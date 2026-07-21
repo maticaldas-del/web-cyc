@@ -1,0 +1,32 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512">
+  <!-- Fondo negro redondeado, estilo app iOS -->
+  <rect x="16" y="16" width="480" height="480" rx="112" fill="#0f0f11"/>
+  <rect x="16.5" y="16.5" width="479" height="479" rx="111.5" fill="none" stroke="#2a2a30" stroke-width="1"/>
+
+  <!-- Empresa / edificio en verde brillante -->
+  <g fill="none" stroke="#4ade80" stroke-width="20" stroke-linecap="round" stroke-linejoin="round">
+    <!-- Cuerpo del edificio -->
+    <path d="M150 356 L150 168 Q150 156 162 156 L288 156 Q300 156 300 168 L300 356"/>
+    <!-- Torre / anexo derecho -->
+    <path d="M300 356 L300 220 Q300 208 312 208 L350 208 Q362 208 362 220 L362 356"/>
+    <!-- Base / piso -->
+    <path d="M120 356 L392 356"/>
+  </g>
+
+  <!-- Ventanas del edificio principal -->
+  <g fill="#4ade80">
+    <rect x="176" y="196" width="30" height="30" rx="7"/>
+    <rect x="244" y="196" width="30" height="30" rx="7"/>
+    <rect x="176" y="256" width="30" height="30" rx="7"/>
+    <rect x="244" y="256" width="30" height="30" rx="7"/>
+  </g>
+
+  <!-- Ventanas de la torre -->
+  <g fill="#166534">
+    <rect x="318" y="248" width="26" height="26" rx="6"/>
+    <rect x="318" y="300" width="26" height="26" rx="6"/>
+  </g>
+
+  <!-- Puerta -->
+  <path d="M206 356 L206 318 Q206 306 218 306 L232 306 Q244 306 244 318 L244 356 Z" fill="#166534"/>
+</svg>
