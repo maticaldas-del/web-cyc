@@ -402,6 +402,7 @@ footer{margin-top:32px;padding-top:14px;border-top:1px solid var(--border);font-
     <input id="login-pass" type="password" autocomplete="current-password" placeholder="Contraseña" required>
     <button id="login-btn" type="submit">Entrar</button>
     <p id="login-err"></p>
+    <a href="#" id="login-forgot" onclick="event.preventDefault();resetPass();" style="display:block;margin-top:10px;color:var(--muted);font-size:.72rem;text-decoration:underline;cursor:pointer">¿Olvidaste tu contraseña?</a>
   </form>
 </div>
 
@@ -1571,6 +1572,19 @@ function doLogin(){
   firebase.auth().signInWithEmailAndPassword(email,pass).catch(e=>{
     errEl.textContent=(e.code==='auth/invalid-credential'||e.code==='auth/wrong-password'||e.code==='auth/user-not-found')?'Email o contraseña incorrectos':'Error: '+e.message;
   }).finally(()=>{btn.disabled=false;btn.textContent='Entrar';});
+}
+function resetPass(){
+  const email=(document.getElementById('login-email').value||'').trim();
+  const errEl=document.getElementById('login-err');
+  errEl.style.color='';
+  if(!email){errEl.textContent='Escribí tu email arriba y volvé a tocar "¿Olvidaste tu contraseña?"';return;}
+  firebase.auth().sendPasswordResetEmail(email).then(()=>{
+    errEl.style.color='var(--green)';
+    errEl.textContent='Te enviamos un mail a '+email+' para restablecer la contraseña. Revisá tu casilla (y también spam).';
+  }).catch(e=>{
+    errEl.style.color='';
+    errEl.textContent=(e.code==='auth/user-not-found')?'No hay ninguna cuenta con ese email':'Error: '+e.message;
+  });
 }
 function logoutCYC(){
   if(!confirm('¿Cerrar sesión?'))return;
