@@ -1,0 +1,18 @@
+{
+  "name": "CYC",
+  "short_name": "CYC",
+  "description": "Panel de negocio CYC: métricas ML, arqueo, pedidos y puntaje del mes.",
+  "start_url": ".",
+  "scope": ".",
+  "display": "standalone",
+  "background_color": "#0f0f11",
+  "theme_color": "#0f0f11",
+  "icons": [
+    {
+      "src": "icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}
