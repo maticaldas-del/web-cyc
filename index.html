@@ -1707,10 +1707,25 @@ function goPage(page){
   if(page==='inventario'){renderInv();renderProds();renderHist();loadFinInputs();updateArqueo();updateTotals();updateHdr();}
   if(page==='home'){checkCierrePendiente();updateHomeDolar();renderPuntajeMes();}
   if(page!=='home'){
-    setTimeout(()=>{
-      const hdr=el?.querySelector('.page-header');
-      if(hdr){const y=hdr.getBoundingClientRect().bottom+window.scrollY+8;window.scrollTo({top:y,behavior:'smooth'});}
-    },150);
+    let cancelled=false;
+    const cancel=()=>{cancelled=true;};
+    window.addEventListener('wheel',cancel,{once:true,passive:true});
+    window.addEventListener('touchmove',cancel,{once:true,passive:true});
+    const scrollPastHeader=()=>{
+      if(cancelled||currentPage!==page)return;
+      const hdr=el&&el.querySelector('.page-header');
+      if(hdr){const y=hdr.getBoundingClientRect().bottom+window.scrollY+8;window.scrollTo({top:y,behavior:'instant'});}
+    };
+    scrollPastHeader();
+    requestAnimationFrame(scrollPastHeader);
+    setTimeout(scrollPastHeader,120);
+    // Reintenta si el contenido termina de cargar después (datos async),
+    // así TODAS las páginas quedan acomodadas sin scrollear a mano.
+    try{
+      const mo=new MutationObserver(scrollPastHeader);
+      mo.observe(el,{childList:true,subtree:true});
+      setTimeout(()=>mo.disconnect(),800);
+    }catch(e){}
   }
 }
 
