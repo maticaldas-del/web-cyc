@@ -1637,10 +1637,43 @@ function injectLogos(){
 }
 
 function setWhoLabels(){
-  ['who-inv','who-ped','who-met','who-res','who-cmp','who-home','who-vp'].forEach(id=>{
+  ['who-inv','who-ped','who-met','who-res','who-cmp','who-home','who-vp','who-ajustes'].forEach(id=>{
     const el=document.getElementById(id);
     if(el)el.textContent='👤 '+whoAmI;
   });
+}
+/* ═══════════ AJUSTES ═══════════ */
+function enterAjustes(){
+  const inp=document.getElementById('ajuste-nombre');if(inp)inp.value=whoAmI;
+  const badge=document.getElementById('who-ajustes');if(badge)badge.textContent='👤 '+whoAmI;
+  const isLight=document.body.classList.contains('light');
+  const tb=document.getElementById('ajuste-tema-btn');if(tb)tb.textContent=isLight?'☀️ Modo claro':'🌙 Modo oscuro';
+  const ok=document.getElementById('ajuste-nombre-ok');if(ok)ok.textContent='';
+}
+function guardarNombre(){
+  const inp=document.getElementById('ajuste-nombre');
+  const ok=document.getElementById('ajuste-nombre-ok');
+  const v=(inp&&inp.value||'').trim();
+  if(!v){if(ok){ok.style.color='var(--red)';ok.textContent='Escribí un nombre';}return;}
+  whoAmI=v;localStorage.setItem(WHO_KEY,v);setWhoLabels();
+  if(ok){ok.style.color='var(--green)';ok.textContent='✓ Guardado';}
+}
+function backupDesdeAjustes(){
+  if(typeof descargarBackup==='function')descargarBackup();
+  else alert('La opción de backup está en Arqueo → Productos.');
+}
+function actualizarApp(){
+  if(!confirm('Se va a actualizar la app a la última versión. ¿Continuar?'))return;
+  const done=()=>location.reload(true);
+  try{
+    if('caches' in window){
+      caches.keys().then(ks=>Promise.all(ks.map(k=>caches.delete(k)))).finally(()=>{
+        if('serviceWorker' in navigator){
+          navigator.serviceWorker.getRegistrations().then(rs=>Promise.all(rs.map(r=>r.unregister()))).finally(done);
+        } else done();
+      });
+    } else done();
+  }catch(e){done();}
 }
 
 /* ═══════════ PAGE ROUTING ═══════════ */
@@ -1656,6 +1689,7 @@ function goPage(page){
   if(page==='metricas')initMetricasPage();
   if(page==='ventaprod')initVentaProd();
   if(page==='rotacion')renderRotacionStock();
+  if(page==='ajustes')enterAjustes();
   if(page==='inventario'){renderInv();renderProds();renderHist();loadFinInputs();updateArqueo();updateTotals();updateHdr();}
   if(page==='home'){checkCierrePendiente();updateHomeDolar();renderPuntajeMes();}
   if(page!=='home'){
@@ -5937,6 +5971,68 @@ function _syncFnav(){
 document.addEventListener('click',e=>{if(fnavOpen&&!e.target.closest('#fnav-btn')&&!e.target.closest('#fnav-menu')){fnavOpen=false;_syncFnav();}});
 </script>
 
+<!-- AJUSTES -->
+<div id="page-ajustes" class="page">
+<div class="page-wrap">
+  <div class="page-header">
+    <div class="ph-left">
+      <button class="back-btn" onclick="goPage('home')">← Inicio</button>
+      <div>
+        <div class="ph-title">Ajustes</div>
+        <div class="ph-sub">Perfil · Apariencia · Datos · Aplicación</div>
+      </div>
+    </div>
+    <div class="ph-right">
+      <span class="who-badge" id="who-ajustes">—</span>
+    </div>
+  </div>
+
+  <div style="max-width:640px">
+
+    <div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:18px 20px;margin-bottom:14px">
+      <div style="font-family:'Syne',sans-serif;font-weight:800;font-size:.95rem;margin-bottom:12px">👤 Perfil</div>
+      <label style="display:block;font-size:.7rem;color:var(--muted);margin-bottom:6px">Tu nombre (aparece en cada sección)</label>
+      <div style="display:flex;gap:8px;flex-wrap:wrap">
+        <input id="ajuste-nombre" type="text" placeholder="Tu nombre" style="flex:1;min-width:160px;padding:9px 12px;border-radius:8px;border:1px solid var(--border2);background:var(--surface2);color:var(--text);font-family:'DM Mono',monospace;font-size:.8rem">
+        <button class="btn" style="background:var(--accent2);color:#fff" onclick="guardarNombre()">Guardar</button>
+      </div>
+      <p id="ajuste-nombre-ok" style="font-size:.68rem;color:var(--green);margin-top:8px;min-height:1em"></p>
+    </div>
+
+    <div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:18px 20px;margin-bottom:14px">
+      <div style="font-family:'Syne',sans-serif;font-weight:800;font-size:.95rem;margin-bottom:12px">🎨 Apariencia</div>
+      <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap">
+        <span style="font-size:.75rem;color:var(--muted)">Tema de la app (claro / oscuro)</span>
+        <button class="btn" id="ajuste-tema-btn" style="background:var(--surface2);border:1px solid var(--border2);color:var(--text)" onclick="toggleTheme();enterAjustes()">🌙 Modo oscuro</button>
+      </div>
+    </div>
+
+    <div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:18px 20px;margin-bottom:14px">
+      <div style="font-family:'Syne',sans-serif;font-weight:800;font-size:.95rem;margin-bottom:12px">💾 Datos</div>
+      <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap">
+        <span style="font-size:.75rem;color:var(--muted)">Descargá una copia de seguridad de toda la base</span>
+        <button class="btn" style="background:rgba(34,197,94,.12);color:var(--green);border:1px solid rgba(34,197,94,.3)" onclick="backupDesdeAjustes()">💾 Descargar backup</button>
+      </div>
+    </div>
+
+    <div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:18px 20px;margin-bottom:14px">
+      <div style="font-family:'Syne',sans-serif;font-weight:800;font-size:.95rem;margin-bottom:12px">🔄 Aplicación</div>
+      <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap">
+        <span style="font-size:.75rem;color:var(--muted)">Si no ves los últimos cambios, forzá la actualización</span>
+        <button class="btn" style="background:rgba(56,189,248,.12);color:var(--blue);border:1px solid rgba(56,189,248,.3)" onclick="actualizarApp()">🔄 Buscar actualizaciones</button>
+      </div>
+      <div style="font-size:.66rem;color:var(--muted);margin-top:12px">CYC · Versión 1.0</div>
+    </div>
+
+    <div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:18px 20px;margin-bottom:14px">
+      <div style="font-family:'Syne',sans-serif;font-weight:800;font-size:.95rem;margin-bottom:12px">🔒 Sesión</div>
+      <button class="btn" style="background:rgba(239,68,68,.12);color:var(--red);border:1px solid rgba(239,68,68,.3)" onclick="logoutCYC()">🔒 Cerrar sesión</button>
+    </div>
+
+  </div>
+</div>
+</div>
+
 <!-- Floating nav -->
 <button id="fnav-btn" onclick="toggleFnav(event)">☰</button>
 <div id="fnav-menu" class="hidden">
@@ -5948,6 +6044,7 @@ document.addEventListener('click',e=>{if(fnavOpen&&!e.target.closest('#fnav-btn'
   <button class="fnav-item" data-page="pedidos"    onclick="goPage('pedidos');fnavOpen=false;_syncFnav()">🚚 Pedidos</button>
   <button class="fnav-item" data-page="rotacion"   onclick="goPage('rotacion');fnavOpen=false;_syncFnav()">📊 Rotación de Stock</button>
   <button class="fnav-item" data-page="compras"    onclick="goPage('compras');fnavOpen=false;_syncFnav()">🛒 Compras y Gastos</button>
+  <button class="fnav-item" data-page="ajustes"    onclick="goPage('ajustes');fnavOpen=false;_syncFnav()">⚙️ Ajustes</button>
   <button class="fnav-item" onclick="fnavOpen=false;_syncFnav();logoutCYC()">🔒 Salir</button>
 </div>
 
