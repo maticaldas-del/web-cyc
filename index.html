@@ -756,6 +756,7 @@ footer{margin-top:32px;padding-top:14px;border-top:1px solid var(--border);font-
   <div id="tab-monotributo" style="display:none">
     <div class="stitle" style="margin-top:0">Monotributo · facturación por mes y cuenta</div>
     <p style="font-size:.68rem;color:var(--muted);margin-bottom:14px">Cargá el facturado <strong>real</strong> de cada mes por cuenta (lo mirás en ML → <em>Métricas</em>). Desde <strong>junio 2026</strong> en adelante lo toma solo de las ventas cargadas (dejá el casillero vacío). Suma los <strong>últimos 12 meses</strong> y calcula la categoría real; cada mes que pasa, el más viejo se cae solo. Dejá vacío un casillero para borrar lo cargado a mano.</p>
+    <div id="mono-panel"></div>
     <div id="mono-cats"></div>
     <div id="mono-grid"><div class="empty-msg">Cargando…</div></div>
     <details style="margin-top:18px">
@@ -2957,6 +2958,37 @@ function renderMonotributo(){
   const win=_ventana365();
   const meses=_ventanaMeses(win); // viejo → nuevo (13 meses: el más viejo entra partido)
   const fac12=_puntFac12();
+  // Panel resumen por cuenta: categoría, margen y semáforo de un vistazo.
+  const panelEl=document.getElementById('mono-panel');
+  if(panelEl){
+    let best=null;
+    const cards=MET_ACCTS.map(a=>{
+      const f=fac12[a]||0;const mc=monoCat(f);
+      const col=mc.excede?'#ef4444':(mc.pct>=90?'#f59e0b':'#22c55e');
+      const sem=mc.excede?'🔴':(mc.pct>=90?'🟡':'🟢');
+      if(!mc.excede&&(best===null||mc.resta>best.resta))best={a,resta:mc.resta};
+      const marg=mc.excede?('Fuera de monotributo +'+fmt(mc.sobreK)):('Quedan '+fmt(mc.resta));
+      return`<div style="background:var(--surface);border:1px solid var(--border);border-left:4px solid ${col};border-radius:var(--r);padding:14px 16px">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
+          <span style="font-family:'Syne',sans-serif;font-weight:800;font-size:.9rem">${MET_LABELS[a]}</span>
+          <span style="font-size:.66rem;font-family:'DM Mono',monospace;font-weight:700;color:${col}">${sem} Cat ${mc.cat}</span>
+        </div>
+        <div style="font-size:.58rem;color:var(--muted);text-transform:uppercase;letter-spacing:.06em">Facturado · últimos 365 días</div>
+        <div style="font-family:'DM Mono',monospace;font-weight:700;font-size:1.05rem;margin:2px 0 8px">${fmt(f)}</div>
+        <div style="height:8px;background:var(--surface2);border-radius:5px;overflow:hidden;margin-bottom:8px">
+          <div style="height:100%;width:${Math.min(100,mc.pct)}%;background:${col}"></div>
+        </div>
+        <div style="display:flex;justify-content:space-between;align-items:baseline;gap:8px;font-size:.63rem">
+          <span style="color:var(--muted)">Tope ${mc.excede?'K':'Cat '+mc.cat}: ${fmt(mc.lim)}</span>
+          <span style="color:${col};font-weight:700">${marg}</span>
+        </div>
+      </div>`;
+    }).join('');
+    const tip=best?`<div style="font-size:.64rem;color:var(--muted);margin:12px 2px 0;line-height:1.5">💡 La cuenta con <strong style="color:var(--text)">más lugar</strong> es <strong style="color:var(--text)">${MET_LABELS[best.a]}</strong> (quedan ${fmt(best.resta)}). Conviene mandarle ahí las ventas nuevas.</div>`:'';
+    panelEl.innerHTML=`<div class="stitle" style="margin-top:0">Estado por cuenta <span style="font-weight:400;color:var(--muted);text-transform:none;letter-spacing:0;font-family:'DM Mono',monospace;font-size:.62rem">· 🟢 con lugar · 🟡 cerca del tope · 🔴 pasada</span></div>`
+      +`<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px">${cards}</div>${tip}`
+      +`<div style="font-size:.57rem;color:var(--muted);margin:10px 2px 22px;line-height:1.5">Calculado con la facturación de la app (ventana rodante de 365 días). La categoría es la que te corresponde <em>por facturación</em>; puede diferir de la registrada hoy en AFIP hasta que recategorices. Topes oficiales vigentes desde ago-2026.</div>`;
+  }
   const th='padding:6px 8px;font-size:.6rem;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;border-bottom:1px solid var(--border);text-align:right';
   const th0='padding:6px 8px;font-size:.6rem;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;border-bottom:1px solid var(--border);text-align:left';
   const td0='padding:4px 8px;font-size:.66rem;white-space:nowrap';
@@ -5310,10 +5342,10 @@ const PUNT_MONO_H=70000000;   // (legacy) facturación anual objetivo por cuenta
 // Categorías reales de Monotributo (venta de cosas muebles) — límite de facturación anual.
 // Si ARCA/AFIP los actualiza (cada ~6 meses), cambiar estos números acá.
 const MONO_CATS=[
-  {c:'A',lim:10277988},{c:'B',lim:15058447},{c:'C',lim:21113696},
-  {c:'D',lim:26212853},{c:'E',lim:30833964},{c:'F',lim:38642048},
-  {c:'G',lim:46211109},{c:'H',lim:70113407},{c:'I',lim:78479211},
-  {c:'J',lim:89872640.30},{c:'K',lim:108357084.05}
+  {c:'A',lim:12009410.45},{c:'B',lim:17595182.74},{c:'C',lim:24670494.31},
+  {c:'D',lim:30628651.43},{c:'E',lim:36028231.33},{c:'F',lim:45151659.41},
+  {c:'G',lim:53995798.87},{c:'H',lim:81924660.37},{c:'I',lim:91699761.90},
+  {c:'J',lim:105012519.20},{c:'K',lim:126610838.75}
 ];
 // Devuelve la categoría en la que cae una facturación de 12 meses, cuánto falta para el
 // límite (pasarse) y la próxima categoría. Si supera la K → fuera de monotributo.
