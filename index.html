@@ -4618,7 +4618,7 @@ function calcRotScore(){
     let ventasPeriodo=0;
     vKeys.forEach(k=>Object.values(state.ventaprod[k]||{}).forEach(v=>{if(ventaEsDe(v,p)&&!_esCancelada(v))ventasPeriodo+=v.qty||0;}));
     const rotNorm=stock>0?(ventasPeriodo/stock)*factor:(ventasPeriodo>0?Infinity:0);
-    const graciaReciente=stock>0&&p.restockTs&&(now-p.restockTs)<3*86400000;
+    const graciaReciente=stock>0&&p.restockTs&&(now-p.restockTs)<7*86400000;
     let estadoKey;
     if(stock===0)estadoKey=ventasPeriodo>0?'sano':'sinstock';
     else if(rotNorm>=0.75)estadoKey='sano';
@@ -4694,7 +4694,7 @@ function renderRotacionStock(){
     // Rotación normalizada: usa stock como denominador (unidades / unidades)
     const rotNorm=stock>0?(ventasPeriodo/stock)*factor:ventasPeriodo>0?Infinity:0;
 
-    const graciaReciente=stock>0&&p.restockTs&&(now-p.restockTs)<3*86400000;
+    const graciaReciente=stock>0&&p.restockTs&&(now-p.restockTs)<7*86400000;
     let estadoKey,estadoHtml;
     if(stock===0){
       if(ventasPeriodo>0){estadoKey='sano';estadoHtml='<span style="color:var(--green)" title="Vendiste todo el stock">🟢 Sin stock</span>';}
@@ -4702,7 +4702,7 @@ function renderRotacionStock(){
     }
     else if(rotNorm>=0.75){estadoKey='sano';estadoHtml='<span style="color:var(--green)">🟢 Sano</span>';}
     else if(rotNorm>=0.20){estadoKey='lento';estadoHtml='<span style="color:var(--amber)">🟠 Lento</span>';}
-    else if(graciaReciente){estadoKey='reciente';estadoHtml='<span style="color:var(--blue)" title="Repuesto hace poco · 3 días de gracia para empezar a venderse">🆕 Reciente</span>';}
+    else if(graciaReciente){estadoKey='reciente';estadoHtml='<span style="color:var(--blue)" title="Repuesto hace poco · 7 días de gracia para empezar a venderse">🆕 Reciente</span>';}
     else{estadoKey='muerto';estadoHtml='<span style="color:var(--red)">🔴 Muerto</span>';}
 
     return{name:p.name,capital,ventasPeriodo,rotNorm,estadoKey,estadoHtml,stock,diasSinVender};
