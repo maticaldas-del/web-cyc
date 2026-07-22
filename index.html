@@ -2963,18 +2963,23 @@ function renderMonotributo(){
   if(panelEl){
     let best=null;
     const cards=MET_ACCTS.map(a=>{
-      const f=fac12[a]||0;const mc=monoCat(f);
+      const mlF=fac12[a]||0;
+      const afipRaw=state.afip_fact?.[a];
+      const hasAfip=afipRaw!=null&&afipRaw!=='';
+      const baseF=hasAfip?Number(afipRaw):mlF;   // la categoría sale de AFIP si lo cargaste
+      const mc=monoCat(baseF);
       const col=mc.excede?'#ef4444':(mc.pct>=90?'#f59e0b':'#22c55e');
       const sem=mc.excede?'🔴':(mc.pct>=90?'🟡':'🟢');
       if(!mc.excede&&(best===null||mc.resta>best.resta))best={a,resta:mc.resta};
       const marg=mc.excede?('Fuera de monotributo +'+fmt(mc.sobreK)):('Quedan '+fmt(mc.resta));
+      const id='afip-'+a;
       return`<div style="background:var(--surface);border:1px solid var(--border);border-left:4px solid ${col};border-radius:var(--r);padding:14px 16px">
         <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
           <span style="font-family:'Syne',sans-serif;font-weight:800;font-size:.9rem">${MET_LABELS[a]}</span>
           <span style="font-size:.66rem;font-family:'DM Mono',monospace;font-weight:700;color:${col}">${sem} Cat ${mc.cat}</span>
         </div>
-        <div style="font-size:.58rem;color:var(--muted);text-transform:uppercase;letter-spacing:.06em">Facturado · últimos 365 días</div>
-        <div style="font-family:'DM Mono',monospace;font-weight:700;font-size:1.05rem;margin:2px 0 8px">${fmt(f)}</div>
+        <div style="font-size:.58rem;color:var(--muted);text-transform:uppercase;letter-spacing:.06em">${hasAfip?'Facturado AFIP':'Ventas ML (app) · 365 días'}</div>
+        <div style="font-family:'DM Mono',monospace;font-weight:700;font-size:1.05rem;margin:2px 0 8px">${fmt(baseF)}</div>
         <div style="height:8px;background:var(--surface2);border-radius:5px;overflow:hidden;margin-bottom:8px">
           <div style="height:100%;width:${Math.min(100,mc.pct)}%;background:${col}"></div>
         </div>
@@ -2982,12 +2987,17 @@ function renderMonotributo(){
           <span style="color:var(--muted)">Tope ${mc.excede?'K':'Cat '+mc.cat}: ${fmt(mc.lim)}</span>
           <span style="color:${col};font-weight:700">${marg}</span>
         </div>
+        ${hasAfip?`<div style="font-size:.56rem;color:var(--muted);margin-top:6px">Ventas ML (app): ${fmt(mlF)}</div>`:''}
+        <div style="margin-top:10px;display:flex;align-items:center;gap:6px">
+          <span style="font-size:.55rem;color:var(--muted);white-space:nowrap">Facturado real AFIP:</span>
+          <input type="text" inputmode="numeric" id="${id}" value="${hasAfip?Math.round(Number(afipRaw)).toLocaleString('es-AR'):''}" placeholder="cargar de AFIP" oninput="fmtMoneyInput(this)" onchange="saveAfipFact('${a}','${id}')" style="flex:1;min-width:0;font-size:.62rem;padding:3px 6px;text-align:right;background:var(--surface2);border:1px solid var(--border);border-radius:6px;color:var(--text)">
+        </div>
       </div>`;
     }).join('');
     const tip=best?`<div style="font-size:.64rem;color:var(--muted);margin:12px 2px 0;line-height:1.5">💡 La cuenta con <strong style="color:var(--text)">más lugar</strong> es <strong style="color:var(--text)">${MET_LABELS[best.a]}</strong> (quedan ${fmt(best.resta)}). Conviene mandarle ahí las ventas nuevas.</div>`:'';
     panelEl.innerHTML=`<div class="stitle" style="margin-top:0">Estado por cuenta <span style="font-weight:400;color:var(--muted);text-transform:none;letter-spacing:0;font-family:'DM Mono',monospace;font-size:.62rem">· 🟢 con lugar · 🟡 cerca del tope · 🔴 pasada</span></div>`
       +`<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px">${cards}</div>${tip}`
-      +`<div style="font-size:.57rem;color:var(--muted);margin:10px 2px 22px;line-height:1.5">Calculado con la facturación de la app (ventana rodante de 365 días). La categoría es la que te corresponde <em>por facturación</em>; puede diferir de la registrada hoy en AFIP hasta que recategorices. Topes oficiales vigentes desde ago-2026.</div>`;
+      +`<div style="font-size:.57rem;color:var(--muted);margin:10px 2px 22px;line-height:1.5">Cargá el <strong>Facturado real AFIP</strong> de cada cuenta y la tarjeta muestra su <strong>categoría oficial</strong> y margen real (las ventas de ML quedan como dato secundario). Si lo dejás vacío, usa las ventas de ML del app. Topes oficiales vigentes desde ago-2026.</div>`;
   }
   const th='padding:6px 8px;font-size:.6rem;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;border-bottom:1px solid var(--border);text-align:right';
   const th0='padding:6px 8px;font-size:.6rem;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;border-bottom:1px solid var(--border);text-align:left';
@@ -3010,6 +3020,19 @@ function renderMonotributo(){
   const catRow=`<tr><td style="${td0};color:var(--muted)">Categoría</td>${MET_ACCTS.map(a=>{const mc=monoCat(fac12[a]);const col=mc.excede?'#ef4444':mc.pct>=90?'#f59e0b':'#22c55e';return`<td style="padding:4px 8px;text-align:right"><div style="color:${col};font-weight:700;font-size:.72rem">${mc.excede?'⚠ &gt; K':'Cat '+mc.cat}</div><div style="font-size:.54rem;color:var(--muted)">${mc.excede?'+'+fmt(mc.sobreK):'faltan '+fmt(mc.resta)}</div></td>`;}).join('')}</tr>`;
   gridEl.innerHTML=`<div style="overflow-x:auto"><table style="border-collapse:collapse;min-width:100%">${head}${rows}${totRow}${catRow}</table></div>`
     +`<div style="font-size:.58rem;color:var(--muted);margin-top:10px;line-height:1.5">Los meses marcados <span style="color:var(--green)">auto</span> salen de las ventas cargadas (podés pisarlos escribiendo un número). El total es la ventana rodante de los <strong>últimos 365 días</strong> (por eso toca 13 meses: el más viejo entra <span style="color:var(--amber)">parcial</span>). En los meses parciales cargá igual el total del mes completo de ML — la app cuenta solo los días que caen dentro de la ventana.</div>`;
+}
+async function saveAfipFact(acct,inputId){
+  const inp=document.getElementById(inputId);if(!inp)return;
+  const raw=(inp.value||'').trim();
+  if(raw===''){
+    if(state.afip_fact&&state.afip_fact[acct]!=null){delete state.afip_fact[acct];await fbDel('afip_fact/'+acct);}
+  } else {
+    const val=parseMoney(raw);if(val<0){toast('Valor inválido','err');inp.focus();return;}
+    if(!state.afip_fact)state.afip_fact={};
+    state.afip_fact[acct]=val;
+    await fbSet('afip_fact/'+acct,val);
+  }
+  renderMonotributo();
 }
 async function saveFacMes(acct,ym,inputId){
   const inp=document.getElementById(inputId);if(!inp)return;
