@@ -453,6 +453,7 @@ footer{margin-top:32px;padding-top:14px;border-top:1px solid var(--border);font-
         <span class="nc-icon">📊</span>
         <div class="nc-title">Rotación de Stock</div>
         <div class="nc-desc">Capital inmovilizado · ventas 30d · estado por producto.</div>
+        <div id="nc-rot-score"></div>
         <span class="nc-arrow">→</span>
       </div>
     </div>
@@ -4591,6 +4592,54 @@ function setRotSort(mode,btn){
   if(btn)btn.classList.add('active');
   renderRotacionStock();
 }
+// Puntaje de rotación (0-10) según % de capital en productos "Muerto". Compartido con la tarjeta de Inicio.
+function _rotScoreLevel(pct){
+  const score=Math.max(0,Math.min(10,10*(1-pct/50)));
+  let nivel,col;
+  if(pct<=7){nivel='Rotación excelente';col='#22c55e';}
+  else if(pct<=15){nivel='Rotación sana';col='#22c55e';}
+  else if(pct<=30){nivel='Atención: capital frenándose';col='#f59e0b';}
+  else{nivel='Mucho stock muerto';col='#ef4444';}
+  return{score,nivel,col};
+}
+function calcRotScore(){
+  const prods=(state.products||[]).filter(p=>p&&p.name);
+  if(!prods.length)return null;
+  const HIST_START=new Date('2026-06-01T00:00:00'),MAX_DAYS=60,now=new Date();
+  const diasHistorial=Math.max(1,Math.min(MAX_DAYS,Math.floor((now-HIST_START)/86400000)+1));
+  const from=new Date(now);from.setDate(now.getDate()-(diasHistorial-1));
+  const fk=dateToKey(from),tk=dateToKey(now);
+  const vKeys=Object.keys(state.ventaprod||{}).filter(k=>k>=fk&&k<=tk);
+  const factor=MAX_DAYS/diasHistorial;
+  let capTotal=0,capMuerto=0,capLento=0,nMuerto=0,nLento=0;
+  prods.forEach(p=>{
+    const stock=stockOf(p),capital=stock*(costFullP(p)||0);
+    if(capital<=0)return;
+    let ventasPeriodo=0;
+    vKeys.forEach(k=>Object.values(state.ventaprod[k]||{}).forEach(v=>{if(ventaEsDe(v,p)&&!_esCancelada(v))ventasPeriodo+=v.qty||0;}));
+    const rotNorm=stock>0?(ventasPeriodo/stock)*factor:(ventasPeriodo>0?Infinity:0);
+    const graciaReciente=stock>0&&p.restockTs&&(now-p.restockTs)<3*86400000;
+    let estadoKey;
+    if(stock===0)estadoKey=ventasPeriodo>0?'sano':'sinstock';
+    else if(rotNorm>=0.75)estadoKey='sano';
+    else if(rotNorm>=0.20)estadoKey='lento';
+    else if(graciaReciente)estadoKey='reciente';
+    else estadoKey='muerto';
+    capTotal+=capital;
+    if(estadoKey==='muerto'){capMuerto+=capital;nMuerto++;}
+    else if(estadoKey==='lento'){capLento+=capital;nLento++;}
+  });
+  if(capTotal<=0)return null;
+  const pct=capMuerto/capTotal*100;
+  const {score,nivel,col}=_rotScoreLevel(pct);
+  return {pct,score,nivel,col,capMuerto,nMuerto,capLento,nLento,capTotal};
+}
+function renderRotCardScore(){
+  const el=document.getElementById('nc-rot-score');if(!el)return;
+  const sc=calcRotScore();
+  if(!sc){el.innerHTML='';return;}
+  el.innerHTML=`<div style="display:flex;align-items:center;gap:8px;margin-top:2px"><span style="display:inline-flex;align-items:center;justify-content:center;width:26px;height:26px;border-radius:50%;background:${sc.col};color:#0f0f11;font-family:'Syne',sans-serif;font-weight:800;font-size:.72rem;flex-shrink:0">${sc.score.toFixed(1)}</span><span style="color:${sc.col};font-weight:700;font-size:.68rem">${sc.nivel}</span></div><div style="font-size:.6rem;color:var(--muted);margin-top:3px">${sc.pct.toFixed(1)}% en stock muerto · ${fmt(sc.capMuerto)}</div>`;
+}
 function renderRotacionStock(){
   const tbody=document.getElementById('rot-body');if(!tbody)return;
   const prods=(state.products||[]).filter(p=>p&&p.name);
@@ -4672,12 +4721,7 @@ function renderRotacionStock(){
       scoreEl.innerHTML=`<div style="background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:16px 18px;margin-bottom:12px;font-size:.7rem;color:var(--muted)">Sin capital en stock cargado para evaluar la rotación.</div>`;
     } else {
       const pct=capMuerto/capTotal*100;                 // % del capital en stock muerto
-      const score=Math.max(0,Math.min(10,10*(1-pct/50)));// 0% muerto → 10 · 50%+ → 0 (cada 5% = −1 pt)
-      let nivel,col;
-      if(pct<=7){nivel='Rotación excelente';col='#22c55e';}
-      else if(pct<=15){nivel='Rotación sana';col='#22c55e';}
-      else if(pct<=30){nivel='Atención: capital frenándose';col='#f59e0b';}
-      else{nivel='Mucho stock muerto';col='#ef4444';}
+      const {score,nivel,col}=_rotScoreLevel(pct);       // 0% muerto → 10 · 50%+ → 0 (cada 5% = −1 pt)
       const C=2*Math.PI*34,off=C*(1-score/10);
       scoreEl.innerHTML=`<div style="background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:16px 18px;margin-bottom:12px;display:flex;align-items:center;gap:18px;flex-wrap:wrap">
         <div style="width:88px;height:88px;flex-shrink:0">
@@ -5708,6 +5752,7 @@ function renderPuntajeMes(){
     ${sugHtml}
     ${monoHtml}
   </div>`;
+  try{renderRotCardScore();}catch(e){}
 }
 function setPuntajeMeta(ym){
   const o=(state.puntaje&&state.puntaje[ym])||{};
