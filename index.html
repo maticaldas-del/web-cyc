@@ -295,6 +295,14 @@ input.qty:focus{border-color:var(--accent2)}
   #chart-line-mes,#chart-pct-mes{min-width:0!important}
   .chart-box{padding:12px}
 }
+#chart-fs{position:fixed;inset:0;z-index:1200;background:var(--bg);display:none}
+#chart-fs.open{display:flex;flex-direction:column}
+#chart-fs .fs-bar{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:10px 14px;border-bottom:1px solid var(--border)}
+#chart-fs .fs-hint{font-size:.66rem;color:var(--muted)}
+#chart-fs .fs-close{background:var(--surface2);border:1px solid var(--border2);color:var(--text);border-radius:8px;padding:7px 14px;font-size:.8rem;cursor:pointer;font-family:'DM Mono',monospace}
+#chart-fs .fs-body{flex:1;min-height:0;padding:10px;display:flex}
+#chart-fs .fs-body > div{flex:1;min-width:0;overflow:hidden!important;position:relative}
+#chart-fs .fs-body canvas{min-width:0!important}
 .empty-msg{font-size:.68rem;color:var(--muted);text-align:center;padding:24px;border:1px dashed var(--border2);border-radius:var(--r)}
 
 /* ── VENTAS PAGE ── */
@@ -1030,6 +1038,7 @@ footer{margin-top:32px;padding-top:14px;border-top:1px solid var(--border);font-
         </div>
       </div>
     </div>
+    <div style="text-align:right;margin-bottom:8px"><button class="pf-btn" onclick="abrirGraficoFS('chart-line-mes')">⛶ Pantalla completa</button></div>
     <div style="overflow-x:auto;-webkit-overflow-scrolling:touch"><canvas id="chart-line-mes" height="120" style="min-width:500px"></canvas></div>
   </div>
 
@@ -1049,6 +1058,7 @@ footer{margin-top:32px;padding-top:14px;border-top:1px solid var(--border);font-
         </div>
       </div>
     </div>
+    <div style="text-align:right;margin-bottom:8px"><button class="pf-btn" onclick="abrirGraficoFS('chart-pct-mes')">⛶ Pantalla completa</button></div>
     <div style="overflow-x:auto;-webkit-overflow-scrolling:touch"><canvas id="chart-pct-mes" height="120" style="min-width:500px"></canvas></div>
     <div id="met-pct-avg" style="display:flex;flex-wrap:wrap;gap:10px;margin-top:16px"></div>
   </div>
@@ -5953,6 +5963,43 @@ function renderComprasComp(){
 }
 
 
+/* ═══════════ GRÁFICO PANTALLA COMPLETA ═══════════ */
+let _fsChart=null,_fsReturn=null;
+function abrirGraficoFS(canvasId){
+  const cv=document.getElementById(canvasId);if(!cv)return;
+  const wrap=cv.parentElement;
+  const chart=canvasId==='chart-line-mes'?metChartLine:(canvasId==='chart-pct-mes'?metChartPct:null);
+  _fsReturn={wrap,parent:wrap.parentNode,next:wrap.nextSibling};
+  const body=document.querySelector('#chart-fs .fs-body');
+  body.innerHTML='';
+  body.appendChild(wrap);
+  const fs=document.getElementById('chart-fs');
+  fs.classList.add('open');
+  document.body.style.overflow='hidden';
+  _fsChart=chart;
+  if(chart){chart.__mar=chart.options.maintainAspectRatio;chart.options.maintainAspectRatio=false;}
+  if(fs.requestFullscreen){fs.requestFullscreen().catch(()=>{});}
+  setTimeout(()=>{if(_fsChart){try{_fsChart.resize();}catch(e){}}},80);
+}
+function cerrarGraficoFS(){
+  const fs=document.getElementById('chart-fs');
+  if(document.fullscreenElement&&document.exitFullscreen){document.exitFullscreen().catch(()=>{});}
+  fs.classList.remove('open');
+  document.body.style.overflow='';
+  if(_fsReturn){
+    const{wrap,parent,next}=_fsReturn;
+    if(next&&next.parentNode===parent)parent.insertBefore(wrap,next);else parent.appendChild(wrap);
+    _fsReturn=null;
+  }
+  if(_fsChart){
+    const c=_fsChart;_fsChart=null;
+    c.options.maintainAspectRatio=(c.__mar!==undefined?c.__mar:true);
+    setTimeout(()=>{try{c.resize();}catch(e){}},80);
+  }
+}
+window.addEventListener('resize',()=>{if(_fsChart){try{_fsChart.resize();}catch(e){}}});
+window.addEventListener('orientationchange',()=>{if(_fsChart)setTimeout(()=>{try{_fsChart.resize();}catch(e){}},250);});
+document.addEventListener('keydown',e=>{if(e.key==='Escape'){const fs=document.getElementById('chart-fs');if(fs&&fs.classList.contains('open'))cerrarGraficoFS();}});
 /* ═══════════ FLOATING NAV ═══════════ */
 const FNAV_PAGES=[
   {id:'home',      icon:'🏠', label:'Inicio'},
@@ -6035,6 +6082,15 @@ document.addEventListener('click',e=>{if(fnavOpen&&!e.target.closest('#fnav-btn'
 
   </div>
 </div>
+</div>
+
+<!-- Gráfico a pantalla completa -->
+<div id="chart-fs">
+  <div class="fs-bar">
+    <span class="fs-hint">📱 Girá el celular para verlo más grande</span>
+    <button class="fs-close" onclick="cerrarGraficoFS()">✕ Cerrar</button>
+  </div>
+  <div class="fs-body"></div>
 </div>
 
 <!-- Floating nav -->
