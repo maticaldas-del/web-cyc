@@ -920,6 +920,7 @@ footer{margin-top:32px;padding-top:14px;border-top:1px solid var(--border);font-
     </div>
   </div>
 
+  <div id="rot-score"></div>
   <div id="rot-periodo-banner" style="font-size:.67rem;color:var(--muted);margin-bottom:12px;padding:10px 14px;background:var(--surface);border:1px solid var(--border);border-radius:8px"></div>
 
   <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:12px">
@@ -4657,6 +4658,45 @@ function renderRotacionStock(){
 
     return{name:p.name,capital,ventasPeriodo,rotNorm,estadoKey,estadoHtml,stock,diasSinVender};
   });
+
+  // ── Puntaje de rotación: % del capital ($) atascado en productos "Muerto" ──
+  const scoreEl=document.getElementById('rot-score');
+  if(scoreEl){
+    const conStock=rows.filter(r=>r.capital>0);
+    const capTotal=conStock.reduce((s,r)=>s+r.capital,0);
+    const muertos=conStock.filter(r=>r.estadoKey==='muerto');
+    const capMuerto=muertos.reduce((s,r)=>s+r.capital,0);
+    const lentos=conStock.filter(r=>r.estadoKey==='lento');
+    const capLento=lentos.reduce((s,r)=>s+r.capital,0);
+    if(capTotal<=0){
+      scoreEl.innerHTML=`<div style="background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:16px 18px;margin-bottom:12px;font-size:.7rem;color:var(--muted)">Sin capital en stock cargado para evaluar la rotación.</div>`;
+    } else {
+      const pct=capMuerto/capTotal*100;                 // % del capital en stock muerto
+      const score=Math.max(0,Math.min(10,10*(1-pct/50)));// 0% muerto → 10 · 50%+ → 0 (cada 5% = −1 pt)
+      let nivel,col;
+      if(pct<=7){nivel='Rotación excelente';col='#22c55e';}
+      else if(pct<=15){nivel='Rotación sana';col='#22c55e';}
+      else if(pct<=30){nivel='Atención: capital frenándose';col='#f59e0b';}
+      else{nivel='Mucho stock muerto';col='#ef4444';}
+      const C=2*Math.PI*34,off=C*(1-score/10);
+      scoreEl.innerHTML=`<div style="background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:16px 18px;margin-bottom:12px;display:flex;align-items:center;gap:18px;flex-wrap:wrap">
+        <div style="width:88px;height:88px;flex-shrink:0">
+          <svg width="88" height="88" viewBox="0 0 88 88">
+            <circle cx="44" cy="44" r="34" fill="none" stroke="var(--surface2)" stroke-width="8"/>
+            <circle cx="44" cy="44" r="34" fill="none" stroke="${col}" stroke-width="8" stroke-linecap="round" stroke-dasharray="${C.toFixed(1)}" stroke-dashoffset="${off.toFixed(1)}" transform="rotate(-90 44 44)"/>
+            <text x="44" y="40" text-anchor="middle" dominant-baseline="central" font-family="'Syne',sans-serif" font-weight="800" font-size="26" fill="${col}">${score.toFixed(1)}</text>
+            <text x="44" y="60" text-anchor="middle" dominant-baseline="central" font-family="'DM Mono',monospace" font-size="8" fill="var(--muted)">de 10</text>
+          </svg>
+        </div>
+        <div style="flex:1;min-width:200px">
+          <div style="font-family:'Syne',sans-serif;font-weight:800;font-size:1rem;color:${col};margin-bottom:5px">${nivel}</div>
+          <div style="font-size:.7rem;color:var(--text);margin-bottom:3px"><strong style="color:${col}">${pct.toFixed(1)}%</strong> del capital en <span style="color:var(--red)">stock muerto</span> · ${fmt(capMuerto)} en ${muertos.length} producto${muertos.length!==1?'s':''}</div>
+          ${capLento>0?`<div style="font-size:.62rem;color:var(--muted);margin-bottom:3px">+ ${fmt(capLento)} en 🟠 lento (${lentos.length}) — vigilar</div>`:''}
+          <div style="font-size:.6rem;color:var(--muted)">Capital total en stock: ${fmt(capTotal)} · 🟢 Sano ≤15% · 🟡 Atención 15-30% · 🔴 Malo &gt;30%</div>
+        </div>
+      </div>`;
+    }
+  }
 
   // ── Ordenamiento según ranking elegido ─────────────────────────
   const rotVal=r=>r.rotNorm===Infinity?Number.MAX_SAFE_INTEGER:r.rotNorm;
