@@ -216,6 +216,8 @@ input.qty:focus{border-color:var(--accent2)}
 .at-val{font-family:'Syne',sans-serif;font-size:1.5rem;font-weight:800}
 .at-val.pos{color:var(--green)}.at-val.neg{color:var(--red)}
 .cal-bar{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:16px;padding:14px;background:var(--surface);border:1px solid var(--border);border-radius:var(--r)}
+#met-cal-bar{transition:transform .25s ease}
+#met-cal-bar.cal-hidden{transform:translateY(-130%)}
 .cal-bar label{font-size:.68rem;color:var(--muted);text-transform:uppercase;letter-spacing:.1em}
 .cal-select{background:var(--surface2);border:1px solid var(--border2);border-radius:6px;color:var(--text);font-family:'DM Mono',monospace;font-size:.74rem;padding:8px 12px;outline:none;cursor:pointer}
 .cal-select:focus{border-color:var(--accent2)}
@@ -973,7 +975,7 @@ footer{margin-top:32px;padding-top:14px;border-top:1px solid var(--border);font-
   </div>
 
   <!-- ── Selector de período (fijo arriba: se puede cambiar la vista mirando cualquier gráfico) ── -->
-  <div class="cal-bar" style="margin-bottom:18px;flex-wrap:wrap;gap:10px;position:sticky;top:0;z-index:20">
+  <div id="met-cal-bar" class="cal-bar" style="margin-bottom:18px;flex-wrap:wrap;gap:10px;position:sticky;top:0;z-index:20">
     <div class="view-toggle">
       <button class="vbtn"        id="ms-7d"   onclick="setMetScope('7d',this)">7 días</button>
       <button class="vbtn"        id="ms-15d"  onclick="setMetScope('15d',this)">15 días</button>
@@ -1703,7 +1705,7 @@ function goPage(page){
   if(page==='compras')initComprasPage();
   if(page==='resumen')enterResumen();
   if(page==='pedidos')enterPedidos();
-  if(page==='metricas')initMetricasPage();
+  if(page==='metricas'){initMetricasPage();const _mb=document.getElementById('met-cal-bar');if(_mb)_mb.classList.remove('cal-hidden');}
   if(page==='ventaprod')initVentaProd();
   if(page==='rotacion')renderRotacionStock();
   if(page==='ajustes')enterAjustes();
@@ -6183,6 +6185,17 @@ window.addEventListener('resize',()=>{if(_fsChart){try{_fsChart.resize();}catch(
 document.addEventListener('fullscreenchange',()=>{if(_fsChart)setTimeout(()=>{try{_fsChart.resize();}catch(e){}},60);});
 window.addEventListener('orientationchange',()=>{if(_fsChart)setTimeout(()=>{try{_fsChart.resize();}catch(e){}},250);});
 document.addEventListener('keydown',e=>{if(e.key==='Escape'){const fs=document.getElementById('chart-fs');if(fs&&fs.classList.contains('open'))cerrarGraficoFS();}});
+/* ═══════════ MÉTRICAS: barra de filtros que se esconde al scrollear ═══════════ */
+let _metLastScroll=0;
+window.addEventListener('scroll',()=>{
+  if(currentPage!=='metricas')return;
+  const bar=document.getElementById('met-cal-bar');if(!bar)return;
+  const y=window.scrollY||document.documentElement.scrollTop||0;
+  if(y<=120)bar.classList.remove('cal-hidden');           // cerca de arriba → siempre visible
+  else if(y>_metLastScroll+5)bar.classList.add('cal-hidden');    // bajando → esconder
+  else if(y<_metLastScroll-5)bar.classList.remove('cal-hidden'); // subiendo → mostrar
+  _metLastScroll=y;
+},{passive:true});
 /* ═══════════ FLOATING NAV ═══════════ */
 const FNAV_PAGES=[
   {id:'home',      icon:'🏠', label:'Inicio'},
