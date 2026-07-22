@@ -5977,9 +5977,14 @@ function abrirGraficoFS(canvasId){
   fs.classList.add('open');
   document.body.style.overflow='hidden';
   _fsChart=chart;
-  if(chart){chart.__mar=chart.options.maintainAspectRatio;chart.options.maintainAspectRatio=false;}
+  if(chart){
+    chart.__mar=chart.options.maintainAspectRatio;
+    chart.options.maintainAspectRatio=false;
+    if(chart.canvas){chart.canvas.style.width='';chart.canvas.style.height='';}
+  }
   if(fs.requestFullscreen){fs.requestFullscreen().catch(()=>{});}
   setTimeout(()=>{if(_fsChart){try{_fsChart.resize();}catch(e){}}},80);
+  setTimeout(()=>{if(_fsChart){try{_fsChart.resize();}catch(e){}}},400);
 }
 function cerrarGraficoFS(){
   const fs=document.getElementById('chart-fs');
@@ -5994,10 +5999,13 @@ function cerrarGraficoFS(){
   if(_fsChart){
     const c=_fsChart;_fsChart=null;
     c.options.maintainAspectRatio=(c.__mar!==undefined?c.__mar:true);
-    setTimeout(()=>{try{c.resize();}catch(e){}},80);
+    if(c.canvas){c.canvas.style.width='';c.canvas.style.height='';}
+    setTimeout(()=>{try{c.resize();c.update('none');}catch(e){}},60);
+    setTimeout(()=>{try{c.resize();}catch(e){}},350);
   }
 }
 window.addEventListener('resize',()=>{if(_fsChart){try{_fsChart.resize();}catch(e){}}});
+document.addEventListener('fullscreenchange',()=>{if(_fsChart)setTimeout(()=>{try{_fsChart.resize();}catch(e){}},60);});
 window.addEventListener('orientationchange',()=>{if(_fsChart)setTimeout(()=>{try{_fsChart.resize();}catch(e){}},250);});
 document.addEventListener('keydown',e=>{if(e.key==='Escape'){const fs=document.getElementById('chart-fs');if(fs&&fs.classList.contains('open'))cerrarGraficoFS();}});
 /* ═══════════ FLOATING NAV ═══════════ */
