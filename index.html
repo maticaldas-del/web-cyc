@@ -1578,7 +1578,7 @@ function startApp(){
     if(_extEntries.length)_applyStockEntries(_extEntries);
     document.getElementById('loading').style.display='none';
     if(firstDataLoad){firstDataLoad=false;goPage('home');}
-    if(isEditing()){pendingRender=true;}
+    if(isEditing()||_finFocused){pendingRender=true;}
     else{renderAll();requestAnimationFrame(()=>window.scrollTo(0,scrollY));}
   });
 }
@@ -1758,6 +1758,7 @@ function fmtMoneyInput(el){
 /* ── Evitar que el re-render de Firebase borre lo que se está editando ── */
 let pendingRender=false;
 let _finPending={}; // valores de finanzas escritos localmente pero aún no confirmados en la base (no dejar que un snapshot los pise)
+let _finFocused=false; // hay un campo de finanzas siendo editado → congelar la recarga de esos campos
 function isEditing(){const a=document.activeElement;return !!a&&/^(INPUT|SELECT|TEXTAREA)$/.test(a.tagName);}
 document.addEventListener('focusout',()=>{
   setTimeout(()=>{if(pendingRender&&!isEditing()){pendingRender=false;renderAll();}},150);
@@ -1768,6 +1769,8 @@ function setMoneyVal(el,num){
   el.value=(!num||isNaN(n)||n===0)?'':Math.round(n).toLocaleString('es-AR');
 }
 document.addEventListener('input',e=>{const t=e.target;if(t&&t.classList&&t.classList.contains('money'))fmtMoneyInput(t);});
+document.addEventListener('focusin',e=>{const t=e.target;if(t&&t.classList&&t.classList.contains('fin-input'))_finFocused=true;});
+document.addEventListener('focusout',e=>{const t=e.target;if(t&&t.classList&&t.classList.contains('fin-input'))setTimeout(()=>{const a=document.activeElement;if(!(a&&a.classList&&a.classList.contains('fin-input')))_finFocused=false;},80);});
 /* tipo de cambio dólar */
 const curTC=()=>parseFloat(state.finanzas&&state.finanzas['tipo_cambio'])||0;
 /* costo real en pesos del producto: usa USD×TC si hay costoUSD, sino el costo peso legacy */
@@ -2632,6 +2635,7 @@ async function saveFin(key,val){
 }
 
 function loadFinInputs(){
+  if(_finFocused)return; // mientras se edita un campo de finanzas, no recargar (evita que se revierta el valor)
   // No pisar el campo que el usuario está editando en este momento (si no, se revierte lo que escribe).
   FIN_FIELDS.forEach(f=>{const inp=document.getElementById('f_'+f.k);if(inp&&document.activeElement!==inp){const raw=parseFloat(state.finanzas[f.k])||0;setMoneyVal(inp,f.neutral?raw:Math.abs(raw));}});
   const tc=document.getElementById('f_tipo_cambio');if(tc&&document.activeElement!==tc)setMoneyVal(tc,state.finanzas['tipo_cambio']);
@@ -6272,7 +6276,7 @@ document.addEventListener('click',e=>{if(fnavOpen&&!e.target.closest('#fnav-btn'
         <span style="font-size:.75rem;color:var(--muted)">Si no ves los últimos cambios, forzá la actualización</span>
         <button class="btn" style="background:rgba(56,189,248,.12);color:var(--blue);border:1px solid rgba(56,189,248,.3)" onclick="actualizarApp()">🔄 Buscar actualizaciones</button>
       </div>
-      <div style="font-size:.66rem;color:var(--muted);margin-top:12px">CYC · Versión 1.0</div>
+      <div style="font-size:.66rem;color:var(--muted);margin-top:12px">CYC · Versión 1.2</div>
     </div>
 
     <div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:18px 20px;margin-bottom:14px">
