@@ -642,6 +642,7 @@ footer{margin-top:32px;padding-top:14px;border-top:1px solid var(--border);font-
         <div class="at-val pos" id="arqueo-total-val">$0</div>
       </div>
     </div>
+    <div id="recon-panel" style="margin-top:14px"></div>
   </div>
 
   <!-- COMPARAR -->
@@ -2692,6 +2693,42 @@ function calcArqueo(){
   return{stockVal,stockML,stockLocal,activos,deudas,corregir,efect,deben,deuda,total:stockVal+activos-deudas+corregir};
 }
 
+// Panel de reconciliación: ¿la ganancia del mes se ve reflejada en el crecimiento del patrimonio?
+function renderReconciliacion(){
+  const el=document.getElementById('recon-panel');if(!el)return;
+  if(_arqViewYM){el.innerHTML='';return;} // solo en vivo, no viendo un cierre pasado
+  const card=(inner,col)=>`<div style="background:var(--surface);border:1px solid var(--border);border-left:4px solid ${col};border-radius:var(--r);padding:16px 18px">${inner}</div>`;
+  const snap=(typeof getLatestSnapshot==='function')?getLatestSnapshot():null;
+  if(!snap||snap.total==null){el.innerHTML=card(`<div style="font-family:'Syne',sans-serif;font-weight:800;font-size:.9rem;margin-bottom:4px">🔍 ¿Cierra el mes?</div><div style="font-size:.66rem;color:var(--muted)">Cerrá un mes con 📸 para tener un punto de comparación del patrimonio.</div>`,'#6b6b7a');return;}
+  const now=new Date();
+  const ym=now.getFullYear()+'_'+String(now.getMonth()+1).padStart(2,'0');
+  const P=_puntGananciaMes(ym);                 // neto/costo/retiro/gastos/ganancia (pesos)
+  const tc=curTC()||1500;
+  const arqNow=calcArqueo().total;              // patrimonio actual (USD)
+  const dP=Math.round((arqNow-snap.total)*tc);  // cuánto creció el patrimonio (pesos, aprox)
+  const genera=P.neto-P.costo-P.gastos;         // lo que generó el negocio
+  const esperado=P.ganancia;                    // lo que debería quedar (genera − retiro)
+  const dif=dP-esperado;                         // <0 falta · >0 sobra
+  const umbral=Math.max(300000,Math.abs(esperado)*0.15);
+  let col,verdict,expl;
+  if(Math.abs(dif)<=umbral){col='#22c55e';verdict='✓ Cierra bien';expl='Los números cuadran: lo que ganó el negocio se ve reflejado en el patrimonio.';}
+  else if(dif<0){col='#ef4444';verdict='🔴 Falta plata';expl=`Salieron <strong>${fmt(-dif)}</strong> que no están anotados. Revisá: gastos sin cargar, retiros de más, o pérdidas/roturas de stock este mes.`;}
+  else{col='#f59e0b';verdict='🟡 Sobra';expl=`El patrimonio creció <strong>${fmt(dif)}</strong> más que la ganancia. Puede ser un valor cargado de más en el arqueo, o plata que entró y no es de ventas.`;}
+  const mesLbl=MONTHS[now.getMonth()]+' '+now.getFullYear();
+  const row=(lbl,val,extra='')=>`<div style="display:flex;justify-content:space-between;align-items:baseline;gap:10px"><span style="color:var(--muted)">${lbl}</span><span style="font-family:'DM Mono',monospace;${extra}">${val}</span></div>`;
+  el.innerHTML=card(`
+    <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;margin-bottom:10px">
+      <span style="font-family:'Syne',sans-serif;font-weight:800;font-size:.95rem">🔍 ¿Cierra el mes? · ${mesLbl}</span>
+      <span style="color:${col};font-weight:700;font-size:.72rem">${verdict}</span>
+    </div>
+    <div style="display:flex;flex-direction:column;gap:5px;font-size:.7rem">
+      ${row('Ganancia del negocio (debería quedar)',fmt(esperado))}
+      ${row('Creció el patrimonio (arqueo)',fmt(dP))}
+      <div style="border-top:1px solid var(--border);margin-top:3px;padding-top:6px">${row('Diferencia',fmt(dif),`font-weight:700;color:${col}`)}</div>
+    </div>
+    <div style="font-size:.6rem;color:var(--muted);margin-top:10px;line-height:1.5">${expl}<br>El negocio generó ${fmt(genera)} · retiro estimado 15% ${fmt(P.retiro)}. Patrimonio pasado a pesos al dólar ${fmt(tc)} (aprox).</div>
+  `,col);
+}
 function updateArqueo(){
   // Si hay un snapshot seleccionado, usar sus finanzas temporalmente
   const selKey=document.getElementById('fin-view-sel')?.value;
@@ -2740,6 +2777,7 @@ function updateArqueo(){
   if(!_arqViewYM)saveDailySnap();
   const tv=document.getElementById('arqueo-total-val');
   if(tv){tv.textContent=fmt(dispTotal);tv.className='at-val '+(dispTotal>=0?'pos':'neg');}
+  try{renderReconciliacion();}catch(e){}
   FIN_FIELDS.forEach(f=>{
     const el=document.getElementById('db_'+f.k);if(!el)return;
     const cur=parseFloat(state.finanzas[f.k])||0;
@@ -6289,7 +6327,7 @@ document.addEventListener('click',e=>{if(fnavOpen&&!e.target.closest('#fnav-btn'
         <span style="font-size:.75rem;color:var(--muted)">Si no ves los últimos cambios, forzá la actualización</span>
         <button class="btn" style="background:rgba(56,189,248,.12);color:var(--blue);border:1px solid rgba(56,189,248,.3)" onclick="actualizarApp()">🔄 Buscar actualizaciones</button>
       </div>
-      <div style="font-size:.66rem;color:var(--muted);margin-top:12px">CYC · Versión 1.4</div>
+      <div style="font-size:.66rem;color:var(--muted);margin-top:12px">CYC · Versión 1.5</div>
     </div>
 
     <div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:18px 20px;margin-bottom:14px">
