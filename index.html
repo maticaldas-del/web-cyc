@@ -605,11 +605,11 @@ footer{margin-top:32px;padding-top:14px;border-top:1px solid var(--border);font-
         <h3>🏢 Stock Local</h3>
         <div class="fin-field"><div class="fin-left"><span class="fin-label">Oficina CYC</span><span id="db_of_viejo"></span></div><input class="fin-input money" type="text" inputmode="numeric" id="f_of_viejo" placeholder="$0" onchange="saveFin('of_viejo',this.value)"></div>
         <div class="fin-field"><div class="fin-left"><span class="fin-label">Oficina Mati</span><span id="db_of_mia"></span></div><input class="fin-input money" type="text" inputmode="numeric" id="f_of_mia" placeholder="$0" onchange="saveFin('of_mia',this.value)"></div>
+        <div class="fin-field"><div class="fin-left"><span class="fin-label">Vendedores</span><span id="db_vendedores"></span></div><input class="fin-input money" type="text" inputmode="numeric" id="f_vendedores" placeholder="$0" onchange="saveFin('vendedores',this.value)"></div>
       </div>
       <div class="arqueo-section positivo">
         <h3>📥 Lo que nos deben</h3>
         <div class="fin-field"><div class="fin-left"><span class="fin-label">Deben a CYC</span><span id="db_deben_cyc"></span></div><input class="fin-input money" type="text" inputmode="numeric" id="f_deben_cyc" placeholder="$0" onchange="saveFin('deben_cyc',this.value)"></div>
-        <div class="fin-field"><div class="fin-left"><span class="fin-label">Vendedores</span><span id="db_vendedores"></span></div><input class="fin-input money" type="text" inputmode="numeric" id="f_vendedores" placeholder="$0" onchange="saveFin('vendedores',this.value)"></div>
       </div>
       <div class="arqueo-section negativo">
         <h3>📤 Lo que debemos</h3>
@@ -646,6 +646,11 @@ footer{margin-top:32px;padding-top:14px;border-top:1px solid var(--border);font-
       <span class="fin-label" style="font-weight:600;color:var(--amber)">💸 Retiro cobrado este mes (Mati + Viejo)</span>
       <span style="font-size:.62rem;color:var(--muted);flex:1;min-width:120px">Cuánto se llevaron de verdad este mes, en <strong>pesos</strong>. Se usa para el chequeo de abajo.</span>
       <input class="fin-input money" type="text" inputmode="numeric" id="f_retiro_mes" placeholder="$0" onchange="saveRetiroMes(this.value)" style="width:150px">
+    </div>
+    <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-top:14px;padding:11px 16px;background:var(--surface);border:1px solid var(--border2);border-radius:var(--r)">
+      <span class="fin-label" style="font-weight:600;color:var(--blue)">🛒 Compra de mercadería este mes</span>
+      <span style="font-size:.62rem;color:var(--muted);flex:1;min-width:120px">Total que gastaste en reponer stock este mes, en <strong>pesos</strong>. Sirve para el chequeo de mercadería.</span>
+      <input class="fin-input money" type="text" inputmode="numeric" id="f_compra_mes" placeholder="$0" onchange="saveCompraMes(this.value)" style="width:150px">
     </div>
     <div id="recon-panel" style="margin-top:14px"></div>
   </div>
@@ -1577,6 +1582,7 @@ function startApp(){
     state.fact_mes=d.fact_mes||{};
     state.puntaje=d.puntaje||{};
     state.retiro_mes=d.retiro_mes||{};
+    state.compra_mes=d.compra_mes||{};
     state.stockDiario=d.stockDiario||{};
     // detectar entradas nuevas de ventaprod escritas externamente (p.ej. cowork)
     const _newVP=d.ventaprod||{};
@@ -1784,6 +1790,7 @@ document.addEventListener('input',e=>{
   // Finanzas: guardar MIENTRAS se escribe (en el celu el 'change'/blur es frágil y se revertía).
   if(t.classList.contains('fin-input')&&t.id&&t.id.indexOf('f_')===0&&t.id!=='f_tipo_cambio'){
     if(t.id==='f_retiro_mes'){saveRetiroMes(t.value);}
+    else if(t.id==='f_compra_mes'){saveCompraMes(t.value);}
     else{
       const key=t.id.slice(2),num=parseMoney(t.value);
       state.finanzas[key]=num;_finPending[key]=num;
@@ -2655,6 +2662,15 @@ function saveRetiroMes(val){
   clearTimeout(_retiroTimer);
   _retiroTimer=setTimeout(()=>{fbSet('retiro_mes/'+ym,num);},700);
 }
+let _compraTimer=null;
+function saveCompraMes(val){
+  const num=parseMoney(val);const ym=_curYM();
+  if(!state.compra_mes)state.compra_mes={};
+  state.compra_mes[ym]=num;
+  try{renderReconciliacion();}catch(e){}
+  clearTimeout(_compraTimer);
+  _compraTimer=setTimeout(()=>{fbSet('compra_mes/'+ym,num);},700);
+}
 async function saveFin(key,val){
   const num=parseMoney(val);
   state.finanzas[key]=num;_finPending[key]=num;updateArqueo();updateHeaderTotal();
@@ -2673,6 +2689,7 @@ function loadFinInputs(){
   FIN_FIELDS.forEach(f=>{const inp=document.getElementById('f_'+f.k);if(inp&&document.activeElement!==inp){const raw=parseFloat(state.finanzas[f.k])||0;setMoneyVal(inp,f.neutral?raw:Math.abs(raw));}});
   const tc=document.getElementById('f_tipo_cambio');if(tc&&document.activeElement!==tc)setMoneyVal(tc,state.finanzas['tipo_cambio']);
   const rm=document.getElementById('f_retiro_mes');if(rm&&document.activeElement!==rm)setMoneyVal(rm,(state.retiro_mes&&state.retiro_mes[_curYM()])||0);
+  const cm2=document.getElementById('f_compra_mes');if(cm2&&document.activeElement!==cm2)setMoneyVal(cm2,(state.compra_mes&&state.compra_mes[_curYM()])||0);
   const cm=document.getElementById('arqueo-close-month');const cy=document.getElementById('arqueo-close-year');const now=new Date();
   if(cm&&!cm.dataset.set){cm.value=String(now.getMonth()+1).padStart(2,'0');cm.dataset.set='1';}
   if(cy&&!cy.value){cy.value=now.getFullYear();}
@@ -2708,7 +2725,7 @@ function calcArqueo(){
     if(f.pos)activos+=v;else deudas+=v;
   });
   const efect=['efectivo','mp_disp','mp_liq'].reduce((s,k)=>s+(parseFloat(state.finanzas[k])||0),0);
-  const deben=['deben_cyc','vendedores'].reduce((s,k)=>s+(parseFloat(state.finanzas[k])||0),0);
+  const deben=['deben_cyc'].reduce((s,k)=>s+(parseFloat(state.finanzas[k])||0),0);
   const deuda=['tarjeta','deuda_cyc','dolares_mati','dolares_tito'].reduce((s,k)=>s+(Math.abs(parseFloat(state.finanzas[k])||0)),0);
   return{stockVal,stockML,stockLocal,activos,deudas,corregir,efect,deben,deuda,total:stockVal+activos-deudas+corregir};
 }
@@ -2724,7 +2741,8 @@ function renderReconciliacion(){
   const ym=now.getFullYear()+'_'+String(now.getMonth()+1).padStart(2,'0');
   const P=_puntGananciaMes(ym);                 // neto/costo/retiro/gastos/ganancia (pesos)
   const tc=curTC()||1500;
-  const arqNow=calcArqueo().total;              // patrimonio actual (USD)
+  const cArq=calcArqueo();
+  const arqNow=cArq.total;                       // patrimonio actual (USD)
   const dP=Math.round((arqNow-snap.total)*tc);  // cuánto creció el patrimonio (pesos, aprox)
   const genera=P.neto-P.costo-P.gastos;         // lo que generó el negocio
   const rmRaw=state.retiro_mes&&state.retiro_mes[ym];
@@ -2751,6 +2769,43 @@ function renderReconciliacion(){
     </div>
     <div style="font-size:.6rem;color:var(--muted);margin-top:10px;line-height:1.5">${expl}<br>El negocio generó ${fmt(genera)} · retiro ${retReal!=null?'cobrado':'estimado 15%'} ${fmt(retiroUsado)}${retReal==null?' <span style="color:var(--amber)">(cargá el retiro real arriba para precisión)</span>':''}. Patrimonio pasado a pesos al dólar ${fmt(tc)} (aprox).</div>
   `,col);
+
+  // 🛒 Chequeo de mercadería: lo que compraste vs lo que apareció como stock + lo que se vendió.
+  // Identidad: Compras = ΔStock + Costo de lo vendido + (merma). Si comprás de más de lo que aparece → fuga.
+  const compraMes=(state.compra_mes&&Number(state.compra_mes[ym]))||0;
+  const finLoc=f=>(parseFloat(state.finanzas[f])||0);
+  const snapFin=f=>(parseFloat(snap.finanzas&&snap.finanzas[f])||0);
+  const stockNowUSD=(cArq.stockML||0)+finLoc('of_viejo')+finLoc('of_mia')+finLoc('vendedores');
+  const stockSnapUSD=(snap.stockML||0)+snapFin('of_viejo')+snapFin('of_mia')+snapFin('vendedores');
+  const dStock=Math.round((stockNowUSD-stockSnapUSD)*tc);   // creció (+) o bajó (−) el stock, en pesos
+  const costoVend=P.costo;                                   // costo de lo vendido este mes (pesos)
+  const esperabaComprar=dStock+costoVend;                    // lo que deberías haber comprado para explicar stock+ventas
+  const merma=compraMes-esperabaComprar;                     // >0 compraste de más de lo que se ve · <0 al revés
+  const mel=document.createElement('div');mel.style.marginTop='12px';
+  if(compraMes<=0){
+    mel.innerHTML=card(`<div style="font-family:'Syne',sans-serif;font-weight:800;font-size:.9rem;margin-bottom:4px">🛒 Chequeo de mercadería</div><div style="font-size:.63rem;color:var(--muted);line-height:1.5">Cargá arriba <strong>cuánto gastaste en reponer stock este mes</strong> y acá te muestro si esa plata apareció como mercadería o se fugó.</div>`,'#6b6b7a');
+  }else{
+    const uMerc=Math.max(300000,Math.abs(esperabaComprar)*0.15);
+    let mcol,mverd,mexp;
+    if(Math.abs(merma)<=uMerc){mcol='#22c55e';mverd='✓ Cuadra';mexp=`Compraste <strong>${fmt(compraMes)}</strong> y esa plata aparece: ${fmt(dStock)} más de stock + ${fmt(costoVend)} que se vendió. La mercadería está toda.`;}
+    else if(merma>0){mcol='#ef4444';mverd='🔴 Se fugó mercadería';mexp=`Compraste <strong>${fmt(compraMes)}</strong> pero solo se explican ${fmt(esperabaComprar)} (${fmt(dStock)} más de stock + ${fmt(costoVend)} vendido). Faltan <strong>${fmt(merma)}</strong>: puede ser error de compra (pagaste de más), roturas/robos, o stock local mal contado.`;}
+    else{mcol='#f59e0b';mverd='🟡 Apareció de más';mexp=`Se sumó más mercadería (${fmt(esperabaComprar)}) de la que compraste (${fmt(compraMes)}). Diferencia <strong>${fmt(-merma)}</strong>: seguro cargaste de más el stock local, o hubo compras sin anotar.`;}
+    const mrow=(l,v,ex='')=>`<div style="display:flex;justify-content:space-between;align-items:baseline;gap:10px"><span style="color:var(--muted)">${l}</span><span style="font-family:'DM Mono',monospace;${ex}">${v}</span></div>`;
+    mel.innerHTML=card(`
+      <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;margin-bottom:10px">
+        <span style="font-family:'Syne',sans-serif;font-weight:800;font-size:.95rem">🛒 Chequeo de mercadería · ${mesLbl}</span>
+        <span style="color:${mcol};font-weight:700;font-size:.72rem">${mverd}</span>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:5px;font-size:.7rem">
+        ${mrow('Compraste este mes',fmt(compraMes))}
+        ${mrow('Creció el stock',fmt(dStock))}
+        ${mrow('Costo de lo vendido',fmt(costoVend))}
+        <div style="border-top:1px solid var(--border);margin-top:3px;padding-top:6px">${mrow('Diferencia (fuga)',fmt(merma),`font-weight:700;color:${mcol}`)}</div>
+      </div>
+      <div style="font-size:.6rem;color:var(--muted);margin-top:10px;line-height:1.5">${mexp}<br>Stock = ML exacto + oficinas + vendedores, comparado contra el cierre anterior. Al dólar ${fmt(tc)} (aprox).</div>
+    `,mcol);
+  }
+  el.appendChild(mel);
 }
 function updateArqueo(){
   // Si hay un snapshot seleccionado, usar sus finanzas temporalmente
@@ -2782,15 +2837,15 @@ function updateArqueo(){
     prev=getLatestSnapshot();
   }
   const setCard=(id,val,cls)=>{const el=document.getElementById(id);if(!el)return;el.textContent=fmt(val);el.className='bk-val '+cls;};
-  const stockLocalFin=(parseFloat(state.finanzas['of_viejo'])||0)+(parseFloat(state.finanzas['of_mia'])||0);
+  const stockLocalFin=(parseFloat(state.finanzas['of_viejo'])||0)+(parseFloat(state.finanzas['of_mia'])||0)+(parseFloat(state.finanzas['vendedores'])||0);
   setCard('bk_stock_ml',dispStockML,'neutral');setCard('bk_stock_local',stockLocalFin,'neutral');setCard('bk_efectivo',c.efect,'pos');
   setCard('bk_deben',c.deben,'pos');setCard('bk_deudas',c.deuda,'neg');
   const yest=_arqViewYM?null:state.daily[yesterdayStr()];
   const prevStockVal=prev?.stock??(yest?.stockVal);
   const dbkStockEl=document.getElementById('dbk_stock');
   if(dbkStockEl)dbkStockEl.innerHTML=prevStockVal!==undefined?deltaBadge(dispStockVal,prevStockVal):'';
-  const prevEfect=prev?['efectivo','mp_disp','mp_liq','of_viejo','of_mia'].reduce((s,k)=>s+(parseFloat(prev.finanzas?.[k])||0),0):null;
-  const prevDeben=prev?['deben_cyc','vendedores'].reduce((s,k)=>s+(parseFloat(prev.finanzas?.[k])||0),0):null;
+  const prevEfect=prev?['efectivo','mp_disp','mp_liq'].reduce((s,k)=>s+(parseFloat(prev.finanzas?.[k])||0),0):null;
+  const prevDeben=prev?['deben_cyc'].reduce((s,k)=>s+(parseFloat(prev.finanzas?.[k])||0),0):null;
   const prevDeuda=prev?['tarjeta','deuda_cyc','dolares_mati','dolares_tito'].reduce((s,k)=>s+(Math.abs(parseFloat(prev.finanzas?.[k])||0)),0):null;
   const dbkEf=document.getElementById('dbk_efectivo');if(dbkEf)dbkEf.innerHTML=prevEfect!==null?deltaBadge(c.efect,prevEfect):'';
   const dbkDb=document.getElementById('dbk_deben');if(dbkDb)dbkDb.innerHTML=prevDeben!==null?deltaBadge(c.deben,prevDeben):'';
@@ -6350,7 +6405,7 @@ document.addEventListener('click',e=>{if(fnavOpen&&!e.target.closest('#fnav-btn'
         <span style="font-size:.75rem;color:var(--muted)">Si no ves los últimos cambios, forzá la actualización</span>
         <button class="btn" style="background:rgba(56,189,248,.12);color:var(--blue);border:1px solid rgba(56,189,248,.3)" onclick="actualizarApp()">🔄 Buscar actualizaciones</button>
       </div>
-      <div style="font-size:.66rem;color:var(--muted);margin-top:12px">CYC · Versión 1.6</div>
+      <div style="font-size:.66rem;color:var(--muted);margin-top:12px">CYC · Versión 1.7</div>
     </div>
 
     <div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:18px 20px;margin-bottom:14px">
