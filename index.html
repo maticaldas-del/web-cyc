@@ -600,8 +600,11 @@ footer{margin-top:32px;padding-top:14px;border-top:1px solid var(--border);font-
         <div class="fin-field"><div class="fin-left"><span class="fin-label">Efectivo disponible</span><span id="db_efectivo"></span></div><input class="fin-input money" type="text" inputmode="numeric" id="f_efectivo" placeholder="$0" onchange="saveFin('efectivo',this.value)"></div>
         <div class="fin-field"><div class="fin-left"><span class="fin-label">MercadoPago disponible</span><span id="db_mp_disp"></span></div><input class="fin-input money" type="text" inputmode="numeric" id="f_mp_disp" placeholder="$0" onchange="saveFin('mp_disp',this.value)"></div>
         <div class="fin-field"><div class="fin-left"><span class="fin-label">A liquidar en ML</span><span id="db_mp_liq"></span></div><input class="fin-input money" type="text" inputmode="numeric" id="f_mp_liq" placeholder="$0" onchange="saveFin('mp_liq',this.value)"></div>
-        <div class="fin-field"><div class="fin-left"><span class="fin-label">Of. Viejo (caja)</span><span id="db_of_viejo"></span></div><input class="fin-input money" type="text" inputmode="numeric" id="f_of_viejo" placeholder="$0" onchange="saveFin('of_viejo',this.value)"></div>
-        <div class="fin-field"><div class="fin-left"><span class="fin-label">Of. Mía (caja)</span><span id="db_of_mia"></span></div><input class="fin-input money" type="text" inputmode="numeric" id="f_of_mia" placeholder="$0" onchange="saveFin('of_mia',this.value)"></div>
+      </div>
+      <div class="arqueo-section positivo">
+        <h3>🏢 Stock Local</h3>
+        <div class="fin-field"><div class="fin-left"><span class="fin-label">Oficina CYC</span><span id="db_of_viejo"></span></div><input class="fin-input money" type="text" inputmode="numeric" id="f_of_viejo" placeholder="$0" onchange="saveFin('of_viejo',this.value)"></div>
+        <div class="fin-field"><div class="fin-left"><span class="fin-label">Oficina Mati</span><span id="db_of_mia"></span></div><input class="fin-input money" type="text" inputmode="numeric" id="f_of_mia" placeholder="$0" onchange="saveFin('of_mia',this.value)"></div>
       </div>
       <div class="arqueo-section positivo">
         <h3>📥 Lo que nos deben</h3>
@@ -1408,8 +1411,8 @@ const FIN_FIELDS=[
   {k:'efectivo',    label:'Efectivo',         pos:true},
   {k:'mp_disp',     label:'MP disponible',     pos:true},
   {k:'mp_liq',      label:'A liquidar ML',     pos:true},
-  {k:'of_viejo',    label:'Of. Viejo (caja)',  pos:true},
-  {k:'of_mia',      label:'Of. Mía (caja)',    pos:true},
+  {k:'of_viejo',    label:'Oficina CYC',       pos:true},
+  {k:'of_mia',      label:'Oficina Mati',      pos:true},
   {k:'tarjeta',     label:'Tarjeta',           pos:false},
   {k:'deben_cyc',   label:'Deben a CYC',      pos:true},
   {k:'vendedores',  label:'Vendedores',        pos:true},
@@ -2683,7 +2686,7 @@ function calcArqueo(){
     const v=Math.abs(raw);
     if(f.pos)activos+=v;else deudas+=v;
   });
-  const efect=['efectivo','mp_disp','mp_liq','of_viejo','of_mia'].reduce((s,k)=>s+(parseFloat(state.finanzas[k])||0),0);
+  const efect=['efectivo','mp_disp','mp_liq'].reduce((s,k)=>s+(parseFloat(state.finanzas[k])||0),0);
   const deben=['deben_cyc','vendedores'].reduce((s,k)=>s+(parseFloat(state.finanzas[k])||0),0);
   const deuda=['tarjeta','deuda_cyc','dolares_mati','dolares_tito'].reduce((s,k)=>s+(Math.abs(parseFloat(state.finanzas[k])||0)),0);
   return{stockVal,stockML,stockLocal,activos,deudas,corregir,efect,deben,deuda,total:stockVal+activos-deudas+corregir};
@@ -6286,7 +6289,7 @@ document.addEventListener('click',e=>{if(fnavOpen&&!e.target.closest('#fnav-btn'
         <span style="font-size:.75rem;color:var(--muted)">Si no ves los últimos cambios, forzá la actualización</span>
         <button class="btn" style="background:rgba(56,189,248,.12);color:var(--blue);border:1px solid rgba(56,189,248,.3)" onclick="actualizarApp()">🔄 Buscar actualizaciones</button>
       </div>
-      <div style="font-size:.66rem;color:var(--muted);margin-top:12px">CYC · Versión 1.3</div>
+      <div style="font-size:.66rem;color:var(--muted);margin-top:12px">CYC · Versión 1.4</div>
     </div>
 
     <div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:18px 20px;margin-bottom:14px">
