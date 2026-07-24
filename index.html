@@ -1768,7 +1768,17 @@ function setMoneyVal(el,num){
   const n=Number(num);
   el.value=(!num||isNaN(n)||n===0)?'':Math.round(n).toLocaleString('es-AR');
 }
-document.addEventListener('input',e=>{const t=e.target;if(t&&t.classList&&t.classList.contains('money'))fmtMoneyInput(t);});
+document.addEventListener('input',e=>{
+  const t=e.target;if(!t||!t.classList)return;
+  if(t.classList.contains('money'))fmtMoneyInput(t);
+  // Finanzas: guardar MIENTRAS se escribe (en el celu el 'change'/blur es frágil y se revertía).
+  if(t.classList.contains('fin-input')&&t.id&&t.id.indexOf('f_')===0&&t.id!=='f_tipo_cambio'){
+    const key=t.id.slice(2),num=parseMoney(t.value);
+    state.finanzas[key]=num;_finPending[key]=num;
+    clearTimeout(finTimers[key]);
+    finTimers[key]=setTimeout(()=>{fbSet('finanzas/'+key,num).then(()=>{if(_finPending[key]===num)delete _finPending[key];});},700);
+  }
+});
 document.addEventListener('focusin',e=>{const t=e.target;if(t&&t.classList&&t.classList.contains('fin-input'))_finFocused=true;});
 document.addEventListener('focusout',e=>{const t=e.target;if(t&&t.classList&&t.classList.contains('fin-input'))setTimeout(()=>{const a=document.activeElement;if(!(a&&a.classList&&a.classList.contains('fin-input')))_finFocused=false;},80);});
 /* tipo de cambio dólar */
@@ -6276,7 +6286,7 @@ document.addEventListener('click',e=>{if(fnavOpen&&!e.target.closest('#fnav-btn'
         <span style="font-size:.75rem;color:var(--muted)">Si no ves los últimos cambios, forzá la actualización</span>
         <button class="btn" style="background:rgba(56,189,248,.12);color:var(--blue);border:1px solid rgba(56,189,248,.3)" onclick="actualizarApp()">🔄 Buscar actualizaciones</button>
       </div>
-      <div style="font-size:.66rem;color:var(--muted);margin-top:12px">CYC · Versión 1.2</div>
+      <div style="font-size:.66rem;color:var(--muted);margin-top:12px">CYC · Versión 1.3</div>
     </div>
 
     <div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:18px 20px;margin-bottom:14px">
