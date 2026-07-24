@@ -642,6 +642,11 @@ footer{margin-top:32px;padding-top:14px;border-top:1px solid var(--border);font-
         <div class="at-val pos" id="arqueo-total-val">$0</div>
       </div>
     </div>
+    <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-top:14px;padding:11px 16px;background:var(--surface);border:1px solid var(--border2);border-radius:var(--r)">
+      <span class="fin-label" style="font-weight:600;color:var(--amber)">💸 Retiro cobrado este mes (Mati + Viejo)</span>
+      <span style="font-size:.62rem;color:var(--muted);flex:1;min-width:120px">Cuánto se llevaron de verdad este mes, en <strong>pesos</strong>. Se usa para el chequeo de abajo.</span>
+      <input class="fin-input money" type="text" inputmode="numeric" id="f_retiro_mes" placeholder="$0" onchange="saveRetiroMes(this.value)" style="width:150px">
+    </div>
     <div id="recon-panel" style="margin-top:14px"></div>
   </div>
 
@@ -1571,6 +1576,7 @@ function startApp(){
     state.tc_mes=d.tc_mes||{};
     state.fact_mes=d.fact_mes||{};
     state.puntaje=d.puntaje||{};
+    state.retiro_mes=d.retiro_mes||{};
     state.stockDiario=d.stockDiario||{};
     // detectar entradas nuevas de ventaprod escritas externamente (p.ej. cowork)
     const _newVP=d.ventaprod||{};
@@ -1777,10 +1783,13 @@ document.addEventListener('input',e=>{
   if(t.classList.contains('money'))fmtMoneyInput(t);
   // Finanzas: guardar MIENTRAS se escribe (en el celu el 'change'/blur es frágil y se revertía).
   if(t.classList.contains('fin-input')&&t.id&&t.id.indexOf('f_')===0&&t.id!=='f_tipo_cambio'){
-    const key=t.id.slice(2),num=parseMoney(t.value);
-    state.finanzas[key]=num;_finPending[key]=num;
-    clearTimeout(finTimers[key]);
-    finTimers[key]=setTimeout(()=>{fbSet('finanzas/'+key,num).then(()=>{if(_finPending[key]===num)delete _finPending[key];});},700);
+    if(t.id==='f_retiro_mes'){saveRetiroMes(t.value);}
+    else{
+      const key=t.id.slice(2),num=parseMoney(t.value);
+      state.finanzas[key]=num;_finPending[key]=num;
+      clearTimeout(finTimers[key]);
+      finTimers[key]=setTimeout(()=>{fbSet('finanzas/'+key,num).then(()=>{if(_finPending[key]===num)delete _finPending[key];});},700);
+    }
   }
 });
 document.addEventListener('focusin',e=>{const t=e.target;if(t&&t.classList&&t.classList.contains('fin-input'))_finFocused=true;});
@@ -2636,6 +2645,16 @@ function updateTotals(){
 
 /* ═══════════ FINANZAS / ARQUEO ═══════════ */
 let finTimers={};
+function _curYM(){const n=new Date();return n.getFullYear()+'_'+String(n.getMonth()+1).padStart(2,'0');}
+let _retiroTimer=null;
+function saveRetiroMes(val){
+  const num=parseMoney(val);const ym=_curYM();
+  if(!state.retiro_mes)state.retiro_mes={};
+  state.retiro_mes[ym]=num;
+  try{renderReconciliacion();}catch(e){}
+  clearTimeout(_retiroTimer);
+  _retiroTimer=setTimeout(()=>{fbSet('retiro_mes/'+ym,num);},700);
+}
 async function saveFin(key,val){
   const num=parseMoney(val);
   state.finanzas[key]=num;_finPending[key]=num;updateArqueo();updateHeaderTotal();
@@ -2653,6 +2672,7 @@ function loadFinInputs(){
   // No pisar el campo que el usuario está editando en este momento (si no, se revierte lo que escribe).
   FIN_FIELDS.forEach(f=>{const inp=document.getElementById('f_'+f.k);if(inp&&document.activeElement!==inp){const raw=parseFloat(state.finanzas[f.k])||0;setMoneyVal(inp,f.neutral?raw:Math.abs(raw));}});
   const tc=document.getElementById('f_tipo_cambio');if(tc&&document.activeElement!==tc)setMoneyVal(tc,state.finanzas['tipo_cambio']);
+  const rm=document.getElementById('f_retiro_mes');if(rm&&document.activeElement!==rm)setMoneyVal(rm,(state.retiro_mes&&state.retiro_mes[_curYM()])||0);
   const cm=document.getElementById('arqueo-close-month');const cy=document.getElementById('arqueo-close-year');const now=new Date();
   if(cm&&!cm.dataset.set){cm.value=String(now.getMonth()+1).padStart(2,'0');cm.dataset.set='1';}
   if(cy&&!cy.value){cy.value=now.getFullYear();}
@@ -2707,7 +2727,10 @@ function renderReconciliacion(){
   const arqNow=calcArqueo().total;              // patrimonio actual (USD)
   const dP=Math.round((arqNow-snap.total)*tc);  // cuánto creció el patrimonio (pesos, aprox)
   const genera=P.neto-P.costo-P.gastos;         // lo que generó el negocio
-  const esperado=P.ganancia;                    // lo que debería quedar (genera − retiro)
+  const rmRaw=state.retiro_mes&&state.retiro_mes[ym];
+  const retReal=(rmRaw!=null&&rmRaw!=='')?Number(rmRaw):null;      // lo que cobraron de verdad
+  const retiroUsado=retReal!=null?retReal:P.retiro;               // real si lo cargaste, si no el 15%
+  const esperado=genera-retiroUsado;            // lo que debería quedar en el negocio
   const dif=dP-esperado;                         // <0 falta · >0 sobra
   const umbral=Math.max(300000,Math.abs(esperado)*0.15);
   let col,verdict,expl;
@@ -2726,7 +2749,7 @@ function renderReconciliacion(){
       ${row('Creció el patrimonio (arqueo)',fmt(dP))}
       <div style="border-top:1px solid var(--border);margin-top:3px;padding-top:6px">${row('Diferencia',fmt(dif),`font-weight:700;color:${col}`)}</div>
     </div>
-    <div style="font-size:.6rem;color:var(--muted);margin-top:10px;line-height:1.5">${expl}<br>El negocio generó ${fmt(genera)} · retiro estimado 15% ${fmt(P.retiro)}. Patrimonio pasado a pesos al dólar ${fmt(tc)} (aprox).</div>
+    <div style="font-size:.6rem;color:var(--muted);margin-top:10px;line-height:1.5">${expl}<br>El negocio generó ${fmt(genera)} · retiro ${retReal!=null?'cobrado':'estimado 15%'} ${fmt(retiroUsado)}${retReal==null?' <span style="color:var(--amber)">(cargá el retiro real arriba para precisión)</span>':''}. Patrimonio pasado a pesos al dólar ${fmt(tc)} (aprox).</div>
   `,col);
 }
 function updateArqueo(){
@@ -6327,7 +6350,7 @@ document.addEventListener('click',e=>{if(fnavOpen&&!e.target.closest('#fnav-btn'
         <span style="font-size:.75rem;color:var(--muted)">Si no ves los últimos cambios, forzá la actualización</span>
         <button class="btn" style="background:rgba(56,189,248,.12);color:var(--blue);border:1px solid rgba(56,189,248,.3)" onclick="actualizarApp()">🔄 Buscar actualizaciones</button>
       </div>
-      <div style="font-size:.66rem;color:var(--muted);margin-top:12px">CYC · Versión 1.5</div>
+      <div style="font-size:.66rem;color:var(--muted);margin-top:12px">CYC · Versión 1.6</div>
     </div>
 
     <div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:18px 20px;margin-bottom:14px">
