@@ -2629,8 +2629,9 @@ async function saveFin(key,val){
 }
 
 function loadFinInputs(){
-  FIN_FIELDS.forEach(f=>{const inp=document.getElementById('f_'+f.k);if(inp){const raw=parseFloat(state.finanzas[f.k])||0;setMoneyVal(inp,f.neutral?raw:Math.abs(raw));}});
-  const tc=document.getElementById('f_tipo_cambio');if(tc)setMoneyVal(tc,state.finanzas['tipo_cambio']);
+  // No pisar el campo que el usuario está editando en este momento (si no, se revierte lo que escribe).
+  FIN_FIELDS.forEach(f=>{const inp=document.getElementById('f_'+f.k);if(inp&&document.activeElement!==inp){const raw=parseFloat(state.finanzas[f.k])||0;setMoneyVal(inp,f.neutral?raw:Math.abs(raw));}});
+  const tc=document.getElementById('f_tipo_cambio');if(tc&&document.activeElement!==tc)setMoneyVal(tc,state.finanzas['tipo_cambio']);
   const cm=document.getElementById('arqueo-close-month');const cy=document.getElementById('arqueo-close-year');const now=new Date();
   if(cm&&!cm.dataset.set){cm.value=String(now.getMonth()+1).padStart(2,'0');cm.dataset.set='1';}
   if(cy&&!cy.value){cy.value=now.getFullYear();}
