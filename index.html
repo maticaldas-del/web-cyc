@@ -647,11 +647,6 @@ footer{margin-top:32px;padding-top:14px;border-top:1px solid var(--border);font-
       <span style="font-size:.62rem;color:var(--muted);flex:1;min-width:120px">Cuánto se llevaron de verdad este mes, en <strong>pesos</strong>. Se usa para el chequeo de abajo.</span>
       <input class="fin-input money" type="text" inputmode="numeric" id="f_retiro_mes" placeholder="$0" onchange="saveRetiroMes(this.value)" style="width:150px">
     </div>
-    <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-top:14px;padding:11px 16px;background:var(--surface);border:1px solid var(--border2);border-radius:var(--r)">
-      <span class="fin-label" style="font-weight:600;color:var(--blue)">🛒 Compra de mercadería este mes</span>
-      <span style="font-size:.62rem;color:var(--muted);flex:1;min-width:120px">Total que gastaste en reponer stock este mes, en <strong>pesos</strong>. Sirve para el chequeo de mercadería.</span>
-      <input class="fin-input money" type="text" inputmode="numeric" id="f_compra_mes" placeholder="$0" onchange="saveCompraMes(this.value)" style="width:150px">
-    </div>
     <div id="recon-panel" style="margin-top:14px"></div>
   </div>
 
@@ -1333,8 +1328,8 @@ footer{margin-top:32px;padding-top:14px;border-top:1px solid var(--border);font-
   </div>
 
   <div class="ventas-summary">
-    <div class="vs-card bruto"><div class="vs-lbl">Período seleccionado</div><div class="vs-val" id="cmp-hoy">$0</div><div class="vs-sub" id="cmp-hoy-sub">—</div></div>
-    <div class="vs-card neto"><div class="vs-lbl">Total histórico</div><div class="vs-val" id="cmp-total">$0</div></div>
+    <div class="vs-card bruto"><div class="vs-lbl">💸 Gastos del período</div><div class="vs-val" id="cmp-hoy">$0</div><div class="vs-sub" id="cmp-hoy-sub">—</div></div>
+    <div class="vs-card neto"><div class="vs-lbl">🛒 Mercadería del período</div><div class="vs-val" id="cmp-total">$0</div><div class="vs-sub" id="cmp-merc-sub">—</div></div>
   </div>
 
   <!-- ── Selector de período ── -->
@@ -1367,8 +1362,12 @@ footer{margin-top:32px;padding-top:14px;border-top:1px solid var(--border);font-
   </div>
   <div id="cmp-comp-result"></div>
 
-  <div class="stitle">Nuevo gasto</div>
+  <div class="stitle">Nuevo movimiento</div>
   <div class="pedidos-add" style="flex-wrap:wrap">
+    <select id="cmp-tipo" class="cal-select" style="font-size:.74rem;padding:8px 12px;font-weight:700" onchange="onCmpTipo()">
+      <option value="gasto">💸 Gasto</option>
+      <option value="mercaderia">🛒 Mercadería</option>
+    </select>
     <input type="text" inputmode="numeric" id="cmp-monto" class="ingreso-inp money" placeholder="Monto $" onkeydown="if(event.key==='Enter')addCompra()">
     <select id="cmp-cat" class="cal-select" style="font-size:.74rem;padding:8px 12px">
       <option value="Monotributo / Impuestos">Monotributo / Impuestos</option>
@@ -1386,10 +1385,10 @@ footer{margin-top:32px;padding-top:14px;border-top:1px solid var(--border);font-
     <button class="btn btn-add" onclick="addCompra()">+ Agregar</button>
   </div>
 
-  <div class="stitle">Gastos del mes</div>
+  <div class="stitle">Movimientos del mes</div>
   <div id="compras-list"><div class="empty-msg">Sin registros este mes.</div></div>
 
-  <div class="stitle">Resumen por categoría</div>
+  <div class="stitle">Gastos por categoría</div>
   <div id="compras-cats"></div>
 
   <div class="stitle">Historial mensual</div>
@@ -1582,7 +1581,6 @@ function startApp(){
     state.fact_mes=d.fact_mes||{};
     state.puntaje=d.puntaje||{};
     state.retiro_mes=d.retiro_mes||{};
-    state.compra_mes=d.compra_mes||{};
     state.stockDiario=d.stockDiario||{};
     // detectar entradas nuevas de ventaprod escritas externamente (p.ej. cowork)
     const _newVP=d.ventaprod||{};
@@ -1790,7 +1788,6 @@ document.addEventListener('input',e=>{
   // Finanzas: guardar MIENTRAS se escribe (en el celu el 'change'/blur es frágil y se revertía).
   if(t.classList.contains('fin-input')&&t.id&&t.id.indexOf('f_')===0&&t.id!=='f_tipo_cambio'){
     if(t.id==='f_retiro_mes'){saveRetiroMes(t.value);}
-    else if(t.id==='f_compra_mes'){saveCompraMes(t.value);}
     else{
       const key=t.id.slice(2),num=parseMoney(t.value);
       state.finanzas[key]=num;_finPending[key]=num;
@@ -2662,15 +2659,6 @@ function saveRetiroMes(val){
   clearTimeout(_retiroTimer);
   _retiroTimer=setTimeout(()=>{fbSet('retiro_mes/'+ym,num);},700);
 }
-let _compraTimer=null;
-function saveCompraMes(val){
-  const num=parseMoney(val);const ym=_curYM();
-  if(!state.compra_mes)state.compra_mes={};
-  state.compra_mes[ym]=num;
-  try{renderReconciliacion();}catch(e){}
-  clearTimeout(_compraTimer);
-  _compraTimer=setTimeout(()=>{fbSet('compra_mes/'+ym,num);},700);
-}
 async function saveFin(key,val){
   const num=parseMoney(val);
   state.finanzas[key]=num;_finPending[key]=num;updateArqueo();updateHeaderTotal();
@@ -2689,7 +2677,6 @@ function loadFinInputs(){
   FIN_FIELDS.forEach(f=>{const inp=document.getElementById('f_'+f.k);if(inp&&document.activeElement!==inp){const raw=parseFloat(state.finanzas[f.k])||0;setMoneyVal(inp,f.neutral?raw:Math.abs(raw));}});
   const tc=document.getElementById('f_tipo_cambio');if(tc&&document.activeElement!==tc)setMoneyVal(tc,state.finanzas['tipo_cambio']);
   const rm=document.getElementById('f_retiro_mes');if(rm&&document.activeElement!==rm)setMoneyVal(rm,(state.retiro_mes&&state.retiro_mes[_curYM()])||0);
-  const cm2=document.getElementById('f_compra_mes');if(cm2&&document.activeElement!==cm2)setMoneyVal(cm2,(state.compra_mes&&state.compra_mes[_curYM()])||0);
   const cm=document.getElementById('arqueo-close-month');const cy=document.getElementById('arqueo-close-year');const now=new Date();
   if(cm&&!cm.dataset.set){cm.value=String(now.getMonth()+1).padStart(2,'0');cm.dataset.set='1';}
   if(cy&&!cy.value){cy.value=now.getFullYear();}
@@ -2772,7 +2759,8 @@ function renderReconciliacion(){
 
   // 🛒 Chequeo de mercadería: lo que compraste vs lo que apareció como stock + lo que se vendió.
   // Identidad: Compras = ΔStock + Costo de lo vendido + (merma). Si comprás de más de lo que aparece → fuga.
-  const compraMes=(state.compra_mes&&Number(state.compra_mes[ym]))||0;
+  // Compra de mercadería del mes = suma de los movimientos tipo 'mercadería' cargados en Compras y gastos.
+  const compraMes=Object.values(state.compras||{}).filter(x=>getCompraTipo(x)==='mercaderia'&&(x.dayKey||'').startsWith(ym)).reduce((s,x)=>s+(x.monto||0),0);
   const finLoc=f=>(parseFloat(state.finanzas[f])||0);
   const snapFin=f=>(parseFloat(snap.finanzas&&snap.finanzas[f])||0);
   const stockNowUSD=(cArq.stockML||0)+finLoc('of_viejo')+finLoc('of_mia')+finLoc('vendedores');
@@ -2783,7 +2771,7 @@ function renderReconciliacion(){
   const merma=compraMes-esperabaComprar;                     // >0 compraste de más de lo que se ve · <0 al revés
   const mel=document.createElement('div');mel.style.marginTop='12px';
   if(compraMes<=0){
-    mel.innerHTML=card(`<div style="font-family:'Syne',sans-serif;font-weight:800;font-size:.9rem;margin-bottom:4px">🛒 Chequeo de mercadería</div><div style="font-size:.63rem;color:var(--muted);line-height:1.5">Cargá arriba <strong>cuánto gastaste en reponer stock este mes</strong> y acá te muestro si esa plata apareció como mercadería o se fugó.</div>`,'#6b6b7a');
+    mel.innerHTML=card(`<div style="font-family:'Syne',sans-serif;font-weight:800;font-size:.9rem;margin-bottom:4px">🛒 Chequeo de mercadería</div><div style="font-size:.63rem;color:var(--muted);line-height:1.5">Cargá tus compras de stock en <strong>Compras y gastos</strong> (elegí tipo 🛒 Mercadería) y acá te muestro si esa plata apareció como mercadería o se fugó.</div>`,'#6b6b7a');
   }else{
     const uMerc=Math.max(300000,Math.abs(esperabaComprar)*0.15);
     let mcol,mverd,mexp;
@@ -6135,29 +6123,41 @@ function loadFinView(){
 }
 
 /* ═══════════ COMPRAS Y GASTOS ═══════════ */
-function getCompraTipo(x){return 'gasto';}
+function getCompraTipo(x){return (x&&x.tipo==='mercaderia')?'mercaderia':'gasto';}
 function initComprasPage(){
   _initScopeDefaults('cmp');
+  onCmpTipo();
   renderComprasList();renderComprasCats();renderComprasHist();updateComprasTotals();renderComprasComp();
 }
 
+// Muestra/oculta el selector de categoría: la mercadería no lleva categoría de gasto.
+function onCmpTipo(){
+  const tipo=document.getElementById('cmp-tipo')?.value||'gasto';
+  const catEl=document.getElementById('cmp-cat');
+  if(catEl)catEl.style.display=(tipo==='mercaderia')?'none':'';
+  const descEl=document.getElementById('cmp-desc');
+  if(descEl)descEl.placeholder=(tipo==='mercaderia')?'Descripción: proveedor, remito… (opcional)':'Descripción (opcional)';
+}
+
 async function addCompra(){
+  const tipoEl=document.getElementById('cmp-tipo');
   const montoEl=document.getElementById('cmp-monto');
   const catEl=document.getElementById('cmp-cat');
   const descEl=document.getElementById('cmp-desc');
   const monto=parseMoney(montoEl?.value);
   if(!monto){montoEl?.focus();return;}
-  const cat=catEl?.value||'Otros gastos operativos';
+  const tipo=(tipoEl?.value==='mercaderia')?'mercaderia':'gasto';
+  const cat=(tipo==='mercaderia')?'Mercadería':(catEl?.value||'Otros gastos operativos');
   const desc=descEl?.value.trim()||'';
   const id='c'+Date.now();
   const dayKey=todayStr().replace(/-/g,'_');
-  const obj={id,monto,cat,tipo:'gasto',desc,ts:Date.now(),dayKey};
+  const obj={id,monto,cat,tipo,desc,ts:Date.now(),dayKey};
   await fbSet('compras/'+id,obj);
-  await log('Gasto '+cat+' '+fmt(monto));
+  await log((tipo==='mercaderia'?'Mercadería ':'Gasto '+cat+' ')+fmt(monto));
   state.compras[id]=obj;
   montoEl.value='';if(descEl)descEl.value='';montoEl.focus();
   renderComprasList();renderComprasCats();renderComprasHist();updateComprasTotals();
-  toast('Gasto registrado');
+  toast(tipo==='mercaderia'?'Mercadería registrada':'Gasto registrado');
 }
 
 async function delCompra(id){
@@ -6176,32 +6176,38 @@ function updateComprasTotals(){
   const curKey=getKey('cmp',cmpScopeMode);
   const curLbl=getLabel('cmp',cmpScopeMode);
   const cur=getComprasByPrefix(curKey);
-  const all=Object.values(state.compras||{});
+  const gastos=cur.filter(x=>getCompraTipo(x)==='gasto');
+  const merc=cur.filter(x=>getCompraTipo(x)==='mercaderia');
   const sum=arr=>arr.reduce((s,x)=>s+(x.monto||0),0);
   const set=(id,v)=>{const el=document.getElementById(id);if(el)el.textContent=fmt(v);};
   const setTxt=(id,v)=>{const el=document.getElementById(id);if(el)el.textContent=v;};
-  set('cmp-hoy',sum(cur));setTxt('cmp-hoy-sub',curLbl+' · '+cur.length+' entrada'+(cur.length!==1?'s':''));
-  set('cmp-total',sum(all));
+  set('cmp-hoy',sum(gastos));setTxt('cmp-hoy-sub',curLbl+' · '+gastos.length+' gasto'+(gastos.length!==1?'s':''));
+  set('cmp-total',sum(merc));setTxt('cmp-merc-sub',curLbl+' · '+merc.length+' compra'+(merc.length!==1?'s':''));
 }
 
 function renderComprasList(){
   const el=document.getElementById('compras-list');if(!el)return;
   const curKey=getKey('cmp',cmpScopeMode);
   const items=getComprasByPrefix(curKey).sort((a,b)=>b.ts-a.ts);
-  if(!items.length){el.innerHTML='<div class="empty-msg">Sin gastos este mes.</div>';return;}
-  el.innerHTML=items.map(x=>`
+  if(!items.length){el.innerHTML='<div class="empty-msg">Sin registros este mes.</div>';return;}
+  el.innerHTML=items.map(x=>{
+    const merc=getCompraTipo(x)==='mercaderia';
+    const col=merc?'var(--blue)':'var(--red)';
+    const bg=merc?'rgba(94,176,245,.12)':'rgba(239,68,68,.1)';
+    const etq=merc?'🛒 Mercadería':(x.cat||'Otros');
+    return`
     <div class="pedido-item" style="opacity:1">
       <span class="pi-ts">${ts2s(x.ts)}</span>
-      <span class="pi-qty" style="background:rgba(239,68,68,.1);color:var(--red)">${fmt(x.monto)}</span>
-      <span class="pi-prod">${x.cat||'Otros'}</span>
+      <span class="pi-qty" style="background:${bg};color:${col}">${fmt(x.monto)}</span>
+      <span class="pi-prod">${etq}</span>
       <span class="pi-nota">${x.desc||''}</span>
       <button class="btn btn-del" onclick="delCompra('${x.id}')">✕</button>
-    </div>`).join('');
+    </div>`;}).join('');
 }
 
 function renderComprasCats(){
   const el=document.getElementById('compras-cats');if(!el)return;
-  const items=getComprasByPrefix(getKey('cmp',cmpScopeMode));
+  const items=getComprasByPrefix(getKey('cmp',cmpScopeMode)).filter(x=>getCompraTipo(x)==='gasto');
   if(!items.length){el.innerHTML='';return;}
   const cats={};
   items.forEach(x=>{const cat=x.cat||'Otros';cats[cat]=(cats[cat]||0)+(x.monto||0);});
@@ -6226,12 +6232,14 @@ function renderComprasHist(){
   const tbody=document.getElementById('compras-hist-body');if(!tbody)return;
   const items=Object.values(state.compras||{}).sort((a,b)=>b.ts-a.ts).slice(0,50);
   if(!items.length){tbody.innerHTML='<tr><td colspan="4" style="text-align:center;padding:20px;color:var(--muted);font-size:.68rem">Sin datos.</td></tr>';return;}
-  tbody.innerHTML=items.map(x=>`<tr>
+  tbody.innerHTML=items.map(x=>{
+    const merc=getCompraTipo(x)==='mercaderia';
+    return`<tr>
     <td>${x.dayKey?x.dayKey.replace(/_/g,'/'):'—'}</td>
-    <td style="color:var(--muted)">${x.cat||'Otros'}</td>
-    <td style="color:var(--red)">${fmt(x.monto)}</td>
+    <td style="color:var(--muted)">${merc?'🛒 Mercadería':(x.cat||'Otros')}</td>
+    <td style="color:${merc?'var(--blue)':'var(--red)'}">${fmt(x.monto)}</td>
     <td style="text-align:left;color:var(--muted);font-size:.68rem">${x.desc||''}</td>
-  </tr>`).join('');
+  </tr>`;}).join('');
 }
 
 function renderComprasComp(){
@@ -6244,8 +6252,8 @@ function renderComprasComp(){
   const curKey=getKey('cmp',cmpScopeMode);
   const curLbl=getLabel('cmp',cmpScopeMode);
   const compLbl=MONTHS[parseInt(compMes)-1]+' '+y;
-  const curItems=getComprasByPrefix(curKey);
-  const compItems=getComprasByPrefix(compKey);
+  const curItems=getComprasByPrefix(curKey).filter(x=>getCompraTipo(x)==='gasto');
+  const compItems=getComprasByPrefix(compKey).filter(x=>getCompraTipo(x)==='gasto');
   if(!curItems.length&&!compItems.length){el.innerHTML='';return;}
   const cats=new Set([...curItems,...compItems].map(x=>x.cat||'Otros'));
   const curCats={},compCats={};
@@ -6405,7 +6413,7 @@ document.addEventListener('click',e=>{if(fnavOpen&&!e.target.closest('#fnav-btn'
         <span style="font-size:.75rem;color:var(--muted)">Si no ves los últimos cambios, forzá la actualización</span>
         <button class="btn" style="background:rgba(56,189,248,.12);color:var(--blue);border:1px solid rgba(56,189,248,.3)" onclick="actualizarApp()">🔄 Buscar actualizaciones</button>
       </div>
-      <div style="font-size:.66rem;color:var(--muted);margin-top:12px">CYC · Versión 1.7</div>
+      <div style="font-size:.66rem;color:var(--muted);margin-top:12px">CYC · Versión 1.8</div>
     </div>
 
     <div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:18px 20px;margin-bottom:14px">
