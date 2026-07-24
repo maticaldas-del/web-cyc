@@ -1551,6 +1551,7 @@ function startApp(){
     state.inventory=d.inventory||{};
     state.history  =d.history  ?Object.values(d.history).sort((a,b)=>b.ts-a.ts):[];
     state.finanzas =d.finanzas ||{};
+    Object.assign(state.finanzas,_finPending); // preservar ediciones locales pendientes de confirmar
     state.snapshots=d.snapshots||{};
     state.daily    =d.daily    ||{};
     state.ingresos =d.ingresos ||{};
@@ -1756,6 +1757,7 @@ function fmtMoneyInput(el){
 }
 /* ── Evitar que el re-render de Firebase borre lo que se está editando ── */
 let pendingRender=false;
+let _finPending={}; // valores de finanzas escritos localmente pero aún no confirmados en la base (no dejar que un snapshot los pise)
 function isEditing(){const a=document.activeElement;return !!a&&/^(INPUT|SELECT|TEXTAREA)$/.test(a.tagName);}
 document.addEventListener('focusout',()=>{
   setTimeout(()=>{if(pendingRender&&!isEditing()){pendingRender=false;renderAll();}},150);
@@ -2619,10 +2621,11 @@ function updateTotals(){
 let finTimers={};
 async function saveFin(key,val){
   const num=parseMoney(val);
-  state.finanzas[key]=num;updateArqueo();updateHeaderTotal();
+  state.finanzas[key]=num;_finPending[key]=num;updateArqueo();updateHeaderTotal();
   clearTimeout(finTimers[key]);
   finTimers[key]=setTimeout(async()=>{
     await fbSet('finanzas/'+key,num);
+    if(_finPending[key]===num)delete _finPending[key]; // ya está en la base, se puede liberar
     const f=FIN_FIELDS.find(x=>x.k===key);
     await log('Arqueo '+(f?f.label:key)+': '+fmt(num));
   },900);
