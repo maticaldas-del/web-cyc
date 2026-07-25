@@ -28,6 +28,10 @@ on:
         description: 'Volcar datos de pago/liquidación (debug): poné 1'
         required: false
         default: ''
+      dump_promos:
+        description: 'Volcar promociones/descuentos de ML (debug): poné 1'
+        required: false
+        default: ''
       backfill_days:
         description: 'Reprocesar los últimos N días (backfill): ej 31'
         required: false
@@ -64,4 +68,5 @@ jobs:
           DUMP_VENTAS: ${{ github.event.inputs.dump_ventas }}
           DUMP_SKU: ${{ github.event.inputs.dump_sku }}
           DUMP_PAY: ${{ github.event.inputs.dump_pay }}
+          DUMP_PROMOS: ${{ github.event.inputs.dump_promos }}
         run: node ml-sync/sync.mjs

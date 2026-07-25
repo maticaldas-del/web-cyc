@@ -396,6 +396,46 @@ async function main() {
     return;
   }
 
+  // DUMP_PROMOS: solo lectura. Lista las promociones/descuentos que ML tiene
+  // sobre cada cuenta y sobre algunas publicaciones vinculadas, para ver los
+  // tipos/estados reales antes de programar el borrado automático.
+  if (process.env.DUMP_PROMOS) {
+    for (const label of labels) {
+      const acc = accounts[label];
+      if (!acc?.refresh_token) continue;
+      const t = await mlRefresh(ML_CLIENT_ID, ML_CLIENT_SECRET, acc.refresh_token);
+      await db.patch('mlapi/tokens/' + label, { refresh_token: t.refresh_token, updated_ts: Date.now() });
+      console.log(`\n═══ ${label} (${acc.nickname || acc.seller_id}) ═══`);
+      // 1) promociones a nivel cuenta
+      try {
+        const u = await mlGet('/seller-promotions/users/' + acc.seller_id + '?app_version=v2', t.access_token);
+        const arr = Array.isArray(u) ? u : (u.results || []);
+        console.log('PROMOS de la cuenta:', arr.length);
+        for (const pr of arr) console.log('  ·', JSON.stringify({
+          id: pr.id, type: pr.type, status: pr.status, name: pr.name,
+          start: pr.start_date, finish: pr.finish_date, benefits: pr.benefits,
+        }));
+      } catch (e) { console.log('  (users promos error:', e.message, ')'); }
+      // 2) promociones por publicación (muestra de vinculadas activas)
+      const ids = Object.entries(map)
+        .filter(([mla, e]) => e && e.cuenta === label && !e.ignored && e.prodId && /^MLA/i.test(mla))
+        .map(([mla]) => mla).slice(0, 6);
+      for (const mla of ids) {
+        try {
+          const r = await mlGet('/seller-promotions/items/' + mla + '?app_version=v2', t.access_token);
+          const arr = Array.isArray(r) ? r : (r.results || []);
+          if (!arr.length) { console.log('  ' + mla + ': sin promos'); continue; }
+          console.log('  ' + mla + ' (' + (map[mla].title || '').slice(0, 30) + '):');
+          for (const pr of arr) console.log('      →', JSON.stringify({
+            id: pr.id, type: pr.type, status: pr.status, offer_id: pr.offer_id,
+            price: pr.price, orig: pr.original_price, deal_price: pr.deal_price,
+          }));
+        } catch (e) { console.log('  ' + mla + ': error ' + e.message); }
+      }
+    }
+    return;
+  }
+
   for (const label of labels) {
     const acc = accounts[label];
     if (!acc?.refresh_token) continue;
