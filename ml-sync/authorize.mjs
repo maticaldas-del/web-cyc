@@ -23,12 +23,15 @@ async function main() {
   need('LABEL', LABEL);
   need('CODE', CODE);
 
+  // Primero validar el acceso al panel (Firebase). Así, si algo está mal acá,
+  // NO gastamos el code de ML (que es de un solo uso y se vence rápido).
+  const idToken = await fbSignIn(FIREBASE_API_KEY, FIREBASE_BOT_EMAIL, FIREBASE_BOT_PASSWORD);
+  const db = makeDB(FIREBASE_DB_URL, idToken);
+
+  // Recién ahora canjeamos el code de ML por los tokens.
   const tokens = await mlExchangeCode(ML_CLIENT_ID, ML_CLIENT_SECRET, CODE, ML_REDIRECT_URI);
   // Averiguar quién es la cuenta (id de vendedor + nick) para etiquetar bien.
   const me = await mlGet('/users/me', tokens.access_token);
-
-  const idToken = await fbSignIn(FIREBASE_API_KEY, FIREBASE_BOT_EMAIL, FIREBASE_BOT_PASSWORD);
-  const db = makeDB(FIREBASE_DB_URL, idToken);
 
   await db.set('mlapi/tokens/' + LABEL, {
     seller_id: me.id,
