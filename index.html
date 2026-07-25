@@ -1582,6 +1582,8 @@ function startApp(){
     state.puntaje=d.puntaje||{};
     state.retiro_mes=d.retiro_mes||{};
     state.stockDiario=d.stockDiario||{};
+    state.mlreview=d.mlreview||{};   // publicaciones ML ambiguas a vincular
+    state.mlmap=d.mlmap||{};         // mapa MLA -> producto (confirmado)
     // detectar entradas nuevas de ventaprod escritas externamente (p.ej. cowork)
     const _newVP=d.ventaprod||{};
     const _allIds=new Set();
@@ -1683,6 +1685,38 @@ function enterAjustes(){
   const isLight=document.body.classList.contains('light');
   const tb=document.getElementById('ajuste-tema-btn');if(tb)tb.textContent=isLight?'☀️ Modo claro':'🌙 Modo oscuro';
   const ok=document.getElementById('ajuste-nombre-ok');if(ok)ok.textContent='';
+  renderMlReview();
+}
+// ── Vincular publicaciones de ML ambiguas con un producto interno ──
+function renderMlReview(){
+  const card=document.getElementById('mlreview-card');const panel=document.getElementById('mlreview-panel');
+  if(!card||!panel)return;
+  const rev=state.mlreview||{};const mlas=Object.keys(rev);
+  if(!mlas.length){card.style.display='none';panel.innerHTML='';return;}
+  card.style.display='';
+  const prods=[...(state.products||[])].sort((a,b)=>(a.name||'').localeCompare(b.name||'','es',{sensitivity:'base'}));
+  panel.innerHTML=mlas.map(mla=>{
+    const r=rev[mla]||{};const cands=r.candidatos||[];
+    const sug=cands[0]?cands[0].id:'';
+    const opts=['<option value="">— elegí el producto —</option>']
+      .concat(prods.map(p=>`<option value="${p.id}"${p.id===sug?' selected':''}>${(p.name||'').replace(/</g,'&lt;')}</option>`)).join('');
+    return `<div style="border:1px solid var(--border2);border-radius:8px;padding:11px 12px;margin-bottom:9px">
+      <div style="font-size:.72rem;margin-bottom:7px"><span style="color:var(--muted)">${r.cuenta||''} ·</span> ${(r.title||'').replace(/</g,'&lt;')}</div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap">
+        <select id="mlsel_${mla}" style="flex:1;min-width:160px;padding:8px 10px;border-radius:8px;border:1px solid var(--border2);background:var(--surface2);color:var(--text);font-size:.74rem">${opts}</select>
+        <button class="btn" style="background:var(--accent2);color:#fff" onclick="saveMlLink('${mla}')">Vincular</button>
+      </div>
+    </div>`;
+  }).join('');
+}
+async function saveMlLink(mla){
+  const sel=document.getElementById('mlsel_'+mla);if(!sel||!sel.value){toast('Elegí un producto','err');return;}
+  await fbSet('mlmap/'+mla,sel.value);
+  await fbDel('mlreview/'+mla);
+  if(state.mlmap)state.mlmap[mla]=sel.value;
+  if(state.mlreview)delete state.mlreview[mla];
+  renderMlReview();
+  toast('Publicación vinculada ✓');
 }
 function guardarNombre(){
   const inp=document.getElementById('ajuste-nombre');
@@ -6391,6 +6425,12 @@ document.addEventListener('click',e=>{if(fnavOpen&&!e.target.closest('#fnav-btn'
       <p id="ajuste-nombre-ok" style="font-size:.68rem;color:var(--green);margin-top:8px;min-height:1em"></p>
     </div>
 
+    <div id="mlreview-card" style="background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:18px 20px;margin-bottom:14px;display:none">
+      <div style="font-family:'Syne',sans-serif;font-weight:800;font-size:.95rem;margin-bottom:6px">🔗 Vincular publicaciones de ML</div>
+      <p style="font-size:.68rem;color:var(--muted);margin:0 0 12px;line-height:1.5">El robot no supo a qué producto tuyo corresponden estas publicaciones. Elegí el correcto y quedan vinculadas para siempre (ventas y stock).</p>
+      <div id="mlreview-panel"></div>
+    </div>
+
     <div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:18px 20px;margin-bottom:14px">
       <div style="font-family:'Syne',sans-serif;font-weight:800;font-size:.95rem;margin-bottom:12px">🎨 Apariencia</div>
       <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap">
@@ -6413,7 +6453,7 @@ document.addEventListener('click',e=>{if(fnavOpen&&!e.target.closest('#fnav-btn'
         <span style="font-size:.75rem;color:var(--muted)">Si no ves los últimos cambios, forzá la actualización</span>
         <button class="btn" style="background:rgba(56,189,248,.12);color:var(--blue);border:1px solid rgba(56,189,248,.3)" onclick="actualizarApp()">🔄 Buscar actualizaciones</button>
       </div>
-      <div style="font-size:.66rem;color:var(--muted);margin-top:12px">CYC · Versión 1.8</div>
+      <div style="font-size:.66rem;color:var(--muted);margin-top:12px">CYC · Versión 1.9</div>
     </div>
 
     <div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:18px 20px;margin-bottom:14px">
