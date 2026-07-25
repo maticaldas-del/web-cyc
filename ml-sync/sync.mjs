@@ -33,20 +33,33 @@ function dayKeyFromISO(iso) {
   return `${p.year}_${p.month}_${p.day}`;
 }
 
-// ── matching publicación → producto interno (por nombre, primera versión) ──
-function buildProductIndex(products) {
-  // products: array de {id, name, costUSD, shipUSD, devPct, ...}
-  return (products || []).map((p) => ({ p, n: norm(p.name) })).filter((x) => x.n);
+// ── matching publicación → producto interno POR PALABRAS EN COMÚN ──────────
+// Palabras genéricas que no ayudan a distinguir (no cuentan para el match).
+const STOP = new Set(['de','con','y','la','el','los','las','para','en','del','al',
+  'un','una','x','color','negro','blanco','gris','rojo','azul','verde','celeste',
+  'pc','set','the','memoria','luz','led','2','0','1','o','a','tipo','marca']);
+function toks(s) {
+  return [...new Set(norm(s).split(' ').filter((t) => t.length >= 2 && !STOP.has(t)))];
 }
+function buildProductIndex(products) {
+  return (products || [])
+    .map((p) => ({ p, toks: toks(p.name) }))
+    .filter((x) => x.toks.length);
+}
+// Devuelve el producto si hay un ganador CLARO (gana al segundo por margen);
+// si empatan (ambiguo) o nadie llega a 2 palabras, devuelve null → va a revisión.
 function matchProduct(title, index) {
-  const t = norm(title);
-  // 1) match exacto normalizado
-  let hit = index.find((x) => x.n === t);
-  if (hit) return hit.p;
-  // 2) el nombre del producto está contenido en el título de la publicación
-  hit = index.filter((x) => t.includes(x.n)).sort((a, b) => b.n.length - a.n.length)[0];
-  if (hit) return hit.p;
-  // 3) sin match → lo dejamos sin producto (se revisa/corrige a mano)
+  const tt = new Set(toks(title));
+  let best = null, bestScore = 0, second = 0;
+  for (const x of index) {
+    let s = 0;
+    for (const tk of x.toks) if (tt.has(tk)) s++;
+    if (s > bestScore) { second = bestScore; bestScore = s; best = x; }
+    else if (s > second) { second = s; }
+  }
+  if (best && bestScore >= 2 && bestScore > second) return best.p;
+  // producto de una sola palabra distintiva (ej "Chispero", "B39", "P47")
+  if (best && bestScore >= 1 && best.toks.length === 1 && bestScore > second) return best.p;
   return null;
 }
 
