@@ -1736,6 +1736,20 @@ async function toggleAutoStock(){
 }
 // ── Administrar vinculaciones publicación de ML → producto (y variante) ──
 const _esc=s=>(s==null?'':String(s)).replace(/[<>&"]/g,c=>({'<':'&lt;','>':'&gt;','&':'&amp;','"':'&quot;'}[c]));
+// Sugerencia de producto por palabras en común (mismo criterio que el robot).
+const _MLSTOP=new Set(['de','con','y','la','el','los','las','para','en','del','al','un','una','x','color','negro','blanco','gris','rojo','azul','verde','celeste','pc','set','the','memoria','luz','led','2','0','1','o','a','tipo','marca','usb','hub','bluetooth','wireless','inalambrico','inalambrica','inalambricos','inalambricas','recargable','flexible','micro','mini','original','premium']);
+const _mlnorm=s=>(s||'').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g,'').replace(/[^a-z0-9 ]/g,' ').replace(/(\d+)\s*(gb|tb|mb|ml|cm|mm|w|v)\b/g,'$1$2').replace(/\s+/g,' ').trim();
+const _mltoks=s=>[...new Set(_mlnorm(s).split(' ').filter(t=>t.length>=2&&!_MLSTOP.has(t)))];
+let _mlIdx=null;
+function _mlBuildIdx(){_mlIdx=(state.products||[]).map(p=>({p,toks:_mltoks(p.name)})).filter(x=>x.toks.length);}
+function mlSuggest(title){
+  if(!_mlIdx)return'';
+  const tt=new Set(_mltoks(title));let best=null,bs=0,sec=0;
+  for(const x of _mlIdx){let s=0;for(const tk of x.toks)if(tt.has(tk))s++;if(s>bs){sec=bs;bs=s;best=x;}else if(s>sec)sec=s;}
+  if(best&&bs>=2&&bs>sec)return best.p.id;
+  if(best&&bs>=1&&best.toks.length===1&&bs>sec)return best.p.id;
+  return'';
+}
 let _mlFilterPend=false,_mlShowHidden=false;
 function toggleMlFilter(){_mlFilterPend=!_mlFilterPend;renderMlLinks();}
 function toggleMlHidden(){_mlShowHidden=!_mlShowHidden;renderMlLinks();}
@@ -1747,6 +1761,7 @@ function renderMlLinks(){
   if(!keys.length){card.style.display='none';panel.innerHTML='';return;}
   card.style.display='';
   const prods=[...(state.products||[])].sort((a,b)=>(a.name||'').localeCompare(b.name||'','es',{sensitivity:'base'}));
+  _mlBuildIdx();
   const q=(document.getElementById('ml-search')?.value||'').toLowerCase().trim();
   const total=keys.length;
   const hidden=keys.filter(m=>map[m].ignored).length;
@@ -1768,7 +1783,10 @@ function renderMlLinks(){
       </div>
     </div>`;
   panel.innerHTML=head+shown.map(mla=>{
-    const e=map[mla]||{};const pid=e.prodId||'';const prod=prods.find(p=>p.id===pid);
+    const e=map[mla]||{};const pid=e.prodId||'';
+    // si no está vinculada, proponemos una sugerencia ya elegida (revisá y Guardá)
+    const sugId=(!pid&&!e.ignored)?mlSuggest(e.title):'';
+    const selVal=pid||sugId;const prod=prods.find(p=>p.id===selVal);
     const vars=(prod&&prod.variantes&&prod.variantes.length)?prod.variantes:[];
     const varOpts=['<option value="">— sin variante —</option>'].concat(vars.map(v=>`<option value="${_esc(v)}"${v===e.variant?' selected':''}>${_esc(v)}</option>`)).join('');
     const dot=e.ignored?'#6b6b7a':(pid?'#22c55e':'#f59e0b');
@@ -1779,10 +1797,11 @@ function renderMlLinks(){
         <div style="flex:1;min-width:140px">${info}</div>
         <button class="btn" style="background:var(--surface2);border:1px solid var(--border2);color:var(--text)" onclick="unhideMl('${mla}')">↩ Recuperar</button></div>`;
     }
+    const sugHint=sugId?`<div style="font-size:.62rem;color:var(--accent2);margin-bottom:6px">💡 Sugerido: <strong>${_esc((prods.find(p=>p.id===sugId)||{}).name)}</strong> — si está bien, Guardá; si no, cambialo.</div>`:'';
     return `<div style="border:1px solid var(--border2);border-radius:8px;padding:11px 12px;margin-bottom:9px">
-      ${info}
+      ${info}${sugHint}
       <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
-        <select id="mlp_${mla}" onchange="mlVarRefresh('${mla}')" style="flex:1;min-width:150px;padding:8px 10px;border-radius:8px;border:1px solid var(--border2);background:var(--surface2);color:var(--text);font-size:.74rem">${optsFor(pid)}</select>
+        <select id="mlp_${mla}" onchange="mlVarRefresh('${mla}')" style="flex:1;min-width:150px;padding:8px 10px;border-radius:8px;border:1px solid var(--border2);background:var(--surface2);color:var(--text);font-size:.74rem">${optsFor(selVal)}</select>
         <select id="mlv_${mla}" style="min-width:120px;padding:8px 10px;border-radius:8px;border:1px solid var(--border2);background:var(--surface2);color:var(--text);font-size:.74rem"${vars.length?'':' disabled'}>${varOpts}</select>
         <button class="btn" style="background:var(--accent2);color:#fff" onclick="saveMlLink('${mla}')">Guardar</button>
         <button class="btn" title="Ocultar" style="background:transparent;border:1px solid var(--border2);color:var(--muted);padding:8px 11px" onclick="hideMl('${mla}')">🗑</button>
@@ -6604,7 +6623,7 @@ document.addEventListener('click',e=>{if(fnavOpen&&!e.target.closest('#fnav-btn'
         <span style="font-size:.75rem;color:var(--muted)">Si no ves los últimos cambios, forzá la actualización</span>
         <button class="btn" style="background:rgba(56,189,248,.12);color:var(--blue);border:1px solid rgba(56,189,248,.3)" onclick="actualizarApp()">🔄 Buscar actualizaciones</button>
       </div>
-      <div style="font-size:.66rem;color:var(--muted);margin-top:12px">CYC · Versión 2.6</div>
+      <div style="font-size:.66rem;color:var(--muted);margin-top:12px">CYC · Versión 2.7</div>
     </div>
 
     <div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:18px 20px;margin-bottom:14px">
