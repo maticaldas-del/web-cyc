@@ -7,11 +7,14 @@ Corre solo como **GitHub Action** (gratis) cada 15–30 min.
 
 | Módulo | Qué trae | Estado |
 |---|---|---|
-| 🧾 Ventas + neto | Cada venta nueva de las 4 cuentas, con su neto real | Fase 1 |
-| 📊 Métricas | Se calculan solas en la app a partir de las ventas | Fase 1 (automático) |
-| 📦 Stock ML | Unidades disponibles por producto y por cuenta | Fase 2 |
-| 🚚 Stock en Full + por llegar | Unidades en Full e ingresos en camino | Fase 3 |
-| ❓ Preguntas | Ver preguntas sin responder (responder: a decidir) | Fase 4 |
+| 🧾 Ventas + neto | Cada venta nueva de las 4 cuentas, con su neto real | ✅ código listo (`sync.mjs`) |
+| 📊 Métricas | Se calculan solas en la app a partir de las ventas | ✅ automático |
+| 📦 Stock ML | Unidades disponibles por producto y por cuenta | ✅ código listo (`stock.mjs`) |
+| 🚚 Stock en Full + por llegar | Unidades en Full e ingresos en camino | ⏳ Fase 3 |
+| ❓ Preguntas | Ver preguntas sin responder (responder: a decidir) | ⏳ Fase 4 |
+
+> Todo escrito y sin activar. Falta conectar las cuentas (ver `MAÑANA.md`) y
+> verificar neto + matches con la primera tanda de datos reales.
 
 ## Cómo funciona (arquitectura)
 
@@ -40,6 +43,7 @@ Nunca van en el código ni en el chat.
 
 - [ ] `ML_CLIENT_ID` — App ID de la aplicación de ML *(no es secreto)*
 - [ ] `ML_CLIENT_SECRET` — Client Secret de la app
+- [ ] `ML_REDIRECT_URI` — la dirección del Redirect URI de la app
 - [ ] `FIREBASE_API_KEY` — ya la tenemos
 - [ ] `FIREBASE_DB_URL` — ya la tenemos
 - [ ] `FIREBASE_BOT_EMAIL` — usuario bot de Firebase (lo creamos)

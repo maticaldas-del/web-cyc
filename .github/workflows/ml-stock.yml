@@ -1,0 +1,27 @@
+name: ml-stock
+
+# Robot que trae el stock de las publicaciones de ML al inventario del panel.
+# Manual por ahora. Solo escribe stock de publicaciones con match confirmado.
+
+on:
+  workflow_dispatch:
+  # schedule:
+  #   - cron: '17 */6 * * *'   # cada 6 h (se activa al final)
+
+jobs:
+  stock:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Sincronizar stock
+        env:
+          ML_CLIENT_ID: ${{ secrets.ML_CLIENT_ID }}
+          ML_CLIENT_SECRET: ${{ secrets.ML_CLIENT_SECRET }}
+          FIREBASE_API_KEY: ${{ secrets.FIREBASE_API_KEY }}
+          FIREBASE_DB_URL: ${{ secrets.FIREBASE_DB_URL }}
+          FIREBASE_BOT_EMAIL: ${{ secrets.FIREBASE_BOT_EMAIL }}
+          FIREBASE_BOT_PASSWORD: ${{ secrets.FIREBASE_BOT_PASSWORD }}
+        run: node ml-sync/stock.mjs

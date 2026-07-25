@@ -55,16 +55,24 @@ function costoPesos(p, qty, tc) {
   return { costo: Math.round(fullUSD * tc * qty), costBaseUSD: costUSD, shipUSD };
 }
 
-// ── neto de una venta (PRIMERA VERSIÓN — se verifica con datos reales) ──────
-// neto = total − comisión de ML − envío que absorbe el vendedor.
-// TODO(verificar en la 1ª tanda real):
-//   · si order_items.sale_fee es por unidad o por línea
-//   · el costo de envío que paga el vendedor (viene de /shipments)
-function netoDeVenta(item) {
-  const gross = (item.unit_price || 0) * (item.quantity || 0);
-  const fee = (item.sale_fee || 0) * (item.quantity || 0); // ← revisar base
-  const shippingSeller = 0;                                 // ← sumar de /shipments
-  return Math.max(0, Math.round(gross - fee - shippingSeller));
+// ── envío que paga el vendedor (best-effort; si el dato viene distinto → 0) ──
+// TODO(verificar 1ª tanda): forma exacta de /shipments/{id}/costs y qué campo
+// es el costo del vendedor. Va con try/catch: si falla, neto = total − comisión.
+async function sellerShipping(order, token) {
+  const shipId = order.shipping?.id;
+  if (!shipId) return 0;
+  try {
+    const c = await mlGet(`/shipments/${shipId}/costs`, token);
+    const s = Array.isArray(c.senders) ? c.senders[0] : null;
+    const cost = (s?.cost || 0) - (s?.compensation || 0);
+    return cost > 0 ? cost : 0;
+  } catch { return 0; }
+}
+// neto por ítem = (total del ítem) − comisión − parte proporcional del envío.
+// TODO(verificar): si order_items.sale_fee es por unidad o por línea.
+function netoItem(itemGross, saleFeeUnit, qty, shipAlloc) {
+  const fee = (saleFeeUnit || 0) * (qty || 0); // ← revisar base de sale_fee
+  return Math.max(0, Math.round(itemGross - fee - shipAlloc));
 }
 
 // ── traer todas las ventas pagadas de una cuenta desde una fecha ───────────
@@ -134,10 +142,15 @@ async function main() {
       seenNum.add(num);
       const dayKey = dayKeyFromISO(o.date_closed || o.date_created);
       const saleId = 's' + o.id;
+      const items = o.order_items || [];
+      const orderGross = items.reduce((s, it) => s + (it.unit_price || 0) * (it.quantity || 0), 0);
+      const shipSeller = await sellerShipping(o, t.access_token);
       let i = 0;
-      for (const it of (o.order_items || [])) {
+      for (const it of items) {
         const title = it.item?.title || '';
         const qty = it.quantity || 0;
+        const itemGross = (it.unit_price || 0) * qty;
+        const shipAlloc = orderGross > 0 ? shipSeller * (itemGross / orderGross) : 0;
         const p = matchProduct(title, index);
         if (!p) sinMatch.push(`${label}: ${title}`);
         const { costo, costBaseUSD, shipUSD } = costoPesos(p, qty, tc);
@@ -148,8 +161,8 @@ async function main() {
           prodId: p ? p.id : null,
           cuenta: label,
           qty,
-          total: Math.round((it.unit_price || 0) * qty),
-          neto: netoDeVenta(it),
+          total: Math.round(itemGross),
+          neto: netoItem(itemGross, it.sale_fee, qty, shipAlloc),
           costo, costBaseUSD, tcSale: tc, shipUSD,
           numVenta: num,
           ts: new Date(o.date_closed || o.date_created).getTime(),
