@@ -147,6 +147,22 @@ async function main() {
 
   const products = Object.values((await db.get('cyc/products')) || {});
   const index = buildProductIndex(products);
+  if (process.env.DUMP_VENTAS) {
+    const vp = (await db.get('cyc/ventaprod')) || {};
+    const all = [];
+    for (const ents of Object.values(vp)) for (const v of Object.values(ents || {})) all.push(v);
+    const by = {};
+    for (const v of all) { const o = v.origen || '(sin origen)'; (by[o] = by[o] || []).push(v); }
+    console.log('TOTAL ventaprod:', all.length);
+    for (const [o, arr] of Object.entries(by)) {
+      const withNum = arr.filter((v) => v.numVenta).length;
+      const maxTs = Math.max(0, ...arr.map((v) => v.ts || 0));
+      console.log(`origen=${o}: ${arr.length} · con numVenta: ${withNum} · última: ${maxTs ? new Date(maxTs).toISOString() : '?'}`);
+      arr.sort((a, b) => (b.ts || 0) - (a.ts || 0)).slice(0, 3).forEach((v) =>
+        console.log('   últ:', JSON.stringify({ numVenta: v.numVenta, prod: v.prod, cuenta: v.cuenta, ts: v.ts })));
+    }
+    return;
+  }
   if (process.env.CATALOG_ONLY) {
     console.log('CATÁLOGO total:', products.length);
     console.log('CAMPOS:', JSON.stringify(Object.keys(products[0] || {})));
