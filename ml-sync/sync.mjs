@@ -6,7 +6,7 @@
 // Requiere secrets: ML_CLIENT_ID, ML_CLIENT_SECRET,
 //   FIREBASE_API_KEY, FIREBASE_DB_URL, FIREBASE_BOT_EMAIL, FIREBASE_BOT_PASSWORD
 
-import { fbSignIn, makeDB, mlRefresh, mlGet } from './lib.mjs';
+import { fbSignIn, makeDB, mlRefresh, mlGet, ML_API } from './lib.mjs';
 
 const {
   ML_CLIENT_ID, ML_CLIENT_SECRET,
@@ -84,14 +84,54 @@ function mlVariant(it, p) {
   for (const v of vs) if (vals.includes(norm(v))) return v;
   return '';
 }
-// costo en pesos, replicando la lógica de la app (costUSD, devolución, envío × dólar)
+// costo en pesos = "costo real full" de la app × dólar × cantidad.
+// La app ya guarda costFullUSD (incluye envío/embalaje y el % devolución en vivo);
+// lo usamos tal cual para que el margen coincida con lo que ves. Si no está,
+// lo reconstruimos: costUSD × (1 + %dev) + envío.
 function costoPesos(p, qty, tc) {
   if (!p) return { costo: 0, costBaseUSD: 0, shipUSD: 0 };
   const costUSD = parseFloat(p.costUSD) || 0;
   const shipUSD = parseFloat(p.shipUSD) || 0;
-  const devPct = parseFloat(p.devPct) || 0;
-  const fullUSD = costUSD * (1 + devPct / 100) + shipUSD;
+  let fullUSD;
+  if (p.costFullUSD != null && p.costFullUSD !== '') {
+    fullUSD = parseFloat(p.costFullUSD) || 0;
+  } else {
+    const devPct = parseFloat(p.devPct) || 0;
+    fullUSD = costUSD * (1 + devPct / 100) + shipUSD;
+  }
   return { costo: Math.round(fullUSD * tc * qty), costBaseUSD: costUSD, shipUSD };
+}
+
+// ── Subir el precio en ML para llegar al margen objetivo ───────────────────
+// Sube (nunca baja) el precio de la publicación/variante. Multiplicador =
+// costo_full × (1+meta) / neto_real. Devuelve {ok, from, to} o {ok:false, err}.
+async function raisePrice(itemId, variationId, multiplier, token) {
+  let item;
+  try { item = await mlGet('/items/' + itemId + '?attributes=id,price,status,variations', token); }
+  catch { return { ok: false, err: 'sin-item' }; }
+  if (item.status === 'closed') return { ok: false, err: 'cerrada' };
+  let base, body, to;
+  const round10 = (x) => Math.ceil(x / 10) * 10;
+  if (variationId && (item.variations || []).length) {
+    const v = item.variations.find((x) => String(x.id) === String(variationId));
+    if (!v || !v.price) return { ok: false, err: 'sin-variante' };
+    base = v.price; to = round10(base * multiplier);
+    body = { variations: [{ id: v.id, price: to }] };
+  } else {
+    if (!item.price) return { ok: false, err: 'sin-precio' };
+    base = item.price; to = round10(base * multiplier);
+    body = { price: to };
+  }
+  if (to <= base) return { ok: false, err: 'no-sube' };
+  try {
+    const r = await fetch(ML_API + '/items/' + itemId, {
+      method: 'PUT',
+      headers: { Authorization: 'Bearer ' + token, 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+    });
+    if (!r.ok) return { ok: false, err: 'ML-' + r.status };
+    return { ok: true, from: Math.round(base), to };
+  } catch { return { ok: false, err: 'red' }; }
 }
 
 // ── NETO REAL: lo que efectivamente te entra según Mercado Pago ──
@@ -287,6 +327,18 @@ async function main() {
   const alerted = (await db.get('mlapi/alerted')) || {};
   const alertUpd = {};
 
+  // config de precios (la editás desde Ajustes en la app): meta, umbral y on/off.
+  const cfg = (await db.get('cyc/mlconfig')) || {};
+  const autoPrice = cfg.autoPrice !== false; // por defecto ON (lo pediste)
+  const targetPct = parseFloat(cfg.targetPct) || 42; // margen objetivo
+  const minPct = parseFloat(cfg.minPct) || 40;        // umbral para actuar
+  const MAX_UP = 1.25; // tope de seguridad: nunca subir más de +25% de una
+  // items a los que ya les tocamos el precio hace poco (para no pelear con los
+  // descuentos automáticos de ML ni subir en loop)
+  const priced = (await db.get('mlapi/priced')) || {};
+  const pricedUpd = {};
+  let pubAlerts = 0; // tope de avisos de publicaciones por corrida (anti-spam)
+
   const state = (await db.get('mlapi/state')) || {};
   let cargadas = 0;
 
@@ -421,25 +473,47 @@ async function main() {
         if (!loadedByNum.has(num)) loadedByNum.set(num, []);
         loadedByNum.get(num).push({ dayKey, id, cancelada: false });
 
-        // ── AVISO al cel si el margen quedó por debajo del 40% ──
-        // Margen = (neto − costo) ÷ costo, igual que la app. Meta para avisar 40%,
-        // y sugerimos el precio para llegar al 42% (2% de colchón).
-        // Solo ventas recientes (últimas 12 h) y en corridas normales (no backfill),
-        // y una sola vez por venta.
+        // ── MARGEN BAJO: subir el precio solo (o avisar) ──
+        // Margen = (neto − costo) ÷ costo, igual que la app. Si queda por debajo
+        // del umbral (40%), llevamos el precio a la meta (42%, 2% de colchón).
+        // El neto real ya trae comisión + impuestos, así que el multiplicador
+        // que sube el neto a costo×1,42 también sube el precio en esa proporción.
+        // Solo ventas recientes (12 h), en corridas normales (no backfill) y una
+        // sola vez por venta.
         const recient = (Date.now() - obj.ts) < 12 * 3600e3;
         if (!DRY && bfd === 0 && recient && costo > 0 && neto > 0 && !alerted[id]) {
           const margen = (neto - costo) / costo;
-          if (margen < 0.40) {
+          if (margen < minPct / 100) {
+            const mult = (costo * (1 + targetPct / 100)) / neto; // >1 siempre acá
             const unit = itemGross / qty;
-            // precio unitario para que el neto llegue a costo×1,42 (el neto escala con el precio)
-            const sug = Math.ceil(((costo * 1.42 / neto) * unit) / 10) * 10;
-            const msg = `⚠️ <b>Margen bajo: ${(margen * 100).toFixed(0)}%</b>\n`
-              + `${p.name}${variant ? ' · ' + variant : ''}\n`
-              + `Cuenta: ${label}\n`
-              + `Precio actual: <b>${money(unit)}</b>\n`
-              + `Neto: ${money(neto)} · Costo: ${money(costo)}\n`
-              + `👉 Subilo a <b>${money(sug)}</b> para llegar al 42%`;
-            if (await sendTelegram(msg)) { alerted[id] = true; alertUpd[id] = obj.ts; }
+            const sugUnit = Math.ceil(((costo * (1 + targetPct / 100) / neto) * unit) / 10) * 10;
+            const head = `Margen bajo: ${(margen * 100).toFixed(0)}%\n`
+              + `${p.name}${variant ? ' · ' + variant : ''}\nCuenta: ${label}\n`;
+            const varId = it.item?.variation_id || null;
+            const yaTocado = priced[mla] && (Date.now() - (priced[mla].ts || 0)) < 12 * 3600e3;
+            let done = false;
+            // subir solo: activo, dentro del tope de seguridad y sin haberlo tocado hace poco
+            if (autoPrice && mult <= MAX_UP && !yaTocado) {
+              const rp = await raisePrice(mla, varId, mult, t.access_token);
+              if (rp.ok) {
+                pricedUpd[mla] = { ts: Date.now(), to: rp.to };
+                priced[mla] = pricedUpd[mla];
+                await sendTelegram(`🔼 <b>Precio subido automático</b>\n${head}`
+                  + `Estaba en margen ${(margen * 100).toFixed(0)}% → lo subí de `
+                  + `${money(rp.from)} a <b>${money(rp.to)}</b> para llegar al ${targetPct}%`);
+                done = true;
+              }
+            }
+            // si no se pudo subir solo (apagado, tope, catálogo, error…): avisar
+            if (!done) {
+              const motivo = !autoPrice ? '' : (mult > MAX_UP
+                ? '\n⚠️ Subida grande, revisalo vos'
+                : (yaTocado ? '\n(ya lo toqué hace poco)' : '\n(no pude subirlo solo)'));
+              await sendTelegram(`⚠️ <b>${head}</b>Precio actual: <b>${money(unit)}</b>\n`
+                + `Neto: ${money(neto)} · Costo: ${money(costo)}\n`
+                + `👉 Subilo a <b>${money(sugUnit)}</b> para llegar al ${targetPct}%${motivo}`);
+            }
+            alerted[id] = true; alertUpd[id] = obj.ts;
           }
         }
       }
@@ -475,6 +549,45 @@ async function main() {
     }
     if (nCanc || nRecl) console.log(`  ↩ ${label}: ${nCanc} cancelada(s) · ${nRecl} reclamo(s) con pérdida`);
 
+    // 3c) SALUD DE PUBLICACIONES: avisar por Telegram si a una publicación
+    //     vinculada la bajaron/pausaron por un problema o la moderó ML.
+    //     Comparamos el estado actual contra el guardado y avisamos solo en la
+    //     transición (así no repite). Ignoramos pausas normales por falta de stock.
+    try {
+      const ids = Object.entries(map)
+        .filter(([mla, e]) => e && e.cuenta === label && !e.ignored && e.prodId && /^MLA/i.test(mla))
+        .map(([mla]) => mla);
+      for (let k = 0; k < ids.length; k += 20) {
+        const chunk = ids.slice(k, k + 20);
+        let arr;
+        try {
+          arr = await mlGet('/items?ids=' + chunk.join(',') + '&attributes=id,status,sub_status,permalink', t.access_token);
+        } catch { continue; }
+        for (const row of (arr || [])) {
+          const b = row.body || {};
+          const mla = b.id; if (!mla || !map[mla]) continue;
+          const st = b.status || '';
+          const sub = (b.sub_status || []).join(',');
+          const prev = map[mla].status || '';
+          if (!st || st === prev) continue;
+          if (!DRY) await db.patch('cyc/mllinks/' + mla, { status: st, subStatus: sub });
+          map[mla].status = st;
+          const bad = st === 'closed' || st === 'under_review'
+            || /deactiv|moderation|warning|suspend|ban|freeze|infract|hold/i.test(sub);
+          const wasBad = prev === 'closed' || prev === 'under_review';
+          if (bad && !wasBad && !DRY && pubAlerts < 8) {
+            const title = map[mla].title || mla;
+            const estados = { closed: 'dada de baja', under_review: 'en revisión', paused: 'pausada' };
+            await sendTelegram(`⚠️ <b>Problema en una publicación</b>\n`
+              + `${title}\nCuenta: ${label}\n`
+              + `Estado: ${estados[st] || st}${sub ? ' · ' + sub : ''}\n`
+              + (b.permalink || ''));
+            pubAlerts++;
+          }
+        }
+      }
+    } catch { /* no cortar la corrida por esto */ }
+
     // 4) marcar hasta dónde llegamos (para la próxima corrida) — no en dry-run
     if (!DRY) await db.patch('mlapi/state/' + label, {
       lastFrom: new Date(Date.now() - 2 * 864e5).toISOString().replace(/\.\d+Z$/, '.000-00:00'),
@@ -487,6 +600,8 @@ async function main() {
   if (!DRY && Object.keys(mapUpd).length) await db.patch('cyc/mllinks', mapUpd);
   // guardar los avisos que ya mandamos (para no repetirlos)
   if (!DRY && Object.keys(alertUpd).length) await db.patch('mlapi/alerted', alertUpd);
+  // guardar los precios que subimos solos (para no pisarlos en loop)
+  if (!DRY && Object.keys(pricedUpd).length) await db.patch('mlapi/priced', pricedUpd);
 
   const pend = Object.values(map).filter((x) => x && !x.prodId).length;
   console.log(`\n✓ Listo. Renglones cargados: ${cargadas}. Publicaciones sin vincular: ${pend}.`);

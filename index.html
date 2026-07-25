@@ -1584,6 +1584,7 @@ function startApp(){
     state.retiro_mes=d.retiro_mes||{};
     state.stockDiario=d.stockDiario||{};
     state.mllinks=d.mllinks||{};     // publicaciones ML a mapear (activas + inactivas)
+    state.mlconfig=d.mlconfig||{};   // config del robot (auto-precio, meta, umbral)
     // detectar entradas nuevas de ventaprod escritas externamente (p.ej. cowork)
     const _newVP=d.ventaprod||{};
     const _allIds=new Set();
@@ -1685,7 +1686,29 @@ function enterAjustes(){
   const isLight=document.body.classList.contains('light');
   const tb=document.getElementById('ajuste-tema-btn');if(tb)tb.textContent=isLight?'☀️ Modo claro':'🌙 Modo oscuro';
   const ok=document.getElementById('ajuste-nombre-ok');if(ok)ok.textContent='';
+  renderAutoPriceCfg();
   renderMlLinks();
+}
+// ── Auto-precio ML (on/off) — se guarda en cyc/mlconfig y lo lee el robot ──
+function renderAutoPriceCfg(){
+  const c=state.mlconfig||{};
+  const on=c.autoPrice!==false; // por defecto ON
+  const btn=document.getElementById('mlcfg-auto-btn');
+  if(btn){
+    btn.textContent=on?'🟢 Activado':'⚪ Apagado';
+    btn.style.color=on?'var(--green)':'var(--muted)';
+  }
+  const ml=document.getElementById('mlcfg-min-lbl');if(ml)ml.textContent=((parseFloat(c.minPct)||40))+'%';
+  const tl=document.getElementById('mlcfg-target-lbl');if(tl)tl.textContent=((parseFloat(c.targetPct)||42))+'%';
+}
+async function toggleAutoPrice(){
+  if(!state.mlconfig)state.mlconfig={};
+  const on=state.mlconfig.autoPrice!==false;
+  state.mlconfig.autoPrice=!on;
+  await fbSet('mlconfig/autoPrice',!on);
+  await log('Auto-precio ML: '+(!on?'activado':'apagado'));
+  renderAutoPriceCfg();
+  toast(!on?'Auto-precio activado ✓':'Auto-precio apagado');
 }
 // ── Administrar vinculaciones publicación de ML → producto (y variante) ──
 const _esc=s=>(s==null?'':String(s)).replace(/[<>&"]/g,c=>({'<':'&lt;','>':'&gt;','&':'&amp;','"':'&quot;'}[c]));
@@ -6513,6 +6536,15 @@ document.addEventListener('click',e=>{if(fnavOpen&&!e.target.closest('#fnav-btn'
     </div>
 
     <div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:18px 20px;margin-bottom:14px">
+      <div style="font-family:'Syne',sans-serif;font-weight:800;font-size:.95rem;margin-bottom:6px">🔼 Precios ML (automático)</div>
+      <p style="font-size:.68rem;color:var(--muted);margin:0 0 12px;line-height:1.5">Cuando entra una venta con margen por debajo del <strong id="mlcfg-min-lbl">40%</strong>, el robot sube solo el precio en ML hasta la meta (<strong id="mlcfg-target-lbl">42%</strong>) y te avisa por Telegram. Nunca baja precios y tiene tope de +25% por seguridad.</p>
+      <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap">
+        <span style="font-size:.75rem;color:var(--muted)">Subir precios automático</span>
+        <button class="btn" id="mlcfg-auto-btn" style="background:var(--surface2);border:1px solid var(--border2);color:var(--text)" onclick="toggleAutoPrice()">…</button>
+      </div>
+    </div>
+
+    <div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:18px 20px;margin-bottom:14px">
       <div style="font-family:'Syne',sans-serif;font-weight:800;font-size:.95rem;margin-bottom:12px">🎨 Apariencia</div>
       <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap">
         <span style="font-size:.75rem;color:var(--muted)">Tema de la app (claro / oscuro)</span>
@@ -6534,7 +6566,7 @@ document.addEventListener('click',e=>{if(fnavOpen&&!e.target.closest('#fnav-btn'
         <span style="font-size:.75rem;color:var(--muted)">Si no ves los últimos cambios, forzá la actualización</span>
         <button class="btn" style="background:rgba(56,189,248,.12);color:var(--blue);border:1px solid rgba(56,189,248,.3)" onclick="actualizarApp()">🔄 Buscar actualizaciones</button>
       </div>
-      <div style="font-size:.66rem;color:var(--muted);margin-top:12px">CYC · Versión 2.3</div>
+      <div style="font-size:.66rem;color:var(--muted);margin-top:12px">CYC · Versión 2.4</div>
     </div>
 
     <div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:18px 20px;margin-bottom:14px">
