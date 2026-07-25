@@ -21,7 +21,9 @@ const DRY = !!process.env.DRY_RUN;
 // ── helpers de texto y fecha ──────────────────────────────────────────────
 const norm = (s) => (s || '')
   .toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '')
-  .replace(/[^a-z0-9 ]/g, ' ').replace(/\s+/g, ' ').trim();
+  .replace(/[^a-z0-9 ]/g, ' ')
+  .replace(/(\d+)\s*(gb|tb|mb|ml|cm|mm|w|v)\b/g, '$1$2') // "8 gb" -> "8gb"
+  .replace(/\s+/g, ' ').trim();
 
 // Fecha local Argentina (UTC-3) → clave YYYY_MM_DD que usa la app.
 function dayKeyFromISO(iso) {
