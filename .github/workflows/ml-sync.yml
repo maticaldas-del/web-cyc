@@ -11,6 +11,10 @@ on:
         description: 'Modo prueba (no escribe nada): poné 1'
         required: false
         default: ''
+      catalog_only:
+        description: 'Solo mostrar el catálogo (debug): poné 1'
+        required: false
+        default: ''
   # schedule:
   #   - cron: '*/20 * * * *'   # cada 20 min (se activa al final)
 
@@ -31,4 +35,5 @@ jobs:
           FIREBASE_BOT_EMAIL: ${{ secrets.FIREBASE_BOT_EMAIL }}
           FIREBASE_BOT_PASSWORD: ${{ secrets.FIREBASE_BOT_PASSWORD }}
           DRY_RUN: ${{ github.event.inputs.dry_run }}
+          CATALOG_ONLY: ${{ github.event.inputs.catalog_only }}
         run: node ml-sync/sync.mjs
