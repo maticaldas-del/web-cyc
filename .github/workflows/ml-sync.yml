@@ -15,6 +15,10 @@ on:
         description: 'Solo mostrar el catálogo (debug): poné 1'
         required: false
         default: ''
+      dump_map:
+        description: 'Volcar el mapa de vinculaciones (debug): poné 1'
+        required: false
+        default: ''
   # schedule:
   #   - cron: '*/20 * * * *'   # cada 20 min (se activa al final)
 
@@ -36,4 +40,5 @@ jobs:
           FIREBASE_BOT_PASSWORD: ${{ secrets.FIREBASE_BOT_PASSWORD }}
           DRY_RUN: ${{ github.event.inputs.dry_run }}
           CATALOG_ONLY: ${{ github.event.inputs.catalog_only }}
+          DUMP_MAP: ${{ github.event.inputs.dump_map }}
         run: node ml-sync/sync.mjs

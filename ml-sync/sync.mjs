@@ -154,6 +154,14 @@ async function main() {
     console.log('EJEMPLO:', JSON.stringify(products[0] || {}));
     return;
   }
+  if (process.env.DUMP_MAP) {
+    const m = (await db.get('cyc/mlmap')) || {};
+    console.log('MLMAP total:', Object.keys(m).length);
+    for (const [k, v] of Object.entries(m)) {
+      console.log(k, '=>', JSON.stringify(v));
+    }
+    return;
+  }
   const finanzas = (await db.get('cyc/finanzas')) || {};
   const tc = parseFloat(finanzas.tipo_cambio) || 1500;
 
