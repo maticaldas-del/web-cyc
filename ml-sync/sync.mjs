@@ -62,6 +62,14 @@ function matchProduct(title, index) {
   if (best && bestScore >= 1 && best.toks.length === 1 && bestScore > second) return best.p;
   return null;
 }
+// candidatos ordenados (para la lista de revisión de las ambiguas)
+function candidatesFor(title, index) {
+  const tt = new Set(toks(title));
+  return index.map((x) => {
+    let s = 0; for (const tk of x.toks) if (tt.has(tk)) s++;
+    return { id: x.p.id, name: x.p.name, s };
+  }).filter((o) => o.s > 0).sort((a, b) => b.s - a.s).slice(0, 4).map(({ id, name }) => ({ id, name }));
+}
 
 // costo en pesos, replicando la lógica de la app (costUSD, devolución, envío × dólar)
 function costoPesos(p, qty, tc) {
@@ -136,16 +144,22 @@ async function main() {
   const finanzas = (await db.get('cyc/finanzas')) || {};
   const tc = parseFloat(finanzas.tipo_cambio) || 1500;
 
-  // set de números de venta ya cargados, para no duplicar
+  // mapa permanente publicación(MLA) → producto interno (resuelto en la app)
+  const map = (await db.get('cyc/mlmap')) || {};
+
+  // ventas ya cargadas a mano / por cowork (para no duplicarlas). Las nuestras
+  // (origen ml-api) usan id determinístico, así que reescribirlas es inofensivo.
   const ventaprod = (await db.get('cyc/ventaprod')) || {};
-  const seenNum = new Set();
+  const seenManual = new Set();
   for (const day of Object.values(ventaprod)) {
-    for (const v of Object.values(day || {})) if (v.numVenta) seenNum.add(String(v.numVenta));
+    for (const v of Object.values(day || {})) {
+      if (v.numVenta && v.origen !== 'ml-api') seenManual.add(String(v.numVenta));
+    }
   }
 
   const state = (await db.get('mlapi/state')) || {};
-  let totalNuevas = 0;
-  const sinMatch = [];
+  let cargadas = 0;
+  const review = {}; // MLA -> { title, cuenta, candidatos:[{id,name}] }
 
   for (const label of labels) {
     const acc = accounts[label];
@@ -160,11 +174,10 @@ async function main() {
       new Date(Date.now() - 7 * 864e5).toISOString().replace(/\.\d+Z$/, '.000-00:00');
     const orders = await fetchOrders(acc.seller_id, t.access_token, fromISO);
 
-    // 3) transformar cada venta nueva → entradas ventaprod
+    // 3) transformar cada venta → entradas ventaprod (solo las que enganchan)
     for (const o of orders) {
       const num = String(o.id);
-      if (seenNum.has(num)) continue;
-      seenNum.add(num);
+      if (seenManual.has(num)) continue; // ya cargada a mano/cowork
       const dayKey = dayKeyFromISO(o.date_closed || o.date_created);
       const saleId = 's' + o.id;
       const items = o.order_items || [];
@@ -172,20 +185,23 @@ async function main() {
       const shipSeller = await sellerShipping(o, t.access_token);
       let i = 0;
       for (const it of items) {
+        const mla = it.item?.id;
         const title = it.item?.title || '';
         const qty = it.quantity || 0;
         const itemGross = (it.unit_price || 0) * qty;
         const shipAlloc = orderGross > 0 ? shipSeller * (itemGross / orderGross) : 0;
-        const p = matchProduct(title, index);
-        if (!p) sinMatch.push(`${label}: ${title}`);
+        const idx = i; i++;
+        // 1) mapa confirmado por MLA · 2) match por palabras
+        let p = (mla && map[mla]) ? (products.find((pp) => pp.id === map[mla]) || null) : null;
+        if (!p) p = matchProduct(title, index);
+        if (!p) { // ambiguo → a revisión, NO se carga (para no quedar sin costo)
+          if (mla) review[mla] = { title, cuenta: label, candidatos: candidatesFor(title, index) };
+          continue;
+        }
         const { costo, costBaseUSD, shipUSD } = costoPesos(p, qty, tc);
-        const id = 'v' + o.id + '_' + i;
+        const id = 'v' + o.id + '_' + idx;
         const obj = {
-          id, saleId,
-          prod: p ? p.name : title,
-          prodId: p ? p.id : null,
-          cuenta: label,
-          qty,
+          id, saleId, prod: p.name, prodId: p.id, cuenta: label, qty,
           total: Math.round(itemGross),
           neto: netoItem(itemGross, it.sale_fee, qty, shipAlloc),
           costo, costBaseUSD, tcSale: tc, shipUSD,
@@ -193,15 +209,10 @@ async function main() {
           ts: new Date(o.date_closed || o.date_created).getTime(),
           origen: 'ml-api',
         };
-        if (DRY) {
-          console.log(`  [${label}] #${num} ${obj.prod} x${qty} · total ${obj.total} · neto ${obj.neto}` +
-            (p ? '' : '  ⚠ SIN PRODUCTO'));
-        } else {
-          await db.set(`cyc/ventaprod/${dayKey}/${id}`, obj);
-        }
-        i++;
+        if (DRY) console.log(`  [${label}] #${num} ${p.name} x${qty} · total ${obj.total} · neto ${obj.neto}`);
+        else await db.set(`cyc/ventaprod/${dayKey}/${id}`, obj);
+        cargadas++;
       }
-      totalNuevas++;
     }
 
     // 4) marcar hasta dónde llegamos (para la próxima corrida) — no en dry-run
@@ -212,11 +223,14 @@ async function main() {
     console.log(`✓ ${label}: ${orders.length} ventas revisadas`);
   }
 
-  console.log(`\n✓ Listo. Ventas nuevas cargadas: ${totalNuevas}`);
-  if (sinMatch.length) {
-    console.log(`\n⚠ Publicaciones sin producto (${sinMatch.length}) — revisar match por nombre:`);
-    [...new Set(sinMatch)].slice(0, 40).forEach((s) => console.log('  · ' + s));
-  }
+  // guardar la lista de revisión (sacando las que ya están resueltas en el mapa)
+  for (const mla of Object.keys(review)) if (map[mla]) delete review[mla];
+  if (!DRY) await db.set('cyc/mlreview', review);
+
+  const pend = Object.keys(review).length;
+  console.log(`\n✓ Listo. Renglones cargados: ${cargadas}. Publicaciones a revisar: ${pend}.`);
+  Object.values(review).slice(0, 40).forEach((r) =>
+    console.log('  · ' + r.title + '  → ' + r.candidatos.map((c) => c.name).join(' | ')));
 }
 
 main().catch((e) => { console.error('✗ Error:', e.message); process.exit(1); });

@@ -66,8 +66,8 @@ async function main() {
 
   const products = Object.values((await db.get('cyc/products')) || {});
   const index = products.map((p) => ({ p, n: norm(p.name) })).filter((x) => x.n);
-  const map = (await db.get('mlapi/map')) || {};   // MLA -> { prodId, prodName, auto }
-  const review = {};                                // MLA -> { title, cuenta, sugerido }
+  const map = (await db.get('cyc/mlmap')) || {};   // MLA -> prodId (string)
+  const review = (await db.get('cyc/mlreview')) || {}; // MLA -> { title, cuenta, candidatos }
 
   const desired = {}; // 'prodId__Cuenta' -> unidades
   const add = (prodId, label, q) => {
@@ -87,31 +87,31 @@ async function main() {
 
     for (const it of items) {
       const q = unidades(it);
-      const known = map[it.id];
-      if (known && known.prodId) { add(known.prodId, label, q); continue; }
+      const known = map[it.id]; // prodId string ya confirmado
+      if (known) { add(known, label, q); continue; }
       // sin match confirmado → intentar match exacto por nombre (auto-confirmar solo si es exacto)
       const t2 = norm(it.title);
       const exact = index.find((x) => x.n === t2);
       if (exact) {
-        map[it.id] = { prodId: exact.p.id, prodName: exact.p.name, auto: true };
+        map[it.id] = exact.p.id;
         add(exact.p.id, label, q);
       } else {
         const sug = index.filter((x) => t2.includes(x.n)).sort((a, b) => b.n.length - a.n.length)[0];
-        review[it.id] = { title: it.title, cuenta: label, sugerido: sug ? sug.p.name : null };
+        review[it.id] = { title: it.title, cuenta: label, candidatos: sug ? [{ id: sug.p.id, name: sug.p.name }] : [] };
       }
     }
   }
 
   // guardar el mapa actualizado y la lista de revisión
-  await db.set('mlapi/map', map);
-  await db.set('mlapi/review', review);
+  await db.set('cyc/mlmap', map);
+  await db.set('cyc/mlreview', review);
 
   // escribir SOLO los stocks confirmados (merge; no toca otras claves)
   if (Object.keys(desired).length) await db.patch('cyc/inventory', desired);
 
   console.log(`\n✓ Stock actualizado en ${Object.keys(desired).length} claves (producto×cuenta).`);
   const rev = Object.keys(review).length;
-  if (rev) console.log(`⚠ ${rev} publicaciones sin match confirmado — quedan en revisión (mlapi/review), no tocaron el inventario.`);
+  if (rev) console.log(`⚠ ${rev} publicaciones sin match confirmado — quedan en revisión (cyc/mlreview), no tocaron el inventario.`);
 }
 
 main().catch((e) => { console.error('✗ Error:', e.message); process.exit(1); });
