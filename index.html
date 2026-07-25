@@ -1700,6 +1700,9 @@ function renderAutoPriceCfg(){
   }
   const ml=document.getElementById('mlcfg-min-lbl');if(ml)ml.textContent=((parseFloat(c.minPct)||40))+'%';
   const tl=document.getElementById('mlcfg-target-lbl');if(tl)tl.textContent=((parseFloat(c.targetPct)||42))+'%';
+  const pon=c.autoPromo!==false; // por defecto ON
+  const pb=document.getElementById('mlcfg-promo-btn');
+  if(pb){pb.textContent=pon?'🟢 Activado':'⚪ Apagado';pb.style.color=pon?'var(--green)':'var(--muted)';}
 }
 async function toggleAutoPrice(){
   if(!state.mlconfig)state.mlconfig={};
@@ -1709,6 +1712,15 @@ async function toggleAutoPrice(){
   await log('Auto-precio ML: '+(!on?'activado':'apagado'));
   renderAutoPriceCfg();
   toast(!on?'Auto-precio activado ✓':'Auto-precio apagado');
+}
+async function toggleAutoPromo(){
+  if(!state.mlconfig)state.mlconfig={};
+  const on=state.mlconfig.autoPromo!==false;
+  state.mlconfig.autoPromo=!on;
+  await fbSet('mlconfig/autoPromo',!on);
+  await log('Sacar descuentos ML: '+(!on?'activado':'apagado'));
+  renderAutoPriceCfg();
+  toast(!on?'Sacar descuentos activado ✓':'Sacar descuentos apagado');
 }
 // ── Administrar vinculaciones publicación de ML → producto (y variante) ──
 const _esc=s=>(s==null?'':String(s)).replace(/[<>&"]/g,c=>({'<':'&lt;','>':'&gt;','&':'&amp;','"':'&quot;'}[c]));
@@ -6538,9 +6550,16 @@ document.addEventListener('click',e=>{if(fnavOpen&&!e.target.closest('#fnav-btn'
     <div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:18px 20px;margin-bottom:14px">
       <div style="font-family:'Syne',sans-serif;font-weight:800;font-size:.95rem;margin-bottom:6px">🔼 Precios ML (automático)</div>
       <p style="font-size:.68rem;color:var(--muted);margin:0 0 12px;line-height:1.5">Cuando entra una venta con margen por debajo del <strong id="mlcfg-min-lbl">40%</strong>, el robot sube solo el precio en ML hasta la meta (<strong id="mlcfg-target-lbl">42%</strong>) y te avisa por Telegram. Nunca baja precios y tiene tope de +25% por seguridad.</p>
-      <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap">
+      <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:10px">
         <span style="font-size:.75rem;color:var(--muted)">Subir precios automático</span>
         <button class="btn" id="mlcfg-auto-btn" style="background:var(--surface2);border:1px solid var(--border2);color:var(--text)" onclick="toggleAutoPrice()">…</button>
+      </div>
+      <div style="border-top:1px solid var(--border);padding-top:10px">
+        <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap">
+          <span style="font-size:.75rem;color:var(--muted)">Sacar descuentos que pone ML</span>
+          <button class="btn" id="mlcfg-promo-btn" style="background:var(--surface2);border:1px solid var(--border2);color:var(--text)" onclick="toggleAutoPromo()">…</button>
+        </div>
+        <p style="font-size:.62rem;color:var(--muted);margin:8px 0 0;line-height:1.5">Cuando ML le aplica un descuento a una de tus publicaciones, el robot lo saca solo y te avisa. No toca las "ofertas candidatas" que ML propone pero no puso.</p>
       </div>
     </div>
 
@@ -6566,7 +6585,7 @@ document.addEventListener('click',e=>{if(fnavOpen&&!e.target.closest('#fnav-btn'
         <span style="font-size:.75rem;color:var(--muted)">Si no ves los últimos cambios, forzá la actualización</span>
         <button class="btn" style="background:rgba(56,189,248,.12);color:var(--blue);border:1px solid rgba(56,189,248,.3)" onclick="actualizarApp()">🔄 Buscar actualizaciones</button>
       </div>
-      <div style="font-size:.66rem;color:var(--muted);margin-top:12px">CYC · Versión 2.4</div>
+      <div style="font-size:.66rem;color:var(--muted);margin-top:12px">CYC · Versión 2.5</div>
     </div>
 
     <div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:18px 20px;margin-bottom:14px">

@@ -134,6 +134,33 @@ async function raisePrice(itemId, variationId, multiplier, token) {
   } catch { return { ok: false, err: 'red' }; }
 }
 
+// ── Sacar los descuentos ACTIVOS que ML le puso a una publicación ──────────
+// Solo toca los que están 'started' (aplicados de verdad). Los 'candidate'
+// (ofertas que ML propone pero no puso) no se tocan: no cuestan nada.
+// Devuelve { removed:[tipos], failed:[tipo:motivo] }.
+async function removeStartedPromos(itemId, token) {
+  let arr;
+  try {
+    const r = await mlGet('/seller-promotions/items/' + itemId + '?app_version=v2', token);
+    arr = Array.isArray(r) ? r : (r.results || []);
+  } catch { return { removed: [], failed: [] }; }
+  const removed = [], failed = [];
+  for (const pr of arr) {
+    if (pr.status !== 'started') continue; // solo los que están aplicados
+    const qs = new URLSearchParams({ app_version: 'v2' });
+    if (pr.id) qs.set('promotion_id', pr.id);
+    if (pr.type) qs.set('promotion_type', pr.type);
+    try {
+      const r = await fetch(ML_API + '/seller-promotions/items/' + itemId + '?' + qs.toString(), {
+        method: 'DELETE', headers: { Authorization: 'Bearer ' + token },
+      });
+      if (r.ok) removed.push(pr.type || 'descuento');
+      else failed.push((pr.type || 'descuento') + ':' + r.status);
+    } catch { failed.push((pr.type || 'descuento') + ':red'); }
+  }
+  return { removed, failed };
+}
+
 // ── NETO REAL: lo que efectivamente te entra según Mercado Pago ──
 // transaction_details.net_received_amount ya tiene descontado TODO:
 // comisión de ML + costo fijo + retenciones de impuestos (IIBB/SIRTAC).
@@ -330,9 +357,11 @@ async function main() {
   // config de precios (la editás desde Ajustes en la app): meta, umbral y on/off.
   const cfg = (await db.get('cyc/mlconfig')) || {};
   const autoPrice = cfg.autoPrice !== false; // por defecto ON (lo pediste)
+  const autoPromo = cfg.autoPromo !== false; // sacar descuentos de ML — ON por defecto
   const targetPct = parseFloat(cfg.targetPct) || 42; // margen objetivo
   const minPct = parseFloat(cfg.minPct) || 40;        // umbral para actuar
   const MAX_UP = 1.25; // tope de seguridad: nunca subir más de +25% de una
+  let promoAlerts = 0; // tope de avisos de "no pude sacar" por corrida
   // items a los que ya les tocamos el precio hace poco (para no pelear con los
   // descuentos automáticos de ML ni subir en loop)
   const priced = (await db.get('mlapi/priced')) || {};
@@ -601,7 +630,7 @@ async function main() {
         const chunk = ids.slice(k, k + 20);
         let arr;
         try {
-          arr = await mlGet('/items?ids=' + chunk.join(',') + '&attributes=id,status,sub_status,permalink', t.access_token);
+          arr = await mlGet('/items?ids=' + chunk.join(',') + '&attributes=id,status,sub_status,permalink,price,original_price,deal_ids', t.access_token);
         } catch { continue; }
         for (const row of (arr || [])) {
           const b = row.body || {};
@@ -609,20 +638,44 @@ async function main() {
           const st = b.status || '';
           const sub = (b.sub_status || []).join(',');
           const prev = map[mla].status || '';
-          if (!st || st === prev) continue;
-          if (!DRY) await db.patch('cyc/mllinks/' + mla, { status: st, subStatus: sub });
-          map[mla].status = st;
-          const bad = st === 'closed' || st === 'under_review'
-            || /deactiv|moderation|warning|suspend|ban|freeze|infract|hold/i.test(sub);
-          const wasBad = prev === 'closed' || prev === 'under_review';
-          if (bad && !wasBad && !DRY && pubAlerts < 8) {
-            const title = map[mla].title || mla;
-            const estados = { closed: 'dada de baja', under_review: 'en revisión', paused: 'pausada' };
-            await sendTelegram(`⚠️ <b>Problema en una publicación</b>\n`
-              + `${title}\nCuenta: ${label}\n`
-              + `Estado: ${estados[st] || st}${sub ? ' · ' + sub : ''}\n`
-              + (b.permalink || ''));
-            pubAlerts++;
+          if (st && st !== prev) {
+            if (!DRY) await db.patch('cyc/mllinks/' + mla, { status: st, subStatus: sub });
+            map[mla].status = st;
+            const bad = st === 'closed' || st === 'under_review'
+              || /deactiv|moderation|warning|suspend|ban|freeze|infract|hold/i.test(sub);
+            const wasBad = prev === 'closed' || prev === 'under_review';
+            if (bad && !wasBad && !DRY && pubAlerts < 8) {
+              const title = map[mla].title || mla;
+              const estados = { closed: 'dada de baja', under_review: 'en revisión', paused: 'pausada' };
+              await sendTelegram(`⚠️ <b>Problema en una publicación</b>\n`
+                + `${title}\nCuenta: ${label}\n`
+                + `Estado: ${estados[st] || st}${sub ? ' · ' + sub : ''}\n`
+                + (b.permalink || ''));
+              pubAlerts++;
+            }
+          }
+
+          // ── SACAR DESCUENTOS de ML que estén aplicados ──
+          // Señal barata de "tiene descuento puesto": precio con rebaja o en un deal.
+          if (autoPromo && !DRY) {
+            const discounted = (b.original_price != null && b.original_price > b.price)
+              || (Array.isArray(b.deal_ids) && b.deal_ids.length > 0);
+            if (discounted) {
+              const { removed, failed } = await removeStartedPromos(mla, t.access_token);
+              if (removed.length) {
+                await sendTelegram(`🏷️ <b>Descuento sacado</b>\n`
+                  + `${map[mla].title || mla}\nCuenta: ${label}\n`
+                  + `ML le había aplicado: ${removed.join(', ')}\n`
+                  + `Volvió a tu precio normal ✅`);
+              }
+              if (failed.length && promoAlerts < 6) {
+                await sendTelegram(`⚠️ <b>Descuento que no pude sacar</b>\n`
+                  + `${map[mla].title || mla}\nCuenta: ${label}\n`
+                  + `Tipo: ${failed.join(', ')}\n`
+                  + `Sacalo vos desde ML → Promociones.`);
+                promoAlerts++;
+              }
+            }
           }
         }
       }
