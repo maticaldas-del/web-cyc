@@ -23,6 +23,10 @@ on:
         description: 'Volcar SKU de ventas (debug): poné 1'
         required: false
         default: ''
+      backfill_days:
+        description: 'Reprocesar los últimos N días (backfill): ej 31'
+        required: false
+        default: ''
   # schedule:
   #   - cron: '*/20 * * * *'   # cada 20 min (se activa al final)
 
@@ -45,4 +49,5 @@ jobs:
           DRY_RUN: ${{ github.event.inputs.dry_run }}
           CATALOG_ONLY: ${{ github.event.inputs.catalog_only }}
           DUMP_MAP: ${{ github.event.inputs.dump_map }}
+          BACKFILL_DAYS: ${{ github.event.inputs.backfill_days }}
         run: node ml-sync/sync.mjs

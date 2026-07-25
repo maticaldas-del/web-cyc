@@ -209,9 +209,13 @@ async function main() {
     const t = await mlRefresh(ML_CLIENT_ID, ML_CLIENT_SECRET, acc.refresh_token);
     await db.patch('mlapi/tokens/' + label, { refresh_token: t.refresh_token, updated_ts: Date.now() });
 
-    // 2) traer ventas desde la última corrida (o últimos 7 días la 1ª vez)
-    const fromISO = state[label]?.lastFrom ||
-      new Date(Date.now() - 7 * 864e5).toISOString().replace(/\.\d+Z$/, '.000-00:00');
+    // 2) traer ventas desde la última corrida (o últimos 7 días la 1ª vez).
+    //    BACKFILL_DAYS fuerza una ventana amplia (para reprocesar el historial).
+    const bfd = parseInt(process.env.BACKFILL_DAYS || '0', 10);
+    const fromISO = bfd > 0
+      ? new Date(Date.now() - bfd * 864e5).toISOString().replace(/\.\d+Z$/, '.000-00:00')
+      : (state[label]?.lastFrom ||
+        new Date(Date.now() - 7 * 864e5).toISOString().replace(/\.\d+Z$/, '.000-00:00'));
     const orders = await fetchOrders(acc.seller_id, t.access_token, fromISO);
 
     // 3) transformar cada venta → entradas ventaprod (solo las que enganchan)
