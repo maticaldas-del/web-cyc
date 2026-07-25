@@ -1688,42 +1688,79 @@ function enterAjustes(){
 }
 // ── Administrar vinculaciones publicación de ML → producto (y variante) ──
 const _esc=s=>(s==null?'':String(s)).replace(/[<>&"]/g,c=>({'<':'&lt;','>':'&gt;','&':'&amp;','"':'&quot;'}[c]));
-let _mlFilterPend=false;
+let _mlFilterPend=false,_mlShowHidden=false;
 function toggleMlFilter(){_mlFilterPend=!_mlFilterPend;renderMlLinks();}
+function toggleMlHidden(){_mlShowHidden=!_mlShowHidden;renderMlLinks();}
 function renderMlLinks(){
   const card=document.getElementById('mlreview-card');const panel=document.getElementById('mlreview-panel');
   if(!card||!panel)return;
   const map=state.mllinks||{};
-  let mlas=Object.keys(map);
-  if(!mlas.length){card.style.display='none';panel.innerHTML='';return;}
+  const keys=Object.keys(map);
+  if(!keys.length){card.style.display='none';panel.innerHTML='';return;}
   card.style.display='';
   const prods=[...(state.products||[])].sort((a,b)=>(a.name||'').localeCompare(b.name||'','es',{sensitivity:'base'}));
   const q=(document.getElementById('ml-search')?.value||'').toLowerCase().trim();
-  const pend=mlas.filter(m=>!map[m].prodId).length;
-  if(_mlFilterPend)mlas=mlas.filter(m=>!map[m].prodId);
+  const total=keys.length;
+  const hidden=keys.filter(m=>map[m].ignored).length;
+  const pend=keys.filter(m=>!map[m].prodId&&!map[m].ignored).length;
+  let mlas;
+  if(_mlShowHidden){mlas=keys.filter(m=>map[m].ignored);}
+  else{mlas=keys.filter(m=>!map[m].ignored);if(_mlFilterPend)mlas=mlas.filter(m=>!map[m].prodId);}
   if(q)mlas=mlas.filter(m=>String(map[m].title||'').toLowerCase().includes(q));
   mlas.sort((a,b)=>((map[a].prodId?1:0)-(map[b].prodId?1:0))||String(map[a].title||'').localeCompare(String(map[b].title||''),'es'));
   const optsFor=sel=>['<option value="">— sin vincular —</option>'].concat(prods.map(p=>`<option value="${p.id}"${p.id===sel?' selected':''}>${_esc(p.name)}</option>`)).join('');
   const CAP=60;const shown=mlas.slice(0,CAP);
+  const btn=(txt,fn,extra='')=>`<button class="btn" style="font-size:.66rem;padding:4px 10px;background:var(--surface2);border:1px solid var(--border2);color:var(--text);${extra}" onclick="${fn}">${txt}</button>`;
   const head=`<div style="display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:10px">
-      <span style="font-size:.66rem;color:var(--muted)">${pend} sin vincular · ${Object.keys(map).length} en total</span>
-      <button class="btn" style="font-size:.66rem;padding:4px 10px;background:var(--surface2);border:1px solid var(--border2);color:var(--text)" onclick="toggleMlFilter()">${_mlFilterPend?'Ver todas':'Ver solo sin vincular'}</button>
+      <span style="font-size:.66rem;color:var(--muted)">${_mlShowHidden?hidden+' ocultas':pend+' sin vincular · '+total+' en total'+(hidden?' · '+hidden+' ocultas':'')}</span>
+      <div style="display:flex;gap:6px;flex-wrap:wrap">
+        ${_mlShowHidden?'':btn(_mlFilterPend?'Ver todas':'Solo sin vincular','toggleMlFilter()')}
+        ${(!_mlShowHidden&&pend)?btn('🗑 Ocultar sin vincular','bulkHidePending()','color:var(--amber)'):''}
+        ${hidden?btn(_mlShowHidden?'← Volver':'Ver ocultas ('+hidden+')','toggleMlHidden()'):''}
+      </div>
     </div>`;
   panel.innerHTML=head+shown.map(mla=>{
     const e=map[mla]||{};const pid=e.prodId||'';const prod=prods.find(p=>p.id===pid);
     const vars=(prod&&prod.variantes&&prod.variantes.length)?prod.variantes:[];
     const varOpts=['<option value="">— sin variante —</option>'].concat(vars.map(v=>`<option value="${_esc(v)}"${v===e.variant?' selected':''}>${_esc(v)}</option>`)).join('');
-    const dot=pid?'#22c55e':'#f59e0b';
+    const dot=e.ignored?'#6b6b7a':(pid?'#22c55e':'#f59e0b');
     const inact=e.status&&e.status!=='active';
+    const info=`<div style="font-size:.72rem;margin-bottom:7px"><span style="color:${dot}">●</span> <span style="color:var(--muted)">${_esc(e.cuenta)}${inact?' · <span style=\"color:var(--amber)\">inactiva</span>':''} ·</span> ${_esc(e.title)}</div>`;
+    if(_mlShowHidden){
+      return `<div style="border:1px solid var(--border2);border-radius:8px;padding:11px 12px;margin-bottom:9px;display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap">
+        <div style="flex:1;min-width:140px">${info}</div>
+        <button class="btn" style="background:var(--surface2);border:1px solid var(--border2);color:var(--text)" onclick="unhideMl('${mla}')">↩ Recuperar</button></div>`;
+    }
     return `<div style="border:1px solid var(--border2);border-radius:8px;padding:11px 12px;margin-bottom:9px">
-      <div style="font-size:.72rem;margin-bottom:7px"><span style="color:${dot}">●</span> <span style="color:var(--muted)">${_esc(e.cuenta)}${inact?' · <span style=\"color:var(--amber)\">inactiva</span>':''} ·</span> ${_esc(e.title)}</div>
+      ${info}
       <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
         <select id="mlp_${mla}" onchange="mlVarRefresh('${mla}')" style="flex:1;min-width:150px;padding:8px 10px;border-radius:8px;border:1px solid var(--border2);background:var(--surface2);color:var(--text);font-size:.74rem">${optsFor(pid)}</select>
         <select id="mlv_${mla}" style="min-width:120px;padding:8px 10px;border-radius:8px;border:1px solid var(--border2);background:var(--surface2);color:var(--text);font-size:.74rem"${vars.length?'':' disabled'}>${varOpts}</select>
         <button class="btn" style="background:var(--accent2);color:#fff" onclick="saveMlLink('${mla}')">Guardar</button>
+        <button class="btn" title="Ocultar" style="background:transparent;border:1px solid var(--border2);color:var(--muted);padding:8px 11px" onclick="hideMl('${mla}')">🗑</button>
       </div>
     </div>`;
   }).join('')+(mlas.length>CAP?`<div style="font-size:.66rem;color:var(--muted);text-align:center;padding:6px">Mostrando ${CAP} de ${mlas.length}. Usá el buscador para encontrar una en particular.</div>`:'');
+}
+async function hideMl(mla){
+  const cur=(state.mllinks&&state.mllinks[mla])||{};
+  const entry={...cur,ignored:true,manual:true};
+  await fbSet('mllinks/'+mla,entry);
+  if(!state.mllinks)state.mllinks={};state.mllinks[mla]=entry;
+  renderMlLinks();toast('Publicación oculta');
+}
+async function unhideMl(mla){
+  const cur={...((state.mllinks&&state.mllinks[mla])||{})};delete cur.ignored;
+  await fbSet('mllinks/'+mla,cur);
+  state.mllinks[mla]=cur;renderMlLinks();toast('Recuperada ✓');
+}
+async function bulkHidePending(){
+  const map=state.mllinks||{};
+  const targets=Object.keys(map).filter(m=>!map[m].prodId&&!map[m].ignored);
+  if(!targets.length){toast('No hay sin vincular','info');return;}
+  if(!confirm('¿Ocultar '+targets.length+' publicaciones sin vincular? Las podés recuperar después.'))return;
+  for(const m of targets){const e={...map[m],ignored:true,manual:true};await fbSet('mllinks/'+m,e);state.mllinks[m]=e;}
+  renderMlLinks();toast(targets.length+' ocultas ✓');
 }
 function mlVarRefresh(mla){
   const ps=document.getElementById('mlp_'+mla);const vs=document.getElementById('mlv_'+mla);
@@ -6479,7 +6516,7 @@ document.addEventListener('click',e=>{if(fnavOpen&&!e.target.closest('#fnav-btn'
         <span style="font-size:.75rem;color:var(--muted)">Si no ves los últimos cambios, forzá la actualización</span>
         <button class="btn" style="background:rgba(56,189,248,.12);color:var(--blue);border:1px solid rgba(56,189,248,.3)" onclick="actualizarApp()">🔄 Buscar actualizaciones</button>
       </div>
-      <div style="font-size:.66rem;color:var(--muted);margin-top:12px">CYC · Versión 2.1</div>
+      <div style="font-size:.66rem;color:var(--muted);margin-top:12px">CYC · Versión 2.2</div>
     </div>
 
     <div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:18px 20px;margin-bottom:14px">
