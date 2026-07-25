@@ -66,7 +66,7 @@ async function main() {
 
   const products = Object.values((await db.get('cyc/products')) || {});
   const index = products.map((p) => ({ p, n: norm(p.name) })).filter((x) => x.n);
-  const map = (await db.get('cyc/mlmap')) || {};   // MLA -> { prodId, variant, ... }
+  const map = (await db.get('cyc/mllinks')) || {};   // MLA -> { prodId, variant, ... }
   const upd = {};                                   // solo publicaciones nuevas a agregar
 
   const desired = {}; // 'prodId__Cuenta' -> unidades
@@ -103,7 +103,7 @@ async function main() {
   }
 
   // guardar en el mapa solo las publicaciones nuevas (no pisa lo ya vinculado)
-  if (Object.keys(upd).length) await db.patch('cyc/mlmap', upd);
+  if (Object.keys(upd).length) await db.patch('cyc/mllinks', upd);
 
   // escribir SOLO los stocks confirmados (merge; no toca otras claves)
   if (Object.keys(desired).length) await db.patch('cyc/inventory', desired);

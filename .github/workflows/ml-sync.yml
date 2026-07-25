@@ -19,6 +19,10 @@ on:
         description: 'Volcar el mapa de vinculaciones (debug): poné 1'
         required: false
         default: ''
+      dump_sku:
+        description: 'Volcar SKU de ventas (debug): poné 1'
+        required: false
+        default: ''
   # schedule:
   #   - cron: '*/20 * * * *'   # cada 20 min (se activa al final)
 

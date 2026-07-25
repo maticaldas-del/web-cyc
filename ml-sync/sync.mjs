@@ -165,8 +165,8 @@ async function main() {
   const finanzas = (await db.get('cyc/finanzas')) || {};
   const tc = parseFloat(finanzas.tipo_cambio) || 1500;
 
-  // mapa permanente publicación(MLA) → { prodId, variant, title, cuenta, manual, candidatos }
-  const map = (await db.get('cyc/mlmap')) || {};
+  // mapa publicación(MLA) → { prodId, variant, title, cuenta, status, manual } — nodo propio
+  const map = (await db.get('cyc/mllinks')) || {};
   const mapUpd = {}; // solo lo que toca el auto-match (no pisa lo que vos fijaste)
 
   // ventas ya cargadas a mano / por cowork (para no duplicarlas). Las nuestras
@@ -181,6 +181,25 @@ async function main() {
 
   const state = (await db.get('mlapi/state')) || {};
   let cargadas = 0;
+
+  if (process.env.DUMP_SKU) {
+    const label = labels[0];
+    const acc = accounts[label];
+    const t = await mlRefresh(ML_CLIENT_ID, ML_CLIENT_SECRET, acc.refresh_token);
+    await db.patch('mlapi/tokens/' + label, { refresh_token: t.refresh_token, updated_ts: Date.now() });
+    const from = new Date(Date.now() - 3 * 864e5).toISOString().replace(/\.\d+Z$/, '.000-00:00');
+    const orders = await fetchOrders(acc.seller_id, t.access_token, from);
+    for (const o of orders.slice(0, 6)) {
+      for (const it of (o.order_items || [])) {
+        console.log('ITEM:', JSON.stringify({
+          id: it.item?.id, seller_sku: it.item?.seller_sku,
+          seller_custom_field: it.item?.seller_custom_field,
+          variation_id: it.item?.variation_id, title: it.item?.title,
+        }));
+      }
+    }
+    return;
+  }
 
   for (const label of labels) {
     const acc = accounts[label];
@@ -259,7 +278,7 @@ async function main() {
   }
 
   // guardar en el mapa lo que tocó el auto-match (sin pisar lo que fijaste vos)
-  if (!DRY && Object.keys(mapUpd).length) await db.patch('cyc/mlmap', mapUpd);
+  if (!DRY && Object.keys(mapUpd).length) await db.patch('cyc/mllinks', mapUpd);
 
   const pend = Object.values(map).filter((x) => x && !x.prodId).length;
   console.log(`\n✓ Listo. Renglones cargados: ${cargadas}. Publicaciones sin vincular: ${pend}.`);

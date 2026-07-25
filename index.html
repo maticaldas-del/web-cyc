@@ -1582,8 +1582,7 @@ function startApp(){
     state.puntaje=d.puntaje||{};
     state.retiro_mes=d.retiro_mes||{};
     state.stockDiario=d.stockDiario||{};
-    state.mlreview=d.mlreview||{};   // publicaciones ML ambiguas a vincular
-    state.mlmap=d.mlmap||{};         // mapa MLA -> producto (confirmado)
+    state.mllinks=d.mllinks||{};     // publicaciones ML a mapear (activas + inactivas)
     // detectar entradas nuevas de ventaprod escritas externamente (p.ej. cowork)
     const _newVP=d.ventaprod||{};
     const _allIds=new Set();
@@ -1694,35 +1693,37 @@ function toggleMlFilter(){_mlFilterPend=!_mlFilterPend;renderMlLinks();}
 function renderMlLinks(){
   const card=document.getElementById('mlreview-card');const panel=document.getElementById('mlreview-panel');
   if(!card||!panel)return;
-  let map=state.mlmap||{};
-  // tolerar entradas viejas guardadas como string (prodId suelto)
-  map=Object.fromEntries(Object.entries(map).map(([k,v])=>[k,(typeof v==='string')?{prodId:v,manual:true}:v]));
+  const map=state.mllinks||{};
   let mlas=Object.keys(map);
   if(!mlas.length){card.style.display='none';panel.innerHTML='';return;}
   card.style.display='';
   const prods=[...(state.products||[])].sort((a,b)=>(a.name||'').localeCompare(b.name||'','es',{sensitivity:'base'}));
+  const q=(document.getElementById('ml-search')?.value||'').toLowerCase().trim();
   const pend=mlas.filter(m=>!map[m].prodId).length;
   if(_mlFilterPend)mlas=mlas.filter(m=>!map[m].prodId);
+  if(q)mlas=mlas.filter(m=>String(map[m].title||'').toLowerCase().includes(q));
   mlas.sort((a,b)=>((map[a].prodId?1:0)-(map[b].prodId?1:0))||String(map[a].title||'').localeCompare(String(map[b].title||''),'es'));
   const optsFor=sel=>['<option value="">— sin vincular —</option>'].concat(prods.map(p=>`<option value="${p.id}"${p.id===sel?' selected':''}>${_esc(p.name)}</option>`)).join('');
+  const CAP=60;const shown=mlas.slice(0,CAP);
   const head=`<div style="display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:10px">
       <span style="font-size:.66rem;color:var(--muted)">${pend} sin vincular · ${Object.keys(map).length} en total</span>
       <button class="btn" style="font-size:.66rem;padding:4px 10px;background:var(--surface2);border:1px solid var(--border2);color:var(--text)" onclick="toggleMlFilter()">${_mlFilterPend?'Ver todas':'Ver solo sin vincular'}</button>
     </div>`;
-  panel.innerHTML=head+mlas.map(mla=>{
+  panel.innerHTML=head+shown.map(mla=>{
     const e=map[mla]||{};const pid=e.prodId||'';const prod=prods.find(p=>p.id===pid);
     const vars=(prod&&prod.variantes&&prod.variantes.length)?prod.variantes:[];
     const varOpts=['<option value="">— sin variante —</option>'].concat(vars.map(v=>`<option value="${_esc(v)}"${v===e.variant?' selected':''}>${_esc(v)}</option>`)).join('');
     const dot=pid?'#22c55e':'#f59e0b';
+    const inact=e.status&&e.status!=='active';
     return `<div style="border:1px solid var(--border2);border-radius:8px;padding:11px 12px;margin-bottom:9px">
-      <div style="font-size:.72rem;margin-bottom:7px"><span style="color:${dot}">●</span> <span style="color:var(--muted)">${_esc(e.cuenta)} ·</span> ${_esc(e.title)}</div>
+      <div style="font-size:.72rem;margin-bottom:7px"><span style="color:${dot}">●</span> <span style="color:var(--muted)">${_esc(e.cuenta)}${inact?' · <span style=\"color:var(--amber)\">inactiva</span>':''} ·</span> ${_esc(e.title)}</div>
       <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
         <select id="mlp_${mla}" onchange="mlVarRefresh('${mla}')" style="flex:1;min-width:150px;padding:8px 10px;border-radius:8px;border:1px solid var(--border2);background:var(--surface2);color:var(--text);font-size:.74rem">${optsFor(pid)}</select>
         <select id="mlv_${mla}" style="min-width:120px;padding:8px 10px;border-radius:8px;border:1px solid var(--border2);background:var(--surface2);color:var(--text);font-size:.74rem"${vars.length?'':' disabled'}>${varOpts}</select>
         <button class="btn" style="background:var(--accent2);color:#fff" onclick="saveMlLink('${mla}')">Guardar</button>
       </div>
     </div>`;
-  }).join('');
+  }).join('')+(mlas.length>CAP?`<div style="font-size:.66rem;color:var(--muted);text-align:center;padding:6px">Mostrando ${CAP} de ${mlas.length}. Usá el buscador para encontrar una en particular.</div>`:'');
 }
 function mlVarRefresh(mla){
   const ps=document.getElementById('mlp_'+mla);const vs=document.getElementById('mlv_'+mla);
@@ -1735,10 +1736,10 @@ function mlVarRefresh(mla){
 async function saveMlLink(mla){
   const ps=document.getElementById('mlp_'+mla);const vs=document.getElementById('mlv_'+mla);
   const prodId=ps?ps.value:'';const variant=vs?vs.value:'';
-  const cur=(state.mlmap&&state.mlmap[mla])||{};
-  const entry={prodId:prodId||null,variant:variant||'',title:cur.title||'',cuenta:cur.cuenta||'',manual:true};
-  await fbSet('mlmap/'+mla,entry);
-  if(!state.mlmap)state.mlmap={};state.mlmap[mla]=entry;
+  const cur=(state.mllinks&&state.mllinks[mla])||{};
+  const entry={prodId:prodId||null,variant:variant||'',title:cur.title||'',cuenta:cur.cuenta||'',status:cur.status||'',manual:true};
+  await fbSet('mllinks/'+mla,entry);
+  if(!state.mllinks)state.mllinks={};state.mllinks[mla]=entry;
   renderMlLinks();
   toast(prodId?'Vinculación guardada ✓':'Marcada sin vincular');
 }
@@ -6451,7 +6452,8 @@ document.addEventListener('click',e=>{if(fnavOpen&&!e.target.closest('#fnav-btn'
 
     <div id="mlreview-card" style="background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:18px 20px;margin-bottom:14px;display:none">
       <div style="font-family:'Syne',sans-serif;font-weight:800;font-size:.95rem;margin-bottom:6px">🔗 Vinculaciones de ML → productos</div>
-      <p style="font-size:.68rem;color:var(--muted);margin:0 0 12px;line-height:1.5">Cada publicación de ML enganchada a tu producto (y variante). 🟢 = vinculada · 🟡 = falta. Cambiá lo que esté mal y guardá; queda fijo para ventas y stock.</p>
+      <p style="font-size:.68rem;color:var(--muted);margin:0 0 10px;line-height:1.5">Todas tus publicaciones de ML (activas e inactivas). Elegí tu producto (y variante si tiene) y guardá. 🟢 = vinculada · 🟡 = falta. Queda fijo para ventas y stock.</p>
+      <input id="ml-search" type="text" placeholder="🔎 Buscar publicación…" oninput="renderMlLinks()" style="width:100%;box-sizing:border-box;padding:8px 12px;border-radius:8px;border:1px solid var(--border2);background:var(--surface2);color:var(--text);font-size:.76rem;margin-bottom:10px">
       <div id="mlreview-panel"></div>
     </div>
 
@@ -6477,7 +6479,7 @@ document.addEventListener('click',e=>{if(fnavOpen&&!e.target.closest('#fnav-btn'
         <span style="font-size:.75rem;color:var(--muted)">Si no ves los últimos cambios, forzá la actualización</span>
         <button class="btn" style="background:rgba(56,189,248,.12);color:var(--blue);border:1px solid rgba(56,189,248,.3)" onclick="actualizarApp()">🔄 Buscar actualizaciones</button>
       </div>
-      <div style="font-size:.66rem;color:var(--muted);margin-top:12px">CYC · Versión 2.0</div>
+      <div style="font-size:.66rem;color:var(--muted);margin-top:12px">CYC · Versión 2.1</div>
     </div>
 
     <div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:18px 20px;margin-bottom:14px">

@@ -1,0 +1,25 @@
+name: ml-pubs
+
+# Lista TODAS las publicaciones (activas e inactivas) de las cuentas conectadas
+# y las deja en cyc/mllinks para mapearlas en la app. Manual.
+
+on:
+  workflow_dispatch:
+
+jobs:
+  pubs:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Listar publicaciones
+        env:
+          ML_CLIENT_ID: ${{ secrets.ML_CLIENT_ID }}
+          ML_CLIENT_SECRET: ${{ secrets.ML_CLIENT_SECRET }}
+          FIREBASE_API_KEY: ${{ secrets.FIREBASE_API_KEY }}
+          FIREBASE_DB_URL: ${{ secrets.FIREBASE_DB_URL }}
+          FIREBASE_BOT_EMAIL: ${{ secrets.FIREBASE_BOT_EMAIL }}
+          FIREBASE_BOT_PASSWORD: ${{ secrets.FIREBASE_BOT_PASSWORD }}
+        run: node ml-sync/pubs.mjs
