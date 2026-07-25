@@ -628,6 +628,30 @@ async function main() {
     return;
   }
 
+  // DUMP_BALANCE: probar de dónde sacar el saldo disponible y a liquidar de MP.
+  if (process.env.DUMP_BALANCE) {
+    for (const label of labels) {
+      const acc = accounts[label];
+      if (!acc?.refresh_token) continue;
+      const t = await mlRefresh(ML_CLIENT_ID, ML_CLIENT_SECRET, acc.refresh_token);
+      await db.patch('mlapi/tokens/' + label, { refresh_token: t.refresh_token, updated_ts: Date.now() });
+      console.log(`\n═══ ${label} (${acc.seller_id}) ═══`);
+      const tries = [
+        'https://api.mercadopago.com/v1/account/balance',
+        'https://api.mercadopago.com/users/' + acc.seller_id + '/mercadopago_account/balance',
+        'https://api.mercadopago.com/v1/account/settlement_report/config',
+      ];
+      for (const url of tries) {
+        try {
+          const r = await fetch(url, { headers: { Authorization: 'Bearer ' + t.access_token } });
+          const txt = await r.text();
+          console.log('  ' + url.replace('https://api.mercadopago.com', '') + ' → ' + r.status + ' ' + txt.slice(0, 300));
+        } catch (e) { console.log('  ' + url + ' ERR ' + e.message); }
+      }
+    }
+    return;
+  }
+
   for (const label of labels) {
     const acc = accounts[label];
     if (!acc?.refresh_token) continue;
