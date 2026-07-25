@@ -1703,6 +1703,9 @@ function renderAutoPriceCfg(){
   const pon=c.autoPromo!==false; // por defecto ON
   const pb=document.getElementById('mlcfg-promo-btn');
   if(pb){pb.textContent=pon?'🟢 Activado':'⚪ Apagado';pb.style.color=pon?'var(--green)':'var(--muted)';}
+  const son=c.autoStock!==false; // por defecto ON
+  const sb=document.getElementById('mlcfg-stock-btn');
+  if(sb){sb.textContent=son?'🟢 Activado':'⚪ Apagado';sb.style.color=son?'var(--green)':'var(--muted)';}
 }
 async function toggleAutoPrice(){
   if(!state.mlconfig)state.mlconfig={};
@@ -1721,6 +1724,15 @@ async function toggleAutoPromo(){
   await log('Sacar descuentos ML: '+(!on?'activado':'apagado'));
   renderAutoPriceCfg();
   toast(!on?'Sacar descuentos activado ✓':'Sacar descuentos apagado');
+}
+async function toggleAutoStock(){
+  if(!state.mlconfig)state.mlconfig={};
+  const on=state.mlconfig.autoStock!==false;
+  state.mlconfig.autoStock=!on;
+  await fbSet('mlconfig/autoStock',!on);
+  await log('Cargar stock de ML: '+(!on?'activado':'apagado'));
+  renderAutoPriceCfg();
+  toast(!on?'Cargar stock activado ✓':'Cargar stock apagado');
 }
 // ── Administrar vinculaciones publicación de ML → producto (y variante) ──
 const _esc=s=>(s==null?'':String(s)).replace(/[<>&"]/g,c=>({'<':'&lt;','>':'&gt;','&':'&amp;','"':'&quot;'}[c]));
@@ -6561,6 +6573,13 @@ document.addEventListener('click',e=>{if(fnavOpen&&!e.target.closest('#fnav-btn'
         </div>
         <p style="font-size:.62rem;color:var(--muted);margin:8px 0 0;line-height:1.5">Cuando ML le aplica un descuento a una de tus publicaciones, el robot lo saca solo y te avisa. No toca las "ofertas candidatas" que ML propone pero no puso.</p>
       </div>
+      <div style="border-top:1px solid var(--border);padding-top:10px;margin-top:10px">
+        <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap">
+          <span style="font-size:.75rem;color:var(--muted)">Cargar stock de ML al panel</span>
+          <button class="btn" id="mlcfg-stock-btn" style="background:var(--surface2);border:1px solid var(--border2);color:var(--text)" onclick="toggleAutoStock()">…</button>
+        </div>
+        <p style="font-size:.62rem;color:var(--muted);margin:8px 0 0;line-height:1.5">El robot trae las unidades disponibles de cada publicación vinculada y las carga en el inventario (por cuenta). ML pasa a ser la fuente del stock, así que no lo cargues a mano en esas cuentas.</p>
+      </div>
     </div>
 
     <div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:18px 20px;margin-bottom:14px">
@@ -6585,7 +6604,7 @@ document.addEventListener('click',e=>{if(fnavOpen&&!e.target.closest('#fnav-btn'
         <span style="font-size:.75rem;color:var(--muted)">Si no ves los últimos cambios, forzá la actualización</span>
         <button class="btn" style="background:rgba(56,189,248,.12);color:var(--blue);border:1px solid rgba(56,189,248,.3)" onclick="actualizarApp()">🔄 Buscar actualizaciones</button>
       </div>
-      <div style="font-size:.66rem;color:var(--muted);margin-top:12px">CYC · Versión 2.5</div>
+      <div style="font-size:.66rem;color:var(--muted);margin-top:12px">CYC · Versión 2.6</div>
     </div>
 
     <div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:18px 20px;margin-bottom:14px">

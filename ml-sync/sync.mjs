@@ -24,6 +24,8 @@ const norm = (s) => (s || '')
   .replace(/[^a-z0-9 ]/g, ' ')
   .replace(/(\d+)\s*(gb|tb|mb|ml|cm|mm|w|v)\b/g, '$1$2') // "8 gb" -> "8gb"
   .replace(/\s+/g, ' ').trim();
+// mismas claves de inventario que la app: prodId__Cuenta y prodId__Cuenta__v__Variante
+const sid = (s) => String(s).replace(/[^a-z0-9]/gi, '_');
 
 // Fecha local Argentina (UTC-3) → clave YYYY_MM_DD que usa la app.
 function dayKeyFromISO(iso) {
@@ -312,6 +314,35 @@ async function main() {
     return;
   }
 
+  // DAILY_SUMMARY=1 → manda el resumen de ventas del día por Telegram y sale.
+  if (process.env.DAILY_SUMMARY) {
+    const vp = (await db.get('cyc/ventaprod')) || {};
+    const today = dayKeyFromISO(new Date().toISOString());
+    const day = vp[today] || {};
+    let n = 0, fact = 0, gan = 0;
+    const byProd = {};
+    for (const v of Object.values(day)) {
+      if (!v || v.cancelada) continue; // canceladas/reclamos no cuentan
+      n += v.qty || 0;
+      fact += v.total || 0;
+      gan += (v.neto || 0) - (v.costo || 0);
+      const k = v.prod || '?';
+      byProd[k] = (byProd[k] || 0) + (v.qty || 0);
+    }
+    const top = Object.entries(byProd).sort((a, b) => b[1] - a[1])[0];
+    const fecha = new Intl.DateTimeFormat('es-AR', {
+      timeZone: 'America/Argentina/Buenos_Aires', day: '2-digit', month: '2-digit',
+    }).format(new Date());
+    const msg = `📊 <b>Resumen del día ${fecha}</b>\n`
+      + `Ventas: <b>${n}</b>\n`
+      + `Facturado: ${money(fact)}\n`
+      + `Ganancia: <b>${money(gan)}</b>\n`
+      + (top ? `🥇 Más vendido: ${top[0]} (${top[1]})` : 'Sin ventas hoy');
+    const ok = await sendTelegram(msg);
+    console.log(ok ? '✓ Resumen diario enviado.' : '✗ No se pudo enviar el resumen (revisá Telegram).');
+    return;
+  }
+
   const accounts = (await db.get('mlapi/tokens')) || {};
   const labels = Object.keys(accounts);
   if (!labels.length) { console.log('No hay cuentas conectadas todavía.'); return; }
@@ -397,6 +428,7 @@ async function main() {
   const cfg = (await db.get('cyc/mlconfig')) || {};
   const autoPrice = cfg.autoPrice !== false; // por defecto ON (lo pediste)
   const autoPromo = cfg.autoPromo !== false; // sacar descuentos de ML — ON por defecto
+  const autoStock = cfg.autoStock !== false; // cargar stock de ML al panel — ON por defecto
   const targetPct = parseFloat(cfg.targetPct) || 42; // margen objetivo
   const minPct = parseFloat(cfg.minPct) || 40;        // umbral para actuar
   const MAX_UP = 1.25; // tope de seguridad: nunca subir más de +25% de una
@@ -406,6 +438,9 @@ async function main() {
   const priced = (await db.get('mlapi/priced')) || {};
   const pricedUpd = {};
   let pubAlerts = 0; // tope de avisos de publicaciones por corrida (anti-spam)
+  // stock a escribir en el inventario del panel (producto×cuenta y por variante)
+  const stockTot = {}; // prodId__Cuenta -> unidades (suma de sus publicaciones)
+  const stockVar = {}; // prodId__Cuenta__v__Variante -> unidades
 
   const state = (await db.get('mlapi/state')) || {};
   let cargadas = 0;
@@ -673,7 +708,7 @@ async function main() {
         const chunk = ids.slice(k, k + 20);
         let arr;
         try {
-          arr = await mlGet('/items?ids=' + chunk.join(',') + '&attributes=id,status,sub_status,permalink,price,original_price,deal_ids', t.access_token);
+          arr = await mlGet('/items?ids=' + chunk.join(',') + '&attributes=id,status,sub_status,permalink,price,original_price,deal_ids,available_quantity,variations', t.access_token);
         } catch { continue; }
         for (const row of (arr || [])) {
           const b = row.body || {};
@@ -695,6 +730,30 @@ async function main() {
                 + `Estado: ${estados[st] || st}${sub ? ' · ' + sub : ''}\n`
                 + (b.permalink || ''));
               pubAlerts++;
+            }
+          }
+
+          // ── CARGAR STOCK al panel (si la pub está vinculada a un producto) ──
+          if (autoStock && map[mla].prodId) {
+            const p = products.find((pp) => pp.id === map[mla].prodId);
+            if (p) {
+              const kTot = map[mla].prodId + '__' + sid(label);
+              let total = 0;
+              if (Array.isArray(b.variations) && b.variations.length) {
+                for (const v of b.variations) {
+                  const q = v.available_quantity || 0;
+                  total += q;
+                  const vals = (v.attribute_combinations || []).map((a) => norm(a.value_name || ''));
+                  const pv = (p.variantes || []).find((x) => vals.includes(norm(x)));
+                  if (pv) {
+                    const vk = map[mla].prodId + '__' + sid(label) + '__v__' + sid(pv);
+                    stockVar[vk] = (stockVar[vk] || 0) + q;
+                  }
+                }
+              } else {
+                total += b.available_quantity || 0;
+              }
+              stockTot[kTot] = (stockTot[kTot] || 0) + total;
             }
           }
 
@@ -738,6 +797,14 @@ async function main() {
   if (!DRY && Object.keys(alertUpd).length) await db.patch('mlapi/alerted', alertUpd);
   // guardar los precios que subimos solos (para no pisarlos en loop)
   if (!DRY && Object.keys(pricedUpd).length) await db.patch('mlapi/priced', pricedUpd);
+  // escribir el stock de ML en el inventario del panel (producto×cuenta + variantes)
+  if (!DRY) {
+    const invUpd = { ...stockVar, ...stockTot };
+    if (Object.keys(invUpd).length) {
+      await db.patch('cyc/inventory', invUpd);
+      console.log(`✓ Stock actualizado: ${Object.keys(stockTot).length} producto×cuenta.`);
+    }
+  }
 
   const pend = Object.values(map).filter((x) => x && !x.prodId).length;
   console.log(`\n✓ Listo. Renglones cargados: ${cargadas}. Publicaciones sin vincular: ${pend}.`);
