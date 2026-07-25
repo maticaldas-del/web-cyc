@@ -238,6 +238,35 @@ async function main() {
     return;
   }
 
+  if (process.env.DUMP_PAY) {
+    const label = labels[0];
+    const acc = accounts[label];
+    const t = await mlRefresh(ML_CLIENT_ID, ML_CLIENT_SECRET, acc.refresh_token);
+    await db.patch('mlapi/tokens/' + label, { refresh_token: t.refresh_token, updated_ts: Date.now() });
+    const from = new Date(Date.now() - 3 * 864e5).toISOString().replace(/\.\d+Z$/, '.000-00:00');
+    const orders = await fetchOrders(acc.seller_id, t.access_token, from);
+    for (const o of orders.slice(0, 6)) {
+      const pid = o.payments?.[0]?.id;
+      if (!pid) { console.log('#' + o.id, 'sin payment id'); continue; }
+      let r, txt;
+      try {
+        r = await fetch('https://api.mercadopago.com/v1/payments/' + pid, { headers: { Authorization: 'Bearer ' + t.access_token } });
+        txt = await r.text();
+      } catch (e) { console.log('#' + o.id, 'ERR', e.message); continue; }
+      let b = null; try { b = JSON.parse(txt); } catch { /* */ }
+      if (b && r.ok) {
+        console.log('#' + o.id, 'total', o.total_amount, JSON.stringify({
+          net_received: b.transaction_details?.net_received_amount,
+          taxes_amount: b.taxes_amount,
+          charges: (b.charges_details || []).map((c) => ({ n: c.name, t: c.type, a: c.amounts?.original })),
+        }));
+      } else {
+        console.log('#' + o.id, 'pay', pid, 'status', r.status, txt.slice(0, 160));
+      }
+    }
+    return;
+  }
+
   for (const label of labels) {
     const acc = accounts[label];
     if (!acc?.refresh_token) continue;

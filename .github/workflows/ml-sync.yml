@@ -23,6 +23,10 @@ on:
         description: 'Volcar SKU de ventas (debug): poné 1'
         required: false
         default: ''
+      dump_pay:
+        description: 'Volcar datos de pago/liquidación (debug): poné 1'
+        required: false
+        default: ''
       backfill_days:
         description: 'Reprocesar los últimos N días (backfill): ej 31'
         required: false
@@ -56,4 +60,5 @@ jobs:
           BACKFILL_DAYS: ${{ github.event.inputs.backfill_days }}
           DUMP_VENTAS: ${{ github.event.inputs.dump_ventas }}
           DUMP_SKU: ${{ github.event.inputs.dump_sku }}
+          DUMP_PAY: ${{ github.event.inputs.dump_pay }}
         run: node ml-sync/sync.mjs
