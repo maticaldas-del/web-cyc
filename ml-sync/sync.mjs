@@ -113,6 +113,11 @@ async function main() {
 
   const products = Object.values((await db.get('products')) || {});
   const index = buildProductIndex(products);
+  if (DRY) {
+    console.log('DEBUG catálogo:', products.length, 'productos');
+    console.log('DEBUG campos:', JSON.stringify(Object.keys(products[0] || {})));
+    console.log('DEBUG nombres:', JSON.stringify((products.slice(0, 30)).map((p) => p.name)));
+  }
   const finanzas = (await db.get('finanzas')) || {};
   const tc = parseFloat(finanzas.tipo_cambio) || 1500;
 
