@@ -161,6 +161,12 @@ async function main() {
       arr.sort((a, b) => (b.ts || 0) - (a.ts || 0)).slice(0, 3).forEach((v) =>
         console.log('   últ:', JSON.stringify({ numVenta: v.numVenta, prod: v.prod, cuenta: v.cuenta, ts: v.ts })));
     }
+    // chequeo de duplicados por número de venta
+    const cnt = {};
+    for (const v of all) if (v.numVenta) cnt[String(v.numVenta)] = (cnt[String(v.numVenta)] || 0) + 1;
+    const dups = Object.entries(cnt).filter(([, n]) => n > 1);
+    console.log('\n🔎 Números de venta repetidos:', dups.length);
+    dups.slice(0, 25).forEach(([num, n]) => console.log('   dup x' + n + ': #' + num));
     return;
   }
   if (process.env.CATALOG_ONLY) {
