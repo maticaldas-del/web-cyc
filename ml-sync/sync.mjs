@@ -111,7 +111,7 @@ async function main() {
   const labels = Object.keys(accounts);
   if (!labels.length) { console.log('No hay cuentas conectadas todavía.'); return; }
 
-  const products = Object.values((await db.get('products')) || {});
+  const products = Object.values((await db.get('cyc/products')) || {});
   const index = buildProductIndex(products);
   if (process.env.CATALOG_ONLY) {
     console.log('CATÁLOGO total:', products.length);
@@ -120,11 +120,11 @@ async function main() {
     console.log('EJEMPLO:', JSON.stringify(products[0] || {}));
     return;
   }
-  const finanzas = (await db.get('finanzas')) || {};
+  const finanzas = (await db.get('cyc/finanzas')) || {};
   const tc = parseFloat(finanzas.tipo_cambio) || 1500;
 
   // set de números de venta ya cargados, para no duplicar
-  const ventaprod = (await db.get('ventaprod')) || {};
+  const ventaprod = (await db.get('cyc/ventaprod')) || {};
   const seenNum = new Set();
   for (const day of Object.values(ventaprod)) {
     for (const v of Object.values(day || {})) if (v.numVenta) seenNum.add(String(v.numVenta));
@@ -184,7 +184,7 @@ async function main() {
           console.log(`  [${label}] #${num} ${obj.prod} x${qty} · total ${obj.total} · neto ${obj.neto}` +
             (p ? '' : '  ⚠ SIN PRODUCTO'));
         } else {
-          await db.set(`ventaprod/${dayKey}/${id}`, obj);
+          await db.set(`cyc/ventaprod/${dayKey}/${id}`, obj);
         }
         i++;
       }

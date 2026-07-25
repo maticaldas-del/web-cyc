@@ -64,7 +64,7 @@ async function main() {
   const labels = Object.keys(accounts);
   if (!labels.length) { console.log('No hay cuentas conectadas todavía.'); return; }
 
-  const products = Object.values((await db.get('products')) || {});
+  const products = Object.values((await db.get('cyc/products')) || {});
   const index = products.map((p) => ({ p, n: norm(p.name) })).filter((x) => x.n);
   const map = (await db.get('mlapi/map')) || {};   // MLA -> { prodId, prodName, auto }
   const review = {};                                // MLA -> { title, cuenta, sugerido }
@@ -107,7 +107,7 @@ async function main() {
   await db.set('mlapi/review', review);
 
   // escribir SOLO los stocks confirmados (merge; no toca otras claves)
-  if (Object.keys(desired).length) await db.patch('inventory', desired);
+  if (Object.keys(desired).length) await db.patch('cyc/inventory', desired);
 
   console.log(`\n✓ Stock actualizado en ${Object.keys(desired).length} claves (producto×cuenta).`);
   const rev = Object.keys(review).length;
