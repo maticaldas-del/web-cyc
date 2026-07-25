@@ -161,12 +161,21 @@ async function main() {
       arr.sort((a, b) => (b.ts || 0) - (a.ts || 0)).slice(0, 3).forEach((v) =>
         console.log('   últ:', JSON.stringify({ numVenta: v.numVenta, prod: v.prod, cuenta: v.cuenta, ts: v.ts })));
     }
-    // chequeo de duplicados por número de venta
-    const cnt = {};
-    for (const v of all) if (v.numVenta) cnt[String(v.numVenta)] = (cnt[String(v.numVenta)] || 0) + 1;
-    const dups = Object.entries(cnt).filter(([, n]) => n > 1);
-    console.log('\n🔎 Números de venta repetidos:', dups.length);
-    dups.slice(0, 25).forEach(([num, n]) => console.log('   dup x' + n + ': #' + num));
+    // duplicado REAL = mismo número de venta + mismo producto (los paquetes con
+    // varios productos comparten número pero son productos distintos, no cuentan).
+    const groups = {};
+    for (const v of all) {
+      if (!v.numVenta) continue;
+      const key = String(v.numVenta) + '|' + (v.prodId || v.prod || '');
+      (groups[key] = groups[key] || []).push(v);
+    }
+    const dups = Object.entries(groups).filter(([, arr]) => arr.length > 1);
+    let mlApiInvolved = 0;
+    dups.forEach(([, arr]) => { if (arr.some((v) => v.origen === 'ml-api')) mlApiInvolved++; });
+    console.log('\n🔎 Duplicados REALES (mismo nº venta + mismo producto):', dups.length);
+    console.log('   de esos, que tocan al robot (ml-api):', mlApiInvolved);
+    dups.slice(0, 20).forEach(([k, arr]) =>
+      console.log('   x' + arr.length + ' [' + arr.map((v) => v.origen || 'viejo').join(',') + '] ' + arr[0].prod + ' #' + k.split('|')[0]));
     return;
   }
   if (process.env.CATALOG_ONLY) {
@@ -211,14 +220,20 @@ async function main() {
     await db.patch('mlapi/tokens/' + label, { refresh_token: t.refresh_token, updated_ts: Date.now() });
     const from = new Date(Date.now() - 3 * 864e5).toISOString().replace(/\.\d+Z$/, '.000-00:00');
     const orders = await fetchOrders(acc.seller_id, t.access_token, from);
-    for (const o of orders.slice(0, 6)) {
-      for (const it of (o.order_items || [])) {
-        console.log('ITEM:', JSON.stringify({
-          id: it.item?.id, seller_sku: it.item?.seller_sku,
-          seller_custom_field: it.item?.seller_custom_field,
-          variation_id: it.item?.variation_id, title: it.item?.title,
-        }));
-      }
+    for (const o of orders.slice(0, 8)) {
+      const full = await mlGet('/orders/' + o.id, t.access_token).catch(() => o);
+      console.log('ORDER #' + o.id, JSON.stringify({
+        total: full.total_amount, paid: full.paid_amount,
+        taxes: full.taxes,
+        items: (full.order_items || []).map((it) => ({
+          title: (it.item?.title || '').slice(0, 30),
+          unit: it.unit_price, qty: it.quantity, sale_fee: it.sale_fee,
+        })),
+        payments: (full.payments || []).map((p) => ({
+          taxes_amount: p.taxes_amount, marketplace_fee: p.marketplace_fee,
+          fee_details: p.fee_details, transaction: p.transaction_amount,
+        })),
+      }));
     }
     return;
   }
