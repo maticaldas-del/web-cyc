@@ -1685,38 +1685,62 @@ function enterAjustes(){
   const isLight=document.body.classList.contains('light');
   const tb=document.getElementById('ajuste-tema-btn');if(tb)tb.textContent=isLight?'☀️ Modo claro':'🌙 Modo oscuro';
   const ok=document.getElementById('ajuste-nombre-ok');if(ok)ok.textContent='';
-  renderMlReview();
+  renderMlLinks();
 }
-// ── Vincular publicaciones de ML ambiguas con un producto interno ──
-function renderMlReview(){
+// ── Administrar vinculaciones publicación de ML → producto (y variante) ──
+const _esc=s=>(s==null?'':String(s)).replace(/[<>&"]/g,c=>({'<':'&lt;','>':'&gt;','&':'&amp;','"':'&quot;'}[c]));
+let _mlFilterPend=false;
+function toggleMlFilter(){_mlFilterPend=!_mlFilterPend;renderMlLinks();}
+function renderMlLinks(){
   const card=document.getElementById('mlreview-card');const panel=document.getElementById('mlreview-panel');
   if(!card||!panel)return;
-  const rev=state.mlreview||{};const mlas=Object.keys(rev);
+  let map=state.mlmap||{};
+  // tolerar entradas viejas guardadas como string (prodId suelto)
+  map=Object.fromEntries(Object.entries(map).map(([k,v])=>[k,(typeof v==='string')?{prodId:v,manual:true}:v]));
+  let mlas=Object.keys(map);
   if(!mlas.length){card.style.display='none';panel.innerHTML='';return;}
   card.style.display='';
   const prods=[...(state.products||[])].sort((a,b)=>(a.name||'').localeCompare(b.name||'','es',{sensitivity:'base'}));
-  panel.innerHTML=mlas.map(mla=>{
-    const r=rev[mla]||{};const cands=r.candidatos||[];
-    const sug=cands[0]?cands[0].id:'';
-    const opts=['<option value="">— elegí el producto —</option>']
-      .concat(prods.map(p=>`<option value="${p.id}"${p.id===sug?' selected':''}>${(p.name||'').replace(/</g,'&lt;')}</option>`)).join('');
+  const pend=mlas.filter(m=>!map[m].prodId).length;
+  if(_mlFilterPend)mlas=mlas.filter(m=>!map[m].prodId);
+  mlas.sort((a,b)=>((map[a].prodId?1:0)-(map[b].prodId?1:0))||String(map[a].title||'').localeCompare(String(map[b].title||''),'es'));
+  const optsFor=sel=>['<option value="">— sin vincular —</option>'].concat(prods.map(p=>`<option value="${p.id}"${p.id===sel?' selected':''}>${_esc(p.name)}</option>`)).join('');
+  const head=`<div style="display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:10px">
+      <span style="font-size:.66rem;color:var(--muted)">${pend} sin vincular · ${Object.keys(map).length} en total</span>
+      <button class="btn" style="font-size:.66rem;padding:4px 10px;background:var(--surface2);border:1px solid var(--border2);color:var(--text)" onclick="toggleMlFilter()">${_mlFilterPend?'Ver todas':'Ver solo sin vincular'}</button>
+    </div>`;
+  panel.innerHTML=head+mlas.map(mla=>{
+    const e=map[mla]||{};const pid=e.prodId||'';const prod=prods.find(p=>p.id===pid);
+    const vars=(prod&&prod.variantes&&prod.variantes.length)?prod.variantes:[];
+    const varOpts=['<option value="">— sin variante —</option>'].concat(vars.map(v=>`<option value="${_esc(v)}"${v===e.variant?' selected':''}>${_esc(v)}</option>`)).join('');
+    const dot=pid?'#22c55e':'#f59e0b';
     return `<div style="border:1px solid var(--border2);border-radius:8px;padding:11px 12px;margin-bottom:9px">
-      <div style="font-size:.72rem;margin-bottom:7px"><span style="color:var(--muted)">${r.cuenta||''} ·</span> ${(r.title||'').replace(/</g,'&lt;')}</div>
-      <div style="display:flex;gap:8px;flex-wrap:wrap">
-        <select id="mlsel_${mla}" style="flex:1;min-width:160px;padding:8px 10px;border-radius:8px;border:1px solid var(--border2);background:var(--surface2);color:var(--text);font-size:.74rem">${opts}</select>
-        <button class="btn" style="background:var(--accent2);color:#fff" onclick="saveMlLink('${mla}')">Vincular</button>
+      <div style="font-size:.72rem;margin-bottom:7px"><span style="color:${dot}">●</span> <span style="color:var(--muted)">${_esc(e.cuenta)} ·</span> ${_esc(e.title)}</div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
+        <select id="mlp_${mla}" onchange="mlVarRefresh('${mla}')" style="flex:1;min-width:150px;padding:8px 10px;border-radius:8px;border:1px solid var(--border2);background:var(--surface2);color:var(--text);font-size:.74rem">${optsFor(pid)}</select>
+        <select id="mlv_${mla}" style="min-width:120px;padding:8px 10px;border-radius:8px;border:1px solid var(--border2);background:var(--surface2);color:var(--text);font-size:.74rem"${vars.length?'':' disabled'}>${varOpts}</select>
+        <button class="btn" style="background:var(--accent2);color:#fff" onclick="saveMlLink('${mla}')">Guardar</button>
       </div>
     </div>`;
   }).join('');
 }
+function mlVarRefresh(mla){
+  const ps=document.getElementById('mlp_'+mla);const vs=document.getElementById('mlv_'+mla);
+  if(!ps||!vs)return;
+  const prod=(state.products||[]).find(p=>p.id===ps.value);
+  const vars=(prod&&prod.variantes&&prod.variantes.length)?prod.variantes:[];
+  vs.disabled=!vars.length;
+  vs.innerHTML=['<option value="">— sin variante —</option>'].concat(vars.map(v=>`<option value="${_esc(v)}">${_esc(v)}</option>`)).join('');
+}
 async function saveMlLink(mla){
-  const sel=document.getElementById('mlsel_'+mla);if(!sel||!sel.value){toast('Elegí un producto','err');return;}
-  await fbSet('mlmap/'+mla,sel.value);
-  await fbDel('mlreview/'+mla);
-  if(state.mlmap)state.mlmap[mla]=sel.value;
-  if(state.mlreview)delete state.mlreview[mla];
-  renderMlReview();
-  toast('Publicación vinculada ✓');
+  const ps=document.getElementById('mlp_'+mla);const vs=document.getElementById('mlv_'+mla);
+  const prodId=ps?ps.value:'';const variant=vs?vs.value:'';
+  const cur=(state.mlmap&&state.mlmap[mla])||{};
+  const entry={prodId:prodId||null,variant:variant||'',title:cur.title||'',cuenta:cur.cuenta||'',manual:true};
+  await fbSet('mlmap/'+mla,entry);
+  if(!state.mlmap)state.mlmap={};state.mlmap[mla]=entry;
+  renderMlLinks();
+  toast(prodId?'Vinculación guardada ✓':'Marcada sin vincular');
 }
 function guardarNombre(){
   const inp=document.getElementById('ajuste-nombre');
@@ -6426,8 +6450,8 @@ document.addEventListener('click',e=>{if(fnavOpen&&!e.target.closest('#fnav-btn'
     </div>
 
     <div id="mlreview-card" style="background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:18px 20px;margin-bottom:14px;display:none">
-      <div style="font-family:'Syne',sans-serif;font-weight:800;font-size:.95rem;margin-bottom:6px">🔗 Vincular publicaciones de ML</div>
-      <p style="font-size:.68rem;color:var(--muted);margin:0 0 12px;line-height:1.5">El robot no supo a qué producto tuyo corresponden estas publicaciones. Elegí el correcto y quedan vinculadas para siempre (ventas y stock).</p>
+      <div style="font-family:'Syne',sans-serif;font-weight:800;font-size:.95rem;margin-bottom:6px">🔗 Vinculaciones de ML → productos</div>
+      <p style="font-size:.68rem;color:var(--muted);margin:0 0 12px;line-height:1.5">Cada publicación de ML enganchada a tu producto (y variante). 🟢 = vinculada · 🟡 = falta. Cambiá lo que esté mal y guardá; queda fijo para ventas y stock.</p>
       <div id="mlreview-panel"></div>
     </div>
 
@@ -6453,7 +6477,7 @@ document.addEventListener('click',e=>{if(fnavOpen&&!e.target.closest('#fnav-btn'
         <span style="font-size:.75rem;color:var(--muted)">Si no ves los últimos cambios, forzá la actualización</span>
         <button class="btn" style="background:rgba(56,189,248,.12);color:var(--blue);border:1px solid rgba(56,189,248,.3)" onclick="actualizarApp()">🔄 Buscar actualizaciones</button>
       </div>
-      <div style="font-size:.66rem;color:var(--muted);margin-top:12px">CYC · Versión 1.9</div>
+      <div style="font-size:.66rem;color:var(--muted);margin-top:12px">CYC · Versión 2.0</div>
     </div>
 
     <div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:18px 20px;margin-bottom:14px">

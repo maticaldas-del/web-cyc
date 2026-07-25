@@ -66,8 +66,8 @@ async function main() {
 
   const products = Object.values((await db.get('cyc/products')) || {});
   const index = products.map((p) => ({ p, n: norm(p.name) })).filter((x) => x.n);
-  const map = (await db.get('cyc/mlmap')) || {};   // MLA -> prodId (string)
-  const review = (await db.get('cyc/mlreview')) || {}; // MLA -> { title, cuenta, candidatos }
+  const map = (await db.get('cyc/mlmap')) || {};   // MLA -> { prodId, variant, ... }
+  const upd = {};                                   // solo publicaciones nuevas a agregar
 
   const desired = {}; // 'prodId__Cuenta' -> unidades
   const add = (prodId, label, q) => {
@@ -87,31 +87,30 @@ async function main() {
 
     for (const it of items) {
       const q = unidades(it);
-      const known = map[it.id]; // prodId string ya confirmado
-      if (known) { add(known, label, q); continue; }
-      // sin match confirmado → intentar match exacto por nombre (auto-confirmar solo si es exacto)
+      let e = map[it.id]; // { prodId, variant, ... }
+      if (typeof e === 'string') e = { prodId: e };
+      if (e && e.prodId) { add(e.prodId, label, q); continue; }
+      if (e) continue; // ya está en el mapa pero sin vincular → lo resolvés en la app
+      // publicación nueva que nunca vendió: intentar match exacto por nombre
       const t2 = norm(it.title);
       const exact = index.find((x) => x.n === t2);
-      if (exact) {
-        map[it.id] = exact.p.id;
-        add(exact.p.id, label, q);
-      } else {
-        const sug = index.filter((x) => t2.includes(x.n)).sort((a, b) => b.n.length - a.n.length)[0];
-        review[it.id] = { title: it.title, cuenta: label, candidatos: sug ? [{ id: sug.p.id, name: sug.p.name }] : [] };
-      }
+      const entry = exact
+        ? { prodId: exact.p.id, variant: '', title: it.title, cuenta: label, auto: true }
+        : { prodId: null, variant: '', title: it.title, cuenta: label, auto: true, candidatos: [] };
+      map[it.id] = entry; upd[it.id] = entry;
+      if (exact) add(exact.p.id, label, q);
     }
   }
 
-  // guardar el mapa actualizado y la lista de revisión
-  await db.set('cyc/mlmap', map);
-  await db.set('cyc/mlreview', review);
+  // guardar en el mapa solo las publicaciones nuevas (no pisa lo ya vinculado)
+  if (Object.keys(upd).length) await db.patch('cyc/mlmap', upd);
 
   // escribir SOLO los stocks confirmados (merge; no toca otras claves)
   if (Object.keys(desired).length) await db.patch('cyc/inventory', desired);
 
   console.log(`\n✓ Stock actualizado en ${Object.keys(desired).length} claves (producto×cuenta).`);
-  const rev = Object.keys(review).length;
-  if (rev) console.log(`⚠ ${rev} publicaciones sin match confirmado — quedan en revisión (cyc/mlreview), no tocaron el inventario.`);
+  const rev = Object.values(map).filter((x) => x && !x.prodId).length;
+  if (rev) console.log(`⚠ ${rev} publicaciones sin vincular — resolvelas en la app; no tocaron el inventario.`);
 }
 
 main().catch((e) => { console.error('✗ Error:', e.message); process.exit(1); });

@@ -75,6 +75,15 @@ function candidatesFor(title, index) {
   }).filter((o) => o.s > 0).sort((a, b) => b.s - a.s).slice(0, 4).map(({ id, name }) => ({ id, name }));
 }
 
+// variante de la venta de ML (color/medida) mapeada a una variante del producto
+function mlVariant(it, p) {
+  const vs = (p && p.variantes) || [];
+  if (!vs.length) return '';
+  const attrs = it.item?.variation_attributes || [];
+  const vals = attrs.map((a) => norm(a.value_name || ''));
+  for (const v of vs) if (vals.includes(norm(v))) return v;
+  return '';
+}
 // costo en pesos, replicando la lógica de la app (costUSD, devolución, envío × dólar)
 function costoPesos(p, qty, tc) {
   if (!p) return { costo: 0, costBaseUSD: 0, shipUSD: 0 };
@@ -148,8 +157,9 @@ async function main() {
   const finanzas = (await db.get('cyc/finanzas')) || {};
   const tc = parseFloat(finanzas.tipo_cambio) || 1500;
 
-  // mapa permanente publicación(MLA) → producto interno (resuelto en la app)
+  // mapa permanente publicación(MLA) → { prodId, variant, title, cuenta, manual, candidatos }
   const map = (await db.get('cyc/mlmap')) || {};
+  const mapUpd = {}; // solo lo que toca el auto-match (no pisa lo que vos fijaste)
 
   // ventas ya cargadas a mano / por cowork (para no duplicarlas). Las nuestras
   // (origen ml-api) usan id determinístico, así que reescribirlas es inofensivo.
@@ -163,7 +173,6 @@ async function main() {
 
   const state = (await db.get('mlapi/state')) || {};
   let cargadas = 0;
-  const review = {}; // MLA -> { title, cuenta, candidatos:[{id,name}] }
 
   for (const label of labels) {
     const acc = accounts[label];
@@ -195,13 +204,26 @@ async function main() {
         const itemGross = (it.unit_price || 0) * qty;
         const shipAlloc = orderGross > 0 ? shipSeller * (itemGross / orderGross) : 0;
         const idx = i; i++;
-        // 1) mapa confirmado por MLA · 2) match por palabras
-        let p = (mla && map[mla]) ? (products.find((pp) => pp.id === map[mla]) || null) : null;
-        if (!p) p = matchProduct(title, index);
-        if (!p) { // ambiguo → a revisión, NO se carga (para no quedar sin costo)
-          if (mla) review[mla] = { title, cuenta: label, candidatos: candidatesFor(title, index) };
-          continue;
+        let e = mla ? map[mla] : null;
+        if (typeof e === 'string') e = { prodId: e, manual: true }; // formato viejo
+        let p = null, variant = '';
+        if (e && e.manual) {               // vinculación fijada por vos en la app
+          p = e.prodId ? (products.find((pp) => pp.id === e.prodId) || null) : null;
+          variant = e.variant || '';
+        } else {                           // auto-match por palabras (y lo dejamos visible/editable)
+          p = matchProduct(title, index);
+          if (mla) {
+            const entry = {
+              prodId: p ? p.id : null, variant: (e && e.variant) || '',
+              title, cuenta: label, auto: true,
+              candidatos: p ? null : candidatesFor(title, index),
+            };
+            map[mla] = entry; mapUpd[mla] = entry;
+          }
+          variant = (e && e.variant) || '';
         }
+        if (!p) continue;                  // sin vincular → NO se carga (para no quedar sin costo)
+        if (!variant) variant = mlVariant(it, p); // variante desde la venta de ML si corresponde
         const { costo, costBaseUSD, shipUSD } = costoPesos(p, qty, tc);
         const id = 'v' + o.id + '_' + idx;
         const obj = {
@@ -213,6 +235,7 @@ async function main() {
           ts: new Date(o.date_closed || o.date_created).getTime(),
           origen: 'ml-api',
         };
+        if (variant) obj.variante = variant;
         if (DRY) console.log(`  [${label}] #${num} ${p.name} x${qty} · total ${obj.total} · neto ${obj.neto}`);
         else await db.set(`cyc/ventaprod/${dayKey}/${id}`, obj);
         cargadas++;
@@ -227,14 +250,13 @@ async function main() {
     console.log(`✓ ${label}: ${orders.length} ventas revisadas`);
   }
 
-  // guardar la lista de revisión (sacando las que ya están resueltas en el mapa)
-  for (const mla of Object.keys(review)) if (map[mla]) delete review[mla];
-  if (!DRY) await db.set('cyc/mlreview', review);
+  // guardar en el mapa lo que tocó el auto-match (sin pisar lo que fijaste vos)
+  if (!DRY && Object.keys(mapUpd).length) await db.patch('cyc/mlmap', mapUpd);
 
-  const pend = Object.keys(review).length;
-  console.log(`\n✓ Listo. Renglones cargados: ${cargadas}. Publicaciones a revisar: ${pend}.`);
-  Object.values(review).slice(0, 40).forEach((r) =>
-    console.log('  · ' + r.title + '  → ' + r.candidatos.map((c) => c.name).join(' | ')));
+  const pend = Object.values(map).filter((x) => x && !x.prodId).length;
+  console.log(`\n✓ Listo. Renglones cargados: ${cargadas}. Publicaciones sin vincular: ${pend}.`);
+  Object.values(map).filter((x) => x && !x.prodId).slice(0, 40).forEach((r) =>
+    console.log('  · ' + r.title + '  → ' + (r.candidatos || []).map((c) => c.name).join(' | ')));
 }
 
 main().catch((e) => { console.error('✗ Error:', e.message); process.exit(1); });
