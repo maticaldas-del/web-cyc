@@ -55,4 +55,5 @@ jobs:
           DUMP_MAP: ${{ github.event.inputs.dump_map }}
           BACKFILL_DAYS: ${{ github.event.inputs.backfill_days }}
           DUMP_VENTAS: ${{ github.event.inputs.dump_ventas }}
+          DUMP_SKU: ${{ github.event.inputs.dump_sku }}
         run: node ml-sync/sync.mjs
