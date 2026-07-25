@@ -186,6 +186,22 @@ async function fetchCancelled(sellerId, token, fromISO) {
   return out;
 }
 
+// ¿el comprador llegó a RECIBIR el producto? (para distinguir reclamo de cancelada)
+// delivered = lo recibió → si además se le devolvió el dinero, es una pérdida (reclamo).
+async function wasDelivered(order, token) {
+  const tags = order.tags || [];
+  if (tags.includes('delivered')) return true;
+  if (tags.includes('not_delivered')) return false;
+  const shipId = order.shipping?.id;
+  if (!shipId) return false;
+  try {
+    const s = await mlGet('/shipments/' + shipId, token);
+    const st = (s.status || '').toLowerCase();
+    const sub = (s.substatus || '').toLowerCase();
+    return st === 'delivered' || sub === 'delivered';
+  } catch { return false; }
+}
+
 async function main() {
   const idToken = await fbSignIn(FIREBASE_API_KEY, FIREBASE_BOT_EMAIL, FIREBASE_BOT_PASSWORD);
   const db = makeDB(FIREBASE_DB_URL, idToken);
@@ -262,7 +278,7 @@ async function main() {
       if (v.numVenta && v.origen === 'ml-api') {
         const k = String(v.numVenta);
         if (!loadedByNum.has(k)) loadedByNum.set(k, []);
-        loadedByNum.get(k).push({ dayKey, id });
+        loadedByNum.get(k).push({ dayKey, id, cancelada: !!v.cancelada });
       }
     }
   }
@@ -403,7 +419,7 @@ async function main() {
         cargadas++;
         // dejar registrada la carga por si esta misma venta se cancela después
         if (!loadedByNum.has(num)) loadedByNum.set(num, []);
-        loadedByNum.get(num).push({ dayKey, id });
+        loadedByNum.get(num).push({ dayKey, id, cancelada: false });
 
         // ── AVISO al cel si el margen quedó por debajo del 40% ──
         // Margen = (neto − costo) ÷ costo, igual que la app. Meta para avisar 40%,
@@ -429,22 +445,35 @@ async function main() {
       }
     }
 
-    // 3b) CANCELACIONES: si una venta que ya cargamos se canceló, la sacamos del
-    //     panel para que no quede contada como venta hecha. Miramos una ventana
-    //     amplia (45 días) porque una cancelación puede llegar bastante después.
+    // 3b) CANCELACIONES y DEVOLUCIONES: si una venta que ya cargamos se canceló
+    //     o tuvo devolución, la MARCAMOS (no la borramos) para que el panel la
+    //     trate como corresponde:
+    //       · cancelada → volvió al stock, no cuenta como venta, no perdés plata.
+    //       · reclamo   → el comprador la recibió y se le devolvió el dinero:
+    //                     producto perdido → sube solo el % devolución del producto
+    //                     (así el precio se ajusta para cubrir ese gasto).
+    //     Miramos una ventana amplia (45 días) porque la cancelación/devolución
+    //     puede llegar bastante después de la venta. NO pisamos lo que vos ya
+    //     clasificaste a mano en la app.
     const cancelFrom = new Date(Date.now() - 45 * 864e5).toISOString().replace(/\.\d+Z$/, '.000-00:00');
     const cancelled = await fetchCancelled(acc.seller_id, t.access_token, cancelFrom);
-    let quitadas = 0;
+    let nCanc = 0, nRecl = 0;
     for (const o of cancelled) {
       const hits = loadedByNum.get(String(o.id));
       if (!hits) continue;
-      for (const h of hits) {
-        if (!DRY) await db.set(`cyc/ventaprod/${h.dayKey}/${h.id}`, null);
-        quitadas++;
+      const pend = hits.filter((h) => !h.cancelada); // ya marcadas/clasificadas → no tocar
+      if (!pend.length) continue;
+      const tipo = (await wasDelivered(o, t.access_token)) ? 'reclamo' : 'cancelada';
+      for (const h of pend) {
+        if (!DRY) await db.patch(`cyc/ventaprod/${h.dayKey}/${h.id}`, {
+          cancelada: true, tipoCancelacion: tipo,
+          total: 0, neto: 0, costo: 0, costBaseUSD: 0,
+        });
+        h.cancelada = true;
+        if (tipo === 'reclamo') nRecl++; else nCanc++;
       }
-      loadedByNum.delete(String(o.id));
     }
-    if (quitadas) console.log(`  ↩ ${label}: ${quitadas} renglón(es) de ventas canceladas quitado(s)`);
+    if (nCanc || nRecl) console.log(`  ↩ ${label}: ${nCanc} cancelada(s) · ${nRecl} reclamo(s) con pérdida`);
 
     // 4) marcar hasta dónde llegamos (para la próxima corrida) — no en dry-run
     if (!DRY) await db.patch('mlapi/state/' + label, {
