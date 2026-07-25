@@ -94,24 +94,29 @@ function costoPesos(p, qty, tc) {
   return { costo: Math.round(fullUSD * tc * qty), costBaseUSD: costUSD, shipUSD };
 }
 
-// ── envío que paga el vendedor (best-effort; si el dato viene distinto → 0) ──
-// TODO(verificar 1ª tanda): forma exacta de /shipments/{id}/costs y qué campo
-// es el costo del vendedor. Va con try/catch: si falla, neto = total − comisión.
-async function sellerShipping(order, token) {
-  const shipId = order.shipping?.id;
-  if (!shipId) return 0;
-  try {
-    const c = await mlGet(`/shipments/${shipId}/costs`, token);
-    const s = Array.isArray(c.senders) ? c.senders[0] : null;
-    const cost = (s?.cost || 0) - (s?.compensation || 0);
-    return cost > 0 ? cost : 0;
-  } catch { return 0; }
+// ── NETO REAL: lo que efectivamente te entra según Mercado Pago ──
+// transaction_details.net_received_amount ya tiene descontado TODO:
+// comisión de ML + costo fijo + retenciones de impuestos (IIBB/SIRTAC).
+// Suma los pagos de la orden. Devuelve null si no se pudo (→ usa el fallback).
+async function orderNet(order, token) {
+  let net = 0, ok = false;
+  for (const p of (order.payments || [])) {
+    if (!p.id) continue;
+    try {
+      const r = await fetch('https://api.mercadopago.com/v1/payments/' + p.id, {
+        headers: { Authorization: 'Bearer ' + token },
+      });
+      if (!r.ok) continue;
+      const b = await r.json();
+      const nr = b.transaction_details?.net_received_amount;
+      if (typeof nr === 'number') { net += nr; ok = true; }
+    } catch { /* ignore */ }
+  }
+  return ok ? net : null;
 }
-// neto por ítem = (total del ítem) − comisión − parte proporcional del envío.
-// TODO(verificar): si order_items.sale_fee es por unidad o por línea.
-function netoItem(itemGross, saleFeeUnit, qty, shipAlloc) {
-  const fee = (saleFeeUnit || 0) * (qty || 0); // ← revisar base de sale_fee
-  return Math.max(0, Math.round(itemGross - fee - shipAlloc));
+// fallback si no se pudo leer el pago: total − comisión (sin impuestos).
+function netoFallback(itemGross, saleFeeUnit, qty) {
+  return Math.max(0, Math.round(itemGross - (saleFeeUnit || 0) * (qty || 0)));
 }
 
 // ── traer todas las ventas pagadas de una cuenta desde una fecha ───────────
@@ -292,14 +297,13 @@ async function main() {
       const saleId = 's' + o.id;
       const items = o.order_items || [];
       const orderGross = items.reduce((s, it) => s + (it.unit_price || 0) * (it.quantity || 0), 0);
-      const shipSeller = await sellerShipping(o, t.access_token);
+      let orderNetAmt = null, netFetched = false; // neto real del pago (una vez por orden)
       let i = 0;
       for (const it of items) {
         const mla = it.item?.id;
         const title = it.item?.title || '';
         const qty = it.quantity || 0;
         const itemGross = (it.unit_price || 0) * qty;
-        const shipAlloc = orderGross > 0 ? shipSeller * (itemGross / orderGross) : 0;
         const idx = i; i++;
         let e = mla ? map[mla] : null;
         if (typeof e === 'string') e = { prodId: e, manual: true }; // formato viejo
@@ -321,12 +325,17 @@ async function main() {
         }
         if (!p) continue;                  // sin vincular → NO se carga (para no quedar sin costo)
         if (!variant) variant = mlVariant(it, p); // variante desde la venta de ML si corresponde
+        // neto real del pago (una sola vez por orden, recién cuando hay un ítem que cargar)
+        if (!netFetched) { orderNetAmt = await orderNet(o, t.access_token); netFetched = true; }
+        const neto = (orderNetAmt != null && orderGross > 0)
+          ? Math.round(orderNetAmt * (itemGross / orderGross))
+          : netoFallback(itemGross, it.sale_fee, qty);
         const { costo, costBaseUSD, shipUSD } = costoPesos(p, qty, tc);
         const id = 'v' + o.id + '_' + idx;
         const obj = {
           id, saleId, prod: p.name, prodId: p.id, cuenta: label, qty,
           total: Math.round(itemGross),
-          neto: netoItem(itemGross, it.sale_fee, qty, shipAlloc),
+          neto,
           costo, costBaseUSD, tcSale: tc, shipUSD,
           numVenta: num,
           ts: new Date(o.date_closed || o.date_created).getTime(),
