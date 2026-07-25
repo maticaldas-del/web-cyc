@@ -539,6 +539,42 @@ async function main() {
     return;
   }
 
+  // DUMP_UNMAPPED: lista las publicaciones SIN vincular ordenadas por cuánto
+  // vendieron (para saber cuáles conviene mapear primero). Solo lectura.
+  if (process.env.DUMP_UNMAPPED) {
+    const byLabel = {};
+    for (const [mla, e] of Object.entries(map)) {
+      if (!e || e.ignored || e.prodId || !/^MLA/i.test(mla)) continue;
+      (byLabel[e.cuenta] = byLabel[e.cuenta] || []).push(mla);
+    }
+    for (const label of labels) {
+      const list = byLabel[label] || [];
+      if (!list.length) continue;
+      const acc = accounts[label];
+      if (!acc?.refresh_token) continue;
+      const t = await mlRefresh(ML_CLIENT_ID, ML_CLIENT_SECRET, acc.refresh_token);
+      await db.patch('mlapi/tokens/' + label, { refresh_token: t.refresh_token, updated_ts: Date.now() });
+      const rows = [];
+      for (let i = 0; i < list.length; i += 20) {
+        const chunk = list.slice(i, i + 20);
+        let arr;
+        try { arr = await mlGet('/items?ids=' + chunk.join(',') + '&attributes=id,title,status,sold_quantity', t.access_token); }
+        catch { continue; }
+        for (const row of (arr || [])) {
+          const b = row.body || {};
+          if (!b.id) continue;
+          rows.push({ title: (b.title || '').slice(0, 55), sold: b.sold_quantity || 0, active: b.status === 'active' });
+        }
+      }
+      rows.sort((a, b) => b.sold - a.sold);
+      const conVenta = rows.filter((r) => r.sold > 0);
+      console.log(`\n═══ ${label}: ${list.length} sin vincular · ${conVenta.length} vendieron alguna vez ═══`);
+      conVenta.slice(0, 30).forEach((r) =>
+        console.log(`  ${String(r.sold).padStart(4)}  [${r.active ? 'ACTIVA  ' : 'inactiva'}]  ${r.title}`));
+    }
+    return;
+  }
+
   for (const label of labels) {
     const acc = accounts[label];
     if (!acc?.refresh_token) continue;
