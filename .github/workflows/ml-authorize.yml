@@ -1,0 +1,37 @@
+name: ml-authorize
+
+# Conecta UNA cuenta de ML. Se corre a mano, una vez por cuenta.
+# Actions → ml-authorize → Run workflow → completás:
+#   label = etiqueta de la cuenta (ej: Adriana)
+#   code  = el código de autorización que devolvió ML
+
+on:
+  workflow_dispatch:
+    inputs:
+      label:
+        description: 'Etiqueta de la cuenta (ej: Adriana)'
+        required: true
+      code:
+        description: 'Código de autorización de ML'
+        required: true
+
+jobs:
+  authorize:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Conectar cuenta
+        env:
+          ML_CLIENT_ID: ${{ secrets.ML_CLIENT_ID }}
+          ML_CLIENT_SECRET: ${{ secrets.ML_CLIENT_SECRET }}
+          ML_REDIRECT_URI: ${{ secrets.ML_REDIRECT_URI }}
+          FIREBASE_API_KEY: ${{ secrets.FIREBASE_API_KEY }}
+          FIREBASE_DB_URL: ${{ secrets.FIREBASE_DB_URL }}
+          FIREBASE_BOT_EMAIL: ${{ secrets.FIREBASE_BOT_EMAIL }}
+          FIREBASE_BOT_PASSWORD: ${{ secrets.FIREBASE_BOT_PASSWORD }}
+          LABEL: ${{ github.event.inputs.label }}
+          CODE: ${{ github.event.inputs.code }}
+        run: node ml-sync/authorize.mjs
