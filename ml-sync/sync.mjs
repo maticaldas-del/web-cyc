@@ -575,6 +575,59 @@ async function main() {
     return;
   }
 
+  // DUMP_ORDER: investigar UNA venta puntual — qué guardó el panel vs qué
+  // devuelve el pago de ML (para diagnosticar netos raros, ej. ventas Full).
+  if (process.env.DUMP_ORDER) {
+    const oid = String(process.env.DUMP_ORDER).trim();
+    // 1) qué quedó guardado en el panel
+    const vp = (await db.get('cyc/ventaprod')) || {};
+    for (const day of Object.values(vp)) {
+      for (const v of Object.values(day || {})) {
+        if (v && String(v.numVenta) === oid) {
+          console.log('PANEL:', JSON.stringify({
+            prod: v.prod, total: v.total, neto: v.neto, costo: v.costo,
+            origen: v.origen, cancelada: v.cancelada || false,
+          }));
+        }
+      }
+    }
+    // 2) qué dice ML/MP para esa orden
+    for (const label of labels) {
+      const acc = accounts[label];
+      if (!acc?.refresh_token) continue;
+      const t = await mlRefresh(ML_CLIENT_ID, ML_CLIENT_SECRET, acc.refresh_token);
+      await db.patch('mlapi/tokens/' + label, { refresh_token: t.refresh_token, updated_ts: Date.now() });
+      let full;
+      try { full = await mlGet('/orders/' + oid, t.access_token); } catch { continue; }
+      if (!full || !full.id) continue;
+      console.log(`\nORDEN ${oid} · cuenta ${label} · status ${full.status}`);
+      console.log('  total_amount:', full.total_amount, 'paid_amount:', full.paid_amount);
+      console.log('  items:', JSON.stringify((full.order_items || []).map((it) => ({
+        t: (it.item?.title || '').slice(0, 30), unit: it.unit_price, qty: it.quantity, fee: it.sale_fee,
+      }))));
+      let net = 0;
+      for (const p of (full.payments || [])) {
+        let b = null;
+        try {
+          const r = await fetch('https://api.mercadopago.com/v1/payments/' + p.id, { headers: { Authorization: 'Bearer ' + t.access_token } });
+          b = await r.json();
+        } catch { /* */ }
+        console.log('  PAGO', p.id, JSON.stringify({
+          status: b?.status,
+          transaction: b?.transaction_amount,
+          net_received: b?.transaction_details?.net_received_amount,
+          shipping_cost: p.shipping_cost,
+          charges: (b?.charges_details || []).map((c) => `${c.name}:${c.amounts?.original}`),
+        }));
+        const nr = b?.transaction_details?.net_received_amount;
+        if (typeof nr === 'number') net += nr;
+      }
+      console.log('  → neto que usa el robot (suma net_received):', net);
+      break;
+    }
+    return;
+  }
+
   for (const label of labels) {
     const acc = accounts[label];
     if (!acc?.refresh_token) continue;

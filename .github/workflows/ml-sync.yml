@@ -40,6 +40,10 @@ on:
         description: 'Listar sin vincular por ventas (debug): poné 1'
         required: false
         default: ''
+      dump_order:
+        description: 'Investigar una venta puntual (nº de venta)'
+        required: false
+        default: ''
       backfill_days:
         description: 'Reprocesar los últimos N días (backfill): ej 31'
         required: false
@@ -79,4 +83,5 @@ jobs:
           DUMP_PROMOS: ${{ github.event.inputs.dump_promos }}
           TELEGRAM_TEST: ${{ github.event.inputs.telegram_test }}
           DUMP_UNMAPPED: ${{ github.event.inputs.dump_unmapped }}
+          DUMP_ORDER: ${{ github.event.inputs.dump_order }}
         run: node ml-sync/sync.mjs
