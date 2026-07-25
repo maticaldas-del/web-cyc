@@ -119,6 +119,24 @@ function netoFallback(itemGross, saleFeeUnit, qty) {
   return Math.max(0, Math.round(itemGross - (saleFeeUnit || 0) * (qty || 0)));
 }
 
+// ── Aviso al celular por Telegram ──────────────────────────────────────────
+// Manda un mensaje a tu chat. Necesita los secrets TELEGRAM_BOT_TOKEN y
+// TELEGRAM_CHAT_ID. Si no están cargados, no hace nada (no rompe la corrida).
+async function sendTelegram(text) {
+  const tok = process.env.TELEGRAM_BOT_TOKEN, chat = process.env.TELEGRAM_CHAT_ID;
+  if (!tok || !chat) return false;
+  try {
+    const r = await fetch('https://api.telegram.org/bot' + tok + '/sendMessage', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        chat_id: chat, text, parse_mode: 'HTML', disable_web_page_preview: true,
+      }),
+    });
+    return r.ok;
+  } catch { return false; }
+}
+const money = (n) => '$' + Math.round(n).toLocaleString('es-AR');
+
 // ── traer todas las ventas pagadas de una cuenta desde una fecha ───────────
 async function fetchOrders(sellerId, token, fromISO) {
   const out = [];
@@ -138,6 +156,32 @@ async function fetchOrders(sellerId, token, fromISO) {
     if (res.length < limit || out.length >= (d.paging?.total || 0)) break;
     offset += limit;
     if (offset > 2000) break; // tope de seguridad
+  }
+  return out;
+}
+
+// ── traer las ventas CANCELADAS (para sacarlas del panel si ya estaban) ─────
+// ML no permite filtrar por fecha de cancelación, así que miramos una ventana
+// amplia (por fecha de creación) para atrapar cancelaciones de ventas viejas.
+async function fetchCancelled(sellerId, token, fromISO) {
+  const out = [];
+  let offset = 0;
+  const limit = 50;
+  for (;;) {
+    const q = new URLSearchParams({
+      seller: String(sellerId),
+      'order.status': 'cancelled',
+      sort: 'date_desc',
+      offset: String(offset), limit: String(limit),
+    });
+    if (fromISO) q.set('order.date_created.from', fromISO);
+    let d;
+    try { d = await mlGet('/orders/search?' + q.toString(), token); } catch { break; }
+    const res = d.results || [];
+    out.push(...res);
+    if (res.length < limit || out.length >= (d.paging?.total || 0)) break;
+    offset += limit;
+    if (offset > 2000) break;
   }
   return out;
 }
@@ -209,11 +253,23 @@ async function main() {
   // (origen ml-api) usan id determinístico, así que reescribirlas es inofensivo.
   const ventaprod = (await db.get('cyc/ventaprod')) || {};
   const seenManual = new Set();
-  for (const day of Object.values(ventaprod)) {
-    for (const v of Object.values(day || {})) {
+  // índice: nº de venta → dónde quedó cargada (para poder quitarla si se cancela)
+  const loadedByNum = new Map();
+  for (const [dayKey, day] of Object.entries(ventaprod)) {
+    for (const [id, v] of Object.entries(day || {})) {
+      if (!v) continue;
       if (v.numVenta && v.origen !== 'ml-api') seenManual.add(String(v.numVenta));
+      if (v.numVenta && v.origen === 'ml-api') {
+        const k = String(v.numVenta);
+        if (!loadedByNum.has(k)) loadedByNum.set(k, []);
+        loadedByNum.get(k).push({ dayKey, id });
+      }
     }
   }
+
+  // avisos ya mandados al cel (para no repetir el mismo por cada corrida)
+  const alerted = (await db.get('mlapi/alerted')) || {};
+  const alertUpd = {};
 
   const state = (await db.get('mlapi/state')) || {};
   let cargadas = 0;
@@ -345,8 +401,50 @@ async function main() {
         if (DRY) console.log(`  [${label}] #${num} ${p.name} x${qty} · total ${obj.total} · neto ${obj.neto}`);
         else await db.set(`cyc/ventaprod/${dayKey}/${id}`, obj);
         cargadas++;
+        // dejar registrada la carga por si esta misma venta se cancela después
+        if (!loadedByNum.has(num)) loadedByNum.set(num, []);
+        loadedByNum.get(num).push({ dayKey, id });
+
+        // ── AVISO al cel si el margen quedó por debajo del 40% ──
+        // Margen = (neto − costo) ÷ costo, igual que la app. Meta para avisar 40%,
+        // y sugerimos el precio para llegar al 42% (2% de colchón).
+        // Solo ventas recientes (últimas 12 h) y en corridas normales (no backfill),
+        // y una sola vez por venta.
+        const recient = (Date.now() - obj.ts) < 12 * 3600e3;
+        if (!DRY && bfd === 0 && recient && costo > 0 && neto > 0 && !alerted[id]) {
+          const margen = (neto - costo) / costo;
+          if (margen < 0.40) {
+            const unit = itemGross / qty;
+            // precio unitario para que el neto llegue a costo×1,42 (el neto escala con el precio)
+            const sug = Math.ceil(((costo * 1.42 / neto) * unit) / 10) * 10;
+            const msg = `⚠️ <b>Margen bajo: ${(margen * 100).toFixed(0)}%</b>\n`
+              + `${p.name}${variant ? ' · ' + variant : ''}\n`
+              + `Cuenta: ${label}\n`
+              + `Precio actual: <b>${money(unit)}</b>\n`
+              + `Neto: ${money(neto)} · Costo: ${money(costo)}\n`
+              + `👉 Subilo a <b>${money(sug)}</b> para llegar al 42%`;
+            if (await sendTelegram(msg)) { alerted[id] = true; alertUpd[id] = obj.ts; }
+          }
+        }
       }
     }
+
+    // 3b) CANCELACIONES: si una venta que ya cargamos se canceló, la sacamos del
+    //     panel para que no quede contada como venta hecha. Miramos una ventana
+    //     amplia (45 días) porque una cancelación puede llegar bastante después.
+    const cancelFrom = new Date(Date.now() - 45 * 864e5).toISOString().replace(/\.\d+Z$/, '.000-00:00');
+    const cancelled = await fetchCancelled(acc.seller_id, t.access_token, cancelFrom);
+    let quitadas = 0;
+    for (const o of cancelled) {
+      const hits = loadedByNum.get(String(o.id));
+      if (!hits) continue;
+      for (const h of hits) {
+        if (!DRY) await db.set(`cyc/ventaprod/${h.dayKey}/${h.id}`, null);
+        quitadas++;
+      }
+      loadedByNum.delete(String(o.id));
+    }
+    if (quitadas) console.log(`  ↩ ${label}: ${quitadas} renglón(es) de ventas canceladas quitado(s)`);
 
     // 4) marcar hasta dónde llegamos (para la próxima corrida) — no en dry-run
     if (!DRY) await db.patch('mlapi/state/' + label, {
@@ -358,6 +456,8 @@ async function main() {
 
   // guardar en el mapa lo que tocó el auto-match (sin pisar lo que fijaste vos)
   if (!DRY && Object.keys(mapUpd).length) await db.patch('cyc/mllinks', mapUpd);
+  // guardar los avisos que ya mandamos (para no repetirlos)
+  if (!DRY && Object.keys(alertUpd).length) await db.patch('mlapi/alerted', alertUpd);
 
   const pend = Object.values(map).filter((x) => x && !x.prodId).length;
   console.log(`\n✓ Listo. Renglones cargados: ${cargadas}. Publicaciones sin vincular: ${pend}.`);
