@@ -623,8 +623,12 @@ async function main() {
     //     Comparamos el estado actual contra el guardado y avisamos solo en la
     //     transición (así no repite). Ignoramos pausas normales por falta de stock.
     try {
+      // todas las publicaciones de la cuenta que no ocultaste (aunque no estén
+      // vinculadas): así los descuentos se sacan también en cuentas recién
+      // agregadas antes de mapearlas. El aviso de "problema" sí se limita a las
+      // vinculadas (para no llenarte de avisos de pubs que no te importan).
       const ids = Object.entries(map)
-        .filter(([mla, e]) => e && e.cuenta === label && !e.ignored && e.prodId && /^MLA/i.test(mla))
+        .filter(([mla, e]) => e && e.cuenta === label && !e.ignored && /^MLA/i.test(mla))
         .map(([mla]) => mla);
       for (let k = 0; k < ids.length; k += 20) {
         const chunk = ids.slice(k, k + 20);
@@ -644,7 +648,7 @@ async function main() {
             const bad = st === 'closed' || st === 'under_review'
               || /deactiv|moderation|warning|suspend|ban|freeze|infract|hold/i.test(sub);
             const wasBad = prev === 'closed' || prev === 'under_review';
-            if (bad && !wasBad && !DRY && pubAlerts < 8) {
+            if (bad && !wasBad && !DRY && map[mla].prodId && pubAlerts < 8) {
               const title = map[mla].title || mla;
               const estados = { closed: 'dada de baja', under_review: 'en revisión', paused: 'pausada' };
               await sendTelegram(`⚠️ <b>Problema en una publicación</b>\n`
