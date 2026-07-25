@@ -39,7 +39,9 @@ function dayKeyFromISO(iso) {
 // Palabras genéricas que no ayudan a distinguir (no cuentan para el match).
 const STOP = new Set(['de','con','y','la','el','los','las','para','en','del','al',
   'un','una','x','color','negro','blanco','gris','rojo','azul','verde','celeste',
-  'pc','set','the','memoria','luz','led','2','0','1','o','a','tipo','marca']);
+  'pc','set','the','memoria','luz','led','2','0','1','o','a','tipo','marca',
+  'usb','hub','bluetooth','wireless','inalambrico','inalambrica','inalambricos',
+  'inalambricas','recargable','flexible','micro','mini','original','premium']);
 function toks(s) {
   return [...new Set(norm(s).split(' ').filter((t) => t.length >= 2 && !STOP.has(t)))];
 }
