@@ -32,6 +32,10 @@ on:
         description: 'Volcar promociones/descuentos de ML (debug): poné 1'
         required: false
         default: ''
+      telegram_test:
+        description: 'Mandar mensaje de prueba a Telegram: poné 1'
+        required: false
+        default: ''
       backfill_days:
         description: 'Reprocesar los últimos N días (backfill): ej 31'
         required: false
@@ -69,4 +73,5 @@ jobs:
           DUMP_SKU: ${{ github.event.inputs.dump_sku }}
           DUMP_PAY: ${{ github.event.inputs.dump_pay }}
           DUMP_PROMOS: ${{ github.event.inputs.dump_promos }}
+          TELEGRAM_TEST: ${{ github.event.inputs.telegram_test }}
         run: node ml-sync/sync.mjs

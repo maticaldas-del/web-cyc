@@ -270,6 +270,15 @@ async function wasDelivered(order, token) {
 }
 
 async function main() {
+  // TELEGRAM_TEST=1 → solo manda un mensaje de prueba y sale (para verificar
+  // que los secrets de Telegram están bien cargados). No toca nada más.
+  if (process.env.TELEGRAM_TEST) {
+    const ok = await sendTelegram('✅ <b>CYC</b>: prueba de avisos. Si ves esto, ¡los avisos ya funcionan! 🎉');
+    console.log(ok ? '✓ Mensaje de prueba enviado a Telegram.'
+      : '✗ No se pudo enviar. Revisá TELEGRAM_BOT_TOKEN y TELEGRAM_CHAT_ID (y que hayas apretado Start en el bot).');
+    return;
+  }
+
   const idToken = await fbSignIn(FIREBASE_API_KEY, FIREBASE_BOT_EMAIL, FIREBASE_BOT_PASSWORD);
   const db = makeDB(FIREBASE_DB_URL, idToken);
 
