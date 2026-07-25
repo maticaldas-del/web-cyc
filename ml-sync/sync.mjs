@@ -187,20 +187,45 @@ function netoFallback(itemGross, saleFeeUnit, qty) {
 }
 
 // ── Aviso al celular por Telegram ──────────────────────────────────────────
-// Manda un mensaje a tu chat. Necesita los secrets TELEGRAM_BOT_TOKEN y
-// TELEGRAM_CHAT_ID. Si no están cargados, no hace nada (no rompe la corrida).
-async function sendTelegram(text) {
-  const tok = process.env.TELEGRAM_BOT_TOKEN, chat = process.env.TELEGRAM_CHAT_ID;
-  if (!tok || !chat) return false;
+// Alcanza con cargar el secret TELEGRAM_BOT_TOKEN. El chat id se descubre solo
+// (del "hola" que le mandaste al bot) y se guarda en Firebase mlapi/telegram.
+// Si querés fijarlo a mano, podés cargar también TELEGRAM_CHAT_ID.
+let TG_TOKEN = process.env.TELEGRAM_BOT_TOKEN || '';
+let TG_CHAT = process.env.TELEGRAM_CHAT_ID || '';
+async function tgApi(method, body) {
+  if (!TG_TOKEN) return null;
   try {
-    const r = await fetch('https://api.telegram.org/bot' + tok + '/sendMessage', {
+    const r = await fetch('https://api.telegram.org/bot' + TG_TOKEN + '/' + method, {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        chat_id: chat, text, parse_mode: 'HTML', disable_web_page_preview: true,
-      }),
+      body: JSON.stringify(body || {}),
     });
-    return r.ok;
-  } catch { return false; }
+    return await r.json();
+  } catch { return null; }
+}
+async function sendTelegram(text) {
+  if (!TG_TOKEN || !TG_CHAT) return false;
+  const r = await tgApi('sendMessage', {
+    chat_id: TG_CHAT, text, parse_mode: 'HTML', disable_web_page_preview: true,
+  });
+  return !!(r && r.ok);
+}
+// Descubre el chat id la primera vez y lo cachea en Firebase.
+async function resolveTgChat(db) {
+  if (!TG_TOKEN || TG_CHAT) return;
+  try { const c = await db.get('mlapi/telegram/chatId'); if (c) { TG_CHAT = String(c); return; } } catch { /* */ }
+  const r = await tgApi('getUpdates', {});
+  if (r && r.ok) {
+    for (const u of (r.result || [])) {
+      const m = u.message || u.edited_message || u.channel_post || {};
+      const id = m.chat && m.chat.id;
+      if (id) {
+        TG_CHAT = String(id);
+        try { await db.set('mlapi/telegram/chatId', TG_CHAT); } catch { /* */ }
+        console.log('✓ Telegram: chat id detectado y guardado:', TG_CHAT);
+        break;
+      }
+    }
+  }
 }
 const money = (n) => '$' + Math.round(n).toLocaleString('es-AR');
 
@@ -270,17 +295,22 @@ async function wasDelivered(order, token) {
 }
 
 async function main() {
-  // TELEGRAM_TEST=1 → solo manda un mensaje de prueba y sale (para verificar
-  // que los secrets de Telegram están bien cargados). No toca nada más.
-  if (process.env.TELEGRAM_TEST) {
-    const ok = await sendTelegram('✅ <b>CYC</b>: prueba de avisos. Si ves esto, ¡los avisos ya funcionan! 🎉');
-    console.log(ok ? '✓ Mensaje de prueba enviado a Telegram.'
-      : '✗ No se pudo enviar. Revisá TELEGRAM_BOT_TOKEN y TELEGRAM_CHAT_ID (y que hayas apretado Start en el bot).');
-    return;
-  }
-
   const idToken = await fbSignIn(FIREBASE_API_KEY, FIREBASE_BOT_EMAIL, FIREBASE_BOT_PASSWORD);
   const db = makeDB(FIREBASE_DB_URL, idToken);
+
+  // Telegram: descubrir/cachear el chat id (solo hace falta el token).
+  await resolveTgChat(db);
+
+  // TELEGRAM_TEST=1 → solo manda un mensaje de prueba y sale (para verificar
+  // que el token está bien y que llega a tu celular). No toca nada más.
+  if (process.env.TELEGRAM_TEST) {
+    if (!TG_TOKEN) { console.log('✗ Falta el secret TELEGRAM_BOT_TOKEN.'); return; }
+    if (!TG_CHAT) { console.log('✗ No encontré tu chat. Mandale un "hola" al bot y reintento.'); return; }
+    const ok = await sendTelegram('✅ <b>CYC</b>: prueba de avisos. Si ves esto, ¡los avisos ya funcionan! 🎉');
+    console.log(ok ? '✓ Mensaje de prueba enviado a Telegram (chat ' + TG_CHAT + ').'
+      : '✗ No se pudo enviar. ¿Apretaste Start en el bot?');
+    return;
+  }
 
   const accounts = (await db.get('mlapi/tokens')) || {};
   const labels = Object.keys(accounts);
