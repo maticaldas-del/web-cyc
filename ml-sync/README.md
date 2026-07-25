@@ -13,7 +13,7 @@ Corre solo como **GitHub Action** (gratis) cada 15–30 min.
 | 🚚 Stock en Full + por llegar | Unidades en Full e ingresos en camino | ⏳ Fase 3 |
 | ❓ Preguntas | Ver preguntas sin responder (responder: a decidir) | ⏳ Fase 4 |
 
-> Todo escrito y sin activar. Falta conectar las cuentas (ver `MAÑANA.md`) y
+> Todo escrito y sin activar. Falta conectar las cuentas (ver `PASOS.md`) y
 > verificar neto + matches con la primera tanda de datos reales.
 
 ## Cómo funciona (arquitectura)

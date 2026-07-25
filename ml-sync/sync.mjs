@@ -13,6 +13,11 @@ const {
   FIREBASE_API_KEY, FIREBASE_DB_URL, FIREBASE_BOT_EMAIL, FIREBASE_BOT_PASSWORD,
 } = process.env;
 
+// DRY_RUN=1 → NO escribe ventas: solo muestra total/neto/comisión de cada una
+// para verificar contra ML antes de cargar nada. (Los tokens sí se guardan igual,
+// porque ML rota el refresh_token en cada renovación.)
+const DRY = !!process.env.DRY_RUN;
+
 // ── helpers de texto y fecha ──────────────────────────────────────────────
 const norm = (s) => (s || '')
   .toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '')
@@ -168,14 +173,19 @@ async function main() {
           ts: new Date(o.date_closed || o.date_created).getTime(),
           origen: 'ml-api',
         };
-        await db.set(`ventaprod/${dayKey}/${id}`, obj);
+        if (DRY) {
+          console.log(`  [${label}] #${num} ${obj.prod} x${qty} · total ${obj.total} · neto ${obj.neto}` +
+            (p ? '' : '  ⚠ SIN PRODUCTO'));
+        } else {
+          await db.set(`ventaprod/${dayKey}/${id}`, obj);
+        }
         i++;
       }
       totalNuevas++;
     }
 
-    // 4) marcar hasta dónde llegamos (para la próxima corrida)
-    await db.patch('mlapi/state/' + label, {
+    // 4) marcar hasta dónde llegamos (para la próxima corrida) — no en dry-run
+    if (!DRY) await db.patch('mlapi/state/' + label, {
       lastFrom: new Date(Date.now() - 2 * 864e5).toISOString().replace(/\.\d+Z$/, '.000-00:00'),
       lastRun: Date.now(),
     });

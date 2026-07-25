@@ -60,10 +60,16 @@ Por cada cuenta (Adriana, Luciana, Ayelen, Matias):
 
 ## Y listo
 
-Cuando estén las 4 conectadas:
+Cuando estén las 4 conectadas, lo hacemos con red de seguridad:
 
-- **Actions → ml-sync → Run workflow** → entran las ventas. Comparamos el neto
-  con lo que ves en ML y lo ajusto fino.
-- **Actions → ml-stock → Run workflow** → entra el stock. Revisamos los matches
-  dudosos (quedan en `mlapi/review`).
-- Cuando todo cuadra, activo los horarios (cron) y el robot queda andando solo.
+1. **Prueba sin escribir nada** (verificar el neto):
+   Actions → ml-sync → Run workflow con la variable `DRY_RUN=1`. Muestra
+   total y neto de cada venta **sin cargar nada**. Comparamos contra ML y
+   ajusto la cuenta del neto hasta que dé igual.
+2. **Cargar de verdad:** ml-sync sin DRY_RUN → entran las ventas.
+3. **Stock:** Actions → ml-stock → Run workflow. Revisamos los matches dudosos
+   (quedan en `mlapi/review`, no tocan el inventario).
+4. Cuando todo cuadra, activo los horarios (cron) y el robot queda solo.
+
+> ⚠️ **Importante antes de la primera carga real:** apagamos la task de Cowork
+> que carga ventas cada hora, así no se duplican las ventas. El robot la reemplaza.
