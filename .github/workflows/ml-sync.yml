@@ -1,10 +1,11 @@
 name: ml-sync
 
 # Robot que trae las ventas nuevas de ML al panel.
-# Por ahora SOLO manual (workflow_dispatch), así no corre ni molesta hasta que
-# esté todo conectado y verificado. Cuando estemos listos, descomento el cron.
+# Corre solo cada 10 min (GitHub a veces lo demora unos minutos más) + manual.
 
 on:
+  schedule:
+    - cron: '*/10 * * * *'   # cada 10 minutos (automático, sin PC)
   workflow_dispatch:
     inputs:
       dry_run:
