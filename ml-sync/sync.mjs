@@ -330,11 +330,6 @@ async function main() {
       byProd[k] = (byProd[k] || 0) + (v.qty || 0);
     }
     const top = Object.entries(byProd).sort((a, b) => b[1] - a[1])[0];
-    // saldos de Mercado Pago cargados en el arqueo (en US$)
-    const fin = (await db.get('cyc/finanzas')) || {};
-    const usd = (n2) => 'US$ ' + Math.round(n2).toLocaleString('es-AR');
-    const mpDisp = parseFloat(fin.mp_disp) || 0;
-    const mpLiq = parseFloat(fin.mp_liq) || 0;
     const fecha = new Intl.DateTimeFormat('es-AR', {
       timeZone: 'America/Argentina/Buenos_Aires', day: '2-digit', month: '2-digit',
     }).format(new Date());
@@ -342,9 +337,7 @@ async function main() {
       + `Ventas: <b>${n}</b>\n`
       + `Facturado: ${money(fact)}\n`
       + `Ganancia: <b>${money(gan)}</b>\n`
-      + (top ? `🥇 Más vendido: ${top[0]} (${top[1]})\n` : 'Sin ventas hoy\n')
-      + `\n💵 MP disponible: <b>${usd(mpDisp)}</b>\n`
-      + `⏳ A liquidar en ML: <b>${usd(mpLiq)}</b>`;
+      + (top ? `🥇 Más vendido: ${top[0]} (${top[1]})` : 'Sin ventas hoy');
     const ok = await sendTelegram(msg);
     console.log(ok ? '✓ Resumen diario enviado.' : '✗ No se pudo enviar el resumen (revisá Telegram).');
     return;
