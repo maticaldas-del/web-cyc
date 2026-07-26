@@ -576,7 +576,7 @@ async function main() {
   if (process.env.BACKFILL_RECLAMOS) {
     const days = parseInt(process.env.BACKFILL_RECLAMOS, 10) || 365;
     const fromISO = new Date(Date.now() - days * 864e5).toISOString().replace(/\.\d+Z$/, '.000-00:00');
-    const map = (await db.get('cyc/mlmap')) || {};
+    const map = (await db.get('cyc/mllinks')) || {}; // mismo mapa que usa el cargador principal
     const onlyAcc = (process.env.ACCOUNT || '').trim().toLowerCase();
     for (const label of labels) {
       if (onlyAcc && label.toLowerCase() !== onlyAcc) continue;

@@ -1881,8 +1881,42 @@ async function saveMlLink(mla){
   const entry={prodId:prodId||null,variant:variant||'',title:cur.title||'',cuenta:cur.cuenta||'',status:cur.status||'',manual:true};
   await fbSet('mllinks/'+mla,entry);
   if(!state.mllinks)state.mllinks={};state.mllinks[mla]=entry;
+  // Reasignar las ventas YA cargadas de esta publicación al producto nuevo (retroactivo).
+  const nRe=await reasignVentasMla(mla,prodId||null,variant);
   renderMlLinks();
-  toast(prodId?'Vinculación guardada ✓':'Marcada sin vincular');
+  if(nRe){renderAll();}
+  toast(prodId?('Vinculación guardada ✓'+(nRe?' · '+nRe+' venta'+(nRe>1?'s':'')+' actualizada'+(nRe>1?'s':''):'')):'Marcada sin vincular');
+}
+// Reasigna TODAS las ventas ya cargadas de una publicación (mla) al producto elegido.
+// Así, al corregir un match, las ventas viejas se actualizan solas: nombre, costo y % de
+// ganancia (todo se recalcula en vivo desde el prodId). Escribe en una sola tanda.
+async function reasignVentasMla(mla,prodId,variant){
+  if(!mla)return 0;
+  const prod=prodById(prodId);
+  const tc=curTC();
+  const newVar=variant||'';
+  const updates={};let n=0;
+  Object.entries(state.ventaprod||{}).forEach(([dk,day])=>{
+    Object.entries(day||{}).forEach(([id,v])=>{
+      if(!v||v.mla!==mla)return;
+      const yaOk=(v.prodId||null)===(prodId||null)&&(v.variante||'')===newVar&&(prod?!v.sinVincular:!!v.sinVincular);
+      if(yaOk)return;
+      v.prod=prod?prod.name:(v.title||v.prod||'');
+      v.prodId=prod?prod.id:null;
+      if(newVar)v.variante=newVar; else delete v.variante;
+      if(prod){v.sinVincular=null;if(!v.cancelada)v.costo=Math.round(costFullUSDof(prod)*tc*(v.qty||1));}
+      else v.sinVincular=true;
+      const b='ventaprod/'+dk+'/'+id+'/';
+      updates[b+'prod']=v.prod;
+      updates[b+'prodId']=v.prodId;
+      updates[b+'variante']=newVar||null;
+      updates[b+'sinVincular']=prod?null:true;
+      if(prod&&!v.cancelada)updates[b+'costo']=v.costo;
+      n++;
+    });
+  });
+  if(n){await fbUpdate(updates);rebuildReclamoStats();}
+  return n;
 }
 function guardarNombre(){
   const inp=document.getElementById('ajuste-nombre');
@@ -2055,6 +2089,8 @@ function toast(msg,type='ok'){
 
 async function fbSet(p,v){if(db)await db.ref('cyc/'+p).set(v);}
 async function fbDel(p){if(db)await db.ref('cyc/'+p).remove();}
+// Escritura en tanda (multi-path) bajo cyc/ — para actualizar muchas ventas de una sola vez.
+async function fbUpdate(updates){if(db&&updates&&Object.keys(updates).length)await db.ref('cyc').update(updates);}
 async function log(desc){await fbSet('history/h'+Date.now(),{who:whoAmI,desc,ts:Date.now()});}
 // Descarga una copia de seguridad de toda la base CYC como archivo JSON.
 async function descargarBackup(){
@@ -6704,7 +6740,7 @@ document.addEventListener('click',e=>{if(fnavOpen&&!e.target.closest('#fnav-btn'
         <span style="font-size:.75rem;color:var(--muted)">Si no ves los últimos cambios, forzá la actualización</span>
         <button class="btn" style="background:rgba(56,189,248,.12);color:var(--blue);border:1px solid rgba(56,189,248,.3)" onclick="actualizarApp()">🔄 Buscar actualizaciones</button>
       </div>
-      <div style="font-size:.66rem;color:var(--muted);margin-top:12px">CYC · Versión 3.2</div>
+      <div style="font-size:.66rem;color:var(--muted);margin-top:12px">CYC · Versión 3.3</div>
     </div>
 
     <div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:18px 20px;margin-bottom:14px">
