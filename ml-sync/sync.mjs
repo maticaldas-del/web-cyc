@@ -254,6 +254,34 @@ async function fetchOrders(sellerId, token, fromISO) {
   return out;
 }
 
+// ── traer TODAS las ventas de un rango largo, por ventanas de fecha ──────────
+// ML no deja paginar muy atrás de una sola (tope ~1000). Partimos el rango en
+// ventanas cortas (para que cada una entre bajo ese tope) y las unimos.
+async function fetchOrdersRange(sellerId, token, fromMs, toMs, winDays = 12) {
+  const out = [];
+  const WIN = winDays * 864e5;
+  const isoT = (ms) => new Date(ms).toISOString().replace(/\.\d+Z$/, '.000-00:00');
+  for (let start = fromMs; start < toMs; start += WIN) {
+    const end = Math.min(start + WIN, toMs);
+    let offset = 0;
+    for (;;) {
+      const q = new URLSearchParams({
+        seller: String(sellerId), 'order.status': 'paid', sort: 'date_asc',
+        'order.date_created.from': isoT(start), 'order.date_created.to': isoT(end),
+        offset: String(offset), limit: '50',
+      });
+      let d;
+      try { d = await mlGet('/orders/search?' + q.toString(), token); } catch { break; }
+      const res = d.results || [];
+      out.push(...res);
+      if (res.length < 50) break;
+      offset += 50;
+      if (offset > 950) break; // si una ventana trae >1000, la achicaríamos (raro con 12 días)
+    }
+  }
+  return out;
+}
+
 // ── traer las ventas CANCELADAS (para sacarlas del panel si ya estaban) ─────
 // ML no permite filtrar por fecha de cancelación, así que miramos una ventana
 // amplia (por fecha de creación) para atrapar cancelaciones de ventas viejas.
@@ -415,6 +443,19 @@ async function main() {
         totalAll = d2.paging?.total; oldestAll = d2.results?.[0]?.date_created || '—';
       } catch (e) { totalAll = 'err ' + e.message.slice(0, 40); }
       console.log(`${label}: ventas últimos 365d = ${total365} (más vieja: ${oldest})  ·  histórico total = ${totalAll} (más vieja: ${oldestAll})`);
+    }
+    return;
+  }
+  if (process.env.DUMP_COUNT) {
+    const days = parseInt(process.env.DUMP_COUNT, 10) || 365;
+    for (const label of labels) {
+      const acc = accounts[label];
+      if (!acc?.refresh_token) continue;
+      const t = await mlRefresh(ML_CLIENT_ID, ML_CLIENT_SECRET, acc.refresh_token);
+      await db.patch('mlapi/tokens/' + label, { refresh_token: t.refresh_token, updated_ts: Date.now() });
+      const orders = await fetchOrdersRange(acc.seller_id, t.access_token, Date.now() - days * 864e5, Date.now());
+      const ids = new Set(orders.map((o) => o.id));
+      console.log(`${label}: el método por fechas trajo ${orders.length} órdenes (${ids.size} únicas) de ${days} días`);
     }
     return;
   }
