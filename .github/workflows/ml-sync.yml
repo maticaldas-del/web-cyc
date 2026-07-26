@@ -56,6 +56,10 @@ on:
         description: 'Ver variantes de productos (palabra clave, ej: paulvic)'
         required: false
         default: ''
+      autolink:
+        description: 'Auto-vincular Paulvic + Victoria (con variantes): poné 1'
+        required: false
+        default: ''
       backfill_days:
         description: 'Reprocesar los últimos N días (backfill): ej 31'
         required: false
@@ -99,4 +103,5 @@ jobs:
           DUMP_BALANCE: ${{ github.event.inputs.dump_balance }}
           DUMP_MARGINS: ${{ github.event.inputs.dump_margins }}
           DUMP_VARS: ${{ github.event.inputs.dump_vars }}
+          AUTOLINK: ${{ github.event.inputs.autolink }}
         run: node ml-sync/sync.mjs

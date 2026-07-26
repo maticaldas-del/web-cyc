@@ -412,6 +412,48 @@ async function main() {
   const map = (await db.get('cyc/mllinks')) || {};
   const mapUpd = {}; // solo lo que toca el auto-match (no pisa lo que vos fijaste)
 
+  // AUTOLINK: vincular familias que son 1 producto con variantes (Paulvic,
+  // Victoria's Secret). Elige la variante buscando sus palabras en el título.
+  // DRY_RUN=1 solo muestra. Deja las que no encuentran variante para revisar.
+  if (process.env.AUTOLINK) {
+    const fams = [{ kw: 'paulvic', prod: 'Paulvic TODOS' }, { kw: 'victoria', prod: "Victoria's Secret" }];
+    const matchVar = (title, variantes) => {
+      const tw = new Set(norm(title).split(' ').filter(Boolean));
+      let best = '', bestScore = 0;
+      for (const v of (variantes || [])) {
+        const vw = norm(v).split(' ').filter(Boolean);
+        if (!vw.length) continue;
+        let sc = 0; for (const w of vw) if (tw.has(w)) sc++;
+        if (sc > 0 && (sc > bestScore || (sc === bestScore && norm(v).length > norm(best).length))) { bestScore = sc; best = v; }
+      }
+      return best;
+    };
+    const upd = {};
+    for (const f of fams) {
+      const p = products.find((pp) => norm(pp.name) === norm(f.prod));
+      if (!p) { console.log('✗ No encontré el producto', f.prod); continue; }
+      let n = 0, nv = 0;
+      console.log(`\n═══ ${f.prod} (${(p.variantes || []).length} variantes) ═══`);
+      for (const [mla, e] of Object.entries(map)) {
+        if (!e || e.ignored || e.prodId) continue;
+        if (!norm(e.title).includes(norm(f.kw))) continue;
+        const variant = matchVar(e.title, p.variantes);
+        const entry = { prodId: p.id, variant, title: e.title || '', cuenta: e.cuenta || '', status: e.status || '', sold: e.sold || 0, manual: true };
+        upd[mla] = entry; map[mla] = entry;
+        n++; if (!variant) nv++;
+        console.log(`  ${variant ? '→ ' + variant : '⚠️ SIN VARIANTE'}  ·  ${e.title}`);
+      }
+      console.log(`  Total: ${n} vinculadas · ${nv} sin variante (revisar)`);
+    }
+    if (!process.env.DRY_RUN && Object.keys(upd).length) {
+      await db.patch('cyc/mllinks', upd);
+      console.log(`\n✓ Guardado en el panel: ${Object.keys(upd).length} publicaciones.`);
+    } else {
+      console.log('\n(DRY_RUN: no guardé nada)');
+    }
+    return;
+  }
+
   // ventas ya cargadas a mano / por cowork (para no duplicarlas). Las nuestras
   // (origen ml-api) usan id determinístico, así que reescribirlas es inofensivo.
   const ventaprod = (await db.get('cyc/ventaprod')) || {};
