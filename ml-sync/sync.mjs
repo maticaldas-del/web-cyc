@@ -434,6 +434,37 @@ async function main() {
       console.log('   x' + arr.length + ' [' + arr.map((v) => v.origen || 'viejo').join(',') + '] ' + arr[0].prod + ' #' + k.split('|')[0]));
     return;
   }
+  // DUMP_SINVIN: diagnostica por qué hay ventas "sin producto" — agrupa por publicación (mla)
+  // y dice si esa publicación está en mllinks, si tiene producto asignado y si el producto existe.
+  if (process.env.DUMP_SINVIN) {
+    const vp = (await db.get('cyc/ventaprod')) || {};
+    const map = (await db.get('cyc/mllinks')) || {};
+    const byMla = {};
+    for (const day of Object.values(vp)) for (const v of Object.values(day || {})) {
+      if (!v || !v.sinVincular) continue;
+      const mla = v.mla || '(sin mla)';
+      if (!byMla[mla]) byMla[mla] = { n: 0, title: v.prod || '' };
+      byMla[mla].n += (v.qty || 0);
+    }
+    const R = { noMla: 0, noLink: 0, ignored: 0, noProdId: 0, prodMissing: 0, shouldFix: 0 };
+    const rows = Object.entries(byMla).sort((a, b) => b[1].n - a[1].n);
+    console.log(`Publicaciones con ventas SIN PRODUCTO: ${rows.length}\n`);
+    for (const [mla, info] of rows.slice(0, 60)) {
+      let reason;
+      if (mla === '(sin mla)') { reason = 'sin mla'; R.noMla += info.n; }
+      else {
+        let e = map[mla]; if (typeof e === 'string') e = { prodId: e };
+        if (!e) { reason = 'NO está en mllinks'; R.noLink += info.n; }
+        else if (e.ignored) { reason = 'marcada IGNORAR'; R.ignored += info.n; }
+        else if (!e.prodId) { reason = 'vinculada SIN producto (prodId vacío)'; R.noProdId += info.n; }
+        else if (!products.find((p) => p.id === e.prodId)) { reason = 'producto NO existe en catálogo'; R.prodMissing += info.n; }
+        else { reason = 'debería arreglarse solo'; R.shouldFix += info.n; }
+      }
+      console.log(`  ${String(info.n).padStart(4)}u · ${mla} · ${reason} · ${(info.title || '').slice(0, 42)}`);
+    }
+    console.log(`\nResumen (unidades): sin-mla ${R.noMla} · no-en-mllinks ${R.noLink} · ignorada ${R.ignored} · vinculada-SIN-producto ${R.noProdId} · producto-faltante ${R.prodMissing} · deberían-arreglarse ${R.shouldFix}`);
+    return;
+  }
   // DUMP_COSTS: mide, sobre las ventas reales, cuánto te queda (neto) según la banda de
   // precio — para saber el rango real de lo que "te sale" vender en Full. Solo lee ventaprod.
   if (process.env.DUMP_COSTS) {
