@@ -1151,18 +1151,25 @@ async function main() {
     // acepta uno o varios números separados por coma (para comparar ventas).
     const oids = String(process.env.DUMP_ORDER).split(',').map((s) => s.trim()).filter(Boolean);
     const vp = (await db.get('cyc/ventaprod')) || {};
-    for (const oid of oids) {
-      // 1) qué quedó guardado en el panel
+    for (const oidIn of oids) {
+      // 1) qué quedó guardado en el panel. Además, sacamos el order.id interno
+      // (guardado como id='v'+order.id+'_'+idx / saleId='s'+order.id) para poder
+      // pedir la orden a ML aunque nos hayan pasado el nº de venta (pack_id).
+      let orderId = oidIn;
       for (const day of Object.values(vp)) {
-        for (const v of Object.values(day || {})) {
-          if (v && String(v.numVenta) === oid) {
+        for (const [k, v] of Object.entries(day || {})) {
+          if (v && String(v.numVenta) === oidIn) {
             console.log('PANEL:', JSON.stringify({
               prod: v.prod, total: v.total, neto: v.neto, costo: v.costo,
-              origen: v.origen, cancelada: v.cancelada || false,
+              origen: v.origen, cancelada: v.cancelada || false, tipo: v.tipoCancelacion || '',
             }));
+            const m = String(v.saleId || v.id || k).match(/(\d{6,})/);
+            if (m) orderId = m[1];
           }
         }
       }
+      const oid = orderId;
+      if (oid !== oidIn) console.log(`  (nº venta ${oidIn} → order.id ${oid})`);
       // 2) qué dice ML/MP para esa orden
       for (const label of labels) {
         const acc = accounts[label];
