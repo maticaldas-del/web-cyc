@@ -324,6 +324,21 @@ async function wasDelivered(order, token) {
   } catch { return false; }
 }
 
+// ¿la cancelación fue una DEVOLUCIÓN (el comprador devolvió el producto y volvió
+// al stock)? ML crea un reclamo/claim type "returns" en ese caso. En Full la
+// devolución vuelve al depósito y se re-publica ("Pusimos los productos de nuevo
+// a la venta") → NO es pérdida, es devolución. Distinto de una pérdida real,
+// donde el comprador recibió, se le devolvió la plata y NO volvió el producto.
+async function wasReturned(order, token) {
+  const oid = order.id;
+  if (!oid) return false;
+  try {
+    const cl = await mlGet('/post-purchase/v1/claims/search?resource=order&resource_id=' + oid, token);
+    const arr = cl.data || cl.results || [];
+    return arr.some((c) => String(c.type || '').toLowerCase() === 'returns');
+  } catch { return false; }
+}
+
 async function main() {
   const idToken = await fbSignIn(FIREBASE_API_KEY, FIREBASE_BOT_EMAIL, FIREBASE_BOT_PASSWORD);
   // reauth: en corridas largas el idToken caduca a la 1h → lo renovamos solo.
@@ -657,10 +672,12 @@ async function main() {
       const t = await mlRefresh(ML_CLIENT_ID, ML_CLIENT_SECRET, acc.refresh_token);
       await db.patch('mlapi/tokens/' + label, { refresh_token: t.refresh_token, updated_ts: Date.now() });
       const cancelled = await fetchCancelled(acc.seller_id, t.access_token, fromISO);
-      let nRecl = 0, nSkip = 0;
+      let nRecl = 0, nDev = 0, nSkip = 0;
       for (const o of cancelled) {
-        // solo pérdidas reales: la recibió el comprador y se le devolvió (reclamo).
+        // la recibió el comprador y se le devolvió el dinero.
         if (!(await wasDelivered(o, t.access_token))) { nSkip++; continue; }
+        // ¿volvió el producto al stock (devolución) o se perdió (reclamo real)?
+        const tipo = (await wasReturned(o, t.access_token)) ? 'devolucion' : 'reclamo';
         const num = String(o.pack_id || o.id);   // número que muestra ML (pack_id)
         const dayKey = dayKeyFromISO(o.date_closed || o.date_created);
         const saleId = 's' + o.id;
@@ -679,15 +696,15 @@ async function main() {
             cuenta: label, qty, total: 0, neto: 0, costo: 0,
             numVenta: num, mla: mla || '',
             ts: new Date(o.date_closed || o.date_created).getTime(),
-            origen: 'ml-api', cancelada: true, tipoCancelacion: 'reclamo',
+            origen: 'ml-api', cancelada: true, tipoCancelacion: tipo,
           };
           if (!p) obj.sinVincular = true;
-          if (DRY) console.log(`  [${label}] RECLAMO #${num} ${obj.prod} x${qty}`);
+          if (DRY) console.log(`  [${label}] ${tipo.toUpperCase()} #${num} ${obj.prod} x${qty}`);
           else await db.set(`cyc/ventaprod/${dayKey}/${id}`, obj);
-          nRecl++;
+          if (tipo === 'reclamo') nRecl++; else nDev++;
         }
       }
-      console.log(`${label}: reclamos con pérdida cargados ${nRecl} · canceladas sin pérdida omitidas ${nSkip}`);
+      console.log(`${label}: reclamos con pérdida ${nRecl} · devoluciones (volvió al stock) ${nDev} · sin entregar omitidas ${nSkip}`);
     }
     return;
   }
@@ -1445,7 +1462,10 @@ async function main() {
       if (!hits) continue;
       const pend = hits.filter((h) => !h.cancelada); // ya marcadas/clasificadas → no tocar
       if (!pend.length) continue;
-      const tipo = (await wasDelivered(o, t.access_token)) ? 'reclamo' : 'cancelada';
+      // devolución (volvió al stock) → no es pérdida; entregada sin devolver → reclamo;
+      // ni entregada → cancelación previa al envío.
+      const tipo = (await wasReturned(o, t.access_token)) ? 'devolucion'
+        : ((await wasDelivered(o, t.access_token)) ? 'reclamo' : 'cancelada');
       for (const h of pend) {
         if (!DRY) await db.patch(`cyc/ventaprod/${h.dayKey}/${h.id}`, {
           cancelada: true, tipoCancelacion: tipo,
