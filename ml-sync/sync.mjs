@@ -384,14 +384,30 @@ async function main() {
     const kw = String(process.env.DUMP_PRODNETO || '').toLowerCase();
     const vp = (await db.get('cyc/ventaprod')) || {};
     const rows = [];
+    const reclamos = [];
     for (const [dk, day] of Object.entries(vp)) {
       for (const v of Object.values(day || {})) {
-        if (!v || v.cancelada) continue;
+        if (!v) continue;
         if (!(v.prod || '').toLowerCase().includes(kw)) continue;
+        if (v.cancelada) {
+          const tc = v.tipoCancelacion || '';
+          reclamos.push({ dk, num: v.numVenta, prod: v.prod, cuenta: v.cuenta, qty: v.qty || 1, tipo: tc });
+          continue;
+        }
         rows.push({ dk, num: v.numVenta, prod: v.prod, total: v.total || 0, neto: v.neto || 0, cuenta: v.cuenta, qty: v.qty || 1 });
       }
     }
     rows.sort((a, b) => (a.dk < b.dk ? 1 : -1));
+    reclamos.sort((a, b) => (a.dk < b.dk ? 1 : -1));
+    const esRec = (t) => t === 'reclamo' || t === 'perdida';
+    const recL = reclamos.filter((r) => esRec(r.tipo));   // reclamo/perdida = suman al % devolución
+    const recC = reclamos.filter((r) => !esRec(r.tipo));  // cancelada/devolución = vuelven al stock
+    console.log(`\n=== RECLAMOS/CANCELADAS de "${kw}" ===`);
+    console.log(`Reclamos (producto perdido, cuentan al % devolución): ${recL.length}`);
+    recL.forEach((r) => console.log(`  ⚠️  ${r.dk.replace(/_/g, '-')} · N° ${r.num || '(sin nº)'} · [${r.cuenta}] x${r.qty} · tipo=${r.tipo}`));
+    console.log(`Canceladas/devueltas (volvieron al stock, NO cuentan reclamo): ${recC.length}`);
+    recC.forEach((r) => console.log(`  ↩︎  ${r.dk.replace(/_/g, '-')} · N° ${r.num || '(sin nº)'} · [${r.cuenta}] x${r.qty} · tipo=${r.tipo || '(sin tipo)'}`));
+    console.log('');
     const withT = rows.filter((r) => r.total > 0);
     console.log(`Ventas de "${kw}": ${rows.length} (con total ${withT.length})\n`);
     rows.slice(0, 25).forEach((r) => {
