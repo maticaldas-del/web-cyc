@@ -1001,7 +1001,7 @@ footer{margin-top:32px;padding-top:14px;border-top:1px solid var(--border);font-
       <button class="vbtn active" id="met-field-total"    onclick="setMetField('total',this)"    title="Precio total de venta (lo que pagó el comprador)">💵 Total</button>
       <button class="vbtn"        id="met-field-neto"     onclick="setMetField('neto',this)"     title="Neto que queda después de comisiones ML">💚 Neto</button>
       <button class="vbtn"        id="met-field-ganancia" onclick="setMetField('ganancia',this)" title="Ganancia = Neto − Costo">💰 Ganancia</button>
-      <button class="vbtn"        id="met-field-gananciaCYC" onclick="setMetField('gananciaCYC',this)" title="Ganancia de CYC = Ganancia − Retiros 15%">🏢 Ganancia CYC</button>
+      <button class="vbtn"        id="met-field-gananciaCYC" onclick="setMetField('gananciaCYC',this)" title="Ganancia de CYC = Ganancia − Retiros 15% − Gastos del mes (los meses sin gastos cargados usan $800.000 estimado)">🏢 Ganancia CYC</button>
       <button class="vbtn"        id="met-field-retiros" onclick="setMetField('retiros',this)" title="Retiros de dueños = 15% del neto (Mati + Viejo)">💸 Retiros 15%</button>
     </div>
     <div id="ms-ctrl-dia" style="display:none;align-items:center;gap:8px">
@@ -1592,6 +1592,7 @@ function startApp(){
     const _extEntries=[];
     Object.values(_newVP).forEach(day=>Object.values(day||{}).forEach(e=>{if(e&&e.id){_allIds.add(e.id);if(_knownVentaprodIds!==null&&!_knownVentaprodIds.has(e.id))_extEntries.push(e);}}));
     _knownVentaprodIds=_allIds;
+    _gastoMesMemo={};_netoMesMemo={};   // datos cambiaron → recalcular gastos/neto por mes
     rebuildReclamoStats();
     if(_extEntries.length)_applyStockEntries(_extEntries);
     document.getElementById('loading').style.display='none';
@@ -5398,6 +5399,27 @@ const MET_SCOPE_BTNS=['ms-7d','ms-15d','ms-30d','ms-60d','ms-dia','ms-mes','ms-a
 
 // Retorna el valor de un campo (total|neto) para una clave de día y una cuenta,
 // usando ventaprod si tiene datos; si no, cae a state.metricas (solo para 'total').
+// Gastos operativos de CYC por mes. Los meses viejos (antes de empezar a cargarlos) no tienen
+// gastos → se usa un promedio fijo estimado, así la "Ganancia CYC" no queda inflada de más.
+const GASTO_MES_DEFAULT=800000;
+let _gastoMesMemo={},_netoMesMemo={};
+function _gastosMes(ym){
+  if(ym in _gastoMesMemo)return _gastoMesMemo[ym];
+  let g=0;
+  Object.values(state.compras||{}).forEach(x=>{if(getCompraTipo(x)==='gasto'&&(x.dayKey||'').startsWith(ym))g+=(x.monto||0);});
+  const val=g>0?g:GASTO_MES_DEFAULT;   // si ese mes no tiene gastos cargados, usar el estimado
+  _gastoMesMemo[ym]=val;return val;
+}
+// Neto del mes por cuenta y total — para repartir los gastos proporcional al neto de cada cuenta.
+function _netoMesData(ym){
+  if(ym in _netoMesMemo)return _netoMesMemo[ym];
+  const per={};MET_ACCTS.forEach(a=>per[a]=0);let tot=0;
+  Object.keys(state.ventaprod||{}).filter(k=>k.startsWith(ym)).forEach(k=>Object.values(state.ventaprod[k]||{}).forEach(v=>{
+    if(!v||v.cancelada)return;const a=(v.cuenta||'').toLowerCase();
+    if(per[a]!=null){per[a]+=(v.neto||0);tot+=(v.neto||0);}
+  }));
+  const d={per,tot};_netoMesMemo[ym]=d;return d;
+}
 function metGetValDay(key,acct,field){
   const vpDay=Object.values(state.ventaprod[key]||{}).filter(v=>!v.cancelada); // canceladas/reclamos no cuentan
   const computed=(field==='neto'||field==='ganancia'||field==='retiros'||field==='gananciaCYC');
@@ -5410,7 +5432,14 @@ function metGetValDay(key,acct,field){
     if(field==='ganancia')return neto-costo;
     const retiro=neto*0.15;                         // 15% del neto = retiros de dueños
     if(field==='retiros')return retiro;
-    if(field==='gananciaCYC')return (neto-costo)-retiro; // ganancia − retiros = lo que queda para CYC
+    if(field==='gananciaCYC'){
+      // ganancia − retiros − parte de los gastos del mes (repartidos por neto de cada cuenta) = lo que queda para CYC
+      const base=(neto-costo)-retiro;
+      const ym=key.substring(0,7);
+      const md=_netoMesData(ym);
+      const share=md.tot>0?(neto/md.tot):0;
+      return base-_gastosMes(ym)*share;
+    }
     return 0;
   }
   return parseFloat(state.metricas[key]?.[acct])||0;
@@ -6009,7 +6038,7 @@ function _puntGananciaMes(ym){
   let neto=0,costo=0;
   keys.forEach(k=>Object.values(state.ventaprod[k]||{}).forEach(v=>{neto+=(v.neto||0);costo+=efectivoCostoVP(v);}));
   const retiro=Math.round(neto*puntCfg(ym).retiroFrac);
-  const gastos=Object.values(state.compras||{}).filter(x=>getCompraTipo(x)==='gasto'&&(x.dayKey||'').startsWith(ym)).reduce((s,x)=>s+(x.monto||0),0);
+  const gastos=_gastosMes(ym); // gastos cargados del mes, o el estimado si ese mes no tiene
   return {neto,costo,retiro,gastos,ganancia:(neto-retiro)-costo-gastos};
 }
 function _puntMesesConDatos(){const s=new Set();Object.keys(state.ventaprod||{}).forEach(k=>s.add(k.substring(0,7)));return [...s].sort();}
@@ -6757,7 +6786,7 @@ document.addEventListener('click',e=>{if(fnavOpen&&!e.target.closest('#fnav-btn'
         <span style="font-size:.75rem;color:var(--muted)">Si no ves los últimos cambios, forzá la actualización</span>
         <button class="btn" style="background:rgba(56,189,248,.12);color:var(--blue);border:1px solid rgba(56,189,248,.3)" onclick="actualizarApp()">🔄 Buscar actualizaciones</button>
       </div>
-      <div style="font-size:.66rem;color:var(--muted);margin-top:12px">CYC · Versión 3.4</div>
+      <div style="font-size:.66rem;color:var(--muted);margin-top:12px">CYC · Versión 3.5</div>
     </div>
 
     <div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:18px 20px;margin-bottom:14px">
