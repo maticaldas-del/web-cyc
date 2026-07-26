@@ -1174,6 +1174,17 @@ async function main() {
         if (!full || !full.id) continue;
         console.log(`\nORDEN ${oid} · cuenta ${label} · status ${full.status}`);
         console.log('  order.id:', full.id, '· pack_id:', full.pack_id, '· shipping.id:', full.shipping?.id);
+        console.log('  tags:', JSON.stringify(full.tags || []));
+        console.log('  status_detail:', JSON.stringify(full.status_detail), '· cancel_detail:', JSON.stringify(full.cancel_detail));
+        console.log('  mediations:', JSON.stringify(full.mediations || []));
+        // claims/returns: ¿la devolución volvió al stock (restock) o se perdió?
+        try {
+          const cl = await mlGet('/post-purchase/v1/claims/search?resource=order&resource_id=' + full.id, t.access_token);
+          console.log('  CLAIMS:', JSON.stringify((cl.data || cl.results || []).map((c) => ({
+            id: c.id, type: c.type, status: c.status, stage: c.stage,
+            reason: c.reason_id, resolution: c.resolution && (c.resolution.reason || c.resolution.closed_by || c.resolution),
+          }))));
+        } catch (e) { console.log('  CLAIMS error', String(e.message || '').slice(0, 60)); }
         console.log('  total_amount:', full.total_amount, 'paid_amount:', full.paid_amount);
         console.log('  items:', JSON.stringify((full.order_items || []).map((it) => ({
           t: (it.item?.title || '').slice(0, 30), unit: it.unit_price, qty: it.quantity, fee: it.sale_fee,
