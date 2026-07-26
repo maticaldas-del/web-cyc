@@ -813,52 +813,80 @@ async function main() {
   // DUMP_ORDER: investigar UNA venta puntual — qué guardó el panel vs qué
   // devuelve el pago de ML (para diagnosticar netos raros, ej. ventas Full).
   if (process.env.DUMP_ORDER) {
-    const oid = String(process.env.DUMP_ORDER).trim();
-    // 1) qué quedó guardado en el panel
+    // acepta uno o varios números separados por coma (para comparar ventas).
+    const oids = String(process.env.DUMP_ORDER).split(',').map((s) => s.trim()).filter(Boolean);
     const vp = (await db.get('cyc/ventaprod')) || {};
-    for (const day of Object.values(vp)) {
-      for (const v of Object.values(day || {})) {
-        if (v && String(v.numVenta) === oid) {
-          console.log('PANEL:', JSON.stringify({
-            prod: v.prod, total: v.total, neto: v.neto, costo: v.costo,
-            origen: v.origen, cancelada: v.cancelada || false,
-          }));
+    for (const oid of oids) {
+      // 1) qué quedó guardado en el panel
+      for (const day of Object.values(vp)) {
+        for (const v of Object.values(day || {})) {
+          if (v && String(v.numVenta) === oid) {
+            console.log('PANEL:', JSON.stringify({
+              prod: v.prod, total: v.total, neto: v.neto, costo: v.costo,
+              origen: v.origen, cancelada: v.cancelada || false,
+            }));
+          }
         }
       }
-    }
-    // 2) qué dice ML/MP para esa orden
-    for (const label of labels) {
-      const acc = accounts[label];
-      if (!acc?.refresh_token) continue;
-      const t = await mlRefresh(ML_CLIENT_ID, ML_CLIENT_SECRET, acc.refresh_token);
-      await db.patch('mlapi/tokens/' + label, { refresh_token: t.refresh_token, updated_ts: Date.now() });
-      let full;
-      try { full = await mlGet('/orders/' + oid, t.access_token); } catch { continue; }
-      if (!full || !full.id) continue;
-      console.log(`\nORDEN ${oid} · cuenta ${label} · status ${full.status}`);
-      console.log('  total_amount:', full.total_amount, 'paid_amount:', full.paid_amount);
-      console.log('  items:', JSON.stringify((full.order_items || []).map((it) => ({
-        t: (it.item?.title || '').slice(0, 30), unit: it.unit_price, qty: it.quantity, fee: it.sale_fee,
-      }))));
-      let net = 0;
-      for (const p of (full.payments || [])) {
-        let b = null;
-        try {
-          const r = await fetch('https://api.mercadopago.com/v1/payments/' + p.id, { headers: { Authorization: 'Bearer ' + t.access_token } });
-          b = await r.json();
-        } catch { /* */ }
-        console.log('  PAGO', p.id, JSON.stringify({
-          status: b?.status,
-          transaction: b?.transaction_amount,
-          net_received: b?.transaction_details?.net_received_amount,
-          shipping_cost: p.shipping_cost,
-          charges: (b?.charges_details || []).map((c) => `${c.name}:${c.amounts?.original}`),
-        }));
-        const nr = b?.transaction_details?.net_received_amount;
-        if (typeof nr === 'number') net += nr;
+      // 2) qué dice ML/MP para esa orden
+      for (const label of labels) {
+        const acc = accounts[label];
+        if (!acc?.refresh_token) continue;
+        const t = await mlRefresh(ML_CLIENT_ID, ML_CLIENT_SECRET, acc.refresh_token);
+        await db.patch('mlapi/tokens/' + label, { refresh_token: t.refresh_token, updated_ts: Date.now() });
+        let full;
+        try { full = await mlGet('/orders/' + oid, t.access_token); } catch { continue; }
+        if (!full || !full.id) continue;
+        console.log(`\nORDEN ${oid} · cuenta ${label} · status ${full.status}`);
+        console.log('  total_amount:', full.total_amount, 'paid_amount:', full.paid_amount);
+        console.log('  items:', JSON.stringify((full.order_items || []).map((it) => ({
+          t: (it.item?.title || '').slice(0, 30), unit: it.unit_price, qty: it.quantity, fee: it.sale_fee,
+        }))));
+        let net = 0;
+        for (const p of (full.payments || [])) {
+          let b = null;
+          try {
+            const r = await fetch('https://api.mercadopago.com/v1/payments/' + p.id, { headers: { Authorization: 'Bearer ' + t.access_token } });
+            b = await r.json();
+          } catch { /* */ }
+          console.log('  PAGO', p.id, JSON.stringify({
+            status: b?.status,
+            transaction: b?.transaction_amount,
+            net_received: b?.transaction_details?.net_received_amount,
+            shipping_cost: p.shipping_cost,
+            charges: (b?.charges_details || []).map((c) => `${c.name}:${c.amounts?.original}`),
+          }));
+          const nr = b?.transaction_details?.net_received_amount;
+          if (typeof nr === 'number') net += nr;
+        }
+        // 3) detalle del ENVÍO: destino + costo de lista + descuento de reputación + lo que pagás.
+        const shipId = full.shipping?.id;
+        if (shipId) {
+          try {
+            const s = await mlGet('/shipments/' + shipId, t.access_token);
+            const addr = s.receiver_address || {};
+            const so = s.shipping_option || {};
+            console.log('  ENVÍO', shipId, JSON.stringify({
+              destino: (addr.state?.name || '') + ' / ' + (addr.city?.name || ''),
+              logistica: s.logistic_type,
+              list_cost: so.list_cost,   // costo "de lista" del envío
+              cost: so.cost,             // lo que efectivamente entra al cálculo
+            }));
+            try {
+              const sc = await mlGet('/shipments/' + shipId + '/costs', t.access_token);
+              const snd = (sc.senders || [])[0] || {};
+              console.log('  ENVÍO/costos', JSON.stringify({
+                bruto: sc.gross_amount,
+                vendedor_paga: snd.cost,
+                compensacion: snd.compensation,
+                descuentos: (snd.discounts || []).map((d) => `${d.type}:${d.promoted_amount}`),
+              }));
+            } catch (e) { console.log('  ENVÍO/costos error', String(e.message || '').slice(0, 50)); }
+          } catch (e) { console.log('  ENVÍO error', String(e.message || '').slice(0, 50)); }
+        }
+        console.log('  → neto que usa el robot (suma net_received):', net);
+        break;
       }
-      console.log('  → neto que usa el robot (suma net_received):', net);
-      break;
     }
     return;
   }
