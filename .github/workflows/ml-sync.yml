@@ -4,10 +4,8 @@ name: ml-sync
 # Corre solo cada 10 min (GitHub a veces lo demora unos minutos más) + manual.
 
 on:
-  # schedule DESACTIVADO temporalmente durante el rebuild del historial
-  # (para que no choque con el backfill y no rompa los tokens de ML).
-  # schedule:
-  #   - cron: '*/10 * * * *'   # cada 10 minutos (automático, sin PC)
+  schedule:
+    - cron: '*/10 * * * *'   # cada 10 minutos (automático, sin PC)
   workflow_dispatch:
     inputs:
       dry_run:
