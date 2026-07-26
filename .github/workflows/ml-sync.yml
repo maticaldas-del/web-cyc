@@ -100,6 +100,10 @@ on:
         description: 'Estimar gestión de Full por producto (días, ej 90)'
         required: false
         default: ''
+      backfill_numventa:
+        description: 'Pasar el nº de venta al que muestra ML/pack_id (días, ej 365)'
+        required: false
+        default: ''
   # schedule:
   #   - cron: '*/20 * * * *'   # cada 20 min (se activa al final)
 
@@ -140,6 +144,7 @@ jobs:
           DUMP_COSTS: ${{ github.event.inputs.dump_costs }}
           BACKFILL_RECLAMOS: ${{ github.event.inputs.backfill_reclamos }}
           FILL_GESTFULL: ${{ github.event.inputs.fill_gestfull }}
+          BACKFILL_NUMVENTA: ${{ github.event.inputs.backfill_numventa }}
           BACKUP_VP: ${{ github.event.inputs.backup_vp }}
           PURGE_VP: ${{ github.event.inputs.purge_vp }}
           RESTORE_VP: ${{ github.event.inputs.restore_vp }}

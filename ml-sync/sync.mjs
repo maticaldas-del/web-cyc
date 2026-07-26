@@ -614,7 +614,7 @@ async function main() {
       for (const o of cancelled) {
         // solo pérdidas reales: la recibió el comprador y se le devolvió (reclamo).
         if (!(await wasDelivered(o, t.access_token))) { nSkip++; continue; }
-        const num = String(o.id);
+        const num = String(o.pack_id || o.id);   // número que muestra ML (pack_id)
         const dayKey = dayKeyFromISO(o.date_closed || o.date_created);
         const saleId = 's' + o.id;
         let i = 0;
@@ -699,6 +699,44 @@ async function main() {
       nProd++;
     }
     console.log(`Gestión Full ${DRY ? 'estimada (DRY)' : 'guardada'} para ${nProd} productos (ventas ≥ $${MIN_GROSS}, ${days} días).`);
+    return;
+  }
+  // BACKFILL_NUMVENTA: pasa el número de venta guardado (order.id) al que muestra ML en la web
+  // (pack_id). El pack_id viene en la búsqueda de órdenes, así que no hace falta pedir orden por
+  // orden. Actualiza las ventas ya cargadas para que el número coincida con ML.
+  if (process.env.BACKFILL_NUMVENTA) {
+    const days = parseInt(process.env.BACKFILL_NUMVENTA, 10) || 365;
+    const onlyAcc = (process.env.ACCOUNT || '').trim().toLowerCase();
+    const fromISO = new Date(Date.now() - days * 864e5).toISOString().replace(/\.\d+Z$/, '.000-00:00');
+    const packMap = {}; // order.id -> pack_id (solo donde difieren)
+    for (const label of labels) {
+      if (onlyAcc && label.toLowerCase() !== onlyAcc) continue;
+      const acc = accounts[label];
+      if (!acc?.refresh_token) continue;
+      const t = await mlRefresh(ML_CLIENT_ID, ML_CLIENT_SECRET, acc.refresh_token);
+      await db.patch('mlapi/tokens/' + label, { refresh_token: t.refresh_token, updated_ts: Date.now() });
+      const paid = await fetchOrdersRange(acc.seller_id, t.access_token, Date.now() - days * 864e5, Date.now());
+      for (const o of paid) if (o.pack_id && String(o.pack_id) !== String(o.id)) packMap[String(o.id)] = String(o.pack_id);
+      const canc = await fetchCancelled(acc.seller_id, t.access_token, fromISO);
+      for (const o of canc) if (o.pack_id && String(o.pack_id) !== String(o.id)) packMap[String(o.id)] = String(o.pack_id);
+      console.log(`  ${label}: ${paid.length} pagadas + ${canc.length} canceladas revisadas`);
+    }
+    const vp = (await db.get('cyc/ventaprod')) || {};
+    const updates = {}; let n = 0;
+    for (const [dk, day] of Object.entries(vp)) {
+      for (const [id, v] of Object.entries(day || {})) {
+        if (!v) continue;
+        const oid = String(v.saleId || '').replace(/^s/, '') || String(id).replace(/^v/, '').replace(/_\d+$/, '');
+        const pack = packMap[oid];
+        if (pack && String(v.numVenta) !== pack) { updates[`${dk}/${id}/numVenta`] = pack; n++; }
+      }
+    }
+    const keys = Object.keys(updates);
+    for (let i = 0; i < keys.length; i += 2000) {
+      const chunk = {}; keys.slice(i, i + 2000).forEach((k) => chunk[k] = updates[k]);
+      if (!DRY) await db.patch('ventaprod', chunk);
+    }
+    console.log(`Número de venta → pack_id: ${n} ventas actualizadas${DRY ? ' (DRY)' : ''} · ${Object.keys(packMap).length} órdenes con pack distinto`);
     return;
   }
   // BACKUP_VP: copia de seguridad de todas las ventas actuales (por si hay que volver atrás)
@@ -1138,7 +1176,8 @@ async function main() {
 
     // 3) transformar cada venta → entradas ventaprod (solo las que enganchan)
     for (const o of orders) {
-      const num = String(o.id);
+      const num = String(o.id);                       // ID interno de la orden (para dedup/cancelaciones)
+      const numDisplay = String(o.pack_id || o.id);   // número que muestra ML en la web (el "Venta #")
       if (seenManual.has(num)) continue; // ya cargada a mano/cowork
       const dayKey = dayKeyFromISO(o.date_closed || o.date_created);
       const saleId = 's' + o.id;
@@ -1185,7 +1224,7 @@ async function main() {
           total: Math.round(itemGross),
           neto,
           costo, costBaseUSD, tcSale: tc, shipUSD,
-          numVenta: num, mla: mla || '',
+          numVenta: numDisplay, mla: mla || '',
           ts: new Date(o.date_closed || o.date_created).getTime(),
           origen: 'ml-api',
         };
