@@ -400,10 +400,12 @@ async function main() {
     const vp = (await db.get('cyc/ventaprod')) || {};
     const rows = [];
     const reclamos = [];
+    const mlas = {}; // mla → cantidad de ventas (para saber qué publicaciones son)
     for (const [dk, day] of Object.entries(vp)) {
       for (const v of Object.values(day || {})) {
         if (!v) continue;
         if (!(v.prod || '').toLowerCase().includes(kw)) continue;
+        if (v.mla) { mlas[v.mla] = (mlas[v.mla] || 0) + 1; }
         if (v.cancelada) {
           const tc = v.tipoCancelacion || '';
           reclamos.push({ dk, num: v.numVenta, prod: v.prod, cuenta: v.cuenta, qty: v.qty || 1, tipo: tc });
@@ -422,6 +424,18 @@ async function main() {
     recL.forEach((r) => console.log(`  ⚠️  ${r.dk.replace(/_/g, '-')} · N° ${r.num || '(sin nº)'} · [${r.cuenta}] x${r.qty} · tipo=${r.tipo}`));
     console.log(`Canceladas/devueltas (volvieron al stock, NO cuentan reclamo): ${recC.length}`);
     recC.forEach((r) => console.log(`  ↩︎  ${r.dk.replace(/_/g, '-')} · N° ${r.num || '(sin nº)'} · [${r.cuenta}] x${r.qty} · tipo=${r.tipo || '(sin tipo)'}`));
+    console.log('');
+    // Publicaciones (MLA) de este producto: título real en ML + a qué está vinculada + si está oculta.
+    // Sirve para encontrarla en Vinculaciones (se busca por el TÍTULO, no por el nombre del producto).
+    const mlmap = (await db.get('cyc/mllinks')) || {};
+    const prodById2 = {}; for (const p of products) prodById2[p.id] = p.name;
+    console.log(`Publicaciones (MLA) con ventas de "${kw}": ${Object.keys(mlas).length}`);
+    Object.entries(mlas).sort((a, b) => b[1] - a[1]).forEach(([mla, n]) => {
+      const e = mlmap[mla] || {};
+      const estado = e.ignored ? 'OCULTA' : (e.prodId ? 'vinculada→' + (prodById2[e.prodId] || e.prodId) : 'SIN vincular');
+      console.log(`  · ${mla} · ${n} ventas · ${estado}`);
+      console.log(`      título ML: "${e.title || '(sin título en mllinks)'}"`);
+    });
     console.log('');
     const withT = rows.filter((r) => r.total > 0);
     console.log(`Ventas de "${kw}": ${rows.length} (con total ${withT.length})\n`);
