@@ -378,6 +378,31 @@ async function main() {
 
   const products = Object.values((await db.get('cyc/products')) || {});
   const index = buildProductIndex(products);
+  // DUMP_PRODNETO: lista el neto real (guardado) de las ventas de un producto (palabra clave),
+  // para corroborar cuánto se recibe de verdad vs lo que dice el simulador. Solo lee ventaprod.
+  if (process.env.DUMP_PRODNETO) {
+    const kw = String(process.env.DUMP_PRODNETO || '').toLowerCase();
+    const vp = (await db.get('cyc/ventaprod')) || {};
+    const rows = [];
+    for (const [dk, day] of Object.entries(vp)) {
+      for (const v of Object.values(day || {})) {
+        if (!v || v.cancelada) continue;
+        if (!(v.prod || '').toLowerCase().includes(kw)) continue;
+        rows.push({ dk, num: v.numVenta, prod: v.prod, total: v.total || 0, neto: v.neto || 0, cuenta: v.cuenta, qty: v.qty || 1 });
+      }
+    }
+    rows.sort((a, b) => (a.dk < b.dk ? 1 : -1));
+    const withT = rows.filter((r) => r.total > 0);
+    console.log(`Ventas de "${kw}": ${rows.length} (con total ${withT.length})\n`);
+    rows.slice(0, 25).forEach((r) => {
+      const pct = r.total > 0 ? Math.round((r.neto / r.total) * 100) : 0;
+      console.log(`  ${r.dk} #${r.num} [${r.cuenta}] x${r.qty} · total ${money(r.total)} · neto ${money(r.neto)} (${pct}%)`);
+    });
+    const avgPct = withT.length ? Math.round(withT.reduce((s, r) => s + (r.neto / r.total) * 100, 0) / withT.length) : 0;
+    const sumT = withT.reduce((s, r) => s + r.total, 0), sumN = withT.reduce((s, r) => s + r.neto, 0);
+    console.log(`\nPromedio neto/total: ${avgPct}%  ·  total $${Math.round(sumT).toLocaleString('es-AR')} → neto $${Math.round(sumN).toLocaleString('es-AR')} (${sumT > 0 ? Math.round(sumN / sumT * 100) : 0}% ponderado)`);
+    return;
+  }
   if (process.env.DUMP_VENTAS) {
     const vp = (await db.get('cyc/ventaprod')) || {};
     const all = [];
