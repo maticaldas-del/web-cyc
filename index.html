@@ -4295,7 +4295,11 @@ function renderVentaProd(){
       return matchQ&&matchC;
     });
     const mesLabel=(MONTHS[parseInt(vm)-1]||'')+' '+vy;
-    list.innerHTML=filteredGroups.length?filteredGroups.map(grp=>{
+    // Tope de dibujado: con miles de ventas, meter todos los bloques en el DOM cuelga
+    // el celular. Mostramos los 200 más recientes; los totales/KPIs de abajo igual
+    // se calculan sobre TODO el período. Para ver otras, se usa el buscador/filtros.
+    const VP_CAP=200;const shownGroups=filteredGroups.slice(0,VP_CAP);
+    list.innerHTML=filteredGroups.length?shownGroups.map(grp=>{
       const isCancelled=grp.cancelada;
       let gn=0,gc=0;grp.items.forEach(v=>{if(!isCancelled){gn+=v.neto||0;gc+=efectivoCostoVP(v);}});
       const gg=gn-gc;const gpct=gc>0?gg/gc*100:null;
@@ -4369,7 +4373,7 @@ function renderVentaProd(){
         </div>
         ${lines}
       </div>`;
-    }).join(''):`<div class="empty-msg">${vpQ||vpFilterCuenta?'Sin resultados para los filtros aplicados en '+mesLabel+'.':'Sin ventas cargadas en '+mesLabel+'.'}</div>`;
+    }).join('')+(filteredGroups.length>VP_CAP?`<div class="empty-msg" style="margin-top:10px">Mostrando las ${VP_CAP} ventas más recientes de ${filteredGroups.length}. Usá el buscador o filtrá por cuenta/período para encontrar otras. (Los totales de arriba sí cuentan todas.)</div>`:''):`<div class="empty-msg">${vpQ||vpFilterCuenta?'Sin resultados para los filtros aplicados en '+mesLabel+'.':'Sin ventas cargadas en '+mesLabel+'.'}</div>`;
   }
   const kpis=document.getElementById('vp-kpis');
   // KPIs usan el mismo período que la lista
@@ -6768,7 +6772,7 @@ document.addEventListener('click',e=>{if(fnavOpen&&!e.target.closest('#fnav-btn'
         <span style="font-size:.75rem;color:var(--muted)">Si no ves los últimos cambios, forzá la actualización</span>
         <button class="btn" style="background:rgba(56,189,248,.12);color:var(--blue);border:1px solid rgba(56,189,248,.3)" onclick="actualizarApp()">🔄 Buscar actualizaciones</button>
       </div>
-      <div style="font-size:.66rem;color:var(--muted);margin-top:12px">CYC · Versión 3.6</div>
+      <div style="font-size:.66rem;color:var(--muted);margin-top:12px">CYC · Versión 3.7</div>
     </div>
 
     <div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:18px 20px;margin-bottom:14px">
