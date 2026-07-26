@@ -409,6 +409,44 @@ async function main() {
       console.log('   x' + arr.length + ' [' + arr.map((v) => v.origen || 'viejo').join(',') + '] ' + arr[0].prod + ' #' + k.split('|')[0]));
     return;
   }
+  // DUMP_COSTS: mide, sobre las ventas reales, cuánto te queda (neto) según la banda de
+  // precio — para saber el rango real de lo que "te sale" vender en Full. Solo lee ventaprod.
+  if (process.env.DUMP_COSTS) {
+    const days = parseInt(process.env.DUMP_COSTS, 10) || 90;
+    const fromKey = dayKeyFromISO(Date.now() - (days - 1) * 864e5);
+    const vp = (await db.get('cyc/ventaprod')) || {};
+    const bands = [
+      { lbl: '< $15.000  ', lo: 0, hi: 15000 },
+      { lbl: '$15k – $30k', lo: 15000, hi: 30000 },
+      { lbl: '$30k – $45k', lo: 30000, hi: 45000 },
+      { lbl: '$45k – $70k', lo: 45000, hi: 70000 },
+      { lbl: '> $70.000  ', lo: 70000, hi: Infinity },
+    ].map((b) => ({ ...b, arr: [] }));
+    for (const [k, ents] of Object.entries(vp)) {
+      if (k < fromKey) continue;
+      for (const v of Object.values(ents || {})) {
+        if (!v || v.cancelada || v.origen !== 'ml-api') continue;
+        const total = v.total || 0, neto = v.neto || 0;
+        if (total <= 0 || neto <= 0) continue;
+        const bk = bands.find((b) => total >= b.lo && total < b.hi);
+        if (bk) bk.arr.push({ total, neto, pct: (neto / total) * 100, cost: total - neto });
+      }
+    }
+    const pctl = (a, p) => (a.length ? a[Math.min(a.length - 1, Math.floor((p / 100) * a.length))] : 0);
+    const avg = (a) => (a.length ? a.reduce((s, x) => s + x, 0) / a.length : 0);
+    console.log(`CUÁNTO TE QUEDA POR VENTA (últimos ${days} días · ventas reales ml-api, sin canceladas)\n`);
+    for (const b of bands) {
+      if (!b.arr.length) { console.log(`${b.lbl}: sin ventas`); continue; }
+      const pcts = b.arr.map((x) => x.pct).sort((a, c) => a - c);
+      const costs = b.arr.map((x) => x.cost).sort((a, c) => a - c);
+      const avgPrice = avg(b.arr.map((x) => x.total));
+      const avgNeto = avg(b.arr.map((x) => x.neto));
+      console.log(`${b.lbl} · ${b.arr.length} ventas · precio prom ${money(avgPrice)}`);
+      console.log(`   TE QUEDA: ${pctl(pcts, 10).toFixed(0)}%–${pctl(pcts, 90).toFixed(0)}% del precio (prom ${avg(pcts).toFixed(0)}%) → neto prom ${money(avgNeto)}`);
+      console.log(`   TE SALE VENDER: ${money(pctl(costs, 10))} a ${money(pctl(costs, 90))} (prom ${money(avgPrice - avgNeto)})\n`);
+    }
+    return;
+  }
   if (process.env.CATALOG_ONLY) {
     console.log('CATÁLOGO total:', products.length);
     console.log('CAMPOS:', JSON.stringify(Object.keys(products[0] || {})));

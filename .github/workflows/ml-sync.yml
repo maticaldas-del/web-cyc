@@ -100,6 +100,10 @@ on:
         description: 'Recalcular facturación de canceladas (días, ej 400)'
         required: false
         default: ''
+      dump_costs:
+        description: 'Cuánto te queda por venta según precio (días, ej 90)'
+        required: false
+        default: ''
   # schedule:
   #   - cron: '*/20 * * * *'   # cada 20 min (se activa al final)
 
@@ -140,6 +144,7 @@ jobs:
           DUMP_COUNT: ${{ github.event.inputs.dump_count }}
           DUMP_RECON: ${{ github.event.inputs.dump_recon }}
           CANCEL_AGG: ${{ github.event.inputs.cancel_agg }}
+          DUMP_COSTS: ${{ github.event.inputs.dump_costs }}
           BACKUP_VP: ${{ github.event.inputs.backup_vp }}
           PURGE_VP: ${{ github.event.inputs.purge_vp }}
           RESTORE_VP: ${{ github.event.inputs.restore_vp }}
