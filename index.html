@@ -647,6 +647,7 @@ footer{margin-top:32px;padding-top:14px;border-top:1px solid var(--border);font-
       <span style="font-size:.62rem;color:var(--muted);flex:1;min-width:120px">Cuánto se llevaron de verdad este mes, en <strong>pesos</strong>. Se usa para el chequeo de abajo.</span>
       <input class="fin-input money" type="text" inputmode="numeric" id="f_retiro_mes" placeholder="$0" onchange="saveRetiroMes(this.value)" style="width:150px">
     </div>
+    <div id="retiros-mes-list" style="margin-top:12px"></div>
     <div id="recon-panel" style="margin-top:14px"></div>
   </div>
 
@@ -1000,8 +1001,8 @@ footer{margin-top:32px;padding-top:14px;border-top:1px solid var(--border);font-
       <button class="vbtn active" id="met-field-total"    onclick="setMetField('total',this)"    title="Precio total de venta (lo que pagó el comprador)">💵 Total</button>
       <button class="vbtn"        id="met-field-neto"     onclick="setMetField('neto',this)"     title="Neto que queda después de comisiones ML">💚 Neto</button>
       <button class="vbtn"        id="met-field-ganancia" onclick="setMetField('ganancia',this)" title="Ganancia = Neto − Costo">💰 Ganancia</button>
-      <button class="vbtn"        id="met-field-gananciaCYC" onclick="setMetField('gananciaCYC',this)" title="Ganancia de CYC = Ganancia − Retiros 15% − Gastos del mes (los meses sin gastos cargados usan $800.000 estimado)">🏢 Ganancia CYC</button>
-      <button class="vbtn"        id="met-field-retiros" onclick="setMetField('retiros',this)" title="Retiros de dueños = 15% del neto (Mati + Viejo)">💸 Retiros 15%</button>
+      <button class="vbtn"        id="met-field-gananciaCYC" onclick="setMetField('gananciaCYC',this)" title="Ganancia de CYC = Ganancia − Retiros − Gastos del mes. Usa el retiro real que anotaste en Finanzas (o el 15% si ese mes no lo cargaste). Gastos sin cargar usan $800.000 estimado.">🏢 Ganancia CYC</button>
+      <button class="vbtn"        id="met-field-retiros" onclick="setMetField('retiros',this)" title="Retiros de dueños: el monto real que anotaste ese mes en Finanzas, o el 15% del neto si no lo cargaste (Mati + Viejo)">💸 Retiros</button>
     </div>
     <div id="ms-ctrl-dia" style="display:none;align-items:center;gap:8px">
       <button class="vbtn" onclick="metNavPrev()" style="padding:3px 13px;font-size:1.1rem;line-height:1">‹</button>
@@ -2916,9 +2917,42 @@ function saveRetiroMes(val){
   const num=parseMoney(val);const ym=_curYM();
   if(!state.retiro_mes)state.retiro_mes={};
   state.retiro_mes[ym]=num;
+  _gastoMesMemo={};_netoMesMemo={};
   try{renderReconciliacion();}catch(e){}
+  try{renderRetirosPorMes();}catch(e){}
+  try{if(currentPage==='metricas')renderMetricas();}catch(e){}
   clearTimeout(_retiroTimer);
   _retiroTimer=setTimeout(()=>{fbSet('retiro_mes/'+ym,num);},700);
+}
+// Guardar el retiro real de UN mes puntual (tabla "retiro por mes").
+let _retiroTimersYM={};
+function saveRetiroMesYM(ym,val){
+  const num=parseMoney(val);
+  if(!state.retiro_mes)state.retiro_mes={};
+  state.retiro_mes[ym]=num;
+  _gastoMesMemo={};_netoMesMemo={};
+  if(ym===_curYM()){const rm=document.getElementById('f_retiro_mes');if(rm&&document.activeElement!==rm)setMoneyVal(rm,num);}
+  try{renderReconciliacion();}catch(e){}
+  try{if(currentPage==='metricas')renderMetricas();}catch(e){}
+  clearTimeout(_retiroTimersYM[ym]);
+  _retiroTimersYM[ym]=setTimeout(()=>{fbSet('retiro_mes/'+ym,num);},700);
+}
+// Tabla editable: retiro real por mes (últimos 12 meses con ventas). Vacío = usa el 15%.
+function renderRetirosPorMes(){
+  const el=document.getElementById('retiros-mes-list');if(!el)return;
+  const months=[...new Set(Object.keys(state.ventaprod||{}).map(k=>k.substring(0,7)))].sort().reverse().slice(0,12);
+  if(!months.length){el.innerHTML='';return;}
+  const rows=months.map(ym=>{
+    const md=_netoMesData(ym);const sug=Math.round((md.tot||0)*0.15);
+    const cur=state.retiro_mes&&state.retiro_mes[ym];const has=(cur!=null&&cur!=='');
+    const parts=ym.split('_');const lbl=(MONTHS[parseInt(parts[1])-1]||parts[1])+' '+parts[0];
+    return `<div style="display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid var(--border)">
+      <span style="font-size:.72rem;min-width:96px;font-weight:600">${lbl}</span>
+      <span style="font-size:.6rem;color:var(--muted);flex:1;min-width:80px">15% = ${fmt(sug)}${has?' · <span style="color:var(--green)">real ✓</span>':''}</span>
+      <input class="fin-input money" type="text" inputmode="numeric" value="${has?fmt(cur):''}" placeholder="${fmt(sug)}" onchange="saveRetiroMesYM('${ym}',this.value)" style="width:130px">
+    </div>`;
+  }).join('');
+  el.innerHTML=`<div style="font-size:.66rem;color:var(--muted);margin-bottom:6px">💸 <strong>Retiro real por mes</strong> — anotá cuánto sacaron de verdad. Si lo dejás vacío, usa el 15%.</div>${rows}`;
 }
 async function saveFin(key,val){
   const num=parseMoney(val);
@@ -3105,6 +3139,7 @@ function updateArqueo(){
   const tv=document.getElementById('arqueo-total-val');
   if(tv){tv.textContent=fmt(dispTotal);tv.className='at-val '+(dispTotal>=0?'pos':'neg');}
   try{renderReconciliacion();}catch(e){}
+  try{renderRetirosPorMes();}catch(e){}
   FIN_FIELDS.forEach(f=>{
     const el=document.getElementById('db_'+f.k);if(!el)return;
     const cur=parseFloat(state.finanzas[f.k])||0;
@@ -5416,13 +5451,16 @@ function metGetValDay(key,acct,field){
     if(field==='neto')return neto;
     const costo=rows.reduce((s,v)=>s+efectivoCostoVP({...v,_dateKey:key}),0);
     if(field==='ganancia')return neto-costo;
-    const retiro=neto*0.15;                         // 15% del neto = retiros de dueños
+    const ym=key.substring(0,7);
+    const md=_netoMesData(ym);
+    const rm=_retiroMesVal(ym); // retiro real anotado del mes (o null = usar 15%)
+    // Si anotaste el retiro real del mes, lo repartimos por el neto de cada día/cuenta
+    // (así la suma del mes da exacto el monto que pusiste). Si no, 15% del neto.
+    const retiro=rm!=null?(md.tot>0?rm*(neto/md.tot):0):neto*0.15;
     if(field==='retiros')return retiro;
     if(field==='gananciaCYC'){
       // ganancia − retiros − parte de los gastos del mes (repartidos por neto de cada cuenta) = lo que queda para CYC
       const base=(neto-costo)-retiro;
-      const ym=key.substring(0,7);
-      const md=_netoMesData(ym);
       const share=md.tot>0?(neto/md.tot):0;
       return base-_gastosMes(ym)*share;
     }
@@ -5608,7 +5646,7 @@ function renderMetricas(){
   const cur=sumMetFields(curKeys,metViewField),prev=sumMetFields(prevKeys,metViewField);
   const curTotal=MET_ACCTS.reduce((s,a)=>s+cur[a],0),prevTotal=MET_ACCTS.reduce((s,a)=>s+prev[a],0);
   const lbl=getMetScopeLabel(metScopeMode),prevLbl=getPrevMetLabel(metScopeMode);
-  const fieldLbl=metViewField==='neto'?'💚 Neto':metViewField==='ganancia'?'💰 Ganancia':metViewField==='gananciaCYC'?'🏢 Ganancia CYC':metViewField==='retiros'?'💸 Retiros 15%':'💵 Total';
+  const fieldLbl=metViewField==='neto'?'💚 Neto':metViewField==='ganancia'?'💰 Ganancia':metViewField==='gananciaCYC'?'🏢 Ganancia CYC':metViewField==='retiros'?'💸 Retiros':'💵 Total';
   const setTxt=(id,v)=>{const el=document.getElementById(id);if(el)el.textContent=v;};
   setTxt('met-kpi-period','· '+lbl+' · '+fieldLbl);setTxt('met-line-period','· '+lbl+' · '+fieldLbl);
   const acctColors=['c1','c4','c2','c3'];
@@ -6019,11 +6057,18 @@ function _puntFac12(){
   return acc;
 }
 // Ganancia real de un mes YYYY_MM — misma cascada que la página Resumen.
+// Retiro real de un mes: si lo anotaste (retiro_mes[ym]) usamos ESE monto; si no,
+// el 15% por defecto. Devuelve null si no hay monto cargado (para decidir afuera).
+function _retiroMesVal(ym){
+  const r=state.retiro_mes&&state.retiro_mes[ym];
+  return (r!=null&&r!=='')?Math.round(Number(r)||0):null;
+}
 function _puntGananciaMes(ym){
   const keys=Object.keys(state.ventaprod||{}).filter(k=>k.startsWith(ym));
   let neto=0,costo=0;
   keys.forEach(k=>Object.values(state.ventaprod[k]||{}).forEach(v=>{neto+=(v.neto||0);costo+=efectivoCostoVP(v);}));
-  const retiro=Math.round(neto*puntCfg(ym).retiroFrac);
+  const rm=_retiroMesVal(ym);
+  const retiro=rm!=null?rm:Math.round(neto*puntCfg(ym).retiroFrac); // real si lo anotaste, si no el 15%
   const gastos=_gastosMes(ym); // gastos cargados del mes, o el estimado si ese mes no tiene
   return {neto,costo,retiro,gastos,ganancia:(neto-retiro)-costo-gastos};
 }
@@ -6772,7 +6817,7 @@ document.addEventListener('click',e=>{if(fnavOpen&&!e.target.closest('#fnav-btn'
         <span style="font-size:.75rem;color:var(--muted)">Si no ves los últimos cambios, forzá la actualización</span>
         <button class="btn" style="background:rgba(56,189,248,.12);color:var(--blue);border:1px solid rgba(56,189,248,.3)" onclick="actualizarApp()">🔄 Buscar actualizaciones</button>
       </div>
-      <div style="font-size:.66rem;color:var(--muted);margin-top:12px">CYC · Versión 3.7</div>
+      <div style="font-size:.66rem;color:var(--muted);margin-top:12px">CYC · Versión 3.8</div>
     </div>
 
     <div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:18px 20px;margin-bottom:14px">
