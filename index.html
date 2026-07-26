@@ -3349,17 +3349,24 @@ function renderMonotributo(){
   const td0='padding:4px 8px;font-size:.66rem;white-space:nowrap';
   const head=`<tr><th style="${th0}">Mes</th>${MET_ACCTS.map(a=>`<th style="${th}">${MET_LABELS[a]}</th>`).join('')}</tr>`;
   const rows=meses.map(ym=>{
-    const auto=ym>=FAC_AUTO_DESDE;
     const ov=_mesOverlap(ym,win);
     const parcial=ov.overlap<ov.total;
+    // Un mes es "auto" si al menos una cuenta tiene ventas reales importadas en la ventana.
+    const auto=MET_ACCTS.some(a=>_facMesCuentaEnRango(a,ym,win.winStartK,win.winEndK)>0);
     const cells=MET_ACCTS.map(a=>{
+      const real=_facMesCuentaEnRango(a,ym,win.winStartK,win.winEndK);
+      const hasReal=real>0;                 // ventas reales de ML → mandan
       const man=state.fact_mes?.[a]?.[ym];
       const hasMan=man!=null&&man!=='';
-      const ph=auto?_facMesCuenta(a,ym):_baseMesFallback(a,ym);
+      // El manual solo se usa (y se muestra) si ese mes NO tiene ventas reales cargadas.
+      const useMan=hasMan&&!hasReal;
+      const ph=hasReal?real:_baseMesFallback(a,ym);
       const id='fm-'+a+'-'+ym;
-      return`<td style="padding:3px 6px;text-align:right"><input class="money" type="text" inputmode="numeric" id="${id}" value="${hasMan?Math.round(parseFloat(man)).toLocaleString('es-AR'):''}" placeholder="${auto?'auto '+fmt(ph):(ph?fmt(ph):'$0')}" style="width:104px;font-size:.66rem;padding:3px 6px;text-align:right;background:var(--surface2);border:1px solid var(--border);border-radius:6px;color:var(--text)" onchange="saveFacMes('${a}','${ym}','${id}')"></td>`;
+      const val=useMan?Math.round(parseFloat(man)).toLocaleString('es-AR'):'';
+      const phTxt=hasReal?('auto '+fmt(real)):(ph?fmt(ph):'$0');
+      return`<td style="padding:3px 6px;text-align:right"><input class="money" type="text" inputmode="numeric" id="${id}" value="${val}" placeholder="${phTxt}" style="width:104px;font-size:.66rem;padding:3px 6px;text-align:right;background:var(--surface2);border:1px solid var(--border);border-radius:6px;color:var(--text)" onchange="saveFacMes('${a}','${ym}','${id}')"></td>`;
     }).join('');
-    return`<tr><td style="${td0}">${_labelMes(ym)}${auto?' <span style="color:var(--green);font-size:.54rem;font-weight:600">auto</span>':''}${parcial?` <span style="color:var(--amber);font-size:.52rem" title="Solo ${ov.overlap} de ${ov.total} días caen dentro de los últimos 365. Cargá igual el total del mes completo de ML; la app cuenta la parte proporcional.">parcial ${ov.overlap}/${ov.total}d</span>`:''}</td>${cells}</tr>`;
+    return`<tr><td style="${td0}">${_labelMes(ym)}${auto?' <span style="color:var(--green);font-size:.54rem;font-weight:600">auto</span>':''}${parcial?` <span style="color:var(--amber);font-size:.52rem" title="Solo ${ov.overlap} de ${ov.total} días caen dentro de los últimos 365. Las ventas reales ya se cuentan día por día.">parcial ${ov.overlap}/${ov.total}d</span>`:''}</td>${cells}</tr>`;
   }).join('');
   const totRow=`<tr style="border-top:2px solid var(--border)"><td style="${td0};font-weight:700">Total 12 meses</td>${MET_ACCTS.map(a=>`<td style="padding:4px 8px;text-align:right;font-family:'DM Mono',monospace;font-weight:700">${fmt(fac12[a])}</td>`).join('')}</tr>`;
   const catRow=`<tr><td style="${td0};color:var(--muted)">Categoría</td>${MET_ACCTS.map(a=>{const mc=monoCat(fac12[a]);const col=mc.excede?'#ef4444':mc.pct>=90?'#f59e0b':'#22c55e';return`<td style="padding:4px 8px;text-align:right"><div style="color:${col};font-weight:700;font-size:.72rem">${mc.excede?'⚠ &gt; K':'Cat '+mc.cat}</div><div style="font-size:.54rem;color:var(--muted)">${mc.excede?'+'+fmt(mc.sobreK):'faltan '+fmt(mc.resta)}</div></td>`;}).join('')}</tr>`;
@@ -5845,9 +5852,9 @@ const PUNT_FAC_BASE_DESDE='2025-06-01';
 const PUNT_FAC_BASE_HASTA='2026-05-31';
 // Facturación (total vendido, sin canceladas) de un mes YYYY_MM.
 function _puntFacMes(ym){let t=0;Object.keys(state.ventaprod||{}).filter(k=>k.startsWith(ym)).forEach(k=>Object.values(state.ventaprod[k]||{}).forEach(v=>{if(!v.cancelada)t+=v.total||0;}));return t;}
-// Desde este mes en adelante la facturación sale AUTOMÁTICA de las ventas cargadas en la app.
-// Antes de esta fecha no hay ventas cargadas → se usa el valor manual (histórico de ML) que se
-// carga en la pestaña "Monotributo"; si no se cargó, cae a la base previa repartida pareja.
+// (LEGADO) Antes marcaba desde qué mes la facturación salía automática. Ya no se usa: ahora
+// _puntFac12() toma las ventas reales importadas de ML SIEMPRE que existan, para cualquier mes.
+// El manual (fact_mes) quedó solo como respaldo para meses sin ventas cargadas.
 const FAC_AUTO_DESDE='2026_06';
 // Facturación (total vendido, sin canceladas) de UNA cuenta en un mes YYYY_MM — de las ventas de la app.
 function _facMesCuenta(acct,ym){
@@ -5897,9 +5904,13 @@ function _puntFac12(){
   _ventanaMeses(win).forEach(ym=>{
     const ov=_mesOverlap(ym,win);if(ov.overlap<=0)return;
     MET_ACCTS.forEach(a=>{
+      // 1º) VENTAS REALES importadas de ML (día por día dentro de la ventana) → mandan siempre.
+      const real=_facMesCuentaEnRango(a,ym,win.winStartK,win.winEndK);
+      if(real>0){acc[a]+=real;return;}
+      // 2º) override manual histórico (solo si ese mes no tiene ventas reales cargadas).
       const man=state.fact_mes?.[a]?.[ym];
       if(man!=null&&man!=='')acc[a]+=(parseFloat(man)||0)*ov.frac;
-      else if(ym>=FAC_AUTO_DESDE)acc[a]+=_facMesCuentaEnRango(a,ym,win.winStartK,win.winEndK);
+      // 3º) base previa repartida pareja (último recurso, meses sin datos).
       else acc[a]+=_baseMesFallback(a,ym)*ov.frac;
     });
   });
@@ -6659,7 +6670,7 @@ document.addEventListener('click',e=>{if(fnavOpen&&!e.target.closest('#fnav-btn'
         <span style="font-size:.75rem;color:var(--muted)">Si no ves los últimos cambios, forzá la actualización</span>
         <button class="btn" style="background:rgba(56,189,248,.12);color:var(--blue);border:1px solid rgba(56,189,248,.3)" onclick="actualizarApp()">🔄 Buscar actualizaciones</button>
       </div>
-      <div style="font-size:.66rem;color:var(--muted);margin-top:12px">CYC · Versión 2.9</div>
+      <div style="font-size:.66rem;color:var(--muted);margin-top:12px">CYC · Versión 3.0</div>
     </div>
 
     <div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:18px 20px;margin-bottom:14px">
