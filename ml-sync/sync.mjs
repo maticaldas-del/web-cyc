@@ -397,6 +397,27 @@ async function main() {
     }
     return;
   }
+  if (process.env.DUMP_HISTORY) {
+    for (const label of labels) {
+      const acc = accounts[label];
+      if (!acc?.refresh_token) continue;
+      const t = await mlRefresh(ML_CLIENT_ID, ML_CLIENT_SECRET, acc.refresh_token);
+      await db.patch('mlapi/tokens/' + label, { refresh_token: t.refresh_token, updated_ts: Date.now() });
+      const iso = (d) => new Date(d).toISOString().replace(/\.\d+Z$/, '.000-00:00');
+      const from365 = iso(Date.now() - 365 * 864e5);
+      let total365 = '?', oldest = '?', totalAll = '?', oldestAll = '?';
+      try {
+        const d1 = await mlGet('/orders/search?' + new URLSearchParams({ seller: String(acc.seller_id), 'order.status': 'paid', 'order.date_created.from': from365, sort: 'date_asc', limit: '1' }), t.access_token);
+        total365 = d1.paging?.total; oldest = d1.results?.[0]?.date_created || '—';
+      } catch (e) { total365 = 'err ' + e.message.slice(0, 40); }
+      try {
+        const d2 = await mlGet('/orders/search?' + new URLSearchParams({ seller: String(acc.seller_id), 'order.status': 'paid', sort: 'date_asc', limit: '1' }), t.access_token);
+        totalAll = d2.paging?.total; oldestAll = d2.results?.[0]?.date_created || '—';
+      } catch (e) { totalAll = 'err ' + e.message.slice(0, 40); }
+      console.log(`${label}: ventas últimos 365d = ${total365} (más vieja: ${oldest})  ·  histórico total = ${totalAll} (más vieja: ${oldestAll})`);
+    }
+    return;
+  }
   if (process.env.DUMP_MAP) {
     const m = (await db.get('cyc/mlmap')) || {};
     console.log('MLMAP total:', Object.keys(m).length);

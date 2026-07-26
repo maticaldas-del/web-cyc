@@ -60,6 +60,10 @@ on:
         description: 'Auto-vincular Paulvic + Victoria (con variantes): poné 1'
         required: false
         default: ''
+      dump_history:
+        description: 'Ver cuántas ventas hay para traer de ML: poné 1'
+        required: false
+        default: ''
       backfill_days:
         description: 'Reprocesar los últimos N días (backfill): ej 31'
         required: false
@@ -104,4 +108,5 @@ jobs:
           DUMP_MARGINS: ${{ github.event.inputs.dump_margins }}
           DUMP_VARS: ${{ github.event.inputs.dump_vars }}
           AUTOLINK: ${{ github.event.inputs.autolink }}
+          DUMP_HISTORY: ${{ github.event.inputs.dump_history }}
         run: node ml-sync/sync.mjs
