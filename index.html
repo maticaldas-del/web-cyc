@@ -2389,6 +2389,7 @@ function renderProds(){
     const legacyShip=!hasNewFields&&p.costFullUSD!=null?Math.max(0,Math.round(((parseFloat(p.costFullUSD)||0)-cu)*100)/100):0;
     const ship=p.shipUSD!=null?parseFloat(p.shipUSD)||0:legacyShip;
     const dev=parseFloat(p.devPct)||0;
+    const gest=parseFloat(p.gestFull)||0;   // gestión/logística Full por venta (pesos, aprox.)
     const cfu=costFullUSDof(p),cfp=cfu*tc;
     const moneyVal=n=>n?Math.round(n).toLocaleString('es-AR'):'';
     const usdVal=n=>n!=null&&n!==''?+(Math.round(n*100)/100):'';
@@ -2416,6 +2417,7 @@ function renderProds(){
         <div><label>Costo US$</label><br><input type="number" min="0" step="0.01" value="${usdVal(cu)}" onchange="updCostUSD('${p.id}',this.value)"></div>
         <div><label>Costo $</label><br><input class="money" type="text" inputmode="numeric" value="${moneyVal(cp)}" onchange="updCostPesos('${p.id}',this.value)"></div>
         <div><label>${shipLabel}</label><br><input type="number" min="0" step="0.01" value="${ship}" onchange="updShipUSD('${p.id}',this.value)"></div>
+        <div><label title="Lo que ML te cobra de gestión/logística Full por cada venta (lo ves en una venta ya hecha). Es aprox., varía un poco por destino.">Gestión Full $ ⓘ</label><br><input class="money" type="text" inputmode="numeric" value="${moneyVal(gest)}" onchange="updGestFull('${p.id}',this.value)" placeholder="p. ej. 6.653"></div>
         <div style="display:flex;flex-direction:column;gap:4px;background:rgba(255,255,255,.04);border:1px solid var(--border);border-radius:8px;padding:8px 12px">
           <div style="font-size:.58rem;color:var(--muted);text-transform:uppercase;letter-spacing:.08em;margin-bottom:2px">Reclamos / Ventas totales <span style="text-transform:none;letter-spacing:0;font-size:.92em">· automático desde Ventas x Producto</span></div>
           <div style="display:flex;align-items:center;gap:8px">
@@ -2430,6 +2432,11 @@ function renderProds(){
           <div class="full-usd" style="font-size:.82rem;font-weight:600;color:#a78bfa">${fmtUSD(cfu)}</div>
           <div class="full-pesos" style="font-size:.75rem;color:var(--text);margin-top:2px">${fmtPesos(cfp)}</div>
           <div style="font-size:.58rem;color:var(--muted);margin-top:5px;line-height:1.5">envío ${fmtUSD(ship)} + costo×(1+${devPctAuto.toFixed(1)}%)</div>
+        </div>
+        <div id="cvfull-${p.id}" style="background:rgba(16,185,129,.1);border:1px solid rgba(16,185,129,.28);border-radius:8px;padding:8px 14px;min-width:175px">
+          <div style="font-size:.6rem;color:var(--muted);text-transform:uppercase;letter-spacing:.1em;margin-bottom:5px">Costo vender en Full</div>
+          <div class="cvfull-val" style="font-size:.82rem;font-weight:700;color:#34d399">${fmtPesos(cfp+gest)}</div>
+          <div class="cvfull-desc" style="font-size:.58rem;color:var(--muted);margin-top:5px;line-height:1.5">costo real full ${fmtPesos(cfp)} + gestión ${fmtPesos(gest)}</div>
         </div>
       </div>
       <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;padding-top:8px;border-top:1px solid var(--border);margin-top:2px">
@@ -2771,6 +2778,24 @@ async function updShipUSD(id,val){
   await fbSet('products/'+id+'/shipUSD',p.shipUSD);
   await log('Envío '+p.name+': US$'+p.shipUSD);
   await recalcAndSaveFullUSD(p);
+}
+// Gestión/logística Full por venta (pesos). Es SOLO informativo: se suma al "costo real full"
+// para mostrar cuánto sale vender el producto en Full. NO toca la ganancia real de las ventas
+// (esa ya usa el neto real de Mercado Pago, que ya trae la gestión descontada). Va PLANA, después
+// del % de devolución (igual que el envío): la gestión ML te la cobra sí o sí, no la perdés más
+// por una devolución. Como el %Dev suele ser bajo, la diferencia entre antes/después es mínima.
+async function updGestFull(id,val){
+  const p=state.products.find(x=>x.id===id);if(!p)return;
+  p.gestFull=parseMoney(val)||0;
+  await fbSet('products/'+id+'/gestFull',p.gestFull);
+  await log('Gestión Full '+p.name+': $'+Math.round(p.gestFull));
+  const box=document.getElementById('cvfull-'+id);
+  if(box){
+    const cfp=costFullUSDof(p)*curTC();const tot=cfp+(p.gestFull||0);
+    const fp=n=>n?'$ '+Math.round(n).toLocaleString('es-AR'):'$ 0';
+    const vEl=box.querySelector('.cvfull-val');if(vEl)vEl.textContent=fp(tot);
+    const dEl=box.querySelector('.cvfull-desc');if(dEl)dEl.textContent='costo real full '+fp(cfp)+' + gestión '+fp(p.gestFull||0);
+  }
 }
 async function updDevCount(id,val){
   const p=state.products.find(x=>x.id===id);if(!p)return;
@@ -6679,7 +6704,7 @@ document.addEventListener('click',e=>{if(fnavOpen&&!e.target.closest('#fnav-btn'
         <span style="font-size:.75rem;color:var(--muted)">Si no ves los últimos cambios, forzá la actualización</span>
         <button class="btn" style="background:rgba(56,189,248,.12);color:var(--blue);border:1px solid rgba(56,189,248,.3)" onclick="actualizarApp()">🔄 Buscar actualizaciones</button>
       </div>
-      <div style="font-size:.66rem;color:var(--muted);margin-top:12px">CYC · Versión 3.1</div>
+      <div style="font-size:.66rem;color:var(--muted);margin-top:12px">CYC · Versión 3.2</div>
     </div>
 
     <div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:18px 20px;margin-bottom:14px">
