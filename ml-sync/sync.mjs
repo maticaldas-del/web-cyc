@@ -763,9 +763,10 @@ async function main() {
       }
     }
     const keys = Object.keys(updates);
+    if (!DRY) await db.set('ventaprod', null); // limpiar basura de una corrida vieja (bug de prefijo)
     for (let i = 0; i < keys.length; i += 2000) {
       const chunk = {}; keys.slice(i, i + 2000).forEach((k) => chunk[k] = updates[k]);
-      if (!DRY) await db.patch('ventaprod', chunk);
+      if (!DRY) await db.patch('cyc/ventaprod', chunk);
     }
     console.log(`Número de venta → pack_id: ${n} ventas actualizadas${DRY ? ' (DRY)' : ''} · ${Object.keys(packMap).length} órdenes con pack distinto`);
     return;
@@ -941,7 +942,8 @@ async function main() {
       }
     }
     const keys = Object.keys(vpUpd);
-    for (let i = 0; i < keys.length; i += 3000) { const chunk = {}; keys.slice(i, i + 3000).forEach((k) => chunk[k] = vpUpd[k]); if (!DRY) await db.patch('ventaprod', chunk); }
+    if (!DRY) await db.set('ventaprod', null); // limpiar basura de una corrida vieja (bug de prefijo)
+    for (let i = 0; i < keys.length; i += 3000) { const chunk = {}; keys.slice(i, i + 3000).forEach((k) => chunk[k] = vpUpd[k]); if (!DRY) await db.patch('cyc/ventaprod', chunk); }
     console.log(`Vinculadas ${linked.length} publicaciones · ventas completadas ${rf}${DRY ? ' (DRY)' : ''}`);
     console.log(`Sin match (para crear/asignar a mano): ${unmatched.length}`);
     unmatched.slice(0, 60).forEach((u) => console.log(`  · ${u.mla} · ${u.title.slice(0, 50)}`));
