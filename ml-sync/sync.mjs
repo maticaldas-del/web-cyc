@@ -460,6 +460,49 @@ async function main() {
     }
     return;
   }
+  // DUMP_RECON: reconciliación ML ↔ app, por cuenta, últimos N días (default 365).
+  // Compara la facturación bruta que ML tiene contra lo que quedó cargado en la app,
+  // para ubicar de dónde salen las diferencias (canceladas, ventas faltantes, etc).
+  if (process.env.DUMP_RECON) {
+    const days = parseInt(process.env.DUMP_RECON, 10) || 365;
+    const fromMs = Date.now() - (days - 1) * 864e5;
+    const fromKey = dayKeyFromISO(fromMs), toKey = dayKeyFromISO(Date.now());
+    const fromISO = new Date(fromMs).toISOString().replace(/\.\d+Z$/, '.000-00:00');
+    const grossOf = (o) => (o.order_items || []).reduce((s, it) => s + (it.unit_price || 0) * (it.quantity || 0), 0);
+    const vp = (await db.get('cyc/ventaprod')) || {};
+    console.log(`RECONCILIACIÓN últimos ${days} días · ventana app ${fromKey} → ${toKey}\n`);
+    const acumML = {}, acumApp = {};
+    for (const label of labels) {
+      const acc = accounts[label];
+      if (!acc?.refresh_token) continue;
+      const t = await mlRefresh(ML_CLIENT_ID, ML_CLIENT_SECRET, acc.refresh_token);
+      await db.patch('mlapi/tokens/' + label, { refresh_token: t.refresh_token, updated_ts: Date.now() });
+      // ── ML: pagadas (lo que cargamos) + canceladas (informativo) ──
+      const paid = await fetchOrdersRange(acc.seller_id, t.access_token, fromMs, Date.now());
+      const paidById = new Map(paid.map((o) => [o.id, o]));
+      let mlPaidGross = 0; for (const o of paidById.values()) mlPaidGross += grossOf(o);
+      const canc = await fetchCancelled(acc.seller_id, t.access_token, fromISO);
+      const cancById = new Map(canc.map((o) => [o.id, o]));
+      let mlCancGross = 0; for (const o of cancById.values()) mlCancGross += grossOf(o);
+      // ── App: lo que quedó cargado en ventaprod para esta cuenta en la ventana ──
+      let okN = 0, okSum = 0, cN = 0, cSum = 0;
+      for (const [k, ents] of Object.entries(vp)) {
+        if (k < fromKey || k > toKey) continue;
+        for (const v of Object.values(ents || {})) {
+          if ((v.cuenta || '').toLowerCase() !== label.toLowerCase()) continue;
+          if (v.cancelada) { cN++; cSum += v.total || 0; }
+          else { okN++; okSum += v.total || 0; }
+        }
+      }
+      acumML[label] = { pn: paidById.size, pg: mlPaidGross, cn: cancById.size, cg: mlCancGross };
+      acumApp[label] = { okN, okSum, cN, cSum };
+      console.log(`▶ ${label}`);
+      console.log(`   ML   · pagadas ${paidById.size} = ${money(mlPaidGross)}  ·  canceladas ${cancById.size} = ${money(mlCancGross)}  ·  bruto(pag+canc) = ${money(mlPaidGross + mlCancGross)}`);
+      console.log(`   APP  · válidas ${okN} = ${money(okSum)}  ·  canceladas ${cN} = ${money(cSum)}`);
+      console.log(`   Δ    · válidas: ML pagadas ${money(mlPaidGross)} − app ${money(okSum)} = ${money(mlPaidGross - okSum)}\n`);
+    }
+    return;
+  }
   // BACKUP_VP: copia de seguridad de todas las ventas actuales (por si hay que volver atrás)
   if (process.env.BACKUP_VP) {
     const vp = (await db.get('cyc/ventaprod')) || {};

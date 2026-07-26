@@ -92,6 +92,10 @@ on:
         description: 'Volcar resumen de ventas cargadas (debug): poné 1'
         required: false
         default: ''
+      dump_recon:
+        description: 'Reconciliar ML vs app por cuenta (días, ej 365)'
+        required: false
+        default: ''
   # schedule:
   #   - cron: '*/20 * * * *'   # cada 20 min (se activa al final)
 
@@ -130,6 +134,7 @@ jobs:
           AUTOLINK: ${{ github.event.inputs.autolink }}
           DUMP_HISTORY: ${{ github.event.inputs.dump_history }}
           DUMP_COUNT: ${{ github.event.inputs.dump_count }}
+          DUMP_RECON: ${{ github.event.inputs.dump_recon }}
           BACKUP_VP: ${{ github.event.inputs.backup_vp }}
           PURGE_VP: ${{ github.event.inputs.purge_vp }}
           RESTORE_VP: ${{ github.event.inputs.restore_vp }}
