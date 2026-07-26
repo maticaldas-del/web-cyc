@@ -909,6 +909,56 @@ async function main() {
     console.log(`\n✓ Creados ${toAdd.length} gastos de $${amount.toLocaleString('es-AR')} (uno por mes sin gastos).`);
     return;
   }
+  // PURGE_BEFORE: borra las ventas ANTERIORES a una fecha (ej 2026_01_01) para arrancar
+  // de cero ese año y aliviar la app. ANTES de borrar, CONGELA la facturación bruta
+  // (pagadas + canceladas) de cada mes viejo en el dato AFIP mensual (cyc/fact_mes),
+  // así el monotributo sigue restando esos meses igual que ahora. Backup de ventaprod,
+  // fact_mes y fact_cancel en *_bak. Con DRY_RUN=1 solo muestra qué haría.
+  if (process.env.PURGE_BEFORE) {
+    const cutoff = String(process.env.PURGE_BEFORE).trim(); // ej 2026_01_01
+    const vp = (await db.get('cyc/ventaprod')) || {};
+    const factMes = (await db.get('cyc/fact_mes')) || {};
+    const factCancel = (await db.get('cyc/fact_cancel')) || {};
+    const frozen = {}; // acct → ym → facturación bruta del mes
+    const delPaths = []; const delMonths = new Set();
+    let total = 0;
+    for (const [dk, day] of Object.entries(vp)) {
+      for (const [id, v] of Object.entries(day || {})) {
+        if (!v) continue; total++;
+        if (String(dk) < cutoff) {
+          delPaths.push(`${dk}/${id}`);
+          const ym = String(dk).slice(0, 7); delMonths.add(ym);
+          if (!v.cancelada) {
+            const a = (v.cuenta || '').toLowerCase();
+            frozen[a] = frozen[a] || {}; frozen[a][ym] = (frozen[a][ym] || 0) + (v.total || 0);
+          }
+        }
+      }
+    }
+    // sumar las canceladas/devueltas (fact_cancel) de esos meses a la bruta congelada
+    for (const [a, bym] of Object.entries(factCancel)) {
+      for (const [ym, val] of Object.entries(bym || {})) {
+        if (delMonths.has(ym)) { const la = a.toLowerCase(); frozen[la] = frozen[la] || {}; frozen[la][ym] = (frozen[la][ym] || 0) + (parseFloat(val) || 0); }
+      }
+    }
+    console.log(`\n=== ARRANCAR DE CERO antes de ${cutoff} ===`);
+    console.log(`Total ventas: ${total} · a borrar: ${delPaths.length} · quedan: ${total - delPaths.length}`);
+    console.log('Facturación AFIP que queda CONGELADA por mes (cyc/fact_mes):');
+    for (const [a, bym] of Object.entries(frozen)) for (const [ym, val] of Object.entries(bym)) console.log(`  ${a} ${ym.replace('_', '-')}: $${Math.round(val).toLocaleString('es-AR')}`);
+    if (DRY) { console.log('\n(DRY: no se tocó nada.)'); return; }
+    await db.set('cyc/ventaprod_bak', vp);
+    await db.set('cyc/fact_mes_bak', factMes);
+    await db.set('cyc/fact_cancel_bak', factCancel);
+    console.log('✓ Backups en cyc/ventaprod_bak, cyc/fact_mes_bak, cyc/fact_cancel_bak.');
+    const fmUpd = {}; const fcDel = {};
+    for (const [a, bym] of Object.entries(frozen)) for (const [ym, val] of Object.entries(bym)) fmUpd[`${a}/${ym}`] = Math.round(val);
+    for (const [a, bym] of Object.entries(factCancel)) for (const ym of Object.keys(bym || {})) if (delMonths.has(ym)) fcDel[`${a}/${ym}`] = null;
+    if (Object.keys(fmUpd).length) await db.patch('cyc/fact_mes', fmUpd);
+    if (Object.keys(fcDel).length) await db.patch('cyc/fact_cancel', fcDel);
+    for (let i = 0; i < delPaths.length; i += 2000) { const chunk = {}; delPaths.slice(i, i + 2000).forEach((p) => chunk[p] = null); await db.patch('cyc/ventaprod', chunk); }
+    console.log(`✓ Borradas ${delPaths.length} ventas · fact_mes congelado en ${Object.keys(fmUpd).length} meses/cuenta.`);
+    return;
+  }
   if (process.env.DUMP_MAP) {
     const m = (await db.get('cyc/mlmap')) || {};
     console.log('MLMAP total:', Object.keys(m).length);

@@ -52,8 +52,8 @@ on:
         description: 'Crear gasto $800.000 en meses con ventas y sin gastos: poné 1'
         required: false
         default: ''
-      dump_count:
-        description: 'Contar cuántas trae el método por fechas (días, ej 365)'
+      purge_before:
+        description: 'Arrancar de cero: borrar ventas antes de (ej 2026_01_01), congelando AFIP'
         required: false
         default: ''
       backup_vp:
@@ -143,7 +143,7 @@ jobs:
           DUMP_VARS: ${{ github.event.inputs.dump_vars }}
           AUTOLINK: ${{ github.event.inputs.autolink }}
           FILL_GASTOS: ${{ github.event.inputs.fill_gastos }}
-          DUMP_COUNT: ${{ github.event.inputs.dump_count }}
+          PURGE_BEFORE: ${{ github.event.inputs.purge_before }}
           DUMP_RECON: ${{ github.event.inputs.dump_recon }}
           CANCEL_AGG: ${{ github.event.inputs.cancel_agg }}
           DUMP_COSTS: ${{ github.event.inputs.dump_costs }}
