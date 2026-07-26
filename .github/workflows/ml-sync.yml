@@ -48,6 +48,10 @@ on:
         description: 'Probar saldo de Mercado Pago (debug): poné 1'
         required: false
         default: ''
+      dump_margins:
+        description: 'Productos por margen real (debug): poné 1'
+        required: false
+        default: ''
       backfill_days:
         description: 'Reprocesar los últimos N días (backfill): ej 31'
         required: false
@@ -89,4 +93,5 @@ jobs:
           DUMP_UNMAPPED: ${{ github.event.inputs.dump_unmapped }}
           DUMP_ORDER: ${{ github.event.inputs.dump_order }}
           DUMP_BALANCE: ${{ github.event.inputs.dump_balance }}
+          DUMP_MARGINS: ${{ github.event.inputs.dump_margins }}
         run: node ml-sync/sync.mjs

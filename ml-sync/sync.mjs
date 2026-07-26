@@ -652,6 +652,28 @@ async function main() {
     return;
   }
 
+  // DUMP_MARGINS: productos ordenados por margen REAL (peor a mejor), con el neto
+  // real ya cargado (que descuenta Full). Sirve para ver dónde perdés. Solo lectura.
+  if (process.env.DUMP_MARGINS) {
+    const vp = (await db.get('cyc/ventaprod')) || {};
+    const agg = {};
+    for (const day of Object.values(vp)) {
+      for (const v of Object.values(day || {})) {
+        if (!v || v.cancelada || v.origen !== 'ml-api') continue;
+        const k = v.prodId || v.prod || '?';
+        const a = agg[k] || (agg[k] = { name: v.prod || k, qty: 0, neto: 0, costo: 0 });
+        a.qty += v.qty || 0; a.neto += v.neto || 0; a.costo += v.costo || 0;
+      }
+    }
+    const rows = Object.values(agg).filter((a) => a.costo > 0 && a.qty >= 1)
+      .map((a) => ({ ...a, margen: (a.neto - a.costo) / a.costo * 100, gan: a.neto - a.costo }))
+      .sort((x, y) => x.margen - y.margen);
+    console.log('PRODUCTOS por margen REAL (peor a mejor):');
+    rows.slice(0, 40).forEach((r) =>
+      console.log(`  ${String(Math.round(r.margen)).padStart(4)}%  x${String(r.qty).padStart(3)}  gan ${String(Math.round(r.gan)).padStart(8)}  ${r.name}`));
+    return;
+  }
+
   for (const label of labels) {
     const acc = accounts[label];
     if (!acc?.refresh_token) continue;
