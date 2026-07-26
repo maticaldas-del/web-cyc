@@ -104,6 +104,10 @@ on:
         description: 'Cuánto te queda por venta según precio (días, ej 90)'
         required: false
         default: ''
+      backfill_reclamos:
+        description: 'Cargar reclamos/pérdidas históricos (días, ej 365)'
+        required: false
+        default: ''
   # schedule:
   #   - cron: '*/20 * * * *'   # cada 20 min (se activa al final)
 
@@ -145,6 +149,7 @@ jobs:
           DUMP_RECON: ${{ github.event.inputs.dump_recon }}
           CANCEL_AGG: ${{ github.event.inputs.cancel_agg }}
           DUMP_COSTS: ${{ github.event.inputs.dump_costs }}
+          BACKFILL_RECLAMOS: ${{ github.event.inputs.backfill_reclamos }}
           BACKUP_VP: ${{ github.event.inputs.backup_vp }}
           PURGE_VP: ${{ github.event.inputs.purge_vp }}
           RESTORE_VP: ${{ github.event.inputs.restore_vp }}

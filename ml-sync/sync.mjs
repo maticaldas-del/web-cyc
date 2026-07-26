@@ -568,6 +568,57 @@ async function main() {
     }
     return;
   }
+  // BACKFILL_RECLAMOS: carga los RECLAMOS históricos (ventas que el comprador recibió y se le
+  // devolvió el dinero = producto perdido) como entradas ventaprod marcadas, para que el
+  // % de devolución de cada producto sea real (y con eso el "costo real full"). Al reconstruir
+  // el año solo cargamos las pagadas, así que estos reclamos faltaban. Misma regla que el robot
+  // usa siempre: entregada + cancelada = reclamo (pérdida); no entregada = cancelación (no cuenta).
+  if (process.env.BACKFILL_RECLAMOS) {
+    const days = parseInt(process.env.BACKFILL_RECLAMOS, 10) || 365;
+    const fromISO = new Date(Date.now() - days * 864e5).toISOString().replace(/\.\d+Z$/, '.000-00:00');
+    const map = (await db.get('cyc/mlmap')) || {};
+    const onlyAcc = (process.env.ACCOUNT || '').trim().toLowerCase();
+    for (const label of labels) {
+      if (onlyAcc && label.toLowerCase() !== onlyAcc) continue;
+      const acc = accounts[label];
+      if (!acc?.refresh_token) continue;
+      const t = await mlRefresh(ML_CLIENT_ID, ML_CLIENT_SECRET, acc.refresh_token);
+      await db.patch('mlapi/tokens/' + label, { refresh_token: t.refresh_token, updated_ts: Date.now() });
+      const cancelled = await fetchCancelled(acc.seller_id, t.access_token, fromISO);
+      let nRecl = 0, nSkip = 0;
+      for (const o of cancelled) {
+        // solo pérdidas reales: la recibió el comprador y se le devolvió (reclamo).
+        if (!(await wasDelivered(o, t.access_token))) { nSkip++; continue; }
+        const num = String(o.id);
+        const dayKey = dayKeyFromISO(o.date_closed || o.date_created);
+        const saleId = 's' + o.id;
+        let i = 0;
+        for (const it of (o.order_items || [])) {
+          const mla = it.item?.id;
+          const title = it.item?.title || '';
+          const qty = it.quantity || 0;
+          const idx = i; i++;
+          let e = mla ? map[mla] : null;
+          if (typeof e === 'string') e = { prodId: e };
+          const p = (e && e.prodId) ? (products.find((pp) => pp.id === e.prodId) || null) : matchProduct(title, index);
+          const id = 'v' + o.id + '_' + idx;
+          const obj = {
+            id, saleId, prod: p ? p.name : title, prodId: p ? p.id : null,
+            cuenta: label, qty, total: 0, neto: 0, costo: 0,
+            numVenta: num, mla: mla || '',
+            ts: new Date(o.date_closed || o.date_created).getTime(),
+            origen: 'ml-api', cancelada: true, tipoCancelacion: 'reclamo',
+          };
+          if (!p) obj.sinVincular = true;
+          if (DRY) console.log(`  [${label}] RECLAMO #${num} ${obj.prod} x${qty}`);
+          else await db.set(`cyc/ventaprod/${dayKey}/${id}`, obj);
+          nRecl++;
+        }
+      }
+      console.log(`${label}: reclamos con pérdida cargados ${nRecl} · canceladas sin pérdida omitidas ${nSkip}`);
+    }
+    return;
+  }
   // BACKUP_VP: copia de seguridad de todas las ventas actuales (por si hay que volver atrás)
   if (process.env.BACKUP_VP) {
     const vp = (await db.get('cyc/ventaprod')) || {};
