@@ -48,8 +48,8 @@ on:
         description: 'Auto-vincular Paulvic + Victoria (con variantes): poné 1'
         required: false
         default: ''
-      dump_history:
-        description: 'Ver cuántas ventas hay para traer de ML: poné 1'
+      fill_gastos:
+        description: 'Crear gasto $800.000 en meses con ventas y sin gastos: poné 1'
         required: false
         default: ''
       dump_count:
@@ -142,7 +142,7 @@ jobs:
           DUMP_ORDER: ${{ github.event.inputs.dump_order }}
           DUMP_VARS: ${{ github.event.inputs.dump_vars }}
           AUTOLINK: ${{ github.event.inputs.autolink }}
-          DUMP_HISTORY: ${{ github.event.inputs.dump_history }}
+          FILL_GASTOS: ${{ github.event.inputs.fill_gastos }}
           DUMP_COUNT: ${{ github.event.inputs.dump_count }}
           DUMP_RECON: ${{ github.event.inputs.dump_recon }}
           CANCEL_AGG: ${{ github.event.inputs.cancel_agg }}

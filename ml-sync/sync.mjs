@@ -875,6 +875,40 @@ async function main() {
     console.log(`✓ Borradas ${delPaths.length} ventas. Quedaron ${keep} confiables de los últimos ${months} meses.`);
     return;
   }
+  // FILL_GASTOS: crea un gasto mensual estimado ($800.000) en cada mes que TENGA
+  // ventas y NO tenga ningún gasto cargado. Así la "Ganancia CYC" descuenta gastos
+  // reales en todos los meses viejos. Id determinístico (cest_AAAA_MM) → no duplica
+  // si se vuelve a correr. Con DRY_RUN=1 solo muestra qué meses rellenaría.
+  if (process.env.FILL_GASTOS) {
+    const amount = 800000;
+    const vp = (await db.get('cyc/ventaprod')) || {};
+    const compras = (await db.get('cyc/compras')) || {};
+    const salesMonths = new Set();
+    for (const [dk, day] of Object.entries(vp)) {
+      const ym = String(dk).slice(0, 7); // AAAA_MM
+      for (const v of Object.values(day || {})) { if (v && !v.cancelada) { salesMonths.add(ym); break; } }
+    }
+    const gastoMonths = new Set();
+    for (const x of Object.values(compras)) {
+      if (x && x.tipo !== 'mercaderia' && x.dayKey) gastoMonths.add(String(x.dayKey).slice(0, 7));
+    }
+    const toAdd = [...salesMonths].filter((ym) => !gastoMonths.has(ym)).sort();
+    console.log(`\n=== GASTO ESTIMADO $${amount.toLocaleString('es-AR')} por mes ===`);
+    console.log(`Meses con ventas: ${salesMonths.size} · ya con gastos: ${gastoMonths.size} · a rellenar: ${toAdd.length}`);
+    toAdd.forEach((ym) => console.log(`  + ${ym.replace('_', '-')}`));
+    if (DRY) { console.log('\n(DRY: no se escribió nada.)'); return; }
+    const updates = {};
+    for (const ym of toAdd) {
+      const id = 'cest_' + ym;
+      updates[id] = {
+        id, monto: amount, cat: 'Gastos estimados', tipo: 'gasto',
+        desc: 'Gasto mensual estimado (automático)', ts: Date.now(), dayKey: ym + '_01',
+      };
+    }
+    if (Object.keys(updates).length) await db.patch('cyc/compras', updates);
+    console.log(`\n✓ Creados ${toAdd.length} gastos de $${amount.toLocaleString('es-AR')} (uno por mes sin gastos).`);
+    return;
+  }
   if (process.env.DUMP_MAP) {
     const m = (await db.get('cyc/mlmap')) || {};
     console.log('MLMAP total:', Object.keys(m).length);
