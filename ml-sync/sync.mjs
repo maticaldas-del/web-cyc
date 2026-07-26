@@ -417,14 +417,30 @@ async function main() {
   // DRY_RUN=1 solo muestra. Deja las que no encuentran variante para revisar.
   if (process.env.AUTOLINK) {
     const fams = [{ kw: 'paulvic', prod: 'Paulvic TODOS' }, { kw: 'victoria', prod: "Victoria's Secret" }];
+    // palabras que NO distinguen el aroma (marca + genéricos de perfumería)
+    const GEN_M = new Set(['hombre', 'men', 'masculino', 'man']);
+    const GEN_F = new Set(['mujer', 'lady', 'women', 'woman', 'femenino']);
+    const NOISE = new Set(['paulvic', 'victoria', 'victorias', 'secret', 'perfume', 'eau', 'de', 'del', 'la',
+      'parfum', 'ml', 'x', 'body', 'mist', 'splash', 'spray', 'fragancia', 'floral', 'frutal', 'intenso',
+      'citrico', 'acuatico', 'aromatico', 'herbal', 'notas', 'formato', 'unidad', 'volumen', 'para',
+      'vaporizador', 'elegante', 'fresco', 'florales', 'orientales', 'du', 'l', 'for', 'dulce', 'vainilla']);
+    const genderOf = (toks) => { let g = ''; for (const w of toks) { if (GEN_M.has(w)) g = 'm'; else if (GEN_F.has(w)) g = 'f'; } return g; };
+    const aromaToks = (toks) => toks.filter((w) => !NOISE.has(w) && !GEN_M.has(w) && !GEN_F.has(w) && !/^\d+$/.test(w));
     const matchVar = (title, variantes) => {
-      const tw = new Set(norm(title).split(' ').filter(Boolean));
-      let best = '', bestScore = 0;
+      const tt = norm(title).split(' ').filter(Boolean);
+      const tset = new Set(tt);
+      const tg = genderOf(tt);
+      let best = '', bestScore = -1;
       for (const v of (variantes || [])) {
-        const vw = norm(v).split(' ').filter(Boolean);
-        if (!vw.length) continue;
-        let sc = 0; for (const w of vw) if (tw.has(w)) sc++;
-        if (sc > 0 && (sc > bestScore || (sc === bestScore && norm(v).length > norm(best).length))) { bestScore = sc; best = v; }
+        const vt = norm(v).split(' ').filter(Boolean);
+        const va = aromaToks(vt);
+        if (!va.length) continue;
+        if (!va.every((w) => tset.has(w))) continue;          // el aroma tiene que estar en el título
+        const vg = genderOf(vt);
+        if (vg && tg && vg !== tg) continue;                   // género opuesto → descartar
+        let score = va.length * 10;                            // más palabras de aroma = más específico
+        if (vg && tg && vg === tg) score += 5;                 // coincide el género
+        if (score > bestScore) { bestScore = score; best = v; }
       }
       return best;
     };
