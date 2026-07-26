@@ -17,31 +17,27 @@ export async function fbSignIn(apiKey, email, password) {
 }
 
 // ── Firebase Realtime DB por REST ──
-export function makeDB(dbUrl, idToken) {
+// El idToken de Firebase caduca a la ~1h. Para corridas largas (backfill),
+// pasamos `reauth` (una función que vuelve a loguear y devuelve un idToken
+// nuevo): ante un 401, renovamos el token y reintentamos una vez.
+export function makeDB(dbUrl, idToken, reauth) {
   const base = dbUrl.replace(/\/$/, '');
-  const url = (p) => `${base}/${p}.json?auth=${idToken}`;
+  let token = idToken;
+  const url = (p) => `${base}/${p}.json?auth=${token}`;
+  async function req(path, opts, method) {
+    let r = await fetch(url(path), opts);
+    if (r.status === 401 && reauth) {
+      token = await reauth();
+      r = await fetch(url(path), opts);
+    }
+    if (!r.ok) throw new Error(`DB ${method} ${path}: ${r.status}`);
+    return r.json();
+  }
+  const body = (value) => ({ headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(value) });
   return {
-    async get(path) {
-      const r = await fetch(url(path));
-      if (!r.ok) throw new Error(`DB get ${path}: ${r.status}`);
-      return r.json();
-    },
-    async set(path, value) {
-      const r = await fetch(url(path), {
-        method: 'PUT', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(value),
-      });
-      if (!r.ok) throw new Error(`DB set ${path}: ${r.status}`);
-      return r.json();
-    },
-    async patch(path, value) {
-      const r = await fetch(url(path), {
-        method: 'PATCH', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(value),
-      });
-      if (!r.ok) throw new Error(`DB patch ${path}: ${r.status}`);
-      return r.json();
-    },
+    get: (path) => req(path, {}, 'get'),
+    set: (path, value) => req(path, { method: 'PUT', ...body(value) }, 'set'),
+    patch: (path, value) => req(path, { method: 'PATCH', ...body(value) }, 'patch'),
   };
 }
 

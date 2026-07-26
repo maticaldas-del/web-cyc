@@ -82,6 +82,10 @@ on:
         description: 'Restaurar ventas desde el backup: poné 1'
         required: false
         default: ''
+      account:
+        description: 'Procesar solo una cuenta (ej: Matias)'
+        required: false
+        default: ''
       backfill_days:
         description: 'Reprocesar los últimos N días (backfill): ej 31'
         required: false
@@ -131,4 +135,5 @@ jobs:
           BACKUP_VP: ${{ github.event.inputs.backup_vp }}
           PURGE_VP: ${{ github.event.inputs.purge_vp }}
           RESTORE_VP: ${{ github.event.inputs.restore_vp }}
+          ACCOUNT: ${{ github.event.inputs.account }}
         run: node ml-sync/sync.mjs

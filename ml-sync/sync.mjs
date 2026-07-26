@@ -326,7 +326,8 @@ async function wasDelivered(order, token) {
 
 async function main() {
   const idToken = await fbSignIn(FIREBASE_API_KEY, FIREBASE_BOT_EMAIL, FIREBASE_BOT_PASSWORD);
-  const db = makeDB(FIREBASE_DB_URL, idToken);
+  // reauth: en corridas largas el idToken caduca a la 1h → lo renovamos solo.
+  const db = makeDB(FIREBASE_DB_URL, idToken, () => fbSignIn(FIREBASE_API_KEY, FIREBASE_BOT_EMAIL, FIREBASE_BOT_PASSWORD));
 
   // Telegram: descubrir/cachear el chat id (solo hace falta el token).
   await resolveTgChat(db);
@@ -838,7 +839,10 @@ async function main() {
     return;
   }
 
+  // ACCOUNT: si está seteado, procesa solo esa cuenta (para backfills por tandas).
+  const onlyAcc = (process.env.ACCOUNT || '').trim().toLowerCase();
   for (const label of labels) {
+    if (onlyAcc && label.toLowerCase() !== onlyAcc) continue;
     const acc = accounts[label];
     if (!acc?.refresh_token) continue;
 
