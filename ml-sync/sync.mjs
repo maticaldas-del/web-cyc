@@ -619,6 +619,63 @@ async function main() {
     }
     return;
   }
+  // FILL_GESTFULL: estima la GESTIÓN/LOGÍSTICA de Full por unidad de cada producto a partir del
+  // cargo real 'shp_fulfillment' que Mercado Pago descuenta en cada venta, y la guarda en
+  // cyc/products/{id}/gestFull (para la caja "Costo vender en Full"). Solo mira ventas por
+  // encima del umbral de envío gratis (las de abajo no pagan Full al vendedor). Promedio por unidad.
+  if (process.env.FILL_GESTFULL) {
+    const days = parseInt(process.env.FILL_GESTFULL, 10) || 90;
+    const MIN_GROSS = 25000; // debajo del umbral de envío gratis no hay cargo Full al vendedor
+    const map = (await db.get('cyc/mllinks')) || {};
+    const onlyAcc = (process.env.ACCOUNT || '').trim().toLowerCase();
+    const agg = {}; // prodId -> { sum, n, name }
+    for (const label of labels) {
+      if (onlyAcc && label.toLowerCase() !== onlyAcc) continue;
+      const acc = accounts[label];
+      if (!acc?.refresh_token) continue;
+      const t = await mlRefresh(ML_CLIENT_ID, ML_CLIENT_SECRET, acc.refresh_token);
+      await db.patch('mlapi/tokens/' + label, { refresh_token: t.refresh_token, updated_ts: Date.now() });
+      const orders = await fetchOrdersRange(acc.seller_id, t.access_token, Date.now() - days * 864e5, Date.now());
+      let nFetch = 0;
+      for (const o of orders) {
+        const items = o.order_items || [];
+        const orderGross = items.reduce((s, it) => s + (it.unit_price || 0) * (it.quantity || 0), 0);
+        if (orderGross < MIN_GROSS) continue; // barato → el comprador paga el envío, no hay cargo Full
+        let shp = 0, got = false;
+        for (const p of (o.payments || [])) {
+          try {
+            const r = await fetch('https://api.mercadopago.com/v1/payments/' + p.id, { headers: { Authorization: 'Bearer ' + t.access_token } });
+            const b = await r.json();
+            for (const c of (b?.charges_details || [])) if (String(c.name).includes('shp_fulfillment')) { shp += (c.amounts?.original || 0); got = true; }
+          } catch { /* */ }
+        }
+        nFetch++;
+        if (!got || shp <= 0) continue;
+        const units = items.reduce((s, it) => s + (it.quantity || 0), 0) || 1;
+        const perUnit = shp / units;
+        for (const it of items) {
+          const mla = it.item?.id;
+          let e = mla ? map[mla] : null;
+          if (typeof e === 'string') e = { prodId: e };
+          const p = (e && e.prodId) ? (products.find((pp) => pp.id === e.prodId) || null) : matchProduct(it.item?.title || '', index);
+          if (!p) continue;
+          if (!agg[p.id]) agg[p.id] = { sum: 0, n: 0, name: p.name };
+          agg[p.id].sum += perUnit; agg[p.id].n += 1;
+        }
+      }
+      console.log(`  ${label}: ${nFetch} ventas ≥ $${MIN_GROSS} revisadas`);
+    }
+    let nProd = 0;
+    for (const [pid, a] of Object.entries(agg)) {
+      const gest = Math.round(a.sum / a.n);
+      if (gest <= 0) continue;
+      if (DRY) console.log(`  ${a.name}: gestión Full ≈ $${gest.toLocaleString('es-AR')} (de ${a.n} venta/s)`);
+      else await db.set('cyc/products/' + pid + '/gestFull', gest);
+      nProd++;
+    }
+    console.log(`Gestión Full ${DRY ? 'estimada (DRY)' : 'guardada'} para ${nProd} productos (ventas ≥ $${MIN_GROSS}, ${days} días).`);
+    return;
+  }
   // BACKUP_VP: copia de seguridad de todas las ventas actuales (por si hay que volver atrás)
   if (process.env.BACKUP_VP) {
     const vp = (await db.get('cyc/ventaprod')) || {};

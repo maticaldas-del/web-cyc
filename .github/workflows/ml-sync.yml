@@ -108,6 +108,10 @@ on:
         description: 'Cargar reclamos/pérdidas históricos (días, ej 365)'
         required: false
         default: ''
+      fill_gestfull:
+        description: 'Estimar gestión de Full por producto (días, ej 90)'
+        required: false
+        default: ''
   # schedule:
   #   - cron: '*/20 * * * *'   # cada 20 min (se activa al final)
 
@@ -150,6 +154,7 @@ jobs:
           CANCEL_AGG: ${{ github.event.inputs.cancel_agg }}
           DUMP_COSTS: ${{ github.event.inputs.dump_costs }}
           BACKFILL_RECLAMOS: ${{ github.event.inputs.backfill_reclamos }}
+          FILL_GESTFULL: ${{ github.event.inputs.fill_gestfull }}
           BACKUP_VP: ${{ github.event.inputs.backup_vp }}
           PURGE_VP: ${{ github.event.inputs.purge_vp }}
           RESTORE_VP: ${{ github.event.inputs.restore_vp }}
