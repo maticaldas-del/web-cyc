@@ -4470,11 +4470,25 @@ function renderMargenML(){
   const tc=curTC();
   const META=40;
   const q=normTxt(document.getElementById('margen-ml-search')?.value||'');
+  // Neto REAL promedio por producto, sacado de las ventas ya cargadas (lo que Mercado Pago
+  // depositó de verdad, ya con la gestión de Full descontada). Así el margen no depende del
+  // simulador ni de estimaciones. Una sola pasada por ventaprod.
+  const netoAgg={};
+  Object.values(state.ventaprod||{}).forEach(day=>Object.values(day||{}).forEach(v=>{
+    if(!v||v.cancelada)return;
+    const k=v.prodId?('id:'+v.prodId):('nm:'+normTxt(v.prod||''));
+    if(!netoAgg[k])netoAgg[k]={neto:0,u:0};
+    netoAgg[k].neto+=(v.neto||0);netoAgg[k].u+=(v.qty||0);
+  }));
+  const _netoRealOf=p=>{const a=netoAgg['id:'+p.id]||netoAgg['nm:'+normTxt(p.name)];return (a&&a.u>0)?Math.round(a.neto/a.u):null;};
   const rows=(state.products||[]).map(p=>{
     const costo=costFullP(p);
-    const neto=(p.netoRef!=null&&p.netoRef!=='')?Number(p.netoRef):null;
+    const netoManual=(p.netoRef!=null&&p.netoRef!=='')?Number(p.netoRef):null;
+    const netoReal=_netoRealOf(p);
+    const neto=netoManual!=null?netoManual:netoReal;   // manual pisa; si no, el real de las ventas
+    const fuente=netoManual!=null?'manual':(netoReal!=null?'real':null);
     const margen=(neto!=null&&costo>0)?((neto-costo)/costo*100):null;
-    return {p,costo,neto,margen};
+    return {p,costo,neto,margen,fuente,netoReal};
   }).filter(r=>!q||normTxt(r.p.name).includes(q));
   rows.sort((a,b)=>{
     if(a.margen==null&&b.margen==null)return (a.p.name||'').localeCompare(b.p.name||'','es',{sensitivity:'base'});
@@ -4484,22 +4498,25 @@ function renderMargenML(){
   });
   const bajo=rows.filter(r=>r.margen!=null&&r.margen<META).length;
   const sinNeto=rows.filter(r=>r.neto==null).length;
+  const conReal=rows.filter(r=>r.fuente==='real').length;
   const sum=document.getElementById('margen-ml-sum');
-  if(sum)sum.innerHTML=`Dólar actual <strong style="color:var(--text)">$${tc?tc.toLocaleString('es-AR'):'—'}</strong> · meta <strong style="color:var(--green)">${META}%</strong> · <strong style="color:${bajo?'var(--red)':'var(--green)'}">${bajo}</strong> bajo la meta · <strong>${sinNeto}</strong> sin neto cargado`;
+  if(sum)sum.innerHTML=`Dólar actual <strong style="color:var(--text)">$${tc?tc.toLocaleString('es-AR'):'—'}</strong> · meta <strong style="color:var(--green)">${META}%</strong> · <strong style="color:${bajo?'var(--red)':'var(--green)'}">${bajo}</strong> bajo la meta · <strong style="color:var(--green)">${conReal}</strong> con neto real de ventas · <strong>${sinNeto}</strong> sin datos`;
   if(!rows.length){el.innerHTML='<div class="empty-msg">No hay productos.</div>';return;}
   el.innerHTML=rows.map(r=>{
     const p=r.p;
     const objetivo=r.costo>0?Math.round(r.costo*(1+META/100)):null; // neto mínimo para llegar al 40%
-    const netoVal=r.neto!=null?Math.round(r.neto):'';
+    const netoManualVal=(p.netoRef!=null&&p.netoRef!=='')?Math.round(Number(p.netoRef)):'';
+    const phNeto=r.netoReal!=null?('real '+Math.round(r.netoReal).toLocaleString('es-AR')):'—';
     let margenTxt,margenColor;
     if(r.costo<=0){margenTxt='sin costo';margenColor='var(--muted)';}
     else if(r.neto==null){margenTxt='—';margenColor='var(--muted)';}
     else {margenColor=pctColor(r.margen);margenTxt=(r.margen>=0?'+':'')+r.margen.toFixed(0)+'%';}
+    const fuenteTag=r.fuente==='real'?`<span title="Neto real promedio de tus ventas (ya con la gestión de Full descontada)" style="font-size:.5rem;color:var(--green);font-weight:700">● REAL</span>`:(r.fuente==='manual'?`<span title="Neto cargado a mano" style="font-size:.5rem;color:var(--muted);font-weight:700">✎ manual</span>`:'');
     const flag=(r.margen!=null&&r.margen<META)?`<span style="background:rgba(239,68,68,.14);color:var(--red);border-radius:5px;padding:2px 7px;font-size:.6rem;font-weight:700;white-space:nowrap">⚠ bajo ${META}%</span>`:'';
     return `<div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;padding:10px 12px;border-bottom:1px solid var(--border)">
       <span style="flex:2;min-width:150px;font-size:.78rem;font-weight:600">${p.name}</span>
       <div style="min-width:88px"><div style="font-size:.55rem;color:var(--muted);text-transform:uppercase;letter-spacing:.06em">Costo full</div><div style="font-size:.75rem;font-family:'DM Mono',monospace">${r.costo>0?fmt(r.costo):'—'}</div></div>
-      <div style="min-width:108px"><div style="font-size:.55rem;color:var(--muted);text-transform:uppercase;letter-spacing:.06em">Neto ML</div><input type="number" min="0" step="1" value="${netoVal}" placeholder="—" onchange="setProdNeto('${p.id}',this.value)" style="width:98px;box-sizing:border-box;background:var(--surface2);border:1px solid var(--border2);border-radius:6px;padding:5px 7px;color:var(--text);font-family:'DM Mono',monospace;font-size:.72rem;text-align:right;outline:none"></div>
+      <div style="min-width:108px"><div style="font-size:.55rem;color:var(--muted);text-transform:uppercase;letter-spacing:.06em">Neto ML ${fuenteTag}</div><input type="number" min="0" step="1" value="${netoManualVal}" placeholder="${phNeto}" onchange="setProdNeto('${p.id}',this.value)" title="Vacío = usa el neto real promedio de tus ventas. Escribí un número para forzar uno." style="width:98px;box-sizing:border-box;background:var(--surface2);border:1px solid var(--border2);border-radius:6px;padding:5px 7px;color:var(--text);font-family:'DM Mono',monospace;font-size:.72rem;text-align:right;outline:none"></div>
       <div style="min-width:70px;text-align:right"><div style="font-size:.55rem;color:var(--muted);text-transform:uppercase;letter-spacing:.06em">Margen</div><div style="font-size:.82rem;font-weight:700;color:${margenColor}">${margenTxt}</div></div>
       ${flag}
       <div style="min-width:130px;font-size:.58rem;color:var(--muted)">${objetivo?`neto p/ ${META}%: <strong style="color:var(--text)">${fmt(objetivo)}</strong>`:''}</div>
@@ -6740,7 +6757,7 @@ document.addEventListener('click',e=>{if(fnavOpen&&!e.target.closest('#fnav-btn'
         <span style="font-size:.75rem;color:var(--muted)">Si no ves los últimos cambios, forzá la actualización</span>
         <button class="btn" style="background:rgba(56,189,248,.12);color:var(--blue);border:1px solid rgba(56,189,248,.3)" onclick="actualizarApp()">🔄 Buscar actualizaciones</button>
       </div>
-      <div style="font-size:.66rem;color:var(--muted);margin-top:12px">CYC · Versión 3.3</div>
+      <div style="font-size:.66rem;color:var(--muted);margin-top:12px">CYC · Versión 3.4</div>
     </div>
 
     <div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:18px 20px;margin-bottom:14px">
