@@ -24,6 +24,10 @@ on:
         description: 'Diagnosticar ventas sin producto: poné 1'
         required: false
         default: ''
+      autolink_ignored:
+        description: 'Vincular publicaciones ignoradas con ventas: poné 1'
+        required: false
+        default: ''
       telegram_test:
         description: 'Mandar mensaje de prueba a Telegram: poné 1'
         required: false
@@ -132,6 +136,7 @@ jobs:
           DUMP_VENTAS: ${{ github.event.inputs.dump_ventas }}
           DUMP_PRODNETO: ${{ github.event.inputs.dump_prodneto }}
           DUMP_SINVIN: ${{ github.event.inputs.dump_sinvin }}
+          AUTOLINK_IGNORED: ${{ github.event.inputs.autolink_ignored }}
           TELEGRAM_TEST: ${{ github.event.inputs.telegram_test }}
           DUMP_UNMAPPED: ${{ github.event.inputs.dump_unmapped }}
           DUMP_ORDER: ${{ github.event.inputs.dump_order }}

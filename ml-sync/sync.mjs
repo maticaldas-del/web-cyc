@@ -877,6 +877,77 @@ async function main() {
     return;
   }
 
+  // AUTOLINK_IGNORED: publicaciones marcadas IGNORAR que igual tienen ventas "sin producto".
+  // Las des-ignora y las auto-vincula (Paulvic/Victoria a su producto con variante; el resto
+  // por palabras contra el catálogo) y completa sus ventas. Las que no matchean quedan listadas.
+  if (process.env.AUTOLINK_IGNORED) {
+    const fams = [{ kw: 'paulvic', prod: 'Paulvic TODOS' }, { kw: 'victoria', prod: "Victoria's Secret" }];
+    const GEN_M = new Set(['hombre', 'men', 'masculino', 'man']);
+    const GEN_F = new Set(['mujer', 'lady', 'women', 'woman', 'femenino']);
+    const NOISE = new Set(['paulvic', 'victoria', 'victorias', 'secret', 'perfume', 'eau', 'de', 'del', 'la',
+      'parfum', 'ml', 'x', 'body', 'mist', 'splash', 'spray', 'fragancia', 'floral', 'frutal', 'intenso',
+      'citrico', 'acuatico', 'aromatico', 'herbal', 'notas', 'formato', 'unidad', 'volumen', 'para',
+      'vaporizador', 'elegante', 'fresco', 'florales', 'orientales', 'du', 'l', 'for', 'dulce', 'vainilla']);
+    const genderOf = (tk) => { let g = ''; for (const w of tk) { if (GEN_M.has(w)) g = 'm'; else if (GEN_F.has(w)) g = 'f'; } return g; };
+    const aromaToks = (tk) => tk.filter((w) => !NOISE.has(w) && !GEN_M.has(w) && !GEN_F.has(w) && !/^\d+$/.test(w));
+    const matchVar = (title, variantes) => {
+      const tt = norm(title).split(' ').filter(Boolean); const tset = new Set(tt); const tg = genderOf(tt);
+      let best = '', bestScore = -1;
+      for (const v of (variantes || [])) {
+        const vt = norm(v).split(' ').filter(Boolean); const va = aromaToks(vt);
+        if (!va.length || !va.every((w) => tset.has(w))) continue;
+        const vg = genderOf(vt); if (vg && tg && vg !== tg) continue;
+        let score = va.length * 10; if (vg && tg && vg === tg) score += 5;
+        if (score > bestScore) { bestScore = score; best = v; }
+      }
+      return best;
+    };
+    const famProd = {}; for (const f of fams) famProd[f.kw] = products.find((pp) => norm(pp.name) === norm(f.prod));
+    const vp = (await db.get('cyc/ventaprod')) || {};
+    // 1) publicaciones (mla) con ventas sin producto
+    const salesByMla = {};
+    for (const day of Object.values(vp)) for (const v of Object.values(day || {})) {
+      if (!v || !v.sinVincular || !v.mla) continue;
+      if (!(v.mla in salesByMla)) salesByMla[v.mla] = v.prod || '';
+    }
+    const mapUpd = {}; const linked = []; const unmatched = [];
+    for (const [mla, title] of Object.entries(salesByMla)) {
+      const e = map[mla] || {};
+      if (e.prodId) continue; // ya vinculada
+      let prodId = null, variant = '';
+      let fam = null; for (const f of fams) if (norm(title).includes(norm(f.kw)) && famProd[f.kw]) { fam = f; break; }
+      if (fam) { const p = famProd[fam.kw]; prodId = p.id; variant = matchVar(title, p.variantes) || ''; }
+      else { const p = matchProduct(title, index); if (p) prodId = p.id; }
+      if (prodId) {
+        const entry = { prodId, variant, title: e.title || title, cuenta: e.cuenta || '', status: e.status || '', sold: e.sold || 0, manual: true };
+        mapUpd[mla] = entry; map[mla] = entry; // des-ignora (queda vinculada normal)
+        linked.push({ mla, variant, title });
+      } else unmatched.push({ mla, title });
+    }
+    if (!DRY && Object.keys(mapUpd).length) await db.patch('cyc/mllinks', mapUpd);
+    // 2) completar las ventas de esas publicaciones (retro-relleno)
+    const vpUpd = {}; let rf = 0;
+    for (const [dk, day] of Object.entries(vp)) {
+      for (const [id, v] of Object.entries(day || {})) {
+        if (!v || !v.sinVincular || !v.mla) continue;
+        const e = map[v.mla]; if (!e || !e.prodId) continue;
+        const p = products.find((pp) => pp.id === e.prodId); if (!p) continue;
+        const { costo, costBaseUSD, shipUSD } = costoPesos(p, v.qty || 1, v.tcSale || tc);
+        const b = `${dk}/${id}/`;
+        vpUpd[b + 'prod'] = p.name; vpUpd[b + 'prodId'] = p.id; vpUpd[b + 'sinVincular'] = null;
+        vpUpd[b + 'costo'] = costo; vpUpd[b + 'costBaseUSD'] = costBaseUSD; vpUpd[b + 'shipUSD'] = shipUSD;
+        if (e.variant) vpUpd[b + 'variante'] = e.variant;
+        rf++;
+      }
+    }
+    const keys = Object.keys(vpUpd);
+    for (let i = 0; i < keys.length; i += 3000) { const chunk = {}; keys.slice(i, i + 3000).forEach((k) => chunk[k] = vpUpd[k]); if (!DRY) await db.patch('ventaprod', chunk); }
+    console.log(`Vinculadas ${linked.length} publicaciones · ventas completadas ${rf}${DRY ? ' (DRY)' : ''}`);
+    console.log(`Sin match (para crear/asignar a mano): ${unmatched.length}`);
+    unmatched.slice(0, 60).forEach((u) => console.log(`  · ${u.mla} · ${u.title.slice(0, 50)}`));
+    return;
+  }
+
   // ventas ya cargadas a mano / por cowork (para no duplicarlas). Las nuestras
   // (origen ml-api) usan id determinístico, así que reescribirlas es inofensivo.
   const ventaprod = (await db.get('cyc/ventaprod')) || {};
