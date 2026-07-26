@@ -923,7 +923,13 @@ async function main() {
         const entry = { prodId, variant, title: e.title || title, cuenta: e.cuenta || '', status: e.status || '', sold: e.sold || 0, manual: true };
         mapUpd[mla] = entry; map[mla] = entry; // des-ignora (queda vinculada normal)
         linked.push({ mla, variant, title });
-      } else unmatched.push({ mla, title });
+      } else {
+        // no hay producto en el catálogo: des-ignorar igual para que aparezca
+        // como PENDIENTE en Vinculaciones y se pueda machear/crear a mano.
+        const entry = { prodId: null, variant: '', title: e.title || title, cuenta: e.cuenta || '', status: e.status || '', sold: e.sold || 0 };
+        mapUpd[mla] = entry; map[mla] = entry;
+        unmatched.push({ mla, title });
+      }
     }
     if (!DRY && Object.keys(mapUpd).length) await db.patch('cyc/mllinks', mapUpd);
     // 2) completar las ventas de esas publicaciones (retro-relleno)
