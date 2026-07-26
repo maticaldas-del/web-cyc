@@ -1009,6 +1009,7 @@ async function main() {
         try { full = await mlGet('/orders/' + oid, t.access_token); } catch { continue; }
         if (!full || !full.id) continue;
         console.log(`\nORDEN ${oid} · cuenta ${label} · status ${full.status}`);
+        console.log('  order.id:', full.id, '· pack_id:', full.pack_id, '· shipping.id:', full.shipping?.id);
         console.log('  total_amount:', full.total_amount, 'paid_amount:', full.paid_amount);
         console.log('  items:', JSON.stringify((full.order_items || []).map((it) => ({
           t: (it.item?.title || '').slice(0, 30), unit: it.unit_price, qty: it.quantity, fee: it.sale_fee,
