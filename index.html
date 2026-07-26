@@ -2933,26 +2933,32 @@ function saveRetiroMesYM(ym,val){
   _gastoMesMemo={};_netoMesMemo={};
   if(ym===_curYM()){const rm=document.getElementById('f_retiro_mes');if(rm&&document.activeElement!==rm)setMoneyVal(rm,num);}
   try{renderReconciliacion();}catch(e){}
+  try{renderRetirosPorMes();}catch(e){}
   try{if(currentPage==='metricas')renderMetricas();}catch(e){}
   clearTimeout(_retiroTimersYM[ym]);
   _retiroTimersYM[ym]=setTimeout(()=>{fbSet('retiro_mes/'+ym,num);},700);
 }
-// Tabla editable: retiro real por mes (últimos 12 meses con ventas). Vacío = usa el 15%.
+// Tabla editable: SOLO los meses anteriores (con ventas) a los que les FALTA cargar el
+// retiro real. El mes actual ya tiene su casillero arriba ("Retiro cobrado este mes").
+// Cuando cargás un mes, desaparece de la lista. Si no falta ninguno, no se muestra nada.
 function renderRetirosPorMes(){
   const el=document.getElementById('retiros-mes-list');if(!el)return;
-  const months=[...new Set(Object.keys(state.ventaprod||{}).map(k=>k.substring(0,7)))].sort().reverse().slice(0,12);
+  const cur=_curYM();
+  const months=[...new Set(Object.keys(state.ventaprod||{}).map(k=>k.substring(0,7)))]
+    .filter(ym=>ym!==cur)
+    .filter(ym=>{const r=state.retiro_mes&&state.retiro_mes[ym];return !(r!=null&&r!=='');}) // solo los que faltan
+    .sort().reverse().slice(0,12);
   if(!months.length){el.innerHTML='';return;}
   const rows=months.map(ym=>{
     const md=_netoMesData(ym);const sug=Math.round((md.tot||0)*0.15);
-    const cur=state.retiro_mes&&state.retiro_mes[ym];const has=(cur!=null&&cur!=='');
     const parts=ym.split('_');const lbl=(MONTHS[parseInt(parts[1])-1]||parts[1])+' '+parts[0];
     return `<div style="display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid var(--border)">
       <span style="font-size:.72rem;min-width:96px;font-weight:600">${lbl}</span>
-      <span style="font-size:.6rem;color:var(--muted);flex:1;min-width:80px">15% = ${fmt(sug)}${has?' · <span style="color:var(--green)">real ✓</span>':''}</span>
-      <input class="fin-input money" type="text" inputmode="numeric" value="${has?fmt(cur):''}" placeholder="${fmt(sug)}" onchange="saveRetiroMesYM('${ym}',this.value)" style="width:130px">
+      <span style="font-size:.6rem;color:var(--amber);flex:1;min-width:80px">falta cargar · 15% = ${fmt(sug)}</span>
+      <input class="fin-input money" type="text" inputmode="numeric" value="" placeholder="${fmt(sug)}" onchange="saveRetiroMesYM('${ym}',this.value)" style="width:130px">
     </div>`;
   }).join('');
-  el.innerHTML=`<div style="font-size:.66rem;color:var(--muted);margin-bottom:6px">💸 <strong>Retiro real por mes</strong> — anotá cuánto sacaron de verdad. Si lo dejás vacío, usa el 15%.</div>${rows}`;
+  el.innerHTML=`<div style="font-size:.66rem;color:var(--amber);margin-bottom:6px">💸 <strong>Meses sin cargar el retiro</strong> — anotá lo que sacaron (vacío = usa el 15%).</div>${rows}`;
 }
 async function saveFin(key,val){
   const num=parseMoney(val);
@@ -6829,7 +6835,7 @@ document.addEventListener('click',e=>{if(fnavOpen&&!e.target.closest('#fnav-btn'
         <span style="font-size:.75rem;color:var(--muted)">Si no ves los últimos cambios, forzá la actualización</span>
         <button class="btn" style="background:rgba(56,189,248,.12);color:var(--blue);border:1px solid rgba(56,189,248,.3)" onclick="actualizarApp()">🔄 Buscar actualizaciones</button>
       </div>
-      <div style="font-size:.66rem;color:var(--muted);margin-top:12px">CYC · Versión 3.9</div>
+      <div style="font-size:.66rem;color:var(--muted);margin-top:12px">CYC · Versión 4.0</div>
     </div>
 
     <div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:18px 20px;margin-bottom:14px">
