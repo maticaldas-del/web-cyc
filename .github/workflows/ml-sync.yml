@@ -40,8 +40,8 @@ on:
         description: 'Investigar una venta puntual (nº de venta)'
         required: false
         default: ''
-      dump_vars:
-        description: 'Ver variantes de productos (palabra clave, ej: paulvic)'
+      resync_vp:
+        description: 'Re-sincronizar ventas al producto de su publicación: poné 1'
         required: false
         default: ''
       autolink:
@@ -140,7 +140,7 @@ jobs:
           TELEGRAM_TEST: ${{ github.event.inputs.telegram_test }}
           DUMP_UNMAPPED: ${{ github.event.inputs.dump_unmapped }}
           DUMP_ORDER: ${{ github.event.inputs.dump_order }}
-          DUMP_VARS: ${{ github.event.inputs.dump_vars }}
+          RESYNC_VP: ${{ github.event.inputs.resync_vp }}
           AUTOLINK: ${{ github.event.inputs.autolink }}
           FILL_GASTOS: ${{ github.event.inputs.fill_gastos }}
           PURGE_BEFORE: ${{ github.event.inputs.purge_before }}

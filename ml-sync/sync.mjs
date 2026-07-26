@@ -994,6 +994,45 @@ async function main() {
     console.log(`\n✓ Borrados ${delIds.length} gastos (backup en cyc/compras_bak).`);
     return;
   }
+  // RESYNC_VP: re-sincroniza TODAS las ventas al producto que HOY tiene su publicación
+  // (según cyc/mllinks). Arregla las ventas que quedaron con el nombre viejo cuando se
+  // cambió un match y no se reflejó. Actualiza nombre, prodId, variante y costo. Backup
+  // en cyc/ventaprod_bak. DRY_RUN=1 solo muestra cuántas cambiarían, por producto.
+  if (process.env.RESYNC_VP) {
+    const vp = (await db.get('cyc/ventaprod')) || {};
+    const map = (await db.get('cyc/mllinks')) || {};
+    const tc = parseFloat(((await db.get('cyc/finanzas')) || {}).tipo_cambio) || 1500;
+    const updates = {}; let n = 0; const byProd = {};
+    for (const [dk, day] of Object.entries(vp)) {
+      for (const [id, v] of Object.entries(day || {})) {
+        if (!v || !v.mla) continue;
+        const e = map[v.mla];
+        if (!e || !e.prodId || e.ignored) continue; // solo publicaciones vinculadas
+        const p = products.find((pp) => pp.id === e.prodId);
+        if (!p) continue;
+        const wantVar = e.variant || '';
+        if ((v.prodId || null) === p.id && (v.variante || '') === wantVar && !v.sinVincular) continue; // ya está bien
+        const { costo, costBaseUSD, shipUSD } = costoPesos(p, v.qty || 1, v.tcSale || tc);
+        const b = `${dk}/${id}/`;
+        updates[b + 'prod'] = p.name; updates[b + 'prodId'] = p.id; updates[b + 'sinVincular'] = null;
+        updates[b + 'variante'] = wantVar || null;
+        if (!v.cancelada) { updates[b + 'costo'] = costo; updates[b + 'costBaseUSD'] = costBaseUSD; updates[b + 'shipUSD'] = shipUSD; }
+        byProd[`${v.prod || '(sin nombre)'} → ${p.name}`] = (byProd[`${v.prod || '(sin nombre)'} → ${p.name}`] || 0) + 1;
+        n++;
+      }
+    }
+    console.log(`\n=== RE-SINCRONIZAR ventas al producto de su publicación ===`);
+    console.log(`Ventas a corregir: ${n}`);
+    Object.entries(byProd).sort((a, b) => b[1] - a[1]).forEach(([k, c]) => console.log(`  ${c} ×  ${k}`));
+    if (DRY) { console.log('\n(DRY: no se tocó nada.)'); return; }
+    if (n) {
+      await db.set('cyc/ventaprod_bak', vp);
+      const keys = Object.keys(updates);
+      for (let i = 0; i < keys.length; i += 3000) { const chunk = {}; keys.slice(i, i + 3000).forEach((k) => chunk[k] = updates[k]); await db.patch('cyc/ventaprod', chunk); }
+    }
+    console.log(`\n✓ Re-sincronizadas ${n} ventas (backup en cyc/ventaprod_bak).`);
+    return;
+  }
   if (process.env.DUMP_MAP) {
     const m = (await db.get('cyc/mlmap')) || {};
     console.log('MLMAP total:', Object.keys(m).length);
