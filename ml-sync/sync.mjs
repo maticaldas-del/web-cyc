@@ -959,6 +959,27 @@ async function main() {
     console.log(`✓ Borradas ${delPaths.length} ventas · fact_mes congelado en ${Object.keys(fmUpd).length} meses/cuenta.`);
     return;
   }
+  // PURGE_GASTOS: borra los GASTOS (no la mercadería) anteriores a una fecha (ej 2026_01_01),
+  // para arrancar limpio también los gastos. Backup de compras en cyc/compras_bak. DRY_RUN=1 = prueba.
+  if (process.env.PURGE_GASTOS) {
+    const cutoff = String(process.env.PURGE_GASTOS).trim();
+    const compras = (await db.get('cyc/compras')) || {};
+    const delIds = [];
+    for (const [id, x] of Object.entries(compras)) {
+      if (!x) continue;
+      const dk = String(x.dayKey || '');
+      if (dk && dk < cutoff && x.tipo !== 'mercaderia') delIds.push(id);
+    }
+    console.log(`\n=== BORRAR GASTOS antes de ${cutoff} ===`);
+    console.log(`Gastos a borrar: ${delIds.length} (de ${Object.keys(compras).length} compras/gastos en total)`);
+    delIds.slice(0, 60).forEach((id) => { const x = compras[id]; console.log(`  ✕ ${x.dayKey} · $${(x.monto || 0).toLocaleString('es-AR')} · ${x.cat || ''} ${x.desc || ''}`.trim()); });
+    if (DRY) { console.log('\n(DRY: no se borró nada.)'); return; }
+    await db.set('cyc/compras_bak', compras);
+    const upd = {}; delIds.forEach((id) => upd[id] = null);
+    if (Object.keys(upd).length) await db.patch('cyc/compras', upd);
+    console.log(`\n✓ Borrados ${delIds.length} gastos (backup en cyc/compras_bak).`);
+    return;
+  }
   if (process.env.DUMP_MAP) {
     const m = (await db.get('cyc/mlmap')) || {};
     console.log('MLMAP total:', Object.keys(m).length);
