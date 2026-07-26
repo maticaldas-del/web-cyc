@@ -409,6 +409,20 @@ async function main() {
       if (!mine.length) continue;
       const t = await mlRefresh(ML_CLIENT_ID, ML_CLIENT_SECRET, acc.refresh_token);
       await db.patch('mlapi/tokens/' + label, { refresh_token: t.refresh_token, updated_ts: Date.now() });
+      // SONDEO de "envíos entrantes a Full" (lo que está en camino, aún no recibido).
+      const sid2 = acc.seller_id;
+      const cands = [
+        '/inbound/shipments/search?seller_id=' + sid2 + '&limit=5',
+        '/inbound/shipments/search?seller_id=' + sid2 + '&status=shipped&limit=5',
+        '/stock/fulfillment/inbound/shipments/search?seller_id=' + sid2,
+        '/fbm/inbound/shipments/search?seller_id=' + sid2,
+        '/shipments/fulfillment/inbound/search?seller_id=' + sid2,
+        '/inbound-shipments/search?seller_id=' + sid2,
+      ];
+      for (const url of cands) {
+        try { const r = await mlGet(url, t.access_token); console.log(`  INBOUND OK [${label}] ${url}\n     → ${JSON.stringify(r).slice(0, 400)}`); }
+        catch (err) { console.log(`  INBOUND x  [${label}] ${url} → ${String(err.message || '').slice(0, 55)}`); }
+      }
       for (const [mla, e] of mine) {
         let item; try { item = await mlGet('/items/' + mla + '?attributes=id,title,available_quantity,shipping,inventory_id,variations', t.access_token); } catch { continue; }
         const invIds = [];
