@@ -823,26 +823,28 @@ async function main() {
           }
           variant = (e && e.variant) || '';
         }
-        if (!p) continue;                  // sin vincular → NO se carga (para no quedar sin costo)
-        if (!variant) variant = mlVariant(it, p); // variante desde la venta de ML si corresponde
-        // neto real del pago (una sola vez por orden, recién cuando hay un ítem que cargar)
+        // Si NO está vinculada, la cargamos igual como "sin producto" (para no
+        // perder ninguna venta); después la asignás/creás y se completa sola.
+        if (p && !variant) variant = mlVariant(it, p); // variante desde la venta de ML
+        // neto real del pago (una sola vez por orden)
         if (!netFetched) { orderNetAmt = await orderNet(o, t.access_token); netFetched = true; }
         const neto = (orderNetAmt != null && orderGross > 0)
           ? Math.round(orderNetAmt * (itemGross / orderGross))
           : netoFallback(itemGross, it.sale_fee, qty);
-        const { costo, costBaseUSD, shipUSD } = costoPesos(p, qty, tc);
+        const { costo, costBaseUSD, shipUSD } = p ? costoPesos(p, qty, tc) : { costo: 0, costBaseUSD: 0, shipUSD: 0 };
         const id = 'v' + o.id + '_' + idx;
         const obj = {
-          id, saleId, prod: p.name, prodId: p.id, cuenta: label, qty,
+          id, saleId, prod: p ? p.name : title, prodId: p ? p.id : null, cuenta: label, qty,
           total: Math.round(itemGross),
           neto,
           costo, costBaseUSD, tcSale: tc, shipUSD,
-          numVenta: num,
+          numVenta: num, mla: mla || '',
           ts: new Date(o.date_closed || o.date_created).getTime(),
           origen: 'ml-api',
         };
+        if (!p) obj.sinVincular = true;    // marca: venta cargada sin producto
         if (variant) obj.variante = variant;
-        if (DRY) console.log(`  [${label}] #${num} ${p.name} x${qty} · total ${obj.total} · neto ${obj.neto}`);
+        if (DRY) console.log(`  [${label}] #${num} ${obj.prod}${p ? '' : ' (SIN PRODUCTO)'} x${qty} · total ${obj.total} · neto ${obj.neto}`);
         else await db.set(`cyc/ventaprod/${dayKey}/${id}`, obj);
         cargadas++;
         // dejar registrada la carga por si esta misma venta se cancela después
@@ -1037,6 +1039,27 @@ async function main() {
       await db.patch('cyc/inventory', invUpd);
       console.log(`✓ Stock actualizado: ${Object.keys(stockTot).length} producto×cuenta.`);
     }
+  }
+
+  // RETRO-RELLENO: ventas que quedaron "sin producto" cuya publicación ya
+  // mapeaste después → les completamos el producto y el costo (una vez).
+  if (!DRY) {
+    let rf = 0;
+    for (const [dayKey, day] of Object.entries(ventaprod)) {
+      for (const [id, v] of Object.entries(day || {})) {
+        if (!v || !v.sinVincular || !v.mla) continue;
+        const e = map[v.mla];
+        if (!e || !e.prodId) continue;                 // sigue sin mapear
+        const p = products.find((pp) => pp.id === e.prodId);
+        if (!p) continue;
+        const { costo, costBaseUSD, shipUSD } = costoPesos(p, v.qty || 1, v.tcSale || tc);
+        const patch = { prod: p.name, prodId: p.id, costo, costBaseUSD, shipUSD, sinVincular: null };
+        if (e.variant) patch.variante = e.variant;
+        await db.patch(`cyc/ventaprod/${dayKey}/${id}`, patch);
+        v.sinVincular = false; rf++;
+      }
+    }
+    if (rf) console.log(`✓ Completé el producto en ${rf} ventas que estaban sin vincular.`);
   }
 
   const pend = Object.values(map).filter((x) => x && !x.prodId).length;
