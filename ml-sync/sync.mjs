@@ -1011,11 +1011,15 @@ async function main() {
         const p = products.find((pp) => pp.id === e.prodId);
         if (!p) continue;
         const wantVar = e.variant || '';
-        if ((v.prodId || null) === p.id && (v.variante || '') === wantVar && !v.sinVincular) continue; // ya está bien
+        // Solo corregir cuando el PRODUCTO es realmente distinto (o quedó sin vincular).
+        // NO tocamos la variante salvo que la publicación fije una: así no borramos los
+        // colores/aromas por-venta de sábanas, Paulvic, Victoria's, etc.
+        const prodDiff = (v.prodId || null) !== p.id;
+        if (!prodDiff && !v.sinVincular) continue;
         const { costo, costBaseUSD, shipUSD } = costoPesos(p, v.qty || 1, v.tcSale || tc);
         const b = `${dk}/${id}/`;
         updates[b + 'prod'] = p.name; updates[b + 'prodId'] = p.id; updates[b + 'sinVincular'] = null;
-        updates[b + 'variante'] = wantVar || null;
+        if (wantVar) updates[b + 'variante'] = wantVar; // solo si la publicación fija variante
         if (!v.cancelada) { updates[b + 'costo'] = costo; updates[b + 'costBaseUSD'] = costBaseUSD; updates[b + 'shipUSD'] = shipUSD; }
         byProd[`${v.prod || '(sin nombre)'} → ${p.name}`] = (byProd[`${v.prod || '(sin nombre)'} → ${p.name}`] || 0) + 1;
         n++;
