@@ -1751,6 +1751,40 @@ function mlSuggest(title){
   if(best&&bs>=1&&best.toks.length===1)return best.p.id; // producto de una palabra distintiva (P47, B39, Chispero)
   return'';
 }
+// Busca en el título de ML cuál variante del producto es (todas las palabras de
+// la variante tienen que estar en el título). Devuelve la más específica.
+function _matchProdVariant(title,variantes){
+  const tw=new Set(_mlnorm(title).split(' ').filter(Boolean));
+  let best='',bestScore=0;
+  for(const v of (variantes||[])){
+    const vw=_mlnorm(v).split(' ').filter(Boolean);
+    if(!vw.length)continue;
+    if(vw.every(w=>tw.has(w))&&vw.length>bestScore){bestScore=vw.length;best=v;}
+  }
+  return best;
+}
+// Auto-vincula familias que son un solo producto con variantes (Paulvic, Victoria's Secret).
+async function autoLinkFamilies(){
+  const fams=[{kw:'paulvic',prod:'Paulvic TODOS'},{kw:'victoria',prod:"Victoria's Secret"}];
+  const map=state.mllinks||{};
+  let linked=0,sinVar=0,noProd=[];
+  for(const f of fams){
+    const prod=(state.products||[]).find(p=>_mlnorm(p.name)===_mlnorm(f.prod));
+    if(!prod){noProd.push(f.prod);continue;}
+    for(const mla of Object.keys(map)){
+      const e=map[mla];
+      if(!e||e.ignored||e.prodId)continue;                       // solo sin vincular
+      if(!_mlnorm(e.title).includes(_mlnorm(f.kw)))continue;      // que sea de la familia
+      const variant=_matchProdVariant(e.title,prod.variantes);
+      const entry={prodId:prod.id,variant:variant||'',title:e.title||'',cuenta:e.cuenta||'',status:e.status||'',sold:e.sold||0,manual:true};
+      await fbSet('mllinks/'+mla,entry);state.mllinks[mla]=entry;
+      linked++;if(!variant)sinVar++;
+    }
+  }
+  renderMlLinks();
+  if(noProd.length)toast('No encontré el producto: '+noProd.join(', '),'err');
+  toast(linked+' vinculadas'+(sinVar?' · '+sinVar+' sin variante (revisá)':'')+' ✓',5000);
+}
 let _mlFilterPend=false,_mlShowHidden=false;
 function toggleMlFilter(){_mlFilterPend=!_mlFilterPend;renderMlLinks();}
 function toggleMlHidden(){_mlShowHidden=!_mlShowHidden;renderMlLinks();}
@@ -1778,6 +1812,7 @@ function renderMlLinks(){
   const head=`<div style="display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:10px">
       <span style="font-size:.66rem;color:var(--muted)">${_mlShowHidden?hidden+' ocultas':pend+' sin vincular · '+total+' en total'+(hidden?' · '+hidden+' ocultas':'')}</span>
       <div style="display:flex;gap:6px;flex-wrap:wrap">
+        ${(!_mlShowHidden&&pend)?btn('⚡ Auto Paulvic + Victoria','autoLinkFamilies()','color:var(--accent2);border-color:var(--accent2)'):''}
         ${_mlShowHidden?'':btn(_mlFilterPend?'Ver todas':'Solo sin vincular','toggleMlFilter()')}
         ${(!_mlShowHidden&&pend)?btn('🗑 Ocultar sin vincular','bulkHidePending()','color:var(--amber)'):''}
         ${hidden?btn(_mlShowHidden?'← Volver':'Ver ocultas ('+hidden+')','toggleMlHidden()'):''}
@@ -6624,7 +6659,7 @@ document.addEventListener('click',e=>{if(fnavOpen&&!e.target.closest('#fnav-btn'
         <span style="font-size:.75rem;color:var(--muted)">Si no ves los últimos cambios, forzá la actualización</span>
         <button class="btn" style="background:rgba(56,189,248,.12);color:var(--blue);border:1px solid rgba(56,189,248,.3)" onclick="actualizarApp()">🔄 Buscar actualizaciones</button>
       </div>
-      <div style="font-size:.66rem;color:var(--muted);margin-top:12px">CYC · Versión 2.8</div>
+      <div style="font-size:.66rem;color:var(--muted);margin-top:12px">CYC · Versión 2.9</div>
     </div>
 
     <div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:18px 20px;margin-bottom:14px">
