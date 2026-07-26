@@ -432,18 +432,27 @@ async function main() {
     for (const f of fams) {
       const p = products.find((pp) => norm(pp.name) === norm(f.prod));
       if (!p) { console.log('✗ No encontré el producto', f.prod); continue; }
-      let n = 0, nv = 0;
+      let nNew = 0, nVar = 0, nRev = 0;
       console.log(`\n═══ ${f.prod} (${(p.variantes || []).length} variantes) ═══`);
       for (const [mla, e] of Object.entries(map)) {
-        if (!e || e.ignored || e.prodId) continue;
-        if (!norm(e.title).includes(norm(f.kw))) continue;
+        if (!e || e.ignored) continue;
+        const linkedHere = e.prodId === p.id;              // ya vinculada a este producto
+        const isFam = norm(e.title).includes(norm(f.kw));  // el título es de esta familia
+        if (linkedHere) {
+          if (e.variant) continue;                         // ya tiene variante → respetar
+        } else if (e.prodId || !isFam) {
+          continue;                                        // mapeada a otra cosa, o no es de la familia
+        }
         const variant = matchVar(e.title, p.variantes);
+        if (linkedHere && !variant) {                      // ya vinculada pero no encontré la variante
+          console.log(`  ⚠️ sin variante (revisá) · ${e.title}`); nRev++; continue;
+        }
         const entry = { prodId: p.id, variant, title: e.title || '', cuenta: e.cuenta || '', status: e.status || '', sold: e.sold || 0, manual: true };
         upd[mla] = entry; map[mla] = entry;
-        n++; if (!variant) nv++;
-        console.log(`  ${variant ? '→ ' + variant : '⚠️ SIN VARIANTE'}  ·  ${e.title}`);
+        if (linkedHere) { nVar++; console.log(`  ✓ variante puesta → ${variant} · ${e.title}`); }
+        else { nNew++; console.log(`  ${variant ? '→ ' + variant : '⚠️ SIN VARIANTE'} · ${e.title}`); if (!variant) nRev++; }
       }
-      console.log(`  Total: ${n} vinculadas · ${nv} sin variante (revisar)`);
+      console.log(`  Nuevas vinculadas: ${nNew} · Variantes completadas: ${nVar} · Para revisar: ${nRev}`);
     }
     if (!process.env.DRY_RUN && Object.keys(upd).length) {
       await db.patch('cyc/mllinks', upd);
