@@ -44,8 +44,8 @@ on:
         description: 'Re-sincronizar ventas al producto de su publicación: poné 1'
         required: false
         default: ''
-      autolink:
-        description: 'Auto-vincular Paulvic + Victoria (con variantes): poné 1'
+      dump_fullstock:
+        description: 'Ver stock Full (disponible + en camino) de un producto (palabra clave)'
         required: false
         default: ''
       fill_gastos:
@@ -141,7 +141,7 @@ jobs:
           DUMP_UNMAPPED: ${{ github.event.inputs.dump_unmapped }}
           DUMP_ORDER: ${{ github.event.inputs.dump_order }}
           RESYNC_VP: ${{ github.event.inputs.resync_vp }}
-          AUTOLINK: ${{ github.event.inputs.autolink }}
+          DUMP_FULLSTOCK: ${{ github.event.inputs.dump_fullstock }}
           FILL_GASTOS: ${{ github.event.inputs.fill_gastos }}
           PURGE_BEFORE: ${{ github.event.inputs.purge_before }}
           DUMP_RECON: ${{ github.event.inputs.dump_recon }}

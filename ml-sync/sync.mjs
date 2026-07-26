@@ -393,6 +393,39 @@ async function main() {
 
   const products = Object.values((await db.get('cyc/products')) || {});
   const index = buildProductIndex(products);
+  // DUMP_FULLSTOCK: diagnóstico del stock de Full de un producto (palabra clave): muestra,
+  // por cada publicación e inventory_id, lo DISPONIBLE y lo que está NO-disponible con su
+  // motivo (transfer/inbound = en camino al depósito). Sirve para validar antes de sumar
+  // "disponible + en camino" al inventario del panel.
+  if (process.env.DUMP_FULLSTOCK) {
+    const kw = String(process.env.DUMP_FULLSTOCK).toLowerCase();
+    const map = (await db.get('cyc/mllinks')) || {};
+    const prodIds = new Set(products.filter((p) => (p.name || '').toLowerCase().includes(kw)).map((p) => p.id));
+    const pubs = Object.entries(map).filter(([, e]) => e && prodIds.has(e.prodId));
+    console.log(`Producto "${kw}": ${prodIds.size} en catálogo · ${pubs.length} publicaciones vinculadas`);
+    for (const label of labels) {
+      const acc = accounts[label]; if (!acc?.refresh_token) continue;
+      const mine = pubs.filter(([, e]) => (e.cuenta || '') === label);
+      if (!mine.length) continue;
+      const t = await mlRefresh(ML_CLIENT_ID, ML_CLIENT_SECRET, acc.refresh_token);
+      await db.patch('mlapi/tokens/' + label, { refresh_token: t.refresh_token, updated_ts: Date.now() });
+      for (const [mla, e] of mine) {
+        let item; try { item = await mlGet('/items/' + mla + '?attributes=id,title,available_quantity,shipping,inventory_id,variations', t.access_token); } catch { continue; }
+        const invIds = [];
+        if (item.inventory_id) invIds.push({ id: item.inventory_id, v: '' });
+        for (const v of (item.variations || [])) if (v.inventory_id) invIds.push({ id: v.inventory_id, v: (v.attribute_combinations || []).map((a) => a.value_name).join('/') });
+        console.log(`\n[${label}] ${mla} · ${(item.title || '').slice(0, 42)} · logística ${item.shipping?.logistic_type || '?'} · disp(item) ${item.available_quantity}`);
+        if (!invIds.length) { console.log('   (sin inventory_id → no es Full)'); continue; }
+        for (const { id, v } of invIds) {
+          try {
+            const s = await mlGet('/inventories/' + id + '/stock/fulfillment', t.access_token);
+            console.log(`   inv ${id}${v ? ' [' + v + ']' : ''}: total ${s.total} · disponible ${s.available_quantity} · no-disp ${s.not_available_quantity} · detalle ${JSON.stringify((s.not_available_detail || []).map((d) => d.status + ':' + d.quantity))}`);
+          } catch (err) { console.log(`   inv ${id}: error ${String(err.message || '').slice(0, 60)}`); }
+        }
+      }
+    }
+    return;
+  }
   // DUMP_PRODNETO: lista el neto real (guardado) de las ventas de un producto (palabra clave),
   // para corroborar cuánto se recibe de verdad vs lo que dice el simulador. Solo lee ventaprod.
   if (process.env.DUMP_PRODNETO) {
