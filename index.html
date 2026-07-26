@@ -583,7 +583,6 @@ footer{margin-top:32px;padding-top:14px;border-top:1px solid var(--border);font-
     <input class="search-box" id="arqueo-search" type="search" placeholder="Buscar producto..." oninput="updateArqueo()">
     <div id="arqueo-product-results"></div>
     <div id="arqueo-missing-costs" style="margin-bottom:14px"></div>
-    <div id="arqueo-problemas" style="margin-bottom:14px"></div>
     <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;margin-bottom:14px">
       <div class="stitle" style="margin:0">Valores actuales <span id="arqueo-prev-label" style="font-size:.62rem;color:var(--muted);font-family:'DM Mono',monospace;font-weight:400;text-transform:none;letter-spacing:0"></span></div>
       <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
@@ -3138,23 +3137,6 @@ function updateArqueo(){
       <div class="tbl-outer"><table style="min-width:320px">
         <thead><tr><th style="text-align:left">Producto</th><th style="text-align:left">Problema</th></tr></thead>
         <tbody>${rows.join('')}</tbody>
-      </table></div>`;
-    }
-  }
-  const prob=document.getElementById('arqueo-problemas');
-  if(prob){
-    // Productos con reclamos/devoluciones con pérdida. El % ya se les suma solo al
-    // costo (costFullUSDof usa reclamos÷ventas), así el precio cubre esos gastos.
-    const items=(state.products||[]).map(p=>{const s=_statsFor(p);return{p,rec:s.reclamos,ven:s.ventas};})
-      .filter(x=>x.rec>0).sort((a,b)=>b.rec-a.rec);
-    if(!items.length)prob.innerHTML='';
-    else{
-      const rows=items.map(x=>{const dev=x.ven>0?Math.round(x.rec/x.ven*1000)/10:0;
-        return `<tr><td>${x.p.name}</td><td style="text-align:center">${x.rec}</td><td style="text-align:center">${x.ven}</td><td style="text-align:center;color:var(--amber);font-weight:700">+${dev.toFixed(1)}%</td></tr>`;}).join('');
-      prob.innerHTML=`<div style="font-size:.68rem;color:var(--muted);margin-bottom:6px">📦 Productos con devoluciones/reclamos (${items.length}) · el <strong>+% costo</strong> se suma solo para cubrir el gasto</div>
-      <div class="tbl-outer"><table style="min-width:360px">
-        <thead><tr><th style="text-align:left">Producto</th><th>Reclamos</th><th>Ventas</th><th>+% costo</th></tr></thead>
-        <tbody>${rows}</tbody>
       </table></div>`;
     }
   }
@@ -6786,7 +6768,7 @@ document.addEventListener('click',e=>{if(fnavOpen&&!e.target.closest('#fnav-btn'
         <span style="font-size:.75rem;color:var(--muted)">Si no ves los últimos cambios, forzá la actualización</span>
         <button class="btn" style="background:rgba(56,189,248,.12);color:var(--blue);border:1px solid rgba(56,189,248,.3)" onclick="actualizarApp()">🔄 Buscar actualizaciones</button>
       </div>
-      <div style="font-size:.66rem;color:var(--muted);margin-top:12px">CYC · Versión 3.5</div>
+      <div style="font-size:.66rem;color:var(--muted);margin-top:12px">CYC · Versión 3.6</div>
     </div>
 
     <div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:18px 20px;margin-bottom:14px">
