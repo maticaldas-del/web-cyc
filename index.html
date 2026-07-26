@@ -1261,13 +1261,13 @@ footer{margin-top:32px;padding-top:14px;border-top:1px solid var(--border);font-
   <div class="stitle">Las preguntas clave <span id="res-period-lbl" style="font-weight:400;color:var(--muted);text-transform:none;letter-spacing:0;font-family:'DM Mono',monospace"></span></div>
   <div class="met-kpi-grid">
     <div class="met-kpi ct"><div class="mk-lbl">Ganancia real CYC</div><div class="mk-val" id="res-hero-ganancia" style="color:var(--green)">$0</div><div class="mk-sub" id="res-hero-ganancia-comp">después de retiros y gastos</div></div>
-    <div class="met-kpi c1"><div class="mk-lbl">Retiros socios (15%)</div><div class="mk-val" id="res-hero-retiro" style="color:var(--amber)">$0</div><div class="mk-sub">Mati + Viejo</div></div>
+    <div class="met-kpi c1"><div class="mk-lbl">Retiros socios</div><div class="mk-val" id="res-hero-retiro" style="color:var(--amber)">$0</div><div class="mk-sub" id="res-hero-retiro-sub">Mati + Viejo</div></div>
   </div>
 
   <div class="stitle">💧 Cascada de caja <span id="res-casc-period" style="font-weight:400;font-size:.65rem;text-transform:none;letter-spacing:0;font-family:'DM Mono',monospace;color:var(--muted)"></span></div>
   <div class="casc">
     <div class="casc-row sub"><div class="cl">Neto ML<span class="cs">suma de ventas en Ventas x Producto</span></div><div class="cv" id="casc-neto">$0</div></div>
-    <div class="casc-row"><div class="cl"><span class="op casc-neg">−</span>Retiro dueños 15%<span class="cs" id="casc-retiro-sub">Mati 7,5% · Viejo 7,5%</span></div><div class="cv casc-neg" id="casc-retiro">$0</div></div>
+    <div class="casc-row"><div class="cl"><span class="op casc-neg">−</span><span id="casc-retiro-lbl">Retiro dueños</span><span class="cs" id="casc-retiro-sub">Mati 7,5% · Viejo 7,5%</span></div><div class="cv casc-neg" id="casc-retiro">$0</div></div>
     <div class="casc-row sub"><div class="cl">Queda en CYC<span class="cs">después de retiros</span></div><div class="cv" id="casc-cyc-ml">$0</div></div>
     <div class="casc-row"><div class="cl"><span class="op casc-neg">−</span>Costo mercadería<span class="cs">lo que costaron los productos vendidos</span></div><div class="cv casc-neg" id="casc-costo-merch">$0</div></div>
     <div class="casc-row sub"><div class="cl">Ganancia bruta CYC<span class="cs">sin descontar gastos operativos</span></div><div class="cv" id="casc-ganancia-bruta">$0</div></div>
@@ -6393,27 +6393,39 @@ function renderResumen_page(){
   const comprasTot=(mk,tipo)=>_cmpTot(periodKeys._cmpKeys||[],tipo);
 
   // ── Cascada ──
+  // Cuando el período es UN mes, usamos el mismo criterio que Métricas: el retiro
+  // REAL que anotaste (o 15% si no lo cargaste) y los gastos del mes (con el $800.000
+  // estimado si ese mes no tiene gastos). Así el Resumen y Métricas dan igual.
+  const _isMonth=(resScopeMode==='mes'&&!!mesKey);
   const netoML=vpNetoSum();
   const costoMerch=vpCostoSum();
-  const retiro=Math.round(netoML*RETIRO_PCT);
+  const _rmMonth=_isMonth?_retiroMesVal(mesKey):null;
+  const retiro=_rmMonth!=null?_rmMonth:Math.round(netoML*RETIRO_PCT);
   const retMitad=Math.round(retiro/2);
   const quedaML=netoML-retiro;
   const gananciaBruta=quedaML-costoMerch;
-  const gastosMes=comprasTot(null,'gasto');
+  const gastosMes=_isMonth?_gastosMes(mesKey):comprasTot(null,'gasto');
   const gananciaReal=gananciaBruta-gastosMes;
 
   // comparación vs período anterior
   const netoMLp=_vpField(prevPeriodKeys,'neto');
   const costoMerchP=_vpEfectCosto(prevPeriodKeys);
-  const gananciaRealP=(netoMLp*(1-RETIRO_PCT))-costoMerchP-_cmpTot(prevPeriodKeys._cmpKeys||[],'gasto');
+  const _isMonthP=(resScopeMode==='mes'&&!!prevMesKey);
+  const _rmMonthP=_isMonthP?_retiroMesVal(prevMesKey):null;
+  const retiroP=_rmMonthP!=null?_rmMonthP:Math.round(netoMLp*RETIRO_PCT);
+  const gastosP=_isMonthP?_gastosMes(prevMesKey):_cmpTot(prevPeriodKeys._cmpKeys||[],'gasto');
+  const gananciaRealP=(netoMLp-retiroP)-costoMerchP-gastosP;
 
   // Hero
   set('res-hero-ganancia',gananciaReal);set('res-hero-retiro',retiro);
   setComp('res-hero-ganancia-comp',gananciaReal,gananciaRealP,prevLbl);
   const gReal=document.getElementById('res-hero-ganancia');if(gReal)gReal.style.color=gananciaReal>=0?'var(--green)':'var(--red)';
+  const _retReal=(_rmMonth!=null); // ¿usó el retiro real anotado o el 15%?
+  setTxt('res-hero-retiro-sub','Mati + Viejo · '+(_retReal?'real anotado':'15%'));
 
   // Cascada
   set('casc-neto',netoML);
+  setTxt('casc-retiro-lbl','Retiro dueños '+(_retReal?'(real)':'15%'));
   set('casc-retiro',retiro);setTxt('casc-retiro-sub','Mati '+fmt(retMitad)+' · Viejo '+fmt(retiro-retMitad));
   set('casc-cyc-ml',quedaML);
   set('casc-costo-merch',costoMerch);
@@ -6817,7 +6829,7 @@ document.addEventListener('click',e=>{if(fnavOpen&&!e.target.closest('#fnav-btn'
         <span style="font-size:.75rem;color:var(--muted)">Si no ves los últimos cambios, forzá la actualización</span>
         <button class="btn" style="background:rgba(56,189,248,.12);color:var(--blue);border:1px solid rgba(56,189,248,.3)" onclick="actualizarApp()">🔄 Buscar actualizaciones</button>
       </div>
-      <div style="font-size:.66rem;color:var(--muted);margin-top:12px">CYC · Versión 3.8</div>
+      <div style="font-size:.66rem;color:var(--muted);margin-top:12px">CYC · Versión 3.9</div>
     </div>
 
     <div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:18px 20px;margin-bottom:14px">
