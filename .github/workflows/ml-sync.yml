@@ -4,8 +4,10 @@ name: ml-sync
 # Corre solo cada 10 min (GitHub a veces lo demora unos minutos más) + manual.
 
 on:
-  schedule:
-    - cron: '*/10 * * * *'   # cada 10 minutos (automático, sin PC)
+  # schedule DESACTIVADO temporalmente durante el rebuild del historial
+  # (para que no choque con el backfill y no rompa los tokens de ML).
+  # schedule:
+  #   - cron: '*/10 * * * *'   # cada 10 minutos (automático, sin PC)
   workflow_dispatch:
     inputs:
       dry_run:
@@ -68,6 +70,18 @@ on:
         description: 'Contar cuántas trae el método por fechas (días, ej 365)'
         required: false
         default: ''
+      backup_vp:
+        description: 'Backup de todas las ventas: poné 1'
+        required: false
+        default: ''
+      purge_vp:
+        description: 'Borrar todas las ventas (necesita backup): poné 1'
+        required: false
+        default: ''
+      restore_vp:
+        description: 'Restaurar ventas desde el backup: poné 1'
+        required: false
+        default: ''
       backfill_days:
         description: 'Reprocesar los últimos N días (backfill): ej 31'
         required: false
@@ -114,4 +128,7 @@ jobs:
           AUTOLINK: ${{ github.event.inputs.autolink }}
           DUMP_HISTORY: ${{ github.event.inputs.dump_history }}
           DUMP_COUNT: ${{ github.event.inputs.dump_count }}
+          BACKUP_VP: ${{ github.event.inputs.backup_vp }}
+          PURGE_VP: ${{ github.event.inputs.purge_vp }}
+          RESTORE_VP: ${{ github.event.inputs.restore_vp }}
         run: node ml-sync/sync.mjs

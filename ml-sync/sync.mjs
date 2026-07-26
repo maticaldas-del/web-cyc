@@ -459,6 +459,31 @@ async function main() {
     }
     return;
   }
+  // BACKUP_VP: copia de seguridad de todas las ventas actuales (por si hay que volver atrás)
+  if (process.env.BACKUP_VP) {
+    const vp = (await db.get('cyc/ventaprod')) || {};
+    let n = 0; for (const day of Object.values(vp)) n += Object.keys(day || {}).length;
+    await db.set('cyc/ventaprod_bak', vp);
+    console.log(`✓ Backup hecho: ${n} ventas copiadas a cyc/ventaprod_bak`);
+    return;
+  }
+  // PURGE_VP: borra todas las ventas (SOLO si ya existe el backup). Para el rebuild.
+  if (process.env.PURGE_VP) {
+    const bak = await db.get('cyc/ventaprod_bak');
+    if (!bak) { console.log('✗ No hay backup (cyc/ventaprod_bak). No borro nada.'); return; }
+    let nb = 0; for (const day of Object.values(bak)) nb += Object.keys(day || {}).length;
+    await db.set('cyc/ventaprod', null);
+    console.log(`✓ Ventas borradas. (Backup a salvo con ${nb} ventas en cyc/ventaprod_bak.)`);
+    return;
+  }
+  // RESTORE_VP: vuelve atrás desde el backup (por si algo salió mal).
+  if (process.env.RESTORE_VP) {
+    const bak = await db.get('cyc/ventaprod_bak');
+    if (!bak) { console.log('✗ No hay backup para restaurar.'); return; }
+    await db.set('cyc/ventaprod', bak);
+    console.log('✓ Ventas restauradas desde el backup.');
+    return;
+  }
   if (process.env.DUMP_MAP) {
     const m = (await db.get('cyc/mlmap')) || {};
     console.log('MLMAP total:', Object.keys(m).length);
@@ -824,11 +849,18 @@ async function main() {
     // 2) traer ventas desde la última corrida (o últimos 7 días la 1ª vez).
     //    BACKFILL_DAYS fuerza una ventana amplia (para reprocesar el historial).
     const bfd = parseInt(process.env.BACKFILL_DAYS || '0', 10);
-    const fromISO = bfd > 0
-      ? new Date(Date.now() - bfd * 864e5).toISOString().replace(/\.\d+Z$/, '.000-00:00')
-      : (state[label]?.lastFrom ||
-        new Date(Date.now() - 7 * 864e5).toISOString().replace(/\.\d+Z$/, '.000-00:00'));
-    const orders = await fetchOrders(acc.seller_id, t.access_token, fromISO);
+    // Backfill grande (>45 días): traemos por ventanas de fecha para llegar a
+    // TODAS (ML no deja paginar tan atrás de una). Si no, el método normal.
+    let orders;
+    if (bfd > 45) {
+      orders = await fetchOrdersRange(acc.seller_id, t.access_token, Date.now() - bfd * 864e5, Date.now());
+    } else {
+      const fromISO = bfd > 0
+        ? new Date(Date.now() - bfd * 864e5).toISOString().replace(/\.\d+Z$/, '.000-00:00')
+        : (state[label]?.lastFrom ||
+          new Date(Date.now() - 7 * 864e5).toISOString().replace(/\.\d+Z$/, '.000-00:00'));
+      orders = await fetchOrders(acc.seller_id, t.access_token, fromISO);
+    }
 
     // 3) transformar cada venta → entradas ventaprod (solo las que enganchan)
     for (const o of orders) {
