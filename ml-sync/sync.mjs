@@ -503,6 +503,33 @@ async function main() {
     }
     return;
   }
+  // CANCEL_AGG: recalcula la facturación de CANCELADAS/DEVUELTAS por cuenta y mes y la guarda
+  // en cyc/fact_cancel/{cuenta}. La app la SUMA a la facturación del monotributo para que el
+  // número quede idéntico a las "Ventas brutas" de ML (AFIP toma lo facturado, canceladas
+  // incluidas). Corre en el workflow diario (barato) y también a mano con este flag.
+  if (process.env.CANCEL_AGG) {
+    const days = parseInt(process.env.CANCEL_AGG, 10) || 400;
+    const fromISO = new Date(Date.now() - days * 864e5).toISOString().replace(/\.\d+Z$/, '.000-00:00');
+    for (const label of labels) {
+      const acc = accounts[label];
+      if (!acc?.refresh_token) continue;
+      const t = await mlRefresh(ML_CLIENT_ID, ML_CLIENT_SECRET, acc.refresh_token);
+      await db.patch('mlapi/tokens/' + label, { refresh_token: t.refresh_token, updated_ts: Date.now() });
+      const canc = await fetchCancelled(acc.seller_id, t.access_token, fromISO);
+      const seen = new Set(), byMonth = {};
+      for (const o of canc) {
+        if (seen.has(o.id)) continue; seen.add(o.id); // por si una orden viene repetida
+        const gross = (o.order_items || []).reduce((s, it) => s + (it.unit_price || 0) * (it.quantity || 0), 0);
+        const ym = dayKeyFromISO(o.date_closed || o.date_created).substring(0, 7); // YYYY_MM
+        byMonth[ym] = (byMonth[ym] || 0) + gross;
+      }
+      for (const k of Object.keys(byMonth)) byMonth[k] = Math.round(byMonth[k]);
+      const totCanc = Object.values(byMonth).reduce((s, v) => s + v, 0);
+      await db.set('cyc/fact_cancel/' + label.toLowerCase(), byMonth);
+      console.log(`${label}: canceladas ${seen.size} · ${Object.keys(byMonth).length} meses · facturado ${money(totCanc)}`);
+    }
+    return;
+  }
   // BACKUP_VP: copia de seguridad de todas las ventas actuales (por si hay que volver atrás)
   if (process.env.BACKUP_VP) {
     const vp = (await db.get('cyc/ventaprod')) || {};
