@@ -52,6 +52,10 @@ on:
         description: 'Productos por margen real (debug): poné 1'
         required: false
         default: ''
+      dump_vars:
+        description: 'Ver variantes de productos (palabra clave, ej: paulvic)'
+        required: false
+        default: ''
       backfill_days:
         description: 'Reprocesar los últimos N días (backfill): ej 31'
         required: false
@@ -94,4 +98,5 @@ jobs:
           DUMP_ORDER: ${{ github.event.inputs.dump_order }}
           DUMP_BALANCE: ${{ github.event.inputs.dump_balance }}
           DUMP_MARGINS: ${{ github.event.inputs.dump_margins }}
+          DUMP_VARS: ${{ github.event.inputs.dump_vars }}
         run: node ml-sync/sync.mjs

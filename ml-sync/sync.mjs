@@ -387,6 +387,16 @@ async function main() {
     console.log('EJEMPLO:', JSON.stringify(products[0] || {}));
     return;
   }
+  if (process.env.DUMP_VARS) {
+    const kw = (process.env.DUMP_VARS || '').toLowerCase();
+    for (const p of products) {
+      if (kw && kw !== '1' && !(p.name || '').toLowerCase().includes(kw)) continue;
+      const vs = p.variantes || [];
+      if (!vs.length && kw === '1') continue;
+      console.log(`${p.name}  → ${vs.length} variantes: ${JSON.stringify(vs)}`);
+    }
+    return;
+  }
   if (process.env.DUMP_MAP) {
     const m = (await db.get('cyc/mlmap')) || {};
     console.log('MLMAP total:', Object.keys(m).length);
