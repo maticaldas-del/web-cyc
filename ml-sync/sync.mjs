@@ -829,6 +829,52 @@ async function main() {
     console.log('✓ Ventas restauradas desde el backup.');
     return;
   }
+  // CLEAN_VP: limpieza SELECTIVA de ventas. Deja solo las ventas CONFIABLES de los
+  // últimos N meses (por defecto 12): las que trajo el robot (origen ml-api) y tienen
+  // número de venta. Borra el resto: viejas, sin nº de venta o cargadas a mano (no
+  // confiables). Con DRY_RUN=1 solo muestra qué borraría (no toca nada). En firme
+  // hace backup a cyc/ventaprod_bak ANTES de borrar (se puede restaurar con RESTORE_VP).
+  if (process.env.CLEAN_VP) {
+    const months = parseInt(process.env.CLEAN_VP, 10) || 12;
+    const cutoff = Date.now() - Math.round(months * 30.44 * 864e5);
+    const vp = (await db.get('cyc/ventaprod')) || {};
+    let total = 0, keep = 0, delOld = 0, delNoNum = 0, delNotApi = 0;
+    const delPaths = []; const sample = [];
+    for (const [dk, day] of Object.entries(vp)) {
+      for (const [id, v] of Object.entries(day || {})) {
+        if (!v) continue;
+        total++;
+        const ts = v.ts || Date.parse(String(dk).replace(/_/g, '-')) || 0;
+        const old = !!ts && ts < cutoff;
+        const noNum = !v.numVenta;
+        const notApi = v.origen !== 'ml-api';
+        if (old || noNum || notApi) {
+          if (old) delOld++; if (noNum) delNoNum++; if (notApi) delNotApi++;
+          delPaths.push(`${dk}/${id}`);
+          if (sample.length < 25) sample.push(`${dk} #${v.numVenta || 'SIN Nº'} [${v.origen || '?'}] ${(v.prod || '').slice(0, 28)}`);
+        } else keep++;
+      }
+    }
+    console.log(`\n=== LIMPIEZA de ventas (dejar solo confiables de ${months} meses) ===`);
+    console.log(`Total actual: ${total}`);
+    console.log(`QUEDAN (ml-api + con nº venta + últimos ${months} meses): ${keep}`);
+    console.log(`A BORRAR: ${delPaths.length}`);
+    console.log(`  · más de ${months} meses: ${delOld}`);
+    console.log(`  · sin número de venta: ${delNoNum}`);
+    console.log(`  · cargadas a mano (no ml-api): ${delNotApi}`);
+    console.log('  (un misma venta puede contar en varios motivos)');
+    console.log('Ejemplos de las que se borrarían:');
+    sample.forEach((s) => console.log('   ✕ ' + s));
+    if (DRY) { console.log('\n(DRY: no se borró nada. Sacá el modo prueba para ejecutar.)'); return; }
+    await db.set('cyc/ventaprod_bak', vp);
+    console.log(`\n✓ Backup de las ${total} ventas en cyc/ventaprod_bak (se puede restaurar con RESTORE_VP).`);
+    for (let i = 0; i < delPaths.length; i += 2000) {
+      const chunk = {}; delPaths.slice(i, i + 2000).forEach((p) => chunk[p] = null);
+      await db.patch('cyc/ventaprod', chunk);
+    }
+    console.log(`✓ Borradas ${delPaths.length} ventas. Quedaron ${keep} confiables de los últimos ${months} meses.`);
+    return;
+  }
   if (process.env.DUMP_MAP) {
     const m = (await db.get('cyc/mlmap')) || {};
     console.log('MLMAP total:', Object.keys(m).length);
