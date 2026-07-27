@@ -623,16 +623,27 @@ async function main() {
     if (process.env.BILLING_PROBE === 'fees') {
       const startMs = Date.UTC(2026, 5, 15);            // 15 jun 2026
       const endMs = Date.UTC(2026, 6, 14, 23, 59, 59);  // 14 jul 2026 (= período ML "2026-07-01")
-      const BILL_TOT = { matias: 2245683.42 };           // total que ML facturó ese período (grupo ML)
+      const PERKEY = '2026-07-01';
+      const sleepF = (ms) => new Promise((r) => setTimeout(r, ms));
+      const chargeNames = new Set(); // TODOS los conceptos que ML descuenta por venta (prueba de que storage no está)
+      let totOculto = 0, totBill = 0, totFees = 0;
       for (const label of labels) {
         if (onlyAcc && label.toLowerCase() !== onlyAcc) continue;
         const acc = accounts[label];
         if (!acc?.refresh_token) continue;
         const t = await mlRefresh(ML_CLIENT_ID, ML_CLIENT_SECRET, acc.refresh_token);
         await db.patch('mlapi/tokens/' + label, { refresh_token: t.refresh_token, updated_ts: Date.now() });
+        // total que ML te facturó ese período (grupo ML) — oficial
+        let bill = null;
+        try {
+          const pr = await mlGet('/billing/integration/monthly/periods?group=ML&document_type=BILL&limit=13', t.access_token);
+          const per = (pr.results || []).find((x) => x.key === PERKEY);
+          if (per) bill = per.amount;
+        } catch (e) { console.log(`   (no pude leer facturación de ${label}: ${String(e.message || '').slice(0, 50)})`); }
+        await sleepF(13000); // límite 5/min del billing
         const paid = await fetchOrdersRange(acc.seller_id, t.access_token, startMs, endMs);
         const byId = new Map(paid.map((o) => [o.id, o]));
-        let comision = 0, fijo = 0, envio = 0, otrosML = 0, tax = 0, net = 0, done = 0;
+        let comision = 0, fijo = 0, envio = 0, otrosML = 0, tax = 0, done = 0;
         for (const o of byId.values()) {
           for (const p of (o.payments || [])) {
             if (!p.id) continue;
@@ -640,27 +651,40 @@ async function main() {
             try { const r = await fetch('https://api.mercadopago.com/v1/payments/' + p.id, { headers: { Authorization: 'Bearer ' + t.access_token } }); b = await r.json(); } catch { continue; }
             for (const c of (b?.charges_details || [])) {
               const amt = c.amounts?.original || 0; const n = (c.name || '').toLowerCase();
+              chargeNames.add(c.name || '?');
               if (n.startsWith('tax_withholding')) tax += amt;
               else if (n.includes('percentage_fee')) comision += amt;
               else if (n.includes('flat_fee')) fijo += amt;
               else if (n.includes('shp') || n.includes('shipping') || n.includes('fulfillment')) envio += amt;
               else otrosML += amt;
             }
-            const nr = b?.transaction_details?.net_received_amount; if (typeof nr === 'number') net += nr;
           }
-          done++; if (done % 100 === 0) console.log(`   ...${label}: ${done}/${byId.size}`);
+          done++; if (done % 150 === 0) console.log(`   ...${label}: ${done}/${byId.size}`);
         }
         const feesML = comision + fijo + envio + otrosML;
-        const bill = BILL_TOT[label.toLowerCase()] || null;
         console.log(`\n▶ ${label} · período 15/jun–14/jul · ${byId.size} órdenes`);
-        console.log(`   Cargos ML por venta (ya están en el neto): comisión ${money(comision)} + fijo ${money(fijo)} + envío ${money(envio)}${otrosML ? ' + otros ' + money(otrosML) : ''} = ${money(feesML)}`);
-        console.log(`   (impuestos AFIP/IIBB retenidos, aparte: ${money(tax)})`);
+        console.log(`   Cargos ML por venta (YA en el neto): comisión ${money(comision)} + fijo ${money(fijo)} + envío ${money(envio)}${otrosML ? ' + otros ' + money(otrosML) : ''} = ${money(feesML)}`);
         if (bill != null) {
           const oculto = Math.round(bill - feesML);
-          console.log(`   TOTAL que ML te facturó (grupo ML): ${money(Math.round(bill))}`);
-          console.log(`   ➜ ALMACENAMIENTO + PUBLICIDAD + gestión (lo que la app NO resta) ≈ ${money(oculto)}`);
+          totOculto += oculto; totBill += bill; totFees += feesML;
+          console.log(`   TOTAL facturado por ML: ${money(Math.round(bill))}  ➜  cargo NO contado (almacenamiento/gestión) ≈ ${money(oculto)}`);
         }
       }
+      console.log(`\n═══ TOTAL 4 CUENTAS (período 15/jun–14/jul) ═══`);
+      console.log(`   ML facturó: ${money(Math.round(totBill))} · ya en el neto: ${money(Math.round(totFees))} · NO contado: ${money(Math.round(totOculto))}`);
+      console.log(`\nConceptos que ML descuenta POR VENTA (deberían NO incluir almacenamiento/publicidad):`);
+      console.log('   ' + [...chargeNames].sort().join(' · '));
+      // ¿Ya había algún gasto de almacenamiento/full cargado en CYC?
+      const compras = (await db.get('cyc/compras')) || {};
+      let totGasto = 0; const sosp = [];
+      for (const x of Object.values(compras)) {
+        if (!x || x.tipo === 'mercaderia') continue;
+        totGasto += x.monto || 0;
+        const txt = ((x.cat || '') + ' ' + (x.desc || '')).toLowerCase();
+        if (/almacen|full|storage|publicid|dep[oó]sito|comisi|mercadolibre|\bml\b/.test(txt)) sosp.push(`${x.dayKey || '?'} · ${money(x.monto || 0)} · ${x.cat || ''} ${x.desc || ''}`.trim());
+      }
+      console.log(`\nGastos cargados en CYC (tipo gasto): total ${money(Math.round(totGasto))}`);
+      console.log(sosp.length ? '   Posibles de ML/almacenamiento ya cargados:\n   ' + sosp.join('\n   ') : '   ✓ NINGÚN gasto de almacenamiento/Full/ML cargado — nunca se tuvo en cuenta.');
       return;
     }
     for (const label of labels) {
