@@ -594,11 +594,14 @@ async function main() {
         const overlap = oE < oS ? 0 : Math.round((oE - oS) / 86400000) + 1;
         const frac = dim > 0 ? overlap / dim : 0;
         if (overlap <= 0) continue;
+        const congelado = ym < '2026_01'; // igual que FAC_CONGELADO_HASTA en la app
         const real = (realMes[a] || {})[ym] || 0;
         const canc = (parseFloat((factCancel[a] || {})[ym]) || 0) * frac;
+        const man = (factMes[a] || {})[ym];
         let val, src;
-        if (real > 0 || canc > 0) { val = real + canc; src = 'REAL'; }
-        else { const man = (factMes[a] || {})[ym]; val = (parseFloat(man) || 0) * frac; src = man != null ? 'congelado' : 'vacío'; }
+        if (congelado) { val = (parseFloat(man) || 0) * frac; src = man != null ? 'CONGELADO' : 'vacío'; }
+        else if (real > 0 || canc > 0) { val = real + canc; src = 'REAL'; }
+        else { val = (parseFloat(man) || 0) * frac; src = man != null ? 'congelado' : 'vacío'; }
         tot += val;
         detalle.push(`${ym}[${src} x${frac.toFixed(2)}]=$${Math.round(val).toLocaleString('es-AR')}`);
       }

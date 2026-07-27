@@ -3437,13 +3437,14 @@ function renderMonotributo(){
   const rows=meses.map(ym=>{
     const ov=_mesOverlap(ym,win);
     const parcial=ov.overlap<ov.total;
-    // Un mes es "auto" si al menos una cuenta tiene ventas reales importadas en la ventana.
-    const auto=MET_ACCTS.some(a=>_facMesCuentaEnRango(a,ym,win.winStartK,win.winEndK)>0);
+    const congelado=ym<FAC_CONGELADO_HASTA;  // mes viejo (antes de arrancar de 0): manda el congelado
+    // Un mes es "auto" si tiene ventas reales importadas Y no es un mes viejo congelado.
+    const auto=!congelado&&MET_ACCTS.some(a=>_facMesCuentaEnRango(a,ym,win.winStartK,win.winEndK)>0);
     const cells=MET_ACCTS.map(a=>{
       const pagadas=_facMesCuentaEnRango(a,ym,win.winStartK,win.winEndK);
       const canc=_facCancelMes(a,ym);        // canceladas/devueltas del mes (facturado)
       const real=pagadas+canc;               // = "Ventas brutas" de ML
-      const hasReal=real>0;                  // ventas reales de ML → mandan
+      const hasReal=real>0&&!congelado;      // en meses viejos NO usamos las ventas sueltas → manda el congelado
       const man=state.fact_mes?.[a]?.[ym];
       const hasMan=man!=null&&man!=='';
       // El manual solo se usa (y se muestra) si ese mes NO tiene ventas reales cargadas.
@@ -6027,6 +6028,11 @@ function _puntFacMes(ym){let t=0;Object.keys(state.ventaprod||{}).filter(k=>k.st
 // _puntFac12() toma las ventas reales importadas de ML SIEMPRE que existan, para cualquier mes.
 // El manual (fact_mes) quedó solo como respaldo para meses sin ventas cargadas.
 const FAC_AUTO_DESDE='2026_06';
+// "Arrancamos de 0" en enero 2026: las ventas viejas se borraron y su facturación quedó
+// CONGELADA en fact_mes. Para los meses anteriores a esta fecha, ese número congelado ES la
+// verdad para el monotributo — aunque queden ventas sueltas re-importadas de 2025, se ignoran
+// (si no, esas ventitas "tapaban" el número real y el año se veía a la mitad).
+const FAC_CONGELADO_HASTA='2026_01';
 // Facturación (total vendido, sin canceladas) de UNA cuenta en un mes YYYY_MM — de las ventas de la app.
 function _facMesCuenta(acct,ym){
   let t=0;
@@ -6078,14 +6084,22 @@ function _puntFac12(){
   const acc={};MET_ACCTS.forEach(a=>acc[a]=0);
   _ventanaMeses(win).forEach(ym=>{
     const ov=_mesOverlap(ym,win);if(ov.overlap<=0)return;
+    const congelado=ym<FAC_CONGELADO_HASTA; // mes viejo, anterior a "arrancar de 0" en 2026
     MET_ACCTS.forEach(a=>{
+      const man=state.fact_mes?.[a]?.[ym];
+      // MES VIEJO CONGELADO: el número guardado (fact_mes) manda. Ya incluye canceladas.
+      // Ignoramos ventas sueltas re-importadas de 2025 para que no tapen la cifra real.
+      if(congelado){
+        if(man!=null&&man!=='')acc[a]+=(parseFloat(man)||0)*ov.frac;
+        else acc[a]+=_baseMesFallback(a,ym)*ov.frac;
+        return;
+      }
       // canceladas/devueltas del mes (van SIEMPRE, es facturado para AFIP) — prorrateadas.
       const canc=_facCancelMes(a,ym)*ov.frac;
       // 1º) VENTAS PAGADAS importadas de ML (día por día dentro de la ventana).
       const real=_facMesCuentaEnRango(a,ym,win.winStartK,win.winEndK);
       if(real>0||canc>0){acc[a]+=real+canc;return;}
       // 2º) override manual histórico (solo si ese mes no tiene ventas cargadas).
-      const man=state.fact_mes?.[a]?.[ym];
       if(man!=null&&man!=='')acc[a]+=(parseFloat(man)||0)*ov.frac;
       // 3º) base previa repartida pareja (último recurso, meses sin datos).
       else acc[a]+=_baseMesFallback(a,ym)*ov.frac;
@@ -6866,7 +6880,7 @@ document.addEventListener('click',e=>{if(fnavOpen&&!e.target.closest('#fnav-btn'
         <span style="font-size:.75rem;color:var(--muted)">Si no ves los últimos cambios, forzá la actualización</span>
         <button class="btn" style="background:rgba(56,189,248,.12);color:var(--blue);border:1px solid rgba(56,189,248,.3)" onclick="actualizarApp()">🔄 Buscar actualizaciones</button>
       </div>
-      <div style="font-size:.66rem;color:var(--muted);margin-top:12px">CYC · Versión 4.1</div>
+      <div style="font-size:.66rem;color:var(--muted);margin-top:12px">CYC · Versión 4.2</div>
     </div>
 
     <div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:18px 20px;margin-bottom:14px">
