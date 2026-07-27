@@ -194,6 +194,8 @@ function netoFallback(itemGross, saleFeeUnit, qty) {
 // Si querés fijarlo a mano, podés cargar también TELEGRAM_CHAT_ID.
 let TG_TOKEN = process.env.TELEGRAM_BOT_TOKEN || '';
 let TG_CHAT = process.env.TELEGRAM_CHAT_ID || '';
+let TG_CHATS = []; // TODOS los chats a los que mandamos (vos, tu papá, etc.)
+let TG_NAMES = {}; // id -> nombre (para mostrar quién está suscripto)
 async function tgApi(method, body) {
   if (!TG_TOKEN) return null;
   try {
@@ -204,30 +206,42 @@ async function tgApi(method, body) {
     return await r.json();
   } catch { return null; }
 }
+// Manda el mensaje a TODOS los suscriptos (los que le escribieron "hola" al bot).
 async function sendTelegram(text) {
-  if (!TG_TOKEN || !TG_CHAT) return false;
-  const r = await tgApi('sendMessage', {
-    chat_id: TG_CHAT, text, parse_mode: 'HTML', disable_web_page_preview: true,
-  });
-  return !!(r && r.ok);
+  if (!TG_TOKEN) return false;
+  const dest = TG_CHATS.length ? TG_CHATS : (TG_CHAT ? [String(TG_CHAT)] : []);
+  if (!dest.length) return false;
+  let anyOk = false;
+  for (const chat_id of dest) {
+    const r = await tgApi('sendMessage', { chat_id, text, parse_mode: 'HTML', disable_web_page_preview: true });
+    if (r && r.ok) anyOk = true;
+  }
+  return anyOk;
 }
-// Descubre el chat id la primera vez y lo cachea en Firebase.
+// Descubre y ACUMULA todos los chats: cada persona que le manda "hola" al bot queda
+// suscripta y recibe los resúmenes/avisos. Se guarda en Firebase mlapi/telegram/chats.
 async function resolveTgChat(db) {
-  if (!TG_TOKEN || TG_CHAT) return;
-  try { const c = await db.get('mlapi/telegram/chatId'); if (c) { TG_CHAT = String(c); return; } } catch { /* */ }
+  if (!TG_TOKEN) return;
+  const chats = {}; // id -> {name, ts}
+  try { const saved = await db.get('mlapi/telegram/chats'); if (saved && typeof saved === 'object') Object.assign(chats, saved); } catch { /* */ }
+  try { const legacy = await db.get('mlapi/telegram/chatId'); if (legacy && !chats[String(legacy)]) chats[String(legacy)] = { name: '', ts: Date.now() }; } catch { /* */ }
+  if (TG_CHAT && !chats[String(TG_CHAT)]) chats[String(TG_CHAT)] = { name: 'fijo', ts: Date.now() };
   const r = await tgApi('getUpdates', {});
   if (r && r.ok) {
     for (const u of (r.result || [])) {
       const m = u.message || u.edited_message || u.channel_post || {};
-      const id = m.chat && m.chat.id;
-      if (id) {
-        TG_CHAT = String(id);
-        try { await db.set('mlapi/telegram/chatId', TG_CHAT); } catch { /* */ }
-        console.log('✓ Telegram: chat id detectado y guardado:', TG_CHAT);
-        break;
+      const c = m.chat; const id = c && c.id;
+      if (id && !chats[String(id)]) {
+        const nm = ((c.first_name || c.title || '') + (c.last_name ? ' ' + c.last_name : '')).trim();
+        chats[String(id)] = { name: nm, ts: Date.now() };
+        console.log('✓ Telegram: nuevo suscriptor', id, nm);
       }
     }
   }
+  if (Object.keys(chats).length) { try { await db.set('mlapi/telegram/chats', chats); } catch { /* */ } }
+  TG_CHATS = Object.keys(chats);
+  TG_NAMES = {}; for (const [id, v] of Object.entries(chats)) TG_NAMES[id] = (v && v.name) || '';
+  if (!TG_CHAT && TG_CHATS.length) TG_CHAT = TG_CHATS[0];
 }
 const money = (n) => '$' + Math.round(n).toLocaleString('es-AR');
 
@@ -351,10 +365,12 @@ async function main() {
   // que el token está bien y que llega a tu celular). No toca nada más.
   if (process.env.TELEGRAM_TEST) {
     if (!TG_TOKEN) { console.log('✗ Falta el secret TELEGRAM_BOT_TOKEN.'); return; }
-    if (!TG_CHAT) { console.log('✗ No encontré tu chat. Mandale un "hola" al bot y reintento.'); return; }
+    if (!TG_CHATS.length) { console.log('✗ Nadie suscripto todavía. Mandale un "hola" al bot y reintento.'); return; }
+    console.log(`Suscriptos (${TG_CHATS.length}):`);
+    TG_CHATS.forEach((id) => console.log(`  · ${id}${TG_NAMES[id] ? ' — ' + TG_NAMES[id] : ''}`));
     const ok = await sendTelegram('✅ <b>CYC</b>: prueba de avisos. Si ves esto, ¡los avisos ya funcionan! 🎉');
-    console.log(ok ? '✓ Mensaje de prueba enviado a Telegram (chat ' + TG_CHAT + ').'
-      : '✗ No se pudo enviar. ¿Apretaste Start en el bot?');
+    console.log(ok ? `✓ Prueba enviada a ${TG_CHATS.length} chat(s).`
+      : '✗ No se pudo enviar. ¿Apretaron Start en el bot?');
     return;
   }
 
