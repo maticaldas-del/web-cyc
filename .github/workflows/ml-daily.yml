@@ -39,16 +39,5 @@ jobs:
           FIREBASE_BOT_PASSWORD: ${{ secrets.FIREBASE_BOT_PASSWORD }}
           CANCEL_AGG: '400'
         run: node ml-sync/sync.mjs
-      # Carga el gasto MENSUAL de ALMACENAMIENTO de Full (número real de la factura del período de ML,
-      # ya sin comisión/envío). Idempotente. Barato (solo Firebase). El cálculo real del período se
-      # corre aparte cuando cierra el período de ML.
-      - name: Almacenamiento Full (gasto mensual)
-        env:
-          ML_CLIENT_ID: ${{ secrets.ML_CLIENT_ID }}
-          ML_CLIENT_SECRET: ${{ secrets.ML_CLIENT_SECRET }}
-          FIREBASE_API_KEY: ${{ secrets.FIREBASE_API_KEY }}
-          FIREBASE_DB_URL: ${{ secrets.FIREBASE_DB_URL }}
-          FIREBASE_BOT_EMAIL: ${{ secrets.FIREBASE_BOT_EMAIL }}
-          FIREBASE_BOT_PASSWORD: ${{ secrets.FIREBASE_BOT_PASSWORD }}
-          BILLING_PROBE: 'month'
-        run: node ml-sync/sync.mjs
+      # (El almacenamiento Full y los cargos de ML por débito —IIBB, etc.— ya NO se cargan como gasto
+      # mensual: ahora se descuentan como un % por cuenta sobre cada venta, en la web. Ver ML_EXTRA_PCT.)
