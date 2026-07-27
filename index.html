@@ -4527,12 +4527,17 @@ function renderMargenML(){
   Object.values(state.ventaprod||{}).forEach(day=>Object.values(day||{}).forEach(v=>{
     if(!v||v.cancelada)return;
     const k=v.prodId?('id:'+v.prodId):('nm:'+normTxt(v.prod||''));
-    if(!netoAgg[k])netoAgg[k]={neto:0,u:0};
+    if(!netoAgg[k])netoAgg[k]={neto:0,u:0,mlx:0};
     netoAgg[k].neto+=(v.neto||0);netoAgg[k].u+=(v.qty||0);
+    // Cargo extra de ML (IIBB + almacenamiento) que ML cobra por débito, aparte de la venta: % del precio.
+    netoAgg[k].mlx+=(v.total||0)*mlExtraPct(v.cuenta)/100;
   }));
-  const _netoRealOf=p=>{const a=netoAgg['id:'+p.id]||netoAgg['nm:'+normTxt(p.name)];return (a&&a.u>0)?Math.round(a.neto/a.u):null;};
+  const _aggOf=p=>netoAgg['id:'+p.id]||netoAgg['nm:'+normTxt(p.name)];
+  const _netoRealOf=p=>{const a=_aggOf(p);return (a&&a.u>0)?Math.round(a.neto/a.u):null;};
+  // Cargo extra de ML por unidad (promedio de las ventas reales del producto). Va SUMADO al costo.
+  const _mlExtraOf=p=>{const a=_aggOf(p);return (a&&a.u>0)?Math.round(a.mlx/a.u):0;};
   const rows=(state.products||[]).map(p=>{
-    const costo=costFullP(p);
+    const costo=costFullP(p)+_mlExtraOf(p); // costo real = full + cargo extra de ML (IIBB, etc.)
     const netoManual=(p.netoRef!=null&&p.netoRef!=='')?Number(p.netoRef):null;
     const netoReal=_netoRealOf(p);
     const neto=netoManual!=null?netoManual:netoReal;   // manual pisa; si no, el real de las ventas
@@ -4550,7 +4555,7 @@ function renderMargenML(){
   const sinNeto=rows.filter(r=>r.neto==null).length;
   const conReal=rows.filter(r=>r.fuente==='real').length;
   const sum=document.getElementById('margen-ml-sum');
-  if(sum)sum.innerHTML=`Dólar actual <strong style="color:var(--text)">$${tc?tc.toLocaleString('es-AR'):'—'}</strong> · meta <strong style="color:var(--green)">${META}%</strong> · <strong style="color:${bajo?'var(--red)':'var(--green)'}">${bajo}</strong> bajo la meta · <strong style="color:var(--green)">${conReal}</strong> con neto real de ventas · <strong>${sinNeto}</strong> sin datos`;
+  if(sum)sum.innerHTML=`Dólar actual <strong style="color:var(--text)">$${tc?tc.toLocaleString('es-AR'):'—'}</strong> · meta <strong style="color:var(--green)">${META}%</strong> · <strong style="color:${bajo?'var(--red)':'var(--green)'}">${bajo}</strong> bajo la meta · <strong style="color:var(--green)">${conReal}</strong> con neto real de ventas · <strong>${sinNeto}</strong> sin datos<br><span style="color:var(--muted);font-size:.92em">El <strong>Costo full</strong> ya incluye el cargo extra de ML (IIBB + almacenamiento, ~4-6% del precio según cuenta).</span>`;
   if(!rows.length){el.innerHTML='<div class="empty-msg">No hay productos.</div>';return;}
   el.innerHTML=rows.map(r=>{
     const p=r.p;
@@ -6901,7 +6906,7 @@ document.addEventListener('click',e=>{if(fnavOpen&&!e.target.closest('#fnav-btn'
         <span style="font-size:.75rem;color:var(--muted)">Si no ves los últimos cambios, forzá la actualización</span>
         <button class="btn" style="background:rgba(56,189,248,.12);color:var(--blue);border:1px solid rgba(56,189,248,.3)" onclick="actualizarApp()">🔄 Buscar actualizaciones</button>
       </div>
-      <div style="font-size:.66rem;color:var(--muted);margin-top:12px">CYC · Versión 4.5</div>
+      <div style="font-size:.66rem;color:var(--muted);margin-top:12px">CYC · Versión 4.6</div>
     </div>
 
     <div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:18px 20px;margin-bottom:14px">
