@@ -1573,7 +1573,8 @@ async function main() {
         for (const [k, v] of Object.entries(day || {})) {
           if (v && String(v.numVenta) === oidIn) {
             console.log('PANEL:', JSON.stringify({
-              prod: v.prod, total: v.total, neto: v.neto, costo: v.costo,
+              prod: v.prod, mla: v.mla || '(sin mla)', prodId: v.prodId || null,
+              total: v.total, neto: v.neto, costo: v.costo,
               origen: v.origen, cancelada: v.cancelada || false, tipo: v.tipoCancelacion || '',
             }));
             const m = String(v.saleId || v.id || k).match(/(\d{6,})/);
@@ -1607,7 +1608,8 @@ async function main() {
         } catch (e) { console.log('  CLAIMS error', String(e.message || '').slice(0, 60)); }
         console.log('  total_amount:', full.total_amount, 'paid_amount:', full.paid_amount);
         console.log('  items:', JSON.stringify((full.order_items || []).map((it) => ({
-          t: (it.item?.title || '').slice(0, 30), unit: it.unit_price, qty: it.quantity, fee: it.sale_fee,
+          mla: it.item?.id, varId: it.item?.variation_id || null,
+          t: (it.item?.title || '').slice(0, 40), unit: it.unit_price, qty: it.quantity, fee: it.sale_fee,
         }))));
         let net = 0;
         for (const p of (full.payments || [])) {
