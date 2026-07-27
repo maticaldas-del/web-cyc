@@ -842,6 +842,29 @@ async function main() {
       console.log(`${DRY ? '(DRY) ' : ''}Cargado ${id} = ${money(monto)} (almacenamiento real).`);
       return;
     }
+    // BILLING_PROBE=licua → mide la LICUACIÓN: cuánto pierden mes a mes los pesos parados (efectivo +
+    // MP disponible + a liquidar) por la suba del dólar. Usa los cierres guardados (cyc/snapshots).
+    if (process.env.BILLING_PROBE === 'licua') {
+      const snaps = (await db.get('cyc/snapshots')) || {};
+      const keys = Object.keys(snaps).sort();
+      console.log('LICUACIÓN DE PESOS PARADOS (por la suba del dólar), mes a mes:');
+      console.log('(pesos parados = efectivo + MercadoPago disponible + a liquidar en ML)\n');
+      console.log('mes cerrado   dólar          sube%   pesos parados   LICUACIÓN');
+      let totLic = 0, n = 0;
+      for (let i = 1; i < keys.length; i++) {
+        const a = snaps[keys[i - 1]], b = snaps[keys[i]];
+        const tcA = a.tipoCambio || 0, tcB = b.tipoCambio || 0;
+        if (!tcA || !tcB) continue;
+        const f = a.finanzas || {};
+        const holdUSD = (parseFloat(f.efectivo) || 0) + (parseFloat(f.mp_disp) || 0) + (parseFloat(f.mp_liq) || 0);
+        const rise = (tcB / tcA - 1) * 100;
+        const licua = Math.round(holdUSD * (tcB - tcA));
+        totLic += licua; n++;
+        console.log(`${(b.label || keys[i]).padEnd(12)}  $${Math.round(tcA)}→$${Math.round(tcB)}   ${rise.toFixed(1).padStart(5)}%   US$${Math.round(holdUSD).toLocaleString('es-AR').padStart(7)}   ${money(licua)}`);
+      }
+      if (n) console.log(`\nPromedio de licuación por mes: ${money(Math.round(totLic / n))} (sobre ${n} meses).`);
+      return;
+    }
     // BILLING_PROBE=unpost → borra los gastos DIARIOS de almacenamiento (almfull_*) que cargamos antes.
     if (process.env.BILLING_PROBE === 'unpost') {
       const compras = (await db.get('cyc/compras')) || {};
