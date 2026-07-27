@@ -4364,7 +4364,7 @@ function renderVentaProd(){
     const VP_CAP=200;const shownGroups=filteredGroups.slice(0,VP_CAP);
     list.innerHTML=filteredGroups.length?shownGroups.map(grp=>{
       const isCancelled=grp.cancelada;
-      let gn=0,gc=0;grp.items.forEach(v=>{if(!isCancelled){gn+=v.neto||0;gc+=efectivoCostoVP(v);}});
+      let gn=0,gc=0,gmlx=0;grp.items.forEach(v=>{if(!isCancelled){gn+=v.neto||0;gc+=efectivoCostoVP(v);gmlx+=(v.total||0)*mlExtraPct(v.cuenta)/100;}});
       const gg=gn-gc;const gpct=gc>0?gg/gc*100:null;
       const cuenta=grp.items[0].cuenta;
       const numVenta=grp.items[0].numVenta||'';
@@ -4418,7 +4418,7 @@ function renderVentaProd(){
       const cancelBadge=isCancelled?(_esRec
         ?`<span style="padding:1px 7px;border-radius:4px;background:rgba(239,68,68,.15);color:#f87171;font-size:.58rem;font-weight:600;letter-spacing:.04em" title="Producto perdido · no volvió al stock · cuenta como reclamo">RECLAMO · sin stock</span>`
         :`<span style="padding:1px 7px;border-radius:4px;background:rgba(148,163,184,.18);color:#cbd5e1;font-size:.58rem;font-weight:600;letter-spacing:.04em" title="El comprador canceló · producto devuelto al stock">CANCELADA · devuelto</span>`):'';
-      const costLabel=(!isCancelled&&gc>0)?`<span style="font-size:.66rem;color:var(--muted)" title="Costo full total de la venta (costo + envío + devoluciones)">costo ${fmt(gc)}</span>`:'';
+      const costLabel=(!isCancelled&&gc>0)?`<span style="font-size:.66rem;color:var(--muted)" title="Costo full: mercadería ${fmt(gc-gmlx)} (costo + envío + %devol + full) + cargo ML por débito de fin de mes (IIBB, etc.) ${fmt(gmlx)}">costo ${fmt(gc)}${gmlx>0?` <span style="color:#f59e0b" title="Cargo extra de ML (IIBB/débito de fin de mes) ya sumado al costo">(ML ${fmt(gmlx)})</span>`:''}</span>`:'';
       const ganLabel=isCancelled?'':(gc>0?`<span style="font-size:.66rem;color:${gg>=0?'var(--green)':'var(--red)'}">gan. ${fmt(gg)}</span>`:`<span style="font-size:.62rem;color:var(--muted)">neto ${fmt(gn)}</span>`);
       const lines=grp.items.map(v=>`<div style="display:flex;justify-content:space-between;font-size:.72rem;padding:2px 0;${isCancelled?'opacity:.45;text-decoration:line-through':''}"><span>${v.qty}× ${nombreDeVenta(v)}${v.variante?` <span style="padding:1px 5px;border-radius:3px;background:rgba(124,58,237,.12);color:#a78bfa;font-size:.62rem">${v.variante}</span>`:''}</span><span style="color:var(--muted)">${(!isCancelled&&(v.total||0)>0)?`total ${fmt(v.total)} · `:''}${isCancelled?'':'neto '+fmt(v.neto||0)}</span></div>`).join('');
       return`<div class="ingreso-item" style="flex-direction:column;align-items:stretch;gap:4px;${isCancelled?'border-color:rgba(239,68,68,.25);background:rgba(239,68,68,.04)':''}">
@@ -6920,7 +6920,7 @@ document.addEventListener('click',e=>{if(fnavOpen&&!e.target.closest('#fnav-btn'
         <span style="font-size:.75rem;color:var(--muted)">Si no ves los últimos cambios, forzá la actualización</span>
         <button class="btn" style="background:rgba(56,189,248,.12);color:var(--blue);border:1px solid rgba(56,189,248,.3)" onclick="actualizarApp()">🔄 Buscar actualizaciones</button>
       </div>
-      <div style="font-size:.66rem;color:var(--muted);margin-top:12px">CYC · Versión 5.4</div>
+      <div style="font-size:.66rem;color:var(--muted);margin-top:12px">CYC · Versión 5.5</div>
     </div>
 
     <div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:18px 20px;margin-bottom:14px">
