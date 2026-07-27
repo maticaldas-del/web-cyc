@@ -979,8 +979,8 @@ footer{margin-top:32px;padding-top:14px;border-top:1px solid var(--border);font-
     </div>
   </div>
 
-  <!-- ── Selector de período (fijo arriba: se puede cambiar la vista mirando cualquier gráfico) ── -->
-  <div id="met-cal-bar" class="cal-bar" style="margin-bottom:18px;flex-wrap:wrap;gap:10px;position:sticky;top:0;z-index:20">
+  <!-- ── Selector de período (queda quieto en su lugar, no sigue el scroll) ── -->
+  <div id="met-cal-bar" class="cal-bar" style="margin-bottom:18px;flex-wrap:wrap;gap:10px">
     <div class="view-toggle">
       <button class="vbtn"        id="ms-7d"   onclick="setMetScope('7d',this)">7 días</button>
       <button class="vbtn"        id="ms-15d"  onclick="setMetScope('15d',this)">15 días</button>
@@ -6891,7 +6891,7 @@ document.addEventListener('click',e=>{if(fnavOpen&&!e.target.closest('#fnav-btn'
         <span style="font-size:.75rem;color:var(--muted)">Si no ves los últimos cambios, forzá la actualización</span>
         <button class="btn" style="background:rgba(56,189,248,.12);color:var(--blue);border:1px solid rgba(56,189,248,.3)" onclick="actualizarApp()">🔄 Buscar actualizaciones</button>
       </div>
-      <div style="font-size:.66rem;color:var(--muted);margin-top:12px">CYC · Versión 5.0</div>
+      <div style="font-size:.66rem;color:var(--muted);margin-top:12px">CYC · Versión 5.1</div>
     </div>
 
     <div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:18px 20px;margin-bottom:14px">
