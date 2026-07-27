@@ -950,6 +950,119 @@ async function main() {
       console.log(`Recordá: el débito "facturas vencidas" de ${label} en junio fue chico. Ese monto es aparte,\nse cobra del saldo a fin de mes, y NO figura en estos net_received de arriba.`);
       return;
     }
+    // BILLING_PROBE=rentab[:<días>] → ANÁLISIS DE RENTABILIDAD COMPLETO para decidir el % mínimo
+    // de ganancia por producto. Usa el modelo ACTUAL de la web (cargo ML % por cuenta sobre el precio).
+    // Muestra: (A) economía mensual (neto − costo − cargo ML − gastos fijos − retiros), (B) gastos
+    // fijos por categoría, (C) punto de equilibrio, (D) margen real por producto con ganancia $,
+    // stock y capital parado, (E) simulación de pisos de margen (qué se pierde si cortás bajo X%).
+    if (String(process.env.BILLING_PROBE || '').startsWith('rentab')) {
+      const days = parseInt(String(process.env.BILLING_PROBE).split(':')[1], 10) || 60;
+      const MLX = { adriana: 4.07, luciana: 4.37, ayelen: 5.95, matias: 4.58 };
+      const mlx = (c) => { const v = MLX[(c || '').toLowerCase()]; return v != null ? v : 4.8; };
+      const vp = (await db.get('cyc/ventaprod')) || {};
+      const compras = (await db.get('cyc/compras')) || {};
+      const retiros = (await db.get('cyc/retiro_mes')) || {};
+      const inventory = (await db.get('cyc/inventory')) || {};
+      const fin = (await db.get('cyc/finanzas')) || {};
+      const tc = parseFloat(fin.tipo_cambio) || 1500;
+      const pIdx = {}; for (const p of products) pIdx[p.id] = p;
+
+      // ── A. Economía mensual (últimos 4 meses) — costo = el guardado en cada venta + cargo ML,
+      //       igual que el arqueo de la web.
+      const now = new Date();
+      const months = [];
+      for (let i = 3; i >= 0; i--) { const d = new Date(now.getFullYear(), now.getMonth() - i, 1); months.push(d.getFullYear() + '_' + String(d.getMonth() + 1).padStart(2, '0')); }
+      const mAgg = {};
+      for (const [k, ents] of Object.entries(vp)) {
+        const ym = k.slice(0, 7); if (!months.includes(ym)) continue;
+        const m = mAgg[ym] || (mAgg[ym] = { neto: 0, total: 0, costo: 0, mlx: 0, ventas: 0 });
+        for (const v of Object.values(ents || {})) {
+          if (!v || v.cancelada) continue;
+          m.neto += v.neto || 0; m.total += v.total || 0; m.ventas++;
+          m.mlx += (v.total || 0) * mlx(v.cuenta) / 100;
+          m.costo += v.costo || 0;
+        }
+      }
+      const gastosMes = {}, gastosCat = {};
+      for (const g of Object.values(compras)) {
+        if (!g || g.tipo === 'mercaderia') continue;
+        const ym = (g.dayKey || '').slice(0, 7); if (!months.includes(ym)) continue;
+        gastosMes[ym] = (gastosMes[ym] || 0) + (g.monto || 0);
+        const cat = g.cat || 'Otros'; (gastosCat[cat] = gastosCat[cat] || {})[ym] = (gastosCat[cat][ym] || 0) + (g.monto || 0);
+      }
+      console.log(`=== RENTABILIDAD CYC · dólar actual ${money(tc)} ===\n`);
+      console.log(`── A. ECONOMÍA MENSUAL (modelo actual: cargo ML % por cuenta ya descontado) ──`);
+      for (const ym of months) {
+        const m = mAgg[ym]; if (!m) { console.log(`  ${ym}: sin ventas`); continue; }
+        const gan = m.neto - m.costo - m.mlx;
+        const gFijos = gastosMes[ym] || 0;
+        const ret = retiros[ym] != null ? Number(retiros[ym]) : null;
+        const retVal = ret != null ? ret : Math.round(m.neto * 0.15);
+        const cyc = gan - gFijos - retVal;
+        const mgC = (m.costo + m.mlx) > 0 ? gan / (m.costo + m.mlx) * 100 : 0;
+        console.log(`  ${ym}: fact ${money(Math.round(m.total))} · neto ${money(Math.round(m.neto))} · costo+ML ${money(Math.round(m.costo + m.mlx))} → GANANCIA ${money(Math.round(gan))} (${mgC.toFixed(1)}% s/costo)`);
+        console.log(`          − gastos fijos ${money(Math.round(gFijos))} − retiros ${money(retVal)}${ret == null ? ' (est. 15%)' : ''} = QUEDA CYC ${money(Math.round(cyc))} · ${m.ventas} ítems`);
+      }
+      console.log(`\n── B. GASTOS FIJOS POR CATEGORÍA (por mes) ──`);
+      for (const [cat, per] of Object.entries(gastosCat).sort((a, b) => Object.values(b[1]).reduce((s, x) => s + x, 0) - Object.values(a[1]).reduce((s, x) => s + x, 0))) {
+        const vals = months.map((ym) => per[ym] != null ? money(Math.round(per[ym])) : '—');
+        console.log(`  ${cat.padEnd(30)} ${vals.join('  ')}`);
+      }
+      // ── C. Punto de equilibrio con promedios de los meses CERRADOS (todos menos el actual)
+      const closed = months.slice(0, -1).filter((ym) => mAgg[ym]);
+      const avg = (f) => closed.length ? closed.reduce((s, ym) => s + f(ym), 0) / closed.length : 0;
+      const avgCosto = avg((ym) => mAgg[ym].costo + mAgg[ym].mlx);
+      const avgGfijos = avg((ym) => gastosMes[ym] || 0);
+      const avgRet = avg((ym) => retiros[ym] != null ? Number(retiros[ym]) : Math.round(mAgg[ym].neto * 0.15));
+      const avgFact = avg((ym) => mAgg[ym].total);
+      const beSinRet = avgCosto > 0 ? avgGfijos / avgCosto * 100 : 0;
+      const beConRet = avgCosto > 0 ? (avgGfijos + avgRet) / avgCosto * 100 : 0;
+      console.log(`\n── C. PUNTO DE EQUILIBRIO (promedio meses cerrados: ${closed.join(', ')}) ──`);
+      console.log(`  Facturación prom: ${money(Math.round(avgFact))} · costo+ML vendido prom: ${money(Math.round(avgCosto))}`);
+      console.log(`  Gastos fijos prom: ${money(Math.round(avgGfijos))}/mes · Retiros prom: ${money(Math.round(avgRet))}/mes`);
+      console.log(`  → margen s/costo para cubrir SOLO gastos fijos: ${beSinRet.toFixed(1)}%`);
+      console.log(`  → margen s/costo para cubrir fijos + retiros (CYC=0): ${beConRet.toFixed(1)}%`);
+      // ── D. Margen real por producto (últimos N días, costo ACTUAL del producto × dólar actual)
+      const fromKey = dayKeyFromISO(Date.now() - (days - 1) * 864e5);
+      const byProd = {};
+      for (const [k, ents] of Object.entries(vp)) {
+        if (k < fromKey) continue;
+        for (const v of Object.values(ents || {})) {
+          if (!v || v.cancelada) continue;
+          const total = v.total || 0, neto = v.neto || 0; if (neto <= 0) continue;
+          const id = v.prodId || v.prod || '?';
+          const b = byProd[id] || (byProd[id] = { nom: v.prod || id, ventas: 0, qty: 0, total: 0, neto: 0, mlx: 0 });
+          b.ventas++; b.qty += v.qty || 1; b.total += total; b.neto += neto; b.mlx += total * mlx(v.cuenta) / 100;
+        }
+      }
+      const stockU = (pid) => Object.entries(inventory).filter(([k]) => k.startsWith(pid + '__') && !k.includes('__v__')).reduce((s, [, v]) => s + (parseInt(v) || 0), 0);
+      const rows = []; let sinCosto = 0;
+      for (const [id, b] of Object.entries(byProd)) {
+        const p = pIdx[id];
+        const cU = p ? costoPesos(p, 1, tc).costo : 0;
+        if (!cU) { sinCosto++; continue; }
+        const costo = cU * b.qty + b.mlx;
+        const gan = b.neto - costo;
+        const mg = costo > 0 ? gan / costo * 100 : 0;
+        const stk = stockU(id);
+        rows.push({ nom: b.nom, ventas: b.ventas, qty: b.qty, gan, mg, ganMes: gan / days * 30, stk, capital: Math.round(stk * cU), precio: b.total / Math.max(1, b.ventas) });
+      }
+      rows.sort((a, b) => a.mg - b.mg);
+      const ganTot = rows.reduce((s, r) => s + r.gan, 0);
+      console.log(`\n── D. MARGEN REAL POR PRODUCTO (últimos ${days} días · ${rows.length} prods con costo · ${sinCosto} sin costo omitidos) ──`);
+      for (const r of rows) console.log(`  ${String(Math.round(r.mg)).padStart(4)}% · gan/mes ${money(Math.round(r.ganMes)).padStart(11)} · ${String(r.ventas).padStart(3)}v · precio ${money(Math.round(r.precio)).padStart(9)} · stock ${String(r.stk).padStart(4)}u (${money(r.capital)}) · ${r.nom.slice(0, 38)}`);
+      // ── E. Simulación de pisos
+      console.log(`\n── E. SI CORTÁS TODO PRODUCTO QUE GANA MENOS DE X% (últimos ${days} días → proyección /mes) ──`);
+      console.log(`  Ganancia total actual: ${money(Math.round(ganTot / days * 30))}/mes`);
+      for (const floor of [15, 20, 25, 30, 35, 40]) {
+        const cut = rows.filter((r) => r.mg < floor);
+        const ganCut = cut.reduce((s, r) => s + r.gan, 0);
+        const capCut = cut.reduce((s, r) => s + r.capital, 0);
+        const vCut = cut.reduce((s, r) => s + r.ventas, 0);
+        console.log(`  piso ${String(floor).padStart(2)}%: cortás ${String(cut.length).padStart(3)} prods · perdés ${money(Math.round(ganCut / days * 30)).padStart(11)}/mes (${ganTot > 0 ? (ganCut / ganTot * 100).toFixed(1) : 0}% de la gan.) · liberás ${money(capCut).padStart(12)} de stock · ${Math.round(vCut / days * 30)} ventas/mes menos de trabajo`);
+      }
+      return;
+    }
     // BILLING_PROBE=prodmargin:<días> → GANANCIA REAL por producto. Junta neto y precio de cada
     // producto, le resta el costo (costo USD + envío) × dólar, y le aplica el descuento del débito de
     // ML (~8.5% del neto, que no está en el neto). Ordena de peor a mejor margen.
