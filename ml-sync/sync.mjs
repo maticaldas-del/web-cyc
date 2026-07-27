@@ -828,6 +828,20 @@ async function main() {
       console.log(`${DRY ? '(DRY) ' : ''}Borrados ${n} gastos mensuales de almacenamiento + períodos guardados.`);
       return;
     }
+    // BILLING_PROBE=seedreal:<YYYY_MM>=<monto> → carga UN gasto mensual de almacenamiento con el número
+    // REAL sacado del reporte oficial de ML (Costos por servicio de almacenamiento). Idempotente.
+    // Ej: seedreal:2026_07=70085  → gasto almmes_2026_07 de $70.085 en el día 1 de julio.
+    if (String(process.env.BILLING_PROBE).startsWith('seedreal:')) {
+      const arg = String(process.env.BILLING_PROBE).slice(9).trim();
+      const m = arg.match(/^(\d{4}_\d{2})=(\d+)$/);
+      if (!m) { console.log('Formato: seedreal:2026_07=70085'); return; }
+      const ym = m[1], monto = parseInt(m[2], 10);
+      const id = 'almmes_' + ym;
+      const gasto = { id, monto, cat: 'Almacenamiento Full', tipo: 'gasto', desc: `Almacenamiento Full ML (real, reporte oficial ${ym})`, dayKey: ym + '_01', ts: Date.now(), auto: true };
+      if (!DRY) await db.patch('cyc/compras', { [id]: gasto });
+      console.log(`${DRY ? '(DRY) ' : ''}Cargado ${id} = ${money(monto)} (almacenamiento real).`);
+      return;
+    }
     // BILLING_PROBE=unpost → borra los gastos DIARIOS de almacenamiento (almfull_*) que cargamos antes.
     if (process.env.BILLING_PROBE === 'unpost') {
       const compras = (await db.get('cyc/compras')) || {};
