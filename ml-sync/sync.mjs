@@ -909,6 +909,47 @@ async function main() {
       console.log(`${DRY ? '(DRY) ' : ''}Cargado ${id} = ${money(monto)} (cargos ML débito automático).`);
       return;
     }
+    // BILLING_PROBE=traceventa → rastrea 3 ventas reales de una cuenta (ACCOUNT=Matias) en junio:
+    // muestra precio → qué le sacó ML en el momento (charges) → cuánto quedó (net_received). Para ver
+    // si "Recibís" ya tiene todo descontado o no. account=Matias.
+    if (process.env.BILLING_PROBE === 'traceventa') {
+      const forced = (process.env.ACCOUNT || 'matias').trim().toLowerCase();
+      const label = labels.find((l) => l.toLowerCase() === forced) || labels[0];
+      const acc = accounts[label];
+      if (!acc?.refresh_token) { console.log('Sin token:', label); return; }
+      const t = await mlRefresh(ML_CLIENT_ID, ML_CLIENT_SECRET, acc.refresh_token);
+      await db.patch('mlapi/tokens/' + label, { refresh_token: t.refresh_token, updated_ts: Date.now() });
+      const win = [Date.UTC(2026, 5, 1), Date.UTC(2026, 5, 30, 23, 59, 59)];
+      const orders = await fetchOrdersRange(acc.seller_id, t.access_token, win[0], win[1]);
+      console.log(`\n=== RASTREO de ventas de ${label} (junio) — ${orders.length} órdenes ===\n`);
+      let shown = 0;
+      for (const o of orders) {
+        if (shown >= 3) break;
+        const it = (o.order_items || [])[0];
+        if (!it) continue;
+        const precio = (it.unit_price || 0) * (it.quantity || 1);
+        for (const p of (o.payments || [])) {
+          if (!p.id) continue;
+          let b = null;
+          try { const r = await fetch('https://api.mercadopago.com/v1/payments/' + p.id, { headers: { Authorization: 'Bearer ' + t.access_token } }); b = await r.json(); } catch { continue; }
+          const net = b?.transaction_details?.net_received_amount;
+          if (typeof net !== 'number') continue;
+          console.log(`Venta #${o.pack_id || o.id} · ${(it.item?.title || '').slice(0, 40)}`);
+          console.log(`   Precio de venta:        ${money(Math.round(precio))}`);
+          let sumCh = 0;
+          for (const c of (b.charges_details || [])) {
+            const amt = c.amounts?.original || 0; sumCh += amt;
+            console.log(`   − ${(c.name || '?').padEnd(28)} ${money(Math.round(amt))}`);
+          }
+          console.log(`   = RECIBÍS (net):        ${money(Math.round(net))}`);
+          console.log(`   (precio − cargos = ${money(Math.round(precio - sumCh))} · net real = ${money(Math.round(net))})\n`);
+          shown++;
+          break;
+        }
+      }
+      console.log(`Recordá: el débito "facturas vencidas" de ${label} en junio fue chico. Ese monto es aparte,\nse cobra del saldo a fin de mes, y NO figura en estos net_received de arriba.`);
+      return;
+    }
     // BILLING_PROBE=unpost → borra los gastos DIARIOS de almacenamiento (almfull_*) que cargamos antes.
     if (process.env.BILLING_PROBE === 'unpost') {
       const compras = (await db.get('cyc/compras')) || {};
