@@ -618,6 +618,51 @@ async function main() {
   // devuelva, para ubicar de dónde sale el "millón que falta" del arqueo. ACCOUNT=Matias para una sola.
   if (process.env.BILLING_PROBE) {
     const onlyAcc = (process.env.ACCOUNT || '').trim().toLowerCase();
+    // BILLING_PROBE=fees → calcula los cargos por venta (comisión+fijo+envío) de un período ML,
+    // para restarlos del total facturado y aislar almacenamiento+publicidad (lo que la app no ve).
+    if (process.env.BILLING_PROBE === 'fees') {
+      const startMs = Date.UTC(2026, 5, 15);            // 15 jun 2026
+      const endMs = Date.UTC(2026, 6, 14, 23, 59, 59);  // 14 jul 2026 (= período ML "2026-07-01")
+      const BILL_TOT = { matias: 2245683.42 };           // total que ML facturó ese período (grupo ML)
+      for (const label of labels) {
+        if (onlyAcc && label.toLowerCase() !== onlyAcc) continue;
+        const acc = accounts[label];
+        if (!acc?.refresh_token) continue;
+        const t = await mlRefresh(ML_CLIENT_ID, ML_CLIENT_SECRET, acc.refresh_token);
+        await db.patch('mlapi/tokens/' + label, { refresh_token: t.refresh_token, updated_ts: Date.now() });
+        const paid = await fetchOrdersRange(acc.seller_id, t.access_token, startMs, endMs);
+        const byId = new Map(paid.map((o) => [o.id, o]));
+        let comision = 0, fijo = 0, envio = 0, otrosML = 0, tax = 0, net = 0, done = 0;
+        for (const o of byId.values()) {
+          for (const p of (o.payments || [])) {
+            if (!p.id) continue;
+            let b = null;
+            try { const r = await fetch('https://api.mercadopago.com/v1/payments/' + p.id, { headers: { Authorization: 'Bearer ' + t.access_token } }); b = await r.json(); } catch { continue; }
+            for (const c of (b?.charges_details || [])) {
+              const amt = c.amounts?.original || 0; const n = (c.name || '').toLowerCase();
+              if (n.startsWith('tax_withholding')) tax += amt;
+              else if (n.includes('percentage_fee')) comision += amt;
+              else if (n.includes('flat_fee')) fijo += amt;
+              else if (n.includes('shp') || n.includes('shipping') || n.includes('fulfillment')) envio += amt;
+              else otrosML += amt;
+            }
+            const nr = b?.transaction_details?.net_received_amount; if (typeof nr === 'number') net += nr;
+          }
+          done++; if (done % 100 === 0) console.log(`   ...${label}: ${done}/${byId.size}`);
+        }
+        const feesML = comision + fijo + envio + otrosML;
+        const bill = BILL_TOT[label.toLowerCase()] || null;
+        console.log(`\n▶ ${label} · período 15/jun–14/jul · ${byId.size} órdenes`);
+        console.log(`   Cargos ML por venta (ya están en el neto): comisión ${money(comision)} + fijo ${money(fijo)} + envío ${money(envio)}${otrosML ? ' + otros ' + money(otrosML) : ''} = ${money(feesML)}`);
+        console.log(`   (impuestos AFIP/IIBB retenidos, aparte: ${money(tax)})`);
+        if (bill != null) {
+          const oculto = Math.round(bill - feesML);
+          console.log(`   TOTAL que ML te facturó (grupo ML): ${money(Math.round(bill))}`);
+          console.log(`   ➜ ALMACENAMIENTO + PUBLICIDAD + gestión (lo que la app NO resta) ≈ ${money(oculto)}`);
+        }
+      }
+      return;
+    }
     for (const label of labels) {
       if (onlyAcc && label.toLowerCase() !== onlyAcc) continue;
       const acc = accounts[label];
