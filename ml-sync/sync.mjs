@@ -618,6 +618,81 @@ async function main() {
   // devuelva, para ubicar de dónde sale el "millón que falta" del arqueo. ACCOUNT=Matias para una sola.
   if (process.env.BILLING_PROBE) {
     const onlyAcc = (process.env.ACCOUNT || '').trim().toLowerCase();
+    // Ventanas canónicas de los períodos de facturación de ML (15 del mes anterior al 14).
+    const PERIOD_WIN = {
+      '2026-05-01': [Date.UTC(2026, 3, 15), Date.UTC(2026, 4, 14, 23, 59, 59)],
+      '2026-06-01': [Date.UTC(2026, 4, 15), Date.UTC(2026, 5, 14, 23, 59, 59)],
+      '2026-07-01': [Date.UTC(2026, 5, 15), Date.UTC(2026, 6, 14, 23, 59, 59)],
+      '2026-08-01': [Date.UTC(2026, 6, 15), Date.UTC(2026, 7, 14, 23, 59, 59)],
+    };
+    // BILLING_PROBE=calc:<periodo> → calcula el ALMACENAMIENTO real de ese período (total ML facturado
+    // − comisión/fijo/envío por venta) por cuenta, y lo GUARDA en cyc/mlapi/storage/periods/<key>.
+    if (String(process.env.BILLING_PROBE).startsWith('calc:')) {
+      const key = String(process.env.BILLING_PROBE).slice(5).trim();
+      const win = PERIOD_WIN[key];
+      if (!win) { console.log('Período desconocido:', key); return; }
+      const sleepC = (ms) => new Promise((r) => setTimeout(r, ms));
+      const perAcct = {}; let total = 0;
+      for (const label of labels) {
+        const acc = accounts[label];
+        if (!acc?.refresh_token) continue;
+        const t = await mlRefresh(ML_CLIENT_ID, ML_CLIENT_SECRET, acc.refresh_token);
+        await db.patch('mlapi/tokens/' + label, { refresh_token: t.refresh_token, updated_ts: Date.now() });
+        let bill = null;
+        try {
+          const pr = await mlGet('/billing/integration/monthly/periods?group=ML&document_type=BILL&limit=13', t.access_token);
+          const per = (pr.results || []).find((x) => x.key === key);
+          if (per) bill = per.amount;
+        } catch (e) { console.log(`   (facturación ${label}: ${String(e.message || '').slice(0, 40)})`); }
+        await sleepC(13000);
+        const paid = await fetchOrdersRange(acc.seller_id, t.access_token, win[0], win[1]);
+        const byId = new Map(paid.map((o) => [o.id, o]));
+        let fees = 0, done = 0;
+        for (const o of byId.values()) {
+          for (const p of (o.payments || [])) {
+            if (!p.id) continue;
+            let b = null;
+            try { const r = await fetch('https://api.mercadopago.com/v1/payments/' + p.id, { headers: { Authorization: 'Bearer ' + t.access_token } }); b = await r.json(); } catch { continue; }
+            for (const c of (b?.charges_details || [])) {
+              const n = (c.name || '').toLowerCase();
+              if (!n.startsWith('tax_withholding')) fees += c.amounts?.original || 0; // todo lo que NO es impuesto = cargo ML por venta
+            }
+          }
+          done++; if (done % 150 === 0) console.log(`   ...${label}: ${done}/${byId.size}`);
+        }
+        const storage = bill != null ? Math.round(bill - fees) : null;
+        perAcct[label.toLowerCase()] = { bill: bill != null ? Math.round(bill) : null, fees: Math.round(fees), storage };
+        if (storage != null && storage > 0) total += storage;
+        console.log(`▶ ${label} ${key}: facturado ${money(Math.round(bill || 0))} − cargos venta ${money(Math.round(fees))} = almacenamiento ${money(storage || 0)}`);
+      }
+      const rec = { key, from: new Date(win[0]).toISOString(), to: new Date(win[1]).toISOString(), days: Math.round((win[1] - win[0]) / 86400000) + 1, total: Math.round(total), perAcct, ts: Date.now() };
+      await db.set('cyc/mlapi/storage/periods/' + key, rec);
+      console.log(`\n✓ Guardado almacenamiento período ${key}: TOTAL ${money(Math.round(total))} · ${rec.days} días · ${money(Math.round(total / rec.days))}/día`);
+      return;
+    }
+    // BILLING_PROBE=post → reparte el almacenamiento guardado en un GASTO DIARIO (backfill desde 1/may + hoy).
+    // Idempotente: un gasto por día con id fijo. Barato (no pega a ML). Corre en el robot diario.
+    if (process.env.BILLING_PROBE === 'post') {
+      const periods = (await db.get('cyc/mlapi/storage/periods')) || {};
+      const wins = Object.values(periods).filter((p) => p && p.total > 0).map((p) => ({ from: Date.parse(p.from), to: Date.parse(p.to), rate: p.total / (p.days || 30) }));
+      if (!wins.length) { console.log('No hay almacenamiento calculado todavía (corré calc: primero).'); return; }
+      const latest = wins.slice().sort((a, b) => b.to - a.to)[0].rate; // para días del período abierto (aún sin cerrar)
+      const rateFor = (ms) => { const w = wins.find((x) => ms >= x.from && ms <= x.to); return w ? w.rate : latest; };
+      const startMs = Date.UTC(2026, 4, 1); // 1 de mayo 2026
+      const now = new Date(); const todayMs = Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate());
+      const updates = {}; let n = 0, sum = 0;
+      for (let d = startMs; d <= todayMs; d += 86400000) {
+        const dk = dayKeyFromISO(d);
+        const monto = Math.round(rateFor(d));
+        if (monto <= 0) continue;
+        const id = 'almfull_' + dk;
+        updates[id] = { id, monto, cat: 'Almacenamiento Full', tipo: 'gasto', desc: 'Almacenamiento Full ML (estimado diario)', dayKey: dk, ts: Date.now(), auto: true };
+        n++; sum += monto;
+      }
+      if (!DRY && Object.keys(updates).length) await db.patch('cyc/compras', updates);
+      console.log(`${DRY ? '(DRY) ' : ''}Gasto diario de almacenamiento: ${n} días · total ${money(sum)} (1/may → hoy).`);
+      return;
+    }
     // BILLING_PROBE=totals → solo el TOTAL facturado por ML (grupo ML) de cada cuenta, por período.
     if (process.env.BILLING_PROBE === 'totals') {
       const sleepT = (ms) => new Promise((r) => setTimeout(r, ms));
