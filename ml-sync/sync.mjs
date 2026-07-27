@@ -692,6 +692,65 @@ async function main() {
       console.log(`\n✓ Guardado almacenamiento período ${key} (rápido): TOTAL ${money(Math.round(total))} · ${billsOk}/4 cuentas`);
       return;
     }
+    // BILLING_PROBE=bfull:<periodo> → DIAGNÓSTICO: para UNA cuenta muestra (a) la factura total, (b) el
+    // desglose por concepto de TODOS los cargos que aparecen en los pagos (nombre → suma), (c) el resto
+    // (factura − cargos de venta) que es lo que llamamos almacenamiento, y (d) prueba endpoints de
+    // detalle de facturación de ML por si sueltan el desglose oficial. account=Adriana por defecto.
+    if (String(process.env.BILLING_PROBE).startsWith('bfull:')) {
+      const key = String(process.env.BILLING_PROBE).slice(6).trim();
+      const win = PERIOD_WIN[key];
+      if (!win) { console.log('Período desconocido:', key); return; }
+      const forced = (process.env.ACCOUNT || 'adriana').trim().toLowerCase();
+      const label = labels.find((l) => l.toLowerCase() === forced) || labels[0];
+      const acc = accounts[label];
+      if (!acc?.refresh_token) { console.log('Sin token:', label); return; }
+      const t = await mlRefresh(ML_CLIENT_ID, ML_CLIENT_SECRET, acc.refresh_token);
+      await db.patch('mlapi/tokens/' + label, { refresh_token: t.refresh_token, updated_ts: Date.now() });
+      // factura total
+      let bill = null, perObj = null;
+      try {
+        const r = await fetch('https://api.mercadolibre.com/billing/integration/monthly/periods?group=ML&document_type=BILL&limit=13', { headers: { Authorization: 'Bearer ' + t.access_token } });
+        const pr = await r.json();
+        perObj = (pr.results || []).find((x) => x.key === key) || null;
+        if (perObj) bill = perObj.amount;
+      } catch (e) { console.log('facturación error', String(e.message || '')); }
+      console.log(`\n=== ${label} · período ${key} ===`);
+      console.log('Factura total ML:', money(Math.round(bill || 0)));
+      if (perObj) console.log('Objeto período (crudo):', JSON.stringify(perObj).slice(0, 1500));
+      // desglose por concepto de los cargos que ML mete en cada pago
+      const paid = await fetchOrdersRange(acc.seller_id, t.access_token, win[0], win[1]);
+      const byId = new Map(paid.map((o) => [o.id, o]));
+      const porConcepto = {}; let ventaFees = 0, done = 0;
+      for (const o of byId.values()) {
+        for (const p of (o.payments || [])) {
+          if (!p.id) continue;
+          let b = null;
+          try { const r = await fetch('https://api.mercadopago.com/v1/payments/' + p.id, { headers: { Authorization: 'Bearer ' + t.access_token } }); b = await r.json(); } catch { continue; }
+          for (const c of (b?.charges_details || [])) {
+            const n = (c.name || '¿?'); const amt = c.amounts?.original || 0;
+            porConcepto[n] = (porConcepto[n] || 0) + amt;
+            if (!n.toLowerCase().startsWith('tax_withholding')) ventaFees += amt;
+          }
+        }
+        done++; if (done % 150 === 0) console.log(`   ...${done}/${byId.size}`);
+      }
+      console.log(`\nCargos por concepto (en los pagos de ${byId.size} ventas):`);
+      for (const [n, v] of Object.entries(porConcepto).sort((a, b) => b[1] - a[1])) console.log(`   ${n}: ${money(Math.round(v))}`);
+      console.log(`\nCargos de venta (sin impuestos): ${money(Math.round(ventaFees))}`);
+      console.log(`RESTO (factura − cargos de venta) = "almacenamiento": ${money(Math.round((bill || 0) - ventaFees))}`);
+      // ¿ML suelta el detalle oficial por concepto?
+      console.log('\nProbando endpoints de detalle de facturación:');
+      const urls = [
+        `https://api.mercadolibre.com/billing/integration/monthly/periods/${key}/details?group=ML&document_type=BILL`,
+        `https://api.mercadolibre.com/billing/integration/periods/${key}/details?group=ML`,
+        `https://api.mercadolibre.com/billing/integration/monthly/periods/${key}/summary?group=ML&document_type=BILL`,
+        `https://api.mercadolibre.com/billing/integration/monthly/periods?group=ML&document_type=BILL&expand=details&limit=13`,
+      ];
+      for (const u of urls) {
+        try { const rr = await fetch(u, { headers: { Authorization: 'Bearer ' + t.access_token } }); console.log(`   [${rr.status}] ${u.slice(46)}`); if (rr.ok) console.log('      →', JSON.stringify(await rr.json()).slice(0, 1200)); } catch (e) { console.log('   err', String(e.message || '').slice(0, 30)); }
+      }
+      return;
+    }
     // BILLING_PROBE=calc1:<periodo> → almacenamiento EXACTO pero de a UNA cuenta por corrida (para no
     // saturar ML). Cada vez procesa la próxima cuenta que falta y guarda su resultado. Con 4 corridas
     // queda el período completo. Podés forzar una cuenta con account=Matias.
