@@ -950,6 +950,58 @@ async function main() {
       console.log(`Recordá: el débito "facturas vencidas" de ${label} en junio fue chico. Ese monto es aparte,\nse cobra del saldo a fin de mes, y NO figura en estos net_received de arriba.`);
       return;
     }
+    // BILLING_PROBE=prodmargin:<días> → GANANCIA REAL por producto. Junta neto y precio de cada
+    // producto, le resta el costo (costo USD + envío) × dólar, y le aplica el descuento del débito de
+    // ML (~8.5% del neto, que no está en el neto). Ordena de peor a mejor margen.
+    if (String(process.env.BILLING_PROBE || '').startsWith('prodmargin')) {
+      const parts = String(process.env.BILLING_PROBE).split(':');
+      const days = parseInt(parts[1], 10) || 60;
+      const DEB = parts[2] != null ? parseFloat(parts[2]) : 0.085; // ratio débito ML sobre neto
+      const fromKey = dayKeyFromISO(Date.now() - (days - 1) * 864e5);
+      const vp = (await db.get('cyc/ventaprod')) || {};
+      const fin = (await db.get('cyc/finanzas')) || {};
+      const tc = parseFloat(fin.tipo_cambio) || 1500;
+      const byProd = {};
+      for (const [k, ents] of Object.entries(vp)) {
+        if (k < fromKey) continue;
+        for (const v of Object.values(ents || {})) {
+          if (!v || v.cancelada || v.origen !== 'ml-api') continue;
+          const total = v.total || 0, neto = v.neto || 0, qty = v.qty || 1;
+          if (total <= 0 || neto <= 0) continue;
+          const id = v.prodId || v.prod || '?';
+          const b = byProd[id] || (byProd[id] = { nom: v.prod || id, ventas: 0, qty: 0, total: 0, neto: 0 });
+          b.ventas++; b.qty += qty; b.total += total; b.neto += neto;
+        }
+      }
+      const rows = []; let sinCosto = 0;
+      for (const [id, b] of Object.entries(byProd)) {
+        const p = products.find((pp) => pp.id === id);
+        let cu = 0, ship = 0, cfu = null;
+        if (p) {
+          cu = (p.costUSD != null && p.costUSD !== '') ? (parseFloat(p.costUSD) || 0) : 0;
+          ship = parseFloat(p.shipUSD) || 0;
+          if (p.costFullUSD != null && p.costFullUSD !== '') cfu = parseFloat(p.costFullUSD) || 0;
+        }
+        const costFullUSD = cfu != null ? cfu : (cu + ship);
+        if (!costFullUSD) { sinCosto++; continue; }
+        const costoPesos = costFullUSD * tc * b.qty;
+        const netoReal = b.neto * (1 - DEB);
+        const netoPct = b.neto / b.total * 100;      // % del precio que te queda tras comisión ML
+        const costoPct = costoPesos / b.total * 100; // % del precio que es costo de producto
+        const ganRealPct = (netoReal - costoPesos) / b.total * 100;
+        const ganWebPct = (b.neto - costoPesos) / b.total * 100;
+        rows.push({ nom: b.nom, ventas: b.ventas, precio: b.total / b.ventas, netoPct, costoPct, ganWebPct, ganRealPct });
+      }
+      rows.sort((a, c) => a.ganRealPct - c.ganRealPct);
+      const fmtRow = (r) => `  gana ${r.ganRealPct.toFixed(0).padStart(3)}% real (web ${r.ganWebPct.toFixed(0)}%) · precio ${money(Math.round(r.precio))} · te queda ${r.netoPct.toFixed(0)}% tras ML · costo ${r.costoPct.toFixed(0)}% · ${r.ventas}v · ${r.nom.slice(0, 34)}`;
+      console.log(`GANANCIA REAL POR PRODUCTO (últimos ${days} días · dólar ${money(tc)} · débito ML ${(DEB * 100).toFixed(1)}%)\n`);
+      console.log(`=== PEORES ${Math.min(15, rows.length)} (candidatos a AUMENTAR) ===`);
+      for (const r of rows.slice(0, 15)) console.log(fmtRow(r));
+      console.log(`\n=== MEJORES 8 ===`);
+      for (const r of rows.slice(-8).reverse()) console.log(fmtRow(r));
+      console.log(`\n(${rows.length} productos con costo cargado · ${sinCosto} sin costo, omitidos)`);
+      return;
+    }
     // BILLING_PROBE=unpost → borra los gastos DIARIOS de almacenamiento (almfull_*) que cargamos antes.
     if (process.env.BILLING_PROBE === 'unpost') {
       const compras = (await db.get('cyc/compras')) || {};
