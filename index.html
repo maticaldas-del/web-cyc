@@ -3864,9 +3864,13 @@ function devPctActual(p){
 // — % de devolución: SIEMPRE el actual (estadística global del producto, ver devPctActual).
 function efectivoCostoVP(v){
   if(v&&v.cancelada)return 0; // canceladas y reclamos no tienen costo (no afectan finanzas)
-  if(!v._dateKey)return v.costo||0;
+  // Cargo extra de ML (IIBB + almacenamiento) que ML cobra por débito, aparte de la venta: % del precio.
+  // Se calcula ACÁ ARRIBA para que TODAS las salidas lo incluyan — incluido el arqueo/ganancia del mes,
+  // que llama sin _dateKey y usa el costo guardado (v.costo). Sin esto, el mes no cerraba.
+  const mlExtra=(v&&v.total?v.total:0)*mlExtraPct(v&&v.cuenta)/100;
+  if(!v._dateKey)return (v.costo||0)+mlExtra;
   const ym=v._dateKey.substring(0,7);
-  const p=prodDeVenta(v);if(!p)return v.costo||0;
+  const p=prodDeVenta(v);if(!p)return (v.costo||0)+mlExtra;
   const dev=devPctActual(p);
   // Base USD (SIN envío ni %dev): usar precio histórico del mes si está cargado, si no el costo actual.
   // No se usa v.costBaseUSD porque en ventas viejas ese campo se guardó como base+envío, y abajo
@@ -3879,10 +3883,6 @@ function efectivoCostoVP(v){
   // Antes se usaba v.shipUSD congelado, así que ventas viejas cargadas cuando el producto no
   // tenía envío quedaban con envío 0 y el mismo producto mostraba costos distintos. Ver arqueo.
   const ship=parseFloat(p.shipUSD)||0;
-  // Cargo extra de ML (IIBB + almacenamiento + logística Full que ML cobra por débito, NO en el neto).
-  // Es un % del PRECIO de la venta (v.total), aparte del costo del producto. Se suma como monto fijo,
-  // NO multiplica al costo ni al %devolución (por eso va afuera del fullUSD).
-  const mlExtra=(v.total||0)*mlExtraPct(v.cuenta)/100;
   if(!baseUSD&&!ship)return (v.costo||0)+mlExtra; // producto sin costo cargado → guardado + cargo ML
   const fullUSD=baseUSD*(1+dev/100)+ship;
   return fullUSD*tc*(v.qty||1)+mlExtra;
@@ -6906,7 +6906,7 @@ document.addEventListener('click',e=>{if(fnavOpen&&!e.target.closest('#fnav-btn'
         <span style="font-size:.75rem;color:var(--muted)">Si no ves los últimos cambios, forzá la actualización</span>
         <button class="btn" style="background:rgba(56,189,248,.12);color:var(--blue);border:1px solid rgba(56,189,248,.3)" onclick="actualizarApp()">🔄 Buscar actualizaciones</button>
       </div>
-      <div style="font-size:.66rem;color:var(--muted);margin-top:12px">CYC · Versión 4.6</div>
+      <div style="font-size:.66rem;color:var(--muted);margin-top:12px">CYC · Versión 4.7</div>
     </div>
 
     <div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:18px 20px;margin-bottom:14px">
