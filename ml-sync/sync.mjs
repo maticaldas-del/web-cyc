@@ -865,6 +865,36 @@ async function main() {
       if (n) console.log(`\nPromedio de licuación por mes: ${money(Math.round(totLic / n))} (sobre ${n} meses).`);
       return;
     }
+    // BILLING_PROBE=chkmes:<YYYY_MM> → dumpea lo que la WEB tiene de ese mes: neto+costo por cuenta,
+    // la lista de GASTOS cargados, y el retiro. Para cruzar contra la realidad de MercadoPago.
+    if (String(process.env.BILLING_PROBE).startsWith('chkmes:')) {
+      const ym = String(process.env.BILLING_PROBE).slice(7).trim(); // 2026_06
+      const vp = (await db.get('cyc/ventaprod')) || {};
+      const perAcc = {};
+      for (const [dk, ents] of Object.entries(vp)) {
+        if (!dk.startsWith(ym)) continue;
+        for (const v of Object.values(ents || {})) {
+          if (!v) continue;
+          const a = (v.cuenta || '?');
+          perAcc[a] = perAcc[a] || { neto: 0, canc: 0, n: 0 };
+          if (v.cancelada) { perAcc[a].canc++; continue; }
+          perAcc[a].neto += (v.neto || 0); perAcc[a].n++;
+        }
+      }
+      console.log(`\n=== WEB · mes ${ym} ===\nNETO por cuenta (ventas no canceladas):`);
+      let netoTot = 0;
+      for (const [a, x] of Object.entries(perAcc)) { console.log(`   ${a}: neto ${money(Math.round(x.neto))} · ${x.n} ventas · ${x.canc} canc`); netoTot += x.neto; }
+      console.log(`   TOTAL neto web: ${money(Math.round(netoTot))}`);
+      const compras = (await db.get('cyc/compras')) || {};
+      const gastos = Object.values(compras).filter((x) => x && (x.dayKey || '').startsWith(ym));
+      let gTot = 0;
+      console.log(`\nGASTOS cargados en ${ym}:`);
+      for (const g of gastos.sort((a, b) => (b.monto || 0) - (a.monto || 0))) { console.log(`   ${money(Math.round(g.monto || 0))}  [${g.cat || g.tipo || '?'}]  ${(g.desc || '').slice(0, 45)}`); gTot += (g.monto || 0); }
+      console.log(`   TOTAL gastos web: ${money(Math.round(gTot))} (${gastos.length} items)`);
+      const rm = (await db.get('cyc/retiro_mes/' + ym));
+      console.log(`\nRETIRO cargado ${ym}: ${rm != null ? money(Math.round(Number(rm))) : '(no cargado)'}`);
+      return;
+    }
     // BILLING_PROBE=unpost → borra los gastos DIARIOS de almacenamiento (almfull_*) que cargamos antes.
     if (process.env.BILLING_PROBE === 'unpost') {
       const compras = (await db.get('cyc/compras')) || {};
