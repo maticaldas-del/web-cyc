@@ -632,6 +632,52 @@ async function main() {
       '2026-07-01': [Date.UTC(2026, 5, 15), Date.UTC(2026, 6, 14, 23, 59, 59)],
       '2026-08-01': [Date.UTC(2026, 6, 15), Date.UTC(2026, 7, 14, 23, 59, 59)],
     };
+    // BILLING_PROBE=fast:<periodo> → ALMACENAMIENTO rápido y casi exacto, SIN leer pago por pago.
+    // storage = factura ML − Σ(total−neto de las ventas del período)×0.9695
+    // El 0.9695 saca el ~3% de impuestos (calibrado contra julio, que sí calculamos exacto).
+    if (String(process.env.BILLING_PROBE).startsWith('fast:')) {
+      const key = String(process.env.BILLING_PROBE).slice(5).trim();
+      const win = PERIOD_WIN[key];
+      if (!win) { console.log('Período desconocido:', key); return; }
+      const TAXADJ = 0.9695; // 1 − 3.05% impuestos (ratio real de julio)
+      const fromDk = dayKeyFromISO(win[0]), toDk = dayKeyFromISO(win[1]);
+      const vp = (await db.get('cyc/ventaprod')) || {};
+      // Σ(total−neto) por cuenta, de las ventas cuyo día cae en la ventana del período
+      const grossMinusNet = {};
+      for (const [dk, ents] of Object.entries(vp)) {
+        if (dk < fromDk || dk > toDk) continue;
+        for (const v of Object.values(ents || {})) {
+          if (!v || v.cancelada) continue;
+          const a = (v.cuenta || '').toLowerCase();
+          grossMinusNet[a] = (grossMinusNet[a] || 0) + ((v.total || 0) - (v.neto || 0));
+        }
+      }
+      const sleepK = (ms) => new Promise((r) => setTimeout(r, ms));
+      const perAcct = {}; let total = 0;
+      for (const label of labels) {
+        const acc = accounts[label];
+        if (!acc?.refresh_token) continue;
+        const t = await mlRefresh(ML_CLIENT_ID, ML_CLIENT_SECRET, acc.refresh_token);
+        await db.patch('mlapi/tokens/' + label, { refresh_token: t.refresh_token, updated_ts: Date.now() });
+        let bill = null;
+        try {
+          const pr = await mlGet('/billing/integration/monthly/periods?group=ML&document_type=BILL&limit=13', t.access_token);
+          const per = (pr.results || []).find((x) => x.key === key);
+          if (per) bill = per.amount;
+        } catch (e) { console.log(`   (facturación ${label}: ${String(e.message || '').slice(0, 40)})`); }
+        await sleepK(13000); // límite 5/min del billing
+        const a = label.toLowerCase();
+        const feesEst = Math.round((grossMinusNet[a] || 0) * TAXADJ);
+        const storage = bill != null ? Math.round(bill - feesEst) : null;
+        perAcct[a] = { bill: bill != null ? Math.round(bill) : null, fees: feesEst, storage };
+        if (storage != null && storage > 0) total += storage;
+        console.log(`▶ ${label} ${key}: facturado ${money(Math.round(bill || 0))} − cargos venta ${money(feesEst)} = almacenamiento ${money(storage || 0)}`);
+      }
+      const rec = { key, from: new Date(win[0]).toISOString(), to: new Date(win[1]).toISOString(), days: Math.round((win[1] - win[0]) / 86400000) + 1, total: Math.round(total), perAcct, ts: Date.now(), metodo: 'fast' };
+      await db.set('cyc/mlapi/storage/periods/' + key, rec);
+      console.log(`\n✓ Guardado almacenamiento período ${key} (rápido): TOTAL ${money(Math.round(total))}`);
+      return;
+    }
     // BILLING_PROBE=unpost → borra los gastos DIARIOS de almacenamiento (almfull_*) que cargamos antes.
     if (process.env.BILLING_PROBE === 'unpost') {
       const compras = (await db.get('cyc/compras')) || {};
