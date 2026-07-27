@@ -6846,13 +6846,6 @@ document.addEventListener('click',e=>{if(fnavOpen&&!e.target.closest('#fnav-btn'
       <p id="ajuste-nombre-ok" style="font-size:.68rem;color:var(--green);margin-top:8px;min-height:1em"></p>
     </div>
 
-    <div id="mlreview-card" style="background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:18px 20px;margin-bottom:14px;display:none">
-      <div style="font-family:'Syne',sans-serif;font-weight:800;font-size:.95rem;margin-bottom:6px">🔗 Vinculaciones de ML → productos</div>
-      <p style="font-size:.68rem;color:var(--muted);margin:0 0 10px;line-height:1.5">Todas tus publicaciones de ML (activas e inactivas). Elegí tu producto (y variante si tiene) y guardá. 🟢 = vinculada · 🟡 = falta. Queda fijo para ventas y stock.</p>
-      <input id="ml-search" type="text" placeholder="🔎 Buscar publicación…" oninput="renderMlLinks()" style="width:100%;box-sizing:border-box;padding:8px 12px;border-radius:8px;border:1px solid var(--border2);background:var(--surface2);color:var(--text);font-size:.76rem;margin-bottom:10px">
-      <div id="mlreview-panel"></div>
-    </div>
-
     <div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:18px 20px;margin-bottom:14px">
       <div style="font-family:'Syne',sans-serif;font-weight:800;font-size:.95rem;margin-bottom:6px">🔼 Precios ML (automático)</div>
       <p style="font-size:.68rem;color:var(--muted);margin:0 0 12px;line-height:1.5">Cuando entra una venta con margen por debajo del <strong id="mlcfg-min-lbl">40%</strong>, el robot sube solo el precio en ML hasta la meta (<strong id="mlcfg-target-lbl">42%</strong>) y te avisa por Telegram. Nunca baja precios y tiene tope de +25% por seguridad.</p>
@@ -6898,12 +6891,19 @@ document.addEventListener('click',e=>{if(fnavOpen&&!e.target.closest('#fnav-btn'
         <span style="font-size:.75rem;color:var(--muted)">Si no ves los últimos cambios, forzá la actualización</span>
         <button class="btn" style="background:rgba(56,189,248,.12);color:var(--blue);border:1px solid rgba(56,189,248,.3)" onclick="actualizarApp()">🔄 Buscar actualizaciones</button>
       </div>
-      <div style="font-size:.66rem;color:var(--muted);margin-top:12px">CYC · Versión 4.9</div>
+      <div style="font-size:.66rem;color:var(--muted);margin-top:12px">CYC · Versión 5.0</div>
     </div>
 
     <div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:18px 20px;margin-bottom:14px">
       <div style="font-family:'Syne',sans-serif;font-weight:800;font-size:.95rem;margin-bottom:12px">🔒 Sesión</div>
       <button class="btn" style="background:rgba(239,68,68,.12);color:var(--red);border:1px solid rgba(239,68,68,.3)" onclick="logoutCYC()">🔒 Cerrar sesión</button>
+    </div>
+
+    <div id="mlreview-card" style="background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:18px 20px;margin-bottom:14px;display:none">
+      <div style="font-family:'Syne',sans-serif;font-weight:800;font-size:.95rem;margin-bottom:6px">🔗 Vinculaciones de ML → productos</div>
+      <p style="font-size:.68rem;color:var(--muted);margin:0 0 10px;line-height:1.5">Todas tus publicaciones de ML (activas e inactivas). Elegí tu producto (y variante si tiene) y guardá. 🟢 = vinculada · 🟡 = falta. Queda fijo para ventas y stock.</p>
+      <input id="ml-search" type="text" placeholder="🔎 Buscar publicación…" oninput="renderMlLinks()" style="width:100%;box-sizing:border-box;padding:8px 12px;border-radius:8px;border:1px solid var(--border2);background:var(--surface2);color:var(--text);font-size:.76rem;margin-bottom:10px">
+      <div id="mlreview-panel"></div>
     </div>
 
   </div>
