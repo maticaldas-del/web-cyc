@@ -594,7 +594,7 @@ async function main() {
         const overlap = oE < oS ? 0 : Math.round((oE - oS) / 86400000) + 1;
         const frac = dim > 0 ? overlap / dim : 0;
         if (overlap <= 0) continue;
-        const congelado = ym < '2026_01'; // igual que FAC_CONGELADO_HASTA en la app
+        const congelado = ym < '2026_05'; // igual que FAC_CONGELADO_HASTA en la app
         const real = (realMes[a] || {})[ym] || 0;
         const canc = (parseFloat((factCancel[a] || {})[ym]) || 0) * frac;
         const man = (factMes[a] || {})[ym];

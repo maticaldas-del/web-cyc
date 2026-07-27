@@ -6028,11 +6028,11 @@ function _puntFacMes(ym){let t=0;Object.keys(state.ventaprod||{}).filter(k=>k.st
 // _puntFac12() toma las ventas reales importadas de ML SIEMPRE que existan, para cualquier mes.
 // El manual (fact_mes) quedó solo como respaldo para meses sin ventas cargadas.
 const FAC_AUTO_DESDE='2026_06';
-// "Arrancamos de 0" en enero 2026: las ventas viejas se borraron y su facturación quedó
+// "Arrancamos de 0" en mayo 2026: las ventas viejas se borraron y su facturación quedó
 // CONGELADA en fact_mes. Para los meses anteriores a esta fecha, ese número congelado ES la
-// verdad para el monotributo — aunque queden ventas sueltas re-importadas de 2025, se ignoran
+// verdad para el monotributo — aunque queden ventas sueltas re-importadas viejas, se ignoran
 // (si no, esas ventitas "tapaban" el número real y el año se veía a la mitad).
-const FAC_CONGELADO_HASTA='2026_01';
+const FAC_CONGELADO_HASTA='2026_05';
 // Facturación (total vendido, sin canceladas) de UNA cuenta en un mes YYYY_MM — de las ventas de la app.
 function _facMesCuenta(acct,ym){
   let t=0;
@@ -6880,7 +6880,7 @@ document.addEventListener('click',e=>{if(fnavOpen&&!e.target.closest('#fnav-btn'
         <span style="font-size:.75rem;color:var(--muted)">Si no ves los últimos cambios, forzá la actualización</span>
         <button class="btn" style="background:rgba(56,189,248,.12);color:var(--blue);border:1px solid rgba(56,189,248,.3)" onclick="actualizarApp()">🔄 Buscar actualizaciones</button>
       </div>
-      <div style="font-size:.66rem;color:var(--muted);margin-top:12px">CYC · Versión 4.2</div>
+      <div style="font-size:.66rem;color:var(--muted);margin-top:12px">CYC · Versión 4.3</div>
     </div>
 
     <div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:18px 20px;margin-bottom:14px">
