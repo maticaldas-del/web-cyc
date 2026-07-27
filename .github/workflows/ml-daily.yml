@@ -5,7 +5,7 @@ name: ml-daily
 
 on:
   schedule:
-    - cron: '0 2 * * *'   # 23:00 hora Argentina
+    - cron: '55 2 * * *'   # 23:55 hora Argentina (día completo)
   workflow_dispatch:
 
 jobs:

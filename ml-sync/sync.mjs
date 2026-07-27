@@ -167,8 +167,8 @@ async function removeStartedPromos(itemId, token) {
 // transaction_details.net_received_amount ya tiene descontado TODO:
 // comisión de ML + costo fijo + retenciones de impuestos (IIBB/SIRTAC).
 // Suma los pagos de la orden. Devuelve null si no se pudo (→ usa el fallback).
-async function orderNet(order, token) {
-  let net = 0, ok = false;
+async function orderNet(order, token, feeOut) {
+  let net = 0, ok = false, mlfee = 0;
   for (const p of (order.payments || [])) {
     if (!p.id) continue;
     try {
@@ -179,8 +179,15 @@ async function orderNet(order, token) {
       const b = await r.json();
       const nr = b.transaction_details?.net_received_amount;
       if (typeof nr === 'number') { net += nr; ok = true; }
+      // Cargos de ML por venta (comisión + costo fijo + envío Full + financiación), SIN impuestos.
+      // Guardarlo por venta permite calcular el almacenamiento del mes al instante (factura − Σ estos).
+      for (const c of (b.charges_details || [])) {
+        const n = (c.name || '').toLowerCase();
+        if (!n.startsWith('tax_withholding')) mlfee += c.amounts?.original || 0;
+      }
     } catch { /* ignore */ }
   }
+  if (feeOut) feeOut.mlfee = Math.round(mlfee);
   return ok ? net : null;
 }
 // fallback si no se pudo leer el pago: total − comisión (sin impuestos).
@@ -2036,7 +2043,7 @@ async function main() {
       const saleId = 's' + o.id;
       const items = o.order_items || [];
       const orderGross = items.reduce((s, it) => s + (it.unit_price || 0) * (it.quantity || 0), 0);
-      let orderNetAmt = null, netFetched = false; // neto real del pago (una vez por orden)
+      let orderNetAmt = null, orderFeeAmt = 0, netFetched = false; // neto y cargos ML del pago (una vez por orden)
       let i = 0;
       for (const it of items) {
         const mla = it.item?.id;
@@ -2066,16 +2073,17 @@ async function main() {
         // perder ninguna venta); después la asignás/creás y se completa sola.
         if (p && !variant) variant = mlVariant(it, p); // variante desde la venta de ML
         // neto real del pago (una sola vez por orden)
-        if (!netFetched) { orderNetAmt = await orderNet(o, t.access_token); netFetched = true; }
+        if (!netFetched) { const fo = {}; orderNetAmt = await orderNet(o, t.access_token, fo); orderFeeAmt = fo.mlfee || 0; netFetched = true; }
         const neto = (orderNetAmt != null && orderGross > 0)
           ? Math.round(orderNetAmt * (itemGross / orderGross))
           : netoFallback(itemGross, it.sale_fee, qty);
+        const mlfee = (orderFeeAmt && orderGross > 0) ? Math.round(orderFeeAmt * (itemGross / orderGross)) : 0; // cargo ML por venta (para el almacenamiento mensual)
         const { costo, costBaseUSD, shipUSD } = p ? costoPesos(p, qty, tc) : { costo: 0, costBaseUSD: 0, shipUSD: 0 };
         const id = 'v' + o.id + '_' + idx;
         const obj = {
           id, saleId, prod: p ? p.name : title, prodId: p ? p.id : null, cuenta: label, qty,
           total: Math.round(itemGross),
-          neto,
+          neto, mlfee,
           costo, costBaseUSD, tcSale: tc, shipUSD,
           numVenta: numDisplay, mla: mla || '',
           ts: new Date(o.date_closed || o.date_created).getTime(),
