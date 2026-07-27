@@ -895,6 +895,20 @@ async function main() {
       console.log(`\nRETIRO cargado ${ym}: ${rm != null ? money(Math.round(Number(rm))) : '(no cargado)'}`);
       return;
     }
+    // BILLING_PROBE=mlcargo:<YYYY_MM>=<monto> → carga UN gasto mensual con los CARGOS DE ML que ML te
+    // cobra por DÉBITO AUTOMÁTICO / "facturas vencidas" (los que NO están en el neto de cada venta).
+    // Es la parte de la factura de ML que sale de tu saldo aparte. Ej: mlcargo:2026_06=1043595.
+    if (String(process.env.BILLING_PROBE).startsWith('mlcargo:')) {
+      const arg = String(process.env.BILLING_PROBE).slice(8).trim();
+      const m = arg.match(/^(\d{4}_\d{2})=(\d+)$/);
+      if (!m) { console.log('Formato: mlcargo:2026_06=1043595'); return; }
+      const ym = m[1], monto = parseInt(m[2], 10);
+      const id = 'mlcargo_' + ym;
+      const gasto = { id, monto, cat: 'Cargos ML (débito automático)', tipo: 'gasto', desc: `Cargos de ML por débito automático / facturas vencidas (${ym})`, dayKey: ym + '_01', ts: Date.now(), auto: true };
+      if (!DRY) await db.patch('cyc/compras', { [id]: gasto });
+      console.log(`${DRY ? '(DRY) ' : ''}Cargado ${id} = ${money(monto)} (cargos ML débito automático).`);
+      return;
+    }
     // BILLING_PROBE=unpost → borra los gastos DIARIOS de almacenamiento (almfull_*) que cargamos antes.
     if (process.env.BILLING_PROBE === 'unpost') {
       const compras = (await db.get('cyc/compras')) || {};
