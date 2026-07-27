@@ -632,6 +632,13 @@ async function main() {
       '2026-07-01': [Date.UTC(2026, 5, 15), Date.UTC(2026, 6, 14, 23, 59, 59)],
       '2026-08-01': [Date.UTC(2026, 6, 15), Date.UTC(2026, 7, 14, 23, 59, 59)],
     };
+    // Facturas TOTALES de ML ya leídas (corrida =totals). Sirven de respaldo cuando la API de
+    // facturación devuelve 429 (rate-limit 5/min). Los cargos por venta SÍ se calculan reales.
+    const KNOWN_BILL = {
+      '2026-05-01': { adriana: 1948053, ayelen: 4884639, luciana: 3279709, matias: 1967596 },
+      '2026-06-01': { adriana: 2189931, ayelen: 3469968, luciana: 3087837, matias: 3056715 },
+      '2026-07-01': { adriana: 1817026, ayelen: 1826477, luciana: 2420347, matias: 2245683 },
+    };
     // BILLING_PROBE=fast:<periodo> → ALMACENAMIENTO rápido y casi exacto, SIN leer pago por pago.
     // storage = factura ML − Σ(total−neto de las ventas del período)×0.9695
     // El 0.9695 saca el ~3% de impuestos (calibrado contra julio, que sí calculamos exacto).
@@ -720,6 +727,11 @@ async function main() {
           const per = (pr.results || []).find((x) => x.key === key);
           if (per) bill = per.amount; else break;
         } catch (e) { console.log('   facturación error', String(e.message || '').slice(0, 40)); }
+      }
+      // Si la API no soltó la factura (rate-limit), uso la factura ya conocida de la corrida =totals.
+      if (bill == null && KNOWN_BILL[key] && KNOWN_BILL[key][label.toLowerCase()] != null) {
+        bill = KNOWN_BILL[key][label.toLowerCase()];
+        console.log(`   (facturación ${label} desde respaldo conocido: ${money(bill)})`);
       }
       // cargos ML reales por venta de esa cuenta en el período (pago por pago, pero UNA sola cuenta)
       const paid = await fetchOrdersRange(acc.seller_id, t.access_token, win[0], win[1]);
