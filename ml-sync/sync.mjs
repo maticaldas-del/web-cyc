@@ -613,6 +613,40 @@ async function main() {
     for (const [a, t] of Object.entries(totalPorCuenta)) console.log(`  ${a}: $${Math.round(t).toLocaleString('es-AR')}`);
     return;
   }
+  // BILLING_PROBE: busca en la FACTURACIÓN de ML los cargos que NO van por venta (almacenamiento
+  // Full, publicidad, cargos de gestión). Prueba varios endpoints de billing y vuelca lo que
+  // devuelva, para ubicar de dónde sale el "millón que falta" del arqueo. ACCOUNT=Matias para una sola.
+  if (process.env.BILLING_PROBE) {
+    const onlyAcc = (process.env.ACCOUNT || '').trim().toLowerCase();
+    for (const label of labels) {
+      if (onlyAcc && label.toLowerCase() !== onlyAcc) continue;
+      const acc = accounts[label];
+      if (!acc?.refresh_token) continue;
+      const t = await mlRefresh(ML_CLIENT_ID, ML_CLIENT_SECRET, acc.refresh_token);
+      await db.patch('mlapi/tokens/' + label, { refresh_token: t.refresh_token, updated_ts: Date.now() });
+      const sid = acc.seller_id;
+      const tries = [
+        '/billing/integration/monthly/periods?group=ML',
+        '/billing/integration/monthly/periods',
+        '/billing/integration/periods?group=ML&limit=5',
+        `/users/${sid}/billing/integration/monthly/periods`,
+        '/billing/integration/group/ML/periods',
+        `/billing/integration/monthly/periods?group=ML&site_id=MLA`,
+        '/billing/integration/documents/summary',
+      ];
+      console.log(`\n═══ BILLING PROBE · ${label} (seller ${sid}) ═══`);
+      for (const path of tries) {
+        try {
+          const r = await fetch('https://api.mercadolibre.com' + path, { headers: { Authorization: 'Bearer ' + t.access_token } });
+          const txt = await r.text();
+          console.log(`\n[${r.status}] ${path}`);
+          console.log('   ' + txt.slice(0, 600).replace(/\n/g, ' '));
+        } catch (e) { console.log(`\n[ERR] ${path} · ${String(e.message || '').slice(0, 80)}`); }
+      }
+      if (onlyAcc) break;
+    }
+    return;
+  }
   // DUMP_MATCH: audita las publicaciones MAL ENGANCHADAS. Para cada publicación con ventas,
   // compara el TÍTULO REAL en ML contra el PRODUCTO que le puso la app. Si casi no comparten
   // palabras, es un enganche equivocado (ej: auriculares Galaxy Buds enganchados al celular A06).
