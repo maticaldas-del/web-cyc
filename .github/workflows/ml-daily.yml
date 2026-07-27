@@ -39,9 +39,10 @@ jobs:
           FIREBASE_BOT_PASSWORD: ${{ secrets.FIREBASE_BOT_PASSWORD }}
           CANCEL_AGG: '400'
         run: node ml-sync/sync.mjs
-      # Carga el gasto diario de ALMACENAMIENTO de Full (reparto del costo del período de ML),
-      # para que el arqueo descuente ese costo día a día. Barato (no pega a ML, solo Firebase).
-      - name: Almacenamiento Full (gasto diario)
+      # Carga el gasto MENSUAL de ALMACENAMIENTO de Full (número real de la factura del período de ML,
+      # ya sin comisión/envío). Idempotente. Barato (solo Firebase). El cálculo real del período se
+      # corre aparte cuando cierra el período de ML.
+      - name: Almacenamiento Full (gasto mensual)
         env:
           ML_CLIENT_ID: ${{ secrets.ML_CLIENT_ID }}
           ML_CLIENT_SECRET: ${{ secrets.ML_CLIENT_SECRET }}
@@ -49,5 +50,5 @@ jobs:
           FIREBASE_DB_URL: ${{ secrets.FIREBASE_DB_URL }}
           FIREBASE_BOT_EMAIL: ${{ secrets.FIREBASE_BOT_EMAIL }}
           FIREBASE_BOT_PASSWORD: ${{ secrets.FIREBASE_BOT_PASSWORD }}
-          BILLING_PROBE: 'post'
+          BILLING_PROBE: 'month'
         run: node ml-sync/sync.mjs

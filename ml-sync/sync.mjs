@@ -625,6 +625,34 @@ async function main() {
       '2026-07-01': [Date.UTC(2026, 5, 15), Date.UTC(2026, 6, 14, 23, 59, 59)],
       '2026-08-01': [Date.UTC(2026, 6, 15), Date.UTC(2026, 7, 14, 23, 59, 59)],
     };
+    // BILLING_PROBE=unpost → borra los gastos DIARIOS de almacenamiento (almfull_*) que cargamos antes.
+    if (process.env.BILLING_PROBE === 'unpost') {
+      const compras = (await db.get('cyc/compras')) || {};
+      const del = {}; let n = 0;
+      for (const [id, x] of Object.entries(compras)) {
+        if (id.startsWith('almfull_') || (x && x.cat === 'Almacenamiento Full' && /diario/.test(x.desc || ''))) { del[id] = null; n++; }
+      }
+      if (!DRY && n) await db.patch('cyc/compras', del);
+      console.log(`${DRY ? '(DRY) ' : ''}Borrados ${n} gastos diarios de almacenamiento.`);
+      return;
+    }
+    // BILLING_PROBE=month → carga UN gasto mensual por período con el almacenamiento REAL guardado
+    // (factura − comisión/fijo/envío). Idempotente: id almmes_<YYYY_MM>. dayKey = día 1 del mes.
+    if (process.env.BILLING_PROBE === 'month') {
+      const periods = (await db.get('cyc/mlapi/storage/periods')) || {};
+      const upd = {}; let n = 0, sum = 0;
+      for (const p of Object.values(periods)) {
+        if (!p || !(p.total > 0)) continue;
+        const ym = String(p.key).slice(0, 7).replace('-', '_'); // 2026_07
+        const id = 'almmes_' + ym;
+        upd[id] = { id, monto: Math.round(p.total), cat: 'Almacenamiento Full', tipo: 'gasto', desc: `Almacenamiento Full ML (período ${p.key})`, dayKey: ym + '_01', ts: Date.now(), auto: true };
+        n++; sum += Math.round(p.total);
+      }
+      if (!DRY && n) await db.patch('cyc/compras', upd);
+      console.log(`${DRY ? '(DRY) ' : ''}Gasto mensual de almacenamiento: ${n} meses · total ${money(sum)}.`);
+      for (const u of Object.values(upd)) console.log(`   ${u.dayKey.slice(0, 7)}: ${money(u.monto)}`);
+      return;
+    }
     // BILLING_PROBE=seed → guarda directo el almacenamiento YA calculado del período 2026-07-01
     // (números exactos de la corrida de fees), sin volver a pegarle a ML. Instantáneo.
     if (process.env.BILLING_PROBE === 'seed') {
