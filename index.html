@@ -5847,7 +5847,7 @@ function renderLineChartFromScope(scope){
   if(metChartLine){metChartLine.data.labels=labels;metChartLine.data.datasets=datasets;metChartLine.update();return;}
   Chart.defaults.color='#6b6b7a';Chart.defaults.borderColor='#2a2a30';
   metChartLine=new Chart(canvas,{type:'line',data:{labels,datasets},
-    options:{responsive:true,interaction:{mode:'index',intersect:false},plugins:{legend:{labels:{boxWidth:12,font:{size:11}}},tooltip:{callbacks:{title:items=>{const total=items.reduce((s,i)=>s+(i.raw||0),0);return metChartLineView==='cuentas'?[items[0].label,'Total: $'+Math.round(total).toLocaleString('es-AR')]:[items[0].label];},label:item=>' '+item.dataset.label+': $'+Math.round(item.raw||0).toLocaleString('es-AR')},titleFont:{size:13,weight:'bold'},bodyFont:{size:11},titleColor:'#f1f1f3',bodyColor:'#9b9ba8'}},scales:{y:{grid:{color:'#2a2a30'},ticks:{callback:v=>'$'+Math.round(v/1000)+'k'}},x:{grid:{display:false}}}}
+    options:{responsive:true,interaction:{mode:'index',intersect:false},plugins:{legend:{labels:{boxWidth:12,font:{size:11}}},tooltip:{callbacks:{title:items=>{const total=items.reduce((s,i)=>s+(i.raw||0),0);return metChartLineView==='cuentas'?[items[0].label,'Total: $'+Math.round(total).toLocaleString('es-AR')]:[items[0].label];},label:item=>' '+item.dataset.label+': $'+Math.round(item.raw||0).toLocaleString('es-AR'),afterBody:items=>{if(metChartLineView!=='general')return '';const find=l=>{const it=items.find(i=>i.dataset.label===l);return it?(it.raw||0):null;};const cur=find(CMP_LBL_CUR),prev=find(CMP_LBL_PREV);if(cur==null||prev==null)return '';const diff=cur-prev,pct=prev!==0?(diff/Math.abs(prev)*100):(cur!==0?100:0),s=diff>=0?'+':'−';return ['','Diferencia vs anterior: '+s+'$'+Math.abs(Math.round(diff)).toLocaleString('es-AR')+'  ('+s+Math.abs(pct).toFixed(1)+'%)'];}},titleFont:{size:13,weight:'bold'},bodyFont:{size:11},titleColor:'#f1f1f3',bodyColor:'#9b9ba8'}},scales:{y:{grid:{color:'#2a2a30'},ticks:{callback:v=>'$'+Math.round(v/1000)+'k'}},x:{grid:{display:false}}}}
   });
 }
 
@@ -6885,7 +6885,7 @@ document.addEventListener('click',e=>{if(fnavOpen&&!e.target.closest('#fnav-btn'
         <span style="font-size:.75rem;color:var(--muted)">Si no ves los últimos cambios, forzá la actualización</span>
         <button class="btn" style="background:rgba(56,189,248,.12);color:var(--blue);border:1px solid rgba(56,189,248,.3)" onclick="actualizarApp()">🔄 Buscar actualizaciones</button>
       </div>
-      <div style="font-size:.66rem;color:var(--muted);margin-top:12px">CYC · Versión 5.2</div>
+      <div style="font-size:.66rem;color:var(--muted);margin-top:12px">CYC · Versión 5.3</div>
     </div>
 
     <div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:18px 20px;margin-bottom:14px">
