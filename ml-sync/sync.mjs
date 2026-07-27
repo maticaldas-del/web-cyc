@@ -625,6 +625,22 @@ async function main() {
       '2026-07-01': [Date.UTC(2026, 5, 15), Date.UTC(2026, 6, 14, 23, 59, 59)],
       '2026-08-01': [Date.UTC(2026, 6, 15), Date.UTC(2026, 7, 14, 23, 59, 59)],
     };
+    // BILLING_PROBE=seed → guarda directo el almacenamiento YA calculado del período 2026-07-01
+    // (números exactos de la corrida de fees), sin volver a pegarle a ML. Instantáneo.
+    if (process.env.BILLING_PROBE === 'seed') {
+      const perAcct = {
+        adriana: { bill: 1817026, fees: 1755302, storage: 61724 },
+        ayelen: { bill: 1826477, fees: 1360851, storage: 465626 },
+        luciana: { bill: 2420347, fees: 1926051, storage: 494296 },
+        matias: { bill: 2245683, fees: 1867995, storage: 377688 },
+      };
+      const total = Object.values(perAcct).reduce((s, x) => s + x.storage, 0);
+      const win = PERIOD_WIN['2026-07-01'];
+      const rec = { key: '2026-07-01', from: new Date(win[0]).toISOString(), to: new Date(win[1]).toISOString(), days: Math.round((win[1] - win[0]) / 86400000) + 1, total, perAcct, ts: Date.now() };
+      await db.set('cyc/mlapi/storage/periods/2026-07-01', rec);
+      console.log(`✓ Sembrado almacenamiento 2026-07-01: TOTAL ${money(total)} · ${rec.days} días · ${money(Math.round(total / rec.days))}/día`);
+      return;
+    }
     // BILLING_PROBE=calc:<periodo> → calcula el ALMACENAMIENTO real de ese período (total ML facturado
     // − comisión/fijo/envío por venta) por cuenta, y lo GUARDA en cyc/mlapi/storage/periods/<key>.
     if (String(process.env.BILLING_PROBE).startsWith('calc:')) {
