@@ -770,9 +770,14 @@ async function main() {
     // (factura − comisión/fijo/envío). Idempotente: id almmes_<YYYY_MM>. dayKey = día 1 del mes.
     if (process.env.BILLING_PROBE === 'month') {
       const periods = (await db.get('cyc/mlapi/storage/periods')) || {};
-      const upd = {}; let n = 0, sum = 0;
+      const upd = {}; let n = 0, sum = 0; const espera = [];
       for (const p of Object.values(periods)) {
-        if (!p || !(p.total > 0)) continue;
+        if (!p || !p.perAcct) continue;
+        // Solo se carga un mes cuando su factura está COMPLETA: las 4 cuentas con almacenamiento real
+        // calculado. Nunca un número parcial, inventado ni repetido del mes anterior. Si falta una
+        // cuenta o todavía no cerró el período, se espera (no se carga nada para ese mes).
+        const completo = labels.every((l) => { const x = p.perAcct[l.toLowerCase()]; return x && x.storage != null; });
+        if (!completo || !(p.total > 0)) { espera.push(String(p.key)); continue; }
         const ym = String(p.key).slice(0, 7).replace('-', '_'); // 2026_07
         const id = 'almmes_' + ym;
         upd[id] = { id, monto: Math.round(p.total), cat: 'Almacenamiento Full', tipo: 'gasto', desc: `Almacenamiento Full ML (período ${p.key})`, dayKey: ym + '_01', ts: Date.now(), auto: true };
@@ -781,6 +786,7 @@ async function main() {
       if (!DRY && n) await db.patch('cyc/compras', upd);
       console.log(`${DRY ? '(DRY) ' : ''}Gasto mensual de almacenamiento: ${n} meses · total ${money(sum)}.`);
       for (const u of Object.values(upd)) console.log(`   ${u.dayKey.slice(0, 7)}: ${money(u.monto)}`);
+      if (espera.length) console.log(`   (períodos incompletos, se esperan hasta tener las 4 cuentas: ${espera.join(', ')})`);
       return;
     }
     // BILLING_PROBE=seed → guarda directo el almacenamiento YA calculado del período 2026-07-01
