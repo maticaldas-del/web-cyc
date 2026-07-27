@@ -830,6 +830,60 @@ async function main() {
     }
     return;
   }
+  // MONTH_NETO: corrobora el NETO de un mes (YYYY_MM) — lo que muestra la web (suma de v.neto)
+  // contra el net_received REAL que devuelve Mercado Pago para las órdenes pagadas de ese mes.
+  // El neto de la app YA es el net_received de MP (repartido por ítem), así que deberían coincidir;
+  // una diferencia marca ventas que faltan o pagos que cambiaron (devoluciones) después de cargarse.
+  if (process.env.MONTH_NETO) {
+    const ym = String(process.env.MONTH_NETO).trim().replace('-', '_'); // 2026_06
+    const [yy, mm] = ym.split('_').map(Number);
+    const startMs = new Date(yy, mm - 1, 1).getTime();
+    const endMs = new Date(yy, mm, 1).getTime() - 1; // último ms del mes
+    const vp = (await db.get('cyc/ventaprod')) || {};
+    const app = {};
+    for (const [dk, ents] of Object.entries(vp)) {
+      if (String(dk).slice(0, 7) !== ym) continue;
+      for (const v of Object.values(ents || {})) {
+        const a = (v.cuenta || '').toLowerCase();
+        app[a] = app[a] || { neto: 0, n: 0, canc: 0 };
+        if (v.cancelada) { app[a].canc++; continue; }
+        app[a].neto += v.neto || 0; app[a].n++;
+      }
+    }
+    console.log(`=== NETO DEL MES ${ym.replace('_', '-')} · WEB (app) vs MP real (net_received) ===\n`);
+    let totApp = 0, totMl = 0;
+    for (const label of labels) {
+      const acc = accounts[label];
+      if (!acc?.refresh_token) continue;
+      const t = await mlRefresh(ML_CLIENT_ID, ML_CLIENT_SECRET, acc.refresh_token);
+      await db.patch('mlapi/tokens/' + label, { refresh_token: t.refresh_token, updated_ts: Date.now() });
+      const paid = await fetchOrdersRange(acc.seller_id, t.access_token, startMs, endMs);
+      const byId = new Map(paid.map((o) => [o.id, o]));
+      let mlNeto = 0, cnt = 0, missing = 0, done = 0;
+      for (const o of byId.values()) {
+        const net = await orderNet(o, t.access_token);
+        done++;
+        if (done % 200 === 0) console.log(`   ...${label}: ${done}/${byId.size} órdenes leídas`);
+        if (net == null) { missing++; continue; }
+        mlNeto += net; cnt++;
+      }
+      const a = label.toLowerCase();
+      const appNeto = Math.round((app[a] && app[a].neto) || 0);
+      mlNeto = Math.round(mlNeto);
+      totApp += appNeto; totMl += mlNeto;
+      const delta = appNeto - mlNeto;
+      const pct = mlNeto > 0 ? (delta / mlNeto) * 100 : 0;
+      console.log(`▶ ${label}`);
+      console.log(`   WEB (app):  ${money(appNeto)}  ·  ${(app[a] && app[a].n) || 0} ventas`);
+      console.log(`   MP real:    ${money(mlNeto)}  ·  ${byId.size} órdenes pagadas${missing ? ` (${missing} sin pago leído)` : ''}`);
+      console.log(`   Δ = ${money(delta)}  (${pct >= 0 ? '+' : ''}${pct.toFixed(1)}%)\n`);
+    }
+    console.log(`=== TOTAL ${ym.replace('_', '-')} ===`);
+    console.log(`   WEB (app):  ${money(totApp)}`);
+    console.log(`   MP real:    ${money(totMl)}`);
+    console.log(`   Δ = ${money(totApp - totMl)}  (${totMl > 0 ? ((totApp - totMl) / totMl * 100).toFixed(2) : '0'}%)`);
+    return;
+  }
   // CANCEL_AGG: recalcula la facturación de CANCELADAS/DEVUELTAS por cuenta y mes y la guarda
   // en cyc/fact_cancel/{cuenta}. La app la SUMA a la facturación del monotributo para que el
   // número quede idéntico a las "Ventas brutas" de ML (AFIP toma lo facturado, canceladas

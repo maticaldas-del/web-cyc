@@ -84,8 +84,8 @@ on:
         description: 'Neto real de las ventas de un producto (palabra clave)'
         required: false
         default: ''
-      dump_recon:
-        description: 'Reconciliar ML vs app por cuenta (días, ej 365)'
+      month_neto:
+        description: 'Cruzar neto del mes vs MP real (YYYY_MM, ej 2026_06)'
         required: false
         default: ''
       cancel_agg:
@@ -144,7 +144,7 @@ jobs:
           DUMP_FULLSTOCK: ${{ github.event.inputs.dump_fullstock }}
           FILL_GASTOS: ${{ github.event.inputs.fill_gastos }}
           PURGE_BEFORE: ${{ github.event.inputs.purge_before }}
-          DUMP_RECON: ${{ github.event.inputs.dump_recon }}
+          MONTH_NETO: ${{ github.event.inputs.month_neto }}
           CANCEL_AGG: ${{ github.event.inputs.cancel_agg }}
           DUMP_COSTS: ${{ github.event.inputs.dump_costs }}
           BACKFILL_RECLAMOS: ${{ github.event.inputs.backfill_reclamos }}
