@@ -956,7 +956,11 @@ async function main() {
     // fijos por categoría, (C) punto de equilibrio, (D) margen real por producto con ganancia $,
     // stock y capital parado, (E) simulación de pisos de margen (qué se pierde si cortás bajo X%).
     if (String(process.env.BILLING_PROBE || '').startsWith('rentab')) {
-      const days = parseInt(String(process.env.BILLING_PROBE).split(':')[1], 10) || 60;
+      const _rp = String(process.env.BILLING_PROBE).split(':');
+      const days = parseInt(_rp[1], 10) || 60;
+      // rentab:60:2026_06,2026_07 → analiza SOLO esos meses (sirve para sacar de la cuenta un mes
+      // atípico). El margen por producto también sale de las ventas de esos meses, no de los N días.
+      const pickYM = (_rp[2] || '').split(',').map((s) => s.trim()).filter(Boolean);
       const MLX = { adriana: 4.07, luciana: 4.37, ayelen: 5.95, matias: 4.58 };
       const mlx = (c) => { const v = MLX[(c || '').toLowerCase()]; return v != null ? v : 4.8; };
       const vp = (await db.get('cyc/ventaprod')) || {};
@@ -970,8 +974,19 @@ async function main() {
       // ── A. Economía mensual (últimos 4 meses) — costo = el guardado en cada venta + cargo ML,
       //       igual que el arqueo de la web.
       const now = new Date();
-      const months = [];
-      for (let i = 3; i >= 0; i--) { const d = new Date(now.getFullYear(), now.getMonth() - i, 1); months.push(d.getFullYear() + '_' + String(d.getMonth() + 1).padStart(2, '0')); }
+      let months = [];
+      if (pickYM.length) months = pickYM.slice().sort();
+      else for (let i = 3; i >= 0; i--) { const d = new Date(now.getFullYear(), now.getMonth() - i, 1); months.push(d.getFullYear() + '_' + String(d.getMonth() + 1).padStart(2, '0')); }
+      // Días realmente cubiertos por los meses elegidos (el mes en curso cuenta solo los transcurridos).
+      let spanDays = days;
+      if (pickYM.length) {
+        spanDays = 0;
+        for (const ym of months) {
+          const [yy, mm] = ym.split('_').map(Number);
+          if (now.getFullYear() === yy && now.getMonth() + 1 === mm) spanDays += now.getDate();
+          else spanDays += new Date(yy, mm, 0).getDate();
+        }
+      }
       const mAgg = {};
       for (const [k, ents] of Object.entries(vp)) {
         const ym = k.slice(0, 7); if (!months.includes(ym)) continue;
@@ -1009,7 +1024,7 @@ async function main() {
         console.log(`  ${cat.padEnd(30)} ${vals.join('  ')}`);
       }
       // ── C. Punto de equilibrio con promedios de los meses CERRADOS (todos menos el actual)
-      const closed = months.slice(0, -1).filter((ym) => mAgg[ym]);
+      const closed = (pickYM.length ? months : months.slice(0, -1)).filter((ym) => mAgg[ym]);
       const avg = (f) => closed.length ? closed.reduce((s, ym) => s + f(ym), 0) / closed.length : 0;
       const avgCosto = avg((ym) => mAgg[ym].costo + mAgg[ym].mlx);
       const avgGfijos = avg((ym) => gastosMes[ym] || 0);
@@ -1017,16 +1032,17 @@ async function main() {
       const avgFact = avg((ym) => mAgg[ym].total);
       const beSinRet = avgCosto > 0 ? avgGfijos / avgCosto * 100 : 0;
       const beConRet = avgCosto > 0 ? (avgGfijos + avgRet) / avgCosto * 100 : 0;
-      console.log(`\n── C. PUNTO DE EQUILIBRIO (promedio meses cerrados: ${closed.join(', ')}) ──`);
+      console.log(`\n── C. PUNTO DE EQUILIBRIO (promedio de: ${closed.join(', ')}) ──`);
       console.log(`  Facturación prom: ${money(Math.round(avgFact))} · costo+ML vendido prom: ${money(Math.round(avgCosto))}`);
       console.log(`  Gastos fijos prom: ${money(Math.round(avgGfijos))}/mes · Retiros prom: ${money(Math.round(avgRet))}/mes`);
       console.log(`  → margen s/costo para cubrir SOLO gastos fijos: ${beSinRet.toFixed(1)}%`);
       console.log(`  → margen s/costo para cubrir fijos + retiros (CYC=0): ${beConRet.toFixed(1)}%`);
       // ── D. Margen real por producto (últimos N días, costo ACTUAL del producto × dólar actual)
       const fromKey = dayKeyFromISO(Date.now() - (days - 1) * 864e5);
+      const inWin = (k) => pickYM.length ? months.includes(k.slice(0, 7)) : (k >= fromKey);
       const byProd = {};
       for (const [k, ents] of Object.entries(vp)) {
-        if (k < fromKey) continue;
+        if (!inWin(k)) continue;
         for (const v of Object.values(ents || {})) {
           if (!v || v.cancelada) continue;
           const total = v.total || 0, neto = v.neto || 0; if (neto <= 0) continue;
@@ -1045,21 +1061,21 @@ async function main() {
         const gan = b.neto - costo;
         const mg = costo > 0 ? gan / costo * 100 : 0;
         const stk = stockU(id);
-        rows.push({ nom: b.nom, ventas: b.ventas, qty: b.qty, gan, mg, ganMes: gan / days * 30, stk, capital: Math.round(stk * cU), precio: b.total / Math.max(1, b.ventas) });
+        rows.push({ nom: b.nom, ventas: b.ventas, qty: b.qty, gan, mg, ganMes: gan / spanDays * 30, stk, capital: Math.round(stk * cU), precio: b.total / Math.max(1, b.ventas) });
       }
       rows.sort((a, b) => a.mg - b.mg);
       const ganTot = rows.reduce((s, r) => s + r.gan, 0);
-      console.log(`\n── D. MARGEN REAL POR PRODUCTO (últimos ${days} días · ${rows.length} prods con costo · ${sinCosto} sin costo omitidos) ──`);
+      console.log(`\n── D. MARGEN REAL POR PRODUCTO (${pickYM.length?'meses '+months.join(', '):'últimos '+days+' días'} · ${spanDays} días · ${rows.length} prods con costo · ${sinCosto} sin costo omitidos) ──`);
       for (const r of rows) console.log(`  ${String(Math.round(r.mg)).padStart(4)}% · gan/mes ${money(Math.round(r.ganMes)).padStart(11)} · ${String(r.ventas).padStart(3)}v · precio ${money(Math.round(r.precio)).padStart(9)} · stock ${String(r.stk).padStart(4)}u (${money(r.capital)}) · ${r.nom.slice(0, 38)}`);
       // ── E. Simulación de pisos
-      console.log(`\n── E. SI CORTÁS TODO PRODUCTO QUE GANA MENOS DE X% (últimos ${days} días → proyección /mes) ──`);
-      console.log(`  Ganancia total actual: ${money(Math.round(ganTot / days * 30))}/mes`);
+      console.log(`\n── E. SI CORTÁS TODO PRODUCTO QUE GANA MENOS DE X% (proyección /mes sobre ${spanDays} días) ──`);
+      console.log(`  Ganancia total actual: ${money(Math.round(ganTot / spanDays * 30))}/mes`);
       for (const floor of [15, 20, 25, 30, 35, 40]) {
         const cut = rows.filter((r) => r.mg < floor);
         const ganCut = cut.reduce((s, r) => s + r.gan, 0);
         const capCut = cut.reduce((s, r) => s + r.capital, 0);
         const vCut = cut.reduce((s, r) => s + r.ventas, 0);
-        console.log(`  piso ${String(floor).padStart(2)}%: cortás ${String(cut.length).padStart(3)} prods · perdés ${money(Math.round(ganCut / days * 30)).padStart(11)}/mes (${ganTot > 0 ? (ganCut / ganTot * 100).toFixed(1) : 0}% de la gan.) · liberás ${money(capCut).padStart(12)} de stock · ${Math.round(vCut / days * 30)} ventas/mes menos de trabajo`);
+        console.log(`  piso ${String(floor).padStart(2)}%: cortás ${String(cut.length).padStart(3)} prods · perdés ${money(Math.round(ganCut / spanDays * 30)).padStart(11)}/mes (${ganTot > 0 ? (ganCut / ganTot * 100).toFixed(1) : 0}% de la gan.) · liberás ${money(capCut).padStart(12)} de stock · ${Math.round(vCut / spanDays * 30)} ventas/mes menos de trabajo`);
       }
       return;
     }
