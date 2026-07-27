@@ -618,6 +618,23 @@ async function main() {
   // devuelva, para ubicar de dónde sale el "millón que falta" del arqueo. ACCOUNT=Matias para una sola.
   if (process.env.BILLING_PROBE) {
     const onlyAcc = (process.env.ACCOUNT || '').trim().toLowerCase();
+    // BILLING_PROBE=totals → solo el TOTAL facturado por ML (grupo ML) de cada cuenta, por período.
+    if (process.env.BILLING_PROBE === 'totals') {
+      const sleepT = (ms) => new Promise((r) => setTimeout(r, ms));
+      for (const label of labels) {
+        const acc = accounts[label];
+        if (!acc?.refresh_token) continue;
+        const t = await mlRefresh(ML_CLIENT_ID, ML_CLIENT_SECRET, acc.refresh_token);
+        await db.patch('mlapi/tokens/' + label, { refresh_token: t.refresh_token, updated_ts: Date.now() });
+        try {
+          const pr = await mlGet('/billing/integration/monthly/periods?group=ML&document_type=BILL&limit=6', t.access_token);
+          console.log(`\n▶ ${label}`);
+          for (const p of (pr.results || [])) console.log(`   ${p.key} (${p.period?.date_from}→${p.period?.date_to}) [${p.period_status}] = ${money(Math.round(p.amount || 0))}`);
+        } catch (e) { console.log(`\n▶ ${label} · ERROR ${String(e.message || '').slice(0, 90)}`); }
+        await sleepT(14000); // límite 5/min del billing
+      }
+      return;
+    }
     // BILLING_PROBE=fees → calcula los cargos por venta (comisión+fijo+envío) de un período ML,
     // para restarlos del total facturado y aislar almacenamiento+publicidad (lo que la app no ve).
     if (process.env.BILLING_PROBE === 'fees') {
