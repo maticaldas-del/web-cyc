@@ -525,6 +525,20 @@ async function main() {
       const key = String(v.numVenta) + '|' + (v.prodId || v.prod || '');
       (groups[key] = groups[key] || []).push(v);
     }
+    // Reparto por mes (según fecha de la venta): cuántas ventas y cuánto facturado hay guardado.
+    const perMonth = {};
+    for (const v of all) {
+      const ts = v.ts || 0;
+      const ym = ts ? new Date(ts).toISOString().slice(0, 7) : '(sin fecha)';
+      const m = (perMonth[ym] = perMonth[ym] || { n: 0, fact: 0, canc: 0 });
+      m.n++;
+      if (v.cancelada) m.canc++; else m.fact += (v.total || 0);
+    }
+    console.log('\n📅 Ventas GUARDADAS por mes (fecha de venta):');
+    Object.keys(perMonth).sort().forEach((ym) => {
+      const m = perMonth[ym];
+      console.log(`   ${ym}: ${String(m.n).padStart(5)} ventas · facturado $${Math.round(m.fact).toLocaleString('es-AR')} · canceladas ${m.canc}`);
+    });
     const dups = Object.entries(groups).filter(([, arr]) => arr.length > 1);
     let mlApiInvolved = 0;
     dups.forEach(([, arr]) => { if (arr.some((v) => v.origen === 'ml-api')) mlApiInvolved++; });
