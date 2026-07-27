@@ -653,29 +653,36 @@ async function main() {
         }
       }
       const sleepK = (ms) => new Promise((r) => setTimeout(r, ms));
-      const perAcct = {}; let total = 0;
+      const perAcct = {}; let total = 0, billsOk = 0;
       for (const label of labels) {
         const acc = accounts[label];
         if (!acc?.refresh_token) continue;
         const t = await mlRefresh(ML_CLIENT_ID, ML_CLIENT_SECRET, acc.refresh_token);
         await db.patch('mlapi/tokens/' + label, { refresh_token: t.refresh_token, updated_ts: Date.now() });
         let bill = null;
-        try {
-          const pr = await mlGet('/billing/integration/monthly/periods?group=ML&document_type=BILL&limit=13', t.access_token);
-          const per = (pr.results || []).find((x) => x.key === key);
-          if (per) bill = per.amount;
-        } catch (e) { console.log(`   (facturación ${label}: ${String(e.message || '').slice(0, 40)})`); }
-        await sleepK(13000); // límite 5/min del billing
+        for (let attempt = 0; attempt < 4 && bill == null; attempt++) {
+          if (attempt) await sleepK(20000); // esperar si falló (rate-limit 5/min)
+          try {
+            const r = await fetch('https://api.mercadolibre.com/billing/integration/monthly/periods?group=ML&document_type=BILL&limit=13', { headers: { Authorization: 'Bearer ' + t.access_token } });
+            if (r.status === 429) { console.log(`   (${label} facturación 429, reintento...)`); continue; }
+            const pr = await r.json();
+            const per = (pr.results || []).find((x) => x.key === key);
+            if (per) { bill = per.amount; }
+            else break; // respondió pero no está el período → no reintentar
+          } catch (e) { console.log(`   (facturación ${label}: ${String(e.message || '').slice(0, 40)})`); }
+        }
+        await sleepK(13000); // espaciar la próxima cuenta (límite 5/min)
         const a = label.toLowerCase();
         const feesEst = Math.round((grossMinusNet[a] || 0) * TAXADJ);
         const storage = bill != null ? Math.round(bill - feesEst) : null;
         perAcct[a] = { bill: bill != null ? Math.round(bill) : null, fees: feesEst, storage };
-        if (storage != null && storage > 0) total += storage;
+        if (storage != null) { total += Math.max(0, storage); billsOk++; }
         console.log(`▶ ${label} ${key}: facturado ${money(Math.round(bill || 0))} − cargos venta ${money(feesEst)} = almacenamiento ${money(storage || 0)}`);
       }
+      if (billsOk === 0) { console.log(`\n✗ No pude leer NINGUNA facturación de ML (rate-limit). NO sobrescribo ${key}. Reintentá más tarde.`); return; }
       const rec = { key, from: new Date(win[0]).toISOString(), to: new Date(win[1]).toISOString(), days: Math.round((win[1] - win[0]) / 86400000) + 1, total: Math.round(total), perAcct, ts: Date.now(), metodo: 'fast' };
       await db.set('cyc/mlapi/storage/periods/' + key, rec);
-      console.log(`\n✓ Guardado almacenamiento período ${key} (rápido): TOTAL ${money(Math.round(total))}`);
+      console.log(`\n✓ Guardado almacenamiento período ${key} (rápido): TOTAL ${money(Math.round(total))} · ${billsOk}/4 cuentas`);
       return;
     }
     // BILLING_PROBE=unpost → borra los gastos DIARIOS de almacenamiento (almfull_*) que cargamos antes.
