@@ -1079,6 +1079,118 @@ async function main() {
       }
       return;
     }
+    // BILLING_PROBE=piso:<margen>[:<YYYY_MM,...>] → SIMULA UN PISO DE MARGEN SUBIENDO PRECIOS (no
+    // cortando). Por cada producto bajo el piso calcula cuánto hay que subir el precio para llegar,
+    // qué ganancia daría si el volumen aguanta, y cuánto volumen podés perder antes de que hubiera
+    // sido mejor no tocarlo. Además compara el resultado de CYC con RETIRO FIJO vs RETIRO 15% DEL NETO
+    // (que es la política de la web) — que es lo que decide si el piso 25% alcanza o no.
+    if (String(process.env.BILLING_PROBE || '').startsWith('piso')) {
+      const _pp = String(process.env.BILLING_PROBE).split(':');
+      const FLOOR = (parseFloat(_pp[1]) || 30) / 100;
+      const pickYM = (_pp[2] || '2026_06,2026_07').split(',').map((s) => s.trim()).filter(Boolean);
+      const MLX = { adriana: 4.07, luciana: 4.37, ayelen: 5.95, matias: 4.58 };
+      const mlxOf = (c) => { const v = MLX[(c || '').toLowerCase()]; return v != null ? v : 4.8; };
+      const vp = (await db.get('cyc/ventaprod')) || {};
+      const compras = (await db.get('cyc/compras')) || {};
+      const retiros = (await db.get('cyc/retiro_mes')) || {};
+      const fin = (await db.get('cyc/finanzas')) || {};
+      const tc = parseFloat(fin.tipo_cambio) || 1500;
+      const pIdx = {}; for (const p of products) pIdx[p.id] = p;
+      const now = new Date();
+      let spanDays = 0;
+      for (const ym of pickYM) {
+        const [yy, mm] = ym.split('_').map(Number);
+        if (now.getFullYear() === yy && now.getMonth() + 1 === mm) spanDays += now.getDate();
+        else spanDays += new Date(yy, mm, 0).getDate();
+      }
+      const perMonth = (x) => x / spanDays * 30;
+      // Gastos fijos y retiros: son montos MENSUALES, se promedian por cantidad de meses (no por días).
+      let gTot = 0;
+      for (const g of Object.values(compras)) {
+        if (!g || g.tipo === 'mercaderia') continue;
+        if (pickYM.includes((g.dayKey || '').slice(0, 7))) gTot += g.monto || 0;
+      }
+      const gastosProm = gTot / pickYM.length;
+      let rTot = 0, rN = 0;
+      for (const ym of pickYM) if (retiros[ym] != null) { rTot += Number(retiros[ym]); rN++; }
+      const retiroFijoProm = rN ? rTot / rN : 0;
+      // Agregado por producto
+      const byProd = {};
+      for (const [k, ents] of Object.entries(vp)) {
+        if (!pickYM.includes(k.slice(0, 7))) continue;
+        for (const v of Object.values(ents || {})) {
+          if (!v || v.cancelada) continue;
+          const neto = v.neto || 0; if (neto <= 0) continue;
+          const id = v.prodId || v.prod || '?';
+          const b = byProd[id] || (byProd[id] = { nom: v.prod || id, ventas: 0, qty: 0, neto: 0, mlx: 0 });
+          b.ventas++; b.qty += v.qty || 1; b.neto += neto; b.mlx += (v.total || 0) * mlxOf(v.cuenta) / 100;
+        }
+      }
+      // Subir el precio ×k hace que el neto y el cargo ML escalen ×k (ambos son % del precio).
+      // Margen = (k·neto − cMerc − k·mlx)/(cMerc + k·mlx) = FLOOR  →  k = cMerc(1+F)/(neto − mlx(1+F))
+      const rows = [];
+      let netoRealTot = 0;
+      for (const [id, b] of Object.entries(byProd)) {
+        const p = pIdx[id]; const cU = p ? costoPesos(p, 1, tc).costo : 0;
+        if (!cU) continue;
+        const cMerc = cU * b.qty, costo = cMerc + b.mlx, gan = b.neto - costo;
+        const mg = costo > 0 ? gan / costo : 0;
+        netoRealTot += b.neto;
+        let k = null, ganNew = gan, netoNew = b.neto, suba = 0, tol = 0;
+        if (mg < FLOOR) {
+          const den = b.neto - b.mlx * (1 + FLOOR);
+          if (den > 0) {
+            k = cMerc * (1 + FLOOR) / den;
+            suba = (k - 1) * 100;
+            ganNew = FLOOR * (cMerc + k * b.mlx);
+            netoNew = b.neto * k;
+            tol = ganNew > 0 ? (1 - gan / ganNew) * 100 : 0;
+          }
+        }
+        rows.push({ nom: b.nom, ventas: b.ventas, mg: mg * 100, gan, ganNew, neto: b.neto, netoNew, suba, tol, bajo: mg < FLOOR && k != null });
+      }
+      const ganActual = rows.reduce((s, r) => s + r.gan, 0);
+      const ganSube = rows.reduce((s, r) => s + r.ganNew, 0);
+      const netoSube = rows.reduce((s, r) => s + r.netoNew, 0);
+      const bajos = rows.filter((r) => r.bajo).sort((a, b) => b.gan - a.gan);
+      console.log(`=== PISO DE MARGEN ${(FLOOR * 100).toFixed(0)}% SUBIENDO PRECIOS · meses ${pickYM.join(', ')} (${spanDays} días) ===\n`);
+      console.log(`── 1. CUÁNTO HAY QUE SUBIR CADA PRODUCTO QUE ESTÁ BAJO EL PISO (${bajos.length} prods) ──`);
+      console.log(`   (tolerancia = cuánto volumen podés perder y aun así ganar lo mismo que hoy)\n`);
+      for (const r of bajos) console.log(`  ${String(Math.round(r.mg)).padStart(3)}% → subir precio ${('+' + r.suba.toFixed(1) + '%').padStart(7)} · gan/mes ${money(Math.round(perMonth(r.gan))).padStart(10)} → ${money(Math.round(perMonth(r.ganNew))).padStart(10)} · tolerás perder ${String(Math.round(r.tol)).padStart(3)}% de las ventas · ${String(r.ventas).padStart(3)}v · ${r.nom.slice(0, 32)}`);
+      const subaProm = bajos.length ? bajos.reduce((s, r) => s + r.suba, 0) / bajos.length : 0;
+      const tolProm = bajos.length ? bajos.reduce((s, r) => s + r.tol, 0) / bajos.length : 0;
+      console.log(`\n  Suba PROMEDIO necesaria: +${subaProm.toFixed(1)}% · tolerancia promedio de pérdida de volumen: ${tolProm.toFixed(0)}%`);
+      console.log(`\n── 2. GANANCIA SEGÚN CUÁNTO VOLUMEN SE PIERDA EN LOS PRODUCTOS SUBIDOS ──`);
+      console.log(`  hoy (sin tocar nada):        ${money(Math.round(perMonth(ganActual)))}/mes`);
+      for (const perd of [0, 10, 20, 30, 40, 50]) {
+        const g = rows.reduce((s, r) => s + (r.bajo ? r.ganNew * (1 - perd / 100) : r.gan), 0);
+        const d = perMonth(g - ganActual);
+        console.log(`  si perdés ${String(perd).padStart(2)}% de esas ventas: ${money(Math.round(perMonth(g))).padStart(12)}/mes  (${d >= 0 ? '+' : '−'}${money(Math.abs(Math.round(d)))})`);
+      }
+      // ── 3. La pregunta de fondo: ¿alcanza el piso con retiro 15% del neto?
+      const costoProm = perMonth(netoRealTot - ganActual);
+      console.log(`\n── 3. ¿ALCANZA? · CYC según el margen PROMEDIO y cómo se calcula el retiro ──`);
+      console.log(`  Base real: costo+ML ${money(Math.round(costoProm))}/mes · gastos fijos ${money(Math.round(gastosProm))}/mes`);
+      console.log(`  Retiro REAL que vienen cargando: ${money(Math.round(retiroFijoProm))}/mes fijo = ${(retiroFijoProm / perMonth(netoRealTot) * 100).toFixed(1)}% del neto\n`);
+      console.log(`  margen │ ganancia/mes │ retiro FIJO ${money(Math.round(retiroFijoProm))} → CYC │ retiro 15% del neto → CYC`);
+      for (const mPct of [20, 25, 28, 30, 32, 35, 40]) {
+        const m = mPct / 100;
+        const ganM = m * costoProm, netoM = costoProm * (1 + m);
+        const cycFijo = ganM - gastosProm - retiroFijoProm;
+        const ret15 = netoM * 0.15;
+        const cyc15 = ganM - gastosProm - ret15;
+        const f = (x) => (x >= 0 ? ' ' : '') + money(Math.round(x));
+        console.log(`   ${String(mPct).padStart(3)}%  │ ${money(Math.round(ganM)).padStart(11)}  │ ${f(cycFijo).padStart(16)}      │ retiro ${money(Math.round(ret15))} → ${f(cyc15)}`);
+      }
+      // Margen de equilibrio con retiro 15% del neto: m·C − 0.15·C·(1+m) − G = 0 → m = (G/C + .15)/.85
+      const beFijo = (gastosProm + retiroFijoProm) / costoProm * 100;
+      const be15 = ((gastosProm / costoProm) + 0.15) / 0.85 * 100;
+      console.log(`\n  → EQUILIBRIO (CYC = 0) con retiro FIJO ${money(Math.round(retiroFijoProm))}: ${beFijo.toFixed(1)}% de margen`);
+      console.log(`  → EQUILIBRIO (CYC = 0) con retiro 15% DEL NETO:  ${be15.toFixed(1)}% de margen`);
+      console.log(`\n  Con el piso ${(FLOOR * 100).toFixed(0)}% aplicado y volumen intacto, el margen promedio quedaría en ` +
+        `${((ganSube / (netoSube - ganSube)) * 100).toFixed(1)}% → CYC con retiro 15%: ${money(Math.round(perMonth(ganSube) - gastosProm - perMonth(netoSube) * 0.15))}/mes`);
+      return;
+    }
     // BILLING_PROBE=prodmargin:<días> → GANANCIA REAL por producto. Junta neto y precio de cada
     // producto, le resta el costo (costo USD + envío) × dólar, y le aplica el descuento del débito de
     // ML (~8.5% del neto, que no está en el neto). Ordena de peor a mejor margen.
