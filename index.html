@@ -5754,13 +5754,7 @@ function initMetricasPage(){
   if(bd)bd.className='pf-btn';if(ba)ba.className='pf-btn active-all';
   const btn=document.getElementById('ms-mes');
   if(btn)setMetScope('mes',btn);else renderMetricas();
-  // Bajar directo al gráfico de tendencia (acumulado), sin tener que scrollear. La barra de
-  // config queda fija arriba, así que se descuenta su alto para que el gráfico quede justo debajo.
-  requestAnimationFrame(()=>{
-    const t=document.getElementById('met-tendencia');
-    const bar=document.querySelector('#page-metricas .cal-bar');
-    if(t){const off=(bar?bar.offsetHeight:0)+16;const y=t.getBoundingClientRect().top+window.scrollY-off;window.scrollTo({top:Math.max(0,y),behavior:'instant'});}
-  });
+  // (Antes la página saltaba sola hacia el gráfico al entrar. Se sacó: ahora queda quieta arriba.)
 }
 
 function loadMetricasDelDia(){
@@ -6891,7 +6885,7 @@ document.addEventListener('click',e=>{if(fnavOpen&&!e.target.closest('#fnav-btn'
         <span style="font-size:.75rem;color:var(--muted)">Si no ves los últimos cambios, forzá la actualización</span>
         <button class="btn" style="background:rgba(56,189,248,.12);color:var(--blue);border:1px solid rgba(56,189,248,.3)" onclick="actualizarApp()">🔄 Buscar actualizaciones</button>
       </div>
-      <div style="font-size:.66rem;color:var(--muted);margin-top:12px">CYC · Versión 5.1</div>
+      <div style="font-size:.66rem;color:var(--muted);margin-top:12px">CYC · Versión 5.2</div>
     </div>
 
     <div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:18px 20px;margin-bottom:14px">
