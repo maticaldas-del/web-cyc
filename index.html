@@ -6143,7 +6143,7 @@ function _retiroMesVal(ym){
 function _puntGananciaMes(ym){
   const keys=Object.keys(state.ventaprod||{}).filter(k=>k.startsWith(ym));
   let neto=0,costo=0;
-  keys.forEach(k=>Object.values(state.ventaprod[k]||{}).forEach(v=>{neto+=(v.neto||0);costo+=efectivoCostoVP(v);}));
+  keys.forEach(k=>Object.values(state.ventaprod[k]||{}).forEach(v=>{neto+=(v.neto||0);costo+=efectivoCostoVP({...v,_dateKey:k});}));
   const rm=_retiroMesVal(ym);
   const retiro=rm!=null?rm:Math.round(neto*puntCfg(ym).retiroFrac); // real si lo anotaste, si no el 15%
   const gastos=_gastosMes(ym); // gastos cargados del mes, o el estimado si ese mes no tiene
@@ -6183,7 +6183,7 @@ function _puntProdMarkup(ym){
   Object.keys(state.ventaprod||{}).filter(k=>k.startsWith(ym)).forEach(k=>Object.values(state.ventaprod[k]||{}).forEach(v=>{
     if(v.cancelada)return;const id=v.prodId||v.prod||'?';
     if(!agg[id])agg[id]={nom:v.prod||(prodDeVenta(v)||{}).name||id,neto:0,costo:0};
-    agg[id].neto+=v.neto||0;agg[id].costo+=efectivoCostoVP(v);
+    agg[id].neto+=v.neto||0;agg[id].costo+=efectivoCostoVP({...v,_dateKey:k});
   }));
   return Object.values(agg).map(a=>({nom:a.nom,markup:a.costo>0?((a.neto-a.costo)/a.costo)*100:null,vol:a.neto})).filter(a=>a.markup!=null);
 }
@@ -6423,7 +6423,7 @@ function renderResumen_page(){
   // ── Sumadores genéricos ──
   const _vpField=(keys,field)=>{let t=0;keys.forEach(k=>{Object.values(state.ventaprod[k]||{}).forEach(v=>t+=(v[field]||0));});return t;};
   const _vpGan=(keys)=>{let g=0;keys.forEach(k=>{Object.values(state.ventaprod[k]||{}).forEach(v=>g+=((v.neto||0)-(v.costo||0)));});return g;};
-  const _vpEfectCosto=keys=>{let t=0;keys.forEach(k=>{Object.values(state.ventaprod[k]||{}).forEach(v=>{t+=efectivoCostoVP(v);});});return t;};
+  const _vpEfectCosto=keys=>{let t=0;keys.forEach(k=>{Object.values(state.ventaprod[k]||{}).forEach(v=>{t+=efectivoCostoVP({...v,_dateKey:k});});});return t;};
   const _cmpTot=(keys,tipo)=>Object.values(state.compras||{}).filter(x=>keys.includes(x.dayKey)&&getCompraTipo(x)===tipo).reduce((s,x)=>s+(x.monto||0),0);
   const _cmpCats=(keys)=>{const cats={};Object.values(state.compras||{}).filter(x=>keys.includes(x.dayKey)).forEach(x=>{const c=x.cat||'Otros';cats[c]=(cats[c]||0)+(x.monto||0);});return cats;};
   // helper: todas las claves de ventaprod que coinciden con lista de day-keys o prefijo
@@ -6906,7 +6906,7 @@ document.addEventListener('click',e=>{if(fnavOpen&&!e.target.closest('#fnav-btn'
         <span style="font-size:.75rem;color:var(--muted)">Si no ves los últimos cambios, forzá la actualización</span>
         <button class="btn" style="background:rgba(56,189,248,.12);color:var(--blue);border:1px solid rgba(56,189,248,.3)" onclick="actualizarApp()">🔄 Buscar actualizaciones</button>
       </div>
-      <div style="font-size:.66rem;color:var(--muted);margin-top:12px">CYC · Versión 4.7</div>
+      <div style="font-size:.66rem;color:var(--muted);margin-top:12px">CYC · Versión 4.8</div>
     </div>
 
     <div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:18px 20px;margin-bottom:14px">
