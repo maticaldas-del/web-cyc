@@ -586,12 +586,7 @@ footer{margin-top:32px;padding-top:14px;border-top:1px solid var(--border);font-
     <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;margin-bottom:14px">
       <div class="stitle" style="margin:0">Valores actuales <span id="arqueo-prev-label" style="font-size:.62rem;color:var(--muted);font-family:'DM Mono',monospace;font-weight:400;text-transform:none;letter-spacing:0"></span></div>
       <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
-        <label style="font-size:.62rem;color:var(--muted)">Cerrar como:</label>
-        <select id="arqueo-close-month" class="cal-select" style="font-size:.7rem;padding:6px 8px" onchange="try{renderReconciliacion()}catch(e){}">
-          <option value="01">Enero</option><option value="02">Febrero</option><option value="03">Marzo</option><option value="04">Abril</option><option value="05">Mayo</option><option value="06">Junio</option><option value="07">Julio</option><option value="08">Agosto</option><option value="09">Septiembre</option><option value="10">Octubre</option><option value="11">Noviembre</option><option value="12">Diciembre</option>
-        </select>
-        <input id="arqueo-close-year" class="cal-select" type="number" style="width:85px;font-size:.7rem;padding:6px 8px" onchange="try{renderReconciliacion()}catch(e){}">
-        <button class="btn btn-snap" onclick="saveSnapshot()">📸 Cerrar mes y guardar</button>
+        <button id="btn-cerrar-mes" class="btn btn-snap" onclick="saveSnapshot()">📸 Cerrar el mes actual y guardar</button>
       </div>
     </div>
     <div class="arqueo-grid">
@@ -2985,9 +2980,6 @@ function loadFinInputs(){
   FIN_FIELDS.forEach(f=>{const inp=document.getElementById('f_'+f.k);if(inp&&document.activeElement!==inp){const raw=parseFloat(state.finanzas[f.k])||0;setMoneyVal(inp,f.neutral?raw:Math.abs(raw));}});
   const tc=document.getElementById('f_tipo_cambio');if(tc&&document.activeElement!==tc)setMoneyVal(tc,state.finanzas['tipo_cambio']);
   const rm=document.getElementById('f_retiro_mes');if(rm&&document.activeElement!==rm)setMoneyVal(rm,(state.retiro_mes&&state.retiro_mes[_curYM()])||0);
-  const cm=document.getElementById('arqueo-close-month');const cy=document.getElementById('arqueo-close-year');const now=new Date();
-  if(cm&&!cm.dataset.set){cm.value=String(now.getMonth()+1).padStart(2,'0');cm.dataset.set='1';}
-  if(cy&&!cy.value){cy.value=now.getFullYear();}
 }
 async function saveTC(val){
   const num=parseMoney(val);
@@ -3028,15 +3020,11 @@ function calcArqueo(){
 // Panel de reconciliación: ¿la ganancia del mes se ve reflejada en el crecimiento del patrimonio?
 function renderReconciliacion(){
   const el=document.getElementById('recon-panel');if(!el)return;
-  if(_arqViewYM){el.innerHTML='';return;} // solo en vivo, no viendo un cierre pasado
   const card=(inner,col)=>`<div style="background:var(--surface);border:1px solid var(--border);border-left:4px solid ${col};border-radius:var(--r);padding:16px 18px">${inner}</div>`;
-  // Mes que se está evaluando = el elegido en "Cerrar como" (si no hay, el mes actual).
+  // Mes que se evalúa = el que estás VIENDO arriba en "Ver período"; si estás "en vivo", el mes actual.
   const now=new Date();
-  const _selM=document.getElementById('arqueo-close-month');
-  const _selY=document.getElementById('arqueo-close-year');
-  const mm=(_selM&&_selM.value)?_selM.value:String(now.getMonth()+1).padStart(2,'0');
-  const yy=(_selY&&_selY.value)?String(parseInt(_selY.value,10)||now.getFullYear()):String(now.getFullYear());
-  const ym=yy+'_'+mm;
+  const ym=_arqViewYM||(now.getFullYear()+'_'+String(now.getMonth()+1).padStart(2,'0'));
+  const yy=ym.split('_')[0], mm=ym.split('_')[1];
   // Base de comparación = el cierre del mes ANTERIOR al que evaluás (si existe); si no, el último cierre.
   const _pd=new Date(parseInt(yy,10),parseInt(mm,10)-1,1);_pd.setMonth(_pd.getMonth()-1);
   const prevYm=_pd.getFullYear()+'_'+String(_pd.getMonth()+1).padStart(2,'0');
@@ -3230,10 +3218,11 @@ function saveDailySnap(){
 }
 
 async function saveSnapshot(){
+  // Siempre cierra el MES ACTUAL (no se pueden cerrar meses anteriores desde acá).
+  if(_arqViewYM){alert('Estás viendo un cierre pasado (solo lectura). Volvé a "Actual (en vivo)" arriba para cerrar el mes en curso.');return;}
   const now=new Date();
-  const ms=document.getElementById('arqueo-close-month');const ys=document.getElementById('arqueo-close-year');
-  const mm=(ms&&ms.value)?ms.value:String(now.getMonth()+1).padStart(2,'0');
-  const yy=(ys&&ys.value)?parseInt(ys.value):now.getFullYear();
+  const mm=String(now.getMonth()+1).padStart(2,'0');
+  const yy=now.getFullYear();
   const key=yy+'_'+mm;
   const label=(MONTHS[parseInt(mm)-1]||'')+' '+yy;
   if(state.snapshots&&state.snapshots[key]){alert('Ya existe un cierre de '+label+'. Si necesitás corregirlo, primero borrá ese cierre desde "Meses cerrados" y volvé a cerrarlo.');return;}
@@ -6563,15 +6552,18 @@ function loadFinView(){
   const key=sel?.value;
   const banner=document.getElementById('fin-view-banner');
   const disableAll=v=>{FIN_FIELDS.forEach(f=>{const el=document.getElementById('f_'+f.k);if(el)el.disabled=v;});const tc=document.getElementById('f_tipo_cambio');if(tc)tc.disabled=v;};
+  const btnCerrar=document.getElementById('btn-cerrar-mes');
   if(!key){
     // live
     _arqViewYM=null;
     disableAll(false);
     if(banner)banner.style.display='none';
+    if(btnCerrar)btnCerrar.style.display=''; // solo se cierra el mes actual, en vivo
     loadFinInputs();updateArqueo();
   } else {
     const snap=state.snapshots[key];if(!snap)return;
     if(banner){banner.textContent='📋 Cierre de '+snap.label+' — solo lectura';banner.style.display='block';}
+    if(btnCerrar)btnCerrar.style.display='none'; // viendo un cierre pasado: no se puede cerrar
     FIN_FIELDS.forEach(f=>{const el=document.getElementById('f_'+f.k);if(el){const raw=parseFloat(snap.finanzas?.[f.k])||0;setMoneyVal(el,f.neutral?raw:Math.abs(raw));el.disabled=true;}});
     const tc=document.getElementById('f_tipo_cambio');if(tc){setMoneyVal(tc,snap.tipoCambio||0);tc.disabled=true;}
     disableAll(true);
@@ -6906,7 +6898,7 @@ document.addEventListener('click',e=>{if(fnavOpen&&!e.target.closest('#fnav-btn'
         <span style="font-size:.75rem;color:var(--muted)">Si no ves los últimos cambios, forzá la actualización</span>
         <button class="btn" style="background:rgba(56,189,248,.12);color:var(--blue);border:1px solid rgba(56,189,248,.3)" onclick="actualizarApp()">🔄 Buscar actualizaciones</button>
       </div>
-      <div style="font-size:.66rem;color:var(--muted);margin-top:12px">CYC · Versión 4.8</div>
+      <div style="font-size:.66rem;color:var(--muted);margin-top:12px">CYC · Versión 4.9</div>
     </div>
 
     <div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:18px 20px;margin-bottom:14px">
