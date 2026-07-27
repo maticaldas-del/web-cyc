@@ -626,13 +626,13 @@ async function main() {
       await db.patch('mlapi/tokens/' + label, { refresh_token: t.refresh_token, updated_ts: Date.now() });
       const sid = acc.seller_id;
       const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
-      const key = (process.env.BILLING_PERIOD || '2026-06-01').trim(); // período a detallar
+      const key = (process.env.BILLING_PERIOD || '2026-08-01').trim(); // período ABIERTO por defecto
       const tries = [
         `/billing/integration/periods/${key}/group/ML/details?document_type=BILL&offset=0&limit=100`,
-        `/billing/integration/periods/${key}/group/ML/details?document_type=BILL&offset=0&limit=100&user_id=${sid}`,
-        `/billing/integration/periods/${key}/group/ML/details?document_type=SELLER_BILLING&offset=0&limit=100`,
-        `/billing/integration/periods/${key}/group/MP/details?document_type=BILL&offset=0&limit=100`,
-        `/billing/integration/group/ML/period/${key}/details?document_type=BILL`,
+        `/billing/integration/periods/${key}/group/ML/documents?document_type=BILL`,
+        `/billing/integration/periods/${key}/group/ML/summary?document_type=BILL`,
+        '/billing/integration/monthly/periods?group=ML&document_type=BILL&limit=2',
+        `/billing/integration/periods/${key}/group/ML/details?document_type=DEBIT_NOTE&offset=0&limit=100`,
       ];
       console.log(`\n═══ BILLING DETAILS · ${label} (seller ${sid}) · período ${key} ═══`);
       for (const path of tries) {
