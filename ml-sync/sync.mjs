@@ -814,6 +814,20 @@ async function main() {
       console.log(`✓ ${label} ${key}: facturado ${money(Math.round(bill || 0))} − cargos ${money(Math.round(fees))} = almacenamiento ${money(storage || 0)} · ${byId.size} órdenes · ${cnt}/4 cuentas listas`);
       return;
     }
+    // BILLING_PROBE=purgemes → BORRA los gastos mensuales de almacenamiento (almmes_*) y los períodos
+    // guardados. Se usa para limpiar los números MAL calculados (método "resto", que inflaba de más).
+    // Los reales (chicos, del reporte oficial de ML) se cargan después con seedreal.
+    if (process.env.BILLING_PROBE === 'purgemes') {
+      const compras = (await db.get('cyc/compras')) || {};
+      const del = {}; let n = 0;
+      for (const [id, x] of Object.entries(compras)) {
+        if (id.startsWith('almmes_') || (x && x.cat === 'Almacenamiento Full')) { del[id] = null; n++; }
+      }
+      if (!DRY && n) await db.patch('cyc/compras', del);
+      if (!DRY) await db.set('cyc/mlapi/storage/periods', null);
+      console.log(`${DRY ? '(DRY) ' : ''}Borrados ${n} gastos mensuales de almacenamiento + períodos guardados.`);
+      return;
+    }
     // BILLING_PROBE=unpost → borra los gastos DIARIOS de almacenamiento (almfull_*) que cargamos antes.
     if (process.env.BILLING_PROBE === 'unpost') {
       const compras = (await db.get('cyc/compras')) || {};
