@@ -626,18 +626,21 @@ async function main() {
       await db.patch('mlapi/tokens/' + label, { refresh_token: t.refresh_token, updated_ts: Date.now() });
       const sid = acc.seller_id;
       const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+      const key = (process.env.BILLING_PERIOD || '2026-07-01').trim(); // período a detallar
       const tries = [
-        '/billing/integration/monthly/periods?group=ML&document_type=BILL',
-        '/billing/integration/monthly/periods?group=MP&document_type=BILL',
-        '/billing/integration/monthly/periods?group=MELI&document_type=BILL',
+        `/billing/integration/periods/${key}/group/ML/details?document_type=BILL&limit=50`,
+        `/billing/integration/periods/${key}/details?group=ML&document_type=BILL&limit=50`,
+        `/billing/integration/periods/${key}/group/ML/document_type/BILL/details?limit=50`,
+        `/billing/integration/monthly/periods/${key}/details?group=ML&document_type=BILL`,
+        `/billing/integration/periods/${key}/group/ML/summary?document_type=BILL`,
       ];
-      console.log(`\n═══ BILLING PROBE · ${label} (seller ${sid}) ═══`);
+      console.log(`\n═══ BILLING DETAILS · ${label} (seller ${sid}) · período ${key} ═══`);
       for (const path of tries) {
         try {
           const r = await fetch('https://api.mercadolibre.com' + path, { headers: { Authorization: 'Bearer ' + t.access_token } });
           const txt = await r.text();
           console.log(`\n[${r.status}] ${path}`);
-          console.log('   ' + txt.slice(0, 1500).replace(/\n/g, ' '));
+          console.log('   ' + txt.slice(0, 1800).replace(/\n/g, ' '));
         } catch (e) { console.log(`\n[ERR] ${path} · ${String(e.message || '').slice(0, 80)}`); }
         await sleep(13000); // límite 5 pedidos/min en billing
       }
