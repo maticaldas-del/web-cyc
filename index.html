@@ -999,6 +999,17 @@ footer{margin-top:32px;padding-top:14px;border-top:1px solid var(--border);font-
       <button class="vbtn"        id="met-field-gananciaCYC" onclick="setMetField('gananciaCYC',this)" title="Ganancia de CYC = Ganancia − Retiros − Gastos del mes. Usa el retiro real que anotaste en Finanzas (o el 15% si ese mes no lo cargaste). Gastos sin cargar usan $800.000 estimado.">🏢 Ganancia CYC</button>
       <button class="vbtn"        id="met-field-retiros" onclick="setMetField('retiros',this)" title="Retiros de dueños: el monto real que anotaste ese mes en Finanzas, o el 15% del neto si no lo cargaste (Mati + Viejo)">💸 Retiros</button>
     </div>
+    <div style="display:flex;align-items:center;gap:6px" title="Elegí una 2ª métrica para verla junto a la primera en el gráfico (cada una con su escala)">
+      <span style="font-size:.72rem;color:var(--muted)">+ comparar:</span>
+      <select id="met-field2" class="cal-select" onchange="setMetField2(this.value)">
+        <option value="">— ninguna —</option>
+        <option value="total">💵 Total</option>
+        <option value="neto">💚 Neto</option>
+        <option value="ganancia">💰 Ganancia</option>
+        <option value="gananciaCYC">🏢 Ganancia CYC</option>
+        <option value="retiros">💸 Retiros</option>
+      </select>
+    </div>
     <div id="ms-ctrl-dia" style="display:none;align-items:center;gap:8px">
       <button class="vbtn" onclick="metNavPrev()" style="padding:3px 13px;font-size:1.1rem;line-height:1">‹</button>
       <input type="date" id="met-date" class="cal-select" onchange="renderMetricas()">
@@ -5454,7 +5465,8 @@ function togglePedidoGroupProv(btn){
 
 
 /* ═══════════ MÉTRICAS ML ═══════════ */
-let metChartBar=null,metChartLine=null,metChartPct=null,metScopeMode='mes',metViewField='total',metChartLineView='general',metPctLineView='general',metChartAccum=true,metPctMode='diario';
+let metChartBar=null,metChartLine=null,metChartPct=null,metScopeMode='mes',metViewField='total',metViewField2='',metChartLineView='general',metPctLineView='general',metChartAccum=true,metPctMode='diario';
+const MET_FIELD_LBL={total:'💵 Total',neto:'💚 Neto',ganancia:'💰 Ganancia',gananciaCYC:'🏢 Ganancia CYC',retiros:'💸 Retiros'};
 function setMetChartView(v,btn){
   metChartLineView=v;
   document.querySelectorAll('#met-view-general,#met-view-cuentas').forEach(b=>b.className='pf-btn');
@@ -5567,10 +5579,19 @@ function getAllPrevMetKeys(scope){
 
 function setMetField(field,btn){
   metViewField=field;
+  if(metViewField2===field)metViewField2=''; // si la 2ª quedó igual a la 1ª, la saco
+  const sel2=document.getElementById('met-field2');if(sel2)sel2.value=metViewField2;
   ['met-field-total','met-field-neto','met-field-ganancia','met-field-gananciaCYC','met-field-retiros'].forEach(id=>{const b=document.getElementById(id);if(b)b.classList.remove('active');});
   if(btn)btn.classList.add('active');
   if(metChartLine){metChartLine.destroy();metChartLine=null;}
   if(metChartBar){metChartBar.destroy();metChartBar=null;}
+  renderMetricas();
+}
+// Segunda métrica para comparar en el gráfico (dibuja su línea junto a la primera). '' = ninguna.
+function setMetField2(v){
+  metViewField2=(v&&v!==metViewField)?v:'';
+  const sel2=document.getElementById('met-field2');if(sel2)sel2.value=metViewField2;
+  if(metChartLine){metChartLine.destroy();metChartLine=null;}
   renderMetricas();
 }
 
@@ -5829,10 +5850,18 @@ function renderLineChartFromScope(scope){
   const canvas=document.getElementById('chart-line-mes');if(!canvas||!window.Chart)return;
   const {labels,buckets,bucketsPrev,bucketsYear,title}=metScopeBuckets(scope);
   const t=document.getElementById('chart-mes-title');if(t)t.textContent=title+(metChartAccum?' · acumulativo':'');
-  // Total (todas las cuentas) para una lista de buckets, con el campo activo (total/neto/ganancia).
-  const totOf=(bkts)=>bkts.map(keys=>{let s=0;keys.forEach(k=>MET_ACCTS.forEach(a=>s+=metGetValDay(k,a,metViewField)));return s;});
+  // Total (todas las cuentas) para una lista de buckets, con el campo indicado (total/neto/ganancia…).
+  const totOf=(bkts,field)=>bkts.map(keys=>{let s=0;keys.forEach(k=>MET_ACCTS.forEach(a=>s+=metGetValDay(k,a,field||metViewField)));return s;});
+  // ¿Juntar dos métricas? (2ª métrica elegida, distinta de la 1ª, y en vista general). Cada una
+  // en su propio eje Y para que ambas se vean bien aunque tengan escalas muy distintas.
+  const twoMetric=metViewField2&&metViewField2!==metViewField&&metChartLineView==='general';
   let datasets;
-  if(metChartLineView==='general'){
+  if(twoMetric){
+    datasets=[
+      {label:MET_FIELD_LBL[metViewField]||metViewField,  data:totOf(buckets,metViewField),  borderColor:CMP_CUR, backgroundColor:CMP_CUR+'22',borderWidth:2.5,tension:.3,pointRadius:2,fill:true, yAxisID:'y'},
+      {label:MET_FIELD_LBL[metViewField2]||metViewField2,data:totOf(buckets,metViewField2),borderColor:CMP_YEAR,backgroundColor:'transparent',borderWidth:2.5,tension:.3,pointRadius:2,fill:false,yAxisID:'y1'},
+    ];
+  } else if(metChartLineView==='general'){
     datasets=[
       {label:CMP_LBL_CUR, data:totOf(buckets),      borderColor:CMP_CUR, backgroundColor:CMP_CUR+'33',borderWidth:2.5,tension:.3,pointRadius:2,fill:true},
       {label:CMP_LBL_PREV,data:totOf(bucketsPrev),  borderColor:CMP_PREV,backgroundColor:'transparent',borderWidth:2,tension:.3,pointRadius:0,fill:false},
@@ -5844,10 +5873,16 @@ function renderLineChartFromScope(scope){
   }
   // Acumulativo: cada serie pasa a ser la suma corriendo (día 1, día1+2, día1+2+3, …).
   if(metChartAccum){const cum=arr=>{let s=0;return arr.map(v=>s+=(v||0));};datasets.forEach(ds=>{ds.data=cum(ds.data);});}
-  if(metChartLine){metChartLine.data.labels=labels;metChartLine.data.datasets=datasets;metChartLine.update();return;}
+  if(metChartLine){metChartLine.destroy();metChartLine=null;}
   Chart.defaults.color='#6b6b7a';Chart.defaults.borderColor='#2a2a30';
+  const scales={y:{grid:{color:'#2a2a30'},ticks:{callback:v=>'$'+Math.round(v/1000)+'k'}},x:{grid:{display:false}}};
+  if(twoMetric){
+    // Eje izquierdo = 1ª métrica (color azul), eje derecho = 2ª métrica (color naranja).
+    scales.y.title={display:true,text:MET_FIELD_LBL[metViewField]||metViewField,color:CMP_CUR,font:{size:10}};
+    scales.y1={position:'right',grid:{display:false},ticks:{callback:v=>'$'+Math.round(v/1000)+'k'},title:{display:true,text:MET_FIELD_LBL[metViewField2]||metViewField2,color:CMP_YEAR,font:{size:10}}};
+  }
   metChartLine=new Chart(canvas,{type:'line',data:{labels,datasets},
-    options:{responsive:true,interaction:{mode:'index',intersect:false},plugins:{legend:{labels:{boxWidth:12,font:{size:11}}},tooltip:{callbacks:{title:items=>{const total=items.reduce((s,i)=>s+(i.raw||0),0);return metChartLineView==='cuentas'?[items[0].label,'Total: $'+Math.round(total).toLocaleString('es-AR')]:[items[0].label];},label:item=>' '+item.dataset.label+': $'+Math.round(item.raw||0).toLocaleString('es-AR'),afterBody:items=>{if(metChartLineView!=='general')return '';const find=l=>{const it=items.find(i=>i.dataset.label===l);return it?(it.raw||0):null;};const cur=find(CMP_LBL_CUR),prev=find(CMP_LBL_PREV);if(cur==null||prev==null)return '';const diff=cur-prev,pct=prev!==0?(diff/Math.abs(prev)*100):(cur!==0?100:0),s=diff>=0?'+':'−';return ['','Diferencia vs anterior: '+s+'$'+Math.abs(Math.round(diff)).toLocaleString('es-AR')+'  ('+s+Math.abs(pct).toFixed(1)+'%)'];}},titleFont:{size:13,weight:'bold'},bodyFont:{size:11},titleColor:'#f1f1f3',bodyColor:'#9b9ba8'}},scales:{y:{grid:{color:'#2a2a30'},ticks:{callback:v=>'$'+Math.round(v/1000)+'k'}},x:{grid:{display:false}}}}
+    options:{responsive:true,interaction:{mode:'index',intersect:false},plugins:{legend:{labels:{boxWidth:12,font:{size:11}}},tooltip:{callbacks:{title:items=>{const total=items.reduce((s,i)=>s+(i.raw||0),0);return metChartLineView==='cuentas'?[items[0].label,'Total: $'+Math.round(total).toLocaleString('es-AR')]:[items[0].label];},label:item=>' '+item.dataset.label+': $'+Math.round(item.raw||0).toLocaleString('es-AR'),afterBody:items=>{if(metChartLineView!=='general'||metViewField2)return '';const find=l=>{const it=items.find(i=>i.dataset.label===l);return it?(it.raw||0):null;};const cur=find(CMP_LBL_CUR),prev=find(CMP_LBL_PREV);if(cur==null||prev==null)return '';const diff=cur-prev,pct=prev!==0?(diff/Math.abs(prev)*100):(cur!==0?100:0),s=diff>=0?'+':'−';return ['','Diferencia vs anterior: '+s+'$'+Math.abs(Math.round(diff)).toLocaleString('es-AR')+'  ('+s+Math.abs(pct).toFixed(1)+'%)'];}},titleFont:{size:13,weight:'bold'},bodyFont:{size:11},titleColor:'#f1f1f3',bodyColor:'#9b9ba8'}},scales}
   });
 }
 
@@ -6885,7 +6920,7 @@ document.addEventListener('click',e=>{if(fnavOpen&&!e.target.closest('#fnav-btn'
         <span style="font-size:.75rem;color:var(--muted)">Si no ves los últimos cambios, forzá la actualización</span>
         <button class="btn" style="background:rgba(56,189,248,.12);color:var(--blue);border:1px solid rgba(56,189,248,.3)" onclick="actualizarApp()">🔄 Buscar actualizaciones</button>
       </div>
-      <div style="font-size:.66rem;color:var(--muted);margin-top:12px">CYC · Versión 5.3</div>
+      <div style="font-size:.66rem;color:var(--muted);margin-top:12px">CYC · Versión 5.4</div>
     </div>
 
     <div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:18px 20px;margin-bottom:14px">
