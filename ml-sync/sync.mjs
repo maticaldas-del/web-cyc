@@ -548,6 +548,68 @@ async function main() {
       console.log('   x' + arr.length + ' [' + arr.map((v) => v.origen || 'viejo').join(',') + '] ' + arr[0].prod + ' #' + k.split('|')[0]));
     return;
   }
+  // DUMP_FACT: muestra la facturación AFIP congelada (cyc/fact_mes) y las canceladas (fact_cancel)
+  // por cuenta/mes, y SIMULA la ventana rodante de 365 días igual que el monotributo de la app,
+  // para ver si los meses viejos (2025) siguen sumando al total de cada cuenta.
+  if (process.env.DUMP_FACT) {
+    const factMes = (await db.get('cyc/fact_mes')) || {};
+    const factCancel = (await db.get('cyc/fact_cancel')) || {};
+    const vp = (await db.get('cyc/ventaprod')) || {};
+    // ventas reales por cuenta/mes (sin canceladas)
+    const realMes = {};
+    for (const [dk, day] of Object.entries(vp)) {
+      const ym = String(dk).slice(0, 7);
+      for (const v of Object.values(day || {})) {
+        if (!v || v.cancelada) continue;
+        const a = (v.cuenta || '').toLowerCase();
+        realMes[a] = realMes[a] || {}; realMes[a][ym] = (realMes[a][ym] || 0) + (v.total || 0);
+      }
+    }
+    console.log('=== fact_mes CONGELADO (cyc/fact_mes) ===');
+    for (const [a, bym] of Object.entries(factMes)) {
+      const meses = Object.keys(bym || {}).sort();
+      console.log(`  ${a}: ${meses.length} meses → ${meses.join(', ')}`);
+      for (const ym of meses) console.log(`      ${ym}: $${Math.round(parseFloat(bym[ym]) || 0).toLocaleString('es-AR')}`);
+    }
+    console.log('\n=== fact_cancel (cyc/fact_cancel) ===');
+    for (const [a, bym] of Object.entries(factCancel)) {
+      const meses = Object.keys(bym || {}).sort();
+      console.log(`  ${a}: ${meses.length} meses → ${meses.join(', ')}`);
+    }
+    // Simular la ventana de 365 días (hoy incluido). Meses tocados y de dónde sale cada uno.
+    const now = new Date();
+    const winEnd = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const winStart = new Date(winEnd); winStart.setDate(winStart.getDate() - 364);
+    const ymOf = (d) => d.getFullYear() + '_' + String(d.getMonth() + 1).padStart(2, '0');
+    const months = []; { let y = winStart.getFullYear(), m = winStart.getMonth(); const ey = winEnd.getFullYear(), em = winEnd.getMonth(); while (y < ey || (y === ey && m <= em)) { months.push(y + '_' + String(m + 1).padStart(2, '0')); m++; if (m > 11) { m = 0; y++; } } }
+    const accts = new Set([...Object.keys(factMes), ...Object.keys(realMes)]);
+    console.log(`\n=== SIMULACIÓN ventana 365 días (${ymOf(winStart)}..${ymOf(winEnd)}) ===`);
+    const totalPorCuenta = {};
+    for (const a of accts) {
+      let tot = 0; const detalle = [];
+      for (const ym of months) {
+        const [yy, mm] = ym.split('_').map(Number);
+        const mStart = new Date(yy, mm - 1, 1), mEnd = new Date(yy, mm, 0), dim = mEnd.getDate();
+        const oS = winStart > mStart ? winStart : mStart, oE = winEnd < mEnd ? winEnd : mEnd;
+        const overlap = oE < oS ? 0 : Math.round((oE - oS) / 86400000) + 1;
+        const frac = dim > 0 ? overlap / dim : 0;
+        if (overlap <= 0) continue;
+        const real = (realMes[a] || {})[ym] || 0;
+        const canc = (parseFloat((factCancel[a] || {})[ym]) || 0) * frac;
+        let val, src;
+        if (real > 0 || canc > 0) { val = real + canc; src = 'REAL'; }
+        else { const man = (factMes[a] || {})[ym]; val = (parseFloat(man) || 0) * frac; src = man != null ? 'congelado' : 'vacío'; }
+        tot += val;
+        detalle.push(`${ym}[${src} x${frac.toFixed(2)}]=$${Math.round(val).toLocaleString('es-AR')}`);
+      }
+      totalPorCuenta[a] = tot;
+      console.log(`\n  ${a.toUpperCase()} → TOTAL 365d $${Math.round(tot).toLocaleString('es-AR')}`);
+      console.log('     ' + detalle.join('  '));
+    }
+    console.log('\n=== TOTAL AFIP por cuenta (lo que muestra el monotributo) ===');
+    for (const [a, t] of Object.entries(totalPorCuenta)) console.log(`  ${a}: $${Math.round(t).toLocaleString('es-AR')}`);
+    return;
+  }
   // DUMP_SINVIN: diagnostica por qué hay ventas "sin producto" — agrupa por publicación (mla)
   // y dice si esa publicación está en mllinks, si tiene producto asignado y si el producto existe.
   if (process.env.DUMP_SINVIN) {

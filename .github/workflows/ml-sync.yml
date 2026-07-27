@@ -32,8 +32,8 @@ on:
         description: 'Mandar mensaje de prueba a Telegram: poné 1'
         required: false
         default: ''
-      dump_unmapped:
-        description: 'Listar sin vincular por ventas (debug): poné 1'
+      dump_fact:
+        description: 'Ver facturación AFIP congelada + simular 365 días (debug): poné 1'
         required: false
         default: ''
       dump_order:
@@ -138,7 +138,7 @@ jobs:
           DUMP_SINVIN: ${{ github.event.inputs.dump_sinvin }}
           AUTOLINK_IGNORED: ${{ github.event.inputs.autolink_ignored }}
           TELEGRAM_TEST: ${{ github.event.inputs.telegram_test }}
-          DUMP_UNMAPPED: ${{ github.event.inputs.dump_unmapped }}
+          DUMP_FACT: ${{ github.event.inputs.dump_fact }}
           DUMP_ORDER: ${{ github.event.inputs.dump_order }}
           RESYNC_VP: ${{ github.event.inputs.resync_vp }}
           DUMP_FULLSTOCK: ${{ github.event.inputs.dump_fullstock }}
