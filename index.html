@@ -587,10 +587,10 @@ footer{margin-top:32px;padding-top:14px;border-top:1px solid var(--border);font-
       <div class="stitle" style="margin:0">Valores actuales <span id="arqueo-prev-label" style="font-size:.62rem;color:var(--muted);font-family:'DM Mono',monospace;font-weight:400;text-transform:none;letter-spacing:0"></span></div>
       <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
         <label style="font-size:.62rem;color:var(--muted)">Cerrar como:</label>
-        <select id="arqueo-close-month" class="cal-select" style="font-size:.7rem;padding:6px 8px">
+        <select id="arqueo-close-month" class="cal-select" style="font-size:.7rem;padding:6px 8px" onchange="try{renderReconciliacion()}catch(e){}">
           <option value="01">Enero</option><option value="02">Febrero</option><option value="03">Marzo</option><option value="04">Abril</option><option value="05">Mayo</option><option value="06">Junio</option><option value="07">Julio</option><option value="08">Agosto</option><option value="09">Septiembre</option><option value="10">Octubre</option><option value="11">Noviembre</option><option value="12">Diciembre</option>
         </select>
-        <input id="arqueo-close-year" class="cal-select" type="number" style="width:85px;font-size:.7rem;padding:6px 8px">
+        <input id="arqueo-close-year" class="cal-select" type="number" style="width:85px;font-size:.7rem;padding:6px 8px" onchange="try{renderReconciliacion()}catch(e){}">
         <button class="btn btn-snap" onclick="saveSnapshot()">📸 Cerrar mes y guardar</button>
       </div>
     </div>
@@ -3023,14 +3023,24 @@ function renderReconciliacion(){
   const el=document.getElementById('recon-panel');if(!el)return;
   if(_arqViewYM){el.innerHTML='';return;} // solo en vivo, no viendo un cierre pasado
   const card=(inner,col)=>`<div style="background:var(--surface);border:1px solid var(--border);border-left:4px solid ${col};border-radius:var(--r);padding:16px 18px">${inner}</div>`;
-  const snap=(typeof getLatestSnapshot==='function')?getLatestSnapshot():null;
-  if(!snap||snap.total==null){el.innerHTML=card(`<div style="font-family:'Syne',sans-serif;font-weight:800;font-size:.9rem;margin-bottom:4px">🔍 ¿Cierra el mes?</div><div style="font-size:.66rem;color:var(--muted)">Cerrá un mes con 📸 para tener un punto de comparación del patrimonio.</div>`,'#6b6b7a');return;}
+  // Mes que se está evaluando = el elegido en "Cerrar como" (si no hay, el mes actual).
   const now=new Date();
-  const ym=now.getFullYear()+'_'+String(now.getMonth()+1).padStart(2,'0');
+  const _selM=document.getElementById('arqueo-close-month');
+  const _selY=document.getElementById('arqueo-close-year');
+  const mm=(_selM&&_selM.value)?_selM.value:String(now.getMonth()+1).padStart(2,'0');
+  const yy=(_selY&&_selY.value)?String(parseInt(_selY.value,10)||now.getFullYear()):String(now.getFullYear());
+  const ym=yy+'_'+mm;
+  // Base de comparación = el cierre del mes ANTERIOR al que evaluás (si existe); si no, el último cierre.
+  const _pd=new Date(parseInt(yy,10),parseInt(mm,10)-1,1);_pd.setMonth(_pd.getMonth()-1);
+  const prevYm=_pd.getFullYear()+'_'+String(_pd.getMonth()+1).padStart(2,'0');
+  const snap=(state.snapshots&&state.snapshots[prevYm])?state.snapshots[prevYm]:((typeof getLatestSnapshot==='function')?getLatestSnapshot():null);
+  if(!snap||snap.total==null){el.innerHTML=card(`<div style="font-family:'Syne',sans-serif;font-weight:800;font-size:.9rem;margin-bottom:4px">🔍 ¿Cierra el mes?</div><div style="font-size:.66rem;color:var(--muted)">Cerrá un mes con 📸 para tener un punto de comparación del patrimonio.</div>`,'#6b6b7a');return;}
   const P=_puntGananciaMes(ym);                 // neto/costo/retiro/gastos/ganancia (pesos)
   const tc=curTC()||1500;
   const cArq=calcArqueo();
-  const arqNow=cArq.total;                       // patrimonio actual (USD)
+  // Si el mes que evaluás YA está cerrado, uso su cierre guardado como "fin"; si todavía no, el valor en vivo.
+  const endSnap=(state.snapshots&&state.snapshots[ym]&&state.snapshots[ym].total!=null)?state.snapshots[ym]:null;
+  const arqNow=endSnap?endSnap.total:cArq.total; // patrimonio al cierre del mes (USD)
   const dP=Math.round((arqNow-snap.total)*tc);  // cuánto creció el patrimonio (pesos, aprox)
   const genera=P.neto-P.costo-P.gastos;         // lo que generó el negocio
   const rmRaw=state.retiro_mes&&state.retiro_mes[ym];
@@ -3043,7 +3053,7 @@ function renderReconciliacion(){
   if(Math.abs(dif)<=umbral){col='#22c55e';verdict='✓ Cierra bien';expl='Los números cuadran: lo que ganó el negocio se ve reflejado en el patrimonio.';}
   else if(dif<0){col='#ef4444';verdict='🔴 Falta plata';expl=`Salieron <strong>${fmt(-dif)}</strong> que no están anotados. Revisá: gastos sin cargar, retiros de más, o pérdidas/roturas de stock este mes.`;}
   else{col='#f59e0b';verdict='🟡 Sobra';expl=`El patrimonio creció <strong>${fmt(dif)}</strong> más que la ganancia. Puede ser un valor cargado de más en el arqueo, o plata que entró y no es de ventas.`;}
-  const mesLbl=MONTHS[now.getMonth()]+' '+now.getFullYear();
+  const mesLbl=MONTHS[parseInt(mm,10)-1]+' '+yy;
   const row=(lbl,val,extra='')=>`<div style="display:flex;justify-content:space-between;align-items:baseline;gap:10px"><span style="color:var(--muted)">${lbl}</span><span style="font-family:'DM Mono',monospace;${extra}">${val}</span></div>`;
   el.innerHTML=card(`
     <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;margin-bottom:10px">
@@ -3062,9 +3072,9 @@ function renderReconciliacion(){
   // Identidad: Compras = ΔStock + Costo de lo vendido + (merma). Si comprás de más de lo que aparece → fuga.
   // Compra de mercadería del mes = suma de los movimientos tipo 'mercadería' cargados en Compras y gastos.
   const compraMes=Object.values(state.compras||{}).filter(x=>getCompraTipo(x)==='mercaderia'&&(x.dayKey||'').startsWith(ym)).reduce((s,x)=>s+(x.monto||0),0);
-  const finLoc=f=>(parseFloat(state.finanzas[f])||0);
+  const finLoc=f=>endSnap?(parseFloat(endSnap.finanzas&&endSnap.finanzas[f])||0):(parseFloat(state.finanzas[f])||0);
   const snapFin=f=>(parseFloat(snap.finanzas&&snap.finanzas[f])||0);
-  const stockNowUSD=(cArq.stockML||0)+finLoc('of_viejo')+finLoc('of_mia')+finLoc('vendedores');
+  const stockNowUSD=(endSnap?(endSnap.stockML||0):(cArq.stockML||0))+finLoc('of_viejo')+finLoc('of_mia')+finLoc('vendedores');
   const stockSnapUSD=(snap.stockML||0)+snapFin('of_viejo')+snapFin('of_mia')+snapFin('vendedores');
   const dStock=Math.round((stockNowUSD-stockSnapUSD)*tc);   // creció (+) o bajó (−) el stock, en pesos
   const costoVend=P.costo;                                   // costo de lo vendido este mes (pesos)
@@ -6880,7 +6890,7 @@ document.addEventListener('click',e=>{if(fnavOpen&&!e.target.closest('#fnav-btn'
         <span style="font-size:.75rem;color:var(--muted)">Si no ves los últimos cambios, forzá la actualización</span>
         <button class="btn" style="background:rgba(56,189,248,.12);color:var(--blue);border:1px solid rgba(56,189,248,.3)" onclick="actualizarApp()">🔄 Buscar actualizaciones</button>
       </div>
-      <div style="font-size:.66rem;color:var(--muted);margin-top:12px">CYC · Versión 4.3</div>
+      <div style="font-size:.66rem;color:var(--muted);margin-top:12px">CYC · Versión 4.4</div>
     </div>
 
     <div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:18px 20px;margin-bottom:14px">
