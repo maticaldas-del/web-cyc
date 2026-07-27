@@ -613,6 +613,60 @@ async function main() {
     for (const [a, t] of Object.entries(totalPorCuenta)) console.log(`  ${a}: $${Math.round(t).toLocaleString('es-AR')}`);
     return;
   }
+  // DUMP_MATCH: audita las publicaciones MAL ENGANCHADAS. Para cada publicación con ventas,
+  // compara el TÍTULO REAL en ML contra el PRODUCTO que le puso la app. Si casi no comparten
+  // palabras, es un enganche equivocado (ej: auriculares Galaxy Buds enganchados al celular A06).
+  if (process.env.DUMP_MATCH) {
+    const vp = (await db.get('cyc/ventaprod')) || {};
+    const links = (await db.get('cyc/mllinks')) || {};
+    const norm = (s) => (s || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[^a-z0-9]+/g, ' ').trim();
+    const STOP = new Set(['con', 'para', 'the', 'and', 'set', 'kit', 'pack', 'black', 'blanco', 'negro', 'white', 'azul', 'rojo', 'gris', 'unidad', 'unidades']);
+    const toks = (s) => norm(s).split(' ').filter((w) => w.length >= 3 && !STOP.has(w));
+    const byMla = {};
+    for (const day of Object.values(vp)) for (const v of Object.values(day || {})) {
+      if (!v || v.cancelada || !v.mla) continue;
+      const m = byMla[v.mla] || (byMla[v.mla] = { panelProd: v.prod || '', prodId: v.prodId || null, count: 0, cuenta: v.cuenta || '', total: 0 });
+      m.count++; m.total += v.total || 0; if (!m.panelProd && v.prod) m.panelProd = v.prod;
+    }
+    // agrupar publicaciones por cuenta y traer el título real de ML (multiget de a 20)
+    const byLabel = {};
+    for (const [mla, info] of Object.entries(byMla)) {
+      const lab = labels.find((l) => l.toLowerCase() === String(info.cuenta).toLowerCase()) || null;
+      (byLabel[lab] = byLabel[lab] || []).push(mla);
+    }
+    const titleOf = {};
+    for (const label of labels) {
+      const list = byLabel[label] || []; if (!list.length) continue;
+      const acc = accounts[label]; if (!acc?.refresh_token) continue;
+      const t = await mlRefresh(ML_CLIENT_ID, ML_CLIENT_SECRET, acc.refresh_token);
+      await db.patch('mlapi/tokens/' + label, { refresh_token: t.refresh_token, updated_ts: Date.now() });
+      for (let i = 0; i < list.length; i += 20) {
+        const chunk = list.slice(i, i + 20);
+        let arr; try { arr = await mlGet('/items?ids=' + chunk.join(',') + '&attributes=id,title', t.access_token); } catch { continue; }
+        for (const row of (arr || [])) { const b = row.body || {}; if (b.id) titleOf[b.id] = b.title || ''; }
+      }
+    }
+    const rows = [];
+    for (const [mla, info] of Object.entries(byMla)) {
+      const mlTitle = titleOf[mla] || '';
+      const pt = toks(info.panelProd), mt = new Set(toks(mlTitle));
+      const shared = pt.filter((w) => mt.has(w)).length;
+      const ratio = pt.length ? shared / pt.length : 1;
+      rows.push({ mla, ...info, mlTitle, ratio, noTitle: !mlTitle });
+    }
+    const bad = rows.filter((r) => !r.noTitle && r.ratio < 0.5).sort((a, b) => b.count - a.count);
+    console.log('\n=== PUBLICACIONES MAL ENGANCHADAS (título ML ≠ producto de la app) ===');
+    console.log(`Publicaciones con ventas: ${rows.length} · con título de ML: ${rows.filter((r) => !r.noTitle).length} · MAL ENGANCHADAS: ${bad.length}\n`);
+    for (const r of bad) {
+      let e = links[r.mla]; if (typeof e === 'string') e = { prodId: e };
+      console.log(`  ${r.mla} · ${r.count} ventas · $${Math.round(r.total).toLocaleString('es-AR')} · cuenta ${r.cuenta}${e && e.ignored ? ' [IGNORADA]' : ''}`);
+      console.log(`     ML dice:  "${(r.mlTitle || '').slice(0, 55)}"`);
+      console.log(`     App pone: "${(r.panelProd || '').slice(0, 55)}"`);
+    }
+    const noT = rows.filter((r) => r.noTitle);
+    if (noT.length) console.log(`\n(no pude traer título de ML de ${noT.length} publicaciones — token de otra cuenta o dadas de baja)`);
+    return;
+  }
   // DUMP_SINVIN: diagnostica por qué hay ventas "sin producto" — agrupa por publicación (mla)
   // y dice si esa publicación está en mllinks, si tiene producto asignado y si el producto existe.
   if (process.env.DUMP_SINVIN) {
