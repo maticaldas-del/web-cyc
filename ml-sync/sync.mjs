@@ -821,11 +821,11 @@ async function main() {
       const compras = (await db.get('cyc/compras')) || {};
       const del = {}; let n = 0;
       for (const [id, x] of Object.entries(compras)) {
-        if (id.startsWith('almmes_') || (x && x.cat === 'Almacenamiento Full')) { del[id] = null; n++; }
+        if (id.startsWith('almmes_') || id.startsWith('mlcargo_') || (x && (x.cat === 'Almacenamiento Full' || x.cat === 'Cargos ML (débito automático)'))) { del[id] = null; n++; }
       }
       if (!DRY && n) await db.patch('cyc/compras', del);
       if (!DRY) await db.set('cyc/mlapi/storage/periods', null);
-      console.log(`${DRY ? '(DRY) ' : ''}Borrados ${n} gastos mensuales de almacenamiento + períodos guardados.`);
+      console.log(`${DRY ? '(DRY) ' : ''}Borrados ${n} gastos sueltos de almacenamiento/cargos ML + períodos (ahora van en el % por venta).`);
       return;
     }
     // BILLING_PROBE=seedreal:<YYYY_MM>=<monto> → carga UN gasto mensual de almacenamiento con el número

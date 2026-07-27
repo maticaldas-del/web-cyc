@@ -2054,6 +2054,13 @@ const costFullUSDof=p=>{
   return cu;
 };
 const costFullP=p=>{const tc=curTC();return costFullUSDof(p)*tc;};
+// Cargo EXTRA de ML que se cobra por afuera de la venta (por "débito automático" / facturas vencidas):
+// casi todo Percepciones de IIBB (impuesto), más algo de almacenamiento y logística Full. NO está en el
+// neto de la venta, así que es un costo real que faltaba. Es un % del PRECIO de venta, medido de las
+// facturas reales de ML de 2026 (ene-jul, sin multas puntuales). Por cuenta, porque cada una le vende a
+// provincias con distinta alícuota de IIBB. Editá estos números si cambia la carga impositiva.
+const ML_EXTRA_PCT={adriana:4.07,luciana:4.37,ayelen:5.95,matias:4.58};
+const mlExtraPct=cuenta=>{const v=ML_EXTRA_PCT[(cuenta||'').toLowerCase()];return v!=null?v:4.8;};
 const sid=s=>s.replace(/[^a-z0-9]/gi,'_');
 const ts2s=t=>{const d=new Date(t);return d.toLocaleDateString('es-AR')+' '+d.toLocaleTimeString('es-AR',{hour:'2-digit',minute:'2-digit'});};
 const invKey=(pid,loc)=>pid+'__'+sid(loc);
@@ -3872,9 +3879,13 @@ function efectivoCostoVP(v){
   // Antes se usaba v.shipUSD congelado, así que ventas viejas cargadas cuando el producto no
   // tenía envío quedaban con envío 0 y el mismo producto mostraba costos distintos. Ver arqueo.
   const ship=parseFloat(p.shipUSD)||0;
-  if(!baseUSD&&!ship)return v.costo||0; // producto sin costo cargado → cae al guardado
+  // Cargo extra de ML (IIBB + almacenamiento + logística Full que ML cobra por débito, NO en el neto).
+  // Es un % del PRECIO de la venta (v.total), aparte del costo del producto. Se suma como monto fijo,
+  // NO multiplica al costo ni al %devolución (por eso va afuera del fullUSD).
+  const mlExtra=(v.total||0)*mlExtraPct(v.cuenta)/100;
+  if(!baseUSD&&!ship)return (v.costo||0)+mlExtra; // producto sin costo cargado → guardado + cargo ML
   const fullUSD=baseUSD*(1+dev/100)+ship;
-  return fullUSD*tc*(v.qty||1);
+  return fullUSD*tc*(v.qty||1)+mlExtra;
 }
 function vpEntries(keys){const out=[];keys.forEach(k=>{const o=state.ventaprod[k];if(o)Object.values(o).forEach(v=>out.push({...v,_dateKey:k}));});return out;}
 function vpAggByAccount(entries){
@@ -6890,7 +6901,7 @@ document.addEventListener('click',e=>{if(fnavOpen&&!e.target.closest('#fnav-btn'
         <span style="font-size:.75rem;color:var(--muted)">Si no ves los últimos cambios, forzá la actualización</span>
         <button class="btn" style="background:rgba(56,189,248,.12);color:var(--blue);border:1px solid rgba(56,189,248,.3)" onclick="actualizarApp()">🔄 Buscar actualizaciones</button>
       </div>
-      <div style="font-size:.66rem;color:var(--muted);margin-top:12px">CYC · Versión 4.4</div>
+      <div style="font-size:.66rem;color:var(--muted);margin-top:12px">CYC · Versión 4.5</div>
     </div>
 
     <div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:18px 20px;margin-bottom:14px">
