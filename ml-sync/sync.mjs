@@ -1480,6 +1480,56 @@ async function main() {
       console.log(`${DRY ? '(DRY) ' : ''}Robot de precios: actúa por debajo de ${piso}% y lleva a ${meta}%.`);
       return;
     }
+    // BILLING_PROBE=promos[:<palabra>] → VUELCA CRUDO lo que ML dice de las promociones de cada
+    // publicación: estado, tipo, precio con descuento y quién lo paga. Solo lee.
+    // Hace falta para saber con qué estado quedan las PROGRAMADAS: el robot solo sacaba las
+    // 'started' (ya aplicadas) y las agendadas para más adelante se le escapaban enteras.
+    if (String(process.env.BILLING_PROBE || '').startsWith('promos')) {
+      const kw = (String(process.env.BILLING_PROBE).split(':')[1] || '').trim().toLowerCase();
+      const links = (await db.get('cyc/mllinks')) || {};
+      const estados = {}; // estado → cuántas
+      console.log(`=== PROMOCIONES CRUDAS DE ML ${kw ? `(filtro "${kw}")` : '(todas)'} · SOLO LECTURA ===\n`);
+      for (const label of labels) {
+        const acc = accounts[label];
+        if (!acc?.refresh_token) continue;
+        let t; try { t = await mlRefresh(ML_CLIENT_ID, ML_CLIENT_SECRET, acc.refresh_token); } catch { continue; }
+        await db.patch('mlapi/tokens/' + label, { refresh_token: t.refresh_token, updated_ts: Date.now() });
+        const ids = Object.entries(links)
+          .filter(([mla, e]) => e && e.cuenta === label && !e.ignored && /^MLA/i.test(mla)
+            && (!kw || (e.title || '').toLowerCase().includes(kw)))
+          .map(([mla, e]) => ({ mla, title: e.title || mla }));
+        let mostradas = 0;
+        for (const it of ids) {
+          let arr;
+          try {
+            const r = await mlGet('/seller-promotions/items/' + it.mla + '?app_version=v2', t.access_token);
+            arr = Array.isArray(r) ? r : (r.results || []);
+          } catch { continue; }
+          if (!arr || !arr.length) continue;
+          for (const pr of arr) estados[pr.status || 'sin-estado'] = (estados[pr.status || 'sin-estado'] || 0) + 1;
+          // Solo se imprimen las que NO son simples ofertas sin aplicar, para no llenar el log.
+          const interesantes = arr.filter((pr) => pr.status !== 'candidate');
+          if (!interesantes.length) continue;
+          if (mostradas >= 12) continue; // tope por cuenta, para poder leerlo
+          mostradas++;
+          console.log(`${label} · ${it.mla} · ${it.title.slice(0, 44)}`);
+          for (const pr of interesantes) {
+            console.log(`   estado=${pr.status} tipo=${pr.type} id=${pr.id || '-'}`
+              + ` precio=${pr.price != null ? money(Math.round(pr.price)) : '-'}`
+              + ` original=${pr.original_price != null ? money(Math.round(pr.original_price)) : '-'}`
+              + `${pr.deal_price != null ? ' deal=' + money(Math.round(pr.deal_price)) : ''}`
+              + `${pr.meli_percentage != null ? ' pagaML=' + pr.meli_percentage + '%' : ''}`
+              + `${pr.seller_percentage != null ? ' pagaVos=' + pr.seller_percentage + '%' : ''}`
+              + `${pr.start_date ? ' desde=' + String(pr.start_date).slice(0, 10) : ''}`
+              + `${pr.finish_date ? ' hasta=' + String(pr.finish_date).slice(0, 10) : ''}`);
+          }
+        }
+      }
+      console.log(`\n── CUÁNTAS HAY DE CADA ESTADO ──`);
+      Object.entries(estados).sort((a, b) => b[1] - a[1]).forEach(([e, n]) => console.log(`   ${e}: ${n}`));
+      console.log(`\nHoy el robot SOLO saca las de estado "started". Todo lo demás se le escapa.`);
+      return;
+    }
     // BILLING_PROBE=fijar:<grupo>:<precio>[:prueba] → pone TODAS las publicaciones activas de un grupo
     // en ese precio exacto, subiendo o bajando. Sirve para corregir cuando una se pasó del techo y
     // arrastraría al resto en la próxima nivelación.
