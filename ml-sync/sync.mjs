@@ -157,6 +157,97 @@ async function raiseVariations(itemId, nuevos, token) {
   return { ok: true, cambios };
 }
 
+// ── GRUPOS DE PRECIO: publicaciones que tienen que valer todas lo mismo ────
+// Caso Paulvic: son el mismo perfume publicado varias veces en varias cuentas. Si
+// quedan a distinto precio, el más barato se lleva todas las ventas — y justo ese
+// puede ser el que está por debajo del piso de margen.
+//
+// La regla es: TODAS al precio MÁS ALTO del grupo. Se nivela en cada corrida, así
+// da igual quién subió (el robot automático, el barrido a mano o vos desde ML).
+//
+// Config en cyc/mlconfig/gruposPrecio = { paulvic: { palabra: 'paulvic' } }
+// La palabra se busca en el título de la publicación y en el nombre del producto,
+// así una publicación nueva entra al grupo sola, sin cargarla a mano.
+//
+// Frenos:
+//   · si el precio más alto es >50% que el de otro, no toca nada y avisa (algo está
+//     mal: precio mal cargado o una publicación que no es de ese producto),
+//   · si nivelar cruzaría los $33.000 de una publicación que hoy está por debajo,
+//     esa se saltea (ahí el envío pasa a pagarlo CYC y el aumento sale caro).
+async function nivelarGrupos(db, links, tokensRun, DRY, pName) {
+  const grupos = (await db.get('cyc/mlconfig/gruposPrecio')) || {};
+  const nombres = Object.keys(grupos).filter((g) => grupos[g] && grupos[g].palabra && grupos[g].activo !== false);
+  if (!nombres.length) return [];
+  const UMBRAL_ENVIO = 33000;
+  const avisos = [];
+  for (const g of nombres) {
+    const palabra = String(grupos[g].palabra).toLowerCase();
+    // Miembros: publicaciones vinculadas, no ignoradas, cuyo título o producto tiene la palabra.
+    const miembros = Object.entries(links)
+      .filter(([mla, e]) => e && !e.ignored && e.prodId && /^MLA/i.test(mla) && tokensRun[e.cuenta]
+        && ((e.title || '') + ' ' + ((pName && pName[e.prodId]) || '')).toLowerCase().includes(palabra))
+      .map(([mla, e]) => ({ mla, cuenta: e.cuenta, title: e.title || mla }));
+    if (miembros.length < 2) continue;
+    // Precio actual de cada uno (el de la 1ª variante si tiene variantes).
+    const porCta = {};
+    for (const mb of miembros) (porCta[mb.cuenta] = porCta[mb.cuenta] || []).push(mb);
+    const vivos = [];
+    for (const [cta, arr] of Object.entries(porCta)) {
+      const tok = tokensRun[cta];
+      for (let k = 0; k < arr.length; k += 20) {
+        let res;
+        try { res = await mlGet('/items?ids=' + arr.slice(k, k + 20).map((x) => x.mla).join(',') + '&attributes=id,status,price,variations', tok); } catch { continue; }
+        for (const row of (res || [])) {
+          const b = row.body || {};
+          if (!b.id || b.status !== 'active') continue;
+          const vars = Array.isArray(b.variations) ? b.variations : [];
+          const precio = vars.length ? Math.max(...vars.map((v) => v.price || 0)) : (b.price || 0);
+          if (!precio) continue;
+          const mb = arr.find((x) => x.mla === b.id);
+          vivos.push({ mla: b.id, cuenta: cta, title: mb ? mb.title : b.id, precio, vars, tok });
+        }
+      }
+    }
+    if (vivos.length < 2) continue;
+    const techo = Math.max(...vivos.map((v) => v.precio));
+    const piso = Math.min(...vivos.map((v) => v.precio));
+    if (piso === techo) continue; // ya están todos iguales
+    if (techo > piso * 1.5) {
+      avisos.push(`⚠️ Grupo <b>${g}</b>: no nivelé nada porque los precios están muy dispares `
+        + `(${money(piso)} vs ${money(techo)}). Revisalo: puede haber un precio mal cargado `
+        + `o una publicación que no es de ese producto.`);
+      continue;
+    }
+    const hechos = [], saltados = [];
+    for (const v of vivos) {
+      if (v.precio >= techo) continue;
+      if (v.precio < UMBRAL_ENVIO && techo >= UMBRAL_ENVIO) {
+        saltados.push(`${v.title.slice(0, 30)} (cruzaría los ${money(UMBRAL_ENVIO)})`);
+        continue;
+      }
+      const mult = techo / v.precio;
+      let r;
+      if (DRY) r = { ok: false, err: 'DRY' };
+      else if (v.vars.length) {
+        const nuevos = {}; for (const vv of v.vars) if ((vv.price || 0) < techo) nuevos[String(vv.id)] = techo;
+        r = await raiseVariations(v.mla, nuevos, v.tok);
+        if (r.ok) r = { ok: true, from: v.precio, to: techo };
+      } else r = await raisePrice(v.mla, null, mult, v.tok);
+      if (r.ok) hechos.push({ title: v.title, from: r.from, to: r.to, cuenta: v.cuenta });
+      else saltados.push(`${v.title.slice(0, 30)} (${r.err})`);
+    }
+    if (hechos.length) {
+      avisos.push(`🟰 <b>Grupo ${g} nivelado a ${money(techo)}</b>\n`
+        + hechos.map((h) => `· ${h.cuenta}: ${h.title.slice(0, 30)} ${money(h.from)} → <b>${money(h.to)}</b>`).join('\n')
+        + (saltados.length ? `\n\nNo se tocaron: ${saltados.join(', ')}` : ''));
+      console.log(`Grupo "${g}" nivelado a ${money(techo)}: ${hechos.length} publicaciones subidas.`);
+      hechos.forEach((h) => console.log(`  ✓ ${h.cuenta} · ${h.title}: ${money(h.from)} → ${money(h.to)}`));
+    }
+    if (saltados.length) console.log(`Grupo "${g}": no se tocaron ${saltados.length} → ${saltados.join(', ')}`);
+  }
+  return avisos;
+}
+
 // ── Poner un precio EXACTO en ML (puede BAJAR) ─────────────────────────────
 // Se usa solo para corregir precios que quedaron demasiado altos. A diferencia
 // de raisePrice, este SÍ baja, así que trae dos frenos propios:
@@ -1290,6 +1381,69 @@ async function main() {
       const meta = piso + 2; // 2 puntos de colchón para no quedar rozando el piso
       if (!DRY) { await db.set('cyc/mlconfig/minPct', piso); await db.set('cyc/mlconfig/targetPct', meta); }
       console.log(`${DRY ? '(DRY) ' : ''}Robot de precios: actúa por debajo de ${piso}% y lleva a ${meta}%.`);
+      return;
+    }
+    // BILLING_PROBE=grupos                       → lista los grupos de precio y cómo está cada uno.
+    // BILLING_PROBE=grupos:<nombre>:<palabra>    → crea/actualiza un grupo (ej: grupos:paulvic:paulvic).
+    // BILLING_PROBE=grupos:<nombre>:off          → lo desactiva sin borrarlo.
+    // Un grupo son publicaciones que tienen que valer TODAS lo mismo (el mismo perfume publicado
+    // varias veces). Se nivelan solas al precio más alto en cada corrida del robot.
+    if (String(process.env.BILLING_PROBE || '').startsWith('grupos')) {
+      const _g = String(process.env.BILLING_PROBE).split(':');
+      const nombre = (_g[1] || '').trim().toLowerCase();
+      const palabra = (_g[2] || '').trim();
+      if (nombre && palabra && palabra.toLowerCase() !== 'off') {
+        if (!DRY) await db.patch('cyc/mlconfig/gruposPrecio/' + nombre, { palabra: palabra.toLowerCase(), activo: true });
+        console.log(`${DRY ? '(DRY) ' : ''}Grupo "${nombre}" guardado: agrupa todo lo que diga "${palabra}" en el título o en el producto.`);
+      } else if (nombre && palabra.toLowerCase() === 'off') {
+        if (!DRY) await db.patch('cyc/mlconfig/gruposPrecio/' + nombre, { activo: false });
+        console.log(`${DRY ? '(DRY) ' : ''}Grupo "${nombre}" desactivado.`);
+      }
+      // Mostrar cómo queda cada grupo: miembros, precio de cada uno y si están parejos.
+      const grupos = (await db.get('cyc/mlconfig/gruposPrecio')) || {};
+      const links = (await db.get('cyc/mllinks')) || {};
+      const pName = {}; for (const p of products) pName[p.id] = p.name || '';
+      const gs = Object.keys(grupos);
+      if (!gs.length) { console.log('No hay ningún grupo de precio configurado.'); return; }
+      console.log(`\n=== GRUPOS DE PRECIO · ${gs.length} ===\n`);
+      for (const g of gs) {
+        const cfgG = grupos[g] || {};
+        const pal = String(cfgG.palabra || '').toLowerCase();
+        console.log(`── ${g} ── palabra "${pal}" · ${cfgG.activo === false ? 'DESACTIVADO' : 'activo'}`);
+        const miembros = Object.entries(links)
+          .filter(([mla, e]) => e && !e.ignored && e.prodId && /^MLA/i.test(mla)
+            && ((e.title || '') + ' ' + (pName[e.prodId] || '')).toLowerCase().includes(pal))
+          .map(([mla, e]) => ({ mla, cuenta: e.cuenta || '', title: e.title || mla }));
+        if (!miembros.length) { console.log('   (ninguna publicación coincide)\n'); continue; }
+        const porCta = {};
+        for (const mb of miembros) (porCta[mb.cuenta] = porCta[mb.cuenta] || []).push(mb);
+        const filas = [];
+        for (const [cta, arr] of Object.entries(porCta)) {
+          const acc = accounts[cta];
+          if (!acc?.refresh_token) { arr.forEach((mb) => filas.push({ ...mb, precio: 0, why: 'sin token' })); continue; }
+          let t; try { t = await mlRefresh(ML_CLIENT_ID, ML_CLIENT_SECRET, acc.refresh_token); } catch { arr.forEach((mb) => filas.push({ ...mb, precio: 0, why: 'no pude renovar token' })); continue; }
+          await db.patch('mlapi/tokens/' + cta, { refresh_token: t.refresh_token, updated_ts: Date.now() });
+          for (let k = 0; k < arr.length; k += 20) {
+            let res;
+            try { res = await mlGet('/items?ids=' + arr.slice(k, k + 20).map((x) => x.mla).join(',') + '&attributes=id,status,price,variations', t.access_token); } catch { continue; }
+            for (const row of (res || [])) {
+              const b = row.body || {}; if (!b.id) continue;
+              const mb = arr.find((x) => x.mla === b.id) || { mla: b.id, cuenta: cta, title: b.id };
+              const vars = Array.isArray(b.variations) ? b.variations : [];
+              const precio = vars.length ? Math.max(...vars.map((v) => v.price || 0)) : (b.price || 0);
+              filas.push({ ...mb, precio, why: b.status !== 'active' ? b.status : '', nVar: vars.length });
+            }
+          }
+        }
+        const act = filas.filter((f) => f.precio > 0 && !f.why);
+        const techo = act.length ? Math.max(...act.map((f) => f.precio)) : 0;
+        filas.sort((a, b) => b.precio - a.precio).forEach((f) => console.log(
+          `   ${money(Math.round(f.precio)).padStart(10)}${f.precio && !f.why && f.precio < techo ? ` → subiría a ${money(techo)}` : (f.precio === techo && !f.why ? ' ← el más alto' : '')}`
+          + ` · ${(f.cuenta || '?').padEnd(8)} · ${f.mla} · ${f.title.slice(0, 34)}${f.nVar ? ` [${f.nVar} variantes]` : ''}${f.why ? ` · ${f.why}` : ''}`));
+        const desparejos = act.filter((f) => f.precio < techo).length;
+        console.log(`   ${act.length} activas · ${desparejos ? `${desparejos} por debajo del más alto (se van a nivelar solas)` : 'todas al mismo precio ✓'}\n`);
+      }
+      console.log('Los grupos se nivelan solos en cada corrida del robot (cada 10 minutos).');
       return;
     }
     // BILLING_PROBE=tocados[:<horas>][:bajar:<MLA|todos>] → QUÉ PRECIOS TOCÓ SOLO EL ROBOT en las
@@ -3752,6 +3906,7 @@ async function main() {
 
   // ACCOUNT: si está seteado, procesa solo esa cuenta (para backfills por tandas).
   const onlyAcc = (process.env.ACCOUNT || '').trim().toLowerCase();
+  const tokensRun = {}; // token de cada cuenta, para nivelar los grupos de precio al final
   for (const label of labels) {
     if (onlyAcc && label.toLowerCase() !== onlyAcc) continue;
     const acc = accounts[label];
@@ -3760,6 +3915,7 @@ async function main() {
     // 1) renovar token y guardar el nuevo refresh_token (ML lo rota)
     const t = await mlRefresh(ML_CLIENT_ID, ML_CLIENT_SECRET, acc.refresh_token);
     await db.patch('mlapi/tokens/' + label, { refresh_token: t.refresh_token, updated_ts: Date.now() });
+    tokensRun[label] = t.access_token;
 
     // 2) traer ventas desde la última corrida (o últimos 7 días la 1ª vez).
     //    BACKFILL_DAYS fuerza una ventana amplia (para reprocesar el historial).
@@ -4060,6 +4216,17 @@ async function main() {
       }
     }
     if (rf) console.log(`✓ Completé el producto en ${rf} ventas que estaban sin vincular.`);
+  }
+
+  // NIVELAR GRUPOS DE PRECIO (ej: todos los Paulvic al mismo precio). Va al final, después
+  // de que el robot pudo haber subido alguno: así se empareja igual quién lo haya movido.
+  // En backfills no corre, para no tocar precios mientras se reprocesa el historial.
+  if (parseInt(process.env.BACKFILL_DAYS || '0', 10) === 0 && !onlyAcc) {
+    try {
+      const pName = {}; for (const p of products) pName[p.id] = p.name || '';
+      const avisos = await nivelarGrupos(db, map, tokensRun, DRY, pName);
+      for (const a of avisos) await sendTelegram(a);
+    } catch (e) { console.log('No pude nivelar los grupos de precio: ' + e.message); }
   }
 
   const pend = Object.values(map).filter((x) => x && !x.prodId).length;
