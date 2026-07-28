@@ -109,6 +109,40 @@ function costoPesos(p, qty, tc) {
   return { costo: Math.round(fullUSD * tc * qty), costBaseUSD: costUSD, shipUSD };
 }
 
+// ── Poner un precio EXACTO en ML (puede BAJAR) ─────────────────────────────
+// Se usa solo para corregir precios que quedaron demasiado altos. A diferencia
+// de raisePrice, este SÍ baja, así que trae dos frenos propios:
+//   · nunca baja más del 25% de una (por si el precio objetivo salió mal),
+//   · nunca deja el precio en 0 ni sube por acá (para subir está raisePrice).
+// Devuelve {ok, from, to} o {ok:false, err}.
+async function setPriceTo(itemId, variationId, nuevo, token) {
+  let item;
+  try { item = await mlGet('/items/' + itemId + '?attributes=id,price,status,variations', token); }
+  catch { return { ok: false, err: 'sin-item' }; }
+  if (item.status === 'closed') return { ok: false, err: 'cerrada' };
+  let base, body;
+  const to = Math.ceil(nuevo / 10) * 10;
+  if (variationId && (item.variations || []).length) {
+    const v = item.variations.find((x) => String(x.id) === String(variationId));
+    if (!v || !v.price) return { ok: false, err: 'sin-variante' };
+    base = v.price; body = { variations: [{ id: v.id, price: to }] };
+  } else {
+    if (!item.price) return { ok: false, err: 'sin-precio' };
+    base = item.price; body = { price: to };
+  }
+  if (to >= base) return { ok: false, err: 'no-baja' };
+  if (to < base * 0.75) return { ok: false, err: 'baja-mayor-a-25%' };
+  try {
+    const r = await fetch(ML_API + '/items/' + itemId, {
+      method: 'PUT',
+      headers: { Authorization: 'Bearer ' + token, 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+    });
+    if (!r.ok) return { ok: false, err: 'ML-' + r.status };
+    return { ok: true, from: Math.round(base), to };
+  } catch { return { ok: false, err: 'red' }; }
+}
+
 // ── Subir el precio en ML para llegar al margen objetivo ───────────────────
 // Sube (nunca baja) el precio de la publicación/variante. Multiplicador =
 // costo_full × (1+meta) / neto_real. Devuelve {ok, from, to} o {ok:false, err}.
@@ -1210,12 +1244,18 @@ async function main() {
       console.log(`${DRY ? '(DRY) ' : ''}Robot de precios: actúa por debajo de ${piso}% y lleva a ${meta}%.`);
       return;
     }
-    // BILLING_PROBE=tocados[:<horas>] → QUÉ PRECIOS TOCÓ SOLO EL ROBOT en las últimas N horas (default
-    // 72) y en qué margen quedaron HOY, con la comisión oficial de ML. Sirve para revisar el daño de
-    // haber corrido con la meta vieja (42%): muestra cuáles quedaron muy por encima de la meta nueva
-    // y a qué precio habría que dejarlos. SOLO LEE, no toca nada en ML.
+    // BILLING_PROBE=tocados[:<horas>][:bajar:<MLA|todos>] → QUÉ PRECIOS TOCÓ SOLO EL ROBOT en las
+    // últimas N horas (default 72) y en qué margen quedaron HOY, con la comisión oficial de ML. Sirve
+    // para revisar el daño de haber corrido con la meta vieja (42%): muestra cuáles quedaron muy por
+    // encima de la meta nueva y a qué precio habría que dejarlos.
+    // Sin 'bajar' SOLO LEE. Con 'bajar:<destino>' corrige en ML los que se pasaron (solo baja, nunca
+    // sube, y nunca más de 25% de una). El destino es obligatorio para que no pase por accidente.
     if (String(process.env.BILLING_PROBE || '').startsWith('tocados')) {
-      const HS = parseFloat(String(process.env.BILLING_PROBE).split(':')[1]) || 72;
+      const _ct = String(process.env.BILLING_PROBE).split(':');
+      const HS = parseFloat(_ct[1]) || 72;
+      const BAJAR = _ct[2] === 'bajar';
+      const DEST = (_ct[3] || '').trim();
+      if (BAJAR && !DEST) { console.log('Para corregir hace falta el destino: tocados:96:bajar:MLA123 o tocados:96:bajar:todos'); return; }
       const cfgT = (await db.get('cyc/mlconfig')) || {};
       const META = (parseFloat(cfgT.targetPct) || 32) / 100;
       const desde = Date.now() - HS * 3600e3;
@@ -1223,7 +1263,7 @@ async function main() {
       const tocados = Object.entries(priced)
         .filter(([mla, e]) => e && (e.ts || 0) >= desde && /^MLA/i.test(mla));
       console.log(`=== PRECIOS QUE TOCÓ EL ROBOT SOLO en las últimas ${HS} h · ${tocados.length} publicaciones ===`);
-      console.log(`Meta guardada hoy: ${(META * 100).toFixed(0)}% · SOLO LECTURA, no se toca nada en ML\n`);
+      console.log(`Meta guardada hoy: ${(META * 100).toFixed(0)}% · ${BAJAR ? `MODO CORRECCIÓN → destino "${DEST}"` : 'SOLO LECTURA, no se toca nada en ML'}\n`);
       if (!tocados.length) { console.log('Ninguna. El robot no subió precios solo en ese lapso.'); return; }
       const links = (await db.get('cyc/mllinks')) || {};
       const vp = (await db.get('cyc/ventaprod')) || {};
@@ -1284,14 +1324,24 @@ async function main() {
           const com = await feeAt(site, precio, lt, cat, t.access_token);
           if (com == null) { sinDato.push({ label, mla, nom, why: 'ML no devolvió la comisión' }); continue; }
           const ventas = (vtaMla[mla] && vtaMla[mla].length) ? vtaMla[mla] : (vtaProd[p.id] || []);
-          let envio = Infinity;
+          // OJO con la asimetría: para SUBIR precios se usa el envío MÁS BARATO (optimista, así no se
+          // sube de más). Acá se BAJA, y ahí el error caro es el otro: si subestimo el envío, bajo
+          // demasiado y se pierde plata en cada venta. Por eso acá se usa el envío MÁS CARO visto.
+          // Si aun con el peor envío el margen sigue arriba de la meta, bajar es seguro.
+          let envio = -Infinity, envioMin = Infinity;
           for (const pv of [...new Set(ventas.map((v) => Math.round(v.tot)))].slice(-6)) {
             const cv = await feeAt(site, pv, lt, cat, t.access_token);
             if (cv == null) continue;
-            for (const v of ventas) { if (Math.round(v.tot) === pv) { const x = v.tot - v.net - cv; if (x < envio) envio = x; } }
+            for (const v of ventas) {
+              if (Math.round(v.tot) !== pv) continue;
+              const x = v.tot - v.net - cv;
+              if (x > envio) envio = x;
+              if (x < envioMin) envioMin = x;
+            }
           }
           if (!isFinite(envio)) { sinDato.push({ label, mla, nom, why: 'no pude deducir el envío' }); continue; }
           if (envio < 0) envio = 0;
+          if (!isFinite(envioMin) || envioMin < 0) envioMin = 0;
           const neto = precio - com - envio;
           const mlx = precio * m;
           const mg = (neto - costo - mlx) / (costo + mlx);
@@ -1307,12 +1357,15 @@ async function main() {
               P = Pn; comP = c2;
             }
           }
-          const fila = { label, mla, nom, precio, mg: mg * 100, deb: Math.ceil(P / 10) * 10, puso: e.to || 0, cuando: new Date(e.ts).toISOString().slice(0, 16).replace('T', ' '), nVar: vars.length };
+          const fila = { label, mla, nom, precio, mg: mg * 100, deb: Math.ceil(P / 10) * 10, puso: e.to || 0, cuando: new Date(e.ts).toISOString().slice(0, 16).replace('T', ' '), nVar: vars.length, tok: t.access_token, prod: p.name || '', com, envio, envioMin, costo, mlx, neto };
           fila.sobra = fila.precio - fila.deb;
           if (mg > META + 0.03) pasados.push(fila); else bien.push(fila);
         }
       }
-      const ln = (f) => `  ${String(Math.round(f.mg)).padStart(4)}% · ${money(Math.round(f.precio)).padStart(10)} · debería ser ${money(f.deb).padStart(10)} (${f.sobra >= 0 ? '+' : ''}${money(Math.round(f.sobra))}) · ${f.label.padEnd(8)} · ${f.mla} · ${f.nom}${f.nVar ? ' [variantes]' : ''}\n        el robot lo puso en ${money(f.puso)} el ${f.cuando} UTC`;
+      const ln = (f) => `  ${String(Math.round(f.mg)).padStart(4)}% · ${money(Math.round(f.precio)).padStart(10)} · debería ser ${money(f.deb).padStart(10)} (${f.sobra >= 0 ? '+' : ''}${money(Math.round(f.sobra))}) · ${f.label.padEnd(8)} · ${f.mla} · ${f.nom}${f.nVar ? ' [variantes]' : ''}\n`
+        + `        el robot lo puso en ${money(f.puso)} el ${f.cuando} UTC\n`
+        + `        precio ${money(Math.round(f.precio))} − comisión ${money(Math.round(f.com))} − envío ${money(Math.round(f.envio))} (el PEOR visto; el mejor fue ${money(Math.round(f.envioMin))}) = neto ${money(Math.round(f.neto))}\n`
+        + `        costo mercadería ${money(Math.round(f.costo))} + cargo ML ${money(Math.round(f.mlx))} = ${money(Math.round(f.costo + f.mlx))}`;
       pasados.sort((a, b) => b.mg - a.mg);
       console.log(`── SE PASARON DE LA META (${(META * 100).toFixed(0)}% + 3 de tolerancia) · ${pasados.length} ──`);
       pasados.forEach((f) => console.log(ln(f)));
@@ -1320,7 +1373,27 @@ async function main() {
       bien.sort((a, b) => a.mg - b.mg).forEach((f) => console.log(ln(f)));
       console.log(`\n── SIN DATOS · ${sinDato.length} ──`);
       sinDato.forEach((f) => console.log(`  ${f.label.padEnd(8)} · ${f.mla} · ${f.nom} · ${f.why}`));
-      console.log(`\nSOLO LECTURA: no se tocó ningún precio en ML.`);
+      if (!BAJAR) { console.log(`\nSOLO LECTURA: no se tocó ningún precio en ML.`); return; }
+      // ── Corregir en ML: solo los que se pasaron, sin variantes (esas van a mano) ──
+      const objetivo = (DEST === 'todos' ? pasados
+        : /^MLA/i.test(DEST) ? pasados.filter((f) => f.mla === DEST)
+        : pasados.filter((f) => (f.nom + ' ' + f.prod).toLowerCase().includes(DEST.toLowerCase())))
+        .filter((f) => !f.nVar);
+      if (!objetivo.length) { console.log(`\nNo hay nada para corregir con destino "${DEST}".`); return; }
+      console.log(`\n══ CORRIGIENDO ${objetivo.length} precio${objetivo.length > 1 ? 's' : ''} en ML (bajando a la meta ${(META * 100).toFixed(0)}%) ══`);
+      let okN = 0, errN = 0; const hechos = [];
+      for (const f of objetivo) {
+        const r = DRY ? { ok: false, err: 'DRY' } : await setPriceTo(f.mla, null, f.deb, f.tok);
+        if (r.ok) { okN++; hechos.push({ nom: f.nom, from: r.from, to: r.to }); console.log(`  ✓ ${f.mla} · ${f.nom}: ${money(r.from)} → ${money(r.to)}`); }
+        else { errN++; console.log(`  ✗ ${f.mla} · ${f.nom}: no se pudo (${r.err})`); }
+      }
+      console.log(`\nListo: ${okN} corregidos, ${errN} con error.`);
+      if (hechos.length) {
+        const lista = hechos.map((h) => `· ${h.nom}: ${money(h.from)} → <b>${money(h.to)}</b>`).join('\n');
+        await sendTelegram(`🔽 <b>Precios corregidos para abajo</b>\n`
+          + `Habían quedado altos porque el robot venía con la meta vieja (42%). Los llevé a la meta nueva de ${(META * 100).toFixed(0)}%.\n\n${lista}`
+          + (errN ? `\n\n⚠️ ${errN} no se pudieron corregir.` : ''));
+      }
       return;
     }
     // BILLING_PROBE=margendia[:YYYY_MM_DD] → por qué el margen del día da lo que da. Muestra venta por
