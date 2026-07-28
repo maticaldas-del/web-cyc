@@ -1084,6 +1084,78 @@ async function main() {
       }
       return;
     }
+    // BILLING_PROBE=chkcosto[:<YYYY_MM,...>] → COMPARA el costo que usa el ROBOT contra el que usa la
+    // APP, producto por producto. La app prioriza RECALCULAR (costUSD × (1+%reclamos) + envío) y solo
+    // usa costFullUSD si el producto no tiene envío/devPct/reclamos; el robot hace lo CONTRARIO
+    // (prioriza costFullUSD guardado). Si ese campo quedó viejo, el robot ve un costo distinto y por
+    // lo tanto un margen distinto. Esto muestra en cuántos productos pasa y cuánto pesa.
+    if (String(process.env.BILLING_PROBE || '').startsWith('chkcosto')) {
+      const pickYM = (String(process.env.BILLING_PROBE).split(':')[1] || '2026_06,2026_07').split(',').map((s) => s.trim()).filter(Boolean);
+      const vp = (await db.get('cyc/ventaprod')) || {};
+      const fin = (await db.get('cyc/finanzas')) || {};
+      const tc = parseFloat(fin.tipo_cambio) || 1500;
+      // Reclamos y ventas por producto (mismo criterio que _statsFor de la app: TODO el historial).
+      const st = {};
+      for (const ents of Object.values(vp)) {
+        for (const v of Object.values(ents || {})) {
+          if (!v || !v.prodId) continue;
+          const s = st[v.prodId] || (st[v.prodId] = { rec: 0, ven: 0 });
+          const esRec = v.cancelada && (v.tipoCancelacion === 'reclamo' || v.tipoCancelacion === 'perdida');
+          if (esRec) s.rec += v.qty || 1;
+          else if (!v.cancelada) s.ven += v.qty || 1;
+        }
+      }
+      // Ventas del período para saber cuánto pesa cada producto.
+      const vpp = {};
+      for (const [k, ents] of Object.entries(vp)) {
+        if (!pickYM.includes(k.slice(0, 7))) continue;
+        for (const v of Object.values(ents || {})) {
+          if (!v || v.cancelada || !v.prodId) continue;
+          const b = vpp[v.prodId] || (vpp[v.prodId] = { n: 0, qty: 0 });
+          b.n++; b.qty += v.qty || 1;
+        }
+      }
+      const rows = [];
+      for (const p of products) {
+        const cu = parseFloat(p.costUSD) || 0;
+        const ship = parseFloat(p.shipUSD) || 0;
+        const dpStored = parseFloat(p.devPct) || 0;
+        const cfu = (p.costFullUSD != null && p.costFullUSD !== '') ? (parseFloat(p.costFullUSD) || 0) : null;
+        const s = st[p.id] || { rec: 0, ven: 0 };
+        const devLive = s.rec > 0 && s.ven > 0 ? Math.round((s.rec / s.ven) * 1000) / 10 : 0;
+        // ROBOT: costFullUSD si existe; si no, recalcula con devPct guardado.
+        const robot = cfu != null ? cfu : cu * (1 + dpStored / 100) + ship;
+        // APP: recalcula con reclamos EN VIVO si el producto tiene envío/devPct/reclamos; si no, costFullUSD.
+        const usaRecalc = (p.shipUSD != null) || (p.devPct != null) || s.rec > 0;
+        const app = usaRecalc ? Math.round((cu * (1 + devLive / 100) + ship) * 100) / 100 : (cfu != null ? cfu : cu);
+        if (!robot && !app) continue;
+        const gapPct = app > 0 ? (robot - app) / app * 100 : 0;
+        const v = vpp[p.id] || { n: 0, qty: 0 };
+        rows.push({ nom: p.name || p.id, cu, ship, dpStored, devLive, cfu, robot, app, gapPct, ventas: v.n, qty: v.qty, rec: s.rec, ven: s.ven });
+      }
+      const malos = rows.filter((r) => Math.abs(r.gapPct) >= 1).sort((a, b) => Math.abs(b.gapPct) - Math.abs(a.gapPct));
+      const conVenta = rows.filter((r) => r.ventas > 0);
+      const malosConVenta = malos.filter((r) => r.ventas > 0);
+      console.log(`=== COSTO: ROBOT vs APP · ${rows.length} productos (${conVenta.length} con ventas en ${pickYM.join(', ')}) ===`);
+      console.log(`Robot = costFullUSD guardado (o recalculo con devPct) · App = costUSD × (1+%reclamos en vivo) + envío\n`);
+      console.log(`DIFERENCIAS ≥1%: ${malos.length} de ${rows.length} productos (${malosConVenta.length} tienen ventas)\n`);
+      console.log(`  gap  robotUS$  appUS$  costUS$  envío  devGuard  devVivo  reclamos/ventas  vtas  producto`);
+      for (const r of malos.slice(0, 45)) {
+        console.log(`  ${(r.gapPct >= 0 ? '+' : '') + r.gapPct.toFixed(1) + '%'}`.padEnd(9)
+          + `${r.robot.toFixed(2)}`.padStart(9) + `${r.app.toFixed(2)}`.padStart(8)
+          + `${r.cu.toFixed(2)}`.padStart(9) + `${r.ship.toFixed(2)}`.padStart(7)
+          + `${r.dpStored.toFixed(1)}%`.padStart(9) + `${r.devLive.toFixed(1)}%`.padStart(9)
+          + `   ${r.rec}/${r.ven}`.padEnd(12) + `${r.ventas}`.padStart(5) + `  ${r.nom.slice(0, 32)}`);
+      }
+      if (malos.length > 45) console.log(`  … y ${malos.length - 45} más`);
+      const pesado = malosConVenta.reduce((s, r) => s + r.ventas, 0);
+      const totalV = conVenta.reduce((s, r) => s + r.ventas, 0);
+      console.log(`\nPeso: ${pesado} de ${totalV} ventas del período (${totalV ? (pesado / totalV * 100).toFixed(0) : 0}%) son de productos con el costo desalineado.`);
+      const sobre = malosConVenta.filter((r) => r.gapPct > 0).length, bajo = malosConVenta.filter((r) => r.gapPct < 0).length;
+      console.log(`De esos: ${sobre} el robot los ve MÁS CAROS que la app (margen subestimado → subiría de más)`);
+      console.log(`         ${bajo} el robot los ve MÁS BARATOS (margen sobreestimado → no subiría lo que hace falta)`);
+      return;
+    }
     // BILLING_PROBE=precios:<piso>[:<YYYY_MM,...>] → LISTA (solo lee, NO escribe nada en ML) qué
     // precio habría que ponerle a cada publicación para que quede en el piso de margen pedido.
     // Margen medido como en la app: (neto − costo mercadería − cargo ML) ÷ (costo + cargo ML).
