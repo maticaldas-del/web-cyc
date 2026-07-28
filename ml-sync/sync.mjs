@@ -1606,6 +1606,100 @@ async function main() {
       }
       return;
     }
+    // BILLING_PROBE=chkrot[:<palabra>] → ¿EL "X DÍAS CUBIERTOS" DE LA WEB ES REAL?
+    // La web calcula  diasCubiertos = stock / vendidos30d × 30  usando el stock guardado en
+    // cyc/inventory. Este probe compara ese stock guardado contra el stock EN VIVO de ML, cuenta
+    // por cuenta, y recalcula los días cubiertos con los dos números. Si no coinciden, la web está
+    // decidiendo reposición con un stock viejo.
+    // Además marca dos cosas que el número global esconde: stock repartido entre cuentas (una
+    // cuenta puede estar en CERO aunque el total dé bien) y productos con poco historial de ventas.
+    if (String(process.env.BILLING_PROBE || '').startsWith('chkrot')) {
+      const kw = (String(process.env.BILLING_PROBE).split(':')[1] || '').trim().toLowerCase();
+      const vp = (await db.get('cyc/ventaprod')) || {};
+      const links = (await db.get('cyc/mllinks')) || {};
+      const invWeb = (await db.get('cyc/inventory')) || {};
+      const pIdx = {}; for (const p of products) pIdx[p.id] = p;
+      const desde = Date.now() - 30 * 864e5;
+      // ventas de los últimos 30 días por producto, y primera venta (para medir el historial)
+      const u30 = {}, primera = {};
+      for (const [k, ents] of Object.entries(vp)) {
+        const ts = Date.parse(k.slice(0, 10).replace(/_/g, '-'));
+        if (!isFinite(ts)) continue;
+        for (const v of Object.values(ents || {})) {
+          if (!v || v.cancelada || !v.prodId) continue;
+          if (ts >= desde) u30[v.prodId] = (u30[v.prodId] || 0) + (v.qty || 1);
+          if (!primera[v.prodId] || ts < primera[v.prodId]) primera[v.prodId] = ts;
+        }
+      }
+      // stock EN VIVO de ML, por producto y por cuenta
+      const vivoProd = {}, vivoCta = {};
+      for (const label of labels) {
+        const acc = accounts[label];
+        if (!acc?.refresh_token) continue;
+        let t; try { t = await mlRefresh(ML_CLIENT_ID, ML_CLIENT_SECRET, acc.refresh_token); } catch { continue; }
+        await db.patch('mlapi/tokens/' + label, { refresh_token: t.refresh_token, updated_ts: Date.now() });
+        const ids = Object.entries(links)
+          .filter(([mla, e]) => e && e.cuenta === label && !e.ignored && e.prodId && /^MLA/i.test(mla))
+          .map(([mla]) => mla);
+        for (let k = 0; k < ids.length; k += 20) {
+          let arr;
+          try { arr = await mlGet('/items?ids=' + ids.slice(k, k + 20).join(',') + '&attributes=id,status,available_quantity,variations', t.access_token); } catch { continue; }
+          for (const row of (arr || [])) {
+            const b = row.body || {}; const mla = b.id; if (!mla || !links[mla]) continue;
+            if (b.status !== 'active') continue;
+            const pid = links[mla].prodId; if (!pid) continue;
+            const vars = Array.isArray(b.variations) ? b.variations : [];
+            const st = vars.length ? vars.reduce((s, v) => s + (v.available_quantity || 0), 0) : (b.available_quantity || 0);
+            vivoProd[pid] = (vivoProd[pid] || 0) + st;
+            vivoCta[pid + '__' + label] = (vivoCta[pid + '__' + label] || 0) + st;
+          }
+        }
+      }
+      // stock que tiene guardado la web (lo que usa para el cálculo)
+      const webProd = {};
+      for (const [k, v] of Object.entries(invWeb)) {
+        if (k.includes('__v__')) continue; // las variantes ya están sumadas en el total del producto
+        const pid = k.split('__')[0];
+        webProd[pid] = (webProd[pid] || 0) + (Number(v) || 0);
+      }
+      const filas = [];
+      for (const p of products) {
+        if (kw && !(p.name || '').toLowerCase().includes(kw)) continue;
+        const vend = u30[p.id] || 0;
+        const vivo = vivoProd[p.id] != null ? vivoProd[p.id] : null;
+        const web = webProd[p.id] || 0;
+        if (vend === 0 && !vivo && !web) continue;
+        const diasHist = primera[p.id] ? Math.round((Date.now() - primera[p.id]) / 864e5) : null;
+        const dCubWeb = vend > 0 ? Math.round(web / vend * 30) : null;
+        const dCubVivo = (vend > 0 && vivo != null) ? Math.round(vivo / vend * 30) : null;
+        const ctas = labels.map((l) => ({ l, st: vivoCta[p.id + '__' + l] })).filter((x) => x.st != null);
+        filas.push({ nom: p.name || p.id, vend, vivo, web, dCubWeb, dCubVivo, diasHist, ctas });
+      }
+      const dif = filas.filter((f) => f.vivo != null && f.vivo !== f.web);
+      console.log(`=== ¿EL STOCK DE LA WEB COINCIDE CON ML? · ${filas.length} productos ===`);
+      console.log(`La web calcula los días cubiertos con el stock guardado. Acá se compara contra ML en vivo.\n`);
+      console.log(`── ❌ NO COINCIDEN · ${dif.length} ──`);
+      dif.sort((a, b) => Math.abs(b.vivo - b.web) - Math.abs(a.vivo - a.web)).slice(0, 30).forEach((f) => console.log(
+        `  web ${String(f.web).padStart(4)} u vs ML ${String(f.vivo).padStart(4)} u`
+        + ` · días cubiertos: web dice ${f.dCubWeb != null ? f.dCubWeb + 'd' : '—'}, real ${f.dCubVivo != null ? f.dCubVivo + 'd' : '—'}`
+        + ` · ${f.vend} vendidos 30d · ${f.nom.slice(0, 34)}`));
+      if (dif.length > 30) console.log(`  … y ${dif.length - 30} más`);
+      const ok = filas.filter((f) => f.vivo != null && f.vivo === f.web);
+      console.log(`\n── ✅ COINCIDEN · ${ok.length} ──`);
+      // Stock repartido: el total alcanza pero alguna cuenta está en cero y ahí no se vende nada.
+      const repartido = filas.filter((f) => f.vend > 0 && f.ctas.length > 1 && f.ctas.some((c) => c.st === 0) && f.ctas.some((c) => c.st > 0));
+      console.log(`\n── ⚠️ STOCK REPARTIDO: el total engaña · ${repartido.length} ──`);
+      console.log(`   El total da bien pero hay cuentas en CERO: ahí la publicación no vende aunque "haya stock".\n`);
+      repartido.slice(0, 20).forEach((f) => console.log(
+        `  ${String(f.vivo).padStart(4)} u en total · ${f.ctas.map((c) => `${c.l}:${c.st}`).join(' · ')} · ${f.nom.slice(0, 34)}`));
+      // Historial corto: la web multiplica para estimar 30 días y puede exagerar la demanda.
+      const corto = filas.filter((f) => f.vend > 0 && f.diasHist != null && f.diasHist < 30);
+      console.log(`\n── ⚠️ POCO HISTORIAL (la web extrapola y puede exagerar) · ${corto.length} ──`);
+      corto.sort((a, b) => a.diasHist - b.diasHist).slice(0, 20).forEach((f) => console.log(
+        `  ${f.diasHist} días de historial · ${f.vend} vendidos · ${f.vivo != null ? f.vivo : '?'} u stock · ${f.nom.slice(0, 34)}`));
+      console.log(`\nSOLO LECTURA.`);
+      return;
+    }
     // BILLING_PROBE=variantes:<palabra>[:<días>] → UN PRODUCTO, VARIANTE POR VARIANTE.
     // Caso Victoria's Secret / Paulvic: un mismo producto publicado muchas veces, una por aroma.
     // Mismo costo, distinto precio, y cada uno rota distinto. Mirar el promedio del producto no
