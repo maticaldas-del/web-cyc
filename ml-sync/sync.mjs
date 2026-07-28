@@ -202,23 +202,60 @@ async function nivelarGrupos(db, links, tokensRun, DRY, pName, sellerIds) {
     // significa una publicación que se queda a otro precio sin que nadie se entere.
     const vivos = []; const sinDueno = [], inactivas = [], sinPrecio = [];
     const vistas = new Set();
-    for (let k = 0; k < miembros.length; k += 20) {
-      const lote = miembros.slice(k, k + 20);
+    // CADA publicación se lee con el token de SU dueño. Leerlas todas con un solo token parecía
+    // más simple, pero ML devuelve mal el estado de las publicaciones de otro vendedor: las de
+    // Luciana salían como "pausadas" y el grupo terminaba nivelando solo las de Adriana.
+    // Las que no tienen cuenta cargada se leen con cualquier token (solo para saber de quién son
+    // por el seller_id) y después se releen con el token del dueño.
+    const lotes = [];
+    const porCta = {};
+    for (const mb of miembros) (porCta[mb.cuenta || '?'] = porCta[mb.cuenta || '?'] || []).push(mb);
+    for (const [cta, arr] of Object.entries(porCta)) {
+      const tok = tokensRun[cta] || algunTok;
+      for (let k = 0; k < arr.length; k += 20) lotes.push({ tok, lote: arr.slice(k, k + 20) });
+    }
+    const pendientes = []; // sin cuenta cargada: hay que releerlas con el token del dueño
+    for (const { tok, lote } of lotes) {
       let res;
-      try { res = await mlGet('/items?ids=' + lote.map((x) => x.mla).join(',') + '&attributes=id,status,price,variations,seller_id', algunTok); } catch { continue; }
+      try { res = await mlGet('/items?ids=' + lote.map((x) => x.mla).join(',') + '&attributes=id,status,price,variations,seller_id', tok); } catch { continue; }
       for (const row of (res || [])) {
         const b = row.body || {};
         if (!b.id) continue;
-        vistas.add(b.id);
         const mb = lote.find((x) => x.mla === b.id);
         const title = mb ? mb.title : b.id;
+        const due = porSeller[String(b.seller_id)];
+        if (!due) { vistas.add(b.id); sinDueno.push(`${title.slice(0, 30)} (seller ${b.seller_id})`); continue; }
+        // Si la leí con un token que no es el del dueño, el estado y el precio no son confiables.
+        if (due.tok !== tok) { pendientes.push({ ...mb, cuenta: due.label, tok: due.tok }); continue; }
+        vistas.add(b.id);
         if (b.status !== 'active') { inactivas.push(`${title.slice(0, 30)} (${b.status})`); continue; }
         const vars = Array.isArray(b.variations) ? b.variations : [];
         const precio = vars.length ? Math.max(...vars.map((v) => v.price || 0)) : (b.price || 0);
         if (!precio) { sinPrecio.push(title.slice(0, 30)); continue; }
-        const due = porSeller[String(b.seller_id)];
-        if (!due) { sinDueno.push(`${title.slice(0, 30)} (seller ${b.seller_id})`); continue; }
         vivos.push({ mla: b.id, cuenta: due.label, title, precio, vars, tok: due.tok });
+      }
+    }
+    // Segunda vuelta: las que no tenían cuenta, ahora leídas con el token de su dueño real.
+    const porDue = {};
+    for (const pd of pendientes) (porDue[pd.cuenta] = porDue[pd.cuenta] || []).push(pd);
+    for (const [cta, arr] of Object.entries(porDue)) {
+      const tok = tokensRun[cta];
+      for (let k = 0; k < arr.length; k += 20) {
+        const lote = arr.slice(k, k + 20);
+        let res;
+        try { res = await mlGet('/items?ids=' + lote.map((x) => x.mla).join(',') + '&attributes=id,status,price,variations', tok); } catch { continue; }
+        for (const row of (res || [])) {
+          const b = row.body || {};
+          if (!b.id) continue;
+          vistas.add(b.id);
+          const mb = lote.find((x) => x.mla === b.id);
+          const title = mb ? mb.title : b.id;
+          if (b.status !== 'active') { inactivas.push(`${title.slice(0, 30)} (${b.status})`); continue; }
+          const vars = Array.isArray(b.variations) ? b.variations : [];
+          const precio = vars.length ? Math.max(...vars.map((v) => v.price || 0)) : (b.price || 0);
+          if (!precio) { sinPrecio.push(title.slice(0, 30)); continue; }
+          vivos.push({ mla: b.id, cuenta: cta, title, precio, vars, tok });
+        }
       }
     }
     const noLeidas = miembros.filter((mb) => !vistas.has(mb.mla));
