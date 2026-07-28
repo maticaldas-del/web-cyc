@@ -2067,6 +2067,12 @@ const costFullP=p=>{const tc=curTC();return costFullUSDof(p)*tc;};
 // provincias con distinta alícuota de IIBB. Editá estos números si cambia la carga impositiva.
 const ML_EXTRA_PCT={adriana:4.07,luciana:4.37,ayelen:5.95,matias:4.58};
 const mlExtraPct=cuenta=>{const v=ML_EXTRA_PCT[(cuenta||'').toLowerCase()];return v!=null?v:4.8;};
+// Retiro de los dueños: desde agosto 2026 es un MONTO FIJO mensual ($1.800.000 = $900.000 cada uno,
+// que es la tarifa de $10.000/hora × 90 hs × 2), NO un % del neto. Antes de esa fecha se sigue
+// usando el 15% del neto para no desarmar el historial de mayo/junio/julio. Si el mes tiene el
+// retiro anotado a mano en Finanzas, ESE manda siempre — esto es solo el supuesto cuando falta.
+const RETIRO_FIJO=1800000, RETIRO_FIJO_DESDE='2026_08';
+const retiroDefMes=(ym,neto)=>(ym&&ym>=RETIRO_FIJO_DESDE)?RETIRO_FIJO:Math.round((neto||0)*0.15);
 const sid=s=>s.replace(/[^a-z0-9]/gi,'_');
 const ts2s=t=>{const d=new Date(t);return d.toLocaleDateString('es-AR')+' '+d.toLocaleTimeString('es-AR',{hour:'2-digit',minute:'2-digit'});};
 const invKey=(pid,loc)=>pid+'__'+sid(loc);
@@ -2963,11 +2969,11 @@ function renderRetirosPorMes(){
     .sort().reverse().slice(0,12);
   if(!months.length){el.innerHTML='';return;}
   const rows=months.map(ym=>{
-    const md=_netoMesData(ym);const sug=Math.round((md.tot||0)*0.15);
+    const md=_netoMesData(ym);const sug=retiroDefMes(ym,md.tot);
     const parts=ym.split('_');const lbl=(MONTHS[parseInt(parts[1])-1]||parts[1])+' '+parts[0];
     return `<div style="display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid var(--border)">
       <span style="font-size:.72rem;min-width:96px;font-weight:600">${lbl}</span>
-      <span style="font-size:.6rem;color:var(--amber);flex:1;min-width:80px">falta cargar · 15% = ${fmt(sug)}</span>
+      <span style="font-size:.6rem;color:var(--amber);flex:1;min-width:80px">falta cargar · sugerido ${fmt(sug)}</span>
       <input class="fin-input money" type="text" inputmode="numeric" value="" placeholder="${fmt(sug)}" onchange="saveRetiroMesYM('${ym}',this.value)" style="width:130px">
     </div>`;
   }).join('');
@@ -5518,10 +5524,11 @@ function metGetValDay(key,acct,field){
     if(field==='ganancia')return neto-costo;
     const ym=key.substring(0,7);
     const md=_netoMesData(ym);
-    const rm=_retiroMesVal(ym); // retiro real anotado del mes (o null = usar 15%)
-    // Si anotaste el retiro real del mes, lo repartimos por el neto de cada día/cuenta
-    // (así la suma del mes da exacto el monto que pusiste). Si no, 15% del neto.
-    const retiro=rm!=null?(md.tot>0?rm*(neto/md.tot):0):neto*0.15;
+    const rm=_retiroMesVal(ym); // retiro real anotado del mes (o null = usar el supuesto)
+    // El retiro del mes —el anotado, o el supuesto (monto fijo desde ago-2026; 15% antes)— se
+    // reparte por el neto de cada día/cuenta, así la suma del mes da exacto ese monto.
+    const rMes=rm!=null?rm:retiroDefMes(ym,md.tot);
+    const retiro=md.tot>0?rMes*(neto/md.tot):0;
     if(field==='retiros')return retiro;
     if(field==='gananciaCYC'){
       // ganancia − retiros − parte de los gastos del mes (repartidos por neto de cada cuenta) = lo que queda para CYC
@@ -6163,7 +6170,7 @@ function _puntGananciaMes(ym){
   let neto=0,costo=0;
   keys.forEach(k=>Object.values(state.ventaprod[k]||{}).forEach(v=>{neto+=(v.neto||0);costo+=efectivoCostoVP({...v,_dateKey:k});}));
   const rm=_retiroMesVal(ym);
-  const retiro=rm!=null?rm:Math.round(neto*puntCfg(ym).retiroFrac); // real si lo anotaste, si no el 15%
+  const retiro=rm!=null?rm:retiroDefMes(ym,neto); // real si lo anotaste; si no, el supuesto del mes
   const gastos=_gastosMes(ym); // gastos cargados del mes, o el estimado si ese mes no tiene
   return {neto,costo,retiro,gastos,ganancia:(neto-retiro)-costo-gastos};
 }
@@ -6495,7 +6502,7 @@ function renderResumen_page(){
   const netoML=vpNetoSum();
   const costoMerch=vpCostoSum();
   const _rmMonth=_isMonth?_retiroMesVal(mesKey):null;
-  const retiro=_rmMonth!=null?_rmMonth:Math.round(netoML*RETIRO_PCT);
+  const retiro=_rmMonth!=null?_rmMonth:(_isMonth?retiroDefMes(mesKey,netoML):Math.round(netoML*RETIRO_PCT));
   const retMitad=Math.round(retiro/2);
   const quedaML=netoML-retiro;
   const gananciaBruta=quedaML-costoMerch;
@@ -6507,7 +6514,7 @@ function renderResumen_page(){
   const costoMerchP=_vpEfectCosto(prevPeriodKeys);
   const _isMonthP=(resScopeMode==='mes'&&!!prevMesKey);
   const _rmMonthP=_isMonthP?_retiroMesVal(prevMesKey):null;
-  const retiroP=_rmMonthP!=null?_rmMonthP:Math.round(netoMLp*RETIRO_PCT);
+  const retiroP=_rmMonthP!=null?_rmMonthP:(_isMonthP?retiroDefMes(prevMesKey,netoMLp):Math.round(netoMLp*RETIRO_PCT));
   const gastosP=_isMonthP?_gastosMes(prevMesKey):_cmpTot(prevPeriodKeys._cmpKeys||[],'gasto');
   const gananciaRealP=(netoMLp-retiroP)-costoMerchP-gastosP;
 
@@ -6920,7 +6927,7 @@ document.addEventListener('click',e=>{if(fnavOpen&&!e.target.closest('#fnav-btn'
         <span style="font-size:.75rem;color:var(--muted)">Si no ves los últimos cambios, forzá la actualización</span>
         <button class="btn" style="background:rgba(56,189,248,.12);color:var(--blue);border:1px solid rgba(56,189,248,.3)" onclick="actualizarApp()">🔄 Buscar actualizaciones</button>
       </div>
-      <div style="font-size:.66rem;color:var(--muted);margin-top:12px">CYC · Versión 5.5</div>
+      <div style="font-size:.66rem;color:var(--muted);margin-top:12px">CYC · Versión 5.6</div>
     </div>
 
     <div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:18px 20px;margin-bottom:14px">
