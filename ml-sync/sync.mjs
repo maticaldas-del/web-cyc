@@ -1093,6 +1093,51 @@ async function main() {
       }
       return;
     }
+    // BILLING_PROBE=envio:<palabra> → averigua A PARTIR DE QUÉ PRECIO ML obliga a poner envío gratis
+    // (que lo paga el vendedor) y cuánto cuesta. Es el dato que falta para no proponer una suba que
+    // cruce ese umbral sin darse cuenta: ahí el margen se desploma en vez de mejorar.
+    // Consulta /users/{id}/shipping_options/free a varios precios y muestra la respuesta cruda.
+    if (String(process.env.BILLING_PROBE || '').startsWith('envio')) {
+      const kw = (String(process.env.BILLING_PROBE).split(':')[1] || '').trim().toLowerCase();
+      const links = (await db.get('cyc/mllinks')) || {};
+      let crudo = false, vistos = 0;
+      for (const label of labels) {
+        if (vistos >= 3) break;
+        const acc = accounts[label]; if (!acc?.refresh_token || !acc.seller_id) continue;
+        let t; try { t = await mlRefresh(ML_CLIENT_ID, ML_CLIENT_SECRET, acc.refresh_token); } catch { continue; }
+        await db.patch('mlapi/tokens/' + label, { refresh_token: t.refresh_token, updated_ts: Date.now() });
+        const ids = Object.entries(links)
+          .filter(([mla, e]) => e && e.cuenta === label && !e.ignored && e.prodId && /^MLA/i.test(mla)
+            && (!kw || (e.title || '').toLowerCase().includes(kw)))
+          .map(([mla]) => mla).slice(0, 3);
+        for (const mla of ids) {
+          if (vistos >= 3) break;
+          let it; try { it = await mlGet('/items/' + mla + '?attributes=id,title,price,status,shipping,listing_type_id,category_id,site_id', t.access_token); } catch { continue; }
+          if (it.status !== 'active') continue;
+          console.log(`── ${label} · ${mla} · ${(it.title || '').slice(0, 44)}`);
+          console.log(`   precio HOY ${money(Math.round(it.price))} · tipo ${it.listing_type_id} · categoría ${it.category_id}`);
+          console.log(`   shipping del item: ${JSON.stringify(it.shipping || {})}`);
+          const lt = (it.shipping && it.shipping.logistic_type) || 'fulfillment';
+          // Precios de prueba alrededor del umbral sospechado (entre $32.000 y $57.000).
+          const pruebas = [...new Set([Math.round(it.price), 25000, 31999, 33020, 36000, 40000, 57000].map(Number))].sort((a, b) => a - b);
+          for (const pr of pruebas) {
+            const qs = `item_price=${pr}&listing_type_id=${it.listing_type_id}&mode=me2&condition=new`
+              + `&logistic_type=${lt}&category_id=${it.category_id}&currency_id=ARS&verbose=true`;
+            let r = null, err = '';
+            try { r = await mlGet(`/users/${acc.seller_id}/shipping_options/free?${qs}`, t.access_token); }
+            catch (e) { err = String(e.message || e).slice(0, 150); }
+            if (r && !crudo) { console.log('\n   RESPUESTA CRUDA DE ML (para verificar los campos):\n' + JSON.stringify(r, null, 2).split('\n').map((x) => '   ' + x).join('\n') + '\n'); crudo = true; }
+            const costo = r?.coverage?.all_country?.list_cost ?? r?.options?.[0]?.list_cost ?? null;
+            const bill = r?.coverage?.all_country?.billable_weight ?? null;
+            console.log(`   precio ${money(pr).padStart(11)} → envío gratis: ${costo != null ? money(Math.round(costo)) : (err ? 'ERROR ' + err : 'no aplica / sin costo')}${bill != null ? ' · peso facturable ' + bill : ''}`);
+          }
+          console.log('');
+          vistos++;
+        }
+      }
+      if (!vistos) console.log('No encontré publicaciones activas que coincidan.');
+      return;
+    }
     // BILLING_PROBE=mlfee:<palabra> → le pregunta a ML cuánto cobra de comisión a un precio dado
     // (endpoint oficial /sites/MLA/listing_prices) y lo compara contra lo que realmente pasó en la
     // última venta de esa publicación. De ahí sale el ENVÍO (que es un monto fijo, no un %):
