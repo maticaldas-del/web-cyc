@@ -1606,6 +1606,116 @@ async function main() {
       }
       return;
     }
+    // BILLING_PROBE=visitas[:<días>] → ¿POR QUÉ NO VENDE? ¿PRECIO O NADIE LO VE?
+    //
+    // Hasta ahora, cuando un producto no vendía no sabíamos el motivo y la única palanca que se nos
+    // ocurría era bajar el precio. Eso es adivinar: si el problema era que nadie lo encuentra,
+    // bajar el precio regala margen y no cambia nada.
+    // Con las visitas de ML se separan dos problemas opuestos:
+    //   · LO VEN Y NO COMPRAN  → muchas visitas, poca conversión → precio / competencia / fotos
+    //   · NO LO VEN            → pocas visitas → posicionamiento, título, categoría
+    // El corte no es un número inventado: se compara contra la MEDIANA de tu propio catálogo.
+    if (String(process.env.BILLING_PROBE || '').startsWith('visitas')) {
+      const DIAS = parseFloat(String(process.env.BILLING_PROBE).split(':')[1]) || 30;
+      const desde = Date.now() - DIAS * 864e5;
+      const links = (await db.get('cyc/mllinks')) || {};
+      const vp = (await db.get('cyc/ventaprod')) || {};
+      const pIdx = {}; for (const p of products) pIdx[p.id] = p;
+      const uMla = {};
+      for (const [k, ents] of Object.entries(vp)) {
+        const ts = Date.parse(k.slice(0, 10).replace(/_/g, '-'));
+        if (!isFinite(ts) || ts < desde) continue;
+        for (const v of Object.values(ents || {})) {
+          if (!v || v.cancelada || !v.mla) continue;
+          uMla[v.mla] = (uMla[v.mla] || 0) + (v.qty || 1);
+        }
+      }
+      const dFrom = new Date(desde).toISOString().replace(/\.\d+Z$/, '.000-00:00');
+      const dTo = new Date().toISOString().replace(/\.\d+Z$/, '.000-00:00');
+      const filas = [];
+      for (const label of labels) {
+        const acc = accounts[label];
+        if (!acc?.refresh_token) continue;
+        let t; try { t = await mlRefresh(ML_CLIENT_ID, ML_CLIENT_SECRET, acc.refresh_token); } catch { continue; }
+        await db.patch('mlapi/tokens/' + label, { refresh_token: t.refresh_token, updated_ts: Date.now() });
+        const ids = Object.entries(links)
+          .filter(([mla, e]) => e && e.cuenta === label && !e.ignored && e.prodId && /^MLA/i.test(mla))
+          .map(([mla]) => mla);
+        // estado + precio de cada publicación
+        const info = {};
+        for (let k = 0; k < ids.length; k += 20) {
+          let arr;
+          try { arr = await mlGet('/items?ids=' + ids.slice(k, k + 20).join(',') + '&attributes=id,status,price,variations,available_quantity', t.access_token); } catch { continue; }
+          for (const row of (arr || [])) {
+            const b = row.body || {}; if (!b.id) continue;
+            const vars = Array.isArray(b.variations) ? b.variations : [];
+            info[b.id] = {
+              estado: b.status,
+              precio: vars.length ? (vars[0].price || 0) : (b.price || 0),
+              stock: vars.length ? vars.reduce((s, v) => s + (v.available_quantity || 0), 0) : (b.available_quantity || 0),
+            };
+          }
+        }
+        const activos = ids.filter((m) => info[m] && info[m].estado === 'active');
+        // visitas: se pide de a lotes; si el endpoint por rango falla se cae al total simple
+        for (let k = 0; k < activos.length; k += 40) {
+          const lote = activos.slice(k, k + 40);
+          let vis = null;
+          try {
+            vis = await mlGet('/visits/items?ids=' + lote.join(',') + '&date_from=' + encodeURIComponent(dFrom) + '&date_to=' + encodeURIComponent(dTo), t.access_token);
+          } catch {
+            try { vis = await mlGet('/visits/items?ids=' + lote.join(','), t.access_token); } catch { vis = null; }
+          }
+          if (!vis) continue;
+          for (const mla of lote) {
+            const raw = vis[mla];
+            const v = typeof raw === 'number' ? raw : (raw && typeof raw.total_visits === 'number' ? raw.total_visits : null);
+            if (v == null) continue;
+            const e = links[mla] || {};
+            const p = pIdx[e.prodId];
+            filas.push({
+              label, mla, visitas: v, vendidas: uMla[mla] || 0,
+              precio: info[mla].precio, stock: info[mla].stock,
+              nom: (e.variant || e.title || (p && p.name) || mla).slice(0, 38),
+            });
+          }
+        }
+      }
+      if (!filas.length) { console.log('ML no devolvió visitas. Puede que el permiso no esté habilitado en la app.'); return; }
+      if (!DRY) {
+        const upd = {}; for (const f of filas) upd[f.mla] = { v: f.visitas, u: f.vendidas, dias: DIAS, ts: Date.now() };
+        await db.patch('cyc/visitas', upd);
+      }
+      filas.forEach((f) => { f.conv = f.visitas > 0 ? (f.vendidas / f.visitas * 100) : null; });
+      const conVis = filas.filter((f) => f.visitas > 0);
+      const visOrd = conVis.map((f) => f.visitas).sort((a, b) => a - b);
+      const medVis = visOrd[Math.floor(visOrd.length / 2)] || 0;
+      const convOrd = conVis.filter((f) => f.vendidas > 0).map((f) => f.conv).sort((a, b) => a - b);
+      const medConv = convOrd[Math.floor(convOrd.length / 2)] || 0;
+      console.log(`=== VISITAS Y CONVERSIÓN · últimos ${DIAS} días · ${filas.length} publicaciones activas ===`);
+      console.log(`Mediana de visitas: ${medVis} · Mediana de conversión (de las que venden): ${medConv.toFixed(2)}%\n`);
+      const linea = (f) => `  ${String(f.visitas).padStart(5)} visitas · ${String(f.vendidas).padStart(3)} vendidas`
+        + ` · ${f.conv != null ? (f.conv.toFixed(2) + '%').padStart(7) : '      —'} conv`
+        + ` · ${money(Math.round(f.precio)).padStart(10)} · ${String(f.stock).padStart(3)} u · ${f.label.padEnd(8)} · ${f.nom}`;
+      // LO VEN Y NO COMPRAN: visitas por encima de la mediana y cero (o casi cero) ventas.
+      const miran = conVis.filter((f) => f.visitas >= medVis && f.stock > 0 && (f.vendidas === 0 || (f.conv != null && f.conv < medConv / 2)));
+      console.log(`── 👀 LO VEN Y NO COMPRAN · ${miran.length} ──`);
+      console.log(`   Tienen visitas y stock, pero no convierten. Acá SÍ el precio (o la competencia) es sospechoso.\n`);
+      miran.sort((a, b) => b.visitas - a.visitas).slice(0, 25).forEach((f) => console.log(linea(f)));
+      // NO LO VEN: pocas visitas. Bajar el precio no sirve, el problema es que no aparece.
+      const invisibles = filas.filter((f) => f.visitas < medVis / 3 && f.stock > 0);
+      console.log(`\n── 🕳️ NO LO VEN · ${invisibles.length} ──`);
+      console.log(`   Muy pocas visitas. Bajar el precio no cambia nada: el problema es título, fotos o categoría.\n`);
+      invisibles.sort((a, b) => a.visitas - b.visitas).slice(0, 25).forEach((f) => console.log(linea(f)));
+      // LAS QUE FUNCIONAN: sirven de referencia de cuánta visita hace falta para vender.
+      const buenas = conVis.filter((f) => f.vendidas > 0 && f.conv >= medConv);
+      console.log(`\n── ✅ CONVIERTEN BIEN (referencia) · ${buenas.length} ──\n`);
+      buenas.sort((a, b) => b.conv - a.conv).slice(0, 15).forEach((f) => console.log(linea(f)));
+      const sinVis = filas.filter((f) => f.visitas === 0);
+      if (sinVis.length) console.log(`\n(${sinVis.length} publicaciones con 0 visitas en el período)`);
+      console.log(`\nGuardado en cyc/visitas para que lo pueda usar la web.`);
+      return;
+    }
     // BILLING_PROBE=fixbliss[:<idAConservar>[:go]] → DEJA UN SOLO PRODUCTO BLISS Y ENGANCHA TODO.
     // Quedaron dos productos "Victoria Secret BLISS": uno creado a mano y otro que creó splitbliss.
     // Esto lista los dos con sus publicaciones, y con un id + ':go' deja ese, borra el otro, y
