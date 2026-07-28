@@ -1373,7 +1373,7 @@ async function main() {
             const neto = precio - (precio * ff.pct + ff.fijo) - envio;
             const mlx = precio * m;
             const mg = (neto - costo - mlx) / (costo + mlx);
-            const fila = { label, mla, nom, precio, mg: mg * 100, nVar: vars.length, envio, pct: ff.pct };
+            const fila = { label, mla, nom, precio, mg: mg * 100, nVar: vars.length, envio, pct: ff.pct, fijo: ff.fijo, costo, mlx, neto, nVtas: ventas.length, prod: p.name || '' };
             if (mg >= MIN) { yaOk.push(fila); continue; }
             const den = 1 - ff.pct - m * (1 + T);
             if (den <= 0) { sinDato.push({ label, mla, nom, why: 'la comisión no deja margen a ningún precio' }); continue; }
@@ -1388,7 +1388,11 @@ async function main() {
           }
         }
       }
-      const line = (f) => `  ${String(Math.round(f.mg)).padStart(4)}% → ${String(Math.round(f.mgNuevo)).padStart(2)}% · ${money(Math.round(f.precio)).padStart(10)} → ${money(f.nuevo).padStart(10)}  (+${((f.mult - 1) * 100).toFixed(1)}%) · com ${(f.pct * 100).toFixed(1)}% · env ${money(Math.round(f.envio))} · ${f.label.padEnd(8)} · ${f.nom}`;
+      // Cada renglón trae TODOS los números para poder verificarlo a mano:
+      //   neto = precio − comisión − envío  ·  margen = (neto − costo − cargoML) / (costo + cargoML)
+      const line = (f) => `  ${String(Math.round(f.mg)).padStart(4)}% → ${String(Math.round(f.mgNuevo)).padStart(2)}% · ${money(Math.round(f.precio)).padStart(10)} → ${money(f.nuevo).padStart(10)} (+${((f.mult - 1) * 100).toFixed(1)}%) · ${f.label.padEnd(8)} · ${f.nom}\n`
+        + `        precio ${money(Math.round(f.precio))} − comisión ${(f.pct * 100).toFixed(1)}% (${money(Math.round(f.precio * f.pct + f.fijo))}) − envío ${money(Math.round(f.envio))} = neto ${money(Math.round(f.neto))}\n`
+        + `        costo mercadería ${money(Math.round(f.costo))} + cargo ML ${money(Math.round(f.mlx))} = ${money(Math.round(f.costo + f.mlx))} · ${f.nVtas} ventas usadas · producto "${f.prod.slice(0, 30)}"`;
       subir.sort((a, b) => a.mg - b.mg); conVar.sort((a, b) => a.mg - b.mg); grandes.sort((a, b) => a.mg - b.mg);
       console.log(`── A. SE PUEDEN SUBIR YA (sin variantes, suba ≤25%) · ${subir.length} publicaciones ──`);
       subir.forEach((f) => console.log(line(f)));
