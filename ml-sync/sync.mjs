@@ -1093,6 +1093,63 @@ async function main() {
       }
       return;
     }
+    // BILLING_PROBE=mono → mide cuánto pesa el MONOTRIBUTO sobre la facturación, para poder cargarlo
+    // como un % en el costo de cada producto (igual que el cargo de ML). Va sobre el PRECIO de venta
+    // porque es la facturación la que define la categoría, no el costo. Muestra mes por mes, el
+    // promedio ponderado, y si los gastos están separados por cuenta o vienen en un solo monto.
+    if (String(process.env.BILLING_PROBE || '').startsWith('mono')) {
+      const vp = (await db.get('cyc/ventaprod')) || {};
+      const compras = (await db.get('cyc/compras')) || {};
+      // Facturación por mes y por cuenta
+      const facMes = {}, facCta = {}, facMesCta = {};
+      for (const [k, ents] of Object.entries(vp)) {
+        const ym = k.slice(0, 7);
+        for (const v of Object.values(ents || {})) {
+          if (!v || v.cancelada) continue;
+          const tot = v.total || 0; if (tot <= 0) continue;
+          const c = (v.cuenta || '?').toLowerCase();
+          facMes[ym] = (facMes[ym] || 0) + tot;
+          facCta[c] = (facCta[c] || 0) + tot;
+          (facMesCta[ym] = facMesCta[ym] || {})[c] = (facMesCta[ym][c] || 0) + tot;
+        }
+      }
+      // Gastos de monotributo por mes (y el detalle, para ver si están separados por cuenta)
+      const monoMes = {}, detalle = [];
+      for (const g of Object.values(compras)) {
+        if (!g || g.tipo === 'mercaderia') continue;
+        const cat = (g.cat || '').toLowerCase();
+        if (!/monotributo|impuesto/.test(cat)) continue;
+        const ym = (g.dayKey || '').slice(0, 7); if (!ym) continue;
+        monoMes[ym] = (monoMes[ym] || 0) + (g.monto || 0);
+        detalle.push({ ym, monto: g.monto || 0, desc: (g.desc || '').slice(0, 50), cat: g.cat || '' });
+      }
+      const meses = [...new Set([...Object.keys(monoMes), ...Object.keys(facMes)])].sort();
+      console.log('=== ¿CUÁNTO PESA EL MONOTRIBUTO SOBRE LA FACTURACIÓN? ===');
+      console.log('Va sobre el PRECIO de venta: la facturación es la que define la categoría.\n');
+      console.log('  mes       monotributo    facturación        %');
+      let mTot = 0, fTot = 0;
+      for (const ym of meses) {
+        const mo = monoMes[ym] || 0, fa = facMes[ym] || 0;
+        if (!mo && !fa) continue;
+        const pct = fa > 0 ? mo / fa * 100 : null;
+        console.log(`  ${ym}  ${money(Math.round(mo)).padStart(12)}  ${money(Math.round(fa)).padStart(14)}   ${pct != null ? pct.toFixed(2) + '%' : '—'}`);
+        if (mo > 0 && fa > 0) { mTot += mo; fTot += fa; }
+      }
+      console.log(`\n  PROMEDIO PONDERADO (solo meses con ambos datos): ${fTot > 0 ? (mTot / fTot * 100).toFixed(2) : '—'}%`);
+      console.log(`  (monotributo ${money(Math.round(mTot))} sobre facturación ${money(Math.round(fTot))})`);
+      console.log('\n── DETALLE DE LOS GASTOS CARGADOS (para ver si están separados por cuenta) ──');
+      for (const d of detalle.sort((a, b) => a.ym.localeCompare(b.ym))) {
+        console.log(`  ${d.ym} · ${money(Math.round(d.monto)).padStart(11)} · [${d.cat}] ${d.desc}`);
+      }
+      console.log('\n── FACTURACIÓN POR CUENTA (todo el histórico cargado) ──');
+      const totCta = Object.values(facCta).reduce((s, x) => s + x, 0);
+      for (const [c, v] of Object.entries(facCta).sort((a, b) => b[1] - a[1])) {
+        console.log(`  ${c.padEnd(10)} ${money(Math.round(v)).padStart(14)}  (${(v / totCta * 100).toFixed(1)}% del total)`);
+      }
+      console.log(`\n  Si el monotributo se reparte por facturación, cada cuenta aporta en esa proporción.`);
+      console.log(`  Para un % POR CUENTA hace falta saber cuánto paga de monotributo cada una por mes.`);
+      return;
+    }
     // BILLING_PROBE=umbral → busca el PRECIO A PARTIR DEL CUAL ML pone envío gratis obligatorio
     // (lo paga el vendedor). En vez de preguntarle a un endpoint, lo deduce de TUS publicaciones:
     // lista todas por precio con su bandera free_shipping. El corte se ve solo. Es el dato que decide
