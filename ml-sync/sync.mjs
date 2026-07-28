@@ -174,7 +174,7 @@ async function raiseVariations(itemId, nuevos, token) {
 //     mal: precio mal cargado o una publicación que no es de ese producto),
 //   · si nivelar cruzaría los $33.000 de una publicación que hoy está por debajo,
 //     esa se saltea (ahí el envío pasa a pagarlo CYC y el aumento sale caro).
-async function nivelarGrupos(db, links, tokensRun, DRY, pName) {
+async function nivelarGrupos(db, links, tokensRun, DRY, pName, sellerIds) {
   const grupos = (await db.get('cyc/mlconfig/gruposPrecio')) || {};
   const nombres = Object.keys(grupos).filter((g) => grupos[g] && grupos[g].palabra && grupos[g].activo !== false);
   if (!nombres.length) return [];
@@ -184,30 +184,39 @@ async function nivelarGrupos(db, links, tokensRun, DRY, pName) {
     const palabra = String(grupos[g].palabra).toLowerCase();
     // Miembros: publicaciones vinculadas, no ignoradas, cuyo título o producto tiene la palabra.
     const miembros = Object.entries(links)
-      .filter(([mla, e]) => e && !e.ignored && e.prodId && /^MLA/i.test(mla) && tokensRun[e.cuenta]
+      .filter(([mla, e]) => e && !e.ignored && e.prodId && /^MLA/i.test(mla)
         && ((e.title || '') + ' ' + ((pName && pName[e.prodId]) || '')).toLowerCase().includes(palabra))
-      .map(([mla, e]) => ({ mla, cuenta: e.cuenta, title: e.title || mla }));
+      .map(([mla, e]) => ({ mla, cuenta: e.cuenta || '', title: e.title || mla }));
     if (miembros.length < 2) continue;
-    // Precio actual de cada uno (el de la 1ª variante si tiene variantes).
-    const porCta = {};
-    for (const mb of miembros) (porCta[mb.cuenta] = porCta[mb.cuenta] || []).push(mb);
-    const vivos = [];
-    for (const [cta, arr] of Object.entries(porCta)) {
-      const tok = tokensRun[cta];
-      for (let k = 0; k < arr.length; k += 20) {
-        let res;
-        try { res = await mlGet('/items?ids=' + arr.slice(k, k + 20).map((x) => x.mla).join(',') + '&attributes=id,status,price,variations', tok); } catch { continue; }
-        for (const row of (res || [])) {
-          const b = row.body || {};
-          if (!b.id || b.status !== 'active') continue;
-          const vars = Array.isArray(b.variations) ? b.variations : [];
-          const precio = vars.length ? Math.max(...vars.map((v) => v.price || 0)) : (b.price || 0);
-          if (!precio) continue;
-          const mb = arr.find((x) => x.mla === b.id);
-          vivos.push({ mla: b.id, cuenta: cta, title: mb ? mb.title : b.id, precio, vars, tok });
-        }
+    // OJO: muchas publicaciones viejas quedaron en mllinks SIN cuenta. Si las salteo por eso,
+    // se quedan a otro precio y el grupo no sirve para nada. Leer se puede con cualquier token,
+    // así que se leen todas y el dueño se resuelve por el seller_id que devuelve ML.
+    const algunTok = Object.values(tokensRun)[0];
+    if (!algunTok) continue;
+    const porSeller = {};
+    for (const [lab, tok] of Object.entries(tokensRun)) {
+      const sid = sellerIds && sellerIds[lab];
+      if (sid) porSeller[String(sid)] = { label: lab, tok };
+    }
+    const vivos = []; const sinDueno = [];
+    for (let k = 0; k < miembros.length; k += 20) {
+      const lote = miembros.slice(k, k + 20);
+      let res;
+      try { res = await mlGet('/items?ids=' + lote.map((x) => x.mla).join(',') + '&attributes=id,status,price,variations,seller_id', algunTok); } catch { continue; }
+      for (const row of (res || [])) {
+        const b = row.body || {};
+        if (!b.id || b.status !== 'active') continue;
+        const vars = Array.isArray(b.variations) ? b.variations : [];
+        const precio = vars.length ? Math.max(...vars.map((v) => v.price || 0)) : (b.price || 0);
+        if (!precio) continue;
+        const mb = lote.find((x) => x.mla === b.id);
+        const due = porSeller[String(b.seller_id)];
+        const title = mb ? mb.title : b.id;
+        if (!due) { sinDueno.push(title.slice(0, 30)); continue; } // no es de ninguna cuenta nuestra
+        vivos.push({ mla: b.id, cuenta: due.label, title, precio, vars, tok: due.tok });
       }
     }
+    if (sinDueno.length) console.log(`Grupo "${g}": ${sinDueno.length} publicaciones no son de ninguna cuenta nuestra, no se tocan.`);
     if (vivos.length < 2) continue;
     const techo = Math.max(...vivos.map((v) => v.precio));
     const piso = Math.min(...vivos.map((v) => v.precio));
@@ -227,7 +236,8 @@ async function nivelarGrupos(db, links, tokensRun, DRY, pName) {
       }
       const mult = techo / v.precio;
       let r;
-      if (DRY) r = { ok: false, err: 'DRY' };
+      // En prueba se calcula igual y se muestra, pero no se escribe en ML.
+      if (DRY) r = { ok: true, from: v.precio, to: Math.ceil(techo / 10) * 10, dry: true };
       else if (v.vars.length) {
         const nuevos = {}; for (const vv of v.vars) if ((vv.price || 0) < techo) nuevos[String(vv.id)] = techo;
         r = await raiseVariations(v.mla, nuevos, v.tok);
@@ -240,8 +250,8 @@ async function nivelarGrupos(db, links, tokensRun, DRY, pName) {
       avisos.push(`🟰 <b>Grupo ${g} nivelado a ${money(techo)}</b>\n`
         + hechos.map((h) => `· ${h.cuenta}: ${h.title.slice(0, 30)} ${money(h.from)} → <b>${money(h.to)}</b>`).join('\n')
         + (saltados.length ? `\n\nNo se tocaron: ${saltados.join(', ')}` : ''));
-      console.log(`Grupo "${g}" nivelado a ${money(techo)}: ${hechos.length} publicaciones subidas.`);
-      hechos.forEach((h) => console.log(`  ✓ ${h.cuenta} · ${h.title}: ${money(h.from)} → ${money(h.to)}`));
+      console.log(`${DRY ? '(PRUEBA) ' : ''}Grupo "${g}" nivelado a ${money(techo)}: ${hechos.length} publicaciones subidas.`);
+      hechos.forEach((h) => console.log(`  ${DRY ? '·' : '✓'} ${h.cuenta} · ${h.title}: ${money(h.from)} → ${money(h.to)}`));
     }
     if (saltados.length) console.log(`Grupo "${g}": no se tocaron ${saltados.length} → ${saltados.join(', ')}`);
   }
@@ -1381,6 +1391,29 @@ async function main() {
       const meta = piso + 2; // 2 puntos de colchón para no quedar rozando el piso
       if (!DRY) { await db.set('cyc/mlconfig/minPct', piso); await db.set('cyc/mlconfig/targetPct', meta); }
       console.log(`${DRY ? '(DRY) ' : ''}Robot de precios: actúa por debajo de ${piso}% y lleva a ${meta}%.`);
+      return;
+    }
+    // BILLING_PROBE=nivelar[:prueba] → corre AHORA la nivelación de los grupos de precio, sin esperar
+    // a la corrida automática. Con ':prueba' calcula y muestra pero NO escribe en ML.
+    if (String(process.env.BILLING_PROBE || '').startsWith('nivelar')) {
+      const soloPrueba = String(process.env.BILLING_PROBE).split(':')[1] === 'prueba';
+      const links = (await db.get('cyc/mllinks')) || {};
+      const pName = {}; for (const p of products) pName[p.id] = p.name || '';
+      const tokensRun = {}, sellerIds = {};
+      for (const label of labels) {
+        const acc = accounts[label];
+        if (!acc?.refresh_token) continue;
+        try {
+          const t = await mlRefresh(ML_CLIENT_ID, ML_CLIENT_SECRET, acc.refresh_token);
+          await db.patch('mlapi/tokens/' + label, { refresh_token: t.refresh_token, updated_ts: Date.now() });
+          tokensRun[label] = t.access_token;
+          if (acc.seller_id) sellerIds[label] = acc.seller_id;
+        } catch { console.log(`(${label}: no pude renovar token)`); }
+      }
+      console.log(soloPrueba ? '=== PRUEBA: no se escribe nada en ML ===' : '=== NIVELANDO GRUPOS EN ML ===');
+      const avisos = await nivelarGrupos(db, links, tokensRun, DRY || soloPrueba, pName, sellerIds);
+      if (!soloPrueba) for (const a of avisos) await sendTelegram(a);
+      if (!avisos.length) console.log('No hubo nada para nivelar.');
       return;
     }
     // BILLING_PROBE=grupos                       → lista los grupos de precio y cómo está cada uno.
@@ -4224,7 +4257,8 @@ async function main() {
   if (parseInt(process.env.BACKFILL_DAYS || '0', 10) === 0 && !onlyAcc) {
     try {
       const pName = {}; for (const p of products) pName[p.id] = p.name || '';
-      const avisos = await nivelarGrupos(db, map, tokensRun, DRY, pName);
+      const sellerIds = {}; for (const l of labels) if (accounts[l]?.seller_id) sellerIds[l] = accounts[l].seller_id;
+      const avisos = await nivelarGrupos(db, map, tokensRun, DRY, pName, sellerIds);
       for (const a of avisos) await sendTelegram(a);
     } catch (e) { console.log('No pude nivelar los grupos de precio: ' + e.message); }
   }
