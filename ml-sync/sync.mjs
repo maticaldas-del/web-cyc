@@ -1651,7 +1651,7 @@ async function main() {
       }
       // Cada renglón trae TODOS los números para poder verificarlo a mano:
       //   neto = precio − comisión − envío  ·  margen = (neto − costo − cargoML) / (costo + cargoML)
-      const line = (f) => `  ${String(Math.round(f.mg)).padStart(4)}% → ${String(Math.round(f.mgNuevo)).padStart(2)}% · ${money(Math.round(f.precio)).padStart(10)} → ${money(f.nuevo).padStart(10)} (+${((f.mult - 1) * 100).toFixed(1)}%) · ${f.label.padEnd(8)} · ${f.nom}\n`
+      const line = (f) => `  ${String(Math.round(f.mg)).padStart(4)}% → ${String(Math.round(f.mgNuevo)).padStart(2)}% · ${money(Math.round(f.precio)).padStart(10)} → ${money(f.nuevo).padStart(10)} (+${((f.mult - 1) * 100).toFixed(1)}%) · ${f.label.padEnd(8)} · ${f.mla} · ${f.nom}\n`
         + `        precio ${money(Math.round(f.precio))} − comisión ${money(Math.round(f.com))} (${(f.com / f.precio * 100).toFixed(1)}%) − envío ${money(Math.round(f.envio))} = neto ${money(Math.round(f.neto))}\n`
         + `        costo mercadería ${money(Math.round(f.costo))} + cargo ML ${money(Math.round(f.mlx))} = ${money(Math.round(f.costo + f.mlx))} · ${f.nVtas} ventas usadas · producto "${f.prod.slice(0, 30)}"`;
       subir.sort((a, b) => a.mg - b.mg); conVar.sort((a, b) => a.mg - b.mg); grandes.sort((a, b) => a.mg - b.mg);
@@ -1668,7 +1668,9 @@ async function main() {
       sinDato.forEach((f) => console.log(`  ${f.label.padEnd(8)} · ${f.mla} · ${f.nom} · ${f.why}`));
       if (!APLICAR) { console.log(`\nRECORDÁ: esto fue solo una LISTA. No se tocó ningún precio en ML.`); return; }
       // Solo se aplica el grupo A: sin variantes, suba ≤25% y sin cruzar los $33.000.
-      const objetivo = DESTINO === 'todos' ? subir : subir.filter((f) => f.mla === DESTINO);
+      const objetivo = DESTINO === 'todos' ? subir
+        : /^MLA/i.test(DESTINO) ? subir.filter((f) => f.mla === DESTINO)
+        : subir.filter((f) => (f.nom + ' ' + f.prod).toLowerCase().includes(DESTINO.toLowerCase()));
       if (!objetivo.length) { console.log(`\nNo hay nada para aplicar con destino "${DESTINO}".`); return; }
       console.log(`\n══ APLICANDO ${objetivo.length} precio${objetivo.length > 1 ? 's' : ''} en ML ══`);
       let ok = 0, err = 0;
