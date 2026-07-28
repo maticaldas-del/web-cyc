@@ -1606,6 +1606,74 @@ async function main() {
       }
       return;
     }
+    // BILLING_PROBE=splitbliss[:go] → SEPARA LOS "BLISS" EN SU PROPIO PRODUCTO.
+    // Los Bliss cuestan USD 16 y los comunes USD 13,8, pero en CYC estaban todos en un solo
+    // producto con un costo promedio de USD 15. Resultado: los comunes figuraban peor de lo que
+    // son (30% cuando dan 40%) y los Bliss mejor (23% reales figuraban como 30%). Mientras
+    // compartan producto, TODOS los márgenes de la línea están mal.
+    // Crea el producto "Victoria Secret BLISS" con costo USD 16 y sus variantes, y repunta hacia
+    // él las publicaciones cuyo título diga "bliss". Sin ':go' solo muestra lo que haría.
+    if (String(process.env.BILLING_PROBE || '').startsWith('splitbliss')) {
+      const APLICAR = String(process.env.BILLING_PROBE).split(':')[1] === 'go';
+      const COSTO_BLISS = 16;   // USD, lo que te sale el Bliss
+      const COSTO_COMUN = 13.8; // USD, lo que sale el común
+      const links = (await db.get('cyc/mllinks')) || {};
+      // El producto actual que agrupa todos los Victoria's Secret
+      const base = products.find((p) => /victoria/i.test(p.name || ''));
+      if (!base) { console.log('No encontré el producto "Victoria\'s Secret" en el catálogo.'); return; }
+      console.log(`=== SEPARAR BLISS ${APLICAR ? '(APLICANDO)' : '(PRUEBA: no se escribe nada)'} ===`);
+      console.log(`Producto actual: "${base.name}" (${base.id}) · costo hoy US$${base.costUSD}\n`);
+      // Publicaciones de ese producto, separadas por si son Bliss o no
+      const suyas = Object.entries(links)
+        .filter(([mla, e]) => e && e.prodId === base.id && /^MLA/i.test(mla));
+      const esBliss = (e, mla) => /bliss/i.test((e.title || '') + ' ' + (e.variant || ''));
+      const bliss = suyas.filter(([mla, e]) => esBliss(e, mla));
+      const comunes = suyas.filter(([mla, e]) => !esBliss(e, mla));
+      console.log(`── BLISS (pasan al producto nuevo, costo US$${COSTO_BLISS}) · ${bliss.length} ──`);
+      bliss.forEach(([mla, e]) => console.log(`   ${mla} · ${e.cuenta || '?'} · ${(e.variant || e.title || '').slice(0, 44)}`));
+      console.log(`\n── COMUNES (se quedan, costo baja a US$${COSTO_COMUN}) · ${comunes.length} ──`);
+      comunes.forEach(([mla, e]) => console.log(`   ${mla} · ${e.cuenta || '?'} · ${(e.variant || e.title || '').slice(0, 44)}`));
+      if (!bliss.length) { console.log('\nNo hay publicaciones Bliss para separar.'); return; }
+      // Variantes del producto nuevo: los nombres de variante de las publicaciones Bliss
+      const varsBliss = [...new Set(bliss.map(([, e]) => (e.variant || '').trim()).filter(Boolean))]
+        .sort((a, b) => a.localeCompare(b, 'es', { sensitivity: 'base' }));
+      const varsComunes = [...new Set(comunes.map(([, e]) => (e.variant || '').trim()).filter(Boolean))]
+        .sort((a, b) => a.localeCompare(b, 'es', { sensitivity: 'base' }));
+      const nuevoId = 'p' + Date.now();
+      const ship = parseFloat(base.shipUSD) || 0, dev = parseFloat(base.devPct) || 0;
+      const nuevo = {
+        id: nuevoId, name: 'Victoria Secret BLISS',
+        costUSD: COSTO_BLISS, cost: Math.round(COSTO_BLISS * ((await db.get('cyc/finanzas/tipo_cambio')) || 1500)),
+        costFullUSD: Math.round((COSTO_BLISS * (1 + dev / 100) + ship) * 100) / 100,
+        variantes: varsBliss,
+      };
+      if (ship) nuevo.shipUSD = ship;
+      if (dev) nuevo.devPct = dev;
+      if (base.proveedorId) nuevo.proveedorId = base.proveedorId;
+      if (base.origen) nuevo.origen = base.origen;
+      console.log(`\n── PRODUCTO NUEVO ──`);
+      console.log(`   "${nuevo.name}" · costo US$${nuevo.costUSD} · costo full US$${nuevo.costFullUSD}`);
+      console.log(`   variantes (${varsBliss.length}): ${varsBliss.join(' · ') || '(ninguna)'}`);
+      console.log(`\n── PRODUCTO QUE QUEDA ──`);
+      console.log(`   "${base.name}" · costo pasa de US$${base.costUSD} a US$${COSTO_COMUN}`);
+      console.log(`   variantes (${varsComunes.length}): ${varsComunes.join(' · ') || '(ninguna)'}`);
+      console.log(`\nLas VENTAS VIEJAS no se tocan: cada venta ya tiene su costo guardado. Esto cambia`);
+      console.log(`el costo de acá en adelante y arregla los márgenes que se muestran hoy.`);
+      if (!APLICAR) { console.log(`\nPRUEBA: no se escribió nada. Para aplicar: splitbliss:go`); return; }
+      await db.set('products/' + nuevoId, nuevo);
+      const patchLinks = {};
+      for (const [mla, e] of bliss) patchLinks[mla + '/prodId'] = nuevoId;
+      for (const [k, v] of Object.entries(patchLinks)) await db.set('cyc/mllinks/' + k, v);
+      await db.set('products/' + base.id + '/costUSD', COSTO_COMUN);
+      await db.set('products/' + base.id + '/costFullUSD', Math.round((COSTO_COMUN * (1 + dev / 100) + ship) * 100) / 100);
+      await db.set('products/' + base.id + '/variantes', varsComunes);
+      console.log(`\n✓ Creado "${nuevo.name}" (${nuevoId}) con ${varsBliss.length} variantes.`);
+      console.log(`✓ ${bliss.length} publicaciones repuntadas al producto nuevo.`);
+      console.log(`✓ "${base.name}" quedó en US$${COSTO_COMUN} con ${varsComunes.length} variantes.`);
+      await sendTelegram(`🧴 <b>Victoria's Secret separado</b>\nSe creó "Victoria Secret BLISS" (US$${COSTO_BLISS}) `
+        + `con ${bliss.length} publicaciones. Los comunes quedaron en US$${COSTO_COMUN}.`);
+      return;
+    }
     // BILLING_PROBE=chkrot[:<palabra>] → ¿EL "X DÍAS CUBIERTOS" DE LA WEB ES REAL?
     // La web calcula  diasCubiertos = stock / vendidos30d × 30  usando el stock guardado en
     // cyc/inventory. Este probe compara ese stock guardado contra el stock EN VIVO de ML, cuenta
