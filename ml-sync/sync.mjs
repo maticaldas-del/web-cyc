@@ -1093,6 +1093,52 @@ async function main() {
       }
       return;
     }
+    // BILLING_PROBE=umbral → busca el PRECIO A PARTIR DEL CUAL ML pone envío gratis obligatorio
+    // (lo paga el vendedor). En vez de preguntarle a un endpoint, lo deduce de TUS publicaciones:
+    // lista todas por precio con su bandera free_shipping. El corte se ve solo. Es el dato que decide
+    // si una suba de precio conviene o hunde el margen al cruzar ese punto.
+    if (String(process.env.BILLING_PROBE || '') === 'umbral') {
+      const links = (await db.get('cyc/mllinks')) || {};
+      const filas = [];
+      for (const label of labels) {
+        const acc = accounts[label]; if (!acc?.refresh_token) continue;
+        let t; try { t = await mlRefresh(ML_CLIENT_ID, ML_CLIENT_SECRET, acc.refresh_token); } catch { continue; }
+        await db.patch('mlapi/tokens/' + label, { refresh_token: t.refresh_token, updated_ts: Date.now() });
+        const ids = Object.entries(links)
+          .filter(([mla, e]) => e && e.cuenta === label && !e.ignored && /^MLA/i.test(mla))
+          .map(([mla]) => mla);
+        for (let k = 0; k < ids.length; k += 20) {
+          let arr;
+          try { arr = await mlGet('/items?ids=' + ids.slice(k, k + 20).join(',') + '&attributes=id,status,price,title,shipping', t.access_token); } catch { continue; }
+          for (const row of (arr || [])) {
+            const b = row.body || {}; if (!b.id || b.status !== 'active' || !b.price) continue;
+            filas.push({ label, mla: b.id, precio: b.price, free: !!(b.shipping && b.shipping.free_shipping),
+              lt: (b.shipping && b.shipping.logistic_type) || '?', nom: (b.title || '').slice(0, 40) });
+          }
+        }
+      }
+      filas.sort((a, b) => a.precio - b.precio);
+      console.log(`=== ¿DESDE QUÉ PRECIO ML OBLIGA A ENVÍO GRATIS? · ${filas.length} publicaciones activas ===`);
+      console.log(`Ordenadas por precio. "SÍ" = el envío lo pagás vos.\n`);
+      let ultimoNo = null, primerSi = null;
+      for (const f of filas) {
+        if (!f.free) ultimoNo = f;
+        if (f.free && !primerSi) primerSi = f;
+        console.log(`  ${money(Math.round(f.precio)).padStart(11)} · envío gratis ${f.free ? 'SÍ ' : 'no '} · ${f.lt.padEnd(12)} · ${f.label.padEnd(8)} · ${f.nom}`);
+      }
+      console.log(`\n── DÓNDE ESTÁ EL CORTE ──`);
+      // El más caro SIN envío gratis y el más barato CON envío gratis acotan el umbral.
+      const masCaroSin = [...filas].filter((f) => !f.free).sort((a, b) => b.precio - a.precio)[0];
+      const masBaratoCon = filas.filter((f) => f.free)[0];
+      if (masCaroSin) console.log(`  El más CARO sin envío gratis:  ${money(Math.round(masCaroSin.precio))} · ${masCaroSin.nom}`);
+      if (masBaratoCon) console.log(`  El más BARATO con envío gratis: ${money(Math.round(masBaratoCon.precio))} · ${masBaratoCon.nom}`);
+      if (masCaroSin && masBaratoCon) {
+        if (masBaratoCon.precio > masCaroSin.precio) console.log(`  → El umbral está entre ${money(Math.round(masCaroSin.precio))} y ${money(Math.round(masBaratoCon.precio))}.`);
+        else console.log(`  → Se superponen: el envío gratis no depende solo del precio (puede estar puesto a mano en algunas).`);
+      }
+      console.log(`\n  Con envío gratis: ${filas.filter((f) => f.free).length} · Sin envío gratis: ${filas.filter((f) => !f.free).length}`);
+      return;
+    }
     // BILLING_PROBE=envio:<palabra> → averigua A PARTIR DE QUÉ PRECIO ML obliga a poner envío gratis
     // (que lo paga el vendedor) y cuánto cuesta. Es el dato que falta para no proponer una suba que
     // cruce ese umbral sin darse cuenta: ahí el margen se desploma en vez de mejorar.
