@@ -1488,6 +1488,185 @@ async function main() {
       console.log(`${DRY ? '(DRY) ' : ''}Robot de precios: actúa por debajo de ${piso}% y lleva a ${meta}%.`);
       return;
     }
+    // BILLING_PROBE=rotacion[:<días>][:<margenMin>] → QUÉ PRODUCTOS NO ROTAN, MIRANDO EL STOCK.
+    //
+    // Por qué existe, y por qué el probe 'dormidos' anterior estaba mal: contaba los días sin vender
+    // a secas. Un producto SIN STOCK no puede venderse — la Lupa llevaba 57 días "sin rotar" y el
+    // motivo era que no había mercadería. Bajarle el precio no habría cambiado nada.
+    //
+    // Acá se separa lo que se puede juzgar de lo que no:
+    //   · sin stock            → no se juzga, no había nada para vender
+    //   · stock recién llegado → todavía no tuvo tiempo, se avisa y se espera
+    //   · con stock hace rato y no vende, con margen alto → ESE es el candidato a bajar
+    //   · vendió en la ventana → no se toca, tu regla
+    // La fecha de llegada sale de las operaciones de Full de ML (inbound_reception).
+    if (String(process.env.BILLING_PROBE || '').startsWith('rotacion')) {
+      const _r = String(process.env.BILLING_PROBE).split(':');
+      const DIAS = parseFloat(_r[1]) || 30;
+      const MG_ALTO = parseFloat(_r[2]) || 45;
+      const RECIEN = 14; // stock que llegó hace menos de esto = todavía no se puede juzgar
+      const cfgR = (await db.get('cyc/mlconfig')) || {};
+      const META = (parseFloat(cfgR.targetPct) || 32) / 100;
+      const desde = Date.now() - DIAS * 864e5;
+      const vp = (await db.get('cyc/ventaprod')) || {};
+      const links = (await db.get('cyc/mllinks')) || {};
+      const fin = (await db.get('cyc/finanzas')) || {};
+      const hist = (await db.get('cyc/stockhist')) || {};
+      const tc = parseFloat(fin.tipo_cambio) || 1500;
+      const monoP = parseFloat(((await db.get('cyc/monotributo')) || {}).pct) || 0;
+      const pIdx = {}; for (const p of products) pIdx[p.id] = p;
+      const uMla = {}, ultMla = {}, ultProd = {}, vtaMla = {}, vtaProd = {}, uProd = {};
+      for (const [k, ents] of Object.entries(vp)) {
+        const ts = Date.parse(k.slice(0, 10).replace(/_/g, '-'));
+        for (const v of Object.values(ents || {})) {
+          if (!v || v.cancelada) continue;
+          const q = v.qty || 1;
+          if (isFinite(ts)) {
+            if (ts >= desde) {
+              if (v.mla) uMla[v.mla] = (uMla[v.mla] || 0) + q;
+              if (v.prodId) uProd[v.prodId] = (uProd[v.prodId] || 0) + q;
+            }
+            if (v.mla && (!ultMla[v.mla] || ts > ultMla[v.mla])) ultMla[v.mla] = ts;
+            if (v.prodId && (!ultProd[v.prodId] || ts > ultProd[v.prodId])) ultProd[v.prodId] = ts;
+          }
+          const tot = (v.total || 0) / q, net = (v.neto || 0) / q;
+          if (tot <= 0 || net <= 0) continue;
+          if (v.mla) (vtaMla[v.mla] = vtaMla[v.mla] || []).push({ tot, net });
+          if (v.prodId) (vtaProd[v.prodId] = vtaProd[v.prodId] || []).push({ tot, net });
+        }
+      }
+      const feeCache = {};
+      const feeAt = async (site, price, ltype, cat, token) => {
+        const key = site + '|' + ltype + '|' + cat + '|' + Math.round(price);
+        if (feeCache[key] !== undefined) return feeCache[key];
+        let out = null;
+        try {
+          const d = await mlGet(`/sites/${site}/listing_prices?price=${Math.round(price)}&listing_type_id=${ltype}&category_id=${cat}`, token);
+          const o = Array.isArray(d) ? d[0] : d;
+          if (typeof o?.sale_fee_amount === 'number') out = o.sale_fee_amount;
+        } catch { out = null; }
+        feeCache[key] = out; return out;
+      };
+      // Cuándo entró el stock a Full. Se pregunta SOLO por los que no vendieron (son pocos),
+      // porque es una llamada por inventario y si no se hace para las 160 publicaciones tarda una eternidad.
+      const cuandoLlego = async (invIds, sellerId, token) => {
+        let ult = 0;
+        for (const id of invIds) {
+          try {
+            const o = await mlGet('/stock/fulfillment/operations/search?seller_id=' + sellerId + '&inventory_id=' + id + '&limit=20', token);
+            const ops = Array.isArray(o) ? o : (o.results || o.operations || []);
+            for (const op of (ops || [])) {
+              const tipo = String(op.type || op.operation_type || '').toLowerCase();
+              if (!tipo.includes('inbound') && !tipo.includes('reception')) continue;
+              const f = Date.parse(op.date_created || op.date || op.last_updated || '');
+              if (isFinite(f) && f > ult) ult = f;
+            }
+          } catch { /* sin datos de Full */ }
+        }
+        return ult || 0;
+      };
+      const vendio = [], sinStock = [], recien = [], candidatos = [], normales = [], sinDato = [];
+      for (const label of labels) {
+        const acc = accounts[label];
+        if (!acc?.refresh_token) continue;
+        let t; try { t = await mlRefresh(ML_CLIENT_ID, ML_CLIENT_SECRET, acc.refresh_token); } catch { continue; }
+        await db.patch('mlapi/tokens/' + label, { refresh_token: t.refresh_token, updated_ts: Date.now() });
+        const m = (mlExtraPct(label) + monoP) / 100;
+        const ids = Object.entries(links)
+          .filter(([mla, e]) => e && e.cuenta === label && !e.ignored && e.prodId && /^MLA/i.test(mla))
+          .map(([mla]) => mla);
+        for (let k = 0; k < ids.length; k += 20) {
+          let arr;
+          try { arr = await mlGet('/items?ids=' + ids.slice(k, k + 20).join(',') + '&attributes=id,status,price,available_quantity,variations,title,listing_type_id,category_id,site_id,inventory_id', t.access_token); } catch { continue; }
+          for (const row of (arr || [])) {
+            const b = row.body || {}; const mla = b.id; if (!mla || !links[mla]) continue;
+            if (b.status !== 'active') continue;
+            const p = pIdx[links[mla].prodId]; if (!p) continue;
+            const nom = (links[mla].title || b.title || p.name || mla).slice(0, 38);
+            const vars = Array.isArray(b.variations) ? b.variations : [];
+            const stock = vars.length
+              ? vars.reduce((s, v) => s + (v.available_quantity || 0), 0)
+              : (b.available_quantity || 0);
+            const vendidas = uMla[mla] || 0;
+            const ult = ultMla[mla] || ultProd[p.id] || 0;
+            const diasSin = ult ? Math.round((Date.now() - ult) / 864e5) : null;
+            const base = { label, mla, nom, stock, vendidas, diasSin, prod: p.name || '', nVar: vars.length, precio: vars.length ? (vars[0].price || 0) : (b.price || 0) };
+            if (vendidas > 0) { vendio.push(base); continue; }   // vendió: no se toca (tu regla)
+            if (stock <= 0) { sinStock.push(base); continue; }   // sin stock: no se puede juzgar
+            // Con stock y sin vender: ¿desde cuándo hay stock?
+            const invIds = [];
+            if (b.inventory_id) invIds.push(b.inventory_id);
+            for (const v of vars) if (v.inventory_id) invIds.push(v.inventory_id);
+            const hKey = p.id + '__' + label;
+            const desdeHist = hist[hKey] && hist[hKey].desde ? hist[hKey].desde : 0;
+            const llego = invIds.length ? await cuandoLlego(invIds, acc.seller_id, t.access_token) : 0;
+            const conStockDesde = Math.max(llego, desdeHist);
+            base.diasConStock = conStockDesde ? Math.round((Date.now() - conStockDesde) / 864e5) : null;
+            base.fuenteStock = llego ? 'Full' : (desdeHist ? 'histórico' : null);
+            if (base.diasConStock != null && base.diasConStock < RECIEN) { recien.push(base); continue; }
+            // Ahora sí: con stock hace rato y sin vender. ¿Tiene margen alto?
+            const costo = costoPesos(p, 1, tc).costo;
+            if (!costo || !base.precio) { sinDato.push({ ...base, why: !costo ? 'sin costo' : 'sin precio' }); continue; }
+            const com = await feeAt(b.site_id || 'MLA', base.precio, b.listing_type_id, b.category_id, t.access_token);
+            if (com == null) { sinDato.push({ ...base, why: 'ML no dio la comisión' }); continue; }
+            const ventas = (vtaMla[mla] && vtaMla[mla].length) ? vtaMla[mla] : (vtaProd[p.id] || []);
+            let envio = Infinity;
+            for (const pv of [...new Set(ventas.map((v) => Math.round(v.tot)))].slice(-6)) {
+              const cv = await feeAt(b.site_id || 'MLA', pv, b.listing_type_id, b.category_id, t.access_token);
+              if (cv == null) continue;
+              for (const v of ventas) if (Math.round(v.tot) === pv) { const x = v.tot - v.net - cv; if (x < envio) envio = x; }
+            }
+            if (!isFinite(envio)) { sinDato.push({ ...base, why: 'nunca vendió: no puedo deducir el envío' }); continue; }
+            if (envio < 0) envio = 0;
+            const neto = base.precio - com - envio;
+            const mlx = base.precio * m;
+            const mg = (neto - costo - mlx) / (costo + mlx) * 100;
+            const fila = { ...base, mg, costo, com, envio, neto, mlx };
+            if (mg < MG_ALTO) { normales.push(fila); continue; }
+            const den = 1 - m * (1 + META);
+            let P = base.precio, comP = com;
+            if (den > 0) {
+              for (let it = 0; it < 3; it++) {
+                const Pn = (costo * (1 + META) + comP + envio) / den;
+                const c2 = await feeAt(b.site_id || 'MLA', Pn, b.listing_type_id, b.category_id, t.access_token);
+                if (c2 == null) break;
+                if (Math.abs(Pn - P) < 1 && it > 0) { P = Pn; comP = c2; break; }
+                P = Pn; comP = c2;
+              }
+            }
+            fila.nuevo = Math.ceil(P / 10) * 10;
+            fila.baja = (1 - fila.nuevo / base.precio) * 100;
+            candidatos.push(fila);
+          }
+        }
+      }
+      const dd = (f) => f.diasConStock != null ? `${f.diasConStock}d con stock` : 'no sé desde cuándo';
+      console.log(`=== ROTACIÓN CON STOCK · ventana ${DIAS} días · margen alto ≥${MG_ALTO}% ===\n`);
+      console.log(`── 🔴 BAJAR EL PRECIO · ${candidatos.length} ──`);
+      console.log(`   Tienen stock hace más de ${RECIEN} días, margen alto y NO se venden.\n`);
+      candidatos.sort((a, b) => b.mg - a.mg).forEach((f) => console.log(
+        `   ${String(Math.round(f.mg)).padStart(4)}% · ${money(Math.round(f.precio)).padStart(10)} → ${money(f.nuevo).padStart(10)} (−${f.baja.toFixed(0)}%) · ${String(f.stock).padStart(3)} u · ${dd(f)} · ${f.label.padEnd(8)} · ${f.nom}`));
+      console.log(`\n── ⏳ RECIÉN LLEGÓ EL STOCK, DARLE TIEMPO · ${recien.length} ──`);
+      recien.sort((a, b) => (a.diasConStock || 0) - (b.diasConStock || 0)).forEach((f) => console.log(
+        `   ${String(f.stock).padStart(3)} u · llegó hace ${f.diasConStock} días · ${money(Math.round(f.precio)).padStart(10)} · ${f.label.padEnd(8)} · ${f.nom}`));
+      console.log(`\n── ⚪ SIN STOCK: NO SE PUEDE JUZGAR · ${sinStock.length} ──`);
+      console.log(`   No se venden porque no hay qué vender. Bajarles el precio no cambia nada.\n`);
+      sinStock.slice(0, 25).forEach((f) => console.log(
+        `   ${money(Math.round(f.precio)).padStart(10)} · ${f.diasSin != null ? f.diasSin + ' días sin vender' : 'NUNCA vendió'} · ${f.label.padEnd(8)} · ${f.nom}`));
+      if (sinStock.length > 25) console.log(`   … y ${sinStock.length - 25} más`);
+      console.log(`\n── 🟡 CON STOCK, NO VENDE, PERO EL MARGEN YA ES NORMAL · ${normales.length} ──`);
+      console.log(`   Bajar el precio NO es la palanca acá: ya están cerca del piso.\n`);
+      normales.sort((a, b) => b.mg - a.mg).slice(0, 20).forEach((f) => console.log(
+        `   ${String(Math.round(f.mg)).padStart(4)}% · ${money(Math.round(f.precio)).padStart(10)} · ${String(f.stock).padStart(3)} u · ${dd(f)} · ${f.label.padEnd(8)} · ${f.nom}`));
+      if (normales.length > 20) console.log(`   … y ${normales.length - 20} más`);
+      console.log(`\n── 🟢 VENDIERON EN ${DIAS} DÍAS (no se tocan) · ${vendio.length} ──`);
+      console.log(`\n── ❔ SIN DATOS · ${sinDato.length} ──`);
+      sinDato.slice(0, 12).forEach((f) => console.log(`   ${f.label.padEnd(8)} · ${f.nom} · ${f.why}`));
+      console.log(`\nSOLO LECTURA: no se tocó ningún precio.`);
+      console.log(`La fecha de llegada sale de las operaciones de Full de ML. Para lo que no es Full, el`);
+      console.log(`robot empezó a anotar desde hoy cuándo un producto pasa de 0 a tener stock.`);
+      return;
+    }
     // BILLING_PROBE=netoweb[:prueba] → CARGA EN LA WEB el neto que deja cada producto AL PRECIO DE HOY.
     // La pantalla "Margen ML" mostraba el neto promedio de las ventas VIEJAS. Después de cambiar
     // precios ese número miente, y los productos que nunca vendieron no mostraban nada.
@@ -4736,8 +4915,24 @@ async function main() {
   if (!DRY) {
     const invUpd = { ...stockVar, ...stockTot };
     if (Object.keys(invUpd).length) {
+      // HISTORIAL DE STOCK: se anota DESDE CUÁNDO un producto tiene stock. Hace falta para saber si
+      // algo "no rota" de verdad o simplemente no había mercadería para vender: sin este dato, un
+      // producto que estuvo agotado dos meses parece un fracaso de precio y no lo es.
+      // Solo se guarda el cambio 0 → hay stock (y la fecha en que se quedó en cero), no un log entero.
+      const invPrev = (await db.get('cyc/inventory')) || {};
+      const histPrev = (await db.get('cyc/stockhist')) || {};
+      const histUpd = {};
+      for (const [k, v] of Object.entries(stockTot)) {
+        const antes = Number(invPrev[k] || 0), ahora = Number(v || 0);
+        const h = histPrev[k] || {};
+        if (ahora > 0 && antes <= 0) histUpd[k] = { ...h, desde: Date.now() };       // volvió a haber stock
+        else if (ahora <= 0 && antes > 0) histUpd[k] = { ...h, desde: null, cero: Date.now() }; // se agotó
+        else if (ahora > 0 && !h.desde) histUpd[k] = { ...h, desde: Date.now() };    // primera vez que lo vemos con stock
+      }
+      if (Object.keys(histUpd).length) await db.patch('cyc/stockhist', histUpd);
       await db.patch('cyc/inventory', invUpd);
-      console.log(`✓ Stock actualizado: ${Object.keys(stockTot).length} producto×cuenta.`);
+      console.log(`✓ Stock actualizado: ${Object.keys(stockTot).length} producto×cuenta.`
+        + (Object.keys(histUpd).length ? ` · ${Object.keys(histUpd).length} cambios de stock anotados.` : ''));
     }
   }
 
