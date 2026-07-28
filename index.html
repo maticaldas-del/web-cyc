@@ -3838,10 +3838,17 @@ function vpGetYM(){
   if(vpPeriod==='7d'||vpPeriod==='15d'||vpPeriod==='30d'||vpPeriod==='60d'||vpPeriod==='365d'||vpPeriod==='rango')return{vy:ny,vm:nm};
   const[y,m]=vpKey().split('_');return{vy:y,vm:m};
 }
-const VP_MIN_PCT=40;
+// Umbrales del margen. OJO: el margen ahora se mide con TODO adentro (mercadería, envío, embalaje,
+// % devoluciones, gestión Full, IIBB y monotributo), así que los cortes viejos —pensados cuando no se
+// contaban los impuestos— quedaron altos: aquel 30% equivale a 19% de ahora y aquel 40% a 26%.
+//   20% = equilibrio real: abajo de eso, si TODO fuera así, CYC no cierra (el retiro es fijo, así que
+//         los dueños igual cobran, pero la empresa se descapitaliza).
+//   30% = el piso que fijamos: ahí CYC se queda ~$1,16M/mes para reponer mercadería.
+const VP_MIN_PCT=30;   // piso objetivo (antes 40, en la escala vieja sin impuestos)
+const VP_EQUIL_PCT=20; // equilibrio: abajo de acá el negocio no cierra
 const pctCls=pct=>(pct==null)?'nc':(pct>=VP_MIN_PCT?'up':'dn');
-const pctColor=pct=>{if(pct==null)return'var(--muted)';const p=Math.round(pct);return p>=300?'#f59e0b':p>=200?'#a78bfa':p>=100?'#60a5fa':p>=60?'#14b8a6':p>=40?'#22c55e':p>=30?'#f97316':'#ef4444';};
-const pctLabel=pct=>{if(pct==null)return'';const p=Math.round(pct);return p>=300?'🟡 JOYA':p>=200?'🟣 Estrella':p>=100?'🔵 Excelente':p>=60?'🩵 Bueno':p>=40?'🟢 Objetivo':p>=30?'🟠 Aceptable':'🔴 Bajo';};
+const pctColor=pct=>{if(pct==null)return'var(--muted)';const p=Math.round(pct);return p>=200?'#f59e0b':p>=130?'#a78bfa':p>=70?'#60a5fa':p>=45?'#14b8a6':p>=30?'#22c55e':p>=20?'#f97316':'#ef4444';};
+const pctLabel=pct=>{if(pct==null)return'';const p=Math.round(pct);return p>=200?'🟡 JOYA':p>=130?'🟣 Estrella':p>=70?'🔵 Excelente':p>=45?'🩵 Bueno':p>=30?'🟢 Objetivo':p>=20?'🟠 Aceptable':'🔴 Bajo';};
 const pctGradient=pct=>pct==null?'#7c3aed,#a855f7':pct>=300?'#f59e0b,#fbbf24':pct>=200?'#7c3aed,#a855f7':pct>=100?'#3b82f6,#60a5fa':pct>=60?'#14b8a6,#2dd4bf':pct>=40?'#22c55e,#4ade80':pct>=30?'#f97316,#fb923c':'#ef4444,#f87171';
 const scoreColor=s=>s>=250000?'#f59e0b':s>=130000?'#a78bfa':s>=80000?'#60a5fa':s>=40000?'#14b8a6':s>=15000?'#22c55e':s>=5000?'#f97316':'#ef4444';
 const scoreLabel=s=>s>=250000?'🟡 JOYA':s>=130000?'🟣 Estrella':s>=80000?'🔵 Excelente':s>=40000?'🩵 Bueno':s>=15000?'🟢 Objetivo':s>=5000?'🟠 Aceptable':'🔴 Bajo';
@@ -3910,7 +3917,7 @@ function vpCostHint(){
   if(!p){el.innerHTML='⚠️ Este producto no está cargado en la web — se guardará igual, pero sin costo no se calcula el % de ganancia. Cargalo en Productos para vincularlo.';return;}
   const unit=costFullP(p);const costo=unit*qty;
   let txt=`Costo Full del producto: <strong>${fmt(unit)}</strong> c/u${qty>1?` · costo total ${fmt(costo)}`:''}`;
-  if(neto>0&&costo>0){const g=neto-costo;const pct=g/costo*100;txt+=` · Ganancia ${fmt(g)} → <strong style="color:${pctColor(pct)}">${pct>=0?'+':''}${pct.toFixed(1)}%</strong>${pct<VP_MIN_PCT?' ⚠️ (bajo el 40%)':''}`;}
+  if(neto>0&&costo>0){const g=neto-costo;const pct=g/costo*100;txt+=` · Ganancia ${fmt(g)} → <strong style="color:${pctColor(pct)}">${pct>=0?'+':''}${pct.toFixed(1)}%</strong>${pct<VP_MIN_PCT?' ⚠️ (bajo el '+VP_MIN_PCT+'%)':''}`;}
   el.innerHTML=txt;
 }
 // Devuelve el TC histórico del mes YYYY_MM: usa el snapshot si existe, sino el actual
@@ -6997,7 +7004,7 @@ document.addEventListener('click',e=>{if(fnavOpen&&!e.target.closest('#fnav-btn'
         <span style="font-size:.75rem;color:var(--muted)">Si no ves los últimos cambios, forzá la actualización</span>
         <button class="btn" style="background:rgba(56,189,248,.12);color:var(--blue);border:1px solid rgba(56,189,248,.3)" onclick="actualizarApp()">🔄 Buscar actualizaciones</button>
       </div>
-      <div style="font-size:.66rem;color:var(--muted);margin-top:12px">CYC · Versión 5.8</div>
+      <div style="font-size:.66rem;color:var(--muted);margin-top:12px">CYC · Versión 5.9</div>
     </div>
 
     <div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:18px 20px;margin-bottom:14px">
