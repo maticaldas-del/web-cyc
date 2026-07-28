@@ -1084,6 +1084,62 @@ async function main() {
       }
       return;
     }
+    // BILLING_PROBE=chkneto[:<palabra>][:<YYYY_MM,...>] → mira qué tan CONFIABLE es estimar el neto
+    // como "precio × relación neto/precio del producto". Si esa relación varía mucho entre ventas del
+    // MISMO producto (envío gratis vs pago, promos, precios distintos), la estimación del barrido de
+    // precios no sirve. Muestra la dispersión por producto y, con palabra, cada venta una por una.
+    if (String(process.env.BILLING_PROBE || '').startsWith('chkneto')) {
+      const _cn = String(process.env.BILLING_PROBE).split(':');
+      const kw = (_cn[1] || '').trim().toLowerCase();
+      const pickYM = (_cn[2] || '2026_06,2026_07').split(',').map((s) => s.trim()).filter(Boolean);
+      const vp = (await db.get('cyc/ventaprod')) || {};
+      const byProd = {};
+      for (const [k, ents] of Object.entries(vp)) {
+        if (!pickYM.includes(k.slice(0, 7))) continue;
+        for (const v of Object.values(ents || {})) {
+          if (!v || v.cancelada || !v.prodId) continue;
+          const tot = v.total || 0, net = v.neto || 0;
+          if (tot <= 0 || net <= 0) continue;
+          const b = byProd[v.prodId] || (byProd[v.prodId] = { nom: v.prod || v.prodId, ventas: [] });
+          b.ventas.push({ dk: k, tot, net, qty: v.qty || 1, cuenta: v.cuenta || '?', r: net / tot });
+        }
+      }
+      const med = (a) => { const s = [...a].sort((x, y) => x - y); const n = s.length; return n % 2 ? s[(n - 1) / 2] : (s[n / 2 - 1] + s[n / 2]) / 2; };
+      if (kw) {
+        console.log(`=== VENTAS DE "${kw}" · ${pickYM.join(', ')} ===\n`);
+        for (const b of Object.values(byProd)) {
+          if (!b.nom.toLowerCase().includes(kw)) continue;
+          const rs = b.ventas.map((v) => v.r);
+          console.log(`── ${b.nom} · ${b.ventas.length} ventas ──`);
+          console.log(`   fecha        cuenta    precio     neto     neto/precio   qty`);
+          for (const v of b.ventas.sort((a, c) => a.dk.localeCompare(c.dk))) {
+            console.log(`   ${v.dk.replace(/_/g, '-')}  ${v.cuenta.padEnd(8)} ${money(Math.round(v.tot)).padStart(10)} ${money(Math.round(v.net)).padStart(9)}     ${(v.r * 100).toFixed(1)}%`.padEnd(72) + `  x${v.qty}`);
+          }
+          const prom = rs.reduce((s, x) => s + x, 0) / rs.length;
+          console.log(`   → promedio ponderado ${(b.ventas.reduce((s, v) => s + v.net, 0) / b.ventas.reduce((s, v) => s + v.tot, 0) * 100).toFixed(1)}% · simple ${(prom * 100).toFixed(1)}% · mínimo ${(Math.min(...rs) * 100).toFixed(1)}% · máximo ${(Math.max(...rs) * 100).toFixed(1)}%\n`);
+        }
+        return;
+      }
+      const rows = [];
+      for (const b of Object.values(byProd)) {
+        if (b.ventas.length < 3) continue;
+        const rs = b.ventas.map((v) => v.r);
+        const mn = Math.min(...rs), mx = Math.max(...rs);
+        const pond = b.ventas.reduce((s, v) => s + v.net, 0) / b.ventas.reduce((s, v) => s + v.tot, 0);
+        rows.push({ nom: b.nom, n: b.ventas.length, mn, mx, pond, med: med(rs), spread: (mx - mn) * 100 });
+      }
+      rows.sort((a, b) => b.spread - a.spread);
+      console.log(`=== ¿SIRVE ESTIMAR EL NETO CON UNA RELACIÓN PROMEDIO? · ${rows.length} productos con 3+ ventas ===`);
+      console.log(`Si la relación neto/precio varía mucho DENTRO del mismo producto, la estimación no sirve.\n`);
+      console.log(`  dispersión   mín     máx    ponder.  mediana   vtas  producto`);
+      for (const r of rows.slice(0, 30)) {
+        console.log(`   ${r.spread.toFixed(1)} pts`.padEnd(14) + `${(r.mn * 100).toFixed(1)}%`.padStart(7) + `${(r.mx * 100).toFixed(1)}%`.padStart(8)
+          + `${(r.pond * 100).toFixed(1)}%`.padStart(9) + `${(r.med * 100).toFixed(1)}%`.padStart(9) + `${r.n}`.padStart(6) + `  ${r.nom.slice(0, 34)}`);
+      }
+      const anchos = rows.filter((r) => r.spread >= 10).length;
+      console.log(`\n${anchos} de ${rows.length} productos tienen más de 10 puntos de dispersión → en esos, estimar el neto con un promedio da un margen poco confiable.`);
+      return;
+    }
     // BILLING_PROBE=chkcosto[:<YYYY_MM,...>] → COMPARA el costo que usa el ROBOT contra el que usa la
     // APP, producto por producto. La app prioriza RECALCULAR (costUSD × (1+%reclamos) + envío) y solo
     // usa costFullUSD si el producto no tiene envío/devPct/reclamos; el robot hace lo CONTRARIO
