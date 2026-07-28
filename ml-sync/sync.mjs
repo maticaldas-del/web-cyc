@@ -219,8 +219,9 @@ async function tgApi(method, body) {
   } catch { return null; }
 }
 // Manda el mensaje a TODOS los suscriptos (los que le escribieron "hola" al bot).
+let TG_SILENCIO = false; // cyc/mlconfig/telegramOff: corta TODOS los envíos (avisos y resumen)
 async function sendTelegram(text) {
-  if (!TG_TOKEN) return false;
+  if (!TG_TOKEN || TG_SILENCIO) return false;
   const dest = TG_CHATS.length ? TG_CHATS : (TG_CHAT ? [String(TG_CHAT)] : []);
   if (!dest.length) return false;
   let anyOk = false;
@@ -371,6 +372,8 @@ async function main() {
   const db = makeDB(FIREBASE_DB_URL, idToken, () => fbSignIn(FIREBASE_API_KEY, FIREBASE_BOT_EMAIL, FIREBASE_BOT_PASSWORD));
 
   // Telegram: descubrir/cachear el chat id (solo hace falta el token).
+  try { TG_SILENCIO = (await db.get('cyc/mlconfig/telegramOff')) === true; } catch { /* */ }
+  if (TG_SILENCIO) console.log('Telegram SILENCIADO (cyc/mlconfig/telegramOff = true). No se manda nada.');
   await resolveTgChat(db);
 
   // TELEGRAM_TEST=1 → solo manda un mensaje de prueba y sale (para verificar
@@ -1091,6 +1094,18 @@ async function main() {
         const vCut = cut.reduce((s, r) => s + r.ventas, 0);
         console.log(`  piso ${String(floor).padStart(2)}%: cortás ${String(cut.length).padStart(3)} prods · perdés ${money(Math.round(ganCut / spanDays * 30)).padStart(11)}/mes (${ganTot > 0 ? (ganCut / ganTot * 100).toFixed(1) : 0}% de la gan.) · liberás ${money(capCut).padStart(12)} de stock · ${Math.round(vCut / spanDays * 30)} ventas/mes menos de trabajo`);
       }
+      return;
+    }
+    // BILLING_PROBE=tg:off / tg:on → corta o reanuda TODOS los mensajes de Telegram
+    // (avisos de margen, problemas de publicaciones y resumen diario). Queda guardado en
+    // cyc/mlconfig/telegramOff, así sobrevive entre corridas.
+    if (String(process.env.BILLING_PROBE || '').startsWith('tg:')) {
+      const modo = String(process.env.BILLING_PROBE).split(':')[1];
+      const off = modo === 'off';
+      if (!DRY) await db.set('cyc/mlconfig/telegramOff', off);
+      console.log(off
+        ? '🔕 Telegram SILENCIADO. No se manda ningún mensaje hasta reactivarlo con tg:on.'
+        : '🔔 Telegram REACTIVADO. Vuelven los avisos y el resumen diario.');
       return;
     }
     // BILLING_PROBE=monofix → saca de los GASTOS la parte del monotributo que ahora está en el costo
