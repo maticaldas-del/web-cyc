@@ -1201,6 +1201,53 @@ async function main() {
       console.log(`El impuesto integrado ahora vive SOLO en el costo de los productos.`);
       return;
     }
+    // BILLING_PROBE=margendia[:YYYY_MM_DD] → por qué el margen del día da lo que da. Muestra venta por
+    // venta el precio, el neto real, el costo con impuestos y el margen, y marca las que quedaron
+    // abajo del piso. Sirve para ver si el promedio bajo es por pocas ventas, por una publicación
+    // puntual, o porque el neto real vino peor que el estimado al fijar el precio.
+    if (String(process.env.BILLING_PROBE || '').startsWith('margendia')) {
+      const arg = (String(process.env.BILLING_PROBE).split(':')[1] || '').trim();
+      const dia = /^\d{4}_\d{2}_\d{2}$/.test(arg) ? arg : dayKeyFromISO(new Date().toISOString());
+      const vp = (await db.get('cyc/ventaprod/' + dia)) || {};
+      const fin = (await db.get('cyc/finanzas')) || {};
+      const mono = (await db.get('cyc/monotributo')) || {};
+      const monoP = parseFloat(mono.pct) || 0;
+      const tc = parseFloat(fin.tipo_cambio) || 1500;
+      const pIdx = {}; for (const p of products) pIdx[p.id] = p;
+      const filas = [];
+      for (const v of Object.values(vp)) {
+        if (!v || v.cancelada) continue;
+        const p = v.prodId ? pIdx[v.prodId] : null;
+        const qty = v.qty || 1, total = v.total || 0, neto = v.neto || 0;
+        const cMerc = p ? costoPesos(p, qty, tc).costo : 0;
+        const imp = total * (mlExtraPct(v.cuenta) + monoP) / 100;
+        const costo = cMerc + imp;
+        const mg = costo > 0 ? (neto - costo) / costo * 100 : null;
+        filas.push({ nom: (v.prod || '?').slice(0, 30), cuenta: v.cuenta || '?', qty, total, neto,
+          cMerc, imp, costo, mg, ratio: total > 0 ? neto / total * 100 : 0, mla: v.mla || '' });
+      }
+      console.log(`=== MARGEN DEL ${dia.replace(/_/g, '-')} · ${filas.length} ventas ===\n`);
+      if (!filas.length) { console.log('Sin ventas cargadas todavía en ese día.'); return; }
+      filas.sort((a, b) => (a.mg ?? 999) - (b.mg ?? 999));
+      for (const f of filas) {
+        const flag = f.mg == null ? '  (sin costo)' : f.mg < 30 ? '  ← ABAJO DEL PISO' : '';
+        console.log(`  ${f.mg == null ? '  ?' : String(Math.round(f.mg)).padStart(4)}% · ${f.cuenta.padEnd(8)} · x${f.qty} · ${f.nom}${flag}`);
+        console.log(`        precio ${money(Math.round(f.total))} → neto ${money(Math.round(f.neto))} (${f.ratio.toFixed(1)}%) · costo ${money(Math.round(f.cMerc))} + imp ${money(Math.round(f.imp))} = ${money(Math.round(f.costo))}`);
+      }
+      const conCosto = filas.filter((f) => f.mg != null);
+      const sNeto = conCosto.reduce((s2, f) => s2 + f.neto, 0);
+      const sCosto = conCosto.reduce((s2, f) => s2 + f.costo, 0);
+      const bajo = conCosto.filter((f) => f.mg < 30);
+      console.log(`\n── RESUMEN ──`);
+      console.log(`  Margen del día: ${sCosto > 0 ? ((sNeto - sCosto) / sCosto * 100).toFixed(1) : '—'}%  (neto ${money(Math.round(sNeto))} sobre costo ${money(Math.round(sCosto))})`);
+      console.log(`  Abajo del piso: ${bajo.length} de ${conCosto.length} ventas`);
+      if (bajo.length) {
+        const arrastre = bajo.reduce((s2, f) => s2 + (f.costo * 0.30 - (f.neto - f.costo)), 0);
+        console.log(`  Esas ${bajo.length} restan ${money(Math.round(arrastre))} para llegar al 30% del día.`);
+      }
+      console.log(`  (impuestos usados: IIBB por cuenta + monotributo ${monoP.toFixed(2)}%)`);
+      return;
+    }
     // BILLING_PROBE=capital → foto del capital de CYC: stock, efectivo, deudas y los dólares de los
     // socios. Sirve para decidir si conviene sacar plata del negocio o dejarla trabajando.
     if (String(process.env.BILLING_PROBE || '') === 'capital') {
