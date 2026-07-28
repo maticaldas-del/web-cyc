@@ -1606,6 +1606,77 @@ async function main() {
       }
       return;
     }
+    // BILLING_PROBE=cuotas[:<días>] → MIDE EL COSTO DE OFRECER CUOTAS, POR PUBLICACIÓN.
+    //
+    // ML cobra "financing_add_on_fee" cuando la publicación ofrece cuotas sin interés, y NO lo
+    // informa en la calculadora de precios (ahí devuelve 0). Sí lo informa en el pago de cada venta.
+    // En la Samsung fueron $67.199 sobre $349.999 = 19,2%, más que toda la ganancia de esa venta.
+    // Sin este número, cualquier precio calculado para un producto con cuotas queda ~19% corto.
+    // Guarda en cyc/mlcuotas el % por publicación para que el barrido de precios lo use.
+    if (String(process.env.BILLING_PROBE || '').startsWith('cuotas')) {
+      const DIAS = parseFloat(String(process.env.BILLING_PROBE).split(':')[1]) || 60;
+      const desde = new Date(Date.now() - DIAS * 864e5).toISOString().replace(/\.\d+Z$/, '.000-00:00');
+      const links = (await db.get('cyc/mllinks')) || {};
+      const acum = {}; // mla → { fin, envio, precio, n }
+      for (const label of labels) {
+        const acc = accounts[label];
+        if (!acc?.refresh_token) continue;
+        let t; try { t = await mlRefresh(ML_CLIENT_ID, ML_CLIENT_SECRET, acc.refresh_token); } catch { continue; }
+        await db.patch('mlapi/tokens/' + label, { refresh_token: t.refresh_token, updated_ts: Date.now() });
+        let orders; try { orders = await fetchOrders(acc.seller_id, t.access_token, desde); } catch { continue; }
+        for (const o of orders) {
+          const its = o.order_items || [];
+          const bruto = its.reduce((s, it) => s + (it.unit_price || 0) * (it.quantity || 1), 0);
+          if (bruto <= 0) continue;
+          let fin = 0, env = 0, leido = false;
+          for (const p of (o.payments || [])) {
+            if (!p.id) continue;
+            try {
+              const r = await fetch('https://api.mercadopago.com/v1/payments/' + p.id, { headers: { Authorization: 'Bearer ' + t.access_token } });
+              if (!r.ok) continue;
+              const b = await r.json();
+              leido = true;
+              for (const c of (b.charges_details || [])) {
+                const n = (c.name || '').toLowerCase();
+                const a = c.amounts?.original || 0;
+                if (n.includes('financing')) fin += a;
+                else if (n.includes('shp_')) env += a;
+              }
+            } catch { /* sigue */ }
+          }
+          if (!leido) continue;
+          // el cargo es de la orden: se reparte entre los ítems por su peso en el bruto
+          for (const it of its) {
+            const mla = it.item?.id; if (!mla) continue;
+            const sub = (it.unit_price || 0) * (it.quantity || 1);
+            const peso = sub / bruto;
+            const a = acum[mla] = acum[mla] || { fin: 0, envio: 0, precio: 0, n: 0 };
+            a.fin += fin * peso; a.envio += env * peso; a.precio += sub; a.n++;
+          }
+        }
+      }
+      const filas = Object.entries(acum).map(([mla, a]) => ({
+        mla, n: a.n, precio: a.precio,
+        pctFin: a.precio > 0 ? (a.fin / a.precio * 100) : 0,
+        envioUnit: a.n > 0 ? (a.envio / a.n) : 0,
+        nom: ((links[mla] || {}).title || mla).slice(0, 40),
+        cuenta: (links[mla] || {}).cuenta || '?',
+      })).filter((f) => f.n > 0);
+      const conCuotas = filas.filter((f) => f.pctFin >= 0.5);
+      console.log(`=== COSTO DE OFRECER CUOTAS · últimos ${DIAS} días · ${filas.length} publicaciones con ventas ===\n`);
+      console.log(`── CON COSTO DE CUOTAS · ${conCuotas.length} ──`);
+      console.log(`   Este % se le resta al neto al calcular el precio. Antes no se contaba.\n`);
+      conCuotas.sort((a, b) => b.pctFin - a.pctFin).forEach((f) => console.log(
+        `   ${f.pctFin.toFixed(1).padStart(5)}% cuotas · envío ${money(Math.round(f.envioUnit)).padStart(8)} · ${f.n} ventas · ${f.cuenta.padEnd(8)} · ${f.nom}`));
+      console.log(`\n── SIN COSTO DE CUOTAS · ${filas.length - conCuotas.length} ──`);
+      if (!DRY) {
+        const upd = {};
+        for (const f of filas) upd[f.mla] = { pct: Math.round(f.pctFin * 100) / 100, envio: Math.round(f.envioUnit), n: f.n, ts: Date.now() };
+        await db.patch('cyc/mlcuotas', upd);
+        console.log(`\n✓ Guardado en cyc/mlcuotas: el barrido de precios ya lo va a descontar.`);
+      }
+      return;
+    }
     // BILLING_PROBE=sindatos → ARREGLA LAS PUBLICACIONES "SIN DATOS SUFICIENTES".
     //
     // Dos agujeros que se tapan acá, los dos porque no le pedía a ML datos que sí tiene:
@@ -3649,6 +3720,14 @@ async function main() {
       const fin = (await db.get('cyc/finanzas')) || {};
       const tc = parseFloat(fin.tipo_cambio) || 1500;
       const monoP = parseFloat(((await db.get('cyc/monotributo')) || {}).pct) || 0; // % monotributo
+      // COSTO DE CUOTAS por publicación (cyc/mlcuotas, lo llena el probe 'cuotas'). ML lo cobra pero
+      // NO lo informa en la calculadora de precios: en la Samsung fue 19,2% del precio, más que toda
+      // la ganancia de esa venta. Sin esto, el precio calculado para un producto con cuotas queda corto.
+      const cuotasCfg = (await db.get('cyc/mlcuotas')) || {};
+      const pctCuotas = (mla) => {
+        const v = cuotasCfg[mla] && parseFloat(cuotasCfg[mla].pct);
+        return isFinite(v) && v > 0 ? v / 100 : 0;
+      };
       const UMBRAL_ENVIO = 33000; // desde acá ML obliga a envío gratis y lo paga el vendedor
       const pIdx = {}; for (const p of products) pIdx[p.id] = p;
       // Ventas por publicación y por producto (precio y neto UNITARIOS).
@@ -3739,7 +3818,10 @@ async function main() {
             }
             if (!isFinite(envio)) { sinDato.push({ label, mla, nom, why: 'no pude deducir el envío' }); continue; }
             if (envio < 0) envio = 0; // nunca negativo
-            const den = 1 - m * (1 + T);
+            // Cuotas: sale del precio, igual que la comisión. Entra en el neto y en el denominador
+            // del precio objetivo, si no el precio calculado queda corto en ese mismo porcentaje.
+            const cuo = pctCuotas(mla);
+            const den = 1 - cuo - m * (1 + T);
             if (den <= 0) { sinDato.push({ label, mla, nom, why: 'el cargo de ML no deja margen a ningún precio' }); continue; }
             // Se mide CADA unidad (publicación simple o variante) por separado.
             let falloML = false;
@@ -3748,7 +3830,7 @@ async function main() {
               const comHoy = await feeAt(site, u.precio, lt, cat, t.access_token);
               if (comHoy == null) { falloML = true; break; }
               u.com = comHoy;
-              u.neto = u.precio - comHoy - envio;
+              u.neto = u.precio - comHoy - envio - u.precio * cuo;
               u.mlx = u.precio * m;
               u.mg = (u.neto - costo - u.mlx) / (costo + u.mlx);
               if (u.mg >= MIN) { u.ok = true; continue; }
@@ -3765,7 +3847,7 @@ async function main() {
               if (!bien) { falloML = true; break; }
               u.nuevo = Math.ceil(P / 10) * 10;
               u.mult = u.nuevo / u.precio;
-              u.mgNuevo = ((u.nuevo - comP - envio) - costo - u.nuevo * m) / (costo + u.nuevo * m) * 100;
+              u.mgNuevo = ((u.nuevo - comP - envio - u.nuevo * cuo) - costo - u.nuevo * m) / (costo + u.nuevo * m) * 100;
               if (u.mult <= 1) u.ok = true;
             }
             if (falloML) { sinDato.push({ label, mla, nom, why: 'ML no devolvió la comisión' }); continue; }
