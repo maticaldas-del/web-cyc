@@ -1588,10 +1588,15 @@ async function main() {
               ? vars.reduce((s, v) => s + (v.available_quantity || 0), 0)
               : (b.available_quantity || 0);
             const vendidas = uMla[mla] || 0;
+            // OJO: la regla es "si el PRODUCTO tuvo ventas, no se toca" — no la publicación. Un mismo
+            // producto suele estar publicado varias veces y las ventas se van por una sola. Mirando
+            // solo la publicación, el Victoria's Secret aparecía como candidato a bajar cuando el
+            // producto vendió 45 unidades en el mes por otra publicación.
+            const vendidasProd = uProd[p.id] || 0;
             const ult = ultMla[mla] || ultProd[p.id] || 0;
             const diasSin = ult ? Math.round((Date.now() - ult) / 864e5) : null;
-            const base = { label, mla, nom, stock, vendidas, diasSin, prod: p.name || '', nVar: vars.length, precio: vars.length ? (vars[0].price || 0) : (b.price || 0) };
-            if (vendidas > 0) { vendio.push(base); continue; }   // vendió: no se toca (tu regla)
+            const base = { label, mla, nom, stock, vendidas, vendidasProd, diasSin, prod: p.name || '', nVar: vars.length, precio: vars.length ? (vars[0].price || 0) : (b.price || 0) };
+            if (vendidasProd > 0) { vendio.push(base); continue; }   // el producto vendió: no se toca (tu regla)
             if (stock <= 0) { sinStock.push(base); continue; }   // sin stock: no se puede juzgar
             // Con stock y sin vender: ¿desde cuándo hay stock?
             const invIds = [];
