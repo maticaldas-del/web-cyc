@@ -1592,6 +1592,7 @@ function startApp(){
     state.stockDiario=d.stockDiario||{};
     state.mllinks=d.mllinks||{};     // publicaciones ML a mapear (activas + inactivas)
     state.mlconfig=d.mlconfig||{};   // config del robot (auto-precio, meta, umbral)
+    state.monotributo=d.monotributo||{}; // monotributo: montos por cuenta + % que calcula el robot
     // detectar entradas nuevas de ventaprod escritas externamente (p.ej. cowork)
     const _newVP=d.ventaprod||{};
     const _allIds=new Set();
@@ -1695,6 +1696,7 @@ function enterAjustes(){
   const tb=document.getElementById('ajuste-tema-btn');if(tb)tb.textContent=isLight?'☀️ Modo claro':'🌙 Modo oscuro';
   const ok=document.getElementById('ajuste-nombre-ok');if(ok)ok.textContent='';
   renderAutoPriceCfg();
+  renderMono();
   renderMlLinks();
 }
 // ── Auto-precio ML (on/off) — se guarda en cyc/mlconfig y lo lee el robot ──
@@ -2067,6 +2069,15 @@ const costFullP=p=>{const tc=curTC();return costFullUSDof(p)*tc;};
 // provincias con distinta alícuota de IIBB. Editá estos números si cambia la carga impositiva.
 const ML_EXTRA_PCT={adriana:4.07,luciana:4.37,ayelen:5.95,matias:4.58};
 const mlExtraPct=cuenta=>{const v=ML_EXTRA_PCT[(cuenta||'').toLowerCase()];return v!=null?v:4.8;};
+// Monotributo (impuesto integrado) como % del PRECIO de venta, sumado al costo. Es un costo de
+// VENDER: cuanto más facturás, más alta la categoría y más pagás. El monto es fijo y la facturación
+// varía, así que el % lo recalcula el robot con la facturación real de los últimos 90 días y lo deja
+// en cyc/monotributo/pct — acá solo se lee. Es UNO SOLO para las 4 cuentas a propósito: con un % por
+// cuenta, el mismo producto valdría distinto según dónde esté publicado y te empujaría a mudarlo.
+// El autónomo y la obra social NO están acá: no son costo del producto, van como gasto del mes.
+const monoPct=()=>{const v=parseFloat(state.monotributo&&state.monotributo.pct);return isFinite(v)&&v>0?v:0;};
+// Impuestos que se suman al costo de una venta: IIBB (cargo ML, por cuenta) + monotributo (general).
+const impuestosDeVenta=v=>((v&&v.total)||0)*(mlExtraPct(v&&v.cuenta)+monoPct())/100;
 // Retiro de los dueños: desde agosto 2026 es un MONTO FIJO mensual ($1.800.000 = $900.000 cada uno,
 // que es la tarifa de $10.000/hora × 90 hs × 2), NO un % del neto. Antes de esa fecha se sigue
 // usando el 15% del neto para no desarmar el historial de mayo/junio/julio. Si el mes tiene el
@@ -2926,6 +2937,44 @@ function updateTotals(){
   const tue=document.getElementById('tot_u');const tve=document.getElementById('tot_v');
   if(tue)tue.textContent=fmtN(tu)+' u.';if(tve)tve.textContent=fmt(grand);
   updateArqueo();updateHeaderTotal();
+}
+
+/* ═══════════ MONOTRIBUTO ═══════════ */
+// Los montos se cargan a mano cada 6 meses (recategorización). El % que se suma al costo de cada
+// producto lo calcula el ROBOT dividiendo el impuesto integrado por la facturación real de los
+// últimos 90 días — así el número no envejece: si vendés más, el % baja solo.
+const MONO_CTAS=['adriana','luciana','ayelen','matias'];
+async function saveMono(){
+  if(!state.monotributo)state.monotributo={};
+  const imp={};
+  MONO_CTAS.forEach(c=>{const el=document.getElementById('mono-'+c);const n=parseMoney(el&&el.value);if(n>0)imp[c]=n;});
+  const fijo=parseMoney(document.getElementById('mono-fijo')?.value);
+  state.monotributo.impuesto=imp;
+  state.monotributo.fijoMensual=fijo;
+  state.monotributo.desde=_curYM();
+  await fbSet('monotributo/impuesto',imp);
+  await fbSet('monotributo/fijoMensual',fijo);
+  await fbSet('monotributo/desde',_curYM());
+  renderMono();
+  toast('Monotributo guardado ✓');
+}
+function renderMono(){
+  const m=state.monotributo||{};
+  const imp=m.impuesto||{};
+  MONO_CTAS.forEach(c=>{const el=document.getElementById('mono-'+c);if(el&&document.activeElement!==el)setMoneyVal(el,imp[c]||0);});
+  const ef=document.getElementById('mono-fijo');if(ef&&document.activeElement!==ef)setMoneyVal(ef,m.fijoMensual||0);
+  const info=document.getElementById('mono-info');if(!info)return;
+  const tot=MONO_CTAS.reduce((s,c)=>s+(parseFloat(imp[c])||0),0);
+  if(!tot){info.innerHTML='<span style="color:var(--amber)">Cargá los montos de cada cuenta para que se aplique.</span>';return;}
+  const pct=monoPct();
+  const desde=m.desde?m.desde.replace('_','-'):'—';
+  info.innerHTML=`Impuesto integrado: <b>${fmt(Math.round(tot))}</b>/mes entre las 4 cuentas.<br>`
+    +(pct>0
+      ? `Se suma <b style="color:var(--accent2)">${pct.toFixed(2)}%</b> al costo de cada producto`
+        +(m.pctFact?` (calculado sobre ${fmt(Math.round(m.pctFact))} de facturación mensual)`:'')+'.<br>'
+      : '<span style="color:var(--amber)">El robot todavía no calculó el %. Se actualiza en la próxima corrida.</span><br>')
+    +(m.fijoMensual>0?`Autónomo + obra social: <b>${fmt(Math.round(m.fijoMensual))}</b>/mes, se carga solo como gasto el día 1.<br>`:'')
+    +`<span style="font-size:.66rem">Última carga: ${desde}. Volvé a actualizarlo en la próxima recategorización.</span>`;
 }
 
 /* ═══════════ FINANZAS / ARQUEO ═══════════ */
@@ -3873,7 +3922,7 @@ function efectivoCostoVP(v){
   // Cargo extra de ML (IIBB + almacenamiento) que ML cobra por débito, aparte de la venta: % del precio.
   // Se calcula ACÁ ARRIBA para que TODAS las salidas lo incluyan — incluido el arqueo/ganancia del mes,
   // que llama sin _dateKey y usa el costo guardado (v.costo). Sin esto, el mes no cerraba.
-  const mlExtra=(v&&v.total?v.total:0)*mlExtraPct(v&&v.cuenta)/100;
+  const mlExtra=impuestosDeVenta(v);
   if(!v._dateKey)return (v.costo||0)+mlExtra;
   const ym=v._dateKey.substring(0,7);
   const p=prodDeVenta(v);if(!p)return (v.costo||0)+mlExtra;
@@ -4370,7 +4419,7 @@ function renderVentaProd(){
     const VP_CAP=200;const shownGroups=filteredGroups.slice(0,VP_CAP);
     list.innerHTML=filteredGroups.length?shownGroups.map(grp=>{
       const isCancelled=grp.cancelada;
-      let gn=0,gc=0,gmlx=0;grp.items.forEach(v=>{if(!isCancelled){gn+=v.neto||0;gc+=efectivoCostoVP(v);gmlx+=(v.total||0)*mlExtraPct(v.cuenta)/100;}});
+      let gn=0,gc=0,gmlx=0;grp.items.forEach(v=>{if(!isCancelled){gn+=v.neto||0;gc+=efectivoCostoVP(v);gmlx+=impuestosDeVenta(v);}});
       const gg=gn-gc;const gpct=gc>0?gg/gc*100:null;
       const cuenta=grp.items[0].cuenta;
       const numVenta=grp.items[0].numVenta||'';
@@ -4424,7 +4473,7 @@ function renderVentaProd(){
       const cancelBadge=isCancelled?(_esRec
         ?`<span style="padding:1px 7px;border-radius:4px;background:rgba(239,68,68,.15);color:#f87171;font-size:.58rem;font-weight:600;letter-spacing:.04em" title="Producto perdido · no volvió al stock · cuenta como reclamo">RECLAMO · sin stock</span>`
         :`<span style="padding:1px 7px;border-radius:4px;background:rgba(148,163,184,.18);color:#cbd5e1;font-size:.58rem;font-weight:600;letter-spacing:.04em" title="El comprador canceló · producto devuelto al stock">CANCELADA · devuelto</span>`):'';
-      const costLabel=(!isCancelled&&gc>0)?`<span style="font-size:.66rem;color:var(--muted)" title="Costo full: mercadería ${fmt(gc-gmlx)} (costo + envío + %devol + full) + cargo ML por débito de fin de mes (IIBB, etc.) ${fmt(gmlx)}">costo ${fmt(gc)}${gmlx>0?` <span style="color:#f59e0b" title="Cargo extra de ML (IIBB/débito de fin de mes) ya sumado al costo">(ML ${fmt(gmlx)})</span>`:''}</span>`:'';
+      const costLabel=(!isCancelled&&gc>0)?`<span style="font-size:.66rem;color:var(--muted)" title="Costo full: mercadería ${fmt(gc-gmlx)} (costo + envío + %devol + gestión Full) + impuestos ${fmt(gmlx)} = IIBB ${mlExtraPct(cuenta).toFixed(2)}% (cargo de ML por débito) + monotributo ${monoPct().toFixed(2)}%">costo ${fmt(gc)}${gmlx>0?` <span style="color:#f59e0b" title="Impuestos ya sumados al costo: IIBB ${mlExtraPct(cuenta).toFixed(2)}% + monotributo ${monoPct().toFixed(2)}% del precio de venta">(imp. ${fmt(gmlx)})</span>`:''}</span>`:'';
       const ganLabel=isCancelled?'':(gc>0?`<span style="font-size:.66rem;color:${gg>=0?'var(--green)':'var(--red)'}">gan. ${fmt(gg)}</span>`:`<span style="font-size:.62rem;color:var(--muted)">neto ${fmt(gn)}</span>`);
       const lines=grp.items.map(v=>`<div style="display:flex;justify-content:space-between;font-size:.72rem;padding:2px 0;${isCancelled?'opacity:.45;text-decoration:line-through':''}"><span>${v.qty}× ${nombreDeVenta(v)}${v.variante?` <span style="padding:1px 5px;border-radius:3px;background:rgba(124,58,237,.12);color:#a78bfa;font-size:.62rem">${v.variante}</span>`:''}</span><span style="color:var(--muted)">${(!isCancelled&&(v.total||0)>0)?`total ${fmt(v.total)} · `:''}${isCancelled?'':'neto '+fmt(v.neto||0)}</span></div>`).join('');
       return`<div class="ingreso-item" style="flex-direction:column;align-items:stretch;gap:4px;${isCancelled?'border-color:rgba(239,68,68,.25);background:rgba(239,68,68,.04)':''}">
@@ -4536,7 +4585,7 @@ function renderMargenML(){
     if(!netoAgg[k])netoAgg[k]={neto:0,u:0,mlx:0};
     netoAgg[k].neto+=(v.neto||0);netoAgg[k].u+=(v.qty||0);
     // Cargo extra de ML (IIBB + almacenamiento) que ML cobra por débito, aparte de la venta: % del precio.
-    netoAgg[k].mlx+=(v.total||0)*mlExtraPct(v.cuenta)/100;
+    netoAgg[k].mlx+=impuestosDeVenta(v);
   }));
   const _aggOf=p=>netoAgg['id:'+p.id]||netoAgg['nm:'+normTxt(p.name)];
   const _netoRealOf=p=>{const a=_aggOf(p);return (a&&a.u>0)?Math.round(a.neto/a.u):null;};
@@ -6927,7 +6976,28 @@ document.addEventListener('click',e=>{if(fnavOpen&&!e.target.closest('#fnav-btn'
         <span style="font-size:.75rem;color:var(--muted)">Si no ves los últimos cambios, forzá la actualización</span>
         <button class="btn" style="background:rgba(56,189,248,.12);color:var(--blue);border:1px solid rgba(56,189,248,.3)" onclick="actualizarApp()">🔄 Buscar actualizaciones</button>
       </div>
-      <div style="font-size:.66rem;color:var(--muted);margin-top:12px">CYC · Versión 5.6</div>
+      <div style="font-size:.66rem;color:var(--muted);margin-top:12px">CYC · Versión 5.7</div>
+    </div>
+
+    <div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:18px 20px;margin-bottom:14px">
+      <div style="font-family:'Syne',sans-serif;font-weight:800;font-size:.95rem;margin-bottom:6px">🧾 Monotributo</div>
+      <p style="font-size:.68rem;color:var(--muted);margin:0 0 12px;line-height:1.5">
+        Cargá lo que paga cada cuenta por mes (lo sacás del VEP). <b>Se actualiza cada 6 meses</b>, cuando recategorizás.<br>
+        El <b>impuesto integrado</b> se reparte como % sobre cada venta y se suma al costo del producto: es un costo de vender
+        (más facturás → categoría más alta). El % lo calcula solo la web con lo que facturaste de verdad.<br>
+        El <b>autónomo + obra social</b> no es costo de producto (es jubilación y salud), va como gasto del mes y
+        <b>se carga solo</b> el día 1 para no depender de acordarse.
+      </p>
+      <div style="display:flex;flex-direction:column;gap:8px;max-width:420px">
+        <div style="font-size:.66rem;color:var(--muted);font-weight:600;letter-spacing:.04em">IMPUESTO INTEGRADO POR CUENTA (va al costo)</div>
+        <div style="display:flex;align-items:center;gap:8px"><span style="font-size:.72rem;min-width:74px">Adriana</span><input class="fin-input money" type="text" inputmode="numeric" id="mono-adriana" placeholder="$0" onchange="saveMono()" style="width:130px"></div>
+        <div style="display:flex;align-items:center;gap:8px"><span style="font-size:.72rem;min-width:74px">Luciana</span><input class="fin-input money" type="text" inputmode="numeric" id="mono-luciana" placeholder="$0" onchange="saveMono()" style="width:130px"></div>
+        <div style="display:flex;align-items:center;gap:8px"><span style="font-size:.72rem;min-width:74px">Ayelen</span><input class="fin-input money" type="text" inputmode="numeric" id="mono-ayelen" placeholder="$0" onchange="saveMono()" style="width:130px"></div>
+        <div style="display:flex;align-items:center;gap:8px"><span style="font-size:.72rem;min-width:74px">Matias</span><input class="fin-input money" type="text" inputmode="numeric" id="mono-matias" placeholder="$0" onchange="saveMono()" style="width:130px"></div>
+        <div style="font-size:.66rem;color:var(--muted);font-weight:600;letter-spacing:.04em;margin-top:8px">AUTÓNOMO + OBRA SOCIAL (va a gastos)</div>
+        <div style="display:flex;align-items:center;gap:8px"><span style="font-size:.72rem;min-width:74px">Por mes</span><input class="fin-input money" type="text" inputmode="numeric" id="mono-fijo" placeholder="$0" onchange="saveMono()" style="width:130px"></div>
+      </div>
+      <div id="mono-info" style="font-size:.7rem;color:var(--muted);margin-top:12px;line-height:1.6"></div>
     </div>
 
     <div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:18px 20px;margin-bottom:14px">

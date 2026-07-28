@@ -2846,6 +2846,57 @@ async function main() {
   const alertUpd = {};
 
   // config de precios (la editás desde Ajustes en la app): meta, umbral y on/off.
+  // ── MONOTRIBUTO ───────────────────────────────────────────────────────────
+  // cyc/monotributo = { impuesto:{cuenta:monto}, fijoMensual:n, desde:'YYYY_MM' }
+  // Se carga a mano en Ajustes cada 6 meses (recategorización). Acá el robot hace dos cosas:
+  //  1) IMPUESTO INTEGRADO: es un costo de VENDER (más facturás → categoría más alta), así que va
+  //     al costo de cada producto como % del precio. El monto es fijo y la facturación varía, así
+  //     que el % se recalcula con la facturación REAL de los últimos 90 días y se guarda en /pct.
+  //     La app solo lee ese número: no tiene que recalcular nada por venta.
+  //     Es UNO SOLO para las 4 cuentas a propósito: si cada cuenta tuviera el suyo, el precio del
+  //     mismo producto cambiaría según dónde esté publicado y te empujaría a mudarlo de cuenta.
+  //  2) AUTÓNOMO + OBRA SOCIAL: NO es costo de producto (es jubilación y salud de una persona),
+  //     va como gasto del mes. Se carga solo el día 1 para no depender de acordarse.
+  const mono = (await db.get('cyc/monotributo')) || {};
+  {
+    const imp = mono.impuesto || {};
+    const totImp = Object.values(imp).reduce((s, x) => s + (parseFloat(x) || 0), 0);
+    if (totImp > 0) {
+      const vpAll = (await db.get('cyc/ventaprod')) || {};
+      const desde = dayKeyFromISO(Date.now() - 89 * 864e5);
+      let fact90 = 0;
+      for (const [k, ents] of Object.entries(vpAll)) {
+        if (k < desde) continue;
+        for (const v of Object.values(ents || {})) {
+          if (!v || v.cancelada) continue;
+          fact90 += v.total || 0;
+        }
+      }
+      const factMes = fact90 / 3; // 90 días ≈ 3 meses
+      if (factMes > 0) {
+        const pct = Math.round((totImp / factMes) * 10000) / 100; // % con 2 decimales
+        if (mono.pct !== pct && !DRY) await db.patch('cyc/monotributo', { pct, pctCalc: Date.now(), pctFact: Math.round(factMes) });
+        console.log(`Monotributo: ${money(Math.round(totImp))}/mes sobre ${money(Math.round(factMes))} facturados → ${pct}% al costo`);
+      }
+    }
+    const fijo = parseFloat(mono.fijoMensual) || 0;
+    if (fijo > 0) {
+      const ymNow = dayKeyFromISO(new Date().toISOString()).slice(0, 7);
+      const gid = 'monofijo_' + ymNow;
+      let ya = null;
+      try { ya = await db.get('cyc/compras/' + gid); } catch { /* */ }
+      if (!ya) {
+        const gasto = {
+          id: gid, monto: Math.round(fijo), cat: 'Monotributo / Impuestos', tipo: 'gasto',
+          desc: `Autónomo + obra social (${ymNow.replace('_', '-')})`,
+          dayKey: ymNow + '_01', ts: Date.now(), auto: true,
+        };
+        if (!DRY) await db.patch('cyc/compras', { [gid]: gasto });
+        console.log(`${DRY ? '(DRY) ' : ''}Cargado ${gid} = ${money(Math.round(fijo))} (autónomo + obra social).`);
+      }
+    }
+  }
+
   const cfg = (await db.get('cyc/mlconfig')) || {};
   const autoPrice = cfg.autoPrice !== false; // por defecto ON (lo pediste)
   const autoPromo = cfg.autoPromo !== false; // sacar descuentos de ML — ON por defecto
