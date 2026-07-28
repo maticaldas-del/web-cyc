@@ -1652,19 +1652,33 @@ async function main() {
         console.log(`   ${mla} · ${e.cuenta || '?'} · variante "${e.variant || '(sin)'}" → ${destino ? `"${destino}"` : '⚠️ NO PUDE MAPEARLA'}`);
       }
       const sinMapear = plan.filter((x) => !x.varNueva);
-      // Ventas ya hechas de esas publicaciones
+      // Ventas ya hechas que tienen que pasar al Bliss. Se buscan por DOS caminos, porque uno solo
+      // deja ventas afuera: por PUBLICACIÓN (las 3 huérfanas) y por VARIANTE (cualquier venta del
+      // producto común cuya variante diga "bliss", aunque haya entrado por otra publicación).
       const mlas = plan.map((x) => x.mla);
       const ventas = [];
       for (const [dk, ents] of Object.entries(vp)) {
         for (const [id, v] of Object.entries(ents || {})) {
-          if (!v || !v.mla || !mlas.includes(v.mla)) continue;
-          ventas.push({ dk, id, mla: v.mla, costo: v.costo || 0 });
+          if (!v) continue;
+          const porPub = v.mla && mlas.includes(v.mla);
+          const porVar = /bliss/i.test(v.variante || '') && (v.prodId === comun.id || !vivos.has(v.prodId));
+          if (!porPub && !porVar) continue;
+          // A qué variante del Bliss va: si vino por publicación, la del plan; si vino por
+          // variante, se traduce el nombre de la variante de la venta.
+          const x = porPub ? plan.find((y) => y.mla === v.mla) : null;
+          const destino = (x && x.varNueva) || matchVar(v.variante || '');
+          ventas.push({ dk, id, mla: v.mla || '', varVieja: v.variante || '', destino, costo: v.costo || 0, via: porPub ? 'publicación' : 'variante' });
         }
       }
+      const ventasSinDestino = ventas.filter((v) => !v.destino);
       const varsComunLimpias = (comun.variantes || []).filter((v) => !/bliss/i.test(v));
       const sacadas = (comun.variantes || []).filter((v) => /bliss/i.test(v));
       console.log(`\n── VENTAS YA HECHAS A MOVER · ${ventas.length} ──`);
-      console.log(`   Cambian de producto, conservan su costo original.`);
+      console.log(`   Cambian de producto y de variante, conservan su costo original.`);
+      const porDestino = {};
+      ventas.forEach((v) => { const k = (v.varVieja || '(sin variante)') + ' → ' + (v.destino || '⚠️ SIN DESTINO'); porDestino[k] = (porDestino[k] || 0) + 1; });
+      Object.entries(porDestino).sort((a, b) => b[1] - a[1]).forEach(([k, n]) => console.log(`   ${String(n).padStart(4)} ventas · ${k}`));
+      if (ventasSinDestino.length) console.log(`   ⚠️ ${ventasSinDestino.length} ventas sin variante equivalente: NO se tocan.`);
       console.log(`\n── VARIANTES A SACAR DEL PRODUCTO COMÚN · ${sacadas.length} ──`);
       console.log(`   ${sacadas.join(' · ') || '(ninguna)'}`);
       if (sinMapear.length) {
@@ -1679,14 +1693,12 @@ async function main() {
         await db.set('cyc/mllinks/' + x.mla + '/variant', x.varNueva);
         okPub++;
       }
-      const mlasOk = plan.filter((x) => x.varNueva).map((x) => x.mla);
       let okVta = 0;
       for (const v of ventas) {
-        if (!mlasOk.includes(v.mla)) continue;
-        const x = plan.find((y) => y.mla === v.mla);
+        if (!v.destino) continue; // sin variante equivalente clara, no se toca
         await db.set(`cyc/ventaprod/${v.dk}/${v.id}/prodId`, bliss.id);
         await db.set(`cyc/ventaprod/${v.dk}/${v.id}/prod`, bliss.name);
-        await db.set(`cyc/ventaprod/${v.dk}/${v.id}/variante`, x.varNueva);
+        await db.set(`cyc/ventaprod/${v.dk}/${v.id}/variante`, v.destino);
         okVta++;
       }
       if (sacadas.length) await db.set('products/' + comun.id + '/variantes', varsComunLimpias);
