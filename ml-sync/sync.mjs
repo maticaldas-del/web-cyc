@@ -4527,7 +4527,10 @@ async function main() {
         const b = `${dk}/${id}/`;
         updates[b + 'prod'] = p.name; updates[b + 'prodId'] = p.id; updates[b + 'sinVincular'] = null;
         if (wantVar) updates[b + 'variante'] = wantVar; // solo si la publicación fija variante
-        if (!v.cancelada) { updates[b + 'costo'] = costo; updates[b + 'costBaseUSD'] = costBaseUSD; updates[b + 'shipUSD'] = shipUSD; }
+        // El costo de una venta YA HECHA no se toca nunca: es lo que costó esa mercadería ese día.
+        // Si se reescribiera con el costo de hoy, cambiar un precio o separar un producto te
+        // reescribiría la ganancia de meses cerrados. Solo se completa si la venta no tenía costo.
+        if (!v.cancelada && !(v.costo > 0)) { updates[b + 'costo'] = costo; updates[b + 'costBaseUSD'] = costBaseUSD; updates[b + 'shipUSD'] = shipUSD; }
         byProd[`${v.prod || '(sin nombre)'} → ${p.name}`] = (byProd[`${v.prod || '(sin nombre)'} → ${p.name}`] || 0) + 1;
         n++;
       }
