@@ -1606,6 +1606,66 @@ async function main() {
       }
       return;
     }
+    // BILLING_PROBE=fixbliss[:<idAConservar>[:go]] → DEJA UN SOLO PRODUCTO BLISS Y ENGANCHA TODO.
+    // Quedaron dos productos "Victoria Secret BLISS": uno creado a mano y otro que creó splitbliss.
+    // Esto lista los dos con sus publicaciones, y con un id + ':go' deja ese, borra el otro, y
+    // engancha al que queda TANTO las publicaciones COMO las ventas ya hechas de esas publicaciones.
+    // A las ventas viejas se les cambia el producto pero NUNCA el costo: cada venta conserva lo que
+    // costó ese día, así el historial y las ganancias de meses cerrados no se mueven.
+    if (String(process.env.BILLING_PROBE || '').startsWith('fixbliss')) {
+      const _fb = String(process.env.BILLING_PROBE).split(':');
+      const KEEP = (_fb[1] || '').trim();
+      const APLICAR = _fb[2] === 'go';
+      const links = (await db.get('cyc/mllinks')) || {};
+      const vp = (await db.get('cyc/ventaprod')) || {};
+      const blissProds = products.filter((p) => /bliss/i.test(p.name || ''));
+      console.log(`=== PRODUCTOS "BLISS" EN EL CATÁLOGO · ${blissProds.length} ===\n`);
+      for (const p of blissProds) {
+        const pubs = Object.entries(links).filter(([, e]) => e && e.prodId === p.id);
+        let ventas = 0;
+        for (const ents of Object.values(vp)) for (const v of Object.values(ents || {})) if (v && v.prodId === p.id) ventas++;
+        console.log(`  ${p.id} · "${p.name}" · costo US$${p.costUSD} · ${(p.variantes || []).length} variantes`);
+        console.log(`     variantes: ${(p.variantes || []).join(' · ') || '(ninguna)'}`);
+        console.log(`     ${pubs.length} publicaciones vinculadas · ${ventas} ventas ya cargadas`);
+        pubs.forEach(([mla, e]) => console.log(`       ${mla} · ${e.cuenta || '?'} · ${e.variant || e.title || ''}`));
+        console.log('');
+      }
+      if (!KEEP) { console.log('Elegí cuál conservar: fixbliss:<idDelQueQueda>:go'); return; }
+      const keep = products.find((p) => p.id === KEEP);
+      if (!keep) { console.log(`No existe el producto ${KEEP}.`); return; }
+      const sobran = blissProds.filter((p) => p.id !== KEEP);
+      // Publicaciones que hoy apuntan a CUALQUIER producto bliss → van al que queda
+      const mlasBliss = Object.entries(links)
+        .filter(([, e]) => e && blissProds.some((p) => p.id === e.prodId))
+        .map(([mla]) => mla);
+      // Ventas ya cargadas de esas publicaciones (por MLA, que es lo único que identifica bien:
+      // el nombre de variante no alcanza, "Velve Petals" existe en la línea común y en la Bliss)
+      const ventasAMover = [];
+      for (const [dk, ents] of Object.entries(vp)) {
+        for (const [id, v] of Object.entries(ents || {})) {
+          if (!v || !v.mla) continue;
+          if (!mlasBliss.includes(v.mla)) continue;
+          if (v.prodId === KEEP && v.prod === keep.name) continue; // ya está bien
+          ventasAMover.push({ dk, id, mla: v.mla, prodViejo: v.prod || '', costo: v.costo || 0 });
+        }
+      }
+      console.log(`── PLAN ──`);
+      console.log(`  Queda:  ${keep.id} · "${keep.name}" · US$${keep.costUSD}`);
+      sobran.forEach((p) => console.log(`  Se borra: ${p.id} · "${p.name}"`));
+      console.log(`  Publicaciones a enganchar: ${mlasBliss.length} → ${mlasBliss.join(', ')}`);
+      console.log(`  Ventas ya hechas a re-etiquetar: ${ventasAMover.length} (se les cambia el producto, NO el costo)`);
+      if (!APLICAR) { console.log(`\nPRUEBA: no se escribió nada. Para aplicar: fixbliss:${KEEP}:go`); return; }
+      for (const mla of mlasBliss) await db.set('cyc/mllinks/' + mla + '/prodId', KEEP);
+      for (const v of ventasAMover) {
+        await db.set(`cyc/ventaprod/${v.dk}/${v.id}/prodId`, KEEP);
+        await db.set(`cyc/ventaprod/${v.dk}/${v.id}/prod`, keep.name);
+      }
+      for (const p of sobran) await db.set('products/' + p.id, null);
+      console.log(`\n✓ ${mlasBliss.length} publicaciones enganchadas a "${keep.name}".`);
+      console.log(`✓ ${ventasAMover.length} ventas ya hechas re-etiquetadas (con su costo original intacto).`);
+      console.log(`✓ ${sobran.length} producto(s) duplicado(s) borrado(s).`);
+      return;
+    }
     // BILLING_PROBE=splitbliss[:go] → SEPARA LOS "BLISS" EN SU PROPIO PRODUCTO.
     // Los Bliss cuestan USD 16 y los comunes USD 13,8, pero en CYC estaban todos en un solo
     // producto con un costo promedio de USD 15. Resultado: los comunes figuraban peor de lo que
