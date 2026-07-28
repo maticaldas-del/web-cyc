@@ -1215,25 +1215,32 @@ async function main() {
         const p = pIdx[k.split('__')[0]]; if (!p) continue;
         stock += costoPesos(p, q, tc).costo; unidades += q;
       }
+      // OJO: cyc/finanzas está TODO en DÓLARES (igual que el arqueo de la app). El stock de arriba
+      // sale en pesos, así que acá se pasa a dólares para poder sumar y restar sin mezclar monedas.
       const n = (k) => parseFloat(fin[k]) || 0;
-      console.log(`=== CAPITAL DE CYC · dólar ${money(tc)} ===\n`);
+      const stockUSD = tc > 0 ? stock / tc : 0;
+      const u = (x) => 'US$ ' + Math.round(x).toLocaleString('es-AR');
+      console.log(`=== CAPITAL DE CYC · todo en DÓLARES · dólar ${money(tc)} ===\n`);
       console.log(`── LO QUE TIENE ──`);
-      console.log(`  Mercadería en stock: ${money(Math.round(stock)).padStart(14)}  (${unidades} unidades)`);
+      console.log(`  Mercadería en stock: ${u(stockUSD).padStart(14)}  (${unidades} unidades · ${money(Math.round(stock))})`);
       const campos = [['of_viejo', 'Oficina CYC'], ['of_mia', 'Oficina Mati'], ['vendedores', 'Vendedores'],
         ['efectivo', 'Efectivo'], ['mp', 'Mercado Pago'], ['banco', 'Banco'], ['deben', 'Nos deben']];
       let otros = 0;
-      for (const [k, lbl] of campos) { const v = n(k); if (v) { console.log(`  ${lbl.padEnd(20)} ${money(Math.round(v)).padStart(14)}`); otros += v; } }
+      for (const [k, lbl] of campos) { const v = n(k); if (v) { console.log(`  ${lbl.padEnd(20)} ${u(v).padStart(14)}`); otros += v; } }
       console.log(`  ${'─'.repeat(36)}`);
-      console.log(`  TOTAL activos:       ${money(Math.round(stock + otros)).padStart(14)}`);
+      console.log(`  TOTAL activos:       ${u(stockUSD + otros).padStart(14)}   (${money(Math.round((stockUSD + otros) * tc))})`);
       console.log(`\n── LO QUE DEBE ──`);
       let deudas = 0;
       for (const [k, lbl] of [['deuda_cyc', 'Deuda de CYC'], ['tarjeta', 'Tarjeta'],
         ['dolares_mati', 'Dólares de Mati'], ['dolares_tito', 'Dólares del viejo']]) {
-        const v = Math.abs(n(k)); if (v) { console.log(`  ${lbl.padEnd(20)} ${money(Math.round(v)).padStart(14)}`); deudas += v; }
+        const v = Math.abs(n(k)); if (v) { console.log(`  ${lbl.padEnd(20)} ${u(v).padStart(14)}`); deudas += v; }
       }
       console.log(`  ${'─'.repeat(36)}`);
-      console.log(`  TOTAL deudas:        ${money(Math.round(deudas)).padStart(14)}`);
-      console.log(`\n  PATRIMONIO NETO:     ${money(Math.round(stock + otros - deudas)).padStart(14)}`);
+      console.log(`  TOTAL deudas:        ${u(deudas).padStart(14)}   (${money(Math.round(deudas * tc))})`);
+      const patr = stockUSD + otros - deudas;
+      console.log(`\n  PATRIMONIO NETO:     ${u(patr).padStart(14)}   (${money(Math.round(patr * tc))})`);
+      const propio = Math.abs(n('dolares_mati')) + Math.abs(n('dolares_tito'));
+      if (propio) console.log(`  De las deudas, ${u(propio)} son los dólares de ustedes (no es plata de terceros).`);
       // Cuánto dura el stock al ritmo de compra actual
       const vp = (await db.get('cyc/ventaprod')) || {};
       const desde = dayKeyFromISO(Date.now() - 59 * 864e5);
