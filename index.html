@@ -4588,7 +4588,11 @@ function setVpRankMode(mode,btn){
 function renderMargenML(){
   const el=document.getElementById('margen-ml-list');if(!el)return;
   const tc=curTC();
-  const META=40;
+  // El piso sale de la config del robot (cyc/mlconfig/minPct), no de un número fijo. Estaba
+  // clavado en 40: eso era de cuando el margen se medía SIN IIBB ni monotributo. Con los
+  // impuestos adentro el piso pasó a 30, y la pantalla seguía marcando en rojo todo lo que no
+  // llegara al 40 — o sea, marcaba como problema productos que están perfectos.
+  const META=parseFloat((state.mlconfig||{}).minPct)||30;
   const q=normTxt(document.getElementById('margen-ml-search')?.value||'');
   // Neto REAL promedio por producto, sacado de las ventas ya cargadas (lo que Mercado Pago
   // depositó de verdad, ya con la gestión de Full descontada). Así el margen no depende del
@@ -7010,7 +7014,7 @@ document.addEventListener('click',e=>{if(fnavOpen&&!e.target.closest('#fnav-btn'
         <span style="font-size:.75rem;color:var(--muted)">Si no ves los últimos cambios, forzá la actualización</span>
         <button class="btn" style="background:rgba(56,189,248,.12);color:var(--blue);border:1px solid rgba(56,189,248,.3)" onclick="actualizarApp()">🔄 Buscar actualizaciones</button>
       </div>
-      <div style="font-size:.66rem;color:var(--muted);margin-top:12px">CYC · Versión 6.3</div>
+      <div style="font-size:.66rem;color:var(--muted);margin-top:12px">CYC · Versión 6.4</div>
     </div>
 
     <div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:18px 20px;margin-bottom:14px">

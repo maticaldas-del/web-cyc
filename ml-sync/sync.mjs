@@ -1488,6 +1488,96 @@ async function main() {
       console.log(`${DRY ? '(DRY) ' : ''}Robot de precios: actúa por debajo de ${piso}% y lleva a ${meta}%.`);
       return;
     }
+    // BILLING_PROBE=envioreal:<palabra> → EL ENVÍO REAL, VENTA POR VENTA, SIN PROMEDIOS NI MÍNIMOS.
+    // Hace falta porque el margen que calculo depende de una estimación del envío: tomo el envío
+    // MÁS BARATO visto en cada publicación. Con eso, dos publicaciones al MISMO precio y con el
+    // MISMO costo daban 53% y 30% de margen — imposible en la realidad. Acá se ve venta por venta
+    // cuánto se llevó el envío de verdad, para saber cuál de los dos números miente.
+    if (String(process.env.BILLING_PROBE || '').startsWith('envioreal:')) {
+      const kw = (String(process.env.BILLING_PROBE).split(':')[1] || '').trim().toLowerCase();
+      if (!kw) { console.log('Usá: envioreal:<palabra>'); return; }
+      const vp = (await db.get('cyc/ventaprod')) || {};
+      const links = (await db.get('cyc/mllinks')) || {};
+      const pIdx = {}; for (const p of products) pIdx[p.id] = p;
+      // Todas las ventas del producto, con su publicación y su variante.
+      const ventas = [];
+      for (const [k, ents] of Object.entries(vp)) {
+        for (const v of Object.values(ents || {})) {
+          if (!v || v.cancelada) continue;
+          const nom = ((v.prod || '') + ' ' + ((links[v.mla] || {}).title || '')).toLowerCase();
+          if (!nom.includes(kw)) continue;
+          const q = v.qty || 1;
+          ventas.push({
+            dia: k.slice(0, 10).replace(/_/g, '-'), mla: v.mla || '?',
+            variante: v.variante || (links[v.mla] || {}).variant || '',
+            precio: (v.total || 0) / q, neto: (v.neto || 0) / q, qty: q, costo: (v.costo || 0) / q,
+          });
+        }
+      }
+      if (!ventas.length) { console.log(`No hay ventas de "${kw}".`); return; }
+      ventas.sort((a, b) => (a.dia < b.dia ? 1 : -1));
+      // Comisión oficial de ML para cada precio, así el envío sale por diferencia y no estimado.
+      const feeCache = {};
+      let tok = null, site = 'MLA', lt = null, cat = null;
+      for (const label of labels) {
+        const acc = accounts[label];
+        if (!acc?.refresh_token) continue;
+        const mla = ventas.find((v) => (links[v.mla] || {}).cuenta === label);
+        if (!mla) continue;
+        try {
+          const t = await mlRefresh(ML_CLIENT_ID, ML_CLIENT_SECRET, acc.refresh_token);
+          await db.patch('mlapi/tokens/' + label, { refresh_token: t.refresh_token, updated_ts: Date.now() });
+          const it = await mlGet('/items/' + mla.mla + '?attributes=id,listing_type_id,category_id,site_id', t.access_token);
+          tok = t.access_token; site = it.site_id || 'MLA'; lt = it.listing_type_id; cat = it.category_id;
+          break;
+        } catch { /* probar otra cuenta */ }
+      }
+      const feeAt = async (price) => {
+        if (!tok) return null;
+        const key = Math.round(price);
+        if (feeCache[key] !== undefined) return feeCache[key];
+        let out = null;
+        try {
+          const d = await mlGet(`/sites/${site}/listing_prices?price=${key}&listing_type_id=${lt}&category_id=${cat}`, tok);
+          const o = Array.isArray(d) ? d[0] : d;
+          if (typeof o?.sale_fee_amount === 'number') out = o.sale_fee_amount;
+        } catch { out = null; }
+        feeCache[key] = out; return out;
+      };
+      console.log(`=== ENVÍO REAL DE "${kw}" · ${ventas.length} ventas ===`);
+      console.log(`envío = precio − neto recibido − comisión oficial de ML a ESE precio\n`);
+      console.log(`  fecha        precio      neto   comisión     ENVÍO  variante`);
+      const porMla = {};
+      for (const v of ventas.slice(0, 60)) {
+        const com = await feeAt(v.precio);
+        if (com == null) continue;
+        const envio = v.precio - v.neto - com;
+        (porMla[v.mla] = porMla[v.mla] || { envios: [], variante: v.variante }).envios.push(envio);
+        console.log(`  ${v.dia}  ${money(Math.round(v.precio)).padStart(9)} ${money(Math.round(v.neto)).padStart(9)}`
+          + ` ${money(Math.round(com)).padStart(9)} ${money(Math.round(envio)).padStart(9)}  ${(v.variante || '').slice(0, 24)}`);
+      }
+      console.log(`\n── ENVÍO POR PUBLICACIÓN ──`);
+      console.log(`  Si el envío es parecido en todas, el margen tiene que ser parecido también.\n`);
+      const todos = [];
+      for (const [mla, d] of Object.entries(porMla)) {
+        const e = d.envios.slice().sort((a, b) => a - b);
+        const min = e[0], max = e[e.length - 1], med = e[Math.floor(e.length / 2)];
+        const prom = e.reduce((s, x) => s + x, 0) / e.length;
+        todos.push(...e);
+        console.log(`  ${mla} · ${(d.variante || '').slice(0, 22).padEnd(22)} · ${e.length} ventas`
+          + ` · más barato ${money(Math.round(min))} · mediana ${money(Math.round(med))} · más caro ${money(Math.round(max))} · promedio ${money(Math.round(prom))}`);
+      }
+      if (todos.length) {
+        const t2 = todos.slice().sort((a, b) => a - b);
+        const medG = t2[Math.floor(t2.length / 2)];
+        const promG = t2.reduce((s, x) => s + x, 0) / t2.length;
+        console.log(`\n  TODO EL PRODUCTO · ${t2.length} ventas · más barato ${money(Math.round(t2[0]))}`
+          + ` · mediana ${money(Math.round(medG))} · más caro ${money(Math.round(t2[t2.length - 1]))} · promedio ${money(Math.round(promG))}`);
+        console.log(`\n  El margen se calcula hoy con el envío MÁS BARATO de cada publicación. Si el más barato`);
+        console.log(`  y la mediana están lejos, ese margen está inflado y hay que usar la mediana.`);
+      }
+      return;
+    }
     // BILLING_PROBE=variantes:<palabra>[:<días>] → UN PRODUCTO, VARIANTE POR VARIANTE.
     // Caso Victoria's Secret / Paulvic: un mismo producto publicado muchas veces, una por aroma.
     // Mismo costo, distinto precio, y cada uno rota distinto. Mirar el promedio del producto no
