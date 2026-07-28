@@ -5,8 +5,19 @@ name: ml-daily
 
 on:
   schedule:
-    - cron: '55 2 * * *'   # 23:55 hora Argentina (día completo)
+    # 23:23, 23:41 y 23:53 hora Argentina. Se intenta TRES veces porque GitHub saltea corridas
+    # programadas cuando está cargado, y esto corre una sola vez por día: si se saltea, no sale nada
+    # (pasó el 27 y 28 de julio). Los minutos son "raros" a propósito: en :00 y :55 hay más cola.
+    # El robot guarda el último día enviado, así que las corridas de más no mandan nada repetido.
+    - cron: '23 2 * * *'
+    - cron: '41 2 * * *'
+    - cron: '53 2 * * *'
   workflow_dispatch:
+    inputs:
+      dia:
+        description: 'Día a resumir (YYYY_MM_DD). Vacío = hoy.'
+        required: false
+        default: ''
 
 jobs:
   daily:
@@ -26,7 +37,7 @@ jobs:
           FIREBASE_BOT_PASSWORD: ${{ secrets.FIREBASE_BOT_PASSWORD }}
           TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
-          DAILY_SUMMARY: '1'
+          DAILY_SUMMARY: ${{ github.event.inputs.dia != '' && github.event.inputs.dia || '1' }}
         run: node ml-sync/sync.mjs
       # Refresca la facturación de canceladas/devueltas (para el monotributo = "Ventas brutas" ML).
       - name: Facturación de canceladas

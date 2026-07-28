@@ -386,10 +386,19 @@ async function main() {
     return;
   }
 
-  // DAILY_SUMMARY=1 → manda el resumen de ventas del día por Telegram y sale.
+  // DAILY_SUMMARY=1 → resumen de ventas del día por Telegram. DAILY_SUMMARY=2026_07_27 → el de ese día.
+  // GitHub saltea corridas programadas cuando está cargado, y como esto corre UNA vez por día, si se
+  // saltea no sale nada (pasó el 27 y 28 de julio). Por eso el workflow lo intenta 3 veces antes de
+  // medianoche y acá se guarda el último día enviado para no mandarlo repetido.
   if (process.env.DAILY_SUMMARY) {
     const vp = (await db.get('cyc/ventaprod')) || {};
-    const today = dayKeyFromISO(new Date().toISOString());
+    const arg = String(process.env.DAILY_SUMMARY).trim();
+    const today = /^\d{4}_\d{2}_\d{2}$/.test(arg) ? arg : dayKeyFromISO(new Date().toISOString());
+    const forzado = /^\d{4}_\d{2}_\d{2}$/.test(arg);
+    if (!forzado) {
+      const ya = await db.get('mlapi/telegram/lastDaily');
+      if (ya === today) { console.log(`Resumen de ${today} ya enviado, no lo repito.`); return; }
+    }
     const day = vp[today] || {};
     let n = 0, fact = 0, gan = 0;
     const byProd = {};
@@ -402,16 +411,16 @@ async function main() {
       byProd[k] = (byProd[k] || 0) + (v.qty || 0);
     }
     const top = Object.entries(byProd).sort((a, b) => b[1] - a[1])[0];
-    const fecha = new Intl.DateTimeFormat('es-AR', {
-      timeZone: 'America/Argentina/Buenos_Aires', day: '2-digit', month: '2-digit',
-    }).format(new Date());
+    const _pt = today.split('_');
+    const fecha = `${_pt[2]}/${_pt[1]}`;
     const msg = `📊 <b>Resumen del día ${fecha}</b>\n`
       + `Ventas: <b>${n}</b>\n`
       + `Facturado: ${money(fact)}\n`
       + `Ganancia: <b>${money(gan)}</b>\n`
       + (top ? `🥇 Más vendido: ${top[0]} (${top[1]})` : 'Sin ventas hoy');
     const ok = await sendTelegram(msg);
-    console.log(ok ? '✓ Resumen diario enviado.' : '✗ No se pudo enviar el resumen (revisá Telegram).');
+    if (ok && !forzado && !DRY) await db.set('mlapi/telegram/lastDaily', today);
+    console.log(ok ? `✓ Resumen de ${today} enviado.` : '✗ No se pudo enviar el resumen (revisá Telegram).');
     return;
   }
 
