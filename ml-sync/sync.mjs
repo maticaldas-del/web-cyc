@@ -1084,6 +1084,72 @@ async function main() {
       }
       return;
     }
+    // BILLING_PROBE=mlfee:<palabra> → le pregunta a ML cuánto cobra de comisión a un precio dado
+    // (endpoint oficial /sites/MLA/listing_prices) y lo compara contra lo que realmente pasó en la
+    // última venta de esa publicación. De ahí sale el ENVÍO (que es un monto fijo, no un %):
+    //     envío = precio_venta − neto_venta − comisión_a_ese_precio
+    // Con comisión exacta + envío fijo, el neto de cualquier precio nuevo se calcula sin estimar nada.
+    // Diagnóstico: muestra la respuesta cruda de ML para poder verificar los campos.
+    if (String(process.env.BILLING_PROBE || '').startsWith('mlfee')) {
+      const kw = (String(process.env.BILLING_PROBE).split(':')[1] || '').trim().toLowerCase();
+      const vp = (await db.get('cyc/ventaprod')) || {};
+      const links = (await db.get('cyc/mllinks')) || {};
+      // Última venta por publicación (mla)
+      const ult = {};
+      for (const [k, ents] of Object.entries(vp)) {
+        for (const v of Object.values(ents || {})) {
+          if (!v || v.cancelada || !v.mla) continue;
+          const tot = v.total || 0, net = v.neto || 0, q = v.qty || 1;
+          if (tot <= 0 || net <= 0) continue;
+          const cur = ult[v.mla];
+          if (!cur || k > cur.dk) ult[v.mla] = { dk: k, unit: tot / q, neto: net / q, cuenta: v.cuenta || '?' };
+        }
+      }
+      const feeDe = async (site, price, ltype, cat, token) => {
+        try {
+          const d = await mlGet(`/sites/${site}/listing_prices?price=${Math.round(price)}&listing_type_id=${ltype}&category_id=${cat}`, token);
+          const o = Array.isArray(d) ? d[0] : d;
+          return { raw: o, fee: o?.sale_fee_amount ?? null, det: o?.sale_fee_details || null };
+        } catch (e) { return { err: String(e.message || e).slice(0, 120) }; }
+      };
+      let mostrados = 0, crudoMostrado = false;
+      for (const label of labels) {
+        if (mostrados >= 8) break;
+        const acc = accounts[label]; if (!acc?.refresh_token) continue;
+        let t; try { t = await mlRefresh(ML_CLIENT_ID, ML_CLIENT_SECRET, acc.refresh_token); } catch { continue; }
+        await db.patch('mlapi/tokens/' + label, { refresh_token: t.refresh_token, updated_ts: Date.now() });
+        const ids = Object.entries(links)
+          .filter(([mla, e]) => e && e.cuenta === label && !e.ignored && e.prodId && /^MLA/i.test(mla)
+            && (!kw || (e.title || '').toLowerCase().includes(kw)))
+          .map(([mla]) => mla).slice(0, 6);
+        for (const mla of ids) {
+          if (mostrados >= 8) break;
+          let it; try { it = await mlGet('/items/' + mla + '?attributes=id,title,price,status,listing_type_id,category_id,site_id', t.access_token); } catch { continue; }
+          if (it.status !== 'active' || !it.price) continue;
+          const site = it.site_id || 'MLA';
+          const fHoy = await feeDe(site, it.price, it.listing_type_id, it.category_id, t.access_token);
+          if (!crudoMostrado && fHoy.raw) { console.log('RESPUESTA CRUDA DE ML (para verificar los campos):\n' + JSON.stringify(fHoy.raw, null, 2) + '\n'); crudoMostrado = true; }
+          console.log(`── ${label} · ${mla} · ${(it.title || '').slice(0, 44)}`);
+          console.log(`   tipo ${it.listing_type_id} · categoría ${it.category_id}`);
+          console.log(`   precio HOY ${money(Math.round(it.price))} → comisión ML ${fHoy.fee != null ? money(Math.round(fHoy.fee)) + ' (' + (fHoy.fee / it.price * 100).toFixed(1) + '%)' : 'ERROR ' + (fHoy.err || '')}`);
+          const u = ult[mla];
+          if (u && fHoy.fee != null) {
+            const fVta = await feeDe(site, u.unit, it.listing_type_id, it.category_id, t.access_token);
+            if (fVta.fee != null) {
+              const envio = u.unit - u.neto - fVta.fee;
+              const netoCalc = it.price - fHoy.fee - envio;
+              console.log(`   última venta ${u.dk.replace(/_/g, '-')}: precio ${money(Math.round(u.unit))} · neto real ${money(Math.round(u.neto))}`);
+              console.log(`      comisión ML a ESE precio ${money(Math.round(fVta.fee))}  →  ENVÍO deducido = ${money(Math.round(envio))}`);
+              console.log(`      ⇒ neto estimado al precio de HOY = ${money(Math.round(netoCalc))} (${(netoCalc / it.price * 100).toFixed(1)}% del precio)`);
+            } else console.log(`   (no pude pedir la comisión al precio de la venta: ${fVta.err || ''})`);
+          } else if (!u) console.log(`   (sin ventas registradas de esta publicación → no puedo deducir el envío)`);
+          console.log('');
+          mostrados++;
+        }
+      }
+      if (!mostrados) console.log('No encontré publicaciones activas que coincidan.');
+      return;
+    }
     // BILLING_PROBE=chkneto[:<palabra>][:<YYYY_MM,...>] → mira qué tan CONFIABLE es estimar el neto
     // como "precio × relación neto/precio del producto". Si esa relación varía mucho entre ventas del
     // MISMO producto (envío gratis vs pago, promos, precios distintos), la estimación del barrido de
