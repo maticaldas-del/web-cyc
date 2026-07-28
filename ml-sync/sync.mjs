@@ -1488,6 +1488,146 @@ async function main() {
       console.log(`${DRY ? '(DRY) ' : ''}Robot de precios: actúa por debajo de ${piso}% y lleva a ${meta}%.`);
       return;
     }
+    // BILLING_PROBE=dormidos[:<días>][:<margenMin>] → PRODUCTOS CON MARGEN ALTO QUE NO ROTAN.
+    // Regla tuya: si el producto VENDIÓ en la ventana, no se toca aunque tenga margen alto. Solo
+    // interesan los que tienen buen margen y NO se venden: ahí bajar el precio puede despertarlos.
+    // Solo lee, no toca ningún precio.
+    if (String(process.env.BILLING_PROBE || '').startsWith('dormidos')) {
+      const _d = String(process.env.BILLING_PROBE).split(':');
+      const DIAS = parseFloat(_d[1]) || 30;
+      const MG_ALTO = parseFloat(_d[2]) || 45;      // de acá para arriba es "margen alto"
+      const cfgD = (await db.get('cyc/mlconfig')) || {};
+      const META = (parseFloat(cfgD.targetPct) || 32) / 100; // a dónde bajarlos
+      const desde = Date.now() - DIAS * 864e5;
+      const vp = (await db.get('cyc/ventaprod')) || {};
+      const links = (await db.get('cyc/mllinks')) || {};
+      const fin = (await db.get('cyc/finanzas')) || {};
+      const tc = parseFloat(fin.tipo_cambio) || 1500;
+      const monoP = parseFloat(((await db.get('cyc/monotributo')) || {}).pct) || 0;
+      const UMBRAL_ENVIO = 33000;
+      const pIdx = {}; for (const p of products) pIdx[p.id] = p;
+      // Ventas: por publicación y por producto. Se guarda cuántas unidades en la ventana y cuándo
+      // fue la última venta de todas (aunque sea vieja), más precio/neto para deducir el envío.
+      const uMla = {}, uProd = {}, ultMla = {}, ultProd = {}, vtaMla = {}, vtaProd = {};
+      for (const [k, ents] of Object.entries(vp)) {
+        const ts = Date.parse(k.slice(0, 10).replace(/_/g, '-'));
+        for (const v of Object.values(ents || {})) {
+          if (!v || v.cancelada) continue;
+          const q = v.qty || 1;
+          if (isFinite(ts)) {
+            if (ts >= desde) {
+              if (v.mla) uMla[v.mla] = (uMla[v.mla] || 0) + q;
+              if (v.prodId) uProd[v.prodId] = (uProd[v.prodId] || 0) + q;
+            }
+            if (v.mla && (!ultMla[v.mla] || ts > ultMla[v.mla])) ultMla[v.mla] = ts;
+            if (v.prodId && (!ultProd[v.prodId] || ts > ultProd[v.prodId])) ultProd[v.prodId] = ts;
+          }
+          const tot = (v.total || 0) / q, net = (v.neto || 0) / q;
+          if (tot <= 0 || net <= 0) continue;
+          if (v.mla) (vtaMla[v.mla] = vtaMla[v.mla] || []).push({ tot, net });
+          if (v.prodId) (vtaProd[v.prodId] = vtaProd[v.prodId] || []).push({ tot, net });
+        }
+      }
+      const feeCache = {};
+      const feeAt = async (site, price, ltype, cat, token) => {
+        const key = site + '|' + ltype + '|' + cat + '|' + Math.round(price);
+        if (feeCache[key] !== undefined) return feeCache[key];
+        let out = null;
+        try {
+          const d = await mlGet(`/sites/${site}/listing_prices?price=${Math.round(price)}&listing_type_id=${ltype}&category_id=${cat}`, token);
+          const o = Array.isArray(d) ? d[0] : d;
+          if (typeof o?.sale_fee_amount === 'number') out = o.sale_fee_amount;
+        } catch { out = null; }
+        feeCache[key] = out; return out;
+      };
+      console.log(`=== MARGEN ALTO SIN ROTACIÓN · últimos ${DIAS} días · margen alto = ${MG_ALTO}% ===`);
+      console.log(`Los que VENDIERON en la ventana NO se listan para bajar, por más margen que tengan.`);
+      console.log(`El precio sugerido lleva el margen a la meta de ${(META * 100).toFixed(0)}%. SOLO LECTURA.\n`);
+      const dormidos = [], vendieron = [], normales = [], sinDato = [];
+      for (const label of labels) {
+        const acc = accounts[label];
+        if (!acc?.refresh_token) continue;
+        let t; try { t = await mlRefresh(ML_CLIENT_ID, ML_CLIENT_SECRET, acc.refresh_token); } catch { continue; }
+        await db.patch('mlapi/tokens/' + label, { refresh_token: t.refresh_token, updated_ts: Date.now() });
+        const m = (mlExtraPct(label) + monoP) / 100;
+        const ids = Object.entries(links)
+          .filter(([mla, e]) => e && e.cuenta === label && !e.ignored && e.prodId && /^MLA/i.test(mla))
+          .map(([mla]) => mla);
+        for (let k = 0; k < ids.length; k += 20) {
+          let arr;
+          try { arr = await mlGet('/items?ids=' + ids.slice(k, k + 20).join(',') + '&attributes=id,status,price,variations,title,listing_type_id,category_id,site_id', t.access_token); } catch { continue; }
+          for (const row of (arr || [])) {
+            const b = row.body || {}; const mla = b.id; if (!mla || !links[mla]) continue;
+            if (b.status !== 'active') continue;
+            const p = pIdx[links[mla].prodId]; if (!p) continue;
+            const nom = (links[mla].title || b.title || p.name || mla).slice(0, 36);
+            const vendidas = (uMla[mla] || 0) || (uProd[p.id] && !uMla[mla] && !vtaMla[mla] ? uProd[p.id] : 0);
+            const ult = ultMla[mla] || ultProd[p.id] || 0;
+            const diasSin = ult ? Math.round((Date.now() - ult) / 864e5) : null;
+            const site = b.site_id || 'MLA', lt = b.listing_type_id, cat = b.category_id;
+            const costo = costoPesos(p, 1, tc).costo;
+            const vars = Array.isArray(b.variations) ? b.variations : [];
+            const precio = vars.length ? (vars[0].price || 0) : (b.price || 0);
+            const base = { label, mla, nom, precio, vendidas, diasSin, prod: p.name || '', nVar: vars.length };
+            if (vendidas > 0) { vendieron.push(base); continue; } // vendió: no se toca
+            if (!costo || !precio) { sinDato.push({ ...base, why: !costo ? 'sin costo' : 'sin precio' }); continue; }
+            const com = await feeAt(site, precio, lt, cat, t.access_token);
+            if (com == null) { sinDato.push({ ...base, why: 'ML no dio la comisión' }); continue; }
+            const ventas = (vtaMla[mla] && vtaMla[mla].length) ? vtaMla[mla] : (vtaProd[p.id] || []);
+            let envio = Infinity;
+            for (const pv of [...new Set(ventas.map((v) => Math.round(v.tot)))].slice(-6)) {
+              const cv = await feeAt(site, pv, lt, cat, t.access_token);
+              if (cv == null) continue;
+              for (const v of ventas) if (Math.round(v.tot) === pv) { const x = v.tot - v.net - cv; if (x < envio) envio = x; }
+            }
+            if (!isFinite(envio)) { sinDato.push({ ...base, why: 'nunca vendió: no puedo deducir el envío' }); continue; }
+            if (envio < 0) envio = 0;
+            const neto = precio - com - envio;
+            const mlx = precio * m;
+            const mg = (neto - costo - mlx) / (costo + mlx) * 100;
+            const fila = { ...base, mg, costo, com, envio, neto, mlx };
+            if (mg < MG_ALTO) { normales.push(fila); continue; }
+            // Precio que dejaría el margen en la meta (mismo punto fijo, pero para BAJAR)
+            const den = 1 - m * (1 + META);
+            let P = precio, comP = com;
+            if (den > 0) {
+              for (let it = 0; it < 3; it++) {
+                const Pn = (costo * (1 + META) + comP + envio) / den;
+                const c2 = await feeAt(site, Pn, lt, cat, t.access_token);
+                if (c2 == null) break;
+                if (Math.abs(Pn - P) < 1 && it > 0) { P = Pn; comP = c2; break; }
+                P = Pn; comP = c2;
+              }
+            }
+            fila.nuevo = Math.ceil(P / 10) * 10;
+            fila.baja = (1 - fila.nuevo / precio) * 100;
+            fila.cruza = (precio >= UMBRAL_ENVIO && fila.nuevo < UMBRAL_ENVIO);
+            dormidos.push(fila);
+          }
+        }
+      }
+      dormidos.sort((a, b) => b.mg - a.mg);
+      console.log(`── A. MARGEN ALTO Y SIN VENDER · ${dormidos.length} publicaciones ──`);
+      console.log(`   (candidatas a bajar de precio para que roten)\n`);
+      dormidos.forEach((f) => console.log(
+        `  ${String(Math.round(f.mg)).padStart(4)}% → ${(META * 100).toFixed(0)}% · ${money(Math.round(f.precio)).padStart(10)} → ${money(f.nuevo).padStart(10)} (−${f.baja.toFixed(1)}%)`
+        + ` · ${f.diasSin != null ? f.diasSin + ' días sin vender' : 'NUNCA vendió'} · ${f.label.padEnd(8)} · ${f.mla} · ${f.nom}${f.nVar ? ` [${f.nVar} var]` : ''}${f.cruza ? ' ⚠️ cruzaría los $33.000 para abajo (ahí el envío deja de pagarlo CYC: MEJOR)' : ''}\n`
+        + `        precio ${money(Math.round(f.precio))} − comisión ${money(Math.round(f.com))} − envío ${money(Math.round(f.envio))} = neto ${money(Math.round(f.neto))}`
+        + ` · costo ${money(Math.round(f.costo))} + cargo ML ${money(Math.round(f.mlx))} = ${money(Math.round(f.costo + f.mlx))}`));
+      console.log(`\n── B. VENDIERON EN ${DIAS} DÍAS (NO SE TOCAN) · ${vendieron.length} ──`);
+      vendieron.sort((a, b) => b.vendidas - a.vendidas).slice(0, 30).forEach((f) =>
+        console.log(`  ${String(f.vendidas).padStart(3)} u · ${money(Math.round(f.precio)).padStart(10)} · ${f.label.padEnd(8)} · ${f.nom}`));
+      if (vendieron.length > 30) console.log(`  … y ${vendieron.length - 30} más`);
+      console.log(`\n── C. SIN VENDER PERO CON MARGEN NORMAL (bajar no es la palanca) · ${normales.length} ──`);
+      normales.sort((a, b) => b.mg - a.mg).slice(0, 20).forEach((f) =>
+        console.log(`  ${String(Math.round(f.mg)).padStart(4)}% · ${money(Math.round(f.precio)).padStart(10)} · ${f.diasSin != null ? f.diasSin + ' días' : 'NUNCA'} · ${f.label.padEnd(8)} · ${f.nom}`));
+      if (normales.length > 20) console.log(`  … y ${normales.length - 20} más`);
+      console.log(`\n── D. SIN DATOS · ${sinDato.length} ──`);
+      sinDato.slice(0, 15).forEach((f) => console.log(`  ${f.label.padEnd(8)} · ${f.nom} · ${f.why}`));
+      if (sinDato.length > 15) console.log(`  … y ${sinDato.length - 15} más`);
+      console.log(`\nSOLO LECTURA: no se tocó ningún precio.`);
+      return;
+    }
     // BILLING_PROBE=sacapromos[:prueba] → saca AHORA todas las promociones aceptadas (aplicadas y
     // agendadas) de las 4 cuentas, sin esperar a la corrida automática.
     if (String(process.env.BILLING_PROBE || '').startsWith('sacapromos')) {
