@@ -109,6 +109,54 @@ function costoPesos(p, qty, tc) {
   return { costo: Math.round(fullUSD * tc * qty), costBaseUSD: costUSD, shipUSD };
 }
 
+// ── Subir el precio de TODAS las variantes de una publicación ──────────────
+// PELIGRO que esto evita: si a ML le mandás la lista de variantes incompleta,
+// BORRA las que faltan (te comés el historial y el stock de esa variante). Por
+// eso siempre se manda la lista COMPLETA: las que suben con el precio nuevo y
+// las que no, con el precio que ya tenían.
+// Después de escribir se vuelve a leer la publicación y se verifica que siga
+// teniendo la MISMA cantidad de variantes y los precios pedidos. Si algo no
+// coincide, devuelve ok:false para que el que llama frene todo lo demás.
+// 'nuevos' = { idVariante: precioNuevo }.  Devuelve {ok, cambios:[{id,from,to}]} o {ok:false, err}.
+async function raiseVariations(itemId, nuevos, token) {
+  let item;
+  try { item = await mlGet('/items/' + itemId + '?attributes=id,price,status,variations', token); }
+  catch { return { ok: false, err: 'sin-item' }; }
+  if (item.status === 'closed') return { ok: false, err: 'cerrada' };
+  const vars = Array.isArray(item.variations) ? item.variations : [];
+  if (!vars.length) return { ok: false, err: 'sin-variantes' };
+  const antes = vars.length;
+  const cambios = [];
+  // Lista COMPLETA: toda variante va, cambie o no.
+  const payload = vars.map((v) => {
+    const n = nuevos[String(v.id)];
+    let precio = v.price;
+    if (n && n > v.price && n <= v.price * 1.25) { precio = Math.ceil(n / 10) * 10; cambios.push({ id: v.id, from: v.price, to: precio }); }
+    return { id: v.id, price: precio };
+  });
+  if (!cambios.length) return { ok: false, err: 'no-sube' };
+  try {
+    const r = await fetch(ML_API + '/items/' + itemId, {
+      method: 'PUT',
+      headers: { Authorization: 'Bearer ' + token, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ variations: payload }),
+    });
+    if (!r.ok) return { ok: false, err: 'ML-' + r.status };
+  } catch { return { ok: false, err: 'red' }; }
+  // Verificación obligatoria: que no se haya borrado ninguna variante y que los precios sean los pedidos.
+  let after;
+  try { after = await mlGet('/items/' + itemId + '?attributes=id,variations', token); }
+  catch { return { ok: false, err: 'no-pude-verificar' }; }
+  const vd = Array.isArray(after.variations) ? after.variations : [];
+  if (vd.length !== antes) return { ok: false, err: `PELIGRO-variantes-${antes}→${vd.length}` };
+  for (const c of cambios) {
+    const v = vd.find((x) => String(x.id) === String(c.id));
+    if (!v) return { ok: false, err: 'PELIGRO-variante-desaparecida-' + c.id };
+    if (Math.round(v.price) !== c.to) return { ok: false, err: `precio-no-quedo-${c.id}-${Math.round(v.price)}` };
+  }
+  return { ok: true, cambios };
+}
+
 // ── Poner un precio EXACTO en ML (puede BAJAR) ─────────────────────────────
 // Se usa solo para corregir precios que quedaron demasiado altos. A diferencia
 // de raisePrice, este SÍ baja, así que trae dos frenos propios:
@@ -1917,7 +1965,7 @@ async function main() {
           .map(([mla]) => mla);
         for (let k = 0; k < ids.length; k += 20) {
           let arr;
-          try { arr = await mlGet('/items?ids=' + ids.slice(k, k + 20).join(',') + '&attributes=id,status,price,variations,title,listing_type_id,category_id,site_id', t.access_token); } catch { continue; }
+          try { arr = await mlGet('/items?ids=' + ids.slice(k, k + 20).join(',') + '&attributes=id,status,price,variations,attribute_combinations,title,listing_type_id,category_id,site_id', t.access_token); } catch { continue; }
           for (const row of (arr || [])) {
             const b = row.body || {}; const mla = b.id; if (!mla || !links[mla]) continue;
             if (b.status !== 'active') continue;
@@ -1927,10 +1975,17 @@ async function main() {
             const costo = costoPesos(p, 1, tc).costo;
             if (!costo) { sinDato.push({ label, mla, nom, why: 'sin costo cargado' }); continue; }
             const vars = Array.isArray(b.variations) ? b.variations : [];
-            const precio = vars.length ? (vars[0].price || 0) : (b.price || 0);
-            if (!precio) { sinDato.push({ label, mla, nom, why: 'sin precio' }); continue; }
-            const comHoy = await feeAt(site, precio, lt, cat, t.access_token);
-            if (comHoy == null) { sinDato.push({ label, mla, nom, why: 'ML no devolvió la comisión' }); continue; }
+            // Cada VARIANTE tiene su propio precio, así que cada una se mide y se sube por separado.
+            // Sin variantes, la publicación es una sola "unidad".
+            const unidades = vars.length
+              ? vars.map((v) => ({
+                varId: v.id,
+                precio: v.price || 0,
+                etiqueta: (v.attribute_combinations || []).map((a) => a.value_name).filter(Boolean).join(' / ') || String(v.id),
+              }))
+              : [{ varId: null, precio: b.price || 0, etiqueta: '' }];
+            if (!unidades.some((u) => u.precio > 0)) { sinDato.push({ label, mla, nom, why: 'sin precio' }); continue; }
+            const precio = unidades[0].precio;
             // ENVÍO: se deduce de ventas reales como  precio − neto − comisión(a ESE precio).
             // Se miran hasta 6 precios distintos de las ventas más recientes y se toma el envío
             // MÁS BAJO (= el neto más alto), descartando así las ventas con costos extra puntuales.
@@ -1950,33 +2005,53 @@ async function main() {
             }
             if (!isFinite(envio)) { sinDato.push({ label, mla, nom, why: 'no pude deducir el envío' }); continue; }
             if (envio < 0) envio = 0; // nunca negativo
-            const neto = precio - comHoy - envio;
-            const mlx = precio * m;
-            const mg = (neto - costo - mlx) / (costo + mlx);
-            const fila = { label, mla, nom, precio, mg: mg * 100, nVar: vars.length, envio, com: comHoy, costo, mlx, neto, nVtas: usadas, prod: p.name || '', tok: t.access_token };
-            if (mg >= MIN) { yaOk.push(fila); continue; }
-            // Precio objetivo por punto fijo: P = [costo(1+meta) + comisión(P) + envío] / (1 − %cargoML(1+meta)).
-            // Se itera porque la comisión depende del precio (y su parte fija salta por tramos).
             const den = 1 - m * (1 + T);
             if (den <= 0) { sinDato.push({ label, mla, nom, why: 'el cargo de ML no deja margen a ningún precio' }); continue; }
-            let P = precio, comP = comHoy, ok = true;
-            for (let it = 0; it < 3; it++) {
-              const Pn = (costo * (1 + T) + comP + envio) / den;
-              const c2 = await feeAt(site, Pn, lt, cat, t.access_token);
-              if (c2 == null) { ok = false; break; }
-              if (Math.abs(Pn - P) < 1 && it > 0) { P = Pn; comP = c2; break; }
-              P = Pn; comP = c2;
+            // Se mide CADA unidad (publicación simple o variante) por separado.
+            let falloML = false;
+            for (const u of unidades) {
+              if (!u.precio) { u.saltar = 'sin precio'; continue; }
+              const comHoy = await feeAt(site, u.precio, lt, cat, t.access_token);
+              if (comHoy == null) { falloML = true; break; }
+              u.com = comHoy;
+              u.neto = u.precio - comHoy - envio;
+              u.mlx = u.precio * m;
+              u.mg = (u.neto - costo - u.mlx) / (costo + u.mlx);
+              if (u.mg >= MIN) { u.ok = true; continue; }
+              // Precio objetivo por punto fijo: P = [costo(1+meta) + comisión(P) + envío] / (1 − %cargoML(1+meta)).
+              // Se itera porque la comisión depende del precio (y su parte fija salta por tramos).
+              let P = u.precio, comP = comHoy, bien = true;
+              for (let it = 0; it < 3; it++) {
+                const Pn = (costo * (1 + T) + comP + envio) / den;
+                const c2 = await feeAt(site, Pn, lt, cat, t.access_token);
+                if (c2 == null) { bien = false; break; }
+                if (Math.abs(Pn - P) < 1 && it > 0) { P = Pn; comP = c2; break; }
+                P = Pn; comP = c2;
+              }
+              if (!bien) { falloML = true; break; }
+              u.nuevo = Math.ceil(P / 10) * 10;
+              u.mult = u.nuevo / u.precio;
+              u.mgNuevo = ((u.nuevo - comP - envio) - costo - u.nuevo * m) / (costo + u.nuevo * m) * 100;
+              if (u.mult <= 1) u.ok = true;
             }
-            if (!ok) { sinDato.push({ label, mla, nom, why: 'ML no devolvió la comisión del precio nuevo' }); continue; }
-            fila.nuevo = Math.ceil(P / 10) * 10;
-            fila.comNuevo = comP;
-            fila.mult = fila.nuevo / precio;
-            fila.mgNuevo = ((fila.nuevo - comP - envio) - costo - fila.nuevo * m) / (costo + fila.nuevo * m) * 100;
-            if (fila.mult <= 1) { yaOk.push(fila); continue; }
+            if (falloML) { sinDato.push({ label, mla, nom, why: 'ML no devolvió la comisión' }); continue; }
+            const tocar = unidades.filter((u) => u.nuevo && !u.ok && !u.saltar);
+            // La publicación se clasifica por su unidad PEOR: la de menor margen entre las que hay que tocar.
+            const peor = tocar.slice().sort((a, b2) => a.mg - b2.mg)[0];
+            const fila = {
+              label, mla, nom, nVar: vars.length, envio, costo, nVtas: usadas, prod: p.name || '', tok: t.access_token,
+              unidades, tocar,
+              precio: peor ? peor.precio : unidades[0].precio,
+              mg: (peor ? peor.mg : (unidades[0].mg || 0)) * 100,
+              com: peor ? peor.com : unidades[0].com, neto: peor ? peor.neto : unidades[0].neto,
+              mlx: peor ? peor.mlx : unidades[0].mlx,
+              nuevo: peor ? peor.nuevo : 0, mult: peor ? peor.mult : 1, mgNuevo: peor ? peor.mgNuevo : 0,
+            };
+            if (!tocar.length) { yaOk.push(fila); continue; }
             // Si el precio nuevo cruza los $33.000, ML pasa a obligar envío gratis (lo pagás vos):
             // el aumento se lo come el envío y encima facturás más. No se toca: queda para decidir.
-            if (precio < UMBRAL_ENVIO && fila.nuevo >= UMBRAL_ENVIO) { cruzan.push(fila); continue; }
-            if (fila.mult > MAX_UP) grandes.push(fila);
+            if (tocar.some((u) => u.precio < UMBRAL_ENVIO && u.nuevo >= UMBRAL_ENVIO)) { cruzan.push(fila); continue; }
+            if (tocar.some((u) => u.mult > MAX_UP)) grandes.push(fila);
             else if (vars.length) conVar.push(fila);
             else subir.push(fila);
           }
@@ -1988,10 +2063,17 @@ async function main() {
         + `        precio ${money(Math.round(f.precio))} − comisión ${money(Math.round(f.com))} (${(f.com / f.precio * 100).toFixed(1)}%) − envío ${money(Math.round(f.envio))} = neto ${money(Math.round(f.neto))}\n`
         + `        costo mercadería ${money(Math.round(f.costo))} + cargo ML ${money(Math.round(f.mlx))} = ${money(Math.round(f.costo + f.mlx))} · ${f.nVtas} ventas usadas · producto "${f.prod.slice(0, 30)}"`;
       subir.sort((a, b) => a.mg - b.mg); conVar.sort((a, b) => a.mg - b.mg); grandes.sort((a, b) => a.mg - b.mg);
+      // Detalle variante por variante: cuál sube, cuál ya está bien y cuál queda igual.
+      const detVar = (f) => f.unidades.map((u) => {
+        const et = (u.etiqueta || '').slice(0, 26).padEnd(26);
+        if (u.saltar) return `          · ${et} ${u.saltar}`;
+        if (u.ok || !u.nuevo) return `          · ${et} ${money(Math.round(u.precio)).padStart(10)} · ${String(Math.round((u.mg || 0) * 100)).padStart(3)}% · ya está bien, no se toca`;
+        return `          · ${et} ${money(Math.round(u.precio)).padStart(10)} → ${money(u.nuevo).padStart(10)} · ${String(Math.round(u.mg * 100)).padStart(3)}% → ${String(Math.round(u.mgNuevo)).padStart(2)}% (+${((u.mult - 1) * 100).toFixed(1)}%)`;
+      }).join('\n');
       console.log(`── A. SE PUEDEN SUBIR YA (sin variantes, suba ≤25%) · ${subir.length} publicaciones ──`);
       subir.forEach((f) => console.log(line(f)));
-      console.log(`\n── B. CON VARIANTES (NO tocar hasta probar una) · ${conVar.length} publicaciones ──`);
-      conVar.forEach((f) => console.log(line(f) + ` · ${f.nVar} variantes`));
+      console.log(`\n── B. CON VARIANTES (suba ≤25%) · ${conVar.length} publicaciones · ${conVar.reduce((s, f) => s + f.tocar.length, 0)} variantes a subir ──`);
+      conVar.forEach((f) => console.log(line(f) + ` · ${f.nVar} variantes\n` + detVar(f)));
       console.log(`\n── C1. CRUZARÍAN LOS $33.000 (NO tocar: ahí el envío pasa a pagarlo CYC) · ${cruzan.length} ──`);
       cruzan.sort((a, b) => a.mg - b.mg).forEach((f) => console.log(line(f)));
       console.log(`\n── C. NECESITAN SUBA MAYOR A 25% (revisalos a mano) · ${grandes.length} publicaciones ──`);
@@ -2000,14 +2082,44 @@ async function main() {
       console.log(`\n── E. SIN DATOS SUFICIENTES · ${sinDato.length} ──`);
       sinDato.forEach((f) => console.log(`  ${f.label.padEnd(8)} · ${f.mla} · ${f.nom} · ${f.why}`));
       if (!APLICAR) { console.log(`\nRECORDÁ: esto fue solo una LISTA. No se tocó ningún precio en ML.`); return; }
-      // Solo se aplica el grupo A: sin variantes, suba ≤25% y sin cruzar los $33.000.
-      const objetivo = DESTINO === 'todos' ? subir
-        : /^MLA/i.test(DESTINO) ? subir.filter((f) => f.mla === DESTINO)
-        : subir.filter((f) => (f.nom + ' ' + f.prod).toLowerCase().includes(DESTINO.toLowerCase()));
+      // Se aplican los grupos A (sin variantes) y B (con variantes), ambos con suba ≤25% y sin cruzar
+      // los $33.000. Quedan afuera C y C1, que son los que hay que mirar a mano.
+      const candidatos = subir.concat(conVar);
+      const objetivo = DESTINO === 'todos' ? candidatos
+        : /^MLA/i.test(DESTINO) ? candidatos.filter((f) => f.mla === DESTINO)
+        : candidatos.filter((f) => (f.nom + ' ' + f.prod).toLowerCase().includes(DESTINO.toLowerCase()));
       if (!objetivo.length) { console.log(`\nNo hay nada para aplicar con destino "${DESTINO}".`); return; }
-      console.log(`\n══ APLICANDO ${objetivo.length} precio${objetivo.length > 1 ? 's' : ''} en ML ══`);
+      const nVarTot = objetivo.reduce((s, f) => s + (f.nVar ? f.tocar.length : 0), 0);
+      console.log(`\n══ APLICANDO ${objetivo.length} publicacion${objetivo.length > 1 ? 'es' : ''} en ML`
+        + (nVarTot ? ` (${nVarTot} variantes)` : '') + ` ══`);
       let ok = 0, err = 0; const hechos = [];
+      // Freno de seguridad para variantes: si la PRIMERA publicación con variantes vuelve mal de la
+      // verificación (se borró alguna, o el precio no quedó), no se toca ninguna más.
+      let varProbada = false, varAbortado = false;
       for (const f of objetivo) {
+        if (f.nVar) {
+          if (varAbortado) { err++; console.log(`  ⊘ ${f.mla} · ${f.nom}: salteada (la prueba de variantes falló)`); continue; }
+          const nuevos = {}; for (const u of f.tocar) nuevos[String(u.varId)] = u.nuevo;
+          const r = DRY ? { ok: false, err: 'DRY' } : await raiseVariations(f.mla, nuevos, f.tok);
+          if (r.ok) {
+            ok++;
+            for (const c of r.cambios) hechos.push({ nom: f.nom + ' · variante', from: c.from, to: c.to });
+            console.log(`  ✓ ${f.mla} · ${f.nom}: ${r.cambios.length} de ${f.nVar} variantes subidas`);
+            r.cambios.forEach((c) => console.log(`      ${money(c.from)} → ${money(c.to)}`));
+          } else {
+            err++; console.log(`  ✗ ${f.mla} · ${f.nom}: no se pudo (${r.err})`);
+            // Un error de verificación es grave: puede haber tocado la estructura de la publicación.
+            if (String(r.err).startsWith('PELIGRO') || String(r.err).startsWith('precio-no-quedo')) {
+              varAbortado = true;
+              console.log(`  ⛔ FRENO: la verificación falló. No se toca ninguna publicación con variantes más. REVISAR ${f.mla} A MANO.`);
+            } else if (!varProbada) {
+              varAbortado = true;
+              console.log(`  ⛔ FRENO: la primera con variantes falló. No sigo con el resto hasta entender por qué.`);
+            }
+          }
+          varProbada = true;
+          continue;
+        }
         const mult = f.nuevo / f.precio; // raisePrice recalcula sobre el precio real de ML y nunca baja
         const r = DRY ? { ok: false, err: 'DRY' } : await raisePrice(f.mla, null, mult, f.tok);
         if (r.ok) { ok++; hechos.push({ nom: f.nom, from: r.from, to: r.to }); console.log(`  ✓ ${f.mla} · ${f.nom}: ${money(r.from)} → ${money(r.to)}`); }
