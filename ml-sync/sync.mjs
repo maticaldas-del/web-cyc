@@ -198,25 +198,37 @@ async function nivelarGrupos(db, links, tokensRun, DRY, pName, sellerIds) {
       const sid = sellerIds && sellerIds[lab];
       if (sid) porSeller[String(sid)] = { label: lab, tok };
     }
-    const vivos = []; const sinDueno = [];
+    // Se lleva la cuenta de POR QUÉ queda afuera cada publicación. Una omisión silenciosa acá
+    // significa una publicación que se queda a otro precio sin que nadie se entere.
+    const vivos = []; const sinDueno = [], inactivas = [], sinPrecio = [];
+    const vistas = new Set();
     for (let k = 0; k < miembros.length; k += 20) {
       const lote = miembros.slice(k, k + 20);
       let res;
       try { res = await mlGet('/items?ids=' + lote.map((x) => x.mla).join(',') + '&attributes=id,status,price,variations,seller_id', algunTok); } catch { continue; }
       for (const row of (res || [])) {
         const b = row.body || {};
-        if (!b.id || b.status !== 'active') continue;
+        if (!b.id) continue;
+        vistas.add(b.id);
+        const mb = lote.find((x) => x.mla === b.id);
+        const title = mb ? mb.title : b.id;
+        if (b.status !== 'active') { inactivas.push(`${title.slice(0, 30)} (${b.status})`); continue; }
         const vars = Array.isArray(b.variations) ? b.variations : [];
         const precio = vars.length ? Math.max(...vars.map((v) => v.price || 0)) : (b.price || 0);
-        if (!precio) continue;
-        const mb = lote.find((x) => x.mla === b.id);
+        if (!precio) { sinPrecio.push(title.slice(0, 30)); continue; }
         const due = porSeller[String(b.seller_id)];
-        const title = mb ? mb.title : b.id;
-        if (!due) { sinDueno.push(title.slice(0, 30)); continue; } // no es de ninguna cuenta nuestra
+        if (!due) { sinDueno.push(`${title.slice(0, 30)} (seller ${b.seller_id})`); continue; }
         vivos.push({ mla: b.id, cuenta: due.label, title, precio, vars, tok: due.tok });
       }
     }
-    if (sinDueno.length) console.log(`Grupo "${g}": ${sinDueno.length} publicaciones no son de ninguna cuenta nuestra, no se tocan.`);
+    const noLeidas = miembros.filter((mb) => !vistas.has(mb.mla));
+    console.log(`Grupo "${g}": ${miembros.length} vinculadas · ${vivos.length} activas para nivelar`
+      + (inactivas.length ? ` · ${inactivas.length} pausadas/cerradas` : '')
+      + (sinDueno.length ? ` · ${sinDueno.length} de otro vendedor` : '')
+      + (sinPrecio.length ? ` · ${sinPrecio.length} sin precio` : '')
+      + (noLeidas.length ? ` · ${noLeidas.length} que ML no devolvió` : ''));
+    if (sinDueno.length) console.log(`   No son de ninguna cuenta nuestra: ${sinDueno.join(', ')}`);
+    if (noLeidas.length) console.log(`   ML no las devolvió (REVISAR): ${noLeidas.map((x) => x.mla + ' ' + x.title.slice(0, 24)).join(', ')}`);
     if (vivos.length < 2) continue;
     const techo = Math.max(...vivos.map((v) => v.precio));
     const piso = Math.min(...vivos.map((v) => v.precio));
