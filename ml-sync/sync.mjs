@@ -1520,6 +1520,11 @@ async function main() {
     //   P = [costo × (1+meta) + fijo + envío] / (1 − %comisión − %cargoML × (1+meta))
     if (String(process.env.BILLING_PROBE || '').startsWith('precios')) {
       const _cp = String(process.env.BILLING_PROBE).split(':');
+      // 'precios' = solo lista. 'preciosgo' = ESCRIBE en ML. El destino (4º campo) es obligatorio
+      // para aplicar: un MLA puntual o 'todos'. Sin eso no toca nada, para que no pase por accidente.
+      const APLICAR = _cp[0] === 'preciosgo';
+      const DESTINO = (_cp[3] || '').trim();
+      if (APLICAR && !DESTINO) { console.log('Para aplicar hace falta el destino: preciosgo:30:meses:MLA123 o preciosgo:30:meses:todos'); return; }
       const MIN = (parseFloat(_cp[1]) || 30) / 100;      // piso: por debajo de esto se toca
       const T = MIN + 0.02;                               // destino: 2 puntos de colchón
       const pickYM = (_cp[2] || '2026_06,2026_07').split(',').map((s) => s.trim()).filter(Boolean);
@@ -1615,7 +1620,7 @@ async function main() {
             const neto = precio - comHoy - envio;
             const mlx = precio * m;
             const mg = (neto - costo - mlx) / (costo + mlx);
-            const fila = { label, mla, nom, precio, mg: mg * 100, nVar: vars.length, envio, com: comHoy, costo, mlx, neto, nVtas: usadas, prod: p.name || '' };
+            const fila = { label, mla, nom, precio, mg: mg * 100, nVar: vars.length, envio, com: comHoy, costo, mlx, neto, nVtas: usadas, prod: p.name || '', tok: t.access_token };
             if (mg >= MIN) { yaOk.push(fila); continue; }
             // Precio objetivo por punto fijo: P = [costo(1+meta) + comisión(P) + envío] / (1 − %cargoML(1+meta)).
             // Se itera porque la comisión depende del precio (y su parte fija salta por tramos).
@@ -1661,7 +1666,19 @@ async function main() {
       console.log(`\n── D. YA ESTÁN EN EL PISO O ARRIBA · ${yaOk.length} publicaciones ──`);
       console.log(`\n── E. SIN DATOS SUFICIENTES · ${sinDato.length} ──`);
       sinDato.forEach((f) => console.log(`  ${f.label.padEnd(8)} · ${f.mla} · ${f.nom} · ${f.why}`));
-      console.log(`\nRECORDÁ: esto fue solo una LISTA. No se tocó ningún precio en ML.`);
+      if (!APLICAR) { console.log(`\nRECORDÁ: esto fue solo una LISTA. No se tocó ningún precio en ML.`); return; }
+      // Solo se aplica el grupo A: sin variantes, suba ≤25% y sin cruzar los $33.000.
+      const objetivo = DESTINO === 'todos' ? subir : subir.filter((f) => f.mla === DESTINO);
+      if (!objetivo.length) { console.log(`\nNo hay nada para aplicar con destino "${DESTINO}".`); return; }
+      console.log(`\n══ APLICANDO ${objetivo.length} precio${objetivo.length > 1 ? 's' : ''} en ML ══`);
+      let ok = 0, err = 0;
+      for (const f of objetivo) {
+        const mult = f.nuevo / f.precio; // raisePrice recalcula sobre el precio real de ML y nunca baja
+        const r = DRY ? { ok: false, err: 'DRY' } : await raisePrice(f.mla, null, mult, f.tok);
+        if (r.ok) { ok++; console.log(`  ✓ ${f.mla} · ${f.nom}: ${money(r.from)} → ${money(r.to)}`); }
+        else { err++; console.log(`  ✗ ${f.mla} · ${f.nom}: no se pudo (${r.err})`); }
+      }
+      console.log(`\nListo: ${ok} aplicados, ${err} con error.`);
       return;
     }
     // BILLING_PROBE=piso:<margen>[:<YYYY_MM,...>] → SIMULA UN PISO DE MARGEN SUBIENDO PRECIOS (no
