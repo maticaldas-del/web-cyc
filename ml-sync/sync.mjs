@@ -220,8 +220,20 @@ async function tgApi(method, body) {
 }
 // Manda el mensaje a TODOS los suscriptos (los que le escribieron "hola" al bot).
 let TG_SILENCIO = false; // cyc/mlconfig/telegramOff: corta TODOS los envíos (avisos y resumen)
+// Horario permitido: 10:00 a 00:30 (hora Argentina). Fuera de eso no se manda nada, para no
+// despertar a nadie. El resumen diario corre 23:23/23:41/23:53, así que entra cómodo.
+function tgHorarioOk() {
+  const p = new Intl.DateTimeFormat('en-GB', {
+    timeZone: 'America/Argentina/Buenos_Aires', hour: '2-digit', minute: '2-digit', hour12: false,
+  }).formatToParts(new Date()).reduce((o, x) => (o[x.type] = x.value, o), {});
+  const h = parseInt(p.hour, 10), m = parseInt(p.minute, 10);
+  if (h >= 10) return true;            // 10:00 → 23:59
+  if (h === 0 && m <= 30) return true; // 00:00 → 00:30
+  return false;                        // 00:31 → 09:59: silencio
+}
 async function sendTelegram(text) {
   if (!TG_TOKEN || TG_SILENCIO) return false;
+  if (!tgHorarioOk()) { console.log('(Telegram fuera de horario 10:00-00:30, no se manda)'); return false; }
   const dest = TG_CHATS.length ? TG_CHATS : (TG_CHAT ? [String(TG_CHAT)] : []);
   if (!dest.length) return false;
   let anyOk = false;
