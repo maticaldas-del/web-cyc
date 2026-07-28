@@ -1210,6 +1210,119 @@ async function main() {
       console.log(`${DRY ? '(DRY) ' : ''}Robot de precios: actúa por debajo de ${piso}% y lleva a ${meta}%.`);
       return;
     }
+    // BILLING_PROBE=tocados[:<horas>] → QUÉ PRECIOS TOCÓ SOLO EL ROBOT en las últimas N horas (default
+    // 72) y en qué margen quedaron HOY, con la comisión oficial de ML. Sirve para revisar el daño de
+    // haber corrido con la meta vieja (42%): muestra cuáles quedaron muy por encima de la meta nueva
+    // y a qué precio habría que dejarlos. SOLO LEE, no toca nada en ML.
+    if (String(process.env.BILLING_PROBE || '').startsWith('tocados')) {
+      const HS = parseFloat(String(process.env.BILLING_PROBE).split(':')[1]) || 72;
+      const cfgT = (await db.get('cyc/mlconfig')) || {};
+      const META = (parseFloat(cfgT.targetPct) || 32) / 100;
+      const desde = Date.now() - HS * 3600e3;
+      const priced = (await db.get('mlapi/priced')) || {};
+      const tocados = Object.entries(priced)
+        .filter(([mla, e]) => e && (e.ts || 0) >= desde && /^MLA/i.test(mla));
+      console.log(`=== PRECIOS QUE TOCÓ EL ROBOT SOLO en las últimas ${HS} h · ${tocados.length} publicaciones ===`);
+      console.log(`Meta guardada hoy: ${(META * 100).toFixed(0)}% · SOLO LECTURA, no se toca nada en ML\n`);
+      if (!tocados.length) { console.log('Ninguna. El robot no subió precios solo en ese lapso.'); return; }
+      const links = (await db.get('cyc/mllinks')) || {};
+      const vp = (await db.get('cyc/ventaprod')) || {};
+      const fin = (await db.get('cyc/finanzas')) || {};
+      const tc = parseFloat(fin.tipo_cambio) || 1500;
+      const monoP = parseFloat(((await db.get('cyc/monotributo')) || {}).pct) || 0;
+      const pIdx = {}; for (const p of products) pIdx[p.id] = p;
+      // ventas por publicación/producto para deducir el envío (igual que el probe 'precios')
+      const vtaMla = {}, vtaProd = {};
+      for (const [k, ents] of Object.entries(vp)) {
+        if (k.slice(0, 7) < '2026_06') continue;
+        for (const v of Object.values(ents || {})) {
+          if (!v || v.cancelada) continue;
+          const q = v.qty || 1, tot = (v.total || 0) / q, net = (v.neto || 0) / q;
+          if (tot <= 0 || net <= 0) continue;
+          const reg = { tot, net };
+          if (v.mla) (vtaMla[v.mla] = vtaMla[v.mla] || []).push(reg);
+          if (v.prodId) (vtaProd[v.prodId] = vtaProd[v.prodId] || []).push(reg);
+        }
+      }
+      const feeCache = {};
+      const feeAt = async (site, price, ltype, cat, token) => {
+        const key = site + '|' + ltype + '|' + cat + '|' + Math.round(price);
+        if (feeCache[key] !== undefined) return feeCache[key];
+        let out = null;
+        try {
+          const d = await mlGet(`/sites/${site}/listing_prices?price=${Math.round(price)}&listing_type_id=${ltype}&category_id=${cat}`, token);
+          const o = Array.isArray(d) ? d[0] : d;
+          if (typeof o?.sale_fee_amount === 'number') out = o.sale_fee_amount;
+        } catch { out = null; }
+        feeCache[key] = out;
+        return out;
+      };
+      // agrupar por cuenta para pedir un solo token por cuenta
+      const porCta = {};
+      for (const [mla, e] of tocados) {
+        const l = links[mla]?.cuenta; if (!l) continue;
+        (porCta[l] = porCta[l] || []).push([mla, e]);
+      }
+      const pasados = [], bien = [], sinDato = [];
+      for (const [label, arr] of Object.entries(porCta)) {
+        const acc = accounts[label];
+        if (!acc?.refresh_token) { console.log(`(${label}: sin token, salteada)`); continue; }
+        let t; try { t = await mlRefresh(ML_CLIENT_ID, ML_CLIENT_SECRET, acc.refresh_token); } catch { console.log(`(${label}: no pude renovar token)`); continue; }
+        await db.patch('mlapi/tokens/' + label, { refresh_token: t.refresh_token, updated_ts: Date.now() });
+        const m = (mlExtraPct(label) + monoP) / 100;
+        for (const [mla, e] of arr) {
+          let b; try { b = await mlGet('/items/' + mla + '?attributes=id,status,price,variations,title,listing_type_id,category_id,site_id', t.access_token); } catch { continue; }
+          const p = pIdx[links[mla].prodId];
+          const nom = (links[mla].title || b.title || p?.name || mla).slice(0, 34);
+          if (!p) { sinDato.push({ label, mla, nom, why: 'sin producto vinculado' }); continue; }
+          const site = b.site_id || 'MLA', lt = b.listing_type_id, cat = b.category_id;
+          const costo = costoPesos(p, 1, tc).costo;
+          if (!costo) { sinDato.push({ label, mla, nom, why: 'sin costo cargado' }); continue; }
+          const vars = Array.isArray(b.variations) ? b.variations : [];
+          const precio = vars.length ? (vars[0].price || 0) : (b.price || 0);
+          if (!precio) { sinDato.push({ label, mla, nom, why: 'sin precio' }); continue; }
+          const com = await feeAt(site, precio, lt, cat, t.access_token);
+          if (com == null) { sinDato.push({ label, mla, nom, why: 'ML no devolvió la comisión' }); continue; }
+          const ventas = (vtaMla[mla] && vtaMla[mla].length) ? vtaMla[mla] : (vtaProd[p.id] || []);
+          let envio = Infinity;
+          for (const pv of [...new Set(ventas.map((v) => Math.round(v.tot)))].slice(-6)) {
+            const cv = await feeAt(site, pv, lt, cat, t.access_token);
+            if (cv == null) continue;
+            for (const v of ventas) { if (Math.round(v.tot) === pv) { const x = v.tot - v.net - cv; if (x < envio) envio = x; } }
+          }
+          if (!isFinite(envio)) { sinDato.push({ label, mla, nom, why: 'no pude deducir el envío' }); continue; }
+          if (envio < 0) envio = 0;
+          const neto = precio - com - envio;
+          const mlx = precio * m;
+          const mg = (neto - costo - mlx) / (costo + mlx);
+          // precio que dejaría el margen justo en la meta nueva (mismo punto fijo que 'precios')
+          const den = 1 - m * (1 + META);
+          let P = precio, comP = com;
+          if (den > 0) {
+            for (let it = 0; it < 3; it++) {
+              const Pn = (costo * (1 + META) + comP + envio) / den;
+              const c2 = await feeAt(site, Pn, lt, cat, t.access_token);
+              if (c2 == null) break;
+              if (Math.abs(Pn - P) < 1 && it > 0) { P = Pn; comP = c2; break; }
+              P = Pn; comP = c2;
+            }
+          }
+          const fila = { label, mla, nom, precio, mg: mg * 100, deb: Math.ceil(P / 10) * 10, puso: e.to || 0, cuando: new Date(e.ts).toISOString().slice(0, 16).replace('T', ' '), nVar: vars.length };
+          fila.sobra = fila.precio - fila.deb;
+          if (mg > META + 0.03) pasados.push(fila); else bien.push(fila);
+        }
+      }
+      const ln = (f) => `  ${String(Math.round(f.mg)).padStart(4)}% · ${money(Math.round(f.precio)).padStart(10)} · debería ser ${money(f.deb).padStart(10)} (${f.sobra >= 0 ? '+' : ''}${money(Math.round(f.sobra))}) · ${f.label.padEnd(8)} · ${f.mla} · ${f.nom}${f.nVar ? ' [variantes]' : ''}\n        el robot lo puso en ${money(f.puso)} el ${f.cuando} UTC`;
+      pasados.sort((a, b) => b.mg - a.mg);
+      console.log(`── SE PASARON DE LA META (${(META * 100).toFixed(0)}% + 3 de tolerancia) · ${pasados.length} ──`);
+      pasados.forEach((f) => console.log(ln(f)));
+      console.log(`\n── QUEDARON BIEN · ${bien.length} ──`);
+      bien.sort((a, b) => a.mg - b.mg).forEach((f) => console.log(ln(f)));
+      console.log(`\n── SIN DATOS · ${sinDato.length} ──`);
+      sinDato.forEach((f) => console.log(`  ${f.label.padEnd(8)} · ${f.mla} · ${f.nom} · ${f.why}`));
+      console.log(`\nSOLO LECTURA: no se tocó ningún precio en ML.`);
+      return;
+    }
     // BILLING_PROBE=margendia[:YYYY_MM_DD] → por qué el margen del día da lo que da. Muestra venta por
     // venta el precio, el neto real, el costo con impuestos y el margen, y marca las que quedaron
     // abajo del piso. Sirve para ver si el promedio bajo es por pocas ventas, por una publicación
