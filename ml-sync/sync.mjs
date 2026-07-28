@@ -1093,6 +1093,36 @@ async function main() {
       }
       return;
     }
+    // BILLING_PROBE=monofix → saca de los GASTOS la parte del monotributo que ahora está en el costo
+    // de los productos (el impuesto integrado), y deja cargado solo el autónomo + obra social.
+    // Sin esto el monotributo queda contado DOS VECES: en el costo de cada venta y como gasto.
+    // El monto que queda es fijoMensual × cantidad de meses que cubría ese pago (junio cubría 2).
+    if (String(process.env.BILLING_PROBE || '').startsWith('monofix')) {
+      const mono = (await db.get('cyc/monotributo')) || {};
+      const fijo = parseFloat(mono.fijoMensual) || 0;
+      if (!fijo) { console.log('Falta cargar el autónomo + obra social en Ajustes. No toco nada.'); return; }
+      const compras = (await db.get('cyc/compras')) || {};
+      // Meses que cubre cada gasto: junio pagó mayo+junio juntos (mayo quedó en cero).
+      const MESES = { '2026_06': 2, '2026_07': 1 };
+      const upd = {};
+      for (const [id, g] of Object.entries(compras)) {
+        if (!g || g.tipo === 'mercaderia') continue;
+        if (!/monotributo|impuesto/i.test(g.cat || '')) continue;
+        if (id.startsWith('monofijo_')) continue; // los que carga el robot ya son solo el fijo
+        const ym = (g.dayKey || '').slice(0, 7);
+        const n = MESES[ym];
+        if (!n) { console.log(`  (dejo ${id} de ${ym}: no sé cuántos meses cubre)`); continue; }
+        const nuevo = Math.round(fijo * n);
+        console.log(`  ${id} (${ym}, cubre ${n} mes${n > 1 ? 'es' : ''}): ${money(Math.round(g.monto || 0))} → ${money(nuevo)}`);
+        upd[id + '/monto'] = nuevo;
+        upd[id + '/desc'] = `Autónomo + obra social (${n} mes${n > 1 ? 'es' : ''})`;
+      }
+      const n = Object.keys(upd).length / 2;
+      if (!n) { console.log('No encontré gastos de monotributo para ajustar.'); return; }
+      if (!DRY) for (const [k, v] of Object.entries(upd)) await db.set('cyc/compras/' + k, v);
+      console.log(`\n${DRY ? '(DRY) ' : ''}Ajustados ${n} gastos. El impuesto integrado ahora vive SOLO en el costo de los productos.`);
+      return;
+    }
     // BILLING_PROBE=mono → mide cuánto pesa el MONOTRIBUTO sobre la facturación, para poder cargarlo
     // como un % en el costo de cada producto (igual que el cargo de ML). Va sobre el PRECIO de venta
     // porque es la facturación la que define la categoría, no el costo. Muestra mes por mes, el

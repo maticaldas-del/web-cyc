@@ -2078,6 +2078,25 @@ const mlExtraPct=cuenta=>{const v=ML_EXTRA_PCT[(cuenta||'').toLowerCase()];retur
 const monoPct=()=>{const v=parseFloat(state.monotributo&&state.monotributo.pct);return isFinite(v)&&v>0?v:0;};
 // Impuestos que se suman al costo de una venta: IIBB (cargo ML, por cuenta) + monotributo (general).
 const impuestosDeVenta=v=>((v&&v.total)||0)*(mlExtraPct(v&&v.cuenta)+monoPct())/100;
+// Impuestos PROMEDIO por unidad vendida de cada producto. Los impuestos son un % del PRECIO, así que
+// para poder mostrarlos dentro del costo del producto (donde no hay precio) se usa lo que realmente
+// pagaste en sus ventas. Sale exacto y contempla que un mismo producto se venda por varias cuentas
+// (cada una con su alícuota de IIBB). Se recalcula al entrar a Inventario.
+let _impPromCache=null;
+function _impPromMap(){
+  if(_impPromCache)return _impPromCache;
+  const m={};
+  Object.values(state.ventaprod||{}).forEach(o=>Object.values(o||{}).forEach(v=>{
+    if(!v||v.cancelada||!v.prodId)return;
+    const q=v.qty||1;if(!((v.total||0)>0))return;
+    const b=m[v.prodId]||(m[v.prodId]={imp:0,q:0});
+    b.imp+=impuestosDeVenta(v);b.q+=q;
+  }));
+  _impPromCache={};
+  Object.entries(m).forEach(([id,b])=>{if(b.q>0)_impPromCache[id]=b.imp/b.q;});
+  return _impPromCache;
+}
+const impProm=p=>(p&&_impPromMap()[p.id])||0;
 // Retiro de los dueños: desde agosto 2026 es un MONTO FIJO mensual ($1.800.000 = $900.000 cada uno,
 // que es la tarifa de $10.000/hora × 90 hs × 2), NO un % del neto. Antes de esa fecha se sigue
 // usando el 15% del neto para no desarmar el historial de mayo/junio/julio. Si el mes tiene el
@@ -2439,6 +2458,7 @@ function _prodIncompletosBanner(){
   </div>`;
 }
 function renderProds(){
+  _impPromCache=null; // los impuestos por unidad se recalculan con las ventas actuales
   const el=document.getElementById('prod-list');if(!el)return;
   let prods=productsFiltered('prod-search');
   const banner=_prodIncompletosBanner();
@@ -2457,6 +2477,7 @@ function renderProds(){
     const ship=p.shipUSD!=null?parseFloat(p.shipUSD)||0:legacyShip;
     const dev=parseFloat(p.devPct)||0;
     const gest=parseFloat(p.gestFull)||0;   // gestión/logística Full por venta (pesos, aprox.)
+    const impP=impProm(p);                  // impuestos promedio por unidad (IIBB + monotributo)
     const cfu=costFullUSDof(p),cfp=cfu*tc;
     const moneyVal=n=>n?Math.round(n).toLocaleString('es-AR'):'';
     const usdVal=n=>n!=null&&n!==''?+(Math.round(n*100)/100):'';
@@ -2502,8 +2523,8 @@ function renderProds(){
         </div>
         <div id="cvfull-${p.id}" style="background:rgba(16,185,129,.1);border:1px solid rgba(16,185,129,.28);border-radius:8px;padding:8px 14px;min-width:175px">
           <div style="font-size:.6rem;color:var(--muted);text-transform:uppercase;letter-spacing:.1em;margin-bottom:5px">Costo vender en Full</div>
-          <div class="cvfull-val" style="font-size:.82rem;font-weight:700;color:#34d399">${fmtPesos(cfp+gest)}</div>
-          <div class="cvfull-desc" style="font-size:.58rem;color:var(--muted);margin-top:5px;line-height:1.5">costo real full ${fmtPesos(cfp)} + gestión ${fmtPesos(gest)}</div>
+          <div class="cvfull-val" style="font-size:.82rem;font-weight:700;color:#34d399">${fmtPesos(cfp+gest+impP)}</div>
+          <div class="cvfull-desc" style="font-size:.58rem;color:var(--muted);margin-top:5px;line-height:1.5">costo real full ${fmtPesos(cfp)} + gestión ${fmtPesos(gest)}${impP>0?' + impuestos '+fmtPesos(impP):''}</div>
         </div>
       </div>
       <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;padding-top:8px;border-top:1px solid var(--border);margin-top:2px">
@@ -2858,10 +2879,10 @@ async function updGestFull(id,val){
   await log('Gestión Full '+p.name+': $'+Math.round(p.gestFull));
   const box=document.getElementById('cvfull-'+id);
   if(box){
-    const cfp=costFullUSDof(p)*curTC();const tot=cfp+(p.gestFull||0);
+    const cfp=costFullUSDof(p)*curTC();const impP=impProm(p);const tot=cfp+(p.gestFull||0)+impP;
     const fp=n=>n?'$ '+Math.round(n).toLocaleString('es-AR'):'$ 0';
     const vEl=box.querySelector('.cvfull-val');if(vEl)vEl.textContent=fp(tot);
-    const dEl=box.querySelector('.cvfull-desc');if(dEl)dEl.textContent='costo real full '+fp(cfp)+' + gestión '+fp(p.gestFull||0);
+    const dEl=box.querySelector('.cvfull-desc');if(dEl)dEl.textContent='costo real full '+fp(cfp)+' + gestión '+fp(p.gestFull||0)+(impP>0?' + impuestos '+fp(impP):'');
   }
 }
 async function updDevCount(id,val){
@@ -4473,7 +4494,7 @@ function renderVentaProd(){
       const cancelBadge=isCancelled?(_esRec
         ?`<span style="padding:1px 7px;border-radius:4px;background:rgba(239,68,68,.15);color:#f87171;font-size:.58rem;font-weight:600;letter-spacing:.04em" title="Producto perdido · no volvió al stock · cuenta como reclamo">RECLAMO · sin stock</span>`
         :`<span style="padding:1px 7px;border-radius:4px;background:rgba(148,163,184,.18);color:#cbd5e1;font-size:.58rem;font-weight:600;letter-spacing:.04em" title="El comprador canceló · producto devuelto al stock">CANCELADA · devuelto</span>`):'';
-      const costLabel=(!isCancelled&&gc>0)?`<span style="font-size:.66rem;color:var(--muted)" title="Costo full: mercadería ${fmt(gc-gmlx)} (costo + envío + %devol + gestión Full) + impuestos ${fmt(gmlx)} = IIBB ${mlExtraPct(cuenta).toFixed(2)}% (cargo de ML por débito) + monotributo ${monoPct().toFixed(2)}%">costo ${fmt(gc)}${gmlx>0?` <span style="color:#f59e0b" title="Impuestos ya sumados al costo: IIBB ${mlExtraPct(cuenta).toFixed(2)}% + monotributo ${monoPct().toFixed(2)}% del precio de venta">(imp. ${fmt(gmlx)})</span>`:''}</span>`:'';
+      const costLabel=(!isCancelled&&gc>0)?`<span style="font-size:.66rem;color:var(--muted)" title="Costo full ${fmt(gc)}: mercadería ${fmt(gc-gmlx)} (costo + envío + %devol + gestión Full) + impuestos ${fmt(gmlx)} (IIBB ${mlExtraPct(cuenta).toFixed(2)}% + monotributo ${monoPct().toFixed(2)}% del precio). Los impuestos también están sumados en el costo del producto, en Inventario.">costo ${fmt(gc)}</span>`:'';
       const ganLabel=isCancelled?'':(gc>0?`<span style="font-size:.66rem;color:${gg>=0?'var(--green)':'var(--red)'}">gan. ${fmt(gg)}</span>`:`<span style="font-size:.62rem;color:var(--muted)">neto ${fmt(gn)}</span>`);
       const lines=grp.items.map(v=>`<div style="display:flex;justify-content:space-between;font-size:.72rem;padding:2px 0;${isCancelled?'opacity:.45;text-decoration:line-through':''}"><span>${v.qty}× ${nombreDeVenta(v)}${v.variante?` <span style="padding:1px 5px;border-radius:3px;background:rgba(124,58,237,.12);color:#a78bfa;font-size:.62rem">${v.variante}</span>`:''}</span><span style="color:var(--muted)">${(!isCancelled&&(v.total||0)>0)?`total ${fmt(v.total)} · `:''}${isCancelled?'':'neto '+fmt(v.neto||0)}</span></div>`).join('');
       return`<div class="ingreso-item" style="flex-direction:column;align-items:stretch;gap:4px;${isCancelled?'border-color:rgba(239,68,68,.25);background:rgba(239,68,68,.04)':''}">
@@ -6976,7 +6997,7 @@ document.addEventListener('click',e=>{if(fnavOpen&&!e.target.closest('#fnav-btn'
         <span style="font-size:.75rem;color:var(--muted)">Si no ves los últimos cambios, forzá la actualización</span>
         <button class="btn" style="background:rgba(56,189,248,.12);color:var(--blue);border:1px solid rgba(56,189,248,.3)" onclick="actualizarApp()">🔄 Buscar actualizaciones</button>
       </div>
-      <div style="font-size:.66rem;color:var(--muted);margin-top:12px">CYC · Versión 5.7</div>
+      <div style="font-size:.66rem;color:var(--muted);margin-top:12px">CYC · Versión 5.8</div>
     </div>
 
     <div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:18px 20px;margin-bottom:14px">
