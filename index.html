@@ -5945,10 +5945,13 @@ function renderLineChartFromScope(scope){
   const t=document.getElementById('chart-mes-title');if(t)t.textContent=title+(metChartAccum?' · acumulativo':'');
   // Total (todas las cuentas) para una lista de buckets, con el campo indicado (total/neto/ganancia…).
   const totOf=(bkts,field)=>bkts.map(keys=>{let s=0;keys.forEach(k=>MET_ACCTS.forEach(a=>s+=metGetValDay(k,a,field||metViewField)));return s;});
-  // ¿Juntar dos métricas? (2ª métrica elegida, distinta de la 1ª, y en vista general). Cada una
-  // en su propio eje Y para que ambas se vean bien aunque tengan escalas muy distintas.
-  // Varias métricas prendidas → una línea por cada una. Cada métrica en su propio eje Y, porque
-  // Total y Ganancia CYC tienen escalas muy distintas y en un eje común la chica queda aplastada.
+  // Varias métricas prendidas → una línea por cada una, TODAS EN EL MISMO EJE.
+  // Antes cada métrica tenía su propio eje y cada eje se autoescalaba para llenar el alto del
+  // gráfico: Total llegaba a $4.500k y Ganancia CYC a $1.830k, pero las dos se estiraban hasta
+  // arriba y quedaban pegadas. Encima solo se mostraban 2 ejes, así que las demás líneas se
+  // dibujaban con una escala invisible. El gráfico daba a entender que Total y Ganancia CYC eran
+  // casi lo mismo. Son todas cifras en pesos: van al mismo eje y se comparan de verdad.
+  // Que una quede abajo de la otra no es un problema de visualización, es el dato.
   const multi=metViewFields.length>1&&metChartLineView==='general';
   const MET_COL=[CMP_CUR,CMP_YEAR,CMP_PREV,'#22c55e','#a78bfa'];
   let datasets;
@@ -5957,9 +5960,8 @@ function renderLineChartFromScope(scope){
       label:MET_FIELD_LBL[f]||f,
       data:totOf(buckets,f),
       borderColor:MET_COL[i%MET_COL.length],
-      backgroundColor:i===0?MET_COL[0]+'22':'transparent',
-      borderWidth:2.5,tension:.3,pointRadius:2,fill:i===0,
-      yAxisID:i===0?'y':'y'+i,
+      backgroundColor:'transparent',
+      borderWidth:2.5,tension:.3,pointRadius:2,fill:false,
     }));
   } else if(metChartLineView==='general'){
     datasets=[
@@ -5976,16 +5978,8 @@ function renderLineChartFromScope(scope){
   if(metChartLine){metChartLine.destroy();metChartLine=null;}
   Chart.defaults.color='#6b6b7a';Chart.defaults.borderColor='#2a2a30';
   const scales={y:{grid:{color:'#2a2a30'},ticks:{callback:v=>'$'+Math.round(v/1000)+'k'}},x:{grid:{display:false}}};
-  if(multi){
-    // La 1ª métrica usa el eje izquierdo; las demás, ejes propios a la derecha (ocultos para no
-    // llenar de números, el valor exacto se ve en el cartelito al tocar el gráfico).
-    scales.y.title={display:true,text:MET_FIELD_LBL[metViewFields[0]]||metViewFields[0],color:MET_COL[0],font:{size:10}};
-    metViewFields.slice(1).forEach((f,i)=>{
-      scales['y'+(i+1)]={position:'right',grid:{display:false},display:i===0,
-        ticks:{callback:v=>'$'+Math.round(v/1000)+'k'},
-        title:{display:i===0,text:MET_FIELD_LBL[f]||f,color:MET_COL[(i+1)%MET_COL.length],font:{size:10}}};
-    });
-  }
+  // Un solo eje para todas: es la única forma de que la comparación entre métricas sea real.
+  if(multi)scales.y.beginAtZero=true; // arrancar en 0, si no las diferencias se ven infladas
   metChartLine=new Chart(canvas,{type:'line',data:{labels,datasets},
     options:{responsive:true,interaction:{mode:'index',intersect:false},plugins:{legend:{labels:{boxWidth:12,font:{size:11}}},tooltip:{callbacks:{title:items=>{const total=items.reduce((s,i)=>s+(i.raw||0),0);return metChartLineView==='cuentas'?[items[0].label,'Total: $'+Math.round(total).toLocaleString('es-AR')]:[items[0].label];},label:item=>' '+item.dataset.label+': $'+Math.round(item.raw||0).toLocaleString('es-AR'),afterBody:items=>{if(metChartLineView!=='general'||metViewFields.length>1)return '';const find=l=>{const it=items.find(i=>i.dataset.label===l);return it?(it.raw||0):null;};const cur=find(CMP_LBL_CUR),prev=find(CMP_LBL_PREV);if(cur==null||prev==null)return '';const diff=cur-prev,pct=prev!==0?(diff/Math.abs(prev)*100):(cur!==0?100:0),s=diff>=0?'+':'−';return ['','Diferencia vs anterior: '+s+'$'+Math.abs(Math.round(diff)).toLocaleString('es-AR')+'  ('+s+Math.abs(pct).toFixed(1)+'%)'];}},titleFont:{size:13,weight:'bold'},bodyFont:{size:11},titleColor:'#f1f1f3',bodyColor:'#9b9ba8'}},scales}
   });
@@ -7016,7 +7010,7 @@ document.addEventListener('click',e=>{if(fnavOpen&&!e.target.closest('#fnav-btn'
         <span style="font-size:.75rem;color:var(--muted)">Si no ves los últimos cambios, forzá la actualización</span>
         <button class="btn" style="background:rgba(56,189,248,.12);color:var(--blue);border:1px solid rgba(56,189,248,.3)" onclick="actualizarApp()">🔄 Buscar actualizaciones</button>
       </div>
-      <div style="font-size:.66rem;color:var(--muted);margin-top:12px">CYC · Versión 6.2</div>
+      <div style="font-size:.66rem;color:var(--muted);margin-top:12px">CYC · Versión 6.3</div>
     </div>
 
     <div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:18px 20px;margin-bottom:14px">
