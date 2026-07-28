@@ -2285,7 +2285,9 @@ function renderAll(){
 function goTab(tab,btn){
   document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
   btn.classList.add('active');
-  ['inventario','arqueo','comparar','resumen','productos','margen-ml','historial','precios-hist','dolar-mes','monotributo','proveedores'].forEach(t=>{
+  // OJO: esta lista hay que actualizarla al agregar una pestaña nueva. Si falta, el botón se
+  // marca como activo pero no se muestra nada (queda la página en blanco).
+  ['inventario','arqueo','comparar','resumen','productos','margen-ml','oficinas','historial','precios-hist','dolar-mes','monotributo','proveedores'].forEach(t=>{
     const el=document.getElementById('tab-'+t);if(el)el.style.display=t===tab?'block':'none';
   });
   if(tab==='arqueo'){initFinViewSel();loadFinInputs();updateArqueo();}
@@ -7099,7 +7101,7 @@ document.addEventListener('click',e=>{if(fnavOpen&&!e.target.closest('#fnav-btn'
         <span style="font-size:.75rem;color:var(--muted)">Si no ves los últimos cambios, forzá la actualización</span>
         <button class="btn" style="background:rgba(56,189,248,.12);color:var(--blue);border:1px solid rgba(56,189,248,.3)" onclick="actualizarApp()">🔄 Buscar actualizaciones</button>
       </div>
-      <div style="font-size:.66rem;color:var(--muted);margin-top:12px">CYC · Versión 6.6</div>
+      <div style="font-size:.66rem;color:var(--muted);margin-top:12px">CYC · Versión 6.7</div>
     </div>
 
     <div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:18px 20px;margin-bottom:14px">
