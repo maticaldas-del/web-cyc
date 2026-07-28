@@ -1653,6 +1653,7 @@ async function main() {
               label, mla, estado: b.status,
               nom: (links[mla].variant || links[mla].title || b.title || mla).slice(0, 40),
               precio, stock, vendidas,
+              prodId: p.id, prodNom: p.name || '',
               diasSin: ult ? Math.round((Date.now() - ult) / 864e5) : null,
             };
             const costo = costoPesos(p, 1, tc).costo;
@@ -1697,11 +1698,17 @@ async function main() {
       const sinVenta = act.filter((f) => f.vendidas === 0);
       console.log(`=== "${kw}" VARIANTE POR VARIANTE · últimos ${DIAS} días ===`);
       console.log(`${act.length} publicaciones activas · ${totalU} unidades vendidas · ${conVenta.length} rotan, ${sinVenta.length} no\n`);
+      // Se muestran el COSTO y el PRODUCTO de cada publicación: si dos variantes al mismo precio
+      // dan margen distinto, la causa está acá. Pasó con Victoria's Secret (53% vs 31% con el mismo
+      // precio, la misma comisión y el mismo envío) y sin este dato no había forma de verlo.
       const linea = (f) => `  ${String(f.vendidas).padStart(3)} u · ${money(Math.round(f.precio)).padStart(10)}`
         + ` · ${f.mg != null ? (String(Math.round(f.mg)) + '%').padStart(5) : '    —'}`
+        + ` · costo ${f.costo != null ? money(Math.round(f.costo)).padStart(9) : '        —'}`
+        + ` · neto ${f.neto != null ? money(Math.round(f.neto)).padStart(9) : '        —'}`
         + ` · ${String(f.stock).padStart(3)} u stock`
         + ` · ${f.diasSin != null ? (f.diasSin + 'd').padStart(5) : ' nunca'} `
-        + ` · ${f.label.padEnd(8)} · ${f.nom}`;
+        + ` · ${f.label.padEnd(8)} · ${f.nom}`
+        + `\n        producto "${(f.prodNom || '').slice(0, 34)}" (${f.prodId || '?'})`;
       console.log(`── ROTAN (vendieron en ${DIAS} días) · ordenadas por unidades ──`);
       console.log(`   u · precio · margen · stock · última venta · cuenta · variante\n`);
       conVenta.sort((a, b) => b.vendidas - a.vendidas).forEach((f) => {
