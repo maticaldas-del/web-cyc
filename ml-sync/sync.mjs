@@ -223,7 +223,17 @@ async function nivelarGrupos(db, links, tokensRun, DRY, pName, sellerIds) {
         if (!b.id) continue;
         const mb = lote.find((x) => x.mla === b.id);
         const title = mb ? mb.title : b.id;
-        const due = porSeller[String(b.seller_id)];
+        // ML no devuelve seller_id cuando la publicación se lee con el token de otra cuenta.
+        // En ese caso se prueba cuenta por cuenta: la del dueño responde con los datos completos.
+        let due = porSeller[String(b.seller_id)];
+        if (!due && b.seller_id === undefined) {
+          for (const [lab, tk] of Object.entries(tokensRun)) {
+            try {
+              const solo = await mlGet('/items/' + b.id + '?attributes=id,status,price,seller_id', tk);
+              if (solo && String(solo.seller_id) === String(sellerIds[lab])) { due = { label: lab, tok: tk }; break; }
+            } catch { /* no es de esta cuenta, probar la siguiente */ }
+          }
+        }
         if (!due) { vistas.add(b.id); sinDueno.push(`${title.slice(0, 30)} (seller ${b.seller_id})`); continue; }
         // Si la leí con un token que no es el del dueño, el estado y el precio no son confiables.
         if (due.tok !== tok) { pendientes.push({ ...mb, cuenta: due.label, tok: due.tok }); continue; }
