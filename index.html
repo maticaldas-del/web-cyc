@@ -993,23 +993,13 @@ footer{margin-top:32px;padding-top:14px;border-top:1px solid var(--border);font-
       <button class="vbtn"        id="ms-rango" onclick="setMetScope('rango',this)">📅 Período</button>
     </div>
     <div class="view-toggle" style="margin:0">
-      <button class="vbtn active" id="met-field-total"    onclick="setMetField('total',this)"    title="Precio total de venta (lo que pagó el comprador)">💵 Total</button>
-      <button class="vbtn"        id="met-field-neto"     onclick="setMetField('neto',this)"     title="Neto que queda después de comisiones ML">💚 Neto</button>
-      <button class="vbtn"        id="met-field-ganancia" onclick="setMetField('ganancia',this)" title="Ganancia = Neto − Costo">💰 Ganancia</button>
-      <button class="vbtn"        id="met-field-gananciaCYC" onclick="setMetField('gananciaCYC',this)" title="Ganancia de CYC = Ganancia − Retiros − Gastos del mes. Usa el retiro real que anotaste en Finanzas (o el 15% si ese mes no lo cargaste). Gastos sin cargar usan $800.000 estimado.">🏢 Ganancia CYC</button>
-      <button class="vbtn"        id="met-field-retiros" onclick="setMetField('retiros',this)" title="Retiros de dueños: el monto real que anotaste ese mes en Finanzas, o el 15% del neto si no lo cargaste (Mati + Viejo)">💸 Retiros</button>
+      <button class="vbtn active" id="met-field-total"    onclick="setMetField('total')"    title="Precio total de venta (lo que pagó el comprador)">💵 Total</button>
+      <button class="vbtn"        id="met-field-neto"     onclick="setMetField('neto')"     title="Neto que queda después de comisiones ML">💚 Neto</button>
+      <button class="vbtn"        id="met-field-ganancia" onclick="setMetField('ganancia')" title="Ganancia = Neto − Costo">💰 Ganancia</button>
+      <button class="vbtn"        id="met-field-gananciaCYC" onclick="setMetField('gananciaCYC')" title="Ganancia de CYC = Ganancia − Retiros − Gastos del mes. Usa el retiro real que anotaste en Finanzas (o el 15% si ese mes no lo cargaste). Gastos sin cargar usan $800.000 estimado.">🏢 Ganancia CYC</button>
+      <button class="vbtn"        id="met-field-retiros" onclick="setMetField('retiros')" title="Retiros de dueños: el monto real que anotaste ese mes en Finanzas, o el 15% del neto si no lo cargaste (Mati + Viejo)">💸 Retiros</button>
     </div>
-    <div style="display:flex;align-items:center;gap:6px" title="Elegí una 2ª métrica para verla junto a la primera en el gráfico (cada una con su escala)">
-      <span style="font-size:.72rem;color:var(--muted)">+ comparar:</span>
-      <select id="met-field2" class="cal-select" onchange="setMetField2(this.value)">
-        <option value="">— ninguna —</option>
-        <option value="total">💵 Total</option>
-        <option value="neto">💚 Neto</option>
-        <option value="ganancia">💰 Ganancia</option>
-        <option value="gananciaCYC">🏢 Ganancia CYC</option>
-        <option value="retiros">💸 Retiros</option>
-      </select>
-    </div>
+    <!-- Para comparar: se clickean las métricas de arriba. Cada una prendida dibuja su línea. -->
     <div id="ms-ctrl-dia" style="display:none;align-items:center;gap:8px">
       <button class="vbtn" onclick="metNavPrev()" style="padding:3px 13px;font-size:1.1rem;line-height:1">‹</button>
       <input type="date" id="met-date" class="cal-select" onchange="renderMetricas()">
@@ -1970,10 +1960,15 @@ function goPage(page){
   if(page==='inventario'){renderInv();renderProds();renderHist();loadFinInputs();updateArqueo();updateTotals();updateHdr();}
   if(page==='home'){checkCierrePendiente();updateHomeDolar();renderPuntajeMes();}
   if(page!=='home'){
+    // Al entrar a una página se baja el header para dejar el contenido arriba. OJO: esto solo puede
+    // pasar en los primeros milisegundos. Antes había un MutationObserver que repetía el scroll cada
+    // vez que cambiaba el DOM durante 800 ms: como los gráficos terminan de dibujarse después, si ya
+    // habías empezado a scrolear la página te tironeaba de vuelta arriba y parecía que la barra de
+    // filtros "se movía sola". Se sacó el observer y ahora CUALQUIER gesto tuyo cancela el ajuste.
     let cancelled=false;
     const cancel=()=>{cancelled=true;};
-    window.addEventListener('wheel',cancel,{once:true,passive:true});
-    window.addEventListener('touchmove',cancel,{once:true,passive:true});
+    ['wheel','touchstart','touchmove','keydown','pointerdown','scroll']
+      .forEach(ev=>window.addEventListener(ev,cancel,{once:true,passive:true}));
     const scrollPastHeader=()=>{
       if(cancelled||currentPage!==page)return;
       const hdr=el&&el.querySelector('.page-header');
@@ -1981,14 +1976,6 @@ function goPage(page){
     };
     scrollPastHeader();
     requestAnimationFrame(scrollPastHeader);
-    setTimeout(scrollPastHeader,120);
-    // Reintenta si el contenido termina de cargar después (datos async),
-    // así TODAS las páginas quedan acomodadas sin scrollear a mano.
-    try{
-      const mo=new MutationObserver(scrollPastHeader);
-      mo.observe(el,{childList:true,subtree:true});
-      setTimeout(()=>mo.disconnect(),800);
-    }catch(e){}
   }
 }
 
@@ -5548,7 +5535,12 @@ function togglePedidoGroupProv(btn){
 
 
 /* ═══════════ MÉTRICAS ML ═══════════ */
-let metChartBar=null,metChartLine=null,metChartPct=null,metScopeMode='mes',metViewField='total',metViewField2='',metChartLineView='general',metPctLineView='general',metChartAccum=true,metPctMode='diario';
+// metViewFields = métricas activas del gráfico. Se prenden y apagan clickeando el botón:
+// clic en una apagada la agrega, clic en una prendida la saca (siempre queda al menos una).
+// metViewField es la PRIMERA de la lista y es la que usa todo lo que muestra un solo valor (KPIs,
+// barras, etc.), así el resto de la página no cambia de comportamiento.
+let metViewFields=['total'];
+let metChartBar=null,metChartLine=null,metChartPct=null,metScopeMode='mes',metViewField='total',metChartLineView='general',metPctLineView='general',metChartAccum=true,metPctMode='diario';
 const MET_FIELD_LBL={total:'💵 Total',neto:'💚 Neto',ganancia:'💰 Ganancia',gananciaCYC:'🏢 Ganancia CYC',retiros:'💸 Retiros'};
 function setMetChartView(v,btn){
   metChartLineView=v;
@@ -5661,22 +5653,31 @@ function getAllPrevMetKeys(scope){
   return[];
 }
 
-function setMetField(field,btn){
-  metViewField=field;
-  if(metViewField2===field)metViewField2=''; // si la 2ª quedó igual a la 1ª, la saco
-  const sel2=document.getElementById('met-field2');if(sel2)sel2.value=metViewField2;
-  ['met-field-total','met-field-neto','met-field-ganancia','met-field-gananciaCYC','met-field-retiros'].forEach(id=>{const b=document.getElementById(id);if(b)b.classList.remove('active');});
-  if(btn)btn.classList.add('active');
+const MET_FIELD_IDS={total:'met-field-total',neto:'met-field-neto',ganancia:'met-field-ganancia',gananciaCYC:'met-field-gananciaCYC',retiros:'met-field-retiros'};
+// Clic en una métrica apagada → la suma al gráfico. Clic en una prendida → la saca.
+// Nunca se apagan todas: si querés dejar una sola, apagás las otras.
+function setMetField(field){
+  const i=metViewFields.indexOf(field);
+  if(i>=0){
+    if(metViewFields.length===1)return; // es la única que queda, no se puede apagar
+    metViewFields.splice(i,1);
+  } else metViewFields.push(field);
+  metViewField=metViewFields[0]; // el resto de la página sigue usando una sola
+  _syncMetFieldBtns();
   if(metChartLine){metChartLine.destroy();metChartLine=null;}
   if(metChartBar){metChartBar.destroy();metChartBar=null;}
   renderMetricas();
 }
-// Segunda métrica para comparar en el gráfico (dibuja su línea junto a la primera). '' = ninguna.
-function setMetField2(v){
-  metViewField2=(v&&v!==metViewField)?v:'';
-  const sel2=document.getElementById('met-field2');if(sel2)sel2.value=metViewField2;
-  if(metChartLine){metChartLine.destroy();metChartLine=null;}
-  renderMetricas();
+function _syncMetFieldBtns(){
+  Object.entries(MET_FIELD_IDS).forEach(([f,id])=>{
+    const b=document.getElementById(id);if(!b)return;
+    const on=metViewFields.includes(f);
+    b.classList.toggle('active',on);
+    // La primera lleva un puntito: es la que usan los KPIs y las barras, no solo el gráfico.
+    b.title=on
+      ? (f===metViewFields[0]?'Métrica principal (la que usan los KPIs). Clic para sacarla del gráfico.':'Clic para sacarla del gráfico.')
+      : 'Clic para agregarla al gráfico y comparar.';
+  });
 }
 
 function dateToKey(d){return d.getFullYear()+'_'+String(d.getMonth()+1).padStart(2,'0')+'_'+String(d.getDate()).padStart(2,'0');}
@@ -5799,6 +5800,7 @@ function metNavNext(){
 }
 
 function renderMetricas(){
+  _syncMetFieldBtns(); // deja los botones prendidos/apagados según las métricas activas
   _initMetDefaults();
   const curKeys=getAllMetKeys(metScopeMode),prevKeys=getAllPrevMetKeys(metScopeMode);
   const cur=sumMetFields(curKeys,metViewField),prev=sumMetFields(prevKeys,metViewField);
@@ -5938,13 +5940,20 @@ function renderLineChartFromScope(scope){
   const totOf=(bkts,field)=>bkts.map(keys=>{let s=0;keys.forEach(k=>MET_ACCTS.forEach(a=>s+=metGetValDay(k,a,field||metViewField)));return s;});
   // ¿Juntar dos métricas? (2ª métrica elegida, distinta de la 1ª, y en vista general). Cada una
   // en su propio eje Y para que ambas se vean bien aunque tengan escalas muy distintas.
-  const twoMetric=metViewField2&&metViewField2!==metViewField&&metChartLineView==='general';
+  // Varias métricas prendidas → una línea por cada una. Cada métrica en su propio eje Y, porque
+  // Total y Ganancia CYC tienen escalas muy distintas y en un eje común la chica queda aplastada.
+  const multi=metViewFields.length>1&&metChartLineView==='general';
+  const MET_COL=[CMP_CUR,CMP_YEAR,CMP_PREV,'#22c55e','#a78bfa'];
   let datasets;
-  if(twoMetric){
-    datasets=[
-      {label:MET_FIELD_LBL[metViewField]||metViewField,  data:totOf(buckets,metViewField),  borderColor:CMP_CUR, backgroundColor:CMP_CUR+'22',borderWidth:2.5,tension:.3,pointRadius:2,fill:true, yAxisID:'y'},
-      {label:MET_FIELD_LBL[metViewField2]||metViewField2,data:totOf(buckets,metViewField2),borderColor:CMP_YEAR,backgroundColor:'transparent',borderWidth:2.5,tension:.3,pointRadius:2,fill:false,yAxisID:'y1'},
-    ];
+  if(multi){
+    datasets=metViewFields.map((f,i)=>({
+      label:MET_FIELD_LBL[f]||f,
+      data:totOf(buckets,f),
+      borderColor:MET_COL[i%MET_COL.length],
+      backgroundColor:i===0?MET_COL[0]+'22':'transparent',
+      borderWidth:2.5,tension:.3,pointRadius:2,fill:i===0,
+      yAxisID:i===0?'y':'y'+i,
+    }));
   } else if(metChartLineView==='general'){
     datasets=[
       {label:CMP_LBL_CUR, data:totOf(buckets),      borderColor:CMP_CUR, backgroundColor:CMP_CUR+'33',borderWidth:2.5,tension:.3,pointRadius:2,fill:true},
@@ -5960,13 +5969,18 @@ function renderLineChartFromScope(scope){
   if(metChartLine){metChartLine.destroy();metChartLine=null;}
   Chart.defaults.color='#6b6b7a';Chart.defaults.borderColor='#2a2a30';
   const scales={y:{grid:{color:'#2a2a30'},ticks:{callback:v=>'$'+Math.round(v/1000)+'k'}},x:{grid:{display:false}}};
-  if(twoMetric){
-    // Eje izquierdo = 1ª métrica (color azul), eje derecho = 2ª métrica (color naranja).
-    scales.y.title={display:true,text:MET_FIELD_LBL[metViewField]||metViewField,color:CMP_CUR,font:{size:10}};
-    scales.y1={position:'right',grid:{display:false},ticks:{callback:v=>'$'+Math.round(v/1000)+'k'},title:{display:true,text:MET_FIELD_LBL[metViewField2]||metViewField2,color:CMP_YEAR,font:{size:10}}};
+  if(multi){
+    // La 1ª métrica usa el eje izquierdo; las demás, ejes propios a la derecha (ocultos para no
+    // llenar de números, el valor exacto se ve en el cartelito al tocar el gráfico).
+    scales.y.title={display:true,text:MET_FIELD_LBL[metViewFields[0]]||metViewFields[0],color:MET_COL[0],font:{size:10}};
+    metViewFields.slice(1).forEach((f,i)=>{
+      scales['y'+(i+1)]={position:'right',grid:{display:false},display:i===0,
+        ticks:{callback:v=>'$'+Math.round(v/1000)+'k'},
+        title:{display:i===0,text:MET_FIELD_LBL[f]||f,color:MET_COL[(i+1)%MET_COL.length],font:{size:10}}};
+    });
   }
   metChartLine=new Chart(canvas,{type:'line',data:{labels,datasets},
-    options:{responsive:true,interaction:{mode:'index',intersect:false},plugins:{legend:{labels:{boxWidth:12,font:{size:11}}},tooltip:{callbacks:{title:items=>{const total=items.reduce((s,i)=>s+(i.raw||0),0);return metChartLineView==='cuentas'?[items[0].label,'Total: $'+Math.round(total).toLocaleString('es-AR')]:[items[0].label];},label:item=>' '+item.dataset.label+': $'+Math.round(item.raw||0).toLocaleString('es-AR'),afterBody:items=>{if(metChartLineView!=='general'||metViewField2)return '';const find=l=>{const it=items.find(i=>i.dataset.label===l);return it?(it.raw||0):null;};const cur=find(CMP_LBL_CUR),prev=find(CMP_LBL_PREV);if(cur==null||prev==null)return '';const diff=cur-prev,pct=prev!==0?(diff/Math.abs(prev)*100):(cur!==0?100:0),s=diff>=0?'+':'−';return ['','Diferencia vs anterior: '+s+'$'+Math.abs(Math.round(diff)).toLocaleString('es-AR')+'  ('+s+Math.abs(pct).toFixed(1)+'%)'];}},titleFont:{size:13,weight:'bold'},bodyFont:{size:11},titleColor:'#f1f1f3',bodyColor:'#9b9ba8'}},scales}
+    options:{responsive:true,interaction:{mode:'index',intersect:false},plugins:{legend:{labels:{boxWidth:12,font:{size:11}}},tooltip:{callbacks:{title:items=>{const total=items.reduce((s,i)=>s+(i.raw||0),0);return metChartLineView==='cuentas'?[items[0].label,'Total: $'+Math.round(total).toLocaleString('es-AR')]:[items[0].label];},label:item=>' '+item.dataset.label+': $'+Math.round(item.raw||0).toLocaleString('es-AR'),afterBody:items=>{if(metChartLineView!=='general'||metViewFields.length>1)return '';const find=l=>{const it=items.find(i=>i.dataset.label===l);return it?(it.raw||0):null;};const cur=find(CMP_LBL_CUR),prev=find(CMP_LBL_PREV);if(cur==null||prev==null)return '';const diff=cur-prev,pct=prev!==0?(diff/Math.abs(prev)*100):(cur!==0?100:0),s=diff>=0?'+':'−';return ['','Diferencia vs anterior: '+s+'$'+Math.abs(Math.round(diff)).toLocaleString('es-AR')+'  ('+s+Math.abs(pct).toFixed(1)+'%)'];}},titleFont:{size:13,weight:'bold'},bodyFont:{size:11},titleColor:'#f1f1f3',bodyColor:'#9b9ba8'}},scales}
   });
 }
 
@@ -7004,7 +7018,7 @@ document.addEventListener('click',e=>{if(fnavOpen&&!e.target.closest('#fnav-btn'
         <span style="font-size:.75rem;color:var(--muted)">Si no ves los últimos cambios, forzá la actualización</span>
         <button class="btn" style="background:rgba(56,189,248,.12);color:var(--blue);border:1px solid rgba(56,189,248,.3)" onclick="actualizarApp()">🔄 Buscar actualizaciones</button>
       </div>
-      <div style="font-size:.66rem;color:var(--muted);margin-top:12px">CYC · Versión 5.9</div>
+      <div style="font-size:.66rem;color:var(--muted);margin-top:12px">CYC · Versión 6.0</div>
     </div>
 
     <div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:18px 20px;margin-bottom:14px">
