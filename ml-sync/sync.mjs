@@ -1201,6 +1201,15 @@ async function main() {
       console.log(`El impuesto integrado ahora vive SOLO en el costo de los productos.`);
       return;
     }
+    // BILLING_PROBE=meta:<piso> → deja guardado el piso y la meta del robot de precios.
+    // Hace falta porque el valor viejo (40/42) quedó de cuando el margen se medía sin impuestos.
+    if (String(process.env.BILLING_PROBE || '').startsWith('meta:')) {
+      const piso = parseFloat(String(process.env.BILLING_PROBE).split(':')[1]) || 30;
+      const meta = piso + 2; // 2 puntos de colchón para no quedar rozando el piso
+      if (!DRY) { await db.set('cyc/mlconfig/minPct', piso); await db.set('cyc/mlconfig/targetPct', meta); }
+      console.log(`${DRY ? '(DRY) ' : ''}Robot de precios: actúa por debajo de ${piso}% y lleva a ${meta}%.`);
+      return;
+    }
     // BILLING_PROBE=margendia[:YYYY_MM_DD] → por qué el margen del día da lo que da. Muestra venta por
     // venta el precio, el neto real, el costo con impuestos y el margen, y marca las que quedaron
     // abajo del piso. Sirve para ver si el promedio bajo es por pocas ventas, por una publicación
@@ -3147,8 +3156,10 @@ async function main() {
   const autoPrice = cfg.autoPrice !== false; // por defecto ON (lo pediste)
   const autoPromo = cfg.autoPromo !== false; // sacar descuentos de ML — ON por defecto
   const autoStock = cfg.autoStock !== false; // cargar stock de ML al panel — ON por defecto
-  const targetPct = parseFloat(cfg.targetPct) || 42; // margen objetivo
-  const minPct = parseFloat(cfg.minPct) || 40;        // umbral para actuar
+  // OJO: 30/32, no 40/42. Los valores viejos eran de cuando el margen se medía SIN IIBB ni
+  // monotributo; con los impuestos adentro, pedir 42% es pedir ~65% de la escala vieja.
+  const targetPct = parseFloat(cfg.targetPct) || 32; // margen objetivo (piso + 2 de colchón)
+  const minPct = parseFloat(cfg.minPct) || 30;        // umbral para actuar
   const MAX_UP = 1.25; // tope de seguridad: nunca subir más de +25% de una
   let promoAlerts = 0; // tope de avisos de "no pude sacar" por corrida
   // items a los que ya les tocamos el precio hace poco (para no pelear con los

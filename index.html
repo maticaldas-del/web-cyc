@@ -1698,8 +1698,8 @@ function renderAutoPriceCfg(){
     btn.textContent=on?'🟢 Activado':'⚪ Apagado';
     btn.style.color=on?'var(--green)':'var(--muted)';
   }
-  const ml=document.getElementById('mlcfg-min-lbl');if(ml)ml.textContent=((parseFloat(c.minPct)||40))+'%';
-  const tl=document.getElementById('mlcfg-target-lbl');if(tl)tl.textContent=((parseFloat(c.targetPct)||42))+'%';
+  const ml=document.getElementById('mlcfg-min-lbl');if(ml)ml.textContent=((parseFloat(c.minPct)||30))+'%';
+  const tl=document.getElementById('mlcfg-target-lbl');if(tl)tl.textContent=((parseFloat(c.targetPct)||32))+'%';
   const pon=c.autoPromo!==false; // por defecto ON
   const pb=document.getElementById('mlcfg-promo-btn');
   if(pb){pb.textContent=pon?'🟢 Activado':'⚪ Apagado';pb.style.color=pon?'var(--green)':'var(--muted)';}
