@@ -1147,7 +1147,7 @@ async function main() {
             tol = ganNew > 0 ? (1 - gan / ganNew) * 100 : 0;
           }
         }
-        rows.push({ nom: b.nom, ventas: b.ventas, mg: mg * 100, gan, ganNew, neto: b.neto, netoNew, suba, tol, bajo: mg < FLOOR && k != null });
+        rows.push({ nom: b.nom, ventas: b.ventas, mg: mg * 100, gan, ganNew, neto: b.neto, netoNew, suba, tol, bajo: mg < FLOOR && k != null, cMerc, mlx: b.mlx, mlxNew: (mg < FLOOR && k != null) ? b.mlx * k : b.mlx });
       }
       const ganActual = rows.reduce((s, r) => s + r.gan, 0);
       const ganSube = rows.reduce((s, r) => s + r.ganNew, 0);
@@ -1187,6 +1187,20 @@ async function main() {
       const be15 = ((gastosProm / costoProm) + 0.15) / 0.85 * 100;
       console.log(`\n  → EQUILIBRIO (CYC = 0) con retiro FIJO ${money(Math.round(retiroFijoProm))}: ${beFijo.toFixed(1)}% de margen`);
       console.log(`  → EQUILIBRIO (CYC = 0) con retiro 15% DEL NETO:  ${be15.toFixed(1)}% de margen`);
+      // ── 4. Cuánto del margen se lo come el cargo de ML (IIBB). Los productos "bajo el piso" están
+      //      bajo el piso justamente porque ahora ese cargo SÍ se cuenta como costo.
+      const cMercTot = rows.reduce((s, r) => s + r.cMerc, 0);
+      const mlxTot = rows.reduce((s, r) => s + r.mlx, 0);
+      const mlxNewTot = rows.reduce((s, r) => s + r.mlxNew, 0);
+      const mgHoyCon = ganActual / (cMercTot + mlxTot) * 100;
+      const mgHoySin = (netoRealTot - cMercTot) / cMercTot * 100;
+      const mgPisoCon = ganSube / (cMercTot + mlxNewTot) * 100;
+      const mgPisoSin = (netoSube - cMercTot) / cMercTot * 100;
+      console.log(`\n── 4. CUÁNTO PESA EL CARGO DE ML (IIBB) EN EL MARGEN ──`);
+      console.log(`  Costo mercadería ${money(Math.round(perMonth(cMercTot)))}/mes + cargo ML ${money(Math.round(perMonth(mlxTot)))}/mes = ${(mlxTot / (cMercTot + mlxTot) * 100).toFixed(1)}% del costo total`);
+      console.log(`  Margen HOY:           ${mgHoyCon.toFixed(1)}% contando el IIBB   →  ${mgHoySin.toFixed(1)}% si NO se contara (como se medía antes)`);
+      console.log(`  Margen con piso ${(FLOOR * 100).toFixed(0)}%:  ${mgPisoCon.toFixed(1)}% contando el IIBB   →  ${mgPisoSin.toFixed(1)}% si NO se contara`);
+      console.log(`  → Un piso de ${(FLOOR * 100).toFixed(0)}% "de ahora" equivale a pedir ${(FLOOR * 100 * (mgPisoSin / mgPisoCon)).toFixed(1)}% "de los de antes".`);
       console.log(`\n  Con el piso ${(FLOOR * 100).toFixed(0)}% aplicado y volumen intacto, el margen promedio quedaría en ` +
         `${((ganSube / (netoSube - ganSube)) * 100).toFixed(1)}% → CYC con retiro 15%: ${money(Math.round(perMonth(ganSube) - gastosProm - perMonth(netoSube) * 0.15))}/mes`);
       return;
