@@ -90,6 +90,11 @@ function mlVariant(it, p) {
 // La app ya guarda costFullUSD (incluye envío/embalaje y el % devolución en vivo);
 // lo usamos tal cual para que el margen coincida con lo que ves. Si no está,
 // lo reconstruimos: costUSD × (1 + %dev) + envío.
+// Cargo extra de ML (IIBB por débito automático) que NO viene descontado del neto de la venta:
+// es un % del PRECIO y va sumado al costo, igual que en la app (ver ML_EXTRA_PCT en index.html).
+// Sin esto el robot mide el margen "a la vieja" (~13 puntos más alto) y apunta a un piso que no es.
+const ML_EXTRA_PCT = { adriana: 4.07, luciana: 4.37, ayelen: 5.95, matias: 4.58 };
+const mlExtraPct = (cuenta) => { const v = ML_EXTRA_PCT[(cuenta || '').toLowerCase()]; return v != null ? v : 4.8; };
 function costoPesos(p, qty, tc) {
   if (!p) return { costo: 0, costBaseUSD: 0, shipUSD: 0 };
   const costUSD = parseFloat(p.costUSD) || 0;
@@ -1077,6 +1082,91 @@ async function main() {
         const vCut = cut.reduce((s, r) => s + r.ventas, 0);
         console.log(`  piso ${String(floor).padStart(2)}%: cortás ${String(cut.length).padStart(3)} prods · perdés ${money(Math.round(ganCut / spanDays * 30)).padStart(11)}/mes (${ganTot > 0 ? (ganCut / ganTot * 100).toFixed(1) : 0}% de la gan.) · liberás ${money(capCut).padStart(12)} de stock · ${Math.round(vCut / spanDays * 30)} ventas/mes menos de trabajo`);
       }
+      return;
+    }
+    // BILLING_PROBE=precios:<piso>[:<YYYY_MM,...>] → LISTA (solo lee, NO escribe nada en ML) qué
+    // precio habría que ponerle a cada publicación para que quede en el piso de margen pedido.
+    // Margen medido como en la app: (neto − costo mercadería − cargo ML) ÷ (costo + cargo ML).
+    // El neto se estima con la relación neto/precio REAL de las ventas de ese producto.
+    if (String(process.env.BILLING_PROBE || '').startsWith('precios')) {
+      const _cp = String(process.env.BILLING_PROBE).split(':');
+      const MIN = (parseFloat(_cp[1]) || 30) / 100;      // piso: por debajo de esto se toca
+      const T = MIN + 0.02;                               // destino: 2 puntos de colchón
+      const pickYM = (_cp[2] || '2026_06,2026_07').split(',').map((s) => s.trim()).filter(Boolean);
+      const MAX_UP = 1.25;                                // mismo tope de seguridad que el robot
+      const vp = (await db.get('cyc/ventaprod')) || {};
+      const links = (await db.get('cyc/mllinks')) || {};
+      const fin = (await db.get('cyc/finanzas')) || {};
+      const tc = parseFloat(fin.tipo_cambio) || 1500;
+      const pIdx = {}; for (const p of products) pIdx[p.id] = p;
+      // Relación neto/precio real por producto (y global, para los que no tienen ventas).
+      const ratio = {}; let gN = 0, gT = 0;
+      for (const [k, ents] of Object.entries(vp)) {
+        if (!pickYM.includes(k.slice(0, 7))) continue;
+        for (const v of Object.values(ents || {})) {
+          if (!v || v.cancelada) continue;
+          const tot = v.total || 0, net = v.neto || 0;
+          if (tot <= 0 || net <= 0) continue;
+          const id = v.prodId; if (!id) continue;
+          const r = ratio[id] || (ratio[id] = { n: 0, t: 0 });
+          r.n += net; r.t += tot; gN += net; gT += tot;
+        }
+      }
+      const gRatio = gT > 0 ? gN / gT : 0.679;
+      const netoRatio = (pid) => { const r = ratio[pid]; return (r && r.t > 0) ? r.n / r.t : gRatio; };
+      console.log(`=== PRECIOS PARA LLEGAR AL PISO ${(MIN * 100).toFixed(0)}% (destino ${(T * 100).toFixed(0)}%) ===`);
+      console.log(`MODO PRUEBA · NO se escribe NADA en ML · dólar ${money(tc)} · neto/precio global ${(gRatio * 100).toFixed(1)}%\n`);
+      const subir = [], grandes = [], conVar = [], yaOk = [], sinDato = [];
+      for (const label of labels) {
+        const acc = accounts[label];
+        if (!acc?.refresh_token) { console.log(`(${label}: sin token, salteada)`); continue; }
+        let t; try { t = await mlRefresh(ML_CLIENT_ID, ML_CLIENT_SECRET, acc.refresh_token); } catch { console.log(`(${label}: no pude renovar token)`); continue; }
+        await db.patch('mlapi/tokens/' + label, { refresh_token: t.refresh_token, updated_ts: Date.now() });
+        const ids = Object.entries(links)
+          .filter(([mla, e]) => e && e.cuenta === label && !e.ignored && e.prodId && /^MLA/i.test(mla))
+          .map(([mla]) => mla);
+        for (let k = 0; k < ids.length; k += 20) {
+          let arr;
+          try { arr = await mlGet('/items?ids=' + ids.slice(k, k + 20).join(',') + '&attributes=id,status,price,variations,title', t.access_token); } catch { continue; }
+          for (const row of (arr || [])) {
+            const b = row.body || {}; const mla = b.id; if (!mla || !links[mla]) continue;
+            if (b.status !== 'active') continue;
+            const p = pIdx[links[mla].prodId]; if (!p) continue;
+            const costo = costoPesos(p, 1, tc).costo;
+            const nom = (links[mla].title || b.title || p.name || mla).slice(0, 34);
+            if (!costo) { sinDato.push({ label, mla, nom, why: 'sin costo cargado' }); continue; }
+            const vars = Array.isArray(b.variations) ? b.variations : [];
+            const precio = vars.length ? (vars[0].price || 0) : (b.price || 0);
+            if (!precio) { sinDato.push({ label, mla, nom, why: 'sin precio' }); continue; }
+            const neto = precio * netoRatio(p.id);
+            const mlx = precio * mlExtraPct(label) / 100;
+            const mg = (neto - costo - mlx) / (costo + mlx);
+            const fila = { label, mla, nom, precio, mg: mg * 100, nVar: vars.length };
+            if (mg >= MIN) { yaOk.push(fila); continue; }
+            const den = neto - mlx * (1 + T);
+            if (den <= 0) { sinDato.push({ label, mla, nom, why: 'el cargo ML se come el neto' }); continue; }
+            const mult = costo * (1 + T) / den;
+            fila.mult = mult;
+            fila.nuevo = Math.ceil(precio * mult / 10) * 10;
+            fila.mgNuevo = T * 100;
+            if (mult > MAX_UP) grandes.push(fila);
+            else if (vars.length) conVar.push(fila);
+            else subir.push(fila);
+          }
+        }
+      }
+      const line = (f) => `  ${String(Math.round(f.mg)).padStart(4)}% → ${String(Math.round(f.mgNuevo)).padStart(2)}% · ${money(Math.round(f.precio)).padStart(10)} → ${money(f.nuevo).padStart(10)}  (+${((f.mult - 1) * 100).toFixed(1)}%) · ${f.label.padEnd(8)} · ${f.nom}`;
+      subir.sort((a, b) => a.mg - b.mg); conVar.sort((a, b) => a.mg - b.mg); grandes.sort((a, b) => a.mg - b.mg);
+      console.log(`── A. SE PUEDEN SUBIR YA (sin variantes, suba ≤25%) · ${subir.length} publicaciones ──`);
+      subir.forEach((f) => console.log(line(f)));
+      console.log(`\n── B. CON VARIANTES (NO tocar hasta probar una) · ${conVar.length} publicaciones ──`);
+      conVar.forEach((f) => console.log(line(f) + ` · ${f.nVar} variantes`));
+      console.log(`\n── C. NECESITAN SUBA MAYOR A 25% (revisalos a mano) · ${grandes.length} publicaciones ──`);
+      grandes.forEach((f) => console.log(line(f)));
+      console.log(`\n── D. YA ESTÁN EN EL PISO O ARRIBA · ${yaOk.length} publicaciones ──`);
+      console.log(`\n── E. SIN DATOS SUFICIENTES · ${sinDato.length} ──`);
+      sinDato.forEach((f) => console.log(`  ${f.label.padEnd(8)} · ${f.mla} · ${f.nom} · ${f.why}`));
+      console.log(`\nRECORDÁ: esto fue solo una LISTA. No se tocó ningún precio en ML.`);
       return;
     }
     // BILLING_PROBE=piso:<margen>[:<YYYY_MM,...>] → SIMULA UN PISO DE MARGEN SUBIENDO PRECIOS (no
@@ -2738,11 +2828,18 @@ async function main() {
         // sola vez por venta.
         const recient = (Date.now() - obj.ts) < 12 * 3600e3;
         if (!DRY && bfd === 0 && recient && costo > 0 && neto > 0 && !alerted[id]) {
-          const margen = (neto - costo) / costo;
+          // Margen REAL = (neto − costo mercadería − cargo ML) ÷ (costo mercadería + cargo ML), igual
+          // que la app. El cargo ML es un % del PRECIO, así que al subir el precio ×k también sube ×k:
+          // por eso el multiplicador sale de   k = costo × (1+meta) / (neto − cargoML × (1+meta)).
+          const mlx = itemGross * mlExtraPct(label) / 100;
+          const costoTot = costo + mlx;
+          const margen = (neto - costoTot) / costoTot;
           if (margen < minPct / 100) {
-            const mult = (costo * (1 + targetPct / 100)) / neto; // >1 siempre acá
+            const T = targetPct / 100;
+            const _den = neto - mlx * (1 + T);
+            const mult = _den > 0 ? (costo * (1 + T)) / _den : Infinity; // Infinity → cae en el aviso, no toca
             const unit = itemGross / qty;
-            const sugUnit = Math.ceil(((costo * (1 + targetPct / 100) / neto) * unit) / 10) * 10;
+            const sugUnit = isFinite(mult) ? Math.ceil((mult * unit) / 10) * 10 : 0;
             const head = `Margen bajo: ${(margen * 100).toFixed(0)}%\n`
               + `${p.name}${variant ? ' · ' + variant : ''}\nCuenta: ${label}\n`;
             const varId = it.item?.variation_id || null;
