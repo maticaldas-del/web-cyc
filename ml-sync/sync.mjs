@@ -1314,26 +1314,28 @@ async function main() {
           if (v.prodId) (vtaProd[v.prodId] = vtaProd[v.prodId] || []).push(reg);
         }
       }
+      // Comisión EXACTA de ML para UN precio puntual. Se cachea por (categoría|tipo|PRECIO), no solo
+      // por categoría: el cargo fijo de ML cambia según el precio, y cachear por categoría le aplicaba
+      // a un producto el fijo calculado para otro (a las sábanas les metía $2.505 en vez de $1.250 y
+      // las hundía de 29% a 15%).
       const feeCache = {};
-      const feeFormula = async (site, price, ltype, cat, token) => {
-        const key = site + '|' + ltype + '|' + cat;
-        if (feeCache[key]) return feeCache[key];
+      let feeCalls = 0;
+      const feeAt = async (site, price, ltype, cat, token) => {
+        const key = site + '|' + ltype + '|' + cat + '|' + Math.round(price);
+        if (feeCache[key] !== undefined) return feeCache[key];
+        let out = null;
         try {
           const d = await mlGet(`/sites/${site}/listing_prices?price=${Math.round(price)}&listing_type_id=${ltype}&category_id=${cat}`, token);
           const o = Array.isArray(d) ? d[0] : d;
-          const det = o?.sale_fee_details || {};
-          const fijo = det.fixed_fee || 0;
-          // % efectivo: si ML no lo informa, se deduce del monto total menos el fijo.
-          const pct = det.percentage_fee != null ? det.percentage_fee / 100
-            : (o?.sale_fee_amount != null && price > 0 ? (o.sale_fee_amount - fijo) / price : null);
-          if (pct == null) return null;
-          feeCache[key] = { pct, fijo };
-          return feeCache[key];
-        } catch { return null; }
+          if (typeof o?.sale_fee_amount === 'number') out = o.sale_fee_amount;
+        } catch { out = null; }
+        feeCache[key] = out; feeCalls++;
+        return out;
       };
       console.log(`=== PRECIOS PARA LLEGAR AL PISO ${(MIN * 100).toFixed(0)}% (destino ${(T * 100).toFixed(0)}%) ===`);
       console.log(`MODO PRUEBA · NO se escribe NADA en ML · dólar ${money(tc)}`);
-      console.log(`Neto = precio − comisión oficial de ML − envío (el MÁS BAJO visto = el mejor caso ya corregido)\n`);
+      console.log(`Neto = precio − comisión oficial de ML (pedida a ML para ESE precio) − envío`);
+      console.log(`Envío = el MÁS BAJO de las últimas ventas (= el neto más alto, el mejor caso ya corregido)\n`);
       const subir = [], grandes = [], conVar = [], yaOk = [], sinDato = [];
       for (const label of labels) {
         const acc = accounts[label];
@@ -1352,35 +1354,55 @@ async function main() {
             if (b.status !== 'active') continue;
             const p = pIdx[links[mla].prodId]; if (!p) continue;
             const nom = (links[mla].title || b.title || p.name || mla).slice(0, 34);
+            const site = b.site_id || 'MLA', lt = b.listing_type_id, cat = b.category_id;
             const costo = costoPesos(p, 1, tc).costo;
             if (!costo) { sinDato.push({ label, mla, nom, why: 'sin costo cargado' }); continue; }
             const vars = Array.isArray(b.variations) ? b.variations : [];
             const precio = vars.length ? (vars[0].price || 0) : (b.price || 0);
             if (!precio) { sinDato.push({ label, mla, nom, why: 'sin precio' }); continue; }
-            const ff = await feeFormula(b.site_id || 'MLA', precio, b.listing_type_id, b.category_id, t.access_token);
-            if (!ff) { sinDato.push({ label, mla, nom, why: 'ML no devolvió la comisión' }); continue; }
-            // Envío = el MÁS BAJO deducido de las ventas (= el neto más alto). Publicación primero;
-            // si esa publicación no vendió, se usan las ventas del mismo producto en otras.
+            const comHoy = await feeAt(site, precio, lt, cat, t.access_token);
+            if (comHoy == null) { sinDato.push({ label, mla, nom, why: 'ML no devolvió la comisión' }); continue; }
+            // ENVÍO: se deduce de ventas reales como  precio − neto − comisión(a ESE precio).
+            // Se miran hasta 6 precios distintos de las ventas más recientes y se toma el envío
+            // MÁS BAJO (= el neto más alto), descartando así las ventas con costos extra puntuales.
             const ventas = (vtaMla[mla] && vtaMla[mla].length) ? vtaMla[mla] : (vtaProd[p.id] || []);
             if (!ventas.length) { sinDato.push({ label, mla, nom, why: 'sin ventas para deducir el envío' }); continue; }
-            let envio = Infinity;
-            for (const v of ventas) {
-              const e = v.tot - v.net - (v.tot * ff.pct + ff.fijo);
-              if (e < envio) envio = e;
+            const precios = [...new Set(ventas.map((v) => Math.round(v.tot)))].slice(-6);
+            let envio = Infinity, usadas = 0;
+            for (const pv of precios) {
+              const cv = await feeAt(site, pv, lt, cat, t.access_token);
+              if (cv == null) continue;
+              for (const v of ventas) {
+                if (Math.round(v.tot) !== pv) continue;
+                const e = v.tot - v.net - cv;
+                usadas++;
+                if (e < envio) envio = e;
+              }
             }
             if (!isFinite(envio)) { sinDato.push({ label, mla, nom, why: 'no pude deducir el envío' }); continue; }
             if (envio < 0) envio = 0; // nunca negativo
-            const neto = precio - (precio * ff.pct + ff.fijo) - envio;
+            const neto = precio - comHoy - envio;
             const mlx = precio * m;
             const mg = (neto - costo - mlx) / (costo + mlx);
-            const fila = { label, mla, nom, precio, mg: mg * 100, nVar: vars.length, envio, pct: ff.pct, fijo: ff.fijo, costo, mlx, neto, nVtas: ventas.length, prod: p.name || '' };
+            const fila = { label, mla, nom, precio, mg: mg * 100, nVar: vars.length, envio, com: comHoy, costo, mlx, neto, nVtas: usadas, prod: p.name || '' };
             if (mg >= MIN) { yaOk.push(fila); continue; }
-            const den = 1 - ff.pct - m * (1 + T);
-            if (den <= 0) { sinDato.push({ label, mla, nom, why: 'la comisión no deja margen a ningún precio' }); continue; }
-            const objetivo = (costo * (1 + T) + ff.fijo + envio) / den;
-            fila.nuevo = Math.ceil(objetivo / 10) * 10;
+            // Precio objetivo por punto fijo: P = [costo(1+meta) + comisión(P) + envío] / (1 − %cargoML(1+meta)).
+            // Se itera porque la comisión depende del precio (y su parte fija salta por tramos).
+            const den = 1 - m * (1 + T);
+            if (den <= 0) { sinDato.push({ label, mla, nom, why: 'el cargo de ML no deja margen a ningún precio' }); continue; }
+            let P = precio, comP = comHoy, ok = true;
+            for (let it = 0; it < 3; it++) {
+              const Pn = (costo * (1 + T) + comP + envio) / den;
+              const c2 = await feeAt(site, Pn, lt, cat, t.access_token);
+              if (c2 == null) { ok = false; break; }
+              if (Math.abs(Pn - P) < 1 && it > 0) { P = Pn; comP = c2; break; }
+              P = Pn; comP = c2;
+            }
+            if (!ok) { sinDato.push({ label, mla, nom, why: 'ML no devolvió la comisión del precio nuevo' }); continue; }
+            fila.nuevo = Math.ceil(P / 10) * 10;
+            fila.comNuevo = comP;
             fila.mult = fila.nuevo / precio;
-            fila.mgNuevo = T * 100;
+            fila.mgNuevo = ((fila.nuevo - comP - envio) - costo - fila.nuevo * m) / (costo + fila.nuevo * m) * 100;
             if (fila.mult <= 1) { yaOk.push(fila); continue; }
             if (fila.mult > MAX_UP) grandes.push(fila);
             else if (vars.length) conVar.push(fila);
@@ -1391,7 +1413,7 @@ async function main() {
       // Cada renglón trae TODOS los números para poder verificarlo a mano:
       //   neto = precio − comisión − envío  ·  margen = (neto − costo − cargoML) / (costo + cargoML)
       const line = (f) => `  ${String(Math.round(f.mg)).padStart(4)}% → ${String(Math.round(f.mgNuevo)).padStart(2)}% · ${money(Math.round(f.precio)).padStart(10)} → ${money(f.nuevo).padStart(10)} (+${((f.mult - 1) * 100).toFixed(1)}%) · ${f.label.padEnd(8)} · ${f.nom}\n`
-        + `        precio ${money(Math.round(f.precio))} − comisión ${(f.pct * 100).toFixed(1)}% (${money(Math.round(f.precio * f.pct + f.fijo))}) − envío ${money(Math.round(f.envio))} = neto ${money(Math.round(f.neto))}\n`
+        + `        precio ${money(Math.round(f.precio))} − comisión ${money(Math.round(f.com))} (${(f.com / f.precio * 100).toFixed(1)}%) − envío ${money(Math.round(f.envio))} = neto ${money(Math.round(f.neto))}\n`
         + `        costo mercadería ${money(Math.round(f.costo))} + cargo ML ${money(Math.round(f.mlx))} = ${money(Math.round(f.costo + f.mlx))} · ${f.nVtas} ventas usadas · producto "${f.prod.slice(0, 30)}"`;
       subir.sort((a, b) => a.mg - b.mg); conVar.sort((a, b) => a.mg - b.mg); grandes.sort((a, b) => a.mg - b.mg);
       console.log(`── A. SE PUEDEN SUBIR YA (sin variantes, suba ≤25%) · ${subir.length} publicaciones ──`);
