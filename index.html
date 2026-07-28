@@ -537,6 +537,7 @@ footer{margin-top:32px;padding-top:14px;border-top:1px solid var(--border);font-
     <button class="tab" onclick="goTab('resumen',this)">Resumen</button>
     <button class="tab" onclick="goTab('productos',this)">Productos</button>
     <button class="tab" onclick="goTab('margen-ml',this)">🎯 Margen ML</button>
+    <button class="tab" onclick="goTab('oficinas',this)">🏠 Oficinas</button>
     <button class="tab" onclick="goTab('historial',this)">Historial</button>
     <button class="tab" onclick="goTab('precios-hist',this)">📅 Precios hist.</button>
     <button class="tab" onclick="goTab('dolar-mes',this)">💵 Dólar x mes</button>
@@ -734,6 +735,18 @@ footer{margin-top:32px;padding-top:14px;border-top:1px solid var(--border);font-
     <div id="margen-ml-sum" style="font-size:.66rem;color:var(--muted);margin-bottom:12px;padding:8px 12px;background:var(--surface);border:1px solid var(--border);border-radius:8px"></div>
     <input class="search-box" id="margen-ml-search" type="search" placeholder="Buscar producto..." oninput="renderMargenML()">
     <div id="margen-ml-list"></div>
+  </div>
+
+  <!-- OFICINAS -->
+  <div id="tab-oficinas" style="display:none">
+    <div class="stitle">🏠 Mercadería en las oficinas <span style="font-weight:400;color:var(--muted);text-transform:none;letter-spacing:0;font-size:.65rem">· lo que está en casa, todavía sin mandar a Full</span></div>
+    <div style="font-size:.66rem;color:var(--muted);margin-bottom:10px;line-height:1.5">
+      Se valúa con el <strong>costo en dólares del producto</strong> y nada más: sin envío, sin Full, sin gestión, sin monotributo, sin IIBB ni almacenamiento. Es lo que pagaste por tener la mercadería.
+    </div>
+    <div id="ofi-sum" style="margin-bottom:12px"></div>
+    <div id="ofi-mandar" style="margin-bottom:14px"></div>
+    <input class="search-box" id="ofi-search" type="search" placeholder="Buscar producto para cargar o filtrar..." oninput="renderOficinas()" style="margin-bottom:10px">
+    <div id="ofi-cols" style="display:flex;gap:14px;flex-wrap:wrap;align-items:flex-start"></div>
   </div>
 
   <!-- HISTORIAL -->
@@ -1574,6 +1587,7 @@ function startApp(){
     state.local    =d.local    ||{};
     state.compras  =d.compras  ||{};
     state.ventaprod=d.ventaprod||{};
+    state.oficinas=d.oficinas||{};   // mercadería en las casas, valuada solo a costo USD
     state.precios_hist_prod=d.precios_hist_prod||{};
     state.tc_mes=d.tc_mes||{};
     state.fact_mes=d.fact_mes||{};
@@ -2286,6 +2300,7 @@ function goTab(tab,btn){
   if(tab==='comparar'){populateSelects();renderComparacion();renderClosedMonths();const sy=document.getElementById('snap-year');if(sy&&!sy.value)sy.value=new Date().getFullYear();}
   if(tab==='proveedores')renderProveedores();
   if(tab==='margen-ml')renderMargenML();
+  if(tab==='oficinas')renderOficinas();
 }
 
 function updateHdr(){
@@ -4660,6 +4675,84 @@ function renderMargenML(){
     </div>`;
   }).join('');
 }
+/* ── OFICINAS: mercadería que está en casa, todavía sin mandar a Full ───────────────────
+   Se valúa SOLO con el costo en dólares del producto (costUSD). NO se usa costFullUSD:
+   ese incluye envío, reclamos y demás, y acá lo que se cuenta es lo que se pagó por tener
+   la mercadería. Mezclarlos inflaría el arqueo con costos que todavía no ocurrieron.
+   Guardado en cyc/oficinas/<oficina>/<prodId> = unidades.                                */
+const OFIS=[{k:'mia',lbl:'Mi oficina'},{k:'tito',lbl:'Oficina de Tito'}];
+const ofiQty=(k,pid)=>parseInt(((state.oficinas||{})[k]||{})[pid])||0;
+function renderOficinas(){
+  const cont=document.getElementById('ofi-cols');if(!cont)return;
+  const tc=curTC();
+  const q=normTxt(document.getElementById('ofi-search')?.value||'');
+  const prods=(state.products||[]).slice().sort((a,b)=>(a.name||'').localeCompare(b.name||'','es',{sensitivity:'base'}));
+  // ── Resumen: cuántos dólares hay en cada oficina ──
+  const totales=OFIS.map(o=>{
+    let usd=0,unid=0,items=0;
+    for(const p of prods){const n=ofiQty(o.k,p.id);if(!n)continue;usd+=n*costUSDof(p);unid+=n;items++;}
+    return {...o,usd,unid,items};
+  });
+  const usdTot=totales.reduce((s,t)=>s+t.usd,0);
+  const sum=document.getElementById('ofi-sum');
+  if(sum)sum.innerHTML=`<div style="display:flex;gap:10px;flex-wrap:wrap">`
+    +totales.map(t=>`<div style="flex:1;min-width:150px;background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:10px 12px">
+      <div style="font-size:.55rem;color:var(--muted);text-transform:uppercase;letter-spacing:.06em">${t.lbl}</div>
+      <div style="font-size:1.05rem;font-weight:700;font-family:'DM Mono',monospace">US$ ${t.usd.toLocaleString('es-AR',{minimumFractionDigits:2,maximumFractionDigits:2})}</div>
+      <div style="font-size:.6rem;color:var(--muted)">${fmt(Math.round(t.usd*tc))} · ${t.unid} u. en ${t.items} productos</div>
+    </div>`).join('')
+    +`<div style="flex:1;min-width:150px;background:var(--surface);border:1px solid var(--green);border-radius:8px;padding:10px 12px">
+      <div style="font-size:.55rem;color:var(--green);text-transform:uppercase;letter-spacing:.06em">Total en casas</div>
+      <div style="font-size:1.05rem;font-weight:700;color:var(--green);font-family:'DM Mono',monospace">US$ ${usdTot.toLocaleString('es-AR',{minimumFractionDigits:2,maximumFractionDigits:2})}</div>
+      <div style="font-size:.6rem;color:var(--muted)">${fmt(Math.round(usdTot*tc))} · para el arqueo</div>
+    </div></div>`;
+  // ── Qué conviene mandar a Full: hay en casa y en ML se está por acabar ──
+  const mandar=[];
+  for(const p of prods){
+    const enCasa=OFIS.reduce((s,o)=>s+ofiQty(o.k,p.id),0);
+    if(!enCasa)continue;
+    const enML=stockOf(p);
+    const {vendidosNorm}=pedVentasNorm(p);
+    if(!vendidosNorm)continue;
+    const dias=Math.round(enML/vendidosNorm*30);
+    if(dias<=15)mandar.push({p,enCasa,enML,dias,vendidosNorm});
+  }
+  const md=document.getElementById('ofi-mandar');
+  if(md)md.innerHTML=mandar.length
+    ? `<div style="background:rgba(245,158,11,.1);border:1px solid rgba(245,158,11,.35);border-radius:8px;padding:10px 12px">
+        <div style="font-size:.7rem;font-weight:700;color:var(--amber);margin-bottom:6px">📦 Mandar a Full · ${mandar.length}</div>
+        <div style="font-size:.6rem;color:var(--muted);margin-bottom:8px">Tenés stock en casa y en ML queda para 15 días o menos.</div>
+        ${mandar.sort((a,b)=>a.dias-b.dias).map(m=>`<div style="font-size:.7rem;padding:3px 0">
+          <strong>${m.p.name}</strong> — <span style="color:var(--amber)">${m.enCasa} u. en casa</span> · en ML quedan ${m.enML} u. (~${m.dias}d) · vende ${m.vendidosNorm}/mes</div>`).join('')}
+      </div>`
+    : `<div style="font-size:.65rem;color:var(--muted)">Nada urgente para mandar a Full.</div>`;
+  // ── Una columna por oficina ──
+  cont.innerHTML=OFIS.map(o=>{
+    const conStock=prods.filter(p=>ofiQty(o.k,p.id)>0);
+    const visibles=q?prods.filter(p=>normTxt(p.name).includes(q)):conStock;
+    return `<div style="flex:1;min-width:290px;background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:12px">
+      <div style="font-size:.72rem;font-weight:700;margin-bottom:8px">${o.lbl}</div>
+      ${visibles.length?visibles.map(p=>{
+        const n=ofiQty(o.k,p.id);const cu=costUSDof(p);
+        return `<div style="display:flex;align-items:center;gap:8px;padding:5px 0;border-bottom:1px solid var(--border)">
+          <span style="flex:1;font-size:.7rem;${n?'':'color:var(--muted)'}">${p.name}</span>
+          <span style="font-size:.58rem;color:var(--muted);font-family:'DM Mono',monospace">US$${cu.toFixed(2)}</span>
+          <input type="number" min="0" step="1" value="${n||''}" placeholder="0" onchange="setOfiQty('${o.k}','${p.id}',this.value)"
+            style="width:62px;background:var(--surface2);border:1px solid var(--border2);border-radius:6px;padding:4px 6px;color:var(--text);font-family:'DM Mono',monospace;font-size:.7rem;text-align:right;outline:none">
+          <span style="font-size:.6rem;min-width:62px;text-align:right;font-family:'DM Mono',monospace;${n?'':'color:var(--muted)'}">${n?'US$'+(n*cu).toFixed(2):'—'}</span>
+        </div>`;}).join('')
+      :`<div class="empty-msg" style="font-size:.65rem">${q?'Sin resultados.':'Sin mercadería cargada. Buscá un producto arriba para agregarlo.'}</div>`}
+    </div>`;
+  }).join('');
+}
+async function setOfiQty(ofi,pid,val){
+  const n=parseInt(String(val).replace(/[^\d]/g,''))||0;
+  if(!state.oficinas)state.oficinas={};
+  if(!state.oficinas[ofi])state.oficinas[ofi]={};
+  if(n>0)state.oficinas[ofi][pid]=n; else delete state.oficinas[ofi][pid];
+  await fbSet('oficinas/'+ofi+'/'+pid,n>0?n:null);
+  renderOficinas();
+}
 async function setProdNeto(id,val){
   const p=state.products.find(x=>x.id===id);if(!p)return;
   const num=(val===''||val==null)?null:parseFloat(String(val).replace(/[^\d.-]/g,''));
@@ -7006,7 +7099,7 @@ document.addEventListener('click',e=>{if(fnavOpen&&!e.target.closest('#fnav-btn'
         <span style="font-size:.75rem;color:var(--muted)">Si no ves los últimos cambios, forzá la actualización</span>
         <button class="btn" style="background:rgba(56,189,248,.12);color:var(--blue);border:1px solid rgba(56,189,248,.3)" onclick="actualizarApp()">🔄 Buscar actualizaciones</button>
       </div>
-      <div style="font-size:.66rem;color:var(--muted);margin-top:12px">CYC · Versión 6.5</div>
+      <div style="font-size:.66rem;color:var(--muted);margin-top:12px">CYC · Versión 6.6</div>
     </div>
 
     <div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:18px 20px;margin-bottom:14px">
