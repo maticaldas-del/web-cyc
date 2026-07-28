@@ -1606,6 +1606,81 @@ async function main() {
       }
       return;
     }
+    // BILLING_PROBE=sindatos → ARREGLA LAS PUBLICACIONES "SIN DATOS SUFICIENTES".
+    //
+    // Dos agujeros que se tapan acá, los dos porque no le pedía a ML datos que sí tiene:
+    //
+    // 1) ENVÍO. Lo venía deduciendo de ventas viejas (precio − neto − comisión). Las publicaciones
+    //    que nunca vendieron quedaban sin precio calculable y se salteaban del barrido.
+    //    ML lo dice directo en /items/{id}/shipping_options/free: cuánto le cuesta al vendedor.
+    //
+    // 2) CUOTAS. La respuesta de comisión de ML trae "financing_add_on_fee", que es lo que cuesta
+    //    la financiación en cuotas. En los productos baratos da 0, por eso no se notaba. En una
+    //    Samsung de $349.999 se fueron $127.267 (36,4%) y comisión + envío no explican ni la mitad.
+    //    Si sale_fee_amount NO lo incluye, todos los precios calculados para productos caros están
+    //    mal: el Pendrive, el Xbox, los Smartwatch.
+    if (String(process.env.BILLING_PROBE || '') === 'sindatos') {
+      const links = (await db.get('cyc/mllinks')) || {};
+      const vp = (await db.get('cyc/ventaprod')) || {};
+      const pIdx = {}; for (const p of products) pIdx[p.id] = p;
+      // publicaciones activas sin ninguna venta registrada (las "sin datos")
+      const conVenta = new Set();
+      for (const ents of Object.values(vp)) for (const v of Object.values(ents || {})) if (v && v.mla) conVenta.add(v.mla);
+      console.log(`=== PUBLICACIONES SIN VENTAS: ENVÍO Y CUOTAS DIRECTO DE ML ===\n`);
+      for (const label of labels) {
+        const acc = accounts[label];
+        if (!acc?.refresh_token) continue;
+        let t; try { t = await mlRefresh(ML_CLIENT_ID, ML_CLIENT_SECRET, acc.refresh_token); } catch { continue; }
+        await db.patch('mlapi/tokens/' + label, { refresh_token: t.refresh_token, updated_ts: Date.now() });
+        const ids = Object.entries(links)
+          .filter(([mla, e]) => e && e.cuenta === label && !e.ignored && e.prodId && /^MLA/i.test(mla))
+          .map(([mla]) => mla);
+        for (let k = 0; k < ids.length; k += 20) {
+          let arr;
+          try { arr = await mlGet('/items?ids=' + ids.slice(k, k + 20).join(',') + '&attributes=id,status,price,title,listing_type_id,category_id,site_id,shipping', t.access_token); } catch { continue; }
+          for (const row of (arr || [])) {
+            const b = row.body || {}; const mla = b.id; if (!mla || b.status !== 'active') continue;
+            const caro = (b.price || 0) >= 100000;
+            const sinVta = !conVenta.has(mla);
+            if (!sinVta && !caro) continue; // solo las que no tienen datos y las caras (por las cuotas)
+            const nom = ((links[mla] || {}).title || b.title || mla).slice(0, 40);
+            console.log(`── ${label} · ${mla} · ${nom}`);
+            console.log(`   precio ${money(Math.round(b.price || 0))}${sinVta ? ' · SIN VENTAS' : ''}${caro ? ' · CARO (mirar cuotas)' : ''}`);
+            // 1) ENVÍO que paga el vendedor, directo de ML
+            try {
+              const s = await mlGet('/items/' + mla + '/shipping_options/free', t.access_token);
+              const cov = s && s.coverage ? s.coverage : {};
+              const ac = cov.all_country || {};
+              console.log(`   ENVÍO según ML: costo vendedor ${ac.list_cost != null ? money(Math.round(ac.list_cost)) : '?'}`
+                + `${ac.currency_id ? ' ' + ac.currency_id : ''}${s && s.free_shipping_eligible != null ? ' · elegible envío gratis: ' + s.free_shipping_eligible : ''}`);
+            } catch (err) {
+              console.log(`   ENVÍO: ML no lo devolvió (${String(err.message || '').slice(0, 50)})`
+                + `${b.shipping?.free_shipping ? ' · la publicación tiene envío gratis activado' : ''}`);
+            }
+            // 2) COMISIÓN con el desglose completo, para ver las cuotas
+            try {
+              const d = await mlGet(`/sites/${b.site_id || 'MLA'}/listing_prices?price=${Math.round(b.price || 0)}&listing_type_id=${b.listing_type_id}&category_id=${b.category_id}`, t.access_token);
+              const o = Array.isArray(d) ? d[0] : d;
+              const det = o?.sale_fee_details || {};
+              const fin = det.financing_add_on_fee || 0;
+              const gross = det.gross_amount || 0;
+              const total = o?.sale_fee_amount || 0;
+              console.log(`   COMISIÓN ML: total ${money(Math.round(total))} · ${det.percentage_fee || 0}% sobre el precio`
+                + ` · fijo ${money(Math.round(det.fixed_fee || 0))} · CUOTAS ${money(Math.round(fin))}`);
+              // La pregunta clave: ¿el total ya incluye las cuotas o hay que sumarlas aparte?
+              if (fin > 0) {
+                const suma = gross + fin + (det.fixed_fee || 0);
+                console.log(`      bruto ${money(Math.round(gross))} + cuotas ${money(Math.round(fin))} + fijo ${money(Math.round(det.fixed_fee || 0))} = ${money(Math.round(suma))}`);
+                console.log(`      ${Math.abs(suma - total) < 2 ? '→ el TOTAL YA INCLUYE las cuotas ✓' : '→ ⚠️ el total NO cuadra: hay que sumar las cuotas aparte'}`);
+              }
+            } catch { console.log(`   COMISIÓN: ML no la devolvió`); }
+            console.log('');
+          }
+        }
+      }
+      console.log(`Con el envío que da ML ya no hace falta esperar a que un producto venda para ponerle precio.`);
+      return;
+    }
     // BILLING_PROBE=recosto:<palabra>[:go] → RECALCULA EL COSTO DE LAS VENTAS YA HECHAS.
     //
     // Como regla, el costo de una venta hecha NO se toca: es lo que costó esa mercadería ese día.
