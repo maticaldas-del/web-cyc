@@ -182,6 +182,34 @@ async function raisePriceTo(itemId, objetivo, token) {
   } catch { return { ok: false, err: 'red' }; }
 }
 
+// ── Envío deducido de las ventas reales, respetando el umbral de $33.000 ──
+// El envío NO es una constante del producto: depende de a qué lado de los $33.000 esté el
+// precio. Abajo lo paga el comprador (≈$0 para vos); arriba lo paga CYC (≈$6.000).
+// Deducir el envío de ventas viejas y aplicarlo al precio de hoy da resultados falsos cuando
+// el precio cruzó el umbral: a un Victoria's Secret que vendió barato hace meses le quedaba
+// un envío de $275 aplicado a un precio de hoy de $45.300, y su margen figuraba 53% cuando
+// en realidad es 31%. Por eso solo se usan las ventas del MISMO lado del umbral.
+// Devuelve { envio, usadas, mismoLado } — mismoLado=false avisa que no hubo ventas del lado
+// que corresponde y hubo que estimar.
+const UMBRAL_ENVIO_GRATIS = 33000;
+async function envioDeducido(ventas, precioHoy, feeAt, opts = {}) {
+  const { modo = 'min' } = opts; // 'min' = mejor caso (para subir) · 'max' = peor caso (para bajar)
+  if (!ventas || !ventas.length) return { envio: null, usadas: 0, mismoLado: false };
+  const arribaHoy = precioHoy >= UMBRAL_ENVIO_GRATIS;
+  const mismas = ventas.filter((v) => (v.tot >= UMBRAL_ENVIO_GRATIS) === arribaHoy);
+  const usar = mismas.length ? mismas : ventas;
+  const vals = [];
+  for (const pv of [...new Set(usar.map((v) => Math.round(v.tot)))].slice(-8)) {
+    const cv = await feeAt(pv);
+    if (cv == null) continue;
+    for (const v of usar) if (Math.round(v.tot) === pv) vals.push(Math.max(0, v.tot - v.net - cv));
+  }
+  if (!vals.length) return { envio: null, usadas: 0, mismoLado: false };
+  vals.sort((a, b) => a - b);
+  const envio = modo === 'max' ? vals[vals.length - 1] : vals[0];
+  return { envio, usadas: vals.length, mismoLado: mismas.length > 0 };
+}
+
 // ── GRUPOS DE PRECIO: publicaciones que tienen que valer todas lo mismo ────
 // Caso Paulvic: son el mismo perfume publicado varias veces en varias cuentas. Si
 // quedan a distinto precio, el más barato se lleva todas las ventas — y justo ese

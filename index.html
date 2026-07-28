@@ -1568,6 +1568,7 @@ function startApp(){
     const _normPed=p=>{if(p.variantesNec&&!Array.isArray(p.variantesNec))p.variantesNec=Object.values(p.variantesNec);return p;};
     state.pedidos    =d.pedidos    ?Object.values(d.pedidos).map(_normPed).sort((a,b)=>(b.ts||0)-(a.ts||0)):[];
     state.pedidos_py =d.pedidos_py ?Object.values(d.pedidos_py).map(_normPed).sort((a,b)=>(b.ts||0)-(a.ts||0)):[];
+    _limpiarEnCamino(); // borra los "en camino" que hayan quedado marcados (la función ya no existe)
     state.proveedores=d.proveedores?Object.values(d.proveedores).sort((a,b)=>(a.nombre||'').localeCompare(b.nombre||'','es',{sensitivity:'base'})).map(pv=>({...pv,condiciones:pv.condiciones?Object.values(pv.condiciones).sort((a,b)=>(a.minUSD||0)-(b.minUSD||0)):[]})):[];
     state.metricas =d.metricas ||{};
     state.local    =d.local    ||{};
@@ -4911,14 +4912,9 @@ async function syncPedidosAuto(){
       varSalesMap[v.prodId][v.variante]=(varSalesMap[v.prodId][v.variante]||0)+(v.qty||0);
     });
   });
-  // Productos marcados "🚚 en camino" (ya comprados / enviados a Full): no volver a
-  // sugerirlos hasta que lleguen. Es la forma de que Pedidos no pida lo que ya viene.
-  const enCaminoPids=new Set([...(state.pedidos||[]),...(state.pedidos_py||[])]
-    .filter(x=>x.estado==='en_camino').map(x=>x.prodId).filter(Boolean));
   // 2. ventas normalizadas a 30d por producto; para variantes calcula necesario por variante
   const resumen={};
   for(const p of (state.products||[])){
-    if(enCaminoPids.has(p.id))continue; // en camino → no sugerir
     const {vendidos,vendidosNorm,diasHistorial}=pedVentasNorm(p);
     if(vendidos===0)continue;
     const stock=stockOf(p);
@@ -5062,7 +5058,7 @@ function updatePedidosCosto(){
   let totalUSD=0;
   allPeds.forEach(ped=>{
     const est=ped.estado||'pendiente';
-    if(est==='suficiente'||est==='en_camino')return;
+    if(est==='suficiente')return;
     const p=state.products.find(x=>x.id===ped.prodId);
     if(!p)return;
     totalUSD+=(costUSDof(p)||0)*(ped.cantidad||1);
@@ -5078,7 +5074,7 @@ function _pedsCostoReponer(peds){
   const tc=curTC();let usd=0;
   (peds||[]).forEach(ped=>{
     const est=ped.estado||'pendiente';
-    if(est==='suficiente'||est==='en_camino')return; // en camino = ya comprado, no falta reponer
+    if(est==='suficiente')return;
     const p=state.products.find(x=>x.id===ped.prodId)||prodByName(ped.producto);
     if(!p)return;
     usd+=(costUSDof(p)||0)*(ped.cantidad||1);
@@ -5140,18 +5136,18 @@ async function setPedidoEstado(id,estado){
 
 // Marca un pedido como "🚚 en camino" (ya lo compré / lo mandé a Full). Deja de
 // sugerirse hasta que lo marques "llegó". No pide cargar cantidades ni stock.
-async function marcarEnCamino(id){
-  const inB=(state.pedidos||[]).some(x=>x.id===id);
-  const path=inB?'pedidos/':'pedidos_py/';
-  const arr=inB?state.pedidos:state.pedidos_py;
-  const p=(arr||[]).find(x=>x.id===id);if(!p)return;
-  p.estado='en_camino';p.auto=false;p.enCaminoTs=Date.now();
-  await fbSet(path+id+'/estado','en_camino');
-  await fbSet(path+id+'/auto',false);
-  await fbSet(path+id+'/enCaminoTs',p.enCaminoTs);
-  await log('Pedido en camino: '+(p.producto||id));
-  renderPedidos();
-  toast('🚚 En camino — no se vuelve a sugerir hasta que lo marques llegó');
+// "En camino" se sacó de la app. Esto limpia de una vez los pedidos que hayan quedado con ese
+// estado: los deja como pendientes, que es como estaban antes de que existiera el botón. Corre
+// solo una vez al abrir; si no hay ninguno marcado, no toca nada.
+async function _limpiarEnCamino(){
+  for(const [arr,path] of [[state.pedidos,'pedidos/'],[state.pedidos_py,'pedidos_py/']]){
+    for(const p of (arr||[])){
+      if(p.estado!=='en_camino')continue;
+      p.estado='pendiente';delete p.enCaminoTs;
+      await fbSet(path+p.id+'/estado','pendiente');
+      await fbSet(path+p.id+'/enCaminoTs',null);
+    }
+  }
 }
 async function delPedido(id){
   let path;
@@ -5360,8 +5356,9 @@ function _pedidoItemHtml(p,opts){
   opts=opts||{};
   const NEXT={pendiente:'poco_stock',poco_stock:'suficiente',suficiente:'pendiente'};
   const LABEL={pendiente:'🔴 Urgente',poco_stock:'🟡 Poco stock',suficiente:'🟢 Suficiente'};
-  const _enCam=(p.estado==='en_camino');
-  const _diasCam=_enCam&&p.enCaminoTs?Math.floor((Date.now()-p.enCaminoTs)/864e5):0;
+  // "En camino" se sacó: confundía más de lo que ayudaba. Cualquier pedido que haya quedado
+  // marcado así se trata como pendiente normal (lo destildó la limpieza de estados).
+  const _enCam=false, _diasCam=0;
   const vars=Array.isArray(p.variantesNec)&&p.variantesNec.length?p.variantesNec:null;
   const varsSorted=vars?[...vars].sort((a,b)=>b.q-a.q):null;
   const _vOpen=varsSorted&&_openPedVars.has(p.id);
@@ -5370,11 +5367,7 @@ function _pedidoItemHtml(p,opts){
   const fotoBtn=(_prod&&_prod.foto)?`<button class="pi-var-toggle" style="background:rgba(56,189,248,.12);color:#38bdf8;border-color:rgba(56,189,248,.3)" onclick="verFoto('${_prod.id}')" title="Ver foto del producto">📷 Foto</button>`:'';
   const riesgoBadge=(opts.showRiesgo&&p.riesgo>0)?`<span class="pi-var-toggle" style="background:rgba(239,68,68,.12);color:var(--red);border-color:rgba(239,68,68,.3);cursor:default" title="Ganancia mensual estimada de este producto × días que vas a pasar sin stock si no se repone">💸 ${fmt(p.riesgo)} en riesgo</span>`:'';
   const origenBadge=opts.origen?`<span class="pi-var-toggle" style="cursor:default">${opts.origen}</span>`:'';
-  const accionBtns=_enCam
-    ? `<span class="pi-status" style="background:rgba(56,189,248,.15);color:#38bdf8;cursor:default" title="Ya la compraste / la mandaste a Full. No se vuelve a sugerir hasta que la marques que llegó.">🚚 En camino${_diasCam>0?' ('+_diasCam+'d)':''}</span>
-       <button class="pi-status" style="background:rgba(34,197,94,.15);color:var(--green);border:1px solid rgba(34,197,94,.3)" onclick="delPedido('${p.id}')" title="Ya llegó a Full / cancelar: vuelve a evaluarse el stock normalmente">✓ Llegó</button>`
-    : `<button class="pi-status ${p.estado||'pendiente'}" onclick="setPedidoEstado('${p.id}','${NEXT[p.estado||'pendiente']}')">${LABEL[p.estado||'pendiente']}</button>
-       <button class="pi-status" style="background:rgba(56,189,248,.12);color:#38bdf8;border:1px solid rgba(56,189,248,.3)" onclick="marcarEnCamino('${p.id}')" title="Ya la compré / la mandé a Full: no me la vuelvas a sugerir hasta que llegue">🚚 En camino</button>`;
+  const accionBtns=`<button class="pi-status ${p.estado||'pendiente'}" onclick="setPedidoEstado('${p.id}','${NEXT[p.estado||'pendiente']}')">${LABEL[p.estado||'pendiente']}</button>`;
   return `<div class="pedido-item ${_enCam?'suficiente':(p.estado||'pendiente')}">
     <span class="pi-prod">${p.producto||'—'}${p.variante?` <span style="padding:1px 6px;border-radius:4px;background:rgba(124,58,237,.15);color:#a78bfa;font-size:.65rem">${p.variante}</span>`:''}</span>
     ${fotoBtn}
@@ -5458,13 +5451,12 @@ function renderPedidos(){
   const provBtn=document.getElementById(provBtnId);
   if(provBtn)provBtn.className='pf-btn'+(pedidoGroupByProv?' active-prov':'');
   let peds=(isBsas?state.pedidos:state.pedidos_py)||[];
-  const cnt={pendiente:0,poco_stock:0,suficiente:0,en_camino:0};peds.forEach(p=>cnt[p.estado||'pendiente']=(cnt[p.estado||'pendiente']||0)+1);
+  const cnt={pendiente:0,poco_stock:0,suficiente:0};peds.forEach(p=>{const e=p.estado==='en_camino'?'pendiente':(p.estado||'pendiente');cnt[e]=(cnt[e]||0)+1;});
   const cntEl=document.getElementById(countId);
   if(cntEl)cntEl.innerHTML=`
     <div class="pcount"><strong style="color:var(--red)">${cnt.pendiente}</strong>Urgente</div>
     <div class="pcount"><strong style="color:var(--amber)">${cnt.poco_stock}</strong>Poco stock</div>
     <div class="pcount"><strong style="color:var(--green)">${cnt.suficiente}</strong>Suficiente</div>
-    ${cnt.en_camino?`<div class="pcount"><strong style="color:#38bdf8">${cnt.en_camino}</strong>🚚 En camino</div>`:''}
     <div class="pcount"><strong>${peds.length}</strong>Total</div>${_pedCostoChip(peds)}`;
   if(pedidoFilter!=='todos')peds=peds.filter(p=>p.estado===pedidoFilter);
   const searchId=isBsas?'ped-search':'ped-py-search';
@@ -5488,7 +5480,7 @@ function renderPedidos(){
       let totalUSD=0;
       items.forEach(ped=>{
         const est=ped.estado||'pendiente';
-        if(est==='suficiente'||est==='en_camino')return;
+        if(est==='suficiente')return;
         const p=prodByName(ped.producto);
         if(p)totalUSD+=(costUSDof(p)||0)*(ped.cantidad||1);
       });
@@ -7014,7 +7006,7 @@ document.addEventListener('click',e=>{if(fnavOpen&&!e.target.closest('#fnav-btn'
         <span style="font-size:.75rem;color:var(--muted)">Si no ves los últimos cambios, forzá la actualización</span>
         <button class="btn" style="background:rgba(56,189,248,.12);color:var(--blue);border:1px solid rgba(56,189,248,.3)" onclick="actualizarApp()">🔄 Buscar actualizaciones</button>
       </div>
-      <div style="font-size:.66rem;color:var(--muted);margin-top:12px">CYC · Versión 6.4</div>
+      <div style="font-size:.66rem;color:var(--muted);margin-top:12px">CYC · Versión 6.5</div>
     </div>
 
     <div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:18px 20px;margin-bottom:14px">
