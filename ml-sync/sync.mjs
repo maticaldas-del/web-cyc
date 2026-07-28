@@ -423,7 +423,15 @@ async function removeStartedPromos(itemId, token) {
   } catch { return { removed: [], failed: [] }; }
   const removed = [], failed = [];
   for (const pr of arr) {
-    if (pr.status !== 'started') continue; // solo los que están aplicados
+    // 'started'  = descuento aplicado AHORA.
+    // 'pending'  = ya aceptado y AGENDADO para arrancar en una fecha futura. Antes se ignoraba, y
+    //              era el agujero grande: quedaban 23 agendadas para el 3/8 con 40-55% de descuento
+    //              que se iban a aplicar solas (el Paulvic de $14.360 se vendía a $7.799).
+    // 'candidate'= ML solo lo ofrece, no está aceptado. Ese NO se toca: no cuesta nada.
+    if (pr.status !== 'started' && pr.status !== 'pending') continue;
+    // Si ML pusiera plata en el descuento, conviene quedarse. Hoy no manda ese dato en estas
+    // campañas, pero si algún día lo manda, no se saca.
+    if (typeof pr.meli_percentage === 'number' && pr.meli_percentage >= 100) continue;
     const qs = new URLSearchParams({ app_version: 'v2' });
     if (pr.id) qs.set('promotion_id', pr.id);
     if (pr.type) qs.set('promotion_type', pr.type);
@@ -1478,6 +1486,54 @@ async function main() {
       const meta = piso + 2; // 2 puntos de colchón para no quedar rozando el piso
       if (!DRY) { await db.set('cyc/mlconfig/minPct', piso); await db.set('cyc/mlconfig/targetPct', meta); }
       console.log(`${DRY ? '(DRY) ' : ''}Robot de precios: actúa por debajo de ${piso}% y lleva a ${meta}%.`);
+      return;
+    }
+    // BILLING_PROBE=sacapromos[:prueba] → saca AHORA todas las promociones aceptadas (aplicadas y
+    // agendadas) de las 4 cuentas, sin esperar a la corrida automática.
+    if (String(process.env.BILLING_PROBE || '').startsWith('sacapromos')) {
+      const prueba = String(process.env.BILLING_PROBE).split(':')[1] === 'prueba';
+      const links = (await db.get('cyc/mllinks')) || {};
+      console.log(`=== SACAR PROMOCIONES ACEPTADAS ${prueba ? '(PRUEBA: no se toca nada)' : ''} ===`);
+      console.log(`Se sacan las 'started' (activas) y las 'pending' (agendadas). Las 'candidate' no se tocan.\n`);
+      let sacadas = 0, fallidas = 0, revisadas = 0; const detalle = [];
+      for (const label of labels) {
+        const acc = accounts[label];
+        if (!acc?.refresh_token) continue;
+        let t; try { t = await mlRefresh(ML_CLIENT_ID, ML_CLIENT_SECRET, acc.refresh_token); } catch { console.log(`(${label}: no pude renovar token)`); continue; }
+        await db.patch('mlapi/tokens/' + label, { refresh_token: t.refresh_token, updated_ts: Date.now() });
+        const ids = Object.entries(links)
+          .filter(([mla, e]) => e && e.cuenta === label && !e.ignored && /^MLA/i.test(mla))
+          .map(([mla, e]) => ({ mla, title: e.title || mla }));
+        for (const it of ids) {
+          revisadas++;
+          let arr;
+          try {
+            const r = await mlGet('/seller-promotions/items/' + it.mla + '?app_version=v2', t.access_token);
+            arr = Array.isArray(r) ? r : (r.results || []);
+          } catch { continue; }
+          const malas = (arr || []).filter((pr) => pr.status === 'started' || pr.status === 'pending');
+          if (!malas.length) continue;
+          for (const pr of malas) {
+            const desc = `${label} · ${it.title.slice(0, 38)} · ${pr.type} ${pr.original_price != null ? money(Math.round(pr.original_price)) : ''}→${pr.price != null ? money(Math.round(pr.price)) : ''}${pr.start_date ? ' desde ' + String(pr.start_date).slice(0, 10) : ''}`;
+            if (prueba) { console.log(`  · ${desc}`); sacadas++; continue; }
+            const qs = new URLSearchParams({ app_version: 'v2' });
+            if (pr.id) qs.set('promotion_id', pr.id);
+            if (pr.type) qs.set('promotion_type', pr.type);
+            try {
+              const r = await fetch(ML_API + '/seller-promotions/items/' + it.mla + '?' + qs.toString(), {
+                method: 'DELETE', headers: { Authorization: 'Bearer ' + t.access_token },
+              });
+              if (r.ok) { sacadas++; detalle.push(desc); console.log(`  ✓ ${desc}`); }
+              else { fallidas++; console.log(`  ✗ ${desc} → ML-${r.status}`); }
+            } catch { fallidas++; console.log(`  ✗ ${desc} → red`); }
+          }
+        }
+      }
+      console.log(`\n${prueba ? '(PRUEBA) ' : ''}${sacadas} promociones ${prueba ? 'se sacarían' : 'sacadas'} · ${fallidas} con error · ${revisadas} publicaciones revisadas`);
+      if (!prueba && sacadas) {
+        await sendTelegram(`🛑 <b>Promociones sacadas</b>\n${sacadas} descuentos de ML dados de baja `
+          + `(activos y agendados).${fallidas ? `\n⚠️ ${fallidas} no se pudieron sacar.` : ''}`);
+      }
       return;
     }
     // BILLING_PROBE=promos[:<palabra>] → VUELCA CRUDO lo que ML dice de las promociones de cada
