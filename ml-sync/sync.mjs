@@ -1606,6 +1606,95 @@ async function main() {
       }
       return;
     }
+    // BILLING_PROBE=repbliss[:go] → REPARA LAS PUBLICACIONES BLISS HUÉRFANAS.
+    // Qué pasó: splitbliss creó su propio producto Bliss y repuntó 3 publicaciones hacia él. Ese
+    // producto después se borró, así que esas 3 publicaciones quedaron apuntando a un producto
+    // inexistente: sus ventas nuevas entrarían como "sin producto".
+    // Esto las engancha al producto Bliss que existe, traduce el nombre de la variante (las
+    // publicaciones dicen "Bare Vanilla Bliss" / "Velve Petals" y el producto "Bare Vanilla" /
+    // "Velvet Petals"), mueve las ventas ya hechas SIN tocarles el costo, y saca del producto
+    // común las variantes que dicen "bliss".
+    if (String(process.env.BILLING_PROBE || '').startsWith('repbliss')) {
+      const APLICAR = String(process.env.BILLING_PROBE).split(':')[1] === 'go';
+      const links = (await db.get('cyc/mllinks')) || {};
+      const vp = (await db.get('cyc/ventaprod')) || {};
+      const bliss = products.find((p) => /bliss/i.test(p.name || ''));
+      const comun = products.find((p) => /victoria/i.test(p.name || '') && !/bliss/i.test(p.name || ''));
+      if (!bliss) { console.log('No encontré ningún producto Bliss.'); return; }
+      if (!comun) { console.log('No encontré el producto Victoria\'s Secret común.'); return; }
+      const vivos = new Set(products.map((p) => p.id));
+      const norm = (s) => String(s || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/bliss/g, '').replace(/[^a-z]/g, '');
+      // distancia de edición chica, para que "velve" enganche con "velvet"
+      const dist = (a, b) => {
+        const m = a.length, n = b.length; const d = Array.from({ length: m + 1 }, (_, i) => [i, ...Array(n).fill(0)]);
+        for (let j = 0; j <= n; j++) d[0][j] = j;
+        for (let i = 1; i <= m; i++) for (let j = 1; j <= n; j++)
+          d[i][j] = Math.min(d[i - 1][j] + 1, d[i][j - 1] + 1, d[i - 1][j - 1] + (a[i - 1] === b[j - 1] ? 0 : 1));
+        return d[m][n];
+      };
+      const varsBliss = bliss.variantes || [];
+      const matchVar = (cand) => {
+        const c = norm(cand);
+        let best = null, bd = 99;
+        for (const v of varsBliss) { const d = dist(c, norm(v)); if (d < bd) { bd = d; best = v; } }
+        return bd <= 2 ? best : null;
+      };
+      // Publicaciones huérfanas (apuntan a un producto que ya no existe) y las que ya son del Bliss
+      const huerfanas = Object.entries(links).filter(([mla, e]) => e && e.prodId && !e.ignored && /^MLA/i.test(mla) && !vivos.has(e.prodId));
+      console.log(`=== REPARAR BLISS ${APLICAR ? '(APLICANDO)' : '(PRUEBA)'} ===`);
+      console.log(`Producto Bliss: ${bliss.id} · "${bliss.name}" · variantes: ${varsBliss.join(' · ')}`);
+      console.log(`Producto común: ${comun.id} · "${comun.name}" · ${(comun.variantes || []).length} variantes\n`);
+      console.log(`── PUBLICACIONES HUÉRFANAS (apuntan a un producto borrado) · ${huerfanas.length} ──`);
+      const plan = [];
+      for (const [mla, e] of huerfanas) {
+        const destino = matchVar(e.variant || e.title || '');
+        plan.push({ mla, cuenta: e.cuenta || '?', varVieja: e.variant || '', varNueva: destino, title: e.title || '' });
+        console.log(`   ${mla} · ${e.cuenta || '?'} · variante "${e.variant || '(sin)'}" → ${destino ? `"${destino}"` : '⚠️ NO PUDE MAPEARLA'}`);
+      }
+      const sinMapear = plan.filter((x) => !x.varNueva);
+      // Ventas ya hechas de esas publicaciones
+      const mlas = plan.map((x) => x.mla);
+      const ventas = [];
+      for (const [dk, ents] of Object.entries(vp)) {
+        for (const [id, v] of Object.entries(ents || {})) {
+          if (!v || !v.mla || !mlas.includes(v.mla)) continue;
+          ventas.push({ dk, id, mla: v.mla, costo: v.costo || 0 });
+        }
+      }
+      const varsComunLimpias = (comun.variantes || []).filter((v) => !/bliss/i.test(v));
+      const sacadas = (comun.variantes || []).filter((v) => /bliss/i.test(v));
+      console.log(`\n── VENTAS YA HECHAS A MOVER · ${ventas.length} ──`);
+      console.log(`   Cambian de producto, conservan su costo original.`);
+      console.log(`\n── VARIANTES A SACAR DEL PRODUCTO COMÚN · ${sacadas.length} ──`);
+      console.log(`   ${sacadas.join(' · ') || '(ninguna)'}`);
+      if (sinMapear.length) {
+        console.log(`\n⚠️ ${sinMapear.length} publicación(es) sin variante equivalente en el producto Bliss.`);
+        console.log(`   No se tocan hasta resolverlo: ${sinMapear.map((x) => x.mla + ' "' + x.varVieja + '"').join(', ')}`);
+      }
+      if (!APLICAR) { console.log(`\nPRUEBA: no se escribió nada. Para aplicar: repbliss:go`); return; }
+      let okPub = 0;
+      for (const x of plan) {
+        if (!x.varNueva) continue; // sin mapeo seguro, no se toca
+        await db.set('cyc/mllinks/' + x.mla + '/prodId', bliss.id);
+        await db.set('cyc/mllinks/' + x.mla + '/variant', x.varNueva);
+        okPub++;
+      }
+      const mlasOk = plan.filter((x) => x.varNueva).map((x) => x.mla);
+      let okVta = 0;
+      for (const v of ventas) {
+        if (!mlasOk.includes(v.mla)) continue;
+        const x = plan.find((y) => y.mla === v.mla);
+        await db.set(`cyc/ventaprod/${v.dk}/${v.id}/prodId`, bliss.id);
+        await db.set(`cyc/ventaprod/${v.dk}/${v.id}/prod`, bliss.name);
+        await db.set(`cyc/ventaprod/${v.dk}/${v.id}/variante`, x.varNueva);
+        okVta++;
+      }
+      if (sacadas.length) await db.set('products/' + comun.id + '/variantes', varsComunLimpias);
+      console.log(`\n✓ ${okPub} publicaciones enganchadas a "${bliss.name}" con su variante traducida.`);
+      console.log(`✓ ${okVta} ventas ya hechas movidas (costo original intacto).`);
+      console.log(`✓ ${sacadas.length} variantes Bliss sacadas del producto común.`);
+      return;
+    }
     // BILLING_PROBE=visitas[:<días>] → ¿POR QUÉ NO VENDE? ¿PRECIO O NADIE LO VE?
     //
     // Hasta ahora, cuando un producto no vendía no sabíamos el motivo y la única palanca que se nos
