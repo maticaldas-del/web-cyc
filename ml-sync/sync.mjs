@@ -1102,25 +1102,39 @@ async function main() {
       const fijo = parseFloat(mono.fijoMensual) || 0;
       if (!fijo) { console.log('Falta cargar el autónomo + obra social en Ajustes. No toco nada.'); return; }
       const compras = (await db.get('cyc/compras')) || {};
-      // Meses que cubre cada gasto: junio pagó mayo+junio juntos (mayo quedó en cero).
+      // Cuántos meses cubre lo pagado en cada mes: en junio se pagaron mayo+junio juntos.
       const MESES = { '2026_06': 2, '2026_07': 1 };
-      const upd = {};
+      // Se agrupan por mes porque puede haber VARIOS gastos del mismo mes (uno por cuenta).
+      // Se borran todos y se deja UNO solo con el autónomo + obra social. Si en vez de agrupar se
+      // ajustara cada uno, el monto quedaría multiplicado por la cantidad de cuentas.
+      const porMes = {};
       for (const [id, g] of Object.entries(compras)) {
         if (!g || g.tipo === 'mercaderia') continue;
         if (!/monotributo|impuesto/i.test(g.cat || '')) continue;
-        if (id.startsWith('monofijo_')) continue; // los que carga el robot ya son solo el fijo
-        const ym = (g.dayKey || '').slice(0, 7);
-        const n = MESES[ym];
-        if (!n) { console.log(`  (dejo ${id} de ${ym}: no sé cuántos meses cubre)`); continue; }
-        const nuevo = Math.round(fijo * n);
-        console.log(`  ${id} (${ym}, cubre ${n} mes${n > 1 ? 'es' : ''}): ${money(Math.round(g.monto || 0))} → ${money(nuevo)}`);
-        upd[id + '/monto'] = nuevo;
-        upd[id + '/desc'] = `Autónomo + obra social (${n} mes${n > 1 ? 'es' : ''})`;
+        if (id.startsWith('monofijo_')) continue; // ya son solo el fijo (los carga el robot)
+        const ym = (g.dayKey || '').slice(0, 7); if (!ym) continue;
+        (porMes[ym] = porMes[ym] || []).push({ id, monto: g.monto || 0 });
       }
-      const n = Object.keys(upd).length / 2;
-      if (!n) { console.log('No encontré gastos de monotributo para ajustar.'); return; }
-      if (!DRY) for (const [k, v] of Object.entries(upd)) await db.set('cyc/compras/' + k, v);
-      console.log(`\n${DRY ? '(DRY) ' : ''}Ajustados ${n} gastos. El impuesto integrado ahora vive SOLO en el costo de los productos.`);
+      const del = {}, add = {};
+      for (const [ym, lista] of Object.entries(porMes)) {
+        const n = MESES[ym];
+        const viejo = lista.reduce((s2, x) => s2 + x.monto, 0);
+        if (!n) { console.log(`  (dejo ${ym} como está: no sé cuántos meses cubre)`); continue; }
+        const nuevoMonto = Math.round(fijo * n);
+        console.log(`  ${ym}: ${lista.length} gasto${lista.length > 1 ? 's' : ''} por ${money(Math.round(viejo))} → 1 gasto de ${money(nuevoMonto)} (autónomo + obra social × ${n})`);
+        for (const x of lista) del[x.id] = null;
+        const gid = 'monofijo_' + ym;
+        add[gid] = {
+          id: gid, monto: nuevoMonto, cat: 'Monotributo / Impuestos', tipo: 'gasto',
+          desc: `Autónomo + obra social (${n} mes${n > 1 ? 'es' : ''})`,
+          dayKey: ym + '_01', ts: Date.now(), auto: true,
+        };
+      }
+      if (!Object.keys(add).length) { console.log('No hay nada para ajustar.'); return; }
+      if (!DRY) { await db.patch('cyc/compras', del); await db.patch('cyc/compras', add); }
+      const totNuevo = Object.values(add).reduce((s2, x) => s2 + x.monto, 0);
+      console.log(`\n${DRY ? '(DRY) ' : ''}Borrados ${Object.keys(del).length} gastos, creados ${Object.keys(add).length} por ${money(totNuevo)} en total.`);
+      console.log(`El impuesto integrado ahora vive SOLO en el costo de los productos.`);
       return;
     }
     // BILLING_PROBE=mono → mide cuánto pesa el MONOTRIBUTO sobre la facturación, para poder cargarlo
