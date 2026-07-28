@@ -1673,14 +1673,24 @@ async function main() {
         : subir.filter((f) => (f.nom + ' ' + f.prod).toLowerCase().includes(DESTINO.toLowerCase()));
       if (!objetivo.length) { console.log(`\nNo hay nada para aplicar con destino "${DESTINO}".`); return; }
       console.log(`\n══ APLICANDO ${objetivo.length} precio${objetivo.length > 1 ? 's' : ''} en ML ══`);
-      let ok = 0, err = 0;
+      let ok = 0, err = 0; const hechos = [];
       for (const f of objetivo) {
         const mult = f.nuevo / f.precio; // raisePrice recalcula sobre el precio real de ML y nunca baja
         const r = DRY ? { ok: false, err: 'DRY' } : await raisePrice(f.mla, null, mult, f.tok);
-        if (r.ok) { ok++; console.log(`  ✓ ${f.mla} · ${f.nom}: ${money(r.from)} → ${money(r.to)}`); }
+        if (r.ok) { ok++; hechos.push({ nom: f.nom, from: r.from, to: r.to }); console.log(`  ✓ ${f.mla} · ${f.nom}: ${money(r.from)} → ${money(r.to)}`); }
         else { err++; console.log(`  ✗ ${f.mla} · ${f.nom}: no se pudo (${r.err})`); }
       }
       console.log(`\nListo: ${ok} aplicados, ${err} con error.`);
+      // Aviso por Telegram: cada cambio de precio tiene que quedar avisado, aunque lo haya hecho
+      // este comando a mano y no el automático (que además está sujeto al switch de Ajustes).
+      if (hechos.length) {
+        const lista = hechos.slice(0, 25).map((h) => `· ${h.nom}: ${money(h.from)} → <b>${money(h.to)}</b>`).join('\n');
+        await sendTelegram(`🔼 <b>Precios actualizados a mano</b>\n`
+          + `${hechos.length} publicacion${hechos.length > 1 ? 'es' : ''} llevada${hechos.length > 1 ? 's' : ''} al piso de ${(MIN * 100).toFixed(0)}% `
+          + `(destino ${(T * 100).toFixed(0)}%)\n\n${lista}`
+          + (hechos.length > 25 ? `\n… y ${hechos.length - 25} más` : '')
+          + (err ? `\n\n⚠️ ${err} no se pudieron aplicar.` : ''));
+      }
       return;
     }
     // BILLING_PROBE=piso:<margen>[:<YYYY_MM,...>] → SIMULA UN PISO DE MARGEN SUBIENDO PRECIOS (no
