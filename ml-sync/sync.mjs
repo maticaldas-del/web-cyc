@@ -1528,6 +1528,8 @@ async function main() {
       const links = (await db.get('cyc/mllinks')) || {};
       const fin = (await db.get('cyc/finanzas')) || {};
       const tc = parseFloat(fin.tipo_cambio) || 1500;
+      const monoP = parseFloat(((await db.get('cyc/monotributo')) || {}).pct) || 0; // % monotributo
+      const UMBRAL_ENVIO = 33000; // desde acá ML obliga a envío gratis y lo paga el vendedor
       const pIdx = {}; for (const p of products) pIdx[p.id] = p;
       // Ventas por publicación y por producto (precio y neto UNITARIOS).
       const vtaMla = {}, vtaProd = {};
@@ -1562,15 +1564,16 @@ async function main() {
       };
       console.log(`=== PRECIOS PARA LLEGAR AL PISO ${(MIN * 100).toFixed(0)}% (destino ${(T * 100).toFixed(0)}%) ===`);
       console.log(`MODO PRUEBA · NO se escribe NADA en ML · dólar ${money(tc)}`);
+      console.log(`Impuestos al costo: IIBB por cuenta + monotributo ${monoP.toFixed(2)}%`);
       console.log(`Neto = precio − comisión oficial de ML (pedida a ML para ESE precio) − envío`);
       console.log(`Envío = el MÁS BAJO de las últimas ventas (= el neto más alto, el mejor caso ya corregido)\n`);
-      const subir = [], grandes = [], conVar = [], yaOk = [], sinDato = [];
+      const subir = [], grandes = [], conVar = [], yaOk = [], sinDato = [], cruzan = [];
       for (const label of labels) {
         const acc = accounts[label];
         if (!acc?.refresh_token) { console.log(`(${label}: sin token, salteada)`); continue; }
         let t; try { t = await mlRefresh(ML_CLIENT_ID, ML_CLIENT_SECRET, acc.refresh_token); } catch { console.log(`(${label}: no pude renovar token)`); continue; }
         await db.patch('mlapi/tokens/' + label, { refresh_token: t.refresh_token, updated_ts: Date.now() });
-        const m = mlExtraPct(label) / 100;
+        const m = (mlExtraPct(label) + monoP) / 100; // IIBB de la cuenta + monotributo (general)
         const ids = Object.entries(links)
           .filter(([mla, e]) => e && e.cuenta === label && !e.ignored && e.prodId && /^MLA/i.test(mla))
           .map(([mla]) => mla);
@@ -1632,6 +1635,9 @@ async function main() {
             fila.mult = fila.nuevo / precio;
             fila.mgNuevo = ((fila.nuevo - comP - envio) - costo - fila.nuevo * m) / (costo + fila.nuevo * m) * 100;
             if (fila.mult <= 1) { yaOk.push(fila); continue; }
+            // Si el precio nuevo cruza los $33.000, ML pasa a obligar envío gratis (lo pagás vos):
+            // el aumento se lo come el envío y encima facturás más. No se toca: queda para decidir.
+            if (precio < UMBRAL_ENVIO && fila.nuevo >= UMBRAL_ENVIO) { cruzan.push(fila); continue; }
             if (fila.mult > MAX_UP) grandes.push(fila);
             else if (vars.length) conVar.push(fila);
             else subir.push(fila);
@@ -1648,6 +1654,8 @@ async function main() {
       subir.forEach((f) => console.log(line(f)));
       console.log(`\n── B. CON VARIANTES (NO tocar hasta probar una) · ${conVar.length} publicaciones ──`);
       conVar.forEach((f) => console.log(line(f) + ` · ${f.nVar} variantes`));
+      console.log(`\n── C1. CRUZARÍAN LOS $33.000 (NO tocar: ahí el envío pasa a pagarlo CYC) · ${cruzan.length} ──`);
+      cruzan.sort((a, b) => a.mg - b.mg).forEach((f) => console.log(line(f)));
       console.log(`\n── C. NECESITAN SUBA MAYOR A 25% (revisalos a mano) · ${grandes.length} publicaciones ──`);
       grandes.forEach((f) => console.log(line(f)));
       console.log(`\n── D. YA ESTÁN EN EL PISO O ARRIBA · ${yaOk.length} publicaciones ──`);
