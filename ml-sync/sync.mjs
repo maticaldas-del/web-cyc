@@ -1606,6 +1606,66 @@ async function main() {
       }
       return;
     }
+    // BILLING_PROBE=recosto:<palabra>[:go] → RECALCULA EL COSTO DE LAS VENTAS YA HECHAS.
+    //
+    // Como regla, el costo de una venta hecha NO se toca: es lo que costó esa mercadería ese día.
+    // La excepción es cuando el costo guardado nunca fue el real. Es el caso de Victoria's Secret:
+    // estaba cargado US$14,8, que era un PROMEDIO entre el común (US$13,8) y el Bliss (US$16,1).
+    // Ese promedio no existió nunca: cada venta fue de uno o del otro. Corregirlo no es reescribir
+    // la historia, es arreglar un dato que estaba mal desde el principio.
+    // Se usa el DÓLAR DEL DÍA DE CADA VENTA (v.tcSale), no el de hoy, para no mezclar el error de
+    // costo con la variación del tipo de cambio.
+    if (String(process.env.BILLING_PROBE || '').startsWith('recosto:')) {
+      const _rc = String(process.env.BILLING_PROBE).split(':');
+      const kw = (_rc[1] || '').trim().toLowerCase();
+      const APLICAR = _rc[2] === 'go';
+      if (!kw) { console.log('Usá: recosto:<palabra>[:go] — ej recosto:victoria'); return; }
+      const vp = (await db.get('cyc/ventaprod')) || {};
+      const tcHoy = parseFloat(((await db.get('cyc/finanzas')) || {}).tipo_cambio) || 1500;
+      const objetivo = products.filter((p) => (p.name || '').toLowerCase().includes(kw));
+      if (!objetivo.length) { console.log(`No hay productos con "${kw}".`); return; }
+      console.log(`=== RECALCULAR COSTO DE VENTAS YA HECHAS · "${kw}" ${APLICAR ? '(APLICANDO)' : '(PRUEBA)'} ===\n`);
+      objetivo.forEach((p) => console.log(`  ${p.id} · "${p.name}" · costo hoy US$${p.costUSD} · full US$${p.costFullUSD}`));
+      const idx = {}; for (const p of objetivo) idx[p.id] = p;
+      const cambios = []; const porProd = {};
+      for (const [dk, ents] of Object.entries(vp)) {
+        for (const [id, v] of Object.entries(ents || {})) {
+          if (!v || !v.prodId || !idx[v.prodId]) continue;
+          if (v.cancelada) continue;
+          const p = idx[v.prodId];
+          const tcV = parseFloat(v.tcSale) || tcHoy;
+          const { costo, costBaseUSD, shipUSD } = costoPesos(p, v.qty || 1, tcV);
+          const viejo = v.costo || 0;
+          if (Math.abs(costo - viejo) < 1) continue;
+          cambios.push({ dk, id, prod: p.name, viejo, nuevo: costo, costBaseUSD, shipUSD, tcV, qty: v.qty || 1 });
+          const k = p.name;
+          porProd[k] = porProd[k] || { n: 0, viejo: 0, nuevo: 0 };
+          porProd[k].n++; porProd[k].viejo += viejo; porProd[k].nuevo += costo;
+        }
+      }
+      console.log(`\n── VENTAS CON EL COSTO DESACTUALIZADO · ${cambios.length} ──\n`);
+      for (const [nom, d] of Object.entries(porProd)) {
+        const dif = d.nuevo - d.viejo;
+        console.log(`  ${nom}`);
+        console.log(`     ${d.n} ventas · costo guardado ${money(Math.round(d.viejo))} → real ${money(Math.round(d.nuevo))}`
+          + ` · ${dif >= 0 ? 'sube' : 'baja'} ${money(Math.abs(Math.round(dif)))}`);
+        console.log(`     (la ganancia histórica de este producto ${dif >= 0 ? 'BAJA' : 'SUBE'} ${money(Math.abs(Math.round(dif)))})`);
+      }
+      const totV = Object.values(porProd).reduce((s, d) => s + d.viejo, 0);
+      const totN = Object.values(porProd).reduce((s, d) => s + d.nuevo, 0);
+      console.log(`\n  TOTAL · costo guardado ${money(Math.round(totV))} → real ${money(Math.round(totN))}`
+        + ` · diferencia ${money(Math.round(totN - totV))}`);
+      console.log(`\n  Ojo: esto cambia la ganancia de meses ya cerrados. Es a propósito — el costo`);
+      console.log(`  guardado era un promedio que nunca existió. Se usa el dólar del día de cada venta.`);
+      if (!APLICAR) { console.log(`\nPRUEBA: no se escribió nada. Para aplicar: recosto:${kw}:go`); return; }
+      for (const c of cambios) {
+        await db.set(`cyc/ventaprod/${c.dk}/${c.id}/costo`, c.nuevo);
+        await db.set(`cyc/ventaprod/${c.dk}/${c.id}/costBaseUSD`, c.costBaseUSD);
+        await db.set(`cyc/ventaprod/${c.dk}/${c.id}/shipUSD`, c.shipUSD);
+      }
+      console.log(`\n✓ ${cambios.length} ventas recalculadas con el costo real.`);
+      return;
+    }
     // BILLING_PROBE=repbliss[:go] → REPARA LAS PUBLICACIONES BLISS HUÉRFANAS.
     // Qué pasó: splitbliss creó su propio producto Bliss y repuntó 3 publicaciones hacia él. Ese
     // producto después se borró, así que esas 3 publicaciones quedaron apuntando a un producto
