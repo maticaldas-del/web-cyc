@@ -4610,10 +4610,14 @@ function renderMargenML(){
     const costo=costFullP(p)+_mlExtraOf(p); // costo real = full + cargo extra de ML (IIBB, etc.)
     const netoManual=(p.netoRef!=null&&p.netoRef!=='')?Number(p.netoRef):null;
     const netoReal=_netoRealOf(p);
-    const neto=netoManual!=null?netoManual:netoReal;   // manual pisa; si no, el real de las ventas
-    const fuente=netoManual!=null?'manual':(netoReal!=null?'real':null);
+    // Neto calculado por el robot con el precio de HOY (precio − comisión oficial de ML − envío).
+    // Va ANTES que el real: el real sale de ventas viejas, a precios viejos, y después de cambiar
+    // precios miente. Este sirve para ver cómo queda el producto ANTES de venderlo.
+    const netoCalc=(p.netoCalc!=null&&p.netoCalc!=='')?Number(p.netoCalc):null;
+    const neto=netoManual!=null?netoManual:(netoCalc!=null?netoCalc:netoReal);
+    const fuente=netoManual!=null?'manual':(netoCalc!=null?'calc':(netoReal!=null?'real':null));
     const margen=(neto!=null&&costo>0)?((neto-costo)/costo*100):null;
-    return {p,costo,neto,margen,fuente,netoReal};
+    return {p,costo,neto,margen,fuente,netoReal,netoCalc};
   }).filter(r=>!q||normTxt(r.p.name).includes(q));
   rows.sort((a,b)=>{
     if(a.margen==null&&b.margen==null)return (a.p.name||'').localeCompare(b.p.name||'','es',{sensitivity:'base'});
@@ -4624,19 +4628,22 @@ function renderMargenML(){
   const bajo=rows.filter(r=>r.margen!=null&&r.margen<META).length;
   const sinNeto=rows.filter(r=>r.neto==null).length;
   const conReal=rows.filter(r=>r.fuente==='real').length;
+  const conCalc=rows.filter(r=>r.fuente==='calc').length;
   const sum=document.getElementById('margen-ml-sum');
-  if(sum)sum.innerHTML=`Dólar actual <strong style="color:var(--text)">$${tc?tc.toLocaleString('es-AR'):'—'}</strong> · meta <strong style="color:var(--green)">${META}%</strong> · <strong style="color:${bajo?'var(--red)':'var(--green)'}">${bajo}</strong> bajo la meta · <strong style="color:var(--green)">${conReal}</strong> con neto real de ventas · <strong>${sinNeto}</strong> sin datos<br><span style="color:var(--muted);font-size:.92em">El <strong>Costo full</strong> ya incluye el cargo extra de ML (IIBB + almacenamiento, ~4-6% del precio según cuenta).</span>`;
+  if(sum)sum.innerHTML=`Dólar actual <strong style="color:var(--text)">$${tc?tc.toLocaleString('es-AR'):'—'}</strong> · meta <strong style="color:var(--green)">${META}%</strong> · <strong style="color:${bajo?'var(--red)':'var(--green)'}">${bajo}</strong> bajo la meta · <strong style="color:var(--blue,#60a5fa)">${conCalc}</strong> con el precio de hoy · <strong style="color:var(--green)">${conReal}</strong> con neto real de ventas · <strong>${sinNeto}</strong> sin datos<br><span style="color:var(--muted);font-size:.92em">El <strong>Costo full</strong> ya incluye el cargo extra de ML (IIBB + almacenamiento, ~4-6% del precio según cuenta).</span>`;
   if(!rows.length){el.innerHTML='<div class="empty-msg">No hay productos.</div>';return;}
   el.innerHTML=rows.map(r=>{
     const p=r.p;
     const objetivo=r.costo>0?Math.round(r.costo*(1+META/100)):null; // neto mínimo para llegar al 40%
     const netoManualVal=(p.netoRef!=null&&p.netoRef!=='')?Math.round(Number(p.netoRef)):'';
-    const phNeto=r.netoReal!=null?('real '+Math.round(r.netoReal).toLocaleString('es-AR')):'—';
+    const phNeto=r.netoCalc!=null?(Math.round(r.netoCalc).toLocaleString('es-AR')):(r.netoReal!=null?('real '+Math.round(r.netoReal).toLocaleString('es-AR')):'—');
     let margenTxt,margenColor;
     if(r.costo<=0){margenTxt='sin costo';margenColor='var(--muted)';}
     else if(r.neto==null){margenTxt='—';margenColor='var(--muted)';}
     else {margenColor=pctColor(r.margen);margenTxt=(r.margen>=0?'+':'')+r.margen.toFixed(0)+'%';}
-    const fuenteTag=r.fuente==='real'?`<span title="Neto real promedio de tus ventas (ya con la gestión de Full descontada)" style="font-size:.5rem;color:var(--green);font-weight:700">● REAL</span>`:(r.fuente==='manual'?`<span title="Neto cargado a mano" style="font-size:.5rem;color:var(--muted);font-weight:700">✎ manual</span>`:'');
+    const fuenteTag=r.fuente==='calc'?`<span title="Calculado con el precio de HOY en ML: precio − comisión oficial de ML − envío. Es lo que te queda si se vende ahora.${r.p.netoCalcPrecio?' Precio usado: $'+Math.round(r.p.netoCalcPrecio).toLocaleString('es-AR'):''}" style="font-size:.5rem;color:var(--blue,#60a5fa);font-weight:700">◉ PRECIO DE HOY</span>`
+      :(r.fuente==='real'?`<span title="Neto real promedio de tus ventas (ya con la gestión de Full descontada)" style="font-size:.5rem;color:var(--green);font-weight:700">● REAL</span>`
+      :(r.fuente==='manual'?`<span title="Neto cargado a mano" style="font-size:.5rem;color:var(--muted);font-weight:700">✎ manual</span>`:''));
     const flag=(r.margen!=null&&r.margen<META)?`<span style="background:rgba(239,68,68,.14);color:var(--red);border-radius:5px;padding:2px 7px;font-size:.6rem;font-weight:700;white-space:nowrap">⚠ bajo ${META}%</span>`:'';
     return `<div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;padding:10px 12px;border-bottom:1px solid var(--border)">
       <span style="flex:2;min-width:150px;font-size:.78rem;font-weight:600">${p.name}</span>
@@ -7009,7 +7016,7 @@ document.addEventListener('click',e=>{if(fnavOpen&&!e.target.closest('#fnav-btn'
         <span style="font-size:.75rem;color:var(--muted)">Si no ves los últimos cambios, forzá la actualización</span>
         <button class="btn" style="background:rgba(56,189,248,.12);color:var(--blue);border:1px solid rgba(56,189,248,.3)" onclick="actualizarApp()">🔄 Buscar actualizaciones</button>
       </div>
-      <div style="font-size:.66rem;color:var(--muted);margin-top:12px">CYC · Versión 6.1</div>
+      <div style="font-size:.66rem;color:var(--muted);margin-top:12px">CYC · Versión 6.2</div>
     </div>
 
     <div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:18px 20px;margin-bottom:14px">

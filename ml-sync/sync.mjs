@@ -1488,6 +1488,98 @@ async function main() {
       console.log(`${DRY ? '(DRY) ' : ''}Robot de precios: actúa por debajo de ${piso}% y lleva a ${meta}%.`);
       return;
     }
+    // BILLING_PROBE=netoweb[:prueba] → CARGA EN LA WEB el neto que deja cada producto AL PRECIO DE HOY.
+    // La pantalla "Margen ML" mostraba el neto promedio de las ventas VIEJAS. Después de cambiar
+    // precios ese número miente, y los productos que nunca vendieron no mostraban nada.
+    // Esto calcula, por cada producto, neto = precio − comisión oficial de ML − envío, y lo guarda
+    // en products/<id>/netoCalc para verlo ANTES de vender. No pisa el neto que cargues a mano.
+    if (String(process.env.BILLING_PROBE || '').startsWith('netoweb')) {
+      const prueba = String(process.env.BILLING_PROBE).split(':')[1] === 'prueba';
+      const vp = (await db.get('cyc/ventaprod')) || {};
+      const links = (await db.get('cyc/mllinks')) || {};
+      const fin = (await db.get('cyc/finanzas')) || {};
+      const tc = parseFloat(fin.tipo_cambio) || 1500;
+      const pIdx = {}; for (const p of products) pIdx[p.id] = p;
+      const vtaMla = {}, vtaProd = {};
+      for (const ents of Object.values(vp)) {
+        for (const v of Object.values(ents || {})) {
+          if (!v || v.cancelada) continue;
+          const q = v.qty || 1, tot = (v.total || 0) / q, net = (v.neto || 0) / q;
+          if (tot <= 0 || net <= 0) continue;
+          if (v.mla) (vtaMla[v.mla] = vtaMla[v.mla] || []).push({ tot, net });
+          if (v.prodId) (vtaProd[v.prodId] = vtaProd[v.prodId] || []).push({ tot, net });
+        }
+      }
+      const feeCache = {};
+      const feeAt = async (site, price, ltype, cat, token) => {
+        const key = site + '|' + ltype + '|' + cat + '|' + Math.round(price);
+        if (feeCache[key] !== undefined) return feeCache[key];
+        let out = null;
+        try {
+          const d = await mlGet(`/sites/${site}/listing_prices?price=${Math.round(price)}&listing_type_id=${ltype}&category_id=${cat}`, token);
+          const o = Array.isArray(d) ? d[0] : d;
+          if (typeof o?.sale_fee_amount === 'number') out = o.sale_fee_amount;
+        } catch { out = null; }
+        feeCache[key] = out; return out;
+      };
+      // Un producto puede estar publicado varias veces. Se toma el neto MÁS BAJO de sus
+      // publicaciones activas: es el peor caso, el que conviene mirar antes de vender.
+      const porProd = {};
+      for (const label of labels) {
+        const acc = accounts[label];
+        if (!acc?.refresh_token) continue;
+        let t; try { t = await mlRefresh(ML_CLIENT_ID, ML_CLIENT_SECRET, acc.refresh_token); } catch { continue; }
+        await db.patch('mlapi/tokens/' + label, { refresh_token: t.refresh_token, updated_ts: Date.now() });
+        const ids = Object.entries(links)
+          .filter(([mla, e]) => e && e.cuenta === label && !e.ignored && e.prodId && /^MLA/i.test(mla))
+          .map(([mla]) => mla);
+        for (let k = 0; k < ids.length; k += 20) {
+          let arr;
+          try { arr = await mlGet('/items?ids=' + ids.slice(k, k + 20).join(',') + '&attributes=id,status,price,variations,listing_type_id,category_id,site_id', t.access_token); } catch { continue; }
+          for (const row of (arr || [])) {
+            const b = row.body || {}; const mla = b.id; if (!mla || !links[mla]) continue;
+            if (b.status !== 'active') continue;
+            const p = pIdx[links[mla].prodId]; if (!p) continue;
+            const vars = Array.isArray(b.variations) ? b.variations : [];
+            const precio = vars.length ? (vars[0].price || 0) : (b.price || 0);
+            if (!precio) continue;
+            const com = await feeAt(b.site_id || 'MLA', precio, b.listing_type_id, b.category_id, t.access_token);
+            if (com == null) continue;
+            const ventas = (vtaMla[mla] && vtaMla[mla].length) ? vtaMla[mla] : (vtaProd[p.id] || []);
+            let envio = Infinity;
+            for (const pv of [...new Set(ventas.map((v) => Math.round(v.tot)))].slice(-6)) {
+              const cv = await feeAt(b.site_id || 'MLA', pv, b.listing_type_id, b.category_id, t.access_token);
+              if (cv == null) continue;
+              for (const v of ventas) if (Math.round(v.tot) === pv) { const x = v.tot - v.net - cv; if (x < envio) envio = x; }
+            }
+            if (!isFinite(envio)) envio = 0; // sin ventas: al menos el neto sin envío deducido
+            if (envio < 0) envio = 0;
+            const neto = Math.round(precio - com - envio);
+            if (neto <= 0) continue;
+            const prev = porProd[p.id];
+            if (!prev || neto < prev.neto) porProd[p.id] = { neto, precio: Math.round(precio), mla, cuenta: label, sinEnvio: !ventas.length };
+          }
+        }
+      }
+      const lista = Object.entries(porProd);
+      console.log(`=== NETO AL PRECIO DE HOY · ${lista.length} productos ${prueba ? '(PRUEBA: no se guarda)' : ''} ===`);
+      console.log(`neto = precio − comisión oficial de ML − envío · si un producto tiene varias publicaciones se toma el PEOR neto\n`);
+      let guardados = 0;
+      for (const [pid, d] of lista) {
+        const p = pIdx[pid];
+        const costo = costoPesos(p, 1, tc).costo;
+        const mg = costo > 0 ? ((d.neto - costo) / costo * 100).toFixed(0) + '%' : '—';
+        console.log(`  ${money(d.precio).padStart(10)} → neto ${money(d.neto).padStart(10)} · margen s/costo ${String(mg).padStart(5)} · ${d.cuenta.padEnd(8)} · ${(p.name || pid).slice(0, 40)}${d.sinEnvio ? ' (sin ventas: envío no deducido)' : ''}`);
+        if (!prueba && !DRY) {
+          await db.set('products/' + pid + '/netoCalc', d.neto);
+          await db.set('products/' + pid + '/netoCalcPrecio', d.precio);
+          await db.set('products/' + pid + '/netoCalcTs', Date.now());
+          guardados++;
+        }
+      }
+      console.log(`\n${prueba ? '(PRUEBA) ' : ''}${prueba ? lista.length + ' se guardarían' : guardados + ' guardados'} en la web (pantalla Margen ML).`);
+      return;
+    }
     // BILLING_PROBE=dormidos[:<días>][:<margenMin>] → PRODUCTOS CON MARGEN ALTO QUE NO ROTAN.
     // Regla tuya: si el producto VENDIÓ en la ventana, no se toca aunque tenga margen alto. Solo
     // interesan los que tienen buen margen y NO se venden: ahí bajar el precio puede despertarlos.
