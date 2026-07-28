@@ -231,9 +231,9 @@ function tgHorarioOk() {
   if (h === 0 && m <= 30) return true; // 00:00 → 00:30
   return false;                        // 00:31 → 09:59: silencio
 }
-async function sendTelegram(text) {
-  if (!TG_TOKEN || TG_SILENCIO) return false;
-  if (!tgHorarioOk()) { console.log('(Telegram fuera de horario 10:00-00:30, no se manda)'); return false; }
+let TG_DB = null; // se setea al arrancar, para poder guardar los mensajes de la madrugada
+// Manda de verdad, sin mirar el horario (lo usa la cola, que ya lo chequeó).
+async function tgEnviar(text) {
   const dest = TG_CHATS.length ? TG_CHATS : (TG_CHAT ? [String(TG_CHAT)] : []);
   if (!dest.length) return false;
   let anyOk = false;
@@ -242,6 +242,41 @@ async function sendTelegram(text) {
     if (r && r.ok) anyOk = true;
   }
   return anyOk;
+}
+// Fuera de horario los mensajes NO se pierden: quedan guardados y salen cuando abre la ventana.
+// Se guardan hasta 20 (los más nuevos) para que una madrugada movida no dispare una avalancha.
+async function tgEncolar(text) {
+  if (!TG_DB) return;
+  try {
+    const cola = (await TG_DB.get('mlapi/telegram/cola')) || {};
+    cola['m' + Date.now() + '_' + Object.keys(cola).length] = { text, ts: Date.now() };
+    const ids = Object.keys(cola).sort((a, b) => (cola[a].ts || 0) - (cola[b].ts || 0));
+    while (ids.length > 20) delete cola[ids.shift()];
+    await TG_DB.set('mlapi/telegram/cola', cola);
+    console.log('(Telegram fuera de horario: el mensaje queda guardado para las 10:00)');
+  } catch { /* si falla, se pierde: no vale la pena romper la corrida por un aviso */ }
+}
+// Manda lo que quedó de la madrugada, con la hora original para que se entienda cuándo pasó.
+async function tgFlushCola(db) {
+  if (!TG_TOKEN || TG_SILENCIO || !tgHorarioOk()) return;
+  let cola = null;
+  try { cola = await db.get('mlapi/telegram/cola'); } catch { return; }
+  if (!cola || !Object.keys(cola).length) return;
+  const ids = Object.keys(cola).sort((a, b) => (cola[a].ts || 0) - (cola[b].ts || 0));
+  console.log(`Telegram: mandando ${ids.length} mensaje(s) que habían quedado de la madrugada.`);
+  for (const id of ids) {
+    const m = cola[id]; if (!m || !m.text) continue;
+    const hora = new Intl.DateTimeFormat('es-AR', {
+      timeZone: 'America/Argentina/Buenos_Aires', day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit',
+    }).format(new Date(m.ts || Date.now()));
+    await tgEnviar(`🕙 <i>Esto pasó a las ${hora} y quedó esperando el horario</i>\n\n${m.text}`);
+  }
+  if (!DRY) await db.set('mlapi/telegram/cola', null);
+}
+async function sendTelegram(text) {
+  if (!TG_TOKEN || TG_SILENCIO) return false;
+  if (!tgHorarioOk()) { await tgEncolar(text); return false; }
+  return tgEnviar(text);
 }
 // Descubre y ACUMULA todos los chats: cada persona que le manda "hola" al bot queda
 // suscripta y recibe los resúmenes/avisos. Se guarda en Firebase mlapi/telegram/chats.
@@ -384,9 +419,11 @@ async function main() {
   const db = makeDB(FIREBASE_DB_URL, idToken, () => fbSignIn(FIREBASE_API_KEY, FIREBASE_BOT_EMAIL, FIREBASE_BOT_PASSWORD));
 
   // Telegram: descubrir/cachear el chat id (solo hace falta el token).
+  TG_DB = db;
   try { TG_SILENCIO = (await db.get('cyc/mlconfig/telegramOff')) === true; } catch { /* */ }
   if (TG_SILENCIO) console.log('Telegram SILENCIADO (cyc/mlconfig/telegramOff = true). No se manda nada.');
   await resolveTgChat(db);
+  await tgFlushCola(db); // primero lo que quedó de la madrugada, después lo de esta corrida
 
   // TELEGRAM_TEST=1 → solo manda un mensaje de prueba y sale (para verificar
   // que el token está bien y que llega a tu celular). No toca nada más.
