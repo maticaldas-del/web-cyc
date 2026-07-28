@@ -1201,6 +1201,53 @@ async function main() {
       console.log(`El impuesto integrado ahora vive SOLO en el costo de los productos.`);
       return;
     }
+    // BILLING_PROBE=capital → foto del capital de CYC: stock, efectivo, deudas y los dólares de los
+    // socios. Sirve para decidir si conviene sacar plata del negocio o dejarla trabajando.
+    if (String(process.env.BILLING_PROBE || '') === 'capital') {
+      const fin = (await db.get('cyc/finanzas')) || {};
+      const inv = (await db.get('cyc/inventory')) || {};
+      const tc = parseFloat(fin.tipo_cambio) || 1500;
+      const pIdx = {}; for (const p of products) pIdx[p.id] = p;
+      let stock = 0, unidades = 0;
+      for (const [k, v] of Object.entries(inv)) {
+        if (k.includes('__v__')) continue;
+        const q = parseInt(v) || 0; if (q <= 0) continue;
+        const p = pIdx[k.split('__')[0]]; if (!p) continue;
+        stock += costoPesos(p, q, tc).costo; unidades += q;
+      }
+      const n = (k) => parseFloat(fin[k]) || 0;
+      console.log(`=== CAPITAL DE CYC · dólar ${money(tc)} ===\n`);
+      console.log(`── LO QUE TIENE ──`);
+      console.log(`  Mercadería en stock: ${money(Math.round(stock)).padStart(14)}  (${unidades} unidades)`);
+      const campos = [['of_viejo', 'Oficina CYC'], ['of_mia', 'Oficina Mati'], ['vendedores', 'Vendedores'],
+        ['efectivo', 'Efectivo'], ['mp', 'Mercado Pago'], ['banco', 'Banco'], ['deben', 'Nos deben']];
+      let otros = 0;
+      for (const [k, lbl] of campos) { const v = n(k); if (v) { console.log(`  ${lbl.padEnd(20)} ${money(Math.round(v)).padStart(14)}`); otros += v; } }
+      console.log(`  ${'─'.repeat(36)}`);
+      console.log(`  TOTAL activos:       ${money(Math.round(stock + otros)).padStart(14)}`);
+      console.log(`\n── LO QUE DEBE ──`);
+      let deudas = 0;
+      for (const [k, lbl] of [['deuda_cyc', 'Deuda de CYC'], ['tarjeta', 'Tarjeta'],
+        ['dolares_mati', 'Dólares de Mati'], ['dolares_tito', 'Dólares del viejo']]) {
+        const v = Math.abs(n(k)); if (v) { console.log(`  ${lbl.padEnd(20)} ${money(Math.round(v)).padStart(14)}`); deudas += v; }
+      }
+      console.log(`  ${'─'.repeat(36)}`);
+      console.log(`  TOTAL deudas:        ${money(Math.round(deudas)).padStart(14)}`);
+      console.log(`\n  PATRIMONIO NETO:     ${money(Math.round(stock + otros - deudas)).padStart(14)}`);
+      // Cuánto dura el stock al ritmo de compra actual
+      const vp = (await db.get('cyc/ventaprod')) || {};
+      const desde = dayKeyFromISO(Date.now() - 59 * 864e5);
+      let costoVendido = 0;
+      for (const [k, ents] of Object.entries(vp)) {
+        if (k < desde) continue;
+        for (const v of Object.values(ents || {})) { if (v && !v.cancelada) costoVendido += v.costo || 0; }
+      }
+      const porMes = costoVendido / 2;
+      console.log(`\n── QUÉ TAN RÁPIDO SE CONSUME ──`);
+      console.log(`  Mercadería vendida (costo): ${money(Math.round(porMes))}/mes`);
+      if (porMes > 0) console.log(`  El stock actual alcanza para ${(stock / porMes).toFixed(1)} meses de venta.`);
+      return;
+    }
     // BILLING_PROBE=mono → mide cuánto pesa el MONOTRIBUTO sobre la facturación, para poder cargarlo
     // como un % en el costo de cada producto (igual que el cargo de ML). Va sobre el PRECIO de venta
     // porque es la facturación la que define la categoría, no el costo. Muestra mes por mes, el
