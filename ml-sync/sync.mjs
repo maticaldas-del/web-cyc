@@ -3832,7 +3832,10 @@ async function main() {
           try { arr = await mlGet('/items?ids=' + faltan.slice(k, k + 20).join(',') + '&attributes=id,status,price,title', t.access_token); } catch { continue; }
           for (const row of (arr || [])) {
             const b = row.body || {}; if (!b.id) continue;
-            if (!estado[b.id]) estado[b.id] = { status: b.status || '?', precio: b.price || 0, leidaPor: label };
+            // Cuando ML no puede devolver un ítem manda un cuerpo de error donde `status` es el código
+            // HTTP (un número, ej 404). Ese no es el estado de la publicación: se descarta.
+            if (b.error || typeof b.status === 'number') continue;
+            if (!estado[b.id]) estado[b.id] = { status: String(b.status || '?'), precio: b.price || 0, leidaPor: label };
           }
         }
       }
