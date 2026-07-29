@@ -3807,6 +3807,9 @@ async function main() {
       const fin = (await db.get('cyc/finanzas')) || {};
       const tcAhora = parseFloat(fin.tipo_cambio) || 1500;
       const tcDelMes = parseFloat(tcMes[ym]) || tcAhora;
+      const monoPct = parseFloat(((await db.get('cyc/monotributo')) || {}).pct) || 0;
+      const comprasMes = (await db.get('cyc/compras')) || {};
+      const retiroMes = (await db.get('cyc/retiro_mes')) || {};
       const pIdx = {}; for (const p of products) pIdx[p.id] = p;
       // Ventas del mes, agrupadas por producto.
       const porProd = {};
@@ -3816,6 +3819,9 @@ async function main() {
           if (!v || v.cancelada || !v.prodId) continue;
           const b = porProd[v.prodId] || (porProd[v.prodId] = { nom: v.prod || v.prodId, qty: 0, n: 0, congelado: 0, neto: 0 });
           b.qty += v.qty || 1; b.n++; b.congelado += v.costo || 0; b.neto += v.neto || 0;
+          b.bruto = (b.bruto || 0) + (v.total || 0);
+          // Impuestos igual que la web: IIBB de la cuenta + monotributo, sobre el precio de venta.
+          b.imp = (b.imp || 0) + (v.total || 0) * (mlExtraPct(v.cuenta) + monoPct) / 100;
         }
       }
       console.log(`=== CON QUÉ COSTO SE VALÚA ${ym} ===`);
@@ -3833,7 +3839,7 @@ async function main() {
         const usaWeb = aPesos(usaUSD);          // lo que la web descuenta hoy
         const conActual = aPesos(actualUSD);    // lo que descontaría con el costo de hoy
         filas.push({
-          nom: b.nom, qty: b.qty, n: b.n, neto: b.neto,
+          nom: b.nom, qty: b.qty, n: b.n, neto: b.neto, imp: b.imp || 0, bruto: b.bruto || 0,
           histUSD, actualUSD, usaWeb, conActual, congelado: b.congelado,
           gapActual: conActual - usaWeb,        // + = la web está descontando de MENOS
           gapCongelado: usaWeb - b.congelado,   // + = la web descuenta MÁS que lo guardado en la venta
@@ -3860,6 +3866,36 @@ async function main() {
       console.log(`  Neto del mes                        ${money(Math.round(totNeto))}`);
       console.log(`\n  Si el costo correcto fuera el ACTUAL, la ganancia del mes cambiaría en ${money(Math.round(-(totActual - totWeb)))}.`);
       console.log(`  (${conHist.length} de ${filas.length} productos tienen precio histórico cargado para ${ym}; el resto usa el costo de hoy.)`);
+
+      // ── ¿CIERRA EL MES? El mismo cierre que muestra el Resumen, pero calculado acá desde cero,
+      //    para poder cruzarlo contra la web y confirmar que no hay nada raro en el medio.
+      const totImp = filas.reduce((s, f) => s + (f.imp || 0), 0);
+      const totBruto = filas.reduce((s, f) => s + (f.bruto || 0), 0);
+      const costoConImp = totWeb + totImp;
+      const ganancia = totNeto - costoConImp;
+      const markup = costoConImp > 0 ? ganancia / costoConImp * 100 : 0;
+      let gastosDelMes = 0;
+      for (const g of Object.values(comprasMes)) {
+        if (!g || g.tipo === 'mercaderia') continue;
+        if ((g.dayKey || '').slice(0, 7) === ym) gastosDelMes += g.monto || 0;
+      }
+      const ret = retiroMes[ym] != null ? Number(retiroMes[ym]) : null;
+      console.log(`\n══ ¿CIERRA ${ym}? ══`);
+      console.log(`  Facturado                        ${money(Math.round(totBruto))}`);
+      console.log(`  Neto ML                          ${money(Math.round(totNeto))}`);
+      console.log(`  − mercadería                     ${money(Math.round(totWeb))}`);
+      console.log(`  − IIBB + monotributo (${monoPct.toFixed(2)}%)     ${money(Math.round(totImp))}`);
+      console.log(`  = GANANCIA                       ${money(Math.round(ganancia))}   · markup ${markup.toFixed(1)}%`);
+      console.log(`  − gastos cargados                ${money(Math.round(gastosDelMes))}`);
+      console.log(`  − retiro                         ${ret != null ? money(Math.round(ret)) : '(no cargado)'}`);
+      if (ret != null) {
+        const queda = ganancia - gastosDelMes - ret;
+        const equil = costoConImp > 0 ? (gastosDelMes + ret) / costoConImp * 100 : 0;
+        console.log(`  = QUEDA EN CYC                   ${money(Math.round(queda))}`);
+        console.log(`\n  Punto de equilibrio del mes: ${equil.toFixed(1)}% de markup`);
+        console.log(`  Estás ${(markup - equil).toFixed(1)} puntos arriba → ${money(Math.round((markup - equil) / 100 * costoConImp))}`);
+        console.log(`  (tiene que dar lo mismo que "QUEDA EN CYC"; si no, hay algo mal)`);
+      }
       return;
     }
     // BILLING_PROBE=activarfull[:go][:<piso>] → REACTIVA LAS PAUSADAS QUE TIENEN STOCK EN FULL.
