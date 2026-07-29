@@ -5960,7 +5960,12 @@ async function main() {
   }
 
   const cfg = (await db.get('cyc/mlconfig')) || {};
-  const autoPrice = cfg.autoPrice !== false; // por defecto ON (lo pediste)
+  // SKIP_PRICES=1 → esta vuelta trae ventas pero NO toca precios. Lo usa el ciclo automático:
+  // las ventas se sincronizan cada 2 minutos, pero el robot de precios corre una vez por hora.
+  // Sin esto, bajar el intervalo a 2 minutos haría que el robot evalúe 720 veces por día en vez
+  // de 14, y una publicación que queda justo en el piso empezaría a subir de a poco sin parar.
+  const SKIP_PRICES = process.env.SKIP_PRICES === '1';
+  const autoPrice = cfg.autoPrice !== false && !SKIP_PRICES; // por defecto ON (lo pediste)
   const autoPromo = cfg.autoPromo !== false; // sacar descuentos de ML — ON por defecto
   const autoStock = cfg.autoStock !== false; // cargar stock de ML al panel — ON por defecto
   // OJO: 30/32, no 40/42. Los valores viejos eran de cuando el margen se medía SIN IIBB ni
@@ -6592,7 +6597,8 @@ async function main() {
   // NIVELAR GRUPOS DE PRECIO (ej: todos los Paulvic al mismo precio). Va al final, después
   // de que el robot pudo haber subido alguno: así se empareja igual quién lo haya movido.
   // En backfills no corre, para no tocar precios mientras se reprocesa el historial.
-  if (parseInt(process.env.BACKFILL_DAYS || '0', 10) === 0 && !onlyAcc) {
+  // Tampoco se nivela en las vueltas rápidas (SKIP_PRICES): nivelar también escribe precios en ML.
+  if (parseInt(process.env.BACKFILL_DAYS || '0', 10) === 0 && !onlyAcc && process.env.SKIP_PRICES !== '1') {
     try {
       const pName = {}; for (const p of products) pName[p.id] = p.name || '';
       const sellerIds = {}; for (const l of labels) if (accounts[l]?.seller_id) sellerIds[l] = accounts[l].seller_id;

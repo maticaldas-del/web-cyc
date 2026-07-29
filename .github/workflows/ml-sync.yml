@@ -1,15 +1,17 @@
 name: ml-sync
 
 # Robot que trae las ventas nuevas de ML al panel.
-# Corre solo cada 10 min (GitHub a veces lo demora unos minutos más) + manual.
+# Corre solo: un ciclo largo que sincroniza cada 2 minutos (ver abajo) + comandos a mano.
 
 on:
   schedule:
-    # Una vez por hora, NO cada 10 minutos. Pedirlo cada 10 no servía: GitHub lo demoraba igual
-    # (medido: cada 104 minutos en la práctica) y además cada disparo nuevo cortaba el ciclo que
-    # estaba corriendo. Pidiendo una vez por hora, GitHub lo cumple mucho mejor y el ciclo de abajo
-    # se encarga de sincronizar cada 5 minutos.
-    - cron: '0 * * * *'
+    # El cron ya NO define cada cuánto se sincroniza: solo se encarga de que siempre haya un ciclo
+    # vivo (el ciclo de abajo dura casi 6 horas y sincroniza cada 2 minutos). Alcanza con que
+    # dispare una vez cada 6 horas; se pide 3 veces por hora para que, si un ciclo se cae, arranque
+    # otro enseguida. Los disparos de más no molestan: se ponen en cola, nunca cortan al que corre.
+    # A propósito en minutos 7/27/47 y no en el 0: en el minuto 0 se juntan los crons de medio
+    # GitHub y es cuando más demora.
+    - cron: '7,27,47 * * * *'
   workflow_dispatch:
     inputs:
       dry_run:
@@ -121,8 +123,8 @@ on:
 # que escribe precios, eso sería una cuenta entera sin aplicar.
 #
 # cancel-in-progress solo para las corridas A MANO: un comando tuyo tiene prioridad y corta el
-# ciclo automático (que se recupera solo en la próxima hora). Al revés nunca: una corrida
-# automática JAMÁS corta un comando a mano, se queda esperando a que termine.
+# ciclo automático (que se recupera solo en el próximo disparo, como mucho 20 minutos). Al revés
+# nunca: una corrida automática JAMÁS corta un comando a mano, se queda esperando a que termine.
 concurrency:
   group: ml-sync
   cancel-in-progress: ${{ github.event_name == 'workflow_dispatch' }}
@@ -130,7 +132,7 @@ concurrency:
 jobs:
   sync:
     runs-on: ubuntu-latest
-    timeout-minutes: 125
+    timeout-minutes: 355   # el ciclo dura 340; GitHub corta los jobs a las 6 h
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -177,18 +179,30 @@ jobs:
             node ml-sync/sync.mjs
             exit $?
           fi
-          # Corrida automática: en vez de terminar enseguida, se queda sincronizando cada 5 minutos
-          # durante 110 minutos. Como el cron pide una por hora, cuando ésta termina ya hay otra
-          # esperando y arranca al toque → el panel se actualiza cada 5 minutos sin cortes.
-          # 110 y no 60 a propósito: si GitHub demora el disparo, el ciclo largo tapa el hueco.
+          # Corrida automática: no termina enseguida, se queda dando vueltas casi 6 horas (el máximo
+          # que deja GitHub para un job). Cuanto más larga, menos depende de que el cron sea puntual.
+          #
+          # Cada vuelta trae ventas (tarda ~25 s) y después espera 2 minutos → el panel nunca está
+          # más de ~2 minutos atrasado.
+          #
+          # El robot de PRECIOS no corre en todas las vueltas: solo en la 1ª y después una por hora.
+          # Traer ventas es leer; tocar precios es escribir en ML, y hacerlo 720 veces por día en vez
+          # de 14 es buscarse un problema con las publicaciones que quedan justo en el piso.
+          #
           # Si una vuelta falla, se avisa y sigue: un error puntual no corta el resto.
-          fin=$(( $(date +%s) + 110*60 ))
+          fin=$(( $(date +%s) + 340*60 ))
           vuelta=0
           while [ "$(date +%s)" -lt "$fin" ]; do
             vuelta=$((vuelta+1))
-            echo "───── vuelta $vuelta · $(TZ=America/Argentina/Buenos_Aires date '+%H:%M:%S') ─────"
-            node ml-sync/sync.mjs || echo "⚠️ esta vuelta falló, sigo con la próxima"
+            hora=$(TZ=America/Argentina/Buenos_Aires date '+%H:%M:%S')
+            if [ $(( (vuelta - 1) % 30 )) -eq 0 ]; then
+              echo "───── vuelta $vuelta · $hora · ventas + PRECIOS ─────"
+              node ml-sync/sync.mjs || echo "⚠️ esta vuelta falló, sigo con la próxima"
+            else
+              echo "───── vuelta $vuelta · $hora · solo ventas ─────"
+              SKIP_PRICES=1 node ml-sync/sync.mjs || echo "⚠️ esta vuelta falló, sigo con la próxima"
+            fi
             [ "$(date +%s)" -lt "$fin" ] || break
-            sleep 300
+            sleep 120
           done
           echo "Fin del ciclo: $vuelta sincronizaciones."
