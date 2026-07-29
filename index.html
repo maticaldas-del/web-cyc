@@ -257,6 +257,10 @@ input.qty:focus{border-color:var(--accent2)}
 .ingreso-inp-nota{flex:1;min-width:100px;background:var(--surface2);border:1px solid var(--border2);border-radius:6px;color:var(--text);font-family:'DM Mono',monospace;font-size:.74rem;padding:8px 10px;outline:none;transition:border .15s}
 .ingreso-inp-nota:focus{border-color:var(--accent2)}
 .ingreso-list{display:flex;flex-direction:column;gap:6px;max-height:420px;overflow-y:auto}
+/* En pantalla grande la lista de ventas no llega al borde derecho: queda una franja libre para
+   apoyar el mouse ahí y scrollear la PÁGINA en vez de la lista (que tiene su propio scroll).
+   Solo desde 900px: en el celular la lista sigue usando todo el ancho. */
+@media (min-width:900px){#vp-day-list{max-width:calc(100% - 170px)}}
 .ingreso-item{display:flex;align-items:center;gap:8px;padding:10px 12px;background:var(--surface);border:1px solid var(--border);border-radius:8px;flex-wrap:wrap}
 .ii-time{font-size:.62rem;color:var(--muted);white-space:nowrap;min-width:40px}
 .ii-monto{font-family:'Syne',sans-serif;font-weight:800;font-size:.88rem;flex:1}
@@ -7137,7 +7141,7 @@ document.addEventListener('click',e=>{if(fnavOpen&&!e.target.closest('#fnav-btn'
         <span style="font-size:.75rem;color:var(--muted)">Si no ves los últimos cambios, forzá la actualización</span>
         <button class="btn" style="background:rgba(56,189,248,.12);color:var(--blue);border:1px solid rgba(56,189,248,.3)" onclick="actualizarApp()">🔄 Buscar actualizaciones</button>
       </div>
-      <div style="font-size:.66rem;color:var(--muted);margin-top:12px">CYC · Versión 7.1</div>
+      <div style="font-size:.66rem;color:var(--muted);margin-top:12px">CYC · Versión 7.2</div>
     </div>
 
     <div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:18px 20px;margin-bottom:14px">
