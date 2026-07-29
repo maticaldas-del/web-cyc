@@ -3786,6 +3786,113 @@ async function main() {
       console.log(`         ${bajo} el robot los ve MÁS BARATOS (margen sobreestimado → no subiría lo que hace falta)`);
       return;
     }
+    // BILLING_PROBE=catalogo[:<días>][:<top>] → ¿SUBIR EL PRECIO ES GRADUAL O ES UN PRECIPICIO?
+    //
+    // La duda de fondo: en las publicaciones de CATÁLOGO, ML le da casi todas las ventas al que gana
+    // la "caja de compra" (buy box). Ahí subir 5% no te hace vender 5% menos: te puede sacar del box
+    // y hacerte vender casi nada. En las publicaciones NORMALES no hay box y la caída es gradual.
+    // Entonces un piso de margen no se puede decidir en promedio: hay que saber CUÁLES de los
+    // productos que dan la plata están en catálogo y cuánto aire tienen antes de perder el box.
+    //
+    // Solo LEE. Ordena los productos por GANANCIA en $ (no por %), y para cada publicación muestra
+    // si es de catálogo, si hoy ganamos el box, y a qué precio está el que lo gana.
+    if (String(process.env.BILLING_PROBE || '').startsWith('catalogo')) {
+      const _c = String(process.env.BILLING_PROBE).split(':');
+      const DIAS = parseFloat(_c[1]) || 90;
+      const TOP = parseFloat(_c[2]) || 12;
+      const vp = (await db.get('cyc/ventaprod')) || {};
+      const links = (await db.get('cyc/mllinks')) || {};
+      const fin = (await db.get('cyc/finanzas')) || {};
+      const tc = parseFloat(fin.tipo_cambio) || 1500;
+      const monoP = parseFloat(((await db.get('cyc/monotributo')) || {}).pct) || 0;
+      const pIdx = {}; for (const p of products) pIdx[p.id] = p;
+      const desde = dayKeyFromISO(Date.now() - (DIAS - 1) * 864e5);
+      // Ganancia por producto, mismo criterio que la web: neto − costo − (IIBB + monotributo).
+      const porProd = {};
+      for (const [k, ents] of Object.entries(vp)) {
+        if (k < desde) continue;
+        for (const v of Object.values(ents || {})) {
+          if (!v || v.cancelada || !v.prodId) continue;
+          const neto = v.neto || 0; if (neto <= 0) continue;
+          const b = porProd[v.prodId] || (porProd[v.prodId] = { nom: v.prod || v.prodId, neto: 0, qty: 0, imp: 0, n: 0 });
+          b.neto += neto; b.qty += v.qty || 1; b.n++;
+          b.imp += (v.total || 0) * (mlExtraPct(v.cuenta) + monoP) / 100;
+        }
+      }
+      const filas = [];
+      for (const [pid, b] of Object.entries(porProd)) {
+        const p = pIdx[pid]; if (!p) continue;
+        const cU = costoPesos(p, 1, tc).costo; if (!cU) continue;
+        const costo = cU * b.qty + b.imp;
+        const gan = b.neto - costo;
+        filas.push({ pid, nom: b.nom, gan, ganMes: gan / DIAS * 30, mg: costo > 0 ? gan / costo * 100 : 0, n: b.n, qty: b.qty });
+      }
+      filas.sort((a, b) => b.ganMes - a.ganMes);
+      const ganTot = filas.reduce((s, f) => s + f.ganMes, 0);
+      const top = filas.slice(0, TOP);
+      console.log(`=== ¿DÓNDE ESTÁ LA PLATA Y CUÁNTO AGUANTA UNA SUBA? (últimos ${DIAS} días) ===`);
+      console.log(`MODO PRUEBA · no se escribe nada · ganancia total ${money(Math.round(ganTot))}/mes\n`);
+      // Publicaciones activas de esos productos, agrupadas por cuenta para usar el token que va.
+      const pubsDe = {};
+      for (const [mla, e] of Object.entries(links)) {
+        if (!e || e.ignored || !e.prodId || !/^MLA/i.test(mla)) continue;
+        if (!top.some((f) => f.pid === e.prodId)) continue;
+        (pubsDe[e.cuenta] = pubsDe[e.cuenta] || []).push(mla);
+      }
+      const info = {};   // mla → {precio, catalogo, cpid, gana, precioGanador, vendedorGanador}
+      for (const label of labels) {
+        const ids = pubsDe[label]; if (!ids || !ids.length) continue;
+        const acc = accounts[label]; if (!acc?.refresh_token) continue;
+        let t; try { t = await mlRefresh(ML_CLIENT_ID, ML_CLIENT_SECRET, acc.refresh_token); } catch { continue; }
+        await db.patch('mlapi/tokens/' + label, { refresh_token: t.refresh_token, updated_ts: Date.now() });
+        for (let k = 0; k < ids.length; k += 20) {
+          let arr;
+          try { arr = await mlGet('/items?ids=' + ids.slice(k, k + 20).join(',') + '&attributes=id,status,price,catalog_listing,catalog_product_id,seller_id,title', t.access_token); } catch { continue; }
+          for (const row of (arr || [])) {
+            const b = row.body || {}; if (!b.id || b.status !== 'active') continue;
+            const r = info[b.id] = { label, precio: b.price || 0, catalogo: !!b.catalog_listing, cpid: b.catalog_product_id || null, prodId: (links[b.id] || {}).prodId };
+            if (!r.catalogo || !r.cpid) continue;
+            // Quién gana la caja de compra de ese producto de catálogo.
+            try {
+              const prod = await mlGet('/products/' + r.cpid, t.access_token);
+              const w = prod && prod.buy_box_winner;
+              if (w) {
+                r.gana = String(w.item_id) === String(b.id);
+                r.precioGanador = w.price;
+                r.vendedorGanador = w.seller_id;
+              } else r.sinBox = true;
+            } catch (e) { r.errBox = String(e.message || e).slice(0, 40); }
+          }
+        }
+      }
+      let ganCat = 0, ganLibre = 0;
+      for (const f of top) {
+        const mias = Object.entries(info).filter(([, r]) => r.prodId === f.pid);
+        const enCat = mias.filter(([, r]) => r.catalogo);
+        const pctCat = mias.length ? enCat.length / mias.length : 0;
+        ganCat += f.ganMes * pctCat; ganLibre += f.ganMes * (1 - pctCat);
+        console.log(`${money(Math.round(f.ganMes)).padStart(11)}/mes · ${String(Math.round(f.mg)).padStart(4)}% · ${String(f.n).padStart(4)} ventas · ${f.nom.slice(0, 38)}`);
+        if (!mias.length) { console.log(`      (sin publicaciones activas vinculadas)`); continue; }
+        for (const [mla, r] of mias.sort((a, b) => (b[1].catalogo ? 1 : 0) - (a[1].catalogo ? 1 : 0))) {
+          if (!r.catalogo) { console.log(`      ${mla} · ${money(r.precio).padStart(10)} · publicación NORMAL (no hay caja de compra: subir es gradual)`); continue; }
+          const est = r.errBox ? `no pude leer el box (${r.errBox})`
+            : r.sinBox ? 'catálogo, pero ML no informa ganador'
+            : r.gana ? `CATÁLOGO · lo GANÁS vos`
+            : `CATÁLOGO · lo PERDÉS · gana otro a ${money(Math.round(r.precioGanador || 0))}`;
+          let aire = '';
+          if (r.gana && r.precioGanador != null) aire = '';
+          if (!r.gana && r.precioGanador > 0 && r.precio > 0) {
+            aire = `  ← estás ${((r.precio / r.precioGanador - 1) * 100).toFixed(1)}% más caro`;
+          }
+          console.log(`      ${mla} · ${money(r.precio).padStart(10)} · ${est}${aire}`);
+        }
+      }
+      console.log(`\n── RESUMEN ──`);
+      console.log(`  Del top ${top.length}: ${money(Math.round(ganCat))}/mes viene de publicaciones de CATÁLOGO (subir ahí es apuesta: ganás o perdés el box)`);
+      console.log(`               ${money(Math.round(ganLibre))}/mes viene de publicaciones NORMALES (subir ahí es gradual y controlable)`);
+      console.log(`  Esos ${top.length} productos son ${ganTot > 0 ? (top.reduce((s, f) => s + f.ganMes, 0) / ganTot * 100).toFixed(0) : 0}% de toda la ganancia.`);
+      return;
+    }
     // BILLING_PROBE=ciegas[:<días>] → PUBLICACIONES QUE VENDEN PERO EL ROBOT DE PRECIOS NO VE.
     //
     // Por qué existe: el barrido de precios solo mira las publicaciones que en cyc/mllinks tienen
