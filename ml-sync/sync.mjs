@@ -3799,6 +3799,72 @@ async function main() {
       console.log(`         ${bajo} el robot los ve MÁS BARATOS (margen sobreestimado → no subiría lo que hace falta)`);
       return;
     }
+    // BILLING_PROBE=cuentas → ¿CUÁNTO FACTURA CADA CUENTA Y EN QUÉ CATEGORÍA LA DEJA?
+    //
+    // Hace falta para decidir la facturación automática de ML: hoy elegís a mano qué cuenta emite
+    // cada factura, así que podés emparejarlas. Con el automático cada cuenta factura lo que vende,
+    // y si una ya está cerca del tope de su categoría se pasa sola.
+    //
+    // Mira dos cosas por cuenta: lo facturado en los últimos 12 meses (lo que mira AFIP para
+    // recategorizar) y el ritmo de los últimos 3 meses anualizado (hacia dónde va). Solo LEE.
+    if (String(process.env.BILLING_PROBE || '') === 'cuentas') {
+      // Topes anuales de monotributo 2026, "venta de cosas muebles". Actualizar cuando AFIP los mueva.
+      const CATS = [
+        { c: 'G', tope: 53995798.87, cuota: 158815.05 },
+        { c: 'H', tope: 81924660.37, cuota: 317895.01 },
+        { c: 'I', tope: 91699761.90, cuota: 474992.78 },
+        { c: 'J', tope: 105012519.20, cuota: 580793.69 },
+        { c: 'K', tope: 126610838.75, cuota: 0 },
+      ];
+      const catDe = (anual) => CATS.find((x) => anual <= x.tope) || { c: 'K+', tope: Infinity, cuota: 0 };
+      const vp = (await db.get('cyc/ventaprod')) || {};
+      const desde12 = dayKeyFromISO(Date.now() - 365 * 864e5);
+      const desde3 = dayKeyFromISO(Date.now() - 90 * 864e5);
+      const acc12 = {}, acc3 = {};
+      for (const [k, ents] of Object.entries(vp)) {
+        for (const v of Object.values(ents || {})) {
+          if (!v || v.cancelada) continue;
+          const c = v.cuenta || '(sin cuenta)';
+          if (k >= desde12) acc12[c] = (acc12[c] || 0) + (v.total || 0);
+          if (k >= desde3) acc3[c] = (acc3[c] || 0) + (v.total || 0);
+        }
+      }
+      console.log(`=== FACTURACIÓN POR CUENTA Y CATEGORÍA DE MONOTRIBUTO ===`);
+      console.log(`MODO PRUEBA · no se escribe nada\n`);
+      const nombres = [...new Set([...Object.keys(acc12), ...Object.keys(acc3)])].sort();
+      const filas = [];
+      for (const c of nombres) {
+        const a12 = acc12[c] || 0;
+        const ritmo = (acc3[c] || 0) * 4;          // últimos 90 días × 4 = ritmo anual
+        const cat12 = catDe(a12), catR = catDe(ritmo);
+        filas.push({ c, a12, ritmo, cat12, catR });
+      }
+      filas.sort((a, b) => b.ritmo - a.ritmo);
+      for (const f of filas) {
+        const falta = f.catR.tope - f.ritmo;
+        const medio = f.catR.tope - (f.catR.tope - (CATS[CATS.indexOf(f.catR) - 1]?.tope || 0)) / 2;
+        console.log(`${f.c}`);
+        console.log(`   últimos 12 meses  ${money(Math.round(f.a12)).padStart(15)}  → categoría ${f.cat12.c}`);
+        console.log(`   ritmo actual (×4) ${money(Math.round(f.ritmo)).padStart(15)}  → categoría ${f.catR.c}${f.catR.cuota ? ` · cuota ${money(Math.round(f.catR.cuota))}/mes` : ''}`);
+        console.log(`   le falta ${money(Math.round(falta))} para pasar a la siguiente`
+          + ` · el medio de la ${f.catR.c} son ${money(Math.round(medio))}`
+          + (f.ritmo > medio ? '  ⚠️ está arriba del medio' : ''));
+        console.log('');
+      }
+      const totalR = filas.reduce((s, f) => s + f.ritmo, 0);
+      const parejo = totalR / (filas.length || 1);
+      console.log(`── SI ESTUVIERA PAREJO ──`);
+      console.log(`  Total al ritmo actual: ${money(Math.round(totalR))}/año · parejo serían ${money(Math.round(parejo))} por cuenta → categoría ${catDe(parejo).c}\n`);
+      console.log(`── CUÁNTO HAY QUE MOVER PARA EMPAREJARLAS ──`);
+      for (const f of filas) {
+        const dif = f.ritmo - parejo;
+        console.log(`  ${f.c.padEnd(10)} ${dif > 0 ? 'sacarle ' : 'darle   '} ${money(Math.round(Math.abs(dif))).padStart(15)} al año`
+          + ` (${money(Math.round(Math.abs(dif) / 12))} por mes)`);
+      }
+      console.log(`\nOJO: mover facturación = mover PUBLICACIONES de una cuenta a otra. Antes de activar`);
+      console.log(`la facturación automática de ML conviene que ninguna esté arriba del medio de su categoría.`);
+      return;
+    }
     // BILLING_PROBE=costomes[:<YYYY_MM>] → ¿CON QUÉ COSTO ESTÁ VALUANDO LA WEB LO VENDIDO?
     //
     // La web NO usa el costo actual del producto: si el mes tiene cargado un "precio histórico"
