@@ -1547,7 +1547,9 @@ async function main() {
     // Hace falta porque el valor viejo (40/42) quedó de cuando el margen se medía sin impuestos.
     if (String(process.env.BILLING_PROBE || '').startsWith('meta:')) {
       const piso = parseFloat(String(process.env.BILLING_PROBE).split(':')[1]) || 30;
-      const meta = piso + 2; // 2 puntos de colchón para no quedar rozando el piso
+      // Sin colchón: se sube al piso EXACTO. Antes se apuntaba 2 puntos arriba para no quedar
+      // rozando, pero eso hacía que el precio real quedara siempre por encima de lo pedido.
+      const meta = piso;
       if (!DRY) { await db.set('cyc/mlconfig/minPct', piso); await db.set('cyc/mlconfig/targetPct', meta); }
       console.log(`${DRY ? '(DRY) ' : ''}Robot de precios: actúa por debajo de ${piso}% y lleva a ${meta}%.`);
       return;
@@ -3786,6 +3788,201 @@ async function main() {
       console.log(`         ${bajo} el robot los ve MÁS BARATOS (margen sobreestimado → no subiría lo que hace falta)`);
       return;
     }
+    // BILLING_PROBE=activarfull[:go][:<piso>] → REACTIVA LAS PAUSADAS QUE TIENEN STOCK EN FULL.
+    //
+    // Regla pedida: SOLO se reactiva lo que tiene stock EN FULL (en el depósito de ML). Lo que
+    // tiene stock en el depósito propio NO se toca — hay que mandarlo a Full primero. Y antes de
+    // reactivar, la publicación tiene que llegar al piso de ganancia: si está por debajo, primero
+    // se le sube el precio y recién después se activa. Nunca se activa algo que pierde plata.
+    //
+    // El margen se mide igual que el barrido de precios: neto = precio − comisión oficial de ML
+    // − envío (mediana de las ventas reales) − cuotas (cyc/mlcuotas). Sin colchón: se apunta al
+    // piso exacto.
+    //
+    // Sin 'go' solo lista. Con 'go' escribe en ML (sube precios y activa).
+    if (String(process.env.BILLING_PROBE || '').startsWith('activarfull')) {
+      const _af = String(process.env.BILLING_PROBE).split(':');
+      const APLICAR = _af[1] === 'go';
+      const PISO = (parseFloat(_af[2]) || 30) / 100;
+      const T = PISO;                       // destino = piso exacto, sin colchón
+      const MAX_UP = 1.25;                  // mismo tope de seguridad de siempre
+      const UMBRAL_ENVIO = 33000;           // desde acá ML obliga envío gratis pago por CYC
+      const vp = (await db.get('cyc/ventaprod')) || {};
+      const links = (await db.get('cyc/mllinks')) || {};
+      const fin = (await db.get('cyc/finanzas')) || {};
+      const tc = parseFloat(fin.tipo_cambio) || 1500;
+      const monoP = parseFloat(((await db.get('cyc/monotributo')) || {}).pct) || 0;
+      const cuotasCfg = (await db.get('cyc/mlcuotas')) || {};
+      const pctCuotas = (mla) => { const v = cuotasCfg[mla] && parseFloat(cuotasCfg[mla].pct); return isFinite(v) && v > 0 ? v / 100 : 0; };
+      const pIdx = {}; for (const p of products) pIdx[p.id] = p;
+      // Ventas de los últimos 2 meses, para deducir el envío real de cada publicación.
+      const meses = (() => { const now = new Date(); const a = []; for (let i = 1; i >= 0; i--) { const d = new Date(now.getFullYear(), now.getMonth() - i, 1); a.push(d.getFullYear() + '_' + String(d.getMonth() + 1).padStart(2, '0')); } return a; })();
+      const vtaMla = {}, vtaProd = {};
+      for (const [k, ents] of Object.entries(vp)) {
+        if (!meses.includes(k.slice(0, 7))) continue;
+        for (const v of Object.values(ents || {})) {
+          if (!v || v.cancelada) continue;
+          const q = v.qty || 1, tot = (v.total || 0) / q, net = (v.neto || 0) / q;
+          if (tot <= 0 || net <= 0) continue;
+          if (v.mla) (vtaMla[v.mla] = vtaMla[v.mla] || []).push({ tot, net });
+          if (v.prodId) (vtaProd[v.prodId] = vtaProd[v.prodId] || []).push({ tot, net });
+        }
+      }
+      const feeCache = {};
+      const feeAt = async (site, price, ltype, cat, token) => {
+        const key = site + '|' + ltype + '|' + cat + '|' + Math.round(price);
+        if (feeCache[key] !== undefined) return feeCache[key];
+        let out = null;
+        try {
+          const d = await mlGet(`/sites/${site}/listing_prices?price=${Math.round(price)}&listing_type_id=${ltype}&category_id=${cat}`, token);
+          const o = Array.isArray(d) ? d[0] : d;
+          if (typeof o?.sale_fee_amount === 'number') out = o.sale_fee_amount;
+        } catch { out = null; }
+        feeCache[key] = out;
+        return out;
+      };
+      console.log(`=== REACTIVAR PAUSADAS CON STOCK EN FULL · piso ${(PISO * 100).toFixed(0)}% exacto ===`);
+      console.log(APLICAR ? '⚠️  MODO REAL: se suben precios y se activan publicaciones en ML\n' : 'MODO PRUEBA · no se escribe NADA en ML\n');
+      const activar = [], sinFull = [], fueraFull = [], sinDatos = [], noLlegan = [];
+      for (const label of labels) {
+        const acc = accounts[label];
+        if (!acc?.refresh_token) { console.log(`(${label}: sin token)`); continue; }
+        let t; try { t = await mlRefresh(ML_CLIENT_ID, ML_CLIENT_SECRET, acc.refresh_token); } catch { console.log(`(${label}: no pude renovar token)`); continue; }
+        await db.patch('mlapi/tokens/' + label, { refresh_token: t.refresh_token, updated_ts: Date.now() });
+        const m = (mlExtraPct(label) + monoP) / 100;
+        const ids = Object.entries(links)
+          .filter(([mla, e]) => e && e.cuenta === label && !e.ignored && e.prodId && /^MLA/i.test(mla))
+          .map(([mla]) => mla);
+        for (let k = 0; k < ids.length; k += 20) {
+          const lote = ids.slice(k, k + 20);
+          let arr;
+          try { arr = await mlGet('/items?ids=' + lote.join(',') + '&attributes=id,status,price,available_quantity,shipping,inventory_id,variations,title,listing_type_id,category_id,site_id', t.access_token); }
+          catch (e) { for (const mla of lote) sinDatos.push({ label, mla, nom: (links[mla] || {}).title || mla, why: 'ML no contestó' }); continue; }
+          for (const row of (arr || [])) {
+            const b = row.body || {}; const mla = b.id;
+            if (!mla || !links[mla] || b.error || typeof b.status === 'number') continue;
+            const nom = (links[mla].title || b.title || mla).slice(0, 34);
+            const vars = Array.isArray(b.variations) ? b.variations : [];
+            // ¿Está en Full? El tipo de logística lo dice la publicación.
+            const logi = (b.shipping && b.shipping.logistic_type) || '';
+            const esFull = logi === 'fulfillment';
+            // Stock EN FULL: se pide al inventario de ML, publicación o variante por variante.
+            let stockFull = 0;
+            if (esFull) {
+              const invIds = vars.length ? vars.map((v) => v.inventory_id).filter(Boolean) : [b.inventory_id].filter(Boolean);
+              for (const inv of invIds) {
+                try {
+                  const st = await mlGet('/inventories/' + inv + '/stock/fulfillment', t.access_token);
+                  stockFull += Number(st?.available_quantity) || 0;
+                } catch { /* si no contesta, cuenta 0: nunca se activa por las dudas */ }
+              }
+            }
+            // Stock propio declarado en la publicación (el que NO está en Full).
+            const stockPropio = esFull ? 0 : (Number(b.available_quantity) || 0);
+            if (b.status !== 'paused') {
+              // Activas: solo interesa avisar si tienen stock propio fuera de Full.
+              if (b.status === 'active' && !esFull && stockPropio > 0) fueraFull.push({ label, mla, nom, stock: stockPropio, logi: logi || '(sin logística)', activa: true });
+              continue;
+            }
+            // De acá para abajo: PAUSADAS.
+            if (!esFull) { fueraFull.push({ label, mla, nom, stock: stockPropio, logi: logi || '(sin logística)', activa: false }); continue; }
+            if (stockFull <= 0) { sinFull.push({ label, mla, nom }); continue; }
+            // Tiene stock en Full → antes de activar, ¿llega al piso?
+            const p = pIdx[links[mla].prodId];
+            if (!p) { sinDatos.push({ label, mla, nom, why: 'sin producto en la web' }); continue; }
+            const costo = costoPesos(p, 1, tc).costo;
+            if (!costo) { sinDatos.push({ label, mla, nom, why: 'sin costo cargado' }); continue; }
+            const precio = vars.length ? (vars[0].price || 0) : (b.price || 0);
+            if (!precio) { sinDatos.push({ label, mla, nom, why: 'sin precio' }); continue; }
+            const ventas = (vtaMla[mla] && vtaMla[mla].length) ? vtaMla[mla] : (vtaProd[p.id] || []);
+            if (!ventas.length) { sinDatos.push({ label, mla, nom, why: 'sin ventas para deducir el envío' }); continue; }
+            const site = b.site_id || 'MLA', lt = b.listing_type_id, cat = b.category_id;
+            const precios = [...new Set(ventas.map((v) => Math.round(v.tot)))].slice(-6);
+            const envios = [];
+            for (const pv of precios) {
+              const cv = await feeAt(site, pv, lt, cat, t.access_token);
+              if (cv == null) continue;
+              for (const v of ventas) { if (Math.round(v.tot) === pv) envios.push(Math.max(0, v.tot - v.net - cv)); }
+            }
+            if (!envios.length) { sinDatos.push({ label, mla, nom, why: 'no pude deducir el envío' }); continue; }
+            envios.sort((a, b2) => a - b2);
+            const envio = Math.max(0, envios[Math.floor(envios.length / 2)]);
+            const cuo = pctCuotas(mla);
+            const com = await feeAt(site, precio, lt, cat, t.access_token);
+            if (com == null) { sinDatos.push({ label, mla, nom, why: 'ML no devolvió la comisión' }); continue; }
+            const neto = precio - com - envio - precio * cuo;
+            const mg = (neto - costo - precio * m) / (costo + precio * m);
+            const fila = { label, mla, nom, stockFull, precio, mg: mg * 100, com, envio, cuo, costo, tok: t.access_token, nVar: vars.length };
+            if (mg >= PISO) { activar.push(fila); continue; }
+            // Está por debajo del piso: hay que subirlo ANTES de activar.
+            const den = 1 - cuo - m * (1 + T);
+            if (den <= 0) { noLlegan.push({ ...fila, why: 'el cargo de ML no deja margen a ningún precio' }); continue; }
+            let P = precio, comP = com, bien = true;
+            for (let it = 0; it < 3; it++) {
+              const Pn = (costo * (1 + T) + comP + envio) / den;
+              const c2 = await feeAt(site, Pn, lt, cat, t.access_token);
+              if (c2 == null) { bien = false; break; }
+              if (Math.abs(Pn - P) < 1 && it > 0) { P = Pn; comP = c2; break; }
+              P = Pn; comP = c2;
+            }
+            if (!bien) { noLlegan.push({ ...fila, why: 'ML no devolvió la comisión del precio nuevo' }); continue; }
+            const nuevo = Math.ceil(P / 10) * 10;
+            if (nuevo > precio * MAX_UP) { noLlegan.push({ ...fila, nuevo, why: `necesita subir ${((nuevo / precio - 1) * 100).toFixed(0)}%, más del 25%` }); continue; }
+            if (precio < UMBRAL_ENVIO && nuevo >= UMBRAL_ENVIO) { noLlegan.push({ ...fila, nuevo, why: 'cruzaría los $33.000 y el envío pasaría a pagarlo CYC' }); continue; }
+            if (vars.length) { noLlegan.push({ ...fila, nuevo, why: 'tiene variantes: subila con el barrido de precios y después activala' }); continue; }
+            activar.push({ ...fila, nuevo, mgNuevo: ((nuevo - comP - envio - nuevo * cuo) - costo - nuevo * m) / (costo + nuevo * m) * 100 });
+          }
+        }
+      }
+      const $ = (x) => money(Math.round(x));
+      console.log(`── A. SE ACTIVAN (stock en Full y llegan al ${(PISO * 100).toFixed(0)}%) · ${activar.length} ──`);
+      activar.sort((a, b) => b.stockFull - a.stockFull).forEach((f) => {
+        console.log(`  ${String(f.stockFull).padStart(4)} u. en Full · ${String(Math.round(f.mg)).padStart(3)}%${f.nuevo ? ` → ${Math.round(f.mgNuevo)}%` : ''} · ${$(f.precio)}${f.nuevo ? ` → ${$(f.nuevo)} (+${((f.nuevo / f.precio - 1) * 100).toFixed(1)}%)` : ' (no hace falta tocar el precio)'} · ${f.label} · ${f.mla} · ${f.nom}`);
+        console.log(`        precio ${$(f.precio)} − comisión ${$(f.com)} − envío ${$(f.envio)}${f.cuo ? ` − cuotas ${(f.cuo * 100).toFixed(1)}%` : ''} · costo ${$(f.costo)}`);
+      });
+      console.log(`\n── B. NO SE ACTIVAN: no llegan al piso ni subiendo · ${noLlegan.length} ──`);
+      noLlegan.forEach((f) => console.log(`  ${String(f.stockFull).padStart(4)} u. en Full · ${Math.round(f.mg)}% · ${$(f.precio)} · ${f.label} · ${f.mla} · ${f.nom} → ${f.why}`));
+      console.log(`\n── C. PAUSADAS EN FULL PERO SIN STOCK EN FULL (no hay nada que activar) · ${sinFull.length} ──`);
+      sinFull.slice(0, 25).forEach((f) => console.log(`  ${f.label} · ${f.mla} · ${f.nom}`));
+      if (sinFull.length > 25) console.log(`  … y ${sinFull.length - 25} más`);
+      console.log(`\n── D. ⚠️ CON STOCK EN DEPÓSITO Y FUERA DE FULL (esto es lo que pediste revisar) · ${fueraFull.length} ──`);
+      fueraFull.sort((a, b) => b.stock - a.stock).forEach((f) => console.log(`  ${String(f.stock).padStart(4)} u. · ${f.activa ? 'ACTIVA  ' : 'PAUSADA '} · logística ${f.logi.padEnd(14)} · ${f.label} · ${f.mla} · ${f.nom}`));
+      if (!fueraFull.length) console.log('  Ninguna: todo lo que tiene stock está en Full.');
+      console.log(`\n── E. SIN DATOS · ${sinDatos.length} ──`);
+      sinDatos.slice(0, 20).forEach((f) => console.log(`  ${f.label} · ${f.mla} · ${f.nom} · ${f.why}`));
+      if (sinDatos.length > 20) console.log(`  … y ${sinDatos.length - 20} más`);
+      if (!APLICAR) { console.log(`\nRECORDÁ: fue solo una LISTA. No se tocó nada en ML. Para hacerlo: activarfull:go`); return; }
+      // ── Aplicar: primero el precio (si hace falta), después activar. Si el precio falla, NO se
+      //    activa: es preferible dejarla pausada que venderla por debajo del piso.
+      console.log(`\n══ APLICANDO ${activar.length} publicaciones ══`);
+      let okP = 0, okA = 0, err = 0; const hechos = [];
+      for (const f of activar) {
+        if (f.nuevo) {
+          const r = DRY ? { ok: false, err: 'DRY' } : await raisePriceTo(f.mla, f.nuevo, f.tok);
+          if (!r.ok) { err++; console.log(`  ✗ ${f.mla} · ${f.nom}: no pude subir el precio (${r.err}) → NO la activo`); continue; }
+          okP++; console.log(`  ↑ ${f.mla} · ${f.nom}: ${$(r.from)} → ${$(r.to)}`);
+        }
+        if (DRY) { console.log(`  (DRY) activaría ${f.mla}`); continue; }
+        let act = false;
+        try {
+          const r = await fetch(ML_API + '/items/' + f.mla, {
+            method: 'PUT',
+            headers: { Authorization: 'Bearer ' + f.tok, 'Content-Type': 'application/json' },
+            body: JSON.stringify({ status: 'active' }),
+          });
+          act = r.ok;
+          if (!r.ok) console.log(`  ✗ ${f.mla} · ${f.nom}: ML rechazó la activación (${r.status})`);
+        } catch { console.log(`  ✗ ${f.mla} · ${f.nom}: error de red al activar`); }
+        if (!act) { err++; continue; }
+        // Verificación: volver a leerla y confirmar que quedó activa.
+        let ver = null;
+        try { ver = await mlGet('/items/' + f.mla + '?attributes=id,status,price', f.tok); } catch { /* ignore */ }
+        if (ver && ver.status === 'active') { okA++; hechos.push({ nom: f.nom, precio: ver.price, stock: f.stockFull }); console.log(`  ✓ ${f.mla} · ${f.nom}: ACTIVA · ${$(ver.price)} · ${f.stockFull} u. en Full`); }
+        else { err++; console.log(`  ✗ ${f.mla} · ${f.nom}: pedí activarla pero quedó en "${ver ? ver.status : '?'}"`); }
+      }
+      console.log(`\nListo: ${okP} precios subidos · ${okA} publicaciones activadas · ${err} con error.`);
+      return;
+    }
     // BILLING_PROBE=prodpubs[:<palabra>][:<días>] → ¿POR QUÉ UN PRODUCTO QUE VENDE NO TIENE
     // PUBLICACIONES VINCULADAS? Sin palabra lista TODOS los productos con ventas en el período que
     // no tienen ni una publicación activa y vinculada: esos el robot de precios no los mira nunca.
@@ -4109,7 +4306,7 @@ async function main() {
       const DESTINO = (_cp[3] || '').trim();
       if (APLICAR && !DESTINO) { console.log('Para aplicar hace falta el destino: preciosgo:30:meses:MLA123 o preciosgo:30:meses:todos'); return; }
       const MIN = (parseFloat(_cp[1]) || 30) / 100;      // piso: por debajo de esto se toca
-      const T = MIN + 0.02;                               // destino: 2 puntos de colchón
+      const T = MIN;                                      // destino: el piso EXACTO, sin colchón
       const pickYM = (_cp[2] || '2026_06,2026_07').split(',').map((s) => s.trim()).filter(Boolean);
       const MAX_UP = 1.25;                                // mismo tope de seguridad que el robot
       const vp = (await db.get('cyc/ventaprod')) || {};
