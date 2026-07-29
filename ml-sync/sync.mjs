@@ -3823,7 +3823,7 @@ async function main() {
       console.log(`MODO PRUEBA · NO se escribe NADA en ML · dólar ${money(tc)}`);
       console.log(`Impuestos al costo: IIBB por cuenta + monotributo ${monoP.toFixed(2)}%`);
       console.log(`Neto = precio − comisión oficial de ML (pedida a ML para ESE precio) − envío`);
-      console.log(`Envío = el MÁS BAJO de las últimas ventas (= el neto más alto, el mejor caso ya corregido)\n`);
+      console.log(`Envío = la MEDIANA de las últimas ventas (el envío típico, ni el mejor ni el peor caso)\n`);
       const subir = [], grandes = [], conVar = [], yaOk = [], sinDato = [], cruzan = [];
       for (const label of labels) {
         const acc = accounts[label];
@@ -3858,23 +3858,26 @@ async function main() {
             if (!unidades.some((u) => u.precio > 0)) { sinDato.push({ label, mla, nom, why: 'sin precio' }); continue; }
             const precio = unidades[0].precio;
             // ENVÍO: se deduce de ventas reales como  precio − neto − comisión(a ESE precio).
-            // Se miran hasta 6 precios distintos de las ventas más recientes y se toma el envío
-            // MÁS BAJO (= el neto más alto), descartando así las ventas con costos extra puntuales.
+            // Se usa la MEDIANA de las ventas, no el mínimo. Con el mínimo el cálculo daba ~4 puntos
+            // por encima de la realidad (32% calculado vs 28% real) y el piso del 30% era nominal, no
+            // real. Con el máximo pasaría lo contrario: subiría precios de más por una venta con un
+            // costo puntual. La mediana es el envío típico: 30% calculado = 30% de verdad.
             const ventas = (vtaMla[mla] && vtaMla[mla].length) ? vtaMla[mla] : (vtaProd[p.id] || []);
             if (!ventas.length) { sinDato.push({ label, mla, nom, why: 'sin ventas para deducir el envío' }); continue; }
             const precios = [...new Set(ventas.map((v) => Math.round(v.tot)))].slice(-6);
-            let envio = Infinity, usadas = 0;
+            const envios = [];
             for (const pv of precios) {
               const cv = await feeAt(site, pv, lt, cat, t.access_token);
               if (cv == null) continue;
               for (const v of ventas) {
                 if (Math.round(v.tot) !== pv) continue;
-                const e = v.tot - v.net - cv;
-                usadas++;
-                if (e < envio) envio = e;
+                envios.push(Math.max(0, v.tot - v.net - cv));
               }
             }
-            if (!isFinite(envio)) { sinDato.push({ label, mla, nom, why: 'no pude deducir el envío' }); continue; }
+            if (!envios.length) { sinDato.push({ label, mla, nom, why: 'no pude deducir el envío' }); continue; }
+            envios.sort((a, b) => a - b);
+            let envio = envios[Math.floor(envios.length / 2)];
+            const usadas = envios.length;
             if (envio < 0) envio = 0; // nunca negativo
             // Cuotas: sale del precio, igual que la comisión. Entra en el neto y en el denominador
             // del precio objetivo, si no el precio calculado queda corto en ese mismo porcentaje.
