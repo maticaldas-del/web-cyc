@@ -745,8 +745,8 @@ footer{margin-top:32px;padding-top:14px;border-top:1px solid var(--border);font-
     </div>
     <div id="ofi-sum" style="margin-bottom:12px"></div>
     <div id="ofi-mandar" style="margin-bottom:14px"></div>
-    <input class="search-box" id="ofi-search" type="search" placeholder="Buscar producto para cargar o filtrar..." oninput="renderOficinas()" style="margin-bottom:10px">
-    <div id="ofi-cols" style="display:flex;gap:14px;flex-wrap:wrap;align-items:flex-start"></div>
+    <input class="search-box" id="ofi-search" type="search" placeholder="Filtrar productos..." oninput="renderOficinas()" style="margin-bottom:10px">
+    <div id="ofi-cols"></div>
   </div>
 
   <!-- HISTORIAL -->
@@ -4728,24 +4728,33 @@ function renderOficinas(){
           <strong>${m.p.name}</strong> — <span style="color:var(--amber)">${m.enCasa} u. en casa</span> · en ML quedan ${m.enML} u. (~${m.dias}d) · vende ${m.vendidosNorm}/mes</div>`).join('')}
       </div>`
     : `<div style="font-size:.65rem;color:var(--muted)">Nada urgente para mandar a Full.</div>`;
-  // ── Una columna por oficina ──
-  cont.innerHTML=OFIS.map(o=>{
-    const conStock=prods.filter(p=>ofiQty(o.k,p.id)>0);
-    const visibles=q?prods.filter(p=>normTxt(p.name).includes(q)):conStock;
-    return `<div style="flex:1;min-width:290px;background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:12px">
-      <div style="font-size:.72rem;font-weight:700;margin-bottom:8px">${o.lbl}</div>
-      ${visibles.length?visibles.map(p=>{
-        const n=ofiQty(o.k,p.id);const cu=costUSDof(p);
-        return `<div style="display:flex;align-items:center;gap:8px;padding:5px 0;border-bottom:1px solid var(--border)">
-          <span style="flex:1;font-size:.7rem;${n?'':'color:var(--muted)'}">${p.name}</span>
-          <span style="font-size:.58rem;color:var(--muted);font-family:'DM Mono',monospace">US$${cu.toFixed(2)}</span>
-          <input type="number" min="0" step="1" value="${n||''}" placeholder="0" onchange="setOfiQty('${o.k}','${p.id}',this.value)"
-            style="width:62px;background:var(--surface2);border:1px solid var(--border2);border-radius:6px;padding:4px 6px;color:var(--text);font-family:'DM Mono',monospace;font-size:.7rem;text-align:right;outline:none">
-          <span style="font-size:.6rem;min-width:62px;text-align:right;font-family:'DM Mono',monospace;${n?'':'color:var(--muted)'}">${n?'US$'+(n*cu).toFixed(2):'—'}</span>
-        </div>`;}).join('')
-      :`<div class="empty-msg" style="font-size:.65rem">${q?'Sin resultados.':'Sin mercadería cargada. Buscá un producto arriba para agregarlo.'}</div>`}
+  // ── Una fila por producto, como Inventario: SIEMPRE están todos, se cargan las unidades ──
+  const visibles=q?prods.filter(p=>normTxt(p.name).includes(q)):prods;
+  const inp=(o,p,n)=>`<input type="number" min="0" step="1" value="${n||''}" placeholder="0" inputmode="numeric"
+    onchange="setOfiQty('${o}','${p}',this.value)"
+    style="width:70px;box-sizing:border-box;background:var(--surface2);border:1px solid var(--border2);border-radius:6px;padding:5px 7px;color:var(--text);font-family:'DM Mono',monospace;font-size:.72rem;text-align:right;outline:none">`;
+  cont.innerHTML=!visibles.length
+    ? `<div class="empty-msg" style="font-size:.68rem">Sin resultados para "${q}".</div>`
+    : `<div style="width:100%;background:var(--surface);border:1px solid var(--border);border-radius:10px;overflow-x:auto">
+      <div style="display:flex;align-items:center;gap:10px;padding:8px 12px;border-bottom:1px solid var(--border2);font-size:.55rem;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;min-width:520px">
+        <span style="flex:1;min-width:150px">Producto</span>
+        <span style="width:60px;text-align:right">Costo</span>
+        <span style="width:70px;text-align:right">${OFIS[0].lbl}</span>
+        <span style="width:70px;text-align:right">${OFIS[1].lbl}</span>
+        <span style="width:80px;text-align:right">Total US$</span>
+      </div>
+      ${visibles.map(p=>{
+        const cu=costUSDof(p);
+        const a=ofiQty(OFIS[0].k,p.id), b=ofiQty(OFIS[1].k,p.id);
+        const tot=(a+b)*cu;
+        return `<div style="display:flex;align-items:center;gap:10px;padding:6px 12px;border-bottom:1px solid var(--border);min-width:520px">
+          <span style="flex:1;min-width:150px;font-size:.72rem;font-weight:${(a+b)?'600':'400'};${(a+b)?'':'color:var(--muted)'}">${p.name}</span>
+          <span style="width:60px;text-align:right;font-size:.6rem;color:var(--muted);font-family:'DM Mono',monospace">${cu?'US$'+cu.toFixed(2):'—'}</span>
+          <span style="width:70px;text-align:right">${inp(OFIS[0].k,p.id,a)}</span>
+          <span style="width:70px;text-align:right">${inp(OFIS[1].k,p.id,b)}</span>
+          <span style="width:80px;text-align:right;font-size:.68rem;font-family:'DM Mono',monospace;${tot?'':'color:var(--muted)'}">${tot?'US$'+tot.toFixed(2):'—'}</span>
+        </div>`;}).join('')}
     </div>`;
-  }).join('');
 }
 async function setOfiQty(ofi,pid,val){
   const n=parseInt(String(val).replace(/[^\d]/g,''))||0;
@@ -7101,7 +7110,7 @@ document.addEventListener('click',e=>{if(fnavOpen&&!e.target.closest('#fnav-btn'
         <span style="font-size:.75rem;color:var(--muted)">Si no ves los últimos cambios, forzá la actualización</span>
         <button class="btn" style="background:rgba(56,189,248,.12);color:var(--blue);border:1px solid rgba(56,189,248,.3)" onclick="actualizarApp()">🔄 Buscar actualizaciones</button>
       </div>
-      <div style="font-size:.66rem;color:var(--muted);margin-top:12px">CYC · Versión 6.7</div>
+      <div style="font-size:.66rem;color:var(--muted);margin-top:12px">CYC · Versión 6.8</div>
     </div>
 
     <div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:18px 20px;margin-bottom:14px">
