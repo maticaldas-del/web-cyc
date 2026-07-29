@@ -3858,7 +3858,14 @@ async function main() {
         const b = porProd[pid];
         const pubs = pubsProd[pid] || [];
         const stk = stockU(pid);
-        const hayLinkRoto = pubs.some((m) => { const e = links[m] || {}; return !e.cuenta || e.ignored; });
+        // Un vínculo roto solo importa si la publicación sigue VIVA. Si está cerrada, que le falte
+        // la cuenta no molesta a nadie: es historia. Sin esto, un producto con stock para reactivar
+        // caía en "arreglar el vínculo" por culpa de una publicación cerrada hace meses (el Chispero).
+        const hayLinkRoto = pubs.some((m) => {
+          const e = links[m] || {}, s = estado[m];
+          const viva = s && s.status !== 'closed';
+          return viva && (!e.cuenta || e.ignored);
+        });
         const accion = hayLinkRoto ? 'ARREGLAR EL VÍNCULO en la web (Publicaciones)'
           : stk > 0 ? `REACTIVAR en ML — hay ${stk} u. de stock`
           : 'nada: no hay stock, la publicación está bien pausada';
