@@ -3786,6 +3786,83 @@ async function main() {
       console.log(`         ${bajo} el robot los ve MÁS BARATOS (margen sobreestimado → no subiría lo que hace falta)`);
       return;
     }
+    // BILLING_PROBE=prodpubs[:<palabra>][:<días>] → ¿POR QUÉ UN PRODUCTO QUE VENDE NO TIENE
+    // PUBLICACIONES VINCULADAS? Sin palabra lista TODOS los productos con ventas en el período que
+    // no tienen ni una publicación activa y vinculada: esos el robot de precios no los mira nunca.
+    // Con palabra, muestra ese producto con TODAS sus publicaciones (activas, pausadas, cerradas,
+    // ignoradas) para ver dónde se cortó el vínculo. Solo LEE.
+    if (String(process.env.BILLING_PROBE || '').startsWith('prodpubs')) {
+      const _pp = String(process.env.BILLING_PROBE).split(':');
+      const kw = (_pp[1] || '').trim().toLowerCase();
+      const DIAS = parseFloat(_pp[2]) || 90;
+      const vp = (await db.get('cyc/ventaprod')) || {};
+      const links = (await db.get('cyc/mllinks')) || {};
+      const pIdx = {}; for (const p of products) pIdx[p.id] = p;
+      const desde = dayKeyFromISO(Date.now() - (DIAS - 1) * 864e5);
+      const porProd = {}, ventasMla = {};
+      for (const [k, ents] of Object.entries(vp)) {
+        if (k < desde) continue;
+        for (const v of Object.values(ents || {})) {
+          if (!v || v.cancelada || !v.prodId) continue;
+          const b = porProd[v.prodId] || (porProd[v.prodId] = { nom: v.prod || v.prodId, n: 0, neto: 0 });
+          b.n++; b.neto += v.neto || 0;
+          if (v.mla) ventasMla[v.mla] = (ventasMla[v.mla] || 0) + 1;
+        }
+      }
+      // Publicaciones por producto (todas, sin filtrar).
+      const pubsProd = {};
+      for (const [mla, e] of Object.entries(links)) {
+        if (!e || !e.prodId || !/^MLA/i.test(mla)) continue;
+        (pubsProd[e.prodId] = pubsProd[e.prodId] || []).push(mla);
+      }
+      // Qué productos mirar.
+      let objetivo;
+      if (kw) objetivo = Object.keys(porProd).filter((pid) => ((porProd[pid].nom || '') + ' ' + ((pIdx[pid] || {}).name || '')).toLowerCase().includes(kw));
+      else objetivo = Object.keys(porProd);
+      // Estado real en ML de todas las publicaciones involucradas.
+      const aPedir = [...new Set(objetivo.flatMap((pid) => pubsProd[pid] || []))];
+      const estado = {};
+      for (const label of labels) {
+        const acc = accounts[label]; if (!acc?.refresh_token) continue;
+        let t; try { t = await mlRefresh(ML_CLIENT_ID, ML_CLIENT_SECRET, acc.refresh_token); } catch { continue; }
+        await db.patch('mlapi/tokens/' + label, { refresh_token: t.refresh_token, updated_ts: Date.now() });
+        const faltan = aPedir.filter((m) => !estado[m]);
+        for (let k = 0; k < faltan.length; k += 20) {
+          let arr;
+          try { arr = await mlGet('/items?ids=' + faltan.slice(k, k + 20).join(',') + '&attributes=id,status,price,title', t.access_token); } catch { continue; }
+          for (const row of (arr || [])) {
+            const b = row.body || {}; if (!b.id) continue;
+            if (!estado[b.id]) estado[b.id] = { status: b.status || '?', precio: b.price || 0, leidaPor: label };
+          }
+        }
+      }
+      const sana = (mla) => { const e = links[mla] || {}; const s = estado[mla]; return s && s.status === 'active' && !e.ignored && e.prodId && e.cuenta; };
+      const rotos = objetivo.filter((pid) => !(pubsProd[pid] || []).some(sana));
+      const lista = kw ? objetivo : rotos;
+      lista.sort((a, b) => porProd[b].neto - porProd[a].neto);
+      console.log(`=== PRODUCTOS Y SUS PUBLICACIONES (últimos ${DIAS} días)${kw ? ` · filtro "${kw}"` : ' · SOLO los que no tienen ninguna publicación sana'} ===`);
+      console.log(`MODO PRUEBA · no se escribe nada\n`);
+      if (!lista.length) { console.log('Nada para mostrar: todos los productos con ventas tienen al menos una publicación activa y vinculada.'); return; }
+      for (const pid of lista) {
+        const b = porProd[pid];
+        const pubs = pubsProd[pid] || [];
+        console.log(`${b.nom.slice(0, 42)} · ${b.n} ventas · neto ${money(Math.round(b.neto))} · ${pubs.length} publicaciones vinculadas`);
+        if (!pubs.length) { console.log(`      NINGUNA publicación apunta a este producto en mllinks.`); }
+        for (const mla of pubs.sort((x, y) => (ventasMla[y] || 0) - (ventasMla[x] || 0))) {
+          const e = links[mla] || {}, s = estado[mla];
+          const marcas = [];
+          if (e.ignored) marcas.push('IGNORADA');
+          if (!e.cuenta) marcas.push('SIN CUENTA');
+          if (!s) marcas.push('ML no la devolvió');
+          else if (s.status !== 'active') marcas.push(s.status.toUpperCase());
+          console.log(`      ${mla} · ${String(ventasMla[mla] || 0).padStart(3)} ventas · ${s ? money(s.precio).padStart(10) : '         —'}`
+            + ` · cuenta ${(e.cuenta || '(vacía)').padEnd(9)} · ${marcas.length ? marcas.join(' + ') : 'OK, el robot la mira'}`);
+        }
+        console.log('');
+      }
+      if (!kw) console.log(`Total: ${lista.length} productos venden pero no tienen ninguna publicación que el robot de precios pueda tocar.`);
+      return;
+    }
     // BILLING_PROBE=catalogo[:<días>][:<top>] → ¿SUBIR EL PRECIO ES GRADUAL O ES UN PRECIPICIO?
     //
     // La duda de fondo: en las publicaciones de CATÁLOGO, ML le da casi todas las ventas al que gana
