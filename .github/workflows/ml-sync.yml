@@ -111,9 +111,18 @@ on:
   # schedule:
   #   - cron: '*/20 * * * *'   # cada 20 min (se activa al final)
 
+# Una sola corrida programada a la vez. Es importante: dos corridas juntas renuevan el token de ML
+# al mismo tiempo y una le invalida el token a la otra. Si entra una nueva, cancela la que estaba
+# dando vueltas y arranca de cero. Las corridas a mano NUNCA se cancelan (quedan en otro grupo),
+# para que un comando a medio aplicar no se corte por la mitad.
+concurrency:
+  group: ml-sync-${{ github.event_name }}
+  cancel-in-progress: ${{ github.event_name == 'schedule' }}
+
 jobs:
   sync:
     runs-on: ubuntu-latest
+    timeout-minutes: 350
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -154,4 +163,25 @@ jobs:
           PURGE_VP: ${{ github.event.inputs.purge_vp }}
           RESTORE_VP: ${{ github.event.inputs.restore_vp }}
           ACCOUNT: ${{ github.event.inputs.account }}
-        run: node ml-sync/sync.mjs
+        run: |
+          if [ "${{ github.event_name }}" != "schedule" ]; then
+            # Corrida a mano (un probe): se ejecuta una sola vez y listo.
+            node ml-sync/sync.mjs
+            exit $?
+          fi
+          # Corrida automática. GitHub dispara el cron cuando tiene lugar, no cuando se lo pedís:
+          # medido sobre las últimas 30 corridas, el intervalo real fue de 59 a 213 minutos
+          # (mediana 104), aunque el cron diga cada 10. Por eso la corrida no termina enseguida:
+          # se queda sincronizando cada 5 minutos durante casi 5 horas. Así el panel se actualiza
+          # cada 5 minutos de verdad, sin depender de que GitHub respete el cron.
+          # Si una vuelta falla, se avisa y sigue: un error puntual no corta el resto.
+          fin=$(( $(date +%s) + 285*60 ))
+          vuelta=0
+          while [ "$(date +%s)" -lt "$fin" ]; do
+            vuelta=$((vuelta+1))
+            echo "───── vuelta $vuelta · $(TZ=America/Argentina/Buenos_Aires date '+%H:%M:%S') ─────"
+            node ml-sync/sync.mjs || echo "⚠️ esta vuelta falló, sigo con la próxima"
+            [ "$(date +%s)" -lt "$fin" ] || break
+            sleep 300
+          done
+          echo "Fin del ciclo: $vuelta sincronizaciones."
