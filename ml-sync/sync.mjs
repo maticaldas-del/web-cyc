@@ -781,6 +781,11 @@ async function main() {
       if (ya === today) { console.log(`Resumen de ${today} ya enviado, no lo repito.`); return; }
     }
     const day = vp[today] || {};
+    // Los impuestos van al COSTO, igual que en la web. Sin esto el resumen inflaba la ganancia:
+    // mostraba $224.643 donde la web decía $162.813, porque no descontaba IIBB ni monotributo
+    // (juntos pesan ~5,6% de lo facturado).
+    const monoPctDia = parseFloat(((await db.get('cyc/monotributo')) || {}).pct) || 0;
+    const impDe = (v) => ((v.total || 0) * (mlExtraPct(v.cuenta) + monoPctDia) / 100);
     let n = 0, fact = 0, gan = 0;
     const byProd = {};   // producto -> unidades
     const ganProd = {};  // producto -> ganancia en $
@@ -788,7 +793,7 @@ async function main() {
       if (!v || v.cancelada) continue; // canceladas/reclamos no cuentan
       n += v.qty || 0;
       fact += v.total || 0;
-      const g = (v.neto || 0) - (v.costo || 0);
+      const g = (v.neto || 0) - (v.costo || 0) - impDe(v);
       gan += g;
       const k = v.prod || '?';
       byProd[k] = (byProd[k] || 0) + (v.qty || 0);
