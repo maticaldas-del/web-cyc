@@ -1282,7 +1282,7 @@ footer{margin-top:32px;padding-top:14px;border-top:1px solid var(--border);font-
          esa línea daba $1.800.000 menos que Métricas, que es lo que no cerraba.
          El resultado final es el mismo: restar en otro orden no cambia la suma. -->
     <div class="casc-row sub"><div class="cl">Neto ML<span class="cs">suma de ventas en Ventas x Producto</span></div><div class="cv" id="casc-neto">$0</div></div>
-    <div class="casc-row"><div class="cl"><span class="op casc-neg">−</span>Costo mercadería<span class="cs">lo que costaron los productos vendidos</span></div><div class="cv casc-neg" id="casc-costo-merch">$0</div></div>
+    <div class="casc-row"><div class="cl"><span class="op casc-neg">−</span>Costo de lo vendido<span class="cs" id="casc-costo-sub">mercadería + IIBB + monotributo</span></div><div class="cv casc-neg" id="casc-costo-merch">$0</div></div>
     <div class="casc-row sub"><div class="cl">Ganancia<span class="cs">el mismo número que Métricas</span></div><div class="cv" id="casc-ganancia-bruta">$0</div></div>
     <div class="casc-row"><div class="cl"><span class="op casc-neg">−</span>Gastos<span class="cs" id="casc-gastos-sub">monotributo, contador, alquiler…</span></div><div class="cv casc-neg" id="casc-gastos">$0</div></div>
     <div class="casc-row sub"><div class="cl">Queda en CYC<span class="cs">antes de los retiros</span></div><div class="cv" id="casc-cyc-ml">$0</div></div>
@@ -6647,6 +6647,9 @@ function renderResumen_page(){
   const _vpField=(keys,field)=>{let t=0;keys.forEach(k=>{Object.values(state.ventaprod[k]||{}).forEach(v=>t+=(v[field]||0));});return t;};
   const _vpGan=(keys)=>{let g=0;keys.forEach(k=>{Object.values(state.ventaprod[k]||{}).forEach(v=>g+=((v.neto||0)-(v.costo||0)));});return g;};
   const _vpEfectCosto=keys=>{let t=0;keys.forEach(k=>{Object.values(state.ventaprod[k]||{}).forEach(v=>{t+=efectivoCostoVP({...v,_dateKey:k});});});return t;};
+  // Cuánto de ese costo son impuestos (IIBB + monotributo) y no mercadería. Mismo criterio que
+  // efectivoCostoVP: las canceladas no suman.
+  const _vpImpuestos=keys=>{let t=0;keys.forEach(k=>{Object.values(state.ventaprod[k]||{}).forEach(v=>{if(!v||v.cancelada)return;t+=impuestosDeVenta(v);});});return t;};
   const _cmpTot=(keys,tipo)=>Object.values(state.compras||{}).filter(x=>keys.includes(x.dayKey)&&getCompraTipo(x)===tipo).reduce((s,x)=>s+(x.monto||0),0);
   const _cmpCats=(keys)=>{const cats={};Object.values(state.compras||{}).filter(x=>keys.includes(x.dayKey)).forEach(x=>{const c=x.cat||'Otros';cats[c]=(cats[c]||0)+(x.monto||0);});return cats;};
   // helper: todas las claves de ventaprod que coinciden con lista de day-keys o prefijo
@@ -6740,6 +6743,12 @@ function renderResumen_page(){
   // por las 4 cuentas, la "Ganancia real CYC" está inflada y no hay forma de darse cuenta mirando.
   const brutoPer=_vpField(periodKeys,'total');
   const monoEnCosto=Math.round(brutoPer*monoPct()/100);
+  // El "costo de lo vendido" NO es solo mercadería: adentro viajan el IIBB de cada cuenta y el
+  // monotributo (impuesto integrado). Se abre acá para que se vea, porque el nombre viejo decía
+  // "lo que costaron los productos" y hacía pensar que los impuestos estaban sin contar.
+  const impPer=_vpImpuestos(periodKeys);
+  setTxt('casc-costo-sub',`mercadería ${fmt(Math.round(costoMerch-impPer))} + impuestos ${fmt(Math.round(impPer))} `
+    +`(IIBB de cada cuenta + monotributo ${monoPct().toFixed(2)}%)`);
   const catsPer=_cmpCats(periodKeys._cmpKeys||[]);
   const monoEnGastos=Object.entries(catsPer).filter(([c])=>/monotributo|impuesto/i.test(c)).reduce((s,[,v])=>s+v,0);
   setTxt('casc-gastos-sub',`monotributo contado: ${fmt(monoEnCosto+Math.round(monoEnGastos))} `
@@ -7128,7 +7137,7 @@ document.addEventListener('click',e=>{if(fnavOpen&&!e.target.closest('#fnav-btn'
         <span style="font-size:.75rem;color:var(--muted)">Si no ves los últimos cambios, forzá la actualización</span>
         <button class="btn" style="background:rgba(56,189,248,.12);color:var(--blue);border:1px solid rgba(56,189,248,.3)" onclick="actualizarApp()">🔄 Buscar actualizaciones</button>
       </div>
-      <div style="font-size:.66rem;color:var(--muted);margin-top:12px">CYC · Versión 7.0</div>
+      <div style="font-size:.66rem;color:var(--muted);margin-top:12px">CYC · Versión 7.1</div>
     </div>
 
     <div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:18px 20px;margin-bottom:14px">
