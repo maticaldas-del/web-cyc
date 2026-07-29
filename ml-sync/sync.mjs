@@ -579,8 +579,16 @@ async function tgFlushCola(db) {
   }
   if (!DRY) await db.set('mlapi/telegram/cola', null);
 }
-async function sendTelegram(text) {
+// Solo se mandan DOS cosas por Telegram: el resumen del día y cuando dan de baja una
+// publicación. Todo el resto (cambios de precio, descuentos, grupos nivelados) queda en el log
+// del robot y no llega al celular. Antes se avisaba de todo y era ruido.
+const TG_PERMITIDO = new Set(['resumen', 'baja']);
+async function sendTelegram(text, tipo) {
   if (!TG_TOKEN || TG_SILENCIO) return false;
+  if (!TG_PERMITIDO.has(tipo)) {
+    console.log(`(Telegram: no se manda "${String(text).slice(0, 60).replace(/\n/g, ' ')}..." — solo van resumen y bajas)`);
+    return false;
+  }
   if (!tgHorarioOk()) { await tgEncolar(text); return false; }
   return tgEnviar(text);
 }
@@ -738,7 +746,7 @@ async function main() {
     if (!TG_CHATS.length) { console.log('✗ Nadie suscripto todavía. Mandale un "hola" al bot y reintento.'); return; }
     console.log(`Suscriptos (${TG_CHATS.length}):`);
     TG_CHATS.forEach((id) => console.log(`  · ${id}${TG_NAMES[id] ? ' — ' + TG_NAMES[id] : ''}`));
-    const ok = await sendTelegram('✅ <b>CYC</b>: prueba de avisos. Si ves esto, ¡los avisos ya funcionan! 🎉');
+    const ok = await sendTelegram('✅ <b>CYC</b>: prueba de avisos. Si ves esto, ¡los avisos ya funcionan! 🎉', 'resumen');
     console.log(ok ? `✓ Prueba enviada a ${TG_CHATS.length} chat(s).`
       : '✗ No se pudo enviar. ¿Apretaron Start en el bot?');
     return;
@@ -751,32 +759,51 @@ async function main() {
   if (process.env.DAILY_SUMMARY) {
     const vp = (await db.get('cyc/ventaprod')) || {};
     const arg = String(process.env.DAILY_SUMMARY).trim();
-    const today = /^\d{4}_\d{2}_\d{2}$/.test(arg) ? arg : dayKeyFromISO(new Date().toISOString());
     const forzado = /^\d{4}_\d{2}_\d{2}$/.test(arg);
+    // QUÉ DÍA SE RESUME. El cron pide las 23:23 de Argentina, pero GitHub demora las corridas
+    // programadas y muchas veces arrancan pasada la medianoche (se vieron a las 00:12 y 00:16).
+    // Si en ese caso se resume "hoy", se resume un día que recién empieza y no tiene ventas — y
+    // encima queda anotado como enviado, así que a la noche siguiente tampoco sale.
+    // Por eso: si son antes de las 6 de la mañana en Argentina, se resume el día ANTERIOR.
+    let today;
+    if (forzado) today = arg;
+    else {
+      const ahoraAR = new Date(new Date().toLocaleString('en-US', { timeZone: 'America/Argentina/Buenos_Aires' }));
+      if (ahoraAR.getHours() < 6) ahoraAR.setDate(ahoraAR.getDate() - 1);
+      today = `${ahoraAR.getFullYear()}_${String(ahoraAR.getMonth() + 1).padStart(2, '0')}_${String(ahoraAR.getDate()).padStart(2, '0')}`;
+    }
     if (!forzado) {
       const ya = await db.get('mlapi/telegram/lastDaily');
       if (ya === today) { console.log(`Resumen de ${today} ya enviado, no lo repito.`); return; }
     }
     const day = vp[today] || {};
     let n = 0, fact = 0, gan = 0;
-    const byProd = {};
+    const byProd = {};   // producto -> unidades
+    const ganProd = {};  // producto -> ganancia en $
     for (const v of Object.values(day)) {
       if (!v || v.cancelada) continue; // canceladas/reclamos no cuentan
       n += v.qty || 0;
       fact += v.total || 0;
-      gan += (v.neto || 0) - (v.costo || 0);
+      const g = (v.neto || 0) - (v.costo || 0);
+      gan += g;
       const k = v.prod || '?';
       byProd[k] = (byProd[k] || 0) + (v.qty || 0);
+      ganProd[k] = (ganProd[k] || 0) + g;
     }
     const top = Object.entries(byProd).sort((a, b) => b[1] - a[1])[0];
+    // Los 3 que MÁS GANANCIA dejaron en pesos. No es lo mismo que el más vendido: algo que se
+    // vende de a muchas unidades baratas puede dejar menos que una sola venta grande.
+    const top3 = Object.entries(ganProd).sort((a, b) => b[1] - a[1]).slice(0, 3);
     const _pt = today.split('_');
     const fecha = `${_pt[2]}/${_pt[1]}`;
     const msg = `📊 <b>Resumen del día ${fecha}</b>\n`
       + `Ventas: <b>${n}</b>\n`
       + `Facturado: ${money(fact)}\n`
       + `Ganancia: <b>${money(gan)}</b>\n`
-      + (top ? `🥇 Más vendido: ${top[0]} (${top[1]})` : 'Sin ventas hoy');
-    const ok = await sendTelegram(msg);
+      + (top ? `🥇 Más vendido: ${top[0]} (${top[1]})\n` : 'Sin ventas hoy')
+      + (top3.length ? `\n<b>Los que más ganancia dejaron</b>\n`
+        + top3.map((t, i) => `${['🥇', '🥈', '🥉'][i]} ${t[0]}: <b>${money(Math.round(t[1]))}</b>`).join('\n') : '');
+    const ok = await sendTelegram(msg, 'resumen');
     if (ok && !forzado && !DRY) await db.set('mlapi/telegram/lastDaily', today);
     console.log(ok ? `✓ Resumen de ${today} enviado.` : '✗ No se pudo enviar el resumen (revisá Telegram).');
     return;
@@ -5845,7 +5872,7 @@ async function main() {
               await sendTelegram(`⚠️ <b>Problema en una publicación</b>\n`
                 + `${title}\nCuenta: ${label}\n`
                 + `Estado: ${estados[st] || st}${sub ? ' · ' + sub : ''}\n`
-                + (b.permalink || ''));
+                + (b.permalink || ''), 'baja');
               pubAlerts++;
             }
           }
