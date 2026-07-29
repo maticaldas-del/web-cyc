@@ -5,13 +5,18 @@ name: ml-daily
 
 on:
   schedule:
-    # 23:23, 23:41 y 23:53 hora Argentina. Se intenta TRES veces porque GitHub saltea corridas
-    # programadas cuando está cargado, y esto corre una sola vez por día: si se saltea, no sale nada
-    # (pasó el 27 y 28 de julio). Los minutos son "raros" a propósito: en :00 y :55 hay más cola.
-    # El robot guarda el último día enviado, así que las corridas de más no mandan nada repetido.
-    - cron: '23 2 * * *'
-    - cron: '41 2 * * *'
-    - cron: '53 2 * * *'
+    # 00:07, 00:21 y 00:43 hora Argentina — YA PASADA LA MEDIANOCHE, a propósito.
+    # El robot siempre resume el DÍA ANTERIOR, así que corriendo después de las 00:00 el día que
+    # resume es el que acaba de cerrar, con todas sus ventas. Antes corría 23:23 y resumía "hoy",
+    # pero GitHub demora las corridas programadas: arrancaban pasada la medianoche y resumían un día
+    # recién empezado, sin ventas. Los crons nunca se adelantan, solo se atrasan, así que esto es
+    # seguro por más que GitHub demore.
+    # Se intenta TRES veces porque GitHub directamente saltea corridas cuando está cargado. Las dos
+    # primeras caen dentro del horario permitido (hasta 00:30); si sale la tercera, el mensaje queda
+    # encolado y llega a las 10:00. El robot guarda el último día enviado: no manda repetido.
+    - cron: '7 3 * * *'
+    - cron: '21 3 * * *'
+    - cron: '43 3 * * *'
   workflow_dispatch:
     inputs:
       dia:

@@ -760,17 +760,18 @@ async function main() {
     const vp = (await db.get('cyc/ventaprod')) || {};
     const arg = String(process.env.DAILY_SUMMARY).trim();
     const forzado = /^\d{4}_\d{2}_\d{2}$/.test(arg);
-    // QUÉ DÍA SE RESUME. El cron pide las 23:23 de Argentina, pero GitHub demora las corridas
-    // programadas y muchas veces arrancan pasada la medianoche (se vieron a las 00:12 y 00:16).
-    // Si en ese caso se resume "hoy", se resume un día que recién empieza y no tiene ventas — y
-    // encima queda anotado como enviado, así que a la noche siguiente tampoco sale.
-    // Por eso: si son antes de las 6 de la mañana en Argentina, se resume el día ANTERIOR.
+    // QUÉ DÍA SE RESUME: SIEMPRE EL ANTERIOR. El cron corre pasada la medianoche de Argentina,
+    // así que "ayer" es el día que acaba de terminar, con todas sus ventas cerradas.
+    // Antes resumía "hoy" a las 23:23, pero GitHub demora las corridas programadas y arrancaban
+    // después de medianoche: resumía un día recién empezado, sin ventas, y lo anotaba como enviado,
+    // así que a la noche siguiente tampoco salía. Los crons nunca se adelantan, solo se atrasan,
+    // por eso esta regla es segura: se atrase lo que se atrase, "ayer" sigue siendo el día correcto.
     let today;
     if (forzado) today = arg;
     else {
-      const ahoraAR = new Date(new Date().toLocaleString('en-US', { timeZone: 'America/Argentina/Buenos_Aires' }));
-      if (ahoraAR.getHours() < 6) ahoraAR.setDate(ahoraAR.getDate() - 1);
-      today = `${ahoraAR.getFullYear()}_${String(ahoraAR.getMonth() + 1).padStart(2, '0')}_${String(ahoraAR.getDate()).padStart(2, '0')}`;
+      const ayerAR = new Date(new Date().toLocaleString('en-US', { timeZone: 'America/Argentina/Buenos_Aires' }));
+      ayerAR.setDate(ayerAR.getDate() - 1);
+      today = `${ayerAR.getFullYear()}_${String(ayerAR.getMonth() + 1).padStart(2, '0')}_${String(ayerAR.getDate()).padStart(2, '0')}`;
     }
     if (!forzado) {
       const ya = await db.get('mlapi/telegram/lastDaily');
@@ -800,7 +801,7 @@ async function main() {
       + `Ventas: <b>${n}</b>\n`
       + `Facturado: ${money(fact)}\n`
       + `Ganancia: <b>${money(gan)}</b>\n`
-      + (top ? `🥇 Más vendido: ${top[0]} (${top[1]})\n` : 'Sin ventas hoy')
+      + (top ? `🥇 Más vendido: ${top[0]} (${top[1]})\n` : 'Sin ventas ese día')
       + (top3.length ? `\n<b>Los que más ganancia dejaron</b>\n`
         + top3.map((t, i) => `${['🥇', '🥈', '🥉'][i]} ${t[0]}: <b>${money(Math.round(t[1]))}</b>`).join('\n') : '');
     const ok = await sendTelegram(msg, 'resumen');
