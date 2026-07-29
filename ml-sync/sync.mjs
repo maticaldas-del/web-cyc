@@ -3797,7 +3797,13 @@ async function main() {
       const DIAS = parseFloat(_pp[2]) || 90;
       const vp = (await db.get('cyc/ventaprod')) || {};
       const links = (await db.get('cyc/mllinks')) || {};
+      const inventory = (await db.get('cyc/inventory')) || {};
       const pIdx = {}; for (const p of products) pIdx[p.id] = p;
+      // Stock del producto según el Inventario de la web. Es el dato que decide qué hacer con una
+      // publicación pausada: con stock hay que reactivarla, sin stock no hay nada que reactivar.
+      const stockU = (pid) => Object.entries(inventory)
+        .filter(([k]) => k.startsWith(pid + '__') && !k.includes('__v__'))
+        .reduce((s, [, v]) => s + (parseInt(v) || 0), 0);
       const desde = dayKeyFromISO(Date.now() - (DIAS - 1) * 864e5);
       const porProd = {}, ventasMla = {};
       for (const [k, ents] of Object.entries(vp)) {
@@ -3846,10 +3852,19 @@ async function main() {
       console.log(`=== PRODUCTOS Y SUS PUBLICACIONES (últimos ${DIAS} días)${kw ? ` · filtro "${kw}"` : ' · SOLO los que no tienen ninguna publicación sana'} ===`);
       console.log(`MODO PRUEBA · no se escribe nada\n`);
       if (!lista.length) { console.log('Nada para mostrar: todos los productos con ventas tienen al menos una publicación activa y vinculada.'); return; }
+      // Qué hacer con cada producto, según stock y motivo. Sirve como lista de tareas.
+      const conStock = [], sinStock = [], aArreglar = [];
       for (const pid of lista) {
         const b = porProd[pid];
         const pubs = pubsProd[pid] || [];
-        console.log(`${b.nom.slice(0, 42)} · ${b.n} ventas · neto ${money(Math.round(b.neto))} · ${pubs.length} publicaciones vinculadas`);
+        const stk = stockU(pid);
+        const hayLinkRoto = pubs.some((m) => { const e = links[m] || {}; return !e.cuenta || e.ignored; });
+        const accion = hayLinkRoto ? 'ARREGLAR EL VÍNCULO en la web (Publicaciones)'
+          : stk > 0 ? `REACTIVAR en ML — hay ${stk} u. de stock`
+          : 'nada: no hay stock, la publicación está bien pausada';
+        (hayLinkRoto ? aArreglar : stk > 0 ? conStock : sinStock).push({ nom: b.nom, stk, neto: b.neto, n: b.n });
+        console.log(`${b.nom.slice(0, 42)} · ${b.n} ventas · neto ${money(Math.round(b.neto))} · stock ${stk} u. · ${pubs.length} publicaciones`);
+        console.log(`   → ${accion}`);
         if (!pubs.length) { console.log(`      NINGUNA publicación apunta a este producto en mllinks.`); }
         for (const mla of pubs.sort((x, y) => (ventasMla[y] || 0) - (ventasMla[x] || 0))) {
           const e = links[mla] || {}, s = estado[mla];
@@ -3863,7 +3878,20 @@ async function main() {
         }
         console.log('');
       }
-      if (!kw) console.log(`Total: ${lista.length} productos venden pero no tienen ninguna publicación que el robot de precios pueda tocar.`);
+      if (!kw) {
+        console.log(`═══ QUÉ HACER ═══`);
+        const linea = (r) => `   ${String(r.stk).padStart(4)} u. · ${money(Math.round(r.neto)).padStart(12)} en ${r.n} ventas · ${r.nom.slice(0, 40)}`;
+        console.log(`\n1) REACTIVAR EN ML — tienen stock y están pausadas (${conStock.length}):`);
+        conStock.sort((a, b) => b.neto - a.neto).forEach((r) => console.log(linea(r)));
+        if (!conStock.length) console.log('   (ninguna)');
+        console.log(`\n2) ARREGLAR EL VÍNCULO en la web → Publicaciones (${aArreglar.length}):`);
+        aArreglar.sort((a, b) => b.neto - a.neto).forEach((r) => console.log(linea(r)));
+        if (!aArreglar.length) console.log('   (ninguna)');
+        console.log(`\n3) NO HACER NADA — sin stock, está bien que estén pausadas (${sinStock.length}):`);
+        sinStock.sort((a, b) => b.neto - a.neto).slice(0, 12).forEach((r) => console.log(linea(r)));
+        if (sinStock.length > 12) console.log(`   … y ${sinStock.length - 12} más`);
+        console.log(`\nTotal: ${lista.length} productos vendieron y hoy no tienen ninguna publicación que el robot pueda tocar.`);
+      }
       return;
     }
     // BILLING_PROBE=catalogo[:<días>][:<top>] → ¿SUBIR EL PRECIO ES GRADUAL O ES UN PRECIPICIO?
