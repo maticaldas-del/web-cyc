@@ -1606,6 +1606,64 @@ async function main() {
       }
       return;
     }
+    // BILLING_PROBE=volver:<MLA=precio,MLA=precio,...>[:go] → DEJA ESOS PRECIOS EXACTOS.
+    // Para deshacer una subida mal aplicada: pone el precio que se le pasa, suba o baje.
+    if (String(process.env.BILLING_PROBE || '').startsWith('volver:')) {
+      const raw = String(process.env.BILLING_PROBE).slice(7);
+      const APLICAR = raw.endsWith(':go');
+      const lista = (APLICAR ? raw.slice(0, -3) : raw).split(',').map((x) => {
+        const [mla, pr] = x.split('=');
+        return { mla: (mla || '').trim(), precio: Math.round(parseFloat(pr) || 0) };
+      }).filter((x) => /^MLA/i.test(x.mla) && x.precio > 0);
+      if (!lista.length) { console.log('Usá: volver:MLA123=45300,MLA456=14360[:go]'); return; }
+      const links = (await db.get('cyc/mllinks')) || {};
+      console.log(`=== VOLVER PRECIOS ${APLICAR ? '(APLICANDO)' : '(PRUEBA)'} · ${lista.length} ===\n`);
+      const toks = {}, sids = {};
+      for (const label of labels) {
+        const acc = accounts[label];
+        if (!acc?.refresh_token) continue;
+        try {
+          const t = await mlRefresh(ML_CLIENT_ID, ML_CLIENT_SECRET, acc.refresh_token);
+          await db.patch('mlapi/tokens/' + label, { refresh_token: t.refresh_token, updated_ts: Date.now() });
+          toks[label] = t.access_token; if (acc.seller_id) sids[label] = acc.seller_id;
+        } catch { /* sigue */ }
+      }
+      let ok = 0, err = 0;
+      for (const x of lista) {
+        const cta = (links[x.mla] || {}).cuenta;
+        let tok = toks[cta];
+        if (!tok) for (const [lab, tk] of Object.entries(toks)) { // sin cuenta cargada: probar
+          try { const it = await mlGet('/items/' + x.mla + '?attributes=id,seller_id', tk); if (String(it.seller_id) === String(sids[lab])) { tok = tk; break; } } catch { /* sigue */ }
+        }
+        if (!tok) { err++; console.log(`  ✗ ${x.mla}: no encontré la cuenta`); continue; }
+        let actual = 0;
+        try { const it = await mlGet('/items/' + x.mla + '?attributes=id,price', tok); actual = it.price || 0; } catch { /* sigue */ }
+        const nom = ((links[x.mla] || {}).title || x.mla).slice(0, 38);
+        if (Math.abs(actual - x.precio) < 1) { console.log(`  = ${x.mla} · ${nom}: ya está en ${money(x.precio)}`); continue; }
+        if (!APLICAR) { console.log(`  · ${x.mla} · ${nom}: ${money(Math.round(actual))} → ${money(x.precio)}`); continue; }
+        try {
+          const r = await fetch(ML_API + '/items/' + x.mla, {
+            method: 'PUT', headers: { Authorization: 'Bearer ' + tok, 'Content-Type': 'application/json' },
+            body: JSON.stringify({ price: x.precio }),
+          });
+          if (r.ok) { ok++; console.log(`  ✓ ${x.mla} · ${nom}: ${money(Math.round(actual))} → ${money(x.precio)}`); }
+          else { err++; console.log(`  ✗ ${x.mla} · ${nom}: ML-${r.status}`); }
+        } catch { err++; console.log(`  ✗ ${x.mla} · ${nom}: red`); }
+      }
+      console.log(`\n${APLICAR ? `${ok} aplicados, ${err} con error.` : 'PRUEBA: no se escribió nada. Agregá ":go" para aplicar.'}`);
+      return;
+    }
+    // BILLING_PROBE=nocuotas → BORRA los % de cuotas medidos automáticamente.
+    // El probe 'cuotas' contaba como costo de financiación cargos que NO son del vendedor: le puso
+    // 9,9% a publicaciones que no ofrecen cuotas (Victoria's Secret) y por eso el barrido subió 6
+    // precios que no había que subir. Hasta poder distinguir bien quién paga cada cargo, se limpia.
+    if (String(process.env.BILLING_PROBE || '') === 'nocuotas') {
+      const prev = (await db.get('cyc/mlcuotas')) || {};
+      const n = Object.keys(prev).length;
+      if (!DRY) await db.set('cyc/mlcuotas', null);
+      console.log(`${DRY ? '(DRY) ' : ''}Borrados los % de cuotas de ${n} publicaciones. El barrido vuelve a calcular sin ese dato.`);
+      return;
+    }
     // BILLING_PROBE=cuotas[:<días>] → MIDE EL COSTO DE OFRECER CUOTAS, POR PUBLICACIÓN.
     //
     // ML cobra "financing_add_on_fee" cuando la publicación ofrece cuotas sin interés, y NO lo
