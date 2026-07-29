@@ -564,7 +564,7 @@ async function tgEncolar(text) {
 }
 // Manda lo que quedó de la madrugada, con la hora original para que se entienda cuándo pasó.
 async function tgFlushCola(db) {
-  if (!TG_TOKEN || TG_SILENCIO || !tgHorarioOk()) return;
+  if (!TG_TOKEN || TG_SILENCIO) return;
   let cola = null;
   try { cola = await db.get('mlapi/telegram/cola'); } catch { return; }
   if (!cola || !Object.keys(cola).length) return;
@@ -589,7 +589,10 @@ async function sendTelegram(text, tipo) {
     console.log(`(Telegram: no se manda "${String(text).slice(0, 60).replace(/\n/g, ' ')}..." — solo van resumen y bajas)`);
     return false;
   }
-  if (!tgHorarioOk()) { await tgEncolar(text); return false; }
+  // Sin restricción de horario. La ventana 10:00-00:30 estaba porque el robot mandaba un mensaje
+  // por cada cambio de precio y despertaba a la madrugada. Ahora solo salen dos cosas —el resumen
+  // del día y las bajas de publicaciones— así que no hay volumen que justifique retenerlos, y el
+  // resumen de la medianoche llegaba tarde o quedaba encolado por esa misma ventana.
   return tgEnviar(text);
 }
 // Descubre y ACUMULA todos los chats: cada persona que le manda "hola" al bot queda
