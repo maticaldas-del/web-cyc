@@ -6734,6 +6734,16 @@ function renderResumen_page(){
   set('casc-ganancia-bruta',gananciaBruta);
   set('casc-gastos',gastosMes);
   set('casc-ganancia',gananciaReal);
+  // Cuánto monotributo se está contando REALMENTE en este número. Va a la vista porque es el
+  // agujero más fácil de no ver: una parte viaja escondida dentro del costo (el % que carga el
+  // robot de precios) y la otra está en Gastos. Si la suma no coincide con lo que pagás de verdad
+  // por las 4 cuentas, la "Ganancia real CYC" está inflada y no hay forma de darse cuenta mirando.
+  const brutoPer=_vpField(periodKeys,'total');
+  const monoEnCosto=Math.round(brutoPer*monoPct()/100);
+  const catsPer=_cmpCats(periodKeys._cmpKeys||[]);
+  const monoEnGastos=Object.entries(catsPer).filter(([c])=>/monotributo|impuesto/i.test(c)).reduce((s,[,v])=>s+v,0);
+  setTxt('casc-gastos-sub',`monotributo contado: ${fmt(monoEnCosto+Math.round(monoEnGastos))} `
+    +`(${fmt(monoEnCosto)} dentro del costo + ${fmt(Math.round(monoEnGastos))} acá) · contador, alquiler…`);
 
   // Gastos fijos por categoría
   const gcEl=document.getElementById('res-gastos-cats');
@@ -7118,7 +7128,7 @@ document.addEventListener('click',e=>{if(fnavOpen&&!e.target.closest('#fnav-btn'
         <span style="font-size:.75rem;color:var(--muted)">Si no ves los últimos cambios, forzá la actualización</span>
         <button class="btn" style="background:rgba(56,189,248,.12);color:var(--blue);border:1px solid rgba(56,189,248,.3)" onclick="actualizarApp()">🔄 Buscar actualizaciones</button>
       </div>
-      <div style="font-size:.66rem;color:var(--muted);margin-top:12px">CYC · Versión 6.9</div>
+      <div style="font-size:.66rem;color:var(--muted);margin-top:12px">CYC · Versión 7.0</div>
     </div>
 
     <div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:18px 20px;margin-bottom:14px">
