@@ -3799,6 +3799,70 @@ async function main() {
       console.log(`         ${bajo} el robot los ve MÁS BARATOS (margen sobreestimado → no subiría lo que hace falta)`);
       return;
     }
+    // BILLING_PROBE=chkfact[:go] → ¿LA PESTAÑA MONOTRIBUTO TIENE LOS NÚMEROS BIEN?
+    //
+    // Esa pestaña usa dos fuentes: para los meses viejos (anteriores a 2026_05) los valores que
+    // cargaste a mano en cyc/fact_mes, y de ahí en adelante las ventas del panel. Los cargados a
+    // mano nadie los volvió a mirar. Este probe los compara CONTRA ML, mes por mes y cuenta por
+    // cuenta. Con ':go' corrige los que no coinciden dejando el número de ML.
+    if (String(process.env.BILLING_PROBE || '').startsWith('chkfact')) {
+      const APLICAR = String(process.env.BILLING_PROBE).split(':')[1] === 'go';
+      const CONGELADO_HASTA = '2026_05';   // igual que FAC_CONGELADO_HASTA en la web
+      const factMes = (await db.get('cyc/fact_mes')) || {};
+      const desdeMs = Date.now() - 400 * 864e5;
+      console.log(`=== ¿LOS MESES CARGADOS A MANO COINCIDEN CON ML? ===`);
+      console.log(APLICAR ? '⚠️  MODO REAL: se corrigen los que no coinciden\n' : 'MODO PRUEBA · no se escribe nada\n');
+      const mlMes = {};   // cuenta → ym → total
+      for (const label of labels) {
+        const acc = accounts[label];
+        if (!acc?.refresh_token || !acc.seller_id) { console.log(`(${label}: sin token)`); continue; }
+        let t; try { t = await mlRefresh(ML_CLIENT_ID, ML_CLIENT_SECRET, acc.refresh_token); } catch { console.log(`(${label}: no pude renovar token)`); continue; }
+        await db.patch('mlapi/tokens/' + label, { refresh_token: t.refresh_token, updated_ts: Date.now() });
+        let ords;
+        try { ords = await fetchOrdersRange(acc.seller_id, t.access_token, desdeMs, Date.now()); }
+        catch (e) { console.log(`(${label}: ML falló — ${String(e.message || e).slice(0, 40)})`); continue; }
+        mlMes[label] = {};
+        for (const o of (ords || [])) {
+          const ym = String(o.date_created || o.date_closed || '').slice(0, 7).replace('-', '_');
+          if (ym) mlMes[label][ym] = (mlMes[label][ym] || 0) + (Number(o.total_amount) || 0);
+        }
+      }
+      // Los meses viejos son los únicos que dependen de lo cargado a mano.
+      const meses = [...new Set(Object.values(mlMes).flatMap((m) => Object.keys(m)))]
+        .filter((ym) => ym < CONGELADO_HASTA).sort();
+      const updates = {}; let malos = 0, bien = 0, faltan = 0;
+      console.log(`  mes        cuenta      cargado en la web            ML          diferencia`);
+      for (const ym of meses) {
+        for (const label of Object.keys(mlMes)) {
+          const ml = Math.round(mlMes[label][ym] || 0);
+          const cargadoRaw = factMes[label] && factMes[label][ym];
+          const cargado = cargadoRaw != null && cargadoRaw !== '' ? Math.round(Number(cargadoRaw)) : null;
+          if (cargado == null) {
+            faltan++;
+            console.log(`  ${ym}  ${label.padEnd(9)} ${'(vacío)'.padStart(18)} ${money(ml).padStart(15)}   ← falta cargarlo`);
+            updates[`${label}/${ym}`] = ml;
+            continue;
+          }
+          const dif = ml - cargado;
+          // Tolerancia de $1.000: redondeos al cargar a mano no son un error.
+          if (Math.abs(dif) <= 1000) { bien++; continue; }
+          malos++;
+          console.log(`  ${ym}  ${label.padEnd(9)} ${money(cargado).padStart(18)} ${money(ml).padStart(15)}   ${(dif > 0 ? '+' : '') + money(dif)}`);
+          updates[`${label}/${ym}`] = ml;
+        }
+      }
+      console.log(`\n  ${bien} coinciden · ${malos} distintos · ${faltan} sin cargar`);
+      // El primer mes de la ventana viene cortado (ML solo devuelve desde la fecha pedida), así que
+      // ese siempre va a dar "de menos": se avisa para no corregirlo con un número incompleto.
+      if (meses.length) console.log(`\n  OJO: ${meses[0]} puede estar incompleto (es el borde de lo que pedí a ML). No lo tomes como error.`);
+      if (!Object.keys(updates).length) { console.log('\nTodo coincide. La pestaña Monotributo está bien.'); return; }
+      if (!APLICAR) { console.log(`\nPara corregirlos: chkfact:go  (deja el número de ML en los ${Object.keys(updates).length} casilleros)`); return; }
+      const patch = {};
+      for (const [k, v] of Object.entries(updates)) patch[k] = v;
+      if (!DRY) for (const [k, v] of Object.entries(patch)) await db.set('cyc/fact_mes/' + k, v);
+      console.log(`\n✓ Corregidos ${Object.keys(patch).length} casilleros con el número de ML.`);
+      return;
+    }
     // BILLING_PROBE=factml[:<días>] → FACTURACIÓN REAL DE CADA CUENTA, PEDIDA A ML.
     //
     // Por qué no alcanza con el panel: el panel arranca en mayo 2026, así que su "últimos 12 meses"
