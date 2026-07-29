@@ -1275,12 +1275,18 @@ footer{margin-top:32px;padding-top:14px;border-top:1px solid var(--border);font-
 
   <div class="stitle">💧 Cascada de caja <span id="res-casc-period" style="font-weight:400;font-size:.65rem;text-transform:none;letter-spacing:0;font-family:'DM Mono',monospace;color:var(--muted)"></span></div>
   <div class="casc">
+    <!-- ORDEN: primero el costo de la mercadería, después los gastos, y el retiro AL FINAL.
+         El retiro no es un costo del negocio: es plata que se reparten los dueños de la ganancia
+         ya hecha. Poniéndolo al final, la línea "Ganancia" da EXACTAMENTE el mismo número que el
+         cuadro "Ganancia" de Métricas (neto − costo). Antes el retiro se restaba arriba de todo y
+         esa línea daba $1.800.000 menos que Métricas, que es lo que no cerraba.
+         El resultado final es el mismo: restar en otro orden no cambia la suma. -->
     <div class="casc-row sub"><div class="cl">Neto ML<span class="cs">suma de ventas en Ventas x Producto</span></div><div class="cv" id="casc-neto">$0</div></div>
-    <div class="casc-row"><div class="cl"><span class="op casc-neg">−</span><span id="casc-retiro-lbl">Retiro dueños</span><span class="cs" id="casc-retiro-sub">Mati 7,5% · Viejo 7,5%</span></div><div class="cv casc-neg" id="casc-retiro">$0</div></div>
-    <div class="casc-row sub"><div class="cl">Queda en CYC<span class="cs">después de retiros</span></div><div class="cv" id="casc-cyc-ml">$0</div></div>
     <div class="casc-row"><div class="cl"><span class="op casc-neg">−</span>Costo mercadería<span class="cs">lo que costaron los productos vendidos</span></div><div class="cv casc-neg" id="casc-costo-merch">$0</div></div>
-    <div class="casc-row sub"><div class="cl">Ganancia bruta CYC<span class="cs">sin descontar gastos operativos</span></div><div class="cv" id="casc-ganancia-bruta">$0</div></div>
+    <div class="casc-row sub"><div class="cl">Ganancia<span class="cs">el mismo número que Métricas</span></div><div class="cv" id="casc-ganancia-bruta">$0</div></div>
     <div class="casc-row"><div class="cl"><span class="op casc-neg">−</span>Gastos<span class="cs" id="casc-gastos-sub">monotributo, contador, alquiler…</span></div><div class="cv casc-neg" id="casc-gastos">$0</div></div>
+    <div class="casc-row sub"><div class="cl">Queda en CYC<span class="cs">antes de los retiros</span></div><div class="cv" id="casc-cyc-ml">$0</div></div>
+    <div class="casc-row"><div class="cl"><span class="op casc-neg">−</span><span id="casc-retiro-lbl">Retiro dueños</span><span class="cs" id="casc-retiro-sub">Mati 7,5% · Viejo 7,5%</span></div><div class="cv casc-neg" id="casc-retiro">$0</div></div>
     <div class="casc-row final"><div class="cl">= Ganancia real CYC</div><div class="cv" id="casc-ganancia">$0</div></div>
   </div>
 
@@ -6696,10 +6702,12 @@ function renderResumen_page(){
   const _rmMonth=_isMonth?_retiroMesVal(mesKey):null;
   const retiro=_rmMonth!=null?_rmMonth:(_isMonth?retiroDefMes(mesKey,netoML):Math.round(netoML*RETIRO_PCT));
   const retMitad=Math.round(retiro/2);
-  const quedaML=netoML-retiro;
-  const gananciaBruta=quedaML-costoMerch;
+  // Mismo orden que la cascada: neto − costo = Ganancia (idéntica a Métricas), después gastos,
+  // y recién al final el retiro de los dueños. El total no cambia.
+  const gananciaBruta=netoML-costoMerch;
   const gastosMes=_isMonth?_gastosMes(mesKey):comprasTot(null,'gasto');
-  const gananciaReal=gananciaBruta-gastosMes;
+  const quedaML=gananciaBruta-gastosMes;
+  const gananciaReal=quedaML-retiro;
 
   // comparación vs período anterior
   const netoMLp=_vpField(prevPeriodKeys,'neto');
@@ -7110,7 +7118,7 @@ document.addEventListener('click',e=>{if(fnavOpen&&!e.target.closest('#fnav-btn'
         <span style="font-size:.75rem;color:var(--muted)">Si no ves los últimos cambios, forzá la actualización</span>
         <button class="btn" style="background:rgba(56,189,248,.12);color:var(--blue);border:1px solid rgba(56,189,248,.3)" onclick="actualizarApp()">🔄 Buscar actualizaciones</button>
       </div>
-      <div style="font-size:.66rem;color:var(--muted);margin-top:12px">CYC · Versión 6.8</div>
+      <div style="font-size:.66rem;color:var(--muted);margin-top:12px">CYC · Versión 6.9</div>
     </div>
 
     <div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:18px 20px;margin-bottom:14px">
