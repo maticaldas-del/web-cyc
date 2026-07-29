@@ -4072,7 +4072,14 @@ async function main() {
       cruzan.sort((a, b) => a.mg - b.mg).forEach((f) => console.log(line(f)));
       console.log(`\n── C. NECESITAN SUBA MAYOR A 25% (revisalos a mano) · ${grandes.length} publicaciones ──`);
       grandes.forEach((f) => console.log(line(f)));
+      // Las que "ya están bien" también se listan: si solo se muestra el número, una publicación que
+      // el cálculo da por buena y en realidad no lo está queda escondida y nunca se revisa. Pasó con
+      // una sábana 2½ que vendía a $18.800 mientras sus hermanas estaban a $19.380.
       console.log(`\n── D. YA ESTÁN EN EL PISO O ARRIBA · ${yaOk.length} publicaciones ──`);
+      yaOk.sort((a, b) => a.mg - b.mg).forEach((f) => console.log(
+        `  ${String(Math.round(f.mg)).padStart(4)}% · ${money(Math.round(f.precio)).padStart(10)} · ${f.label.padEnd(8)} · ${f.mla} · ${f.nom}\n`
+        + `        precio ${money(Math.round(f.precio))} − comisión ${money(Math.round(f.com))} − envío ${money(Math.round(f.envio))} = neto ${money(Math.round(f.neto))}`
+        + ` · costo ${money(Math.round(f.costo + f.mlx))} · ${f.nVtas} ventas usadas`));
       console.log(`\n── E. SIN DATOS SUFICIENTES · ${sinDato.length} ──`);
       sinDato.forEach((f) => console.log(`  ${f.label.padEnd(8)} · ${f.mla} · ${f.nom} · ${f.why}`));
       if (!APLICAR) { console.log(`\nRECORDÁ: esto fue solo una LISTA. No se tocó ningún precio en ML.`); return; }
