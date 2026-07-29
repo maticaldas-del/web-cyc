@@ -478,8 +478,16 @@ async function removeStartedPromos(itemId, token) {
 // transaction_details.net_received_amount ya tiene descontado TODO:
 // comisión de ML + costo fijo + retenciones de impuestos (IIBB/SIRTAC).
 // Suma los pagos de la orden. Devuelve null si no se pudo (→ usa el fallback).
+// OJO CON EL TIMING: ML no descuenta su parte en el instante de la compra. Durante los primeros
+// minutos el pago figura aprobado pero con las retenciones de impuestos SOLAMENTE, sin la comisión
+// ni el costo fijo. Si se lee justo en ese momento, net_received viene altísimo y la venta queda
+// guardada con una ganancia que no existe (un Paulvic de $14.360 quedó con neto $14.040 y 71% de
+// ganancia, cuando el neto real era $10.656 y la ganancia 33%).
+// Por eso: si el pago todavía no tiene los cargos de ML, se devuelve null y el que llama usa el
+// fallback (precio − comisión de la orden), que es mucho más cercano. En la próxima corrida, ya
+// con el pago liquidado, la venta se vuelve a escribir con el neto exacto.
 async function orderNet(order, token, feeOut) {
-  let net = 0, ok = false, mlfee = 0;
+  let net = 0, ok = false, mlfee = 0, tieneCargosML = false;
   for (const p of (order.payments || [])) {
     if (!p.id) continue;
     try {
@@ -494,12 +502,15 @@ async function orderNet(order, token, feeOut) {
       // Guardarlo por venta permite calcular el almacenamiento del mes al instante (factura − Σ estos).
       for (const c of (b.charges_details || [])) {
         const n = (c.name || '').toLowerCase();
-        if (!n.startsWith('tax_withholding')) mlfee += c.amounts?.original || 0;
+        if (n.startsWith('tax_withholding')) continue;
+        mlfee += c.amounts?.original || 0;
+        tieneCargosML = true;   // apareció al menos un cargo propio de ML → el pago ya está liquidado
       }
     } catch { /* ignore */ }
   }
-  if (feeOut) feeOut.mlfee = Math.round(mlfee);
-  return ok ? net : null;
+  if (feeOut) { feeOut.mlfee = Math.round(mlfee); feeOut.liquidado = tieneCargosML; }
+  // Sin cargos de ML el neto no sirve todavía: mejor el fallback que un número inflado.
+  return (ok && tieneCargosML) ? net : null;
 }
 // fallback si no se pudo leer el pago: total − comisión (sin impuestos).
 function netoFallback(itemGross, saleFeeUnit, qty) {
@@ -6368,7 +6379,14 @@ async function main() {
         // perder ninguna venta); después la asignás/creás y se completa sola.
         if (p && !variant) variant = mlVariant(it, p); // variante desde la venta de ML
         // neto real del pago (una sola vez por orden)
-        if (!netFetched) { const fo = {}; orderNetAmt = await orderNet(o, t.access_token, fo); orderFeeAmt = fo.mlfee || 0; netFetched = true; }
+        if (!netFetched) {
+          const fo = {};
+          orderNetAmt = await orderNet(o, t.access_token, fo);
+          orderFeeAmt = fo.mlfee || 0; netFetched = true;
+          // Si ML todavía no descontó lo suyo, se avisa: la venta queda con el neto estimado y se
+          // corrige sola en cuanto el pago se liquide (la ventana de sincronización son 2 días).
+          if (orderNetAmt == null && !DRY) console.log(`  · venta ${o.id}: ML todavía no descontó su parte, uso el neto estimado (se corrige en la próxima vuelta)`);
+        }
         const neto = (orderNetAmt != null && orderGross > 0)
           ? Math.round(orderNetAmt * (itemGross / orderGross))
           : netoFallback(itemGross, it.sale_fee, qty);
