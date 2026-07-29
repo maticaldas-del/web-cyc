@@ -3799,6 +3799,70 @@ async function main() {
       console.log(`         ${bajo} el robot los ve MÁS BARATOS (margen sobreestimado → no subiría lo que hace falta)`);
       return;
     }
+    // BILLING_PROBE=factml[:<días>] → FACTURACIÓN REAL DE CADA CUENTA, PEDIDA A ML.
+    //
+    // Por qué no alcanza con el panel: el panel arranca en mayo 2026, así que su "últimos 12 meses"
+    // son en realidad 90 días y deja afuera todo lo anterior. Para la categoría de monotributo lo
+    // que cuenta son los 12 meses de verdad, así que hay que ir a buscarlos a ML.
+    // Solo LEE: suma el total de las órdenes pagadas, mes a mes y por cuenta.
+    if (String(process.env.BILLING_PROBE || '').startsWith('factml')) {
+      const DIAS = parseFloat(String(process.env.BILLING_PROBE).split(':')[1]) || 365;
+      const CATS = [
+        { c: 'G', tope: 53995798.87, cuota: 158815.05 },
+        { c: 'H', tope: 81924660.37, cuota: 317895.01 },
+        { c: 'I', tope: 91699761.90, cuota: 474992.78 },
+        { c: 'J', tope: 105012519.20, cuota: 580793.69 },
+        { c: 'K', tope: 126610838.75, cuota: 0 },
+      ];
+      const catDe = (a) => CATS.find((x) => a <= x.tope) || { c: 'K+ (se pasó del régimen)', tope: Infinity, cuota: 0 };
+      const desdeMs = Date.now() - DIAS * 864e5;
+      console.log(`=== FACTURACIÓN REAL EN ML · últimos ${DIAS} días ===`);
+      console.log(`MODO PRUEBA · no se escribe nada · esto lo dice ML, no el panel\n`);
+      const totalPorCuenta = {}, porMes = {};
+      for (const label of labels) {
+        const acc = accounts[label];
+        if (!acc?.refresh_token || !acc.seller_id) { console.log(`(${label}: sin token o sin seller_id)`); continue; }
+        let t; try { t = await mlRefresh(ML_CLIENT_ID, ML_CLIENT_SECRET, acc.refresh_token); } catch { console.log(`(${label}: no pude renovar token)`); continue; }
+        await db.patch('mlapi/tokens/' + label, { refresh_token: t.refresh_token, updated_ts: Date.now() });
+        let ords;
+        try { ords = await fetchOrdersRange(acc.seller_id, t.access_token, desdeMs, Date.now()); }
+        catch (e) { console.log(`(${label}: ML falló — ${String(e.message || e).slice(0, 50)})`); continue; }
+        let tot = 0, n = 0;
+        for (const o of (ords || [])) {
+          const monto = Number(o.total_amount) || 0;
+          if (!monto) continue;
+          tot += monto; n++;
+          const ym = String(o.date_created || o.date_closed || '').slice(0, 7).replace('-', '_');
+          if (ym) { porMes[ym] = porMes[ym] || {}; porMes[ym][label] = (porMes[ym][label] || 0) + monto; }
+        }
+        totalPorCuenta[label] = tot;
+        console.log(`${label.padEnd(9)} ${money(Math.round(tot)).padStart(16)}  ·  ${n} órdenes pagadas  →  categoría ${catDe(tot).c}`);
+      }
+      const meses = Object.keys(porMes).sort();
+      if (meses.length) {
+        console.log(`\n── MES A MES (para ver desde cuándo hay datos y cómo viene creciendo) ──`);
+        console.log(`  mes       ` + labels.map((l) => l.slice(0, 8).padStart(14)).join('') + '          TOTAL');
+        for (const ym of meses) {
+          const row = labels.map((l) => money(Math.round(porMes[ym][l] || 0)).padStart(14)).join('');
+          const tm = labels.reduce((s, l) => s + (porMes[ym][l] || 0), 0);
+          console.log(`  ${ym}  ${row}  ${money(Math.round(tm)).padStart(15)}`);
+        }
+      }
+      const gran = Object.values(totalPorCuenta).reduce((s, x) => s + x, 0);
+      console.log(`\n── RESUMEN ──`);
+      console.log(`  TOTAL las 4 cuentas en ${DIAS} días: ${money(Math.round(gran))}`);
+      const nAcc = Object.keys(totalPorCuenta).length || 1;
+      const parejo = gran / nAcc;
+      console.log(`  Si estuviera parejo: ${money(Math.round(parejo))} por cuenta → categoría ${catDe(parejo).c}`);
+      const cuotaHoy = Object.values(totalPorCuenta).reduce((s, x) => s + catDe(x).cuota, 0);
+      const cuotaParejo = catDe(parejo).cuota * nAcc;
+      console.log(`\n  Cuota mensual como está:  ${money(Math.round(cuotaHoy))}`);
+      console.log(`  Cuota mensual emparejado: ${money(Math.round(cuotaParejo))}`);
+      const ahorro = cuotaHoy - cuotaParejo;
+      console.log(`  ${ahorro > 0 ? `Emparejar ahorra ${money(Math.round(ahorro))}/mes (${money(Math.round(ahorro * 12))}/año)` : 'Emparejar no cambia la cuota: ya están todas en la misma categoría.'}`);
+      console.log(`\nOJO: esto es lo FACTURADO según ML. Para AFIP cuenta lo que efectivamente facturaste vos.`);
+      return;
+    }
     // BILLING_PROBE=cuentas → ¿CUÁNTO FACTURA CADA CUENTA Y EN QUÉ CATEGORÍA LA DEJA?
     //
     // Hace falta para decidir la facturación automática de ML: hoy elegís a mano qué cuenta emite
