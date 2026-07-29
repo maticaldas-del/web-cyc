@@ -3951,13 +3951,25 @@ async function main() {
         const ids = Object.entries(links)
           .filter(([mla, e]) => e && e.cuenta === label && !e.ignored && e.prodId && /^MLA/i.test(mla))
           .map(([mla]) => mla);
+        // CONTABILIDAD: toda publicación que entra tiene que salir en alguna lista. Los `continue`
+        // mudos de acá abajo escondían publicaciones que venden y nunca subían de precio (una sábana
+        // 2½ quedó a $18.800 mientras sus hermanas estaban a $19.380 y no figuraba en ninguna lista).
         for (let k = 0; k < ids.length; k += 20) {
+          const lote = ids.slice(k, k + 20);
           let arr;
-          try { arr = await mlGet('/items?ids=' + ids.slice(k, k + 20).join(',') + '&attributes=id,status,price,variations,attribute_combinations,title,listing_type_id,category_id,site_id', t.access_token); } catch { continue; }
+          try { arr = await mlGet('/items?ids=' + lote.join(',') + '&attributes=id,status,price,variations,attribute_combinations,title,listing_type_id,category_id,site_id', t.access_token); }
+          catch (e) {
+            // Si falla el pedido se caían 20 publicaciones de una sin decir nada.
+            for (const mla of lote) sinDato.push({ label, mla, nom: (links[mla] || {}).title || mla, why: `ML no contestó el pedido (${String(e.message || e).slice(0, 40)})` });
+            continue;
+          }
+          const vinieron = new Set((arr || []).map((r) => r.body && r.body.id).filter(Boolean));
+          for (const mla of lote) if (!vinieron.has(mla)) sinDato.push({ label, mla, nom: (links[mla] || {}).title || mla, why: 'ML no la devolvió en la consulta' });
           for (const row of (arr || [])) {
             const b = row.body || {}; const mla = b.id; if (!mla || !links[mla]) continue;
-            if (b.status !== 'active') continue;
-            const p = pIdx[links[mla].prodId]; if (!p) continue;
+            if (b.status !== 'active') { sinDato.push({ label, mla, nom: (links[mla].title || b.title || mla).slice(0, 34), why: `no está activa (${b.status || 'sin estado'})` }); continue; }
+            const p = pIdx[links[mla].prodId];
+            if (!p) { sinDato.push({ label, mla, nom: (links[mla].title || b.title || mla).slice(0, 34), why: `el producto ${links[mla].prodId} no existe en la web` }); continue; }
             const nom = (links[mla].title || b.title || p.name || mla).slice(0, 34);
             const site = b.site_id || 'MLA', lt = b.listing_type_id, cat = b.category_id;
             const costo = costoPesos(p, 1, tc).costo;
