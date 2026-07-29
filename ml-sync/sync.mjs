@@ -3786,6 +3786,87 @@ async function main() {
       console.log(`         ${bajo} el robot los ve MÁS BARATOS (margen sobreestimado → no subiría lo que hace falta)`);
       return;
     }
+    // BILLING_PROBE=ciegas[:<días>] → PUBLICACIONES QUE VENDEN PERO EL ROBOT DE PRECIOS NO VE.
+    //
+    // Por qué existe: el barrido de precios solo mira las publicaciones que en cyc/mllinks tienen
+    // cuenta + prodId y no están ignoradas. Si a un link le falta la cuenta (o quedó ignorado), esa
+    // publicación NUNCA sube de precio, aunque venda todos los días. Pasó con una sábana 2½: cinco
+    // publicaciones iguales a $19.380 y esta, invisible, vendiendo a $18.800.
+    //
+    // Solo LEE. Lista cada publicación con ventas en el período que el barrido saltea, con el motivo
+    // y el precio de hoy, y al lado el precio de las publicaciones hermanas (mismo producto) que sí
+    // se barren, para ver cuánto quedó atrasada.
+    if (String(process.env.BILLING_PROBE || '').startsWith('ciegas')) {
+      const DIAS = parseFloat(String(process.env.BILLING_PROBE).split(':')[1]) || 60;
+      const vp = (await db.get('cyc/ventaprod')) || {};
+      const links = (await db.get('cyc/mllinks')) || {};
+      const desde = dayKeyFromISO(Date.now() - (DIAS - 1) * 864e5);
+      // Ventas por publicación en el período.
+      const ventasDe = {};
+      for (const [k, ents] of Object.entries(vp)) {
+        if (k < desde) continue;
+        for (const v of Object.values(ents || {})) {
+          if (!v || v.cancelada || !v.mla) continue;
+          const b = ventasDe[v.mla] || (ventasDe[v.mla] = { n: 0, prod: v.prod || '', prodId: v.prodId || '', cuenta: v.cuenta || '' });
+          b.n++;
+        }
+      }
+      // Motivo por el que el barrido la saltea (mismo filtro exacto que el probe 'precios').
+      const bajoLupa = [];
+      for (const [mla, b] of Object.entries(ventasDe)) {
+        const e = links[mla];
+        let why = null;
+        if (!e) why = 'no está en mllinks';
+        else if (e.ignored) why = 'marcada como ignorada';
+        else if (!e.prodId) why = 'sin producto vinculado';
+        else if (!e.cuenta) why = 'sin cuenta en el link';
+        else if (!labels.includes(e.cuenta)) why = `cuenta "${e.cuenta}" no es una de las 4`;
+        if (why) bajoLupa.push({ mla, why, ...b, prodId: (e && e.prodId) || b.prodId });
+      }
+      console.log(`=== PUBLICACIONES QUE VENDEN Y EL ROBOT DE PRECIOS NO TOCA (últimos ${DIAS} días) ===`);
+      console.log(`MODO PRUEBA · no se escribe nada\n`);
+      if (!bajoLupa.length) { console.log('Ninguna: todas las publicaciones con ventas entran al barrido.'); return; }
+      // Precio de hoy de las ciegas y de sus hermanas (mismo prodId) que sí se barren.
+      const hermanas = {};   // prodId → [precios de las que SÍ ve el robot]
+      const precioDe = {};
+      for (const label of labels) {
+        const acc = accounts[label];
+        if (!acc?.refresh_token) continue;
+        let t; try { t = await mlRefresh(ML_CLIENT_ID, ML_CLIENT_SECRET, acc.refresh_token); } catch { continue; }
+        await db.patch('mlapi/tokens/' + label, { refresh_token: t.refresh_token, updated_ts: Date.now() });
+        const mios = Object.entries(links)
+          .filter(([mla, e]) => e && e.cuenta === label && !e.ignored && e.prodId && /^MLA/i.test(mla))
+          .map(([mla]) => mla);
+        const pedir = [...new Set(mios.concat(bajoLupa.map((r) => r.mla)))];
+        for (let k = 0; k < pedir.length; k += 20) {
+          let arr;
+          try { arr = await mlGet('/items?ids=' + pedir.slice(k, k + 20).join(',') + '&attributes=id,status,price,seller_id', t.access_token); } catch { continue; }
+          for (const row of (arr || [])) {
+            const b = row.body || {}; if (!b.id || b.status !== 'active' || !(b.price > 0)) continue;
+            precioDe[b.id] = b.price;
+            const e = links[b.id];
+            // Solo cuenta como "hermana sana" la que el barrido efectivamente mira.
+            if (e && e.cuenta === label && !e.ignored && e.prodId) (hermanas[e.prodId] = hermanas[e.prodId] || []).push(b.price);
+          }
+        }
+      }
+      bajoLupa.sort((a, b) => b.n - a.n);
+      let atrasadas = 0;
+      for (const r of bajoLupa) {
+        const p = precioDe[r.mla];
+        const hs = (hermanas[r.prodId] || []).filter((x) => x > 0);
+        const ref = hs.length ? Math.max(...hs) : null;
+        const gap = (p && ref && ref > p) ? ((ref / p - 1) * 100) : 0;
+        if (gap > 0.5) atrasadas++;
+        console.log(`  ${r.mla} · ${String(r.n).padStart(3)} ventas · ${(r.prod || '').slice(0, 34).padEnd(34)}`);
+        console.log(`      motivo: ${r.why}`);
+        console.log(`      precio hoy ${p ? money(p) : '(no activa / no la pude leer)'}`
+          + (ref ? ` · hermanas del mismo producto ${money(ref)}${gap > 0.5 ? `  ← ATRASADA ${gap.toFixed(1)}%` : ''}` : ' · sin hermanas para comparar'));
+      }
+      console.log(`\nTotal: ${bajoLupa.length} publicaciones invisibles para el robot de precios, ${atrasadas} con el precio atrasado respecto de sus hermanas.`);
+      console.log(`Se arreglan completando la cuenta / el producto del link en la web (pestaña Publicaciones).`);
+      return;
+    }
     // BILLING_PROBE=precios:<piso>[:<YYYY_MM,...>] → LISTA (solo lee, NO escribe nada en ML) qué
     // precio habría que ponerle a cada publicación para llegar al piso de margen pedido.
     //
