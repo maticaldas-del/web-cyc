@@ -3788,7 +3788,7 @@ async function main() {
       console.log(`         ${bajo} el robot los ve MÁS BARATOS (margen sobreestimado → no subiría lo que hace falta)`);
       return;
     }
-    // BILLING_PROBE=chkcosto[:<YYYY_MM>] → ¿CON QUÉ COSTO ESTÁ VALUANDO LA WEB LO VENDIDO?
+    // BILLING_PROBE=costomes[:<YYYY_MM>] → ¿CON QUÉ COSTO ESTÁ VALUANDO LA WEB LO VENDIDO?
     //
     // La web NO usa el costo actual del producto: si el mes tiene cargado un "precio histórico"
     // (cyc/precios_hist_prod/<mes>/<prodId>), usa ESE. Si ese histórico quedó viejo, todas las ventas
@@ -3798,7 +3798,7 @@ async function main() {
     //   · el costo ACTUAL del producto             (lo que vale hoy)
     //   · el costo CONGELADO en cada venta         (lo que se guardó el día de la venta)
     // y dice cuánta ganancia del mes se explica por la diferencia. Solo LEE.
-    if (String(process.env.BILLING_PROBE || '').startsWith('chkcosto')) {
+    if (String(process.env.BILLING_PROBE || '').startsWith('costomes')) {
       const ym = (String(process.env.BILLING_PROBE).split(':')[1] || '').trim()
         || (() => { const d = new Date(); return d.getFullYear() + '_' + String(d.getMonth() + 1).padStart(2, '0'); })();
       const vp = (await db.get('cyc/ventaprod')) || {};
