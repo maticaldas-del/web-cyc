@@ -3788,6 +3788,80 @@ async function main() {
       console.log(`         ${bajo} el robot los ve MÁS BARATOS (margen sobreestimado → no subiría lo que hace falta)`);
       return;
     }
+    // BILLING_PROBE=chkcosto[:<YYYY_MM>] → ¿CON QUÉ COSTO ESTÁ VALUANDO LA WEB LO VENDIDO?
+    //
+    // La web NO usa el costo actual del producto: si el mes tiene cargado un "precio histórico"
+    // (cyc/precios_hist_prod/<mes>/<prodId>), usa ESE. Si ese histórico quedó viejo, todas las ventas
+    // del mes se valúan con un costo más barato del real y la ganancia del mes sale inflada — sin que
+    // nada avise. Este probe compara, producto por producto:
+    //   · el costo HISTÓRICO cargado para el mes  (el que usa la web)
+    //   · el costo ACTUAL del producto             (lo que vale hoy)
+    //   · el costo CONGELADO en cada venta         (lo que se guardó el día de la venta)
+    // y dice cuánta ganancia del mes se explica por la diferencia. Solo LEE.
+    if (String(process.env.BILLING_PROBE || '').startsWith('chkcosto')) {
+      const ym = (String(process.env.BILLING_PROBE).split(':')[1] || '').trim()
+        || (() => { const d = new Date(); return d.getFullYear() + '_' + String(d.getMonth() + 1).padStart(2, '0'); })();
+      const vp = (await db.get('cyc/ventaprod')) || {};
+      const hist = ((await db.get('cyc/precios_hist_prod')) || {})[ym] || {};
+      const tcMes = (await db.get('cyc/tc_mes')) || {};
+      const fin = (await db.get('cyc/finanzas')) || {};
+      const tcAhora = parseFloat(fin.tipo_cambio) || 1500;
+      const tcDelMes = parseFloat(tcMes[ym]) || tcAhora;
+      const pIdx = {}; for (const p of products) pIdx[p.id] = p;
+      // Ventas del mes, agrupadas por producto.
+      const porProd = {};
+      for (const [k, ents] of Object.entries(vp)) {
+        if (k.slice(0, 7) !== ym) continue;
+        for (const v of Object.values(ents || {})) {
+          if (!v || v.cancelada || !v.prodId) continue;
+          const b = porProd[v.prodId] || (porProd[v.prodId] = { nom: v.prod || v.prodId, qty: 0, n: 0, congelado: 0, neto: 0 });
+          b.qty += v.qty || 1; b.n++; b.congelado += v.costo || 0; b.neto += v.neto || 0;
+        }
+      }
+      console.log(`=== CON QUÉ COSTO SE VALÚA ${ym} ===`);
+      console.log(`Dólar del mes: ${money(tcDelMes)}${tcMes[ym] ? '' : ' (no hay dólar cargado para el mes → usa el de Finanzas)'} · dólar de Finanzas: ${money(tcAhora)}`);
+      console.log(`Precios históricos cargados para ${ym}: ${Object.keys(hist).length} productos\n`);
+      const filas = [];
+      for (const [pid, b] of Object.entries(porProd)) {
+        const p = pIdx[pid]; if (!p) continue;
+        const dev = parseFloat(p.devPct) || 0;
+        const ship = parseFloat(p.shipUSD) || 0;
+        const histUSD = hist[pid] != null ? parseFloat(hist[pid]) : null;
+        const actualUSD = parseFloat(p.costUSD) || 0;
+        const usaUSD = histUSD != null ? histUSD : actualUSD;
+        const aPesos = (u) => (u * (1 + dev / 100) + ship) * tcDelMes * b.qty;
+        const usaWeb = aPesos(usaUSD);          // lo que la web descuenta hoy
+        const conActual = aPesos(actualUSD);    // lo que descontaría con el costo de hoy
+        filas.push({
+          nom: b.nom, qty: b.qty, n: b.n, neto: b.neto,
+          histUSD, actualUSD, usaWeb, conActual, congelado: b.congelado,
+          gapActual: conActual - usaWeb,        // + = la web está descontando de MENOS
+          gapCongelado: usaWeb - b.congelado,   // + = la web descuenta MÁS que lo guardado en la venta
+        });
+      }
+      filas.sort((a, b2) => Math.abs(b2.gapActual) - Math.abs(a.gapActual));
+      const conHist = filas.filter((f) => f.histUSD != null);
+      const desalineados = filas.filter((f) => f.histUSD != null && Math.abs(f.histUSD - f.actualUSD) > 0.001);
+      console.log(`── PRODUCTOS CON PRECIO HISTÓRICO DISTINTO AL ACTUAL (${desalineados.length}) ──`);
+      if (!desalineados.length) console.log('  Ninguno: el histórico del mes coincide con el costo de hoy.');
+      for (const f of desalineados.slice(0, 30)) {
+        const signo = f.gapActual > 0 ? 'la web descuenta DE MENOS' : 'la web descuenta DE MÁS';
+        console.log(`  US$${f.histUSD.toFixed(2)} (histórico) vs US$${f.actualUSD.toFixed(2)} (hoy) · ${f.qty} u. · ${signo} ${money(Math.round(Math.abs(f.gapActual)))} · ${f.nom.slice(0, 38)}`);
+      }
+      if (desalineados.length > 30) console.log(`  … y ${desalineados.length - 30} más`);
+      const totWeb = filas.reduce((s, f) => s + f.usaWeb, 0);
+      const totActual = filas.reduce((s, f) => s + f.conActual, 0);
+      const totCong = filas.reduce((s, f) => s + f.congelado, 0);
+      const totNeto = filas.reduce((s, f) => s + f.neto, 0);
+      console.log(`\n── TOTALES DEL MES (${filas.length} productos con ventas, sin impuestos) ──`);
+      console.log(`  Costo que usa la WEB hoy            ${money(Math.round(totWeb))}`);
+      console.log(`  Costo con el precio ACTUAL          ${money(Math.round(totActual))}   → diferencia ${money(Math.round(totActual - totWeb))}`);
+      console.log(`  Costo CONGELADO en las ventas       ${money(Math.round(totCong))}   → diferencia ${money(Math.round(totWeb - totCong))}`);
+      console.log(`  Neto del mes                        ${money(Math.round(totNeto))}`);
+      console.log(`\n  Si el costo correcto fuera el ACTUAL, la ganancia del mes cambiaría en ${money(Math.round(-(totActual - totWeb)))}.`);
+      console.log(`  (${conHist.length} de ${filas.length} productos tienen precio histórico cargado para ${ym}; el resto usa el costo de hoy.)`);
+      return;
+    }
     // BILLING_PROBE=activarfull[:go][:<piso>] → REACTIVA LAS PAUSADAS QUE TIENEN STOCK EN FULL.
     //
     // Regla pedida: SOLO se reactiva lo que tiene stock EN FULL (en el depósito de ML). Lo que
