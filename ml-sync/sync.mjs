@@ -3799,6 +3799,128 @@ async function main() {
       console.log(`         ${bajo} el robot los ve MÁS BARATOS (margen sobreestimado → no subiría lo que hace falta)`);
       return;
     }
+    // BILLING_PROBE=disperso[:<piso>][:<días>] → ¿CUÁNTO VARÍA LO QUE TE DESCUENTAN ENTRE VENTAS IGUALES?
+    //
+    // Dos ventas del mismo producto al mismo precio no dejan lo mismo. Lo que cambia es la retención
+    // de IIBB (SIRTAC): es 0,90% de TODO lo que pagó el comprador, envío incluido, pero te la sacan
+    // de la plata del producto. Si el comprador pagó un envío Full caro, esa venta queda varios
+    // puntos abajo. Medido: dos infusores a $4.480 el mismo día, uno al 30% y el otro al 26%.
+    //
+    // El precio hoy se calcula con el descuento TÍPICO (la mediana), así que por diseño la mitad de
+    // las ventas cae abajo del piso. Este probe mide, publicación por publicación, cuánto varía ese
+    // descuento y qué precio haría falta para que hasta la PEOR venta llegue al piso.
+    // No cambia nada: solo muestra los dos precios para poder decidir. Solo LEE.
+    if (String(process.env.BILLING_PROBE || '').startsWith('disperso')) {
+      const _d = String(process.env.BILLING_PROBE).split(':');
+      const MIN = (parseFloat(_d[1]) || 30) / 100;
+      const DIAS = parseFloat(_d[2]) || 60;
+      const links = (await db.get('cyc/mllinks')) || {};
+      const vp = (await db.get('cyc/ventaprod')) || {};
+      const fin = (await db.get('cyc/finanzas')) || {};
+      const tc = parseFloat(fin.tipo_cambio) || 1500;
+      const monoP = parseFloat(((await db.get('cyc/monotributo')) || {}).pct) || 0;
+      const cuotasCfg = (await db.get('cyc/mlcuotas')) || {};
+      const pctCuotas = (mla) => { const v = cuotasCfg[mla] && parseFloat(cuotasCfg[mla].pct); return isFinite(v) && v > 0 ? v / 100 : 0; };
+      const pIdx = {}; for (const p of products) pIdx[p.id] = p;
+      const desde = Date.now() - DIAS * 864e5;
+      const vtaMla = {};
+      for (const ents of Object.values(vp)) {
+        for (const v of Object.values(ents || {})) {
+          if (!v || v.cancelada || !v.mla || (v.ts || 0) < desde) continue;
+          const q = v.qty || 1, tot = (v.total || 0) / q, net = (v.neto || 0) / q;
+          if (tot > 0 && net > 0) (vtaMla[v.mla] = vtaMla[v.mla] || []).push({ tot, net });
+        }
+      }
+      const feeCache = {};
+      const feeAt = async (site, price, ltype, cat, token) => {
+        const k = site + '|' + ltype + '|' + cat + '|' + Math.round(price);
+        if (feeCache[k] !== undefined) return feeCache[k];
+        let out = null;
+        try {
+          const d = await mlGet(`/sites/${site}/listing_prices?price=${Math.round(price)}&listing_type_id=${ltype}&category_id=${cat}`, token);
+          const o = Array.isArray(d) ? d[0] : d;
+          if (typeof o?.sale_fee_amount === 'number') out = o.sale_fee_amount;
+        } catch { out = null; }
+        feeCache[k] = out; return out;
+      };
+      console.log(`=== CUÁNTO VARÍA EL DESCUENTO ENTRE VENTAS IGUALES · últimos ${DIAS} días ===`);
+      console.log(`MODO PRUEBA · NO se escribe NADA en ML`);
+      console.log(`"Descuento extra" = precio − neto − comisión de ML. Es sobre todo la retención de IIBB,`);
+      console.log(`que se calcula sobre lo que pagó el comprador (envío incluido) y varía venta por venta.\n`);
+      const filas = [];
+      for (const label of labels) {
+        const acc = accounts[label];
+        if (!acc?.refresh_token) continue;
+        let t; try { t = await mlRefresh(ML_CLIENT_ID, ML_CLIENT_SECRET, acc.refresh_token); } catch { continue; }
+        await db.patch('mlapi/tokens/' + label, { refresh_token: t.refresh_token, updated_ts: Date.now() });
+        const m = (mlExtraPct(label) + monoP) / 100;
+        const ids = Object.entries(links)
+          .filter(([mla, e]) => e && e.cuenta === label && !e.ignored && e.prodId && /^MLA/i.test(mla) && (vtaMla[mla] || []).length >= 3)
+          .map(([mla]) => mla);
+        for (let k = 0; k < ids.length; k += 20) {
+          let arr;
+          try { arr = await mlGet('/items?ids=' + ids.slice(k, k + 20).join(',') + '&attributes=id,status,price,variations,title,listing_type_id,category_id,site_id,catalog_listing', t.access_token); } catch { continue; }
+          for (const row of (arr || [])) {
+            const b = row.body || {}; const mla = b.id;
+            if (!mla || !links[mla] || b.error || typeof b.status === 'number' || b.status !== 'active') continue;
+            if ((b.variations || []).length) continue;   // las de variantes van a mano
+            const p = pIdx[links[mla].prodId]; if (!p) continue;
+            const costo = costoPesos(p, 1, tc).costo; if (!costo) continue;
+            const precio = b.price || 0; if (!precio) continue;
+            const site = b.site_id || 'MLA', lt = b.listing_type_id, cat = b.category_id;
+            // descuento extra de CADA venta = precio − neto − comisión a ESE precio
+            const extras = [];
+            for (const pv of [...new Set(vtaMla[mla].map((v) => Math.round(v.tot)))].slice(-8)) {
+              const cv = await feeAt(site, pv, lt, cat, t.access_token); if (cv == null) continue;
+              for (const v of vtaMla[mla]) if (Math.round(v.tot) === pv) extras.push(Math.max(0, v.tot - v.net - cv));
+            }
+            if (extras.length < 3) continue;
+            extras.sort((a, c) => a - c);
+            const mn = extras[0], med = extras[Math.floor(extras.length / 2)], mx = extras[extras.length - 1];
+            if (mx - mn < precio * 0.002) continue;   // varía menos de 0,2% del precio: no vale la pena
+            const cuo = pctCuotas(mla);
+            const com = await feeAt(site, precio, lt, cat, t.access_token); if (com == null) continue;
+            const mlx = precio * m;
+            const mgDe = (env) => ((precio - com - env - precio * cuo) - costo - mlx) / (costo + mlx) * 100;
+            // precio para que la PEOR venta llegue al piso (mismo punto fijo, con el descuento máximo)
+            const den = 1 - cuo - m * (1 + MIN);
+            if (den <= 0) continue;
+            let P = precio, comP = com, bien = true;
+            for (let it = 0; it < 4; it++) {
+              const Pn = (costo * (1 + MIN) + comP + mx) / den;
+              const c2 = await feeAt(site, Pn, lt, cat, t.access_token);
+              if (c2 == null) { bien = false; break; }
+              if (Math.abs(Pn - P) < 1 && it > 0) { P = Pn; comP = c2; break; }
+              P = Pn; comP = c2;
+            }
+            if (!bien) continue;
+            const nuevo = Math.ceil(P / 10) * 10;
+            // ¿en qué margen quedaría la venta SIN retención grande, a ese precio nuevo?
+            const mgMejor = ((nuevo - comP - mn - nuevo * cuo) - costo - nuevo * m) / (costo + nuevo * m) * 100;
+            filas.push({
+              label, mla, nom: (links[mla].title || b.title || mla).slice(0, 34), precio, nuevo,
+              n: extras.length, mn, med, mx, spread: mx - mn, catalogo: !!b.catalog_listing,
+              mgMin: mgDe(mn), mgMed: mgDe(med), mgMax: mgDe(mx), mgMejor,
+              suba: nuevo / precio - 1,
+            });
+          }
+        }
+      }
+      filas.sort((a, b) => (b.spread / b.precio) - (a.spread / a.precio));
+      console.log(`── PUBLICACIONES DONDE EL DESCUENTO VARÍA · ${filas.length} ──\n`);
+      for (const f of filas) {
+        console.log(`  ${f.label.padEnd(8)} · ${f.mla} · ${f.nom}${f.catalogo ? '  [CATÁLOGO]' : ''}`);
+        console.log(`      descuento extra en ${f.n} ventas: mínimo ${money(Math.round(f.mn))} · típico ${money(Math.round(f.med))} · PEOR ${money(Math.round(f.mx))}`);
+        console.log(`      a ${money(Math.round(f.precio))} de hoy el margen va de ${f.mgMax.toFixed(0)}% (peor venta) a ${f.mgMin.toFixed(0)}% (mejor venta) · típico ${f.mgMed.toFixed(0)}%`);
+        console.log(`      para que hasta la PEOR llegue al ${(MIN * 100).toFixed(0)}%: ${money(Math.round(f.precio))} → ${money(f.nuevo)} (+${(f.suba * 100).toFixed(1)}%) · ahí la mejor quedaría en ${f.mgMejor.toFixed(0)}%`);
+      }
+      const bajoPiso = filas.filter((f) => f.mgMax < MIN * 100).length;
+      const cat = filas.filter((f) => f.catalogo).length;
+      console.log(`\nDe las ${filas.length}, ${bajoPiso} tienen ventas que caen abajo del ${(MIN * 100).toFixed(0)}% por la retención.`);
+      console.log(`${cat} son de CATÁLOGO: ahí subir el precio puede costar la caja de compra. Ojo con esas.`);
+      console.log(`\nRECORDÁ: esto fue solo una LISTA. No se tocó ningún precio en ML.`);
+      return;
+    }
     // BILLING_PROBE=catmono[:<YYYY-MM-DD>] → ¿QUÉ CATEGORÍA DE MONOTRIBUTO LE CORRESPONDE A CADA CUENTA?
     //
     // (Se llama 'catmono' y no 'monocat' porque más arriba hay un probe que agarra todo lo que
