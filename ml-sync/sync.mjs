@@ -3906,18 +3906,25 @@ async function main() {
           }
         }
       }
-      filas.sort((a, b) => (b.spread / b.precio) - (a.spread / a.precio));
-      console.log(`── PUBLICACIONES DONDE EL DESCUENTO VARÍA · ${filas.length} ──\n`);
-      for (const f of filas) {
-        console.log(`  ${f.label.padEnd(8)} · ${f.mla} · ${f.nom}${f.catalogo ? '  [CATÁLOGO]' : ''}`);
+      // Lo único que hay que DECIDIR son las que hoy tienen ventas cayendo abajo del piso y por lo
+      // tanto necesitan SUBIR. El resto ya está cubierto incluso en su peor venta: se muestran en una
+      // línea para que quede constancia, pero no hay nada que hacer con ellas.
+      const subir = filas.filter((f) => f.mgMax < MIN * 100 && f.nuevo > f.precio).sort((a, b) => a.mgMax - b.mgMax);
+      const cubiertas = filas.filter((f) => !(f.mgMax < MIN * 100 && f.nuevo > f.precio));
+      console.log(`── A. LES CAEN VENTAS ABAJO DEL ${(MIN * 100).toFixed(0)}% · HAY QUE SUBIRLAS · ${subir.length} ──\n`);
+      for (const f of subir) {
+        console.log(`  ${f.label.padEnd(8)} · ${f.mla} · ${f.nom}${f.catalogo ? '  ⚠️ CATÁLOGO' : ''}`);
         console.log(`      descuento extra en ${f.n} ventas: mínimo ${money(Math.round(f.mn))} · típico ${money(Math.round(f.med))} · PEOR ${money(Math.round(f.mx))}`);
-        console.log(`      a ${money(Math.round(f.precio))} de hoy el margen va de ${f.mgMax.toFixed(0)}% (peor venta) a ${f.mgMin.toFixed(0)}% (mejor venta) · típico ${f.mgMed.toFixed(0)}%`);
+        console.log(`      a ${money(Math.round(f.precio))} el margen va de ${f.mgMax.toFixed(0)}% (peor venta) a ${f.mgMin.toFixed(0)}% (mejor) · típico ${f.mgMed.toFixed(0)}%`);
         console.log(`      para que hasta la PEOR llegue al ${(MIN * 100).toFixed(0)}%: ${money(Math.round(f.precio))} → ${money(f.nuevo)} (+${(f.suba * 100).toFixed(1)}%) · ahí la mejor quedaría en ${f.mgMejor.toFixed(0)}%`);
       }
-      const bajoPiso = filas.filter((f) => f.mgMax < MIN * 100).length;
-      const cat = filas.filter((f) => f.catalogo).length;
-      console.log(`\nDe las ${filas.length}, ${bajoPiso} tienen ventas que caen abajo del ${(MIN * 100).toFixed(0)}% por la retención.`);
-      console.log(`${cat} son de CATÁLOGO: ahí subir el precio puede costar la caja de compra. Ojo con esas.`);
+      console.log(`\n── B. YA CUBIERTAS: hasta su PEOR venta queda arriba del ${(MIN * 100).toFixed(0)}% · ${cubiertas.length} ──`);
+      cubiertas.sort((a, b) => a.mgMax - b.mgMax).slice(0, 20).forEach((f) => console.log(
+        `  peor ${String(Math.round(f.mgMax)).padStart(4)}% · mejor ${String(Math.round(f.mgMin)).padStart(4)}% · ${money(Math.round(f.precio)).padStart(10)} · ${f.label.padEnd(8)} · ${f.mla} · ${f.nom}${f.catalogo ? ' [catálogo]' : ''}`));
+      if (cubiertas.length > 20) console.log(`  … y ${cubiertas.length - 20} más`);
+      const catSubir = subir.filter((f) => f.catalogo).length;
+      console.log(`\nResumen: de ${filas.length} publicaciones medidas, ${subir.length} necesitan subir para que su peor venta llegue al ${(MIN * 100).toFixed(0)}%.`);
+      console.log(`De esas ${subir.length}, ${catSubir} son de CATÁLOGO: ahí subir puede costar la caja de compra. Esas van una por una.`);
       console.log(`\nRECORDÁ: esto fue solo una LISTA. No se tocó ningún precio en ML.`);
       return;
     }
