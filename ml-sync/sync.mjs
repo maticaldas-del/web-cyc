@@ -3799,6 +3799,171 @@ async function main() {
       console.log(`         ${bajo} el robot los ve MÁS BARATOS (margen sobreestimado → no subiría lo que hace falta)`);
       return;
     }
+    // BILLING_PROBE=bajopiso[:<piso>][:<días>] → TODAS LAS QUE ESTÁN ABAJO DEL PISO, PARA DECIDIR UNA POR UNA
+    //
+    // Una sola lista con todo lo que hace falta para decidir si subirla o no:
+    //   · el margen TÍPICO y el de la PEOR venta (que no es el mismo: la retención de IIBB se calcula
+    //     sobre lo que pagó el comprador, envío incluido, así que varía venta por venta),
+    //   · el precio que la deja en el piso incluso en su peor venta,
+    //   · si es de CATÁLOGO y si ahí estás GANANDO, COMPARTIENDO o PERDIENDO la caja de compra, con el
+    //     precio que haría falta para ganarla. Esto es lo que decide el riesgo: si ya la perdiste,
+    //     subir no te cuesta nada; si la estás ganando, subir puede dejarte sin ventas,
+    //   · si está en un GRUPO de precio (Paulvic): ahí subir una sube TODAS, no se puede de a una,
+    //   · si tiene VARIANTES: esas van a mano.
+    // Y una recomendación por renglón, para que sea rápido decir sí o no. Solo LEE.
+    if (String(process.env.BILLING_PROBE || '').startsWith('bajopiso')) {
+      const _bp = String(process.env.BILLING_PROBE).split(':');
+      const MIN = (parseFloat(_bp[1]) || 30) / 100;
+      const DIAS = parseFloat(_bp[2]) || 60;
+      const links = (await db.get('cyc/mllinks')) || {};
+      const vp = (await db.get('cyc/ventaprod')) || {};
+      const fin = (await db.get('cyc/finanzas')) || {};
+      const tc = parseFloat(fin.tipo_cambio) || 1500;
+      const monoP = parseFloat(((await db.get('cyc/monotributo')) || {}).pct) || 0;
+      const cuotasCfg = (await db.get('cyc/mlcuotas')) || {};
+      const pctCuotas = (mla) => { const v = cuotasCfg[mla] && parseFloat(cuotasCfg[mla].pct); return isFinite(v) && v > 0 ? v / 100 : 0; };
+      const pIdx = {}; for (const p of products) pIdx[p.id] = p;
+      const grupos = (await db.get('cyc/mlconfig/gruposPrecio')) || {};
+      const palabras = Object.keys(grupos)
+        .filter((g) => grupos[g] && grupos[g].palabra && grupos[g].activo !== false)
+        .map((g) => ({ g, palabra: String(grupos[g].palabra).toLowerCase() }));
+      const grupoDe = (e) => {
+        const txt = ((e.title || '') + ' ' + ((pIdx[e.prodId] || {}).name || '')).toLowerCase();
+        const hit = palabras.find((x) => txt.includes(x.palabra));
+        return hit ? hit.g : null;
+      };
+      const desde = Date.now() - DIAS * 864e5;
+      const vtaMla = {};
+      for (const ents of Object.values(vp)) {
+        for (const v of Object.values(ents || {})) {
+          if (!v || v.cancelada || !v.mla || (v.ts || 0) < desde) continue;
+          const q = v.qty || 1, tot = (v.total || 0) / q, net = (v.neto || 0) / q;
+          if (tot > 0 && net > 0) (vtaMla[v.mla] = vtaMla[v.mla] || []).push({ tot, net });
+        }
+      }
+      const feeCache = {};
+      const feeAt = async (site, price, ltype, cat, token) => {
+        const k = site + '|' + ltype + '|' + cat + '|' + Math.round(price);
+        if (feeCache[k] !== undefined) return feeCache[k];
+        let out = null;
+        try {
+          const d = await mlGet(`/sites/${site}/listing_prices?price=${Math.round(price)}&listing_type_id=${ltype}&category_id=${cat}`, token);
+          const o = Array.isArray(d) ? d[0] : d;
+          if (typeof o?.sale_fee_amount === 'number') out = o.sale_fee_amount;
+        } catch { out = null; }
+        feeCache[k] = out; return out;
+      };
+      const ESTADO = { winning: 'GANANDO', sharing_first_place: 'COMPARTIENDO', competing: 'PERDIENDO', losing: 'PERDIENDO' };
+      console.log(`=== TODAS LAS QUE ESTÁN ABAJO DEL ${(MIN * 100).toFixed(0)}% · para decidir una por una ===`);
+      console.log(`MODO PRUEBA · NO se escribe NADA en ML · ventas de los últimos ${DIAS} días`);
+      console.log(`"peor venta" = con la retención más alta que se le vio. "típico" = la retención habitual.\n`);
+      const filas = [], sinDato = [];
+      for (const label of labels) {
+        const acc = accounts[label];
+        if (!acc?.refresh_token) continue;
+        let t; try { t = await mlRefresh(ML_CLIENT_ID, ML_CLIENT_SECRET, acc.refresh_token); } catch { continue; }
+        await db.patch('mlapi/tokens/' + label, { refresh_token: t.refresh_token, updated_ts: Date.now() });
+        const m = (mlExtraPct(label) + monoP) / 100;
+        const ids = Object.entries(links)
+          .filter(([mla, e]) => e && e.cuenta === label && !e.ignored && e.prodId && /^MLA/i.test(mla))
+          .map(([mla]) => mla);
+        for (let k = 0; k < ids.length; k += 20) {
+          let arr;
+          try { arr = await mlGet('/items?ids=' + ids.slice(k, k + 20).join(',') + '&attributes=id,status,price,variations,title,listing_type_id,category_id,site_id,catalog_listing,available_quantity', t.access_token); } catch { continue; }
+          for (const row of (arr || [])) {
+            const b = row.body || {}; const mla = b.id;
+            if (!mla || !links[mla] || b.error || typeof b.status === 'number') continue;
+            const e = links[mla];
+            const nom = (e.title || b.title || mla).slice(0, 34);
+            if (b.status !== 'active') continue;                    // pausada/cerrada: no vende a ningún precio
+            const p = pIdx[e.prodId];
+            if (!p) { sinDato.push({ label, mla, nom, why: 'sin producto en la web' }); continue; }
+            const costo = costoPesos(p, 1, tc).costo;
+            if (!costo) { sinDato.push({ label, mla, nom, why: 'sin costo cargado' }); continue; }
+            const vars = Array.isArray(b.variations) ? b.variations : [];
+            const precio = vars.length ? (vars[0].price || 0) : (b.price || 0);
+            if (!precio) { sinDato.push({ label, mla, nom, why: 'sin precio' }); continue; }
+            const ventas = vtaMla[mla] || [];
+            if (!ventas.length) { sinDato.push({ label, mla, nom, why: `sin ventas en ${DIAS} días para medir el descuento` }); continue; }
+            const site = b.site_id || 'MLA', lt = b.listing_type_id, cat = b.category_id;
+            const com = await feeAt(site, precio, lt, cat, t.access_token);
+            if (com == null) { sinDato.push({ label, mla, nom, why: 'ML no devolvió la comisión' }); continue; }
+            const extras = [];
+            for (const pv of [...new Set(ventas.map((v) => Math.round(v.tot)))].slice(-8)) {
+              const cv = await feeAt(site, pv, lt, cat, t.access_token); if (cv == null) continue;
+              for (const v of ventas) if (Math.round(v.tot) === pv) extras.push(Math.max(0, v.tot - v.net - cv));
+            }
+            if (!extras.length) { sinDato.push({ label, mla, nom, why: 'no pude deducir el descuento' }); continue; }
+            extras.sort((a, c) => a - c);
+            const med = extras[Math.floor(extras.length / 2)], mx = extras[extras.length - 1];
+            const cuo = pctCuotas(mla), mlx = precio * m;
+            const mgDe = (env) => ((precio - com - env - precio * cuo) - costo - mlx) / (costo + mlx) * 100;
+            const mgTip = mgDe(med), mgPeor = mgDe(mx);
+            if (mgPeor >= MIN * 100) continue;    // ni en su peor venta baja del piso: no entra en la lista
+            const den = 1 - cuo - m * (1 + MIN);
+            let nuevo = 0;
+            if (den > 0) {
+              let P = precio, comP = com, bien = true;
+              for (let it = 0; it < 4; it++) {
+                const Pn = (costo * (1 + MIN) + comP + mx) / den;
+                const c2 = await feeAt(site, Pn, lt, cat, t.access_token);
+                if (c2 == null) { bien = false; break; }
+                if (Math.abs(Pn - P) < 1 && it > 0) { P = Pn; comP = c2; break; }
+                P = Pn; comP = c2;
+              }
+              if (bien) nuevo = Math.ceil(P / 10) * 10;
+            }
+            let caja = null;
+            if (b.catalog_listing) {
+              try { caja = await mlGet('/items/' + mla + '/price_to_win?version=v2', t.access_token); } catch { /* */ }
+            }
+            const g = grupoDe(e);
+            // Recomendación: lo que decide el riesgo es si hoy tenés la caja de compra o no.
+            let reco;
+            if (vars.length) reco = '✋ A MANO — tiene variantes (subir una sola hace que ML borre las otras)';
+            else if (g) reco = `⚠️ GRUPO "${g}" — subir esta sube TODAS las del grupo, no se puede de a una`;
+            else if (!b.catalog_listing) reco = '✅ SUBIR — no es de catálogo, no hay caja de compra que perder';
+            else if (!caja) reco = '❓ CATÁLOGO — ML no me dijo si tenés la caja, revisar a mano';
+            else if (caja.status === 'winning') reco = '🛑 NO SUBIR — hoy GANÁS la caja de compra';
+            else if (caja.status === 'sharing_first_place') reco = '🛑 NO SUBIR — hoy COMPARTÍS la caja, subir te saca';
+            else reco = '✅ SUBIR — ya PERDÉS la caja, subir no te cuesta nada';
+            filas.push({
+              label, mla, nom, precio, nuevo, mgTip, mgPeor, med, mx, nV: ventas.length,
+              catalogo: !!b.catalog_listing, caja, grupo: g, nVar: vars.length, reco, prod: p.name || '',
+              suba: nuevo ? nuevo / precio - 1 : 0,
+            });
+          }
+        }
+      }
+      filas.sort((a, b) => a.mgPeor - b.mgPeor);
+      console.log(`── ABAJO DEL ${(MIN * 100).toFixed(0)}% · ${filas.length} publicaciones ──\n`);
+      for (const f of filas) {
+        console.log(`  ${f.label.padEnd(8)} · ${f.mla} · ${f.nom}`);
+        console.log(`      margen: peor venta ${f.mgPeor.toFixed(0)}% · típico ${f.mgTip.toFixed(0)}%   (${f.nV} ventas · descuento típico ${money(Math.round(f.med))}, peor ${money(Math.round(f.mx))})`);
+        console.log(`      precio: ${money(Math.round(f.precio))}` + (f.nuevo ? ` → ${money(f.nuevo)} para el ${(MIN * 100).toFixed(0)}% en su peor venta (+${(f.suba * 100).toFixed(1)}%)` : ' → no pude calcular el precio nuevo'));
+        if (f.catalogo) {
+          const st = f.caja ? (ESTADO[f.caja.status] || f.caja.status) : '¿?';
+          console.log(`      catálogo: ${st}` + (f.caja && f.caja.price_to_win && f.caja.status !== 'winning' ? ` · para ganar la caja hacen falta ${money(Math.round(f.caja.price_to_win))}` : ''));
+        }
+        console.log(`      ${f.reco}\n`);
+      }
+      const cuenta = (txt) => filas.filter((f) => f.reco.includes(txt)).length;
+      console.log(`── RESUMEN PARA DECIDIR ──`);
+      console.log(`  ✅ se pueden subir sin riesgo : ${cuenta('SUBIR')}`);
+      console.log(`  🛑 mejor no tocar (tenés caja): ${cuenta('NO SUBIR')}`);
+      console.log(`  ⚠️ son de un grupo de precio  : ${cuenta('GRUPO')}`);
+      console.log(`  ✋ tienen variantes (a mano)   : ${cuenta('A MANO')}`);
+      console.log(`  ❓ hay que mirarlas a mano     : ${cuenta('revisar a mano')}`);
+      console.log(`\n── NO SE PUDIERON MEDIR · ${sinDato.length} ──`);
+      const porQue = {};
+      for (const f of sinDato) (porQue[f.why] = porQue[f.why] || []).push(f);
+      for (const [why, arr] of Object.entries(porQue).sort((a, b) => b[1].length - a[1].length)) {
+        console.log(`  · ${why} → ${arr.length}`);
+        if (arr.length <= 8) arr.forEach((f) => console.log(`      ${f.label.padEnd(8)} · ${f.mla} · ${f.nom}`));
+      }
+      console.log(`\nRECORDÁ: esto fue solo una LISTA. No se tocó ningún precio en ML.`);
+      return;
+    }
     // BILLING_PROBE=disperso[:<piso>][:<días>] → ¿CUÁNTO VARÍA LO QUE TE DESCUENTAN ENTRE VENTAS IGUALES?
     //
     // Dos ventas del mismo producto al mismo precio no dejan lo mismo. Lo que cambia es la retención
