@@ -3805,8 +3805,11 @@ async function main() {
         const cfu = (p.costFullUSD != null && p.costFullUSD !== '') ? (parseFloat(p.costFullUSD) || 0) : null;
         const s = st[p.id] || { rec: 0, ven: 0 };
         const devLive = s.rec > 0 && s.ven > 0 ? Math.round((s.rec / s.ven) * 1000) / 10 : 0;
-        // ROBOT: costFullUSD si existe; si no, recalcula con devPct guardado.
-        const robot = cfu != null ? cfu : cu * (1 + dpStored / 100) + ship;
+        // ROBOT: lo que el robot USA DE VERDAD hoy, o sea costoPesos(), no una copia de su fórmula.
+        // Antes acá estaba escrita a mano la vieja regla ("costFullUSD guardado"), así que este
+        // chequeo seguía marcando desalineados aunque el robot ya estuviera arreglado: comparaba
+        // contra una fórmula que ya nadie usa. Midiendo la función real, el chequeo sirve de verdad.
+        const robot = costoPesos(p, 1, 1e6).costo / 1e6;   // tc alto = leer el costo en USD sin perder decimales
         // APP: recalcula con reclamos EN VIVO si el producto tiene envío/devPct/reclamos; si no, costFullUSD.
         const usaRecalc = (p.shipUSD != null) || (p.devPct != null) || s.rec > 0;
         const app = usaRecalc ? Math.round((cu * (1 + devLive / 100) + ship) * 100) / 100 : (cfu != null ? cfu : cu);
