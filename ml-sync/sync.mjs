@@ -3799,7 +3799,10 @@ async function main() {
       console.log(`         ${bajo} el robot los ve MÁS BARATOS (margen sobreestimado → no subiría lo que hace falta)`);
       return;
     }
-    // BILLING_PROBE=monocat[:<YYYY-MM-DD>] → ¿QUÉ CATEGORÍA DE MONOTRIBUTO LE CORRESPONDE A CADA CUENTA?
+    // BILLING_PROBE=catmono[:<YYYY-MM-DD>] → ¿QUÉ CATEGORÍA DE MONOTRIBUTO LE CORRESPONDE A CADA CUENTA?
+    //
+    // (Se llama 'catmono' y no 'monocat' porque más arriba hay un probe que agarra todo lo que
+    //  empiece con 'mono' y se lo quedaba antes de llegar acá.)
     //
     // ARCA recategoriza por SEMESTRE: al 5 de agosto se mira lo facturado en los 12 meses cerrados
     // al 30 de junio; al 5 de febrero, los 12 meses cerrados al 31 de diciembre. NO son los últimos
@@ -3807,7 +3810,7 @@ async function main() {
     // Se listan los dos números igual (el del corte y el de hoy) porque el de hoy es el que anticipa
     // la recategorización siguiente.
     // Los topes son los de "venta de cosas muebles" 2026. Solo LEE.
-    if (String(process.env.BILLING_PROBE || '').startsWith('monocat')) {
+    if (String(process.env.BILLING_PROBE || '').startsWith('catmono')) {
       const arg = (String(process.env.BILLING_PROBE).split(':')[1] || '').trim();
       const corte = /^\d{4}-\d{2}-\d{2}$/.test(arg) ? new Date(arg + 'T23:59:59Z').getTime() : Date.parse('2026-06-30T23:59:59Z');
       const TOPES = [
