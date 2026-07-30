@@ -3926,7 +3926,10 @@ async function main() {
             else if (!caja) reco = '❓ CATÁLOGO — ML no me dijo si tenés la caja, revisar a mano';
             else if (caja.status === 'winning') reco = '🛑 NO SUBIR — hoy GANÁS la caja de compra';
             else if (caja.status === 'sharing_first_place') reco = '🛑 NO SUBIR — hoy COMPARTÍS la caja, subir te saca';
-            else reco = '✅ SUBIR — ya PERDÉS la caja, subir no te cuesta nada';
+            else if (caja.status === 'competing' || caja.status === 'losing') reco = '✅ SUBIR — ya PERDÉS la caja, subir no te cuesta nada';
+            // Cualquier otro estado (p. ej. 'listed', sin competencia todavía) NO es "perdiste": si lo
+            // trato como perdido subo el precio de algo que quizás estás ganando. Se revisa a mano.
+            else reco = `❓ CATÁLOGO en estado "${caja.status}" — no es ni ganando ni perdiendo, revisar a mano`;
             filas.push({
               label, mla, nom, precio, nuevo, mgTip, mgPeor, med, mx, nV: ventas.length,
               catalogo: !!b.catalog_listing, caja, grupo: g, nVar: vars.length, reco, prod: p.name || '',
@@ -3947,13 +3950,15 @@ async function main() {
         }
         console.log(`      ${f.reco}\n`);
       }
-      const cuenta = (txt) => filas.filter((f) => f.reco.includes(txt)).length;
+      // Contar por el ÍCONO, no por el texto: 'SUBIR' también matchea 'NO SUBIR' y el resumen
+      // sumaba las dos cosas juntas (decía 19 donde eran 14).
+      const cuenta = (ico) => filas.filter((f) => f.reco.startsWith(ico)).length;
       console.log(`── RESUMEN PARA DECIDIR ──`);
-      console.log(`  ✅ se pueden subir sin riesgo : ${cuenta('SUBIR')}`);
-      console.log(`  🛑 mejor no tocar (tenés caja): ${cuenta('NO SUBIR')}`);
-      console.log(`  ⚠️ son de un grupo de precio  : ${cuenta('GRUPO')}`);
-      console.log(`  ✋ tienen variantes (a mano)   : ${cuenta('A MANO')}`);
-      console.log(`  ❓ hay que mirarlas a mano     : ${cuenta('revisar a mano')}`);
+      console.log(`  ✅ se pueden subir sin riesgo : ${cuenta('✅')}`);
+      console.log(`  🛑 mejor no tocar (tenés caja): ${cuenta('🛑')}`);
+      console.log(`  ⚠️ son de un grupo de precio  : ${cuenta('⚠️')}`);
+      console.log(`  ✋ tienen variantes (a mano)   : ${cuenta('✋')}`);
+      console.log(`  ❓ hay que mirarlas a mano     : ${cuenta('❓')}`);
       console.log(`\n── NO SE PUDIERON MEDIR · ${sinDato.length} ──`);
       const porQue = {};
       for (const f of sinDato) (porQue[f.why] = porQue[f.why] || []).push(f);
