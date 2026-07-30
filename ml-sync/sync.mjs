@@ -3981,6 +3981,252 @@ async function main() {
       console.log(`\nDe las cerradas, ${cerradasVendian} habían vendido en estos ${DIAS} días. Si es 0, las cerradas son historia vieja y no explican el frenazo.`);
       return;
     }
+    // BILLING_PROBE=bajar[:<piso>][:<días>][:go:<MLA|todos>] → BAJAR AL PISO LO QUE NO VENDE
+    //
+    // Al revés del robot: el robot SUBE lo que está por debajo del piso; esto BAJA lo que está por
+    // encima y no vende. Si una publicación está al 33% y hace semanas que no vende a ese precio,
+    // esos 3 puntos no son ganancia, son una venta que no pasa. Se baja hasta el piso EXACTO, nunca
+    // por debajo. Las 4 cuentas de una.
+    //
+    // CONDICIÓN QUE PEDISTE: no tiene que haber vendido a ese precio. Se mide contra las ventas
+    // reales: si en los últimos <días> hay una venta de ESA publicación a (más o menos) el precio de
+    // hoy, no se toca — ese precio funciona.
+    //
+    // TRES ASIMETRÍAS QUE HAY QUE RESPETAR AL BAJAR (subir y bajar NO son simétricos):
+    //   1. ENVÍO: para subir se usa el envío más BARATO visto (así no se sube de más). Acá el error
+    //      caro es el otro: si subestimo el envío, bajo demasiado y se pierde plata en cada venta.
+    //      Por eso se usa el envío MÁS CARO visto. Si aun con el peor envío el margen sigue arriba
+    //      del piso, bajar es seguro. Efecto: el precio que sale es un poco conservador — el 30% de
+    //      acá es el 32-33% medido con el criterio optimista. Es a propósito.
+    //   2. GRUPOS DE PRECIO (Paulvic): nivelarGrupos lleva a todo el grupo al precio MÁS ALTO en cada
+    //      corrida. Si bajo un miembro, en 2 minutos vuelve arriba. Se saltean y se listan aparte.
+    //   3. VARIANTES: bajar una variante sola le manda a ML una lista incompleta y ML BORRA las que
+    //      faltan (stock e historial). No se tocan por acá: se listan para hacerlas a mano.
+    //
+    // Sin ':go' SOLO LISTA. Con ':go:<destino>' escribe en ML, y cada precio escrito se vuelve a leer
+    // para confirmar que quedó el que se pidió.
+    if (String(process.env.BILLING_PROBE || '').startsWith('bajar')) {
+      const _b = String(process.env.BILLING_PROBE).split(':');
+      const MIN = (parseFloat(_b[1]) || 30) / 100;   // piso = destino, sin colchón
+      const DIAS = parseFloat(_b[2]) || 21;          // ventana para "no vendió a este precio"
+      const APLICAR = _b[3] === 'go';
+      const DEST = (_b[4] || '').trim();
+      if (APLICAR && !DEST) { console.log('Para aplicar hace falta el destino: bajar:30:21:go:todos o bajar:30:21:go:MLA123'); return; }
+      const T = MIN;
+      const TOL_PRECIO = 0.015;   // "vendió a este precio" = dentro del 1,5%
+      const MARGEN_MINIMO_PARA_TOCAR = 0.01;  // menos de 1 punto de sobra no justifica escribir en ML
+      const HORAS_FRESCO = 72;    // si el robot le tocó el precio hace menos que esto, no tuvo tiempo de vender
+      const links = (await db.get('cyc/mllinks')) || {};
+      const vp = (await db.get('cyc/ventaprod')) || {};
+      const fin = (await db.get('cyc/finanzas')) || {};
+      const tc = parseFloat(fin.tipo_cambio) || 1500;
+      const monoP = parseFloat(((await db.get('cyc/monotributo')) || {}).pct) || 0;
+      const cuotasCfg = (await db.get('cyc/mlcuotas')) || {};
+      const pctCuotas = (mla) => {
+        const v = cuotasCfg[mla] && parseFloat(cuotasCfg[mla].pct);
+        return isFinite(v) && v > 0 ? v / 100 : 0;
+      };
+      const priced = (await db.get('mlapi/priced')) || {};
+      const pIdx = {}; for (const p of products) pIdx[p.id] = p;
+      // Miembros de grupos de precio: los nivela solo el robot, bajarlos no sirve.
+      const grupos = (await db.get('cyc/mlconfig/gruposPrecio')) || {};
+      const palabras = Object.keys(grupos)
+        .filter((g) => grupos[g] && grupos[g].palabra && grupos[g].activo !== false)
+        .map((g) => ({ g, palabra: String(grupos[g].palabra).toLowerCase() }));
+      const enGrupo = (mla, e) => {
+        const txt = ((e.title || '') + ' ' + ((pIdx[e.prodId] || {}).name || '')).toLowerCase();
+        const hit = palabras.find((x) => txt.includes(x.palabra));
+        return hit ? hit.g : null;
+      };
+      // Ventas: para deducir el envío (historial) y para el test "vendió a este precio" (ventana).
+      const desdeVentana = Date.now() - DIAS * 864e5;
+      const vtaMla = {}, vtaProd = {}, ventanaMla = {}, todasMla = {};
+      for (const [k, ents] of Object.entries(vp)) {
+        if (k.slice(0, 7) < '2026_06') continue;
+        for (const v of Object.values(ents || {})) {
+          if (!v || v.cancelada) continue;
+          const q = v.qty || 1, tot = (v.total || 0) / q, net = (v.neto || 0) / q;
+          if (tot <= 0 || net <= 0) continue;
+          if (v.mla) (vtaMla[v.mla] = vtaMla[v.mla] || []).push({ tot, net });
+          if (v.prodId) (vtaProd[v.prodId] = vtaProd[v.prodId] || []).push({ tot, net });
+          if (v.mla) {
+            (todasMla[v.mla] = todasMla[v.mla] || []).push(tot);
+            if ((v.ts || 0) >= desdeVentana) (ventanaMla[v.mla] = ventanaMla[v.mla] || []).push(tot);
+          }
+        }
+      }
+      const feeCache = {};
+      const feeAt = async (site, price, ltype, cat, token) => {
+        const key = site + '|' + ltype + '|' + cat + '|' + Math.round(price);
+        if (feeCache[key] !== undefined) return feeCache[key];
+        let out = null;
+        try {
+          const d = await mlGet(`/sites/${site}/listing_prices?price=${Math.round(price)}&listing_type_id=${ltype}&category_id=${cat}`, token);
+          const o = Array.isArray(d) ? d[0] : d;
+          if (typeof o?.sale_fee_amount === 'number') out = o.sale_fee_amount;
+        } catch { out = null; }
+        feeCache[key] = out;
+        return out;
+      };
+      console.log(`=== BAJAR AL PISO ${(MIN * 100).toFixed(0)}% LO QUE NO VENDE A SU PRECIO ===`);
+      console.log(APLICAR ? `⚠️  MODO REAL · se escriben precios en ML · destino "${DEST}"` : 'MODO PRUEBA · NO se escribe NADA en ML');
+      console.log(`Dólar ${money(tc)} · impuestos al costo: IIBB por cuenta + monotributo ${monoP.toFixed(2)}%`);
+      console.log(`"No vendió a este precio" = ninguna venta de la publicación en ${DIAS} días a ±1,5% del precio de hoy`);
+      console.log(`Envío: el PEOR visto (al bajar, subestimar el envío es perder plata en cada venta)\n`);
+      const bajar = [], vende = [], yaEnPiso = [], conVar = [], grupo = [], fresco = [], sinDato = [];
+      for (const label of labels) {
+        const acc = accounts[label];
+        if (!acc?.refresh_token) { console.log(`(${label}: sin token, salteada)`); continue; }
+        let t; try { t = await mlRefresh(ML_CLIENT_ID, ML_CLIENT_SECRET, acc.refresh_token); } catch { console.log(`(${label}: no pude renovar token)`); continue; }
+        await db.patch('mlapi/tokens/' + label, { refresh_token: t.refresh_token, updated_ts: Date.now() });
+        const m = (mlExtraPct(label) + monoP) / 100;
+        const ids = Object.entries(links)
+          .filter(([mla, e]) => e && e.cuenta === label && !e.ignored && e.prodId && /^MLA/i.test(mla))
+          .map(([mla]) => mla);
+        for (let k = 0; k < ids.length; k += 20) {
+          const lote = ids.slice(k, k + 20);
+          let arr;
+          try { arr = await mlGet('/items?ids=' + lote.join(',') + '&attributes=id,status,price,variations,title,listing_type_id,category_id,site_id', t.access_token); }
+          catch (e) {
+            for (const mla of lote) sinDato.push({ label, mla, nom: (links[mla] || {}).title || mla, why: `ML no contestó (${String(e.message || e).slice(0, 40)})` });
+            continue;
+          }
+          const vinieron = new Set((arr || []).map((r) => r.body && r.body.id).filter(Boolean));
+          for (const mla of lote) if (!vinieron.has(mla)) sinDato.push({ label, mla, nom: (links[mla] || {}).title || mla, why: 'ML no la devolvió' });
+          for (const row of (arr || [])) {
+            const b = row.body || {}; const mla = b.id; if (!mla || !links[mla]) continue;
+            const e = links[mla];
+            const p = pIdx[e.prodId];
+            const nom = (e.title || b.title || (p && p.name) || mla).slice(0, 34);
+            if (b.error || typeof b.status === 'number') { sinDato.push({ label, mla, nom, why: 'ML devolvió un error' }); continue; }
+            // Solo activas: una pausada no vende a ningún precio, bajarla no cambia nada.
+            if (b.status !== 'active') { sinDato.push({ label, mla, nom, why: `no está activa (${b.status || 'sin estado'})` }); continue; }
+            if (!p) { sinDato.push({ label, mla, nom, why: `el producto ${e.prodId} no existe en la web` }); continue; }
+            const g = enGrupo(mla, e);
+            if (g) { grupo.push({ label, mla, nom, why: `está en el grupo "${g}" (el robot lo nivela al más alto)` }); continue; }
+            const vars = Array.isArray(b.variations) ? b.variations : [];
+            const precio = vars.length ? (vars[0].price || 0) : (b.price || 0);
+            if (!precio) { sinDato.push({ label, mla, nom, why: 'sin precio' }); continue; }
+            const costo = costoPesos(p, 1, tc).costo;
+            if (!costo) { sinDato.push({ label, mla, nom, why: 'sin costo cargado' }); continue; }
+            // ¿Vendió a ESTE precio en la ventana? Si sí, el precio funciona y no se toca.
+            const cerca = (x) => Math.abs(x - precio) <= precio * TOL_PRECIO;
+            const nVentana = (ventanaMla[mla] || []).filter(cerca).length;
+            const nHist = (todasMla[mla] || []).filter(cerca).length;
+            if (nVentana > 0) { vende.push({ label, mla, nom, precio, n: nVentana }); continue; }
+            // ¿Precio recién puesto? Todavía no tuvo tiempo de vender.
+            const ult = priced[mla] && priced[mla].ts;
+            if (ult && (Date.now() - ult) < HORAS_FRESCO * 3600e3) {
+              fresco.push({ label, mla, nom, precio, hs: Math.round((Date.now() - ult) / 3600e3) }); continue;
+            }
+            if (vars.length) { conVar.push({ label, mla, nom, precio, nVar: vars.length }); continue; }
+            const site = b.site_id || 'MLA', lt = b.listing_type_id, cat = b.category_id;
+            const com = await feeAt(site, precio, lt, cat, t.access_token);
+            if (com == null) { sinDato.push({ label, mla, nom, why: 'ML no devolvió la comisión' }); continue; }
+            // Envío: el PEOR visto (ver asimetría 1 arriba).
+            const ventas = (vtaMla[mla] && vtaMla[mla].length) ? vtaMla[mla] : (vtaProd[p.id] || []);
+            if (!ventas.length) { sinDato.push({ label, mla, nom, why: 'sin ventas para deducir el envío' }); continue; }
+            let envio = -Infinity, envioMin = Infinity;
+            for (const pv of [...new Set(ventas.map((v) => Math.round(v.tot)))].slice(-8)) {
+              const cv = await feeAt(site, pv, lt, cat, t.access_token);
+              if (cv == null) continue;
+              for (const v of ventas) {
+                if (Math.round(v.tot) !== pv) continue;
+                const x = v.tot - v.net - cv;
+                if (x > envio) envio = x;
+                if (x < envioMin) envioMin = x;
+              }
+            }
+            if (!isFinite(envio)) { sinDato.push({ label, mla, nom, why: 'no pude deducir el envío' }); continue; }
+            if (envio < 0) envio = 0;
+            if (!isFinite(envioMin) || envioMin < 0) envioMin = 0;
+            const cuo = pctCuotas(mla);
+            const neto = precio - com - envio - precio * cuo;
+            const mlx = precio * m;
+            const mg = (neto - costo - mlx) / (costo + mlx);
+            if (mg <= MIN + MARGEN_MINIMO_PARA_TOCAR) { yaEnPiso.push({ label, mla, nom, precio, mg: mg * 100 }); continue; }
+            // Precio que deja el margen JUSTO en el piso (mismo punto fijo que el robot, con cuotas).
+            const den = 1 - cuo - m * (1 + T);
+            if (den <= 0) { sinDato.push({ label, mla, nom, why: 'el cargo de ML no deja margen a ningún precio' }); continue; }
+            let P = precio, comP = com, bien = true;
+            for (let it = 0; it < 4; it++) {
+              const Pn = (costo * (1 + T) + comP + envio) / den;
+              const c2 = await feeAt(site, Pn, lt, cat, t.access_token);
+              if (c2 == null) { bien = false; break; }
+              if (Math.abs(Pn - P) < 1 && it > 0) { P = Pn; comP = c2; break; }
+              P = Pn; comP = c2;
+            }
+            if (!bien) { sinDato.push({ label, mla, nom, why: 'ML no devolvió la comisión del precio nuevo' }); continue; }
+            const nuevo = Math.ceil(P / 10) * 10;   // redondeo HACIA ARRIBA: nunca queda abajo del piso
+            if (nuevo >= precio) { yaEnPiso.push({ label, mla, nom, precio, mg: mg * 100 }); continue; }
+            const cae = 1 - nuevo / precio;
+            const mgNuevo = ((nuevo - comP - envio - nuevo * cuo) - costo - nuevo * m) / (costo + nuevo * m) * 100;
+            const fila = {
+              label, mla, nom, precio, nuevo, mg: mg * 100, mgNuevo, cae, com, comP, envio, envioMin,
+              costo, mlx, neto, cuo, nHist, tok: t.access_token, prod: p.name || '',
+              cruzaAbajo: precio >= 33000 && nuevo < 33000,
+            };
+            // Freno propio, además del de setPriceTo: una baja de más del 25% no se aplica sola.
+            if (cae > 0.25) fila.grande = true;
+            bajar.push(fila);
+          }
+        }
+      }
+      const ln = (f) => `  ${String(Math.round(f.mg)).padStart(4)}% → ${String(Math.round(f.mgNuevo)).padStart(2)}% · ${money(Math.round(f.precio)).padStart(10)} → ${money(f.nuevo).padStart(10)} (−${(f.cae * 100).toFixed(1)}%) · ${f.label.padEnd(8)} · ${f.mla} · ${f.nom}\n`
+        + `        precio ${money(Math.round(f.precio))} − comisión ${money(Math.round(f.com))} − envío ${money(Math.round(f.envio))} (el PEOR visto; el mejor fue ${money(Math.round(f.envioMin))})`
+        + (f.cuo ? ` − cuotas ${money(Math.round(f.precio * f.cuo))} (${(f.cuo * 100).toFixed(1)}%)` : '') + ` = neto ${money(Math.round(f.neto))}\n`
+        + `        costo mercadería ${money(Math.round(f.costo))} + cargo ML ${money(Math.round(f.mlx))} = ${money(Math.round(f.costo + f.mlx))}`
+        + ` · nunca vendió a ${money(Math.round(f.precio))} en ${DIAS} días${f.nHist ? ` (sí vendió ${f.nHist} veces a ese precio hace más tiempo)` : ''}`
+        + (f.cruzaAbajo ? `\n        ✔ baja de los $33.000: el envío vuelve a pagarlo el comprador, el margen real va a quedar MEJOR que ${Math.round(f.mgNuevo)}%` : '');
+      const aplicables = bajar.filter((f) => !f.grande);
+      const grandes = bajar.filter((f) => f.grande);
+      aplicables.sort((a, b) => b.mg - a.mg);
+      console.log(`── A. SE PUEDEN BAJAR AL PISO · ${aplicables.length} publicaciones ──`);
+      aplicables.forEach((f) => console.log(ln(f)));
+      console.log(`\n── B. BAJA MAYOR AL 25% (a mano: una baja así puede ser un costo mal cargado) · ${grandes.length} ──`);
+      grandes.sort((a, b) => b.cae - a.cae).forEach((f) => console.log(ln(f)));
+      console.log(`\n── C. CON VARIANTES (a mano: bajar una sola variante hace que ML borre las otras) · ${conVar.length} ──`);
+      conVar.forEach((f) => console.log(`  ${money(Math.round(f.precio)).padStart(10)} · ${f.nVar} variantes · ${f.label.padEnd(8)} · ${f.mla} · ${f.nom}`));
+      console.log(`\n── D. EN GRUPO DE PRECIO (no sirve bajarlas, el robot las vuelve a nivelar) · ${grupo.length} ──`);
+      grupo.forEach((f) => console.log(`  ${f.label.padEnd(8)} · ${f.mla} · ${f.nom} · ${f.why}`));
+      console.log(`\n── E. NO SE TOCAN: VENDEN A SU PRECIO DE HOY · ${vende.length} ──`);
+      vende.sort((a, b) => b.n - a.n).forEach((f) => console.log(`  ${money(Math.round(f.precio)).padStart(10)} · ${f.n} venta${f.n > 1 ? 's' : ''} a este precio · ${f.label.padEnd(8)} · ${f.mla} · ${f.nom}`));
+      console.log(`\n── F. PRECIO RECIÉN PUESTO (todavía no tuvo tiempo de vender) · ${fresco.length} ──`);
+      fresco.forEach((f) => console.log(`  ${money(Math.round(f.precio)).padStart(10)} · hace ${f.hs} h · ${f.label.padEnd(8)} · ${f.mla} · ${f.nom}`));
+      console.log(`\n── G. YA ESTÁN EN EL PISO (no hay nada para bajar) · ${yaEnPiso.length} ──`);
+      yaEnPiso.sort((a, b) => b.mg - a.mg).forEach((f) => console.log(`  ${String(Math.round(f.mg)).padStart(4)}% · ${money(Math.round(f.precio)).padStart(10)} · ${f.label.padEnd(8)} · ${f.mla} · ${f.nom}`));
+      console.log(`\n── H. SIN DATOS SUFICIENTES · ${sinDato.length} ──`);
+      sinDato.forEach((f) => console.log(`  ${f.label.padEnd(8)} · ${f.mla} · ${f.nom} · ${f.why}`));
+      if (!APLICAR) { console.log(`\nRECORDÁ: esto fue solo una LISTA. No se tocó ningún precio en ML.`); return; }
+      const objetivo = DEST === 'todos' ? aplicables
+        : /^MLA/i.test(DEST) ? aplicables.filter((f) => f.mla === DEST)
+        : aplicables.filter((f) => (f.nom + ' ' + f.prod).toLowerCase().includes(DEST.toLowerCase()));
+      if (!objetivo.length) { console.log(`\nNo hay nada para bajar con destino "${DEST}".`); return; }
+      console.log(`\n══ BAJANDO ${objetivo.length} precio${objetivo.length > 1 ? 's' : ''} en ML ══`);
+      let okN = 0, errN = 0; const hechos = [];
+      for (const f of objetivo) {
+        const r = DRY ? { ok: false, err: 'DRY' } : await setPriceTo(f.mla, null, f.nuevo, f.tok);
+        if (!r.ok) { errN++; console.log(`  ✗ ${f.mla} · ${f.nom}: no se pudo (${r.err})`); continue; }
+        // Verificación obligatoria: se relee de ML y tiene que estar el precio pedido.
+        let quedo = null;
+        try { quedo = Math.round((await mlGet('/items/' + f.mla + '?attributes=id,price', f.tok)).price || 0); } catch { /* */ }
+        if (quedo !== r.to) {
+          errN++;
+          console.log(`  ⚠️ ${f.mla} · ${f.nom}: ML aceptó ${money(r.to)} pero al releer dice ${quedo == null ? 'no pude leer' : money(quedo)} · REVISAR A MANO`);
+          continue;
+        }
+        okN++; hechos.push({ nom: f.nom, from: r.from, to: r.to, mg: f.mgNuevo });
+        console.log(`  ✓ ${f.mla} · ${f.nom}: ${money(r.from)} → ${money(r.to)} · margen ${Math.round(f.mgNuevo)}% (verificado en ML)`);
+      }
+      console.log(`\nListo: ${okN} bajados, ${errN} con error.`);
+      if (hechos.length) {
+        const lista = hechos.map((h) => `· ${h.nom}: ${money(h.from)} → <b>${money(h.to)}</b> (${Math.round(h.mg)}%)`).join('\n');
+        await sendTelegram(`🔽 <b>Precios bajados al piso del ${(MIN * 100).toFixed(0)}%</b>\n`
+          + `Estaban por encima del piso y no vendían a ese precio.\n\n${lista}`
+          + (errN ? `\n\n⚠️ ${errN} no se pudieron bajar.` : ''));
+      }
+      return;
+    }
     // BILLING_PROBE=chkfact[:go] → ¿LA PESTAÑA MONOTRIBUTO TIENE LOS NÚMEROS BIEN?
     //
     // Esa pestaña usa dos fuentes: para los meses viejos (anteriores a 2026_05) los valores que
