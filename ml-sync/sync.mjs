@@ -4207,9 +4207,27 @@ async function main() {
         if (arr.length <= 6) arr.forEach((f) => console.log(`      ${f.label.padEnd(8)} · ${f.mla} · ${f.nom}`));
       }
       if (!APLICAR) { console.log(`\nRECORDÁ: esto fue solo una LISTA. No se tocó ningún precio en ML.`); return; }
+      // El destino puede ser 'todos', una palabra, o una LISTA de MLA separados por coma (para
+      // aplicar solo las que se eligieron de la lista, sin tocar el resto).
+      const pedidos = DEST.split(',').map((s) => s.trim()).filter((s) => /^MLA/i.test(s));
       const objetivo = DEST === 'todos' ? aplicables
-        : /^MLA/i.test(DEST) ? aplicables.filter((f) => f.mla === DEST)
+        : pedidos.length ? aplicables.filter((f) => pedidos.includes(f.mla))
         : aplicables.filter((f) => (f.nom + ' ' + f.prod).toLowerCase().includes(DEST.toLowerCase()));
+      // Si se pidió una lista y alguna no está, hay que DECIRLO: entre la lista de prueba y ahora
+      // pudo vender a ese precio (y entonces ya no corresponde bajarla) o cambiar de estado.
+      if (pedidos.length) {
+        const faltan = pedidos.filter((m) => !objetivo.some((f) => f.mla === m));
+        for (const m of faltan) {
+          const e = links[m] || {};
+          const donde = vende.find((f) => f.mla === m) ? 'ahora vende a su precio de hoy'
+            : fresco.find((f) => f.mla === m) ? 'le tocaron el precio hace poco'
+            : yaEnPiso.find((f) => f.mla === m) ? 'ya está en el piso'
+            : grupo.find((f) => f.mla === m) ? 'está en un grupo de precio'
+            : conVar.find((f) => f.mla === m) ? 'tiene variantes'
+            : (sinDato.find((f) => f.mla === m) || {}).why || 'no aparece entre las bajables';
+          console.log(`  ⊘ ${m} · ${String(e.title || '').slice(0, 34)}: NO se baja → ${donde}`);
+        }
+      }
       if (!objetivo.length) { console.log(`\nNo hay nada para bajar con destino "${DEST}".`); return; }
       console.log(`\n══ BAJANDO ${objetivo.length} precio${objetivo.length > 1 ? 's' : ''} en ML ══`);
       let okN = 0, errN = 0; const hechos = [];
