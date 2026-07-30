@@ -95,12 +95,51 @@ function mlVariant(it, p) {
 // Sin esto el robot mide el margen "a la vieja" (~13 puntos más alto) y apunta a un piso que no es.
 const ML_EXTRA_PCT = { adriana: 4.07, luciana: 4.37, ayelen: 5.95, matias: 4.58 };
 const mlExtraPct = (cuenta) => { const v = ML_EXTRA_PCT[(cuenta || '').toLowerCase()]; return v != null ? v : 4.8; };
+// ── % de reclamos EN VIVO por producto, igual que la web ───────────────────
+// La web nunca usa el costFullUSD guardado: lo recalcula en cada pantalla como
+//    costo = costUSD × (1 + % reclamos) + envío
+// donde el % de reclamos sale de las ventas reales (reclamos ÷ ventas). El robot, en cambio,
+// confiaba en el costFullUSD guardado, que se escribió cuando ese producto todavía no tenía
+// reclamos. Resultado: el robot veía los productos MÁS BARATOS que la web, calculaba un margen
+// más alto del real, y por lo tanto subía de menos y bajaba de más. Medido: 23 productos
+// desalineados, el 27% de las ventas. En el P47 la diferencia era 5,3% y por eso un precio que
+// yo dejé "en el 30%" vendió al 26%.
+// Esto reconstruye la misma cuenta que la web para que los dos miren el mismo número.
+let DEV_LIVE = {};   // prodId → % de reclamos en vivo
+const _esReclamo = (v) => !!(v && v.cancelada && (v.tipoCancelacion === 'reclamo' || v.tipoCancelacion === 'perdida'));
+const _esCancelada = (v) => !!(v && v.cancelada && (v.tipoCancelacion === 'cancelada' || v.tipoCancelacion === 'devolucion'));
+function setDevLive(vp) {
+  const stats = {};
+  for (const day of Object.values(vp || {})) {
+    if (!day || typeof day !== 'object') continue;
+    for (const v of Object.values(day)) {
+      if (!v || typeof v !== 'object' || !v.prodId) continue;
+      const s = stats[v.prodId] = stats[v.prodId] || { reclamos: 0, ventas: 0 };
+      const q = v.qty || 0;
+      if (_esReclamo(v)) s.reclamos += q;
+      if (!_esCancelada(v)) s.ventas += q;   // los reclamos SÍ son ventas: llegaron al comprador
+    }
+  }
+  const out = {};
+  for (const [id, s] of Object.entries(stats)) {
+    // Mismo redondeo que la web (un decimal), si no el costo queda a centavos de diferencia.
+    out[id] = (s.reclamos > 0 && s.ventas > 0) ? Math.round((s.reclamos / s.ventas) * 1000) / 10 : 0;
+  }
+  DEV_LIVE = out;
+  return out;
+}
 function costoPesos(p, qty, tc) {
   if (!p) return { costo: 0, costBaseUSD: 0, shipUSD: 0 };
   const costUSD = parseFloat(p.costUSD) || 0;
   const shipUSD = parseFloat(p.shipUSD) || 0;
   let fullUSD;
-  if (p.costFullUSD != null && p.costFullUSD !== '') {
+  const devVivo = DEV_LIVE[p.id];
+  // Misma condición que la web: solo recalcula si el producto tiene envío, % cargado o reclamos.
+  // Si no tiene nada de eso, el guardado sigue siendo el bueno.
+  if (devVivo != null && (p.shipUSD != null || p.devPct != null || devVivo > 0)) {
+    // Igual que la web: reclamos en vivo, no el número congelado.
+    fullUSD = Math.round((costUSD * (1 + devVivo / 100) + shipUSD) * 100) / 100;
+  } else if (p.costFullUSD != null && p.costFullUSD !== '') {
     fullUSD = parseFloat(p.costFullUSD) || 0;
   } else {
     const devPct = parseFloat(p.devPct) || 0;
@@ -771,7 +810,7 @@ async function main() {
   // saltea no sale nada (pasó el 27 y 28 de julio). Por eso el workflow lo intenta 3 veces antes de
   // medianoche y acá se guarda el último día enviado para no mandarlo repetido.
   if (process.env.DAILY_SUMMARY) {
-    const vp = (await db.get('cyc/ventaprod')) || {};
+    const vp = (await db.get('cyc/ventaprod')) || {}; setDevLive(vp);
     const arg = String(process.env.DAILY_SUMMARY).trim();
     const forzado = /^\d{4}_\d{2}_\d{2}$/.test(arg);
     // QUÉ DÍA SE RESUME: SIEMPRE EL ANTERIOR. El cron corre pasada la medianoche de Argentina,
@@ -878,7 +917,7 @@ async function main() {
   // para corroborar cuánto se recibe de verdad vs lo que dice el simulador. Solo lee ventaprod.
   if (process.env.DUMP_PRODNETO) {
     const kw = String(process.env.DUMP_PRODNETO || '').toLowerCase();
-    const vp = (await db.get('cyc/ventaprod')) || {};
+    const vp = (await db.get('cyc/ventaprod')) || {}; setDevLive(vp);
     const rows = [];
     const reclamos = [];
     const mlas = {}; // mla → cantidad de ventas (para saber qué publicaciones son)
@@ -930,7 +969,7 @@ async function main() {
     return;
   }
   if (process.env.DUMP_VENTAS) {
-    const vp = (await db.get('cyc/ventaprod')) || {};
+    const vp = (await db.get('cyc/ventaprod')) || {}; setDevLive(vp);
     const all = [];
     for (const ents of Object.values(vp)) for (const v of Object.values(ents || {})) all.push(v);
     const by = {};
@@ -980,7 +1019,7 @@ async function main() {
   if (process.env.DUMP_FACT) {
     const factMes = (await db.get('cyc/fact_mes')) || {};
     const factCancel = (await db.get('cyc/fact_cancel')) || {};
-    const vp = (await db.get('cyc/ventaprod')) || {};
+    const vp = (await db.get('cyc/ventaprod')) || {}; setDevLive(vp);
     // ventas reales por cuenta/mes (sin canceladas)
     const realMes = {};
     for (const [dk, day] of Object.entries(vp)) {
@@ -1067,7 +1106,7 @@ async function main() {
       if (!win) { console.log('Período desconocido:', key); return; }
       const TAXADJ = 0.9695; // 1 − 3.05% impuestos (ratio real de julio)
       const fromDk = dayKeyFromISO(win[0]), toDk = dayKeyFromISO(win[1]);
-      const vp = (await db.get('cyc/ventaprod')) || {};
+      const vp = (await db.get('cyc/ventaprod')) || {}; setDevLive(vp);
       // Σ(total−neto) por cuenta, de las ventas cuyo día cae en la ventana del período
       const grossMinusNet = {};
       for (const [dk, ents] of Object.entries(vp)) {
@@ -1288,7 +1327,7 @@ async function main() {
     // la lista de GASTOS cargados, y el retiro. Para cruzar contra la realidad de MercadoPago.
     if (String(process.env.BILLING_PROBE).startsWith('chkmes:')) {
       const ym = String(process.env.BILLING_PROBE).slice(7).trim(); // 2026_06
-      const vp = (await db.get('cyc/ventaprod')) || {};
+      const vp = (await db.get('cyc/ventaprod')) || {}; setDevLive(vp);
       const perAcc = {};
       for (const [dk, ents] of Object.entries(vp)) {
         if (!dk.startsWith(ym)) continue;
@@ -1382,7 +1421,7 @@ async function main() {
       const pickYM = (_rp[2] || '').split(',').map((s) => s.trim()).filter(Boolean);
       const MLX = { adriana: 4.07, luciana: 4.37, ayelen: 5.95, matias: 4.58 };
       const mlx = (c) => { const v = MLX[(c || '').toLowerCase()]; return v != null ? v : 4.8; };
-      const vp = (await db.get('cyc/ventaprod')) || {};
+      const vp = (await db.get('cyc/ventaprod')) || {}; setDevLive(vp);
       const compras = (await db.get('cyc/compras')) || {};
       const retiros = (await db.get('cyc/retiro_mes')) || {};
       const inventory = (await db.get('cyc/inventory')) || {};
@@ -1573,7 +1612,7 @@ async function main() {
     if (String(process.env.BILLING_PROBE || '').startsWith('envioreal:')) {
       const kw = (String(process.env.BILLING_PROBE).split(':')[1] || '').trim().toLowerCase();
       if (!kw) { console.log('Usá: envioreal:<palabra>'); return; }
-      const vp = (await db.get('cyc/ventaprod')) || {};
+      const vp = (await db.get('cyc/ventaprod')) || {}; setDevLive(vp);
       const links = (await db.get('cyc/mllinks')) || {};
       const pIdx = {}; for (const p of products) pIdx[p.id] = p;
       // Todas las ventas del producto, con su publicación y su variante.
@@ -1799,7 +1838,7 @@ async function main() {
     //    mal: el Pendrive, el Xbox, los Smartwatch.
     if (String(process.env.BILLING_PROBE || '') === 'sindatos') {
       const links = (await db.get('cyc/mllinks')) || {};
-      const vp = (await db.get('cyc/ventaprod')) || {};
+      const vp = (await db.get('cyc/ventaprod')) || {}; setDevLive(vp);
       const pIdx = {}; for (const p of products) pIdx[p.id] = p;
       // publicaciones activas sin ninguna venta registrada (las "sin datos")
       const conVenta = new Set();
@@ -1873,7 +1912,7 @@ async function main() {
       const kw = (_rc[1] || '').trim().toLowerCase();
       const APLICAR = _rc[2] === 'go';
       if (!kw) { console.log('Usá: recosto:<palabra>[:go] — ej recosto:victoria'); return; }
-      const vp = (await db.get('cyc/ventaprod')) || {};
+      const vp = (await db.get('cyc/ventaprod')) || {}; setDevLive(vp);
       const tcHoy = parseFloat(((await db.get('cyc/finanzas')) || {}).tipo_cambio) || 1500;
       const objetivo = products.filter((p) => (p.name || '').toLowerCase().includes(kw));
       if (!objetivo.length) { console.log(`No hay productos con "${kw}".`); return; }
@@ -1930,7 +1969,7 @@ async function main() {
     if (String(process.env.BILLING_PROBE || '').startsWith('repbliss')) {
       const APLICAR = String(process.env.BILLING_PROBE).split(':')[1] === 'go';
       const links = (await db.get('cyc/mllinks')) || {};
-      const vp = (await db.get('cyc/ventaprod')) || {};
+      const vp = (await db.get('cyc/ventaprod')) || {}; setDevLive(vp);
       const bliss = products.find((p) => /bliss/i.test(p.name || ''));
       const comun = products.find((p) => /victoria/i.test(p.name || '') && !/bliss/i.test(p.name || ''));
       if (!bliss) { console.log('No encontré ningún producto Bliss.'); return; }
@@ -2033,7 +2072,7 @@ async function main() {
       const DIAS = parseFloat(String(process.env.BILLING_PROBE).split(':')[1]) || 30;
       const desde = Date.now() - DIAS * 864e5;
       const links = (await db.get('cyc/mllinks')) || {};
-      const vp = (await db.get('cyc/ventaprod')) || {};
+      const vp = (await db.get('cyc/ventaprod')) || {}; setDevLive(vp);
       const pIdx = {}; for (const p of products) pIdx[p.id] = p;
       const uMla = {};
       for (const [k, ents] of Object.entries(vp)) {
@@ -2141,7 +2180,7 @@ async function main() {
       const KEEP = (_fb[1] || '').trim();
       const APLICAR = _fb[2] === 'go';
       const links = (await db.get('cyc/mllinks')) || {};
-      const vp = (await db.get('cyc/ventaprod')) || {};
+      const vp = (await db.get('cyc/ventaprod')) || {}; setDevLive(vp);
       const blissProds = products.filter((p) => /bliss/i.test(p.name || ''));
       console.log(`=== PRODUCTOS "BLISS" EN EL CATÁLOGO · ${blissProds.length} ===\n`);
       for (const p of blissProds) {
@@ -2267,7 +2306,7 @@ async function main() {
     // cuenta puede estar en CERO aunque el total dé bien) y productos con poco historial de ventas.
     if (String(process.env.BILLING_PROBE || '').startsWith('chkrot')) {
       const kw = (String(process.env.BILLING_PROBE).split(':')[1] || '').trim().toLowerCase();
-      const vp = (await db.get('cyc/ventaprod')) || {};
+      const vp = (await db.get('cyc/ventaprod')) || {}; setDevLive(vp);
       const links = (await db.get('cyc/mllinks')) || {};
       const invWeb = (await db.get('cyc/inventory')) || {};
       const pIdx = {}; for (const p of products) pIdx[p.id] = p;
@@ -2366,7 +2405,7 @@ async function main() {
       const PISO = (parseFloat(cfgV.minPct) || 30);
       const META = (parseFloat(cfgV.targetPct) || 32) / 100;
       const desde = Date.now() - DIAS * 864e5;
-      const vp = (await db.get('cyc/ventaprod')) || {};
+      const vp = (await db.get('cyc/ventaprod')) || {}; setDevLive(vp);
       const links = (await db.get('cyc/mllinks')) || {};
       const fin = (await db.get('cyc/finanzas')) || {};
       const tc = parseFloat(fin.tipo_cambio) || 1500;
@@ -2538,7 +2577,7 @@ async function main() {
       const cfgR = (await db.get('cyc/mlconfig')) || {};
       const META = (parseFloat(cfgR.targetPct) || 32) / 100;
       const desde = Date.now() - DIAS * 864e5;
-      const vp = (await db.get('cyc/ventaprod')) || {};
+      const vp = (await db.get('cyc/ventaprod')) || {}; setDevLive(vp);
       const links = (await db.get('cyc/mllinks')) || {};
       const fin = (await db.get('cyc/finanzas')) || {};
       const hist = (await db.get('cyc/stockhist')) || {};
@@ -2709,7 +2748,7 @@ async function main() {
     // en products/<id>/netoCalc para verlo ANTES de vender. No pisa el neto que cargues a mano.
     if (String(process.env.BILLING_PROBE || '').startsWith('netoweb')) {
       const prueba = String(process.env.BILLING_PROBE).split(':')[1] === 'prueba';
-      const vp = (await db.get('cyc/ventaprod')) || {};
+      const vp = (await db.get('cyc/ventaprod')) || {}; setDevLive(vp);
       const links = (await db.get('cyc/mllinks')) || {};
       const fin = (await db.get('cyc/finanzas')) || {};
       const tc = parseFloat(fin.tipo_cambio) || 1500;
@@ -2805,7 +2844,7 @@ async function main() {
       const cfgD = (await db.get('cyc/mlconfig')) || {};
       const META = (parseFloat(cfgD.targetPct) || 32) / 100; // a dónde bajarlos
       const desde = Date.now() - DIAS * 864e5;
-      const vp = (await db.get('cyc/ventaprod')) || {};
+      const vp = (await db.get('cyc/ventaprod')) || {}; setDevLive(vp);
       const links = (await db.get('cyc/mllinks')) || {};
       const fin = (await db.get('cyc/finanzas')) || {};
       const tc = parseFloat(fin.tipo_cambio) || 1500;
@@ -3226,7 +3265,7 @@ async function main() {
       console.log(`Meta guardada hoy: ${(META * 100).toFixed(0)}% · ${BAJAR ? `MODO CORRECCIÓN → destino "${DEST}"` : 'SOLO LECTURA, no se toca nada en ML'}\n`);
       if (!tocados.length) { console.log('Ninguna. El robot no subió precios solo en ese lapso.'); return; }
       const links = (await db.get('cyc/mllinks')) || {};
-      const vp = (await db.get('cyc/ventaprod')) || {};
+      const vp = (await db.get('cyc/ventaprod')) || {}; setDevLive(vp);
       const fin = (await db.get('cyc/finanzas')) || {};
       const tc = parseFloat(fin.tipo_cambio) || 1500;
       const monoP = parseFloat(((await db.get('cyc/monotributo')) || {}).pct) || 0;
@@ -3444,7 +3483,7 @@ async function main() {
       const propio = Math.abs(n('dolares_mati')) + Math.abs(n('dolares_tito'));
       if (propio) console.log(`  De las deudas, ${u(propio)} son los dólares de ustedes (no es plata de terceros).`);
       // Cuánto dura el stock al ritmo de compra actual
-      const vp = (await db.get('cyc/ventaprod')) || {};
+      const vp = (await db.get('cyc/ventaprod')) || {}; setDevLive(vp);
       const desde = dayKeyFromISO(Date.now() - 59 * 864e5);
       let costoVendido = 0;
       for (const [k, ents] of Object.entries(vp)) {
@@ -3462,7 +3501,7 @@ async function main() {
     // porque es la facturación la que define la categoría, no el costo. Muestra mes por mes, el
     // promedio ponderado, y si los gastos están separados por cuenta o vienen en un solo monto.
     if (String(process.env.BILLING_PROBE || '').startsWith('mono')) {
-      const vp = (await db.get('cyc/ventaprod')) || {};
+      const vp = (await db.get('cyc/ventaprod')) || {}; setDevLive(vp);
       const compras = (await db.get('cyc/compras')) || {};
       // Facturación por mes y por cuenta
       const facMes = {}, facCta = {}, facMesCta = {};
@@ -3613,7 +3652,7 @@ async function main() {
     // Diagnóstico: muestra la respuesta cruda de ML para poder verificar los campos.
     if (String(process.env.BILLING_PROBE || '').startsWith('mlfee')) {
       const kw = (String(process.env.BILLING_PROBE).split(':')[1] || '').trim().toLowerCase();
-      const vp = (await db.get('cyc/ventaprod')) || {};
+      const vp = (await db.get('cyc/ventaprod')) || {}; setDevLive(vp);
       const links = (await db.get('cyc/mllinks')) || {};
       // Última venta por publicación (mla)
       const ult = {};
@@ -3679,7 +3718,7 @@ async function main() {
       const _cn = String(process.env.BILLING_PROBE).split(':');
       const kw = (_cn[1] || '').trim().toLowerCase();
       const pickYM = (_cn[2] || '2026_06,2026_07').split(',').map((s) => s.trim()).filter(Boolean);
-      const vp = (await db.get('cyc/ventaprod')) || {};
+      const vp = (await db.get('cyc/ventaprod')) || {}; setDevLive(vp);
       const byProd = {};
       for (const [k, ents] of Object.entries(vp)) {
         if (!pickYM.includes(k.slice(0, 7))) continue;
@@ -3734,7 +3773,7 @@ async function main() {
     // lo tanto un margen distinto. Esto muestra en cuántos productos pasa y cuánto pesa.
     if (String(process.env.BILLING_PROBE || '').startsWith('chkcosto')) {
       const pickYM = (String(process.env.BILLING_PROBE).split(':')[1] || '2026_06,2026_07').split(',').map((s) => s.trim()).filter(Boolean);
-      const vp = (await db.get('cyc/ventaprod')) || {};
+      const vp = (await db.get('cyc/ventaprod')) || {}; setDevLive(vp);
       const fin = (await db.get('cyc/finanzas')) || {};
       const tc = parseFloat(fin.tipo_cambio) || 1500;
       // Reclamos y ventas por producto (mismo criterio que _statsFor de la app: TODO el historial).
@@ -3820,7 +3859,7 @@ async function main() {
       if (APLICAR && !DEST) { console.log('Para aplicar hace falta la lista: bajopiso:30:60:go:MLA123,MLA456'); return; }
       const UMBRAL = 33000;   // arriba de esto ML obliga a envío gratis y lo paga CYC
       const links = (await db.get('cyc/mllinks')) || {};
-      const vp = (await db.get('cyc/ventaprod')) || {};
+      const vp = (await db.get('cyc/ventaprod')) || {}; setDevLive(vp);
       const fin = (await db.get('cyc/finanzas')) || {};
       const tc = parseFloat(fin.tipo_cambio) || 1500;
       const monoP = parseFloat(((await db.get('cyc/monotributo')) || {}).pct) || 0;
@@ -4030,7 +4069,7 @@ async function main() {
       const MIN = (parseFloat(_d[1]) || 30) / 100;
       const DIAS = parseFloat(_d[2]) || 60;
       const links = (await db.get('cyc/mllinks')) || {};
-      const vp = (await db.get('cyc/ventaprod')) || {};
+      const vp = (await db.get('cyc/ventaprod')) || {}; setDevLive(vp);
       const fin = (await db.get('cyc/finanzas')) || {};
       const tc = parseFloat(fin.tipo_cambio) || 1500;
       const monoP = parseFloat(((await db.get('cyc/monotributo')) || {}).pct) || 0;
@@ -4231,7 +4270,7 @@ async function main() {
       const DIAS = parseFloat(_u[3]) || 30;
       if (!/^MLA/.test(MLA)) { console.log('Poné la publicación: unapub:MLA2188775470'); return; }
       const links = (await db.get('cyc/mllinks')) || {};
-      const vp = (await db.get('cyc/ventaprod')) || {};
+      const vp = (await db.get('cyc/ventaprod')) || {}; setDevLive(vp);
       const fin = (await db.get('cyc/finanzas')) || {};
       const tc = parseFloat(fin.tipo_cambio) || 1500;
       const monoP = parseFloat(((await db.get('cyc/monotributo')) || {}).pct) || 0;
@@ -4573,7 +4612,7 @@ async function main() {
       const MARGEN_MINIMO_PARA_TOCAR = 0.01;  // menos de 1 punto de sobra no justifica escribir en ML
       const HORAS_FRESCO = 72;    // si el robot le tocó el precio hace menos que esto, no tuvo tiempo de vender
       const links = (await db.get('cyc/mllinks')) || {};
-      const vp = (await db.get('cyc/ventaprod')) || {};
+      const vp = (await db.get('cyc/ventaprod')) || {}; setDevLive(vp);
       const fin = (await db.get('cyc/finanzas')) || {};
       const tc = parseFloat(fin.tipo_cambio) || 1500;
       const monoP = parseFloat(((await db.get('cyc/monotributo')) || {}).pct) || 0;
@@ -4956,7 +4995,7 @@ async function main() {
         { c: 'K', tope: 126610838.75, cuota: 0 },
       ];
       const catDe = (anual) => CATS.find((x) => anual <= x.tope) || { c: 'K+', tope: Infinity, cuota: 0 };
-      const vp = (await db.get('cyc/ventaprod')) || {};
+      const vp = (await db.get('cyc/ventaprod')) || {}; setDevLive(vp);
       const desde12 = dayKeyFromISO(Date.now() - 365 * 864e5);
       const desde3 = dayKeyFromISO(Date.now() - 90 * 864e5);
       const acc12 = {}, acc3 = {};
@@ -5017,7 +5056,7 @@ async function main() {
     if (String(process.env.BILLING_PROBE || '').startsWith('costomes')) {
       const ym = (String(process.env.BILLING_PROBE).split(':')[1] || '').trim()
         || (() => { const d = new Date(); return d.getFullYear() + '_' + String(d.getMonth() + 1).padStart(2, '0'); })();
-      const vp = (await db.get('cyc/ventaprod')) || {};
+      const vp = (await db.get('cyc/ventaprod')) || {}; setDevLive(vp);
       const hist = ((await db.get('cyc/precios_hist_prod')) || {})[ym] || {};
       const tcMes = (await db.get('cyc/tc_mes')) || {};
       const fin = (await db.get('cyc/finanzas')) || {};
@@ -5133,7 +5172,7 @@ async function main() {
       const T = PISO;                       // destino = piso exacto, sin colchón
       const MAX_UP = 1.25;                  // mismo tope de seguridad de siempre
       const UMBRAL_ENVIO = 33000;           // desde acá ML obliga envío gratis pago por CYC
-      const vp = (await db.get('cyc/ventaprod')) || {};
+      const vp = (await db.get('cyc/ventaprod')) || {}; setDevLive(vp);
       const links = (await db.get('cyc/mllinks')) || {};
       const fin = (await db.get('cyc/finanzas')) || {};
       const tc = parseFloat(fin.tipo_cambio) || 1500;
@@ -5318,7 +5357,7 @@ async function main() {
       const _pp = String(process.env.BILLING_PROBE).split(':');
       const kw = (_pp[1] || '').trim().toLowerCase();
       const DIAS = parseFloat(_pp[2]) || 90;
-      const vp = (await db.get('cyc/ventaprod')) || {};
+      const vp = (await db.get('cyc/ventaprod')) || {}; setDevLive(vp);
       const links = (await db.get('cyc/mllinks')) || {};
       const inventory = (await db.get('cyc/inventory')) || {};
       const pIdx = {}; for (const p of products) pIdx[p.id] = p;
@@ -5438,7 +5477,7 @@ async function main() {
       const _c = String(process.env.BILLING_PROBE).split(':');
       const DIAS = parseFloat(_c[1]) || 90;
       const TOP = parseFloat(_c[2]) || 12;
-      const vp = (await db.get('cyc/ventaprod')) || {};
+      const vp = (await db.get('cyc/ventaprod')) || {}; setDevLive(vp);
       const links = (await db.get('cyc/mllinks')) || {};
       const fin = (await db.get('cyc/finanzas')) || {};
       const tc = parseFloat(fin.tipo_cambio) || 1500;
@@ -5543,7 +5582,7 @@ async function main() {
     // se barren, para ver cuánto quedó atrasada.
     if (String(process.env.BILLING_PROBE || '').startsWith('ciegas')) {
       const DIAS = parseFloat(String(process.env.BILLING_PROBE).split(':')[1]) || 60;
-      const vp = (await db.get('cyc/ventaprod')) || {};
+      const vp = (await db.get('cyc/ventaprod')) || {}; setDevLive(vp);
       const links = (await db.get('cyc/mllinks')) || {};
       const desde = dayKeyFromISO(Date.now() - (DIAS - 1) * 864e5);
       // Ventas por publicación en el período.
@@ -5635,7 +5674,7 @@ async function main() {
       const T = MIN;                                      // destino: el piso EXACTO, sin colchón
       const pickYM = (_cp[2] || '2026_06,2026_07').split(',').map((s) => s.trim()).filter(Boolean);
       const MAX_UP = 1.25;                                // mismo tope de seguridad que el robot
-      const vp = (await db.get('cyc/ventaprod')) || {};
+      const vp = (await db.get('cyc/ventaprod')) || {}; setDevLive(vp);
       const links = (await db.get('cyc/mllinks')) || {};
       const fin = (await db.get('cyc/finanzas')) || {};
       const tc = parseFloat(fin.tipo_cambio) || 1500;
@@ -5907,7 +5946,7 @@ async function main() {
       const pickYM = (_pp[2] || '2026_06,2026_07').split(',').map((s) => s.trim()).filter(Boolean);
       const MLX = { adriana: 4.07, luciana: 4.37, ayelen: 5.95, matias: 4.58 };
       const mlxOf = (c) => { const v = MLX[(c || '').toLowerCase()]; return v != null ? v : 4.8; };
-      const vp = (await db.get('cyc/ventaprod')) || {};
+      const vp = (await db.get('cyc/ventaprod')) || {}; setDevLive(vp);
       const compras = (await db.get('cyc/compras')) || {};
       const retiros = (await db.get('cyc/retiro_mes')) || {};
       const fin = (await db.get('cyc/finanzas')) || {};
@@ -6030,7 +6069,7 @@ async function main() {
       const days = parseInt(parts[1], 10) || 60;
       const DEB = parts[2] != null ? parseFloat(parts[2]) : 0.085; // ratio débito ML sobre neto
       const fromKey = dayKeyFromISO(Date.now() - (days - 1) * 864e5);
-      const vp = (await db.get('cyc/ventaprod')) || {};
+      const vp = (await db.get('cyc/ventaprod')) || {}; setDevLive(vp);
       const fin = (await db.get('cyc/finanzas')) || {};
       const tc = parseFloat(fin.tipo_cambio) || 1500;
       const byProd = {};
@@ -6312,7 +6351,7 @@ async function main() {
   // compara el TÍTULO REAL en ML contra el PRODUCTO que le puso la app. Si casi no comparten
   // palabras, es un enganche equivocado (ej: auriculares Galaxy Buds enganchados al celular A06).
   if (process.env.DUMP_MATCH) {
-    const vp = (await db.get('cyc/ventaprod')) || {};
+    const vp = (await db.get('cyc/ventaprod')) || {}; setDevLive(vp);
     const links = (await db.get('cyc/mllinks')) || {};
     const norm = (s) => (s || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[^a-z0-9]+/g, ' ').trim();
     const STOP = new Set(['con', 'para', 'the', 'and', 'set', 'kit', 'pack', 'black', 'blanco', 'negro', 'white', 'azul', 'rojo', 'gris', 'unidad', 'unidades']);
@@ -6365,7 +6404,7 @@ async function main() {
   // DUMP_SINVIN: diagnostica por qué hay ventas "sin producto" — agrupa por publicación (mla)
   // y dice si esa publicación está en mllinks, si tiene producto asignado y si el producto existe.
   if (process.env.DUMP_SINVIN) {
-    const vp = (await db.get('cyc/ventaprod')) || {};
+    const vp = (await db.get('cyc/ventaprod')) || {}; setDevLive(vp);
     const map = (await db.get('cyc/mllinks')) || {};
     const byMla = {};
     for (const day of Object.values(vp)) for (const v of Object.values(day || {})) {
@@ -6398,7 +6437,7 @@ async function main() {
   if (process.env.DUMP_COSTS) {
     const days = parseInt(process.env.DUMP_COSTS, 10) || 90;
     const fromKey = dayKeyFromISO(Date.now() - (days - 1) * 864e5);
-    const vp = (await db.get('cyc/ventaprod')) || {};
+    const vp = (await db.get('cyc/ventaprod')) || {}; setDevLive(vp);
     const bands = [
       { lbl: '< $15.000  ', lo: 0, hi: 15000 },
       { lbl: '$15k – $30k', lo: 15000, hi: 30000 },
@@ -6491,7 +6530,7 @@ async function main() {
     const fromKey = dayKeyFromISO(fromMs), toKey = dayKeyFromISO(Date.now());
     const fromISO = new Date(fromMs).toISOString().replace(/\.\d+Z$/, '.000-00:00');
     const grossOf = (o) => (o.order_items || []).reduce((s, it) => s + (it.unit_price || 0) * (it.quantity || 0), 0);
-    const vp = (await db.get('cyc/ventaprod')) || {};
+    const vp = (await db.get('cyc/ventaprod')) || {}; setDevLive(vp);
     console.log(`RECONCILIACIÓN últimos ${days} días · ventana app ${fromKey} → ${toKey}\n`);
     const acumML = {}, acumApp = {};
     for (const label of labels) {
@@ -6534,7 +6573,7 @@ async function main() {
     const [yy, mm] = ym.split('_').map(Number);
     const startMs = new Date(yy, mm - 1, 1).getTime();
     const endMs = new Date(yy, mm, 1).getTime() - 1; // último ms del mes
-    const vp = (await db.get('cyc/ventaprod')) || {};
+    const vp = (await db.get('cyc/ventaprod')) || {}; setDevLive(vp);
     const app = {};
     for (const [dk, ents] of Object.entries(vp)) {
       if (String(dk).slice(0, 7) !== ym) continue;
@@ -6736,7 +6775,7 @@ async function main() {
       for (const o of canc) if (o.pack_id && String(o.pack_id) !== String(o.id)) packMap[String(o.id)] = String(o.pack_id);
       console.log(`  ${label}: ${paid.length} pagadas + ${canc.length} canceladas revisadas`);
     }
-    const vp = (await db.get('cyc/ventaprod')) || {};
+    const vp = (await db.get('cyc/ventaprod')) || {}; setDevLive(vp);
     const updates = {}; let n = 0;
     for (const [dk, day] of Object.entries(vp)) {
       for (const [id, v] of Object.entries(day || {})) {
@@ -6757,7 +6796,7 @@ async function main() {
   }
   // BACKUP_VP: copia de seguridad de todas las ventas actuales (por si hay que volver atrás)
   if (process.env.BACKUP_VP) {
-    const vp = (await db.get('cyc/ventaprod')) || {};
+    const vp = (await db.get('cyc/ventaprod')) || {}; setDevLive(vp);
     let n = 0; for (const day of Object.values(vp)) n += Object.keys(day || {}).length;
     await db.set('cyc/ventaprod_bak', vp);
     console.log(`✓ Backup hecho: ${n} ventas copiadas a cyc/ventaprod_bak`);
@@ -6788,7 +6827,7 @@ async function main() {
   if (process.env.CLEAN_VP) {
     const months = parseInt(process.env.CLEAN_VP, 10) || 12;
     const cutoff = Date.now() - Math.round(months * 30.44 * 864e5);
-    const vp = (await db.get('cyc/ventaprod')) || {};
+    const vp = (await db.get('cyc/ventaprod')) || {}; setDevLive(vp);
     let total = 0, keep = 0, delOld = 0, delNoNum = 0, delNotApi = 0;
     const delPaths = []; const sample = [];
     for (const [dk, day] of Object.entries(vp)) {
@@ -6832,7 +6871,7 @@ async function main() {
   // si se vuelve a correr. Con DRY_RUN=1 solo muestra qué meses rellenaría.
   if (process.env.FILL_GASTOS) {
     const amount = 800000;
-    const vp = (await db.get('cyc/ventaprod')) || {};
+    const vp = (await db.get('cyc/ventaprod')) || {}; setDevLive(vp);
     const compras = (await db.get('cyc/compras')) || {};
     const salesMonths = new Set();
     for (const [dk, day] of Object.entries(vp)) {
@@ -6867,7 +6906,7 @@ async function main() {
   // fact_mes y fact_cancel en *_bak. Con DRY_RUN=1 solo muestra qué haría.
   if (process.env.PURGE_BEFORE) {
     const cutoff = String(process.env.PURGE_BEFORE).trim(); // ej 2026_01_01
-    const vp = (await db.get('cyc/ventaprod')) || {};
+    const vp = (await db.get('cyc/ventaprod')) || {}; setDevLive(vp);
     const factMes = (await db.get('cyc/fact_mes')) || {};
     const factCancel = (await db.get('cyc/fact_cancel')) || {};
     const frozen = {}; // acct → ym → facturación bruta del mes
@@ -6936,7 +6975,7 @@ async function main() {
   // cambió un match y no se reflejó. Actualiza nombre, prodId, variante y costo. Backup
   // en cyc/ventaprod_bak. DRY_RUN=1 solo muestra cuántas cambiarían, por producto.
   if (process.env.RESYNC_VP) {
-    const vp = (await db.get('cyc/ventaprod')) || {};
+    const vp = (await db.get('cyc/ventaprod')) || {}; setDevLive(vp);
     const map = (await db.get('cyc/mllinks')) || {};
     const tc = parseFloat(((await db.get('cyc/finanzas')) || {}).tipo_cambio) || 1500;
     const updates = {}; let n = 0; const byProd = {};
@@ -7085,7 +7124,7 @@ async function main() {
       return best;
     };
     const famProd = {}; for (const f of fams) famProd[f.kw] = products.find((pp) => norm(pp.name) === norm(f.prod));
-    const vp = (await db.get('cyc/ventaprod')) || {};
+    const vp = (await db.get('cyc/ventaprod')) || {}; setDevLive(vp);
     // 1) publicaciones (mla) con ventas sin producto
     const salesByMla = {};
     for (const day of Object.values(vp)) for (const v of Object.values(day || {})) {
@@ -7139,7 +7178,7 @@ async function main() {
 
   // ventas ya cargadas a mano / por cowork (para no duplicarlas). Las nuestras
   // (origen ml-api) usan id determinístico, así que reescribirlas es inofensivo.
-  const ventaprod = (await db.get('cyc/ventaprod')) || {};
+  const ventaprod = (await db.get('cyc/ventaprod')) || {}; setDevLive(ventaprod);
   const seenManual = new Set();
   // índice: nº de venta → dónde quedó cargada (para poder quitarla si se cancela)
   const loadedByNum = new Map();
@@ -7176,7 +7215,7 @@ async function main() {
     const imp = mono.impuesto || {};
     const totImp = Object.values(imp).reduce((s, x) => s + (parseFloat(x) || 0), 0);
     if (totImp > 0) {
-      const vpAll = (await db.get('cyc/ventaprod')) || {};
+      const vpAll = (await db.get('cyc/ventaprod')) || {}; setDevLive(vpAll);
       const desde = dayKeyFromISO(Date.now() - 89 * 864e5);
       let fact90 = 0;
       for (const [k, ents] of Object.entries(vpAll)) {
@@ -7373,7 +7412,7 @@ async function main() {
   if (process.env.DUMP_ORDER) {
     // acepta uno o varios números separados por coma (para comparar ventas).
     const oids = String(process.env.DUMP_ORDER).split(',').map((s) => s.trim()).filter(Boolean);
-    const vp = (await db.get('cyc/ventaprod')) || {};
+    const vp = (await db.get('cyc/ventaprod')) || {}; setDevLive(vp);
     for (const oidIn of oids) {
       // 1) qué quedó guardado en el panel. Además, sacamos el order.id interno
       // (guardado como id='v'+order.id+'_'+idx / saleId='s'+order.id) para poder
@@ -7497,7 +7536,7 @@ async function main() {
   // DUMP_MARGINS: productos ordenados por margen REAL (peor a mejor), con el neto
   // real ya cargado (que descuenta Full). Sirve para ver dónde perdés. Solo lectura.
   if (process.env.DUMP_MARGINS) {
-    const vp = (await db.get('cyc/ventaprod')) || {};
+    const vp = (await db.get('cyc/ventaprod')) || {}; setDevLive(vp);
     const agg = {};
     for (const day of Object.values(vp)) {
       for (const v of Object.values(day || {})) {
