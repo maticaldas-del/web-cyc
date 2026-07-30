@@ -3815,6 +3815,10 @@ async function main() {
       const _bp = String(process.env.BILLING_PROBE).split(':');
       const MIN = (parseFloat(_bp[1]) || 30) / 100;
       const DIAS = parseFloat(_bp[2]) || 60;
+      const APLICAR = _bp[3] === 'go';
+      const DEST = (_bp[4] || '').trim();
+      if (APLICAR && !DEST) { console.log('Para aplicar hace falta la lista: bajopiso:30:60:go:MLA123,MLA456'); return; }
+      const UMBRAL = 33000;   // arriba de esto ML obliga a envío gratis y lo paga CYC
       const links = (await db.get('cyc/mllinks')) || {};
       const vp = (await db.get('cyc/ventaprod')) || {};
       const fin = (await db.get('cyc/finanzas')) || {};
@@ -3933,7 +3937,8 @@ async function main() {
             filas.push({
               label, mla, nom, precio, nuevo, mgTip, mgPeor, med, mx, nV: ventas.length,
               catalogo: !!b.catalog_listing, caja, grupo: g, nVar: vars.length, reco, prod: p.name || '',
-              suba: nuevo ? nuevo / precio - 1 : 0,
+              suba: nuevo ? nuevo / precio - 1 : 0, tok: t.access_token,
+              cruza: !!(nuevo && precio < UMBRAL && nuevo >= UMBRAL),
             });
           }
         }
@@ -3966,7 +3971,44 @@ async function main() {
         console.log(`  · ${why} → ${arr.length}`);
         if (arr.length <= 8) arr.forEach((f) => console.log(`      ${f.label.padEnd(8)} · ${f.mla} · ${f.nom}`));
       }
-      console.log(`\nRECORDÁ: esto fue solo una LISTA. No se tocó ningún precio en ML.`);
+      if (!APLICAR) { console.log(`\nRECORDÁ: esto fue solo una LISTA. No se tocó ningún precio en ML.`); return; }
+      // ── Aplicar SOLO las que se pidieron, y solo si siguen siendo seguras ──
+      const pedidos = DEST.split(',').map((s) => s.trim().toUpperCase()).filter((s) => /^MLA/.test(s));
+      const objetivo = [], frenadas = [];
+      for (const mla of pedidos) {
+        const f = filas.find((x) => x.mla === mla);
+        if (!f) { frenadas.push({ mla, why: 'ya no figura abajo del piso (cambió algo desde la lista)' }); continue; }
+        if (!f.nuevo || f.nuevo <= f.precio) { frenadas.push({ mla, why: 'no hay precio nuevo que calcular' }); continue; }
+        // Freno duro: cruzar los $33.000 cambia quién paga el envío, así que el precio calculado
+        // con el régimen de hoy deja de valer. No se toca aunque se haya pedido.
+        if (f.cruza) { frenadas.push({ mla, why: `el precio nuevo (${money(f.nuevo)}) cruza los $33.000 y ahí el envío pasa a pagarlo CYC: el cálculo deja de valer` }); continue; }
+        if (!f.reco.startsWith('✅')) { frenadas.push({ mla, why: f.reco.replace(/^\S+\s/, '') }); continue; }
+        objetivo.push(f);
+      }
+      for (const x of frenadas) console.log(`  ⊘ ${x.mla}: NO se sube → ${x.why}`);
+      if (!objetivo.length) { console.log(`\nNo quedó ninguna para subir.`); return; }
+      console.log(`\n══ SUBIENDO ${objetivo.length} precio${objetivo.length > 1 ? 's' : ''} en ML ══`);
+      let okN = 0, errN = 0; const hechos = [];
+      for (const f of objetivo) {
+        const r = DRY ? { ok: false, err: 'DRY' } : await raisePriceTo(f.mla, f.nuevo, f.tok);
+        if (!r.ok) { errN++; console.log(`  ✗ ${f.mla} · ${f.nom}: no se pudo (${r.err})`); continue; }
+        let quedo = null;
+        try { quedo = Math.round((await mlGet('/items/' + f.mla + '?attributes=id,price', f.tok)).price || 0); } catch { /* */ }
+        if (quedo !== r.to) {
+          errN++;
+          console.log(`  ⚠️ ${f.mla} · ${f.nom}: ML aceptó ${money(r.to)} pero al releer dice ${quedo == null ? 'no pude leer' : money(quedo)} · REVISAR A MANO`);
+          continue;
+        }
+        okN++; hechos.push({ nom: f.nom, from: r.from, to: r.to });
+        console.log(`  ✓ ${f.mla} · ${f.nom}: ${money(r.from)} → ${money(r.to)} (verificado en ML)`);
+      }
+      console.log(`\nListo: ${okN} subidos, ${errN} con error.`);
+      if (hechos.length) {
+        const lista = hechos.map((h) => `· ${h.nom}: ${money(h.from)} → <b>${money(h.to)}</b>`).join('\n');
+        await sendTelegram(`🔼 <b>Precios subidos al piso del ${(MIN * 100).toFixed(0)}%</b>\n`
+          + `Ahora el piso se mide con la PEOR venta, no con la típica.\n\n${lista}`
+          + (errN ? `\n\n⚠️ ${errN} no se pudieron subir.` : ''));
+      }
       return;
     }
     // BILLING_PROBE=disperso[:<piso>][:<días>] → ¿CUÁNTO VARÍA LO QUE TE DESCUENTAN ENTRE VENTAS IGUALES?
