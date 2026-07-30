@@ -3799,6 +3799,92 @@ async function main() {
       console.log(`         ${bajo} el robot los ve MÁS BARATOS (margen sobreestimado → no subiría lo que hace falta)`);
       return;
     }
+    // BILLING_PROBE=salud[:<cuenta>][:<días>] → ¿POR QUÉ UNA CUENTA DEJÓ DE VENDER?
+    //
+    // Tres cosas de una, que son las que explican casi siempre un frenazo:
+    //   1. Ventas por día (de ML, no del panel) → ¿es real o es que no se cargaron?
+    //   2. Publicaciones activas vs pausadas → ¿ML te bajó algo?
+    //   3. Precios que tocó el robot en las últimas 48 h → ¿lo causamos nosotros?
+    // Solo LEE.
+    if (String(process.env.BILLING_PROBE || '').startsWith('salud')) {
+      const _s = String(process.env.BILLING_PROBE).split(':');
+      const soloCuenta = (_s[1] || '').trim().toLowerCase();
+      const DIAS = parseFloat(_s[2]) || 12;
+      const links = (await db.get('cyc/mllinks')) || {};
+      const priced = (await db.get('mlapi/priced')) || {};
+      const desdeMs = Date.now() - DIAS * 864e5;
+      const dia = (iso) => String(iso || '').slice(0, 10);
+      console.log(`=== SALUD DE LAS CUENTAS · últimos ${DIAS} días ===`);
+      console.log(`MODO PRUEBA · no se escribe nada · las ventas salen de ML\n`);
+      const porDia = {}, resumen = {};
+      for (const label of labels) {
+        if (soloCuenta && label.toLowerCase() !== soloCuenta) continue;
+        const acc = accounts[label];
+        if (!acc?.refresh_token || !acc.seller_id) { console.log(`(${label}: sin token)`); continue; }
+        let t; try { t = await mlRefresh(ML_CLIENT_ID, ML_CLIENT_SECRET, acc.refresh_token); } catch { console.log(`(${label}: no pude renovar token)`); continue; }
+        await db.patch('mlapi/tokens/' + label, { refresh_token: t.refresh_token, updated_ts: Date.now() });
+        // 1) ventas por día
+        let ords = [];
+        try { ords = await fetchOrdersRange(acc.seller_id, t.access_token, desdeMs, Date.now()); } catch { /* */ }
+        for (const o of (ords || [])) {
+          const d = dia(o.date_created || o.date_closed); if (!d) continue;
+          porDia[d] = porDia[d] || {};
+          porDia[d][label] = porDia[d][label] || { n: 0, $: 0 };
+          porDia[d][label].n++; porDia[d][label].$ += Number(o.total_amount) || 0;
+        }
+        // 2) estado de las publicaciones
+        const ids = Object.entries(links).filter(([m, e]) => e && e.cuenta === label && !e.ignored && /^MLA/i.test(m)).map(([m]) => m);
+        const est = { active: 0, paused: 0, closed: 0, otro: 0 };
+        const pausadas = [];
+        for (let k = 0; k < ids.length; k += 20) {
+          let arr;
+          try { arr = await mlGet('/items?ids=' + ids.slice(k, k + 20).join(',') + '&attributes=id,status,price,title,available_quantity', t.access_token); } catch { continue; }
+          for (const row of (arr || [])) {
+            const b = row.body || {}; if (!b.id || b.error || typeof b.status === 'number') continue;
+            if (est[b.status] != null) est[b.status]++; else est.otro++;
+            if (b.status === 'paused') pausadas.push({ mla: b.id, nom: (links[b.id]?.title || b.title || b.id).slice(0, 38), stock: b.available_quantity });
+          }
+        }
+        resumen[label] = { est, pausadas, ids: ids.length };
+      }
+      // ── Ventas por día
+      const dias = Object.keys(porDia).sort();
+      const cols = labels.filter((l) => !soloCuenta || l.toLowerCase() === soloCuenta);
+      console.log(`── VENTAS POR DÍA (cantidad · facturado) ──`);
+      console.log(`  día        ` + cols.map((l) => l.slice(0, 9).padStart(20)).join(''));
+      for (const d of dias) {
+        const row = cols.map((l) => {
+          const x = porDia[d][l];
+          return (x ? `${String(x.n).padStart(4)} · ${money(Math.round(x.$)).padStart(13)}` : `${'—'.padStart(20)}`);
+        }).join('');
+        console.log(`  ${d}${row}`);
+      }
+      // ── Estado de publicaciones
+      console.log(`\n── PUBLICACIONES ──`);
+      for (const [label, r] of Object.entries(resumen)) {
+        console.log(`  ${label.padEnd(9)} ${r.est.active} activas · ${r.est.paused} pausadas · ${r.est.closed} cerradas`
+          + (r.est.otro ? ` · ${r.est.otro} en otro estado` : '') + `  (de ${r.ids} vinculadas)`);
+      }
+      // ── Pausadas con stock (las que más duelen)
+      for (const [label, r] of Object.entries(resumen)) {
+        const conStock = r.pausadas.filter((p) => (p.stock || 0) > 0);
+        if (!conStock.length) continue;
+        console.log(`\n  ⚠️ ${label}: ${conStock.length} pausadas que todavía declaran stock`);
+        conStock.slice(0, 15).forEach((p) => console.log(`      ${p.mla} · ${p.stock} u. · ${p.nom}`));
+        if (conStock.length > 15) console.log(`      … y ${conStock.length - 15} más`);
+      }
+      // ── ¿Tocamos precios hace poco?
+      const hace48 = Date.now() - 2 * 864e5;
+      const recientes = Object.entries(priced)
+        .filter(([, v]) => v && v.ts && v.ts >= hace48)
+        .map(([mla, v]) => ({ mla, ts: v.ts, to: v.to, cuenta: (links[mla] || {}).cuenta || '?', nom: (links[mla] || {}).title || mla }))
+        .filter((r) => !soloCuenta || r.cuenta.toLowerCase() === soloCuenta);
+      console.log(`\n── PRECIOS QUE TOCÓ EL ROBOT EN LAS ÚLTIMAS 48 HORAS · ${recientes.length} ──`);
+      if (!recientes.length) console.log(`  Ninguno. El robot no subió precios en ese lapso.`);
+      recientes.sort((a, b) => b.ts - a.ts).slice(0, 25).forEach((r) => console.log(
+        `  ${new Date(r.ts).toISOString().slice(0, 16).replace('T', ' ')} · ${r.cuenta.padEnd(9)} · ${money(r.to).padStart(11)} · ${r.mla} · ${String(r.nom).slice(0, 34)}`));
+      return;
+    }
     // BILLING_PROBE=chkfact[:go] → ¿LA PESTAÑA MONOTRIBUTO TIENE LOS NÚMEROS BIEN?
     //
     // Esa pestaña usa dos fuentes: para los meses viejos (anteriores a 2026_05) los valores que
