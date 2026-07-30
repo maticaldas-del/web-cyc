@@ -7641,9 +7641,15 @@ async function main() {
               + `${p.name}${variant ? ' · ' + variant : ''}\nCuenta: ${label}\n`;
             const varId = it.item?.variation_id || null;
             const yaTocado = priced[mla] && (Date.now() - (priced[mla].ts || 0)) < 12 * 3600e3;
+            // REGLA FIJA: el robot NUNCA cruza solo los $33.000. Arriba de esa línea ML obliga a
+            // envío gratis y lo paga CYC (unos $6.000 por venta), así que el precio calculado con el
+            // envío de hoy deja de valer: la "suba" puede dejar el margen PEOR que antes. Cuando el
+            // precio nuevo pasa la barrera, no se toca nada y se avisa para que lo decidas vos.
+            const cruzaUmbral = unit < UMBRAL_ENVIO_GRATIS && sugUnit >= UMBRAL_ENVIO_GRATIS;
             let done = false;
-            // subir solo: activo, dentro del tope de seguridad y sin haberlo tocado hace poco
-            if (autoPrice && mult <= MAX_UP && !yaTocado) {
+            // subir solo: activo, dentro del tope de seguridad, sin haberlo tocado hace poco y sin
+            // cruzar la barrera de los $33.000
+            if (autoPrice && mult <= MAX_UP && !yaTocado && !cruzaUmbral) {
               const rp = await raisePrice(mla, varId, mult, t.access_token);
               if (rp.ok) {
                 pricedUpd[mla] = { ts: Date.now(), to: rp.to };
@@ -7656,9 +7662,11 @@ async function main() {
             }
             // si no se pudo subir solo (apagado, tope, catálogo, error…): avisar
             if (!done) {
-              const motivo = !autoPrice ? '' : (mult > MAX_UP
-                ? '\n⚠️ Subida grande, revisalo vos'
-                : (yaTocado ? '\n(ya lo toqué hace poco)' : '\n(no pude subirlo solo)'));
+              const motivo = cruzaUmbral
+                ? `\n\n🛑 <b>NO lo subí solo: cruza los $33.000.</b>\nDe ${money(unit)} pasaría a ${money(sugUnit)}, y arriba de $33.000 el envío gratis lo paga CYC (~$6.000 por venta). Con ese envío el precio que hace falta es bastante más alto que ${money(sugUnit)}. Decidilo vos.`
+                : (!autoPrice ? '' : (mult > MAX_UP
+                  ? '\n⚠️ Subida grande, revisalo vos'
+                  : (yaTocado ? '\n(ya lo toqué hace poco)' : '\n(no pude subirlo solo)')));
               await sendTelegram(`⚠️ <b>${head}</b>Precio actual: <b>${money(unit)}</b>\n`
                 + `Neto: ${money(neto)} · Costo: ${money(costo)}\n`
                 + `👉 Subilo a <b>${money(sugUnit)}</b> para llegar al ${targetPct}%${motivo}`);
