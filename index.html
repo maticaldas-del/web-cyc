@@ -1579,8 +1579,7 @@ function startApp(){
   });
   db.ref('cyc').on('value',snap=>{
     const d=snap.val()||{};
-    const scrollY=window.scrollY;
-    state.products =d.products ?Object.values(d.products).sort((a,b)=>(a.name||'').localeCompare(b.name||'','es',{sensitivity:'base'})):[];
+    state.products=d.products ?Object.values(d.products).sort((a,b)=>(a.name||'').localeCompare(b.name||'','es',{sensitivity:'base'})):[];
     state.inventory=d.inventory||{};
     state.history  =d.history  ?Object.values(d.history).sort((a,b)=>b.ts-a.ts):[];
     state.finanzas =d.finanzas ||{};
@@ -1618,9 +1617,10 @@ function startApp(){
     rebuildReclamoStats();
     if(_extEntries.length)_applyStockEntries(_extEntries);
     document.getElementById('loading').style.display='none';
+    const primeraVez=firstDataLoad;
     if(firstDataLoad){firstDataLoad=false;goPage('home');}
-    if(isEditing()||_finFocused){pendingRender=true;}
-    else{renderAll();requestAnimationFrame(()=>window.scrollTo(0,scrollY));}
+    // La primera carga se dibuja ya; las demás se juntan y respetan tu scroll (ver renderPronto).
+    renderPronto(primeraVez);
   });
 }
 function doLogin(){
@@ -2029,6 +2029,34 @@ let pendingRender=false;
 let _finPending={}; // valores de finanzas escritos localmente pero aún no confirmados en la base (no dejar que un snapshot los pise)
 let _finFocused=false; // hay un campo de finanzas siendo editado → congelar la recarga de esos campos
 function isEditing(){const a=document.activeElement;return !!a&&/^(INPUT|SELECT|TEXTAREA)$/.test(a.tagName);}
+/* ── POR QUÉ LA PÁGINA SE TRABA EN EL CELULAR MIENTRAS SCROLEÁS ──
+   Cada vez que cambia algo en la base se vuelve a dibujar la página entera y, para que no salte,
+   se la devolvía a la posición de scroll anterior con window.scrollTo(). Eso está bien si estás
+   quieto, pero si estás scroleando con el dedo el scrollTo te tira de vuelta atrás: la página
+   pelea contra vos y se siente trabada, saltando para arriba y para abajo.
+   Y pasa seguido: el robot escribe varios nodos por cada venta (la venta, el vínculo, el precio),
+   y cada nodo disparaba SU propio re-dibujado. Antes sincronizaba cada hora y media y casi no se
+   notaba; ahora sincroniza cada 2 minutos y son ráfagas de varios seguidos.
+   Dos arreglos, los dos acá:
+     1. una ráfaga de escrituras = UN solo re-dibujado (se junta lo que llegue en 300 ms),
+     2. mientras el dedo está scroleando NO se toca el scroll. Se retoma cuando parás. ── */
+let _renderT=null,_scrollando=false,_scrollIdle=null;
+addEventListener('scroll',()=>{
+  _scrollando=true;
+  clearTimeout(_scrollIdle);
+  _scrollIdle=setTimeout(()=>{_scrollando=false;},450);   // 450 ms sin moverse = el dedo paró
+},{passive:true});
+function renderPronto(ya){
+  clearTimeout(_renderT);
+  const correr=()=>{
+    _renderT=null;
+    if(isEditing()||_finFocused){pendingRender=true;return;}
+    const y=window.scrollY;
+    renderAll();
+    if(!_scrollando)requestAnimationFrame(()=>window.scrollTo(0,y));
+  };
+  if(ya)correr();else _renderT=setTimeout(correr,300);
+}
 document.addEventListener('focusout',()=>{
   setTimeout(()=>{if(pendingRender&&!isEditing()){pendingRender=false;renderAll();}},150);
 });
@@ -7141,7 +7169,7 @@ document.addEventListener('click',e=>{if(fnavOpen&&!e.target.closest('#fnav-btn'
         <span style="font-size:.75rem;color:var(--muted)">Si no ves los últimos cambios, forzá la actualización</span>
         <button class="btn" style="background:rgba(56,189,248,.12);color:var(--blue);border:1px solid rgba(56,189,248,.3)" onclick="actualizarApp()">🔄 Buscar actualizaciones</button>
       </div>
-      <div style="font-size:.66rem;color:var(--muted);margin-top:12px">CYC · Versión 7.2</div>
+      <div style="font-size:.66rem;color:var(--muted);margin-top:12px">CYC · Versión 7.3</div>
     </div>
 
     <div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:18px 20px;margin-bottom:14px">
