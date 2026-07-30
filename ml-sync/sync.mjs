@@ -3982,10 +3982,13 @@ async function main() {
         // Freno duro: cruzar los $33.000 cambia quién paga el envío, así que el precio calculado
         // con el régimen de hoy deja de valer. No se toca aunque se haya pedido.
         if (f.cruza) { frenadas.push({ mla, why: `el precio nuevo (${money(f.nuevo)}) cruza los $33.000 y ahí el envío pasa a pagarlo CYC: el cálculo deja de valer` }); continue; }
-        if (!f.reco.startsWith('✅')) { frenadas.push({ mla, why: f.reco.replace(/^\S+\s/, '') }); continue; }
+        // La recomendación NO frena: es una opinión sobre la caja de compra, y esa decisión es del
+        // dueño. Si nombraste la publicación, se sube igual — pero queda escrito qué se resigna.
+        if (!f.reco.startsWith('✅')) f.aviso = f.reco.replace(/^\S+\s/, '');
         objetivo.push(f);
       }
       for (const x of frenadas) console.log(`  ⊘ ${x.mla}: NO se sube → ${x.why}`);
+      for (const f of objetivo) if (f.aviso) console.log(`  ⚠️ ${f.mla} · ${f.nom}: se sube igual porque lo pediste → ${f.aviso}`);
       if (!objetivo.length) { console.log(`\nNo quedó ninguna para subir.`); return; }
       console.log(`\n══ SUBIENDO ${objetivo.length} precio${objetivo.length > 1 ? 's' : ''} en ML ══`);
       let okN = 0, errN = 0; const hechos = [];
