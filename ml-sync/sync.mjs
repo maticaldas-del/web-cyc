@@ -4189,14 +4189,23 @@ async function main() {
       conVar.forEach((f) => console.log(`  ${money(Math.round(f.precio)).padStart(10)} · ${f.nVar} variantes · ${f.label.padEnd(8)} · ${f.mla} · ${f.nom}`));
       console.log(`\n── D. EN GRUPO DE PRECIO (no sirve bajarlas, el robot las vuelve a nivelar) · ${grupo.length} ──`);
       grupo.forEach((f) => console.log(`  ${f.label.padEnd(8)} · ${f.mla} · ${f.nom} · ${f.why}`));
+      // De acá abajo son las que NO se tocan. Se muestran igual (una omisión muda esconde errores)
+      // pero recortadas: la lista completa de pausadas tapaba lo único que hay que leer, que es A.
+      const corte = (arr, n, f) => { arr.slice(0, n).forEach(f); if (arr.length > n) console.log(`  … y ${arr.length - n} más`); };
       console.log(`\n── E. NO SE TOCAN: VENDEN A SU PRECIO DE HOY · ${vende.length} ──`);
-      vende.sort((a, b) => b.n - a.n).forEach((f) => console.log(`  ${money(Math.round(f.precio)).padStart(10)} · ${f.n} venta${f.n > 1 ? 's' : ''} a este precio · ${f.label.padEnd(8)} · ${f.mla} · ${f.nom}`));
+      corte(vende.sort((a, b) => b.n - a.n), 15, (f) => console.log(`  ${money(Math.round(f.precio)).padStart(10)} · ${f.n} venta${f.n > 1 ? 's' : ''} a este precio · ${f.label.padEnd(8)} · ${f.mla} · ${f.nom}`));
       console.log(`\n── F. PRECIO RECIÉN PUESTO (todavía no tuvo tiempo de vender) · ${fresco.length} ──`);
-      fresco.forEach((f) => console.log(`  ${money(Math.round(f.precio)).padStart(10)} · hace ${f.hs} h · ${f.label.padEnd(8)} · ${f.mla} · ${f.nom}`));
+      corte(fresco, 15, (f) => console.log(`  ${money(Math.round(f.precio)).padStart(10)} · hace ${f.hs} h · ${f.label.padEnd(8)} · ${f.mla} · ${f.nom}`));
       console.log(`\n── G. YA ESTÁN EN EL PISO (no hay nada para bajar) · ${yaEnPiso.length} ──`);
-      yaEnPiso.sort((a, b) => b.mg - a.mg).forEach((f) => console.log(`  ${String(Math.round(f.mg)).padStart(4)}% · ${money(Math.round(f.precio)).padStart(10)} · ${f.label.padEnd(8)} · ${f.mla} · ${f.nom}`));
+      corte(yaEnPiso.sort((a, b) => b.mg - a.mg), 15, (f) => console.log(`  ${String(Math.round(f.mg)).padStart(4)}% · ${money(Math.round(f.precio)).padStart(10)} · ${f.label.padEnd(8)} · ${f.mla} · ${f.nom}`));
+      // Agrupadas por MOTIVO: "88 pausadas" dice mucho más que 88 renglones iguales.
       console.log(`\n── H. SIN DATOS SUFICIENTES · ${sinDato.length} ──`);
-      sinDato.forEach((f) => console.log(`  ${f.label.padEnd(8)} · ${f.mla} · ${f.nom} · ${f.why}`));
+      const porQue = {};
+      for (const f of sinDato) (porQue[f.why] = porQue[f.why] || []).push(f);
+      for (const [why, arr] of Object.entries(porQue).sort((a, b) => b[1].length - a[1].length)) {
+        console.log(`  · ${why} → ${arr.length}`);
+        if (arr.length <= 6) arr.forEach((f) => console.log(`      ${f.label.padEnd(8)} · ${f.mla} · ${f.nom}`));
+      }
       if (!APLICAR) { console.log(`\nRECORDÁ: esto fue solo una LISTA. No se tocó ningún precio en ML.`); return; }
       const objetivo = DEST === 'todos' ? aplicables
         : /^MLA/i.test(DEST) ? aplicables.filter((f) => f.mla === DEST)
