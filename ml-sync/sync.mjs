@@ -3885,6 +3885,102 @@ async function main() {
         `  ${new Date(r.ts).toISOString().slice(0, 16).replace('T', ' ')} · ${r.cuenta.padEnd(9)} · ${money(r.to).padStart(11)} · ${r.mla} · ${String(r.nom).slice(0, 34)}`));
       return;
     }
+    // BILLING_PROBE=frenazo:<cuenta>[:días] → UNA CUENTA FRENÓ: ¿QUÉ PUBLICACIÓN DEJÓ DE VENDER Y POR QUÉ?
+    //
+    // 'salud' dice SI frenó. Esto dice QUÉ y POR QUÉ, publicación por publicación:
+    //   1. Qué vendía cada publicación antes y qué vende en las últimas 48 h (mismo ritmo diario).
+    //   2. En qué estado está hoy (activa / pausada / cerrada / con sub-estado de ML).
+    //   3. Si es de CATÁLOGO, si está GANANDO, COMPARTIENDO o PERDIENDO la caja de compra, y a qué
+    //      precio habría que estar para ganarla. Es la explicación más común de un frenazo de un día
+    //      para el otro: no te bajaron nada, te ganaron el precio. Sale de /price_to_win, que es el
+    //      mismo dato que muestra ML en la publicación.
+    // Solo LEE. No toca ni un precio.
+    if (String(process.env.BILLING_PROBE || '').startsWith('frenazo')) {
+      const _s = String(process.env.BILLING_PROBE).split(':');
+      const cuenta = (_s[1] || '').trim().toLowerCase();
+      const DIAS = parseFloat(_s[2]) || 14;
+      const label = labels.find((l) => l.toLowerCase() === cuenta);
+      if (!label) { console.log(`Poné una cuenta: frenazo:matias  (hay: ${labels.join(', ')})`); return; }
+      const links = (await db.get('cyc/mllinks')) || {};
+      const acc = accounts[label];
+      if (!acc?.refresh_token || !acc.seller_id) { console.log(`(${label}: sin token)`); return; }
+      const t = await mlRefresh(ML_CLIENT_ID, ML_CLIENT_SECRET, acc.refresh_token);
+      await db.patch('mlapi/tokens/' + label, { refresh_token: t.refresh_token, updated_ts: Date.now() });
+      const ahora = Date.now(), corte = ahora - 2 * 864e5, desdeMs = ahora - DIAS * 864e5;
+      console.log(`=== ${label.toUpperCase()} · ¿QUÉ DEJÓ DE VENDER? · últimos ${DIAS} días ===`);
+      console.log(`MODO PRUEBA · no se escribe nada\n`);
+      // 1) ventas por publicación, partidas en "antes" y "últimas 48 h"
+      let ords = [];
+      try { ords = await fetchOrdersRange(acc.seller_id, t.access_token, desdeMs, ahora); }
+      catch (e) { console.log(`ML no contestó las ventas: ${String(e.message || e).slice(0, 80)}`); return; }
+      const porPub = {};
+      for (const o of (ords || [])) {
+        const ts = new Date(o.date_created || o.date_closed).getTime();
+        const nuevo = ts >= corte;
+        for (const it of (o.order_items || [])) {
+          const mla = it.item?.id; if (!mla) continue;
+          const imp = (it.unit_price || 0) * (it.quantity || 0);
+          const r = porPub[mla] = porPub[mla] || { mla, nom: it.item?.title || mla, antesU: 0, antes$: 0, nuevoU: 0, nuevo$: 0 };
+          if (nuevo) { r.nuevoU += (it.quantity || 0); r.nuevo$ += imp; }
+          else { r.antesU += (it.quantity || 0); r.antes$ += imp; }
+        }
+      }
+      const diasAntes = Math.max(1, DIAS - 2);
+      const top = Object.values(porPub).sort((a, b) => (b.antes$ + b.nuevo$) - (a.antes$ + a.nuevo$)).slice(0, 20);
+      // 2) estado actual de esas publicaciones (+ las vinculadas, para las cerradas)
+      const vinc = Object.entries(links).filter(([m, e]) => e && e.cuenta === label && !e.ignored && /^MLA/i.test(m)).map(([m]) => m);
+      const todos = [...new Set([...top.map((r) => r.mla), ...vinc])];
+      const info = {};
+      for (let k = 0; k < todos.length; k += 20) {
+        let arr;
+        try { arr = await mlGet('/items?ids=' + todos.slice(k, k + 20).join(',') + '&attributes=id,title,status,sub_status,price,available_quantity,catalog_listing,catalog_product_id,health,last_updated', t.access_token); }
+        catch { continue; }
+        for (const row of (arr || [])) {
+          const b = row.body || {}; if (!b.id || b.error || typeof b.status === 'number') continue;
+          info[b.id] = b;
+        }
+      }
+      // 3) caja de compra, solo para las de catálogo del top (una consulta por publicación)
+      const ptw = {};
+      for (const r of top) {
+        const b = info[r.mla];
+        if (!b || !b.catalog_listing || b.status !== 'active') continue;
+        try { ptw[r.mla] = await mlGet('/items/' + r.mla + '/price_to_win?version=v2', t.access_token); } catch { /* algunas no lo tienen */ }
+      }
+      const ESTADO = { winning: 'GANANDO', sharing_first_place: 'COMPARTIENDO', competing: 'PERDIENDO', losing: 'PERDIENDO' };
+      console.log(`── LAS 20 QUE MÁS FACTURARON · ritmo por día ──`);
+      console.log(`  ${'publicación'.padEnd(36)}${'antes/día'.padStart(12)}${'48h/día'.padStart(12)}   estado`);
+      for (const r of top) {
+        const b = info[r.mla] || {};
+        const antesDia = r.antes$ / diasAntes, nuevoDia = r.nuevo$ / 2;
+        const caida = antesDia > 0 ? (1 - nuevoDia / antesDia) : 0;
+        const marca = (antesDia > 5000 && caida >= 0.7) ? ' ⛔' : (antesDia > 5000 && caida >= 0.4 ? ' ⚠️' : '   ');
+        let est = b.status ? (b.status === 'active' ? 'activa' : b.status === 'paused' ? 'PAUSADA' : b.status.toUpperCase()) : '¿?';
+        const sub = [].concat(b.sub_status || []).filter(Boolean);
+        if (sub.length) est += ' (' + sub.join(', ') + ')';
+        const p = ptw[r.mla];
+        if (p) {
+          const e = ESTADO[p.status] || p.status || '?';
+          est += ` · catálogo: ${e}`;
+          if (p.price_to_win && p.status !== 'winning') est += ` (para ganar: ${money(Math.round(p.price_to_win))}, estás a ${money(Math.round(b.price || 0))})`;
+        } else if (b.catalog_listing) est += ' · catálogo';
+        console.log(`${marca}${String(r.nom).slice(0, 35).padEnd(36)}${money(Math.round(antesDia)).padStart(12)}${money(Math.round(nuevoDia)).padStart(12)}   ${est}`);
+        console.log(`     ${r.mla} · ${r.antesU} u. antes · ${r.nuevoU} u. en 48 h · stock ${b.available_quantity != null ? b.available_quantity : '¿?'}`);
+      }
+      // 4) cerradas: cuáles y desde cuándo
+      const cerradas = Object.values(info).filter((b) => b.status === 'closed')
+        .sort((a, b) => String(b.last_updated || '').localeCompare(String(a.last_updated || '')));
+      console.log(`\n── CERRADAS · ${cerradas.length} ──`);
+      cerradas.slice(0, 20).forEach((b) => {
+        const vendio = porPub[b.id] ? ` · VENDÍA (${porPub[b.id].antesU + porPub[b.id].nuevoU} u. en el período)` : '';
+        const sub = [].concat(b.sub_status || []).filter(Boolean);
+        console.log(`  ${String(b.last_updated || '').slice(0, 10)} · ${b.id} · ${String(links[b.id]?.title || b.title || '').slice(0, 40)}${sub.length ? ' (' + sub.join(', ') + ')' : ''}${vendio}`);
+      });
+      if (cerradas.length > 20) console.log(`  … y ${cerradas.length - 20} más`);
+      const cerradasVendian = cerradas.filter((b) => porPub[b.id]).length;
+      console.log(`\nDe las cerradas, ${cerradasVendian} habían vendido en estos ${DIAS} días. Si es 0, las cerradas son historia vieja y no explican el frenazo.`);
+      return;
+    }
     // BILLING_PROBE=chkfact[:go] → ¿LA PESTAÑA MONOTRIBUTO TIENE LOS NÚMEROS BIEN?
     //
     // Esa pestaña usa dos fuentes: para los meses viejos (anteriores a 2026_05) los valores que
