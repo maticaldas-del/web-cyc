@@ -3799,6 +3799,73 @@ async function main() {
       console.log(`         ${bajo} el robot los ve MÁS BARATOS (margen sobreestimado → no subiría lo que hace falta)`);
       return;
     }
+    // BILLING_PROBE=monocat[:<YYYY-MM-DD>] → ¿QUÉ CATEGORÍA DE MONOTRIBUTO LE CORRESPONDE A CADA CUENTA?
+    //
+    // ARCA recategoriza por SEMESTRE: al 5 de agosto se mira lo facturado en los 12 meses cerrados
+    // al 30 de junio; al 5 de febrero, los 12 meses cerrados al 31 de diciembre. NO son los últimos
+    // 365 días corridos — por eso el corte es un parámetro y por defecto es el 30 de junio.
+    // Se listan los dos números igual (el del corte y el de hoy) porque el de hoy es el que anticipa
+    // la recategorización siguiente.
+    // Los topes son los de "venta de cosas muebles" 2026. Solo LEE.
+    if (String(process.env.BILLING_PROBE || '').startsWith('monocat')) {
+      const arg = (String(process.env.BILLING_PROBE).split(':')[1] || '').trim();
+      const corte = /^\d{4}-\d{2}-\d{2}$/.test(arg) ? new Date(arg + 'T23:59:59Z').getTime() : Date.parse('2026-06-30T23:59:59Z');
+      const TOPES = [
+        { cat: 'G', tope: 53995798.87, cuota: 158815.05 },
+        { cat: 'H', tope: 81924660.37, cuota: 317895.01 },
+        { cat: 'I', tope: 91699761.90, cuota: 474992.78 },
+        { cat: 'J', tope: 105012519.20, cuota: 580793.69 },
+        { cat: 'K', tope: 126610838.75, cuota: 0 },
+      ];
+      const catDe = (x) => TOPES.find((t) => x <= t.tope) || { cat: 'ARRIBA DE K (te excluyen)', tope: 0, cuota: 0 };
+      const desdeCorte = corte - 365 * 864e5;
+      const hoy = Date.now(), desdeHoy = hoy - 365 * 864e5;
+      const desde = Math.min(desdeCorte, desdeHoy);
+      console.log(`=== CATEGORÍA DE MONOTRIBUTO QUE CORRESPONDE POR FACTURACIÓN ===`);
+      console.log(`MODO PRUEBA · no se escribe nada · los montos salen de ML (ventas pagas)`);
+      console.log(`Corte de recategorización: 12 meses cerrados al ${new Date(corte).toISOString().slice(0, 10)}`);
+      console.log(`Topes 2026 · venta de cosas muebles:`);
+      TOPES.forEach((t) => console.log(`   ${t.cat}: hasta ${money(Math.round(t.tope))}${t.cuota ? ` · cuota ${money(Math.round(t.cuota))}/mes` : ''}`));
+      console.log('');
+      const filas = [];
+      for (const label of labels) {
+        const acc = accounts[label];
+        if (!acc?.refresh_token || !acc.seller_id) { console.log(`(${label}: sin token)`); continue; }
+        let t; try { t = await mlRefresh(ML_CLIENT_ID, ML_CLIENT_SECRET, acc.refresh_token); } catch { console.log(`(${label}: no pude renovar token)`); continue; }
+        await db.patch('mlapi/tokens/' + label, { refresh_token: t.refresh_token, updated_ts: Date.now() });
+        let ords = [];
+        try { ords = await fetchOrdersRange(acc.seller_id, t.access_token, desde, hoy); }
+        catch (e) { console.log(`(${label}: ML falló — ${String(e.message || e).slice(0, 50)})`); continue; }
+        let alCorte = 0, aHoy = 0;
+        const porMes = {};
+        for (const o of (ords || [])) {
+          const ts = new Date(o.date_created || o.date_closed).getTime();
+          const imp = Number(o.total_amount) || 0;
+          if (ts > desdeCorte && ts <= corte) alCorte += imp;
+          if (ts > desdeHoy && ts <= hoy) aHoy += imp;
+          const ym = String(o.date_created || o.date_closed || '').slice(0, 7);
+          if (ym) porMes[ym] = (porMes[ym] || 0) + imp;
+        }
+        filas.push({ label, alCorte, aHoy, porMes });
+      }
+      for (const f of filas) {
+        const c1 = catDe(f.alCorte), c2 = catDe(f.aHoy);
+        console.log(`── ${f.label.toUpperCase()} ──`);
+        console.log(`  12 meses al corte : ${money(Math.round(f.alCorte)).padStart(16)} → categoría ${c1.cat}`
+          + (c1.tope ? ` (le sobran ${money(Math.round(c1.tope - f.alCorte))} para el tope)` : ''));
+        console.log(`  últimos 365 días  : ${money(Math.round(f.aHoy)).padStart(16)} → categoría ${c2.cat}`
+          + (c2.tope ? ` (le sobran ${money(Math.round(c2.tope - f.aHoy))} para el tope)` : ''));
+        const meses = Object.keys(f.porMes).sort().slice(-13);
+        console.log(`  mes a mes: ` + meses.map((m) => `${m.slice(2)} ${Math.round(f.porMes[m] / 1e6)}M`).join(' · '));
+        console.log('');
+      }
+      const total = filas.reduce((s, f) => s + f.aHoy, 0);
+      console.log(`Total de las ${filas.length} cuentas en los últimos 365 días: ${money(Math.round(total))}`);
+      console.log(`\nOJO: esto dice qué categoría CORRESPONDE por facturación. En qué categoría está HOY cada`);
+      console.log(`una sale de ARCA, no de acá. Si alguna está en una categoría más baja que la que le`);
+      console.log(`corresponde, hay que recategorizar en la fecha que marca ARCA.`);
+      return;
+    }
     // BILLING_PROBE=unapub:<MLA>[:<piso>][:<días>] → TODO SOBRE UNA PUBLICACIÓN
     //
     // Para cuando un número de la web o del panel no coincide con lo que muestra ML. Contesta:
