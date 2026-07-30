@@ -3799,6 +3799,148 @@ async function main() {
       console.log(`         ${bajo} el robot los ve MÁS BARATOS (margen sobreestimado → no subiría lo que hace falta)`);
       return;
     }
+    // BILLING_PROBE=unapub:<MLA>[:<piso>][:<días>] → TODO SOBRE UNA PUBLICACIÓN
+    //
+    // Para cuando un número de la web o del panel no coincide con lo que muestra ML. Contesta:
+    //   · qué precio tiene REALMENTE en ML (y si hay un precio promocional distinto del de lista:
+    //     ML lo guarda aparte, y leyendo solo 'price' se ve el de lista y la cuenta sale mal),
+    //   · si es de catálogo, si gana o pierde la caja de compra y a qué precio se gana,
+    //   · el margen HOY, y el margen que quedaría al precio para ganar la caja → si ese precio deja
+    //     el piso o no. Es la pregunta que decide si una publicación que perdió se puede recuperar,
+    //   · qué precio haría falta para el piso,
+    //   · las últimas ventas con su precio, para ver a qué precio vende de verdad.
+    // Solo LEE.
+    if (String(process.env.BILLING_PROBE || '').startsWith('unapub')) {
+      const _u = String(process.env.BILLING_PROBE).split(':');
+      const MLA = (_u[1] || '').trim().toUpperCase();
+      const MIN = (parseFloat(_u[2]) || 30) / 100;
+      const DIAS = parseFloat(_u[3]) || 30;
+      if (!/^MLA/.test(MLA)) { console.log('Poné la publicación: unapub:MLA2188775470'); return; }
+      const links = (await db.get('cyc/mllinks')) || {};
+      const vp = (await db.get('cyc/ventaprod')) || {};
+      const fin = (await db.get('cyc/finanzas')) || {};
+      const tc = parseFloat(fin.tipo_cambio) || 1500;
+      const monoP = parseFloat(((await db.get('cyc/monotributo')) || {}).pct) || 0;
+      const cuotasCfg = (await db.get('cyc/mlcuotas')) || {};
+      const cuo = (() => { const v = cuotasCfg[MLA] && parseFloat(cuotasCfg[MLA].pct); return isFinite(v) && v > 0 ? v / 100 : 0; })();
+      const e = links[MLA] || {};
+      const label = labels.find((l) => l === e.cuenta) || labels.find((l) => accounts[l]?.refresh_token);
+      if (!label) { console.log('No hay ninguna cuenta con token.'); return; }
+      let t; try { t = await mlRefresh(ML_CLIENT_ID, ML_CLIENT_SECRET, accounts[label].refresh_token); }
+      catch { console.log(`(${label}: no pude renovar el token)`); return; }
+      await db.patch('mlapi/tokens/' + label, { refresh_token: t.refresh_token, updated_ts: Date.now() });
+      let b; try { b = await mlGet('/items/' + MLA, t.access_token); } catch (err) { console.log('ML no me dio la publicación: ' + String(err.message || err).slice(0, 120)); return; }
+      console.log(`=== ${MLA} · ${String(b.title || '').slice(0, 60)} ===`);
+      console.log(`Cuenta ${label} · estado ${b.status}${(b.sub_status || []).length ? ' (' + b.sub_status.join(', ') + ')' : ''} · stock ${b.available_quantity} · vendidas ${b.sold_quantity}`);
+      console.log(`\n── PRECIOS QUE TIENE ML ──`);
+      console.log(`  price (el de lista, el que leo yo) : ${money(Math.round(b.price || 0))}`);
+      if (b.base_price != null && Math.round(b.base_price) !== Math.round(b.price || 0)) console.log(`  base_price                        : ${money(Math.round(b.base_price))}`);
+      if (b.original_price != null) console.log(`  original_price (precio tachado)   : ${money(Math.round(b.original_price))}`);
+      // ML guarda los precios promocionales acá, NO en 'price'. Si hay uno vigente, el comprador paga
+      // ESE y no el de lista: es la explicación de "en ML veo un precio y el robot ve otro".
+      const listaP = (b.prices && Array.isArray(b.prices.prices)) ? b.prices.prices : [];
+      if (listaP.length) {
+        console.log(`  cuadro de precios de ML (${listaP.length}):`);
+        for (const pr of listaP) {
+          const desde = String(pr.last_updated || pr.conditions?.start_time || '').slice(0, 16).replace('T', ' ');
+          const hasta = String(pr.conditions?.end_time || '').slice(0, 16).replace('T', ' ');
+          console.log(`      · ${String(pr.type || '?').padEnd(12)} ${money(Math.round(pr.amount || 0)).padStart(12)}${desde ? ` · desde ${desde}` : ''}${hasta ? ` · hasta ${hasta}` : ''}`);
+        }
+        const promo = listaP.find((pr) => pr.type && pr.type !== 'standard' && Math.round(pr.amount || 0) !== Math.round(b.price || 0));
+        if (promo) console.log(`  ⚠️ HAY UN PRECIO DISTINTO DEL DE LISTA (${money(Math.round(promo.amount))}): el comprador paga ese. Todas las cuentas de abajo usan el de lista.`);
+      }
+      const feeCache = {};
+      const feeAt = async (price) => {
+        const k = Math.round(price); if (feeCache[k] !== undefined) return feeCache[k];
+        let out = null;
+        try {
+          const d = await mlGet(`/sites/${b.site_id || 'MLA'}/listing_prices?price=${k}&listing_type_id=${b.listing_type_id}&category_id=${b.category_id}`, t.access_token);
+          const o = Array.isArray(d) ? d[0] : d;
+          if (typeof o?.sale_fee_amount === 'number') out = o.sale_fee_amount;
+        } catch { out = null; }
+        feeCache[k] = out; return out;
+      };
+      // Caja de compra
+      let ptw = null;
+      if (b.catalog_listing) {
+        try { ptw = await mlGet('/items/' + MLA + '/price_to_win?version=v2', t.access_token); } catch { /* */ }
+        const ESTADO = { winning: 'GANANDO', sharing_first_place: 'COMPARTIENDO', competing: 'PERDIENDO', losing: 'PERDIENDO' };
+        console.log(`\n── CAJA DE COMPRA (es de catálogo) ──`);
+        if (!ptw) console.log(`  ML no me contestó el estado de la caja.`);
+        else console.log(`  ${ESTADO[ptw.status] || ptw.status} · para ganar hace falta ${money(Math.round(ptw.price_to_win || 0))}`
+          + (ptw.competitor_price ? ` · el competidor está a ${money(Math.round(ptw.competitor_price))}` : ''));
+      }
+      // Costo de la web
+      const p = e.prodId ? products.find((pp) => pp.id === e.prodId) : null;
+      if (!p) { console.log(`\n⚠️ No está vinculada a ningún producto de la web (prodId ${e.prodId || 'vacío'}): sin costo no puedo calcular margen.`); return; }
+      const costo = costoPesos(p, 1, tc).costo;
+      const m = (mlExtraPct(label) + monoP) / 100;
+      console.log(`\n── COSTO (de la web) ──`);
+      console.log(`  producto "${p.name}" · costo mercadería ${money(Math.round(costo))} (dólar ${money(tc)})`);
+      console.log(`  impuestos sobre el precio: IIBB ${mlExtraPct(label).toFixed(2)}% + monotributo ${monoP.toFixed(2)}% = ${(m * 100).toFixed(2)}%`);
+      if (cuo) console.log(`  cuotas cargadas para esta publicación: ${(cuo * 100).toFixed(1)}% del precio`);
+      // Ventas de esta publicación (para el envío y para ver a qué precio vende)
+      const desde = Date.now() - DIAS * 864e5;
+      const ventas = [];
+      for (const [k, ents] of Object.entries(vp)) {
+        for (const v of Object.values(ents || {})) {
+          if (!v || v.cancelada || v.mla !== MLA) continue;
+          const q = v.qty || 1;
+          ventas.push({ ts: v.ts || 0, dia: k.replace(/_/g, '-'), tot: (v.total || 0) / q, net: (v.neto || 0) / q });
+        }
+      }
+      ventas.sort((a, c) => c.ts - a.ts);
+      const recientes = ventas.filter((v) => v.ts >= desde);
+      console.log(`\n── ÚLTIMAS VENTAS (${recientes.length} en ${DIAS} días · ${ventas.length} en total) ──`);
+      recientes.slice(0, 15).forEach((v) => console.log(`  ${v.dia} · precio ${money(Math.round(v.tot)).padStart(11)} · neto ${money(Math.round(v.net)).padStart(11)} · envío deducido ≈ ${money(Math.round(v.tot - v.net))} (con comisión)`));
+      if (recientes.length > 15) console.log(`  … y ${recientes.length - 15} más`);
+      const usar = ventas.filter((v) => v.tot > 0 && v.net > 0);
+      let envioMax = -Infinity, envioMin = Infinity;
+      for (const pv of [...new Set(usar.map((v) => Math.round(v.tot)))].slice(-8)) {
+        const cv = await feeAt(pv); if (cv == null) continue;
+        for (const v of usar) { if (Math.round(v.tot) !== pv) continue; const x = v.tot - v.net - cv; if (x > envioMax) envioMax = x; if (x < envioMin) envioMin = x; }
+      }
+      if (!isFinite(envioMax)) { console.log(`\n⚠️ No tengo ventas con neto para deducir el envío: sin eso el margen sería un invento.`); return; }
+      envioMax = Math.max(0, envioMax); envioMin = Math.max(0, isFinite(envioMin) ? envioMin : 0);
+      console.log(`  envío deducido: peor caso ${money(Math.round(envioMax))} · mejor caso ${money(Math.round(envioMin))}`);
+      // Margen a un precio cualquiera, con el envío peor (conservador) y el mejor
+      const margenA = async (precio, envio) => {
+        const com = await feeAt(precio); if (com == null) return null;
+        const neto = precio - com - envio - precio * cuo;
+        const mlx = precio * m;
+        return { com, neto, mlx, mg: (neto - costo - mlx) / (costo + mlx) * 100 };
+      };
+      const fmt = (precio, r, etiqueta) => r == null ? `  ${etiqueta}: ML no me dio la comisión`
+        : `  ${etiqueta}: ${money(Math.round(precio))} − comisión ${money(Math.round(r.com))} − envío ${money(Math.round(envioMax))}`
+          + (cuo ? ` − cuotas ${money(Math.round(precio * cuo))}` : '')
+          + ` = neto ${money(Math.round(r.neto))} · costo ${money(Math.round(costo + r.mlx))} → margen ${r.mg.toFixed(1)}%`;
+      console.log(`\n── MARGEN (con el envío del PEOR caso, el criterio conservador) ──`);
+      const hoy = await margenA(b.price || 0, envioMax);
+      console.log(fmt(b.price || 0, hoy, 'precio de hoy   '));
+      const hoyBueno = await margenA(b.price || 0, envioMin);
+      if (hoyBueno) console.log(`  con el envío del MEJOR caso el margen de hoy sería ${hoyBueno.mg.toFixed(1)}%`);
+      if (ptw && ptw.price_to_win) {
+        const r = await margenA(ptw.price_to_win, envioMax);
+        console.log(fmt(ptw.price_to_win, r, 'para GANAR la caja'));
+        if (r) console.log(r.mg >= MIN * 100
+          ? `  ✅ AL PRECIO PARA GANAR LA CAJA TODAVÍA DEJA ${r.mg.toFixed(1)}%, arriba del piso del ${(MIN * 100).toFixed(0)}%: se puede recuperar.`
+          : `  ❌ Al precio para ganar la caja el margen cae a ${r.mg.toFixed(1)}%, abajo del piso del ${(MIN * 100).toFixed(0)}%: NO conviene pelearla.`);
+      }
+      // Precio para el piso
+      const den = 1 - cuo - m * (1 + MIN);
+      if (den > 0) {
+        let P = b.price || 0, comP = (hoy && hoy.com) || 0;
+        for (let it = 0; it < 4; it++) {
+          const Pn = (costo * (1 + MIN) + comP + envioMax) / den;
+          const c2 = await feeAt(Pn); if (c2 == null) break;
+          if (Math.abs(Pn - P) < 1 && it > 0) { P = Pn; break; }
+          P = Pn; comP = c2;
+        }
+        console.log(`\n── PRECIO PARA QUEDAR EXACTO EN EL PISO DEL ${(MIN * 100).toFixed(0)}% ──`);
+        console.log(`  ${money(Math.ceil(P / 10) * 10)}  (hoy está a ${money(Math.round(b.price || 0))})`);
+      }
+      return;
+    }
     // BILLING_PROBE=salud[:<cuenta>][:<días>] → ¿POR QUÉ UNA CUENTA DEJÓ DE VENDER?
     //
     // Tres cosas de una, que son las que explican casi siempre un frenazo:
