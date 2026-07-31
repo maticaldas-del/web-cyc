@@ -7546,6 +7546,16 @@ async function main() {
   const seenManual = new Set();
   // índice: nº de venta → dónde quedó cargada (para poder quitarla si se cancela)
   const loadedByNum = new Map();
+  // SEGUNDO índice, por nº de ORDEN. Hace falta porque el de arriba está armado por nº de VENTA,
+  // que para las compras con carrito es el nº del PAQUETE (pack_id), no el de la orden. Cuando ML
+  // cancelaba una orden se la buscaba por su id contra un índice lleno de ids de paquete: nunca
+  // coincidía y la cancelación no se aplicaba nunca.
+  // Se ve clarito con lo que pasó el 30 de julio: ML partió tres paquetes (cancela la orden
+  // original y crea otras), el panel se quedó con las dos versiones y contó $54.260 de más.
+  // El id de cada renglón es 'v<nº de orden>_<i>', así que la orden se saca de ahí y la marca cae
+  // SOLO en los renglones de esa orden — no en todo el paquete, que sería peor todavía.
+  const loadedByOrder = new Map();
+  const _oidDe = (id) => { const m = String(id).match(/^v(\d+)_/); return m ? m[1] : null; };
   for (const [dayKey, day] of Object.entries(ventaprod)) {
     for (const [id, v] of Object.entries(day || {})) {
       if (!v) continue;
@@ -7554,6 +7564,13 @@ async function main() {
         const k = String(v.numVenta);
         if (!loadedByNum.has(k)) loadedByNum.set(k, []);
         loadedByNum.get(k).push({ dayKey, id, cancelada: !!v.cancelada });
+      }
+      if (v.origen === 'ml-api') {
+        const oid = _oidDe(id);
+        if (oid) {
+          if (!loadedByOrder.has(oid)) loadedByOrder.set(oid, []);
+          loadedByOrder.get(oid).push({ dayKey, id, cancelada: !!v.cancelada });
+        }
       }
     }
   }
@@ -8018,6 +8035,9 @@ async function main() {
         // dejar registrada la carga por si esta misma venta se cancela después
         if (!loadedByNum.has(num)) loadedByNum.set(num, []);
         loadedByNum.get(num).push({ dayKey, id, cancelada: false });
+        const _oid = String(o.id);
+        if (!loadedByOrder.has(_oid)) loadedByOrder.set(_oid, []);
+        loadedByOrder.get(_oid).push({ dayKey, id, cancelada: false });
 
         // ── MARGEN BAJO: subir el precio solo (o avisar) ──
         // Margen = (neto − costo) ÷ costo, igual que la app. Si queda por debajo
@@ -8094,8 +8114,10 @@ async function main() {
     const cancelled = await fetchCancelled(acc.seller_id, t.access_token, cancelFrom);
     let nCanc = 0, nRecl = 0;
     for (const o of cancelled) {
-      const hits = loadedByNum.get(String(o.id));
-      if (!hits) continue;
+      // Se busca por nº de ORDEN (ver loadedByOrder arriba). El índice por nº de venta se deja como
+      // respaldo para las ventas viejas que no tengan el id con el formato 'v<orden>_<i>'.
+      const hits = loadedByOrder.get(String(o.id)) || loadedByNum.get(String(o.id));
+      if (!hits || !hits.length) continue;
       const pend = hits.filter((h) => !h.cancelada); // ya marcadas/clasificadas → no tocar
       if (!pend.length) continue;
       // devolución (volvió al stock) → no es pérdida; entregada sin devolver → reclamo;
