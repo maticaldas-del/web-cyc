@@ -249,6 +249,139 @@ async function envioDeducido(ventas, precioHoy, feeAt, opts = {}) {
   return { envio, usadas: vals.length, mismoLado: mismas.length > 0 };
 }
 
+// ── ACTIVAR SOLO LAS PAUSADAS QUE TIENEN STOCK EN FULL ────────────────────
+// Regla pedida: si una publicación está pausada y tiene mercadería en el depósito de ML (Full),
+// que se active sola — pero SOLO si con su precio de hoy llega al piso de ganancia. Una pausada
+// no vende nada, así que dejarla dormida con stock pago en Full es plata parada; pero activarla
+// abajo del piso es vender perdiendo.
+//
+// Cuatro frenos, todos a propósito:
+//   1. SOLO Full. Si el stock está en el depósito propio no se toca: eso se manda a Full primero.
+//      El stock de Full se pide a ML publicación por publicación; si ML no contesta, cuenta 0 y no
+//      se activa (nunca se activa "por las dudas").
+//   2. SOLO pausadas "limpias". Si ML la pausó por una infracción o está en revisión, tiene un
+//      sub_status y no se toca: reactivar eso a la fuerza es buscarse un problema con la cuenta.
+//   3. SOLO si llega al piso con el precio que ya tiene. NO se le sube el precio para que entre:
+//      subir precio y activar en un mismo movimiento automático es demasiado para dejarlo suelto.
+//      Las que no llegan se avisan por Telegram para decidirlas a mano.
+//   4. Si la marcaste con noAutoActivar en cyc/mllinks, se respeta y no se toca nunca. Es la forma
+//      de pausar algo a mano sin que el robot te lo vuelva a prender.
+async function activarPausadasFull(db, links, tokensRun, DRY, products, piso) {
+  const PISO = piso != null ? piso : 0.30;
+  const fin = (await db.get('cyc/finanzas')) || {};
+  const tc = parseFloat(fin.tipo_cambio) || 1500;
+  const monoP = parseFloat(((await db.get('cyc/monotributo')) || {}).pct) || 0;
+  const cuotasCfg = (await db.get('cyc/mlcuotas')) || {};
+  const vp = (await db.get('cyc/ventaprod')) || {}; setDevLive(vp);
+  const pIdx = {}; for (const p of products) pIdx[p.id] = p;
+  // Ventas para deducir el descuento real (comisión aparte) de cada publicación.
+  const vtaMla = {}, vtaProd = {};
+  const desde = Date.now() - 120 * 864e5;
+  for (const ents of Object.values(vp)) {
+    for (const v of Object.values(ents || {})) {
+      if (!v || v.cancelada || (v.ts || 0) < desde) continue;
+      const q = v.qty || 1, tot = (v.total || 0) / q, net = (v.neto || 0) / q;
+      if (tot <= 0 || net <= 0) continue;
+      if (v.mla) (vtaMla[v.mla] = vtaMla[v.mla] || []).push({ tot, net });
+      if (v.prodId) (vtaProd[v.prodId] = vtaProd[v.prodId] || []).push({ tot, net });
+    }
+  }
+  const feeCache = {};
+  const avisos = [], activadas = [], noLlegan = [];
+  for (const [label, tok] of Object.entries(tokensRun)) {
+    const feeAt = async (site, price, lt, cat) => {
+      const k = site + '|' + lt + '|' + cat + '|' + Math.round(price);
+      if (feeCache[k] !== undefined) return feeCache[k];
+      let out = null;
+      try {
+        const d = await mlGet(`/sites/${site}/listing_prices?price=${Math.round(price)}&listing_type_id=${lt}&category_id=${cat}`, tok);
+        const o = Array.isArray(d) ? d[0] : d;
+        if (typeof o?.sale_fee_amount === 'number') out = o.sale_fee_amount;
+      } catch { out = null; }
+      feeCache[k] = out; return out;
+    };
+    const m = (mlExtraPct(label) + monoP) / 100;
+    const ids = Object.entries(links)
+      .filter(([mla, e]) => e && e.cuenta === label && !e.ignored && !e.noAutoActivar && e.prodId && /^MLA/i.test(mla))
+      .map(([mla]) => mla);
+    for (let k = 0; k < ids.length; k += 20) {
+      let arr;
+      try { arr = await mlGet('/items?ids=' + ids.slice(k, k + 20).join(',') + '&attributes=id,status,sub_status,price,variations,title,listing_type_id,category_id,site_id,shipping,inventory_id', tok); }
+      catch { continue; }
+      for (const row of (arr || [])) {
+        const b = row.body || {}; const mla = b.id;
+        if (!mla || !links[mla] || b.error || typeof b.status === 'number') continue;
+        if (b.status !== 'paused') continue;
+        // Freno 2: pausada por ML (infracción, revisión…) → no se toca.
+        const sub = [].concat(b.sub_status || []).filter(Boolean).filter((s) => s !== 'out_of_stock');
+        if (sub.length) continue;
+        // Freno 1: tiene que ser Full y tener stock EN Full.
+        if (((b.shipping && b.shipping.logistic_type) || '') !== 'fulfillment') continue;
+        const vars = Array.isArray(b.variations) ? b.variations : [];
+        const invIds = vars.length ? vars.map((v) => v.inventory_id).filter(Boolean) : [b.inventory_id].filter(Boolean);
+        let stockFull = 0;
+        for (const inv of invIds) {
+          try { stockFull += Number((await mlGet('/inventories/' + inv + '/stock/fulfillment', tok))?.available_quantity) || 0; }
+          catch { /* si no contesta, cuenta 0 */ }
+        }
+        if (stockFull <= 0) continue;
+        const nom = (links[mla].title || b.title || mla).slice(0, 40);
+        // Freno 3: ¿llega al piso con el precio de hoy?
+        const p = pIdx[links[mla].prodId];
+        if (!p) { noLlegan.push({ label, mla, nom, why: 'sin producto en la web' }); continue; }
+        const costo = costoPesos(p, 1, tc).costo;
+        if (!costo) { noLlegan.push({ label, mla, nom, why: 'sin costo cargado' }); continue; }
+        const precio = vars.length ? (vars[0].price || 0) : (b.price || 0);
+        if (!precio) { noLlegan.push({ label, mla, nom, why: 'sin precio' }); continue; }
+        const site = b.site_id || 'MLA', lt = b.listing_type_id, cat = b.category_id;
+        const com = await feeAt(site, precio, lt, cat);
+        if (com == null) { noLlegan.push({ label, mla, nom, why: 'ML no devolvió la comisión' }); continue; }
+        const ventas = (vtaMla[mla] && vtaMla[mla].length) ? vtaMla[mla] : (vtaProd[p.id] || []);
+        if (!ventas.length) { noLlegan.push({ label, mla, nom, why: 'sin ventas para medir el margen' }); continue; }
+        // El descuento PEOR visto, igual que cuando se bajan precios: si aun así llega al piso,
+        // activarla es seguro. Con el descuento típico, la mitad de las ventas quedaría abajo.
+        let extra = -Infinity;
+        for (const pv of [...new Set(ventas.map((v) => Math.round(v.tot)))].slice(-8)) {
+          const cv = await feeAt(site, pv, lt, cat); if (cv == null) continue;
+          for (const v of ventas) if (Math.round(v.tot) === pv) extra = Math.max(extra, v.tot - v.net - cv);
+        }
+        if (!isFinite(extra)) { noLlegan.push({ label, mla, nom, why: 'no pude deducir el descuento' }); continue; }
+        extra = Math.max(0, extra);
+        const cuoV = cuotasCfg[mla] && parseFloat(cuotasCfg[mla].pct);
+        const cuo = isFinite(cuoV) && cuoV > 0 ? cuoV / 100 : 0;
+        const mlx = precio * m;
+        const mg = ((precio - com - extra - precio * cuo) - costo - mlx) / (costo + mlx);
+        if (mg < PISO) { noLlegan.push({ label, mla, nom, why: `queda en ${(mg * 100).toFixed(0)}%, abajo del ${(PISO * 100).toFixed(0)}%`, precio, stock: stockFull }); continue; }
+        if (DRY) { activadas.push({ label, mla, nom, precio, stock: stockFull, mg: mg * 100, dry: true }); continue; }
+        try {
+          const r = await fetch(ML_API + '/items/' + mla, {
+            method: 'PUT',
+            headers: { Authorization: 'Bearer ' + tok, 'Content-Type': 'application/json' },
+            body: JSON.stringify({ status: 'active' }),
+          });
+          if (!r.ok) { noLlegan.push({ label, mla, nom, why: 'ML rechazó la activación (' + r.status + ')' }); continue; }
+        } catch { noLlegan.push({ label, mla, nom, why: 'error de red al activar' }); continue; }
+        // Verificación obligatoria: se relee y tiene que estar activa de verdad.
+        let quedo = null;
+        try { quedo = (await mlGet('/items/' + mla + '?attributes=id,status', tok)).status; } catch { /* */ }
+        if (quedo !== 'active') { noLlegan.push({ label, mla, nom, why: `pedí activarla pero quedó "${quedo || 'no pude leer'}"` }); continue; }
+        activadas.push({ label, mla, nom, precio, stock: stockFull, mg: mg * 100 });
+      }
+    }
+  }
+  if (activadas.length) {
+    avisos.push(`▶️ <b>Publicaciones activadas (tenían stock en Full)</b>\n`
+      + activadas.map((a) => `· ${a.nom} · ${a.label} · ${a.stock} u. · ${money(Math.round(a.precio))} · ${Math.round(a.mg)}%`).join('\n'));
+  }
+  const bajas = noLlegan.filter((x) => x.precio);
+  if (bajas.length) {
+    avisos.push(`⏸️ <b>Con stock en Full pero NO las activé</b>\nNo llegan al ${(PISO * 100).toFixed(0)}% con su precio de hoy:\n`
+      + bajas.map((x) => `· ${x.nom} · ${x.label} · ${x.stock} u. · ${money(Math.round(x.precio))} → ${x.why}`).join('\n'));
+  }
+  console.log(`Activar pausadas con Full: ${activadas.length} activadas · ${noLlegan.length} no (${bajas.length} por margen).`);
+  return avisos;
+}
+
 // ── GRUPOS DE PRECIO: publicaciones que tienen que valer todas lo mismo ────
 // Caso Paulvic: son el mismo perfume publicado varias veces en varias cuentas. Si
 // quedan a distinto precio, el más barato se lleva todas las ventas — y justo ese
@@ -7914,6 +8047,14 @@ async function main() {
       const avisos = await nivelarGrupos(db, map, tokensRun, DRY, pName, sellerIds);
       for (const a of avisos) await sendTelegram(a);
     } catch (e) { console.log('No pude nivelar los grupos de precio: ' + e.message); }
+    // ACTIVAR LAS PAUSADAS QUE TIENEN STOCK EN FULL Y LLEGAN AL PISO. Va acá, en la misma vuelta
+    // que los precios (una por hora), no en las vueltas rápidas: activar escribe en ML.
+    try {
+      const cfgP = (await db.get('cyc/mlconfig')) || {};
+      const piso = (parseFloat(cfgP.minPct) || 30) / 100;
+      const avisos = await activarPausadasFull(db, map, tokensRun, DRY, products, piso);
+      for (const a of avisos) await sendTelegram(a);
+    } catch (e) { console.log('No pude activar las pausadas con Full: ' + e.message); }
   }
 
   const pend = Object.values(map).filter((x) => x && !x.prodId).length;
