@@ -4109,6 +4109,10 @@ async function main() {
           tokPorCuenta[label] = t.access_token;
         } catch { /* */ }
       }
+      // Además de la demora, se guarda el MOTIVO. No es lo mismo "no le gustó" que "vino fallada":
+      // si fallan, el problema es el producto y hay que pensarlo dos veces; si son arrepentimientos,
+      // es el costo normal de vender por internet.
+      const detalles = [];
       for (const r of [...reclamos, ...devols].slice(0, 40)) {
         if (!r.oid) continue;
         const tok = tokPorCuenta[r.cuenta] || Object.values(tokPorCuenta)[0];
@@ -4117,10 +4121,19 @@ async function main() {
           const cl = await mlGet('/post-purchase/v1/claims/search?resource=order&resource_id=' + r.oid, tok);
           const arr = cl.data || cl.results || [];
           const c = arr[0];
-          if (c && c.date_created) {
-            const dias = Math.round((Date.parse(c.date_created) - r.ts) / 864e5);
-            if (isFinite(dias) && dias >= 0) demoras.push({ dias, prod: r.prod, tipo: esReclamo(r) ? 'reclamo' : 'devolución' });
+          if (!c) { detalles.push({ prod: r.prod, oid: r.oid, tipo: esReclamo(r) ? 'reclamo' : 'devolución', motivo: '(ML no devolvió reclamo para esta orden)', dias: null }); continue; }
+          let dias = null;
+          if (c.date_created) {
+            const d = Math.round((Date.parse(c.date_created) - r.ts) / 864e5);
+            if (isFinite(d) && d >= 0) { dias = d; demoras.push({ dias: d, prod: r.prod, tipo: esReclamo(r) ? 'reclamo' : 'devolución' }); }
           }
+          detalles.push({
+            prod: r.prod, oid: r.oid, cuenta: r.cuenta, dias,
+            tipo: esReclamo(r) ? 'reclamo' : 'devolución',
+            motivo: c.reason_id || '(sin motivo)',
+            estado: `${c.type || '?'}/${c.stage || '?'}/${c.status || '?'}`,
+            resol: c.resolution ? (c.resolution.reason || c.resolution.closed_by || JSON.stringify(c.resolution).slice(0, 40)) : '',
+          });
         } catch { /* */ }
       }
       let corte = 30;   // por defecto: 30 días para dar por buena una venta
@@ -4133,6 +4146,31 @@ async function main() {
         console.log(`  9 de cada 10 aparecieron antes de los ${p90} días → uso ${corte} días como plazo seguro.`);
       } else {
         console.log(`  ML no me dio la fecha de ninguno (o no hay). Uso el plazo por defecto: ${corte} días.`);
+      }
+      // ── 2b. el motivo de cada uno, que es lo que dice si el problema es el producto
+      if (detalles.length) {
+        // Traducción de los códigos que usa ML. Lo que no esté en la lista sale con su código
+        // crudo: prefiero que veas un código raro y me preguntes, antes que inventarle un nombre.
+        const MOT = {
+          PDD_PRODUCT_DEFECTIVE: 'llegó FALLADO / no funciona',
+          PDD_PRODUCT_DIFFERENT: 'no era lo que esperaba (distinto a la publicación)',
+          PDD_PRODUCT_INCOMPLETE: 'llegó incompleto (faltaban partes)',
+          PDD_PRODUCT_DAMAGED: 'llegó dañado / roto',
+          PNR_PRODUCT_NOT_RECEIVED: 'nunca lo recibió (problema de envío)',
+          BUYER_REGRET: 'se arrepintió, no lo quiso',
+          PDD_REGRET: 'se arrepintió, no lo quiso',
+          CHANGE_OF_MIND: 'cambió de opinión',
+        };
+        console.log(`\n── MOTIVO DE CADA UNO ──`);
+        for (const d of detalles.sort((a, b) => (a.dias ?? 999) - (b.dias ?? 999))) {
+          const traduc = MOT[d.motivo] || `código ML: ${d.motivo}`;
+          console.log(`  ${d.tipo === 'reclamo' ? '⚠️ ' : '↩︎ '}${String(d.prod).slice(0, 30).padEnd(31)} · ${d.dias != null ? `a los ${String(d.dias).padStart(3)} días` : 'sin fecha    '} · ${traduc}`);
+          console.log(`       orden ${d.oid} · ${d.cuenta || ''} · estado ${d.estado || '?'}${d.resol ? ` · cerró: ${d.resol}` : ''}`);
+        }
+        const fallas = detalles.filter((d) => /DEFECTIVE|DAMAGED|INCOMPLETE/.test(String(d.motivo)));
+        const arrep = detalles.filter((d) => /REGRET|MIND/.test(String(d.motivo)));
+        console.log(`\n  Fallas del producto: ${fallas.length} · Arrepentimientos del comprador: ${arrep.length} · Otros: ${detalles.length - fallas.length - arrep.length}`);
+        console.log(`  (Los arrepentimientos son costo normal de vender por internet. Las FALLAS son el dato que importa para decidir si comprar más.)`);
       }
       // ── 3. maduras vs en observación
       const maduras = ventas.filter((x) => (ahora - x.ts) >= corte * 864e5);
