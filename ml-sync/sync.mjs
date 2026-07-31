@@ -3974,6 +3974,96 @@ async function main() {
       console.log(`         ${bajo} el robot los ve MÁS BARATOS (margen sobreestimado → no subiría lo que hace falta)`);
       return;
     }
+    // BILLING_PROBE=mudardia[:<días>][:go] → MOVER LAS VENTAS YA CARGADAS AL DÍA QUE USA ML
+    //
+    // El panel venía agrupando cada venta por la fecha en que se CERRÓ y ML la cuenta por la fecha
+    // en que se CREÓ (cuando el comprador compró). Una venta creada 23:50 y cerrada 00:10 caía en
+    // días distintos en cada lado, y por eso el total del día nunca coincidía (el 30 de julio: CYC
+    // $639.276 contra $596.816 de ML).
+    //
+    // La regla para las ventas NUEVAS ya está cambiada. Esto arregla las VIEJAS, y hay que hacerlo
+    // sí o sí: la venta vive en cyc/ventaprod/<día>/<id>, así que si cambia el día y no se mueve la
+    // vieja, la próxima sincronización la escribe en el día nuevo y queda DUPLICADA.
+    //
+    // Cómo: se piden a ML las órdenes del período (traen las dos fechas), se recalcula el día de
+    // cada venta guardada, y las que cambian se escriben en el día nuevo y se borran del viejo.
+    // Sin ':go' solo cuenta y muestra el efecto. No toca ML: esto es solo la base del panel.
+    if (String(process.env.BILLING_PROBE || '').startsWith('mudardia')) {
+      const _md = String(process.env.BILLING_PROBE).split(':');
+      const DIAS = parseFloat(_md[1]) || 400;
+      const APLICAR = _md[2] === 'go';
+      const vp = (await db.get('cyc/ventaprod')) || {}; setDevLive(vp);
+      console.log(`=== MOVER LAS VENTAS AL DÍA QUE USA ML · últimos ${DIAS} días ===`);
+      console.log(APLICAR ? '⚠️  MODO REAL: se reescriben ventas en el panel\n' : 'MODO PRUEBA · no se escribe nada\n');
+      // 1) fecha de CREACIÓN de cada orden, pedida a ML
+      const creado = {};
+      const desde = Date.now() - DIAS * 864e5;
+      for (const label of labels) {
+        const acc = accounts[label];
+        if (!acc?.refresh_token || !acc.seller_id) { console.log(`(${label}: sin token)`); continue; }
+        let t; try { t = await mlRefresh(ML_CLIENT_ID, ML_CLIENT_SECRET, acc.refresh_token); } catch { console.log(`(${label}: no pude renovar token)`); continue; }
+        await db.patch('mlapi/tokens/' + label, { refresh_token: t.refresh_token, updated_ts: Date.now() });
+        let ords = [];
+        try { ords = await fetchOrdersRange(acc.seller_id, t.access_token, desde, Date.now()); }
+        catch (e) { console.log(`(${label}: ML falló — ${String(e.message || e).slice(0, 50)})`); continue; }
+        for (const o of (ords || [])) if (o.id && o.date_created) creado[String(o.id)] = o.date_created;
+        console.log(`${label}: ${(ords || []).length} órdenes leídas de ML`);
+      }
+      console.log(`Fechas de creación conocidas: ${Object.keys(creado).length}\n`);
+      // 2) recalcular el día de cada venta guardada
+      const mudar = [], sinFecha = [];
+      let total = 0, quedan = 0;
+      for (const [dayKey, day] of Object.entries(vp)) {
+        for (const [id, v] of Object.entries(day || {})) {
+          if (!v || v.origen !== 'ml-api') continue;   // las cargadas a mano no se tocan
+          total++;
+          const m = String(id).match(/^v(\d+)_/);
+          const oid = m ? m[1] : null;
+          const iso = oid ? creado[oid] : null;
+          if (!iso) { sinFecha.push({ dayKey, id, prod: v.prod }); continue; }
+          const nuevo = dayKeyFromISO(iso);
+          if (nuevo === dayKey) { quedan++; continue; }
+          mudar.push({ de: dayKey, a: nuevo, id, v, ts: new Date(iso).getTime(), prod: v.prod, total: v.total });
+        }
+      }
+      console.log(`Ventas del robot: ${total} · se quedan: ${quedan} · CAMBIAN DE DÍA: ${mudar.length} · sin fecha de ML: ${sinFecha.length}`);
+      const porDia = {};
+      for (const x of mudar) {
+        (porDia[x.de] = porDia[x.de] || { sale: 0, entra: 0 }).sale += (x.total || 0);
+        (porDia[x.a] = porDia[x.a] || { sale: 0, entra: 0 }).entra += (x.total || 0);
+      }
+      const dias = Object.keys(porDia).sort().slice(-12);
+      if (dias.length) {
+        console.log(`\n── EFECTO EN LOS ÚLTIMOS DÍAS ──`);
+        for (const d of dias) {
+          const x = porDia[d], neto = (x.entra || 0) - (x.sale || 0);
+          console.log(`  ${d.replace(/_/g, '-')}: entra ${money(Math.round(x.entra || 0))} · sale ${money(Math.round(x.sale || 0))} · queda ${neto >= 0 ? '+' : ''}${money(Math.round(neto))}`);
+        }
+      }
+      console.log(`\n── EJEMPLOS (primeros 10) ──`);
+      mudar.slice(0, 10).forEach((x) => console.log(`  ${x.de.replace(/_/g, '-')} → ${x.a.replace(/_/g, '-')} · ${money(Math.round(x.total || 0)).padStart(11)} · ${String(x.prod || '').slice(0, 34)}`));
+      if (sinFecha.length) {
+        console.log(`\n── SIN FECHA DE ML (quedan como están) · ${sinFecha.length} ──`);
+        sinFecha.slice(0, 8).forEach((x) => console.log(`  ${x.dayKey.replace(/_/g, '-')} · ${x.id} · ${String(x.prod || '').slice(0, 34)}`));
+        if (sinFecha.length > 8) console.log(`  … y ${sinFecha.length - 8} más (ventas más viejas que el período pedido)`);
+      }
+      if (!APLICAR) { console.log(`\nRECORDÁ: fue solo una CUENTA. No se movió ninguna venta. Para hacerlo: mudardia:${DIAS}:go`); return; }
+      // 3) mover: PRIMERO se escribe en el día nuevo, DESPUÉS se borra el viejo. Si se cortara en el
+      // medio queda duplicada (se arregla volviendo a correr esto), nunca perdida.
+      console.log(`\n══ MOVIENDO ${mudar.length} ventas ══`);
+      let ok = 0, err = 0;
+      for (const x of mudar) {
+        try {
+          await db.set(`cyc/ventaprod/${x.a}/${x.id}`, { ...x.v, ts: x.ts });
+          await db.set(`cyc/ventaprod/${x.de}/${x.id}`, null);
+          ok++;
+          if (ok % 50 === 0) console.log(`  … ${ok} movidas`);
+        } catch (e) { err++; console.log(`  ✗ ${x.id}: ${String(e.message || e).slice(0, 60)}`); }
+      }
+      console.log(`\nListo: ${ok} movidas, ${err} con error.`);
+      console.log(`Desde ahora el panel y ML cuentan las ventas en el mismo día.`);
+      return;
+    }
     // BILLING_PROBE=bajopiso[:<piso>][:<días>] → TODAS LAS QUE ESTÁN ABAJO DEL PISO, PARA DECIDIR UNA POR UNA
     //
     // Una sola lista con todo lo que hace falta para decidir si subirla o no:
@@ -6785,7 +6875,7 @@ async function main() {
       for (const o of canc) {
         if (seen.has(o.id)) continue; seen.add(o.id); // por si una orden viene repetida
         const gross = (o.order_items || []).reduce((s, it) => s + (it.unit_price || 0) * (it.quantity || 0), 0);
-        const ym = dayKeyFromISO(o.date_closed || o.date_created).substring(0, 7); // YYYY_MM
+        const ym = dayKeyFromISO(o.date_created || o.date_closed).substring(0, 7); // YYYY_MM
         byMonth[ym] = (byMonth[ym] || 0) + gross;
       }
       for (const k of Object.keys(byMonth)) byMonth[k] = Math.round(byMonth[k]);
@@ -6819,7 +6909,7 @@ async function main() {
         // ¿volvió el producto al stock (devolución) o se perdió (reclamo real)?
         const tipo = (await wasReturned(o, t.access_token)) ? 'devolucion' : 'reclamo';
         const num = String(o.pack_id || o.id);   // número que muestra ML (pack_id)
-        const dayKey = dayKeyFromISO(o.date_closed || o.date_created);
+        const dayKey = dayKeyFromISO(o.date_created || o.date_closed);
         const saleId = 's' + o.id;
         let i = 0;
         for (const it of (o.order_items || [])) {
@@ -6835,7 +6925,7 @@ async function main() {
             id, saleId, prod: p ? p.name : title, prodId: p ? p.id : null,
             cuenta: label, qty, total: 0, neto: 0, costo: 0,
             numVenta: num, mla: mla || '',
-            ts: new Date(o.date_closed || o.date_created).getTime(),
+            ts: new Date(o.date_created || o.date_closed).getTime(),
             origen: 'ml-api', cancelada: true, tipoCancelacion: tipo,
           };
           if (!p) obj.sinVincular = true;
@@ -7739,7 +7829,7 @@ async function main() {
       const num = String(o.id);                       // ID interno de la orden (para dedup/cancelaciones)
       const numDisplay = String(o.pack_id || o.id);   // número que muestra ML en la web (el "Venta #")
       if (seenManual.has(num)) continue; // ya cargada a mano/cowork
-      const dayKey = dayKeyFromISO(o.date_closed || o.date_created);
+      const dayKey = dayKeyFromISO(o.date_created || o.date_closed);
       const saleId = 's' + o.id;
       const items = o.order_items || [];
       const orderGross = items.reduce((s, it) => s + (it.unit_price || 0) * (it.quantity || 0), 0);
@@ -7793,7 +7883,7 @@ async function main() {
           neto, mlfee,
           costo, costBaseUSD, tcSale: tc, shipUSD,
           numVenta: numDisplay, mla: mla || '',
-          ts: new Date(o.date_closed || o.date_created).getTime(),
+          ts: new Date(o.date_created || o.date_closed).getTime(),
           origen: 'ml-api',
         };
         if (!p) obj.sinVincular = true;    // marca: venta cargada sin producto
