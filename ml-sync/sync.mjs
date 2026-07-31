@@ -4148,8 +4148,22 @@ async function main() {
       }
       if (!APLICAR) { console.log(`\nRECORDÁ: esto fue solo una LISTA. No se tocó ningún precio en ML.`); return; }
       // ── Aplicar SOLO las que se pidieron, y solo si siguen siendo seguras ──
-      const pedidos = DEST.split(',').map((s) => s.trim().toUpperCase()).filter((s) => /^MLA/.test(s));
+      // El destino acepta 'todos' (= todas las ✅, sin riesgo de caja de compra), una lista de MLA,
+      // o las dos cosas juntas separadas por coma: 'todos,MLA123,MLA456'. Los MLA nombrados a mano
+      // van igual aunque no sean ✅ (queda el aviso escrito); 'todos' NUNCA incluye las 🛑 ni las de grupo.
+      const partes = DEST.split(',').map((s) => s.trim()).filter(Boolean);
+      const quiereTodas = partes.some((s) => s.toLowerCase() === 'todos');
+      const pedidos = partes.map((s) => s.toUpperCase()).filter((s) => /^MLA/.test(s));
       const objetivo = [], frenadas = [];
+      if (quiereTodas) {
+        for (const f of filas) {
+          if (!f.reco.startsWith('✅')) continue;
+          if (!f.nuevo || f.nuevo <= f.precio) continue;
+          if (f.cruza) { frenadas.push({ mla: f.mla, why: `el precio nuevo (${money(f.nuevo)}) cruza los $33.000` }); continue; }
+          if (pedidos.includes(f.mla)) continue;   // ya va por nombre propio, no duplicar
+          objetivo.push(f);
+        }
+      }
       for (const mla of pedidos) {
         const f = filas.find((x) => x.mla === mla);
         if (!f) { frenadas.push({ mla, why: 'ya no figura abajo del piso (cambió algo desde la lista)' }); continue; }
