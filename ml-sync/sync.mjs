@@ -4024,6 +4024,152 @@ async function main() {
       console.log(`         ${bajo} el robot los ve MÁS BARATOS (margen sobreestimado → no subiría lo que hace falta)`);
       return;
     }
+    // BILLING_PROBE=linea:<palabras>[:<palabras a excluir>] → ¿CONVIENE APOSTAR A ESTA LÍNEA?
+    //
+    // Para decidir si comprar fuerte de una línea nueva. El riesgo de mirar el % de reclamos y
+    // listo es que los reclamos TARDAN: si vendiste 10 hace tres días, el comprador todavía no
+    // probó el producto y esas ventas figuran como perfectas. El % sale bajo y engaña.
+    //
+    // Por eso esto hace tres cosas:
+    //   1. Mide cuánto TARDA un reclamo en aparecer (se le pregunta a ML la fecha de cada reclamo y
+    //      se compara con la fecha de la venta). Eso define a partir de qué antigüedad una venta ya
+    //      se puede dar por buena.
+    //   2. Separa las ventas MADURAS de las que todavía no cumplieron ese plazo, y calcula el % de
+    //      reclamos SOLO sobre las maduras — que es el número honesto.
+    //   3. Muestra cuánta plata todavía está "en observación", que es el riesgo que se asume hoy.
+    // Solo LEE.
+    if (String(process.env.BILLING_PROBE || '').startsWith('linea')) {
+      const _l = String(process.env.BILLING_PROBE).split(':');
+      const incl = (_l[1] || '').split(',').map((s) => s.trim().toLowerCase()).filter(Boolean);
+      const excl = (_l[2] || '').split(',').map((s) => s.trim().toLowerCase()).filter(Boolean);
+      if (!incl.length) { console.log('Poné las palabras: linea:memoria,microsd:pendrive,cruzer'); return; }
+      const vp = (await db.get('cyc/ventaprod')) || {}; setDevLive(vp);
+      const fin = (await db.get('cyc/finanzas')) || {};
+      const tc = parseFloat(fin.tipo_cambio) || 1500;
+      const monoP = parseFloat(((await db.get('cyc/monotributo')) || {}).pct) || 0;
+      const pIdx = {}; for (const p of products) pIdx[p.id] = p;
+      const entra = (nom) => {
+        const t = String(nom || '').toLowerCase();
+        if (!incl.some((w) => t.includes(w))) return false;
+        if (excl.some((w) => t.includes(w))) return false;
+        return true;
+      };
+      console.log(`=== LÍNEA "${incl.join(', ')}"${excl.length ? ` (sin: ${excl.join(', ')})` : ''} ===`);
+      console.log(`MODO PRUEBA · no se escribe nada · todo el historial cargado\n`);
+      const ahora = Date.now();
+      const ventas = [];   // {prod, ts, qty, total, neto, costo, cuenta, reclamo, oid, tipo}
+      for (const [dk, day] of Object.entries(vp)) {
+        for (const [id, v] of Object.entries(day || {})) {
+          if (!v || !entra(v.prod)) continue;
+          const m = String(id).match(/^v(\d+)_/);
+          ventas.push({
+            prod: v.prod || '?', ts: v.ts || Date.parse(dk.replace(/_/g, '-')) || 0,
+            qty: v.qty || 1, total: v.total || 0, neto: v.neto || 0, costo: v.costo || 0,
+            cuenta: v.cuenta || '?', tipo: v.tipoCancelacion || '', cancelada: !!v.cancelada,
+            oid: m ? m[1] : null, dk,
+          });
+        }
+      }
+      if (!ventas.length) { console.log('No encontré ventas con esas palabras. Probá con otras.'); return; }
+      const esReclamo = (x) => x.cancelada && (x.tipo === 'reclamo' || x.tipo === 'perdida');
+      const esDevol = (x) => x.cancelada && !esReclamo(x);
+      // ── 1. qué productos entraron (para poder controlar que no se coló otra cosa)
+      const porProd = {};
+      for (const x of ventas) {
+        const p = porProd[x.prod] = porProd[x.prod] || { u: 0, fact: 0, gan: 0, rec: 0, dev: 0, ult: 0, pri: Infinity };
+        if (!x.cancelada) {
+          p.u += x.qty; p.fact += x.total;
+          p.gan += (x.neto - x.costo - x.total * (mlExtraPct(x.cuenta) + monoP) / 100);
+        }
+        if (esReclamo(x)) p.rec += x.qty;
+        if (esDevol(x)) p.dev += x.qty;
+        if (x.ts > p.ult) p.ult = x.ts;
+        if (x.ts < p.pri) p.pri = x.ts;
+      }
+      console.log(`── PRODUCTOS DE LA LÍNEA · ${Object.keys(porProd).length} ──`);
+      console.log(`  ${'producto'.padEnd(34)}${'unid'.padStart(6)}${'facturado'.padStart(14)}${'ganancia'.padStart(13)}${'margen'.padStart(8)}${'recl'.padStart(6)}${'dev'.padStart(5)}  primera → última venta`);
+      for (const [nom, p] of Object.entries(porProd).sort((a, b) => b[1].gan - a[1].gan)) {
+        const mg = p.fact > 0 ? (p.gan / (p.fact - p.gan) * 100) : 0;
+        const d = (ms) => isFinite(ms) && ms ? new Date(ms).toISOString().slice(0, 10) : '—';
+        console.log(`  ${nom.slice(0, 33).padEnd(34)}${String(p.u).padStart(6)}${money(Math.round(p.fact)).padStart(14)}${money(Math.round(p.gan)).padStart(13)}${(mg.toFixed(0) + '%').padStart(8)}${String(p.rec).padStart(6)}${String(p.dev).padStart(5)}  ${d(p.pri)} → ${d(p.ult)}`);
+      }
+      // ── 2. cuánto tarda un reclamo en aparecer (se le pide la fecha a ML)
+      const reclamos = ventas.filter(esReclamo);
+      const devols = ventas.filter(esDevol);
+      console.log(`\n── CUÁNTO TARDA EN APARECER UN RECLAMO ──`);
+      console.log(`Reclamos con pérdida: ${reclamos.length} · devoluciones/canceladas: ${devols.length}`);
+      const demoras = [];
+      const tokPorCuenta = {};
+      for (const label of labels) {
+        const acc = accounts[label];
+        if (!acc?.refresh_token) continue;
+        try {
+          const t = await mlRefresh(ML_CLIENT_ID, ML_CLIENT_SECRET, acc.refresh_token);
+          await db.patch('mlapi/tokens/' + label, { refresh_token: t.refresh_token, updated_ts: Date.now() });
+          tokPorCuenta[label] = t.access_token;
+        } catch { /* */ }
+      }
+      for (const r of [...reclamos, ...devols].slice(0, 40)) {
+        if (!r.oid) continue;
+        const tok = tokPorCuenta[r.cuenta] || Object.values(tokPorCuenta)[0];
+        if (!tok) continue;
+        try {
+          const cl = await mlGet('/post-purchase/v1/claims/search?resource=order&resource_id=' + r.oid, tok);
+          const arr = cl.data || cl.results || [];
+          const c = arr[0];
+          if (c && c.date_created) {
+            const dias = Math.round((Date.parse(c.date_created) - r.ts) / 864e5);
+            if (isFinite(dias) && dias >= 0) demoras.push({ dias, prod: r.prod, tipo: esReclamo(r) ? 'reclamo' : 'devolución' });
+          }
+        } catch { /* */ }
+      }
+      let corte = 30;   // por defecto: 30 días para dar por buena una venta
+      if (demoras.length) {
+        demoras.sort((a, b) => a.dias - b.dias);
+        const p90 = demoras[Math.min(demoras.length - 1, Math.floor(demoras.length * 0.9))].dias;
+        corte = Math.max(15, Math.min(60, p90 + 3));
+        console.log(`  Demora de cada uno (días desde la venta): ${demoras.map((d) => d.dias).join(', ')}`);
+        console.log(`  El más rápido: ${demoras[0].dias} días · el más lento: ${demoras[demoras.length - 1].dias} días`);
+        console.log(`  9 de cada 10 aparecieron antes de los ${p90} días → uso ${corte} días como plazo seguro.`);
+      } else {
+        console.log(`  ML no me dio la fecha de ninguno (o no hay). Uso el plazo por defecto: ${corte} días.`);
+      }
+      // ── 3. maduras vs en observación
+      const maduras = ventas.filter((x) => (ahora - x.ts) >= corte * 864e5);
+      const jovenes = ventas.filter((x) => (ahora - x.ts) < corte * 864e5);
+      const uni = (arr) => arr.filter((x) => !x.cancelada).reduce((s, x) => s + x.qty, 0);
+      const recU = (arr) => arr.filter(esReclamo).reduce((s, x) => s + x.qty, 0);
+      const devU = (arr) => arr.filter(esDevol).reduce((s, x) => s + x.qty, 0);
+      const factOf = (arr) => arr.filter((x) => !x.cancelada).reduce((s, x) => s + x.total, 0);
+      const ganOf = (arr) => arr.filter((x) => !x.cancelada).reduce((s, x) => s + (x.neto - x.costo - x.total * (mlExtraPct(x.cuenta) + monoP) / 100), 0);
+      const pct = (a, b) => b > 0 ? (a / b * 100) : 0;
+      const uMad = uni(maduras), uJov = uni(jovenes);
+      console.log(`\n── EL NÚMERO HONESTO ──`);
+      console.log(`  MADURAS (más de ${corte} días): ${uMad} unidades · ${recU(maduras)} reclamos · ${devU(maduras)} devoluciones`);
+      console.log(`      % reclamos REAL de la línea: ${pct(recU(maduras), uMad + recU(maduras)).toFixed(1)}%`);
+      console.log(`      % reclamos + devoluciones : ${pct(recU(maduras) + devU(maduras), uMad + recU(maduras) + devU(maduras)).toFixed(1)}%`);
+      console.log(`  EN OBSERVACIÓN (menos de ${corte} días): ${uJov} unidades · ${recU(jovenes)} reclamos hasta ahora`);
+      console.log(`      facturado todavía sin confirmar: ${money(Math.round(factOf(jovenes)))}`);
+      console.log(`      son el ${pct(uJov, uMad + uJov).toFixed(0)}% de todo lo vendido de la línea`);
+      const crudo = pct(recU(ventas), uni(ventas) + recU(ventas));
+      console.log(`\n  Para comparar: el % "crudo" (contando todo junto) da ${crudo.toFixed(1)}% — ese es el que engaña.`);
+      // ── 4. por mes, para ver si la línea mejora o empeora
+      const porMes = {};
+      for (const x of ventas) {
+        const ym = x.dk.slice(0, 7);
+        const m = porMes[ym] = porMes[ym] || { u: 0, rec: 0, dev: 0, fact: 0, gan: 0 };
+        if (!x.cancelada) { m.u += x.qty; m.fact += x.total; m.gan += (x.neto - x.costo - x.total * (mlExtraPct(x.cuenta) + monoP) / 100); }
+        if (esReclamo(x)) m.rec += x.qty;
+        if (esDevol(x)) m.dev += x.qty;
+      }
+      console.log(`\n── MES A MES ──`);
+      console.log(`  ${'mes'.padEnd(10)}${'unid'.padStart(6)}${'facturado'.padStart(14)}${'ganancia'.padStart(13)}${'recl'.padStart(6)}${'% recl'.padStart(8)}`);
+      for (const [ym, m] of Object.entries(porMes).sort()) {
+        console.log(`  ${ym.replace('_', '-').padEnd(10)}${String(m.u).padStart(6)}${money(Math.round(m.fact)).padStart(14)}${money(Math.round(m.gan)).padStart(13)}${String(m.rec).padStart(6)}${(pct(m.rec, m.u + m.rec).toFixed(1) + '%').padStart(8)}`);
+      }
+      console.log(`\nRECORDÁ: son solo números. La decisión de comprar es tuya.`);
+      return;
+    }
     // BILLING_PROBE=cotejo:<YYYY_MM_DD> → VENTA POR VENTA: QUÉ TIENE EL PANEL Y QUÉ TIENE ML
     //
     // Cuando el total del día no coincide, teorizar no sirve: hay que poner las dos listas al lado y
