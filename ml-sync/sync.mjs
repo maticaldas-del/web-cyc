@@ -4024,6 +4024,107 @@ async function main() {
       console.log(`         ${bajo} el robot los ve MÁS BARATOS (margen sobreestimado → no subiría lo que hace falta)`);
       return;
     }
+    // BILLING_PROBE=comprar:<palabras>:<excluir>[:<presupuesto $>] → QUÉ Y CUÁNTO COMPRAR
+    //
+    // Lista de compra concreta para una línea. Para cada producto: lo que hay en stock, lo que se
+    // vende por mes, cuántos días de stock quedan y cuánto cuesta reponer.
+    // La plata se reparte por ROTACIÓN, no en partes iguales: lo que más se vende se lleva más.
+    // Y marca aparte lo que TIENE STOCK Y NO VENDE, que es justo lo que NO hay que comprar.
+    // Solo LEE.
+    if (String(process.env.BILLING_PROBE || '').startsWith('comprar')) {
+      const _c = String(process.env.BILLING_PROBE).split(':');
+      const incl = (_c[1] || '').split(',').map((s) => s.trim().toLowerCase()).filter(Boolean);
+      const excl = (_c[2] || '').split(',').map((s) => s.trim().toLowerCase()).filter(Boolean);
+      const PRESU = parseFloat(_c[3]) || 1000000;
+      if (!incl.length) { console.log('Poné las palabras: comprar:memoria,microsd:pendrive:1000000'); return; }
+      const vp = (await db.get('cyc/ventaprod')) || {}; setDevLive(vp);
+      const inventory = (await db.get('cyc/inventory')) || {};
+      const fin = (await db.get('cyc/finanzas')) || {};
+      const tc = parseFloat(fin.tipo_cambio) || 1500;
+      const monoP = parseFloat(((await db.get('cyc/monotributo')) || {}).pct) || 0;
+      const stockU = (pid) => Object.entries(inventory).filter(([k]) => k.startsWith(pid + '__') && !k.includes('__v__')).reduce((s, [, v]) => s + (parseInt(v) || 0), 0);
+      const entra = (nom) => {
+        const t = String(nom || '').toLowerCase();
+        return incl.some((w) => t.includes(w)) && !excl.some((w) => t.includes(w));
+      };
+      const ahora = Date.now();
+      // ventas por producto en los últimos 60 días (y reclamos, para no comprar lo que se rompe)
+      const porProd = {};
+      for (const [dk, day] of Object.entries(vp)) {
+        for (const v of Object.values(day || {})) {
+          if (!v || !v.prodId || !entra(v.prod)) continue;
+          const dias = (ahora - (v.ts || 0)) / 864e5;
+          const p = porProd[v.prodId] = porProd[v.prodId] || { nom: v.prod, u60: 0, u30: 0, fact: 0, gan: 0, rec: 0, ultima: 0 };
+          if (v.cancelada) { if (v.tipoCancelacion === 'reclamo' || v.tipoCancelacion === 'perdida') p.rec += (v.qty || 1); continue; }
+          if (dias <= 60) { p.u60 += (v.qty || 1); p.fact += (v.total || 0); p.gan += ((v.neto || 0) - (v.costo || 0) - (v.total || 0) * (mlExtraPct(v.cuenta) + monoP) / 100); }
+          if (dias <= 30) p.u30 += (v.qty || 1);
+          if ((v.ts || 0) > p.ultima) p.ultima = v.ts || 0;
+        }
+      }
+      // productos de la línea que existen en el catálogo (aunque no hayan vendido nunca)
+      for (const p of products) if (entra(p.name) && !porProd[p.id]) porProd[p.id] = { nom: p.name, u60: 0, u30: 0, fact: 0, gan: 0, rec: 0, ultima: 0 };
+      const filas = [];
+      for (const [pid, d] of Object.entries(porProd)) {
+        const p = products.find((x) => x.id === pid);
+        if (!p) continue;
+        const costoU = costoPesos(p, 1, tc).costo;
+        const stock = stockU(pid);
+        const porDia = d.u60 / 60;
+        const diasStock = porDia > 0 ? stock / porDia : (stock > 0 ? Infinity : 0);
+        const mg = d.gan > 0 && d.fact > 0 ? (d.gan / (d.fact - d.gan) * 100) : 0;
+        filas.push({ pid, nom: d.nom || p.name, costoU, stock, u60: d.u60, u30: d.u30, porDia, diasStock, mg, rec: d.rec, ultima: d.ultima, gan: d.gan });
+      }
+      console.log(`=== QUÉ COMPRAR · línea "${incl.join(', ')}" · presupuesto ${money(PRESU)} ===`);
+      console.log(`MODO PRUEBA · no se escribe nada · dólar ${money(tc)}\n`);
+      // ── lo que NO hay que comprar
+      const muertos = filas.filter((f) => f.stock > 0 && f.u60 === 0);
+      const lentos = filas.filter((f) => f.stock > 0 && f.u60 > 0 && f.diasStock > 90);
+      console.log(`── ⛔ TIENEN STOCK Y NO VENDIERON NADA EN 60 DÍAS · ${muertos.length} ──`);
+      if (!muertos.length) console.log(`  Ninguno. Todo lo que tenés en stock rota.`);
+      muertos.forEach((f) => console.log(`  ${f.nom.slice(0, 38).padEnd(39)} stock ${String(f.stock).padStart(4)} u. · costo ${money(Math.round(f.costoU))} c/u · plata quieta ${money(Math.round(f.stock * f.costoU))}${f.ultima ? ` · última venta ${new Date(f.ultima).toISOString().slice(0, 10)}` : ' · NUNCA vendió'}`));
+      console.log(`\n── ⚠️ TIENEN STOCK PARA MÁS DE 3 MESES (no hace falta comprar) · ${lentos.length} ──`);
+      if (!lentos.length) console.log(`  Ninguno.`);
+      lentos.forEach((f) => console.log(`  ${f.nom.slice(0, 38).padEnd(39)} stock ${String(f.stock).padStart(4)} u. · vende ${f.u60} en 60 días · alcanza para ${Math.round(f.diasStock)} días`));
+      // ── los que sí: reparto por rotación
+      const compra = filas.filter((f) => f.u60 > 0 && f.diasStock <= 90 && f.costoU > 0).sort((a, b) => b.porDia - a.porDia);
+      const totalDia = compra.reduce((s, f) => s + f.porDia, 0);
+      console.log(`\n── ✅ QUÉ COMPRAR · ${compra.length} productos ──`);
+      if (!compra.length) { console.log('  No hay nada que reponer con estos criterios.'); return; }
+      console.log(`Reparto: la plata se divide según cuánto vende cada uno por día.\n`);
+      console.log(`  ${'producto'.padEnd(34)}${'stock'.padStart(7)}${'60d'.padStart(6)}${'días'.padStart(6)}${'costo u.'.padStart(11)}${'comprar'.padStart(9)}${'$ compra'.padStart(13)}${'margen'.padStart(8)}${'recl'.padStart(6)}`);
+      let gastado = 0; const lista = [];
+      for (const f of compra) {
+        const share = totalDia > 0 ? f.porDia / totalDia : 0;
+        let uds = Math.floor((PRESU * share) / f.costoU);
+        if (uds < 1) uds = 1;                       // mínimo 1 de cada uno que rota
+        const monto = uds * f.costoU;
+        gastado += monto; lista.push({ f, uds, monto });
+      }
+      // ajuste fino: si se pasó o faltó, se corrige sobre el que más rota
+      let dif = PRESU - gastado;
+      for (const it of lista) {
+        if (Math.abs(dif) < it.f.costoU) break;
+        const extra = Math.trunc(dif / it.f.costoU);
+        if (!extra) continue;
+        if (it.uds + extra < 1) continue;
+        it.uds += extra; it.monto = it.uds * it.f.costoU; dif -= extra * it.f.costoU;
+      }
+      let tot = 0, cubre = [];
+      for (const it of lista) {
+        const f = it.f;
+        tot += it.monto;
+        const diasNuevos = f.porDia > 0 ? (f.stock + it.uds) / f.porDia : 0;
+        cubre.push(diasNuevos);
+        console.log(`  ${f.nom.slice(0, 33).padEnd(34)}${String(f.stock).padStart(7)}${String(f.u60).padStart(6)}${String(Math.round(f.diasStock)).padStart(6)}${money(Math.round(f.costoU)).padStart(11)}${String(it.uds).padStart(9)}${money(Math.round(it.monto)).padStart(13)}${(Math.round(f.mg) + '%').padStart(8)}${String(f.rec).padStart(6)}`);
+        console.log(`       → con esto pasa de ${Math.round(f.diasStock)} a ${Math.round(diasNuevos)} días de stock`);
+      }
+      console.log(`\n  TOTAL: ${money(Math.round(tot))} de ${money(PRESU)} · quedan ${money(Math.round(PRESU - tot))} sin asignar`);
+      console.log(`  Con el 10% de descuento pagarías ${money(Math.round(tot * 0.9))} y te ahorrás ${money(Math.round(tot * 0.1))}`);
+      const unidTot = lista.reduce((s, x) => s + x.uds, 0);
+      const ventaDia = compra.reduce((s, f) => s + f.porDia, 0);
+      console.log(`  Son ${unidTot} unidades · al ritmo de hoy (${(ventaDia * 30).toFixed(0)} por mes) es stock para ${ventaDia > 0 ? Math.round(unidTot / ventaDia) : 0} días`);
+      return;
+    }
     // BILLING_PROBE=linea:<palabras>[:<palabras a excluir>] → ¿CONVIENE APOSTAR A ESTA LÍNEA?
     //
     // Para decidir si comprar fuerte de una línea nueva. El riesgo de mirar el % de reclamos y
