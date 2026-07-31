@@ -1013,8 +1013,7 @@ footer{margin-top:32px;padding-top:14px;border-top:1px solid var(--border);font-
       <button class="vbtn active" id="met-field-total"    onclick="setMetField('total')"    title="Precio total de venta (lo que pagó el comprador)">💵 Total</button>
       <button class="vbtn"        id="met-field-neto"     onclick="setMetField('neto')"     title="Neto que queda después de comisiones ML">💚 Neto</button>
       <button class="vbtn"        id="met-field-ganancia" onclick="setMetField('ganancia')" title="Ganancia = Neto − Costo">💰 Ganancia</button>
-      <button class="vbtn"        id="met-field-gananciaCYC" onclick="setMetField('gananciaCYC')" title="Ganancia de CYC = Ganancia − Retiros − Gastos del mes. Usa el retiro real que anotaste en Finanzas (o el 15% si ese mes no lo cargaste). Gastos sin cargar usan $800.000 estimado.">🏢 Ganancia CYC</button>
-      <button class="vbtn"        id="met-field-retiros" onclick="setMetField('retiros')" title="Retiros de dueños: el monto real que anotaste ese mes en Finanzas, o el 15% del neto si no lo cargaste (Mati + Viejo)">💸 Retiros</button>
+      <button class="vbtn"        id="met-field-gananciaCYC" onclick="setMetField('gananciaCYC')" title="Ganancia de CYC = Ganancia − Gastos del mes. NO descuenta el retiro de los dueños: el retiro es un monto fijo que sale después, así ves exacto cómo viene el mes. Gastos sin cargar usan $800.000 estimado.">🏢 Ganancia CYC</button>
     </div>
     <!-- Para comparar: se clickean las métricas de arriba. Cada una prendida dibuja su línea. -->
     <div id="ms-ctrl-dia" style="display:none;align-items:center;gap:8px">
@@ -5686,7 +5685,7 @@ function togglePedidoGroupProv(btn){
 // barras, etc.), así el resto de la página no cambia de comportamiento.
 let metViewFields=['total'];
 let metChartBar=null,metChartLine=null,metChartPct=null,metScopeMode='mes',metViewField='total',metChartLineView='general',metPctLineView='general',metChartAccum=true,metPctMode='diario';
-const MET_FIELD_LBL={total:'💵 Total',neto:'💚 Neto',ganancia:'💰 Ganancia',gananciaCYC:'🏢 Ganancia CYC',retiros:'💸 Retiros'};
+const MET_FIELD_LBL={total:'💵 Total',neto:'💚 Neto',ganancia:'💰 Ganancia',gananciaCYC:'🏢 Ganancia CYC'};
 function setMetChartView(v,btn){
   metChartLineView=v;
   document.querySelectorAll('#met-view-general,#met-view-cuentas').forEach(b=>b.className='pf-btn');
@@ -5728,7 +5727,7 @@ function _netoMesData(ym){
 }
 function metGetValDay(key,acct,field){
   const vpDay=Object.values(state.ventaprod[key]||{}).filter(v=>!v.cancelada); // canceladas/reclamos no cuentan
-  const computed=(field==='neto'||field==='ganancia'||field==='retiros'||field==='gananciaCYC');
+  const computed=(field==='neto'||field==='ganancia'||field==='gananciaCYC');
   if(vpDay.length>0||computed){
     const rows=vpDay.filter(v=>(v.cuenta||'').toLowerCase()===acct);
     if(field==='total')return rows.reduce((s,v)=>s+(v.total||0),0);
@@ -5738,17 +5737,13 @@ function metGetValDay(key,acct,field){
     if(field==='ganancia')return neto-costo;
     const ym=key.substring(0,7);
     const md=_netoMesData(ym);
-    const rm=_retiroMesVal(ym); // retiro real anotado del mes (o null = usar el supuesto)
-    // El retiro del mes —el anotado, o el supuesto (monto fijo desde ago-2026; 15% antes)— se
-    // reparte por el neto de cada día/cuenta, así la suma del mes da exacto ese monto.
-    const rMes=rm!=null?rm:retiroDefMes(ym,md.tot);
-    const retiro=md.tot>0?rMes*(neto/md.tot):0;
-    if(field==='retiros')return retiro;
     if(field==='gananciaCYC'){
-      // ganancia − retiros − parte de los gastos del mes (repartidos por neto de cada cuenta) = lo que queda para CYC
-      const base=(neto-costo)-retiro;
+      // Ganancia REAL del mes = ganancia − gastos. A propósito NO se descuenta el retiro de los
+      // dueños: el retiro es un monto fijo que sale después y no depende de cómo venga el mes;
+      // mezclarlo acá tapaba justamente lo que se quiere mirar, que es cómo viene el negocio.
+      // Los gastos del mes se reparten por el neto de cada día/cuenta, así la suma del mes da exacta.
       const share=md.tot>0?(neto/md.tot):0;
-      return base-_gastosMes(ym)*share;
+      return (neto-costo)-_gastosMes(ym)*share;
     }
     return 0;
   }
@@ -5798,7 +5793,7 @@ function getAllPrevMetKeys(scope){
   return[];
 }
 
-const MET_FIELD_IDS={total:'met-field-total',neto:'met-field-neto',ganancia:'met-field-ganancia',gananciaCYC:'met-field-gananciaCYC',retiros:'met-field-retiros'};
+const MET_FIELD_IDS={total:'met-field-total',neto:'met-field-neto',ganancia:'met-field-ganancia',gananciaCYC:'met-field-gananciaCYC'};
 // Clic en una métrica apagada → la suma al gráfico. Clic en una prendida → la saca.
 // Nunca se apagan todas: si querés dejar una sola, apagás las otras.
 function setMetField(field){
@@ -5951,7 +5946,7 @@ function renderMetricas(){
   const cur=sumMetFields(curKeys,metViewField),prev=sumMetFields(prevKeys,metViewField);
   const curTotal=MET_ACCTS.reduce((s,a)=>s+cur[a],0),prevTotal=MET_ACCTS.reduce((s,a)=>s+prev[a],0);
   const lbl=getMetScopeLabel(metScopeMode),prevLbl=getPrevMetLabel(metScopeMode);
-  const fieldLbl=metViewField==='neto'?'💚 Neto':metViewField==='ganancia'?'💰 Ganancia':metViewField==='gananciaCYC'?'🏢 Ganancia CYC':metViewField==='retiros'?'💸 Retiros':'💵 Total';
+  const fieldLbl=metViewField==='neto'?'💚 Neto':metViewField==='ganancia'?'💰 Ganancia':metViewField==='gananciaCYC'?'🏢 Ganancia CYC':'💵 Total';
   const setTxt=(id,v)=>{const el=document.getElementById(id);if(el)el.textContent=v;};
   setTxt('met-kpi-period','· '+lbl+' · '+fieldLbl);setTxt('met-line-period','· '+lbl+' · '+fieldLbl);
   const acctColors=['c1','c4','c2','c3'];
@@ -7169,7 +7164,7 @@ document.addEventListener('click',e=>{if(fnavOpen&&!e.target.closest('#fnav-btn'
         <span style="font-size:.75rem;color:var(--muted)">Si no ves los últimos cambios, forzá la actualización</span>
         <button class="btn" style="background:rgba(56,189,248,.12);color:var(--blue);border:1px solid rgba(56,189,248,.3)" onclick="actualizarApp()">🔄 Buscar actualizaciones</button>
       </div>
-      <div style="font-size:.66rem;color:var(--muted);margin-top:12px">CYC · Versión 7.3</div>
+      <div style="font-size:.66rem;color:var(--muted);margin-top:12px">CYC · Versión 7.4</div>
     </div>
 
     <div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:18px 20px;margin-bottom:14px">
