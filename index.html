@@ -1013,7 +1013,7 @@ footer{margin-top:32px;padding-top:14px;border-top:1px solid var(--border);font-
       <button class="vbtn active" id="met-field-total"    onclick="setMetField('total')"    title="Precio total de venta (lo que pagó el comprador)">💵 Total</button>
       <button class="vbtn"        id="met-field-neto"     onclick="setMetField('neto')"     title="Neto que queda después de comisiones ML">💚 Neto</button>
       <button class="vbtn"        id="met-field-ganancia" onclick="setMetField('ganancia')" title="Ganancia = Neto − Costo">💰 Ganancia</button>
-      <button class="vbtn"        id="met-field-gananciaCYC" onclick="setMetField('gananciaCYC')" title="Ganancia de CYC = Ganancia − Gastos del mes. NO descuenta el retiro de los dueños: el retiro es un monto fijo que sale después, así ves exacto cómo viene el mes. Gastos sin cargar usan $800.000 estimado.">🏢 Ganancia CYC</button>
+      <button class="vbtn"        id="met-field-gananciaCYC" onclick="setMetField('gananciaCYC')" title="Ganancia de CYC = Ganancia − Gastos − Retiro de los dueños. Es el mismo número que 'Ganancia real CYC' del Resumen. Gastos y retiro se reparten entre los días según lo que vendió cada uno. Gastos sin cargar usan $800.000 estimado.">🏢 Ganancia CYC</button>
     </div>
     <!-- Para comparar: se clickean las métricas de arriba. Cada una prendida dibuja su línea. -->
     <div id="ms-ctrl-dia" style="display:none;align-items:center;gap:8px">
@@ -5738,12 +5738,15 @@ function metGetValDay(key,acct,field){
     const ym=key.substring(0,7);
     const md=_netoMesData(ym);
     if(field==='gananciaCYC'){
-      // Ganancia REAL del mes = ganancia − gastos. A propósito NO se descuenta el retiro de los
-      // dueños: el retiro es un monto fijo que sale después y no depende de cómo venga el mes;
-      // mezclarlo acá tapaba justamente lo que se quiere mirar, que es cómo viene el negocio.
-      // Los gastos del mes se reparten por el neto de cada día/cuenta, así la suma del mes da exacta.
+      // Ganancia CYC = ganancia − gastos − retiro de los dueños. Es el MISMO número que el último
+      // renglón del Resumen ("Ganancia real CYC"), para que los dos lados digan lo mismo.
+      // Tanto los gastos como el retiro del mes se reparten entre los días proporcional al neto de
+      // cada día/cuenta, así la suma del mes da exactamente el monto del mes (y no queda pegado al
+      // día en que se cargó el gasto).
       const share=md.tot>0?(neto/md.tot):0;
-      return (neto-costo)-_gastosMes(ym)*share;
+      const rm=_retiroMesVal(ym); // retiro real anotado del mes (o null = usar el supuesto)
+      const rMes=rm!=null?rm:retiroDefMes(ym,md.tot);
+      return (neto-costo)-_gastosMes(ym)*share-rMes*share;
     }
     return 0;
   }
@@ -7164,7 +7167,7 @@ document.addEventListener('click',e=>{if(fnavOpen&&!e.target.closest('#fnav-btn'
         <span style="font-size:.75rem;color:var(--muted)">Si no ves los últimos cambios, forzá la actualización</span>
         <button class="btn" style="background:rgba(56,189,248,.12);color:var(--blue);border:1px solid rgba(56,189,248,.3)" onclick="actualizarApp()">🔄 Buscar actualizaciones</button>
       </div>
-      <div style="font-size:.66rem;color:var(--muted);margin-top:12px">CYC · Versión 7.4</div>
+      <div style="font-size:.66rem;color:var(--muted);margin-top:12px">CYC · Versión 7.5</div>
     </div>
 
     <div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:18px 20px;margin-bottom:14px">
