@@ -202,6 +202,20 @@ jobs:
               echo "───── vuelta $vuelta · $hora · solo ventas ─────"
               SKIP_PRICES=1 node ml-sync/sync.mjs || echo "⚠️ esta vuelta falló, sigo con la próxima"
             fi
+            # RESUMEN DEL DÍA AL CELULAR. Lo manda ESTE ciclo, no el cron de ml-daily.
+            # Por qué: el cron pide las 00:07 de Argentina, pero GitHub demora las corridas
+            # programadas cuando está cargado — el 30 de julio lo corrió 02:51, y a esa hora el
+            # resumen no lo mira nadie. Este ciclo está vivo las 24 h y da una vuelta cada 2
+            # minutos, así que apenas pasa la medianoche lo manda.
+            # Se intenta en TODAS las vueltas entre las 00:03 y las 00:59: el robot guarda cuál fue
+            # el último día que mandó y no lo repite, así que los intentos de más no cuestan nada y
+            # alcanza con que UNA vuelta salga bien.
+            # El cron de ml-daily queda igual, de respaldo, por si este ciclo se cae justo esa noche.
+            hh=$(TZ=America/Argentina/Buenos_Aires date '+%-H')
+            mi=$(TZ=America/Argentina/Buenos_Aires date '+%-M')
+            if [ "$hh" -eq 0 ] && [ "$mi" -ge 3 ]; then
+              DAILY_SUMMARY=1 node ml-sync/sync.mjs || echo "⚠️ no pude mandar el resumen, reintento en la próxima vuelta"
+            fi
             [ "$(date +%s)" -lt "$fin" ] || break
             sleep 120
           done
