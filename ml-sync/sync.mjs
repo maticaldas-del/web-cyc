@@ -4104,7 +4104,12 @@ async function main() {
       });
       console.log(`\n── ⚠️ TIENEN STOCK PARA MÁS DE 3 MESES (no hace falta comprar) · ${lentos.length} ──`);
       if (!lentos.length) console.log(`  Ninguno.`);
-      lentos.forEach((f) => console.log(`  ${f.nom.slice(0, 38).padEnd(39)} stock ${String(f.stock).padStart(4)} u. · vende ${f.u60} en 60 días · alcanza para ${Math.round(f.diasStock)} días`));
+      lentos.forEach((f) => {
+        const caps = capDe([f.nom, ...titulosDe(f.pid)]);
+        console.log(`  ${f.nom.slice(0, 38).padEnd(39)} stock ${String(f.stock).padStart(4)} u. · vende ${f.u60} en 60 días · alcanza para ${Math.round(f.diasStock)} días`);
+        console.log(`       CAPACIDAD: ${caps.length ? caps.join(' / ') : '(no la pude sacar)'} · "${f.nom}"`);
+        titulosDe(f.pid).slice(0, 2).forEach((t) => console.log(`       publicación ML: "${String(t).slice(0, 78)}"`));
+      });
       // ── los que sí: reparto por rotación
       const compra = filas.filter((f) => f.u60 > 0 && f.diasStock <= 90 && f.costoU > 0).sort((a, b) => b.porDia - a.porDia);
       const totalDia = compra.reduce((s, f) => s + f.porDia, 0);
