@@ -4043,6 +4043,22 @@ async function main() {
       const tc = parseFloat(fin.tipo_cambio) || 1500;
       const monoP = parseFloat(((await db.get('cyc/monotributo')) || {}).pct) || 0;
       const stockU = (pid) => Object.entries(inventory).filter(([k]) => k.startsWith(pid + '__') && !k.includes('__v__')).reduce((s, [, v]) => s + (parseInt(v) || 0), 0);
+      // Los títulos de las publicaciones de ML, que son los que dicen la CAPACIDAD. El nombre corto
+      // del producto en la web no alcanza: hay dos "Tarjeta de memoria SanDisk Ultra" con costos
+      // distintos y sin los GB no se sabe cuál es cuál a la hora de comprar.
+      const linksC = (await db.get('cyc/mllinks')) || {};
+      const titulosDe = (pid) => [...new Set(Object.values(linksC)
+        .filter((e) => e && e.prodId === pid && e.title)
+        .map((e) => String(e.title)))];
+      // Por las dudas, también se busca la capacidad en el texto (32/64/128/256/512 GB o 1 TB).
+      const capDe = (txts) => {
+        const caps = new Set();
+        for (const t of txts) {
+          const m = String(t).match(/(\d+)\s*(gb|tb)/gi);
+          if (m) m.forEach((x) => caps.add(x.replace(/\s+/g, '').toUpperCase()));
+        }
+        return [...caps];
+      };
       const entra = (nom) => {
         const t = String(nom || '').toLowerCase();
         return incl.some((w) => t.includes(w)) && !excl.some((w) => t.includes(w));
@@ -4081,7 +4097,11 @@ async function main() {
       const lentos = filas.filter((f) => f.stock > 0 && f.u60 > 0 && f.diasStock > 90);
       console.log(`── ⛔ TIENEN STOCK Y NO VENDIERON NADA EN 60 DÍAS · ${muertos.length} ──`);
       if (!muertos.length) console.log(`  Ninguno. Todo lo que tenés en stock rota.`);
-      muertos.forEach((f) => console.log(`  ${f.nom.slice(0, 38).padEnd(39)} stock ${String(f.stock).padStart(4)} u. · costo ${money(Math.round(f.costoU))} c/u · plata quieta ${money(Math.round(f.stock * f.costoU))}${f.ultima ? ` · última venta ${new Date(f.ultima).toISOString().slice(0, 10)}` : ' · NUNCA vendió'}`));
+      muertos.forEach((f) => {
+        const caps = capDe([f.nom, ...titulosDe(f.pid)]);
+        console.log(`  ${f.nom.slice(0, 38).padEnd(39)} stock ${String(f.stock).padStart(4)} u. · costo ${money(Math.round(f.costoU))} c/u · plata quieta ${money(Math.round(f.stock * f.costoU))}${f.ultima ? ` · última venta ${new Date(f.ultima).toISOString().slice(0, 10)}` : ' · NUNCA vendió'}`);
+        console.log(`       CAPACIDAD: ${caps.length ? caps.join(' / ') : '(no la pude sacar)'} · "${f.nom}"`);
+      });
       console.log(`\n── ⚠️ TIENEN STOCK PARA MÁS DE 3 MESES (no hace falta comprar) · ${lentos.length} ──`);
       if (!lentos.length) console.log(`  Ninguno.`);
       lentos.forEach((f) => console.log(`  ${f.nom.slice(0, 38).padEnd(39)} stock ${String(f.stock).padStart(4)} u. · vende ${f.u60} en 60 días · alcanza para ${Math.round(f.diasStock)} días`));
@@ -4115,7 +4135,11 @@ async function main() {
         tot += it.monto;
         const diasNuevos = f.porDia > 0 ? (f.stock + it.uds) / f.porDia : 0;
         cubre.push(diasNuevos);
+        const tits = titulosDe(f.pid);
+        const caps = capDe([f.nom, ...tits]);
         console.log(`  ${f.nom.slice(0, 33).padEnd(34)}${String(f.stock).padStart(7)}${String(f.u60).padStart(6)}${String(Math.round(f.diasStock)).padStart(6)}${money(Math.round(f.costoU)).padStart(11)}${String(it.uds).padStart(9)}${money(Math.round(it.monto)).padStart(13)}${(Math.round(f.mg) + '%').padStart(8)}${String(f.rec).padStart(6)}`);
+        console.log(`       CAPACIDAD: ${caps.length ? caps.join(' / ') : '⚠️ no la pude sacar del título'}   ·   nombre completo: "${f.nom}"`);
+        tits.slice(0, 3).forEach((t) => console.log(`       publicación ML: "${t.slice(0, 78)}"`));
         console.log(`       → con esto pasa de ${Math.round(f.diasStock)} a ${Math.round(diasNuevos)} días de stock`);
       }
       console.log(`\n  TOTAL: ${money(Math.round(tot))} de ${money(PRESU)} · quedan ${money(Math.round(PRESU - tot))} sin asignar`);
