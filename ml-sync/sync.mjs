@@ -998,6 +998,56 @@ async function main() {
     const ok = await sendTelegram(msg, 'resumen');
     if (ok && !forzado && !DRY) await db.set('mlapi/telegram/lastDaily', today);
     console.log(ok ? `✓ Resumen de ${today} enviado.` : '✗ No se pudo enviar el resumen (revisá Telegram).');
+
+    // ── RESUMEN DEL MES, los días 1 ──────────────────────────────────────────
+    // Si el día que se acaba de resumir es el ÚLTIMO del mes (o sea: hoy es 1), sale además el
+    // resumen del mes completo. Va como mensaje aparte para que no se mezcle con el del día.
+    // Se apoya en la misma cuenta del resumen diario (mismo neto, mismo costo, mismos impuestos al
+    // costo) para que los dos números sean consistentes entre sí y con la web.
+    const [_ay, _am, _ad] = today.split('_');
+    const ultimoDelMes = new Date(Number(_ay), Number(_am), 0).getDate() === Number(_ad);
+    if (ultimoDelMes) {
+      const ym = `${_ay}_${_am}`;
+      const yaMes = await db.get('mlapi/telegram/lastMensual');
+      if (yaMes === ym && !forzado) {
+        console.log(`Resumen mensual de ${ym} ya enviado, no lo repito.`);
+      } else {
+        let mN = 0, mFact = 0, mGan = 0, mDias = 0, mCancel = 0;
+        const mProd = {}, mCuenta = {};
+        for (const [dk, dd] of Object.entries(vp)) {
+          if (!dk.startsWith(ym + '_')) continue;
+          let huboVenta = false;
+          for (const v of Object.values(dd || {})) {
+            if (!v) continue;
+            if (v.cancelada) { mCancel += (v.total || 0); continue; }
+            huboVenta = true;
+            mN += v.qty || 0;
+            mFact += v.total || 0;
+            const g = (v.neto || 0) - (v.costo || 0) - impDe(v);
+            mGan += g;
+            mProd[v.prod || '?'] = (mProd[v.prod || '?'] || 0) + g;
+            mCuenta[v.cuenta || '?'] = (mCuenta[v.cuenta || '?'] || 0) + (v.total || 0);
+          }
+          if (huboVenta) mDias++;
+        }
+        const mTop = Object.entries(mProd).sort((a, b) => b[1] - a[1]).slice(0, 5);
+        const cuentas = Object.entries(mCuenta).sort((a, b) => b[1] - a[1]);
+        const margen = mFact > 0 ? (mGan / mFact * 100) : 0;
+        const MES = ['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio', 'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre'];
+        const msgMes = `🗓️ <b>RESUMEN DE ${MES[Number(_am) - 1].toUpperCase()} ${_ay}</b>\n\n`
+          + `Ventas: <b>${mN}</b> en ${mDias} días\n`
+          + `Facturado: <b>${money(Math.round(mFact))}</b>\n`
+          + `Ganancia: <b>${money(Math.round(mGan))}</b> (${margen.toFixed(1)}% del facturado)\n`
+          + `Promedio por día: ${money(Math.round(mDias ? mFact / mDias : 0))}\n`
+          + (mCancel ? `Canceladas/devueltas: ${money(Math.round(mCancel))}\n` : '')
+          + (cuentas.length ? `\n<b>Por cuenta</b>\n` + cuentas.map(([c, t]) => `· ${c}: ${money(Math.round(t))}`).join('\n') + '\n' : '')
+          + (mTop.length ? `\n<b>Los 5 que más ganancia dejaron</b>\n`
+            + mTop.map((t, i) => `${i + 1}. ${t[0]}: <b>${money(Math.round(t[1]))}</b>`).join('\n') : '');
+        const okMes = await sendTelegram(msgMes, 'resumen');
+        if (okMes && !DRY) await db.set('mlapi/telegram/lastMensual', ym);
+        console.log(okMes ? `✓ Resumen MENSUAL de ${ym} enviado.` : '✗ No se pudo enviar el resumen mensual.');
+      }
+    }
     return;
   }
 
