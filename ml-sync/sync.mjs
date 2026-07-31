@@ -3974,6 +3974,80 @@ async function main() {
       console.log(`         ${bajo} el robot los ve MÁS BARATOS (margen sobreestimado → no subiría lo que hace falta)`);
       return;
     }
+    // BILLING_PROBE=cotejo:<YYYY_MM_DD> → VENTA POR VENTA: QUÉ TIENE EL PANEL Y QUÉ TIENE ML
+    //
+    // Cuando el total del día no coincide, teorizar no sirve: hay que poner las dos listas al lado y
+    // buscar las filas que sobran. Esto trae las órdenes que ML dice que se CREARON ese día y las
+    // compara una por una contra lo que tiene guardado el panel:
+    //   · las que están en ML y NO en el panel  → ventas que no se cargaron
+    //   · las que están en el panel y NO en ML  → ventas de más (¿otra cuenta? ¿otro día?)
+    //   · las que están en las dos con importe distinto
+    // Y muestra los totales de los dos lados, con y sin las canceladas, porque esa es la sospecha
+    // principal: que el panel las sume al bruto y ML no. Solo LEE.
+    if (String(process.env.BILLING_PROBE || '').startsWith('cotejo')) {
+      const dia = (String(process.env.BILLING_PROBE).split(':')[1] || '').trim();
+      if (!/^\d{4}_\d{2}_\d{2}$/.test(dia)) { console.log('Poné el día: cotejo:2026_07_30'); return; }
+      const vp = (await db.get('cyc/ventaprod')) || {}; setDevLive(vp);
+      const dayPanel = vp[dia] || {};
+      console.log(`=== COTEJO DEL ${dia.replace(/_/g, '-')} · panel contra ML ===`);
+      console.log(`MODO PRUEBA · no se escribe nada\n`);
+      // ── lo que tiene ML (órdenes CREADAS ese día, que es como cuenta ML)
+      const mlPorOrden = {};
+      const centro = Date.parse(dia.replace(/_/g, '-') + 'T12:00:00Z');
+      for (const label of labels) {
+        const acc = accounts[label];
+        if (!acc?.refresh_token || !acc.seller_id) { console.log(`(${label}: sin token)`); continue; }
+        let t; try { t = await mlRefresh(ML_CLIENT_ID, ML_CLIENT_SECRET, acc.refresh_token); } catch { console.log(`(${label}: no pude renovar token)`); continue; }
+        await db.patch('mlapi/tokens/' + label, { refresh_token: t.refresh_token, updated_ts: Date.now() });
+        let ords = [];
+        try { ords = await fetchOrdersRange(acc.seller_id, t.access_token, centro - 2 * 864e5, centro + 2 * 864e5); } catch { /* */ }
+        for (const o of (ords || [])) {
+          if (dayKeyFromISO(o.date_created || o.date_closed) !== dia) continue;
+          mlPorOrden[String(o.id)] = {
+            label, total: Number(o.total_amount) || 0, status: o.status,
+            tit: ((o.order_items || [])[0]?.item?.title || '').slice(0, 34),
+          };
+        }
+      }
+      // ── lo que tiene el panel (agrupado por orden, porque una orden puede traer varios renglones)
+      const panelPorOrden = {};
+      for (const [id, v] of Object.entries(dayPanel)) {
+        if (!v) continue;
+        const m = String(id).match(/^v(\d+)_/);
+        const oid = m ? m[1] : ('sinid_' + id);
+        const p = panelPorOrden[oid] = panelPorOrden[oid] || { total: 0, cancel: 0, prods: [], cuenta: v.cuenta, origen: v.origen };
+        p.total += (v.total || 0);
+        if (v.cancelada) p.cancel += (v.total || 0);
+        p.prods.push(String(v.prod || '').slice(0, 22));
+      }
+      const sum = (o) => Object.values(o).reduce((s, x) => s + (x.total || 0), 0);
+      const totML = sum(mlPorOrden);
+      const totPanel = sum(panelPorOrden);
+      const totCancel = Object.values(panelPorOrden).reduce((s, x) => s + (x.cancel || 0), 0);
+      console.log(`── TOTALES ──`);
+      console.log(`  ML (órdenes creadas ese día) : ${money(Math.round(totML)).padStart(14)}  · ${Object.keys(mlPorOrden).length} órdenes`);
+      console.log(`  Panel (todo)                 : ${money(Math.round(totPanel)).padStart(14)}  · ${Object.keys(panelPorOrden).length} órdenes`);
+      console.log(`  Panel sin las canceladas     : ${money(Math.round(totPanel - totCancel)).padStart(14)}  · canceladas ${money(Math.round(totCancel))}`);
+      console.log(`  Diferencia panel − ML        : ${money(Math.round(totPanel - totML)).padStart(14)}\n`);
+      // ── las que faltan de cada lado
+      const soloPanel = Object.entries(panelPorOrden).filter(([oid]) => !mlPorOrden[oid]);
+      const soloML = Object.entries(mlPorOrden).filter(([oid]) => !panelPorOrden[oid]);
+      const distinto = Object.entries(panelPorOrden)
+        .filter(([oid, p]) => mlPorOrden[oid] && Math.abs(p.total - mlPorOrden[oid].total) > 1)
+        .map(([oid, p]) => ({ oid, panel: p.total, ml: mlPorOrden[oid].total, prod: p.prods.join(' + ') }));
+      console.log(`── EN EL PANEL Y NO EN ML · ${soloPanel.length} · ${money(Math.round(soloPanel.reduce((s, [, p]) => s + p.total, 0)))} ──`);
+      soloPanel.slice(0, 25).forEach(([oid, p]) => console.log(
+        `  ${money(Math.round(p.total)).padStart(11)} · ${(p.cuenta || '?').padEnd(8)} · orden ${oid}${p.cancel ? ' · CANCELADA' : ''}${p.origen !== 'ml-api' ? ' · cargada a mano' : ''} · ${p.prods.join(' + ').slice(0, 40)}`));
+      if (soloPanel.length > 25) console.log(`  … y ${soloPanel.length - 25} más`);
+      console.log(`\n── EN ML Y NO EN EL PANEL · ${soloML.length} · ${money(Math.round(soloML.reduce((s, [, m]) => s + m.total, 0)))} ──`);
+      soloML.slice(0, 25).forEach(([oid, m]) => console.log(
+        `  ${money(Math.round(m.total)).padStart(11)} · ${m.label.padEnd(8)} · orden ${oid} · ${m.status} · ${m.tit}`));
+      if (soloML.length > 25) console.log(`  … y ${soloML.length - 25} más`);
+      console.log(`\n── EN LAS DOS PERO CON IMPORTE DISTINTO · ${distinto.length} ──`);
+      distinto.slice(0, 25).forEach((d) => console.log(
+        `  panel ${money(Math.round(d.panel)).padStart(11)} · ML ${money(Math.round(d.ml)).padStart(11)} · dif ${money(Math.round(d.panel - d.ml)).padStart(10)} · orden ${d.oid} · ${d.prod.slice(0, 34)}`));
+      return;
+    }
     // BILLING_PROBE=mudardia[:<días>][:go] → MOVER LAS VENTAS YA CARGADAS AL DÍA QUE USA ML
     //
     // El panel venía agrupando cada venta por la fecha en que se CERRÓ y ML la cuenta por la fecha
