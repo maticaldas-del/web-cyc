@@ -1831,6 +1831,19 @@ async function main() {
         await db.patch('cyc/monotributo', { cats: Object.fromEntries(Object.entries(ARCA).map(([c, x]) => [c, x.cat])) });
         if (pctNuevo > 0) await db.patch('cyc/monotributo', { pct: pctNuevo, pctCalc: Date.now(), pctFact: Math.round(factMes) });
       }
+      // El gasto del mes en curso puede estar ya creado con el monto viejo: el robot solo lo crea si
+      // no existe, nunca lo corrige. Se pisa acá, si no agosto quedaría con el número de antes.
+      const ymHoy = dayKeyFromISO(new Date().toISOString()).slice(0, 7);
+      const gidHoy = 'monofijo_' + ymHoy;
+      let gHoy = null;
+      try { gHoy = await db.get('cyc/compras/' + gidHoy); } catch { /* */ }
+      const montoFijo = Math.round(fijo);
+      if (gHoy && Math.round(gHoy.monto || 0) !== montoFijo) {
+        if (!DRY) await db.patch('cyc/compras/' + gidHoy, { monto: montoFijo, desc: `Autónomo + obra social (${ymHoy.replace('_', '-')})` });
+        console.log(`Gasto ${gidHoy}: ${money(Math.round(gHoy.monto || 0))} → ${money(montoFijo)}.`);
+      } else if (!gHoy) {
+        console.log(`(el gasto ${gidHoy} todavía no existe: lo crea el robot solo en la próxima corrida, ya con ${money(montoFijo)})`);
+      }
       console.log(`\n${DRY ? '(DRY) ' : ''}Guardado. La web ya lo toma: cambia el costo de cada venta y el margen de cada publicación.`);
       return;
     }
