@@ -3539,6 +3539,20 @@ function renderMonotributo(){
       if(!mc.excede&&(best===null||mc.resta>best.resta))best={a,resta:mc.resta};
       const marg=mc.excede?('Fuera de monotributo +'+fmt(mc.sobreK)):('Quedan '+fmt(mc.resta));
       const id='afip-'+a;
+      // Categoría REAL en la que está inscripta la cuenta (sale de la credencial de ARCA, la carga
+      // el robot con monoreal). Si no coincide con la que le toca por lo que factura, se avisa:
+      // estar en una categoría más baja de la que corresponde es lo que ARCA multa.
+      const arcaCat=(state.monotributo&&state.monotributo.cats||{})[a]||null;
+      const arcaImp=parseFloat((state.monotributo&&state.monotributo.impuesto||{})[a])||0;
+      let arcaLine='';
+      if(arcaCat){
+        const iA=MONO_CATS.findIndex(x=>x.c===arcaCat), iR=MONO_CATS.findIndex(x=>x.c===mc.cat);
+        const baja=iA>=0&&iR>=0&&iA<iR;
+        arcaLine=`<div style="font-size:.57rem;margin-top:6px;color:${baja?'#f59e0b':'var(--muted)'};line-height:1.45">`
+          +`🪪 Inscripta en <strong>Cat ${arcaCat}</strong>${arcaImp?' · '+fmt(Math.round(arcaImp))+'/mes':''}`
+          +(baja?`<br>⚠️ Por lo que factura le corresponde <strong>Cat ${mc.cat}</strong>. Avisale al contador.`:'')
+          +`</div>`;
+      }
       return`<div style="background:var(--surface);border:1px solid var(--border);border-left:4px solid ${col};border-radius:var(--r);padding:14px 16px">
         <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
           <span style="font-family:'Syne',sans-serif;font-weight:800;font-size:.9rem">${MET_LABELS[a]}</span>
@@ -3554,6 +3568,7 @@ function renderMonotributo(){
           <span style="color:${col};font-weight:700">${marg}</span>
         </div>
         ${hasAfip?`<div style="font-size:.56rem;color:var(--muted);margin-top:6px">Facturado ML (app): ${fmt(mlF)}</div>`:''}
+        ${arcaLine}
         <div style="margin-top:10px;display:flex;align-items:center;gap:6px">
           <span style="font-size:.55rem;color:var(--muted);white-space:nowrap">Facturado real AFIP:</span>
           <input type="text" inputmode="numeric" id="${id}" value="${hasAfip?Math.round(Number(afipRaw)).toLocaleString('es-AR'):''}" placeholder="cargar de AFIP" oninput="fmtMoneyInput(this)" onchange="saveAfipFact('${a}','${id}')" style="flex:1;min-width:0;font-size:.62rem;padding:3px 6px;text-align:right;background:var(--surface2);border:1px solid var(--border);border-radius:6px;color:var(--text)">
@@ -7167,7 +7182,7 @@ document.addEventListener('click',e=>{if(fnavOpen&&!e.target.closest('#fnav-btn'
         <span style="font-size:.75rem;color:var(--muted)">Si no ves los últimos cambios, forzá la actualización</span>
         <button class="btn" style="background:rgba(56,189,248,.12);color:var(--blue);border:1px solid rgba(56,189,248,.3)" onclick="actualizarApp()">🔄 Buscar actualizaciones</button>
       </div>
-      <div style="font-size:.66rem;color:var(--muted);margin-top:12px">CYC · Versión 7.5</div>
+      <div style="font-size:.66rem;color:var(--muted);margin-top:12px">CYC · Versión 7.6</div>
     </div>
 
     <div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:18px 20px;margin-bottom:14px">
