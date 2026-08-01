@@ -5183,11 +5183,26 @@ async function main() {
     // Solo LEE.
     if (String(process.env.BILLING_PROBE || '').startsWith('unapub')) {
       const _u = String(process.env.BILLING_PROBE).split(':');
-      const MLA = (_u[1] || '').trim().toUpperCase();
+      let MLA = (_u[1] || '').trim().toUpperCase();
       const MIN = (parseFloat(_u[2]) || 30) / 100;
       const DIAS = parseFloat(_u[3]) || 30;
-      if (!/^MLA/.test(MLA)) { console.log('Poné la publicación: unapub:MLA2188775470'); return; }
       const links = (await db.get('cyc/mllinks')) || {};
+      // También acepta una palabra del título (unapub:metatarso): buscarse el MLA a mano cada vez
+      // era el paso más molesto de usar este probe. Si hay más de una, las lista y no adivina.
+      if (!/^MLA/.test(MLA)) {
+        const kw = MLA.toLowerCase();
+        if (!kw) { console.log('Poné la publicación: unapub:MLA2188775470 o unapub:<palabra del título>'); return; }
+        const hits = Object.entries(links).filter(([id, e2]) => id.startsWith('MLA')
+          && String((e2 && (e2.title || e2.titulo || e2.prod)) || '').toLowerCase().includes(kw));
+        if (!hits.length) { console.log(`No encontré ninguna publicación con "${kw}" en el título.`); return; }
+        if (hits.length > 1) {
+          console.log(`Hay ${hits.length} publicaciones con "${kw}". Elegí una:`);
+          for (const [id, e2] of hits.slice(0, 25)) console.log(`  ${id}  ${e2.cuenta || '?'}  ${String(e2.title || e2.titulo || e2.prod || '').slice(0, 60)}`);
+          return;
+        }
+        MLA = hits[0][0];
+        console.log(`(por "${kw}" → ${MLA})\n`);
+      }
       const vp = (await db.get('cyc/ventaprod')) || {}; setDevLive(vp);
       const fin = (await db.get('cyc/finanzas')) || {};
       const tc = parseFloat(fin.tipo_cambio) || 1500;
