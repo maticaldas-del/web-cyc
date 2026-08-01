@@ -3696,6 +3696,113 @@ async function main() {
       console.log(`  (impuestos usados: IIBB por cuenta + monotributo ${monoP.toFixed(2)}%)`);
       return;
     }
+    // BILLING_PROBE=proyec[:<retiro>][:<tasa%>][:<meses>] → ¿CUÁNTO LE QUEDA A CYC POR MES DE ACÁ EN
+    // ADELANTE? Toma los meses reales que ya cerraron (por defecto junio y julio), los vuelve a
+    // calcular CON EL MONOTRIBUTO NUEVO, y les descuenta el retiro fijo y el interés de los socios.
+    //
+    // Los meses viejos se recalculan, no se leen: la ganancia que quedó guardada en junio y julio se
+    // hizo con el monotributo viejo (1,37%). Para saber qué va a pasar de ahora en más hay que
+    // preguntarse cuánto habrían dejado esos mismos meses con el de hoy.
+    //
+    // Los gastos también se normalizan: el gasto de monotributo de cada mes se reemplaza por el
+    // autónomo + obra social de hoy, porque el impuesto integrado ya está adentro del costo de cada
+    // venta. Si se dejara el gasto viejo, el monotributo quedaría contado dos veces.
+    if (String(process.env.BILLING_PROBE || '').startsWith('proyec')) {
+      const _pj = String(process.env.BILLING_PROBE).split(':');
+      const RETIRO = parseFloat(_pj[1]) || 1800000;
+      const TASA = _pj[2] != null && _pj[2] !== '' ? parseFloat(_pj[2]) : 2;
+      const MESES = (_pj[3] || '2026_06,2026_07').split(',').map((x) => x.trim()).filter(Boolean);
+      const vp = (await db.get('cyc/ventaprod')) || {}; setDevLive(vp);
+      const mono = (await db.get('cyc/monotributo')) || {};
+      const monoP = parseFloat(mono.pct) || 0;
+      const monoFijo = parseFloat(mono.fijoMensual) || 0;
+      const compras = (await db.get('cyc/compras')) || {};
+      const retiroMes = (await db.get('cyc/retiro_mes')) || {};
+      const fin = (await db.get('cyc/finanzas')) || {};
+      const tc = parseFloat(fin.tipo_cambio) || 1500;
+      console.log(`PROYECCIÓN DE CYC · base ${MESES.join(' + ')} · monotributo nuevo (${monoP.toFixed(2)}% al costo)\n`);
+      const filas = [];
+      for (const ym of MESES) {
+        let bruto = 0, neto = 0, costo = 0, imp = 0, nVentas = 0;
+        for (const [k, ents] of Object.entries(vp)) {
+          if (k.slice(0, 7) !== ym) continue;
+          for (const v of Object.values(ents || {})) {
+            if (!v || v.cancelada) continue;
+            bruto += v.total || 0; neto += v.neto || 0; costo += v.costo || 0; nVentas++;
+            imp += (v.total || 0) * (mlExtraPct(v.cuenta) + monoP) / 100;
+          }
+        }
+        // Gastos del mes, separando los de monotributo (que se reemplazan por el fijo de hoy).
+        let gOtros = 0, gMono = 0;
+        for (const g of Object.values(compras)) {
+          if (!g || g.tipo === 'mercaderia') continue;
+          if ((g.dayKey || '').slice(0, 7) !== ym) continue;
+          if (/monotributo|impuesto/i.test(g.cat || '')) gMono += g.monto || 0;
+          else gOtros += g.monto || 0;
+        }
+        const gastos = gOtros + monoFijo;   // normalizado: el integrado ya está en el costo
+        const ganancia = neto - costo - imp;
+        filas.push({ ym, bruto, neto, costo, imp, ganancia, gOtros, gMono, gastos, nVentas,
+          retReal: retiroMes[ym] != null ? Number(retiroMes[ym]) : null });
+      }
+      const lbl = (s) => s.padEnd(34);
+      for (const f of filas) {
+        console.log(`── ${f.ym.replace('_', '-')} ── (${f.nVentas} ventas)`);
+        console.log(`  ${lbl('Facturado')}${money(Math.round(f.bruto)).padStart(14)}`);
+        console.log(`  ${lbl('Neto que entró de ML')}${money(Math.round(f.neto)).padStart(14)}`);
+        console.log(`  ${lbl('− mercadería')}${money(-Math.round(f.costo)).padStart(14)}`);
+        console.log(`  ${lbl('− IIBB + monotributo')}${money(-Math.round(f.imp)).padStart(14)}`);
+        console.log(`  ${lbl('= GANANCIA BRUTA')}${money(Math.round(f.ganancia)).padStart(14)}`);
+        console.log(`  ${lbl('− gastos (sin monotributo)')}${money(-Math.round(f.gOtros)).padStart(14)}`);
+        console.log(`  ${lbl('− autónomo + obra social')}${money(-Math.round(monoFijo)).padStart(14)}`);
+        console.log(`  ${lbl('= ANTES DE RETIRO E INTERÉS')}${money(Math.round(f.ganancia - f.gastos)).padStart(14)}`);
+        console.log(`     (el gasto de monotributo cargado ese mes era ${money(Math.round(f.gMono))}; se reemplazó por ${money(Math.round(monoFijo))})`);
+        console.log('');
+      }
+      const n = filas.length || 1;
+      const prom = (k) => filas.reduce((s, f) => s + f[k], 0) / n;
+      const pBruto = prom('bruto'), pNeto = prom('neto'), pCosto = prom('costo'), pImp = prom('imp');
+      const pGan = prom('ganancia'), pGastos = prom('gastos');
+      const antes = pGan - pGastos;
+      // Base del interés: los dólares que ustedes tienen puestos adentro del negocio. Están en el
+      // arqueo como deuda de CYC (dolares_mati + dolares_tito) justamente porque son plata prestada.
+      const dolMati = Math.abs(parseFloat(fin.dolares_mati) || 0);
+      const dolTito = Math.abs(parseFloat(fin.dolares_tito) || 0);
+      const capUSD = dolMati + dolTito;
+      const capPesos = capUSD * tc;
+      const interes = capPesos * TASA / 100;
+      console.log(`══ PROMEDIO MENSUAL (${n} meses) ══`);
+      console.log(`  ${lbl('Facturado')}${money(Math.round(pBruto)).padStart(14)}`);
+      console.log(`  ${lbl('Neto de ML')}${money(Math.round(pNeto)).padStart(14)}`);
+      console.log(`  ${lbl('− mercadería')}${money(-Math.round(pCosto)).padStart(14)}`);
+      console.log(`  ${lbl('− IIBB + monotributo')}${money(-Math.round(pImp)).padStart(14)}`);
+      console.log(`  ${lbl('− gastos')}${money(-Math.round(pGastos)).padStart(14)}`);
+      console.log(`  ${lbl('= QUEDA ANTES DE USTEDES')}${money(Math.round(antes)).padStart(14)}`);
+      console.log(`  ${lbl('− retiro fijo')}${money(-Math.round(RETIRO)).padStart(14)}`);
+      console.log(`  ${lbl(`− interés ${TASA}% s/ ${money(Math.round(capPesos))}`)}${money(-Math.round(interes)).padStart(14)}`);
+      console.log(`  ${'─'.repeat(48)}`);
+      console.log(`  ${lbl('= LE QUEDA A CYC POR MES')}${money(Math.round(antes - RETIRO - interes)).padStart(14)}`);
+      console.log(`\n  (capital de ustedes adentro: US$ ${Math.round(capUSD).toLocaleString('es-AR')} = ${money(Math.round(capPesos))} al dólar ${money(tc)})`);
+      console.log(`  (Mati US$ ${Math.round(dolMati).toLocaleString('es-AR')} · el viejo US$ ${Math.round(dolTito).toLocaleString('es-AR')})`);
+      // Por si el 2% se cobra sobre otra cosa: se muestran las otras lecturas posibles.
+      console.log(`\n── SI EL ${TASA}% FUERA SOBRE OTRA BASE ──`);
+      const bases = [
+        ['el capital de ustedes', capPesos],
+        ['la facturación del mes', pBruto],
+        ['la mercadería comprada (costo vendido)', pCosto],
+      ];
+      for (const [nom, base] of bases) {
+        const i2 = base * TASA / 100;
+        console.log(`  ${nom.padEnd(40)} interés ${money(Math.round(i2)).padStart(12)} → queda ${money(Math.round(antes - RETIRO - i2)).padStart(12)}`);
+      }
+      // Cuánto aguanta: hasta dónde puede caer la ganancia antes de no cubrir retiro + interés.
+      const piso = RETIRO + interes;
+      console.log(`\n── COLCHÓN ──`);
+      console.log(`  Para cubrir retiro + interés hacen falta ${money(Math.round(piso))} por mes.`);
+      console.log(`  Hoy se generan ${money(Math.round(antes))} → sobran ${money(Math.round(antes - piso))} (${antes > 0 ? ((antes - piso) / antes * 100).toFixed(0) : 0}% de colchón).`);
+      if (pBruto > 0) console.log(`  Podés facturar hasta ${((piso / antes) * 100).toFixed(0)}% de lo de hoy (${money(Math.round(pBruto * piso / antes))}/mes) y todavía no ponés plata de tu bolsillo.`);
+      return;
+    }
     // BILLING_PROBE=capital → foto del capital de CYC: stock, efectivo, deudas y los dólares de los
     // socios. Sirve para decidir si conviene sacar plata del negocio o dejarla trabajando.
     if (String(process.env.BILLING_PROBE || '') === 'capital') {
