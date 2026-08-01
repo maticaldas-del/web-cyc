@@ -1948,6 +1948,91 @@ async function main() {
       }
       return;
     }
+    // BILLING_PROBE=hermanas:<palabra>[:<piso>] → TODAS LAS PUBLICACIONES DEL MISMO PRODUCTO.
+    // Cuando se toca el precio de UNA publicación hay que saber si el mismo producto está publicado
+    // en otras cuentas: subir una sola y dejar las demás abajo del piso arregla la mitad del problema
+    // y encima deja las cuentas desparejas. Agrupa por producto de la web (prodId), no por título.
+    if (String(process.env.BILLING_PROBE || '').startsWith('hermanas:')) {
+      const _h = String(process.env.BILLING_PROBE).split(':');
+      const kw = (_h[1] || '').trim().toLowerCase();
+      const MIN = (parseFloat(_h[2]) || 30) / 100;
+      if (!kw) { console.log('Usá: hermanas:metatarso'); return; }
+      const links = (await db.get('cyc/mllinks')) || {};
+      const vp = (await db.get('cyc/ventaprod')) || {}; setDevLive(vp);
+      const fin = (await db.get('cyc/finanzas')) || {};
+      const tc = parseFloat(fin.tipo_cambio) || 1500;
+      const monoP = parseFloat(((await db.get('cyc/monotributo')) || {}).pct) || 0;
+      const pIdx = {}; for (const p of products) pIdx[p.id] = p;
+      // Qué productos matchean la palabra (por nombre del producto o título de la publicación).
+      const prodIds = new Set();
+      for (const [id, e2] of Object.entries(links)) {
+        if (!id.startsWith('MLA') || !e2 || !e2.prodId) continue;
+        const nom = String((pIdx[e2.prodId] || {}).nombre || '').toLowerCase();
+        const tit = String(e2.title || '').toLowerCase();
+        if (nom.includes(kw) || tit.includes(kw)) prodIds.add(e2.prodId);
+      }
+      if (!prodIds.size) { console.log(`No encontré ningún producto con "${kw}".`); return; }
+      const toks = {};
+      for (const label of labels) {
+        const acc = accounts[label]; if (!acc?.refresh_token) continue;
+        try {
+          const t = await mlRefresh(ML_CLIENT_ID, ML_CLIENT_SECRET, acc.refresh_token);
+          await db.patch('mlapi/tokens/' + label, { refresh_token: t.refresh_token, updated_ts: Date.now() });
+          toks[label] = t.access_token;
+        } catch { /* sigue */ }
+      }
+      for (const pid of prodIds) {
+        const p = pIdx[pid];
+        const costo = costoPesos(p, 1, tc).costo;
+        console.log(`\n══ ${(p && p.nombre) || pid} · mercadería ${money(costo)} ══`);
+        const mlas = Object.entries(links).filter(([id, e2]) => id.startsWith('MLA') && e2 && e2.prodId === pid);
+        console.log(`  ${'publicación'.padEnd(15)} ${'cuenta'.padEnd(9)} ${'estado'.padEnd(18)} ${'precio'.padStart(10)} ${'margen'.padStart(8)}  ${'para el 30%'.padStart(11)}`);
+        for (const [id, e2] of mlas) {
+          const tok = toks[e2.cuenta] || Object.values(toks)[0];
+          let it = null;
+          try { it = await mlGet('/items/' + id + '?attributes=id,price,status,sub_status,available_quantity,listing_type_id,category_id,site_id', tok); }
+          catch { console.log(`  ${id.padEnd(15)} ${String(e2.cuenta || '?').padEnd(9)} (ML no me la dio)`); continue; }
+          const precio = it.price || 0;
+          // Comisión oficial de ML a ese precio + el fijo ya viene incluido en sale_fee_amount.
+          let fee = null;
+          try {
+            const d = await mlGet(`/sites/${it.site_id || 'MLA'}/listing_prices?price=${Math.round(precio)}&listing_type_id=${it.listing_type_id}&category_id=${it.category_id}`, tok);
+            const o = Array.isArray(d) ? d[0] : d;
+            if (typeof o?.sale_fee_amount === 'number') fee = o.sale_fee_amount;
+          } catch { /* sigue */ }
+          const impPct = (mlExtraPct(e2.cuenta) + monoP) / 100;
+          let margen = null, paraPiso = null;
+          if (fee != null) {
+            const neto = precio - fee;
+            const costoTot = costo + precio * impPct;
+            margen = costoTot > 0 ? (neto - costoTot) / costoTot : 0;
+            // Precio para el piso: se resuelve tanteando, porque la comisión de ML no es lineal.
+            let lo = precio, hi = precio * 3;
+            for (let i = 0; i < 18; i++) {
+              const mid = Math.round((lo + hi) / 2);
+              let f2 = null;
+              try {
+                const d = await mlGet(`/sites/${it.site_id || 'MLA'}/listing_prices?price=${mid}&listing_type_id=${it.listing_type_id}&category_id=${it.category_id}`, tok);
+                const o = Array.isArray(d) ? d[0] : d;
+                if (typeof o?.sale_fee_amount === 'number') f2 = o.sale_fee_amount;
+              } catch { /* sigue */ }
+              if (f2 == null) break;
+              const c2 = costo + mid * impPct;
+              const m2 = c2 > 0 ? (mid - f2 - c2) / c2 : 0;
+              if (m2 < MIN) lo = mid; else hi = mid;
+              if (hi - lo <= 1) break;
+            }
+            paraPiso = hi;
+          }
+          const est = it.status + ((it.sub_status || []).length ? ' (' + it.sub_status.join(',') + ')' : '');
+          const marca = margen != null && margen < MIN ? ' ⚠' : '';
+          console.log(`  ${id.padEnd(15)} ${String(e2.cuenta || '?').padEnd(9)} ${est.slice(0, 18).padEnd(18)} ${money(Math.round(precio)).padStart(10)}`
+            + ` ${(margen != null ? (margen * 100).toFixed(1) + '%' : '?').padStart(8)}  ${(paraPiso != null ? money(paraPiso) : '?').padStart(11)}${marca}`);
+        }
+      }
+      console.log(`\n(⚠ = está abajo del ${(MIN * 100).toFixed(0)}%. La columna "para el 30%" es el precio que la dejaría justo en el piso.)`);
+      return;
+    }
     // BILLING_PROBE=volver:<MLA=precio,MLA=precio,...>[:go] → DEJA ESOS PRECIOS EXACTOS.
     // Para deshacer una subida mal aplicada: pone el precio que se le pasa, suba o baje.
     if (String(process.env.BILLING_PROBE || '').startsWith('volver:')) {
