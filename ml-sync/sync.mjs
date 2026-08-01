@@ -2006,6 +2006,11 @@ async function main() {
             const neto = precio - fee;
             const costoTot = costo + precio * impPct;
             margen = costoTot > 0 ? (neto - costoTot) / costoTot : 0;
+            // Solo tiene sentido buscar el precio del piso si HOY está abajo. Si ya está arriba, la
+            // búsqueda arrancaría con el piso ya cumplido y devolvería el precio de hoy + 1, que
+            // parece un número pero no dice nada.
+            if (margen >= MIN) { paraPiso = null; }
+            else {
             // Precio para el piso: se resuelve tanteando, porque la comisión de ML no es lineal.
             let lo = precio, hi = precio * 3;
             for (let i = 0; i < 18; i++) {
@@ -2023,11 +2028,13 @@ async function main() {
               if (hi - lo <= 1) break;
             }
             paraPiso = hi;
+            }
           }
           const est = it.status + ((it.sub_status || []).length ? ' (' + it.sub_status.join(',') + ')' : '');
           const marca = margen != null && margen < MIN ? ' ⚠' : '';
+          const colPiso = margen == null ? '?' : (paraPiso != null ? money(paraPiso) : '— ya está');
           console.log(`  ${id.padEnd(15)} ${String(e2.cuenta || '?').padEnd(9)} ${est.slice(0, 18).padEnd(18)} ${money(Math.round(precio)).padStart(10)}`
-            + ` ${(margen != null ? (margen * 100).toFixed(1) + '%' : '?').padStart(8)}  ${(paraPiso != null ? money(paraPiso) : '?').padStart(11)}${marca}`);
+            + ` ${(margen != null ? (margen * 100).toFixed(1) + '%' : '?').padStart(8)}  ${colPiso.padStart(11)}${marca}`);
         }
       }
       console.log(`\n(⚠ = está abajo del ${(MIN * 100).toFixed(0)}%. La columna "para el 30%" es el precio que la dejaría justo en el piso.)`);
