@@ -3803,6 +3803,68 @@ async function main() {
       if (pBruto > 0) console.log(`  Podés facturar hasta ${((piso / antes) * 100).toFixed(0)}% de lo de hoy (${money(Math.round(pBruto * piso / antes))}/mes) y todavía no ponés plata de tu bolsillo.`);
       return;
     }
+    // BILLING_PROBE=facarca → ¿QUÉ VA A MOSTRAR LA WEB EN LA LÍNEA DE AFIP?
+    // Repite EXACTAMENTE la cuenta que hace la web (_facARCA): la ventana de 12 meses cerrada en el
+    // último 30/06 o 31/12, con las mismas reglas raras que tiene la app —meses viejos congelados en
+    // fact_mes, canceladas sumadas aparte, mes partido prorrateado—. Es para poder mirar el número
+    // ANTES de que lo vea nadie en el celular, y no enterarse por una alarma roja equivocada.
+    if (String(process.env.BILLING_PROBE || '') === 'facarca') {
+      const ACCTS = ['adriana', 'luciana', 'ayelen', 'matias'];
+      const CATS = [['A', 12009410.45], ['B', 17595182.74], ['C', 24670494.31], ['D', 30628651.43],
+        ['E', 36028231.33], ['F', 45151659.41], ['G', 53995798.87], ['H', 81924660.37],
+        ['I', 91699761.90], ['J', 105012519.20], ['K', 126610838.75]];
+      const catDe = (x) => (CATS.find(([, l]) => x <= l) || ['>K', 0])[0];
+      const limDe = (c) => (CATS.find(([k]) => k === c) || [null, 0])[1];
+      const FAC_CONGELADO_HASTA = '2026_05';
+      const vp = (await db.get('cyc/ventaprod')) || {};
+      const factMes = (await db.get('cyc/fact_mes')) || {};
+      const factCancel = (await db.get('cyc/fact_cancel')) || {};
+      const mono = (await db.get('cyc/monotributo')) || {};
+      const cats = mono.cats || {};
+      // Ventana de ARCA, igual que en la web.
+      const now = new Date();
+      const winEnd = now.getMonth() >= 6 ? new Date(now.getFullYear(), 5, 30) : new Date(now.getFullYear() - 1, 11, 31);
+      const winStart = new Date(winEnd); winStart.setDate(winStart.getDate() - 364);
+      const kOf = (d) => d.getFullYear() + '_' + String(d.getMonth() + 1).padStart(2, '0') + '_' + String(d.getDate()).padStart(2, '0');
+      const winStartK = kOf(winStart), winEndK = kOf(winEnd);
+      console.log(`Ventana que mira ARCA: ${winStartK} → ${winEndK}\n`);
+      const meses = [];
+      { let y = winStart.getFullYear(), m = winStart.getMonth();
+        while (y < winEnd.getFullYear() || (y === winEnd.getFullYear() && m <= winEnd.getMonth())) {
+          meses.push(y + '_' + String(m + 1).padStart(2, '0')); m++; if (m > 11) { m = 0; y++; } } }
+      const acc = {}; ACCTS.forEach((a) => acc[a] = 0);
+      for (const ym of meses) {
+        const [yy, mm] = ym.split('_').map(Number);
+        const mStart = new Date(yy, mm - 1, 1), mEnd = new Date(yy, mm, 0), dim = mEnd.getDate();
+        const oS = winStart > mStart ? winStart : mStart, oE = winEnd < mEnd ? winEnd : mEnd;
+        const overlap = oE < oS ? 0 : Math.round((oE - oS) / 864e5) + 1;
+        if (overlap <= 0) continue;
+        const frac = dim > 0 ? overlap / dim : 0;
+        const congelado = ym < FAC_CONGELADO_HASTA;
+        for (const a of ACCTS) {
+          const man = factMes[a] && factMes[a][ym];
+          if (congelado) { acc[a] += (man != null && man !== '' ? parseFloat(man) || 0 : 0) * frac; continue; }
+          const canc = (parseFloat(factCancel[a] && factCancel[a][ym]) || 0) * frac;
+          let real = 0;
+          for (const [k, ents] of Object.entries(vp)) {
+            if (!k.startsWith(ym) || k < winStartK || k > winEndK) continue;
+            for (const v of Object.values(ents || {})) {
+              if (v && !v.cancelada && (v.cuenta || '').toLowerCase() === a) real += v.total || 0;
+            }
+          }
+          if (real > 0 || canc > 0) { acc[a] += real + canc; continue; }
+          if (man != null && man !== '') acc[a] += (parseFloat(man) || 0) * frac;
+        }
+      }
+      console.log('  cuenta     inscripta   facturado en la ventana   corresponde   estado');
+      for (const a of ACCTS) {
+        const f = acc[a], insc = cats[a] || '?', corr = catDe(f), lim = limDe(insc);
+        const dif = lim - f;
+        const est = !lim ? '(sin credencial cargada)' : (dif < 0 ? `⚠ PASADA +${money(Math.round(-dif))}` : `faltan ${money(Math.round(dif))}`);
+        console.log(`  ${a.padEnd(10)} ${String(insc).padEnd(11)} ${money(Math.round(f)).padStart(16)}        ${corr.padEnd(13)} ${est}`);
+      }
+      return;
+    }
     // BILLING_PROBE=capital → foto del capital de CYC: stock, efectivo, deudas y los dólares de los
     // socios. Sirve para decidir si conviene sacar plata del negocio o dejarla trabajando.
     if (String(process.env.BILLING_PROBE || '') === 'capital') {

@@ -3528,6 +3528,7 @@ function renderMonotributo(){
   const panelEl=document.getElementById('mono-panel');
   if(panelEl){
     let best=null;
+    const facARCAmap=_facARCA();   // una sola vez para las 4 tarjetas
     const cards=MET_ACCTS.map(a=>{
       const mlF=fac12[a]||0;
       const afipRaw=state.afip_fact?.[a];
@@ -3546,11 +3547,16 @@ function renderMonotributo(){
       const arcaImp=parseFloat((state.monotributo&&state.monotributo.impuesto||{})[a])||0;
       let arcaLine='';
       if(arcaCat){
-        const iA=MONO_CATS.findIndex(x=>x.c===arcaCat), iR=MONO_CATS.findIndex(x=>x.c===mc.cat);
-        const baja=iA>=0&&iR>=0&&iA<iR;
+        // Se compara contra la ventana que mira ARCA (12 meses al último cierre de semestre),
+        // NO contra los últimos 365 días: son ventanas distintas y dan categorías distintas.
+        const fA=facARCAmap[a]||0;
+        const mcA=monoCat(fA);
+        const iA=MONO_CATS.findIndex(x=>x.c===arcaCat), iR=MONO_CATS.findIndex(x=>x.c===mcA.cat);
+        const baja=fA>0&&iA>=0&&iR>=0&&iA<iR;
         arcaLine=`<div style="font-size:.57rem;margin-top:6px;color:${baja?'#f59e0b':'var(--muted)'};line-height:1.45">`
           +`🪪 Inscripta en <strong>Cat ${arcaCat}</strong>${arcaImp?' · '+fmt(Math.round(arcaImp))+'/mes':''}`
-          +(baja?`<br>⚠️ Por lo que factura le corresponde <strong>Cat ${mc.cat}</strong>. Avisale al contador.`:'')
+          +(fA>0?`<br>Facturó ${fmt(Math.round(fA))} en los 12 meses que mira ARCA`:'')
+          +(baja?`<br>⚠️ Por eso le corresponde <strong>Cat ${mcA.cat}</strong>. Avisale al contador.`:'')
           +`</div>`;
       }
       return`<div style="background:var(--surface);border:1px solid var(--border);border-left:4px solid ${col};border-radius:var(--r);padding:14px 16px">
@@ -6373,8 +6379,21 @@ function _facMesCuentaEnRango(acct,ym,fromK,toK){
 // AFIP toma lo FACTURADO, sin importar si después se canceló o devolvió → se SUMA para igualar
 // el número de "Ventas brutas" de ML. Se prorratea igual que el resto en el mes partido.
 function _facCancelMes(acct,ym){return parseFloat(state.fact_cancel?.[acct]?.[ym])||0;}
-function _puntFac12(){
-  const win=_ventana365();
+function _puntFac12(){return _facVentana(_ventana365());}
+// LA VENTANA QUE MIRA ARCA. No son los últimos 365 días: ARCA cierra por semestre y mira los 12
+// meses terminados en el último 30/06 o 31/12. En agosto de 2026 la recategorización se hace con
+// julio-2025 → junio-2026, no con lo que vendiste ayer. Por eso hay DOS números y dan distinto:
+// "vendiendo así" (últimos 365 días, hacia dónde vas) y "AFIP" (esta ventana, lo que te miran).
+function _ventanaARCA(){
+  const now=new Date();
+  const y=now.getFullYear(),m=now.getMonth(); // 0-11
+  // Último cierre de semestre ya pasado: si estamos en julio o después, es el 30/06 de este año.
+  const winEnd=m>=6?new Date(y,5,30):new Date(y-1,11,31);
+  const winStart=new Date(winEnd);winStart.setDate(winStart.getDate()-364);
+  return {winStart,winEnd,winStartK:dateToKey(winStart),winEndK:dateToKey(winEnd)};
+}
+function _facARCA(){return _facVentana(_ventanaARCA());}
+function _facVentana(win){
   const acc={};MET_ACCTS.forEach(a=>acc[a]=0);
   _ventanaMeses(win).forEach(ym=>{
     const ov=_mesOverlap(ym,win);if(ov.overlap<=0)return;
@@ -6554,16 +6573,32 @@ function renderPuntajeMes(){
   const cycTxt=`<span style="color:var(--muted)">CYC (queda en el negocio):</span> vas <strong style="color:var(--green)">${fmt(P.g.ganancia)}</strong> · proy <strong>${fmt(P.proy)}</strong>${nota}`;
   const _mati=Math.round(P.retiroProy/2),_viejo=P.retiroProy-_mati;
   const nuestroTxt=`<span style="color:var(--muted)">Nuestro (retiro):</span> vas <strong style="color:var(--green)">${fmt(P.g.retiro)}</strong> · proy <strong>${fmt(P.retiroProy)}</strong> · piso <strong>${fmt(P.meta)}</strong> <span style="color:var(--muted)">(${P.metaFuente==='manual'?'manual':'US$'+Math.round(P.meta/P.tc)})</span> <span style="color:var(--muted)">· Mati ${fmt(_mati)} / Viejo ${fmt(_viejo)}</span>`;
+  const facARCA=_facARCA();   // una sola vez: recorrer todas las ventas por cuenta sería 4 veces lo mismo
   const monoHtml=`<div style="margin-top:14px;border-top:1px solid var(--border);padding-top:12px"><div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px"><span style="font-size:.6rem;text-transform:uppercase;letter-spacing:.1em;color:var(--muted)">Monotributo · cómo vendés vs AFIP</span><button onclick="goMonotributo()" style="background:transparent;border:1px solid var(--border2);color:var(--muted);border-radius:6px;padding:2px 8px;font-size:.56rem;cursor:pointer">✎ AFIP / meses</button></div>${P.monoCuentas.map(m=>{
     const mlF=m.fac;
     const mc=monoCat(mlF);   // categoría según cómo vendés (ML)
     const col=mc.excede?'#ef4444':mc.pct>=90?'#f59e0b':'#22c55e';
     const ventaTxt=mc.excede?`🔴 Cat &gt; K (+${fmt(mc.sobreK)})`:`${mc.pct>=90?'🟡':'🟢'} Cat ${mc.cat} · faltan ${fmt(mc.resta)} para el tope`;
-    // Categoría real de AFIP: override manual si lo cargaste, si no la de las fotos (AFIP_REG)
+    // LÍNEA DE AFIP. Compara la categoría en la que la cuenta está INSCRIPTA contra lo que facturó
+    // en la ventana que mira ARCA. Los dos datos se sacan solos:
+    //  · la categoría, de la credencial de ARCA (cyc/monotributo/cats, la carga el robot)
+    //  · lo facturado, de las ventas reales en la ventana de ARCA (12 meses al último cierre)
+    // Antes las dos cosas estaban escritas a mano en AFIP_REG, sacadas de unas fotos: quedaron
+    // viejas y el panel decía que Matías tenía lugar cuando en realidad ya se había pasado.
+    // AFIP_REG queda solo de respaldo para una cuenta que todavía no tenga credencial cargada.
     const ovr=state.afip_fact&&state.afip_fact[m.acct];
+    const reg=AFIP_REG[m.acct];
+    const catReal=(state.monotributo&&state.monotributo.cats||{})[m.acct]||(reg&&reg.cat)||null;
+    const facA=(ovr!=null&&ovr!=='')?Number(ovr):(facARCA[m.acct]||(reg&&reg.fact)||0);
     let afipLine='';
-    if(ovr!=null&&ovr!==''){const mcA=monoCat(Number(ovr));const c=mcA.excede?'#ef4444':mcA.pct>=90?'#f59e0b':'#22c55e';afipLine=`<span style="color:${c}">🪪 AFIP: Cat ${mcA.cat} · ${mcA.excede?'fuera de monotributo':'faltan '+fmt(mcA.resta)}</span>`;}
-    else{const reg=AFIP_REG[m.acct];if(reg){const lim=catLim(reg.cat),dif=lim-reg.fact,c=dif<0?'#ef4444':(reg.fact/lim>=0.9?'#f59e0b':'#22c55e');afipLine=`<span style="color:${c}">🪪 AFIP: Cat ${reg.cat} · ${dif<0?'⚠ pasada +'+fmt(-dif)+' (recategorizar)':'faltan '+fmt(dif)+' para el tope'}</span>`;}}
+    if(catReal&&facA>0){
+      const lim=catLim(catReal),dif=lim-facA;
+      const c=dif<0?'#ef4444':(facA/lim>=0.9?'#f59e0b':'#22c55e');
+      const corresp=monoCat(facA);
+      afipLine=`<span style="color:${c}">🪪 AFIP: Cat ${catReal} · ${fmt(Math.round(facA))} · `
+        +(dif<0?`⚠ pasada +${fmt(-dif)} → va a Cat ${corresp.cat} (recategorizar)`:`faltan ${fmt(dif)} para el tope`)
+        +`</span>`;
+    }
     return`<div style="margin-bottom:11px"><div style="display:flex;align-items:center;gap:8px"><span style="width:70px;font-size:.62rem;flex-shrink:0">${m.label}</span><div style="flex:1;height:8px;border-radius:4px;background:var(--surface2);overflow:hidden"><div style="height:100%;width:${Math.min(100,mc.pct)}%;background:${mc.excede?'#ef4444':'linear-gradient(90deg,#16a34a,#22c55e)'};border-radius:4px"></div></div><span style="width:104px;text-align:right;font-size:.6rem;font-family:'DM Mono',monospace;color:var(--text)">${fmt(mlF)}</span></div><div style="font-size:.56rem;color:${col};margin-left:78px;margin-top:2px">Vendiendo así: ${ventaTxt}</div>${afipLine?`<div style="font-size:.56rem;margin-left:78px;margin-top:1px">${afipLine}</div>`:''}</div>`;
   }).join('')}</div>`;
   const bars=P.comp.map(c=>{const pc=Math.max(0,Math.min(1,c.pts/c.max));return`<div style="display:flex;align-items:center;gap:8px;margin-bottom:5px"><span style="width:150px;font-size:.62rem;color:var(--muted);flex-shrink:0">${c.label}</span><div style="flex:1;height:7px;border-radius:4px;background:var(--surface2);overflow:hidden"><div style="height:100%;width:${pc*100}%;background:${col};border-radius:4px"></div></div><span style="width:52px;text-align:right;font-size:.62rem;font-family:'DM Mono',monospace">${c.pts.toFixed(1)}/${c.max}</span></div>`;}).join('');
@@ -7182,7 +7217,7 @@ document.addEventListener('click',e=>{if(fnavOpen&&!e.target.closest('#fnav-btn'
         <span style="font-size:.75rem;color:var(--muted)">Si no ves los últimos cambios, forzá la actualización</span>
         <button class="btn" style="background:rgba(56,189,248,.12);color:var(--blue);border:1px solid rgba(56,189,248,.3)" onclick="actualizarApp()">🔄 Buscar actualizaciones</button>
       </div>
-      <div style="font-size:.66rem;color:var(--muted);margin-top:12px">CYC · Versión 7.6</div>
+      <div style="font-size:.66rem;color:var(--muted);margin-top:12px">CYC · Versión 7.7</div>
     </div>
 
     <div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:18px 20px;margin-bottom:14px">
