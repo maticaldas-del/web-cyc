@@ -1776,6 +1776,64 @@ async function main() {
       console.log(`El impuesto integrado ahora vive SOLO en el costo de los productos.`);
       return;
     }
+    // BILLING_PROBE=monoreal[:go] → CARGA EN LA WEB EL MONOTRIBUTO REAL DE ARCA.
+    // Los montos salen de las credenciales de pago que bajó el contador (agosto 2026). Antes estaban
+    // cargados a ojo y todos iguales; ahora cada cuenta tiene el suyo, que es lo que ARCA cobra.
+    // La plata se parte en DOS, y va a lugares distintos a propósito:
+    //   · IMPUESTO INTEGRADO → costo del producto. Es un costo de VENDER: cuanto más facturás, más
+    //     alta la categoría. El robot lo pasa a % dividiéndolo por la facturación real (ver abajo).
+    //   · AUTÓNOMO + OBRA SOCIAL → gasto del mes. Es jubilación y salud de una persona: se paga
+    //     igual aunque no vendas nada, así que meterlo en el precio de un pendrive no tiene sentido.
+    // Solo Ayelen aporta: las otras tres figuran NO APORTANTE en la credencial (aportan por otro lado).
+    if (String(process.env.BILLING_PROBE || '').startsWith('monoreal')) {
+      const APLICAR = String(process.env.BILLING_PROBE).split(':')[1] === 'go';
+      // Credenciales ARCA de agosto 2026. Actualizar en cada recategorización (enero y julio).
+      const ARCA = {
+        adriana: { cat: 'G', integrado: 71497.87, autonomo: 0, obra: 0 },
+        luciana: { cat: 'F', integrado: 57719.64, autonomo: 0, obra: 0 },
+        ayelen: { cat: 'H', integrado: 204811.64, autonomo: 57598.04, obra: 55485.33 },
+        matias: { cat: 'F', integrado: 57719.64, autonomo: 0, obra: 0 },
+      };
+      const mono = (await db.get('cyc/monotributo')) || {};
+      const viejo = mono.impuesto || {};
+      const totViejo = Object.values(viejo).reduce((s2, x) => s2 + (parseFloat(x) || 0), 0);
+      const imp = {}, totNuevo = Object.values(ARCA).reduce((s2, x) => s2 + x.integrado, 0);
+      const fijo = Object.values(ARCA).reduce((s2, x) => s2 + x.autonomo + x.obra, 0);
+      console.log('MONOTRIBUTO REAL (credenciales ARCA)\n');
+      console.log('  cuenta     cat   integrado      antes        autónomo   obra social');
+      for (const [c, x] of Object.entries(ARCA)) {
+        imp[c] = Math.round(x.integrado * 100) / 100;
+        const ant = parseFloat(viejo[c]) || 0;
+        console.log(`  ${c.padEnd(10)} ${x.cat}     ${money(Math.round(x.integrado)).padStart(10)}  ${money(Math.round(ant)).padStart(10)}  ${(x.autonomo ? money(Math.round(x.autonomo)) : '—').padStart(11)}  ${(x.obra ? money(Math.round(x.obra)) : '—').padStart(11)}`);
+      }
+      console.log(`\n  Impuesto integrado (va al COSTO):   ${money(Math.round(totNuevo))}/mes   (antes ${money(Math.round(totViejo))})`);
+      console.log(`  Autónomo + obra social (va a GASTOS): ${money(Math.round(fijo))}/mes   (antes ${money(Math.round(parseFloat(mono.fijoMensual) || 0))})`);
+      console.log(`  Total que se le paga a ARCA:          ${money(Math.round(totNuevo + fijo))}/mes`);
+      // El % al costo con la facturación REAL de los últimos 90 días, mismo cálculo que hace el robot
+      // en cada corrida. Se muestra acá para ver de una cuánto se mueve el margen de cada producto.
+      const vpAll = (await db.get('cyc/ventaprod')) || {}; setDevLive(vpAll);
+      const desde90 = dayKeyFromISO(Date.now() - 89 * 864e5);
+      let fact90 = 0;
+      for (const [k, ents] of Object.entries(vpAll)) {
+        if (k < desde90) continue;
+        for (const v of Object.values(ents || {})) { if (v && !v.cancelada) fact90 += v.total || 0; }
+      }
+      const factMes = fact90 / 3;
+      const pctNuevo = factMes > 0 ? Math.round((totNuevo / factMes) * 10000) / 100 : 0;
+      const pctViejo = parseFloat(mono.pct) || 0;
+      console.log(`\n  % al costo: ${pctViejo.toFixed(2)}% → ${pctNuevo.toFixed(2)}%  (sobre ${money(Math.round(factMes))} de facturación mensual)`);
+      console.log(`  O sea: cada publicación pierde ${(pctNuevo - pctViejo).toFixed(2)} puntos de margen. Una de $10.000 paga ${money(Math.round(10000 * (pctNuevo - pctViejo) / 100))} más.`);
+      if (!APLICAR) { console.log('\n(prueba — no escribí nada. Para aplicar: monoreal:go)'); return; }
+      if (!DRY) {
+        await db.set('cyc/monotributo/impuesto', imp);
+        await db.set('cyc/monotributo/fijoMensual', Math.round(fijo * 100) / 100);
+        await db.set('cyc/monotributo/desde', dayKeyFromISO(new Date().toISOString()).slice(0, 7));
+        await db.patch('cyc/monotributo', { cats: Object.fromEntries(Object.entries(ARCA).map(([c, x]) => [c, x.cat])) });
+        if (pctNuevo > 0) await db.patch('cyc/monotributo', { pct: pctNuevo, pctCalc: Date.now(), pctFact: Math.round(factMes) });
+      }
+      console.log(`\n${DRY ? '(DRY) ' : ''}Guardado. La web ya lo toma: cambia el costo de cada venta y el margen de cada publicación.`);
+      return;
+    }
     // BILLING_PROBE=meta:<piso> → deja guardado el piso y la meta del robot de precios.
     // Hace falta porque el valor viejo (40/42) quedó de cuando el margen se medía sin impuestos.
     if (String(process.env.BILLING_PROBE || '').startsWith('meta:')) {
