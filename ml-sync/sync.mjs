@@ -1948,6 +1948,169 @@ async function main() {
       }
       return;
     }
+    // BILLING_PROBE=chequeo[:<días>] → EL CHEQUEO DE LA MAÑANA, LAS 4 CUENTAS.
+    //
+    // Es la recorrida que se hacía a mano cada mañana, hecha por el robot y mandada al celular.
+    // Mira, cuenta por cuenta:
+    //   · preguntas sin responder (con la más vieja, que es la que quema)
+    //   · reclamos abiertos y mensajes de posventa sin leer
+    //   · publicaciones pausadas, SEPARADAS POR MOTIVO: sin stock es normal, pausada por ML es
+    //     una infracción y hay que mirarla hoy
+    //   · publicaciones ACTIVAS que no son de Full (venden desde el depósito) → no debería haber
+    //   · Full: unidades con problema (dañadas, perdidas, en cuarentena) y cajas que llegaron
+    //
+    // Sobre las cajas: ML no tiene una lista de cajas por vendedor, solo por inventario. Así que
+    // se recorre inventario por inventario. Son dos llamadas por producto en Full, por eso el
+    // chequeo tarda unos minutos; corre una vez por día, no molesta.
+    if (String(process.env.BILLING_PROBE || '').startsWith('chequeo')) {
+      const DIAS = parseFloat(String(process.env.BILLING_PROBE).split(':')[1]) || 7;
+      const links = (await db.get('cyc/mllinks')) || {};
+      const desdeISO = new Date(Date.now() - DIAS * 864e5).toISOString().slice(0, 19);
+      const hoyLbl = new Intl.DateTimeFormat('es-AR', {
+        timeZone: 'America/Argentina/Buenos_Aires', weekday: 'long', day: 'numeric', month: 'long',
+      }).format(new Date());
+      const R = [];   // una fila por cuenta
+      let capado = 0; // inventarios que no llegué a mirar (se avisa, nunca se calla)
+      const MAX_INV = 400;
+      for (const label of labels) {
+        const acc = accounts[label];
+        if (!acc?.refresh_token || !acc.seller_id) { console.log(`(${label}: sin token)`); continue; }
+        let t; try { t = await mlRefresh(ML_CLIENT_ID, ML_CLIENT_SECRET, acc.refresh_token); }
+        catch { console.log(`(${label}: no pude renovar el token)`); continue; }
+        await db.patch('mlapi/tokens/' + label, { refresh_token: t.refresh_token, updated_ts: Date.now() });
+        const tok = t.access_token, sid = acc.seller_id;
+        const r = { label, preg: 0, pregVieja: null, pregTxt: [], reclamos: [], msgs: 0,
+          pausSinStock: 0, pausML: [], pausMano: [], deposito: [], fullProblema: [], cajas: [], err: [] };
+        // ── PREGUNTAS ──
+        try {
+          const q = await mlGet(`/questions/search?seller_id=${sid}&status=UNANSWERED&api_version=4&limit=50&sort=date_created_asc`, tok);
+          r.preg = q?.total || 0;
+          const qs = q?.questions || [];
+          if (qs.length) {
+            r.pregVieja = qs[0]?.date_created || null;
+            r.pregTxt = qs.slice(0, 3).map((x) => ({ t: String(x.text || '').slice(0, 70), mla: x.item_id, d: String(x.date_created || '').slice(0, 10) }));
+          }
+        } catch (e) { r.err.push('preguntas: ' + String(e.message || e).slice(0, 60)); }
+        // ── RECLAMOS ABIERTOS ──
+        try {
+          const c = await mlGet('/post-purchase/v1/claims/search?status=opened&limit=20', tok);
+          for (const x of (c?.data || [])) {
+            r.reclamos.push({ id: x.id, razon: x.reason_id || x.type || '?', etapa: x.stage || '', orden: (x.resource_id || '') });
+          }
+        } catch (e) { r.err.push('reclamos: ' + String(e.message || e).slice(0, 60)); }
+        // ── MENSAJES DE POSVENTA SIN LEER ──
+        try { r.msgs = (await mlGet('/messages/unread?role=seller&tag=post_sale', tok))?.total || 0; }
+        catch (e) { r.err.push('mensajes: ' + String(e.message || e).slice(0, 60)); }
+        // ── PUBLICACIONES: pausadas, en depósito, e inventarios de Full ──
+        const ids = Object.entries(links)
+          .filter(([mla, e2]) => e2 && e2.cuenta === label && !e2.ignored && /^MLA/i.test(mla))
+          .map(([mla]) => mla);
+        const invs = [];   // {inv, mla, nom}
+        for (let k = 0; k < ids.length; k += 20) {
+          let arr;
+          try { arr = await mlGet('/items?ids=' + ids.slice(k, k + 20).join(',') + '&attributes=id,status,sub_status,title,shipping,inventory_id,variations,available_quantity', tok); }
+          catch { continue; }
+          for (const row of (arr || [])) {
+            const b2 = row.body || {};
+            const mla = b2.id;
+            if (!mla || b2.error || typeof b2.status === 'number') continue;
+            const nom = ((links[mla] || {}).title || b2.title || mla).slice(0, 42);
+            const esFull = ((b2.shipping && b2.shipping.logistic_type) || '') === 'fulfillment';
+            const sub = [].concat(b2.sub_status || []).filter(Boolean);
+            if (b2.status === 'paused') {
+              if (sub.includes('out_of_stock')) r.pausSinStock++;
+              else if (sub.length) r.pausML.push({ mla, nom, sub: sub.join(',') });
+              else r.pausMano.push({ mla, nom });
+            } else if (b2.status === 'active' && !esFull && (b2.available_quantity || 0) > 0) {
+              // Activa y NO es Full: la venta sale del depósito propio y hay que despacharla a mano.
+              r.deposito.push({ mla, nom, q: b2.available_quantity, log: (b2.shipping && b2.shipping.logistic_type) || '?' });
+            }
+            if (esFull) {
+              const vars = Array.isArray(b2.variations) ? b2.variations : [];
+              const lista = vars.length ? vars.map((v) => v.inventory_id).filter(Boolean) : [b2.inventory_id].filter(Boolean);
+              for (const inv of lista) invs.push({ inv, mla, nom });
+            }
+          }
+        }
+        // ── FULL: problemas de stock y cajas que llegaron ──
+        const vistos = new Set();
+        for (const x of invs) {
+          if (vistos.has(x.inv)) continue; vistos.add(x.inv);
+          if (vistos.size > MAX_INV) { capado++; continue; }
+          try {
+            const s = await mlGet('/inventories/' + x.inv + '/stock/fulfillment', tok);
+            const na = Number(s?.not_available_quantity) || 0;
+            if (na > 0) {
+              const det = (s?.not_available_detail || []).map((d) => `${d.status || d.type || '?'} ${d.quantity || 0}`).join(', ');
+              r.fullProblema.push({ nom: x.nom, mla: x.mla, na, det: det || 'sin detalle' });
+            }
+          } catch { /* si no contesta, se saltea */ }
+          try {
+            const o = await mlGet(`/stock/fulfillment/operations/search?seller_id=${sid}&inventory_id=${x.inv}&date_from=${desdeISO}&limit=20`, tok);
+            for (const op of (o?.results || [])) {
+              const tipo = String(op.type || op.operation_type || '').toLowerCase();
+              if (!tipo.includes('inbound') && !tipo.includes('reception')) continue;
+              r.cajas.push({ nom: x.nom, q: op.quantity || op.detail?.quantity || 0, fecha: String(op.date_created || '').slice(0, 10) });
+            }
+          } catch { /* idem */ }
+        }
+        R.push(r);
+      }
+      if (!R.length) { console.log('No pude entrar a ninguna cuenta.'); return; }
+      // ── SALIDA ──
+      const L = [];
+      const totPreg = R.reduce((s, r) => s + r.preg, 0);
+      const totRec = R.reduce((s, r) => s + r.reclamos.length, 0);
+      const totMsg = R.reduce((s, r) => s + r.msgs, 0);
+      const totML = R.reduce((s, r) => s + r.pausML.length, 0);
+      const totDep = R.reduce((s, r) => s + r.deposito.length, 0);
+      const totProb = R.reduce((s, r) => s + r.fullProblema.reduce((a, x) => a + x.na, 0), 0);
+      const totCajas = R.reduce((s, r) => s + r.cajas.length, 0);
+      const totSinStock = R.reduce((s, r) => s + r.pausSinStock, 0);
+      const totMano = R.reduce((s, r) => s + r.pausMano.length, 0);
+      L.push(`🌅 <b>CHEQUEO DE LA MAÑANA</b> · ${hoyLbl}`);
+      const urgente = totRec > 0 || totML > 0 || totDep > 0 || totProb > 0;
+      L.push(urgente ? '\n🔴 <b>Hay cosas para mirar hoy.</b>' : '\n🟢 <b>Todo en orden.</b>');
+      // Preguntas
+      L.push(`\n❓ <b>Preguntas sin responder: ${totPreg}</b>`);
+      for (const r of R) {
+        if (!r.preg) continue;
+        const dias = r.pregVieja ? Math.floor((Date.now() - new Date(r.pregVieja).getTime()) / 864e5) : null;
+        L.push(`   · ${r.label}: <b>${r.preg}</b>${dias != null ? ` · la más vieja hace ${dias} días` : ''}`);
+      }
+      if (!totPreg) L.push('   · ninguna, todas contestadas');
+      // Reclamos y mensajes
+      L.push(`\n${totRec ? '⚠️' : '✅'} <b>Reclamos abiertos: ${totRec}</b>`);
+      for (const r of R) for (const c of r.reclamos) L.push(`   · ${r.label}: ${c.razon} (orden ${c.orden})`);
+      if (totMsg) L.push(`💬 Mensajes de posventa sin leer: <b>${totMsg}</b>`);
+      // Pausadas
+      L.push(`\n⏸️ <b>Pausadas</b>: ${totSinStock} sin stock · ${totML} por ML · ${totMano} a mano`);
+      for (const r of R) for (const p of r.pausML) L.push(`   🔴 ${r.label} · ${p.nom} (${p.sub})`);
+      for (const r of R) for (const p of r.pausMano.slice(0, 5)) L.push(`   · ${r.label} · ${p.nom} (pausada a mano)`);
+      // Depósito
+      L.push(`\n${totDep ? '📦 <b>ACTIVAS FUERA DE FULL: ' + totDep + '</b> (venden desde el depósito)' : '✅ <b>Ninguna activa fuera de Full</b>'}`);
+      for (const r of R) for (const d of r.deposito.slice(0, 8)) L.push(`   🔴 ${r.label} · ${d.nom} · ${d.q} u. (${d.log})`);
+      // Full
+      L.push(`\n🏭 <b>Full</b>`);
+      L.push(`   ${totProb ? '🔴' : '✅'} unidades con problema: <b>${totProb}</b>`);
+      for (const r of R) for (const f of r.fullProblema.slice(0, 8)) L.push(`      · ${r.label} · ${f.nom}: ${f.na} u. (${f.det})`);
+      L.push(`   📥 cajas que llegaron en ${DIAS} días: <b>${totCajas}</b>`);
+      for (const r of R) for (const c of r.cajas.slice(0, 8)) L.push(`      · ${r.label} · ${c.fecha} · ${c.nom}${c.q ? ` · ${c.q} u.` : ''}`);
+      if (capado) L.push(`\n<i>(no llegué a mirar ${capado} inventarios de Full: hay más de ${MAX_INV})</i>`);
+      for (const r of R) for (const e2 of r.err) L.push(`\n⚠️ ${r.label} · no pude leer ${e2}`);
+      const msg = L.join('\n');
+      console.log(msg.replace(/<[^>]+>/g, ''));
+      // Las preguntas viejas, con el texto, van solo al log: en el celular ocuparían media pantalla.
+      for (const r of R) {
+        if (!r.pregTxt.length) continue;
+        console.log(`\n── ${r.label}: las 3 preguntas más viejas sin responder ──`);
+        for (const q of r.pregTxt) console.log(`   ${q.d} · ${q.mla} · "${q.t}"`);
+      }
+      if (String(process.env.BILLING_PROBE).includes('nomandar')) { console.log('\n(no lo mandé a Telegram)'); return; }
+      const ok = await sendTelegram(msg, 'resumen');
+      console.log(ok ? '\n✅ Mandado a Telegram.' : '\n⚠️ No pude mandarlo a Telegram.');
+      return;
+    }
     // BILLING_PROBE=apis[:<cuenta>] → PRUEBA QUÉ ENDPOINTS DE ML CONTESTAN.
     // Antes de armar el chequeo de la mañana hay que saber cuáles de estas puertas están abiertas
     // para nuestra app: preguntas, reclamos y —sobre todo— las cajas que se mandan a Full, que ML
