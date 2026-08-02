@@ -24,12 +24,17 @@ on:
         required: false
         default: ''
 
-# El chequeo solo LEE de ML, así que no hace falta compartir el candado con ml-sync (que escribe
-# precios). Pero sí renueva los tokens de ML, y dos corridas renovando a la vez se pisan: la
-# segunda usa un token que la primera ya quemó. Por eso comparte el mismo grupo.
+# Comparte el candado con ml-sync porque los dos renuevan los tokens de ML, y dos corridas
+# renovando a la vez se pisan: la segunda usa un token que la primera ya quemó, y esa cuenta se
+# saltea sin avisar.
+#
+# cancel-in-progress: true a propósito. El ciclo automático de ventas dura casi 6 horas; si el
+# chequeo se pusiera a esperar, no saldría nunca. Así que lo corta, igual que un comando a mano.
+# El ciclo se levanta solo en el próximo disparo del cron (como mucho 20 minutos después) y las
+# ventas de esos minutos entran igual cuando vuelve: no se pierde ninguna.
 concurrency:
   group: ml-sync
-  cancel-in-progress: false
+  cancel-in-progress: true
 
 jobs:
   chequeo:

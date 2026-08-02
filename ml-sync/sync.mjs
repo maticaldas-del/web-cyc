@@ -1965,6 +1965,18 @@ async function main() {
     // chequeo tarda unos minutos; corre una vez por día, no molesta.
     if (String(process.env.BILLING_PROBE || '').startsWith('chequeo')) {
       const DIAS = parseFloat(String(process.env.BILLING_PROBE).split(':')[1]) || 7;
+      // Anti-repetido, ANTES de empezar. El cron se pide tres veces por si GitHub saltea alguna,
+      // pero el chequeo tarda un minuto y medio y frena al robot de ventas mientras corre: si los
+      // tres intentos hicieran el recorrido entero para después descubrir que ya se mandó, se
+      // pagaría tres veces el mismo peaje. Con esto, el 2º y el 3º salen en un segundo.
+      const hoyK = dayKeyFromISO(new Date().toISOString());
+      const forzado = String(process.env.BILLING_PROBE).includes('igual')
+        || String(process.env.BILLING_PROBE).includes('nomandar');
+      if (!forzado) {
+        let ultimo = null;
+        try { ultimo = await db.get('mlapi/telegram/lastChequeo'); } catch { /* si no se lee, se hace igual */ }
+        if (ultimo === hoyK) { console.log(`El chequeo de ${hoyK} ya se mandó. No lo repito.`); return; }
+      }
       const links = (await db.get('cyc/mllinks')) || {};
       const desdeISO = new Date(Date.now() - DIAS * 864e5).toISOString().slice(0, 19);
       const hoyLbl = new Intl.DateTimeFormat('es-AR', {
@@ -2130,15 +2142,6 @@ async function main() {
         for (const q of r.pregTxt) console.log(`   ${q.d} · ${q.mla} · "${q.t}"`);
       }
       if (String(process.env.BILLING_PROBE).includes('nomandar')) { console.log('\n(no lo mandé a Telegram)'); return; }
-      // Anti-repetido: el cron se pide varias veces porque GitHub saltea corridas cuando está
-      // cargado, pero el chequeo tiene que llegar UNA sola vez por día. Se guarda el último día
-      // mandado y los intentos de más no cuestan nada.
-      const hoyK = dayKeyFromISO(new Date().toISOString());
-      if (!String(process.env.BILLING_PROBE).includes('igual')) {
-        let ultimo = null;
-        try { ultimo = await db.get('mlapi/telegram/lastChequeo'); } catch { /* si no se puede leer, se manda */ }
-        if (ultimo === hoyK) { console.log(`\n(el chequeo de ${hoyK} ya se mandó — no lo repito)`); return; }
-      }
       const ok = await sendTelegram(msg, 'resumen');
       if (ok && !DRY) { try { await db.set('mlapi/telegram/lastChequeo', hoyK); } catch { /* no rompe */ } }
       console.log(ok ? '\n✅ Mandado a Telegram.' : '\n⚠️ No pude mandarlo a Telegram.');
