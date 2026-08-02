@@ -2116,7 +2116,17 @@ async function main() {
         for (const q of r.pregTxt) console.log(`   ${q.d} · ${q.mla} · "${q.t}"`);
       }
       if (String(process.env.BILLING_PROBE).includes('nomandar')) { console.log('\n(no lo mandé a Telegram)'); return; }
+      // Anti-repetido: el cron se pide varias veces porque GitHub saltea corridas cuando está
+      // cargado, pero el chequeo tiene que llegar UNA sola vez por día. Se guarda el último día
+      // mandado y los intentos de más no cuestan nada.
+      const hoyK = dayKeyFromISO(new Date().toISOString());
+      if (!String(process.env.BILLING_PROBE).includes('igual')) {
+        let ultimo = null;
+        try { ultimo = await db.get('mlapi/telegram/lastChequeo'); } catch { /* si no se puede leer, se manda */ }
+        if (ultimo === hoyK) { console.log(`\n(el chequeo de ${hoyK} ya se mandó — no lo repito)`); return; }
+      }
       const ok = await sendTelegram(msg, 'resumen');
+      if (ok && !DRY) { try { await db.set('mlapi/telegram/lastChequeo', hoyK); } catch { /* no rompe */ } }
       console.log(ok ? '\n✅ Mandado a Telegram.' : '\n⚠️ No pude mandarlo a Telegram.');
       return;
     }

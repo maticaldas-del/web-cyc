@@ -1,0 +1,54 @@
+name: ml-chequeo
+
+# El chequeo de la mañana al celular: preguntas sin responder, reclamos abiertos, publicaciones
+# pausadas por ML, activas que no son de Full, y el estado de Full (unidades con problema y cajas
+# que llegaron). Es la recorrida que se hacía a mano cada mañana.
+
+on:
+  schedule:
+    # 07:45, 08:05 y 08:30 hora Argentina (UTC-3). Se pide TRES veces porque GitHub demora —y a
+    # veces directamente saltea— las corridas programadas cuando está cargado. El robot guarda cuál
+    # fue el último día que mandó el chequeo, así que los intentos de más no mandan nada repetido:
+    # alcanza con que UNO salga bien.
+    - cron: '45 10 * * *'
+    - cron: '5 11 * * *'
+    - cron: '30 11 * * *'
+  workflow_dispatch:
+    inputs:
+      dias:
+        description: 'Días para atrás que mira las cajas de Full (por defecto 7)'
+        required: false
+        default: '7'
+      igual:
+        description: 'Mandarlo igual aunque ya se haya mandado hoy: poné 1'
+        required: false
+        default: ''
+
+# El chequeo solo LEE de ML, así que no hace falta compartir el candado con ml-sync (que escribe
+# precios). Pero sí renueva los tokens de ML, y dos corridas renovando a la vez se pisan: la
+# segunda usa un token que la primera ya quemó. Por eso comparte el mismo grupo.
+concurrency:
+  group: ml-sync
+  cancel-in-progress: false
+
+jobs:
+  chequeo:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Chequeo de la mañana
+        env:
+          ML_CLIENT_ID: ${{ secrets.ML_CLIENT_ID }}
+          ML_CLIENT_SECRET: ${{ secrets.ML_CLIENT_SECRET }}
+          FIREBASE_API_KEY: ${{ secrets.FIREBASE_API_KEY }}
+          FIREBASE_DB_URL: ${{ secrets.FIREBASE_DB_URL }}
+          FIREBASE_BOT_EMAIL: ${{ secrets.FIREBASE_BOT_EMAIL }}
+          FIREBASE_BOT_PASSWORD: ${{ secrets.FIREBASE_BOT_PASSWORD }}
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+          BILLING_PROBE: chequeo:${{ github.event.inputs.dias || '7' }}${{ github.event.inputs.igual == '1' && ':igual' || '' }}
+        run: node ml-sync/sync.mjs
