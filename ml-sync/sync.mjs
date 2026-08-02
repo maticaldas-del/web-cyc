@@ -2231,6 +2231,37 @@ async function main() {
       console.log('\n(esto solo LEE: no contesté nada ni marqué nada como leído)');
       return;
     }
+    // BILLING_PROBE=freno:<MLA>[:off][:<motivo>] → QUE EL ROBOT NO ACTIVE ESA PUBLICACIÓN.
+    //
+    // El robot activa solo las publicaciones pausadas que tienen stock en Full y están arriba del
+    // piso. Eso está bien casi siempre, pero hay casos donde volver a vender es justo lo que NO hay
+    // que hacer: por ejemplo cuando lo que va a entrar a Full es una devolución de un producto
+    // equivocado. Esto lo deja frenado hasta que lo saques a mano. NO toca el precio ni ML: es una
+    // marca en nuestros datos. Se saca con `freno:<MLA>:off`.
+    if (String(process.env.BILLING_PROBE || '').startsWith('freno:')) {
+      const _f = String(process.env.BILLING_PROBE).split(':');
+      const MLA = (_f[1] || '').trim().toUpperCase();
+      const SACAR = (_f[2] || '').trim().toLowerCase() === 'off';
+      const MOTIVO = _f.slice(SACAR ? 3 : 2).join(':').trim();
+      if (!/^MLA/.test(MLA)) { console.log('Usá: freno:MLA3528713302:<motivo>  ·  para sacarlo: freno:MLA3528713302:off'); return; }
+      const links = (await db.get('cyc/mllinks')) || {};
+      const e2 = links[MLA];
+      if (!e2) { console.log(`No tengo cargada la publicación ${MLA}.`); return; }
+      const nom = (e2.title || MLA).slice(0, 50);
+      console.log(`${MLA} · ${e2.cuenta || '?'} · ${nom}`);
+      console.log(`  freno antes: ${e2.noAutoActivar ? 'SÍ' + (e2.frenoMotivo ? ' (' + e2.frenoMotivo + ')' : '') : 'no'}`);
+      if (DRY) { console.log('(DRY: no escribí nada)'); return; }
+      if (SACAR) await db.patch('cyc/mllinks/' + MLA, { noAutoActivar: null, frenoMotivo: null, frenoTs: null });
+      else await db.patch('cyc/mllinks/' + MLA, { noAutoActivar: true, frenoMotivo: MOTIVO || 'sin motivo anotado', frenoTs: Date.now() });
+      // Se relee de Firebase: que la escritura no haya dado error no quiere decir que haya quedado.
+      const ver = (await db.get('cyc/mllinks/' + MLA)) || {};
+      console.log(`  freno ahora: ${ver.noAutoActivar ? 'SÍ' + (ver.frenoMotivo ? ' (' + ver.frenoMotivo + ')' : '') : 'no'}`);
+      const ok = SACAR ? !ver.noAutoActivar : !!ver.noAutoActivar;
+      console.log(ok
+        ? (SACAR ? '\n✅ Freno sacado: el robot puede volver a activarla.' : '\n✅ Freno puesto: el robot NO la va a activar aunque entre stock a Full.')
+        : '\n⚠️ NO quedó: lo releí de la base y sigue como estaba.');
+      return;
+    }
     // BILLING_PROBE=unreclamo:<id> → TODO SOBRE UN RECLAMO, SIN RECORTAR.
     //
     // El probe `posventa` muestra los reclamos en fila y corta los mensajes a 300 letras, que
