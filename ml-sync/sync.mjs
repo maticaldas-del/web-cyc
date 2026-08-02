@@ -2204,8 +2204,18 @@ async function main() {
         for (const u of unread) {
           console.log(`\n── MENSAJE SIN LEER ──`);
           if (CRUDO) console.log('  CRUDO: ' + JSON.stringify(u).slice(0, 600));
-          const pack = u.resource_id || u.pack_id || u.id;
-          if (!pack) continue;
+          // ML no manda el nº de paquete suelto: viene adentro de una ruta, tipo
+          // "/packs/2000014220310455/sellers/354425757". Hay que sacarlo de ahí.
+          const pack = u.resource_id || u.pack_id
+            || (String(u.resource || '').match(/packs\/(\d+)/) || [])[1];
+          if (!pack) { console.log('  (no encontré el nº de paquete: ' + JSON.stringify(u).slice(0, 200) + ')'); continue; }
+          console.log(`  paquete ${pack}`);
+          // De qué venta habla, para no contestar a ciegas.
+          try {
+            const o = await mlGet('/orders/search?seller=' + sid + '&q=' + pack, tok);
+            const or = (o?.results || [])[0];
+            for (const it of (or?.order_items || [])) console.log(`  producto: ${String(it.item?.title || '').slice(0, 55)} · ${it.quantity} u.`);
+          } catch { /* si no sale, se sigue igual */ }
           try {
             const d = await mlGet(`/messages/packs/${pack}/sellers/${sid}?tag=post_sale&mark_as_read=false`, tok);
             const arr = d?.messages || d?.results || [];
