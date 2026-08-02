@@ -2147,6 +2147,80 @@ async function main() {
       console.log(ok ? '\n✅ Mandado a Telegram.' : '\n⚠️ No pude mandarlo a Telegram.');
       return;
     }
+    // BILLING_PROBE=posventa[:crudo] → LOS RECLAMOS ABIERTOS Y LOS MENSAJES SIN LEER, CON EL TEXTO.
+    //
+    // El chequeo de la mañana dice CUÁNTOS hay; esto dice QUÉ dicen: quién reclama, por qué, en qué
+    // etapa está, qué le contestamos (si le contestamos) y hasta cuándo hay tiempo antes de que ML
+    // decida solo. Con `:crudo` además vuelca el JSON completo de ML, para descubrir qué campos
+    // trae y qué se puede llegar a responder desde acá.
+    //
+    // Solo LEE. Contestarle a un comprador es otra cosa y va aparte, con confirmación.
+    if (String(process.env.BILLING_PROBE || '').startsWith('posventa')) {
+      const CRUDO = String(process.env.BILLING_PROBE).includes('crudo');
+      for (const label of labels) {
+        const acc = accounts[label];
+        if (!acc?.refresh_token || !acc.seller_id) continue;
+        let t; try { t = await mlRefresh(ML_CLIENT_ID, ML_CLIENT_SECRET, acc.refresh_token); } catch { continue; }
+        await db.patch('mlapi/tokens/' + label, { refresh_token: t.refresh_token, updated_ts: Date.now() });
+        const tok = t.access_token, sid = acc.seller_id;
+        // ── RECLAMOS ──
+        let claims = [];
+        try { claims = ((await mlGet('/post-purchase/v1/claims/search?status=opened&limit=20', tok))?.data) || []; } catch { /* sigue */ }
+        // ── MENSAJES SIN LEER ──
+        let unread = [];
+        try { unread = ((await mlGet('/messages/unread?role=seller&tag=post_sale', tok))?.results) || []; } catch { /* sigue */ }
+        if (!claims.length && !unread.length) { console.log(`\n═══ ${label.toUpperCase()} ═══\n  Sin reclamos ni mensajes sin leer.`); continue; }
+        console.log(`\n═══ ${label.toUpperCase()} ═══`);
+        for (const c of claims) {
+          console.log(`\n── RECLAMO ${c.id} ──`);
+          console.log(`  motivo ${c.reason_id || '?'} · tipo ${c.type || '?'} · etapa ${c.stage || '?'} · estado ${c.status || '?'}`);
+          console.log(`  abierto ${String(c.date_created || '').slice(0, 16).replace('T', ' ')} · orden ${c.resource_id || '?'}`);
+          if (c.players) for (const p of c.players) console.log(`  ${p.role}: ${p.type || ''} ${p.available_actions ? '· puede: ' + (p.available_actions || []).map((a) => a.action || a).join(', ') : ''}`);
+          // Qué producto es (para saber de qué está hablando el comprador).
+          try {
+            const o = await mlGet('/orders/' + c.resource_id, tok);
+            for (const it of (o.order_items || [])) console.log(`  producto: ${String(it.item?.title || '').slice(0, 55)} · ${it.quantity} u. · ${money(Math.round(it.unit_price || 0))}`);
+          } catch { /* sigue */ }
+          // La conversación del reclamo.
+          for (const ruta of [`/post-purchase/v1/claims/${c.id}/messages`, `/post-purchase/v1/claims/${c.id}/actions`]) {
+            try {
+              const d = await mlGet(ruta, tok);
+              const arr = Array.isArray(d) ? d : (d?.data || d?.results || []);
+              if (ruta.endsWith('/messages')) {
+                if (!arr.length) { console.log('  (sin mensajes en el reclamo)'); continue; }
+                console.log('  conversación:');
+                for (const m of arr) {
+                  const quien = m.sender_role || m.from?.role || m.sender?.role || '?';
+                  const cuando = String(m.date_created || m.date || '').slice(0, 16).replace('T', ' ');
+                  console.log(`    [${cuando}] ${quien}: ${String(m.message || m.text || '').replace(/\s+/g, ' ').slice(0, 300)}`);
+                }
+              } else if (arr.length) {
+                console.log(`  acciones que ML me deja hacer: ${arr.map((a) => a.action || a.id || a).join(', ')}`);
+              }
+            } catch (e) { if (CRUDO) console.log(`  (${ruta}: ${String(e.message || e).slice(0, 90)})`); }
+          }
+          if (CRUDO) console.log('  CRUDO: ' + JSON.stringify(c).slice(0, 1200));
+        }
+        for (const u of unread) {
+          console.log(`\n── MENSAJE SIN LEER ──`);
+          if (CRUDO) console.log('  CRUDO: ' + JSON.stringify(u).slice(0, 600));
+          const pack = u.resource_id || u.pack_id || u.id;
+          if (!pack) continue;
+          try {
+            const d = await mlGet(`/messages/packs/${pack}/sellers/${sid}?tag=post_sale&mark_as_read=false`, tok);
+            const arr = d?.messages || d?.results || [];
+            for (const m of arr.slice(-6)) {
+              const mio = String(m.from?.user_id || '') === String(sid);
+              const cuando = String(m.message_date?.created || m.date_created || '').slice(0, 16).replace('T', ' ');
+              console.log(`    [${cuando}] ${mio ? 'NOSOTROS' : 'COMPRADOR'}: ${String(m.text || '').replace(/\s+/g, ' ').slice(0, 300)}`);
+            }
+            if (!arr.length) console.log('  (no pude leer el hilo)');
+          } catch (e) { console.log(`  (no pude leer el hilo: ${String(e.message || e).slice(0, 90)})`); }
+        }
+      }
+      console.log('\n(esto solo LEE: no contesté nada ni marqué nada como leído)');
+      return;
+    }
     // BILLING_PROBE=apis[:<cuenta>] → PRUEBA QUÉ ENDPOINTS DE ML CONTESTAN.
     // Antes de armar el chequeo de la mañana hay que saber cuáles de estas puertas están abiertas
     // para nuestra app: preguntas, reclamos y —sobre todo— las cajas que se mandan a Full, que ML
