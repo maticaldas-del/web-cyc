@@ -35,6 +35,9 @@ jobs:
   chequeo:
     runs-on: ubuntu-latest
     timeout-minutes: 20
+    # Hace falta para poder dejar el resultado guardado en el repo (ver el último paso).
+    permissions:
+      contents: write
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -42,6 +45,7 @@ jobs:
           node-version: '20'
       - name: Chequeo de la mañana
         env:
+          CHEQUEO_ARCHIVO: chequeo/ultimo.txt
           ML_CLIENT_ID: ${{ secrets.ML_CLIENT_ID }}
           ML_CLIENT_SECRET: ${{ secrets.ML_CLIENT_SECRET }}
           FIREBASE_API_KEY: ${{ secrets.FIREBASE_API_KEY }}
@@ -52,3 +56,29 @@ jobs:
           TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
           BILLING_PROBE: chequeo:${{ github.event.inputs.dias || '7' }}${{ github.event.inputs.igual == '1' && ':igual' || '' }}
         run: node ml-sync/sync.mjs
+      # El chequeo queda guardado en el repo. Es para poder leerlo después desde un chat nuevo, que
+      # no tiene las claves de ML ni de Firebase y por lo tanto no puede correr el chequeo por su
+      # cuenta. El archivo NO lleva números de orden ni el texto de las preguntas: el repo es
+      # público. Eso completo va solo a Telegram.
+      - name: Guardar el chequeo en el repo
+        run: |
+          if [ ! -f chequeo/ultimo.txt ]; then
+            echo "El chequeo no dejó archivo (habrá fallado antes). No commiteo nada."
+            exit 0
+          fi
+          git config user.name  "robot-cyc"
+          git config user.email "robot-cyc@users.noreply.github.com"
+          git add chequeo/ultimo.txt
+          if git diff --cached --quiet; then
+            echo "El chequeo dio igual que el de la corrida anterior: no hay nada para guardar."
+            exit 0
+          fi
+          git commit -m "Chequeo de la mañana $(TZ=America/Argentina/Buenos_Aires date '+%d-%m-%Y %H:%M')"
+          # La rama puede haber avanzado mientras corría el chequeo (el robot de precios escribe
+          # seguido). Se reintenta con rebase para no pisar nada ni fallar por una carrera.
+          for i in 1 2 3; do
+            git pull --rebase origin "${GITHUB_REF_NAME}" && git push origin "HEAD:${GITHUB_REF_NAME}" && exit 0
+            echo "no pude guardar (intento $i), reintento"
+            sleep 5
+          done
+          echo "No pude guardar el chequeo en el repo. El de Telegram salió igual."

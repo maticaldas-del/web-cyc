@@ -7,6 +7,7 @@
 //   FIREBASE_API_KEY, FIREBASE_DB_URL, FIREBASE_BOT_EMAIL, FIREBASE_BOT_PASSWORD
 
 import { fbSignIn, makeDB, mlRefresh, mlGet, ML_API } from './lib.mjs';
+import { writeFileSync, mkdirSync } from 'node:fs';
 
 const {
   ML_CLIENT_ID, ML_CLIENT_SECRET,
@@ -2109,6 +2110,19 @@ async function main() {
       let msg = L.join('\n');
       if (msg.length > 3900) msg = msg.slice(0, 3900) + '\n\n<i>(recortado: el resto está en el log)</i>';
       console.log(L.join('\n').replace(/<[^>]+>/g, ''));
+      // CHEQUEO_ARCHIVO=<ruta> → deja el chequeo en un archivo del repo, para que después se pueda
+      // leer sin tener las claves de ML ni de Firebase. Va SIN los números de orden ni el texto de
+      // las preguntas: el repo es público y eso es data de compradores. Lo completo va a Telegram.
+      if (process.env.CHEQUEO_ARCHIVO) {
+        const ruta = process.env.CHEQUEO_ARCHIVO;
+        const limpio = L.join('\n').replace(/<[^>]+>/g, '').replace(/ \(orden \d+\)/g, '');
+        try {
+          const dir = ruta.slice(0, ruta.lastIndexOf('/'));
+          if (dir) mkdirSync(dir, { recursive: true });
+          writeFileSync(ruta, limpio + '\n');
+          console.log(`\n(chequeo guardado en ${ruta})`);
+        } catch (e) { console.log(`\n(no pude guardar ${ruta}: ${String(e.message || e).slice(0, 80)})`); }
+      }
       // Las preguntas viejas, con el texto, van solo al log: en el celular ocuparían media pantalla.
       for (const r of R) {
         if (!r.pregTxt.length) continue;
