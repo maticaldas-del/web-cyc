@@ -1,28 +1,20 @@
 name: ml-chequeo
 
-# El chequeo de la mañana al celular: preguntas sin responder, reclamos abiertos, publicaciones
-# pausadas por ML, activas que no son de Full, y el estado de Full (unidades con problema y cajas
-# que llegaron). Es la recorrida que se hacía a mano cada mañana.
+# El chequeo de la mañana: preguntas sin responder, reclamos abiertos, publicaciones pausadas por
+# ML, activas que no son de Full, y el estado de Full (unidades con problema y cajas que llegaron).
+# Es la recorrida que se hacía a mano cada mañana.
 
+# SIN horario propio, a propósito. El chequeo lo pide Claude cada mañana a las 10 (hora Argentina)
+# desde el chat, lo lee y escribe el resumen ahí mismo. Antes esto corría solo a las 07:45 y lo
+# mandaba por Telegram; se sacó porque el resumen se quiere en el chat y no en el celular.
+# Queda el botón para dispararlo a mano cuando haga falta.
 on:
-  schedule:
-    # 07:45, 08:05 y 08:30 hora Argentina (UTC-3). Se pide TRES veces porque GitHub demora —y a
-    # veces directamente saltea— las corridas programadas cuando está cargado. El robot guarda cuál
-    # fue el último día que mandó el chequeo, así que los intentos de más no mandan nada repetido:
-    # alcanza con que UNO salga bien.
-    - cron: '45 10 * * *'
-    - cron: '5 11 * * *'
-    - cron: '30 11 * * *'
   workflow_dispatch:
     inputs:
       dias:
         description: 'Días para atrás que mira las cajas de Full (por defecto 7)'
         required: false
         default: '7'
-      igual:
-        description: 'Mandarlo igual aunque ya se haya mandado hoy: poné 1'
-        required: false
-        default: ''
 
 # Comparte el candado con ml-sync porque los dos renuevan los tokens de ML, y dos corridas
 # renovando a la vez se pisan: la segunda usa un token que la primera ya quemó, y esa cuenta se
@@ -59,7 +51,8 @@ jobs:
           FIREBASE_BOT_PASSWORD: ${{ secrets.FIREBASE_BOT_PASSWORD }}
           TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
-          BILLING_PROBE: chequeo:${{ github.event.inputs.dias || '7' }}${{ github.event.inputs.igual == '1' && ':igual' || '' }}
+          # nomandar = no va a Telegram. El chequeo se lee desde el chat, no desde el celular.
+          BILLING_PROBE: chequeo:${{ github.event.inputs.dias || '7' }}:nomandar
         run: node ml-sync/sync.mjs
       # El chequeo queda guardado en el repo. Es para poder leerlo después desde un chat nuevo, que
       # no tiene las claves de ML ni de Firebase y por lo tanto no puede correr el chequeo por su
