@@ -1985,6 +1985,33 @@ async function main() {
           console.log(`❌ ${nom.padEnd(26)} ${String(e.message || e).slice(0, 150)}\n`);
         }
       }
+      // Las cajas de Full no tienen lista por vendedor: ML solo las da por inventario. Se agarra un
+      // producto que esté en Full y se mira qué devuelve, para ver si de ahí sale "llegó una caja"
+      // y "hubo un problema con la caja" (unidades dañadas, perdidas, retenidas).
+      const links2 = (await db.get('cyc/mllinks')) || {};
+      const mios = Object.entries(links2).filter(([id, e2]) => id.startsWith('MLA') && e2 && e2.cuenta === label).map(([id]) => id);
+      let invId = null, mlaFull = null;
+      for (let k = 0; k < mios.length && !invId; k += 20) {
+        let arr; try { arr = await mlGet('/items?ids=' + mios.slice(k, k + 20).join(',') + '&attributes=id,shipping,inventory_id,variations', tok); } catch { continue; }
+        for (const row of (arr || [])) {
+          const b2 = row.body || {};
+          if (((b2.shipping && b2.shipping.logistic_type) || '') !== 'fulfillment') continue;
+          const vars = Array.isArray(b2.variations) ? b2.variations : [];
+          const cand = vars.length ? vars.map((v) => v.inventory_id).find(Boolean) : b2.inventory_id;
+          if (cand) { invId = cand; mlaFull = b2.id; break; }
+        }
+      }
+      if (!invId) { console.log('\n(no encontré ninguna publicación en Full para probar las cajas)'); return; }
+      console.log(`\n── CAJAS DE FULL · probando con ${mlaFull} (inventario ${invId}) ──\n`);
+      for (const [nom, ruta] of [
+        ['stock en Full', `/inventories/${invId}/stock/fulfillment`],
+        ['operaciones del inventario', `/stock/fulfillment/operations/search?seller_id=${sid}&inventory_id=${invId}&limit=10`],
+      ]) {
+        try {
+          const d = await mlGet(ruta, tok);
+          console.log(`✅ ${nom}\n   ${JSON.stringify(d).slice(0, 1500)}\n`);
+        } catch (e) { console.log(`❌ ${nom}: ${String(e.message || e).slice(0, 150)}\n`); }
+      }
       return;
     }
     // BILLING_PROBE=hermanas:<palabra>[:<piso>] → TODAS LAS PUBLICACIONES DEL MISMO PRODUCTO.
