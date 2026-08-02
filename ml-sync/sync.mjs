@@ -1948,6 +1948,45 @@ async function main() {
       }
       return;
     }
+    // BILLING_PROBE=apis[:<cuenta>] → PRUEBA QUÉ ENDPOINTS DE ML CONTESTAN.
+    // Antes de armar el chequeo de la mañana hay que saber cuáles de estas puertas están abiertas
+    // para nuestra app: preguntas, reclamos y —sobre todo— las cajas que se mandan a Full, que ML
+    // fue moviendo de lugar varias veces. Prueba cada una y muestra el estado y una muestra corta.
+    // Solo LEE.
+    if (String(process.env.BILLING_PROBE || '').startsWith('apis')) {
+      const soloCta = (String(process.env.BILLING_PROBE).split(':')[1] || '').trim().toLowerCase();
+      const label = labels.find((l) => (!soloCta || l.toLowerCase() === soloCta) && accounts[l]?.refresh_token);
+      if (!label) { console.log('No hay cuenta con token.'); return; }
+      const acc = accounts[label];
+      const t = await mlRefresh(ML_CLIENT_ID, ML_CLIENT_SECRET, acc.refresh_token);
+      await db.patch('mlapi/tokens/' + label, { refresh_token: t.refresh_token, updated_ts: Date.now() });
+      const tok = t.access_token, sid = acc.seller_id;
+      console.log(`Probando endpoints con la cuenta ${label} (seller ${sid})\n`);
+      const rutas = [
+        ['preguntas sin responder', `/questions/search?seller_id=${sid}&status=UNANSWERED&api_version=4&limit=5`],
+        ['preguntas (recibidas)', `/my/received_questions/search?status=UNANSWERED&api_version=4&limit=5`],
+        ['reclamos abiertos', `/post-purchase/v1/claims/search?status=opened&limit=5`],
+        ['reclamos (por rol)', `/post-purchase/v1/claims/search?players.role=respondent&limit=5`],
+        ['cajas a Full (inbound)', `/inbound_shipments/search?seller_id=${sid}&limit=5`],
+        ['cajas a Full (stock ops)', `/stock/fulfillment/operations/search?seller_id=${sid}&limit=5`],
+        ['cajas a Full (v2)', `/stock/fulfillment/operations/search?seller_id=${sid}&type=inbound&limit=5`],
+        ['envíos entrantes', `/shipments/search?seller_id=${sid}&type=inbound&limit=5`],
+        ['salud de la cuenta', `/users/${sid}/seller_reputation`],
+        ['mensajes sin leer', `/messages/unread?role=seller&tag=post_sale`],
+      ];
+      for (const [nom, ruta] of rutas) {
+        try {
+          const d = await mlGet(ruta, tok);
+          const muestra = JSON.stringify(d);
+          const n = Array.isArray(d?.results) ? d.results.length : (Array.isArray(d?.questions) ? d.questions.length : null);
+          console.log(`✅ ${nom.padEnd(26)} ${ruta}`);
+          console.log(`   ${n != null ? `${n} resultados · ` : ''}${muestra.slice(0, 300)}${muestra.length > 300 ? '…' : ''}\n`);
+        } catch (e) {
+          console.log(`❌ ${nom.padEnd(26)} ${String(e.message || e).slice(0, 150)}\n`);
+        }
+      }
+      return;
+    }
     // BILLING_PROBE=hermanas:<palabra>[:<piso>] → TODAS LAS PUBLICACIONES DEL MISMO PRODUCTO.
     // Cuando se toca el precio de UNA publicación hay que saber si el mismo producto está publicado
     // en otras cuentas: subir una sola y dejar las demás abajo del piso arregla la mitad del problema
