@@ -2431,12 +2431,26 @@ async function main() {
         const costo = costoPesos(p, 1, tc).costo;
         console.log(`\n══ ${(p && p.nombre) || pid} · mercadería ${money(costo)} ══`);
         const mlas = Object.entries(links).filter(([id, e2]) => id.startsWith('MLA') && e2 && e2.prodId === pid);
-        console.log(`  ${'publicación'.padEnd(15)} ${'cuenta'.padEnd(9)} ${'estado'.padEnd(18)} ${'precio'.padStart(10)} ${'margen'.padStart(8)}  ${'para el 30%'.padStart(11)}`);
+        console.log(`  ${'publicación'.padEnd(15)} ${'cuenta'.padEnd(9)} ${'estado'.padEnd(26)} ${'stock'.padStart(14)} ${'precio'.padStart(10)} ${'margen'.padStart(8)}  ${'para el 30%'.padStart(11)}`);
         for (const [id, e2] of mlas) {
           const tok = toks[e2.cuenta] || Object.values(toks)[0];
           let it = null;
-          try { it = await mlGet('/items/' + id + '?attributes=id,price,status,sub_status,available_quantity,listing_type_id,category_id,site_id', tok); }
+          try { it = await mlGet('/items/' + id + '?attributes=id,price,status,sub_status,available_quantity,listing_type_id,category_id,site_id,shipping,inventory_id,variations', tok); }
           catch { console.log(`  ${id.padEnd(15)} ${String(e2.cuenta || '?').padEnd(9)} (ML no me la dio)`); continue; }
+          // Stock: si es Full hay que preguntarle al inventario, porque una publicación pausada
+          // muestra available_quantity 0 aunque tenga mercadería guardada en el depósito de ML.
+          const esFull = ((it.shipping && it.shipping.logistic_type) || '') === 'fulfillment';
+          let stock = it.available_quantity || 0, dondeStock = esFull ? 'Full' : 'depósito';
+          if (esFull) {
+            const vars = Array.isArray(it.variations) ? it.variations : [];
+            const invs2 = vars.length ? vars.map((v) => v.inventory_id).filter(Boolean) : [it.inventory_id].filter(Boolean);
+            let s2 = 0, hubo = false;
+            for (const inv of invs2) {
+              try { s2 += Number((await mlGet('/inventories/' + inv + '/stock/fulfillment', tok))?.available_quantity) || 0; hubo = true; }
+              catch { /* si no contesta, queda lo que dijo la publicación */ }
+            }
+            if (hubo) stock = s2;
+          }
           const precio = it.price || 0;
           // Comisión oficial de ML a ese precio + el fijo ya viene incluido en sale_fee_amount.
           let fee = null;
@@ -2478,8 +2492,8 @@ async function main() {
           const est = it.status + ((it.sub_status || []).length ? ' (' + it.sub_status.join(',') + ')' : '');
           const marca = margen != null && margen < MIN ? ' ⚠' : '';
           const colPiso = margen == null ? '?' : (paraPiso != null ? money(paraPiso) : '— ya está');
-          console.log(`  ${id.padEnd(15)} ${String(e2.cuenta || '?').padEnd(9)} ${est.slice(0, 18).padEnd(18)} ${money(Math.round(precio)).padStart(10)}`
-            + ` ${(margen != null ? (margen * 100).toFixed(1) + '%' : '?').padStart(8)}  ${colPiso.padStart(11)}${marca}`);
+          console.log(`  ${id.padEnd(15)} ${String(e2.cuenta || '?').padEnd(9)} ${est.slice(0, 26).padEnd(26)} ${(stock + ' u. ' + dondeStock).padStart(14)}`
+            + ` ${money(Math.round(precio)).padStart(10)} ${(margen != null ? (margen * 100).toFixed(1) + '%' : '?').padStart(8)}  ${colPiso.padStart(11)}${marca}`);
         }
       }
       console.log(`\n(⚠ = está abajo del ${(MIN * 100).toFixed(0)}%. La columna "para el 30%" es el precio que la dejaría justo en el piso.)`);
