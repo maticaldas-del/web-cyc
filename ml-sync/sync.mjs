@@ -2018,8 +2018,13 @@ async function main() {
             const esFull = ((b2.shipping && b2.shipping.logistic_type) || '') === 'fulfillment';
             const sub = [].concat(b2.sub_status || []).filter(Boolean);
             if (b2.status === 'paused') {
-              if (sub.includes('out_of_stock')) r.pausSinStock++;
-              else if (sub.length) r.pausML.push({ mla, nom, sub: sub.join(',') });
+              // OJO con los sub_status: 'paused_by_seller' lo pusieron USTEDES, no ML. Si se cuenta
+              // como problema, el chequeo avisa de 40 publicaciones que están pausadas a propósito y
+              // deja de servir. Solo es problema lo que pausó ML: infracción, revisión, baja.
+              const DE_ELLOS = new Set(['out_of_stock', 'paused_by_seller']);
+              const deML = sub.filter((s) => !DE_ELLOS.has(s));
+              if (deML.length) r.pausML.push({ mla, nom, sub: deML.join(',') });
+              else if (sub.includes('out_of_stock')) r.pausSinStock++;
               else r.pausMano.push({ mla, nom });
             } else if (b2.status === 'active' && !esFull && (b2.available_quantity || 0) > 0) {
               // Activa y NO es Full: la venta sale del depósito propio y hay que despacharla a mano.
@@ -2084,9 +2089,11 @@ async function main() {
       for (const r of R) for (const c of r.reclamos) L.push(`   · ${r.label}: ${c.razon} (orden ${c.orden})`);
       if (totMsg) L.push(`💬 Mensajes de posventa sin leer: <b>${totMsg}</b>`);
       // Pausadas
-      L.push(`\n⏸️ <b>Pausadas</b>: ${totSinStock} sin stock · ${totML} por ML · ${totMano} a mano`);
-      for (const r of R) for (const p of r.pausML) L.push(`   🔴 ${r.label} · ${p.nom} (${p.sub})`);
-      for (const r of R) for (const p of r.pausMano.slice(0, 5)) L.push(`   · ${r.label} · ${p.nom} (pausada a mano)`);
+      // Las pausadas a mano NO se listan: son decenas y están pausadas a propósito. Solo el número.
+      L.push(`\n⏸️ <b>Pausadas</b>: ${totSinStock} sin stock · ${totMano} a mano · <b>${totML} por ML</b>`);
+      let nML = 0;
+      for (const r of R) for (const p of r.pausML) { if (nML++ < 8) L.push(`   🔴 ${r.label} · ${p.nom} (${p.sub})`); }
+      if (nML > 8) L.push(`   <i>… y ${nML - 8} más</i>`);
       // Depósito
       L.push(`\n${totDep ? '📦 <b>ACTIVAS FUERA DE FULL: ' + totDep + '</b> (venden desde el depósito)' : '✅ <b>Ninguna activa fuera de Full</b>'}`);
       for (const r of R) for (const d of r.deposito.slice(0, 8)) L.push(`   🔴 ${r.label} · ${d.nom} · ${d.q} u. (${d.log})`);
@@ -2098,8 +2105,10 @@ async function main() {
       for (const r of R) for (const c of r.cajas.slice(0, 8)) L.push(`      · ${r.label} · ${c.fecha} · ${c.nom}${c.q ? ` · ${c.q} u.` : ''}`);
       if (capado) L.push(`\n<i>(no llegué a mirar ${capado} inventarios de Full: hay más de ${MAX_INV})</i>`);
       for (const r of R) for (const e2 of r.err) L.push(`\n⚠️ ${r.label} · no pude leer ${e2}`);
-      const msg = L.join('\n');
-      console.log(msg.replace(/<[^>]+>/g, ''));
+      // Telegram corta en 4096 caracteres: un mensaje que se pasa NO llega, así que se recorta acá.
+      let msg = L.join('\n');
+      if (msg.length > 3900) msg = msg.slice(0, 3900) + '\n\n<i>(recortado: el resto está en el log)</i>';
+      console.log(L.join('\n').replace(/<[^>]+>/g, ''));
       // Las preguntas viejas, con el texto, van solo al log: en el celular ocuparían media pantalla.
       for (const r of R) {
         if (!r.pregTxt.length) continue;
