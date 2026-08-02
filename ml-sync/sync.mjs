@@ -2231,6 +2231,71 @@ async function main() {
       console.log('\n(esto solo LEE: no contesté nada ni marqué nada como leído)');
       return;
     }
+    // BILLING_PROBE=unreclamo:<id> → TODO SOBRE UN RECLAMO, SIN RECORTAR.
+    //
+    // El probe `posventa` muestra los reclamos en fila y corta los mensajes a 300 letras, que
+    // alcanza para saber de qué va pero no para saber CÓMO TERMINA: si el comprador devuelve el
+    // producto, si ya le devolvieron la plata, y cuánta. Esto contesta eso: el detalle del reclamo,
+    // la conversación entera, la devolución del producto (si hay) y los pagos con sus reintegros.
+    // Solo LEE.
+    if (String(process.env.BILLING_PROBE || '').startsWith('unreclamo:')) {
+      const CID = String(process.env.BILLING_PROBE).split(':')[1].trim();
+      if (!CID) { console.log('Usá: unreclamo:5551817867'); return; }
+      // El reclamo puede ser de cualquiera de las 4 cuentas: se prueba con todas hasta que una lo dé.
+      let tok = null, sid = null, label = null, det = null;
+      for (const l of labels) {
+        const acc = accounts[l];
+        if (!acc?.refresh_token) continue;
+        let t; try { t = await mlRefresh(ML_CLIENT_ID, ML_CLIENT_SECRET, acc.refresh_token); } catch { continue; }
+        await db.patch('mlapi/tokens/' + l, { refresh_token: t.refresh_token, updated_ts: Date.now() });
+        try { det = await mlGet('/post-purchase/v1/claims/' + CID, t.access_token); tok = t.access_token; sid = acc.seller_id; label = l; break; }
+        catch { /* no es de esta cuenta */ }
+      }
+      if (!tok) { console.log(`No pude abrir el reclamo ${CID} con ninguna cuenta.`); return; }
+      console.log(`=== RECLAMO ${CID} · cuenta ${label} ===\n`);
+      console.log(`  tipo ${det.type || '?'} · etapa ${det.stage || '?'} · estado ${det.status || '?'} · motivo ${det.reason_id || '?'}`);
+      console.log(`  abierto ${String(det.date_created || '').slice(0, 16).replace('T', ' ')} · último movimiento ${String(det.last_updated || '').slice(0, 16).replace('T', ' ')}`);
+      console.log(`  CÓMO TERMINÓ: ${det.resolution ? JSON.stringify(det.resolution) : '(todavía sin resolución cargada)'}`);
+      for (const p of (det.players || [])) {
+        const acc2 = (p.available_actions || []).map((a) => a.action || a).join(', ');
+        console.log(`  ${p.role} (${p.type}): ${acc2 ? 'puede ' + acc2 : 'sin acciones disponibles'}`);
+      }
+      // La conversación COMPLETA, sin recortar y sin las etiquetas HTML que mete ML.
+      const limpiar = (s) => String(s || '').replace(/<br\s*\/?>/gi, '\n').replace(/<\/p>/gi, '\n').replace(/<[^>]+>/g, '').replace(/&nbsp;/g, ' ').replace(/\n{3,}/g, '\n\n').trim();
+      try {
+        const ms = await mlGet(`/post-purchase/v1/claims/${CID}/messages`, tok);
+        const arr = Array.isArray(ms) ? ms : (ms?.data || []);
+        console.log(`\n── LA CONVERSACIÓN ENTERA (${arr.length}) ──`);
+        for (const m of arr.slice().reverse()) {
+          console.log(`\n[${String(m.date_created || '').slice(0, 16).replace('T', ' ')}] ${m.sender_role || '?'}:`);
+          console.log(limpiar(m.message || m.text).split('\n').map((x) => '   ' + x).join('\n'));
+        }
+      } catch (e) { console.log(`(no pude leer los mensajes: ${String(e.message || e).slice(0, 90)})`); }
+      // ¿El comprador devuelve el producto? ML lo guarda aparte del reclamo.
+      for (const ruta of [`/post-purchase/v1/claims/${CID}/returns`, `/post-purchase/v2/claims/${CID}/returns`]) {
+        try {
+          const r = await mlGet(ruta, tok);
+          console.log(`\n── ¿VUELVE EL PRODUCTO? ──\n  ${JSON.stringify(r).slice(0, 1200)}`);
+          break;
+        } catch (e) { console.log(`\n(${ruta}: ${String(e.message || e).slice(0, 100)})`); }
+      }
+      // La plata: qué se cobró y qué se devolvió.
+      try {
+        const o = await mlGet('/orders/' + det.resource_id, tok);
+        console.log(`\n── LA VENTA ──`);
+        console.log(`  orden ${o.id} · estado ${o.status}${o.status_detail ? ' (' + JSON.stringify(o.status_detail) + ')' : ''}`);
+        for (const it of (o.order_items || [])) console.log(`  ${it.quantity} × ${String(it.item?.title || '').slice(0, 55)} · ${money(Math.round(it.unit_price || 0))}`);
+        console.log(`  total ${money(Math.round(o.total_amount || 0))} · pagado ${money(Math.round(o.paid_amount || 0))}`);
+        console.log(`\n── LA PLATA ──`);
+        for (const p of (o.payments || [])) {
+          console.log(`  pago ${p.id} · ${p.status}${p.status_detail ? '/' + p.status_detail : ''} · cobrado ${money(Math.round(p.transaction_amount || 0))}`
+            + ` · te quedó ${money(Math.round(p.transaction_amount_refunded != null ? (p.transaction_amount - p.transaction_amount_refunded) : (p.transaction_amount || 0)))}`
+            + (p.transaction_amount_refunded ? ` · DEVUELTO AL COMPRADOR ${money(Math.round(p.transaction_amount_refunded))}` : ''));
+        }
+      } catch (e) { console.log(`(no pude leer la venta: ${String(e.message || e).slice(0, 90)})`); }
+      console.log('\n(esto solo LEE: no toqué nada)');
+      return;
+    }
     // BILLING_PROBE=apis[:<cuenta>] → PRUEBA QUÉ ENDPOINTS DE ML CONTESTAN.
     // Antes de armar el chequeo de la mañana hay que saber cuáles de estas puertas están abiertas
     // para nuestra app: preguntas, reclamos y —sobre todo— las cajas que se mandan a Full, que ML
