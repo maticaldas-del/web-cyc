@@ -3135,7 +3135,12 @@ async function saveFin(key,val){
   clearTimeout(finTimers[key]);
   finTimers[key]=setTimeout(async()=>{
     await fbSet('finanzas/'+key,num);
-    if(grupo)await fbSet('finanzas/_ts/'+grupo,ahora);
+    if(grupo){
+      await fbSet('finanzas/_ts/'+grupo,ahora);
+      // _seen es la copia contra la que el robot compara para detectar cambios hechos por afuera.
+      // Se actualiza también acá para que no vuelva a marcar como "cambio" lo que acabás de cargar.
+      await fbSet('finanzas/_seen/'+key,num);
+    }
     if(_finPending[key]===num)delete _finPending[key]; // ya está en la base, se puede liberar
     const f=FIN_FIELDS.find(x=>x.k===key);
     await log('Arqueo '+(f?f.label:key)+': '+fmt(num));
@@ -7257,7 +7262,7 @@ document.addEventListener('click',e=>{if(fnavOpen&&!e.target.closest('#fnav-btn'
         <span style="font-size:.75rem;color:var(--muted)">Si no ves los últimos cambios, forzá la actualización</span>
         <button class="btn" style="background:rgba(56,189,248,.12);color:var(--blue);border:1px solid rgba(56,189,248,.3)" onclick="actualizarApp()">🔄 Buscar actualizaciones</button>
       </div>
-      <div style="font-size:.66rem;color:var(--muted);margin-top:12px">CYC · Versión 7.8</div>
+      <div style="font-size:.66rem;color:var(--muted);margin-top:12px">CYC · Versión 7.9</div>
     </div>
 
     <div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:18px 20px;margin-bottom:14px">

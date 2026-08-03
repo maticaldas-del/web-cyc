@@ -8579,6 +8579,36 @@ async function main() {
   const finanzas = (await db.get('cyc/finanzas')) || {};
   const tc = parseFloat(finanzas.tipo_cambio) || 1500;
 
+  // ── FECHA DE "ÚLTIMA ACTUALIZACIÓN" DEL ARQUEO ──────────────────────────────────────────────
+  // La app pone la fecha cuando alguien escribe el número a mano. Pero el efectivo y MercadoPago
+  // también se cargan por afuera (una IA, un script) escribiendo derecho en Firebase, y por ese
+  // camino la app no se entera: el número quedaría fresco con la fecha vieja al lado. Una fecha
+  // que miente es peor que no tener fecha.
+  // Por eso el robot, que pasa cada 2 minutos, compara contra lo último que vio y si el número
+  // cambió pone la fecha él. No importa quién lo haya escrito.
+  {
+    const GRUPO = { efectivo: 'efectivo', mp_disp: 'mp', mp_liq: 'mp' };
+    const visto = finanzas._seen || {};
+    const primeraVez = !finanzas._seen;   // arranque: se anota lo que hay, sin inventar una fecha
+    const ahora = Date.now();
+    // Se arman los objetos ENTEROS y no rutas con barra: un PATCH con {_seen:{...}} reemplaza todo
+    // el nodo, así que si mandara solo el campo que cambió se perderían los otros dos.
+    const seenNuevo = { ...visto }, tsNuevo = { ...(finanzas._ts || {}) };
+    let cambio = false; const tocados = [];
+    for (const [campo, grupo] of Object.entries(GRUPO)) {
+      const valor = parseFloat(finanzas[campo]) || 0;
+      if (parseFloat(visto[campo]) === valor) continue;
+      seenNuevo[campo] = valor; cambio = true;
+      if (!primeraVez) { tsNuevo[grupo] = ahora; if (!tocados.includes(grupo)) tocados.push(grupo); }
+    }
+    if (cambio && !DRY) {
+      await db.patch('cyc/finanzas', { _seen: seenNuevo, _ts: tsNuevo });
+      console.log(tocados.length
+        ? `Arqueo: cambió ${tocados.join(' y ')} → le puse la fecha de ahora.`
+        : 'Arqueo: anoto los valores de referencia (primera vez, sin fecha).');
+    }
+  }
+
   // mapa publicación(MLA) → { prodId, variant, title, cuenta, status, manual } — nodo propio
   const map = (await db.get('cyc/mllinks')) || {};
   const mapUpd = {}; // solo lo que toca el auto-match (no pisa lo que vos fijaste)
