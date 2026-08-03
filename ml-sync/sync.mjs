@@ -3713,9 +3713,25 @@ async function main() {
         if (sinCalc) console.log(`  (${sinCalc} no se pueden comparar: no tienen neto al precio de hoy. Suelen ser productos sin publicación activa.)`);
       }
       if (!BORRAR) { console.log('\n(solo lista — para sacar los manuales: netoref:borrar)'); return; }
+      // Solo se saca el manual cuando hay con qué reemplazarlo (el del precio de hoy, o el
+      // promedio de las ventas). Si no hay ninguno de los dos, sacarlo deja el producto en blanco
+      // y se pierde el único número que había. Esos se dejan y se avisa cuáles son.
+      const conRecambio = filas.filter((f) => f.calc != null || f.real != null);
+      const sinRecambio = filas.filter((f) => f.calc == null && f.real == null);
       let n = 0;
-      for (const f of filas) { if (!DRY) await db.set('cyc/products/' + f.p.id + '/netoRef', null); n++; }
-      console.log(`\n${DRY ? '(DRY) ' : ''}Borrados ${n} netos manuales. Ahora la pantalla usa el del precio de HOY.`);
+      for (const f of conRecambio) { if (!DRY) await db.set('cyc/products/' + f.p.id + '/netoRef', null); n++; }
+      console.log(`\n${DRY ? '(DRY) ' : ''}Borrados ${n} netos manuales de ${filas.length}.`);
+      if (sinRecambio.length) {
+        console.log(`Quedaron ${sinRecambio.length} sin tocar porque no tienen con qué reemplazarlos (ni precio de hoy ni ventas):`);
+        console.log('  ' + sinRecambio.map((f) => String(f.p.name || f.p.id).slice(0, 30)).join(' · '));
+      }
+      // Verificación: se vuelve a leer de la base, del mismo lugar del que lee la web.
+      if (!DRY && n) {
+        const rele = (await db.get('cyc/products')) || {};
+        const quedan = conRecambio.filter((f) => { const v = (rele[f.p.id] || {}).netoRef; return v != null && v !== ''; });
+        console.log(`Releído de la base: ${n - quedan.length} de ${n} salieron bien.`);
+        if (quedan.length) console.log(`  NO salieron: ${quedan.map((f) => String(f.p.name || f.p.id).slice(0, 30)).join(' · ')}`);
+      }
       return;
     }
     // BILLING_PROBE=netoweb[:prueba] → CARGA EN LA WEB el neto que deja cada producto AL PRECIO DE HOY.
