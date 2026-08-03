@@ -2,24 +2,37 @@
 
 🔴 Hay cosas para mirar hoy.
 
+🔻 Ayer: $390.705 · promedio 7 días $795.980 · -51%
+   🔴 Cayó fuerte. Mirá si alguna cuenta se quedó sin stock o perdió la caja de compra.
+
+📉 Sin stock y vendían: 88 publicaciones · se pierden $475.845/día
+   · Adriana · Perfume Para Hombre Ferrari Scuderia Ferra — $26.000/día
+   · Matias · Pendrive Sandisk Cruzer Blade 8gb 2.0 Negr — $25.688/día
+   · Matias · Memoria Microsd Sandisk Ultra A1 64gb C10  — $24.840/día
+   · Matias · Disco Sólido Externo Sandisk Sdssde30-1t00 — $23.000/día
+   · Matias · Playstation Portal Remote Player Reproduct — $19.333/día
+   · Matias · Joystick Xbox Microsoft Qat-00001 Inalámbr — $17.000/día
+   … y 82 más
+
 ❓ Preguntas sin responder: 97
    · Adriana: 22 · la más vieja hace 197 días
    · Ayelen: 33 · la más vieja hace 217 días
-   · Luciana: 19 · la más vieja hace 179 días
-   · Matias: 23 · la más vieja hace 203 días
+   · Luciana: 19 · la más vieja hace 180 días
+   · Matias: 23 · la más vieja hace 204 días
 
 ⚠️ Reclamos abiertos: 2
-   · Matias: PDD9944
-   · Matias: PDD9949
+   · Matias: PDD9944 · 3 días · lo maneja ML, no hay nada para hacer
+   · Matias: PDD9949 · 4 días · lo maneja ML, no hay nada para hacer
 💬 Mensajes de posventa sin leer: 4
 
-⏸️ Pausadas: 163 sin stock · 45 a mano · 0 por ML
+⏸️ Pausadas: 164 sin stock · 45 a mano · 0 por ML
 
 ✅ Ninguna activa fuera de Full
 
 🏭 Full
-   🔴 unidades con problema: 4
+   🔴 unidades con problema: 5
       · Adriana · Pendrive Sandisk Cruzer Blade 64gb 2.0 Neg: 1 u. (lost 1)
       · Ayelen · Espejo Redondo Giratorio C/ Soporte Metal : 2 u. (notSupported 2)
+      · Matias · Audifonos Galaxy Buds Core Black Samsung: 1 u. (internalProcess 1)
       · Matias · Pendrive Sandisk Cruzer Blade 64gb 2.0 Neg: 1 u. (internalProcess 1)
    📥 cajas que llegaron en 7 días: 0
