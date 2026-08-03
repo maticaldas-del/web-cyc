@@ -2939,7 +2939,7 @@ async function main() {
         await db.set(`cyc/ventaprod/${v.dk}/${v.id}/variante`, v.destino);
         okVta++;
       }
-      if (sacadas.length) await db.set('products/' + comun.id + '/variantes', varsComunLimpias);
+      if (sacadas.length) await db.set('cyc/products/' + comun.id + '/variantes', varsComunLimpias);
       console.log(`\n✓ ${okPub} publicaciones enganchadas a "${bliss.name}" con su variante traducida.`);
       console.log(`✓ ${okVta} ventas ya hechas movidas (costo original intacto).`);
       console.log(`✓ ${sacadas.length} variantes Bliss sacadas del producto común.`);
@@ -3109,7 +3109,7 @@ async function main() {
         await db.set(`cyc/ventaprod/${v.dk}/${v.id}/prodId`, KEEP);
         await db.set(`cyc/ventaprod/${v.dk}/${v.id}/prod`, keep.name);
       }
-      for (const p of sobran) await db.set('products/' + p.id, null);
+      for (const p of sobran) await db.set('cyc/products/' + p.id, null);
       console.log(`\n✓ ${mlasBliss.length} publicaciones enganchadas a "${keep.name}".`);
       console.log(`✓ ${ventasAMover.length} ventas ya hechas re-etiquetadas (con su costo original intacto).`);
       console.log(`✓ ${sobran.length} producto(s) duplicado(s) borrado(s).`);
@@ -3169,13 +3169,13 @@ async function main() {
       console.log(`\nLas VENTAS VIEJAS no se tocan: cada venta ya tiene su costo guardado. Esto cambia`);
       console.log(`el costo de acá en adelante y arregla los márgenes que se muestran hoy.`);
       if (!APLICAR) { console.log(`\nPRUEBA: no se escribió nada. Para aplicar: splitbliss:go`); return; }
-      await db.set('products/' + nuevoId, nuevo);
+      await db.set('cyc/products/' + nuevoId, nuevo);
       const patchLinks = {};
       for (const [mla, e] of bliss) patchLinks[mla + '/prodId'] = nuevoId;
       for (const [k, v] of Object.entries(patchLinks)) await db.set('cyc/mllinks/' + k, v);
-      await db.set('products/' + base.id + '/costUSD', COSTO_COMUN);
-      await db.set('products/' + base.id + '/costFullUSD', Math.round((COSTO_COMUN * (1 + dev / 100) + ship) * 100) / 100);
-      await db.set('products/' + base.id + '/variantes', varsComunes);
+      await db.set('cyc/products/' + base.id + '/costUSD', COSTO_COMUN);
+      await db.set('cyc/products/' + base.id + '/costFullUSD', Math.round((COSTO_COMUN * (1 + dev / 100) + ship) * 100) / 100);
+      await db.set('cyc/products/' + base.id + '/variantes', varsComunes);
       console.log(`\n✓ Creado "${nuevo.name}" (${nuevoId}) con ${varsBliss.length} variantes.`);
       console.log(`✓ ${bliss.length} publicaciones repuntadas al producto nuevo.`);
       console.log(`✓ "${base.name}" quedó en US$${COSTO_COMUN} con ${varsComunes.length} variantes.`);
@@ -3627,6 +3627,34 @@ async function main() {
       console.log(`robot empezó a anotar desde hoy cuándo un producto pasa de 0 a tener stock.`);
       return;
     }
+    // BILLING_PROBE=raizsucia[:go] → LO QUE QUEDÓ ESCRITO FUERA DE "cyc/" POR EL BUG DE PREFIJO.
+    //
+    // Todos los datos del panel viven bajo "cyc/". Varios comandos escribían "products/..." en vez
+    // de "cyc/products/...": iba a una rama aparte que la web no lee nunca. El comando decía
+    // "guardado" y en la pantalla no cambiaba nada. Ya pasó antes con "ventaprod".
+    // Esto muestra qué quedó tirado ahí y, con :go, lo borra. Solo toca ramas de basura conocidas;
+    // "cyc/" y "mlapi/" (que sí van en la raíz, son los tokens) no se tocan.
+    if (String(process.env.BILLING_PROBE || '').startsWith('raizsucia')) {
+      const GO = String(process.env.BILLING_PROBE).split(':')[1] === 'go';
+      const BASURA = ['products', 'ventaprod', 'mllinks', 'finanzas', 'compras', 'mlconfig', 'monotributo'];
+      let algo = false;
+      for (const rama of BASURA) {
+        let d = null;
+        try { d = await db.get(rama); } catch { continue; }
+        if (!d) continue;
+        algo = true;
+        const n = typeof d === 'object' ? Object.keys(d).length : 1;
+        console.log(`  /${rama}  → ${n} cosas tiradas fuera de cyc/`);
+        if (GO && !DRY) {
+          await db.set(rama, null);
+          const rele = await db.get(rama);
+          console.log(`     ${rele == null ? 'borrado y verificado' : 'NO se pudo borrar'}`);
+        }
+      }
+      if (!algo) console.log('La raíz está limpia: no hay nada escrito fuera de cyc/.');
+      else if (!GO) console.log('\n(solo lista — para borrarlo: raizsucia:go)');
+      return;
+    }
     // BILLING_PROBE=netoref[:borrar] → LOS NETOS CARGADOS A MANO QUE ESTÁN TAPANDO EL REAL.
     //
     // La pantalla "Margen ML" elige el neto en este orden: MANUAL → calculado con el precio de hoy
@@ -3667,17 +3695,26 @@ async function main() {
       filas.sort((a, b) => ((b.mgCalc ?? -999) - (b.mgMan ?? 0)) - ((a.mgCalc ?? -999) - (a.mgMan ?? 0)));
       console.log(`NETOS CARGADOS A MANO · ${filas.length} productos${BORRAR ? ' (BORRANDO)' : ' (solo lista)'}\n`);
       console.log(`  ${'producto'.padEnd(34)} ${'costo'.padStart(9)} ${'manual'.padStart(9)} ${'m%'.padStart(6)} ${'hoy'.padStart(9)} ${'h%'.padStart(6)} ${'real'.padStart(9)} ${'r%'.padStart(6)}`);
-      let arreglaria = 0;
+      let arreglaria = 0, sinCalc = 0;
       for (const f of filas) {
         const pc = (x) => x == null ? '—' : (x >= 0 ? '+' : '') + x.toFixed(0) + '%';
         const mo = (x) => x == null ? '—' : money(Math.round(x));
         console.log(`  ${String(f.p.name || f.p.nombre || f.p.id).slice(0, 34).padEnd(34)} ${mo(f.costo).padStart(9)} ${mo(f.man).padStart(9)} ${pc(f.mgMan).padStart(6)} ${mo(f.calc).padStart(9)} ${pc(f.mgCalc).padStart(6)} ${mo(f.real).padStart(9)} ${pc(f.mgReal).padStart(6)}`);
+        if (f.calc == null) sinCalc++;
         if (f.mgMan != null && f.mgMan < 30 && f.mgCalc != null && f.mgCalc >= 30) arreglaria++;
       }
-      console.log(`\n  ${arreglaria} de ${filas.length} pasan de "abajo del 30%" a "arriba del 30%" con solo sacar el número escrito a mano.`);
+      // Sin la columna "hoy" no se puede comparar nada: decirlo, y NO dar un veredicto que suene
+      // a que está todo bien. (Pasó una vez: dijo "0 de 132 mejoran" cuando en realidad no había
+      // con qué comparar, porque el netoweb estaba guardando en la rama equivocada de la base.)
+      if (sinCalc === filas.length) {
+        console.log(`\n  NO se puede comparar: ninguno tiene el neto al precio de hoy cargado. Corré netoweb primero.`);
+      } else {
+        console.log(`\n  ${arreglaria} de ${filas.length - sinCalc} comparables pasan de "abajo del 30%" a "arriba del 30%" con solo sacar el número escrito a mano.`);
+        if (sinCalc) console.log(`  (${sinCalc} no se pueden comparar: no tienen neto al precio de hoy. Suelen ser productos sin publicación activa.)`);
+      }
       if (!BORRAR) { console.log('\n(solo lista — para sacar los manuales: netoref:borrar)'); return; }
       let n = 0;
-      for (const f of filas) { if (!DRY) await db.set('products/' + f.p.id + '/netoRef', null); n++; }
+      for (const f of filas) { if (!DRY) await db.set('cyc/products/' + f.p.id + '/netoRef', null); n++; }
       console.log(`\n${DRY ? '(DRY) ' : ''}Borrados ${n} netos manuales. Ahora la pantalla usa el del precio de HOY.`);
       return;
     }
@@ -3685,7 +3722,12 @@ async function main() {
     // La pantalla "Margen ML" mostraba el neto promedio de las ventas VIEJAS. Después de cambiar
     // precios ese número miente, y los productos que nunca vendieron no mostraban nada.
     // Esto calcula, por cada producto, neto = precio − comisión oficial de ML − envío, y lo guarda
-    // en products/<id>/netoCalc para verlo ANTES de vender. No pisa el neto que cargues a mano.
+    // en cyc/products/<id>/netoCalc para verlo ANTES de vender. No toca el neto cargado a mano
+    // (es otro campo, netoRef), pero OJO: en la pantalla el manual le gana a este.
+    //
+    // La primera versión guardaba en "products/..." sin el "cyc/" adelante: escribía en una rama
+    // aparte de la base que la web no lee nunca. Decía "68 guardados" y no se veía ni uno. Al final
+    // vuelve a leer de la base lo que guardó y lo dice, para que no pueda volver a pasar callado.
     if (String(process.env.BILLING_PROBE || '').startsWith('netoweb')) {
       const prueba = String(process.env.BILLING_PROBE).split(':')[1] === 'prueba';
       const vp = (await db.get('cyc/ventaprod')) || {}; setDevLive(vp);
@@ -3764,13 +3806,28 @@ async function main() {
         const mg = costo > 0 ? ((d.neto - costo) / costo * 100).toFixed(0) + '%' : '—';
         console.log(`  ${money(d.precio).padStart(10)} → neto ${money(d.neto).padStart(10)} · margen s/costo ${String(mg).padStart(5)} · ${d.cuenta.padEnd(8)} · ${(p.name || pid).slice(0, 40)}${d.sinEnvio ? ' (sin ventas: envío no deducido)' : ''}`);
         if (!prueba && !DRY) {
-          await db.set('products/' + pid + '/netoCalc', d.neto);
-          await db.set('products/' + pid + '/netoCalcPrecio', d.precio);
-          await db.set('products/' + pid + '/netoCalcTs', Date.now());
+          await db.set('cyc/products/' + pid + '/netoCalc', d.neto);
+          await db.set('cyc/products/' + pid + '/netoCalcPrecio', d.precio);
+          await db.set('cyc/products/' + pid + '/netoCalcTs', Date.now());
           guardados++;
         }
       }
       console.log(`\n${prueba ? '(PRUEBA) ' : ''}${prueba ? lista.length + ' se guardarían' : guardados + ' guardados'} en la web (pantalla Margen ML).`);
+      // Verificación: se vuelve a leer de la base, del mismo lugar del que lee la web.
+      if (!prueba && !DRY && guardados) {
+        const releido = (await db.get('cyc/products')) || {};
+        let ok = 0, mal = [];
+        for (const [pid, d] of lista) {
+          const g = releido[pid] || {};
+          if (Math.round(Number(g.netoCalc)) === Math.round(d.neto)) ok++;
+          else mal.push((pIdx[pid]?.name || pid).slice(0, 34));
+        }
+        console.log(`Releído de la base: ${ok} de ${lista.length} quedaron bien.`);
+        if (mal.length) console.log(`  NO quedaron: ${mal.slice(0, 15).join(' · ')}${mal.length > 15 ? ` (+${mal.length - 15})` : ''}`);
+        // Los que tienen neto a mano no van a mostrar esto en la pantalla: el manual gana.
+        const tapados = lista.filter(([pid]) => { const v = pIdx[pid]?.netoRef; return v != null && v !== ''; }).length;
+        if (tapados) console.log(`OJO: ${tapados} de estos tienen neto cargado A MANO, así que la pantalla va a seguir mostrando el viejo. Para verlos: netoref`);
+      }
       return;
     }
     // BILLING_PROBE=dormidos[:<días>][:<margenMin>] → PRODUCTOS CON MARGEN ALTO QUE NO ROTAN.
