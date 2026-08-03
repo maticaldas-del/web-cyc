@@ -3627,6 +3627,60 @@ async function main() {
       console.log(`robot empezó a anotar desde hoy cuándo un producto pasa de 0 a tener stock.`);
       return;
     }
+    // BILLING_PROBE=netoref[:borrar] → LOS NETOS CARGADOS A MANO QUE ESTÁN TAPANDO EL REAL.
+    //
+    // La pantalla "Margen ML" elige el neto en este orden: MANUAL → calculado con el precio de hoy
+    // → promedio de las ventas. El manual gana SIEMPRE, y ahí está la trampa: un neto que alguien
+    // escribió hace meses, a precios de entonces, sigue mandando aunque el precio haya cambiado
+    // diez veces. El producto aparece muy abajo del 30% y no hay forma de darse cuenta mirando.
+    // Esto compara los tres y, con :borrar, saca el manual para que use el del precio de hoy.
+    if (String(process.env.BILLING_PROBE || '').startsWith('netoref')) {
+      const BORRAR = String(process.env.BILLING_PROBE).split(':')[1] === 'borrar';
+      const vp = (await db.get('cyc/ventaprod')) || {}; setDevLive(vp);
+      const fin = (await db.get('cyc/finanzas')) || {};
+      const tc = parseFloat(fin.tipo_cambio) || 1500;
+      const monoP = parseFloat(((await db.get('cyc/monotributo')) || {}).pct) || 0;
+      // Neto real y cargo de ML por unidad, de las ventas.
+      const agg = {};
+      for (const ents of Object.values(vp)) {
+        for (const v of Object.values(ents || {})) {
+          if (!v || v.cancelada || !v.prodId) continue;
+          const b = agg[v.prodId] = agg[v.prodId] || { neto: 0, u: 0, mlx: 0 };
+          b.neto += v.neto || 0; b.u += v.qty || 0;
+          b.mlx += (v.total || 0) * (mlExtraPct(v.cuenta) + monoP) / 100;
+        }
+      }
+      const filas = [];
+      for (const p of products) {
+        const man = (p.netoRef != null && p.netoRef !== '') ? Number(p.netoRef) : null;
+        if (man == null) continue;
+        const a = agg[p.id];
+        const calc = (p.netoCalc != null && p.netoCalc !== '') ? Number(p.netoCalc) : null;
+        const real = (a && a.u > 0) ? a.neto / a.u : null;
+        const mlx = (a && a.u > 0) ? a.mlx / a.u : 0;
+        const costo = costoPesos(p, 1, tc).costo + mlx;
+        const mg = (n) => (costo > 0 && n != null) ? (n - costo) / costo * 100 : null;
+        filas.push({ p, man, calc, real, costo, mgMan: mg(man), mgCalc: mg(calc), mgReal: mg(real) });
+      }
+      if (!filas.length) { console.log('Ningún producto tiene el neto cargado a mano.'); return; }
+      // Los que más cambian primero: son los que están mintiendo más.
+      filas.sort((a, b) => ((b.mgCalc ?? -999) - (b.mgMan ?? 0)) - ((a.mgCalc ?? -999) - (a.mgMan ?? 0)));
+      console.log(`NETOS CARGADOS A MANO · ${filas.length} productos${BORRAR ? ' (BORRANDO)' : ' (solo lista)'}\n`);
+      console.log(`  ${'producto'.padEnd(34)} ${'costo'.padStart(9)} ${'manual'.padStart(9)} ${'m%'.padStart(6)} ${'hoy'.padStart(9)} ${'h%'.padStart(6)} ${'real'.padStart(9)} ${'r%'.padStart(6)}`);
+      let arreglaria = 0;
+      for (const f of filas) {
+        const pc = (x) => x == null ? '—' : (x >= 0 ? '+' : '') + x.toFixed(0) + '%';
+        const mo = (x) => x == null ? '—' : money(Math.round(x));
+        console.log(`  ${String(f.p.name || f.p.nombre || f.p.id).slice(0, 34).padEnd(34)} ${mo(f.costo).padStart(9)} ${mo(f.man).padStart(9)} ${pc(f.mgMan).padStart(6)} ${mo(f.calc).padStart(9)} ${pc(f.mgCalc).padStart(6)} ${mo(f.real).padStart(9)} ${pc(f.mgReal).padStart(6)}`);
+        if (f.mgMan != null && f.mgMan < 30 && f.mgCalc != null && f.mgCalc >= 30) arreglaria++;
+      }
+      console.log(`\n  ${arreglaria} de ${filas.length} pasan de "abajo del 30%" a "arriba del 30%" con solo sacar el número escrito a mano.`);
+      if (!BORRAR) { console.log('\n(solo lista — para sacar los manuales: netoref:borrar)'); return; }
+      let n = 0;
+      for (const f of filas) { if (!DRY) await db.set('products/' + f.p.id + '/netoRef', null); n++; }
+      console.log(`\n${DRY ? '(DRY) ' : ''}Borrados ${n} netos manuales. Ahora la pantalla usa el del precio de HOY.`);
+      return;
+    }
     // BILLING_PROBE=netoweb[:prueba] → CARGA EN LA WEB el neto que deja cada producto AL PRECIO DE HOY.
     // La pantalla "Margen ML" mostraba el neto promedio de las ventas VIEJAS. Después de cambiar
     // precios ese número miente, y los productos que nunca vendieron no mostraban nada.
