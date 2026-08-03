@@ -1848,15 +1848,28 @@ async function main() {
       console.log(`\n${DRY ? '(DRY) ' : ''}Guardado. La web ya lo toma: cambia el costo de cada venta y el margen de cada publicación.`);
       return;
     }
-    // BILLING_PROBE=meta:<piso> → deja guardado el piso y la meta del robot de precios.
-    // Hace falta porque el valor viejo (40/42) quedó de cuando el margen se medía sin impuestos.
+    // BILLING_PROBE=meta:<piso>[:<meta>] → deja guardado el piso y la meta del robot de precios.
+    //
+    // Son DOS números distintos y conviene que lo sean:
+    //   · piso  = abajo de esto el robot actúa
+    //   · meta  = a cuánto lo lleva cuando actúa
+    //
+    // Un tiempo se usó meta = piso (subir al piso EXACTO). El resultado fue que medio catálogo
+    // quedó clavado en 30,0% y cualquier cosa mínima —un descuento de $10 de ML, un envío un peso
+    // más caro— lo empujaba a 29,8%. La lista de "abajo del piso" se llenaba sola de publicaciones
+    // que en la práctica estaban bien: de 76, 58 ya cumplían el piso en su venta típica.
+    // Con la meta unos puntos arriba del piso, el precio aguanta esa variación normal sin cruzar.
     if (String(process.env.BILLING_PROBE || '').startsWith('meta:')) {
-      const piso = parseFloat(String(process.env.BILLING_PROBE).split(':')[1]) || 30;
-      // Sin colchón: se sube al piso EXACTO. Antes se apuntaba 2 puntos arriba para no quedar
-      // rozando, pero eso hacía que el precio real quedara siempre por encima de lo pedido.
-      const meta = piso;
+      const _m = String(process.env.BILLING_PROBE).split(':');
+      const piso = parseFloat(_m[1]) || 30;
+      const meta = _m[2] != null && _m[2] !== '' ? parseFloat(_m[2]) : piso;
+      if (meta < piso) { console.log(`La meta (${meta}%) no puede ser menor que el piso (${piso}%). No toco nada.`); return; }
       if (!DRY) { await db.set('cyc/mlconfig/minPct', piso); await db.set('cyc/mlconfig/targetPct', meta); }
+      // Se relee: que la escritura no dé error no quiere decir que haya quedado.
+      const cfg = (await db.get('cyc/mlconfig')) || {};
       console.log(`${DRY ? '(DRY) ' : ''}Robot de precios: actúa por debajo de ${piso}% y lleva a ${meta}%.`);
+      console.log(`Releído de la base: piso ${cfg.minPct}% · meta ${cfg.targetPct}%`);
+      if (!DRY && (Number(cfg.minPct) !== piso || Number(cfg.targetPct) !== meta)) console.log('⚠️ NO quedó como pedí.');
       return;
     }
     // BILLING_PROBE=envioreal:<palabra> → EL ENVÍO REAL, VENTA POR VENTA, SIN PROMEDIOS NI MÍNIMOS.
