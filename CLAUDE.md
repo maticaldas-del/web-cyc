@@ -72,6 +72,9 @@ Los que más se usan:
 | `facarca` | lo facturado en la ventana que mira ARCA, por cuenta |
 | `catmono[:fecha]` | qué categoría de monotributo corresponde |
 | `frenazo:<cuenta>` | por qué una cuenta dejó de vender |
+| `netoweb` | calcula lo que deja cada producto al precio de hoy y lo carga en Margen ML |
+| `netoref[:borrar]` | los netos escritos a mano que tapan el real, y sacarlos |
+| `raizsucia[:go]` | qué quedó escrito fuera de `cyc/` por el bug de prefijo |
 | `apis` | qué endpoints de ML contestan (para diagnosticar) |
 
 Casi todos son de solo lectura. Los que escriben piden `:go` explícito.
@@ -103,6 +106,16 @@ Telegram va solo el resumen de ventas del día y el del mes.
 - **El margen se calcula con el envío del PEOR caso**, que es el criterio conservador con el que se
   fijaron todos los precios. Con Full el envío real suele ser $0, así que el margen que se ve en el
   panel queda por arriba del piso.
+- **TODO lo del panel vive abajo de `cyc/`.** Escribir `products/...` en vez de `cyc/products/...`
+  manda el dato a una rama aparte que la web no lee nunca: el comando dice "guardado" y en la
+  pantalla no cambia nada. Ya pasó dos veces (`ventaprod` y `products`, 10 escrituras). Lo único
+  que sí va en la raíz es `mlapi/` (tokens y estado de Telegram). Para chequearlo: `raizsucia`.
+- **En "Margen ML" el neto escrito a mano le gana a todo.** Un número tipeado hace meses sigue
+  mandando aunque el precio haya cambiado diez veces, y el producto aparece muy abajo del piso sin
+  que se note. `bajopiso` mide el precio real de ML; las dos pantallas pueden no coincidir por eso.
+- **Cuando él pasa un número, preguntar si es precio o costo.** El 03/08 dijo "el total que dice la
+  web" para la Lupa 60mm x10 y era el COSTO ($11.638). Se aplicó como precio de venta. No alcanza
+  con aplicarlo: hay que mirar el margen que queda ANTES de tocar ML.
 
 ## Cómo verificar antes de decir que algo anda
 
