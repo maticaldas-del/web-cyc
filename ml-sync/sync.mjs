@@ -1982,6 +1982,32 @@ async function main() {
       const hoyLbl = new Intl.DateTimeFormat('es-AR', {
         timeZone: 'America/Argentina/Buenos_Aires', weekday: 'long', day: 'numeric', month: 'long',
       }).format(new Date());
+      // ── LAS VENTAS: para el termómetro del día y para saber qué quiebre de stock duele ──
+      const vpCh = (await db.get('cyc/ventaprod')) || {}; setDevLive(vpCh);
+      const kAtras = (d) => dayKeyFromISO(new Date(Date.now() - d * 864e5).toISOString());
+      const totalDelDia = (k) => {
+        let t = 0;
+        for (const v of Object.values(vpCh[k] || {})) if (v && !v.cancelada) t += v.total || 0;
+        return t;
+      };
+      const ventasAyer = totalDelDia(kAtras(1));
+      // Promedio de los 7 días ANTERIORES a ayer: si se incluyera ayer, un día malo se taparía
+      // a sí mismo bajando el promedio contra el que se compara.
+      let suma7 = 0;
+      for (let d = 2; d <= 8; d++) suma7 += totalDelDia(kAtras(d));
+      const prom7 = suma7 / 7;
+      const varPct = prom7 > 0 ? (ventasAyer / prom7 - 1) * 100 : 0;
+      // Cuánto vendía cada publicación por día, para poder decir cuánto cuesta que esté sin stock.
+      const ventaMla = {};
+      const desde30 = kAtras(30);
+      for (const [k, ents] of Object.entries(vpCh)) {
+        if (k < desde30) continue;
+        for (const v of Object.values(ents || {})) {
+          if (!v || v.cancelada || !v.mla) continue;
+          const b = ventaMla[v.mla] = ventaMla[v.mla] || { total: 0, qty: 0 };
+          b.total += v.total || 0; b.qty += v.qty || 1;
+        }
+      }
       const R = [];   // una fila por cuenta
       let capado = 0; // inventarios que no llegué a mirar (se avisa, nunca se calla)
       const MAX_INV = 400;
@@ -1993,7 +2019,7 @@ async function main() {
         await db.patch('mlapi/tokens/' + label, { refresh_token: t.refresh_token, updated_ts: Date.now() });
         const tok = t.access_token, sid = acc.seller_id;
         const r = { label, preg: 0, pregVieja: null, pregTxt: [], reclamos: [], msgs: 0,
-          pausSinStock: 0, pausML: [], pausMano: [], deposito: [], fullProblema: [], cajas: [], err: [] };
+          pausSinStock: 0, quiebres: [], pausML: [], pausMano: [], deposito: [], fullProblema: [], cajas: [], err: [] };
         // ── PREGUNTAS ──
         try {
           const q = await mlGet(`/questions/search?seller_id=${sid}&status=UNANSWERED&api_version=4&limit=50&sort=date_created_asc`, tok);
@@ -2008,7 +2034,14 @@ async function main() {
         try {
           const c = await mlGet('/post-purchase/v1/claims/search?status=opened&limit=20', tok);
           for (const x of (c?.data || [])) {
-            r.reclamos.push({ id: x.id, razon: x.reason_id || x.type || '?', etapa: x.stage || '', orden: (x.resource_id || '') });
+            // Los días abiertos y lo que ML deja hacer son lo que separa un reclamo que avanza solo
+            // de uno que se está pudriendo esperándote. Sin esto el chequeo cuenta reclamos pero no
+            // avisa cuál hay que tocar hoy — y así se perdió el de los Galaxy Buds.
+            const dias = x.date_created ? Math.floor((Date.now() - new Date(x.date_created).getTime()) / 864e5) : null;
+            const acciones = ((x.players || []).find((p) => p.role === 'respondent')?.available_actions || [])
+              .map((a) => a.action || a).filter(Boolean);
+            r.reclamos.push({ id: x.id, razon: x.reason_id || x.type || '?', etapa: x.stage || '',
+              orden: (x.resource_id || ''), dias, acciones });
           }
         } catch (e) { r.err.push('reclamos: ' + String(e.message || e).slice(0, 60)); }
         // ── MENSAJES DE POSVENTA SIN LEER ──
@@ -2037,8 +2070,13 @@ async function main() {
               const DE_ELLOS = new Set(['out_of_stock', 'paused_by_seller']);
               const deML = sub.filter((s) => !DE_ELLOS.has(s));
               if (deML.length) r.pausML.push({ mla, nom, sub: deML.join(',') });
-              else if (sub.includes('out_of_stock')) r.pausSinStock++;
-              else r.pausMano.push({ mla, nom });
+              else if (sub.includes('out_of_stock')) {
+                r.pausSinStock++;
+                // Quedarse sin stock de algo que no vendía no cuesta nada; quedarse sin stock de
+                // algo que vendía todos los días cuesta plata cada día que pasa. Solo esas importan.
+                const vta = ventaMla[mla];
+                if (vta && vta.total > 0) r.quiebres.push({ mla, nom, porDia: vta.total / 30, qty: vta.qty });
+              } else r.pausMano.push({ mla, nom });
             } else if (b2.status === 'active' && !esFull && (b2.available_quantity || 0) > 0) {
               // Activa y NO es Full: la venta sale del depósito propio y hay que despacharla a mano.
               r.deposito.push({ mla, nom, q: b2.available_quantity, log: (b2.shipping && b2.shipping.logistic_type) || '?' });
@@ -2086,9 +2124,36 @@ async function main() {
       const totCajas = R.reduce((s, r) => s + r.cajas.length, 0);
       const totSinStock = R.reduce((s, r) => s + r.pausSinStock, 0);
       const totMano = R.reduce((s, r) => s + r.pausMano.length, 0);
+      // Quiebres de stock que están costando plata, de todas las cuentas juntos y de mayor a menor.
+      const quiebres = R.flatMap((r) => r.quiebres.map((q) => ({ ...q, cta: r.label })))
+        .sort((a, b) => b.porDia - a.porDia);
+      const perdidaDia = quiebres.reduce((s, q) => s + q.porDia, 0);
+      // Reclamos que dependen de vos y llevan días parados: 2 días es el umbral porque el de los
+      // Galaxy Buds se cerró solo al sexto.
+      const parados = R.flatMap((r) => r.reclamos.filter((c) => c.acciones.length && (c.dias || 0) >= 2)
+        .map((c) => ({ ...c, cta: r.label })));
       L.push(`🌅 <b>CHEQUEO DE LA MAÑANA</b> · ${hoyLbl}`);
-      const urgente = totRec > 0 || totML > 0 || totDep > 0 || totProb > 0;
+      const urgente = parados.length > 0 || totML > 0 || totDep > 0 || totProb > 0 || perdidaDia > 0;
       L.push(urgente ? '\n🔴 <b>Hay cosas para mirar hoy.</b>' : '\n🟢 <b>Todo en orden.</b>');
+      // 1) El termómetro del día: lo primero que se mira por instinto.
+      const flecha = varPct >= 5 ? '📈' : (varPct <= -15 ? '🔻' : '➡️');
+      L.push(`\n${flecha} <b>Ayer: ${money(Math.round(ventasAyer))}</b> · promedio 7 días ${money(Math.round(prom7))}`
+        + ` · <b>${varPct >= 0 ? '+' : ''}${varPct.toFixed(0)}%</b>`);
+      if (varPct <= -25) L.push(`   🔴 <b>Cayó fuerte.</b> Mirá si alguna cuenta se quedó sin stock o perdió la caja de compra.`);
+      // 2) Quiebres de stock que duelen.
+      if (quiebres.length) {
+        L.push(`\n📉 <b>Sin stock y vendían: ${quiebres.length} publicaciones</b> · se pierden <b>${money(Math.round(perdidaDia))}/día</b>`);
+        for (const q of quiebres.slice(0, 6)) L.push(`   · ${q.cta} · ${q.nom} — ${money(Math.round(q.porDia))}/día`);
+        if (quiebres.length > 6) L.push(`   <i>… y ${quiebres.length - 6} más</i>`);
+      } else {
+        L.push(`\n✅ <b>Ningún quiebre de stock que esté costando plata</b>`);
+      }
+      // 3) Reclamos parados: van arriba de todo lo demás porque tienen reloj.
+      if (parados.length) {
+        L.push(`\n🔴 <b>RECLAMOS QUE TE ESTÁN ESPERANDO: ${parados.length}</b>`);
+        for (const c of parados) L.push(`   · ${c.cta} · ${c.razon} · <b>${c.dias} días sin contestar</b> · podés: ${c.acciones.join(', ')}`);
+        L.push(`   <i>Si no contestás, ML resuelve solo — casi siempre a favor del comprador.</i>`);
+      }
       // Preguntas
       L.push(`\n❓ <b>Preguntas sin responder: ${totPreg}</b>`);
       for (const r of R) {
@@ -2099,7 +2164,10 @@ async function main() {
       if (!totPreg) L.push('   · ninguna, todas contestadas');
       // Reclamos y mensajes
       L.push(`\n${totRec ? '⚠️' : '✅'} <b>Reclamos abiertos: ${totRec}</b>`);
-      for (const r of R) for (const c of r.reclamos) L.push(`   · ${r.label}: ${c.razon} (orden ${c.orden})`);
+      for (const r of R) for (const c of r.reclamos) {
+        L.push(`   · ${r.label}: ${c.razon}${c.dias != null ? ` · ${c.dias} días` : ''}`
+          + (c.acciones.length ? '' : ' · lo maneja ML, no hay nada para hacer') + ` (orden ${c.orden})`);
+      }
       if (totMsg) L.push(`💬 Mensajes de posventa sin leer: <b>${totMsg}</b>`);
       // Pausadas
       // Las pausadas a mano NO se listan: son decenas y están pausadas a propósito. Solo el número.
