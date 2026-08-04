@@ -1012,6 +1012,7 @@ footer{margin-top:32px;padding-top:14px;border-top:1px solid var(--border);font-
         <button class="vbtn"        id="ms-30d"  onclick="setMetScope('30d',this)">30 días</button>
         <button class="vbtn"        id="ms-60d"  onclick="setMetScope('60d',this)">60 días</button>
         <button class="vbtn"        id="ms-90d"  onclick="setMetScope('90d',this)">90 días</button>
+        <button class="vbtn"        id="ms-365d" onclick="setMetScope('365d',this)">365 días</button>
       </div>
       <div class="view-toggle">
         <button class="vbtn"        id="ms-dia"  onclick="setMetScope('dia',this)">Día</button>
@@ -1019,7 +1020,6 @@ footer{margin-top:32px;padding-top:14px;border-top:1px solid var(--border);font-
         <button class="vbtn"        id="ms-ano"  onclick="setMetScope('ano',this)">Año</button>
       </div>
       <div class="view-toggle">
-        <button class="vbtn"        id="ms-365d" onclick="setMetScope('365d',this)">365 días</button>
         <button class="vbtn"        id="ms-rango" onclick="setMetScope('rango',this)">📅 Período</button>
       </div>
     </div>
@@ -7307,7 +7307,7 @@ document.addEventListener('click',e=>{if(fnavOpen&&!e.target.closest('#fnav-btn'
         <span style="font-size:.75rem;color:var(--muted)">Si no ves los últimos cambios, forzá la actualización</span>
         <button class="btn" style="background:rgba(56,189,248,.12);color:var(--blue);border:1px solid rgba(56,189,248,.3)" onclick="actualizarApp()">🔄 Buscar actualizaciones</button>
       </div>
-      <div style="font-size:.66rem;color:var(--muted);margin-top:12px">CYC · Versión 8.1</div>
+      <div style="font-size:.66rem;color:var(--muted);margin-top:12px">CYC · Versión 8.2</div>
     </div>
 
     <div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:18px 20px;margin-bottom:14px">
