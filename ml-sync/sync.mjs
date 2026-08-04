@@ -2408,6 +2408,73 @@ async function main() {
       console.log('\n(esto solo LEE: no toqué nada)');
       return;
     }
+    // BILLING_PROBE=facturas[:<cuenta>][:<días>] → ¿SALIÓ LA FACTURA DE CADA VENTA?
+    //
+    // Desde que se prende el facturador automático de ML, cada venta nueva tendría que salir con
+    // su factura C. Esto agarra las ventas de los últimos días y le pregunta a ML, venta por
+    // venta, si tiene factura y con qué número y CAE. Sirve para no confiar en que "quedó
+    // configurado": lo único que prueba que anda es ver la factura emitida.
+    //
+    // ML movió esta puerta de lugar varias veces, así que se prueban varias direcciones y se usa
+    // la primera que conteste. Si ninguna contesta lo dice, en vez de decir que no hay facturas.
+    // Solo LEE.
+    if (String(process.env.BILLING_PROBE || '').startsWith('facturas')) {
+      const _f = String(process.env.BILLING_PROBE).split(':');
+      const soloCta = (_f[1] || '').trim().toLowerCase();
+      const DIAS = parseFloat(_f[2]) || 7;
+      const desde = new Date(Date.now() - DIAS * 864e5).toISOString();
+      for (const label of labels) {
+        if (soloCta && label.toLowerCase() !== soloCta) continue;
+        const acc = accounts[label];
+        if (!acc?.refresh_token) continue;
+        let t; try { t = await mlRefresh(ML_CLIENT_ID, ML_CLIENT_SECRET, acc.refresh_token); } catch { console.log(`\n═══ ${label.toUpperCase()} ═══\n  (no pude entrar a la cuenta)`); continue; }
+        await db.patch('mlapi/tokens/' + label, { refresh_token: t.refresh_token, updated_ts: Date.now() });
+        const tok = t.access_token, sid = acc.seller_id;
+        console.log(`\n═══ ${label.toUpperCase()} · ventas de los últimos ${DIAS} días ═══`);
+        let ords = [];
+        try {
+          const d = await mlGet('/orders/search?' + new URLSearchParams({
+            seller: String(sid), 'order.status': 'paid', 'order.date_created.from': desde,
+            sort: 'date_desc', limit: '30',
+          }), tok);
+          ords = d.results || [];
+        } catch (e) { console.log(`  (no pude leer las ventas: ${String(e.message || e).slice(0, 80)})`); continue; }
+        if (!ords.length) { console.log('  No hubo ninguna venta en esa ventana. Sin ventas no hay factura para mirar.'); continue; }
+        let conFac = 0, sinFac = 0, noSe = 0;
+        for (const o of ords) {
+          const oid = o.id;
+          const fecha = String(o.date_created || '').slice(0, 16).replace('T', ' ');
+          const tot = money(Math.round(o.total_amount || 0));
+          const prod = ((o.order_items || [])[0]?.item?.title || '').slice(0, 34);
+          // Varias direcciones posibles; se queda con la primera que conteste 200.
+          const puertas = [
+            `/users/${sid}/invoices/orders/${oid}`,
+            `/orders/${oid}/billing_info`,
+            `/packs/${o.pack_id || oid}/fiscal_documents`,
+          ];
+          let doc = null, puertaOk = null;
+          for (const p of puertas) {
+            try { const d = await mlGet(p, tok); if (d) { doc = d; puertaOk = p; break; } } catch { /* probamos la siguiente */ }
+          }
+          if (!doc) { noSe++; console.log(`  ${fecha} · ${tot.padStart(10)} · ${prod.padEnd(34)} · ML no me contesta si tiene factura`); continue; }
+          const num = doc.invoice_number || doc.number || doc.document_number
+            || (doc.invoice && (doc.invoice.number || doc.invoice.invoice_number)) || null;
+          const cae = doc.cae || doc.authorization_code || (doc.invoice && doc.invoice.cae) || null;
+          if (num || cae) {
+            conFac++;
+            console.log(`  ${fecha} · ${tot.padStart(10)} · ${prod.padEnd(34)} · FACTURA ${num || '(sin número)'}${cae ? ' · CAE ' + cae : ''}`);
+          } else {
+            sinFac++;
+            console.log(`  ${fecha} · ${tot.padStart(10)} · ${prod.padEnd(34)} · SIN FACTURA todavía`);
+            if (process.env.FACT_CRUDO) console.log(`      (${puertaOk} → ${JSON.stringify(doc).slice(0, 300)})`);
+          }
+        }
+        console.log(`  ── ${ords.length} ventas · ${conFac} con factura · ${sinFac} sin factura · ${noSe} que ML no me quiso decir`);
+        if (noSe === ords.length) console.log('  OJO: ninguna me contestó. Puede ser que nuestra app no tenga permiso para ver las facturas, NO que no existan.');
+      }
+      console.log('\n(esto solo LEE: no emití ni toqué ninguna factura)');
+      return;
+    }
     // BILLING_PROBE=apis[:<cuenta>] → PRUEBA QUÉ ENDPOINTS DE ML CONTESTAN.
     // Antes de armar el chequeo de la mañana hay que saber cuáles de estas puertas están abiertas
     // para nuestra app: preguntas, reclamos y —sobre todo— las cajas que se mandan a Full, que ML
