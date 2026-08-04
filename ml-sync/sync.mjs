@@ -3978,7 +3978,11 @@ async function main() {
       let netoMP = 0;
       for (const pg of (ord.payments || [])) {
         try {
-          const d = await mlGet('/payments/' + pg.id, tok);
+          // Los pagos viven en api.mercadopago.com, NO en api.mercadolibre.com: pedirlos por el
+          // segundo da 404 y parece que el pago no existiera.
+          const rp = await fetch('https://api.mercadopago.com/v1/payments/' + pg.id, { headers: { Authorization: 'Bearer ' + tok } });
+          if (!rp.ok) throw new Error('HTTP ' + rp.status);
+          const d = await rp.json();
           const td = d.transaction_details || {};
           console.log(`  pago ${pg.id} · estado ${d.status}`);
           console.log(`      cobrado    ${money(Math.round(td.total_paid_amount || 0))}`);
@@ -3994,7 +3998,9 @@ async function main() {
       for (const [dia, ents] of Object.entries(vpU)) {
         for (const [k, v] of Object.entries(ents || {})) {
           if (!v) continue;
-          if (String(v.orden) === String(ord.id) || String(k) === String(ord.id) || String(v.pack) === String(OID) || String(k) === String(OID)) hallado = { dia, k, v };
+          // El renglón se guarda con la clave v<número de orden>_<n>. Buscarlo por un campo
+          // "orden" no servía: ese campo no existe, y el comando decía que la venta no estaba.
+          if (new RegExp('^v' + ord.id + '_').test(k)) hallado = { dia, k, v };
         }
       }
       if (!hallado) console.log('  (no encontré esta venta guardada en el panel)');
