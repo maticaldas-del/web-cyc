@@ -1002,16 +1002,26 @@ footer{margin-top:32px;padding-top:14px;border-top:1px solid var(--border);font-
 
   <!-- ── Selector de período (queda quieto en su lugar, no sigue el scroll) ── -->
   <div id="met-cal-bar" class="cal-bar" style="margin-bottom:18px;flex-wrap:wrap;gap:10px">
-    <div class="view-toggle">
-      <button class="vbtn"        id="ms-7d"   onclick="setMetScope('7d',this)">7 días</button>
-      <button class="vbtn"        id="ms-15d"  onclick="setMetScope('15d',this)">15 días</button>
-      <button class="vbtn"        id="ms-30d"  onclick="setMetScope('30d',this)">30 días</button>
-      <button class="vbtn"        id="ms-60d"  onclick="setMetScope('60d',this)">60 días</button>
-      <button class="vbtn"        id="ms-dia"  onclick="setMetScope('dia',this)">Día</button>
-      <button class="vbtn active" id="ms-mes"  onclick="setMetScope('mes',this)">Mes</button>
-      <button class="vbtn"        id="ms-ano"  onclick="setMetScope('ano',this)">Año</button>
-      <button class="vbtn"        id="ms-365d" onclick="setMetScope('365d',this)">365 días</button>
-      <button class="vbtn"        id="ms-rango" onclick="setMetScope('rango',this)">📅 Período</button>
+    <!-- Los períodos van en grupos separados: los que miran "los últimos N días" por un lado y
+         los que miran un día/mes/año concreto por el otro. Antes eran nueve botones en fila y
+         costaba encontrar el que se buscaba. -->
+    <div style="display:flex;gap:18px;flex-wrap:wrap">
+      <div class="view-toggle">
+        <button class="vbtn"        id="ms-7d"   onclick="setMetScope('7d',this)">7 días</button>
+        <button class="vbtn"        id="ms-15d"  onclick="setMetScope('15d',this)">15 días</button>
+        <button class="vbtn"        id="ms-30d"  onclick="setMetScope('30d',this)">30 días</button>
+        <button class="vbtn"        id="ms-60d"  onclick="setMetScope('60d',this)">60 días</button>
+        <button class="vbtn"        id="ms-90d"  onclick="setMetScope('90d',this)">90 días</button>
+      </div>
+      <div class="view-toggle">
+        <button class="vbtn"        id="ms-dia"  onclick="setMetScope('dia',this)">Día</button>
+        <button class="vbtn active" id="ms-mes"  onclick="setMetScope('mes',this)">Mes</button>
+        <button class="vbtn"        id="ms-ano"  onclick="setMetScope('ano',this)">Año</button>
+      </div>
+      <div class="view-toggle">
+        <button class="vbtn"        id="ms-365d" onclick="setMetScope('365d',this)">365 días</button>
+        <button class="vbtn"        id="ms-rango" onclick="setMetScope('rango',this)">📅 Período</button>
+      </div>
     </div>
     <div class="view-toggle" style="margin:0">
       <button class="vbtn active" id="met-field-total"    onclick="setMetField('total')"    title="Precio total de venta (lo que pagó el comprador)">💵 Total</button>
@@ -5792,7 +5802,7 @@ function setMetChartMode(m,btn){
   if(metChartLine){metChartLine.destroy();metChartLine=null;}
   renderLineChartFromScope(metScopeMode);
 }
-const MET_SCOPE_BTNS=['ms-7d','ms-15d','ms-30d','ms-60d','ms-dia','ms-mes','ms-ano','ms-365d','ms-rango'];
+const MET_SCOPE_BTNS=['ms-7d','ms-15d','ms-30d','ms-60d','ms-90d','ms-dia','ms-mes','ms-ano','ms-365d','ms-rango'];
 
 // Retorna el valor de un campo (total|neto) para una clave de día y una cuenta,
 // usando ventaprod si tiene datos; si no, cae a state.metricas (solo para 'total').
@@ -5868,6 +5878,7 @@ function getAllMetKeys(scope){
   if(scope==='15d'){const f=new Date(d);f.setDate(d.getDate()-14);const fk=dateToKey(f),tk=dateToKey(d);return all.filter(k=>k>=fk&&k<=tk);}
   if(scope==='30d'){const f=new Date(d);f.setDate(d.getDate()-29);const fk=dateToKey(f),tk=dateToKey(d);return all.filter(k=>k>=fk&&k<=tk);}
   if(scope==='60d'){const f=new Date(d);f.setDate(d.getDate()-59);const fk=dateToKey(f),tk=dateToKey(d);return all.filter(k=>k>=fk&&k<=tk);}
+  if(scope==='90d'){const f=new Date(d);f.setDate(d.getDate()-89);const fk=dateToKey(f),tk=dateToKey(d);return all.filter(k=>k>=fk&&k<=tk);}
   if(scope==='365d'){const f=new Date(d);f.setDate(d.getDate()-364);const fk=dateToKey(f),tk=dateToKey(d);return all.filter(k=>k>=fk&&k<=tk);}
   if(scope==='dia'){const v=document.getElementById('met-date')?.value||todayStr();return all.filter(k=>k===v.replace(/-/g,'_'));}
   if(scope==='mes'){const m=document.getElementById('met-mes')?.value||String(d.getMonth()+1).padStart(2,'0'),y=document.getElementById('met-anio')?.value||d.getFullYear();return all.filter(k=>k.startsWith(y+'_'+m));}
@@ -5881,6 +5892,7 @@ function getAllPrevMetKeys(scope){
   if(scope==='15d'){const to=new Date(d);to.setDate(d.getDate()-15);const fr=new Date(d);fr.setDate(d.getDate()-29);return all.filter(k=>k>=dateToKey(fr)&&k<=dateToKey(to));}
   if(scope==='30d'){const to=new Date(d);to.setDate(d.getDate()-30);const fr=new Date(d);fr.setDate(d.getDate()-59);return all.filter(k=>k>=dateToKey(fr)&&k<=dateToKey(to));}
   if(scope==='60d'){const to=new Date(d);to.setDate(d.getDate()-60);const fr=new Date(d);fr.setDate(d.getDate()-119);return all.filter(k=>k>=dateToKey(fr)&&k<=dateToKey(to));}
+  if(scope==='90d'){const to=new Date(d);to.setDate(d.getDate()-90);const fr=new Date(d);fr.setDate(d.getDate()-179);return all.filter(k=>k>=dateToKey(fr)&&k<=dateToKey(to));}
   if(scope==='365d'){const to=new Date(d);to.setDate(d.getDate()-365);const fr=new Date(d);fr.setDate(d.getDate()-729);return all.filter(k=>k>=dateToKey(fr)&&k<=dateToKey(to));}
   if(scope==='dia'){const v=document.getElementById('met-date')?.value||todayStr();const dt=new Date(v+'T12:00:00');dt.setDate(dt.getDate()-1);return all.filter(k=>k===dateToKey(dt));}
   if(scope==='mes'){const m=document.getElementById('met-mes')?.value||String(d.getMonth()+1).padStart(2,'0'),y=document.getElementById('met-anio')?.value||d.getFullYear();const pd=new Date(Number(y),Number(m)-2,1);return all.filter(k=>k.startsWith(pd.getFullYear()+'_'+String(pd.getMonth()+1).padStart(2,'0')));}
@@ -5934,6 +5946,7 @@ function getMetKeys(scope){
   if(scope==='15d'){const f=new Date(d);f.setDate(d.getDate()-14);return all.filter(k=>k>=dateToKey(f)&&k<=dateToKey(d));}
   if(scope==='30d'){const f=new Date(d);f.setDate(d.getDate()-29);return all.filter(k=>k>=dateToKey(f)&&k<=dateToKey(d));}
   if(scope==='60d'){const f=new Date(d);f.setDate(d.getDate()-59);return all.filter(k=>k>=dateToKey(f)&&k<=dateToKey(d));}
+  if(scope==='90d'){const f=new Date(d);f.setDate(d.getDate()-89);return all.filter(k=>k>=dateToKey(f)&&k<=dateToKey(d));}
   if(scope==='365d'){const f=new Date(d);f.setDate(d.getDate()-364);return all.filter(k=>k>=dateToKey(f)&&k<=dateToKey(d));}
   if(scope==='dia'){const v=document.getElementById('met-date')?.value||todayStr();return all.filter(k=>k===v.replace(/-/g,'_'));}
   if(scope==='mes'){const m=document.getElementById('met-mes')?.value||String(d.getMonth()+1).padStart(2,'0'),y=document.getElementById('met-anio')?.value||d.getFullYear();return all.filter(k=>k.startsWith(y+'_'+m));}
@@ -5947,6 +5960,7 @@ function getPrevMetKeys(scope){
   if(scope==='15d'){const to=new Date(d);to.setDate(d.getDate()-15);const fr=new Date(d);fr.setDate(d.getDate()-29);return all.filter(k=>k>=dateToKey(fr)&&k<=dateToKey(to));}
   if(scope==='30d'){const to=new Date(d);to.setDate(d.getDate()-30);const fr=new Date(d);fr.setDate(d.getDate()-59);return all.filter(k=>k>=dateToKey(fr)&&k<=dateToKey(to));}
   if(scope==='60d'){const to=new Date(d);to.setDate(d.getDate()-60);const fr=new Date(d);fr.setDate(d.getDate()-119);return all.filter(k=>k>=dateToKey(fr)&&k<=dateToKey(to));}
+  if(scope==='90d'){const to=new Date(d);to.setDate(d.getDate()-90);const fr=new Date(d);fr.setDate(d.getDate()-179);return all.filter(k=>k>=dateToKey(fr)&&k<=dateToKey(to));}
   if(scope==='365d'){const to=new Date(d);to.setDate(d.getDate()-365);const fr=new Date(d);fr.setDate(d.getDate()-729);return all.filter(k=>k>=dateToKey(fr)&&k<=dateToKey(to));}
   if(scope==='dia'){const v=document.getElementById('met-date')?.value||todayStr();const dt=new Date(v+'T12:00:00');dt.setDate(dt.getDate()-1);return all.filter(k=>k===dateToKey(dt));}
   if(scope==='mes'){const m=document.getElementById('met-mes')?.value||String(d.getMonth()+1).padStart(2,'0'),y=document.getElementById('met-anio')?.value||d.getFullYear();const pd=new Date(Number(y),Number(m)-2,1);return all.filter(k=>k.startsWith(pd.getFullYear()+'_'+String(pd.getMonth()+1).padStart(2,'0')));}
@@ -5963,6 +5977,7 @@ function getMetScopeLabel(scope){
   if(scope==='15d')return 'últimos 15 días';
   if(scope==='30d')return 'últimos 30 días';
   if(scope==='60d')return 'últimos 60 días';
+  if(scope==='90d')return 'últimos 90 días';
   if(scope==='365d')return 'últimos 365 días';
   if(scope==='dia'){const v=document.getElementById('met-date')?.value||todayStr();return new Date(v+'T12:00:00').toLocaleDateString('es-AR',{weekday:'short',day:'numeric',month:'short'});}
   if(scope==='mes'){const m=document.getElementById('met-mes')?.value||String(d.getMonth()+1).padStart(2,'0'),y=document.getElementById('met-anio')?.value||d.getFullYear();return MONTHS[parseInt(m)-1]+' '+y;}
@@ -5977,6 +5992,7 @@ function getPrevMetLabel(scope){
   if(scope==='15d')return '15d anteriores';
   if(scope==='30d')return '30d anteriores';
   if(scope==='60d')return '60d anteriores';
+  if(scope==='90d')return '90d anteriores';
   if(scope==='365d')return '365d anteriores';
   if(scope==='dia'){const v=document.getElementById('met-date')?.value||todayStr();const dt=new Date(v+'T12:00:00');dt.setDate(dt.getDate()-1);return dt.toLocaleDateString('es-AR',{weekday:'short',day:'numeric',month:'short'});}
   if(scope==='mes'){const m=document.getElementById('met-mes')?.value||String(d.getMonth()+1).padStart(2,'0'),y=document.getElementById('met-anio')?.value||d.getFullYear();const pd=new Date(Number(y),Number(m)-2,1);return MONTHS[pd.getMonth()]+' '+pd.getFullYear();}
@@ -5988,8 +6004,11 @@ function getPrevMetLabel(scope){
 function getMetPeriodSpan(scope){
   const d=new Date();
   if(scope==='rango'){const r=_readRange('met-from','met-to');return{n:r?r.days:0,unit:'día'};}
+  if(scope==='7d')return{n:7,unit:'día'};
+  if(scope==='15d')return{n:15,unit:'día'};
   if(scope==='30d')return{n:30,unit:'día'};
   if(scope==='60d')return{n:60,unit:'día'};
+  if(scope==='90d')return{n:90,unit:'día'};
   if(scope==='365d')return{n:365,unit:'día'};
   if(scope==='dia')return{n:1,unit:'día'};
   if(scope==='mes'){
@@ -6228,8 +6247,8 @@ function metScopeBuckets(scope){
   const kYearShift=(k,n)=>{const [yy,mm,dd]=k.split('_').map(Number);return (yy+n)+'_'+String(mm).padStart(2,'0')+'_'+String(dd).padStart(2,'0');};
   const monKeys=(prefix)=>_allMetUnionKeys().filter(k=>k.startsWith(prefix));
   const monPrefixShift=(y,mi,dm2)=>{const dt=new Date(y,mi+dm2,1);return dt.getFullYear()+'_'+String(dt.getMonth()+1).padStart(2,'0');};
-  if(scope==='7d'||scope==='15d'||scope==='30d'||scope==='60d'||scope==='dia'){
-    const days=scope==='dia'?1:scope==='7d'?7:scope==='15d'?15:scope==='30d'?30:60;
+  if(scope==='7d'||scope==='15d'||scope==='30d'||scope==='60d'||scope==='90d'||scope==='dia'){
+    const days=scope==='dia'?1:scope==='7d'?7:scope==='15d'?15:scope==='30d'?30:scope==='60d'?60:90;
     for(let i=days-1;i>=0;i--){const dt=new Date(d);dt.setDate(d.getDate()-i);const k=dateToKey(dt);labels.push(dm(dt));buckets.push([k]);bucketsPrev.push([kDayShift(k,-days)]);bucketsYear.push([kYearShift(k,-1)]);}
     title='Diario · '+days+' días';
   } else if(scope==='rango'){
@@ -7288,7 +7307,7 @@ document.addEventListener('click',e=>{if(fnavOpen&&!e.target.closest('#fnav-btn'
         <span style="font-size:.75rem;color:var(--muted)">Si no ves los últimos cambios, forzá la actualización</span>
         <button class="btn" style="background:rgba(56,189,248,.12);color:var(--blue);border:1px solid rgba(56,189,248,.3)" onclick="actualizarApp()">🔄 Buscar actualizaciones</button>
       </div>
-      <div style="font-size:.66rem;color:var(--muted);margin-top:12px">CYC · Versión 8.0</div>
+      <div style="font-size:.66rem;color:var(--muted);margin-top:12px">CYC · Versión 8.1</div>
     </div>
 
     <div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:18px 20px;margin-bottom:14px">
