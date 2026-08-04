@@ -616,6 +616,64 @@ async function raisePrice(itemId, variationId, multiplier, token) {
 // Solo toca los que están 'started' (aplicados de verdad). Los 'candidate'
 // (ofertas que ML propone pero no puso) no se tocan: no cuestan nada.
 // Devuelve { removed:[tipos], failed:[tipo:motivo] }.
+// ── PROMOCIONES AGENDADAS: las que ML va a aplicar SOLAS más adelante ──────
+// El robot que saca descuentos solo se pone a mirar cuando la publicación YA tiene el precio
+// rebajado hoy. Una promo agendada para dentro de una semana todavía no rebajó nada, así que se le
+// escapa entera: arranca sola el día pactado y recién ahí se entera, con la venta ya hecha.
+// El 04/08/2026 había 25 agendadas para el 10/08 con 20% a 50% de descuento.
+// Esto SOLO LEE. Devuelve la lista para avisar; sacarlas es una decisión aparte.
+async function promosAgendadas(db, accounts, labels, products) {
+  const links = (await db.get('cyc/mllinks')) || {};
+  const fin = (await db.get('cyc/finanzas')) || {};
+  const tc = parseFloat(fin.tipo_cambio) || 1500;
+  const monoP = parseFloat(((await db.get('cyc/monotributo')) || {}).pct) || 0;
+  const pIdx = {}; for (const p of products) pIdx[p.id] = p;
+  const out = [];
+  for (const label of labels) {
+    const acc = accounts[label];
+    if (!acc?.refresh_token) continue;
+    let t; try { t = await mlRefresh(ML_CLIENT_ID, ML_CLIENT_SECRET, acc.refresh_token); } catch { continue; }
+    try { await db.patch('mlapi/tokens/' + label, { refresh_token: t.refresh_token, updated_ts: Date.now() }); } catch { /* no rompe */ }
+    const ids = Object.entries(links)
+      .filter(([mla, e]) => e && e.cuenta === label && !e.ignored && /^MLA/i.test(mla))
+      .map(([mla, e]) => ({ mla, title: e.title || mla, prodId: e.prodId }));
+    for (const it of ids) {
+      let arr;
+      try {
+        const r = await mlGet('/seller-promotions/items/' + it.mla + '?app_version=v2', t.access_token);
+        arr = Array.isArray(r) ? r : (r.results || []);
+      } catch { continue; }
+      for (const pr of (arr || [])) {
+        // 'candidate' es una oferta que ML propone y NADIE aceptó: no se aplica sola, no molesta.
+        if (pr.status !== 'pending' && pr.status !== 'started') continue;
+        const precioProm = Number(pr.price);
+        const precioHoy = Number(pr.original_price);
+        if (!(precioProm > 0)) continue;
+        const off = precioHoy > 0 ? (1 - precioProm / precioHoy) * 100 : null;
+        // Margen ESTIMADO al precio de la promo. Se usa la proporción neto/precio que ya midió
+        // netoweb para ese producto (precio − comisión oficial − envío). Es una estimación: se
+        // dice así al mostrarlo, no se presenta como el margen exacto.
+        const p = pIdx[it.prodId];
+        let mg = null;
+        if (p && p.netoCalc > 0 && p.netoCalcPrecio > 0) {
+          const ratio = Number(p.netoCalc) / Number(p.netoCalcPrecio);
+          const netoEst = precioProm * ratio;
+          const costo = costoPesos(p, 1, tc).costo + precioProm * (mlExtraPct(label) + monoP) / 100;
+          if (costo > 0) mg = (netoEst - costo) / costo * 100;
+        }
+        out.push({
+          label, mla: it.mla, nom: it.title, estado: pr.status,
+          precioHoy, precioProm, off, mg,
+          desde: pr.start_date ? String(pr.start_date).slice(0, 10) : null,
+          hasta: pr.finish_date ? String(pr.finish_date).slice(0, 10) : null,
+        });
+      }
+    }
+  }
+  out.sort((a, b) => (b.off || 0) - (a.off || 0));
+  return out;
+}
+
 async function removeStartedPromos(itemId, token) {
   let arr;
   try {
@@ -996,7 +1054,33 @@ async function main() {
       + (top ? `🥇 Más vendido: ${top[0]} (${top[1]})\n` : 'Sin ventas ese día')
       + (top3.length ? `\n<b>Los que más ganancia dejaron</b>\n`
         + top3.map((t, i) => `${['🥇', '🥈', '🥉'][i]} ${t[0]}: <b>${money(Math.round(t[1]))}</b>`).join('\n') : '');
-    const ok = await sendTelegram(msg, 'resumen');
+    // PROMOCIONES AGENDADAS. Van pegadas al resumen porque son plata que se pierde sola: ML las
+    // aplica el día pactado sin avisar y el precio queda rebajado hasta 50% sin que nadie lo toque.
+    let msgProm = '';
+    try {
+      // El resumen corre ANTES de que el flujo principal cargue cuentas y productos, así que se
+      // leen acá. Sin esto tiraba "accounts is not defined" y el aviso no salía nunca — pero como
+      // el error quedaba atrapado, el resumen se mandaba igual y nadie se enteraba.
+      const accDia = (await db.get('mlapi/tokens')) || {};
+      const labDia = Object.keys(accDia);
+      const prodDia = Object.values((await db.get('cyc/products')) || {});
+      const proms = await promosAgendadas(db, accDia, labDia, prodDia);
+      if (proms.length) {
+        const arranca = proms.filter((x) => x.estado === 'pending').length;
+        const yaCorre = proms.filter((x) => x.estado === 'started').length;
+        const bajoCero = proms.filter((x) => x.mg != null && x.mg < 30).length;
+        msgProm = `\n\n🏷️ <b>Promociones de ML</b>\n`
+          + (arranca ? `${arranca} agendadas (arrancan solas)\n` : '')
+          + (yaCorre ? `${yaCorre} YA aplicadas ahora\n` : '')
+          + (bajoCero ? `⚠️ ${bajoCero} quedarían abajo del 30%\n` : '')
+          + proms.slice(0, 5).map((x) => `· ${String(x.nom).slice(0, 26)}: ${money(Math.round(x.precioHoy))} → <b>${money(Math.round(x.precioProm))}</b>`
+            + (x.off != null ? ` (-${x.off.toFixed(0)}%)` : '')
+            + (x.mg != null ? ` · quedaría en ${x.mg.toFixed(0)}%` : '')).join('\n')
+          + (proms.length > 5 ? `\n… y ${proms.length - 5} más` : '');
+      }
+    } catch (e) { console.log('No pude mirar las promociones: ' + e.message); }
+
+    const ok = await sendTelegram(msg + msgProm, 'resumen');
     if (ok && !forzado && !DRY) await db.set('mlapi/telegram/lastDaily', today);
     console.log(ok ? `✓ Resumen de ${today} enviado.` : '✗ No se pudo enviar el resumen (revisá Telegram).');
 
@@ -2225,6 +2309,30 @@ async function main() {
       L.push(`   📥 cajas que llegaron en ${DIAS} días: <b>${totCajas}</b>`);
       for (const r of R) for (const c of r.cajas.slice(0, 8)) L.push(`      · ${r.label} · ${c.fecha} · ${c.nom}${c.q ? ` · ${c.q} u.` : ''}`);
       if (capado) L.push(`\n<i>(no llegué a mirar ${capado} inventarios de Full: hay más de ${MAX_INV})</i>`);
+      // PROMOCIONES QUE ML VA A APLICAR SOLAS. Es plata que se pierde sin que nadie toque nada:
+      // arrancan el día pactado con hasta 50% de descuento. El robot que saca descuentos no las ve
+      // porque solo mira las publicaciones que YA tienen el precio rebajado hoy.
+      try {
+        const proms = await promosAgendadas(db, accounts, labels, products);
+        if (!proms.length) L.push(`\n✅ <b>Sin promociones de ML agendadas</b>`);
+        else {
+          const arranca = proms.filter((x) => x.estado === 'pending');
+          const yaCorre = proms.filter((x) => x.estado === 'started');
+          const feo = proms.filter((x) => x.mg != null && x.mg < 30).length;
+          L.push(`\n🏷️ <b>PROMOCIONES DE ML: ${proms.length}</b>`
+            + (arranca.length ? ` · ${arranca.length} agendadas` : '')
+            + (yaCorre.length ? ` · ${yaCorre.length} YA aplicadas` : ''));
+          if (feo) L.push(`   ⚠️ <b>${feo} quedarían abajo del 30%</b>`);
+          if (arranca.length) L.push(`   arrancan el ${arranca[0].desde || '?'}${arranca[0].hasta ? ' y van hasta el ' + arranca[0].hasta : ''}`);
+          for (const x of proms.slice(0, 10)) {
+            L.push(`   ${x.mg != null && x.mg < 30 ? '🔴' : '·'} ${x.label} · ${String(x.nom).slice(0, 34)}`);
+            L.push(`      ${money(Math.round(x.precioHoy))} → <b>${money(Math.round(x.precioProm))}</b>`
+              + (x.off != null ? ` (-${x.off.toFixed(0)}%)` : '')
+              + (x.mg != null ? ` · quedaría en ${x.mg.toFixed(0)}% (estimado)` : ' · no pude estimar el margen'));
+          }
+          if (proms.length > 10) L.push(`   <i>… y ${proms.length - 10} más</i>`);
+        }
+      } catch (e) { L.push(`\n⚠️ No pude mirar las promociones: ${String(e.message || e).slice(0, 60)}`); }
       for (const r of R) for (const e2 of r.err) L.push(`\n⚠️ ${r.label} · no pude leer ${e2}`);
       // Telegram corta en 4096 caracteres: un mensaje que se pasa NO llega, así que se recorta acá.
       let msg = L.join('\n');
