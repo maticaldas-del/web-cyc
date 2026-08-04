@@ -5740,32 +5740,46 @@ async function main() {
         }
       }
       filas.sort((a, b) => a.mgPeor - b.mgPeor);
-      console.log(`── ABAJO DEL ${(MIN * 100).toFixed(0)}% · ${filas.length} publicaciones ──\n`);
+      // Todo lo que se imprime queda también guardado, para poder dejarlo en un archivo del repo:
+      // la lista pasa las 80 publicaciones y leerla del log de GitHub es incómodo.
+      const OUT = [];
+      const P = (s2) => { console.log(s2); OUT.push(s2); };
+      P(`── ABAJO DEL ${(MIN * 100).toFixed(0)}% · ${filas.length} publicaciones ──\n`);
       for (const f of filas) {
-        console.log(`  ${f.label.padEnd(8)} · ${f.mla} · ${f.nom}`);
-        console.log(`      margen: peor venta ${f.mgPeor.toFixed(0)}% · típico ${f.mgTip.toFixed(0)}%   (${f.nV} ventas · descuento típico ${money(Math.round(f.med))}, peor ${money(Math.round(f.mx))})`);
-        console.log(`      precio: ${money(Math.round(f.precio))}` + (f.nuevo ? ` → ${money(f.nuevo)} para el ${(MIN * 100).toFixed(0)}% en su peor venta (+${(f.suba * 100).toFixed(1)}%)` : ' → no pude calcular el precio nuevo'));
+        P(`  ${f.label.padEnd(8)} · ${f.mla} · ${f.nom}`);
+        P(`      margen: peor venta ${f.mgPeor.toFixed(0)}% · típico ${f.mgTip.toFixed(0)}%   (${f.nV} ventas · descuento típico ${money(Math.round(f.med))}, peor ${money(Math.round(f.mx))})`);
+        P(`      precio: ${money(Math.round(f.precio))}` + (f.nuevo ? ` → ${money(f.nuevo)} para el ${(MIN * 100).toFixed(0)}% en su peor venta (+${(f.suba * 100).toFixed(1)}%)` : ' → no pude calcular el precio nuevo'));
         if (f.catalogo) {
           const st = f.caja ? (ESTADO[f.caja.status] || f.caja.status) : '¿?';
-          console.log(`      catálogo: ${st}` + (f.caja && f.caja.price_to_win && f.caja.status !== 'winning' ? ` · para ganar la caja hacen falta ${money(Math.round(f.caja.price_to_win))}` : ''));
+          P(`      catálogo: ${st}` + (f.caja && f.caja.price_to_win && f.caja.status !== 'winning' ? ` · para ganar la caja hacen falta ${money(Math.round(f.caja.price_to_win))}` : ''));
         }
-        console.log(`      ${f.reco}\n`);
+        P(`      ${f.reco}\n`);
       }
       // Contar por el ÍCONO, no por el texto: 'SUBIR' también matchea 'NO SUBIR' y el resumen
       // sumaba las dos cosas juntas (decía 19 donde eran 14).
       const cuenta = (ico) => filas.filter((f) => f.reco.startsWith(ico)).length;
-      console.log(`── RESUMEN PARA DECIDIR ──`);
-      console.log(`  ✅ se pueden subir sin riesgo : ${cuenta('✅')}`);
-      console.log(`  🛑 mejor no tocar (tenés caja): ${cuenta('🛑')}`);
-      console.log(`  ⚠️ son de un grupo de precio  : ${cuenta('⚠️')}`);
-      console.log(`  ✋ tienen variantes (a mano)   : ${cuenta('✋')}`);
-      console.log(`  ❓ hay que mirarlas a mano     : ${cuenta('❓')}`);
+      P(`── RESUMEN PARA DECIDIR ──`);
+      P(`  ✅ se pueden subir sin riesgo : ${cuenta('✅')}`);
+      P(`  🛑 mejor no tocar (tenés caja): ${cuenta('🛑')}`);
+      P(`  ⚠️ son de un grupo de precio  : ${cuenta('⚠️')}`);
+      P(`  ✋ tienen variantes (a mano)   : ${cuenta('✋')}`);
+      P(`  ❓ hay que mirarlas a mano     : ${cuenta('❓')}`);
       console.log(`\n── NO SE PUDIERON MEDIR · ${sinDato.length} ──`);
       const porQue = {};
       for (const f of sinDato) (porQue[f.why] = porQue[f.why] || []).push(f);
       for (const [why, arr] of Object.entries(porQue).sort((a, b) => b[1].length - a[1].length)) {
         console.log(`  · ${why} → ${arr.length}`);
         if (arr.length <= 8) arr.forEach((f) => console.log(`      ${f.label.padEnd(8)} · ${f.mla} · ${f.nom}`));
+      }
+      if (process.env.BAJOPISO_ARCHIVO) {
+        const ruta = process.env.BAJOPISO_ARCHIVO;
+        try {
+          const dir = ruta.includes('/') ? ruta.slice(0, ruta.lastIndexOf('/')) : '';
+          if (dir) mkdirSync(dir, { recursive: true });
+          const cab = `ABAJO DEL ${(MIN * 100).toFixed(0)}% · ${filas.length} publicaciones · ventana ${DIAS} días`;
+          writeFileSync(ruta, cab + '\n\n' + OUT.join('\n') + '\n');
+          console.log(`\n(lista guardada en ${ruta})`);
+        } catch (e) { console.log('No pude guardar la lista: ' + e.message); }
       }
       if (!APLICAR) { console.log(`\nRECORDÁ: esto fue solo una LISTA. No se tocó ningún precio en ML.`); return; }
       // ── Aplicar SOLO las que se pidieron, y solo si siguen siendo seguras ──

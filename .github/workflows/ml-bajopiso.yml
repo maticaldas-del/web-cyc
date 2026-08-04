@@ -1,0 +1,71 @@
+name: ml-bajopiso
+
+# La lista de publicaciones abajo del piso de margen, guardada en el repo.
+#
+# Existe porque desde el 04/08/2026 los precios se manejan A MANO: el robot está apagado y esta
+# lista es la que se mira para decidir qué subir. Son 80+ publicaciones, y leerlas del log de
+# GitHub es incómodo — así queda un archivo que se abre de una y se puede comparar con el de ayer.
+#
+# NO toca ningún precio: bajopiso sin ":go" es solo lectura.
+on:
+  workflow_dispatch:
+    inputs:
+      piso:
+        description: 'Piso de margen en % (por defecto 30)'
+        required: false
+        default: '30'
+      dias:
+        description: 'Días de ventas que mira para medir el descuento (por defecto 60)'
+        required: false
+        default: '60'
+
+# Mismo candado que ml-sync: los dos renuevan los tokens de ML y dos corridas renovando a la vez
+# se pisan. Corta la corrida en curso, igual que el chequeo de la mañana.
+concurrency:
+  group: ml-sync
+  cancel-in-progress: true
+
+jobs:
+  bajopiso:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    # Hace falta para dejar la lista guardada en el repo.
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Publicaciones abajo del piso
+        env:
+          BAJOPISO_ARCHIVO: precios/bajopiso.txt
+          ML_CLIENT_ID: ${{ secrets.ML_CLIENT_ID }}
+          ML_CLIENT_SECRET: ${{ secrets.ML_CLIENT_SECRET }}
+          FIREBASE_API_KEY: ${{ secrets.FIREBASE_API_KEY }}
+          FIREBASE_DB_URL: ${{ secrets.FIREBASE_DB_URL }}
+          FIREBASE_BOT_EMAIL: ${{ secrets.FIREBASE_BOT_EMAIL }}
+          FIREBASE_BOT_PASSWORD: ${{ secrets.FIREBASE_BOT_PASSWORD }}
+          BILLING_PROBE: bajopiso:${{ github.event.inputs.piso || '30' }}:${{ github.event.inputs.dias || '60' }}
+        run: node ml-sync/sync.mjs
+      - name: Guardar la lista en el repo
+        run: |
+          if [ ! -f precios/bajopiso.txt ]; then
+            echo "No quedó archivo (habrá fallado antes). No commiteo nada."
+            exit 0
+          fi
+          git config user.name  "robot-cyc"
+          git config user.email "robot-cyc@users.noreply.github.com"
+          git add precios/bajopiso.txt
+          if git diff --cached --quiet; then
+            echo "La lista dio igual que la de la corrida anterior: no hay nada para guardar."
+            exit 0
+          fi
+          git commit -m "Abajo del piso $(TZ=America/Argentina/Buenos_Aires date '+%d-%m-%Y %H:%M')"
+          # La rama puede haber avanzado mientras corría. Se reintenta con rebase.
+          for i in 1 2 3; do
+            git pull --rebase origin "${GITHUB_REF_NAME}" && git push origin "HEAD:${GITHUB_REF_NAME}" && exit 0
+            echo "no pude guardar (intento $i), reintento"
+            sleep 5
+          done
+          echo "No pude guardar la lista en el repo."
