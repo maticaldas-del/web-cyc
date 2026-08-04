@@ -228,6 +228,16 @@ input.qty:focus{border-color:var(--accent2)}
 .view-toggle{display:flex;gap:6px;flex-wrap:wrap}
 .vbtn{padding:6px 14px;border-radius:6px;border:1px solid var(--border2);background:var(--surface2);color:var(--muted);font-family:'DM Mono',monospace;font-size:.68rem;cursor:pointer;transition:all .15s}
 .vbtn.active{background:var(--accent2);border-color:var(--accent2);color:#fff}
+/* Menú desplegable del período (Métricas ML). En la barra queda UN solo botón con el período
+   elegido; las diez opciones viven adentro y aparecen recién al tocarlo. Antes eran diez
+   botones en fila y ocupaban media pantalla. */
+.dd-wrap{position:relative;display:inline-flex}
+.dd-menu{position:absolute;top:calc(100% + 6px);left:0;z-index:60;min-width:172px;padding:6px;background:var(--surface);border:1px solid var(--border2);border-radius:8px;box-shadow:0 12px 30px rgba(0,0,0,.45);display:none}
+.dd-menu.open{display:block}
+.dd-grp{font-size:.55rem;text-transform:uppercase;letter-spacing:.09em;color:var(--muted);padding:8px 10px 4px}
+.dd-opt{display:block;width:100%;text-align:left;padding:7px 10px;border:0;border-radius:6px;background:none;color:var(--text);font-family:'DM Mono',monospace;font-size:.68rem;cursor:pointer}
+.dd-opt:hover{background:var(--surface2)}
+.dd-opt.active{background:var(--accent2);color:#fff}
 .comp-table{width:100%;border-collapse:collapse;font-size:.74rem}
 .comp-table th{padding:10px 14px;text-align:right;font-size:.62rem;text-transform:uppercase;letter-spacing:.1em;color:var(--muted);border-bottom:1px solid var(--border);background:var(--surface);white-space:nowrap}
 .comp-table th:first-child{text-align:left}
@@ -1002,25 +1012,24 @@ footer{margin-top:32px;padding-top:14px;border-top:1px solid var(--border);font-
 
   <!-- ── Selector de período (queda quieto en su lugar, no sigue el scroll) ── -->
   <div id="met-cal-bar" class="cal-bar" style="margin-bottom:18px;flex-wrap:wrap;gap:10px">
-    <!-- Los períodos van en grupos separados: los que miran "los últimos N días" por un lado y
-         los que miran un día/mes/año concreto por el otro. Antes eran nueve botones en fila y
-         costaba encontrar el que se buscaba. -->
-    <div style="display:flex;gap:18px;flex-wrap:wrap">
-      <div class="view-toggle">
-        <button class="vbtn"        id="ms-7d"   onclick="setMetScope('7d',this)">7 días</button>
-        <button class="vbtn"        id="ms-15d"  onclick="setMetScope('15d',this)">15 días</button>
-        <button class="vbtn"        id="ms-30d"  onclick="setMetScope('30d',this)">30 días</button>
-        <button class="vbtn"        id="ms-60d"  onclick="setMetScope('60d',this)">60 días</button>
-        <button class="vbtn"        id="ms-90d"  onclick="setMetScope('90d',this)">90 días</button>
-        <button class="vbtn"        id="ms-365d" onclick="setMetScope('365d',this)">365 días</button>
-      </div>
-      <div class="view-toggle">
-        <button class="vbtn"        id="ms-dia"  onclick="setMetScope('dia',this)">Día</button>
-        <button class="vbtn active" id="ms-mes"  onclick="setMetScope('mes',this)">Mes</button>
-        <button class="vbtn"        id="ms-ano"  onclick="setMetScope('ano',this)">Año</button>
-      </div>
-      <div class="view-toggle">
-        <button class="vbtn"        id="ms-rango" onclick="setMetScope('rango',this)">📅 Período</button>
+    <!-- Un botón con el período elegido. Las opciones salen al tocarlo, agrupadas: por un lado
+         los "últimos N días", por otro un día/mes/año concreto, y aparte el período a medida. -->
+    <div class="dd-wrap" id="ms-dd-wrap">
+      <button class="vbtn active" id="ms-dd-btn" onclick="toggleMetScopeMenu(event)">Mes ▾</button>
+      <div class="dd-menu" id="ms-dd-menu">
+        <div class="dd-grp">Últimos días</div>
+        <button class="dd-opt" id="ms-7d"   onclick="setMetScope('7d',this)">7 días</button>
+        <button class="dd-opt" id="ms-15d"  onclick="setMetScope('15d',this)">15 días</button>
+        <button class="dd-opt" id="ms-30d"  onclick="setMetScope('30d',this)">30 días</button>
+        <button class="dd-opt" id="ms-60d"  onclick="setMetScope('60d',this)">60 días</button>
+        <button class="dd-opt" id="ms-90d"  onclick="setMetScope('90d',this)">90 días</button>
+        <button class="dd-opt" id="ms-365d" onclick="setMetScope('365d',this)">365 días</button>
+        <div class="dd-grp">Fecha puntual</div>
+        <button class="dd-opt" id="ms-dia"  onclick="setMetScope('dia',this)">Día</button>
+        <button class="dd-opt active" id="ms-mes" onclick="setMetScope('mes',this)">Mes</button>
+        <button class="dd-opt" id="ms-ano"  onclick="setMetScope('ano',this)">Año</button>
+        <div class="dd-grp">A medida</div>
+        <button class="dd-opt" id="ms-rango" onclick="setMetScope('rango',this)">📅 Período</button>
       </div>
     </div>
     <div class="view-toggle" style="margin:0">
@@ -5803,6 +5812,13 @@ function setMetChartMode(m,btn){
   renderLineChartFromScope(metScopeMode);
 }
 const MET_SCOPE_BTNS=['ms-7d','ms-15d','ms-30d','ms-60d','ms-90d','ms-dia','ms-mes','ms-ano','ms-365d','ms-rango'];
+// Lo que dice el botón de la barra según el período elegido.
+const MET_SCOPE_TXT={'7d':'7 días','15d':'15 días','30d':'30 días','60d':'60 días','90d':'90 días','365d':'365 días',dia:'Día',mes:'Mes',ano:'Año',rango:'📅 Período'};
+function toggleMetScopeMenu(e){if(e)e.stopPropagation();document.getElementById('ms-dd-menu')?.classList.toggle('open');}
+function closeMetScopeMenu(){document.getElementById('ms-dd-menu')?.classList.remove('open');}
+// Se cierra al tocar en cualquier otro lado o con Escape.
+document.addEventListener('click',(e)=>{const w=document.getElementById('ms-dd-wrap');if(w&&!w.contains(e.target))closeMetScopeMenu();});
+document.addEventListener('keydown',(e)=>{if(e.key==='Escape')closeMetScopeMenu();});
 
 // Retorna el valor de un campo (total|neto) para una clave de día y una cuenta,
 // usando ventaprod si tiene datos; si no, cae a state.metricas (solo para 'total').
@@ -6036,6 +6052,8 @@ function setMetScope(scope,btn){
   metScopeMode=scope;
   MET_SCOPE_BTNS.forEach(id=>{const b=document.getElementById(id);if(b)b.classList.remove('active');});
   btn.classList.add('active');
+  const trg=document.getElementById('ms-dd-btn');if(trg)trg.textContent=(MET_SCOPE_TXT[scope]||scope)+' ▾';
+  closeMetScopeMenu();
   ['dia','mes','ano','rango'].forEach(s=>{const el=document.getElementById('ms-ctrl-'+s);if(el)el.style.display=scope===s?'flex':'none';});
   const entry=document.getElementById('met-entry-section');if(entry)entry.style.display=scope==='dia'?'block':'none';
   renderMetricas();
@@ -7307,7 +7325,7 @@ document.addEventListener('click',e=>{if(fnavOpen&&!e.target.closest('#fnav-btn'
         <span style="font-size:.75rem;color:var(--muted)">Si no ves los últimos cambios, forzá la actualización</span>
         <button class="btn" style="background:rgba(56,189,248,.12);color:var(--blue);border:1px solid rgba(56,189,248,.3)" onclick="actualizarApp()">🔄 Buscar actualizaciones</button>
       </div>
-      <div style="font-size:.66rem;color:var(--muted);margin-top:12px">CYC · Versión 8.2</div>
+      <div style="font-size:.66rem;color:var(--muted);margin-top:12px">CYC · Versión 8.3</div>
     </div>
 
     <div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:18px 20px;margin-bottom:14px">
