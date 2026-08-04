@@ -3864,6 +3864,82 @@ async function main() {
     // escribió hace meses, a precios de entonces, sigue mandando aunque el precio haya cambiado
     // diez veces. El producto aparece muy abajo del 30% y no hay forma de darse cuenta mirando.
     // Esto compara los tres y, con :borrar, saca el manual para que use el del precio de hoy.
+    // BILLING_PROBE=margenweb → ¿LO QUE MUESTRA "MARGEN ML" COINCIDE CON ML?
+    //
+    // La pantalla arma el margen así: neto a mano → si no hay, el calculado al precio de hoy →
+    // si no hay, el promedio de las ventas. El riesgo es que el "precio de hoy" con el que se
+    // calculó ya no sea el de hoy: cada vez que se cambia un precio en ML, ese neto queda viejo y
+    // la pantalla sigue mostrando el margen del precio anterior sin avisar.
+    // Esto va publicación por publicación, lee el precio REAL de ML y lo compara. Solo lee.
+    if (String(process.env.BILLING_PROBE || '').startsWith('margenweb')) {
+      const links = (await db.get('cyc/mllinks')) || {};
+      const pIdx = {}; for (const p of products) pIdx[p.id] = p;
+      const precioML = {};   // prodId → el precio más bajo de sus publicaciones activas
+      let activas = 0;
+      for (const label of labels) {
+        const acc = accounts[label];
+        if (!acc?.refresh_token) continue;
+        let t; try { t = await mlRefresh(ML_CLIENT_ID, ML_CLIENT_SECRET, acc.refresh_token); } catch { continue; }
+        await db.patch('mlapi/tokens/' + label, { refresh_token: t.refresh_token, updated_ts: Date.now() });
+        const ids = Object.entries(links)
+          .filter(([mla, e]) => e && e.cuenta === label && !e.ignored && e.prodId && /^MLA/i.test(mla))
+          .map(([mla]) => mla);
+        for (let k = 0; k < ids.length; k += 20) {
+          let arr;
+          try { arr = await mlGet('/items?ids=' + ids.slice(k, k + 20).join(',') + '&attributes=id,status,price,variations', t.access_token); } catch { continue; }
+          for (const row of (arr || [])) {
+            const b = row.body || {}; const mla = b.id;
+            if (!mla || !links[mla] || b.status !== 'active') continue;
+            const vars = Array.isArray(b.variations) ? b.variations : [];
+            const pr = vars.length ? (vars[0].price || 0) : (b.price || 0);
+            if (!pr) continue;
+            activas++;
+            const pid = links[mla].prodId;
+            // El mismo criterio que usa netoweb: si hay varias publicaciones, manda la peor.
+            if (precioML[pid] == null || pr < precioML[pid]) precioML[pid] = pr;
+          }
+        }
+      }
+      const viejos = [], sinCalc = [], manuales = [];
+      let ok = 0;
+      for (const p of products) {
+        const prML = precioML[p.id];
+        if (prML == null) continue;  // sin publicación activa: la pantalla no promete nada
+        const man = (p.netoRef != null && p.netoRef !== '') ? Number(p.netoRef) : null;
+        const calc = (p.netoCalc != null && p.netoCalc !== '') ? Number(p.netoCalc) : null;
+        const prCalc = Number(p.netoCalcPrecio) || 0;
+        if (man != null) { manuales.push({ p, prML }); continue; }
+        if (calc == null) { sinCalc.push({ p, prML }); continue; }
+        const dif = prCalc > 0 ? (prML / prCalc - 1) * 100 : null;
+        if (dif == null || Math.abs(dif) >= 1) viejos.push({ p, prML, prCalc, dif });
+        else ok++;
+      }
+      console.log(`=== ¿"MARGEN ML" COINCIDE CON ML? · ${activas} publicaciones activas leídas ===\n`);
+      console.log(`  ✅ al día (el neto está calculado al precio que hoy tiene ML) : ${ok}`);
+      console.log(`  🔴 VIEJOS (el precio cambió y el neto quedó del precio anterior): ${viejos.length}`);
+      console.log(`  ⚪ sin neto calculado (la pantalla muestra "—")                 : ${sinCalc.length}`);
+      console.log(`  ✎ con neto escrito a mano (ese le gana a todo)                 : ${manuales.length}\n`);
+      if (viejos.length) {
+        console.log(`── LOS QUE MUESTRAN UN MARGEN VIEJO ──`);
+        console.log(`  ${'producto'.padEnd(36)} ${'precio del neto'.padStart(15)} ${'precio hoy en ML'.padStart(16)} ${'dif'.padStart(7)}`);
+        for (const v of viejos.sort((a, b) => Math.abs(b.dif || 0) - Math.abs(a.dif || 0))) {
+          console.log(`  ${String(v.p.name || v.p.id).slice(0, 36).padEnd(36)} ${money(Math.round(v.prCalc)).padStart(15)} ${money(Math.round(v.prML)).padStart(16)} ${((v.dif >= 0 ? '+' : '') + v.dif.toFixed(1) + '%').padStart(7)}`);
+        }
+        console.log(`\n  Se arregla corriendo netoweb: recalcula el neto con el precio de hoy.`);
+      }
+      if (manuales.length) {
+        console.log(`\n── CON NETO A MANO (la pantalla ignora el precio real de ML) ──`);
+        for (const m of manuales.slice(0, 20)) console.log(`  ${String(m.p.name || m.p.id).slice(0, 40)}`);
+        if (manuales.length > 20) console.log(`  … y ${manuales.length - 20} más`);
+      }
+      if (sinCalc.length) {
+        console.log(`\n── SIN NETO (muestran "—" en la pantalla) ──`);
+        for (const m of sinCalc.slice(0, 20)) console.log(`  ${String(m.p.name || m.p.id).slice(0, 40)} · hoy en ML ${money(Math.round(m.prML))}`);
+        if (sinCalc.length > 20) console.log(`  … y ${sinCalc.length - 20} más`);
+      }
+      console.log(`\n(esto solo LEE: no toqué nada)`);
+      return;
+    }
     if (String(process.env.BILLING_PROBE || '').startsWith('netoref')) {
       const BORRAR = String(process.env.BILLING_PROBE).split(':')[1] === 'borrar';
       const vp = (await db.get('cyc/ventaprod')) || {}; setDevLive(vp);
