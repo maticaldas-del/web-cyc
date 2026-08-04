@@ -3940,6 +3940,80 @@ async function main() {
       console.log(`\n(esto solo LEE: no toqué nada)`);
       return;
     }
+    // BILLING_PROBE=unaorden:<número> → QUÉ DICE ML DE UNA VENTA Y QUÉ GUARDÓ EL PANEL.
+    // Sirve cuando un número del panel no coincide con lo que muestra ML: acá se ven los dos
+    // lados juntos, el neto que informa Mercado Pago y el que quedó guardado. Solo lee.
+    if (String(process.env.BILLING_PROBE || '').startsWith('unaorden')) {
+      const OID = (String(process.env.BILLING_PROBE).split(':')[1] || '').trim();
+      if (!OID) { console.log('Falta el número: unaorden:2000014358253051'); return; }
+      let ord = null, tok = null, label = null;
+      for (const l of labels) {
+        const acc = accounts[l];
+        if (!acc?.refresh_token) continue;
+        let t; try { t = await mlRefresh(ML_CLIENT_ID, ML_CLIENT_SECRET, acc.refresh_token); } catch { continue; }
+        await db.patch('mlapi/tokens/' + l, { refresh_token: t.refresh_token, updated_ts: Date.now() });
+        try { ord = await mlGet('/orders/' + OID, t.access_token); tok = t.access_token; label = l; break; } catch { /* probamos con la que sigue */ }
+        // Con carrito el número que se ve es el del PAQUETE, no el de la orden.
+        try {
+          const pk = await mlGet('/packs/' + OID, t.access_token);
+          const oid2 = ((pk.orders || [])[0] || {}).id;
+          if (oid2) { ord = await mlGet('/orders/' + oid2, t.access_token); tok = t.access_token; label = l; break; }
+        } catch { /* sigue */ }
+      }
+      if (!ord) { console.log(`No pude abrir la venta ${OID} con ninguna cuenta.`); return; }
+      console.log(`=== VENTA ${ord.id} · cuenta ${label} ===`);
+      console.log(`  fecha ${String(ord.date_created || '').slice(0, 16).replace('T', ' ')} · estado ${ord.status}`);
+      let unidades = 0, comisiones = 0;
+      for (const oi of (ord.order_items || [])) {
+        unidades += oi.quantity || 0;
+        comisiones += oi.sale_fee || 0;
+        console.log(`  ${oi.quantity} × ${money(Math.round(oi.unit_price))} · ${String(oi.item?.title || '').slice(0, 44)}`);
+        console.log(`      comisión que informa la orden: ${money(Math.round(oi.sale_fee || 0))} (por unidad ${money(Math.round((oi.sale_fee || 0)))})`);
+      }
+      console.log(`\n  ── LO QUE DICE LA ORDEN ──`);
+      console.log(`  total pagado por el comprador : ${money(Math.round(ord.total_amount || 0))}`);
+      console.log(`  unidades                      : ${unidades}`);
+      console.log(`  comisión (sale_fee × unidades): ${money(Math.round(comisiones * unidades))}   ← así lo cuenta el panel`);
+      console.log(`\n  ── LO QUE DICE MERCADO PAGO (lo que realmente te entra) ──`);
+      let netoMP = 0;
+      for (const pg of (ord.payments || [])) {
+        try {
+          const d = await mlGet('/payments/' + pg.id, tok);
+          const td = d.transaction_details || {};
+          console.log(`  pago ${pg.id} · estado ${d.status}`);
+          console.log(`      cobrado    ${money(Math.round(td.total_paid_amount || 0))}`);
+          console.log(`      comisión   ${money(Math.round((d.fee_details || []).reduce((a, f) => a + (f.amount || 0), 0)))}`);
+          for (const f of (d.fee_details || [])) console.log(`         · ${f.type}: ${money(Math.round(f.amount || 0))} (paga ${f.fee_payer})`);
+          console.log(`      TE QUEDA   ${money(Math.round(td.net_received_amount || 0))}   ← el número de verdad`);
+          netoMP += td.net_received_amount || 0;
+        } catch (e) { console.log(`  pago ${pg.id}: no pude leerlo (${String(e.message || e).slice(0, 50)})`); }
+      }
+      console.log(`\n  ── LO QUE GUARDÓ EL PANEL ──`);
+      const vpU = (await db.get('cyc/ventaprod')) || {};
+      let hallado = null;
+      for (const [dia, ents] of Object.entries(vpU)) {
+        for (const [k, v] of Object.entries(ents || {})) {
+          if (!v) continue;
+          if (String(v.orden) === String(ord.id) || String(k) === String(ord.id) || String(v.pack) === String(OID) || String(k) === String(OID)) hallado = { dia, k, v };
+        }
+      }
+      if (!hallado) console.log('  (no encontré esta venta guardada en el panel)');
+      else {
+        const v = hallado.v;
+        console.log(`  día ${hallado.dia} · ${v.qty} u. · total ${money(Math.round(v.total || 0))} · neto ${money(Math.round(v.neto || 0))} · costo ${money(Math.round(v.costo || 0))}`);
+        const dif = (netoMP || 0) - (v.neto || 0);
+        if (netoMP > 0) {
+          console.log(`\n  ── LA COMPARACIÓN ──`);
+          console.log(`  neto según Mercado Pago : ${money(Math.round(netoMP))}`);
+          console.log(`  neto guardado en el panel: ${money(Math.round(v.neto || 0))}`);
+          console.log(`  diferencia               : ${money(Math.round(dif))}${unidades > 0 ? ` (${money(Math.round(dif / unidades))} por unidad)` : ''}`);
+          console.log(dif > 1 ? '  → el panel te está mostrando MENOS ganancia de la que tenés.'
+            : (dif < -1 ? '  → el panel te está mostrando MÁS ganancia de la que tenés.' : '  → coinciden ✓'));
+        }
+      }
+      console.log('\n(esto solo LEE: no toqué nada)');
+      return;
+    }
     if (String(process.env.BILLING_PROBE || '').startsWith('netoref')) {
       const BORRAR = String(process.env.BILLING_PROBE).split(':')[1] === 'borrar';
       const vp = (await db.get('cyc/ventaprod')) || {}; setDevLive(vp);
