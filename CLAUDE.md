@@ -27,7 +27,32 @@ Solo Ayelen aporta autónomos ($57.598,04) y obra social ($55.485,33); las otras
 APORTANTE. Total a ARCA: **$504.832/mes**.
 
 **Pendiente para el contador: Luciana y Matías están en F pero facturan a nivel G/H.** Hay que
-recategorizar.
+recategorizar. Y la actividad declarada de Luciana y Ayelen es "marroquinería, paraguas y
+similares", que no es lo que venden; la que corresponde es "venta al por menor por internet"
+(solo Matías la tiene). Se arregla en el mismo trámite.
+
+### El facturador automático de ML
+
+Datos de las constancias de ARCA (03/08/2026), los que pide MercadoLibre al configurarlo:
+
+| cuenta | inicio de actividades | punto de venta ML | estado |
+|---|---|---|---|
+| Adriana | 01/05/2021 | 2 | **listo** · certificado vence 03/08/2028 |
+| Luciana | 01/09/2022 | — | pendiente |
+| Ayelen | 01/05/2024 | — | pendiente |
+| Matías | 01/12/2020 | — | pendiente |
+
+El trámite son 5 pasos en ML **más uno que ML no avisa**: después de subir el certificado da error
+y hay que ir a ARCA → *Administrador de Relaciones de Clave Fiscal* → **Nueva Relación** →
+servicio `ARCA / WebServices / Facturación Electrónica` → representante = el computador fiscal del
+certificado. Sin eso el facturador no emite. Ojo: *Administración de Certificados Digitales* y
+*Administrador de Relaciones* son servicios distintos con nombre parecido.
+
+El punto de venta tiene que ser del tipo **"Factura Electronica - Monotributo - Web Services"**, no
+"Factura en Línea" (esa es la de facturar a mano) ni la de contingencias (CAEA).
+
+El facturador arranca **desde la próxima venta**: las facturas ya pedidas de ventas viejas hay que
+hacerlas a mano igual.
 
 Casi todo se vende por **Full**. El retiro de la familia es **$1.800.000/mes** más un **2% de
 interés** sobre el capital que los socios tienen puesto adentro (~US$ 10.000). Con el ritmo de
