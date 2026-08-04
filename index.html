@@ -234,6 +234,7 @@ input.qty:focus{border-color:var(--accent2)}
 .dd-wrap{position:relative;display:inline-flex}
 .dd-menu{position:absolute;top:calc(100% + 6px);left:0;z-index:60;min-width:172px;padding:6px;background:var(--surface);border:1px solid var(--border2);border-radius:8px;box-shadow:0 12px 30px rgba(0,0,0,.45);display:none}
 .dd-menu.open{display:block}
+.dd-menu.up{top:auto;bottom:calc(100% + 6px)}
 .dd-grp{font-size:.55rem;text-transform:uppercase;letter-spacing:.09em;color:var(--muted);padding:8px 10px 4px}
 .dd-opt{display:block;width:100%;text-align:left;padding:7px 10px;border:0;border-radius:6px;background:none;color:var(--text);font-family:'DM Mono',monospace;font-size:.68rem;cursor:pointer}
 .dd-opt:hover{background:var(--surface2)}
@@ -1209,16 +1210,25 @@ footer{margin-top:32px;padding-top:14px;border-top:1px solid var(--border);font-
   </div>
 
   <div class="met-date-bar" style="flex-wrap:wrap;gap:8px;align-items:center;margin-top:22px">
-    <div class="view-toggle" style="margin:0">
-      <button id="vpperiod-7d"   class="vbtn"        onclick="setVpPeriod('7d',this)">7 días</button>
-      <button id="vpperiod-15d"  class="vbtn"        onclick="setVpPeriod('15d',this)">15 días</button>
-      <button id="vpperiod-30d"  class="vbtn"        onclick="setVpPeriod('30d',this)">30 días</button>
-      <button id="vpperiod-60d"  class="vbtn"        onclick="setVpPeriod('60d',this)">60 días</button>
-      <button id="vpperiod-dia"  class="vbtn active" onclick="setVpPeriod('dia',this)">Día</button>
-      <button id="vpperiod-mes"  class="vbtn"        onclick="setVpPeriod('mes',this)">Mes</button>
-      <button id="vpperiod-anio" class="vbtn"        onclick="setVpPeriod('anio',this)">Año</button>
-      <button id="vpperiod-365d" class="vbtn"        onclick="setVpPeriod('365d',this)">365 días</button>
-      <button id="vpperiod-rango" class="vbtn"        onclick="setVpPeriod('rango',this)">📅 Período</button>
+    <!-- Mismo criterio que en Métricas ML: un solo botón con el período elegido y las opciones
+         adentro, agrupadas. Los ids "vpperiod-*" no cambian: setVpPeriod los busca por ahí. -->
+    <div class="dd-wrap" id="vp-dd-wrap">
+      <button class="vbtn active" id="vp-dd-btn" onclick="toggleVpPeriodMenu(event)">Día ▾</button>
+      <div class="dd-menu" id="vp-dd-menu">
+        <div class="dd-grp">Últimos días</div>
+        <button id="vpperiod-7d"   class="dd-opt" onclick="setVpPeriod('7d',this)">7 días</button>
+        <button id="vpperiod-15d"  class="dd-opt" onclick="setVpPeriod('15d',this)">15 días</button>
+        <button id="vpperiod-30d"  class="dd-opt" onclick="setVpPeriod('30d',this)">30 días</button>
+        <button id="vpperiod-60d"  class="dd-opt" onclick="setVpPeriod('60d',this)">60 días</button>
+        <button id="vpperiod-90d"  class="dd-opt" onclick="setVpPeriod('90d',this)">90 días</button>
+        <button id="vpperiod-365d" class="dd-opt" onclick="setVpPeriod('365d',this)">365 días</button>
+        <div class="dd-grp">Fecha puntual</div>
+        <button id="vpperiod-dia"  class="dd-opt active" onclick="setVpPeriod('dia',this)">Día</button>
+        <button id="vpperiod-mes"  class="dd-opt" onclick="setVpPeriod('mes',this)">Mes</button>
+        <button id="vpperiod-anio" class="dd-opt" onclick="setVpPeriod('anio',this)">Año</button>
+        <div class="dd-grp">A medida</div>
+        <button id="vpperiod-rango" class="dd-opt" onclick="setVpPeriod('rango',this)">📅 Período</button>
+      </div>
     </div>
     <button id="vp-nav-prev" class="vbtn" onclick="vpNavPrev()" style="display:none;padding:3px 13px;font-size:1.1rem;line-height:1">‹</button>
     <input type="date"   id="vp-date"  class="cal-select" style="display:none" onchange="renderVentaProd()">
@@ -3949,7 +3959,21 @@ function buildCompHTML(dataA,dataB,labelB,isYearly=false){
 
 /* ═══════════ VENTAS x PRODUCTO ═══════════ */
 let vpDate='';
-let vpPeriod='dia'; // '7d' | '15d' | '30d' | '60d' | 'dia' | 'mes' | 'anio' | '365d' | 'rango'
+let vpPeriod='dia'; // '7d' | '15d' | '30d' | '60d' | '90d' | 'dia' | 'mes' | 'anio' | '365d' | 'rango'
+// Lo que dice el botón del período en Ventas por producto.
+const VP_PERIOD_TXT={'7d':'7 días','15d':'15 días','30d':'30 días','60d':'60 días','90d':'90 días','365d':'365 días',dia:'Día',mes:'Mes',anio:'Año',rango:'📅 Período'};
+// Si abriendo para abajo el menú se sale de la pantalla (pasa en las barras que están cerca del
+// pie de la página), se abre para arriba. Lo usan los dos menús de período.
+function _ddPlace(menu){
+  menu.classList.remove('up');
+  const r=menu.getBoundingClientRect();
+  const arriba=menu.parentElement.getBoundingClientRect().top;
+  if(r.bottom>window.innerHeight-8&&r.height+14<arriba)menu.classList.add('up');
+}
+function toggleVpPeriodMenu(e){if(e)e.stopPropagation();const m=document.getElementById('vp-dd-menu');if(!m)return;m.classList.toggle('open');if(m.classList.contains('open'))_ddPlace(m);}
+function closeVpPeriodMenu(){document.getElementById('vp-dd-menu')?.classList.remove('open');}
+document.addEventListener('click',(e)=>{const w=document.getElementById('vp-dd-wrap');if(w&&!w.contains(e.target))closeVpPeriodMenu();});
+document.addEventListener('keydown',(e)=>{if(e.key==='Escape')closeVpPeriodMenu();});
 const VP_ACCTS=['Adriana','Luciana','Ayelen','Matias'];
 let vpFilterCuenta=null;
 function setVpCuenta(cuenta,btn){
@@ -3962,6 +3986,8 @@ function setVpPeriod(period,btn){
   vpPeriod=period;
   document.querySelectorAll('[id^="vpperiod-"]').forEach(b=>b.classList.remove('active'));
   if(btn)btn.classList.add('active');
+  const vtrg=document.getElementById('vp-dd-btn');if(vtrg)vtrg.textContent=(VP_PERIOD_TXT[period]||period)+' ▾';
+  closeVpPeriodMenu();
   const hasNav=period==='dia'||period==='mes'||period==='anio';
   document.getElementById('vp-nav-prev').style.display=hasNav?'':'none';
   document.getElementById('vp-nav-next').style.display=hasNav?'':'none';
@@ -3988,7 +4014,7 @@ function vpGetYM(){
   if(vpPeriod==='anio'){const y=document.getElementById('vp-year')?.value||new Date().getFullYear();return{vy:String(y),vm:null};}
   // 30d y 365d usan el año/mes de hoy como referencia
   const now=new Date();const ny=String(now.getFullYear()),nm=String(now.getMonth()+1).padStart(2,'0');
-  if(vpPeriod==='7d'||vpPeriod==='15d'||vpPeriod==='30d'||vpPeriod==='60d'||vpPeriod==='365d'||vpPeriod==='rango')return{vy:ny,vm:nm};
+  if(vpPeriod==='7d'||vpPeriod==='15d'||vpPeriod==='30d'||vpPeriod==='60d'||vpPeriod==='90d'||vpPeriod==='365d'||vpPeriod==='rango')return{vy:ny,vm:nm};
   const[y,m]=vpKey().split('_');return{vy:y,vm:m};
 }
 // Umbrales del margen. OJO: el margen ahora se mide con TODO adentro (mercadería, envío, embalaje,
@@ -4141,8 +4167,8 @@ function vpScopeKeys(){
     return{keys:allKeys.filter(k=>k>=r.fk&&k<=r.tk),label:r.fk.replace(/_/g,'-')+' → '+r.tk.replace(/_/g,'-'),
            prevKeys:allKeys.filter(k=>k>=dateToKey(pFrom)&&k<=dateToKey(pTo)),prevLabel:r.days+' días previos'};
   }
-  if(vpPeriod==='7d'||vpPeriod==='15d'||vpPeriod==='30d'||vpPeriod==='60d'||vpPeriod==='365d'){
-    const days=vpPeriod==='7d'?7:vpPeriod==='15d'?15:vpPeriod==='30d'?30:vpPeriod==='60d'?60:365;
+  if(vpPeriod==='7d'||vpPeriod==='15d'||vpPeriod==='30d'||vpPeriod==='60d'||vpPeriod==='90d'||vpPeriod==='365d'){
+    const days=vpPeriod==='7d'?7:vpPeriod==='15d'?15:vpPeriod==='30d'?30:vpPeriod==='60d'?60:vpPeriod==='90d'?90:365;
     const now=new Date(),from=new Date(now);from.setDate(from.getDate()-(days-1));
     const fk=dateToKey(from),tk=dateToKey(now);
     const prevTo=new Date(now);prevTo.setDate(prevTo.getDate()-days);
@@ -4576,7 +4602,7 @@ function renderVentaProd(){
   let listScopeKeys;
   if(vpPeriod==='dia') listScopeKeys=[vpKey()];
   else if(vpPeriod==='anio') listScopeKeys=allKeys.filter(k=>k.startsWith(vy+'_'));
-  else if(vpPeriod==='7d'||vpPeriod==='15d'||vpPeriod==='30d'||vpPeriod==='60d'||vpPeriod==='365d'||vpPeriod==='rango'){listScopeKeys=vpScopeKeys().keys;}
+  else if(vpPeriod==='7d'||vpPeriod==='15d'||vpPeriod==='30d'||vpPeriod==='60d'||vpPeriod==='90d'||vpPeriod==='365d'||vpPeriod==='rango'){listScopeKeys=vpScopeKeys().keys;}
   else listScopeKeys=allKeys.filter(k=>k.startsWith(vy+'_'+(vm||''))); // mes
   const mesEntries=[];listScopeKeys.forEach(k=>{const o=state.ventaprod[k];if(o)Object.values(o).forEach(v=>mesEntries.push({...v,_dateKey:k}));});
   const list=document.getElementById('vp-day-list');
@@ -4930,6 +4956,7 @@ function _vpRankDays(){
   if(vpPeriod==='15d')return Math.min(15,elapsed);
   if(vpPeriod==='30d')return Math.min(30,elapsed);
   if(vpPeriod==='60d')return Math.min(60,elapsed);
+  if(vpPeriod==='90d')return Math.min(90,elapsed);
   if(vpPeriod==='365d')return Math.min(365,elapsed);
   if(vpPeriod==='rango'){const r=_readRange('vp-range-from','vp-range-to');return r?Math.max(1,r.days):1;}
   const {vy,vm}=vpGetYM();
@@ -5814,7 +5841,7 @@ function setMetChartMode(m,btn){
 const MET_SCOPE_BTNS=['ms-7d','ms-15d','ms-30d','ms-60d','ms-90d','ms-dia','ms-mes','ms-ano','ms-365d','ms-rango'];
 // Lo que dice el botón de la barra según el período elegido.
 const MET_SCOPE_TXT={'7d':'7 días','15d':'15 días','30d':'30 días','60d':'60 días','90d':'90 días','365d':'365 días',dia:'Día',mes:'Mes',ano:'Año',rango:'📅 Período'};
-function toggleMetScopeMenu(e){if(e)e.stopPropagation();document.getElementById('ms-dd-menu')?.classList.toggle('open');}
+function toggleMetScopeMenu(e){if(e)e.stopPropagation();const m=document.getElementById('ms-dd-menu');if(!m)return;m.classList.toggle('open');if(m.classList.contains('open'))_ddPlace(m);}
 function closeMetScopeMenu(){document.getElementById('ms-dd-menu')?.classList.remove('open');}
 // Se cierra al tocar en cualquier otro lado o con Escape.
 document.addEventListener('click',(e)=>{const w=document.getElementById('ms-dd-wrap');if(w&&!w.contains(e.target))closeMetScopeMenu();});
@@ -7325,7 +7352,7 @@ document.addEventListener('click',e=>{if(fnavOpen&&!e.target.closest('#fnav-btn'
         <span style="font-size:.75rem;color:var(--muted)">Si no ves los últimos cambios, forzá la actualización</span>
         <button class="btn" style="background:rgba(56,189,248,.12);color:var(--blue);border:1px solid rgba(56,189,248,.3)" onclick="actualizarApp()">🔄 Buscar actualizaciones</button>
       </div>
-      <div style="font-size:.66rem;color:var(--muted);margin-top:12px">CYC · Versión 8.3</div>
+      <div style="font-size:.66rem;color:var(--muted);margin-top:12px">CYC · Versión 8.4</div>
     </div>
 
     <div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:18px 20px;margin-bottom:14px">
