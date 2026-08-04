@@ -4014,6 +4014,104 @@ async function main() {
       console.log('\n(esto solo LEE: no toqué nada)');
       return;
     }
+    // BILLING_PROBE=netoreal[:<días>][:go] → PONER EN CADA VENTA EL NETO REAL DE MERCADO PAGO.
+    //
+    // Cuando entra una venta, ML todavía no descontó lo suyo: el pago figura aprobado pero sin la
+    // comisión. En ese momento se guarda un neto ESTIMADO (precio − comisión de la orden × unidades)
+    // y se corrige solo cuando el pago se liquida... pero la sincronización mira 2 días para atrás,
+    // así que una venta que se liquida más tarde queda con el estimado PARA SIEMPRE.
+    //
+    // Y el estimado es malo en las ventas de varias unidades: descuenta el cargo fijo de ML una vez
+    // por unidad. En una venta de 56 unidades eso son $68.880 de más, y el panel muestra esa
+    // ganancia de menos. Con 1 unidad no se nota; por eso tardó en aparecer.
+    //
+    // Esto recorre las ventas, le pregunta a Mercado Pago cuánto entró de verdad y compara.
+    // Sin ":go" solo lista. Con ":go" reescribe el neto de las que están mal.
+    if (String(process.env.BILLING_PROBE || '').startsWith('netoreal')) {
+      const _n = String(process.env.BILLING_PROBE).split(':');
+      const DIAS = parseFloat(_n[1]) || 7;
+      const GO = _n.includes('go');
+      const vp = (await db.get('cyc/ventaprod')) || {};
+      const desde = new Date(Date.now() - DIAS * 864e5);
+      const dkDesde = dayKeyFromISO(desde.toISOString());
+      // Se agrupa por ORDEN: el neto que informa Mercado Pago es de la orden entera y después se
+      // reparte entre los renglones según cuánto pesa cada uno.
+      const porOrden = {};
+      for (const [dk, ents] of Object.entries(vp)) {
+        if (dk < dkDesde) continue;
+        for (const [id, v] of Object.entries(ents || {})) {
+          if (!v || v.cancelada) continue;
+          const m = /^v(\d+)_/.exec(id);
+          if (!m) continue;
+          const oid = m[1];
+          (porOrden[oid] = porOrden[oid] || { cuenta: v.cuenta, filas: [] }).filas.push({ dk, id, v });
+        }
+      }
+      const oids = Object.keys(porOrden);
+      console.log(`=== NETO REAL vs NETO GUARDADO · ${oids.length} ventas de los últimos ${DIAS} días ${GO ? '(ARREGLANDO)' : '(solo lista)'} ===\n`);
+      const toks = {};
+      for (const label of labels) {
+        const acc = accounts[label];
+        if (!acc?.refresh_token) continue;
+        try {
+          const t = await mlRefresh(ML_CLIENT_ID, ML_CLIENT_SECRET, acc.refresh_token);
+          await db.patch('mlapi/tokens/' + label, { refresh_token: t.refresh_token, updated_ts: Date.now() });
+          toks[label] = t.access_token;
+        } catch { /* sin token, esa cuenta se saltea */ }
+      }
+      let iguales = 0, distintas = 0, sinLiquidar = 0, noPude = 0, arregladas = 0, difTotal = 0;
+      const malas = [];
+      for (const oid of oids) {
+        const g = porOrden[oid];
+        const tok = toks[g.cuenta];
+        if (!tok) { noPude++; continue; }
+        let ord; try { ord = await mlGet('/orders/' + oid, tok); } catch { noPude++; continue; }
+        const feeOut = {};
+        const netoOrden = await orderNet(ord, tok, feeOut);
+        if (netoOrden == null) { sinLiquidar++; continue; }
+        const bruto = (ord.order_items || []).reduce((a, oi) => a + (oi.unit_price || 0) * (oi.quantity || 0), 0);
+        if (!(bruto > 0)) { noPude++; continue; }
+        for (const f of g.filas) {
+          const netoOk = Math.round(netoOrden * ((f.v.total || 0) / bruto));
+          const guardado = Math.round(f.v.neto || 0);
+          const dif = netoOk - guardado;
+          if (Math.abs(dif) <= 2) { iguales++; continue; }
+          distintas++; difTotal += dif;
+          malas.push({ ...f, netoOk, guardado, dif, mlfee: (feeOut.mlfee && bruto > 0) ? Math.round(feeOut.mlfee * ((f.v.total || 0) / bruto)) : null });
+        }
+      }
+      malas.sort((a, b) => Math.abs(b.dif) - Math.abs(a.dif));
+      if (malas.length) {
+        console.log(`  ${'fecha'.padEnd(10)} ${'u.'.padStart(3)} ${'total'.padStart(10)} ${'guardado'.padStart(10)} ${'real ML'.padStart(10)} ${'diferencia'.padStart(11)}  producto`);
+        for (const m of malas) {
+          console.log(`  ${m.dk.replace(/_/g, '-').padEnd(10)} ${String(m.v.qty || 1).padStart(3)} ${money(Math.round(m.v.total || 0)).padStart(10)} ${money(m.guardado).padStart(10)} ${money(m.netoOk).padStart(10)} ${((m.dif > 0 ? '+' : '') + money(m.dif)).padStart(11)}  ${String(m.v.prod || '').slice(0, 34)}`);
+        }
+      }
+      console.log(`\n  ✅ coinciden con ML          : ${iguales}`);
+      console.log(`  🔴 tienen el neto mal        : ${distintas}`);
+      console.log(`  ⏳ ML todavía no liquidó     : ${sinLiquidar}  (esas se arreglan solas)`);
+      console.log(`  ❓ no las pude leer          : ${noPude}`);
+      if (distintas) console.log(`\n  En total el panel muestra ${difTotal > 0 ? 'MENOS' : 'MÁS'} ganancia de la real por ${money(Math.abs(Math.round(difTotal)))}.`);
+      if (!GO) { console.log(`\n(solo lista — para arreglarlas: netoreal:${DIAS}:go)`); return; }
+      for (const m of malas) {
+        const patch = { neto: m.netoOk };
+        if (m.mlfee != null) patch.mlfee = m.mlfee;
+        if (!DRY) await db.patch(`cyc/ventaprod/${m.dk}/${m.id}`, patch);
+        arregladas++;
+      }
+      console.log(`\n${DRY ? '(DRY) ' : ''}Arregladas ${arregladas}.`);
+      // Verificación: se vuelve a leer de la base, del mismo lugar del que lee la web.
+      if (!DRY && arregladas) {
+        let ok2 = 0; const fallaron = [];
+        for (const m of malas) {
+          const rele = await db.get(`cyc/ventaprod/${m.dk}/${m.id}/neto`);
+          if (Math.round(Number(rele)) === m.netoOk) ok2++; else fallaron.push(m.v.prod || m.id);
+        }
+        console.log(`Releído de la base: ${ok2} de ${arregladas} quedaron bien.`);
+        if (fallaron.length) console.log(`  NO quedaron: ${fallaron.slice(0, 10).join(' · ')}`);
+      }
+      return;
+    }
     if (String(process.env.BILLING_PROBE || '').startsWith('netoref')) {
       const BORRAR = String(process.env.BILLING_PROBE).split(':')[1] === 'borrar';
       const vp = (await db.get('cyc/ventaprod')) || {}; setDevLive(vp);
