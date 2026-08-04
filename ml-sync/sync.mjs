@@ -1848,6 +1848,33 @@ async function main() {
       console.log(`\n${DRY ? '(DRY) ' : ''}Guardado. La web ya lo toma: cambia el costo de cada venta y el margen de cada publicación.`);
       return;
     }
+    // BILLING_PROBE=robot[:off|:on] → PRENDER O APAGAR TODO LO AUTOMÁTICO QUE TOCA PRECIOS.
+    //
+    // Sin argumento solo dice cómo está. Apaga/prende tres cosas de una:
+    //   · el robot que ajusta las publicaciones al piso,
+    //   · la nivelación de grupos (poner todos los Paulvic al mismo precio),
+    //   · la reactivación automática de pausadas que tienen stock en Full.
+    // NO toca los comandos a mano (volver, bajopiso:go): esos siguen funcionando igual.
+    if (String(process.env.BILLING_PROBE || '').startsWith('robot')) {
+      const _r = String(process.env.BILLING_PROBE).split(':')[1];
+      const cfgR = (await db.get('cyc/mlconfig')) || {};
+      const estaba = cfgR.autoPrice !== false;
+      if (_r !== 'off' && _r !== 'on') {
+        console.log(`El robot de precios está ${estaba ? 'PRENDIDO' : 'APAGADO'}.`);
+        console.log(`  piso ${cfgR.minPct ?? 30}% · meta ${cfgR.targetPct ?? 30}%`);
+        console.log('\n(para cambiarlo: robot:off  /  robot:on)');
+        return;
+      }
+      const quiero = _r === 'on';
+      if (!DRY) await db.set('cyc/mlconfig/autoPrice', quiero);
+      // Se relee de la base: que el comando diga "listo" no prueba nada.
+      const cfg2 = (await db.get('cyc/mlconfig')) || {};
+      const quedo = cfg2.autoPrice !== false;
+      console.log(`${DRY ? '(DRY) ' : ''}Robot de precios: ${estaba ? 'PRENDIDO' : 'APAGADO'} → ${quiero ? 'PRENDIDO' : 'APAGADO'}`);
+      console.log(`Releído de la base: quedó ${quedo ? 'PRENDIDO' : 'APAGADO'}. ${quedo === quiero ? '✓' : '✗ NO quedó como pedí'}`);
+      if (!quedo) console.log('Desde ahora nadie toca precios en ML salvo que vos lo pidas a mano.');
+      return;
+    }
     // BILLING_PROBE=meta:<piso>[:<meta>] → deja guardado el piso y la meta del robot de precios.
     //
     // Son DOS números distintos y conviene que lo sean:
@@ -9062,7 +9089,12 @@ async function main() {
   // Sin esto, bajar el intervalo a 2 minutos haría que el robot evalúe 720 veces por día en vez
   // de 14, y una publicación que queda justo en el piso empezaría a subir de a poco sin parar.
   const SKIP_PRICES = process.env.SKIP_PRICES === '1';
-  const autoPrice = cfg.autoPrice !== false && !SKIP_PRICES; // por defecto ON (lo pediste)
+  // INTERRUPTOR GENERAL. mlconfig.autoPrice=false apaga TODO lo que escribe precios en ML sin que
+  // nadie lo pida: el robot que ajusta al piso, la nivelación de grupos y la reactivación de
+  // pausadas. Se apagó el 04/08/2026: los precios pasan a manejarse a mano, uno por uno.
+  // Los comandos a mano (volver, bajopiso:go, etc.) siguen andando: esto solo frena lo automático.
+  const precioAuto = cfg.autoPrice !== false;
+  const autoPrice = precioAuto && !SKIP_PRICES;
   const autoPromo = cfg.autoPromo !== false; // sacar descuentos de ML — ON por defecto
   const autoStock = cfg.autoStock !== false; // cargar stock de ML al panel — ON por defecto
   // OJO: 30/32, no 40/42. Los valores viejos eran de cuando el margen se medía SIN IIBB ni
@@ -9715,7 +9747,7 @@ async function main() {
   // de que el robot pudo haber subido alguno: así se empareja igual quién lo haya movido.
   // En backfills no corre, para no tocar precios mientras se reprocesa el historial.
   // Tampoco se nivela en las vueltas rápidas (SKIP_PRICES): nivelar también escribe precios en ML.
-  if (parseInt(process.env.BACKFILL_DAYS || '0', 10) === 0 && !onlyAcc && process.env.SKIP_PRICES !== '1') {
+  if (parseInt(process.env.BACKFILL_DAYS || '0', 10) === 0 && !onlyAcc && process.env.SKIP_PRICES !== '1' && precioAuto) {
     try {
       const pName = {}; for (const p of products) pName[p.id] = p.name || '';
       const sellerIds = {}; for (const l of labels) if (accounts[l]?.seller_id) sellerIds[l] = accounts[l].seller_id;
@@ -9732,6 +9764,7 @@ async function main() {
     } catch (e) { console.log('No pude activar las pausadas con Full: ' + e.message); }
   }
 
+  if (!precioAuto && !SKIP_PRICES) console.log('\n⏸️  Robot de precios APAGADO (mlconfig.autoPrice=false): no ajusté, no nivelé y no activé nada. Para prenderlo: robot:on');
   const pend = Object.values(map).filter((x) => x && !x.prodId).length;
   console.log(`\n✓ Listo. Renglones cargados: ${cargadas}. Publicaciones sin vincular: ${pend}.`);
   Object.values(map).filter((x) => x && !x.prodId).slice(0, 40).forEach((r) =>
