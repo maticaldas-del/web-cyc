@@ -1,61 +1,48 @@
-🌅 CHEQUEO DE LA MAÑANA · martes, 4 de agosto
+🌅 CHEQUEO DE LA MAÑANA · miércoles, 5 de agosto
 
 🔴 Hay cosas para mirar hoy.
 
-🔻 Ayer: $556.318 · promedio 7 días $719.232 · -23%
+📈 Ayer: $1.145.356 · promedio 7 días $621.050 · +84%
 
-📉 Sin stock y vendían: 92 publicaciones · se pierden $487.352/día
-   · Adriana · Perfume Para Hombre Ferrari Scuderia Ferra — $26.000/día
+📉 Sin stock y vendían: 95 publicaciones · se pierden $490.142/día
    · Matias · Pendrive Sandisk Cruzer Blade 8gb 2.0 Negr — $25.688/día
    · Matias · Memoria Microsd Sandisk Ultra A1 64gb C10  — $24.840/día
+   · Adriana · Perfume Para Hombre Ferrari Scuderia Ferra — $24.267/día
    · Matias · Disco Sólido Externo Sandisk Sdssde30-1t00 — $23.000/día
    · Matias · Playstation Portal Remote Player Reproduct — $19.333/día
    · Matias · Joystick Xbox Microsoft Qat-00001 Inalámbr — $17.000/día
-   … y 86 más
+   … y 89 más
 
-❓ Preguntas sin responder: 92
+❓ Preguntas sin responder: 94
    · Adriana: 20 · la más vieja hace 199 días
-   · Ayelen: 31 · la más vieja hace 219 días
+   · Ayelen: 33 · la más vieja hace 219 días
    · Luciana: 18 · la más vieja hace 181 días
    · Matias: 23 · la más vieja hace 205 días
 
-⚠️ Reclamos abiertos: 3
-   · Matias: PDD9949 · 0 días · lo maneja ML, no hay nada para hacer
+⚠️ Reclamos abiertos: 6
+   · Ayelen: PDD9955 · 0 días
+   · Luciana: PDD9944 · 0 días · lo maneja ML, no hay nada para hacer
+   · Luciana: PDD9939 · 0 días
+   · Matias: PDD9949 · 1 días · lo maneja ML, no hay nada para hacer
    · Matias: PDD9944 · 5 días · lo maneja ML, no hay nada para hacer
    · Matias: PDD9949 · 6 días · lo maneja ML, no hay nada para hacer
-💬 Mensajes de posventa sin leer: 4
+💬 Mensajes de posventa sin leer: 3
 
-⏸️ Pausadas: 168 sin stock · 45 a mano · 0 por ML
+⏸️ Pausadas: 172 sin stock · 45 a mano · 0 por ML
 
 ✅ Ninguna activa fuera de Full
 
 🏭 Full
-   🔴 unidades con problema: 3
-      · Adriana · Pendrive Sandisk Cruzer Blade 64gb 2.0 Neg: 1 u. (lost 1)
+   🔴 unidades con problema: 69
+      · Adriana · Perfume Femenino Paulvic Flores Rojas Eau : 8 u. (internalProcess 8)
+      · Adriana · Perfume Pret A Porter Cities Milan Edp 100: 3 u. (internalProcess 3)
+      · Adriana · De La Patagonia Eau De Parfum Asher Perfum: 15 u. (internalProcess 15)
+      · Adriana · Perfume Femenino Paulvic L'extase Eau De P: 7 u. (internalProcess 7)
+      · Adriana · Perfume Femenino Paulvic Fuego Eau De Parf: 4 u. (internalProcess 4)
+      · Adriana · Aromatizante Ambiental Colgante Aer Power : 1 u. (internalProcess 1)
+      · Adriana · Pret A Porter Body Splash X75ml: 6 u. (internalProcess 6)
+      · Adriana · Aromatizante Ambiental Colgante Para Auto : 2 u. (internalProcess 2)
       · Ayelen · Espejo Redondo Giratorio C/ Soporte Metal : 2 u. (notSupported 2)
    📥 cajas que llegaron en 7 días: 0
 
-🏷️ PROMOCIONES DE ML: 25 · 25 agendadas
-   ⚠️ 25 quedarían abajo del 30%
-   arrancan el 2026-08-10 y van hasta el 2026-08-23
-   🔴 Ayelen · Balanza P/valija Equipaje Digital 
-      $7.960 → $3.980 (-50%) · quedaría en -32% (estimado)
-   🔴 Ayelen · Linterna Minera Vincha Con Usb Rec
-      $6.400 → $3.200 (-50%) · quedaría en -25% (estimado)
-   🔴 Matias · Adaptador De Enchufe Universal Via
-      $5.360 → $2.680 (-50%) · quedaría en -28% (estimado)
-   🔴 Adriana · Perfume Paulvic Teikirisi 50ml
-      $14.360 → $7.898 (-45%) · quedaría en -25% (estimado)
-   🔴 Adriana · Perfume Paulvic Miss Volumen De La
-      $14.360 → $7.898 (-45%) · quedaría en -25% (estimado)
-   🔴 Adriana · Perfume Pasión Paulvic Para Mujer 
-      $14.360 → $7.898 (-45%) · quedaría en -25% (estimado)
-   🔴 Adriana · Perfume Paulvic 1.4 Sexy For Men E
-      $14.360 → $7.898 (-45%) · quedaría en -25% (estimado)
-   🔴 Adriana · Perfume Paulvic H For Men Eau De P
-      $14.360 → $7.898 (-45%) · quedaría en -25% (estimado)
-   🔴 Adriana · Perfume Paulvic Eau De Parfum Rosé
-      $14.360 → $7.898 (-45%) · quedaría en -25% (estimado)
-   🔴 Adriana · Paulvic 1.4 W Eau De Parfum Floral
-      $14.360 → $7.898 (-45%) · quedaría en -25% (estimado)
-   … y 15 más
+✅ Sin promociones de ML agendadas
