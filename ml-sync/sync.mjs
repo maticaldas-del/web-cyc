@@ -3900,11 +3900,18 @@ async function main() {
           }
         }
       }
-      const viejos = [], sinCalc = [], manuales = [];
+      const viejos = [], sinCalc = [], manuales = [], sinPub = [];
       let ok = 0;
       for (const p of products) {
         const prML = precioML[p.id];
-        if (prML == null) continue;  // sin publicación activa: la pantalla no promete nada
+        if (prML == null) {
+          // SIN PUBLICACIÓN ACTIVA. La pantalla igual muestra un margen: el del promedio de las
+          // ventas VIEJAS, a los precios de entonces. Por eso puede aparecer en rojo un producto
+          // cuyo precio ya se subió — no hay forma de medirlo hoy porque no está publicado.
+          const tuvo = (p.netoRef != null && p.netoRef !== '') || (p.netoCalc != null && p.netoCalc !== '');
+          sinPub.push({ p, tuvo });
+          continue;
+        }
         const man = (p.netoRef != null && p.netoRef !== '') ? Number(p.netoRef) : null;
         const calc = (p.netoCalc != null && p.netoCalc !== '') ? Number(p.netoCalc) : null;
         const prCalc = Number(p.netoCalcPrecio) || 0;
@@ -3918,7 +3925,8 @@ async function main() {
       console.log(`  ✅ al día (el neto está calculado al precio que hoy tiene ML) : ${ok}`);
       console.log(`  🔴 VIEJOS (el precio cambió y el neto quedó del precio anterior): ${viejos.length}`);
       console.log(`  ⚪ sin neto calculado (la pantalla muestra "—")                 : ${sinCalc.length}`);
-      console.log(`  ✎ con neto escrito a mano (ese le gana a todo)                 : ${manuales.length}\n`);
+      console.log(`  ✎ con neto escrito a mano (ese le gana a todo)                 : ${manuales.length}`);
+      console.log(`  ⚫ SIN PUBLICACIÓN ACTIVA (muestran el margen de ventas viejas) : ${sinPub.length}\n`);
       if (viejos.length) {
         console.log(`── LOS QUE MUESTRAN UN MARGEN VIEJO ──`);
         console.log(`  ${'producto'.padEnd(36)} ${'precio del neto'.padStart(15)} ${'precio hoy en ML'.padStart(16)} ${'dif'.padStart(7)}`);
@@ -3936,6 +3944,14 @@ async function main() {
         console.log(`\n── SIN NETO (muestran "—" en la pantalla) ──`);
         for (const m of sinCalc.slice(0, 20)) console.log(`  ${String(m.p.name || m.p.id).slice(0, 40)} · hoy en ML ${money(Math.round(m.prML))}`);
         if (sinCalc.length > 20) console.log(`  … y ${sinCalc.length - 20} más`);
+      }
+      if (sinPub.length) {
+        console.log(`\n── SIN PUBLICACIÓN ACTIVA · ${sinPub.length} ──`);
+        console.log(`  Estos no se pueden medir contra ML: no están publicados (casi siempre por falta`);
+        console.log(`  de stock). El margen que muestra la pantalla sale del promedio de sus ventas`);
+        console.log(`  viejas, a los precios de entonces. No quiere decir que el precio esté mal hoy.`);
+        for (const m of sinPub.slice(0, 40)) console.log(`  · ${String(m.p.name || m.p.id).slice(0, 44)}`);
+        if (sinPub.length > 40) console.log(`  … y ${sinPub.length - 40} más`);
       }
       console.log(`\n(esto solo LEE: no toqué nada)`);
       return;
