@@ -4261,7 +4261,11 @@ async function main() {
           try { arr = await mlGet('/items?ids=' + ids.slice(k, k + 20).join(',') + '&attributes=id,status,price,variations,listing_type_id,category_id,site_id', t.access_token); } catch { continue; }
           for (const row of (arr || [])) {
             const b = row.body || {}; const mla = b.id; if (!mla || !links[mla]) continue;
-            if (b.status !== 'active') continue;
+            // También las PAUSADAS. Una publicación pausada por falta de stock igual tiene precio,
+            // así que ML puede decir cuánto recibirías si se vendiera. Sin esto, los productos sin
+            // stock quedaban mostrando el margen de sus ventas viejas, a los precios de entonces.
+            if (b.status !== 'active' && b.status !== 'paused') continue;
+            const activa = b.status === 'active';
             const p = pIdx[links[mla].prodId]; if (!p) continue;
             const vars = Array.isArray(b.variations) ? b.variations : [];
             const precio = vars.length ? (vars[0].price || 0) : (b.price || 0);
@@ -4280,7 +4284,10 @@ async function main() {
             const neto = Math.round(precio - com - envio);
             if (neto <= 0) continue;
             const prev = porProd[p.id];
-            if (!prev || neto < prev.neto) porProd[p.id] = { neto, precio: Math.round(precio), mla, cuenta: label, sinEnvio: !ventas.length };
+            // Las ACTIVAS mandan: una pausada solo se usa si el producto no tiene ninguna activa.
+            // Entre las del mismo tipo gana la peor, que es el criterio conservador de siempre.
+            const mejor = !prev || (activa && !prev.activa) || (activa === prev.activa && neto < prev.neto);
+            if (mejor) porProd[p.id] = { neto, precio: Math.round(precio), mla, cuenta: label, sinEnvio: !ventas.length, activa };
           }
         }
       }
@@ -4292,10 +4299,11 @@ async function main() {
         const p = pIdx[pid];
         const costo = costoPesos(p, 1, tc).costo;
         const mg = costo > 0 ? ((d.neto - costo) / costo * 100).toFixed(0) + '%' : '—';
-        console.log(`  ${money(d.precio).padStart(10)} → neto ${money(d.neto).padStart(10)} · margen s/costo ${String(mg).padStart(5)} · ${d.cuenta.padEnd(8)} · ${(p.name || pid).slice(0, 40)}${d.sinEnvio ? ' (sin ventas: envío no deducido)' : ''}`);
+        console.log(`  ${money(d.precio).padStart(10)} → neto ${money(d.neto).padStart(10)} · margen s/costo ${String(mg).padStart(5)} · ${d.cuenta.padEnd(8)} · ${(p.name || pid).slice(0, 40)}${d.activa ? '' : ' [PAUSADA]'}${d.sinEnvio ? ' (sin ventas: envío no deducido)' : ''}`);
         if (!prueba && !DRY) {
           await db.set('cyc/products/' + pid + '/netoCalc', d.neto);
           await db.set('cyc/products/' + pid + '/netoCalcPrecio', d.precio);
+          await db.set('cyc/products/' + pid + '/netoCalcPausada', !d.activa);
           await db.set('cyc/products/' + pid + '/netoCalcTs', Date.now());
           guardados++;
         }
