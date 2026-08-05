@@ -5891,7 +5891,8 @@ function metGetValDay(key,acct,field){
       const share=md.tot>0?(neto/md.tot):0;
       const rm=_retiroMesVal(ym); // retiro real anotado del mes (o null = usar el supuesto)
       const rMes=rm!=null?rm:retiroDefMes(ym,md.tot);
-      return (neto-costo)-_gastosMes(ym)*share-rMes*share;
+      const prop=_propMes(ym); // mes en curso: solo la parte de los días que ya pasaron
+      return (neto-costo)-(_gastosMes(ym)+rMes)*share*prop;
     }
     return 0;
   }
@@ -6562,13 +6563,27 @@ function _retiroMesVal(ym){
   const r=state.retiro_mes&&state.retiro_mes[ym];
   return (r!=null&&r!=='')?Math.round(Number(r)||0):null;
 }
+// Qué parte del mes ya pasó. Los gastos del mes y el retiro de los dueños son del MES ENTERO;
+// cargarlos completos sobre los pocos días que van del mes en curso hace que los primeros días de
+// cada mes muestren una pérdida enorme que no existe (el 04/08 los 4 días cargaban el mes entero y
+// la Ganancia CYC caía a −$700.000). Para el mes en curso se carga solo la parte proporcional a
+// los días transcurridos. Para un mes ya cerrado devuelve 1 y no cambia nada.
+function _propMes(ym){
+  if(!ym)return 1;
+  const p=String(ym).split('_').map(Number);
+  const hoy=new Date();
+  if(p[0]!==hoy.getFullYear()||p[1]!==(hoy.getMonth()+1))return 1;
+  const dim=new Date(p[0],p[1],0).getDate();
+  return Math.min(1,hoy.getDate()/dim);
+}
 function _puntGananciaMes(ym){
   const keys=Object.keys(state.ventaprod||{}).filter(k=>k.startsWith(ym));
   let neto=0,costo=0;
   keys.forEach(k=>Object.values(state.ventaprod[k]||{}).forEach(v=>{neto+=(v.neto||0);costo+=efectivoCostoVP({...v,_dateKey:k});}));
   const rm=_retiroMesVal(ym);
-  const retiro=rm!=null?rm:retiroDefMes(ym,neto); // real si lo anotaste; si no, el supuesto del mes
-  const gastos=_gastosMes(ym); // gastos cargados del mes, o el estimado si ese mes no tiene
+  const _pm=_propMes(ym); // mes en curso: solo la parte proporcional a los días transcurridos
+  const retiro=Math.round((rm!=null?rm:retiroDefMes(ym,neto))*_pm); // real si lo anotaste; si no, el supuesto
+  const gastos=Math.round(_gastosMes(ym)*_pm); // gastos del mes, o el estimado si ese mes no tiene
   return {neto,costo,retiro,gastos,ganancia:(neto-retiro)-costo-gastos};
 }
 function _puntMesesConDatos(){const s=new Set();Object.keys(state.ventaprod||{}).forEach(k=>s.add(k.substring(0,7)));return [...s].sort();}
@@ -6918,12 +6933,15 @@ function renderResumen_page(){
   const netoML=vpNetoSum();
   const costoMerch=vpCostoSum();
   const _rmMonth=_isMonth?_retiroMesVal(mesKey):null;
-  const retiro=_rmMonth!=null?_rmMonth:(_isMonth?retiroDefMes(mesKey,netoML):Math.round(netoML*RETIRO_PCT));
+  // Mismo criterio que Métricas: en el mes en curso el retiro y los gastos van proporcionales a
+  // los días transcurridos, así los dos lados siguen dando el mismo número.
+  const _propM=_isMonth?_propMes(mesKey):1;
+  const retiro=Math.round((_rmMonth!=null?_rmMonth:(_isMonth?retiroDefMes(mesKey,netoML):Math.round(netoML*RETIRO_PCT)))*_propM);
   const retMitad=Math.round(retiro/2);
   // Mismo orden que la cascada: neto − costo = Ganancia (idéntica a Métricas), después gastos,
   // y recién al final el retiro de los dueños. El total no cambia.
   const gananciaBruta=netoML-costoMerch;
-  const gastosMes=_isMonth?_gastosMes(mesKey):comprasTot(null,'gasto');
+  const gastosMes=Math.round((_isMonth?_gastosMes(mesKey):comprasTot(null,'gasto'))*_propM);
   const quedaML=gananciaBruta-gastosMes;
   const gananciaReal=quedaML-retiro;
 
@@ -7352,7 +7370,7 @@ document.addEventListener('click',e=>{if(fnavOpen&&!e.target.closest('#fnav-btn'
         <span style="font-size:.75rem;color:var(--muted)">Si no ves los últimos cambios, forzá la actualización</span>
         <button class="btn" style="background:rgba(56,189,248,.12);color:var(--blue);border:1px solid rgba(56,189,248,.3)" onclick="actualizarApp()">🔄 Buscar actualizaciones</button>
       </div>
-      <div style="font-size:.66rem;color:var(--muted);margin-top:12px">CYC · Versión 8.4</div>
+      <div style="font-size:.66rem;color:var(--muted);margin-top:12px">CYC · Versión 8.5</div>
     </div>
 
     <div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:18px 20px;margin-bottom:14px">
