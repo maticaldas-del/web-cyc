@@ -112,9 +112,9 @@ Casi todos son de solo lectura. Los que escriben piden `:go` explícito.
 | 1 vez por hora | robot de precios |
 | 00:03 | resumen del día por Telegram |
 | el 1º de cada mes | resumen del mes |
-| 10:00 | el chequeo de la mañana, **escrito en el chat, NO por Telegram** |
+| 08:00 | el chequeo de la mañana, **escrito en el chat, NO por Telegram** |
 
-El chequeo de las 10 lo pide Claude desde el chat: dispara `ml-chequeo.yml` (o `ml-sync.yml` con
+El chequeo de las 8 lo pide Claude desde el chat: dispara `ml-chequeo.yml` (o `ml-sync.yml` con
 `billing_probe` = `chequeo:7:nomandar`), lee el resultado y escribe el resumen ahí mismo. Por
 Telegram va solo el resumen de ventas del día y el del mes.
 
