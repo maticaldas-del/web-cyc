@@ -38,9 +38,13 @@ Datos de las constancias de ARCA (03/08/2026), los que pide MercadoLibre al conf
 | cuenta | inicio de actividades | punto de venta ML | estado |
 |---|---|---|---|
 | Adriana | 01/05/2021 | 2 | **listo** · certificado vence 03/08/2028 |
-| Luciana | 01/09/2022 | — | pendiente |
-| Ayelen | 01/05/2024 | — | pendiente |
-| Matías | 01/12/2020 | — | pendiente |
+| Luciana | 01/09/2022 | 2 | **listo** · certificado vence 04/08/2028 |
+| Ayelen | 01/05/2024 | 2 | **listo** |
+| Matías | 01/12/2020 | 2 | **listo** · actividad "venta al por menor por internet" |
+
+Las cuatro quedaron configuradas el 05/08/2026. El domicilio distingue de quién es cada pantalla
+cuando ARCA no muestra el nombre: Adriana **Av. Ceballos 18 PB**, Matías **Av. Ceballos 18 1ºA**,
+Luciana **Pascual Grisolía 1383**, Ayelen **Pintos 646**.
 
 El trámite son 5 pasos en ML **más uno que ML no avisa**: después de subir el certificado da error
 y hay que ir a ARCA → *Administrador de Relaciones de Clave Fiscal* → **Nueva Relación** →
