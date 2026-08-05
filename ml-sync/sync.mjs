@@ -6107,7 +6107,11 @@ async function main() {
             if (!mla || !links[mla] || b.error || typeof b.status === 'number') continue;
             const e = links[mla];
             const nom = (e.title || b.title || mla).slice(0, 34);
-            if (b.status !== 'active') continue;                    // pausada/cerrada: no vende a ningún precio
+            // También las PAUSADAS: no venden hoy, pero tienen precio cargado y cuando vuelva el
+            // stock van a vender a ESE precio. Si no se miran, el día que se reponen arrancan con
+            // el margen viejo. Quedan marcadas para no confundirlas con las que están vendiendo.
+            if (b.status !== 'active' && b.status !== 'paused') continue;
+            const pausada = b.status === 'paused';
             const p = pIdx[e.prodId];
             if (!p) { sinDato.push({ label, mla, nom, why: 'sin producto en la web' }); continue; }
             const costo = costoPesos(p, 1, tc).costo;
