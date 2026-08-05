@@ -6167,6 +6167,7 @@ async function main() {
             // trato como perdido subo el precio de algo que quizás estás ganando. Se revisa a mano.
             else reco = `❓ CATÁLOGO en estado "${caja.status}" — no es ni ganando ni perdiendo, revisar a mano`;
             filas.push({
+              pausada,
               label, mla, nom, precio, nuevo, mgTip, mgPeor, med, mx, nV: ventas.length,
               catalogo: !!b.catalog_listing, caja, grupo: g, nVar: vars.length, reco, prod: p.name || '',
               suba: nuevo ? nuevo / precio - 1 : 0, tok: t.access_token,
@@ -6182,7 +6183,7 @@ async function main() {
       const P = (s2) => { console.log(s2); OUT.push(s2); };
       P(`── ABAJO DEL ${(MIN * 100).toFixed(0)}% · ${filas.length} publicaciones ──\n`);
       for (const f of filas) {
-        P(`  ${f.label.padEnd(8)} · ${f.mla} · ${f.nom}`);
+        P(`  ${f.label.padEnd(8)} · ${f.mla} · ${f.nom}${f.pausada ? '  [PAUSADA · sin stock]' : ''}`);
         P(`      margen: peor venta ${f.mgPeor.toFixed(0)}% · típico ${f.mgTip.toFixed(0)}%   (${f.nV} ventas · descuento típico ${money(Math.round(f.med))}, peor ${money(Math.round(f.mx))})`);
         P(`      precio: ${money(Math.round(f.precio))}` + (f.nuevo ? ` → ${money(f.nuevo)} para el ${(MIN * 100).toFixed(0)}% en su peor venta (+${(f.suba * 100).toFixed(1)}%)` : ' → no pude calcular el precio nuevo'));
         if (f.catalogo) {
