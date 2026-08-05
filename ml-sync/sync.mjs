@@ -3945,6 +3945,52 @@ async function main() {
         for (const m of sinCalc.slice(0, 20)) console.log(`  ${String(m.p.name || m.p.id).slice(0, 40)} · hoy en ML ${money(Math.round(m.prML))}`);
         if (sinCalc.length > 20) console.log(`  … y ${sinCalc.length - 20} más`);
       }
+      // ── LO QUE VA A MOSTRAR LA PANTALLA, PRODUCTO POR PRODUCTO ──
+      // Se arma el margen con el MISMO orden que usa la web: neto a mano → neto al precio de hoy →
+      // promedio de las ventas. Y el costo igual que la web: mercadería + IIBB + monotributo.
+      // Así la lista de acá y lo que ves en el celular tienen que dar el mismo número.
+      const vpM = (await db.get('cyc/ventaprod')) || {}; setDevLive(vpM);
+      const finM = (await db.get('cyc/finanzas')) || {};
+      const tcM = parseFloat(finM.tipo_cambio) || 1500;
+      const monoM = parseFloat(((await db.get('cyc/monotributo')) || {}).pct) || 0;
+      const aggM = {};
+      for (const ents of Object.values(vpM)) {
+        for (const v of Object.values(ents || {})) {
+          if (!v || v.cancelada || !v.prodId) continue;
+          const bb = aggM[v.prodId] = aggM[v.prodId] || { neto: 0, u: 0, mlx: 0 };
+          bb.neto += v.neto || 0; bb.u += v.qty || 0;
+          bb.mlx += (v.total || 0) * (mlExtraPct(v.cuenta) + monoM) / 100;
+        }
+      }
+      const ctaDe = {};
+      for (const [mla, e] of Object.entries(links)) if (e && e.prodId && !ctaDe[e.prodId]) ctaDe[e.prodId] = e.cuenta;
+      const filasM = [];
+      for (const p of products) {
+        const a2 = aggM[p.id];
+        const man = (p.netoRef != null && p.netoRef !== '') ? Number(p.netoRef) : null;
+        const calc = (p.netoCalc != null && p.netoCalc !== '') ? Number(p.netoCalc) : null;
+        const real = (a2 && a2.u > 0) ? a2.neto / a2.u : null;
+        const neto = man != null ? man : (calc != null ? calc : real);
+        if (neto == null) continue;
+        const fuente = man != null ? 'a mano' : (calc != null ? 'precio de hoy' : 'ventas viejas');
+        // Impuestos: de las ventas si las hay; si no, estimados sobre el precio de hoy (igual que la web).
+        let mlx = (a2 && a2.u > 0) ? a2.mlx / a2.u : 0;
+        if (!mlx && p.netoCalcPrecio > 0) mlx = Number(p.netoCalcPrecio) * (mlExtraPct(ctaDe[p.id]) + monoM) / 100;
+        const costo = costoPesos(p, 1, tcM).costo + mlx;
+        if (!(costo > 0)) continue;
+        const mg = (neto - costo) / costo * 100;
+        filasM.push({ p, neto, costo, mg, fuente, prML: precioML[p.id] ?? null, paus: p.netoCalcPausada === true, need: Math.round(costo * 1.3) });
+      }
+      filasM.sort((x, y) => x.mg - y.mg);
+      const bajo = filasM.filter((f) => f.mg < 30);
+      console.log(`\n══ LO QUE MUESTRA LA PANTALLA · ${filasM.length} productos con margen ══`);
+      console.log(`   ${bajo.length} abajo del 30% · ${filasM.length - bajo.length} en 30% o más\n`);
+      if (bajo.length) {
+        console.log(`  ${'producto'.padEnd(34)} ${'margen'.padStart(7)} ${'costo'.padStart(10)} ${'te queda'.padStart(10)} ${'necesita'.padStart(10)} ${'precio ML'.padStart(10)}  de dónde sale`);
+        for (const f of bajo) {
+          console.log(`  ${String(f.p.name || f.p.id).slice(0, 34).padEnd(34)} ${(f.mg.toFixed(0) + '%').padStart(7)} ${money(Math.round(f.costo)).padStart(10)} ${money(Math.round(f.neto)).padStart(10)} ${money(f.need).padStart(10)} ${(f.prML != null ? money(Math.round(f.prML)) : '—').padStart(10)}  ${f.fuente}${f.paus ? ' (pausada)' : ''}`);
+        }
+      }
       if (sinPub.length) {
         console.log(`\n── SIN PUBLICACIÓN ACTIVA · ${sinPub.length} ──`);
         console.log(`  Estos no se pueden medir contra ML: no están publicados (casi siempre por falta`);
