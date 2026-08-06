@@ -3836,6 +3836,40 @@ async function main() {
     // "guardado" y en la pantalla no cambiaba nada. Ya pasó antes con "ventaprod".
     // Esto muestra qué quedó tirado ahí y, con :go, lo borra. Solo toca ramas de basura conocidas;
     // "cyc/" y "mlapi/" (que sí van en la raíz, son los tokens) no se tocan.
+    // PUBAVISO: de qué publicaciones ya se avisó "problema en una publicación" por Telegram,
+    // y en qué estado está hoy cada una según el panel.
+    // Existe porque el 05/08/2026 ese aviso se repitió cada 2 minutos: el robot perdía la memoria
+    // de lo que ya había avisado. Ahora la memoria vive en mlapi/pubalert y esto la muestra, que
+    // es la única forma de comprobar que el arreglo funciona sin esperar a que suene el celular.
+    // Con ":borrar" se borra toda la memoria (vuelve a avisar de lo que siga con problema).
+    if (String(process.env.BILLING_PROBE || '').startsWith('pubaviso')) {
+      const BORRAR = String(process.env.BILLING_PROBE).split(':')[1] === 'borrar';
+      const marcas = (await db.get('mlapi/pubalert')) || {};
+      const links = (await db.get('cyc/mllinks')) || {};
+      const vivas = Object.entries(marcas).filter(([, v]) => v);
+      console.log(`\n═══ AVISOS DE PROBLEMA YA MANDADOS ═══`);
+      if (!vivas.length) console.log('  (ninguno: no hay ninguna publicación marcada como ya avisada)');
+      for (const [mla, estado] of vivas) {
+        const e = links[mla] || {};
+        const coincide = (e.status || '') + (e.subStatus ? '|' + e.subStatus : '') === estado;
+        console.log(`  ${mla} · ${e.cuenta || '?'} · ${(e.title || '').slice(0, 55)}`);
+        console.log(`      avisado por: ${estado}`);
+        console.log(`      panel dice : ${e.status || '(vacío)'}${e.subStatus ? ' · ' + e.subStatus : ''}  ${coincide ? '✓ coincide → NO va a repetir' : '⚠️ no coincide → puede volver a avisar'}`);
+      }
+      // Publicaciones con problema que todavía NO tienen marca: son las que van a avisar.
+      const pend = Object.entries(links).filter(([mla, e]) => e && e.prodId && !marcas[mla]
+        && (e.status === 'closed' || e.status === 'under_review'));
+      if (pend.length) {
+        console.log(`\n  Con problema y SIN marca (van a avisar una vez): ${pend.length}`);
+        for (const [mla, e] of pend.slice(0, 20)) console.log(`    ${mla} · ${e.cuenta || '?'} · ${e.status} · ${(e.title || '').slice(0, 50)}`);
+      }
+      if (BORRAR && !DRY) {
+        await db.set('mlapi/pubalert', null);
+        console.log('\n  ✓ Memoria borrada.');
+      }
+      return;
+    }
+
     if (String(process.env.BILLING_PROBE || '').startsWith('raizsucia')) {
       const GO = String(process.env.BILLING_PROBE).split(':')[1] === 'go';
       const BASURA = ['products', 'ventaprod', 'mllinks', 'finanzas', 'compras', 'mlconfig', 'monotributo'];
