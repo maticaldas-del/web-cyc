@@ -44,6 +44,21 @@ jobs:
           TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
           DAILY_SUMMARY: ${{ github.event.inputs.dia != '' && github.event.inputs.dia || '1' }}
         run: node ml-sync/sync.mjs
+      # Guarda las facturas reales que emitió el facturador de ML, cuenta por cuenta, y marca las
+      # ventas que quedaron SIN factura. Va acá y no en el ciclo de 2 minutos porque pide una
+      # consulta por venta: una vez por día alcanza y no castiga la API de ML.
+      - name: Facturas emitidas
+        env:
+          ML_CLIENT_ID: ${{ secrets.ML_CLIENT_ID }}
+          ML_CLIENT_SECRET: ${{ secrets.ML_CLIENT_SECRET }}
+          FIREBASE_API_KEY: ${{ secrets.FIREBASE_API_KEY }}
+          FIREBASE_DB_URL: ${{ secrets.FIREBASE_DB_URL }}
+          FIREBASE_BOT_EMAIL: ${{ secrets.FIREBASE_BOT_EMAIL }}
+          FIREBASE_BOT_PASSWORD: ${{ secrets.FIREBASE_BOT_PASSWORD }}
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+          BILLING_PROBE: facsync:3:go
+        run: node ml-sync/sync.mjs
       # Refresca la facturación de canceladas/devueltas (para el monotributo = "Ventas brutas" ML).
       - name: Facturación de canceladas
         env:

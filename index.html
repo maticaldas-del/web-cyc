@@ -507,6 +507,12 @@ footer{margin-top:32px;padding-top:14px;border-top:1px solid var(--border);font-
         <div class="nc-desc">Qué producto se vendió, en qué cuenta y ranking del mes.</div>
         <span class="nc-arrow">→</span>
       </div>
+      <div class="nav-card nc1" onclick="goPage('facturas')">
+        <span class="nc-icon">🧾</span>
+        <div class="nc-title">Facturas</div>
+        <div class="nc-desc">Las facturas que emitió ML por cada cuenta, y si alguna venta quedó sin facturar.</div>
+        <span class="nc-arrow">→</span>
+      </div>
     </div>
   </div>
   <div class="home-status">
@@ -988,6 +994,53 @@ footer{margin-top:32px;padding-top:14px;border-top:1px solid var(--border);font-
   </div>
 
   <footer>CYC · Rotación de Stock</footer>
+</div>
+</div>
+
+
+<!-- ════════════════════ FACTURAS ════════════════════ -->
+<div id="page-facturas" class="page">
+<div class="page-wrap">
+  <div class="page-header">
+    <div class="ph-left">
+      <button class="back-btn" onclick="goPage('home')">← Inicio</button>
+      <div>
+        <div class="ph-title">Facturas</div>
+        <div class="ph-sub">Lo que emitió el facturador de ML, cuenta por cuenta</div>
+      </div>
+    </div>
+    <div class="ph-right">
+      <span class="conn-label"><span class="dot" id="dot-fac"></span><span id="conn-fac">conectando</span></span>
+      <span class="who-badge" id="who-fac">—</span>
+    </div>
+  </div>
+
+  <!-- Lo primero de la pantalla es la alarma, no el resumen: si algo dejó de facturarse hay que
+       verlo sin buscarlo. -->
+  <div id="fac-alarma"></div>
+  <div id="fac-cuentas" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:10px;margin-bottom:14px"></div>
+
+  <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:12px">
+    <span style="font-size:.66rem;color:var(--muted);text-transform:uppercase;letter-spacing:.1em">Cuenta</span>
+    <div class="view-toggle" id="fac-filtro"></div>
+  </div>
+
+  <div class="tbl-outer">
+    <table id="fac-tbl">
+      <thead><tr>
+        <th style="min-width:110px">Fecha</th>
+        <th style="text-align:left;min-width:90px">Cuenta</th>
+        <th style="min-width:110px">Comprobante</th>
+        <th style="text-align:left;width:230px;max-width:230px">Producto</th>
+        <th style="min-width:105px">Monto</th>
+        <th style="min-width:150px">CAE</th>
+        <th style="min-width:95px">Estado</th>
+      </tr></thead>
+      <tbody id="fac-body"></tbody>
+    </table>
+  </div>
+
+  <footer>CYC · Facturas</footer>
 </div>
 </div>
 
@@ -1639,6 +1692,12 @@ function startApp(){
     state.mllinks=d.mllinks||{};     // publicaciones ML a mapear (activas + inactivas)
     state.mlconfig=d.mlconfig||{};   // config del robot (auto-precio, meta, umbral)
     state.monotributo=d.monotributo||{}; // monotributo: montos por cuenta + % que calcula el robot
+    // Facturas que emitió el facturador automático de ML, por cuenta. Las carga el robot una vez
+    // por día (probe facsync). facturas_sin son las ventas que quedaron SIN factura: eso es lo que
+    // avisa que el facturador se cortó, porque ML no manda ningún aviso cuando deja de emitir.
+    state.facturas=d.facturas||{};
+    state.facturas_sin=d.facturas_sin||{};
+    state.facturas_desde=d.facturas_desde||{};
     // detectar entradas nuevas de ventaprod escritas externamente (p.ej. cowork)
     const _newVP=d.ventaprod||{};
     const _allIds=new Set();
@@ -2013,6 +2072,7 @@ function goPage(page){
   if(page==='metricas'){initMetricasPage();}
   if(page==='ventaprod')initVentaProd();
   if(page==='rotacion')renderRotacionStock();
+  if(page==='facturas')renderFacturas();
   if(page==='ajustes')enterAjustes();
   if(page==='inventario'){renderInv();renderProds();renderHist();loadFinInputs();updateArqueo();updateTotals();updateHdr();}
   if(page==='home'){checkCierrePendiente();updateHomeDolar();renderPuntajeMes();}
@@ -5505,6 +5565,108 @@ function renderRotCardScore(){
   if(!sc){el.innerHTML='';return;}
   el.innerHTML=`<div style="display:flex;align-items:center;gap:8px;margin-top:2px"><span style="display:inline-flex;align-items:center;justify-content:center;width:26px;height:26px;border-radius:50%;background:${sc.col};color:#0f0f11;font-family:'Syne',sans-serif;font-weight:800;font-size:.72rem;flex-shrink:0">${sc.score.toFixed(1)}</span><span style="color:${sc.col};font-weight:700;font-size:.68rem">${sc.nivel}</span></div><div style="font-size:.6rem;color:var(--muted);margin-top:3px">${sc.pct.toFixed(1)}% en stock muerto · ${fmt(sc.capMuerto)}</div>`;
 }
+/* ═══════════ FACTURAS ═══════════
+   Muestra las facturas que emitió solo el facturador de ML, tal como las devuelve ML.
+   NO se calcula nada acá: número, monto, CAE y estado vienen de ML y se muestran como vienen.
+   Lo que sí se hace es AGRUPAR bien: una compra con carrito son varias ventas y UNA factura, así
+   que los totales se suman por factura (la clave ya es serie_número) y no por venta. */
+let FAC_CTA='todas';
+function setFacCta(c,btn){FAC_CTA=c;document.querySelectorAll('#fac-filtro .vbtn').forEach(b=>b.classList.remove('active'));if(btn)btn.classList.add('active');renderFacturas();}
+function _facCuentas(){
+  const set=new Set([...Object.keys(state.facturas||{}),...Object.keys(state.facturas_sin||{})]);
+  return [...set].sort();
+}
+function _facLindo(k){return String(k).replace(/_/g,' ');}
+function _facFechaCorta(f){
+  if(!f)return '—';
+  const d=new Date(f);
+  if(isNaN(d))return String(f).slice(0,10);
+  return d.toLocaleDateString('es-AR',{day:'2-digit',month:'2-digit'})+' '+d.toLocaleTimeString('es-AR',{hour:'2-digit',minute:'2-digit',hour12:false});
+}
+function _facTipo(t){
+  const m={factura_c:'Factura C',factura_a:'Factura A',factura_b:'Factura B',nota_credito_c:'N. Crédito C'};
+  return m[t]||(t?String(t).replace(/_/g,' '):'Comprobante');
+}
+function renderFacturas(){
+  const ctas=_facCuentas();
+  // Botones de filtro (se arman una sola vez por render, así aparecen las cuentas nuevas solas)
+  const filtro=document.getElementById('fac-filtro');
+  if(filtro){
+    filtro.innerHTML=`<button class="vbtn${FAC_CTA==='todas'?' active':''}" onclick="setFacCta('todas',this)">Todas</button>`
+      +ctas.map(c=>`<button class="vbtn${FAC_CTA===c?' active':''}" onclick="setFacCta('${c}',this)">${_facLindo(c)}</button>`).join('');
+  }
+
+  // ── LA ALARMA: ventas sin factura ──
+  const sinTodas=[];
+  for(const c of ctas){
+    for(const [oid,v] of Object.entries((state.facturas_sin||{})[c]||{})){
+      if(v)sinTodas.push({cta:c,oid,...v});
+    }
+  }
+  sinTodas.sort((a,b)=>String(b.fecha||'').localeCompare(String(a.fecha||'')));
+  const al=document.getElementById('fac-alarma');
+  if(al){
+    if(!ctas.length){
+      al.innerHTML=`<div style="padding:14px;background:var(--surface);border:1px solid var(--border);border-radius:8px;font-size:.78rem;color:var(--muted);margin-bottom:14px">Todavía no hay facturas cargadas. El robot las trae una vez por día.</div>`;
+    }else if(sinTodas.length){
+      const monto=sinTodas.reduce((a,x)=>a+(x.monto||0),0);
+      al.innerHTML=`<div style="padding:14px;background:rgba(239,68,68,.12);border:1px solid rgba(239,68,68,.45);border-radius:8px;margin-bottom:14px">
+        <div style="font-weight:700;color:var(--red,#ef4444);font-size:.86rem;margin-bottom:6px">⚠️ ${sinTodas.length} venta${sinTodas.length>1?'s':''} sin factura · ${fmt(monto)}</div>
+        <div style="font-size:.72rem;color:var(--muted);margin-bottom:8px">Estas ventas son posteriores a que la cuenta empezara a facturar, así que tendrían que tener factura y no la tienen. Puede ser que el facturador se haya cortado.</div>
+        ${sinTodas.slice(0,15).map(x=>`<div style="font-size:.72rem;padding:3px 0;border-top:1px solid var(--border)">${_facFechaCorta(x.fecha)} · <b>${_facLindo(x.cta)}</b> · ${fmt(x.monto||0)} · ${(x.prod||'').slice(0,45)}</div>`).join('')}
+        ${sinTodas.length>15?`<div style="font-size:.7rem;color:var(--muted);padding-top:4px">…y ${sinTodas.length-15} más</div>`:''}
+      </div>`;
+    }else{
+      al.innerHTML=`<div style="padding:12px 14px;background:rgba(34,197,94,.10);border:1px solid rgba(34,197,94,.4);border-radius:8px;font-size:.8rem;font-weight:600;color:var(--green,#22c55e);margin-bottom:14px">✓ Todas las ventas salieron con factura</div>`;
+    }
+  }
+
+  // ── Una tarjeta por cuenta ──
+  const cont=document.getElementById('fac-cuentas');
+  if(cont){
+    cont.innerHTML=ctas.map(c=>{
+      const fs=Object.values((state.facturas||{})[c]||{}).filter(Boolean);
+      const total=fs.reduce((a,f)=>a+(f.monto||0),0);
+      const nums=fs.map(f=>f.num).filter(n=>n!=null).sort((a,b)=>a-b);
+      // Huecos en la numeración: si falta un número, o se emitió por fuera del panel o algo falló.
+      const huecos=[];
+      for(let i=1;i<nums.length;i++)for(let n=nums[i-1]+1;n<nums[i];n++)huecos.push(n);
+      const desde=(state.facturas_desde||{})[c];
+      const sinC=Object.keys((state.facturas_sin||{})[c]||{}).length;
+      return `<div style="padding:12px 14px;background:var(--surface);border:1px solid ${sinC?'rgba(239,68,68,.45)':'var(--border)'};border-radius:8px">
+        <div style="font-size:.78rem;font-weight:700;margin-bottom:6px">${_facLindo(c)}</div>
+        <div style="font-size:1.05rem;font-weight:700">${fmt(total)}</div>
+        <div style="font-size:.68rem;color:var(--muted);margin-top:4px">${nums.length} factura${nums.length===1?'':'s'}${nums.length?` · de la ${nums[0]} a la ${nums[nums.length-1]}`:''}</div>
+        <div style="font-size:.66rem;color:var(--muted);margin-top:2px">Factura desde ${desde?String(desde).slice(0,10).split('-').reverse().join('/'):'—'}</div>
+        ${huecos.length?`<div style="font-size:.68rem;color:var(--amber,#f59e0b);margin-top:4px;font-weight:600">⚠️ Faltan los números ${huecos.slice(0,8).join(', ')}${huecos.length>8?'…':''}</div>`:''}
+      </div>`;
+    }).join('');
+  }
+
+  // ── El detalle ──
+  const filas=[];
+  for(const c of ctas){
+    if(FAC_CTA!=='todas'&&FAC_CTA!==c)continue;
+    for(const f of Object.values((state.facturas||{})[c]||{})){if(f)filas.push({cta:c,...f});}
+  }
+  filas.sort((a,b)=>String(b.fecha||'').localeCompare(String(a.fecha||'')));
+  const body=document.getElementById('fac-body');
+  if(!body)return;
+  if(!filas.length){body.innerHTML=`<tr><td colspan="7" style="text-align:center;color:var(--muted);padding:18px;font-size:.76rem">Sin facturas para mostrar</td></tr>`;return;}
+  body.innerHTML=filas.map(f=>{
+    const ok=f.estado==='authorized';
+    return `<tr>
+      <td style="font-size:.72rem">${_facFechaCorta(f.fecha)}</td>
+      <td style="text-align:left;font-size:.74rem">${_facLindo(f.cta)}</td>
+      <td style="font-size:.72rem">${_facTipo(f.tipo)}<div style="color:var(--muted);font-size:.66rem">${f.serie?'Pto vta '+f.serie+' · ':''}Nº ${f.num}</div></td>
+      <td style="text-align:left;font-size:.71rem">${(f.prod||'').slice(0,55)}${(f.ventas&&f.ventas.length>1)?`<div style="color:var(--muted);font-size:.64rem">y ${f.ventas.length-1} venta${f.ventas.length>2?'s':''} más (carrito)</div>`:''}</td>
+      <td style="font-weight:600">${fmt(f.monto||0)}</td>
+      <td style="font-size:.68rem;font-family:monospace">${f.cae||'—'}${f.caeVence?`<div style="color:var(--muted);font-size:.63rem;font-family:inherit">vence ${String(f.caeVence).slice(0,10).split('-').reverse().join('/')}</div>`:''}</td>
+      <td style="font-size:.7rem;color:${ok?'var(--green,#22c55e)':'var(--amber,#f59e0b)'};font-weight:600">${ok?'Autorizada':(f.estado||'—')}</td>
+    </tr>`;
+  }).join('');
+}
+
 function renderRotacionStock(){
   const tbody=document.getElementById('rot-body');if(!tbody)return;
   const prods=(state.products||[]).filter(p=>p&&p.name);
@@ -7371,7 +7533,7 @@ document.addEventListener('click',e=>{if(fnavOpen&&!e.target.closest('#fnav-btn'
         <span style="font-size:.75rem;color:var(--muted)">Si no ves los últimos cambios, forzá la actualización</span>
         <button class="btn" style="background:rgba(56,189,248,.12);color:var(--blue);border:1px solid rgba(56,189,248,.3)" onclick="actualizarApp()">🔄 Buscar actualizaciones</button>
       </div>
-      <div style="font-size:.66rem;color:var(--muted);margin-top:12px">CYC · Versión 8.6</div>
+      <div style="font-size:.66rem;color:var(--muted);margin-top:12px">CYC · Versión 8.7</div>
     </div>
 
     <div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:18px 20px;margin-bottom:14px">
@@ -7431,6 +7593,7 @@ document.addEventListener('click',e=>{if(fnavOpen&&!e.target.closest('#fnav-btn'
   <button class="fnav-item" data-page="pedidos"    onclick="goPage('pedidos');fnavOpen=false;_syncFnav()">🚚 Pedidos</button>
   <button class="fnav-item" data-page="rotacion"   onclick="goPage('rotacion');fnavOpen=false;_syncFnav()">📊 Rotación de Stock</button>
   <button class="fnav-item" data-page="compras"    onclick="goPage('compras');fnavOpen=false;_syncFnav()">🛒 Compras y Gastos</button>
+  <button class="fnav-item" data-page="facturas"   onclick="goPage('facturas');fnavOpen=false;_syncFnav()">🧾 Facturas</button>
   <button class="fnav-item" data-page="ajustes"    onclick="goPage('ajustes');fnavOpen=false;_syncFnav()">⚙️ Ajustes</button>
   <button class="fnav-item" onclick="fnavOpen=false;_syncFnav();logoutCYC()">🔒 Salir</button>
 </div>
