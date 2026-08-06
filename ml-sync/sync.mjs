@@ -3856,12 +3856,17 @@ async function main() {
         console.log(`      avisado por: ${estado}`);
         console.log(`      panel dice : ${e.status || '(vacío)'}${e.subStatus ? ' · ' + e.subStatus : ''}  ${coincide ? '✓ coincide → NO va a repetir' : '⚠️ no coincide → puede volver a avisar'}`);
       }
-      // Publicaciones con problema que todavía NO tienen marca: son las que van a avisar.
+      // Publicaciones con problema que todavía NO tienen marca. OJO: NO significa que vayan a
+      // avisar. El aviso sale solo si el estado que devuelve ML es DISTINTO al guardado acá; si
+      // es el mismo (que es el caso de casi todas estas, cerradas hace rato) se anotan calladas.
+      // Las que tienen cuenta "?" ni se miran: el robot solo revisa las de una cuenta conocida.
       const pend = Object.entries(links).filter(([mla, e]) => e && e.prodId && !marcas[mla]
         && (e.status === 'closed' || e.status === 'under_review'));
       if (pend.length) {
-        console.log(`\n  Con problema y SIN marca (van a avisar una vez): ${pend.length}`);
-        for (const [mla, e] of pend.slice(0, 20)) console.log(`    ${mla} · ${e.cuenta || '?'} · ${e.status} · ${(e.title || '').slice(0, 50)}`);
+        const conCuenta = pend.filter(([, e]) => e.cuenta);
+        console.log(`\n  Con problema y sin marca: ${pend.length} (${conCuenta.length} en cuentas que el robot revisa).`);
+        console.log('  No van a avisar mientras ML siga diciendo el mismo estado que está guardado acá.');
+        for (const [mla, e] of pend.slice(0, 20)) console.log(`    ${mla} · ${e.cuenta || 'sin cuenta'} · ${e.status} · ${(e.title || '').slice(0, 50)}`);
       }
       if (BORRAR && !DRY) {
         await db.set('mlapi/pubalert', null);
