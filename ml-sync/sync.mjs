@@ -9482,6 +9482,14 @@ async function main() {
   const alerted = (await db.get('mlapi/alerted')) || {};
   const alertUpd = {};
 
+  // Avisos de "problema en una publicación" ya mandados: MLA → estado por el que se avisó.
+  // Vive acá y NO en cyc/mllinks porque la ficha de una publicación se reescribe entera cada
+  // vez que esa publicación vende, y al reescribirse se perdía el estado guardado: el aviso
+  // se quedaba sin memoria y repetía el mismo mensaje cada 2 minutos (pasó el 05/08/2026 con
+  // el perfume Cabotine de Adriana).
+  const pubAlerted = (await db.get('mlapi/pubalert')) || {};
+  const pubAlertUpd = {};
+
   // config de precios (la editás desde Ajustes en la app): meta, umbral y on/off.
   // ── MONOTRIBUTO ───────────────────────────────────────────────────────────
   // cyc/monotributo = { impuesto:{cuenta:monto}, fijoMensual:n, desde:'YYYY_MM' }
@@ -9902,6 +9910,11 @@ async function main() {
             const entry = {
               prodId: p ? p.id : null, variant: (e && e.variant) || '',
               title, cuenta: label, auto: true,
+              // OJO: este objeto REEMPLAZA entero al que está guardado (el patch de más abajo
+              // es sobre cyc/mllinks, y ahí cada hijo se pisa completo). Todo campo que no se
+              // arrastre acá se PIERDE. El estado de la publicación se perdía así, y el aviso
+              // de "problema en una publicación" lo repetía cada 2 minutos.
+              status: (e && e.status) || '', subStatus: (e && e.subStatus) || '',
               candidatos: p ? null : candidatesFor(title, index),
             };
             map[mla] = entry; mapUpd[mla] = entry;
@@ -10045,8 +10058,9 @@ async function main() {
 
     // 3c) SALUD DE PUBLICACIONES: avisar por Telegram si a una publicación
     //     vinculada la bajaron/pausaron por un problema o la moderó ML.
-    //     Comparamos el estado actual contra el guardado y avisamos solo en la
-    //     transición (así no repite). Ignoramos pausas normales por falta de stock.
+    //     El aviso sale UNA vez por publicación y por estado: queda anotado en
+    //     mlapi/pubalert y no se repite hasta que la publicación se arregla.
+    //     Ignoramos pausas normales por falta de stock.
     try {
       // todas las publicaciones de la cuenta que no ocultaste (aunque no estén
       // vinculadas): así los descuentos se sacan también en cuentas recién
@@ -10067,21 +10081,37 @@ async function main() {
           const st = b.status || '';
           const sub = (b.sub_status || []).join(',');
           const prev = map[mla].status || '';
-          if (st && st !== prev) {
+          const prevSub = map[mla].subStatus || '';
+          if (st && (st !== prev || sub !== prevSub)) {
             if (!DRY) await db.patch('cyc/mllinks/' + mla, { status: st, subStatus: sub });
-            map[mla].status = st;
-            const bad = st === 'closed' || st === 'under_review'
-              || /deactiv|moderation|warning|suspend|ban|freeze|infract|hold/i.test(sub);
-            const wasBad = prev === 'closed' || prev === 'under_review';
-            if (bad && !wasBad && !DRY && map[mla].prodId && pubAlerts < 8) {
+            map[mla].status = st; map[mla].subStatus = sub;
+          }
+          // El aviso se decide SOLO por lo anotado en mlapi/pubalert, no por el estado guardado
+          // en el mapa: el mapa se reescribe cuando la publicación vende y perdía la memoria.
+          // Regla: se manda una vez por publicación y por estado; cuando la publicación se
+          // arregla, se borra la marca para que un problema nuevo vuelva a avisar.
+          const bad = st === 'closed' || st === 'under_review'
+            || /deactiv|moderation|warning|suspend|ban|freeze|infract|hold/i.test(sub);
+          const clave = bad ? st + (sub ? '|' + sub : '') : '';
+          if (!bad) {
+            if (pubAlerted[mla]) { pubAlerted[mla] = null; pubAlertUpd[mla] = null; }
+          } else if (pubAlerted[mla] !== clave && map[mla].prodId) {
+            // Si el estado ya venía guardado igual, no es novedad: se anota sin avisar (así al
+            // estrenar esto no llega una catarata de avisos por problemas viejos ya conocidos).
+            const novedad = st !== prev;
+            let mandado = false;
+            if (novedad && !DRY && pubAlerts < 8) {
               const title = map[mla].title || mla;
               const estados = { closed: 'dada de baja', under_review: 'en revisión', paused: 'pausada' };
               await sendTelegram(`⚠️ <b>Problema en una publicación</b>\n`
                 + `${title}\nCuenta: ${label}\n`
                 + `Estado: ${estados[st] || st}${sub ? ' · ' + sub : ''}\n`
                 + (b.permalink || ''), 'baja');
-              pubAlerts++;
+              pubAlerts++; mandado = true;
             }
+            // Se anota si ya se avisó, o si no era novedad. Si no se avisó por el tope de 8
+            // avisos por corrida, NO se anota: queda pendiente para la próxima vuelta.
+            if ((mandado || !novedad) && !DRY) { pubAlerted[mla] = clave; pubAlertUpd[mla] = clave; }
           }
 
           // ── CARGAR STOCK al panel (si la pub está vinculada a un producto) ──
@@ -10146,6 +10176,8 @@ async function main() {
   if (!DRY && Object.keys(mapUpd).length) await db.patch('cyc/mllinks', mapUpd);
   // guardar los avisos que ya mandamos (para no repetirlos)
   if (!DRY && Object.keys(alertUpd).length) await db.patch('mlapi/alerted', alertUpd);
+  // guardar por qué publicación ya avisamos (para no repetir el aviso cada 2 minutos)
+  if (!DRY && Object.keys(pubAlertUpd).length) await db.patch('mlapi/pubalert', pubAlertUpd);
   // guardar los precios que subimos solos (para no pisarlos en loop)
   if (!DRY && Object.keys(pricedUpd).length) await db.patch('mlapi/priced', pricedUpd);
   // escribir el stock de ML en el inventario del panel (producto×cuenta + variantes)
