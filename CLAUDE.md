@@ -104,6 +104,7 @@ Los que más se usan:
 | `netoweb` | calcula lo que deja cada producto al precio de hoy y lo carga en Margen ML |
 | `netoref[:borrar]` | los netos escritos a mano que tapan el real, y sacarlos |
 | `raizsucia[:go]` | qué quedó escrito fuera de `cyc/` por el bug de prefijo |
+| `pubaviso[:borrar]` | de qué publicaciones ya se avisó "problema", para que no repita |
 | `apis` | qué endpoints de ML contestan (para diagnosticar) |
 
 Casi todos son de solo lectura. Los que escriben piden `:go` explícito.
@@ -142,6 +143,11 @@ Telegram va solo el resumen de ventas del día y el del mes.
 - **En "Margen ML" el neto escrito a mano le gana a todo.** Un número tipeado hace meses sigue
   mandando aunque el precio haya cambiado diez veces, y el producto aparece muy abajo del piso sin
   que se note. `bajopiso` mide el precio real de ML; las dos pantallas pueden no coincidir por eso.
+- **Las fichas de `cyc/mllinks` se reescriben ENTERAS cuando la publicación vende.** El auto-match
+  arma un objeto nuevo y el patch sobre `cyc/mllinks` pisa el hijo completo: todo campo que no se
+  arrastre en ese objeto se pierde. Así se perdía el estado de la publicación y el aviso "Problema
+  en una publicación" se repetía cada 2 minutos (05/08/2026, el Cabotine de Adriana). Por eso la
+  memoria de los avisos vive aparte, en `mlapi/pubalert`, y se mira con `pubaviso`.
 - **Cuando él pasa un número, preguntar si es precio o costo.** El 03/08 dijo "el total que dice la
   web" para la Lupa 60mm x10 y era el COSTO ($11.638). Se aplicó como precio de venta. No alcanza
   con aplicarlo: hay que mirar el margen que queda ANTES de tocar ML.
