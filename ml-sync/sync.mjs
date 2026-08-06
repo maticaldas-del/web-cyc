@@ -2564,6 +2564,7 @@ async function main() {
       const GO = _s.includes('go');
       const desdeISO = new Date(Date.now() - DIAS * 864e5).toISOString().replace(/\.\d+Z$/, '.000-00:00');
       const facUpd = {};   // cuenta → { claveFactura: ficha }
+      const arranqueUpd = {};  // cuenta → desde cuándo factura (para no dar falsas alarmas)
       const sinUpd = {};   // cuenta → { nºventa: ficha }
       const resumen = [];
       for (const label of labels) {
@@ -2576,6 +2577,11 @@ async function main() {
         try { ords = await fetchOrders(sellerId, tok, desdeISO); } catch (e) { console.log(`\n═══ ${label.toUpperCase()} ═══\n  (no pude leer las ventas: ${String(e.message || e).slice(0, 70)})`); continue; }
         const facs = {}, sin = {};
         let noSe = 0;
+        // ML tarda unos minutos en emitir la factura después de la venta. Una venta de recién
+        // TODAVÍA no tiene factura y eso es normal, no un problema: se le dan 3 horas de gracia
+        // antes de contarla. Sin esto la alarma sonaría todos los días por la última venta.
+        const graciaMs = Date.now() - 3 * 3600e3;
+        let ventaFacturadaMasVieja = null;
         for (const o of ords) {
           let doc = null;
           try { doc = await mlGet(`/users/${sellerId}/invoices/orders/${o.id}`, tok); } catch { /* sin factura o sin permiso */ }
@@ -2603,6 +2609,8 @@ async function main() {
               prod: ((o.order_items || [])[0]?.item?.title || '').slice(0, 70),
               errores: (doc.errors || []).length,
             };
+            const fv = o.date_created || '';
+            if (fv && (!ventaFacturadaMasVieja || fv < ventaFacturadaMasVieja)) ventaFacturadaMasVieja = fv;
           } else {
             sin[String(o.id)] = {
               fecha: o.date_created || '',
@@ -2611,18 +2619,24 @@ async function main() {
             };
           }
         }
-        // Desde cuándo esta cuenta factura: la fecha de su factura MÁS VIEJA que tengamos.
-        // Las ventas anteriores a eso NO son un problema — el facturador todavía no existía —
-        // así que no se cuentan como "sin factura" y no disparan ninguna alarma.
+        // Desde cuándo esta cuenta factura. Se toma la fecha de la VENTA facturada más vieja, no la
+        // de emisión de la factura: la factura sale unos minutos después de la venta, y usando la
+        // fecha de emisión las ventas de esos minutos quedaban del lado "viejo" sin mirarse.
+        // Las ventas anteriores a esa fecha NO son un problema (el facturador todavía no existía),
+        // así que no se cuentan como "sin factura" ni disparan ninguna alarma.
         const yaGuardadas = (await db.get('cyc/facturas/' + sid(label))) || {};
-        const fechas = [...Object.values(facs), ...Object.values(yaGuardadas)]
+        const arranqueGuardado = (await db.get('cyc/facturas_desde/' + sid(label))) || null;
+        const emisiones = [...Object.values(facs), ...Object.values(yaGuardadas)]
           .map((f) => f && f.fecha).filter(Boolean).sort();
-        const arranque = fechas[0] || null;
+        const candidatos = [ventaFacturadaMasVieja, arranqueGuardado, emisiones[0]].filter(Boolean).sort();
+        const arranque = candidatos[0] || null;
         let sinReales = 0;
         for (const [oid, v] of Object.entries(sin)) {
-          if (arranque && v.fecha && v.fecha >= arranque) sinReales++;
-          else delete sin[oid];   // venta vieja: no es un problema, no la guardamos
+          const reciente = v.fecha && Date.parse(v.fecha) > graciaMs;
+          if (arranque && v.fecha && v.fecha >= arranque && !reciente) sinReales++;
+          else delete sin[oid];   // venta vieja, o de recién: no es un problema, no la guardamos
         }
+        arranqueUpd[sid(label)] = arranque;
         facUpd[label] = facs; sinUpd[label] = sin;
         const total = Object.values(facs).reduce((a, f) => a + f.monto, 0);
         const nums = Object.values(facs).map((f) => f.num).sort((a, b) => a - b);
@@ -2640,8 +2654,9 @@ async function main() {
       if (!GO) { console.log('\n(prueba: no guardé nada. Agregá ":go" para guardarlo en el panel)'); return; }
       for (const label of Object.keys(facUpd)) {
         await db.patch('cyc/facturas/' + sid(label), facUpd[label]);
-        await db.set('cyc/facturassin/' + sid(label), sinUpd[label]);
+        await db.set('cyc/facturas_sin/' + sid(label), sinUpd[label]);
       }
+      await db.patch('cyc/facturas_desde', arranqueUpd);
       // Verificación: se vuelve a leer de Firebase y se compara, porque "guardado" sin releer ya
       // nos mintió antes (las escrituras que iban fuera de cyc/).
       console.log('\n── Verificación (releído del panel) ──');
