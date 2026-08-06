@@ -2543,6 +2543,117 @@ async function main() {
       console.log('\n(esto solo LEE: no toqué nada)');
       return;
     }
+    // BILLING_PROBE=facsync[:<días>][:go] → GUARDAR LAS FACTURAS REALES EN EL PANEL.
+    //
+    // Recorre las ventas de los últimos días de las 4 cuentas, le pide a ML la factura de cada una
+    // y la guarda en cyc/facturas. La web las muestra en la pantalla "Facturas".
+    //
+    // Lo que de verdad importa que haga: marcar las ventas que quedaron SIN factura. Si el
+    // facturador se corta (se vence el certificado, ARCA rechaza, se cae el permiso), ML no avisa
+    // nada: vos seguís vendiendo y las facturas no salen. Eso es lo que esto detecta.
+    //
+    // Cómo se guarda: la clave es <serie>_<número>, NO el número de venta. Es a propósito: una
+    // compra con carrito son varias ventas y UNA sola factura (el 05/08 la 8 de Adriana cubrió 3
+    // ventas). Si se guardara por venta, esa factura se contaría tres veces y el total facturado
+    // saldría inflado.
+    //
+    // Sin ":go" NO escribe nada, solo muestra lo que haría.
+    if (String(process.env.BILLING_PROBE || '').startsWith('facsync')) {
+      const _s = String(process.env.BILLING_PROBE).split(':');
+      const DIAS = parseFloat(_s[1]) || 7;
+      const GO = _s.includes('go');
+      const desdeISO = new Date(Date.now() - DIAS * 864e5).toISOString().replace(/\.\d+Z$/, '.000-00:00');
+      const facUpd = {};   // cuenta → { claveFactura: ficha }
+      const sinUpd = {};   // cuenta → { nºventa: ficha }
+      const resumen = [];
+      for (const label of labels) {
+        const acc = accounts[label];
+        if (!acc?.refresh_token) continue;
+        let t; try { t = await mlRefresh(ML_CLIENT_ID, ML_CLIENT_SECRET, acc.refresh_token); } catch { console.log(`\n═══ ${label.toUpperCase()} ═══\n  (no pude entrar a la cuenta)`); continue; }
+        await db.patch('mlapi/tokens/' + label, { refresh_token: t.refresh_token, updated_ts: Date.now() });
+        const tok = t.access_token, sellerId = acc.seller_id;
+        let ords = [];
+        try { ords = await fetchOrders(sellerId, tok, desdeISO); } catch (e) { console.log(`\n═══ ${label.toUpperCase()} ═══\n  (no pude leer las ventas: ${String(e.message || e).slice(0, 70)})`); continue; }
+        const facs = {}, sin = {};
+        let noSe = 0;
+        for (const o of ords) {
+          let doc = null;
+          try { doc = await mlGet(`/users/${sellerId}/invoices/orders/${o.id}`, tok); } catch { /* sin factura o sin permiso */ }
+          const num = doc && (doc.invoice_number != null ? doc.invoice_number : null);
+          if (doc && num == null) noSe++;
+          if (doc && num != null) {
+            const serie = String(doc.invoice_series || '');
+            const a = doc.attributes || {};
+            const clave = (serie || 's') + '_' + num;
+            const prev = facs[clave];
+            facs[clave] = {
+              num, serie,
+              tipo: a.document_type || '',            // factura_c
+              estado: doc.status || '',               // authorized
+              fecha: doc.issued_date || '',
+              monto: Math.round(doc.amount || doc.items_amount || 0),
+              cant: doc.items_quantity || 0,
+              // OJO: ML le dice "protocol" al CAE (el código con el que ARCA autoriza la factura)
+              // y "protocol_due_date" a su vencimiento. No hay ningún campo que se llame "cae".
+              cae: a.protocol || '',
+              caeVence: a.protocol_due_date || '',
+              autorizada: a.authorization_date || '',
+              // Una factura puede cubrir varias ventas (compra con carrito).
+              ventas: [...new Set([...((prev && prev.ventas) || []), String(o.id)])],
+              prod: ((o.order_items || [])[0]?.item?.title || '').slice(0, 70),
+              errores: (doc.errors || []).length,
+            };
+          } else {
+            sin[String(o.id)] = {
+              fecha: o.date_created || '',
+              monto: Math.round(o.total_amount || 0),
+              prod: ((o.order_items || [])[0]?.item?.title || '').slice(0, 70),
+            };
+          }
+        }
+        // Desde cuándo esta cuenta factura: la fecha de su factura MÁS VIEJA que tengamos.
+        // Las ventas anteriores a eso NO son un problema — el facturador todavía no existía —
+        // así que no se cuentan como "sin factura" y no disparan ninguna alarma.
+        const yaGuardadas = (await db.get('cyc/facturas/' + sid(label))) || {};
+        const fechas = [...Object.values(facs), ...Object.values(yaGuardadas)]
+          .map((f) => f && f.fecha).filter(Boolean).sort();
+        const arranque = fechas[0] || null;
+        let sinReales = 0;
+        for (const [oid, v] of Object.entries(sin)) {
+          if (arranque && v.fecha && v.fecha >= arranque) sinReales++;
+          else delete sin[oid];   // venta vieja: no es un problema, no la guardamos
+        }
+        facUpd[label] = facs; sinUpd[label] = sin;
+        const total = Object.values(facs).reduce((a, f) => a + f.monto, 0);
+        const nums = Object.values(facs).map((f) => f.num).sort((a, b) => a - b);
+        const huecos = [];
+        for (let i = 1; i < nums.length; i++) for (let n = nums[i - 1] + 1; n < nums[i]; n++) huecos.push(n);
+        console.log(`\n═══ ${label.toUpperCase()} · ${ords.length} ventas en ${DIAS} días ═══`);
+        console.log(`  Facturas: ${nums.length}${nums.length ? ` (de la ${nums[0]} a la ${nums[nums.length - 1]})` : ''} · facturado ${money(total)}`);
+        console.log(`  Empezó a facturar: ${arranque ? arranque.slice(0, 10) : '(todavía no facturó nada)'}`);
+        if (huecos.length) console.log(`  ⚠️ FALTAN los números: ${huecos.join(', ')}`);
+        if (sinReales) console.log(`  ⚠️ ${sinReales} venta(s) POSTERIORES a esa fecha SIN factura — hay que mirarlo`);
+        else console.log(`  ✓ Ninguna venta quedó sin factura`);
+        if (noSe) console.log(`  (${noSe} que ML contestó pero sin número)`);
+        resumen.push({ label, nFac: nums.length, total, sinFac: sinReales, huecos: huecos.length });
+      }
+      if (!GO) { console.log('\n(prueba: no guardé nada. Agregá ":go" para guardarlo en el panel)'); return; }
+      for (const label of Object.keys(facUpd)) {
+        await db.patch('cyc/facturas/' + sid(label), facUpd[label]);
+        await db.set('cyc/facturassin/' + sid(label), sinUpd[label]);
+      }
+      // Verificación: se vuelve a leer de Firebase y se compara, porque "guardado" sin releer ya
+      // nos mintió antes (las escrituras que iban fuera de cyc/).
+      console.log('\n── Verificación (releído del panel) ──');
+      for (const label of Object.keys(facUpd)) {
+        const leido = (await db.get('cyc/facturas/' + sid(label))) || {};
+        const esperadas = Object.keys(facUpd[label]);
+        const faltan = esperadas.filter((k) => !leido[k]);
+        console.log(`  ${label}: guardadas ${esperadas.length} · en el panel ${Object.keys(leido).length} · ${faltan.length ? '⚠️ no quedaron: ' + faltan.join(', ') : '✓ están todas'}`);
+      }
+      return;
+    }
+
     // BILLING_PROBE=facturas[:<cuenta>][:<días>] → ¿SALIÓ LA FACTURA DE CADA VENTA?
     //
     // Desde que se prende el facturador automático de ML, cada venta nueva tendría que salir con
