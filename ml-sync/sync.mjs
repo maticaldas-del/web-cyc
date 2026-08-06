@@ -2557,6 +2557,11 @@ async function main() {
       const _f = String(process.env.BILLING_PROBE).split(':');
       const soloCta = (_f[1] || '').trim().toLowerCase();
       const DIAS = parseFloat(_f[2]) || 7;
+      // ":crudo" muestra tal cual lo que contesta ML de las primeras ventas. Hace falta para saber
+      // qué datos hay de verdad (número, CAE, fecha, tipo) antes de mostrarlos en la web: los
+      // nombres de los campos los fue cambiando ML y adivinarlos es cómo se muestran datos falsos.
+      const CRUDO = _f.includes('crudo') || !!process.env.FACT_CRUDO;
+      let crudosVistos = 0;
       const desde = new Date(Date.now() - DIAS * 864e5).toISOString();
       for (const label of labels) {
         if (soloCta && label.toLowerCase() !== soloCta) continue;
@@ -2592,6 +2597,10 @@ async function main() {
             try { const d = await mlGet(p, tok); if (d) { doc = d; puertaOk = p; break; } } catch { /* probamos la siguiente */ }
           }
           if (!doc) { noSe++; console.log(`  ${fecha} · ${tot.padStart(10)} · ${prod.padEnd(34)} · ML no me contesta si tiene factura`); continue; }
+          if (CRUDO && crudosVistos < 3) {
+            crudosVistos++;
+            console.log(`      CRUDO (${puertaOk}):\n      ${JSON.stringify(doc).slice(0, 1200)}`);
+          }
           const num = doc.invoice_number || doc.number || doc.document_number
             || (doc.invoice && (doc.invoice.number || doc.invoice.invoice_number)) || null;
           const cae = doc.cae || doc.authorization_code || (doc.invoice && doc.invoice.cae) || null;
