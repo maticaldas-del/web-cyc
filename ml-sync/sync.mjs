@@ -2597,9 +2597,15 @@ async function main() {
             try { const d = await mlGet(p, tok); if (d) { doc = d; puertaOk = p; break; } } catch { /* probamos la siguiente */ }
           }
           if (!doc) { noSe++; console.log(`  ${fecha} · ${tot.padStart(10)} · ${prod.padEnd(34)} · ML no me contesta si tiene factura`); continue; }
-          if (CRUDO && crudosVistos < 3) {
+          if (CRUDO && crudosVistos < 2) {
             crudosVistos++;
-            console.log(`      CRUDO (${puertaOk}):\n      ${JSON.stringify(doc).slice(0, 1200)}`);
+            // Se sacan las partes largas (quién emite, quién compra, el envío) porque no hacen
+            // falta y tapaban lo que sí importa: número, fecha, monto, tipo y CAE.
+            const { issuer, recipient, shipment, items, ...resto } = doc;
+            console.log(`      CRUDO (${puertaOk})`);
+            console.log(`      campos: ${Object.keys(doc).join(', ')}`);
+            console.log(`      sin issuer/recipient/shipment/items: ${JSON.stringify(resto).slice(0, 1500)}`);
+            if (Array.isArray(items) && items[0]) console.log(`      1er item: ${JSON.stringify(items[0]).slice(0, 600)}`);
           }
           const num = doc.invoice_number || doc.number || doc.document_number
             || (doc.invoice && (doc.invoice.number || doc.invoice.invoice_number)) || null;
