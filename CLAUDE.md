@@ -106,8 +106,19 @@ Los que más se usan:
 | `raizsucia[:go]` | qué quedó escrito fuera de `cyc/` por el bug de prefijo |
 | `pubaviso[:borrar]` | de qué publicaciones ya se avisó "problema", para que no repita |
 | `apis` | qué endpoints de ML contestan (para diagnosticar) |
+| `ciclo` | **no es un comando: vuelve a prender el ciclo de 2 minutos** (ver abajo) |
 
 Casi todos son de solo lectura. Los que escriben piden `:go` explícito.
+
+**SIEMPRE, después de correr un comando: volver a prender el ciclo** disparando `ml-sync` con
+`billing_probe` = `ciclo`. Cada corrida a mano **mata** el ciclo automático (es el mismo candado),
+y el ciclo NO se recupera solo: solo lo arranca el reloj de GitHub, que saltea corridas. La noche
+del 05/08/2026 pasaron 3 horas sin ninguna y el resumen del día no salió porque no había ciclo
+vivo. Chequeo rápido: si `ml-sync` no figura "in progress", el robot está apagado.
+
+Ojo también: el workflow `ml-sync` **ya tiene las 25 opciones que permite GitHub**. Agregar una más
+rompe el archivo entero y deja de correr TODO, sin aviso. Si hace falta algo nuevo, va adentro de
+`billing_probe`.
 
 ### Los automáticos
 
