@@ -69,13 +69,13 @@ body{font-family:'DM Mono',monospace;background:var(--bg);color:var(--text);min-
 .home-logo{text-align:center}
 .home-logo img{height:140px;object-fit:contain;filter:brightness(1.05)}
 .home-subtitle{font-size:.7rem;color:var(--muted);text-transform:uppercase;letter-spacing:.16em;margin-top:8px}
-.home-grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px;width:100%;max-width:1280px}
-.home-col{display:flex;flex-direction:column;gap:14px}
-.nav-card-center{background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:28px 22px;cursor:pointer;transition:all .18s;position:relative;overflow:hidden;text-align:left;height:100%;display:flex;flex-direction:column;justify-content:center}
-.nav-card-center:hover{transform:translateY(-2px);border-color:var(--border2)}
-.nav-card-center::before{content:'';position:absolute;top:0;left:0;right:0;height:3px;background:linear-gradient(90deg,#f472b6,#fb7185);opacity:.7}
-@media(max-width:640px){.home-grid{grid-template-columns:1fr}.home-col{}}
-.nav-card{background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:24px 22px;cursor:pointer;transition:all .18s;position:relative;overflow:hidden;text-align:left}
+/* Las tarjetas del inicio: TODAS iguales, 3 por fila, de izquierda a derecha.
+   Antes había tres columnas con una tarjeta grande en el medio: cada tarjeta tenía un tamaño
+   distinto y la vista quedaba cargada. Ahora es una sola grilla y todas miden lo mismo. */
+.home-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;width:100%;max-width:1280px;align-items:stretch}
+@media(max-width:900px){.home-grid{grid-template-columns:repeat(2,1fr)}}
+@media(max-width:640px){.home-grid{grid-template-columns:1fr}}
+.nav-card{background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:24px 22px 44px;cursor:pointer;transition:all .18s;position:relative;overflow:hidden;text-align:left;height:100%}
 .nav-card:hover{transform:translateY(-2px);border-color:var(--border2)}
 .nav-card::before{content:'';position:absolute;top:0;left:0;right:0;height:3px;transition:opacity .18s}
 .nav-card:hover::before{opacity:1}
@@ -454,65 +454,56 @@ footer{margin-top:32px;padding-top:14px;border-top:1px solid var(--border);font-
   <div id="home-cierre-aviso" style="display:none"></div>
   <div id="home-puntaje"></div>
   <div class="home-grid">
-    <!-- LEFT: Gastos + Pedidos -->
-    <div class="home-col">
-      <div class="nav-card" onclick="goPage('compras')" style="border-color:rgba(239,68,68,.3)">
-        <span style="position:absolute;top:0;left:0;right:0;height:3px;background:linear-gradient(90deg,#ef4444,#f87171)"></span>
-        <span class="nc-icon">🛒</span>
-        <div class="nc-title">Compras y Gastos</div>
-        <div class="nc-desc">Registro de inversiones y gastos operativos por categoría.</div>
-        <span class="nc-arrow">→</span>
-      </div>
-      <div class="nav-card nc3" onclick="goPage('pedidos')">
-        <span class="nc-icon">🚚</span>
-        <div class="nc-title">Pedidos</div>
-        <div class="nc-desc">BS AS · Paraguay · Urgente · Poco stock.</div>
-        <div id="nc-pedidos-costo" style="font-size:.68rem;color:var(--muted);margin-top:4px"></div>
-        <span class="nc-arrow">→</span>
-      </div>
-      <div class="nav-card nc3" onclick="goPage('rotacion')">
-        <span class="nc-icon">📊</span>
-        <div class="nc-title">Rotación de Stock</div>
-        <div class="nc-desc">Capital inmovilizado · ventas 30d · estado por producto.</div>
-        <div id="nc-rot-score"></div>
-        <span class="nc-arrow">→</span>
-      </div>
+    <div class="nav-card nc6" onclick="goPage('resumen')">
+      <span class="nc-icon">📋</span>
+      <div class="nc-title">Resumen</div>
+      <div class="nc-desc">Vista general de todas las secciones: patrimonio, ingresos ML, local y pedidos.</div>
+      <span class="nc-arrow">→</span>
     </div>
-    <!-- CENTER: Resumen -->
-    <div>
-      <div class="nav-card-center" onclick="goPage('resumen')">
-        <span class="nc-icon" style="font-size:2.4rem">📋</span>
-        <div class="nc-title" style="font-size:1.25rem;margin-bottom:10px">Resumen</div>
-        <div class="nc-desc">Vista general de todas las secciones: patrimonio, ingresos ML, local y pedidos.</div>
-        <span class="nc-arrow">→</span>
-      </div>
+    <div class="nav-card nc1" onclick="goPage('inventario')">
+      <span class="nc-icon">📦</span>
+      <div class="nc-title">Arqueo</div>
+      <div class="nc-desc">Stock, balance financiero y comparación de cierres.</div>
+      <span class="nc-arrow">→</span>
     </div>
-    <!-- RIGHT: Arqueo + Métricas + Ventas x Producto -->
-    <div class="home-col">
-      <div class="nav-card nc1" onclick="goPage('inventario')">
-        <span class="nc-icon">📦</span>
-        <div class="nc-title">Arqueo</div>
-        <div class="nc-desc">Stock, balance financiero y comparación de cierres.</div>
-        <span class="nc-arrow">→</span>
-      </div>
-      <div class="nav-card nc4" onclick="goPage('metricas')">
-        <span class="nc-icon">📊</span>
-        <div class="nc-title">Métricas ML</div>
-        <div class="nc-desc">Ventas diarias por cuenta. Gráficos y análisis mensual.</div>
-        <span class="nc-arrow">→</span>
-      </div>
-      <div class="nav-card nc6" onclick="goPage('ventaprod')">
-        <span class="nc-icon">🏷️</span>
-        <div class="nc-title">Ventas x Producto</div>
-        <div class="nc-desc">Qué producto se vendió, en qué cuenta y ranking del mes.</div>
-        <span class="nc-arrow">→</span>
-      </div>
-      <div class="nav-card nc1" onclick="goPage('facturas')">
-        <span class="nc-icon">🧾</span>
-        <div class="nc-title">Facturas</div>
-        <div class="nc-desc">Las facturas que emitió ML por cada cuenta, y si alguna venta quedó sin facturar.</div>
-        <span class="nc-arrow">→</span>
-      </div>
+    <div class="nav-card nc4" onclick="goPage('metricas')">
+      <span class="nc-icon">📊</span>
+      <div class="nc-title">Métricas ML</div>
+      <div class="nc-desc">Ventas diarias por cuenta. Gráficos y análisis mensual.</div>
+      <span class="nc-arrow">→</span>
+    </div>
+    <div class="nav-card nc2" onclick="goPage('ventaprod')">
+      <span class="nc-icon">🏷️</span>
+      <div class="nc-title">Ventas x Producto</div>
+      <div class="nc-desc">Qué producto se vendió, en qué cuenta y ranking del mes.</div>
+      <span class="nc-arrow">→</span>
+    </div>
+    <div class="nav-card nc5" onclick="goPage('facturas')">
+      <span class="nc-icon">🧾</span>
+      <div class="nc-title">Facturas</div>
+      <div class="nc-desc">Las facturas que emitió ML por cada cuenta, y si alguna venta quedó sin facturar.</div>
+      <span class="nc-arrow">→</span>
+    </div>
+    <div class="nav-card" onclick="goPage('compras')" style="border-color:rgba(239,68,68,.3)">
+      <span style="position:absolute;top:0;left:0;right:0;height:3px;background:linear-gradient(90deg,#ef4444,#f87171)"></span>
+      <span class="nc-icon">🛒</span>
+      <div class="nc-title">Compras y Gastos</div>
+      <div class="nc-desc">Registro de inversiones y gastos operativos por categoría.</div>
+      <span class="nc-arrow">→</span>
+    </div>
+    <div class="nav-card nc3" onclick="goPage('pedidos')">
+      <span class="nc-icon">🚚</span>
+      <div class="nc-title">Pedidos</div>
+      <div class="nc-desc">BS AS · Paraguay · Urgente · Poco stock.</div>
+      <div id="nc-pedidos-costo" style="font-size:.68rem;color:var(--muted);margin-top:4px"></div>
+      <span class="nc-arrow">→</span>
+    </div>
+    <div class="nav-card nc3" onclick="goPage('rotacion')">
+      <span class="nc-icon">📊</span>
+      <div class="nc-title">Rotación de Stock</div>
+      <div class="nc-desc">Capital inmovilizado · ventas 30d · estado por producto.</div>
+      <div id="nc-rot-score"></div>
+      <span class="nc-arrow">→</span>
     </div>
   </div>
   <div class="home-status">
@@ -7533,7 +7524,7 @@ document.addEventListener('click',e=>{if(fnavOpen&&!e.target.closest('#fnav-btn'
         <span style="font-size:.75rem;color:var(--muted)">Si no ves los últimos cambios, forzá la actualización</span>
         <button class="btn" style="background:rgba(56,189,248,.12);color:var(--blue);border:1px solid rgba(56,189,248,.3)" onclick="actualizarApp()">🔄 Buscar actualizaciones</button>
       </div>
-      <div style="font-size:.66rem;color:var(--muted);margin-top:12px">CYC · Versión 8.7</div>
+      <div style="font-size:.66rem;color:var(--muted);margin-top:12px">CYC · Versión 8.8</div>
     </div>
 
     <div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:18px 20px;margin-bottom:14px">
