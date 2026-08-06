@@ -114,6 +114,10 @@ on:
         description: 'Borrar gastos anteriores a (ej 2026_01_01)'
         required: false
         default: ''
+      ciclo:
+        description: 'Volver a arrancar el ciclo de 2 minutos (poné 1). Se usa después de un comando.'
+        required: false
+        default: ''
   # schedule:
   #   - cron: '*/20 * * * *'   # cada 20 min (se activa al final)
 
@@ -123,8 +127,14 @@ on:
 # que escribe precios, eso sería una cuenta entera sin aplicar.
 #
 # cancel-in-progress solo para las corridas A MANO: un comando tuyo tiene prioridad y corta el
-# ciclo automático (que se recupera solo en el próximo disparo, como mucho 20 minutos). Al revés
-# nunca: una corrida automática JAMÁS corta un comando a mano, se queda esperando a que termine.
+# ciclo automático. Al revés nunca: una corrida automática JAMÁS corta un comando a mano, se queda
+# esperando a que termine.
+#
+# OJO, ESTO YA ROMPIÓ ALGO: cortar el ciclo lo deja MUERTO, no dormido. Antes solo lo podía arrancar
+# el reloj de GitHub, y GitHub saltea corridas programadas — la noche del 05/08/2026 pasaron 3 horas
+# sin ninguna, y el resumen del día no salió porque no había ciclo vivo para mandarlo. Por eso
+# existe la opción "ciclo": después de correr un comando a mano hay que volver a arrancarlo con
+# ciclo=1 y no confiar en que GitHub lo haga.
 concurrency:
   group: ml-sync
   cancel-in-progress: ${{ github.event_name == 'workflow_dispatch' }}
@@ -174,7 +184,7 @@ jobs:
           RESTORE_VP: ${{ github.event.inputs.restore_vp }}
           ACCOUNT: ${{ github.event.inputs.account }}
         run: |
-          if [ "${{ github.event_name }}" != "schedule" ]; then
+          if [ "${{ github.event_name }}" != "schedule" ] && [ "${{ github.event.inputs.ciclo }}" != "1" ]; then
             # Corrida a mano (un probe): se ejecuta una sola vez y listo.
             node ml-sync/sync.mjs
             exit $?
