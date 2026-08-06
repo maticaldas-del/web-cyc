@@ -114,10 +114,6 @@ on:
         description: 'Borrar gastos anteriores a (ej 2026_01_01)'
         required: false
         default: ''
-      ciclo:
-        description: 'Volver a arrancar el ciclo de 2 minutos (poné 1). Se usa después de un comando.'
-        required: false
-        default: ''
   # schedule:
   #   - cron: '*/20 * * * *'   # cada 20 min (se activa al final)
 
@@ -133,8 +129,8 @@ on:
 # OJO, ESTO YA ROMPIÓ ALGO: cortar el ciclo lo deja MUERTO, no dormido. Antes solo lo podía arrancar
 # el reloj de GitHub, y GitHub saltea corridas programadas — la noche del 05/08/2026 pasaron 3 horas
 # sin ninguna, y el resumen del día no salió porque no había ciclo vivo para mandarlo. Por eso
-# existe la opción "ciclo": después de correr un comando a mano hay que volver a arrancarlo con
-# ciclo=1 y no confiar en que GitHub lo haga.
+# después de correr un comando a mano hay que volver a arrancar el ciclo poniendo la palabra
+# "ciclo" en billing_probe, y no confiar en que GitHub lo haga solo.
 concurrency:
   group: ml-sync
   cancel-in-progress: ${{ github.event_name == 'workflow_dispatch' }}
@@ -184,8 +180,13 @@ jobs:
           RESTORE_VP: ${{ github.event.inputs.restore_vp }}
           ACCOUNT: ${{ github.event.inputs.account }}
         run: |
-          if [ "${{ github.event_name }}" != "schedule" ] && [ "${{ github.event.inputs.ciclo }}" != "1" ]; then
-            # Corrida a mano (un probe): se ejecuta una sola vez y listo.
+          # "billing_probe = ciclo" NO es un comando del robot: es la forma de volver a prender el
+          # ciclo automático a mano. Va por acá y no por una opción nueva porque GitHub no deja
+          # tener más de 25 opciones en un workflow, y ya están todas usadas.
+          if [ "${{ github.event.inputs.billing_probe }}" = "ciclo" ]; then
+            unset BILLING_PROBE   # si no, el robot lo tomaría como un comando que no existe
+          elif [ "${{ github.event_name }}" != "schedule" ]; then
+            # Corrida a mano (un comando): se ejecuta una sola vez y listo.
             node ml-sync/sync.mjs
             exit $?
           fi
