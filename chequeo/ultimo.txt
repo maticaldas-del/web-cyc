@@ -1,36 +1,38 @@
-🌅 CHEQUEO DE LA MAÑANA · sábado, 8 de agosto
+🌅 CHEQUEO DE LA MAÑANA · domingo, 9 de agosto
 
 🔴 Hay cosas para mirar hoy.
 
-➡️ Ayer: $553.792 · promedio 7 días $645.401 · -14%
+➡️ Ayer: $566.758 · promedio 7 días $612.403 · -7%
 
-📉 Sin stock y vendían: 96 publicaciones · se pierden $494.988/día
-   · Matias · Infusor De Te En Hebras Acero Inoxidable C — $28.523/día
+📉 Sin stock y vendían: 100 publicaciones · se pierden $514.466/día
+   · Matias · Infusor De Te En Hebras Acero Inoxidable C — $27.949/día
    · Matias · Pendrive Sandisk Cruzer Blade 8gb 2.0 Negr — $25.688/día
-   · Adriana · Perfume Para Hombre Ferrari Scuderia Ferra — $24.267/día
    · Matias · Disco Sólido Externo Sandisk Sdssde30-1t00 — $23.000/día
+   · Adriana · Perfume Para Hombre Ferrari Scuderia Ferra — $22.533/día
    · Matias · Memoria Microsd Sandisk Ultra A1 64gb C10  — $19.872/día
    · Matias · Playstation Portal Remote Player Reproduct — $19.333/día
-   … y 90 más
+   … y 94 más
 
-🔴 RECLAMOS QUE TE ESTÁN ESPERANDO: 1
-   · Luciana · PDD9939 · 2 días sin contestar · podés: send_message_to_complainant, refund, open_dispute
+🔴 RECLAMOS QUE TE ESTÁN ESPERANDO: 2
+   · Luciana · PDD9939 · 3 días sin contestar · podés: send_message_to_complainant, refund, open_dispute
+   · Matias · PDD9939 · 2 días sin contestar · podés: send_message_to_complainant, refund, open_dispute, allow_return, allow_partial_refund
    Si no contestás, ML resuelve solo — casi siempre a favor del comprador.
 
-❓ Preguntas sin responder: 95
-   · Adriana: 20 · la más vieja hace 202 días
-   · Ayelen: 32 · la más vieja hace 222 días
-   · Luciana: 20 · la más vieja hace 184 días
-   · Matias: 23 · la más vieja hace 208 días
+❓ Preguntas sin responder: 91
+   · Adriana: 20 · la más vieja hace 203 días
+   · Ayelen: 32 · la más vieja hace 223 días
+   · Luciana: 16 · la más vieja hace 185 días
+   · Matias: 23 · la más vieja hace 209 días
 
-⚠️ Reclamos abiertos: 4
-   · Ayelen: PDD9944 · 1 días · lo maneja ML, no hay nada para hacer
-   · Luciana: PDD9939 · 2 días
-   · Matias: PDD9939 · 1 días
-   · Matias: PDD9944 · 8 días · lo maneja ML, no hay nada para hacer
+⚠️ Reclamos abiertos: 5
+   · Ayelen: PDD9944 · 2 días · lo maneja ML, no hay nada para hacer
+   · Luciana: PDD9939 · 3 días
+   · Luciana: PDD9952 · 0 días
+   · Matias: PDD9939 · 2 días
+   · Matias: PDD9944 · 9 días · lo maneja ML, no hay nada para hacer
 💬 Mensajes de posventa sin leer: 2
 
-⏸️ Pausadas: 178 sin stock · 45 a mano · 0 por ML
+⏸️ Pausadas: 183 sin stock · 45 a mano · 0 por ML
 
 ✅ Ninguna activa fuera de Full
 
@@ -38,8 +40,8 @@
    🔴 unidades con problema: 10
       · Adriana · Pendrive Sandisk Cruzer Blade 64gb 2.0 Neg: 1 u. (lost 1)
       · Ayelen · Espejo Redondo Giratorio C/ Soporte Metal : 1 u. (lost 1)
-      · Ayelen · Pack X10 Lupa De Aumento 60mm Glass: 6 u. (withdrawal 6)
       · Ayelen · Auricular Vincha Diseño De Orejas De Gatit: 1 u. (notSupported 1)
+      · Ayelen · Pack X10 Lupa De Aumento 60mm Glass: 6 u. (withdrawal 6)
       · Matias · Philips 2000 Series Tat2206 Negro: 1 u. (notSupported 1)
    📥 cajas que llegaron en 7 días: 0
 
