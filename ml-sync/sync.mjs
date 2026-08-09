@@ -2543,6 +2543,51 @@ async function main() {
       console.log('\n(esto solo LEE: no toqué nada)');
       return;
     }
+    // BILLING_PROBE=vergastos[:<AAAA_MM>] → LOS GASTOS DE UN MES, TAL COMO ESTÁN GUARDADOS.
+    //
+    // La pantalla "Gastos por categoría" solo muestra el período elegido y agrupa por categoría, así
+    // que dos gastos parecidos se ven como uno y no se sabe cuál es cuál. Esto los abre uno por uno
+    // con TODOS los campos (quién lo creó, si es automático, la fecha real) — que es lo único que
+    // permite decidir si algo está duplicado.
+    // Existe porque el 09/08/2026 aparecieron en agosto "Obra Social $250.000" y "Autónomo + obra
+    // social $113.083" y desde la web no había forma de saber si la obra social estaba dos veces.
+    // Solo LEE.
+    if (String(process.env.BILLING_PROBE || '').startsWith('vergastos')) {
+      const _g = String(process.env.BILLING_PROBE).split(':');
+      const YM = (_g[1] || '').trim() || dayKeyFromISO(new Date().toISOString()).slice(0, 7);
+      const compras = (await db.get('cyc/compras')) || {};
+      const delMes = Object.entries(compras)
+        .filter(([, g]) => g && String(g.dayKey || '').startsWith(YM))
+        .sort((a, b) => String(a[1].dayKey).localeCompare(String(b[1].dayKey)));
+      console.log(`\n═══ GASTOS DE ${YM.replace('_', '-')} ═══`);
+      if (!delMes.length) console.log('  (ninguno)');
+      let tot = 0;
+      for (const [id, g] of delMes) {
+        tot += Math.round(g.monto || 0);
+        console.log(`\n  ${g.dayKey} · ${money(Math.round(g.monto || 0))} · ${g.cat || '(sin categoría)'}`);
+        console.log(`      desc : ${g.desc || '(sin descripción)'}`);
+        console.log(`      clave: ${id}${g.auto ? '  · lo creó el robot' : '  · cargado a mano'}`);
+        const otros = Object.entries(g).filter(([k]) => !['monto', 'cat', 'desc', 'dayKey', 'ts', 'auto', 'tipo', 'id'].includes(k));
+        if (otros.length) console.log(`      otros: ${otros.map(([k, v]) => k + '=' + JSON.stringify(v)).join(' · ')}`);
+      }
+      console.log(`\n  TOTAL ${YM.replace('_', '-')}: ${money(tot)} en ${delMes.length} gasto(s)`);
+      // Los mismos gastos de los 3 meses anteriores, para ver cuáles se repiten todos los meses y
+      // cuáles aparecieron una sola vez (que es la pista de que algo se cargó de más).
+      console.log(`\n── Los mismos conceptos en los meses anteriores ──`);
+      const [aa, mm] = YM.split('_').map(Number);
+      for (let k = 1; k <= 3; k++) {
+        const d = new Date(aa, mm - 1 - k, 1);
+        const ymk = d.getFullYear() + '_' + String(d.getMonth() + 1).padStart(2, '0');
+        const items = Object.values(compras).filter((g) => g && String(g.dayKey || '').startsWith(ymk));
+        const t = items.reduce((s, g) => s + Math.round(g.monto || 0), 0);
+        console.log(`  ${ymk.replace('_', '-')}: ${money(t)} · ${items.length} gasto(s)`);
+        for (const g of items.sort((a, b) => String(a.dayKey).localeCompare(String(b.dayKey)))) {
+          console.log(`      ${g.dayKey} · ${money(Math.round(g.monto || 0)).padStart(12)} · ${(g.cat || '?').padEnd(28)} · ${(g.desc || '').slice(0, 45)}`);
+        }
+      }
+      return;
+    }
+
     // BILLING_PROBE=facsync[:<días>][:go] → GUARDAR LAS FACTURAS REALES EN EL PANEL.
     //
     // Recorre las ventas de los últimos días de las 4 cuentas, le pide a ML la factura de cada una
