@@ -2543,6 +2543,59 @@ async function main() {
       console.log('\n(esto solo LEE: no toqué nada)');
       return;
     }
+    // BILLING_PROBE=partirgasto:<clave>:<AAAA_MM,AAAA_MM,...>[:go] → REPARTIR UN GASTO EN VARIOS MESES.
+    //
+    // Para cuando se paga junto algo que corresponde a varios meses. Si queda todo en el mes en que
+    // se pagó, ese mes aparece peor de lo que fue y los otros mejores: comparar meses deja de servir.
+    // Pasó el 09/08/2026 con la obra social ($250.000 de una vez = 3 meses atrasados).
+    //
+    // El reparto es EXACTO: el último mes se lleva el resto de la división, así la suma da igual al
+    // original hasta el peso. No se inventa plata ni se pierde.
+    // Sin ":go" solo muestra lo que haría.
+    if (String(process.env.BILLING_PROBE || '').startsWith('partirgasto:')) {
+      const _p = String(process.env.BILLING_PROBE).split(':');
+      const CLAVE = (_p[1] || '').trim();
+      const MESES = (_p[2] || '').split(',').map((s) => s.trim()).filter(Boolean);
+      const GO = _p.includes('go');
+      if (!CLAVE || !MESES.length) { console.log('Formato: partirgasto:c1785858065566:2026_05,2026_06,2026_07[:go]'); return; }
+      if (!MESES.every((m) => /^\d{4}_\d{2}$/.test(m))) { console.log('Los meses van como 2026_05, separados por coma.'); return; }
+      const orig = await db.get('cyc/compras/' + CLAVE);
+      if (!orig) { console.log(`No existe ningún gasto con la clave ${CLAVE}.`); return; }
+      const total = Math.round(orig.monto || 0);
+      if (total <= 0) { console.log('Ese gasto no tiene monto.'); return; }
+      const base = Math.floor(total / MESES.length);
+      const partes = MESES.map((_, i) => (i === MESES.length - 1 ? total - base * (MESES.length - 1) : base));
+      console.log(`\n═══ REPARTIR ${money(total)} ═══`);
+      console.log(`  Original: ${orig.dayKey} · ${orig.cat || '?'} · ${orig.desc || '(sin descripción)'}`);
+      const nuevos = {};
+      MESES.forEach((ym, i) => {
+        const id = 'partido_' + CLAVE + '_' + ym;
+        nuevos[id] = {
+          id, monto: partes[i], cat: orig.cat || 'Otros gastos operativos', tipo: 'gasto',
+          desc: `${orig.desc || 'Gasto'} (${i + 1}/${MESES.length} · se pagó todo junto el ${orig.dayKey})`,
+          dayKey: ym + '_01', ts: Date.now(), auto: false, partidoDe: CLAVE,
+        };
+        console.log(`  → ${ym.replace('_', '-')}: ${money(partes[i])}`);
+      });
+      console.log(`  Suma de las partes: ${money(partes.reduce((a, b) => a + b, 0))} ${partes.reduce((a, b) => a + b, 0) === total ? '✓ igual al original' : '✗ NO COINCIDE'}`);
+      console.log(`  Y se borra el original de ${orig.dayKey}.`);
+      if (!GO) { console.log('\n(prueba: no toqué nada. Agregá ":go" para aplicarlo)'); return; }
+      if (DRY) { console.log('\n(DRY_RUN: no escribí nada)'); return; }
+      await db.patch('cyc/compras', nuevos);
+      await db.set('cyc/compras/' + CLAVE, null);
+      // Verificación: se relee de Firebase. "Guardado" sin releer ya nos mintió antes.
+      const check = (await db.get('cyc/compras')) || {};
+      let suma = 0, faltan = [];
+      for (const id of Object.keys(nuevos)) {
+        if (check[id]) suma += Math.round(check[id].monto || 0); else faltan.push(id);
+      }
+      console.log(`\n── Verificación (releído del panel) ──`);
+      console.log(`  Partes en el panel: ${Object.keys(nuevos).length - faltan.length} de ${Object.keys(nuevos).length}${faltan.length ? ' · FALTAN: ' + faltan.join(', ') : ''}`);
+      console.log(`  Suman ${money(suma)} ${suma === total ? '✓ igual al original' : '✗ NO COINCIDE con ' + money(total)}`);
+      console.log(`  El original ${CLAVE}: ${check[CLAVE] ? '✗ TODAVÍA ESTÁ (se contaría dos veces)' : '✓ borrado'}`);
+      return;
+    }
+
     // BILLING_PROBE=vergastos[:<AAAA_MM>] → LOS GASTOS DE UN MES, TAL COMO ESTÁN GUARDADOS.
     //
     // La pantalla "Gastos por categoría" solo muestra el período elegido y agrupa por categoría, así
