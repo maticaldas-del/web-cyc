@@ -105,6 +105,8 @@ Los que más se usan:
 | `netoref[:borrar]` | los netos escritos a mano que tapan el real, y sacarlos |
 | `raizsucia[:go]` | qué quedó escrito fuera de `cyc/` por el bug de prefijo |
 | `pubaviso[:borrar]` | de qué publicaciones ya se avisó "problema", para que no repita |
+| `vergastos[:mes]` | los gastos de un mes uno por uno, con los 3 meses anteriores al lado |
+| `partirgasto:<clave>:<meses>[:go]` | reparte un gasto pagado junto entre los meses que cubre |
 | `apis` | qué endpoints de ML contestan (para diagnosticar) |
 | `ciclo` | **no es un comando: vuelve a prender el ciclo de 2 minutos** (ver abajo) |
 
