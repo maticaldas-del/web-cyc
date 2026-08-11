@@ -176,3 +176,34 @@ No alcanza con que el código compile. Para cualquier cambio que toque plata o p
 
 Si un probe de verificación tiene la fórmula vieja copiada adentro, va a decir "todo bien" para
 siempre. Los verificadores tienen que llamar a la misma función que el código real.
+
+## Pendientes al 11/08/2026
+
+Lo que quedó abierto. Borrá de acá lo que se vaya cerrando.
+
+- **Vigilar las 8 publicaciones que ganaban la caja de compra y se subieron igual** (11/08). Él lo
+  decidió así: *"aunque perdamos en catálogo ganamos igual, y si hay que mantenerlos abajo para que
+  ganen no sirven como productos"*. Entre ellas el Separador de Dedos x2 (35 ventas en 60 días) y
+  las luces de bici. Si alguna se cae fuerte en ventas, avisarle para que decida.
+- **Dos publicaciones de Matías a $32.999 sin resolver**: Recortadora 4 en 1 (MLA1751064238) y
+  Corta Pelo Nariz/Oreja (MLA1751165454). `bajopiso` dice que para llegar al 30% hay que BAJARLAS a
+  ~$30.300 — un precio menor no puede dar más margen, así que hay un error en la cuenta. No se
+  tocaron. Están pegadas a la barrera de los $33.000.
+- **Grupo Paulvic: NO TOCAR.** 26 publicaciones entre 24% y 30% a $14.360. Subirlas todas a $14.840
+  las pondría arriba del piso (~$34.500/mes más), pero él dijo expresamente que no.
+- **Obra social privada: falta dejarla automática.** Son $83.333/mes. El pago de $250.000 del
+  04/08 eran 3 meses atrasados y ya se repartió en mayo, junio y julio (`partirgasto`). Falta que
+  él confirme si agosto ya tiene su cuota o si el primer mes del régimen nuevo es septiembre, y
+  después dejarla cargándose sola todos los meses (como hace el robot con el monotributo).
+- **Victoria's Secret "adulterado"** (reclamo de Adriana, 11/08, $45.300). Él dice que son
+  originales con factura. ML cerró el caso a favor del comprador sin dejar responder. Se le
+  recomendó guardar la factura del lote, abrir una unidad y filmarla, y reclamarle al proveedor.
+- **Factura A de Luciana**, pedida el 29/07 por mensaje de posventa y sin responder.
+- **El robot NO sabe reembolsar ni contestar reclamos**: solo lee. Si alguna vez se programa,
+  probarlo primero con un reclamo chico, nunca con uno grande.
+
+### Lo grande, que no se arregla con precios
+
+**~100 publicaciones sin stock que dejan de vender ~$500.000 por día**, y cero cajas entrando a
+Full desde el 01/08. Todo lo que se puede ganar subiendo precios son ~$34.000/mes: reponer un solo
+día vale más que eso. Él ya está reponiendo — no hace falta insistirle, pero sí medirlo.
