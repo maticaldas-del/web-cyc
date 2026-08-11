@@ -59,6 +59,20 @@ jobs:
           TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
           BILLING_PROBE: facsync:3:go
         run: node ml-sync/sync.mjs
+      # Recalcula el neto de cada producto al precio que tiene HOY en ML y lo carga en "Margen ML".
+      # Va acá porque esa pantalla NO lee ML en vivo: muestra lo último que se calculó. Si no se
+      # recalcula, después de tocar precios sigue mostrando números viejos que parecen actuales —
+      # y así un producto puede figurar arriba del piso estando abajo, o al revés, sin que se note.
+      - name: Margen ML al precio de hoy
+        env:
+          ML_CLIENT_ID: ${{ secrets.ML_CLIENT_ID }}
+          ML_CLIENT_SECRET: ${{ secrets.ML_CLIENT_SECRET }}
+          FIREBASE_API_KEY: ${{ secrets.FIREBASE_API_KEY }}
+          FIREBASE_DB_URL: ${{ secrets.FIREBASE_DB_URL }}
+          FIREBASE_BOT_EMAIL: ${{ secrets.FIREBASE_BOT_EMAIL }}
+          FIREBASE_BOT_PASSWORD: ${{ secrets.FIREBASE_BOT_PASSWORD }}
+          BILLING_PROBE: netoweb
+        run: node ml-sync/sync.mjs
       # Refresca la facturación de canceladas/devueltas (para el monotributo = "Ventas brutas" ML).
       - name: Facturación de canceladas
         env:

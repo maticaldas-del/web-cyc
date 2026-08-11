@@ -129,6 +129,7 @@ rompe el archivo entero y deja de correr TODO, sin aviso. Si hace falta algo nue
 | cada 2 minutos | trae las ventas nuevas |
 | 1 vez por hora | robot de precios |
 | 00:03 | resumen del día por Telegram |
+| 00:03 | junto con el resumen: facturas emitidas + recalcular Margen ML al precio de hoy |
 | el 1º de cada mes | resumen del mes |
 | 08:00 | el chequeo de la mañana, **escrito en el chat, NO por Telegram** |
 
