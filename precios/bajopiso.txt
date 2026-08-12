@@ -1,10 +1,10 @@
-ABAJO DEL 30% · 154 publicaciones · ventana 60 días
+ABAJO DEL 30% · 84 publicaciones · ventana 60 días
 
-── ABAJO DEL 30% · 154 publicaciones ──
+── ABAJO DEL 30% · 84 publicaciones ──
 
   Luciana  · MLA3576626852 · Tendedero Vertical 3 Niveles De Pi  [PAUSADA · sin stock]
       margen: peor venta -4% · típico 9%   (6 ventas · descuento típico $13.298, peor $16.480)
-      precio: $46.400 → $56.930 para el 30% en su peor venta (+22.7%)
+      precio: $46.400 → $56.940 para el 30% en su peor venta (+22.7%)
       catálogo: not_listed
       ❓ CATÁLOGO en estado "not_listed" — no es ni ganando ni perdiendo, revisar a mano
 
@@ -15,14 +15,14 @@ ABAJO DEL 30% · 154 publicaciones · ventana 60 días
       ❓ CATÁLOGO en estado "not_listed" — no es ni ganando ni perdiendo, revisar a mano
 
   Ayelen   · MLA3151845888 · Linterna Minera De Cabeza Con Vinc  [PAUSADA · sin stock]
-      margen: peor venta 9% · típico 21%   (59 ventas · descuento típico $0, peor $131)
+      margen: peor venta 9% · típico 21%   (56 ventas · descuento típico $0, peor $131)
       precio: $2.999 → $3.300 para el 30% en su peor venta (+10.0%)
       catálogo: not_listed
       ❓ CATÁLOGO en estado "not_listed" — no es ni ganando ni perdiendo, revisar a mano
 
   Matias   · MLA3528738632 · Philips 2000 Series Tat2206 Negro  [PAUSADA · sin stock]
       margen: peor venta 13% · típico 13%   (5 ventas · descuento típico $7.100, peor $7.100)
-      precio: $83.190 → $95.650 para el 30% en su peor venta (+15.0%)
+      precio: $83.190 → $95.670 para el 30% en su peor venta (+15.0%)
       catálogo: not_listed
       ❓ CATÁLOGO en estado "not_listed" — no es ni ganando ni perdiendo, revisar a mano
 
@@ -44,7 +44,7 @@ ABAJO DEL 30% · 154 publicaciones · ventana 60 días
 
   Matias   · MLA3315898018 · Playstation Portal Remote Player R  [PAUSADA · sin stock]
       margen: peor venta 19% · típico 19%   (1 ventas · descuento típico $13.085, peor $13.085)
-      precio: $580.000 → $639.570 para el 30% en su peor venta (+10.3%)
+      precio: $580.000 → $639.680 para el 30% en su peor venta (+10.3%)
       catálogo: not_listed
       ❓ CATÁLOGO en estado "not_listed" — no es ni ganando ni perdiendo, revisar a mano
 
@@ -54,19 +54,13 @@ ABAJO DEL 30% · 154 publicaciones · ventana 60 días
       catálogo: not_listed
       ❓ CATÁLOGO en estado "not_listed" — no es ni ganando ni perdiendo, revisar a mano
 
-  Adriana  · MLA1771171013 · Splash Victoria's Secret Bare Vani  [PAUSADA · sin stock]
-      margen: peor venta 20% · típico 20%   (1 ventas · descuento típico $5.895, peor $5.895)
-      precio: $45.300 → $48.680 para el 30% en su peor venta (+7.5%)
-      catálogo: not_listed
-      ❓ CATÁLOGO en estado "not_listed" — no es ni ganando ni perdiendo, revisar a mano
-
   Matias   · MLA1455445977 · Muñequera Ortopédica Gym Soporte D  [PAUSADA · sin stock]
       margen: peor venta 21% · típico 25%   (7 ventas · descuento típico $18, peor $100)
       precio: $4.100 → $4.320 para el 30% en su peor venta (+5.4%)
       ✅ SUBIR — no es de catálogo, no hay caja de compra que perder
 
   Ayelen   · MLA2008621508 · Corta Pelo Nariz Oreja Recargable   [PAUSADA · sin stock]
-      margen: peor venta 21% · típico 25%   (14 ventas · descuento típico $65, peor $361)
+      margen: peor venta 21% · típico 25%   (13 ventas · descuento típico $65, peor $361)
       precio: $12.990 → $13.960 para el 30% en su peor venta (+7.5%)
       catálogo: not_listed
       ❓ CATÁLOGO en estado "not_listed" — no es ni ganando ni perdiendo, revisar a mano
@@ -90,7 +84,7 @@ ABAJO DEL 30% · 154 publicaciones · ventana 60 días
 
   Matias   · MLA1751077020 · Corta Pelo De Nariz Oreja Cejas Po  [PAUSADA · sin stock]
       margen: peor venta 22% · típico 22%   (1 ventas · descuento típico $473, peor $473)
-      precio: $22.500 → $23.830 para el 30% en su peor venta (+5.9%)
+      precio: $22.500 → $23.840 para el 30% en su peor venta (+6.0%)
       ✅ SUBIR — no es de catálogo, no hay caja de compra que perder
 
   Adriana  · MLA1859593439 · Perfume Pret A Porter Cities Paris  [PAUSADA · sin stock]
@@ -101,41 +95,25 @@ ABAJO DEL 30% · 154 publicaciones · ventana 60 días
 
   Matias   · MLA1880529871 · Disco Sólido Externo Sandisk Sdssd  [PAUSADA · sin stock]
       margen: peor venta 23% · típico 23%   (1 ventas · descuento típico $9.780, peor $9.780)
-      precio: $399.999 → $424.740 para el 30% en su peor venta (+6.2%)
+      precio: $399.999 → $424.820 para el 30% en su peor venta (+6.2%)
       catálogo: not_listed
       ❓ CATÁLOGO en estado "not_listed" — no es ni ganando ni perdiendo, revisar a mano
 
   Luciana  · MLA1377920253 · Corta Pelo De Nariz Oreja Cuidado   [PAUSADA · sin stock]
       margen: peor venta 24% · típico 24%   (2 ventas · descuento típico $0, peor $0)
-      precio: $31.800 → $33.280 para el 30% en su peor venta (+4.7%)
+      precio: $31.800 → $33.290 para el 30% en su peor venta (+4.7%)
+      catálogo: not_listed
+      ❓ CATÁLOGO en estado "not_listed" — no es ni ganando ni perdiendo, revisar a mano
+
+  Matias   · MLA1873679049 · Samsung Galaxy A06 128gb 4gb Black  [PAUSADA · sin stock]
+      margen: peor venta 24% · típico 24%   (1 ventas · descuento típico $9.225, peor $9.225)
+      precio: $340.000 → $357.870 para el 30% en su peor venta (+5.3%)
       catálogo: not_listed
       ❓ CATÁLOGO en estado "not_listed" — no es ni ganando ni perdiendo, revisar a mano
 
   Luciana  · MLA3233205042 · Sabanas 1 Plazas Y Media Juego Par  [PAUSADA · sin stock]
       margen: peor venta 24% · típico 24%   (2 ventas · descuento típico $22, peor $22)
-      precio: $14.100 → $14.780 para el 30% en su peor venta (+4.8%)
-      ✅ SUBIR — no es de catálogo, no hay caja de compra que perder
-
-  Matias   · MLA1873679049 · Samsung Galaxy A06 128gb 4gb Black  [PAUSADA · sin stock]
-      margen: peor venta 24% · típico 24%   (1 ventas · descuento típico $9.225, peor $9.225)
-      precio: $340.000 → $357.800 para el 30% en su peor venta (+5.2%)
-      catálogo: not_listed
-      ❓ CATÁLOGO en estado "not_listed" — no es ni ganando ni perdiendo, revisar a mano
-
-  Matias   · MLA3568724892 · Tapon Hermetico Para Botellas De V
-      margen: peor venta 24% · típico 28%   (7 ventas · descuento típico $29, peor $90)
-      precio: $4.010 → $4.140 para el 30% en su peor venta (+3.2%)
-      ✅ SUBIR — no es de catálogo, no hay caja de compra que perder
-
-  Adriana  · MLA3026120138 · Perfume Femenino Paulvic Good Eau 
-      margen: peor venta 24% · típico 28%   (30 ventas · descuento típico $82, peor $385)
-      precio: $13.999 → $14.640 para el 30% en su peor venta (+4.6%)
-      catálogo: GANANDO
-      ⚠️ GRUPO "paulvic" — subir esta sube TODAS las del grupo, no se puede de a una
-
-  Luciana  · MLA1558373811 · Sabanas 2 Plazas Y Media Juego Par
-      margen: peor venta 24% · típico 24%   (6 ventas · descuento típico $0, peor $0)
-      precio: $18.800 → $19.640 para el 30% en su peor venta (+4.5%)
+      precio: $14.100 → $14.760 para el 30% en su peor venta (+4.7%)
       ✅ SUBIR — no es de catálogo, no hay caja de compra que perder
 
   Ayelen   · MLA1471679657 · Tira Luces Led 5050 Rgb, Kit Compl  [PAUSADA · sin stock]
@@ -168,7 +146,7 @@ ABAJO DEL 30% · 154 publicaciones · ventana 60 días
 
   Matias   · MLA3550882216 · Reloj Xiaomi Watch S5 Negro Negro   [PAUSADA · sin stock]
       margen: peor venta 25% · típico 25%   (1 ventas · descuento típico $9.965, peor $9.965)
-      precio: $420.000 → $439.790 para el 30% en su peor venta (+4.7%)
+      precio: $420.000 → $439.880 para el 30% en su peor venta (+4.7%)
       catálogo: not_listed
       ❓ CATÁLOGO en estado "not_listed" — no es ni ganando ni perdiendo, revisar a mano
 
@@ -184,86 +162,46 @@ ABAJO DEL 30% · 154 publicaciones · ventana 60 días
       catálogo: not_listed
       ❓ CATÁLOGO en estado "not_listed" — no es ni ganando ni perdiendo, revisar a mano
 
-  Adriana  · MLA1714328883 · De La Patagonia Eau De Parfum Ashe
-      margen: peor venta 25% · típico 25%   (4 ventas · descuento típico $6.017, peor $6.017)
-      precio: $42.900 → $44.480 para el 30% en su peor venta (+3.7%)
-      catálogo: GANANDO
-      🛑 NO SUBIR — hoy GANÁS la caja de compra
-
-  Adriana  · MLA3026299952 · Perfume Femenino Paulvic Dream Way  [PAUSADA · sin stock]
-      margen: peor venta 25% · típico 31%   (28 ventas · descuento típico $123, peor $580)
-      precio: $14.360 → $14.890 para el 30% en su peor venta (+3.7%)
-      catálogo: not_listed
-      ⚠️ GRUPO "paulvic" — subir esta sube TODAS las del grupo, no se puede de a una
-
   Luciana  · MLA1892750708 · Auriculares Inalámbricos P47 Over-  [PAUSADA · sin stock]
       margen: peor venta 25% · típico 25%   (2 ventas · descuento típico $0, peor $0)
       precio: $8.100 → $8.380 para el 30% en su peor venta (+3.5%)
       catálogo: not_listed
       ❓ CATÁLOGO en estado "not_listed" — no es ni ganando ni perdiendo, revisar a mano
 
-  Ayelen   · MLA3207459664 · Separador Protector X2 De Dedos De
-      margen: peor venta 25% · típico 34%   (35 ventas · descuento típico $25, peor $142)
-      precio: $3.630 → $3.720 para el 30% en su peor venta (+2.5%)
-      catálogo: GANANDO
-      🛑 NO SUBIR — hoy GANÁS la caja de compra
-
   Adriana  · MLA1841629747 · Perfume Para Hombre Ferrari Scuder  [PAUSADA · sin stock]
       margen: peor venta 25% · típico 26%   (3 ventas · descuento típico $6.981, peor $7.042)
-      precio: $60.999 → $63.090 para el 30% en su peor venta (+3.4%)
+      precio: $60.999 → $63.100 para el 30% en su peor venta (+3.4%)
       catálogo: not_listed
       ❓ CATÁLOGO en estado "not_listed" — no es ni ganando ni perdiendo, revisar a mano
 
-  Luciana  · MLA1560617349 · Sabanas 2 Plazas Y Media Juego Par
-      margen: peor venta 26% · típico 29%   (11 ventas · descuento típico $0, peor $390)
-      precio: $19.500 → $20.140 para el 30% en su peor venta (+3.3%)
-      ✅ SUBIR — no es de catálogo, no hay caja de compra que perder
-
   Matias   · MLA3528837742 · Joystick Xbox Microsoft Qat-00001   [PAUSADA · sin stock]
-      margen: peor venta 26% · típico 26%   (3 ventas · descuento típico $9.042, peor $9.042)
-      precio: $170.000 → $176.310 para el 30% en su peor venta (+3.7%)
+      margen: peor venta 25% · típico 25%   (3 ventas · descuento típico $9.042, peor $9.042)
+      precio: $170.000 → $176.340 para el 30% en su peor venta (+3.7%)
       catálogo: not_listed
       ❓ CATÁLOGO en estado "not_listed" — no es ni ganando ni perdiendo, revisar a mano
 
   Matias   · MLA3535622380 · Xiaomi Redmi Watch 4 Smartwatch Ne  [PAUSADA · sin stock]
       margen: peor venta 26% · típico 26%   (1 ventas · descuento típico $7.615, peor $7.615)
-      precio: $165.999 → $172.180 para el 30% en su peor venta (+3.7%)
+      precio: $165.999 → $172.210 para el 30% en su peor venta (+3.7%)
       catálogo: not_listed
       ❓ CATÁLOGO en estado "not_listed" — no es ni ganando ni perdiendo, revisar a mano
 
-  Adriana  · MLA1695234269 · Perfume Masculino Paulvic Gentlema
-      margen: peor venta 26% · típico 30%   (9 ventas · descuento típico $134, peor $538)
-      precio: $14.360 → $14.840 para el 30% en su peor venta (+3.3%)
-      catálogo: GANANDO
-      ⚠️ GRUPO "paulvic" — subir esta sube TODAS las del grupo, no se puede de a una
-
   Luciana  · MLA1809315921 · Sabanas 2 Plazas Y Media Juego Par  [PAUSADA · sin stock]
-      margen: peor venta 26% · típico 28%   (22 ventas · descuento típico $2, peor $291)
-      precio: $19.410 → $20.010 para el 30% en su peor venta (+3.1%)
+      margen: peor venta 26% · típico 29%   (22 ventas · descuento típico $2, peor $291)
+      precio: $19.410 → $19.990 para el 30% en su peor venta (+3.0%)
       ✅ SUBIR — no es de catálogo, no hay caja de compra que perder
 
   Matias   · MLA3528713302 · Samsung Galaxy A07 Lte 128gb Negro  [PAUSADA · sin stock]
       margen: peor venta 26% · típico 26%   (1 ventas · descuento típico $40.467, peor $40.467)
-      precio: $349.999 → $360.670 para el 30% en su peor venta (+3.0%)
+      precio: $349.999 → $360.740 para el 30% en su peor venta (+3.1%)
       catálogo: not_listed
       ❓ CATÁLOGO en estado "not_listed" — no es ni ganando ni perdiendo, revisar a mano
 
   Matias   · MLA3550882622 · Disco Sólido Externo Sandisk Sdssd  [PAUSADA · sin stock]
       margen: peor venta 26% · típico 26%   (2 ventas · descuento típico $9.271, peor $9.271)
-      precio: $344.999 → $355.740 para el 30% en su peor venta (+3.1%)
+      precio: $344.999 → $355.800 para el 30% en su peor venta (+3.1%)
       catálogo: not_listed
       ❓ CATÁLOGO en estado "not_listed" — no es ni ganando ni perdiendo, revisar a mano
-
-  Adriana  · MLA1695195433 · Perfume Hombre Paulvic Red 55 Ml E
-      margen: peor venta 26% · típico 31%   (8 ventas · descuento típico $94, peor $466)
-      precio: $14.360 → $14.740 para el 30% en su peor venta (+2.6%)
-      catálogo: PERDIENDO · para ganar la caja hacen falta $13.439
-      ⚠️ GRUPO "paulvic" — subir esta sube TODAS las del grupo, no se puede de a una
-
-  Luciana  · MLA3160820190 · Sabanas 1 Plazas Y Media Juego Par  [PAUSADA · sin stock]
-      margen: peor venta 26% · típico 29%   (3 ventas · descuento típico $10, peor $236)
-      precio: $14.660 → $15.060 para el 30% en su peor venta (+2.7%)
-      ✅ SUBIR — no es de catálogo, no hay caja de compra que perder
 
   Ayelen   · MLA1998586178 · Joystick Bluetooth Inalambrico Cel  [PAUSADA · sin stock]
       margen: peor venta 27% · típico 29%   (10 ventas · descuento típico $183, peor $546)
@@ -271,50 +209,26 @@ ABAJO DEL 30% · 154 publicaciones · ventana 60 días
       catálogo: not_listed
       ❓ CATÁLOGO en estado "not_listed" — no es ni ganando ni perdiendo, revisar a mano
 
-  Adriana  · MLA1869295391 · Animale For Men Tradicional Hombre
-      margen: peor venta 27% · típico 27%   (1 ventas · descuento típico $11.557, peor $11.557)
-      precio: $83.658 → $85.660 para el 30% en su peor venta (+2.4%)
-      catálogo: GANANDO
-      🛑 NO SUBIR — hoy GANÁS la caja de compra
-
-  Adriana  · MLA1542117486 · Perfume Paulvic Turbulence
-      margen: peor venta 27% · típico 29%   (6 ventas · descuento típico $271, peor $445)
-      precio: $14.360 → $14.720 para el 30% en su peor venta (+2.5%)
-      catálogo: COMPARTIENDO · para ganar la caja hacen falta $14.247
-      ⚠️ GRUPO "paulvic" — subir esta sube TODAS las del grupo, no se puede de a una
+  Luciana  · MLA3160820190 · Sabanas 1 Plazas Y Media Juego Par  [PAUSADA · sin stock]
+      margen: peor venta 27% · típico 29%   (3 ventas · descuento típico $10, peor $236)
+      precio: $14.660 → $15.040 para el 30% en su peor venta (+2.6%)
+      ✅ SUBIR — no es de catálogo, no hay caja de compra que perder
 
   Ayelen   · MLA1764624395 · Espejo Redondo Giratorio C/ Soport  [PAUSADA · sin stock]
       margen: peor venta 27% · típico 31%   (15 ventas · descuento típico $87, peor $244)
       precio: $6.810 → $6.960 para el 30% en su peor venta (+2.2%)
       ✅ SUBIR — no es de catálogo, no hay caja de compra que perder
 
-  Ayelen   · MLA1753638867 · Linterna Led Multifuncion Recargab
-      margen: peor venta 27% · típico 27%   (3 ventas · descuento típico $95, peor $95)
-      precio: $8.650 → $8.850 para el 30% en su peor venta (+2.3%)
-      ✅ SUBIR — no es de catálogo, no hay caja de compra que perder
-
   Ayelen   · MLA1477737961 · Limpia Pantallas Kit Liquido Frane  [PAUSADA · sin stock]
       margen: peor venta 27% · típico 30%   (10 ventas · descuento típico $33, peor $113)
-      precio: $5.260 → $5.360 para el 30% en su peor venta (+1.9%)
+      precio: $5.260 → $5.370 para el 30% en su peor venta (+2.1%)
       ✅ SUBIR — no es de catálogo, no hay caja de compra que perder
-
-  Adriana  · MLA3374364116 · Victoria's Secret Body Splash Midn
-      margen: peor venta 27% · típico 54%   (8 ventas · descuento típico $5.948, peor $12.602)
-      precio: $51.200 → $52.120 para el 30% en su peor venta (+1.8%)
-      catálogo: PERDIENDO · para ganar la caja hacen falta $44.037
-      ✅ SUBIR — ya PERDÉS la caja, subir no te cuesta nada
 
   Matias   · MLA1751064238 · Recortadora De Pelos 4 En 1 Nariz 
       margen: peor venta 27% · típico 27%   (1 ventas · descuento típico $184, peor $184)
-      precio: $32.999 → $30.370 para el 30% en su peor venta (+-8.0%)
-      catálogo: PERDIENDO · para ganar la caja hacen falta $28.243
+      precio: $32.999 → $30.380 para el 30% en su peor venta (+-7.9%)
+      catálogo: PERDIENDO · para ganar la caja hacen falta $28.286
       ✅ SUBIR — ya PERDÉS la caja, subir no te cuesta nada
-
-  Adriana  · MLA1393989921 · Parfum Paulvic Hot Floral Elegante  [PAUSADA · sin stock]
-      margen: peor venta 27% · típico 28%   (7 ventas · descuento típico $82, peor $133)
-      precio: $13.999 → $14.310 para el 30% en su peor venta (+2.2%)
-      catálogo: not_listed
-      ⚠️ GRUPO "paulvic" — subir esta sube TODAS las del grupo, no se puede de a una
 
   Adriana  · MLA3546661648 · Victoria's Secret Body Mist Rush 2  [PAUSADA · sin stock]
       margen: peor venta 27% · típico 34%   (5 ventas · descuento típico $6.628, peor $8.213)
@@ -322,135 +236,29 @@ ABAJO DEL 30% · 154 publicaciones · ventana 60 días
       catálogo: not_listed
       ❓ CATÁLOGO en estado "not_listed" — no es ni ganando ni perdiendo, revisar a mano
 
+  Adriana  · MLA1714328883 · De La Patagonia Eau De Parfum Ashe
+      margen: peor venta 27% · típico 27%   (4 ventas · descuento típico $6.017, peor $6.017)
+      precio: $43.599 → $44.490 para el 30% en su peor venta (+2.0%)
+      catálogo: COMPARTIENDO · para ganar la caja hacen falta $43.167
+      🛑 NO SUBIR — hoy COMPARTÍS la caja, subir te saca
+
   Matias   · MLA1954973242 · Auricular Inalambrico Orejas De Ga  [PAUSADA · sin stock]
       margen: peor venta 27% · típico 29%   (3 ventas · descuento típico $73, peor $154)
       precio: $9.050 → $9.230 para el 30% en su peor venta (+2.0%)
       catálogo: not_listed
       ❓ CATÁLOGO en estado "not_listed" — no es ni ganando ni perdiendo, revisar a mano
 
-  Adriana  · MLA1392899541 · Perfume Femenino Paulvic Flores Ro
-      margen: peor venta 27% · típico 31%   (17 ventas · descuento típico $81, peor $400)
-      precio: $14.360 → $14.660 para el 30% en su peor venta (+2.1%)
-      catálogo: COMPARTIENDO · para ganar la caja hacen falta $13.967
-      ⚠️ GRUPO "paulvic" — subir esta sube TODAS las del grupo, no se puede de a una
-
-  Adriana  · MLA1441714807 · Perfume Paulvic Green For Men Eau   [PAUSADA · sin stock]
-      margen: peor venta 27% · típico 31%   (10 ventas · descuento típico $81, peor $400)
-      precio: $14.360 → $14.660 para el 30% en su peor venta (+2.1%)
-      catálogo: not_listed
-      ⚠️ GRUPO "paulvic" — subir esta sube TODAS las del grupo, no se puede de a una
-
-  Adriana  · MLA1695189171 · Paulvic Victory Eau De Parfum Para  [PAUSADA · sin stock]
-      margen: peor venta 27% · típico 27%   (4 ventas · descuento típico $106, peor $107)
-      precio: $13.999 → $14.280 para el 30% en su peor venta (+2.0%)
-      catálogo: not_listed
-      ⚠️ GRUPO "paulvic" — subir esta sube TODAS las del grupo, no se puede de a una
-
   Matias   · MLA1751165454 · Corta Pelo De Nariz Oreja Cuidado 
       margen: peor venta 27% · típico 27%   (1 ventas · descuento típico $105, peor $105)
       precio: $32.999 → $30.270 para el 30% en su peor venta (+-8.3%)
-      catálogo: PERDIENDO · para ganar la caja hacen falta $26.574
+      catálogo: PERDIENDO · para ganar la caja hacen falta $26.617
       ✅ SUBIR — ya PERDÉS la caja, subir no te cuesta nada
-
-  Adriana  · MLA1750802833 · Pret A Porter Body Splash X75ml
-      margen: peor venta 28% · típico 30%   (7 ventas · descuento típico $99, peor $377)
-      precio: $18.730 → $19.060 para el 30% en su peor venta (+1.8%)
-      catálogo: GANANDO
-      🛑 NO SUBIR — hoy GANÁS la caja de compra
-
-  Adriana  · MLA1393949627 · Perfume Femenino Paulvic Paradise 
-      margen: peor venta 28% · típico 28%   (6 ventas · descuento típico $301, peor $371)
-      precio: $14.360 → $14.620 para el 30% en su peor venta (+1.8%)
-      catálogo: COMPARTIENDO · para ganar la caja hacen falta $14.247
-      ⚠️ GRUPO "paulvic" — subir esta sube TODAS las del grupo, no se puede de a una
-
-  Adriana  · MLA1441701719 · Perfume Paulvic 1.4 Sexy For Men E
-      margen: peor venta 28% · típico 31%   (7 ventas · descuento típico $91, peor $350)
-      precio: $14.360 → $14.590 para el 30% en su peor venta (+1.6%)
-      catálogo: COMPARTIENDO · para ganar la caja hacen falta $14.137
-      ⚠️ GRUPO "paulvic" — subir esta sube TODAS las del grupo, no se puede de a una
-
-  Adriana  · MLA3026296570 · Perfume Femenino Paulvic Sexy Eau 
-      margen: peor venta 28% · típico 31%   (11 ventas · descuento típico $91, peor $350)
-      precio: $14.360 → $14.590 para el 30% en su peor venta (+1.6%)
-      catálogo: PERDIENDO · para ganar la caja hacen falta $13.349
-      ⚠️ GRUPO "paulvic" — subir esta sube TODAS las del grupo, no se puede de a una
-
-  Adriana  · MLA3026460280 · Perfume Paulvic Bella Eau De Parfu
-      margen: peor venta 28% · típico 31%   (8 ventas · descuento típico $91, peor $350)
-      precio: $14.360 → $14.590 para el 30% en su peor venta (+1.6%)
-      catálogo: COMPARTIENDO · para ganar la caja hacen falta $14.012
-      ⚠️ GRUPO "paulvic" — subir esta sube TODAS las del grupo, no se puede de a una
-
-  Ayelen   · MLA2029235796 · Par Protector Almohadillas Pies Me
-      margen: peor venta 28% · típico 35%   (21 ventas · descuento típico $12, peor $93)
-      precio: $3.400 → $3.440 para el 30% en su peor venta (+1.2%)
-      ✅ SUBIR — no es de catálogo, no hay caja de compra que perder
-
-  Adriana  · MLA1441688987 · Perfume Pasión Paulvic Para Mujer 
-      margen: peor venta 28% · típico 30%   (6 ventas · descuento típico $138, peor $340)
-      precio: $14.360 → $14.580 para el 30% en su peor venta (+1.5%)
-      catálogo: COMPARTIENDO · para ganar la caja hacen falta $14.247
-      ⚠️ GRUPO "paulvic" — subir esta sube TODAS las del grupo, no se puede de a una
-
-  Adriana  · MLA1542218918 · Perfume Mujer Paulvic Gold Lady Ea  [PAUSADA · sin stock]
-      margen: peor venta 28% · típico 29%   (8 ventas · descuento típico $291, peor $340)
-      precio: $14.360 → $14.580 para el 30% en su peor venta (+1.5%)
-      catálogo: not_listed
-      ⚠️ GRUPO "paulvic" — subir esta sube TODAS las del grupo, no se puede de a una
-
-  Adriana  · MLA3026121450 · Perfume Paulvic Only Glow
-      margen: peor venta 28% · típico 30%   (7 ventas · descuento típico $134, peor $340)
-      precio: $14.360 → $14.580 para el 30% en su peor venta (+1.5%)
-      catálogo: GANANDO
-      ⚠️ GRUPO "paulvic" — subir esta sube TODAS las del grupo, no se puede de a una
-
-  Adriana  · MLA1441674743 · Perfume Paulvic H Woman Parfum Flo  [PAUSADA · sin stock]
-      margen: peor venta 28% · típico 31%   (5 ventas · descuento típico $91, peor $338)
-      precio: $14.360 → $14.580 para el 30% en su peor venta (+1.5%)
-      catálogo: not_listed
-      ⚠️ GRUPO "paulvic" — subir esta sube TODAS las del grupo, no se puede de a una
-
-  Adriana  · MLA1695213053 · Eau De Parfum Paulvic Dark For Men  [PAUSADA · sin stock]
-      margen: peor venta 28% · típico 31%   (7 ventas · descuento típico $91, peor $338)
-      precio: $14.360 → $14.580 para el 30% en su peor venta (+1.5%)
-      catálogo: not_listed
-      ⚠️ GRUPO "paulvic" — subir esta sube TODAS las del grupo, no se puede de a una
-
-  Adriana  · MLA2362720588 · Perfume Masculino Paulvic 1.4m Eau
-      margen: peor venta 28% · típico 28%   (2 ventas · descuento típico $328, peor $328)
-      precio: $14.360 → $14.570 para el 30% en su peor venta (+1.5%)
-      catálogo: PERDIENDO · para ganar la caja hacen falta $13.246
-      ⚠️ GRUPO "paulvic" — subir esta sube TODAS las del grupo, no se puede de a una
-
-  Adriana  · MLA3026301044 · Eau De Parfum Paulvic Debutant Hom
-      margen: peor venta 28% · típico 31%   (5 ventas · descuento típico $113, peor $328)
-      precio: $14.360 → $14.570 para el 30% en su peor venta (+1.5%)
-      catálogo: GANANDO
-      ⚠️ GRUPO "paulvic" — subir esta sube TODAS las del grupo, no se puede de a una
-
-  Luciana  · MLA2239196176 · Sabanas 2 Plazas Y Media Juego Par
-      margen: peor venta 28% · típico 28%   (19 ventas · descuento típico $2, peor $3)
-      precio: $19.380 → $19.640 para el 30% en su peor venta (+1.3%)
-      ✅ SUBIR — no es de catálogo, no hay caja de compra que perder
-
-  Luciana  · MLA2102557104 · Perfume Femenino Paulvic Persea Ea
-      margen: peor venta 28% · típico 31%   (58 ventas · descuento típico $0, peor $259)
-      precio: $14.360 → $14.550 para el 30% en su peor venta (+1.3%)
-      catálogo: GANANDO
-      ⚠️ GRUPO "paulvic" — subir esta sube TODAS las del grupo, no se puede de a una
 
   Adriana  · MLA3374447776 · Splash Victoria's Secret Pure Sedu  [PAUSADA · sin stock]
       margen: peor venta 28% · típico 30%   (6 ventas · descuento típico $6.074, peor $6.628)
-      precio: $49.040 → $49.630 para el 30% en su peor venta (+1.2%)
+      precio: $49.040 → $49.640 para el 30% en su peor venta (+1.2%)
       catálogo: not_listed
       ❓ CATÁLOGO en estado "not_listed" — no es ni ganando ni perdiendo, revisar a mano
-
-  Adriana  · MLA1393957107 · Perfume Paulvic Acqua Eau De Parfu
-      margen: peor venta 28% · típico 31%   (4 ventas · descuento típico $94, peor $310)
-      precio: $14.360 → $14.540 para el 30% en su peor venta (+1.3%)
-      catálogo: COMPARTIENDO · para ganar la caja hacen falta $14.247
-      ⚠️ GRUPO "paulvic" — subir esta sube TODAS las del grupo, no se puede de a una
 
   Ayelen   · MLA1768398815 · Luz Trasera Bicicleta Led Seisa Fy
       margen: peor venta 28% · típico 37%   (14 ventas · descuento típico $45, peor $286)
@@ -459,84 +267,22 @@ ABAJO DEL 30% · 154 publicaciones · ventana 60 días
       ❓ CATÁLOGO en estado "listed" — no es ni ganando ni perdiendo, revisar a mano
 
   Adriana  · MLA1821814267 · Aromatizante Ambiental Colgante Ae  [PAUSADA · sin stock]
-      margen: peor venta 28% · típico 29%   (4 ventas · descuento típico $119, peor $177)
+      margen: peor venta 28% · típico 29%   (3 ventas · descuento típico $89, peor $177)
       precio: $14.999 → $15.190 para el 30% en su peor venta (+1.3%)
       catálogo: not_listed
       ❓ CATÁLOGO en estado "not_listed" — no es ni ganando ni perdiendo, revisar a mano
 
-  Luciana  · MLA1807593513 · Batidor Eléctrico Usb Espumadora C  [PAUSADA · sin stock]
-      margen: peor venta 28% · típico 28%   (27 ventas · descuento típico $0, peor $0)
-      precio: $14.600 → $14.780 para el 30% en su peor venta (+1.2%)
-      catálogo: not_listed
-      ❓ CATÁLOGO en estado "not_listed" — no es ni ganando ni perdiendo, revisar a mano
-
-  Luciana  · MLA3384643016 · Batidor Eléctrico Usb Espumadora C
-      margen: peor venta 28% · típico 28%   (6 ventas · descuento típico $0, peor $0)
-      precio: $14.600 → $14.780 para el 30% en su peor venta (+1.2%)
-      ✅ SUBIR — no es de catálogo, no hay caja de compra que perder
-
-  Adriana  · MLA1550577582 · Perfume Femenino Paulvic Witch Nig  [PAUSADA · sin stock]
-      margen: peor venta 28% · típico 31%   (22 ventas · descuento típico $81, peor $300)
-      precio: $14.360 → $14.530 para el 30% en su peor venta (+1.2%)
-      catálogo: not_listed
-      ⚠️ GRUPO "paulvic" — subir esta sube TODAS las del grupo, no se puede de a una
-
-  Adriana  · MLA3026302302 · Perfume Paulvic Privé Hombre 55 Ml
-      margen: peor venta 28% · típico 31%   (8 ventas · descuento típico $81, peor $300)
-      precio: $14.360 → $14.530 para el 30% en su peor venta (+1.2%)
-      catálogo: GANANDO
-      ⚠️ GRUPO "paulvic" — subir esta sube TODAS las del grupo, no se puede de a una
-
   Ayelen   · MLA3013604144 · Balanza Digital Viaje 50kg Pantall  [PAUSADA · sin stock]
-      margen: peor venta 29% · típico 29%   (7 ventas · descuento típico $14, peor $43)
+      margen: peor venta 28% · típico 29%   (7 ventas · descuento típico $14, peor $43)
       precio: $7.900 → $7.990 para el 30% en su peor venta (+1.1%)
       catálogo: not_listed
       ❓ CATÁLOGO en estado "not_listed" — no es ni ganando ni perdiendo, revisar a mano
 
-  Luciana  · MLA1722780467 · Sabanas 2 Plazas Y Media Juego Par  [PAUSADA · sin stock]
-      margen: peor venta 29% · típico 29%   (1 ventas · descuento típico $0, peor $0)
-      precio: $19.430 → $19.640 para el 30% en su peor venta (+1.1%)
-      ✅ SUBIR — no es de catálogo, no hay caja de compra que perder
-
-  Adriana  · MLA1441662661 · Perfume Paulvic Barbarella - Fraga
-      margen: peor venta 29% · típico 31%   (13 ventas · descuento típico $81, peor $291)
-      precio: $14.360 → $14.520 para el 30% en su peor venta (+1.1%)
-      ⚠️ GRUPO "paulvic" — subir esta sube TODAS las del grupo, no se puede de a una
-
-  Adriana  · MLA1542102540 · Perfume Paulvic Jules Parfum Hombr
-      margen: peor venta 29% · típico 29%   (2 ventas · descuento típico $291, peor $291)
-      precio: $14.360 → $14.520 para el 30% en su peor venta (+1.1%)
-      catálogo: COMPARTIENDO · para ganar la caja hacen falta $14.247
-      ⚠️ GRUPO "paulvic" — subir esta sube TODAS las del grupo, no se puede de a una
-
-  Adriana  · MLA1446098433 · Perfume Libre By Paulvic
-      margen: peor venta 29% · típico 31%   (7 ventas · descuento típico $81, peor $291)
-      precio: $14.360 → $14.520 para el 30% en su peor venta (+1.1%)
-      catálogo: COMPARTIENDO · para ganar la caja hacen falta $14.012
-      ⚠️ GRUPO "paulvic" — subir esta sube TODAS las del grupo, no se puede de a una
-
-  Adriana  · MLA1546343320 · Parfum Paulvic Invictus Hombre Nac  [PAUSADA · sin stock]
-      margen: peor venta 29% · típico 31%   (9 ventas · descuento típico $81, peor $291)
-      precio: $14.360 → $14.520 para el 30% en su peor venta (+1.1%)
+  Luciana  · MLA1807593513 · Batidor Eléctrico Usb Espumadora C  [PAUSADA · sin stock]
+      margen: peor venta 29% · típico 29%   (27 ventas · descuento típico $0, peor $0)
+      precio: $14.600 → $14.760 para el 30% en su peor venta (+1.1%)
       catálogo: not_listed
-      ⚠️ GRUPO "paulvic" — subir esta sube TODAS las del grupo, no se puede de a una
-
-  Adriana  · MLA1542283690 · Perfume Femenino Paulvic L'extase 
-      margen: peor venta 29% · típico 31%   (13 ventas · descuento típico $81, peor $291)
-      precio: $14.360 → $14.520 para el 30% en su peor venta (+1.1%)
-      catálogo: COMPARTIENDO · para ganar la caja hacen falta $14.026
-      ⚠️ GRUPO "paulvic" — subir esta sube TODAS las del grupo, no se puede de a una
-
-  Adriana  · MLA1695223163 · Perfume Masculino Paulvic Blue Eau
-      margen: peor venta 29% · típico 31%   (9 ventas · descuento típico $81, peor $291)
-      precio: $14.360 → $14.520 para el 30% en su peor venta (+1.1%)
-      catálogo: PERDIENDO · para ganar la caja hacen falta $13.345
-      ⚠️ GRUPO "paulvic" — subir esta sube TODAS las del grupo, no se puede de a una
-
-  Luciana  · MLA1558373809 · Sabanas 2 Plazas Y Media Juego Par
-      margen: peor venta 29% · típico 29%   (8 ventas · descuento típico $2, peor $2)
-      precio: $19.440 → $19.640 para el 30% en su peor venta (+1.0%)
-      ✅ SUBIR — no es de catálogo, no hay caja de compra que perder
+      ❓ CATÁLOGO en estado "not_listed" — no es ni ganando ni perdiendo, revisar a mano
 
   Ayelen   · MLA1782015609 · Espejo Redondo Giratorio C/ Soport  [PAUSADA · sin stock]
       margen: peor venta 29% · típico 33%   (28 ventas · descuento típico $23, peor $107)
@@ -544,214 +290,61 @@ ABAJO DEL 30% · 154 publicaciones · ventana 60 días
       catálogo: not_listed
       ❓ CATÁLOGO en estado "not_listed" — no es ni ganando ni perdiendo, revisar a mano
 
+  Luciana  · MLA1722780467 · Sabanas 2 Plazas Y Media Juego Par  [PAUSADA · sin stock]
+      margen: peor venta 29% · típico 29%   (1 ventas · descuento típico $0, peor $0)
+      precio: $19.430 → $19.620 para el 30% en su peor venta (+1.0%)
+      ✅ SUBIR — no es de catálogo, no hay caja de compra que perder
+
+  Ayelen   · MLA3110101636 · Reflector Led Panel Solar 100 Leds
+      margen: peor venta 29% · típico 29%   (2 ventas · descuento típico $90, peor $90)
+      precio: $8.330 → $8.410 para el 30% en su peor venta (+1.0%)
+      ✅ SUBIR — no es de catálogo, no hay caja de compra que perder
+
   Matias   · MLA1459803695 · Auricular Bluetooth Vincha Recarga  [PAUSADA · sin stock]
       margen: peor venta 29% · típico 30%   (3 ventas · descuento típico $60, peor $118)
       precio: $8.490 → $8.570 para el 30% en su peor venta (+0.9%)
       catálogo: not_listed
       ❓ CATÁLOGO en estado "not_listed" — no es ni ganando ni perdiendo, revisar a mano
 
-  Matias   · MLA1955012350 · Auricular Bluetooth Vincha Micro S
-      margen: peor venta 29% · típico 30%   (5 ventas · descuento típico $68, peor $118)
-      precio: $8.490 → $8.570 para el 30% en su peor venta (+0.9%)
-      catálogo: GANANDO
-      🛑 NO SUBIR — hoy GANÁS la caja de compra
-
-  Adriana  · MLA1392775893 · Perfume Paulvic Héroes Aromático H
-      margen: peor venta 29% · típico 31%   (8 ventas · descuento típico $81, peor $271)
-      precio: $14.360 → $14.490 para el 30% en su peor venta (+0.9%)
-      catálogo: PERDIENDO · para ganar la caja hacen falta $10.683
-      ⚠️ GRUPO "paulvic" — subir esta sube TODAS las del grupo, no se puede de a una
-
-  Adriana  · MLA1441622869 · Perfume Paulvic Abismo Eau De Parf
-      margen: peor venta 29% · típico 29%   (2 ventas · descuento típico $271, peor $271)
-      precio: $14.360 → $14.490 para el 30% en su peor venta (+0.9%)
-      catálogo: GANANDO
-      ⚠️ GRUPO "paulvic" — subir esta sube TODAS las del grupo, no se puede de a una
-
-  Adriana  · MLA1542270890 · Perfume Femenino Paulvic Transpare  [PAUSADA · sin stock]
-      margen: peor venta 29% · típico 31%   (10 ventas · descuento típico $81, peor $271)
-      precio: $14.360 → $14.490 para el 30% en su peor venta (+0.9%)
-      catálogo: not_listed
-      ⚠️ GRUPO "paulvic" — subir esta sube TODAS las del grupo, no se puede de a una
-
-  Adriana  · MLA1853070446 · Perfume Parfum Paulvic Boy Hombre   [PAUSADA · sin stock]
-      margen: peor venta 29% · típico 31%   (6 ventas · descuento típico $113, peor $271)
-      precio: $14.360 → $14.490 para el 30% en su peor venta (+0.9%)
-      catálogo: not_listed
-      ⚠️ GRUPO "paulvic" — subir esta sube TODAS las del grupo, no se puede de a una
-
-  Adriana  · MLA1890297208 · Perfume Parfum Paulvic Free Love F
-      margen: peor venta 29% · típico 31%   (8 ventas · descuento típico $82, peor $271)
-      precio: $14.360 → $14.490 para el 30% en su peor venta (+0.9%)
-      catálogo: COMPARTIENDO · para ganar la caja hacen falta $14.247
-      ⚠️ GRUPO "paulvic" — subir esta sube TODAS las del grupo, no se puede de a una
-
-  Adriana  · MLA3091313732 · Perfume Paulvic Leyton Hombre Cítr
-      margen: peor venta 29% · típico 31%   (6 ventas · descuento típico $82, peor $271)
-      precio: $14.360 → $14.490 para el 30% en su peor venta (+0.9%)
-      catálogo: PERDIENDO · para ganar la caja hacen falta $11.466
-      ⚠️ GRUPO "paulvic" — subir esta sube TODAS las del grupo, no se puede de a una
-
-  Matias   · MLA1701523603 · Auriculares Inalámbricos Bluetooth
-      margen: peor venta 29% · típico 30%   (8 ventas · descuento típico $68, peor $138)
-      precio: $8.520 → $8.590 para el 30% en su peor venta (+0.8%)
-      catálogo: GANANDO
-      🛑 NO SUBIR — hoy GANÁS la caja de compra
-
   Adriana  · MLA3428980806 · Aromatizante Colgante Para Auto Go  [PAUSADA · sin stock]
       margen: peor venta 29% · típico 29%   (4 ventas · descuento típico $89, peor $137)
-      precio: $14.999 → $15.130 para el 30% en su peor venta (+0.9%)
+      precio: $14.999 → $15.140 para el 30% en su peor venta (+0.9%)
       catálogo: not_listed
       ❓ CATÁLOGO en estado "not_listed" — no es ni ganando ni perdiendo, revisar a mano
-
-  Luciana  · MLA3233166506 · Sabanas 1 Plazas Y Media Juego Par  [PAUSADA · sin stock]
-      margen: peor venta 29% · típico 29%   (4 ventas · descuento típico $20, peor $26)
-      precio: $14.670 → $14.790 para el 30% en su peor venta (+0.8%)
-      ✅ SUBIR — no es de catálogo, no hay caja de compra que perder
-
-  Matias   · MLA1970353724 · Pendrive Sandisk Cruzer Blade 64gb
-      margen: peor venta 29% · típico 32%   (52 ventas · descuento típico $146, peor $564)
-      precio: $22.520 → $22.690 para el 30% en su peor venta (+0.8%)
-      catálogo: PERDIENDO · para ganar la caja hacen falta $17.563
-      ✅ SUBIR — ya PERDÉS la caja, subir no te cuesta nada
 
   Ayelen   · MLA2177750062 · Juguete Gato Bola Interactivo Inte
       margen: peor venta 29% · típico 29%   (6 ventas · descuento típico $48, peor $52)
       precio: $6.960 → $7.010 para el 30% en su peor venta (+0.7%)
       ✋ A MANO — tiene variantes (subir una sola hace que ML borre las otras)
 
-  Luciana  · MLA3233166500 · Sabanas 1 Plazas Y Media Juego Par  [PAUSADA · sin stock]
-      margen: peor venta 29% · típico 29%   (2 ventas · descuento típico $22, peor $22)
-      precio: $14.670 → $14.780 para el 30% en su peor venta (+0.7%)
+  Luciana  · MLA3233166506 · Sabanas 1 Plazas Y Media Juego Par  [PAUSADA · sin stock]
+      margen: peor venta 29% · típico 29%   (4 ventas · descuento típico $20, peor $26)
+      precio: $14.670 → $14.770 para el 30% en su peor venta (+0.7%)
       ✅ SUBIR — no es de catálogo, no hay caja de compra que perder
 
-  Matias   · MLA1782601845 · Audifonos Galaxy Buds Core Black S
-      margen: peor venta 29% · típico 29%   (7 ventas · descuento típico $20.892, peor $20.892)
-      precio: $144.930 → $145.920 para el 30% en su peor venta (+0.7%)
-      catálogo: PERDIENDO · para ganar la caja hacen falta $91.464
-      ✅ SUBIR — ya PERDÉS la caja, subir no te cuesta nada
-
   Luciana  · MLA1560656337 · Sabanas 2 Plazas Y Media Juego Par  [PAUSADA · sin stock]
-      margen: peor venta 29% · típico 29%   (9 ventas · descuento típico $0, peor $0)
-      precio: $19.500 → $19.640 para el 30% en su peor venta (+0.7%)
+      margen: peor venta 29% · típico 29%   (8 ventas · descuento típico $0, peor $0)
+      precio: $19.500 → $19.620 para el 30% en su peor venta (+0.6%)
       ✅ SUBIR — no es de catálogo, no hay caja de compra que perder
 
   Luciana  · MLA1609499703 · Sabanas 2 Plazas Y Media Juego Par  [PAUSADA · sin stock]
       margen: peor venta 29% · típico 29%   (8 ventas · descuento típico $0, peor $0)
-      precio: $19.500 → $19.640 para el 30% en su peor venta (+0.7%)
-      ✅ SUBIR — no es de catálogo, no hay caja de compra que perder
-
-  Luciana  · MLA2239209320 · Sabanas 2 Plazas Y Media Juego Par
-      margen: peor venta 29% · típico 29%   (8 ventas · descuento típico $0, peor $0)
-      precio: $19.500 → $19.640 para el 30% en su peor venta (+0.7%)
-      ✅ SUBIR — no es de catálogo, no hay caja de compra que perder
-
-  Matias   · MLA1970314726 · Pendrive Sandisk Cruzer Blade 32gb
-      margen: peor venta 29% · típico 32%   (55 ventas · descuento típico $136, peor $427)
-      precio: $20.820 → $20.960 para el 30% en su peor venta (+0.7%)
-      catálogo: PERDIENDO · para ganar la caja hacen falta $18.228
-      ✅ SUBIR — ya PERDÉS la caja, subir no te cuesta nada
-
-  Ayelen   · MLA1692236241 · Luz Led Delantera Para Bicicleta C
-      margen: peor venta 29% · típico 29%   (1 ventas · descuento típico $41, peor $41)
-      precio: $5.250 → $5.290 para el 30% en su peor venta (+0.8%)
+      precio: $19.500 → $19.620 para el 30% en su peor venta (+0.6%)
       ✅ SUBIR — no es de catálogo, no hay caja de compra que perder
 
   Luciana  · MLA2655470590 · Sabanas 2 Plazas Y Media Juego Par  [PAUSADA · sin stock]
       margen: peor venta 29% · típico 29%   (10 ventas · descuento típico $0, peor $5)
-      precio: $19.510 → $19.650 para el 30% en su peor venta (+0.7%)
+      precio: $19.510 → $19.620 para el 30% en su peor venta (+0.6%)
+      ✅ SUBIR — no es de catálogo, no hay caja de compra que perder
+
+  Luciana  · MLA3233166500 · Sabanas 1 Plazas Y Media Juego Par  [PAUSADA · sin stock]
+      margen: peor venta 29% · típico 29%   (2 ventas · descuento típico $22, peor $22)
+      precio: $14.670 → $14.760 para el 30% en su peor venta (+0.6%)
       ✅ SUBIR — no es de catálogo, no hay caja de compra que perder
 
   Luciana  · MLA3160976302 · Sabanas 1 Plazas Y Media Juego Par  [PAUSADA · sin stock]
       margen: peor venta 29% · típico 29%   (4 ventas · descuento típico $10, peor $10)
-      precio: $14.660 → $14.770 para el 30% en su peor venta (+0.8%)
-      ✅ SUBIR — no es de catálogo, no hay caja de compra que perder
-
-  Ayelen   · MLA3133190658 · Balanza P/valija Equipaje Digital 
-      margen: peor venta 29% · típico 32%   (3 ventas · descuento típico $57, peor $182)
-      precio: $8.120 → $8.180 para el 30% en su peor venta (+0.7%)
-      ✅ SUBIR — no es de catálogo, no hay caja de compra que perder
-
-  Ayelen   · MLA1998653574 · Corta Pelo De Nariz Oreja Cejas Po
-      margen: peor venta 29% · típico 32%   (22 ventas · descuento típico $195, peor $547)
-      precio: $25.010 → $25.180 para el 30% en su peor venta (+0.7%)
-      ✅ SUBIR — no es de catálogo, no hay caja de compra que perder
-
-  Ayelen   · MLA1998561036 · Par Corrector Juanete Magnético De
-      margen: peor venta 29% · típico 32%   (3 ventas · descuento típico $93, peor $205)
-      precio: $8.560 → $8.620 para el 30% en su peor venta (+0.7%)
-      ✅ SUBIR — no es de catálogo, no hay caja de compra que perder
-
-  Ayelen   · MLA1474889365 · Pezoneras De Silicona Cubre Pezone
-      margen: peor venta 29% · típico 29%   (2 ventas · descuento típico $25, peor $25)
-      precio: $3.460 → $3.480 para el 30% en su peor venta (+0.6%)
-      ✅ SUBIR — no es de catálogo, no hay caja de compra que perder
-
-  Ayelen   · MLA3191908748 · Linterna Minera Vincha Con Usb Rec
-      margen: peor venta 29% · típico 36%   (10 ventas · descuento típico $38, peor $253)
-      precio: $6.400 → $6.440 para el 30% en su peor venta (+0.6%)
-      catálogo: PERDIENDO · para ganar la caja hacen falta $4.721
-      ✅ SUBIR — ya PERDÉS la caja, subir no te cuesta nada
-
-  Matias   · MLA1980939236 · Adaptador De Enchufe Universal Via
-      margen: peor venta 29% · típico 33%   (46 ventas · descuento típico $28, peor $118)
-      precio: $5.360 → $5.390 para el 30% en su peor venta (+0.6%)
-      catálogo: PERDIENDO · para ganar la caja hacen falta $3.122
-      ✅ SUBIR — ya PERDÉS la caja, subir no te cuesta nada
-
-  Luciana  · MLA2239196178 · Sabanas 2 Plazas Y Media Juego Par
-      margen: peor venta 29% · típico 29%   (12 ventas · descuento típico $2, peor $14)
-      precio: $19.530 → $19.660 para el 30% en su peor venta (+0.7%)
-      ✅ SUBIR — no es de catálogo, no hay caja de compra que perder
-
-  Luciana  · MLA3161137574 · Funda Cubre Colchón Protector Pvc 
-      margen: peor venta 29% · típico 29%   (1 ventas · descuento típico $210, peor $210)
-      precio: $14.660 → $14.760 para el 30% en su peor venta (+0.7%)
-      ✅ SUBIR — no es de catálogo, no hay caja de compra que perder
-
-  Ayelen   · MLA1599760457 · Balanza P/valija Equipaje Digital 
-      margen: peor venta 29% · típico 29%   (2 ventas · descuento típico $224, peor $224)
-      precio: $8.180 → $8.230 para el 30% en su peor venta (+0.6%)
-      ✅ SUBIR — no es de catálogo, no hay caja de compra que perder
-
-  Luciana  · MLA3233166498 · Sabanas 1 Plazas Y Media Juego Par
-      margen: peor venta 29% · típico 29%   (4 ventas · descuento típico $10, peor $26)
-      precio: $14.690 → $14.790 para el 30% en su peor venta (+0.7%)
-      ✅ SUBIR — no es de catálogo, no hay caja de compra que perder
-
-  Luciana  · MLA3160820188 · Sabanas 1 Plazas Y Media Juego Par
-      margen: peor venta 29% · típico 29%   (14 ventas · descuento típico $20, peor $32)
-      precio: $14.700 → $14.800 para el 30% en su peor venta (+0.7%)
-      ✅ SUBIR — no es de catálogo, no hay caja de compra que perder
-
-  Ayelen   · MLA3018947968 · Espejo 8 Pulgadas Con Aumento De M
-      margen: peor venta 29% · típico 29%   (4 ventas · descuento típico $123, peor $124)
-      precio: $7.480 → $7.530 para el 30% en su peor venta (+0.7%)
-      ✅ SUBIR — no es de catálogo, no hay caja de compra que perder
-
-  Ayelen   · MLA1998605914 · Plantillas Silicona Soporte Arco F
-      margen: peor venta 29% · típico 32%   (10 ventas · descuento típico $44, peor $149)
-      precio: $6.570 → $6.610 para el 30% en su peor venta (+0.6%)
-      ✅ SUBIR — no es de catálogo, no hay caja de compra que perder
-
-  Luciana  · MLA3233166504 · Sabanas 1 Plazas Y Media Juego Par
-      margen: peor venta 29% · típico 29%   (5 ventas · descuento típico $26, peor $27)
-      precio: $14.700 → $14.790 para el 30% en su peor venta (+0.6%)
-      ✅ SUBIR — no es de catálogo, no hay caja de compra que perder
-
-  Ayelen   · MLA1539098055 · Luz Trasera Bicicleta Led Usb Reca
-      margen: peor venta 29% · típico 29%   (2 ventas · descuento típico $25, peor $25)
-      precio: $4.240 → $4.260 para el 30% en su peor venta (+0.5%)
-      ✅ SUBIR — no es de catálogo, no hay caja de compra que perder
-
-  Luciana  · MLA3233166502 · Sabanas 1 Plazas Y Media Juego Par
-      margen: peor venta 29% · típico 29%   (4 ventas · descuento típico $20, peor $26)
-      precio: $14.700 → $14.790 para el 30% en su peor venta (+0.6%)
-      ✅ SUBIR — no es de catálogo, no hay caja de compra que perder
-
-  Luciana  · MLA1902691527 · Sabanas 1 Plazas Y Media Juego Par  [PAUSADA · sin stock]
-      margen: peor venta 29% · típico 29%   (1 ventas · descuento típico $16, peor $16)
-      precio: $14.690 → $14.780 para el 30% en su peor venta (+0.6%)
+      precio: $14.660 → $14.750 para el 30% en su peor venta (+0.6%)
       ✅ SUBIR — no es de catálogo, no hay caja de compra que perder
 
   Matias   · MLA3572658428 · Auriculares Bluetooth Orejas Gatit  [PAUSADA · sin stock]
@@ -760,53 +353,21 @@ ABAJO DEL 30% · 154 publicaciones · ventana 60 días
       catálogo: not_listed
       ❓ CATÁLOGO en estado "not_listed" — no es ni ganando ni perdiendo, revisar a mano
 
-  Luciana  · MLA3160807424 · Sabanas 1 Plazas Y Media Juego Par
-      margen: peor venta 29% · típico 29%   (4 ventas · descuento típico $20, peor $20)
-      precio: $14.700 → $14.780 para el 30% en su peor venta (+0.5%)
-      ✅ SUBIR — no es de catálogo, no hay caja de compra que perder
-
-  Luciana  · MLA3233166496 · Sabanas 1 Plazas Y Media Juego Par
-      margen: peor venta 29% · típico 29%   (1 ventas · descuento típico $20, peor $20)
-      precio: $14.700 → $14.780 para el 30% en su peor venta (+0.5%)
-      ✅ SUBIR — no es de catálogo, no hay caja de compra que perder
-
-  Ayelen   · MLA2141745210 · Balanza Digital 10kg Multiuso Pres
-      margen: peor venta 29% · típico 29%   (3 ventas · descuento típico $113, peor $113)
-      precio: $8.200 → $8.240 para el 30% en su peor venta (+0.5%)
-      ✅ SUBIR — no es de catálogo, no hay caja de compra que perder
-
-  Matias   · MLA1459229525 · Filtro Purificador Descartable Agu
-      margen: peor venta 29% · típico 37%   (122 ventas · descuento típico $10, peor $106)
-      precio: $3.490 → $3.510 para el 30% en su peor venta (+0.6%)
-      catálogo: PERDIENDO · para ganar la caja hacen falta $1.769
-      ✅ SUBIR — ya PERDÉS la caja, subir no te cuesta nada
-
-  Luciana  · MLA3305853684 · Sabanas 1 Plazas Y Media Juego Par
-      margen: peor venta 29% · típico 29%   (1 ventas · descuento típico $10, peor $10)
-      precio: $14.690 → $14.770 para el 30% en su peor venta (+0.5%)
-      ✅ SUBIR — no es de catálogo, no hay caja de compra que perder
-
-  Ayelen   · MLA2031293040 · Luz Bicicleta Led Kit Delantera Y 
-      margen: peor venta 29% · típico 30%   (11 ventas · descuento típico $23, peor $39)
-      precio: $4.440 → $4.460 para el 30% en su peor venta (+0.5%)
-      catálogo: COMPARTIENDO · para ganar la caja hacen falta $4.180
-      🛑 NO SUBIR — hoy COMPARTÍS la caja, subir te saca
-
   Adriana  · MLA1821851883 · Aromatizante Colgante Godrej Power  [PAUSADA · sin stock]
       margen: peor venta 29% · típico 29%   (4 ventas · descuento típico $89, peor $89)
-      precio: $14.999 → $15.070 para el 30% en su peor venta (+0.5%)
-      catálogo: not_listed
-      ❓ CATÁLOGO en estado "not_listed" — no es ni ganando ni perdiendo, revisar a mano
-
-  Adriana  · MLA3429019146 · Aromatizante Para Auto Colgante Go  [PAUSADA · sin stock]
-      margen: peor venta 29% · típico 29%   (3 ventas · descuento típico $89, peor $89)
-      precio: $14.999 → $15.070 para el 30% en su peor venta (+0.5%)
+      precio: $14.999 → $15.080 para el 30% en su peor venta (+0.5%)
       catálogo: not_listed
       ❓ CATÁLOGO en estado "not_listed" — no es ni ganando ni perdiendo, revisar a mano
 
   Adriana  · MLA3429019144 · Aromatizante Ambiental Colgante Ae  [PAUSADA · sin stock]
       margen: peor venta 29% · típico 29%   (4 ventas · descuento típico $89, peor $89)
-      precio: $14.999 → $15.070 para el 30% en su peor venta (+0.5%)
+      precio: $14.999 → $15.080 para el 30% en su peor venta (+0.5%)
+      catálogo: not_listed
+      ❓ CATÁLOGO en estado "not_listed" — no es ni ganando ni perdiendo, revisar a mano
+
+  Adriana  · MLA3429019146 · Aromatizante Para Auto Colgante Go  [PAUSADA · sin stock]
+      margen: peor venta 29% · típico 29%   (3 ventas · descuento típico $89, peor $89)
+      precio: $14.999 → $15.080 para el 30% en su peor venta (+0.5%)
       catálogo: not_listed
       ❓ CATÁLOGO en estado "not_listed" — no es ni ganando ni perdiendo, revisar a mano
 
@@ -816,26 +377,31 @@ ABAJO DEL 30% · 154 publicaciones · ventana 60 días
       ✅ SUBIR — no es de catálogo, no hay caja de compra que perder
 
   Luciana  · MLA3278287038 · Auriculares In-ear Gamer Inalámbri  [PAUSADA · sin stock]
-      margen: peor venta 29% · típico 29%   (21 ventas · descuento típico $0, peor $0)
+      margen: peor venta 29% · típico 29%   (20 ventas · descuento típico $0, peor $0)
       precio: $8.780 → $8.820 para el 30% en su peor venta (+0.5%)
       catálogo: not_listed
       ❓ CATÁLOGO en estado "not_listed" — no es ni ganando ni perdiendo, revisar a mano
 
   Ayelen   · MLA1472615965 · Plantillas Almohadilla Gel Metatar  [PAUSADA · sin stock]
       margen: peor venta 29% · típico 35%   (34 ventas · descuento típico $15, peor $89)
-      precio: $3.710 → $3.720 para el 30% en su peor venta (+0.3%)
+      precio: $3.710 → $3.730 para el 30% en su peor venta (+0.5%)
       ✅ SUBIR — no es de catálogo, no hay caja de compra que perder
 
-  Adriana  · MLA1695208821 · Perfume Paulvic Indigo Parfum Cítr
-      margen: peor venta 30% · típico 30%   (2 ventas · descuento típico $207, peor $207)
-      precio: $14.360 → $14.410 para el 30% en su peor venta (+0.3%)
-      catálogo: COMPARTIENDO · para ganar la caja hacen falta $14.026
-      ⚠️ GRUPO "paulvic" — subir esta sube TODAS las del grupo, no se puede de a una
+  Luciana  · MLA1902691527 · Sabanas 1 Plazas Y Media Juego Par  [PAUSADA · sin stock]
+      margen: peor venta 29% · típico 29%   (1 ventas · descuento típico $16, peor $16)
+      precio: $14.690 → $14.750 para el 30% en su peor venta (+0.4%)
+      ✅ SUBIR — no es de catálogo, no hay caja de compra que perder
 
   Matias   · MLA1709796225 · Auricular Inalambrico P47 Cat Ear   [PAUSADA · sin stock]
       margen: peor venta 30% · típico 30%   (3 ventas · descuento típico $75, peor $75)
       precio: $9.100 → $9.130 para el 30% en su peor venta (+0.3%)
       ✅ SUBIR — no es de catálogo, no hay caja de compra que perder
+
+  Matias   · MLA1980939236 · Adaptador De Enchufe Universal Via
+      margen: peor venta 30% · típico 34%   (48 ventas · descuento típico $28, peor $127)
+      precio: $5.390 → $5.410 para el 30% en su peor venta (+0.4%)
+      catálogo: PERDIENDO · para ganar la caja hacen falta $3.118
+      ✅ SUBIR — ya PERDÉS la caja, subir no te cuesta nada
 
   Matias   · MLA1568102809 · Infusor De Te En Hebras Acero Inox  [PAUSADA · sin stock]
       margen: peor venta 30% · típico 34%   (90 ventas · descuento típico $20, peor $102)
@@ -855,26 +421,66 @@ ABAJO DEL 30% · 154 publicaciones · ventana 60 días
       catálogo: not_listed
       ❓ CATÁLOGO en estado "not_listed" — no es ni ganando ni perdiendo, revisar a mano
 
+  Matias   · MLA1861360455 · Joystick Xbox Wireless Azul Xbox S  [PAUSADA · sin stock]
+      margen: peor venta 30% · típico 30%   (1 ventas · descuento típico $9.637, peor $9.637)
+      precio: $176.890 → $177.130 para el 30% en su peor venta (+0.1%)
+      catálogo: not_listed
+      ❓ CATÁLOGO en estado "not_listed" — no es ni ganando ni perdiendo, revisar a mano
+
   Matias   · MLA1459816555 · Auriculares Inalámbricos Myp P47 R  [PAUSADA · sin stock]
       margen: peor venta 30% · típico 30%   (3 ventas · descuento típico $60, peor $68)
       precio: $8.490 → $8.500 para el 30% en su peor venta (+0.1%)
       catálogo: not_listed
       ❓ CATÁLOGO en estado "not_listed" — no es ni ganando ni perdiendo, revisar a mano
 
-  Ayelen   · MLA3018510784 · Espejo Redondo Giratorio C/ Soport
-      margen: peor venta 30% · típico 34%   (14 ventas · descuento típico $37, peor $129)
-      precio: $5.190 → $5.200 para el 30% en su peor venta (+0.2%)
+  Adriana  · MLA3374364116 · Victoria's Secret Body Splash Midn
+      margen: peor venta 30% · típico 57%   (8 ventas · descuento típico $5.948, peor $12.602)
+      precio: $52.120 → $52.130 para el 30% en su peor venta (+0.0%)
+      catálogo: PERDIENDO · para ganar la caja hacen falta $44.037
+      ✅ SUBIR — ya PERDÉS la caja, subir no te cuesta nada
+
+  Matias   · MLA1970314726 · Pendrive Sandisk Cruzer Blade 32gb
+      margen: peor venta 30% · típico 33%   (54 ventas · descuento típico $136, peor $427)
+      precio: $20.960 → $20.970 para el 30% en su peor venta (+0.0%)
+      catálogo: PERDIENDO · para ganar la caja hacen falta $18.228
+      ✅ SUBIR — ya PERDÉS la caja, subir no te cuesta nada
+
+  Adriana  · MLA1750802833 · Pret A Porter Body Splash X75ml
+      margen: peor venta 30% · típico 33%   (7 ventas · descuento típico $99, peor $377)
+      precio: $19.060 → $19.070 para el 30% en su peor venta (+0.1%)
+      catálogo: COMPARTIENDO · para ganar la caja hacen falta $18.793
+      🛑 NO SUBIR — hoy COMPARTÍS la caja, subir te saca
+
+  Matias   · MLA1782601845 · Audifonos Galaxy Buds Core Black S
+      margen: peor venta 30% · típico 30%   (7 ventas · descuento típico $20.892, peor $20.892)
+      precio: $145.920 → $145.940 para el 30% en su peor venta (+0.0%)
+      catálogo: PERDIENDO · para ganar la caja hacen falta $114.526
+      ✅ SUBIR — ya PERDÉS la caja, subir no te cuesta nada
+
+  Ayelen   · MLA1753638867 · Linterna Led Multifuncion Recargab
+      margen: peor venta 30% · típico 30%   (3 ventas · descuento típico $95, peor $95)
+      precio: $8.850 → $8.860 para el 30% en su peor venta (+0.1%)
+      ✅ SUBIR — no es de catálogo, no hay caja de compra que perder
+
+  Adriana  · MLA1869295391 · Animale For Men Tradicional Hombre
+      margen: peor venta 30% · típico 30%   (1 ventas · descuento típico $11.557, peor $11.557)
+      precio: $85.660 → $85.670 para el 30% en su peor venta (+0.0%)
       catálogo: GANANDO
       🛑 NO SUBIR — hoy GANÁS la caja de compra
 
-  Luciana  · MLA3151922750 · Termómetro Nevera Pantalla Lcd Cab
-      margen: peor venta 30% · típico 30%   (4 ventas · descuento típico $0, peor $0)
-      precio: $5.180 → $5.190 para el 30% en su peor venta (+0.2%)
+  Ayelen   · MLA1998653574 · Corta Pelo De Nariz Oreja Cejas Po
+      margen: peor venta 30% · típico 33%   (23 ventas · descuento típico $195, peor $547)
+      precio: $25.180 → $25.190 para el 30% en su peor venta (+0.0%)
+      ✅ SUBIR — no es de catálogo, no hay caja de compra que perder
+
+  Ayelen   · MLA2141745210 · Balanza Digital 10kg Multiuso Pres
+      margen: peor venta 30% · típico 30%   (3 ventas · descuento típico $113, peor $113)
+      precio: $8.240 → $8.250 para el 30% en su peor venta (+0.1%)
       ✅ SUBIR — no es de catálogo, no hay caja de compra que perder
 
 ── RESUMEN PARA DECIDIR ──
-  ✅ se pueden subir sin riesgo : 60
-  🛑 mejor no tocar (tenés caja): 8
-  ⚠️ son de un grupo de precio  : 37
+  ✅ se pueden subir sin riesgo : 32
+  🛑 mejor no tocar (tenés caja): 3
+  ⚠️ son de un grupo de precio  : 0
   ✋ tienen variantes (a mano)   : 2
   ❓ hay que mirarlas a mano     : 47
