@@ -198,7 +198,14 @@ Lo que quedó abierto. Borrá de acá lo que se vaya cerrando.
 - **Victoria's Secret "adulterado"** (reclamo de Adriana, 11/08, $45.300). Él dice que son
   originales con factura. ML cerró el caso a favor del comprador sin dejar responder. Se le
   recomendó guardar la factura del lote, abrir una unidad y filmarla, y reclamarle al proveedor.
-- **Factura A de Luciana**, pedida el 29/07 por mensaje de posventa y sin responder.
+- **ARCA y las compras (12/08).** Él quiere empezar a controlar que las compras estén respaldadas
+  con factura. **Recordarle que pase las compras.** Aclaraciones que ya se le dieron: en monotributo
+  las facturas de compra NO bajan lo que paga, y NO existe ningún mínimo de compras — lo que existe
+  es un máximo (si compras + gastos de 12 meses llegan al 80% del tope de la categoría más alta,
+  queda excluido). El panel hoy NO guarda si una compra tuvo factura ni de qué proveedor: si lo va
+  a controlar, hay que armar esa pantalla.
+- **Factura A de Luciana**, pedida el 29/07 por mensaje de posventa y sin responder. Al 12/08 son
+  TRES compradores distintos pidiendo factura en Luciana, uno ya insistió dos veces.
 - **El robot NO sabe reembolsar ni contestar reclamos**: solo lee. Si alguna vez se programa,
   probarlo primero con un reclamo chico, nunca con uno grande.
 
