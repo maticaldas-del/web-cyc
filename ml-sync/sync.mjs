@@ -5001,6 +5001,158 @@ async function main() {
       }
       return;
     }
+
+    // BILLING_PROBE=frenados[:<díasStock>][:<días>] → ¿CONVIENE BAJARLE EL PRECIO AL STOCK PARADO?
+    //
+    // La pregunta que contesta: en un producto con mucha plata parada, ¿bajar el precio lo mueve o
+    // es regalar margen? La respuesta NO es el descuento: es cuántas unidades MÁS habría que vender
+    // para que bajar no te deje peor que ahora. Si bajando 15% necesitás vender el doble, casi
+    // nunca vale la pena; si necesitás un 20% más, quizás sí.
+    //
+    // Dos cosas que decide el resultado y no se ven en la pantalla de Stock:
+    //   · Si es de CATÁLOGO y estás PERDIENDO la caja de compra, bajar puede desbloquear ventas de
+    //     verdad (hoy no te ve nadie). Si la estás GANANDO, bajar es regalar plata: ya sos el que
+    //     vende y aun así no rota, o sea que el problema es la demanda, no el precio.
+    //   · Cuánto queda por unidad DESPUÉS del cargo fijo de ML. En un producto barato el descuento
+    //     sale casi entero de tu ganancia, porque ML cobra lo mismo igual.
+    //
+    // OJO con "Muerto" de la pantalla: mide rotación (ventas ÷ stock), no si vende. Acá se muestra
+    // la última venta al lado, para no confundir sobrecomprado con muerto. Solo LEE.
+    if (String(process.env.BILLING_PROBE || '').startsWith('frenados')) {
+      const _fr = String(process.env.BILLING_PROBE).split(':');
+      const DIAS_MIN = parseFloat(_fr[1]) || 90;   // desde cuántos días de stock se considera frenado
+      const VENT = parseFloat(_fr[2]) || 60;       // ventana de ventas
+      const finF = (await db.get('cyc/finanzas')) || {};
+      const tcF = parseFloat(finF.tipo_cambio) || 1500;
+      const monoF = parseFloat(((await db.get('cyc/monotributo')) || {}).pct) || 0;
+      const links = (await db.get('cyc/mllinks')) || {};
+      const inv = (await db.get('cyc/inventory')) || {};
+      const vpF = (await db.get('cyc/ventaprod')) || {}; setDevLive(vpF);
+      const pIdx = {}; for (const p of products) pIdx[p.id] = p;
+      const desde = Date.now() - VENT * 864e5;
+      // Ventas en la ventana + última venta de todas, por producto.
+      const uProd = {}, ultProd = {}, vtaProd = {};
+      for (const [k, ents] of Object.entries(vpF)) {
+        const ts = Date.parse(k.slice(0, 10).replace(/_/g, '-'));
+        for (const v of Object.values(ents || {})) {
+          if (!v || v.cancelada || !v.prodId) continue;
+          const q = v.qty || 1;
+          if (isFinite(ts)) {
+            if (ts >= desde) uProd[v.prodId] = (uProd[v.prodId] || 0) + q;
+            if (!ultProd[v.prodId] || ts > ultProd[v.prodId]) ultProd[v.prodId] = ts;
+          }
+          const tot = (v.total || 0) / q, net = (v.neto || 0) / q;
+          if (tot > 0 && net > 0) (vtaProd[v.prodId] = vtaProd[v.prodId] || []).push({ tot, net });
+        }
+      }
+      // Stock por producto: se suma todo lo que hay en inventario con ese prodId.
+      const stockDe = {};
+      for (const [k, n] of Object.entries(inv)) {
+        const pid = String(k).split('__')[0];
+        const q = parseInt(n) || 0; if (!q) continue;
+        stockDe[pid] = (stockDe[pid] || 0) + q;
+      }
+      const feeCache = {};
+      const feeAt = async (site, price, ltype, cat, token) => {
+        const key = site + '|' + ltype + '|' + cat + '|' + Math.round(price);
+        if (feeCache[key] !== undefined) return feeCache[key];
+        let out = null;
+        try {
+          const d = await mlGet(`/sites/${site}/listing_prices?price=${Math.round(price)}&listing_type_id=${ltype}&category_id=${cat}`, token);
+          const o = Array.isArray(d) ? d[0] : d;
+          if (typeof o?.sale_fee_amount === 'number') out = o.sale_fee_amount;
+        } catch { out = null; }
+        feeCache[key] = out; return out;
+      };
+      console.log(`=== ¿CONVIENE BAJAR EL PRECIO DEL STOCK PARADO? · más de ${DIAS_MIN} días de stock ===`);
+      console.log(`ventas de los últimos ${VENT} días · SOLO LECTURA, no se toca ningún precio\n`);
+      const filas = [];
+      for (const label of labels) {
+        const acc = accounts[label];
+        if (!acc?.refresh_token) continue;
+        let t; try { t = await mlRefresh(ML_CLIENT_ID, ML_CLIENT_SECRET, acc.refresh_token); } catch { continue; }
+        await db.patch('mlapi/tokens/' + label, { refresh_token: t.refresh_token, updated_ts: Date.now() });
+        const ids = Object.entries(links)
+          .filter(([mla, e]) => e && e.cuenta === label && !e.ignored && e.prodId && /^MLA/i.test(mla))
+          .map(([mla]) => mla);
+        for (let k = 0; k < ids.length; k += 20) {
+          let arr;
+          try { arr = await mlGet('/items?ids=' + ids.slice(k, k + 20).join(',') + '&attributes=id,status,price,variations,listing_type_id,category_id,site_id,catalog_listing,title', t.access_token); } catch { continue; }
+          for (const row of (arr || [])) {
+            const b = row.body || {}; const mla = b.id; if (!mla || !links[mla]) continue;
+            if (b.status !== 'active') continue;   // pausada no se puede analizar: no está a la venta
+            const p = pIdx[links[mla].prodId]; if (!p) continue;
+            const stock = stockDe[p.id] || 0; if (stock <= 0) continue;
+            const u = uProd[p.id] || 0;
+            const porDia = u / VENT;
+            const diasStock = porDia > 0 ? Math.round(stock / porDia) : 9999;
+            if (diasStock < DIAS_MIN) continue;
+            const vars = Array.isArray(b.variations) ? b.variations : [];
+            const precio = vars.length ? (vars[0].price || 0) : (b.price || 0);
+            if (!precio) continue;
+            const costoBase = costoPesos(p, 1, tcF).costo; if (!(costoBase > 0)) continue;
+            const extraPct = mlExtraPct(label) + monoF;
+            // Envío deducido de las ventas, igual que en el resto del panel.
+            const ventas = vtaProd[p.id] || [];
+            let envio = Infinity;
+            for (const pv of [...new Set(ventas.map((v) => Math.round(v.tot)))].slice(-6)) {
+              const cv = await feeAt(b.site_id || 'MLA', pv, b.listing_type_id, b.category_id, t.access_token);
+              if (cv == null) continue;
+              for (const v of ventas) if (Math.round(v.tot) === pv) { const x = v.tot - v.net - cv; if (x < envio) envio = x; }
+            }
+            if (!isFinite(envio) || envio < 0) envio = 0;
+            const ganA = async (pr) => {
+              const c = await feeAt(b.site_id || 'MLA', pr, b.listing_type_id, b.category_id, t.access_token);
+              if (c == null) return null;
+              return (pr - c - envio) - (costoBase + pr * extraPct / 100);
+            };
+            const g0 = await ganA(precio); if (g0 == null) continue;
+            const g10 = await ganA(Math.round(precio * 0.90));
+            const g20 = await ganA(Math.round(precio * 0.80));
+            let caja = null;
+            if (b.catalog_listing) { try { caja = await mlGet('/items/' + mla + '/price_to_win?version=v2', t.access_token); } catch { /* */ } }
+            filas.push({
+              mla, label, nom: (b.title || p.name || mla).slice(0, 38), prod: p.name,
+              stock, u, diasStock, precio, capital: Math.round(stock * costoBase),
+              g0, g10, g20, ult: ultProd[p.id] || 0, caja, mgPct: g0 / (costoBase + precio * extraPct / 100) * 100,
+            });
+          }
+        }
+      }
+      filas.sort((a, b) => b.capital - a.capital);
+      if (!filas.length) { console.log('Ninguna publicación activa con tanto stock. (Las pausadas no se pueden analizar: no están a la venta.)'); return; }
+      const dias = (ts) => ts ? Math.floor((Date.now() - ts) / 864e5) : null;
+      let capTot = 0;
+      for (const f of filas) {
+        capTot += f.capital;
+        const d = dias(f.ult);
+        console.log(`── ${f.nom}   (${f.label})`);
+        console.log(`     ${f.stock} u. en stock · ${money(f.capital)} parados · vendió ${f.u} en ${VENT} días · alcanza para ${f.diasStock > 900 ? '+900' : f.diasStock} días`);
+        console.log(`     última venta: ${d == null ? 'nunca' : 'hace ' + d + ' días'}${d != null && d <= 15 ? '  ← VENDE, está SOBRECOMPRADO (no muerto)' : ''}`);
+        console.log(`     precio ${money(Math.round(f.precio))} · te queda ${money(Math.round(f.g0))} por unidad (${f.mgPct.toFixed(0)}%)`);
+        // Cuántas unidades más habría que vender para no perder plata bajando. Es LA cuenta.
+        const mult = (g) => (g == null || g <= 0) ? null : f.g0 / g;
+        const m10 = mult(f.g10), m20 = mult(f.g20);
+        console.log(`     bajando 10% (${money(Math.round(f.precio * 0.9))}): te quedarían ${f.g10 == null ? '?' : money(Math.round(f.g10))} · ${m10 == null ? 'PERDERÍAS PLATA en cada venta' : 'tendrías que vender ' + m10.toFixed(1) + '× más para no perder'}`);
+        console.log(`     bajando 20% (${money(Math.round(f.precio * 0.8))}): te quedarían ${f.g20 == null ? '?' : money(Math.round(f.g20))} · ${m20 == null ? 'PERDERÍAS PLATA en cada venta' : 'tendrías que vender ' + m20.toFixed(1) + '× más para no perder'}`);
+        if (f.caja) {
+          const st = f.caja.status || '?';
+          if (st === 'winning') console.log(`     catálogo: GANÁS la caja de compra → bajar NO te va a traer más ventas, ya sos el que vende`);
+          else if (f.caja.price_to_win) console.log(`     catálogo: NO tenés la caja · para ganarla hace falta ${money(Math.round(f.caja.price_to_win))} → acá bajar SÍ puede desbloquear ventas`);
+          else console.log(`     catálogo: ${st}`);
+        } else console.log(`     no es de catálogo: no hay caja de compra que ganar ni perder`);
+        console.log('');
+      }
+      console.log(`TOTAL: ${money(capTot)} parados en ${filas.length} publicaciones activas.\n`);
+      console.log(`CÓMO LEERLO:`);
+      console.log(`  · "tendrías que vender 2× más" = bajando ese precio, vendiendo el doble ganás lo MISMO que hoy.`);
+      console.log(`    Menos del doble, ganás menos. Por eso el número que importa no es el descuento.`);
+      console.log(`  · Si GANÁS la caja de compra y aun así no rota, el problema NO es el precio: es que`);
+      console.log(`    no hay demanda a ese ritmo. Bajar solo te hace ganar menos por la misma venta.`);
+      console.log(`  · Si vendió hace poco, no está muerto: está SOBRECOMPRADO. Ahí no hay nada que arreglar`);
+      console.log(`    con el precio — hay que dejar de comprarlo y esperar.`);
+      return;
+    }
     // BILLING_PROBE=dormidos[:<días>][:<margenMin>] → PRODUCTOS CON MARGEN ALTO QUE NO ROTAN.
     // Regla tuya: si el producto VENDIÓ en la ventana, no se toca aunque tenga margen alto. Solo
     // interesan los que tienen buen margen y NO se venden: ahí bajar el precio puede despertarlos.
