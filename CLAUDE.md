@@ -70,12 +70,14 @@ julio, a CYC le quedan **~$2.000.000/mes** después de todo eso.
    cobra el envío gratis y el margen se da vuelta. Si para llegar al 30% hay que cruzarla, se deja
    en **$32.999** y se avisa que quedó abajo del piso a propósito. NO se cruza. (Decidido por él
    el 13/08/2026; antes había que preguntar cada vez.)
-3. **El piso de margen es 30%**, medido sobre el costo total (mercadería + envío + % de reclamos +
+3. **TECHO DURO: nunca subir un precio por encima de $600.000.** Regla suya del 13/08/2026. Si
+   para llegar al 30% haría falta cruzar ese número, se deja donde está y se avisa.
+4. **El piso de margen es 30%**, medido sobre el costo total (mercadería + envío + % de reclamos +
    IIBB + monotributo). El robot baja al piso solo; subir por encima del piso se decide a mano.
-4. **NUNCA bajar un precio.** Regla suya del 13/08/2026, sin excepciones. Si una cuenta dice que
+5. **NUNCA bajar un precio.** Regla suya del 13/08/2026, sin excepciones. Si una cuenta dice que
    para llegar al 30% hay que BAJAR, el número está mal: no se toca y se investiga.
-5. Después de aplicar un precio en ML, **volvé a leerlo de ML para confirmar** que quedó.
-6. **Las publicaciones con variantes también se suben.** No alcanza con el precio de la
+6. Después de aplicar un precio en ML, **volvé a leerlo de ML para confirmar** que quedó.
+7. **Las publicaciones con variantes también se suben.** No alcanza con el precio de la
    publicación: hay que tocar cada variante, y mandar la lista incompleta hace que ML borre las
    que faltan. Después de subirlas, releer y verificar que estén TODAS.
 
