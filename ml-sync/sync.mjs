@@ -10305,22 +10305,19 @@ async function main() {
         console.log(`Monotributo: ${money(Math.round(totImp))}/mes sobre ${money(Math.round(factMes))} facturados → ${pct}% al costo`);
       }
     }
-    const fijo = parseFloat(mono.fijoMensual) || 0;
-    if (fijo > 0) {
-      const ymNow = dayKeyFromISO(new Date().toISOString()).slice(0, 7);
-      const gid = 'monofijo_' + ymNow;
-      let ya = null;
-      try { ya = await db.get('cyc/compras/' + gid); } catch { /* */ }
-      if (!ya) {
-        const gasto = {
-          id: gid, monto: Math.round(fijo), cat: 'Monotributo / Impuestos', tipo: 'gasto',
-          desc: `Autónomo + obra social (${ymNow.replace('_', '-')})`,
-          dayKey: ymNow + '_01', ts: Date.now(), auto: true,
-        };
-        if (!DRY) await db.patch('cyc/compras', { [gid]: gasto });
-        console.log(`${DRY ? '(DRY) ' : ''}Cargado ${gid} = ${money(Math.round(fijo))} (autónomo + obra social).`);
-      }
-    }
+    // EL ROBOT YA NO CARGA NINGÚN GASTO SOLO. Decisión suya del 13/08/2026.
+    //
+    // Antes creaba todos los meses el gasto `monofijo_<mes>` con el autónomo + obra social, tomando
+    // un monto fijo guardado en mlconfig. Dos problemas: el monto real cambia todos los meses (en
+    // agosto el VEP vino $113.083 y el guardado era otro), y al cargarse solo nadie lo miraba, así
+    // que un número viejo se repetía mes a mes sin que se notara. Además quedaban afuera los
+    // honorarios, el alquiler, los servicios y la obra social privada, y el mes cerraba corto: en
+    // agosto figuraban $393.083 contra $781.114 de julio, y la ganancia se veía mejor de lo que era.
+    //
+    // Ahora los carga él pasando los comprobantes, con `cargargasto`, cada uno en su categoría y con
+    // proveedor, factura y CAE. Es más trabajo pero el mes cierra con lo que de verdad se pagó.
+    // El % de monotributo que se descuenta de cada venta NO se toca: eso se sigue calculando solo
+    // acá arriba, y es otra cosa (va en el margen de cada producto, no en la lista de gastos).
   }
 
   const cfg = (await db.get('cyc/mlconfig')) || {};
