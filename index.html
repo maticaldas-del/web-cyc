@@ -855,6 +855,7 @@ footer{margin-top:32px;padding-top:14px;border-top:1px solid var(--border);font-
     <button class="tab active ped-section-tab" id="tab-bsas-btn" onclick="setPedidoSection('bsas',this)">Pedidos BS AS</button>
     <button class="tab ped-section-tab" id="tab-py-btn" onclick="setPedidoSection('paraguay',this)">Pedidos Paraguay</button>
     <button class="tab ped-section-tab" id="tab-paulvic-btn" onclick="setPedidoSection('paulvic',this)">Paulvic</button>
+    <button class="tab ped-section-tab" id="tab-papelera-btn" onclick="setPedidoSection('papelera',this)">🗑️ Papelera <span id="tab-papelera-n"></span></button>
   </div>
 
   <!-- ── SECCIÓN PRIORIDAD (mezclado, ordenado por $ en riesgo) ── -->
@@ -934,6 +935,18 @@ footer{margin-top:32px;padding-top:14px;border-top:1px solid var(--border);font-
       <button class="pf-btn" id="pf-paulvic-suficiente" onclick="setPedidoFilter('suficiente',this)">🟢 Suficiente</button>
     </div>
     <div id="pedidos-paulvic-list"><div class="empty-msg">Sin pedidos cargados.</div></div>
+  </div>
+
+  <!-- ── PAPELERA ──
+       Los productos que se sacan de Pedidos NO se borran: caen acá. Antes la ✕ los borraba y el
+       robot los volvía a crear a los pocos segundos, porque los pedidos se arman solos a partir de
+       las ventas y el stock. Estando acá, el robot los saltea, y tampoco cuentan para el Puntaje
+       del mes ni para el stock en riesgo. Se pueden devolver cuando se quiera. -->
+  <div id="ped-section-papelera" style="display:none">
+    <div style="font-size:.66rem;color:var(--muted);margin-bottom:10px">Productos que sacaste de Pedidos. No se vuelven a crear solos y no cuentan para el Puntaje del mes ni para el stock en riesgo. Si te arrepentís, "Devolver" los reactiva.</div>
+    <div class="pedidos-count" id="pedidos-papelera-count"></div>
+    <input class="search-box" id="ped-papelera-search" type="search" placeholder="Buscar en la papelera..." oninput="renderPedidos()" style="margin-bottom:10px">
+    <div id="pedidos-papelera-list"><div class="empty-msg">La papelera está vacía.</div></div>
   </div>
 
   <footer>CYC · Pedidos</footer>
@@ -1629,7 +1642,7 @@ function toggleTheme(){
 })();
 
 let db,whoAmI='',viewMode='mes',pedidoFilter='todos',pedidoSection='bsas',pedidoGroupByProv=false;
-let state={products:[],inventory:{},history:[],finanzas:{},snapshots:{},daily:{},ingresos:{},pedidos:[],pedidos_py:[],metricas:{},compras:{},ventaprod:{},proveedores:[],puntaje:{},stockDiario:{},tc_mes:{},precios_hist_prod:{},fact_mes:{},fact_cancel:{}};
+let state={products:[],inventory:{},history:[],finanzas:{},snapshots:{},daily:{},ingresos:{},pedidos:[],pedidos_py:[],papelera:{},metricas:{},compras:{},ventaprod:{},proveedores:[],puntaje:{},stockDiario:{},tc_mes:{},precios_hist_prod:{},fact_mes:{},fact_cancel:{}};
 let _knownVentaprodIds=null; // null = primera carga; Set después
 let currentPage='home';
 let firstDataLoad=true;
@@ -1666,6 +1679,9 @@ function startApp(){
     const _normPed=p=>{if(p.variantesNec&&!Array.isArray(p.variantesNec))p.variantesNec=Object.values(p.variantesNec);return p;};
     state.pedidos    =d.pedidos    ?Object.values(d.pedidos).map(_normPed).sort((a,b)=>(b.ts||0)-(a.ts||0)):[];
     state.pedidos_py =d.pedidos_py ?Object.values(d.pedidos_py).map(_normPed).sort((a,b)=>(b.ts||0)-(a.ts||0)):[];
+    // Papelera de Pedidos: clave = id interno del producto. Lo que está acá el robot no lo vuelve
+    // a crear, y no cuenta ni en el Puntaje del mes ni en el stock en riesgo.
+    state.papelera =d.pedidos_papelera||{};
     _limpiarEnCamino(); // borra los "en camino" que hayan quedado marcados (la función ya no existe)
     state.proveedores=d.proveedores?Object.values(d.proveedores).sort((a,b)=>(a.nombre||'').localeCompare(b.nombre||'','es',{sensitivity:'base'})).map(pv=>({...pv,condiciones:pv.condiciones?Object.values(pv.condiciones).sort((a,b)=>(a.minUSD||0)-(b.minUSD||0)):[]})):[];
     state.metricas =d.metricas ||{};
@@ -5143,6 +5159,7 @@ function setPedidoSection(sec,btn){
   document.getElementById('ped-section-bsas').style.display=sec==='bsas'?'':'none';
   document.getElementById('ped-section-paraguay').style.display=sec==='paraguay'?'':'none';
   document.getElementById('ped-section-paulvic').style.display=sec==='paulvic'?'':'none';
+  document.getElementById('ped-section-papelera').style.display=sec==='papelera'?'':'none';
   pedidoFilter='todos';pedidoGroupByProv=false;
   const secEl=document.getElementById('ped-section-'+sec);
   if(secEl)secEl.querySelectorAll('.pf-btn').forEach(b=>{
@@ -5244,7 +5261,12 @@ async function syncPedidosAuto(){
   });
   // 2. ventas normalizadas a 30d por producto; para variantes calcula necesario por variante
   const resumen={};
+  const _pap=state.papelera||{};
   for(const p of (state.products||[])){
+    // En la papelera = no se vende más. Se saltea ACÁ, antes de calcular nada: así no vuelve a
+    // aparecer en Pedidos y tampoco suma "riesgo", que es lo que alimenta el Puntaje del mes y el
+    // stock en riesgo. Si se saltease más abajo, el producto seguiría restando puntaje sin verse.
+    if(_pap[p.id])continue;
     const {vendidos,vendidosNorm,diasHistorial}=pedVentasNorm(p);
     if(vendidos===0)continue;
     const stock=stockOf(p);
@@ -5479,19 +5501,59 @@ async function _limpiarEnCamino(){
     }
   }
 }
+// La ✕ de un pedido lo manda a la PAPELERA, no lo borra.
+// Por qué: los pedidos de productos se arman solos con las ventas y el stock (syncPedidosAuto).
+// Borrar el registro no servía de nada — a los segundos el robot lo volvía a crear igual, y desde
+// afuera parecía que la ✕ no andaba. Guardando el producto en la papelera, el robot lo saltea:
+// deja de aparecer en Pedidos y deja de contar en el Puntaje del mes y en el stock en riesgo,
+// pero el dato queda y se puede devolver.
 async function delPedido(id){
-  let path;
-  if(pedidoSection==='paulvic'||pedidoSection==='prioridad'){
-    path=(state.pedidos||[]).find(x=>x.id===id)?'pedidos/':'pedidos_py/';
-  } else {
-    const isBsas=pedidoSection==='bsas';
-    path=isBsas?'pedidos/':'pedidos_py/';
-  }
   const allArr=[...(state.pedidos||[]),...(state.pedidos_py||[])];
   const p=allArr.find(x=>x.id===id);
-  await fbDel(path+id);
-  await log('Eliminó pedido: '+(p?p.producto:id));
-  toast('Eliminado','info');
+  const path=(state.pedidos||[]).some(x=>x.id===id)?'pedidos/':'pedidos_py/';
+  // Sin producto interno no hay con qué frenar al robot; se borra y listo (pedido suelto a mano).
+  const pid=p?p.prodId:null;
+  if(!pid){
+    await fbDel(path+id);
+    await log('Eliminó pedido: '+(p?p.producto:id));
+    toast('Eliminado','info');
+    return;
+  }
+  const entry={prodId:pid,producto:p.producto||'',ts:Date.now(),coll:path.replace('/',''),auto:p.auto===true};
+  // Los pedidos cargados a mano se guardan ENTEROS: si no, devolverlos perdería cantidad y nota
+  // (los automáticos no hacen falta, el robot los reconstruye solo).
+  if(!p.auto)entry.ped={...p};
+  state.papelera=state.papelera||{};state.papelera[pid]=entry;
+  state[path.replace('/','')]=(state[path.replace('/','')]||[]).filter(x=>x.id!==id);
+  await db.ref('cyc').update({['pedidos_papelera/'+pid]:entry,[path+id]:null});
+  await log('Mandó a la papelera: '+(p.producto||id));
+  renderPedidos();updatePedidosCosto();
+  toast('A la papelera 🗑️','info');
+}
+
+// Devuelve un producto de la papelera. El robot lo vuelve a tener en cuenta en la próxima pasada.
+async function restaurarPedido(pid){
+  const e=(state.papelera||{})[pid];if(!e)return;
+  const upd={['pedidos_papelera/'+pid]:null};
+  if(e.ped&&e.ped.id){upd[(e.coll||'pedidos')+'/'+e.ped.id]=e.ped;(state[e.coll||'pedidos']||[]).push(e.ped);}
+  delete state.papelera[pid];
+  await db.ref('cyc').update(upd);
+  await log('Devolvió de la papelera: '+(e.producto||pid));
+  renderPedidos();
+  toast('Devuelto ✓');
+  syncPedidosAuto();
+}
+
+// Vacía la papelera entera. No borra productos ni ventas: solo deja de esconderlos en Pedidos.
+async function vaciarPapelera(){
+  const n=Object.keys(state.papelera||{}).length;if(!n)return;
+  if(!confirm(`Devolver los ${n} productos de la papelera a Pedidos?\n\nNo se borra nada: vuelven a aparecer y a contar en el Puntaje del mes.`))return;
+  state.papelera={};
+  await fbSet('pedidos_papelera',null);
+  await log('Vació la papelera de pedidos ('+n+')');
+  renderPedidos();
+  toast('Papelera vacía ✓');
+  syncPedidosAuto();
 }
 
 function rotDiasSinVenderHtml(dias){
@@ -5818,6 +5880,32 @@ const _pedSortFn=(a,b)=>{const o={pendiente:0,poco_stock:1,suficiente:2};return(
 const _pedSortFnRiesgo=(a,b)=>(b.riesgo||0)-(a.riesgo||0);
 
 function renderPedidos(){
+  // El número al lado de la solapa se refresca siempre, se esté mirando la papelera o no.
+  const _papN=Object.keys(state.papelera||{}).length;
+  const _papTab=document.getElementById('tab-papelera-n');
+  if(_papTab)_papTab.textContent=_papN?'('+_papN+')':'';
+  if(pedidoSection==='papelera'){
+    const el=document.getElementById('pedidos-papelera-list');if(!el)return;
+    let items=Object.values(state.papelera||{}).sort((a,b)=>(b.ts||0)-(a.ts||0));
+    const cntEl=document.getElementById('pedidos-papelera-count');
+    if(cntEl)cntEl.innerHTML=`<div class="pcount"><strong>${items.length}</strong>En la papelera</div>`+
+      (items.length?`<button class="btn" style="align-self:center" onclick="vaciarPapelera()">Devolver todos</button>`:'');
+    const q=normTxt(document.getElementById('ped-papelera-search')?.value||'');
+    if(q)items=items.filter(x=>normTxt(x.producto||'').includes(q));
+    if(!items.length){el.innerHTML='<div class="empty-msg">La papelera está vacía.</div>';return;}
+    el.innerHTML=items.map(x=>{
+      const prod=(state.products||[]).find(p=>p.id===x.prodId);
+      const nom=(prod?prod.name:x.producto)||x.prodId;
+      return `<div class="pedido-item suficiente">
+        <span class="pi-prod">${nom}</span>
+        <span class="pi-nota">${x.auto===false?'cargado a mano':'lo armaba el robot solo'}</span>
+        <span class="pi-nota" style="flex:1"></span>
+        <button class="btn" onclick="restaurarPedido('${x.prodId}')">↩︎ Devolver</button>
+        <span class="pi-ts">${x.ts?ts2s(x.ts):''}</span>
+      </div>`;
+    }).join('');
+    return;
+  }
   if(pedidoSection==='prioridad'){
     const el=document.getElementById('pedidos-prioridad-list');if(!el)return;
     let peds=[
@@ -7523,7 +7611,7 @@ document.addEventListener('click',e=>{if(fnavOpen&&!e.target.closest('#fnav-btn'
         <span style="font-size:.75rem;color:var(--muted)">Si no ves los últimos cambios, forzá la actualización</span>
         <button class="btn" style="background:rgba(56,189,248,.12);color:var(--blue);border:1px solid rgba(56,189,248,.3)" onclick="actualizarApp()">🔄 Buscar actualizaciones</button>
       </div>
-      <div style="font-size:.66rem;color:var(--muted);margin-top:12px">CYC · Versión 8.9</div>
+      <div style="font-size:.66rem;color:var(--muted);margin-top:12px">CYC · Versión 9.0</div>
     </div>
 
     <div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:18px 20px;margin-bottom:14px">
