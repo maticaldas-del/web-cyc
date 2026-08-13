@@ -4174,6 +4174,153 @@ async function main() {
       else if (!GO) console.log('\n(solo lista — para borrarlo: raizsucia:go)');
       return;
     }
+    // BILLING_PROBE=submargen[:<piso>][:go] → SUBE LOS QUE ESTÁN BAJO EL PISO SEGÚN "MARGEN ML".
+    //
+    // POR QUÉ EXISTE, si ya está `bajopiso`: son dos cuentas distintas y ninguna cubre todo.
+    // `bajopiso` va por publicación y necesita VENTAS de los últimos 60 días para deducir el envío
+    // real; sin ventas no puede medir y se saltea la publicación. El 13/08/2026 se salteó 121 de
+    // 401 así, en silencio, y quedaron productos abajo del 30% que parecían resueltos.
+    // Esto va por la cuenta de la pantalla "Margen ML": costo full + el % que ML cobra por débito
+    // (IIBB + monotributo) contra el neto que informa ML al precio de hoy. No necesita ventas, así
+    // que llega justo a los que la otra no puede medir.
+    //
+    // El precio se busca con la calculadora OFICIAL de ML, no con una fórmula copiada: se prueba un
+    // precio, se le pregunta a ML cuánto cobra de comisión, y se repite hasta llegar al piso.
+    // Respeta las reglas: NUNCA baja, frena en $32.999 si cruzaría los $33.000, no pasa de $600.000,
+    // no toca el grupo Paulvic, y las publicaciones con variantes van con la lista completa.
+    if (String(process.env.BILLING_PROBE || '').startsWith('submargen')) {
+      const _sm = String(process.env.BILLING_PROBE).split(':');
+      const PISO = (parseFloat(_sm[1]) || 30) / 100;
+      const APLICAR = _sm.includes('go');
+      const TOPE_ENVIO = 33000;   // arriba de esto ML te cobra el envío: no se cruza
+      const TECHO = 600000;       // regla suya del 13/08/2026
+      const finS = (await db.get('cyc/finanzas')) || {};
+      const tcS = parseFloat(finS.tipo_cambio) || 1500;
+      const monoS = parseFloat(((await db.get('cyc/monotributo')) || {}).pct) || 0;
+      const links = (await db.get('cyc/mllinks')) || {};
+      const vpS = (await db.get('cyc/ventaprod')) || {}; setDevLive(vpS);
+      const pIdx = {}; for (const p of products) pIdx[p.id] = p;
+      // Ventas por publicación, para deducir el envío igual que netoweb.
+      const vtaMla = {}, vtaProd = {};
+      for (const ents of Object.values(vpS)) {
+        for (const v of Object.values(ents || {})) {
+          if (!v || v.cancelada) continue;
+          const q = v.qty || 1, tot = (v.total || 0) / q, net = (v.neto || 0) / q;
+          if (tot <= 0 || net <= 0) continue;
+          if (v.mla) (vtaMla[v.mla] = vtaMla[v.mla] || []).push({ tot, net });
+          if (v.prodId) (vtaProd[v.prodId] = vtaProd[v.prodId] || []).push({ tot, net });
+        }
+      }
+      const feeCache = {};
+      const feeAt = async (site, price, ltype, cat, token) => {
+        const key = site + '|' + ltype + '|' + cat + '|' + Math.round(price);
+        if (feeCache[key] !== undefined) return feeCache[key];
+        let out = null;
+        try {
+          const d = await mlGet(`/sites/${site}/listing_prices?price=${Math.round(price)}&listing_type_id=${ltype}&category_id=${cat}`, token);
+          const o = Array.isArray(d) ? d[0] : d;
+          if (typeof o?.sale_fee_amount === 'number') out = o.sale_fee_amount;
+        } catch { out = null; }
+        feeCache[key] = out; return out;
+      };
+      console.log(`=== SUBIR AL ${(PISO * 100).toFixed(0)}% SEGÚN "MARGEN ML" ${APLICAR ? '(APLICANDO)' : '(PRUEBA)'} ===`);
+      console.log(`costo = costo full + el % que ML cobra por débito · neto = lo que informa ML al precio\n`);
+      const subir = [], yaOk = [], frenados = [];
+      for (const label of labels) {
+        const acc = accounts[label];
+        if (!acc?.refresh_token) continue;
+        let t; try { t = await mlRefresh(ML_CLIENT_ID, ML_CLIENT_SECRET, acc.refresh_token); } catch { continue; }
+        await db.patch('mlapi/tokens/' + label, { refresh_token: t.refresh_token, updated_ts: Date.now() });
+        const ids = Object.entries(links)
+          .filter(([mla, e]) => e && e.cuenta === label && !e.ignored && e.prodId && /^MLA/i.test(mla))
+          .map(([mla]) => mla);
+        for (let k = 0; k < ids.length; k += 20) {
+          let arr;
+          try { arr = await mlGet('/items?ids=' + ids.slice(k, k + 20).join(',') + '&attributes=id,status,price,variations,listing_type_id,category_id,site_id', t.access_token); } catch { continue; }
+          for (const row of (arr || [])) {
+            const b = row.body || {}; const mla = b.id; if (!mla || !links[mla]) continue;
+            if (b.status !== 'active' && b.status !== 'paused') continue;
+            const p = pIdx[links[mla].prodId]; if (!p) continue;
+            // Paulvic no se toca (regla suya): subir uno sube el grupo entero.
+            if (/paulvic/i.test((p.name || '') + ' ' + (links[mla].title || ''))) continue;
+            const vars = Array.isArray(b.variations) ? b.variations : [];
+            const precio0 = vars.length ? (vars[0].price || 0) : (b.price || 0);
+            if (!precio0) continue;
+            // Envío: se deduce de las ventas, igual que netoweb. Sin ventas queda 0 (ML no lo dice).
+            const ventas = (vtaMla[mla] && vtaMla[mla].length) ? vtaMla[mla] : (vtaProd[p.id] || []);
+            let envio = Infinity;
+            for (const pv of [...new Set(ventas.map((v) => Math.round(v.tot)))].slice(-6)) {
+              const cv = await feeAt(b.site_id || 'MLA', pv, b.listing_type_id, b.category_id, t.access_token);
+              if (cv == null) continue;
+              for (const v of ventas) if (Math.round(v.tot) === pv) { const x = v.tot - v.net - cv; if (x < envio) envio = x; }
+            }
+            if (!isFinite(envio) || envio < 0) envio = 0;
+            const costoBase = costoPesos(p, 1, tcS).costo;
+            if (!(costoBase > 0)) continue;
+            const extraPct = mlExtraPct(label) + monoS;
+            // El costo sube con el precio (el % de ML se cobra sobre el precio), así que el objetivo
+            // se mueve mientras se busca. Por eso se itera en vez de despejar de una.
+            const netoDe = async (P) => {
+              const c = await feeAt(b.site_id || 'MLA', P, b.listing_type_id, b.category_id, t.access_token);
+              return c == null ? null : P - c - envio;
+            };
+            const metaDe = (P) => (costoBase + P * extraPct / 100) * (1 + PISO);
+            let P = Math.round(precio0), ok = false, n0 = null, m0 = null;
+            for (let it = 0; it < 14; it++) {
+              const n = await netoDe(P); if (n == null) break;
+              const m = metaDe(P);
+              if (it === 0) { n0 = n; m0 = m; }
+              if (n >= m) { ok = true; break; }
+              // El hueco se cierra ~0,7 pesos por peso de aumento; se pide 1,5× para no quedar corto.
+              P = Math.ceil((P + (m - n) * 1.5) / 10) * 10;
+              if (P > TECHO * 1.2) break;
+            }
+            const nom = (links[mla].title || p.name || mla).slice(0, 40);
+            if (n0 == null) { frenados.push({ mla, label, nom, why: 'ML no me dio la comisión' }); continue; }
+            if (n0 >= m0) { yaOk.push(mla); continue; }
+            if (!ok) { frenados.push({ mla, label, nom, why: 'no llego al piso ni subiendo mucho' }); continue; }
+            if (P <= precio0) { frenados.push({ mla, label, nom, why: 'la cuenta da un precio MENOR — no se baja' }); continue; }
+            if (P > TECHO) { frenados.push({ mla, label, nom, why: `pasa el techo de ${money(TECHO)} (haría falta ${money(P)})` }); continue; }
+            let final = P, nota = '';
+            if (precio0 < TOPE_ENVIO && P >= TOPE_ENVIO) { final = 32999; nota = ` (frenado en la barrera de los ${money(TOPE_ENVIO)}; para el piso hacían falta ${money(P)})`; }
+            if (final <= precio0) { frenados.push({ mla, label, nom, why: `ya está en la barrera de los ${money(TOPE_ENVIO)}` }); continue; }
+            subir.push({ mla, label, nom, prod: p.name, de: Math.round(precio0), a: final, nota, vars, tok: t.access_token, pct: ((n0 - m0 / (1 + PISO)) / (m0 / (1 + PISO)) * 100) });
+          }
+        }
+      }
+      console.log(`── PARA SUBIR · ${subir.length} ──`);
+      for (const s of subir) {
+        console.log(`  ${s.mla} · ${s.label.padEnd(8)} · ${s.nom.padEnd(40)} ${money(s.de).padStart(10)} → ${money(s.a).padStart(10)}${s.vars.length ? ` · ${s.vars.length} variantes` : ''}${s.nota}`);
+      }
+      if (frenados.length) {
+        console.log(`\n── NO SE TOCAN · ${frenados.length} ──`);
+        for (const f of frenados) console.log(`  ${f.mla} · ${f.label.padEnd(8)} · ${f.nom.padEnd(40)} ${f.why}`);
+      }
+      console.log(`\n${yaOk.length} ya estaban en el piso o arriba.`);
+      if (!APLICAR) { console.log(`\nPRUEBA: no se escribió nada en ML. Agregá ":go" para aplicar.`); return; }
+      let ok = 0, err = 0;
+      for (const s of subir) {
+        if (s.vars.length) {
+          const nuevos = {}; for (const v of s.vars) if ((v.price || 0) < s.a) nuevos[String(v.id)] = s.a;
+          const r = await raiseVariations(s.mla, nuevos, s.tok);
+          if (r.ok) { ok++; console.log(`  ✓ ${s.mla} · ${s.nom}: ${r.cambios.length} variantes a ${money(s.a)} · las ${s.vars.length} siguen ahí`); }
+          else { err++; console.log(`  ✗ ${s.mla} · ${s.nom}: ${r.err}`); }
+          continue;
+        }
+        try {
+          const r = await fetch(ML_API + '/items/' + s.mla, {
+            method: 'PUT', headers: { Authorization: 'Bearer ' + s.tok, 'Content-Type': 'application/json' },
+            body: JSON.stringify({ price: s.a }),
+          });
+          if (r.ok) { ok++; console.log(`  ✓ ${s.mla} · ${s.nom}: ${money(s.de)} → ${money(s.a)}`); }
+          else { err++; console.log(`  ✗ ${s.mla} · ${s.nom}: ML-${r.status}`); }
+        } catch { err++; console.log(`  ✗ ${s.mla} · ${s.nom}: red`); }
+      }
+      console.log(`\n${ok} aplicados, ${err} con error.`);
+      console.log(`Verificá releyendo de ML: volver:<MLA=precio,...> sin ":go" tiene que decir "ya está en".`);
+      console.log(`Y después corré netoweb, si no la pantalla sigue mostrando el neto del precio viejo.`);
+      return;
+    }
     // BILLING_PROBE=huerfanos[:<palabra>] → PRODUCTOS SIN PUBLICACIÓN, Y CUÁL LES CORRESPONDE
     //
     // Son los que en "Margen ML" muestran "—": no hay ninguna publicación apuntándoles, así que no
