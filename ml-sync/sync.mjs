@@ -3023,6 +3023,10 @@ async function main() {
     }
     // BILLING_PROBE=volver:<MLA=precio,MLA=precio,...>[:go] → DEJA ESOS PRECIOS EXACTOS.
     // Para deshacer una subida mal aplicada: pone el precio que se le pasa, suba o baje.
+    // Si la publicación tiene VARIANTES, pone ese precio en todas (mandando la lista completa, que
+    // es lo único seguro) y en ese caso solo SUBE: bajar variantes no está permitido.
+    // Sin ":go" no escribe nada. Correrlo sin ":go" DESPUÉS de aplicar es la forma de verificar:
+    // lo que ya quedó bien aparece como "= ya está en".
     if (String(process.env.BILLING_PROBE || '').startsWith('volver:')) {
       const raw = String(process.env.BILLING_PROBE).slice(7);
       const APLICAR = raw.endsWith(':go');
@@ -3051,9 +3055,44 @@ async function main() {
           try { const it = await mlGet('/items/' + x.mla + '?attributes=id,seller_id', tk); if (String(it.seller_id) === String(sids[lab])) { tok = tk; break; } } catch { /* sigue */ }
         }
         if (!tok) { err++; console.log(`  ✗ ${x.mla}: no encontré la cuenta`); continue; }
-        let actual = 0;
-        try { const it = await mlGet('/items/' + x.mla + '?attributes=id,price', tok); actual = it.price || 0; } catch { /* sigue */ }
+        let actual = 0, vars = [];
+        try {
+          const it = await mlGet('/items/' + x.mla + '?attributes=id,price,variations', tok);
+          actual = it.price || 0;
+          vars = Array.isArray(it.variations) ? it.variations : [];
+          if (vars.length) actual = vars[0].price || actual;
+        } catch { /* sigue */ }
         const nom = ((links[x.mla] || {}).title || x.mla).slice(0, 38);
+        // ── PUBLICACIÓN CON VARIANTES ──
+        // Mandar solo { price } acá NO sirve: el precio que vale es el de cada variante, así que la
+        // publicación quedaba igual y el comando decía "✓". Y mandar la lista de variantes
+        // incompleta es peor: ML BORRA las que falten, con su stock y su historial. Por eso va por
+        // raiseVariations, que manda la lista COMPLETA y después relee para verificar que sigan
+        // estando todas y con el precio pedido.
+        if (vars.length) {
+          const bajan = vars.filter((v) => x.precio < (v.price || 0));
+          if (bajan.length) { err++; console.log(`  ✗ ${x.mla} · ${nom}: ${bajan.length} de ${vars.length} variantes quedarían MÁS BARATAS — no se baja`); continue; }
+          const suben = vars.filter((v) => x.precio > (v.price || 0));
+          if (!suben.length) { console.log(`  = ${x.mla} · ${nom}: sus ${vars.length} variantes ya están en ${money(x.precio)}`); continue; }
+          if (!APLICAR) {
+            console.log(`  · ${x.mla} · ${nom}: ${suben.length} de ${vars.length} variantes → ${money(x.precio)}`);
+            for (const v of suben) console.log(`        variante ${v.id}: ${money(Math.round(v.price || 0))} → ${money(x.precio)}`);
+            continue;
+          }
+          const nuevos = {}; for (const v of suben) nuevos[String(v.id)] = x.precio;
+          const r = await raiseVariations(x.mla, nuevos, tok);
+          if (!r.ok) { err++; console.log(`  ✗ ${x.mla} · ${nom}: ${r.err}`); continue; }
+          ok++;
+          console.log(`  ✓ ${x.mla} · ${nom}: ${r.cambios.length} variantes a ${money(x.precio)} · las ${vars.length} siguen ahí (releído de ML)`);
+          // raiseVariations no sube una variante si el salto pasa el +25% (freno de seguridad).
+          // Esas quedan en su precio viejo: hay que decirlo, si no parece que subió todo.
+          if (r.cambios.length < suben.length) {
+            const hechas = new Set(r.cambios.map((c) => String(c.id)));
+            const quedaron = suben.filter((v) => !hechas.has(String(v.id)));
+            console.log(`      OJO: ${quedaron.length} no subieron (el salto pasaba el +25%, freno de seguridad): ${quedaron.map((v) => v.id + ' en ' + money(Math.round(v.price || 0))).join(' · ')}`);
+          }
+          continue;
+        }
         if (Math.abs(actual - x.precio) < 1) { console.log(`  = ${x.mla} · ${nom}: ya está en ${money(x.precio)}`); continue; }
         if (!APLICAR) { console.log(`  · ${x.mla} · ${nom}: ${money(Math.round(actual))} → ${money(x.precio)}`); continue; }
         try {
