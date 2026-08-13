@@ -31,6 +31,60 @@ recategorizar. Y la actividad declarada de Luciana y Ayelen es "marroquinería, 
 similares", que no es lo que venden; la que corresponde es "venta al por menor por internet"
 (solo Matías la tiene). Se arregla en el mismo trámite.
 
+### Los números de ARCA (categoría K, la más alta · agosto 2026)
+
+| qué | cuánto |
+|---|---|
+| Ingresos brutos máximos | $126.610.838,75 |
+| **Límite de compras + gastos** (80% del anterior) | **$101.288.671** |
+
+**La ventana son 12 meses corridos**, no el año calendario: se recalcula todos los meses. Cuenta
+compras + gastos de la actividad, **por CUIT** (no se suman entre las cuatro). Las comisiones y
+envíos de ML cuentan; los peajes, la salud y el colegio no.
+
+Estado al 13/08/2026 (facturación de la ventana 07/2025→06/2026, compras proyectadas a 12 meses):
+
+| cuenta | factura al año | % del tope | compras+gastos | % del límite | mercadería con factura | merc/venta |
+|---|---|---|---|---|---|---|
+| Ayelen | $62.341.557 | 49% | $40.872.143 | 40% | $1.395.352 | **2,2%** |
+| Adriana | $57.183.498 | 45% | $32.614.043 | 32% | $2.596.360 | **4,5%** |
+| Luciana | $56.416.951 | 45% | $37.118.588 | 37% | $4.170.038 | 7,4% |
+| Matías | $54.388.754 | 43% | $52.061.940 | 51% | $9.502.998 | 17,5% |
+
+**Ni el tope de facturación ni el límite del 80% aprietan.** Ninguna pasa del 51%.
+
+### EL problema con ARCA: venden $230M y compran $17,7M con factura
+
+Entre las cuatro facturan **$230.330.760** al año y tienen **$17.664.749** de mercadería con
+comprobante: el **7,7%**. Haciendo la cuenta al revés —ML se lleva ~32%, y el margen es 30% sobre
+el costo— esa venta necesita unos **$120 millones** de mercadería. **Faltan ~$102 millones sin
+respaldo.** La pregunta que hace ARCA no es el 80%: es *de dónde salió lo que vendiste*.
+
+Regla suya del 13/08/2026, y es la correcta: *"no puedo vender 10 y comprar 1"*. Están en 13 a 1.
+
+**Qué se decidió hacer:** NO comprar más (hay $12M de stock parado). Comprar lo MISMO pero
+**pidiendo siempre factura** a nombre de la cuenta que corresponda, repartiendo así de cada $100:
+
+| cuenta | cuánto | CUIT para pedir la factura |
+|---|---|---|
+| **Ayelen** | **$40** | 27-42950142-9 |
+| **Adriana** | **$35** | 27-23443755-6 |
+| **Luciana** | **$25** | 27-27194694-0 |
+| Matías | $0 — ya está ordenada | — |
+
+Para emparejarlas al nivel de Matías hacen falta $22,6M/año más con factura (Ayelen $9,5M ·
+Adriana $7,4M · Luciana $5,7M). Si un proveedor no factura, ese proveedor es parte del problema.
+
+### Se facturan entre ellas: $17.163.842 en 2026
+
+Ayelen→Matías $6.029.405 · Luciana→Adriana $4.095.941 · Luciana→Ayelen $2.798.300 ·
+Adriana→Matías $1.304.000 · Ayelen→Adriana $1.261.496 · Ayelen→Luciana $1.063.500 ·
+Luciana→Matías $576.000.
+
+Para ARCA cada una de esas facturas es una VENTA de quien la emite, así que infla la facturación
+de las cuatro sin que entre un peso nuevo ni aparezca mercadería nueva. **Va al contador junto con
+la recategorización y lo de las compras: es una sola conversación.**
+
 ### El facturador automático de ML
 
 Datos de las constancias de ARCA (03/08/2026), los que pide MercadoLibre al configurarlo:
@@ -108,6 +162,8 @@ Los que más se usan:
 | `volver:<MLA=precio>[:go]` | deja un precio exacto (sin `:go` es prueba) · maneja variantes |
 | `huerfanos[:palabra]` | los productos en "—": por qué no tienen precio y cuál es su publicación |
 | `cargargasto:<fecha>\|<monto>\|<cat>\|<desc>[\|prov=][\|fact=][\|cae=][\|go]` | carga un gasto con su comprobante |
+| `subirrecibidas[:go]` | sube las compras de ARCA a Facturas → Recibidas (lee `ml-sync/recibidas.json`) |
+| `frenados[:díasStock]` | si conviene bajarle el precio al stock parado, con la cuenta hecha |
 | `proyec[:retiro][:tasa]` | cuánto le queda a CYC por mes |
 | `facarca` | lo facturado en la ventana que mira ARCA, por cuenta |
 | `catmono[:fecha]` | qué categoría de monotributo corresponde |
@@ -261,12 +317,21 @@ Lo que quedó abierto. Borrá de acá lo que se vaya cerrando.
 - **Victoria's Secret "adulterado"** (reclamo de Adriana, 11/08, $45.300). Él dice que son
   originales con factura. ML cerró el caso a favor del comprador sin dejar responder. Se le
   recomendó guardar la factura del lote, abrir una unidad y filmarla, y reclamarle al proveedor.
-- **ARCA y las compras (12/08).** Él quiere empezar a controlar que las compras estén respaldadas
-  con factura. **Recordarle que pase las compras.** Aclaraciones que ya se le dieron: en monotributo
-  las facturas de compra NO bajan lo que paga, y NO existe ningún mínimo de compras — lo que existe
-  es un máximo (si compras + gastos de 12 meses llegan al 80% del tope de la categoría más alta,
-  queda excluido). El panel hoy NO guarda si una compra tuvo factura ni de qué proveedor: si lo va
-  a controlar, hay que armar esa pantalla.
+- **ARCA y las compras.** Ya está la pantalla (Facturas → Recibidas, 338 comprobantes de ene a
+  ago 2026) y ya está el diagnóstico (ver arriba: venden $230M, compran $17,7M con factura). Lo que
+  falta es que **empiece a pedir factura en cada compra** y que pase los comprobantes nuevos para
+  cargarlos con `subirrecibidas`. Faltan también los meses 09/2025 a 12/2025, que hoy están dentro
+  de la ventana de 12 meses que mira ARCA y no los tenemos.
+  Aclaración que ya se le dio y conviene no repetir: en monotributo las facturas de compra NO bajan
+  lo que paga; sirven para respaldar, no para descontar.
+- **Las facturas RECIBIDAS no son gastos.** Viven en `cyc/facturas_recibidas`, aparte de
+  `cyc/compras`. Si entraran en los gastos, la mercadería se contaría dos veces —su costo ya está
+  dentro del costo de cada producto— y la ganancia del mes saldría millones más baja.
+- **Los gastos ya NO se cargan solos.** El robot creaba `monofijo_<mes>` con un monto fijo; se sacó
+  el 13/08/2026 porque el monto real cambia todos los meses y nadie lo miraba. Ahora los carga
+  Claude con `cargargasto` cuando él pasa los comprobantes. **Los VEPs del monotributo NO se cargan
+  como gasto**: el impuesto integrado ($391.748/mes entre las cuatro) ya se descuenta como % en
+  cada venta. Lo único que va como gasto es autónomos + obra social de Ayelen ($113.083).
 - **Factura A de Luciana**, pedida el 29/07 por mensaje de posventa y sin responder. Al 12/08 son
   TRES compradores distintos pidiendo factura en Luciana, uno ya insistió dos veces.
 - **El robot NO sabe reembolsar ni contestar reclamos**: solo lee. Si alguna vez se programa,
