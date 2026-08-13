@@ -4135,19 +4135,19 @@ async function main() {
       else if (!GO) console.log('\n(solo lista — para borrarlo: raizsucia:go)');
       return;
     }
-    // BILLING_PROBE=netoref[:borrar] → LOS NETOS CARGADOS A MANO QUE ESTÁN TAPANDO EL REAL.
+    // BILLING_PROBE=netoref[:borrar] → LOS NETOS QUE QUEDARON ESCRITOS A MANO EN LA BASE.
     //
-    // La pantalla "Margen ML" elige el neto en este orden: MANUAL → calculado con el precio de hoy
-    // → promedio de las ventas. El manual gana SIEMPRE, y ahí está la trampa: un neto que alguien
-    // escribió hace meses, a precios de entonces, sigue mandando aunque el precio haya cambiado
-    // diez veces. El producto aparece muy abajo del 30% y no hay forma de darse cuenta mirando.
-    // Esto compara los tres y, con :borrar, saca el manual para que use el del precio de hoy.
+    // Hasta el 13/08/2026 la pantalla "Margen ML" elegía el neto así: MANUAL → calculado con el
+    // precio de hoy → promedio de las ventas. El manual ganaba SIEMPRE, y ahí estaba la trampa: un
+    // neto escrito meses antes, a precios de entonces, seguía mandando aunque el precio hubiera
+    // cambiado diez veces, y el producto aparecía muy abajo del 30% sin forma de darse cuenta.
+    // Desde esa fecha la pantalla ya NO mira este campo (el neto sale solo de ML), pero los valores
+    // viejos siguen guardados: esto los lista y, con :borrar, los saca de la base.
     // BILLING_PROBE=margenweb → ¿LO QUE MUESTRA "MARGEN ML" COINCIDE CON ML?
     //
-    // La pantalla arma el margen así: neto a mano → si no hay, el calculado al precio de hoy →
-    // si no hay, el promedio de las ventas. El riesgo es que el "precio de hoy" con el que se
-    // calculó ya no sea el de hoy: cada vez que se cambia un precio en ML, ese neto queda viejo y
-    // la pantalla sigue mostrando el margen del precio anterior sin avisar.
+    // La pantalla muestra el neto calculado al precio de hoy, y nada más. El riesgo es que ese
+    // "precio de hoy" ya no sea el de hoy: cada vez que se cambia un precio en ML, el neto queda
+    // viejo y la pantalla sigue mostrando el margen del precio anterior sin avisar.
     // Esto va publicación por publicación, lee el precio REAL de ML y lo compara. Solo lee.
     if (String(process.env.BILLING_PROBE || '').startsWith('margenweb')) {
       const links = (await db.get('cyc/mllinks')) || {};
@@ -4509,18 +4509,16 @@ async function main() {
         if (sinCalc) console.log(`  (${sinCalc} no se pueden comparar: no tienen neto al precio de hoy. Suelen ser productos sin publicación activa.)`);
       }
       if (!BORRAR) { console.log('\n(solo lista — para sacar los manuales: netoref:borrar)'); return; }
-      // Solo se saca el manual cuando hay con qué reemplazarlo (el del precio de hoy, o el
-      // promedio de las ventas). Si no hay ninguno de los dos, sacarlo deja el producto en blanco
-      // y se pierde el único número que había. Esos se dejan y se avisa cuáles son.
-      const conRecambio = filas.filter((f) => f.calc != null || f.real != null);
-      const sinRecambio = filas.filter((f) => f.calc == null && f.real == null);
+      // Se borran TODOS, tengan o no con qué reemplazarlos.
+      // Antes se dejaban los que no tenían recambio, para no perder el único número que había. Eso
+      // dejó de tener sentido el 13/08/2026: desde esa fecha la pantalla ignora este campo y el
+      // neto sale SOLO de lo que informa ML. Un netoRef que quedara guardado ya no se muestra en
+      // ningún lado, así que dejarlo solo sirve para que vuelva a aparecer si alguien reactiva el
+      // campo. Los que no tienen precio en ML quedan en "—", que es lo pedido: sin inventar.
+      const conRecambio = filas;
       let n = 0;
       for (const f of conRecambio) { if (!DRY) await db.set('cyc/products/' + f.p.id + '/netoRef', null); n++; }
       console.log(`\n${DRY ? '(DRY) ' : ''}Borrados ${n} netos manuales de ${filas.length}.`);
-      if (sinRecambio.length) {
-        console.log(`Quedaron ${sinRecambio.length} sin tocar porque no tienen con qué reemplazarlos (ni precio de hoy ni ventas):`);
-        console.log('  ' + sinRecambio.map((f) => String(f.p.name || f.p.id).slice(0, 30)).join(' · '));
-      }
       // Verificación: se vuelve a leer de la base, del mismo lugar del que lee la web.
       if (!DRY && n) {
         const rele = (await db.get('cyc/products')) || {};
@@ -4644,9 +4642,10 @@ async function main() {
         }
         console.log(`Releído de la base: ${ok} de ${lista.length} quedaron bien.`);
         if (mal.length) console.log(`  NO quedaron: ${mal.slice(0, 15).join(' · ')}${mal.length > 15 ? ` (+${mal.length - 15})` : ''}`);
-        // Los que tienen neto a mano no van a mostrar esto en la pantalla: el manual gana.
+        // Restos del neto a mano. Desde el 13/08/2026 la pantalla los ignora, así que ya no tapan
+        // nada; se avisa igual para poder limpiarlos y que no queden dando vueltas en la base.
         const tapados = lista.filter(([pid]) => { const v = pIdx[pid]?.netoRef; return v != null && v !== ''; }).length;
-        if (tapados) console.log(`OJO: ${tapados} de estos tienen neto cargado A MANO, así que la pantalla va a seguir mostrando el viejo. Para verlos: netoref`);
+        if (tapados) console.log(`Quedan ${tapados} netos viejos escritos a mano en la base (la pantalla ya no los mira). Para sacarlos: netoref:borrar`);
       }
       return;
     }

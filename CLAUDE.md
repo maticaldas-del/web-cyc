@@ -162,9 +162,17 @@ Telegram va solo el resumen de ventas del día y el del mes.
   manda el dato a una rama aparte que la web no lee nunca: el comando dice "guardado" y en la
   pantalla no cambia nada. Ya pasó dos veces (`ventaprod` y `products`, 10 escrituras). Lo único
   que sí va en la raíz es `mlapi/` (tokens y estado de Telegram). Para chequearlo: `raizsucia`.
-- **En "Margen ML" el neto escrito a mano le gana a todo.** Un número tipeado hace meses sigue
-  mandando aunque el precio haya cambiado diez veces, y el producto aparece muy abajo del piso sin
-  que se note. `bajopiso` mide el precio real de ML; las dos pantallas pueden no coincidir por eso.
+- **"Margen ML" muestra SOLO lo que dice ML**, desde el 13/08/2026. Antes elegía entre tres números
+  —el escrito a mano, el calculado al precio de hoy y el promedio de las ventas viejas— y el
+  escrito a mano ganaba siempre: un número tipeado hacía meses seguía mandando aunque el precio
+  hubiera cambiado diez veces, y el producto aparecía muy abajo del piso sin que se notara. Ahora
+  el campo para escribirlo NO existe y el promedio de ventas ya no rellena: si ML no tiene el
+  producto publicado, la pantalla dice "—" en vez de inventar. El robot lo recalcula todas las
+  noches (paso "Margen ML al precio de hoy" en `ml-daily`) y la pantalla muestra arriba cuándo fue
+  la última vez. Para chequear que coincide con ML: `margenweb`.
+- **"Margen ML" y `bajopiso` no miden lo mismo y no tienen por qué coincidir.** Margen ML va por
+  PRODUCTO (neto de ML contra el costo full); `bajopiso` va por PUBLICACIÓN y suma el envío del
+  peor caso, IIBB, monotributo y el % de reclamos. Ninguna miente.
 - **Las fichas de `cyc/mllinks` se reescriben ENTERAS cuando la publicación vende.** El auto-match
   arma un objeto nuevo y el patch sobre `cyc/mllinks` pisa el hijo completo: todo campo que no se
   arrastre en ese objeto se pierde. Así se perdía el estado de la publicación y el aviso "Problema
