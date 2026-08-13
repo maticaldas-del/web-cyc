@@ -4197,31 +4197,66 @@ async function main() {
         pubs.push({ mla, title: e.title || '', cuenta: e.cuenta || '', prodId: e.prodId || null, ignored: !!e.ignored, toks: toks(e.title || '') });
         if (e.prodId) (pubsDe[e.prodId] = pubsDe[e.prodId] || []).push(mla);
       }
-      let huerf = products.filter((p) => !(pubsDe[p.id] || []).length);
+      // Los que muestran "—" son los que NO tienen neto de ML, no solo los que no tienen link:
+      // una publicación cerrada, o todas ocultas, también deja al producto sin precio. Se usa el
+      // mismo criterio que la pantalla para que esta lista sea exactamente la que él ve.
+      let huerf = products.filter((p) => p.netoCalc == null || p.netoCalc === '');
       if (FIL) huerf = huerf.filter((p) => norm(p.name || '').includes(FIL));
-      console.log(`=== PRODUCTOS SIN NINGUNA PUBLICACIÓN · ${huerf.length} de ${products.length} ===`);
-      console.log(`${pubs.length} publicaciones en total. Para cada uno, las publicaciones que más se le parecen.\n`);
-      if (!huerf.length) { console.log('Ninguno: todos los productos tienen al menos una publicación.'); return; }
+      console.log(`=== PRODUCTOS QUE MUESTRAN "—" EN MARGEN ML · ${huerf.length} de ${products.length} ===`);
+      console.log(`${pubs.length} publicaciones en total. Para cada uno: por qué está así y qué se le parece.\n`);
+      if (!huerf.length) { console.log('Ninguno: todos tienen precio de ML.'); return; }
+      // Índice de nombres de PRODUCTO, para encontrar la ficha GEMELA: otro producto que es el
+      // mismo y sí tiene publicación. Buscar solo por el título de ML no alcanza — el título puede
+      // no tener ninguna palabra del nombre interno (la "Batidora" puede estar publicada como
+      // "Mixer"). Ese agujero hizo que la primera versión dijera "no está publicado" y era mentira.
+      const conPub = products.filter((p) => (pubsDe[p.id] || []).length).map((p) => ({ p, toks: toks(p.name || '') }));
       for (const p of huerf) {
+        const mias = pubsDe[p.id] || [];
+        console.log(`── ${p.name}   (costo full ${money(Math.round(costoPesos(p, 1, tcH).costo))})`);
+        if (mias.length) {
+          console.log(`     TIENE ${mias.length} publicación(es) vinculada(s), pero ML no da precio de ninguna:`);
+          for (const mla of mias) {
+            const e = links[mla] || {};
+            console.log(`       ${mla} · ${(e.cuenta || '').padEnd(8)} · ${String(e.title || '').slice(0, 44)}${e.ignored ? ' · OCULTA' : ''}${e.status ? ' · ' + e.status : ''}`);
+          }
+          console.log(`     → si está cerrada hay que reabrirla; si está oculta, mostrarla en Vinculaciones.\n`);
+          continue;
+        }
         const pt = new Set(toks(p.name || ''));
-        if (!pt.size) { console.log(`── ${p.name}\n     (el nombre no deja ninguna palabra para buscar)\n`); continue; }
+        const gem = conPub.map((x) => {
+          let s = 0; for (const tk of x.toks) if (pt.has(tk)) s++;
+          return { x, s };
+        }).filter((g) => g.s > 0).sort((a, b) => b.s - a.s).slice(0, 3);
+        if (gem.length) {
+          console.log(`     PRODUCTOS PARECIDOS QUE SÍ TIENEN PUBLICACIÓN (¿es el mismo cargado dos veces?):`);
+          for (const g of gem) {
+            const ms = pubsDe[g.x.p.id] || [];
+            console.log(`       "${g.x.p.name}" (${g.s} palabras en común) · ${ms.length} publicación(es)`);
+            for (const mla of ms.slice(0, 3)) console.log(`           ${mla} · ${String((links[mla] || {}).title || '').slice(0, 42)}`);
+          }
+        }
+        // Publicaciones por título. Las que NO tienen producto van PRIMERO: esas son las que de
+        // verdad falta vincular. Las que ya apuntan a otro producto casi siempre son la gemela.
         const cand = pubs.map((u) => {
           let s = 0; for (const tk of u.toks) if (pt.has(tk)) s++;
           return { u, s };
-        }).filter((c) => c.s > 0).sort((a, b) => b.s - a.s).slice(0, 5);
-        console.log(`── ${p.name}   (costo full ${money(Math.round(costoPesos(p, 1, tcH).costo))})`);
-        if (!cand.length) { console.log(`     ninguna publicación se le parece — probablemente no está publicado\n`); continue; }
-        for (const c of cand) {
-          const dueno = c.u.prodId ? (pIdx[c.u.prodId]?.name || c.u.prodId) : '⚠️ SIN PRODUCTO';
-          const gemelo = c.u.prodId && c.u.prodId !== p.id && norm(pIdx[c.u.prodId]?.name || '').includes(norm(p.name || '').split(' ')[0] || ' ');
-          console.log(`     ${c.u.mla} · ${c.u.cuenta.padEnd(8)} · ${String(c.u.title).slice(0, 46).padEnd(46)} (${c.s} palabras)`);
-          console.log(`         hoy apunta a: ${dueno}${gemelo ? '   ← POSIBLE PRODUCTO REPETIDO' : ''}${c.u.ignored ? ' · OCULTA' : ''}`);
+        }).filter((c) => c.s > 0).sort((a, b) => (a.u.prodId ? 1 : 0) - (b.u.prodId ? 1 : 0) || b.s - a.s).slice(0, 5);
+        if (cand.length) {
+          console.log(`     PUBLICACIONES CON PALABRAS EN COMÚN:`);
+          for (const c of cand) {
+            const dueno = c.u.prodId ? (pIdx[c.u.prodId]?.name || c.u.prodId) : '⚠️ SIN PRODUCTO — ESTA SE PUEDE VINCULAR';
+            console.log(`       ${c.u.mla} · ${c.u.cuenta.padEnd(8)} · ${String(c.u.title).slice(0, 42).padEnd(42)} (${c.s})`);
+            console.log(`           hoy apunta a: ${dueno}${c.u.ignored ? ' · OCULTA' : ''}`);
+          }
         }
+        if (!gem.length && !cand.length) console.log(`     nada se le parece — o no está publicado, o el nombre interno no se parece al título de ML`);
         console.log('');
       }
-      console.log(`Para vincular: en la web, Vinculaciones de ML → buscá la publicación y elegí el producto.`);
-      console.log(`Si dice "POSIBLE PRODUCTO REPETIDO", el arreglo NO es revincular: son dos fichas del mismo`);
-      console.log(`producto y hay que quedarse con una sola, o vas a dejar huérfana a la otra.`);
+      console.log(`CÓMO LEERLO:`);
+      console.log(`  · "SIN PRODUCTO — ESTA SE PUEDE VINCULAR": vinculala en la web, Vinculaciones de ML.`);
+      console.log(`  · "PRODUCTOS PARECIDOS QUE SÍ TIENEN PUBLICACIÓN": son dos fichas del mismo producto.`);
+      console.log(`    Ahí revincular NO sirve: le sacás la publicación a una para dejar huérfana a la otra.`);
+      console.log(`    Hay que quedarse con UNA sola ficha (la que tiene las ventas) y borrar la repetida.`);
       console.log(`\n(esto solo LEE: no toqué nada)`);
       return;
     }
