@@ -4174,6 +4174,57 @@ async function main() {
       else if (!GO) console.log('\n(solo lista — para borrarlo: raizsucia:go)');
       return;
     }
+    // BILLING_PROBE=huerfanos[:<palabra>] → PRODUCTOS SIN PUBLICACIÓN, Y CUÁL LES CORRESPONDE
+    //
+    // Son los que en "Margen ML" muestran "—": no hay ninguna publicación apuntándoles, así que no
+    // hay precio del cual sacar el neto. La pantalla de Vinculaciones dice "0 sin vincular" y por
+    // eso parece que está todo bien: ahí se cuenta que cada PUBLICACIÓN tenga producto, que es la
+    // dirección contraria. Un producto sin nadie que le apunte no aparece en esa cuenta.
+    //
+    // La causa casi siempre es un producto REPETIDO: existen dos fichas parecidas ("Batidora" y
+    // "Batidora 1 Cabezal"), la publicación quedó pegada a una y la otra quedó huérfana. Por eso
+    // acá, además de buscar la publicación por palabras en común, se dice a qué producto está
+    // pegada hoy cada candidata y se marca el posible producto gemelo. Solo LEE.
+    if (String(process.env.BILLING_PROBE || '').startsWith('huerfanos')) {
+      const FIL = norm((String(process.env.BILLING_PROBE).split(':')[1] || '').trim());
+      const tcH = parseFloat(((await db.get('cyc/finanzas')) || {}).tipo_cambio) || 1500;
+      const links = (await db.get('cyc/mllinks')) || {};
+      const pIdx = {}; for (const p of products) pIdx[p.id] = p;
+      const pubsDe = {};
+      const pubs = [];
+      for (const [mla, e] of Object.entries(links)) {
+        if (!e || !/^MLA/i.test(mla)) continue;
+        pubs.push({ mla, title: e.title || '', cuenta: e.cuenta || '', prodId: e.prodId || null, ignored: !!e.ignored, toks: toks(e.title || '') });
+        if (e.prodId) (pubsDe[e.prodId] = pubsDe[e.prodId] || []).push(mla);
+      }
+      let huerf = products.filter((p) => !(pubsDe[p.id] || []).length);
+      if (FIL) huerf = huerf.filter((p) => norm(p.name || '').includes(FIL));
+      console.log(`=== PRODUCTOS SIN NINGUNA PUBLICACIÓN · ${huerf.length} de ${products.length} ===`);
+      console.log(`${pubs.length} publicaciones en total. Para cada uno, las publicaciones que más se le parecen.\n`);
+      if (!huerf.length) { console.log('Ninguno: todos los productos tienen al menos una publicación.'); return; }
+      for (const p of huerf) {
+        const pt = new Set(toks(p.name || ''));
+        if (!pt.size) { console.log(`── ${p.name}\n     (el nombre no deja ninguna palabra para buscar)\n`); continue; }
+        const cand = pubs.map((u) => {
+          let s = 0; for (const tk of u.toks) if (pt.has(tk)) s++;
+          return { u, s };
+        }).filter((c) => c.s > 0).sort((a, b) => b.s - a.s).slice(0, 5);
+        console.log(`── ${p.name}   (costo full ${money(Math.round(costoPesos(p, 1, tcH).costo))})`);
+        if (!cand.length) { console.log(`     ninguna publicación se le parece — probablemente no está publicado\n`); continue; }
+        for (const c of cand) {
+          const dueno = c.u.prodId ? (pIdx[c.u.prodId]?.name || c.u.prodId) : '⚠️ SIN PRODUCTO';
+          const gemelo = c.u.prodId && c.u.prodId !== p.id && norm(pIdx[c.u.prodId]?.name || '').includes(norm(p.name || '').split(' ')[0] || ' ');
+          console.log(`     ${c.u.mla} · ${c.u.cuenta.padEnd(8)} · ${String(c.u.title).slice(0, 46).padEnd(46)} (${c.s} palabras)`);
+          console.log(`         hoy apunta a: ${dueno}${gemelo ? '   ← POSIBLE PRODUCTO REPETIDO' : ''}${c.u.ignored ? ' · OCULTA' : ''}`);
+        }
+        console.log('');
+      }
+      console.log(`Para vincular: en la web, Vinculaciones de ML → buscá la publicación y elegí el producto.`);
+      console.log(`Si dice "POSIBLE PRODUCTO REPETIDO", el arreglo NO es revincular: son dos fichas del mismo`);
+      console.log(`producto y hay que quedarse con una sola, o vas a dejar huérfana a la otra.`);
+      console.log(`\n(esto solo LEE: no toqué nada)`);
+      return;
+    }
     // BILLING_PROBE=netoref[:borrar] → LOS NETOS QUE QUEDARON ESCRITOS A MANO EN LA BASE.
     //
     // Hasta el 13/08/2026 la pantalla "Margen ML" elegía el neto así: MANUAL → calculado con el
