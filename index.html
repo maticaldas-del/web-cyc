@@ -943,7 +943,7 @@ footer{margin-top:32px;padding-top:14px;border-top:1px solid var(--border);font-
        las ventas y el stock. Estando acá, el robot los saltea, y tampoco cuentan para el Puntaje
        del mes ni para el stock en riesgo. Se pueden devolver cuando se quiera. -->
   <div id="ped-section-papelera" style="display:none">
-    <div style="font-size:.66rem;color:var(--muted);margin-bottom:10px">Productos que sacaste de Pedidos. No se vuelven a crear solos y no cuentan para el Puntaje del mes ni para el stock en riesgo. Si te arrepentís, "Devolver" los reactiva.</div>
+    <div style="font-size:.66rem;color:var(--muted);margin-bottom:10px">Productos que sacaste de Pedidos. No se vuelven a crear solos y no cuentan para el Puntaje del mes ni para el stock en riesgo. Tenés <strong>7 días</strong> para arrepentirte con "Devolver"; pasado ese plazo la eliminación queda definitiva.</div>
     <div class="pedidos-count" id="pedidos-papelera-count"></div>
     <input class="search-box" id="ped-papelera-search" type="search" placeholder="Buscar en la papelera..." oninput="renderPedidos()" style="margin-bottom:10px">
     <div id="pedidos-papelera-list"><div class="empty-msg">La papelera está vacía.</div></div>
@@ -5182,6 +5182,9 @@ function setPedidoFilter(f,btn){
 // y proyecta a 30 días multiplicando por (30 / diasHistorial).
 const PED_HIST_START=new Date('2026-06-01T00:00:00');
 const PED_MAX_DAYS=30;
+// Días que un producto queda en la papelera de Pedidos pudiendo volver atrás. Después la
+// eliminación es definitiva (regla suya del 13/08/2026).
+const PAP_DIAS=7;
 function pedVentasNorm(prodOrName){
   const target=(prodOrName&&typeof prodOrName==='object')?prodOrName:prodByName(prodOrName);
   const tname=target?target.name:(prodOrName||'');
@@ -5262,6 +5265,19 @@ async function syncPedidosAuto(){
   // 2. ventas normalizadas a 30d por producto; para variantes calcula necesario por variante
   const resumen={};
   const _pap=state.papelera||{};
+  // VENCIMIENTO DE LA PAPELERA (7 días). Pasado ese plazo la eliminación queda definitiva: sale
+  // del tachito y ya no se puede deshacer de un click.
+  // OJO con qué significa "borrar para siempre" acá: NO se borra la ficha de la papelera, se MARCA.
+  // Si se borrara, el robot dejaría de ver la marca y volvería a crear el pedido a los dos minutos
+  // — o sea, "borrar para siempre" haría que el producto REAPAREZCA, justo lo contrario de lo
+  // pedido. Lo que se borra para siempre es la posibilidad de arrepentirse, no la marca.
+  const _vencUpd={};
+  for(const [pid,e] of Object.entries(_pap)){
+    if(e&&!e.definitivo&&(Date.now()-(e.ts||0))>PAP_DIAS*86400000){
+      e.definitivo=true;_vencUpd['pedidos_papelera/'+pid+'/definitivo']=true;
+    }
+  }
+  if(Object.keys(_vencUpd).length)db.ref('cyc').update(_vencUpd).catch(()=>{});
   for(const p of (state.products||[])){
     // En la papelera = no se vende más. Se saltea ACÁ, antes de calcular nada: así no vuelve a
     // aparecer en Pedidos y tampoco suma "riesgo", que es lo que alimenta el Puntaje del mes y el
@@ -5544,13 +5560,22 @@ async function restaurarPedido(pid){
   syncPedidosAuto();
 }
 
-// Vacía la papelera entera. No borra productos ni ventas: solo deja de esconderlos en Pedidos.
+// Devuelve de una a Pedidos todo lo que todavía está dentro de los 7 días.
 async function vaciarPapelera(){
-  const n=Object.keys(state.papelera||{}).length;if(!n)return;
-  if(!confirm(`Devolver los ${n} productos de la papelera a Pedidos?\n\nNo se borra nada: vuelven a aparecer y a contar en el Puntaje del mes.`))return;
-  state.papelera={};
-  await fbSet('pedidos_papelera',null);
-  await log('Vació la papelera de pedidos ('+n+')');
+  // Solo los que todavía se pueden devolver. Los vencidos NO: si este botón los trajera de vuelta,
+  // "eliminado para siempre" no querría decir nada.
+  const ids=Object.entries(state.papelera||{}).filter(([,x])=>!x.definitivo).map(([pid])=>pid);
+  const n=ids.length;if(!n)return;
+  if(!confirm(`Devolver los ${n} productos que todavía están a tiempo?\n\nNo se borra nada: vuelven a aparecer en Pedidos y a contar en el Puntaje del mes.`))return;
+  const upd={};
+  for(const pid of ids){
+    const e=state.papelera[pid];
+    if(e.ped&&e.ped.id){upd[(e.coll||'pedidos')+'/'+e.ped.id]=e.ped;(state[e.coll||'pedidos']||[]).push(e.ped);}
+    upd['pedidos_papelera/'+pid]=null;
+    delete state.papelera[pid];
+  }
+  await db.ref('cyc').update(upd);
+  await log('Devolvió de la papelera ('+n+')');
   renderPedidos();
   toast('Papelera vacía ✓');
   syncPedidosAuto();
@@ -5881,29 +5906,40 @@ const _pedSortFnRiesgo=(a,b)=>(b.riesgo||0)-(a.riesgo||0);
 
 function renderPedidos(){
   // El número al lado de la solapa se refresca siempre, se esté mirando la papelera o no.
-  const _papN=Object.keys(state.papelera||{}).length;
+  // El número de la solapa cuenta solo lo que TODAVÍA se puede devolver: si contara también los
+  // vencidos, crecería para siempre y dejaría de significar "tenés algo pendiente de decidir".
+  const _papN=Object.values(state.papelera||{}).filter(x=>!x.definitivo).length;
   const _papTab=document.getElementById('tab-papelera-n');
   if(_papTab)_papTab.textContent=_papN?'('+_papN+')':'';
   if(pedidoSection==='papelera'){
     const el=document.getElementById('pedidos-papelera-list');if(!el)return;
-    let items=Object.values(state.papelera||{}).sort((a,b)=>(b.ts||0)-(a.ts||0));
+    const todos=Object.values(state.papelera||{}).sort((a,b)=>(b.ts||0)-(a.ts||0));
+    // Los vencidos (más de 7 días) ya no se pueden devolver de un click: van aparte y en gris.
+    let items=todos.filter(x=>!x.definitivo);
+    const finados=todos.filter(x=>x.definitivo);
     const cntEl=document.getElementById('pedidos-papelera-count');
-    if(cntEl)cntEl.innerHTML=`<div class="pcount"><strong>${items.length}</strong>En la papelera</div>`+
+    if(cntEl)cntEl.innerHTML=`<div class="pcount"><strong>${items.length}</strong>Se pueden devolver</div>`+
+      (finados.length?`<div class="pcount"><strong style="color:var(--muted)">${finados.length}</strong>Ya vencieron</div>`:'')+
       (items.length?`<button class="btn" style="align-self:center" onclick="vaciarPapelera()">Devolver todos</button>`:'');
     const q=normTxt(document.getElementById('ped-papelera-search')?.value||'');
     if(q)items=items.filter(x=>normTxt(x.producto||'').includes(q));
-    if(!items.length){el.innerHTML='<div class="empty-msg">La papelera está vacía.</div>';return;}
-    el.innerHTML=items.map(x=>{
+    const fila=(x,muerto)=>{
       const prod=(state.products||[]).find(p=>p.id===x.prodId);
       const nom=(prod?prod.name:x.producto)||x.prodId;
-      return `<div class="pedido-item suficiente">
+      const quedan=Math.max(0,PAP_DIAS-Math.floor((Date.now()-(x.ts||0))/86400000));
+      return `<div class="pedido-item ${muerto?'suficiente':'poco_stock'}"${muerto?' style="opacity:.55"':''}>
         <span class="pi-prod">${nom}</span>
         <span class="pi-nota">${x.auto===false?'cargado a mano':'lo armaba el robot solo'}</span>
-        <span class="pi-nota" style="flex:1"></span>
-        <button class="btn" onclick="restaurarPedido('${x.prodId}')">↩︎ Devolver</button>
+        <span class="pi-nota" style="flex:1">${muerto?'eliminado para siempre — pasaron los '+PAP_DIAS+' días':(quedan<=1?'último día para arrepentirte':'quedan '+quedan+' días para arrepentirte')}</span>
+        <button class="btn" onclick="restaurarPedido('${x.prodId}')">↩︎ Devolver${muerto?' igual':''}</button>
         <span class="pi-ts">${x.ts?ts2s(x.ts):''}</span>
       </div>`;
-    }).join('');
+    };
+    let html=items.length?items.map(x=>fila(x,false)).join(''):'<div class="empty-msg">No hay nada que se pueda devolver.</div>';
+    // Los vencidos se muestran igual, en gris y abajo. Si no se mostraran, un producto podría no
+    // aparecer nunca más en Pedidos sin ningún lugar donde ver por qué.
+    if(finados.length)html+=`<div style="font-size:.62rem;color:var(--muted);margin:14px 0 6px">Eliminados para siempre (${finados.length}) — no vuelven a aparecer en Pedidos ni cuentan en el Puntaje del mes.</div>`+finados.map(x=>fila(x,true)).join('');
+    el.innerHTML=html;
     return;
   }
   if(pedidoSection==='prioridad'){
@@ -7611,7 +7647,7 @@ document.addEventListener('click',e=>{if(fnavOpen&&!e.target.closest('#fnav-btn'
         <span style="font-size:.75rem;color:var(--muted)">Si no ves los últimos cambios, forzá la actualización</span>
         <button class="btn" style="background:rgba(56,189,248,.12);color:var(--blue);border:1px solid rgba(56,189,248,.3)" onclick="actualizarApp()">🔄 Buscar actualizaciones</button>
       </div>
-      <div style="font-size:.66rem;color:var(--muted);margin-top:12px">CYC · Versión 9.0</div>
+      <div style="font-size:.66rem;color:var(--muted);margin-top:12px">CYC · Versión 9.1</div>
     </div>
 
     <div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:18px 20px;margin-bottom:14px">
