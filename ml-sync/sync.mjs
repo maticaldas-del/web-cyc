@@ -2641,6 +2641,60 @@ async function main() {
       return;
     }
 
+    // BILLING_PROBE=cargargasto:<AAAA_MM_DD>|<monto>|<categoría>|<descripción>[|prov=..][|fact=..][|cae=..][|go]
+    // → CARGA UN GASTO, GUARDANDO EL RESPALDO.
+    //
+    // Existe por dos cosas. Una: cargar a mano desde el celular un gasto con la factura al lado es
+    // incómodo y se termina cargando "100000" sin decir de qué era; tres meses después nadie sabe.
+    // Dos: él quiere poder demostrarle a ARCA que los gastos y compras tienen comprobante, y el
+    // panel no guardaba NI el proveedor NI el número de factura. Ahora van en el mismo registro.
+    //
+    // El separador es "|" y no ":" a propósito: las descripciones llevan dos puntos todo el tiempo.
+    // Antes de escribir avisa si ya hay un gasto del mismo mes, misma categoría y mismo monto, que
+    // es la forma en que se duplican (se carga dos veces el mismo comprobante). Sin "|go" no escribe.
+    if (String(process.env.BILLING_PROBE || '').startsWith('cargargasto:')) {
+      const crudo = String(process.env.BILLING_PROBE).slice('cargargasto:'.length);
+      const partes = crudo.split('|').map((x) => x.trim());
+      const GO = partes.includes('go');
+      const dayKey = partes[0] || '';
+      const monto = Math.round(parseFloat((partes[1] || '').replace(/[^\d.-]/g, '')) || 0);
+      const cat = partes[2] || '';
+      const desc = partes[3] || '';
+      const extra = {};
+      for (const x of partes.slice(4)) {
+        const m = x.match(/^(prov|cuit|fact|cae|venc)=(.+)$/i);
+        if (m) extra[m[1].toLowerCase()] = m[2];
+      }
+      if (!/^\d{4}_\d{2}_\d{2}$/.test(dayKey) || !(monto > 0) || !cat) {
+        console.log('Usá: cargargasto:2026_08_13|100000|Honorarios contables|Contador|prov=Cavallo|fact=C 00001-00000929|go');
+        return;
+      }
+      const compras = (await db.get('cyc/compras')) || {};
+      const ym = dayKey.slice(0, 7);
+      const parecidos = Object.entries(compras).filter(([, g]) => g && String(g.dayKey || '').startsWith(ym)
+        && (g.cat || '') === cat && Math.round(g.monto || 0) === monto);
+      console.log(`=== CARGAR GASTO ${GO ? '(APLICANDO)' : '(PRUEBA)'} ===`);
+      console.log(`  fecha    : ${dayKey.replace(/_/g, '-')}`);
+      console.log(`  monto    : ${money(monto)}`);
+      console.log(`  categoría: ${cat}`);
+      console.log(`  desc     : ${desc || '(sin descripción)'}`);
+      for (const [k, v] of Object.entries(extra)) console.log(`  ${k.padEnd(9)}: ${v}`);
+      if (parecidos.length) {
+        console.log(`\n  ⚠️ OJO: ya hay ${parecidos.length} gasto(s) de ${ym.replace('_', '-')} con la misma categoría y el mismo monto:`);
+        for (const [id, g] of parecidos) console.log(`     ${g.dayKey} · ${money(Math.round(g.monto))} · ${g.desc || '(sin desc)'} · clave ${id}`);
+        console.log(`     Si es el mismo comprobante, NO lo cargues de nuevo.`);
+      }
+      if (!GO) { console.log(`\nPRUEBA: no se escribió nada. Agregá "|go" para cargarlo.`); return; }
+      const clave = 'c' + Date.now();
+      const obj = { id: clave, dayKey, monto, cat, desc, ts: Date.now(), ...extra };
+      await db.set('cyc/compras/' + clave, obj);
+      // Verificación: se relee de la base, del mismo lugar del que lee la web.
+      const rele = await db.get('cyc/compras/' + clave);
+      if (rele && Math.round(rele.monto || 0) === monto) console.log(`\n✓ Cargado y releído de la base · clave ${clave}`);
+      else console.log(`\n✗ NO quedó guardado. Releído: ${JSON.stringify(rele)}`);
+      return;
+    }
+
     // BILLING_PROBE=facsync[:<días>][:go] → GUARDAR LAS FACTURAS REALES EN EL PANEL.
     //
     // Recorre las ventas de los últimos días de las 4 cuentas, le pide a ML la factura de cada una
