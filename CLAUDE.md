@@ -216,18 +216,38 @@ No alcanza con que el código compile. Para cualquier cambio que toque plata o p
 Si un probe de verificación tiene la fórmula vieja copiada adentro, va a decir "todo bien" para
 siempre. Los verificadores tienen que llamar a la misma función que el código real.
 
-## Pendientes al 11/08/2026
+## Pendientes al 13/08/2026
 
 Lo que quedó abierto. Borrá de acá lo que se vaya cerrando.
+
+- **Él va a pasar de qué publicación de ML es cada uno de los 11 productos en "—"**, y los Excel de
+  compras de ARCA (Mis Comprobantes → Recibidos, una cuenta por vez). Cuando lleguen: vincular con
+  `huerfanos` de guía, y armar el cuadro de compras con factura por proveedor.
+- **Tres productos están cargados DOS VECES** y por eso la ficha gemela quedó sin publicación:
+  Batidora / Batidora 1 Cabezal · Filtro agua / Filtro Con precito · Separador dedo Gordo /
+  2 Separadores. Falta que él diga con cuál se queda. Revincular NO alcanza.
+- **Balanza persona y Bioxidil tienen la publicación CERRADA en ML** (`MLA2316189534` y
+  `MLA2301693130`). No es error de vinculación: o las reabre o siguen en "—".
+- **La Cortadora Sportsman está a $32.999 en Adriana y a $13.180 en Ayelen.** Mismo producto, dos
+  precios: hay un costo mal cargado en una de las dos fichas. Él decidió subir igual el 13/08. Si la
+  de Adriana deja de vender, empezar por ahí.
+- **Packs/combos, propuesto y sin respuesta.** Abajo de ~$4.000 el cargo fijo de ML se come el
+  producto. Vender de a 3 paga UN cargo fijo en vez de tres, sin bajar ningún precio. Falta armar
+  la lista de qué conviene empaquetar y a qué precio.
+- **Stock frenado: $3.123.616 en 27 productos.** Tres de los cuatro más grandes vendieron esta
+  semana — están SOBRECOMPRADOS, no muertos. Falta mirar la caja de compra de cada uno para saber
+  si además hay un problema de competencia.
+- **Faltan gastos de agosto**: alquiler (~$95.000) y servicios ($150.000). Los honorarios del
+  contador ya están ($100.000, factura C 00001-00000929).
 
 - **Vigilar las 8 publicaciones que ganaban la caja de compra y se subieron igual** (11/08). Él lo
   decidió así: *"aunque perdamos en catálogo ganamos igual, y si hay que mantenerlos abajo para que
   ganen no sirven como productos"*. Entre ellas el Separador de Dedos x2 (35 ventas en 60 días) y
   las luces de bici. Si alguna se cae fuerte en ventas, avisarle para que decida.
-- **Dos publicaciones de Matías a $32.999 sin resolver**: Recortadora 4 en 1 (MLA1751064238) y
-  Corta Pelo Nariz/Oreja (MLA1751165454). `bajopiso` dice que para llegar al 30% hay que BAJARLAS a
-  ~$30.300 — un precio menor no puede dar más margen, así que hay un error en la cuenta. No se
-  tocaron. Están pegadas a la barrera de los $33.000.
+- **Cuatro Corta Pelo / Recortadora topados en $32.999** (MLA1751064238, MLA1751165454,
+  MLA1452471312, MLA1377920253). Para llegar al 30% habría que cruzar la barrera, así que se quedan
+  ahí. En dos de ellos `bajopiso` además dice que hay que BAJARLOS a ~$30.300 — un precio menor no
+  puede dar más margen, así que ahí hay un error de cuenta que sigue sin explicarse.
 - **Grupo Paulvic: NO TOCAR.** 26 publicaciones entre 24% y 30% a $14.360. Subirlas todas a $14.840
   las pondría arriba del piso (~$34.500/mes más), pero él dijo expresamente que no.
 - **Obra social privada: falta dejarla automática.** Son $83.333/mes. El pago de $250.000 del
