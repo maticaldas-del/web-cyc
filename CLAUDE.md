@@ -103,8 +103,11 @@ Los que más se usan:
 | `chequeo[:días]` | el chequeo de la mañana de las 4 cuentas |
 | `unapub:<MLA o palabra>` | todo sobre una publicación: precio real, caja de compra, margen |
 | `hermanas:<palabra>` | todas las publicaciones del mismo producto, por si hay que subirlas juntas |
-| `bajopiso[:piso]` | las publicaciones abajo del 30%, con recomendación |
-| `volver:<MLA=precio>[:go]` | deja un precio exacto (sin `:go` es prueba) |
+| `bajopiso[:piso]` | las publicaciones abajo del 30%, con recomendación · **solo las que vendieron** |
+| `submargen[:piso][:go]` | sube al piso con la cuenta de Margen ML · **llega a las que no vendieron** |
+| `volver:<MLA=precio>[:go]` | deja un precio exacto (sin `:go` es prueba) · maneja variantes |
+| `huerfanos[:palabra]` | los productos en "—": por qué no tienen precio y cuál es su publicación |
+| `cargargasto:<fecha>\|<monto>\|<cat>\|<desc>[\|prov=][\|fact=][\|cae=][\|go]` | carga un gasto con su comprobante |
 | `proyec[:retiro][:tasa]` | cuánto le queda a CYC por mes |
 | `facarca` | lo facturado en la ventana que mira ARCA, por cuenta |
 | `catmono[:fecha]` | qué categoría de monotributo corresponde |
@@ -173,6 +176,26 @@ Telegram va solo el resumen de ventas del día y el del mes.
 - **"Margen ML" y `bajopiso` no miden lo mismo y no tienen por qué coincidir.** Margen ML va por
   PRODUCTO (neto de ML contra el costo full); `bajopiso` va por PUBLICACIÓN y suma el envío del
   peor caso, IIBB, monotributo y el % de reclamos. Ninguna miente.
+- **`bajopiso` NO mide las publicaciones sin ventas en 60 días: las saltea.** Necesita ventas para
+  deducir el envío real. El 13/08/2026 salteó **121 de 401** y lo dijo en una línea al final; yo
+  leí "23 abajo del piso" y le dije que no quedaba nada abajo del 30%. Era falso. Para esas está
+  `submargen`, que usa la cuenta de Margen ML y no necesita ventas. **Los dos, siempre.**
+- **Después de tocar precios hay que correr `netoweb`.** Si no, "Margen ML" sigue mostrando el neto
+  del precio viejo y parece que el aumento no se aplicó. Pasó dos veces el 13/08.
+- **Ojo con "Muerto" en Stock y reposición.** Mide rotación (ventas ÷ stock), no si vende. Un
+  producto con 150 unidades que vende 25 cada 2 meses figura "Muerto" y vendió la semana pasada:
+  no está muerto, está SOBRECOMPRADO. El remedio no es rematarlo, es dejar de comprarlo.
+- **"0 sin vincular" en Vinculaciones no quiere decir que esté todo vinculado.** Cuenta que cada
+  PUBLICACIÓN tenga producto — la dirección contraria. Un producto sin ninguna publicación que le
+  apunte no aparece ahí. Y las publicaciones OCULTAS tampoco se cuentan: el 13/08 había 4 ocultas
+  sin producto con el cartel diciendo 0. Para verlo de verdad: `huerfanos`.
+- **Los productos en "—" casi siempre son fichas repetidas.** El mismo producto cargado dos veces:
+  la publicación quedó pegada a una ficha y la otra quedó huérfana (Batidora / Batidora 1 Cabezal,
+  Filtro agua / Filtro Con precito, Separador dedo Gordo / 2 Separadores...). Ahí revincular NO
+  sirve: le sacás la publicación a la que funciona. Hay que quedarse con UNA ficha.
+- **Los productos baratos no se arreglan subiendo un poco.** Venta real del 13/08: Talonera a
+  $2.500, neto $862 — ML se quedó con $1.638, el 65%, casi todo el cargo fijo de ~$1.230. Con
+  costo $812 quedaron $50 de ganancia. Abajo de ~$4.000 el cargo fijo se come el producto.
 - **Las fichas de `cyc/mllinks` se reescriben ENTERAS cuando la publicación vende.** El auto-match
   arma un objeto nuevo y el patch sobre `cyc/mllinks` pisa el hijo completo: todo campo que no se
   arrastre en ese objeto se pierde. Así se perdía el estado de la publicación y el aviso "Problema
