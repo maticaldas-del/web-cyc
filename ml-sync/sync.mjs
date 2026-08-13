@@ -4183,17 +4183,17 @@ async function main() {
       for (const p of products) {
         const prML = precioML[p.id];
         if (prML == null) {
-          // SIN PUBLICACIÓN ACTIVA. La pantalla igual muestra un margen: el del promedio de las
-          // ventas VIEJAS, a los precios de entonces. Por eso puede aparecer en rojo un producto
-          // cuyo precio ya se subió — no hay forma de medirlo hoy porque no está publicado.
-          const tuvo = (p.netoRef != null && p.netoRef !== '') || (p.netoCalc != null && p.netoCalc !== '');
+          // SIN PUBLICACIÓN ACTIVA. Puede seguir teniendo neto si la publicación está PAUSADA
+          // (ahí ML igual da un precio). Si no tiene ninguna, la pantalla muestra "—".
+          const tuvo = (p.netoCalc != null && p.netoCalc !== '');
           sinPub.push({ p, tuvo });
           continue;
         }
         const man = (p.netoRef != null && p.netoRef !== '') ? Number(p.netoRef) : null;
         const calc = (p.netoCalc != null && p.netoCalc !== '') ? Number(p.netoCalc) : null;
         const prCalc = Number(p.netoCalcPrecio) || 0;
-        if (man != null) { manuales.push({ p, prML }); continue; }
+        // El manual ya NO tapa nada (la pantalla lo ignora), pero se lista para poder limpiarlo.
+        if (man != null) manuales.push({ p, prML });
         if (calc == null) { sinCalc.push({ p, prML }); continue; }
         const dif = prCalc > 0 ? (prML / prCalc - 1) * 100 : null;
         if (dif == null || Math.abs(dif) >= 1) viejos.push({ p, prML, prCalc, dif });
@@ -4203,8 +4203,8 @@ async function main() {
       console.log(`  ✅ al día (el neto está calculado al precio que hoy tiene ML) : ${ok}`);
       console.log(`  🔴 VIEJOS (el precio cambió y el neto quedó del precio anterior): ${viejos.length}`);
       console.log(`  ⚪ sin neto calculado (la pantalla muestra "—")                 : ${sinCalc.length}`);
-      console.log(`  ✎ con neto escrito a mano (ese le gana a todo)                 : ${manuales.length}`);
-      console.log(`  ⚫ SIN PUBLICACIÓN ACTIVA (muestran el margen de ventas viejas) : ${sinPub.length}\n`);
+      console.log(`  ✎ con restos de neto a mano en la base (la pantalla los ignora): ${manuales.length}`);
+      console.log(`  ⚫ SIN PUBLICACIÓN ACTIVA (pausadas, o directamente sin publicar): ${sinPub.length}\n`);
       if (viejos.length) {
         console.log(`── LOS QUE MUESTRAN UN MARGEN VIEJO ──`);
         console.log(`  ${'producto'.padEnd(36)} ${'precio del neto'.padStart(15)} ${'precio hoy en ML'.padStart(16)} ${'dif'.padStart(7)}`);
@@ -4214,7 +4214,7 @@ async function main() {
         console.log(`\n  Se arregla corriendo netoweb: recalcula el neto con el precio de hoy.`);
       }
       if (manuales.length) {
-        console.log(`\n── CON NETO A MANO (la pantalla ignora el precio real de ML) ──`);
+        console.log(`\n── RESTOS DE NETO A MANO EN LA BASE (ya no se muestran; sacarlos con netoref:borrar) ──`);
         for (const m of manuales.slice(0, 20)) console.log(`  ${String(m.p.name || m.p.id).slice(0, 40)}`);
         if (manuales.length > 20) console.log(`  … y ${manuales.length - 20} más`);
       }
@@ -4245,12 +4245,12 @@ async function main() {
       const filasM = [];
       for (const p of products) {
         const a2 = aggM[p.id];
-        const man = (p.netoRef != null && p.netoRef !== '') ? Number(p.netoRef) : null;
-        const calc = (p.netoCalc != null && p.netoCalc !== '') ? Number(p.netoCalc) : null;
-        const real = (a2 && a2.u > 0) ? a2.neto / a2.u : null;
-        const neto = man != null ? man : (calc != null ? calc : real);
+        // El neto es SOLO el de ML al precio de hoy, igual que la pantalla desde el 13/08/2026.
+        // Si acá se dejara el orden viejo (a mano → precio de hoy → ventas), este chequeo estaría
+        // midiendo una pantalla que ya no existe y diría "todo bien" para siempre.
+        const neto = (p.netoCalc != null && p.netoCalc !== '') ? Number(p.netoCalc) : null;
         if (neto == null) continue;
-        const fuente = man != null ? 'a mano' : (calc != null ? 'precio de hoy' : 'ventas viejas');
+        const fuente = 'precio de hoy';
         // Impuestos: de las ventas si las hay; si no, estimados sobre el precio de hoy (igual que la web).
         let mlx = (a2 && a2.u > 0) ? a2.mlx / a2.u : 0;
         if (!mlx && p.netoCalcPrecio > 0) mlx = Number(p.netoCalcPrecio) * (mlExtraPct(ctaDe[p.id]) + monoM) / 100;
@@ -4271,9 +4271,11 @@ async function main() {
       }
       if (sinPub.length) {
         console.log(`\n── SIN PUBLICACIÓN ACTIVA · ${sinPub.length} ──`);
-        console.log(`  Estos no se pueden medir contra ML: no están publicados (casi siempre por falta`);
-        console.log(`  de stock). El margen que muestra la pantalla sale del promedio de sus ventas`);
-        console.log(`  viejas, a los precios de entonces. No quiere decir que el precio esté mal hoy.`);
+        console.log(`  Estos no tienen publicación ACTIVA (casi siempre por falta de stock). Los que están`);
+        console.log(`  pausados igual muestran margen: ML da el precio que tienen cargado. Los que no tienen`);
+        console.log(`  ninguna publicación muestran "—", porque no hay de dónde sacar el neto.`);
+        const conNeto = sinPub.filter((m) => m.tuvo).length;
+        console.log(`  De los ${sinPub.length}: ${conNeto} con neto (pausadas) · ${sinPub.length - conNeto} en "—".`);
         for (const m of sinPub.slice(0, 40)) console.log(`  · ${String(m.p.name || m.p.id).slice(0, 44)}`);
         if (sinPub.length > 40) console.log(`  … y ${sinPub.length - 40} más`);
       }
