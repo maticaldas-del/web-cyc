@@ -237,8 +237,12 @@ Lo que quedó abierto. Borrá de acá lo que se vaya cerrando.
 - **Stock frenado: $3.123.616 en 27 productos.** Tres de los cuatro más grandes vendieron esta
   semana — están SOBRECOMPRADOS, no muertos. Falta mirar la caja de compra de cada uno para saber
   si además hay un problema de competencia.
-- **Faltan gastos de agosto**: alquiler (~$95.000) y servicios ($150.000). Los honorarios del
-  contador ya están ($100.000, factura C 00001-00000929).
+- **Faltan gastos de agosto**: servicios ($150.000, en julio figura como "Claude"). El alquiler
+  ($100.000), los honorarios ($100.000) y la obra social Sancor ($65.227) ya están.
+- **OSDE es PERSONAL, no es de CYC. No cargarlo nunca.** Aparece en los comprobantes recibidos de
+  ARCA ($321.796 de Adriana + $200.414 de Luciana el 25/07) y es tentador tomarlo por un gasto del
+  negocio. Él lo dijo expreso el 13/08/2026. Lo mismo el colegio (Asociación Hijas de Nuestra
+  Señora de la Misericordia) y los peajes.
 
 - **Vigilar las 8 publicaciones que ganaban la caja de compra y se subieron igual** (11/08). Él lo
   decidió así: *"aunque perdamos en catálogo ganamos igual, y si hay que mantenerlos abajo para que
