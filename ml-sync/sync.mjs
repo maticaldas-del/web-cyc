@@ -5002,6 +5002,49 @@ async function main() {
       return;
     }
 
+    // BILLING_PROBE=subirrecibidas[:go] → CARGA LAS FACTURAS RECIBIDAS AL PANEL.
+    //
+    // Las "recibidas" son las compras: lo que ARCA muestra en Mis Comprobantes → Recibidos, una
+    // cuenta por vez. ML no las tiene y no hay API: salen del PDF que baja él de ARCA. Por eso el
+    // dato viaja en un archivo del repo (ml-sync/recibidas.json) en vez de pedirse a una API.
+    //
+    // Van a `cyc/facturas_recibidas`, NO a `cyc/compras`. Es a propósito: `cyc/compras` es la lista
+    // de GASTOS y entra en el cálculo de la ganancia del mes. Si las compras entraran ahí se
+    // contarían dos veces —el costo de la mercadería ya está en el costo de cada producto— y la
+    // ganancia del mes aparecería muchísimo más baja de lo que es. Acá son solo un registro para
+    // mirar: qué se compró, a quién, con qué factura.
+    if (String(process.env.BILLING_PROBE || '').startsWith('subirrecibidas')) {
+      const GO = String(process.env.BILLING_PROBE).endsWith(':go');
+      let datos;
+      try { datos = JSON.parse(await (await import('node:fs/promises')).readFile('ml-sync/recibidas.json', 'utf8')); }
+      catch (e) { console.log('No pude leer ml-sync/recibidas.json: ' + e.message); return; }
+      console.log(`=== FACTURAS RECIBIDAS ${GO ? '(APLICANDO)' : '(PRUEBA)'} ===\n`);
+      const upd = {};
+      let n = 0, tot = 0;
+      for (const [cta, comps] of Object.entries(datos)) {
+        const arr = Object.values(comps);
+        const suma = arr.reduce((s, c) => s + (c.nc ? -(c.total || 0) : (c.total || 0)), 0);
+        const desde = arr.map((c) => c.fecha).sort()[0] || '?';
+        const hasta = arr.map((c) => c.fecha).sort().slice(-1)[0] || '?';
+        console.log(`  ${cta.padEnd(9)} ${String(arr.length).padStart(4)} comprobantes · ${money(Math.round(suma)).padStart(16)} · de ${desde} a ${hasta}`);
+        n += arr.length; tot += suma;
+        upd['cyc/facturas_recibidas/' + cta] = comps;
+      }
+      console.log(`\n  TOTAL: ${n} comprobantes · ${money(Math.round(tot))}`);
+      if (!GO) { console.log(`\nPRUEBA: no se escribió nada. Agregá ":go" para cargarlas.`); return; }
+      for (const [ruta, val] of Object.entries(upd)) await db.set(ruta, val);
+      // Verificación: se relee de la base, del mismo lugar del que lee la web.
+      let ok = 0;
+      for (const cta of Object.keys(datos)) {
+        const rele = (await db.get('cyc/facturas_recibidas/' + cta)) || {};
+        const q = Object.keys(rele).length;
+        console.log(`  ${cta.padEnd(9)} releído: ${q} de ${Object.keys(datos[cta]).length}`);
+        if (q === Object.keys(datos[cta]).length) ok++;
+      }
+      console.log(`\n${ok} de ${Object.keys(datos).length} cuentas quedaron bien.`);
+      return;
+    }
+
     // BILLING_PROBE=frenados[:<díasStock>][:<días>] → ¿CONVIENE BAJARLE EL PRECIO AL STOCK PARADO?
     //
     // La pregunta que contesta: en un producto con mucha plata parada, ¿bajar el precio lo mueve o

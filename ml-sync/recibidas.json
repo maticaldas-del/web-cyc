@@ -1,0 +1,3390 @@
+{
+"Adriana": {
+"00012_00012137": {
+"fecha": "2026-01-02",
+"tipo": "Factura A",
+"num": "00012-00012137",
+"cae": "76015334094598",
+"cuit": "30715729985",
+"prov": "MUYLINDA S.R.L.",
+"total": 367520.16,
+"nc": false
+},
+"00058_00495572": {
+"fecha": "2026-01-12",
+"tipo": "Factura A",
+"num": "00058-00495572",
+"cae": "76024724335718",
+"cuit": "30703088534",
+"prov": "MERCADOLIBRE S.R.L.",
+"total": 1331415.74,
+"nc": false
+},
+"00001_03532862": {
+"fecha": "2026-01-12",
+"tipo": "Factura A",
+"num": "00001-03532862",
+"cae": "76024724524624",
+"cuit": "30715686054",
+"prov": "MELI LOG SRL",
+"total": 649996.33,
+"nc": false
+},
+"00001_01164373": {
+"fecha": "2026-01-12",
+"tipo": "Nota de Crédito A",
+"num": "00001-01164373",
+"cae": "76024738731415",
+"cuit": "30715686054",
+"prov": "MELI LOG SRL",
+"total": 3584.78,
+"nc": true
+},
+"00011_02145043": {
+"fecha": "2026-01-12",
+"tipo": "Nota de Crédito A",
+"num": "00011-02145043",
+"cae": "76024752322045",
+"cuit": "30703088534",
+"prov": "MERCADOLIBRE S.R.L.",
+"total": 2767.81,
+"nc": true
+},
+"00058_00529419": {
+"fecha": "2026-02-12",
+"tipo": "Factura A",
+"num": "00058-00529419",
+"cae": "86073796099983",
+"cuit": "30703088534",
+"prov": "MERCADOLIBRE S.R.L.",
+"total": 666649.06,
+"nc": false
+},
+"00019_00396748": {
+"fecha": "2026-02-12",
+"tipo": "Factura A",
+"num": "00019-00396748",
+"cae": "86073796143280",
+"cuit": "30715686054",
+"prov": "MELI LOG SRL",
+"total": 343540.95,
+"nc": false
+},
+"00001_00000421": {
+"fecha": "2026-02-25",
+"tipo": "Factura C",
+"num": "00001-00000421",
+"cae": "86085305092878",
+"cuit": "27271946940",
+"prov": "CALDAS LUCIANA DIAMELA",
+"total": 60000.0,
+"nc": false
+},
+"00030_00003456": {
+"fecha": "2026-02-26",
+"tipo": "Factura A",
+"num": "00030-00003456",
+"cae": "86095319893592",
+"cuit": "30708577592",
+"prov": "ABELJO SRL",
+"total": 60000.0,
+"nc": false
+},
+"00104_12602312": {
+"fecha": "2026-02-27",
+"tipo": "Factura A",
+"num": "00104-12602312",
+"cae": "86095521607993",
+"cuit": "30715804812",
+"prov": "CORREDORES VIALES SOCIEDAD ANONIMA",
+"total": 2579.16,
+"nc": false
+},
+"00050_41208768": {
+"fecha": "2026-02-28",
+"tipo": "Factura B",
+"num": "00050-41208768",
+"cae": "86096295165821",
+"cuit": "30714112836",
+"prov": "AUTOPISTAS DE BUENOS AIRES (AUBASA) SA S. A.",
+"total": 6964.13,
+"nc": false
+},
+"05032_00261749": {
+"fecha": "2026-03-05",
+"tipo": "Factura A",
+"num": "05032-00261749",
+"cae": "86096280039772",
+"cuit": "30574876474",
+"prov": "AUTOPISTAS URBANAS S. A.",
+"total": 18353.16,
+"nc": false
+},
+"00001_00000430": {
+"fecha": "2026-03-06",
+"tipo": "Factura C",
+"num": "00001-00000430",
+"cae": "86106545155689",
+"cuit": "27271946940",
+"prov": "CALDAS LUCIANA DIAMELA",
+"total": 1700000.0,
+"nc": false
+},
+"00003_00013074": {
+"fecha": "2026-03-10",
+"tipo": "Factura B",
+"num": "00003-00013074",
+"cae": "86107019355876",
+"cuit": "20292504455",
+"prov": "GARCIA FERNANDO DAVID",
+"total": 61000.0,
+"nc": false
+},
+"00016_00138662": {
+"fecha": "2026-03-11",
+"tipo": "Factura A",
+"num": "00016-00138662",
+"cae": "86085028852967",
+"cuit": "30644206463",
+"prov": "DAI NIPPON S A",
+"total": 147220.37,
+"nc": false
+},
+"00011_04860877": {
+"fecha": "2026-03-12",
+"tipo": "Factura A",
+"num": "00011-04860877",
+"cae": "86117650200372",
+"cuit": "30703088534",
+"prov": "MERCADOLIBRE S.R.L.",
+"total": 313177.56,
+"nc": false
+},
+"00018_00424086": {
+"fecha": "2026-03-12",
+"tipo": "Factura A",
+"num": "00018-00424086",
+"cae": "86117650283400",
+"cuit": "30715686054",
+"prov": "MELI LOG SRL",
+"total": 98971.96,
+"nc": false
+},
+"00001_00000302": {
+"fecha": "2026-03-13",
+"tipo": "Factura C",
+"num": "00001-00000302",
+"cae": "86117507547082",
+"cuit": "27429501429",
+"prov": "FORTI AYELEN",
+"total": 750000.0,
+"nc": false
+},
+"00104_12842461": {
+"fecha": "2026-03-14",
+"tipo": "Factura A",
+"num": "00104-12842461",
+"cae": "86117654250012",
+"cuit": "30715804812",
+"prov": "CORREDORES VIALES SOCIEDAD ANONIMA",
+"total": 7933.88,
+"nc": false
+},
+"00629_57000283": {
+"fecha": "2026-03-16",
+"tipo": "Factura B",
+"num": "00629-57000283",
+"cae": "86107154368868",
+"cuit": "30663498513",
+"prov": "GRUPO CONCESIONARIO DEL OESTE SA",
+"total": 17076.23,
+"nc": false
+},
+"00012_00012864": {
+"fecha": "2026-03-20",
+"tipo": "Factura A",
+"num": "00012-00012864",
+"cae": "86128430614508",
+"cuit": "30715729985",
+"prov": "MUYLINDA S.R.L.",
+"total": 349699.87,
+"nc": false
+},
+"00001_00000441": {
+"fecha": "2026-03-21",
+"tipo": "?",
+"num": "00001-00000441",
+"cae": "86128530976281",
+"cuit": "27271946940",
+"prov": "CALDAS LUCIANA",
+"total": 435000.0,
+"nc": false
+},
+"00104_13158296": {
+"fecha": "2026-03-29",
+"tipo": "Factura A",
+"num": "00104-13158296",
+"cae": "86139444207665",
+"cuit": "30715804812",
+"prov": "CORREDORES VIALES SOCIEDAD ANONIMA",
+"total": 6347.11,
+"nc": false
+},
+"00012_00012980": {
+"fecha": "2026-03-31",
+"tipo": "Factura A",
+"num": "00012-00012980",
+"cae": "86139747165415",
+"cuit": "30715729985",
+"prov": "MUYLINDA S.R.L.",
+"total": 261709.79,
+"nc": false
+},
+"00016_00139798": {
+"fecha": "2026-04-10",
+"tipo": "Factura A",
+"num": "00016-00139798",
+"cae": "86139160882660",
+"cuit": "30644206463",
+"prov": "DAI NIPPON S A",
+"total": 53687.92,
+"nc": false
+},
+"00001_03610478": {
+"fecha": "2026-04-12",
+"tipo": "Factura A",
+"num": "00001-03610478",
+"cae": "86151436099295",
+"cuit": "30715686054",
+"prov": "MELI LOG SRL",
+"total": 314167.56,
+"nc": false
+},
+"00058_00600887": {
+"fecha": "2026-04-12",
+"tipo": "Factura A",
+"num": "00058-00600887",
+"cae": "86151437070961",
+"cuit": "30703088534",
+"prov": "MERCADOLIBRE S.R.L.",
+"total": 905090.04,
+"nc": false
+},
+"00104_13252190": {
+"fecha": "2026-04-14",
+"tipo": "Factura A",
+"num": "00104-13252190",
+"cae": "86151576834789",
+"cuit": "30715804812",
+"prov": "CORREDORES VIALES SOCIEDAD ANONIMA",
+"total": 12694.21,
+"nc": false
+},
+"00758_00905299": {
+"fecha": "2026-04-16",
+"tipo": "Factura B",
+"num": "00758-00905299",
+"cae": "86162265719912",
+"cuit": "30663498513",
+"prov": "GRUPO CONCESIONARIO DEL OESTE SA",
+"total": 32608.31,
+"nc": false
+},
+"05032_00281106": {
+"fecha": "2026-04-29",
+"tipo": "Factura A",
+"num": "05032-00281106",
+"cae": "86173343490626",
+"cuit": "30574876474",
+"prov": "AUTOPISTAS URBANAS S. A.",
+"total": 70706.3,
+"nc": false
+},
+"00104_13558947": {
+"fecha": "2026-04-29",
+"tipo": "Factura A",
+"num": "00104-13558947",
+"cae": "86173526257461",
+"cuit": "30715804812",
+"prov": "CORREDORES VIALES SOCIEDAD ANONIMA",
+"total": 1537.19,
+"nc": false
+},
+"00104_13588162": {
+"fecha": "2026-04-29",
+"tipo": "Factura A",
+"num": "00104-13588162",
+"cae": "86173544388487",
+"cuit": "30715804812",
+"prov": "CORREDORES VIALES SOCIEDAD ANONIMA",
+"total": 9520.66,
+"nc": false
+},
+"00001_00000459": {
+"fecha": "2026-04-30",
+"tipo": "?",
+"num": "00001-00000459",
+"cae": "86183709183248",
+"cuit": "27271946940",
+"prov": "CALDAS LUCIANA",
+"total": 497970.0,
+"nc": false
+},
+"00018_00342824": {
+"fecha": "2026-05-12",
+"tipo": "Factura B",
+"num": "00018-00342824",
+"cae": "86195357436701",
+"cuit": "30715686054",
+"prov": "MELI LOG SRL",
+"total": 536967.63,
+"nc": false
+},
+"00011_12320982": {
+"fecha": "2026-05-12",
+"tipo": "Factura B",
+"num": "00011-12320982",
+"cae": "86195383264797",
+"cuit": "30703088534",
+"prov": "MERCADOLIBRE S.R.L.",
+"total": 1411085.1,
+"nc": false
+},
+"00023_16262575": {
+"fecha": "2026-05-12",
+"tipo": "Factura B",
+"num": "00023-16262575",
+"cae": "86195407860515",
+"cuit": "30703088534",
+"prov": "MERCADOLIBRE S.R.L.",
+"total": 14534.79,
+"nc": false
+},
+"00057_00073804": {
+"fecha": "2026-05-12",
+"tipo": "Nota de Crédito B",
+"num": "00057-00073804",
+"cae": "86205517664519",
+"cuit": "30703088534",
+"prov": "MERCADOLIBRE S.R.L.",
+"total": 17490.71,
+"nc": true
+},
+"00001_00837618": {
+"fecha": "2026-05-12",
+"tipo": "Nota de Crédito B",
+"num": "00001-00837618",
+"cae": "86205506109861",
+"cuit": "30715686054",
+"prov": "MELI LOG SRL",
+"total": 5852.24,
+"nc": true
+},
+"00001_00000331": {
+"fecha": "2026-05-12",
+"tipo": "Factura C",
+"num": "00001-00000331",
+"cae": "86195293521618",
+"cuit": "27429501429",
+"prov": "FORTI AYELEN",
+"total": 36000.0,
+"nc": false
+},
+"00001_00000330": {
+"fecha": "2026-05-12",
+"tipo": "Factura C",
+"num": "00001-00000330",
+"cae": "86195291031897",
+"cuit": "27429501429",
+"prov": "FORTI AYELEN",
+"total": 156200.0,
+"nc": false
+},
+"00104_13786297": {
+"fecha": "2026-05-15",
+"tipo": "Factura A",
+"num": "00104-13786297",
+"cae": "86205621564400",
+"cuit": "30715804812",
+"prov": "CORREDORES VIALES SOCIEDAD ANONIMA",
+"total": 4760.33,
+"nc": false
+},
+"00003_00002734": {
+"fecha": "2026-05-15",
+"tipo": "Factura B",
+"num": "00003-00002734",
+"cae": "86205778870375",
+"cuit": "23372286709",
+"prov": "GIACCONE FEDERICO",
+"total": 130000.0,
+"nc": false
+},
+"00758_01805082": {
+"fecha": "2026-05-16",
+"tipo": "Factura B",
+"num": "00758-01805082",
+"cae": "86216616356464",
+"cuit": "30663498513",
+"prov": "GRUPO CONCESIONARIO DEL OESTE SA",
+"total": 24257.38,
+"nc": false
+},
+"05032_00303306": {
+"fecha": "2026-05-21",
+"tipo": "?",
+"num": "05032-00303306",
+"cae": "86216384653316",
+"cuit": "",
+"prov": "",
+"total": 46312.01,
+"nc": false
+},
+"00001_00000477": {
+"fecha": "2026-05-21",
+"tipo": "Factura C",
+"num": "00001-00000477",
+"cae": "86216483765146",
+"cuit": "27271946940",
+"prov": "CALDAS LUCIANA DIAMELA",
+"total": 100000.0,
+"nc": false
+},
+"00001_00000478": {
+"fecha": "2026-05-26",
+"tipo": "Factura C",
+"num": "00001-00000478",
+"cae": "86217094852700",
+"cuit": "27271946940",
+"prov": "CALDAS LUCIANA DIAMELA",
+"total": 321977.0,
+"nc": false
+},
+"00023_03570160": {
+"fecha": "2026-05-29",
+"tipo": "Factura A",
+"num": "00023-03570160",
+"cae": "86227859551368",
+"cuit": "30703088534",
+"prov": "MERCADOLIBRE S.R.L.",
+"total": 14534.79,
+"nc": false
+},
+"00011_04942667": {
+"fecha": "2026-05-29",
+"tipo": "Factura A",
+"num": "00011-04942667",
+"cae": "86228203827869",
+"cuit": "30703088534",
+"prov": "MERCADOLIBRE S.R.L.",
+"total": 1411085.1,
+"nc": false
+},
+"00001_01233363": {
+"fecha": "2026-05-29",
+"tipo": "Nota de Crédito A",
+"num": "00001-01233363",
+"cae": "86227911888280",
+"cuit": "30715686054",
+"prov": "MELI LOG SRL",
+"total": 5852.24,
+"nc": true
+},
+"00057_00321827": {
+"fecha": "2026-05-29",
+"tipo": "Nota de Crédito A",
+"num": "00057-00321827",
+"cae": "86227861180844",
+"cuit": "30703088534",
+"prov": "MERCADOLIBRE S.R.L.",
+"total": 17490.71,
+"nc": true
+},
+"00057_00436644": {
+"fecha": "2026-05-29",
+"tipo": "Factura B",
+"num": "00057-00436644",
+"cae": "86227735287136",
+"cuit": "30703088534",
+"prov": "MERCADOLIBRE S.R.L.",
+"total": 17490.71,
+"nc": false
+},
+"00001_07901553": {
+"fecha": "2026-05-29",
+"tipo": "Factura B",
+"num": "00001-07901553",
+"cae": "86227894734990",
+"cuit": "30715686054",
+"prov": "MELI LOG SRL",
+"total": 5852.24,
+"nc": false
+},
+"00023_00204442": {
+"fecha": "2026-05-29",
+"tipo": "Nota de Crédito B",
+"num": "00023-00204442",
+"cae": "86227744923454",
+"cuit": "30703088534",
+"prov": "MERCADOLIBRE S.R.L.",
+"total": 14534.79,
+"nc": true
+},
+"00011_01464816": {
+"fecha": "2026-05-29",
+"tipo": "?",
+"num": "00011-01464816",
+"cae": "86227757323468",
+"cuit": "30703088534",
+"prov": "MERCADOLIBRE S.R.L.",
+"total": 1411085.1,
+"nc": false
+},
+"00018_00053141": {
+"fecha": "2026-05-29",
+"tipo": "Nota de Crédito B",
+"num": "00018-00053141",
+"cae": "86227963705021",
+"cuit": "30715686054",
+"prov": "MELI LOG SRL",
+"total": 536967.63,
+"nc": true
+},
+"00104_14005211": {
+"fecha": "2026-05-30",
+"tipo": "Factura A",
+"num": "00104-14005211",
+"cae": "86227557228586",
+"cuit": "30715804812",
+"prov": "CORREDORES VIALES SOCIEDAD ANONIMA",
+"total": 7933.88,
+"nc": false
+},
+"00018_00483345": {
+"fecha": "2026-05-31",
+"tipo": "Factura A",
+"num": "00018-00483345",
+"cae": "86228280895690",
+"cuit": "30715686054",
+"prov": "MELI LOG SRL",
+"total": 536967.63,
+"nc": false
+},
+"00001_00000480": {
+"fecha": "2026-06-06",
+"tipo": "Factura C",
+"num": "00001-00000480",
+"cae": "86238719387683",
+"cuit": "27271946940",
+"prov": "CALDAS LUCIANA DIAMELA",
+"total": 29994.0,
+"nc": false
+},
+"00001_00000350": {
+"fecha": "2026-06-06",
+"tipo": "Factura C",
+"num": "00001-00000350",
+"cae": "86238733853951",
+"cuit": "27429501429",
+"prov": "FORTI AYELEN",
+"total": 39996.0,
+"nc": false
+},
+"00025_03620957": {
+"fecha": "2026-06-12",
+"tipo": "Factura A",
+"num": "00025-03620957",
+"cae": "86249640717196",
+"cuit": "30703088534",
+"prov": "MERCADOLIBRE S.R.L.",
+"total": 34667.2,
+"nc": false
+},
+"00011_04976204": {
+"fecha": "2026-06-12",
+"tipo": "Factura A",
+"num": "00011-04976204",
+"cae": "86249643834343",
+"cuit": "30703088534",
+"prov": "MERCADOLIBRE S.R.L.",
+"total": 1400160.48,
+"nc": false
+},
+"00018_00503273": {
+"fecha": "2026-06-12",
+"tipo": "Factura A",
+"num": "00018-00503273",
+"cae": "86249640071631",
+"cuit": "30715686054",
+"prov": "MELI LOG SRL",
+"total": 789770.36,
+"nc": false
+},
+"00011_02241885": {
+"fecha": "2026-06-12",
+"tipo": "Nota de Crédito A",
+"num": "00011-02241885",
+"cae": "86249659170652",
+"cuit": "30703088534",
+"prov": "MERCADOLIBRE S.R.L.",
+"total": 16081.08,
+"nc": true
+},
+"00104_14166681": {
+"fecha": "2026-06-14",
+"tipo": "?",
+"num": "00104-14166681",
+"cae": "86249709109861",
+"cuit": "30715804812",
+"prov": "CORREDORES VIALES",
+"total": 14280.99,
+"nc": false
+},
+"00758_02723369": {
+"fecha": "2026-06-16",
+"tipo": "Factura B",
+"num": "00758-02723369",
+"cae": "86250473411331",
+"cuit": "30663498513",
+"prov": "GRUPO CONCESIONARIO DEL OESTE SA",
+"total": 24456.17,
+"nc": false
+},
+"05035_00180252": {
+"fecha": "2026-06-17",
+"tipo": "Factura A",
+"num": "05035-00180252",
+"cae": "86240077909661",
+"cuit": "30574876474",
+"prov": "AUTOPISTAS URBANAS S. A.",
+"total": 24486.5,
+"nc": false
+},
+"05032_00318057": {
+"fecha": "2026-06-17",
+"tipo": "Factura A",
+"num": "05032-00318057",
+"cae": "86240123130885",
+"cuit": "30574876474",
+"prov": "AUTOPISTAS URBANAS S. A.",
+"total": 52921.94,
+"nc": false
+},
+"00001_00000357": {
+"fecha": "2026-06-26",
+"tipo": "Factura C",
+"num": "00001-00000357",
+"cae": "86261345136966",
+"cuit": "27429501429",
+"prov": "FORTI AYELEN",
+"total": 209300.0,
+"nc": false
+},
+"00104_14377340": {
+"fecha": "2026-06-29",
+"tipo": "Factura A",
+"num": "00104-14377340",
+"cae": "86261576652548",
+"cuit": "30715804812",
+"prov": "CORREDORES VIALES SOCIEDAD ANONIMA",
+"total": 9520.66,
+"nc": false
+},
+"00001_00000487": {
+"fecha": "2026-07-01",
+"tipo": "Factura C",
+"num": "00001-00000487",
+"cae": "86262060171257",
+"cuit": "27271946940",
+"prov": "CALDAS LUCIANA DIAMELA",
+"total": 200000.0,
+"nc": false
+},
+"00001_00000485": {
+"fecha": "2026-07-01",
+"tipo": "Factura C",
+"num": "00001-00000485",
+"cae": "86262013999129",
+"cuit": "27271946940",
+"prov": "CALDAS LUCIANA DIAMELA",
+"total": 100000.0,
+"nc": false
+},
+"00001_00000488": {
+"fecha": "2026-07-01",
+"tipo": "Factura C",
+"num": "00001-00000488",
+"cae": "86262061612340",
+"cuit": "27271946940",
+"prov": "CALDAS LUCIANA DIAMELA",
+"total": 198000.0,
+"nc": false
+},
+"00001_00000486": {
+"fecha": "2026-07-01",
+"tipo": "Factura C",
+"num": "00001-00000486",
+"cae": "86262015737703",
+"cuit": "27271946940",
+"prov": "CALDAS LUCIANA DIAMELA",
+"total": 400000.0,
+"nc": false
+},
+"00001_00000489": {
+"fecha": "2026-07-03",
+"tipo": "Factura C",
+"num": "00001-00000489",
+"cae": "86272324025923",
+"cuit": "27271946940",
+"prov": "CALDAS LUCIANA DIAMELA",
+"total": 53000.0,
+"nc": false
+},
+"00018_00529699": {
+"fecha": "2026-07-12",
+"tipo": "Factura A",
+"num": "00018-00529699",
+"cae": "86283681351018",
+"cuit": "30715686054",
+"prov": "MELI LOG SRL",
+"total": 594579.23,
+"nc": false
+},
+"00011_05049609": {
+"fecha": "2026-07-12",
+"tipo": "Factura A",
+"num": "00011-05049609",
+"cae": "86283700888923",
+"cuit": "30703088534",
+"prov": "MERCADOLIBRE S.R.L.",
+"total": 1222446.96,
+"nc": false
+},
+"00104_14565526": {
+"fecha": "2026-07-14",
+"tipo": "Factura A",
+"num": "00104-14565526",
+"cae": "86283777340438",
+"cuit": "30715804812",
+"prov": "CORREDORES VIALES SOCIEDAD ANONIMA",
+"total": 3074.38,
+"nc": false
+},
+"05031_00588050": {
+"fecha": "2026-07-16",
+"tipo": "Factura A",
+"num": "05031-00588050",
+"cae": "86294196136035",
+"cuit": "30574876474",
+"prov": "AUTOPISTAS URBANAS S. A.",
+"total": 64276.35,
+"nc": false
+},
+"00758_03584935": {
+"fecha": "2026-07-16",
+"tipo": "Factura B",
+"num": "00758-03584935",
+"cae": "86294598886870",
+"cuit": "30663498513",
+"prov": "GRUPO CONCESIONARIO DEL OESTE SA",
+"total": 33801.25,
+"nc": false
+},
+"00071_00191424": {
+"fecha": "2026-07-25",
+"tipo": "Factura B",
+"num": "00071-00191424",
+"cae": "86305486228926",
+"cuit": "30546741253",
+"prov": "OSDE ORGANIZACION DE SERVICIOS DIRECTOS EMPRESARIOS",
+"total": 321795.76,
+"nc": false
+},
+"00015_00116074": {
+"fecha": "2026-07-26",
+"tipo": "Factura B",
+"num": "00015-00116074",
+"cae": "86305465034462",
+"cuit": "30714358797",
+"prov": "OPCION SEGUROS S.A.",
+"total": 27374.99,
+"nc": false
+},
+"00001_00000373": {
+"fecha": "2026-07-28",
+"tipo": "Factura C",
+"num": "00001-00000373",
+"cae": "86305837795418",
+"cuit": "27429501429",
+"prov": "FORTI AYELEN",
+"total": 70000.0,
+"nc": false
+},
+"00012_00014203": {
+"fecha": "2026-07-31",
+"tipo": "Factura A",
+"num": "00012-00014203",
+"cae": "86316358215681",
+"cuit": "30715729985",
+"prov": "MUYLINDA S.R.L.",
+"total": 118199.94,
+"nc": false
+}
+},
+"Ayelen": {
+"00097_07904213": {
+"fecha": "2026-01-01",
+"tipo": "Factura C",
+"num": "00097-07904213",
+"cae": "75528997228938",
+"cuit": "30590354798",
+"prov": "ASOCIACION MUTUAL SANCOR SALUD",
+"total": 85045.1,
+"nc": false
+},
+"00002_00000073": {
+"fecha": "2026-01-13",
+"tipo": "Nota de Crédito C",
+"num": "00002-00000073",
+"cae": "76021701935991",
+"cuit": "20394608441",
+"prov": "BRAVO ADAM GABRIEL",
+"total": 42750.0,
+"nc": true
+},
+"00001_03534382": {
+"fecha": "2026-01-14",
+"tipo": "Factura A",
+"num": "00001-03534382",
+"cae": "86030085020522",
+"cuit": "30715686054",
+"prov": "MELI LOG SRL",
+"total": 662450.7,
+"nc": false
+},
+"00057_00498828": {
+"fecha": "2026-01-14",
+"tipo": "Factura A",
+"num": "00057-00498828",
+"cae": "86030087549008",
+"cuit": "30703088534",
+"prov": "MERCADOLIBRE S.R.L.",
+"total": 2266597.58,
+"nc": false
+},
+"00001_01165011": {
+"fecha": "2026-01-14",
+"tipo": "Nota de Crédito A",
+"num": "00001-01165011",
+"cae": "86030104258144",
+"cuit": "30715686054",
+"prov": "MELI LOG SRL",
+"total": 313.18,
+"nc": true
+},
+"00058_00241195": {
+"fecha": "2026-01-14",
+"tipo": "Nota de Crédito A",
+"num": "00058-00241195",
+"cae": "86030212236245",
+"cuit": "30703088534",
+"prov": "MERCADOLIBRE S.R.L.",
+"total": 24766.15,
+"nc": true
+},
+"00002_00000442": {
+"fecha": "2026-01-17",
+"tipo": "Factura C",
+"num": "00002-00000442",
+"cae": "86030329903968",
+"cuit": "27269864724",
+"prov": "CALDERON FERNANDA BETINA",
+"total": 112900.0,
+"nc": false
+},
+"00097_08052973": {
+"fecha": "2026-02-01",
+"tipo": "Factura C",
+"num": "00097-08052973",
+"cae": "86051841753274",
+"cuit": "30590354798",
+"prov": "ASOCIACION MUTUAL SANCOR SALUD",
+"total": 57524.17,
+"nc": false
+},
+"00004_00184907": {
+"fecha": "2026-02-04",
+"tipo": "Factura B",
+"num": "00004-00184907",
+"cae": "86052620754389",
+"cuit": "30716748371",
+"prov": "MFLFTP",
+"total": 8430.99,
+"nc": false
+},
+"00721_00014397": {
+"fecha": "2026-02-11",
+"tipo": "?",
+"num": "00721-00014397",
+"cae": "86063555295172",
+"cuit": "30653764819",
+"prov": "ESSENTIAL S A",
+"total": 51519.36,
+"nc": false
+},
+"00019_00399295": {
+"fecha": "2026-02-14",
+"tipo": "Factura A",
+"num": "00019-00399295",
+"cae": "86074035854729",
+"cuit": "30715686054",
+"prov": "MELI LOG SRL",
+"total": 827496.52,
+"nc": false
+},
+"00057_00532891": {
+"fecha": "2026-02-14",
+"tipo": "Factura A",
+"num": "00057-00532891",
+"cae": "86074033976824",
+"cuit": "30703088534",
+"prov": "MERCADOLIBRE S.R.L.",
+"total": 2469911.51,
+"nc": false
+},
+"00018_00121590": {
+"fecha": "2026-02-14",
+"tipo": "Nota de Crédito A",
+"num": "00018-00121590",
+"cae": "86074042988585",
+"cuit": "30715686054",
+"prov": "MELI LOG SRL",
+"total": 7131.47,
+"nc": true
+},
+"00058_00260552": {
+"fecha": "2026-02-14",
+"tipo": "Nota de Crédito A",
+"num": "00058-00260552",
+"cae": "86074093443204",
+"cuit": "30703088534",
+"prov": "MERCADOLIBRE S.R.L.",
+"total": 9532.3,
+"nc": true
+},
+"00097_08198720": {
+"fecha": "2026-03-01",
+"tipo": "Factura C",
+"num": "00097-08198720",
+"cae": "86095762504162",
+"cuit": "30590354798",
+"prov": "ASOCIACION MUTUAL SANCOR SALUD",
+"total": 91596.17,
+"nc": false
+},
+"00022_00043834": {
+"fecha": "2026-03-02",
+"tipo": "Factura C",
+"num": "00022-00043834",
+"cae": "86095945645993",
+"cuit": "30528772435",
+"prov": "ASOCIACION HIJAS DE NUESTRA SEÑORA DE LA MISERICORDIA",
+"total": 144843.14,
+"nc": false
+},
+"00001_00000433": {
+"fecha": "2026-03-06",
+"tipo": "Factura C",
+"num": "00001-00000433",
+"cae": "86106629807751",
+"cuit": "27271946940",
+"prov": "CALDAS LUCIANA DIAMELA",
+"total": 410900.0,
+"nc": false
+},
+"00001_00000431": {
+"fecha": "2026-03-06",
+"tipo": "Factura C",
+"num": "00001-00000431",
+"cae": "86106620830665",
+"cuit": "27271946940",
+"prov": "CALDAS LUCIANA DIAMELA",
+"total": 1302400.0,
+"nc": false
+},
+"00001_00000432": {
+"fecha": "2026-03-06",
+"tipo": "Factura C",
+"num": "00001-00000432",
+"cae": "86106629273675",
+"cuit": "27271946940",
+"prov": "CALDAS LUCIANA DIAMELA",
+"total": 1085000.0,
+"nc": false
+},
+"00018_00425762": {
+"fecha": "2026-03-14",
+"tipo": "Factura A",
+"num": "00018-00425762",
+"cae": "86117749497687",
+"cuit": "30715686054",
+"prov": "MELI LOG SRL",
+"total": 510690.01,
+"nc": false
+},
+"00057_00567334": {
+"fecha": "2026-03-14",
+"tipo": "Factura A",
+"num": "00057-00567334",
+"cae": "86117744770067",
+"cuit": "30703088534",
+"prov": "MERCADOLIBRE S.R.L.",
+"total": 1240040.6,
+"nc": false
+},
+"00001_01181300": {
+"fecha": "2026-03-14",
+"tipo": "Nota de Crédito A",
+"num": "00001-01181300",
+"cae": "86117752768248",
+"cuit": "30715686054",
+"prov": "MELI LOG SRL",
+"total": 6446.17,
+"nc": true
+},
+"00011_02184525": {
+"fecha": "2026-03-14",
+"tipo": "Nota de Crédito A",
+"num": "00011-02184525",
+"cae": "86117756960531",
+"cuit": "30703088534",
+"prov": "MERCADOLIBRE S.R.L.",
+"total": 11847.97,
+"nc": true
+},
+"00001_00001624": {
+"fecha": "2026-03-21",
+"tipo": "Factura C",
+"num": "00001-00001624",
+"cae": "86128564019180",
+"cuit": "20425740661",
+"prov": "CALDAS MATIAS JOSE",
+"total": 35200.0,
+"nc": false
+},
+"00097_08445763": {
+"fecha": "2026-04-01",
+"tipo": "Factura C",
+"num": "00097-08445763",
+"cae": "86139650990480",
+"cuit": "30590354798",
+"prov": "ASOCIACION MUTUAL SANCOR SALUD",
+"total": 82150.83,
+"nc": false
+},
+"00022_00044202": {
+"fecha": "2026-04-01",
+"tipo": "Factura C",
+"num": "00022-00044202",
+"cae": "86139909810320",
+"cuit": "30528772435",
+"prov": "ASOCIACION HIJAS DE NUESTRA SEÑORA DE LA MISERICORDIA",
+"total": 152049.43,
+"nc": false
+},
+"00018_00452080": {
+"fecha": "2026-04-14",
+"tipo": "Factura A",
+"num": "00018-00452080",
+"cae": "86161810267068",
+"cuit": "30715686054",
+"prov": "MELI LOG SRL",
+"total": 1252776.47,
+"nc": false
+},
+"00058_00604419": {
+"fecha": "2026-04-14",
+"tipo": "Factura A",
+"num": "00058-00604419",
+"cae": "86161814668841",
+"cuit": "30703088534",
+"prov": "MERCADOLIBRE S.R.L.",
+"total": 2541012.35,
+"nc": false
+},
+"00011_02204212": {
+"fecha": "2026-04-14",
+"tipo": "Nota de Crédito A",
+"num": "00011-02204212",
+"cae": "86161819624125",
+"cuit": "30703088534",
+"prov": "MERCADOLIBRE S.R.L.",
+"total": 11594.63,
+"nc": true
+},
+"00022_00044802": {
+"fecha": "2026-04-30",
+"tipo": "Factura C",
+"num": "00022-00044802",
+"cae": "86183649698268",
+"cuit": "30528772435",
+"prov": "ASOCIACION HIJAS DE NUESTRA",
+"total": 156215.56,
+"nc": false
+},
+"00097_08628919": {
+"fecha": "2026-05-01",
+"tipo": "Factura C",
+"num": "00097-08628919",
+"cae": "86183603287118",
+"cuit": "30590354798",
+"prov": "ASOCIACION MUTUAL SANCOR SALUD",
+"total": 87627.31,
+"nc": false
+},
+"00012_00013257": {
+"fecha": "2026-05-04",
+"tipo": "Factura A",
+"num": "00012-00013257",
+"cae": "86184119780898",
+"cuit": "30715729985",
+"prov": "MUYLINDA S.R.L.",
+"total": 341000.2,
+"nc": false
+},
+"00552_00165249": {
+"fecha": "2026-05-08",
+"tipo": "Factura B",
+"num": "00552-00165249",
+"cae": "86194776053669",
+"cuit": "30696170580",
+"prov": "AEROPUERTOS ARGENTINA 2000 S A",
+"total": 146250.0,
+"nc": false
+},
+"00001_00001558": {
+"fecha": "2026-05-12",
+"tipo": "?",
+"num": "00001-00001558",
+"cae": "86195301250926",
+"cuit": "27301360121",
+"prov": "SORROCHE PAOLA INES",
+"total": 42600.0,
+"nc": false
+},
+"00001_07891311": {
+"fecha": "2026-05-14",
+"tipo": "Factura B",
+"num": "00001-07891311",
+"cae": "86205924447900",
+"cuit": "30715686054",
+"prov": "MELI LOG SRL",
+"total": 1347699.73,
+"nc": false
+},
+"00078_02690483": {
+"fecha": "2026-05-14",
+"tipo": "Factura B",
+"num": "00078-02690483",
+"cae": "86205928408445",
+"cuit": "30703088534",
+"prov": "MERCADOLIBRE S.R.L.",
+"total": 20381.47,
+"nc": false
+},
+"00011_12326012": {
+"fecha": "2026-05-14",
+"tipo": "Factura B",
+"num": "00011-12326012",
+"cae": "86205925113054",
+"cuit": "30703088534",
+"prov": "MERCADOLIBRE S.R.L.",
+"total": 3536939.7,
+"nc": false
+},
+"00058_00074749": {
+"fecha": "2026-05-14",
+"tipo": "Nota de Crédito B",
+"num": "00058-00074749",
+"cae": "86205645083768",
+"cuit": "30703088534",
+"prov": "MERCADOLIBRE S.R.L.",
+"total": 11078.24,
+"nc": true
+},
+"00078_00700195": {
+"fecha": "2026-05-29",
+"tipo": "Factura A",
+"num": "00078-00700195",
+"cae": "86227822060232",
+"cuit": "30703088534",
+"prov": "MERCADOLIBRE S.R.L.",
+"total": 20381.47,
+"nc": false
+},
+"00011_04949035": {
+"fecha": "2026-05-29",
+"tipo": "Factura A",
+"num": "00011-04949035",
+"cae": "86228216149992",
+"cuit": "30703088534",
+"prov": "MERCADOLIBRE S.R.L.",
+"total": 3536939.7,
+"nc": false
+},
+"00058_00321170": {
+"fecha": "2026-05-29",
+"tipo": "?",
+"num": "00058-00321170",
+"cae": "86227841207679",
+"cuit": "30703088534",
+"prov": "MERCADOLIBRE S.R.L.",
+"total": 11078.24,
+"nc": false
+},
+"00058_00434856": {
+"fecha": "2026-05-29",
+"tipo": "Factura B",
+"num": "00058-00434856",
+"cae": "86227731394854",
+"cuit": "30703088534",
+"prov": "MERCADOLIBRE S.R.L.",
+"total": 11078.24,
+"nc": false
+},
+"00078_02732025": {
+"fecha": "2026-05-29",
+"tipo": "Factura B",
+"num": "00078-02732025",
+"cae": "86228010378217",
+"cuit": "30703088534",
+"prov": "MERCADOLIBRE S.R.L.",
+"total": 40762.94,
+"nc": false
+},
+"00078_00085564": {
+"fecha": "2026-05-29",
+"tipo": "Nota de Crédito B",
+"num": "00078-00085564",
+"cae": "86227770841452",
+"cuit": "30703088534",
+"prov": "MERCADOLIBRE S.R.L.",
+"total": 40762.94,
+"nc": true
+},
+"00011_01472576": {
+"fecha": "2026-05-29",
+"tipo": "Nota de Crédito B",
+"num": "00011-01472576",
+"cae": "86227784532466",
+"cuit": "30703088534",
+"prov": "MERCADOLIBRE S.R.L.",
+"total": 3536939.7,
+"nc": true
+},
+"00001_00852923": {
+"fecha": "2026-05-29",
+"tipo": "Nota de Crédito B",
+"num": "00001-00852923",
+"cae": "86227981277802",
+"cuit": "30715686054",
+"prov": "MELI LOG SRL",
+"total": 1347699.73,
+"nc": true
+},
+"00001_03645635": {
+"fecha": "2026-05-31",
+"tipo": "Factura A",
+"num": "00001-03645635",
+"cae": "86228283902501",
+"cuit": "30715686054",
+"prov": "MELI LOG SRL",
+"total": 1347699.73,
+"nc": false
+},
+"00078_00093610": {
+"fecha": "2026-05-31",
+"tipo": "Nota de Crédito B",
+"num": "00078-00093610",
+"cae": "86228021943651",
+"cuit": "30703088534",
+"prov": "MERCADOLIBRE S.R.L.",
+"total": 20381.47,
+"nc": true
+},
+"00097_08752601": {
+"fecha": "2026-06-01",
+"tipo": "Factura C",
+"num": "00097-08752601",
+"cae": "86227377282242",
+"cuit": "30590354798",
+"prov": "ASOCIACION MUTUAL SANCOR SALUD",
+"total": 90191.96,
+"nc": false
+},
+"00022_00045480": {
+"fecha": "2026-06-01",
+"tipo": "Factura C",
+"num": "00022-00045480",
+"cae": "86227883093337",
+"cuit": "30528772435",
+"prov": "ASOCIACION HIJAS DE NUESTRA SEÑORA DE LA",
+"total": 162029.73,
+"nc": false
+},
+"00077_00751031": {
+"fecha": "2026-06-14",
+"tipo": "Factura A",
+"num": "00077-00751031",
+"cae": "86249824303083",
+"cuit": "30703088534",
+"prov": "MERCADOLIBRE S.R.L.",
+"total": 15988.01,
+"nc": false
+},
+"00018_00506014": {
+"fecha": "2026-06-14",
+"tipo": "Factura A",
+"num": "00018-00506014",
+"cae": "86249827225286",
+"cuit": "30715686054",
+"prov": "MELI LOG SRL",
+"total": 1278372.01,
+"nc": false
+},
+"00058_00683184": {
+"fecha": "2026-06-14",
+"tipo": "Factura A",
+"num": "00058-00683184",
+"cae": "86249821615599",
+"cuit": "30703088534",
+"prov": "MERCADOLIBRE S.R.L.",
+"total": 2191595.8,
+"nc": false
+},
+"00019_00154384": {
+"fecha": "2026-06-14",
+"tipo": "Nota de Crédito A",
+"num": "00019-00154384",
+"cae": "86249830701386",
+"cuit": "30715686054",
+"prov": "MELI LOG SRL",
+"total": 18688.75,
+"nc": true
+},
+"00058_00337025": {
+"fecha": "2026-06-14",
+"tipo": "Nota de Crédito A",
+"num": "00058-00337025",
+"cae": "86249841165803",
+"cuit": "30703088534",
+"prov": "MERCADOLIBRE S.R.L.",
+"total": 39108.83,
+"nc": true
+},
+"00552_00178649": {
+"fecha": "2026-06-25",
+"tipo": "Factura B",
+"num": "00552-00178649",
+"cae": "86261078238631",
+"cuit": "30696170580",
+"prov": "AEROPUERTOS ARGENTINA 2000 S A",
+"total": 146250.0,
+"nc": false
+},
+"00097_09003205": {
+"fecha": "2026-07-01",
+"tipo": "Factura C",
+"num": "00097-09003205",
+"cae": "86261766884596",
+"cuit": "30590354798",
+"prov": "ASOCIACION MUTUAL SANCOR SALUD",
+"total": 152715.69,
+"nc": false
+},
+"00022_00046078": {
+"fecha": "2026-07-01",
+"tipo": "Factura C",
+"num": "00022-00046078",
+"cae": "86261991546187",
+"cuit": "30528772435",
+"prov": "ASOCIACION HIJAS DE NUESTRA SEÑORA DE LA MISERICORDIA",
+"total": 162029.73,
+"nc": false
+},
+"00019_00531688": {
+"fecha": "2026-07-14",
+"tipo": "Factura A",
+"num": "00019-00531688",
+"cae": "86284007380281",
+"cuit": "30715686054",
+"prov": "MELI LOG SRL",
+"total": 599660.93,
+"nc": false
+},
+"00058_00760133": {
+"fecha": "2026-07-14",
+"tipo": "Factura A",
+"num": "00058-00760133",
+"cae": "86284017180457",
+"cuit": "30703088534",
+"prov": "MERCADOLIBRE S.R.L.",
+"total": 1226816.3,
+"nc": false
+},
+"00057_00357785": {
+"fecha": "2026-07-14",
+"tipo": "Nota de Crédito A",
+"num": "00057-00357785",
+"cae": "86284031991210",
+"cuit": "30703088534",
+"prov": "MERCADOLIBRE S.R.L.",
+"total": 16338.93,
+"nc": true
+},
+"00019_00163093": {
+"fecha": "2026-07-14",
+"tipo": "Nota de Crédito A",
+"num": "00019-00163093",
+"cae": "86284020177331",
+"cuit": "30715686054",
+"prov": "MELI LOG SRL",
+"total": 14245.29,
+"nc": true
+},
+"00001_00004281": {
+"fecha": "2026-07-20",
+"tipo": "Factura B",
+"num": "00001-00004281",
+"cae": "86294664638679",
+"cuit": "30716304198",
+"prov": "RD PRINTER SERVICE S.R.L.",
+"total": 84560.85,
+"nc": false
+},
+"00010_00007558": {
+"fecha": "2026-07-20",
+"tipo": "Factura B",
+"num": "00010-00007558",
+"cae": "86294896453817",
+"cuit": "20260967208",
+"prov": "PERROTA CHRISTIAN MARCELO",
+"total": 37440.0,
+"nc": false
+},
+"00015_00088212": {
+"fecha": "2026-07-30",
+"tipo": "Factura B",
+"num": "00015-00088212",
+"cae": "86316080399369",
+"cuit": "30708890762",
+"prov": "MTS S R L",
+"total": 51403.78,
+"nc": false
+},
+"00097_09100341": {
+"fecha": "2026-08-01",
+"tipo": "Factura C",
+"num": "00097-09100341",
+"cae": "86305962143117",
+"cuit": "30590354798",
+"prov": "ASOCIACION MUTUAL SANCOR SALUD",
+"total": 65227.03,
+"nc": false
+},
+"00022_00046671": {
+"fecha": "2026-08-03",
+"tipo": "Factura C",
+"num": "00022-00046671",
+"cae": "86316674242326",
+"cuit": "30528772435",
+"prov": "ASOCIACION HIJAS DE NUESTRA SEÑORA DE LA MISERICORDIA",
+"total": 169023.31,
+"nc": false
+},
+"00009_00001827": {
+"fecha": "2026-08-05",
+"tipo": "Factura B",
+"num": "00009-00001827",
+"cae": "86317006759275",
+"cuit": "27361661821",
+"prov": "SUAREZ ITATI VANINA CELESTE",
+"total": 105000.0,
+"nc": false
+},
+"00003_00002639": {
+"fecha": "2026-08-11",
+"tipo": "Factura B",
+"num": "00003-00002639",
+"cae": "86327920348750",
+"cuit": "20231020528",
+"prov": "GERONIMI CRISTIAN DARIO",
+"total": 79990.0,
+"nc": false
+}
+},
+"Luciana": {
+"00019_00372642": {
+"fecha": "2026-01-14",
+"tipo": "Factura A",
+"num": "00019-00372642",
+"cae": "86030073921396",
+"cuit": "30715686054",
+"prov": "MELI LOG SRL",
+"total": 512468.02,
+"nc": false
+},
+"00057_00498147": {
+"fecha": "2026-01-14",
+"tipo": "Factura A",
+"num": "00057-00498147",
+"cae": "86030074544173",
+"cuit": "30703088534",
+"prov": "MERCADOLIBRE S.R.L.",
+"total": 776014.55,
+"nc": false
+},
+"00008_00002098": {
+"fecha": "2026-01-20",
+"tipo": "Factura B",
+"num": "00008-00002098",
+"cae": "86041104107223",
+"cuit": "27330978010",
+"prov": "LOPEZ VANINA PAOLA",
+"total": 1220534.53,
+"nc": false
+},
+"00005_00000396": {
+"fecha": "2026-01-29",
+"tipo": "Factura C",
+"num": "00005-00000396",
+"cae": "86051797093452",
+"cuit": "27207120931",
+"prov": "SARKIS MARIA SILVINA",
+"total": 44000.0,
+"nc": false
+},
+"00018_00400098": {
+"fecha": "2026-02-14",
+"tipo": "Factura A",
+"num": "00018-00400098",
+"cae": "86074040072146",
+"cuit": "30715686054",
+"prov": "MELI LOG SRL",
+"total": 500616.56,
+"nc": false
+},
+"00058_00533480": {
+"fecha": "2026-02-14",
+"tipo": "Factura A",
+"num": "00058-00533480",
+"cae": "86074041072422",
+"cuit": "30703088534",
+"prov": "MERCADOLIBRE S.R.L.",
+"total": 1268201.75,
+"nc": false
+},
+"00058_00260416": {
+"fecha": "2026-02-14",
+"tipo": "Nota de Crédito A",
+"num": "00058-00260416",
+"cae": "86074048776969",
+"cuit": "30703088534",
+"prov": "MERCADOLIBRE S.R.L.",
+"total": 5511.41,
+"nc": true
+},
+"00009_00023479": {
+"fecha": "2026-02-14",
+"tipo": "Factura B",
+"num": "00009-00023479",
+"cae": "86073880509358",
+"cuit": "33718006169",
+"prov": "HUNTER GROUP S.R.L.",
+"total": 38783.0,
+"nc": false
+},
+"00005_00001344": {
+"fecha": "2026-02-27",
+"tipo": "Factura B",
+"num": "00005-00001344",
+"cae": "86106981458287",
+"cuit": "27330978010",
+"prov": "LOPEZ VANINA PAOLA",
+"total": 149430.0,
+"nc": false
+},
+"00005_00000398": {
+"fecha": "2026-02-28",
+"tipo": "Factura C",
+"num": "00005-00000398",
+"cae": "86095669294378",
+"cuit": "27207120931",
+"prov": "SARKIS MARIA SILVINA",
+"total": 44000.0,
+"nc": false
+},
+"00001_00000297": {
+"fecha": "2026-03-06",
+"tipo": "Factura C",
+"num": "00001-00000297",
+"cae": "86106617747966",
+"cuit": "27429501429",
+"prov": "FORTI AYELEN",
+"total": 965500.0,
+"nc": false
+},
+"00001_03585516": {
+"fecha": "2026-03-14",
+"tipo": "Factura A",
+"num": "00001-03585516",
+"cae": "86117745218953",
+"cuit": "30715686054",
+"prov": "MELI LOG SRL",
+"total": 1016082.99,
+"nc": false
+},
+"00011_04862954": {
+"fecha": "2026-03-14",
+"tipo": "Factura A",
+"num": "00011-04862954",
+"cae": "86117749453110",
+"cuit": "30703088534",
+"prov": "MERCADOLIBRE S.R.L.",
+"total": 3086946.34,
+"nc": false
+},
+"00012_00012863": {
+"fecha": "2026-03-20",
+"tipo": "Factura A",
+"num": "00012-00012863",
+"cae": "86128428520493",
+"cuit": "30715729985",
+"prov": "MUYLINDA S.R.L.",
+"total": 145539.97,
+"nc": false
+},
+"00005_00000399": {
+"fecha": "2026-03-28",
+"tipo": "Factura C",
+"num": "00005-00000399",
+"cae": "86139327367533",
+"cuit": "27207120931",
+"prov": "SARKIS MARIA SILVINA",
+"total": 44000.0,
+"nc": false
+},
+"00011_04900140": {
+"fecha": "2026-04-14",
+"tipo": "Factura A",
+"num": "00011-04900140",
+"cae": "86161815224563",
+"cuit": "30703088534",
+"prov": "MERCADOLIBRE S.R.L.",
+"total": 2672368.53,
+"nc": false
+},
+"00018_00452131": {
+"fecha": "2026-04-14",
+"tipo": "Factura A",
+"num": "00018-00452131",
+"cae": "86161810619440",
+"cuit": "30715686054",
+"prov": "MELI LOG SRL",
+"total": 941732.28,
+"nc": false
+},
+"00057_00297702": {
+"fecha": "2026-04-14",
+"tipo": "Nota de Crédito A",
+"num": "00057-00297702",
+"cae": "86161819019497",
+"cuit": "30703088534",
+"prov": "MERCADOLIBRE S.R.L.",
+"total": 3831.56,
+"nc": true
+},
+"00005_00000401": {
+"fecha": "2026-04-29",
+"tipo": "Factura C",
+"num": "00005-00000401",
+"cae": "86173515813893",
+"cuit": "27207120931",
+"prov": "SARKIS MARIA SILVINA",
+"total": 48000.0,
+"nc": false
+},
+"00057_00418411": {
+"fecha": "2026-05-14",
+"tipo": "Factura B",
+"num": "00057-00418411",
+"cae": "86205628548104",
+"cuit": "30703088534",
+"prov": "MERCADOLIBRE S.R.L.",
+"total": 2404692.67,
+"nc": false
+},
+"00018_00347514": {
+"fecha": "2026-05-14",
+"tipo": "Factura B",
+"num": "00018-00347514",
+"cae": "86205631765308",
+"cuit": "30715686054",
+"prov": "MELI LOG SRL",
+"total": 875016.59,
+"nc": false
+},
+"00058_00075075": {
+"fecha": "2026-05-14",
+"tipo": "Nota de Crédito B",
+"num": "00058-00075075",
+"cae": "86205654113064",
+"cuit": "30703088534",
+"prov": "MERCADOLIBRE S.R.L.",
+"total": 8899.14,
+"nc": true
+},
+"00057_00641031": {
+"fecha": "2026-05-29",
+"tipo": "Factura A",
+"num": "00057-00641031",
+"cae": "86228183386370",
+"cuit": "30703088534",
+"prov": "MERCADOLIBRE S.R.L.",
+"total": 2404692.67,
+"nc": false
+},
+"00058_00321528": {
+"fecha": "2026-05-29",
+"tipo": "Nota de Crédito A",
+"num": "00058-00321528",
+"cae": "86227848881833",
+"cuit": "30703088534",
+"prov": "MERCADOLIBRE S.R.L.",
+"total": 8899.14,
+"nc": true
+},
+"00058_00436508": {
+"fecha": "2026-05-29",
+"tipo": "Factura B",
+"num": "00058-00436508",
+"cae": "86227757654066",
+"cuit": "30703088534",
+"prov": "MERCADOLIBRE S.R.L.",
+"total": 8899.14,
+"nc": false
+},
+"00057_00094312": {
+"fecha": "2026-05-29",
+"tipo": "Nota de Crédito B",
+"num": "00057-00094312",
+"cae": "86227769945525",
+"cuit": "30703088534",
+"prov": "MERCADOLIBRE S.R.L.",
+"total": 2404692.67,
+"nc": true
+},
+"00018_00052443": {
+"fecha": "2026-05-29",
+"tipo": "Nota de Crédito B",
+"num": "00018-00052443",
+"cae": "86227960744231",
+"cuit": "30715686054",
+"prov": "MELI LOG SRL",
+"total": 875016.59,
+"nc": true
+},
+"00006_00000194": {
+"fecha": "2026-05-29",
+"tipo": "Factura C",
+"num": "00006-00000194",
+"cae": "86227469044914",
+"cuit": "27349821686",
+"prov": "CHAVES YESSICA SOLEDAD",
+"total": 59000.0,
+"nc": false
+},
+"00018_00488766": {
+"fecha": "2026-05-31",
+"tipo": "Factura A",
+"num": "00018-00488766",
+"cae": "86228286331788",
+"cuit": "30715686054",
+"prov": "MELI LOG SRL",
+"total": 875016.59,
+"nc": false
+},
+"00011_04978507": {
+"fecha": "2026-06-14",
+"tipo": "Factura A",
+"num": "00011-04978507",
+"cae": "86249820518222",
+"cuit": "30703088534",
+"prov": "MERCADOLIBRE S.R.L.",
+"total": 2294474.45,
+"nc": false
+},
+"00023_03615858": {
+"fecha": "2026-06-14",
+"tipo": "Factura A",
+"num": "00023-03615858",
+"cae": "86249825614974",
+"cuit": "30703088534",
+"prov": "MERCADOLIBRE S.R.L.",
+"total": 11494.58,
+"nc": false
+},
+"00018_00504579": {
+"fecha": "2026-06-14",
+"tipo": "Factura A",
+"num": "00018-00504579",
+"cae": "86249820298929",
+"cuit": "30715686054",
+"prov": "MELI LOG SRL",
+"total": 793362.21,
+"nc": false
+},
+"00011_02243704": {
+"fecha": "2026-06-14",
+"tipo": "?",
+"num": "00011-02243704",
+"cae": "86249845568073",
+"cuit": "",
+"prov": "",
+"total": 7369.38,
+"nc": false
+},
+"00001_00000360": {
+"fecha": "2026-06-27",
+"tipo": "Factura C",
+"num": "00001-00000360",
+"cae": "86261479013683",
+"cuit": "27429501429",
+"prov": "FORTI AYELEN",
+"total": 98000.0,
+"nc": false
+},
+"00005_00000403": {
+"fecha": "2026-06-30",
+"tipo": "Factura C",
+"num": "00005-00000403",
+"cae": "86261741121669",
+"cuit": "27207120931",
+"prov": "SARKIS MARIA SILVINA",
+"total": 58000.0,
+"nc": false
+},
+"00007_00013704": {
+"fecha": "2026-07-06",
+"tipo": "Factura B",
+"num": "00007-00013704",
+"cae": "86272880544652",
+"cuit": "23353169599",
+"prov": "LEVY MARCOS GABRIEL",
+"total": 9839.55,
+"nc": false
+},
+"00057_00764130": {
+"fecha": "2026-07-14",
+"tipo": "Factura A",
+"num": "00057-00764130",
+"cae": "86284027516316",
+"cuit": "30703088534",
+"prov": "MERCADOLIBRE S.R.L.",
+"total": 1915448.55,
+"nc": false
+},
+"00018_00531861": {
+"fecha": "2026-07-14",
+"tipo": "Factura A",
+"num": "00018-00531861",
+"cae": "86284008801027",
+"cuit": "30715686054",
+"prov": "MELI LOG SRL",
+"total": 504898.05,
+"nc": false
+},
+"00057_00358625": {
+"fecha": "2026-07-14",
+"tipo": "Nota de Crédito A",
+"num": "00057-00358625",
+"cae": "86284041674046",
+"cuit": "30703088534",
+"prov": "MERCADOLIBRE S.R.L.",
+"total": 26232.65,
+"nc": true
+},
+"02104_00156127": {
+"fecha": "2026-07-21",
+"tipo": "Factura B",
+"num": "02104-00156127",
+"cae": "86294746715791",
+"cuit": "30616556963",
+"prov": "DIFFUPAR SA",
+"total": 54972.5,
+"nc": false
+},
+"02104_00156130": {
+"fecha": "2026-07-21",
+"tipo": "Factura B",
+"num": "02104-00156130",
+"cae": "86294746754750",
+"cuit": "30616556963",
+"prov": "DIFFUPAR SA",
+"total": 54972.5,
+"nc": false
+},
+"02104_00156132": {
+"fecha": "2026-07-21",
+"tipo": "Factura B",
+"num": "02104-00156132",
+"cae": "86294746790596",
+"cuit": "30616556963",
+"prov": "DIFFUPAR SA",
+"total": 54972.5,
+"nc": false
+},
+"02104_00156133": {
+"fecha": "2026-07-21",
+"tipo": "Factura B",
+"num": "02104-00156133",
+"cae": "86294746803696",
+"cuit": "30616556963",
+"prov": "DIFFUPAR SA",
+"total": 54972.5,
+"nc": false
+},
+"02104_00156135": {
+"fecha": "2026-07-21",
+"tipo": "?",
+"num": "02104-00156135",
+"cae": "86294746819394",
+"cuit": "",
+"prov": "",
+"total": 54972.5,
+"nc": false
+},
+"02104_00156154": {
+"fecha": "2026-07-21",
+"tipo": "Factura B",
+"num": "02104-00156154",
+"cae": "86294747080435",
+"cuit": "30616556963",
+"prov": "DIFFUPAR SA",
+"total": 54972.5,
+"nc": false
+},
+"02104_00156171": {
+"fecha": "2026-07-21",
+"tipo": "Factura B",
+"num": "02104-00156171",
+"cae": "86294747483478",
+"cuit": "30616556963",
+"prov": "DIFFUPAR SA",
+"total": 54972.5,
+"nc": false
+},
+"03104_00015645": {
+"fecha": "2026-07-21",
+"tipo": "Factura B",
+"num": "03104-00015645",
+"cae": "86283399248391",
+"cuit": "30616556963",
+"prov": "DIFFUPAR SA",
+"total": 54972.5,
+"nc": false
+},
+"00071_00200814": {
+"fecha": "2026-07-25",
+"tipo": "Factura B",
+"num": "00071-00200814",
+"cae": "86305487319773",
+"cuit": "30546741253",
+"prov": "OSDE ORGANIZACION DE SERVICIOS DIRECTOS EMPRESARIOS",
+"total": 200414.47,
+"nc": false
+},
+"00721_00018237": {
+"fecha": "2026-07-30",
+"tipo": "Factura B",
+"num": "00721-00018237",
+"cae": "86316029570566",
+"cuit": "30653764819",
+"prov": "ESSENTIAL S A",
+"total": 239998.0,
+"nc": false
+},
+"00005_00000405": {
+"fecha": "2026-07-31",
+"tipo": "Factura C",
+"num": "00005-00000405",
+"cae": "86316198626928",
+"cuit": "27207120931",
+"prov": "SARKIS MARIA SILVINA",
+"total": 58000.0,
+"nc": false
+}
+},
+"Matias": {
+"00104_11932435": {
+"fecha": "2026-01-14",
+"tipo": "Factura A",
+"num": "00104-11932435",
+"cae": "76022859139960",
+"cuit": "30715804812",
+"prov": "CORREDORES VIALES SOCIEDAD ANONIMA",
+"total": 3868.74,
+"nc": false
+},
+"00104_12003438": {
+"fecha": "2026-01-14",
+"tipo": "Factura A",
+"num": "00104-12003438",
+"cae": "76022908290312",
+"cuit": "30715804812",
+"prov": "CORREDORES VIALES SOCIEDAD ANONIMA",
+"total": 15786.95,
+"nc": false
+},
+"00057_00498065": {
+"fecha": "2026-01-14",
+"tipo": "Factura A",
+"num": "00057-00498065",
+"cae": "86030073794508",
+"cuit": "30703088534",
+"prov": "MERCADOLIBRE S.R.L.",
+"total": 2731669.48,
+"nc": false
+},
+"00001_03533774": {
+"fecha": "2026-01-14",
+"tipo": "Factura A",
+"num": "00001-03533774",
+"cae": "86030073267439",
+"cuit": "30715686054",
+"prov": "MELI LOG SRL",
+"total": 988129.76,
+"nc": false
+},
+"00011_02146299": {
+"fecha": "2026-01-14",
+"tipo": "Nota de Crédito A",
+"num": "00011-02146299",
+"cae": "86030112026985",
+"cuit": "30703088534",
+"prov": "MERCADOLIBRE S.R.L.",
+"total": 27027.04,
+"nc": true
+},
+"00001_00000810": {
+"fecha": "2026-01-15",
+"tipo": "Factura C",
+"num": "00001-00000810",
+"cae": "86030064167920",
+"cuit": "20233249034",
+"prov": "CAVALLO SEBASTIAN GASTON",
+"total": 72000.0,
+"nc": false
+},
+"00629_55158751": {
+"fecha": "2026-01-16",
+"tipo": "Factura B",
+"num": "00629-55158751",
+"cae": "36023601706190",
+"cuit": "30663498513",
+"prov": "GRUPO CONCESIONARIO DEL OESTE SA",
+"total": 43903.71,
+"nc": false
+},
+"00104_12179293": {
+"fecha": "2026-01-29",
+"tipo": "Factura A",
+"num": "00104-12179293",
+"cae": "86051767850123",
+"cuit": "30715804812",
+"prov": "CORREDORES VIALES SOCIEDAD ANONIMA",
+"total": 13155.79,
+"nc": false
+},
+"00104_12328471": {
+"fecha": "2026-01-30",
+"tipo": "Factura A",
+"num": "00104-12328471",
+"cae": "86051844335283",
+"cuit": "30715804812",
+"prov": "CORREDORES VIALES SOCIEDAD ANONIMA",
+"total": 1289.58,
+"nc": false
+},
+"00600_00020322": {
+"fecha": "2026-02-12",
+"tipo": "?",
+"num": "00600-00020322",
+"cae": "86073663360528",
+"cuit": "30684923486",
+"prov": "V T V NOROESTE SA",
+"total": 97057.65,
+"nc": false
+},
+"00001_00000829": {
+"fecha": "2026-02-13",
+"tipo": "Factura C",
+"num": "00001-00000829",
+"cae": "86073822243986",
+"cuit": "20233249034",
+"prov": "CAVALLO SEBASTIAN GASTON",
+"total": 72000.0,
+"nc": false
+},
+"00104_12518861": {
+"fecha": "2026-02-14",
+"tipo": "Factura A",
+"num": "00104-12518861",
+"cae": "86073990709084",
+"cuit": "30715804812",
+"prov": "CORREDORES VIALES SOCIEDAD ANONIMA",
+"total": 15786.95,
+"nc": false
+},
+"00011_04827999": {
+"fecha": "2026-02-14",
+"tipo": "Factura A",
+"num": "00011-04827999",
+"cae": "86074035138244",
+"cuit": "30703088534",
+"prov": "MERCADOLIBRE S.R.L.",
+"total": 1488236.12,
+"nc": false
+},
+"00019_00398891": {
+"fecha": "2026-02-14",
+"tipo": "Factura A",
+"num": "00019-00398891",
+"cae": "86074034137807",
+"cuit": "30715686054",
+"prov": "MELI LOG SRL",
+"total": 676733.75,
+"nc": false
+},
+"00011_02165616": {
+"fecha": "2026-02-14",
+"tipo": "Nota de Crédito A",
+"num": "00011-02165616",
+"cae": "86074046957319",
+"cuit": "30703088534",
+"prov": "MERCADOLIBRE S.R.L.",
+"total": 17235.9,
+"nc": true
+},
+"00001_01173725": {
+"fecha": "2026-02-14",
+"tipo": "Nota de Crédito A",
+"num": "00001-01173725",
+"cae": "86074042428317",
+"cuit": "30715686054",
+"prov": "MELI LOG SRL",
+"total": 774.43,
+"nc": true
+},
+"00629_56089225": {
+"fecha": "2026-02-16",
+"tipo": "Factura B",
+"num": "00629-56089225",
+"cae": "86063446777345",
+"cuit": "30663498513",
+"prov": "GRUPO CONCESIONARIO DEL OESTE SA",
+"total": 34395.91,
+"nc": false
+},
+"00008_00001474": {
+"fecha": "2026-02-18",
+"tipo": "Factura B",
+"num": "00008-00001474",
+"cae": "86074276413840",
+"cuit": "23319875999",
+"prov": "MARMO DIEGO ALEJANDRO",
+"total": 110000.0,
+"nc": false
+},
+"00015_00117542": {
+"fecha": "2026-02-18",
+"tipo": "Factura B",
+"num": "00015-00117542",
+"cae": "86084438123125",
+"cuit": "30719231191",
+"prov": "AUTOVIA DEL MERCOSUR",
+"total": 1886.87,
+"nc": false
+},
+"00004_01776222": {
+"fecha": "2026-02-23",
+"tipo": "Factura A",
+"num": "00004-01776222",
+"cae": "86084934004598",
+"cuit": "30716620634",
+"prov": "FIRST LABEL S.R.L.",
+"total": 418416.4,
+"nc": false
+},
+"00004_08362590": {
+"fecha": "2026-02-26",
+"tipo": "?",
+"num": "00004-08362590",
+"cae": "86095441963054",
+"cuit": "",
+"prov": "",
+"total": 198300.0,
+"nc": false
+},
+"00004_08362236": {
+"fecha": "2026-02-26",
+"tipo": "Factura B",
+"num": "00004-08362236",
+"cae": "86095439365455",
+"cuit": "30716620634",
+"prov": "FIRST LABEL S.R.L.",
+"total": 198300.0,
+"nc": false
+},
+"00104_12612024": {
+"fecha": "2026-02-27",
+"tipo": "Factura A",
+"num": "00104-12612024",
+"cae": "86095531360914",
+"cuit": "30715804812",
+"prov": "CORREDORES VIALES SOCIEDAD ANONIMA",
+"total": 2579.16,
+"nc": false
+},
+"00050_41208743": {
+"fecha": "2026-02-28",
+"tipo": "Factura B",
+"num": "00050-41208743",
+"cae": "86096295164980",
+"cuit": "30714112836",
+"prov": "AUTOPISTAS DE BUENOS AIRES (AUBASA) SA S. A.",
+"total": 6964.13,
+"nc": false
+},
+"00001_00000298": {
+"fecha": "2026-03-06",
+"tipo": "Factura C",
+"num": "00001-00000298",
+"cae": "86106630667109",
+"cuit": "27429501429",
+"prov": "FORTI AYELEN",
+"total": 666250.0,
+"nc": false
+},
+"00001_00000299": {
+"fecha": "2026-03-06",
+"tipo": "Factura C",
+"num": "00001-00000299",
+"cae": "86106630936809",
+"cuit": "27429501429",
+"prov": "FORTI AYELEN",
+"total": 429460.0,
+"nc": false
+},
+"00005_00009237": {
+"fecha": "2026-03-13",
+"tipo": "Factura B",
+"num": "00005-00009237",
+"cae": "86117477807668",
+"cuit": "20426496179",
+"prov": "NOYA FRANCISCO",
+"total": 78000.0,
+"nc": false
+},
+"00001_02763474": {
+"fecha": "2026-03-13",
+"tipo": "Factura B",
+"num": "00001-02763474",
+"cae": "86118087349216",
+"cuit": "30714928577",
+"prov": "SIMPLEX VILI S. A.",
+"total": 197298.0,
+"nc": false
+},
+"00001_00000842": {
+"fecha": "2026-03-13",
+"tipo": "Factura C",
+"num": "00001-00000842",
+"cae": "86117499539636",
+"cuit": "20233249034",
+"prov": "CAVALLO SEBASTIAN GASTON",
+"total": 84000.0,
+"nc": false
+},
+"00104_12852748": {
+"fecha": "2026-03-14",
+"tipo": "Factura A",
+"num": "00104-12852748",
+"cae": "86117658273484",
+"cuit": "30715804812",
+"prov": "CORREDORES VIALES SOCIEDAD ANONIMA",
+"total": 15681.82,
+"nc": false
+},
+"00019_00426235": {
+"fecha": "2026-03-14",
+"tipo": "Factura A",
+"num": "00019-00426235",
+"cae": "86117750443642",
+"cuit": "30715686054",
+"prov": "MELI LOG SRL",
+"total": 893969.36,
+"nc": false
+},
+"00057_00567448": {
+"fecha": "2026-03-14",
+"tipo": "?",
+"num": "00057-00567448",
+"cae": "86117745440848",
+"cuit": "30703088534",
+"prov": "MERCADOLIBRE S.R.L.",
+"total": 2317896.03,
+"nc": false
+},
+"00001_01181332": {
+"fecha": "2026-03-14",
+"tipo": "Nota de Crédito A",
+"num": "00001-01181332",
+"cae": "86117752899135",
+"cuit": "30715686054",
+"prov": "MELI LOG SRL",
+"total": 6277.26,
+"nc": true
+},
+"00058_00278649": {
+"fecha": "2026-03-14",
+"tipo": "Nota de Crédito A",
+"num": "00058-00278649",
+"cae": "86117756907221",
+"cuit": "30703088534",
+"prov": "MERCADOLIBRE S.R.L.",
+"total": 3605.48,
+"nc": true
+},
+"00629_57000228": {
+"fecha": "2026-03-16",
+"tipo": "Factura B",
+"num": "00629-57000228",
+"cae": "86107154368868",
+"cuit": "30663498513",
+"prov": "GRUPO CONCESIONARIO DEL OESTE SA",
+"total": 9507.8,
+"nc": false
+},
+"00002_00008534": {
+"fecha": "2026-03-27",
+"tipo": "Factura B",
+"num": "00002-00008534",
+"cae": "86139211431802",
+"cuit": "33717180459",
+"prov": "SKYCOM SRL",
+"total": 98625.0,
+"nc": false
+},
+"00104_13002841": {
+"fecha": "2026-03-29",
+"tipo": "Factura A",
+"num": "00104-13002841",
+"cae": "86139423744396",
+"cuit": "30715804812",
+"prov": "CORREDORES VIALES SOCIEDAD ANONIMA",
+"total": 1537.19,
+"nc": false
+},
+"00104_13147423": {
+"fecha": "2026-03-29",
+"tipo": "Factura A",
+"num": "00104-13147423",
+"cae": "86139439524855",
+"cuit": "30715804812",
+"prov": "CORREDORES VIALES SOCIEDAD ANONIMA",
+"total": 1537.19,
+"nc": false
+},
+"00003_00013419": {
+"fecha": "2026-04-07",
+"tipo": "Factura B",
+"num": "00003-00013419",
+"cae": "86140538325542",
+"cuit": "20292504455",
+"prov": "GARCIA FERNANDO DAVID",
+"total": 61000.0,
+"nc": false
+},
+"00004_08954658": {
+"fecha": "2026-04-10",
+"tipo": "Factura B",
+"num": "00004-08954658",
+"cae": "86151057404429",
+"cuit": "30716620634",
+"prov": "FIRST LABEL S.R.L.",
+"total": 128700.0,
+"nc": false
+},
+"00004_08954686": {
+"fecha": "2026-04-10",
+"tipo": "Factura B",
+"num": "00004-08954686",
+"cae": "86151057773409",
+"cuit": "30716620634",
+"prov": "FIRST LABEL S.R.L.",
+"total": 99000.0,
+"nc": false
+},
+"00004_08954700": {
+"fecha": "2026-04-10",
+"tipo": "Factura B",
+"num": "00004-08954700",
+"cae": "86151057957529",
+"cuit": "30716620634",
+"prov": "FIRST LABEL S.R.L.",
+"total": 99000.0,
+"nc": false
+},
+"00004_08954740": {
+"fecha": "2026-04-10",
+"tipo": "Factura B",
+"num": "00004-08954740",
+"cae": "86151058264314",
+"cuit": "30716620634",
+"prov": "FIRST LABEL S.R.L.",
+"total": 108900.0,
+"nc": false
+},
+"00004_08954792": {
+"fecha": "2026-04-10",
+"tipo": "Factura B",
+"num": "00004-08954792",
+"cae": "86151058831437",
+"cuit": "30716620634",
+"prov": "FIRST LABEL S.R.L.",
+"total": 148500.0,
+"nc": false
+},
+"00004_08954909": {
+"fecha": "2026-04-10",
+"tipo": "Factura B",
+"num": "00004-08954909",
+"cae": "86151059601642",
+"cuit": "30716620634",
+"prov": "FIRST LABEL S.R.L.",
+"total": 128700.0,
+"nc": false
+},
+"00104_13256427": {
+"fecha": "2026-04-14",
+"tipo": "Factura A",
+"num": "00104-13256427",
+"cae": "86151582520101",
+"cuit": "30715804812",
+"prov": "CORREDORES VIALES SOCIEDAD ANONIMA",
+"total": 3074.38,
+"nc": false
+},
+"00011_04900218": {
+"fecha": "2026-04-14",
+"tipo": "Factura A",
+"num": "00011-04900218",
+"cae": "86161815690327",
+"cuit": "30703088534",
+"prov": "MERCADOLIBRE S.R.L.",
+"total": 1828312.69,
+"nc": false
+},
+"00019_00452577": {
+"fecha": "2026-04-14",
+"tipo": "Factura A",
+"num": "00019-00452577",
+"cae": "86161813922039",
+"cuit": "30715686054",
+"prov": "MELI LOG SRL",
+"total": 610191.51,
+"nc": false
+},
+"00011_02204287": {
+"fecha": "2026-04-14",
+"tipo": "Nota de Crédito A",
+"num": "00011-02204287",
+"cae": "86161819819846",
+"cuit": "30703088534",
+"prov": "MERCADOLIBRE S.R.L.",
+"total": 55923.91,
+"nc": true
+},
+"00001_00000859": {
+"fecha": "2026-04-14",
+"tipo": "Factura C",
+"num": "00001-00000859",
+"cae": "86151621707439",
+"cuit": "20233249034",
+"prov": "CAVALLO SEBASTIAN GASTON",
+"total": 84000.0,
+"nc": false
+},
+"00758_00905237": {
+"fecha": "2026-04-16",
+"tipo": "Factura B",
+"num": "00758-00905237",
+"cae": "86162265717130",
+"cuit": "30663498513",
+"prov": "GRUPO CONCESIONARIO DEL OESTE SA",
+"total": 6760.26,
+"nc": false
+},
+"09002_00118230": {
+"fecha": "2026-04-16",
+"tipo": "Factura B",
+"num": "09002-00118230",
+"cae": "86162474404106",
+"cuit": "30710644809",
+"prov": "MAARE S.R.L.",
+"total": 349990.0,
+"nc": false
+},
+"02107_00001311": {
+"fecha": "2026-04-18",
+"tipo": "Factura C",
+"num": "02107-00001311",
+"cae": "86162123969863",
+"cuit": "27463359151",
+"prov": "CARREIRA CANDELA IBEL",
+"total": 113905.0,
+"nc": false
+},
+"00005_00012260": {
+"fecha": "2026-04-19",
+"tipo": "?",
+"num": "00005-00012260",
+"cae": "86162208067464",
+"cuit": "",
+"prov": "",
+"total": 78000.0,
+"nc": false
+},
+"00011_00121005": {
+"fecha": "2026-04-19",
+"tipo": "Factura B",
+"num": "00011-00121005",
+"cae": "86162208550980",
+"cuit": "30715464086",
+"prov": "VIVET SRL",
+"total": 75719.76,
+"nc": false
+},
+"00700_28191344": {
+"fecha": "2026-04-22",
+"tipo": "Factura B",
+"num": "00700-28191344",
+"cae": "86172663962160",
+"cuit": "30715804812",
+"prov": "CORREDORES VIALES SOCIEDAD ANONIMA",
+"total": 1500.0,
+"nc": false
+},
+"00552_00160896": {
+"fecha": "2026-04-24",
+"tipo": "Factura B",
+"num": "00552-00160896",
+"cae": "86172804656627",
+"cuit": "30696170580",
+"prov": "AEROPUERTOS ARGENTINA 2000 S A",
+"total": 146250.0,
+"nc": false
+},
+"00007_00009088": {
+"fecha": "2026-04-24",
+"tipo": "Factura B",
+"num": "00007-00009088",
+"cae": "86172813396376",
+"cuit": "30716132567",
+"prov": "DESARROLLOS COMERCIALES S.A.S.",
+"total": 90155.0,
+"nc": false
+},
+"00002_00700830": {
+"fecha": "2026-05-04",
+"tipo": "Factura B",
+"num": "00002-00700830",
+"cae": "86184172677725",
+"cuit": "30718581601",
+"prov": "MORASHOP S. R. L.",
+"total": 179200.0,
+"nc": false
+},
+"00006_00253160": {
+"fecha": "2026-05-04",
+"tipo": "Factura B",
+"num": "00006-00253160",
+"cae": "86184185371014",
+"cuit": "23385319819",
+"prov": "VECINO GABRIEL ALEJANDRO",
+"total": 49500.0,
+"nc": false
+},
+"00007_00096820": {
+"fecha": "2026-05-05",
+"tipo": "Factura B",
+"num": "00007-00096820",
+"cae": "86184198950494",
+"cuit": "30714745294",
+"prov": "POSVENT SOLUCIONES S.R.L",
+"total": 58516.0,
+"nc": false
+},
+"00009_00131161": {
+"fecha": "2026-05-05",
+"tipo": "Factura B",
+"num": "00009-00131161",
+"cae": "86184229039339",
+"cuit": "30708530863",
+"prov": "NUTRICIENCIA SOCIEDAD ANONIMA",
+"total": 220974.0,
+"nc": false
+},
+"00007_00001814": {
+"fecha": "2026-05-07",
+"tipo": "Factura B",
+"num": "00007-00001814",
+"cae": "86194516205549",
+"cuit": "20224262737",
+"prov": "GOLCEKER DARIO GABRIEL",
+"total": 40699.05,
+"nc": false
+},
+"00084_01792062": {
+"fecha": "2026-05-07",
+"tipo": "Factura B",
+"num": "00084-01792062",
+"cae": "86194860801933",
+"cuit": "30703088534",
+"prov": "MERCADOLIBRE S.R.L.",
+"total": 3490.0,
+"nc": false
+},
+"00001_00000462": {
+"fecha": "2026-05-10",
+"tipo": "Factura C",
+"num": "00001-00000462",
+"cae": "86194962805137",
+"cuit": "27271946940",
+"prov": "CALDAS LUCIANA DIAMELA",
+"total": 576000.0,
+"nc": false
+},
+"00001_00000562": {
+"fecha": "2026-05-13",
+"tipo": "Factura C",
+"num": "00001-00000562",
+"cae": "86195429465970",
+"cuit": "27234437556",
+"prov": "MOYANO ADRIANA MABEL",
+"total": 130000.0,
+"nc": false
+},
+"00001_00000563": {
+"fecha": "2026-05-13",
+"tipo": "Factura C",
+"num": "00001-00000563",
+"cae": "86195432977910",
+"cuit": "27234437556",
+"prov": "MOYANO ADRIANA MABEL",
+"total": 300000.0,
+"nc": false
+},
+"00001_00000561": {
+"fecha": "2026-05-13",
+"tipo": "Factura C",
+"num": "00001-00000561",
+"cae": "86195427725419",
+"cuit": "27234437556",
+"prov": "MOYANO ADRIANA MABEL",
+"total": 490000.0,
+"nc": false
+},
+"00001_00000564": {
+"fecha": "2026-05-13",
+"tipo": "Factura C",
+"num": "00001-00000564",
+"cae": "86195443140383",
+"cuit": "27234437556",
+"prov": "MOYANO ADRIANA MABEL",
+"total": 384000.0,
+"nc": false
+},
+"00001_07889267": {
+"fecha": "2026-05-14",
+"tipo": "Factura B",
+"num": "00001-07889267",
+"cae": "86205627096436",
+"cuit": "30715686054",
+"prov": "MELI LOG SRL",
+"total": 453311.38,
+"nc": false
+},
+"00058_00416776": {
+"fecha": "2026-05-14",
+"tipo": "Factura B",
+"num": "00058-00416776",
+"cae": "86205627883177",
+"cuit": "30703088534",
+"prov": "MERCADOLIBRE S.R.L.",
+"total": 1514284.53,
+"nc": false
+},
+"00021_17291549": {
+"fecha": "2026-05-14",
+"tipo": "Factura B",
+"num": "00021-17291549",
+"cae": "86205646135441",
+"cuit": "30703088534",
+"prov": "MERCADOLIBRE S.R.L.",
+"total": 6329.01,
+"nc": false
+},
+"00058_00074690": {
+"fecha": "2026-05-14",
+"tipo": "Nota de Crédito B",
+"num": "00058-00074690",
+"cae": "86205643468789",
+"cuit": "30703088534",
+"prov": "MERCADOLIBRE S.R.L.",
+"total": 6349.69,
+"nc": true
+},
+"00001_00838631": {
+"fecha": "2026-05-14",
+"tipo": "Nota de Crédito B",
+"num": "00001-00838631",
+"cae": "86205939602915",
+"cuit": "30715686054",
+"prov": "MELI LOG SRL",
+"total": 7675.78,
+"nc": true
+},
+"00001_00000876": {
+"fecha": "2026-05-14",
+"tipo": "Factura C",
+"num": "00001-00000876",
+"cae": "86205551402386",
+"cuit": "20233249034",
+"prov": "CAVALLO SEBASTIAN GASTON",
+"total": 84000.0,
+"nc": false
+},
+"00104_13796739": {
+"fecha": "2026-05-15",
+"tipo": "Factura A",
+"num": "00104-13796739",
+"cae": "86205622513345",
+"cuit": "30715804812",
+"prov": "CORREDORES VIALES SOCIEDAD",
+"total": 14113.64,
+"nc": false
+},
+"00758_01805024": {
+"fecha": "2026-05-16",
+"tipo": "Factura B",
+"num": "00758-01805024",
+"cae": "86216616350617",
+"cuit": "30663498513",
+"prov": "GRUPO CONCESIONARIO DEL OESTE SA",
+"total": 27438.67,
+"nc": false
+},
+"00004_09740275": {
+"fecha": "2026-05-18",
+"tipo": "Factura B",
+"num": "00004-09740275",
+"cae": "86206025398305",
+"cuit": "30716620634",
+"prov": "FIRST LABEL S.R.L.",
+"total": 134385.0,
+"nc": false
+},
+"00004_09740675": {
+"fecha": "2026-05-18",
+"tipo": "Factura B",
+"num": "00004-09740675",
+"cae": "86206026155522",
+"cuit": "30716620634",
+"prov": "FIRST LABEL S.R.L.",
+"total": 124385.0,
+"nc": false
+},
+"00004_09740700": {
+"fecha": "2026-05-18",
+"tipo": "Factura B",
+"num": "00004-09740700",
+"cae": "86206026207123",
+"cuit": "30716620634",
+"prov": "FIRST LABEL S.R.L.",
+"total": 120946.5,
+"nc": false
+},
+"00004_09740761": {
+"fecha": "2026-05-18",
+"tipo": "Factura B",
+"num": "00004-09740761",
+"cae": "86206026321900",
+"cuit": "30716620634",
+"prov": "FIRST LABEL S.R.L.",
+"total": 134385.0,
+"nc": false
+},
+"00011_00016799": {
+"fecha": "2026-05-22",
+"tipo": "Factura A",
+"num": "00011-00016799",
+"cae": "86216588071941",
+"cuit": "30707835768",
+"prov": "IMPORTADORA JORGE S.R.L.",
+"total": 50000.0,
+"nc": false
+},
+"00011_00000216": {
+"fecha": "2026-05-22",
+"tipo": "Nota de Crédito A",
+"num": "00011-00000216",
+"cae": "86216588207827",
+"cuit": "30707835768",
+"prov": "IMPORTADORA JORGE S.R.L.",
+"total": 50000.0,
+"nc": true
+},
+"00005_00015109": {
+"fecha": "2026-05-28",
+"tipo": "Factura B",
+"num": "00005-00015109",
+"cae": "86227244615059",
+"cuit": "20426496179",
+"prov": "NOYA FRANCISCO",
+"total": 350000.0,
+"nc": false
+},
+"00021_03673182": {
+"fecha": "2026-05-29",
+"tipo": "Factura A",
+"num": "00021-03673182",
+"cae": "86227845534442",
+"cuit": "30703088534",
+"prov": "MERCADOLIBRE S.R.L.",
+"total": 6329.01,
+"nc": false
+},
+"00058_00654239": {
+"fecha": "2026-05-29",
+"tipo": "Factura A",
+"num": "00058-00654239",
+"cae": "86228217343721",
+"cuit": "30703088534",
+"prov": "MERCADOLIBRE S.R.L.",
+"total": 1514284.53,
+"nc": false
+},
+"00001_01234317": {
+"fecha": "2026-05-29",
+"tipo": "?",
+"num": "00001-01234317",
+"cae": "86227920714711",
+"cuit": "30715686054",
+"prov": "MELI LOG SRL",
+"total": 7675.78,
+"nc": false
+},
+"00058_00323631": {
+"fecha": "2026-05-29",
+"tipo": "Nota de Crédito A",
+"num": "00058-00323631",
+"cae": "86227884891280",
+"cuit": "30703088534",
+"prov": "MERCADOLIBRE S.R.L.",
+"total": 6349.69,
+"nc": true
+},
+"00001_07901483": {
+"fecha": "2026-05-29",
+"tipo": "Factura B",
+"num": "00001-07901483",
+"cae": "86227894345035",
+"cuit": "30715686054",
+"prov": "MELI LOG SRL",
+"total": 7675.78,
+"nc": false
+},
+"00058_00438611": {
+"fecha": "2026-05-29",
+"tipo": "Factura B",
+"num": "00058-00438611",
+"cae": "86227782209513",
+"cuit": "30703088534",
+"prov": "MERCADOLIBRE S.R.L.",
+"total": 6349.69,
+"nc": false
+},
+"00058_00080952": {
+"fecha": "2026-05-29",
+"tipo": "Nota de Crédito B",
+"num": "00058-00080952",
+"cae": "86227705666394",
+"cuit": "30703088534",
+"prov": "MERCADOLIBRE S.R.L.",
+"total": 1514284.53,
+"nc": true
+},
+"00021_00401317": {
+"fecha": "2026-05-29",
+"tipo": "Nota de Crédito B",
+"num": "00021-00401317",
+"cae": "86227779194285",
+"cuit": "30703088534",
+"prov": "MERCADOLIBRE S.R.L.",
+"total": 6329.01,
+"nc": true
+},
+"00001_00842049": {
+"fecha": "2026-05-29",
+"tipo": "Nota de Crédito B",
+"num": "00001-00842049",
+"cae": "86227957459418",
+"cuit": "30715686054",
+"prov": "MELI LOG SRL",
+"total": 453311.38,
+"nc": true
+},
+"00104_13996058": {
+"fecha": "2026-05-30",
+"tipo": "Factura A",
+"num": "00104-13996058",
+"cae": "86227556248413",
+"cuit": "30715804812",
+"prov": "CORREDORES VIALES SOCIEDAD ANONIMA",
+"total": 9409.09,
+"nc": false
+},
+"00001_03639575": {
+"fecha": "2026-05-31",
+"tipo": "Factura A",
+"num": "00001-03639575",
+"cae": "86228242959015",
+"cuit": "30715686054",
+"prov": "MELI LOG SRL",
+"total": 453311.38,
+"nc": false
+},
+"00006_00082253": {
+"fecha": "2026-05-31",
+"tipo": "Factura B",
+"num": "00006-00082253",
+"cae": "86227713150047",
+"cuit": "20364018623",
+"prov": "WAINMANN ARIEL HERNAN",
+"total": 21989.0,
+"nc": false
+},
+"00007_00034303": {
+"fecha": "2026-06-01",
+"tipo": "Factura B",
+"num": "00007-00034303",
+"cae": "86227951833434",
+"cuit": "20284641710",
+"prov": "CAMISASCA JAVIER IGNACIO",
+"total": 10910.0,
+"nc": false
+},
+"00001_00003729": {
+"fecha": "2026-06-03",
+"tipo": "Factura B",
+"num": "00001-00003729",
+"cae": "86228222214682",
+"cuit": "30716304198",
+"prov": "RD PRINTER SERVICE S.R.L.",
+"total": 49131.95,
+"nc": false
+},
+"00081_01970849": {
+"fecha": "2026-06-06",
+"tipo": "Factura B",
+"num": "00081-01970849",
+"cae": "86238792085997",
+"cuit": "30703088534",
+"prov": "MERCADOLIBRE S.R.L.",
+"total": 3490.0,
+"nc": false
+},
+"00006_00280022": {
+"fecha": "2026-06-09",
+"tipo": "Factura B",
+"num": "00006-00280022",
+"cae": "86239064132977",
+"cuit": "30711975558",
+"prov": "W.STANDARD GROUP SRL",
+"total": 58861.92,
+"nc": false
+},
+"00006_00458584": {
+"fecha": "2026-06-09",
+"tipo": "Factura B",
+"num": "00006-00458584",
+"cae": "86239139355026",
+"cuit": "30714971782",
+"prov": "PINTOS SCHMIDT ALDANA MARCELA Y SACK ADRIANA CRISTINA SH",
+"total": 69300.0,
+"nc": false
+},
+"00020_00152065": {
+"fecha": "2026-06-10",
+"tipo": "Factura B",
+"num": "00020-00152065",
+"cae": "86239152675254",
+"cuit": "30717210847",
+"prov": "STENDY",
+"total": 36149.0,
+"nc": false
+},
+"00001_00000897": {
+"fecha": "2026-06-12",
+"tipo": "Factura C",
+"num": "00001-00000897",
+"cae": "86249547542597",
+"cuit": "20233249034",
+"prov": "CAVALLO SEBASTIAN GASTON",
+"total": 84000.0,
+"nc": false
+},
+"00104_14177262": {
+"fecha": "2026-06-14",
+"tipo": "Factura A",
+"num": "00104-14177262",
+"cae": "86249709532248",
+"cuit": "30715804812",
+"prov": "CORREDORES VIALES SOCIEDAD ANONIMA",
+"total": 7840.91,
+"nc": false
+},
+"00104_14140550": {
+"fecha": "2026-06-14",
+"tipo": "Factura A",
+"num": "00104-14140550",
+"cae": "86249707800589",
+"cuit": "30715804812",
+"prov": "CORREDORES VIALES SOCIEDAD ANONIMA",
+"total": 1537.19,
+"nc": false
+},
+"00018_00504599": {
+"fecha": "2026-06-14",
+"tipo": "Factura A",
+"num": "00018-00504599",
+"cae": "86249820461260",
+"cuit": "30715686054",
+"prov": "MELI LOG SRL",
+"total": 567537.74,
+"nc": false
+},
+"00057_00684089": {
+"fecha": "2026-06-14",
+"tipo": "?",
+"num": "00057-00684089",
+"cae": "86249821002994",
+"cuit": "30703088534",
+"prov": "MERCADOLIBRE S.R.L.",
+"total": 2489177.68,
+"nc": false
+},
+"00011_02243581": {
+"fecha": "2026-06-14",
+"tipo": "Nota de Crédito A",
+"num": "00011-02243581",
+"cae": "86249844138091",
+"cuit": "30703088534",
+"prov": "MERCADOLIBRE S.R.L.",
+"total": 8877.25,
+"nc": true
+},
+"00758_02723309": {
+"fecha": "2026-06-16",
+"tipo": "Factura B",
+"num": "00758-02723309",
+"cae": "86250473408149",
+"cuit": "30663498513",
+"prov": "GRUPO CONCESIONARIO DEL OESTE SA",
+"total": 18093.59,
+"nc": false
+},
+"00004_00003656": {
+"fecha": "2026-06-19",
+"tipo": "Factura B",
+"num": "00004-00003656",
+"cae": "86250443421452",
+"cuit": "20130233059",
+"prov": "GARCIA DANIEL RODOLFO",
+"total": 9800.0,
+"nc": false
+},
+"03000_00363785": {
+"fecha": "2026-06-22",
+"tipo": "Factura B",
+"num": "03000-00363785",
+"cae": "86250669789097",
+"cuit": "33708543409",
+"prov": "DAMARFU SA",
+"total": 43998.0,
+"nc": false
+},
+"00001_00000358": {
+"fecha": "2026-06-27",
+"tipo": "Factura C",
+"num": "00001-00000358",
+"cae": "86261474688115",
+"cuit": "27429501429",
+"prov": "FORTI AYELEN",
+"total": 159996.0,
+"nc": false
+},
+"00001_00000361": {
+"fecha": "2026-06-27",
+"tipo": "Factura C",
+"num": "00001-00000361",
+"cae": "86261480242296",
+"cuit": "27429501429",
+"prov": "FORTI AYELEN",
+"total": 861999.0,
+"nc": false
+},
+"00001_00000359": {
+"fecha": "2026-06-27",
+"tipo": "Factura C",
+"num": "00001-00000359",
+"cae": "86261478506467",
+"cuit": "27429501429",
+"prov": "FORTI AYELEN",
+"total": 200000.0,
+"nc": false
+},
+"00001_00000362": {
+"fecha": "2026-06-28",
+"tipo": "Factura C",
+"num": "00001-00000362",
+"cae": "86261562379685",
+"cuit": "27429501429",
+"prov": "FORTI AYELEN",
+"total": 125000.0,
+"nc": false
+},
+"00104_14368226": {
+"fecha": "2026-06-29",
+"tipo": "Factura A",
+"num": "00104-14368226",
+"cae": "86261576255069",
+"cuit": "30715804812",
+"prov": "CORREDORES VIALES SOCIEDAD ANONIMA",
+"total": 10977.27,
+"nc": false
+},
+"00104_14346147": {
+"fecha": "2026-06-29",
+"tipo": "Factura A",
+"num": "00104-14346147",
+"cae": "86261575412180",
+"cuit": "30715804812",
+"prov": "CORREDORES VIALES SOCIEDAD ANONIMA",
+"total": 1537.19,
+"nc": false
+},
+"00001_00000363": {
+"fecha": "2026-06-29",
+"tipo": "?",
+"num": "00001-00000363",
+"cae": "86261712134014",
+"cuit": "27429501429",
+"prov": "FORTI AYELEN",
+"total": 795000.0,
+"nc": false
+},
+"00050_43913797": {
+"fecha": "2026-06-30",
+"tipo": "Factura B",
+"num": "00050-43913797",
+"cae": "86272397049206",
+"cuit": "30714112836",
+"prov": "AUTOPISTAS DE BUENOS AIRES (AUBASA) SA S. A.",
+"total": 15710.99,
+"nc": false
+},
+"00001_00000364": {
+"fecha": "2026-06-30",
+"tipo": "Factura C",
+"num": "00001-00000364",
+"cae": "86261783635639",
+"cuit": "27429501429",
+"prov": "FORTI AYELEN",
+"total": 1715700.0,
+"nc": false
+},
+"00001_00000365": {
+"fecha": "2026-07-02",
+"tipo": "Factura C",
+"num": "00001-00000365",
+"cae": "86272121990036",
+"cuit": "27429501429",
+"prov": "FORTI AYELEN",
+"total": 776000.0,
+"nc": false
+},
+"00001_00000367": {
+"fecha": "2026-07-02",
+"tipo": "Factura C",
+"num": "00001-00000367",
+"cae": "86272125669694",
+"cuit": "27429501429",
+"prov": "FORTI AYELEN",
+"total": 30000.0,
+"nc": false
+},
+"00001_00000366": {
+"fecha": "2026-07-02",
+"tipo": "Factura C",
+"num": "00001-00000366",
+"cae": "86272122555008",
+"cuit": "27429501429",
+"prov": "FORTI AYELEN",
+"total": 270000.0,
+"nc": false
+},
+"00023_00180474": {
+"fecha": "2026-07-06",
+"tipo": "Factura B",
+"num": "00023-00180474",
+"cae": "86272671997907",
+"cuit": "30687059812",
+"prov": "REDNET SRL",
+"total": 21450.24,
+"nc": false
+},
+"00093_02166134": {
+"fecha": "2026-07-06",
+"tipo": "Factura B",
+"num": "00093-02166134",
+"cae": "86272899726253",
+"cuit": "30703088534",
+"prov": "MERCADOLIBRE S.R.L.",
+"total": 3490.0,
+"nc": false
+},
+"00002_00021135": {
+"fecha": "2026-07-08",
+"tipo": "Factura B",
+"num": "00002-00021135",
+"cae": "86272973725001",
+"cuit": "30714652652",
+"prov": "CAMISETA DE FUTBOL S.R.L.",
+"total": 64308.0,
+"nc": false
+},
+"00104_14561116": {
+"fecha": "2026-07-14",
+"tipo": "Factura A",
+"num": "00104-14561116",
+"cae": "86283776730534",
+"cuit": "30715804812",
+"prov": "CORREDORES VIALES SOCIEDAD ANONIMA",
+"total": 3074.38,
+"nc": false
+},
+"00001_03692333": {
+"fecha": "2026-07-14",
+"tipo": "Factura A",
+"num": "00001-03692333",
+"cae": "86284011940484",
+"cuit": "30715686054",
+"prov": "MELI LOG SRL",
+"total": 526422.51,
+"nc": false
+},
+"00011_05056094": {
+"fecha": "2026-07-14",
+"tipo": "Factura A",
+"num": "00011-05056094",
+"cae": "86284015881691",
+"cuit": "30703088534",
+"prov": "MERCADOLIBRE S.R.L.",
+"total": 1719260.91,
+"nc": false
+},
+"00058_00357940": {
+"fecha": "2026-07-14",
+"tipo": "Nota de Crédito A",
+"num": "00058-00357940",
+"cae": "86284036987632",
+"cuit": "30703088534",
+"prov": "MERCADOLIBRE S.R.L.",
+"total": 1742.7,
+"nc": true
+},
+"00001_00000910": {
+"fecha": "2026-07-14",
+"tipo": "Factura C",
+"num": "00001-00000910",
+"cae": "86283845866961",
+"cuit": "20233249034",
+"prov": "CAVALLO SEBASTIAN GASTON",
+"total": 84000.0,
+"nc": false
+},
+"00758_03584886": {
+"fecha": "2026-07-16",
+"tipo": "Factura B",
+"num": "00758-03584886",
+"cae": "86294598885706",
+"cuit": "30663498513",
+"prov": "GRUPO CONCESIONARIO DEL OESTE SA",
+"total": 30619.96,
+"nc": false
+},
+"00018_00002245": {
+"fecha": "2026-07-28",
+"tipo": "Factura B",
+"num": "00018-00002245",
+"cae": "86305696619153",
+"cuit": "30715925873",
+"prov": "SOMOS INTEGRA S. R. L.",
+"total": 58999.0,
+"nc": false
+},
+"00001_00004457": {
+"fecha": "2026-08-03",
+"tipo": "Factura B",
+"num": "00001-00004457",
+"cae": "86316682138024",
+"cuit": "30716304198",
+"prov": "RD PRINTER SERVICE S.R.L.",
+"total": 56373.9,
+"nc": false
+},
+"00024_00005622": {
+"fecha": "2026-08-03",
+"tipo": "Factura B",
+"num": "00024-00005622",
+"cae": "86316628888621",
+"cuit": "30711260486",
+"prov": "ESPUMA BRAGADO S.R.L.",
+"total": 680603.61,
+"nc": false
+},
+"00084_02375591": {
+"fecha": "2026-08-05",
+"tipo": "Factura B",
+"num": "00084-02375591",
+"cae": "86327231483977",
+"cuit": "30703088534",
+"prov": "MERCADOLIBRE S.R.L.",
+"total": 3490.0,
+"nc": false
+}
+}
+}

@@ -1010,7 +1010,7 @@ footer{margin-top:32px;padding-top:14px;border-top:1px solid var(--border);font-
       <button class="back-btn" onclick="goPage('home')">← Inicio</button>
       <div>
         <div class="ph-title">Facturas</div>
-        <div class="ph-sub">Lo que emitió el facturador de ML, cuenta por cuenta</div>
+        <div class="ph-sub">Las que emitís por tus ventas y las que recibís de tus compras</div>
       </div>
     </div>
     <div class="ph-right">
@@ -1019,6 +1019,16 @@ footer{margin-top:32px;padding-top:14px;border-top:1px solid var(--border);font-
     </div>
   </div>
 
+  <!-- EMITIDAS = tus ventas (las hace el facturador de ML solo).
+       RECIBIDAS = tus compras (salen de ARCA, Mis Comprobantes → Recibidos).
+       Son dos cosas distintas y por eso van separadas: las emitidas se controlan para que no
+       falte ninguna, las recibidas para saber qué compras tienen respaldo. -->
+  <div class="tabs" style="margin-bottom:16px">
+    <button class="tab active fac-tab" id="tab-fac-emi" onclick="setFacTab('emitidas',this)">Emitidas</button>
+    <button class="tab fac-tab" id="tab-fac-rec" onclick="setFacTab('recibidas',this)">Recibidas <span id="tab-fac-rec-n"></span></button>
+  </div>
+
+  <div id="fac-sec-emitidas">
   <!-- Lo primero de la pantalla es la alarma, no el resumen: si algo dejó de facturarse hay que
        verlo sin buscarlo. -->
   <div id="fac-alarma"></div>
@@ -1042,6 +1052,31 @@ footer{margin-top:32px;padding-top:14px;border-top:1px solid var(--border);font-
       </tr></thead>
       <tbody id="fac-body"></tbody>
     </table>
+  </div>
+  </div>
+
+  <!-- ── RECIBIDAS (compras) ── -->
+  <div id="fac-sec-recibidas" style="display:none">
+    <div style="font-size:.68rem;color:var(--muted);margin-bottom:12px">Lo que ARCA tiene registrado como comprobantes recibidos por cada cuenta. Son <strong>solo un registro</strong>: no entran en los gastos ni cambian la ganancia del mes (el costo de la mercadería ya está dentro del costo de cada producto).</div>
+    <div id="fac-rec-cuentas" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:10px;margin-bottom:14px"></div>
+    <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:12px">
+      <span style="font-size:.66rem;color:var(--muted);text-transform:uppercase;letter-spacing:.1em">Cuenta</span>
+      <div class="view-toggle" id="fac-rec-filtro"></div>
+    </div>
+    <input class="search-box" id="fac-rec-buscar" type="search" placeholder="Buscar por proveedor, factura o CUIT..." oninput="renderFacturas()" style="margin-bottom:10px">
+    <div class="tbl-outer">
+      <table>
+        <thead><tr>
+          <th style="min-width:100px">Fecha</th>
+          <th style="text-align:left;min-width:85px">Cuenta</th>
+          <th style="text-align:left;min-width:120px">Tipo</th>
+          <th style="min-width:120px">Número</th>
+          <th style="text-align:left;width:220px;max-width:220px">Proveedor</th>
+          <th style="min-width:110px">Monto</th>
+        </tr></thead>
+        <tbody id="fac-rec-body"></tbody>
+      </table>
+    </div>
   </div>
 
   <footer>CYC · Facturas</footer>
@@ -1705,6 +1740,9 @@ function startApp(){
     state.facturas=d.facturas||{};
     state.facturas_sin=d.facturas_sin||{};
     state.facturas_desde=d.facturas_desde||{};
+    // Facturas RECIBIDAS = las compras, según ARCA. Van aparte de cyc/compras (los gastos) a
+    // propósito: son un registro para mirar, no entran en la ganancia del mes.
+    state.facturas_rec=d.facturas_recibidas||{};
     // detectar entradas nuevas de ventaprod escritas externamente (p.ej. cowork)
     const _newVP=d.ventaprod||{};
     const _allIds=new Set();
@@ -5664,7 +5702,62 @@ function _facTipo(t){
   const m={factura_c:'Factura C',factura_a:'Factura A',factura_b:'Factura B',nota_credito_c:'N. Crédito C'};
   return m[t]||(t?String(t).replace(/_/g,' '):'Comprobante');
 }
+let FAC_TAB='emitidas', FAC_REC_CTA='todas';
+function setFacTab(t,btn){
+  FAC_TAB=t;
+  document.querySelectorAll('.fac-tab').forEach(b=>b.classList.remove('active'));
+  if(btn)btn.classList.add('active');
+  document.getElementById('fac-sec-emitidas').style.display=t==='emitidas'?'':'none';
+  document.getElementById('fac-sec-recibidas').style.display=t==='recibidas'?'':'none';
+  renderFacturas();
+}
+function setFacRecCta(c,btn){FAC_REC_CTA=c;document.querySelectorAll('#fac-rec-filtro .vbtn').forEach(b=>b.classList.remove('active'));if(btn)btn.classList.add('active');renderFacturas();}
+// Las recibidas: una fila por comprobante. Las notas de crédito restan (son devoluciones), por eso
+// se muestran en rojo y con el signo menos: si se sumaran, el total de compras saldría inflado.
+function renderFacturasRecibidas(){
+  const rec=state.facturas_rec||{};
+  const ctas=Object.keys(rec).sort();
+  const n=ctas.reduce((s,c)=>s+Object.keys(rec[c]||{}).length,0);
+  const tabN=document.getElementById('tab-fac-rec-n');
+  if(tabN)tabN.textContent=n?'('+n+')':'';
+  const filtro=document.getElementById('fac-rec-filtro');
+  if(filtro)filtro.innerHTML=`<button class="vbtn${FAC_REC_CTA==='todas'?' active':''}" onclick="setFacRecCta('todas',this)">Todas</button>`
+    +ctas.map(c=>`<button class="vbtn${FAC_REC_CTA===c?' active':''}" onclick="setFacRecCta('${c}',this)">${_facLindo(c)}</button>`).join('');
+  const cont=document.getElementById('fac-rec-cuentas');
+  if(cont)cont.innerHTML=ctas.map(c=>{
+    const arr=Object.values(rec[c]||{}).filter(Boolean);
+    const suma=arr.reduce((s,x)=>s+(x.nc?-(x.total||0):(x.total||0)),0);
+    const fechas=arr.map(x=>x.fecha).filter(Boolean).sort();
+    return `<div style="padding:12px 14px;background:var(--surface);border:1px solid var(--border);border-radius:8px">
+      <div style="font-size:.78rem;font-weight:700;margin-bottom:6px">${_facLindo(c)}</div>
+      <div style="font-size:1.05rem;font-weight:700">${fmt(suma)}</div>
+      <div style="font-size:.68rem;color:var(--muted);margin-top:4px">${arr.length} comprobante${arr.length===1?'':'s'}</div>
+      <div style="font-size:.66rem;color:var(--muted);margin-top:2px">${fechas.length?fechas[0].split('-').reverse().join('/')+' a '+fechas[fechas.length-1].split('-').reverse().join('/'):'—'}</div>
+    </div>`;
+  }).join('');
+  let filas=[];
+  for(const c of ctas){
+    if(FAC_REC_CTA!=='todas'&&FAC_REC_CTA!==c)continue;
+    for(const x of Object.values(rec[c]||{}))if(x)filas.push({cta:c,...x});
+  }
+  const q=normTxt(document.getElementById('fac-rec-buscar')?.value||'');
+  if(q)filas=filas.filter(x=>normTxt((x.prov||'')+' '+(x.num||'')+' '+(x.cuit||'')).includes(q));
+  filas.sort((a,b)=>String(b.fecha||'').localeCompare(String(a.fecha||'')));
+  const body=document.getElementById('fac-rec-body');
+  if(!body)return;
+  if(!filas.length){body.innerHTML=`<tr><td colspan="6" style="text-align:center;color:var(--muted);padding:18px;font-size:.76rem">${n?'Sin comprobantes para mostrar':'Todavía no hay compras cargadas.'}</td></tr>`;return;}
+  body.innerHTML=filas.slice(0,400).map(x=>`<tr>
+    <td style="font-size:.72rem">${String(x.fecha||'').split('-').reverse().join('/')}</td>
+    <td style="text-align:left;font-size:.72rem">${_facLindo(x.cta)}</td>
+    <td style="text-align:left;font-size:.7rem;color:${x.nc?'var(--red,#ef4444)':'var(--muted)'}">${x.tipo||'—'}</td>
+    <td style="font-size:.7rem;font-family:'DM Mono',monospace">${x.num||'—'}</td>
+    <td style="text-align:left;font-size:.72rem">${(x.prov||'—').slice(0,42)}</td>
+    <td style="font-size:.74rem;font-family:'DM Mono',monospace;color:${x.nc?'var(--red,#ef4444)':'var(--text)'}">${x.nc?'−':''}${fmt(x.total||0)}</td>
+  </tr>`).join('')+(filas.length>400?`<tr><td colspan="6" style="text-align:center;color:var(--muted);padding:10px;font-size:.72rem">…y ${filas.length-400} más (usá el buscador)</td></tr>`:'');
+}
 function renderFacturas(){
+  renderFacturasRecibidas();
+  if(FAC_TAB==='recibidas')return;
   const ctas=_facCuentas();
   // Botones de filtro (se arman una sola vez por render, así aparecen las cuentas nuevas solas)
   const filtro=document.getElementById('fac-filtro');
@@ -7647,7 +7740,7 @@ document.addEventListener('click',e=>{if(fnavOpen&&!e.target.closest('#fnav-btn'
         <span style="font-size:.75rem;color:var(--muted)">Si no ves los últimos cambios, forzá la actualización</span>
         <button class="btn" style="background:rgba(56,189,248,.12);color:var(--blue);border:1px solid rgba(56,189,248,.3)" onclick="actualizarApp()">🔄 Buscar actualizaciones</button>
       </div>
-      <div style="font-size:.66rem;color:var(--muted);margin-top:12px">CYC · Versión 9.1</div>
+      <div style="font-size:.66rem;color:var(--muted);margin-top:12px">CYC · Versión 9.2</div>
     </div>
 
     <div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:18px 20px;margin-bottom:14px">
