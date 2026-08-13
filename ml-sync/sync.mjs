@@ -4278,6 +4278,30 @@ async function main() {
         console.log(`  De los ${sinPub.length}: ${conNeto} con neto (pausadas) · ${sinPub.length - conNeto} en "—".`);
         for (const m of sinPub.slice(0, 40)) console.log(`  · ${String(m.p.name || m.p.id).slice(0, 44)}`);
         if (sinPub.length > 40) console.log(`  … y ${sinPub.length - 40} más`);
+        // ── POR QUÉ ESTE PRODUCTO NO SACA NETO DE ML ──
+        // La pantalla de Vinculaciones dice "0 sin vincular" y eso confunde: ahí se cuenta que cada
+        // PUBLICACIÓN tenga producto, que es la dirección contraria. Un producto puede no tener
+        // NINGUNA publicación apuntándole y la pantalla igual dice 0. Y hay dos casos más que
+        // tampoco se ven ahí: la publicación está OCULTA (ignorada, no se consulta a ML) o está
+        // CERRADA en ML (ML no da precio de una cerrada). Los tres terminan en "—".
+        const enBlanco = sinPub.filter((m) => !m.tuvo);
+        if (enBlanco.length) {
+          const nada = [], ocultas = [], cerradas = [];
+          for (const m of enBlanco) {
+            const pubs = Object.entries(links).filter(([, e]) => e && e.prodId === m.p.id);
+            if (!pubs.length) nada.push(m.p);
+            else if (pubs.every(([, e]) => e.ignored)) ocultas.push(m.p);
+            else cerradas.push(m.p);
+          }
+          console.log(`\n  ── LOS QUE QUEDAN EN "—" · ${enBlanco.length} · por qué ──`);
+          const bloque = (tit, arr) => {
+            if (!arr.length) return;
+            console.log(`  ${tit} (${arr.length}): ${arr.map((p) => String(p.name || p.id).slice(0, 28)).join(' · ')}`);
+          };
+          bloque('SIN NINGUNA PUBLICACIÓN en ML — no hay de dónde sacar precio', nada);
+          bloque('TODAS SUS PUBLICACIONES ESTÁN OCULTAS — se las saltea a propósito', ocultas);
+          bloque('SU PUBLICACIÓN ESTÁ CERRADA en ML — ML no da precio de una cerrada', cerradas);
+        }
       }
       console.log(`\n(esto solo LEE: no toqué nada)`);
       return;
