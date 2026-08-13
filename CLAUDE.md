@@ -66,12 +66,18 @@ julio, a CYC le quedan **~$2.000.000/mes** después de todo eso.
 
 1. **Antes de tocar un precio en ML tenés que estar 100% seguro de que el número es correcto.**
    Si no estás seguro, no lo hagas: preguntá. Esta es la regla más importante de todas.
-2. **Nunca cruzar la barrera de los $33.000 sin preguntar.** Arriba de ese precio ML te cobra el
-   envío gratis y el margen se da vuelta. Si una suba cruza ese número, avisá y esperá respuesta.
+2. **La barrera de los $33.000: subir hasta $32.999 y ahí frenar.** Arriba de ese precio ML te
+   cobra el envío gratis y el margen se da vuelta. Si para llegar al 30% hay que cruzarla, se deja
+   en **$32.999** y se avisa que quedó abajo del piso a propósito. NO se cruza. (Decidido por él
+   el 13/08/2026; antes había que preguntar cada vez.)
 3. **El piso de margen es 30%**, medido sobre el costo total (mercadería + envío + % de reclamos +
    IIBB + monotributo). El robot baja al piso solo; subir por encima del piso se decide a mano.
-4. **Bajar el precio solo si NO vendió a ese precio.** Si vendió, el precio funciona.
+4. **NUNCA bajar un precio.** Regla suya del 13/08/2026, sin excepciones. Si una cuenta dice que
+   para llegar al 30% hay que BAJAR, el número está mal: no se toca y se investiga.
 5. Después de aplicar un precio en ML, **volvé a leerlo de ML para confirmar** que quedó.
+6. **Las publicaciones con variantes también se suben.** No alcanza con el precio de la
+   publicación: hay que tocar cada variante, y mandar la lista incompleta hace que ML borre las
+   que faltan. Después de subirlas, releer y verificar que estén TODAS.
 
 ## Cómo están hechas las cosas
 
