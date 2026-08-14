@@ -299,6 +299,11 @@ Lo que quedó abierto. Borrá de acá lo que se vaya cerrando.
   ARCA ($321.796 de Adriana + $200.414 de Luciana el 25/07) y es tentador tomarlo por un gasto del
   negocio. Él lo dijo expreso el 13/08/2026. Lo mismo el colegio (Asociación Hijas de Nuestra
   Señora de la Misericordia) y los peajes.
+- **SANCOR SALUD sí es de CYC, y no es lo mismo que OSDE.** Es la obra social de Ayelen y la paga
+  CYC porque *no se descuenta del monotributo* (el aporte de obra social del monotributo, $55.485,
+  va igual; Sancor se paga aparte y encima). Se factura todos los meses a nombre de Ayelen y el
+  monto cambia: 2026 fue $85.045 · $57.524 · $91.596 · $82.151 · $87.627 · $90.192 · $152.716 ·
+  $65.227 (ene a ago). **Cargarla con el monto REAL de la factura, no con un promedio.**
 
 - **Vigilar las 8 publicaciones que ganaban la caja de compra y se subieron igual** (11/08). Él lo
   decidió así: *"aunque perdamos en catálogo ganamos igual, y si hay que mantenerlos abajo para que
