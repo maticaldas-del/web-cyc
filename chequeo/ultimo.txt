@@ -1,35 +1,36 @@
-🌅 CHEQUEO DE LA MAÑANA · jueves, 13 de agosto
+🌅 CHEQUEO DE LA MAÑANA · viernes, 14 de agosto
 
 🔴 Hay cosas para mirar hoy.
 
-📈 Ayer: $636.025 · promedio 7 días $536.769 · +18%
+📈 Ayer: $1.016.573 · promedio 7 días $533.253 · +91%
 
-📉 Sin stock y vendían: 104 publicaciones · se pierden $480.426/día
-   · Matias · Infusor De Te En Hebras Acero Inoxidable C — $25.799/día
+📉 Sin stock y vendían: 87 publicaciones · se pierden $401.199/día
    · Matias · Pendrive Sandisk Cruzer Blade 8gb 2.0 Negr — $25.688/día
+   · Matias · Infusor De Te En Hebras Acero Inoxidable C — $24.366/día
    · Matias · Disco Sólido Externo Sandisk Sdssde30-1t00 — $23.000/día
    · Matias · Memoria Microsd Sandisk Ultra A1 64gb C10  — $19.872/día
    · Adriana · Cabotine Eau De Toilette 30ml Mujer Floral — $16.753/día
-   · Adriana · Body Mist Victoria's Secret Bare Vanilla 2 — $15.100/día
-   … y 98 más
+   · Matias · Reloj Xiaomi Watch S5 Negro Negro Milanés — $14.000/día
+   … y 81 más
 
-❓ Preguntas sin responder: 92
-   · Adriana: 20 · la más vieja hace 207 días
-   · Ayelen: 32 · la más vieja hace 227 días
-   · Luciana: 16 · la más vieja hace 189 días
-   · Matias: 24 · la más vieja hace 213 días
+❓ Preguntas sin responder: 91
+   · Adriana: 20 · la más vieja hace 208 días
+   · Ayelen: 31 · la más vieja hace 228 días
+   · Luciana: 16 · la más vieja hace 190 días
+   · Matias: 24 · la más vieja hace 214 días
 
 ⚠️ Reclamos abiertos: 1
-   · Adriana: PDD9943 · 2 días · lo maneja ML, no hay nada para hacer
-💬 Mensajes de posventa sin leer: 3
+   · Ayelen: PDD9949 · 0 días
+💬 Mensajes de posventa sin leer: 2
 
-⏸️ Pausadas: 192 sin stock · 45 a mano · 0 por ML
+⏸️ Pausadas: 167 sin stock · 44 a mano · 0 por ML
 
 ✅ Ninguna activa fuera de Full
 
 🏭 Full
-   🔴 unidades con problema: 4
+   🔴 unidades con problema: 5
       · Adriana · Pendrive Sandisk Cruzer Blade 64gb 2.0 Neg: 1 u. (lost 1)
+      · Adriana · Body Mist Victoria's Secret Bare Vanilla 2: 1 u. (internalProcess 1)
       · Ayelen · Espejo Redondo Giratorio C/ Soporte Metal : 1 u. (lost 1)
       · Ayelen · Auricular Vincha Diseño De Orejas De Gatit: 1 u. (notSupported 1)
       · Matias · Philips 2000 Series Tat2206 Negro: 1 u. (notSupported 1)
