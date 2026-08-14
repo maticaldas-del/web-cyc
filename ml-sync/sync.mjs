@@ -3378,6 +3378,133 @@ async function main() {
       console.log(`\n✓ ${cambios.length} ventas recalculadas con el costo real.`);
       return;
     }
+    // BILLING_PROBE=poncosto:<palabra o id>|<pesos>[|go] → CORRIGE EL COSTO DE UN PRODUCTO.
+    //
+    // Es lo mismo que escribir el costo a mano en la ficha del producto en la web, pero desde acá.
+    // Existe porque un costo mal cargado no lo avisa nadie: el masajeador figuraba en $2.159 cuando
+    // en realidad se paga $9.000, y con ese número las publicaciones parecían dar 60% de margen
+    // cuando estaban vendiendo ABAJO del costo. Por eso, además de cambiarlo, esto lista las
+    // publicaciones del producto y muestra cuánto sube el costo, para mirar el margen después.
+    //
+    // El número que se pasa son PESOS de MERCADERÍA, igual que el campo de la web: se guarda como
+    // dólares (costUSD) al tipo de cambio de hoy y se recalcula costFullUSD sumando el envío y el %
+    // de reclamos, con la misma cuenta que hace la pantalla.
+    //
+    // NO toca las ventas ya hechas: el costo de una venta es lo que costó ese día. Si el costo
+    // estuvo mal desde el principio y hay que rehacer las viejas, eso es `recosto`, que usa el
+    // dólar del día de cada venta.
+    if (String(process.env.BILLING_PROBE || '').startsWith('poncosto:')) {
+      const _pc = String(process.env.BILLING_PROBE).slice(9).split('|');
+      const quien = (_pc[0] || '').trim();
+      const APLICAR = (_pc[2] || '').trim() === 'go';
+      // Acepta "9000" y "9.000" (y "9.000,50"), que es como los escribe él.
+      let _s = String(_pc[1] || '').replace(/[^\d.,]/g, '');
+      if (_s.includes(',')) _s = _s.replace(/\./g, '').replace(',', '.');
+      else if (/^\d{1,3}(\.\d{3})+$/.test(_s)) _s = _s.replace(/\./g, '');
+      const pesos = Math.round(parseFloat(_s) || 0);
+      if (!quien || !(pesos > 0)) { console.log('Usá: poncosto:<palabra o id>|<pesos>[|go] — ej poncosto:masajeador|9000'); return; }
+      const tcP = parseFloat(((await db.get('cyc/finanzas')) || {}).tipo_cambio) || 1500;
+      const vpP = (await db.get('cyc/ventaprod')) || {}; setDevLive(vpP);
+      const linksP = (await db.get('cyc/mllinks')) || {};
+      const objetivo = products.filter((p) => p.id === quien || norm(p.name || '').includes(norm(quien)));
+      if (!objetivo.length) { console.log(`No hay ningún producto que se llame como "${quien}".`); return; }
+      const usd = Math.round((pesos / tcP) * 100) / 100;
+      console.log(`=== PONER EL COSTO EN ${money(pesos)} ${APLICAR ? '(APLICANDO)' : '(PRUEBA)'} ===`);
+      console.log(`Dólar de hoy $${tcP} → US$ ${usd.toFixed(2)} de mercadería.\n`);
+      const plan = [];
+      for (const p of objetivo) {
+        const antes = costoPesos(p, 1, tcP).costo;
+        const ship = parseFloat(p.shipUSD) || 0;
+        // El % de reclamos vivo, igual que la web: el guardado puede ser de hace meses.
+        const dev = DEV_LIVE[p.id] != null ? DEV_LIVE[p.id] : (parseFloat(p.devPct) || 0);
+        const fullUSD = Math.round((usd * (1 + dev / 100) + ship) * 100) / 100;
+        // El "después" se mide con la MISMA función que usa el robot, no con una copia de la
+        // fórmula: si algún día cambia la cuenta, esto cambia con ella.
+        const despues = costoPesos({ ...p, costUSD: usd, costFullUSD: fullUSD }, 1, tcP).costo;
+        plan.push({ p, antes, despues, fullUSD });
+        console.log(`── ${p.name}   (${p.id})`);
+        console.log(`     costo full: ${money(antes)} → ${money(despues)}`
+          + `   (envío US$ ${ship.toFixed(2)} · reclamos ${dev.toFixed(1)}%)`);
+        const mias = Object.entries(linksP).filter(([, e]) => e && e.prodId === p.id);
+        if (!mias.length) console.log(`     sin publicaciones vinculadas`);
+        for (const [mla, e] of mias) {
+          console.log(`     ${mla} · ${String(e.cuenta || '').padEnd(8)} · ${String(e.title || '').slice(0, 44)}`
+            + `${e.ignored ? ' · OCULTA' : ''}${e.status ? ' · ' + e.status : ''}`);
+        }
+        console.log('');
+      }
+      if (!APLICAR) {
+        console.log(`PRUEBA: no escribí nada. Para aplicar: poncosto:${quien}|${pesos}|go`);
+        console.log(`Después de aplicar, corré hermanas:${quien} para ver qué margen queda en cada publicación.`);
+        return;
+      }
+      for (const x of plan) {
+        await db.set('cyc/products/' + x.p.id + '/costUSD', usd);
+        await db.set('cyc/products/' + x.p.id + '/cost', pesos);
+        await db.set('cyc/products/' + x.p.id + '/costFullUSD', x.fullUSD);
+      }
+      // Releer de la base: que el comando diga "guardado" no alcanza.
+      const prodsVer = (await db.get('cyc/products')) || {};
+      let mal = 0;
+      for (const x of plan) {
+        const v = prodsVer[x.p.id] || {};
+        const ok = Math.abs((parseFloat(v.costUSD) || 0) - usd) < 0.005
+          && Math.abs((parseFloat(v.costFullUSD) || 0) - x.fullUSD) < 0.005;
+        if (!ok) mal++;
+        console.log(`  ${ok ? '✓' : '✗'} ${x.p.name}: US$ ${Number(v.costUSD).toFixed(2)} · full US$ ${Number(v.costFullUSD).toFixed(2)} = ${money(Math.round((parseFloat(v.costFullUSD) || 0) * tcP))}`);
+      }
+      console.log(mal ? `\n✗ ${mal} no quedaron como pedí — revisalo.` : `\n✓ ${plan.length} producto(s) con el costo corregido.`);
+      console.log(`Ahora corré hermanas:${quien} para ver el margen con el costo nuevo, y netoweb para la pantalla.`);
+      return;
+    }
+    // BILLING_PROBE=vincular:<MLA>=<palabra o id de producto>[:go] → PEGA UNA PUBLICACIÓN A UN PRODUCTO.
+    //
+    // Es lo mismo que vincular a mano en la pantalla "Vinculaciones de ML", pero desde acá. Sirve
+    // para las publicaciones que quedaron sin producto: sus ventas entran como "sin vincular", no
+    // descuentan stock, y el producto muestra "—" en Margen ML porque no hay precio del cual sacar
+    // el neto. Si la publicación además está OCULTA, se la muestra: oculta no cuenta para nada.
+    //
+    // Escribe con patch SOBRE EL HIJO (cyc/mllinks/<MLA>), nunca sobre cyc/mllinks entero: un patch
+    // al padre pisa la ficha completa y se pierde todo lo que no vaya en el objeto.
+    if (String(process.env.BILLING_PROBE || '').startsWith('vincular:')) {
+      const _vcRaw = String(process.env.BILLING_PROBE).slice(9);
+      const APLICAR = /:go$/i.test(_vcRaw);
+      const [mlaRaw, quienRaw] = (APLICAR ? _vcRaw.replace(/:go$/i, '') : _vcRaw).split('=');
+      const MLA = (mlaRaw || '').trim().toUpperCase();
+      const quien = (quienRaw || '').trim();
+      if (!/^MLA\d+$/.test(MLA) || !quien) { console.log('Usá: vincular:<MLA>=<palabra o id de producto>[:go]'); return; }
+      const linksV = (await db.get('cyc/mllinks')) || {};
+      const e = linksV[MLA];
+      if (!e) { console.log(`${MLA} no figura en el panel. ¿Está bien escrito el número?`); return; }
+      const cand = products.filter((p) => p.id === quien || norm(p.name || '').includes(norm(quien)));
+      if (!cand.length) { console.log(`No hay ningún producto que se llame como "${quien}".`); return; }
+      if (cand.length > 1) {
+        console.log(`"${quien}" da ${cand.length} productos. Pasá el id exacto de uno:`);
+        cand.forEach((p) => console.log(`   ${p.id} · ${p.name}`));
+        return;
+      }
+      const p = cand[0];
+      const dueno = e.prodId ? ((products.find((x) => x.id === e.prodId) || {}).name || e.prodId) : '(ninguno)';
+      console.log(`=== VINCULAR ${APLICAR ? '(APLICANDO)' : '(PRUEBA)'} ===\n`);
+      console.log(`  ${MLA} · ${e.cuenta || '?'} · ${e.title || ''}`);
+      console.log(`  en ML: ${e.status || '?'}${e.ignored ? ' · OCULTA en el panel' : ''}`);
+      console.log(`  producto de hoy: ${dueno}`);
+      console.log(`  producto nuevo : ${p.name} (${p.id})`);
+      if (e.prodId === p.id && !e.ignored) { console.log('\nYa estaba así: no hay nada que cambiar.'); return; }
+      if (e.prodId && e.prodId !== p.id) {
+        console.log(`\n  ⚠️ OJO: se la sacás a "${dueno}". Si ese producto se queda sin ninguna publicación,`);
+        console.log(`     va a pasar a mostrar "—" en Margen ML. Cuando son dos fichas del mismo producto,`);
+        console.log(`     revincular no alcanza: hay que quedarse con UNA sola.`);
+      }
+      if (!APLICAR) { console.log(`\nPRUEBA: no escribí nada. Para aplicar: vincular:${MLA}=${p.id}:go`); return; }
+      await db.patch('cyc/mllinks/' + MLA, { prodId: p.id, ignored: null, manual: true });
+      const ver = (await db.get('cyc/mllinks/' + MLA)) || {};
+      const okP = ver.prodId === p.id, okI = !ver.ignored;
+      console.log(`\n  releído del panel: producto ${ver.prodId || '(ninguno)'} ${okP ? '✓' : '✗'} · oculta ${ver.ignored ? 'SÍ ✗' : 'no ✓'}`);
+      console.log(okP && okI ? '\n✓ Vinculada.' : '\n✗ NO quedó como pedí — revisalo.');
+      console.log('Después corré netoweb, si no el producto sigue mostrando "—".');
+      return;
+    }
     // BILLING_PROBE=repbliss[:go] → REPARA LAS PUBLICACIONES BLISS HUÉRFANAS.
     // Qué pasó: splitbliss creó su propio producto Bliss y repuntó 3 publicaciones hacia él. Ese
     // producto después se borró, así que esas 3 publicaciones quedaron apuntando a un producto
