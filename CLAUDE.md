@@ -245,6 +245,13 @@ Telegram va solo el resumen de ventas del día y el del mes.
   deducir el envío real. El 13/08/2026 salteó **121 de 401** y lo dijo en una línea al final; yo
   leí "23 abajo del piso" y le dije que no quedaba nada abajo del 30%. Era falso. Para esas está
   `submargen`, que usa la cuenta de Margen ML y no necesita ventas. **Los dos, siempre.**
+- **El margen de una publicación no se sabe del todo hasta que vende con el envío CARO.** El
+  14/08 revisé la Plantilla Metatarso (`MLA1472615965`, Ayelen) y `unapub` dio 37% con peor caso
+  $14, porque TODAS sus ventas habían salido con el envío barato: no había con qué medir el caro.
+  Le dije que estaba bien. Esa tarde vendió al 28% real y ahí apareció el envío de $126. Hubo que
+  subirla de $3.730 a $3.770. Lección: cuando el "peor caso" de una publicación es sospechosamente
+  bajo (unos pesos), NO es que sea barata de enviar — es que todavía no le tocó un envío caro. Las
+  ventas que él manda en naranja son justo las que el comando solo no puede ver.
 - **Después de tocar precios hay que correr `netoweb`.** Si no, "Margen ML" sigue mostrando el neto
   del precio viejo y parece que el aumento no se aplicó. Pasó dos veces el 13/08.
 - **Hay DOS envíos conviviendo y dan márgenes distintos.** `netoweb`, "Margen ML" y `submargen`
