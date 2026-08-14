@@ -215,7 +215,14 @@ Telegram va solo el resumen de ventas del día y el del mes.
 - **El cargo fijo de ML es ~$1.230 por venta**, sin importar el precio. En un producto de $3.400
   eso es el 36%: los productos baratos dan mucho menos margen del que parece.
 - **SIRTAC retiene 0,90% de todo lo que pagó el comprador**, envío incluido.
-- **`paused_by_seller` lo pausan ellos**, no ML. No es un problema.
+- **`paused_by_seller` lo pausan ellos**, no ML. No es un problema — **salvo que tenga stock en
+  Full**. Ahí sí: no vende nada, paga almacenamiento todos los meses y el reloj del descarte corre
+  igual. Por eso el chequeo de la mañana ahora lo avisa aparte de las pausadas.
+- **La marca roja de "para evitar descarte" NO viene por la API.** El stock de Full
+  (`/inventories/<id>/stock/fulfillment`) devuelve `available_quantity` y `not_available_quantity`
+  y nada más: ni la marca ni la fecha de descarte que se ven en "Estado de tu stock". Se deduce
+  cruzando el stock de Full con las ventas del panel (stock > 0 y cero ventas en 30 días), que
+  además es mejor dato porque las ventas las tenemos de verdad.
 - **El margen se calcula con el envío del PEOR caso**, que es el criterio conservador con el que se
   fijaron todos los precios. Con Full el envío real suele ser $0, así que el margen que se ve en el
   panel queda por arriba del piso.
@@ -314,6 +321,12 @@ Lo que quedó abierto. Borrá de acá lo que se vaya cerrando.
 - **Stock frenado: $3.123.616 en 27 productos.** Tres de los cuatro más grandes vendieron esta
   semana — están SOBRECOMPRADOS, no muertos. Falta mirar la caja de compra de cada uno para saber
   si además hay un problema de competencia.
+- **Stock en Full que ML va a descartar (14/08).** El chequeo lo mide desde hoy. Están así:
+  **32 publicaciones con stock y CERO ventas en 30 días · 309 u. · $2.908.548**, las más grandes
+  la Tablet Redmi Pad (2 u., $587.844), el Ferrari de Adriana (14 u., $427.448) y la Tarjeta
+  Sandisk 32gb (30 u., $238.290). Y **1 pausada con stock adentro**: Filtros Purificador de Agua
+  de Matías, 20 u., $20.840 — o la reactiva o retira el stock. De las 44 pausadas a mano, es la
+  única con mercadería adentro.
 - **Faltan gastos de agosto**: servicios ($150.000, en julio figura como "Claude"). El alquiler
   ($100.000), los honorarios ($100.000) y la obra social Sancor ($65.227) ya están.
 - **OSDE es PERSONAL, no es de CYC. No cargarlo nunca.** Aparece en los comprobantes recibidos de
