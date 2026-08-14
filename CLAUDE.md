@@ -238,6 +238,16 @@ Telegram va solo el resumen de ventas del día y el del mes.
   `submargen`, que usa la cuenta de Margen ML y no necesita ventas. **Los dos, siempre.**
 - **Después de tocar precios hay que correr `netoweb`.** Si no, "Margen ML" sigue mostrando el neto
   del precio viejo y parece que el aumento no se aplicó. Pasó dos veces el 13/08.
+- **Hay DOS envíos conviviendo y dan márgenes distintos.** `netoweb`, "Margen ML" y `submargen`
+  deducen el envío MÁS BARATO que se vio en las ventas; `bajopiso` y `unapub` usan el MÁS CARO.
+  El Espejo 8" daba 31,8% con uno y 26,9% con el otro (14/08). **El que vale es el del peor caso**:
+  es el criterio conservador con el que se fijaron todos los precios. Mientras `submargen` use el
+  barato se va a saltear publicaciones que están abajo del piso — PENDIENTE cambiarlo.
+- **Un aumento no está hecho hasta que la PANTALLA lo muestre arriba del 30%.** El 13/08 subí 62
+  publicaciones, el comando dijo que todas habían llegado al piso, y en la pantalla seguían en
+  27-29%: `submargen` estimaba el cargo de ML como un % del precio nuevo y la pantalla usa el
+  promedio de los impuestos de las ventas reales. Corregido el 14/08. La lección general:
+  **verificar contra lo que él ve, no contra lo que dice el comando que lo hizo.**
 - **Ojo con "Muerto" en Stock y reposición.** Mide rotación (ventas ÷ stock), no si vende. Un
   producto con 150 unidades que vende 25 cada 2 meses figura "Muerto" y vendió la semana pasada:
   no está muerto, está SOBRECOMPRADO. El remedio no es rematarlo, es dejar de comprarlo.
