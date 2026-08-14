@@ -161,6 +161,8 @@ Los que más se usan:
 | `submargen[:piso][:go]` | sube al piso con la cuenta de Margen ML · **llega a las que no vendieron** |
 | `volver:<MLA=precio>[:go]` | deja un precio exacto (sin `:go` es prueba) · maneja variantes |
 | `huerfanos[:palabra]` | los productos en "—": por qué no tienen precio y cuál es su publicación |
+| `poncosto:<palabra\|id>\|<pesos>[\|go]` | corrige el costo de un producto (lo mismo que el campo de la ficha) |
+| `vincular:<MLA>=<palabra\|id>[:go]` | pega una publicación a un producto y la saca de oculta |
 | `cargargasto:<fecha>\|<monto>\|<cat>\|<desc>[\|prov=][\|fact=][\|cae=][\|go]` | carga un gasto con su comprobante |
 | `subirrecibidas[:go]` | sube las compras de ARCA a Facturas → Recibidas (lee `ml-sync/recibidas.json`) |
 | `frenados[:díasStock]` | si conviene bajarle el precio al stock parado, con la cuenta hecha |
@@ -294,6 +296,15 @@ Lo que quedó abierto. Borrá de acá lo que se vaya cerrando.
   2 Separadores. Falta que él diga con cuál se queda. Revincular NO alcanza.
 - **Balanza persona y Bioxidil tienen la publicación CERRADA en ML** (`MLA2316189534` y
   `MLA2301693130`). No es error de vinculación: o las reabre o siguen en "—".
+- **El masajeador: falta saber si son UNO o DOS productos.** El 14/08 se le puso costo $9.000 a la
+  ficha "masajeador de cara" (full $10.132 con el 12,5% de reclamos), que era lo que él dijo que se
+  paga. Su única publicación, `MLA1714540251` de Ayelen ("Masajeador Facial Y Corporal Reductor
+  3en1"), está PAUSADA. Aparte hay `MLA1754449117` de Matías, **"Masajeador Facial Bola De Hielo
+  Crioterapia"**, pausada sin stock, a $15.000, 4 vendidas y **sin producto**. Él dijo "son todos
+  los mismos", pero por el título una es un rodillo de hielo para la cara y la otra un reductor
+  corporal 3 en 1: son cosas distintas. **No se vinculó nada hasta que él lo confirme.** Si son el
+  mismo: `vincular:MLA1754449117=p1779912656170:go`. Si no, hay que darle su propia ficha con su
+  costo. Ninguna de las dos está vendiendo, así que no corre riesgo hoy.
 - **La Cortadora Sportsman está a $32.999 en Adriana y a $13.180 en Ayelen.** Mismo producto, dos
   precios: hay un costo mal cargado en una de las dos fichas. Él decidió subir igual el 13/08. Si la
   de Adriana deja de vender, empezar por ahí.
