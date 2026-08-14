@@ -302,7 +302,14 @@ siempre. Los verificadores tienen que llamar a la misma función que el código 
 
 Lo que quedó abierto. Borrá de acá lo que se vaya cerrando.
 
-- **Él va a pasar de qué publicación de ML es cada uno de los 11 productos en "—"**, y los Excel de
+- **PREGUNTARLE POR LAS FACTURAS DE LOS PRODUCTOS "IMITABLES".** Él las tiene y las va a pasar;
+  pidió expresamente que se le haga acordar. **Sacarlo en cada chat hasta que las mande.** ML le
+  exige factura de compra de todo lo que puede ser falsificado —Victoria's Secret, pendrives y
+  tarjetas de memoria, y todo lo de marca— y sin esa factura te frena la publicación (es lo que
+  pasó con el "Bare Vanilla") o te da el reclamo en contra (el "adulterado" del 11/08). Cuando
+  lleguen: cruzar contra el catálogo y decirle **de qué productos FALTA** la factura. Las de ARCA
+  que ya están en `cyc/facturas_recibidas` sirven de punto de partida, pero ahí falta 09/2025 a
+  12/2025 y no todas las compras salieron con comprobante. y los Excel de
   compras de ARCA (Mis Comprobantes → Recibidos, una cuenta por vez). Cuando lleguen: vincular con
   `huerfanos` de guía, y armar el cuadro de compras con factura por proveedor.
 - **Tres productos están cargados DOS VECES** y por eso la ficha gemela quedó sin publicación:
