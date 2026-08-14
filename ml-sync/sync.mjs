@@ -4255,16 +4255,27 @@ async function main() {
       const vpS = (await db.get('cyc/ventaprod')) || {}; setDevLive(vpS);
       const pIdx = {}; for (const p of products) pIdx[p.id] = p;
       // Ventas por publicación, para deducir el envío igual que netoweb.
-      const vtaMla = {}, vtaProd = {};
+      // Y el cargo extra de ML por producto, EXACTAMENTE como lo hace la pantalla: el promedio de
+      // lo que se pagó de IIBB + monotributo en las ventas REALES del producto, y 0 si nunca vendió.
+      // Antes acá se estimaba como un % del precio nuevo. Parecido pero no igual: esa diferencia de
+      // $50 o $70 es justo la que separa el 29% del 30%, y por eso el 13/08 subí 62 publicaciones y
+      // muchas quedaron en 27-29% mientras el comando decía que habían llegado al piso.
+      const vtaMla = {}, vtaProd = {}, impProd = {};
       for (const ents of Object.values(vpS)) {
         for (const v of Object.values(ents || {})) {
           if (!v || v.cancelada) continue;
           const q = v.qty || 1, tot = (v.total || 0) / q, net = (v.neto || 0) / q;
+          if (v.prodId) {
+            const b = impProd[v.prodId] = impProd[v.prodId] || { imp: 0, u: 0 };
+            b.imp += (v.total || 0) * (mlExtraPct(v.cuenta) + monoS) / 100;
+            b.u += q;
+          }
           if (tot <= 0 || net <= 0) continue;
           if (v.mla) (vtaMla[v.mla] = vtaMla[v.mla] || []).push({ tot, net });
           if (v.prodId) (vtaProd[v.prodId] = vtaProd[v.prodId] || []).push({ tot, net });
         }
       }
+      const mlxDe = (pid) => { const b = impProd[pid]; return (b && b.u > 0) ? Math.round(b.imp / b.u) : 0; };
       const feeCache = {};
       const feeAt = async (site, price, ltype, cat, token) => {
         const key = site + '|' + ltype + '|' + cat + '|' + Math.round(price);
@@ -4311,18 +4322,19 @@ async function main() {
             if (!isFinite(envio) || envio < 0) envio = 0;
             const costoBase = costoPesos(p, 1, tcS).costo;
             if (!(costoBase > 0)) continue;
-            const extraPct = mlExtraPct(label) + monoS;
-            // El costo sube con el precio (el % de ML se cobra sobre el precio), así que el objetivo
-            // se mueve mientras se busca. Por eso se itera en vez de despejar de una.
+            // El costo es fijo (no depende del precio nuevo), igual que en la pantalla: costo full
+            // del producto + el promedio de impuestos de sus ventas. Se itera igual porque la
+            // comisión de ML no es lineal y hay que preguntársela precio por precio.
+            const costoTot = costoBase + mlxDe(p.id);
             const netoDe = async (P) => {
               const c = await feeAt(b.site_id || 'MLA', P, b.listing_type_id, b.category_id, t.access_token);
               return c == null ? null : P - c - envio;
             };
-            const metaDe = (P) => (costoBase + P * extraPct / 100) * (1 + PISO);
+            const metaDe = () => costoTot * (1 + PISO);
             let P = Math.round(precio0), ok = false, n0 = null, m0 = null;
             for (let it = 0; it < 14; it++) {
               const n = await netoDe(P); if (n == null) break;
-              const m = metaDe(P);
+              const m = metaDe();
               if (it === 0) { n0 = n; m0 = m; }
               if (n >= m) { ok = true; break; }
               // El hueco se cierra ~0,7 pesos por peso de aumento; se pide 1,5× para no quedar corto.
@@ -4338,7 +4350,7 @@ async function main() {
             let final = P, nota = '';
             if (precio0 < TOPE_ENVIO && P >= TOPE_ENVIO) { final = 32999; nota = ` (frenado en la barrera de los ${money(TOPE_ENVIO)}; para el piso hacían falta ${money(P)})`; }
             if (final <= precio0) { frenados.push({ mla, label, nom, why: `ya está en la barrera de los ${money(TOPE_ENVIO)}` }); continue; }
-            subir.push({ mla, label, nom, prod: p.name, de: Math.round(precio0), a: final, nota, vars, tok: t.access_token, pct: ((n0 - m0 / (1 + PISO)) / (m0 / (1 + PISO)) * 100) });
+            subir.push({ mla, label, nom, prod: p.name, de: Math.round(precio0), a: final, nota, vars, tok: t.access_token, pct: ((n0 - costoTot) / costoTot * 100) });
           }
         }
       }
