@@ -356,6 +356,15 @@ Lo que quedó abierto. Borrá de acá lo que se vaya cerrando.
 - **Victoria's Secret "adulterado"** (reclamo de Adriana, 11/08, $45.300). Él dice que son
   originales con factura. ML cerró el caso a favor del comprador sin dejar responder. Se le
   recomendó guardar la factura del lote, abrir una unidad y filmarla, y reclamarle al proveedor.
+- **El "Bare Vanilla" de VS (`MLA3546445862`) está EN REVISIÓN de ML esperando documentación**
+  (`under_review · pending_documentation`) y por eso ML rechaza cualquier cambio, el precio
+  incluido (ML-400). El 14/08 quedó en $45.300 cuando las otras 9 subieron a $49.000. Cuando él
+  mande los papeles y ML la libere: `volver:MLA3546445862=49000:go`. Es el mismo tema que el
+  reclamo del "adulterado": ML quiere que pruebe que son originales.
+- **Las 13 publicaciones de VS son TODAS de Adriana** y están en dos fichas: `p1779912655550`
+  (mercadería $21.533, 10 publicaciones) y `p1785263851692` ($24.462, 3). El 14/08 él pidió
+  llevarlas todas a $49.000; tres ya estaban más caras y no se tocaron (regla de no bajar):
+  `MLA1771171013` $49.040 · `MLA3374447776` $49.640 · `MLA3374364116` $52.130.
 - **ARCA y las compras.** Ya está la pantalla (Facturas → Recibidas, 338 comprobantes de ene a
   ago 2026) y ya está el diagnóstico (ver arriba: venden $230M, compran $17,7M con factura). Lo que
   falta es que **empiece a pedir factura en cada compra** y que pase los comprobantes nuevos para
