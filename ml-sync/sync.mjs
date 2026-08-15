@@ -2288,9 +2288,12 @@ async function main() {
       const quiebres = R.flatMap((r) => r.quiebres.map((q) => ({ ...q, cta: r.label })))
         .sort((a, b) => b.porDia - a.porDia);
       const perdidaDia = quiebres.reduce((s, q) => s + q.porDia, 0);
-      // Reclamos que dependen de vos y llevan días parados: 2 días es el umbral porque el de los
-      // Galaxy Buds se cerró solo al sexto.
-      const parados = R.flatMap((r) => r.reclamos.filter((c) => c.acciones.length && (c.dias || 0) >= 2)
+      // Reclamos que DEPENDEN DE VOS: los que ML todavía te deja contestar, tengan los días que
+      // tengan. Antes el umbral eran 2 días (por el de los Galaxy Buds, que se cerró al sexto) y
+      // eso llegó tarde: el 13/08 el de la Depiladora entró a las 16:01, no se contestó, y ML lo
+      // cerró en contra a las 13:25 del día siguiente — 21 horas, ni un día. Con umbral de 2 días
+      // ese reclamo nunca se hubiera avisado. Si se puede contestar, va a "PARA HOY" y punto.
+      const parados = R.flatMap((r) => r.reclamos.filter((c) => c.acciones.length)
         .map((c) => ({ ...c, cta: r.label })));
       // Stock parado en Full. Se mira aparte de "Pausadas" a propósito: una pausada SIN stock no
       // cuesta nada —por eso las pausadas a mano ni se listan—, pero una pausada CON stock en Full
@@ -2314,7 +2317,7 @@ async function main() {
       L.push(`🌅 <b>CHEQUEO</b> · ${hoyLbl}`);
       // 1) LO QUE HAY QUE HACER HOY. Va primero porque es lo único que pide que hagas algo.
       const hacer = [];
-      for (const c of parados) hacer.push(`⏰ <b>${c.cta}</b>: reclamo de ${c.dias} días — todavía podés contestarlo`);
+      for (const c of parados) hacer.push(`⏰ <b>${c.cta}</b>: reclamo ${c.dias ? `de ${c.dias} día(s)` : 'de hoy'} — <b>todavía podés contestarlo</b>`);
       if (totMsg) hacer.push(`💬 ${totMsg} mensaje(s) de comprador sin leer`);
       if (totML) hacer.push(`🚫 ${totML} publicación(es) pausada(s) <b>por ML</b>`);
       if (totDep) hacer.push(`📤 ${totDep} activa(s) fuera de Full`);
@@ -2331,7 +2334,7 @@ async function main() {
       }
       // 4) El resto: una línea por tema, sin listas.
       L.push(`\n❓ <b>${totPreg}</b> preguntas sin responder${diasVieja ? ` · la más vieja hace <b>${diasVieja} días</b>` : ''}`);
-      L.push(`⚠️ <b>${totRec}</b> reclamo(s) abierto(s)${parados.length ? ` · ${parados.length} te espera(n)` : ' · los maneja ML'}`);
+      L.push(`⚠️ <b>${totRec}</b> reclamo(s) abierto(s)${parados.length ? ` · <b>${parados.length} te espera(n)</b>` : ' · los maneja ML, no hay nada para hacer'}`);
       L.push(`🏭 Full: ${totProb} u. con problema · <b>${totCajas}</b> caja(s) llegada(s) en ${DIAS} días`);
       if (pausados.length) L.push(`🧊 <b>${pausados.length}</b> pausada(s) con stock adentro · ${uPaus} u. · <b>${money(Math.round($paus))}</b>`);
       if (dormidos.length) L.push(`🟠 <b>${dormidos.length}</b> con stock y sin vender hace 30 días · ${money(Math.round($dorm))}`);
