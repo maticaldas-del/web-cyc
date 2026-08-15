@@ -3571,6 +3571,36 @@ async function main() {
       console.log('Después corré netoweb, si no el producto sigue mostrando "—".');
       return;
     }
+    // BILLING_PROBE=probarsaldo → ¿ML/MercadoPago nos dan el saldo por la API?
+    //
+    // Diagnóstico y nada más: prueba los endpoints candidatos en las 4 cuentas y muestra lo que
+    // contesta cada uno, crudo. Antes de mostrar un peso en el Arqueo hay que estar seguro de que
+    // el número existe y de cuál de los campos es el "disponible".
+    if (String(process.env.BILLING_PROBE || '') === 'probarsaldo') {
+      for (const label of labels) {
+        const acc = accounts[label];
+        if (!acc?.refresh_token || !acc.seller_id) { console.log(`\n[${label}] sin token`); continue; }
+        let t; try { t = await mlRefresh(ML_CLIENT_ID, ML_CLIENT_SECRET, acc.refresh_token); }
+        catch { console.log(`\n[${label}] no pude renovar el token`); continue; }
+        await db.patch('mlapi/tokens/' + label, { refresh_token: t.refresh_token, updated_ts: Date.now() });
+        const sid = acc.seller_id;
+        console.log(`\n══ ${label} · seller ${sid} ══`);
+        const pruebas = [
+          ['ML  · mercadopago_account/balance', `${ML_API}/users/${sid}/mercadopago_account/balance`],
+          ['MP  · v1/account/balance', 'https://api.mercadopago.com/v1/account/balance'],
+          ['MP  · users/.../balance', `https://api.mercadopago.com/users/${sid}/mercadopago_account/balance`],
+        ];
+        for (const [nom, url] of pruebas) {
+          try {
+            const r = await fetch(url, { headers: { Authorization: `Bearer ${t.access_token}` } });
+            const txt = (await r.text()).slice(0, 400);
+            console.log(`  ${nom}: HTTP ${r.status} → ${txt}`);
+          } catch (e) { console.log(`  ${nom}: ERROR ${String(e.message || e).slice(0, 80)}`); }
+        }
+      }
+      console.log('\n(esto solo lee: no toqué nada)');
+      return;
+    }
     // BILLING_PROBE=repbliss[:go] → REPARA LAS PUBLICACIONES BLISS HUÉRFANAS.
     // Qué pasó: splitbliss creó su propio producto Bliss y repuntó 3 publicaciones hacia él. Ese
     // producto después se borró, así que esas 3 publicaciones quedaron apuntando a un producto
