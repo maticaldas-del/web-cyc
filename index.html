@@ -1057,8 +1057,10 @@ footer{margin-top:32px;padding-top:14px;border-top:1px solid var(--border);font-
 
   <div class="pedidos-add" style="margin-bottom:12px">
     <input type="date" id="env-fecha" class="fin-input" style="width:150px">
+    <!-- La cuenta NO es obligatoria: el comprobante del correo no la dice, y muchas veces se
+         despacha sin tenerla a mano. Se puede completar después tocándola en la lista. -->
     <select id="env-cuenta" class="cal-select" style="font-size:.72rem">
-      <option value="">¿De qué cuenta?</option>
+      <option value="">¿De qué cuenta? (después)</option>
       <option value="Adriana">Adriana</option>
       <option value="Luciana">Luciana</option>
       <option value="Ayelen">Ayelen</option>
@@ -3597,7 +3599,6 @@ async function addEnvioFull(){
   const segs=(document.getElementById('env-track').value||'')
     .split(/[\n,;]+/).map(s=>s.replace(/[^0-9]/g,'')).filter(Boolean);
   if(!fecha){toast('Falta la fecha','err');return;}
-  if(!cuenta){toast('Elegí de qué cuenta es','err');return;}
   // Si no se escribe la cantidad, son tantas cajas como seguimientos haya.
   const cajas=parseInt(cajasTxt,10)||segs.length;
   if(!cajas){toast('Poné cuántas cajas o pegá los seguimientos','err');return;}
@@ -3605,7 +3606,7 @@ async function addEnvioFull(){
     if(!confirm(`Pusiste ${cajas} caja(s) y ${segs.length} número(s) de seguimiento. ¿Lo guardo igual?`))return;
   }
   const id='env'+Date.now();
-  const e={fecha,cuenta,correo:correo||'Andreani',sucursal:suc,cajas,seguimientos:segs,obs,ts:Date.now()};
+  const e={fecha,cuenta:cuenta||'?',correo:correo||'Andreani',sucursal:suc,cajas,seguimientos:segs,obs,ts:Date.now()};
   await fbSet('envios_full/'+id,e);
   state.envios_full=state.envios_full||{};state.envios_full[id]=e;
   document.getElementById('env-track').value='';
@@ -3613,6 +3614,15 @@ async function addEnvioFull(){
   document.getElementById('env-cajas').value='';
   await log('Envío a Full: '+cajas+' caja(s) · '+cuenta+' · '+fecha);
   toast('Envío guardado ✓');
+  renderEnviosFull();
+}
+// La cuenta se puede completar después: el comprobante del correo no la trae, y a veces recién se
+// sabe cuando ML recibe la mercadería (cada cuenta tiene su propio depósito).
+async function setEnvioCuenta(id,cuenta){
+  const e=(state.envios_full||{})[id];if(!e)return;
+  e.cuenta=cuenta;
+  await fbSet('envios_full/'+id+'/cuenta',cuenta);
+  await log('Envío del '+e.fecha+': cuenta → '+cuenta);
   renderEnviosFull();
 }
 async function delEnvioFull(id){
@@ -3647,7 +3657,9 @@ function renderEnviosFull(){
     return `<div style="padding:12px 14px;background:var(--surface);border:1px solid var(--border);border-radius:var(--r);margin-bottom:7px">
       <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap">
         <div>
-          <span class="pi-prov">${e.cuenta||'?'}</span>
+          <select class="pi-prov" style="cursor:pointer" onchange="setEnvioCuenta('${e.id}',this.value)">
+            ${['?',...LOCS].map(l=>`<option value="${l}"${(e.cuenta||'?')===l?' selected':''}>${l==='?'?'¿qué cuenta?':l}</option>`).join('')}
+          </select>
           <strong style="font-family:'DM Mono',monospace;font-size:.78rem"> ${e.fecha}</strong>
           <span class="pi-qty" style="margin-left:6px">${e.cajas} caja(s)</span>
           <span style="color:var(--muted);font-size:.68rem"> ${e.correo||''}${e.sucursal?' · '+e.sucursal:''}</span>
@@ -8190,7 +8202,7 @@ document.addEventListener('click',e=>{if(fnavOpen&&!e.target.closest('#fnav-btn'
         <span style="font-size:.75rem;color:var(--muted)">Si no ves los últimos cambios, forzá la actualización</span>
         <button class="btn" style="background:rgba(56,189,248,.12);color:var(--blue);border:1px solid rgba(56,189,248,.3)" onclick="actualizarApp()">🔄 Buscar actualizaciones</button>
       </div>
-      <div style="font-size:.66rem;color:var(--muted);margin-top:12px">CYC · Versión 9.5</div>
+      <div style="font-size:.66rem;color:var(--muted);margin-top:12px">CYC · Versión 9.6</div>
     </div>
 
     <div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:18px 20px;margin-bottom:14px">
