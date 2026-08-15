@@ -498,6 +498,13 @@ footer{margin-top:32px;padding-top:14px;border-top:1px solid var(--border);font-
       <div id="nc-pedidos-costo" style="font-size:.68rem;color:var(--muted);margin-top:4px"></div>
       <span class="nc-arrow">→</span>
     </div>
+    <div class="nav-card nc3" onclick="goPage('enviosfull')">
+      <span class="nc-icon">📦</span>
+      <div class="nc-title">Envíos a Full</div>
+      <div class="nc-desc">Las cajas que mandaste al depósito de ML, con su seguimiento.</div>
+      <div id="nc-envios-sub" style="font-size:.68rem;color:var(--muted);margin-top:4px"></div>
+      <span class="nc-arrow">→</span>
+    </div>
     <div class="nav-card nc3" onclick="goPage('rotacion')">
       <span class="nc-icon">📊</span>
       <div class="nc-title">Rotación de Stock</div>
@@ -962,6 +969,55 @@ footer{margin-top:32px;padding-top:14px;border-top:1px solid var(--border);font-
   </div>
 
   <footer>CYC · Pedidos</footer>
+</div>
+</div>
+
+<!-- ════════════════════ ENVÍOS A FULL ════════════════════
+     Las cajas que se mandan al depósito de ML. Se anotan a mano (del comprobante del correo)
+     porque del lado de ML solo se sabe lo que YA LLEGÓ: el chequeo de la mañana lee las
+     recepciones, pero si una caja se pierde en el camino no aparece en ningún lado — ni como
+     llegada ni como faltante. Teniendo lo que se despachó, la diferencia salta sola.
+     NO se guarda la foto del comprobante: la app se baja todos los datos de una sola vez al
+     abrir, y las fotos la harían lentísima en el celular. Con los números de seguimiento alcanza. -->
+<div id="page-enviosfull" class="page">
+<div class="page-wrap">
+  <div class="page-header">
+    <div class="ph-left">
+      <button class="back-btn" onclick="goPage('home')">← Inicio</button>
+      <div>
+        <div class="ph-title">Envíos a Full</div>
+        <div class="ph-sub">Cajas despachadas al depósito de ML</div>
+      </div>
+    </div>
+    <div class="ph-right">
+      <span class="conn-label"><span class="dot" id="dot-env"></span><span id="conn-env">conectando</span></span>
+      <span class="who-badge" id="who-env">—</span>
+    </div>
+  </div>
+
+  <div class="pedidos-add" style="margin-bottom:12px">
+    <input type="date" id="env-fecha" class="fin-input" style="width:150px">
+    <select id="env-cuenta" class="cal-select" style="font-size:.72rem">
+      <option value="">¿De qué cuenta?</option>
+      <option value="Adriana">Adriana</option>
+      <option value="Luciana">Luciana</option>
+      <option value="Ayelen">Ayelen</option>
+      <option value="Matias">Matias</option>
+    </select>
+    <input type="text" id="env-correo" class="fin-input" placeholder="Correo (Andreani)" style="width:130px">
+    <input type="text" id="env-suc" class="fin-input" placeholder="Sucursal" style="width:150px">
+    <input type="text" id="env-cajas" class="fin-input" inputmode="numeric" placeholder="Cajas" style="width:80px">
+    <button class="btn" onclick="addEnvioFull()">Guardar envío</button>
+  </div>
+  <textarea id="env-track" placeholder="Números de seguimiento, uno por línea (los del comprobante)"
+    style="width:100%;min-height:80px;background:var(--surface2);border:1px solid var(--border2);border-radius:6px;color:var(--text);font-family:'DM Mono',monospace;font-size:.72rem;padding:10px;outline:none;margin-bottom:6px"></textarea>
+  <input type="text" id="env-obs" class="fin-input" placeholder="Nota (opcional): quién lo despachó, qué iba adentro…" style="width:100%;margin-bottom:14px">
+
+  <div class="pedidos-count" id="envios-count"></div>
+  <input class="search-box" id="env-search" type="search" placeholder="Buscar por seguimiento, cuenta o fecha..." oninput="renderEnviosFull()" style="margin-bottom:10px">
+  <div id="envios-list"><div class="empty-msg">Todavía no hay envíos anotados.</div></div>
+
+  <footer>CYC · Envíos a Full</footer>
 </div>
 </div>
 
@@ -1761,6 +1817,8 @@ function startApp(){
     // Facturas RECIBIDAS = las compras, según ARCA. Van aparte de cyc/compras (los gastos) a
     // propósito: son un registro para mirar, no entran en la ganancia del mes.
     state.facturas_rec=d.facturas_recibidas||{};
+    // Las cajas despachadas a Full, anotadas del comprobante del correo.
+    state.envios_full=d.envios_full||{};
     // detectar entradas nuevas de ventaprod escritas externamente (p.ej. cowork)
     const _newVP=d.ventaprod||{};
     const _allIds=new Set();
@@ -2135,6 +2193,7 @@ function goPage(page){
   if(page==='metricas'){initMetricasPage();}
   if(page==='ventaprod')initVentaProd();
   if(page==='rotacion')renderRotacionStock();
+  if(page==='enviosfull')enterEnviosFull();
   if(page==='facturas')renderFacturas();
   if(page==='ajustes')enterAjustes();
   if(page==='inventario'){renderInv();renderProds();renderHist();loadFinInputs();updateArqueo();updateTotals();updateHdr();}
@@ -3358,6 +3417,93 @@ async function saveTC(val){
   renderInv();renderResumen();renderProds();updateTotals();updateArqueo();updateHeaderTotal();
   await recalcTodayCostos(null);
   toast('Dólar actualizado ✓');
+}
+
+/* ═══════════ ENVÍOS A FULL ═══════════
+   Se anota lo que SALE. Lo que llega ya lo sabe el chequeo de la mañana leyéndolo de ML; lo que
+   no sabe nadie es lo que se despachó, y sin eso una caja perdida no aparece en ningún lado.
+   Un envío = un comprobante del correo, con sus números de seguimiento. */
+function enterEnviosFull(){
+  const f=document.getElementById('env-fecha');
+  if(f&&!f.value)f.value=new Date().toISOString().slice(0,10);
+  const c=document.getElementById('env-correo');
+  if(c&&!c.value)c.value='Andreani';
+  renderEnviosFull();
+}
+async function addEnvioFull(){
+  const fecha=(document.getElementById('env-fecha').value||'').trim();
+  const cuenta=(document.getElementById('env-cuenta').value||'').trim();
+  const correo=(document.getElementById('env-correo').value||'').trim();
+  const suc=(document.getElementById('env-suc').value||'').trim();
+  const cajasTxt=(document.getElementById('env-cajas').value||'').trim();
+  const obs=(document.getElementById('env-obs').value||'').trim();
+  // Un seguimiento por línea, como viene en el comprobante. Se limpia todo lo que no sea número
+  // para que dé igual pegarlo con espacios o guiones.
+  const segs=(document.getElementById('env-track').value||'')
+    .split(/[\n,;]+/).map(s=>s.replace(/[^0-9]/g,'')).filter(Boolean);
+  if(!fecha){toast('Falta la fecha','err');return;}
+  if(!cuenta){toast('Elegí de qué cuenta es','err');return;}
+  // Si no se escribe la cantidad, son tantas cajas como seguimientos haya.
+  const cajas=parseInt(cajasTxt,10)||segs.length;
+  if(!cajas){toast('Poné cuántas cajas o pegá los seguimientos','err');return;}
+  if(segs.length&&segs.length!==cajas){
+    if(!confirm(`Pusiste ${cajas} caja(s) y ${segs.length} número(s) de seguimiento. ¿Lo guardo igual?`))return;
+  }
+  const id='env'+Date.now();
+  const e={fecha,cuenta,correo:correo||'Andreani',sucursal:suc,cajas,seguimientos:segs,obs,ts:Date.now()};
+  await fbSet('envios_full/'+id,e);
+  state.envios_full=state.envios_full||{};state.envios_full[id]=e;
+  document.getElementById('env-track').value='';
+  document.getElementById('env-obs').value='';
+  document.getElementById('env-cajas').value='';
+  await log('Envío a Full: '+cajas+' caja(s) · '+cuenta+' · '+fecha);
+  toast('Envío guardado ✓');
+  renderEnviosFull();
+}
+async function delEnvioFull(id){
+  const e=(state.envios_full||{})[id];if(!e)return;
+  if(!confirm(`¿Borrar el envío del ${e.fecha} (${e.cajas} caja/s de ${e.cuenta})?`))return;
+  await fbSet('envios_full/'+id,null);
+  delete state.envios_full[id];
+  renderEnviosFull();
+}
+function renderEnviosFull(){
+  const cont=document.getElementById('envios-list');if(!cont)return;
+  const todos=Object.entries(state.envios_full||{}).map(([id,e])=>({id,...e}))
+    .sort((a,b)=>(b.fecha||'').localeCompare(a.fecha||'')||(b.ts||0)-(a.ts||0));
+  const q=normTxt(document.getElementById('env-search')?.value||'');
+  const arr=q?todos.filter(e=>normTxt([e.fecha,e.cuenta,e.correo,e.sucursal,e.obs,(e.seguimientos||[]).join(' ')].join(' ')).includes(q)):todos;
+  // Resumen arriba: cajas de los últimos 30 días, que es la ventana que mira el chequeo.
+  const hace30=new Date(Date.now()-30*86400000).toISOString().slice(0,10);
+  const cajas30=todos.filter(e=>(e.fecha||'')>=hace30).reduce((s,e)=>s+(e.cajas||0),0);
+  const ultimo=todos[0];
+  const cnt=document.getElementById('envios-count');
+  if(cnt){
+    const dias=ultimo?Math.floor((Date.now()-new Date(ultimo.fecha+'T12:00:00').getTime())/86400000):null;
+    cnt.innerHTML=`<div class="pcount"><strong>${todos.length}</strong>envíos anotados</div>`
+      +`<div class="pcount"><strong>${cajas30}</strong>cajas en 30 días</div>`
+      +(ultimo?`<div class="pcount"${dias>=7?' style="border-color:rgba(245,158,11,.3)"':''}><strong${dias>=7?' style="color:var(--amber)"':''}>${dias}</strong>días del último</div>`:'');
+  }
+  const sub=document.getElementById('nc-envios-sub');
+  if(sub)sub.textContent=ultimo?`Último: ${ultimo.fecha} · ${ultimo.cajas} caja(s)`:'Todavía sin envíos';
+  if(!arr.length){cont.innerHTML='<div class="empty-msg">'+(q?'Nada con esa búsqueda.':'Todavía no hay envíos anotados.')+'</div>';return;}
+  cont.innerHTML=arr.map(e=>{
+    const segs=(e.seguimientos||[]);
+    return `<div style="padding:12px 14px;background:var(--surface);border:1px solid var(--border);border-radius:var(--r);margin-bottom:7px">
+      <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap">
+        <div>
+          <span class="pi-prov">${e.cuenta||'?'}</span>
+          <strong style="font-family:'DM Mono',monospace;font-size:.78rem"> ${e.fecha}</strong>
+          <span class="pi-qty" style="margin-left:6px">${e.cajas} caja(s)</span>
+          <span style="color:var(--muted);font-size:.68rem"> ${e.correo||''}${e.sucursal?' · '+e.sucursal:''}</span>
+        </div>
+        <button class="btn btn-del" onclick="delEnvioFull('${e.id}')" title="Borrar este envío">✕</button>
+      </div>
+      ${segs.length?`<div style="margin-top:6px;font-family:'DM Mono',monospace;font-size:.68rem;color:var(--muted);line-height:1.7">${segs.map(s=>`<span style="display:inline-block;background:var(--surface2);border:1px solid var(--border2);border-radius:5px;padding:1px 7px;margin:0 5px 4px 0">${s}</span>`).join('')}</div>`
+        :`<div style="margin-top:6px;font-size:.66rem;color:var(--amber)">sin números de seguimiento</div>`}
+      ${e.obs?`<div style="margin-top:4px;font-size:.68rem;color:var(--muted)">${e.obs}</div>`:''}
+    </div>`;
+  }).join('');
 }
 
 let _arqViewYM=null; // YYYY_MM del snapshot que se está viendo, null = en vivo
@@ -7788,7 +7934,7 @@ document.addEventListener('click',e=>{if(fnavOpen&&!e.target.closest('#fnav-btn'
         <span style="font-size:.75rem;color:var(--muted)">Si no ves los últimos cambios, forzá la actualización</span>
         <button class="btn" style="background:rgba(56,189,248,.12);color:var(--blue);border:1px solid rgba(56,189,248,.3)" onclick="actualizarApp()">🔄 Buscar actualizaciones</button>
       </div>
-      <div style="font-size:.66rem;color:var(--muted);margin-top:12px">CYC · Versión 9.3</div>
+      <div style="font-size:.66rem;color:var(--muted);margin-top:12px">CYC · Versión 9.4</div>
     </div>
 
     <div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:18px 20px;margin-bottom:14px">

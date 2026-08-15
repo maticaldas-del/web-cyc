@@ -3571,6 +3571,50 @@ async function main() {
       console.log('Después corré netoweb, si no el producto sigue mostrando "—".');
       return;
     }
+    // BILLING_PROBE=cargarenvio:<fecha>|<cuenta>|<cajas>|<seg1,seg2,…>[|suc=][|correo=][|obs=][|go]
+    //
+    // Anota una tanda de cajas despachadas a Full, para que quede en la pantalla "Envíos a Full".
+    // Existe para poder cargarlo desde el chat cuando él manda la foto del comprobante del correo,
+    // que es como pasa de verdad: deja las cajas, saca la foto y la manda.
+    //
+    // Por qué anotar lo que SALE: del lado de ML solo se sabe lo que YA LLEGÓ (el chequeo lee las
+    // recepciones). Si una caja se pierde en el camino no figura en ningún lado, ni como llegada ni
+    // como faltante. Teniendo el despacho, la diferencia salta sola.
+    // La fecha va en formato YYYY-MM-DD. Si no se pasa la cantidad, son tantas cajas como
+    // seguimientos. Sin ":go" solo muestra lo que guardaría.
+    if (String(process.env.BILLING_PROBE || '').startsWith('cargarenvio:')) {
+      const _ce = String(process.env.BILLING_PROBE).slice(12).split('|').map((s) => s.trim());
+      const APLICAR = _ce.some((p) => p === 'go');
+      const fecha = _ce[0] || '';
+      const cuenta = _ce[1] || '?';
+      const cajasTxt = _ce[2] || '';
+      const segs = (_ce[3] || '').split(/[,;\s]+/).map((s) => s.replace(/[^0-9]/g, '')).filter(Boolean);
+      const opt = (k) => { const p = _ce.find((x) => x.toLowerCase().startsWith(k + '=')); return p ? p.slice(k.length + 1).trim() : ''; };
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(fecha)) { console.log('Usá: cargarenvio:<YYYY-MM-DD>|<cuenta>|<cajas>|<seg1,seg2,…>[|suc=][|correo=][|obs=][|go]'); return; }
+      const cajas = parseInt(cajasTxt, 10) || segs.length;
+      if (!cajas) { console.log('Falta la cantidad de cajas (o los números de seguimiento).'); return; }
+      const e = {
+        fecha, cuenta, cajas, seguimientos: segs,
+        correo: opt('correo') || 'Andreani', sucursal: opt('suc'), obs: opt('obs'), ts: Date.now(),
+      };
+      console.log(`=== ENVÍO A FULL ${APLICAR ? '(GUARDANDO)' : '(PRUEBA)'} ===\n`);
+      console.log(`  fecha    : ${e.fecha}`);
+      console.log(`  cuenta   : ${e.cuenta}${e.cuenta === '?' ? '   ⚠️ SIN DEFINIR — hay que corregirla' : ''}`);
+      console.log(`  cajas    : ${e.cajas}`);
+      console.log(`  correo   : ${e.correo}${e.sucursal ? ' · ' + e.sucursal : ''}`);
+      if (e.obs) console.log(`  nota     : ${e.obs}`);
+      console.log(`  seguimientos (${segs.length}):`);
+      for (const s of segs) console.log(`     ${s}`);
+      if (segs.length && segs.length !== cajas) console.log(`\n  ⚠️ Ojo: ${cajas} cajas pero ${segs.length} números de seguimiento.`);
+      if (!APLICAR) { console.log(`\nPRUEBA: no guardé nada. Para guardar, el mismo comando terminado en "|go".`); return; }
+      const id = 'env' + Date.now();
+      await db.set('cyc/envios_full/' + id, e);
+      const ver = (await db.get('cyc/envios_full/' + id)) || {};
+      const ok = ver.fecha === e.fecha && (ver.seguimientos || []).length === segs.length && ver.cajas === cajas;
+      console.log(`\n  releído de la base: ${ver.fecha || '—'} · ${ver.cajas || 0} caja(s) · ${(ver.seguimientos || []).length} seguimiento(s) ${ok ? '✓' : '✗'}`);
+      console.log(ok ? '\n✓ Guardado. Se ve en la pantalla "Envíos a Full".' : '\n✗ NO quedó como pedí — revisalo.');
+      return;
+    }
     // BILLING_PROBE=pausar:<busca>[!<saca>][:go] → PAUSA VARIAS PUBLICACIONES DE UNA.
     //
     // `busca` y `saca` son palabras separadas por "+". Entra la publicación cuyo título tenga
