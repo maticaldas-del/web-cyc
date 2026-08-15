@@ -498,6 +498,13 @@ footer{margin-top:32px;padding-top:14px;border-top:1px solid var(--border);font-
       <div id="nc-pedidos-costo" style="font-size:.68rem;color:var(--muted);margin-top:4px"></div>
       <span class="nc-arrow">→</span>
     </div>
+    <div class="nav-card nc3" onclick="goPage('oficina')">
+      <span class="nc-icon">🏠</span>
+      <div class="nc-title">Mi oficina</div>
+      <div class="nc-desc">Qué tenés en casa y a qué cuenta va cada cosa.</div>
+      <div id="nc-ofi-sub" style="font-size:.68rem;color:var(--muted);margin-top:4px"></div>
+      <span class="nc-arrow">→</span>
+    </div>
     <div class="nav-card nc3" onclick="goPage('enviosfull')">
       <span class="nc-icon">📦</span>
       <div class="nc-title">Envíos a Full</div>
@@ -637,6 +644,9 @@ footer{margin-top:32px;padding-top:14px;border-top:1px solid var(--border);font-
         <div class="fin-field"><div class="fin-left"><span class="fin-label">Oficina CYC</span><span id="db_of_viejo"></span></div><input class="fin-input money" type="text" inputmode="numeric" id="f_of_viejo" placeholder="$0" onchange="saveFin('of_viejo',this.value)"></div>
         <div class="fin-field"><div class="fin-left"><span class="fin-label">Oficina Mati</span><span id="db_of_mia"></span></div><input class="fin-input money" type="text" inputmode="numeric" id="f_of_mia" placeholder="$0" onchange="saveFin('of_mia',this.value)"></div>
         <div class="fin-field"><div class="fin-left"><span class="fin-label">Vendedores</span><span id="db_vendedores"></span></div><input class="fin-input money" type="text" inputmode="numeric" id="f_vendedores" placeholder="$0" onchange="saveFin('vendedores',this.value)"></div>
+        <!-- Desde que se cuenta la oficina por unidades, esa mercadería ya entra sola en el
+             patrimonio (Stock Local). Si además queda cargada a mano acá, se cuenta DOS VECES. -->
+        <div id="ofi-doble-aviso" style="display:none;font-size:.64rem;color:var(--amber);margin-top:6px;line-height:1.4"></div>
       </div>
       <div class="arqueo-section positivo">
         <h3>📥 Lo que nos deben</h3>
@@ -969,6 +979,56 @@ footer{margin-top:32px;padding-top:14px;border-top:1px solid var(--border);font-
   </div>
 
   <footer>CYC · Pedidos</footer>
+</div>
+</div>
+
+<!-- ════════════════════ MI OFICINA ════════════════════
+     Dos habitaciones: una con lo YA ETIQUETADO (listo para meter en la caja) y otra con lo que
+     todavía no tiene etiqueta. Y, sobre eso, la respuesta a la pregunta que aparece cuando está
+     armando la caja: de esto que tengo, ¿qué mando y a qué cuenta? -->
+<div id="page-oficina" class="page">
+<div class="page-wrap">
+  <div class="page-header">
+    <div class="ph-left">
+      <button class="back-btn" onclick="goPage('home')">← Inicio</button>
+      <div>
+        <div class="ph-title">Mi oficina</div>
+        <div class="ph-sub">Lo que tenés en casa, y a qué cuenta va</div>
+      </div>
+    </div>
+    <div class="ph-right">
+      <span class="conn-label"><span class="dot" id="dot-ofi"></span><span id="conn-ofi">conectando</span></span>
+      <span class="who-badge" id="who-ofi">—</span>
+    </div>
+  </div>
+
+  <div class="tabs">
+    <button class="tab active" id="tab-ofi-caja" onclick="setOfiTab('caja',this)">📦 Armar caja</button>
+    <button class="tab" id="tab-ofi-contar" onclick="setOfiTab('contar',this)">🔢 Contar lo que hay</button>
+  </div>
+
+  <!-- ARMAR CAJA -->
+  <div id="ofi-sec-caja">
+    <div class="pedidos-count" id="ofi-resumen"></div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px" id="ofi-filtro-cuentas"></div>
+    <div id="ofi-caja-list"><div class="empty-msg">Contá lo que tenés en la pestaña de al lado y acá te digo a qué cuenta va.</div></div>
+  </div>
+
+  <!-- CONTAR -->
+  <div id="ofi-sec-contar" style="display:none">
+    <div style="font-size:.66rem;color:var(--muted);margin-bottom:10px;line-height:1.5">
+      Poné cuántas unidades tenés de cada producto en cada habitación. <strong>Esto no es stock de ML</strong>:
+      son cosas que están en tu casa y todavía no se pueden vender. Por eso no tapan un quiebre de stock,
+      pero sí evitan que Pedidos te mande a comprar algo que ya tenés.
+    </div>
+    <input class="search-box" id="ofi-search" type="search" placeholder="Buscar producto..." oninput="renderOfiContar()" style="margin-bottom:10px">
+    <label style="font-size:.66rem;color:var(--muted);display:flex;align-items:center;gap:6px;margin-bottom:10px">
+      <input type="checkbox" id="ofi-solo-con" onchange="renderOfiContar()"> mostrar solo los que tienen algo
+    </label>
+    <div id="ofi-contar-list"></div>
+  </div>
+
+  <footer>CYC · Mi oficina</footer>
 </div>
 </div>
 
@@ -1624,7 +1684,14 @@ footer{margin-top:32px;padding-top:14px;border-top:1px solid var(--border);font-
 /* ═══════════ CONFIG & STATE ═══════════ */
 const LOCS=['Adriana','Luciana','Ayelen','Matias'];
 const ML_LOCS=['Adriana','Luciana','Ayelen','Matias'];
-const LOCAL_LOCS=[];
+// LAS DOS HABITACIONES DE LA OFICINA. Van APARTE de las cuatro cuentas a propósito: las cuatro
+// son depósitos de ML (mercadería que se puede vender YA) y esto es mercadería que todavía está
+// en casa. Si se mezclaran, el panel creería que hay stock para vender y no avisaría los quiebres.
+// La diferencia entre las dos: "etiquetado" ya tiene la etiqueta de ML pegada y está listo para
+// meter en la caja; "sin etiquetar" todavía no, y no se puede despachar así.
+const OFI_ETIQ='Ofi etiquetado';
+const OFI_SIN='Ofi sin etiquetar';
+const LOCAL_LOCS=[OFI_ETIQ,OFI_SIN];
 const VAL_ORDER=['Adriana','Luciana','Ayelen','Matias'];
 const COLORS=['c1','c2','c3','c4','c5','c6'];
 const WHO_KEY='cyc_who';
@@ -2194,6 +2261,7 @@ function goPage(page){
   if(page==='ventaprod')initVentaProd();
   if(page==='rotacion')renderRotacionStock();
   if(page==='enviosfull')enterEnviosFull();
+  if(page==='oficina')enterOficina();
   if(page==='facturas')renderFacturas();
   if(page==='ajustes')enterAjustes();
   if(page==='inventario'){renderInv();renderProds();renderHist();loadFinInputs();updateArqueo();updateTotals();updateHdr();}
@@ -2393,11 +2461,21 @@ const clamp0=n=>n<0?0:n; // el stock nunca queda negativo (venta con stock ya en
 const VENTAS_TOCAN_STOCK=false;
 const getQ=(pid,loc)=>parseInt(state.inventory[invKey(pid,loc)])||0;
 const getQV=(pid,loc,variant)=>parseInt(state.inventory[invKeyV(pid,loc,variant)])||0;
+// Sufijos de las claves de inventario que son de la OFICINA, no de un depósito de ML.
+const _SUF_OFI=LOCAL_LOCS.map(l=>'__'+sid(l));
+const _esClaveOficina=k=>_SUF_OFI.some(s=>k.endsWith(s));
 function stockOf(p){
   if(!p)return 0;
-  // Usa siempre claves de producto (fuente de verdad financiera); las claves __v__ son solo desglose visual
-  return Object.entries(state.inventory||{}).filter(([k])=>k.startsWith(p.id+'__')&&!k.includes('__v__')).reduce((s,[,v])=>s+(parseInt(v)||0),0);
+  // Usa siempre claves de producto (fuente de verdad financiera); las claves __v__ son solo desglose visual.
+  // La OFICINA queda AFUERA: es mercadería que todavía no está en ML, así que no evita un quiebre
+  // ni cubre días de venta. Si entrara acá, el panel dejaría de avisar que algo se quedó sin stock
+  // justo cuando lo tenés en casa sin mandar — que es el peor momento para no enterarse.
+  return Object.entries(state.inventory||{}).filter(([k])=>k.startsWith(p.id+'__')&&!k.includes('__v__')&&!_esClaveOficina(k)).reduce((s,[,v])=>s+(parseInt(v)||0),0);
 }
+// Lo que hay en casa, por habitación y total.
+const stockOfiEtiq=p=>p?getQ(p.id,OFI_ETIQ):0;
+const stockOfiSin=p=>p?getQ(p.id,OFI_SIN):0;
+const stockOficina=p=>stockOfiEtiq(p)+stockOfiSin(p);
 const todayStr=()=>{const d=new Date();return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');};
 const yesterdayStr=()=>{const d=new Date();d.setDate(d.getDate()-1);return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');};
 const normTxt=s=>(s||'').toString().normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase();
@@ -3419,6 +3497,83 @@ async function saveTC(val){
   toast('Dólar actualizado ✓');
 }
 
+/* ═══════════ MI OFICINA ═══════════ */
+let ofiTab='caja',ofiFiltroCuenta='';
+function setOfiTab(t,btn){
+  ofiTab=t;
+  document.querySelectorAll('#page-oficina .tab').forEach(b=>b.classList.remove('active'));
+  if(btn)btn.classList.add('active');
+  document.getElementById('ofi-sec-caja').style.display=t==='caja'?'':'none';
+  document.getElementById('ofi-sec-contar').style.display=t==='contar'?'':'none';
+  if(t==='caja')renderOfiCaja();else renderOfiContar();
+}
+function enterOficina(){ofiTab==='caja'?renderOfiCaja():renderOfiContar();}
+function setOfiFiltro(c){ofiFiltroCuenta=(ofiFiltroCuenta===c?'':c);renderOfiCaja();}
+function renderOfiCaja(){
+  const cont=document.getElementById('ofi-caja-list');if(!cont)return;
+  const filas=repartoOficina();
+  // Resumen de arriba: cuánto hay en casa y cuánto de eso hay que mandar.
+  const uEtiq=filas.reduce((s,f)=>s+f.etiq,0), uSin=filas.reduce((s,f)=>s+f.sin,0);
+  const aMandar=filas.reduce((s,f)=>s+f.sug.reduce((a,x)=>a+x.mandar,0),0);
+  const plata=filas.reduce((s,f)=>s+f.hay*costP(f.p),0);
+  const res=document.getElementById('ofi-resumen');
+  if(res)res.innerHTML=`<div class="pcount"><strong>${uEtiq}</strong>etiquetadas</div>`
+    +`<div class="pcount"><strong>${uSin}</strong>sin etiquetar</div>`
+    +`<div class="pcount"><strong>${aMandar}</strong>hay que mandar</div>`
+    +`<div class="pcount"><strong>${fmt(plata)}</strong>en casa</div>`;
+  const sub=document.getElementById('nc-ofi-sub');
+  if(sub)sub.textContent=(uEtiq+uSin)?`${uEtiq+uSin} u. en casa · ${aMandar} para mandar`:'Sin nada contado todavía';
+  // Botones para armar la caja de UNA cuenta: es como se despacha de verdad, una caja por cuenta.
+  const fc=document.getElementById('ofi-filtro-cuentas');
+  if(fc)fc.innerHTML=`<button class="pf-btn${ofiFiltroCuenta===''?' active-all':''}" onclick="setOfiFiltro('')">Todas</button>`
+    +LOCS.map(l=>`<button class="pf-btn${ofiFiltroCuenta===l?' active-all':''}" onclick="setOfiFiltro('${l}')">${l}</button>`).join('');
+  const vis=ofiFiltroCuenta?filas.filter(f=>f.sug.some(s=>s.cuenta===ofiFiltroCuenta)):filas;
+  if(!vis.length){
+    cont.innerHTML='<div class="empty-msg">'+(filas.length?'Nada para mandar a esa cuenta.':'No hay nada contado en la oficina todavía.')+'</div>';
+    return;
+  }
+  cont.innerHTML=vis.map(f=>{
+    const sug=ofiFiltroCuenta?f.sug.filter(s=>s.cuenta===ofiFiltroCuenta):f.sug;
+    const lineas=sug.map(s=>{
+      const dias=s.dias==null?'no vendió':(s.dias>=999?'no vende':Math.round(s.dias)+' días de stock');
+      const urg=s.dias!=null&&s.dias<7;
+      return `<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;padding:6px 0;border-top:1px solid var(--border)">
+        <span class="pi-prov">${s.cuenta}</span>
+        <strong style="font-family:'Syne',sans-serif;font-size:1rem;${urg?'color:var(--red)':''}">${s.mandar} u.</strong>
+        <span style="font-size:.66rem;color:var(--muted)">le quedan ${s.stock} · ${dias} · vende ${s.vMes}/mes</span>
+      </div>`;
+    }).join('');
+    let pie='';
+    if(f.sinPublicar)pie=`<div style="font-size:.66rem;color:var(--amber);margin-top:5px">⚠️ No está publicado en ninguna cuenta. Mandarlo no sirve hasta que lo publiques.</div>`;
+    else if(f.nadieNecesita)pie=`<div style="font-size:.66rem;color:var(--green);margin-top:5px">✓ Ninguna cuenta lo necesita: todas tienen para más de 30 días. Dejalo en casa.</div>`;
+    else if(f.sobra>0)pie=`<div style="font-size:.66rem;color:var(--muted);margin-top:5px">Te sobran ${f.sobra} u. después de repartir. No hace falta mandarlas.</div>`;
+    const faltaEtiq=f.sin>0?`<span style="font-size:.64rem;color:var(--amber)"> · ${f.sin} sin etiquetar</span>`:'';
+    return `<div style="padding:12px 14px;background:var(--surface);border:1px solid var(--border);border-radius:var(--r);margin-bottom:8px">
+      <div style="display:flex;justify-content:space-between;align-items:baseline;gap:10px;flex-wrap:wrap">
+        <div class="pi-prod">${f.p.name}</div>
+        <div style="font-size:.68rem;color:var(--muted)">tenés ${f.hay} u.${faltaEtiq}</div>
+      </div>
+      ${lineas}${pie}
+    </div>`;
+  }).join('');
+}
+function renderOfiContar(){
+  const cont=document.getElementById('ofi-contar-list');if(!cont)return;
+  const q=normTxt(document.getElementById('ofi-search')?.value||'');
+  const solo=document.getElementById('ofi-solo-con')?.checked;
+  let prods=(state.products||[]).slice().sort((a,b)=>(a.name||'').localeCompare(b.name||''));
+  if(q)prods=prods.filter(p=>normTxt(p.name).includes(q));
+  if(solo)prods=prods.filter(p=>stockOficina(p)>0);
+  if(!prods.length){cont.innerHTML='<div class="empty-msg">Nada con esa búsqueda.</div>';return;}
+  cont.innerHTML=`<table class="tbl"><thead><tr><th>Producto</th><th class="ac">Etiquetado</th><th class="ac">Sin etiquetar</th><th class="ac">En Full</th></tr></thead><tbody>`
+    +prods.map(p=>`<tr>
+      <td>${p.name}</td>
+      <td><input class="qty" type="number" value="${stockOfiEtiq(p)}" onchange="setQ('${p.id}','${OFI_ETIQ}',this.value);renderOfiContar()"></td>
+      <td><input class="qty" type="number" value="${stockOfiSin(p)}" onchange="setQ('${p.id}','${OFI_SIN}',this.value);renderOfiContar()"></td>
+      <td class="ac" style="font-size:.72rem;color:var(--muted)">${fmtN(stockOf(p))}</td>
+    </tr>`).join('')+`</tbody></table>`;
+}
+
 /* ═══════════ ENVÍOS A FULL ═══════════
    Se anota lo que SALE. Lo que llega ya lo sabe el chequeo de la mañana leyéndolo de ML; lo que
    no sabe nadie es lo que se despachó, y sin eso una caja perdida no aparece en ningún lado.
@@ -3675,6 +3830,16 @@ function updateArqueo(){
   // todavía no se repartió entre las cuatro cuentas, hay que decirlo — si no, alguien abre la
   // pantalla, ve las cuatro en cero y cree que se perdió la plata. El total viejo se sigue
   // contando en el patrimonio hasta que cargue la primera cuenta.
+  // La mercadería de la oficina, contada por unidades, ya entra en el patrimonio como Stock Local.
+  // Si además sigue cargada a mano en "Oficina CYC" / "Oficina Mati", la misma plata está dos veces.
+  const _ofiAviso=document.getElementById('ofi-doble-aviso');
+  if(_ofiAviso){
+    const uOfi=(state.products||[]).reduce((s,p)=>s+stockOficina(p),0);
+    const manual=(parseFloat(state.finanzas.of_viejo)||0)+(parseFloat(state.finanzas.of_mia)||0);
+    const doble=!_arqViewYM&&uOfi>0&&manual>0;
+    _ofiAviso.style.display=doble?'':'none';
+    if(doble)_ofiAviso.textContent=`⚠️ Estás contando ${uOfi} u. en "Mi oficina" y además tenés ${fmt(manual)} escritos acá arriba. Esa mercadería se está sumando dos veces al patrimonio: dejá una sola de las dos.`;
+  }
   const _mpAviso=document.getElementById('mp-disp-aviso');
   if(_mpAviso){
     const suma=MP_CUENTAS.reduce((s,k)=>s+(parseFloat(state.finanzas[k])||0),0);
@@ -5435,6 +5600,85 @@ function pedVentasNorm(prodOrName){
   const vendidosNorm=Math.round(vendidos*factor);
   return{vendidos,vendidosNorm,diasHistorial,factor};
 }
+// ── A QUÉ CUENTA MANDAR LO QUE HAY EN LA OFICINA ───────────────────────────
+// El problema que resuelve: cuando está armando la caja tiene mercadería de varios productos y no
+// se acuerda a qué cuenta va cada cosa ni si hace falta mandarla. Esto lo calcula solo.
+//
+// Por cuenta y producto se mira lo MISMO que mira Pedidos, pero abierto por cuenta en vez de
+// sumado: cuánto vende esa cuenta ese producto, cuánto le queda en Full, y cuántos días le dura.
+// Después se reparte lo que hay en casa empezando por la cuenta a la que se le acaba antes.
+//
+// Dos reglas que evitan mandar al pedo:
+//  · Solo entran las cuentas donde el producto ESTÁ PUBLICADO (y la publicación no está cerrada).
+//    Mandar stock a una cuenta que no lo vende es enterrarlo.
+//  · Si a una cuenta le sobra para más de 30 días, no se le manda nada.
+function ventasPorCuenta(p){
+  // Ventas de ESTE producto en cada cuenta, normalizadas a 30 días igual que Pedidos.
+  const now=new Date();
+  const diasHistorial=Math.max(1,Math.min(PED_MAX_DAYS,Math.floor((now-PED_HIST_START)/86400000)+1));
+  const from=new Date(now);from.setDate(now.getDate()-(diasHistorial-1));
+  const fk=dateToKey(from),tk=dateToKey(now);
+  const out={};LOCS.forEach(l=>out[l]=0);
+  Object.keys(state.ventaprod||{}).filter(k=>k>=fk&&k<=tk).forEach(k=>{
+    Object.values(state.ventaprod[k]||{}).forEach(v=>{
+      if(!ventaEsDe(v,p)||_esCancelada(v))return;
+      if(out[v.cuenta]===undefined)return;
+      out[v.cuenta]+=v.qty||0;
+    });
+  });
+  const factor=PED_MAX_DAYS/diasHistorial;
+  LOCS.forEach(l=>out[l]=Math.round(out[l]*factor));
+  return out;
+}
+function cuentasConPublicacion(p){
+  const s=new Set();
+  Object.values(state.mllinks||{}).forEach(e=>{
+    if(!e||e.prodId!==p.id)return;
+    if((e.status||'')==='closed')return;   // cerrada = no vende nunca más
+    if(e.cuenta&&LOCS.includes(e.cuenta))s.add(e.cuenta);
+  });
+  return [...s];
+}
+function repartoOficina(){
+  const filas=[];
+  (state.products||[]).forEach(p=>{
+    const etiq=stockOfiEtiq(p),sinEt=stockOfiSin(p),hay=etiq+sinEt;
+    if(hay<=0)return;
+    const ventas=ventasPorCuenta(p);
+    const publicadas=cuentasConPublicacion(p);
+    const cand=publicadas.map(l=>{
+      const vDia=(ventas[l]||0)/30;
+      const stock=getQ(p.id,l);
+      const dias=vDia>0?stock/vDia:(stock>0?999:null);   // sin ventas no se puede estimar
+      const objetivo=Math.ceil(vDia*30);
+      return{cuenta:l,vMes:ventas[l]||0,vDia,stock,dias,falta:Math.max(0,objetivo-stock)};
+    }).sort((a,b)=>{
+      // Primero a la que se le acaba antes. Las que no venden van al final.
+      const da=a.dias==null?9999:a.dias, db=b.dias==null?9999:b.dias;
+      if(da!==db)return da-db;
+      return b.vMes-a.vMes;
+    });
+    let quedan=hay;
+    const sug=[];
+    for(const c of cand){
+      if(quedan<=0)break;
+      if(c.falta<=0)continue;                 // ya tiene para 30 días
+      const mandar=Math.min(quedan,c.falta);
+      quedan-=mandar;
+      sug.push({...c,mandar});
+    }
+    filas.push({p,etiq,sin:sinEt,hay,sug,sobra:quedan,
+      sinPublicar:publicadas.length===0,
+      nadieNecesita:sug.length===0&&publicadas.length>0});
+  });
+  // Primero lo que más urge mandar: la cuenta más apretada de cada producto.
+  filas.sort((a,b)=>{
+    const ua=a.sug.length?(a.sug[0].dias==null?9999:a.sug[0].dias):9999;
+    const ub=b.sug.length?(b.sug[0].dias==null?9999:b.sug[0].dias):9999;
+    return ua-ub;
+  });
+  return filas;
+}
 // Ganancia real (neto-costo) de un producto en los últimos PED_MAX_DAYS días, normalizada igual que pedVentasNorm.
 function pedGananciaNorm(p){
   const now=new Date();
@@ -5539,6 +5783,14 @@ async function syncPedidosAuto(){
       necesario=Math.max(0,targetStock-stock);
       variantesNec=null;
     }
+    // LO QUE YA ESTÁ EN CASA NO HAY QUE COMPRARLO. `necesario` es lo que falta llegar a tener en
+    // ML; si una parte ya está en la oficina, lo que hay que COMPRAR es la diferencia — eso sí, hay
+    // que mandarlo, y de eso se ocupa la pantalla "Mi oficina".
+    // Ojo: el stock de la oficina NO entra en `stock` (ver stockOf), así que el "dinero en riesgo"
+    // de abajo sigue midiendo el quiebre real: tenerlo en casa sin mandar no evita quedarse sin
+    // vender, y justamente por eso el aviso tiene que seguir apareciendo.
+    const enOficina=stockOficina(p);
+    const aComprar=Math.max(0,necesario-enOficina);
     // "Dinero en riesgo": ganancia diaria del producto × cuántos de los próximos 30 días vas a pasar REALMENTE sin stock.
     // Ventana de 30 días (no 45): un producto con 30+ días de stock no está en riesgo este mes → aporta 0.
     // Así un producto que vende poco pero deja buen margen no le gana en prioridad a uno de alta rotación que se está por quedar sin stock.
@@ -5546,12 +5798,15 @@ async function syncPedidosAuto(){
     const gan30d=pedGananciaNorm(p);
     const diasEnRiesgo=Math.max(0,RIESGO_DIAS-diasCubiertos);
     const riesgo=Math.round((gan30d/30)*diasEnRiesgo);
-    resumen[p.id]={p,vendidos,vendidosNorm,stock,diasHistorial,diasCubiertos,necesario,variantesNec,coll,gan30d,riesgo};
+    // Si hay unidades en casa no se puede repartir el pedido por variante con confianza (no se
+    // sabe de qué variante son las de la oficina), así que se deja el pedido sin desglose.
+    if(enOficina>0)variantesNec=null;
+    resumen[p.id]={p,vendidos,vendidosNorm,stock,diasHistorial,diasCubiertos,necesario,enOficina,aComprar,variantesNec,coll,gan30d,riesgo};
   }
   // 3. IDs que deberían existir como auto-pedidos
   const expectedIds=new Set();
   for(const [pid,r] of Object.entries(resumen)){
-    if(r.necesario===0)continue;
+    if(r.aComprar===0)continue;   // lo que ya está en la oficina no se compra de nuevo
     expectedIds.add('pedauto_'+pid);
   }
   // 4 y 5. Se calcula TODO en memoria y se junta en UN solo update a Firebase.
@@ -5564,7 +5819,7 @@ async function syncPedidosAuto(){
     for(const ped of [...arr.filter(x=>x.auto)]){
       const pid=ped.prodId;
       const r=pid?resumen[pid]:null;
-      if(!r||r.necesario===0||r.coll!==coll||!expectedIds.has(ped.id)){
+      if(!r||r.aComprar===0||r.coll!==coll||!expectedIds.has(ped.id)){
         updates[coll+'/'+ped.id]=null;
         state[coll]=state[coll].filter(x=>x.id!==ped.id);
       }
@@ -5572,24 +5827,25 @@ async function syncPedidosAuto(){
   }
   // crear/actualizar — un pedido por producto
   for(const [pid,r] of Object.entries(resumen)){
-    if(r.necesario===0)continue;
+    if(r.aComprar===0)continue;
     const coll=r.coll;const arr=state[coll]||(state[coll]=[]);
     const estado=r.diasCubiertos<=7?'pendiente':'poco_stock';
     const notaHist=r.diasHistorial<PED_MAX_DAYS?` (${r.vendidos} en ${r.diasHistorial}d)`:'';
     const variantesNec=r.variantesNec||null;
-    const nota=`30d: ${r.vendidosNorm} vendidos${notaHist} · ${r.stock} en stock · ~${r.diasCubiertos}d cubiertos`;
+    const notaOfi=r.enOficina>0?` · ${r.enOficina} ya en tu oficina`:'';
+    const nota=`30d: ${r.vendidosNorm} vendidos${notaHist} · ${r.stock} en stock · ~${r.diasCubiertos}d cubiertos${notaOfi}`;
     const pvMatch=r.p.proveedorId?(state.proveedores||[]).find(x=>x.id===r.p.proveedorId):null;
     const provNom=pvMatch?.nombre||null;
     const id='pedauto_'+pid;
     const existing=arr.find(x=>x.id===id);
     if(existing){
-      const same=existing.cantidad===r.necesario&&existing.estado===estado&&existing.nota===nota&&existing.producto===r.p.name&&JSON.stringify(existing.variantesNec||null)===JSON.stringify(variantesNec)&&(existing.proveedor||null)===(provNom)&&existing.riesgo===r.riesgo&&existing.gan30d===r.gan30d;
+      const same=existing.cantidad===r.aComprar&&existing.estado===estado&&existing.nota===nota&&existing.producto===r.p.name&&JSON.stringify(existing.variantesNec||null)===JSON.stringify(variantesNec)&&(existing.proveedor||null)===(provNom)&&existing.riesgo===r.riesgo&&existing.gan30d===r.gan30d;
       if(same)continue;
-      existing.cantidad=r.necesario;existing.estado=estado;existing.nota=nota;existing.producto=r.p.name;existing.prodId=pid;existing.variantesNec=variantesNec;existing.proveedor=provNom;existing.riesgo=r.riesgo;existing.gan30d=r.gan30d;
+      existing.cantidad=r.aComprar;existing.estado=estado;existing.nota=nota;existing.producto=r.p.name;existing.prodId=pid;existing.variantesNec=variantesNec;existing.proveedor=provNom;existing.riesgo=r.riesgo;existing.gan30d=r.gan30d;
       delete existing.variante;
-      updates[coll+'/'+id]={id,producto:r.p.name,prodId:pid,cantidad:r.necesario,nota,estado,auto:true,ts:existing.ts||Date.now(),variantesNec:variantesNec||null,proveedor:provNom,riesgo:r.riesgo,gan30d:r.gan30d};
+      updates[coll+'/'+id]={id,producto:r.p.name,prodId:pid,cantidad:r.aComprar,nota,estado,auto:true,ts:existing.ts||Date.now(),variantesNec:variantesNec||null,proveedor:provNom,riesgo:r.riesgo,gan30d:r.gan30d};
     } else {
-      const obj={id,producto:r.p.name,prodId:pid,cantidad:r.necesario,nota,estado,auto:true,ts:Date.now(),variantesNec:variantesNec||null,proveedor:provNom,riesgo:r.riesgo,gan30d:r.gan30d};
+      const obj={id,producto:r.p.name,prodId:pid,cantidad:r.aComprar,nota,estado,auto:true,ts:Date.now(),variantesNec:variantesNec||null,proveedor:provNom,riesgo:r.riesgo,gan30d:r.gan30d};
       arr.push(obj);
       updates[coll+'/'+id]=obj;
     }
@@ -7934,7 +8190,7 @@ document.addEventListener('click',e=>{if(fnavOpen&&!e.target.closest('#fnav-btn'
         <span style="font-size:.75rem;color:var(--muted)">Si no ves los últimos cambios, forzá la actualización</span>
         <button class="btn" style="background:rgba(56,189,248,.12);color:var(--blue);border:1px solid rgba(56,189,248,.3)" onclick="actualizarApp()">🔄 Buscar actualizaciones</button>
       </div>
-      <div style="font-size:.66rem;color:var(--muted);margin-top:12px">CYC · Versión 9.4</div>
+      <div style="font-size:.66rem;color:var(--muted);margin-top:12px">CYC · Versión 9.5</div>
     </div>
 
     <div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:18px 20px;margin-bottom:14px">
