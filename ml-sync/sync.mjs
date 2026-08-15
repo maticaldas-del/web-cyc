@@ -3571,6 +3571,106 @@ async function main() {
       console.log('Después corré netoweb, si no el producto sigue mostrando "—".');
       return;
     }
+    // BILLING_PROBE=pausar:<busca>[!<saca>][:go] → PAUSA VARIAS PUBLICACIONES DE UNA.
+    //
+    // `busca` y `saca` son palabras separadas por "+". Entra la publicación cuyo título tenga
+    // ALGUNA de las de `busca` y NINGUNA de las de `saca`. La lista de exclusión existe porque el
+    // caso real que lo pidió fue "pausar las tarjetas de memoria pero NO los pendrives", y por
+    // título se parecen muchísimo (los dos dicen Sandisk, Kingston, GB, USB).
+    //
+    // Sin ":go" solo MUESTRA la lista, con precio, stock y ventas de 30 días, para poder mirarla
+    // antes de apagar nada. Con ":go" pausa y RELEE cada una de ML para confirmar que quedó
+    // pausada de verdad; si ML dice otra cosa, lo dice.
+    //
+    // Ojo: pausar NO saca la mercadería de Full. Si la publicación tiene stock adentro sigue
+    // pagando almacenamiento y el reloj del descarte corre igual — por eso se avisa cuáles tienen
+    // stock, que son las que además hay que retirar.
+    if (String(process.env.BILLING_PROBE || '').startsWith('pausar:')) {
+      const _pz = String(process.env.BILLING_PROBE).slice(7);
+      const APLICAR = /:go$/i.test(_pz);
+      const cuerpo = APLICAR ? _pz.replace(/:go$/i, '') : _pz;
+      const [busRaw, sacRaw] = cuerpo.split('!');
+      const busca = (busRaw || '').split('+').map((s) => norm(s)).filter(Boolean);
+      const saca = (sacRaw || '').split('+').map((s) => norm(s)).filter(Boolean);
+      if (!busca.length) { console.log('Usá: pausar:<palabras con +>[!<palabras a sacar>][:go]'); return; }
+      const linksP = (await db.get('cyc/mllinks')) || {};
+      const vpP = (await db.get('cyc/ventaprod')) || {}; setDevLive(vpP);
+      // Ventas de 30 días por publicación, para saber qué se está apagando.
+      const v30 = {};
+      const desde30 = dayKeyFromISO(new Date(Date.now() - 30 * 864e5).toISOString());
+      for (const [k, ents] of Object.entries(vpP)) {
+        if (k < desde30) continue;
+        for (const v of Object.values(ents || {})) {
+          if (!v || v.cancelada || !v.mla) continue;
+          const b = v30[v.mla] = v30[v.mla] || { u: 0, $: 0 };
+          b.u += v.qty || 1; b.$ += v.total || 0;
+        }
+      }
+      console.log(`=== PAUSAR ${APLICAR ? '(APLICANDO)' : '(SOLO MIRAR)'} ===`);
+      console.log(`busca: ${busca.join(' / ')}${saca.length ? `   ·   saca: ${saca.join(' / ')}` : ''}\n`);
+      let nOk = 0, nErr = 0, nYa = 0;
+      const conStock = [];
+      for (const label of labels) {
+        const acc = accounts[label];
+        if (!acc?.refresh_token) continue;
+        let t; try { t = await mlRefresh(ML_CLIENT_ID, ML_CLIENT_SECRET, acc.refresh_token); }
+        catch { console.log(`(${label}: no pude renovar el token)`); continue; }
+        await db.patch('mlapi/tokens/' + label, { refresh_token: t.refresh_token, updated_ts: Date.now() });
+        const tok = t.access_token;
+        // El título de la base alcanza para elegir; el estado y el stock SÍ se leen de ML.
+        const mios = Object.entries(linksP)
+          .filter(([mla, e]) => e && e.cuenta === label && /^MLA/i.test(mla))
+          .filter(([, e]) => {
+            const tt = norm(e.title || '');
+            if (!busca.some((w) => tt.includes(w))) return false;
+            if (saca.some((w) => tt.includes(w))) return false;
+            return true;
+          })
+          .map(([mla]) => mla);
+        if (!mios.length) continue;
+        for (let k = 0; k < mios.length; k += 20) {
+          let arr;
+          try { arr = await mlGet('/items?ids=' + mios.slice(k, k + 20).join(',') + '&attributes=id,title,status,price,available_quantity', tok); }
+          catch { continue; }
+          for (const row of (arr || [])) {
+            const b = row.body || {};
+            const mla = b.id;
+            if (!mla || b.error || typeof b.status === 'number') continue;
+            const nom = String((linksP[mla] || {}).title || b.title || mla).slice(0, 44);
+            const q = b.available_quantity || 0;
+            const vv = v30[mla];
+            const linea = `  ${label.padEnd(8)} ${mla} · ${nom.padEnd(44)} ${money(b.price || 0).padStart(10)}`
+              + ` · ${String(q).padStart(3)} u.` + (vv ? ` · vendió ${vv.u} u. (${money(Math.round(vv.$))}) en 30d` : ' · sin ventas en 30d');
+            if (b.status === 'paused') { nYa++; console.log(linea + '  → ya estaba pausada'); continue; }
+            if (b.status !== 'active') { console.log(linea + `  → está "${b.status}", no la toco`); continue; }
+            if (q > 0) conStock.push({ label, mla, nom, q });
+            if (!APLICAR) { nOk++; console.log(linea + '  → SE PAUSARÍA'); continue; }
+            try {
+              const r = await fetch(ML_API + '/items/' + mla, {
+                method: 'PUT',
+                headers: { Authorization: 'Bearer ' + tok, 'Content-Type': 'application/json' },
+                body: JSON.stringify({ status: 'paused' }),
+              });
+              if (!r.ok) { nErr++; console.log(linea + `  → ✗ ML rechazó (${r.status})`); continue; }
+            } catch { nErr++; console.log(linea + '  → ✗ error de red'); continue; }
+            // Verificación obligatoria: que el comando diga "pausada" no alcanza, se relee de ML.
+            let quedo = null;
+            try { quedo = (await mlGet('/items/' + mla + '?attributes=id,status', tok)).status; } catch { /* */ }
+            if (quedo !== 'paused') { nErr++; console.log(linea + `  → ✗ pedí pausarla y quedó "${quedo || 'no pude leer'}"`); continue; }
+            nOk++; console.log(linea + '  → ✓ pausada');
+          }
+        }
+      }
+      console.log(`\n${APLICAR ? `${nOk} pausadas, ${nErr} con error` : `${nOk} se pausarían`}` + (nYa ? ` · ${nYa} ya estaban pausadas` : ''));
+      if (conStock.length) {
+        const u = conStock.reduce((s, x) => s + x.q, 0);
+        console.log(`\n⚠️ ${conStock.length} de estas TIENEN STOCK (${u} u.). Pausar no lo saca de Full:`);
+        console.log(`   sigue pagando almacenamiento y ML lo descarta igual. Hay que retirarlo.`);
+        for (const x of conStock) console.log(`   · ${x.label} · ${x.nom} — ${x.q} u.`);
+      }
+      if (!APLICAR) console.log(`\nSOLO MIRÉ: no toqué nada. Para aplicar, el mismo comando terminado en ":go".`);
+      return;
+    }
     // BILLING_PROBE=probarsaldo → ¿ML/MercadoPago nos dan el saldo por la API?
     //
     // Diagnóstico y nada más: prueba los endpoints candidatos en las 4 cuentas y muestra lo que
