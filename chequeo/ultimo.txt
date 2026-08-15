@@ -1,39 +1,55 @@
-🌅 CHEQUEO DE LA MAÑANA · viernes, 14 de agosto
+🌅 CHEQUEO DE LA MAÑANA · sábado, 15 de agosto
 
 🔴 Hay cosas para mirar hoy.
 
-📈 Ayer: $1.016.573 · promedio 7 días $533.253 · +91%
+📈 Ayer: $789.696 · promedio 7 días $606.566 · +30%
 
-📉 Sin stock y vendían: 87 publicaciones · se pierden $401.199/día
+📉 Sin stock y vendían: 81 publicaciones · se pierden $335.477/día
    · Matias · Pendrive Sandisk Cruzer Blade 8gb 2.0 Negr — $25.688/día
-   · Matias · Infusor De Te En Hebras Acero Inoxidable C — $24.366/día
    · Matias · Disco Sólido Externo Sandisk Sdssde30-1t00 — $23.000/día
-   · Matias · Memoria Microsd Sandisk Ultra A1 64gb C10  — $19.872/día
+   · Matias · Memoria Microsd Sandisk Ultra A1 64gb C10  — $18.216/día
    · Adriana · Cabotine Eau De Toilette 30ml Mujer Floral — $16.753/día
-   · Matias · Reloj Xiaomi Watch S5 Negro Negro Milanés — $14.000/día
-   … y 81 más
+   · Matias · Disco Sólido Externo Sandisk Sdssde30-1t00 — $13.333/día
+   · Matias · Samsung Galaxy A07 Lte 128gb Negro Negro — $11.667/día
+   … y 75 más
 
-❓ Preguntas sin responder: 91
-   · Adriana: 20 · la más vieja hace 208 días
-   · Ayelen: 31 · la más vieja hace 228 días
-   · Luciana: 16 · la más vieja hace 190 días
-   · Matias: 24 · la más vieja hace 214 días
+❓ Preguntas sin responder: 93
+   · Adriana: 20 · la más vieja hace 209 días
+   · Ayelen: 31 · la más vieja hace 229 días
+   · Luciana: 17 · la más vieja hace 191 días
+   · Matias: 25 · la más vieja hace 215 días
 
-⚠️ Reclamos abiertos: 1
-   · Ayelen: PDD9949 · 0 días
+⚠️ Reclamos abiertos: 3
+   · Ayelen: PDD9949 · 1 días · lo maneja ML, no hay nada para hacer
+   · Matias: PDD9944 · 0 días · lo maneja ML, no hay nada para hacer
+   · Matias: PDD9949 · 0 días
 💬 Mensajes de posventa sin leer: 2
 
-⏸️ Pausadas: 167 sin stock · 44 a mano · 0 por ML
+⏸️ Pausadas: 157 sin stock · 47 a mano · 0 por ML
 
 ✅ Ninguna activa fuera de Full
 
 🏭 Full
-   🔴 unidades con problema: 5
-      · Adriana · Pendrive Sandisk Cruzer Blade 64gb 2.0 Neg: 1 u. (lost 1)
-      · Adriana · Body Mist Victoria's Secret Bare Vanilla 2: 1 u. (internalProcess 1)
+   🔴 unidades con problema: 3
       · Ayelen · Espejo Redondo Giratorio C/ Soporte Metal : 1 u. (lost 1)
       · Ayelen · Auricular Vincha Diseño De Orejas De Gatit: 1 u. (notSupported 1)
       · Matias · Philips 2000 Series Tat2206 Negro: 1 u. (notSupported 1)
+   🔴 PAUSADAS CON STOCK EN FULL: 5 · 58 u. · $607.065
+      · Matias · Tarjeta De Memoria Sandisk Sdsquns-032g-gn — 28 u. ($222.404)
+      · Matias · Tarjeta De Memoria Kingston Sdcs2/64gb Can — 15 u. ($181.200)
+      · Matias · Msd 256gb Kingston Canvas Select Plus — 4 u. ($76.528)
+      · Matias · Tarjeta De Memoria Sandisk Sdsquns-128g-gn — 4 u. ($71.332)
+      · Matias · Tarjeta De Memoria Kingston Sdc10 Con Adap — 7 u. ($55.601)
+      No venden y pagan almacenamiento igual. O las reactivás o retirás el stock.
+   🟠 CON STOCK Y CERO VENTAS EN 30 DÍAS: 32 · 309 u. · $2.579.656
+      · Matias · Tablet Xiaomi Redmi Pad 2, 4gb Ram, 128gb  — 2 u. ($587.844)
+      · Adriana · Ferrari Scuderia Ferrari Black Hombre Eau  — 14 u. ($427.448)
+      · Adriana · Perfume Paulvic Miss Volumen De La Unidad  — 23 u. ($157.320)
+      · Matias · Recortadora De Pelos 4 En 1 Nariz Oreja Ce — 7 u. ($120.498)
+      · Matias · Pendrive Sandisk 128g Usb 3.0 Ultra Shift  — 4 u. ($108.720)
+      · Ayelen · Balanza P/valija Equipaje Digital Portátil — 30 u. ($106.470)
+      … y 26 más
+      Estas son las que ML te va a marcar "para evitar descarte".
    📥 cajas que llegaron en 7 días: 0
 
 ✅ Sin promociones de ML agendadas
