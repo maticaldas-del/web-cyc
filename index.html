@@ -641,8 +641,14 @@ footer{margin-top:32px;padding-top:14px;border-top:1px solid var(--border);font-
       </div>
       <div class="arqueo-section positivo">
         <h3>🏢 Stock Local</h3>
-        <div class="fin-field"><div class="fin-left"><span class="fin-label">Oficina CYC</span><span id="db_of_viejo"></span></div><input class="fin-input money" type="text" inputmode="numeric" id="f_of_viejo" placeholder="$0" onchange="saveFin('of_viejo',this.value)"></div>
-        <div class="fin-field"><div class="fin-left"><span class="fin-label">Oficina Mati</span><span id="db_of_mia"></span></div><input class="fin-input money" type="text" inputmode="numeric" id="f_of_mia" placeholder="$0" onchange="saveFin('of_mia',this.value)"></div>
+        <!-- OFICINA CYC: solo el VALOR, sin unidades. Esa mercadería no es de ML —no se publica ni
+             se manda a Full— así que contarla producto por producto no sirve para nada: no hay a
+             qué cuenta mandarla ni con qué venta compararla. Va el número en dólares y listo. -->
+        <div class="fin-field"><div class="fin-left"><span class="fin-label">Oficina CYC</span><span style="font-size:.6rem;color:var(--muted)"> · solo el valor, no es de ML</span><span id="db_of_viejo"></span></div><input class="fin-input money" type="text" inputmode="numeric" id="f_of_viejo" placeholder="US$ 0" onchange="saveFin('of_viejo',this.value)"></div>
+        <!-- OFICINA MATI: acá SÍ van las unidades, producto por producto, porque es la mercadería
+             que se manda a Full. El número de acá lo calcula la pantalla "Mi oficina" a partir de
+             lo contado; por eso el campo queda bloqueado apenas hay algo contado. -->
+        <div class="fin-field"><div class="fin-left"><span class="fin-label">Oficina Mati</span><span id="ofi-mati-nota" style="font-size:.6rem;color:var(--muted)"></span><span id="db_of_mia"></span></div><input class="fin-input money" type="text" inputmode="numeric" id="f_of_mia" placeholder="US$ 0" onchange="saveFin('of_mia',this.value)"></div>
         <div class="fin-field"><div class="fin-left"><span class="fin-label">Vendedores</span><span id="db_vendedores"></span></div><input class="fin-input money" type="text" inputmode="numeric" id="f_vendedores" placeholder="$0" onchange="saveFin('vendedores',this.value)"></div>
         <!-- Desde que se cuenta la oficina por unidades, esa mercadería ya entra sola en el
              patrimonio (Stock Local). Si además queda cargada a mano acá, se cuenta DOS VECES. -->
@@ -993,7 +999,7 @@ footer{margin-top:32px;padding-top:14px;border-top:1px solid var(--border);font-
       <button class="back-btn" onclick="goPage('home')">← Inicio</button>
       <div>
         <div class="ph-title">Mi oficina</div>
-        <div class="ph-sub">Lo que tenés en casa, y a qué cuenta va</div>
+        <div class="ph-sub">Oficina Mati · lo que tenés en casa y a qué cuenta va</div>
       </div>
     </div>
     <div class="ph-right">
@@ -1017,9 +1023,12 @@ footer{margin-top:32px;padding-top:14px;border-top:1px solid var(--border);font-
   <!-- CONTAR -->
   <div id="ofi-sec-contar" style="display:none">
     <div style="font-size:.66rem;color:var(--muted);margin-bottom:10px;line-height:1.5">
-      Poné cuántas unidades tenés de cada producto en cada habitación. <strong>Esto no es stock de ML</strong>:
-      son cosas que están en tu casa y todavía no se pueden vender. Por eso no tapan un quiebre de stock,
-      pero sí evitan que Pedidos te mande a comprar algo que ya tenés.
+      Las dos habitaciones de <strong>tu oficina</strong>: la de los productos ya etiquetados (listos para
+      la caja) y la de los que todavía no. <strong>Esto no es stock de ML</strong>: está en tu casa y todavía
+      no se puede vender, así que no tapa un quiebre de stock, pero sí evita que Pedidos te mande a comprar
+      algo que ya tenés. El total en dólares se copia solo a <strong>Arqueo → Oficina Mati</strong>.
+      <br><strong>La oficina de CYC no va acá</strong>: esa mercadería no es de ML, así que en el Arqueo va
+      solo el valor, sin contar unidades.
     </div>
     <input class="search-box" id="ofi-search" type="search" placeholder="Buscar producto..." oninput="renderOfiContar()" style="margin-bottom:10px">
     <label style="font-size:.66rem;color:var(--muted);display:flex;align-items:center;gap:6px;margin-bottom:10px">
@@ -3559,6 +3568,15 @@ function renderOfiCaja(){
     </div>`;
   }).join('');
 }
+// Deja "Oficina Mati" del Arqueo igual a lo contado (unidades × costo US$). Se guarda de verdad,
+// no solo se muestra: si quedara solo en pantalla, el cierre de mes guardaría el número viejo.
+async function syncOfiMati(){
+  const val=Math.round((state.products||[]).reduce((s,p)=>s+stockOficina(p)*costP(p),0));
+  if((parseFloat(state.finanzas.of_mia)||0)===val)return;
+  state.finanzas.of_mia=val;
+  await fbSet('finanzas/of_mia',val);
+  updateArqueo();updateHeaderTotal();
+}
 function renderOfiContar(){
   const cont=document.getElementById('ofi-contar-list');if(!cont)return;
   const q=normTxt(document.getElementById('ofi-search')?.value||'');
@@ -3570,8 +3588,8 @@ function renderOfiContar(){
   cont.innerHTML=`<table class="tbl"><thead><tr><th>Producto</th><th class="ac">Etiquetado</th><th class="ac">Sin etiquetar</th><th class="ac">En Full</th></tr></thead><tbody>`
     +prods.map(p=>`<tr>
       <td>${p.name}</td>
-      <td><input class="qty" type="number" value="${stockOfiEtiq(p)}" onchange="setQ('${p.id}','${OFI_ETIQ}',this.value);renderOfiContar()"></td>
-      <td><input class="qty" type="number" value="${stockOfiSin(p)}" onchange="setQ('${p.id}','${OFI_SIN}',this.value);renderOfiContar()"></td>
+      <td><input class="qty" type="number" value="${stockOfiEtiq(p)}" onchange="setQ('${p.id}','${OFI_ETIQ}',this.value);syncOfiMati();renderOfiContar()"></td>
+      <td><input class="qty" type="number" value="${stockOfiSin(p)}" onchange="setQ('${p.id}','${OFI_SIN}',this.value);syncOfiMati();renderOfiContar()"></td>
       <td class="ac" style="font-size:.72rem;color:var(--muted)">${fmtN(stockOf(p))}</td>
     </tr>`).join('')+`</tbody></table>`;
 }
@@ -3685,8 +3703,14 @@ function calcArqueo(){
   });
   stockVal=stockML+stockLocal;
   let activos=0,deudas=0,corregir=0;
+  // Unidades contadas en la oficina de Mati. Si hay aunque sea una, el valor de la mercadería sale
+  // de ahí (ya entró arriba en stockLocal) y el campo "Oficina Mati" escrito a mano se IGNORA:
+  // si se sumaran los dos, la misma mercadería estaría contada dos veces.
+  // Mientras no haya nada contado se sigue usando el número viejo, para no borrar plata de golpe.
+  const _uOfiMati=(state.products||[]).reduce((s,p)=>s+stockOficina(p),0);
   FIN_FIELDS.forEach(f=>{
     if(f.detalle)return;                        /* desglose de otro campo: ya está sumado ahí */
+    if(f.k==='of_mia'&&_uOfiMati>0)return;      /* ya contado como stock local, por unidades */
     const raw=parseFloat(state.finanzas[f.k])||0;
     if(f.neutral){corregir+=raw;return;}        /* neutro y con signo */
     const v=Math.abs(raw);
@@ -3842,15 +3866,31 @@ function updateArqueo(){
   // todavía no se repartió entre las cuatro cuentas, hay que decirlo — si no, alguien abre la
   // pantalla, ve las cuatro en cero y cree que se perdió la plata. El total viejo se sigue
   // contando en el patrimonio hasta que cargue la primera cuenta.
-  // La mercadería de la oficina, contada por unidades, ya entra en el patrimonio como Stock Local.
-  // Si además sigue cargada a mano en "Oficina CYC" / "Oficina Mati", la misma plata está dos veces.
+  // "Oficina Mati" ya no se escribe a mano en cuanto hay unidades contadas: el número sale de la
+  // pantalla "Mi oficina" (unidades × costo US$) y es el que entra al patrimonio como Stock Local.
+  // El campo se bloquea y se muestra el calculado, para que no queden dos números peleados.
+  const _uOfi=(state.products||[]).reduce((s,p)=>s+stockOficina(p),0);
+  const _valOfi=(state.products||[]).reduce((s,p)=>s+stockOficina(p)*efectivoCostP(p),0);
+  const _inpMati=document.getElementById('f_of_mia');
+  const _notaMati=document.getElementById('ofi-mati-nota');
+  if(_inpMati&&!_arqViewYM){
+    if(_uOfi>0){
+      _inpMati.readOnly=true;_inpMati.style.opacity='.75';_inpMati.style.cursor='default';
+      if(document.activeElement!==_inpMati)setMoneyVal(_inpMati,Math.round(_valOfi));
+      if(_notaMati)_notaMati.textContent=` · ${_uOfi} u. contadas en Mi oficina`;
+    }else{
+      _inpMati.readOnly=false;_inpMati.style.opacity='';_inpMati.style.cursor='';
+      if(_notaMati)_notaMati.textContent=' · contá las unidades en Mi oficina';
+    }
+  }
   const _ofiAviso=document.getElementById('ofi-doble-aviso');
   if(_ofiAviso){
-    const uOfi=(state.products||[]).reduce((s,p)=>s+stockOficina(p),0);
-    const manual=(parseFloat(state.finanzas.of_viejo)||0)+(parseFloat(state.finanzas.of_mia)||0);
-    const doble=!_arqViewYM&&uOfi>0&&manual>0;
-    _ofiAviso.style.display=doble?'':'none';
-    if(doble)_ofiAviso.textContent=`⚠️ Estás contando ${uOfi} u. en "Mi oficina" y además tenés ${fmt(manual)} escritos acá arriba. Esa mercadería se está sumando dos veces al patrimonio: dejá una sola de las dos.`;
+    // El único riesgo de doble conteo que queda: que la mercadería de la oficina de Mati también
+    // esté metida dentro del número de Oficina CYC.
+    const cyc=parseFloat(state.finanzas.of_viejo)||0;
+    const avisar=!_arqViewYM&&_uOfi>0&&cyc>0;
+    _ofiAviso.style.display=avisar?'':'none';
+    if(avisar)_ofiAviso.textContent=`Ojo: "Oficina Mati" ahora sale de las ${_uOfi} u. que contaste (${fmt(_valOfi)}). Fijate que esa misma mercadería no esté además adentro de los ${fmt(cyc)} de Oficina CYC.`;
   }
   const _mpAviso=document.getElementById('mp-disp-aviso');
   if(_mpAviso){
@@ -8202,7 +8242,7 @@ document.addEventListener('click',e=>{if(fnavOpen&&!e.target.closest('#fnav-btn'
         <span style="font-size:.75rem;color:var(--muted)">Si no ves los últimos cambios, forzá la actualización</span>
         <button class="btn" style="background:rgba(56,189,248,.12);color:var(--blue);border:1px solid rgba(56,189,248,.3)" onclick="actualizarApp()">🔄 Buscar actualizaciones</button>
       </div>
-      <div style="font-size:.66rem;color:var(--muted);margin-top:12px">CYC · Versión 9.6</div>
+      <div style="font-size:.66rem;color:var(--muted);margin-top:12px">CYC · Versión 9.7</div>
     </div>
 
     <div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:18px 20px;margin-bottom:14px">
