@@ -163,6 +163,7 @@ Los que más se usan:
 | `huerfanos[:palabra]` | los productos en "—": por qué no tienen precio y cuál es su publicación |
 | `poncosto:<palabra\|id>\|<pesos>[\|go]` | corrige el costo de un producto (lo mismo que el campo de la ficha) |
 | `vincular:<MLA>=<palabra\|id>[:go]` | pega una publicación a un producto y la saca de oculta |
+| `pausar:<busca>[!<saca>][:go]` | pausa varias de una · palabras con `+` · **mirar la lista antes** |
 | `cargargasto:<fecha>\|<monto>\|<cat>\|<desc>[\|prov=][\|fact=][\|cae=][\|go]` | carga un gasto con su comprobante |
 | `subirrecibidas[:go]` | sube las compras de ARCA a Facturas → Recibidas (lee `ml-sync/recibidas.json`) |
 | `frenados[:díasStock]` | si conviene bajarle el precio al stock parado, con la cuenta hecha |
@@ -218,6 +219,17 @@ Telegram va solo el resumen de ventas del día y el del mes.
 - **`paused_by_seller` lo pausan ellos**, no ML. No es un problema — **salvo que tenga stock en
   Full**. Ahí sí: no vende nada, paga almacenamiento todos los meses y el reloj del descarte corre
   igual. Por eso el chequeo de la mañana ahora lo avisa aparte de las pausadas.
+- **Filtrar publicaciones por palabras del título es peligroso: hay que MIRAR la lista antes.**
+  El 15/08 se pidió pausar las tarjetas de memoria y el primer filtro se llevaba puesto el
+  "Auricular Bluetooth Vincha **Micro Sd** Radio Fm" (que vendía 3 por mes) y las "Tablet Xiaomi
+  Redmi Pad 2, 128gb **Memoria**" de medio millón. Por eso `pausar` sin `:go` solo muestra, y tiene
+  lista de exclusión con `!`. Nunca aplicar un filtro por título sin leer qué agarró.
+- **El saldo de ML NO se puede leer por la API.** Probado el 15/08/2026 con `probarsaldo` en las
+  cuatro cuentas y en los tres endpoints que existen (`/users/<id>/mercadopago_account/balance`,
+  `/v1/account/balance` de MercadoPago y la variante por usuario): los doce intentos devuelven
+  **403 forbidden**. No es configuración ni token — la app no tiene ni puede pedir ese permiso.
+  Por eso el disponible por cuenta en el Arqueo se carga a mano. Si algún día ML lo habilita, se
+  corre `probarsaldo` y se ve al toque.
 - **La marca roja de "para evitar descarte" NO viene por la API.** El stock de Full
   (`/inventories/<id>/stock/fulfillment`) devuelve `available_quantity` y `not_available_quantity`
   y nada más: ni la marca ni la fecha de descarte que se ven en "Estado de tu stock". Se deduce
@@ -341,6 +353,11 @@ Lo que quedó abierto. Borrá de acá lo que se vaya cerrando.
   Sandisk 32gb (30 u., $238.290). Y **1 pausada con stock adentro**: Filtros Purificador de Agua
   de Matías, 20 u., $20.840 — o la reactiva o retira el stock. De las 44 pausadas a mano, es la
   única con mercadería adentro.
+- **Las 7 tarjetas de memoria quedaron TODAS pausadas** (15/08, decisión suya: "son para
+  problemas"). Son todas de Matías. Pero **quedan 54 unidades adentro de Full**: Sandisk 32gb 28 u.
+  · Kingston Canvas 64gb 15 u. · Kingston con adaptador 7 u. · Sandisk 128gb 4 u. Pausar NO saca la
+  mercadería del depósito: sigue pagando almacenamiento y ML la descarta igual. **Falta que decida
+  si las retira.** Los pendrives NO se tocaron.
 - **Faltan gastos de agosto**: servicios ($150.000, en julio figura como "Claude"). El alquiler
   ($100.000), los honorarios ($100.000) y la obra social Sancor ($65.227) ya están.
 - **OSDE es PERSONAL, no es de CYC. No cargarlo nunca.** Aparece en los comprobantes recibidos de
