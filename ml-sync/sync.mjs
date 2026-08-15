@@ -2299,117 +2299,99 @@ async function main() {
         .sort((a, b) => b.plata - a.plata);
       const dormidos = R.flatMap((r) => r.fullDormido.map((f) => ({ ...f, cta: r.label })))
         .sort((a, b) => b.plata - a.plata);
-      L.push(`🌅 <b>CHEQUEO DE LA MAÑANA</b> · ${hoyLbl}`);
-      const urgente = parados.length > 0 || totML > 0 || totDep > 0 || totProb > 0 || perdidaDia > 0
-        || pausados.length > 0;
-      L.push(urgente ? '\n🔴 <b>Hay cosas para mirar hoy.</b>' : '\n🟢 <b>Todo en orden.</b>');
-      // 1) El termómetro del día: lo primero que se mira por instinto.
+      // ── EL MENSAJE: corto y con emojis, para leerlo de un vistazo en el celular ──
+      // Pedido suyo del 15/08/2026: "el resumen lo quiero más resumido, decime lo importante de
+      // verdad y con emoticonos". Antes eran ~40 líneas y se leían en diagonal, que es peor que
+      // no leerlas: el reclamo de la Depiladora se perdió estando ahí escrito.
+      // Ahora se manda SOLO lo que pide una decisión. Todo el detalle sigue saliendo abajo, en el
+      // log, para poder mirarlo cuando algo llama la atención.
+      const D = [];   // el detalle largo, solo para el log
+      const uPaus = pausados.reduce((s, f) => s + f.q, 0);
+      const $paus = pausados.reduce((s, f) => s + f.plata, 0);
+      const $dorm = dormidos.reduce((s, f) => s + f.plata, 0);
+      const diasVieja = Math.max(0, ...R.map((r) => r.pregVieja
+        ? Math.floor((Date.now() - new Date(r.pregVieja).getTime()) / 864e5) : 0));
+      L.push(`🌅 <b>CHEQUEO</b> · ${hoyLbl}`);
+      // 1) LO QUE HAY QUE HACER HOY. Va primero porque es lo único que pide que hagas algo.
+      const hacer = [];
+      for (const c of parados) hacer.push(`⏰ <b>${c.cta}</b>: reclamo de ${c.dias} días — todavía podés contestarlo`);
+      if (totMsg) hacer.push(`💬 ${totMsg} mensaje(s) de comprador sin leer`);
+      if (totML) hacer.push(`🚫 ${totML} publicación(es) pausada(s) <b>por ML</b>`);
+      if (totDep) hacer.push(`📤 ${totDep} activa(s) fuera de Full`);
+      if (!totCajas && quiebres.length) hacer.push(`📥 <b>0 cajas</b> a Full en ${DIAS} días, y ${quiebres.length} publicaciones sin stock`);
+      if (hacer.length) { L.push(`\n🔴 <b>PARA HOY</b>`); for (const h of hacer.slice(0, 5)) L.push(`   ${h}`); }
+      else L.push(`\n🟢 <b>Nada urgente hoy.</b>`);
+      // 2) El termómetro del día.
       const flecha = varPct >= 5 ? '📈' : (varPct <= -15 ? '🔻' : '➡️');
-      L.push(`\n${flecha} <b>Ayer: ${money(Math.round(ventasAyer))}</b> · promedio 7 días ${money(Math.round(prom7))}`
-        + ` · <b>${varPct >= 0 ? '+' : ''}${varPct.toFixed(0)}%</b>`);
-      if (varPct <= -25) L.push(`   🔴 <b>Cayó fuerte.</b> Mirá si alguna cuenta se quedó sin stock o perdió la caja de compra.`);
-      // 2) Quiebres de stock que duelen.
+      L.push(`\n${flecha} <b>Ayer ${money(Math.round(ventasAyer))}</b> · ${varPct >= 0 ? '+' : ''}${varPct.toFixed(0)}% vs la semana`);
+      // 3) Lo que está costando plata todos los días.
       if (quiebres.length) {
-        L.push(`\n📉 <b>Sin stock y vendían: ${quiebres.length} publicaciones</b> · se pierden <b>${money(Math.round(perdidaDia))}/día</b>`);
-        for (const q of quiebres.slice(0, 6)) L.push(`   · ${q.cta} · ${q.nom} — ${money(Math.round(q.porDia))}/día`);
-        if (quiebres.length > 6) L.push(`   <i>… y ${quiebres.length - 6} más</i>`);
-      } else {
-        L.push(`\n✅ <b>Ningún quiebre de stock que esté costando plata</b>`);
+        L.push(`💸 <b>${quiebres.length} sin stock</b> → <b>${money(Math.round(perdidaDia))}/día</b>`);
+        for (const q of quiebres.slice(0, 3)) L.push(`   · ${String(q.nom).slice(0, 30)} — ${money(Math.round(q.porDia))}/día`);
       }
-      // 3) Reclamos parados: van arriba de todo lo demás porque tienen reloj.
-      if (parados.length) {
-        L.push(`\n🔴 <b>RECLAMOS QUE TE ESTÁN ESPERANDO: ${parados.length}</b>`);
-        for (const c of parados) L.push(`   · ${c.cta} · ${c.razon} · <b>${c.dias} días sin contestar</b> · podés: ${c.acciones.join(', ')}`);
-        L.push(`   <i>Si no contestás, ML resuelve solo — casi siempre a favor del comprador.</i>`);
-      }
-      // Preguntas
-      L.push(`\n❓ <b>Preguntas sin responder: ${totPreg}</b>`);
+      // 4) El resto: una línea por tema, sin listas.
+      L.push(`\n❓ <b>${totPreg}</b> preguntas sin responder${diasVieja ? ` · la más vieja hace <b>${diasVieja} días</b>` : ''}`);
+      L.push(`⚠️ <b>${totRec}</b> reclamo(s) abierto(s)${parados.length ? ` · ${parados.length} te espera(n)` : ' · los maneja ML'}`);
+      L.push(`🏭 Full: ${totProb} u. con problema · <b>${totCajas}</b> caja(s) llegada(s) en ${DIAS} días`);
+      if (pausados.length) L.push(`🧊 <b>${pausados.length}</b> pausada(s) con stock adentro · ${uPaus} u. · <b>${money(Math.round($paus))}</b>`);
+      if (dormidos.length) L.push(`🟠 <b>${dormidos.length}</b> con stock y sin vender hace 30 días · ${money(Math.round($dorm))}`);
+      // ── EL DETALLE, solo para el log ──
+      D.push(`\n\n════════ DETALLE ════════`);
+      D.push(`\n── Preguntas por cuenta ──`);
       for (const r of R) {
-        if (!r.preg) continue;
-        const dias = r.pregVieja ? Math.floor((Date.now() - new Date(r.pregVieja).getTime()) / 864e5) : null;
-        L.push(`   · ${r.label}: <b>${r.preg}</b>${dias != null ? ` · la más vieja hace ${dias} días` : ''}`);
+        const d = r.pregVieja ? Math.floor((Date.now() - new Date(r.pregVieja).getTime()) / 864e5) : null;
+        D.push(`   ${r.label}: ${r.preg}${d != null ? ` · la más vieja hace ${d} días` : ''}`);
       }
-      if (!totPreg) L.push('   · ninguna, todas contestadas');
-      // Reclamos y mensajes
-      L.push(`\n${totRec ? '⚠️' : '✅'} <b>Reclamos abiertos: ${totRec}</b>`);
+      D.push(`\n── Reclamos ──`);
       for (const r of R) for (const c of r.reclamos) {
-        L.push(`   · ${r.label}: ${c.razon}${c.dias != null ? ` · ${c.dias} días` : ''}`
-          + (c.acciones.length ? '' : ' · lo maneja ML, no hay nada para hacer') + ` (orden ${c.orden})`);
+        D.push(`   ${r.label}: ${c.razon}${c.dias != null ? ` · ${c.dias} días` : ''}`
+          + (c.acciones.length ? ` · podés: ${c.acciones.join(', ')}` : ' · lo maneja ML') + ` (orden ${c.orden})`);
       }
-      if (totMsg) L.push(`💬 Mensajes de posventa sin leer: <b>${totMsg}</b>`);
-      // Pausadas
-      // Las pausadas a mano NO se listan: son decenas y están pausadas a propósito. Solo el número.
-      L.push(`\n⏸️ <b>Pausadas</b>: ${totSinStock} sin stock · ${totMano} a mano · <b>${totML} por ML</b>`);
-      let nML = 0;
-      for (const r of R) for (const p of r.pausML) { if (nML++ < 8) L.push(`   🔴 ${r.label} · ${p.nom} (${p.sub})`); }
-      if (nML > 8) L.push(`   <i>… y ${nML - 8} más</i>`);
-      // Depósito
-      L.push(`\n${totDep ? '📦 <b>ACTIVAS FUERA DE FULL: ' + totDep + '</b> (venden desde el depósito)' : '✅ <b>Ninguna activa fuera de Full</b>'}`);
-      for (const r of R) for (const d of r.deposito.slice(0, 8)) L.push(`   🔴 ${r.label} · ${d.nom} · ${d.q} u. (${d.log})`);
-      // Full
-      L.push(`\n🏭 <b>Full</b>`);
-      L.push(`   ${totProb ? '🔴' : '✅'} unidades con problema: <b>${totProb}</b>`);
-      for (const r of R) for (const f of r.fullProblema.slice(0, 8)) L.push(`      · ${r.label} · ${f.nom}: ${f.na} u. (${f.det})`);
-      if (pausados.length) {
-        const uP = pausados.reduce((s, f) => s + f.q, 0);
-        const $P = pausados.reduce((s, f) => s + f.plata, 0);
-        L.push(`   🔴 <b>PAUSADAS CON STOCK EN FULL: ${pausados.length}</b> · ${uP} u. · ${money(Math.round($P))}`);
-        for (const f of pausados.slice(0, 8)) {
-          L.push(`      · ${f.cta} · ${f.nom} — <b>${f.q} u.</b> (${money(Math.round(f.plata))})`);
-        }
-        if (pausados.length > 8) L.push(`      <i>… y ${pausados.length - 8} más</i>`);
-        L.push(`      <i>No venden y pagan almacenamiento igual. O las reactivás o retirás el stock.</i>`);
-      } else {
-        L.push(`   ✅ ninguna pausada con stock en Full`);
-      }
-      if (dormidos.length) {
-        const uD = dormidos.reduce((s, f) => s + f.q, 0);
-        const $D = dormidos.reduce((s, f) => s + f.plata, 0);
-        L.push(`   🟠 <b>CON STOCK Y CERO VENTAS EN 30 DÍAS: ${dormidos.length}</b> · ${uD} u. · ${money(Math.round($D))}`);
-        for (const f of dormidos.slice(0, 6)) {
-          L.push(`      · ${f.cta} · ${f.nom} — ${f.q} u. (${money(Math.round(f.plata))})`);
-        }
-        if (dormidos.length > 6) L.push(`      <i>… y ${dormidos.length - 6} más</i>`);
-        L.push(`      <i>Estas son las que ML te va a marcar "para evitar descarte".</i>`);
-      }
-      L.push(`   📥 cajas que llegaron en ${DIAS} días: <b>${totCajas}</b>`);
-      for (const r of R) for (const c of r.cajas.slice(0, 8)) L.push(`      · ${r.label} · ${c.fecha} · ${c.nom}${c.q ? ` · ${c.q} u.` : ''}`);
-      if (capado) L.push(`\n<i>(no llegué a mirar ${capado} inventarios de Full: hay más de ${MAX_INV})</i>`);
+      if (!totRec) D.push('   ninguno');
+      D.push(`\n── Pausadas ── ${totSinStock} sin stock · ${totMano} a mano · ${totML} por ML`);
+      for (const r of R) for (const p of r.pausML) D.push(`   🔴 ${r.label} · ${p.nom} (${p.sub})`);
+      if (totDep) { D.push(`\n── Activas fuera de Full ──`); for (const r of R) for (const d of r.deposito) D.push(`   ${r.label} · ${d.nom} · ${d.q} u. (${d.log})`); }
+      D.push(`\n── Sin stock y vendían · ${quiebres.length} ──`);
+      for (const q of quiebres.slice(0, 20)) D.push(`   ${q.cta} · ${q.nom} — ${money(Math.round(q.porDia))}/día`);
+      D.push(`\n── Full: unidades con problema ──`);
+      for (const r of R) for (const f of r.fullProblema) D.push(`   ${r.label} · ${f.nom}: ${f.na} u. (${f.det})`);
+      if (!totProb) D.push('   ninguna');
+      if (pausados.length) { D.push(`\n── Pausadas con stock adentro ──`); for (const f of pausados) D.push(`   ${f.cta} · ${f.nom} — ${f.q} u. (${money(Math.round(f.plata))})`); }
+      if (dormidos.length) { D.push(`\n── Con stock y cero ventas en 30 días ──`); for (const f of dormidos.slice(0, 20)) D.push(`   ${f.cta} · ${f.nom} — ${f.q} u. (${money(Math.round(f.plata))})`); }
+      D.push(`\n── Cajas que llegaron en ${DIAS} días · ${totCajas} ──`);
+      for (const r of R) for (const c of r.cajas) D.push(`   ${r.label} · ${c.fecha} · ${c.nom}${c.q ? ` · ${c.q} u.` : ''}`);
+      if (capado) D.push(`\n(no llegué a mirar ${capado} inventarios de Full: hay más de ${MAX_INV})`);
       // PROMOCIONES QUE ML VA A APLICAR SOLAS. Es plata que se pierde sin que nadie toque nada:
       // arrancan el día pactado con hasta 50% de descuento. El robot que saca descuentos no las ve
       // porque solo mira las publicaciones que YA tienen el precio rebajado hoy.
       try {
         const proms = await promosAgendadas(db, accounts, labels, products);
-        if (!proms.length) L.push(`\n✅ <b>Sin promociones de ML agendadas</b>`);
-        else {
-          const arranca = proms.filter((x) => x.estado === 'pending');
-          const yaCorre = proms.filter((x) => x.estado === 'started');
+        // En el mensaje va UNA línea: cuántas son y cuántas quedarían abajo del piso, que es lo
+        // único que cambia lo que hay que hacer. El detalle, al log.
+        if (proms.length) {
           const feo = proms.filter((x) => x.mg != null && x.mg < 30).length;
-          L.push(`\n🏷️ <b>PROMOCIONES DE ML: ${proms.length}</b>`
-            + (arranca.length ? ` · ${arranca.length} agendadas` : '')
-            + (yaCorre.length ? ` · ${yaCorre.length} YA aplicadas` : ''));
-          if (feo) L.push(`   ⚠️ <b>${feo} quedarían abajo del 30%</b>`);
-          if (arranca.length) L.push(`   arrancan el ${arranca[0].desde || '?'}${arranca[0].hasta ? ' y van hasta el ' + arranca[0].hasta : ''}`);
-          for (const x of proms.slice(0, 10)) {
-            L.push(`   ${x.mg != null && x.mg < 30 ? '🔴' : '·'} ${x.label} · ${String(x.nom).slice(0, 34)}`);
-            L.push(`      ${money(Math.round(x.precioHoy))} → <b>${money(Math.round(x.precioProm))}</b>`
+          L.push(`🏷️ <b>${proms.length}</b> promoción(es) de ML${feo ? ` · <b>${feo} quedarían abajo del 30%</b> ⚠️` : ''}`);
+          D.push(`\n── Promociones de ML ──`);
+          for (const x of proms) {
+            D.push(`   ${x.label} · ${String(x.nom).slice(0, 40)}: ${money(Math.round(x.precioHoy))} → ${money(Math.round(x.precioProm))}`
               + (x.off != null ? ` (-${x.off.toFixed(0)}%)` : '')
-              + (x.mg != null ? ` · quedaría en ${x.mg.toFixed(0)}% (estimado)` : ' · no pude estimar el margen'));
+              + (x.mg != null ? ` · quedaría en ${x.mg.toFixed(0)}%` : '') + ` · ${x.estado}`);
           }
-          if (proms.length > 10) L.push(`   <i>… y ${proms.length - 10} más</i>`);
         }
-      } catch (e) { L.push(`\n⚠️ No pude mirar las promociones: ${String(e.message || e).slice(0, 60)}`); }
-      for (const r of R) for (const e2 of r.err) L.push(`\n⚠️ ${r.label} · no pude leer ${e2}`);
+      } catch (e) { L.push(`⚠️ No pude mirar las promociones: ${String(e.message || e).slice(0, 60)}`); }
+      for (const r of R) for (const e2 of r.err) L.push(`⚠️ ${r.label} · no pude leer ${e2}`);
       // Telegram corta en 4096 caracteres: un mensaje que se pasa NO llega, así que se recorta acá.
       let msg = L.join('\n');
       if (msg.length > 3900) msg = msg.slice(0, 3900) + '\n\n<i>(recortado: el resto está en el log)</i>';
-      console.log(L.join('\n').replace(/<[^>]+>/g, ''));
+      console.log((L.join('\n') + D.join('\n')).replace(/<[^>]+>/g, ''));
       // CHEQUEO_ARCHIVO=<ruta> → deja el chequeo en un archivo del repo, para que después se pueda
       // leer sin tener las claves de ML ni de Firebase. Va SIN los números de orden ni el texto de
       // las preguntas: el repo es público y eso es data de compradores. Lo completo va a Telegram.
       if (process.env.CHEQUEO_ARCHIVO) {
         const ruta = process.env.CHEQUEO_ARCHIVO;
-        const limpio = L.join('\n').replace(/<[^>]+>/g, '').replace(/ \(orden \d+\)/g, '');
+        // Va el mensaje corto Y el detalle: el archivo es lo que se lee después para escribir
+        // el resumen en el chat, y ahí sí hacen falta las listas completas.
+        const limpio = (L.join('\n') + D.join('\n')).replace(/<[^>]+>/g, '').replace(/ \(orden \d+\)/g, '');
         try {
           const dir = ruta.slice(0, ruta.lastIndexOf('/'));
           if (dir) mkdirSync(dir, { recursive: true });
