@@ -735,7 +735,7 @@ async function bajarParaMover(db, accounts, labels, products, opts = {}) {
     } catch { out = null; }
     feeCache[key] = out; return out;
   };
-  const filas = [], ganando = [], sinCaja = [], noConviene = [];
+  const filas = [], ganando = [], sinCaja = [], noConviene = [], paulvic = [];
   for (const label of labels) {
     const acc = accounts[label];
     if (!acc?.refresh_token) continue;
@@ -768,6 +768,9 @@ async function bajarParaMover(db, accounts, labels, products, opts = {}) {
           label, mla, nom, precio, stock, diasSin: diasSin === 9999 ? null : diasSin,
           plata: Math.round(stock * costo), nVar: vars.length,
         };
+        // Paulvic no se toca (regla suya del 13/08/2026) y además es un GRUPO de precio: bajar una
+        // arrastra a las 26. Se cuentan aparte para que se vea que están, no se esconden.
+        if (/paulvic/i.test((p.name || '') + ' ' + nom)) { paulvic.push(base); continue; }
         // Sin caja de compra no hay palanca conocida: bajar sería adivinar. Se cuenta y se sigue.
         if (!b.catalog_listing) { sinCaja.push(base); continue; }
         let caja = null;
@@ -795,7 +798,7 @@ async function bajarParaMover(db, accounts, labels, products, opts = {}) {
   }
   filas.sort((a, b) => b.plata - a.plata);
   noConviene.sort((a, b) => b.plata - a.plata);
-  return { filas, ganando, sinCaja, noConviene, DIAS, PISO, MAX_BAJA };
+  return { filas, ganando, sinCaja, noConviene, paulvic, DIAS, PISO, MAX_BAJA };
 }
 
 async function removeStartedPromos(itemId, token) {
@@ -2436,7 +2439,7 @@ async function main() {
       // Qué se puede bajar un poco para que vuelva a vender. Pedido suyo del 16/08/2026: que salga
       // todos los días junto con el chequeo. Nunca baja nada solo — deja la lista y el comando.
       // Si ML no contesta, el chequeo sigue igual: esto no puede voltear el resumen de la mañana.
-      let baj = { filas: [], ganando: [], sinCaja: [], noConviene: [] };
+      let baj = { filas: [], ganando: [], sinCaja: [], noConviene: [], paulvic: [] };
       try { baj = await bajarParaMover(db, accounts, labels, products, { dias: 15, piso: 30, maxBaja: 10 }); }
       catch (e) { D.push(`\n(no pude calcular qué bajar: ${e.message})`); }
       const $baj = baj.filas.reduce((s, f) => s + f.plata, 0);
@@ -2504,6 +2507,7 @@ async function main() {
         D.push(`      ${money(Math.round(f.precio))} → ${money(f.pw)} (−${f.baja.toFixed(1)}%) · margen ${f.mgHoy.toFixed(0)}% → ${f.mgPw.toFixed(0)}% · volver:${f.mla}=${f.pw}:go`);
       }
       if (!baj.filas.length) D.push('   ninguna');
+      if (baj.paulvic.length) D.push(`   (+ ${baj.paulvic.length} Paulvic salteados: regla suya, no se tocan)`);
       if (baj.noConviene.length) {
         D.push(`\n── Perdieron la caja pero NO conviene bajarlas · ${baj.noConviene.length} ──`);
         for (const f of baj.noConviene.slice(0, 15)) D.push(`   ${f.label} · ${f.nom} · ${f.why}`);
@@ -5586,6 +5590,7 @@ async function main() {
       for (const f of R.ganando.slice(0, 15)) console.log(`   ${f.label.padEnd(8)} · ${f.nom.padEnd(40)} ${f.stock} u. · ${money(f.plata)}`);
       if (R.ganando.length > 15) console.log(`   … y ${R.ganando.length - 15} más`);
       console.log(`\n── Sin caja de compra que medir · ${R.sinCaja.length} ── (no son de catálogo o ML no dio el dato)`);
+      console.log(`── Paulvic salteados (regla suya: no se tocan) · ${R.paulvic.length} ──`);
       console.log(`\nSOLO LECTURA: no se tocó ningún precio.`);
       return;
     }
