@@ -128,8 +128,12 @@ julio, a CYC le quedan **~$2.000.000/mes** después de todo eso.
    para llegar al 30% haría falta cruzar ese número, se deja donde está y se avisa.
 4. **El piso de margen es 30%**, medido sobre el costo total (mercadería + envío + % de reclamos +
    IIBB + monotributo). El robot baja al piso solo; subir por encima del piso se decide a mano.
-5. **NUNCA bajar un precio.** Regla suya del 13/08/2026, sin excepciones. Si una cuenta dice que
-   para llegar al 30% hay que BAJAR, el número está mal: no se toca y se investiga.
+5. **NUNCA bajar un precio por tu cuenta.** Regla suya del 13/08/2026. Si una cuenta dice que para
+   llegar al 30% hay que BAJAR, el número está mal: no se toca y se investiga.
+   **Única excepción, y la pide ÉL cada vez:** recuperar la caja de compra de un producto que tiene
+   stock y no vende. El 16/08/2026 autorizó las tres primeras (pendrive 128gb, Ferrari, De La
+   Patagonia). Aun así: nunca se baja sin que lo apruebe, nunca abajo del piso del 30%, y el robot
+   **no baja nada solo** — `bajarcaja` deja la lista y el comando, la decisión es suya.
 6. Después de aplicar un precio en ML, **volvé a leerlo de ML para confirmar** que quedó.
 7. **Las publicaciones con variantes también se suben.** No alcanza con el precio de la
    publicación: hay que tocar cada variante, y mandar la lista incompleta hace que ML borre las
@@ -167,6 +171,7 @@ Los que más se usan:
 | `cargargasto:<fecha>\|<monto>\|<cat>\|<desc>[\|prov=][\|fact=][\|cae=][\|go]` | carga un gasto con su comprobante |
 | `subirrecibidas[:go]` | sube las compras de ARCA a Facturas → Recibidas (lee `ml-sync/recibidas.json`) |
 | `frenados[:díasStock]` | si conviene bajarle el precio al stock parado, con la cuenta hecha |
+| `bajarcaja[:días][:piso][:maxBaja]` | qué bajar **poquito** para que vuelva a vender: las que tienen stock, no venden y perdieron la caja de compra por poca plata · **sale solo en el chequeo de las 8** |
 | `proyec[:retiro][:tasa]` | cuánto le queda a CYC por mes |
 | `facarca` | lo facturado en la ventana que mira ARCA, por cuenta |
 | `catmono[:fecha]` | qué categoría de monotributo corresponde |
@@ -257,6 +262,12 @@ Telegram va solo el resumen de ventas del día y el del mes.
   deducir el envío real. El 13/08/2026 salteó **121 de 401** y lo dijo en una línea al final; yo
   leí "23 abajo del piso" y le dije que no quedaba nada abajo del 30%. Era falso. Para esas está
   `submargen`, que usa la cuenta de Margen ML y no necesita ventas. **Los dos, siempre.**
+- **`frenados` SOLO ve lo sobrecomprado: se saltea todo lo que tenga menos de 90 días de stock.**
+  El filtro es `diasStock < DIAS_MIN → continue`, con `DIAS_MIN` = 90 por defecto. Un producto con
+  20 unidades que vendía 1 por día y se frenó hace 15 días tiene 20 días de stock y **no aparece**.
+  El 16/08/2026 le pasé los 3 candidatos que dio `frenados` y él desconfió: *"me resulta raro que
+  justo el que te dije esté y que no haya más que dos más"*. Tenía razón — el filtro los tapaba.
+  Para la pregunta "¿qué bajo para que rote?" va `bajarcaja`, que mira TODAS las activas con stock.
 - **El margen de una publicación no se sabe del todo hasta que vende con el envío CARO.** El
   14/08 revisé la Plantilla Metatarso (`MLA1472615965`, Ayelen) y `unapub` dio 37% con peor caso
   $14, porque TODAS sus ventas habían salido con el envío barato: no había con qué medir el caro.

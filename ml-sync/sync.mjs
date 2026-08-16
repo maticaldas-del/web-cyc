@@ -674,6 +674,130 @@ async function promosAgendadas(db, accounts, labels, products) {
   return out;
 }
 
+// ── ¿QUÉ SE PUEDE BAJAR UN POCO PARA QUE VUELVA A VENDER? ─────────────────
+// Pedido suyo del 16/08/2026, después de que el padre viera el pendrive de 128gb: "fijate si hay
+// algún producto que no se esté vendiendo bien y que podamos bajarlo un poco y mover las ventas".
+//
+// Por qué existe y no alcanzaba con lo que ya había:
+//   · `frenados` SOLO mira lo que tiene más de 90 días de stock (`diasStock < DIAS_MIN` → continue).
+//     Un producto con 20 unidades que vendía 1 por día y se frenó hace 15 días tiene 20 días de
+//     stock: nunca aparece. El 16/08 `frenados` devolvió 3 candidatos y él desconfió con razón.
+//   · `dormidos` sí mira todas las activas, pero no mira el stock ni la caja de compra: propone
+//     bajar hasta la meta de margen aunque no haya nada que desbloquear.
+// Acá la pregunta es otra y tiene UNA respuesta objetiva: en las que NO se venden hace X días y
+// tienen mercadería adentro, ¿estamos perdiendo la caja de compra por poca plata? Si sí, bajar
+// hasta el precio de la caja es lo único que se sabe que mueve ventas de verdad. Si la caja ya
+// es nuestra —o no es de catálogo—, bajar es regalar margen y acá NO se propone.
+//
+// Dos criterios que no se negocian:
+//   · El envío se toma del PEOR caso (`modo:'max'`), igual que `bajopiso` y `unapub`. Es el
+//     criterio conservador con el que se fijaron todos los precios: para decidir una BAJA es el
+//     único honesto, porque el mejor caso muestra un margen que después no aparece.
+//   · Solo se propone si al precio de la caja el margen SIGUE arriba del piso. Ganar la caja
+//     vendiendo abajo del piso es vender para perder más rápido.
+// SOLO LEE: devuelve las filas, no toca ningún precio.
+async function bajarParaMover(db, accounts, labels, products, opts = {}) {
+  const DIAS = opts.dias || 15;          // desde cuántos días sin vender se considera frenada
+  const PISO = opts.piso != null ? opts.piso : 30;  // margen mínimo que tiene que quedar
+  const MAX_BAJA = opts.maxBaja || 10;   // no se propone una baja mayor a esto (%)
+  const links = (await db.get('cyc/mllinks')) || {};
+  const fin = (await db.get('cyc/finanzas')) || {};
+  const tc = parseFloat(fin.tipo_cambio) || 1500;
+  const monoP = parseFloat(((await db.get('cyc/monotributo')) || {}).pct) || 0;
+  const vp = (await db.get('cyc/ventaprod')) || {}; setDevLive(vp);
+  const pIdx = {}; for (const p of products) pIdx[p.id] = p;
+  // Última venta y precios/netos, por publicación y por producto (para deducir el envío).
+  const ultMla = {}, ultProd = {}, vtaMla = {}, vtaProd = {};
+  for (const [k, ents] of Object.entries(vp)) {
+    const ts = Date.parse(k.slice(0, 10).replace(/_/g, '-'));
+    for (const v of Object.values(ents || {})) {
+      if (!v || v.cancelada) continue;
+      const q = v.qty || 1;
+      if (isFinite(ts)) {
+        if (v.mla && (!ultMla[v.mla] || ts > ultMla[v.mla])) ultMla[v.mla] = ts;
+        if (v.prodId && (!ultProd[v.prodId] || ts > ultProd[v.prodId])) ultProd[v.prodId] = ts;
+      }
+      const tot = (v.total || 0) / q, net = (v.neto || 0) / q;
+      if (tot <= 0 || net <= 0) continue;
+      if (v.mla) (vtaMla[v.mla] = vtaMla[v.mla] || []).push({ tot, net });
+      if (v.prodId) (vtaProd[v.prodId] = vtaProd[v.prodId] || []).push({ tot, net });
+    }
+  }
+  const feeCache = {};
+  const feeAt = async (site, price, ltype, cat, token) => {
+    const key = site + '|' + ltype + '|' + cat + '|' + Math.round(price);
+    if (feeCache[key] !== undefined) return feeCache[key];
+    let out = null;
+    try {
+      const d = await mlGet(`/sites/${site}/listing_prices?price=${Math.round(price)}&listing_type_id=${ltype}&category_id=${cat}`, token);
+      const o = Array.isArray(d) ? d[0] : d;
+      if (typeof o?.sale_fee_amount === 'number') out = o.sale_fee_amount;
+    } catch { out = null; }
+    feeCache[key] = out; return out;
+  };
+  const filas = [], ganando = [], sinCaja = [], noConviene = [];
+  for (const label of labels) {
+    const acc = accounts[label];
+    if (!acc?.refresh_token) continue;
+    let t; try { t = await mlRefresh(ML_CLIENT_ID, ML_CLIENT_SECRET, acc.refresh_token); } catch { continue; }
+    try { await db.patch('mlapi/tokens/' + label, { refresh_token: t.refresh_token, updated_ts: Date.now() }); } catch { /* no rompe */ }
+    const m = (mlExtraPct(label) + monoP) / 100;
+    const ids = Object.entries(links)
+      .filter(([mla, e]) => e && e.cuenta === label && !e.ignored && e.prodId && /^MLA/i.test(mla))
+      .map(([mla]) => mla);
+    for (let k = 0; k < ids.length; k += 20) {
+      let arr;
+      try { arr = await mlGet('/items?ids=' + ids.slice(k, k + 20).join(',') + '&attributes=id,status,price,available_quantity,variations,title,listing_type_id,category_id,site_id,catalog_listing', t.access_token); } catch { continue; }
+      for (const row of (arr || [])) {
+        const b = row.body || {}; const mla = b.id; if (!mla || !links[mla]) continue;
+        if (b.status !== 'active') continue;        // pausada: no está a la venta, no hay nada que mover
+        const p = pIdx[links[mla].prodId]; if (!p) continue;
+        // El stock que importa es el que ML tiene A LA VENTA en esta publicación, no el del panel:
+        // acá la pregunta es "hay mercadería esperando comprador", y eso lo sabe ML.
+        const stock = Number(b.available_quantity) || 0; if (stock <= 0) continue;
+        const ult = ultMla[mla] || ultProd[p.id] || 0;
+        const diasSin = ult ? Math.floor((Date.now() - ult) / 864e5) : 9999;
+        if (diasSin < DIAS) continue;               // vendió hace poco: no está frenada
+        const vars = Array.isArray(b.variations) ? b.variations : [];
+        const precio = vars.length ? (vars[0].price || 0) : (b.price || 0);
+        if (!precio) continue;
+        const costo = costoPesos(p, 1, tc).costo; if (!(costo > 0)) continue;
+        const nom = (links[mla].title || b.title || p.name || mla).slice(0, 40);
+        const site = b.site_id || 'MLA', lt = b.listing_type_id, cat = b.category_id;
+        const base = {
+          label, mla, nom, precio, stock, diasSin: diasSin === 9999 ? null : diasSin,
+          plata: Math.round(stock * costo), nVar: vars.length,
+        };
+        // Sin caja de compra no hay palanca conocida: bajar sería adivinar. Se cuenta y se sigue.
+        if (!b.catalog_listing) { sinCaja.push(base); continue; }
+        let caja = null;
+        try { caja = await mlGet('/items/' + mla + '/price_to_win?version=v2', t.access_token); } catch { /* */ }
+        if (caja && caja.status === 'winning') { ganando.push(base); continue; }
+        const pw = Number(caja?.price_to_win) || 0;
+        if (!(pw > 0) || pw >= precio) { sinCaja.push({ ...base, why: 'ML no dio precio de caja' }); continue; }
+        const com0 = await feeAt(site, precio, lt, cat, t.access_token);
+        if (com0 == null) continue;
+        const ventas = (vtaMla[mla] && vtaMla[mla].length) ? vtaMla[mla] : (vtaProd[p.id] || []);
+        // Peor caso a propósito: ver el comentario de arriba.
+        const { envio: env } = await envioDeducido(ventas, precio, (pv) => feeAt(site, pv, lt, cat, t.access_token), { modo: 'max' });
+        if (env == null) { sinCaja.push({ ...base, why: 'nunca vendió: no puedo deducir el envío' }); continue; }
+        const mgDe = (pr, com) => { const mlx = pr * m; return (pr - com - env - costo - mlx) / (costo + mlx) * 100; };
+        const comPw = await feeAt(site, pw, lt, cat, t.access_token);
+        if (comPw == null) continue;
+        const mgHoy = mgDe(precio, com0), mgPw = mgDe(pw, comPw);
+        const baja = (1 - pw / precio) * 100;
+        const fila = { ...base, pw: Math.floor(pw) - 1, mgHoy, mgPw, baja, envio: env, costo };
+        // Se propone solo si después de bajar SIGUE arriba del piso y la baja es chica.
+        if (mgPw >= PISO && baja <= MAX_BAJA) filas.push(fila);
+        else noConviene.push({ ...fila, why: mgPw < PISO ? `al precio de la caja queda en ${mgPw.toFixed(0)}%` : `habría que bajar ${baja.toFixed(0)}%` });
+      }
+    }
+  }
+  filas.sort((a, b) => b.plata - a.plata);
+  noConviene.sort((a, b) => b.plata - a.plata);
+  return { filas, ganando, sinCaja, noConviene, DIAS, PISO, MAX_BAJA };
+}
+
 async function removeStartedPromos(itemId, token) {
   let arr;
   try {
@@ -2309,6 +2433,13 @@ async function main() {
       // Ahora se manda SOLO lo que pide una decisión. Todo el detalle sigue saliendo abajo, en el
       // log, para poder mirarlo cuando algo llama la atención.
       const D = [];   // el detalle largo, solo para el log
+      // Qué se puede bajar un poco para que vuelva a vender. Pedido suyo del 16/08/2026: que salga
+      // todos los días junto con el chequeo. Nunca baja nada solo — deja la lista y el comando.
+      // Si ML no contesta, el chequeo sigue igual: esto no puede voltear el resumen de la mañana.
+      let baj = { filas: [], ganando: [], sinCaja: [], noConviene: [] };
+      try { baj = await bajarParaMover(db, accounts, labels, products, { dias: 15, piso: 30, maxBaja: 10 }); }
+      catch (e) { D.push(`\n(no pude calcular qué bajar: ${e.message})`); }
+      const $baj = baj.filas.reduce((s, f) => s + f.plata, 0);
       const uPaus = pausados.reduce((s, f) => s + f.q, 0);
       const $paus = pausados.reduce((s, f) => s + f.plata, 0);
       const $dorm = dormidos.reduce((s, f) => s + f.plata, 0);
@@ -2338,6 +2469,12 @@ async function main() {
       L.push(`🏭 Full: ${totProb} u. con problema · <b>${totCajas}</b> caja(s) llegada(s) en ${DIAS} días`);
       if (pausados.length) L.push(`🧊 <b>${pausados.length}</b> pausada(s) con stock adentro · ${uPaus} u. · <b>${money(Math.round($paus))}</b>`);
       if (dormidos.length) L.push(`🟠 <b>${dormidos.length}</b> con stock y sin vender hace 30 días · ${money(Math.round($dorm))}`);
+      // Lo único de todo el chequeo que se arregla con un comando y da plata el mismo día.
+      if (baj.filas.length) {
+        L.push(`\n🏷️ <b>${baj.filas.length} para bajar poquito y que roten</b> · ${money(Math.round($baj))} parados`);
+        for (const f of baj.filas.slice(0, 3))
+          L.push(`   · ${String(f.nom).slice(0, 28)} — ${money(Math.round(f.precio))} → <b>${money(f.pw)}</b> (−${f.baja.toFixed(1)}%, queda ${f.mgPw.toFixed(0)}%)`);
+      }
       // ── EL DETALLE, solo para el log ──
       D.push(`\n\n════════ DETALLE ════════`);
       D.push(`\n── Preguntas por cuenta ──`);
@@ -2361,6 +2498,16 @@ async function main() {
       if (!totProb) D.push('   ninguna');
       if (pausados.length) { D.push(`\n── Pausadas con stock adentro ──`); for (const f of pausados) D.push(`   ${f.cta} · ${f.nom} — ${f.q} u. (${money(Math.round(f.plata))})`); }
       if (dormidos.length) { D.push(`\n── Con stock y cero ventas en 30 días ──`); for (const f of dormidos.slice(0, 20)) D.push(`   ${f.cta} · ${f.nom} — ${f.q} u. (${money(Math.round(f.plata))})`); }
+      D.push(`\n── Para bajar y que roten · ${baj.filas.length} ──`);
+      for (const f of baj.filas) {
+        D.push(`   ${f.cta || f.label} · ${f.nom} · ${f.stock} u. (${money(f.plata)}) · ${f.diasSin == null ? 'NUNCA vendió' : f.diasSin + ' días sin vender'}`);
+        D.push(`      ${money(Math.round(f.precio))} → ${money(f.pw)} (−${f.baja.toFixed(1)}%) · margen ${f.mgHoy.toFixed(0)}% → ${f.mgPw.toFixed(0)}% · volver:${f.mla}=${f.pw}:go`);
+      }
+      if (!baj.filas.length) D.push('   ninguna');
+      if (baj.noConviene.length) {
+        D.push(`\n── Perdieron la caja pero NO conviene bajarlas · ${baj.noConviene.length} ──`);
+        for (const f of baj.noConviene.slice(0, 15)) D.push(`   ${f.label} · ${f.nom} · ${f.why}`);
+      }
       D.push(`\n── Cajas que llegaron en ${DIAS} días · ${totCajas} ──`);
       for (const r of R) for (const c of r.cajas) D.push(`   ${r.label} · ${c.fecha} · ${c.nom}${c.q ? ` · ${c.q} u.` : ''}`);
       if (capado) D.push(`\n(no llegué a mirar ${capado} inventarios de Full: hay más de ${MAX_INV})`);
@@ -5406,6 +5553,40 @@ async function main() {
         if (q === Object.keys(datos[cta]).length) ok++;
       }
       console.log(`\n${ok} de ${Object.keys(datos).length} cuentas quedaron bien.`);
+      return;
+    }
+
+    // BILLING_PROBE=bajarcaja[:<díasSinVender>][:<piso>][:<maxBaja>] → QUÉ BAJAR PARA QUE ROTE.
+    // Mira TODAS las activas con stock (no solo las sobrecompradas, que es lo que mira `frenados`)
+    // y se queda con las que perdieron la caja de compra por poca plata. Ver el comentario largo
+    // arriba de bajarParaMover(). SOLO LEE. Sale también en el chequeo de la mañana.
+    if (String(process.env.BILLING_PROBE || '').startsWith('bajarcaja')) {
+      const _b = String(process.env.BILLING_PROBE).split(':');
+      const R = await bajarParaMover(db, accounts, labels, products, {
+        dias: parseFloat(_b[1]) || 15, piso: parseFloat(_b[2]) || 30, maxBaja: parseFloat(_b[3]) || 10,
+      });
+      console.log(`=== BAJAR PARA QUE VUELVA A VENDER · sin vender hace ${R.DIAS}+ días · piso ${R.PISO}% ===`);
+      console.log(`Solo publicaciones ACTIVAS, CON stock, de CATÁLOGO y donde HOY se pierde la caja.`);
+      console.log(`El envío es el del PEOR caso, igual que bajopiso y unapub. SOLO LECTURA.\n`);
+      if (!R.filas.length) console.log('── Ninguna. No hay nada que bajar que valga la pena hoy.\n');
+      for (const f of R.filas) {
+        console.log(`── ${f.nom}   (${f.label} · ${f.mla})${f.nVar ? ` [${f.nVar} var]` : ''}`);
+        console.log(`     ${f.stock} u. sin vender · ${money(f.plata)} parados · ${f.diasSin == null ? 'NUNCA vendió' : `hace ${f.diasSin} días que no vende`}`);
+        console.log(`     ${money(Math.round(f.precio))} → ${money(f.pw)}  (−${f.baja.toFixed(1)}%)  ·  margen ${f.mgHoy.toFixed(0)}% → ${f.mgPw.toFixed(0)}%`);
+        console.log(`     comando: volver:${f.mla}=${f.pw}:go`);
+      }
+      if (R.noConviene.length) {
+        console.log(`\n── NO CONVIENE BAJARLAS · ${R.noConviene.length} ──`);
+        for (const f of R.noConviene.slice(0, 25))
+          console.log(`   ${f.label.padEnd(8)} · ${f.nom.padEnd(40)} ${money(Math.round(f.precio))} → caja ${money(f.pw)} · ${f.why}`);
+        if (R.noConviene.length > 25) console.log(`   … y ${R.noConviene.length - 25} más`);
+      }
+      console.log(`\n── Ya GANAN la caja y aun así no rotan · ${R.ganando.length} ──`);
+      console.log(`   (ahí el precio no es el problema: bajar es regalar margen)`);
+      for (const f of R.ganando.slice(0, 15)) console.log(`   ${f.label.padEnd(8)} · ${f.nom.padEnd(40)} ${f.stock} u. · ${money(f.plata)}`);
+      if (R.ganando.length > 15) console.log(`   … y ${R.ganando.length - 15} más`);
+      console.log(`\n── Sin caja de compra que medir · ${R.sinCaja.length} ── (no son de catálogo o ML no dio el dato)`);
+      console.log(`\nSOLO LECTURA: no se tocó ningún precio.`);
       return;
     }
 
