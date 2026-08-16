@@ -335,9 +335,21 @@ Lo que quedó abierto. Borrá de acá lo que se vaya cerrando.
   12/2025 y no todas las compras salieron con comprobante. y los Excel de
   compras de ARCA (Mis Comprobantes → Recibidos, una cuenta por vez). Cuando lleguen: vincular con
   `huerfanos` de guía, y armar el cuadro de compras con factura por proveedor.
-- **Tres productos están cargados DOS VECES** y por eso la ficha gemela quedó sin publicación:
-  Batidora / Batidora 1 Cabezal · Filtro agua / Filtro Con precito · Separador dedo Gordo /
-  2 Separadores. Falta que él diga con cuál se queda. Revincular NO alcanza.
+- **NO son fichas repetidas: son 10 productos SIN NINGUNA publicación en ML.** El 16/08/2026 le
+  pregunté con cuál ficha se quedaba de los tres pares (Batidora / Filtro / Separador) y contestó
+  **"son 6 productos diferentes"**. Tenía razón y la nota vieja de acá estaba mal: el parecido de
+  nombres que muestra `huerfanos` es una pista, no un diagnóstico. Lo que pasa de verdad es más
+  simple: **no existe la publicación**. Son 10 de 137 productos, y `huerfanos` los lista.
+  Los que sí tienen arreglo conocido: Balanza persona y Bioxidil (publicación cerrada, ver abajo)
+  y Cargador notebook (`MLA1474825987`, Ayelen, OCULTA y SIN PRODUCTO → se vincula y listo).
+  Los otros siete —Separador dedo Gordo, Calculadora, Bola Cristal, Filtro Con precito, Alargue
+  Zapatilla Hub USB 220, Dermaglos Facial Ultra Volumen, Batidora 1 Cabezal— **necesitan que se
+  publiquen**, no que se revinculen. Falta que él diga cuáles quiere publicar.
+- **Cuatro publicaciones están OCULTAS y SIN PRODUCTO** (16/08): `MLA1474825987` Ayelen "Cargador
+  Universal Computadora Laptop" · `MLA2019878760` Matías "Cafetera Eléctrica De Filtro Sprint" ·
+  `MLA2046277374` Ayelen "Espumador De Leche Manual Acero Inoxidable" · `MLA1754449117` Matías
+  "Masajeador Facial Bola De Hielo". Antes de vincular ninguna hay que preguntarle **a qué producto
+  suyo corresponde cada una**: por el título no alcanza.
 - **Balanza persona y Bioxidil tienen la publicación CERRADA en ML** (`MLA2316189534` y
   `MLA2301693130`). No es error de vinculación: o las reabre o siguen en "—".
 - **El masajeador: falta saber si son UNO o DOS productos.** El 14/08 se le puso costo $9.000 a la
@@ -367,8 +379,9 @@ Lo que quedó abierto. Borrá de acá lo que se vaya cerrando.
 - **Las 7 tarjetas de memoria quedaron TODAS pausadas** (15/08, decisión suya: "son para
   problemas"). Son todas de Matías. Pero **quedan 54 unidades adentro de Full**: Sandisk 32gb 28 u.
   · Kingston Canvas 64gb 15 u. · Kingston con adaptador 7 u. · Sandisk 128gb 4 u. Pausar NO saca la
-  mercadería del depósito: sigue pagando almacenamiento y ML la descarta igual. **Falta que decida
-  si las retira.** Los pendrives NO se tocaron.
+  mercadería del depósito: sigue pagando almacenamiento y ML la descarta igual. El 16/08 decidió:
+  **las retira**. El retiro se pide desde ML (Full → Estado de tu stock → Retirar), no hay API para
+  eso: lo hace él. Falta confirmar que las 54 unidades salieron. Los pendrives NO se tocaron.
 - **Faltan gastos de agosto**: servicios ($150.000, en julio figura como "Claude"). El alquiler
   ($100.000), los honorarios ($100.000) y la obra social Sancor ($65.227) ya están.
 - **OSDE es PERSONAL, no es de CYC. No cargarlo nunca.** Aparece en los comprobantes recibidos de
