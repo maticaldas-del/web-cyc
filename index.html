@@ -1024,14 +1024,9 @@ footer{margin-top:32px;padding-top:14px;border-top:1px solid var(--border);font-
   <!-- CONTAR -->
   <div id="ofi-sec-contar" style="display:none">
     <div style="font-size:.66rem;color:var(--muted);margin-bottom:10px;line-height:1.5">
-      Cuántas unidades tenés de cada producto en tu oficina. <strong>Esto no es stock de ML</strong>: está
-      en tu casa y todavía no se puede vender, así que no tapa un quiebre de stock, pero sí evita que Pedidos
-      te mande a comprar algo que ya tenés. El total en dólares se copia solo a
-      <strong>Arqueo → Oficina Mati</strong>.
-      <br><strong>La oficina de CYC no va acá</strong>: esa mercadería no es de ML, así que en el Arqueo va
-      solo el valor, sin contar unidades.
+      Cuántas unidades tenés de cada producto en tu oficina. Se guarda solo.
     </div>
-    <input class="search-box" id="ofi-search" type="search" placeholder="Buscar producto..." oninput="renderOfiContar()" style="margin-bottom:10px">
+    <input class="search-box" id="ofi-search" type="search" placeholder="Buscar producto..." oninput="renderOfiContar()" style="margin-bottom:8px">
     <label style="font-size:.66rem;color:var(--muted);display:flex;align-items:center;gap:6px;margin-bottom:10px">
       <input type="checkbox" id="ofi-solo-con" onchange="renderOfiContar()"> mostrar solo los que tienen algo
     </label>
@@ -3610,12 +3605,21 @@ function renderOfiContar(){
   if(q)prods=prods.filter(p=>normTxt(p.name).includes(q));
   if(solo)prods=prods.filter(p=>stockOficina(p)>0);
   if(!prods.length){cont.innerHTML='<div class="empty-msg">Nada con esa búsqueda.</div>';return;}
-  cont.innerHTML=`<table class="tbl"><thead><tr><th>Producto</th><th class="ac">Unidades</th><th class="ac">En Full</th></tr></thead><tbody>`
-    +prods.map(p=>`<tr>
-      <td>${p.name}</td>
-      <td><input class="qty" type="number" value="${stockOficina(p)}" onchange="setQ('${p.id}','${OFI}',this.value);syncOfiMati();renderOfiContar()"></td>
-      <td class="ac" style="font-size:.72rem;color:var(--muted)">${fmtN(stockOf(p))}</td>
-    </tr>`).join('')+`</tbody></table>`;
+  // Lista, NO tabla. En el celular la tabla dejaba la casilla fuera de pantalla y había que
+  // arrastrar para el costado para anotar. Así el nombre se acomoda solo y la casilla queda
+  // siempre a la vista, del lado derecho.
+  cont.innerHTML=prods.map(p=>{
+    const enCasa=stockOficina(p);
+    return `<div style="display:flex;align-items:center;gap:10px;padding:10px 12px;background:${enCasa>0?'var(--surface2)':'var(--surface)'};border:1px solid var(--border);border-radius:8px;margin-bottom:6px">
+      <div style="flex:1;min-width:0">
+        <div style="font-size:.8rem;line-height:1.3;word-break:break-word">${p.name}</div>
+        <div style="font-size:.62rem;color:var(--muted);margin-top:2px">en Full: ${fmtN(stockOf(p))}</div>
+      </div>
+      <input type="number" inputmode="numeric" value="${enCasa||''}" placeholder="0"
+        style="flex:none;width:72px;text-align:center;background:var(--bg);border:1px solid ${enCasa>0?'var(--accent2)':'var(--border2)'};border-radius:8px;color:var(--text);font-family:'DM Mono',monospace;font-size:1rem;padding:10px 4px;outline:none"
+        onchange="setQ('${p.id}','${OFI}',this.value);syncOfiMati();renderOfiContar()">
+    </div>`;
+  }).join('');
 }
 
 /* ═══════════ ENVÍOS A FULL ═══════════
@@ -8266,7 +8270,7 @@ document.addEventListener('click',e=>{if(fnavOpen&&!e.target.closest('#fnav-btn'
         <span style="font-size:.75rem;color:var(--muted)">Si no ves los últimos cambios, forzá la actualización</span>
         <button class="btn" style="background:rgba(56,189,248,.12);color:var(--blue);border:1px solid rgba(56,189,248,.3)" onclick="actualizarApp()">🔄 Buscar actualizaciones</button>
       </div>
-      <div style="font-size:.66rem;color:var(--muted);margin-top:12px">CYC · Versión 9.8</div>
+      <div style="font-size:.66rem;color:var(--muted);margin-top:12px">CYC · Versión 9.9</div>
     </div>
 
     <div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:18px 20px;margin-bottom:14px">
