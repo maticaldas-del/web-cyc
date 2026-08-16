@@ -989,9 +989,10 @@ footer{margin-top:32px;padding-top:14px;border-top:1px solid var(--border);font-
 </div>
 
 <!-- ════════════════════ MI OFICINA ════════════════════
-     Dos habitaciones: una con lo YA ETIQUETADO (listo para meter en la caja) y otra con lo que
-     todavía no tiene etiqueta. Y, sobre eso, la respuesta a la pregunta que aparece cuando está
-     armando la caja: de esto que tengo, ¿qué mando y a qué cuenta? -->
+     Un número por producto: cuántas unidades hay en casa. Al principio estaba partido en dos
+     (etiquetado / sin etiquetar) y él lo pidió simple: llevar dos números por producto era más
+     trabajo que ayuda. Sobre eso, la respuesta a la pregunta que aparece cuando arma la caja:
+     de esto que tengo, ¿qué mando y a qué cuenta? -->
 <div id="page-oficina" class="page">
 <div class="page-wrap">
   <div class="page-header">
@@ -1023,10 +1024,10 @@ footer{margin-top:32px;padding-top:14px;border-top:1px solid var(--border);font-
   <!-- CONTAR -->
   <div id="ofi-sec-contar" style="display:none">
     <div style="font-size:.66rem;color:var(--muted);margin-bottom:10px;line-height:1.5">
-      Las dos habitaciones de <strong>tu oficina</strong>: la de los productos ya etiquetados (listos para
-      la caja) y la de los que todavía no. <strong>Esto no es stock de ML</strong>: está en tu casa y todavía
-      no se puede vender, así que no tapa un quiebre de stock, pero sí evita que Pedidos te mande a comprar
-      algo que ya tenés. El total en dólares se copia solo a <strong>Arqueo → Oficina Mati</strong>.
+      Cuántas unidades tenés de cada producto en tu oficina. <strong>Esto no es stock de ML</strong>: está
+      en tu casa y todavía no se puede vender, así que no tapa un quiebre de stock, pero sí evita que Pedidos
+      te mande a comprar algo que ya tenés. El total en dólares se copia solo a
+      <strong>Arqueo → Oficina Mati</strong>.
       <br><strong>La oficina de CYC no va acá</strong>: esa mercadería no es de ML, así que en el Arqueo va
       solo el valor, sin contar unidades.
     </div>
@@ -1695,14 +1696,15 @@ footer{margin-top:32px;padding-top:14px;border-top:1px solid var(--border);font-
 /* ═══════════ CONFIG & STATE ═══════════ */
 const LOCS=['Adriana','Luciana','Ayelen','Matias'];
 const ML_LOCS=['Adriana','Luciana','Ayelen','Matias'];
-// LAS DOS HABITACIONES DE LA OFICINA. Van APARTE de las cuatro cuentas a propósito: las cuatro
-// son depósitos de ML (mercadería que se puede vender YA) y esto es mercadería que todavía está
-// en casa. Si se mezclaran, el panel creería que hay stock para vender y no avisaría los quiebres.
-// La diferencia entre las dos: "etiquetado" ya tiene la etiqueta de ML pegada y está listo para
-// meter en la caja; "sin etiquetar" todavía no, y no se puede despachar así.
-const OFI_ETIQ='Ofi etiquetado';
-const OFI_SIN='Ofi sin etiquetar';
-const LOCAL_LOCS=[OFI_ETIQ,OFI_SIN];
+// LA OFICINA DE MATI. Va APARTE de las cuatro cuentas a propósito: las cuatro son depósitos de ML
+// (mercadería que se puede vender YA) y esto es mercadería que todavía está en casa. Si se
+// mezclaran, el panel creería que hay stock para vender y no avisaría los quiebres.
+const OFI='Oficina Mati';
+const LOCAL_LOCS=[OFI];
+// Nombres viejos: al principio la oficina estaba partida en dos (etiquetado / sin etiquetar).
+// Se juntó en una sola porque llevar dos números por producto era más trabajo que ayuda. Quedan
+// acá solo para pasar a la nueva lo que se haya llegado a cargar; ver migrarOficina().
+const OFI_VIEJAS=['Ofi etiquetado','Ofi sin etiquetar'];
 const VAL_ORDER=['Adriana','Luciana','Ayelen','Matias'];
 const COLORS=['c1','c2','c3','c4','c5','c6'];
 const WHO_KEY='cyc_who';
@@ -2484,9 +2486,7 @@ function stockOf(p){
   return Object.entries(state.inventory||{}).filter(([k])=>k.startsWith(p.id+'__')&&!k.includes('__v__')&&!_esClaveOficina(k)).reduce((s,[,v])=>s+(parseInt(v)||0),0);
 }
 // Lo que hay en casa, por habitación y total.
-const stockOfiEtiq=p=>p?getQ(p.id,OFI_ETIQ):0;
-const stockOfiSin=p=>p?getQ(p.id,OFI_SIN):0;
-const stockOficina=p=>stockOfiEtiq(p)+stockOfiSin(p);
+const stockOficina=p=>p?getQ(p.id,OFI):0;
 const todayStr=()=>{const d=new Date();return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');};
 const yesterdayStr=()=>{const d=new Date();d.setDate(d.getDate()-1);return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');};
 const normTxt=s=>(s||'').toString().normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase();
@@ -3518,22 +3518,21 @@ function setOfiTab(t,btn){
   document.getElementById('ofi-sec-contar').style.display=t==='contar'?'':'none';
   if(t==='caja')renderOfiCaja();else renderOfiContar();
 }
-function enterOficina(){ofiTab==='caja'?renderOfiCaja():renderOfiContar();}
+function enterOficina(){migrarOficina().then(()=>{ofiTab==='caja'?renderOfiCaja():renderOfiContar();});}
 function setOfiFiltro(c){ofiFiltroCuenta=(ofiFiltroCuenta===c?'':c);renderOfiCaja();}
 function renderOfiCaja(){
   const cont=document.getElementById('ofi-caja-list');if(!cont)return;
   const filas=repartoOficina();
   // Resumen de arriba: cuánto hay en casa y cuánto de eso hay que mandar.
-  const uEtiq=filas.reduce((s,f)=>s+f.etiq,0), uSin=filas.reduce((s,f)=>s+f.sin,0);
+  const uHay=filas.reduce((s,f)=>s+f.hay,0);
   const aMandar=filas.reduce((s,f)=>s+f.sug.reduce((a,x)=>a+x.mandar,0),0);
   const plata=filas.reduce((s,f)=>s+f.hay*costP(f.p),0);
   const res=document.getElementById('ofi-resumen');
-  if(res)res.innerHTML=`<div class="pcount"><strong>${uEtiq}</strong>etiquetadas</div>`
-    +`<div class="pcount"><strong>${uSin}</strong>sin etiquetar</div>`
+  if(res)res.innerHTML=`<div class="pcount"><strong>${uHay}</strong>u. en casa</div>`
     +`<div class="pcount"><strong>${aMandar}</strong>hay que mandar</div>`
-    +`<div class="pcount"><strong>${fmt(plata)}</strong>en casa</div>`;
+    +`<div class="pcount"><strong>${fmt(plata)}</strong>en mercadería</div>`;
   const sub=document.getElementById('nc-ofi-sub');
-  if(sub)sub.textContent=(uEtiq+uSin)?`${uEtiq+uSin} u. en casa · ${aMandar} para mandar`:'Sin nada contado todavía';
+  if(sub)sub.textContent=uHay?`${uHay} u. en casa · ${aMandar} para mandar`:'Sin nada contado todavía';
   // Botones para armar la caja de UNA cuenta: es como se despacha de verdad, una caja por cuenta.
   const fc=document.getElementById('ofi-filtro-cuentas');
   if(fc)fc.innerHTML=`<button class="pf-btn${ofiFiltroCuenta===''?' active-all':''}" onclick="setOfiFiltro('')">Todas</button>`
@@ -3558,15 +3557,41 @@ function renderOfiCaja(){
     if(f.sinPublicar)pie=`<div style="font-size:.66rem;color:var(--amber);margin-top:5px">⚠️ No está publicado en ninguna cuenta. Mandarlo no sirve hasta que lo publiques.</div>`;
     else if(f.nadieNecesita)pie=`<div style="font-size:.66rem;color:var(--green);margin-top:5px">✓ Ninguna cuenta lo necesita: todas tienen para más de 30 días. Dejalo en casa.</div>`;
     else if(f.sobra>0)pie=`<div style="font-size:.66rem;color:var(--muted);margin-top:5px">Te sobran ${f.sobra} u. después de repartir. No hace falta mandarlas.</div>`;
-    const faltaEtiq=f.sin>0?`<span style="font-size:.64rem;color:var(--amber)"> · ${f.sin} sin etiquetar</span>`:'';
+
     return `<div style="padding:12px 14px;background:var(--surface);border:1px solid var(--border);border-radius:var(--r);margin-bottom:8px">
       <div style="display:flex;justify-content:space-between;align-items:baseline;gap:10px;flex-wrap:wrap">
         <div class="pi-prod">${f.p.name}</div>
-        <div style="font-size:.68rem;color:var(--muted)">tenés ${f.hay} u.${faltaEtiq}</div>
+        <div style="font-size:.68rem;color:var(--muted)">tenés ${f.hay} u.</div>
       </div>
       ${lineas}${pie}
     </div>`;
   }).join('');
+}
+// Junta en la casilla única lo que se haya llegado a cargar cuando la oficina estaba partida en
+// dos. Es idempotente: suma las viejas a la nueva y las borra, así una segunda pasada no encuentra
+// nada. Sin esto, lo ya contado quedaría escrito en una clave que la pantalla ya no lee — invisible
+// pero sumando al patrimonio, que es la peor combinación.
+let _ofiMigrado=false;
+async function migrarOficina(){
+  if(_ofiMigrado||!db)return;_ofiMigrado=true;
+  const upd={};let n=0;
+  for(const p of (state.products||[])){
+    let viejo=0;
+    for(const l of OFI_VIEJAS){
+      const k=invKey(p.id,l);
+      const q=parseInt(state.inventory[k])||0;
+      if(q){viejo+=q;upd['inventory/'+k]=null;delete state.inventory[k];}
+      else if(state.inventory[k]!==undefined){upd['inventory/'+k]=null;delete state.inventory[k];}
+    }
+    if(viejo>0){
+      const kn=invKey(p.id,OFI);
+      const nuevo=(parseInt(state.inventory[kn])||0)+viejo;
+      state.inventory[kn]=nuevo;upd['inventory/'+kn]=nuevo;n++;
+    }
+  }
+  if(!Object.keys(upd).length)return;
+  await db.ref('cyc').update(upd);
+  if(n){await log('Oficina: junté '+n+' producto(s) de las dos casillas viejas en una sola');toast('Oficina unificada ✓');}
 }
 // Deja "Oficina Mati" del Arqueo igual a lo contado (unidades × costo US$). Se guarda de verdad,
 // no solo se muestra: si quedara solo en pantalla, el cierre de mes guardaría el número viejo.
@@ -3585,11 +3610,10 @@ function renderOfiContar(){
   if(q)prods=prods.filter(p=>normTxt(p.name).includes(q));
   if(solo)prods=prods.filter(p=>stockOficina(p)>0);
   if(!prods.length){cont.innerHTML='<div class="empty-msg">Nada con esa búsqueda.</div>';return;}
-  cont.innerHTML=`<table class="tbl"><thead><tr><th>Producto</th><th class="ac">Etiquetado</th><th class="ac">Sin etiquetar</th><th class="ac">En Full</th></tr></thead><tbody>`
+  cont.innerHTML=`<table class="tbl"><thead><tr><th>Producto</th><th class="ac">Unidades</th><th class="ac">En Full</th></tr></thead><tbody>`
     +prods.map(p=>`<tr>
       <td>${p.name}</td>
-      <td><input class="qty" type="number" value="${stockOfiEtiq(p)}" onchange="setQ('${p.id}','${OFI_ETIQ}',this.value);syncOfiMati();renderOfiContar()"></td>
-      <td><input class="qty" type="number" value="${stockOfiSin(p)}" onchange="setQ('${p.id}','${OFI_SIN}',this.value);syncOfiMati();renderOfiContar()"></td>
+      <td><input class="qty" type="number" value="${stockOficina(p)}" onchange="setQ('${p.id}','${OFI}',this.value);syncOfiMati();renderOfiContar()"></td>
       <td class="ac" style="font-size:.72rem;color:var(--muted)">${fmtN(stockOf(p))}</td>
     </tr>`).join('')+`</tbody></table>`;
 }
@@ -5694,7 +5718,7 @@ function cuentasConPublicacion(p){
 function repartoOficina(){
   const filas=[];
   (state.products||[]).forEach(p=>{
-    const etiq=stockOfiEtiq(p),sinEt=stockOfiSin(p),hay=etiq+sinEt;
+    const hay=stockOficina(p);
     if(hay<=0)return;
     const ventas=ventasPorCuenta(p);
     const publicadas=cuentasConPublicacion(p);
@@ -5719,7 +5743,7 @@ function repartoOficina(){
       quedan-=mandar;
       sug.push({...c,mandar});
     }
-    filas.push({p,etiq,sin:sinEt,hay,sug,sobra:quedan,
+    filas.push({p,hay,sug,sobra:quedan,
       sinPublicar:publicadas.length===0,
       nadieNecesita:sug.length===0&&publicadas.length>0});
   });
@@ -8242,7 +8266,7 @@ document.addEventListener('click',e=>{if(fnavOpen&&!e.target.closest('#fnav-btn'
         <span style="font-size:.75rem;color:var(--muted)">Si no ves los últimos cambios, forzá la actualización</span>
         <button class="btn" style="background:rgba(56,189,248,.12);color:var(--blue);border:1px solid rgba(56,189,248,.3)" onclick="actualizarApp()">🔄 Buscar actualizaciones</button>
       </div>
-      <div style="font-size:.66rem;color:var(--muted);margin-top:12px">CYC · Versión 9.7</div>
+      <div style="font-size:.66rem;color:var(--muted);margin-top:12px">CYC · Versión 9.8</div>
     </div>
 
     <div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:18px 20px;margin-bottom:14px">
