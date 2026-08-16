@@ -697,7 +697,10 @@ async function promosAgendadas(db, accounts, labels, products) {
 //     vendiendo abajo del piso es vender para perder más rápido.
 // SOLO LEE: devuelve las filas, no toca ningún precio.
 async function bajarParaMover(db, accounts, labels, products, opts = {}) {
-  const DIAS = opts.dias || 15;          // desde cuántos días sin vender se considera frenada
+  // 10 días y no 15, pedido suyo del 16/08/2026: "con 15 perdemos un par de días". Tenía razón —
+  // el pendrive de 128gb llevaba 13 días sin vender, o sea que con el umbral de 15 el aviso de la
+  // mañana se lo hubiera perdido y lo encontramos de casualidad porque lo vio el padre.
+  const DIAS = opts.dias || 10;          // desde cuántos días sin vender se considera frenada
   const PISO = opts.piso != null ? opts.piso : 30;  // margen mínimo que tiene que quedar
   const MAX_BAJA = opts.maxBaja || 10;   // no se propone una baja mayor a esto (%)
   const links = (await db.get('cyc/mllinks')) || {};
@@ -2440,7 +2443,7 @@ async function main() {
       // todos los días junto con el chequeo. Nunca baja nada solo — deja la lista y el comando.
       // Si ML no contesta, el chequeo sigue igual: esto no puede voltear el resumen de la mañana.
       let baj = { filas: [], ganando: [], sinCaja: [], noConviene: [], paulvic: [] };
-      try { baj = await bajarParaMover(db, accounts, labels, products, { dias: 15, piso: 30, maxBaja: 10 }); }
+      try { baj = await bajarParaMover(db, accounts, labels, products, { dias: 10, piso: 30, maxBaja: 10 }); }
       catch (e) { D.push(`\n(no pude calcular qué bajar: ${e.message})`); }
       const $baj = baj.filas.reduce((s, f) => s + f.plata, 0);
       const uPaus = pausados.reduce((s, f) => s + f.q, 0);
@@ -5567,7 +5570,7 @@ async function main() {
     if (String(process.env.BILLING_PROBE || '').startsWith('bajarcaja')) {
       const _b = String(process.env.BILLING_PROBE).split(':');
       const R = await bajarParaMover(db, accounts, labels, products, {
-        dias: parseFloat(_b[1]) || 15, piso: parseFloat(_b[2]) || 30, maxBaja: parseFloat(_b[3]) || 10,
+        dias: parseFloat(_b[1]) || 10, piso: parseFloat(_b[2]) || 30, maxBaja: parseFloat(_b[3]) || 10,
       });
       console.log(`=== BAJAR PARA QUE VUELVA A VENDER · sin vender hace ${R.DIAS}+ días · piso ${R.PISO}% ===`);
       console.log(`Solo publicaciones ACTIVAS, CON stock, de CATÁLOGO y donde HOY se pierde la caja.`);
