@@ -5563,6 +5563,63 @@ async function main() {
       return;
     }
 
+    // BILLING_PROBE=preguntas[:<cuenta>][:<cuántas>] → LAS PREGUNTAS SIN RESPONDER, ENTERAS.
+    //
+    // El chequeo de la mañana dice cuántas hay y muestra 3 por cuenta recortadas a 70 caracteres.
+    // Para poder CONTESTARLAS hace falta el texto completo y, sobre todo, de QUÉ publicación es
+    // cada una: la mitad de las preguntas ("¿son autoadhesivas?", "¿viene con cable?") no se
+    // entienden sin el título del producto.
+    //
+    // Salen de la más vieja a la más nueva, que es el orden en que hay que contestarlas: ML mide
+    // el tiempo de respuesta y las de 200 días son las que más pesan.
+    // SOLO LEE: no contesta nada. Las respuestas las escribe Claude y las aprueba él antes.
+    if (String(process.env.BILLING_PROBE || '').startsWith('preguntas')) {
+      const _q = String(process.env.BILLING_PROBE).split(':');
+      const soloCta = (_q[1] || '').toLowerCase();
+      const MAX = parseFloat(_q[2]) || 200;
+      const links = (await db.get('cyc/mllinks')) || {};
+      let total = 0;
+      for (const label of labels) {
+        if (soloCta && label.toLowerCase() !== soloCta) continue;
+        const acc = accounts[label];
+        if (!acc?.refresh_token) continue;
+        let t; try { t = await mlRefresh(ML_CLIENT_ID, ML_CLIENT_SECRET, acc.refresh_token); } catch { continue; }
+        try { await db.patch('mlapi/tokens/' + label, { refresh_token: t.refresh_token, updated_ts: Date.now() }); } catch { /* no rompe */ }
+        const tok = t.access_token, sid = acc.seller_id;
+        // ML pagina de a 50: hay que pedir de a tandas o solo se ven las primeras.
+        const todas = [];
+        for (let off = 0; off < MAX; off += 50) {
+          let q;
+          try { q = await mlGet(`/questions/search?seller_id=${sid}&status=UNANSWERED&api_version=4&limit=50&offset=${off}&sort=date_created_asc`, tok); } catch { break; }
+          const qs = q?.questions || [];
+          todas.push(...qs);
+          if (qs.length < 50) break;
+        }
+        console.log(`\n═══ ${label.toUpperCase()} · ${todas.length} sin responder ═══`);
+        // Los títulos, en tandas de 20. Se prefiere el que ya tenemos guardado y solo se le
+        // pregunta a ML por los que faltan, para no hacer 99 llamadas al pedo.
+        const faltan = [...new Set(todas.map((x) => x.item_id).filter((id) => id && !(links[id] || {}).title))];
+        const titulo = {};
+        for (const [mla, e] of Object.entries(links)) if (e && e.title) titulo[mla] = e.title;
+        for (let k = 0; k < faltan.length; k += 20) {
+          try {
+            const arr = await mlGet('/items?ids=' + faltan.slice(k, k + 20).join(',') + '&attributes=id,title', tok);
+            for (const row of (arr || [])) { const b = row.body || {}; if (b.id) titulo[b.id] = b.title || b.id; }
+          } catch { /* sigue sin título */ }
+        }
+        for (const x of todas) {
+          const f = String(x.date_created || '').slice(0, 10);
+          const d = x.date_created ? Math.floor((Date.now() - Date.parse(x.date_created)) / 864e5) : null;
+          console.log(`\n  [${f} · ${d == null ? '?' : d} días] ${x.item_id} · ${titulo[x.item_id] || '(sin título)'}`);
+          console.log(`     ${String(x.text || '').replace(/\s+/g, ' ').trim()}`);
+        }
+        total += todas.length;
+      }
+      console.log(`\n\nTOTAL: ${total} preguntas sin responder.`);
+      console.log(`(esto solo LEE: no contesté ninguna)`);
+      return;
+    }
+
     // BILLING_PROBE=bajarcaja[:<díasSinVender>][:<piso>][:<maxBaja>] → QUÉ BAJAR PARA QUE ROTE.
     // Mira TODAS las activas con stock (no solo las sobrecompradas, que es lo que mira `frenados`)
     // y se queda con las que perdieron la caja de compra por poca plata. Ver el comentario largo
