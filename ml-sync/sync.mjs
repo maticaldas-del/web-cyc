@@ -10974,6 +10974,31 @@ async function main() {
   }
 
   const cfg = (await db.get('cyc/mlconfig')) || {};
+  // ── RETIRO FIJO DEL MES ────────────────────────────────────────────────
+  // Pedido suyo del 18/08/2026: "que se ponga automático siempre a principio de mes, sacamos
+  // 1.800.000 hasta nuevo aviso". Antes había que escribirlo a mano en Arqueo todos los meses, y
+  // si no se cargaba la web usaba el 15% supuesto, que no es lo que se llevan.
+  //
+  // Dos frenos, a propósito:
+  //   1. NO PISA NADA. Solo escribe si el mes está vacío. Si él escribe otro número —porque un mes
+  //      sacaron más o menos— ese número manda y el robot no lo vuelve a tocar nunca.
+  //   2. El monto vive en cyc/mlconfig/retiroMes, así se cambia sin tocar el código.
+  // El antecedente que hay que respetar: los gastos automáticos (monofijo_<mes>) se sacaron el
+  // 13/08/2026 porque el monto real cambiaba todos los meses y nadie lo miraba. Acá el monto es
+  // fijo por decisión suya y el freno 1 hace que corregirlo a mano alcance para siempre.
+  const RETIRO_MES = cfg.retiroMes != null ? (parseFloat(cfg.retiroMes) || 0) : 1800000;
+  if (!DRY && RETIRO_MES > 0) {
+    const ymRet = dayKeyFromISO(new Date().toISOString()).slice(0, 7);   // YYYY_MM en hora argentina
+    const yaRet = await db.get('cyc/retiro_mes/' + ymRet);
+    if (yaRet == null || yaRet === '') {
+      await db.set('cyc/retiro_mes/' + ymRet, RETIRO_MES);
+      // Se relee de la base antes de decir que quedó: si el guardado falla, que se note.
+      const rel = await db.get('cyc/retiro_mes/' + ymRet);
+      console.log(Number(rel) === RETIRO_MES
+        ? `\u2713 Retiro de ${ymRet} cargado solo: ${money(RETIRO_MES)} (verificado)`
+        : `\u26a0\ufe0f No pude guardar el retiro de ${ymRet}: la base dice ${rel}`);
+    }
+  }
   // SKIP_PRICES=1 → esta vuelta trae ventas pero NO toca precios. Lo usa el ciclo automático:
   // las ventas se sincronizan cada 2 minutos, pero el robot de precios corre una vez por hora.
   // Sin esto, bajar el intervalo a 2 minutos haría que el robot evalúe 720 veces por día en vez
