@@ -2485,6 +2485,14 @@ async function main() {
       let baj = { filas: [], ganando: [], sinCaja: [], noConviene: [], paulvic: [] };
       try { baj = await bajarParaMover(db, accounts, labels, products, { dias: 10, piso: 30, maxBaja: 10 }); }
       catch (e) { D.push(`\n(no pude calcular qué bajar: ${e.message})`); }
+      // PROMOCIONES ACEPTADAS. Iba sólo en el resumen de Telegram de las 00:03, mezclado con las
+      // ventas del día, y él lee ESTE chequeo — el 18/08/2026 preguntó "hay un montón de
+      // promociones, ¿por qué no sale el aviso?" y había 26 agendadas para arrancar en 6 días.
+      // El robot ahora las saca solo una vez por hora, pero el aviso queda igual: si aparece algo
+      // acá es que se aceptó hace menos de una hora, y conviene verlo.
+      let proms = [];
+      try { proms = await promosAgendadas(db, accounts, labels, products); }
+      catch (e) { D.push(`\n(no pude mirar las promociones: ${e.message})`); }
       const $baj = baj.filas.reduce((s, f) => s + f.plata, 0);
       const uPaus = pausados.reduce((s, f) => s + f.q, 0);
       const $paus = pausados.reduce((s, f) => s + f.plata, 0);
@@ -2499,6 +2507,16 @@ async function main() {
       if (totML) hacer.push(`🚫 ${totML} publicación(es) pausada(s) <b>por ML</b>`);
       if (totDep) hacer.push(`📤 ${totDep} activa(s) fuera de Full`);
       if (!totCajas && quiebres.length) hacer.push(`📥 <b>0 cajas</b> a Full en ${DIAS} días, y ${quiebres.length} publicaciones sin stock`);
+      // Una promoción aceptada baja el precio SOLA en la fecha que diga ML: va primero de todo,
+      // antes incluso que los reclamos, porque no avisa y no se puede deshacer una vez que vendió.
+      if (proms.length) {
+        const agend = proms.filter((x) => x.estado === 'pending').length;
+        const corre = proms.filter((x) => x.estado === 'started').length;
+        hacer.unshift(`🏷️ <b>${proms.length} promoción(es) de ML aceptadas</b>`
+          + (corre ? ` · <b>${corre} aplicándose YA</b>` : '')
+          + (agend ? ` · ${agend} agendada(s)` : '')
+          + ` — bajan el precio solas · sacapromos`);
+      }
       if (hacer.length) { L.push(`\n🔴 <b>PARA HOY</b>`); for (const h of hacer.slice(0, 5)) L.push(`   ${h}`); }
       else L.push(`\n🟢 <b>Nada urgente hoy.</b>`);
       // 2) El termómetro del día.
@@ -2544,6 +2562,13 @@ async function main() {
       if (!totProb) D.push('   ninguna');
       if (pausados.length) { D.push(`\n── Pausadas con stock adentro ──`); for (const f of pausados) D.push(`   ${f.cta} · ${f.nom} — ${f.q} u. (${money(Math.round(f.plata))})`); }
       if (dormidos.length) { D.push(`\n── Con stock y cero ventas en 30 días ──`); for (const f of dormidos.slice(0, 20)) D.push(`   ${f.cta} · ${f.nom} — ${f.q} u. (${money(Math.round(f.plata))})`); }
+      if (proms.length) {
+        D.push(`\n── Promociones de ML aceptadas · ${proms.length} ──`);
+        for (const x of proms.slice(0, 25)) D.push(`   ${x.label} · ${String(x.nom).slice(0, 38)} · ${money(Math.round(x.precioHoy))} → ${money(Math.round(x.precioProm))}`
+          + (x.off != null ? ` (−${x.off.toFixed(0)}%)` : '') + ` · ${x.estado === 'started' ? 'YA APLICADA' : 'arranca ' + (x.desde || '?')}`);
+        if (proms.length > 25) D.push(`   … y ${proms.length - 25} más`);
+        D.push(`   Para sacarlas todas: sacapromos`);
+      }
       D.push(`\n── Para bajar y que roten · ${baj.filas.length} ──`);
       for (const f of baj.filas) {
         D.push(`   ${f.cta || f.label} · ${f.nom} · ${f.stock} u. (${money(f.plata)}) · ${f.diasSin == null ? 'NUNCA vendió' : f.diasSin + ' días sin vender'}`);
@@ -11826,12 +11851,24 @@ async function main() {
             }
           }
 
-          // ── SACAR DESCUENTOS de ML que estén aplicados ──
-          // Señal barata de "tiene descuento puesto": precio con rebaja o en un deal.
+          // ── SACAR DESCUENTOS DE ML ──
+          // Regla suya del 18/08/2026: "saca siempre todas las promociones". Todas: las que ya
+          // están aplicadas Y las aceptadas que todavía no arrancaron.
+          //
+          // Antes solo se miraba si el PRECIO ya venía rebajado. Ese es el agujero que se comió
+          // dos veces: una promoción aceptada y agendada para dentro de una semana no rebaja el
+          // precio hoy, así que el robot la daba por buena y la promo arrancaba sola. El 03/08
+          // quedaron 23 agendadas al 40-55%; el 18/08 aparecieron 26 más para el 24/08 —entre
+          // ellas los 9 Paulvic a $7.898— y las encontramos de casualidad.
+          //
+          // Ahora: en las vueltas rápidas (cada 2 min) se usa la señal barata del precio, y en la
+          // vuelta COMPLETA (una por hora) se le pregunta a ML publicación por publicación. Son
+          // ~500 llamadas más por hora, no por vuelta: preguntarlo cada 2 minutos serían 360.000
+          // llamadas por día para encontrar algo que se acepta una vez por semana.
           if (autoPromo && !DRY) {
             const discounted = (b.original_price != null && b.original_price > b.price)
               || (Array.isArray(b.deal_ids) && b.deal_ids.length > 0);
-            if (discounted) {
+            if (discounted || !SKIP_PRICES) {
               const { removed, failed } = await removeStartedPromos(mla, t.access_token);
               if (removed.length) {
                 await sendTelegram(`🏷️ <b>Descuento sacado</b>\n`

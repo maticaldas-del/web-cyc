@@ -138,6 +138,13 @@ julio, a CYC le quedan **~$2.000.000/mes** después de todo eso.
 7. **Las publicaciones con variantes también se suben.** No alcanza con el precio de la
    publicación: hay que tocar cada variante, y mandar la lista incompleta hace que ML borre las
    que faltan. Después de subirlas, releer y verificar que estén TODAS.
+8. **SACAR SIEMPRE TODAS LAS PROMOCIONES DE ML.** Regla suya del 18/08/2026. Todas: las que ya
+   están aplicadas (`started`) y las aceptadas que todavía no arrancaron (`pending`). Las
+   `candidate` son propuestas que nadie aceptó, no hacen nada y no se tocan (hay ~1.000).
+   El robot las saca solo, en la vuelta completa de cada hora. A mano: `sacapromos`.
+   **El agujero que hay que recordar:** una promo agendada NO baja el precio hoy, así que mirar
+   sólo el precio no la encuentra. Pasó dos veces — 23 el 03/08 y 26 el 18/08, estas para arrancar
+   el 24/08 con los 9 Paulvic a $7.898.
 
 ## Cómo están hechas las cosas
 
