@@ -5699,8 +5699,44 @@ async function main() {
           console.log(`     ${f.nom}`);
         }
       }
-      console.log(`\n\nTOTAL sin producto (sin contar las cerradas): ${total}`);
-      console.log(`Cerradas salteadas: ${cerradas} — vincular una publicación dada de baja no sirve.`);
+      // Las que NO tienen cuenta anotada en mllinks. El bucle de arriba filtra por cuenta, así que
+      // sin esto se escapan — y son la mayoría: el robot cuenta 81 sin producto y por cuenta
+      // aparecían 8. Son renglones viejos que quedaron sin datos. Se le pregunta a ML con
+      // cualquier token (los ítems son públicos) para saber si todavía existen.
+      if (!soloC) {
+        const huerf = Object.entries(links)
+          .filter(([mla, e]) => e && !e.prodId && !labels.includes(e.cuenta) && /^MLA/i.test(mla))
+          .map(([mla]) => mla);
+        if (huerf.length) {
+          let tok = null;
+          for (const label of labels) {
+            const acc = accounts[label];
+            if (!acc?.refresh_token) continue;
+            try { tok = (await mlRefresh(ML_CLIENT_ID, ML_CLIENT_SECRET, acc.refresh_token)).access_token; break; } catch { /* prueba la próxima */ }
+          }
+          const vivas = [], muertas = [];
+          for (let k = 0; k < huerf.length && tok; k += 20) {
+            let arr;
+            try { arr = await mlGet('/items?ids=' + huerf.slice(k, k + 20).join(',') + '&attributes=id,status,price,available_quantity,title', tok); } catch { continue; }
+            for (const row of (arr || [])) {
+              const b = row.body || {}; if (!b.id) continue;
+              if (b.status === 'closed' || b.status === 'inactive') { muertas.push(b.id); continue; }
+              vivas.push({ mla: b.id, est: b.status || '?', stock: Number(b.available_quantity) || 0, precio: Number(b.price) || 0, nom: b.title || '(sin título)', v: v60[b.id] || 0 });
+            }
+          }
+          vivas.sort((a, b) => (b.v - a.v) || (b.stock - a.stock));
+          console.log(`\n═══ SIN CUENTA ANOTADA · ${huerf.length} renglones ═══`);
+          console.log(`   (${muertas.length} son publicaciones dadas de baja: no hay nada que hacer)`);
+          for (const f of vivas) {
+            console.log(`  ${f.mla} · ${f.est.padEnd(6)} · ${String(f.stock).padStart(3)} u. · ${money(f.precio).padStart(10)}${f.v ? ` · vendió ${f.v} en 60d` : ''}`);
+            console.log(`     ${f.nom}`);
+          }
+          if (!vivas.length) console.log('   ninguna sigue viva: son todas basura vieja de la base.');
+          total += vivas.length; cerradas += muertas.length;
+        }
+      }
+      console.log(`\n\nTOTAL sin producto y TODAVÍA VIVAS: ${total}`);
+      console.log(`Dadas de baja salteadas: ${cerradas} — vincular una publicación cerrada no sirve.`);
       console.log(`Para pegar una a su producto: vincular:<MLA>=<palabra del producto>:go`);
       return;
     }
