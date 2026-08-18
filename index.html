@@ -7168,6 +7168,24 @@ function renderLineChartFromScope(scope){
   }
   // Acumulativo: cada serie pasa a ser la suma corriendo (día 1, día1+2, día1+2+3, …).
   if(metChartAccum){const cum=arr=>{let s=0;return arr.map(v=>s+=(v||0));};datasets.forEach(ds=>{ds.data=cum(ds.data);});}
+  // LA LÍNEA DEL PERÍODO ACTUAL CORTA EN EL DÍA DE HOY, no sigue hasta fin de mes.
+  // Pedido suyo del 18/08/2026: "que no siga hasta fin de mes porque confunde". Los días que
+  // todavía no pasaron valen 0, así que en acumulativo la línea quedaba PLANA desde hoy hasta el
+  // 31 y parecía que el negocio se había frenado. Ahora se corta y se ve dónde vamos de verdad.
+  // Se cortan solo las series del período ACTUAL: las de comparación (período anterior y año
+  // pasado) son meses ya cerrados y tienen que dibujarse enteras — son justo la referencia.
+  // El corte es genérico: un tramo es futuro si NINGUNO de sus días llegó todavía. Así sirve
+  // igual para el mes, el año o un rango, y en un mes ya cerrado no corta nada.
+  {
+    const hoyK=dateToKey(new Date());
+    let ult=-1; buckets.forEach((keys,i)=>{ if((keys||[]).some(k=>k<=hoyK)) ult=i; });
+    if(ult>=0&&ult<buckets.length-1){
+      datasets.forEach(ds=>{
+        if(ds.label===CMP_LBL_PREV||ds.label===CMP_LBL_YEAR)return;
+        ds.data=ds.data.map((v,i)=>i>ult?null:v);
+      });
+    }
+  }
   if(metChartLine){metChartLine.destroy();metChartLine=null;}
   Chart.defaults.color='#6b6b7a';Chart.defaults.borderColor='#2a2a30';
   const scales={y:{grid:{color:'#2a2a30'},ticks:{callback:v=>'$'+Math.round(v/1000)+'k'}},x:{grid:{display:false}}};
@@ -8270,7 +8288,7 @@ document.addEventListener('click',e=>{if(fnavOpen&&!e.target.closest('#fnav-btn'
         <span style="font-size:.75rem;color:var(--muted)">Si no ves los últimos cambios, forzá la actualización</span>
         <button class="btn" style="background:rgba(56,189,248,.12);color:var(--blue);border:1px solid rgba(56,189,248,.3)" onclick="actualizarApp()">🔄 Buscar actualizaciones</button>
       </div>
-      <div style="font-size:.66rem;color:var(--muted);margin-top:12px">CYC · Versión 9.9</div>
+      <div style="font-size:.66rem;color:var(--muted);margin-top:12px">CYC · Versión 10.0</div>
     </div>
 
     <div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:18px 20px;margin-bottom:14px">
