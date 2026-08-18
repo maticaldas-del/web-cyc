@@ -175,6 +175,7 @@ Los que más se usan:
 | `proyec[:retiro][:tasa]` | cuánto le queda a CYC por mes |
 | `retiromes[:monto]` | el retiro de los dueños que se carga solo el 1º de cada mes · `:probar:<mes>` para ver qué haría |
 | `sinvincular[:cuenta]` | las publicaciones que NO tienen producto: el robot no les ve stock ni margen |
+| `nomas:<MLA,...>[:go]` | "esto no lo vendemos más": oculta la publicación del panel · no toca nada en ML |
 | `preguntas[:cuenta]` | las preguntas sin responder ENTERAS, con el producto de cada una |
 | `facarca` | lo facturado en la ventana que mira ARCA, por cuenta |
 | `catmono[:fecha]` | qué categoría de monotributo corresponde |

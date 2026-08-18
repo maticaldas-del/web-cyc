@@ -5603,6 +5603,61 @@ async function main() {
       return;
     }
 
+    // BILLING_PROBE=nomas:<MLA,MLA,...>[:go] → "ESTO NO LO VENDEMOS MÁS".
+    //
+    // Marca la publicación como OCULTA en el panel (mllinks.ignored). A partir de ahí el robot la
+    // saltea entera: no le carga stock, no le mide margen, no la propone para nada y deja de
+    // aparecer en `sinvincular`. NO toca nada en MercadoLibre — la publicación queda como está.
+    //
+    // Freno: si la publicación está ACTIVA y con stock, NO la oculta. Esconder del panel algo que
+    // se está vendiendo es la forma de que una venta desaparezca de los números sin que nadie se
+    // entere. En ese caso avisa y no hace nada.
+    // Para volver atrás: vincular:<MLA>=<producto>:go, que la des-oculta.
+    if (String(process.env.BILLING_PROBE || '').startsWith('nomas:')) {
+      const _n = String(process.env.BILLING_PROBE).slice(6).split(':');
+      const GO = _n[1] === 'go';
+      const mlas = (_n[0] || '').split(',').map((x) => x.trim().toUpperCase()).filter((x) => /^MLA/.test(x));
+      if (!mlas.length) { console.log('Usá: nomas:MLA123,MLA456[:go]'); return; }
+      const links = (await db.get('cyc/mllinks')) || {};
+      console.log(`=== NO SE VENDE MÁS · ${mlas.length} ${GO ? '(APLICANDO)' : '(PRUEBA)'} ===`);
+      console.log(`Solo se ocultan del panel. En MercadoLibre no se toca nada.\n`);
+      let ok = 0, frenadas = 0;
+      for (const mla of mlas) {
+        const e = links[mla];
+        if (!e) { console.log(`  ✗ ${mla} · no está en el panel, no hay nada que ocultar`); continue; }
+        // Se le pregunta a ML el estado REAL, no el guardado: el guardado puede estar viejo.
+        let b = null;
+        for (const label of labels) {
+          const acc = accounts[label];
+          if (!acc?.refresh_token) continue;
+          let tk; try { tk = (await mlRefresh(ML_CLIENT_ID, ML_CLIENT_SECRET, acc.refresh_token)).access_token; } catch { continue; }
+          try {
+            const arr = await mlGet('/items?ids=' + mla + '&attributes=id,status,available_quantity,title', tk);
+            const row = (arr || [])[0]; const bb = row?.body || {};
+            if (bb.id && bb.title) { b = bb; break; }
+          } catch { /* prueba la próxima cuenta */ }
+        }
+        const est = b ? String(b.status || '?') : '(ML no contestó)';
+        const stk = b ? (Number(b.available_quantity) || 0) : 0;
+        const nom = b ? (b.title || mla) : (e.title || mla);
+        if (b && b.status === 'active' && stk > 0) {
+          console.log(`  ⚠️ ${mla} · ACTIVA con ${stk} u. · ${String(nom).slice(0, 48)}`);
+          console.log(`       NO la oculto: está a la venta con mercadería. Pausala en ML primero.`);
+          frenadas++; continue;
+        }
+        if (!GO) { console.log(`  · ${mla} · ${est} · ${stk} u. · ${String(nom).slice(0, 48)} → se ocultaría`); ok++; continue; }
+        await db.patch('cyc/mllinks/' + mla, { ignored: true, noVendemosMas: true });
+        const ver = (await db.get('cyc/mllinks/' + mla)) || {};
+        const bien = ver.ignored === true;
+        console.log(`  ${bien ? '✓' : '✗'} ${mla} · ${String(nom).slice(0, 48)}${bien ? ' · oculta (releído del panel)' : ' · NO pude guardarlo'}`);
+        if (bien) ok++;
+      }
+      console.log(`\n${GO ? `${ok} ocultadas` : `${ok} se ocultarían`}${frenadas ? ` · ${frenadas} frenadas por estar activas con stock` : ''}.`);
+      if (!GO) console.log('PRUEBA: no se escribió nada. Agregá ":go" para aplicar.');
+      else console.log('Para volver atrás: vincular:<MLA>=<producto>:go');
+      return;
+    }
+
     // BILLING_PROBE=retiromes | retiromes:<monto> | retiromes:probar:<AAAA_MM>
     // El retiro de los dueños que se carga solo a principio de mes. Ver ponerRetiroMes().
     //   sin nada        → muestra el monto configurado y qué tiene cargado cada mes
