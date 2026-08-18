@@ -1026,7 +1026,7 @@ footer{margin-top:32px;padding-top:14px;border-top:1px solid var(--border);font-
     <div style="font-size:.66rem;color:var(--muted);margin-bottom:10px;line-height:1.5">
       Cuántas unidades tenés de cada producto en tu oficina. Se guarda solo.
     </div>
-    <input class="search-box" id="ofi-search" type="search" placeholder="Buscar producto..." oninput="renderOfiContar()" style="margin-bottom:8px">
+    <input class="search-box" id="ofi-contar-search" type="search" placeholder="Buscar producto..." oninput="renderOfiContar()" style="margin-bottom:8px">
     <label style="font-size:.66rem;color:var(--muted);display:flex;align-items:center;gap:6px;margin-bottom:10px">
       <input type="checkbox" id="ofi-solo-con" onchange="renderOfiContar()"> mostrar solo los que tienen algo
     </label>
@@ -3617,7 +3617,10 @@ async function syncOfiMati(){
 }
 function renderOfiContar(){
   const cont=document.getElementById('ofi-contar-list');if(!cont)return;
-  const q=normTxt(document.getElementById('ofi-search')?.value||'');
+  // OJO: el cuadro de acá se llama 'ofi-contar-search', NO 'ofi-search'. Había dos con el mismo
+  // nombre —este y el de Arqueo → Inventario— y getElementById devuelve siempre el PRIMERO del
+  // documento, que es el de la otra pantalla y está siempre vacío: el buscador no filtraba nada.
+  const q=normTxt(document.getElementById('ofi-contar-search')?.value||'');
   const solo=document.getElementById('ofi-solo-con')?.checked;
   let prods=(state.products||[]).slice().sort((a,b)=>(a.name||'').localeCompare(b.name||''));
   if(q)prods=prods.filter(p=>normTxt(p.name).includes(q));
@@ -8317,7 +8320,7 @@ document.addEventListener('click',e=>{if(fnavOpen&&!e.target.closest('#fnav-btn'
         <span style="font-size:.75rem;color:var(--muted)">Si no ves los últimos cambios, forzá la actualización</span>
         <button class="btn" style="background:rgba(56,189,248,.12);color:var(--blue);border:1px solid rgba(56,189,248,.3)" onclick="actualizarApp()">🔄 Buscar actualizaciones</button>
       </div>
-      <div style="font-size:.66rem;color:var(--muted);margin-top:12px">CYC · Versión 10.2</div>
+      <div style="font-size:.66rem;color:var(--muted);margin-top:12px">CYC · Versión 10.3</div>
     </div>
 
     <div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:18px 20px;margin-bottom:14px">
