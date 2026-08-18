@@ -344,27 +344,21 @@ Lo que quedó abierto. Borrá de acá lo que se vaya cerrando.
   **"son 6 productos diferentes"**. Tenía razón y la nota vieja de acá estaba mal: el parecido de
   nombres que muestra `huerfanos` es una pista, no un diagnóstico. Lo que pasa de verdad es más
   simple: **no existe la publicación**. Son 10 de 137 productos, y `huerfanos` los lista.
-  Los que sí tienen arreglo conocido: Balanza persona y Bioxidil (publicación cerrada, ver abajo)
-  y Cargador notebook (`MLA1474825987`, Ayelen, OCULTA y SIN PRODUCTO → se vincula y listo).
+  El Cargador notebook **ya está resuelto** (se vinculó el 18/08, ver abajo). Balanza persona y
+  Bioxidil tienen la publicación cerrada (ver abajo).
   Los otros siete —Separador dedo Gordo, Calculadora, Bola Cristal, Filtro Con precito, Alargue
   Zapatilla Hub USB 220, Dermaglos Facial Ultra Volumen, Batidora 1 Cabezal— **necesitan que se
   publiquen**, no que se revinculen. Falta que él diga cuáles quiere publicar.
-- **Cuatro publicaciones están OCULTAS y SIN PRODUCTO** (16/08): `MLA1474825987` Ayelen "Cargador
-  Universal Computadora Laptop" · `MLA2019878760` Matías "Cafetera Eléctrica De Filtro Sprint" ·
-  `MLA2046277374` Ayelen "Espumador De Leche Manual Acero Inoxidable" · `MLA1754449117` Matías
-  "Masajeador Facial Bola De Hielo". Antes de vincular ninguna hay que preguntarle **a qué producto
-  suyo corresponde cada una**: por el título no alcanza.
+- **Las publicaciones sin producto ya están resueltas** (18/08/2026). Eran 81 en el conteo del
+  robot, pero **71 estaban dadas de baja**: renglones viejos de `cyc/mllinks`, nada para hacer.
+  De las 10 vivas él decidió: `MLA1474825987` (Cargador Universal Laptop, Ayelen) → vinculada al
+  producto **Cargador notebook** (`p1782926072704`), y **seis marcadas "no las vendemos más"** con
+  el comando `nomas` — Espumador de leche, los dos Playstation VR 2, los dos Redmi Note 15 y el
+  **Masajeador Bola de Hielo**. Quedan dos sin decidir: `MLA1504814419` y `MLA3127034782`, los dos
+  **Termómetros de heladera**, que están **EN REVISIÓN de ML con 2 unidades cada uno** — mismo tema
+  que el "Bare Vanilla": ML pide documentación. Él dijo "no dar bola todavía".
 - **Balanza persona y Bioxidil tienen la publicación CERRADA en ML** (`MLA2316189534` y
   `MLA2301693130`). No es error de vinculación: o las reabre o siguen en "—".
-- **El masajeador: falta saber si son UNO o DOS productos.** El 14/08 se le puso costo $9.000 a la
-  ficha "masajeador de cara" (full $10.132 con el 12,5% de reclamos), que era lo que él dijo que se
-  paga. Su única publicación, `MLA1714540251` de Ayelen ("Masajeador Facial Y Corporal Reductor
-  3en1"), está PAUSADA. Aparte hay `MLA1754449117` de Matías, **"Masajeador Facial Bola De Hielo
-  Crioterapia"**, pausada sin stock, a $15.000, 4 vendidas y **sin producto**. Él dijo "son todos
-  los mismos", pero por el título una es un rodillo de hielo para la cara y la otra un reductor
-  corporal 3 en 1: son cosas distintas. **No se vinculó nada hasta que él lo confirme.** Si son el
-  mismo: `vincular:MLA1754449117=p1779912656170:go`. Si no, hay que darle su propia ficha con su
-  costo. Ninguna de las dos está vendiendo, así que no corre riesgo hoy.
 - **La Cortadora Sportsman está a $32.999 en Adriana y a $13.180 en Ayelen.** Mismo producto, dos
   precios: hay un costo mal cargado en una de las dos fichas. Él decidió subir igual el 13/08. Si la
   de Adriana deja de vender, empezar por ahí.
