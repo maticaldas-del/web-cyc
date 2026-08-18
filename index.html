@@ -673,7 +673,7 @@ footer{margin-top:32px;padding-top:14px;border-top:1px solid var(--border);font-
       <input class="fin-input money" type="text" inputmode="numeric" id="f_corregir" placeholder="$0" onchange="saveFin('corregir',this.value)" style="width:150px">
     </div>
     <div class="breakdown-grid">
-      <div class="bk-card"><div class="bk-lbl">Stock ML</div><div class="bk-val neutral" id="bk_stock_ml">$0</div><div class="bk-lbl" style="margin-top:6px">Stock Local</div><div class="bk-val neutral" id="bk_stock_local" style="font-size:.8rem">$0</div><div id="dbk_stock" style="margin-top:5px"></div></div>
+      <div class="bk-card"><div class="bk-lbl">Stock ML</div><div class="bk-val neutral" id="bk_stock_ml">$0</div><div id="dbk_stock_ml" style="margin-top:3px"></div><div class="bk-lbl" style="margin-top:8px">Stock Local</div><div class="bk-val neutral" id="bk_stock_local" style="font-size:.8rem">$0</div><div id="dbk_stock_local" style="margin-top:3px"></div><div class="bk-lbl" style="margin-top:8px;opacity:.75">Total stock</div><div id="dbk_stock" style="margin-top:3px"></div></div>
       <div class="bk-card"><div class="bk-lbl">Efectivo & Digital</div><div class="bk-val pos" id="bk_efectivo">$0</div><div id="dbk_efectivo" style="margin-top:5px"></div></div>
       <div class="bk-card"><div class="bk-lbl">Lo que nos deben</div><div class="bk-val pos" id="bk_deben">$0</div><div id="dbk_deben" style="margin-top:5px"></div></div>
       <div class="bk-card"><div class="bk-lbl">Lo que debemos</div><div class="bk-val neg" id="bk_deudas">$0</div><div id="dbk_deudas" style="margin-top:5px"></div></div>
@@ -3889,6 +3889,17 @@ function updateArqueo(){
   const prevStockVal=prev?.stock??(yest?.stockVal);
   const dbkStockEl=document.getElementById('dbk_stock');
   if(dbkStockEl)dbkStockEl.innerHTML=prevStockVal!==undefined?deltaBadge(dispStockVal,prevStockVal):'';
+  // Variación de CADA stock por separado, no sólo la del total. Pedido suyo del 18/08/2026: con un
+  // solo número no se sabe si subió la mercadería que está en ML o la que está en casa, y son dos
+  // cosas distintas — la de ML se vende sola, la de casa hay que despacharla.
+  // El anterior del local se calcula con la MISMA suma que el número que se muestra arriba
+  // (of_viejo + of_mia + vendedores del snapshot), para que la comparación sea contra lo mismo.
+  const prevStockML=prev?.stockML;
+  const prevLocalFin=prev?['of_viejo','of_mia','vendedores'].reduce((a,k)=>a+(parseFloat(prev.finanzas?.[k])||0),0):undefined;
+  const dbkML=document.getElementById('dbk_stock_ml');
+  if(dbkML)dbkML.innerHTML=(prevStockML!==undefined&&prevStockML!==null)?deltaBadge(dispStockML,prevStockML):'';
+  const dbkLoc=document.getElementById('dbk_stock_local');
+  if(dbkLoc)dbkLoc.innerHTML=prevLocalFin!==undefined?deltaBadge(stockLocalFin,prevLocalFin):'';
   const prevEfect=prev?['efectivo','mp_disp','mp_liq'].reduce((s,k)=>s+(parseFloat(prev.finanzas?.[k])||0),0):null;
   const prevDeben=prev?['deben_cyc'].reduce((s,k)=>s+(parseFloat(prev.finanzas?.[k])||0),0):null;
   const prevDeuda=prev?['tarjeta','deuda_cyc','dolares_mati','dolares_tito'].reduce((s,k)=>s+(Math.abs(parseFloat(prev.finanzas?.[k])||0)),0):null;
@@ -8306,7 +8317,7 @@ document.addEventListener('click',e=>{if(fnavOpen&&!e.target.closest('#fnav-btn'
         <span style="font-size:.75rem;color:var(--muted)">Si no ves los últimos cambios, forzá la actualización</span>
         <button class="btn" style="background:rgba(56,189,248,.12);color:var(--blue);border:1px solid rgba(56,189,248,.3)" onclick="actualizarApp()">🔄 Buscar actualizaciones</button>
       </div>
-      <div style="font-size:.66rem;color:var(--muted);margin-top:12px">CYC · Versión 10.1</div>
+      <div style="font-size:.66rem;color:var(--muted);margin-top:12px">CYC · Versión 10.2</div>
     </div>
 
     <div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:18px 20px;margin-bottom:14px">
