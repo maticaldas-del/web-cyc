@@ -3938,6 +3938,12 @@ function updateArqueo(){
       _inpMati.readOnly=true;_inpMati.style.opacity='.75';_inpMati.style.cursor='default';
       if(document.activeElement!==_inpMati)setMoneyVal(_inpMati,Math.round(_valOfi));
       if(_notaMati)_notaMati.textContent=` · ${_uOfi} u. contadas en Mi oficina`;
+      // Y se GUARDA, no sólo se muestra. Antes el número calculado se escribía en la base solo
+      // cuando él tocaba una casilla en "Mi oficina": si después cambiaba el costo de un producto
+      // o el dólar, la casilla mostraba el valor nuevo y la base seguía con el viejo — y la
+      // tarjeta "Stock Local" lee la base, así que quedaban dos números distintos en pantalla.
+      // syncOfiMati() no hace nada si ya coincide, así que esto no cuesta ni entra en loop.
+      syncOfiMati();
     }else{
       _inpMati.readOnly=false;_inpMati.style.opacity='';_inpMati.style.cursor='';
       if(_notaMati)_notaMati.textContent=' · contá las unidades en Mi oficina';
@@ -8320,7 +8326,7 @@ document.addEventListener('click',e=>{if(fnavOpen&&!e.target.closest('#fnav-btn'
         <span style="font-size:.75rem;color:var(--muted)">Si no ves los últimos cambios, forzá la actualización</span>
         <button class="btn" style="background:rgba(56,189,248,.12);color:var(--blue);border:1px solid rgba(56,189,248,.3)" onclick="actualizarApp()">🔄 Buscar actualizaciones</button>
       </div>
-      <div style="font-size:.66rem;color:var(--muted);margin-top:12px">CYC · Versión 10.3</div>
+      <div style="font-size:.66rem;color:var(--muted);margin-top:12px">CYC · Versión 10.4</div>
     </div>
 
     <div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:18px 20px;margin-bottom:14px">
