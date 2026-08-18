@@ -5694,7 +5694,7 @@ async function main() {
         total += filas.length;
         console.log(`\n═══ ${label.toUpperCase()} · ${filas.length} sin producto ═══`);
         for (const f of filas) {
-          console.log(`  ${f.mla} · ${f.est.padEnd(6)} · ${String(f.stock).padStart(3)} u. · ${money(f.precio).padStart(10)}`
+          console.log(`  ${f.mla} · ${String(f.est).padEnd(6)} · ${String(f.stock).padStart(3)} u. · ${money(f.precio).padStart(10)}`
             + `${f.v ? ` · vendió ${f.v} en 60d` : ''}`);
           console.log(`     ${f.nom}`);
         }
@@ -5728,7 +5728,7 @@ async function main() {
           console.log(`\n═══ SIN CUENTA ANOTADA · ${huerf.length} renglones ═══`);
           console.log(`   (${muertas.length} son publicaciones dadas de baja: no hay nada que hacer)`);
           for (const f of vivas) {
-            console.log(`  ${f.mla} · ${f.est.padEnd(6)} · ${String(f.stock).padStart(3)} u. · ${money(f.precio).padStart(10)}${f.v ? ` · vendió ${f.v} en 60d` : ''}`);
+            console.log(`  ${f.mla} · ${String(f.est).padEnd(6)} · ${String(f.stock).padStart(3)} u. · ${money(f.precio).padStart(10)}${f.v ? ` · vendió ${f.v} en 60d` : ''}`);
             console.log(`     ${f.nom}`);
           }
           if (!vivas.length) console.log('   ninguna sigue viva: son todas basura vieja de la base.');
