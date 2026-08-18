@@ -173,6 +173,9 @@ Los que más se usan:
 | `frenados[:díasStock]` | si conviene bajarle el precio al stock parado, con la cuenta hecha |
 | `bajarcaja[:días][:piso][:maxBaja]` | qué bajar **poquito** para que vuelva a vender: las que tienen stock, no venden y perdieron la caja de compra por poca plata · **sale solo en el chequeo de las 8** |
 | `proyec[:retiro][:tasa]` | cuánto le queda a CYC por mes |
+| `retiromes[:monto]` | el retiro de los dueños que se carga solo el 1º de cada mes · `:probar:<mes>` para ver qué haría |
+| `sinvincular[:cuenta]` | las publicaciones que NO tienen producto: el robot no les ve stock ni margen |
+| `preguntas[:cuenta]` | las preguntas sin responder ENTERAS, con el producto de cada una |
 | `facarca` | lo facturado en la ventana que mira ARCA, por cuenta |
 | `catmono[:fecha]` | qué categoría de monotributo corresponde |
 | `frenazo:<cuenta>` | por qué una cuenta dejó de vender |

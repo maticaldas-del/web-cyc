@@ -804,6 +804,46 @@ async function bajarParaMover(db, accounts, labels, products, opts = {}) {
   return { filas, ganando, sinCaja, noConviene, paulvic, DIAS, PISO, MAX_BAJA };
 }
 
+// Mes actual YYYY_MM en hora argentina (no la del servidor de GitHub, que va en UTC: el 1º de
+// cada mes a las 21 de Argentina ya es día 2 en UTC y el mes podría no coincidir).
+function mesActualAR() {
+  return dayKeyFromISO(new Date().toISOString()).slice(0, 7);
+}
+
+// ── EL RETIRO DEL MES SE CARGA SOLO ───────────────────────────────────────
+// Pedido suyo del 18/08/2026: "que se ponga automático siempre a principio de mes, sacamos
+// 1.800.000 hasta nuevo aviso". Antes había que escribirlo a mano en Arqueo todos los meses, y si
+// no se cargaba la web usaba el 15% supuesto, que no es lo que se llevan de verdad.
+//
+// NO PISA NADA: solo escribe si el mes está vacío. Si él escribe otro número —porque un mes
+// sacaron más o menos— ese número manda y esto no lo vuelve a tocar nunca.
+// El monto vive en cyc/mlconfig/retiroMes, así se cambia sin tocar el código.
+//
+// El antecedente que hay que respetar: los gastos automáticos (monofijo_<mes>) se sacaron el
+// 13/08/2026 porque el monto real cambiaba todos los meses y nadie lo miraba. Acá el monto es fijo
+// por decisión suya, y como no pisa nada, corregirlo a mano una vez alcanza para siempre.
+//
+// Está en una función aparte para que el probe `retiromes` pueda probar ESTA misma lógica en modo
+// prueba. Un verificador con la cuenta copiada adentro diría "todo bien" para siempre.
+async function ponerRetiroMes(db, cfg, ym, dry) {
+  const monto = cfg.retiroMes != null ? (parseFloat(cfg.retiroMes) || 0) : 1800000;
+  if (!(monto > 0)) return { escrito: false, monto, msg: null, why: 'el monto configurado es 0' };
+  const ya = await db.get('cyc/retiro_mes/' + ym);
+  if (ya != null && ya !== '') {
+    return { escrito: false, monto, ya: Number(ya), msg: null, why: `${ym} ya tiene ${money(Number(ya))} cargado` };
+  }
+  if (dry) return { escrito: false, monto, msg: null, why: `${ym} está vacío → escribiría ${money(monto)}`, escribiria: true };
+  await db.set('cyc/retiro_mes/' + ym, monto);
+  // Se relee de la base antes de decir que quedó: si el guardado falla, que se note.
+  const rel = await db.get('cyc/retiro_mes/' + ym);
+  const ok = Number(rel) === monto;
+  return {
+    escrito: ok, monto,
+    msg: ok ? `\u2713 Retiro de ${ym} cargado solo: ${money(monto)} (releído de la base)`
+            : `\u26a0\ufe0f No pude guardar el retiro de ${ym}: la base dice ${rel}`,
+  };
+}
+
 async function removeStartedPromos(itemId, token) {
   let arr;
   try {
@@ -5560,6 +5600,108 @@ async function main() {
         if (q === Object.keys(datos[cta]).length) ok++;
       }
       console.log(`\n${ok} de ${Object.keys(datos).length} cuentas quedaron bien.`);
+      return;
+    }
+
+    // BILLING_PROBE=retiromes | retiromes:<monto> | retiromes:probar:<AAAA_MM>
+    // El retiro de los dueños que se carga solo a principio de mes. Ver ponerRetiroMes().
+    //   sin nada        → muestra el monto configurado y qué tiene cargado cada mes
+    //   :<monto>        → cambia el monto de acá en adelante (ej: retiromes:2000000)
+    //   :probar:<mes>   → dice qué HARÍA con ese mes, sin escribir nada
+    if (String(process.env.BILLING_PROBE || '').startsWith('retiromes')) {
+      const _r = String(process.env.BILLING_PROBE).split(':');
+      const cfgR = (await db.get('cyc/mlconfig')) || {};
+      if (_r[1] === 'probar') {
+        const ym = _r[2] || mesActualAR();
+        const res = await ponerRetiroMes(db, cfgR, ym, true);   // la MISMA función que usa el robot
+        console.log(`=== PRUEBA · retiro de ${ym} ===`);
+        console.log(`  monto configurado: ${money(res.monto)}`);
+        console.log(`  ${res.escribiria ? '→ ESCRIBIRÍA' : '→ no toca nada'} · ${res.why}`);
+        console.log(`\nPRUEBA: no se escribió nada.`);
+        return;
+      }
+      if (_r[1]) {
+        const nuevoM = Math.round(parseFloat(String(_r[1]).replace(/[^\d]/g, '')) || 0);
+        if (!(nuevoM > 0)) { console.log('Usá: retiromes:1800000'); return; }
+        await db.patch('cyc/mlconfig', { retiroMes: nuevoM });
+        const rel = ((await db.get('cyc/mlconfig')) || {}).retiroMes;
+        console.log(Number(rel) === nuevoM
+          ? `\u2713 De acá en adelante el retiro del mes se carga en ${money(nuevoM)} (releído de la base).`
+          : `\u26a0\ufe0f No pude guardarlo: la base dice ${rel}`);
+        console.log('Los meses que YA están cargados no cambian. Este monto vale para los que vengan.');
+        return;
+      }
+      const monto = cfgR.retiroMes != null ? (parseFloat(cfgR.retiroMes) || 0) : 1800000;
+      const todos = (await db.get('cyc/retiro_mes')) || {};
+      console.log(`=== RETIRO DEL MES ===`);
+      console.log(`Monto que se carga solo: ${money(monto)}${cfgR.retiroMes == null ? ' (por defecto, no está guardado en la config)' : ''}`);
+      console.log(`Mes actual (hora argentina): ${mesActualAR()}\n`);
+      const ms = Object.keys(todos).sort();
+      if (!ms.length) console.log('  todavía no hay ningún mes cargado');
+      for (const m of ms) console.log(`  ${m.replace('_', '/')} · ${money(Number(todos[m]) || 0)}${m === mesActualAR() ? '  ← este mes' : ''}`);
+      console.log(`\nSOLO LECTURA. Para cambiar el monto: retiromes:<pesos>`);
+      return;
+    }
+
+    // BILLING_PROBE=sinvincular[:<cuenta>] → LAS PUBLICACIONES QUE NO TIENEN PRODUCTO.
+    //
+    // El robot solo carga stock y mide margen de las publicaciones que están pegadas a un producto
+    // del catálogo. Las que no lo están son invisibles: no suman stock al panel, no entran en
+    // "Margen ML" y no las ve ningún comando de precios. Al 18/08/2026 son 81.
+    // Acá se listan con el título REAL de ML (el guardado suele venir vacío), el estado, el stock y
+    // el precio, para poder decir producto por producto cuál es. Las cerradas van sólo contadas:
+    // vincular una publicación dada de baja no sirve para nada.
+    if (String(process.env.BILLING_PROBE || '').startsWith('sinvincular')) {
+      const soloC = (String(process.env.BILLING_PROBE).split(':')[1] || '').toLowerCase();
+      const links = (await db.get('cyc/mllinks')) || {};
+      const vpS = (await db.get('cyc/ventaprod')) || {}; setDevLive(vpS);
+      const desdeS = Date.now() - 60 * 864e5;
+      const v60 = {};
+      for (const [k, ents] of Object.entries(vpS)) {
+        const ts = Date.parse(k.slice(0, 10).replace(/_/g, '-'));
+        if (!isFinite(ts) || ts < desdeS) continue;
+        for (const v of Object.values(ents || {})) {
+          if (!v || v.cancelada || !v.mla) continue;
+          v60[v.mla] = (v60[v.mla] || 0) + (v.qty || 1);
+        }
+      }
+      let cerradas = 0, total = 0;
+      for (const label of labels) {
+        if (soloC && label.toLowerCase() !== soloC) continue;
+        const acc = accounts[label];
+        if (!acc?.refresh_token) continue;
+        let t; try { t = await mlRefresh(ML_CLIENT_ID, ML_CLIENT_SECRET, acc.refresh_token); } catch { continue; }
+        try { await db.patch('mlapi/tokens/' + label, { refresh_token: t.refresh_token, updated_ts: Date.now() }); } catch { /* */ }
+        const ids = Object.entries(links)
+          .filter(([mla, e]) => e && e.cuenta === label && !e.prodId && /^MLA/i.test(mla))
+          .map(([mla]) => mla);
+        const filas = [];
+        for (let k = 0; k < ids.length; k += 20) {
+          let arr;
+          try { arr = await mlGet('/items?ids=' + ids.slice(k, k + 20).join(',') + '&attributes=id,status,price,available_quantity,title', t.access_token); } catch { continue; }
+          for (const row of (arr || [])) {
+            const b = row.body || {}; const mla = b.id; if (!mla) continue;
+            if (b.status === 'closed') { cerradas++; continue; }
+            filas.push({
+              mla, est: b.status || '?', stock: Number(b.available_quantity) || 0,
+              precio: Number(b.price) || 0, nom: b.title || '(ML no dio título)', v: v60[mla] || 0,
+            });
+          }
+        }
+        // Primero lo que importa: las que están vendiendo, después las que tienen stock parado.
+        filas.sort((a, b) => (b.v - a.v) || (b.stock - a.stock));
+        if (!filas.length) continue;
+        total += filas.length;
+        console.log(`\n═══ ${label.toUpperCase()} · ${filas.length} sin producto ═══`);
+        for (const f of filas) {
+          console.log(`  ${f.mla} · ${f.est.padEnd(6)} · ${String(f.stock).padStart(3)} u. · ${money(f.precio).padStart(10)}`
+            + `${f.v ? ` · vendió ${f.v} en 60d` : ''}`);
+          console.log(`     ${f.nom}`);
+        }
+      }
+      console.log(`\n\nTOTAL sin producto (sin contar las cerradas): ${total}`);
+      console.log(`Cerradas salteadas: ${cerradas} — vincular una publicación dada de baja no sirve.`);
+      console.log(`Para pegar una a su producto: vincular:<MLA>=<palabra del producto>:go`);
       return;
     }
 
@@ -10986,19 +11128,7 @@ async function main() {
   // El antecedente que hay que respetar: los gastos automáticos (monofijo_<mes>) se sacaron el
   // 13/08/2026 porque el monto real cambiaba todos los meses y nadie lo miraba. Acá el monto es
   // fijo por decisión suya y el freno 1 hace que corregirlo a mano alcance para siempre.
-  const RETIRO_MES = cfg.retiroMes != null ? (parseFloat(cfg.retiroMes) || 0) : 1800000;
-  if (!DRY && RETIRO_MES > 0) {
-    const ymRet = dayKeyFromISO(new Date().toISOString()).slice(0, 7);   // YYYY_MM en hora argentina
-    const yaRet = await db.get('cyc/retiro_mes/' + ymRet);
-    if (yaRet == null || yaRet === '') {
-      await db.set('cyc/retiro_mes/' + ymRet, RETIRO_MES);
-      // Se relee de la base antes de decir que quedó: si el guardado falla, que se note.
-      const rel = await db.get('cyc/retiro_mes/' + ymRet);
-      console.log(Number(rel) === RETIRO_MES
-        ? `\u2713 Retiro de ${ymRet} cargado solo: ${money(RETIRO_MES)} (verificado)`
-        : `\u26a0\ufe0f No pude guardar el retiro de ${ymRet}: la base dice ${rel}`);
-    }
-  }
+  if (!DRY) { const r = await ponerRetiroMes(db, cfg, mesActualAR(), false); if (r.msg) console.log(r.msg); }
   // SKIP_PRICES=1 → esta vuelta trae ventas pero NO toca precios. Lo usa el ciclo automático:
   // las ventas se sincronizan cada 2 minutos, pero el robot de precios corre una vez por hora.
   // Sin esto, bajar el intervalo a 2 minutos haría que el robot evalúe 720 veces por día en vez
