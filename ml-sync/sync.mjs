@@ -5708,21 +5708,32 @@ async function main() {
           .filter(([mla, e]) => e && !e.prodId && !labels.includes(e.cuenta) && /^MLA/i.test(mla))
           .map(([mla]) => mla);
         if (huerf.length) {
-          let tok = null;
+          // Se prueba con el token de CADA cuenta: ML devuelve 403 cuando el token no es el dueño
+          // de la publicación, así que con uno solo la mitad vuelve vacía. La primera cuenta que
+          // contesta bien es, además, la dueña — que es justo el dato que falta en la base.
+          const info = {};
           for (const label of labels) {
             const acc = accounts[label];
             if (!acc?.refresh_token) continue;
-            try { tok = (await mlRefresh(ML_CLIENT_ID, ML_CLIENT_SECRET, acc.refresh_token)).access_token; break; } catch { /* prueba la próxima */ }
+            let tk; try { tk = (await mlRefresh(ML_CLIENT_ID, ML_CLIENT_SECRET, acc.refresh_token)).access_token; } catch { continue; }
+            const faltan = huerf.filter((m) => !info[m]);
+            if (!faltan.length) break;
+            for (let k = 0; k < faltan.length; k += 20) {
+              let arr;
+              try { arr = await mlGet('/items?ids=' + faltan.slice(k, k + 20).join(',') + '&attributes=id,status,price,available_quantity,title', tk); } catch { continue; }
+              for (const row of (arr || [])) {
+                const b = row.body || {};
+                if (!b.id || Number(row.code) === 403 || !b.title) continue;   // 403 = no es de esta cuenta
+                info[b.id] = { ...b, duena: label };
+              }
+            }
           }
           const vivas = [], muertas = [];
-          for (let k = 0; k < huerf.length && tok; k += 20) {
-            let arr;
-            try { arr = await mlGet('/items?ids=' + huerf.slice(k, k + 20).join(',') + '&attributes=id,status,price,available_quantity,title', tok); } catch { continue; }
-            for (const row of (arr || [])) {
-              const b = row.body || {}; if (!b.id) continue;
-              if (b.status === 'closed' || b.status === 'inactive') { muertas.push(b.id); continue; }
-              vivas.push({ mla: b.id, est: b.status || '?', stock: Number(b.available_quantity) || 0, precio: Number(b.price) || 0, nom: b.title || '(sin título)', v: v60[b.id] || 0 });
-            }
+          for (const mla of huerf) {
+            const b = info[mla];
+            if (!b) { muertas.push(mla); continue; }             // ninguna cuenta la reconoce
+            if (b.status === 'closed' || b.status === 'inactive') { muertas.push(mla); continue; }
+            vivas.push({ mla, est: String(b.status || '?'), stock: Number(b.available_quantity) || 0, precio: Number(b.price) || 0, nom: b.title || '(sin título)', v: v60[mla] || 0, cta: b.duena });
           }
           vivas.sort((a, b) => (b.v - a.v) || (b.stock - a.stock));
           console.log(`\n═══ SIN CUENTA ANOTADA · ${huerf.length} renglones ═══`);
