@@ -79,6 +79,22 @@ function candidatesFor(title, index) {
 }
 
 // variante de la venta de ML (color/medida) mapeada a una variante del producto
+// Qué variante nombra el título de una publicación. Regla: TODAS las palabras de la variante
+// tienen que estar en el título, y gana la variante más larga que cumpla. Es la misma regla que
+// usa la web (_matchProdVariant), a propósito: si las dos no coinciden, el stock por variante del
+// panel y el reparto de la oficina hablarían de aromas distintos.
+// Conservadora por diseño: ante la duda no devuelve nada. Un aroma mal adivinado ensucia el stock
+// de dos variantes a la vez y no se nota mirando.
+function varianteDeTitulo(title, variantes) {
+  const tw = new Set(norm(title).split(' ').filter(Boolean));
+  let best = '', bestLen = 0;
+  for (const v of (variantes || [])) {
+    const vw = norm(v).split(' ').filter(Boolean);
+    if (!vw.length) continue;
+    if (vw.every((w) => tw.has(w)) && vw.length > bestLen) { bestLen = vw.length; best = v; }
+  }
+  return best;
+}
 function mlVariant(it, p) {
   const vs = (p && p.variantes) || [];
   if (!vs.length) return '';
@@ -12104,7 +12120,20 @@ async function main() {
                   }
                 }
               } else {
-                total += b.available_quantity || 0;
+                const q = b.available_quantity || 0;
+                total += q;
+                // ── UNA PUBLICACIÓN POR VARIANTE (los aromas del Paulvic) ──
+                // Acá el stock por variante solo se guardaba cuando la publicación tenía variantes
+                // ADENTRO (el desplegable de ML). El Paulvic no es así: cada aroma es una
+                // publicación aparte. Resultado: el panel veía "Paulvic: 100 unidades" y nunca
+                // supo que Free Love estaba en CERO, así que "Armar caja" decía que no hacía falta
+                // mandar nada. Si el título de la publicación nombra una variante del producto, su
+                // stock también se anota en esa variante.
+                const pv = varianteDeTitulo(b.title || map[mla].title || '', p.variantes);
+                if (pv) {
+                  const vk = map[mla].prodId + '__' + sid(label) + '__v__' + sid(pv);
+                  stockVar[vk] = (stockVar[vk] || 0) + q;
+                }
               }
               stockTot[kTot] = (stockTot[kTot] || 0) + total;
             }

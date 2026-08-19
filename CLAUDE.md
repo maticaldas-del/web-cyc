@@ -302,6 +302,16 @@ Telegram va solo el resumen de ventas del día y el del mes.
   El Espejo 8" daba 31,8% con uno y 26,9% con el otro (14/08). **El que vale es el del peor caso**:
   es el criterio conservador con el que se fijaron todos los precios. Mientras `submargen` use el
   barato se va a saltear publicaciones que están abajo del piso — PENDIENTE cambiarlo.
+- **"Armar caja" no veía los aromas y por eso decía que no había que mandar nada.** El 19/08/2026
+  el Paulvic tenía **97 u. en casa y Free Love en CERO en Full**, y la pantalla decía *"ninguna
+  cuenta lo necesita: todas tienen para más de 30 días"*. Miraba el PRODUCTO entero: sumaba el
+  stock de los 28 aromas y le daba de sobra. Dos cosas estaban faltando y las dos se arreglaron:
+  el robot solo separaba el stock por variante cuando la publicación tenía el desplegable de ML
+  adentro —y en el Paulvic **cada aroma es una publicación aparte**, así que nunca separó nada—, y
+  el reparto de la oficina iba por producto. Ahora el stock por aroma se deduce del TÍTULO de cada
+  publicación (misma regla en el robot y en la web, a propósito) y el reparto va aroma por aroma.
+  **Regla nueva del reparto: una cuenta con CERO unidades siempre recibe, aunque "no lo necesite"
+  por días de stock.** En cero no vende — eso no es reponer, es la diferencia entre vender y no.
 - **La pantalla "Margen ML" tampoco descontaba bien el envío.** El 19/08/2026 mostraba **+47%** en
   el Ferrari Negro (costo full $33.867 · neto ML $49.687) cuando las ventas REALES de ese producto
   dejaban $41.490, o sea **22%**. Los $8.197 de diferencia eran justo el envío: `netoweb` tomaba el

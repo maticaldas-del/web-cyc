@@ -3518,21 +3518,23 @@ function renderOfiCaja(){
     const sug=ofiFiltroCuenta?f.sug.filter(s=>s.cuenta===ofiFiltroCuenta):f.sug;
     const lineas=sug.map(s=>{
       const dias=s.dias==null?'no vendió':(s.dias>=999?'no vende':Math.round(s.dias)+' días de stock');
-      const urg=s.dias!=null&&s.dias<7;
+      const urg=(s.dias!=null&&s.dias<7)||s.enCero;
       return `<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;padding:6px 0;border-top:1px solid var(--border)">
         <span class="pi-prov">${s.cuenta}</span>
         <strong style="font-family:'Syne',sans-serif;font-size:1rem;${urg?'color:var(--red)':''}">${s.mandar} u.</strong>
+        ${s.enCero?'<span style="background:rgba(239,68,68,.14);color:var(--red);border-radius:5px;padding:2px 7px;font-size:.6rem;font-weight:700">SIN STOCK · no vende</span>':''}
         <span style="font-size:.66rem;color:var(--muted)">le quedan ${s.stock} · ${dias} · vende ${s.vMes}/mes</span>
       </div>`;
     }).join('');
     let pie='';
-    if(f.sinPublicar)pie=`<div style="font-size:.66rem;color:var(--amber);margin-top:5px">⚠️ No está publicado en ninguna cuenta. Mandarlo no sirve hasta que lo publiques.</div>`;
+    if(f.sinContarPorAroma)pie=`<div style="font-size:.66rem;color:var(--amber);margin-top:5px">⚠️ Estas ${f.hay} u. están contadas en el producto pero sin decir de qué variante. Anotalas en "Contar lo que hay", una por variante, y ahí te digo a dónde van.</div>`;
+    else if(f.sinPublicar)pie=`<div style="font-size:.66rem;color:var(--amber);margin-top:5px">⚠️ No está publicado en ninguna cuenta. Mandarlo no sirve hasta que lo publiques.</div>`;
     else if(f.nadieNecesita)pie=`<div style="font-size:.66rem;color:var(--green);margin-top:5px">✓ Ninguna cuenta lo necesita: todas tienen para más de 30 días. Dejalo en casa.</div>`;
     else if(f.sobra>0)pie=`<div style="font-size:.66rem;color:var(--muted);margin-top:5px">Te sobran ${f.sobra} u. después de repartir. No hace falta mandarlas.</div>`;
 
     return `<div style="padding:12px 14px;background:var(--surface);border:1px solid var(--border);border-radius:var(--r);margin-bottom:8px">
       <div style="display:flex;justify-content:space-between;align-items:baseline;gap:10px;flex-wrap:wrap">
-        <div class="pi-prod">${f.p.name}</div>
+        <div class="pi-prod">${f.p.name}${f.variante?` <span style="color:var(--accent2);font-weight:700">· ${f.variante}</span>`:(f.sinContarPorAroma?' <span style="color:var(--muted);font-weight:400">· sin variante</span>':'')}</div>
         <div style="font-size:.68rem;color:var(--muted)">tenés ${f.hay} u.</div>
       </div>
       ${lineas}${pie}
@@ -5720,11 +5722,102 @@ function cuentasConPublicacion(p){
   });
   return [...s];
 }
+// MLA → variante, mirando el TÍTULO de cada publicación. Hace falta porque hay productos donde
+// cada variante es una publicación aparte (los aromas del Paulvic) y no una variante adentro de
+// una sola publicación. Sin esto no hay forma de saber a qué aroma pertenece una venta.
+function _varPorMla(p){
+  const out={};
+  Object.entries(state.mllinks||{}).forEach(([mla,e])=>{
+    if(!e||e.prodId!==p.id)return;
+    const v=e.variant||_matchProdVariant(e.title||'',p.variantes||[]);
+    if(v)out[mla]=v;
+  });
+  return out;
+}
+// Ventas por cuenta Y variante, normalizadas a 30 días igual que ventasPorCuenta.
+function ventasPorCuentaVar(p,varDeMla){
+  const now=new Date();
+  const diasHistorial=Math.max(1,Math.min(PED_MAX_DAYS,Math.floor((now-PED_HIST_START)/86400000)+1));
+  const from=new Date(now);from.setDate(now.getDate()-(diasHistorial-1));
+  const fk=dateToKey(from),tk=dateToKey(now);
+  const out={};
+  Object.keys(state.ventaprod||{}).filter(k=>k>=fk&&k<=tk).forEach(k=>{
+    Object.values(state.ventaprod[k]||{}).forEach(v=>{
+      if(!ventaEsDe(v,p)||_esCancelada(v))return;
+      if(!LOCS.includes(v.cuenta))return;
+      const va=v.variante||varDeMla[v.mla]||'';
+      if(!va)return;
+      (out[v.cuenta]=out[v.cuenta]||{});
+      out[v.cuenta][va]=(out[v.cuenta][va]||0)+(v.qty||0);
+    });
+  });
+  const factor=PED_MAX_DAYS/diasHistorial;
+  Object.values(out).forEach(o=>Object.keys(o).forEach(k=>o[k]=Math.round(o[k]*factor)));
+  return out;
+}
+// Reparto de UN producto con variantes: se hace variante por variante. Contar el producto entero
+// tapa el caso que más importa — el Paulvic tenía 97 unidades en casa y Free Love en CERO, y la
+// pantalla decía "ninguna cuenta lo necesita" porque miraba el total.
+function _repartoVariantes(p,hayTotal){
+  const varDeMla=_varPorMla(p);
+  const ventasV=ventasPorCuentaVar(p,varDeMla);
+  // Qué cuentas publican cada variante (por su publicación, no por el producto).
+  const pubV={};
+  Object.entries(state.mllinks||{}).forEach(([mla,e])=>{
+    if(!e||e.prodId!==p.id)return;
+    if((e.status||'')==='closed')return;
+    const va=varDeMla[mla];if(!va)return;
+    if(!e.cuenta||!LOCS.includes(e.cuenta))return;
+    (pubV[va]=pubV[va]||new Set()).add(e.cuenta);
+  });
+  const filas=[];
+  let repartido=0;
+  for(const va of (p.variantes||[])){
+    const hay=getQV(p.id,OFI,va);
+    repartido+=hay;
+    if(hay<=0)continue;
+    const publicadas=[...(pubV[va]||[])];
+    const cand=publicadas.map(l=>{
+      const vMes=(ventasV[l]||{})[va]||0;
+      const vDia=vMes/30;
+      const stock=getQV(p.id,l,va);
+      const dias=vDia>0?stock/vDia:(stock>0?999:null);
+      const objetivo=Math.ceil(vDia*30);
+      return{cuenta:l,vMes,vDia,stock,dias,falta:Math.max(0,objetivo-stock)};
+    }).sort((a,b)=>{
+      const da=a.dias==null?9999:a.dias, db=b.dias==null?9999:b.dias;
+      if(da!==db)return da-db;
+      return b.vMes-a.vMes;
+    });
+    let quedan=hay;const sug=[];
+    for(const c of cand){
+      if(quedan<=0)break;
+      // Sin una sola unidad en Full la publicación NO VENDE. Aunque la cuenta "no lo necesite"
+      // según los días de stock, si está en cero hay que mandarle algo: es la diferencia entre
+      // vender y no vender, no un ajuste de reposición.
+      const necesita=c.stock<=0?Math.max(1,c.falta):c.falta;
+      if(necesita<=0)continue;
+      const mandar=Math.min(quedan,necesita);
+      quedan-=mandar;
+      sug.push({...c,mandar,enCero:c.stock<=0});
+    }
+    filas.push({p,variante:va,hay,sug,sobra:quedan,
+      sinPublicar:publicadas.length===0,
+      nadieNecesita:sug.length===0&&publicadas.length>0});
+  }
+  // Lo contado sin aroma (la casilla del producto quedó con más que la suma de sus variantes):
+  // se muestra aparte para que no desaparezca de la pantalla sin decir nada.
+  const sinAroma=hayTotal-repartido;
+  if(sinAroma>0)filas.push({p,variante:null,hay:sinAroma,sug:[],sobra:sinAroma,
+    sinPublicar:false,nadieNecesita:false,sinContarPorAroma:true});
+  return filas;
+}
 function repartoOficina(){
   const filas=[];
   (state.products||[]).forEach(p=>{
     const hay=stockOficina(p);
     if(hay<=0)return;
+    if((p.variantes||[]).length){ filas.push(..._repartoVariantes(p,hay)); return; }
     const ventas=ventasPorCuenta(p);
     const publicadas=cuentasConPublicacion(p);
     const cand=publicadas.map(l=>{
@@ -8327,7 +8420,7 @@ document.addEventListener('click',e=>{if(fnavOpen&&!e.target.closest('#fnav-btn'
         <span style="font-size:.75rem;color:var(--muted)">Si no ves los últimos cambios, forzá la actualización</span>
         <button class="btn" style="background:rgba(56,189,248,.12);color:var(--blue);border:1px solid rgba(56,189,248,.3)" onclick="actualizarApp()">🔄 Buscar actualizaciones</button>
       </div>
-      <div style="font-size:.66rem;color:var(--muted);margin-top:12px">CYC · Versión 10.9</div>
+      <div style="font-size:.66rem;color:var(--muted);margin-top:12px">CYC · Versión 11.0</div>
     </div>
 
     <div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:18px 20px;margin-bottom:14px">
