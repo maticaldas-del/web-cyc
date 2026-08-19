@@ -564,10 +564,8 @@ footer{margin-top:32px;padding-top:14px;border-top:1px solid var(--border);font-
     <button class="tab active" onclick="goTab('inventario',this)">Inventario</button>
     <button class="tab" onclick="goTab('arqueo',this)">Finanzas</button>
     <button class="tab" onclick="goTab('comparar',this)">📅 Comparar</button>
-    <button class="tab" onclick="goTab('resumen',this)">Resumen</button>
     <button class="tab" onclick="goTab('productos',this)">Productos</button>
     <button class="tab" onclick="goTab('margen-ml',this)">🎯 Margen ML</button>
-    <button class="tab" onclick="goTab('oficinas',this)">🏠 Oficinas</button>
     <button class="tab" onclick="goTab('historial',this)">Historial</button>
     <button class="tab" onclick="goTab('precios-hist',this)">📅 Precios hist.</button>
     <button class="tab" onclick="goTab('dolar-mes',this)">💵 Dólar x mes</button>
@@ -673,7 +671,7 @@ footer{margin-top:32px;padding-top:14px;border-top:1px solid var(--border);font-
       <input class="fin-input money" type="text" inputmode="numeric" id="f_corregir" placeholder="$0" onchange="saveFin('corregir',this.value)" style="width:150px">
     </div>
     <div class="breakdown-grid">
-      <div class="bk-card"><div class="bk-lbl">Stock ML</div><div class="bk-val neutral" id="bk_stock_ml">$0</div><div id="dbk_stock_ml" style="margin-top:3px"></div><div class="bk-lbl" style="margin-top:8px">Stock Local</div><div class="bk-val neutral" id="bk_stock_local" style="font-size:.8rem">$0</div><div id="dbk_stock_local" style="margin-top:3px"></div><div class="bk-lbl" style="margin-top:8px;opacity:.75">Total stock</div><div id="dbk_stock" style="margin-top:3px"></div></div>
+      <div class="bk-card"><div class="bk-lbl">Stock ML</div><div class="bk-val neutral" id="bk_stock_ml">$0</div><div id="dbk_stock_ml" style="margin-top:3px"></div><div id="bk_stock_ml_ctas" style="margin-top:7px"></div><div class="bk-lbl" style="margin-top:8px">Stock Local</div><div class="bk-val neutral" id="bk_stock_local" style="font-size:.8rem">$0</div><div id="dbk_stock_local" style="margin-top:3px"></div><div class="bk-lbl" style="margin-top:8px;opacity:.75">Total stock</div><div id="dbk_stock" style="margin-top:3px"></div></div>
       <div class="bk-card"><div class="bk-lbl">Efectivo & Digital</div><div class="bk-val pos" id="bk_efectivo">$0</div><div id="dbk_efectivo" style="margin-top:5px"></div></div>
       <div class="bk-card"><div class="bk-lbl">Lo que nos deben</div><div class="bk-val pos" id="bk_deben">$0</div><div id="dbk_deben" style="margin-top:5px"></div></div>
       <div class="bk-card"><div class="bk-lbl">Lo que debemos</div><div class="bk-val neg" id="bk_deudas">$0</div><div id="dbk_deudas" style="margin-top:5px"></div></div>
@@ -733,11 +731,6 @@ footer{margin-top:32px;padding-top:14px;border-top:1px solid var(--border);font-
   </div>
 
   <!-- RESUMEN -->
-  <div id="tab-resumen" style="display:none">
-    <div class="stitle">Valor por cuenta</div>
-    <div class="sum-grid" id="sum-grid"></div>
-    <div id="acct-detail"></div>
-  </div>
 
   <!-- PRODUCTOS -->
   <div id="tab-productos" style="display:none">
@@ -789,17 +782,6 @@ footer{margin-top:32px;padding-top:14px;border-top:1px solid var(--border);font-
   </div>
 
   <!-- OFICINAS -->
-  <div id="tab-oficinas" style="display:none">
-    <div class="stitle">🏠 Mercadería en las oficinas <span style="font-weight:400;color:var(--muted);text-transform:none;letter-spacing:0;font-size:.65rem">· lo que está en casa, todavía sin mandar a Full</span></div>
-    <div style="font-size:.66rem;color:var(--muted);margin-bottom:10px;line-height:1.5">
-      Se valúa con el <strong>costo en dólares del producto</strong> y nada más: sin envío, sin Full, sin gestión, sin monotributo, sin IIBB ni almacenamiento. Es lo que pagaste por tener la mercadería.
-    </div>
-    <div id="ofi-sum" style="margin-bottom:12px"></div>
-    <div id="ofi-mandar" style="margin-bottom:14px"></div>
-    <input class="search-box" id="ofi-search" type="search" placeholder="Filtrar productos..." oninput="renderOficinas()" style="margin-bottom:10px">
-    <div id="ofi-cols"></div>
-  </div>
-
   <!-- HISTORIAL -->
   <div id="tab-historial" style="display:none">
     <div class="stitle">Últimos cambios</div>
@@ -2632,7 +2614,7 @@ function _syncNewProvSelect(){
 }
 function renderAll(){
   updateHdr();updateAct();populateSelects();_syncNewProvSelect();
-  if(currentPage==='inventario'){renderInv();renderResumen();renderProds();renderHist();renderProveedores();loadFinInputs();updateArqueo();updateTotals();}
+  if(currentPage==='inventario'){renderInv();renderProds();renderHist();renderProveedores();loadFinInputs();updateArqueo();updateTotals();}
   if(currentPage==='pedidos')renderPedidos();
   if(currentPage==='compras')initComprasPage();
   if(currentPage==='resumen')renderResumen_page();
@@ -2659,11 +2641,9 @@ function goTab(tab,btn){
   }
   if(tab==='dolar-mes')renderDolarMes();
   if(tab==='monotributo')renderMonotributo();
-  if(tab==='resumen')renderResumen();
   if(tab==='comparar'){populateSelects();renderComparacion();renderClosedMonths();const sy=document.getElementById('snap-year');if(sy&&!sy.value)sy.value=new Date().getFullYear();}
   if(tab==='proveedores')renderProveedores();
   if(tab==='margen-ml')renderMargenML();
-  if(tab==='oficinas')renderOficinas();
 }
 
 function updateHdr(){
@@ -2768,31 +2748,6 @@ function renderInv(){
     ${LOCS.map(l=>`<td class="ac" id="lu_${sid(l)}">—</td>`).join('')}
     <td class="ac" id="tot_u">—</td><td class="ac" id="tot_v">—</td><td></td>
   </tr>`;
-}
-
-function renderResumen(){
-  const prods=productsSorted();
-  const sg=document.getElementById('sum-grid');if(!sg)return;
-  sg.innerHTML=VAL_ORDER.map((l,i)=>{
-    let v=0,u=0;prods.forEach(p=>{const q=getQ(p.id,l);v+=q*costP(p);u+=q;});
-    return`<div class="sum-card ${COLORS[i]}">
-      <div class="slbl">${l}</div>
-      <div class="sval" id="lv_${sid(l)}">${fmt(v)}</div>
-      <div class="ssub">${u} unidades</div>
-    </div>`;
-  }).join('');
-  const det=VAL_ORDER.map(l=>{
-    const ps=prods.filter(p=>getQ(p.id,l)>0);if(!ps.length)return'';
-    return`<div style="margin-top:16px"><div class="stitle">${l}</div>
-      <div class="tbl-outer"><table style="min-width:340px">
-        <thead><tr><th style="text-align:left">Producto</th><th>Unidades</th><th>Costo US$</th><th>Valor</th></tr></thead>
-        <tbody>${ps.map(p=>`<tr>
-          <td style="text-align:left;font-family:'Syne',sans-serif;font-weight:700">${p.name}</td>
-          <td>${getQ(p.id,l)}</td><td>${costUSDof(p)?('US$'+costUSDof(p).toLocaleString('es-AR',{minimumFractionDigits:2,maximumFractionDigits:2})):'<span style="color:var(--amber)">sin US$</span>'}</td><td>${fmt(getQ(p.id,l)*costP(p))}</td>
-        </tr>`).join('')}</tbody>
-      </table></div></div>`;
-  }).join('');
-  document.getElementById('acct-detail').innerHTML=det||'<div class="empty-msg">Sin stock cargado.</div>';
 }
 
 // Un producto está "incompleto" si le falta el costo US$, o si tiene costo pero le falta el
@@ -3498,7 +3453,7 @@ async function saveTC(val){
   await log('Dólar: '+fmt(num));
   /* recalcular costos peso de productos vinculados a USD */
   (state.products||[]).forEach(p=>{if(p.costUSD!=null&&p.costUSD!==''){p.cost=(parseFloat(p.costUSD)||0)*num;}});
-  renderInv();renderResumen();renderProds();updateTotals();updateArqueo();updateHeaderTotal();
+  renderInv();renderProds();updateTotals();updateArqueo();updateHeaderTotal();
   await recalcTodayCostos(null);
   toast('Dólar actualizado ✓');
 }
@@ -3901,6 +3856,29 @@ function updateArqueo(){
   const prevLocalFin=prev?['of_viejo','of_mia','vendedores'].reduce((a,k)=>a+(parseFloat(prev.finanzas?.[k])||0),0):undefined;
   const dbkML=document.getElementById('dbk_stock_ml');
   if(dbkML)dbkML.innerHTML=(prevStockML!==undefined&&prevStockML!==null)?deltaBadge(dispStockML,prevStockML):'';
+  // ── STOCK ML, CUENTA POR CUENTA ──
+  // Pedido suyo del 19/08/2026, cuando se sacó la pestaña "Resumen": el valor por cuenta era lo
+  // único de esa pantalla que servía, y su lugar natural es acá abajo del total de Stock ML.
+  // Se valúa con efectivoCostP, la MISMA función que usa calcArqueo para el total: así las cuatro
+  // cuentas suman exacto el número de arriba y no hay dos verdades.
+  // Cuando se está mirando un mes cerrado no se muestra: el desglose por cuenta no se guarda en el
+  // snapshot, así que reconstruirlo con el stock de hoy daría un número que no es el de ese mes.
+  const ctasEl=document.getElementById('bk_stock_ml_ctas');
+  if(ctasEl){
+    if(_arqViewYM){ ctasEl.innerHTML=''; }
+    else{
+      const filas=ML_LOCS.map(l=>{
+        let v=0,u=0;
+        (state.products||[]).forEach(p=>{const q=getQ(p.id,l);if(q){v+=q*efectivoCostP(p);u+=q;}});
+        return{l,v,u};
+      });
+      const tot=filas.reduce((a,f)=>a+f.v,0);
+      ctasEl.innerHTML=filas.map(f=>`<div style="display:flex;justify-content:space-between;align-items:baseline;gap:8px;padding:2px 0;font-size:.63rem">
+        <span style="color:var(--muted)">${f.l}<span style="opacity:.6"> · ${f.u} u.</span></span>
+        <span style="font-family:'DM Mono',monospace;white-space:nowrap">${fmt(f.v)}<span style="color:var(--muted);opacity:.7"> ${tot>0?Math.round(f.v/tot*100):0}%</span></span>
+      </div>`).join('');
+    }
+  }
   const dbkLoc=document.getElementById('dbk_stock_local');
   if(dbkLoc)dbkLoc.innerHTML=prevLocalFin!==undefined?deltaBadge(stockLocalFin,prevLocalFin):'';
   const prevEfect=prev?['efectivo','mp_disp','mp_liq'].reduce((s,k)=>s+(parseFloat(prev.finanzas?.[k])||0),0):null;
@@ -5442,88 +5420,11 @@ function renderMargenML(){
    ese incluye envío, reclamos y demás, y acá lo que se cuenta es lo que se pagó por tener
    la mercadería. Mezclarlos inflaría el arqueo con costos que todavía no ocurrieron.
    Guardado en cyc/oficinas/<oficina>/<prodId> = unidades.                                */
-const OFIS=[{k:'mia',lbl:'Mi oficina'},{k:'tito',lbl:'Oficina de Tito'}];
-const ofiQty=(k,pid)=>parseInt(((state.oficinas||{})[k]||{})[pid])||0;
-function renderOficinas(){
-  const cont=document.getElementById('ofi-cols');if(!cont)return;
-  const tc=curTC();
-  const q=normTxt(document.getElementById('ofi-search')?.value||'');
-  const prods=(state.products||[]).slice().sort((a,b)=>(a.name||'').localeCompare(b.name||'','es',{sensitivity:'base'}));
-  // ── Resumen: cuántos dólares hay en cada oficina ──
-  const totales=OFIS.map(o=>{
-    let usd=0,unid=0,items=0;
-    for(const p of prods){const n=ofiQty(o.k,p.id);if(!n)continue;usd+=n*costUSDof(p);unid+=n;items++;}
-    return {...o,usd,unid,items};
-  });
-  const usdTot=totales.reduce((s,t)=>s+t.usd,0);
-  const sum=document.getElementById('ofi-sum');
-  if(sum)sum.innerHTML=`<div style="display:flex;gap:10px;flex-wrap:wrap">`
-    +totales.map(t=>`<div style="flex:1;min-width:150px;background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:10px 12px">
-      <div style="font-size:.55rem;color:var(--muted);text-transform:uppercase;letter-spacing:.06em">${t.lbl}</div>
-      <div style="font-size:1.05rem;font-weight:700;font-family:'DM Mono',monospace">US$ ${t.usd.toLocaleString('es-AR',{minimumFractionDigits:2,maximumFractionDigits:2})}</div>
-      <div style="font-size:.6rem;color:var(--muted)">${fmt(Math.round(t.usd*tc))} · ${t.unid} u. en ${t.items} productos</div>
-    </div>`).join('')
-    +`<div style="flex:1;min-width:150px;background:var(--surface);border:1px solid var(--green);border-radius:8px;padding:10px 12px">
-      <div style="font-size:.55rem;color:var(--green);text-transform:uppercase;letter-spacing:.06em">Total en casas</div>
-      <div style="font-size:1.05rem;font-weight:700;color:var(--green);font-family:'DM Mono',monospace">US$ ${usdTot.toLocaleString('es-AR',{minimumFractionDigits:2,maximumFractionDigits:2})}</div>
-      <div style="font-size:.6rem;color:var(--muted)">${fmt(Math.round(usdTot*tc))} · para el arqueo</div>
-    </div></div>`;
-  // ── Qué conviene mandar a Full: hay en casa y en ML se está por acabar ──
-  const mandar=[];
-  for(const p of prods){
-    const enCasa=OFIS.reduce((s,o)=>s+ofiQty(o.k,p.id),0);
-    if(!enCasa)continue;
-    const enML=stockOf(p);
-    const {vendidosNorm}=pedVentasNorm(p);
-    if(!vendidosNorm)continue;
-    const dias=Math.round(enML/vendidosNorm*30);
-    if(dias<=15)mandar.push({p,enCasa,enML,dias,vendidosNorm});
-  }
-  const md=document.getElementById('ofi-mandar');
-  if(md)md.innerHTML=mandar.length
-    ? `<div style="background:rgba(245,158,11,.1);border:1px solid rgba(245,158,11,.35);border-radius:8px;padding:10px 12px">
-        <div style="font-size:.7rem;font-weight:700;color:var(--amber);margin-bottom:6px">📦 Mandar a Full · ${mandar.length}</div>
-        <div style="font-size:.6rem;color:var(--muted);margin-bottom:8px">Tenés stock en casa y en ML queda para 15 días o menos.</div>
-        ${mandar.sort((a,b)=>a.dias-b.dias).map(m=>`<div style="font-size:.7rem;padding:3px 0">
-          <strong>${m.p.name}</strong> — <span style="color:var(--amber)">${m.enCasa} u. en casa</span> · en ML quedan ${m.enML} u. (~${m.dias}d) · vende ${m.vendidosNorm}/mes</div>`).join('')}
-      </div>`
-    : `<div style="font-size:.65rem;color:var(--muted)">Nada urgente para mandar a Full.</div>`;
-  // ── Una fila por producto, como Inventario: SIEMPRE están todos, se cargan las unidades ──
-  const visibles=q?prods.filter(p=>normTxt(p.name).includes(q)):prods;
-  const inp=(o,p,n)=>`<input type="number" min="0" step="1" value="${n||''}" placeholder="0" inputmode="numeric"
-    onchange="setOfiQty('${o}','${p}',this.value)"
-    style="width:70px;box-sizing:border-box;background:var(--surface2);border:1px solid var(--border2);border-radius:6px;padding:5px 7px;color:var(--text);font-family:'DM Mono',monospace;font-size:.72rem;text-align:right;outline:none">`;
-  cont.innerHTML=!visibles.length
-    ? `<div class="empty-msg" style="font-size:.68rem">Sin resultados para "${q}".</div>`
-    : `<div style="width:100%;background:var(--surface);border:1px solid var(--border);border-radius:10px;overflow-x:auto">
-      <div style="display:flex;align-items:center;gap:10px;padding:8px 12px;border-bottom:1px solid var(--border2);font-size:.55rem;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;min-width:520px">
-        <span style="flex:1;min-width:150px">Producto</span>
-        <span style="width:60px;text-align:right">Costo</span>
-        <span style="width:70px;text-align:right">${OFIS[0].lbl}</span>
-        <span style="width:70px;text-align:right">${OFIS[1].lbl}</span>
-        <span style="width:80px;text-align:right">Total US$</span>
-      </div>
-      ${visibles.map(p=>{
-        const cu=costUSDof(p);
-        const a=ofiQty(OFIS[0].k,p.id), b=ofiQty(OFIS[1].k,p.id);
-        const tot=(a+b)*cu;
-        return `<div style="display:flex;align-items:center;gap:10px;padding:6px 12px;border-bottom:1px solid var(--border);min-width:520px">
-          <span style="flex:1;min-width:150px;font-size:.72rem;font-weight:${(a+b)?'600':'400'};${(a+b)?'':'color:var(--muted)'}">${p.name}</span>
-          <span style="width:60px;text-align:right;font-size:.6rem;color:var(--muted);font-family:'DM Mono',monospace">${cu?'US$'+cu.toFixed(2):'—'}</span>
-          <span style="width:70px;text-align:right">${inp(OFIS[0].k,p.id,a)}</span>
-          <span style="width:70px;text-align:right">${inp(OFIS[1].k,p.id,b)}</span>
-          <span style="width:80px;text-align:right;font-size:.68rem;font-family:'DM Mono',monospace;${tot?'':'color:var(--muted)'}">${tot?'US$'+tot.toFixed(2):'—'}</span>
-        </div>`;}).join('')}
-    </div>`;
-}
-async function setOfiQty(ofi,pid,val){
-  const n=parseInt(String(val).replace(/[^\d]/g,''))||0;
-  if(!state.oficinas)state.oficinas={};
-  if(!state.oficinas[ofi])state.oficinas[ofi]={};
-  if(n>0)state.oficinas[ofi][pid]=n; else delete state.oficinas[ofi][pid];
-  await fbSet('oficinas/'+ofi+'/'+pid,n>0?n:null);
-  renderOficinas();
-}
+// (Acá estaba la pestaña "Oficinas" de Finanzas, con su tabla para cargar unidades en "Mi oficina"
+// y "Oficina de Tito". Se sacó el 19/08/2026 a pedido suyo: su oficina ya se cuenta en la pantalla
+// "Mi oficina" (por unidades, producto por producto) y la otra la carga a mano en Finanzas. Tener
+// las dos formas de cargar lo mismo era la receta para contar la mercadería dos veces.
+// Los datos viejos siguen guardados en `oficinas/` y no los lee nada más: no tocaban el patrimonio.
 // (Acá había setProdNeto, que dejaba escribir el neto a mano. Se sacó el 13/08/2026 junto con el
 // campo de la pantalla: ese número le ganaba al que informa ML y seguía mandando meses después, a
 // precios que ya no existían, sin que se notara. Ahora el neto sale SOLO de ML.)
@@ -8332,7 +8233,7 @@ document.addEventListener('click',e=>{if(fnavOpen&&!e.target.closest('#fnav-btn'
         <span style="font-size:.75rem;color:var(--muted)">Si no ves los últimos cambios, forzá la actualización</span>
         <button class="btn" style="background:rgba(56,189,248,.12);color:var(--blue);border:1px solid rgba(56,189,248,.3)" onclick="actualizarApp()">🔄 Buscar actualizaciones</button>
       </div>
-      <div style="font-size:.66rem;color:var(--muted);margin-top:12px">CYC · Versión 10.5</div>
+      <div style="font-size:.66rem;color:var(--muted);margin-top:12px">CYC · Versión 10.6</div>
     </div>
 
     <div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:18px 20px;margin-bottom:14px">
