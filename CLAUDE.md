@@ -232,6 +232,27 @@ El chequeo de las 8 lo pide Claude desde el chat: dispara `ml-chequeo.yml` (o `m
 `billing_probe` = `chequeo:7:nomandar`), lee el resultado y escribe el resumen ahí mismo. Por
 Telegram va solo el resumen de ventas del día y el del mes.
 
+### Los tres lugares donde está la mercadería
+
+Desde el 19/08/2026 el panel distingue **tres**, no dos:
+
+1. **Mi oficina** — lo que está en casa, contado a mano (por variante si el producto tiene).
+2. **En camino a Full** — cajas ya despachadas que ML todavía no recibió. Vive en
+   `cyc/envios_full/<id>/cajasDet`, una entrada por CAJA, con su seguimiento, su contenido
+   (`items: [{prodId, variante, u}]`) y si llegó.
+3. **En ML (Full)** — lo que ML informa.
+
+Por qué importa: **todos los días salen cajas**. Sin el paso del medio, "Armar caja" recomendaba
+mandar cosas que ya iban arriba de un camión, y la reposición contaba como faltante lo que estaba
+por llegar. Ahora lo que va en camino **cuenta como stock** de la cuenta a la que va.
+
+**Y cuenta en el patrimonio.** Al cerrar una caja las unidades salen de la oficina; si no se
+contaran en el medio, el Arqueo bajaría solo por despachar y volvería a subir al llegar — plata
+que aparece y desaparece sin que pase nada. Está como "En camino a Full" en la tarjeta de stock.
+
+Colores de cada caja, regla suya: **verde** llegó · **naranja** en camino · **rojo** 7 días o más
+sin llegar.
+
 ## Cosas que ya pasaron (para no repetirlas)
 
 - **GitHub demora las corridas programadas**, a veces horas. Por eso los crons se piden 3 veces y

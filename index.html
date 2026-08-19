@@ -671,7 +671,7 @@ footer{margin-top:32px;padding-top:14px;border-top:1px solid var(--border);font-
       <input class="fin-input money" type="text" inputmode="numeric" id="f_corregir" placeholder="$0" onchange="saveFin('corregir',this.value)" style="width:150px">
     </div>
     <div class="breakdown-grid">
-      <div class="bk-card"><div class="bk-lbl">Stock ML</div><div class="bk-val neutral" id="bk_stock_ml">$0</div><div id="dbk_stock_ml" style="margin-top:3px"></div><div id="bk_stock_ml_ctas" style="margin-top:7px"></div><div class="bk-lbl" style="margin-top:8px">Stock Local</div><div class="bk-val neutral" id="bk_stock_local" style="font-size:.8rem">$0</div><div id="dbk_stock_local" style="margin-top:3px"></div><div class="bk-lbl" style="margin-top:8px;opacity:.75">Total stock</div><div id="dbk_stock" style="margin-top:3px"></div></div>
+      <div class="bk-card"><div class="bk-lbl">Stock ML</div><div class="bk-val neutral" id="bk_stock_ml">$0</div><div id="dbk_stock_ml" style="margin-top:3px"></div><div id="bk_stock_ml_ctas" style="margin-top:7px"></div><div class="bk-lbl" style="margin-top:8px">Stock Local</div><div class="bk-val neutral" id="bk_stock_local" style="font-size:.8rem">$0</div><div id="dbk_stock_local" style="margin-top:3px"></div><div id="bk_camino_wrap" style="display:none"><div class="bk-lbl" style="margin-top:8px">En camino a Full</div><div class="bk-val neutral" id="bk_stock_camino" style="font-size:.8rem">$0</div><div id="dbk_stock_camino" style="font-size:.58rem;color:var(--muted);margin-top:2px"></div></div><div class="bk-lbl" style="margin-top:8px;opacity:.75">Total stock</div><div id="dbk_stock" style="margin-top:3px"></div></div>
       <div class="bk-card"><div class="bk-lbl">Efectivo & Digital</div><div class="bk-val pos" id="bk_efectivo">$0</div><div id="dbk_efectivo" style="margin-top:5px"></div></div>
       <div class="bk-card"><div class="bk-lbl">Lo que nos deben</div><div class="bk-val pos" id="bk_deben">$0</div><div id="dbk_deben" style="margin-top:5px"></div></div>
       <div class="bk-card"><div class="bk-lbl">Lo que debemos</div><div class="bk-val neg" id="bk_deudas">$0</div><div id="dbk_deudas" style="margin-top:5px"></div></div>
@@ -1000,6 +1000,7 @@ footer{margin-top:32px;padding-top:14px;border-top:1px solid var(--border);font-
   <div id="ofi-sec-caja">
     <div class="pedidos-count" id="ofi-resumen"></div>
     <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px" id="ofi-filtro-cuentas"></div>
+    <button class="btn" id="ofi-btn-despachar" style="display:none;width:100%;margin-bottom:10px;padding:12px;font-size:.82rem"></button>
     <div id="ofi-caja-list"><div class="empty-msg">Contá lo que tenés en la pestaña de al lado y acá te digo a qué cuenta va.</div></div>
   </div>
 
@@ -3498,6 +3499,16 @@ function renderOfiCaja(){
   if(fc)fc.innerHTML=`<button class="pf-btn${ofiFiltroCuenta===''?' active-all':''}" onclick="setOfiFiltro('')">Todas</button>`
     +LOCS.map(l=>`<button class="pf-btn${ofiFiltroCuenta===l?' active-all':''}" onclick="setOfiFiltro('${l}')">${l}</button>`).join('');
   const vis=ofiFiltroCuenta?filas.filter(f=>f.sug.some(s=>s.cuenta===ofiFiltroCuenta)):filas;
+  // Botón para cerrar la caja. Aparece solo con una cuenta elegida porque una caja va a UNA cuenta:
+  // es como se despacha de verdad. Al tocarlo, lo que la pantalla recomienda para esa cuenta pasa
+  // a ser el contenido de la caja, sale de la oficina y queda "en camino" hasta que llegue.
+  const btnDesp=document.getElementById('ofi-btn-despachar');
+  if(btnDesp){
+    const uCaja=ofiFiltroCuenta?vis.reduce((a,f)=>a+f.sug.filter(s=>s.cuenta===ofiFiltroCuenta).reduce((x,s)=>x+s.mandar,0),0):0;
+    btnDesp.style.display=uCaja>0?'':'none';
+    btnDesp.textContent=`📦 Despaché esta caja a ${ofiFiltroCuenta} · ${uCaja} u.`;
+    btnDesp.onclick=()=>despacharCaja(ofiFiltroCuenta);
+  }
   if(!vis.length){
     // El vacío tiene que decir QUÉ HACER, no sólo que está vacío. Pedido suyo del 18/08/2026:
     // buscaba dónde cargar las unidades y esta pantalla no se lo decía — la lista de productos
@@ -3523,7 +3534,7 @@ function renderOfiCaja(){
         <span class="pi-prov">${s.cuenta}</span>
         <strong style="font-family:'Syne',sans-serif;font-size:1rem;${urg?'color:var(--red)':''}">${s.mandar} u.</strong>
         ${s.enCero?'<span style="background:rgba(239,68,68,.14);color:var(--red);border-radius:5px;padding:2px 7px;font-size:.6rem;font-weight:700">SIN STOCK · no vende</span>':''}
-        <span style="font-size:.66rem;color:var(--muted)">le quedan ${s.stock} · ${dias} · vende ${s.vMes}/mes</span>
+        <span style="font-size:.66rem;color:var(--muted)">le quedan ${s.enML!=null?s.enML:s.stock}${s.camino?` <span style="color:var(--amber)">+${s.camino} en camino</span>`:''} · ${dias} · vende ${s.vMes}/mes</span>
       </div>`;
     }).join('');
     let pie='';
@@ -3650,6 +3661,101 @@ async function setOfiVar(pid,variante,val){
   syncOfiMati();renderOfiContar();
 }
 
+// Cierra la caja de UNA cuenta: guarda qué lleva, la saca de la oficina y la deja "en camino".
+// El número de seguimiento se pega después, cuando llega el comprobante del correo — por eso no se
+// pide acá: si se pidiera, la caja no se cargaría hasta la noche y el panel seguiría recomendando
+// mandar lo que ya salió.
+async function despacharCaja(cuenta){
+  if(!cuenta)return;
+  const filas=repartoOficina();
+  const items=[];
+  filas.forEach(f=>{
+    (f.sug||[]).forEach(s=>{
+      if(s.cuenta!==cuenta||!(s.mandar>0))return;
+      items.push({prodId:f.p.id,nombre:f.p.name,variante:f.variante||'',u:s.mandar});
+    });
+  });
+  if(!items.length){toast('No hay nada para despachar a esa cuenta','err');return;}
+  const uTot=items.reduce((a,x)=>a+x.u,0);
+  if(!confirm(`¿Cerrar la caja para ${cuenta} con ${uTot} unidades (${items.length} renglones)?\n\nSale de tu oficina y queda "en camino" hasta que ML la reciba. El número de seguimiento se lo pegás después.`))return;
+  const hoy=new Date().toISOString().slice(0,10);
+  const id='env'+Date.now();
+  const e={fecha:hoy,cuenta,correo:'Andreani',sucursal:'',cajas:1,seguimientos:[],obs:'',ts:Date.now(),
+    cajasDet:[{n:1,track:'',items,recibida:false}]};
+  await fbSet('envios_full/'+id,e);
+  state.envios_full=state.envios_full||{};state.envios_full[id]=e;
+  // Descontar de la oficina lo que se fue. Con variante se toca la clave de la variante y se
+  // recalcula el total del producto; sin variante, la clave del producto.
+  for(const it of items){
+    if(it.variante){
+      const vk=invKeyV(it.prodId,OFI,it.variante);
+      const nv=Math.max(0,(parseInt(state.inventory[vk])||0)-it.u);
+      state.inventory[vk]=nv;
+      await fbSet('inventory/'+vk,nv||null);
+      const prod=(state.products||[]).find(x=>x.id===it.prodId);
+      const suma=((prod&&prod.variantes)||[]).reduce((a,v)=>a+(parseInt(state.inventory[invKeyV(it.prodId,OFI,v)])||0),0);
+      const pk=invKey(it.prodId,OFI);
+      state.inventory[pk]=suma;
+      await fbSet('inventory/'+pk,suma||null);
+    } else {
+      const pk=invKey(it.prodId,OFI);
+      const nv=Math.max(0,(parseInt(state.inventory[pk])||0)-it.u);
+      state.inventory[pk]=nv;
+      await fbSet('inventory/'+pk,nv||null);
+    }
+  }
+  await log('Caja despachada a '+cuenta+': '+uTot+' u.');
+  toast('Caja cerrada ✓ · pegale el seguimiento en Envíos a Full',4500);
+  syncOfiMati();renderOfiCaja();renderOfiContar();
+}
+
+/* ═══════════ CAJAS EN CAMINO A FULL ═══════════
+   Una caja despachada ya no está en la oficina pero todavía no está en ML: es un TERCER lugar, y
+   hasta el 19/08/2026 no existía en el panel. Por eso "Armar caja" pedía mandar cosas que ya iban
+   arriba de un camión, y la reposición contaba como faltante lo que estaba por llegar. Todos los
+   días salen cajas, así que la foto quedaba mal casi siempre.
+   Los colores son del pedido suyo: verde llegó · naranja en camino · rojo si pasaron 7 días. */
+const ENV_ROJO_DIAS=7;
+// Cajas de un envío. Los envíos VIEJOS solo tienen la cantidad y los seguimientos sueltos: se
+// arman al vuelo para que la pantalla los muestre igual, sin tocar lo que está guardado.
+function cajasDe(e){
+  if(Array.isArray(e.cajasDet)&&e.cajasDet.length)return e.cajasDet;
+  const segs=e.seguimientos||[];
+  const n=e.cajas||segs.length||0;
+  return Array.from({length:n},(_,i)=>({n:i+1,track:segs[i]||'',items:[],recibida:false}));
+}
+function envDias(e){
+  if(!e||!e.fecha)return 0;
+  const d=new Date(e.fecha+'T12:00:00');
+  return Math.max(0,Math.floor((Date.now()-d.getTime())/86400000));
+}
+function estadoCaja(e,c){
+  if(c.recibida)return{color:'var(--green)',bg:'rgba(34,197,94,.12)',txt:'✓ llegó'+(c.recFecha?' el '+c.recFecha:'')};
+  const d=envDias(e);
+  if(d>=ENV_ROJO_DIAS)return{color:'var(--red)',bg:'rgba(239,68,68,.14)',txt:`⚠ ${d} días y no llegó`};
+  return{color:'var(--amber)',bg:'rgba(245,158,11,.14)',txt:d<=0?'en camino · salió hoy':`en camino · ${d} día${d===1?'':'s'}`};
+}
+// Unidades que van en camino, por cuenta y por producto/variante. Mismas claves que el inventario
+// (prodId__Cuenta y prodId__Cuenta__v__Variante) para poder sumarlas sin traducir nada.
+function enTransito(){
+  const out={};
+  Object.values(state.envios_full||{}).forEach(e=>{
+    const cta=e.cuenta;
+    if(!cta||!LOCS.includes(cta))return;   // sin cuenta no se sabe a qué depósito va
+    for(const c of cajasDe(e)){
+      if(c.recibida)continue;
+      for(const it of (c.items||[])){
+        if(!it||!it.prodId||!(it.u>0))continue;
+        const kp=it.prodId+'__'+sid(cta);
+        out[kp]=(out[kp]||0)+it.u;
+        if(it.variante)out[kp+'__v__'+sid(it.variante)]=(out[kp+'__v__'+sid(it.variante)]||0)+it.u;
+      }
+    }
+  });
+  return out;
+}
+const transitoDe=(tr,pid,cta,variante)=>tr[variante?(pid+'__'+sid(cta)+'__v__'+sid(variante)):(pid+'__'+sid(cta))]||0;
+
 /* ═══════════ ENVÍOS A FULL ═══════════
    Se anota lo que SALE. Lo que llega ya lo sabe el chequeo de la mañana leyéndolo de ML; lo que
    no sabe nadie es lo que se despachó, y sin eso una caja perdida no aparece en ningún lado.
@@ -3699,6 +3805,41 @@ async function setEnvioCuenta(id,cuenta){
   await log('Envío del '+e.fecha+': cuenta → '+cuenta);
   renderEnviosFull();
 }
+// Guarda las cajas de un envío enteras: cajasDet es una lista y un patch parcial la rompería.
+async function _guardarCajas(id,cajas){
+  const e=(state.envios_full||{})[id];if(!e)return;
+  e.cajasDet=cajas;
+  e.cajas=cajas.length;
+  e.seguimientos=cajas.map(c=>c.track).filter(Boolean);
+  await fbSet('envios_full/'+id+'/cajasDet',cajas);
+  await fbSet('envios_full/'+id+'/cajas',cajas.length);
+  await fbSet('envios_full/'+id+'/seguimientos',e.seguimientos.length?e.seguimientos:null);
+  renderEnviosFull();
+  if(document.getElementById('ofi-caja-list'))renderOfiCaja();
+}
+async function marcarCajaRecibida(id,i,valor){
+  const e=(state.envios_full||{})[id];if(!e)return;
+  const cajas=cajasDe(e).map(c=>({...c}));
+  if(!cajas[i])return;
+  cajas[i].recibida=!!valor;
+  cajas[i].recFecha=valor?new Date().toISOString().slice(0,10):null;
+  await _guardarCajas(id,cajas);
+  await log('Caja '+(i+1)+' del envío '+e.fecha+': '+(valor?'llegó a Full':'vuelve a en camino'));
+}
+async function setCajaTrack(id,i,val){
+  const e=(state.envios_full||{})[id];if(!e)return;
+  const cajas=cajasDe(e).map(c=>({...c}));
+  if(!cajas[i])return;
+  cajas[i].track=String(val||'').replace(/[^0-9]/g,'');
+  await _guardarCajas(id,cajas);
+}
+// Agrega una caja vacía a un envío (cuando el comprobante trae más seguimientos que cajas cargadas).
+async function addCajaAEnvio(id){
+  const e=(state.envios_full||{})[id];if(!e)return;
+  const cajas=cajasDe(e).map(c=>({...c}));
+  cajas.push({n:cajas.length+1,track:'',items:[],recibida:false});
+  await _guardarCajas(id,cajas);
+}
 async function delEnvioFull(id){
   const e=(state.envios_full||{})[id];if(!e)return;
   if(!confirm(`¿Borrar el envío del ${e.fecha} (${e.cajas} caja/s de ${e.cuenta})?`))return;
@@ -3719,15 +3860,35 @@ function renderEnviosFull(){
   const cnt=document.getElementById('envios-count');
   if(cnt){
     const dias=ultimo?Math.floor((Date.now()-new Date(ultimo.fecha+'T12:00:00').getTime())/86400000):null;
+    // Lo que de verdad importa mirar todos los días: cuántas cajas están en la calle y cuántas
+    // ya pasaron los 7 días sin llegar.
+    let enCamino=0,tarde=0,uCamino=0;
+    todos.forEach(e=>cajasDe(e).forEach(c=>{
+      if(c.recibida)return;
+      enCamino++;
+      uCamino+=(c.items||[]).reduce((a,x)=>a+(x.u||0),0);
+      if(envDias(e)>=ENV_ROJO_DIAS)tarde++;
+    }));
     cnt.innerHTML=`<div class="pcount"><strong>${todos.length}</strong>envíos anotados</div>`
+      +`<div class="pcount"${enCamino?' style="border-color:rgba(245,158,11,.35)"':''}><strong${enCamino?' style="color:var(--amber)"':''}>${enCamino}</strong>cajas en camino</div>`
+      +(uCamino?`<div class="pcount"><strong>${uCamino}</strong>unidades en camino</div>`:'')
+      +(tarde?`<div class="pcount" style="border-color:rgba(239,68,68,.4)"><strong style="color:var(--red)">${tarde}</strong>hace +${ENV_ROJO_DIAS} días</div>`:'')
       +`<div class="pcount"><strong>${cajas30}</strong>cajas en 30 días</div>`
       +(ultimo?`<div class="pcount"${dias>=7?' style="border-color:rgba(245,158,11,.3)"':''}><strong${dias>=7?' style="color:var(--amber)"':''}>${dias}</strong>días del último</div>`:'');
   }
+  // El cartel de la portada dice lo que hay que mirar: cuántas cajas están en la calle y si alguna
+  // pasó los 7 días. "Último envío: hace 3 días" no le sirve a nadie para decidir nada.
   const sub=document.getElementById('nc-envios-sub');
-  if(sub)sub.textContent=ultimo?`Último: ${ultimo.fecha} · ${ultimo.cajas} caja(s)`:'Todavía sin envíos';
+  if(sub){
+    let cam=0,tar=0;
+    todos.forEach(e=>cajasDe(e).forEach(c=>{if(c.recibida)return;cam++;if(envDias(e)>=ENV_ROJO_DIAS)tar++;}));
+    sub.innerHTML=cam
+      ? `<span style="color:var(--amber)">${cam} caja(s) en camino</span>`+(tar?` · <span style="color:var(--red);font-weight:700">${tar} hace más de ${ENV_ROJO_DIAS} días</span>`:'')
+      : (ultimo?`Todo recibido · último: ${ultimo.fecha}`:'Todavía sin envíos');
+  }
   if(!arr.length){cont.innerHTML='<div class="empty-msg">'+(q?'Nada con esa búsqueda.':'Todavía no hay envíos anotados.')+'</div>';return;}
   cont.innerHTML=arr.map(e=>{
-    const segs=(e.seguimientos||[]);
+    const cajas=cajasDe(e);
     return `<div style="padding:12px 14px;background:var(--surface);border:1px solid var(--border);border-radius:var(--r);margin-bottom:7px">
       <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap">
         <div>
@@ -3740,8 +3901,26 @@ function renderEnviosFull(){
         </div>
         <button class="btn btn-del" onclick="delEnvioFull('${e.id}')" title="Borrar este envío">✕</button>
       </div>
-      ${segs.length?`<div style="margin-top:6px;font-family:'DM Mono',monospace;font-size:.68rem;color:var(--muted);line-height:1.7">${segs.map(s=>`<span style="display:inline-block;background:var(--surface2);border:1px solid var(--border2);border-radius:5px;padding:1px 7px;margin:0 5px 4px 0">${s}</span>`).join('')}</div>`
-        :`<div style="margin-top:6px;font-size:.66rem;color:var(--amber)">sin números de seguimiento</div>`}
+      ${cajas.map((c,i)=>{
+        const st=estadoCaja(e,c);
+        const items=(c.items||[]);
+        const uu=items.reduce((a,x)=>a+(x.u||0),0);
+        return `<div style="margin-top:7px;padding:8px 10px;background:${st.bg};border:1px solid ${st.color};border-radius:8px">
+          <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+            <strong style="font-size:.7rem;color:${st.color}">Caja ${i+1}</strong>
+            <span style="font-size:.66rem;font-weight:700;color:${st.color}">${st.txt}</span>
+            ${uu?`<span style="font-size:.64rem;color:var(--muted)">${uu} u. · ${items.length} renglón(es)</span>`:'<span style="font-size:.64rem;color:var(--muted)">sin contenido cargado</span>'}
+            <span style="flex:1"></span>
+            <input type="text" inputmode="numeric" value="${c.track||''}" placeholder="seguimiento"
+              style="width:130px;background:var(--bg);border:1px solid var(--border2);border-radius:6px;color:var(--text);font-family:'DM Mono',monospace;font-size:.66rem;padding:5px 7px;outline:none"
+              onchange="setCajaTrack('${e.id}',${i},this.value)">
+            <button class="btn" style="padding:5px 10px;font-size:.64rem;${c.recibida?'background:transparent;border:1px solid var(--border2);color:var(--muted)':''}"
+              onclick="marcarCajaRecibida('${e.id}',${i},${c.recibida?'false':'true'})">${c.recibida?'deshacer':'llegó'}</button>
+          </div>
+          ${items.length?`<div style="margin-top:5px;font-size:.64rem;color:var(--muted);line-height:1.6">${items.map(x=>`<span style="display:inline-block;background:var(--surface2);border:1px solid var(--border2);border-radius:5px;padding:1px 7px;margin:0 5px 4px 0"><strong style="color:var(--text)">${x.u}×</strong> ${x.nombre||x.prodId}${x.variante?' · '+x.variante:''}</span>`).join('')}</div>`:''}
+        </div>`;
+      }).join('')}
+      <button class="btn" style="margin-top:6px;padding:4px 10px;font-size:.62rem;background:transparent;border:1px solid var(--border2);color:var(--muted)" onclick="addCajaAEnvio('${e.id}')">+ otra caja</button>
       ${e.obs?`<div style="margin-top:4px;font-size:.68rem;color:var(--muted)">${e.obs}</div>`:''}
     </div>`;
   }).join('');
@@ -3751,13 +3930,20 @@ let _arqViewYM=null; // YYYY_MM del snapshot que se está viendo, null = en vivo
 function getHistCostUSDProd(prodId,ym){return state.precios_hist_prod?.[ym]?.[prodId]??null;}
 function efectivoCostP(p){if(!_arqViewYM)return costP(p);return getHistCostUSDProd(p.id,_arqViewYM)??costP(p);}
 function calcArqueo(){
-  let stockVal=0,stockML=0,stockLocal=0;
+  let stockVal=0,stockML=0,stockLocal=0,stockCamino=0;
+  // MERCADERÍA EN CAMINO A FULL. Cuando se cierra una caja, esas unidades salen de la oficina y
+  // todavía no están en ML: si no se contaran acá, el patrimonio bajaría solo por despachar, y
+  // volvería a subir días después al llegar. Plata que aparece y desaparece sin que pase nada.
+  const _tr=enTransito();
   (state.products||[]).forEach(p=>{
     const cp=efectivoCostP(p);
-    ML_LOCS.forEach(l=>stockML+=getQ(p.id,l)*cp);
+    ML_LOCS.forEach(l=>{
+      stockML+=getQ(p.id,l)*cp;
+      stockCamino+=transitoDe(_tr,p.id,l,'')*cp;   // la clave sin variante ya es el total
+    });
     LOCAL_LOCS.forEach(l=>stockLocal+=getQ(p.id,l)*cp);
   });
-  stockVal=stockML+stockLocal;
+  stockVal=stockML+stockLocal+stockCamino;
   let activos=0,deudas=0,corregir=0;
   // Unidades contadas en la oficina de Mati. Si hay aunque sea una, el valor de la mercadería sale
   // de ahí (ya entró arriba en stockLocal) y el campo "Oficina Mati" escrito a mano se IGNORA:
@@ -3775,7 +3961,7 @@ function calcArqueo(){
   const efect=['efectivo','mp_disp','mp_liq'].reduce((s,k)=>s+(parseFloat(state.finanzas[k])||0),0);
   const deben=['deben_cyc'].reduce((s,k)=>s+(parseFloat(state.finanzas[k])||0),0);
   const deuda=['tarjeta','deuda_cyc','dolares_mati','dolares_tito'].reduce((s,k)=>s+(Math.abs(parseFloat(state.finanzas[k])||0)),0);
-  return{stockVal,stockML,stockLocal,activos,deudas,corregir,efect,deben,deuda,total:stockVal+activos-deudas+corregir};
+  return{stockVal,stockML,stockLocal,stockCamino,activos,deudas,corregir,efect,deben,deuda,total:stockVal+activos-deudas+corregir};
 }
 
 // Panel de reconciliación: ¿la ganancia del mes se ve reflejada en el crecimiento del patrimonio?
@@ -3915,6 +4101,18 @@ function updateArqueo(){
   // cuentas suman exacto el número de arriba y no hay dos verdades.
   // Cuando se está mirando un mes cerrado no se muestra: el desglose por cuenta no se guarda en el
   // snapshot, así que reconstruirlo con el stock de hoy daría un número que no es el de ese mes.
+  // En camino a Full: solo se muestra si hay algo, para no agregar un renglón en cero.
+  const camWrap=document.getElementById('bk_camino_wrap');
+  if(camWrap){
+    const cam=_arqViewYM?0:(c.stockCamino||0);
+    camWrap.style.display=cam>0?'':'none';
+    if(cam>0){
+      setCard('bk_stock_camino',cam,'neutral');
+      let uCam=0;Object.values(state.envios_full||{}).forEach(e=>cajasDe(e).forEach(x=>{if(!x.recibida)uCam+=(x.items||[]).reduce((a,y)=>a+(y.u||0),0);}));
+      const d=document.getElementById('dbk_stock_camino');
+      if(d)d.textContent=uCam+' u. despachadas que ML todavía no recibió';
+    }
+  }
   const ctasEl=document.getElementById('bk_stock_ml_ctas');
   if(ctasEl){
     if(_arqViewYM){ ctasEl.innerHTML=''; }
@@ -5758,7 +5956,7 @@ function ventasPorCuentaVar(p,varDeMla){
 // Reparto de UN producto con variantes: se hace variante por variante. Contar el producto entero
 // tapa el caso que más importa — el Paulvic tenía 97 unidades en casa y Free Love en CERO, y la
 // pantalla decía "ninguna cuenta lo necesita" porque miraba el total.
-function _repartoVariantes(p,hayTotal){
+function _repartoVariantes(p,hayTotal,tr){
   const varDeMla=_varPorMla(p);
   const ventasV=ventasPorCuentaVar(p,varDeMla);
   // Qué cuentas publican cada variante (por su publicación, no por el producto).
@@ -5780,10 +5978,13 @@ function _repartoVariantes(p,hayTotal){
     const cand=publicadas.map(l=>{
       const vMes=(ventasV[l]||{})[va]||0;
       const vDia=vMes/30;
-      const stock=getQV(p.id,l,va);
+      const enML=getQV(p.id,l,va);
+      // Lo que ya va en camino cuenta como stock: si no, el panel lo vuelve a pedir.
+      const camino=transitoDe(tr,p.id,l,va);
+      const stock=enML+camino;
       const dias=vDia>0?stock/vDia:(stock>0?999:null);
       const objetivo=Math.ceil(vDia*30);
-      return{cuenta:l,vMes,vDia,stock,dias,falta:Math.max(0,objetivo-stock)};
+      return{cuenta:l,vMes,vDia,stock,enML,camino,dias,falta:Math.max(0,objetivo-stock)};
     }).sort((a,b)=>{
       const da=a.dias==null?9999:a.dias, db=b.dias==null?9999:b.dias;
       if(da!==db)return da-db;
@@ -5814,18 +6015,21 @@ function _repartoVariantes(p,hayTotal){
 }
 function repartoOficina(){
   const filas=[];
+  const tr=enTransito();   // lo que ya va en camino a cada cuenta
   (state.products||[]).forEach(p=>{
     const hay=stockOficina(p);
     if(hay<=0)return;
-    if((p.variantes||[]).length){ filas.push(..._repartoVariantes(p,hay)); return; }
+    if((p.variantes||[]).length){ filas.push(..._repartoVariantes(p,hay,tr)); return; }
     const ventas=ventasPorCuenta(p);
     const publicadas=cuentasConPublicacion(p);
     const cand=publicadas.map(l=>{
       const vDia=(ventas[l]||0)/30;
-      const stock=getQ(p.id,l);
+      const enML=getQ(p.id,l);
+      const camino=transitoDe(tr,p.id,l,'');
+      const stock=enML+camino;
       const dias=vDia>0?stock/vDia:(stock>0?999:null);   // sin ventas no se puede estimar
       const objetivo=Math.ceil(vDia*30);
-      return{cuenta:l,vMes:ventas[l]||0,vDia,stock,dias,falta:Math.max(0,objetivo-stock)};
+      return{cuenta:l,vMes:ventas[l]||0,vDia,stock,enML,camino,dias,falta:Math.max(0,objetivo-stock)};
     }).sort((a,b)=>{
       // Primero a la que se le acaba antes. Las que no venden van al final.
       const da=a.dias==null?9999:a.dias, db=b.dias==null?9999:b.dias;
@@ -8420,7 +8624,7 @@ document.addEventListener('click',e=>{if(fnavOpen&&!e.target.closest('#fnav-btn'
         <span style="font-size:.75rem;color:var(--muted)">Si no ves los últimos cambios, forzá la actualización</span>
         <button class="btn" style="background:rgba(56,189,248,.12);color:var(--blue);border:1px solid rgba(56,189,248,.3)" onclick="actualizarApp()">🔄 Buscar actualizaciones</button>
       </div>
-      <div style="font-size:.66rem;color:var(--muted);margin-top:12px">CYC · Versión 11.0</div>
+      <div style="font-size:.66rem;color:var(--muted);margin-top:12px">CYC · Versión 11.1</div>
     </div>
 
     <div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:18px 20px;margin-bottom:14px">
