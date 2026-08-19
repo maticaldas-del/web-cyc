@@ -3243,6 +3243,9 @@ async function main() {
     // Cuando se toca el precio de UNA publicación hay que saber si el mismo producto está publicado
     // en otras cuentas: subir una sola y dejar las demás abajo del piso arregla la mitad del problema
     // y encima deja las cuentas desparejas. Agrupa por producto de la web (prodId), no por título.
+    // El margen sale con el envío del PEOR caso y las cuotas, igual que bajopiso y unapub. Hasta el
+    // 19/08/2026 no descontaba el envío y por eso mostraba 57% en una publicación cuyo margen real
+    // era 32%: era el margen de una venta sin envío, que no existe.
     if (String(process.env.BILLING_PROBE || '').startsWith('hermanas:')) {
       const _h = String(process.env.BILLING_PROBE).split(':');
       const kw = (_h[1] || '').trim().toLowerCase();
@@ -3253,7 +3256,20 @@ async function main() {
       const fin = (await db.get('cyc/finanzas')) || {};
       const tc = parseFloat(fin.tipo_cambio) || 1500;
       const monoP = parseFloat(((await db.get('cyc/monotributo')) || {}).pct) || 0;
+      const cuotasCfg = (await db.get('cyc/mlcuotas')) || {};
       const pIdx = {}; for (const p of products) pIdx[p.id] = p;
+      // Ventas por publicación: hacen falta para deducir el envío. Sin envío el margen que salía
+      // acá era el de una venta sin costo de envío, o sea imposible: el 19/08/2026 esta tabla
+      // mostraba 57% donde el margen real de la misma publicación era 32%. Un número así invita a
+      // no tocar un precio que sí hay que tocar, o peor, a bajarlo.
+      const vtaMla = {};
+      for (const ents of Object.values(vp)) {
+        for (const v of Object.values(ents || {})) {
+          if (!v || v.cancelada || !v.mla) continue;
+          const q = v.qty || 1;
+          (vtaMla[v.mla] = vtaMla[v.mla] || []).push({ tot: (v.total || 0) / q, net: (v.neto || 0) / q });
+        }
+      }
       // Qué productos matchean la palabra (por nombre del producto o título de la publicación).
       const prodIds = new Set();
       for (const [id, e2] of Object.entries(links)) {
@@ -3277,7 +3293,7 @@ async function main() {
         const costo = costoPesos(p, 1, tc).costo;
         console.log(`\n══ ${(p && p.nombre) || pid} · mercadería ${money(costo)} ══`);
         const mlas = Object.entries(links).filter(([id, e2]) => id.startsWith('MLA') && e2 && e2.prodId === pid);
-        console.log(`  ${'publicación'.padEnd(15)} ${'cuenta'.padEnd(9)} ${'estado'.padEnd(26)} ${'stock'.padStart(14)} ${'precio'.padStart(10)} ${'margen'.padStart(8)}  ${'para el 30%'.padStart(11)}`);
+        console.log(`  ${'publicación'.padEnd(15)} ${'cuenta'.padEnd(9)} ${'estado'.padEnd(26)} ${'stock'.padStart(14)} ${'precio'.padStart(10)} ${'margen'.padStart(8)}  ${('para el ' + (MIN * 100).toFixed(0) + '%').padStart(11)}`);
         for (const [id, e2] of mlas) {
           const tok = toks[e2.cuenta] || Object.values(toks)[0];
           let it = null;
@@ -3299,16 +3315,29 @@ async function main() {
           }
           const precio = it.price || 0;
           // Comisión oficial de ML a ese precio + el fijo ya viene incluido en sale_fee_amount.
-          let fee = null;
-          try {
-            const d = await mlGet(`/sites/${it.site_id || 'MLA'}/listing_prices?price=${Math.round(precio)}&listing_type_id=${it.listing_type_id}&category_id=${it.category_id}`, tok);
-            const o = Array.isArray(d) ? d[0] : d;
-            if (typeof o?.sale_fee_amount === 'number') fee = o.sale_fee_amount;
-          } catch { /* sigue */ }
+          const feeCache = {};
+          const feeAt = async (pp) => {
+            const k = Math.round(pp); if (feeCache[k] !== undefined) return feeCache[k];
+            let out = null;
+            try {
+              const d = await mlGet(`/sites/${it.site_id || 'MLA'}/listing_prices?price=${k}&listing_type_id=${it.listing_type_id}&category_id=${it.category_id}`, tok);
+              const o = Array.isArray(d) ? d[0] : d;
+              if (typeof o?.sale_fee_amount === 'number') out = o.sale_fee_amount;
+            } catch { out = null; }
+            feeCache[k] = out; return out;
+          };
+          const fee = await feeAt(precio);
+          // Envío del PEOR caso, el mismo criterio con el que se fijaron todos los precios y el que
+          // usan bajopiso y unapub. Se llama a la MISMA función que ellos: si un día se corrige la
+          // fórmula, se corrige acá también sola.
+          const vtas = (vtaMla[id] || []).filter((v) => v.tot > 0 && v.net > 0);
+          const { envio: envioMax } = await envioDeducido(vtas, precio, feeAt, { modo: 'max' });
+          const cuo = (() => { const v = cuotasCfg[id] && parseFloat(cuotasCfg[id].pct); return isFinite(v) && v > 0 ? v / 100 : 0; })();
           const impPct = (mlExtraPct(e2.cuenta) + monoP) / 100;
           let margen = null, paraPiso = null;
-          if (fee != null) {
-            const neto = precio - fee;
+          // Sin ventas no hay envío que deducir, y un margen sin envío es mentira: se muestra "?".
+          if (fee != null && envioMax != null) {
+            const neto = precio - fee - envioMax - precio * cuo;
             const costoTot = costo + precio * impPct;
             margen = costoTot > 0 ? (neto - costoTot) / costoTot : 0;
             // Solo tiene sentido buscar el precio del piso si HOY está abajo. Si ya está arriba, la
@@ -3320,19 +3349,14 @@ async function main() {
             let lo = precio, hi = precio * 3;
             for (let i = 0; i < 18; i++) {
               const mid = Math.round((lo + hi) / 2);
-              let f2 = null;
-              try {
-                const d = await mlGet(`/sites/${it.site_id || 'MLA'}/listing_prices?price=${mid}&listing_type_id=${it.listing_type_id}&category_id=${it.category_id}`, tok);
-                const o = Array.isArray(d) ? d[0] : d;
-                if (typeof o?.sale_fee_amount === 'number') f2 = o.sale_fee_amount;
-              } catch { /* sigue */ }
+              const f2 = await feeAt(mid);
               if (f2 == null) break;
               const c2 = costo + mid * impPct;
-              const m2 = c2 > 0 ? (mid - f2 - c2) / c2 : 0;
+              const m2 = c2 > 0 ? (mid - f2 - envioMax - mid * cuo - c2) / c2 : 0;
               if (m2 < MIN) lo = mid; else hi = mid;
               if (hi - lo <= 1) break;
             }
-            paraPiso = hi;
+            paraPiso = Math.ceil(hi / 10) * 10;
             }
           }
           const est = it.status + ((it.sub_status || []).length ? ' (' + it.sub_status.join(',') + ')' : '');
@@ -3342,7 +3366,8 @@ async function main() {
             + ` ${money(Math.round(precio)).padStart(10)} ${(margen != null ? (margen * 100).toFixed(1) + '%' : '?').padStart(8)}  ${colPiso.padStart(11)}${marca}`);
         }
       }
-      console.log(`\n(⚠ = está abajo del ${(MIN * 100).toFixed(0)}%. La columna "para el 30%" es el precio que la dejaría justo en el piso.)`);
+      console.log(`\n(⚠ = está abajo del ${(MIN * 100).toFixed(0)}%. La última columna es el precio que la dejaría justo ahí.)`);
+      console.log(`Margen con el envío del PEOR caso, igual que bajopiso y unapub. "?" = sin ventas, no hay envío que deducir.`);
       return;
     }
     // BILLING_PROBE=volver:<MLA=precio,MLA=precio,...>[:go] → DEJA ESOS PRECIOS EXACTOS.

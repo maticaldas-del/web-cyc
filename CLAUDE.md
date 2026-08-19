@@ -126,8 +126,16 @@ julio, a CYC le quedan **~$2.000.000/mes** después de todo eso.
    el 13/08/2026; antes había que preguntar cada vez.)
 3. **TECHO DURO: nunca subir un precio por encima de $600.000.** Regla suya del 13/08/2026. Si
    para llegar al 30% haría falta cruzar ese número, se deja donde está y se avisa.
-4. **El piso de margen es 30%**, medido sobre el costo total (mercadería + envío + % de reclamos +
-   IIBB + monotributo). El robot baja al piso solo; subir por encima del piso se decide a mano.
+4. **El piso de margen es 30% y la BASE a la que se sube es 32%.** Regla suya del 19/08/2026:
+   *"ponele 32% como base a todo a partir de ahora a cada cosa que se aumente. no retroactiva"*.
+   Los dos números son distintos a propósito: se toca lo que está **abajo del 30%**, y cuando se
+   toca se lo lleva al **32%**, no al 30% justo. Con la meta pegada al piso cualquier cosa mínima
+   —un envío un peso más caro, un descuento de $10 de ML— lo volvía a hundir; el perfume De La
+   Patagonia hubo que subirlo dos días seguidos por eso. **No es retroactiva**: lo que hoy está
+   entre 30% y 32% se deja donde está, no se sale a subir nada. Se mide sobre el costo total
+   (mercadería + envío del peor caso + % de reclamos + IIBB + monotributo). En la base está como
+   `cyc/mlconfig` → piso 30 / meta 32 (se cambia con el comando `meta:<piso>:<meta>`), y a mano
+   los comandos van con el 32: `unapub:<MLA>:32`, `bajopiso:32`, `submargen:32`.
 5. **NUNCA bajar un precio por tu cuenta.** Regla suya del 13/08/2026. Si una cuenta dice que para
    llegar al 30% hay que BAJAR, el número está mal: no se toca y se investiga.
    **Única excepción, y la pide ÉL cada vez:** recuperar la caja de compra de un producto que tiene
@@ -293,6 +301,14 @@ Telegram va solo el resumen de ventas del día y el del mes.
   El Espejo 8" daba 31,8% con uno y 26,9% con el otro (14/08). **El que vale es el del peor caso**:
   es el criterio conservador con el que se fijaron todos los precios. Mientras `submargen` use el
   barato se va a saltear publicaciones que están abajo del piso — PENDIENTE cambiarlo.
+- **`hermanas` no descontaba el envío y por eso mentía feo.** El 19/08/2026 mostraba **57%** de
+  margen en el perfume De La Patagonia cuando el margen real de esa misma publicación era **32%**:
+  hacía la cuenta `precio − comisión` y listo, sin envío ni cuotas. O sea, el margen de una venta
+  que no paga envío, que no existe. Un número así hace pensar que una publicación está holgada
+  cuando está justo en el filo. Corregido: ahora usa el envío del PEOR caso llamando a la misma
+  función que `bajopiso` y `unapub`, y cuando no hay ventas para deducirlo muestra "?" en vez de
+  inventar. Lección general: **si dos comandos dan márgenes muy distintos para la misma
+  publicación, no es que "midan cosas distintas" — hay uno que está mal. Mirar la fórmula.**
 - **Un aumento no está hecho hasta que la PANTALLA lo muestre arriba del 30%.** El 13/08 subí 62
   publicaciones, el comando dijo que todas habían llegado al piso, y en la pantalla seguían en
   27-29%: `submargen` estimaba el cargo de ML como un % del precio nuevo y la pantalla usa el
