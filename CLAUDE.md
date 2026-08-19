@@ -189,6 +189,7 @@ Los que más se usan:
 | `bajarcaja[:días][:piso][:maxBaja]` | qué bajar **poquito** para que vuelva a vender: las que tienen stock, no venden y perdieron la caja de compra por poca plata · **sale solo en el chequeo de las 8** |
 | `proyec[:retiro][:tasa]` | cuánto le queda a CYC por mes |
 | `retiromes[:monto]` | el retiro de los dueños que se carga solo el 1º de cada mes · `:probar:<mes>` para ver qué haría |
+| `variantes:<palabra>` | qué variantes tiene un producto y el título real de cada publicación, para cargar las que falten |
 | `sinvincular[:cuenta]` | las publicaciones que NO tienen producto: el robot no les ve stock ni margen |
 | `nomas:<MLA,...>[:go]` | "esto no lo vendemos más": oculta la publicación del panel · no toca nada en ML |
 | `preguntas[:cuenta]` | las preguntas sin responder ENTERAS, con el producto de cada una |

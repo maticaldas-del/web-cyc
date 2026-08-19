@@ -2151,6 +2151,68 @@ async function main() {
       if (!quedo) console.log('Desde ahora nadie toca precios en ML salvo que vos lo pidas a mano.');
       return;
     }
+    // BILLING_PROBE=variantes:<palabra> → QUÉ VARIANTES TIENE UN PRODUCTO Y CUÁLES LE FALTAN.
+    //
+    // Para qué existe: la pantalla "Mi oficina" cuenta por variante, pero solo las que estén
+    // cargadas en la ficha del producto. Si el Paulvic tiene 26 publicaciones (una por aroma) y la
+    // ficha no tiene ninguna variante, al contar aparece un solo renglón "Paulvic TODOS" y no hay
+    // forma de decidir QUÉ aroma mandar a Full. Esto muestra las tres cosas de una:
+    //   · las variantes que ya tiene la ficha,
+    //   · el título REAL de cada publicación en ML (de ahí salen los aromas que faltan),
+    //   · el stock en Full de cada publicación, que es lo que decide qué reponer.
+    // Solo LEE.
+    if (String(process.env.BILLING_PROBE || '').startsWith('variantes:')) {
+      const kw = String(process.env.BILLING_PROBE).split(':')[1].trim().toLowerCase();
+      if (!kw) { console.log('Usá: variantes:paulvic'); return; }
+      const links = (await db.get('cyc/mllinks')) || {};
+      const pIdx = {}; for (const p of products) pIdx[p.id] = p;
+      const prodIds = new Set();
+      for (const [id, e] of Object.entries(links)) {
+        if (!id.startsWith('MLA') || !e || !e.prodId) continue;
+        const nom = String((pIdx[e.prodId] || {}).name || '').toLowerCase();
+        if (nom.includes(kw) || String(e.title || '').toLowerCase().includes(kw)) prodIds.add(e.prodId);
+      }
+      for (const p of products) if (String(p.name || '').toLowerCase().includes(kw)) prodIds.add(p.id);
+      if (!prodIds.size) { console.log(`No encontré ningún producto con "${kw}".`); return; }
+      const toks = {};
+      for (const label of labels) {
+        const acc = accounts[label]; if (!acc?.refresh_token) continue;
+        try {
+          const t = await mlRefresh(ML_CLIENT_ID, ML_CLIENT_SECRET, acc.refresh_token);
+          await db.patch('mlapi/tokens/' + label, { refresh_token: t.refresh_token, updated_ts: Date.now() });
+          toks[label] = t.access_token;
+        } catch { /* sigue */ }
+      }
+      for (const pid of prodIds) {
+        const p = pIdx[pid] || products.find((x) => x.id === pid);
+        const vs = (p && p.variantes) || [];
+        console.log(`\n══ ${(p && p.name) || pid} ══`);
+        console.log(`  variantes cargadas en la ficha: ${vs.length ? vs.join(' · ') : '(ninguna)'}`);
+        const mlas = Object.entries(links).filter(([id, e]) => id.startsWith('MLA') && e && e.prodId === pid);
+        console.log(`  publicaciones: ${mlas.length}`);
+        for (const [id, e] of mlas) {
+          const tok = toks[e.cuenta] || Object.values(toks)[0];
+          let it = null;
+          try { it = await mlGet('/items/' + id + '?attributes=id,title,status,price,available_quantity,shipping,inventory_id,variations', tok); }
+          catch { console.log(`    ${id} · ${String(e.cuenta || '?').padEnd(8)} (ML no me la dio) · ${String(e.title || '').slice(0, 60)}`); continue; }
+          let stock = it.available_quantity || 0;
+          if (((it.shipping && it.shipping.logistic_type) || '') === 'fulfillment') {
+            const vars2 = Array.isArray(it.variations) ? it.variations : [];
+            const invs = vars2.length ? vars2.map((v) => v.inventory_id).filter(Boolean) : [it.inventory_id].filter(Boolean);
+            let s2 = 0, hubo = false;
+            for (const inv of invs) {
+              try { s2 += Number((await mlGet('/inventories/' + inv + '/stock/fulfillment', tok))?.available_quantity) || 0; hubo = true; }
+              catch { /* queda lo de la publicación */ }
+            }
+            if (hubo) stock = s2;
+          }
+          const est = it.status + ((it.sub_status || []).length ? '/' + it.sub_status.join(',') : '');
+          console.log(`    ${id} · ${String(e.cuenta || '?').padEnd(8)} · ${String(est).padEnd(10)} · ${String(stock + ' u.').padStart(7)} · ${money(Math.round(it.price || 0)).padStart(10)} · ${String(it.title || '').slice(0, 70)}`);
+        }
+      }
+      console.log(`\nLos aromas que falten se cargan como variantes en la ficha del producto (Productos → variantes).`);
+      return;
+    }
     // BILLING_PROBE=subeventa[:on|:off] → SUBIR SOLO EL PRECIO CUANDO UNA VENTA CAE ABAJO DEL PISO.
     //
     // Pedido suyo del 19/08/2026: "cuando una venta aparece en naranja avisarme y automáticamente
