@@ -3488,16 +3488,26 @@ function renderOfiCaja(){
   const uHay=filas.reduce((s,f)=>s+f.hay,0);
   const aMandar=filas.reduce((s,f)=>s+f.sug.reduce((a,x)=>a+x.mandar,0),0);
   const plata=filas.reduce((s,f)=>s+f.hay*costP(f.p),0);
+  // Unidades que van a CADA cuenta. Es el número que se necesita para armar la caja de verdad:
+  // "41 hay que mandar" no dice cuántas van en la caja que estás armando ahora.
+  const porCta={};LOCS.forEach(l=>porCta[l]=0);
+  filas.forEach(f=>(f.sug||[]).forEach(x=>{if(porCta[x.cuenta]!==undefined)porCta[x.cuenta]+=x.mandar;}));
+  const uCta=ofiFiltroCuenta?(porCta[ofiFiltroCuenta]||0):0;
   const res=document.getElementById('ofi-resumen');
-  if(res)res.innerHTML=`<div class="pcount"><strong>${uHay}</strong>u. en casa</div>`
-    +`<div class="pcount"><strong>${aMandar}</strong>hay que mandar</div>`
+  if(res)res.innerHTML=(ofiFiltroCuenta
+      ? `<div class="pcount" style="border-color:var(--accent2)"><strong style="color:var(--accent2)">${uCta}</strong>u. para ${ofiFiltroCuenta}</div>`
+      : '')
+    +`<div class="pcount"><strong>${uHay}</strong>u. en casa</div>`
+    +`<div class="pcount"><strong>${aMandar}</strong>${ofiFiltroCuenta?'a mandar en total':'hay que mandar'}</div>`
     +`<div class="pcount"><strong>${fmt(plata)}</strong>en mercadería</div>`;
   const sub=document.getElementById('nc-ofi-sub');
   if(sub)sub.textContent=uHay?`${uHay} u. en casa · ${aMandar} para mandar`:'Sin nada contado todavía';
   // Botones para armar la caja de UNA cuenta: es como se despacha de verdad, una caja por cuenta.
   const fc=document.getElementById('ofi-filtro-cuentas');
-  if(fc)fc.innerHTML=`<button class="pf-btn${ofiFiltroCuenta===''?' active-all':''}" onclick="setOfiFiltro('')">Todas</button>`
-    +LOCS.map(l=>`<button class="pf-btn${ofiFiltroCuenta===l?' active-all':''}" onclick="setOfiFiltro('${l}')">${l}</button>`).join('');
+  // Cada botón muestra cuántas unidades le tocan: así se ve de un vistazo a quién hay que
+  // mandarle sin tener que entrar cuenta por cuenta.
+  if(fc)fc.innerHTML=`<button class="pf-btn${ofiFiltroCuenta===''?' active-all':''}" onclick="setOfiFiltro('')">Todas${aMandar?` <strong>${aMandar}</strong>`:''}</button>`
+    +LOCS.map(l=>`<button class="pf-btn${ofiFiltroCuenta===l?' active-all':''}" onclick="setOfiFiltro('${l}')">${l}${porCta[l]?` <strong>${porCta[l]}</strong>`:''}</button>`).join('');
   const vis=ofiFiltroCuenta?filas.filter(f=>f.sug.some(s=>s.cuenta===ofiFiltroCuenta)):filas;
   // Botón para cerrar la caja. Aparece solo con una cuenta elegida porque una caja va a UNA cuenta:
   // es como se despacha de verdad. Al tocarlo, lo que la pantalla recomienda para esa cuenta pasa
@@ -8624,7 +8634,7 @@ document.addEventListener('click',e=>{if(fnavOpen&&!e.target.closest('#fnav-btn'
         <span style="font-size:.75rem;color:var(--muted)">Si no ves los últimos cambios, forzá la actualización</span>
         <button class="btn" style="background:rgba(56,189,248,.12);color:var(--blue);border:1px solid rgba(56,189,248,.3)" onclick="actualizarApp()">🔄 Buscar actualizaciones</button>
       </div>
-      <div style="font-size:.66rem;color:var(--muted);margin-top:12px">CYC · Versión 11.1</div>
+      <div style="font-size:.66rem;color:var(--muted);margin-top:12px">CYC · Versión 11.2</div>
     </div>
 
     <div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:18px 20px;margin-bottom:14px">
