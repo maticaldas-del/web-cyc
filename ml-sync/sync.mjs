@@ -2244,7 +2244,13 @@ async function main() {
       const raw = String(process.env.BILLING_PROBE).slice('ponvariantes:'.length);
       const parts = raw.split('|');
       const quien = (parts[0] || '').trim();
-      const APLICAR = (parts[2] || '').trim() === 'go';
+      const modo = (parts[2] || '').trim();
+      const APLICAR = modo === 'go' || modo === 'reemplazar';
+      // 'reemplazar' deja EXACTAMENTE la lista que se pasa (sirve para corregir un nombre mal
+      // escrito). 'go' solo agrega. Se usa poco y a propósito: las variantes son etiquetas, pero
+      // si se le cambia el nombre a una, el stock y lo contado que estaban guardados con el nombre
+      // viejo dejan de encontrarse.
+      const REEMPLAZAR = modo === 'reemplazar';
       const pedidas = (parts[1] || '').split(',').map((x) => x.trim()).filter(Boolean);
       if (!quien || !pedidas.length) { console.log('Usá: ponvariantes:paulvic|Blue,Red,Luna[|go]'); return; }
       const cands = products.filter((p) => p.id === quien || String(p.name || '').toLowerCase().includes(quien.toLowerCase()));
@@ -2263,8 +2269,11 @@ async function main() {
       console.log(`  ya tenía ${antes.length}: ${antes.length ? antes.join(' · ') : '(ninguna)'}`);
       console.log(`  se agregan ${nuevas.length}: ${nuevas.length ? nuevas.join(' · ') : '(ninguna)'}`);
       if (repes.length) console.log(`  ya estaban, no se tocan: ${repes.join(' · ')}`);
-      if (!nuevas.length) { console.log('\nNo hay nada para agregar.'); return; }
-      const final = antes.concat(nuevas).sort((a, b) => String(a).localeCompare(String(b), 'es', { sensitivity: 'base' }));
+      const sobran = REEMPLAZAR ? antes.filter((v) => !pedidas.some((x) => x.toLowerCase() === String(v).toLowerCase())) : [];
+      if (sobran.length) console.log(`  se SACAN ${sobran.length}: ${sobran.join(' · ')}`);
+      if (!nuevas.length && !sobran.length) { console.log('\nNo hay nada para cambiar.'); return; }
+      const final = (REEMPLAZAR ? pedidas.slice() : antes.concat(nuevas))
+        .sort((a, b) => String(a).localeCompare(String(b), 'es', { sensitivity: 'base' }));
       if (!APLICAR) { console.log(`\nPRUEBA: no se escribió nada. Quedarían ${final.length}. Agregá "|go" para aplicar.`); return; }
       if (!DRY) await db.set('cyc/products/' + p.id + '/variantes', final);
       // Se relee de la base, del mismo lugar del que lee la web: que la escritura no dé error no
