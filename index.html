@@ -5402,7 +5402,7 @@ function renderMargenML(){
   const ultTs=Math.max(0,...(state.products||[]).map(p=>Number(p.netoCalcTs)||0));
   const ultTxt=ultTs?new Date(ultTs).toLocaleString('es-AR',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'}):'—';
   const sum=document.getElementById('margen-ml-sum');
-  if(sum)sum.innerHTML=`Dólar actual <strong style="color:var(--text)">$${tc?tc.toLocaleString('es-AR'):'—'}</strong> · meta <strong style="color:var(--green)">${META}%</strong> · <strong style="color:${bajo?'var(--red)':'var(--green)'}">${bajo}</strong> bajo la meta · <strong style="color:var(--blue,#60a5fa)">${conCalc}</strong> con el precio de hoy · <strong>${sinNeto}</strong> sin publicación en ML<br><span style="color:var(--muted);font-size:.92em">El neto es <strong>lo que dice ML</strong> que te queda al precio de hoy (precio − comisión − envío). Se actualiza solo todas las noches · última vez: <strong style="color:var(--text)">${ultTxt}</strong>.<br>El <strong>Costo full</strong> ya incluye el cargo extra de ML (IIBB + almacenamiento, ~4-6% del precio según cuenta).</span>`;
+  if(sum)sum.innerHTML=`Dólar actual <strong style="color:var(--text)">$${tc?tc.toLocaleString('es-AR'):'—'}</strong> · meta <strong style="color:var(--green)">${META}%</strong> · <strong style="color:${bajo?'var(--red)':'var(--green)'}">${bajo}</strong> bajo la meta · <strong style="color:var(--blue,#60a5fa)">${conCalc}</strong> con el precio de hoy · <strong>${sinNeto}</strong> sin publicación en ML<br><span style="color:var(--muted);font-size:.92em">El neto es <strong>lo que dice ML</strong> que te queda al precio de hoy (precio − comisión − <strong>envío del peor caso</strong>, el mismo criterio con el que se fijaron los precios). Los marcados <span style="color:var(--amber)">SIN ENVÍO</span> nunca vendieron: ahí no hay envío que descontar y el margen que se ve es más alto que el real. Se actualiza solo todas las noches · última vez: <strong style="color:var(--text)">${ultTxt}</strong>.<br>El <strong>Costo full</strong> ya incluye el cargo extra de ML (IIBB + almacenamiento, ~4-6% del precio según cuenta).</span>`;
   if(!rows.length){el.innerHTML='<div class="empty-msg">No hay productos.</div>';return;}
   el.innerHTML=rows.map(r=>{
     const p=r.p;
@@ -5412,7 +5412,11 @@ function renderMargenML(){
     else if(r.neto==null){margenTxt='—';margenColor='var(--muted)';}
     else {margenColor=pctColor(r.margen);margenTxt=(r.margen>=0?'+':'')+r.margen.toFixed(0)+'%';}
     const _paus=r.fuente==='calc'&&r.p.netoCalcPausada===true;
-    const fuenteTag=r.fuente==='calc'?`<span title="Calculado con el precio de HOY en ML: precio − comisión oficial de ML − envío. Es lo que te queda si se vende ahora.${r.p.netoCalcPrecio?' Precio usado: $'+Math.round(r.p.netoCalcPrecio).toLocaleString('es-AR'):''}${_paus?' · La publicación está PAUSADA (sin stock): el precio es el que tiene cargado, no está vendiendo.':''}" style="font-size:.5rem;color:${_paus?'var(--amber)':'var(--blue,#60a5fa)'};font-weight:700">◉ PRECIO DE HOY${_paus?' · PAUSADA':''}</span>`
+    // Sin ninguna venta no hay con qué deducir el envío, así que este neto sale SIN descontarlo y
+    // el margen queda más alto de lo que va a ser en la realidad. Se marca en pantalla: antes el
+    // número salía igual, sin ninguna diferencia con los que sí tienen el envío descontado.
+    const _sinEnv=r.fuente==='calc'&&r.p.netoCalcSinEnvio===true;
+    const fuenteTag=r.fuente==='calc'?`<span title="Calculado con el precio de HOY en ML: precio − comisión oficial de ML − envío del peor caso. Es lo que te queda si se vende ahora.${r.p.netoCalcPrecio?' Precio usado: $'+Math.round(r.p.netoCalcPrecio).toLocaleString('es-AR'):''}${_paus?' · La publicación está PAUSADA (sin stock): el precio es el que tiene cargado, no está vendiendo.':''}${_sinEnv?' · SIN ENVÍO DESCONTADO: este producto no tiene ninguna venta con la que deducir cuánto cuesta enviarlo, así que el margen real va a ser MENOR que el que se ve.':''}" style="font-size:.5rem;color:${_paus||_sinEnv?'var(--amber)':'var(--blue,#60a5fa)'};font-weight:700">◉ PRECIO DE HOY${_paus?' · PAUSADA':''}${_sinEnv?' · SIN ENVÍO':''}</span>`
       :`<span title="ML no puede calcularlo: el producto no tiene ninguna publicación de la que sacar el precio." style="font-size:.5rem;color:var(--muted);font-weight:700">SIN PUBLICACIÓN</span>`;
     const flag=(r.margen!=null&&r.margen<META)?`<span style="background:rgba(239,68,68,.14);color:var(--red);border-radius:5px;padding:2px 7px;font-size:.6rem;font-weight:700;white-space:nowrap">⚠ bajo ${META}%</span>`:'';
     return `<div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;padding:10px 12px;border-bottom:1px solid var(--border)">
@@ -8275,7 +8279,7 @@ document.addEventListener('click',e=>{if(fnavOpen&&!e.target.closest('#fnav-btn'
         <span style="font-size:.75rem;color:var(--muted)">Si no ves los últimos cambios, forzá la actualización</span>
         <button class="btn" style="background:rgba(56,189,248,.12);color:var(--blue);border:1px solid rgba(56,189,248,.3)" onclick="actualizarApp()">🔄 Buscar actualizaciones</button>
       </div>
-      <div style="font-size:.66rem;color:var(--muted);margin-top:12px">CYC · Versión 10.7</div>
+      <div style="font-size:.66rem;color:var(--muted);margin-top:12px">CYC · Versión 10.8</div>
     </div>
 
     <div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:18px 20px;margin-bottom:14px">

@@ -301,6 +301,14 @@ Telegram va solo el resumen de ventas del día y el del mes.
   El Espejo 8" daba 31,8% con uno y 26,9% con el otro (14/08). **El que vale es el del peor caso**:
   es el criterio conservador con el que se fijaron todos los precios. Mientras `submargen` use el
   barato se va a saltear publicaciones que están abajo del piso — PENDIENTE cambiarlo.
+- **La pantalla "Margen ML" tampoco descontaba bien el envío.** El 19/08/2026 mostraba **+47%** en
+  el Ferrari Negro (costo full $33.867 · neto ML $49.687) cuando las ventas REALES de ese producto
+  dejaban $41.490, o sea **22%**. Los $8.197 de diferencia eran justo el envío: `netoweb` tomaba el
+  envío MÁS BARATO visto y ahí daba casi cero. Corregido: ahora usa el PEOR caso. Y los productos
+  que nunca vendieron —donde no hay ningún envío que deducir— salen marcados **SIN ENVÍO** en
+  ámbar, porque su margen se ve más alto de lo que va a ser. Antes ese caso salía callado, igual
+  que cualquier otro. Es el tercer lugar con el mismo error en un día: **cuando aparezca un margen
+  sospechosamente alto, lo primero que hay que mirar es si esa cuenta descuenta el envío.**
 - **`hermanas` no descontaba el envío y por eso mentía feo.** El 19/08/2026 mostraba **57%** de
   margen en el perfume De La Patagonia cuando el margen real de esa misma publicación era **32%**:
   hacía la cuenta `precio − comisión` y listo, sin envío ni cuotas. O sea, el margen de una venta

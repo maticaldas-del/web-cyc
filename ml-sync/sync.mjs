@@ -5630,14 +5630,24 @@ async function main() {
             if (!precio) continue;
             const com = await feeAt(b.site_id || 'MLA', precio, b.listing_type_id, b.category_id, t.access_token);
             if (com == null) continue;
+            // ── ENVÍO: EL DEL PEOR CASO ──
+            // Acá se tomaba el envío MÁS BARATO visto. En el Ferrari Negro eso daba casi $0 y la
+            // pantalla mostraba 47% de margen cuando las ventas reales dejaban 22%: los $8.197 de
+            // diferencia eran justo el envío. Un número así hace pensar que un producto está
+            // holgado cuando está abajo del piso. El envío que vale es el MÁS CARO, el criterio
+            // conservador con el que se fijaron todos los precios (el mismo de bajopiso y unapub).
             const ventas = (vtaMla[mla] && vtaMla[mla].length) ? vtaMla[mla] : (vtaProd[p.id] || []);
-            let envio = Infinity;
+            let envio = -Infinity;
             for (const pv of [...new Set(ventas.map((v) => Math.round(v.tot)))].slice(-6)) {
               const cv = await feeAt(b.site_id || 'MLA', pv, b.listing_type_id, b.category_id, t.access_token);
               if (cv == null) continue;
-              for (const v of ventas) if (Math.round(v.tot) === pv) { const x = v.tot - v.net - cv; if (x < envio) envio = x; }
+              for (const v of ventas) if (Math.round(v.tot) === pv) { const x = v.tot - v.net - cv; if (x > envio) envio = x; }
             }
-            if (!isFinite(envio)) envio = 0; // sin ventas: al menos el neto sin envío deducido
+            // Sin ninguna venta no hay envío que deducir. Se sigue mostrando el neto (es mejor que
+            // no mostrar nada) pero queda MARCADO: la pantalla avisa que ese margen está sin envío
+            // y por lo tanto es optimista. Antes esto pasaba callado.
+            const sinEnvio = !isFinite(envio);
+            if (sinEnvio) envio = 0;
             if (envio < 0) envio = 0;
             const neto = Math.round(precio - com - envio);
             if (neto <= 0) continue;
@@ -5645,7 +5655,7 @@ async function main() {
             // Las ACTIVAS mandan: una pausada solo se usa si el producto no tiene ninguna activa.
             // Entre las del mismo tipo gana la peor, que es el criterio conservador de siempre.
             const mejor = !prev || (activa && !prev.activa) || (activa === prev.activa && neto < prev.neto);
-            if (mejor) porProd[p.id] = { neto, precio: Math.round(precio), mla, cuenta: label, sinEnvio: !ventas.length, activa };
+            if (mejor) porProd[p.id] = { neto, precio: Math.round(precio), mla, cuenta: label, sinEnvio, activa };
           }
         }
       }
@@ -5662,6 +5672,7 @@ async function main() {
           await db.set('cyc/products/' + pid + '/netoCalc', d.neto);
           await db.set('cyc/products/' + pid + '/netoCalcPrecio', d.precio);
           await db.set('cyc/products/' + pid + '/netoCalcPausada', !d.activa);
+          await db.set('cyc/products/' + pid + '/netoCalcSinEnvio', !!d.sinEnvio);
           await db.set('cyc/products/' + pid + '/netoCalcTs', Date.now());
           guardados++;
         }
