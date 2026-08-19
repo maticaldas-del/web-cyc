@@ -2213,6 +2213,54 @@ async function main() {
       console.log(`\nLos aromas que falten se cargan como variantes en la ficha del producto (Productos → variantes).`);
       return;
     }
+    // BILLING_PROBE=ponvariantes:<palabra o id>|<v1,v2,v3>[|go] → CARGA LAS VARIANTES DE UN PRODUCTO.
+    //
+    // La lista va EXPLÍCITA, escrita a mano, no deducida de los títulos. Se probó pensar en sacarlas
+    // solas de los títulos de ML y es justo el tipo de filtro que ya salió mal antes: "Perfume
+    // Femenino Paulvic Free Love Eau De Parfum X 50 Ml." tiene el aroma en el medio y cada
+    // publicación lo escribe distinto. Un aroma mal deducido ensucia el conteo de la oficina y el
+    // desglose de las ventas sin que nadie lo note.
+    //
+    // MERGE, no reemplazo: agrega las que faltan y deja las que ya estaban. Nunca borra ninguna
+    // (para sacar una está el botón en Productos → variantes, que además avisa).
+    // Sin '|go' solo muestra qué agregaría. Con 'go' escribe y vuelve a leer de la base.
+    if (String(process.env.BILLING_PROBE || '').startsWith('ponvariantes:')) {
+      const raw = String(process.env.BILLING_PROBE).slice('ponvariantes:'.length);
+      const parts = raw.split('|');
+      const quien = (parts[0] || '').trim();
+      const APLICAR = (parts[2] || '').trim() === 'go';
+      const pedidas = (parts[1] || '').split(',').map((x) => x.trim()).filter(Boolean);
+      if (!quien || !pedidas.length) { console.log('Usá: ponvariantes:paulvic|Blue,Red,Luna[|go]'); return; }
+      const cands = products.filter((p) => p.id === quien || String(p.name || '').toLowerCase().includes(quien.toLowerCase()));
+      if (!cands.length) { console.log(`No encontré ningún producto con "${quien}".`); return; }
+      if (cands.length > 1) {
+        console.log(`Hay ${cands.length} productos con "${quien}". Pasá el id exacto:`);
+        for (const c of cands) console.log(`  ${c.id} · ${c.name}`);
+        return;
+      }
+      const p = cands[0];
+      const antes = Array.isArray(p.variantes) ? p.variantes.slice() : [];
+      const yaTiene = new Set(antes.map((v) => String(v).toLowerCase()));
+      const nuevas = pedidas.filter((v) => !yaTiene.has(v.toLowerCase()));
+      const repes = pedidas.filter((v) => yaTiene.has(v.toLowerCase()));
+      console.log(`Producto: ${p.name} (${p.id})`);
+      console.log(`  ya tenía ${antes.length}: ${antes.length ? antes.join(' · ') : '(ninguna)'}`);
+      console.log(`  se agregan ${nuevas.length}: ${nuevas.length ? nuevas.join(' · ') : '(ninguna)'}`);
+      if (repes.length) console.log(`  ya estaban, no se tocan: ${repes.join(' · ')}`);
+      if (!nuevas.length) { console.log('\nNo hay nada para agregar.'); return; }
+      const final = antes.concat(nuevas).sort((a, b) => String(a).localeCompare(String(b), 'es', { sensitivity: 'base' }));
+      if (!APLICAR) { console.log(`\nPRUEBA: no se escribió nada. Quedarían ${final.length}. Agregá "|go" para aplicar.`); return; }
+      if (!DRY) await db.set('cyc/products/' + p.id + '/variantes', final);
+      // Se relee de la base, del mismo lugar del que lee la web: que la escritura no dé error no
+      // quiere decir que haya quedado.
+      const rel = (await db.get('cyc/products/' + p.id + '/variantes')) || [];
+      const relArr = Array.isArray(rel) ? rel : Object.values(rel);
+      console.log(`\n${DRY ? '(DRY) ' : ''}Guardado. Releído de la base: ${relArr.length} variantes.`);
+      console.log(`  ${relArr.join(' · ')}`);
+      if (relArr.length !== final.length) console.log('⚠️ NO quedó como pedí.');
+      else console.log('✓ Quedó. En "Mi oficina" ya se puede contar aroma por aroma.');
+      return;
+    }
     // BILLING_PROBE=subeventa[:on|:off] → SUBIR SOLO EL PRECIO CUANDO UNA VENTA CAE ABAJO DEL PISO.
     //
     // Pedido suyo del 19/08/2026: "cuando una venta aparece en naranja avisarme y automáticamente
