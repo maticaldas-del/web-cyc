@@ -302,6 +302,12 @@ Telegram va solo el resumen de ventas del día y el del mes.
   El Espejo 8" daba 31,8% con uno y 26,9% con el otro (14/08). **El que vale es el del peor caso**:
   es el criterio conservador con el que se fijaron todos los precios. Mientras `submargen` use el
   barato se va a saltear publicaciones que están abajo del piso — PENDIENTE cambiarlo.
+- **Leer la salida ENTERA del comando, no el renglón final.** El 19/08/2026 corrí `ponvariantes`
+  sobre el Paulvic, leí solo el "✓ Quedó" del final y no vi el renglón de arriba que decía qué
+  había antes. La ficha ya tenía **70 aromas cargados** y con `reemplazar` **borré 43** (Abismo,
+  Acqua, Barbarella, Invictus, Libre, Paradise, Turbulence, Witch Night, Diva, Gold, Green, Hot…).
+  Se restauraron los 71 en el momento leyéndolos del log del propio comando, pero el error no fue
+  el comando: fue mirar solo la última línea. Los probes imprimen el ANTES justamente para eso.
 - **"Armar caja" no veía los aromas y por eso decía que no había que mandar nada.** El 19/08/2026
   el Paulvic tenía **97 u. en casa y Free Love en CERO en Full**, y la pantalla decía *"ninguna
   cuenta lo necesita: todas tienen para más de 30 días"*. Miraba el PRODUCTO entero: sumaba el
