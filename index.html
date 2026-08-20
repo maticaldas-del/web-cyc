@@ -1131,6 +1131,7 @@ footer{margin-top:32px;padding-top:14px;border-top:1px solid var(--border);font-
         <th style="min-width:100px">Rotación</th>
         <th style="min-width:110px">⏳ Días sin vender</th>
         <th style="min-width:95px" title="Lo que deja hoy sobre el costo, con el precio que tiene puesto en ML ahora. Es la MISMA cuenta que muestra la pantalla Margen ML. Sirve para ver de un vistazo cuánto aire hay antes de tocar un precio.">💰 Margen hoy</th>
+        <th style="min-width:105px" title="Hace cuánto que esta mercadería está en ML. Es lo que le da sentido a los días sin vender: un producto que llegó anteayer y no vendió NO es un problema; uno que está hace dos meses sí. 🆕 = llegó hace menos de 10 días, todavía no se puede juzgar. El dato se reinicia con cada reposición, así que mide lo que hay ahora.">📅 En stock hace</th>
         <th style="min-width:110px" title="En las publicaciones de CATÁLOGO, ML muestra un solo botón de comprar y se lo lleva UN vendedor. 🟢 Ganás = la venta es tuya · 🟠 Compartís = ML reparte con otro (subir el precio te saca) · 🔴 Perdés = la venta se la lleva otro y tu publicación no la ve nadie · ⚪ = no es de catálogo, no hay caja que pelear. Ojo: el color de acá NO significa lo mismo que el del margen de al lado.">🥊 Caja ML</th>
         <th style="min-width:100px">Estado</th>
       </tr></thead>
@@ -2264,7 +2265,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='12.8';
+const APP_VERSION='12.9';
 // El problema real que esto resuelve no es curiosidad: es que el celular guarda la app y sigue
 // mostrando la de ayer sin avisar. Varias veces se revisó un cambio que ya estaba subido y no se
 // veía. Por eso, además del número, el chip avisa cuando hay una versión nueva esperando.
@@ -6978,6 +6979,41 @@ function rotCajaHtml(r){
     return `<span style="font-weight:700;color:var(--red)" title="PERDÉS LA CAJA: la venta se la lleva otro vendedor. La publicación está viva pero el comprador ni la ve, así que puede tener stock, buen margen y cero ventas para siempre.${c.ptw?` ML dice que se gana a ${fmt(c.ptw)} — pero eso NO quiere decir que convenga bajar hasta ahí: primero hay que ver si ese precio llega al piso de margen.`:''}${detalle}">🔴 Perdés</span>`;
   return `<span style="color:var(--muted)" title="Ninguna de sus publicaciones es de catálogo, así que no hay caja de compra que ganar ni perder: es una publicación propia y compite sola.${detalle}">⚪ Sin catálogo</span>`;
 }
+// ── DESDE CUÁNDO ESTÁ ESA MERCADERÍA ────────────────────────────────────────────────
+// Planteo suyo, y corrige de raíz cómo se lee esta pantalla: "Muerto" no quiere decir lo mismo en
+// un producto que llegó a Full anteayer que en uno que está hace dos meses. El primero todavía no
+// tuvo tiempo de vender y no hay nada que decidir; el segundo sí es plata parada.
+// Sin esta columna, los dos se veían EXACTAMENTE IGUAL — rojo, "Muerto", cero ventas — y llevaba a
+// tocarle el precio a algo que recién llega, que es la peor decisión posible.
+//
+// El dato ya lo anota el robot en cyc/stockhist: cuándo pasó de cero a tener stock (`desde`). Se
+// reinicia con cada reposición, así que mide LO QUE HAY AHORA, no el producto en general.
+//
+// Se toma la cuenta que lo tiene hace MÁS tiempo: es cuánto hace que hay chance de venderlo.
+// Solo cuentan las cuentas de ML — lo que está en la oficina no está a la venta.
+const ROT_RECIEN_DIAS=10;   // menos que esto = todavía no se puede juzgar
+function diasEnStockDe(p){
+  const H=state.stockhist||{};
+  let masViejo=null;
+  for(const l of LOCS){
+    if(getQ(p.id,l)<=0)continue;              // sin stock hoy en esa cuenta: no hay nada parado
+    const h=H[invKey(p.id,l)];
+    if(!h||!h.desde)continue;
+    const d=Math.floor((Date.now()-h.desde)/86400000);
+    if(!isFinite(d)||d<0)continue;
+    if(masViejo==null||d>masViejo)masViejo=d;
+  }
+  return masViejo;
+}
+function rotEnStockHtml(r){
+  const d=r.diasEnStock;
+  if(d==null)
+    return `<span style="color:var(--muted)" title="Todavía no hay registro de cuándo entró esta mercadería. El robot lo anota cuando ve que un producto pasa de cero a tener stock, así que lo que ya estaba antes de que empezara a mirarlo no tiene fecha.">—</span>`;
+  if(d<ROT_RECIEN_DIAS)
+    return `<span style="color:var(--blue,#60a5fa);font-weight:700" title="Llegó hace ${d} día(s). RECIÉN LLEGÓ: que no haya vendido todavía no significa nada y no es motivo para tocarle el precio. Dale unos días antes de sacar conclusiones.">🆕 ${d}d</span>`;
+  const color=d>=60?'var(--red)':d>=30?'var(--amber)':'var(--text)';
+  return `<span style="color:${color}" title="Esta mercadería está hace ${d} día(s) en ML. Junto con los días sin vender es lo que dice si de verdad está parada: acá ya hubo tiempo de sobra para venderla.">${d}d</span>`;
+}
 function rotMargenHtml(r){
   const PISO=parseFloat((state.mlconfig||{}).minPct)||30;
   if(r.margen==null)
@@ -7212,7 +7248,7 @@ function renderFacturas(){
 function renderRotacionStock(){
   const tbody=document.getElementById('rot-body');if(!tbody)return;
   const prods=(state.products||[]).filter(p=>p&&p.name);
-  if(!prods.length){tbody.innerHTML='<tr><td colspan="9" style="text-align:center;color:var(--muted);padding:18px">Sin productos.</td></tr>';return;}
+  if(!prods.length){tbody.innerHTML='<tr><td colspan="10" style="text-align:center;color:var(--muted);padding:18px">Sin productos.</td></tr>';return;}
 
   // ── Período disponible (máx 60 días) ───────────────────────────
   // Fecha de arranque del negocio. Durante los primeros 60 días normaliza por
@@ -7284,7 +7320,7 @@ function renderRotacionStock(){
     // caja perdida = el precio no tiene nada que ver, la venta se la lleva otro.
     return{name:p.name,capital,ventasPeriodo,rotNorm,estadoKey,estadoHtml,stock,diasSinVender,
       margen:mg.margen,margenSinEnvio:mg.sinEnvio,margenNeto:mg.neto,margenCosto:mg.costo,
-      caja:cajaMLDe(p)};
+      caja:cajaMLDe(p),diasEnStock:diasEnStockDe(p)};
   });
 
   // ── Puntaje de rotación: % del capital ($) atascado en productos "Muerto" ──
@@ -7353,6 +7389,7 @@ function renderRotacionStock(){
     <td style="text-align:right">${r.ventasPeriodo} u.</td>
     <td style="text-align:right;font-family:'DM Mono',monospace">${r.stock>0?r.rotNorm.toFixed(2):'—'}</td>
     <td style="text-align:right">${rotDiasSinVenderHtml(r.diasSinVender)}</td>
+    <td style="text-align:right">${rotEnStockHtml(r)}</td>
     <td style="text-align:right">${rotMargenHtml(r)}</td>
     <td style="text-align:right">${rotCajaHtml(r)}</td>
     <td>${r.estadoHtml}</td>
