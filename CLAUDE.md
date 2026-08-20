@@ -253,6 +253,14 @@ que aparece y desaparece sin que pase nada. Está como "En camino a Full" en la 
 Colores de cada caja, regla suya: **verde** llegó · **naranja** en camino · **rojo** 7 días o más
 sin llegar.
 
+**Las cajas se arman a mano y se pueden dejar a medias.** La recomendación del panel es el punto
+de partida, no la orden: casi nunca se despacha exacto lo que dice (entra menos, se manda otra
+cosa, hacen falta dos cajas). Cada renglón tiene su casilla y se listan TODOS los productos que
+hay en casa, no solo los que la cuenta "necesita". La caja a medio armar vive en
+`cyc/cajas_armando/<cuenta>` —una por cuenta— así que sobrevive a cambiar de cuenta y a cerrar la
+app. Como el stock de la oficina no baja hasta cerrarla, el tope de cada renglón descuenta lo que
+ya está apartado en las cajas de las otras cuentas.
+
 ## Cosas que ya pasaron (para no repetirlas)
 
 - **GitHub demora las corridas programadas**, a veces horas. Por eso los crons se piden 3 veces y

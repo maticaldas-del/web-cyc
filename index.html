@@ -1880,6 +1880,7 @@ function startApp(){
     state.facturas_rec=d.facturas_recibidas||{};
     // Las cajas despachadas a Full, anotadas del comprobante del correo.
     state.envios_full=d.envios_full||{};
+    state.cajas_armando=d.cajas_armando||{};   // cajas a medio armar, una por cuenta
     // detectar entradas nuevas de ventaprod escritas externamente (p.ej. cowork)
     const _newVP=d.ventaprod||{};
     const _allIds=new Set();
@@ -3481,32 +3482,65 @@ function enterOficina(){migrarOficina().then(()=>{
   if(!hayAlgo&&ofiTab==='caja')setOfiTab('contar',document.getElementById('tab-ofi-contar'));
   else ofiTab==='caja'?renderOfiCaja():renderOfiContar();
 });}
-// LO QUE VA EN LA CAJA QUE SE ESTÁ ARMANDO. Clave: prodId|variante → unidades.
-// Existe porque casi nunca se despacha exactamente lo que el panel recomienda: a veces entra
-// menos en la caja, a veces se manda otra cosa, y a veces hace falta más de una caja. La
-// recomendación queda como sugerencia —se carga sola— pero el que decide es él.
-let cajaSel={};
+// CAJAS A MEDIO ARMAR. Clave: prodId|variante → unidades. UNA POR CUENTA, y GUARDADAS.
+//
+// Se empaquetan varias cajas a lo largo del día y no siempre de una sentada: se arma la de
+// Adriana, se deja a medias, se arma la de Luciana, se vuelve. Si esto viviera solo en memoria,
+// cambiar de cuenta o cerrar la app borraría lo cargado — y lo peor es que no se notaría hasta
+// volver a mirar. Por eso vive en `cyc/cajas_armando/<cuenta>` y sobrevive a todo.
+//
+// El stock de la oficina NO baja hasta cerrar la caja, así que dos cajas a medio armar podrían
+// pedir las mismas unidades. Por eso el máximo de cada renglón descuenta lo que ya está reservado
+// en las cajas de las OTRAS cuentas (ver cajaMax).
 const _ck=(pid,va)=>pid+'|'+(va||'');
+const cajaDe=(cta)=>((state.cajas_armando||{})[cta]||{}).items||{};
 function setOfiFiltro(c){
   ofiFiltroCuenta=(ofiFiltroCuenta===c?'':c);
-  cajaSel={};                                  // cambiar de cuenta arranca una caja nueva
-  if(ofiFiltroCuenta)return cajaSugerida();    // y arranca con lo sugerido cargado, para editarlo
+  // Si esta cuenta ya tiene una caja a medio armar, se sigue con esa. Si no, arranca con lo
+  // sugerido cargado para editarlo.
+  if(ofiFiltroCuenta&&!Object.keys(cajaDe(ofiFiltroCuenta)).length)return cajaSugerida();
   renderOfiCaja();
 }
-// Carga en la caja lo que el panel recomienda para esta cuenta.
-function cajaSugerida(){
-  cajaSel={};
+async function _guardarCajaArmando(cta,items){
+  state.cajas_armando=state.cajas_armando||{};
+  const hay=Object.keys(items||{}).length;
+  if(hay)state.cajas_armando[cta]={items,ts:Date.now()};
+  else delete state.cajas_armando[cta];
+  await fbSet('cajas_armando/'+cta,hay?{items,ts:Date.now()}:null);
+}
+// Unidades de un producto/variante ya reservadas en las cajas de las OTRAS cuentas.
+function reservadoEnOtras(pid,va,ctaActual){
+  let n=0;
+  Object.entries(state.cajas_armando||{}).forEach(([cta,c])=>{
+    if(cta===ctaActual)return;
+    n+=(c&&c.items&&c.items[_ck(pid,va)])||0;
+  });
+  return n;
+}
+const cajaMax=(f,cta)=>Math.max(0,f.hay-reservadoEnOtras(f.p.id,f.variante,cta));
+async function cajaSugerida(){
   if(!ofiFiltroCuenta)return renderOfiCaja();
+  const items={};
   repartoOficina().forEach(f=>(f.sug||[]).forEach(x=>{
     if(x.cuenta!==ofiFiltroCuenta||!(x.mandar>0))return;
-    cajaSel[_ck(f.p.id,f.variante)]=x.mandar;
+    const tope=cajaMax(f,ofiFiltroCuenta);
+    const u=Math.min(x.mandar,tope);
+    if(u>0)items[_ck(f.p.id,f.variante)]=u;
   }));
+  await _guardarCajaArmando(ofiFiltroCuenta,items);
   renderOfiCaja();
 }
-function cajaVaciar(){cajaSel={};renderOfiCaja();}
-function setCajaItem(pid,va,val,max){
+async function cajaVaciar(){
+  if(!ofiFiltroCuenta)return;
+  await _guardarCajaArmando(ofiFiltroCuenta,{});
+  renderOfiCaja();
+}
+async function setCajaItem(pid,va,val,max){
+  if(!ofiFiltroCuenta)return;
+  const items={...cajaDe(ofiFiltroCuenta)};
   const n=Math.max(0,Math.min(parseInt(String(val).replace(/[^\d]/g,''))||0,max));
-  if(n>0)cajaSel[_ck(pid,va)]=n; else delete cajaSel[_ck(pid,va)];
+  if(n>0)items[_ck(pid,va)]=n; else delete items[_ck(pid,va)];
+  await _guardarCajaArmando(ofiFiltroCuenta,items);
   renderOfiCaja();
 }
 function renderOfiCaja(){
@@ -3535,7 +3569,10 @@ function renderOfiCaja(){
   // Cada botón muestra cuántas unidades le tocan: así se ve de un vistazo a quién hay que
   // mandarle sin tener que entrar cuenta por cuenta.
   if(fc)fc.innerHTML=`<button class="pf-btn${ofiFiltroCuenta===''?' active-all':''}" onclick="setOfiFiltro('')">Todas${aMandar?` <strong>${aMandar}</strong>`:''}</button>`
-    +LOCS.map(l=>`<button class="pf-btn${ofiFiltroCuenta===l?' active-all':''}" onclick="setOfiFiltro('${l}')">${l}${porCta[l]?` <strong>${porCta[l]}</strong>`:''}</button>`).join('');
+    +LOCS.map(l=>{
+      const u=Object.values(cajaDe(l)).reduce((a,x)=>a+x,0);
+      return `<button class="pf-btn${ofiFiltroCuenta===l?' active-all':''}" onclick="setOfiFiltro('${l}')">${l}${porCta[l]?` <strong>${porCta[l]}</strong>`:''}${u?` <span style="color:var(--accent2)" title="caja a medio armar">📦${u}</span>`:''}</button>`;
+    }).join('');
   // Con una cuenta elegida se entra en MODO ARMAR CAJA: se listan TODOS los productos que hay en
   // casa (no solo los que la cuenta "necesita"), cada uno con una casilla para poner cuántos van
   // de verdad en esta caja. La recomendación se carga sola como punto de partida, pero se cambia.
@@ -3543,8 +3580,9 @@ function renderOfiCaja(){
   const vis=armando?filas.filter(f=>f.hay>0):filas;
   // Se suma SOLO lo que sigue estando en pantalla: si una fila desapareció (porque ya se despachó)
   // su número no puede seguir contando en la caja.
+  const cajaAct=armando?cajaDe(ofiFiltroCuenta):{};
   const _visK=new Set(vis.map(f=>_ck(f.p.id,f.variante)));
-  const uCaja=Object.entries(cajaSel).reduce((a,[k,x])=>a+(_visK.has(k)?x:0),0);
+  const uCaja=Object.entries(cajaAct).reduce((a,[k,x])=>a+(_visK.has(k)?x:0),0);
   const btnDesp=document.getElementById('ofi-btn-despachar');
   if(btnDesp){
     btnDesp.style.display=armando?'':'none';
@@ -3558,7 +3596,7 @@ function renderOfiCaja(){
     barra.style.display=armando?'flex':'none';
     barra.innerHTML=armando?`<button class="pf-btn" onclick="cajaSugerida()">Cargar lo sugerido</button>`
       +`<button class="pf-btn" onclick="cajaVaciar()">Vaciar caja</button>`
-      +`<span style="font-size:.66rem;color:var(--muted);align-self:center">Poné cuántas unidades van en ESTA caja. Si no entra todo, cerrás ésta y armás la siguiente.</span>`:'';
+      +`<span style="font-size:.66rem;color:var(--muted);align-self:center">Poné cuántas unidades van en ESTA caja. Si no entra todo, cerrás ésta y armás la siguiente. Se guarda sola: podés dejarla a medias.</span>`:'';
   }
   if(!vis.length){
     // El vacío tiene que decir QUÉ HACER, no sólo que está vacío. Pedido suyo del 18/08/2026:
@@ -3595,14 +3633,17 @@ function renderOfiCaja(){
     else if(f.sobra>0)pie=`<div style="font-size:.66rem;color:var(--muted);margin-top:5px">Te sobran ${f.sobra} u. después de repartir. No hace falta mandarlas.</div>`;
 
     // En modo armar caja, cada renglón tiene su casilla: lo que va DE VERDAD en esta caja.
-    const enCaja=armando?(cajaSel[_ck(f.p.id,f.variante)]||0):0;
-    const casilla=armando?`<input type="number" inputmode="numeric" value="${enCaja||''}" placeholder="0" max="${f.hay}"
+    const enCaja=armando?(cajaAct[_ck(f.p.id,f.variante)]||0):0;
+    // Tope: lo que hay en casa MENOS lo que ya está apartado en las cajas de las otras cuentas.
+    const tope=armando?cajaMax(f,ofiFiltroCuenta):f.hay;
+    const otras=f.hay-tope;
+    const casilla=armando?`<input type="number" inputmode="numeric" value="${enCaja||''}" placeholder="0" max="${tope}"
         style="flex:none;width:66px;text-align:center;background:var(--bg);border:1px solid ${enCaja>0?'var(--accent2)':'var(--border2)'};border-radius:8px;color:var(--text);font-family:'DM Mono',monospace;font-size:.95rem;padding:8px 4px;outline:none"
-        onchange="setCajaItem('${f.p.id}',${JSON.stringify(f.variante||'').replace(/"/g,'&quot;')},this.value,${f.hay})">`:'';
+        onchange="setCajaItem('${f.p.id}',${JSON.stringify(f.variante||'').replace(/"/g,'&quot;')},this.value,${tope})">`:'';
     return `<div style="padding:12px 14px;background:var(--surface);border:1px solid ${enCaja>0?'var(--accent2)':'var(--border)'};border-radius:var(--r);margin-bottom:8px">
       <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap">
         <div class="pi-prod" style="flex:1;min-width:150px">${f.p.name}${f.variante?` <span style="color:var(--accent2);font-weight:700">· ${f.variante}</span>`:(f.sinContarPorAroma?' <span style="color:var(--muted);font-weight:400">· sin variante</span>':'')}</div>
-        <div style="font-size:.68rem;color:var(--muted)">tenés ${f.hay} u.</div>
+        <div style="font-size:.68rem;color:var(--muted)">tenés ${f.hay} u.${otras>0?` <span style="color:var(--amber)">(${otras} en otra caja)</span>`:''}</div>
         ${casilla}
       </div>
       ${lineas}${pie}
@@ -3726,8 +3767,9 @@ async function cerrarCaja(cuenta){
   if(!cuenta)return;
   const filas=repartoOficina();
   const idx={};filas.forEach(f=>{idx[_ck(f.p.id,f.variante)]={p:f.p,variante:f.variante||'',hay:f.hay};});
+  const guardada=cajaDe(cuenta);
   const items=[];
-  for(const [k,u] of Object.entries(cajaSel)){
+  for(const [k,u] of Object.entries(guardada)){
     const f=idx[k];if(!f||!(u>0))continue;
     items.push({prodId:f.p.id,nombre:f.p.name,variante:f.variante,u:Math.min(u,f.hay)});
   }
@@ -3761,7 +3803,7 @@ async function cerrarCaja(cuenta){
       await fbSet('inventory/'+pk,nv||null);
     }
   }
-  cajaSel={};
+  await _guardarCajaArmando(cuenta,{});   // la caja se cerró: deja de estar a medio armar
   await log('Caja despachada a '+cuenta+': '+uTot+' u.'+(track?' · '+track:''));
   toast(track?'Caja cerrada ✓':'Caja cerrada ✓ · pegale el seguimiento en Envíos a Full',4500);
   syncOfiMati();renderOfiCaja();renderOfiContar();
@@ -8682,7 +8724,7 @@ document.addEventListener('click',e=>{if(fnavOpen&&!e.target.closest('#fnav-btn'
         <span style="font-size:.75rem;color:var(--muted)">Si no ves los últimos cambios, forzá la actualización</span>
         <button class="btn" style="background:rgba(56,189,248,.12);color:var(--blue);border:1px solid rgba(56,189,248,.3)" onclick="actualizarApp()">🔄 Buscar actualizaciones</button>
       </div>
-      <div style="font-size:.66rem;color:var(--muted);margin-top:12px">CYC · Versión 11.3</div>
+      <div style="font-size:.66rem;color:var(--muted);margin-top:12px">CYC · Versión 11.4</div>
     </div>
 
     <div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:18px 20px;margin-bottom:14px">
