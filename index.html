@@ -1863,6 +1863,7 @@ function startApp(){
     const d=snap.val()||{};
     state.products=d.products ?Object.values(d.products).sort((a,b)=>(a.name||'').localeCompare(b.name||'','es',{sensitivity:'base'})):[];
     state.inventory=d.inventory||{};
+    Object.assign(state.inventory,_invPending); // no dejar que un snapshot pise lo recién escrito
     state.history  =d.history  ?Object.values(d.history).sort((a,b)=>b.ts-a.ts):[];
     state.finanzas =d.finanzas ||{};
     Object.assign(state.finanzas,_finPending); // preservar ediciones locales pendientes de confirmar
@@ -2265,7 +2266,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='13.3';
+const APP_VERSION='13.4';
 // El problema real que esto resuelve no es curiosidad: es que el celular guarda la app y sigue
 // mostrando la de ayer sin avisar. Varias veces se revisó un cambio que ya estaba subido y no se
 // veía. Por eso, además del número, el chip avisa cuando hay una versión nueva esperando.
@@ -2382,6 +2383,17 @@ function fmtMoneyInput(el){
 /* ── Evitar que el re-render de Firebase borre lo que se está editando ── */
 let pendingRender=false;
 let _finPending={}; // valores de finanzas escritos localmente pero aún no confirmados en la base (no dejar que un snapshot los pise)
+// ── LO MISMO PARA EL INVENTARIO ──────────────────────────────────────────────────────
+// El bug que arregla, contado por él: en "Contar lo que hay" escribís las unidades, tocás OK y el
+// número VUELVE A CERO; al segundo intento queda. No era el teclado ni el guardado.
+// Lo que pasaba: `setQ` guarda con 0,9 s de retardo (para no escribir en la base con cada tecla).
+// En ese rato, cualquier cambio en la base —el robot escribe seguido— dispara una actualización que
+// reemplaza state.inventory ENTERO por lo que hay en el servidor, donde tu número todavía no llegó.
+// La pantalla se vuelve a dibujar con el valor viejo y parece que no se guardó nada. Al segundo
+// intento anda porque para entonces la escritura anterior ya llegó.
+// La solución es la misma que ya estaba hecha para Finanzas: lo escrito localmente y todavía sin
+// confirmar se vuelve a aplicar arriba de cada actualización, hasta que la base lo devuelve.
+let _invPending={};
 let _finFocused=false; // hay un campo de finanzas siendo editado → congelar la recarga de esos campos
 function isEditing(){const a=document.activeElement;return !!a&&/^(INPUT|SELECT|TEXTAREA)$/.test(a.tagName);}
 /* ── POR QUÉ LA PÁGINA SE TRABA EN EL CELULAR MIENTRAS SCROLEÁS ──
@@ -2963,13 +2975,13 @@ function setQ(pid,loc,val,variant=''){
   if(old===nv)return;
   const _pStk=state.products.find(x=>x.id===pid);
   const _totalBefore=_pStk?stockOf(_pStk):0;
-  state.inventory[k]=nv;
+  state.inventory[k]=nv;_invPending[k]=nv;
   // Si es variante, recalcular y actualizar la clave de producto (suma de todas las variantes)
   if(variant){
     const p=state.products.find(x=>x.id===pid);
     const vars=p?.variantes||[];
     const sum=vars.reduce((s,v)=>s+(parseInt(state.inventory[invKeyV(pid,loc,v)])||0),0);
-    state.inventory[invKey(pid,loc)]=sum;
+    state.inventory[invKey(pid,loc)]=sum;_invPending[invKey(pid,loc)]=sum;
   }
   // Reabastecimiento: si el stock TOTAL del producto pasó de 0 a >0, guardar la fecha.
   // Rotación le da 3 días de gracia (es normal que tarde en empezar a venderse).
@@ -2981,11 +2993,13 @@ function setQ(pid,loc,val,variant=''){
   clearTimeout(qTimers[k]);
   qTimers[k]=setTimeout(async()=>{
     await fbSet('inventory/'+k,nv);
+    if(_invPending[k]===nv)delete _invPending[k];   // ya está en la base: puede volver a mandar el servidor
     if(variant){
       const p=state.products.find(x=>x.id===pid);
       const vars=p?.variantes||[];
       const sum=vars.reduce((s,v)=>s+(parseInt(state.inventory[invKeyV(pid,loc,v)])||0),0);
       await fbSet('inventory/'+invKey(pid,loc),sum||null);
+      if(_invPending[invKey(pid,loc)]===sum)delete _invPending[invKey(pid,loc)];
     }
     const p=state.products.find(x=>x.id===pid);
     await log((p?p.name:pid)+(variant?' ['+variant+']':'')+' / '+loc+': '+old+' → '+nv);
@@ -3915,12 +3929,14 @@ async function setOfiVar(pid,variante,val){
   const p=(state.products||[]).find(x=>x.id===pid);if(!p)return;
   const n=Math.max(0,parseInt(String(val).replace(/[^\d]/g,''))||0);
   const vk=invKeyV(pid,OFI,variante);
-  state.inventory[vk]=n;
+  state.inventory[vk]=n;_invPending[vk]=n;
   await fbSet('inventory/'+vk,n||null);
+  if(_invPending[vk]===n)delete _invPending[vk];
   const suma=(p.variantes||[]).reduce((s,v)=>s+(parseInt(state.inventory[invKeyV(pid,OFI,v)])||0),0);
   const pk=invKey(pid,OFI);
-  state.inventory[pk]=suma;
+  state.inventory[pk]=suma;_invPending[pk]=suma;
   await fbSet('inventory/'+pk,suma||null);
+  if(_invPending[pk]===suma)delete _invPending[pk];
   syncOfiMati();renderOfiContar();
 }
 
