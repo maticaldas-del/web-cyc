@@ -1010,6 +1010,8 @@ footer{margin-top:32px;padding-top:14px;border-top:1px solid var(--border);font-
     <div style="font-size:.66rem;color:var(--muted);margin-bottom:10px;line-height:1.5">
       Cuántas unidades tenés de cada producto en tu oficina. Se guarda solo.
     </div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:6px" id="ofi-contar-cuentas"></div>
+    <div id="ofi-contar-nota" style="display:none;font-size:.63rem;color:var(--muted);margin-bottom:10px;line-height:1.5"></div>
     <input class="search-box" id="ofi-contar-search" type="search" placeholder="Buscar producto..." oninput="renderOfiContar()" style="margin-bottom:8px">
     <label style="font-size:.66rem;color:var(--muted);display:flex;align-items:center;gap:6px;margin-bottom:10px">
       <input type="checkbox" id="ofi-solo-con" onchange="renderOfiContar()"> mostrar solo los que tienen algo
@@ -3685,8 +3687,21 @@ async function syncOfiMati(){
   await fbSet('finanzas/of_mia',val);
   updateArqueo();updateHeaderTotal();
 }
+// Cuenta elegida para contar. No cambia lo que se guarda —lo que hay en casa es uno solo— pero
+// deja ver SOLO lo que esa cuenta vende y con SU stock en Full al lado. Contar los 137 productos
+// para armar una caja de Adriana es buscar una aguja; contar los 30 que Adriana vende, no.
+let ofiContarCuenta='';
+function setOfiContarCuenta(c){ofiContarCuenta=(ofiContarCuenta===c?'':c);renderOfiContar();}
 function renderOfiContar(){
   const cont=document.getElementById('ofi-contar-list');if(!cont)return;
+  const fcc=document.getElementById('ofi-contar-cuentas');
+  if(fcc)fcc.innerHTML=`<button class="pf-btn${ofiContarCuenta===''?' active-all':''}" onclick="setOfiContarCuenta('')">Todas</button>`
+    +LOCS.map(l=>`<button class="pf-btn${ofiContarCuenta===l?' active-all':''}" onclick="setOfiContarCuenta('${l}')">${l}</button>`).join('');
+  const nota=document.getElementById('ofi-contar-nota');
+  if(nota){
+    nota.style.display=ofiContarCuenta?'':'none';
+    nota.innerHTML=ofiContarCuenta?`Mostrando solo lo que <strong>${ofiContarCuenta}</strong> tiene publicado, con el stock en Full de esa cuenta. Lo que anotás es lo que tenés en casa, que es uno solo — el filtro no lo parte por cuenta.`:'';
+  }
   // OJO: el cuadro de acá se llama 'ofi-contar-search', NO 'ofi-search'. Había dos con el mismo
   // nombre —este y el de Arqueo → Inventario— y getElementById devuelve siempre el PRIMERO del
   // documento, que es el de la otra pantalla y está siempre vacío: el buscador no filtraba nada.
@@ -3696,6 +3711,20 @@ function renderOfiContar(){
   // El buscador también mira las variantes: escribiendo "paulv" tienen que aparecer sus aromas,
   // y escribiendo un aroma tiene que aparecer ese renglón aunque el nombre del producto no lo diga.
   if(q)prods=prods.filter(p=>normTxt(p.name).includes(q)||(p.variantes||[]).some(v=>normTxt(v).includes(q)));
+  // Filtro por cuenta: se dejan solo los productos que ESA cuenta tiene publicados. Los que tienen
+  // variantes quedan si alguna de sus variantes la publica esa cuenta (después se filtran los
+  // aromas uno por uno más abajo).
+  const cta=ofiContarCuenta;
+  let pubVarCache={};
+  if(cta){
+    prods=prods.filter(p=>{
+      if((p.variantes||[]).length){
+        const pv=pubVarCache[p.id]=cuentasPorVariante(p);
+        return Object.values(pv).some(set=>set.has(cta));
+      }
+      return cuentasConPublicacion(p).includes(cta);
+    });
+  }
   if(solo)prods=prods.filter(p=>stockOficina(p)>0);
   if(!prods.length){cont.innerHTML='<div class="empty-msg">Nada con esa búsqueda.</div>';return;}
   // Lista, NO tabla. En el celular la tabla dejaba la casilla fuera de pantalla y había que
@@ -3713,12 +3742,14 @@ function renderOfiContar(){
     // variante son el desglose.
     const vars=(p.variantes||[]).filter(v=>!q||normTxt(p.name).includes(q)||normTxt(v).includes(q));
     if((p.variantes||[]).length){
-      const filas=vars.map(v=>{
+      const pubV=cta?(pubVarCache[p.id]||cuentasPorVariante(p)):null;
+      const filas=vars.filter(v=>!cta||(pubV[v]&&pubV[v].has(cta))).map(v=>{
         const hay=getQV(p.id,OFI,v);
+        const enFull=cta?getQV(p.id,cta,v):stockOfVar(p,v);
         return `<div style="display:flex;align-items:center;gap:10px;padding:7px 0 7px 12px;border-top:1px solid var(--border)">
           <div style="flex:1;min-width:0">
             <div style="font-size:.75rem;line-height:1.3;word-break:break-word">${v}</div>
-            <div style="font-size:.6rem;color:var(--muted);margin-top:2px">en Full: ${fmtN(stockOfVar(p,v))}</div>
+            <div style="font-size:.6rem;color:var(--muted);margin-top:2px">en Full${cta?' de '+cta:''}: ${fmtN(enFull)}</div>
           </div>
           ${casilla(hay,hay>0,`setOfiVar('${p.id}',${JSON.stringify(v).replace(/"/g,'&quot;')},this.value)`)}
         </div>`;
@@ -3727,7 +3758,7 @@ function renderOfiContar(){
         <div style="display:flex;align-items:center;gap:10px">
           <div style="flex:1;min-width:0">
             <div style="font-size:.8rem;font-weight:700;line-height:1.3;word-break:break-word">${p.name}</div>
-            <div style="font-size:.62rem;color:var(--muted);margin-top:2px">en Full: ${fmtN(stockOf(p))} · ${(p.variantes||[]).length} variantes</div>
+            <div style="font-size:.62rem;color:var(--muted);margin-top:2px">en Full${cta?' de '+cta:''}: ${fmtN(cta?getQ(p.id,cta):stockOf(p))} · ${(p.variantes||[]).length} variantes</div>
           </div>
           <div style="flex:none;width:72px;text-align:center;font-family:'DM Mono',monospace;font-size:1rem;color:${enCasa>0?'var(--accent2)':'var(--muted)'}">${enCasa||0}</div>
         </div>
@@ -3737,7 +3768,7 @@ function renderOfiContar(){
     return `<div style="display:flex;align-items:center;gap:10px;padding:10px 12px;background:${enCasa>0?'var(--surface2)':'var(--surface)'};border:1px solid var(--border);border-radius:8px;margin-bottom:6px">
       <div style="flex:1;min-width:0">
         <div style="font-size:.8rem;line-height:1.3;word-break:break-word">${p.name}</div>
-        <div style="font-size:.62rem;color:var(--muted);margin-top:2px">en Full: ${fmtN(stockOf(p))}</div>
+        <div style="font-size:.62rem;color:var(--muted);margin-top:2px">en Full${cta?' de '+cta:''}: ${fmtN(cta?getQ(p.id,cta):stockOf(p))}</div>
       </div>
       ${casilla(enCasa,enCasa>0,`setQ('${p.id}','${OFI}',this.value);syncOfiMati();renderOfiContar()`)}
     </div>`;
@@ -6056,18 +6087,24 @@ function ventasPorCuentaVar(p,varDeMla){
 // Reparto de UN producto con variantes: se hace variante por variante. Contar el producto entero
 // tapa el caso que más importa — el Paulvic tenía 97 unidades en casa y Free Love en CERO, y la
 // pantalla decía "ninguna cuenta lo necesita" porque miraba el total.
-function _repartoVariantes(p,hayTotal,tr){
-  const varDeMla=_varPorMla(p);
-  const ventasV=ventasPorCuentaVar(p,varDeMla);
-  // Qué cuentas publican cada variante (por su publicación, no por el producto).
-  const pubV={};
+// Qué cuentas publican CADA variante (por su publicación, no por el producto): con un aroma por
+// publicación, una cuenta puede tener algunos aromas y otros no.
+function cuentasPorVariante(p,varDeMla){
+  const mapa=varDeMla||_varPorMla(p);
+  const out={};
   Object.entries(state.mllinks||{}).forEach(([mla,e])=>{
     if(!e||e.prodId!==p.id)return;
     if((e.status||'')==='closed')return;
-    const va=varDeMla[mla];if(!va)return;
+    const va=mapa[mla];if(!va)return;
     if(!e.cuenta||!LOCS.includes(e.cuenta))return;
-    (pubV[va]=pubV[va]||new Set()).add(e.cuenta);
+    (out[va]=out[va]||new Set()).add(e.cuenta);
   });
+  return out;
+}
+function _repartoVariantes(p,hayTotal,tr){
+  const varDeMla=_varPorMla(p);
+  const ventasV=ventasPorCuentaVar(p,varDeMla);
+  const pubV=cuentasPorVariante(p,varDeMla);
   const filas=[];
   let repartido=0;
   for(const va of (p.variantes||[])){
@@ -8724,7 +8761,7 @@ document.addEventListener('click',e=>{if(fnavOpen&&!e.target.closest('#fnav-btn'
         <span style="font-size:.75rem;color:var(--muted)">Si no ves los últimos cambios, forzá la actualización</span>
         <button class="btn" style="background:rgba(56,189,248,.12);color:var(--blue);border:1px solid rgba(56,189,248,.3)" onclick="actualizarApp()">🔄 Buscar actualizaciones</button>
       </div>
-      <div style="font-size:.66rem;color:var(--muted);margin-top:12px">CYC · Versión 11.4</div>
+      <div style="font-size:.66rem;color:var(--muted);margin-top:12px">CYC · Versión 11.5</div>
     </div>
 
     <div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:18px 20px;margin-bottom:14px">
