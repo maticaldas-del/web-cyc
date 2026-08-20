@@ -770,13 +770,40 @@ async function nivelarGrupos(db, links, tokensRun, DRY, pName, sellerIds) {
   return avisos;
 }
 
+// ── EL PISO DE 30%, COMO FRENO Y NO COMO BUENA INTENCIÓN ─────────────────────
+// Regla suya del 20/08/2026, textual: "NUNCA BAJAR NINGUN PRODUCTO A MENOS DE 30%".
+//
+// Estaba respetada en cada comando por separado, calculando el precio del piso antes de bajar.
+// El problema de eso es que la regla vive repartida en tres lugares y depende de que el próximo
+// comando que se escriba se acuerde de aplicarla. Un solo olvido y se vende perdiendo.
+//
+// Ahora el freno está en la ÚNICA función que baja precios, y es obligatorio: quien quiera bajar
+// tiene que declarar en qué margen queda. Si no lo declara, o si queda abajo del piso, NO SE BAJA.
+// Un comando nuevo que se olvide de pasar el dato no baja nada — falla ruidoso, que es lo correcto
+// para algo que mueve plata.
+const PISO_DURO = 30;
+function _chequeoPiso(chequeo) {
+  if (!chequeo || typeof chequeo.margen !== 'number' || !isFinite(chequeo.margen)) {
+    return { ok: false, err: 'sin-margen-declarado (regla: no se baja sin saber en qué margen queda)' };
+  }
+  if (chequeo.margen < PISO_DURO) {
+    // Con un decimal a propósito: redondeando, un 29,9% se leía "quedaría en 30%, abajo del piso
+    // de 30%", que parece un error del programa y no un freno bien puesto.
+    return { ok: false, err: `quedaria-en-${chequeo.margen.toFixed(1)}%-abajo-del-piso-de-${PISO_DURO}%` };
+  }
+  return { ok: true };
+}
+
 // ── Poner un precio EXACTO en ML (puede BAJAR) ─────────────────────────────
 // Se usa solo para corregir precios que quedaron demasiado altos. A diferencia
-// de raisePrice, este SÍ baja, así que trae dos frenos propios:
+// de raisePrice, este SÍ baja, así que trae tres frenos propios:
+//   · el piso de 30% (obligatorio: hay que declarar en qué margen queda),
 //   · nunca baja más del 25% de una (por si el precio objetivo salió mal),
 //   · nunca deja el precio en 0 ni sube por acá (para subir está raisePrice).
 // Devuelve {ok, from, to} o {ok:false, err}.
-async function setPriceTo(itemId, variationId, nuevo, token) {
+async function setPriceTo(itemId, variationId, nuevo, token, chequeo) {
+  const g = _chequeoPiso(chequeo);
+  if (!g.ok) return { ok: false, err: g.err };
   let item;
   try { item = await mlGet('/items/' + itemId + '?attributes=id,price,status,variations', token); }
   catch { return { ok: false, err: 'sin-item' }; }
@@ -7432,7 +7459,12 @@ async function main() {
             } catch { r = { ok: false, err: 'red' }; }
           }
         } else if (actual < precioFijo) r = await raisePriceTo(mb.mla, precioFijo, tok);
-        else r = await setPriceTo(mb.mla, null, precioFijo, tok);
+        else {
+          // `fijar` pone un precio a mano y NO calcula ningún margen, así que bajar por acá es bajar
+          // a ciegas. Con la regla del piso de 30% eso no puede pasar más: subir sigue igual, bajar
+          // hay que hacerlo con `bajarcaja`/`corregir`, que sí calculan en cuánto queda.
+          r = { ok: false, err: `fijar no puede BAJAR: no calcula el margen y el piso de ${PISO_DURO}% no se puede verificar. Para bajar usá bajarcaja o corregir.` };
+        }
         if (r.ok) {
           if (r.to > r.from) sube++; else baja++;
           hechos.push({ title: mb.title, from: r.from, to: r.to, cuenta: cta });
@@ -7671,7 +7703,9 @@ async function main() {
       console.log(`\n══ CORRIGIENDO ${objetivo.length} precio${objetivo.length > 1 ? 's' : ''} en ML (bajando a la meta ${(META * 100).toFixed(0)}%) ══`);
       let okN = 0, errN = 0; const hechos = [];
       for (const f of objetivo) {
-        const r = DRY ? { ok: false, err: 'DRY' } : await setPriceTo(f.mla, null, f.deb, f.tok);
+        // El precio se calculó justo PARA la meta y se redondea hacia arriba, así que el margen que
+        // queda es la meta o un poco más. Si la meta guardada fuese menor al piso, el freno corta.
+        const r = DRY ? { ok: false, err: 'DRY' } : await setPriceTo(f.mla, null, f.deb, f.tok, { margen: META * 100 });
         if (r.ok) { okN++; hechos.push({ nom: f.nom, from: r.from, to: r.to }); console.log(`  ✓ ${f.mla} · ${f.nom}: ${money(r.from)} → ${money(r.to)}`); }
         else { errN++; console.log(`  ✗ ${f.mla} · ${f.nom}: no se pudo (${r.err})`); }
       }
@@ -9814,7 +9848,9 @@ async function main() {
       console.log(`\n══ BAJANDO ${objetivo.length} precio${objetivo.length > 1 ? 's' : ''} en ML ══`);
       let okN = 0, errN = 0; const hechos = [];
       for (const f of objetivo) {
-        const r = DRY ? { ok: false, err: 'DRY' } : await setPriceTo(f.mla, null, f.nuevo, f.tok);
+        // mgNuevo es el margen EXACTO al precio nuevo, calculado unas líneas más arriba con el envío
+        // del peor caso. Es el número que el freno del piso tiene que mirar.
+        const r = DRY ? { ok: false, err: 'DRY' } : await setPriceTo(f.mla, null, f.nuevo, f.tok, { margen: f.mgNuevo });
         if (!r.ok) { errN++; console.log(`  ✗ ${f.mla} · ${f.nom}: no se pudo (${r.err})`); continue; }
         // Verificación obligatoria: se relee de ML y tiene que estar el precio pedido.
         let quedo = null;

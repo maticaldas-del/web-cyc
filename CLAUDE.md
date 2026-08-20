@@ -1,3 +1,22 @@
+
+## PISO DURO: NUNCA BAJAR NINGÚN PRODUCTO A MENOS DE 30%
+
+Regla suya, textual, del 20/08/2026: **"NUNCA BAJAR NINGUN PRODUCTO A MENOS DE 30%."**
+
+No es una guía, es un freno en el código. Está en `setPriceTo`, que es la ÚNICA función que baja
+precios en ML, y es OBLIGATORIO: quien quiera bajar tiene que declarar en qué margen queda
+(`setPriceTo(mla, varId, precio, token, { margen })`).
+
+  - Si no lo declara → NO BAJA. Un comando nuevo que se olvide del dato falla ruidoso.
+  - Si queda abajo de 30 → NO BAJA, y dice en cuánto habría quedado.
+
+Por qué está ahí y no en cada comando: la regla vivía repartida en tres lugares y dependía de que
+el próximo comando que se escribiera se acordara de aplicarla. Un solo olvido = vender perdiendo.
+
+`fijar:<grupo>:<precio>` YA NO PUEDE BAJAR. Pone un precio a mano sin calcular ningún margen, o sea
+bajaba a ciegas. Subir sigue funcionando igual. Para bajar: `bajarcaja` o `corregir`, que calculan.
+
+
 # CYC · panel de MercadoLibre
 
 Esto lo lee Claude solo al abrir cualquier chat en este repo. **Sirve para no tener que explicar
