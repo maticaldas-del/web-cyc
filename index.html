@@ -1117,6 +1117,7 @@ footer{margin-top:32px;padding-top:14px;border-top:1px solid var(--border);font-
       <button class="vbtn"        id="rotsort-ventas"  onclick="setRotSort('ventas',this)">📦 Ventas</button>
       <button class="vbtn"        id="rotsort-rotacion" onclick="setRotSort('rotacion',this)">🔄 Rotación</button>
       <button class="vbtn"        id="rotsort-margen"  onclick="setRotSort('margen',this)" title="Los de MÁS margen primero: son los que tienen de dónde recortar si hace falta que roten.">💰 Margen</button>
+      <button class="vbtn"        id="rotsort-caja"    onclick="setRotSort('caja',this)" title="Primero los que PIERDEN la caja de compra: están publicados y la venta se la lleva otro. Ahí el precio no es el problema.">🥊 Caja ML</button>
     </div>
   </div>
   <div class="tbl-outer">
@@ -1129,6 +1130,7 @@ footer{margin-top:32px;padding-top:14px;border-top:1px solid var(--border);font-
         <th style="min-width:100px">Rotación</th>
         <th style="min-width:110px">⏳ Días sin vender</th>
         <th style="min-width:95px" title="Lo que deja hoy sobre el costo, con el precio que tiene puesto en ML ahora. Es la MISMA cuenta que muestra la pantalla Margen ML. Sirve para ver de un vistazo cuánto aire hay antes de tocar un precio.">💰 Margen hoy</th>
+        <th style="min-width:110px" title="En las publicaciones de CATÁLOGO, ML muestra un solo botón de comprar y se lo lleva UN vendedor. 🟢 Ganás = la venta es tuya · 🟠 Compartís = ML reparte con otro (subir el precio te saca) · 🔴 Perdés = la venta se la lleva otro y tu publicación no la ve nadie · ⚪ = no es de catálogo, no hay caja que pelear. Ojo: el color de acá NO significa lo mismo que el del margen de al lado.">🥊 Caja ML</th>
         <th style="min-width:100px">Estado</th>
       </tr></thead>
       <tbody id="rot-body"></tbody>
@@ -6880,6 +6882,52 @@ async function vaciarPapelera(){
 // A propósito muestra los PUNTOS de aire y no unos pesos de precio sugerido: la baja de precio no
 // se traduce uno a uno al margen (ML se queda con su comisión de lo que recortes), y tirar acá un
 // "bajalo $X" sería justo lo que la regla de no bajar precios solo quiere evitar.
+// ── LA CAJA DE COMPRA DE UN PRODUCTO ──────────────────────────────────────────────────
+// Contesta la pregunta que el margen no contesta: ¿la venta es nuestra o del otro?
+// En una publicación de CATÁLOGO, ML muestra UN SOLO botón de comprar y se lo lleva un vendedor.
+// Si la caja la tiene otro, la publicación está activa, con stock y con buen margen, y NO VENDE:
+// el comprador ni la ve. Por eso va justo al lado del margen — son los dos motivos distintos por
+// los que un producto puede estar frenado, y el remedio de cada uno es el opuesto.
+//
+// El dato lo deja el robot en cyc/mllinks/<MLA>/caja (una vez por hora, o a mano con `cajacompra`).
+// La web no puede preguntárselo a ML por su cuenta: no tiene el token. Es el mismo camino que ya
+// usan las visitas, a propósito.
+//
+// Un producto suele tener varias publicaciones y pueden estar en estados distintos. La regla es
+// "lo MEJOR que tenemos", porque con que una sola gane la caja el producto se vende:
+//   alguna gana → verde · si no, alguna comparte → naranja · si todas pierden → rojo.
+function cajaMLDe(p){
+  const L=state.mllinks||{};
+  const n={winning:0,sharing:0,losing:0,nocat:0,sincaja:0};
+  let ts=0,ptw=0,pubs=0;
+  for(const e of Object.values(L)){
+    if(!e||e.prodId!==p.id||e.ignored)continue;
+    if((e.status||'')==='closed')continue;
+    if(!e.caja||!(e.caja in n))continue;
+    n[e.caja]++;pubs++;
+    if((e.cajaTs||0)>ts)ts=e.cajaTs;
+    // El precio para ganar que se muestra es el MÁS ALTO de las que perdemos: es el que alcanza
+    // para todas. Mostrar el más barato haría creer que con eso se recupera la caja en todas.
+    if(e.caja==='losing'&&(e.cajaPtw||0)>ptw)ptw=e.cajaPtw;
+  }
+  if(!pubs)return null;
+  const st=n.winning?'winning':n.sharing?'sharing':n.losing?'losing':'nocat';
+  return {st,n,ts,ptw,pubs};
+}
+function rotCajaHtml(r){
+  const c=r.caja;
+  if(!c)return `<span style="color:var(--muted)" title="Todavía no hay dato de caja de compra para este producto. Lo deja el robot una vez por hora, y solo de las publicaciones ACTIVAS: si el producto está pausado o sin publicación viva, acá va a decir siempre &quot;—&quot;.">—</span>`;
+  const dias=c.ts?Math.floor((Date.now()-c.ts)/86400000):null;
+  const cuando=c.ts?` · dato de ${dias>=1?`hace ${dias} día(s)`:'hoy'}`:'';
+  const detalle=` · ${c.pubs} publicación(es): ${c.n.winning} ganando, ${c.n.sharing} compartiendo, ${c.n.losing} perdiendo, ${c.n.nocat+c.n.sincaja} sin catálogo${cuando}`;
+  if(c.st==='winning')
+    return `<span style="font-weight:700;color:var(--green)" title="GANÁS LA CAJA DE COMPRA. El botón de comprar del catálogo es tuyo: la venta la hacés vos. Si igual no vende, el problema NO es la competencia — mirá visitas, foto o título.${detalle}">🟢 Ganás</span>`;
+  if(c.st==='sharing')
+    return `<span style="font-weight:700;color:var(--amber)" title="COMPARTÍS LA CAJA. ML te reparte las ventas con otro vendedor que está al mismo precio. Vendés, pero la mitad. OJO: SUBIRLE EL PRECIO TE SACA DEL REPARTO.${detalle}">🟠 Compartís</span>`;
+  if(c.st==='losing')
+    return `<span style="font-weight:700;color:var(--red)" title="PERDÉS LA CAJA: la venta se la lleva otro vendedor. La publicación está viva pero el comprador ni la ve, así que puede tener stock, buen margen y cero ventas para siempre.${c.ptw?` ML dice que se gana a ${fmt(c.ptw)} — pero eso NO quiere decir que convenga bajar hasta ahí: primero hay que ver si ese precio llega al piso de margen.`:''}${detalle}">🔴 Perdés</span>`;
+  return `<span style="color:var(--muted)" title="Ninguna de sus publicaciones es de catálogo, así que no hay caja de compra que ganar ni perder: es una publicación propia y compite sola.${detalle}">⚪ Sin catálogo</span>`;
+}
 function rotMargenHtml(r){
   const PISO=parseFloat((state.mlconfig||{}).minPct)||30;
   if(r.margen==null)
@@ -6899,7 +6947,7 @@ function rotDiasSinVenderHtml(dias){
   const dot=dias>=60?'🔴':dias>=30?'🟠':'🟢';
   return `<span style="color:${color}">${dot} ${dias}d</span>`;
 }
-let rotSortMode='estado'; // 'estado' | 'capital' | 'ventas' | 'rotacion' | 'margen'
+let rotSortMode='estado'; // 'estado' | 'capital' | 'ventas' | 'rotacion' | 'margen' | 'caja'
 function setRotSort(mode,btn){
   rotSortMode=mode;
   document.querySelectorAll('[id^="rotsort-"]').forEach(b=>b.classList.remove('active'));
@@ -7114,7 +7162,7 @@ function renderFacturas(){
 function renderRotacionStock(){
   const tbody=document.getElementById('rot-body');if(!tbody)return;
   const prods=(state.products||[]).filter(p=>p&&p.name);
-  if(!prods.length){tbody.innerHTML='<tr><td colspan="8" style="text-align:center;color:var(--muted);padding:18px">Sin productos.</td></tr>';return;}
+  if(!prods.length){tbody.innerHTML='<tr><td colspan="9" style="text-align:center;color:var(--muted);padding:18px">Sin productos.</td></tr>';return;}
 
   // ── Período disponible (máx 60 días) ───────────────────────────
   // Fecha de arranque del negocio. Durante los primeros 60 días normaliza por
@@ -7181,8 +7229,12 @@ function renderRotacionStock(){
     // frenado con 45% tiene de dónde recortar; uno con 31% ya está pegado al piso y bajarlo es
     // vender perdiendo.
     const mg=margenMLDe(p);
+    // La caja de compra va al lado del margen porque son las DOS razones distintas por las que un
+    // producto puede estar frenado, y se arreglan al revés: margen bajo = hay que subir el precio;
+    // caja perdida = el precio no tiene nada que ver, la venta se la lleva otro.
     return{name:p.name,capital,ventasPeriodo,rotNorm,estadoKey,estadoHtml,stock,diasSinVender,
-      margen:mg.margen,margenSinEnvio:mg.sinEnvio,margenNeto:mg.neto,margenCosto:mg.costo};
+      margen:mg.margen,margenSinEnvio:mg.sinEnvio,margenNeto:mg.neto,margenCosto:mg.costo,
+      caja:cajaMLDe(p)};
   });
 
   // ── Puntaje de rotación: % del capital ($) atascado en productos "Muerto" ──
@@ -7231,6 +7283,15 @@ function renderRotacionStock(){
       const ma=a.margen==null?-Infinity:a.margen, mb=b.margen==null?-Infinity:b.margen;
       return mb-ma||b.capital-a.capital;
     }
+    // Por caja: primero los que la PIERDEN, que son los que tienen problema y no se ve en ningún
+    // otro número. Después los que comparten, y al final los que ganan y los que no son de
+    // catálogo (esos no tienen nada para revisar acá). Dentro de cada grupo, por capital: si hay
+    // plata parada por perder la caja, que aparezca arriba.
+    if(rotSortMode==='caja'){
+      const O={losing:0,sharing:1,winning:2,nocat:3,sincaja:3};
+      const oa=a.caja?O[a.caja.st]:4, ob=b.caja?O[b.caja.st]:4;
+      return oa-ob||b.capital-a.capital;
+    }
     // estado: Muerto → Lento → Sano, luego por capital desc
     return ORDER[a.estadoKey]-ORDER[b.estadoKey]||b.capital-a.capital;
   });
@@ -7243,6 +7304,7 @@ function renderRotacionStock(){
     <td style="text-align:right;font-family:'DM Mono',monospace">${r.stock>0?r.rotNorm.toFixed(2):'—'}</td>
     <td style="text-align:right">${rotDiasSinVenderHtml(r.diasSinVender)}</td>
     <td style="text-align:right">${rotMargenHtml(r)}</td>
+    <td style="text-align:right">${rotCajaHtml(r)}</td>
     <td>${r.estadoHtml}</td>
   </tr>`).join('');
 }
@@ -9115,7 +9177,7 @@ document.addEventListener('click',e=>{if(fnavOpen&&!e.target.closest('#fnav-btn'
         <span style="font-size:.75rem;color:var(--muted)">Si no ves los últimos cambios, forzá la actualización</span>
         <button class="btn" style="background:rgba(56,189,248,.12);color:var(--blue);border:1px solid rgba(56,189,248,.3)" onclick="actualizarApp()">🔄 Buscar actualizaciones</button>
       </div>
-      <div style="font-size:.66rem;color:var(--muted);margin-top:12px">CYC · Versión 12.5</div>
+      <div style="font-size:.66rem;color:var(--muted);margin-top:12px">CYC · Versión 12.6</div>
     </div>
 
     <div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:18px 20px;margin-bottom:14px">

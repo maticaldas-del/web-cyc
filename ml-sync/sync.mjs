@@ -427,6 +427,70 @@ async function cajasQueLlegaron(db, accounts, labels, products, DRY) {
   };
 }
 
+// ── LA CAJA DE COMPRA DE CADA PUBLICACIÓN, GUARDADA PARA QUE LA VEA LA PANTALLA ───────
+// Qué contesta, y no lo contesta ningún otro número del panel: en una publicación de CATÁLOGO
+// ML muestra UN SOLO botón de comprar y se lo lleva un vendedor. Si la caja la tiene otro, la
+// publicación está activa, con stock y con buen margen… y no vende, porque el comprador ni la ve.
+// Eso no se deduce del precio, ni del margen, ni de las ventas: hay que preguntárselo a ML.
+//
+// Por qué se guarda en vez de pedirlo cuando se mira la pantalla: la web no tiene el token de ML
+// (ni puede tenerlo). El mismo camino que ya usan las visitas — el robot pregunta y deja el dato
+// en cyc/mllinks/<MLA>, la pantalla lo lee de ahí.
+//
+// Los tres estados que devuelve ML (`/items/<MLA>/price_to_win`) se guardan normalizados, para
+// que la pantalla no tenga que conocer los nombres de ML:
+//   winning → la caja es nuestra · sharing → la compartimos · losing → la tiene otro
+// Y dos más nuestros: `nocat` (no es de catálogo, no hay caja que pelear) y `sincaja` (es de
+// catálogo pero ML no informa ganador).
+//
+// Si ML no contesta para una publicación NO se escribe nada: queda el dato de la vuelta anterior.
+// Mejor un dato de hace una hora que un "no sé" que borre lo que sabíamos.
+async function cajaDeCompraML(db, accounts, labels, DRY, soloCta) {
+  const links = (await db.get('cyc/mllinks')) || {};
+  const upd = {};
+  const res = { winning: 0, sharing: 0, losing: 0, nocat: 0, sincaja: 0, mirados: 0, filas: [] };
+  for (const label of labels) {
+    if (soloCta && label.toLowerCase() !== String(soloCta).toLowerCase()) continue;
+    const acc = accounts[label]; if (!acc?.refresh_token) continue;
+    let tok;
+    try {
+      const t = await mlRefresh(ML_CLIENT_ID, ML_CLIENT_SECRET, acc.refresh_token);
+      await db.patch('mlapi/tokens/' + label, { refresh_token: t.refresh_token, updated_ts: Date.now() });
+      tok = t.access_token;
+    } catch { continue; }
+    const ids = Object.entries(links).filter(([m, e]) =>
+      m.startsWith('MLA') && e && e.cuenta === label && !e.ignored && (e.status || '') !== 'closed').map(([m]) => m);
+    for (let k = 0; k < ids.length; k += 20) {
+      let arr;
+      try { arr = await mlGet('/items?ids=' + ids.slice(k, k + 20).join(',') + '&attributes=id,title,status,price,catalog_listing', tok); }
+      catch { continue; }
+      for (const row of (arr || [])) {
+        const b = row.body || {}; const mla = b.id; if (!mla || !links[mla]) continue;
+        if (b.status !== 'active') continue;      // pausada o cerrada: no está peleando ninguna caja
+        res.mirados++;
+        const stamp = (st, ptw) => {
+          upd[mla + '/caja'] = st;
+          upd[mla + '/cajaPtw'] = ptw || null;
+          upd[mla + '/cajaTs'] = Date.now();
+          res[st]++;
+        };
+        if (!b.catalog_listing) { stamp('nocat', null); continue; }
+        let ptw = null;
+        try { ptw = await mlGet('/items/' + mla + '/price_to_win?version=v2', tok); } catch { /* se deja lo de antes */ }
+        if (!ptw || !ptw.status) continue;
+        const st = ptw.status === 'winning' ? 'winning'
+          : ptw.status === 'sharing_first_place' ? 'sharing'
+            : (ptw.status === 'competing' || ptw.status === 'losing') ? 'losing' : 'sincaja';
+        const pw = (st !== 'winning' && Number(ptw.price_to_win) > 0) ? Math.round(Number(ptw.price_to_win)) : null;
+        stamp(st, pw);
+        res.filas.push({ mla, label, nom: String(b.title || '').slice(0, 46), st, precio: Math.round(b.price || 0), ptw: pw });
+      }
+    }
+  }
+  if (!DRY && Object.keys(upd).length) await db.patch('cyc/mllinks', upd);
+  return res;
+}
+
 async function activarPausadasFull(db, links, tokensRun, DRY, products, piso) {
   const PISO = piso != null ? piso : 0.30;
   const fin = (await db.get('cyc/finanzas')) || {};
@@ -3762,6 +3826,44 @@ async function main() {
     // Guarda las visitas en cyc/mllinks/<MLA>/vis30 para poder usarlas en el chequeo de la mañana.
     // El match es EXACTO sobre el nombre (no prefijo suelto): si no, `visitasconv` caería acá,
     // que es justo el bug que este comentario documenta.
+    // BILLING_PROBE=cajacompra[:cuenta] → ¿QUIÉN SE LLEVA LA VENTA EN LAS DE CATÁLOGO?
+    // Lo mismo que el robot hace solo una vez por hora, para poder mirarlo cuando haga falta sin
+    // esperar la vuelta. Deja el estado en cada publicación (cyc/mllinks/<MLA>/caja) y con eso la
+    // columna "Caja ML" de Rotación de Stock se pinta sola.
+    // Para qué sirve el número que da: una publicación que PIERDE la caja no vende aunque esté
+    // perfecta de precio, de stock y de margen — el comprador ni la ve. Es la diferencia entre
+    // "hay que tocarle el precio" y "no hay nada que tocar acá".
+    if (/^cajacompra(:|$)/.test(String(process.env.BILLING_PROBE || ''))) {
+      const soloCta = (String(process.env.BILLING_PROBE).split(':')[1] || '').trim() || null;
+      const r = await cajaDeCompraML(db, accounts, labels, DRY, soloCta);
+      if (!r.mirados) { console.log('No pude leer ninguna publicación activa.'); return; }
+      console.log(`=== CAJA DE COMPRA · ${r.mirados} publicaciones activas ===\n`);
+      console.log(`  🟢 la ganamos ....... ${r.winning}`);
+      console.log(`  🟠 la compartimos ... ${r.sharing}`);
+      console.log(`  🔴 la tiene otro .... ${r.losing}`);
+      console.log(`  ⚪ no es de catálogo  ${r.nocat}   (no hay caja que pelear)`);
+      if (r.sincaja) console.log(`  ⚪ sin ganador ...... ${r.sincaja}`);
+      const perd = r.filas.filter((f) => f.st === 'losing').sort((a, b) => (b.precio - (b.ptw || 0)) - (a.precio - (a.ptw || 0)));
+      if (perd.length) {
+        console.log(`\n── LAS QUE PIERDEN LA CAJA · ${perd.length} ──`);
+        console.log('   Están publicadas y no venden porque la venta se la lleva otro vendedor.');
+        for (const f of perd.slice(0, 40)) {
+          console.log(`  ${f.mla} · ${f.label.padEnd(8)} · estamos a ${money(f.precio).padStart(11)}`
+            + (f.ptw ? ` · para ganarla ${money(f.ptw).padStart(11)}` : ' · ML no dice a cuánto') + ` · ${f.nom}`);
+        }
+        if (perd.length > 40) console.log(`  … y ${perd.length - 40} más`);
+        console.log('\n   OJO: que ML diga a cuánto se gana NO quiere decir que convenga bajar hasta ahí.');
+        console.log('   Antes de tocar nada, mirar el margen con `unapub:<MLA>` — y no se baja sin que él lo pida.');
+      }
+      const comp = r.filas.filter((f) => f.st === 'sharing');
+      if (comp.length) {
+        console.log(`\n── LAS QUE COMPARTIMOS · ${comp.length} ──`);
+        console.log('   La caja es nuestra a medias: ML reparte. Subirle el precio nos saca del reparto.');
+        for (const f of comp.slice(0, 25)) console.log(`  ${f.mla} · ${f.label.padEnd(8)} · ${money(f.precio).padStart(11)} · ${f.nom}`);
+      }
+      console.log(`\nGuardado en cada publicación. Ya se ve en Rotación de Stock, columna "Caja ML".`);
+      return;
+    }
     if (/^visitas(:|$)/.test(String(process.env.BILLING_PROBE || ''))) {
       const _v = String(process.env.BILLING_PROBE).split(':');
       const soloCta = (_v[1] || '').trim().toLowerCase();
@@ -12976,6 +13078,17 @@ async function main() {
       const rc = await cajasQueLlegaron(db, accounts, labels, products, DRY);
       if (rc.msg) { console.log(rc.msg.replace(/<[^>]+>/g, '')); await sendTelegram(rc.msg); }
     } catch (e) { console.log('No pude revisar las cajas en camino: ' + e.message); }
+  }
+
+  // LA CAJA DE COMPRA DE CADA PUBLICACIÓN. Va en la vuelta horaria por lo mismo que las cajas:
+  // es una llamada por publicación de catálogo, mucho para las vueltas de 2 minutos y un dato que
+  // no cambia de un minuto al otro. Tampoco toca precios en ML, solo lee y anota en el panel, así
+  // que va FUERA del bloque que apaga `robot:off`.
+  if (parseInt(process.env.BACKFILL_DAYS || '0', 10) === 0 && !onlyAcc && process.env.SKIP_PRICES !== '1') {
+    try {
+      const rb = await cajaDeCompraML(db, accounts, labels, DRY, null);
+      console.log(`🥊 Caja de compra · ${rb.mirados} publicaciones activas · ganamos ${rb.winning} · compartimos ${rb.sharing} · perdemos ${rb.losing} · sin catálogo ${rb.nocat}`);
+    } catch (e) { console.log('No pude leer la caja de compra: ' + e.message); }
   }
 
   if (!precioAuto && !SKIP_PRICES) console.log('\n⏸️  Robot de precios APAGADO (mlconfig.autoPrice=false): no ajusté, no nivelé y no activé nada. Para prenderlo: robot:on');
