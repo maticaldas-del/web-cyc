@@ -3562,6 +3562,58 @@ async function main() {
     // para nuestra app: preguntas, reclamos y —sobre todo— las cajas que se mandan a Full, que ML
     // fue moviendo de lugar varias veces. Prueba cada una y muestra el estado y una muestra corta.
     // Solo LEE.
+    // BILLING_PROBE=apisnuevas:<MLA> → ¿QUÉ MÁS NOS DEJA VER ML QUE HOY NO ESTAMOS USANDO?
+    //
+    // El probe `apis` mira lo que YA usamos (preguntas, reclamos, envíos). Este mira lo que NO:
+    // visitas, costo de envío por destino, calidad de la publicación, infracciones, sugerencia de
+    // precio, competencia de catálogo, facturación de ML. Prueba cada uno y dice qué contesta.
+    // No adivina: si un endpoint no existe o no tenemos permiso, lo dice.
+    if (String(process.env.BILLING_PROBE || '').startsWith('apisnuevas')) {
+      const MLA = (String(process.env.BILLING_PROBE).split(':')[1] || 'MLA1782602199').trim().toUpperCase();
+      const links = (await db.get('cyc/mllinks')) || {};
+      const e = links[MLA] || {};
+      const label = labels.find((l) => l === e.cuenta && accounts[l]?.refresh_token) || labels.find((l) => accounts[l]?.refresh_token);
+      if (!label) { console.log('No hay cuenta con token.'); return; }
+      const acc = accounts[label];
+      const t = await mlRefresh(ML_CLIENT_ID, ML_CLIENT_SECRET, acc.refresh_token);
+      await db.patch('mlapi/tokens/' + label, { refresh_token: t.refresh_token, updated_ts: Date.now() });
+      const tok = t.access_token, sid = acc.seller_id;
+      // Datos de la publicación para armar las rutas que los necesitan.
+      let it = {};
+      try { it = await mlGet('/items/' + MLA + '?attributes=id,title,catalog_product_id,category_id,price', tok); } catch { /* sigue */ }
+      const hoy = new Date().toISOString().slice(0, 10);
+      const hace30 = new Date(Date.now() - 30 * 864e5).toISOString().slice(0, 10);
+      console.log(`Cuenta ${label} (seller ${sid}) · publicación ${MLA}${it.title ? ' · ' + it.title.slice(0, 50) : ''}\n`);
+      const rutas = [
+        ['VISITAS de la publicación', `/visits/items?ids=${MLA}`],
+        ['VISITAS día por día', `/items/${MLA}/visits/time_window?last=30&unit=day`],
+        ['VISITAS de toda la cuenta', `/users/${sid}/items_visits?date_from=${hace30}T00:00:00.000-00:00&date_to=${hoy}T00:00:00.000-00:00`],
+        ['ENVÍO a Ushuaia (peor caso)', `/items/${MLA}/shipping_options?zip_code=9410`],
+        ['ENVÍO a CABA (mejor caso)', `/items/${MLA}/shipping_options?zip_code=1425`],
+        ['CALIDAD de la publicación', `/items/${MLA}/health`],
+        ['CALIDAD (marketplace)', `/marketplace/items/${MLA}/quality`],
+        ['INFRACCIONES de la cuenta', `/users/${sid}/moderations/infractions`],
+        ['SUGERENCIA de precio de ML', `/suggestions/items/${MLA}/details`],
+        ['COMPETENCIA del catálogo', it.catalog_product_id ? `/products/${it.catalog_product_id}/items` : ''],
+        ['GANADOR del catálogo', it.catalog_product_id ? `/products/${it.catalog_product_id}` : ''],
+        ['TENDENCIAS de la categoría', it.category_id ? `/trends/MLA/${it.category_id}` : ''],
+        ['FACTURAS que ML nos emite', `/billing/integration/monthly/periods?group=ML&document_type=BILL&offset=0&limit=3&site_id=MLA`],
+        ['MÉTRICAS de vendedor', `/users/${sid}/seller_reputation`],
+      ];
+      for (const [nom, ruta] of rutas) {
+        if (!ruta) { console.log(`⏭️  ${nom.padEnd(30)} (no aplica a esta publicación)\n`); continue; }
+        try {
+          const d = await mlGet(ruta, tok);
+          const m = JSON.stringify(d);
+          console.log(`✅ ${nom.padEnd(30)} ${ruta}`);
+          console.log(`   ${m.slice(0, 420)}${m.length > 420 ? '…' : ''}\n`);
+        } catch (err) {
+          console.log(`❌ ${nom.padEnd(30)} ${String(err.message || err).slice(0, 130)}\n`);
+        }
+      }
+      console.log('Los ✅ son los que podríamos empezar a usar.');
+      return;
+    }
     if (String(process.env.BILLING_PROBE || '').startsWith('apis')) {
       const soloCta = (String(process.env.BILLING_PROBE).split(':')[1] || '').trim().toLowerCase();
       const label = labels.find((l) => (!soloCta || l.toLowerCase() === soloCta) && accounts[l]?.refresh_token);
