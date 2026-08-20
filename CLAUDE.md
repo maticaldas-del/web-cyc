@@ -203,6 +203,7 @@ Los que más se usan:
 | `pubaviso[:borrar]` | de qué publicaciones ya se avisó "problema", para que no repita |
 | `vergastos[:mes]` | los gastos de un mes uno por uno, con los 3 meses anteriores al lado |
 | `partirgasto:<clave>:<meses>[:go]` | reparte un gasto pagado junto entre los meses que cubre |
+| `sincargo:<palabra>[:go]` | "este reclamo no fue culpa del producto": deja de encarecerlo · **sin `:go` solo muestra** |
 | `visitas[:cuenta][:días]` | **¿la ve alguien o no la ve nadie?** separa problema de visibilidad de problema de precio |
 | `competencia:<MLA>` | los vendedores del catálogo con sus precios y **si la pelea se puede ganar** |
 | `envioml:<MLA>` | el envío que **dice ML** (por destino) vs el que deducimos de las ventas · `envioreal` es OTRO comando |
@@ -371,6 +372,22 @@ ya está apartado en las cajas de las otras cuentas.
   dos dicen $0; arriba, ML $5.620 contra nuestros $6.620, o sea que quedamos más conservadores),
   pero **dos datos no alcanzan** para cambiar la fórmula que define todos los precios. Para juntar
   más está `envioml:<MLA>`.
+- **Un reclamo por CÓMO SE ENVIÓ no es un problema del producto, y encarecía el precio.** El costo
+  full es `costo × (1 + % de reclamos)`, y ese costo define si un precio llega al piso. El
+  20/08/2026 él marcó dos casos que eran suyos, no del producto: la **Lupa 60mm x10** (se equivocó
+  al despacharla — tenía **4 reclamos sobre 4 unidades vendidas, o sea 100%**, y el sistema le
+  cobraba el DOBLE de costo: US$ 14,20 en vez de US$ 7,20) y **TODOS los espejos**, que mandaba sin
+  protección y ahora van con protección (Espejo 5" 9,2% · 7" 12,5% · 6" 19,4% · 4" 1,7% → todos a 0).
+  Se marcan con `sincargo:<palabra>[!<excluir>][:go]`, que escribe `sinCargo` en la venta.
+  **La venta SIGUE siendo un reclamo** en Ventas x Producto y en el resumen del mes: el registro de
+  lo que pasó no se falsea, lo único que cambia es que deja de encarecer el producto. Y se marca lo
+  VIEJO: los reclamos nuevos no vienen marcados, así que cuentan solos — *"ahora sí cualquier
+  reclamo que tengan los productos son reales"*.
+  **Va en los DOS lados**: `devPctCosto()` en `index.html` y `setDevLive()` en `sync.mjs`. Cada uno
+  calcula el % por su cuenta; tocar uno solo deja al robot poniendo precios con un costo distinto
+  del que muestra el panel.
+  Ojo con el filtro: `sincargo:lupa` agarra **la Lupa 90mm también**, que no era del caso. Sin `:go`
+  solo muestra, con el antes y el después de cada producto. Mirar la lista siempre.
 - **La reposición dividía por 30 fijo y subestimaba justo lo que más vende.** Hasta el 20/08/2026
   "Armar caja" calculaba `ventas del mes ÷ 30` sin preguntar si en esos 30 días había mercadería
   para vender. Un producto que vendió 10 unidades en 5 días y se agotó daba **0,33 por día** cuando
