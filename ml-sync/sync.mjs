@@ -3562,6 +3562,265 @@ async function main() {
     // para nuestra app: preguntas, reclamos y —sobre todo— las cajas que se mandan a Full, que ML
     // fue moviendo de lugar varias veces. Prueba cada una y muestra el estado y una muestra corta.
     // Solo LEE.
+    // BILLING_PROBE=competencia:<MLA o palabra> → CONTRA QUIÉN ESTAMOS PELEANDO EN EL CATÁLOGO.
+    //
+    // En una publicación de catálogo todos los vendedores comparten la misma ficha y ML le muestra
+    // al comprador UNO SOLO: el que gana la caja de compra. Los demás no existen.
+    // Hasta ahora solo sabíamos el precio que hace falta para ganar (`price_to_win`), y eso alcanza
+    // para decidir una bajada... pero no para saber si la pelea se puede ganar. Si hay alguien
+    // MUY abajo de nuestro piso, bajar es tirar margen sin recuperar la caja: la vuelve a perder
+    // en cuanto el otro reaccione. Pasó con el pendrive 128gb: dos bajadas en cuatro días.
+    // Esto trae la lista completa de competidores con sus precios y dice si la pelea es ganable.
+    if (String(process.env.BILLING_PROBE || '').startsWith('competencia:')) {
+      const kw = String(process.env.BILLING_PROBE).split(':')[1].trim();
+      const links = (await db.get('cyc/mllinks')) || {};
+      const fin = (await db.get('cyc/finanzas')) || {};
+      const tc = parseFloat(fin.tipo_cambio) || 1500;
+      const monoP = parseFloat(((await db.get('cyc/monotributo')) || {}).pct) || 0;
+      const vp = (await db.get('cyc/ventaprod')) || {}; setDevLive(vp);
+      const pIdx = {}; for (const p of products) pIdx[p.id] = p;
+      let mlas = [];
+      if (/^MLA/i.test(kw)) mlas = [kw.toUpperCase()];
+      else mlas = Object.entries(links).filter(([m, e]) => m.startsWith('MLA') && e && !e.ignored
+        && String(e.title || '').toLowerCase().includes(kw.toLowerCase())).slice(0, 5).map(([m]) => m);
+      if (!mlas.length) { console.log(`No encontré publicaciones con "${kw}".`); return; }
+      const sids = {}; for (const l of labels) if (accounts[l]?.seller_id) sids[String(accounts[l].seller_id)] = l;
+      for (const MLA of mlas) {
+        const e = links[MLA] || {};
+        const label = labels.find((l) => l === e.cuenta && accounts[l]?.refresh_token) || labels.find((l) => accounts[l]?.refresh_token);
+        if (!label) continue;
+        let tok;
+        try {
+          const t = await mlRefresh(ML_CLIENT_ID, ML_CLIENT_SECRET, accounts[label].refresh_token);
+          await db.patch('mlapi/tokens/' + label, { refresh_token: t.refresh_token, updated_ts: Date.now() });
+          tok = t.access_token;
+        } catch { continue; }
+        let b = {};
+        try { b = await mlGet('/items/' + MLA + '?attributes=id,title,price,catalog_product_id,catalog_listing,listing_type_id,category_id,site_id', tok); } catch { continue; }
+        console.log(`\n══ ${MLA} · ${label} · ${String(b.title || '').slice(0, 55)} ══`);
+        console.log(`  nuestro precio: ${money(Math.round(b.price || 0))}`);
+        if (!b.catalog_product_id) { console.log('  No es de catálogo: no compite contra nadie por la misma ficha.'); continue; }
+        // Nuestro piso, con la misma cuenta que usa todo el resto.
+        const p = e.prodId ? pIdx[e.prodId] : null;
+        let piso = null;
+        if (p) {
+          const costo = costoPesos(p, 1, tc).costo;
+          const m = (mlExtraPct(label) + monoP) / 100;
+          const ventas = [];
+          for (const ents of Object.values(vp)) for (const v of Object.values(ents || {})) {
+            if (!v || v.cancelada || v.mla !== MLA) continue;
+            const q = v.qty || 1; ventas.push({ tot: (v.total || 0) / q, net: (v.neto || 0) / q });
+          }
+          const feeCache = {};
+          const feeAt = async (pp) => {
+            const k = Math.round(pp); if (feeCache[k] !== undefined) return feeCache[k];
+            let out = null;
+            try {
+              const d = await mlGet(`/sites/${b.site_id || 'MLA'}/listing_prices?price=${k}&listing_type_id=${b.listing_type_id}&category_id=${b.category_id}`, tok);
+              const o = Array.isArray(d) ? d[0] : d;
+              if (typeof o?.sale_fee_amount === 'number') out = o.sale_fee_amount;
+            } catch { out = null; }
+            feeCache[k] = out; return out;
+          };
+          const { envio } = await envioDeducido(ventas.filter((v) => v.tot > 0 && v.net > 0), b.price || 0, feeAt, { modo: 'max' });
+          if (envio != null) {
+            const MIN = 0.30, den = 1 - m * (1 + MIN);
+            let P = b.price || 0, comP = (await feeAt(P)) || 0;
+            for (let i = 0; i < 4; i++) {
+              const Pn = (costo * (1 + MIN) + comP + envio) / den;
+              const c2 = await feeAt(Pn); if (c2 == null) break;
+              if (Math.abs(Pn - P) < 1 && i > 0) { P = Pn; break; }
+              P = Pn; comP = c2;
+            }
+            piso = Math.ceil(P / 10) * 10;
+            console.log(`  nuestro piso del 30%: ${money(piso)}`);
+          }
+        }
+        try {
+          const ptw = await mlGet('/items/' + MLA + '/price_to_win?version=v2', tok);
+          const ESTADO = { winning: 'GANANDO', sharing_first_place: 'COMPARTIENDO', competing: 'PERDIENDO', losing: 'PERDIENDO' };
+          console.log(`  caja de compra: ${ESTADO[ptw?.status] || ptw?.status || '?'}${ptw?.price_to_win ? ` · para ganar ${money(Math.round(ptw.price_to_win))}` : ''}`);
+        } catch { /* sigue */ }
+        let comp = null;
+        try { comp = await mlGet(`/products/${b.catalog_product_id}/items`, tok); } catch { /* sigue */ }
+        const res = (comp?.results || []).filter((x) => x && x.price > 0);
+        if (!res.length) { console.log('  ML no me dio la lista de competidores.'); continue; }
+        res.sort((a, b2) => a.price - b2.price);
+        const nuestros = res.filter((x) => sids[String(x.seller_id)]);
+        console.log(`\n  ${res.length} vendedores en esta ficha. Los 10 más baratos:`);
+        for (const x of res.slice(0, 10)) {
+          const mio = sids[String(x.seller_id)];
+          const marca = mio ? `  ← ${mio.toUpperCase()}` : '';
+          const bajoPiso = piso != null && x.price < piso ? '  ⚠ abajo de nuestro piso' : '';
+          console.log(`    ${money(Math.round(x.price)).padStart(11)} · ${String(x.item_id).padEnd(15)} · ${(x.tags || []).includes('cart_eligible') ? 'con carrito' : '           '}${marca}${bajoPiso}`);
+        }
+        if (nuestros.length > 1) console.log(`\n  ⚠️ TENEMOS ${nuestros.length} PUBLICACIONES EN ESTA MISMA FICHA: nos competimos entre nosotros.`);
+        const masBarato = res[0].price;
+        console.log('');
+        if (piso == null) console.log('  No pude calcular nuestro piso (falta costo o ventas): mirá los precios de arriba a mano.');
+        else if (masBarato < piso) console.log(`  ❌ LA PELEA NO SE PUEDE GANAR: el más barato está a ${money(Math.round(masBarato))} y nuestro piso es ${money(piso)}. Bajar es tirar margen sin recuperar la caja.`);
+        else console.log(`  ✅ SE PUEDE PELEAR: el más barato está a ${money(Math.round(masBarato))}, arriba de nuestro piso de ${money(piso)}.`);
+      }
+      return;
+    }
+    // BILLING_PROBE=visitas[:cuenta][:días] → ¿LA VE ALGUIEN O NO LA VE NADIE?
+    //
+    // Separa dos problemas que hasta ahora se confundían y tienen remedios OPUESTOS:
+    //   · POCAS visitas → no la ve nadie. Es la caja de compra, el título o la foto.
+    //     Bajar el precio NO sirve: nadie la está mirando para comparar.
+    //   · MUCHAS visitas y CERO ventas → la ven y no compran. Ahí sí es el precio (o la foto,
+    //     o la reputación, o que la competencia está más barata).
+    // Sin este dato, "no vende" no se puede diagnosticar y se termina bajando precios a ciegas.
+    // Guarda las visitas en cyc/mllinks/<MLA>/vis30 para poder usarlas en el chequeo de la mañana.
+    if (String(process.env.BILLING_PROBE || '').startsWith('visitas')) {
+      const _v = String(process.env.BILLING_PROBE).split(':');
+      const soloCta = (_v[1] || '').trim().toLowerCase();
+      const DIAS = parseFloat(_v[2]) || 30;
+      const links = (await db.get('cyc/mllinks')) || {};
+      const vp = (await db.get('cyc/ventaprod')) || {}; setDevLive(vp);
+      const desdeTs = Date.now() - DIAS * 864e5;
+      const ventaMla = {};
+      for (const ents of Object.values(vp)) for (const v of Object.values(ents || {})) {
+        if (!v || v.cancelada || !v.mla || (v.ts || 0) < desdeTs) continue;
+        ventaMla[v.mla] = (ventaMla[v.mla] || 0) + (v.qty || 1);
+      }
+      const filas = []; const upd = {};
+      for (const label of labels) {
+        if (soloCta && label.toLowerCase() !== soloCta) continue;
+        const acc = accounts[label]; if (!acc?.refresh_token) continue;
+        let tok;
+        try {
+          const t = await mlRefresh(ML_CLIENT_ID, ML_CLIENT_SECRET, acc.refresh_token);
+          await db.patch('mlapi/tokens/' + label, { refresh_token: t.refresh_token, updated_ts: Date.now() });
+          tok = t.access_token;
+        } catch { continue; }
+        const ids = Object.entries(links).filter(([m, e]) => m.startsWith('MLA') && e && e.cuenta === label && !e.ignored).map(([m]) => m);
+        for (let k = 0; k < ids.length; k += 20) {
+          const lote = ids.slice(k, k + 20);
+          let arr;
+          try { arr = await mlGet('/items?ids=' + lote.join(',') + '&attributes=id,title,status,price,available_quantity,shipping,inventory_id,variations', tok); }
+          catch { continue; }
+          for (const row of (arr || [])) {
+            const b = row.body || {}; const mla = b.id; if (!mla) continue;
+            if (b.status !== 'active') continue;           // pausadas y cerradas no reciben visitas
+            let stock = b.available_quantity || 0;
+            if (((b.shipping && b.shipping.logistic_type) || '') === 'fulfillment') {
+              const vars = Array.isArray(b.variations) ? b.variations : [];
+              const invs = vars.length ? vars.map((v) => v.inventory_id).filter(Boolean) : [b.inventory_id].filter(Boolean);
+              let s2 = 0, hubo = false;
+              for (const inv of invs) {
+                try { s2 += Number((await mlGet('/inventories/' + inv + '/stock/fulfillment', tok))?.available_quantity) || 0; hubo = true; } catch { /* */ }
+              }
+              if (hubo) stock = s2;
+            }
+            if (stock <= 0) continue;                       // sin stock no vende por motivos obvios
+            let vis = null;
+            try {
+              const d = await mlGet(`/items/${mla}/visits/time_window?last=${DIAS}&unit=day`, tok);
+              vis = Number(d?.total_visits);
+            } catch { /* sigue */ }
+            if (vis == null || !isFinite(vis)) continue;
+            const ven = ventaMla[mla] || 0;
+            filas.push({ mla, label, nom: String(b.title || '').slice(0, 46), vis, ven, stock, precio: b.price || 0 });
+            upd[mla + '/vis30'] = vis;
+            upd[mla + '/vis30Ts'] = Date.now();
+          }
+        }
+      }
+      if (!filas.length) { console.log('No pude leer visitas de ninguna publicación activa con stock.'); return; }
+      if (!DRY) { await db.patch('cyc/mllinks', Object.fromEntries(Object.entries(upd).map(([k, v]) => [k, v]))); }
+      const tot = filas.reduce((a, f) => a + f.vis, 0);
+      console.log(`=== VISITAS EN ${DIAS} DÍAS · ${filas.length} publicaciones activas con stock · ${tot} visitas ===\n`);
+      // 1) NADIE LAS VE. El remedio es visibilidad, no precio.
+      const invisibles = filas.filter((f) => f.vis < 20).sort((a, b) => a.vis - b.vis);
+      console.log(`── NO LAS VE NADIE (menos de 20 visitas en ${DIAS} días) · ${invisibles.length} ──`);
+      console.log('   El problema NO es el precio: nadie las está mirando. Es caja de compra, título o foto.');
+      for (const f of invisibles.slice(0, 30)) console.log(`  ${f.mla} · ${f.label.padEnd(8)} · ${String(f.vis).padStart(4)} visitas · ${String(f.ven).padStart(3)} ventas · ${String(f.stock).padStart(4)} u. · ${f.nom}`);
+      if (invisibles.length > 30) console.log(`  … y ${invisibles.length - 30} más`);
+      // 2) LAS VEN Y NO COMPRAN. Ahí sí el precio (o la competencia).
+      const miradas = filas.filter((f) => f.vis >= 50 && f.ven === 0).sort((a, b) => b.vis - a.vis);
+      console.log(`\n── LA VEN Y NO COMPRAN (50+ visitas y CERO ventas) · ${miradas.length} ──`);
+      console.log('   Acá sí puede ser el precio: la están mirando y eligen otra.');
+      for (const f of miradas.slice(0, 25)) console.log(`  ${f.mla} · ${f.label.padEnd(8)} · ${String(f.vis).padStart(4)} visitas · ${String(f.stock).padStart(4)} u. · ${money(Math.round(f.precio)).padStart(10)} · ${f.nom}`);
+      // 3) Las que mejor convierten, para saber qué funciona.
+      const conv = filas.filter((f) => f.ven > 0 && f.vis > 0).map((f) => ({ ...f, c: f.ven / f.vis * 100 })).sort((a, b) => b.c - a.c);
+      console.log(`\n── LAS QUE MEJOR CONVIERTEN (ventas ÷ visitas) · top 10 ──`);
+      for (const f of conv.slice(0, 10)) console.log(`  ${f.c.toFixed(1)}% · ${String(f.vis).padStart(4)} visitas → ${String(f.ven).padStart(3)} ventas · ${f.label.padEnd(8)} · ${f.nom}`);
+      console.log(`\nGuardado en cada publicación para poder usarlo en el chequeo de la mañana.`);
+      return;
+    }
+    // BILLING_PROBE=envioreal:<MLA o palabra> → EL ENVÍO QUE DICE ML vs EL QUE DEDUCIMOS.
+    //
+    // Todo el cálculo de márgenes depende de una estimación del envío sacada de ventas viejas
+    // (`envioDeducido`). Esa estimación fue el origen de los tres errores del 19/08/2026: el 47%
+    // del Ferrari, el 57% de hermanas y los productos "SIN ENVÍO" que nunca vendieron.
+    // ML sí sabe cuánto sale el envío. Este comando pone los dos números uno al lado del otro para
+    // decidir con datos si conviene cambiar la fórmula. NO cambia nada: solo compara.
+    if (String(process.env.BILLING_PROBE || '').startsWith('envioreal:')) {
+      const kw = String(process.env.BILLING_PROBE).split(':')[1].trim();
+      const links = (await db.get('cyc/mllinks')) || {};
+      const vp = (await db.get('cyc/ventaprod')) || {}; setDevLive(vp);
+      let mlas = [];
+      if (/^MLA/i.test(kw)) mlas = [kw.toUpperCase()];
+      else mlas = Object.entries(links).filter(([m, e]) => m.startsWith('MLA') && e && !e.ignored
+        && String(e.title || '').toLowerCase().includes(kw.toLowerCase())).slice(0, 8).map(([m]) => m);
+      if (!mlas.length) { console.log(`No encontré publicaciones con "${kw}".`); return; }
+      // Códigos postales que cubren el país de punta a punta: el envío cambia muchísimo según dónde.
+      const CPS = [['CABA', '1425'], ['Córdoba', '5000'], ['Salta', '4400'], ['Ushuaia', '9410']];
+      for (const MLA of mlas) {
+        const e = links[MLA] || {};
+        const label = labels.find((l) => l === e.cuenta && accounts[l]?.refresh_token) || labels.find((l) => accounts[l]?.refresh_token);
+        if (!label) continue;
+        let tok;
+        try {
+          const t = await mlRefresh(ML_CLIENT_ID, ML_CLIENT_SECRET, accounts[label].refresh_token);
+          await db.patch('mlapi/tokens/' + label, { refresh_token: t.refresh_token, updated_ts: Date.now() });
+          tok = t.access_token;
+        } catch { continue; }
+        let b = {};
+        try { b = await mlGet('/items/' + MLA + '?attributes=id,title,price,listing_type_id,category_id,site_id,shipping', tok); } catch { continue; }
+        console.log(`\n══ ${MLA} · ${label} · ${String(b.title || '').slice(0, 55)} · ${money(Math.round(b.price || 0))} ══`);
+        // 1) Lo que decimos nosotros, con la MISMA función que usan bajopiso y unapub.
+        const ventas = [];
+        for (const ents of Object.values(vp)) for (const v of Object.values(ents || {})) {
+          if (!v || v.cancelada || v.mla !== MLA) continue;
+          const q = v.qty || 1;
+          ventas.push({ tot: (v.total || 0) / q, net: (v.neto || 0) / q });
+        }
+        const feeCache = {};
+        const feeAt = async (pp) => {
+          const k = Math.round(pp); if (feeCache[k] !== undefined) return feeCache[k];
+          let out = null;
+          try {
+            const d = await mlGet(`/sites/${b.site_id || 'MLA'}/listing_prices?price=${k}&listing_type_id=${b.listing_type_id}&category_id=${b.category_id}`, tok);
+            const o = Array.isArray(d) ? d[0] : d;
+            if (typeof o?.sale_fee_amount === 'number') out = o.sale_fee_amount;
+          } catch { out = null; }
+          feeCache[k] = out; return out;
+        };
+        const usar = ventas.filter((v) => v.tot > 0 && v.net > 0);
+        const { envio: envMax } = await envioDeducido(usar, b.price || 0, feeAt, { modo: 'max' });
+        const { envio: envMin } = await envioDeducido(usar, b.price || 0, feeAt, { modo: 'min' });
+        console.log(`  DEDUCIDO de ${usar.length} venta(s): peor caso ${envMax == null ? '—' : money(Math.round(envMax))} · mejor caso ${envMin == null ? '—' : money(Math.round(envMin))}`);
+        // 2) Lo que dice ML que nos cobra a NOSOTROS, al precio de hoy.
+        try {
+          const sg = await mlGet(`/suggestions/items/${MLA}/details`, tok);
+          const sf = sg?.costs?.shipping_fees, vf = sg?.costs?.selling_fees;
+          console.log(`  ML DICE      : envío ${sf != null ? money(Math.round(sf)) : '—'} · comisión ${vf != null ? money(Math.round(vf)) : '—'}`);
+        } catch (err) { console.log(`  ML DICE      : no contestó (${String(err.message).slice(0, 60)})`); }
+        // 3) Tarifa por destino, de punta a punta del país.
+        for (const [nom, cp] of CPS) {
+          try {
+            const so = await mlGet(`/items/${MLA}/shipping_options?zip_code=${cp}`, tok);
+            const op = (so?.options || [])[0];
+            if (!op) { console.log(`  ${nom.padEnd(9)}: sin opciones`); continue; }
+            console.log(`  ${nom.padEnd(9)}: tarifa ${money(Math.round(op.base_cost || 0))} · paga el comprador ${money(Math.round(op.cost || 0))} · lista ${money(Math.round(op.list_cost || 0))}`);
+          } catch { console.log(`  ${nom.padEnd(9)}: no contestó`); }
+        }
+      }
+      console.log('\nSi el número de ML y el deducido coinciden, se puede cambiar la fórmula y dejar de adivinar.');
+      return;
+    }
     // BILLING_PROBE=apisnuevas:<MLA> → ¿QUÉ MÁS NOS DEJA VER ML QUE HOY NO ESTAMOS USANDO?
     //
     // El probe `apis` mira lo que YA usamos (preguntas, reclamos, envíos). Este mira lo que NO:

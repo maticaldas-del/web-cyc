@@ -203,6 +203,10 @@ Los que más se usan:
 | `pubaviso[:borrar]` | de qué publicaciones ya se avisó "problema", para que no repita |
 | `vergastos[:mes]` | los gastos de un mes uno por uno, con los 3 meses anteriores al lado |
 | `partirgasto:<clave>:<meses>[:go]` | reparte un gasto pagado junto entre los meses que cubre |
+| `visitas[:cuenta][:días]` | **¿la ve alguien o no la ve nadie?** separa problema de visibilidad de problema de precio |
+| `competencia:<MLA>` | los vendedores del catálogo con sus precios y **si la pelea se puede ganar** |
+| `envioreal:<MLA>` | el envío que dice ML vs el que deducimos de las ventas |
+| `apisnuevas:<MLA>` | qué endpoints de ML andan y no usamos |
 | `apis` | qué endpoints de ML contestan (para diagnosticar) |
 | `ciclo` | **no es un comando: vuelve a prender el ciclo de 2 minutos** (ver abajo) |
 
