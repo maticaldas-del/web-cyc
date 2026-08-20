@@ -205,6 +205,7 @@ Los que más se usan:
 | `partirgasto:<clave>:<meses>[:go]` | reparte un gasto pagado junto entre los meses que cubre |
 | `sincargo:<palabra>[:go]` | "este reclamo no fue culpa del producto": deja de encarecerlo · **sin `:go` solo muestra** |
 | `visitas[:cuenta][:días]` | **¿la ve alguien o no la ve nadie?** separa problema de visibilidad de problema de precio |
+| `cajacompra[:cuenta]` | **¿la venta es nuestra o del otro?** el estado de la caja de compra de cada publicación · lo corre solo el robot cada hora y pinta la columna "Caja ML" de Rotación de Stock |
 | `competencia:<MLA>` | los vendedores del catálogo con sus precios y **si la pelea se puede ganar** |
 | `envioml:<MLA>` | el envío que **dice ML** (por destino) vs el que deducimos de las ventas · `envioreal` es OTRO comando |
 | `apisnuevas:<MLA>` | qué endpoints de ML andan y no usamos |
@@ -229,6 +230,7 @@ rompe el archivo entero y deja de correr TODO, sin aviso. Si hace falta algo nue
 |---|---|
 | cada 2 minutos | trae las ventas nuevas |
 | 1 vez por hora | robot de precios |
+| 1 vez por hora | la caja de compra de cada publicación (para la columna "Caja ML") |
 | 00:03 | resumen del día por Telegram |
 | 00:03 | junto con el resumen: facturas emitidas + recalcular Margen ML al precio de hoy |
 | el 1º de cada mes | resumen del mes |
@@ -316,6 +318,20 @@ ya está apartado en las cajas de las otras cuentas.
   caja de compra, el título o la foto, y bajar el precio no hace nada— y **50 o más con cero ventas
   = la ven y no compran**, ahí sí entra el precio. Sale de `/items/<MLA>/visits/time_window`.
   A mano y para todo el catálogo: `visitas`.
+- **Margen bajo y caja de compra perdida se ven IGUAL en pantalla y se arreglan al revés.** Desde
+  el 20/08/2026 Rotación de Stock tiene la columna **🥊 Caja ML** al lado del margen, justo por eso:
+  un producto frenado con margen bajo hay que SUBIRLO; un producto frenado que perdió la caja de
+  compra puede tener stock, buen margen y cero ventas para siempre, porque en el catálogo ML muestra
+  **un solo botón de comprar** y se lo lleva otro vendedor — el precio no es el problema y tocarlo no
+  hace nada. 🟢 la ganamos · 🟠 la compartimos (**subir el precio nos saca del reparto**) · 🔴 la tiene
+  otro · ⚪ no es de catálogo. Cuando un producto tiene varias publicaciones manda la MEJOR: con que
+  una sola gane la caja, el producto se vende.
+  El dato sale de `/items/<MLA>/price_to_win`, lo escribe el robot en `cyc/mllinks/<MLA>/caja` una
+  vez por hora y la pantalla lo lee de ahí — la web no puede preguntarle a ML por su cuenta, no tiene
+  el token. Mismo camino que las visitas, a propósito. A mano: `cajacompra`.
+  **Ojo con lo que ML dice que hace falta para ganar la caja: no es una recomendación de precio.**
+  Que se gane a $900 no quiere decir que a $900 haya margen. Antes de tocar nada va `unapub:<MLA>`,
+  y sigue mandando la regla de no bajar precios solo.
 - **La marca roja de "para evitar descarte" NO viene por la API.** El stock de Full
   (`/inventories/<id>/stock/fulfillment`) devuelve `available_quantity` y `not_available_quantity`
   y nada más: ni la marca ni la fecha de descarte que se ven en "Estado de tu stock". Se deduce
