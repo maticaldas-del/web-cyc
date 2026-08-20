@@ -2845,7 +2845,17 @@ async function main() {
               const v30 = refs.reduce((a, f) => a + ((ventaMla[f.mla] || {}).qty || 0), 0);
               const plata = disp * costoDeMla(x.mla);
               if (todasPausadas) r.fullPausado.push({ nom: x.nom, mla: x.mla, q: disp, plata, n: refs.length });
-              else if (v30 === 0) r.fullDormido.push({ nom: x.nom, mla: x.mla, q: disp, plata });
+              else if (v30 === 0) {
+                // ── ¿NO LA VE NADIE, O LA VEN Y NO COMPRAN? ──
+                // "Tiene stock y no vendió en 30 días" no se puede arreglar sin saber cuál de las
+                // dos cosas es, y los remedios son OPUESTOS: si nadie la ve, bajar el precio no
+                // hace nada (el problema es la caja de compra, el título o la foto); si la ven y
+                // no compran, ahí sí el precio entra en la conversación.
+                // Se pregunta solo para estas, que son un puñado, no para las ~400 publicaciones.
+                let vis = null;
+                try { vis = Number((await mlGet(`/items/${x.mla}/visits/time_window?last=30&unit=day`, tok))?.total_visits); } catch { /* sigue sin el dato */ }
+                r.fullDormido.push({ nom: x.nom, mla: x.mla, q: disp, plata, vis: isFinite(vis) ? vis : null });
+              }
             }
           } catch { /* si no contesta, se saltea */ }
           try {
@@ -2949,7 +2959,13 @@ async function main() {
       L.push(`⚠️ <b>${totRec}</b> reclamo(s) abierto(s)${parados.length ? ` · <b>${parados.length} te espera(n)</b>` : ' · los maneja ML, no hay nada para hacer'}`);
       L.push(`🏭 Full: ${totProb} u. con problema · <b>${totCajas}</b> caja(s) llegada(s) en ${DIAS} días`);
       if (pausados.length) L.push(`🧊 <b>${pausados.length}</b> pausada(s) con stock adentro · ${uPaus} u. · <b>${money(Math.round($paus))}</b>`);
-      if (dormidos.length) L.push(`🟠 <b>${dormidos.length}</b> con stock y sin vender hace 30 días · ${money(Math.round($dorm))}`);
+      if (dormidos.length) {
+        const ciegas = dormidos.filter((f) => f.vis != null && f.vis < 20).length;
+        const vistas = dormidos.filter((f) => f.vis != null && f.vis >= 50).length;
+        L.push(`🟠 <b>${dormidos.length}</b> con stock y sin vender hace 30 días · ${money(Math.round($dorm))}`);
+        if (ciegas) L.push(`   └ <b>${ciegas}</b> no las ve NADIE (menos de 20 visitas): el precio no es el problema`);
+        if (vistas) L.push(`   └ <b>${vistas}</b> las ven y no compran (50+ visitas): ahí sí mirar el precio`);
+      }
       // Lo único de todo el chequeo que se arregla con un comando y da plata el mismo día.
       if (baj.filas.length) {
         L.push(`\n🏷️ <b>${baj.filas.length} para bajar poquito y que roten</b> · ${money(Math.round($baj))} parados`);
@@ -2978,7 +2994,17 @@ async function main() {
       for (const r of R) for (const f of r.fullProblema) D.push(`   ${r.label} · ${f.nom}: ${f.na} u. (${f.det})`);
       if (!totProb) D.push('   ninguna');
       if (pausados.length) { D.push(`\n── Pausadas con stock adentro ──`); for (const f of pausados) D.push(`   ${f.cta} · ${f.nom} — ${f.q} u. (${money(Math.round(f.plata))})`); }
-      if (dormidos.length) { D.push(`\n── Con stock y cero ventas en 30 días ──`); for (const f of dormidos.slice(0, 20)) D.push(`   ${f.cta} · ${f.nom} — ${f.q} u. (${money(Math.round(f.plata))})`); }
+      if (dormidos.length) {
+        D.push(`\n── Con stock y cero ventas en 30 días ──`);
+        D.push(`   (las visitas dicen si el problema es que no la ve nadie o que la ven y no compran)`);
+        for (const f of dormidos.slice(0, 20)) {
+          const dx = f.vis == null ? 'sin dato de visitas'
+            : f.vis < 20 ? `${f.vis} visitas → NO LA VE NADIE, no es el precio`
+              : f.vis >= 50 ? `${f.vis} visitas → la ven y no compran, mirar precio`
+                : `${f.vis} visitas`;
+          D.push(`   ${f.cta} · ${f.nom} — ${f.q} u. (${money(Math.round(f.plata))}) · ${dx}`);
+        }
+      }
       if (proms.length) {
         D.push(`\n── Promociones de ML aceptadas · ${proms.length} ──`);
         for (const x of proms.slice(0, 25)) D.push(`   ${x.label} · ${String(x.nom).slice(0, 38)} · ${money(Math.round(x.precioHoy))} → ${money(Math.round(x.precioProm))}`

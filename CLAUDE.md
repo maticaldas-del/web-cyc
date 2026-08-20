@@ -309,6 +309,12 @@ ya está apartado en las cajas de las otras cuentas.
   lo que YA ENTRÓ, no lo que viaja. Conclusión: el contenido de las cajas en camino sale de lo que
   se carga al cerrarlas en "Armar caja", y no hay forma de sacarlo de ML. **Consecuencia práctica:
   una caja despachada sin cargar el contenido NO se puede marcar sola** — no hay con qué cruzarla.
+- **"No vende" no se puede diagnosticar sin las VISITAS, y los remedios son opuestos.** Desde el
+  20/08/2026 el chequeo de la mañana pregunta a ML cuántas visitas tuvo cada publicación dormida
+  (con stock y cero ventas en 30 días): **menos de 20 visitas = no la ve nadie** —el problema es la
+  caja de compra, el título o la foto, y bajar el precio no hace nada— y **50 o más con cero ventas
+  = la ven y no compran**, ahí sí entra el precio. Sale de `/items/<MLA>/visits/time_window`.
+  A mano y para todo el catálogo: `visitas`.
 - **La marca roja de "para evitar descarte" NO viene por la API.** El stock de Full
   (`/inventories/<id>/stock/fulfillment`) devuelve `available_quantity` y `not_available_quantity`
   y nada más: ni la marca ni la fecha de descarte que se ven en "Estado de tu stock". Se deduce
