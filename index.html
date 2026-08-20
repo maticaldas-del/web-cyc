@@ -3579,7 +3579,21 @@ function renderOfiCaja(){
   // casa (no solo los que la cuenta "necesita"), cada uno con una casilla para poner cuántos van
   // de verdad en esta caja. La recomendación se carga sola como punto de partida, pero se cambia.
   const armando=!!ofiFiltroCuenta;
-  const vis=armando?filas.filter(f=>f.hay>0):filas;
+  // Con una cuenta elegida se muestran SOLO los productos que esa cuenta tiene publicados —y en los
+  // que tienen variantes, solo las variantes que publica esa cuenta. Mandarle a Luciana algo que
+  // Luciana no publica no sirve para nada: ocupa lugar en la caja y no se puede vender.
+  // Se listan igual los que la cuenta "no necesita": ahí manda él, no el cálculo de días de stock.
+  const _pubVar={};
+  const publicaLaCuenta=(f)=>{
+    const p=f.p;
+    if((p.variantes||[]).length){
+      const pv=_pubVar[p.id]||(_pubVar[p.id]=cuentasPorVariante(p));
+      if(!f.variante)return Object.values(pv).some(x=>x.has(ofiFiltroCuenta));  // fila "sin variante"
+      return !!(pv[f.variante]&&pv[f.variante].has(ofiFiltroCuenta));
+    }
+    return cuentasConPublicacion(p).includes(ofiFiltroCuenta);
+  };
+  const vis=armando?filas.filter(f=>f.hay>0&&publicaLaCuenta(f)):filas;
   // Se suma SOLO lo que sigue estando en pantalla: si una fila desapareció (porque ya se despachó)
   // su número no puede seguir contando en la caja.
   const cajaAct=armando?cajaDe(ofiFiltroCuenta):{};
@@ -3605,7 +3619,7 @@ function renderOfiCaja(){
     // buscaba dónde cargar las unidades y esta pantalla no se lo decía — la lista de productos
     // estaba en la pestaña de al lado y nada la señalaba.
     cont.innerHTML = filas.length
-      ? '<div class="empty-msg">Nada para mandar a esa cuenta.</div>'
+      ? `<div class="empty-msg">Nada de lo que tenés en casa está publicado en ${ofiFiltroCuenta||'esa cuenta'}.</div>`
       : `<div class="empty-msg" style="padding:22px 16px">
            <div style="margin-bottom:12px">Todavía no contaste nada de tu oficina.</div>
            <button class="pf-btn active-all" style="font-size:.78rem;padding:10px 18px"
@@ -8770,7 +8784,7 @@ document.addEventListener('click',e=>{if(fnavOpen&&!e.target.closest('#fnav-btn'
         <span style="font-size:.75rem;color:var(--muted)">Si no ves los últimos cambios, forzá la actualización</span>
         <button class="btn" style="background:rgba(56,189,248,.12);color:var(--blue);border:1px solid rgba(56,189,248,.3)" onclick="actualizarApp()">🔄 Buscar actualizaciones</button>
       </div>
-      <div style="font-size:.66rem;color:var(--muted);margin-top:12px">CYC · Versión 11.6</div>
+      <div style="font-size:.66rem;color:var(--muted);margin-top:12px">CYC · Versión 11.7</div>
     </div>
 
     <div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:18px 20px;margin-bottom:14px">
