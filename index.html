@@ -2266,7 +2266,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='13.4';
+const APP_VERSION='13.5';
 // El problema real que esto resuelve no es curiosidad: es que el celular guarda la app y sigue
 // mostrando la de ayer sin avisar. Varias veces se revisó un cambio que ya estaba subido y no se
 // veía. Por eso, además del número, el chip avisa cuando hay una versión nueva esperando.
@@ -4086,6 +4086,9 @@ function enTransito(){
   return out;
 }
 const transitoDe=(tr,pid,cta,variante)=>tr[variante?(pid+'__'+sid(cta)+'__v__'+sid(variante)):(pid+'__'+sid(cta))]||0;
+// Todo lo que va en camino de un producto, sin importar a qué cuenta. Es mercadería que YA
+// COMPRASTE y que ya salió de casa: para decidir si hay que comprar más, cuenta como que la tenés.
+const transitoTotal=(tr,pid)=>LOCS.reduce((s,l)=>s+transitoDe(tr,pid,l,''),0);
 
 /* ═══════════ ENVÍOS A FULL ═══════════
    Se anota lo que SALE. Lo que llega ya lo sabe el chequeo de la mañana leyéndolo de ML; lo que
@@ -6638,6 +6641,7 @@ async function syncPedidosAuto(){
     }
   }
   if(Object.keys(_vencUpd).length)db.ref('cyc').update(_vencUpd).catch(()=>{});
+  const _trPed=enTransito();   // lo despachado y todavía sin llegar: ya es tuyo, no se compra de nuevo
   for(const p of (state.products||[])){
     // En la papelera = no se vende más. Se saltea ACÁ, antes de calcular nada: así no vuelve a
     // aparecer en Pedidos y tampoco suma "riesgo", que es lo que alimenta el Puntaje del mes y el
@@ -6679,7 +6683,14 @@ async function syncPedidosAuto(){
     // de abajo sigue midiendo el quiebre real: tenerlo en casa sin mandar no evita quedarse sin
     // vender, y justamente por eso el aviso tiene que seguir apareciendo.
     const enOficina=stockOficina(p);
-    const aComprar=Math.max(0,necesario-enOficina);
+    // ── LO QUE VA ARRIBA DEL CAMIÓN TAMBIÉN ES TUYO ──────────────────────────────────
+    // Planteo suyo del 20/08/2026: al cerrar una caja la mercadería sale de la oficina y todavía no
+    // llegó a Full, así que durante los ~8 días del viaje no la veía NADIE en Pedidos. Resultado:
+    // la pantalla te pedía comprar de nuevo algo que ya habías comprado y que estaba viajando.
+    // Y le pega justo a lo que más rota, que es lo que más seguido se despacha.
+    // "Armar caja" ya lo contaba desde el 19/08; Pedidos se quedó afuera.
+    const enCamino=transitoTotal(_trPed,p.id);
+    const aComprar=Math.max(0,necesario-enOficina-enCamino);
     // "Dinero en riesgo": ganancia diaria del producto × cuántos de los próximos 30 días vas a pasar REALMENTE sin stock.
     // Ventana de 30 días (no 45): un producto con 30+ días de stock no está en riesgo este mes → aporta 0.
     // Así un producto que vende poco pero deja buen margen no le gana en prioridad a uno de alta rotación que se está por quedar sin stock.
@@ -6690,8 +6701,8 @@ async function syncPedidosAuto(){
     const riesgo=Math.round((gan30d/30)*diasEnRiesgo);
     // Si hay unidades en casa no se puede repartir el pedido por variante con confianza (no se
     // sabe de qué variante son las de la oficina), así que se deja el pedido sin desglose.
-    if(enOficina>0)variantesNec=null;
-    resumen[p.id]={p,vendidos,vendidosNorm,stock,diasHistorial,diasCubiertos,necesario,enOficina,aComprar,variantesNec,coll,gan30d,riesgo,dConS,vDia};
+    if(enOficina>0||enCamino>0)variantesNec=null;
+    resumen[p.id]={p,vendidos,vendidosNorm,stock,diasHistorial,diasCubiertos,necesario,enOficina,enCamino,aComprar,variantesNec,coll,gan30d,riesgo,dConS,vDia};
   }
   // 3. IDs que deberían existir como auto-pedidos
   const expectedIds=new Set();
@@ -6722,7 +6733,8 @@ async function syncPedidosAuto(){
     const estado=r.diasCubiertos<=7?'pendiente':'poco_stock';
     const notaHist=r.diasHistorial<PED_MAX_DAYS?` (${r.vendidos} en ${r.diasHistorial}d)`:'';
     const variantesNec=r.variantesNec||null;
-    const notaOfi=r.enOficina>0?` · ${r.enOficina} ya en tu oficina`:'';
+    const notaOfi=(r.enOficina>0?` · ${r.enOficina} ya en tu oficina`:'')
+                 +(r.enCamino>0?` · <span style="color:var(--amber)">${r.enCamino} ya en camino a Full</span>`:'');
     const nota=`30d: ${r.vendidosNorm} vendidos${notaHist} · ${r.stock} en stock · ~${r.diasCubiertos}d cubiertos${notaOfi}`;
     const pvMatch=r.p.proveedorId?(state.proveedores||[]).find(x=>x.id===r.p.proveedorId):null;
     const provNom=pvMatch?.nombre||null;
