@@ -2265,7 +2265,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='13.1';
+const APP_VERSION='13.2';
 // El problema real que esto resuelve no es curiosidad: es que el celular guarda la app y sigue
 // mostrando la de ayer sin avisar. Varias veces se revisó un cambio que ya estaba subido y no se
 // veía. Por eso, además del número, el chip avisa cuando hay una versión nueva esperando.
@@ -6086,7 +6086,7 @@ function renderMargenML(){
   const ultTs=Math.max(0,...(state.products||[]).map(p=>Number(p.netoCalcTs)||0));
   const ultTxt=ultTs?new Date(ultTs).toLocaleString('es-AR',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'}):'—';
   const sum=document.getElementById('margen-ml-sum');
-  if(sum)sum.innerHTML=`Dólar actual <strong style="color:var(--text)">$${tc?tc.toLocaleString('es-AR'):'—'}</strong> · meta <strong style="color:var(--green)">${META}%</strong> · <strong style="color:${bajo?'var(--red)':'var(--green)'}">${bajo}</strong> bajo la meta · <strong style="color:var(--blue,#60a5fa)">${conCalc}</strong> con el precio de hoy · <strong>${sinNeto}</strong> sin publicación en ML<br><span style="color:var(--muted);font-size:.92em">El neto es <strong>lo que dice ML</strong> que te queda al precio de hoy (precio − comisión − <strong>envío del peor caso</strong>, el mismo criterio con el que se fijaron los precios). Los marcados <span style="color:var(--muted)">ml</span> nunca vendieron, así que el envío no sale de ventas tuyas sino de la <strong>tarifa que informa ML</strong> para el peor destino. Los <span style="color:var(--amber)">SIN ENVÍO</span> son los que además ML no supo contestar: ahí no hay ningún envío descontado y el margen que se ve es más alto que el real. Se actualiza solo todas las noches · última vez: <strong style="color:var(--text)">${ultTxt}</strong>.<br>El <strong>Costo full</strong> ya incluye el cargo extra de ML (IIBB + almacenamiento, ~4-6% del precio según cuenta).<br><strong style="color:var(--text)">Lo miran</strong> = visitas de los últimos 30 días sumando las publicaciones vivas del producto. Está para no confundir dos problemas que se ven igual: <span style="color:var(--amber)">menos de ${VIS_POCAS} visitas</span> es que <strong>no la ve nadie</strong> —el precio no es el problema y bajarlo no sirve— y ${VIS_MUCHAS} o más sin vender es que <strong>la ven y no compran</strong>, ahí sí mirá el precio.</span>`;
+  if(sum)sum.innerHTML=`Dólar actual <strong style="color:var(--text)">$${tc?tc.toLocaleString('es-AR'):'—'}</strong> · meta <strong style="color:var(--green)">${META}%</strong> · <strong style="color:${bajo?'var(--red)':'var(--green)'}">${bajo}</strong> bajo la meta · <strong style="color:var(--blue,#60a5fa)">${conCalc}</strong> con el precio de hoy · <strong>${sinNeto}</strong> sin publicación en ML<br><span style="color:var(--muted);font-size:.92em">El neto es <strong>lo que dice ML</strong> que te queda al precio de hoy (precio − comisión − <strong>envío del peor caso</strong>, el mismo criterio con el que se fijaron los precios). Los marcados <span style="color:var(--amber)">⚠ml</span> nunca vendieron, así que el envío sale de la <strong>tarifa de ML</strong> y no de ventas tuyas. Medida contra ventas reales, esa tarifa <strong>se queda corta</strong>, así que el margen real es menor que el que se ve. Los <span style="color:var(--amber)">SIN ENVÍO</span> son los que además ML no supo contestar: ahí no hay ningún envío descontado y el margen que se ve es más alto que el real. Se actualiza solo todas las noches · última vez: <strong style="color:var(--text)">${ultTxt}</strong>.<br>El <strong>Costo full</strong> ya incluye el cargo extra de ML (IIBB + almacenamiento, ~4-6% del precio según cuenta).<br><strong style="color:var(--text)">Lo miran</strong> = visitas de los últimos 30 días sumando las publicaciones vivas del producto. Está para no confundir dos problemas que se ven igual: <span style="color:var(--amber)">menos de ${VIS_POCAS} visitas</span> es que <strong>no la ve nadie</strong> —el precio no es el problema y bajarlo no sirve— y ${VIS_MUCHAS} o más sin vender es que <strong>la ven y no compran</strong>, ahí sí mirá el precio.</span>`;
   if(!rows.length){el.innerHTML='<div class="empty-msg">No hay productos.</div>';return;}
   el.innerHTML=rows.map(r=>{
     const p=r.p;
@@ -7043,9 +7043,15 @@ function rotMargenHtml(r){
   // El envío puede venir de dos lados y no es lo mismo. De nuestras ventas es el dato de la
   // realidad; de la tarifa de ML es lo que ML dice que cobra, y se usa en los que nunca vendieron
   // porque ahí la única alternativa era no descontar nada. Se marca para no confundirlos.
-  else if(r.margenEnvioML)tit+=' · El envío no sale de ventas nuestras (este producto nunca vendió) sino de la TARIFA que informa ML para el peor destino. Es un número real, pero no está medido en tus ventas.';
+  // El control del 20/08/2026 midió las dos formas en 15 productos que SÍ vendieron: la tarifa de
+  // ML dio $0 donde nuestras ventas mostraban entre $81 y $354, con $246 de diferencia promedio.
+  // O sea que NO miden lo mismo — la tarifa es el flete solo, y lo que se deduce de una venta es
+  // todo lo que ML se queda además de la comisión (flete + SIRTAC + IIBB). Por eso la tarifa se usa
+  // (es mejor que no descontar nada) pero sigue marcada en ámbar: se queda CORTA, y un margen que
+  // se queda corto en los costos se ve más alto de lo que es.
+  else if(r.margenEnvioML)tit+=' · OJO: este producto nunca vendió, así que el envío no está medido en tus ventas sino sacado de la TARIFA de ML. Medido contra ventas reales, la tarifa se queda corta (dio $246 de menos en promedio), así que el margen real es MENOR que este.';
   const marca=r.margenSinEnvio?'<span style="color:var(--amber);font-weight:400" > ⚠</span>'
-             :r.margenEnvioML?'<span style="color:var(--muted);font-weight:400;font-size:.85em" > ml</span>':'';
+             :r.margenEnvioML?'<span style="color:var(--amber);font-weight:400;font-size:.85em" > ⚠ml</span>':'';
   return `<span title="${tit}" style="font-weight:700;color:${color}">${m>=0?'+':''}${m.toFixed(0)}%${marca}</span>`;
 }
 function rotDiasSinVenderHtml(dias){
