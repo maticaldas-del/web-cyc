@@ -6690,6 +6690,9 @@ async function main() {
             // Las ACTIVAS mandan: una pausada solo se usa si el producto no tiene ninguna activa.
             // Entre las del mismo tipo gana la peor, que es el criterio conservador de siempre.
             const mejor = !prev || (activa && !prev.activa) || (activa === prev.activa && neto < prev.neto);
+            // La cuenta se guarda porque la pantalla la necesita: el IIBB de ML es un % DISTINTO por
+            // cuenta (4,07 Adriana · 4,37 Luciana · 5,95 Ayelen · 4,58 Matías), y sin saber de qué
+            // cuenta es la publicación no hay forma de estimarlo en un producto que nunca vendió.
             if (mejor) porProd[p.id] = { neto, precio: Math.round(precio), mla, cuenta: label, sinEnvio, envioDeML, activa };
           }
         }
@@ -6709,6 +6712,7 @@ async function main() {
           await db.set('cyc/products/' + pid + '/netoCalcPausada', !d.activa);
           await db.set('cyc/products/' + pid + '/netoCalcSinEnvio', !!d.sinEnvio);
           await db.set('cyc/products/' + pid + '/netoCalcEnvioML', !!d.envioDeML);
+          await db.set('cyc/products/' + pid + '/netoCalcCuenta', d.cuenta);
           await db.set('cyc/products/' + pid + '/netoCalcTs', Date.now());
           guardados++;
         }

@@ -2265,7 +2265,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='13.2';
+const APP_VERSION='13.3';
 // El problema real que esto resuelve no es curiosidad: es que el celular guarda la app y sigue
 // mostrando la de ayer sin avisar. Varias veces se revisó un cambio que ya estaba subido y no se
 // veía. Por eso, además del número, el chip avisa cuando hay una versión nueva esperando.
@@ -6026,14 +6026,33 @@ function _netoAgg(){
   }));
   return _netoAggMemo=agg;
 }
+// ── LOS IMPUESTOS DE ML EN UN PRODUCTO QUE TODAVÍA NO VENDIÓ ────────────────────────
+// Encontrado el 20/08/2026 con una venta real suya: el panel mostraba +53% en el Hub USB 7 Puertos
+// y la venta dejó +29%. La diferencia NO estaba en el neto (el panel decía $6.007 y la venta dejó
+// $5.923, casi igual) sino en el COSTO: el panel usaba $3.926 y el costo real era $4.595.
+// Los $669 que faltaban son los impuestos — IIBB 5,95% de Ayelen + monotributo 1,84% sobre $8.600.
+//
+// El motivo: los impuestos se sacaban PROMEDIANDO las ventas del producto, y si nunca vendió no hay
+// nada que promediar… así que contaban CERO. Costo de menos = margen de más, siempre para el mismo
+// lado. Y le pega justo a los productos que no venden, que son los que uno mira para decidir si
+// bajar el precio: es el peor lugar posible donde tener el número inflado.
+//
+// Ahora, sin ventas, se estiman con el mismo % que usa el resto del panel sobre el precio de hoy.
+// Contra la venta real da $670 contra $669: un peso de diferencia.
+// Queda marcado como estimado para que la pantalla pueda decirlo en vez de darlo por medido.
 function margenMLDe(p){
   const agg=_netoAgg();
   const a=agg['id:'+p.id]||agg['nm:'+normTxt(p.name)];
-  const mlExtra=(a&&a.u>0)?Math.round(a.mlx/a.u):0;
+  let mlExtra=0,mlExtraEstimado=false;
+  if(a&&a.u>0)mlExtra=Math.round(a.mlx/a.u);
+  else if(Number(p.netoCalcPrecio)>0){
+    mlExtra=Math.round(Number(p.netoCalcPrecio)*(mlExtraPct(p.netoCalcCuenta)+monoPct())/100);
+    mlExtraEstimado=true;
+  }
   const costo=costFullP(p)+mlExtra;
   const netoCalc=(p.netoCalc!=null&&p.netoCalc!=='')?Number(p.netoCalc):null;
   const margen=(netoCalc!=null&&costo>0)?((netoCalc-costo)/costo*100):null;
-  return {costo,neto:netoCalc,netoCalc,margen,
+  return {costo,neto:netoCalc,netoCalc,margen,mlExtra,mlExtraEstimado,
     fuente:netoCalc!=null?'calc':null,
     netoReal:(a&&a.u>0)?Math.round(a.neto/a.u):null,
     sinEnvio:p.netoCalcSinEnvio===true,
