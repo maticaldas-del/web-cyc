@@ -298,6 +298,25 @@ hay en casa, no solo los que la cuenta "necesita". La caja a medio armar vive en
 app. Como el stock de la oficina no baja hasta cerrarla, el tope de cada renglón descuenta lo que
 ya está apartado en las cajas de las otras cuentas.
 
+## EL STOCK QUE NO ESTÁ EN FULL NO EXISTE
+
+Regla suya del 20/08/2026, textual: **"todo lo que diga 'depósito' en ML no tener en cuenta nunca.
+Ya que no existe ese stock. Dice uno porque es lo mínimo que permite ML para crear una
+publicación."**
+
+Ese `1` es un requisito del formulario de ML, no mercadería. Contarlo hacía dos daños a la vez:
+metía **plata inventada en el patrimonio** del Arqueo (unidades × costo de algo que no está), y
+**tapaba quiebres** — una publicación con "1 unidad" no figura sin stock, así que no aparecía en lo
+que hay que reponer.
+
+Está frenado en el robot, donde se carga el stock al panel: si la publicación no es `fulfillment`,
+cuenta **cero**. Ojo con el detalle que casi se pasa: la clave se escribe **en cero igual**, no se
+saltea — sólo se guarda en la base lo que aparece en ese objeto, así que saltearla dejaría para
+siempre el número inventado de antes. Cada corrida dice cuántas publicaciones ignoró y cuántas
+unidades falsas descartó.
+
+Lo que está en casa se cuenta a mano en **Mi oficina**, que es el lugar que corresponde.
+
 ## Cosas que ya pasaron (para no repetirlas)
 
 - **GitHub demora las corridas programadas**, a veces horas. Por eso los crons se piden 3 veces y

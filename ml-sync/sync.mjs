@@ -12471,7 +12471,8 @@ async function main() {
   const pricedUpd = {};
   let pubAlerts = 0; // tope de avisos de publicaciones por corrida (anti-spam)
   // stock a escribir en el inventario del panel (producto×cuenta y por variante)
-  const stockTot = {}; // prodId__Cuenta -> unidades (suma de sus publicaciones)
+  const stockTot = {}; // prodId__Cuenta -> unidades (suma de sus publicaciones EN FULL)
+  const depositoIgnorado = []; // publicaciones fuera de Full: su "stock" no existe (ver más abajo)
   const stockVar = {}; // prodId__Cuenta__v__Variante -> unidades
 
   const state = (await db.get('mlapi/state')) || {};
@@ -12997,7 +12998,7 @@ async function main() {
         const chunk = ids.slice(k, k + 20);
         let arr;
         try {
-          arr = await mlGet('/items?ids=' + chunk.join(',') + '&attributes=id,status,sub_status,permalink,price,original_price,deal_ids,available_quantity,variations', t.access_token);
+          arr = await mlGet('/items?ids=' + chunk.join(',') + '&attributes=id,status,sub_status,permalink,price,original_price,deal_ids,available_quantity,variations,shipping,title', t.access_token);
         } catch { continue; }
         for (const row of (arr || [])) {
           const b = row.body || {};
@@ -13041,7 +13042,26 @@ async function main() {
           // ── CARGAR STOCK al panel (si la pub está vinculada a un producto) ──
           if (autoStock && map[mla].prodId) {
             const p = products.find((pp) => pp.id === map[mla].prodId);
-            if (p) {
+            // ── EL STOCK QUE NO ESTÁ EN FULL NO EXISTE ────────────────────────────────
+            // Regla suya del 20/08/2026, textual: "todo lo que diga depósito en ML no tener en
+            // cuenta nunca, ya que no existe ese stock. Dice uno porque es lo mínimo que permite
+            // ML para crear una publicación."
+            // O sea: ese 1 es un requisito del formulario de ML, no mercadería. Contarlo hacía dos
+            // daños: metía plata inventada en el patrimonio del Arqueo (unidades × costo de un
+            // producto que no está), y tapaba los quiebres — una publicación con "1 unidad" no
+            // figura sin stock, así que no aparecía en lo que hay que reponer.
+            // Lo que está en casa se cuenta a mano en "Mi oficina", que es el lugar que corresponde.
+            const esFull = ((b.shipping && b.shipping.logistic_type) || '') === 'fulfillment';
+            if (p && !esFull) {
+              // Se escribe la clave en CERO, no se saltea: solo se guarda en la base lo que aparece
+              // en este objeto, así que saltearla dejaría para siempre el número inventado que se
+              // había guardado antes. Si el producto además tiene una publicación en Full, esa suma
+              // arriba de este cero y el total queda bien igual.
+              const kTot0 = map[mla].prodId + '__' + sid(label);
+              if (stockTot[kTot0] === undefined) stockTot[kTot0] = 0;
+              depositoIgnorado.push({ mla, label, q: b.available_quantity || 0, nom: (b.title || map[mla].title || mla).slice(0, 38) });
+            }
+            else if (p) {
               const kTot = map[mla].prodId + '__' + sid(label);
               let total = 0;
               if (Array.isArray(b.variations) && b.variations.length) {
@@ -13156,6 +13176,12 @@ async function main() {
       }
       if (Object.keys(histUpd).length) await db.patch('cyc/stockhist', histUpd);
       await db.patch('cyc/inventory', invUpd);
+      if (depositoIgnorado.length) {
+        const u = depositoIgnorado.reduce((a, x) => a + x.q, 0);
+        console.log(`ℹ️  ${depositoIgnorado.length} publicación(es) fuera de Full: ${u} u. NO se contaron (regla suya: ese stock no existe).`);
+        for (const d of depositoIgnorado.slice(0, 10)) console.log(`     ${d.mla} · ${d.label.padEnd(8)} · decía ${d.q} u. · ${d.nom}`);
+        if (depositoIgnorado.length > 10) console.log(`     … y ${depositoIgnorado.length - 10} más`);
+      }
       console.log(`✓ Stock actualizado: ${Object.keys(stockTot).length} producto×cuenta.`
         + (Object.keys(histUpd).length ? ` · ${Object.keys(histUpd).length} cambios de stock anotados.` : ''));
     }
