@@ -451,6 +451,7 @@ footer{margin-top:32px;padding-top:14px;border-top:1px solid var(--border);font-
       <input id="home-dolar-val" type="text" inputmode="numeric" title="Editá el dólar y apretá Enter (o salí del campo) para guardarlo" oninput="fmtMoneyInput(this)" onchange="saveTC(this.value)" onkeydown="if(event.key==='Enter')this.blur()" style="font-size:2rem;line-height:1.4;color:#22c55e;font-family:'Syne',sans-serif;font-weight:800;background:transparent;border:none;border-bottom:2px dashed rgba(34,197,94,.5);width:150px;text-align:left;outline:none;padding:4px 2px 6px;cursor:text">
     </div>
   </div>
+  <div style="text-align:center;margin:-6px auto 14px"><span id="home-version" onclick="actualizarApp()" title="Versión de la app que estás usando ahora. Tocá para buscar actualizaciones." style="display:inline-flex;align-items:center;gap:7px;font-size:.62rem;color:var(--muted);border:1px solid var(--border);border-radius:999px;padding:5px 13px;cursor:pointer;letter-spacing:.06em">…</span></div>
   <div id="home-cierre-aviso" style="display:none"></div>
   <div id="home-puntaje"></div>
   <div class="home-grid">
@@ -1960,6 +1961,7 @@ window.addEventListener('load',async()=>{
   if(!whoAmI){whoAmI=prompt('¿Cómo te llamás?')||'Usuario';localStorage.setItem(WHO_KEY,whoAmI);}
   injectLogos();
   setWhoLabels();
+  _vigilarVersion();   // pinta la versión en la principal y en Ajustes, y avisa si hay una nueva
   try{
     if(!firebase.apps.length)firebase.initializeApp(FIREBASE_CONFIG);
     db=firebase.database();
@@ -2256,6 +2258,52 @@ function guardarNombre(){
 function backupDesdeAjustes(){
   if(typeof descargarBackup==='function')descargarBackup();
   else alert('La opción de backup está en Arqueo → Productos.');
+}
+// ── LA VERSIÓN, EN UN SOLO LUGAR ─────────────────────────────────────────────────────
+// Estaba escrita a mano en el pie de Ajustes. Ahora también se muestra en la pantalla principal,
+// y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
+// mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
+// Se escribe ACÁ y los dos lugares lo leen de acá.
+const APP_VERSION='12.8';
+// El problema real que esto resuelve no es curiosidad: es que el celular guarda la app y sigue
+// mostrando la de ayer sin avisar. Varias veces se revisó un cambio que ya estaba subido y no se
+// veía. Por eso, además del número, el chip avisa cuando hay una versión nueva esperando.
+let _hayVersionNueva=false;
+function _pintarVersion(){
+  const chip=document.getElementById('home-version');
+  const pie=document.getElementById('ajustes-version');
+  if(pie)pie.textContent='CYC · Versión '+APP_VERSION;
+  if(!chip)return;
+  if(_hayVersionNueva){
+    chip.innerHTML='🔄 <strong style="color:var(--text)">Hay una versión nueva</strong> · tocá para actualizar';
+    chip.style.color='var(--amber)';
+    chip.style.borderColor='var(--amber)';
+    chip.title='Ya se descargó una versión más nueva que la '+APP_VERSION+'. Tocá para pasarte a ella.';
+  } else {
+    chip.innerHTML='Versión <strong style="color:var(--text)">'+APP_VERSION+'</strong>';
+    chip.style.color='var(--muted)';
+    chip.style.borderColor='var(--border)';
+    chip.title='Versión de la app que estás usando ahora. Tocá para buscar actualizaciones.';
+  }
+}
+// Le pregunta al navegador si ya tiene bajada una versión más nueva. `waiting` es una que ya se
+// descargó y está esperando; `updatefound` es una que se está bajando en este momento.
+function _vigilarVersion(){
+  _pintarVersion();
+  if(!('serviceWorker' in navigator))return;
+  navigator.serviceWorker.getRegistration().then(reg=>{
+    if(!reg)return;
+    const marcar=()=>{_hayVersionNueva=true;_pintarVersion();};
+    if(reg.waiting&&navigator.serviceWorker.controller)marcar();
+    reg.addEventListener('updatefound',()=>{
+      const nuevo=reg.installing;if(!nuevo)return;
+      nuevo.addEventListener('statechange',()=>{
+        // 'installed' + ya había una versión andando = la que se bajó es más nueva que ésta.
+        if(nuevo.state==='installed'&&navigator.serviceWorker.controller)marcar();
+      });
+    });
+    reg.update().catch(()=>{});
+  }).catch(()=>{});
 }
 function actualizarApp(){
   if(!confirm('Se va a actualizar la app a la última versión. ¿Continuar?'))return;
@@ -9179,7 +9227,7 @@ document.addEventListener('click',e=>{if(fnavOpen&&!e.target.closest('#fnav-btn'
         <span style="font-size:.75rem;color:var(--muted)">Si no ves los últimos cambios, forzá la actualización</span>
         <button class="btn" style="background:rgba(56,189,248,.12);color:var(--blue);border:1px solid rgba(56,189,248,.3)" onclick="actualizarApp()">🔄 Buscar actualizaciones</button>
       </div>
-      <div style="font-size:.66rem;color:var(--muted);margin-top:12px">CYC · Versión 12.7</div>
+      <div id="ajustes-version" style="font-size:.66rem;color:var(--muted);margin-top:12px"></div>
     </div>
 
     <div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:18px 20px;margin-bottom:14px">
