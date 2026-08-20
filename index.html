@@ -876,6 +876,10 @@ footer{margin-top:32px;padding-top:14px;border-top:1px solid var(--border);font-
     <button class="tab ped-section-tab" id="tab-papelera-btn" onclick="setPedidoSection('papelera',this)">🗑️ Papelera <span id="tab-papelera-n"></span></button>
   </div>
 
+  <!-- Lo que ya salió y todavía no llegó. Va ARRIBA de todo y en las tres secciones porque es la
+       explicación de por qué algunos números de compra bajaron: esa mercadería ya está paga. -->
+  <div id="ped-camino"></div>
+
   <!-- ── SECCIÓN PRIORIDAD (mezclado, ordenado por $ en riesgo) ── -->
   <div id="ped-section-prioridad" style="display:none">
     <div style="font-size:.66rem;color:var(--muted);margin-bottom:10px">Todo lo que hay que comprar, mezclado BS AS + Paraguay, ordenado por plata que se pierde si no se repone a tiempo (ganancia mensual del producto × días que va a estar sin stock).</div>
@@ -2266,7 +2270,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='13.5';
+const APP_VERSION='13.6';
 // El problema real que esto resuelve no es curiosidad: es que el celular guarda la app y sigue
 // mostrando la de ayer sin avisar. Varias veces se revisó un cambio que ya estaba subido y no se
 // veía. Por eso, además del número, el chip avisa cuando hay una versión nueva esperando.
@@ -6733,8 +6737,9 @@ async function syncPedidosAuto(){
     const estado=r.diasCubiertos<=7?'pendiente':'poco_stock';
     const notaHist=r.diasHistorial<PED_MAX_DAYS?` (${r.vendidos} en ${r.diasHistorial}d)`:'';
     const variantesNec=r.variantesNec||null;
+    const _ti=r.enCamino>0?transitoInfoDe(r.p.id):null;
     const notaOfi=(r.enOficina>0?` · ${r.enOficina} ya en tu oficina`:'')
-                 +(r.enCamino>0?` · <span style="color:var(--amber)">${r.enCamino} ya en camino a Full</span>`:'');
+                 +(_ti?` · <span style="color:${_ti.diasMax>=ENV_ROJO_DIAS?'var(--red)':'var(--amber)'}" title="${_ti.u} unidades despachadas en ${_ti.cajas} caja(s) que todavía no llegaron a Full: ${Object.entries(_ti.ctas).map(([c,q])=>q+' a '+c).join(' · ')}. Como ya están compradas, no entran en lo que hay que comprar.${_ti.diasMax>=ENV_ROJO_DIAS?' OJO: la más vieja lleva '+_ti.diasMax+' días, revisá si ya entró.':''}">🚚 ${_ti.u} en camino${_ti.cajas>1?` (${_ti.cajas} cajas)`:''}, hace ${_ti.diasMax}d</span>`:'');
     const nota=`30d: ${r.vendidosNorm} vendidos${notaHist} · ${r.stock} en stock · ~${r.diasCubiertos}d cubiertos${notaOfi}`;
     const pvMatch=r.p.proveedorId?(state.proveedores||[]).find(x=>x.id===r.p.proveedorId):null;
     const provNom=pvMatch?.nombre||null;
@@ -7507,10 +7512,57 @@ function _pedidoItemHtml(p,opts){
 const _pedSortFn=(a,b)=>{const o={pendiente:0,poco_stock:1,suficiente:2};return(o[a.estado||'pendiente']-o[b.estado||'pendiente'])||((b.cantidad||1)-(a.cantidad||1))||((a.producto||'').localeCompare(b.producto||'','es',{sensitivity:'base'}));};
 const _pedSortFnRiesgo=(a,b)=>(b.riesgo||0)-(a.riesgo||0);
 
+// ── LO QUE VA EN CAMINO A FULL, POR PRODUCTO ─────────────────────────────────────────
+// Devuelve además de las unidades: en cuántas cajas van, hace cuántos días salió la más vieja y a
+// qué cuentas. Sin eso, en Pedidos el número de compra baja "porque sí" y parece un error del
+// sistema; con esto se ve QUÉ hay viajando y si está tardando.
+function transitoInfoDe(pid){
+  let u=0,cajas=0,diasMax=0;const ctas={};
+  Object.values(state.envios_full||{}).forEach(e=>{
+    const cta=e.cuenta;if(!cta||!LOCS.includes(cta))return;
+    const d=envDias(e);
+    for(const c of cajasDe(e)){
+      if(c.recibida)continue;
+      let uc=0;
+      for(const it of (c.items||[]))if(it&&it.prodId===pid&&it.u>0)uc+=it.u;
+      if(uc<=0)continue;
+      u+=uc;cajas++;ctas[cta]=(ctas[cta]||0)+uc;
+      if(d>diasMax)diasMax=d;
+    }
+  });
+  return u>0?{u,cajas,diasMax,ctas}:null;
+}
+// El resumen de arriba de Pedidos: todo lo que está viajando, con lo que está tardando aparte.
+function renderPedCamino(){
+  const el=document.getElementById('ped-camino');if(!el)return;
+  let u=0,cajas=0,tarde=0,uTarde=0;
+  Object.values(state.envios_full||{}).forEach(e=>{
+    if(!e.cuenta||!LOCS.includes(e.cuenta))return;
+    const d=envDias(e);
+    for(const c of cajasDe(e)){
+      if(c.recibida)continue;
+      const uc=(c.items||[]).reduce((s,it)=>s+((it&&it.u>0)?it.u:0),0);
+      if(uc<=0)continue;
+      u+=uc;cajas++;
+      if(d>=ENV_ROJO_DIAS){tarde++;uTarde+=uc;}
+    }
+  });
+  if(!u){el.innerHTML='';return;}
+  el.innerHTML=`<div style="background:var(--surface);border:1px solid ${tarde?'var(--red)':'var(--amber)'};border-radius:var(--r);padding:12px 14px;margin-bottom:12px">
+    <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap">
+      <div style="font-size:.74rem"><span style="color:var(--amber);font-weight:700">🚚 ${fmtN(u)} u. en camino a Full</span>
+        <span style="color:var(--muted)"> · ${cajas} caja${cajas===1?'':'s'} despachada${cajas===1?'':'s'} sin llegar</span></div>
+      <button class="btn" style="font-size:.62rem;padding:5px 10px" onclick="goPage('oficina');setOfiTab('camino',document.getElementById('tab-ofi-camino'))">Ver las cajas →</button>
+    </div>
+    <div style="font-size:.63rem;color:var(--muted);margin-top:6px;line-height:1.5">Esta mercadería <strong>ya está comprada y pagada</strong>, así que abajo NO se vuelve a pedir. Todavía no se puede vender: sigue contando como quiebre de stock hasta que ML la active.
+    ${tarde?`<br><span style="color:var(--red);font-weight:700">⚠ ${tarde} caja(s) con ${fmtN(uTarde)} u. llevan ${ENV_ROJO_DIAS}+ días sin llegar.</span> Si ya entraron, marcalas para que el stock se acomode.`:''}</div>
+  </div>`;
+}
 function renderPedidos(){
   // El número al lado de la solapa se refresca siempre, se esté mirando la papelera o no.
   // El número de la solapa cuenta solo lo que TODAVÍA se puede devolver: si contara también los
   // vencidos, crecería para siempre y dejaría de significar "tenés algo pendiente de decidir".
+  renderPedCamino();   // el resumen de lo que va en camino, arriba y en todas las secciones
   const _papN=Object.values(state.papelera||{}).filter(x=>!x.definitivo).length;
   const _papTab=document.getElementById('tab-papelera-n');
   if(_papTab)_papTab.textContent=_papN?'('+_papN+')':'';
