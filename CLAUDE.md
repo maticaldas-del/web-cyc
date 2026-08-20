@@ -295,6 +295,16 @@ ya está apartado en las cajas de las otras cuentas.
   **403 forbidden**. No es configuración ni token — la app no tiene ni puede pedir ese permiso.
   Por eso el disponible por cuenta en el Arqueo se carga a mano. Si algún día ML lo habilita, se
   corre `probarsaldo` y se ve al toque.
+- **Lo que va EN CAMINO a Full no se puede leer de ML.** Probado el 20/08/2026 con `probarinbound`
+  en las cuatro cuentas: 7 endpoints candidatos × 4 cuentas = 28 intentos, **todos fallan** (404 o
+  directamente una página web, o sea que ni siquiera es una ruta de la API):
+  `/inbound-shipments`, `/inbound-shipments/search`, `/stock/fulfillment/inbound/shipments`,
+  `/stock/fulfillment/inbound_shipments`, `/users/<id>/inbound-shipments`, `/shipments/inbound`,
+  `/fbm/inbound/shipments`. El único que sí anda es
+  `/stock/fulfillment/operations/search`, y **exige `inventory_id`** (sin él da 400): sirve para ver
+  lo que YA ENTRÓ, no lo que viaja. Conclusión: el contenido de las cajas en camino sale de lo que
+  se carga al cerrarlas en "Armar caja", y no hay forma de sacarlo de ML. **Consecuencia práctica:
+  una caja despachada sin cargar el contenido NO se puede marcar sola** — no hay con qué cruzarla.
 - **La marca roja de "para evitar descarte" NO viene por la API.** El stock de Full
   (`/inventories/<id>/stock/fulfillment`) devuelve `available_quantity` y `not_available_quantity`
   y nada más: ni la marca ni la fecha de descarte que se ven en "Estado de tu stock". Se deduce
