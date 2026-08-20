@@ -3924,15 +3924,15 @@ async function cerrarCaja(cuenta){
 }
 
 // CUÁNTO SE MANDA. Regla suya del 19/08/2026: desde que se arma la caja hasta que la mercadería
-// se puede vender pasan unos 14 días — ~7 hasta que la caja sale y ~7 más hasta que ML la activa
-// en Full. Durante esos 14 días la cuenta sigue vendiendo de lo que ya tiene. Si se manda para
+// se puede vender pasan unos 8 días (era 14; él lo corrigió el 20/08 con lo que ve en la práctica).
+// Durante esos días la cuenta sigue vendiendo de lo que ya tiene. Si se manda para
 // "30 días", la caja llega justo cuando la publicación se quedó sin nada, que es el peor momento.
-// Por eso el objetivo son 30 días DE VENTA más los 14 de demora: 44 días de cobertura.
+// Por eso el objetivo son 30 días DE VENTA más los de demora (REPO_DIAS_TOTAL).
 // ── A QUÉ VELOCIDAD SE VENDE: DIVIDIR POR LOS DÍAS QUE HUBO STOCK, NO POR 30 ──────────
 // Antes la cuenta era `ventas del mes ÷ 30` fijo, sin preguntar si en esos 30 días había
 // mercadería para vender. Eso mide MAL justo lo que más importa: un producto que vendió 10
 // unidades en 5 días y se agotó daba 0,33 por día (10÷30) cuando en realidad vendía 2 por día.
-// Con los 44 días de objetivo eso son 15 unidades sugeridas en vez de 88 — casi seis veces menos.
+// Con el objetivo de cobertura eso son unas 15 unidades sugeridas en vez de 88.
 //
 // Y el error va SIEMPRE para el mismo lado: cuanto más rápido se vende algo, antes se queda sin
 // stock, más días pasa en cero y más lo achica la cuenta. El que más urge reponer es el que peor
@@ -3957,8 +3957,20 @@ function diasConStock(pid,loc){
   if(!isFinite(d)||d<=0)return REPO_DIAS_MIN;
   return Math.max(REPO_DIAS_MIN,Math.min(PED_MAX_DAYS,d));
 }
+// A nivel PRODUCTO (lo que mira Pedidos, que compra para todas las cuentas juntas): el producto
+// se pudo vender mientras HUBO stock en ALGUNA cuenta, así que se toma el máximo. Tomar el mínimo
+// o el promedio castigaría a un producto que en una cuenta se agotó y en otra sobraba.
+function diasConStockProd(pid){
+  let mx=0;
+  for(const l of LOCS){const d=diasConStock(pid,l);if(d>mx)mx=d;}
+  return mx>0?mx:PED_MAX_DAYS;
+}
 const REPO_DIAS_COBERTURA=30;
-const REPO_DIAS_DEMORA=14;      // 7 de despacho + 7 de activación en Full
+// Cuánto tarda desde que se arma la caja hasta que ML la tiene a la venta. Estaba en 14 (7 de
+// despacho + 7 de activación); él corrigió el 20/08 que en la práctica son unos 8. Se sobreestima
+// la demora = se manda de más, así que el número importa. Cuando haya cajas marcadas como llegadas
+// se puede medir de verdad, con la fecha de despacho contra la de entrada a Full.
+const REPO_DIAS_DEMORA=8;
 const REPO_DIAS_TOTAL=REPO_DIAS_COBERTURA+REPO_DIAS_DEMORA;
 
 /* ═══════════ CAJAS EN CAMINO A FULL ═══════════
@@ -5976,16 +5988,23 @@ function margenMLDe(p){
     sinEnvio:p.netoCalcSinEnvio===true,
     pausada:p.netoCalcPausada===true};
 }
+// El dato vive en cyc/mllinks/<MLA>/vis30, que es donde lo escribe el probe `visitas`.
+// Estuvo leyéndose de cyc/visitas y por eso la columna salía toda en "—": ese nodo lo escribía un
+// SEGUNDO probe que también se llamaba `visitas` y que nunca llegó a correr, porque el dispatcher
+// toma el primero que matchea. Los dos lugares tienen que ser el mismo o la pantalla miente.
+//
+// El robot solo mide las publicaciones CON STOCK: una sin stock no vende por un motivo evidente y
+// preguntar sus visitas no aporta nada. Por eso un producto agotado sigue mostrando "—".
 function visitasDe(p){
-  const V=state.visitas||{}, L=state.mllinks||{};
-  let tot=0,pubs=0,ts=0,dias=30;
-  for(const [mla,e] of Object.entries(L)){
+  const L=state.mllinks||{};
+  let tot=0,pubs=0,ts=0;
+  for(const e of Object.values(L)){
     if(!e||e.prodId!==p.id)continue;
     if((e.status||'')==='closed')continue;
-    const v=V[mla];if(!v||typeof v.v!=='number')continue;
-    tot+=v.v;pubs++;if(v.ts>ts)ts=v.ts;if(v.dias)dias=v.dias;
+    if(typeof e.vis30!=='number')continue;
+    tot+=e.vis30;pubs++;if((e.vis30Ts||0)>ts)ts=e.vis30Ts;
   }
-  return pubs?{tot,pubs,ts,dias}:null;
+  return pubs?{tot,pubs,ts,dias:30}:null;
 }
 function renderMargenML(){
   const el=document.getElementById('margen-ml-list');if(!el)return;
@@ -6265,7 +6284,12 @@ function pedVentasNorm(prodOrName){
   });
   const factor=PED_MAX_DAYS/diasHistorial;
   const vendidosNorm=Math.round(vendidos*factor);
-  return{vendidos,vendidosNorm,diasHistorial,factor};
+  // MISMA corrección que en "Mi oficina": la velocidad se mide sobre los días que hubo mercadería,
+  // no sobre los 30 del mes. Si el producto estuvo agotado media ventana, dividir por 30 dice que
+  // vende la mitad de lo que vende — y es justo el que hay que reponer primero.
+  const dConS=target?diasConStockProd(target.id):PED_MAX_DAYS;
+  const vDia=vendidos/Math.min(dConS,diasHistorial);
+  return{vendidos,vendidosNorm,diasHistorial,factor,dConS,vDia};
 }
 // ── A QUÉ CUENTA MANDAR LO QUE HAY EN LA OFICINA ───────────────────────────
 // El problema que resuelve: cuando está armando la caja tiene mercadería de varios productos y no
@@ -6532,10 +6556,13 @@ async function syncPedidosAuto(){
     // aparecer en Pedidos y tampoco suma "riesgo", que es lo que alimenta el Puntaje del mes y el
     // stock en riesgo. Si se saltease más abajo, el producto seguiría restando puntaje sin verse.
     if(_pap[p.id])continue;
-    const {vendidos,vendidosNorm,diasHistorial}=pedVentasNorm(p);
+    const {vendidos,vendidosNorm,diasHistorial,dConS,vDia}=pedVentasNorm(p);
     if(vendidos===0)continue;
     const stock=stockOf(p);
-    const diasCubiertos=vendidosNorm>0?Math.round(stock/vendidosNorm*30):999;
+    // Los días que dura el stock salen de la velocidad REAL (ventas ÷ días con mercadería), no de
+    // ventas÷30. Con la cuenta vieja un producto agotado la mitad del mes parecía tener el doble de
+    // días de cobertura de los que tiene.
+    const diasCubiertos=vDia>0?Math.round(stock/vDia):999;
     const coll=p.origen==='py'?'pedidos_py':'pedidos';
     const hasVars=(p.variantes||[]).length>0;
     let necesario,variantesNec;
@@ -6545,14 +6572,16 @@ async function syncPedidosAuto(){
       const varDefs=(p.variantes||[]).map(v=>{
         const vSalesNorm=Math.round((varSalesMap[p.id][v]||0)*normFactor);
         const vStock=LOCS.reduce((s,l)=>s+(parseInt(state.inventory[invKeyV(p.id,l,v)])||0),0);
-        const vTarget=Math.ceil(vSalesNorm*TARGET_DAYS/30);
+        // El stockhist es por producto×cuenta, no por variante: acá se usa la velocidad del
+        // producto como aproximación, que es lo mejor que hay hasta que se anote por variante.
+        const vTarget=Math.ceil((varSalesMap[p.id][v]||0)/Math.min(dConS,diasHistorial)*TARGET_DAYS);
         const vNec=Math.max(0,vTarget-vStock);
         return{v,vNec};
       }).filter(x=>x.vNec>0);
       necesario=varDefs.reduce((s,x)=>s+x.vNec,0);
       variantesNec=varDefs.length?varDefs.map(({v,vNec:q})=>({v,q})):null;
     } else {
-      const targetStock=Math.ceil(vendidosNorm*TARGET_DAYS/30);
+      const targetStock=Math.ceil(vDia*TARGET_DAYS);
       necesario=Math.max(0,targetStock-stock);
       variantesNec=null;
     }
@@ -6570,11 +6599,12 @@ async function syncPedidosAuto(){
     const RIESGO_DIAS=30;
     const gan30d=pedGananciaNorm(p);
     const diasEnRiesgo=Math.max(0,RIESGO_DIAS-diasCubiertos);
+    void dConS;
     const riesgo=Math.round((gan30d/30)*diasEnRiesgo);
     // Si hay unidades en casa no se puede repartir el pedido por variante con confianza (no se
     // sabe de qué variante son las de la oficina), así que se deja el pedido sin desglose.
     if(enOficina>0)variantesNec=null;
-    resumen[p.id]={p,vendidos,vendidosNorm,stock,diasHistorial,diasCubiertos,necesario,enOficina,aComprar,variantesNec,coll,gan30d,riesgo};
+    resumen[p.id]={p,vendidos,vendidosNorm,stock,diasHistorial,diasCubiertos,necesario,enOficina,aComprar,variantesNec,coll,gan30d,riesgo,dConS,vDia};
   }
   // 3. IDs que deberían existir como auto-pedidos
   const expectedIds=new Set();
@@ -9085,7 +9115,7 @@ document.addEventListener('click',e=>{if(fnavOpen&&!e.target.closest('#fnav-btn'
         <span style="font-size:.75rem;color:var(--muted)">Si no ves los últimos cambios, forzá la actualización</span>
         <button class="btn" style="background:rgba(56,189,248,.12);color:var(--blue);border:1px solid rgba(56,189,248,.3)" onclick="actualizarApp()">🔄 Buscar actualizaciones</button>
       </div>
-      <div style="font-size:.66rem;color:var(--muted);margin-top:12px">CYC · Versión 12.3</div>
+      <div style="font-size:.66rem;color:var(--muted);margin-top:12px">CYC · Versión 12.5</div>
     </div>
 
     <div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:18px 20px;margin-bottom:14px">

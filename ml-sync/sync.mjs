@@ -3760,7 +3760,9 @@ async function main() {
     //     o la reputación, o que la competencia está más barata).
     // Sin este dato, "no vende" no se puede diagnosticar y se termina bajando precios a ciegas.
     // Guarda las visitas en cyc/mllinks/<MLA>/vis30 para poder usarlas en el chequeo de la mañana.
-    if (String(process.env.BILLING_PROBE || '').startsWith('visitas')) {
+    // El match es EXACTO sobre el nombre (no prefijo suelto): si no, `visitasconv` caería acá,
+    // que es justo el bug que este comentario documenta.
+    if (/^visitas(:|$)/.test(String(process.env.BILLING_PROBE || ''))) {
       const _v = String(process.env.BILLING_PROBE).split(':');
       const soloCta = (_v[1] || '').trim().toLowerCase();
       const DIAS = parseFloat(_v[2]) || 30;
@@ -4862,7 +4864,13 @@ async function main() {
       console.log(`✓ ${sacadas.length} variantes Bliss sacadas del producto común.`);
       return;
     }
-    // BILLING_PROBE=visitas[:<días>] → ¿POR QUÉ NO VENDE? ¿PRECIO O NADIE LO VE?
+    // BILLING_PROBE=visitasconv[:<días>] → LO MISMO QUE `visitas` PERO CONTRA LA MEDIANA DEL CATÁLOGO.
+    //
+    // OJO — este probe se llamaba `visitas` y NUNCA se ejecutó: ya hay un `visitas` más arriba y el
+    // dispatcher toma el PRIMERO que matchea. Segunda vez que pasa (la otra fue envioreal/envioml).
+    // El de arriba es el que manda y el que guarda el dato en cyc/mllinks/<MLA>/vis30, que es de
+    // donde lo lee la web. Éste queda con nombre propio porque hace un análisis distinto: en vez de
+    // cortar en 20/50 visitas fijas, compara contra la MEDIANA de tu propio catálogo.
     //
     // Hasta ahora, cuando un producto no vendía no sabíamos el motivo y la única palanca que se nos
     // ocurría era bajar el precio. Eso es adivinar: si el problema era que nadie lo encuentra,
@@ -4871,7 +4879,7 @@ async function main() {
     //   · LO VEN Y NO COMPRAN  → muchas visitas, poca conversión → precio / competencia / fotos
     //   · NO LO VEN            → pocas visitas → posicionamiento, título, categoría
     // El corte no es un número inventado: se compara contra la MEDIANA de tu propio catálogo.
-    if (String(process.env.BILLING_PROBE || '').startsWith('visitas')) {
+    if (/^visitasconv(:|$)/.test(String(process.env.BILLING_PROBE || ''))) {
       const DIAS = parseFloat(String(process.env.BILLING_PROBE).split(':')[1]) || 30;
       const desde = Date.now() - DIAS * 864e5;
       const links = (await db.get('cyc/mllinks')) || {};
