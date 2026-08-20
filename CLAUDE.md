@@ -253,6 +253,12 @@ que aparece y desaparece sin que pase nada. Está como "En camino a Full" en la 
 Colores de cada caja, regla suya: **verde** llegó · **naranja** en camino · **rojo** 7 días o más
 sin llegar.
 
+**Lo que se sugiere mandar cubre 44 días, no 30.** Regla suya del 19/08/2026: desde que se arma
+la caja hasta que la mercadería se puede vender pasan unos **14 días** —~7 hasta que la caja sale
+y ~7 más hasta que ML la activa en Full— y en el medio la cuenta sigue vendiendo de lo que ya
+tiene. Mandar para 30 días hace que la caja llegue justo cuando la publicación se quedó sin nada.
+Los dos números están en `index.html` como `REPO_DIAS_COBERTURA` (30) y `REPO_DIAS_DEMORA` (14).
+
 **Las cajas se arman a mano y se pueden dejar a medias.** La recomendación del panel es el punto
 de partida, no la orden: casi nunca se despacha exacto lo que dice (entra menos, se manda otra
 cosa, hacen falta dos cajas). Cada renglón tiene su casilla y se listan TODOS los productos que

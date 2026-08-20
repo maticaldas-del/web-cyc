@@ -3612,7 +3612,7 @@ function renderOfiCaja(){
     barra.style.display=armando?'flex':'none';
     barra.innerHTML=armando?`<button class="pf-btn" onclick="cajaSugerida()">Cargar lo sugerido</button>`
       +`<button class="pf-btn" onclick="cajaVaciar()">Vaciar caja</button>`
-      +`<span style="font-size:.66rem;color:var(--muted);align-self:center">Poné cuántas unidades van en ESTA caja. Si no entra todo, cerrás ésta y armás la siguiente. Se guarda sola: podés dejarla a medias.</span>`:'';
+      +`<span style="font-size:.66rem;color:var(--muted);align-self:center">Poné cuántas unidades van en ESTA caja. Si no entra todo, cerrás ésta y armás la siguiente. Se guarda sola: podés dejarla a medias.<br>Lo sugerido cubre <strong>${REPO_DIAS_COBERTURA} días de venta más los ${REPO_DIAS_DEMORA} que tarda en llegar y activarse</strong>.</span>`:'';
   }
   if(!vis.length){
     // El vacío tiene que decir QUÉ HACER, no sólo que está vacío. Pedido suyo del 18/08/2026:
@@ -3645,7 +3645,7 @@ function renderOfiCaja(){
     let pie='';
     if(f.sinContarPorAroma)pie=`<div style="font-size:.66rem;color:var(--amber);margin-top:5px">⚠️ Estas ${f.hay} u. están contadas en el producto pero sin decir de qué variante. Anotalas en "Contar lo que hay", una por variante, y ahí te digo a dónde van.</div>`;
     else if(f.sinPublicar)pie=`<div style="font-size:.66rem;color:var(--amber);margin-top:5px">⚠️ No está publicado en ninguna cuenta. Mandarlo no sirve hasta que lo publiques.</div>`;
-    else if(f.nadieNecesita)pie=`<div style="font-size:.66rem;color:var(--green);margin-top:5px">✓ Ninguna cuenta lo necesita: todas tienen para más de 30 días. Dejalo en casa.</div>`;
+    else if(f.nadieNecesita)pie=`<div style="font-size:.66rem;color:var(--green);margin-top:5px">✓ Ninguna cuenta lo necesita: a todas les alcanza para los ${REPO_DIAS_DEMORA} días que tarda en llegar más ${REPO_DIAS_COBERTURA} de venta. Dejalo en casa.</div>`;
     else if(f.sobra>0)pie=`<div style="font-size:.66rem;color:var(--muted);margin-top:5px">Te sobran ${f.sobra} u. después de repartir. No hace falta mandarlas.</div>`;
 
     // En modo armar caja, cada renglón tiene su casilla: lo que va DE VERDAD en esta caja.
@@ -3862,6 +3862,15 @@ async function cerrarCaja(cuenta){
   toast(track?'Caja cerrada ✓':'Caja cerrada ✓ · pegale el seguimiento en Envíos a Full',4500);
   syncOfiMati();renderOfiCaja();renderOfiContar();
 }
+
+// CUÁNTO SE MANDA. Regla suya del 19/08/2026: desde que se arma la caja hasta que la mercadería
+// se puede vender pasan unos 14 días — ~7 hasta que la caja sale y ~7 más hasta que ML la activa
+// en Full. Durante esos 14 días la cuenta sigue vendiendo de lo que ya tiene. Si se manda para
+// "30 días", la caja llega justo cuando la publicación se quedó sin nada, que es el peor momento.
+// Por eso el objetivo son 30 días DE VENTA más los 14 de demora: 44 días de cobertura.
+const REPO_DIAS_COBERTURA=30;
+const REPO_DIAS_DEMORA=14;      // 7 de despacho + 7 de activación en Full
+const REPO_DIAS_TOTAL=REPO_DIAS_COBERTURA+REPO_DIAS_DEMORA;
 
 /* ═══════════ CAJAS EN CAMINO A FULL ═══════════
    Una caja despachada ya no está en la oficina pero todavía no está en ML: es un TERCER lugar, y
@@ -6143,7 +6152,7 @@ function _repartoVariantes(p,hayTotal,tr){
       const camino=transitoDe(tr,p.id,l,va);
       const stock=enML+camino;
       const dias=vDia>0?stock/vDia:(stock>0?999:null);
-      const objetivo=Math.ceil(vDia*30);
+      const objetivo=Math.ceil(vDia*REPO_DIAS_TOTAL);
       return{cuenta:l,vMes,vDia,stock,enML,camino,dias,falta:Math.max(0,objetivo-stock)};
     }).sort((a,b)=>{
       const da=a.dias==null?9999:a.dias, db=b.dias==null?9999:b.dias;
@@ -6188,7 +6197,7 @@ function repartoOficina(){
       const camino=transitoDe(tr,p.id,l,'');
       const stock=enML+camino;
       const dias=vDia>0?stock/vDia:(stock>0?999:null);   // sin ventas no se puede estimar
-      const objetivo=Math.ceil(vDia*30);
+      const objetivo=Math.ceil(vDia*REPO_DIAS_TOTAL);
       return{cuenta:l,vMes:ventas[l]||0,vDia,stock,enML,camino,dias,falta:Math.max(0,objetivo-stock)};
     }).sort((a,b)=>{
       // Primero a la que se le acaba antes. Las que no venden van al final.
@@ -8784,7 +8793,7 @@ document.addEventListener('click',e=>{if(fnavOpen&&!e.target.closest('#fnav-btn'
         <span style="font-size:.75rem;color:var(--muted)">Si no ves los últimos cambios, forzá la actualización</span>
         <button class="btn" style="background:rgba(56,189,248,.12);color:var(--blue);border:1px solid rgba(56,189,248,.3)" onclick="actualizarApp()">🔄 Buscar actualizaciones</button>
       </div>
-      <div style="font-size:.66rem;color:var(--muted);margin-top:12px">CYC · Versión 11.7</div>
+      <div style="font-size:.66rem;color:var(--muted);margin-top:12px">CYC · Versión 11.8</div>
     </div>
 
     <div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:18px 20px;margin-bottom:14px">
