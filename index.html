@@ -6906,9 +6906,11 @@ function cajaMLDe(p){
     if(!e.caja||!(e.caja in n))continue;
     n[e.caja]++;pubs++;
     if((e.cajaTs||0)>ts)ts=e.cajaTs;
-    // El precio para ganar que se muestra es el MÁS ALTO de las que perdemos: es el que alcanza
-    // para todas. Mostrar el más barato haría creer que con eso se recupera la caja en todas.
-    if(e.caja==='losing'&&(e.cajaPtw||0)>ptw)ptw=e.cajaPtw;
+    // El precio para ganar que se muestra es el MÁS BAJO de las que perdemos, no el más alto.
+    // price_to_win es el precio al que se gana ESA caja, así que para ganarlas todas hay que estar
+    // abajo de la más exigente = la más barata. Con el más alto se gana solo una y el número miente
+    // para el lado peligroso: hace parecer que alcanza con recortar menos de lo que hace falta.
+    if(e.caja==='losing'&&(e.cajaPtw||0)>0&&(ptw===0||e.cajaPtw<ptw))ptw=e.cajaPtw;
   }
   if(!pubs)return null;
   const st=n.winning?'winning':n.sharing?'sharing':n.losing?'losing':'nocat';
@@ -9177,7 +9179,7 @@ document.addEventListener('click',e=>{if(fnavOpen&&!e.target.closest('#fnav-btn'
         <span style="font-size:.75rem;color:var(--muted)">Si no ves los últimos cambios, forzá la actualización</span>
         <button class="btn" style="background:rgba(56,189,248,.12);color:var(--blue);border:1px solid rgba(56,189,248,.3)" onclick="actualizarApp()">🔄 Buscar actualizaciones</button>
       </div>
-      <div style="font-size:.66rem;color:var(--muted);margin-top:12px">CYC · Versión 12.6</div>
+      <div style="font-size:.66rem;color:var(--muted);margin-top:12px">CYC · Versión 12.7</div>
     </div>
 
     <div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:18px 20px;margin-bottom:14px">
