@@ -921,7 +921,7 @@ async function bajarParaMover(db, accounts, labels, products, opts = {}) {
       .map(([mla]) => mla);
     for (let k = 0; k < ids.length; k += 20) {
       let arr;
-      try { arr = await mlGet('/items?ids=' + ids.slice(k, k + 20).join(',') + '&attributes=id,status,price,available_quantity,variations,title,listing_type_id,category_id,site_id,catalog_listing', t.access_token); } catch { continue; }
+      try { arr = await mlGet('/items?ids=' + ids.slice(k, k + 20).join(',') + '&attributes=id,status,price,available_quantity,variations,title,listing_type_id,category_id,site_id,catalog_listing,catalog_product_id', t.access_token); } catch { continue; }
       for (const row of (arr || [])) {
         const b = row.body || {}; const mla = b.id; if (!mla || !links[mla]) continue;
         if (b.status !== 'active') continue;        // pausada: no está a la venta, no hay nada que mover
@@ -964,6 +964,38 @@ async function bajarParaMover(db, accounts, labels, products, opts = {}) {
         const mgHoy = mgDe(precio, com0), mgPw = mgDe(pw, comPw);
         const baja = (1 - pw / precio) * 100;
         const fila = { ...base, pw: Math.floor(pw) - 1, mgHoy, mgPw, baja, envio: env, costo };
+        // ── ¿LA PELEA SE PUEDE SOSTENER? ──
+        // Bajar al precio de la caja la recupera HOY. La pregunta que faltaba es si se puede
+        // sostener: si en la misma ficha hay vendedores MÁS BARATOS que nuestro piso, apenas
+        // reactiven stock nos la vuelven a sacar y ya no hay margen para responder. Es exactamente
+        // lo que pasó con el pendrive 128gb: bajado el 16/08, la caja perdida el 20/08, y en la
+        // ficha había tres publicaciones abajo del piso esperando.
+        // No frena la sugerencia —recuperar la caja hoy igual vende hoy— pero lo AVISA.
+        try {
+          const cpid = b.catalog_product_id;
+          if (cpid) {
+            const comp = await mlGet(`/products/${cpid}/items`, t.access_token);
+            const otros = (comp?.results || []).filter((x) => x && x.price > 0 && String(x.seller_id) !== String(accounts[label]?.seller_id));
+            // El piso en PESOS de esta publicación, con la misma cuenta que el resto.
+            const den = 1 - m * (1 + PISO / 100);
+            let pisoPesos = null;
+            if (den > 0) {
+              let P = precio, comP = com0;
+              for (let i = 0; i < 4; i++) {
+                const Pn = (costo * (1 + PISO / 100) + comP + env) / den;
+                const c2 = await feeAt(site, Pn, lt, cat, t.access_token); if (c2 == null) break;
+                if (Math.abs(Pn - P) < 1 && i > 0) { P = Pn; break; }
+                P = Pn; comP = c2;
+              }
+              pisoPesos = Math.ceil(P / 10) * 10;
+            }
+            if (pisoPesos) {
+              const acechan = otros.filter((x) => x.price < pisoPesos).length;
+              if (acechan) fila.acechan = acechan;
+              fila.pisoPesos = pisoPesos;
+            }
+          }
+        } catch { /* si ML no da la ficha, se sigue sin este dato */ }
         // Se propone solo si después de bajar SIGUE arriba del piso y la baja es chica.
         if (mgPw >= PISO && baja <= MAX_BAJA) filas.push(fila);
         else noConviene.push({ ...fila, why: mgPw < PISO ? `al precio de la caja queda en ${mgPw.toFixed(0)}%` : `habría que bajar ${baja.toFixed(0)}%` });
@@ -6304,11 +6336,24 @@ async function main() {
               if (cv == null) continue;
               for (const v of ventas) if (Math.round(v.tot) === pv) { const x = v.tot - v.net - cv; if (x > envio) envio = x; }
             }
-            // Sin ninguna venta no hay envío que deducir. Se sigue mostrando el neto (es mejor que
-            // no mostrar nada) pero queda MARCADO: la pantalla avisa que ese margen está sin envío
-            // y por lo tanto es optimista. Antes esto pasaba callado.
-            const sinEnvio = !isFinite(envio);
-            if (sinEnvio) envio = 0;
+            // Sin ninguna venta no hay envío que deducir de nuestras ventas... pero ML sí sabe
+            // cuánto nos cobra. Se le pregunta antes de rendirse.
+            //
+            // Medido el 20/08/2026 con `envioml`: para las publicaciones ABAJO de los $33.000 ML
+            // contesta $0 (correcto: el envío lo paga el comprador) y para las de arriba contestó
+            // $5.620 donde nuestras ventas mostraban $6.620. O sea: sirve, y es muchísimo mejor que
+            // el CERO que se usaba antes, pero no es idéntico. Por eso se usa SOLO acá, donde la
+            // alternativa es no descontar nada; las publicaciones que sí tienen ventas siguen
+            // usando sus ventas, que son el dato de la realidad.
+            let sinEnvio = !isFinite(envio);
+            if (sinEnvio) {
+              try {
+                const sg = await mlGet(`/suggestions/items/${mla}/details`, t.access_token);
+                const sf = Number(sg?.costs?.shipping_fees);
+                if (isFinite(sf) && sf >= 0) { envio = sf; sinEnvio = false; }
+              } catch { /* ML no lo tiene para todas: ahí sí queda marcada como SIN ENVÍO */ }
+            }
+            if (!isFinite(envio)) envio = 0;
             if (envio < 0) envio = 0;
             const neto = Math.round(precio - com - envio);
             if (neto <= 0) continue;
@@ -6679,6 +6724,7 @@ async function main() {
         console.log(`── ${f.nom}   (${f.label} · ${f.mla})${f.nVar ? ` [${f.nVar} var]` : ''}`);
         console.log(`     ${f.stock} u. sin vender · ${money(f.plata)} parados · ${f.diasSin == null ? 'NUNCA vendió' : `hace ${f.diasSin} días que no vende`}`);
         console.log(`     ${money(Math.round(f.precio))} → ${money(f.pw)}  (−${f.baja.toFixed(1)}%)  ·  margen ${f.mgHoy.toFixed(0)}% → ${f.mgPw.toFixed(0)}%`);
+        if (f.acechan) console.log(`     ⚠️ ${f.acechan} vendedor(es) de esta ficha están MÁS BARATOS que nuestro piso (${money(f.pisoPesos)}). Hoy no compiten, pero si reactivan stock la caja se pierde y ya no hay margen para responder.`);
         console.log(`     comando: volver:${f.mla}=${f.pw}:go`);
       }
       if (R.noConviene.length) {
