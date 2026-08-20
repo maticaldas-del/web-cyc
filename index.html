@@ -994,6 +994,7 @@ footer{margin-top:32px;padding-top:14px;border-top:1px solid var(--border);font-
   <div class="tabs">
     <button class="tab active" id="tab-ofi-caja" onclick="setOfiTab('caja',this)">📦 Armar caja</button>
     <button class="tab" id="tab-ofi-contar" onclick="setOfiTab('contar',this)">🔢 Contar lo que hay</button>
+    <button class="tab" id="tab-ofi-camino" onclick="setOfiTab('camino',this)">🚚 En camino <span id="tab-ofi-camino-n"></span></button>
   </div>
 
   <!-- ARMAR CAJA -->
@@ -1017,6 +1018,20 @@ footer{margin-top:32px;padding-top:14px;border-top:1px solid var(--border);font-
       <input type="checkbox" id="ofi-solo-con" onchange="renderOfiContar()"> mostrar solo los que tienen algo
     </label>
     <div id="ofi-contar-list"></div>
+  </div>
+
+  <!-- EN CAMINO. Las cajas ya cerradas viven acá, en la misma pantalla que la oficina: es el paso
+       del medio del mismo recorrido (casa → camión → ML) y separarlo en otra página hacía que una
+       caja cerrada por error pareciera haberse esfumado. -->
+  <div id="ofi-sec-camino" style="display:none">
+    <div style="font-size:.66rem;color:var(--muted);margin-bottom:10px;line-height:1.5">
+      Las cajas que ya cerraste. <span style="color:var(--green)">Verde</span> llegó a ML ·
+      <span style="color:var(--amber)">naranja</span> en camino ·
+      <span style="color:var(--red)">rojo</span> hace 7 días o más.
+      El verde lo pone el robot solo cuando ML informa que la mercadería entró.
+    </div>
+    <div class="pedidos-count" id="ofi-camino-count"></div>
+    <div id="ofi-camino-list"></div>
   </div>
 
   <footer>CYC · Mi oficina</footer>
@@ -3475,9 +3490,13 @@ function setOfiTab(t,btn){
   if(btn)btn.classList.add('active');
   document.getElementById('ofi-sec-caja').style.display=t==='caja'?'':'none';
   document.getElementById('ofi-sec-contar').style.display=t==='contar'?'':'none';
-  if(t==='caja')renderOfiCaja();else renderOfiContar();
+  const sc=document.getElementById('ofi-sec-camino');if(sc)sc.style.display=t==='camino'?'':'none';
+  if(t==='caja')renderOfiCaja();
+  else if(t==='camino')renderCajasEnCamino();
+  else renderOfiContar();
 }
 function enterOficina(){migrarOficina().then(()=>{
+  renderCajasEnCamino();   // deja el número de la pestaña "En camino" al día
   // Si todavía no hay nada contado, la pantalla útil es la de contar: entrar a "Armar caja" sin
   // datos deja al usuario mirando un cartel vacío sin saber dónde se cargan las unidades.
   const hayAlgo=(state.products||[]).some(p=>stockOficina(p)>0);
@@ -3859,8 +3878,8 @@ async function cerrarCaja(cuenta){
   }
   await _guardarCajaArmando(cuenta,{});   // la caja se cerró: deja de estar a medio armar
   await log('Caja despachada a '+cuenta+': '+uTot+' u.'+(track?' · '+track:''));
-  toast(track?'Caja cerrada ✓':'Caja cerrada ✓ · pegale el seguimiento en Envíos a Full',4500);
-  syncOfiMati();renderOfiCaja();renderOfiContar();
+  toast(track?'Caja cerrada ✓ · está en "En camino"':'Caja cerrada ✓ · pegale el seguimiento en "En camino"',5000);
+  syncOfiMati();renderOfiCaja();renderOfiContar();renderCajasEnCamino();
 }
 
 // CUÁNTO SE MANDA. Regla suya del 19/08/2026: desde que se arma la caja hasta que la mercadería
@@ -3980,6 +3999,49 @@ async function _guardarCajas(id,cajas){
   renderEnviosFull();
   if(document.getElementById('ofi-caja-list'))renderOfiCaja();
 }
+// DESHACER una caja: devuelve sus unidades a la oficina y la borra. Hace falta porque el botón de
+// cerrar está a un toque de distancia y cerrar una caja por error saca mercadería de la oficina: si
+// solo se pudiera borrar el envío, esas unidades desaparecerían del panel sin haber salido nunca
+// de tu casa. Una caja YA RECIBIDA no se deshace: esa mercadería está en ML, no en la oficina.
+async function deshacerCaja(id,i){
+  const e=(state.envios_full||{})[id];if(!e)return;
+  const cajas=cajasDe(e).map(c=>({...c}));
+  const c=cajas[i];if(!c)return;
+  if(c.recibida){toast('Esa caja ya llegó a ML: no se puede deshacer','err');return;}
+  const items=(c.items||[]).filter(x=>x&&x.prodId&&x.u>0);
+  const uTot=items.reduce((a,x)=>a+x.u,0);
+  if(!confirm(`¿Deshacer esta caja?\n\n${uTot} unidad(es) vuelven a tu oficina y la caja se borra.`))return;
+  // Devolver a la oficina, con la misma cuenta que se usó al descontar.
+  for(const it of items){
+    if(it.variante){
+      const vk=invKeyV(it.prodId,OFI,it.variante);
+      state.inventory[vk]=(parseInt(state.inventory[vk])||0)+it.u;
+      await fbSet('inventory/'+vk,state.inventory[vk]);
+      const prod=(state.products||[]).find(x=>x.id===it.prodId);
+      const suma=((prod&&prod.variantes)||[]).reduce((a,v)=>a+(parseInt(state.inventory[invKeyV(it.prodId,OFI,v)])||0),0);
+      const pk=invKey(it.prodId,OFI);
+      state.inventory[pk]=suma;
+      await fbSet('inventory/'+pk,suma||null);
+    } else {
+      const pk=invKey(it.prodId,OFI);
+      state.inventory[pk]=(parseInt(state.inventory[pk])||0)+it.u;
+      await fbSet('inventory/'+pk,state.inventory[pk]);
+    }
+  }
+  cajas.splice(i,1);
+  if(!cajas.length){
+    // Era la única caja del envío: se borra el envío entero, si no queda un renglón vacío.
+    await fbSet('envios_full/'+id,null);
+    delete state.envios_full[id];
+    renderCajasEnCamino();renderEnviosFull();renderOfiCaja();renderOfiContar();
+  } else {
+    await _guardarCajas(id,cajas);
+    renderCajasEnCamino();renderOfiCaja();renderOfiContar();
+  }
+  syncOfiMati();
+  await log('Caja deshecha: '+uTot+' u. volvieron a la oficina');
+  toast(`Deshecha ✓ · ${uTot} u. volvieron a tu oficina`,4000);
+}
 async function marcarCajaRecibida(id,i,valor){
   const e=(state.envios_full||{})[id];if(!e)return;
   const cajas=cajasDe(e).map(c=>({...c}));
@@ -4009,6 +4071,50 @@ async function delEnvioFull(id){
   await fbSet('envios_full/'+id,null);
   delete state.envios_full[id];
   renderEnviosFull();
+}
+// Las cajas dentro de "Mi oficina". Misma información que la pantalla de Envíos a Full pero en el
+// lugar donde se arman: no hay que salir a buscarlas a otro lado.
+function renderCajasEnCamino(){
+  const cont=document.getElementById('ofi-camino-list');if(!cont)return;
+  const todos=Object.entries(state.envios_full||{}).map(([id,e])=>({id,...e}))
+    .sort((a,b)=>(b.fecha||'').localeCompare(a.fecha||'')||(b.ts||0)-(a.ts||0));
+  let cam=0,tarde=0,uCam=0,lleg=0;
+  todos.forEach(e=>cajasDe(e).forEach(c=>{
+    if(c.recibida){lleg++;return;}
+    cam++;uCam+=(c.items||[]).reduce((a,x)=>a+(x.u||0),0);
+    if(envDias(e)>=ENV_ROJO_DIAS)tarde++;
+  }));
+  const cnt=document.getElementById('ofi-camino-count');
+  if(cnt)cnt.innerHTML=`<div class="pcount"${cam?' style="border-color:rgba(245,158,11,.35)"':''}><strong${cam?' style="color:var(--amber)"':''}>${cam}</strong>cajas en camino</div>`
+    +(uCam?`<div class="pcount"><strong>${uCam}</strong>unidades</div>`:'')
+    +(tarde?`<div class="pcount" style="border-color:rgba(239,68,68,.4)"><strong style="color:var(--red)">${tarde}</strong>hace +${ENV_ROJO_DIAS} días</div>`:'')
+    +`<div class="pcount"><strong>${lleg}</strong>ya llegaron</div>`;
+  const chip=document.getElementById('tab-ofi-camino-n');
+  if(chip)chip.innerHTML=cam?`<strong style="color:${tarde?'var(--red)':'var(--amber)'}">${cam}</strong>`:'';
+  if(!todos.length){cont.innerHTML='<div class="empty-msg">Todavía no cerraste ninguna caja.</div>';return;}
+  cont.innerHTML=todos.map(e=>cajasDe(e).map((c,i)=>{
+    const st=estadoCaja(e,c);
+    const items=(c.items||[]);
+    const uu=items.reduce((a,x)=>a+(x.u||0),0);
+    return `<div style="padding:11px 13px;background:${st.bg};border:1px solid ${st.color};border-radius:10px;margin-bottom:8px">
+      <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:6px">
+        <span class="pi-prov">${e.cuenta||'¿qué cuenta?'}</span>
+        <strong style="font-family:'DM Mono',monospace;font-size:.74rem">${e.fecha||''}</strong>
+        <span style="font-size:.68rem;font-weight:700;color:${st.color}">${st.txt}</span>
+        <span style="font-size:.64rem;color:var(--muted)">${uu} u.</span>
+      </div>
+      <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-bottom:6px">
+        <input type="text" inputmode="numeric" value="${c.track||''}" placeholder="nº de seguimiento"
+          style="flex:1;min-width:130px;background:var(--bg);border:1px solid var(--border2);border-radius:6px;color:var(--text);font-family:'DM Mono',monospace;font-size:.68rem;padding:7px 9px;outline:none"
+          onchange="setCajaTrack('${e.id}',${i},this.value);renderCajasEnCamino()">
+        <button class="btn" style="padding:7px 12px;font-size:.66rem;${c.recibida?'background:transparent;border:1px solid var(--border2);color:var(--muted)':''}"
+          onclick="marcarCajaRecibida('${e.id}',${i},${c.recibida?'false':'true'}).then(renderCajasEnCamino)">${c.recibida?'no llegó':'llegó'}</button>
+        ${c.recibida?'':`<button class="btn btn-del" style="padding:7px 12px;font-size:.66rem" title="Deshacer: las unidades vuelven a tu oficina" onclick="deshacerCaja('${e.id}',${i})">deshacer</button>`}
+      </div>
+      ${items.length?`<div style="font-size:.64rem;color:var(--muted);line-height:1.7">${items.map(x=>`<span style="display:inline-block;background:var(--surface2);border:1px solid var(--border2);border-radius:5px;padding:1px 7px;margin:0 5px 4px 0"><strong style="color:var(--text)">${x.u}×</strong> ${x.nombre||x.prodId}${x.variante?' · '+x.variante:''}</span>`).join('')}</div>`
+        :'<div style="font-size:.64rem;color:var(--amber)">Sin contenido cargado: el robot no la va a poder marcar solo.</div>'}
+    </div>`;
+  }).join('')).join('');
 }
 function renderEnviosFull(){
   const cont=document.getElementById('envios-list');if(!cont)return;
@@ -4078,7 +4184,8 @@ function renderEnviosFull(){
               style="width:130px;background:var(--bg);border:1px solid var(--border2);border-radius:6px;color:var(--text);font-family:'DM Mono',monospace;font-size:.66rem;padding:5px 7px;outline:none"
               onchange="setCajaTrack('${e.id}',${i},this.value)">
             <button class="btn" style="padding:5px 10px;font-size:.64rem;${c.recibida?'background:transparent;border:1px solid var(--border2);color:var(--muted)':''}"
-              onclick="marcarCajaRecibida('${e.id}',${i},${c.recibida?'false':'true'})">${c.recibida?'deshacer':'llegó'}</button>
+              onclick="marcarCajaRecibida('${e.id}',${i},${c.recibida?'false':'true'})">${c.recibida?'no llegó':'llegó'}</button>
+            ${c.recibida?'':`<button class="btn btn-del" style="padding:5px 10px;font-size:.64rem" title="Deshacer: las unidades vuelven a tu oficina" onclick="deshacerCaja('${e.id}',${i})">deshacer</button>`}
           </div>
           ${items.length?`<div style="margin-top:5px;font-size:.64rem;color:var(--muted);line-height:1.6">${items.map(x=>`<span style="display:inline-block;background:var(--surface2);border:1px solid var(--border2);border-radius:5px;padding:1px 7px;margin:0 5px 4px 0"><strong style="color:var(--text)">${x.u}×</strong> ${x.nombre||x.prodId}${x.variante?' · '+x.variante:''}</span>`).join('')}</div>`:''}
         </div>`;
@@ -8793,7 +8900,7 @@ document.addEventListener('click',e=>{if(fnavOpen&&!e.target.closest('#fnav-btn'
         <span style="font-size:.75rem;color:var(--muted)">Si no ves los últimos cambios, forzá la actualización</span>
         <button class="btn" style="background:rgba(56,189,248,.12);color:var(--blue);border:1px solid rgba(56,189,248,.3)" onclick="actualizarApp()">🔄 Buscar actualizaciones</button>
       </div>
-      <div style="font-size:.66rem;color:var(--muted);margin-top:12px">CYC · Versión 11.8</div>
+      <div style="font-size:.66rem;color:var(--muted);margin-top:12px">CYC · Versión 11.9</div>
     </div>
 
     <div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:18px 20px;margin-bottom:14px">
