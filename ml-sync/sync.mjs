@@ -770,6 +770,41 @@ async function nivelarGrupos(db, links, tokensRun, DRY, pName, sellerIds) {
   return avisos;
 }
 
+// ── CUÁNTO NOS COBRA ML DE ENVÍO, SIN NECESIDAD DE HABER VENDIDO ─────────────
+// El agujero que tapa: el envío se venía deduciendo de NUESTRAS ventas (lo que entró de menos
+// contra lo que debía entrar). Funciona bien... salvo en los productos que nunca vendieron, que son
+// justo los que hay que revisar. Ahí no había nada que deducir y el margen se mostraba SIN
+// descontar envío: más alto que el real, y sin que se notara.
+//
+// El primer intento fue `/suggestions/items/<MLA>/details` → costs.shipping_fees. NO SIRVE: para el
+// cortapelo contesta $0 cuando el envío real es de cientos de pesos. Contesta, pero contesta mal.
+//
+// Este es el que sí: `/items/<MLA>/shipping_options?zip_code=` devuelve, por destino,
+//   base_cost = la tarifa entera · cost = lo que paga el comprador
+// y la diferencia es lo que ML nos descuenta a nosotros. Existe siempre, haya vendido o no.
+//
+// Se pregunta por DOS destinos y se toma el PEOR: es el mismo criterio conservador con el que se
+// fijaron todos los precios (ver envioDeducido con modo:'max'). Dos y no cuatro para no multiplicar
+// las llamadas: CABA es el piso del país y Ushuaia el techo.
+const CPS_ENVIO = [['CABA', '1425'], ['Ushuaia', '9410']];
+async function envioSegunML(mla, token) {
+  let peor = null; const det = [];
+  for (const [nom, cp] of CPS_ENVIO) {
+    try {
+      const so = await mlGet(`/items/${mla}/shipping_options?zip_code=${cp}`, token);
+      const op = (so?.options || [])[0];
+      if (!op) continue;
+      const base = Number(op.base_cost);
+      if (!isFinite(base)) continue;
+      const paga = Number(op.cost);
+      const nuestro = Math.max(0, base - (isFinite(paga) ? paga : 0));
+      det.push({ nom, nuestro });
+      if (peor == null || nuestro > peor) peor = nuestro;
+    } catch { /* si un destino no contesta se usan los que sí */ }
+  }
+  return peor == null ? null : { envio: Math.round(peor), det };
+}
+
 // ── EL MARGEN DE LA WEB, ACTUALIZADO EN EL ACTO AL CAMBIAR UN PRECIO ─────────
 // Pedido suyo del 20/08/2026: el robot puede seguir recalculando todo de noche, pero cada vez que
 // se toca un precio la pantalla "Margen ML" tiene que quedar al día EN EL MOMENTO.
@@ -6569,6 +6604,7 @@ async function main() {
           if (v.prodId) (vtaProd[v.prodId] = vtaProd[v.prodId] || []).push({ tot, net });
         }
       }
+      const compEnvio = [];   // comparación: tarifa de ML vs envío deducido de nuestras ventas
       const feeCache = {};
       const feeAt = async (site, price, ltype, cat, token) => {
         const key = site + '|' + ltype + '|' + cat + '|' + Math.round(price);
@@ -6630,13 +6666,21 @@ async function main() {
             // el CERO que se usaba antes, pero no es idéntico. Por eso se usa SOLO acá, donde la
             // alternativa es no descontar nada; las publicaciones que sí tienen ventas siguen
             // usando sus ventas, que son el dato de la realidad.
-            let sinEnvio = !isFinite(envio);
+            let sinEnvio = !isFinite(envio), envioDeML = false;
             if (sinEnvio) {
-              try {
-                const sg = await mlGet(`/suggestions/items/${mla}/details`, t.access_token);
-                const sf = Number(sg?.costs?.shipping_fees);
-                if (isFinite(sf) && sf >= 0) { envio = sf; sinEnvio = false; }
-              } catch { /* ML no lo tiene para todas: ahí sí queda marcada como SIN ENVÍO */ }
+              // Decisión suya del 20/08/2026 después de ver los tres números lado a lado en el
+              // cortapelo: ML "sugerencia" decía $0, ventas no había, y la TARIFA daba $490.
+              // Se usa la tarifa. Queda marcado de dónde salió: no es lo mismo un envío medido en
+              // nuestras ventas que uno sacado de la tarifa de ML.
+              const r = await envioSegunML(mla, t.access_token);
+              if (r) { envio = r.envio; sinEnvio = false; envioDeML = true; }
+            } else if (compEnvio.length < 15) {
+              // VALIDACIÓN QUE CORRE SOLA. En los productos que SÍ vendieron tenemos las dos
+              // medidas, así que se comparan. Es el control que faltaba para poder confiar en la
+              // tarifa: si los números se parecen, el fallback es bueno; si no, hay que revisarlo.
+              // Solo los primeros 15 para no multiplicar las llamadas a ML.
+              const r = await envioSegunML(mla, t.access_token);
+              if (r) compEnvio.push({ nom: String(b.title || mla).slice(0, 34), nuestro: Math.round(envio), ml: r.envio });
             }
             if (!isFinite(envio)) envio = 0;
             if (envio < 0) envio = 0;
@@ -6646,7 +6690,7 @@ async function main() {
             // Las ACTIVAS mandan: una pausada solo se usa si el producto no tiene ninguna activa.
             // Entre las del mismo tipo gana la peor, que es el criterio conservador de siempre.
             const mejor = !prev || (activa && !prev.activa) || (activa === prev.activa && neto < prev.neto);
-            if (mejor) porProd[p.id] = { neto, precio: Math.round(precio), mla, cuenta: label, sinEnvio, activa };
+            if (mejor) porProd[p.id] = { neto, precio: Math.round(precio), mla, cuenta: label, sinEnvio, envioDeML, activa };
           }
         }
       }
@@ -6664,9 +6708,22 @@ async function main() {
           await db.set('cyc/products/' + pid + '/netoCalcPrecio', d.precio);
           await db.set('cyc/products/' + pid + '/netoCalcPausada', !d.activa);
           await db.set('cyc/products/' + pid + '/netoCalcSinEnvio', !!d.sinEnvio);
+          await db.set('cyc/products/' + pid + '/netoCalcEnvioML', !!d.envioDeML);
           await db.set('cyc/products/' + pid + '/netoCalcTs', Date.now());
           guardados++;
         }
+      }
+      if (compEnvio.length) {
+        console.log(`\n── CONTROL DEL ENVÍO · ${compEnvio.length} productos que SÍ vendieron ──`);
+        console.log('   Se compara la tarifa de ML contra el envío deducido de nuestras ventas. Si los dos');
+        console.log('   números se parecen, la tarifa sirve para los que nunca vendieron.\n');
+        let sum = 0;
+        for (const c of compEnvio) {
+          const dif = c.ml - c.nuestro;
+          sum += Math.abs(dif);
+          console.log(`  nuestras ventas ${money(c.nuestro).padStart(9)} · tarifa ML ${money(c.ml).padStart(9)} · dif ${(dif >= 0 ? '+' : '') + money(dif)} · ${c.nom}`);
+        }
+        console.log(`\n  Diferencia promedio: ${money(Math.round(sum / compEnvio.length))}.`);
       }
       console.log(`\n${prueba ? '(PRUEBA) ' : ''}${prueba ? lista.length + ' se guardarían' : guardados + ' guardados'} en la web (pantalla Margen ML).`);
       // Verificación: se vuelve a leer de la base, del mismo lugar del que lee la web.
