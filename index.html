@@ -1116,6 +1116,7 @@ footer{margin-top:32px;padding-top:14px;border-top:1px solid var(--border);font-
       <button class="vbtn"        id="rotsort-capital" onclick="setRotSort('capital',this)">💰 Capital</button>
       <button class="vbtn"        id="rotsort-ventas"  onclick="setRotSort('ventas',this)">📦 Ventas</button>
       <button class="vbtn"        id="rotsort-rotacion" onclick="setRotSort('rotacion',this)">🔄 Rotación</button>
+      <button class="vbtn"        id="rotsort-margen"  onclick="setRotSort('margen',this)" title="Los de MÁS margen primero: son los que tienen de dónde recortar si hace falta que roten.">💰 Margen</button>
     </div>
   </div>
   <div class="tbl-outer">
@@ -1127,6 +1128,7 @@ footer{margin-top:32px;padding-top:14px;border-top:1px solid var(--border);font-
         <th style="min-width:85px">Ventas período</th>
         <th style="min-width:100px">Rotación</th>
         <th style="min-width:110px">⏳ Días sin vender</th>
+        <th style="min-width:95px" title="Lo que deja hoy sobre el costo, con el precio que tiene puesto en ML ahora. Es la MISMA cuenta que muestra la pantalla Margen ML. Sirve para ver de un vistazo cuánto aire hay antes de tocar un precio.">💰 Margen hoy</th>
         <th style="min-width:100px">Estado</th>
       </tr></thead>
       <tbody id="rot-body"></tbody>
@@ -1912,7 +1914,7 @@ function startApp(){
     const _extEntries=[];
     Object.values(_newVP).forEach(day=>Object.values(day||{}).forEach(e=>{if(e&&e.id){_allIds.add(e.id);if(_knownVentaprodIds!==null&&!_knownVentaprodIds.has(e.id))_extEntries.push(e);}}));
     _knownVentaprodIds=_allIds;
-    _gastoMesMemo={};_netoMesMemo={};   // datos cambiaron → recalcular gastos/neto por mes
+    _gastoMesMemo={};_netoMesMemo={};_netoAggMemo=null;   // datos cambiaron → recalcular gastos/neto por mes y el margen por producto
     rebuildReclamoStats();
     if(_extEntries.length)_applyStockEntries(_extEntries);
     document.getElementById('loading').style.display='none';
@@ -5917,6 +5919,42 @@ function setVpRankMode(mode,btn){
 // compra) y bajarlo es regalar margen; si lo ven y no compran, ahí sí el precio entra.
 // Los umbrales son los mismos que usa el chequeo de la mañana, a propósito: 20 y 50.
 const VIS_POCAS=20, VIS_MUCHAS=50;
+// ── EL MARGEN DE UN PRODUCTO: UNA SOLA CUENTA PARA TODAS LAS PANTALLAS ────────────────
+// Vive acá y no adentro de renderMargenML porque ahora la usan dos pantallas (Margen ML y
+// Rotación de Stock). Si cada una tuviera su copia, tarde o temprano se tocaría una y no la otra,
+// y tendríamos el mismo producto con dos márgenes distintos según dónde lo mires — que es
+// exactamente el problema que ya nos pasó con el envío.
+//
+// costo  = costo full del producto + el cargo extra de ML (IIBB, almacenamiento) que sale del
+//          promedio de las ventas REALES de ese producto.
+// neto   = SOLO lo que dice ML al precio de hoy (precio − comisión − envío del peor caso).
+//          Si el producto no está publicado, es null y no se rellena con nada viejo.
+let _netoAggMemo=null;
+function _netoAgg(){
+  if(_netoAggMemo)return _netoAggMemo;
+  const agg={};
+  Object.values(state.ventaprod||{}).forEach(day=>Object.values(day||{}).forEach(v=>{
+    if(!v||v.cancelada)return;
+    const k=v.prodId?('id:'+v.prodId):('nm:'+normTxt(v.prod||''));
+    if(!agg[k])agg[k]={neto:0,u:0,mlx:0};
+    agg[k].neto+=(v.neto||0);agg[k].u+=(v.qty||0);
+    agg[k].mlx+=impuestosDeVenta(v);
+  }));
+  return _netoAggMemo=agg;
+}
+function margenMLDe(p){
+  const agg=_netoAgg();
+  const a=agg['id:'+p.id]||agg['nm:'+normTxt(p.name)];
+  const mlExtra=(a&&a.u>0)?Math.round(a.mlx/a.u):0;
+  const costo=costFullP(p)+mlExtra;
+  const netoCalc=(p.netoCalc!=null&&p.netoCalc!=='')?Number(p.netoCalc):null;
+  const margen=(netoCalc!=null&&costo>0)?((netoCalc-costo)/costo*100):null;
+  return {costo,neto:netoCalc,netoCalc,margen,
+    fuente:netoCalc!=null?'calc':null,
+    netoReal:(a&&a.u>0)?Math.round(a.neto/a.u):null,
+    sinEnvio:p.netoCalcSinEnvio===true,
+    pausada:p.netoCalcPausada===true};
+}
 function visitasDe(p){
   const V=state.visitas||{}, L=state.mllinks||{};
   let tot=0,pubs=0,ts=0,dias=30;
@@ -5937,38 +5975,11 @@ function renderMargenML(){
   // llegara al 40 — o sea, marcaba como problema productos que están perfectos.
   const META=parseFloat((state.mlconfig||{}).minPct)||30;
   const q=normTxt(document.getElementById('margen-ml-search')?.value||'');
-  // Neto REAL promedio por producto, sacado de las ventas ya cargadas (lo que Mercado Pago
-  // depositó de verdad, ya con la gestión de Full descontada). Así el margen no depende del
-  // simulador ni de estimaciones. Una sola pasada por ventaprod.
-  const netoAgg={};
-  Object.values(state.ventaprod||{}).forEach(day=>Object.values(day||{}).forEach(v=>{
-    if(!v||v.cancelada)return;
-    const k=v.prodId?('id:'+v.prodId):('nm:'+normTxt(v.prod||''));
-    if(!netoAgg[k])netoAgg[k]={neto:0,u:0,mlx:0};
-    netoAgg[k].neto+=(v.neto||0);netoAgg[k].u+=(v.qty||0);
-    // Cargo extra de ML (IIBB + almacenamiento) que ML cobra por débito, aparte de la venta: % del precio.
-    netoAgg[k].mlx+=impuestosDeVenta(v);
-  }));
-  const _aggOf=p=>netoAgg['id:'+p.id]||netoAgg['nm:'+normTxt(p.name)];
-  const _netoRealOf=p=>{const a=_aggOf(p);return (a&&a.u>0)?Math.round(a.neto/a.u):null;};
-  // Cargo extra de ML por unidad (promedio de las ventas reales del producto). Va SUMADO al costo.
-  const _mlExtraOf=p=>{const a=_aggOf(p);return (a&&a.u>0)?Math.round(a.mlx/a.u):0;};
-  const rows=(state.products||[]).map(p=>{
-    const costo=costFullP(p)+_mlExtraOf(p); // costo real = full + cargo extra de ML (IIBB, etc.)
-    // EL NETO ES SOLO EL QUE DICE ML, al precio que el producto tiene publicado HOY
-    // (precio − comisión oficial de ML − envío). Decisión suya del 13/08/2026.
-    // Antes había dos números que le ganaban a este y lo tapaban: uno escrito a mano —que seguía
-    // mandando meses después, a precios que ya no existían— y el promedio de las ventas viejas.
-    // Con cualquiera de los dos, la pantalla mostraba un margen que no era el de hoy y no había
-    // forma de darse cuenta mirando. Si ML no dice nada (el producto no está publicado) se muestra
-    // "—": no se rellena con un número viejo.
-    const netoCalc=(p.netoCalc!=null&&p.netoCalc!=='')?Number(p.netoCalc):null;
-    const netoReal=_netoRealOf(p);   // queda solo como dato al costado, ya no define el margen
-    const neto=netoCalc;
-    const fuente=netoCalc!=null?'calc':null;
-    const margen=(neto!=null&&costo>0)?((neto-costo)/costo*100):null;
-    return {p,costo,neto,margen,fuente,netoReal,netoCalc};
-  }).filter(r=>!q||normTxt(r.p.name).includes(q));
+  // El margen sale de margenMLDe(), la MISMA función que usa Rotación de Stock. El neto es solo
+  // el que dice ML al precio de hoy: si el producto no está publicado se muestra "—" y no se
+  // rellena con un número viejo (decisión suya del 13/08/2026).
+  const rows=(state.products||[]).map(p=>({p,...margenMLDe(p)}))
+    .filter(r=>!q||normTxt(r.p.name).includes(q));
   rows.sort((a,b)=>{
     if(a.margen==null&&b.margen==null)return (a.p.name||'').localeCompare(b.p.name||'','es',{sensitivity:'base'});
     if(a.margen==null)return 1;
@@ -6810,13 +6821,34 @@ async function vaciarPapelera(){
   syncPedidosAuto();
 }
 
+// ── MARGEN EN LA TABLA DE ROTACIÓN ────────────────────────────────────────────────────
+// Para qué está: mirando solo "Muerto" no se puede decidir nada. Un producto frenado con 45% de
+// margen tiene de dónde recortar para que vuelva a moverse; el mismo producto frenado con 31% ya
+// está pegado al piso y bajarlo sería vender perdiendo — ahí el problema es otro (que no lo ve
+// nadie, o que la competencia está más barata que nuestro costo).
+// A propósito muestra los PUNTOS de aire y no unos pesos de precio sugerido: la baja de precio no
+// se traduce uno a uno al margen (ML se queda con su comisión de lo que recortes), y tirar acá un
+// "bajalo $X" sería justo lo que la regla de no bajar precios solo quiere evitar.
+function rotMargenHtml(r){
+  const PISO=parseFloat((state.mlconfig||{}).minPct)||30;
+  if(r.margen==null)
+    return `<span style="color:var(--muted)" title="Este producto no tiene ninguna publicación viva en ML de la que sacar el precio, así que no hay margen que calcular.">—</span>`;
+  const m=r.margen, aire=m-PISO;
+  let color,tit;
+  if(m<PISO){color='var(--red)';tit=`ABAJO DEL PISO de ${PISO}%: no hay nada para bajar, este habría que SUBIRLO.`;}
+  else if(aire<5){color='var(--amber)';tit=`Pegado al piso: solo ${aire.toFixed(0)} punto(s) de aire sobre el ${PISO}%. Casi no se puede bajar.`;}
+  else {color='var(--green)';tit=`${aire.toFixed(0)} puntos de aire sobre el piso de ${PISO}%. Acá sí hay margen para recortar si hace falta que rote.`;}
+  tit+=` · Neto ML ${fmt(r.margenNeto)} contra un costo de ${fmt(r.margenCosto)}. Ojo: bajar el precio $100 NO baja el margen $100 (ML se queda con su comisión de lo que recortes).`;
+  if(r.margenSinEnvio)tit+=' · SIN ENVÍO DESCONTADO: nunca vendió, así que no hay envío que deducir y el margen real va a ser MENOR que este.';
+  return `<span title="${tit}" style="font-weight:700;color:${color}">${m>=0?'+':''}${m.toFixed(0)}%${r.margenSinEnvio?'<span style="color:var(--amber);font-weight:400"> ⚠</span>':''}</span>`;
+}
 function rotDiasSinVenderHtml(dias){
   if(dias===null||dias===undefined)return '<span style="color:var(--muted)">Sin ventas</span>';
   const color=dias>=60?'var(--red)':dias>=30?'var(--amber)':'var(--text)';
   const dot=dias>=60?'🔴':dias>=30?'🟠':'🟢';
   return `<span style="color:${color}">${dot} ${dias}d</span>`;
 }
-let rotSortMode='estado'; // 'estado' | 'capital' | 'ventas' | 'rotacion'
+let rotSortMode='estado'; // 'estado' | 'capital' | 'ventas' | 'rotacion' | 'margen'
 function setRotSort(mode,btn){
   rotSortMode=mode;
   document.querySelectorAll('[id^="rotsort-"]').forEach(b=>b.classList.remove('active'));
@@ -7031,7 +7063,7 @@ function renderFacturas(){
 function renderRotacionStock(){
   const tbody=document.getElementById('rot-body');if(!tbody)return;
   const prods=(state.products||[]).filter(p=>p&&p.name);
-  if(!prods.length){tbody.innerHTML='<tr><td colspan="7" style="text-align:center;color:var(--muted);padding:18px">Sin productos.</td></tr>';return;}
+  if(!prods.length){tbody.innerHTML='<tr><td colspan="8" style="text-align:center;color:var(--muted);padding:18px">Sin productos.</td></tr>';return;}
 
   // ── Período disponible (máx 60 días) ───────────────────────────
   // Fecha de arranque del negocio. Durante los primeros 60 días normaliza por
@@ -7093,7 +7125,13 @@ function renderRotacionStock(){
     else if(graciaReciente){estadoKey='reciente';estadoHtml='<span style="color:var(--blue)" title="Repuesto hace poco · 7 días de gracia para empezar a venderse">🆕 Reciente</span>';}
     else{estadoKey='muerto';estadoHtml='<span style="color:var(--red)">🔴 Muerto</span>';}
 
-    return{name:p.name,capital,ventasPeriodo,rotNorm,estadoKey,estadoHtml,stock,diasSinVender};
+    // Margen de HOY, con la MISMA cuenta que la pantalla Margen ML (misma función, no una copia).
+    // Es lo que contesta "¿puedo bajarle el precio?" sin salir de esta pantalla: un producto
+    // frenado con 45% tiene de dónde recortar; uno con 31% ya está pegado al piso y bajarlo es
+    // vender perdiendo.
+    const mg=margenMLDe(p);
+    return{name:p.name,capital,ventasPeriodo,rotNorm,estadoKey,estadoHtml,stock,diasSinVender,
+      margen:mg.margen,margenSinEnvio:mg.sinEnvio,margenNeto:mg.neto,margenCosto:mg.costo};
   });
 
   // ── Puntaje de rotación: % del capital ($) atascado en productos "Muerto" ──
@@ -7136,6 +7174,12 @@ function renderRotacionStock(){
     if(rotSortMode==='capital')  return b.capital-a.capital||rotVal(b)-rotVal(a);
     if(rotSortMode==='ventas')   return b.ventasPeriodo-a.ventasPeriodo||b.capital-a.capital;
     if(rotSortMode==='rotacion') return rotVal(b)-rotVal(a)||b.capital-a.capital;
+    // Por margen: primero los que MÁS aire tienen. Los que no tienen publicación (margen null) van
+    // al final, no arriba: no son "los mejores", son los que no se pueden medir.
+    if(rotSortMode==='margen'){
+      const ma=a.margen==null?-Infinity:a.margen, mb=b.margen==null?-Infinity:b.margen;
+      return mb-ma||b.capital-a.capital;
+    }
     // estado: Muerto → Lento → Sano, luego por capital desc
     return ORDER[a.estadoKey]-ORDER[b.estadoKey]||b.capital-a.capital;
   });
@@ -7147,6 +7191,7 @@ function renderRotacionStock(){
     <td style="text-align:right">${r.ventasPeriodo} u.</td>
     <td style="text-align:right;font-family:'DM Mono',monospace">${r.stock>0?r.rotNorm.toFixed(2):'—'}</td>
     <td style="text-align:right">${rotDiasSinVenderHtml(r.diasSinVender)}</td>
+    <td style="text-align:right">${rotMargenHtml(r)}</td>
     <td>${r.estadoHtml}</td>
   </tr>`).join('');
 }
@@ -8987,7 +9032,7 @@ document.addEventListener('click',e=>{if(fnavOpen&&!e.target.closest('#fnav-btn'
         <span style="font-size:.75rem;color:var(--muted)">Si no ves los últimos cambios, forzá la actualización</span>
         <button class="btn" style="background:rgba(56,189,248,.12);color:var(--blue);border:1px solid rgba(56,189,248,.3)" onclick="actualizarApp()">🔄 Buscar actualizaciones</button>
       </div>
-      <div style="font-size:.66rem;color:var(--muted);margin-top:12px">CYC · Versión 12.0</div>
+      <div style="font-size:.66rem;color:var(--muted);margin-top:12px">CYC · Versión 12.1</div>
     </div>
 
     <div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:18px 20px;margin-bottom:14px">
