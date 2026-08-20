@@ -283,6 +283,139 @@ async function envioDeducido(ventas, precioHoy, feeAt, opts = {}) {
 //      Las que no llegan se avisan por Telegram para decidirlas a mano.
 //   4. Si la marcaste con noAutoActivar en cyc/mllinks, se respeta y no se toca nunca. Es la forma
 //      de pausar algo a mano sin que el robot te lo vuelva a prender.
+// ── MARCAR SOLAS LAS CAJAS QUE YA LLEGARON A FULL ─────────────────────────
+// Pedido suyo del 19/08/2026. Hasta ahora había que tocar "llegó" a mano en cada caja, y una caja
+// que sigue figurando en camino miente dos veces: el panel cuenta como stock algo que ya está en
+// ML (y lo cuenta otra vez cuando ML lo informa), y el semáforo se pone rojo sin motivo.
+//
+// De dónde sale el dato: ML publica las OPERACIONES de cada inventario de Full
+// (/stock/fulfillment/operations/search) y ahí aparecen las entradas (inbound / reception) con su
+// fecha y su cantidad. Es lo mismo que ya lee el chequeo de la mañana para contar cajas recibidas.
+//
+// Cómo se reparte cuando hay varias cajas del mismo producto: por ORDEN DE DESPACHO, la más vieja
+// primero. Es la única regla que se puede sostener —ML no dice de qué caja vino cada unidad— y
+// coincide con cómo salen: la que se despachó antes llega antes.
+//
+// Una caja se marca recibida SOLO cuando TODOS sus renglones quedaron cubiertos. Si llegó la mitad,
+// se deja abierta: media caja recibida sigue siendo una caja en camino.
+async function cajasQueLlegaron(db, accounts, labels, products, DRY) {
+  const envios = (await db.get('cyc/envios_full')) || {};
+  const links = (await db.get('cyc/mllinks')) || {};
+  const pIdx = {}; for (const p of products) pIdx[p.id] = p;
+  // Cajas abiertas, de la más vieja a la más nueva.
+  const abiertas = [];
+  for (const [id, e] of Object.entries(envios)) {
+    if (!e || !e.cuenta || !labels.includes(e.cuenta)) continue;
+    const cajas = Array.isArray(e.cajasDet) ? e.cajasDet : [];
+    cajas.forEach((c, i) => {
+      if (!c || c.recibida) return;
+      const items = (c.items || []).filter((x) => x && x.prodId && x.u > 0);
+      if (!items.length) return;   // sin contenido no hay nada que cruzar
+      abiertas.push({ id, i, e, c, items, fecha: e.fecha || '' });
+    });
+  }
+  if (!abiertas.length) return { marcadas: [], mirados: 0, msg: null };
+  abiertas.sort((a, b) => (a.fecha || '').localeCompare(b.fecha || ''));
+  // Qué productos hay que mirar, por cuenta, y desde cuándo.
+  const porCta = {};
+  for (const ab of abiertas) {
+    const o = porCta[ab.e.cuenta] = porCta[ab.e.cuenta] || { prods: new Set(), desde: ab.fecha };
+    ab.items.forEach((x) => o.prods.add(x.prodId));
+    if (ab.fecha && ab.fecha < o.desde) o.desde = ab.fecha;
+  }
+  // Entradas a Full por cuenta+producto+variante desde la fecha de la caja más vieja.
+  const recibido = {};                       // "cuenta|prodId|variante" -> unidades
+  const kR = (cta, pid, va) => cta + '|' + pid + '|' + (va || '');
+  let mirados = 0;
+  for (const [cta, o] of Object.entries(porCta)) {
+    const acc = accounts[cta]; if (!acc?.refresh_token) continue;
+    let tok, sid;
+    try {
+      const t = await mlRefresh(ML_CLIENT_ID, ML_CLIENT_SECRET, acc.refresh_token);
+      await db.patch('mlapi/tokens/' + cta, { refresh_token: t.refresh_token, updated_ts: Date.now() });
+      tok = t.access_token; sid = acc.seller_id;
+    } catch { continue; }
+    const desdeISO = new Date(new Date((o.desde || '2020-01-01') + 'T00:00:00Z').getTime() - 86400e3).toISOString();
+    // Publicaciones de esos productos en esta cuenta.
+    const mlas = Object.entries(links).filter(([m, e2]) =>
+      m.startsWith('MLA') && e2 && e2.cuenta === cta && !e2.ignored && o.prods.has(e2.prodId)).map(([m]) => m);
+    for (let k = 0; k < mlas.length; k += 20) {
+      let arr;
+      try { arr = await mlGet('/items?ids=' + mlas.slice(k, k + 20).join(',') + '&attributes=id,title,status,inventory_id,variations,shipping', tok); }
+      catch { continue; }
+      for (const row of (arr || [])) {
+        const b = row.body || {}; const mla = b.id; if (!mla || !links[mla]) continue;
+        if (((b.shipping && b.shipping.logistic_type) || '') !== 'fulfillment') continue;
+        const p = pIdx[links[mla].prodId]; if (!p) continue;
+        // inventario → variante. Con variantes de ML, cada una tiene su inventario; con una
+        // publicación por aroma, la variante sale del título (misma regla que el resto del panel).
+        const pares = [];
+        const vars = Array.isArray(b.variations) ? b.variations : [];
+        if (vars.length) {
+          for (const v of vars) {
+            if (!v.inventory_id) continue;
+            const vals = (v.attribute_combinations || []).map((a) => norm(a.value_name || ''));
+            const pv = (p.variantes || []).find((x) => vals.includes(norm(x))) || '';
+            pares.push({ inv: v.inventory_id, va: pv });
+          }
+        } else if (b.inventory_id) {
+          pares.push({ inv: b.inventory_id, va: varianteDeTitulo(b.title || links[mla].title || '', p.variantes) });
+        }
+        for (const par of pares) {
+          mirados++;
+          try {
+            const op = await mlGet(`/stock/fulfillment/operations/search?seller_id=${sid}&inventory_id=${par.inv}&date_from=${desdeISO}&limit=50`, tok);
+            for (const x of (op?.results || [])) {
+              const tipo = String(x.type || x.operation_type || '').toLowerCase();
+              if (!tipo.includes('inbound') && !tipo.includes('reception')) continue;
+              const q = Number(x.quantity || x.detail?.quantity || 0) || 0;
+              if (q <= 0) continue;
+              const k1 = kR(cta, p.id, par.va);
+              recibido[k1] = (recibido[k1] || 0) + q;
+            }
+          } catch { /* si no contesta, esa caja se queda abierta: mejor eso que marcarla de más */ }
+        }
+      }
+    }
+  }
+  // Repartir lo recibido entre las cajas abiertas, la más vieja primero.
+  const marcadas = [];
+  for (const ab of abiertas) {
+    const faltan = [];
+    for (const it of ab.items) {
+      const k1 = kR(ab.e.cuenta, it.prodId, it.variante || '');
+      if ((recibido[k1] || 0) >= it.u) continue;
+      faltan.push(it);
+    }
+    if (faltan.length) continue;                       // esta caja no está completa: se deja abierta
+    for (const it of ab.items) recibido[kR(ab.e.cuenta, it.prodId, it.variante || '')] -= it.u;
+    marcadas.push(ab);
+  }
+  if (!marcadas.length) return { marcadas: [], mirados, msg: null };
+  if (!DRY) {
+    // Se escribe la lista COMPLETA de cajas del envío: cajasDet es un array y un patch parcial la
+    // rompería, igual que pasa con las variantes de ML.
+    const porEnvio = {};
+    for (const m of marcadas) (porEnvio[m.id] = porEnvio[m.id] || []).push(m.i);
+    const hoy = dayKeyFromISO(new Date().toISOString()).replace(/_/g, '-');
+    for (const [id, idxs] of Object.entries(porEnvio)) {
+      const e = envios[id];
+      const cajas = (e.cajasDet || []).map((c, i) => idxs.includes(i)
+        ? { ...c, recibida: true, recFecha: hoy, recAuto: true } : c);
+      await db.set('cyc/envios_full/' + id + '/cajasDet', cajas);
+      // Releído: que la escritura no dé error no prueba que haya quedado.
+      const rel = (await db.get('cyc/envios_full/' + id + '/cajasDet')) || [];
+      const arrRel = Array.isArray(rel) ? rel : Object.values(rel);
+      for (const i of idxs) if (!arrRel[i] || !arrRel[i].recibida) console.log(`⚠️ la caja ${i + 1} del envío ${id} NO quedó marcada`);
+    }
+  }
+  const det = marcadas.map((m) => `· ${m.e.cuenta} · caja del ${m.fecha}${m.c.track ? ' (' + m.c.track + ')' : ''} · ${m.items.reduce((a, x) => a + x.u, 0)} u.`).join('\n');
+  return {
+    marcadas, mirados,
+    msg: `📦 <b>${marcadas.length} caja(s) llegaron a Full</b>\n${det}\n\nYa cuentan como stock de la cuenta.`,
+  };
+}
+
 async function activarPausadasFull(db, links, tokensRun, DRY, products, piso) {
   const PISO = piso != null ? piso : 0.30;
   const fin = (await db.get('cyc/finanzas')) || {};
@@ -2284,6 +2417,22 @@ async function main() {
       console.log(`  ${relArr.join(' · ')}`);
       if (relArr.length !== final.length) console.log('⚠️ NO quedó como pedí.');
       else console.log('✓ Quedó. En "Mi oficina" ya se puede contar aroma por aroma.');
+      return;
+    }
+    // BILLING_PROBE=cajasllegaron[:go] → MARCA LAS CAJAS QUE YA ENTRARON A FULL.
+    // Sin ':go' solo dice cuáles marcaría. Es la misma función que corre sola una vez por hora, no
+    // una copia: si un día se cambia la regla, se cambia en un solo lado.
+    if (String(process.env.BILLING_PROBE || '').startsWith('cajasllegaron')) {
+      const APLICAR = String(process.env.BILLING_PROBE).split(':')[1] === 'go';
+      const r = await cajasQueLlegaron(db, accounts, labels, products, !APLICAR);
+      console.log(`Inventarios de Full mirados: ${r.mirados}`);
+      if (!r.marcadas.length) { console.log('Ninguna caja abierta quedó cubierta por las entradas que informa ML.'); return; }
+      console.log(`\n${APLICAR ? 'MARCADAS' : '(PRUEBA) SE MARCARÍAN'} · ${r.marcadas.length}`);
+      for (const m of r.marcadas) {
+        console.log(`  ${m.e.cuenta.padEnd(8)} · caja del ${m.fecha}${m.c.track ? ' · ' + m.c.track : ''} · ${m.items.reduce((a, x) => a + x.u, 0)} u.`);
+        for (const it of m.items) console.log(`      ${String(it.u).padStart(4)}× ${(it.nombre || it.prodId)}${it.variante ? ' · ' + it.variante : ''}`);
+      }
+      if (!APLICAR) console.log('\nNo se escribió nada. Agregá ":go" para marcarlas.');
       return;
     }
     // BILLING_PROBE=subeventa[:on|:off] → SUBIR SOLO EL PRECIO CUANDO UNA VENTA CAE ABAJO DEL PISO.
@@ -12267,6 +12416,17 @@ async function main() {
       const avisos = await activarPausadasFull(db, map, tokensRun, DRY, products, piso);
       for (const a of avisos) await sendTelegram(a);
     } catch (e) { console.log('No pude activar las pausadas con Full: ' + e.message); }
+  }
+
+  // CAJAS QUE LLEGARON A FULL. Va en la vuelta horaria (no en las de 2 minutos): preguntarle a ML
+  // las operaciones de cada inventario todo el tiempo sería mucha llamada para un dato que cambia
+  // una vez por día. Va FUERA del bloque de arriba a propósito: eso está apagado por `robot:off`,
+  // que corta lo que ESCRIBE PRECIOS en ML. Esto no toca ML, solo marca cajas en el panel.
+  if (parseInt(process.env.BACKFILL_DAYS || '0', 10) === 0 && !onlyAcc && process.env.SKIP_PRICES !== '1') {
+    try {
+      const rc = await cajasQueLlegaron(db, accounts, labels, products, DRY);
+      if (rc.msg) { console.log(rc.msg.replace(/<[^>]+>/g, '')); await sendTelegram(rc.msg); }
+    } catch (e) { console.log('No pude revisar las cajas en camino: ' + e.message); }
   }
 
   if (!precioAuto && !SKIP_PRICES) console.log('\n⏸️  Robot de precios APAGADO (mlconfig.autoPrice=false): no ajusté, no nivelé y no activé nada. Para prenderlo: robot:on');
