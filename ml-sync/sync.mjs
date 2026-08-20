@@ -2419,6 +2419,49 @@ async function main() {
       else console.log('✓ Quedó. En "Mi oficina" ya se puede contar aroma por aroma.');
       return;
     }
+    // BILLING_PROBE=probarinbound → ¿ML NOS DEJA VER LAS CAJAS QUE VAN EN CAMINO A FULL?
+    //
+    // Hoy el robot solo ve la ENTRADA (cuando la mercadería ya está adentro de Full). Mientras la
+    // caja viaja, lo que sabe el panel es lo que él cargó a mano al cerrarla. Si ML tuviera un
+    // endpoint de envíos entrantes, se podría leer directo de ML: cuántas cajas van, con qué,
+    // y en qué estado — y dejaría de depender de que se cargue el contenido.
+    // Esto NO adivina: prueba los endpoints candidatos uno por uno y dice qué contesta cada uno.
+    // Es el mismo método que se usó con el saldo de MercadoPago (`probarsaldo`), que resultó en
+    // 403 en los tres endpoints y quedó documentado para no volver a intentarlo cada dos meses.
+    if (String(process.env.BILLING_PROBE || '') === 'probarinbound') {
+      for (const label of labels) {
+        const acc = accounts[label]; if (!acc?.refresh_token) continue;
+        let tok, sid;
+        try {
+          const t = await mlRefresh(ML_CLIENT_ID, ML_CLIENT_SECRET, acc.refresh_token);
+          await db.patch('mlapi/tokens/' + label, { refresh_token: t.refresh_token, updated_ts: Date.now() });
+          tok = t.access_token; sid = acc.seller_id;
+        } catch (e) { console.log(`${label}: no pude entrar (${e.message})`); continue; }
+        console.log(`\n══ ${label} · seller ${sid} ══`);
+        const rutas = [
+          `/inbound-shipments/search?seller_id=${sid}`,
+          `/inbound-shipments?seller_id=${sid}`,
+          `/stock/fulfillment/inbound/shipments?seller_id=${sid}`,
+          `/stock/fulfillment/inbound_shipments?seller_id=${sid}`,
+          `/users/${sid}/inbound-shipments`,
+          `/shipments/inbound?seller_id=${sid}`,
+          `/fbm/inbound/shipments?seller_id=${sid}`,
+          `/stock/fulfillment/operations/search?seller_id=${sid}&limit=5`,
+        ];
+        for (const r of rutas) {
+          try {
+            const d = await mlGet(r, tok);
+            const n = Array.isArray(d?.results) ? d.results.length : (Array.isArray(d) ? d.length : null);
+            console.log(`  ✅ ${r}`);
+            console.log(`      contesta${n != null ? ` · ${n} resultado(s)` : ''} · ${JSON.stringify(d).slice(0, 260)}`);
+          } catch (e) {
+            console.log(`  ✗ ${r}  →  ${String(e.message || e).slice(0, 90)}`);
+          }
+        }
+      }
+      console.log('\nLos que digan ✅ sirven para ver lo que va en camino sin cargarlo a mano.');
+      return;
+    }
     // BILLING_PROBE=cajasllegaron[:go] → MARCA LAS CAJAS QUE YA ENTRARON A FULL.
     // Sin ':go' solo dice cuáles marcaría. Es la misma función que corre sola una vez por hora, no
     // una copia: si un día se cambia la regla, se cambia en un solo lado.
