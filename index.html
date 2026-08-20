@@ -3733,7 +3733,7 @@ function renderOfiContar(){
   const casilla=(val,hay,onch)=>`<input type="number" inputmode="numeric" value="${val||''}" placeholder="0"
         style="flex:none;width:72px;text-align:center;background:var(--bg);border:1px solid ${hay?'var(--accent2)':'var(--border2)'};border-radius:8px;color:var(--text);font-family:'DM Mono',monospace;font-size:1rem;padding:10px 4px;outline:none"
         onchange="${onch}">`;
-  cont.innerHTML=prods.map(p=>{
+  const html=prods.map(p=>{
     const enCasa=stockOficina(p);
     // ── PRODUCTO CON VARIANTES (los aromas del Paulvic, los colores, las medidas) ──
     // Contar "Paulvic TODOS: 40" no sirve para decidir qué mandar a Full: hay que saber CUÁL
@@ -3743,7 +3743,14 @@ function renderOfiContar(){
     const vars=(p.variantes||[]).filter(v=>!q||normTxt(p.name).includes(q)||normTxt(v).includes(q));
     if((p.variantes||[]).length){
       const pubV=cta?(pubVarCache[p.id]||cuentasPorVariante(p)):null;
-      const filas=vars.filter(v=>!cta||(pubV[v]&&pubV[v].has(cta))).map(v=>{
+      // "Mostrar solo los que tienen algo" tiene que filtrar CADA VARIANTE, no el producto entero.
+      // Miraba el total del producto: como el Paulvic tiene 151 unidades sumando todo, pasaba el
+      // filtro y después se dibujaban los 71 aromas, la mayoría en cero. La lista quedaba igual de
+      // larga y el filtro no servía para nada.
+      const visibles=vars.filter(v=>(!cta||(pubV[v]&&pubV[v].has(cta)))&&(!solo||getQV(p.id,OFI,v)>0));
+      // Si con el filtro puesto no queda ninguna variante con unidades, el producto no se muestra.
+      if(solo&&!visibles.length)return '';
+      const filas=visibles.map(v=>{
         const hay=getQV(p.id,OFI,v);
         const enFull=cta?getQV(p.id,cta,v):stockOfVar(p,v);
         return `<div style="display:flex;align-items:center;gap:10px;padding:7px 0 7px 12px;border-top:1px solid var(--border)">
@@ -3758,7 +3765,7 @@ function renderOfiContar(){
         <div style="display:flex;align-items:center;gap:10px">
           <div style="flex:1;min-width:0">
             <div style="font-size:.8rem;font-weight:700;line-height:1.3;word-break:break-word">${p.name}</div>
-            <div style="font-size:.62rem;color:var(--muted);margin-top:2px">en Full${cta?' de '+cta:''}: ${fmtN(cta?getQ(p.id,cta):stockOf(p))} · ${(p.variantes||[]).length} variantes</div>
+            <div style="font-size:.62rem;color:var(--muted);margin-top:2px">en Full${cta?' de '+cta:''}: ${fmtN(cta?getQ(p.id,cta):stockOf(p))} · ${visibles.length<(p.variantes||[]).length?`${visibles.length} de ${(p.variantes||[]).length}`:(p.variantes||[]).length} variantes</div>
           </div>
           <div style="flex:none;width:72px;text-align:center;font-family:'DM Mono',monospace;font-size:1rem;color:${enCasa>0?'var(--accent2)':'var(--muted)'}">${enCasa||0}</div>
         </div>
@@ -3773,6 +3780,8 @@ function renderOfiContar(){
       ${casilla(enCasa,enCasa>0,`setQ('${p.id}','${OFI}',this.value);syncOfiMati();renderOfiContar()`)}
     </div>`;
   }).join('');
+  // Si el filtro dejó todo afuera, decirlo. Antes quedaba la lista en blanco, que parece un error.
+  cont.innerHTML=html||`<div class="empty-msg">${solo?'No hay nada con unidades cargadas'+(ofiContarCuenta?' de '+ofiContarCuenta:'')+'.':'Nada con esa búsqueda.'}</div>`;
 }
 // Guarda las unidades de UNA variante en la oficina y recalcula el total del producto como la
 // suma de sus variantes. La clave de producto tiene que quedar siempre igual a esa suma: es la
@@ -8761,7 +8770,7 @@ document.addEventListener('click',e=>{if(fnavOpen&&!e.target.closest('#fnav-btn'
         <span style="font-size:.75rem;color:var(--muted)">Si no ves los últimos cambios, forzá la actualización</span>
         <button class="btn" style="background:rgba(56,189,248,.12);color:var(--blue);border:1px solid rgba(56,189,248,.3)" onclick="actualizarApp()">🔄 Buscar actualizaciones</button>
       </div>
-      <div style="font-size:.66rem;color:var(--muted);margin-top:12px">CYC · Versión 11.5</div>
+      <div style="font-size:.66rem;color:var(--muted);margin-top:12px">CYC · Versión 11.6</div>
     </div>
 
     <div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:18px 20px;margin-bottom:14px">
