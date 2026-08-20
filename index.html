@@ -1131,7 +1131,7 @@ footer{margin-top:32px;padding-top:14px;border-top:1px solid var(--border);font-
         <th style="min-width:100px">Rotación</th>
         <th style="min-width:110px">⏳ Días sin vender</th>
         <th style="min-width:95px" title="Lo que deja hoy sobre el costo, con el precio que tiene puesto en ML ahora. Es la MISMA cuenta que muestra la pantalla Margen ML. Sirve para ver de un vistazo cuánto aire hay antes de tocar un precio.">💰 Margen hoy</th>
-        <th style="min-width:105px" title="Hace cuánto que esta mercadería está en ML. Es lo que le da sentido a los días sin vender: un producto que llegó anteayer y no vendió NO es un problema; uno que está hace dos meses sí. 🆕 = llegó hace menos de 10 días, todavía no se puede juzgar. El dato se reinicia con cada reposición, así que mide lo que hay ahora.">📅 En stock hace</th>
+        <th style="min-width:105px" title="Hace cuánto que esta mercadería está en ML. Es lo que le da sentido a los días sin vender: un producto que llegó anteayer y no vendió NO es un problema; uno que está hace dos meses sí. 🆕 = entró hace menos de 10 días, todavía no se puede juzgar. "≥ N d" = ya tenía stock cuando el robot empezó a mirar, así que está desde AL MENOS esa fecha y puede ser mucho más. El dato se reinicia con cada reposición.">📅 En stock hace</th>
         <th style="min-width:110px" title="En las publicaciones de CATÁLOGO, ML muestra un solo botón de comprar y se lo lleva UN vendedor. 🟢 Ganás = la venta es tuya · 🟠 Compartís = ML reparte con otro (subir el precio te saca) · 🔴 Perdés = la venta se la lleva otro y tu publicación no la ve nadie · ⚪ = no es de catálogo, no hay caja que pelear. Ojo: el color de acá NO significa lo mismo que el del margen de al lado.">🥊 Caja ML</th>
         <th style="min-width:100px">Estado</th>
       </tr></thead>
@@ -2265,7 +2265,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='12.9';
+const APP_VERSION='13.0';
 // El problema real que esto resuelve no es curiosidad: es que el celular guarda la app y sigue
 // mostrando la de ayer sin avisar. Varias veces se revisó un cambio que ya estaba subido y no se
 // veía. Por eso, además del número, el chip avisa cuando hay una versión nueva esperando.
@@ -6992,27 +6992,41 @@ function rotCajaHtml(r){
 // Se toma la cuenta que lo tiene hace MÁS tiempo: es cuánto hace que hay chance de venderlo.
 // Solo cuentan las cuentas de ML — lo que está en la oficina no está a la venta.
 const ROT_RECIEN_DIAS=10;   // menos que esto = todavía no se puede juzgar
+// OJO con la fecha: hay dos clases y la diferencia cambia lo que se puede afirmar.
+//   exacta      → el robot vio entrar la mercadería (pasó de 0 a tener stock). Ahí sí se puede
+//                 decir "llegó hace N días".
+//   aproximada  → el producto YA tenía stock la primera vez que el robot lo miró. De ese solo se
+//                 sabe que está desde AL MENOS esa fecha, y puede llevar meses.
+// El día que se prendió el registro TODO quedó marcado con la fecha de ese día, así que la primera
+// versión mostraba "🆕 recién llegó, 2 días" en productos parados hace meses — al revés de para qué
+// está la columna. Por eso: sin marca explícita de exacta, se trata como aproximada y se muestra
+// "≥ N d", que es lo único que se puede afirmar sin mentir.
 function diasEnStockDe(p){
   const H=state.stockhist||{};
-  let masViejo=null;
+  let masViejo=null,aprox=false;
   for(const l of LOCS){
     if(getQ(p.id,l)<=0)continue;              // sin stock hoy en esa cuenta: no hay nada parado
     const h=H[invKey(p.id,l)];
     if(!h||!h.desde)continue;
     const d=Math.floor((Date.now()-h.desde)/86400000);
     if(!isFinite(d)||d<0)continue;
-    if(masViejo==null||d>masViejo)masViejo=d;
+    if(masViejo==null||d>masViejo){masViejo=d;aprox=(h.aprox!==false);}
   }
-  return masViejo;
+  return masViejo==null?null:{dias:masViejo,aprox};
 }
 function rotEnStockHtml(r){
-  const d=r.diasEnStock;
-  if(d==null)
-    return `<span style="color:var(--muted)" title="Todavía no hay registro de cuándo entró esta mercadería. El robot lo anota cuando ve que un producto pasa de cero a tener stock, así que lo que ya estaba antes de que empezara a mirarlo no tiene fecha.">—</span>`;
+  const e=r.diasEnStock;
+  if(e==null)
+    return `<span style="color:var(--muted)" title="No hay registro de esta mercadería. El robot anota la fecha cuando ve un producto con stock; si acá no hay nada es que hoy no tiene stock en ninguna cuenta de ML.">—</span>`;
+  const d=e.dias;
+  // Aproximada: solo se sabe que está desde AL MENOS esa fecha. Nunca se marca como "recién
+  // llegado", porque justamente puede llevar meses y sería el peor error posible en esta columna.
+  if(e.aprox)
+    return `<span style="color:var(--muted)" title="Está hace AL MENOS ${d} día(s), y probablemente mucho más: cuando el robot empezó a llevar este registro este producto YA tenía stock, así que no se sabe cuándo entró de verdad. La fecha exacta va a aparecer sola la próxima vez que se agote y se reponga.">≥ ${d}d</span>`;
   if(d<ROT_RECIEN_DIAS)
-    return `<span style="color:var(--blue,#60a5fa);font-weight:700" title="Llegó hace ${d} día(s). RECIÉN LLEGÓ: que no haya vendido todavía no significa nada y no es motivo para tocarle el precio. Dale unos días antes de sacar conclusiones.">🆕 ${d}d</span>`;
+    return `<span style="color:var(--blue,#60a5fa);font-weight:700" title="Llegó hace ${d} día(s), y el robot lo vio entrar, así que la fecha es exacta. RECIÉN LLEGÓ: que todavía no haya vendido no significa nada y no es motivo para tocarle el precio.">🆕 ${d}d</span>`;
   const color=d>=60?'var(--red)':d>=30?'var(--amber)':'var(--text)';
-  return `<span style="color:${color}" title="Esta mercadería está hace ${d} día(s) en ML. Junto con los días sin vender es lo que dice si de verdad está parada: acá ya hubo tiempo de sobra para venderla.">${d}d</span>`;
+  return `<span style="color:${color}" title="Entró hace ${d} día(s) y el robot lo vio entrar, así que la fecha es exacta. Junto con los días sin vender es lo que dice si de verdad está parada: acá ya hubo tiempo de sobra para venderla.">${d}d</span>`;
 }
 function rotMargenHtml(r){
   const PISO=parseFloat((state.mlconfig||{}).minPct)||30;
@@ -7389,8 +7403,8 @@ function renderRotacionStock(){
     <td style="text-align:right">${r.ventasPeriodo} u.</td>
     <td style="text-align:right;font-family:'DM Mono',monospace">${r.stock>0?r.rotNorm.toFixed(2):'—'}</td>
     <td style="text-align:right">${rotDiasSinVenderHtml(r.diasSinVender)}</td>
-    <td style="text-align:right">${rotEnStockHtml(r)}</td>
     <td style="text-align:right">${rotMargenHtml(r)}</td>
+    <td style="text-align:right">${rotEnStockHtml(r)}</td>
     <td style="text-align:right">${rotCajaHtml(r)}</td>
     <td>${r.estadoHtml}</td>
   </tr>`).join('');

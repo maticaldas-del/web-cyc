@@ -770,6 +770,36 @@ async function nivelarGrupos(db, links, tokensRun, DRY, pName, sellerIds) {
   return avisos;
 }
 
+// ── EL MARGEN DE LA WEB, ACTUALIZADO EN EL ACTO AL CAMBIAR UN PRECIO ─────────
+// Pedido suyo del 20/08/2026: el robot puede seguir recalculando todo de noche, pero cada vez que
+// se toca un precio la pantalla "Margen ML" tiene que quedar al día EN EL MOMENTO.
+//
+// Antes el neto lo recalculaba `netoweb` una sola vez por día, a las 00:07. Si a las 10 de la mañana
+// se cambiaba un precio, hasta la medianoche la pantalla mostraba el margen del PRECIO VIEJO — y es
+// justo la pantalla que se mira para decidir el próximo precio. Decisiones con el número de ayer.
+//
+// No recalcula nada por su cuenta a propósito: escribe los MISMOS números que el comando ya usó
+// para decidir el precio (precio − comisión − envío es la fórmula de netoweb, tal cual). Si en vez
+// de eso volviera a pedirle todo a ML, serían dos cuentas distintas conviviendo, que es de donde
+// salieron los errores de margen del 19/08.
+async function anotarNetoWeb(db, pid, datos, DRY) {
+  if (!pid || !datos) return false;
+  const precio = Number(datos.precio), com = Number(datos.com) || 0, envio = Number(datos.envio) || 0;
+  if (!isFinite(precio) || precio <= 0) return false;
+  const neto = Math.round(precio - com - envio);
+  if (!(neto > 0)) return false;          // un neto negativo no se guarda: taparía el dato bueno
+  if (DRY) return false;
+  try {
+    await db.patch('cyc/products/' + pid, {
+      netoCalc: neto,
+      netoCalcPrecio: Math.round(precio),
+      netoCalcSinEnvio: !!datos.sinEnvio,
+      netoCalcTs: Date.now(),
+    });
+    return true;
+  } catch { return false; }               // que no se pueda anotar NUNCA puede voltear un cambio de precio
+}
+
 // ── EL PISO DE 30%, COMO FRENO Y NO COMO BUENA INTENCIÓN ─────────────────────
 // Regla suya del 20/08/2026, textual: "NUNCA BAJAR NINGUN PRODUCTO A MENOS DE 30%".
 //
@@ -13052,9 +13082,16 @@ async function main() {
       for (const [k, v] of Object.entries(stockTot)) {
         const antes = Number(invPrev[k] || 0), ahora = Number(v || 0);
         const h = histPrev[k] || {};
-        if (ahora > 0 && antes <= 0) histUpd[k] = { ...h, desde: Date.now() };       // volvió a haber stock
-        else if (ahora <= 0 && antes > 0) histUpd[k] = { ...h, desde: null, cero: Date.now() }; // se agotó
-        else if (ahora > 0 && !h.desde) histUpd[k] = { ...h, desde: Date.now() };    // primera vez que lo vemos con stock
+        // `aprox` separa dos cosas que NO son lo mismo y que hasta el 20/08/2026 se guardaban igual:
+        //   aprox:false → vimos el momento exacto en que entró mercadería (pasó de 0 a tener stock)
+        //   aprox:true  → ya tenía stock la primera vez que lo miramos, así que NO sabemos de cuándo
+        //                 es; lo único cierto es que está desde AL MENOS esa fecha.
+        // Sin esta distinción, el día que se prendió el registro se le puso la fecha de hoy a TODO,
+        // y la pantalla mostraba "recién llegó, hace 2 días" en productos que llevaban meses
+        // parados. Eso es peor que no mostrar nada: invita a no tocar justo lo que hay que revisar.
+        if (ahora > 0 && antes <= 0) histUpd[k] = { ...h, desde: Date.now(), aprox: false };       // entró mercadería: fecha exacta
+        else if (ahora <= 0 && antes > 0) histUpd[k] = { ...h, desde: null, cero: Date.now() };    // se agotó
+        else if (ahora > 0 && !h.desde) histUpd[k] = { ...h, desde: Date.now(), aprox: true };     // ya estaba: no sabemos desde cuándo
       }
       if (Object.keys(histUpd).length) await db.patch('cyc/stockhist', histUpd);
       await db.patch('cyc/inventory', invUpd);
