@@ -7944,6 +7944,41 @@ function metCortarEnHoy(datasets,buckets){
 // Cada bucket es una lista de day-keys que caen en esa etiqueta (1 día para diario/mes,
 // todo un mes para 365d/año). bucketsPrev = período inmediatamente anterior alineado día a
 // día; bucketsYear = mismo período un año atrás. (En vistas anuales prev y year coinciden.)
+// ── QUE EL GRÁFICO NUNCA MUESTRE CUATRO PUNTOS ───────────────────────────────────────
+// "Desde el primer registro" iba SIEMPRE por mes. Con 4 meses de historia eso son 4 puntos: una
+// línea de cuatro tramos donde no se ve nada, y encima cada punto tapa un mes entero — el pico y
+// el pozo de adentro del mes desaparecen. Justo al lado, "90 días" muestra 90 puntos.
+//
+// Ahora el tamaño del tramo se elige solo: se prueba de más grueso a más fino y se toma el primero
+// que llegue a MET_MIN_PUNTOS. Con 112 días de historia da tramos de 7 días = 16 puntos; con tres
+// años sigue dando tramos de 30 = ~36 puntos, que era lo que se quería evitar romper.
+//
+// El límite: el dato más fino que tenemos es UN DÍA. Si el período elegido tiene menos de 12 días
+// no hay forma de sacar 12 puntos, y se muestra uno por día, que es todo lo que hay.
+const MET_MIN_PUNTOS=12;
+const MET_ESCALERA=[30,14,7,3,2,1];   // días por tramo, de más grueso a más fino
+function metTramoIdeal(dias){
+  for(const t of MET_ESCALERA) if(Math.ceil(dias/t)>=MET_MIN_PUNTOS) return t;
+  return 1;   // menos de 12 días: uno por día y listo, es el máximo detalle que hay
+}
+// Parte [fd..td] en tramos de `paso` días. Cada tramo es la lista de day-keys que caen adentro,
+// que es el mismo formato que usan los demás scopes (por eso el resto del gráfico no se entera).
+function metTramos(fd,td,paso,kYearShift){
+  const labels=[],buckets=[],bucketsYear=[];
+  const MONTHS3=['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'];
+  const cur=new Date(fd);
+  while(cur<=td){
+    const keys=[];
+    const ini=new Date(cur);
+    for(let i=0;i<paso&&cur<=td;i++){keys.push(dateToKey(cur));cur.setDate(cur.getDate()+1);}
+    labels.push(paso>=28
+      ? MONTHS3[ini.getMonth()]+' '+String(ini.getFullYear()).slice(2)
+      : String(ini.getDate()).padStart(2,'0')+'/'+String(ini.getMonth()+1).padStart(2,'0'));
+    buckets.push(keys);
+    bucketsYear.push(keys.map(k=>kYearShift(k,-1)));
+  }
+  return {labels,buckets,bucketsYear};
+}
 function metScopeBuckets(scope){
   const d=new Date();let labels=[],buckets=[],bucketsPrev=[],bucketsYear=[],title='';
   const dm=(dt)=>String(dt.getDate()).padStart(2,'0')+'/'+String(dt.getMonth()+1).padStart(2,'0');
@@ -7976,15 +8011,12 @@ function metScopeBuckets(scope){
     // esa línea no se dibuja; la de "año pasado" sí, que ahí sí se puede comparar.
     const k0=_primerRegistroKey();
     if(k0){
-      const [y0,m0]=k0.split('_').map(Number);
-      let y=y0,mi=m0-1;const yEnd=d.getFullYear(),miEnd=d.getMonth();
-      while(y<yEnd||(y===yEnd&&mi<=miEnd)){
-        labels.push(MONTHS[mi].substring(0,3)+' '+String(y).slice(2));
-        buckets.push(monKeys(monPrefixShift(y,mi,0)));
-        bucketsPrev.push([]);
-        bucketsYear.push(monKeys(monPrefixShift(y,mi,-12)));
-        mi++;if(mi>11){mi=0;y++;}
-      }
+      const fd=new Date(k0.replace(/_/g,'-')+'T12:00:00');
+      const td=new Date(d.getFullYear(),d.getMonth(),d.getDate(),12,0,0);
+      const dias=Math.max(1,Math.round((td-fd)/86400000)+1);
+      const t=metTramos(fd,td,metTramoIdeal(dias),kYearShift);
+      labels=t.labels;buckets=t.buckets;bucketsYear=t.bucketsYear;
+      bucketsPrev=buckets.map(()=>[]);   // no hay "período anterior": antes del primer registro no hay nada
     }
     title='Desde el primer registro'+(k0?' · '+k0.replace(/_/g,'/'):'');
     return {labels,buckets,bucketsPrev,bucketsYear,title,sinPrev:true};
@@ -9053,7 +9085,7 @@ document.addEventListener('click',e=>{if(fnavOpen&&!e.target.closest('#fnav-btn'
         <span style="font-size:.75rem;color:var(--muted)">Si no ves los últimos cambios, forzá la actualización</span>
         <button class="btn" style="background:rgba(56,189,248,.12);color:var(--blue);border:1px solid rgba(56,189,248,.3)" onclick="actualizarApp()">🔄 Buscar actualizaciones</button>
       </div>
-      <div style="font-size:.66rem;color:var(--muted);margin-top:12px">CYC · Versión 12.2</div>
+      <div style="font-size:.66rem;color:var(--muted);margin-top:12px">CYC · Versión 12.3</div>
     </div>
 
     <div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:18px 20px;margin-bottom:14px">
