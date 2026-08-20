@@ -2622,8 +2622,9 @@ async function main() {
         const promG = t2.reduce((s, x) => s + x, 0) / t2.length;
         console.log(`\n  TODO EL PRODUCTO · ${t2.length} ventas · más barato ${money(Math.round(t2[0]))}`
           + ` · mediana ${money(Math.round(medG))} · más caro ${money(Math.round(t2[t2.length - 1]))} · promedio ${money(Math.round(promG))}`);
-        console.log(`\n  El margen se calcula hoy con el envío MÁS BARATO de cada publicación. Si el más barato`);
-        console.log(`  y la mediana están lejos, ese margen está inflado y hay que usar la mediana.`);
+        console.log(`\n  Desde el 19/08/2026 el margen usa el envío MÁS CARO visto: es el criterio conservador con`);
+        console.log(`  el que se fijaron todos los precios. Si el más caro está MUY lejos de la mediana, casi`);
+        console.log(`  seguro es una venta que cruzó los $33.000 y el envío gratis lo pagó CYC.`);
       }
       return;
     }
@@ -3767,14 +3768,18 @@ async function main() {
       console.log(`\nGuardado en cada publicación para poder usarlo en el chequeo de la mañana.`);
       return;
     }
-    // BILLING_PROBE=envioreal:<MLA o palabra> → EL ENVÍO QUE DICE ML vs EL QUE DEDUCIMOS.
+    // BILLING_PROBE=envioml:<MLA o palabra> → EL ENVÍO QUE DICE ML vs EL QUE DEDUCIMOS.
     //
+    // OJO: se llama `envioml` y no `envioreal` porque `envioreal` YA EXISTE y hace otra cosa (muestra
+    // el envío venta por venta, deducido de lo que pagó cada comprador). El primer intento se llamó
+    // igual y quedó TAPADO: el dispatcher toma el primero que matchea y este código no se ejecutó
+    // nunca. Es exactamente lo que avisa CLAUDE.md: buscar si ya está antes de escribir uno nuevo.
     // Todo el cálculo de márgenes depende de una estimación del envío sacada de ventas viejas
     // (`envioDeducido`). Esa estimación fue el origen de los tres errores del 19/08/2026: el 47%
     // del Ferrari, el 57% de hermanas y los productos "SIN ENVÍO" que nunca vendieron.
     // ML sí sabe cuánto sale el envío. Este comando pone los dos números uno al lado del otro para
     // decidir con datos si conviene cambiar la fórmula. NO cambia nada: solo compara.
-    if (String(process.env.BILLING_PROBE || '').startsWith('envioreal:')) {
+    if (String(process.env.BILLING_PROBE || '').startsWith('envioml:')) {
       const kw = String(process.env.BILLING_PROBE).split(':')[1].trim();
       const links = (await db.get('cyc/mllinks')) || {};
       const vp = (await db.get('cyc/ventaprod')) || {}; setDevLive(vp);
