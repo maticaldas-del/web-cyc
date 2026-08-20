@@ -73,6 +73,21 @@ jobs:
           FIREBASE_BOT_PASSWORD: ${{ secrets.FIREBASE_BOT_PASSWORD }}
           BILLING_PROBE: netoweb
         run: node ml-sync/sync.mjs
+      # Trae las visitas de los ultimos 30 dias de cada publicacion y las guarda en cyc/visitas,
+      # que es de donde las lee la columna "Lo miran" de Margen ML. Sin este paso la columna se
+      # queda con el dato del dia que alguien corrio el probe a mano, y una visita vieja es peor
+      # que ninguna: se decide sobre un producto que hace semanas que no se mide.
+      # Solo LEE de ML: no toca ningun precio.
+      - name: Visitas de las publicaciones
+        env:
+          ML_CLIENT_ID: ${{ secrets.ML_CLIENT_ID }}
+          ML_CLIENT_SECRET: ${{ secrets.ML_CLIENT_SECRET }}
+          FIREBASE_API_KEY: ${{ secrets.FIREBASE_API_KEY }}
+          FIREBASE_DB_URL: ${{ secrets.FIREBASE_DB_URL }}
+          FIREBASE_BOT_EMAIL: ${{ secrets.FIREBASE_BOT_EMAIL }}
+          FIREBASE_BOT_PASSWORD: ${{ secrets.FIREBASE_BOT_PASSWORD }}
+          BILLING_PROBE: visitas
+        run: node ml-sync/sync.mjs
       # Refresca la facturación de canceladas/devueltas (para el monotributo = "Ventas brutas" ML).
       - name: Facturación de canceladas
         env:

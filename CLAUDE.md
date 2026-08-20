@@ -357,11 +357,32 @@ ya está apartado en las cajas de las otras cuentas.
   ventas que él manda en naranja son justo las que el comando solo no puede ver.
 - **Después de tocar precios hay que correr `netoweb`.** Si no, "Margen ML" sigue mostrando el neto
   del precio viejo y parece que el aumento no se aplicó. Pasó dos veces el 13/08.
-- **Hay DOS envíos conviviendo y dan márgenes distintos.** `netoweb`, "Margen ML" y `submargen`
-  deducen el envío MÁS BARATO que se vio en las ventas; `bajopiso` y `unapub` usan el MÁS CARO.
-  El Espejo 8" daba 31,8% con uno y 26,9% con el otro (14/08). **El que vale es el del peor caso**:
-  es el criterio conservador con el que se fijaron todos los precios. Mientras `submargen` use el
-  barato se va a saltear publicaciones que están abajo del piso — PENDIENTE cambiarlo.
+- **Había DOS envíos conviviendo y daban márgenes distintos. RESUELTO el 20/08/2026.** `netoweb`,
+  "Margen ML" y `submargen` deducían el envío MÁS BARATO visto en las ventas; `bajopiso` y `unapub`
+  usaban el MÁS CARO. El Espejo 8" daba 31,8% con uno y 26,9% con el otro (14/08). Ahora **los
+  cinco lugares usan el PEOR caso** (`modo:'max'`), que es el criterio conservador con el que se
+  fijaron todos los precios. Consecuencia: los márgenes en pantalla bajaron, pero son los reales —
+  antes se mostraban de más. Si aparece un margen sospechosamente alto, lo primero sigue siendo
+  mirar si esa cuenta descuenta el envío.
+  Lo que NO se cambió: la fórmula sigue deduciendo el envío de nuestras ventas, no del número que
+  informa ML (`/suggestions/items/<MLA>/details` → `costs.shipping_fees`). Ese solo se usa como
+  respaldo cuando el producto NUNCA vendió y no hay nada que deducir; si ML tampoco lo tiene, queda
+  marcado **SIN ENVÍO** en ámbar. Las dos comparaciones que hay dan parecido (abajo de $33.000 los
+  dos dicen $0; arriba, ML $5.620 contra nuestros $6.620, o sea que quedamos más conservadores),
+  pero **dos datos no alcanzan** para cambiar la fórmula que define todos los precios. Para juntar
+  más está `envioml:<MLA>`.
+- **La reposición dividía por 30 fijo y subestimaba justo lo que más vende.** Hasta el 20/08/2026
+  "Armar caja" calculaba `ventas del mes ÷ 30` sin preguntar si en esos 30 días había mercadería
+  para vender. Un producto que vendió 10 unidades en 5 días y se agotó daba **0,33 por día** cuando
+  vendía **2 por día**: sugería **15 unidades en vez de 88**. Y el error va siempre para el mismo
+  lado — cuanto más rápido se vende algo, antes se agota, más días pasa en cero y más lo achica la
+  cuenta; el que más urge reponer es el que peor mide. Ese día había 68 publicaciones sin stock que
+  vendían, $222.489 por día. Ahora divide por los días que REALMENTE tuvo stock, que salen de
+  `cyc/stockhist` (el robot ya los venía anotando y la pantalla nunca los miró). Piso de 7 días
+  (`REPO_DIAS_MIN`): con 1 o 2 días medidos una venta de casualidad pediría una caja entera.
+  Lo probado: el producto que tuvo stock todo el mes **no cambia**; el que se agotó sube.
+  Ojo: `cyc/stockhist` es por producto×cuenta, no por variante — en los productos con aromas se usa
+  como aproximación.
 - **Leer la salida ENTERA del comando, no el renglón final.** El 19/08/2026 corrí `ponvariantes`
   sobre el Paulvic, leí solo el "✓ Quedó" del final y no vi el renglón de arriba que decía qué
   había antes. La ficha ya tenía **70 aromas cargados** y con `reemplazar` **borré 43** (Abismo,
