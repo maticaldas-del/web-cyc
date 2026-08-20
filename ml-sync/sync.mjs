@@ -123,17 +123,24 @@ const mlExtraPct = (cuenta) => { const v = ML_EXTRA_PCT[(cuenta || '').toLowerCa
 // yo dejé "en el 30%" vendió al 26%.
 // Esto reconstruye la misma cuenta que la web para que los dos miren el mismo número.
 let DEV_LIVE = {};   // prodId → % de reclamos en vivo
+let DEV_TUVO = {};   // prodId → tuvo algún reclamo alguna vez (aunque no encarezca el costo)
 const _esReclamo = (v) => !!(v && v.cancelada && (v.tipoCancelacion === 'reclamo' || v.tipoCancelacion === 'perdida'));
 const _esCancelada = (v) => !!(v && v.cancelada && (v.tipoCancelacion === 'cancelada' || v.tipoCancelacion === 'devolucion'));
+// RECLAMOS QUE NO ENCARECEN EL PRODUCTO. Un reclamo sube el costo (costo × (1 + % reclamos)), y
+// eso está bien cuando el producto falla, pero no cuando fue culpa del envío. Las ventas marcadas
+// `sinCargo` siguen siendo reclamos en todos lados —el registro no se toca— pero no entran en este
+// porcentaje. MISMA REGLA que devPctCosto() en index.html: si se cambia una hay que cambiar la
+// otra, o el robot pone precios con un costo distinto del que muestra el panel.
+const _sinCargo = (v) => !!(v && v.sinCargo);
 function setDevLive(vp) {
-  const stats = {};
+  const stats = {}, tuvo = {};
   for (const day of Object.values(vp || {})) {
     if (!day || typeof day !== 'object') continue;
     for (const v of Object.values(day)) {
       if (!v || typeof v !== 'object' || !v.prodId) continue;
       const s = stats[v.prodId] = stats[v.prodId] || { reclamos: 0, ventas: 0 };
       const q = v.qty || 0;
-      if (_esReclamo(v)) s.reclamos += q;
+      if (_esReclamo(v)) { tuvo[v.prodId] = true; if (!_sinCargo(v)) s.reclamos += q; }
       if (!_esCancelada(v)) s.ventas += q;   // los reclamos SÍ son ventas: llegaron al comprador
     }
   }
@@ -143,6 +150,7 @@ function setDevLive(vp) {
     out[id] = (s.reclamos > 0 && s.ventas > 0) ? Math.round((s.reclamos / s.ventas) * 1000) / 10 : 0;
   }
   DEV_LIVE = out;
+  DEV_TUVO = tuvo;
   return out;
 }
 function costoPesos(p, qty, tc) {
@@ -153,7 +161,10 @@ function costoPesos(p, qty, tc) {
   const devVivo = DEV_LIVE[p.id];
   // Misma condición que la web: solo recalcula si el producto tiene envío, % cargado o reclamos.
   // Si no tiene nada de eso, el guardado sigue siendo el bueno.
-  if (devVivo != null && (p.shipUSD != null || p.devPct != null || devVivo > 0)) {
+  // DEV_TUVO va en la condición a propósito: a un producto al que se le sacaron TODOS los reclamos
+  // del costo, devVivo le queda en 0 y sin esto volvería a caer en el costFullUSD guardado, que
+  // todavía tiene adentro el recargo viejo. Tiene que recalcular igual para que ese recargo se vaya.
+  if (devVivo != null && (p.shipUSD != null || p.devPct != null || devVivo > 0 || DEV_TUVO[p.id])) {
     // Igual que la web: reclamos en vivo, no el número congelado.
     fullUSD = Math.round((costUSD * (1 + devVivo / 100) + shipUSD) * 100) / 100;
   } else if (p.costFullUSD != null && p.costFullUSD !== '') {
@@ -5872,6 +5883,87 @@ async function main() {
     // cambiado diez veces, y el producto aparecía muy abajo del 30% sin forma de darse cuenta.
     // Desde esa fecha la pantalla ya NO mira este campo (el neto sale solo de ML), pero los valores
     // viejos siguen guardados: esto los lista y, con :borrar, los saca de la base.
+    // BILLING_PROBE=sincargo:<palabra>[!<excluir>][:go] → ESTE RECLAMO NO FUE CULPA DEL PRODUCTO.
+    //
+    // Un reclamo encarece el producto: el costo full se calcula como costo × (1 + % de reclamos),
+    // y ese costo es el que define si un precio llega al piso. Está bien cuando el producto falla;
+    // NO está bien cuando el reclamo fue por cómo se despachó. El 20/08/2026 él marcó dos casos:
+    // la Lupa 60mm x10 (4 reclamos, se equivocó al enviarla) y TODOS los espejos (los mandaba sin
+    // protección; desde ahora van protegidos). Con esos adentro, la cuenta le clavaba un recargo
+    // permanente a productos que no tienen ningún problema.
+    //
+    // Marca `sinCargo:true` en la venta. NO la saca de los reclamos: sigue figurando en Ventas x
+    // Producto y en el resumen del mes, porque el registro de lo que pasó no se falsea. Lo único
+    // que cambia es que deja de encarecer el producto. Y marca lo VIEJO: los reclamos nuevos no
+    // vienen marcados, así que cuentan solos — que es justo lo que él pidió, "de ahora en adelante
+    // cualquier reclamo que tengan los productos son reales".
+    //
+    // Sin :go SOLO MUESTRA. Filtrar por palabras del título ya se llevó puesto lo que no era
+    // (el 15/08 un filtro de "memoria" agarró un auricular y las tablets de medio millón), así que
+    // acá vale la misma regla: mirar la lista antes. Con `!` se excluyen palabras.
+    if (String(process.env.BILLING_PROBE || '').startsWith('sincargo')) {
+      const _sc = String(process.env.BILLING_PROBE).split(':');
+      const GO = _sc.includes('go');
+      const crudo = (_sc[1] || '').trim();
+      if (!crudo) { console.log('Falta la palabra. Ej: sincargo:espejo  ·  sincargo:lupa 60mm!100mm:go'); return; }
+      const [inc, exc] = crudo.split('!');
+      const pal = inc.split('+').map((x) => x.trim().toLowerCase()).filter(Boolean);
+      const sacar = (exc || '').split('+').map((x) => x.trim().toLowerCase()).filter(Boolean);
+      const vp = (await db.get('cyc/ventaprod')) || {};
+      const pIdx = {}; for (const p of products) pIdx[p.id] = p;
+      const nom = (v) => String(v.prod || (pIdx[v.prodId] || {}).name || '').toLowerCase();
+      const hits = [];
+      for (const [dk, day] of Object.entries(vp)) {
+        for (const [k, v] of Object.entries(day || {})) {
+          if (!_esReclamo(v)) continue;
+          const n = nom(v);
+          if (!pal.every((w) => n.includes(w))) continue;
+          if (sacar.length && sacar.some((w) => n.includes(w))) continue;
+          hits.push({ dk, k, v, ya: !!v.sinCargo });
+        }
+      }
+      if (!hits.length) { console.log(`Ningún reclamo con "${inc}".`); return; }
+      // Agrupado por producto, con el antes y el después del % que entra en el costo.
+      const porProd = {};
+      for (const h of hits) {
+        const id = h.v.prodId || ('nm:' + nom(h.v));
+        (porProd[id] = porProd[id] || []).push(h);
+      }
+      console.log(`=== RECLAMOS QUE MATCHEAN "${inc}"${sacar.length ? ' (sin: ' + sacar.join(', ') + ')' : ''} · ${hits.length} ===`);
+      console.log(`${GO ? 'SE VAN A MARCAR' : 'PRUEBA: no se marca nada'} · marcar = no encarece el producto, pero SIGUE siendo un reclamo\n`);
+      for (const [id, lista] of Object.entries(porProd)) {
+        const p = pIdx[id];
+        // El % de reclamos sale de: unidades reclamadas ÷ unidades vendidas del producto.
+        let vendidas = 0, reclAhora = 0, reclDespues = 0;
+        for (const day of Object.values(vp)) {
+          for (const v of Object.values(day || {})) {
+            if (!v || (v.prodId ? v.prodId !== id : ('nm:' + nom(v)) !== id)) continue;
+            const q = v.qty || 0;
+            if (!_esCancelada(v)) vendidas += q;
+            if (_esReclamo(v)) { if (!v.sinCargo) reclAhora += q; if (!v.sinCargo && !lista.some((h) => h.v === v)) reclDespues += q; }
+          }
+        }
+        const pct = (r) => vendidas > 0 ? (Math.round((r / vendidas) * 1000) / 10) : 0;
+        const cu = parseFloat((p || {}).costUSD) || 0;
+        const cf = (r) => Math.round((cu * (1 + pct(r) / 100) + (parseFloat((p || {}).shipUSD) || 0)) * 100) / 100;
+        console.log(`── ${(p ? p.name : id)} · ${lista.length} reclamo(s) · ${vendidas} u. vendidas`);
+        console.log(`   % reclamos: ${pct(reclAhora)}%  →  ${pct(reclDespues)}%   ·   costo full: US$ ${cf(reclAhora)}  →  US$ ${cf(reclDespues)}`);
+        for (const h of lista) console.log(`     ${h.dk.slice(0, 10).replace(/_/g, '-')} · ${h.v.qty || 1} u. · ${String(h.v.tipoCancelacion || '')}${h.ya ? ' · YA ESTABA MARCADO' : ''} · ${(h.v.prod || '').slice(0, 46)}`);
+      }
+      const faltan = hits.filter((h) => !h.ya);
+      if (!GO) { console.log(`\n(PRUEBA) ${faltan.length} se marcarían. Mirá la lista de arriba ANTES de correrlo con :go.`); return; }
+      if (!faltan.length) { console.log('\nYa estaban todos marcados: no hay nada para hacer.'); return; }
+      const upd = {};
+      for (const h of faltan) upd[`${h.dk}/${h.k}/sinCargo`] = true;
+      await db.patch('cyc/ventaprod', upd);
+      // Releer de la base y confirmar, que es la regla: no alcanza con que el patch no tire error.
+      const vp2 = (await db.get('cyc/ventaprod')) || {};
+      let ok = 0; for (const h of faltan) if (((vp2[h.dk] || {})[h.k] || {}).sinCargo === true) ok++;
+      console.log(`\n✓ Marcados ${ok} de ${faltan.length} (releído de la base).`);
+      if (ok !== faltan.length) console.log('⚠️ Alguno no quedó guardado. Volvé a correrlo.');
+      console.log('El costo se recalcula solo: la web y el robot leen el % en vivo, no un número guardado.');
+      return;
+    }
     // BILLING_PROBE=margenweb → ¿LO QUE MUESTRA "MARGEN ML" COINCIDE CON ML?
     //
     // La pantalla muestra el neto calculado al precio de hoy, y nada más. El riesgo es que ese

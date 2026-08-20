@@ -2395,11 +2395,13 @@ const costFullUSDof=p=>{
   if(!p)return 0;
   const cu=costUSDof(p);
   const dc=devCountOf(p);
+  // La condición mira dc (TODOS los reclamos) a propósito: si mirara solo los que encarecen, un
+  // producto al que se le sacaron todos volvería a caer en el costFullUSD guardado, que todavía
+  // tiene adentro el recargo viejo. Tiene que recalcular igual para que ese recargo se vaya.
   if(p.shipUSD!=null||p.devPct!=null||dc>0){
     const ship=parseFloat(p.shipUSD)||0;
-    // % reclamos: automático en vivo desde "Ventas x Producto" (reclamos ÷ ventas totales)
-    let dev=0;
-    if(dc>0){const v=ventasProd365(p);dev=v>0?Math.round((dc/v)*1000)/10:0;}
+    // % reclamos: en vivo desde "Ventas x Producto", sin los marcados "no fue culpa del producto".
+    const dev=devPctCosto(p);
     return Math.round((cu*(1+dev/100)+ship)*100)/100;
   }
   if(p.costFullUSD!=null&&p.costFullUSD!=='')return parseFloat(p.costFullUSD)||0;
@@ -3146,9 +3148,7 @@ async function recalcAndSaveFullUSD(p){
   // Siempre recalcular desde cero ignorando costFullUSD guardado (puede estar desactualizado)
   const cu=costUSDof(p);
   const ship=parseFloat(p.shipUSD)||0;
-  let dev=0;
-  const dc=devCountOf(p);
-  if(dc>0){const v=ventasProd365(p);dev=v>0?Math.round((dc/v)*1000)/10:0;}
+  const dev=devPctCosto(p);   // sin los reclamos marcados "no fue culpa del producto"
   const full=Math.round((cu*(1+dev/100)+ship)*100)/100;
   p.costFullUSD=full;
   await fbSet('products/'+p.id+'/costFullUSD',full);
@@ -3187,6 +3187,17 @@ async function updCostPesos(id,val){
 let _reclamoStats={};
 function _esReclamo(v){return v&&v.cancelada&&(v.tipoCancelacion==='reclamo'||v.tipoCancelacion==='perdida');}
 function _esCancelada(v){return v&&v.cancelada&&(v.tipoCancelacion==='cancelada'||v.tipoCancelacion==='devolucion');}
+// ── RECLAMOS QUE NO SON DEL PRODUCTO ──────────────────────────────────────────────────
+// Un reclamo encarece el producto: el costo full se calcula como costo × (1 + % de reclamos).
+// Eso está bien cuando el producto falla, pero NO cuando el reclamo fue culpa del envío. El
+// 20/08/2026 él marcó dos casos: la Lupa 60mm x10 (4 reclamos, error suyo al despacharlo) y TODOS
+// los espejos (los mandaba sin protección; desde ahora van protegidos). Con esos adentro, la
+// cuenta le clavaba un recargo permanente a productos que no tienen ningún problema.
+// La marca es `sinCargo` en la venta. A propósito NO toca _esReclamo: la venta sigue figurando
+// como reclamo en Ventas x Producto y en el resumen del mes —el registro no se falsea— y lo único
+// que cambia es que deja de encarecer el costo. Lo que se marca es lo VIEJO: los reclamos nuevos
+// no vienen marcados, así que cuentan solos.
+const _sinCargo=v=>!!(v&&v.sinCargo);
 function rebuildReclamoStats(){
   const stats={};
   try{
@@ -3196,9 +3207,12 @@ function rebuildReclamoStats(){
         if(!v||typeof v!=='object')return; // ignorar entradas nulas/corruptas
         const p=prodDeVenta(v);
         const key=p?('id:'+p.id):('nm:'+normTxt(v.prod||''));
-        if(!stats[key])stats[key]={reclamos:0,ventas:0};
+        if(!stats[key])stats[key]={reclamos:0,ventas:0,reclamosCosto:0};
         const q=v.qty||0;
-        if(_esReclamo(v))stats[key].reclamos+=q;
+        if(_esReclamo(v)){
+          stats[key].reclamos+=q;                        // los que SE MUESTRAN (el registro entero)
+          if(!_sinCargo(v))stats[key].reclamosCosto+=q;  // los que ENCARECEN el producto
+        }
         if(!_esCancelada(v))stats[key].ventas+=q; // los reclamos SÍ son ventas (llegaron al comprador)
       });
     });
@@ -3206,11 +3220,21 @@ function rebuildReclamoStats(){
   _reclamoStats=stats;
 }
 function _statsFor(p){
-  if(!p)return{reclamos:0,ventas:0};
-  return _reclamoStats['id:'+p.id]||_reclamoStats['nm:'+normTxt(p.name)]||{reclamos:0,ventas:0};
+  if(!p)return{reclamos:0,ventas:0,reclamosCosto:0};
+  return _reclamoStats['id:'+p.id]||_reclamoStats['nm:'+normTxt(p.name)]||{reclamos:0,ventas:0,reclamosCosto:0};
 }
-// Reclamos (unidades) del producto — automático desde "Ventas x Producto".
+// Reclamos (unidades) del producto — automático desde "Ventas x Producto". Este es el número que
+// se MUESTRA: están todos, incluidos los que no encarecen el costo.
 function devCountOf(p){return _statsFor(p).reclamos;}
+// Los que SÍ encarecen el producto (sin los marcados "no fue culpa del producto").
+function devCountCosto(p){const s=_statsFor(p);return s.reclamosCosto!=null?s.reclamosCosto:s.reclamos;}
+// EL % de reclamos que entra en el costo. Una sola cuenta, para que la ficha, el arqueo y el robot
+// no puedan discrepar. El robot tiene la misma en setDevLive() de ml-sync/sync.mjs.
+function devPctCosto(p){
+  const dc=devCountCosto(p);if(dc<=0)return 0;
+  const v=ventasProd365(p);
+  return v>0?Math.round((dc/v)*1000)/10:0;
+}
 // Ventas totales (unidades, sin contar canceladas) — denominador del % de reclamos.
 function ventasProd365(prodOrName){
   const target=(prodOrName&&typeof prodOrName==='object')?prodOrName:prodByName(prodOrName);
@@ -5241,10 +5265,7 @@ function tcForYM(ym){
 // que mejora a medida que se cargan más ventas, por eso siempre se usa el valor actual.
 function devPctActual(p){
   if(!p)return 0;
-  const dc=devCountOf(p);
-  if(dc<=0)return 0;
-  const vn=ventasProd365(p);
-  return vn>0?Math.round((dc/vn)*1000)/10:0;
+  return devPctCosto(p);   // sin los reclamos marcados "no fue culpa del producto"
 }
 // Costo efectivo de una venta para calcular su % de ganancia.
 // — Costo USD, dólar y envío: CONGELADOS del momento de la venta (si se guardaron; si no,
@@ -9032,7 +9053,7 @@ document.addEventListener('click',e=>{if(fnavOpen&&!e.target.closest('#fnav-btn'
         <span style="font-size:.75rem;color:var(--muted)">Si no ves los últimos cambios, forzá la actualización</span>
         <button class="btn" style="background:rgba(56,189,248,.12);color:var(--blue);border:1px solid rgba(56,189,248,.3)" onclick="actualizarApp()">🔄 Buscar actualizaciones</button>
       </div>
-      <div style="font-size:.66rem;color:var(--muted);margin-top:12px">CYC · Versión 12.1</div>
+      <div style="font-size:.66rem;color:var(--muted);margin-top:12px">CYC · Versión 12.2</div>
     </div>
 
     <div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:18px 20px;margin-bottom:14px">
