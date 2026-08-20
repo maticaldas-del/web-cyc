@@ -3636,8 +3636,9 @@ async function main() {
             console.log(`  nuestro piso del 30%: ${money(piso)}`);
           }
         }
+        let ptw = null;
         try {
-          const ptw = await mlGet('/items/' + MLA + '/price_to_win?version=v2', tok);
+          ptw = await mlGet('/items/' + MLA + '/price_to_win?version=v2', tok);
           const ESTADO = { winning: 'GANANDO', sharing_first_place: 'COMPARTIENDO', competing: 'PERDIENDO', losing: 'PERDIENDO' };
           console.log(`  caja de compra: ${ESTADO[ptw?.status] || ptw?.status || '?'}${ptw?.price_to_win ? ` · para ganar ${money(Math.round(ptw.price_to_win))}` : ''}`);
         } catch { /* sigue */ }
@@ -3656,10 +3657,27 @@ async function main() {
         }
         if (nuestros.length > 1) console.log(`\n  ⚠️ TENEMOS ${nuestros.length} PUBLICACIONES EN ESTA MISMA FICHA: nos competimos entre nosotros.`);
         const masBarato = res[0].price;
+        const masBaratos = res.filter((x) => piso != null && x.price < piso && !sids[String(x.seller_id)]).length;
         console.log('');
-        if (piso == null) console.log('  No pude calcular nuestro piso (falta costo o ventas): mirá los precios de arriba a mano.');
-        else if (masBarato < piso) console.log(`  ❌ LA PELEA NO SE PUEDE GANAR: el más barato está a ${money(Math.round(masBarato))} y nuestro piso es ${money(piso)}. Bajar es tirar margen sin recuperar la caja.`);
-        else console.log(`  ✅ SE PUEDE PELEAR: el más barato está a ${money(Math.round(masBarato))}, arriba de nuestro piso de ${money(piso)}.`);
+        // OJO CON ESTA CONCLUSIÓN. El primer intento la sacaba del precio MÁS BARATO de la lista y
+        // daba exactamente al revés de la realidad: en el pendrive 128gb decía "no se puede ganar"
+        // porque había tres publicaciones más baratas... y sin embargo estábamos GANANDO la caja.
+        // La lista trae TODAS las publicaciones de la ficha, incluidas las que no compiten (sin
+        // stock, sin carrito, con reputación que no califica). El único número que refleja la
+        // competencia REAL es el price_to_win que ML calcula. La lista sirve de contexto, no de
+        // veredicto.
+        const gana = ptw && (ptw.status === 'winning' || ptw.status === 'sharing_first_place');
+        if (gana) {
+          console.log(`  ✅ HOY LA ESTÁS GANANDO a ${money(Math.round(b.price || 0))}.`);
+          if (masBaratos) console.log(`     Figuran ${masBaratos} publicaciones más baratas que nuestro piso, pero NO están compitiendo (sin stock o no califican). Si alguna se reactiva, perdés la caja.`);
+        } else if (piso == null) {
+          console.log('  No pude calcular nuestro piso (falta costo o ventas): mirá los precios de arriba a mano.');
+        } else if (ptw && ptw.price_to_win) {
+          if (ptw.price_to_win < piso) console.log(`  ❌ NO SE PUEDE GANAR SIN ROMPER EL PISO: para ganar hacen falta ${money(Math.round(ptw.price_to_win))} y nuestro piso es ${money(piso)}.`);
+          else console.log(`  ✅ SE PUEDE RECUPERAR: para ganar hacen falta ${money(Math.round(ptw.price_to_win))}, arriba de nuestro piso de ${money(piso)}.`);
+        } else {
+          console.log(`  ML no me dio el precio para ganar. El más barato de la ficha está a ${money(Math.round(masBarato))} y nuestro piso es ${money(piso)}.`);
+        }
       }
       return;
     }
