@@ -11508,7 +11508,16 @@ async function main() {
           `/billing/integration/monthly/periods?group=ML&document_type=PERCEPTION&limit=13`,
           `/users/${acc.seller_id}/billing/perceptions?period=${KEY}`,
         ];
+        // ── EL LÍMITE DE 5 POR MINUTO ─────────────────────────────────────────────
+        // El primer intento (21/08/2026) mandó los 11 endpoints seguidos y ML contestó 429
+        // "demasiadas solicitudes" a casi todos. O sea que no probó los endpoints: probó el
+        // límite. El tope es 5/min y ya estaba anotado en el probe `fees`; había que leerlo.
+        // 14 segundos entre llamadas: ~2,5 minutos por cuenta, y las respuestas son de verdad.
+        const pausa = (ms) => new Promise((r) => setTimeout(r, ms));
+        let primero = true;
         for (const u of urls) {
+          if (!primero) await pausa(14000);
+          primero = false;
           let st = '?', txt = '';
           try {
             const r = await fetch('https://api.mercadolibre.com' + u, { headers: { Authorization: 'Bearer ' + tok } });
@@ -11520,6 +11529,8 @@ async function main() {
           } catch (e) { st = 'err'; txt = String(e.message || '').slice(0, 60); }
           console.log(`   [${String(st).padStart(3)}] ${u.slice(0, 74)}`);
           if (String(st) === '200') console.log(`         ${txt}`);
+          // 429 = no se probó nada, se topó el límite. Que se note, para no leerlo como "no existe".
+          if (String(st) === '429') console.log(`         (429 = límite de velocidad, NO es que el endpoint no exista)`);
         }
         console.log('');
       }
