@@ -2249,7 +2249,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='13.8';
+const APP_VERSION='13.9';
 // El problema real que esto resuelve no es curiosidad: es que el celular guarda la app y sigue
 // mostrando la de ayer sin avisar. Varias veces se revisó un cambio que ya estaba subido y no se
 // veía. Por eso, además del número, el chip avisa cuando hay una versión nueva esperando.
@@ -4289,6 +4289,128 @@ function renderCajasEnCamino(){
     }).join('');
   }).join('');
 }
+function getHistCostUSDProd(prodId,ym){return state.precios_hist_prod?.[ym]?.[prodId]??null;}
+function efectivoCostP(p){if(!_arqViewYM)return costP(p);return getHistCostUSDProd(p.id,_arqViewYM)??costP(p);}
+function calcArqueo(){
+  let stockVal=0,stockML=0,stockLocal=0,stockCamino=0;
+  // MERCADERÍA EN CAMINO A FULL. Cuando se cierra una caja, esas unidades salen de la oficina y
+  // todavía no están en ML: si no se contaran acá, el patrimonio bajaría solo por despachar, y
+  // volvería a subir días después al llegar. Plata que aparece y desaparece sin que pase nada.
+  const _tr=enTransito();
+  (state.products||[]).forEach(p=>{
+    const cp=efectivoCostP(p);
+    ML_LOCS.forEach(l=>{
+      stockML+=getQ(p.id,l)*cp;
+      stockCamino+=transitoDe(_tr,p.id,l,'')*cp;   // la clave sin variante ya es el total
+    });
+    LOCAL_LOCS.forEach(l=>stockLocal+=getQ(p.id,l)*cp);
+  });
+  stockVal=stockML+stockLocal+stockCamino;
+  let activos=0,deudas=0,corregir=0;
+  // Unidades contadas en la oficina de Mati. Si hay aunque sea una, el valor de la mercadería sale
+  // de ahí (ya entró arriba en stockLocal) y el campo "Oficina Mati" escrito a mano se IGNORA:
+  // si se sumaran los dos, la misma mercadería estaría contada dos veces.
+  // Mientras no haya nada contado se sigue usando el número viejo, para no borrar plata de golpe.
+  const _uOfiMati=(state.products||[]).reduce((s,p)=>s+stockOficina(p),0);
+  FIN_FIELDS.forEach(f=>{
+    if(f.detalle)return;                        /* desglose de otro campo: ya está sumado ahí */
+    if(f.k==='of_mia'&&_uOfiMati>0)return;      /* ya contado como stock local, por unidades */
+    const raw=parseFloat(state.finanzas[f.k])||0;
+    if(f.neutral){corregir+=raw;return;}        /* neutro y con signo */
+    const v=Math.abs(raw);
+    if(f.pos)activos+=v;else deudas+=v;
+  });
+  const efect=['efectivo','mp_disp','mp_liq'].reduce((s,k)=>s+(parseFloat(state.finanzas[k])||0),0);
+  const deben=['deben_cyc'].reduce((s,k)=>s+(parseFloat(state.finanzas[k])||0),0);
+  const deuda=['tarjeta','deuda_cyc','dolares_mati','dolares_tito'].reduce((s,k)=>s+(Math.abs(parseFloat(state.finanzas[k])||0)),0);
+  return{stockVal,stockML,stockLocal,stockCamino,activos,deudas,corregir,efect,deben,deuda,total:stockVal+activos-deudas+corregir};
+}
+
+// Panel de reconciliación: ¿la ganancia del mes se ve reflejada en el crecimiento del patrimonio?
+function renderReconciliacion(){
+  const el=document.getElementById('recon-panel');if(!el)return;
+  const card=(inner,col)=>`<div style="background:var(--surface);border:1px solid var(--border);border-left:4px solid ${col};border-radius:var(--r);padding:16px 18px">${inner}</div>`;
+  // Mes que se evalúa = el que estás VIENDO arriba en "Ver período"; si estás "en vivo", el mes actual.
+  const now=new Date();
+  const ym=_arqViewYM||(now.getFullYear()+'_'+String(now.getMonth()+1).padStart(2,'0'));
+  const yy=ym.split('_')[0], mm=ym.split('_')[1];
+  // Base de comparación = el cierre del mes ANTERIOR al que evaluás (si existe); si no, el último cierre.
+  const _pd=new Date(parseInt(yy,10),parseInt(mm,10)-1,1);_pd.setMonth(_pd.getMonth()-1);
+  const prevYm=_pd.getFullYear()+'_'+String(_pd.getMonth()+1).padStart(2,'0');
+  const snap=(state.snapshots&&state.snapshots[prevYm])?state.snapshots[prevYm]:((typeof getLatestSnapshot==='function')?getLatestSnapshot():null);
+  if(!snap||snap.total==null){el.innerHTML=card(`<div style="font-family:'Syne',sans-serif;font-weight:800;font-size:.9rem;margin-bottom:4px">🔍 ¿Cierra el mes?</div><div style="font-size:.66rem;color:var(--muted)">Cerrá un mes con 📸 para tener un punto de comparación del patrimonio.</div>`,'#6b6b7a');return;}
+  const P=_puntGananciaMes(ym);                 // neto/costo/retiro/gastos/ganancia (pesos)
+  const tc=curTC()||1500;
+  const cArq=calcArqueo();
+  // Si el mes que evaluás YA está cerrado, uso su cierre guardado como "fin"; si todavía no, el valor en vivo.
+  const endSnap=(state.snapshots&&state.snapshots[ym]&&state.snapshots[ym].total!=null)?state.snapshots[ym]:null;
+  const arqNow=endSnap?endSnap.total:cArq.total; // patrimonio al cierre del mes (USD)
+  const dP=Math.round((arqNow-snap.total)*tc);  // cuánto creció el patrimonio (pesos, aprox)
+  const genera=P.neto-P.costo-P.gastos;         // lo que generó el negocio
+  const rmRaw=state.retiro_mes&&state.retiro_mes[ym];
+  const retReal=(rmRaw!=null&&rmRaw!=='')?Number(rmRaw):null;      // lo que cobraron de verdad
+  const retiroUsado=retReal!=null?retReal:P.retiro;               // real si lo cargaste, si no el 15%
+  const esperado=genera-retiroUsado;            // lo que debería quedar en el negocio
+  const dif=dP-esperado;                         // <0 falta · >0 sobra
+  const umbral=Math.max(300000,Math.abs(esperado)*0.15);
+  let col,verdict,expl;
+  if(Math.abs(dif)<=umbral){col='#22c55e';verdict='✓ Cierra bien';expl='Los números cuadran: lo que ganó el negocio se ve reflejado en el patrimonio.';}
+  else if(dif<0){col='#ef4444';verdict='🔴 Falta plata';expl=`Salieron <strong>${fmt(-dif)}</strong> que no están anotados. Revisá: gastos sin cargar, retiros de más, o pérdidas/roturas de stock este mes.`;}
+  else{col='#f59e0b';verdict='🟡 Sobra';expl=`El patrimonio creció <strong>${fmt(dif)}</strong> más que la ganancia. Puede ser un valor cargado de más en el arqueo, o plata que entró y no es de ventas.`;}
+  const mesLbl=MONTHS[parseInt(mm,10)-1]+' '+yy;
+  const row=(lbl,val,extra='')=>`<div style="display:flex;justify-content:space-between;align-items:baseline;gap:10px"><span style="color:var(--muted)">${lbl}</span><span style="font-family:'DM Mono',monospace;${extra}">${val}</span></div>`;
+  el.innerHTML=card(`
+    <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;margin-bottom:10px">
+      <span style="font-family:'Syne',sans-serif;font-weight:800;font-size:.95rem">🔍 ¿Cierra el mes? · ${mesLbl}</span>
+      <span style="color:${col};font-weight:700;font-size:.72rem">${verdict}</span>
+    </div>
+    <div style="display:flex;flex-direction:column;gap:5px;font-size:.7rem">
+      ${row('Ganancia del negocio (debería quedar)',fmt(esperado))}
+      ${row('Creció el patrimonio (arqueo)',fmt(dP))}
+      <div style="border-top:1px solid var(--border);margin-top:3px;padding-top:6px">${row('Diferencia',fmt(dif),`font-weight:700;color:${col}`)}</div>
+    </div>
+    <div style="font-size:.6rem;color:var(--muted);margin-top:10px;line-height:1.5">${expl}<br>El negocio generó ${fmt(genera)} · retiro ${retReal!=null?'cobrado':'estimado 15%'} ${fmt(retiroUsado)}${retReal==null?' <span style="color:var(--amber)">(cargá el retiro real arriba para precisión)</span>':''}. Patrimonio pasado a pesos al dólar ${fmt(tc)} (aprox).</div>
+  `,col);
+
+  // 🛒 Chequeo de mercadería: lo que compraste vs lo que apareció como stock + lo que se vendió.
+  // Identidad: Compras = ΔStock + Costo de lo vendido + (merma). Si comprás de más de lo que aparece → fuga.
+  // Compra de mercadería del mes = suma de los movimientos tipo 'mercadería' cargados en Compras y gastos.
+  const compraMes=Object.values(state.compras||{}).filter(x=>getCompraTipo(x)==='mercaderia'&&(x.dayKey||'').startsWith(ym)).reduce((s,x)=>s+(x.monto||0),0);
+  const finLoc=f=>endSnap?(parseFloat(endSnap.finanzas&&endSnap.finanzas[f])||0):(parseFloat(state.finanzas[f])||0);
+  const snapFin=f=>(parseFloat(snap.finanzas&&snap.finanzas[f])||0);
+  const stockNowUSD=(endSnap?(endSnap.stockML||0):(cArq.stockML||0))+finLoc('of_viejo')+finLoc('of_mia')+finLoc('vendedores');
+  const stockSnapUSD=(snap.stockML||0)+snapFin('of_viejo')+snapFin('of_mia')+snapFin('vendedores');
+  const dStock=Math.round((stockNowUSD-stockSnapUSD)*tc);   // creció (+) o bajó (−) el stock, en pesos
+  const costoVend=P.costo;                                   // costo de lo vendido este mes (pesos)
+  const esperabaComprar=dStock+costoVend;                    // lo que deberías haber comprado para explicar stock+ventas
+  const merma=compraMes-esperabaComprar;                     // >0 compraste de más de lo que se ve · <0 al revés
+  const mel=document.createElement('div');mel.style.marginTop='12px';
+  if(compraMes<=0){
+    mel.innerHTML=card(`<div style="font-family:'Syne',sans-serif;font-weight:800;font-size:.9rem;margin-bottom:4px">🛒 Chequeo de mercadería</div><div style="font-size:.63rem;color:var(--muted);line-height:1.5">Cargá tus compras de stock en <strong>Compras y gastos</strong> (elegí tipo 🛒 Mercadería) y acá te muestro si esa plata apareció como mercadería o se fugó.</div>`,'#6b6b7a');
+  }else{
+    const uMerc=Math.max(300000,Math.abs(esperabaComprar)*0.15);
+    let mcol,mverd,mexp;
+    if(Math.abs(merma)<=uMerc){mcol='#22c55e';mverd='✓ Cuadra';mexp=`Compraste <strong>${fmt(compraMes)}</strong> y esa plata aparece: ${fmt(dStock)} más de stock + ${fmt(costoVend)} que se vendió. La mercadería está toda.`;}
+    else if(merma>0){mcol='#ef4444';mverd='🔴 Se fugó mercadería';mexp=`Compraste <strong>${fmt(compraMes)}</strong> pero solo se explican ${fmt(esperabaComprar)} (${fmt(dStock)} más de stock + ${fmt(costoVend)} vendido). Faltan <strong>${fmt(merma)}</strong>: puede ser error de compra (pagaste de más), roturas/robos, o stock local mal contado.`;}
+    else{mcol='#f59e0b';mverd='🟡 Apareció de más';mexp=`Se sumó más mercadería (${fmt(esperabaComprar)}) de la que compraste (${fmt(compraMes)}). Diferencia <strong>${fmt(-merma)}</strong>: seguro cargaste de más el stock local, o hubo compras sin anotar.`;}
+    const mrow=(l,v,ex='')=>`<div style="display:flex;justify-content:space-between;align-items:baseline;gap:10px"><span style="color:var(--muted)">${l}</span><span style="font-family:'DM Mono',monospace;${ex}">${v}</span></div>`;
+    mel.innerHTML=card(`
+      <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;margin-bottom:10px">
+        <span style="font-family:'Syne',sans-serif;font-weight:800;font-size:.95rem">🛒 Chequeo de mercadería · ${mesLbl}</span>
+        <span style="color:${mcol};font-weight:700;font-size:.72rem">${mverd}</span>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:5px;font-size:.7rem">
+        ${mrow('Compraste este mes',fmt(compraMes))}
+        ${mrow('Creció el stock',fmt(dStock))}
+        ${mrow('Costo de lo vendido',fmt(costoVend))}
+        <div style="border-top:1px solid var(--border);margin-top:3px;padding-top:6px">${mrow('Diferencia (fuga)',fmt(merma),`font-weight:700;color:${mcol}`)}</div>
+      </div>
+      <div style="font-size:.6rem;color:var(--muted);margin-top:10px;line-height:1.5">${mexp}<br>Stock = ML exacto + oficinas + vendedores, comparado contra el cierre anterior. Al dólar ${fmt(tc)} (aprox).</div>
+    `,mcol);
+  }
+  el.appendChild(mel);
+}
+
 function updateArqueo(){
   // Si hay un snapshot seleccionado, usar sus finanzas temporalmente
   const selKey=document.getElementById('fin-view-sel')?.value;
