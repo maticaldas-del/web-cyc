@@ -329,6 +329,20 @@ casi seguro se genera **saldo a favor todos los meses** — plata parada en las 
 Recuperarla depende de estar inscripta y presentar. ML ya dice que se inscribió en el fisco de CABA.
 Falta medir las otras tres cuentas.
 
+**Las percepciones NO salen por la API. Probado el 21/08/2026** con `probarpercep` en Matías: 11
+endpoints candidatos, **10 fallan** (404 los de `/details`, `/summary`, `/perceptions`; 422 los que
+prueban `group=MP` o `document_type=PERCEPTION`). El único que contesta es el que ya se usa
+(`/billing/integration/monthly/periods?group=ML&document_type=BILL`) y devuelve **solo el total del
+período**, sin abrir el impuesto. Van a mano, igual que el saldo de MercadoPago.
+Ojo al probarlo: el billing de ML permite **5 llamadas por minuto**. El primer intento las mandó
+seguidas, contestó 429 en casi todas y el resultado no valía — un 429 NO quiere decir que el
+endpoint no exista. Hay que dejar ~14 segundos entre llamadas.
+
+**Dónde se miran a mano:** ML → Facturación → (elegir el mes, que **cierra el 14**) → Ir al detalle
+→ Detalle de cuenta → **Total de percepciones**. Ojo con el mes: si dice "EN CURSO" es parcial y no
+sirve para comparar. Medidos del período de agosto (15/07→14/08): **Matías $349.774,20 · Luciana
+$231.496,80**. Faltan Adriana y Ayelen.
+
 **Ojo con el comando `alicuota`:** mide RETENCIONES, no percepciones. Mirando solo los $6.784 habría
 contestado "todo bien" y era falso. Las percepciones **no salen por la API**: se ven en
 ML → Facturación → Información fiscal → Cálculos fiscales → Percepciones.
