@@ -11362,6 +11362,110 @@ async function main() {
       }
       return;
     }
+    // BILLING_PROBE=alicuota[:<cuenta>][:<meses>] → ¿CUÁNTO NOS RETIENEN DE IMPUESTOS, DE VERDAD?
+    //
+    // El 21/08/2026 ML avisó en la cuenta de Luciana: "Estás pagando más impuestos porque llegaste a
+    // los topes establecidos por los fiscos". El problema es que TODO el cálculo de margen del panel
+    // usa un porcentaje FIJO por cuenta escrito a mano (ML_EXTRA_PCT). Si la alícuota sube y ese
+    // número queda viejo, el costo real de cada venta es mayor que el que muestra el panel: los
+    // márgenes se ven más altos de lo que son y el robot fija precios apuntando a un 32% que en
+    // realidad es menos. Es el mismo error de los impuestos que faltaban, pero en las cuatro cuentas.
+    //
+    // Esto no adivina ni pregunta: lee lo que ML retuvo EN CADA PAGO (charges_details, los conceptos
+    // que empiezan con tax_withholding) y lo divide por lo que pagó el comprador. Además abre por
+    // NOMBRE de concepto, que es lo que dice QUÉ impuesto es (IIBB, SIRTAC, ganancias...), y por MES,
+    // que es lo que muestra CUÁNDO saltó.
+    //
+    // ⚠️ OJO, Y ES LO MÁS IMPORTANTE DE ESTE COMANDO: esto mide RETENCIONES, que son las que salen
+    // de cada venta y ya están dentro del neto. NO mide PERCEPCIONES, que ML factura aparte a fin de
+    // mes y se pagan por separado — y ahí está casi toda la plata.
+    // Medido en Luciana el 21/08/2026: retenciones de agosto $6.784 · percepciones del mismo mes
+    // $231.497, o sea 34 veces más. Este comando solo, mirando los $6.784, habría contestado "todo
+    // bien, no hay nada que corregir", y habría sido FALSO.
+    // Las percepciones no salen por la API: se ven en ML → Facturación → Información fiscal →
+    // Cálculos fiscales → Percepciones, mes por mes, y hay que mirarlas ahí.
+    //
+    // Solo lee. No escribe ni cambia ningún precio.
+    if (/^alicuota(:|$)/.test(String(process.env.BILLING_PROBE || ''))) {
+      const _a = String(process.env.BILLING_PROBE).split(':');
+      const soloCta = (_a[1] || '').trim().toLowerCase();
+      const MESES = Math.min(6, Math.max(1, parseInt(_a[2], 10) || 3));
+      const TOPE_PAGOS = 400;   // techo por cuenta: cada pago es una llamada a MercadoPago
+      const hoy = new Date();
+      const desdeMs = Date.UTC(hoy.getUTCFullYear(), hoy.getUTCMonth() - (MESES - 1), 1);
+      console.log(`=== LO QUE ML RETIENE DE IMPUESTOS, MEDIDO EN LAS VENTAS · últimos ${MESES} mes(es) ===`);
+      console.log('Sale de charges_details de cada pago: los conceptos tax_withholding* dividido lo que pagó el comprador.\n');
+      for (const label of labels) {
+        if (soloCta && label.toLowerCase() !== soloCta) continue;
+        const acc = accounts[label]; if (!acc?.refresh_token) continue;
+        let t; try { t = await mlRefresh(ML_CLIENT_ID, ML_CLIENT_SECRET, acc.refresh_token); } catch { continue; }
+        await db.patch('mlapi/tokens/' + label, { refresh_token: t.refresh_token, updated_ts: Date.now() });
+        let ords = [];
+        try { ords = await fetchOrdersRange(acc.seller_id, t.access_token, desdeMs, Date.now()); } catch { }
+        if (!ords.length) { console.log(`▶ ${label}: sin ventas en el período.\n`); continue; }
+        // De la más nueva a la más vieja: si hay que cortar por el tope, que sobren las viejas.
+        ords.sort((a, b) => Date.parse(b.date_created || 0) - Date.parse(a.date_created || 0));
+        const porMes = {}, porConcepto = {};
+        let leidos = 0, sinDato = 0;
+        for (const o of ords) {
+          if (leidos >= TOPE_PAGOS) break;
+          const ym = String(o.date_created || '').slice(0, 7);
+          const tot = Number(o.total_amount) || 0;
+          if (!(tot > 0)) continue;
+          for (const p of (o.payments || [])) {
+            if (!p.id) continue;
+            let b = null;
+            try {
+              const r = await fetch('https://api.mercadopago.com/v1/payments/' + p.id, { headers: { Authorization: 'Bearer ' + t.access_token } });
+              b = await r.json();
+            } catch { sinDato++; continue; }
+            if (!b || !Array.isArray(b.charges_details)) { sinDato++; continue; }
+            leidos++;
+            const m = porMes[ym] || (porMes[ym] = { tax: 0, tot: 0, n: 0 });
+            m.tot += tot; m.n++;
+            for (const c of b.charges_details) {
+              const n = (c.name || '').toLowerCase();
+              if (!n.startsWith('tax_withholding')) continue;
+              const amt = Number(c.amounts?.original) || 0;
+              m.tax += amt;
+              porConcepto[c.name || '?'] = (porConcepto[c.name || '?'] || 0) + amt;
+            }
+          }
+        }
+        const meses = Object.keys(porMes).sort();
+        if (!meses.length) { console.log(`▶ ${label}: no pude leer los cargos de ningún pago.\n`); continue; }
+        console.log(`▶ ${label.toUpperCase()} · ${leidos} pago(s) leído(s)${sinDato ? ` · ${sinDato} sin datos` : ''}`);
+        console.log(`   mes        ventas   retenido        sobre lo vendido`);
+        for (const ym of meses) {
+          const m = porMes[ym];
+          const pct = m.tot > 0 ? (m.tax / m.tot * 100) : 0;
+          console.log(`   ${ym}   ${String(m.n).padStart(6)}   ${money(Math.round(m.tax)).padStart(12)}   ${pct.toFixed(2).padStart(6)}%`);
+        }
+        // La comparación que importa: lo medido contra el número fijo que usa el panel.
+        const ult = porMes[meses[meses.length - 1]];
+        const real = ult.tot > 0 ? (ult.tax / ult.tot * 100) : 0;
+        const usado = mlExtraPct(label);
+        const dif = real - usado;
+        console.log(`   ──`);
+        console.log(`   El panel usa ${usado.toFixed(2)}% para ${label}. Medido este mes: ${real.toFixed(2)}%.`);
+        if (Math.abs(dif) < 0.25) console.log(`   ✓ Coincide. No hay nada que corregir.`);
+        else if (dif > 0) console.log(`   ⚠ RETIENEN ${dif.toFixed(2)} PUNTOS MÁS de lo que el panel descuenta: los márgenes se ven MÁS ALTOS de lo que son.`);
+        else console.log(`   ℹ Retienen ${Math.abs(dif).toFixed(2)} puntos MENOS: los márgenes se ven más bajos de lo que son (no es peligroso, pero está mal).`);
+        const conc = Object.entries(porConcepto).sort((a, b) => b[1] - a[1]);
+        if (conc.length) {
+          console.log(`   Conceptos que retuvieron (esto dice QUÉ impuesto es):`);
+          for (const [n, v] of conc) console.log(`     ${n.padEnd(38)} ${money(Math.round(v)).padStart(12)}`);
+        }
+        console.log('');
+      }
+      console.log('SOLO LECTURA: no toqué ningún precio ni guardé nada.');
+      console.log('\n⚠️  ESTO ES SOLO LA MITAD: son las RETENCIONES, las que ya salen del neto de cada venta.');
+      console.log('   Las PERCEPCIONES (que ML factura aparte a fin de mes) NO están acá y son MUCHO más grandes:');
+      console.log('   en Luciana, agosto 2026 → retenciones $6.784 vs percepciones $231.497.');
+      console.log('   Esas se miran en ML → Facturación → Información fiscal → Cálculos fiscales → Percepciones.');
+      return;
+    }
+
     // BILLING_PROBE=fees → calcula los cargos por venta (comisión+fijo+envío) de un período ML,
     // para restarlos del total facturado y aislar almacenamiento+publicidad (lo que la app no ve).
     if (process.env.BILLING_PROBE === 'fees') {

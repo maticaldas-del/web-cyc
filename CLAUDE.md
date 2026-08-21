@@ -298,6 +298,41 @@ hay en casa, no solo los que la cuenta "necesita". La caja a medio armar vive en
 app. Como el stock de la oficina no baja hasta cerrarla, el tope de cada renglón descuenta lo que
 ya está apartado en las cajas de las otras cuentas.
 
+## LAS PERCEPCIONES: LO QUE EL PANEL NO ESTÁ CONTANDO (21/08/2026)
+
+ML avisó en la cuenta de Luciana *"estás pagando más impuestos porque llegaste a los topes"*. Al
+mirarlo aparecieron **dos impuestos distintos que se confundían en uno**:
+
+| | qué es | Luciana, agosto 2026 |
+|---|---|---|
+| **Retenciones** | salen de cada venta · **ya están dentro del neto** | **$6.784** |
+| **Percepciones** | ML las factura a fin de mes · **se pagan aparte** | **$231.497** |
+
+**La plata está casi toda en las percepciones**, y el panel no las mide. Base de ventas de agosto
+$2.305.048 → percepciones **10,04%**. El panel usa **4,37%** para Luciana (`ML_EXTRA_PCT`).
+No es un mes suelto: junio $244.508 · julio $190.392 · agosto $231.497.
+
+Llega al 10% porque **cada provincia percibe por separado sobre la MISMA venta**: Buenos Aires 2,5%
++ CABA 3% + Corrientes 0,75% + Tucumán 5%. Ninguna alícuota sola pasa del 5% y sumadas dan 10.
+
+**Consecuencia:** si el costo real tiene ~6 puntos más de impuestos que los que descuenta el panel,
+los márgenes de Luciana se ven ~6 puntos más altos de lo que son. Un 32% en pantalla sería ~26%.
+
+**Lo que falta ANTES de tocar `ML_EXTRA_PCT`:** verificar si esas percepciones ya están cargadas
+como gasto mensual (ML las factura y se pagan). Si lo están y además se suben al costo de cada
+producto, se cuentan DOS VECES y los márgenes saldrían más bajos de lo que son. Mismo cuidado que
+con la mercadería y las facturas recibidas.
+
+**Para el contador, y es más grande que la recategorización:** las percepciones son pago a cuenta de
+IIBB, no impuesto perdido. Pero perciben al 10% cuando las alícuotas reales son 2,5%-5%, así que
+casi seguro se genera **saldo a favor todos los meses** — plata parada en las provincias.
+Recuperarla depende de estar inscripta y presentar. ML ya dice que se inscribió en el fisco de CABA.
+Falta medir las otras tres cuentas.
+
+**Ojo con el comando `alicuota`:** mide RETENCIONES, no percepciones. Mirando solo los $6.784 habría
+contestado "todo bien" y era falso. Las percepciones **no salen por la API**: se ven en
+ML → Facturación → Información fiscal → Cálculos fiscales → Percepciones.
+
 ## EL STOCK QUE NO ESTÁ EN FULL NO EXISTE
 
 Regla suya del 20/08/2026, textual: **"todo lo que diga 'depósito' en ML no tener en cuenta nunca.
