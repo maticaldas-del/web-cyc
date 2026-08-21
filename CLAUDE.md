@@ -298,36 +298,37 @@ hay en casa, no solo los que la cuenta "necesita". La caja a medio armar vive en
 app. Como el stock de la oficina no baja hasta cerrarla, el tope de cada renglón descuenta lo que
 ya está apartado en las cajas de las otras cuentas.
 
-## LAS PERCEPCIONES: LO QUE EL PANEL NO ESTÁ CONTANDO (21/08/2026)
+## LAS PERCEPCIONES: MEDIDAS Y EL PANEL DA BIEN (21/08/2026)
 
-ML avisó en la cuenta de Luciana *"estás pagando más impuestos porque llegaste a los topes"*. Al
-mirarlo aparecieron **dos impuestos distintos que se confundían en uno**:
+ML avisó en Luciana *"estás pagando más impuestos porque llegaste a los topes"*. Al mirarlo
+aparecieron **dos impuestos distintos que se confundían en uno**:
 
 | | qué es | Luciana, agosto 2026 |
 |---|---|---|
-| **Retenciones** | salen de cada venta · **ya están dentro del neto** | **$6.784** |
-| **Percepciones** | ML las factura a fin de mes · **se pagan aparte** | **$231.497** |
+| **Retenciones** | salen de cada venta · ya están dentro del neto | $6.784 |
+| **Percepciones** | ML las factura a fin de mes · se pagan aparte | **$231.497** |
 
-**La plata está casi toda en las percepciones**, y el panel no las mide. Base de ventas de agosto
-$2.305.048 → percepciones **10,04%**. El panel usa **4,37%** para Luciana (`ML_EXTRA_PCT`).
-No es un mes suelto: junio $244.508 · julio $190.392 · agosto $231.497.
+**RESULTADO: el `ML_EXTRA_PCT` del panel está BIEN.** Medido con `percepcalc` (percepciones ÷ ventas
+reales del mismo período, agosto 2026):
 
-Llega al 10% porque **cada provincia percibe por separado sobre la MISMA venta**: Buenos Aires 2,5%
-+ CABA 3% + Corrientes 0,75% + Tucumán 5%. Ninguna alícuota sola pasa del 5% y sumadas dan 10.
+| cuenta | ventas | percepciones | REAL | panel |
+|---|---|---|---|---|
+| Adriana | $7.193.833 | $273.493 | 3,80% | 4,07% |
+| Ayelen | $2.660.660 | $159.402 | 5,99% | 5,95% |
+| Luciana | $5.780.144 | $231.497 | 4,01% | 4,37% |
+| Matías | $10.284.587 | $349.774 | 3,40% | 4,58% |
+| **total** | **$25.919.224** | **$1.014.166** | **3,91%** | |
 
-**Consecuencia:** si el costo real tiene ~6 puntos más de impuestos que los que descuenta el panel,
-los márgenes de Luciana se ven ~6 puntos más altos de lo que son. Un 32% en pantalla sería ~26%.
+Las cuatro dentro de ~1 punto, y en tres de ellas el panel descuenta **de más** (conservador). No
+hay nada que corregir. Son $1.014.166/mes de IIBB, pero **ya estaban contados**.
 
-**Lo que falta ANTES de tocar `ML_EXTRA_PCT`:** verificar si esas percepciones ya están cargadas
-como gasto mensual (ML las factura y se pagan). Si lo están y además se suben al costo de cada
-producto, se cuentan DOS VECES y los márgenes saldrían más bajos de lo que son. Mismo cuidado que
-con la mercadería y las facturas recibidas.
-
-**Para el contador, y es más grande que la recategorización:** las percepciones son pago a cuenta de
-IIBB, no impuesto perdido. Pero perciben al 10% cuando las alícuotas reales son 2,5%-5%, así que
-casi seguro se genera **saldo a favor todos los meses** — plata parada en las provincias.
-Recuperarla depende de estar inscripta y presentar. ML ya dice que se inscribió en el fisco de CABA.
-Falta medir las otras tres cuentas.
+**EL ERROR QUE SE COMETIÓ, PARA NO REPETIRLO:** primero se calculó "10,04%" dividiendo las
+percepciones por la **"base imponible"** que muestra ML ($2.305.048). Esa base **NO son las ventas**:
+las ventas reales de Luciana en el período fueron $5.780.144, más del doble. La base imponible es
+solo la parte sujeta a ese régimen, y cada régimen tiene la suya ($1.785.253, $1.080.077, $395.411…).
+Con eso se llegó a "los márgenes están 6 puntos inflados" y "falta un millón por mes", las dos cosas
+FALSAS. **Para medir un % que va a mover precios, el denominador tiene que ser las ventas del panel,
+no una base que informa ML.**
 
 **Las percepciones NO salen por la API. Probado el 21/08/2026** con `probarpercep` en Matías: 11
 endpoints candidatos, **10 fallan** (404 los de `/details`, `/summary`, `/perceptions`; 422 los que
@@ -338,14 +339,16 @@ Ojo al probarlo: el billing de ML permite **5 llamadas por minuto**. El primer i
 seguidas, contestó 429 en casi todas y el resultado no valía — un 429 NO quiere decir que el
 endpoint no exista. Hay que dejar ~14 segundos entre llamadas.
 
-**Dónde se miran a mano:** ML → Facturación → (elegir el mes, que **cierra el 14**) → Ir al detalle
-→ Detalle de cuenta → **Total de percepciones**. Ojo con el mes: si dice "EN CURSO" es parcial y no
-sirve para comparar. Medidos del período de agosto (15/07→14/08): **Matías $349.774,20 · Luciana
-$231.496,80**. Faltan Adriana y Ayelen.
+**Dónde se miran a mano:** ML → Facturación → (elegir el mes) → Ir al detalle → Detalle de cuenta →
+**Total de percepciones**. Ojo: si dice "EN CURSO" es parcial y no sirve. Y **cada cuenta cierra un
+día distinto** (Adriana el 12, las otras el 14).
 
 **Ojo con el comando `alicuota`:** mide RETENCIONES, no percepciones. Mirando solo los $6.784 habría
-contestado "todo bien" y era falso. Las percepciones **no salen por la API**: se ven en
-ML → Facturación → Información fiscal → Cálculos fiscales → Percepciones.
+contestado "todo bien" — por casualidad acertaba, pero por el motivo equivocado.
+
+**Para el contador (sigue abierto, pero es más chico de lo que parecía):** las percepciones son pago
+a cuenta de IIBB y él las usa todas cada mes, sin dejar saldo a favor. O sea que el impuesto se paga
+completo y no hay plata parada para recuperar.
 
 ## EL STOCK QUE NO ESTÁ EN FULL NO EXISTE
 
