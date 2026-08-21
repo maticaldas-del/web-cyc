@@ -11466,6 +11466,68 @@ async function main() {
       return;
     }
 
+    // BILLING_PROBE=probarpercep[:cuenta] → ¿ML DEVUELVE LAS PERCEPCIONES POR LA API?
+    //
+    // Las percepciones son el impuesto de Ingresos Brutos que ML cobra aparte de cada venta. En
+    // Matías, período de agosto 2026, son $349.774,20 — más que las de Luciana ($231.497). Hoy el
+    // panel las estima con un % fijo por cuenta (ML_EXTRA_PCT) que quedó corto: 4,37% contra un
+    // ~10% real. Con el número de verdad los márgenes cambian varios puntos.
+    //
+    // El dato se ve en ML → Facturación → Resumen de facturación → Detalle de cuenta, pero sacarlo
+    // a mano de las cuatro cuentas todos los meses no se sostiene. Esto prueba los endpoints
+    // candidatos y dice cuál contesta, igual que se hizo con el saldo y con los envíos entrantes.
+    //
+    // LA VALIDACIÓN: se conoce el número real de Matías de agosto. El endpoint que sirva tiene que
+    // devolver 349774,20. Si ninguno lo da, no se usa ninguno — un número parecido que no es el
+    // mismo es peor que no tenerlo, porque define todos los precios.
+    if (/^probarpercep(:|$)/.test(String(process.env.BILLING_PROBE || ''))) {
+      const soloCta = (String(process.env.BILLING_PROBE).split(':')[1] || '').trim().toLowerCase();
+      const ESPERADO = { matias: 349774.20, luciana: 231496.80 };  // medidos a mano en la pantalla de ML
+      console.log('=== ¿ML DEVUELVE LAS PERCEPCIONES POR LA API? ===');
+      console.log('Referencia tomada a mano de la pantalla de ML (período de agosto, 15/07→14/08):');
+      console.log('   Matías $349.774,20 · Luciana $231.496,80\n');
+      for (const label of labels) {
+        if (soloCta && label.toLowerCase() !== soloCta) continue;
+        const acc = accounts[label]; if (!acc?.refresh_token) continue;
+        let t; try { t = await mlRefresh(ML_CLIENT_ID, ML_CLIENT_SECRET, acc.refresh_token); } catch { continue; }
+        await db.patch('mlapi/tokens/' + label, { refresh_token: t.refresh_token, updated_ts: Date.now() });
+        const tok = t.access_token;
+        console.log(`▶ ${label.toUpperCase()}${ESPERADO[label.toLowerCase()] ? ` · tendría que dar ${money(Math.round(ESPERADO[label.toLowerCase()]))}` : ''}`);
+        // El período de agosto en la nomenclatura de ML (cierra el 14 de cada mes).
+        const KEY = '2026-08-01';
+        const urls = [
+          `/billing/integration/monthly/periods?group=ML&document_type=BILL&limit=13`,
+          `/billing/integration/monthly/periods?group=MP&document_type=BILL&limit=13`,
+          `/billing/integration/monthly/periods/${KEY}/details?group=ML&document_type=BILL`,
+          `/billing/integration/monthly/periods/${KEY}/summary?group=ML&document_type=BILL`,
+          `/billing/integration/monthly/periods/${KEY}/detail?group=ML&document_type=BILL`,
+          `/billing/integration/periods/${KEY}/summary?group=ML`,
+          `/billing/integration/monthly/summary?group=ML&document_type=BILL&period=${KEY}`,
+          `/billing/integration/monthly/perceptions?period=${KEY}`,
+          `/billing/integration/perceptions?period=${KEY}`,
+          `/billing/integration/monthly/periods?group=ML&document_type=PERCEPTION&limit=13`,
+          `/users/${acc.seller_id}/billing/perceptions?period=${KEY}`,
+        ];
+        for (const u of urls) {
+          let st = '?', txt = '';
+          try {
+            const r = await fetch('https://api.mercadolibre.com' + u, { headers: { Authorization: 'Bearer ' + tok } });
+            st = r.status;
+            const body = await r.text();
+            txt = body.slice(0, 260).replace(/\s+/g, ' ');
+            // Si en la respuesta aparece algo que suene a percepción, se marca: es lo que se busca.
+            if (r.ok && /percep/i.test(body)) txt = '★ HABLA DE PERCEPCIONES ★ ' + txt;
+          } catch (e) { st = 'err'; txt = String(e.message || '').slice(0, 60); }
+          console.log(`   [${String(st).padStart(3)}] ${u.slice(0, 74)}`);
+          if (String(st) === '200') console.log(`         ${txt}`);
+        }
+        console.log('');
+      }
+      console.log('Si ninguno devuelve el número exacto, se sigue cargando a mano: un número parecido');
+      console.log('que no es el mismo es peor que no tenerlo, porque de acá salen todos los precios.');
+      return;
+    }
+
     // BILLING_PROBE=fees → calcula los cargos por venta (comisión+fijo+envío) de un período ML,
     // para restarlos del total facturado y aislar almacenamiento+publicidad (lo que la app no ve).
     if (process.env.BILLING_PROBE === 'fees') {
