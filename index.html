@@ -506,13 +506,6 @@ footer{margin-top:32px;padding-top:14px;border-top:1px solid var(--border);font-
       <div id="nc-ofi-sub" style="font-size:.68rem;color:var(--muted);margin-top:4px"></div>
       <span class="nc-arrow">→</span>
     </div>
-    <div class="nav-card nc3" onclick="goPage('enviosfull')">
-      <span class="nc-icon">📦</span>
-      <div class="nc-title">Envíos a Full</div>
-      <div class="nc-desc">Las cajas que mandaste al depósito de ML, con su seguimiento.</div>
-      <div id="nc-envios-sub" style="font-size:.68rem;color:var(--muted);margin-top:4px"></div>
-      <span class="nc-arrow">→</span>
-    </div>
     <div class="nav-card nc3" onclick="goPage('rotacion')">
       <span class="nc-icon">📊</span>
       <div class="nc-title">Rotación de Stock</div>
@@ -1029,6 +1022,36 @@ footer{margin-top:32px;padding-top:14px;border-top:1px solid var(--border);font-
        del medio del mismo recorrido (casa → camión → ML) y separarlo en otra página hacía que una
        caja cerrada por error pareciera haberse esfumado. -->
   <div id="ofi-sec-camino" style="display:none">
+    <!-- ── ANOTAR UN ENVÍO A MANO ────────────────────────────────────────────────────
+         Vino de la pantalla "Envíos a Full", que mostraba lo MISMO que esta solapa. Tener el
+         mismo dato en dos lugares es pedir que uno quede viejo, así que quedó uno solo.
+         Va plegado porque el camino normal es "Armar caja": ahí la caja se crea sola y con el
+         contenido cargado, que es lo que después le permite al robot marcarla cuando llega.
+         Esto es para el otro caso: la caja ya salió y solo tenés el comprobante del correo. -->
+    <details style="margin-bottom:12px">
+      <summary style="cursor:pointer;font-size:.7rem;color:var(--muted);padding:8px 0">➕ Anotar un envío a mano (ya despachado, sin pasar por "Armar caja")</summary>
+      <div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:12px;margin-top:6px">
+        <div class="pedidos-add" style="margin-bottom:10px">
+          <input type="date" id="env-fecha" class="fin-input" style="width:150px">
+          <select id="env-cuenta" class="cal-select" style="font-size:.72rem">
+            <option value="">¿De qué cuenta? (después)</option>
+            <option value="Adriana">Adriana</option>
+            <option value="Luciana">Luciana</option>
+            <option value="Ayelen">Ayelen</option>
+            <option value="Matias">Matias</option>
+          </select>
+          <input type="text" id="env-correo" class="fin-input" placeholder="Correo (Andreani)" style="width:130px">
+          <input type="text" id="env-suc" class="fin-input" placeholder="Sucursal" style="width:150px">
+          <input type="text" id="env-cajas" class="fin-input" inputmode="numeric" placeholder="Cajas" style="width:80px">
+          <button class="btn" onclick="addEnvioFull()">Guardar envío</button>
+        </div>
+        <textarea id="env-track" placeholder="Números de seguimiento, uno por línea (los del comprobante)"
+          style="width:100%;min-height:70px;background:var(--surface2);border:1px solid var(--border2);border-radius:6px;color:var(--text);font-family:'DM Mono',monospace;font-size:.72rem;padding:10px;outline:none;margin-bottom:6px"></textarea>
+        <input type="text" id="env-obs" class="fin-input" placeholder="Nota (opcional): quién lo despachó, qué iba adentro…" style="width:100%">
+        <div style="font-size:.63rem;color:var(--amber);margin-top:8px;line-height:1.6">Una caja anotada así queda <strong>sin contenido</strong>, y el robot no la puede marcar solo cuando llega: hay que tocarle "llegó" a mano. Si la mercadería todavía está en casa, conviene usar "Armar caja".</div>
+      </div>
+    </details>
+    <input class="search-box" id="env-search" type="search" placeholder="Buscar por seguimiento, cuenta o fecha..." oninput="renderCajasEnCamino()" style="margin-bottom:10px">
     <div style="font-size:.66rem;color:var(--muted);margin-bottom:10px;line-height:1.5">
       Las cajas que ya cerraste. <span style="color:var(--green)">Verde</span> llegó a ML ·
       <span style="color:var(--amber)">naranja</span> en camino ·
@@ -1050,50 +1073,6 @@ footer{margin-top:32px;padding-top:14px;border-top:1px solid var(--border);font-
      llegada ni como faltante. Teniendo lo que se despachó, la diferencia salta sola.
      NO se guarda la foto del comprobante: la app se baja todos los datos de una sola vez al
      abrir, y las fotos la harían lentísima en el celular. Con los números de seguimiento alcanza. -->
-<div id="page-enviosfull" class="page">
-<div class="page-wrap">
-  <div class="page-header">
-    <div class="ph-left">
-      <button class="back-btn" onclick="goPage('home')">← Inicio</button>
-      <div>
-        <div class="ph-title">Envíos a Full</div>
-        <div class="ph-sub">Cajas despachadas al depósito de ML</div>
-      </div>
-    </div>
-    <div class="ph-right">
-      <span class="conn-label"><span class="dot" id="dot-env"></span><span id="conn-env">conectando</span></span>
-      <span class="who-badge" id="who-env">—</span>
-    </div>
-  </div>
-
-  <div class="pedidos-add" style="margin-bottom:12px">
-    <input type="date" id="env-fecha" class="fin-input" style="width:150px">
-    <!-- La cuenta NO es obligatoria: el comprobante del correo no la dice, y muchas veces se
-         despacha sin tenerla a mano. Se puede completar después tocándola en la lista. -->
-    <select id="env-cuenta" class="cal-select" style="font-size:.72rem">
-      <option value="">¿De qué cuenta? (después)</option>
-      <option value="Adriana">Adriana</option>
-      <option value="Luciana">Luciana</option>
-      <option value="Ayelen">Ayelen</option>
-      <option value="Matias">Matias</option>
-    </select>
-    <input type="text" id="env-correo" class="fin-input" placeholder="Correo (Andreani)" style="width:130px">
-    <input type="text" id="env-suc" class="fin-input" placeholder="Sucursal" style="width:150px">
-    <input type="text" id="env-cajas" class="fin-input" inputmode="numeric" placeholder="Cajas" style="width:80px">
-    <button class="btn" onclick="addEnvioFull()">Guardar envío</button>
-  </div>
-  <textarea id="env-track" placeholder="Números de seguimiento, uno por línea (los del comprobante)"
-    style="width:100%;min-height:80px;background:var(--surface2);border:1px solid var(--border2);border-radius:6px;color:var(--text);font-family:'DM Mono',monospace;font-size:.72rem;padding:10px;outline:none;margin-bottom:6px"></textarea>
-  <input type="text" id="env-obs" class="fin-input" placeholder="Nota (opcional): quién lo despachó, qué iba adentro…" style="width:100%;margin-bottom:14px">
-
-  <div class="pedidos-count" id="envios-count"></div>
-  <input class="search-box" id="env-search" type="search" placeholder="Buscar por seguimiento, cuenta o fecha..." oninput="renderEnviosFull()" style="margin-bottom:10px">
-  <div id="envios-list"><div class="empty-msg">Todavía no hay envíos anotados.</div></div>
-
-  <footer>CYC · Envíos a Full</footer>
-</div>
-</div>
-
 <!-- ════════════════════ ROTACIÓN DE STOCK ════════════════════ -->
 <div id="page-rotacion" class="page">
 <div class="page-wrap">
@@ -2270,7 +2249,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='13.6';
+const APP_VERSION='13.7';
 // El problema real que esto resuelve no es curiosidad: es que el celular guarda la app y sigue
 // mostrando la de ayer sin avisar. Varias veces se revisó un cambio que ya estaba subido y no se
 // veía. Por eso, además del número, el chip avisa cuando hay una versión nueva esperando.
@@ -2338,7 +2317,6 @@ function goPage(page){
   if(page==='metricas'){initMetricasPage();}
   if(page==='ventaprod')initVentaProd();
   if(page==='rotacion')renderRotacionStock();
-  if(page==='enviosfull')enterEnviosFull();
   if(page==='oficina')enterOficina();
   if(page==='facturas')renderFacturas();
   if(page==='ajustes')enterAjustes();
@@ -3595,7 +3573,7 @@ function setOfiTab(t,btn){
   document.getElementById('ofi-sec-contar').style.display=t==='contar'?'':'none';
   const sc=document.getElementById('ofi-sec-camino');if(sc)sc.style.display=t==='camino'?'':'none';
   if(t==='caja')renderOfiCaja();
-  else if(t==='camino')renderCajasEnCamino();
+  else if(t==='camino')enterEnviosFull();   // pone fecha de hoy y "Andreani", y dibuja la lista
   else renderOfiContar();
 }
 function enterOficina(){migrarOficina().then(()=>{
@@ -4103,7 +4081,7 @@ function enterEnviosFull(){
   if(f&&!f.value)f.value=new Date().toISOString().slice(0,10);
   const c=document.getElementById('env-correo');
   if(c&&!c.value)c.value='Andreani';
-  renderEnviosFull();
+  renderCajasEnCamino();
 }
 async function addEnvioFull(){
   const fecha=(document.getElementById('env-fecha').value||'').trim();
@@ -4132,7 +4110,7 @@ async function addEnvioFull(){
   document.getElementById('env-cajas').value='';
   await log('Envío a Full: '+cajas+' caja(s) · '+cuenta+' · '+fecha);
   toast('Envío guardado ✓');
-  renderEnviosFull();
+  renderCajasEnCamino();
 }
 // La cuenta se puede completar después: el comprobante del correo no la trae, y a veces recién se
 // sabe cuando ML recibe la mercadería (cada cuenta tiene su propio depósito).
@@ -4141,7 +4119,7 @@ async function setEnvioCuenta(id,cuenta){
   e.cuenta=cuenta;
   await fbSet('envios_full/'+id+'/cuenta',cuenta);
   await log('Envío del '+e.fecha+': cuenta → '+cuenta);
-  renderEnviosFull();
+  renderCajasEnCamino();
 }
 // Guarda las cajas de un envío enteras: cajasDet es una lista y un patch parcial la rompería.
 async function _guardarCajas(id,cajas){
@@ -4152,7 +4130,7 @@ async function _guardarCajas(id,cajas){
   await fbSet('envios_full/'+id+'/cajasDet',cajas);
   await fbSet('envios_full/'+id+'/cajas',cajas.length);
   await fbSet('envios_full/'+id+'/seguimientos',e.seguimientos.length?e.seguimientos:null);
-  renderEnviosFull();
+  renderCajasEnCamino();
   if(document.getElementById('ofi-caja-list'))renderOfiCaja();
 }
 // DESHACER una caja: devuelve sus unidades a la oficina y la borra. Hace falta porque el botón de
@@ -4189,7 +4167,7 @@ async function deshacerCaja(id,i){
     // Era la única caja del envío: se borra el envío entero, si no queda un renglón vacío.
     await fbSet('envios_full/'+id,null);
     delete state.envios_full[id];
-    renderCajasEnCamino();renderEnviosFull();renderOfiCaja();renderOfiContar();
+    renderCajasEnCamino();renderOfiCaja();renderOfiContar();
   } else {
     await _guardarCajas(id,cajas);
     renderCajasEnCamino();renderOfiCaja();renderOfiContar();
@@ -4226,16 +4204,21 @@ async function delEnvioFull(id){
   if(!confirm(`¿Borrar el envío del ${e.fecha} (${e.cajas} caja/s de ${e.cuenta})?`))return;
   await fbSet('envios_full/'+id,null);
   delete state.envios_full[id];
-  renderEnviosFull();
+  renderCajasEnCamino();
 }
 // Las cajas dentro de "Mi oficina". Misma información que la pantalla de Envíos a Full pero en el
 // lugar donde se arman: no hay que salir a buscarlas a otro lado.
 function renderCajasEnCamino(){
   const cont=document.getElementById('ofi-camino-list');if(!cont)return;
-  const todos=Object.entries(state.envios_full||{}).map(([id,e])=>({id,...e}))
+  const todos0=Object.entries(state.envios_full||{}).map(([id,e])=>({id,...e}))
     .sort((a,b)=>(b.fecha||'').localeCompare(a.fecha||'')||(b.ts||0)-(a.ts||0));
+  // El buscador también vino de "Envíos a Full": con varios meses de cajas, encontrar una por el
+  // número del comprobante es la única forma práctica.
+  const q=normTxt(document.getElementById('env-search')?.value||'');
+  const todos=q?todos0.filter(e=>normTxt([e.fecha,e.cuenta,e.correo,e.sucursal,e.obs,
+      cajasDe(e).map(c=>c.track||'').join(' ')].join(' ')).includes(q)):todos0;
   let cam=0,tarde=0,uCam=0,lleg=0;
-  todos.forEach(e=>cajasDe(e).forEach(c=>{
+  todos0.forEach(e=>cajasDe(e).forEach(c=>{
     if(c.recibida){lleg++;return;}
     cam++;uCam+=(c.items||[]).reduce((a,x)=>a+(x.u||0),0);
     if(envDias(e)>=ENV_ROJO_DIAS)tarde++;
@@ -4247,8 +4230,22 @@ function renderCajasEnCamino(){
     +`<div class="pcount"><strong>${lleg}</strong>ya llegaron</div>`;
   const chip=document.getElementById('tab-ofi-camino-n');
   if(chip)chip.innerHTML=cam?`<strong style="color:${tarde?'var(--red)':'var(--amber)'}">${cam}</strong>`:'';
-  if(!todos.length){cont.innerHTML='<div class="empty-msg">Todavía no cerraste ninguna caja.</div>';return;}
-  cont.innerHTML=todos.map(e=>cajasDe(e).map((c,i)=>{
+  if(!todos.length){cont.innerHTML='<div class="empty-msg">'+(q?'Nada con esa búsqueda.':'Todavía no cerraste ninguna caja.')+'</div>';return;}
+  cont.innerHTML=todos.map(e=>{
+    // Cabecera del ENVÍO (puede tener varias cajas): la cuenta se puede corregir acá porque cuando
+    // se anota desde el comprobante del correo muchas veces no se sabe todavía a cuál va.
+    const cab=`<div style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;margin:14px 0 6px">
+      <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+        <select class="pi-prov" style="cursor:pointer" onchange="setEnvioCuenta('${e.id}',this.value).then(renderCajasEnCamino)">
+          ${['?',...LOCS].map(l=>`<option value="${l}"${(e.cuenta||'?')===l?' selected':''}>${l==='?'?'¿qué cuenta?':l}</option>`).join('')}
+        </select>
+        <strong style="font-family:'DM Mono',monospace;font-size:.76rem">${e.fecha||''}</strong>
+        <span class="pi-qty">${cajasDe(e).length} caja(s)</span>
+        <span style="color:var(--muted);font-size:.66rem">${e.correo||''}${e.sucursal?' · '+e.sucursal:''}</span>
+      </div>
+      <button class="btn btn-del" style="padding:5px 10px;font-size:.66rem" onclick="delEnvioFull('${e.id}').then(renderCajasEnCamino)" title="Borrar este envío entero">✕</button>
+    </div>`;
+    return cab+cajasDe(e).map((c,i)=>{
     const st=estadoCaja(e,c);
     const items=(c.items||[]);
     const uu=items.reduce((a,x)=>a+(x.u||0),0);
@@ -4270,209 +4267,8 @@ function renderCajasEnCamino(){
       ${items.length?`<div style="font-size:.64rem;color:var(--muted);line-height:1.7">${items.map(x=>`<span style="display:inline-block;background:var(--surface2);border:1px solid var(--border2);border-radius:5px;padding:1px 7px;margin:0 5px 4px 0"><strong style="color:var(--text)">${x.u}×</strong> ${x.nombre||x.prodId}${x.variante?' · '+x.variante:''}</span>`).join('')}</div>`
         :'<div style="font-size:.64rem;color:var(--amber)">Sin contenido cargado: el robot no la va a poder marcar solo.</div>'}
     </div>`;
-  }).join('')).join('');
-}
-function renderEnviosFull(){
-  const cont=document.getElementById('envios-list');if(!cont)return;
-  const todos=Object.entries(state.envios_full||{}).map(([id,e])=>({id,...e}))
-    .sort((a,b)=>(b.fecha||'').localeCompare(a.fecha||'')||(b.ts||0)-(a.ts||0));
-  const q=normTxt(document.getElementById('env-search')?.value||'');
-  const arr=q?todos.filter(e=>normTxt([e.fecha,e.cuenta,e.correo,e.sucursal,e.obs,(e.seguimientos||[]).join(' ')].join(' ')).includes(q)):todos;
-  // Resumen arriba: cajas de los últimos 30 días, que es la ventana que mira el chequeo.
-  const hace30=new Date(Date.now()-30*86400000).toISOString().slice(0,10);
-  const cajas30=todos.filter(e=>(e.fecha||'')>=hace30).reduce((s,e)=>s+(e.cajas||0),0);
-  const ultimo=todos[0];
-  const cnt=document.getElementById('envios-count');
-  if(cnt){
-    const dias=ultimo?Math.floor((Date.now()-new Date(ultimo.fecha+'T12:00:00').getTime())/86400000):null;
-    // Lo que de verdad importa mirar todos los días: cuántas cajas están en la calle y cuántas
-    // ya pasaron los 7 días sin llegar.
-    let enCamino=0,tarde=0,uCamino=0;
-    todos.forEach(e=>cajasDe(e).forEach(c=>{
-      if(c.recibida)return;
-      enCamino++;
-      uCamino+=(c.items||[]).reduce((a,x)=>a+(x.u||0),0);
-      if(envDias(e)>=ENV_ROJO_DIAS)tarde++;
-    }));
-    cnt.innerHTML=`<div class="pcount"><strong>${todos.length}</strong>envíos anotados</div>`
-      +`<div class="pcount"${enCamino?' style="border-color:rgba(245,158,11,.35)"':''}><strong${enCamino?' style="color:var(--amber)"':''}>${enCamino}</strong>cajas en camino</div>`
-      +(uCamino?`<div class="pcount"><strong>${uCamino}</strong>unidades en camino</div>`:'')
-      +(tarde?`<div class="pcount" style="border-color:rgba(239,68,68,.4)"><strong style="color:var(--red)">${tarde}</strong>hace +${ENV_ROJO_DIAS} días</div>`:'')
-      +`<div class="pcount"><strong>${cajas30}</strong>cajas en 30 días</div>`
-      +(ultimo?`<div class="pcount"${dias>=7?' style="border-color:rgba(245,158,11,.3)"':''}><strong${dias>=7?' style="color:var(--amber)"':''}>${dias}</strong>días del último</div>`:'');
-  }
-  // El cartel de la portada dice lo que hay que mirar: cuántas cajas están en la calle y si alguna
-  // pasó los 7 días. "Último envío: hace 3 días" no le sirve a nadie para decidir nada.
-  const sub=document.getElementById('nc-envios-sub');
-  if(sub){
-    let cam=0,tar=0;
-    todos.forEach(e=>cajasDe(e).forEach(c=>{if(c.recibida)return;cam++;if(envDias(e)>=ENV_ROJO_DIAS)tar++;}));
-    sub.innerHTML=cam
-      ? `<span style="color:var(--amber)">${cam} caja(s) en camino</span>`+(tar?` · <span style="color:var(--red);font-weight:700">${tar} hace más de ${ENV_ROJO_DIAS} días</span>`:'')
-      : (ultimo?`Todo recibido · último: ${ultimo.fecha}`:'Todavía sin envíos');
-  }
-  if(!arr.length){cont.innerHTML='<div class="empty-msg">'+(q?'Nada con esa búsqueda.':'Todavía no hay envíos anotados.')+'</div>';return;}
-  cont.innerHTML=arr.map(e=>{
-    const cajas=cajasDe(e);
-    return `<div style="padding:12px 14px;background:var(--surface);border:1px solid var(--border);border-radius:var(--r);margin-bottom:7px">
-      <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap">
-        <div>
-          <select class="pi-prov" style="cursor:pointer" onchange="setEnvioCuenta('${e.id}',this.value)">
-            ${['?',...LOCS].map(l=>`<option value="${l}"${(e.cuenta||'?')===l?' selected':''}>${l==='?'?'¿qué cuenta?':l}</option>`).join('')}
-          </select>
-          <strong style="font-family:'DM Mono',monospace;font-size:.78rem"> ${e.fecha}</strong>
-          <span class="pi-qty" style="margin-left:6px">${e.cajas} caja(s)</span>
-          <span style="color:var(--muted);font-size:.68rem"> ${e.correo||''}${e.sucursal?' · '+e.sucursal:''}</span>
-        </div>
-        <button class="btn btn-del" onclick="delEnvioFull('${e.id}')" title="Borrar este envío">✕</button>
-      </div>
-      ${cajas.map((c,i)=>{
-        const st=estadoCaja(e,c);
-        const items=(c.items||[]);
-        const uu=items.reduce((a,x)=>a+(x.u||0),0);
-        return `<div style="margin-top:7px;padding:8px 10px;background:${st.bg};border:1px solid ${st.color};border-radius:8px">
-          <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
-            <strong style="font-size:.7rem;color:${st.color}">Caja ${i+1}</strong>
-            <span style="font-size:.66rem;font-weight:700;color:${st.color}">${st.txt}</span>
-            ${uu?`<span style="font-size:.64rem;color:var(--muted)">${uu} u. · ${items.length} renglón(es)</span>`:'<span style="font-size:.64rem;color:var(--muted)">sin contenido cargado</span>'}
-            <span style="flex:1"></span>
-            <input type="text" inputmode="numeric" value="${c.track||''}" placeholder="seguimiento"
-              style="width:130px;background:var(--bg);border:1px solid var(--border2);border-radius:6px;color:var(--text);font-family:'DM Mono',monospace;font-size:.66rem;padding:5px 7px;outline:none"
-              onchange="setCajaTrack('${e.id}',${i},this.value)">
-            <button class="btn" style="padding:5px 10px;font-size:.64rem;${c.recibida?'background:transparent;border:1px solid var(--border2);color:var(--muted)':''}"
-              onclick="marcarCajaRecibida('${e.id}',${i},${c.recibida?'false':'true'})">${c.recibida?'no llegó':'llegó'}</button>
-            ${c.recibida?'':`<button class="btn btn-del" style="padding:5px 10px;font-size:.64rem" title="Deshacer: las unidades vuelven a tu oficina" onclick="deshacerCaja('${e.id}',${i})">deshacer</button>`}
-          </div>
-          ${items.length?`<div style="margin-top:5px;font-size:.64rem;color:var(--muted);line-height:1.6">${items.map(x=>`<span style="display:inline-block;background:var(--surface2);border:1px solid var(--border2);border-radius:5px;padding:1px 7px;margin:0 5px 4px 0"><strong style="color:var(--text)">${x.u}×</strong> ${x.nombre||x.prodId}${x.variante?' · '+x.variante:''}</span>`).join('')}</div>`:''}
-        </div>`;
-      }).join('')}
-      <button class="btn" style="margin-top:6px;padding:4px 10px;font-size:.62rem;background:transparent;border:1px solid var(--border2);color:var(--muted)" onclick="addCajaAEnvio('${e.id}')">+ otra caja</button>
-      ${e.obs?`<div style="margin-top:4px;font-size:.68rem;color:var(--muted)">${e.obs}</div>`:''}
-    </div>`;
+    }).join('');
   }).join('');
-}
-
-let _arqViewYM=null; // YYYY_MM del snapshot que se está viendo, null = en vivo
-function getHistCostUSDProd(prodId,ym){return state.precios_hist_prod?.[ym]?.[prodId]??null;}
-function efectivoCostP(p){if(!_arqViewYM)return costP(p);return getHistCostUSDProd(p.id,_arqViewYM)??costP(p);}
-function calcArqueo(){
-  let stockVal=0,stockML=0,stockLocal=0,stockCamino=0;
-  // MERCADERÍA EN CAMINO A FULL. Cuando se cierra una caja, esas unidades salen de la oficina y
-  // todavía no están en ML: si no se contaran acá, el patrimonio bajaría solo por despachar, y
-  // volvería a subir días después al llegar. Plata que aparece y desaparece sin que pase nada.
-  const _tr=enTransito();
-  (state.products||[]).forEach(p=>{
-    const cp=efectivoCostP(p);
-    ML_LOCS.forEach(l=>{
-      stockML+=getQ(p.id,l)*cp;
-      stockCamino+=transitoDe(_tr,p.id,l,'')*cp;   // la clave sin variante ya es el total
-    });
-    LOCAL_LOCS.forEach(l=>stockLocal+=getQ(p.id,l)*cp);
-  });
-  stockVal=stockML+stockLocal+stockCamino;
-  let activos=0,deudas=0,corregir=0;
-  // Unidades contadas en la oficina de Mati. Si hay aunque sea una, el valor de la mercadería sale
-  // de ahí (ya entró arriba en stockLocal) y el campo "Oficina Mati" escrito a mano se IGNORA:
-  // si se sumaran los dos, la misma mercadería estaría contada dos veces.
-  // Mientras no haya nada contado se sigue usando el número viejo, para no borrar plata de golpe.
-  const _uOfiMati=(state.products||[]).reduce((s,p)=>s+stockOficina(p),0);
-  FIN_FIELDS.forEach(f=>{
-    if(f.detalle)return;                        /* desglose de otro campo: ya está sumado ahí */
-    if(f.k==='of_mia'&&_uOfiMati>0)return;      /* ya contado como stock local, por unidades */
-    const raw=parseFloat(state.finanzas[f.k])||0;
-    if(f.neutral){corregir+=raw;return;}        /* neutro y con signo */
-    const v=Math.abs(raw);
-    if(f.pos)activos+=v;else deudas+=v;
-  });
-  const efect=['efectivo','mp_disp','mp_liq'].reduce((s,k)=>s+(parseFloat(state.finanzas[k])||0),0);
-  const deben=['deben_cyc'].reduce((s,k)=>s+(parseFloat(state.finanzas[k])||0),0);
-  const deuda=['tarjeta','deuda_cyc','dolares_mati','dolares_tito'].reduce((s,k)=>s+(Math.abs(parseFloat(state.finanzas[k])||0)),0);
-  return{stockVal,stockML,stockLocal,stockCamino,activos,deudas,corregir,efect,deben,deuda,total:stockVal+activos-deudas+corregir};
-}
-
-// Panel de reconciliación: ¿la ganancia del mes se ve reflejada en el crecimiento del patrimonio?
-function renderReconciliacion(){
-  const el=document.getElementById('recon-panel');if(!el)return;
-  const card=(inner,col)=>`<div style="background:var(--surface);border:1px solid var(--border);border-left:4px solid ${col};border-radius:var(--r);padding:16px 18px">${inner}</div>`;
-  // Mes que se evalúa = el que estás VIENDO arriba en "Ver período"; si estás "en vivo", el mes actual.
-  const now=new Date();
-  const ym=_arqViewYM||(now.getFullYear()+'_'+String(now.getMonth()+1).padStart(2,'0'));
-  const yy=ym.split('_')[0], mm=ym.split('_')[1];
-  // Base de comparación = el cierre del mes ANTERIOR al que evaluás (si existe); si no, el último cierre.
-  const _pd=new Date(parseInt(yy,10),parseInt(mm,10)-1,1);_pd.setMonth(_pd.getMonth()-1);
-  const prevYm=_pd.getFullYear()+'_'+String(_pd.getMonth()+1).padStart(2,'0');
-  const snap=(state.snapshots&&state.snapshots[prevYm])?state.snapshots[prevYm]:((typeof getLatestSnapshot==='function')?getLatestSnapshot():null);
-  if(!snap||snap.total==null){el.innerHTML=card(`<div style="font-family:'Syne',sans-serif;font-weight:800;font-size:.9rem;margin-bottom:4px">🔍 ¿Cierra el mes?</div><div style="font-size:.66rem;color:var(--muted)">Cerrá un mes con 📸 para tener un punto de comparación del patrimonio.</div>`,'#6b6b7a');return;}
-  const P=_puntGananciaMes(ym);                 // neto/costo/retiro/gastos/ganancia (pesos)
-  const tc=curTC()||1500;
-  const cArq=calcArqueo();
-  // Si el mes que evaluás YA está cerrado, uso su cierre guardado como "fin"; si todavía no, el valor en vivo.
-  const endSnap=(state.snapshots&&state.snapshots[ym]&&state.snapshots[ym].total!=null)?state.snapshots[ym]:null;
-  const arqNow=endSnap?endSnap.total:cArq.total; // patrimonio al cierre del mes (USD)
-  const dP=Math.round((arqNow-snap.total)*tc);  // cuánto creció el patrimonio (pesos, aprox)
-  const genera=P.neto-P.costo-P.gastos;         // lo que generó el negocio
-  const rmRaw=state.retiro_mes&&state.retiro_mes[ym];
-  const retReal=(rmRaw!=null&&rmRaw!=='')?Number(rmRaw):null;      // lo que cobraron de verdad
-  const retiroUsado=retReal!=null?retReal:P.retiro;               // real si lo cargaste, si no el 15%
-  const esperado=genera-retiroUsado;            // lo que debería quedar en el negocio
-  const dif=dP-esperado;                         // <0 falta · >0 sobra
-  const umbral=Math.max(300000,Math.abs(esperado)*0.15);
-  let col,verdict,expl;
-  if(Math.abs(dif)<=umbral){col='#22c55e';verdict='✓ Cierra bien';expl='Los números cuadran: lo que ganó el negocio se ve reflejado en el patrimonio.';}
-  else if(dif<0){col='#ef4444';verdict='🔴 Falta plata';expl=`Salieron <strong>${fmt(-dif)}</strong> que no están anotados. Revisá: gastos sin cargar, retiros de más, o pérdidas/roturas de stock este mes.`;}
-  else{col='#f59e0b';verdict='🟡 Sobra';expl=`El patrimonio creció <strong>${fmt(dif)}</strong> más que la ganancia. Puede ser un valor cargado de más en el arqueo, o plata que entró y no es de ventas.`;}
-  const mesLbl=MONTHS[parseInt(mm,10)-1]+' '+yy;
-  const row=(lbl,val,extra='')=>`<div style="display:flex;justify-content:space-between;align-items:baseline;gap:10px"><span style="color:var(--muted)">${lbl}</span><span style="font-family:'DM Mono',monospace;${extra}">${val}</span></div>`;
-  el.innerHTML=card(`
-    <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;margin-bottom:10px">
-      <span style="font-family:'Syne',sans-serif;font-weight:800;font-size:.95rem">🔍 ¿Cierra el mes? · ${mesLbl}</span>
-      <span style="color:${col};font-weight:700;font-size:.72rem">${verdict}</span>
-    </div>
-    <div style="display:flex;flex-direction:column;gap:5px;font-size:.7rem">
-      ${row('Ganancia del negocio (debería quedar)',fmt(esperado))}
-      ${row('Creció el patrimonio (arqueo)',fmt(dP))}
-      <div style="border-top:1px solid var(--border);margin-top:3px;padding-top:6px">${row('Diferencia',fmt(dif),`font-weight:700;color:${col}`)}</div>
-    </div>
-    <div style="font-size:.6rem;color:var(--muted);margin-top:10px;line-height:1.5">${expl}<br>El negocio generó ${fmt(genera)} · retiro ${retReal!=null?'cobrado':'estimado 15%'} ${fmt(retiroUsado)}${retReal==null?' <span style="color:var(--amber)">(cargá el retiro real arriba para precisión)</span>':''}. Patrimonio pasado a pesos al dólar ${fmt(tc)} (aprox).</div>
-  `,col);
-
-  // 🛒 Chequeo de mercadería: lo que compraste vs lo que apareció como stock + lo que se vendió.
-  // Identidad: Compras = ΔStock + Costo de lo vendido + (merma). Si comprás de más de lo que aparece → fuga.
-  // Compra de mercadería del mes = suma de los movimientos tipo 'mercadería' cargados en Compras y gastos.
-  const compraMes=Object.values(state.compras||{}).filter(x=>getCompraTipo(x)==='mercaderia'&&(x.dayKey||'').startsWith(ym)).reduce((s,x)=>s+(x.monto||0),0);
-  const finLoc=f=>endSnap?(parseFloat(endSnap.finanzas&&endSnap.finanzas[f])||0):(parseFloat(state.finanzas[f])||0);
-  const snapFin=f=>(parseFloat(snap.finanzas&&snap.finanzas[f])||0);
-  const stockNowUSD=(endSnap?(endSnap.stockML||0):(cArq.stockML||0))+finLoc('of_viejo')+finLoc('of_mia')+finLoc('vendedores');
-  const stockSnapUSD=(snap.stockML||0)+snapFin('of_viejo')+snapFin('of_mia')+snapFin('vendedores');
-  const dStock=Math.round((stockNowUSD-stockSnapUSD)*tc);   // creció (+) o bajó (−) el stock, en pesos
-  const costoVend=P.costo;                                   // costo de lo vendido este mes (pesos)
-  const esperabaComprar=dStock+costoVend;                    // lo que deberías haber comprado para explicar stock+ventas
-  const merma=compraMes-esperabaComprar;                     // >0 compraste de más de lo que se ve · <0 al revés
-  const mel=document.createElement('div');mel.style.marginTop='12px';
-  if(compraMes<=0){
-    mel.innerHTML=card(`<div style="font-family:'Syne',sans-serif;font-weight:800;font-size:.9rem;margin-bottom:4px">🛒 Chequeo de mercadería</div><div style="font-size:.63rem;color:var(--muted);line-height:1.5">Cargá tus compras de stock en <strong>Compras y gastos</strong> (elegí tipo 🛒 Mercadería) y acá te muestro si esa plata apareció como mercadería o se fugó.</div>`,'#6b6b7a');
-  }else{
-    const uMerc=Math.max(300000,Math.abs(esperabaComprar)*0.15);
-    let mcol,mverd,mexp;
-    if(Math.abs(merma)<=uMerc){mcol='#22c55e';mverd='✓ Cuadra';mexp=`Compraste <strong>${fmt(compraMes)}</strong> y esa plata aparece: ${fmt(dStock)} más de stock + ${fmt(costoVend)} que se vendió. La mercadería está toda.`;}
-    else if(merma>0){mcol='#ef4444';mverd='🔴 Se fugó mercadería';mexp=`Compraste <strong>${fmt(compraMes)}</strong> pero solo se explican ${fmt(esperabaComprar)} (${fmt(dStock)} más de stock + ${fmt(costoVend)} vendido). Faltan <strong>${fmt(merma)}</strong>: puede ser error de compra (pagaste de más), roturas/robos, o stock local mal contado.`;}
-    else{mcol='#f59e0b';mverd='🟡 Apareció de más';mexp=`Se sumó más mercadería (${fmt(esperabaComprar)}) de la que compraste (${fmt(compraMes)}). Diferencia <strong>${fmt(-merma)}</strong>: seguro cargaste de más el stock local, o hubo compras sin anotar.`;}
-    const mrow=(l,v,ex='')=>`<div style="display:flex;justify-content:space-between;align-items:baseline;gap:10px"><span style="color:var(--muted)">${l}</span><span style="font-family:'DM Mono',monospace;${ex}">${v}</span></div>`;
-    mel.innerHTML=card(`
-      <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;margin-bottom:10px">
-        <span style="font-family:'Syne',sans-serif;font-weight:800;font-size:.95rem">🛒 Chequeo de mercadería · ${mesLbl}</span>
-        <span style="color:${mcol};font-weight:700;font-size:.72rem">${mverd}</span>
-      </div>
-      <div style="display:flex;flex-direction:column;gap:5px;font-size:.7rem">
-        ${mrow('Compraste este mes',fmt(compraMes))}
-        ${mrow('Creció el stock',fmt(dStock))}
-        ${mrow('Costo de lo vendido',fmt(costoVend))}
-        <div style="border-top:1px solid var(--border);margin-top:3px;padding-top:6px">${mrow('Diferencia (fuga)',fmt(merma),`font-weight:700;color:${mcol}`)}</div>
-      </div>
-      <div style="font-size:.6rem;color:var(--muted);margin-top:10px;line-height:1.5">${mexp}<br>Stock = ML exacto + oficinas + vendedores, comparado contra el cierre anterior. Al dólar ${fmt(tc)} (aprox).</div>
-    `,mcol);
-  }
-  el.appendChild(mel);
 }
 function updateArqueo(){
   // Si hay un snapshot seleccionado, usar sus finanzas temporalmente
