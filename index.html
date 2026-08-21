@@ -2249,7 +2249,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='13.7';
+const APP_VERSION='13.8';
 // El problema real que esto resuelve no es curiosidad: es que el celular guarda la app y sigue
 // mostrando la de ayer sin avisar. Varias veces se revisó un cambio que ya estaba subido y no se
 // veía. Por eso, además del número, el chip avisa cuando hay una versión nueva esperando.
@@ -3994,12 +3994,31 @@ async function cerrarCaja(cuenta){
 // venta el único día que hubo stock daría "1 por día" → 44 unidades, y capaz fue casualidad.
 // Preferimos quedarnos algo cortos antes que mandar una caja entera por una venta de suerte.
 const REPO_DIAS_MIN=7;
+// ── OJO CON LA FECHA APROXIMADA ─────────────────────────────────────────────────────
+// Error encontrado por él el 21/08/2026: "Armar caja" sugería mandar de más. Decía que el Paulvic
+// Barbarella vendía 1 por día "(7 u. en 7 días con stock)" cuando en 7 días había vendido 2.
+//
+// El "7" no eran días medidos: era el PISO de REPO_DIAS_MIN. El robot había empezado a llevar el
+// registro de stock hacía dos días, así que `desde` decía "hace 2 días" en CASI TODOS los productos
+// —no porque hubieran entrado hace dos días, sino porque recién ahí se los miró por primera vez—.
+// La cuenta hacía max(7, 2) = 7 y dividía las ventas del MES por 7 días: la velocidad salía cuatro
+// veces más alta y el pedido cuatro veces más grande.
+//
+// Es el mismo problema que ya se había arreglado en la columna "En stock hace", pero acá no se
+// aplicó: una fecha aproximada no habilita a decir "solo tuvo stock N días". Si no se vio ENTRAR la
+// mercadería (`aprox === false`), se mide el mes entero, que es como se calculaba antes y es el
+// lado seguro: sugiere de menos, no de más.
 function diasConStock(pid,loc){
   const h=(state.stockhist||{})[invKey(pid,loc)];
   if(!h)return PED_MAX_DAYS;                          // sin dato: se mide como antes, el mes entero
   const now=Date.now(), ini=now-PED_MAX_DAYS*86400000;
   let ms=null;
-  if(h.desde)     ms=now-Math.max(h.desde,ini);       // hoy TIENE stock: desde que volvió a haber
+  if(h.desde){
+    // Solo vale si el robot VIO entrar la mercadería. Si ya estaba cuando empezó a mirar, la fecha
+    // no dice hace cuánto hay stock, dice hace cuánto miramos: no se puede achicar el período.
+    if(h.aprox!==false)return PED_MAX_DAYS;
+    ms=now-Math.max(h.desde,ini);                     // hoy TIENE stock: desde que volvió a haber
+  }
   else if(h.cero) ms=Math.max(0,h.cero-ini);          // hoy está en CERO: hasta el día que se agotó
   if(ms==null)return PED_MAX_DAYS;
   const d=ms/86400000;
