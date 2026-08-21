@@ -566,6 +566,33 @@ Lo que está en casa se cuenta a mano en **Mi oficina**, que es el lugar que cor
   web" para la Lupa 60mm x10 y era el COSTO ($11.638). Se aplicó como precio de venta. No alcanza
   con aplicarlo: hay que mirar el margen que queda ANTES de tocar ML.
 
+## BORRAR CÓDIGO A OJO ROMPIÓ LA APP DOS VECES SEGUIDAS (21/08/2026)
+
+Al sacar la pantalla "Envíos a Full" se borró `renderEnviosFull` buscando **"el próximo cierre de
+función"** con una expresión regular. Cortó de más y se llevó puestas cuatro funciones que no tenían
+nada que ver: `calcArqueo`, `efectivoCostP`, `getHistCostUSDProd` y `renderReconciliacion`.
+
+`calcArqueo` la usa media app. Sin ella, **la pantalla tiraba error en pleno dibujado y las ventas
+aparecían vacías**. Él lo reportó así: *"la nueva actualización rompió las ventas"*.
+
+Y al restaurarlas se repitió el error en chico: se empezó a copiar desde la primera función, pero
+justo arriba había una variable suelta (`let _arqViewYM=null`, la usan 25 lugares) que también se
+había ido. Segunda rotura: Resumen, Métricas y Arqueo.
+
+**Lo que NO sirve para detectarlo:** el chequeo de sintaxis. El archivo quedaba perfectamente válido
+las dos veces — solo que sin pedazos.
+
+**Lo que SÍ sirve, y hay que correrlo ANTES de subir** cualquier borrado grande en `index.html`:
+comparar contra la versión anterior las **tres listas** —funciones, `const`/`let` de nivel superior,
+e `id="..."`— y revisar que lo único que falte sea exactamente lo que se quiso sacar.
+
+```
+git show HEAD:index.html > /tmp/viejo.html   # y comparar los tres conjuntos
+```
+
+Regla simple: **para borrar un bloque hay que marcar dónde empieza Y dónde termina a mano.** Buscar
+"el próximo }" es adivinar dónde termina algo.
+
 ## Cómo verificar antes de decir que algo anda
 
 No alcanza con que el código compile. Para cualquier cambio que toque plata o precios:
