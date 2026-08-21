@@ -2249,7 +2249,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='13.9';
+const APP_VERSION='14.0';
 // El problema real que esto resuelve no es curiosidad: es que el celular guarda la app y sigue
 // mostrando la de ayer sin avisar. Varias veces se revisó un cambio que ya estaba subido y no se
 // veía. Por eso, además del número, el chip avisa cuando hay una versión nueva esperando.
@@ -4289,6 +4289,7 @@ function renderCajasEnCamino(){
     }).join('');
   }).join('');
 }
+let _arqViewYM=null; // YYYY_MM del snapshot que se está viendo, null = en vivo
 function getHistCostUSDProd(prodId,ym){return state.precios_hist_prod?.[ym]?.[prodId]??null;}
 function efectivoCostP(p){if(!_arqViewYM)return costP(p);return getHistCostUSDProd(p.id,_arqViewYM)??costP(p);}
 function calcArqueo(){
