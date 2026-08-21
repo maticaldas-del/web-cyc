@@ -2249,7 +2249,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='14.1';
+const APP_VERSION='14.2';
 // El problema real que esto resuelve no es curiosidad: es que el celular guarda la app y sigue
 // mostrando la de ayer sin avisar. Varias veces se revisó un cambio que ya estaba subido y no se
 // veía. Por eso, además del número, el chip avisa cuando hay una versión nueva esperando.
@@ -7005,8 +7005,36 @@ function diasEnStockDe(p){
   }
   return masViejo==null?null:{dias:masViejo,aprox};
 }
+// ── LA FECHA REAL: CUÁNDO ENTRÓ LA ÚLTIMA CAJA ──────────────────────────────────────
+// Planteo suyo del 21/08/2026: "cuando llegó stock a Full, ¿vos tenés esa info? las cajas que yo
+// cargo tienen toda esa info y marco cuando lleguen".
+// Y sí: cada caja marcada como llegada guarda su fecha (`recFecha`), tanto cuando la marca él como
+// cuando la marca el robot solo al ver la entrada en ML. Eso es una entrada de mercadería REAL, con
+// fecha exacta, y es mucho mejor dato que esperar a que el robot vea un producto pasar de cero.
+// Se toma la caja llegada MÁS RECIENTE que tenga este producto: la pregunta que contesta la columna
+// es "¿esto acaba de llegar, o está hace rato?", y para eso lo que importa es la última entrada.
+function ultimaEntradaDe(p){
+  let ms=null;
+  for(const e of Object.values(state.envios_full||{})){
+    if(!e||!LOCS.includes(e.cuenta))continue;
+    for(const c of cajasDe(e)){
+      if(!c||!c.recibida||!c.recFecha)continue;
+      if(!(c.items||[]).some(x=>x&&x.prodId===p.id&&x.u>0))continue;
+      const t=Date.parse(c.recFecha+'T12:00:00');
+      if(!isFinite(t))continue;
+      if(ms==null||t>ms)ms=t;
+    }
+  }
+  if(ms==null)return null;
+  const d=Math.floor((Date.now()-ms)/86400000);
+  return d>=0?d:0;
+}
 function rotEnStockHtml(r){
-  const e=r.diasEnStock;
+  // Una caja que llegó es un dato exacto y observado; el registro de stock del robot puede ser
+  // aproximado. Si hay caja, manda la caja. Si hay las dos, la más reciente: las dos son entradas
+  // de mercadería de verdad y lo que se quiere saber es cuándo entró la última.
+  let e=r.diasEnStock;
+  if(r.diasCaja!=null&&(e==null||e.aprox||r.diasCaja<e.dias))e={dias:r.diasCaja,aprox:false};
   if(e==null)
     return `<span style="color:var(--muted)" title="No hay registro de esta mercadería. El robot anota la fecha cuando ve un producto con stock; si acá no hay nada es que hoy no tiene stock en ninguna cuenta de ML.">—</span>`;
   const d=e.dias;
@@ -7344,7 +7372,7 @@ function renderRotacionStock(){
     // caja perdida = el precio no tiene nada que ver, la venta se la lleva otro.
     return{name:p.name,capital,ventasPeriodo,rotNorm,estadoKey,estadoHtml,stock,diasSinVender,
       margen:mg.margen,margenSinEnvio:mg.sinEnvio,margenEnvioML:mg.envioML,margenNeto:mg.neto,margenCosto:mg.costo,
-      caja:cajaMLDe(p),diasEnStock:diasEnStockDe(p)};
+      caja:cajaMLDe(p),diasEnStock:diasEnStockDe(p),diasCaja:ultimaEntradaDe(p)};
   });
 
   // ── Puntaje de rotación: % del capital ($) atascado en productos "Muerto" ──
