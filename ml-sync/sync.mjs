@@ -11466,6 +11466,65 @@ async function main() {
       return;
     }
 
+    // BILLING_PROBE=percepcalc[:desde:hasta] → EL % REAL DE IIBB DE CADA CUENTA
+    //
+    // Divide las percepciones que ML facturó (tomadas a mano de la pantalla, porque la API no las da
+    // — ver probarpercep) por las ventas del MISMO período, sacadas de la base del panel.
+    // El resultado es el % de Ingresos Brutos que se paga de verdad, para comparar contra el número
+    // fijo que usa hoy el panel (ML_EXTRA_PCT).
+    //
+    // Por qué se mide y no se copia la alícuota que muestra ML: ML calcula cada percepción sobre
+    // bases distintas (una dice $1.785.253, otra $1.080.077, otra $395.411) y cada provincia percibe
+    // sobre la misma venta. Elegir una de esas bases sería adivinar. Dividiendo el total percibido
+    // por las ventas reales no hay nada que suponer, y da el número que hay que sumarle al costo.
+    //
+    // SOLO LECTURA: muestra qué cambiaría, no toca ningún precio ni guarda nada.
+    if (/^percepcalc(:|$)/.test(String(process.env.BILLING_PROBE || ''))) {
+      const _p = String(process.env.BILLING_PROBE).split(':');
+      // Período de facturación de agosto 2026. Ojo: cada cuenta cierra en un día distinto
+      // (Adriana el 12, las otras el 14), así que la ventana es aproximada a propósito.
+      const DESDE = _p[1] || '2026_07_15';
+      const HASTA = _p[2] || '2026_08_14';
+      // Tomados a mano de ML → Facturación → (mes) → Detalle de cuenta → Total de percepciones.
+      // Período de agosto 2026, leídos el 21/08/2026.
+      const PERCEP = { matias: 349774.20, adriana: 273493.07, luciana: 231496.80, ayelen: 159401.99 };
+      const vp = (await db.get('cyc/ventaprod')) || {};
+      const ventas = {}, unidades = {};
+      for (const [dk, ents] of Object.entries(vp)) {
+        if (dk < DESDE || dk > HASTA) continue;
+        for (const v of Object.values(ents || {})) {
+          if (!v || v.cancelada || !v.cuenta) continue;
+          const c = String(v.cuenta).toLowerCase();
+          ventas[c] = (ventas[c] || 0) + (Number(v.total) || 0);
+          unidades[c] = (unidades[c] || 0) + (Number(v.qty) || 1);
+        }
+      }
+      console.log(`=== % REAL DE INGRESOS BRUTOS · ventas del ${DESDE.replace(/_/g, '/')} al ${HASTA.replace(/_/g, '/')} ===`);
+      console.log('Percepciones tomadas a mano de la pantalla de ML (la API no las da).\n');
+      console.log('  cuenta     ventas del período   percepciones      REAL     panel    diferencia');
+      let totV = 0, totP = 0;
+      for (const label of labels) {
+        const c = label.toLowerCase();
+        const v = ventas[c] || 0, pc = PERCEP[c];
+        if (pc == null) { console.log(`  ${label.padEnd(9)} ${money(Math.round(v)).padStart(18)}   (sin dato de percepciones)`); continue; }
+        totV += v; totP += pc;
+        const real = v > 0 ? (pc / v * 100) : 0;
+        const usa = mlExtraPct(label);
+        const dif = real - usa;
+        console.log(`  ${label.padEnd(9)} ${money(Math.round(v)).padStart(18)} ${money(Math.round(pc)).padStart(14)}`
+          + ` ${(real.toFixed(2) + '%').padStart(9)} ${(usa.toFixed(2) + '%').padStart(8)}`
+          + ` ${((dif >= 0 ? '+' : '') + dif.toFixed(2) + ' pts').padStart(12)}`);
+      }
+      if (totV > 0) {
+        console.log(`\n  TOTAL     ${money(Math.round(totV)).padStart(18)} ${money(Math.round(totP)).padStart(14)} ${((totP / totV * 100).toFixed(2) + '%').padStart(9)}`);
+        console.log(`\n  Son ${money(Math.round(totP))} POR MES de Ingresos Brutos que hoy el panel cuenta de menos.`);
+      }
+      console.log('\n  El "REAL" es lo que habría que poner en ML_EXTRA_PCT. Subirlo BAJA todos los márgenes');
+      console.log('  de esa cuenta: van a aparecer publicaciones abajo del piso que hoy figuran bien.');
+      console.log('\nSOLO LECTURA: no toqué ningún precio ni guardé nada.');
+      return;
+    }
+
     // BILLING_PROBE=probarpercep[:cuenta] → ¿ML DEVUELVE LAS PERCEPCIONES POR LA API?
     //
     // Las percepciones son el impuesto de Ingresos Brutos que ML cobra aparte de cada venta. En
