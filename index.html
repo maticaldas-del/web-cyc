@@ -2249,7 +2249,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='14.2';
+const APP_VERSION='14.3';
 // El problema real que esto resuelve no es curiosidad: es que el celular guarda la app y sigue
 // mostrando la de ayer sin avisar. Varias veces se revisó un cambio que ya estaba subido y no se
 // veía. Por eso, además del número, el chip avisa cuando hay una versión nueva esperando.
@@ -3851,6 +3851,21 @@ function renderOfiContar(){
   // Lista, NO tabla. En el celular la tabla dejaba la casilla fuera de pantalla y había que
   // arrastrar para el costado para anotar. Así el nombre se acomoda solo y la casilla queda
   // siempre a la vista, del lado derecho.
+  // ── EN QUÉ CUENTA ESTÁ PUBLICADO Y CUÁNTO TIENE CADA UNA ─────────────────────────
+  // Pedido suyo: contando lo que hay en casa, saber de qué cuenta es cada publicación. Se muestra
+  // además cuánto tiene cada una, que es lo que después decide a cuál mandarle: una cuenta en CERO
+  // no vende, y esa es la diferencia entre vender y no vender.
+  // Las que están en cero se marcan en rojo justamente por eso. Si no publica el producto, no
+  // aparece: no tiene sentido mostrar una cuenta que no lo vende.
+  const porCuenta=(p,variante)=>{
+    const ctas=variante?[...(cuentasPorVariante(p,_varPorMla(p))[variante]||[])]
+                       :cuentasConPublicacion(p);
+    if(!ctas.length)return '<span style="color:var(--amber)">sin publicar en ninguna cuenta</span>';
+    return LOCS.filter(l=>ctas.includes(l)).map(l=>{
+      const q=variante?getQV(p.id,l,variante):getQ(p.id,l);
+      return `<span style="margin-right:9px">${l} <strong style="color:${q>0?'var(--text)':'var(--red)'}">${fmtN(q)}</strong></span>`;
+    }).join('');
+  };
   const casilla=(val,hay,onch)=>`<input type="number" inputmode="numeric" value="${val||''}" placeholder="0"
         style="flex:none;width:72px;text-align:center;background:var(--bg);border:1px solid ${hay?'var(--accent2)':'var(--border2)'};border-radius:8px;color:var(--text);font-family:'DM Mono',monospace;font-size:1rem;padding:10px 4px;outline:none"
         onchange="${onch}">`;
@@ -3877,7 +3892,7 @@ function renderOfiContar(){
         return `<div style="display:flex;align-items:center;gap:10px;padding:7px 0 7px 12px;border-top:1px solid var(--border)">
           <div style="flex:1;min-width:0">
             <div style="font-size:.75rem;line-height:1.3;word-break:break-word">${v}</div>
-            <div style="font-size:.6rem;color:var(--muted);margin-top:2px">en Full${cta?' de '+cta:''}: ${fmtN(enFull)}</div>
+            <div style="font-size:.6rem;color:var(--muted);margin-top:2px">${cta?`en Full de ${cta}: ${fmtN(enFull)}`:`en Full · ${porCuenta(p,v)}`}</div>
           </div>
           ${casilla(hay,hay>0,`setOfiVar('${p.id}',${JSON.stringify(v).replace(/"/g,'&quot;')},this.value)`)}
         </div>`;
@@ -3896,7 +3911,7 @@ function renderOfiContar(){
     return `<div style="display:flex;align-items:center;gap:10px;padding:10px 12px;background:${enCasa>0?'var(--surface2)':'var(--surface)'};border:1px solid var(--border);border-radius:8px;margin-bottom:6px">
       <div style="flex:1;min-width:0">
         <div style="font-size:.8rem;line-height:1.3;word-break:break-word">${p.name}</div>
-        <div style="font-size:.62rem;color:var(--muted);margin-top:2px">en Full${cta?' de '+cta:''}: ${fmtN(cta?getQ(p.id,cta):stockOf(p))}</div>
+        <div style="font-size:.62rem;color:var(--muted);margin-top:2px">${cta?`en Full de ${cta}: ${fmtN(getQ(p.id,cta))}`:`en Full · ${porCuenta(p,'')}`}</div>
       </div>
       ${casilla(enCasa,enCasa>0,`setQ('${p.id}','${OFI}',this.value);syncOfiMati();renderOfiContar()`)}
     </div>`;
