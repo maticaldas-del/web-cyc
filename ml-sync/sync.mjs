@@ -805,6 +805,72 @@ async function envioSegunML(mla, token) {
   return peor == null ? null : { envio: Math.round(peor), det };
 }
 
+// ── EL DÓLAR OFICIAL DE VENTA, SOLO ────────────────────────────────────────
+// Decisión suya del 22/08/2026. Hasta hoy el tipo de cambio se cargaba a mano en el Arqueo, y de
+// ese número salen TODOS los márgenes (el costo de cada producto está en dólares) y por lo tanto
+// todos los precios. Si queda viejo, los márgenes se ven MÁS ALTOS de lo que son.
+//
+// EL UMBRAL ES 1,5% Y NO ES ARBITRARIO. Se sube al 32% y el piso es 30%: dos puntos de colchón,
+// y 1,32 ÷ 1,30 = 1,0154. O sea que un movimiento del 1,5% del dólar se come el colchón entero.
+// Con el dólar en $1.510 son $23. Abajo de eso no se toca, para no recalcular todos los márgenes
+// —y despertar al robot de precios— por monedas.
+//
+// DOS FUENTES, SIEMPRE. Un solo número no se puede chequear contra nada, y si esa fuente un día
+// devuelve cualquier cosa se mete un dato malo que mueve todos los precios sin que nadie lo note.
+// Se piden las dos y si no coinciden NO se escribe. Probado el 22/08/2026 con `probardolar`: las
+// cuatro fuentes andaban y se diferenciaban en 0,13%, así que si un día no coinciden, pasa algo.
+//
+// NO ROMPE EL HISTORIAL: cada venta guarda el dólar de SU día (v.tcSale) y los meses cerrados usan
+// ese. Esto solo mueve los márgenes de hoy y la valuación del stock.
+const DOLAR_UMBRAL_PCT = 1.5;   // cuánto se tiene que mover para tocarlo
+const DOLAR_DESACUERDO_PCT = 1; // si las dos fuentes difieren más que esto, no se escribe nada
+async function dolarOficialVenta() {
+  const leer = async (nom, url, sacar) => {
+    try {
+      const r = await fetch(url, { headers: { 'User-Agent': 'cyc-panel' } });
+      const j = await r.json();
+      const v = Number(sacar(j));
+      return (isFinite(v) && v > 0) ? { nom, v } : null;
+    } catch { return null; }
+  };
+  const a = await leer('dolarapi', 'https://dolarapi.com/v1/dolares/oficial', (j) => j && j.venta);
+  const b = await leer('bluelytics', 'https://api.bluelytics.com.ar/v2/latest', (j) => j && j.oficial && j.oficial.value_sell);
+  return { a, b };
+}
+async function dolarAuto(db, DRY) {
+  const fin = (await db.get('cyc/finanzas')) || {};
+  const actual = parseFloat(fin.tipo_cambio) || 0;
+  const { a, b } = await dolarOficialVenta();
+  if (!a && !b) return { que: 'sin-fuentes', msg: null };
+  // Si contestan las dos, tienen que decir lo mismo. Si contesta una sola se usa igual: es mejor
+  // que quedarse con un dato viejo, pero queda dicho en el mensaje de dónde salió.
+  if (a && b) {
+    const dif = Math.abs(a.v / b.v - 1) * 100;
+    if (dif > DOLAR_DESACUERDO_PCT) {
+      return { que: 'desacuerdo', msg: `⚠️ Dólar: las fuentes no coinciden (${a.nom} ${money(Math.round(a.v))} vs ${b.nom} ${money(Math.round(b.v))}, ${dif.toFixed(2)}%). No toqué nada.` };
+    }
+  }
+  const nuevo = Math.round((a || b).v);
+  const fuente = (a || b).nom + (a && b ? ' (confirmado por ' + b.nom + ')' : ' (la otra fuente no contestó)');
+  if (!actual) {
+    if (!DRY) await db.set('cyc/finanzas/tipo_cambio', nuevo);
+    return { que: 'primera', nuevo, msg: `💵 Dólar cargado por primera vez: ${money(nuevo)} · ${fuente}` };
+  }
+  const mov = (nuevo / actual - 1) * 100;
+  if (Math.abs(mov) < DOLAR_UMBRAL_PCT) return { que: 'quieto', actual, nuevo, mov, msg: null };
+  if (!DRY) await db.set('cyc/finanzas/tipo_cambio', nuevo);
+  const rele = DRY ? nuevo : parseFloat(await db.get('cyc/finanzas/tipo_cambio'));
+  const ok = Math.round(rele) === nuevo;
+  return {
+    que: 'actualizado', actual, nuevo, mov, ok,
+    msg: `💵 <b>Dólar actualizado</b>: ${money(actual)} → ${money(nuevo)} (${mov >= 0 ? '+' : ''}${mov.toFixed(2)}%)\n`
+       + `Fuente: ${fuente}.\n`
+       + `Se movió más del ${DOLAR_UMBRAL_PCT}%, que es lo que separa la meta del 32% del piso del 30%: `
+       + `los márgenes de la pantalla estaban ${mov > 0 ? 'más altos' : 'más bajos'} de lo real y ya se corrigieron.`
+       + (ok ? '' : '\n⚠️ NO pude confirmar que quedara guardado — revisalo.'),
+  };
+}
+
 // ── EL MARGEN DE LA WEB, ACTUALIZADO EN EL ACTO AL CAMBIAR UN PRECIO ─────────
 // Pedido suyo del 20/08/2026: el robot puede seguir recalculando todo de noche, pero cada vez que
 // se toca un precio la pantalla "Margen ML" tiene que quedar al día EN EL MOMENTO.
@@ -11515,6 +11581,24 @@ async function main() {
       return;
     }
 
+    // BILLING_PROBE=dolar[:go] → CORRER A MANO LA ACTUALIZACIÓN DEL DÓLAR
+    //
+    // El robot ya lo hace solo una vez por día en la vuelta horaria. Esto es para forzarlo o para
+    // ver qué haría, sin esperar. Llama a la MISMA función que usa el automático (dolarAuto), no a
+    // una copia: si un día se corrige la fórmula, se corrige acá también sola. Un verificador con
+    // la cuenta copiada adentro diría "todo bien" para siempre.
+    if (/^dolar(:|$)/.test(String(process.env.BILLING_PROBE || ''))) {
+      const APLICAR = String(process.env.BILLING_PROBE).includes(':go');
+      const r = await dolarAuto(db, !APLICAR);
+      console.log(`=== DÓLAR ${APLICAR ? '(APLICANDO)' : '(PRUEBA)'} ===\n`);
+      if (r.que === 'sin-fuentes') console.log('Ninguna fuente contestó. Dejo el que estaba.');
+      else if (r.que === 'desacuerdo') console.log(r.msg);
+      else if (r.que === 'quieto') console.log(`  cargado ${money(r.actual)} · hoy ${money(r.nuevo)} · se movió ${r.mov.toFixed(2)}%\n  Abajo del ${DOLAR_UMBRAL_PCT}%: no se toca.`);
+      else console.log(r.msg.replace(/<[^>]+>/g, ''));
+      if (!APLICAR && (r.que === 'actualizado' || r.que === 'primera')) console.log(`\nPRUEBA: no escribí nada. Para aplicar: dolar:go`);
+      return;
+    }
+
     // BILLING_PROBE=probardolar → DE DÓNDE SACAR EL DÓLAR OFICIAL DE VENTA, AUTOMÁTICO
     //
     // Pedido suyo del 22/08/2026: "al dólar oficial de venta tomamos nosotros... ¿pero el robot
@@ -13922,6 +14006,23 @@ async function main() {
       const rb = await cajaDeCompraML(db, accounts, labels, DRY, null);
       console.log(`🥊 Caja de compra · ${rb.mirados} publicaciones activas · ganamos ${rb.winning} · compartimos ${rb.sharing} · perdemos ${rb.losing} · sin catálogo ${rb.nocat}`);
     } catch (e) { console.log('No pude leer la caja de compra: ' + e.message); }
+  }
+
+  // EL DÓLAR, UNA VEZ POR DÍA. Va en la vuelta horaria (no en las de 2 minutos) y además con un
+  // marcador del último día: el dólar oficial se publica una vez por día, pedirlo 14 veces no
+  // aporta nada. El marcador vive en mlapi/ como el resto del estado del robot.
+  if (parseInt(process.env.BACKFILL_DAYS || '0', 10) === 0 && !onlyAcc && !SKIP_PRICES) {
+    try {
+      const hoyAR = new Date(Date.now() - 3 * 3600e3).toISOString().slice(0, 10);
+      const marca = (await db.get('mlapi/dolar/ultimoDia')) || '';
+      if (marca !== hoyAR) {
+        const rd = await dolarAuto(db, DRY);
+        if (!DRY) await db.set('mlapi/dolar/ultimoDia', hoyAR);
+        if (rd.que === 'quieto') console.log(`💵 Dólar ${money(rd.nuevo)} · el cargado ${money(rd.actual)} · se movió ${rd.mov.toFixed(2)}%: abajo del ${DOLAR_UMBRAL_PCT}%, no lo toqué.`);
+        else if (rd.msg) { console.log(rd.msg.replace(/<[^>]+>/g, '')); await sendTelegram(rd.msg); }
+        else console.log('💵 Dólar: ninguna fuente contestó, dejo el que estaba.');
+      }
+    } catch (e) { console.log('No pude mirar el dólar: ' + e.message); }
   }
 
   if (!precioAuto && !SKIP_PRICES) console.log('\n⏸️  Robot de precios APAGADO (mlconfig.autoPrice=false): no ajusté, no nivelé y no activé nada. Para prenderlo: robot:on');
