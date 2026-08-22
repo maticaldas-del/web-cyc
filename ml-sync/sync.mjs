@@ -11466,6 +11466,116 @@ async function main() {
       return;
     }
 
+    // BILLING_PROBE=pubfaltan[:<cuenta>][:go] → LAS PUBLICACIONES QUE EL PANEL NO CONOCE
+    //
+    // EL AGUJERO QUE ARREGLA (encontrado el 22/08/2026): una publicación entra a `cyc/mllinks`
+    // SOLO cuando VENDE. El alta la hace el auto-match mientras recorre las órdenes:
+    // `for (const o of orders) { const mla = it.item?.id; ... }`. No hay ningún lugar que le
+    // pregunte a ML "dame todas tus publicaciones".
+    //
+    // Consecuencia: una publicación que NUNCA vendió es INVISIBLE. No se le cuenta el stock de
+    // Full (o sea que falta plata en el Arqueo), no tiene margen, no se le mira la caja de compra,
+    // el robot de precios no la toca y tampoco se le sacan las promociones. Y como `vincular` pide
+    // que el MLA ya figure en el panel, tampoco se la puede enganchar a mano: contesta
+    // "no figura en el panel".
+    //
+    // Así aparecieron dos que él encontró a ojo en la app de ML, las dos activas y con mercadería:
+    //   MLA3686241824 · Adriana · Dermaglós Ultra Volumen · 4 u. · $26.999 · 0 vendidas
+    //   MLA1900463085 · Ayelen  · Alargue Adaptador 220 Usb Hub · 17 u. · $8.850
+    // Y explica la nota vieja de "10 productos sin ninguna publicación": varios SÍ tienen
+    // publicación, lo que pasa es que nunca vendieron y por eso el panel no las veía.
+    //
+    // Las registra con prodId VACÍO a propósito, no con el auto-match por palabras. Un match por
+    // título equivocado le pega un costo ajeno a la publicación, y de ese costo sale el margen que
+    // el robot usa para mover precios. Sin producto no hay costo, no hay margen y nadie le toca el
+    // precio: quedan listadas en `sinvincular` y se vinculan a mano, mirando cada una.
+    //
+    // Sin `:go` solo muestra.
+    if (/^pubfaltan(:|$)/.test(String(process.env.BILLING_PROBE || ''))) {
+      const _pf = String(process.env.BILLING_PROBE).split(':');
+      const SOLO = (_pf[1] && _pf[1] !== 'go') ? _pf[1].toLowerCase() : '';
+      const APLICAR = _pf.includes('go');
+      const links = (await db.get('cyc/mllinks')) || {};
+      const upd = {};
+      let totalML = 0, totalFaltan = 0;
+      for (const label of labels) {
+        if (SOLO && label.toLowerCase() !== SOLO) continue;
+        const acc = accounts[label]; if (!acc?.refresh_token) continue;
+        let t; try { t = await mlRefresh(ML_CLIENT_ID, ML_CLIENT_SECRET, acc.refresh_token); }
+        catch { console.log(`▶ ${label}: no pude renovar el token.\n`); continue; }
+        await db.patch('mlapi/tokens/' + label, { refresh_token: t.refresh_token, updated_ts: Date.now() });
+        const tok = t.access_token;
+        // Catálogo completo de la cuenta. `/users/<id>/items/search` pagina de a 100 y ML corta el
+        // paginado por offset en 1.000, así que arriba de eso hay que ir por scan_id. Se prueban
+        // los dos: primero offset, y si la cuenta tiene más de 1.000 se sigue con scan.
+        const mios = [];
+        let total = null;
+        try {
+          for (let off = 0; off < 1000; off += 100) {
+            const r = await mlGet(`/users/${acc.seller_id}/items/search?limit=100&offset=${off}`, tok);
+            if (total == null) total = Number(r?.paging?.total) || 0;
+            const res = r?.results || [];
+            mios.push(...res);
+            if (res.length < 100) break;
+          }
+          if (total != null && total > 1000) {
+            let scan = null, vueltas = 0;
+            do {
+              const url = `/users/${acc.seller_id}/items/search?search_type=scan&limit=100` + (scan ? `&scroll_id=${encodeURIComponent(scan)}` : '');
+              const r = await mlGet(url, tok);
+              scan = r?.scroll_id || null;
+              const res = r?.results || [];
+              for (const m of res) if (!mios.includes(m)) mios.push(m);
+              if (!res.length) break;
+            } while (scan && ++vueltas < 60);
+          }
+        } catch (err) {
+          console.log(`▶ ${label}: ML no me dio el catálogo — ${String(err.message || err).slice(0, 100)}\n`);
+          continue;
+        }
+        totalML += mios.length;
+        const faltan = mios.filter((m) => !links[m]);
+        console.log(`▶ ${label}: ML tiene ${mios.length} publicaciones${total != null ? ` (dice ${total})` : ''} · el panel conoce ${mios.length - faltan.length} · FALTAN ${faltan.length}`);
+        if (!faltan.length) { console.log(''); continue; }
+        totalFaltan += faltan.length;
+        // El detalle se pide de a 20, que es el tope de /items?ids=
+        for (let k = 0; k < faltan.length; k += 20) {
+          let arr;
+          try { arr = await mlGet('/items?ids=' + faltan.slice(k, k + 20).join(',') + '&attributes=id,title,status,sub_status,price,available_quantity,sold_quantity,shipping', tok); }
+          catch { continue; }
+          for (const row of (arr || [])) {
+            const b = row.body || {}; const mla = b.id; if (!mla) continue;
+            const full = ((b.shipping && b.shipping.logistic_type) || '') === 'fulfillment';
+            // El stock que se muestra es el de Full. Regla suya del 20/08/2026: lo que dice
+            // "depósito" en ML no existe, es el 1 que exige el formulario para poder publicar.
+            const stk = full ? (b.available_quantity || 0) : 0;
+            console.log(`   ${mla}  ${String(b.status || '?').padEnd(8)} ${full ? String(stk).padStart(4) + ' u. Full' : '   — no Full'} · $${Math.round(b.price || 0).toLocaleString('es-AR')} · ${b.sold_quantity || 0} vendidas · ${String(b.title || '').slice(0, 46)}`);
+            upd[mla] = {
+              prodId: null, variant: '',
+              title: b.title || '', cuenta: label,
+              status: b.status || '', subStatus: (b.sub_status || []).join(','),
+              auto: true, altaPorCatalogo: true, altaTs: Date.now(),
+            };
+          }
+        }
+        console.log('');
+      }
+      if (!totalFaltan) { console.log('No falta ninguna: el panel conoce todas las publicaciones de ML.'); return; }
+      if (!APLICAR) {
+        console.log(`PRUEBA: no escribí nada. Son ${totalFaltan} de ${totalML}.`);
+        console.log('Para darlas de alta en el panel (sin producto, para vincularlas a mano): pubfaltan:go');
+        return;
+      }
+      // patch sobre cyc/mllinks: cada hijo se escribe entero, pero son publicaciones que NO existían,
+      // así que no hay nada que pisar. Las que ya estaban ni siquiera entran en `upd`.
+      await db.patch('cyc/mllinks', upd);
+      const rel = (await db.get('cyc/mllinks')) || {};
+      const ok = Object.keys(upd).filter((m) => rel[m]).length;
+      console.log(`Releído del panel: ${ok} de ${Object.keys(upd).length} quedaron dadas de alta ${ok === Object.keys(upd).length ? '✓' : '✗ REVISALO'}`);
+      console.log('Quedaron SIN producto a propósito. Vinculá cada una con: vincular:<MLA>=<palabra o id>:go');
+      return;
+    }
+
     // BILLING_PROBE=veroficina → QUÉ HAY EN CASA Y QUÉ NECESITA CADA CUENTA
     //
     // Vuelca los datos crudos para decidir qué caja armar primero: lo que hay en la oficina, y por
