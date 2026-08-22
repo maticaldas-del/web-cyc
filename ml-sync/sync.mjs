@@ -11515,6 +11515,124 @@ async function main() {
       return;
     }
 
+    // BILLING_PROBE=reventas:<MLA[,MLA...]>[:go] → LAS VENTAS VIEJAS AL PRODUCTO CORRECTO
+    //
+    // PARA QUÉ. Cuando entra una venta, el robot adivina el producto por las palabras del título
+    // (matchProduct). Con dos productos que se llaman casi igual se equivoca, y todas las ventas de
+    // esa publicación quedan cargadas al producto que NO es. Pasó el 22/08/2026 con los separadores:
+    // las publicaciones "Separador Protector X2 ... Relax Color Piel" habían quedado pegadas a la
+    // ficha "2 Separadores Protector De Dedos Del Pie Silicona Juanetes", que es OTRO producto y
+    // tiene su propia publicación.
+    //
+    // Arreglar la vinculación con `vincular` corrige las ventas que vengan de acá en adelante, pero
+    // las que ya están cargadas siguen apuntando al producto viejo. Eso ensucia dos cosas: Ventas x
+    // Producto las cuenta en la ficha equivocada, y —lo que importa— el COSTO de cada venta se
+    // calculó con el costo del producto equivocado, así que la ganancia de esos meses está mal.
+    //
+    // QUÉ HACE. Toma las ventas de las publicaciones que le pases y las manda al producto que esa
+    // publicación tiene vinculado HOY. No hay que decirle el producto: se lo pregunta a la
+    // vinculación, que es la que ya se corrigió a mano. Si una publicación no tiene producto, la
+    // saltea y lo dice.
+    //
+    // EL COSTO SE RECALCULA, y ahí está la diferencia con `fixbliss`, que a propósito lo deja
+    // intacto. Allá las ventas eran del producto correcto y el costo del día era el bueno; acá el
+    // costo es el de OTRO producto, o sea que nunca fue correcto. Se rehace con el costo del
+    // producto que corresponde y con el DÓLAR DEL DÍA DE ESA VENTA (v.tcSale), no el de hoy: el
+    // error a corregir es el producto, no el tipo de cambio.
+    //
+    // OJO: esto CAMBIA LA GANANCIA YA INFORMADA de los meses donde haya ventas. Es la corrección de
+    // un número que estaba mal, pero si mirás un mes viejo va a dar distinto que antes. Por eso sin
+    // `:go` solo muestra, con el total de cuánto se mueve.
+    if (/^reventas(:|$)/.test(String(process.env.BILLING_PROBE || ''))) {
+      const _rv = String(process.env.BILLING_PROBE).split(':');
+      const APLICAR = _rv.includes('go');
+      const mlas = (_rv[1] || '').split(',').map((x) => x.trim().toUpperCase()).filter((x) => /^MLA/.test(x));
+      if (!mlas.length) { console.log('Usá: reventas:MLA1474954957,MLA3207459664[:2026_08][:go]'); return; }
+      // MES OPCIONAL (pedido suyo del 22/08/2026: "o por lo menos este mes, el anterior no hace
+      // falta"). Los meses cerrados ya se informaron y se miraron; rehacerles la ganancia mueve
+      // números que él ya dio por buenos. Con el mes puesto se toca SOLO ese.
+      const MES = (_rv.find((x) => /^\d{4}_\d{2}$/.test(x || '')) || '');
+      const links = (await db.get('cyc/mllinks')) || {};
+      const vp = (await db.get('cyc/ventaprod')) || {}; setDevLive(vp);
+      const fin = (await db.get('cyc/finanzas')) || {};
+      const tcHoy = parseFloat(fin.tipo_cambio) || 1500;
+      // Producto destino de cada publicación = el que tiene vinculado hoy.
+      const destino = {};
+      for (const mla of mlas) {
+        const e = links[mla];
+        if (!e) { console.log(`⚠️ ${mla} no figura en el panel — la salteo.`); continue; }
+        if (!e.prodId) { console.log(`⚠️ ${mla} no tiene producto vinculado — vinculala primero con \`vincular\`. La salteo.`); continue; }
+        const pd = products.find((x) => x.id === e.prodId);
+        if (!pd) { console.log(`⚠️ ${mla} apunta a un producto que ya no existe (${e.prodId}) — la salteo.`); continue; }
+        destino[mla] = pd;
+      }
+      if (!Object.keys(destino).length) { console.log('\nNo quedó ninguna publicación para tocar.'); return; }
+      const mover = [];
+      for (const [dk, ents] of Object.entries(vp)) {
+        for (const [id, v] of Object.entries(ents || {})) {
+          if (!v || !v.mla) continue;
+          const pd = destino[String(v.mla).toUpperCase()];
+          if (!pd) continue;
+          if (MES && !String(dk).startsWith(MES)) continue; // fuera del mes pedido
+          if (v.prodId === pd.id) continue;                 // ya está bien
+          const qty = v.qty || 1;
+          const tcV = parseFloat(v.tcSale) || tcHoy;
+          const c = costoPesos(pd, qty, tcV);
+          mover.push({
+            dk, id, mla: v.mla, fecha: dk, qty,
+            prodViejo: v.prod || '(sin producto)', prodIdViejo: v.prodId || null,
+            costoViejo: Math.round(v.costo || 0), costoNuevo: Math.round(c.costo),
+            costBaseUSD: c.costBaseUSD, shipUSD: c.shipUSD,
+            total: Math.round(v.total || 0), neto: Math.round(v.neto || 0),
+            cancelada: !!v.cancelada, pd,
+          });
+        }
+      }
+      console.log(`\n=== VENTAS AL PRODUCTO CORRECTO ${APLICAR ? '(APLICANDO)' : '(PRUEBA)'} ===\n`);
+      for (const [mla, pd] of Object.entries(destino)) console.log(`  ${mla} → "${pd.name}" (${pd.id})`);
+      console.log(MES ? `\n  Solo el mes ${MES.replace('_', '-')}: los meses anteriores quedan como están.`
+                      : `\n  TODOS los meses. Para tocar uno solo: reventas:${mlas.join(',')}:2026_08`);
+      if (!mover.length) { console.log('\nNo hay ninguna venta para mover: ya están todas en el producto que corresponde.'); return; }
+      mover.sort((a, b) => (a.fecha < b.fecha ? -1 : 1));
+      console.log(`\n── ${mover.length} venta(s) a mover ──`);
+      for (const m of mover.slice(0, 60)) {
+        console.log(`  ${m.fecha} · ${m.mla} · x${m.qty} · venta ${money(m.total)} · "${String(m.prodViejo).slice(0, 30)}" → "${m.pd.name}" · costo ${money(m.costoViejo)} → ${money(m.costoNuevo)}${m.cancelada ? ' · CANCELADA' : ''}`);
+      }
+      if (mover.length > 60) console.log(`  … y ${mover.length - 60} más (no las imprimo todas).`);
+      // El impacto en la ganancia: solo las que NO están canceladas, que son las que suman.
+      const vivas = mover.filter((m) => !m.cancelada);
+      const cv = vivas.reduce((a, m) => a + m.costoViejo, 0);
+      const cn = vivas.reduce((a, m) => a + m.costoNuevo, 0);
+      console.log(`\n── LO QUE CAMBIA EN LA GANANCIA ──`);
+      console.log(`  ${vivas.length} ventas no canceladas · costo que figuraba ${money(cv)} → costo real ${money(cn)}`);
+      console.log(`  La ganancia ya informada se mueve ${cn > cv ? 'ABAJO' : 'ARRIBA'} en ${money(Math.abs(cn - cv))}.`);
+      console.log(`  (Es la corrección de un número que estaba mal, pero un mes viejo va a dar distinto que antes.)`);
+      // Por mes, para saber qué meses se tocan
+      const porMes = {};
+      for (const m of vivas) { const ym = m.fecha.slice(0, 7); const b = porMes[ym] = porMes[ym] || { n: 0, dif: 0 }; b.n++; b.dif += (m.costoNuevo - m.costoViejo); }
+      console.log(`\n── POR MES ──`);
+      for (const ym of Object.keys(porMes).sort()) console.log(`  ${ym.replace('_', '-')} · ${porMes[ym].n} ventas · ganancia ${porMes[ym].dif > 0 ? '−' : '+'}${money(Math.abs(porMes[ym].dif))}`);
+      if (!APLICAR) { console.log(`\nPRUEBA: no escribí nada. Para aplicar: reventas:${mlas.join(',')}${MES ? ':' + MES : ''}:go`); return; }
+      let hechas = 0;
+      for (const m of mover) {
+        await db.patch(`cyc/ventaprod/${m.dk}/${m.id}`, {
+          prodId: m.pd.id, prod: m.pd.name,
+          costo: m.costoNuevo, costBaseUSD: m.costBaseUSD, shipUSD: m.shipUSD,
+          sinVincular: null,
+        });
+        hechas++;
+      }
+      // Releer para confirmar, igual que hacen vincular y pubfaltan.
+      let ok = 0;
+      for (const m of mover) {
+        const rel = await db.get(`cyc/ventaprod/${m.dk}/${m.id}/prodId`);
+        if (rel === m.pd.id) ok++;
+      }
+      console.log(`\nReleído de la base: ${ok} de ${hechas} quedaron en el producto correcto ${ok === hechas ? '✓' : '✗ REVISALO'}`);
+      console.log('Ahora corré netoweb para que la pantalla se ponga al día.');
+      return;
+    }
+
     // BILLING_PROBE=pubfaltan[:<cuenta>][:go] → LAS PUBLICACIONES QUE EL PANEL NO CONOCE
     //
     // EL AGUJERO QUE ARREGLA (encontrado el 22/08/2026): una publicación entra a `cyc/mllinks`
