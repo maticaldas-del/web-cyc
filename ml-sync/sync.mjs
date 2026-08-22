@@ -11515,6 +11515,83 @@ async function main() {
       return;
     }
 
+    // BILLING_PROBE=probardolar → DE DÓNDE SACAR EL DÓLAR OFICIAL DE VENTA, AUTOMÁTICO
+    //
+    // Pedido suyo del 22/08/2026: "al dólar oficial de venta tomamos nosotros... ¿pero el robot
+    // puede hacerlo automático todos los días? ¿de dónde saca la API?".
+    //
+    // POR QUÉ IMPORTA EL DÓLAR. El costo de cada producto está en dólares, así que el tipo de
+    // cambio cargado a mano define TODOS los márgenes, y de los márgenes salen los precios. La
+    // cuenta: se sube al 32% y el piso es 30%, o sea que el colchón es de 2 puntos, y ese colchón
+    // se lo come un movimiento del 1,5% del dólar (1,32 ÷ 1,30 = 1,0154). Con el dólar en $1.510
+    // son $23. Pasados esos $23, todo lo que se subió al 32% ya está abajo del piso y la pantalla
+    // lo sigue mostrando bien.
+    //
+    // NO ROMPE EL HISTORIAL: cada venta guarda el dólar de SU día (v.tcSale) y los meses cerrados
+    // usan ese. Cambiar el de hoy solo mueve los márgenes de hoy y la valuación del stock.
+    //
+    // ESTO SOLO PRUEBA, no escribe nada. Mismo método que se usó con el saldo de MercadoPago, con
+    // los envíos entrantes a Full y con las percepciones: se prueban las fuentes candidatas y se ve
+    // cuál contesta y qué devuelve, ANTES de colgar de ahí un número que mueve todos los precios.
+    // Ojo con leer esto al revés: que una fuente falle hoy no quiere decir que no sirva —puede ser
+    // un corte puntual—, por eso se prueban varias y se comparan entre sí.
+    if (/^probardolar(:|$)/.test(String(process.env.BILLING_PROBE || ''))) {
+      const fin = (await db.get('cyc/finanzas')) || {};
+      const tcCargado = parseFloat(fin.tipo_cambio) || 0;
+      console.log(`=== DE DÓNDE SACAR EL DÓLAR OFICIAL DE VENTA ===\n`);
+      console.log(`  El que está cargado hoy en el panel: ${tcCargado ? money(tcCargado) : '(ninguno)'}\n`);
+      const fuentes = [
+        ['dolarapi',      'https://dolarapi.com/v1/dolares/oficial',              (j) => j && j.venta],
+        ['bluelytics',    'https://api.bluelytics.com.ar/v2/latest',              (j) => j && j.oficial && j.oficial.value_sell],
+        ['ambito',        'https://mercados.ambito.com/dolar/oficial/variacion',  (j) => j && parseFloat(String(j.venta).replace(/\./g, '').replace(',', '.'))],
+        ['argentinadatos','https://api.argentinadatos.com/v1/cotizaciones/dolares/oficial', (j) => Array.isArray(j) && j.length ? j[j.length - 1].venta : null],
+      ];
+      const sirven = [];
+      for (const [nom, url, sacar] of fuentes) {
+        try {
+          const r = await fetch(url, { headers: { 'User-Agent': 'cyc-panel' } });
+          const txt = await r.text();
+          let j = null; try { j = JSON.parse(txt); } catch { /* no es JSON */ }
+          const v = j ? Number(sacar(j)) : null;
+          console.log(`▶ ${nom.padEnd(15)} HTTP ${r.status}`);
+          console.log(`   ${url}`);
+          if (v && isFinite(v) && v > 0) {
+            sirven.push({ nom, v, url });
+            console.log(`   VENTA = ${money(Math.round(v))}${tcCargado ? `  · contra el cargado: ${((v / tcCargado - 1) * 100).toFixed(2)}%` : ''}`);
+          } else {
+            console.log(`   no pude sacar la venta de la respuesta`);
+          }
+          console.log(`   crudo: ${txt.slice(0, 220).replace(/\s+/g, ' ')}\n`);
+        } catch (err) {
+          console.log(`▶ ${nom.padEnd(15)} FALLÓ · ${String(err.message || err).slice(0, 90)}\n`);
+        }
+      }
+      if (!sirven.length) { console.log('Ninguna contestó. No se automatiza nada hasta tener una que sí.'); return; }
+      // Que dos fuentes independientes digan lo mismo es la validación: un número solo no se puede
+      // chequear contra nada, y de ese número salen todos los precios.
+      console.log(`── LAS QUE SIRVEN · ${sirven.length} ──`);
+      sirven.forEach((x) => console.log(`   ${x.nom.padEnd(15)} ${money(Math.round(x.v))}`));
+      if (sirven.length > 1) {
+        const vals = sirven.map((x) => x.v);
+        const dif = (Math.max(...vals) / Math.min(...vals) - 1) * 100;
+        console.log(`\n   Se diferencian entre sí en ${dif.toFixed(2)}%.`);
+        console.log(dif < 0.5
+          ? '   Coinciden: se puede confiar en cualquiera y usar la otra de respaldo.'
+          : '   ⚠️ NO coinciden. Antes de automatizar hay que ver cuál es la que corresponde.');
+      }
+      if (tcCargado) {
+        const ref = sirven[0].v;
+        const mov = (ref / tcCargado - 1) * 100;
+        console.log(`\n── CONTRA EL QUE TENÉS CARGADO ──`);
+        console.log(`   ${money(tcCargado)} → ${money(Math.round(ref))} · ${mov >= 0 ? '+' : ''}${mov.toFixed(2)}%`);
+        console.log(Math.abs(mov) >= 1.5
+          ? `   🔴 Se movió más del 1,5%: los márgenes de la pantalla están ${mov > 0 ? 'MÁS ALTOS' : 'más bajos'} de lo real.`
+          : `   ✓ Abajo del 1,5%: todavía no hace falta cambiarlo.`);
+      }
+      console.log(`\nSOLO LECTURA: no toqué el tipo de cambio ni ningún precio.`);
+      return;
+    }
+
     // BILLING_PROBE=reventas:<MLA[,MLA...]>[:go] → LAS VENTAS VIEJAS AL PRODUCTO CORRECTO
     //
     // PARA QUÉ. Cuando entra una venta, el robot adivina el producto por las palabras del título
