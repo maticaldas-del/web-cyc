@@ -11466,6 +11466,89 @@ async function main() {
       return;
     }
 
+    // BILLING_PROBE=veroficina → QUÉ HAY EN CASA Y QUÉ NECESITA CADA CUENTA
+    //
+    // Vuelca los datos crudos para decidir qué caja armar primero: lo que hay en la oficina, y por
+    // cada cuenta que publica ese producto su stock en Full, sus ventas de 30 días y cuántos días le
+    // duran. NO decide nada ni recomienda: la prioridad se piensa mirando estos números.
+    // A propósito es un volcado y no una recomendación: la cuenta de "cuánto mandar" ya vive en la
+    // pantalla "Armar caja", y tener dos versiones de esa cuenta es pedir que una quede vieja.
+    //
+    // Lo que más importa y por eso va marcado: una cuenta en CERO no vende NADA. Eso no es un ajuste
+    // de reposición, es la diferencia entre vender y no vender.
+    if (/^veroficina(:|$)/.test(String(process.env.BILLING_PROBE || ''))) {
+      const OFI = 'Oficina Mati';
+      const inv = (await db.get('cyc/inventory')) || {};
+      const vp = (await db.get('cyc/ventaprod')) || {}; setDevLive(vp);
+      const links = (await db.get('cyc/mllinks')) || {};
+      const fin = (await db.get('cyc/finanzas')) || {};
+      const tc = parseFloat(fin.tipo_cambio) || 1500;
+      const pIdx = {}; for (const p of products) pIdx[p.id] = p;
+      const sidL = (x) => String(x).replace(/[^a-z0-9]/gi, '_');
+      // ventas de 30 días por producto×cuenta
+      const desde = Date.now() - 30 * 864e5;
+      const v30 = {}, plata30 = {};
+      for (const ents of Object.values(vp)) for (const v of Object.values(ents || {})) {
+        if (!v || v.cancelada || !v.prodId || !v.cuenta) continue;
+        if ((v.ts || 0) < desde) continue;
+        const k = v.prodId + '|' + v.cuenta;
+        v30[k] = (v30[k] || 0) + (v.qty || 1);
+        plata30[k] = (plata30[k] || 0) + (v.total || 0);
+      }
+      // en qué cuentas está publicado cada producto
+      const pubDe = {};
+      for (const e of Object.values(links)) {
+        if (!e || !e.prodId || e.ignored || (e.status || '') === 'closed') continue;
+        if (!labels.includes(e.cuenta)) continue;
+        (pubDe[e.prodId] = pubDe[e.prodId] || new Set()).add(e.cuenta);
+      }
+      // lo que hay en la oficina
+      const enCasa = {};
+      for (const [k, val] of Object.entries(inv)) {
+        const q = parseInt(val) || 0; if (q <= 0) continue;
+        if (!k.endsWith('__' + sidL(OFI))) continue;          // solo la clave de producto, sin variante
+        const pid = k.slice(0, k.length - ('__' + sidL(OFI)).length);
+        if (!pIdx[pid]) continue;
+        enCasa[pid] = q;
+      }
+      const filas = [];
+      for (const [pid, hay] of Object.entries(enCasa)) {
+        const p = pIdx[pid];
+        const ctas = [...(pubDe[pid] || [])];
+        const det = ctas.map((c) => {
+          const stock = parseInt(inv[pid + '__' + sidL(c)]) || 0;
+          const ven = v30[pid + '|' + c] || 0;
+          const plata = plata30[pid + '|' + c] || 0;
+          const dia = ven / 30;
+          return { c, stock, ven, plata, dias: dia > 0 ? Math.round(stock / dia) : null, porDia: Math.round(plata / 30) };
+        }).sort((a, b) => (a.stock - b.stock) || (b.ven - a.ven));
+        const enCero = det.filter((d) => d.stock <= 0 && d.ven > 0);
+        const perdiendo = enCero.reduce((s, d) => s + d.porDia, 0);
+        filas.push({ p, hay, det, enCero: enCero.length, perdiendo, ventaTot: det.reduce((s, d) => s + d.ven, 0) });
+      }
+      // Primero lo que ya está perdiendo plata TODOS LOS DÍAS por estar en cero.
+      filas.sort((a, b) => b.perdiendo - a.perdiendo || b.ventaTot - a.ventaTot);
+      console.log(`=== LO QUE HAY EN LA OFICINA · ${filas.length} productos ===`);
+      console.log('Ordenado por la plata que se pierde POR DÍA en las cuentas que están en CERO.\n');
+      let totPerd = 0, totU = 0;
+      for (const f of filas) {
+        totPerd += f.perdiendo; totU += f.hay;
+        const costo = costoPesos(f.p, 1, tc).costo;
+        console.log(`▶ ${(f.p.name || '').slice(0, 44)}  ·  ${f.hay} u. en casa  ·  costo ${money(costo)} c/u`
+          + (f.perdiendo ? `  ·  🔴 PIERDE ${money(f.perdiendo)}/día` : ''));
+        if (!f.det.length) { console.log('    (no está publicado en ninguna cuenta)'); continue; }
+        for (const d of f.det) {
+          console.log(`    ${d.c.padEnd(9)} Full ${String(d.stock).padStart(4)} u.  ·  vendió ${String(d.ven).padStart(3)} en 30d`
+            + (d.dias != null ? `  ·  le dura ${String(d.dias).padStart(3)} días` : '  ·  sin ventas       ')
+            + (d.stock <= 0 && d.ven > 0 ? '  ← EN CERO, NO VENDE' : ''));
+        }
+      }
+      console.log(`\nTOTAL: ${totU} unidades en casa · se pierden ${money(totPerd)} por día por las cuentas en cero.`);
+      console.log('\nSOLO LECTURA. Las fichas NO tienen peso ni medidas, así que no se puede calcular');
+      console.log('cuántas unidades entran en una caja: eso se decide al armarla.');
+      return;
+    }
+
     // BILLING_PROBE=percepcalc[:desde:hasta] → EL % REAL DE IIBB DE CADA CUENTA
     //
     // Divide las percepciones que ML facturó (tomadas a mano de la pantalla, porque la API no las da
