@@ -5940,22 +5940,42 @@ async function main() {
             // El costo es fijo (no depende del precio nuevo), igual que en la pantalla: costo full
             // del producto + el promedio de impuestos de sus ventas. Se itera igual porque la
             // comisión de ML no es lineal y hay que preguntársela precio por precio.
-            const costoTot = costoBase + mlxDe(p.id);
+            // LOS IMPUESTOS, EN LOS QUE NUNCA VENDIERON. Segunda mitad de "emparejar las fórmulas"
+            // (22/08/2026). mlxDe() es el promedio de IIBB + monotributo de las VENTAS del producto,
+            // y en un producto que nunca vendió devuelve CERO — o sea que el costo salía sin
+            // impuestos y el precio calculado quedaba corto.
+            //
+            // Medido en el Xiaomi Watch 5 Lite (MLA1871169547): así daba $143.950 para el 32%,
+            // cuando unapub —que sí los estima como % del precio— daba $161.850. Los ~$18.000 de
+            // diferencia son justo el 6,41% de IIBB + monotributo sobre el precio. Aplicar $143.950
+            // habría dejado la publicación abajo del piso diciendo que llegó: exactamente el error
+            // del 13/08, cuando se subieron 62 y en la pantalla seguían en 27-29%.
+            //
+            // Donde SÍ hay ventas no se cambia nada: manda el promedio real, que es el que usa la
+            // pantalla. El % estimado es solo para los que no tienen ninguna venta.
+            const impPctS = (mlExtraPct(label) + monoS) / 100;
+            const mlxProd = mlxDe(p.id);
+            const sinImpMedido = !(mlxProd > 0);
+            const costoTotDe = (P) => costoBase + (sinImpMedido ? P * impPctS : mlxProd);
+            const costoTot = costoTotDe(precio0);
             const netoDe = async (P) => {
               const c = await feeAt(b.site_id || 'MLA', P, b.listing_type_id, b.category_id, t.access_token);
               return c == null ? null : P - c - envio;
             };
-            const metaDe = () => costoTot * (1 + META);
+            // La meta se mide contra el costo AL PRECIO QUE SE ESTÁ PROBANDO: si el impuesto es un
+            // % del precio, subir el precio sube también el costo, y con un costo fijo la cuenta
+            // se quedaba corta.
+            const metaDe = (P) => costoTotDe(P) * (1 + META);
             // El piso decide SI se toca; la meta decide HASTA DÓNDE. Con los dos pegados, cualquier
             // cosa mínima —un envío un peso más caro— volvía a hundir lo recién subido.
-            const pisoDe = () => costoTot * (1 + PISO);
+            const pisoDe = (P) => costoTotDe(P) * (1 + PISO);
             let P = Math.round(precio0), ok = false, n0 = null, m0 = null;
             for (let it = 0; it < 14; it++) {
               const n = await netoDe(P); if (n == null) break;
-              const m = metaDe();
+              const m = metaDe(P);
               // La primera vuelta mide el precio de HOY contra el PISO: es lo que decide si esta
               // publicación entra o no. Las vueltas siguientes buscan la META.
-              if (it === 0) { n0 = n; m0 = pisoDe(); }
+              if (it === 0) { n0 = n; m0 = pisoDe(P); }
               if (n >= m) { ok = true; break; }
               // El hueco se cierra ~0,7 pesos por peso de aumento; se pide 1,5× para no quedar corto.
               P = Math.ceil((P + (m - n) * 1.5) / 10) * 10;
