@@ -5915,7 +5915,25 @@ async function main() {
               for (const v of ventas) if (Math.round(v.tot) === pv) { const x = v.tot - v.net - cv; if (x > envio) envio = x; }
             }
             const nomE = (links[mla].title || p.name || mla).slice(0, 40);
-            if (!isFinite(envio)) { frenados.push({ mla, label, nom: nomE, why: 'sin ventas: no hay envío que deducir (no invento el margen)' }); continue; }
+            // SIN VENTAS: se le pregunta la TARIFA a ML antes de rendirse.
+            //
+            // Emparejar las fórmulas, decisión suya del 22/08/2026. Hasta hoy la pantalla "Margen ML"
+            // y este comando decían cosas distintas de la MISMA publicación: el Xiaomi Watch 5 Lite
+            // mostraba +16% en pantalla y acá salía "no puedo calcular". La pantalla, desde el
+            // arreglo del 20/08, cuando un producto nunca vendió usa la tarifa de ML
+            // (envioSegunML); este comando seguía esperando ventas propias y se rendía. Dos
+            // fórmulas para lo mismo es de donde salieron los errores de margen del 19/08.
+            //
+            // El orden no cambia: las ventas propias mandan donde existen, porque son el dato de la
+            // realidad. La tarifa es el respaldo, y solo para los que nunca vendieron —que son
+            // justo los que hay que revisar y los únicos que quedaban afuera.
+            let envioDeTarifa = false;
+            if (!isFinite(envio)) {
+              const rT = await envioSegunML(mla, t.access_token);
+              if (rT) { envio = rT.envio; envioDeTarifa = true; }
+            }
+            // Si ML tampoco da la tarifa no se inventa nada: sigue sin tocarse.
+            if (!isFinite(envio)) { frenados.push({ mla, label, nom: nomE, why: 'sin ventas y ML no da la tarifa de envío: no invento el margen' }); continue; }
             if (envio < 0) envio = 0;
             const costoBase = costoPesos(p, 1, tcS).costo;
             if (!(costoBase > 0)) continue;
@@ -5952,7 +5970,7 @@ async function main() {
             let final = P, nota = '';
             if (precio0 < TOPE_ENVIO && P >= TOPE_ENVIO) { final = 32999; nota = ` (frenado en la barrera de los ${money(TOPE_ENVIO)}; para el piso hacían falta ${money(P)})`; }
             if (final <= precio0) { frenados.push({ mla, label, nom, why: `ya está en la barrera de los ${money(TOPE_ENVIO)}` }); continue; }
-            subir.push({ mla, label, nom, prod: p.name, de: Math.round(precio0), a: final, nota, vars, tok: t.access_token, pct: ((n0 - costoTot) / costoTot * 100) });
+            subir.push({ mla, label, nom, prod: p.name, de: Math.round(precio0), a: final, nota, vars, tok: t.access_token, pct: ((n0 - costoTot) / costoTot * 100), envioDeTarifa });
           }
         }
       }
@@ -5960,7 +5978,7 @@ async function main() {
       console.log(`Envío del PEOR caso, igual que bajopiso y unapub.\n`);
       console.log(`── PARA SUBIR · ${subir.length} ──`);
       for (const s of subir) {
-        console.log(`  ${s.mla} · ${s.label.padEnd(8)} · ${s.nom.padEnd(40)} ${money(s.de).padStart(10)} → ${money(s.a).padStart(10)}${s.vars.length ? ` · ${s.vars.length} variantes` : ''}${s.nota}`);
+        console.log(`  ${s.mla} · ${s.label.padEnd(8)} · ${s.nom.padEnd(40)} ${money(s.de).padStart(10)} → ${money(s.a).padStart(10)}${s.vars.length ? ` · ${s.vars.length} variantes` : ''}${s.envioDeTarifa ? ' · envío de la TARIFA de ML (nunca vendió)' : ''}${s.nota}`);
       }
       if (frenados.length) {
         console.log(`\n── NO SE TOCAN · ${frenados.length} ──`);
@@ -9465,9 +9483,20 @@ async function main() {
         const cv = await feeAt(pv); if (cv == null) continue;
         for (const v of usar) { if (Math.round(v.tot) !== pv) continue; const x = v.tot - v.net - cv; if (x > envioMax) envioMax = x; if (x < envioMin) envioMin = x; }
       }
-      if (!isFinite(envioMax)) { console.log(`\n⚠️ No tengo ventas con neto para deducir el envío: sin eso el margen sería un invento.`); return; }
+      // SIN VENTAS: la TARIFA de ML, igual que la pantalla "Margen ML" y que submargen.
+      // Emparejar las fórmulas, decisión suya del 22/08/2026: antes acá se cortaba y la pantalla
+      // igual mostraba un margen, así que los dos números no coincidían nunca en las publicaciones
+      // que nunca vendieron. Las ventas propias siguen mandando donde existen.
+      let envioDeTarifa = false;
+      if (!isFinite(envioMax)) {
+        const rT = await envioSegunML(MLA, t.access_token);
+        if (rT) { envioMax = rT.envio; envioMin = rT.envio; envioDeTarifa = true; }
+      }
+      if (!isFinite(envioMax)) { console.log(`\n⚠️ Ni ventas ni tarifa de ML: sin envío el margen sería un invento.`); return; }
       envioMax = Math.max(0, envioMax); envioMin = Math.max(0, isFinite(envioMin) ? envioMin : 0);
-      console.log(`  envío deducido: peor caso ${money(Math.round(envioMax))} · mejor caso ${money(Math.round(envioMin))}`);
+      console.log(envioDeTarifa
+        ? `  envío: ${money(Math.round(envioMax))} · sale de la TARIFA de ML (esta publicación nunca vendió)`
+        : `  envío deducido: peor caso ${money(Math.round(envioMax))} · mejor caso ${money(Math.round(envioMin))}`);
       // Margen a un precio cualquiera, con el envío peor (conservador) y el mejor
       const margenA = async (precio, envio) => {
         const com = await feeAt(precio); if (com == null) return null;
