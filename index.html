@@ -665,7 +665,7 @@ footer{margin-top:32px;padding-top:14px;border-top:1px solid var(--border);font-
       <input class="fin-input money" type="text" inputmode="numeric" id="f_corregir" placeholder="$0" onchange="saveFin('corregir',this.value)" style="width:150px">
     </div>
     <div class="breakdown-grid">
-      <div class="bk-card"><div class="bk-lbl">Stock ML</div><div class="bk-val neutral" id="bk_stock_ml">$0</div><div id="dbk_stock_ml" style="margin-top:3px"></div><div id="bk_stock_ml_ctas" style="margin-top:7px"></div><div class="bk-lbl" style="margin-top:8px">Stock Local</div><div class="bk-val neutral" id="bk_stock_local" style="font-size:.8rem">$0</div><div id="dbk_stock_local" style="margin-top:3px"></div><div id="bk_camino_wrap" style="display:none"><div class="bk-lbl" style="margin-top:8px">En camino a Full</div><div class="bk-val neutral" id="bk_stock_camino" style="font-size:.8rem">$0</div><div id="dbk_stock_camino" style="font-size:.58rem;color:var(--muted);margin-top:2px"></div></div><div class="bk-lbl" style="margin-top:8px;opacity:.75">Total stock</div><div id="dbk_stock" style="margin-top:3px"></div></div>
+      <div class="bk-card"><div class="bk-lbl">Stock ML</div><div class="bk-val neutral" id="bk_stock_ml">$0</div><div id="dbk_stock_ml" style="margin-top:3px"></div><div id="bk_stock_ml_ctas" style="margin-top:7px"></div><div class="bk-lbl" style="margin-top:8px">Stock Local</div><div class="bk-val neutral" id="bk_stock_local" style="font-size:.8rem">$0</div><div id="dbk_stock_local" style="margin-top:3px"></div><div id="bk_camino_wrap" style="display:none"><div class="bk-lbl" style="margin-top:8px">En camino a Full</div><div class="bk-val neutral" id="bk_stock_camino" style="font-size:.8rem">$0</div><div id="dbk_stock_camino" style="font-size:.58rem;color:var(--muted);margin-top:2px"></div></div><div class="bk-lbl" style="margin-top:8px;opacity:.75">Total stock</div><div class="bk-val neutral" id="bk_stock_tot" style="font-size:.8rem">$0</div><div id="dbk_stock" style="margin-top:3px"></div></div>
       <div class="bk-card"><div class="bk-lbl">Efectivo & Digital</div><div class="bk-val pos" id="bk_efectivo">$0</div><div id="dbk_efectivo" style="margin-top:5px"></div></div>
       <div class="bk-card"><div class="bk-lbl">Lo que nos deben</div><div class="bk-val pos" id="bk_deben">$0</div><div id="dbk_deben" style="margin-top:5px"></div></div>
       <div class="bk-card"><div class="bk-lbl">Lo que debemos</div><div class="bk-val neg" id="bk_deudas">$0</div><div id="dbk_deudas" style="margin-top:5px"></div></div>
@@ -2249,7 +2249,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='14.4';
+const APP_VERSION='14.5';
 // El problema real que esto resuelve no es curiosidad: es que el celular guarda la app y sigue
 // mostrando la de ayer sin avisar. Varias veces se revisó un cambio que ya estaba subido y no se
 // veía. Por eso, además del número, el chip avisa cuando hay una versión nueva esperando.
@@ -4444,7 +4444,6 @@ function updateArqueo(){
   // Si estamos viendo un snapshot, usar sus valores guardados de stock (no recalcular)
   // así el display y las comparaciones son consistentes.
   const dispStockML=(_arqViewYM&&viewSnap?.stockML!=null)?viewSnap.stockML:c.stockML;
-  const dispStockVal=(_arqViewYM&&viewSnap?.stock!=null)?viewSnap.stock:c.stockVal;
   const dispTotal=(_arqViewYM&&viewSnap?.total!=null)?viewSnap.total:c.total;
   // Comparación: si estamos viendo un snapshot, comparar contra el ANTERIOR; si es el primero, sin comparación.
   // Si estamos en Actual, comparar contra el más reciente.
@@ -4461,16 +4460,37 @@ function updateArqueo(){
   setCard('bk_stock_ml',dispStockML,'neutral');setCard('bk_stock_local',stockLocalFin,'neutral');setCard('bk_efectivo',c.efect,'pos');
   setCard('bk_deben',c.deben,'pos');setCard('bk_deudas',c.deuda,'neg');
   const yest=_arqViewYM?null:state.daily[yesterdayStr()];
-  const prevStockVal=prev?.stock??(yest?.stockVal);
+  // TOTAL STOCK = EXACTAMENTE LOS TRES CARTELES DE ARRIBA: Stock ML + Stock Local + En camino.
+  // Pedido suyo del 22/08/2026: "no me dan los numeros". Y no daban. El total mostraba c.stockVal,
+  // que es Stock ML + las unidades contadas + lo que va en camino, y NO incluye Oficina CYC ni
+  // Vendedores — los dos entran igual al patrimonio, pero por el lado de los activos. O sea que la
+  // variacion del total no era la suma de las variaciones de sus partes y no habia forma de
+  // chequearla a mano: Stock ML -$2.202 + Local +$829 tenia que dar -$1.373 y decia +$770.
+  // Ahora se suman los tres numeros que se ven, asi que la cuenta se puede hacer con la pantalla.
+  // Se usa stockLocalFin (of_viejo + of_mia + vendedores) y no c.stockLocal a proposito: es el
+  // numero del cartel. Los dos valen lo mismo cuando hay unidades contadas -of_mia se mantiene
+  // sincronizado con ellas en syncOfiMati()- y cuando no hay nada contado of_mia es el valor
+  // escrito a mano, que es el unico que existe. En los dos casos cada peso se cuenta una sola vez.
+  // Lo de en camino de un mes cerrado no se guarda aparte en el snapshot, pero sale de restar:
+  // stock (= ML + local + camino) - stockML - stockLocal.
+  const _camDe=(o)=>Math.max(0,(o?.stock??0)-(o?.stockML??0)-(o?.stockLocal??0));
+  const dispCamino=(_arqViewYM&&viewSnap)?_camDe(viewSnap):(c.stockCamino||0);
+  const dispStockTot=dispStockML+stockLocalFin+dispCamino;
+  setCard('bk_stock_tot',dispStockTot,'neutral');
+  // El anterior se arma con la MISMA suma, para comparar contra lo mismo. El snapshot mensual
+  // guarda las finanzas, asi que se puede reconstruir entero; el diario no, y por eso ahora
+  // tambien guarda stockTot (los dias viejos no lo tienen y ahi no se muestra variacion, que es
+  // mejor que mostrar una variacion contra otra cuenta).
+  const prevLocalFin=prev?['of_viejo','of_mia','vendedores'].reduce((a,k)=>a+(parseFloat(prev.finanzas?.[k])||0),0):undefined;
+  const prevStockTot=prev?((prev.stockML||0)+(prevLocalFin||0)+_camDe(prev)):(yest?.stockTot);
   const dbkStockEl=document.getElementById('dbk_stock');
-  if(dbkStockEl)dbkStockEl.innerHTML=prevStockVal!==undefined?deltaBadge(dispStockVal,prevStockVal):'';
+  if(dbkStockEl)dbkStockEl.innerHTML=(prevStockTot!==undefined&&prevStockTot!==null)?deltaBadge(dispStockTot,prevStockTot):'';
   // Variación de CADA stock por separado, no sólo la del total. Pedido suyo del 18/08/2026: con un
   // solo número no se sabe si subió la mercadería que está en ML o la que está en casa, y son dos
   // cosas distintas — la de ML se vende sola, la de casa hay que despacharla.
   // El anterior del local se calcula con la MISMA suma que el número que se muestra arriba
   // (of_viejo + of_mia + vendedores del snapshot), para que la comparación sea contra lo mismo.
   const prevStockML=prev?.stockML;
-  const prevLocalFin=prev?['of_viejo','of_mia','vendedores'].reduce((a,k)=>a+(parseFloat(prev.finanzas?.[k])||0),0):undefined;
   const dbkML=document.getElementById('dbk_stock_ml');
   if(dbkML)dbkML.innerHTML=(prevStockML!==undefined&&prevStockML!==null)?deltaBadge(dispStockML,prevStockML):'';
   // ── STOCK ML, CUENTA POR CUENTA ──
@@ -4629,7 +4649,11 @@ function saveDailySnap(){
     if(!db)return;
     const c=calcArqueo();
     const key=todayStr();
-    await fbSet('daily/'+key,{ts:Date.now(),stockVal:c.stockVal,efect:c.efect,deben:c.deben,deuda:c.deuda,total:c.total});
+    // stockTot = los tres carteles sumados (ML + Local + En camino), que es lo que muestra la
+    // pantalla. stockVal queda igual porque lo usan el patrimonio y los cierres de mes.
+    const _lf=(parseFloat(state.finanzas['of_viejo'])||0)+(parseFloat(state.finanzas['of_mia'])||0)+(parseFloat(state.finanzas['vendedores'])||0);
+    const stockTot=c.stockML+_lf+(c.stockCamino||0);
+    await fbSet('daily/'+key,{ts:Date.now(),stockVal:c.stockVal,stockTot,efect:c.efect,deben:c.deben,deuda:c.deuda,total:c.total});
   },2000);
 }
 
