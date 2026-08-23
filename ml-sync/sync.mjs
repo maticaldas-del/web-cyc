@@ -2819,16 +2819,36 @@ async function main() {
       for (const p of products) {
         const v = porProd[p.id] || [];
         if (!v.length) { faltan.push(p); continue; }
-        const key = (x) => `${x.l}x${x.a}x${x.h}|${x.g}`;
-        const distintas = new Set(v.map(key));
+        // ── CUÁNDO DOS MEDIDAS SON "LA MISMA" ──────────────────────────────────
+        // Comparar los números pelados marcaba como "duda" cosas que no lo son y le daría 40
+        // productos para revisar cuando importan 5:
+        //   · MISMA CAJA GIRADA. El Victoria's Secret venía 17,8x5,2x3 en una publicación y
+        //     5x5,2x16,4 en otra: es el mismo frasco con los lados en otro orden. Y da igual,
+        //     porque para saber cuántos entran se prueban las tres formas de apoyarlo.
+        //     Por eso se comparan los tres lados ORDENADOS de menor a mayor.
+        //   · MILÍMETROS. El Timer daba 6,8 en una y 7,2 en otra. Con 70 cm de caja eso no cambia
+        //     ni una unidad. Se toleran 1 cm por lado y 25% de peso.
+        // Lo que SÍ queda como duda es cuando cambia un lado entero (el Adaptador universal: 8,4
+        // contra 14,4) o el peso se va al doble: ahí hay que mirarlo.
+        const ord = (x) => [x.l, x.a, x.h].slice().sort((m, n) => m - n);
+        const igual = (x, y) => {
+          const ox = ord(x), oy = ord(y);
+          if (ox.some((d, i) => Math.abs(d - oy[i]) > 1)) return false;
+          const mx = Math.max(x.g, y.g), mn = Math.min(x.g, y.g);
+          return mn > 0 && mx / mn <= 1.25;
+        };
+        // Se agrupan las medidas parecidas entre sí. Un solo grupo = todas dicen lo mismo.
+        const grupos = [];
+        for (const x of v) { const g = grupos.find((gr) => igual(gr[0], x)); if (g) g.push(x); else grupos.push([x]); }
+        const hayDuda = grupos.length > 1;
         // La más grande por volumen: si hay desacuerdo, mejor que sobre lugar en la caja.
         const vol = (x) => x.l * x.a * x.h;
         const may = v.slice().sort((x, y) => vol(y) - vol(x) || y.g - x.g)[0];
         const m = { largoCm: may.l, anchoCm: may.a, altoCm: may.h, pesoG: may.g,
                     volCm3: Math.round(vol(may)), fuente: 'ML', mla: may.mla, pubs: v.length,
-                    duda: distintas.size > 1 ? true : null, ts: Date.now() };
+                    duda: hayDuda ? true : null, ts: Date.now() };
         upd[p.id] = m;
-        (distintas.size > 1 ? dudas : seguros).push({ p, m, v, distintas });
+        (hayDuda ? dudas : seguros).push({ p, m, v, grupos });
       }
       console.log(`\n══ RESULTADO sobre ${products.length} productos ══`);
       console.log(`   (las que ya tengan medida cargada A MANO no se tocan)`);
