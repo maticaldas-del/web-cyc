@@ -2249,7 +2249,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='15.5';
+const APP_VERSION='15.6';
 // El problema real que esto resuelve no es curiosidad: es que el celular guarda la app y sigue
 // mostrando la de ayer sin avisar. Varias veces se revisó un cambio que ya estaba subido y no se
 // veía. Por eso, además del número, el chip avisa cuando hay una versión nueva esperando.
@@ -3638,9 +3638,14 @@ const _ck=(pid,va)=>pid+'|'+(va||'');
 const cajaDe=(cta)=>((state.cajas_armando||{})[cta]||{}).items||{};
 function setOfiFiltro(c){
   ofiFiltroCuenta=(ofiFiltroCuenta===c?'':c);
-  // Si esta cuenta ya tiene una caja a medio armar, se sigue con esa. Si no, arranca con lo
-  // sugerido cargado para editarlo.
-  if(ofiFiltroCuenta&&!Object.keys(cajaDe(ofiFiltroCuenta)).length)return cajaSugerida();
+  // ELEGIR UNA CUENTA NO CARGA NADA. Pedido suyo del 23/08/2026: "al clickear cada cuenta me arma
+  // directamente los sugeridos, no quiero eso; quiero que este vacio (o como lo habia dejado) y si
+  // quiero cargar lo sugerido apreto el boton".
+  // Antes, entrar a una cuenta sin caja empezada llenaba la caja con la sugerencia sola. Dos
+  // problemas: la caja quedaba armada sin que nadie la armara —y el 📦 del boton pasaba a mostrar
+  // el mismo numero que la sugerencia, que es de donde salia el "repite el mismo numero"—, y no
+  // habia forma de mirar una cuenta sin que te dejara una caja a medio armar.
+  // Ahora se abre como estaba: vacia si nunca se armo, o con lo que haya quedado a medias.
   renderOfiCaja();
 }
 async function _guardarCajaArmando(cta,items){
