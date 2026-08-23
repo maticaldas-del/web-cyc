@@ -14754,34 +14754,42 @@ async function main() {
             else if (p) {
               const kTot = map[mla].prodId + '__' + sid(label);
               let total = 0;
-              // ── UNA PUBLICACIÓN APAGADA MIENTE SU STOCK ──────────────────────────────
-              // Encontrado el 23/08/2026 por él: el panel mostraba 7 unidades del Joystick x3 en
-              // Matías y en ML no había ninguna. Sus dos publicaciones están CERRADAS, y el
-              // `available_quantity` que devuelve /items para una publicación apagada se queda con
-              // el último número que tuvo — no se pone en cero. El robot lo sumaba igual y ese 7
-              // quedaba clavado para siempre: plata inventada en el patrimonio del Arqueo y un
-              // quiebre tapado (la reposición cree que hay y no lo pide).
-              // El número que no miente es el del INVENTARIO de Full, que es lo que ML tiene de
-              // verdad en el depósito. Se consulta solo para las publicaciones que NO están activas,
-              // que son las que mienten: las activas coincidieron en todo lo medido y consultarlas
-              // todas sería una llamada más por publicación en cada vuelta.
-              // Y DE PASO, EL OTRO ERROR DEL MISMO CASO: las dos publicaciones cerradas comparten
-              // el MISMO inventario (ZQLU34716). Sumar las dos contaría la misma mercadería dos
-              // veces. Por eso cada inventario se cuenta UNA sola vez por producto×cuenta.
-              const activa = st === 'active';
-              const stockDeInv = async (invId) => {
-                if (!invId) return null;
+              // ── EL STOCK DE FULL SE PREGUNTA AL DEPÓSITO, NO A LA PUBLICACIÓN ────────
+              // Dos casos que él encontró el 23/08/2026 y que tienen la MISMA raíz: confiar en el
+              // `available_quantity` que devuelve /items.
+              //
+              //  1. UNA PUBLICACIÓN APAGADA MIENTE. El panel mostraba 7 unidades del Joystick x3 en
+              //     Matías y en ML no hay ninguna. Sus dos publicaciones están CERRADAS, y para una
+              //     publicación apagada ese número se queda con el último que tuvo: no se pone en
+              //     cero. Como el stock sólo se reescribe con lo que llega en la vuelta, ese 7
+              //     quedaba clavado para siempre.
+              //  2. DOS PUBLICACIONES PUEDEN COMPARTIR UN DEPÓSITO. El Termómetro pincha tiene dos
+              //     publicaciones activas en Ayelen apuntando al MISMO inventario (GKVM69940, 36
+              //     unidades). Sumar las dos cuenta la misma mercadería dos veces.
+              //
+              // Los dos daños son los mismos y no se ven en pantalla: plata inventada en el
+              // patrimonio del Arqueo (unidades × costo) y quiebres tapados, porque la reposición
+              // cree que hay stock y no lo pide.
+              //
+              // Se resuelve preguntando SIEMPRE al inventario de Full, que es lo que ML tiene de
+              // verdad en el depósito, y contando cada inventario UNA sola vez.
+              // Por qué siempre y no sólo en las apagadas: primero se probó eso, y era una apuesta a
+              // que las activas no mienten. Peor todavía, si dos publicaciones activas se REPARTEN
+              // el número (20 y 16 de un depósito de 36), contar una sola daría 20 — cambiar un
+              // error de más por uno de menos. Preguntando al depósito no hay nada que adivinar.
+              // Se pide una vez por inventario, no por publicación, así las compartidas no duplican
+              // la llamada.
+              const stockDeInv = async (invId, fallback) => {
+                if (!invId) return fallback;
                 const kIv = kTot + '|' + invId;
-                if (invYaContado.has(kIv)) return 0;      // ya lo sumó otra publicación
+                if (invYaContado.has(kIv)) return 0;      // ya lo contó otra publicación
                 invYaContado.add(kIv);
                 try { return Number((await mlGet('/inventories/' + invId + '/stock/fulfillment', t.access_token))?.available_quantity) || 0; }
-                catch { return null; }                    // si no contesta, se usa lo que dijo /items
+                catch { return fallback; }                // si no contesta, lo de antes
               };
               if (Array.isArray(b.variations) && b.variations.length) {
                 for (const v of b.variations) {
-                  let q = v.available_quantity || 0;
-                  if (!activa) { const r = await stockDeInv(v.inventory_id); if (r !== null) q = r; }
-                  else if (v.inventory_id) { const kIv = kTot + '|' + v.inventory_id; if (invYaContado.has(kIv)) q = 0; else invYaContado.add(kIv); }
+                  const q = await stockDeInv(v.inventory_id, v.available_quantity || 0);
                   total += q;
                   const vals = (v.attribute_combinations || []).map((a) => norm(a.value_name || ''));
                   const pv = (p.variantes || []).find((x) => vals.includes(norm(x)));
@@ -14791,9 +14799,7 @@ async function main() {
                   }
                 }
               } else {
-                let q = b.available_quantity || 0;
-                if (!activa) { const r = await stockDeInv(b.inventory_id); if (r !== null) q = r; }
-                else if (b.inventory_id) { const kIv = kTot + '|' + b.inventory_id; if (invYaContado.has(kIv)) q = 0; else invYaContado.add(kIv); }
+                const q = await stockDeInv(b.inventory_id, b.available_quantity || 0);
                 total += q;
                 // ── UNA PUBLICACIÓN POR VARIANTE (los aromas del Paulvic) ──
                 // Acá el stock por variante solo se guardaba cuando la publicación tenía variantes
