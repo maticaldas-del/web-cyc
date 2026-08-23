@@ -14150,6 +14150,9 @@ async function main() {
   const stockTot = {}; // prodId__Cuenta -> unidades (suma de sus publicaciones EN FULL)
   const depositoIgnorado = []; // publicaciones fuera de Full: su "stock" no existe (ver más abajo)
   const stockVar = {}; // prodId__Cuenta__v__Variante -> unidades
+  // Inventarios de Full ya contados, por producto×cuenta: dos publicaciones pueden compartir el
+  // mismo inventario y sumarlas contaría la misma mercadería dos veces (ver el caso del Joystick).
+  const invYaContado = new Set();
 
   const state = (await db.get('mlapi/state')) || {};
   let cargadas = 0;
@@ -14674,7 +14677,9 @@ async function main() {
         const chunk = ids.slice(k, k + 20);
         let arr;
         try {
-          arr = await mlGet('/items?ids=' + chunk.join(',') + '&attributes=id,status,sub_status,permalink,price,original_price,deal_ids,available_quantity,variations,shipping,title', t.access_token);
+          // inventory_id hace falta para leer el stock REAL de Full de las publicaciones apagadas
+          // (ver el caso del Joystick x3 más abajo). Sin pedirlo, b.inventory_id viene vacío.
+          arr = await mlGet('/items?ids=' + chunk.join(',') + '&attributes=id,status,sub_status,permalink,price,original_price,deal_ids,available_quantity,inventory_id,variations,shipping,title', t.access_token);
         } catch { continue; }
         for (const row of (arr || [])) {
           const b = row.body || {};
@@ -14740,9 +14745,34 @@ async function main() {
             else if (p) {
               const kTot = map[mla].prodId + '__' + sid(label);
               let total = 0;
+              // ── UNA PUBLICACIÓN APAGADA MIENTE SU STOCK ──────────────────────────────
+              // Encontrado el 23/08/2026 por él: el panel mostraba 7 unidades del Joystick x3 en
+              // Matías y en ML no había ninguna. Sus dos publicaciones están CERRADAS, y el
+              // `available_quantity` que devuelve /items para una publicación apagada se queda con
+              // el último número que tuvo — no se pone en cero. El robot lo sumaba igual y ese 7
+              // quedaba clavado para siempre: plata inventada en el patrimonio del Arqueo y un
+              // quiebre tapado (la reposición cree que hay y no lo pide).
+              // El número que no miente es el del INVENTARIO de Full, que es lo que ML tiene de
+              // verdad en el depósito. Se consulta solo para las publicaciones que NO están activas,
+              // que son las que mienten: las activas coincidieron en todo lo medido y consultarlas
+              // todas sería una llamada más por publicación en cada vuelta.
+              // Y DE PASO, EL OTRO ERROR DEL MISMO CASO: las dos publicaciones cerradas comparten
+              // el MISMO inventario (ZQLU34716). Sumar las dos contaría la misma mercadería dos
+              // veces. Por eso cada inventario se cuenta UNA sola vez por producto×cuenta.
+              const activa = st === 'active';
+              const stockDeInv = async (invId) => {
+                if (!invId) return null;
+                const kIv = kTot + '|' + invId;
+                if (invYaContado.has(kIv)) return 0;      // ya lo sumó otra publicación
+                invYaContado.add(kIv);
+                try { return Number((await mlGet('/inventories/' + invId + '/stock/fulfillment', t.access_token))?.available_quantity) || 0; }
+                catch { return null; }                    // si no contesta, se usa lo que dijo /items
+              };
               if (Array.isArray(b.variations) && b.variations.length) {
                 for (const v of b.variations) {
-                  const q = v.available_quantity || 0;
+                  let q = v.available_quantity || 0;
+                  if (!activa) { const r = await stockDeInv(v.inventory_id); if (r !== null) q = r; }
+                  else if (v.inventory_id) { const kIv = kTot + '|' + v.inventory_id; if (invYaContado.has(kIv)) q = 0; else invYaContado.add(kIv); }
                   total += q;
                   const vals = (v.attribute_combinations || []).map((a) => norm(a.value_name || ''));
                   const pv = (p.variantes || []).find((x) => vals.includes(norm(x)));
@@ -14752,7 +14782,9 @@ async function main() {
                   }
                 }
               } else {
-                const q = b.available_quantity || 0;
+                let q = b.available_quantity || 0;
+                if (!activa) { const r = await stockDeInv(b.inventory_id); if (r !== null) q = r; }
+                else if (b.inventory_id) { const kIv = kTot + '|' + b.inventory_id; if (invYaContado.has(kIv)) q = 0; else invYaContado.add(kIv); }
                 total += q;
                 // ── UNA PUBLICACIÓN POR VARIANTE (los aromas del Paulvic) ──
                 // Acá el stock por variante solo se guardaba cuando la publicación tenía variantes
