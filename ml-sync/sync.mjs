@@ -2913,6 +2913,13 @@ async function main() {
       const sidL = (x) => String(x).replace(/[^a-z0-9]/gi, '_');
       const LOCS = ['Adriana', 'Luciana', 'Ayelen', 'Matias'];
       const toks = {};
+      // UN INVENTARIO SE CUENTA UNA SOLA VEZ. Error mío, encontrado el 23/08/2026 con el Termómetro
+      // pincha: sus dos publicaciones de Ayelen (MLA1472539211 y MLA3376866646) están las dos
+      // activas y apuntan al MISMO inventario de Full (GKVM69940, 36 unidades). Sumar las dos daba
+      // "ML dice 72" y hacía saltar una alarma que no existía — el panel tenía bien las 36.
+      // Un verificador que cuenta doble inventa alarmas para siempre, que es justo lo que este
+      // probe existe para evitar.
+      const invVistos = new Set();
       for (const p of cand) {
         console.log(`\n══ ${p.name} ══  (${p.id})`);
         const mias = Object.entries(links).filter(([m, e]) => m.startsWith('MLA') && e && e.prodId === p.id && !e.ignored);
@@ -2944,8 +2951,10 @@ async function main() {
                 const st = await mlGet('/inventories/' + iv + '/stock/fulfillment', tok);
                 const disp = Number(st?.available_quantity) || 0;
                 const noDisp = Number(st?.not_available_quantity) || 0;
-                real += disp;
-                detalle.push(`${iv}: ${disp} disponibles${noDisp ? ` (+${noDisp} no disponibles)` : ''}`);
+                const kIv = p.id + '|' + cta + '|' + iv;
+                const repetido = invVistos.has(kIv);
+                if (!repetido) { invVistos.add(kIv); real += disp; }
+                detalle.push(`${iv}: ${disp} disponibles${noDisp ? ` (+${noDisp} no disponibles)` : ''}${repetido ? '  ⚠️ MISMO INVENTARIO que otra publicación: no se suma de nuevo' : ''}`);
               } catch (err) { detalle.push(`${iv}: ✗ ${err.message || err}`); }
             }
           }

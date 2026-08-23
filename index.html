@@ -2249,7 +2249,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='15.6';
+const APP_VERSION='15.7';
 // El problema real que esto resuelve no es curiosidad: es que el celular guarda la app y sigue
 // mostrando la de ayer sin avisar. Varias veces se revisó un cambio que ya estaba subido y no se
 // veía. Por eso, además del número, el chip avisa cuando hay una versión nueva esperando.
@@ -7057,8 +7057,8 @@ async function syncPedidosAuto(){
       delete existing.variante;
       // OJO: acá se arma un objeto NUEVO y se pisa el pedido entero. Todo campo que no se arrastre
       // se pierde en silencio — es el mismo agujero que ya se comió el estado de las publicaciones
-      // en cyc/mllinks. Por eso compradoU/compradoTs se copian del que estaba.
-      updates[coll+'/'+id]={id,producto:r.p.name,prodId:pid,cantidad:r.aComprar,nota,estado,auto:true,ts:existing.ts||Date.now(),variantesNec:variantesNec||null,proveedor:provNom,riesgo:r.riesgo,riesgoComprar:r.riesgoComprar,riesgoMandar:r.riesgoMandar,gan30d:r.gan30d,compradoU:existing.compradoU||null,compradoTs:existing.compradoTs||null};
+      // en cyc/mllinks. Si algún día se agrega un campo que se edita a mano, hay que copiarlo acá.
+      updates[coll+'/'+id]={id,producto:r.p.name,prodId:pid,cantidad:r.aComprar,nota,estado,auto:true,ts:existing.ts||Date.now(),variantesNec:variantesNec||null,proveedor:provNom,riesgo:r.riesgo,riesgoComprar:r.riesgoComprar,riesgoMandar:r.riesgoMandar,gan30d:r.gan30d,compradoU:null,compradoTs:null};
     } else {
       const obj={id,producto:r.p.name,prodId:pid,cantidad:r.aComprar,nota,estado,auto:true,ts:Date.now(),variantesNec:variantesNec||null,proveedor:provNom,riesgo:r.riesgo,riesgoComprar:r.riesgoComprar,riesgoMandar:r.riesgoMandar,gan30d:r.gan30d};
       arr.push(obj);
@@ -7141,17 +7141,16 @@ function updatePedidosCosto(){
 }
 // Plata que falta para reponer el stock de una lista de pedidos: costo base (US$) × unidades
 // pendientes (NO cuenta los marcados "suficiente"). Devuelve {usd, ars}.
-// LO QUE YA COMPRASTE NO SE COMPRA DE NUEVO. Planteo suyo del 23/08/2026: "si me dice que tengo
-// que comprar 1M, compro mercaderia y me dice que todavia tengo que comprar 1M, esta mal".
-// Tenía razón a medias, y la mitad que faltaba era la importante:
-//   · Lo que ya salió para Full SÍ estaba descontado. Chequeado con las sábanas de 140: vende
-//     65/mes, tiene 6 en Full y 7 en camino → objetivo 65, menos 6, menos 7 = 52, y pide 51.
-//   · Lo que NO estaba en ningún lado es la mercadería COMPRADA AL PROVEEDOR que todavía no llegó
-//     a tu casa. Entre que se le paga a Charlie y que la caja entra a la oficina pasan semanas, y
-//     en todo ese tiempo Pedidos te la seguía pidiendo. Ese era el agujero.
-// Ahora cada pedido guarda cuántas unidades ya compraste (`compradoU`), y tanto el renglón como
-// el total de "Falta reponer" descuentan eso.
-const pendienteDe=(ped)=>Math.max(0,(ped.cantidad||1)-(ped.compradoU||0));
+// LO QUE YA COMPRASTE NO SE COMPRA DE NUEVO, Y NO HACE FALTA MARCARLO A MANO.
+// El 23/08/2026 se probó un botón "Ya compré" para anotar las unidades ya pagadas al proveedor.
+// Él lo sacó, y con razón: "si hay más stock en mi oficina es porque compré, y tenés que sacar las
+// unidades pedidas de ahí". Y eso YA pasa — `aComprar` es
+//     necesario − lo que hay en la oficina − lo que va en camino a Full
+// así que en cuanto la mercadería entra a casa y se cuenta en "Mi oficina", Pedidos deja de
+// pedirla solo. Un botón aparte era un segundo registro de lo mismo, que hay que acordarse de
+// mantener y que se desincroniza del primero.
+// Lo que ya salió para Full también estaba bien descontado: las sábanas de 140 venden 65/mes,
+// tienen 6 en Full y 7 en camino → objetivo 65, menos 6, menos 7 = 52, y la pantalla pide 51.
 function _pedsCostoReponer(peds){
   const tc=curTC();let usd=0;
   (peds||[]).forEach(ped=>{
@@ -7159,28 +7158,9 @@ function _pedsCostoReponer(peds){
     if(est==='suficiente')return;
     const p=state.products.find(x=>x.id===ped.prodId)||prodByName(ped.producto);
     if(!p)return;
-    usd+=(costUSDof(p)||0)*pendienteDe(ped);
+    usd+=(costUSDof(p)||0)*(ped.cantidad||1);
   });
   return {usd,ars:tc?Math.round(usd*tc):0};
-}
-// Marca cuántas unidades de un pedido YA se compraron. No borra el pedido: la mercadería todavía
-// no está, así que el riesgo de quiebre sigue siendo real y el renglón tiene que seguir a la vista
-// —sólo deja de pedir plata que ya pusiste.
-async function pedYaCompre(id){
-  for(const coll of ['pedidos','pedidos_py']){
-    const ped=(state[coll]||[]).find(x=>x.id===id);
-    if(!ped)continue;
-    const ya=ped.compradoU||0;
-    const txt=prompt(`${ped.producto}\n\nFaltaban ${ped.cantidad||1} u.\n¿Cuántas compraste? (0 para deshacer)`,String(ya||(ped.cantidad||1)));
-    if(txt===null)return;
-    const n=Math.max(0,Math.min(parseInt(String(txt).replace(/[^\d]/g,''))||0,ped.cantidad||1));
-    ped.compradoU=n||null;ped.compradoTs=n?Date.now():null;
-    await fbSet(coll+'/'+id+'/compradoU',ped.compradoU);
-    await fbSet(coll+'/'+id+'/compradoTs',ped.compradoTs);
-    await log('Pedido '+ped.producto+': marcadas '+n+' u. como ya compradas');
-    renderPedidos();updatePedidosCosto();
-    return;
-  }
 }
 function _pedCostoChip(peds){
   const c=_pedsCostoReponer(peds);
@@ -7871,13 +7851,11 @@ function _pedidoItemHtml(p,opts){
     +((p.riesgoMandar>0)?`<span class="pi-var-toggle" style="background:rgba(245,158,11,.12);color:var(--amber);border-color:rgba(245,158,11,.3);cursor:default" title="Esta parte NO se arregla comprando: son unidades que ya tenés en casa o viajando. Se destraba mandando la caja.">📦 ${fmt(p.riesgoMandar)} se tapa mandando</span>`:'')
     +((p.riesgoComprar>0&&p.riesgoMandar>0)?`<span class="pi-var-toggle" style="background:rgba(239,68,68,.18);color:var(--red);border-color:rgba(239,68,68,.4);cursor:default" title="Lo que queda en riesgo DESPUÉS de mandar todo lo que ya tenés: esto sí necesita comprar.">🛒 ${fmt(p.riesgoComprar)} hay que comprar</span>`:''):'';
   const origenBadge=opts.origen?`<span class="pi-var-toggle" style="cursor:default">${opts.origen}</span>`:'';
-  const accionBtns=`<button class="pi-var-toggle" style="background:rgba(34,197,94,.10);color:var(--green);border-color:rgba(34,197,94,.28)" onclick="pedYaCompre('${p.id}')" title="Marcar cuántas unidades ya le compraste al proveedor. Dejan de contar en 'Falta reponer' pero el pedido sigue a la vista hasta que llegue.">🛒 Ya compré</button>`
-    +`<button class="pi-status ${p.estado||'pendiente'}" onclick="setPedidoEstado('${p.id}','${NEXT[p.estado||'pendiente']}')">${LABEL[p.estado||'pendiente']}</button>`;
+  const accionBtns=`<button class="pi-status ${p.estado||'pendiente'}" onclick="setPedidoEstado('${p.id}','${NEXT[p.estado||'pendiente']}')">${LABEL[p.estado||'pendiente']}</button>`;
   return `<div class="pedido-item ${_enCam?'suficiente':(p.estado||'pendiente')}">
     <span class="pi-prod">${p.producto||'—'}${p.variante?` <span style="padding:1px 6px;border-radius:4px;background:rgba(124,58,237,.15);color:#a78bfa;font-size:.65rem">${p.variante}</span>`:''}</span>
     ${fotoBtn}
-    <span class="pi-qty"${p.compradoU?` title="Faltaban ${p.cantidad||1} y ya compraste ${p.compradoU}"`:''}>${Math.max(0,(p.cantidad||1)-(p.compradoU||0))} u.</span>
-    ${p.compradoU?`<span class="pi-var-toggle" style="background:rgba(34,197,94,.12);color:var(--green);border-color:rgba(34,197,94,.3);cursor:default" title="Ya las pagaste. Siguen figurando porque todavía no llegaron: el riesgo de quedarte sin stock sigue siendo real, pero ya no te pide esa plata.">🛒 ${p.compradoU} ya compradas${p.compradoTs?`, hace ${Math.max(0,Math.round((Date.now()-p.compradoTs)/86400000))}d`:''}</span>`:''}
+    <span class="pi-qty">${p.cantidad||1} u.</span>
     ${p.nota?`<span class="pi-nota">${p.nota}</span>`:'<span class="pi-nota" style="flex:0"></span>'}
     ${_enCam?'':riesgoBadge}
     ${origenBadge}
