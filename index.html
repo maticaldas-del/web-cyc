@@ -2249,7 +2249,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='15.3';
+const APP_VERSION='15.4';
 // El problema real que esto resuelve no es curiosidad: es que el celular guarda la app y sigue
 // mostrando la de ayer sin avisar. Varias veces se revisó un cambio que ya estaba subido y no se
 // veía. Por eso, además del número, el chip avisa cuando hay una versión nueva esperando.
@@ -6990,12 +6990,23 @@ async function syncPedidosAuto(){
     const diasEnRiesgo=Math.max(0,RIESGO_DIAS-diasCubiertos);
     void dConS;
     const riesgo=Math.round((gan30d/30)*diasEnRiesgo);
+    // ── CUÁNTO DE ESE RIESGO SE TAPA MANDANDO LO QUE YA TENÉS ───────────────────────
+    // Duda suya del 23/08/2026, y tenía razón: la Cinta 7.5M decía "$116.876 en riesgo" al lado de
+    // "2 u." para comprar y "14 ya en tu oficina". Leído así parece que comprando 2 unidades se
+    // destraban $116.876, y no es eso. Los $116.876 son el mes entero de ese producto, porque en ML
+    // está en CERO — el riesgo es real, pero NO es un riesgo de COMPRA: 14 de esas 16 unidades ya
+    // las tiene, y se arreglan mandando la caja, no comprando.
+    // Esta pantalla decide CUÁNTO COMPRAR, así que el riesgo se parte en dos y se muestran los dos:
+    // lo que se tapa despachando lo que ya está en casa o viajando, y lo que de verdad falta comprar.
+    const cubreCasa=vDia>0?Math.round((stock+enOficina+enCamino)/vDia):999;
+    const riesgoComprar=Math.round((gan30d/30)*Math.max(0,RIESGO_DIAS-cubreCasa));
+    const riesgoMandar=Math.max(0,riesgo-riesgoComprar);
     // Si hay unidades en casa no se puede repartir el pedido por variante con confianza (no se
     // sabe de qué variante son las de la oficina), así que se deja el pedido sin desglose.
     // El desglose por variante ya NO se tira cuando hay stock en casa o en camino: se descuenta por
     // variante más arriba. Solo se saltea si el producto no tiene ventas por variante que repartir.
 
-    resumen[p.id]={p,vendidos,vendidosNorm,stock,diasHistorial,diasCubiertos,necesario,enOficina,enCamino,aComprar,variantesNec,coll,gan30d,riesgo,dConS,vDia};
+    resumen[p.id]={p,vendidos,vendidosNorm,stock,diasHistorial,diasCubiertos,necesario,enOficina,enCamino,aComprar,variantesNec,coll,gan30d,riesgo,riesgoComprar,riesgoMandar,dConS,vDia};
   }
   // 3. IDs que deberían existir como auto-pedidos
   const expectedIds=new Set();
@@ -7816,7 +7827,11 @@ function _pedidoItemHtml(p,opts){
   const varToggle=varsSorted?`<details class="pi-var-det"${_vOpen?' open':''} ontoggle="_setPedVarOpen('${p.id}',this.open)"><summary class="pi-var-toggle">Variantes (${varsSorted.length})</summary><div class="pi-var-list">${varsSorted.map(x=>`<span class="pi-var-chip">${x.v}<strong>×${x.q}</strong></span>`).join('')}</div></details>`:'';
   const _prod=(state.products||[]).find(x=>x.id===p.prodId||(x.name&&normTxt(x.name)===normTxt(p.producto||'')));
   const fotoBtn=(_prod&&_prod.foto)?`<button class="pi-var-toggle" style="background:rgba(56,189,248,.12);color:#38bdf8;border-color:rgba(56,189,248,.3)" onclick="verFoto('${_prod.id}')" title="Ver foto del producto">📷 Foto</button>`:'';
-  const riesgoBadge=(opts.showRiesgo&&p.riesgo>0)?`<span class="pi-var-toggle" style="background:rgba(239,68,68,.12);color:var(--red);border-color:rgba(239,68,68,.3);cursor:default" title="Ganancia mensual estimada de este producto × días que vas a pasar sin stock si no se repone">💸 ${fmt(p.riesgo)} en riesgo</span>`:'';
+  // El riesgo se muestra partido: lo que se tapa MANDANDO lo que ya tenés, y lo que hay que
+  // COMPRAR de verdad. Ver el comentario de riesgoComprar/riesgoMandar en renderPedidos.
+  const riesgoBadge=(opts.showRiesgo&&p.riesgo>0)?`<span class="pi-var-toggle" style="background:rgba(239,68,68,.12);color:var(--red);border-color:rgba(239,68,68,.3);cursor:default" title="Ganancia de un mes de este producto × los días que vas a pasar sin stock en ML si no se repone. Estar sin stock cuesta esto, tengas o no la mercadería en casa.">💸 ${fmt(p.riesgo)} en riesgo</span>`
+    +((p.riesgoMandar>0)?`<span class="pi-var-toggle" style="background:rgba(245,158,11,.12);color:var(--amber);border-color:rgba(245,158,11,.3);cursor:default" title="Esta parte NO se arregla comprando: son unidades que ya tenés en casa o viajando. Se destraba mandando la caja.">📦 ${fmt(p.riesgoMandar)} se tapa mandando</span>`:'')
+    +((p.riesgoComprar>0&&p.riesgoMandar>0)?`<span class="pi-var-toggle" style="background:rgba(239,68,68,.18);color:var(--red);border-color:rgba(239,68,68,.4);cursor:default" title="Lo que queda en riesgo DESPUÉS de mandar todo lo que ya tenés: esto sí necesita comprar.">🛒 ${fmt(p.riesgoComprar)} hay que comprar</span>`:''):'';
   const origenBadge=opts.origen?`<span class="pi-var-toggle" style="cursor:default">${opts.origen}</span>`:'';
   const accionBtns=`<button class="pi-status ${p.estado||'pendiente'}" onclick="setPedidoEstado('${p.id}','${NEXT[p.estado||'pendiente']}')">${LABEL[p.estado||'pendiente']}</button>`;
   return `<div class="pedido-item ${_enCam?'suficiente':(p.estado||'pendiente')}">
