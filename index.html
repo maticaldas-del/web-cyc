@@ -2249,7 +2249,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='14.5';
+const APP_VERSION='14.6';
 // El problema real que esto resuelve no es curiosidad: es que el celular guarda la app y sigue
 // mostrando la de ayer sin avisar. Varias veces se revisó un cambio que ya estaba subido y no se
 // veía. Por eso, además del número, el chip avisa cuando hay una versión nueva esperando.
@@ -4048,13 +4048,29 @@ function diasConStockProd(pid){
   for(const l of LOCS){const d=diasConStock(pid,l);if(d>mx)mx=d;}
   return mx>0?mx:PED_MAX_DAYS;
 }
-const REPO_DIAS_COBERTURA=30;
+// CUÁNTOS DÍAS DE VENTA CUBRE LA CAJA. Decisión suya del 23/08/2026, comparando contra lo que
+// recomienda ML: "la idea nunca quedarme corto". Estaba en 30 y quedaba MUY por debajo de ML —
+// la Lupa de Mano 100mm en Ayelen: CYC decía mandar 2 y ML decía 13.
+// No se copia el número de ML: la API no lo entrega (7 de 11 rutas dan 403, ver probarrepo) y
+// sacándolo de las capturas tampoco sale una regla — entre sus propios ejemplos ML cubre desde 12
+// hasta 120 días según el producto. Un número "parecido al de ML" es lo peor de los dos mundos.
+// Lo que sí es una decisión y no una adivinanza es cuántos días cubrir, y eso es esta perilla.
+// La cuenta que la justifica: mandar de más a Full cuesta almacenamiento; quedarse sin stock
+// costaba $239.794 por día al 20/08/2026.
+const REPO_DIAS_COBERTURA=45;
 // Cuánto tarda desde que se arma la caja hasta que ML la tiene a la venta. Estaba en 14 (7 de
 // despacho + 7 de activación); él corrigió el 20/08 que en la práctica son unos 8. Se sobreestima
 // la demora = se manda de más, así que el número importa. Cuando haya cajas marcadas como llegadas
 // se puede medir de verdad, con la fecha de despacho contra la de entrada a Full.
 const REPO_DIAS_DEMORA=8;
 const REPO_DIAS_TOTAL=REPO_DIAS_COBERTURA+REPO_DIAS_DEMORA;
+// PISO PARA LA PUBLICACIÓN QUE ESTÁ EN CERO. Decisión suya del 23/08/2026, el mismo número que usa
+// ML (lo mostró en la Linterna Blanco Azul: 0 ventas, 0 stock → "Sugerencia: 4 u.").
+// Por qué un piso y no la cuenta normal: en cero la publicación NO VENDE, así que tampoco tiene
+// ventas de las cuales deducir a qué velocidad vendería — la cuenta da 0 y el panel contesta
+// "ninguna cuenta lo necesita" justo cuando es lo único que hace falta. Y mandar 1 sola unidad la
+// deja de vuelta en cero con la primera venta.
+const REPO_PISO_CERO=4;
 
 /* ═══════════ CAJAS EN CAMINO A FULL ═══════════
    Una caja despachada ya no está en la oficina pero todavía no está en ML: es un TERCER lugar, y
@@ -6485,7 +6501,7 @@ function _repartoVariantes(p,hayTotal,tr){
       // Sin una sola unidad en Full la publicación NO VENDE. Aunque la cuenta "no lo necesite"
       // según los días de stock, si está en cero hay que mandarle algo: es la diferencia entre
       // vender y no vender, no un ajuste de reposición.
-      const necesita=c.stock<=0?Math.max(1,c.falta):c.falta;
+      const necesita=c.stock<=0?Math.max(REPO_PISO_CERO,c.falta):c.falta;
       if(necesita<=0)continue;
       const mandar=Math.min(quedan,necesita);
       quedan-=mandar;
@@ -6530,10 +6546,15 @@ function repartoOficina(){
     const sug=[];
     for(const c of cand){
       if(quedan<=0)break;
-      if(c.falta<=0)continue;                 // ya tiene para 30 días
-      const mandar=Math.min(quedan,c.falta);
+      // MISMA REGLA QUE LOS PRODUCTOS CON VARIANTES, que acá faltaba: una cuenta en CERO recibe
+      // siempre. Sin esto un producto sin ventas daba objetivo 0, falta 0, y la pantalla contestaba
+      // "ninguna cuenta lo necesita" con la publicación parada en cero — que es justo cuando más
+      // hace falta mandar. Pasaba con la Linterna Multifuncion (23/08/2026).
+      const necesita=c.stock<=0?Math.max(REPO_PISO_CERO,c.falta):c.falta;
+      if(necesita<=0)continue;                // ya tiene para los días de cobertura
+      const mandar=Math.min(quedan,necesita);
       quedan-=mandar;
-      sug.push({...c,mandar});
+      sug.push({...c,mandar,enCero:c.stock<=0});
     }
     filas.push({p,hay,sug,sobra:quedan,
       sinPublicar:publicadas.length===0,
