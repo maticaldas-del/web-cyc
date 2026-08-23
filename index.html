@@ -2249,7 +2249,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='15.7';
+const APP_VERSION='15.8';
 // El problema real que esto resuelve no es curiosidad: es que el celular guarda la app y sigue
 // mostrando la de ayer sin avisar. Varias veces se revisó un cambio que ya estaba subido y no se
 // veía. Por eso, además del número, el chip avisa cuando hay una versión nueva esperando.
@@ -7151,6 +7151,17 @@ function updatePedidosCosto(){
 // mantener y que se desincroniza del primero.
 // Lo que ya salió para Full también estaba bien descontado: las sábanas de 140 venden 65/mes,
 // tienen 6 en Full y 7 en camino → objetivo 65, menos 6, menos 7 = 52, y la pantalla pide 51.
+// ¿Este pedido es del proveedor Paulvic? Manda el proveedor de la ficha; si no lo tiene, el que
+// diga el pedido; y por último el nombre del producto. Se usa en DOS lugares —la pestaña Paulvic y
+// la de Bs As, que lo excluye— así que vive acá: si cada pantalla lo decidiera por su cuenta, un
+// producto podría quedar en las dos o en ninguna.
+function esPedidoPaulvic(ped){
+  const prod=(state.products||[]).find(x=>x.id===ped.prodId||(x.name&&normTxt(x.name)===normTxt(ped.producto||'')));
+  const prov=prod?.proveedorId?(state.proveedores||[]).find(x=>x.id===prod.proveedorId):null;
+  if(prov)return normTxt(prov.nombre||'').includes('paulvic');
+  if(normTxt(ped.proveedor||'').includes('paulvic'))return true;
+  return normTxt(prod?.name||ped.producto||'').includes('paulvic');
+}
 function _pedsCostoReponer(peds){
   const tc=curTC();let usd=0;
   (peds||[]).forEach(ped=>{
@@ -7977,13 +7988,7 @@ function renderPedidos(){
   if(pedidoSection==='paulvic'){
     const el=document.getElementById('pedidos-paulvic-list');if(!el)return;
     let allPeds=[...(state.pedidos||[]),...(state.pedidos_py||[])];
-    let peds=allPeds.filter(ped=>{
-      const prod=state.products.find(x=>x.id===ped.prodId||(x.name&&normTxt(x.name)===normTxt(ped.producto||'')));
-      const prov=prod?.proveedorId?(state.proveedores||[]).find(x=>x.id===prod.proveedorId):null;
-      if(prov)return normTxt(prov.nombre||'').includes('paulvic');
-      if(normTxt(ped.proveedor||'').includes('paulvic'))return true;
-      return normTxt(prod?.name||ped.producto||'').includes('paulvic');
-    });
+    let peds=allPeds.filter(esPedidoPaulvic);
     const cnt={pendiente:0,poco_stock:0,suficiente:0};
     peds.forEach(p=>cnt[p.estado||'pendiente']=(cnt[p.estado||'pendiente']||0)+1);
     const cntEl=document.getElementById('pedidos-paulvic-count');
@@ -8018,7 +8023,11 @@ function renderPedidos(){
   const provBtnId=isBsas?'pf-prov':'pf-py-prov';
   const provBtn=document.getElementById(provBtnId);
   if(provBtn)provBtn.className='pf-btn'+(pedidoGroupByProv?' active-prov':'');
-  let peds=(isBsas?state.pedidos:state.pedidos_py)||[];
+  // EL PAULVIC TIENE SU PROPIA PESTAÑA Y NO VA ACÁ. Reportado por él el 23/08/2026: "en pedidos
+  // bs as aparecen cosas que son de otra categoría". Bs As mostraba TODO state.pedidos sin sacar
+  // los del Paulvic, así que el mismo pedido salía en las dos listas y el total de "Falta reponer"
+  // lo contaba dos veces.
+  let peds=((isBsas?state.pedidos:state.pedidos_py)||[]).filter(x=>!esPedidoPaulvic(x));
   const cnt={pendiente:0,poco_stock:0,suficiente:0};peds.forEach(p=>{const e=p.estado==='en_camino'?'pendiente':(p.estado||'pendiente');cnt[e]=(cnt[e]||0)+1;});
   const cntEl=document.getElementById(countId);
   if(cntEl)cntEl.innerHTML=`
