@@ -12055,6 +12055,154 @@ async function main() {
       return;
     }
 
+    // BILLING_PROBE=vercaja[:<idEnvio|cuenta|cuantas>] → REVISA UNA CAJA CERRADA DE PUNTA A PUNTA.
+    //
+    // Existe para el momento en que se cierra una caja de verdad. Ahí se tocan cinco cosas a la vez
+    // —el contenido de la caja, el stock de la oficina, el "En camino a Full", los dólares del stock
+    // y el total del Arqueo— y cada una vive en un lugar distinto de la base. Mirar la pantalla no
+    // alcanza: si un número está mal, se ve igual de prolijo.
+    //
+    // Chequea, una por una:
+    //   1. el contenido de la caja: producto y variante existen, unidades > 0, cuenta válida
+    //   2. que lo despachado haya SALIDO de la oficina y no haya quedado en negativo
+    //   3. el invariante que mantiene "cerrar caja": la clave del PRODUCTO en la oficina tiene que
+    //      ser la suma de sus claves por variante. Si se desfasa, el Arqueo cuenta de más o de menos
+    //      y no hay pantalla que lo muestre.
+    //   4. el "En camino a Full" con la MISMA cuenta que hace el Arqueo (clave sin variante)
+    //   5. el Arqueo entero: Stock ML + Stock Local + En camino, y que "Oficina Mati" escrito en
+    //      finanzas coincida con las unidades contadas × costo (lo que hace syncOfiMati en la web)
+    //
+    // Sin argumento revisa las cajas abiertas (no recibidas) de todos los envíos. Con un id de
+    // envío revisa ese; con un nombre de cuenta, las de esa cuenta.
+    // Solo lee: no escribe nada nunca.
+    if (/^vercaja(:|$)/.test(String(process.env.BILLING_PROBE || ''))) {
+      const arg = String(process.env.BILLING_PROBE).slice('vercaja:'.length).trim();
+      const OFI = 'Oficina Mati';
+      const LOCS = ['Adriana', 'Luciana', 'Ayelen', 'Matias'];
+      const sidL = (x) => String(x).replace(/[^a-z0-9]/gi, '_');
+      const inv = (await db.get('cyc/inventory')) || {};
+      const envios = (await db.get('cyc/envios_full')) || {};
+      const fin = (await db.get('cyc/finanzas')) || {};
+      const vp = (await db.get('cyc/ventaprod')) || {}; setDevLive(vp);
+      const tc = parseFloat(fin.tipo_cambio) || 0;
+      const pIdx = {}; for (const p of products) pIdx[p.id] = p;
+      const pesos = (n) => '$' + Math.round(n).toLocaleString('es-AR');
+      // costo unitario en USD, el MISMO que usa el Arqueo (costP: el costUSD de la ficha, sin el
+      // % de reclamos ni el envío — el patrimonio vale lo que costó la mercadería, no lo que
+      // costaría reponerla con sus problemas).
+      const costUSD = (p) => (p && p.costUSD != null && p.costUSD !== '') ? (parseFloat(p.costUSD) || 0) : 0;
+      const getQ = (pid, loc) => parseInt(inv[pid + '__' + sidL(loc)]) || 0;
+      const getQV = (pid, loc, va) => parseInt(inv[pid + '__' + sidL(loc) + '__v__' + sidL(va)]) || 0;
+
+      console.log('=== REVISIÓN DE CAJA ===\n');
+      if (!tc) console.log('⚠️ No hay tipo de cambio cargado en finanzas: los pesos de abajo no valen.\n');
+      else console.log(`Dólar del panel: $${tc.toLocaleString('es-AR')}\n`);
+
+      // ── 1. las cajas ───────────────────────────────────────────────────────────
+      const filas = [];
+      for (const [id, e] of Object.entries(envios)) {
+        if (!e) continue;
+        if (arg && arg !== id && String(e.cuenta || '').toLowerCase() !== arg.toLowerCase()) continue;
+        const cajas = Array.isArray(e.cajasDet) ? e.cajasDet : [];
+        for (const c of cajas) filas.push({ id, e, c });
+      }
+      filas.sort((a, b) => (b.e.ts || 0) - (a.e.ts || 0));
+      if (!filas.length) { console.log('No encontré ninguna caja con ese filtro.'); return; }
+      const problemas = [];
+      let usadoPorProdVar = {};   // lo que las cajas ABIERTAS dicen que salió
+      for (const { id, e, c } of filas) {
+        const items = Array.isArray(c.items) ? c.items : [];
+        const uTot = items.reduce((a, x) => a + (x?.u || 0), 0);
+        console.log(`── ${e.fecha || '?'} · ${e.cuenta || '(SIN CUENTA)'} · caja ${c.n || 1} · ${c.recibida ? '🟢 recibida' : '🟠 en camino'} · seguimiento ${c.track || '(sin cargar)'}`);
+        console.log(`   id ${id} · ${items.length} renglón(es) · ${uTot} unidades`);
+        if (!e.cuenta || !LOCS.includes(e.cuenta)) problemas.push(`${id}: la cuenta "${e.cuenta || ''}" no es una de las cuatro — esa caja NO cuenta como en camino en el Arqueo.`);
+        if (!items.length) problemas.push(`${id}: la caja no tiene contenido cargado — no se va a poder marcar como recibida (no hay con qué cruzarla).`);
+        if (!c.track) problemas.push(`${id}: sin número de seguimiento.`);
+        let valUSD = 0;
+        for (const it of items) {
+          const p = pIdx[it?.prodId];
+          const u = it?.u || 0;
+          if (!p) { problemas.push(`${id}: el renglón "${it?.nombre || it?.prodId}" apunta a un producto que ya no existe.`); continue; }
+          const cu = costUSD(p);
+          valUSD += cu * u;
+          const va = it.variante || '';
+          if (va && !(p.variantes || []).some((v) => v === va)) problemas.push(`${id}: "${p.name}" · la variante "${va}" ya no figura en la ficha.`);
+          const quedaOfi = va ? getQV(p.id, OFI, va) : getQ(p.id, OFI);
+          console.log(`      ${String(u).padStart(3)} u. · ${p.name}${va ? ' · ' + va : ''} · US$ ${cu.toFixed(2)} c/u = US$ ${(cu * u).toFixed(2)} = ${pesos(cu * u * tc)}`);
+          console.log(`            en la oficina quedan ${quedaOfi} · costo de la ficha ${cu ? 'ok' : '⚠️ EN CERO: esta caja vale $0 en el Arqueo'}`);
+          if (!cu) problemas.push(`${id}: "${p.name}" no tiene costo cargado (costUSD): esas ${u} unidades valen $0 en el patrimonio.`);
+          if (!c.recibida) {
+            const k = p.id + '|' + (e.cuenta || '');
+            usadoPorProdVar[k] = (usadoPorProdVar[k] || 0) + u;
+          }
+        }
+        console.log(`   valor de la caja: US$ ${valUSD.toFixed(2)} = ${pesos(valUSD * tc)}\n`);
+      }
+
+      // ── 2. el invariante de la oficina: producto = suma de sus variantes ───────
+      console.log('── OFICINA: ¿el total de cada producto coincide con la suma de sus colores? ──');
+      let desfasados = 0;
+      for (const p of products) {
+        const vs = p.variantes || [];
+        if (!vs.length) continue;
+        const tot = getQ(p.id, OFI);
+        const suma = vs.reduce((a, v) => a + getQV(p.id, OFI, v), 0);
+        // claves de variante que ya no están en la ficha (quedarían fuera de la suma)
+        const pref = p.id + '__' + sidL(OFI) + '__v__';
+        let huerfanas = 0;
+        for (const [k, v] of Object.entries(inv)) {
+          if (!k.startsWith(pref)) continue;
+          if (!vs.some((x) => pref + sidL(x) === k)) huerfanas += parseInt(v) || 0;
+        }
+        if (tot !== suma || huerfanas) {
+          desfasados++;
+          console.log(`   ⚠️ ${p.name}: el producto dice ${tot} y los colores suman ${suma}${huerfanas ? ` (+${huerfanas} en colores que ya no están en la ficha)` : ''}`);
+          problemas.push(`Oficina descuadrada en "${p.name}": ${tot} contra ${suma}.`);
+        }
+      }
+      console.log(desfasados ? `   ${desfasados} producto(s) descuadrado(s).\n` : '   Todos coinciden ✓\n');
+
+      // ── 3. el Arqueo, con la misma cuenta que hace la pantalla ────────────────
+      let stockML = 0, stockLocal = 0, stockCamino = 0, uML = 0, uLocal = 0, uCamino = 0;
+      const camPorCuenta = {};
+      for (const [id, e] of Object.entries(envios)) {
+        if (!e || !e.cuenta || !LOCS.includes(e.cuenta)) continue;
+        for (const c of (Array.isArray(e.cajasDet) ? e.cajasDet : [])) {
+          if (c.recibida) continue;
+          for (const it of (c.items || [])) {
+            if (!it || !it.prodId || !(it.u > 0)) continue;
+            const p = pIdx[it.prodId]; if (!p) continue;
+            stockCamino += costUSD(p) * it.u * tc;
+            uCamino += it.u;
+            camPorCuenta[e.cuenta] = (camPorCuenta[e.cuenta] || 0) + it.u;
+          }
+        }
+      }
+      for (const p of products) {
+        const cu = costUSD(p) * tc;
+        for (const l of LOCS) { const q = getQ(p.id, l); stockML += q * cu; uML += q; }
+        const q = getQ(p.id, OFI); stockLocal += q * cu; uLocal += q;
+      }
+      const of_mia = parseFloat(fin.of_mia) || 0;
+      console.log('── ARQUEO ──');
+      console.log(`   Stock ML (Full) ..... ${String(uML).padStart(5)} u. · ${pesos(stockML)}`);
+      console.log(`   Stock Local (casa) .. ${String(uLocal).padStart(5)} u. · ${pesos(stockLocal)}`);
+      console.log(`   En camino a Full .... ${String(uCamino).padStart(5)} u. · ${pesos(stockCamino)}${Object.keys(camPorCuenta).length ? ' · ' + Object.entries(camPorCuenta).map(([k, v]) => `${k} ${v}`).join(' · ') : ''}`);
+      console.log(`   ────────────────────────────────────────────`);
+      console.log(`   Total stock ......... ${String(uML + uLocal + uCamino).padStart(5)} u. · ${pesos(stockML + stockLocal + stockCamino)}`);
+      console.log(`\n   "Oficina Mati" guardado en finanzas: ${pesos(of_mia)} · contado por unidades: ${pesos(stockLocal)}`);
+      const dif = Math.abs(of_mia - stockLocal);
+      if (dif > Math.max(1000, stockLocal * 0.005)) {
+        console.log(`   ⚠️ Difieren en ${pesos(dif)}. La pantalla usa el contado por unidades, así que el Arqueo está bien,`);
+        console.log(`      pero el campo viejo quedó desactualizado. Se arregla solo al abrir "Mi oficina".`);
+        problemas.push(`El campo "Oficina Mati" de finanzas (${pesos(of_mia)}) no coincide con lo contado (${pesos(stockLocal)}).`);
+      } else console.log('   Coinciden ✓');
+
+      console.log(`\n── RESULTADO ──`);
+      if (!problemas.length) console.log('✓ Todo cierra: la caja, el stock que salió de la oficina, los dólares y el Arqueo.');
+      else { console.log(`⚠️ ${problemas.length} cosa(s) para mirar:`); problemas.forEach((x) => console.log(`   · ${x}`)); }
+      return;
+    }
     // BILLING_PROBE=veroficina → QUÉ HAY EN CASA Y QUÉ NECESITA CADA CUENTA
     //
     // Vuelca los datos crudos para decidir qué caja armar primero: lo que hay en la oficina, y por
