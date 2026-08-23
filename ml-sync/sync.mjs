@@ -12354,20 +12354,50 @@ async function main() {
         }
 
         // ── la cuenta, cuenta por cuenta ──────────────────────────────────────
-        const publicadas = [...new Set(mias.filter(([, e]) => (e.status || '') !== 'closed' && LOCS.includes(e.cuenta)).map(([, e]) => e.cuenta))];
+        const vivas = mias.filter(([, e]) => (e.status || '') !== 'closed' && LOCS.includes(e.cuenta));
+        // El caso que apareció TRES veces el 23/08/2026 (Adaptador 8 en 1, Cargador notebook,
+        // Ferrari Rojo): todas las publicaciones pausadas. Pausada no vende, así que no hay ventas
+        // de las cuales medir nada, y mandarle mercadería no sirve hasta despausarla.
+        if (vivas.length && vivas.every(([, e]) => (e.status || '') === 'paused')) {
+          console.log(`\n   🔴 TODAS SUS PUBLICACIONES ESTÁN PAUSADAS (${vivas.length}). Pausada no vende:`);
+          console.log(`      por eso mide 0 y por eso no te la pide. Mandar mercadería no sirve hasta despausarla.`);
+        }
+        const publicadas = [...new Set(vivas.map(([, e]) => e.cuenta))];
         console.log(`\n   ── la cuenta de "Armar caja" (cubre ${DIAS_COBERTURA} días de venta + ${DIAS_DEMORA} de demora = ${TOTAL}) ──`);
         if (!publicadas.length) { console.log(`      Ninguna cuenta lo publica viva: no hay a quién mandarle. Ése es el problema, no la fórmula.`); continue; }
+        // ── MISMO RESPALDO QUE LA WEB (index 14.7, ventasHistoricas) ──
+        // Sin esto el probe diría "0,00/día" donde la pantalla ya dice "vendía 1,2/día cuando
+        // tenía", y un verificador con la fórmula vieja adentro miente para siempre.
+        const histDe = (cuenta) => {
+          let u = 0, tMin = null, tMax = null;
+          const desdeH = Date.now() - 180 * 864e5;
+          for (const ents of Object.values(vp)) for (const v of Object.values(ents || {})) {
+            if (!v || v.cancelada || v.prodId !== p.id) continue;
+            if (cuenta && v.cuenta !== cuenta) continue;
+            const t = v.ts || 0; if (!t || t < desdeH) continue;
+            const q = v.qty || 0; if (q <= 0) continue;
+            u += q;
+            if (tMin === null || t < tMin) tMin = t;
+            if (tMax === null || t > tMax) tMax = t;
+          }
+          if (u <= 0 || tMin === null) return null;
+          const dias = Math.max(DIAS_MIN, (tMax - tMin) / 864e5 + 1);
+          return { u, dias, vDia: u / dias };
+        };
         for (const l of publicadas) {
           const vMes = v30[l] || 0;
           const dConS = diasConStock(p.id, l);
-          const vDia = vMes / dConS;
+          let vDia = vMes / dConS, hist = null;
+          if (vMes <= 0) { hist = histDe(l); if (hist) vDia = hist.vDia; }
           const enML = getQ(p.id, l);
           const camino = tr[p.id + '|' + l] || 0;
           const stock = enML + camino;
           const objetivo = Math.ceil(vDia * TOTAL);
           const falta = Math.max(0, objetivo - stock);
           const necesita = stock <= 0 ? Math.max(PISO_CERO, falta) : falta;
-          console.log(`      ${l.padEnd(8)} · vendió ${String(vMes).padStart(3)} u. en ${dConS.toFixed(0).padStart(2)} días con stock = ${vDia.toFixed(2)}/día`);
+          console.log(hist
+            ? `      ${l.padEnd(8)} · vendió 0 en 30 días (estuvo sin stock) → vendía ${hist.vDia.toFixed(2)}/día cuando tenía (${hist.u} u. en ${Math.round(hist.dias)} días)`
+            : `      ${l.padEnd(8)} · vendió ${String(vMes).padStart(3)} u. en ${dConS.toFixed(0).padStart(2)} días con stock = ${vDia.toFixed(2)}/día`);
           console.log(`                 tiene ${enML} en Full${camino ? ` + ${camino} en camino` : ''} · objetivo ${objetivo} · ${necesita > 0 ? `MANDAR ${necesita}` : 'no le hace falta'}${stock <= 0 && falta < PISO_CERO ? `  (piso de ${PISO_CERO} por estar en cero)` : ''}`);
         }
         console.log(`\n   Si el "vendió" de arriba no es lo que vos ves vender, el problema NO es la fórmula:`);
