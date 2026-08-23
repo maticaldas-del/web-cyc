@@ -2904,7 +2904,95 @@ async function main() {
     // Solo lee: no corrige nada. Si aparece diferencia, la corrección la hace la vuelta del robot.
     if (/^stockreal(:|$)/.test(String(process.env.BILLING_PROBE || ''))) {
       const q = String(process.env.BILLING_PROBE).slice('stockreal:'.length).trim();
-      if (!q) { console.log('Usá: stockreal:joystick'); return; }
+      // ── TODO EL CATÁLOGO DE UNA ───────────────────────────────────────────────────
+      // Pedido suyo del 23/08/2026 después de que aparecieran tres casos mirando al azar:
+      // "no podés correrlo ahora?". Producto por producto no sirve para saber CUÁNTO hay mal.
+      // Va en lotes de 20 publicaciones para /items, y después UNA llamada por cada inventario
+      // distinto (no por publicación): las compartidas no se preguntan dos veces.
+      // Solo lee. Muestra únicamente las diferencias, con el total de plata que sobra o falta.
+      if (!q || /^(todos|todo)$/i.test(q)) {
+        const links = (await db.get('cyc/mllinks')) || {};
+        const inv = (await db.get('cyc/inventory')) || {};
+        const fin = (await db.get('cyc/finanzas')) || {};
+        const tc = parseFloat(fin.tipo_cambio) || 0;
+        const sidL = (x) => String(x).replace(/[^a-z0-9]/gi, '_');
+        const pIdx = {}; for (const pp of products) pIdx[pp.id] = pp;
+        const real = {};            // prodId__Cuenta → unidades reales
+        const invYa = new Set();    // inventario ya contado, por producto×cuenta
+        let pubs = 0, invLeidos = 0, fallos = 0;
+        for (const label of labels) {
+          const acc = accounts[label]; if (!acc?.refresh_token) continue;
+          let tok;
+          try {
+            const t = await mlRefresh(ML_CLIENT_ID, ML_CLIENT_SECRET, acc.refresh_token);
+            await db.patch('mlapi/tokens/' + label, { refresh_token: t.refresh_token, updated_ts: Date.now() });
+            tok = t.access_token;
+          } catch { console.log(`  ${label}: no pude entrar`); continue; }
+          const mlas = Object.entries(links)
+            .filter(([m, e]) => m.startsWith('MLA') && e && e.cuenta === label && !e.ignored && e.prodId && pIdx[e.prodId])
+            .map(([m]) => m);
+          for (let k = 0; k < mlas.length; k += 20) {
+            let arr;
+            try { arr = await mlGet('/items?ids=' + mlas.slice(k, k + 20).join(',') + '&attributes=id,status,available_quantity,inventory_id,variations,shipping', tok); }
+            catch { fallos++; continue; }
+            for (const row of (arr || [])) {
+              const b = row.body || {}; const mla = b.id; if (!mla || !links[mla]) continue;
+              const pid = links[mla].prodId; if (!pid || !pIdx[pid]) continue;
+              pubs++;
+              const kTot = pid + '__' + sidL(label);
+              if (real[kTot] === undefined) real[kTot] = 0;
+              // Lo que no es Full cuenta CERO (regla suya del 20/08/2026), pero la clave se
+              // escribe igual: si no, un producto que dejó de ser Full no se compararía nunca.
+              if (((b.shipping && b.shipping.logistic_type) || '') !== 'fulfillment') continue;
+              const vars = Array.isArray(b.variations) ? b.variations : [];
+              const invs = vars.length ? vars.map((v) => v.inventory_id).filter(Boolean) : [b.inventory_id].filter(Boolean);
+              for (const iv of invs) {
+                const kIv = kTot + '|' + iv;
+                if (invYa.has(kIv)) continue;
+                invYa.add(kIv);
+                try {
+                  const st = await mlGet('/inventories/' + iv + '/stock/fulfillment', tok);
+                  real[kTot] += Number(st?.available_quantity) || 0;
+                  invLeidos++;
+                } catch { fallos++; }
+              }
+            }
+          }
+        }
+        const difs = [];
+        for (const [k, r] of Object.entries(real)) {
+          const panel = parseInt(inv[k]) || 0;
+          if (panel === r) continue;
+          const pid = k.split('__')[0], cta = k.slice(pid.length + 2);
+          const pp = pIdx[pid]; if (!pp) continue;
+          const cu = (pp.costUSD != null && pp.costUSD !== '') ? (parseFloat(pp.costUSD) || 0) : 0;
+          difs.push({ pp, cta, panel, real: r, dif: panel - r, usd: (panel - r) * cu });
+        }
+        difs.sort((a, b2) => Math.abs(b2.usd) - Math.abs(a.usd) || Math.abs(b2.dif) - Math.abs(a.dif));
+        console.log(`Miradas ${pubs} publicaciones · ${invLeidos} depósitos leídos${fallos ? ` · ${fallos} que no contestaron` : ''}\n`);
+        if (!difs.length) { console.log('✓ No hay ninguna diferencia: el panel dice lo mismo que ML en todo el catálogo.'); return; }
+        const deMas = difs.filter((d) => d.dif > 0), deMenos = difs.filter((d) => d.dif < 0);
+        const usdMas = deMas.reduce((a, d) => a + d.usd, 0), usdMenos = deMenos.reduce((a, d) => a + d.usd, 0);
+        console.log(`🔴 ${difs.length} producto×cuenta con diferencia\n`);
+        const linea = (d) => `   ${String(d.pp.name).slice(0, 36).padEnd(36)} ${d.cta.padEnd(8)} panel ${String(d.panel).padStart(4)} · ML ${String(d.real).padStart(4)} · ${d.dif > 0 ? '+' : ''}${d.dif} u. · US$ ${d.usd.toFixed(2)}`;
+        if (deMas.length) {
+          console.log(`── EL PANEL TIENE DE MÁS · ${deMas.length} · plata inventada en el Arqueo ──`);
+          deMas.slice(0, 60).forEach((d) => console.log(linea(d)));
+          if (deMas.length > 60) console.log(`   … y ${deMas.length - 60} más`);
+        }
+        if (deMenos.length) {
+          console.log(`\n── EL PANEL TIENE DE MENOS · ${deMenos.length} · stock que existe y no se ve ──`);
+          deMenos.slice(0, 60).forEach((d) => console.log(linea(d)));
+          if (deMenos.length > 60) console.log(`   … y ${deMenos.length - 60} más`);
+        }
+        const neto = usdMas + usdMenos;
+        console.log(`\n── EN PLATA ──`);
+        console.log(`   de más  : US$ ${usdMas.toFixed(2)}${tc ? ` ($${Math.round(usdMas * tc).toLocaleString('es-AR')})` : ''}`);
+        console.log(`   de menos: US$ ${usdMenos.toFixed(2)}${tc ? ` ($${Math.round(usdMenos * tc).toLocaleString('es-AR')})` : ''}`);
+        console.log(`   NETO    : US$ ${neto.toFixed(2)}${tc ? ` ($${Math.round(neto * tc).toLocaleString('es-AR')})` : ''}  ← lo que el Arqueo tiene ${neto >= 0 ? 'de MÁS' : 'de MENOS'}`);
+        console.log(`\nSe corrige solo en la próxima vuelta del robot. Volvé a correr esto después para confirmar.`);
+        return;
+      }
       const cand = products.filter((p) => p.id === q || norm(p.name || '').includes(norm(q)));
       if (!cand.length) { console.log(`No hay ningún producto que se llame como "${q}".`); return; }
       if (cand.length > 4) { console.log(`"${q}" da ${cand.length} productos. Afiná:`); cand.forEach((p) => console.log(`   ${p.id} · ${p.name}`)); return; }
