@@ -2249,7 +2249,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='14.6';
+const APP_VERSION='14.7';
 // El problema real que esto resuelve no es curiosidad: es que el celular guarda la app y sigue
 // mostrando la de ayer sin avisar. Varias veces se revisó un cambio que ya estaba subido y no se
 // veía. Por eso, además del número, el chip avisa cuando hay una versión nueva esperando.
@@ -3739,7 +3739,12 @@ function renderOfiCaja(){
       // stock. Se muestra así para que el número sugerido no parezca salido de la nada: "vende
       // 10/mes" y "vende 2 por día" son el mismo producto contado de dos maneras muy distintas.
       const _parcial=s.dConS!=null&&s.dConS<PED_MAX_DAYS-0.5&&s.vMes>0;
-      const ritmo=_parcial
+      // Y cuando en el mes no vendió NADA, el número sale de lo que vendía la última vez que tuvo
+      // mercadería. Se marca distinto a propósito: es una estimación vieja, no una medición de hoy,
+      // y el que arma la caja tiene que poder verlo.
+      const ritmo=s.hist
+        ? `<span style="color:var(--amber)" title="No vendió nada en los últimos ${PED_MAX_DAYS} días porque estuvo sin stock. Este ritmo sale de sus ventas anteriores: ${s.hist.u} unidades en ${Math.round(s.hist.dias)} días con mercadería.">vendía <strong>${s.hist.vDia.toFixed(1)}/día</strong> cuando tenía (${s.hist.u} u. en ${Math.round(s.hist.dias)} días)</span>`
+        : _parcial
         ? `<span style="color:var(--amber)" title="Vendió ${s.vMes} unidades pero solo tuvo stock ${Math.round(s.dConS)} de los ${PED_MAX_DAYS} días. El resto del mes estuvo agotado, así que no se puede dividir por 30: se mide sobre los días que hubo mercadería.">vende <strong>${s.vDia.toFixed(1)}/día</strong> (${s.vMes} u. en ${Math.round(s.dConS)} días con stock)</span>`
         : `vende ${s.vMes}/mes`;
       return `<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;padding:6px 0;border-top:1px solid var(--border)">
@@ -6408,6 +6413,50 @@ function ventasPorCuenta(p){
   LOCS.forEach(l=>out[l]=Math.round(out[l]*factor));
   return out;
 }
+// ── CUÁNTO VENDÍA CUANDO SÍ TENÍA MERCADERÍA ───────────────────────────────
+// Error encontrado por él el 23/08/2026, y es el más caro de los que aparecieron: el "Adaptador
+// 8 en 1" tenía 50 unidades en casa, ML lo marcaba URGENTE, y el panel decía "ninguna cuenta lo
+// necesita". Los números de ML: 35 unidades vendidas entre el 10/06 y el 09/07 —más de 1 por
+// día— y desde mediados de julio en CERO. Dicho por él: "no vendió en los últimos 30 porque no
+// había".
+//
+// La velocidad se mide sobre los últimos 30 días. Un producto que se agotó hace más de un mes
+// vendió 0 en esa ventana, así que la cuenta da 0 por día, objetivo 0, y el panel contesta que no
+// hace falta mandar nada. O sea: EL PANEL SE CALLA JUSTO CON LOS QUE MÁS URGE REPONER, porque
+// estar agotado hace tiempo es lo que borra la evidencia de que se vendían.
+//
+// Esto rescata esa evidencia: cuando en 30 días no vendió NADA, se mira hasta 180 días atrás y se
+// calcula a qué velocidad vendía MIENTRAS VENDÍA — unidades ÷ los días que van de su primera a su
+// última venta. No es lo mismo que dividir por 180: eso volvería a dar casi cero por el mismo
+// motivo.
+//
+// Solo se usa cuando las ventas del mes son CERO. Con una sola venta en el mes manda la medición
+// de verdad: un dato viejo no puede pisar a uno nuevo.
+const REPO_HIST_DIAS=180;
+function ventasHistoricas(p,cuenta,variante){
+  const now=new Date();
+  const from=new Date(now);from.setDate(now.getDate()-REPO_HIST_DIAS);
+  const fk=dateToKey(from),tk=dateToKey(now);
+  let u=0,tMin=null,tMax=null;
+  const varDeMla=variante?_varPorMla(p):null;
+  Object.keys(state.ventaprod||{}).filter(k=>k>=fk&&k<=tk).forEach(k=>{
+    Object.values(state.ventaprod[k]||{}).forEach(v=>{
+      if(!ventaEsDe(v,p)||_esCancelada(v))return;
+      if(cuenta&&v.cuenta!==cuenta)return;
+      if(variante){const va=v.variante||varDeMla[v.mla]||'';if(va!==variante)return;}
+      const q=v.qty||0;if(q<=0)return;
+      u+=q;
+      const t=v.ts||0;if(!t)return;
+      if(tMin===null||t<tMin)tMin=t;
+      if(tMax===null||t>tMax)tMax=t;
+    });
+  });
+  if(u<=0||tMin===null)return null;
+  // Piso de REPO_DIAS_MIN por el mismo motivo de siempre: con 1 o 2 días medidos una venta de
+  // casualidad daría una velocidad enorme y pediría una caja entera.
+  const dias=Math.max(REPO_DIAS_MIN,(tMax-tMin)/86400000+1);
+  return{u,dias,vDia:u/dias};
+}
 function cuentasConPublicacion(p){
   const s=new Set();
   Object.values(state.mllinks||{}).forEach(e=>{
@@ -6482,14 +6531,17 @@ function _repartoVariantes(p,hayTotal,tr){
       const vMes=(ventasV[l]||{})[va]||0;
       // El historial de stock es por producto×cuenta, no por variante: se usa como aproximación.
       const dConS=diasConStock(p.id,l);
-      const vDia=vMes/dConS;
+      let vDia=vMes/dConS,hist=null;
+      // Cero ventas en el mes no quiere decir que no se venda: puede ser que no hubiera con qué.
+      // Ver ventasHistoricas().
+      if(vMes<=0){hist=ventasHistoricas(p,l,va);if(hist)vDia=hist.vDia;}
       const enML=getQV(p.id,l,va);
       // Lo que ya va en camino cuenta como stock: si no, el panel lo vuelve a pedir.
       const camino=transitoDe(tr,p.id,l,va);
       const stock=enML+camino;
       const dias=vDia>0?stock/vDia:(stock>0?999:null);
       const objetivo=Math.ceil(vDia*REPO_DIAS_TOTAL);
-      return{cuenta:l,vMes,vDia,dConS,stock,enML,camino,dias,falta:Math.max(0,objetivo-stock)};
+      return{cuenta:l,vMes,vDia,dConS,stock,enML,camino,dias,hist,falta:Math.max(0,objetivo-stock)};
     }).sort((a,b)=>{
       const da=a.dias==null?9999:a.dias, db=b.dias==null?9999:b.dias;
       if(da!==db)return da-db;
@@ -6529,13 +6581,14 @@ function repartoOficina(){
     const publicadas=cuentasConPublicacion(p);
     const cand=publicadas.map(l=>{
       const dConS=diasConStock(p.id,l);
-      const vDia=(ventas[l]||0)/dConS;
+      let vDia=(ventas[l]||0)/dConS,hist=null;
+      if((ventas[l]||0)<=0){hist=ventasHistoricas(p,l,'');if(hist)vDia=hist.vDia;}
       const enML=getQ(p.id,l);
       const camino=transitoDe(tr,p.id,l,'');
       const stock=enML+camino;
       const dias=vDia>0?stock/vDia:(stock>0?999:null);   // sin ventas no se puede estimar
       const objetivo=Math.ceil(vDia*REPO_DIAS_TOTAL);
-      return{cuenta:l,vMes:ventas[l]||0,vDia,dConS,stock,enML,camino,dias,falta:Math.max(0,objetivo-stock)};
+      return{cuenta:l,vMes:ventas[l]||0,vDia,dConS,stock,enML,camino,dias,hist,falta:Math.max(0,objetivo-stock)};
     }).sort((a,b)=>{
       // Primero a la que se le acaba antes. Las que no venden van al final.
       const da=a.dias==null?9999:a.dias, db=b.dias==null?9999:b.dias;
