@@ -12216,6 +12216,148 @@ async function main() {
       else { console.log(`⚠️ ${problemas.length} cosa(s) para mirar:`); problemas.forEach((x) => console.log(`   · ${x}`)); }
       return;
     }
+    // BILLING_PROBE=porquecaja:<palabra o id de producto> → POR QUÉ "ARMAR CAJA" DICE LO QUE DICE.
+    //
+    // La pantalla contesta con una frase ("ninguna cuenta lo necesita", "mandá 2") y no muestra de
+    // dónde sale. Cuando la frase no coincide con lo que él ve vender, no hay forma de saber si el
+    // problema es la fórmula, las ventas, el stock o la vinculación. Esto vuelca los INSUMOS, que
+    // son el diagnóstico: la fórmula es lo de menos.
+    //
+    // El caso que lo motivó (23/08/2026): el "Adaptador 8 en 1" vendía 15 por semana, tenía 50 u.
+    // en casa, ML lo marcaba URGENTE — y el panel decía "ninguna cuenta lo necesita".
+    //
+    // La causa típica de un "0" que no cierra es que las VENTAS ESTÉN EN OTRA FICHA: dos fichas del
+    // mismo producto, la publicación colgada de una y las ventas viejas de la otra. Por eso además
+    // de los números lista las publicaciones de este producto Y las publicaciones de OTROS productos
+    // cuyo título se parece, que es donde suelen estar las ventas que faltan.
+    // Solo lee.
+    if (/^porquecaja(:|$)/.test(String(process.env.BILLING_PROBE || ''))) {
+      const q = String(process.env.BILLING_PROBE).slice('porquecaja:'.length).trim();
+      if (!q) { console.log('Usá: porquecaja:adaptador'); return; }
+      const OFI = 'Oficina Mati';
+      const LOCS = ['Adriana', 'Luciana', 'Ayelen', 'Matias'];
+      const DIAS_COBERTURA = 45, DIAS_DEMORA = 8, DIAS_MIN = 7, MAX_DAYS = 30, PISO_CERO = 4;
+      const TOTAL = DIAS_COBERTURA + DIAS_DEMORA;
+      const sidL = (x) => String(x).replace(/[^a-z0-9]/gi, '_');
+      const inv = (await db.get('cyc/inventory')) || {};
+      const links = (await db.get('cyc/mllinks')) || {};
+      const vp = (await db.get('cyc/ventaprod')) || {}; setDevLive(vp);
+      const hist = (await db.get('cyc/stockhist')) || {};
+      const envios = (await db.get('cyc/envios_full')) || {};
+      const getQ = (pid, loc) => parseInt(inv[pid + '__' + sidL(loc)]) || 0;
+      const getQV = (pid, loc, va) => parseInt(inv[pid + '__' + sidL(loc) + '__v__' + sidL(va)]) || 0;
+      const cand = products.filter((p) => p.id === q || norm(p.name || '').includes(norm(q)));
+      if (!cand.length) { console.log(`No hay ningún producto que se llame como "${q}".`); return; }
+      if (cand.length > 3) { console.log(`"${q}" da ${cand.length} productos. Afiná la palabra:`); cand.forEach((p) => console.log(`   ${p.id} · ${p.name}`)); return; }
+
+      // días con stock, MISMA regla que la web (diasConStock): una fecha aproximada NO habilita a
+      // decir "solo tuvo stock N días" — sin haber visto ENTRAR la mercadería se mide el mes entero.
+      const diasConStock = (pid, loc) => {
+        const h = hist[pid + '__' + sidL(loc)];
+        if (!h) return MAX_DAYS;
+        const now = Date.now(), ini = now - MAX_DAYS * 864e5;
+        let ms = null;
+        if (h.desde) { if (h.aprox !== false) return MAX_DAYS; ms = now - Math.max(h.desde, ini); }
+        else if (h.cero) ms = Math.max(0, h.cero - ini);
+        if (ms == null) return MAX_DAYS;
+        const d = ms / 864e5;
+        if (!isFinite(d) || d <= 0) return DIAS_MIN;
+        return Math.max(DIAS_MIN, Math.min(MAX_DAYS, d));
+      };
+      // lo que va en camino, por cuenta (clave sin variante = el total del producto)
+      const tr = {};
+      for (const e of Object.values(envios)) {
+        if (!e || !e.cuenta || !LOCS.includes(e.cuenta)) continue;
+        for (const c of (Array.isArray(e.cajasDet) ? e.cajasDet : [])) {
+          if (c.recibida) continue;
+          for (const it of (c.items || [])) {
+            if (!it || !it.prodId || !(it.u > 0)) continue;
+            tr[it.prodId + '|' + e.cuenta] = (tr[it.prodId + '|' + e.cuenta] || 0) + it.u;
+          }
+        }
+      }
+      const desde = Date.now() - MAX_DAYS * 864e5;
+      const desde7 = Date.now() - 7 * 864e5;
+
+      for (const p of cand) {
+        console.log(`\n══ ${p.name} ══  (${p.id})`);
+        const vs = p.variantes || [];
+        console.log(`   en casa: ${getQ(p.id, OFI)} u.${vs.length ? ` · ${vs.length} variantes` : ' · sin variantes'}`);
+
+        // ── publicaciones de ESTE producto ────────────────────────────────────
+        const mias = Object.entries(links).filter(([, e]) => e && e.prodId === p.id && !e.ignored);
+        console.log(`\n   ── publicaciones pegadas a esta ficha: ${mias.length} ──`);
+        if (!mias.length) console.log(`      ⚠️ NINGUNA. Sin publicación el panel no le ve ni stock ni ventas: por eso no lo pide.`);
+        for (const [mla, e] of mias) {
+          const va = e.variant || varianteDeTitulo(e.title || '', vs);
+          console.log(`      ${mla} · ${(e.cuenta || '?').padEnd(8)} · ${(e.status || '?').padEnd(12)}${va ? ' · ' + va : (vs.length ? ' · ⚠️ SIN COLOR (el título no lo nombra)' : '')}`);
+          console.log(`         ${String(e.title || '').slice(0, 76)}`);
+        }
+
+        // ── publicaciones parecidas que apuntan a OTRA ficha ──────────────────
+        const palabras = norm(p.name).split(' ').filter((w) => w.length > 3);
+        const ajenas = Object.entries(links).filter(([, e]) => {
+          if (!e || e.prodId === p.id || e.ignored) return false;
+          const t = norm(e.title || '');
+          const n = palabras.filter((w) => t.includes(w)).length;
+          return palabras.length && n >= Math.max(2, Math.ceil(palabras.length * 0.6));
+        });
+        if (ajenas.length) {
+          console.log(`\n   ── ⚠️ publicaciones con título parecido colgadas de OTRA ficha: ${ajenas.length} ──`);
+          console.log(`      Si las ventas están acá, esta ficha las ve en CERO y por eso no pide nada.`);
+          for (const [mla, e] of ajenas) {
+            const otra = products.find((x) => x.id === e.prodId);
+            console.log(`      ${mla} · ${(e.cuenta || '?').padEnd(8)} · ${(e.status || '?').padEnd(12)} · ficha "${otra ? otra.name : e.prodId}"`);
+            console.log(`         ${String(e.title || '').slice(0, 76)}`);
+          }
+        }
+
+        // ── ventas ────────────────────────────────────────────────────────────
+        const v30 = {}, v7 = {}, vOtras = {};
+        const mlasMios = new Set(mias.map(([m]) => m));
+        for (const ents of Object.values(vp)) for (const v of Object.values(ents || {})) {
+          if (!v || v.cancelada || !v.cuenta) continue;
+          if ((v.ts || 0) < desde) continue;
+          if (v.prodId === p.id) {
+            v30[v.cuenta] = (v30[v.cuenta] || 0) + (v.qty || 1);
+            if ((v.ts || 0) >= desde7) v7[v.cuenta] = (v7[v.cuenta] || 0) + (v.qty || 1);
+          } else if (v.mla && !mlasMios.has(v.mla)) {
+            // ventas de las publicaciones parecidas: van a otra ficha
+            const aj = ajenas.find(([m]) => m === v.mla);
+            if (aj) { const k = (products.find((x) => x.id === v.prodId) || {}).name || v.prodId; vOtras[k] = (vOtras[k] || 0) + (v.qty || 1); }
+          }
+        }
+        const tot30 = Object.values(v30).reduce((a, b) => a + b, 0);
+        const tot7 = Object.values(v7).reduce((a, b) => a + b, 0);
+        console.log(`\n   ── ventas que el panel le imputa a esta ficha ──`);
+        console.log(`      últimos 30 días: ${tot30} u.${tot30 ? ' · ' + Object.entries(v30).map(([k, v]) => `${k} ${v}`).join(' · ') : ''}`);
+        console.log(`      últimos  7 días: ${tot7} u.${tot7 ? ' · ' + Object.entries(v7).map(([k, v]) => `${k} ${v}`).join(' · ') : ''}`);
+        if (Object.keys(vOtras).length) {
+          console.log(`      ⚠️ y estas ventas de 30 días fueron a OTRA ficha: ${Object.entries(vOtras).map(([k, v]) => `${v} u. → "${k}"`).join(' · ')}`);
+        }
+
+        // ── la cuenta, cuenta por cuenta ──────────────────────────────────────
+        const publicadas = [...new Set(mias.filter(([, e]) => (e.status || '') !== 'closed' && LOCS.includes(e.cuenta)).map(([, e]) => e.cuenta))];
+        console.log(`\n   ── la cuenta de "Armar caja" (cubre ${DIAS_COBERTURA} días de venta + ${DIAS_DEMORA} de demora = ${TOTAL}) ──`);
+        if (!publicadas.length) { console.log(`      Ninguna cuenta lo publica viva: no hay a quién mandarle. Ése es el problema, no la fórmula.`); continue; }
+        for (const l of publicadas) {
+          const vMes = v30[l] || 0;
+          const dConS = diasConStock(p.id, l);
+          const vDia = vMes / dConS;
+          const enML = getQ(p.id, l);
+          const camino = tr[p.id + '|' + l] || 0;
+          const stock = enML + camino;
+          const objetivo = Math.ceil(vDia * TOTAL);
+          const falta = Math.max(0, objetivo - stock);
+          const necesita = stock <= 0 ? Math.max(PISO_CERO, falta) : falta;
+          console.log(`      ${l.padEnd(8)} · vendió ${String(vMes).padStart(3)} u. en ${dConS.toFixed(0).padStart(2)} días con stock = ${vDia.toFixed(2)}/día`);
+          console.log(`                 tiene ${enML} en Full${camino ? ` + ${camino} en camino` : ''} · objetivo ${objetivo} · ${necesita > 0 ? `MANDAR ${necesita}` : 'no le hace falta'}${stock <= 0 && falta < PISO_CERO ? `  (piso de ${PISO_CERO} por estar en cero)` : ''}`);
+        }
+        console.log(`\n   Si el "vendió" de arriba no es lo que vos ves vender, el problema NO es la fórmula:`);
+        console.log(`   son las ventas que no le llegan a esta ficha. Mirá las publicaciones de arriba.`);
+      }
+      return;
+    }
     // BILLING_PROBE=veroficina → QUÉ HAY EN CASA Y QUÉ NECESITA CADA CUENTA
     //
     // Vuelca los datos crudos para decidir qué caja armar primero: lo que hay en la oficina, y por
