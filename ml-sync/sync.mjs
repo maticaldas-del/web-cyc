@@ -2888,6 +2888,92 @@ async function main() {
       console.log(`\n${ok === Object.keys(upd).length ? '✓' : '✗'} ${ok} de ${Object.keys(upd).length} guardadas y releídas de la base.`);
       return;
     }
+    // BILLING_PROBE=stockreal:<palabra o id de producto> → ¿EL STOCK QUE MUESTRA EL PANEL EXISTE EN
+    // ML DE VERDAD?
+    //
+    // Por qué existe: el 23/08/2026 él marcó DOS productos donde el panel mostraba stock que según
+    // él no está — el Ferrari Negro con 14 unidades y el Joystick x3 con 7. Ese número no es
+    // decorativo: entra en el patrimonio del Arqueo (unidades × costo) y decide si Pedidos y Armar
+    // caja te piden reponer. Si está inflado, hay plata inventada y quiebres tapados a la vez.
+    //
+    // Va a la fuente por cada publicación: pregunta a ML el estado, si es Full, y el stock de cada
+    // inventario (/inventories/<id>/stock/fulfillment), y lo compara con lo que tiene guardado el
+    // panel en cyc/inventory. Aplica la MISMA regla que el robot al cargar: lo que no es
+    // `fulfillment` cuenta CERO —el "1" del depósito es un requisito del formulario de ML, no
+    // mercadería—, así que si el panel tiene de más por ese motivo, se ve.
+    // Solo lee: no corrige nada. Si aparece diferencia, la corrección la hace la vuelta del robot.
+    if (/^stockreal(:|$)/.test(String(process.env.BILLING_PROBE || ''))) {
+      const q = String(process.env.BILLING_PROBE).slice('stockreal:'.length).trim();
+      if (!q) { console.log('Usá: stockreal:joystick'); return; }
+      const cand = products.filter((p) => p.id === q || norm(p.name || '').includes(norm(q)));
+      if (!cand.length) { console.log(`No hay ningún producto que se llame como "${q}".`); return; }
+      if (cand.length > 4) { console.log(`"${q}" da ${cand.length} productos. Afiná:`); cand.forEach((p) => console.log(`   ${p.id} · ${p.name}`)); return; }
+      const links = (await db.get('cyc/mllinks')) || {};
+      const inv = (await db.get('cyc/inventory')) || {};
+      const sidL = (x) => String(x).replace(/[^a-z0-9]/gi, '_');
+      const LOCS = ['Adriana', 'Luciana', 'Ayelen', 'Matias'];
+      const toks = {};
+      for (const p of cand) {
+        console.log(`\n══ ${p.name} ══  (${p.id})`);
+        const mias = Object.entries(links).filter(([m, e]) => m.startsWith('MLA') && e && e.prodId === p.id && !e.ignored);
+        if (!mias.length) { console.log('   sin publicaciones en el panel'); continue; }
+        const realCta = {};
+        for (const [mla, e] of mias) {
+          const cta = e.cuenta;
+          if (!toks[cta]) {
+            const acc = accounts[cta];
+            if (!acc?.refresh_token) { console.log(`   ${mla} · ${cta}: no tengo acceso a esa cuenta`); continue; }
+            try {
+              const t = await mlRefresh(ML_CLIENT_ID, ML_CLIENT_SECRET, acc.refresh_token);
+              await db.patch('mlapi/tokens/' + cta, { refresh_token: t.refresh_token, updated_ts: Date.now() });
+              toks[cta] = t.access_token;
+            } catch { console.log(`   ${cta}: no pude entrar`); continue; }
+          }
+          const tok = toks[cta]; if (!tok) continue;
+          let b = null;
+          try { b = await mlGet(`/items/${mla}?attributes=id,title,status,available_quantity,inventory_id,variations,shipping`, tok); }
+          catch (err) { console.log(`   ${mla} · ${cta} · ✗ ${err.message || err}`); continue; }
+          const lt = (b?.shipping && b.shipping.logistic_type) || '';
+          const esFull = lt === 'fulfillment';
+          let real = 0, detalle = [];
+          if (esFull) {
+            const vars = Array.isArray(b.variations) ? b.variations : [];
+            const invs = vars.length ? vars.map((v) => v.inventory_id).filter(Boolean) : [b.inventory_id].filter(Boolean);
+            for (const iv of invs) {
+              try {
+                const st = await mlGet('/inventories/' + iv + '/stock/fulfillment', tok);
+                const disp = Number(st?.available_quantity) || 0;
+                const noDisp = Number(st?.not_available_quantity) || 0;
+                real += disp;
+                detalle.push(`${iv}: ${disp} disponibles${noDisp ? ` (+${noDisp} no disponibles)` : ''}`);
+              } catch (err) { detalle.push(`${iv}: ✗ ${err.message || err}`); }
+            }
+          }
+          realCta[cta] = (realCta[cta] || 0) + real;
+          console.log(`   ${mla} · ${cta} · ${b?.status || '?'} · ${esFull ? 'FULL' : `NO es Full (${lt || 'sin logística'}) → cuenta CERO`}`);
+          console.log(`      ML dice: ${esFull ? real + ' u.' : '0 u. (available_quantity de ML: ' + (b?.available_quantity || 0) + ', se ignora a propósito)'}`);
+          for (const d of detalle) console.log(`         ${d}`);
+        }
+        console.log(`\n   ── PANEL vs ML, por cuenta ──`);
+        let hayDif = false;
+        for (const l of LOCS) {
+          const panel = parseInt(inv[p.id + '__' + sidL(l)]) || 0;
+          const real = realCta[l] || 0;
+          if (!panel && !real) continue;
+          const ok = panel === real;
+          if (!ok) hayDif = true;
+          console.log(`   ${l.padEnd(8)} panel ${String(panel).padStart(4)} · ML ${String(real).padStart(4)}  ${ok ? '✓' : '🔴 DIFERENCIA de ' + (panel - real)}`);
+        }
+        if (!hayDif) console.log(`   Coinciden ✓ — el número del panel es el que dice ML.`);
+        else {
+          console.log(`\n   🔴 El panel tiene stock que ML no confirma. Eso mete plata inventada en el Arqueo`);
+          console.log(`      (unidades × costo) y tapa el quiebre: la reposición cree que hay y no te lo pide.`);
+          console.log(`      Se corrige solo en la próxima vuelta del robot (1 vez por hora); si no se corrige,`);
+          console.log(`      el problema está en la carga y hay que mirarlo.`);
+        }
+      }
+      return;
+    }
     // BILLING_PROBE=codigoml:<MLA,MLA,…>  ó  codigoml:<CODIGO,CODIGO,…> → CRUZA EL "CÓDIGO ML" QUE
     // SE VE EN LA PANTALLA DE FULL CON EL NÚMERO DE PUBLICACIÓN.
     //
