@@ -2629,6 +2629,76 @@ async function main() {
       console.log(`\nLos aromas que falten se cargan como variantes en la ficha del producto (Productos → variantes).`);
       return;
     }
+    // BILLING_PROBE=sacavar:<palabra o id>|<v1,v2,…>[|go] → SACA VARIANTES DE UNA FICHA, POR NOMBRE.
+    //
+    // Es el inverso de `ponvariantes|reemplazar`, y existe por lo que pasó el 19/08/2026: para
+    // borrar 1 variante había que MANDAR TODAS LAS QUE QUEDAN, y un nombre mal escrito en esa lista
+    // borra el aroma vivo en silencio. Ese día se perdieron 43 aromas del Paulvic así.
+    // Acá se nombran SOLO las que se van. Las que quedan no se escriben, así que no se pueden
+    // romper tipeando. Si un nombre no existe, lo dice y sigue: no borra "lo más parecido".
+    //
+    // Antes de borrar chequea las dos cosas que harían perder datos, y por defecto NO borra si
+    // alguna da positivo:
+    //   · unidades contadas de esa variante en la oficina (se perdería el conteo)
+    //   · publicaciones que hoy caen en esa variante (quedarían sin color)
+    // Con `forzar` se borra igual, pero hay que pedirlo aparte de `go`.
+    if (/^sacavar(:|$)/.test(String(process.env.BILLING_PROBE || ''))) {
+      const _svRaw = String(process.env.BILLING_PROBE).slice('sacavar:'.length);
+      const _svP = _svRaw.split('|').map((x) => x.trim());
+      const APLICAR = _svP.some((x) => x.toLowerCase() === 'go');
+      const FORZAR = _svP.some((x) => x.toLowerCase() === 'forzar');
+      const quien = _svP[0] || '';
+      const pedidas = (_svP[1] || '').split(',').map((x) => x.trim()).filter(Boolean);
+      if (!quien || !pedidas.length) { console.log('Usá: sacavar:Paulvic TODOS|Beauty,Diva,Silver[|go]'); return; }
+      const cand = products.filter((p) => p.id === quien || norm(p.name || '').includes(norm(quien)));
+      if (!cand.length) { console.log(`No hay ningún producto que se llame como "${quien}".`); return; }
+      if (cand.length > 1) { console.log(`"${quien}" da ${cand.length} productos. Pasá el id exacto:`); cand.forEach((p) => console.log(`   ${p.id} · ${p.name}`)); return; }
+      const p = cand[0];
+      const antes = (p.variantes || []).slice();
+      const OFI = 'Oficina Mati';
+      const sidL = (x) => String(x).replace(/[^a-z0-9]/gi, '_');
+      const inv = (await db.get('cyc/inventory')) || {};
+      const links = (await db.get('cyc/mllinks')) || {};
+      console.log(`=== SACAR VARIANTES ${APLICAR ? '(APLICANDO)' : '(PRUEBA)'} ===\n`);
+      console.log(`  ${p.name} (${p.id})`);
+      console.log(`  ANTES · ${antes.length} variantes: ${antes.join(' · ')}\n`);
+      const sacar = [], noEstan = [], conProblema = [];
+      for (const v of pedidas) {
+        const exacta = antes.find((x) => norm(x) === norm(v));
+        if (!exacta) { noEstan.push(v); continue; }
+        const uOfi = parseInt(inv[p.id + '__' + sidL(OFI) + '__v__' + sidL(exacta)]) || 0;
+        const pubs = Object.entries(links).filter(([, e]) => {
+          if (!e || e.prodId !== p.id || e.ignored || (e.status || '') === 'closed') return false;
+          const va = e.variant || varianteDeTitulo(e.title || '', antes);
+          return va === exacta;
+        });
+        const mal = uOfi > 0 || pubs.length > 0;
+        if (mal) conProblema.push({ v: exacta, uOfi, pubs });
+        sacar.push({ v: exacta, uOfi, pubs, mal });
+      }
+      for (const x of sacar) {
+        console.log(`  ${x.mal ? '⚠️' : '✓ '} sacar "${x.v}"${x.uOfi ? ` · ${x.uOfi} u. contadas en la oficina` : ''}${x.pubs.length ? ` · ${x.pubs.length} publicación(es) viva(s): ${x.pubs.map(([m]) => m).join(', ')}` : ''}`);
+      }
+      if (noEstan.length) console.log(`\n  Estos no figuran en la ficha (no hago nada con ellos): ${noEstan.join(' · ')}`);
+      const aSacar = sacar.filter((x) => FORZAR || !x.mal);
+      const frenados = sacar.filter((x) => x.mal && !FORZAR);
+      if (frenados.length) {
+        console.log(`\n  🔴 ${frenados.length} NO se sacan: tienen unidades contadas o una publicación viva.`);
+        console.log(`     Borrarlas perdería ese dato. Si igual va, repetí el comando agregando |forzar.`);
+      }
+      const quedan = antes.filter((v) => !aSacar.some((x) => x.v === v));
+      console.log(`\n  DESPUÉS · ${quedan.length} variantes (se van ${aSacar.length}, quedan ${quedan.length})`);
+      console.log(`  ${quedan.join(' · ')}`);
+      if (!aSacar.length) { console.log(`\nNo hay nada para sacar.`); return; }
+      if (!APLICAR) { console.log(`\nPRUEBA: no escribí nada. Para aplicar, mandá lo mismo con |go al final.`); return; }
+      await db.set('cyc/products/' + p.id + '/variantes', quedan);
+      const rel = (await db.get('cyc/products/' + p.id + '/variantes')) || [];
+      const ok = rel.length === quedan.length && quedan.every((v) => rel.includes(v));
+      console.log(`\n  releído de la base: ${rel.length} variantes ${ok ? '✓' : '✗'}`);
+      if (!ok) console.log(`  ✗ NO quedó como pedí. Los de antes eran: ${antes.join(' · ')}`);
+      else console.log(`\n✓ Listo. Se sacaron ${aSacar.length}: ${aSacar.map((x) => x.v).join(' · ')}`);
+      return;
+    }
     // BILLING_PROBE=ponvariantes:<palabra o id>|<v1,v2,v3>[|go] → CARGA LAS VARIANTES DE UN PRODUCTO.
     //
     // La lista va EXPLÍCITA, escrita a mano, no deducida de los títulos. Se probó pensar en sacarlas
