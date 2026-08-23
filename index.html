@@ -2249,7 +2249,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='14.9';
+const APP_VERSION='15.0';
 // El problema real que esto resuelve no es curiosidad: es que el celular guarda la app y sigue
 // mostrando la de ayer sin avisar. Varias veces se revisó un cambio que ya estaba subido y no se
 // veía. Por eso, además del número, el chip avisa cuando hay una versión nueva esperando.
@@ -3737,29 +3737,36 @@ function renderOfiCaja(){
   let cartel='';
   if(armando){
     const cv=convieneCaja(filas,ofiFiltroCuenta);
-    if(cv.gCero>0){
+    if(cv.gCero>0||cv.gTotal>0){
       const d=cv.diasPago;
-      const cuando=d<1?`${Math.max(1,Math.round(d*24))} h`:`${d<10?d.toFixed(1):Math.round(d)} días`;
-      const semana=Math.round(cv.gCero*7);
-      const verde=d<=2, ambar=d>2&&d<=7;
+      const cuando=d==null?null:(d<1?`${Math.max(1,Math.round(d*24))} h`:`${d<10?d.toFixed(1):Math.round(d)} días`);
+      const porRitmo=d!=null&&d<=2, ritmoOk=d!=null&&d<=7;
+      // Dos motivos distintos para mandarla, y cualquiera de los dos alcanza: que se pague rápido
+      // por lo que destraba, o que lleve tanta plata adentro que el envío sea calderilla.
+      const verde=porRitmo||cv.porTamano, ambar=!verde&&ritmoOk;
       const col=verde?'var(--green)':ambar?'var(--amber)':'var(--muted)';
       const veredicto=verde?'MANDALA YA':ambar?'Conviene mandarla':'Podés esperar y juntar más';
+      const motivo=porRitmo
+        ?`se paga en <strong>${cuando}</strong>`
+        :cv.porTamano
+        ?`lleva <strong>${cv.vecesElEnvio<100?Math.round(cv.vecesElEnvio):'+100'} veces</strong> el costo del envío`
+        :d!=null?`se paga en <strong>${cuando}</strong>`:'';
       cartel=`<div style="border:1px solid ${col};border-radius:10px;padding:10px 12px;margin-bottom:10px;background:rgba(255,255,255,.02)">
-        <div style="font-size:.9rem;font-weight:700;color:${col}">${veredicto}</div>
+        <div style="font-size:.9rem;font-weight:700;color:${col}">${veredicto}${motivo?` <span style="font-weight:400;font-size:.7rem;color:var(--muted)">· ${motivo}</span>`:''}</div>
         <div style="font-size:.72rem;margin-top:5px;line-height:1.6">
-          Esta caja destraba <strong>${fmt(Math.round(cv.gCero))} por día</strong> de ganancia
-          (${cv.nCero} producto${cv.nCero===1?'':'s'} en cero, ${cv.uCero} u.).<br>
-          Los <strong>${fmt(COSTO_CAJA)}</strong> del envío se pagan en <strong>${cuando}</strong>.
-          Esperar una semana te cuesta <strong>${fmt(semana)}</strong>.
+          Lleva <strong>${fmt(Math.round(cv.gTotal))}</strong> de ganancia en ${cv.uTot} u.
+          contra <strong>${fmt(COSTO_CAJA)}</strong> de envío.<br>
+          ${cv.gCero>0
+            ? `Destraba <strong>${fmt(Math.round(cv.gCero))} por día</strong> (${cv.nCero} producto${cv.nCero===1?'':'s'} en cero, ${cv.uCero} u.): esperar una semana te cuesta <strong>${fmt(Math.round(cv.gCero*7))}</strong>.`
+            : `Nada de la caja está en cero, así que hoy no destraba ninguna venta — pero esa plata no puede venderse mientras esté en tu casa.`}
         </div>
         ${cv.gRelleno>0?`<div style="font-size:.66rem;color:var(--muted);margin-top:6px">Otros ${fmt(Math.round(cv.gRelleno))}/día de la caja son relleno de publicaciones que <strong>ya tienen stock</strong>: eso no lo perdés si esperás. Si lo que te falta para llenar la caja es de acá, juntá tranquilo.</div>`:''}
-        ${cv.sinDato?`<div style="font-size:.66rem;color:var(--amber);margin-top:6px">${cv.sinDato} renglón(es) sin neto de ML cargado: no entran en la cuenta, así que el número de arriba se queda corto.</div>`:''}
+        ${cv.sinDato?`<div style="font-size:.66rem;color:var(--amber);margin-top:6px">${cv.sinDato} renglón(es) sin neto de ML cargado: no entran en la cuenta, así que los números de arriba se quedan cortos.</div>`:''}
       </div>`;
     } else {
       cartel=`<div style="border:1px solid var(--border);border-radius:10px;padding:10px 12px;margin-bottom:10px">
         <div style="font-size:.72rem;line-height:1.6;color:var(--muted)">
-          Nada de esta caja está en cero en ${ofiFiltroCuenta}: es todo relleno de publicaciones que todavía tienen stock.
-          <strong>Mandarla hoy no destraba ninguna venta</strong>, así que los ${fmt(COSTO_CAJA)} del envío no se pagan solos. Conviene juntar más.
+          Todavía no hay nada sugerido para ${ofiFiltroCuenta}${cv.sinDato?`, y ${cv.sinDato} renglón(es) no tienen neto de ML cargado`:''}.
         </div></div>`;
     }
   }
@@ -4135,22 +4142,38 @@ function gananciaUnidad(p){
 // Plata por día que destraba la caja de una cuenta, separada en la que se pierde HOY (publicaciones
 // en cero) y la que no (relleno de las que todavía tienen). Se mide sobre lo SUGERIDO, no sobre lo
 // que él haya tipeado: es la respuesta a "¿me conviene armarla?", antes de armarla.
+// ── EL SEGUNDO MOTIVO PARA MANDAR UNA CAJA CHICA ───────────────────────────
+// Ejemplo suyo del 23/08/2026: "había veces que mandaba cajas chiquitas porque teníamos 2
+// celulares, relojes y un joystick; entre todo sumaba 1M, entonces necesitábamos mandar la caja
+// porque ya cubría y había mucha demanda".
+// Ahí no manda la velocidad sino el TAMAÑO de lo que va adentro. Dos celulares que dejan $200.000
+// de ganancia justifican los $16.000 aunque tarden un mes en venderse: mientras están en casa no
+// pueden venderse, y el envío es menos del 10% de lo que llevan. Si el cartel mirara solo la
+// ganancia POR DÍA, un producto caro que vende de a poco —o uno nuevo, sin historia, donde la
+// velocidad es 0— saldría como "podés esperar", que es justo al revés.
+// Por eso se miran los dos: en cuánto se paga la caja, y cuánta plata lleva.
+const CAJA_VALE_LA_PENA=10;   // si lleva 10 veces el costo del envío, va igual
 function convieneCaja(filas,cuenta){
-  let gCero=0,gRelleno=0,nCero=0,uCero=0,sinDato=0;
+  let gCero=0,gRelleno=0,gTotal=0,nCero=0,uCero=0,uTot=0,sinDato=0;
   const detalle=[];
   for(const f of filas){
     for(const s of (f.sug||[])){
       if(s.cuenta!==cuenta||!(s.mandar>0))continue;
       const g=gananciaUnidad(f.p);
       if(g==null){sinDato++;continue;}
+      uTot+=s.mandar;
+      gTotal+=Math.max(0,g)*s.mandar;
       const porDia=Math.max(0,g)*(s.vDia||0);
-      if(s.enCero){gCero+=porDia;nCero++;uCero+=s.mandar;detalle.push({p:f.p,variante:f.variante,porDia,mandar:s.mandar});}
+      if(s.enCero){gCero+=porDia;nCero++;uCero+=s.mandar;detalle.push({p:f.p,variante:f.variante,porDia,mandar:s.mandar,gan:Math.max(0,g)*s.mandar});}
       else gRelleno+=porDia;
     }
   }
-  detalle.sort((a,b)=>b.porDia-a.porDia);
-  return{gCero,gRelleno,nCero,uCero,sinDato,detalle,
-    diasPago:gCero>0?COSTO_CAJA/gCero:null};
+  detalle.sort((a,b)=>b.porDia-a.porDia||b.gan-a.gan);
+  const diasPago=gCero>0?COSTO_CAJA/gCero:null;
+  return{gCero,gRelleno,gTotal,nCero,uCero,uTot,sinDato,detalle,diasPago,
+    // Vale la pena por lo que lleva, aunque la velocidad no lo justifique sola.
+    porTamano:gTotal>=COSTO_CAJA*CAJA_VALE_LA_PENA,
+    vecesElEnvio:COSTO_CAJA>0?gTotal/COSTO_CAJA:0};
 }
 
 /* ═══════════ CAJAS EN CAMINO A FULL ═══════════
