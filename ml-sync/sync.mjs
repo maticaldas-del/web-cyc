@@ -370,7 +370,9 @@ async function cajasQueLlegaron(db, accounts, labels, products, DRY) {
             pares.push({ inv: v.inventory_id, va: pv });
           }
         } else if (b.inventory_id) {
-          pares.push({ inv: b.inventory_id, va: varianteDeTitulo(b.title || links[mla].title || '', p.variantes) });
+          // `variant` fijada a mano (probe fijarvar) manda por encima del título: hay fichas donde
+          // la variante se llama más largo que el título de ML ("Azul Marino" vs "Azul").
+          pares.push({ inv: b.inventory_id, va: links[mla].variant || varianteDeTitulo(b.title || links[mla].title || '', p.variantes) });
         }
         for (const par of pares) {
           mirados++;
@@ -4847,6 +4849,85 @@ async function main() {
       console.log(`\n  releído del panel: producto ${ver.prodId || '(ninguno)'} ${okP ? '✓' : '✗'} · oculta ${ver.ignored ? 'SÍ ✗' : 'no ✓'}`);
       console.log(okP && okI ? '\n✓ Vinculada.' : '\n✗ NO quedó como pedí — revisalo.');
       console.log('Después corré netoweb, si no el producto sigue mostrando "—".');
+      return;
+    }
+    // BILLING_PROBE=fijarvar:<MLA>=<variante>|<MLA>=<variante>…[|go] → DICE A MANO QUÉ VARIANTE ES
+    // CADA PUBLICACIÓN.
+    //
+    // Por qué existe. El panel adivina la variante leyendo el TÍTULO de la publicación, y la regla
+    // es estricta a propósito: TODAS las palabras de la variante tienen que estar en el título
+    // (varianteDeTitulo acá, _matchProdVariant en la web). Eso funciona con los aromas del Paulvic,
+    // pero se cae cuando el nombre de la ficha es más largo que el de ML: la variante "Azul Marino"
+    // contra un título que dice sólo "Azul" NO engancha, y la variante aparece "sin publicar en
+    // ninguna cuenta" aunque tenga su publicación andando. Aflojar la regla sería peor: con
+    // "Azul Marino" y "Azul Oscuro" en la misma ficha, adivinar por una sola palabra ensucia el
+    // stock de las dos y no se nota mirando.
+    // Entonces se dice a mano, una vez, y queda escrito en cyc/mllinks/<MLA>/variant, que es el
+    // campo que la web ya prefiere por encima del título (_varPorMla) y que ahora también respeta
+    // el stock de Full y el marcado de cajas.
+    //
+    // Si la publicación todavía no está pegada a ningún producto, la pega al que tenga esa
+    // variante (y si hay más de uno, no adivina: pide que se vincule primero).
+    if (/^fijarvar(:|$)/.test(String(process.env.BILLING_PROBE || ''))) {
+      const _fvRaw = String(process.env.BILLING_PROBE).slice('fijarvar:'.length);
+      const _fvPart = _fvRaw.split('|').map((s) => s.trim()).filter(Boolean);
+      const APLICAR = _fvPart.some((s) => s.toLowerCase() === 'go');
+      const pares = _fvPart.filter((s) => s.toLowerCase() !== 'go').map((s) => {
+        const i = s.indexOf('=');
+        return { mla: (i < 0 ? s : s.slice(0, i)).trim().toUpperCase(), va: (i < 0 ? '' : s.slice(i + 1)).trim() };
+      });
+      if (!pares.length || pares.some((x) => !/^MLA\d+$/.test(x.mla) || !x.va)) {
+        console.log('Usá: fijarvar:MLA3233166506=Azul Marino|MLA3233166504=Beige Oscuro[|go]');
+        return;
+      }
+      const linksF = (await db.get('cyc/mllinks')) || {};
+      console.log(`=== FIJAR VARIANTE ${APLICAR ? '(APLICANDO)' : '(PRUEBA)'} ===\n`);
+      const plan = [];
+      for (const x of pares) {
+        const e = linksF[x.mla];
+        if (!e) { console.log(`  ✗ ${x.mla} · no figura en el panel. Si nunca vendió, primero corré pubfaltan:go.`); continue; }
+        const actual = e.prodId ? products.find((p) => p.id === e.prodId) : null;
+        // ¿Qué producto tiene esa variante? Primero el suyo; si no, se busca.
+        const tiene = (p) => (p.variantes || []).some((v) => norm(v) === norm(x.va));
+        let destino = actual && tiene(actual) ? actual : null;
+        let ojo = '';
+        if (!destino) {
+          const cand = products.filter(tiene);
+          if (!cand.length) {
+            console.log(`  ✗ ${x.mla} · ningún producto tiene la variante "${x.va}". Fijate cómo está escrita en la ficha.`);
+            continue;
+          }
+          if (cand.length > 1) {
+            console.log(`  ✗ ${x.mla} · "${x.va}" existe en ${cand.length} productos: ${cand.map((p) => p.name).join(' · ')}.`);
+            console.log(`       No adivino: vinculá primero con vincular:${x.mla}=<id>:go y volvé a correr esto.`);
+            continue;
+          }
+          destino = cand[0];
+          if (actual && actual.id !== destino.id) ojo = `  ⚠️ se la sacás a "${actual.name}"`;
+        }
+        // el nombre EXACTO como está en la ficha (por si vino con otra mayúscula o acento)
+        const vaExacta = (destino.variantes || []).find((v) => norm(v) === norm(x.va)) || x.va;
+        const yaEsta = e.prodId === destino.id && e.variant === vaExacta && !e.ignored;
+        console.log(`  ${yaEsta ? '=' : '→'} ${x.mla} · ${e.cuenta || '?'} · ${e.status || '?'}${e.ignored ? ' · OCULTA' : ''}`);
+        console.log(`      ${String(e.title || '').slice(0, 78)}`);
+        console.log(`      producto : ${actual ? actual.name : '(ninguno)'} → ${destino.name}`);
+        console.log(`      variante : ${e.variant || '(la adivina del título: ' + (varianteDeTitulo(e.title || '', destino.variantes) || 'NINGUNA') + ')'} → "${vaExacta}"`);
+        if (ojo) console.log(ojo);
+        if (yaEsta) { console.log(`      ya estaba así: no hay nada que cambiar.`); continue; }
+        plan.push({ mla: x.mla, prodId: destino.id, prod: destino.name, variant: vaExacta });
+      }
+      if (!plan.length) { console.log(`\nNo quedó nada para cambiar.`); return; }
+      if (!APLICAR) { console.log(`\nPRUEBA: no escribí nada. Son ${plan.length} para cambiar. Para aplicar, mandá lo mismo con |go al final.`); return; }
+      let ok = 0;
+      for (const x of plan) {
+        await db.patch('cyc/mllinks/' + x.mla, { prodId: x.prodId, variant: x.variant, ignored: null, manual: true });
+        const ver = (await db.get('cyc/mllinks/' + x.mla)) || {};
+        const bien = ver.prodId === x.prodId && ver.variant === x.variant && !ver.ignored;
+        if (bien) ok++;
+        console.log(`  releído ${x.mla}: ${ver.prod || ''} producto ${ver.prodId === x.prodId ? '✓' : '✗'} · variante "${ver.variant || ''}" ${ver.variant === x.variant ? '✓' : '✗'}`);
+      }
+      console.log(`\n${ok === plan.length ? '✓' : '✗'} ${ok} de ${plan.length} quedaron fijadas.`);
+      console.log(`El stock de Full se reacomoda en la próxima vuelta del robot (1 vez por hora).`);
       return;
     }
     // BILLING_PROBE=cargarenvio:<fecha>|<cuenta>|<cajas>|<seg1,seg2,…>[|suc=][|correo=][|obs=][|go]
@@ -13912,7 +13993,10 @@ async function main() {
                 // supo que Free Love estaba en CERO, así que "Armar caja" decía que no hacía falta
                 // mandar nada. Si el título de la publicación nombra una variante del producto, su
                 // stock también se anota en esa variante.
-                const pv = varianteDeTitulo(b.title || map[mla].title || '', p.variantes);
+                // Si la variante se fijó a mano (probe fijarvar) manda esa: el título de ML puede
+                // decir "Azul" donde la ficha dice "Azul Marino", y adivinar por una sola palabra
+                // ensuciaría el stock de dos variantes a la vez.
+                const pv = map[mla].variant || varianteDeTitulo(b.title || map[mla].title || '', p.variantes);
                 if (pv) {
                   const vk = map[mla].prodId + '__' + sid(label) + '__v__' + sid(pv);
                   stockVar[vk] = (stockVar[vk] || 0) + q;
