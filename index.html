@@ -2249,7 +2249,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='14.8';
+const APP_VERSION='14.9';
 // El problema real que esto resuelve no es curiosidad: es que el celular guarda la app y sigue
 // mostrando la de ayer sin avisar. Varias veces se revisó un cambio que ya estaba subido y no se
 // veía. Por eso, además del número, el chip avisa cuando hay una versión nueva esperando.
@@ -3776,7 +3776,7 @@ function renderOfiCaja(){
       // mercadería. Se marca distinto a propósito: es una estimación vieja, no una medición de hoy,
       // y el que arma la caja tiene que poder verlo.
       const ritmo=s.hist
-        ? `<span style="color:var(--amber)" title="No vendió nada en los últimos ${PED_MAX_DAYS} días porque estuvo sin stock. Este ritmo sale de sus ventas anteriores: ${s.hist.u} unidades en ${Math.round(s.hist.dias)} días con mercadería.">vendía <strong>${s.hist.vDia.toFixed(1)}/día</strong> cuando tenía (${s.hist.u} u. en ${Math.round(s.hist.dias)} días)</span>`
+        ? `<span style="color:var(--amber)" title="Está en CERO y no vendió nada en los últimos ${PED_MAX_DAYS} días. Este ritmo sale de sus ventas anteriores: ${s.hist.u} unidades en ${Math.round(s.hist.dias)} días con mercadería.">vendía <strong>${s.hist.vDia.toFixed(1)}/día</strong> cuando tenía (${s.hist.u} u. en ${Math.round(s.hist.dias)} días)</span>`
         : _parcial
         ? `<span style="color:var(--amber)" title="Vendió ${s.vMes} unidades pero solo tuvo stock ${Math.round(s.dConS)} de los ${PED_MAX_DAYS} días. El resto del mes estuvo agotado, así que no se puede dividir por 30: se mide sobre los días que hubo mercadería.">vende <strong>${s.vDia.toFixed(1)}/día</strong> (${s.vMes} u. en ${Math.round(s.dConS)} días con stock)</span>`
         : `vende ${s.vMes}/mes`;
@@ -6607,14 +6607,18 @@ function _repartoVariantes(p,hayTotal,tr){
       const vMes=(ventasV[l]||{})[va]||0;
       // El historial de stock es por producto×cuenta, no por variante: se usa como aproximación.
       const dConS=diasConStock(p.id,l);
-      let vDia=vMes/dConS,hist=null;
-      // Cero ventas en el mes no quiere decir que no se venda: puede ser que no hubiera con qué.
-      // Ver ventasHistoricas().
-      if(vMes<=0){hist=ventasHistoricas(p,l,va);if(hist)vDia=hist.vDia;}
       const enML=getQV(p.id,l,va);
       // Lo que ya va en camino cuenta como stock: si no, el panel lo vuelve a pedir.
       const camino=transitoDe(tr,p.id,l,va);
       const stock=enML+camino;
+      let vDia=vMes/dConS,hist=null;
+      // Cero ventas en el mes no quiere decir que no se venda: puede ser que no hubiera con qué.
+      // Ver ventasHistoricas(). PERO SOLO SI ESTÁ EN CERO: con mercadería adentro y cero ventas,
+      // el cero es la respuesta honesta —se murió la demanda o perdió la caja de compra— y usar
+      // la velocidad vieja pediría una caja para algo que hoy no vende. Encontrado el 23/08/2026
+      // en el Ferrari Negro: 14 u. en Full, 0 ventas en 30 días, y la primera versión de esto le
+      // atribuía igual las 0,25/día de junio.
+      if(vMes<=0&&stock<=0){hist=ventasHistoricas(p,l,va);if(hist)vDia=hist.vDia;}
       const dias=vDia>0?stock/vDia:(stock>0?999:null);
       const objetivo=Math.ceil(vDia*REPO_DIAS_TOTAL);
       return{cuenta:l,vMes,vDia,dConS,stock,enML,camino,dias,hist,falta:Math.max(0,objetivo-stock)};
@@ -6657,11 +6661,12 @@ function repartoOficina(){
     const publicadas=cuentasConPublicacion(p);
     const cand=publicadas.map(l=>{
       const dConS=diasConStock(p.id,l);
-      let vDia=(ventas[l]||0)/dConS,hist=null;
-      if((ventas[l]||0)<=0){hist=ventasHistoricas(p,l,'');if(hist)vDia=hist.vDia;}
       const enML=getQ(p.id,l);
       const camino=transitoDe(tr,p.id,l,'');
       const stock=enML+camino;
+      let vDia=(ventas[l]||0)/dConS,hist=null;
+      // Solo si está en CERO — ver el comentario de la rama con variantes.
+      if((ventas[l]||0)<=0&&stock<=0){hist=ventasHistoricas(p,l,'');if(hist)vDia=hist.vDia;}
       const dias=vDia>0?stock/vDia:(stock>0?999:null);   // sin ventas no se puede estimar
       const objetivo=Math.ceil(vDia*REPO_DIAS_TOTAL);
       return{cuenta:l,vMes:ventas[l]||0,vDia,dConS,stock,enML,camino,dias,hist,falta:Math.max(0,objetivo-stock)};

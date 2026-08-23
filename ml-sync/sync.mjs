@@ -12387,16 +12387,19 @@ async function main() {
         for (const l of publicadas) {
           const vMes = v30[l] || 0;
           const dConS = diasConStock(p.id, l);
-          let vDia = vMes / dConS, hist = null;
-          if (vMes <= 0) { hist = histDe(l); if (hist) vDia = hist.vDia; }
           const enML = getQ(p.id, l);
           const camino = tr[p.id + '|' + l] || 0;
           const stock = enML + camino;
+          let vDia = vMes / dConS, hist = null;
+          // SOLO SI ESTÁ EN CERO: con mercadería adentro y cero ventas, el cero es la respuesta
+          // honesta (se murió la demanda o perdió la caja de compra), y usar la velocidad vieja
+          // pediría una caja para algo que hoy no vende. Mismo criterio que la web.
+          if (vMes <= 0 && stock <= 0) { hist = histDe(l); if (hist) vDia = hist.vDia; }
           const objetivo = Math.ceil(vDia * TOTAL);
           const falta = Math.max(0, objetivo - stock);
           const necesita = stock <= 0 ? Math.max(PISO_CERO, falta) : falta;
           console.log(hist
-            ? `      ${l.padEnd(8)} · vendió 0 en 30 días (estuvo sin stock) → vendía ${hist.vDia.toFixed(2)}/día cuando tenía (${hist.u} u. en ${Math.round(hist.dias)} días)`
+            ? `      ${l.padEnd(8)} · vendió 0 en 30 días y está en CERO → vendía ${hist.vDia.toFixed(2)}/día cuando tenía (${hist.u} u. en ${Math.round(hist.dias)} días)`
             : `      ${l.padEnd(8)} · vendió ${String(vMes).padStart(3)} u. en ${dConS.toFixed(0).padStart(2)} días con stock = ${vDia.toFixed(2)}/día`);
           console.log(`                 tiene ${enML} en Full${camino ? ` + ${camino} en camino` : ''} · objetivo ${objetivo} · ${necesita > 0 ? `MANDAR ${necesita}` : 'no le hace falta'}${stock <= 0 && falta < PISO_CERO ? `  (piso de ${PISO_CERO} por estar en cero)` : ''}`);
         }
