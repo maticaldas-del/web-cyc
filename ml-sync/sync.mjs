@@ -12295,17 +12295,34 @@ async function main() {
         }
 
         // ── publicaciones parecidas que apuntan a OTRA ficha ──────────────────
+        // OJO CON EL PISO DE PALABRAS. La primera versión pedía "al menos 2 palabras en común", y
+        // con eso NUNCA podía encontrar nada en los productos de nombre corto: "Adaptador 8 en 1"
+        // deja una sola palabra larga ("adaptador"), así que el filtro pedía 2 de 1 y no salía nadie.
+        // Justo el caso que este probe existe para diagnosticar. El piso va en 1.
         const palabras = norm(p.name).split(' ').filter((w) => w.length > 3);
         const ajenas = Object.entries(links).filter(([, e]) => {
           if (!e || e.prodId === p.id || e.ignored) return false;
           const t = norm(e.title || '');
           const n = palabras.filter((w) => t.includes(w)).length;
-          return palabras.length && n >= Math.max(2, Math.ceil(palabras.length * 0.6));
+          return palabras.length && n >= Math.max(1, Math.ceil(palabras.length * 0.6));
         });
+        const sinFicha = Object.entries(links).filter(([, e]) => {
+          if (!e || e.prodId || e.ignored) return false;
+          const t = norm(e.title || '');
+          return palabras.length && palabras.some((w) => t.includes(w));
+        });
+        if (sinFicha.length) {
+          console.log(`\n   ── ⚠️ publicaciones con título parecido SIN NINGUNA ficha: ${sinFicha.length} ──`);
+          console.log(`      Sus ventas entran como "sin vincular": no descuentan stock ni cuentan acá.`);
+          for (const [mla, e] of sinFicha.slice(0, 15)) {
+            console.log(`      ${mla} · ${(e.cuenta || '?').padEnd(8)} · ${(e.status || '?').padEnd(12)}`);
+            console.log(`         ${String(e.title || '').slice(0, 76)}`);
+          }
+        }
         if (ajenas.length) {
           console.log(`\n   ── ⚠️ publicaciones con título parecido colgadas de OTRA ficha: ${ajenas.length} ──`);
           console.log(`      Si las ventas están acá, esta ficha las ve en CERO y por eso no pide nada.`);
-          for (const [mla, e] of ajenas) {
+          for (const [mla, e] of ajenas.slice(0, 15)) {
             const otra = products.find((x) => x.id === e.prodId);
             console.log(`      ${mla} · ${(e.cuenta || '?').padEnd(8)} · ${(e.status || '?').padEnd(12)} · ficha "${otra ? otra.name : e.prodId}"`);
             console.log(`         ${String(e.title || '').slice(0, 76)}`);
