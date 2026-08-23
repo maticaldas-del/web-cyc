@@ -2888,6 +2888,47 @@ async function main() {
       console.log(`\n${ok === Object.keys(upd).length ? '✓' : '✗'} ${ok} de ${Object.keys(upd).length} guardadas y releídas de la base.`);
       return;
     }
+    // BILLING_PROBE=ponorigen:<py|bsas>|<producto,producto,…>[|go] → DE DÓNDE VIENE CADA PRODUCTO.
+    //
+    // Ese campo decide en qué pestaña de Pedidos aparece: Bs As o Paraguay. No lo puede adivinar el
+    // panel —el nombre del producto no dice de dónde lo traés— así que se marca una vez por ficha.
+    // En la app está el botón 🇦🇷/🇵🇾 en cada producto; esto es lo mismo pero para varios de una,
+    // que es como aparece el problema: él mira Pedidos Bs As y ve tres perfumes que son de Paraguay.
+    // Sin ":go" solo muestra. Si un nombre da más de un producto NO adivina: pide el id.
+    if (/^ponorigen(:|$)/.test(String(process.env.BILLING_PROBE || ''))) {
+      const _poP = String(process.env.BILLING_PROBE).slice('ponorigen:'.length).split('|').map((x) => x.trim());
+      const APLICAR = _poP.some((x) => x.toLowerCase() === 'go');
+      const destino = (_poP[0] || '').toLowerCase() === 'py' ? 'py' : ((_poP[0] || '').toLowerCase() === 'bsas' ? 'bsas' : null);
+      const pedidos = (_poP[1] || '').split(',').map((x) => x.trim()).filter(Boolean);
+      if (!destino || !pedidos.length) { console.log("Usá: ponorigen:py|Animale,azzaro[|go]  ·  el primero es py o bsas"); return; }
+      console.log(`=== ORIGEN → ${destino === 'py' ? '🇵🇾 Paraguay' : '🇦🇷 BS AS'} ${APLICAR ? '(APLICANDO)' : '(PRUEBA)'} ===\n`);
+      const plan = [];
+      for (const nom of pedidos) {
+        const cand = products.filter((p) => p.id === nom || norm(p.name || '').includes(norm(nom)));
+        if (!cand.length) { console.log(`  ✗ "${nom}" · no hay ningún producto con ese nombre`); continue; }
+        if (cand.length > 1) {
+          console.log(`  ✗ "${nom}" da ${cand.length} productos. Pasá el id exacto de cuál:`);
+          cand.forEach((p) => console.log(`       ${p.id} · ${p.name}  (hoy ${p.origen === 'py' ? 'Paraguay' : 'BS AS'})`));
+          continue;
+        }
+        const p = cand[0];
+        const hoy = p.origen === 'py' ? 'py' : 'bsas';
+        console.log(`  ${hoy === destino ? '=' : '→'} ${p.name} (${p.id}) · hoy ${hoy === 'py' ? 'Paraguay' : 'BS AS'}${hoy === destino ? ' · ya estaba así' : ''}`);
+        if (hoy !== destino) plan.push(p);
+      }
+      if (!plan.length) { console.log('\nNo hay nada para cambiar.'); return; }
+      if (!APLICAR) { console.log(`\nPRUEBA: no escribí nada. Son ${plan.length}. Para aplicar, mandá lo mismo con |go al final.`); return; }
+      let ok = 0;
+      for (const p of plan) {
+        await db.set('cyc/products/' + p.id + '/origen', destino);
+        const rel = await db.get('cyc/products/' + p.id + '/origen');
+        if (rel === destino) ok++;
+        console.log(`  releído ${p.name}: ${rel === 'py' ? 'Paraguay' : 'BS AS'} ${rel === destino ? '✓' : '✗'}`);
+      }
+      console.log(`\n${ok === plan.length ? '✓' : '✗'} ${ok} de ${plan.length} cambiados.`);
+      console.log(`Los pedidos se reacomodan de pestaña en cuanto abras Pedidos.`);
+      return;
+    }
     // BILLING_PROBE=stockreal:<palabra o id de producto> → ¿EL STOCK QUE MUESTRA EL PANEL EXISTE EN
     // ML DE VERDAD?
     //
