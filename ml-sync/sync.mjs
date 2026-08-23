@@ -2888,6 +2888,66 @@ async function main() {
       console.log(`\n${ok === Object.keys(upd).length ? '✓' : '✗'} ${ok} de ${Object.keys(upd).length} guardadas y releídas de la base.`);
       return;
     }
+    // BILLING_PROBE=codigoml:<MLA,MLA,…>  ó  codigoml:<CODIGO,CODIGO,…> → CRUZA EL "CÓDIGO ML" QUE
+    // SE VE EN LA PANTALLA DE FULL CON EL NÚMERO DE PUBLICACIÓN.
+    //
+    // Por qué hace falta: en "Estado de tu stock" y en la reposición, ML identifica las cosas con un
+    // código tipo ZBGG56355 —que es el ID de inventario de Full— y no con el MLA. Cuando él manda una
+    // captura diciendo "este es el blanco", manda ese código, y acá adentro todo se maneja por MLA.
+    // Sin este cruce hay que abrir cada publicación a mano para saber cuál es cuál, y peor: dos
+    // publicaciones pueden tener el MISMO TÍTULO (pasó con el Centímetro modista, donde dos decían
+    // "Centímetro Automático Retráctil Costura Modista Full" sin el color).
+    //
+    // Acepta las dos direcciones: se le pasan MLAs y devuelve su código, o se le pasan códigos y
+    // busca en las cuatro cuentas cuál publicación los tiene. Solo lee.
+    if (/^codigoml(:|$)/.test(String(process.env.BILLING_PROBE || ''))) {
+      const pedidos = String(process.env.BILLING_PROBE).slice('codigoml:'.length)
+        .split(/[,\s]+/).map((x) => x.trim()).filter(Boolean);
+      if (!pedidos.length) { console.log('Usá: codigoml:MLA1699834745,MLA1841730099  ó  codigoml:ZBGG56355'); return; }
+      const links = (await db.get('cyc/mllinks')) || {};
+      const mlasPed = pedidos.filter((x) => /^MLA\d+$/i.test(x)).map((x) => x.toUpperCase());
+      const codsPed = pedidos.filter((x) => !/^MLA\d+$/i.test(x)).map((x) => x.toUpperCase());
+      console.log(`=== CÓDIGO DE FULL ↔ PUBLICACIÓN ===\n`);
+      // Qué publicaciones hay que mirar: las pedidas por MLA, o TODAS si se buscan códigos.
+      const aMirar = mlasPed.length
+        ? mlasPed.filter((m) => links[m]).map((m) => [m, links[m]])
+        : Object.entries(links).filter(([m, e]) => m.startsWith('MLA') && e && !e.ignored && (e.status || '') !== 'closed');
+      for (const m of mlasPed) if (!links[m]) console.log(`  ⚠️ ${m} no figura en el panel`);
+      const porCta = {};
+      for (const [m, e] of aMirar) (porCta[e.cuenta] = porCta[e.cuenta] || []).push(m);
+      const hallados = [];
+      for (const [cta, mlas] of Object.entries(porCta)) {
+        const acc = accounts[cta]; if (!acc?.refresh_token) continue;
+        let tok;
+        try {
+          const t = await mlRefresh(ML_CLIENT_ID, ML_CLIENT_SECRET, acc.refresh_token);
+          await db.patch('mlapi/tokens/' + cta, { refresh_token: t.refresh_token, updated_ts: Date.now() });
+          tok = t.access_token;
+        } catch { console.log(`  ${cta}: no pude entrar`); continue; }
+        for (let k = 0; k < mlas.length; k += 20) {
+          let arr;
+          try { arr = await mlGet('/items?ids=' + mlas.slice(k, k + 20).join(',') + '&attributes=id,title,status,inventory_id,variations', tok); }
+          catch { continue; }
+          for (const row of (arr || [])) {
+            const b = row.body || {}; const mla = b.id; if (!mla) continue;
+            const codes = [];
+            if (b.inventory_id) codes.push({ inv: b.inventory_id, va: '' });
+            for (const v of (Array.isArray(b.variations) ? b.variations : [])) {
+              if (v.inventory_id) codes.push({ inv: v.inventory_id, va: (v.attribute_combinations || []).map((a) => a.value_name).filter(Boolean).join(' ') });
+            }
+            if (!codes.length) { if (mlasPed.length) console.log(`  ${mla} · ${cta} · sin código de Full (no es Full)`); continue; }
+            const pega = codsPed.length ? codes.some((c) => codsPed.includes(String(c.inv).toUpperCase())) : true;
+            if (!pega) continue;
+            hallados.push(mla);
+            console.log(`  ${mla} · ${cta} · ${b.status}`);
+            console.log(`     ${String(b.title || '').slice(0, 74)}`);
+            for (const c of codes) console.log(`     código de Full: ${c.inv}${c.va ? ' · ' + c.va : ''}${codsPed.includes(String(c.inv).toUpperCase()) ? '   ⬅️ ES ÉSTE' : ''}`);
+          }
+        }
+      }
+      if (codsPed.length && !hallados.length) console.log(`\n  No encontré ninguna publicación con ${codsPed.join(' · ')}. ¿Está bien escrito?`);
+      return;
+    }
     // BILLING_PROBE=probarmedidas[:cuenta][:cuantas] → ¿ML NOS DA EL PESO Y LAS MEDIDAS DE CADA
     // PRODUCTO?
     //
