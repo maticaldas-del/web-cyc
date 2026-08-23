@@ -2249,7 +2249,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='15.1';
+const APP_VERSION='15.2';
 // El problema real que esto resuelve no es curiosidad: es que el celular guarda la app y sigue
 // mostrando la de ayer sin avisar. Varias veces se revisó un cambio que ya estaba subido y no se
 // veía. Por eso, además del número, el chip avisa cuando hay una versión nueva esperando.
@@ -2909,6 +2909,7 @@ function renderProds(){
         <div><label>Costo $</label><br><input class="money" type="text" inputmode="numeric" value="${moneyVal(cp)}" onchange="updCostPesos('${p.id}',this.value)"></div>
         <div><label>${shipLabel}</label><br><input type="number" min="0" step="0.01" value="${ship}" onchange="updShipUSD('${p.id}',this.value)"></div>
         <div><label title="Lo que ML te cobra de gestión/logística Full por cada venta (lo ves en una venta ya hecha). Es aprox., varía un poco por destino.">Gestión Full $ ⓘ</label><br><input class="money" type="text" inputmode="numeric" value="${moneyVal(gest)}" onchange="updGestFull('${p.id}',this.value)" placeholder="p. ej. 6.653"></div>
+        ${medidaHtml(p)}
         <div style="display:flex;flex-direction:column;gap:4px;background:rgba(255,255,255,.04);border:1px solid var(--border);border-radius:8px;padding:8px 12px">
           <div style="font-size:.58rem;color:var(--muted);text-transform:uppercase;letter-spacing:.08em;margin-bottom:2px">Reclamos / Ventas totales <span style="text-transform:none;letter-spacing:0;font-size:.92em">· automático desde Ventas x Producto</span></div>
           <div style="display:flex;align-items:center;gap:8px">
@@ -3286,6 +3287,45 @@ function devPctCosto(p){
 function ventasProd365(prodOrName){
   const target=(prodOrName&&typeof prodOrName==='object')?prodOrName:prodByName(prodOrName);
   return _statsFor(target).ventas;
+}
+// ── MEDIDAS DEL PAQUETE ────────────────────────────────────────────────────
+// Para qué están: sin peso ni volumen no se puede cortar la caja a Full en 70x70x70 cm y 30 kg,
+// que es lo que él pidió el 23/08/2026 ("si hay 1,5 cajas, armame una sola").
+// Casi todas las llena el robot solo leyendo los atributos del paquete de ML (probe bajarmedidas).
+// Estos campos son para las que ML no informa y para corregir las que vienen mal: lo que se
+// escribe acá queda marcado como cargado a mano y el robot NO lo vuelve a pisar.
+const CAJA_CM3=70*70*70, CAJA_KG=30;
+function medidaHtml(p){
+  const m=p.medida||{};
+  const aMano=m.fuente==='mano';
+  const nota=m.fuente==='ML'?(m.duda?'de ML · sus publicaciones no coinciden':'de ML')
+    :aMano?'cargada a mano':'sin cargar';
+  const col=m.duda?'var(--amber)':(m.largoCm?'var(--muted)':'var(--red)');
+  const v=(x)=>x!=null&&x!==''?x:'';
+  return `<div style="display:flex;flex-direction:column;gap:4px;background:rgba(255,255,255,.04);border:1px solid var(--border);border-radius:8px;padding:8px 12px">
+    <div style="font-size:.58rem;color:${col};text-transform:uppercase;letter-spacing:.08em;margin-bottom:2px">Paquete <span style="text-transform:none;letter-spacing:0;font-size:.92em">· ${nota}</span></div>
+    <div style="display:flex;align-items:flex-end;gap:8px;flex-wrap:wrap">
+      <div><label style="font-size:.62rem">Largo cm</label><br><input style="width:70px" type="number" min="0" step="0.1" value="${v(m.largoCm)}" onchange="updMedida('${p.id}','largoCm',this.value)"></div>
+      <div><label style="font-size:.62rem">Ancho cm</label><br><input style="width:70px" type="number" min="0" step="0.1" value="${v(m.anchoCm)}" onchange="updMedida('${p.id}','anchoCm',this.value)"></div>
+      <div><label style="font-size:.62rem">Alto cm</label><br><input style="width:70px" type="number" min="0" step="0.1" value="${v(m.altoCm)}" onchange="updMedida('${p.id}','altoCm',this.value)"></div>
+      <div><label style="font-size:.62rem">Peso kg</label><br><input style="width:70px" type="number" min="0" step="0.01" value="${m.pesoG?(m.pesoG/1000):''}" onchange="updMedida('${p.id}','pesoKg',this.value)"></div>
+      ${m.largoCm&&m.anchoCm&&m.altoCm?`<div style="font-size:.6rem;color:var(--muted);padding-bottom:7px">${Math.round(m.largoCm*m.anchoCm*m.altoCm).toLocaleString('es-AR')} cm³ · entran <strong>${Math.floor(CAJA_CM3/Math.max(1,m.largoCm*m.anchoCm*m.altoCm))}</strong> por caja${m.pesoG?` (${Math.floor(CAJA_KG*1000/m.pesoG)} por peso)`:''}</div>`:''}
+    </div>
+  </div>`;
+}
+async function updMedida(id,campo,val){
+  const p=state.products.find(x=>x.id===id);if(!p)return;
+  const n=parseFloat(String(val).replace(',','.'));
+  const m={...(p.medida||{})};
+  if(campo==='pesoKg')m.pesoG=isFinite(n)&&n>0?Math.round(n*1000):null;
+  else m[campo]=isFinite(n)&&n>0?n:null;
+  // Cargado a mano manda sobre lo que trae ML: el robot respeta fuente:'mano' y no lo pisa.
+  m.fuente='mano';m.duda=null;m.ts=Date.now();
+  if(m.largoCm&&m.anchoCm&&m.altoCm)m.volCm3=Math.round(m.largoCm*m.anchoCm*m.altoCm);
+  p.medida=m;
+  await fbSet('products/'+id+'/medida',m);
+  await log('Medidas '+p.name+': '+(m.largoCm||'?')+'x'+(m.anchoCm||'?')+'x'+(m.altoCm||'?')+' cm · '+((m.pesoG||0)/1000)+' kg');
+  renderProds();
 }
 async function updShipUSD(id,val){
   const p=state.products.find(x=>x.id===id);if(!p)return;

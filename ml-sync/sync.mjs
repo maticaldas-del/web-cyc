@@ -2831,6 +2831,7 @@ async function main() {
         (distintas.size > 1 ? dudas : seguros).push({ p, m, v, distintas });
       }
       console.log(`\n══ RESULTADO sobre ${products.length} productos ══`);
+      console.log(`   (las que ya tengan medida cargada A MANO no se tocan)`);
       console.log(`   ✅ SEGUROS ..... ${seguros.length}  (todas sus publicaciones dicen lo mismo)`);
       console.log(`   ⚠️  CON DUDAS ... ${dudas.length}  (sus publicaciones NO coinciden entre sí)`);
       console.log(`   ❌ FALTAN ...... ${faltan.length}  (ninguna publicación las informa)\n`);
@@ -2856,9 +2857,13 @@ async function main() {
       if (!APLICAR) { console.log(`\nPRUEBA: no escribí nada. Para guardarlas: bajarmedidas:go`); return; }
       let ok = 0;
       for (const [pid, m] of Object.entries(upd)) {
+        // Lo cargado A MANO manda: si él corrigió la medida en la ficha, el robot no la pisa.
+        const yaHay = await db.get('cyc/products/' + pid + '/medida');
+        if (yaHay && yaHay.fuente === 'mano') { ok++; continue; }
         await db.patch('cyc/products/' + pid, { medida: m });
         const rel = await db.get('cyc/products/' + pid + '/medida');
         if (rel && rel.volCm3 === m.volCm3 && rel.pesoG === m.pesoG) ok++;
+        else console.log(`   ✗ no quedó: ${pid}`);
       }
       console.log(`\n${ok === Object.keys(upd).length ? '✓' : '✗'} ${ok} de ${Object.keys(upd).length} guardadas y releídas de la base.`);
       return;
