@@ -2249,7 +2249,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='15.8';
+const APP_VERSION='15.9';
 // El problema real que esto resuelve no es curiosidad: es que el celular guarda la app y sigue
 // mostrando la de ayer sin avisar. Varias veces se revisó un cambio que ya estaba subido y no se
 // veía. Por eso, además del número, el chip avisa cuando hay una versión nueva esperando.
@@ -7856,11 +7856,13 @@ function _pedidoItemHtml(p,opts){
   const varToggle=varsSorted?`<details class="pi-var-det"${_vOpen?' open':''} ontoggle="_setPedVarOpen('${p.id}',this.open)"><summary class="pi-var-toggle">Variantes (${varsSorted.length})</summary><div class="pi-var-list">${varsSorted.map(x=>`<span class="pi-var-chip">${x.v}<strong>×${x.q}</strong></span>`).join('')}</div></details>`:'';
   const _prod=(state.products||[]).find(x=>x.id===p.prodId||(x.name&&normTxt(x.name)===normTxt(p.producto||'')));
   const fotoBtn=(_prod&&_prod.foto)?`<button class="pi-var-toggle" style="background:rgba(56,189,248,.12);color:#38bdf8;border-color:rgba(56,189,248,.3)" onclick="verFoto('${_prod.id}')" title="Ver foto del producto">📷 Foto</button>`:'';
-  // El riesgo se muestra partido: lo que se tapa MANDANDO lo que ya tenés, y lo que hay que
-  // COMPRAR de verdad. Ver el comentario de riesgoComprar/riesgoMandar en renderPedidos.
-  const riesgoBadge=(opts.showRiesgo&&p.riesgo>0)?`<span class="pi-var-toggle" style="background:rgba(239,68,68,.12);color:var(--red);border-color:rgba(239,68,68,.3);cursor:default" title="Ganancia de un mes de este producto × los días que vas a pasar sin stock en ML si no se repone. Estar sin stock cuesta esto, tengas o no la mercadería en casa.">💸 ${fmt(p.riesgo)} en riesgo</span>`
-    +((p.riesgoMandar>0)?`<span class="pi-var-toggle" style="background:rgba(245,158,11,.12);color:var(--amber);border-color:rgba(245,158,11,.3);cursor:default" title="Esta parte NO se arregla comprando: son unidades que ya tenés en casa o viajando. Se destraba mandando la caja.">📦 ${fmt(p.riesgoMandar)} se tapa mandando</span>`:'')
-    +((p.riesgoComprar>0&&p.riesgoMandar>0)?`<span class="pi-var-toggle" style="background:rgba(239,68,68,.18);color:var(--red);border-color:rgba(239,68,68,.4);cursor:default" title="Lo que queda en riesgo DESPUÉS de mandar todo lo que ya tenés: esto sí necesita comprar.">🛒 ${fmt(p.riesgoComprar)} hay que comprar</span>`:''):'';
+  // UN SOLO NÚMERO: lo que queda en riesgo DESPUÉS de mandar lo que ya tenés en casa o viajando.
+  // Se probó mostrar los tres (el riesgo entero, lo que se tapa mandando y lo que hay que comprar)
+  // y él lo cortó el 23/08/2026: "sacá el 'se tapa mandando', dejá sólo la resta y listo". Tiene
+  // razón — esta pantalla decide CUÁNTO COMPRAR, y para eso el único número que se usa es el neto.
+  // El desglose completo no se pierde: está en el globito al apoyar el dedo.
+  const _riesgoNeto=(p.riesgoComprar!=null?p.riesgoComprar:p.riesgo)||0;
+  const riesgoBadge=(opts.showRiesgo&&_riesgoNeto>0)?`<span class="pi-var-toggle" style="background:rgba(239,68,68,.12);color:var(--red);border-color:rgba(239,68,68,.3);cursor:default" title="${p.riesgoMandar>0?`De ${fmt(p.riesgo)} que se pierden por estar sin stock, ${fmt(p.riesgoMandar)} se tapan mandando lo que ya tenés en casa o en camino. Esto es lo que necesita COMPRA.`:'Ganancia de un mes de este producto × los días que vas a pasar sin stock en ML si no se repone.'}">💸 ${fmt(_riesgoNeto)} en riesgo</span>`:'';
   const origenBadge=opts.origen?`<span class="pi-var-toggle" style="cursor:default">${opts.origen}</span>`:'';
   const accionBtns=`<button class="pi-status ${p.estado||'pendiente'}" onclick="setPedidoEstado('${p.id}','${NEXT[p.estado||'pendiente']}')">${LABEL[p.estado||'pendiente']}</button>`;
   return `<div class="pedido-item ${_enCam?'suficiente':(p.estado||'pendiente')}">
