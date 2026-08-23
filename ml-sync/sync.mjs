@@ -2756,6 +2756,113 @@ async function main() {
       else console.log('✓ Quedó. En "Mi oficina" ya se puede contar aroma por aroma.');
       return;
     }
+    // BILLING_PROBE=bajarmedidas[:go] → TRAE DE ML EL PESO Y LAS MEDIDAS DE CADA PRODUCTO.
+    //
+    // Para qué: pedido suyo del 23/08/2026, que cuando haya más mercadería que la que entra en una
+    // caja el panel arme SOLO UNA (70x70x70 cm y hasta 30 kg) y deje el resto para la siguiente.
+    // Sin peso ni volumen eso no se puede calcular, y la ficha no los tenía.
+    //
+    // Probado con `probarmedidas` el 23/08/2026: de los tres caminos posibles, `shipping.dimensions`
+    // y `shipping_options` vienen VACÍOS, y los **attributes PACKAGE_\*** vinieron completos en 5 de 5
+    // (PACKAGE_LENGTH / _WIDTH / _HEIGHT en cm y PACKAGE_WEIGHT en gramos). Así que se leen de ahí.
+    //
+    // Las medidas son POR PUBLICACIÓN y el panel trabaja por PRODUCTO. Cuando un producto tiene
+    // varias publicaciones se comparan entre sí:
+    //   · todas iguales (o una sola)      → SEGURO
+    //   · distintas entre ellas           → CON DUDAS: se guarda la más grande (que es el lado que
+    //     no hace reventar la caja) y queda marcado para revisar
+    //   · ninguna publicación las informa → FALTA, y hay que cargarla a mano
+    // Se guarda en cyc/products/<id>/medida, con patch SOBRE EL HIJO para no pisar la ficha entera.
+    // Sin ":go" no escribe nada.
+    if (/^bajarmedidas(:|$)/.test(String(process.env.BILLING_PROBE || ''))) {
+      const APLICAR = String(process.env.BILLING_PROBE).split(':')[1] === 'go';
+      const links = (await db.get('cyc/mllinks')) || {};
+      const pIdx = {}; for (const p of products) pIdx[p.id] = p;
+      const porProd = {};   // prodId → [{mla, l, a, h, g}]
+      const numAttr = (at, id) => {
+        const a = (at || []).find((x) => x.id === id);
+        if (!a) return null;
+        const n = parseFloat(String(a.value_name || a.value_struct?.number || '').replace(',', '.'));
+        return isFinite(n) && n > 0 ? n : null;
+      };
+      for (const label of labels) {
+        const acc = accounts[label]; if (!acc?.refresh_token) continue;
+        let tok;
+        try {
+          const t = await mlRefresh(ML_CLIENT_ID, ML_CLIENT_SECRET, acc.refresh_token);
+          await db.patch('mlapi/tokens/' + label, { refresh_token: t.refresh_token, updated_ts: Date.now() });
+          tok = t.access_token;
+        } catch { console.log(`  ${label}: no pude entrar`); continue; }
+        const mlas = Object.entries(links)
+          .filter(([m, e]) => m.startsWith('MLA') && e && e.cuenta === label && !e.ignored &&
+            (e.status || '') !== 'closed' && e.prodId && pIdx[e.prodId]).map(([m]) => m);
+        let leidas = 0;
+        for (let k = 0; k < mlas.length; k += 20) {
+          const lote = mlas.slice(k, k + 20);
+          let arr;
+          try { arr = await mlGet('/items?ids=' + lote.join(',') + '&attributes=id,attributes', tok); } catch { continue; }
+          for (const row of (arr || [])) {
+            const b = row.body || {}; const mla = b.id; if (!mla || !links[mla]) continue;
+            const at = b.attributes || [];
+            const l = numAttr(at, 'PACKAGE_LENGTH'), a = numAttr(at, 'PACKAGE_WIDTH'),
+                  h = numAttr(at, 'PACKAGE_HEIGHT'), g = numAttr(at, 'PACKAGE_WEIGHT');
+            if (!(l && a && h && g)) continue;
+            const pid = links[mla].prodId;
+            (porProd[pid] = porProd[pid] || []).push({ mla, l, a, h, g });
+            leidas++;
+          }
+        }
+        console.log(`  ${label}: ${leidas} de ${mlas.length} publicaciones con medidas`);
+      }
+      const seguros = [], dudas = [], faltan = [];
+      const upd = {};
+      for (const p of products) {
+        const v = porProd[p.id] || [];
+        if (!v.length) { faltan.push(p); continue; }
+        const key = (x) => `${x.l}x${x.a}x${x.h}|${x.g}`;
+        const distintas = new Set(v.map(key));
+        // La más grande por volumen: si hay desacuerdo, mejor que sobre lugar en la caja.
+        const vol = (x) => x.l * x.a * x.h;
+        const may = v.slice().sort((x, y) => vol(y) - vol(x) || y.g - x.g)[0];
+        const m = { largoCm: may.l, anchoCm: may.a, altoCm: may.h, pesoG: may.g,
+                    volCm3: Math.round(vol(may)), fuente: 'ML', mla: may.mla, pubs: v.length,
+                    duda: distintas.size > 1 ? true : null, ts: Date.now() };
+        upd[p.id] = m;
+        (distintas.size > 1 ? dudas : seguros).push({ p, m, v, distintas });
+      }
+      console.log(`\n══ RESULTADO sobre ${products.length} productos ══`);
+      console.log(`   ✅ SEGUROS ..... ${seguros.length}  (todas sus publicaciones dicen lo mismo)`);
+      console.log(`   ⚠️  CON DUDAS ... ${dudas.length}  (sus publicaciones NO coinciden entre sí)`);
+      console.log(`   ❌ FALTAN ...... ${faltan.length}  (ninguna publicación las informa)\n`);
+      if (dudas.length) {
+        console.log(`── CON DUDAS · se guarda la más grande, revisalas ──`);
+        for (const d of dudas.slice(0, 40)) {
+          console.log(`   ${String(d.p.name).slice(0, 40).padEnd(40)} → ${d.m.largoCm}x${d.m.anchoCm}x${d.m.altoCm} cm · ${d.m.pesoG} g`);
+          for (const x of d.v) console.log(`      ${x.mla}: ${x.l}x${x.a}x${x.h} cm · ${x.g} g`);
+        }
+        if (dudas.length > 40) console.log(`   … y ${dudas.length - 40} más`);
+      }
+      if (faltan.length) {
+        console.log(`\n── FALTAN · hay que cargarlas a mano ──`);
+        faltan.forEach((p) => console.log(`   ${p.id} · ${p.name}`));
+      }
+      if (seguros.length) {
+        console.log(`\n── SEGUROS (los primeros 25 para ver que tenga sentido) ──`);
+        for (const sg of seguros.slice(0, 25)) console.log(`   ${String(sg.p.name).slice(0, 40).padEnd(40)} ${sg.m.largoCm}x${sg.m.anchoCm}x${sg.m.altoCm} cm · ${(sg.m.pesoG / 1000).toFixed(2)} kg · ${sg.m.volCm3.toLocaleString('es-AR')} cm³`);
+      }
+      // Cuántos entran en una caja, para que se vea si el dato sirve
+      const CAJA_CM3 = 70 * 70 * 70, CAJA_KG = 30;
+      console.log(`\n   Una caja de 70x70x70 son ${CAJA_CM3.toLocaleString('es-AR')} cm³ y ${CAJA_KG} kg.`);
+      if (!APLICAR) { console.log(`\nPRUEBA: no escribí nada. Para guardarlas: bajarmedidas:go`); return; }
+      let ok = 0;
+      for (const [pid, m] of Object.entries(upd)) {
+        await db.patch('cyc/products/' + pid, { medida: m });
+        const rel = await db.get('cyc/products/' + pid + '/medida');
+        if (rel && rel.volCm3 === m.volCm3 && rel.pesoG === m.pesoG) ok++;
+      }
+      console.log(`\n${ok === Object.keys(upd).length ? '✓' : '✗'} ${ok} de ${Object.keys(upd).length} guardadas y releídas de la base.`);
+      return;
+    }
     // BILLING_PROBE=probarmedidas[:cuenta][:cuantas] → ¿ML NOS DA EL PESO Y LAS MEDIDAS DE CADA
     // PRODUCTO?
     //
