@@ -2249,7 +2249,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='15.2';
+const APP_VERSION='15.3';
 // El problema real que esto resuelve no es curiosidad: es que el celular guarda la app y sigue
 // mostrando la de ayer sin avisar. Varias veces se revisó un cambio que ya estaba subido y no se
 // veía. Por eso, además del número, el chip avisa cuando hay una versión nueva esperando.
@@ -3660,16 +3660,78 @@ function reservadoEnOtras(pid,va,ctaActual){
   return n;
 }
 const cajaMax=(f,cta)=>Math.max(0,f.hay-reservadoEnOtras(f.p.id,f.variante,cta));
+// ── CUÁNTAS UNIDADES ENTRAN EN UNA CAJA ────────────────────────────────────
+// La caja es un cubo de 70x70x70, así que da igual de qué lado se apoye cada cosa: el resultado
+// de floor(70/lado) por los tres lados es el mismo en cualquier orden. Por eso no hace falta
+// probar las seis maneras de girarla.
+// TODO RÍGIDO, decisión suya del 23/08/2026 ("trata todo como rigido y listo, mas facil"). Las
+// sábanas en la realidad se aplastan y van a entrar más; se prefiere quedarse corto.
+// No se usa volumen a propósito: 343.000 cm³ de mercadería NO entran en una caja de 343.000 cm³,
+// porque quedan huecos. Contando cuántas entran por lado el hueco ya está descontado.
+function porCaja(p){
+  const m=p&&p.medida;
+  if(!m||!(m.largoCm>0)||!(m.anchoCm>0)||!(m.altoCm>0))return null;
+  const n=Math.floor(70/m.largoCm)*Math.floor(70/m.anchoCm)*Math.floor(70/m.altoCm);
+  return n>0?n:0;   // 0 = no entra ni una: hay que mandarla suelta
+}
+// ── ARMAR UNA SOLA CAJA, MEZCLANDO BIEN ────────────────────────────────────
+// Pedido suyo del 23/08/2026, con el ejemplo: "si pones todas sabanas te va a quedar mucho volumen
+// y poco peso; lo mejor es sacar algunas sabanas y poner cartas, que son chiquitas y pesan, hasta
+// quedar justo en los limites".
+// Son DOS límites a la vez —el lugar y los 30 kg— y llenar uno solo desperdicia el otro.
+// Cómo se resuelve: cada unidad gasta una fracción de cada límite. En cada paso se elige la que más
+// ganancia deja por lo que gasta, PERO midiendo el gasto contra lo que QUEDA de cada límite:
+//     puntaje = ganancia / ( gastoLugar/lugarQueQueda + gastoPeso/pesoQueQueda )
+// Cuando el lugar se está por terminar, "lugarQueQueda" es chico y las cosas voluminosas se
+// vuelven carísimas: ahí ganan solas las chicas y pesadas. Es lo mismo que hace él a mano.
+//
+// OJO CON EL OBJETIVO: no es llenar la caja, es meter la mayor ganancia posible. Solo compiten
+// cosas que YA valía la pena mandar, y las que están en cero van primero. Media caja con lo que
+// urge es mejor que una caja llena de relleno que paga almacenamiento sin destrabar ninguna venta.
 async function cajaSugerida(){
   if(!ofiFiltroCuenta)return renderOfiCaja();
-  const items={};
-  repartoOficina().forEach(f=>(f.sug||[]).forEach(x=>{
+  const filas=repartoOficina();
+  const cand=[];
+  filas.forEach(f=>(f.sug||[]).forEach(x=>{
     if(x.cuenta!==ofiFiltroCuenta||!(x.mandar>0))return;
-    const tope=cajaMax(f,ofiFiltroCuenta);
-    const u=Math.min(x.mandar,tope);
-    if(u>0)items[_ck(f.p.id,f.variante)]=u;
+    const u=Math.min(x.mandar,cajaMax(f,ofiFiltroCuenta));
+    if(u>0)cand.push({f,u,enCero:!!x.enCero,dias:x.dias});
   }));
+  if(!cand.length){await _guardarCajaArmando(ofiFiltroCuenta,{});return renderOfiCaja();}
+  // Sin medidas no se puede cortar: se carga todo lo sugerido, como antes, y el cartel lo avisa.
+  if(cand.some(c=>porCaja(c.f.p)==null)){
+    const items={};cand.forEach(c=>items[_ck(c.f.p.id,c.f.variante)]=c.u);
+    await _guardarCajaArmando(ofiFiltroCuenta,items);
+    toast('Falta la medida de algún producto: cargué todo lo sugerido sin cortar la caja',4000);
+    return renderOfiCaja();
+  }
+  const items={};
+  let restoLugar=1, restoPeso=CAJA_KG*1000;   // 1 caja entera de lugar, 30.000 g
+  const restante={};cand.forEach((c,i)=>restante[i]=c.u);
+  const gan=(c)=>{const g=gananciaUnidad(c.f.p);return g!=null&&g>0?g:1;};
+  for(;;){
+    let mejor=-1,mejorPunt=-1;
+    cand.forEach((c,i)=>{
+      if(restante[i]<=0)return;
+      const n=porCaja(c.f.p), pe=(c.f.p.medida?.pesoG)||0;
+      if(!n)return;                              // no entra ni una: se manda aparte
+      const fl=1/n;
+      if(fl>restoLugar+1e-9||pe>restoPeso+1e-9)return;
+      // Lo que está en CERO vale el doble: es venta que no se está haciendo, no un ajuste.
+      const punt=gan(c)*(c.enCero?2:1)/((fl/Math.max(restoLugar,1e-6))+(pe/Math.max(restoPeso,1)));
+      if(punt>mejorPunt){mejorPunt=punt;mejor=i;}
+    });
+    if(mejor<0)break;
+    const c=cand[mejor];
+    const k=_ck(c.f.p.id,c.f.variante);
+    items[k]=(items[k]||0)+1;restante[mejor]--;
+    restoLugar-=1/porCaja(c.f.p);
+    restoPeso-=(c.f.p.medida?.pesoG)||0;
+  }
+  const puestas=Object.values(items).reduce((a,x)=>a+x,0);
+  const pedidas=cand.reduce((a,c)=>a+c.u,0);
   await _guardarCajaArmando(ofiFiltroCuenta,items);
+  if(puestas<pedidas)toast(`Entró UNA caja: ${puestas} de ${pedidas} u. Cerrala y armá la siguiente con el resto.`,5000);
   renderOfiCaja();
 }
 async function cajaVaciar(){
