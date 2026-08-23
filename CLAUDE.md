@@ -201,6 +201,7 @@ Los que más se usan:
 | `huerfanos[:palabra]` | los productos en "—": por qué no tienen precio y cuál es su publicación |
 | `poncosto:<palabra\|id>\|<pesos>[\|go]` | corrige el costo de un producto (lo mismo que el campo de la ficha) |
 | `vincular:<MLA>=<palabra\|id>[:go]` | pega una publicación a un producto y la saca de oculta |
+| `fijarvar:<MLA>=<variante>\|…[\|go]` | dice a mano de qué color/aroma es cada publicación cuando el título de ML no lo nombra igual que la ficha |
 | `pausar:<busca>[!<saca>][:go]` | pausa varias de una · palabras con `+` · **mirar la lista antes** |
 | `cargargasto:<fecha>\|<monto>\|<cat>\|<desc>[\|prov=][\|fact=][\|cae=][\|go]` | carga un gasto con su comprobante |
 | `subirrecibidas[:go]` | sube las compras de ARCA a Facturas → Recibidas (lee `ml-sync/recibidas.json`) |
@@ -506,6 +507,19 @@ Lo que está en casa se cuenta a mano en **Mi oficina**, que es el lugar que cor
   Lo probado: el producto que tuvo stock todo el mes **no cambia**; el que se agotó sube.
   Ojo: `cyc/stockhist` es por producto×cuenta, no por variante — en los productos con aromas se usa
   como aproximación.
+- **Una variante puede tener su publicación andando y figurar "sin publicar en ninguna cuenta".**
+  El panel adivina de qué color/aroma es cada publicación leyendo el TÍTULO, y exige que TODAS las
+  palabras de la variante estén ahí. Si la ficha la llama "Azul Marino" y ML dice sólo "Azul", no
+  engancha: la variante no aparece en Armar caja y el stock de Full no se le imputa. Pasó el
+  21/08/2026 con las 4 sábanas de 105x190 de Luciana (Azul Marino, Beige Oscuro, Rosa Chicle, Verde
+  Musgo) y la Azul Oscuro de 140x190. Aflojar la regla sería peor —"Azul Marino" y "Azul Oscuro"
+  conviven en la misma ficha— así que se dice a mano con `fijarvar:<MLA>=<variante>[|go]`, que lo
+  escribe en `cyc/mllinks/<MLA>/variant`. Ese campo lo respetan la web, el stock de Full por
+  variante y el marcado de cajas recibidas.
+  **Y antes de aplicar, mirar SIEMPRE la prueba:** de los 8 que él marcó ese día, 3 (los Victoria's
+  Secret) ya estaban bien vinculados a la ficha "Victoria's Secret BLISS" y aplicarlos los habría
+  devuelto a la ficha vieja. Lo que se veía en cero en pantalla no era una variante sin publicación:
+  eran 3 nombres de color sobrantes en la ficha vieja, que se sacaron con `repbliss:go`.
 - **Leer la salida ENTERA del comando, no el renglón final.** El 19/08/2026 corrí `ponvariantes`
   sobre el Paulvic, leí solo el "✓ Quedó" del final y no vi el renglón de arriba que decía qué
   había antes. La ficha ya tenía **70 aromas cargados** y con `reemplazar` **borré 43** (Abismo,
