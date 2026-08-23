@@ -2249,7 +2249,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='15.0';
+const APP_VERSION='15.1';
 // El problema real que esto resuelve no es curiosidad: es que el celular guarda la app y sigue
 // mostrando la de ayer sin avisar. Varias veces se revisó un cambio que ya estaba subido y no se
 // veía. Por eso, además del número, el chip avisa cuando hay una versión nueva esperando.
@@ -3670,10 +3670,24 @@ function renderOfiCaja(){
   const fc=document.getElementById('ofi-filtro-cuentas');
   // Cada botón muestra cuántas unidades le tocan: así se ve de un vistazo a quién hay que
   // mandarle sin tener que entrar cuenta por cuenta.
+  // EL NUMERITO EN VERDE O EN ROJO. Pedido suyo del 23/08/2026: "que cuando no haya caja lista
+  // para armar aparezca en rojo, y en verde solo cuando hay cajas listas".
+  // "Lista" no es "hay unidades sueltas": es que la caja SE JUSTIFIQUE, con el mismo criterio del
+  // cartel de arriba (convieneCaja) — o se paga rápido por lo que destraba, o lleva bastante más
+  // plata que los $16.000 del envío. Si el numerito se pusiera verde con la primera unidad
+  // sugerida, volvería a ser el número de antes pintado de colores.
+  const _listo={};
+  LOCS.forEach(l=>{
+    const cv=convieneCaja(filas,l);
+    const d=cv.diasPago;
+    _listo[l]=(d!=null&&d<=7)||cv.porTamano;
+  });
   if(fc)fc.innerHTML=`<button class="pf-btn${ofiFiltroCuenta===''?' active-all':''}" onclick="setOfiFiltro('')">Todas${aMandar?` <strong>${aMandar}</strong>`:''}</button>`
     +LOCS.map(l=>{
       const u=Object.values(cajaDe(l)).reduce((a,x)=>a+x,0);
-      return `<button class="pf-btn${ofiFiltroCuenta===l?' active-all':''}" onclick="setOfiFiltro('${l}')">${l}${porCta[l]?` <strong>${porCta[l]}</strong>`:''}${u?` <span style="color:var(--accent2)" title="caja a medio armar">📦${u}</span>`:''}</button>`;
+      const col=porCta[l]?(_listo[l]?'var(--green)':'var(--red)'):'';
+      const tit=porCta[l]?(_listo[l]?`La caja de ${l} ya se justifica: mandala`:`Todavía no da: juntá más antes de pagar los ${fmt(COSTO_CAJA)} del envío`):'';
+      return `<button class="pf-btn${ofiFiltroCuenta===l?' active-all':''}" onclick="setOfiFiltro('${l}')">${l}${porCta[l]?` <strong style="color:${col}" title="${tit}">${porCta[l]}</strong>`:''}${u?` <span style="color:var(--accent2)" title="caja a medio armar">📦${u}</span>`:''}</button>`;
     }).join('');
   // Con una cuenta elegida se entra en MODO ARMAR CAJA: se listan TODOS los productos que hay en
   // casa (no solo los que la cuenta "necesita"), cada uno con una casilla para poner cuántos van

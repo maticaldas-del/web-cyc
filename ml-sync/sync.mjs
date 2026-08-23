@@ -2756,6 +2756,73 @@ async function main() {
       else console.log('✓ Quedó. En "Mi oficina" ya se puede contar aroma por aroma.');
       return;
     }
+    // BILLING_PROBE=probarmedidas[:cuenta][:cuantas] → ¿ML NOS DA EL PESO Y LAS MEDIDAS DE CADA
+    // PRODUCTO?
+    //
+    // Pedido suyo del 23/08/2026: que cuando haya más mercadería que la que entra en una caja, el
+    // panel arme SOLO UNA (70x70x70 cm y 30 kg) y deje el resto para la siguiente.
+    // Para eso hace falta el peso y el volumen de cada producto, y HOY EL PANEL NO LOS TIENE: la
+    // ficha guarda costo, envío y variantes, nada de medidas. Cargarlas a mano son 137 productos.
+    // ML sí las tiene que saber —las exige para publicar en Full— así que se pregunta antes de
+    // construir nada encima. Mismo método que con el saldo de MercadoPago, los envíos entrantes,
+    // las percepciones y la recomendación de reposición: preguntar primero, no suponer.
+    //
+    // Prueba tres caminos por publicación:
+    //   1. /items/<MLA> → shipping.dimensions (el string "AxBxC,peso")
+    //   2. /items/<MLA> → attributes PACKAGE_WEIGHT / PACKAGE_LENGTH / _WIDTH / _HEIGHT
+    //   3. /items/<MLA>/shipping_options → dimensions del envío
+    // Solo lee.
+    if (/^probarmedidas(:|$)/.test(String(process.env.BILLING_PROBE || ''))) {
+      const _pmP = String(process.env.BILLING_PROBE).split(':');
+      const soloCta = (_pmP[1] || '').trim().toLowerCase();
+      const CUANTAS = parseInt(_pmP[2]) || 6;
+      const links = (await db.get('cyc/mllinks')) || {};
+      console.log(`=== ¿ML DA PESO Y MEDIDAS? ===\n`);
+      let conDim = 0, conAttr = 0, conShip = 0, total = 0;
+      for (const label of labels) {
+        if (soloCta && label.toLowerCase() !== soloCta) continue;
+        const acc = accounts[label]; if (!acc?.refresh_token) continue;
+        let tok;
+        try {
+          const t = await mlRefresh(ML_CLIENT_ID, ML_CLIENT_SECRET, acc.refresh_token);
+          await db.patch('mlapi/tokens/' + label, { refresh_token: t.refresh_token, updated_ts: Date.now() });
+          tok = t.access_token;
+        } catch { console.log(`  ${label}: no pude entrar`); continue; }
+        const mlas = Object.entries(links)
+          .filter(([m, e]) => m.startsWith('MLA') && e && e.cuenta === label && !e.ignored && (e.status || '') === 'active')
+          .slice(0, CUANTAS).map(([m]) => m);
+        if (!mlas.length) { console.log(`  ${label}: sin publicaciones activas`); continue; }
+        console.log(`── ${label} · ${mlas.length} publicaciones ──`);
+        for (const mla of mlas) {
+          total++;
+          const e = links[mla] || {};
+          console.log(`  ${mla} · ${String(e.title || '').slice(0, 54)}`);
+          let it = null;
+          try { it = await mlGet(`/items/${mla}`, tok); } catch (err) { console.log(`     /items → ✗ ${err.message || err}`); }
+          const dim = it?.shipping?.dimensions;
+          console.log(`     1. shipping.dimensions ... ${dim ? '✅ ' + dim : '— vacío'}`);
+          if (dim) conDim++;
+          const at = (it?.attributes || []).filter((a) => /^PACKAGE_/.test(a.id || ''));
+          console.log(`     2. attributes PACKAGE_* .. ${at.length ? '✅ ' + at.map((a) => `${a.id}=${a.value_name}`).join(' · ') : '— ninguno'}`);
+          if (at.length) conAttr++;
+          try {
+            const so = await mlGet(`/items/${mla}/shipping_options?zip_code=1425`, tok);
+            const o = (so?.options || [])[0];
+            const d2 = o?.dimensions || so?.dimensions;
+            console.log(`     3. shipping_options ...... ${d2 ? '✅ ' + JSON.stringify(d2) : '— sin medidas'}`);
+            if (d2) conShip++;
+          } catch (err) { console.log(`     3. shipping_options ...... ✗ ${err.message || err}`); }
+          await new Promise((r) => setTimeout(r, 350));
+        }
+      }
+      console.log(`\n── RESUMEN sobre ${total} publicaciones ──`);
+      console.log(`   shipping.dimensions ... ${conDim}`);
+      console.log(`   attributes PACKAGE_* .. ${conAttr}`);
+      console.log(`   shipping_options ...... ${conShip}`);
+      console.log(`\nUna caja de 70x70x70 son 343.000 cm³ y hasta 30 kg. Si alguno de los tres viene`);
+      console.log(`completo se puede cortar la caja sola; si no, hay que cargar peso y medidas a mano.`);
+      return;
+    }
     // BILLING_PROBE=probarinbound → ¿ML NOS DEJA VER LAS CAJAS QUE VAN EN CAMINO A FULL?
     //
     // Hoy el robot solo ve la ENTRADA (cuando la mercadería ya está adentro de Full). Mientras la
