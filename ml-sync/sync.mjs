@@ -11599,6 +11599,76 @@ async function main() {
       return;
     }
 
+    // BILLING_PROBE=probarrepo[:<cuenta>] → ¿ML DA POR API SU RECOMENDACIÓN DE REPOSICIÓN?
+    //
+    // Pedido suyo del 23/08/2026: que la recomendación del panel sea LA MISMA que la de ML
+    // ("Enviá 74 u." en Reposición → Stock a enviar), para no tener dos números que decidan lo
+    // mismo y no saber a cuál hacerle caso.
+    //
+    // POR QUÉ NO SE COPIA LA FÓRMULA A OJO. Mirando su captura no hay cuenta que la explique:
+    //   Centímetro Rosa ....... 77 ventas en 30d → Enviá 74
+    //   Sábanas 2½ Blanco ..... 10 ventas        → Enviá 4
+    //   Sábanas 1½ Gris Oscuro . 1 venta         → Enviá 4
+    //   Cartas Españolas ...... 36 ventas        → Enviá 27
+    // 10 ventas dan 4 y 1 venta también da 4, así que hay un mínimo y algo más que no se ve
+    // (probablemente días de cobertura de ML, estacionalidad y lo que ya está en camino).
+    // Reproducir eso a ojo da un número PARECIDO al de ML, que es lo peor de los dos mundos:
+    // no es el de ML y tampoco es el nuestro, que al menos sabemos cómo se calcula.
+    //
+    // ASÍ QUE PRIMERO SE PREGUNTA. Mismo método que con el saldo de MercadoPago, los envíos
+    // entrantes y las percepciones: se prueban los endpoints candidatos y se ve cuál contesta,
+    // ANTES de construir nada encima.
+    //
+    // OJO CON LEERLO AL REVÉS: un 404 dice que ESA ruta no existe, no que el dato no exista. Y un
+    // 429 no dice nada (es el límite de velocidad). Si fallan todos, la conclusión es "por acá no",
+    // no "ML no lo tiene".
+    //
+    // DE YAPA: la pantalla de ML muestra "Aptas y en camino", así que si alguno de estos contesta
+    // puede traer también lo que viaja a Full — el dato que el 20/08 dimos por imposible después
+    // de 28 intentos con `probarinbound`.
+    if (/^probarrepo(:|$)/.test(String(process.env.BILLING_PROBE || ''))) {
+      const _pr = String(process.env.BILLING_PROBE).split(':');
+      const SOLO = (_pr[1] || '').toLowerCase();
+      for (const label of labels) {
+        if (SOLO && label.toLowerCase() !== SOLO) continue;
+        const acc = accounts[label]; if (!acc?.refresh_token) continue;
+        let t; try { t = await mlRefresh(ML_CLIENT_ID, ML_CLIENT_SECRET, acc.refresh_token); }
+        catch { console.log(`▶ ${label}: no pude renovar el token.\n`); continue; }
+        await db.patch('mlapi/tokens/' + label, { refresh_token: t.refresh_token, updated_ts: Date.now() });
+        const sid = acc.seller_id;
+        console.log(`\n═══ ${label} (${sid}) ═══`);
+        const rutas = [
+          `/inventories/recommendations/restock?seller_id=${sid}`,
+          `/inventories/restock/recommendations?seller_id=${sid}`,
+          `/users/${sid}/stock/fulfillment/recommendations`,
+          `/stock/fulfillment/recommendations?seller_id=${sid}`,
+          `/stock/fulfillment/restock?seller_id=${sid}`,
+          `/stock/fulfillment/inbound/recommendations?seller_id=${sid}`,
+          `/users/${sid}/inventories/recommendations`,
+          `/inventories/${sid}/restock`,
+          `/restock/recommendations?seller_id=${sid}`,
+          `/fbm/restock/recommendations?seller_id=${sid}`,
+          `/sites/MLA/inventories/recommendations?seller_id=${sid}`,
+        ];
+        for (const ruta of rutas) {
+          try {
+            const r = await fetch(ML_API + ruta, { headers: { Authorization: 'Bearer ' + t.access_token } });
+            const txt = await r.text();
+            const marca = r.status === 200 ? '✅' : (r.status === 429 ? '⏳' : '  ');
+            console.log(`${marca} ${String(r.status).padEnd(4)} ${ruta}`);
+            if (r.status === 200) console.log(`      ${txt.slice(0, 400).replace(/\s+/g, ' ')}`);
+            else if (r.status !== 404) console.log(`      ${txt.slice(0, 160).replace(/\s+/g, ' ')}`);
+          } catch (err) {
+            console.log(`   ERR  ${ruta} · ${String(err.message || err).slice(0, 70)}`);
+          }
+          await new Promise((z) => setTimeout(z, 400)); // sin apuro: un 429 no prueba nada
+        }
+      }
+      console.log(`\nSOLO LECTURA. 404 = esa ruta no existe (no que el dato no exista). 429 = límite de`);
+      console.log(`velocidad, no dice nada. Si fallan todas, la conclusión es "por acá no", no "ML no lo tiene".`);
+      return;
+    }
+
     // BILLING_PROBE=probardolar → DE DÓNDE SACAR EL DÓLAR OFICIAL DE VENTA, AUTOMÁTICO
     //
     // Pedido suyo del 22/08/2026: "al dólar oficial de venta tomamos nosotros... ¿pero el robot
