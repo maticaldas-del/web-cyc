@@ -2274,7 +2274,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='16.1';
+const APP_VERSION='16.2';
 // El problema real que esto resuelve no es curiosidad: es que el celular guarda la app y sigue
 // mostrando la de ayer sin avisar. Varias veces se revisó un cambio que ya estaba subido y no se
 // veía. Por eso, además del número, el chip avisa cuando hay una versión nueva esperando.
@@ -4235,9 +4235,23 @@ function diasConStock(pid,loc){
 // se pudo vender mientras HUBO stock en ALGUNA cuenta, así que se toma el máximo. Tomar el mínimo
 // o el promedio castigaría a un producto que en una cuenta se agotó y en otra sobraba.
 function diasConStockProd(pid){
-  let mx=0;
-  for(const l of LOCS){const d=diasConStock(pid,l);if(d>mx)mx=d;}
-  return mx>0?mx:PED_MAX_DAYS;
+  // UNA CUENTA SIN NINGÚN REGISTRO NO ES "TUVO STOCK TODO EL MES": ES QUE AHÍ NUNCA HUBO.
+  // Medido el 24/08/2026 con `ordenped`: los 37 pedidos de Bs As daban 30 días sin excepción, o
+  // sea que la corrección de los días con stock no llegaba a aplicarse NUNCA. El motivo estaba
+  // acá: `diasConStock` devuelve el mes entero cuando no hay registro de esa cuenta, y como acá
+  // se toma el máximo, con que UNA de las cuatro no tuviera el producto alcanzaba para tapar a
+  // las que sí lo medían. El Joystick x3 lo mostraba entero: Adriana en cero hace 27 días y
+  // Matías hace 29, pero Luciana y Ayelen sin registro → máximo 30 → corrección cero.
+  // Ahora se miran sólo las cuentas que tienen registro. Si ninguna lo tiene, se mide el mes
+  // entero como antes. Ojo con la diferencia: "sin registro" se saltea, pero una fecha aproximada
+  // (el robot no vio entrar la mercadería) SÍ cuenta como mes entero, porque ahí sí hubo stock.
+  let mx=0,hubo=false;
+  for(const l of LOCS){
+    if(!(state.stockhist||{})[invKey(pid,l)])continue;
+    hubo=true;
+    const d=diasConStock(pid,l);if(d>mx)mx=d;
+  }
+  return (hubo&&mx>0)?mx:PED_MAX_DAYS;
 }
 // CUÁNTOS DÍAS DE VENTA CUBRE LA CAJA. Decisión suya del 23/08/2026, comparando contra lo que
 // recomienda ML: "la idea nunca quedarme corto". Estaba en 30 y quedaba MUY por debajo de ML —

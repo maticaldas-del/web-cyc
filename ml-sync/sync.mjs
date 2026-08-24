@@ -12822,7 +12822,10 @@ async function main() {
       };
       // A nivel producto se toma el MÁXIMO entre cuentas, igual que diasConStockProd(): el producto
       // se pudo vender mientras hubo stock en ALGUNA cuenta.
-      const dConSProd = (pid) => { let mx = 0; for (const l of LOCS) { const d = diasConStock(pid, l); if (d > mx) mx = d; } return mx > 0 ? mx : MAX_DAYS; };
+      // Se miran SOLO las cuentas que tienen registro: una cuenta sin registro no es "tuvo stock
+      // todo el mes", es que ahí nunca hubo el producto — y como se toma el máximo, tapaba a las
+      // que sí lo medían. Misma regla que diasConStockProd() en la web.
+      const dConSProd = (pid) => { let mx = 0, hubo = false; for (const l of LOCS) { if (!hist[pid + '__' + sidL(l)]) continue; hubo = true; const d = diasConStock(pid, l); if (d > mx) mx = d; } return (hubo && mx > 0) ? mx : MAX_DAYS; };
 
       const esPaulvic = (ped) => {
         const p = products.find((x) => x.id === ped.prodId || (x.name && norm(x.name) === norm(ped.producto || '')));
