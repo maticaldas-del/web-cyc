@@ -463,6 +463,15 @@ Lo que está en casa se cuenta a mano en **Mi oficina**, que es el lugar que cor
   Al hacerlo se corrió el chequeo de las tres listas contra la versión anterior y lo ÚNICO que
   faltaba era lo que se quiso sacar: `renderMargenML`, los tres `id` de esa pantalla,
   `tab-margen-ml` y `tab-btn-monotributo`. Ese chequeo no es opcional (ver más abajo).
+- **UNA FICHA NUEVA SIN VENTAS PUEDE TENER DOS COSTOS: el de la web y el del robot.** El
+  24/08/2026 la ficha "De la Patagonia KO UNISEX" mostraba US$ 12,41 en pantalla y `unapub` decía
+  US$ 12,51 — $151 de diferencia en el mismo producto. El motivo: la web **siempre** recalcula
+  (`costFullUSDof`: costo × (1+%reclamos) + envío), pero `costoPesos()` del robot solo recalcula si
+  el producto tiene reclamos en vivo; **sin ninguna venta cae en el `costFullUSD` guardado**, que
+  en una ficha recién creada puede tener cualquier resto viejo adentro. Se arregló haciendo que
+  `patagoniako` lo escriba explícito. **Regla para cualquier ficha que se cree desde un probe:
+  escribirle `costFullUSD` a mano, no dejarlo librado.** Verificado: el costo pasó de $21.561 a
+  $21.410 y el margen de 50,1% a 51,2%, que es el que muestra la web.
 - **"Costo vender en Full" (ficha) y "Costo full" (Margen ML) NO son el mismo número, y los dos
   están bien.** El 24/08/2026 él marcó los dos perfumes De la Patagonia: la ficha decía $29.984 y
   Margen ML $24.364. La diferencia son los **$5.620 de gestión de Full** (`gestFull`, el cargo
