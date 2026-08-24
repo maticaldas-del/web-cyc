@@ -500,6 +500,26 @@ Lo que está en casa se cuenta a mano en **Mi oficina**, que es el lugar que cor
   del que muestra el panel.
   Ojo con el filtro: `sincargo:lupa` agarra **la Lupa 90mm también**, que no era del caso. Sin `:go`
   solo muestra, con el antes y el después de cada producto. Mirar la lista siempre.
+- **EL PROVEEDOR NO TARDA LO MISMO SEGÚN DE DÓNDE VENGA, Y EL PANEL LOS TRATABA IGUAL.** Plazos
+  que él pasó el 24/08/2026: **Bs As 1 semana · Paulvic 1 semana · Paraguay 2 MESES**. Hasta ese
+  día el origen sólo decidía en qué pestaña aparecía el pedido; no cambiaba ninguna cuenta. Con 2
+  meses de viaje eso deja el aviso inservible: un producto de Paraguay con 20 días de stock salía
+  **amarillo** cuando ya estaba condenado a ~40 días sin vender aunque se comprara esa tarde. Y la
+  otra mitad es peor — comprando cada 2 meses **para 30 días** te quedás corto siempre, por diseño.
+  Números elegidos por él: **Paraguay rojo a 50 días y comprar para 95**; Bs As y Paulvic quedan
+  en 14 y 30. Están en `index.html` como `PED_DIAS_ROJO_PY` / `PED_TARGET_PY` y se aplican con
+  `pedDiasRojoDe(p)` / `pedTargetDiasDe(p)`.
+  **El Paulvic NO entra en el plazo de Paraguay** aunque su ficha esté marcada `origen:'py'`: viene
+  en una semana. Lo separa `esPaisLento()` usando `esProductoPaulvic()`.
+  Ojo con no confundir dos plazos que se parecen: `REPO_DIAS_DEMORA` (8 días) es el tramo
+  caja→Full y es igual para todos, porque sale de la misma oficina. Este otro es el del PROVEEDOR
+  y arranca antes, cuando todavía hay que comprar la mercadería.
+- **LA PLATA YA NO ES EL LÍMITE: EL PROVEEDOR SÍ.** Dicho por él el 24/08/2026: *"siempre el límite
+  fue el dinero, pero hoy es el proveedor"* — hacen falta $3.400.000 para reponer y hay $5.000.000.
+  Importa para la pregunta de qué mercadería conviene rematar: **con plata sobrando, liberar caja
+  vale mucho menos** de lo que parece, porque no se puede gastar ni lo que ya está. Lo que manda
+  entonces es el almacenamiento de Full, el reloj del descarte y el lugar que ocupa. El argumento
+  de "esa plata rinde en otro lado" vuelve a pesar recién cuando el proveedor tenga stock.
 - **UN PEDIDO CARGADO A MANO QUEDABA CONGELADO PARA SIEMPRE.** El 24/08/2026 él marcó *"error
   grave"*: el Termómetro pincha pedía comprar 31 con urgencia teniendo **30 en Full y 150 en la
   oficina** — y lo probó mostrando una venta de ese mismo día. `stockreal` decía que el panel y ML

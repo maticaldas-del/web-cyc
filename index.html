@@ -2274,7 +2274,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='16.4';
+const APP_VERSION='16.5';
 // El problema real que esto resuelve no es curiosidad: es que el celular guarda la app y sigue
 // mostrando la de ayer sin avisar. Varias veces se revisó un cambio que ya estaba subido y no se
 // veía. Por eso, además del número, el chip avisa cuando hay una versión nueva esperando.
@@ -4286,6 +4286,23 @@ const REPO_DIAS_TOTAL=REPO_DIAS_COBERTURA+REPO_DIAS_DEMORA;
 // Va aparte de REPO_DIAS_DEMORA a propósito: aquel mide sólo el tramo caja→ML, y este arranca
 // antes, cuando todavía hay que comprar la mercadería.
 const PED_DIAS_ROJO=14;
+// ── EL PROVEEDOR NO TARDA LO MISMO SEGÚN DE DÓNDE VENGA ──────────────────────────────
+// Plazos que él pasó el 24/08/2026: Bs As 1 semana · Paulvic 1 semana · Paraguay 2 MESES.
+// Hasta ahora el panel trataba a los tres igual y el único lugar donde figuraba el origen era
+// en qué pestaña aparecía el pedido: no cambiaba ninguna cuenta. Con 2 meses de viaje eso deja
+// el aviso inservible — un producto de Paraguay con 20 días de stock salía AMARILLO cuando ya
+// estaba condenado a 40 días sin vender, comprándolo esa misma tarde.
+// Y la otra mitad, peor: comprando cada 2 meses PARA 30 días te quedás corto siempre, por
+// diseño. De Paraguay hay que comprar para el viaje MÁS el período de venta.
+// Los dos números los eligió él: rojo a 50 días y comprar para 95.
+const PED_DIAS_ROJO_PY=50;
+const PED_TARGET_PY=95;
+const PED_TARGET_DIAS=30;   // Bs As y Paulvic: pedir para cubrir los próximos 30 días
+// El Paulvic viene en 1 semana como Bs As, así que NO entra en el plazo de Paraguay aunque su
+// ficha esté marcada con origen py.
+const esPaisLento=p=>!!p&&p.origen==='py'&&!esProductoPaulvic(p);
+const pedDiasRojoDe=p=>esPaisLento(p)?PED_DIAS_ROJO_PY:PED_DIAS_ROJO;
+const pedTargetDiasDe=p=>esPaisLento(p)?PED_TARGET_PY:PED_TARGET_DIAS;
 // PISO PARA LA PUBLICACIÓN QUE ESTÁ EN CERO. Decisión suya del 23/08/2026, el mismo número que usa
 // ML (lo mostró en la Linterna Blanco Azul: 0 ventas, 0 stock → "Sugerencia: 4 u.").
 // Por qué un piso y no la cuenta normal: en cero la publicación NO VENDE, así que tampoco tiene
@@ -6959,7 +6976,8 @@ function pedAutoFill(prodElId,qtyElId,hintElId,varElId){
 }
 let syncPedidosTimer=null;
 async function syncPedidosAuto(){
-  const TARGET_DAYS=30; // objetivo de reposición: pedir para cubrir los próximos 30 días
+  // El objetivo de compra ya no es uno solo: depende de cuánto tarde el proveedor de ese producto
+  // (ver pedTargetDiasDe). Bs As y Paulvic 30 días · Paraguay 95.
   // 1. ventas por variante en el período
   const varSalesMap={};
   const _now=new Date();const _from=new Date(_now);_from.setDate(_now.getDate()-(PED_MAX_DAYS-1));
@@ -7001,6 +7019,7 @@ async function syncPedidosAuto(){
     // días de cobertura de los que tiene.
     const diasCubiertos=vDia>0?Math.round(stock/vDia):999;
     const coll=p.origen==='py'?'pedidos_py':'pedidos';
+    const TARGET_DIAS_P=pedTargetDiasDe(p);   // 30 días, o 95 si el proveedor tarda 2 meses
     const hasVars=(p.variantes||[]).length>0;
     let necesario,variantesNec,aComprarVar=null;
     if(hasVars&&varSalesMap[p.id]){
@@ -7011,7 +7030,7 @@ async function syncPedidosAuto(){
         const vStock=LOCS.reduce((s,l)=>s+(parseInt(state.inventory[invKeyV(p.id,l,v)])||0),0);
         // El stockhist es por producto×cuenta, no por variante: acá se usa la velocidad del
         // producto como aproximación, que es lo mejor que hay hasta que se anote por variante.
-        const vTarget=Math.ceil((varSalesMap[p.id][v]||0)/Math.min(dConS,diasHistorial)*TARGET_DAYS);
+        const vTarget=Math.ceil((varSalesMap[p.id][v]||0)/Math.min(dConS,diasHistorial)*TARGET_DIAS_P);
         // ── LO QUE YA TENÉS DE ESA VARIANTE NO SE COMPRA DE NUEVO ──────────────────
         // Antes, si había CUALQUIER cosa en la oficina, el pedido se dejaba sin desglose: no se
         // sabía de qué variante eran esas unidades. Eso dejó de ser cierto cuando "Contar lo que
@@ -7032,7 +7051,7 @@ async function syncPedidosAuto(){
       aComprarVar=_aComp.reduce((s,x)=>s+x.vComprar,0);
       variantesNec=_aComp.length?_aComp.map(({v,vComprar:q})=>({v,q})):null;
     } else {
-      const targetStock=Math.ceil(vDia*TARGET_DAYS);
+      const targetStock=Math.ceil(vDia*TARGET_DIAS_P);
       necesario=Math.max(0,targetStock-stock);
       variantesNec=null;
     }
@@ -7132,7 +7151,7 @@ async function syncPedidosAuto(){
   for(const [pid,r] of Object.entries(resumen)){
     if(r.aComprar===0)continue;
     const coll=r.coll;const arr=state[coll]||(state[coll]=[]);
-    const estado=r.diasCubiertos<=PED_DIAS_ROJO?'pendiente':'poco_stock';
+    const estado=r.diasCubiertos<=pedDiasRojoDe(r.p)?'pendiente':'poco_stock';
     const notaHist=r.diasHistorial<PED_MAX_DAYS?` (${r.vendidos} en ${r.diasHistorial}d)`:'';
     const variantesNec=r.variantesNec||null;
     const _ti=r.enCamino>0?transitoInfoDe(r.p.id):null;
@@ -7248,6 +7267,14 @@ function updatePedidosCosto(){
 // diga el pedido; y por último el nombre del producto. Se usa en DOS lugares —la pestaña Paulvic y
 // la de Bs As, que lo excluye— así que vive acá: si cada pantalla lo decidiera por su cuenta, un
 // producto podría quedar en las dos o en ninguna.
+// Si un PRODUCTO es del Paulvic. `esPedidoPaulvic` mira un pedido; acá hace falta mirar la ficha,
+// porque el plazo del proveedor es del producto, exista o no un pedido.
+function esProductoPaulvic(p){
+  if(!p)return false;
+  const prov=p.proveedorId?(state.proveedores||[]).find(x=>x.id===p.proveedorId):null;
+  if(prov)return normTxt(prov.nombre||'').includes('paulvic');
+  return normTxt(p.name||'').includes('paulvic');
+}
 function esPedidoPaulvic(ped){
   const prod=(state.products||[]).find(x=>x.id===ped.prodId||(x.name&&normTxt(x.name)===normTxt(ped.producto||'')));
   const prov=prod?.proveedorId?(state.proveedores||[]).find(x=>x.id===prod.proveedorId):null;
