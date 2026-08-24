@@ -12930,11 +12930,43 @@ async function main() {
       const inv = (await db.get('cyc/inventory')) || {};
       const vp = (await db.get('cyc/ventaprod')) || {}; setDevLive(vp);
       const links = (await db.get('cyc/mllinks')) || {};
+      const hist = (await db.get('cyc/stockhist')) || {};
+      const envios = (await db.get('cyc/envios_full')) || {};
       const fin = (await db.get('cyc/finanzas')) || {};
       const tc = parseFloat(fin.tipo_cambio) || 1500;
       const $ = (n) => '$' + Math.round(n).toLocaleString('es-AR');
 
       const hoy = Date.now();
+      // ── HACE CUÁNTO QUE ESTE PRODUCTO TIENE STOCK ────────────────────────────────────
+      // Planteo suyo del 24/08/2026: "falta un dato importante — productos que todavía no llegaron
+      // o llegaron hace poco". Un producto recién llegado tiene stock y CERO ventas, exactamente
+      // igual que uno muerto, y rematarlo sería el peor error posible: no vendió porque no tuvo
+      // tiempo. Sale de `cyc/stockhist`, que el robot viene anotando: `desde` es cuándo apareció
+      // el stock, y `aprox:false` quiere decir que el robot VIO entrar la mercadería (si es
+      // aproximada, esa fecha dice hace cuánto miramos, no hace cuánto hay stock, y no sirve).
+      // Se toma la MÁS RECIENTE entre las cuentas: si a una cuenta le llegó hace 5 días, ese
+      // producto tuvo mercadería nueva hace 5 días.
+      const llegoHace = (pid) => {
+        let masNuevo = null;
+        for (const l of LOCS) {
+          const h = hist[pid + '__' + sidL(l)];
+          if (!h || !h.desde || h.aprox !== false) continue;
+          const d = Math.floor((hoy - h.desde) / 864e5);
+          if (masNuevo == null || d < masNuevo) masNuevo = d;
+        }
+        return masNuevo;
+      };
+      const enCaminoDe = (pid) => {
+        let u = 0;
+        for (const e of Object.values(envios)) {
+          if (!e || !e.cuenta || !LOCS.includes(e.cuenta)) continue;
+          for (const c of (Array.isArray(e.cajasDet) ? e.cajasDet : [])) {
+            if (c.recibida) continue;
+            for (const it of (c.items || [])) if (it && it.prodId === pid && it.u > 0) u += it.u;
+          }
+        }
+        return u;
+      };
       const kDesde = new Date(hoy - (DIAS - 1) * 864e5).toISOString().slice(0, 10).replace(/-/g, '_');
 
       // caja de compra: la MEJOR entre las publicaciones del producto — con que UNA gane, el
@@ -12983,14 +13015,17 @@ async function main() {
         // qué está parado y bajarle el precio no lo va a arreglar. Si vende bien, que la comparta
         // o la pierda es una nota al pie, no un motivo para liquidar.
         const PARADO = 120;   // días de stock: más que esto es mercadería que no rota
+        const NUEVO = 30;     // menos de esto con stock: todavía no tuvo tiempo de vender
+        const lleg = llegoHace(p.id), cam = enCaminoDe(p.id);
         let grupo;
-        if (vPer === 0) grupo = 'MUERTO';
+        if (lleg != null && lleg < NUEVO && vPer === 0) grupo = 'NUEVO';
+        else if (vPer === 0) grupo = 'MUERTO';
         else if (caja === 'losing' && diasStock > PARADO) grupo = 'CAJA';
         else if (diasStock > PARADO) grupo = 'SOBRE';
         else grupo = 'SANO';
         // "quieto": unidades × meses sin venderse. Es lo que paga almacenamiento sin devolver nada.
         const quieto = stock * Math.min(diasSin, 365) / 30;
-        filas.push({ n: p.name, stock, plata, vPer, diasSin, diasStock, caja, py, grupo, quieto, cUSD });
+        filas.push({ n: p.name, stock, plata, vPer, diasSin, diasStock, caja, py, grupo, quieto, cUSD, lleg, cam });
       }
       if (!filas.length) { console.log('No hay ningún producto con stock.'); return; }
 
@@ -12999,7 +13034,8 @@ async function main() {
         const d = f.diasSin === 9999 ? 'nunca vendió' : `hace ${f.diasSin}d`;
         return `   ${String(f.stock).padStart(4)} u. · ${$(f.plata).padStart(12)} · última venta ${d}`
           + `${f.vPer > 0 ? ` · ${f.vPer} vendidas en ${DIAS}d (dura ${f.diasStock}d)` : ''}`
-          + `${f.caja ? ' · ' + CAJA_TXT[f.caja] : ''}${f.py ? ' · 🇵🇾 REPONER TARDA 2 MESES' : ''}\n        ${f.n}`;
+          + `${f.caja ? ' · ' + CAJA_TXT[f.caja] : ''}${f.py ? ' · 🇵🇾 REPONER TARDA 2 MESES' : ''}`
+          + `${f.lleg != null ? ` · 📦 con stock hace ${f.lleg}d` : ''}${f.cam > 0 ? ` · 🚚 ${f.cam} EN CAMINO` : ''}\n        ${f.n}`;
       };
       const grupo = (k) => filas.filter((f) => f.grupo === k).sort((a, b) => b.quieto - a.quieto);
       const tot = (a) => a.reduce((s, f) => s + f.plata, 0);
@@ -13013,6 +13049,12 @@ async function main() {
       console.log(`   Éstos son los candidatos a rematar. Pagan almacenamiento y el reloj del descarte de ML les corre.`);
       muertos.forEach((f) => console.log(linea(f)));
       if (!muertos.length) console.log('   ninguno ✓');
+
+      const nuevos = grupo('NUEVO');
+      console.log(`\n🆕 TODAVÍA NO TUVIERON TIEMPO — con stock hace menos de 30 días  ·  ${nuevos.length} · ${$(tot(nuevos))}`);
+      console.log(`   NO SON MUERTOS. No vendieron porque recién llegaron. Hay que esperarlos.`);
+      nuevos.forEach((f) => console.log(linea(f)));
+      if (!nuevos.length) console.log('   ninguno');
 
       console.log(`\n🟠 PERDIERON LA CAJA **Y ADEMÁS NO ROTAN**  ·  ${cajas.length} · ${$(tot(cajas))}`);
       console.log(`   OJO: acá bajar el precio NO arregla nada. O se remata, o se acepta que vende poco.`);
