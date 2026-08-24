@@ -12833,6 +12833,11 @@ async function main() {
       // Sin gestFull, "Costo vender en Full" sale MÁS BARATO de lo que es y el margen se ve mejor
       // de lo real, que es justo el error que no queremos.
       for (const k of ['origen', 'proveedorId', 'foto', 'medida', 'categoria', 'gestFull', 'shipUSD']) if (vieja[k] != null) ficha[k] = vieja[k];
+      // Si el hermano NO tiene el envío cargado, se pone 0 EXPLÍCITO en vez de dejarlo vacío.
+      // Con el campo vacío la web lo deduce de `costFullUSD − costo`, y ahí sale un resto de
+      // redondeo — al KO le quedó US$ 0,10 mientras el hermano mostraba 0, siendo el MISMO
+      // producto. Dos fichas iguales con números distintos confunden más que un cero.
+      if (ficha.shipUSD == null) ficha.shipUSD = 0;
       console.log(`\n  1. FICHA NUEVA ${yaKo ? '(ya existía, se actualiza)' : '(se crea)'}`);
       console.log(`     ${nuevoId} · "${ficha.name}" · costo ${$(COSTO_KO)} = US$ ${ficha.costUSD}`);
       console.log(`     copiado del hermano: gestión Full ${ficha.gestFull != null ? $(ficha.gestFull) : '(el hermano no la tiene cargada)'} · envío US$ ${ficha.shipUSD != null ? ficha.shipUSD : 0}`);
