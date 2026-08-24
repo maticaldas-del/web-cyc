@@ -12784,6 +12784,90 @@ async function main() {
     // de los números lista las publicaciones de este producto Y las publicaciones de OTROS productos
     // cuyo título se parece, que es donde suelen estar las ventas que faltan.
     // Solo lee.
+    // BILLING_PROBE=ordenped[:cuántos] → ¿ESTÁ BIEN EL ORDEN DE LA LISTA DE PEDIDOS BS AS?
+    // Duda suya del 24/08/2026: el padre compra de arriba hacia abajo y deja la cola, "y cada vez
+    // hay más publicaciones inactivas". La lista se ordena por plata en riesgo, y esa plata se
+    // medía dividiendo la ganancia por los 30 días del mes SIN preguntar si en esos días había
+    // mercadería para vender — o sea que lo que más tiempo lleva agotado es lo que peor mide.
+    //
+    // POR QUÉ ESTE PROBE PUEDE COMPARAR SIN RECALCULAR LA GANANCIA: la corrección es un factor
+    // exacto. La fórmula vieja multiplicaba por 30/diasHistorial y la nueva por 30/díasConStock,
+    // sobre la MISMA suma de ganancia. Como diasHistorial ya está clavado en 30 (el historial
+    // arranca el 01/06/2026), lo nuevo es exactamente lo viejo × (30 / díasConStock). Así que se
+    // toma el número que la web ya dejó guardado en cyc/pedidos y se lo multiplica: no hay una
+    // segunda copia de la fórmula que pueda quedar vieja y decir "todo bien" para siempre.
+    if (/^ordenped(:|$)/.test(String(process.env.BILLING_PROBE || ''))) {
+      const cuantos = Math.max(5, parseInt(String(process.env.BILLING_PROBE).split(':')[1]) || 25);
+      const LOCS = ['Adriana', 'Luciana', 'Ayelen', 'Matias'];
+      const MAX_DAYS = 30, DIAS_MIN = 7;
+      const sidL = (x) => String(x).replace(/[^a-z0-9]/gi, '_');
+      const hist = (await db.get('cyc/stockhist')) || {};
+      const peds = Object.values((await db.get('cyc/pedidos')) || {}).filter(Boolean);
+      const provs = Object.values((await db.get('cyc/proveedores')) || {}).filter(Boolean);
+      if (!peds.length) { console.log('cyc/pedidos está vacío: la web todavía no escribió ningún pedido.'); return; }
+
+      // MISMA regla que diasConStock() en la web: una fecha aproximada NO habilita a decir "tuvo
+      // stock sólo N días" — sin haber visto ENTRAR la mercadería se mide el mes entero.
+      const diasConStock = (pid, loc) => {
+        const h = hist[pid + '__' + sidL(loc)];
+        if (!h) return MAX_DAYS;
+        const now = Date.now(), ini = now - MAX_DAYS * 864e5;
+        let ms = null;
+        if (h.desde) { if (h.aprox !== false) return MAX_DAYS; ms = now - Math.max(h.desde, ini); }
+        else if (h.cero) ms = Math.max(0, h.cero - ini);
+        if (ms == null) return MAX_DAYS;
+        const d = ms / 864e5;
+        if (!isFinite(d) || d <= 0) return DIAS_MIN;
+        return Math.max(DIAS_MIN, Math.min(MAX_DAYS, d));
+      };
+      // A nivel producto se toma el MÁXIMO entre cuentas, igual que diasConStockProd(): el producto
+      // se pudo vender mientras hubo stock en ALGUNA cuenta.
+      const dConSProd = (pid) => { let mx = 0; for (const l of LOCS) { const d = diasConStock(pid, l); if (d > mx) mx = d; } return mx > 0 ? mx : MAX_DAYS; };
+
+      const esPaulvic = (ped) => {
+        const p = products.find((x) => x.id === ped.prodId || (x.name && norm(x.name) === norm(ped.producto || '')));
+        const pv = p && p.proveedorId ? provs.find((x) => x.id === p.proveedorId) : null;
+        if (pv) return norm(pv.nombre || '').includes('paulvic');
+        if (norm(ped.proveedor || '').includes('paulvic')) return true;
+        return norm((p && p.name) || ped.producto || '').includes('paulvic');
+      };
+
+      const filas = peds.filter((x) => !esPaulvic(x) && (x.estado || 'pendiente') !== 'suficiente').map((x) => {
+        const dConS = dConSProd(x.prodId);
+        const mult = MAX_DAYS / Math.max(1, dConS);
+        const viejoOrden = x.riesgo || 0;                                           // por lo que ordenaba antes
+        const netoHoy = (x.riesgoComprar != null ? x.riesgoComprar : x.riesgo) || 0; // lo que muestra la tarjeta
+        return { nom: x.producto || x.prodId, u: x.cantidad || 0, dConS: Math.round(dConS), mult, viejoOrden, netoHoy, nuevo: Math.round(netoHoy * mult) };
+      });
+      if (!filas.length) { console.log('No hay pedidos de Bs As pendientes.'); return; }
+
+      const $ = (n) => '$' + Math.round(n).toLocaleString('es-AR');
+      const ordViejo = filas.slice().sort((a, b) => b.viejoOrden - a.viejoOrden);
+      const ordNuevo = filas.slice().sort((a, b) => b.nuevo - a.nuevo || b.viejoOrden - a.viejoOrden);
+      const posV = new Map(ordViejo.map((f, i) => [f.nom, i + 1]));
+
+      console.log(`\n══ ORDEN DE PEDIDOS BS AS · ${filas.length} pendientes ══\n`);
+      console.log(`ANTES (por el riesgo del mes entero, sin mirar los días con stock):`);
+      ordViejo.slice(0, cuantos).forEach((f, i) => console.log(`  ${String(i + 1).padStart(3)}. ${$(f.viejoOrden).padStart(12)} · ${f.u} u. · ${f.nom.slice(0, 52)}`));
+      console.log(`\nAHORA (por lo que hay que comprar, medido sobre los días que hubo stock):`);
+      ordNuevo.slice(0, cuantos).forEach((f, i) => {
+        const antes = posV.get(f.nom), salto = antes - (i + 1);
+        const flecha = salto > 0 ? `↑${salto}` : salto < 0 ? `↓${-salto}` : '  =';
+        const nota = f.dConS < MAX_DAYS ? ` · tuvo stock ${f.dConS}d de 30 → ×${f.mult.toFixed(1)}` : '';
+        console.log(`  ${String(i + 1).padStart(3)}. ${flecha.padStart(4)} ${$(f.nuevo).padStart(12)} · ${f.u} u. · ${f.nom.slice(0, 42)}${nota}`);
+      });
+
+      const movidos = ordNuevo.slice(0, cuantos).filter((f, i) => posV.get(f.nom) !== i + 1).length;
+      const conMult = filas.filter((f) => f.dConS < MAX_DAYS);
+      console.log(`\n── RESUMEN ──`);
+      console.log(`  ${movidos} de los primeros ${cuantos} cambian de lugar.`);
+      console.log(`  ${conMult.length} de ${filas.length} productos tienen medidos MENOS de 30 días con stock (son los que suben).`);
+      if (!conMult.length) console.log(`  ⚠ NINGUNO tiene el dato: cyc/stockhist no alcanza para medirlos, así que el orden queda igual que antes.`);
+      const topSube = conMult.slice().sort((a, b) => b.mult - a.mult).slice(0, 8);
+      if (topSube.length) { console.log(`\n  Los que más se corrigen:`); topSube.forEach((f) => console.log(`    ×${f.mult.toFixed(1)} · ${$(f.netoHoy)} → ${$(f.nuevo)} · tuvo stock ${f.dConS}d · ${f.nom.slice(0, 46)}`)); }
+      return;
+    }
+
     if (/^porquecaja(:|$)/.test(String(process.env.BILLING_PROBE || ''))) {
       const q = String(process.env.BILLING_PROBE).slice('porquecaja:'.length).trim();
       if (!q) { console.log('Usá: porquecaja:adaptador'); return; }
