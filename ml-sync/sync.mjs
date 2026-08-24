@@ -12958,10 +12958,17 @@ async function main() {
         const diasStock = vDia > 0 ? Math.round(stock / vDia) : 9999;
         const caja = cajaDe(p.id);
         const py = p.origen === 'py';
+        // PERDER LA CAJA NO ALCANZA PARA REMATAR UN PRODUCTO. La primera versión mandaba a la lista
+        // de remate a TODO el que tuviera la caja perdida, vendiera bien o no — y ahí entraron
+        // productos que venden todas las semanas. Rematar uno de esos es regalar plata.
+        // Perder la caja recién importa cuando ADEMÁS el stock no rota: ahí sí la caja explica por
+        // qué está parado y bajarle el precio no lo va a arreglar. Si vende bien, que la comparta
+        // o la pierda es una nota al pie, no un motivo para liquidar.
+        const PARADO = 120;   // días de stock: más que esto es mercadería que no rota
         let grupo;
         if (vPer === 0) grupo = 'MUERTO';
-        else if (caja === 'losing') grupo = 'CAJA';
-        else if (diasStock > 120) grupo = 'SOBRE';
+        else if (caja === 'losing' && diasStock > PARADO) grupo = 'CAJA';
+        else if (diasStock > PARADO) grupo = 'SOBRE';
         else grupo = 'SANO';
         // "quieto": unidades × meses sin venderse. Es lo que paga almacenamiento sin devolver nada.
         const quieto = stock * Math.min(diasSin, 365) / 30;
@@ -12989,7 +12996,7 @@ async function main() {
       muertos.forEach((f) => console.log(linea(f)));
       if (!muertos.length) console.log('   ninguno ✓');
 
-      console.log(`\n🟠 PERDIERON LA CAJA DE COMPRA — venden poco porque el botón se lo lleva otro  ·  ${cajas.length} · ${$(tot(cajas))}`);
+      console.log(`\n🟠 PERDIERON LA CAJA **Y ADEMÁS NO ROTAN**  ·  ${cajas.length} · ${$(tot(cajas))}`);
       console.log(`   OJO: acá bajar el precio NO arregla nada. O se remata, o se acepta que vende poco.`);
       cajas.forEach((f) => console.log(linea(f)));
       if (!cajas.length) console.log('   ninguno ✓');
