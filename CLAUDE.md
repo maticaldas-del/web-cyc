@@ -450,6 +450,15 @@ Lo que está en casa se cuenta a mano en **Mi oficina**, que es el lugar que cor
   producto publicado, la pantalla dice "—" en vez de inventar. El robot lo recalcula todas las
   noches (paso "Margen ML al precio de hoy" en `ml-daily`) y la pantalla muestra arriba cuándo fue
   la última vez. Para chequear que coincide con ML: `margenweb`.
+- **"Costo vender en Full" (ficha) y "Costo full" (Margen ML) NO son el mismo número, y los dos
+  están bien.** El 24/08/2026 él marcó los dos perfumes De la Patagonia: la ficha decía $29.984 y
+  Margen ML $24.364. La diferencia son los **$5.620 de gestión de Full** (`gestFull`, el cargo
+  `shp_fulfillment` que Mercado Pago descuenta en cada venta). La ficha la SUMA porque ahí el número
+  se compara contra el **precio**; Margen ML NO la suma porque el **neto ya la trae descontada** —
+  el neto es precio − comisión − envío del peor caso, y ese envío ES la gestión de Full. Sumarla en
+  Margen ML contaría el envío dos veces y hundiría todos los márgenes de mentira.
+  Regla para no volver a dudar: **la gestión de Full se suma al COSTO o se resta del PRECIO, nunca
+  las dos cosas.** Las dos cajas ahora lo dicen en pantalla.
 - **"Margen ML" y `bajopiso` no miden lo mismo y no tienen por qué coincidir.** Margen ML va por
   PRODUCTO (neto de ML contra el costo full); `bajopiso` va por PUBLICACIÓN y suma el envío del
   peor caso, IIBB, monotributo y el % de reclamos. Ninguna miente.
