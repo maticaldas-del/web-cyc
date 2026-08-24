@@ -12840,8 +12840,13 @@ async function main() {
       }
 
       // 3. LA VARIANTE QUE SALE DE LA FICHA VIEJA
-      const quedan = (vieja.variantes || []).filter((v) => !norm(v).includes('ko'));
-      const sacadas = (vieja.variantes || []).filter((v) => norm(v).includes('ko'));
+      // OJO CON EL FILTRO POR PALABRA. La primera versión sacaba toda variante que CONTUVIERA "ko",
+      // y en la prueba se llevaba puesta "Kosten (Hombre)", que es la de hombre y no tiene nada que
+      // ver. Es la misma trampa de siempre (pausar por título, sincargo:lupa): acá se compara el
+      // nombre COMPLETO, no un pedacito.
+      const ES_KO = (v) => ['ko (unisex)', 'ko unisex', 'ko'].includes(norm(v).trim());
+      const quedan = (vieja.variantes || []).filter((v) => !ES_KO(v));
+      const sacadas = (vieja.variantes || []).filter((v) => ES_KO(v));
       console.log(`\n  3. VARIANTES DE LA FICHA VIEJA`);
       console.log(`     salen  : ${sacadas.join(' · ') || '(ninguna)'}`);
       console.log(`     quedan : ${quedan.join(' · ') || '(ninguna)'}`);
