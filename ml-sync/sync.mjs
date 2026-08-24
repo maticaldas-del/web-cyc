@@ -12921,12 +12921,18 @@ async function main() {
 
       // caja de compra: la MEJOR entre las publicaciones del producto — con que UNA gane, el
       // producto se vende. Lo escribe el robot una vez por hora en cyc/mllinks/<MLA>/caja.
+      // OJO CON LA FORMA DEL DATO. El robot guarda `caja` como TEXTO PLANO ('winning' / 'sharing' /
+      // 'losing' / 'nocat'), no como objeto. La primera versión leía `l.caja.st` y por eso el grupo
+      // "perdieron la caja" daba SIEMPRE 0 productos — y un cero así no se nota: parece una buena
+      // noticia. Se acepta cualquiera de las dos formas por si alguna vez cambia.
       const cajaDe = (pid) => {
         const ORD = { winning: 0, sharing: 1, losing: 2 };
         let best = null;
         for (const [, l] of Object.entries(links)) {
-          if (!l || l.prodId !== pid || !l.caja || !l.caja.st) continue;
-          if (best == null || (ORD[l.caja.st] ?? 9) < (ORD[best] ?? 9)) best = l.caja.st;
+          if (!l || l.prodId !== pid || !l.caja) continue;
+          const st = typeof l.caja === 'string' ? l.caja : l.caja.st;
+          if (!st) continue;
+          if (best == null || (ORD[st] ?? 9) < (ORD[best] ?? 9)) best = st;
         }
         return best;
       };
