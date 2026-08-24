@@ -289,7 +289,8 @@ cubiertos: media caja recibida sigue siendo una caja en camino. A mano: `cajasll
 la caja hasta que la mercadería se puede vender pasan unos **14 días** —~7 hasta que la caja sale
 y ~7 más hasta que ML la activa en Full— y en el medio la cuenta sigue vendiendo de lo que ya
 tiene. Mandar para 30 días hace que la caja llegue justo cuando la publicación se quedó sin nada.
-Los dos números están en `index.html` como `REPO_DIAS_COBERTURA` (30) y `REPO_DIAS_DEMORA` (14).
+Los dos números están en `index.html` como `REPO_DIAS_COBERTURA` (**45**) y `REPO_DIAS_DEMORA` (**8**:
+él corrigió el 20/08 que en la práctica el viaje son 8 días, no 14).
 
 **Las cajas se arman a mano y se pueden dejar a medias.** La recomendación del panel es el punto
 de partida, no la orden: casi nunca se despacha exacto lo que dice (entra menos, se manda otra
@@ -495,6 +496,14 @@ Lo que está en casa se cuenta a mano en **Mi oficina**, que es el lugar que cor
   del que muestra el panel.
   Ojo con el filtro: `sincargo:lupa` agarra **la Lupa 90mm también**, que no era del caso. Sin `:go`
   solo muestra, con el antes y el después de cada producto. Mirar la lista siempre.
+- **El ROJO de Pedidos no se hablaba con la demora del viaje.** Un pedido se pintaba rojo con 7
+  días de stock o menos, pero la caja tarda 8 días en llegar y activarse (más lo que tarde comprar
+  la mercadería). O sea que el AMARILLO podía significar "ya está condenado a cortarse": las Cartas
+  Casino tenían 10 días de stock, salían amarillas, y en 10 días no llega ni la caja. Planteo suyo
+  del 24/08/2026 y aprobado el mismo día — el umbral pasó a **14 días**, en `PED_DIAS_ROJO`. Ahora
+  el rojo quiere decir *"si no lo comprás AHORA, se corta sí o sí"*.
+  Va aparte de `REPO_DIAS_DEMORA` a propósito: aquel mide sólo el tramo caja→ML, y este arranca
+  antes, cuando todavía hay que comprar.
 - **El ORDEN de Pedidos tenía el mismo error del 20/08, y encima la corrección no llegaba a
   aplicarse.** Planteo suyo del 24/08/2026: el padre compra las primeras de la lista y deja la
   cola, *"y cada vez hay más publicaciones inactivas"*. Dos cosas estaban mal, las dos medidas con

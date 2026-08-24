@@ -12864,6 +12864,16 @@ async function main() {
       // y no se sabe si es que hay stock de verdad todo el mes o que falta el dato — que son dos
       // conclusiones opuestas. Ojo con el MÁXIMO entre cuentas: alcanza con que UNA cuenta no
       // tenga el dato para que el producto entero se mida como si hubiera tenido stock 30 días.
+      // CUÁNTOS QUEDAN EN ROJO CON UN UMBRAL Y CON EL OTRO. Los días cubiertos no se guardan como
+      // número, pero la nota del pedido los dice ("~10d cubiertos"), así que se leen de ahí.
+      const cub = (x) => { const m = /~(\d+)d cubiertos/.exec(x.nota || ''); return m ? parseInt(m[1]) : null; };
+      const conCub = peds.filter((x) => !esPaulvic(x) && cub(x) != null);
+      const r7 = conCub.filter((x) => cub(x) <= 7).length, r14 = conCub.filter((x) => cub(x) <= 14).length;
+      console.log(`\n── EL UMBRAL DEL ROJO ──`);
+      console.log(`  con 7 días : ${r7} en rojo · con 14 días: ${r14} en rojo  (sobre ${conCub.length} con el dato)`);
+      const nuevos = conCub.filter((x) => cub(x) > 7 && cub(x) <= 14).sort((a, b) => cub(a) - cub(b));
+      if (nuevos.length) { console.log(`  Los que pasan de amarillo a rojo:`); nuevos.forEach((x) => console.log(`    ${String(cub(x)).padStart(2)}d · ${(x.producto || '').slice(0, 46)}`)); }
+
       console.log(`\n── POR QUÉ (los 8 primeros, cuenta por cuenta) ──`);
       const motivo = (pid, loc) => {
         const h = hist[pid + '__' + sidL(loc)];

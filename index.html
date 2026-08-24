@@ -2274,7 +2274,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='16.2';
+const APP_VERSION='16.3';
 // El problema real que esto resuelve no es curiosidad: es que el celular guarda la app y sigue
 // mostrando la de ayer sin avisar. Varias veces se revisó un cambio que ya estaba subido y no se
 // veía. Por eso, además del número, el chip avisa cuando hay una versión nueva esperando.
@@ -4269,6 +4269,15 @@ const REPO_DIAS_COBERTURA=45;
 // se puede medir de verdad, con la fecha de despacho contra la de entrada a Full.
 const REPO_DIAS_DEMORA=8;
 const REPO_DIAS_TOTAL=REPO_DIAS_COBERTURA+REPO_DIAS_DEMORA;
+// CUÁNDO UN PEDIDO SE PINTA DE ROJO. Estaba en 7 días de stock y no se hablaba con la demora del
+// viaje: las Cartas Casino tenían 10 días de stock y salían AMARILLAS, cuando en 10 días no llega
+// ni la caja. O sea que el amarillo podía significar "ya está condenado a cortarse".
+// Planteo suyo del 24/08/2026 y aprobado el mismo día: el rojo tiene que querer decir "si no lo
+// comprás AHORA se corta sí o sí". Son los 8 días que tarda la caja en llegar y activarse
+// (REPO_DIAS_DEMORA) más los días de comprarlo y tenerlo en casa, que no están medidos.
+// Va aparte de REPO_DIAS_DEMORA a propósito: aquel mide sólo el tramo caja→ML, y este arranca
+// antes, cuando todavía hay que comprar la mercadería.
+const PED_DIAS_ROJO=14;
 // PISO PARA LA PUBLICACIÓN QUE ESTÁ EN CERO. Decisión suya del 23/08/2026, el mismo número que usa
 // ML (lo mostró en la Linterna Blanco Azul: 0 ventas, 0 stock → "Sugerencia: 4 u.").
 // Por qué un piso y no la cuenta normal: en cero la publicación NO VENDE, así que tampoco tiene
@@ -7088,7 +7097,7 @@ async function syncPedidosAuto(){
   for(const [pid,r] of Object.entries(resumen)){
     if(r.aComprar===0)continue;
     const coll=r.coll;const arr=state[coll]||(state[coll]=[]);
-    const estado=r.diasCubiertos<=7?'pendiente':'poco_stock';
+    const estado=r.diasCubiertos<=PED_DIAS_ROJO?'pendiente':'poco_stock';
     const notaHist=r.diasHistorial<PED_MAX_DAYS?` (${r.vendidos} en ${r.diasHistorial}d)`:'';
     const variantesNec=r.variantesNec||null;
     const _ti=r.enCamino>0?transitoInfoDe(r.p.id):null;
