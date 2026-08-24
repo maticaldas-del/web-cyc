@@ -209,6 +209,8 @@ Los que más se usan:
 | `revisarpedidos` | barre TODO: claves de inventario basura + pedidos que ya no coinciden con la realidad de hoy |
 | `limpiarclaves[:go]` | borra las claves de inventario basura (cuentas mal escritas, negativos, productos que no existen) |
 | `ordenped[:cuántos]` | compara el orden de Pedidos Bs As antes y después de medir sobre los días con stock |
+| `liquidar[:días]` | **qué mercadería conviene rematar**: separa muerto de sobrecomprado y de caja perdida |
+| `patagoniako[:go]` | parte "De la Patagonia" en dos fichas por el costo distinto del KO UNISEX |
 | `frenados[:díasStock]` | si conviene bajarle el precio al stock parado, con la cuenta hecha |
 | `bajarcaja[:días][:piso][:maxBaja]` | qué bajar **poquito** para que vuelva a vender: las que tienen stock, no venden y perdieron la caja de compra por poca plata · **sale solo en el chequeo de las 8** |
 | `proyec[:retiro][:tasa]` | cuánto le queda a CYC por mes |
@@ -500,6 +502,19 @@ Lo que está en casa se cuenta a mano en **Mi oficina**, que es el lugar que cor
   del que muestra el panel.
   Ojo con el filtro: `sincargo:lupa` agarra **la Lupa 90mm también**, que no era del caso. Sin `:go`
   solo muestra, con el antes y el después de cada producto. Mirar la lista siempre.
+- **DOS ERRORES EN EL MISMO COMANDO NUEVO (`liquidar`), Y NINGUNO SE NOTABA.** El 24/08/2026, al
+  armar la lista de qué rematar:
+  · **La caja de compra se guarda como TEXTO, no como objeto.** El robot escribe
+    `cyc/mllinks/<MLA>/caja = 'losing'`, y yo leía `caja.st`. Resultado: el grupo "perdieron la
+    caja" daba **0 productos**, y un cero así **parece una buena noticia** — no se nota. Lo que lo
+    delató fue desconfiar del número: 0 de 137 era demasiado lindo.
+  · **Perder la caja NO alcanza para rematar.** Al arreglar lo anterior, el comando mandó a la
+    lista de remate a TODO el que tuviera la caja perdida, vendiera bien o no: pasó de 5 productos
+    a **27 y $5.940.189**, con la balanza de equipaje adentro (vendió anteayer). Perder la caja
+    recién importa cuando ADEMÁS el stock no rota (>120 días). Con las dos cosas juntas: 15
+    productos · $2.767.075.
+  **La lección: un comando nuevo hay que leerlo con la misma desconfianza que a los viejos, y un
+  grupo que da CERO merece tanta sospecha como uno que da de más.**
 - **EL PROVEEDOR NO TARDA LO MISMO SEGÚN DE DÓNDE VENGA, Y EL PANEL LOS TRATABA IGUAL.** Plazos
   que él pasó el 24/08/2026: **Bs As 1 semana · Paulvic 1 semana · Paraguay 2 MESES**. Hasta ese
   día el origen sólo decidía en qué pestaña aparecía el pedido; no cambiaba ninguna cuenta. Con 2
