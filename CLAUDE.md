@@ -639,9 +639,13 @@ Lo que quedó abierto. Borrá de acá lo que se vaya cerrando.
   simple: **no existe la publicación**. Son 10 de 137 productos, y `huerfanos` los lista.
   El Cargador notebook **ya está resuelto** (se vinculó el 18/08, ver abajo). Balanza persona y
   Bioxidil tienen la publicación cerrada (ver abajo).
-  Los otros siete —Separador dedo Gordo, Calculadora, Bola Cristal, Filtro Con precito, Alargue
-  Zapatilla Hub USB 220, Dermaglos Facial Ultra Volumen, Batidora 1 Cabezal— **necesitan que se
+  Los otros siete eran Separador dedo Gordo, Calculadora, Bola Cristal, Filtro Con precito, Alargue
+  Zapatilla Hub USB 220, Dermaglos Facial Ultra Volumen y Batidora 1 Cabezal: **necesitan que se
   publiquen**, no que se revinculen. Falta que él diga cuáles quiere publicar.
+  **El Alargue Zapatilla Hub USB 220 ya está resuelto** (24/08/2026): él pasó la publicación desde
+  la app de ML y es `MLA1900463085` (Ayelen, activa, $8.850). Ya estaba vinculada a la ficha. Ese
+  día `huerfanos` dio **0 de 137**, o sea que ninguno de los siete sigue en "—" — antes de darlos
+  por cerrados hay que mirarlos uno por uno, porque la nota vieja decía otra cosa.
 - **Las publicaciones sin producto ya están resueltas** (18/08/2026). Eran 81 en el conteo del
   robot, pero **71 estaban dadas de baja**: renglones viejos de `cyc/mllinks`, nada para hacer.
   De las 10 vivas él decidió: `MLA1474825987` (Cargador Universal Laptop, Ayelen) → vinculada al
