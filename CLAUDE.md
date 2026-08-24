@@ -495,6 +495,26 @@ Lo que está en casa se cuenta a mano en **Mi oficina**, que es el lugar que cor
   del que muestra el panel.
   Ojo con el filtro: `sincargo:lupa` agarra **la Lupa 90mm también**, que no era del caso. Sin `:go`
   solo muestra, con el antes y el después de cada producto. Mirar la lista siempre.
+- **El ORDEN de Pedidos tenía el mismo error del 20/08, y encima la corrección no llegaba a
+  aplicarse.** Planteo suyo del 24/08/2026: el padre compra las primeras de la lista y deja la
+  cola, *"y cada vez hay más publicaciones inactivas"*. Dos cosas estaban mal, las dos medidas con
+  el comando nuevo `ordenped`:
+  · **`pedGananciaNorm` dividía por 30 fijo.** Es el número que define el orden. Un producto
+    agotado 25 de 30 días figuraba ganando SEIS VECES MENOS → caía al fondo → no se compraba →
+    seguía agotado. Es la misma corrección que se hizo en las unidades y acá había quedado sin
+    hacer.
+  · **`diasConStockProd` tomaba el máximo entre las CUATRO cuentas, y una cuenta sin registro
+    devuelve el mes entero.** O sea que con que UNA de las cuatro no tuviera el producto, la
+    corrección quedaba en cero. Al medirlo daba **0 de 37** productos corregidos: no se aplicaba
+    nunca. El Joystick x3 lo mostraba entero — Adriana en cero hace 27 días y Matías hace 29, pero
+    Luciana y Ayelen sin registro → máximo 30 → corrección cero. Ahora se miran sólo las cuentas
+    con registro (una fecha "aproximada" SÍ cuenta: ahí hubo stock, sólo que no se vio entrar).
+    Después del arreglo: **12 de 37**, y la Funda Cubre Colchón pasó del puesto 18 al 7 (×4,3).
+  · Y la lista **ordenaba por `riesgo` mientras la tarjeta muestra `riesgoComprar`**. La Cinta
+    7.5M salía 3ª con $116.792 y en la tarjeta decía $15.572. Ahora los dos usan el mismo número.
+  **La lección que se repite: cuando un arreglo "no se nota", medir si de verdad se está
+  aplicando antes de explicar por qué debería notarse.** Yo le dije que los agotados iban a subir
+  y en ese momento no subía ninguno.
 - **La reposición dividía por 30 fijo y subestimaba justo lo que más vende.** Hasta el 20/08/2026
   "Armar caja" calculaba `ventas del mes ÷ 30` sin preguntar si en esos 30 días había mercadería
   para vender. Un producto que vendió 10 unidades en 5 días y se agotó daba **0,33 por día** cuando
