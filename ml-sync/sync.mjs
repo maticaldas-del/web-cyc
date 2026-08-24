@@ -12784,6 +12784,40 @@ async function main() {
     // de los números lista las publicaciones de este producto Y las publicaciones de OTROS productos
     // cuyo título se parece, que es donde suelen estar las ventas que faltan.
     // Solo lee.
+    // BILLING_PROBE=borrarpedido:<palabra|id>[:go] → SACA UN PEDIDO DE LA LISTA.
+    // Para los cargados A MANO, que el panel no borra solo (los automáticos se borran cuando la
+    // cuenta da comprar 0). Pedido suyo del 24/08/2026 con el Termómetro pincha.
+    // NO usa la papelera a propósito: mandar el producto a la papelera lo saca de Pedidos PARA
+    // SIEMPRE (deja de contar hasta el riesgo), y acá lo que sobra es el renglón viejo, no el
+    // producto. Si mañana hay que comprarlo de verdad, el panel lo va a volver a pedir solo.
+    // Sin :go sólo muestra.
+    if (/^borrarpedido(:|$)/.test(String(process.env.BILLING_PROBE || ''))) {
+      const _a = String(process.env.BILLING_PROBE).split(':');
+      const q = (_a[1] || '').trim();
+      const go = _a.includes('go');
+      if (!q) { console.log('Usá: borrarpedido:termometro  (sin :go sólo muestra)'); return; }
+      const colls = ['pedidos', 'pedidos_py'];
+      const hits = [];
+      for (const coll of colls) {
+        const o = (await db.get('cyc/' + coll)) || {};
+        for (const [id, ped] of Object.entries(o)) {
+          if (!ped) continue;
+          if (id === q || norm(ped.producto || '').includes(norm(q))) hits.push({ coll, id, ped });
+        }
+      }
+      if (!hits.length) { console.log(`No hay ningún pedido que se llame como "${q}".`); return; }
+      console.log(`\n${hits.length} pedido(s) que coinciden con "${q}":`);
+      hits.forEach((h) => console.log(`   ${h.coll}/${h.id} · ${h.ped.producto} · comprar ${h.ped.cantidad || 0} · ${h.ped.auto === false ? 'cargado A MANO' : 'automático'}`));
+      if (hits.length > 1) { console.log(`\n⚠️ Da más de uno. Afiná la palabra o pasá el id exacto: no borro a ciegas.`); return; }
+      if (!go) { console.log(`\nEsto fue una PRUEBA. Para borrarlo de verdad: borrarpedido:${q}:go`); return; }
+      const h = hits[0];
+      if (h.ped.auto !== false) console.log(`   OJO: éste es AUTOMÁTICO. Si la cuenta todavía dice que hay que comprar, el panel lo va a volver a crear.`);
+      await db.set('cyc/' + h.coll + '/' + h.id, null);
+      const rel = (await db.get('cyc/' + h.coll + '/' + h.id));
+      console.log(rel == null ? `\n✓ Borrado. Releído de la base: ya no está.` : `\n⚠️ Sigue ahí después de borrarlo: ${JSON.stringify(rel).slice(0, 120)}`);
+      return;
+    }
+
     // BILLING_PROBE=limpiarclaves[:go] → BORRA LAS CLAVES DE INVENTARIO BASURA.
     // Las que encuentra `revisarpedidos`: cuentas con el nombre en mayúscula, cantidades negativas
     // y claves de productos que ya no están en el catálogo. Sin :go sólo muestra.
@@ -12914,6 +12948,16 @@ async function main() {
       dif.forEach((x) => console.log(`   ${x.viejo} → ${x.nuevo}  ${x.nuevo < x.viejo ? '🔴 BAJA — revisar, puede haber stock bueno en una clave rara' : '✓'}  · ${x.n}`));
       const bajan = dif.filter((x) => x.nuevo < x.viejo);
       console.log(`   ${bajan.length} bajan · ${dif.length - bajan.length} suben${bajan.length ? '  🔴 MIRAR LOS QUE BAJAN' : '  ✓ ninguno pierde stock'}`);
+
+      // ── (a3) TODOS LOS PEDIDOS CARGADOS A MANO ────────────────────────────────────
+      // Duda suya del 24/08/2026: "me parece raro que no haya otro producto como el pincha, fue el
+      // primero que me fijé". La lista (b) sólo muestra los que NO coinciden, así que un pedido a
+      // mano cuyos números den parecido por casualidad no aparecería. Acá salen TODOS, coincidan o
+      // no, porque el problema no es el número: es que a ninguno lo actualiza nadie.
+      const aMano = Object.values(peds).filter((x) => x && x.auto === false);
+      console.log(`\n══ (a3) PEDIDOS CARGADOS A MANO ══  ${aMano.length} de ${Object.values(peds).filter(Boolean).length}`);
+      if (!aMano.length) console.log('   ninguno ✓ — el resto los arma y los borra el panel solo');
+      aMano.forEach((x) => console.log(`   ${x.producto || x.prodId} · comprar ${x.cantidad || 0} · cargado el ${x.ts ? new Date(x.ts).toISOString().slice(0, 10) : '?'}\n      nota: ${String(x.nota || '(sin nota)').replace(/<[^>]+>/g, '')}`));
 
       console.log(`\n══ (b) PEDIDOS QUE NO COINCIDEN CON LO DE HOY ══  ${malos.length} de ${Object.values(peds).filter(Boolean).length}`);
       if (!malos.length) console.log('   ninguno ✓');
