@@ -12784,6 +12784,71 @@ async function main() {
     // de los números lista las publicaciones de este producto Y las publicaciones de OTROS productos
     // cuyo título se parece, que es donde suelen estar las ventas que faltan.
     // Solo lee.
+    // BILLING_PROBE=arreglar2408[:go] → LAS TRES COSAS QUE PIDIÓ EL 24/08/2026, DE UNA.
+    // Existe porque cada corrida a mano pelea con el ciclo automático por el mismo candado y se
+    // cancelan entre ellas: tres comandos seguidos son tres oportunidades de que uno se pierda a
+    // la mitad. Juntos, o sale todo o no sale nada, y se relee de la base al final.
+    //   1. borra el pedido del Termómetro pincha, que estaba cargado a mano y congelado
+    //   2. borra las claves de inventario basura (cuentas mal escritas, negativos, huérfanas)
+    //   3. lista TODOS los pedidos cargados a mano que queden, para contestar si hay más como ése
+    if (/^arreglar2408(:|$)/.test(String(process.env.BILLING_PROBE || ''))) {
+      const go = /:go\b/.test(String(process.env.BILLING_PROBE));
+      const LOCS = ['Adriana', 'Luciana', 'Ayelen', 'Matias'];
+      const OFI = 'Oficina Mati';
+      const sidL = (x) => String(x).replace(/[^a-z0-9]/gi, '_');
+      const upd = {};
+
+      // 1. el pedido del Termómetro pincha
+      console.log('\n── 1. EL PEDIDO DEL TERMÓMETRO PINCHA ──');
+      const pedHits = [];
+      for (const coll of ['pedidos', 'pedidos_py']) {
+        const o = (await db.get('cyc/' + coll)) || {};
+        for (const [id, ped] of Object.entries(o)) {
+          if (ped && norm(ped.producto || '').includes(norm('termometro pincha'))) pedHits.push({ coll, id, ped });
+        }
+      }
+      if (!pedHits.length) console.log('   no hay ninguno (puede que ya se haya borrado)');
+      pedHits.forEach((h) => { console.log(`   ${h.coll}/${h.id} · comprar ${h.ped.cantidad || 0} · ${h.ped.auto === false ? 'cargado A MANO' : 'automático'}`); upd[h.coll + '/' + h.id] = null; });
+
+      // 2. las claves basura
+      console.log('\n── 2. CLAVES DE INVENTARIO BASURA ──');
+      const inv = (await db.get('cyc/inventory')) || {};
+      const validos = new Set([...LOCS.map(sidL), sidL(OFI)]);
+      const porId = {}; products.forEach((p) => { porId[p.id] = p; });
+      const claves = [];
+      for (const [k, v] of Object.entries(inv)) {
+        const i = k.indexOf('__'); if (i < 0) { claves.push([k, v, 'clave sin separador']); continue; }
+        const pid = k.slice(0, i), cuenta = k.slice(i + 2).split('__v__')[0];
+        if (!porId[pid]) claves.push([k, v, 'el producto ya no existe']);
+        else if (!validos.has(cuenta)) claves.push([k, v, `"${cuenta}" no es una cuenta`]);
+        else if ((parseInt(v) || 0) < 0) claves.push([k, v, 'cantidad negativa']);
+      }
+      claves.forEach(([k, v, por]) => { console.log(`   ${k} = ${v}   (${por})`); upd['inventory/' + k] = null; });
+      if (!claves.length) console.log('   ninguna ✓');
+
+      if (!go) { console.log(`\nEsto fue una PRUEBA: ${Object.keys(upd).length} cosa(s) para borrar. Para hacerlo: arreglar2408:go`); return; }
+      if (Object.keys(upd).length) await db.patch('cyc', upd);
+
+      // relectura: no alcanza con que no haya dado error
+      console.log('\n── VERIFICACIÓN (releído de la base) ──');
+      const inv2 = (await db.get('cyc/inventory')) || {};
+      const quedanClaves = claves.filter(([k]) => inv2[k] !== undefined);
+      console.log(`   claves basura: quedan ${quedanClaves.length} de ${claves.length}`);
+      quedanClaves.forEach(([k]) => console.log(`      ⚠️ sigue: ${k}`));
+      let quedanPed = 0;
+      for (const h of pedHits) { const r = await db.get('cyc/' + h.coll + '/' + h.id); if (r != null) { quedanPed++; console.log(`      ⚠️ sigue el pedido ${h.coll}/${h.id}`); } }
+      console.log(`   pedido del termómetro: ${quedanPed === 0 ? 'borrado ✓' : 'SIGUE ⚠️'}`);
+
+      // 3. ¿hay más pedidos cargados a mano?
+      console.log('\n── 3. ¿HAY MÁS PEDIDOS CARGADOS A MANO? ──');
+      const todos = { ...((await db.get('cyc/pedidos')) || {}), ...((await db.get('cyc/pedidos_py')) || {}) };
+      const aMano = Object.values(todos).filter((x) => x && x.auto === false);
+      console.log(`   ${aMano.length} de ${Object.values(todos).filter(Boolean).length} pedidos están cargados a mano`);
+      aMano.forEach((x) => console.log(`      ${x.producto || x.prodId} · comprar ${x.cantidad || 0} · del ${x.ts ? new Date(x.ts).toISOString().slice(0, 10) : '?'}\n         nota: ${String(x.nota || '(sin nota)').replace(/<[^>]+>/g, '')}`));
+      if (!aMano.length) console.log('      ninguno ✓ — el Termómetro era el único');
+      return;
+    }
+
     // BILLING_PROBE=borrarpedido:<palabra|id>[:go] → SACA UN PEDIDO DE LA LISTA.
     // Para los cargados A MANO, que el panel no borra solo (los automáticos se borran cuando la
     // cuenta da comprar 0). Pedido suyo del 24/08/2026 con el Termómetro pincha.
