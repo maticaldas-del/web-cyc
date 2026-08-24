@@ -2274,7 +2274,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='16.0';
+const APP_VERSION='16.1';
 // El problema real que esto resuelve no es curiosidad: es que el celular guarda la app y sigue
 // mostrando la de ayer sin avisar. Varias veces se revisó un cambio que ya estaba subido y no se
 // veía. Por eso, además del número, el chip avisa cuando hay una versión nueva esperando.
@@ -6884,7 +6884,17 @@ function pedGananciaNorm(p){
       ganancia+=(v.neto||0)-efectivoCostoVP({...v,_dateKey:k});
     });
   });
-  const factor=PED_MAX_DAYS/diasHistorial;
+  // MISMA CORRECCIÓN QUE EN LAS UNIDADES (20/08/2026), que acá había quedado sin hacer.
+  // `gan30d` es lo que decide EL ORDEN de la lista de Pedidos, y se medía dividiendo por los 30
+  // días del mes sin preguntar si en esos días había mercadería para vender. Un producto que
+  // estuvo agotado 25 de 30 días figuraba ganando SEIS VECES MENOS de lo que gana, así que caía
+  // al fondo de la lista, no se compraba, seguía agotado y al mes siguiente medía todavía peor.
+  // Ese círculo es el que le iba llenando la cuenta de publicaciones inactivas (planteo suyo del
+  // 24/08/2026: "cada vez hay más publicaciones inactivas"). El error va SIEMPRE para el mismo
+  // lado: cuanto más rápido se vende algo, antes se agota y peor mide justo el que más urge.
+  // El piso de 7 días ya viene adentro de diasConStockProd().
+  const dConS=Math.min(diasConStockProd(p.id),diasHistorial);
+  const factor=PED_MAX_DAYS/Math.max(1,dConS);
   return Math.round(ganancia*factor);
 }
 
@@ -7917,7 +7927,15 @@ function _pedidoItemHtml(p,opts){
   </details>`;
 }
 const _pedSortFn=(a,b)=>{const o={pendiente:0,poco_stock:1,suficiente:2};return(o[a.estado||'pendiente']-o[b.estado||'pendiente'])||((b.cantidad||1)-(a.cantidad||1))||((a.producto||'').localeCompare(b.producto||'','es',{sensitivity:'base'}));};
-const _pedSortFnRiesgo=(a,b)=>(b.riesgo||0)-(a.riesgo||0);
+// ORDENA POR EL MISMO NÚMERO QUE MUESTRA LA TARJETA. Ordenaba por `riesgo` (el mes entero del
+// producto) mientras la tarjeta muestra `riesgoComprar` (lo que queda después de mandar lo que ya
+// tenés en casa o viajando). O sea que un producto con 14 unidades en casa y 2 para comprar subía
+// arriba de todo por una plata que NO se destraba comprando — es el caso de la Cinta 7.5M que él
+// marcó el 23/08/2026. Con el mismo número en los dos lados, el orden se puede leer de la pantalla.
+const _pedSortFnRiesgo=(a,b)=>{
+  const r=x=>(x.riesgoComprar!=null?x.riesgoComprar:x.riesgo)||0;
+  return r(b)-r(a)||(b.riesgo||0)-(a.riesgo||0);
+};
 
 // ── LO QUE VA EN CAMINO A FULL, POR PRODUCTO ─────────────────────────────────────────
 // Devuelve además de las unidades: en cuántas cajas van, hace cuántos días salió la más vieja y a
