@@ -383,6 +383,31 @@ input.qty:focus{border-color:var(--accent2)}
 .pi-prov{font-size:.64rem;background:rgba(56,189,248,.1);color:#38bdf8;padding:3px 9px;border-radius:5px;white-space:nowrap;cursor:pointer;transition:background .15s;border:1px solid rgba(56,189,248,.2);font-family:'DM Mono',monospace}
 .pi-prov:hover{background:rgba(56,189,248,.2)}
 .pi-prov.sin-prov{color:var(--muted);background:transparent;border-color:var(--border2)}
+
+/* ── PEDIDOS: LA TARJETA DICE DOS COSAS Y NADA MÁS ────────────────────────────────────
+   Pedido suyo del 24/08/2026: "quiero que sea más claro las unidades que hay que comprar…
+   que a la vista default aparezca nombre del producto y cuánto comprar en grande y llamativo
+   (sin agrandar la tarjeta de cada producto)". Antes la tarjeta tenía ocho cosas al mismo nivel
+   —foto, riesgo, variantes, proveedor, estado, fecha— y el número de compra, que es LA decisión
+   de esta pantalla, era un chip chiquito igual a los demás.
+   El estado no necesita chip a la vista: lo dicen la barra de color de la izquierda y el color
+   del número. Todo lo otro sigue estando, adentro del desplegable. */
+.ped-card{background:var(--surface);border:1px solid var(--border);border-left:4px solid var(--border2);border-radius:var(--r);margin-bottom:7px}
+.ped-card.pendiente{border-left-color:var(--red)}
+.ped-card.poco_stock{border-left-color:var(--amber)}
+.ped-card.suficiente{border-left-color:var(--green)}
+.ped-head{list-style:none;cursor:pointer;display:flex;align-items:center;gap:12px;padding:11px 14px}
+.ped-head::-webkit-details-marker{display:none}
+.ped-name{font-family:'Syne',sans-serif;font-weight:800;font-size:.92rem;line-height:1.25;flex:1;min-width:0}
+.ped-buy{display:flex;flex-direction:column;align-items:flex-end;gap:0;white-space:nowrap;flex-shrink:0}
+.ped-buy b{font-family:'Syne',sans-serif;font-weight:800;font-size:1.7rem;line-height:1}
+.ped-buy i{font-style:normal;font-size:.58rem;color:var(--muted);letter-spacing:.03em;margin-top:1px}
+.ped-card.pendiente .ped-buy b{color:var(--red)}
+.ped-card.poco_stock .ped-buy b{color:var(--amber)}
+.ped-card.suficiente .ped-buy b{color:var(--green)}
+.ped-caret{display:inline-block;font-size:.62rem;color:var(--muted);width:16px;text-align:center;flex-shrink:0;transition:transform .15s}
+.ped-card[open] .ped-caret{transform:rotate(180deg)}
+.ped-body{display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding:11px 14px 12px;border-top:1px solid var(--border)}
 .inp-prov{flex:1;min-width:120px}
 .pf-btn.active-prov{background:rgba(56,189,248,.12);color:#38bdf8;border-color:rgba(56,189,248,.25)}
 .ped-prov-group{margin-bottom:18px}
@@ -2249,7 +2274,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='15.9';
+const APP_VERSION='16.0';
 // El problema real que esto resuelve no es curiosidad: es que el celular guarda la app y sigue
 // mostrando la de ayer sin avisar. Varias veces se revisó un cambio que ya estaba subido y no se
 // veía. Por eso, además del número, el chip avisa cuando hay una versión nueva esperando.
@@ -7840,6 +7865,10 @@ function renderRotacionStock(){
 }
 
 const _openPedVars=new Set();
+// Qué tarjetas de Pedidos quedaron desplegadas, para reabrirlas igual después de un re-render
+// (el robot vuelve a dibujar la lista cada vez que entra una venta).
+const _openPedCards=new Set();
+function _setPedCardOpen(id,open){if(open)_openPedCards.add(id);else _openPedCards.delete(id);}
 // El <details> maneja mostrar/ocultar de forma nativa; acá solo recordamos qué pedidos
 // quedaron abiertos para reabrirlos igual tras un re-render.
 function _setPedVarOpen(id,open){if(open)_openPedVars.add(id);else _openPedVars.delete(id);}
@@ -7865,19 +7894,27 @@ function _pedidoItemHtml(p,opts){
   const riesgoBadge=(opts.showRiesgo&&_riesgoNeto>0)?`<span class="pi-var-toggle" style="background:rgba(239,68,68,.12);color:var(--red);border-color:rgba(239,68,68,.3);cursor:default" title="${p.riesgoMandar>0?`De ${fmt(p.riesgo)} que se pierden por estar sin stock, ${fmt(p.riesgoMandar)} se tapan mandando lo que ya tenés en casa o en camino. Esto es lo que necesita COMPRA.`:'Ganancia de un mes de este producto × los días que vas a pasar sin stock en ML si no se repone.'}">💸 ${fmt(_riesgoNeto)} en riesgo</span>`:'';
   const origenBadge=opts.origen?`<span class="pi-var-toggle" style="cursor:default">${opts.origen}</span>`:'';
   const accionBtns=`<button class="pi-status ${p.estado||'pendiente'}" onclick="setPedidoEstado('${p.id}','${NEXT[p.estado||'pendiente']}')">${LABEL[p.estado||'pendiente']}</button>`;
-  return `<div class="pedido-item ${_enCam?'suficiente':(p.estado||'pendiente')}">
-    <span class="pi-prod">${p.producto||'—'}${p.variante?` <span style="padding:1px 6px;border-radius:4px;background:rgba(124,58,237,.15);color:#a78bfa;font-size:.65rem">${p.variante}</span>`:''}</span>
-    ${fotoBtn}
-    <span class="pi-qty">${p.cantidad||1} u.</span>
-    ${p.nota?`<span class="pi-nota">${p.nota}</span>`:'<span class="pi-nota" style="flex:0"></span>'}
-    ${_enCam?'':riesgoBadge}
-    ${origenBadge}
-    ${varToggle}
-    <button class="pi-prov ${p.proveedor?'':'sin-prov'}" onclick="setPedidoProveedor('${p.id}')">${p.proveedor?p.proveedor.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'):'+ proveedor'}</button>
-    ${accionBtns}
-    <span class="pi-ts">${p.ts?ts2s(p.ts):''}</span>
-    <button class="btn btn-del" onclick="delPedido('${p.id}')">✕</button>
-  </div>`;
+  // A LA VISTA: nombre y cuántas unidades comprar. Nada más. Todo lo demás está a un toque.
+  const _est=_enCam?'suficiente':(p.estado||'pendiente');
+  const _abierto=_openPedCards.has(p.id);
+  return `<details class="ped-card ${_est}"${_abierto?' open':''} ontoggle="_setPedCardOpen('${p.id}',this.open)">
+    <summary class="ped-head">
+      <span class="ped-name">${p.producto||'—'}${p.variante?` <span style="padding:1px 6px;border-radius:4px;background:rgba(124,58,237,.15);color:#a78bfa;font-size:.65rem;font-family:'DM Mono',monospace;font-weight:400">${p.variante}</span>`:''}</span>
+      <span class="ped-buy"><b>${fmtN(p.cantidad||1)}</b><i>u. a comprar</i></span>
+      <span class="ped-caret">▼</span>
+    </summary>
+    <div class="ped-body">
+      ${fotoBtn}
+      ${p.nota?`<span class="pi-nota">${p.nota}</span>`:'<span class="pi-nota" style="flex:0"></span>'}
+      ${_enCam?'':riesgoBadge}
+      ${origenBadge}
+      ${varToggle}
+      <button class="pi-prov ${p.proveedor?'':'sin-prov'}" onclick="setPedidoProveedor('${p.id}')">${p.proveedor?p.proveedor.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'):'+ proveedor'}</button>
+      ${accionBtns}
+      <span class="pi-ts">${p.ts?ts2s(p.ts):''}</span>
+      <button class="btn btn-del" onclick="delPedido('${p.id}')">✕</button>
+    </div>
+  </details>`;
 }
 const _pedSortFn=(a,b)=>{const o={pendiente:0,poco_stock:1,suficiente:2};return(o[a.estado||'pendiente']-o[b.estado||'pendiente'])||((b.cantidad||1)-(a.cantidad||1))||((a.producto||'').localeCompare(b.producto||'','es',{sensitivity:'base'}));};
 const _pedSortFnRiesgo=(a,b)=>(b.riesgo||0)-(a.riesgo||0);
