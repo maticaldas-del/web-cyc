@@ -12823,9 +12823,19 @@ async function main() {
         costUSD: Math.round((COSTO_KO / tc) * 100) / 100,
         variantes: [],
       };
-      for (const k of ['origen', 'proveedorId', 'foto', 'medida', 'categoria']) if (vieja[k] != null) ficha[k] = vieja[k];
+      // SE COPIAN DEL HERMANO, NO SE INVENTAN. Es el MISMO producto físico: misma caja
+      // (12,6 × 7,2 × 7,2 · 0,22 kg) y el mismo rango de precio, así que ML le cobra la misma
+      // gestión de Full y el envío es el mismo. Pedido suyo del 24/08/2026: "no tiene ventas aún,
+      // pero ponele algo mínimamente real". Copiar lo MEDIDO en el hermano es lo más cercano que
+      // hay; cuando el KO tenga ventas propias el número se corrige con lo que cobre ML de verdad.
+      //   · gestFull → lo que ML cobra de logística Full por venta (en pesos)
+      //   · shipUSD  → envío + embalaje
+      // Sin gestFull, "Costo vender en Full" sale MÁS BARATO de lo que es y el margen se ve mejor
+      // de lo real, que es justo el error que no queremos.
+      for (const k of ['origen', 'proveedorId', 'foto', 'medida', 'categoria', 'gestFull', 'shipUSD']) if (vieja[k] != null) ficha[k] = vieja[k];
       console.log(`\n  1. FICHA NUEVA ${yaKo ? '(ya existía, se actualiza)' : '(se crea)'}`);
       console.log(`     ${nuevoId} · "${ficha.name}" · costo ${$(COSTO_KO)} = US$ ${ficha.costUSD}`);
+      console.log(`     copiado del hermano: gestión Full ${ficha.gestFull != null ? $(ficha.gestFull) : '(el hermano no la tiene cargada)'} · envío US$ ${ficha.shipUSD != null ? ficha.shipUSD : 0}`);
 
       // 2. LAS PUBLICACIONES DE KO
       const links = (await db.get('cyc/mllinks')) || {};
@@ -12864,8 +12874,10 @@ async function main() {
 
       if (!go) { console.log(`\nPRUEBA: no escribí nada. Para aplicar los pasos 1, 2 y 3: patagoniako:go`); return; }
 
+      // Se escribe CAMPO POR CAMPO, no la ficha entera: si el comando se corre dos veces, un
+      // objeto completo borraría cualquier cosa que él haya cargado a mano en el medio.
       const upd = {};
-      upd['products/' + nuevoId] = ficha;
+      for (const [k, v] of Object.entries(ficha)) upd['products/' + nuevoId + '/' + k] = v;
       for (const mla of mudar) { upd['mllinks/' + mla + '/prodId'] = nuevoId; upd['mllinks/' + mla + '/ignored'] = null; upd['mllinks/' + mla + '/manual'] = true; }
       upd['products/' + vieja.id + '/variantes'] = quedan;
       await db.patch('cyc', upd);
@@ -12874,6 +12886,7 @@ async function main() {
       console.log(`\n── VERIFICACIÓN (releído de la base) ──`);
       const fNueva = (await db.get('cyc/products/' + nuevoId)) || {};
       console.log(`  ficha nueva: "${fNueva.name}" · costo US$ ${fNueva.costUSD} · ${(fNueva.variantes || []).length} variantes`);
+      console.log(`               gestión Full ${fNueva.gestFull != null ? $(fNueva.gestFull) : '⚠️ SIN CARGAR'} · envío US$ ${fNueva.shipUSD != null ? fNueva.shipUSD : '⚠️ sin cargar'}`);
       for (const mla of mudar) {
         const e = (await db.get('cyc/mllinks/' + mla)) || {};
         console.log(`  ${mla} → ${e.prodId === nuevoId ? '✓ apunta a la ficha nueva' : '⚠️ sigue en ' + e.prodId}`);
