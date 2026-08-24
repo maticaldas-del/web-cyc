@@ -12784,6 +12784,101 @@ async function main() {
     // de los números lista las publicaciones de este producto Y las publicaciones de OTROS productos
     // cuyo título se parece, que es donde suelen estar las ventas que faltan.
     // Solo lee.
+    // BILLING_PROBE=patagoniako[:go] → PARTIR "De la Patagonia" EN DOS FICHAS.
+    // Pedido suyo del 24/08/2026: el KO UNISEX cuesta $18.740 y los otros $21.971, y hoy están todos
+    // como variantes de una sola ficha, o sea con UN costo para los dos. Con un costo mezclado el
+    // margen de los dos sale mal: uno se ve mejor de lo que es y el otro peor.
+    // Las publicaciones de KO ya existen en ML — no hay nada que publicar, hay que despegarlas de la
+    // ficha vieja y pegarlas a una nueva.
+    //
+    // LO QUE NO TOCA, Y POR QUÉ. El costo de la ficha VIEJA no se cambia acá aunque él haya dicho
+    // $21.971. Motivo: `efectivoCostoVP()` usa el costo histórico del mes SÓLO si está cargado en
+    // `cyc/precios_hist_prod`; si ese mes no lo tiene, usa el costo de HOY. O sea que cambiar el
+    // costo de una ficha REESCRIBE el margen de las ventas viejas de los meses sin registro — y él
+    // pidió expreso que "las ventas viejas queden como están". Así que se informa qué meses tienen
+    // registro y qué pasaría, y la decisión queda para él.
+    if (/^patagoniako(:|$)/.test(String(process.env.BILLING_PROBE || ''))) {
+      const go = /:go\b/.test(String(process.env.BILLING_PROBE));
+      const MLAS_KO = ['MLA3082882284', 'MLA3013798466', 'MLA2772518840'];
+      const COSTO_KO = 18740, COSTO_VIEJO = 21971;
+      const fin = (await db.get('cyc/finanzas')) || {};
+      const tc = parseFloat(fin.tipo_cambio) || 1500;
+      const $ = (n) => '$' + Math.round(n).toLocaleString('es-AR');
+
+      const vieja = products.find((p) => norm(p.name || '') === norm('De la Patagonia'))
+        || products.find((p) => norm(p.name || '').includes('patagonia') && !norm(p.name || '').includes('estuche'));
+      if (!vieja) { console.log('No encontré la ficha "De la Patagonia".'); return; }
+      const yaKo = products.find((p) => norm(p.name || '').includes('ko unisex'));
+
+      console.log(`\n══ PARTIR "${vieja.name}" (${vieja.id}) ${go ? '· APLICANDO' : '· PRUEBA'} ══`);
+      console.log(`  variantes hoy: ${(vieja.variantes || []).join(' · ') || '(ninguna)'}`);
+      console.log(`  costo hoy    : US$ ${vieja.costUSD} = ${$(parseFloat(vieja.costUSD) * tc)}`);
+
+      // 1. LA FICHA NUEVA. Se copian los campos que hacen que se comporte igual (proveedor, origen,
+      //    foto, medidas); lo único distinto es el nombre, el costo y que no tiene variantes.
+      const nuevoId = yaKo ? yaKo.id : 'p' + Date.now();
+      const ficha = {
+        id: nuevoId,
+        name: 'De la Patagonia KO UNISEX',
+        costUSD: Math.round((COSTO_KO / tc) * 100) / 100,
+        variantes: [],
+      };
+      for (const k of ['origen', 'proveedorId', 'foto', 'medida', 'categoria']) if (vieja[k] != null) ficha[k] = vieja[k];
+      console.log(`\n  1. FICHA NUEVA ${yaKo ? '(ya existía, se actualiza)' : '(se crea)'}`);
+      console.log(`     ${nuevoId} · "${ficha.name}" · costo ${$(COSTO_KO)} = US$ ${ficha.costUSD}`);
+
+      // 2. LAS PUBLICACIONES DE KO
+      const links = (await db.get('cyc/mllinks')) || {};
+      console.log(`\n  2. PUBLICACIONES QUE SE MUDAN`);
+      const mudar = [];
+      for (const mla of MLAS_KO) {
+        const e = links[mla];
+        if (!e) { console.log(`     ${mla} · ⚠️ no figura en el panel, la salteo`); continue; }
+        const de = e.prodId === vieja.id ? vieja.name : (e.prodId || '(ninguna)');
+        console.log(`     ${mla} · ${e.cuenta || '?'} · ${e.status || '?'} · de "${de}" → "${ficha.name}"`);
+        mudar.push(mla);
+      }
+
+      // 3. LA VARIANTE QUE SALE DE LA FICHA VIEJA
+      const quedan = (vieja.variantes || []).filter((v) => !norm(v).includes('ko'));
+      const sacadas = (vieja.variantes || []).filter((v) => norm(v).includes('ko'));
+      console.log(`\n  3. VARIANTES DE LA FICHA VIEJA`);
+      console.log(`     salen  : ${sacadas.join(' · ') || '(ninguna)'}`);
+      console.log(`     quedan : ${quedan.join(' · ') || '(ninguna)'}`);
+
+      // 4. EL COSTO DE LA FICHA VIEJA — SÓLO SE INFORMA
+      const hist = (await db.get('cyc/precios_hist_prod')) || {};
+      const meses = Object.keys(hist).filter((ym) => hist[ym] && hist[ym][vieja.id] != null).sort();
+      console.log(`\n  4. EL COSTO DE LA FICHA VIEJA: NO LO TOCO ACÁ`);
+      console.log(`     Él dijo $21.971, pero cambiarlo reescribe el margen de las ventas viejas de`);
+      console.log(`     los meses que NO tengan el costo histórico guardado, y pidió que el pasado`);
+      console.log(`     quede como está.`);
+      console.log(`     Meses CON costo histórico guardado (esos no se tocarían): ${meses.length ? meses.join(' · ') : 'NINGUNO'}`);
+      console.log(`     Costo de hoy ${$(parseFloat(vieja.costUSD) * tc)} → él quiere ${$(COSTO_VIEJO)}.`);
+      if (!meses.length) console.log(`     🔴 Sin ningún mes guardado: cambiarlo movería TODAS las ventas viejas de esta ficha.`);
+
+      if (!go) { console.log(`\nPRUEBA: no escribí nada. Para aplicar los pasos 1, 2 y 3: patagoniako:go`); return; }
+
+      const upd = {};
+      upd['products/' + nuevoId] = ficha;
+      for (const mla of mudar) { upd['mllinks/' + mla + '/prodId'] = nuevoId; upd['mllinks/' + mla + '/ignored'] = null; upd['mllinks/' + mla + '/manual'] = true; }
+      upd['products/' + vieja.id + '/variantes'] = quedan;
+      await db.patch('cyc', upd);
+
+      // RELECTURA: no alcanza con que el patch no diera error.
+      console.log(`\n── VERIFICACIÓN (releído de la base) ──`);
+      const fNueva = (await db.get('cyc/products/' + nuevoId)) || {};
+      console.log(`  ficha nueva: "${fNueva.name}" · costo US$ ${fNueva.costUSD} · ${(fNueva.variantes || []).length} variantes`);
+      for (const mla of mudar) {
+        const e = (await db.get('cyc/mllinks/' + mla)) || {};
+        console.log(`  ${mla} → ${e.prodId === nuevoId ? '✓ apunta a la ficha nueva' : '⚠️ sigue en ' + e.prodId}`);
+      }
+      const vRel = (await db.get('cyc/products/' + vieja.id + '/variantes')) || [];
+      console.log(`  ficha vieja: quedan ${vRel.join(' · ') || '(ninguna)'}`);
+      console.log(`\n  Falta sólo lo del costo de la ficha vieja (punto 4), que no toqué a propósito.`);
+      return;
+    }
+
     // BILLING_PROBE=liquidar[:díasSinVender] → QUÉ MERCADERÍA CONVIENE REMATAR PARA SACÁRSELA DE ENCIMA.
     // Planteo suyo del 24/08/2026: *"mercadería que conviene regalarla para hacer caja, eliminar el
     // producto para siempre y no pagar por stock antiguo"*, y después: *"es verdad que tenemos
