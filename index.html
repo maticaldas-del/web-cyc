@@ -2274,7 +2274,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='16.3';
+const APP_VERSION='16.4';
 // El problema real que esto resuelve no es curiosidad: es que el celular guarda la app y sigue
 // mostrando la de ayer sin avisar. Varias veces se revisó un cambio que ya estaba subido y no se
 // veía. Por eso, además del número, el chip avisa cuando hay una versión nueva esperando.
@@ -2564,7 +2564,15 @@ function stockOf(p){
   // La OFICINA queda AFUERA: es mercadería que todavía no está en ML, así que no evita un quiebre
   // ni cubre días de venta. Si entrara acá, el panel dejaría de avisar que algo se quedó sin stock
   // justo cuando lo tenés en casa sin mandar — que es el peor momento para no enterarse.
-  return Object.entries(state.inventory||{}).filter(([k])=>k.startsWith(p.id+'__')&&!k.includes('__v__')&&!_esClaveOficina(k)).reduce((s,[,v])=>s+(parseInt(v)||0),0);
+  // SE SUMAN SOLO LAS CUATRO CUENTAS, UNA POR UNA. Antes se sumaba TODA clave que empezara con el
+  // id del producto, sin mirar a qué cuenta correspondía. En la base hay claves basura con el
+  // nombre de la cuenta en MAYÚSCULA y cantidades NEGATIVAS (p1779912655880__AYELEN = −1, y 12 más
+  // encontradas el 24/08/2026 con `revisarpedidos`), y esas se sumaban igual: el Enchufe viajero
+  // llegó a mostrar "−1 en stock". Yendo cuenta por cuenta, una clave que no sea de ninguna de las
+  // cuatro simplemente no existe para el panel.
+  // El Math.max(0,…) es el segundo cerrojo: un stock negativo no es un dato, es un error de carga,
+  // y restando bajaba el total del producto.
+  return ML_LOCS.reduce((s,l)=>s+Math.max(0,getQ(p.id,l)),0);
 }
 // Lo que hay en casa, por habitación y total.
 const stockOficina=p=>p?getQ(p.id,OFI):0;
@@ -7093,6 +7101,33 @@ async function syncPedidosAuto(){
       }
     }
   }
+  // ── LOS PEDIDOS CARGADOS A MANO TAMBIÉN TIENEN QUE DECIR LA VERDAD ──────────────
+  // La limpieza de arriba sólo mira los `auto`, y la creación de abajo sólo escribe los `auto`.
+  // Resultado: un pedido cargado a mano quedaba CONGELADO para siempre con los números del día que
+  // se creó. El Termómetro pincha (24/08/2026) decía "0 en stock · comprar 31" desde el 27/06,
+  // cuando hoy hay 30 en Full, 150 en la oficina y no hay que comprar nada. Él lo encontró porque
+  // acababa de vender uno: "me pide con urgencia y hay stock en full".
+  // Qué se toca y qué no: la CANTIDAD y el ESTADO son suyos, los puso a mano y no se pisan. Lo que
+  // se actualiza es lo que describe la realidad —el stock, los días cubiertos, lo que hay en casa y
+  // la plata en riesgo— más un aviso cuando la cuenta dice que ya no hace falta comprar.
+  for(const coll of ['pedidos','pedidos_py']){
+    for(const ped of (state[coll]||[])){
+      if(ped.auto!==false||!ped.prodId)continue;
+      const r=resumen[ped.prodId];if(!r)continue;
+      const _tiM=r.enCamino>0?transitoInfoDe(r.p.id):null;
+      const notaM=`30d: ${r.vendidosNorm} vendidos · ${r.stock} en stock · ~${r.diasCubiertos}d cubiertos`
+        +(r.enOficina>0?` · ${r.enOficina} ya en tu oficina`:'')
+        +(_tiM?` · 🚚 ${_tiM.u} en camino, hace ${_tiM.diasMax}d`:'')
+        +(r.aComprar===0?` · <span style="color:var(--green)">✓ con lo que tenés alcanza: la cuenta dice comprar 0</span>`:'');
+      if(ped.nota===notaM&&ped.riesgo===r.riesgo&&ped.gan30d===r.gan30d)continue;
+      ped.nota=notaM;ped.riesgo=r.riesgo;ped.riesgoComprar=r.riesgoComprar;ped.riesgoMandar=r.riesgoMandar;ped.gan30d=r.gan30d;
+      updates[coll+'/'+ped.id+'/nota']=notaM;
+      updates[coll+'/'+ped.id+'/riesgo']=r.riesgo;
+      updates[coll+'/'+ped.id+'/riesgoComprar']=r.riesgoComprar;
+      updates[coll+'/'+ped.id+'/riesgoMandar']=r.riesgoMandar;
+      updates[coll+'/'+ped.id+'/gan30d']=r.gan30d;
+    }
+  }
   // crear/actualizar — un pedido por producto
   for(const [pid,r] of Object.entries(resumen)){
     if(r.aComprar===0)continue;
@@ -7933,7 +7968,7 @@ function _pedidoItemHtml(p,opts){
   return `<details class="ped-card ${_est}"${_abierto?' open':''} ontoggle="_setPedCardOpen('${p.id}',this.open)">
     <summary class="ped-head">
       <span class="ped-name">${p.producto||'—'}${p.variante?` <span style="padding:1px 6px;border-radius:4px;background:rgba(124,58,237,.15);color:#a78bfa;font-size:.65rem;font-family:'DM Mono',monospace;font-weight:400">${p.variante}</span>`:''}</span>
-      <span class="ped-buy"><b>${fmtN(p.cantidad||1)}</b><i>u. a comprar</i></span>
+      <span class="ped-buy"><b>${fmtN(p.cantidad||1)}</b><i>u. a comprar${p.auto===false?' · a mano':''}</i></span>
       <span class="ped-caret">▼</span>
     </summary>
     <div class="ped-body">

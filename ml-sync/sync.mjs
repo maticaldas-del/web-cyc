@@ -12784,6 +12784,40 @@ async function main() {
     // de los números lista las publicaciones de este producto Y las publicaciones de OTROS productos
     // cuyo título se parece, que es donde suelen estar las ventas que faltan.
     // Solo lee.
+    // BILLING_PROBE=limpiarclaves[:go] → BORRA LAS CLAVES DE INVENTARIO BASURA.
+    // Las que encuentra `revisarpedidos`: cuentas con el nombre en mayúscula, cantidades negativas
+    // y claves de productos que ya no están en el catálogo. Sin :go sólo muestra.
+    // Se borran de verdad (se ponen en null): son basura, no hay nada que conservar. El stock bueno
+    // vive en la clave con el nombre bien escrito y no se toca.
+    if (/^limpiarclaves(:|$)/.test(String(process.env.BILLING_PROBE || ''))) {
+      const go = /:go\b/.test(String(process.env.BILLING_PROBE));
+      const LOCS = ['Adriana', 'Luciana', 'Ayelen', 'Matias'];
+      const OFI = 'Oficina Mati';
+      const sidL = (x) => String(x).replace(/[^a-z0-9]/gi, '_');
+      const inv = (await db.get('cyc/inventory')) || {};
+      const validos = new Set([...LOCS.map(sidL), sidL(OFI)]);
+      const porId = {}; products.forEach((p) => { porId[p.id] = p; });
+      const borrar = [];
+      for (const [k, v] of Object.entries(inv)) {
+        const i = k.indexOf('__'); if (i < 0) { borrar.push([k, v, 'clave sin separador']); continue; }
+        const pid = k.slice(0, i), cuenta = k.slice(i + 2).split('__v__')[0];
+        if (!porId[pid]) borrar.push([k, v, 'el producto ya no existe']);
+        else if (!validos.has(cuenta)) borrar.push([k, v, `"${cuenta}" no es una cuenta`]);
+        else if ((parseInt(v) || 0) < 0) borrar.push([k, v, 'cantidad negativa']);
+      }
+      console.log(`\n${borrar.length} clave(s) para borrar de ${Object.keys(inv).length}:`);
+      borrar.forEach(([k, v, por]) => console.log(`   ${k} = ${v}   (${por})`));
+      if (!borrar.length) { console.log('Nada para limpiar ✓'); return; }
+      if (!go) { console.log('\nEsto fue una PRUEBA. Para borrarlas de verdad: limpiarclaves:go'); return; }
+      const upd = {}; borrar.forEach(([k]) => { upd['inventory/' + k] = null; });
+      await db.patch('cyc', upd);
+      const rel = (await db.get('cyc/inventory')) || {};
+      const quedan = borrar.filter(([k]) => rel[k] !== undefined);
+      console.log(`\n✓ Borradas. Releído de la base: quedan ${quedan.length} de las ${borrar.length}.`);
+      quedan.forEach(([k]) => console.log(`   ⚠️ sigue ahí: ${k}`));
+      return;
+    }
+
     // BILLING_PROBE=revisarpedidos → ¿CUÁNTOS PEDIDOS ESTÁN MINTIENDO, Y POR QUÉ?
     // Pregunta suya del 24/08/2026 sobre el Termómetro pincha: "no sé si es el único ejemplo".
     // Barre las DOS cosas que se encontraron en ese caso, sobre todo el catálogo:
@@ -12865,6 +12899,22 @@ async function main() {
         const difCant = (ped.cantidad || 0) !== hoyComprar;
         if (difStock || difCant) malos.push({ ped, nom: p.name, stockGuardado, stock, casa, cant: ped.cantidad || 0, hoyComprar, auto: ped.auto !== false, vendidos });
       }
+      // ── (a2) ¿QUÉ CAMBIA AL SUMAR SOLO LAS 4 CUENTAS? ────────────────────────────
+      // El arreglo de stockOf() pasa de "sumar toda clave que empiece con el id" a "sumar las 4
+      // cuentas, una por una, sin negativos". Acá se comprueba que eso SÓLO suba stocks (sacar
+      // basura negativa) y que no haya ningún producto donde BAJE — si bajara, querría decir que
+      // hay stock legítimo guardado bajo una cuenta escrita de otra forma y lo estaríamos perdiendo.
+      const dif = [];
+      for (const p of products) {
+        const viejo = Object.entries(inv).filter(([k]) => k.startsWith(p.id + '__') && !k.includes('__v__') && !k.slice(p.id.length + 2).startsWith(sidL(OFI))).reduce((a, [, v]) => a + (parseInt(v) || 0), 0);
+        const nuevo = LOCS.reduce((a, l) => a + Math.max(0, parseInt(inv[p.id + '__' + sidL(l)]) || 0), 0);
+        if (viejo !== nuevo) dif.push({ n: p.name, viejo, nuevo });
+      }
+      console.log(`\n══ (a2) STOCK ANTES vs DESPUÉS DEL ARREGLO ══  ${dif.length} producto(s) cambian`);
+      dif.forEach((x) => console.log(`   ${x.viejo} → ${x.nuevo}  ${x.nuevo < x.viejo ? '🔴 BAJA — revisar, puede haber stock bueno en una clave rara' : '✓'}  · ${x.n}`));
+      const bajan = dif.filter((x) => x.nuevo < x.viejo);
+      console.log(`   ${bajan.length} bajan · ${dif.length - bajan.length} suben${bajan.length ? '  🔴 MIRAR LOS QUE BAJAN' : '  ✓ ninguno pierde stock'}`);
+
       console.log(`\n══ (b) PEDIDOS QUE NO COINCIDEN CON LO DE HOY ══  ${malos.length} de ${Object.values(peds).filter(Boolean).length}`);
       if (!malos.length) console.log('   ninguno ✓');
       const sobran = malos.filter((x) => x.hoyComprar === 0);
