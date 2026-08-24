@@ -12784,6 +12784,102 @@ async function main() {
     // de los números lista las publicaciones de este producto Y las publicaciones de OTROS productos
     // cuyo título se parece, que es donde suelen estar las ventas que faltan.
     // Solo lee.
+    // BILLING_PROBE=revisarpedidos → ¿CUÁNTOS PEDIDOS ESTÁN MINTIENDO, Y POR QUÉ?
+    // Pregunta suya del 24/08/2026 sobre el Termómetro pincha: "no sé si es el único ejemplo".
+    // Barre las DOS cosas que se encontraron en ese caso, sobre todo el catálogo:
+    //  (a) claves de cyc/inventory basura — cuentas con el nombre escrito distinto (AYELEN vs
+    //      Ayelen) o cantidades negativas. Una clave así SE SUMA igual en stockOf(), porque suma
+    //      todo lo que empiece con el id del producto sin mirar a qué cuenta corresponde.
+    //  (b) pedidos guardados que ya no coinciden con la realidad de hoy: dicen "N en stock" y hoy
+    //      hay otra cosa, o piden comprar cuando la cuenta da cero. Un pedido se recalcula sólo
+    //      cuando alguien ABRE la pantalla de Pedidos en la app; si esa vuelta no termina, el
+    //      pedido viejo queda escrito en la base y se sigue mostrando como si fuera de hoy.
+    if (/^revisarpedidos(:|$)/.test(String(process.env.BILLING_PROBE || ''))) {
+      const LOCS = ['Adriana', 'Luciana', 'Ayelen', 'Matias'];
+      const OFI = 'Oficina Mati';
+      const MAX_DAYS = 30, DIAS_MIN = 7, TARGET_DAYS = 30;
+      const sidL = (x) => String(x).replace(/[^a-z0-9]/gi, '_');
+      const inv = (await db.get('cyc/inventory')) || {};
+      const hist = (await db.get('cyc/stockhist')) || {};
+      const vp = (await db.get('cyc/ventaprod')) || {}; setDevLive(vp);
+      const peds = { ...((await db.get('cyc/pedidos')) || {}), ...((await db.get('cyc/pedidos_py')) || {}) };
+      const $ = (n) => '$' + Math.round(n).toLocaleString('es-AR');
+
+      // ── (a) CLAVES BASURA ─────────────────────────────────────────────────────────
+      const validos = new Set([...LOCS.map(sidL), sidL(OFI)]);
+      const porId = {};
+      products.forEach((p) => { porId[p.id] = p; });
+      const sucias = [];
+      for (const [k, v] of Object.entries(inv)) {
+        const i = k.indexOf('__');
+        if (i < 0) { sucias.push({ k, v, por: 'la clave no tiene el separador __' }); continue; }
+        const pid = k.slice(0, i);
+        const resto = k.slice(i + 2);
+        const cuenta = resto.split('__v__')[0];
+        const n = parseInt(v);
+        if (!porId[pid]) { sucias.push({ k, v, por: 'el producto ya no existe en el catálogo' }); continue; }
+        if (!validos.has(cuenta)) sucias.push({ k, v, por: `"${cuenta}" no es ninguna de las 4 cuentas ni la oficina`, pid });
+        else if (n < 0) sucias.push({ k, v, por: 'cantidad NEGATIVA', pid });
+      }
+      console.log(`\n══ (a) CLAVES DE INVENTARIO CON PROBLEMA ══  ${sucias.length} de ${Object.keys(inv).length}`);
+      if (!sucias.length) console.log('   ninguna ✓');
+      sucias.forEach((x) => console.log(`   ${x.k} = ${x.v}\n      → ${x.por}${x.pid && porId[x.pid] ? ' · producto: ' + porId[x.pid].name : ''}`));
+      if (sucias.length) console.log(`   OJO: stockOf() SUMA estas claves igual, así que corren el stock del producto.`);
+
+      // ── (b) PEDIDOS QUE NO COINCIDEN CON HOY ──────────────────────────────────────
+      const desde = new Date(Date.now() - (MAX_DAYS - 1) * 864e5);
+      const fk = desde.toISOString().slice(0, 10).replace(/-/g, '_');
+      const dCS = (pid, loc) => {
+        const h = hist[pid + '__' + sidL(loc)];
+        if (!h) return null;
+        const now = Date.now(), ini = now - MAX_DAYS * 864e5;
+        let ms = null;
+        if (h.desde) { if (h.aprox !== false) return MAX_DAYS; ms = now - Math.max(h.desde, ini); }
+        else if (h.cero) ms = Math.max(0, h.cero - ini);
+        if (ms == null) return MAX_DAYS;
+        const d = ms / 864e5;
+        if (!isFinite(d) || d <= 0) return DIAS_MIN;
+        return Math.max(DIAS_MIN, Math.min(MAX_DAYS, d));
+      };
+      const malos = [];
+      for (const ped of Object.values(peds)) {
+        if (!ped || !ped.prodId) continue;
+        const p = porId[ped.prodId];
+        if (!p) { malos.push({ ped, nom: ped.producto, por: 'el producto ya no existe' }); continue; }
+        const stock = Object.entries(inv).filter(([k]) => k.startsWith(p.id + '__') && !k.includes('__v__') && !k.slice(p.id.length + 2).startsWith(sidL(OFI))).reduce((s, [, v]) => s + (parseInt(v) || 0), 0);
+        const casa = parseInt(inv[p.id + '__' + sidL(OFI)]) || 0;
+        let vendidos = 0;
+        Object.keys(vp).filter((k) => k >= fk).forEach((k) => Object.values(vp[k] || {}).forEach((v) => {
+          const esta = v.prodId ? v.prodId === p.id : norm(v.prod || '') === norm(p.name || '');
+          if (esta && !v.cancelada) vendidos += v.qty || 0;
+        }));
+        let dConS = 0, hubo = false;
+        for (const l of LOCS) { const d = dCS(p.id, l); if (d == null) continue; hubo = true; if (d > dConS) dConS = d; }
+        if (!hubo || dConS <= 0) dConS = MAX_DAYS;
+        const vDia = vendidos / Math.min(dConS, MAX_DAYS);
+        const hoyComprar = Math.max(0, Math.max(0, Math.ceil(vDia * TARGET_DAYS) - stock) - casa);
+        // Lo que el pedido dice que había cuando se calculó, sacado de su propia nota.
+        const m = /·\s*(-?\d+)\s+en stock/.exec(ped.nota || '');
+        const stockGuardado = m ? parseInt(m[1]) : null;
+        const difStock = stockGuardado != null && stockGuardado !== stock;
+        const difCant = (ped.cantidad || 0) !== hoyComprar;
+        if (difStock || difCant) malos.push({ ped, nom: p.name, stockGuardado, stock, casa, cant: ped.cantidad || 0, hoyComprar, auto: ped.auto !== false, vendidos });
+      }
+      console.log(`\n══ (b) PEDIDOS QUE NO COINCIDEN CON LO DE HOY ══  ${malos.length} de ${Object.values(peds).filter(Boolean).length}`);
+      if (!malos.length) console.log('   ninguno ✓');
+      const sobran = malos.filter((x) => x.hoyComprar === 0);
+      malos.sort((a, b) => (b.cant || 0) - (a.cant || 0)).forEach((x) => {
+        if (x.por) { console.log(`   ${x.nom} → ${x.por}`); return; }
+        console.log(`   ${x.nom}${x.auto ? '' : '  (cargado A MANO: el panel no lo toca nunca)'}`);
+        console.log(`      dice: ${x.stockGuardado} en stock · comprar ${x.cant}`);
+        console.log(`      hoy : ${x.stock} en Full · ${x.casa} en la oficina · ${x.vendidos} vendidas 30d → comprar ${x.hoyComprar}${x.hoyComprar === 0 ? '   🔴 NO HAY QUE COMPRAR NADA' : ''}`);
+      });
+      console.log(`\n── RESUMEN ──`);
+      console.log(`  ${sobran.length} pedido(s) NO deberían estar en la lista: hoy la cuenta da comprar 0.`);
+      console.log(`  ${malos.length - sobran.length} tienen la cantidad desactualizada.`);
+      return;
+    }
+
     // BILLING_PROBE=porquepedido:<palabra o id> → POR QUÉ PEDIDOS DICE LO QUE DICE.
     // Hermano de `porquecaja`, pero para la pantalla de Pedidos. Nace del caso del 24/08/2026: el
     // Termómetro pincha aparecía "0 en stock · ~0d cubiertos · 31 u. a comprar" cuando Ayelen tenía
