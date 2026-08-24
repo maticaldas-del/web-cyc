@@ -12838,9 +12838,15 @@ async function main() {
       // redondeo — al KO le quedó US$ 0,10 mientras el hermano mostraba 0, siendo el MISMO
       // producto. Dos fichas iguales con números distintos confunden más que un cero.
       if (ficha.shipUSD == null) ficha.shipUSD = 0;
+      // Y el costo full guardado, EXPLÍCITO. La web lo recalcula siempre (costo × (1+%recl) + envío),
+      // pero el robot solo recalcula si el producto tiene reclamos en vivo: sin ventas cae en el
+      // `costFullUSD` guardado. Con uno viejo adentro, la ficha y el robot muestran costos distintos
+      // para el mismo producto — al KO le pasó: la web decía US$ 12,41 y `unapub` US$ 12,51 ($151).
+      ficha.costFullUSD = Math.round((ficha.costUSD * (1 + (parseFloat(vieja.devPct) || 0) / 100) + (parseFloat(ficha.shipUSD) || 0)) * 100) / 100;
       console.log(`\n  1. FICHA NUEVA ${yaKo ? '(ya existía, se actualiza)' : '(se crea)'}`);
       console.log(`     ${nuevoId} · "${ficha.name}" · costo ${$(COSTO_KO)} = US$ ${ficha.costUSD}`);
       console.log(`     copiado del hermano: gestión Full ${ficha.gestFull != null ? $(ficha.gestFull) : '(el hermano no la tiene cargada)'} · envío US$ ${ficha.shipUSD != null ? ficha.shipUSD : 0}`);
+      console.log(`     costo full guardado: US$ ${ficha.costFullUSD} (= ${$(Math.round(ficha.costFullUSD * tc))})`);
 
       // 2. LAS PUBLICACIONES DE KO
       const links = (await db.get('cyc/mllinks')) || {};
