@@ -205,6 +205,10 @@ Los que más se usan:
 | `pausar:<busca>[!<saca>][:go]` | pausa varias de una · palabras con `+` · **mirar la lista antes** |
 | `cargargasto:<fecha>\|<monto>\|<cat>\|<desc>[\|prov=][\|fact=][\|cae=][\|go]` | carga un gasto con su comprobante |
 | `subirrecibidas[:go]` | sube las compras de ARCA a Facturas → Recibidas (lee `ml-sync/recibidas.json`) |
+| `porquepedido:<palabra>` | **por qué Pedidos dice lo que dice**: claves crudas de inventario, ventas, días con stock y qué camino toma la cuenta |
+| `revisarpedidos` | barre TODO: claves de inventario basura + pedidos que ya no coinciden con la realidad de hoy |
+| `limpiarclaves[:go]` | borra las claves de inventario basura (cuentas mal escritas, negativos, productos que no existen) |
+| `ordenped[:cuántos]` | compara el orden de Pedidos Bs As antes y después de medir sobre los días con stock |
 | `frenados[:díasStock]` | si conviene bajarle el precio al stock parado, con la cuenta hecha |
 | `bajarcaja[:días][:piso][:maxBaja]` | qué bajar **poquito** para que vuelva a vender: las que tienen stock, no venden y perdieron la caja de compra por poca plata · **sale solo en el chequeo de las 8** |
 | `proyec[:retiro][:tasa]` | cuánto le queda a CYC por mes |
@@ -496,6 +500,24 @@ Lo que está en casa se cuenta a mano en **Mi oficina**, que es el lugar que cor
   del que muestra el panel.
   Ojo con el filtro: `sincargo:lupa` agarra **la Lupa 90mm también**, que no era del caso. Sin `:go`
   solo muestra, con el antes y el después de cada producto. Mirar la lista siempre.
+- **UN PEDIDO CARGADO A MANO QUEDABA CONGELADO PARA SIEMPRE.** El 24/08/2026 él marcó *"error
+  grave"*: el Termómetro pincha pedía comprar 31 con urgencia teniendo **30 en Full y 150 en la
+  oficina** — y lo probó mostrando una venta de ese mismo día. `stockreal` decía que el panel y ML
+  coincidían, así que el problema no era el stock sino **quién lo lee**. Con `porquepedido` y
+  `revisarpedidos` salieron dos cosas:
+  · **El pedido era `auto:false`.** La limpieza de pedidos obsoletos filtra `arr.filter(x=>x.auto)`
+    y la actualización sólo escribe los `auto`: un pedido a mano no lo toca NADIE. Ese estaba
+    escrito desde el 27/06 con "0 en stock". Ahora se le refresca la nota y la plata en riesgo (la
+    CANTIDAD y el ESTADO no se pisan: los puso él), avisa *"con lo que tenés alcanza"* cuando la
+    cuenta da comprar 0, y la tarjeta lo marca **· a mano**.
+  · **`stockOf` sumaba TODA clave que empezara con el id del producto**, sin mirar de qué cuenta
+    era. En la base hay **13 claves basura** con el nombre de cuenta en MAYÚSCULA y cantidades
+    NEGATIVAS (`p1779912655880__AYELEN = −1` y 12 más), y se sumaban igual — el Enchufe viajero
+    llegó a mostrar **"−1 en stock"**. Ahora suma las 4 cuentas una por una con `Math.max(0,…)`.
+    Se limpian con `limpiarclaves[:go]`; `revisarpedidos` las lista y comprueba que el arreglo
+    sólo SUBA stocks (si alguno bajara, habría stock bueno en una clave rara).
+  **La lección: cuando un número de la pantalla no cuadra, `stockreal` dice si el dato está bien
+  guardado, pero no si quien lo lee lo lee bien. Son dos preguntas distintas.**
 - **El ROJO de Pedidos no se hablaba con la demora del viaje.** Un pedido se pintaba rojo con 7
   días de stock o menos, pero la caja tarda 8 días en llegar y activarse (más lo que tarde comprar
   la mercadería). O sea que el AMARILLO podía significar "ya está condenado a cortarse": las Cartas
