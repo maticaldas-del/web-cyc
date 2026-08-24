@@ -12784,6 +12784,124 @@ async function main() {
     // de los números lista las publicaciones de este producto Y las publicaciones de OTROS productos
     // cuyo título se parece, que es donde suelen estar las ventas que faltan.
     // Solo lee.
+    // BILLING_PROBE=liquidar[:díasSinVender] → QUÉ MERCADERÍA CONVIENE REMATAR PARA SACÁRSELA DE ENCIMA.
+    // Planteo suyo del 24/08/2026: *"mercadería que conviene regalarla para hacer caja, eliminar el
+    // producto para siempre y no pagar por stock antiguo"*, y después: *"es verdad que tenemos
+    // dinero para comprar, pero quizás un producto no vende, atrasa y paga por estar en stock"*.
+    //
+    // POR QUÉ NO ORDENA POR PLATA PARADA. Sería lo intuitivo, pero hoy la plata NO es el límite:
+    // hacen falta $3.400.000 para reponer y hay $5.000.000 — o sea que liberar caja no compra ni
+    // una venta más, porque no se puede gastar ni lo que ya está. Lo que sí corre igual, tengas
+    // plata o no, es el almacenamiento de Full y el reloj del descarte. Por eso ordena por lo que
+    // de verdad duele: unidades quietas × cuánto hace que están quietas.
+    //
+    // LAS TRES TRAMPAS QUE SEPARA, porque en pantalla se ven IGUAL y se arreglan al revés:
+    //   · MUERTO         → tiene stock y no vendió NADA en el período. Éste es el candidato.
+    //   · SOBRECOMPRADO  → vende, sólo que compraste de más. NO se remata: se deja de comprar.
+    //                      (Un producto con 150 u. que vende 25 cada dos meses vendió la semana
+    //                       pasada. Rematarlo es regalar plata.)
+    //   · PERDIÓ LA CAJA → tiene buen precio y no vende porque en el catálogo el botón de comprar
+    //                      se lo lleva otro. Bajarle el precio NO lo arregla.
+    // Y marca aparte los de PARAGUAY: reponer tarda 2 meses, así que matar uno por error ahí no se
+    // recupera en una semana. Con esos hay que ser más conservador.
+    // Solo LEE: no toca precios ni borra nada. La decisión es de él, producto por producto.
+    if (/^liquidar(:|$)/.test(String(process.env.BILLING_PROBE || ''))) {
+      const DIAS = Math.max(30, parseInt(String(process.env.BILLING_PROBE).split(':')[1]) || 90);
+      const LOCS = ['Adriana', 'Luciana', 'Ayelen', 'Matias'];
+      const sidL = (x) => String(x).replace(/[^a-z0-9]/gi, '_');
+      const inv = (await db.get('cyc/inventory')) || {};
+      const vp = (await db.get('cyc/ventaprod')) || {}; setDevLive(vp);
+      const links = (await db.get('cyc/mllinks')) || {};
+      const fin = (await db.get('cyc/finanzas')) || {};
+      const tc = parseFloat(fin.tipo_cambio) || 1500;
+      const $ = (n) => '$' + Math.round(n).toLocaleString('es-AR');
+
+      const hoy = Date.now();
+      const kDesde = new Date(hoy - (DIAS - 1) * 864e5).toISOString().slice(0, 10).replace(/-/g, '_');
+
+      // caja de compra: la MEJOR entre las publicaciones del producto — con que UNA gane, el
+      // producto se vende. Lo escribe el robot una vez por hora en cyc/mllinks/<MLA>/caja.
+      const cajaDe = (pid) => {
+        const ORD = { winning: 0, sharing: 1, losing: 2 };
+        let best = null;
+        for (const [, l] of Object.entries(links)) {
+          if (!l || l.prodId !== pid || !l.caja || !l.caja.st) continue;
+          if (best == null || (ORD[l.caja.st] ?? 9) < (ORD[best] ?? 9)) best = l.caja.st;
+        }
+        return best;
+      };
+
+      const filas = [];
+      for (const p of products) {
+        const stock = LOCS.reduce((a, l) => a + Math.max(0, parseInt(inv[p.id + '__' + sidL(l)]) || 0), 0);
+        if (stock <= 0) continue;
+        let vPer = 0, ultima = 0;
+        for (const [k, dia] of Object.entries(vp)) {
+          for (const v of Object.values(dia || {})) {
+            const esta = v.prodId ? v.prodId === p.id : norm(v.prod || '') === norm(p.name || '');
+            if (!esta || v.cancelada) continue;
+            const t = new Date(k.replace(/_/g, '-')).getTime();
+            if (t > ultima) ultima = t;
+            if (k >= kDesde) vPer += v.qty || 0;
+          }
+        }
+        const diasSin = ultima ? Math.floor((hoy - ultima) / 864e5) : 9999;
+        const cUSD = parseFloat(p.costFullUSD) || parseFloat(p.costUSD) || 0;
+        const plata = stock * cUSD * tc;
+        const vDia = vPer / DIAS;
+        const diasStock = vDia > 0 ? Math.round(stock / vDia) : 9999;
+        const caja = cajaDe(p.id);
+        const py = p.origen === 'py';
+        let grupo;
+        if (vPer === 0) grupo = 'MUERTO';
+        else if (caja === 'losing') grupo = 'CAJA';
+        else if (diasStock > 120) grupo = 'SOBRE';
+        else grupo = 'SANO';
+        // "quieto": unidades × meses sin venderse. Es lo que paga almacenamiento sin devolver nada.
+        const quieto = stock * Math.min(diasSin, 365) / 30;
+        filas.push({ n: p.name, stock, plata, vPer, diasSin, diasStock, caja, py, grupo, quieto, cUSD });
+      }
+      if (!filas.length) { console.log('No hay ningún producto con stock.'); return; }
+
+      const CAJA_TXT = { winning: '🟢 la ganás', sharing: '🟠 la compartís', losing: '🔴 la tiene otro', nocat: '⚪ no es catálogo' };
+      const linea = (f) => {
+        const d = f.diasSin === 9999 ? 'nunca vendió' : `hace ${f.diasSin}d`;
+        return `   ${String(f.stock).padStart(4)} u. · ${$(f.plata).padStart(12)} · última venta ${d}`
+          + `${f.vPer > 0 ? ` · ${f.vPer} vendidas en ${DIAS}d (dura ${f.diasStock}d)` : ''}`
+          + `${f.caja ? ' · ' + CAJA_TXT[f.caja] : ''}${f.py ? ' · 🇵🇾 REPONER TARDA 2 MESES' : ''}\n        ${f.n}`;
+      };
+      const grupo = (k) => filas.filter((f) => f.grupo === k).sort((a, b) => b.quieto - a.quieto);
+      const tot = (a) => a.reduce((s, f) => s + f.plata, 0);
+
+      const muertos = grupo('MUERTO'), cajas = grupo('CAJA'), sobre = grupo('SOBRE');
+      console.log(`\n══ QUÉ CONVIENE REMATAR · mirando los últimos ${DIAS} días ══`);
+      console.log(`   Ordenado por unidades quietas × tiempo quietas, que es lo que paga almacenamiento.`);
+      console.log(`   NO por plata parada: hoy la plata no es el límite (el proveedor sí).`);
+
+      console.log(`\n🔴 MUERTOS — tienen stock y NO vendieron NADA en ${DIAS} días  ·  ${muertos.length} productos · ${$(tot(muertos))}`);
+      console.log(`   Éstos son los candidatos a rematar. Pagan almacenamiento y el reloj del descarte de ML les corre.`);
+      muertos.forEach((f) => console.log(linea(f)));
+      if (!muertos.length) console.log('   ninguno ✓');
+
+      console.log(`\n🟠 PERDIERON LA CAJA DE COMPRA — venden poco porque el botón se lo lleva otro  ·  ${cajas.length} · ${$(tot(cajas))}`);
+      console.log(`   OJO: acá bajar el precio NO arregla nada. O se remata, o se acepta que vende poco.`);
+      cajas.forEach((f) => console.log(linea(f)));
+      if (!cajas.length) console.log('   ninguno ✓');
+
+      console.log(`\n🟡 SOBRECOMPRADOS — SÍ venden, hay de más  ·  ${sobre.length} · ${$(tot(sobre))}`);
+      console.log(`   ESTOS NO SE REMATAN. Se dejan de comprar y se venden solos, a precio entero.`);
+      sobre.forEach((f) => console.log(linea(f)));
+      if (!sobre.length) console.log('   ninguno ✓');
+
+      const pyM = muertos.filter((f) => f.py);
+      console.log(`\n── RESUMEN ──`);
+      console.log(`  Para rematar (muertos + caja perdida): ${muertos.length + cajas.length} productos · ${$(tot(muertos) + tot(cajas))}`);
+      console.log(`  Para dejar de comprar (sobrecomprados): ${sobre.length} productos · ${$(tot(sobre))}`);
+      if (pyM.length) console.log(`  ⚠️ ${pyM.length} de los muertos son de PARAGUAY: si te equivocás, recuperarlo tarda 2 meses.`);
+      console.log(`\n  Ninguno se toca solo. Decime cuáles y te paso el precio de remate de cada uno.`);
+      return;
+    }
+
     // BILLING_PROBE=arreglar2408[:go] → LAS TRES COSAS QUE PIDIÓ EL 24/08/2026, DE UNA.
     // Existe porque cada corrida a mano pelea con el ciclo automático por el mismo candado y se
     // cancelan entre ellas: tres comandos seguidos son tres oportunidades de que uno se pierda a
