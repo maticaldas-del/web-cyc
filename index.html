@@ -2274,7 +2274,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='16.5';
+const APP_VERSION='16.6';
 // El problema real que esto resuelve no es curiosidad: es que el celular guarda la app y sigue
 // mostrando la de ayer sin avisar. Varias veces se revisó un cambio que ya estaba subido y no se
 // veía. Por eso, además del número, el chip avisa cuando hay una versión nueva esperando.
@@ -2958,10 +2958,11 @@ function renderProds(){
           <div class="full-pesos" style="font-size:.75rem;color:var(--text);margin-top:2px">${fmtPesos(cfp)}</div>
           <div style="font-size:.58rem;color:var(--muted);margin-top:5px;line-height:1.5">envío ${fmtUSD(ship)} + costo×(1+${devPctAuto.toFixed(1)}%)</div>
         </div>
-        <div id="cvfull-${p.id}" style="background:rgba(16,185,129,.1);border:1px solid rgba(16,185,129,.28);border-radius:8px;padding:8px 14px;min-width:175px">
+        <div id="cvfull-${p.id}" title="Lo que sale vender una unidad por Full, para comparar contra el PRECIO de venta. OJO: la gestión de Full ya viene descontada de lo que te paga ML, así que en la pantalla Margen ML NO se vuelve a sumar — si se sumara, el envío quedaría contado dos veces y el margen saldría más bajo de lo que es." style="background:rgba(16,185,129,.1);border:1px solid rgba(16,185,129,.28);border-radius:8px;padding:8px 14px;min-width:175px">
           <div style="font-size:.6rem;color:var(--muted);text-transform:uppercase;letter-spacing:.1em;margin-bottom:5px">Costo vender en Full</div>
           <div class="cvfull-val" style="font-size:.82rem;font-weight:700;color:#34d399">${fmtPesos(cfp+gest+impP)}</div>
           <div class="cvfull-desc" style="font-size:.58rem;color:var(--muted);margin-top:5px;line-height:1.5">costo real full ${fmtPesos(cfp)} + gestión ${fmtPesos(gest)}${impP>0?' + impuestos '+fmtPesos(impP)+(impDet.estimado?' <span style="color:var(--amber)">(estimado, sin ventas todavía)</span>':''):''}</div>
+          <div style="font-size:.55rem;color:var(--muted);margin-top:4px;line-height:1.45;opacity:.85">Se compara contra el <strong>precio</strong>. La gestión ya está descontada en lo que te paga ML: en <strong>Margen ML</strong> no se suma de nuevo.</div>
         </div>
       </div>
       <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;padding-top:8px;border-top:1px solid var(--border);margin-top:2px">
