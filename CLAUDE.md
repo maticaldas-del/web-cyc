@@ -450,6 +450,19 @@ Lo que está en casa se cuenta a mano en **Mi oficina**, que es el lugar que cor
   producto publicado, la pantalla dice "—" en vez de inventar. El robot lo recalcula todas las
   noches (paso "Margen ML al precio de hoy" en `ml-daily`) y la pantalla muestra arriba cuándo fue
   la última vez. Para chequear que coincide con ML: `margenweb`.
+- **La pantalla "Margen ML" YA NO EXISTE: está adentro de la ficha del producto** (24/08/2026,
+  pedido suyo). En Productos, cada ficha tiene ahora la caja **Neto ML** al lado de "Costo vender
+  en Full": el neto que dice ML al precio de hoy, el margen %, el neto que haría falta para llegar
+  a la meta y las visitas. Arriba del listado quedó el resumen (cuántos bajo la meta, cuándo se
+  recalculó) y el botón **"Ver solo los que están bajo la meta"**, que es lo único que la pantalla
+  vieja hacía y la ficha no. Todo sale de `mmlBoxHTML()`, que llama a `margenMLDe()` y `visitasDe()`
+  — las MISMAS funciones que usa Rotación de Stock, para que no puedan discrepar.
+  **Y las cuatro pantallas de datos se mudaron a Ajustes** como tarjetas desplegables: Facturación
+  por mes y cuenta (monotributo), Dólar por mes, Precios históricos y Últimos cambios. Se dibujan
+  al abrirlas (`ontoggle`), no al entrar a Ajustes.
+  Al hacerlo se corrió el chequeo de las tres listas contra la versión anterior y lo ÚNICO que
+  faltaba era lo que se quiso sacar: `renderMargenML`, los tres `id` de esa pantalla,
+  `tab-margen-ml` y `tab-btn-monotributo`. Ese chequeo no es opcional (ver más abajo).
 - **"Costo vender en Full" (ficha) y "Costo full" (Margen ML) NO son el mismo número, y los dos
   están bien.** El 24/08/2026 él marcó los dos perfumes De la Patagonia: la ficha decía $29.984 y
   Margen ML $24.364. La diferencia son los **$5.620 de gestión de Full** (`gestFull`, el cargo
