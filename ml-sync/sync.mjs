@@ -12857,6 +12857,27 @@ async function main() {
         console.log(`  ${String(i + 1).padStart(3)}. ${flecha.padStart(4)} ${$(f.nuevo).padStart(12)} · ${f.u} u. · ${f.nom.slice(0, 42)}${nota}`);
       });
 
+      // POR QUÉ un producto no tiene medidos los días con stock. Sin esto el probe dice "0 de 37"
+      // y no se sabe si es que hay stock de verdad todo el mes o que falta el dato — que son dos
+      // conclusiones opuestas. Ojo con el MÁXIMO entre cuentas: alcanza con que UNA cuenta no
+      // tenga el dato para que el producto entero se mida como si hubiera tenido stock 30 días.
+      console.log(`\n── POR QUÉ (los 8 primeros, cuenta por cuenta) ──`);
+      const motivo = (pid, loc) => {
+        const h = hist[pid + '__' + sidL(loc)];
+        if (!h) return 'sin dato';
+        if (h.desde) return h.aprox !== false ? 'desde aprox (no se vio entrar)' : 'desde ' + new Date(h.desde).toISOString().slice(0, 10);
+        if (h.cero) return 'en cero desde ' + new Date(h.cero).toISOString().slice(0, 10);
+        return 'dato vacío';
+      };
+      for (const f of ordNuevo.slice(0, 8)) {
+        const ped = peds.find((x) => (x.producto || x.prodId) === f.nom);
+        const pid = ped && ped.prodId;
+        console.log(`  ${f.nom.slice(0, 40)}`);
+        for (const l of LOCS) console.log(`      ${l.padEnd(9)} ${String(Math.round(diasConStock(pid, l))).padStart(2)}d · ${motivo(pid, l)}`);
+      }
+      const conDato = filas.filter((f) => { const ped = peds.find((x) => (x.producto || x.prodId) === f.nom); return LOCS.some((l) => { const h = hist[(ped && ped.prodId) + '__' + sidL(l)]; return h && (h.cero || (h.desde && h.aprox === false)); }); });
+      console.log(`\n  ${conDato.length} de ${filas.length} productos tienen AL MENOS una cuenta con el dato bueno.`);
+
       const movidos = ordNuevo.slice(0, cuantos).filter((f, i) => posV.get(f.nom) !== i + 1).length;
       const conMult = filas.filter((f) => f.dConS < MAX_DAYS);
       console.log(`\n── RESUMEN ──`);
