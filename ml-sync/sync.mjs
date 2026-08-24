@@ -12784,6 +12784,135 @@ async function main() {
     // de los números lista las publicaciones de este producto Y las publicaciones de OTROS productos
     // cuyo título se parece, que es donde suelen estar las ventas que faltan.
     // Solo lee.
+    // BILLING_PROBE=porquepedido:<palabra o id> → POR QUÉ PEDIDOS DICE LO QUE DICE.
+    // Hermano de `porquecaja`, pero para la pantalla de Pedidos. Nace del caso del 24/08/2026: el
+    // Termómetro pincha aparecía "0 en stock · ~0d cubiertos · 31 u. a comprar" cuando Ayelen tenía
+    // 31 en Full (se acababa de vender uno) y había 150 en la oficina. `stockreal` decía que el
+    // panel y ML coincidían, así que el problema no era el stock sino QUIÉN lo lee.
+    // Imprime las claves CRUDAS de cyc/inventory, que es donde se ven las cosas que ningún número
+    // resumido muestra: fichas repetidas, claves con el nombre de cuenta escrito distinto, y stock
+    // cargado a nivel producto cuando la ficha tiene variantes (o al revés).
+    if (/^porquepedido(:|$)/.test(String(process.env.BILLING_PROBE || ''))) {
+      const q = String(process.env.BILLING_PROBE).slice('porquepedido:'.length).trim();
+      if (!q) { console.log('Usá: porquepedido:termometro'); return; }
+      const LOCS = ['Adriana', 'Luciana', 'Ayelen', 'Matias'];
+      const OFI = 'Oficina Mati';
+      const MAX_DAYS = 30, DIAS_MIN = 7, TARGET_DAYS = 30;
+      const sidL = (x) => String(x).replace(/[^a-z0-9]/gi, '_');
+      const inv = (await db.get('cyc/inventory')) || {};
+      const hist = (await db.get('cyc/stockhist')) || {};
+      const vp = (await db.get('cyc/ventaprod')) || {}; setDevLive(vp);
+      const envios = (await db.get('cyc/envios_full')) || {};
+
+      // TODAS las fichas que se llaman parecido: si hay dos, una puede tener el stock y la otra el
+      // pedido, y por separado las dos parecen correctas.
+      const cand = products.filter((p) => p.id === q || norm(p.name || '').includes(norm(q)));
+      if (!cand.length) { console.log(`No hay ninguna ficha que se llame como "${q}".`); return; }
+      console.log(`\n══ ${cand.length} ficha(s) que coinciden con "${q}" ══`);
+      cand.forEach((p) => console.log(`   ${p.id} · "${p.name}" · ${(p.variantes || []).length} variantes${(p.variantes || []).length ? ': ' + p.variantes.join(' · ') : ''}`));
+      if (cand.length > 1) console.log(`   ⚠️ MÁS DE UNA FICHA. Si el stock está en una y las ventas en la otra, Pedidos pide de más.`);
+
+      const desde = new Date(Date.now() - (MAX_DAYS - 1) * 864e5);
+      const fk = desde.toISOString().slice(0, 10).replace(/-/g, '_');
+
+      for (const p of cand) {
+        console.log(`\n──────── ${p.id} · ${p.name} ────────`);
+
+        // 1. LAS CLAVES CRUDAS. Sin filtrar nada: así se ve si hay una cuenta escrita distinto.
+        const claves = Object.entries(inv).filter(([k]) => k.startsWith(p.id + '__'));
+        console.log(`  cyc/inventory · ${claves.length} clave(s):`);
+        if (!claves.length) console.log(`     (ninguna — para el panel esta ficha no tiene stock en ningún lado)`);
+        claves.forEach(([k, v]) => {
+          const suf = k.slice(p.id.length + 2);
+          const esVar = k.includes('__v__'), esOfi = suf.startsWith(sidL(OFI));
+          console.log(`     ${k} = ${v}   ${esOfi ? '← OFICINA' : esVar ? '← desglose por variante' : '← Full de una cuenta'}`);
+        });
+
+        // 2. LO QUE CALCULA CADA FUNCIÓN DE LA WEB, con la misma regla.
+        const stockFull = claves.filter(([k]) => !k.includes('__v__') && !k.slice(p.id.length + 2).startsWith(sidL(OFI))).reduce((s, [, v]) => s + (parseInt(v) || 0), 0);
+        const enOficina = parseInt(inv[p.id + '__' + sidL(OFI)]) || 0;
+        console.log(`\n  stockOf()        = ${stockFull}   (lo que Pedidos llama "en stock")`);
+        console.log(`  stockOficina()   = ${enOficina}   (lo que descuenta de la compra)`);
+
+        // 3. VENTAS: cuántas y si vienen con prodId. Una venta SIN prodId se engancha por NOMBRE,
+        //    así que dos fichas con nombre parecido se llevan las mismas ventas.
+        let vendidos = 0, sinId = 0, conId = 0;
+        const porVariante = {};
+        Object.keys(vp).filter((k) => k >= fk).forEach((k) => {
+          Object.values(vp[k] || {}).forEach((v) => {
+            const esta = v.prodId ? v.prodId === p.id : norm(v.prod || '') === norm(p.name || '');
+            if (!esta || v.cancelada) return;
+            vendidos += v.qty || 0;
+            if (v.prodId) conId++; else sinId++;
+            if (v.variante) porVariante[v.variante] = (porVariante[v.variante] || 0) + (v.qty || 0);
+          });
+        });
+        console.log(`  ventas 30d       = ${vendidos} u.  (${conId} ventas pegadas por ID · ${sinId} pegadas por NOMBRE)`);
+        if (sinId) console.log(`     ⚠️ las ${sinId} pegadas por nombre las agarra CUALQUIER ficha que se llame igual`);
+        if (Object.keys(porVariante).length) console.log(`     por variante: ${Object.entries(porVariante).map(([v, n]) => v + ' ×' + n).join(' · ')}`);
+
+        // 4. DÍAS CON STOCK Y VELOCIDAD
+        const dCS = (loc) => {
+          const h = hist[p.id + '__' + sidL(loc)];
+          if (!h) return null;
+          const now = Date.now(), ini = now - MAX_DAYS * 864e5;
+          let ms = null;
+          if (h.desde) { if (h.aprox !== false) return MAX_DAYS; ms = now - Math.max(h.desde, ini); }
+          else if (h.cero) ms = Math.max(0, h.cero - ini);
+          if (ms == null) return MAX_DAYS;
+          const d = ms / 864e5;
+          if (!isFinite(d) || d <= 0) return DIAS_MIN;
+          return Math.max(DIAS_MIN, Math.min(MAX_DAYS, d));
+        };
+        let dConS = 0, hubo = false;
+        for (const l of LOCS) { const d = dCS(l); if (d == null) continue; hubo = true; if (d > dConS) dConS = d; }
+        if (!hubo || dConS <= 0) dConS = MAX_DAYS;
+        const vDia = vendidos / Math.min(dConS, MAX_DAYS);
+        const diasCubiertos = vDia > 0 ? Math.round(stockFull / vDia) : 999;
+        console.log(`\n  días con stock   = ${Math.round(dConS)}  ·  velocidad = ${vDia.toFixed(2)} u./día`);
+        console.log(`  días cubiertos   = ${diasCubiertos}   (stock ${stockFull} ÷ ${vDia.toFixed(2)})`);
+
+        // 5. EL CAMINO QUE VA A TOMAR: con variantes o sin variantes. Son dos cuentas DISTINTAS y
+        //    la de variantes sólo mira las claves __v__.
+        const hasVars = (p.variantes || []).length > 0;
+        const tieneVentaVar = Object.keys(porVariante).length > 0;
+        console.log(`\n  ── QUÉ CAMINO TOMA EL CÁLCULO ──`);
+        if (hasVars && tieneVentaVar) {
+          console.log(`  POR VARIANTE (la ficha tiene variantes y hay ventas con variante).`);
+          console.log(`  OJO: este camino mira SOLO las claves __v__. El stock cargado a nivel producto NO lo ve.`);
+          let nec = 0, comprar = 0;
+          for (const v of p.variantes) {
+            const vSt = LOCS.reduce((s, l) => s + (parseInt(inv[p.id + '__' + sidL(l) + '__v__' + sidL(v)]) || 0), 0);
+            const vTarget = Math.ceil((porVariante[v] || 0) / Math.min(dConS, MAX_DAYS) * TARGET_DAYS);
+            const vCasa = parseInt(inv[p.id + '__' + sidL(OFI) + '__v__' + sidL(v)]) || 0;
+            const vFalta = Math.max(0, vTarget - vSt), vComprar = Math.max(0, vFalta - vCasa);
+            nec += vFalta; comprar += vComprar;
+            if (vTarget > 0 || vSt > 0) console.log(`     ${v}: vendidas ${porVariante[v] || 0} → objetivo ${vTarget} · en Full ${vSt} · en casa ${vCasa} → falta ${vFalta} · comprar ${vComprar}`);
+          }
+          console.log(`  → necesario ${nec} · a comprar ${comprar}`);
+          const sumaVar = LOCS.reduce((s, l) => s + p.variantes.reduce((a, v) => a + (parseInt(inv[p.id + '__' + sidL(l) + '__v__' + sidL(v)]) || 0), 0), 0);
+          if (stockFull > 0 && sumaVar === 0) console.log(`     🔴 ACÁ ESTÁ EL PROBLEMA: hay ${stockFull} u. en Full a nivel producto y CERO repartidas por variante,\n        así que este camino las trata como si no existieran y pide comprar todo de nuevo.`);
+        } else {
+          const targetStock = Math.ceil(vDia * TARGET_DAYS);
+          const nec = Math.max(0, targetStock - stockFull);
+          console.log(`  POR PRODUCTO (sin variantes${hasVars ? ', porque no hay ventas con variante' : ''}).`);
+          console.log(`     objetivo ${targetStock} − stock ${stockFull} = necesario ${nec} · − casa ${enOficina} → a comprar ${Math.max(0, nec - enOficina)}`);
+        }
+
+        // 6. LO QUE VA EN CAMINO
+        let cam = 0;
+        for (const e of Object.values(envios)) {
+          if (!e || !e.cuenta || !LOCS.includes(e.cuenta)) continue;
+          for (const c of (Array.isArray(e.cajasDet) ? e.cajasDet : [])) {
+            if (c.recibida) continue;
+            for (const it of (c.items || [])) if (it && it.prodId === p.id && it.u > 0) cam += it.u;
+          }
+        }
+        console.log(`  en camino a Full = ${cam}`);
+      }
+      return;
+    }
+
     // BILLING_PROBE=ordenped[:cuántos] → ¿ESTÁ BIEN EL ORDEN DE LA LISTA DE PEDIDOS BS AS?
     // Duda suya del 24/08/2026: el padre compra de arriba hacia abajo y deja la cola, "y cada vez
     // hay más publicaciones inactivas". La lista se ordena por plata en riesgo, y esa plata se
