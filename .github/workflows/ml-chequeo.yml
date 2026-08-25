@@ -31,7 +31,11 @@ concurrency:
 jobs:
   chequeo:
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    # 45 y no 20: el 25/08/2026 el chequeo se corto por tiempo tres veces seguidas. Desde que
+    # pregunta las VISITAS de cada publicacion dormida (20/08) son muchas mas llamadas a ML, y con
+    # ML lento no entra en 20 minutos. Ojo: comparte el candado con ml-sync, asi que mientras corre
+    # el ciclo de ventas esta parado — por eso tampoco conviene subirlo mucho mas.
+    timeout-minutes: 45
     # Hace falta para poder dejar el resultado guardado en el repo (ver el último paso).
     permissions:
       contents: write
