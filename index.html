@@ -1081,6 +1081,7 @@ footer{margin-top:32px;padding-top:14px;border-top:1px solid var(--border);font-
       <button class="vbtn"        id="rotsort-caja"    onclick="setRotSort('caja',this)" title="Primero los que PIERDEN la caja de compra: están publicados y la venta se la lleva otro. Ahí el precio no es el problema.">🥊 Caja ML</button>
     </div>
   </div>
+  <input class="search-box" id="rot-search" type="search" placeholder="Buscar producto..." oninput="renderRotacionStock()" style="margin-bottom:12px">
   <div class="tbl-outer">
     <table id="rot-tbl">
       <thead><tr>
@@ -2227,7 +2228,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='17.0';
+const APP_VERSION='17.1';
 // El problema real que esto resuelve no es curiosidad: es que el celular guarda la app y sigue
 // mostrando la de ayer sin avisar. Varias veces se revisó un cambio que ya estaba subido y no se
 // veía. Por eso, además del número, el chip avisa cuando hay una versión nueva esperando.
@@ -7842,7 +7843,7 @@ function renderRotacionStock(){
   // 0.20 = vendiste 20% del stock en 60 días → Lento
   // <0.20 = casi no se movió → Muerto
   const ORDER={muerto:0,lento:1,sano:2,reciente:3,sinstock:4};
-  const rows=prods.map(p=>{
+  let rows=prods.map(p=>{
     const stock=stockOf(p);
     const capital=stock*(costFullP(p)||0);
     let ventasPeriodo=0;
@@ -7949,6 +7950,17 @@ function renderRotacionStock(){
     return ORDER[a.estadoKey]-ORDER[b.estadoKey]||b.capital-a.capital;
   });
 
+  // ── BUSCADOR ───────────────────────────────────────────────────
+  // Se filtra ACÁ, al final de todo, y no arriba a propósito: el puntaje y el banner de arriba
+  // hablan del catálogo entero, y si el buscador los moviera diría "tenés 1 producto muerto"
+  // cuando en realidad estás mirando uno solo. Lo único que se achica es la tabla.
+  const _q=normTxt(document.getElementById('rot-search')?.value||'');
+  const _todas=rows.length;
+  if(_q)rows=rows.filter(r=>normTxt(r.name).includes(_q));
+  if(_q&&!rows.length){
+    tbody.innerHTML=`<tr><td colspan="10" style="text-align:center;color:var(--muted);padding:18px">Ningún producto con “${document.getElementById('rot-search').value}” (de ${_todas}).</td></tr>`;
+    return;
+  }
   tbody.innerHTML=rows.map(r=>`<tr>
     <td style="max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${r.name}">${r.name}</td>
     <td style="text-align:right">${r.stock} u.</td>
