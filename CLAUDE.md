@@ -534,6 +534,20 @@ Lo que está en casa se cuenta a mano en **Mi oficina**, que es el lugar que cor
   del que muestra el panel.
   Ojo con el filtro: `sincargo:lupa` agarra **la Lupa 90mm también**, que no era del caso. Sin `:go`
   solo muestra, con el antes y el después de cada producto. Mirar la lista siempre.
+- **EL FERRARI NEGRO SE BAJÓ ABAJO DEL PISO, CON SU AUTORIZACIÓN EXPRESA (25/08/2026).**
+  `MLA1771184347` (Adriana) pasó de **$61.980 a $59.900**. El piso del 30% de esa publicación es
+  $61.200, así que quedó en **~27,4%**. Él lo pidió tres veces, con el número del margen a la
+  vista. **No es un permiso general: fue para esta publicación y este día.**
+  Resultado, releído de ML: la caja de compra pasó de **PERDIENDO a GANANDO**. No a "compartiendo",
+  que era lo que él pedía — compartir no se puede elegir, lo decide ML.
+  **La explicación de por qué ganamos teniendo dos vendedores a $53.900:** esos dos **no están
+  compitiendo** (sin stock o no califican). Por eso ML pedía $59.966 y no $53.900. **Si alguno se
+  reactiva, se pierde la caja y quedamos con el margen bajo sin la ventaja** — hay que mirarlo.
+  **Y el agujero que salió a la luz: `volver` NO pasa por el freno del piso.** En una publicación
+  sin variantes hace un PUT directo a ML, salteando `setPriceTo` y `_chequeoPiso`. O sea que la
+  frase "setPriceTo es la ÚNICA función que baja precios" **no es cierta hoy**. Con variantes sí
+  está tapado (`raiseVariations` se niega a bajar). Queda pendiente cerrarlo.
+
 - **UNA CUENTA PUEDE NO QUERER UN PRODUCTO, Y EL PANEL NO TENÍA CÓMO DECIRLO.** El 24/08/2026
   miró Armar caja de Adriana y le aparecía medio catálogo: mercadería mezclada de un experimento
   que no funcionó. Textual: *"puede que tenga stock en full, que venda re bien, que vaya en otra
