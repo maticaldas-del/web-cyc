@@ -7530,6 +7530,89 @@ async function main() {
       return;
     }
 
+    // BILLING_PROBE=nomandar:<cuenta>[:<palabra,palabra,...>][:go|:borrar]
+    //
+    // "ESTE PRODUCTO NO SE VENDE MÁS EN ESTA CUENTA". Pedido suyo del 24/08/2026 mirando Armar
+    // caja de Adriana. Textual: "puede que tenga stock en full, que venda re bien, que vaya en
+    // otra caja, lo que sea. solamente NO se van a vender mas en ADRIANA".
+    //
+    // Escribe cyc/norepo/<prodId>__<cuenta> = true. Con eso el panel saca esa cuenta del reparto
+    // de "Armar caja": el producto deja de sugerirse para ella y sigue reponiéndose en las otras.
+    // NO borra la ficha, NO toca el stock de la oficina ni el de Full, NO toca nada en ML y las
+    // ventas viejas quedan como están.
+    //
+    // Sin ":go" SOLO MUESTRA lo que agarró el filtro, con el stock en Full y las ventas de esa
+    // cuenta al lado. Es a propósito: filtrar productos por palabras del título ya nos hizo pausar
+    // de más una vez (15/08/2026, las tarjetas de memoria se llevaban puesto un auricular).
+    // Sin palabras lista lo que YA está marcado. Con ":borrar" en vez de ":go" saca la marca.
+    if (/^nomandar(:|$)/.test(String(process.env.BILLING_PROBE || ''))) {
+      const _p = String(process.env.BILLING_PROBE).split(':');
+      const sidL = (x) => String(x).replace(/[^a-z0-9]/gi, '_');
+      const nm = (x) => String(x || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[^a-z0-9]+/g, ' ').trim();
+      const cta = labels.find((l) => nm(l) === nm(_p[1] || ''));
+      if (!cta) { console.log(`Usá: nomandar:<cuenta>[:<palabra,palabra>][:go|:borrar]  ·  cuentas: ${labels.join(', ')}`); return; }
+      const ultimo = String(_p[_p.length - 1] || '').toLowerCase();
+      const GO = ultimo === 'go', BORRAR = ultimo === 'borrar';
+      const crudo = (GO || BORRAR) ? _p.slice(2, -1).join(':') : _p.slice(2).join(':');
+      const palabras = crudo.split(',').map((x) => nm(x)).filter(Boolean);
+      const marcas = (await db.get('cyc/norepo')) || {};
+      const inv = (await db.get('cyc/inventory')) || {};
+      const suf = '__' + sidL(cta);
+
+      // Sin palabras: solo listar lo que ya está marcado en esa cuenta.
+      if (!palabras.length) {
+        const yaM = Object.keys(marcas).filter((k) => marcas[k] === true && k.endsWith(suf));
+        console.log(`=== NO SE MANDA MÁS A ${cta.toUpperCase()} · ${yaM.length} producto(s) ===`);
+        for (const k of yaM) {
+          const pid = k.slice(0, k.length - suf.length);
+          const pr = products.find((x) => x.id === pid);
+          console.log(`  · ${pr ? pr.name : '(ficha borrada) ' + pid}`);
+        }
+        if (!yaM.length) console.log('  (ninguno)');
+        console.log(`\nPara marcar: nomandar:${cta}:<palabra,palabra>  (sin :go solo muestra)`);
+        console.log(`Para sacar la marca: nomandar:${cta}:<palabra>:borrar`);
+        return;
+      }
+
+      // Ventas por producto de ESA cuenta en los últimos 90 días: es el dato que dice si el filtro
+      // se está llevando puesto algo que vende. Va en la lista aunque él ya haya dicho que no le
+      // importa: la decisión es suya, pero tiene que verla.
+      const vAcc = {};
+      const desde = Date.now() - 90 * 864e5;
+      const vp = (await db.get('cyc/ventaprod')) || {};
+      for (const [dia, day] of Object.entries(vp)) {
+        if (new Date(dia + 'T00:00:00-03:00').getTime() < desde) continue;
+        for (const v of Object.values(day || {})) {
+          if (!v || v.cancelada || v.cuenta !== cta || !v.prodId) continue;
+          vAcc[v.prodId] = (vAcc[v.prodId] || 0) + (v.qty || 0);
+        }
+      }
+
+      const elegidos = products.filter((pr) => {
+        const n = nm(pr.name);
+        return palabras.some((w) => pr.id === w.replace(/ /g, '') || n === w || n.includes(w));
+      });
+      console.log(`=== ${BORRAR ? 'SACAR LA MARCA' : 'NO SE MANDA MÁS'} · ${cta.toUpperCase()} · ${elegidos.length} producto(s) ${GO || BORRAR ? '(APLICANDO)' : '(PRUEBA)'} ===`);
+      console.log(`Solo saca a ${cta} del reparto de Armar caja. No borra fichas, no toca stock ni ML.\n`);
+      let ok = 0;
+      for (const pr of elegidos) {
+        const full = Number(inv[pr.id + suf] || 0);
+        const v90 = vAcc[pr.id] || 0;
+        const yaEsta = marcas[pr.id + suf] === true;
+        const det = `Full ${full} u. · ${v90} vendidas en 90d${v90 > 0 ? ' ⚠️ VENDE' : ''}${yaEsta ? ' · ya estaba marcado' : ''}`;
+        if (!GO && !BORRAR) { console.log(`  · ${pr.name} — ${det}`); ok++; continue; }
+        await db.set('cyc/norepo/' + pr.id + suf, BORRAR ? null : true);
+        const ver = await db.get('cyc/norepo/' + pr.id + suf);
+        const bien = BORRAR ? (ver == null) : (ver === true);
+        console.log(`  ${bien ? '✓' : '✗'} ${pr.name} — ${det}`);
+        if (bien) ok++;
+      }
+      if (!elegidos.length) console.log('  (el filtro no agarró ningún producto)');
+      console.log(`\n${GO ? `${ok} marcados` : BORRAR ? `${ok} desmarcados` : `${ok} se marcarían`}.`);
+      if (!GO && !BORRAR) console.log('PRUEBA: no se escribió nada. MIRÁ LA LISTA y recién ahí agregá ":go".');
+      return;
+    }
+
     // BILLING_PROBE=nomas:<MLA,MLA,...>[:go] → "ESTO NO LO VENDEMOS MÁS".
     //
     // Marca la publicación como OCULTA en el panel (mllinks.ignored). A partir de ahí el robot la

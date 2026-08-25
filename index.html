@@ -1865,6 +1865,7 @@ function startApp(){
     // Las cajas despachadas a Full, anotadas del comprobante del correo.
     state.envios_full=d.envios_full||{};
     state.cajas_armando=d.cajas_armando||{};   // cajas a medio armar, una por cuenta
+    state.norepo=d.norepo||{};                 // "este producto no va más a esta cuenta" (por producto×cuenta)
     // HISTORIAL DE STOCK: desde cuándo cada producto×cuenta tiene mercadería (`desde`) y cuándo se
     // quedó en cero (`cero`). Lo viene anotando el robot. Sirve para medir a qué velocidad se vende
     // algo DIVIDIENDO POR LOS DÍAS QUE HUBO STOCK y no por 30 fijo (ver diasConStock).
@@ -2499,6 +2500,24 @@ const retiroDefMes=(ym,neto)=>(ym&&ym>=RETIRO_FIJO_DESDE)?RETIRO_FIJO:Math.round
 const sid=s=>s.replace(/[^a-z0-9]/gi,'_');
 const ts2s=t=>{const d=new Date(t);return d.toLocaleDateString('es-AR')+' '+d.toLocaleTimeString('es-AR',{hour:'2-digit',minute:'2-digit'});};
 const invKey=(pid,loc)=>pid+'__'+sid(loc);
+// ── "ESTE PRODUCTO NO VA MÁS A ESTA CUENTA" ────────────────────────────────────────────
+// Pedido suyo del 24/08/2026 mirando Armar caja de Adriana: mercadería mezclada que fue un
+// experimento y no funcionó. Textual: "puede que tenga stock en full, que venda re bien, que vaya
+// en otra caja, lo que sea. solamente NO se van a vender mas en ADRIANA".
+// Por eso la marca es por producto×CUENTA y no por producto: el mismo producto sigue reponiéndose
+// en las cuentas donde sí funciona. Y no se borra ninguna ficha: las unidades que hay en casa
+// siguen contando en el Arqueo y las ventas viejas quedan como están.
+// Lo que las hacía aparecer es la regla "una cuenta en CERO siempre recibe" (19/08/2026), que es
+// correcta para un producto que se vende y pésima para uno que esa cuenta no piensa vender más.
+const noRepoDe=(pid,loc)=>!!(state.norepo||{})[invKey(pid,loc)];
+async function setNoRepo(pid,loc,val){
+  state.norepo=state.norepo||{};
+  if(val)state.norepo[invKey(pid,loc)]=true; else delete state.norepo[invKey(pid,loc)];
+  await fbSet('norepo/'+invKey(pid,loc),val?true:null);
+  const pr=(state.products||[]).find(x=>x.id===pid);
+  await log((val?'No mandar más ':'Vuelve a reponerse ')+(pr?pr.name:pid)+' · '+loc);
+  renderOfiCaja();
+}
 const invKeyV=(pid,loc,variant)=>pid+'__'+sid(loc)+'__v__'+sid(variant);
 const clamp0=n=>n<0?0:n; // el stock nunca queda negativo (venta con stock ya en 0 → queda en 0, no en negativo)
 /* Las ventas NO tocan el stock. El inventario lo maneja la IA (que lo recarga cada tanto) o se
@@ -3961,6 +3980,9 @@ function renderOfiCaja(){
         <strong style="font-family:'Syne',sans-serif;font-size:1rem;${urg?'color:var(--red)':''}">${s.mandar} u.</strong>
         ${s.enCero?'<span style="background:rgba(239,68,68,.14);color:var(--red);border-radius:5px;padding:2px 7px;font-size:.6rem;font-weight:700">SIN STOCK · no vende</span>':''}
         <span style="font-size:.66rem;color:var(--muted)">le quedan ${s.enML!=null?s.enML:s.stock}${s.camino?` <span style="color:var(--amber)">+${s.camino} en camino</span>`:''} · ${dias} · ${ritmo}</span>
+        <button class="btn" style="margin-left:auto;font-size:.58rem;padding:3px 8px;background:rgba(239,68,68,.10);color:#f87171;border:1px solid rgba(239,68,68,.28)"
+          onclick="setNoRepo('${f.p.id}','${s.cuenta}',true)"
+          title="Este producto no se vende más en ${s.cuenta}: deja de sugerirse para esa cuenta. No borra la ficha, no toca el stock y sigue reponiéndose en las otras cuentas. Se deshace abajo de todo.">🚫 no va más a ${s.cuenta}</button>
       </div>`;
     }).join('');
     let pie='';
@@ -3985,7 +4007,31 @@ function renderOfiCaja(){
       </div>
       ${lineas}${pie}
     </div>`;
-  }).join('');
+  }).join('')+_noRepoPie();
+}
+// EL PIE DE LOS MARCADOS. Va sí o sí: una lista que esconde renglones sin decirlo es una lista que
+// miente. Acá se ve qué se sacó y se deshace de un click.
+function _noRepoPie(){
+  const marcas=Object.entries(state.norepo||{}).filter(([,v])=>v===true);
+  if(!marcas.length)return '';
+  const filas=marcas.map(([k])=>{
+    const cta=LOCS.find(l=>k.endsWith('__'+sid(l)));
+    if(!cta)return null;
+    const pid=k.slice(0,k.length-('__'+sid(cta)).length);
+    const pr=(state.products||[]).find(x=>x.id===pid);
+    return {pid,cta,name:pr?pr.name:'(ficha borrada)'};
+  }).filter(Boolean).sort((a,b)=>a.cta.localeCompare(b.cta)||a.name.localeCompare(b.name));
+  if(!filas.length)return '';
+  const vis=ofiFiltroCuenta?filas.filter(f=>f.cta===ofiFiltroCuenta):filas;
+  if(!vis.length)return '';
+  return `<details style="margin-top:14px;background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:10px 14px">
+    <summary style="cursor:pointer;font-size:.7rem;color:var(--muted)">🚫 <strong style="color:var(--text)">${vis.length}</strong> producto${vis.length===1?'':'s'} que no se manda${vis.length===1?'':'n'} más${ofiFiltroCuenta?' a '+ofiFiltroCuenta:''} — no aparecen en la lista de arriba</summary>
+    <div style="margin-top:8px">${vis.map(f=>`<div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding:5px 0;border-top:1px solid var(--border)">
+      <span class="pi-prov">${f.cta}</span>
+      <span style="flex:1;min-width:150px;font-size:.72rem">${f.name}</span>
+      <button class="btn" style="font-size:.58rem;padding:3px 8px" onclick="setNoRepo('${f.pid}','${f.cta}',false)" title="Volver a reponerlo en ${f.cta}">↩ volver a mandarlo</button>
+    </div>`).join('')}</div>
+  </details>`;
 }
 // Junta en la casilla única lo que se haya llegado a cargar cuando la oficina estaba partida en
 // dos. Es idempotente: suma las viejas a la nueva y las borra, así una segunda pasada no encuentra
@@ -6773,7 +6819,7 @@ function _repartoVariantes(p,hayTotal,tr){
     const hay=getQV(p.id,OFI,va);
     repartido+=hay;
     if(hay<=0)continue;
-    const publicadas=[...(pubV[va]||[])];
+    const publicadas=[...(pubV[va]||[])].filter(l=>!noRepoDe(p.id,l));
     const cand=publicadas.map(l=>{
       const vMes=(ventasV[l]||{})[va]||0;
       // El historial de stock es por producto×cuenta, no por variante: se usa como aproximación.
@@ -6829,7 +6875,7 @@ function repartoOficina(){
     if(hay<=0)return;
     if((p.variantes||[]).length){ filas.push(..._repartoVariantes(p,hay,tr)); return; }
     const ventas=ventasPorCuenta(p);
-    const publicadas=cuentasConPublicacion(p);
+    const publicadas=cuentasConPublicacion(p).filter(l=>!noRepoDe(p.id,l));
     const cand=publicadas.map(l=>{
       const dConS=diasConStock(p.id,l);
       const enML=getQ(p.id,l);
