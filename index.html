@@ -2227,7 +2227,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='16.8';
+const APP_VERSION='16.9';
 // El problema real que esto resuelve no es curiosidad: es que el celular guarda la app y sigue
 // mostrando la de ayer sin avisar. Varias veces se revisó un cambio que ya estaba subido y no se
 // veía. Por eso, además del número, el chip avisa cuando hay una versión nueva esperando.
@@ -3881,7 +3881,11 @@ function renderOfiCaja(){
     }
     return cuentasConPublicacion(p).includes(ofiFiltroCuenta);
   };
-  const vis=armando?filas.filter(f=>f.hay>0&&publicaLaCuenta(f)):filas;
+  // Y se saca lo marcado "no se manda más a esta cuenta". La marca ya sacaba a la cuenta del
+  // reparto, pero el renglón seguía apareciendo igual porque la lista muestra TODO lo que hay en
+  // casa para poder cargar a mano. El 25/08/2026 le seguían saliendo en Adriana el P47, las Cartas
+  // Casino y el Termómetro pincha, que ya estaban marcados: "esto no va en adriana".
+  const vis=armando?filas.filter(f=>f.hay>0&&publicaLaCuenta(f)&&!noRepoDe(f.p.id,ofiFiltroCuenta)):filas;
   // Se suma SOLO lo que sigue estando en pantalla: si una fila desapareció (porque ya se despachó)
   // su número no puede seguir contando en la caja.
   const cajaAct=armando?cajaDe(ofiFiltroCuenta):{};
