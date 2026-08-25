@@ -7554,7 +7554,7 @@ async function main() {
       const ultimo = String(_p[_p.length - 1] || '').toLowerCase();
       const GO = ultimo === 'go', BORRAR = ultimo === 'borrar';
       const crudo = (GO || BORRAR) ? _p.slice(2, -1).join(':') : _p.slice(2).join(':');
-      const palabras = crudo.split(',').map((x) => nm(x)).filter(Boolean);
+      const palabras = crudo.split(',').map((x) => (String(x).trim().startsWith('=') ? '=' + nm(x) : nm(x))).filter((x) => x && x !== '=');
       const marcas = (await db.get('cyc/norepo')) || {};
       const inv = (await db.get('cyc/inventory')) || {};
       const suf = '__' + sidL(cta);
@@ -7588,9 +7588,15 @@ async function main() {
         }
       }
 
+      // Un nombre que empieza con "=" es EXACTO: no agarra a los parientes. Hace falta porque el
+      // filtro por palabras se lleva puesto todo lo que contenga el texto — pedir "metatarso" trae
+      // "Metatarso Fuerte", "P47" trae "p47 oreja gato" y "Cortapelo 1 en 1" trae el "a pila".
+      // El 24/08/2026 pedimos 32 productos y el filtro suelto agarró 42.
       const elegidos = products.filter((pr) => {
         const n = nm(pr.name);
-        return palabras.some((w) => pr.id === w.replace(/ /g, '') || n === w || n.includes(w));
+        return palabras.some((w) => w.startsWith('=')
+          ? n === w.slice(1).trim()
+          : (pr.id === w.replace(/ /g, '') || n === w || n.includes(w)));
       });
       console.log(`=== ${BORRAR ? 'SACAR LA MARCA' : 'NO SE MANDA MÁS'} · ${cta.toUpperCase()} · ${elegidos.length} producto(s) ${GO || BORRAR ? '(APLICANDO)' : '(PRUEBA)'} ===`);
       console.log(`Solo saca a ${cta} del reparto de Armar caja. No borra fichas, no toca stock ni ML.\n`);
