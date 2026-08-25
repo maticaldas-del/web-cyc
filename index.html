@@ -2227,7 +2227,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='16.7';
+const APP_VERSION='16.8';
 // El problema real que esto resuelve no es curiosidad: es que el celular guarda la app y sigue
 // mostrando la de ayer sin avisar. Varias veces se revisó un cambio que ya estaba subido y no se
 // veía. Por eso, además del número, el chip avisa cuando hay una versión nueva esperando.
@@ -3980,9 +3980,6 @@ function renderOfiCaja(){
         <strong style="font-family:'Syne',sans-serif;font-size:1rem;${urg?'color:var(--red)':''}">${s.mandar} u.</strong>
         ${s.enCero?'<span style="background:rgba(239,68,68,.14);color:var(--red);border-radius:5px;padding:2px 7px;font-size:.6rem;font-weight:700">SIN STOCK · no vende</span>':''}
         <span style="font-size:.66rem;color:var(--muted)">le quedan ${s.enML!=null?s.enML:s.stock}${s.camino?` <span style="color:var(--amber)">+${s.camino} en camino</span>`:''} · ${dias} · ${ritmo}</span>
-        <button class="btn" style="margin-left:auto;font-size:.58rem;padding:3px 8px;background:rgba(239,68,68,.10);color:#f87171;border:1px solid rgba(239,68,68,.28)"
-          onclick="setNoRepo('${f.p.id}','${s.cuenta}',true)"
-          title="Este producto no se vende más en ${s.cuenta}: deja de sugerirse para esa cuenta. No borra la ficha, no toca el stock y sigue reponiéndose en las otras cuentas. Se deshace abajo de todo.">🚫 no va más a ${s.cuenta}</button>
       </div>`;
     }).join('');
     let pie='';
