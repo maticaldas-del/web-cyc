@@ -219,6 +219,7 @@ Los que más se usan:
 | `variantes:<palabra>` | qué variantes tiene un producto y el título real de cada publicación, para cargar las que falten |
 | `sinvincular[:cuenta]` | las publicaciones que NO tienen producto: el robot no les ve stock ni margen |
 | `nomas:<MLA,...>[:go]` | "esto no lo vendemos más": oculta la publicación del panel · no toca nada en ML |
+| `nomandar:<cuenta>[:<palabras>][:go]` | "este producto no se vende más en ESTA cuenta": la saca del reparto de Armar caja · nombre con `=` adelante = exacto · sin `:go` solo muestra |
 | `preguntas[:cuenta]` | las preguntas sin responder ENTERAS, con el producto de cada una |
 | `facarca` | lo facturado en la ventana que mira ARCA, por cuenta |
 | `catmono[:fecha]` | qué categoría de monotributo corresponde |
@@ -533,6 +534,30 @@ Lo que está en casa se cuenta a mano en **Mi oficina**, que es el lugar que cor
   del que muestra el panel.
   Ojo con el filtro: `sincargo:lupa` agarra **la Lupa 90mm también**, que no era del caso. Sin `:go`
   solo muestra, con el antes y el después de cada producto. Mirar la lista siempre.
+- **UNA CUENTA PUEDE NO QUERER UN PRODUCTO, Y EL PANEL NO TENÍA CÓMO DECIRLO.** El 24/08/2026
+  miró Armar caja de Adriana y le aparecía medio catálogo: mercadería mezclada de un experimento
+  que no funcionó. Textual: *"puede que tenga stock en full, que venda re bien, que vaya en otra
+  caja, lo que sea. solamente NO se van a vender mas en ADRIANA"*.
+  Lo que los hacía aparecer es la regla **"una cuenta en CERO siempre recibe"** (19/08/2026), que
+  es correcta para algo que se vende y pésima para algo que esa cuenta no piensa vender más.
+  Se marca en `cyc/norepo/<prodId>__<cuenta>` y la web saca esa cuenta del reparto. Es **por
+  producto×CUENTA a propósito**: el mismo producto sigue reponiéndose donde sí funciona. NO borra
+  la ficha —las unidades siguen contando en el Arqueo— ni toca el stock, ni ML, ni las ventas
+  viejas. Abajo de Armar caja queda el desplegable con lo que se sacó y el botón para deshacerlo:
+  una lista que esconde renglones sin decirlo es una lista que miente.
+  **Dos cosas que salieron mal en el camino y conviene no repetir:**
+  · Al principio el botón se puso en CADA renglón de las CUATRO cuentas. Él lo cortó en seco:
+    *"esto esta mal. solo era lo de adriana. no las otras cuentas. estaban bien las otras"*. Se
+    sacó. **Un pedido sobre una cuenta no es permiso para tocar la pantalla de las otras tres.**
+  · El filtro por palabras agarró **42 productos cuando se pidieron 32**: "metatarso" traía
+    *Metatarso Fuerte*, "P47" traía *p47 oreja gato*, "Cortapelo 1 en 1" traía el *a pila*,
+    "Batidora" traía *Batidora 1 Cabezal* y "Cruzer Blade" traía los pendrives de 8/16/32/128gb.
+    Por eso `nomandar` acepta el nombre con **`=` adelante = coincidencia exacta**. Es la misma
+    lección del 15/08 con las tarjetas de memoria, otra vez: **mirar la lista de la prueba antes
+    de aplicar.**
+  Marcados en Adriana el 24/08/2026: 32 productos. La **balanza equipaje tiene 2 u. adentro del
+  Full de Adriana** y se van a seguir vendiendo hasta que se acaben — marcar no retira stock.
+
 - **DOS ERRORES EN EL MISMO COMANDO NUEVO (`liquidar`), Y NINGUNO SE NOTABA.** El 24/08/2026, al
   armar la lista de qué rematar:
   · **La caja de compra se guarda como TEXTO, no como objeto.** El robot escribe
