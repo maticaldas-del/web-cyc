@@ -2228,7 +2228,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='17.3';
+const APP_VERSION='17.4';
 // El problema real que esto resuelve no es curiosidad: es que el celular guarda la app y sigue
 // mostrando la de ayer sin avisar. Varias veces se revisó un cambio que ya estaba subido y no se
 // veía. Por eso, además del número, el chip avisa cuando hay una versión nueva esperando.
@@ -4887,25 +4887,62 @@ function updateArqueo(){
     camWrap.style.display=cam>0?'':'none';
     if(cam>0){
       setCard('bk_stock_camino',cam,'neutral');
-      let uCam=0;Object.values(state.envios_full||{}).forEach(e=>cajasDe(e).forEach(x=>{if(!x.recibida)uCam+=(x.items||[]).reduce((a,y)=>a+(y.u||0),0);}));
+      // Y acá también, a qué cuenta le va. Es la otra mitad de "cuánto tiene cada cuenta": una
+      // cuenta puede tener poco en Full y mucho arriba de un camión, y mirando solo el bloque de
+      // arriba parece que está vacía cuando en realidad está por recibir.
+      let uCam=0; const camCta={};
+      Object.values(state.envios_full||{}).forEach(e=>cajasDe(e).forEach(x=>{
+        if(x.recibida)return;
+        const u=(x.items||[]).reduce((a,y)=>a+(y.u||0),0);
+        uCam+=u;
+        if(e.cuenta&&u>0)camCta[e.cuenta]=(camCta[e.cuenta]||0)+u;
+      }));
       const d=document.getElementById('dbk_stock_camino');
-      if(d)d.textContent=uCam+' u. despachadas que ML todavía no recibió';
+      if(d){
+        const det=Object.entries(camCta).sort((a,b)=>b[1]-a[1])
+          .map(([k,v])=>`${k} ${fmtN(v)}`).join(' · ');
+        d.innerHTML=`${fmtN(uCam)} u. despachadas que ML todavía no recibió`
+          +(det?`<br><span style="opacity:.85">${det}</span>`:'');
+      }
     }
   }
   const ctasEl=document.getElementById('bk_stock_ml_ctas');
   if(ctasEl){
     if(_arqViewYM){ ctasEl.innerHTML=''; }
     else{
+      // ── CÓMO SE LEE ESTE BLOQUE ──────────────────────────────────────────────
+      // Pedido suyo del 26/08/2026: "no se entiende bien, se puede organizar mejor para que se
+      // entienda cuánto tiene cada cuenta". Tres cosas que lo hacían difícil de leer:
+      //   · Los números no estaban alineados: el nombre y las unidades a la izquierda y la plata
+      //     pegada a la derecha, así que comparar cuatro renglones obligaba a ir y venir.
+      //   · Iban en orden fijo (Adriana, Luciana, Ayelen, Matías), no por plata. Para saber quién
+      //     tiene más había que leer los cuatro y compararlos de memoria.
+      //   · El % no decía de qué era. Es la PARTE DEL TOTAL, y sin barra no se ve de un vistazo.
+      // Ahora: ordenado de mayor a menor, en columnas alineadas y con una barra proporcional.
+      // Y se aclara arriba qué es cada columna, que antes había que adivinarlo.
+      //
+      // OJO CON LAS UNIDADES: la que más UNIDADES tiene no es la que más PLATA tiene. Ayelen tenía
+      // 563 u. (las más de las cuatro) y el 13% del valor, porque son productos baratos. Por eso se
+      // muestran las dos cosas y el orden va por plata, que es lo que importa para el arqueo.
       const filas=ML_LOCS.map(l=>{
         let v=0,u=0;
         (state.products||[]).forEach(p=>{const q=getQ(p.id,l);if(q){v+=q*efectivoCostP(p);u+=q;}});
         return{l,v,u};
-      });
+      }).sort((a,b)=>b.v-a.v);
       const tot=filas.reduce((a,f)=>a+f.v,0);
-      ctasEl.innerHTML=filas.map(f=>`<div style="display:flex;justify-content:space-between;align-items:baseline;gap:8px;padding:2px 0;font-size:.63rem">
-        <span style="color:var(--muted)">${f.l}<span style="opacity:.6"> · ${f.u} u.</span></span>
-        <span style="font-family:'DM Mono',monospace;white-space:nowrap">${fmt(f.v)}<span style="color:var(--muted);opacity:.7"> ${tot>0?Math.round(f.v/tot*100):0}%</span></span>
-      </div>`).join('');
+      const maxV=filas.reduce((a,f)=>Math.max(a,f.v),0);
+      ctasEl.innerHTML=`<div style="display:grid;grid-template-columns:1fr auto auto;gap:2px 8px;align-items:center;font-size:.63rem">
+        <span style="color:var(--muted);opacity:.6;font-size:.55rem;text-transform:uppercase;letter-spacing:.06em">cuenta</span>
+        <span style="color:var(--muted);opacity:.6;font-size:.55rem;text-transform:uppercase;letter-spacing:.06em;text-align:right">valor</span>
+        <span style="color:var(--muted);opacity:.6;font-size:.55rem;text-transform:uppercase;letter-spacing:.06em;text-align:right">del total</span>
+        ${filas.map(f=>`
+          <span style="color:var(--text)">${f.l}<span style="color:var(--muted);opacity:.75"> · ${fmtN(f.u)} u.</span></span>
+          <span style="font-family:'DM Mono',monospace;white-space:nowrap;text-align:right">${fmt(f.v)}</span>
+          <span style="font-family:'DM Mono',monospace;white-space:nowrap;text-align:right;color:var(--muted)">${tot>0?Math.round(f.v/tot*100):0}%</span>
+          <span style="grid-column:1/-1;height:3px;border-radius:2px;background:var(--border);margin:0 0 4px;overflow:hidden">
+            <span style="display:block;height:100%;width:${maxV>0?Math.round(f.v/maxV*100):0}%;background:var(--accent2);opacity:.55"></span>
+          </span>`).join('')}
+      </div>`;
     }
   }
   const dbkLoc=document.getElementById('dbk_stock_local');
