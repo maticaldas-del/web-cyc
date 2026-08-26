@@ -572,6 +572,20 @@ Lo que está en casa se cuenta a mano en **Mi oficina**, que es el lugar que cor
   Marcados en Adriana el 24/08/2026: 32 productos. La **balanza equipaje tiene 2 u. adentro del
   Full de Adriana** y se van a seguir vendiendo hasta que se acaben — marcar no retira stock.
 
+- **EL COLOR ES UNA SEÑAL, NO UN ADORNO — Y LO IMPORTANTE VA PRIMERO.** El 26/08/2026 él marcó
+  Finanzas: *"lo más importante de esa página es el total y se ve menos que lo que cobramos con mi
+  viejo"*. Dos cosas estaban al revés y las dos se repiten fácil:
+  · **El orden.** El patrimonio total estaba ABAJO DE TODO, después de quince casillas de carga.
+    Ahora abre la pantalla, con las cuatro tarjetas que lo forman debajo, y recién después las
+    casillas. Regla: **primero la conclusión, después el detalle, al final lo que se carga.**
+  · **El color.** La etiqueta del retiro estaba en ámbar y la de "Corregir" en azul — dos campos de
+    carga pintados como si avisaran algo, mientras el total tenía la etiqueta en gris. El ámbar y
+    el rojo son para lo que AVISA (deudas, "solo lectura", "se cuenta dos veces"). **La importancia
+    se muestra con el TAMAÑO, no pintando etiquetas**: el total pasó de 1,5rem a 2,3rem y los dos
+    campos volvieron a etiqueta común.
+  Él autorizó usar color en las letras (*"si querés podés usar colores en letras"*), pero eso no es
+  permiso para pintar todo: cuando todo está pintado, nada resalta.
+
 - **DOS ERRORES EN EL MISMO COMANDO NUEVO (`liquidar`), Y NINGUNO SE NOTABA.** El 24/08/2026, al
   armar la lista de qué rematar:
   · **La caja de compra se guarda como TEXTO, no como objeto.** El robot escribe
