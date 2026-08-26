@@ -223,7 +223,7 @@ input.qty:focus{border-color:var(--accent2)}
    El ojo va al color, así que iba al lugar equivocado.
    Regla para de acá en adelante: el color se reserva para lo que significa algo —verde bien, rojo
    mal, ámbar aviso— y la IMPORTANCIA se muestra con el tamaño, no pintando cosas. */
-.arqueo-total{background:var(--surface2);border:1px solid var(--accent2);border-radius:var(--r);padding:20px 22px;margin-top:16px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px}
+.arqueo-total{background:var(--surface2);border:1px solid var(--accent2);border-radius:var(--r);padding:20px 22px;margin:0 0 14px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px}
 .at-label{font-family:'Syne',sans-serif;font-size:.86rem;font-weight:800;text-transform:uppercase;letter-spacing:.1em;color:var(--text)}
 .at-val{font-family:'Syne',sans-serif;font-size:2.3rem;font-weight:800;line-height:1}
 .at-val.pos{color:var(--green)}.at-val.neg{color:var(--red)}
@@ -631,6 +631,66 @@ footer{margin-top:32px;padding-top:14px;border-top:1px solid var(--border);font-
       <span id="fin-view-banner" style="font-size:.67rem;color:var(--amber);display:none">📋 Solo lectura — datos del cierre guardado</span>
     </div>
 
+    <!-- EL ORDEN DE FINANZAS: PRIMERO LA CONCLUSION, DESPUES EL DETALLE, AL FINAL LO QUE SE CARGA.
+         Hasta el 26/08/2026 el patrimonio total estaba ABAJO DE TODO: habia que pasar por quince
+         casillas de carga para llegar al unico numero que se entra a mirar. Dicho por el:
+         "lo mas importante de esa pagina es el total y se ve menos que lo que cobramos con mi viejo".
+         Ahora arriba va el TOTAL, debajo las cuatro tarjetas que lo forman, y recien despues las
+         casillas para cargar. Misma regla para el color: se pinta lo que AVISA algo (deudas en
+         rojo, avisos en ambar); la importancia se muestra con el TAMANO, no pintando etiquetas. -->
+    <div class="arqueo-total">
+      <div>
+        <div class="at-label">Patrimonio total CYC</div>
+        <div style="font-size:.65rem;color:var(--muted);margin-top:3px">Stock + Activos − Deudas</div>
+      </div>
+      <div style="display:flex;align-items:center;gap:10px">
+        <span id="db_total"></span>
+        <span id="dbk_total_day"></span>
+        <div class="at-val pos" id="arqueo-total-val">$0</div>
+      </div>
+    </div>
+    <div class="breakdown-grid">
+      <!-- LA TARJETA DE STOCK, REARMADA (26/08/2026). Antes eran cuatro bloques apilados con el
+           mismo peso visual y sin separación: "está todo junto", dicho por él. Y lo peor: no se
+           veía que el total ES la suma de los tres de abajo, que fue justo lo que se arregló el
+           22/08 para que la cuenta se pudiera chequear a mano.
+           Ahora el TOTAL va arriba y grande —es el número que importa— y debajo, separados por
+           líneas, los tres lugares donde está la mercadería, cada uno con su ícono y su variación.
+           El orden es el del camino que hace la mercadería: casa → camión → ML. -->
+      <div class="bk-card">
+        <div class="bk-lbl">Stock total</div>
+        <div class="bk-val neutral" id="bk_stock_tot">$0</div>
+        <div id="dbk_stock" style="margin-top:3px"></div>
+        <div style="font-size:.55rem;color:var(--muted);opacity:.7;margin-top:6px">La suma de los tres de abajo</div>
+
+        <div style="border-top:1px solid var(--border2);margin:9px 0 8px"></div>
+        <div style="display:flex;justify-content:space-between;align-items:baseline;gap:8px">
+          <span class="bk-lbl" style="margin:0">🏠 En la oficina</span>
+          <span class="bk-val neutral" id="bk_stock_local" style="font-size:.78rem">$0</span>
+        </div>
+        <div id="dbk_stock_local" style="margin-top:3px"></div>
+
+        <div id="bk_camino_wrap" style="display:none">
+          <div style="border-top:1px solid var(--border);margin:8px 0"></div>
+          <div style="display:flex;justify-content:space-between;align-items:baseline;gap:8px">
+            <span class="bk-lbl" style="margin:0">🚚 En camino a Full</span>
+            <span class="bk-val neutral" id="bk_stock_camino" style="font-size:.78rem">$0</span>
+          </div>
+          <div id="dbk_stock_camino" style="font-size:.58rem;color:var(--muted);margin-top:3px;line-height:1.5"></div>
+        </div>
+
+        <div style="border-top:1px solid var(--border);margin:8px 0"></div>
+        <div style="display:flex;justify-content:space-between;align-items:baseline;gap:8px">
+          <span class="bk-lbl" style="margin:0">📦 En ML (Full)</span>
+          <span class="bk-val neutral" id="bk_stock_ml" style="font-size:.78rem">$0</span>
+        </div>
+        <div id="dbk_stock_ml" style="margin-top:3px"></div>
+        <div id="bk_stock_ml_ctas" style="margin-top:7px"></div>
+      </div>
+      <div class="bk-card"><div class="bk-lbl">Efectivo & Digital</div><div class="bk-val pos" id="bk_efectivo">$0</div><div id="dbk_efectivo" style="margin-top:5px"></div></div>
+      <div class="bk-card"><div class="bk-lbl">Lo que nos deben</div><div class="bk-val pos" id="bk_deben">$0</div><div id="dbk_deben" style="margin-top:5px"></div></div>
+      <div class="bk-card"><div class="bk-lbl">Lo que debemos</div><div class="bk-val neg" id="bk_deudas">$0</div><div id="dbk_deudas" style="margin-top:5px"></div></div>
+    </div>
     <input class="search-box" id="arqueo-search" type="search" placeholder="Buscar producto..." oninput="updateArqueo()">
     <div id="arqueo-product-results"></div>
     <div id="arqueo-missing-costs" style="margin-bottom:14px"></div>
@@ -687,63 +747,10 @@ footer{margin-top:32px;padding-top:14px;border-top:1px solid var(--border);font-
       </div>
     </div>
     <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:14px;padding:11px 16px;background:var(--surface);border:1px solid var(--border2);border-radius:var(--r)">
-      <span class="fin-label" style="font-weight:600;color:var(--blue)">⚖️ Corregir (ajuste ±)</span>
+      <span class="fin-label" style="font-weight:600">⚖️ Corregir (ajuste ±)</span>
       <span style="font-size:.62rem;color:var(--muted);flex:1;min-width:120px">Suma o resta al patrimonio. Puede ser negativo. No cuenta como deuda ni como activo.</span>
       <span id="db_corregir"></span>
       <input class="fin-input money" type="text" inputmode="numeric" id="f_corregir" placeholder="$0" onchange="saveFin('corregir',this.value)" style="width:150px">
-    </div>
-    <div class="breakdown-grid">
-      <!-- LA TARJETA DE STOCK, REARMADA (26/08/2026). Antes eran cuatro bloques apilados con el
-           mismo peso visual y sin separación: "está todo junto", dicho por él. Y lo peor: no se
-           veía que el total ES la suma de los tres de abajo, que fue justo lo que se arregló el
-           22/08 para que la cuenta se pudiera chequear a mano.
-           Ahora el TOTAL va arriba y grande —es el número que importa— y debajo, separados por
-           líneas, los tres lugares donde está la mercadería, cada uno con su ícono y su variación.
-           El orden es el del camino que hace la mercadería: casa → camión → ML. -->
-      <div class="bk-card">
-        <div class="bk-lbl">Stock total</div>
-        <div class="bk-val neutral" id="bk_stock_tot">$0</div>
-        <div id="dbk_stock" style="margin-top:3px"></div>
-        <div style="font-size:.55rem;color:var(--muted);opacity:.7;margin-top:6px">La suma de los tres de abajo</div>
-
-        <div style="border-top:1px solid var(--border2);margin:9px 0 8px"></div>
-        <div style="display:flex;justify-content:space-between;align-items:baseline;gap:8px">
-          <span class="bk-lbl" style="margin:0">🏠 En la oficina</span>
-          <span class="bk-val neutral" id="bk_stock_local" style="font-size:.78rem">$0</span>
-        </div>
-        <div id="dbk_stock_local" style="margin-top:3px"></div>
-
-        <div id="bk_camino_wrap" style="display:none">
-          <div style="border-top:1px solid var(--border);margin:8px 0"></div>
-          <div style="display:flex;justify-content:space-between;align-items:baseline;gap:8px">
-            <span class="bk-lbl" style="margin:0">🚚 En camino a Full</span>
-            <span class="bk-val neutral" id="bk_stock_camino" style="font-size:.78rem">$0</span>
-          </div>
-          <div id="dbk_stock_camino" style="font-size:.58rem;color:var(--muted);margin-top:3px;line-height:1.5"></div>
-        </div>
-
-        <div style="border-top:1px solid var(--border);margin:8px 0"></div>
-        <div style="display:flex;justify-content:space-between;align-items:baseline;gap:8px">
-          <span class="bk-lbl" style="margin:0">📦 En ML (Full)</span>
-          <span class="bk-val neutral" id="bk_stock_ml" style="font-size:.78rem">$0</span>
-        </div>
-        <div id="dbk_stock_ml" style="margin-top:3px"></div>
-        <div id="bk_stock_ml_ctas" style="margin-top:7px"></div>
-      </div>
-      <div class="bk-card"><div class="bk-lbl">Efectivo & Digital</div><div class="bk-val pos" id="bk_efectivo">$0</div><div id="dbk_efectivo" style="margin-top:5px"></div></div>
-      <div class="bk-card"><div class="bk-lbl">Lo que nos deben</div><div class="bk-val pos" id="bk_deben">$0</div><div id="dbk_deben" style="margin-top:5px"></div></div>
-      <div class="bk-card"><div class="bk-lbl">Lo que debemos</div><div class="bk-val neg" id="bk_deudas">$0</div><div id="dbk_deudas" style="margin-top:5px"></div></div>
-    </div>
-    <div class="arqueo-total">
-      <div>
-        <div class="at-label">Patrimonio total CYC</div>
-        <div style="font-size:.65rem;color:var(--muted);margin-top:3px">Stock + Activos − Deudas</div>
-      </div>
-      <div style="display:flex;align-items:center;gap:10px">
-        <span id="db_total"></span>
-        <span id="dbk_total_day"></span>
-        <div class="at-val pos" id="arqueo-total-val">$0</div>
-      </div>
     </div>
     <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-top:14px;padding:11px 16px;background:var(--surface);border:1px solid var(--border2);border-radius:var(--r)">
       <span class="fin-label">💸 Retiro cobrado este mes (Mati + Viejo)</span>
@@ -2272,7 +2279,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='17.7';
+const APP_VERSION='17.8';
 // El problema real que esto resuelve no es curiosidad: es que el celular guarda la app y sigue
 // mostrando la de ayer sin avisar. Varias veces se revisó un cambio que ya estaba subido y no se
 // veía. Por eso, además del número, el chip avisa cuando hay una versión nueva esperando.
