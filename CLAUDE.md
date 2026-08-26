@@ -792,6 +792,21 @@ siempre. Los verificadores tienen que llamar a la misma función que el código 
 
 Lo que quedó abierto. Borrá de acá lo que se vaya cerrando.
 
+- **REBARBADOR MANUAL GIRATORIO: falta el COSTO DE COMPRA. Pedírselo en cada chat hasta que lo mande.**
+  Pedido suyo del 26/08/2026: quiere publicarlo NUEVO en **Ayelen** y darlo de alta en el panel.
+  Dijo textual *"el costo de compra te lo paso más tarde. haceme acordar"*.
+  Producto: "Rebarbador Manual Giratorio Para Resina, Jabón, Etc" · la competencia lo tiene desde
+  **$6.000** · +100 vendidos · 4,7 (93 opiniones).
+  **NO se creó la ficha todavía, a propósito:** una ficha sin costo cae en la trampa del 24/08 con
+  el KO UNISEX (`costFullUSD` sin escribir = cualquier resto viejo adentro). Se crea cuando llegue
+  el costo, con el número puesto a mano.
+  **Cuenta que ya está hecha, para cuando lo mande:** a $6.000 en Ayelen el neto queda en ~$2.490
+  (comisión ~32% + cargo fijo $1.230 + 5,95% de percepciones), así que **para llegar al 32% hay que
+  comprarlo a menos de ~$1.900**. Si el proveedor pide más, a $6.000 no cierra: o se vende más caro
+  o no va. Ojo que el ~32% de comisión es el general, no el de esa categoría.
+  **Lo que falta además del costo:** fotos PROPIAS (las del screenshot son de otro vendedor, no se
+  usan), stock real, y la categoría de ML.
+
 - **PREGUNTARLE POR LAS FACTURAS DE LOS PRODUCTOS "IMITABLES".** Él las tiene y las va a pasar;
   pidió expresamente que se le haga acordar. **Sacarlo en cada chat hasta que las mande.** ML le
   exige factura de compra de todo lo que puede ser falsificado —Victoria's Secret, pendrives y
