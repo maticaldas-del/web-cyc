@@ -3476,6 +3476,11 @@ async function main() {
         try { ultimo = await db.get('mlapi/telegram/lastChequeo'); } catch { /* si no se lee, se hace igual */ }
         if (ultimo === hoyK) { console.log(`El chequeo de ${hoyK} ya se mandó. No lo repito.`); return; }
       }
+      // Cronómetro. Está para que la próxima vez que el chequeo se ponga lento se vea DÓNDE, en vez
+      // de tener que adivinar: el 26/08/2026 se cortó por tiempo tres veces y encontrar el cuello
+      // de botella llevó más que arreglarlo.
+      const _tCheq = Date.now();
+      const _seg = () => ((Date.now() - _tCheq) / 1000).toFixed(0) + 's';
       const links = (await db.get('cyc/mllinks')) || {};
       const desdeISO = new Date(Date.now() - DIAS * 864e5).toISOString().slice(0, 19);
       const hoyLbl = new Intl.DateTimeFormat('es-AR', {
@@ -3510,6 +3515,17 @@ async function main() {
       const R = [];   // una fila por cuenta
       let capado = 0; // inventarios que no llegué a mirar (se avisa, nunca se calla)
       const MAX_INV = 400;
+      // Cuántas llamadas a ML van a la vez cuando se recorre el Full. Ver el comentario largo más
+      // abajo, donde se usa. 6 es conservador: acelera ~6 veces y no llega a hacer enojar a ML.
+      const TANDA_FULL = 6;
+      // Corre las tareas de a `n` en vez de una por una. No cambia el resultado ni el orden en que
+      // se guardan las cosas importa acá: cada tarea escribe en su propia lista.
+      const enTanda = async (items, n, fn) => {
+        let i = 0;
+        await Promise.all(Array.from({ length: Math.min(n, items.length) }, async () => {
+          for (;;) { const k = i++; if (k >= items.length) return; await fn(items[k], k); }
+        }));
+      };
       // Para poner en pesos lo que hay parado en Full: unidades solas no mueven a nadie.
       const tcCh = parseFloat(((await db.get('cyc/finanzas')) || {}).tipo_cambio) || 1500;
       const prodDe = {}; for (const p of products) prodDe[p.id] = p;
@@ -3607,10 +3623,25 @@ async function main() {
           }
         }
         // ── FULL: problemas de stock y cajas que llegaron ──
+        //
+        // ESTE ERA EL CUELLO DE BOTELLA. Hasta el 26/08/2026 se preguntaba inventario por
+        // inventario, esperando cada respuesta antes de pedir la siguiente: con el tope de 400 por
+        // cuenta y 4 cuentas son hasta 3.200 llamadas EN FILA. A medio segundo cada una ya son 27
+        // minutos, y el chequeo se cortó por tiempo tres veces (20 min el 25/08, 45 min el 26/08).
+        // Y empeoraba solo: cuanto más stock hay, más inventarios, más llamadas.
+        // Ahora van de a TANDA_FULL a la vez. No cambia ni un número del resultado: son las mismas
+        // llamadas y el mismo cuerpo, solo que no se esperan entre sí.
+        // La tanda es chica a propósito: ML tira 429 si se lo apura, y un 429 acá se comería el
+        // dato de ese inventario sin avisar (el catch de abajo saltea en silencio).
         const vistos = new Set();
+        const aMirar = [];
         for (const x of invs) {
           if (vistos.has(x.inv)) continue; vistos.add(x.inv);
-          if (vistos.size > MAX_INV) { capado++; continue; }
+          if (aMirar.length >= MAX_INV) { capado++; continue; }
+          aMirar.push(x);
+        }
+        const _t0Full = Date.now();
+        await enTanda(aMirar, TANDA_FULL, async (x) => {
           try {
             const s = await mlGet('/inventories/' + x.inv + '/stock/fulfillment', tok);
             const na = Number(s?.not_available_quantity) || 0;
@@ -3654,10 +3685,12 @@ async function main() {
               r.cajas.push({ nom: x.nom, q: op.quantity || op.detail?.quantity || 0, fecha: String(op.date_created || '').slice(0, 10) });
             }
           } catch { /* idem */ }
-        }
+        });
+        console.log(`  ${label}: Full ${aMirar.length} inventarios en ${((Date.now() - _t0Full) / 1000).toFixed(0)}s · van ${_seg()} de chequeo`);
         R.push(r);
       }
       if (!R.length) { console.log('No pude entrar a ninguna cuenta.'); return; }
+      console.log(`Las 4 cuentas leídas en ${_seg()}. Armando el texto...`);
       // ── SALIDA ──
       const L = [];
       const totPreg = R.reduce((s, r) => s + r.preg, 0);
@@ -3858,6 +3891,7 @@ async function main() {
         console.log(`\n── ${r.label}: las 3 preguntas más viejas sin responder ──`);
         for (const q of r.pregTxt) console.log(`   ${q.d} · ${q.mla} · "${q.t}"`);
       }
+      console.log(`\n⏱️ Chequeo completo en ${_seg()}.`);
       if (String(process.env.BILLING_PROBE).includes('nomandar')) { console.log('\n(no lo mandé a Telegram)'); return; }
       const ok = await sendTelegram(msg, 'resumen');
       if (ok && !DRY) { try { await db.set('mlapi/telegram/lastChequeo', hoyK); } catch { /* no rompe */ } }
