@@ -215,9 +215,17 @@ input.qty:focus{border-color:var(--accent2)}
 .bk-card .bk-val.pos{color:var(--green)}
 .bk-card .bk-val.neg{color:var(--red)}
 .bk-card .bk-val.neutral{color:var(--text)}
-.arqueo-total{background:var(--surface2);border:1px solid var(--border2);border-radius:var(--r);padding:16px 20px;margin-top:16px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px}
-.at-label{font-family:'Syne',sans-serif;font-size:.8rem;font-weight:800;text-transform:uppercase;letter-spacing:.1em;color:var(--muted)}
-.at-val{font-family:'Syne',sans-serif;font-size:1.5rem;font-weight:800}
+/* EL COLOR ES UNA SEÑAL, NO UN ADORNO. Planteo suyo del 26/08/2026: "se le da más importancia a
+   cosas que no son más importantes que otras — lo más importante de esa página es el total y se ve
+   menos que lo que cobramos con mi viejo".
+   Tenía razón y el motivo era ese: el renglón del retiro —un campo para escribir un número— estaba
+   en DORADO y en negrita, y el patrimonio, que es EL número de la página, tenía el título en gris.
+   El ojo va al color, así que iba al lugar equivocado.
+   Regla para de acá en adelante: el color se reserva para lo que significa algo —verde bien, rojo
+   mal, ámbar aviso— y la IMPORTANCIA se muestra con el tamaño, no pintando cosas. */
+.arqueo-total{background:var(--surface2);border:1px solid var(--accent2);border-radius:var(--r);padding:20px 22px;margin-top:16px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px}
+.at-label{font-family:'Syne',sans-serif;font-size:.86rem;font-weight:800;text-transform:uppercase;letter-spacing:.1em;color:var(--text)}
+.at-val{font-family:'Syne',sans-serif;font-size:2.3rem;font-weight:800;line-height:1}
 .at-val.pos{color:var(--green)}.at-val.neg{color:var(--red)}
 .cal-bar{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:16px;padding:14px;background:var(--surface);border:1px solid var(--border);border-radius:var(--r)}
 #met-cal-bar{transition:transform .25s ease}
@@ -738,7 +746,7 @@ footer{margin-top:32px;padding-top:14px;border-top:1px solid var(--border);font-
       </div>
     </div>
     <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-top:14px;padding:11px 16px;background:var(--surface);border:1px solid var(--border2);border-radius:var(--r)">
-      <span class="fin-label" style="font-weight:600;color:var(--amber)">💸 Retiro cobrado este mes (Mati + Viejo)</span>
+      <span class="fin-label">💸 Retiro cobrado este mes (Mati + Viejo)</span>
       <span style="font-size:.62rem;color:var(--muted);flex:1;min-width:120px">Cuánto se llevaron de verdad este mes, en <strong>pesos</strong>. Se usa para el chequeo de abajo.</span>
       <input class="fin-input money" type="text" inputmode="numeric" id="f_retiro_mes" placeholder="$0" onchange="saveRetiroMes(this.value)" style="width:150px">
     </div>
@@ -2264,7 +2272,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='17.6';
+const APP_VERSION='17.7';
 // El problema real que esto resuelve no es curiosidad: es que el celular guarda la app y sigue
 // mostrando la de ayer sin avisar. Varias veces se revisó un cambio que ya estaba subido y no se
 // veía. Por eso, además del número, el chip avisa cuando hay una versión nueva esperando.
