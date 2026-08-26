@@ -201,6 +201,7 @@ Los que más se usan:
 | `huerfanos[:palabra]` | los productos en "—": por qué no tienen precio y cuál es su publicación |
 | `poncosto:<palabra\|id>\|<pesos>[\|go]` | corrige el costo de un producto (lo mismo que el campo de la ficha) |
 | `vincular:<MLA>=<palabra\|id>[:go]` | pega una publicación a un producto y la saca de oculta |
+| `nuevoprod:<nombre>[\|costo=][\|mla=][\|go]` | da de alta un producto nuevo y lo vincula · avisa si ya hay una ficha parecida |
 | `fijarvar:<MLA>=<variante>\|…[\|go]` | dice a mano de qué color/aroma es cada publicación cuando el título de ML no lo nombra igual que la ficha |
 | `pausar:<busca>[!<saca>][:go]` | pausa varias de una · palabras con `+` · **mirar la lista antes** |
 | `cargargasto:<fecha>\|<monto>\|<cat>\|<desc>[\|prov=][\|fact=][\|cae=][\|go]` | carga un gasto con su comprobante |

@@ -5399,6 +5399,111 @@ async function main() {
     //
     // Escribe con patch SOBRE EL HIJO (cyc/mllinks/<MLA>), nunca sobre cyc/mllinks entero: un patch
     // al padre pisa la ficha completa y se pierde todo lo que no vaya en el objeto.
+    // BILLING_PROBE=nuevoprod:<nombre>[|costo=<pesos>][|mla=<MLA>][|go] → DA DE ALTA UN PRODUCTO.
+    //
+    // Hasta el 26/08/2026 no había forma de crear una ficha desde acá: se creaban a mano en la web,
+    // o con un probe hecho a medida para un caso puntual (patagoniako). Con publicaciones nuevas
+    // apareciendo seguido, hacía falta uno general.
+    //
+    // EL COSTO SE ESCRIBE SIEMPRE, AUNQUE SEA CERO. Es la lección del KO UNISEX (24/08/2026): la web
+    // recalcula el costo full siempre, pero el robot sólo lo recalcula si el producto tiene reclamos
+    // en vivo — sin ninguna venta cae en el `costFullUSD` guardado, y en una ficha recién creada eso
+    // puede tener cualquier resto viejo adentro. Por eso `costUSD`, `shipUSD` y `costFullUSD` se
+    // escriben explícitos los tres, aunque el costo todavía no se sepa.
+    //
+    // OJO CON LAS FICHAS REPETIDAS. El problema de los productos en "—" casi siempre es el mismo
+    // producto cargado dos veces: la publicación queda pegada a una ficha y la otra queda huérfana.
+    // Por eso, antes de crear, busca si ya hay alguna con nombre parecido y NO crea si la encuentra:
+    // avisa cuál es y con qué id, para que se decida a mano.
+    if (/^nuevoprod:/.test(String(process.env.BILLING_PROBE || ''))) {
+      const _npRaw = String(process.env.BILLING_PROBE).slice(10);
+      const partes = _npRaw.split('|').map((x) => x.trim());
+      const go = partes.some((x) => /^go$/i.test(x));
+      const nombre = (partes[0] || '').trim();
+      const arg = (k) => { const m = partes.find((x) => new RegExp('^' + k + '=', 'i').test(x)); return m ? m.slice(k.length + 1).trim() : ''; };
+      const costoPesosArg = parseFloat(String(arg('costo')).replace(/[^0-9.,]/g, '').replace(/\./g, '').replace(',', '.')) || 0;
+      const MLA = arg('mla').toUpperCase();
+      if (!nombre) { console.log('Usá: nuevoprod:<nombre>[|costo=<pesos>][|mla=<MLA>][|go]'); return; }
+      if (MLA && !/^MLA\d+$/.test(MLA)) { console.log(`"${MLA}" no parece un número de publicación (tiene que ser MLA seguido de números).`); return; }
+
+      const finN = (await db.get('cyc/finanzas')) || {};
+      const tcN = parseFloat(finN.tipo_cambio) || 0;
+      if (!tcN) { console.log('No hay tipo de cambio cargado en el panel: sin eso el costo en dólares saldría mal. No creo nada.'); return; }
+      const $n = (x) => '$' + Math.round(x).toLocaleString('es-AR');
+
+      console.log(`=== PRODUCTO NUEVO ${go ? '(APLICANDO)' : '(PRUEBA)'} ===\n`);
+
+      // 1. ¿Ya existe una ficha parecida? Si sí, no se crea: se avisa.
+      const parecidas = products.filter((p) => {
+        const a = norm(p.name || ''), b = norm(nombre);
+        return a === b || a.includes(b) || b.includes(a);
+      });
+      if (parecidas.length) {
+        console.log(`  🔴 YA HAY ${parecidas.length} ficha(s) con nombre parecido. NO creo nada:`);
+        parecidas.forEach((p) => console.log(`     ${p.id} · "${p.name}"`));
+        console.log(`\n  Si de verdad es otro producto, ponele un nombre que no se confunda.`);
+        console.log(`  Si es el mismo, no hace falta crear nada: vinculá la publicación con vincular:<MLA>=${parecidas[0].id}:go`);
+        return;
+      }
+
+      // 2. La publicación, si la pasaron.
+      const linksN = (await db.get('cyc/mllinks')) || {};
+      let eN = null;
+      if (MLA) {
+        eN = linksN[MLA];
+        if (!eN) {
+          console.log(`  ⚠️ ${MLA} todavía no figura en el panel.`);
+          console.log(`     Si la acabás de crear en ML, el robot no la leyó aún: se vincula sola en la vuelta`);
+          console.log(`     de la hora, o a mano después con vincular:${MLA}=<id>:go.`);
+        } else if (eN.prodId) {
+          const due = (products.find((x) => x.id === eN.prodId) || {}).name || eN.prodId;
+          console.log(`  🔴 ${MLA} YA está vinculada a "${due}". NO la toco.`);
+          return;
+        }
+      }
+
+      // 3. La ficha. Campo por campo y explícitos, para que no queden restos.
+      const nid = 'p' + Date.now();
+      const costUSD = costoPesosArg > 0 ? Math.round((costoPesosArg / tcN) * 100) / 100 : 0;
+      const ficha = {
+        id: nid,
+        name: nombre,
+        costUSD,
+        shipUSD: 0,          // explícito: vacío hace que la web lo deduzca y salga un resto de redondeo
+        costFullUSD: costUSD, // sin reclamos ni envío todavía, es el mismo número — pero ESCRITO
+        variantes: [],
+      };
+      console.log(`  ficha            : ${nid} · "${nombre}"`);
+      console.log(`  costo de compra  : ${costoPesosArg > 0 ? $n(costoPesosArg) + ' = US$ ' + costUSD : '🔴 SIN CARGAR (queda en 0)'}`);
+      console.log(`  envío/embalaje   : US$ 0 (explícito)`);
+      console.log(`  costo full       : US$ ${ficha.costFullUSD}`);
+      if (MLA && eN) console.log(`  se vincula a     : ${MLA} · ${eN.cuenta || '?'} · ${eN.status || '?'} · ${eN.title || ''}`);
+      if (!costoPesosArg) {
+        console.log(`\n  ⚠️ SIN COSTO, el margen de este producto va a salir mal (se ve como si fuera todo`);
+        console.log(`     ganancia). Cargalo apenas lo tengas con: poncosto:${nid}|<pesos>|go`);
+      }
+      if (!go) { console.log(`\n  PRUEBA: no escribí nada. Para aplicar, agregale |go al final.`); return; }
+
+      const updN = {};
+      for (const [k, v] of Object.entries(ficha)) updN['products/' + nid + '/' + k] = v;
+      if (MLA && eN) { updN['mllinks/' + MLA + '/prodId'] = nid; updN['mllinks/' + MLA + '/ignored'] = null; updN['mllinks/' + MLA + '/manual'] = true; }
+      await db.patch('cyc', updN);
+
+      // RELECTURA: que el patch no diera error no quiere decir que haya quedado.
+      console.log(`\n── VERIFICACIÓN (releído de la base) ──`);
+      const relN = (await db.get('cyc/products/' + nid)) || {};
+      const okN = relN.name === nombre && relN.costFullUSD != null;
+      console.log(`  ficha  : "${relN.name || '(no está)'}" · costo US$ ${relN.costUSD} · full US$ ${relN.costFullUSD} ${okN ? '✓' : '✗'}`);
+      let okV = true;
+      if (MLA && eN) {
+        const relV = (await db.get('cyc/mllinks/' + MLA)) || {};
+        okV = relV.prodId === nid;
+        console.log(`  vínculo: ${MLA} → ${relV.prodId || '(ninguno)'} ${okV ? '✓' : '✗'}`);
+      }
+      console.log(okN && okV ? `\n✓ Listo. Id del producto: ${nid}` : `\n✗ NO quedó como pedí — revisalo.`);
+      if (okN && okV && MLA) console.log('Después corré netoweb, si no el producto sigue mostrando "—".');
+      return;
+    }
     if (String(process.env.BILLING_PROBE || '').startsWith('vincular:')) {
       const _vcRaw = String(process.env.BILLING_PROBE).slice(9);
       const APLICAR = /:go$/i.test(_vcRaw);
