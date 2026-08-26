@@ -623,6 +623,22 @@ Lo que está en casa se cuenta a mano en **Mi oficina**, que es el lugar que cor
     sólo SUBA stocks (si alguno bajara, habría stock bueno en una clave rara).
   **La lección: cuando un número de la pantalla no cuadra, `stockreal` dice si el dato está bien
   guardado, pero no si quien lo lee lo lee bien. Son dos preguntas distintas.**
+- **"0 VENDIDAS EN 30 DÍAS" NO QUIERE DECIR QUE NADIE LO QUIERE: PUEDE QUERER DECIR QUE HACE
+  RATO NO HAY NADA PARA VENDER.** Roberto (el papá de Matías, socio que compra la mercadería) lo
+  marcó el 26/08/2026 con el Pendrive Sandisk Cruzer Blade 8gb: la pantalla decía "0 en Full · 0
+  en la oficina · 0 vendidas 30d → comprar 0", y la conclusión de "no hace falta comprar" es
+  EXACTAMENTE AL REVÉS — no vende porque no hay stock hace mucho, no porque no se venda.
+  Se confirmó con `porquepedido`: sin historial de stock para ese producto/cuenta, la cuenta
+  asume por defecto que tuvo stock los 30 días enteros (`días con stock = 30`), así que 0 ventas
+  ÷ 30 días da velocidad 0 y "a comprar 0" — el sistema no tiene forma de distinguir "no se
+  vende" de "no tuvo nada para vender". Mismo agujero que ya tapó `revisarpedidos` con la balanza
+  y otros ("comprar 0 · NO HAY QUE COMPRAR NADA" en esa lista es sospechoso siempre que el
+  producto también esté en 0 hace tiempo, no solo cuando el stock actual alcanza).
+  **Regla para leer cualquier lista de "qué comprar" de acá en adelante:** un "comprar 0" con
+  stock en 0 y ventas en 0 NO es información — es la ausencia de información. Antes de tacharlo
+  de la lista hay que preguntar (o mirar a mano) si ese producto vendía bien ANTES de quedarse
+  sin stock. Pendiente: confirmarle a Roberto cuánto pedir de este pendrive en particular, porque
+  el panel no tiene el dato para calcularlo solo.
 - **El ROJO de Pedidos no se hablaba con la demora del viaje.** Un pedido se pintaba rojo con 7
   días de stock o menos, pero la caja tarda 8 días en llegar y activarse (más lo que tarde comprar
   la mercadería). O sea que el AMARILLO podía significar "ya está condenado a cortarse": las Cartas
