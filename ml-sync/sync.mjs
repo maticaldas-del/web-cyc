@@ -2553,7 +2553,7 @@ async function main() {
       const estaba = cfgR.autoPrice !== false;
       if (_r !== 'off' && _r !== 'on') {
         console.log(`El robot de precios está ${estaba ? 'PRENDIDO' : 'APAGADO'}.`);
-        console.log(`  piso ${cfgR.minPct ?? 30}% · meta ${cfgR.targetPct ?? 30}%`);
+        console.log(`  piso ${cfgR.minPct ?? 30}% · meta ${cfgR.targetPct ?? 32}%`);   // 32, no 30: la meta y el piso son distintos a propósito
         console.log('\n(para cambiarlo: robot:off  /  robot:on)');
         return;
       }
