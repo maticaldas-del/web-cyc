@@ -685,7 +685,43 @@ footer{margin-top:32px;padding-top:14px;border-top:1px solid var(--border);font-
       <input class="fin-input money" type="text" inputmode="numeric" id="f_corregir" placeholder="$0" onchange="saveFin('corregir',this.value)" style="width:150px">
     </div>
     <div class="breakdown-grid">
-      <div class="bk-card"><div class="bk-lbl">Stock ML</div><div class="bk-val neutral" id="bk_stock_ml">$0</div><div id="dbk_stock_ml" style="margin-top:3px"></div><div id="bk_stock_ml_ctas" style="margin-top:7px"></div><div class="bk-lbl" style="margin-top:8px">Stock Local</div><div class="bk-val neutral" id="bk_stock_local" style="font-size:.8rem">$0</div><div id="dbk_stock_local" style="margin-top:3px"></div><div id="bk_camino_wrap" style="display:none"><div class="bk-lbl" style="margin-top:8px">En camino a Full</div><div class="bk-val neutral" id="bk_stock_camino" style="font-size:.8rem">$0</div><div id="dbk_stock_camino" style="font-size:.58rem;color:var(--muted);margin-top:2px"></div></div><div class="bk-lbl" style="margin-top:8px;opacity:.75">Total stock</div><div class="bk-val neutral" id="bk_stock_tot" style="font-size:.8rem">$0</div><div id="dbk_stock" style="margin-top:3px"></div></div>
+      <!-- LA TARJETA DE STOCK, REARMADA (26/08/2026). Antes eran cuatro bloques apilados con el
+           mismo peso visual y sin separación: "está todo junto", dicho por él. Y lo peor: no se
+           veía que el total ES la suma de los tres de abajo, que fue justo lo que se arregló el
+           22/08 para que la cuenta se pudiera chequear a mano.
+           Ahora el TOTAL va arriba y grande —es el número que importa— y debajo, separados por
+           líneas, los tres lugares donde está la mercadería, cada uno con su ícono y su variación.
+           El orden es el del camino que hace la mercadería: casa → camión → ML. -->
+      <div class="bk-card">
+        <div class="bk-lbl">Stock total</div>
+        <div class="bk-val neutral" id="bk_stock_tot">$0</div>
+        <div id="dbk_stock" style="margin-top:3px"></div>
+        <div style="font-size:.55rem;color:var(--muted);opacity:.7;margin-top:6px">La suma de los tres de abajo</div>
+
+        <div style="border-top:1px solid var(--border2);margin:9px 0 8px"></div>
+        <div style="display:flex;justify-content:space-between;align-items:baseline;gap:8px">
+          <span class="bk-lbl" style="margin:0">🏠 En la oficina</span>
+          <span class="bk-val neutral" id="bk_stock_local" style="font-size:.78rem">$0</span>
+        </div>
+        <div id="dbk_stock_local" style="margin-top:3px"></div>
+
+        <div id="bk_camino_wrap" style="display:none">
+          <div style="border-top:1px solid var(--border);margin:8px 0"></div>
+          <div style="display:flex;justify-content:space-between;align-items:baseline;gap:8px">
+            <span class="bk-lbl" style="margin:0">🚚 En camino a Full</span>
+            <span class="bk-val neutral" id="bk_stock_camino" style="font-size:.78rem">$0</span>
+          </div>
+          <div id="dbk_stock_camino" style="font-size:.58rem;color:var(--muted);margin-top:3px;line-height:1.5"></div>
+        </div>
+
+        <div style="border-top:1px solid var(--border);margin:8px 0"></div>
+        <div style="display:flex;justify-content:space-between;align-items:baseline;gap:8px">
+          <span class="bk-lbl" style="margin:0">📦 En ML (Full)</span>
+          <span class="bk-val neutral" id="bk_stock_ml" style="font-size:.78rem">$0</span>
+        </div>
+        <div id="dbk_stock_ml" style="margin-top:3px"></div>
+        <div id="bk_stock_ml_ctas" style="margin-top:7px"></div>
+      </div>
       <div class="bk-card"><div class="bk-lbl">Efectivo & Digital</div><div class="bk-val pos" id="bk_efectivo">$0</div><div id="dbk_efectivo" style="margin-top:5px"></div></div>
       <div class="bk-card"><div class="bk-lbl">Lo que nos deben</div><div class="bk-val pos" id="bk_deben">$0</div><div id="dbk_deben" style="margin-top:5px"></div></div>
       <div class="bk-card"><div class="bk-lbl">Lo que debemos</div><div class="bk-val neg" id="bk_deudas">$0</div><div id="dbk_deudas" style="margin-top:5px"></div></div>
@@ -2228,7 +2264,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='17.4';
+const APP_VERSION='17.5';
 // El problema real que esto resuelve no es curiosidad: es que el celular guarda la app y sigue
 // mostrando la de ayer sin avisar. Varias veces se revisó un cambio que ya estaba subido y no se
 // veía. Por eso, además del número, el chip avisa cuando hay una versión nueva esperando.
@@ -4931,7 +4967,9 @@ function updateArqueo(){
       }).sort((a,b)=>b.v-a.v);
       const tot=filas.reduce((a,f)=>a+f.v,0);
       const maxV=filas.reduce((a,f)=>Math.max(a,f.v),0);
-      ctasEl.innerHTML=`<div style="display:grid;grid-template-columns:1fr auto auto;gap:2px 8px;align-items:center;font-size:.63rem">
+      // Sangrado y con una línea al costado: estas cuatro filas son el DESGLOSE de "En ML (Full)",
+      // no un cuarto bloque más. Sin eso se leían como si fueran otra cosa aparte.
+      ctasEl.innerHTML=`<div style="display:grid;grid-template-columns:1fr auto auto;gap:2px 8px;align-items:center;font-size:.63rem;padding-left:9px;border-left:2px solid var(--border2)">
         <span style="color:var(--muted);opacity:.6;font-size:.55rem;text-transform:uppercase;letter-spacing:.06em">cuenta</span>
         <span style="color:var(--muted);opacity:.6;font-size:.55rem;text-transform:uppercase;letter-spacing:.06em;text-align:right">valor</span>
         <span style="color:var(--muted);opacity:.6;font-size:.55rem;text-transform:uppercase;letter-spacing:.06em;text-align:right">del total</span>
