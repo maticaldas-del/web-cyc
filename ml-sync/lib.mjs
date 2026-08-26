@@ -75,9 +75,18 @@ export async function mlRefresh(clientId, clientSecret, refreshToken) {
 }
 
 // ── MercadoLibre: llamada GET autenticada ──
-export async function mlGet(path, accessToken) {
+// TIMEOUT OBLIGATORIO. Hasta el 26/08/2026 esto era un fetch pelado, sin límite de tiempo: si ML
+// no contestaba una llamada, el robot se quedaba esperando PARA SIEMPRE. No es teoría — así se
+// colgó el chequeo de la mañana ese día, tres veces: no terminaba tarde, no terminaba nunca, y
+// GitHub lo mataba a los 45 minutos sin dejar ni una línea de log.
+// 25 segundos es holgado a propósito: una llamada normal de ML tarda menos de 2. Lo que se corta
+// acá es una llamada COLGADA, no una lenta. Al abortar, fetch tira error y el que llamó decide:
+// casi todos los recorridos tienen try/catch y saltean ese renglón, que es lo correcto — perder
+// un dato es mucho mejor que perder el informe entero.
+export async function mlGet(path, accessToken, ms = 25000) {
   const r = await fetch(`${ML_API}${path}`, {
     headers: { Authorization: `Bearer ${accessToken}` },
+    signal: AbortSignal.timeout(ms),
   });
   const d = await r.json();
   if (!r.ok) throw new Error(`ML GET ${path}: ${r.status} ${JSON.stringify(d)}`);
