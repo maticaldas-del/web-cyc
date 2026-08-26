@@ -379,6 +379,28 @@ unidades falsas descartó.
 
 Lo que está en casa se cuenta a mano en **Mi oficina**, que es el lugar que corresponde.
 
+## PUBLICACIONES NUEVAS: LAS CREA ÉL EN ML, LA FICHA LA CREA CLAUDE (26/08/2026)
+
+Norma suya, textual: *"a partir de ahora te voy a ir pasando publicaciones nuevas que creo en ml
+para que vos la crees y vincules en la web de cyc"*.
+
+O sea: **él publica en ML** (fotos, categoría, título, precio) y **Claude da de alta la ficha en el
+panel y la vincula**. Claude NO crea publicaciones en ML — el robot sólo sabe modificar las que ya
+existen, nunca hizo un alta, y publicar sin costo cargado rompería la regla del piso del 30%.
+
+El comando es `nuevoprod:<nombre>[|costo=<pesos>][|mla=<MLA>][|go]`.
+
+**Lo que hay que pedirle cada vez:**
+1. **El número MLA** (o el link). Una publicación recién creada NO figura todavía en `cyc/mllinks`:
+   el catálogo entero se enumera en la vuelta del robot de precios, una por hora. Sin el número no
+   hay con qué vincular, y `sinvincular` no la va a mostrar.
+2. **El costo de compra.** Si no lo tiene todavía, se puede crear igual con costo 0 —él eligió eso
+   el 26/08— pero **hay que decírselo**: hasta que llegue el costo el producto se ve como si fuera
+   todo ganancia y puede aparecer arriba de todo en Rotación de Stock como si fuera un éxito.
+   Se corrige después con `poncosto:<id>|<pesos>|go`.
+
+**Y después de vincular va `netoweb`**, si no el producto sigue mostrando "—" en el panel.
+
 ## Cosas que ya pasaron (para no repetirlas)
 
 - **GitHub demora las corridas programadas**, a veces horas. Por eso los crons se piden 3 veces y
