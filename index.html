@@ -2228,7 +2228,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='17.1';
+const APP_VERSION='17.2';
 // El problema real que esto resuelve no es curiosidad: es que el celular guarda la app y sigue
 // mostrando la de ayer sin avisar. Varias veces se revisó un cambio que ya estaba subido y no se
 // veía. Por eso, además del número, el chip avisa cuando hay una versión nueva esperando.
@@ -6655,6 +6655,9 @@ function setPedidoFilter(f,btn){
 // y proyecta a 30 días multiplicando por (30 / diasHistorial).
 const PED_HIST_START=new Date('2026-06-01T00:00:00');
 const PED_MAX_DAYS=30;
+// Cuánto mirar hacia atrás cuando un producto vendió 0 en los últimos PED_MAX_DAYS días. Regla
+// suya del 26/08/2026: "mira siempre los últimos 90 días sino". Ver el uso en syncPedidosAuto.
+const PED_HIST_DIAS=90;
 // Días que un producto queda en la papelera de Pedidos pudiendo volver atrás. Después la
 // eliminación es definitiva (regla suya del 13/08/2026).
 const PAP_DIAS=7;
@@ -6731,9 +6734,9 @@ function ventasPorCuenta(p){
 // Solo se usa cuando las ventas del mes son CERO. Con una sola venta en el mes manda la medición
 // de verdad: un dato viejo no puede pisar a uno nuevo.
 const REPO_HIST_DIAS=180;
-function ventasHistoricas(p,cuenta,variante){
+function ventasHistoricas(p,cuenta,variante,diasVentana){
   const now=new Date();
-  const from=new Date(now);from.setDate(now.getDate()-REPO_HIST_DIAS);
+  const from=new Date(now);from.setDate(now.getDate()-(diasVentana||REPO_HIST_DIAS));
   const fk=dateToKey(from),tk=dateToKey(now);
   let u=0,tMin=null,tMax=null;
   const varDeMla=variante?_varPorMla(p):null;
@@ -7016,9 +7019,23 @@ async function syncPedidosAuto(){
     // aparecer en Pedidos y tampoco suma "riesgo", que es lo que alimenta el Puntaje del mes y el
     // stock en riesgo. Si se saltease más abajo, el producto seguiría restando puntaje sin verse.
     if(_pap[p.id])continue;
-    const {vendidos,vendidosNorm,diasHistorial,dConS,vDia}=pedVentasNorm(p);
-    if(vendidos===0)continue;
+    const _pvn=pedVentasNorm(p);
+    const {vendidos,diasHistorial,dConS}=_pvn;
+    let {vendidosNorm,vDia}=_pvn;
     const stock=stockOf(p);
+    // "0 VENDIDAS EN 30 DÍAS" NO ES LO MISMO QUE "0 DEMANDA": puede ser que hace rato no tenga
+    // stock. Roberto (26/08/2026) lo marcó con el Pendrive Sandisk 8gb — 0 en Full, 0 en la
+    // oficina, 0 vendidas, y esta pantalla ni siquiera armaba el pedido (saltaba directo acá).
+    // Mismo agujero que ya se tapó en "Armar caja" el 23/08 con el Adaptador 8 en 1: sólo se
+    // rescata la velocidad vieja cuando ADEMÁS el stock está en cero — con stock en Full y cero
+    // ventas el cero es la respuesta honesta (se murió la demanda o perdió la caja de compra) y
+    // no hay que resucitarlo con un dato viejo. Pedido suyo: mirar hasta PED_HIST_DIAS atrás.
+    let hist=null;
+    if(vendidos===0&&stock<=0){
+      hist=ventasHistoricas(p,null,null,PED_HIST_DIAS);
+      if(hist){vDia=hist.vDia;vendidosNorm=Math.round(hist.vDia*PED_MAX_DAYS);}
+    }
+    if(vendidos===0&&!hist)continue;
     // Los días que dura el stock salen de la velocidad REAL (ventas ÷ días con mercadería), no de
     // ventas÷30. Con la cuenta vieja un producto agotado la mitad del mes parecía tener el doble de
     // días de cobertura de los que tiene.
@@ -7101,7 +7118,7 @@ async function syncPedidosAuto(){
     // El desglose por variante ya NO se tira cuando hay stock en casa o en camino: se descuenta por
     // variante más arriba. Solo se saltea si el producto no tiene ventas por variante que repartir.
 
-    resumen[p.id]={p,vendidos,vendidosNorm,stock,diasHistorial,diasCubiertos,necesario,enOficina,enCamino,aComprar,variantesNec,coll,gan30d,riesgo,riesgoComprar,riesgoMandar,dConS,vDia};
+    resumen[p.id]={p,vendidos,vendidosNorm,stock,diasHistorial,diasCubiertos,necesario,enOficina,enCamino,aComprar,variantesNec,coll,gan30d,riesgo,riesgoComprar,riesgoMandar,dConS,vDia,hist};
   }
   // 3. IDs que deberían existir como auto-pedidos
   const expectedIds=new Set();
@@ -7139,7 +7156,8 @@ async function syncPedidosAuto(){
       if(ped.auto!==false||!ped.prodId)continue;
       const r=resumen[ped.prodId];if(!r)continue;
       const _tiM=r.enCamino>0?transitoInfoDe(r.p.id):null;
-      const notaM=`30d: ${r.vendidosNorm} vendidos · ${r.stock} en stock · ~${r.diasCubiertos}d cubiertos`
+      const notaHistM=r.hist?` (sin ventas en ${PED_MAX_DAYS}d con 0 stock · vendía ${r.hist.vDia.toFixed(1)}/día en los últimos ${PED_HIST_DIAS}d)`:'';
+      const notaM=`30d: ${r.vendidosNorm} vendidos${notaHistM} · ${r.stock} en stock · ~${r.diasCubiertos}d cubiertos`
         +(r.enOficina>0?` · ${r.enOficina} ya en tu oficina`:'')
         +(_tiM?` · 🚚 ${_tiM.u} en camino, hace ${_tiM.diasMax}d`:'')
         +(r.aComprar===0?` · <span style="color:var(--green)">✓ con lo que tenés alcanza: la cuenta dice comprar 0</span>`:'');
@@ -7157,7 +7175,11 @@ async function syncPedidosAuto(){
     if(r.aComprar===0)continue;
     const coll=r.coll;const arr=state[coll]||(state[coll]=[]);
     const estado=r.diasCubiertos<=pedDiasRojoDe(r.p)?'pendiente':'poco_stock';
-    const notaHist=r.diasHistorial<PED_MAX_DAYS?` (${r.vendidos} en ${r.diasHistorial}d)`:'';
+    // Cuando el número sale del historial viejo (0 ventas y 0 stock en los últimos PED_MAX_DAYS
+    // días), decirlo: si no, "30d: 8 vendidos" parece salido de esta ventana y no lo está.
+    const notaHist=r.hist
+      ?` (sin ventas en ${PED_MAX_DAYS}d con 0 stock · vendía ${r.hist.vDia.toFixed(1)}/día en los últimos ${PED_HIST_DIAS}d)`
+      :r.diasHistorial<PED_MAX_DAYS?` (${r.vendidos} en ${r.diasHistorial}d)`:'';
     const variantesNec=r.variantesNec||null;
     const _ti=r.enCamino>0?transitoInfoDe(r.p.id):null;
     const notaOfi=(r.enOficina>0?` · ${r.enOficina} ya en tu oficina`:'')
