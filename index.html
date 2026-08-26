@@ -2279,7 +2279,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='17.8';
+const APP_VERSION='17.9';
 // El problema real que esto resuelve no es curiosidad: es que el celular guarda la app y sigue
 // mostrando la de ayer sin avisar. Varias veces se revisó un cambio que ya estaba subido y no se
 // veía. Por eso, además del número, el chip avisa cuando hay una versión nueva esperando.
@@ -4869,15 +4869,23 @@ function updateArqueo(){
   const _camDe=(o)=>Math.max(0,(o?.stock??0)-(o?.stockML??0)-(o?.stockLocal??0));
   const dispCamino=(_arqViewYM&&viewSnap)?_camDe(viewSnap):(c.stockCamino||0);
   const dispStockTot=dispStockML+stockLocalFin+dispCamino;
-  setCard('bk_stock_tot',dispStockTot,'neutral');
   // El anterior se arma con la MISMA suma, para comparar contra lo mismo. El snapshot mensual
   // guarda las finanzas, asi que se puede reconstruir entero; el diario no, y por eso ahora
   // tambien guarda stockTot (los dias viejos no lo tienen y ahi no se muestra variacion, que es
   // mejor que mostrar una variacion contra otra cuenta).
   const prevLocalFin=prev?['of_viejo','of_mia','vendedores'].reduce((a,k)=>a+(parseFloat(prev.finanzas?.[k])||0),0):undefined;
   const prevStockTot=prev?((prev.stockML||0)+(prevLocalFin||0)+_camDe(prev)):(yest?.stockTot);
+  // EL COLOR DEL STOCK TOTAL VA POR LA VARIACION, NO POR LA CATEGORIA (26/08/2026, pedido suyo:
+  // "que se ponga en color como los otros segun como va respecto al periodo pasado").
+  // Subio = verde, bajo = rojo. Sin periodo anterior con que comparar queda BLANCO, no verde:
+  // un color ahi seria inventar una variacion que no se midio.
+  // OJO: las otras tres tarjetas NO usan esta regla — van fijas por lo que son (activos verde,
+  // deudas rojo) y no cambian nunca. Si algun dia se unifican, se cambian las cuatro juntas.
+  const _hayPrevStock=prevStockTot!==undefined&&prevStockTot!==null;
+  setCard('bk_stock_tot',dispStockTot,
+    !_hayPrevStock||dispStockTot===prevStockTot?'neutral':(dispStockTot>prevStockTot?'pos':'neg'));
   const dbkStockEl=document.getElementById('dbk_stock');
-  if(dbkStockEl)dbkStockEl.innerHTML=(prevStockTot!==undefined&&prevStockTot!==null)?deltaBadge(dispStockTot,prevStockTot):'';
+  if(dbkStockEl)dbkStockEl.innerHTML=_hayPrevStock?deltaBadge(dispStockTot,prevStockTot):'';
   // Variación de CADA stock por separado, no sólo la del total. Pedido suyo del 18/08/2026: con un
   // solo número no se sabe si subió la mercadería que está en ML o la que está en casa, y son dos
   // cosas distintas — la de ML se vende sola, la de casa hay que despacharla.
