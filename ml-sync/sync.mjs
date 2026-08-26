@@ -5512,8 +5512,39 @@ async function main() {
       const quien = (quienRaw || '').trim();
       if (!/^MLA\d+$/.test(MLA) || !quien) { console.log('Usá: vincular:<MLA>=<palabra o id de producto>[:go]'); return; }
       const linksV = (await db.get('cyc/mllinks')) || {};
-      const e = linksV[MLA];
-      if (!e) { console.log(`${MLA} no figura en el panel. ¿Está bien escrito el número?`); return; }
+      let e = linksV[MLA];
+      // UNA PUBLICACIÓN RECIÉN CREADA NO ESTÁ EN cyc/mllinks TODAVÍA, Y ESO NO ES MOTIVO PARA NO
+      // VINCULARLA. El catálogo entero se enumera en la vuelta del robot de precios, una por hora;
+      // hasta entonces esto contestaba "no figura en el panel" y había que esperar. Con publicaciones
+      // nuevas llegando seguido (norma del 26/08/2026) eso es inservible: se le pregunta a ML y listo.
+      // Se prueban las cuatro cuentas porque el MLA solo no dice de quién es; la que reconoce al
+      // dueño (seller_id) es la que manda, así que la cuenta NO se adivina, se verifica.
+      if (!e) {
+        console.log(`${MLA} todavía no figura en el panel (es nueva). Se la pido a ML…`);
+        let hallada = null;
+        for (const label of labels) {
+          const acc = accounts[label];
+          if (!acc?.refresh_token) continue;
+          let t; try { t = await mlRefresh(ML_CLIENT_ID, ML_CLIENT_SECRET, acc.refresh_token); } catch { continue; }
+          await db.patch('mlapi/tokens/' + label, { refresh_token: t.refresh_token, updated_ts: Date.now() });
+          try {
+            const it = await mlGet('/items/' + MLA, t.access_token);
+            if (!it || !it.id) continue;
+            if (String(it.seller_id) !== String(acc.seller_id)) continue;   // existe, pero no es de esta cuenta
+            hallada = { label, it };
+            break;
+          } catch { /* esta cuenta no la tiene, sigo */ }
+        }
+        if (!hallada) {
+          console.log(`   ✗ Ninguna de las cuatro cuentas tiene ${MLA}. O el número está mal, o la publicación es de otro vendedor.`);
+          return;
+        }
+        const { label, it } = hallada;
+        e = { prodId: null, title: it.title || MLA, cuenta: label, status: it.status || '', sold: it.sold_quantity || 0 };
+        console.log(`   ✓ Es de ${label} · ${it.status} · ${money(Math.round(it.price || 0))} · "${it.title}"`);
+        if (!APLICAR) console.log(`   (en prueba no la escribo todavía)`);
+        else { await db.patch('cyc/mllinks/' + MLA, e); console.log(`   ✓ Cargada en el panel.`); }
+      }
       const cand = products.filter((p) => p.id === quien || norm(p.name || '').includes(norm(quien)));
       if (!cand.length) { console.log(`No hay ningún producto que se llame como "${quien}".`); return; }
       if (cand.length > 1) {
