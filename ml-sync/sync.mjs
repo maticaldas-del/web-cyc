@@ -1432,7 +1432,13 @@ async function tgFlushCola(db) {
 // Solo se mandan DOS cosas por Telegram: el resumen del día y cuando dan de baja una
 // publicación. Todo el resto (cambios de precio, descuentos, grupos nivelados) queda en el log
 // del robot y no llega al celular. Antes se avisaba de todo y era ruido.
-const TG_PERMITIDO = new Set(['resumen', 'baja']);
+// QUÉ SALE POR TELEGRAM. El que no declara su tipo NO SE MANDA, y eso ya se comió un aviso:
+// el del dólar llamaba a sendTelegram(msg) sin segundo parámetro, así que caía siempre en el
+// "no se manda" y se perdía en una línea del log. El 27/08/2026 el dólar pasó de $1.510 a $1.535
+// (+1,66%), se actualizó bien en el panel y a Mati no le llegó nada — lo contó él.
+// El dólar SÍ tiene que avisar: mueve el costo de TODOS los productos y por lo tanto todos los
+// márgenes, y sólo salta cuando se movió más del 1,5%, o sea rara vez. No es ruido.
+const TG_PERMITIDO = new Set(['resumen', 'baja', 'dolar']);
 async function sendTelegram(text, tipo) {
   if (!TG_TOKEN || TG_SILENCIO) return false;
   if (!TG_PERMITIDO.has(tipo)) {
@@ -16229,7 +16235,7 @@ async function main() {
         const rd = await dolarAuto(db, DRY);
         if (!DRY) await db.set('mlapi/dolar/ultimoDia', hoyAR);
         if (rd.que === 'quieto') console.log(`💵 Dólar ${money(rd.nuevo)} · el cargado ${money(rd.actual)} · se movió ${rd.mov.toFixed(2)}%: abajo del ${DOLAR_UMBRAL_PCT}%, no lo toqué.`);
-        else if (rd.msg) { console.log(rd.msg.replace(/<[^>]+>/g, '')); await sendTelegram(rd.msg); }
+        else if (rd.msg) { console.log(rd.msg.replace(/<[^>]+>/g, '')); await sendTelegram(rd.msg, 'dolar'); }
         else console.log('💵 Dólar: ninguna fuente contestó, dejo el que estaba.');
       }
     } catch (e) { console.log('No pude mirar el dólar: ' + e.message); }
