@@ -5371,6 +5371,94 @@ async function main() {
       console.log(`\n✓ ${cambios.length} ventas recalculadas con el costo real.`);
       return;
     }
+    // BILLING_PROBE=embalaje[:cuantos] → ¿EL "ENVÍO+EMBALAJE" DE CADA FICHA SE PARECE A LO QUE
+    //   DE VERDAD CUESTA MANDAR ESA UNIDAD A FULL?
+    //
+    // SOLO LEE. No escribe nada, no toca precios. Pedido suyo del 27/08/2026: "fijate si el costo
+    // de envío (embalaje) coincide con el producto; vos tenés peso, volumen y costo de enviar una
+    // caja. No modifiques nada y mandame una lista de lo que parece mal o dudas".
+    //
+    // Por qué importa: el "Envío+embalaje US$" de la ficha se SUMA al costo de cada unidad
+    // (costFull = mercadería × (1+reclamos) + envío), y ese costo es contra el que se mide el
+    // margen y por lo tanto el que decide todos los precios. Si está bajo, el margen se ve más
+    // alto de lo que es y se fijan precios contra un costo que no existe. Nunca se había podido
+    // chequear porque hasta hoy faltaban las medidas; ahora las tienen 135 de 140 productos.
+    //
+    // LA CUENTA, y su supuesto: una caja a Full sale $16.000 (COSTO_CAJA del panel) y entran N
+    // unidades, así que a cada una le toca 16.000/N. N sale de los DOS límites —cuántas entran por
+    // lugar en 70x70x70 y cuántas por los 30 kg— y manda el más chico, igual que en "Armar caja".
+    // El supuesto es que la caja va llena de ESE producto. Una caja mezclada reparte distinto,
+    // pero como reparte proporcionalmente el costo por unidad da parecido: sirve para comparar.
+    if (/^embalaje(:|$)/.test(String(process.env.BILLING_PROBE || ''))) {
+      const CUANTOS = parseInt(String(process.env.BILLING_PROBE).split(':')[1] || '0', 10) || 0;
+      const COSTO_CAJA = 16000;                       // el mismo número que usa el panel
+      const tcE = parseFloat(((await db.get('cyc/finanzas')) || {}).tipo_cambio) || 1500;
+      const porCajaDe = (m) => {
+        if (!m || !(m.largoCm > 0) || !(m.anchoCm > 0) || !(m.altoCm > 0)) return null;
+        const n = Math.floor(70 / m.largoCm) * Math.floor(70 / m.anchoCm) * Math.floor(70 / m.altoCm);
+        return n > 0 ? n : 0;
+      };
+      console.log(`=== ENVÍO+EMBALAJE vs LO QUE CUESTA MANDARLO (SOLO LECTURA) ===`);
+      console.log(`Caja de 70x70x70 y 30 kg · ${money(COSTO_CAJA)} por caja · dólar $${tcE}\n`);
+      const bajos = [], altos = [], ok = [], sinMed = [], noEntra = [];
+      for (const p of products) {
+        const m = p.medida || {};
+        const cargadoUSD = parseFloat(p.shipUSD) || 0;
+        const cargado = cargadoUSD * tcE;
+        const nL = porCajaDe(m);
+        const nP = m.pesoG > 0 ? Math.floor(30000 / m.pesoG) : null;
+        if (nL == null || nP == null) { sinMed.push({ p, cargado, falta: nL == null ? (nP == null ? 'medidas y peso' : 'medidas') : 'peso' }); continue; }
+        if (!nL) { noEntra.push({ p, m, cargado }); continue; }
+        const n = Math.min(nL, nP);
+        const deberia = COSTO_CAJA / n;
+        const dif = cargado - deberia;
+        // El costo de la mercadería, para poder decir cuánto pesa el error en el margen.
+        const mercaderia = (parseFloat(p.costUSD) || 0) * tcE;
+        const pctCosto = mercaderia > 0 ? (Math.abs(dif) / mercaderia) * 100 : null;
+        const fila = { p, m, n, nL, nP, deberia, cargado, dif, mercaderia, pctCosto, manda: nL <= nP ? 'lugar' : 'peso' };
+        // "Parece mal" = se lleva más de 3 puntos del margen, o está en cero teniendo que costar algo.
+        // 3 puntos no es capricho: entre el piso (30%) y la meta (32%) hay 2, así que un error de 3
+        // ya alcanza para cruzar el piso sin que nadie lo note.
+        const puntos = mercaderia > 0 ? (Math.abs(dif) / mercaderia) * 100 : 999;
+        if (cargado === 0 && deberia >= 50) bajos.push(fila);
+        else if (puntos >= 3 && dif < 0) bajos.push(fila);
+        else if (puntos >= 3 && dif > 0) altos.push(fila);
+        else ok.push(fila);
+      }
+      const linea = (f) => {
+        console.log(`   ${String(f.p.name).slice(0, 38).padEnd(38)} ${f.m.largoCm}x${f.m.anchoCm}x${f.m.altoCm} cm · ${(f.m.pesoG / 1000).toFixed(2)} kg`);
+        console.log(`      entran ${String(f.n).padStart(5)} por caja (${f.nL} por lugar / ${f.nP} por peso → manda el ${f.manda})`);
+        console.log(`      debería ser ${money(Math.round(f.deberia)).padStart(10)}   ·   cargado ${money(Math.round(f.cargado)).padStart(10)}`
+          + `   ·   ${f.dif >= 0 ? '+' : ''}${money(Math.round(f.dif))}`
+          + (f.pctCosto != null ? ` = ${f.pctCosto.toFixed(1)} puntos de margen` : ' (sin costo de mercadería cargado)'));
+      };
+      const corte = (arr) => CUANTOS > 0 ? arr.slice(0, CUANTOS) : arr;
+      bajos.sort((a, b) => (b.pctCosto || 999) - (a.pctCosto || 999));
+      altos.sort((a, b) => (b.pctCosto || 0) - (a.pctCosto || 0));
+      console.log(`── 🔴 CARGADO DE MENOS · el margen se ve MÁS ALTO de lo que es · ${bajos.length} ──`);
+      if (!bajos.length) console.log('   ninguno'); else corte(bajos).forEach(linea);
+      if (CUANTOS > 0 && bajos.length > CUANTOS) console.log(`   … y ${bajos.length - CUANTOS} más`);
+      console.log(`\n── 🟠 CARGADO DE MÁS · el margen se ve MÁS BAJO de lo que es · ${altos.length} ──`);
+      if (!altos.length) console.log('   ninguno'); else corte(altos).forEach(linea);
+      if (CUANTOS > 0 && altos.length > CUANTOS) console.log(`   … y ${altos.length - CUANTOS} más`);
+      if (noEntra.length) {
+        console.log(`\n── ⚠️ NO ENTRAN EN UNA CAJA (más de 70 cm de lado) · ${noEntra.length} ──`);
+        noEntra.forEach((f) => console.log(`   ${String(f.p.name).slice(0, 38).padEnd(38)} ${f.m.largoCm}x${f.m.anchoCm}x${f.m.altoCm} cm · cargado ${money(Math.round(f.cargado))}`));
+      }
+      if (sinMed.length) {
+        console.log(`\n── ❓ SIN DATOS, NO PUEDO COMPARAR · ${sinMed.length} ──`);
+        sinMed.forEach((f) => console.log(`   ${String(f.p.name).slice(0, 38).padEnd(38)} falta ${f.falta} · cargado ${money(Math.round(f.cargado))}`));
+      }
+      console.log(`\n── ✅ RAZONABLES (menos de 3 puntos de diferencia) · ${ok.length} ──`);
+      console.log(`\nOJO CON EL SUPUESTO: la cuenta asume la caja llena de ese producto. Una caja mezclada`);
+      console.log(`reparte los ${money(COSTO_CAJA)} entre lo que lleve, pero proporcionalmente, así que el costo por`);
+      console.log(`unidad da parecido. Sirve para ver quién está MUY lejos, no para afinar centavos.`);
+      console.log(`Y el embalaje de verdad (bolsita, burbuja) va ADEMÁS de esto: si un producto necesita`);
+      console.log(`protección, lo que corresponde es MÁS que lo que dice acá, no menos.`);
+      console.log(`\nNo escribí nada. Para corregir uno: es el campo "Envío+embalaje US$" de la ficha.`);
+      return;
+    }
+
     // BILLING_PROBE=ponmedida:<busca>|<largo>x<ancho>x<alto>|<peso>[;otro…][;go]
     //   → CARGA A MANO EL PAQUETE DE UN PRODUCTO (medidas y peso).
     //
