@@ -420,6 +420,23 @@ El comando es `nuevoprod:<nombre>[|costo=<pesos>][|mla=<MLA>][|go]`.
   dato no se pierde con ruido, se pierde en silencio. Es el mismo patrón del bug de `cyc/mllinks`
   del 05/08. Para mirar la lista sin despertar a nadie: `tgchats`.
 
+- **EL AVISO DEL DÓLAR NUNCA SALIÓ: NO DECLARABA SU TIPO (27/08/2026).** El dólar pasó de $1.510 a
+  $1.535 (+1,66%), el robot lo actualizó bien en el panel, y a Mati no le llegó nada por Telegram.
+  Lo contó él. **No fallaba el envío ni la lista de suscriptos** —eso era el bug del 22/08, otro—:
+  el mensaje se tiraba ANTES de intentar mandarlo.
+  `sendTelegram(texto, tipo)` filtra por el segundo parámetro contra `TG_PERMITIDO`, y el que no lo
+  declara cae en el `no se manda` y se pierde en una línea del log. El aviso del dólar llamaba
+  `sendTelegram(rd.msg)` **sin el tipo**, así que `tipo` quedaba `undefined` y no salió nunca ni uno.
+  Arreglado: se agregó `'dolar'` al conjunto y la llamada lo pasa.
+  **Ojo con lo que queda igual a propósito:** los avisos de precios (subidas, bajadas, promos
+  sacadas, "problema en una publicación") tampoco declaran tipo y por lo tanto tampoco salen — eso
+  SÍ fue una decisión, para que el robot no mande un mensaje por cada cambio de precio. Y `'baja'`
+  está en el conjunto pero **ningún llamado lo usa**, así que hoy lo único que sale de verdad es el
+  resumen. Si algún día se quiere prender alguno, hay que agregarle el tipo a la llamada.
+  **La lección: un filtro que descarta por omisión es un filtro que apaga cosas en silencio.** El
+  que escribe un aviso nuevo no se entera de que existe el tipo hasta que alguien pregunta por qué
+  no le llegó. Es el mismo patrón que el `catch {}` vacío: el dato no se pierde con ruido.
+
 - **GitHub demora las corridas programadas**, a veces horas. Por eso los crons se piden 3 veces y
   el robot guarda el último día que mandó cada aviso, para no repetir.
 - **Las compras con carrito** llegan con el número del paquete, no el de la orden. Hay que
