@@ -5371,6 +5371,78 @@ async function main() {
       console.log(`\n✓ ${cambios.length} ventas recalculadas con el costo real.`);
       return;
     }
+    // BILLING_PROBE=ponmedida:<busca>|<largo>x<ancho>x<alto>|<peso>[;otro…][;go]
+    //   → CARGA A MANO EL PAQUETE DE UN PRODUCTO (medidas y peso).
+    //
+    // Para qué existe: sin peso ni medidas el producto NO entra en las dos barras de "Armar caja"
+    // (lugar sobre 70x70x70 y peso sobre 30 kg) y la caja se ve más vacía de lo que está. Casi
+    // todas las carga solo el robot con `bajarmedidas` leyendo el paquete que declara ML, pero
+    // cuando NINGUNA publicación del producto lo informa —o el producto no tiene publicación—
+    // no hay de dónde sacarlas y las tiene que pasar él. El 27/08/2026 eran 10 de 140.
+    //
+    // Queda marcado `fuente:'mano'`, que es lo que hace que `bajarmedidas` NO lo vuelva a pisar.
+    //
+    // Se pueden cargar varios de una, separados por ";", porque siempre llegan de a varios y cada
+    // corrida a mano mata el ciclo del robot: hacer una corrida por producto es peor.
+    // El peso acepta "100g", "100gr", "0,5kg" o "500" (sin unidad = GRAMOS) y dice qué entendió,
+    // porque confundir gramos con kilos son mil veces el error.
+    // Si un nombre da más de un producto NO adivina: lista los candidatos y pide el id.
+    if (/^ponmedida:/.test(String(process.env.BILLING_PROBE || ''))) {
+      const _todo = String(process.env.BILLING_PROBE).slice(10).split(';').map((x) => x.trim()).filter(Boolean);
+      const APLICAR = _todo[_todo.length - 1] === 'go';
+      const _ent = APLICAR ? _todo.slice(0, -1) : _todo;
+      if (!_ent.length) { console.log('Usá: ponmedida:<busca>|<largo>x<ancho>x<alto>|<peso>[;otro…][;go]'); return; }
+      const num = (t) => { let x = String(t || '').replace(',', '.').replace(/[^\d.]/g, ''); return parseFloat(x) || 0; };
+      const plan = []; let mal = 0;
+      console.log(`=== PONER MEDIDAS A MANO ${APLICAR ? '(APLICANDO)' : '(PRUEBA)'} ===\n`);
+      for (const e of _ent) {
+        const [quien0, dim0, peso0] = e.split('|').map((x) => (x || '').trim());
+        const quien = quien0 || '';
+        const partes = String(dim0 || '').toLowerCase().split('x');
+        const L = num(partes[0]), A = num(partes[1]), H = num(partes[2]);
+        // Sin unidad = gramos. "kg" multiplica por mil.
+        const esKg = /kg/i.test(String(peso0 || ''));
+        const g = Math.round(num(peso0) * (esKg ? 1000 : 1));
+        if (!quien || !(L > 0) || !(A > 0) || !(H > 0) || !(g > 0)) {
+          console.log(`✗ "${e}" — no entendí. Va: <busca>|<largo>x<ancho>x<alto>|<peso>`); mal++; continue;
+        }
+        const cand = products.filter((p) => p.id === quien || norm(p.name || '').includes(norm(quien)));
+        if (!cand.length) { console.log(`✗ "${quien}" — no hay ningún producto con ese nombre.`); mal++; continue; }
+        if (cand.length > 1) {
+          console.log(`✗ "${quien}" — da ${cand.length} productos, pasame el id:`);
+          cand.forEach((p) => console.log(`     ${p.id} · ${p.name}`)); mal++; continue;
+        }
+        const p = cand[0];
+        const ant = p.medida || {};
+        const vol = Math.round(L * A * H);
+        // Cuántas entran en la caja: es el dato que de verdad va a usar la pantalla, así que se
+        // muestra acá para que se vea si el número tiene sentido antes de guardarlo.
+        const nCaja = Math.floor(70 / L) * Math.floor(70 / A) * Math.floor(70 / H);
+        const nPeso = Math.floor(30000 / g);
+        const m = { largoCm: L, anchoCm: A, altoCm: H, pesoG: g, volCm3: vol,
+                    fuente: 'mano', duda: null, ts: Date.now() };
+        plan.push({ p, m });
+        console.log(`── ${p.name}   (${p.id})`);
+        console.log(`     antes : ${ant.largoCm ? `${ant.largoCm}x${ant.anchoCm}x${ant.altoCm} cm · ${ant.pesoG} g · ${ant.fuente || '?'}` : 'SIN MEDIDAS'}`);
+        console.log(`     ahora : ${L}x${A}x${H} cm · ${g} g (${(g / 1000).toFixed(3)} kg) · ${vol.toLocaleString('es-AR')} cm³`);
+        console.log(`     en una caja de 70x70x70 entran ${nCaja === 0 ? 'NINGUNA (mide más de 70 cm de lado)' : nCaja} por lugar y ${nPeso} por peso\n`);
+      }
+      if (!plan.length) { console.log('Nada para guardar.'); return; }
+      if (!APLICAR) { console.log(`PRUEBA: no escribí nada. Para aplicar, agregale ";go" al final.`); return; }
+      let ok = 0;
+      for (const x of plan) {
+        // patch SOBRE EL HIJO: `medida` es un campo más de la ficha y no se puede pisar el resto.
+        await db.patch('cyc/products/' + x.p.id, { medida: x.m });
+        // Releer de la base: que el comando diga "guardado" no alcanza.
+        const rel = await db.get('cyc/products/' + x.p.id + '/medida');
+        if (rel && rel.volCm3 === x.m.volCm3 && rel.pesoG === x.m.pesoG && rel.fuente === 'mano') ok++;
+        else console.log(`   ✗ no quedó: ${x.p.id} · ${x.p.name}`);
+      }
+      console.log(`\n${ok === plan.length ? '✓' : '✗'} ${ok} de ${plan.length} guardadas y releídas de la base.`);
+      if (mal) console.log(`(${mal} renglón(es) no se pudieron cargar, mirá arriba)`);
+      return;
+    }
+
     // BILLING_PROBE=poncosto:<palabra o id>|<pesos>[|go] → CORRIGE EL COSTO DE UN PRODUCTO.
     //
     // Es lo mismo que escribir el costo a mano en la ficha del producto en la web, pero desde acá.
