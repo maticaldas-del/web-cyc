@@ -1027,9 +1027,13 @@ footer{margin-top:32px;padding-top:14px;border-top:1px solid var(--border);font-
   <div id="ofi-sec-caja">
     <div class="pedidos-count" id="ofi-resumen"></div>
     <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px" id="ofi-filtro-cuentas"></div>
+    <div id="ofi-cajas-abiertas" style="display:none;margin-bottom:10px"></div>
     <div id="ofi-caja-barra" style="display:none;gap:8px;flex-wrap:wrap;margin-bottom:10px"></div>
     <div id="ofi-caja-medidor" style="display:none;margin-bottom:10px"></div>
     <button class="btn" id="ofi-btn-despachar" style="display:none;width:100%;margin-bottom:10px;padding:12px;font-size:.82rem"></button>
+    <!-- El buscador va ACA ABAJO de las barras y del boton de cerrar, no arriba, porque filtra
+         SOLO la lista de productos: las barras, el boton y el cartel hablan de la caja ENTERA. -->
+    <input class="search-box" id="ofi-caja-search" type="search" placeholder="Buscar producto..." oninput="renderOfiCaja()" style="margin-bottom:10px">
     <div id="ofi-caja-list"><div class="empty-msg">Contá lo que tenés en la pestaña de al lado y acá te digo a qué cuenta va.</div></div>
   </div>
 
@@ -2280,7 +2284,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='18.0';
+const APP_VERSION='18.1';
 // El problema real que esto resuelve no es curiosidad: es que el celular guarda la app y sigue
 // mostrando la de ayer sin avisar. Varias veces se revisó un cambio que ya estaba subido y no se
 // veía. Por eso, además del número, el chip avisa cuando hay una versión nueva esperando.
@@ -3910,6 +3914,16 @@ async function cajaVaciar(){
   await _guardarCajaArmando(ofiFiltroCuenta,{});
   renderOfiCaja();
 }
+// Vaciar la caja de CUALQUIER cuenta, no solo la que estás mirando: el aviso de arriba lista las
+// cuatro y desde ahí se tiene que poder soltar la que quedó olvidada sin ir a buscarla.
+// Pregunta antes porque tira a la basura trabajo hecho a mano y no se puede deshacer.
+async function cajaVaciarDe(cta){
+  const u=Object.values(cajaDe(cta)).reduce((a,x)=>a+x,0);
+  if(!u)return;
+  if(!confirm(`¿Vaciar la caja de ${cta}? Son ${u} unidades cargadas a mano y no se puede deshacer.\n\nLa mercadería NO se pierde: vuelve a quedar disponible para las otras cuentas.`))return;
+  await _guardarCajaArmando(cta,{});
+  renderOfiCaja();
+}
 async function setCajaItem(pid,va,val,max){
   if(!ofiFiltroCuenta)return;
   const items={...cajaDe(ofiFiltroCuenta)};
@@ -3998,6 +4012,50 @@ function renderOfiCaja(){
     btnDesp.style.opacity=uCaja>0?'1':'.45';
     btnDesp.onclick=()=>{if(uCaja>0)cerrarCaja(ofiFiltroCuenta);};
   }
+  // ── LAS CAJAS QUE QUEDARON A MEDIO ARMAR ─────────────────────────────────
+  // Pedido suyo del 27/08/2026, después de preguntar "si no se cierra una caja no deja mercadería
+  // para una segunda?". La respuesta es sí, y hasta hoy no se veía en ningún lado.
+  //
+  // El stock de la oficina NO baja hasta cerrar la caja, así que lo cargado en una caja a medio
+  // armar queda APARTADO y las otras tres cuentas ya no lo pueden usar (ver cajaMax). Eso está
+  // bien mientras la caja se esté armando; el problema es la caja olvidada: retiene mercadería
+  // para siempre y el único lugar donde se notaba era el "(N en otra caja)" de cada renglón, que
+  // hay que ir a buscar entrando a la cuenta correcta.
+  //
+  // Se listan TODAS, incluida la que estás mirando: esconder la de al lado sería el mismo error de
+  // antes en chico. Va en color normal a propósito —tener una caja armándose no es un problema—;
+  // lo único que hace es dejar de esconderlo.
+  const ab=document.getElementById('ofi-cajas-abiertas');
+  if(ab){
+    const abiertas=LOCS.map(l=>{
+      const it=cajaDe(l);
+      const u=Object.values(it).reduce((a,x)=>a+x,0);
+      const ts=((state.cajas_armando||{})[l]||{}).ts||0;
+      return {cta:l,u,ts};
+    }).filter(x=>x.u>0);
+    ab.style.display=abiertas.length?'':'none';
+    if(abiertas.length){
+      const uTot=abiertas.reduce((a,x)=>a+x.u,0);
+      const hace=(ts)=>{
+        if(!ts)return '';
+        const d=Math.floor((Date.now()-ts)/86400000);
+        return d<=0?'hoy':d===1?'hace 1 día':`hace ${d} días`;
+      };
+      ab.innerHTML=`<details style="background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:10px 14px">
+        <summary style="cursor:pointer;font-size:.72rem">📦 <strong>${abiertas.length}</strong> caja${abiertas.length===1?'':'s'} a medio armar · <strong>${uTot}</strong> u. apartadas
+          <span style="color:var(--muted);font-weight:400">— esas unidades no se le ofrecen a las otras cuentas hasta cerrar o vaciar</span>
+        </summary>
+        <div style="margin-top:8px">${abiertas.map(x=>`<div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding:6px 0;border-top:1px solid var(--border)">
+          <span class="pi-prov">${x.cta}</span>
+          <strong style="font-family:'DM Mono',monospace;font-size:.85rem">${x.u} u.</strong>
+          <span style="font-size:.64rem;color:var(--muted)">${hace(x.ts)}</span>
+          <button class="btn" style="margin-left:auto;font-size:.58rem;padding:3px 8px" onclick="cajaVaciarDe('${x.cta}')"
+            title="Suelta las ${x.u} unidades de la caja de ${x.cta}. No toca el stock ni ML: la mercadería vuelve a quedar disponible para las cuatro cuentas.">vaciar</button>
+        </div>`).join('')}</div>
+      </details>`;
+    }
+  }
+
   // ── LAS DOS BARRITAS DE LA CAJA ──────────────────────────────────────────
   // Los dos límites de una caja a Full son 70x70x70 y 30 kg, y llenar uno solo desperdicia el
   // otro: por eso van las DOS, no una sola de "qué tan llena está". Sábanas = mucho lugar y poco
@@ -4096,7 +4154,25 @@ function renderOfiCaja(){
         </div></div>`;
     }
   }
-  cont.innerHTML=cartel+vis.map(f=>{
+  // ── EL BUSCADOR FILTRA SOLO LA LISTA ─────────────────────────────────────
+  // Pedido suyo del 27/08/2026. Lo importante es lo que NO toca: las dos barras, el botón de
+  // cerrar y el cartel de "conviene mandarla" siguen hablando de la CAJA ENTERA, y por eso se
+  // calculan con `vis` y no con esto. Si el buscador los moviera, escribir "balanza" haría que el
+  // botón dijera "Cerrar esta caja · 4 u." teniendo 301 adentro — y ese botón despacha de verdad.
+  // Es la misma decisión que en Rotación de Stock, por el mismo motivo.
+  // También mira las variantes: escribiendo un aroma tiene que aparecer ese renglón aunque el
+  // nombre del producto no lo nombre.
+  const _q=normTxt(document.getElementById('ofi-caja-search')?.value||'');
+  const verLista=_q?vis.filter(f=>normTxt(f.p.name).includes(_q)
+    ||normTxt(f.variante||'').includes(_q)
+    ||(f.p.variantes||[]).some(v=>normTxt(v).includes(_q))):vis;
+  // Cuando no encuentra nada se dice, y con cuántos renglones había: una lista vacía sin
+  // explicación se lee como "no tenés nada", que es otra cosa.
+  if(_q&&!verLista.length){
+    cont.innerHTML=cartel+`<div class="empty-msg">Ningún producto de los ${vis.length} de esta lista dice "${_q}".</div>`+_noRepoPie();
+    return;
+  }
+  cont.innerHTML=cartel+verLista.map(f=>{
     const sug=ofiFiltroCuenta?f.sug.filter(s=>s.cuenta===ofiFiltroCuenta):f.sug;
     const lineas=sug.map(s=>{
       const dias=s.dias==null?'no vendió':(s.dias>=999?'no vende':Math.round(s.dias)+' días de stock');

@@ -325,6 +325,23 @@ tiene. Mandar para 30 días hace que la caja llegue justo cuando la publicación
 Los dos números están en `index.html` como `REPO_DIAS_COBERTURA` (**45**) y `REPO_DIAS_DEMORA` (**8**:
 él corrigió el 20/08 que en la práctica el viaje son 8 días, no 14).
 
+**UNA CAJA A MEDIO ARMAR RETIENE MERCADERÍA, Y AHORA SE VE.** Lo planteó él el 27/08/2026:
+*"si no se cierra una caja no deja mercadería para una segunda no?"*. Es así, y es a propósito: el
+stock de la oficina no baja hasta cerrar, así que lo cargado en una caja queda APARTADO y las otras
+tres cuentas no lo pueden usar (`cajaMax` ← `reservadoEnOtras`). Sin eso, dos cajas podrían pedir
+las mismas unidades y al cerrarlas faltaría mercadería.
+El problema no era la regla sino que **no se veía**: lo único que lo decía era el "(N en otra caja)"
+de cada renglón, que hay que ir a buscar entrando a la cuenta correcta. Una caja olvidada retenía
+unidades para siempre sin que nada lo dijera. Ahora arriba de "Armar caja" hay un desplegable con
+TODAS las cajas abiertas, cuántas unidades aparta cada una, hace cuánto, y el botón para vaciarla
+—que pregunta antes, porque tira trabajo hecho a mano—. Va en color normal a propósito: tener una
+caja armándose no es un problema, esconderla sí.
+
+**El buscador de Armar caja filtra SOLO la lista de productos.** Las dos barras, el botón de cerrar
+y el cartel de "conviene mandarla" se siguen calculando con la lista COMPLETA. Si el buscador los
+moviera, escribir "balanza" haría que el botón dijera *"Cerrar esta caja · 4 u."* teniendo 301
+adentro — y ese botón despacha de verdad. Misma decisión que en Rotación de Stock y por lo mismo.
+
 **Las cajas se arman a mano y se pueden dejar a medias.** La recomendación del panel es el punto
 de partida, no la orden: casi nunca se despacha exacto lo que dice (entra menos, se manda otra
 cosa, hacen falta dos cajas). Cada renglón tiene su casilla y se listan TODOS los productos que
