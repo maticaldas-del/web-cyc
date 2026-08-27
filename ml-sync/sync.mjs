@@ -1447,12 +1447,33 @@ async function sendTelegram(text, tipo) {
 }
 // Descubre y ACUMULA todos los chats: cada persona que le manda "hola" al bot queda
 // suscripta y recibe los resúmenes/avisos. Se guarda en Firebase mlapi/telegram/chats.
+// SE ESCRIBE CON patch Y SÓLO LO NUEVO, NUNCA LA LISTA ENTERA (27/08/2026).
+// El padre de Mati dejó de recibir los avisos el 22/08 y nadie se enteró hasta cinco días después:
+// no fallaban los envíos, había desaparecido de la lista. El motivo estaba acá.
+//
+// Antes esto armaba la lista en memoria, y si la LECTURA de la guardada fallaba seguía de largo en
+// silencio (el catch estaba vacío) con el objeto vacío. Después le sumaba lo que devuelve getUpdates
+// —que son sólo los mensajes de las últimas ~24 horas— y guardaba el resultado con `set`, que PISA
+// el nodo entero. O sea: un solo tropiezo de lectura borraba a todo el que no le hubiera escrito al
+// bot ese día. El que escribe seguido se salva; el que no, desaparece sin aviso.
+//
+// Dos cambios: (1) si la lectura falla NO se escribe nada —perder un aviso es mucho menos grave que
+// perder un destinatario—, y (2) se escribe con `patch` y sólo los que se agregan, así el guardado
+// no puede sacar a nadie ni aunque la lectura venga incompleta.
 async function resolveTgChat(db) {
   if (!TG_TOKEN) return;
   const chats = {}; // id -> {name, ts}
-  try { const saved = await db.get('mlapi/telegram/chats'); if (saved && typeof saved === 'object') Object.assign(chats, saved); } catch { /* */ }
+  let leyoBien = true;
+  try {
+    const saved = await db.get('mlapi/telegram/chats');
+    if (saved && typeof saved === 'object') Object.assign(chats, saved);
+  } catch (e) {
+    leyoBien = false;
+    console.log(`⚠️ Telegram: no pude leer la lista de suscriptos (${e.message}). NO la reescribo, para no borrar a nadie.`);
+  }
   try { const legacy = await db.get('mlapi/telegram/chatId'); if (legacy && !chats[String(legacy)]) chats[String(legacy)] = { name: '', ts: Date.now() }; } catch { /* */ }
   if (TG_CHAT && !chats[String(TG_CHAT)]) chats[String(TG_CHAT)] = { name: 'fijo', ts: Date.now() };
+  const nuevos = {};
   const r = await tgApi('getUpdates', {});
   if (r && r.ok) {
     for (const u of (r.result || [])) {
@@ -1460,15 +1481,22 @@ async function resolveTgChat(db) {
       const c = m.chat; const id = c && c.id;
       if (id && !chats[String(id)]) {
         const nm = ((c.first_name || c.title || '') + (c.last_name ? ' ' + c.last_name : '')).trim();
-        chats[String(id)] = { name: nm, ts: Date.now() };
+        const entrada = { name: nm, ts: Date.now() };
+        chats[String(id)] = entrada; nuevos[String(id)] = entrada;
         console.log('✓ Telegram: nuevo suscriptor', id, nm);
       }
     }
   }
-  if (Object.keys(chats).length) { try { await db.set('mlapi/telegram/chats', chats); } catch { /* */ } }
+  // Sólo los nuevos, y sólo si la lectura anduvo. Con patch los que ya estaban quedan intactos.
+  if (leyoBien && Object.keys(nuevos).length) {
+    try { await db.patch('mlapi/telegram/chats', nuevos); } catch { /* */ }
+  }
   TG_CHATS = Object.keys(chats);
   TG_NAMES = {}; for (const [id, v] of Object.entries(chats)) TG_NAMES[id] = (v && v.name) || '';
   if (!TG_CHAT && TG_CHATS.length) TG_CHAT = TG_CHATS[0];
+  // Que el número quede SIEMPRE en el log: así, si un día alguien desaparece, se ve en la corrida
+  // del día en vez de descubrirse cuando el que falta avisa que no le llega nada.
+  console.log(`Telegram: ${TG_CHATS.length} suscripto(s)${TG_CHATS.length ? ' · ' + TG_CHATS.map((id) => id + (TG_NAMES[id] ? ' (' + TG_NAMES[id] + ')' : '')).join(' · ') : ''}`);
 }
 const money = (n) => '$' + Math.round(n).toLocaleString('es-AR');
 
@@ -2411,6 +2439,32 @@ async function main() {
         const vCut = cut.reduce((s, r) => s + r.ventas, 0);
         console.log(`  piso ${String(floor).padStart(2)}%: cortás ${String(cut.length).padStart(3)} prods · perdés ${money(Math.round(ganCut / spanDays * 30)).padStart(11)}/mes (${ganTot > 0 ? (ganCut / ganTot * 100).toFixed(1) : 0}% de la gan.) · liberás ${money(capCut).padStart(12)} de stock · ${Math.round(vCut / spanDays * 30)} ventas/mes menos de trabajo`);
       }
+      return;
+    }
+    // BILLING_PROBE=tgchats → QUIÉN RECIBE LOS AVISOS DE TELEGRAM. Sólo lee, no manda nada.
+    //
+    // Existe porque el 27/08/2026 el padre de Mati llevaba cinco días sin recibir los resúmenes y no
+    // había forma de mirar la lista sin mandarle un mensaje de prueba a todos (TELEGRAM_TEST=1).
+    // Cuando lo que se sospecha es "a alguien no le llega", despertar a los que SÍ reciben para
+    // averiguarlo es al revés.
+    if (/^tgchats(:|$)/.test(String(process.env.BILLING_PROBE || ''))) {
+      console.log('=== QUIÉN RECIBE LOS AVISOS DE TELEGRAM ===\n');
+      if (!TG_TOKEN) { console.log('✗ Falta el secret TELEGRAM_BOT_TOKEN: no se manda nada a nadie.'); return; }
+      const guardados = (await db.get('mlapi/telegram/chats')) || {};
+      const ids = Object.keys(guardados);
+      if (!ids.length) {
+        console.log('🔴 NADIE está suscripto. Los resúmenes no le llegan a ninguno.');
+        console.log('   Se arregla mandándole un "hola" al bot desde el Telegram de cada uno.');
+        return;
+      }
+      console.log(`Suscriptos: ${ids.length}\n`);
+      for (const id of ids) {
+        const v = guardados[id] || {};
+        const alta = v.ts ? new Date(v.ts).toISOString().slice(0, 10) : '(sin fecha)';
+        console.log(`  · ${id}${v.name ? ' — ' + v.name : ''} · desde ${alta}`);
+      }
+      console.log('\nSi falta alguien: que le mande un "hola" al bot y vuelve solo en la próxima vuelta.');
+      console.log('Para mandar un mensaje de prueba a TODOS: telegram_test=1 (ojo, les llega a los cuatro).');
       return;
     }
     // BILLING_PROBE=tg:off / tg:on → corta o reanuda TODOS los mensajes de Telegram

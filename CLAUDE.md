@@ -229,6 +229,7 @@ Los que más se usan:
 | `netoref[:borrar]` | los netos escritos a mano que tapan el real, y sacarlos |
 | `raizsucia[:go]` | qué quedó escrito fuera de `cyc/` por el bug de prefijo |
 | `pubaviso[:borrar]` | de qué publicaciones ya se avisó "problema", para que no repita |
+| `tgchats` | quién recibe los avisos de Telegram · **solo lee, no manda nada** |
 | `vergastos[:mes]` | los gastos de un mes uno por uno, con los 3 meses anteriores al lado |
 | `partirgasto:<clave>:<meses>[:go]` | reparte un gasto pagado junto entre los meses que cubre |
 | `sincargo:<palabra>[:go]` | "este reclamo no fue culpa del producto": deja de encarecerlo · **sin `:go` solo muestra** |
@@ -402,6 +403,22 @@ El comando es `nuevoprod:<nombre>[|costo=<pesos>][|mla=<MLA>][|go]`.
 **Y después de vincular va `netoweb`**, si no el producto sigue mostrando "—" en el panel.
 
 ## Cosas que ya pasaron (para no repetirlas)
+
+- **UN SOLO TROPIEZO DE LECTURA BORRABA A UN DESTINATARIO DE TELEGRAM, EN SILENCIO (27/08/2026).**
+  Su viejo dejó de recibir los resúmenes el 22/08 y se descubrió cinco días después, porque él lo
+  contó. Los envíos NO fallaban: había **desaparecido de la lista de suscriptos**, y el robot ni
+  siquiera intentaba mandarle.
+  El motivo estaba en `resolveTgChat`: armaba la lista en memoria y, si la lectura de la guardada
+  fallaba, **seguía de largo con el catch vacío** y el objeto vacío. Después le sumaba lo que
+  devuelve `getUpdates` —sólo mensajes de las últimas ~24 h— y guardaba con `set`, que **pisa el
+  nodo entero**. O sea que un tropiezo de lectura dejaba únicamente a los que le habían escrito al
+  bot ese día. Mati se salvaba porque le escribe seguido.
+  Arreglado con dos cosas: si la lectura falla **no se escribe nada**, y el guardado va con `patch`
+  y **sólo los nuevos**, así no puede sacar a nadie ni con la lectura incompleta. Además cada
+  corrida imprime cuántos suscriptos hay y quiénes, para que una baja se vea el mismo día.
+  **La lección general: un `catch {}` vacío antes de un `set` que pisa el padre es una bomba.** El
+  dato no se pierde con ruido, se pierde en silencio. Es el mismo patrón del bug de `cyc/mllinks`
+  del 05/08. Para mirar la lista sin despertar a nadie: `tgchats`.
 
 - **GitHub demora las corridas programadas**, a veces horas. Por eso los crons se piden 3 veces y
   el robot guarda el último día que mandó cada aviso, para no repetir.
