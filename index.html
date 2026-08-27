@@ -1028,6 +1028,7 @@ footer{margin-top:32px;padding-top:14px;border-top:1px solid var(--border);font-
     <div class="pedidos-count" id="ofi-resumen"></div>
     <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px" id="ofi-filtro-cuentas"></div>
     <div id="ofi-caja-barra" style="display:none;gap:8px;flex-wrap:wrap;margin-bottom:10px"></div>
+    <div id="ofi-caja-medidor" style="display:none;margin-bottom:10px"></div>
     <button class="btn" id="ofi-btn-despachar" style="display:none;width:100%;margin-bottom:10px;padding:12px;font-size:.82rem"></button>
     <div id="ofi-caja-list"><div class="empty-msg">Contá lo que tenés en la pestaña de al lado y acá te digo a qué cuenta va.</div></div>
   </div>
@@ -2279,7 +2280,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='17.9';
+const APP_VERSION='18.0';
 // El problema real que esto resuelve no es curiosidad: es que el celular guarda la app y sigue
 // mostrando la de ayer sin avisar. Varias veces se revisó un cambio que ya estaba subido y no se
 // veía. Por eso, además del número, el chip avisa cuando hay una versión nueva esperando.
@@ -3798,6 +3799,52 @@ function porCaja(p){
   const n=Math.floor(70/m.largoCm)*Math.floor(70/m.anchoCm)*Math.floor(70/m.altoCm);
   return n>0?n:0;   // 0 = no entra ni una: hay que mandarla suelta
 }
+
+// ── CUÁNTO LLENA LO QUE YA PUSISTE ─────────────────────────────────────────
+// Pedido suyo del 27/08/2026: "dos barritas de la caja, peso 30kg y tamaño 70x70x70, y qué tan
+// llena está esa caja. Y que nunca cargue más de lo que se permite."
+//
+// Se mide con el MISMO criterio que usa cajaSugerida, a propósito: si el medidor contara distinto
+// del que arma la caja, la barra diría 80% en una caja que el algoritmo ya dio por llena.
+// El lugar va como FRACCIÓN de caja (cada unidad gasta 1/porCaja), no como volumen: 343.000 cm³
+// de mercadería no entran en 343.000 cm³ de caja porque quedan huecos, y contando cuántas entran
+// por lado el hueco ya está descontado.
+//
+// Lo que NO tiene medida cargada se cuenta aparte y se dice en pantalla. Sumarlo como cero haría
+// que la barra mostrara una caja medio vacía que en realidad está llena: una barra que miente es
+// peor que no tener barra.
+function cajaOcupacion(items,filas){
+  let lugar=0,gramos=0,sinDim=0,sinPeso=0;
+  const byK={};(filas||[]).forEach(f=>{byK[_ck(f.p.id,f.variante)]=f;});
+  Object.entries(items||{}).forEach(([k,u])=>{
+    if(!(u>0))return;
+    const f=byK[k];if(!f)return;
+    const n=porCaja(f.p);
+    const pe=(f.p.medida&&f.p.medida.pesoG)||0;
+    if(n==null)sinDim+=u; else lugar+=n>0?u/n:u;   // n=0 (no entra ni una) cuenta caja entera
+    if(pe>0)gramos+=u*pe; else sinPeso+=u;
+  });
+  return {lugar,gramos,sinDim,sinPeso};
+}
+// Cuántas unidades de este renglón entran EN TOTAL, contra lo que la caja tiene puesto de TODO LO
+// DEMÁS. Devuelve el tope del renglón, no un incremento: las unidades propias se descuentan de la
+// cuenta a propósito, porque la casilla de la pantalla guarda el total de ese renglón. Sumarle
+// después lo que ya tenía puesto sería contarlas dos veces y dejar cargar el doble.
+// Sin medida devuelve Infinity: no se puede cortar lo que no se puede medir, y trabar la casilla
+// por falta de un dato sería peor que dejarlo pasar (el medidor lo avisa igual).
+function cajaCabenDe(f,items,filas){
+  const n=porCaja(f.p);
+  if(n==null)return Infinity;
+  if(!n)return 0;                                  // más de 70 cm de lado: en esta caja no va
+  const otros={...(items||{})};delete otros[_ck(f.p.id,f.variante)];
+  const oc=cajaOcupacion(otros,filas);
+  const libreLugar=Math.max(0,1-oc.lugar);
+  const librePeso=Math.max(0,CAJA_KG*1000-oc.gramos);
+  const pe=(f.p.medida&&f.p.medida.pesoG)||0;
+  const porLugar=Math.floor(libreLugar*n+1e-9);
+  const porPeso=pe>0?Math.floor(librePeso/pe+1e-9):Infinity;
+  return Math.max(0,Math.min(porLugar,porPeso));
+}
 // ── ARMAR UNA SOLA CAJA, MEZCLANDO BIEN ────────────────────────────────────
 // Pedido suyo del 23/08/2026, con el ejemplo: "si pones todas sabanas te va a quedar mucho volumen
 // y poco peso; lo mejor es sacar algunas sabanas y poner cartas, que son chiquitas y pesan, hasta
@@ -3852,10 +3899,10 @@ async function cajaSugerida(){
     restoLugar-=1/porCaja(c.f.p);
     restoPeso-=(c.f.p.medida?.pesoG)||0;
   }
-  const puestas=Object.values(items).reduce((a,x)=>a+x,0);
-  const pedidas=cand.reduce((a,c)=>a+c.u,0);
   await _guardarCajaArmando(ofiFiltroCuenta,items);
-  if(puestas<pedidas)toast(`Entró UNA caja: ${puestas} de ${pedidas} u. Cerrala y armá la siguiente con el resto.`,5000);
+  // LO QUE NO ENTRÓ NO SE AVISA. Pedido suyo del 27/08/2026: "si sobra no decir nada, me daré
+  // cuenta una vez que ya envíe la caja, que siga recomendándome más mercadería". El sobrante no
+  // se pierde: sigue en la oficina y vuelve a salir sugerido en la caja siguiente.
   renderOfiCaja();
 }
 async function cajaVaciar(){
@@ -3950,6 +3997,41 @@ function renderOfiCaja(){
     btnDesp.disabled=uCaja<=0;
     btnDesp.style.opacity=uCaja>0?'1':'.45';
     btnDesp.onclick=()=>{if(uCaja>0)cerrarCaja(ofiFiltroCuenta);};
+  }
+  // ── LAS DOS BARRITAS DE LA CAJA ──────────────────────────────────────────
+  // Los dos límites de una caja a Full son 70x70x70 y 30 kg, y llenar uno solo desperdicia el
+  // otro: por eso van las DOS, no una sola de "qué tan llena está". Sábanas = mucho lugar y poco
+  // peso; cartas = poco lugar y mucho peso. Mirando las dos se ve qué le falta a la caja.
+  const med=document.getElementById('ofi-caja-medidor');
+  if(med){
+    med.style.display=armando?'':'none';
+    if(armando){
+      const oc=cajaOcupacion(cajaAct,vis);
+      const pLugar=oc.lugar*100, kg=oc.gramos/1000, pPeso=(kg/CAJA_KG)*100;
+      // Rojo SOLO si se pasó: es lo único que hay que arreglar. El resto va en el color de siempre
+      // — pintar una barra al 60% de ámbar sería avisar de algo que no pasa nada.
+      const barrita=(pct,col,txt,det)=>`<div style="flex:1;min-width:150px">
+        <div style="display:flex;justify-content:space-between;align-items:baseline;gap:8px;font-size:.62rem;color:var(--muted);margin-bottom:4px">
+          <span>${txt}</span><strong style="font-family:'DM Mono',monospace;font-size:.78rem;color:${col}">${det}</strong>
+        </div>
+        <div style="height:9px;background:var(--bg);border:1px solid var(--border2);border-radius:6px;overflow:hidden">
+          <div style="height:100%;width:${Math.min(100,Math.max(0,pct))}%;background:${col};border-radius:6px"></div>
+        </div>
+      </div>`;
+      const colL=pLugar>100.5?'var(--red)':'var(--accent2)';
+      const colP=pPeso>100.5?'var(--red)':'var(--accent2)';
+      const avisos=[];
+      if(pLugar>100.5||pPeso>100.5)avisos.push(`<span style="color:var(--red)">Esta caja está pasada: sacá unidades hasta que las dos barras entren.</span>`);
+      if(oc.sinDim)avisos.push(`${oc.sinDim} u. sin medidas cargadas: no entran en la barra del lugar, así que la caja está <strong>más llena</strong> de lo que muestra.`);
+      if(oc.sinPeso)avisos.push(`${oc.sinPeso} u. sin peso cargado: lo mismo con la barra del peso.`);
+      med.innerHTML=`<div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:10px 14px">
+        <div style="display:flex;gap:16px;flex-wrap:wrap">
+          ${barrita(pLugar,colL,'Lugar · caja de 70×70×70',`${Math.round(pLugar)}%`)}
+          ${barrita(pPeso,colP,'Peso · tope 30 kg',`${kg.toFixed(1)} kg`)}
+        </div>
+        ${avisos.length?`<div style="font-size:.62rem;color:var(--muted);margin-top:8px;line-height:1.6">${avisos.join('<br>')}</div>`:''}
+      </div>`;
+    }
   }
   const barra=document.getElementById('ofi-caja-barra');
   if(barra){
@@ -4049,8 +4131,12 @@ function renderOfiCaja(){
 
     // En modo armar caja, cada renglón tiene su casilla: lo que va DE VERDAD en esta caja.
     const enCaja=armando?(cajaAct[_ck(f.p.id,f.variante)]||0):0;
-    // Tope: lo que hay en casa MENOS lo que ya está apartado en las cajas de las otras cuentas.
-    const tope=armando?cajaMax(f,ofiFiltroCuenta):f.hay;
+    // Tope: lo que hay en casa MENOS lo que ya está apartado en las cajas de las otras cuentas,
+    // Y ADEMÁS lo que todavía entra en ESTA caja por lugar y por peso (27/08/2026: "que nunca
+    // cargue más de lo que se permite en esa caja"). Sin medidas cargadas no se puede cortar y
+    // manda el stock: el medidor de arriba avisa que la barra se quedó corta.
+    const cabenAqui=armando?cajaCabenDe(f,cajaAct,vis):Infinity;
+    const tope=armando?Math.min(cajaMax(f,ofiFiltroCuenta),cabenAqui):f.hay;
     const otras=f.hay-tope;
     const casilla=armando?`<input type="number" inputmode="numeric" value="${enCaja||''}" placeholder="0" max="${tope}"
         style="flex:none;width:66px;text-align:center;background:var(--bg);border:1px solid ${enCaja>0?'var(--accent2)':'var(--border2)'};border-radius:8px;color:var(--text);font-family:'DM Mono',monospace;font-size:.95rem;padding:8px 4px;outline:none"

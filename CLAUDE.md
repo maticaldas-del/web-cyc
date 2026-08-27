@@ -294,6 +294,29 @@ varias cajas del mismo producto se reparte **por orden de despacho, la más viej
 dice de qué caja vino cada unidad). Una caja se marca **solo si TODOS sus renglones** quedaron
 cubiertos: media caja recibida sigue siendo una caja en camino. A mano: `cajasllegaron`.
 
+**La caja tiene DOS límites y se ven los dos: 70×70×70 y 30 kg** (27/08/2026, pedido suyo). Arriba
+de "Armar caja" van dos barritas —lugar y peso— con lo que llevás puesto. Van las dos y no una
+sola de "qué tan llena está" porque llenar uno desperdicia el otro: las sábanas gastan lugar y no
+pesan, las cartas pesan y no ocupan. Mirando las dos se ve qué le falta a la caja.
+**Y la casilla de cada renglón NO deja pasarse**: el tope de cada una es lo que hay en casa, menos
+lo apartado en las cajas de las otras cuentas, menos lo que ya ocupa el resto de ESTA caja.
+El lugar se mide como FRACCIÓN de caja (cada unidad gasta `1/porCaja`), nunca como volumen:
+343.000 cm³ de mercadería no entran en 343.000 cm³ de caja porque quedan huecos, y contando
+cuántas entran por lado el hueco ya está descontado. Es la MISMA cuenta que usa `cajaSugerida`, a
+propósito — si el medidor contara distinto del que arma la caja, la barra diría 80% en una caja
+que el algoritmo ya dio por llena.
+**Lo que no entró no se avisa**, decisión suya: *"si sobra no decir nada, me daré cuenta una vez
+que ya envíe la caja, que siga recomendándome más mercadería"*. El sobrante no se pierde: queda en
+la oficina y vuelve a salir sugerido en la caja siguiente.
+**Ojo con las medidas que faltan:** lo que no tiene largo/ancho/alto o peso cargado NO entra en las
+barras y se dice en pantalla, porque una barra que muestra media caja cuando está llena es peor que
+no tener barra. Las carga solas el robot con `bajarmedidas`; lo que se escribe a mano en la ficha
+queda marcado `fuente:'mano'` y el robot no lo pisa.
+**El error que se cometió al hacerlo, para no repetirlo:** `cajaCabenDe` devuelve el TOTAL que
+entra de ese renglón (se descuenta a sí mismo del cálculo), no un incremento. La primera versión le
+sumaba encima lo que el renglón ya tenía puesto y dejaba cargar el DOBLE. Compilaba perfecto y en
+pantalla no se notaba: lo agarró probar la cuenta con números inventados antes de subir.
+
 **Lo que se sugiere mandar cubre 44 días, no 30.** Regla suya del 19/08/2026: desde que se arma
 la caja hasta que la mercadería se puede vender pasan unos **14 días** —~7 hasta que la caja sale
 y ~7 más hasta que ML la activa en Full— y en el medio la cuenta sigue vendiendo de lo que ya
