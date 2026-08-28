@@ -807,6 +807,42 @@ async function envioSegunML(mla, token) {
   return peor == null ? null : { envio: Math.round(peor), det };
 }
 
+// ── EL CATÁLOGO COMPLETO DE UNA CUENTA ──────────────────────────────────
+// Devuelve TODOS los MLA que ML dice que tiene esa cuenta, activos y pausados.
+//
+// Está aparte a propósito: la usan `pubfaltan` y el chequeo de la mañana, y son la misma
+// pregunta ("¿el panel conoce todas las publicaciones de ML?"). Si cada uno enumerara el
+// catálogo por su cuenta, el chequeo podría decir "0 faltan" con una cuenta distinta de la que
+// hace el alta y nadie se enteraría. Misma regla que ya vale para los márgenes: el que verifica
+// tiene que llamar a la MISMA función que el que hace el trabajo.
+//
+// `/users/<id>/items/search` pagina de a 100 y ML corta el paginado por offset en 1.000, así que
+// arriba de eso hay que seguir por scan_id. Se hacen los dos: primero offset, y si la cuenta tiene
+// más de 1.000 se completa con scan.
+async function catalogoDeCuenta(sellerId, tok) {
+  const mios = [];
+  let total = null;
+  for (let off = 0; off < 1000; off += 100) {
+    const r = await mlGet(`/users/${sellerId}/items/search?limit=100&offset=${off}`, tok);
+    if (total == null) total = Number(r?.paging?.total) || 0;
+    const res = r?.results || [];
+    mios.push(...res);
+    if (res.length < 100) break;
+  }
+  if (total != null && total > 1000) {
+    let scan = null, vueltas = 0;
+    do {
+      const url = `/users/${sellerId}/items/search?search_type=scan&limit=100` + (scan ? `&scroll_id=${encodeURIComponent(scan)}` : '');
+      const r = await mlGet(url, tok);
+      scan = r?.scroll_id || null;
+      const res = r?.results || [];
+      for (const m of res) if (!mios.includes(m)) mios.push(m);
+      if (!res.length) break;
+    } while (scan && ++vueltas < 60);
+  }
+  return { mios, total };
+}
+
 // ── EL DÓLAR OFICIAL DE VENTA, SOLO ────────────────────────────────────────
 // Decisión suya del 22/08/2026. Hasta hoy el tipo de cambio se cargaba a mano en el Arqueo, y de
 // ese número salen TODOS los márgenes (el costo de cada producto está en dólares) y por lo tanto
@@ -3602,7 +3638,31 @@ async function main() {
         const tok = t.access_token, sid = acc.seller_id;
         const r = { label, preg: 0, pregVieja: null, pregTxt: [], reclamos: [], msgs: 0,
           pausSinStock: 0, quiebres: [], pausML: [], pausMano: [], deposito: [], fullProblema: [],
-          fullPausado: [], fullDormido: [], cajas: [], err: [] };
+          fullPausado: [], fullDormido: [], cajas: [], err: [],
+          mlTiene: null, faltan: [], sinFicha: [] };
+        // ── LAS PUBLICACIONES QUE EL PANEL NO CONOCE ──
+        // Pedido suyo del 28/08/2026: "agrega las publicaciones que faltan".
+        //
+        // POR QUÉ NO ALCANZA CON `sinvincular`: esa cuenta va del panel hacia ML — recorre
+        // `cyc/mllinks` y avisa cuáles no tienen producto. Si ML tiene 100 publicaciones y el panel
+        // conoce 80, `sinvincular` mira las 80 y contesta "está todo bien". Él lo dijo así ese
+        // mismo día. La pregunta que falta es la contraria: de las 100 de ML, ¿cuántas conoce el
+        // panel? Una publicación que NUNCA vendió no entra sola: el alta la hace el auto-match
+        // recorriendo las órdenes. Mientras tanto no se le cuenta el stock de Full (falta plata en
+        // el Arqueo), no tiene margen, el robot no le toca el precio ni le saca las promociones.
+        //
+        // Van los DOS números, que son problemas distintos: las que ML tiene y el panel no
+        // (se dan de alta con `pubfaltan:go`) y las que el panel tiene sin ficha de producto
+        // (se enganchan con `vincular`). Si no se separan, arreglar una parece arreglar la otra.
+        try {
+          const { mios } = await catalogoDeCuenta(sid, tok);
+          r.mlTiene = mios.length;
+          for (const m of mios) {
+            const e = links[m];
+            if (!e) r.faltan.push(m);
+            else if (!e.prodId) r.sinFicha.push(m);
+          }
+        } catch (e) { r.err.push('catálogo: ' + String(e.message || e).slice(0, 60)); }
         // ── PREGUNTAS ──
         try {
           const q = await mlGet(`/questions/search?seller_id=${sid}&status=UNANSWERED&api_version=4&limit=50&sort=date_created_asc`, tok);
@@ -3847,6 +3907,12 @@ async function main() {
         if (ciegas) L.push(`   └ <b>${ciegas}</b> no las ve NADIE (menos de 20 visitas): el precio no es el problema`);
         if (vistas) L.push(`   └ <b>${vistas}</b> las ven y no compran (50+ visitas): ahí sí mirar el precio`);
       }
+      // PUBLICACIONES QUE EL PANEL NO VE. Se avisa solo si hay: en un día normal son cero y una
+      // línea fija de "0" enseña a saltearla.
+      const totFaltan = R.reduce((a, r) => a + r.faltan.length, 0);
+      const totSinFicha = R.reduce((a, r) => a + r.sinFicha.length, 0);
+      if (totFaltan) L.push(`👻 <b>${totFaltan}</b> publicación(es) de ML que el panel NO conoce · no se les cuenta stock ni margen · <code>pubfaltan:go</code>`);
+      if (totSinFicha) L.push(`🔗 <b>${totSinFicha}</b> publicación(es) sin ficha de producto · sin costo no hay margen · <code>vincular</code>`);
       // Lo único de todo el chequeo que se arregla con un comando y da plata el mismo día.
       if (baj.filas.length) {
         L.push(`\n🏷️ <b>${baj.filas.length} para bajar poquito y que roten</b> · ${money(Math.round($baj))} parados`);
@@ -3903,6 +3969,18 @@ async function main() {
       if (baj.noConviene.length) {
         D.push(`\n── Perdieron la caja pero NO conviene bajarlas · ${baj.noConviene.length} ──`);
         for (const f of baj.noConviene.slice(0, 15)) D.push(`   ${f.label} · ${f.nom} · ${f.why}`);
+      }
+      D.push(`\n── El panel contra ML ──`);
+      for (const r of R) D.push(`   ${r.label}: ML tiene ${r.mlTiene == null ? '?' : r.mlTiene} · el panel no conoce ${r.faltan.length} · sin ficha ${r.sinFicha.length}`);
+      if (totFaltan) {
+        D.push(`\n── ML las tiene y el panel no · ${totFaltan} ──`);
+        for (const r of R) for (const m of r.faltan.slice(0, 25)) D.push(`   ${r.label} · ${m}`);
+        D.push(`   Para darlas de alta (sin producto, para vincularlas a mano): pubfaltan:go`);
+      }
+      if (totSinFicha) {
+        D.push(`\n── En el panel pero sin ficha de producto · ${totSinFicha} ──`);
+        for (const r of R) for (const m of r.sinFicha.slice(0, 25)) D.push(`   ${r.label} · ${m} · ${String((links[m] || {}).title || '').slice(0, 46)}`);
+        D.push(`   Se enganchan una por una: vincular:<MLA>=<palabra o id>:go`);
       }
       D.push(`\n── Cajas que llegaron en ${DIAS} días · ${totCajas} ──`);
       for (const r of R) for (const c of r.cajas) D.push(`   ${r.label} · ${c.fecha} · ${c.nom}${c.q ? ` · ${c.q} u.` : ''}`);
@@ -13055,31 +13133,12 @@ async function main() {
         catch { console.log(`▶ ${label}: no pude renovar el token.\n`); continue; }
         await db.patch('mlapi/tokens/' + label, { refresh_token: t.refresh_token, updated_ts: Date.now() });
         const tok = t.access_token;
-        // Catálogo completo de la cuenta. `/users/<id>/items/search` pagina de a 100 y ML corta el
-        // paginado por offset en 1.000, así que arriba de eso hay que ir por scan_id. Se prueban
-        // los dos: primero offset, y si la cuenta tiene más de 1.000 se sigue con scan.
-        const mios = [];
-        let total = null;
-        try {
-          for (let off = 0; off < 1000; off += 100) {
-            const r = await mlGet(`/users/${acc.seller_id}/items/search?limit=100&offset=${off}`, tok);
-            if (total == null) total = Number(r?.paging?.total) || 0;
-            const res = r?.results || [];
-            mios.push(...res);
-            if (res.length < 100) break;
-          }
-          if (total != null && total > 1000) {
-            let scan = null, vueltas = 0;
-            do {
-              const url = `/users/${acc.seller_id}/items/search?search_type=scan&limit=100` + (scan ? `&scroll_id=${encodeURIComponent(scan)}` : '');
-              const r = await mlGet(url, tok);
-              scan = r?.scroll_id || null;
-              const res = r?.results || [];
-              for (const m of res) if (!mios.includes(m)) mios.push(m);
-              if (!res.length) break;
-            } while (scan && ++vueltas < 60);
-          }
-        } catch (err) {
+        // El catálogo lo trae `catalogoDeCuenta`, la MISMA función que usa el chequeo de la
+        // mañana para avisar si falta alguna. Dos copias de esta enumeración podrían discrepar y
+        // el chequeo diría "no falta ninguna" mientras acá sí faltan.
+        let mios, total;
+        try { ({ mios, total } = await catalogoDeCuenta(acc.seller_id, tok)); }
+        catch (err) {
           console.log(`▶ ${label}: ML no me dio el catálogo — ${String(err.message || err).slice(0, 100)}\n`);
           continue;
         }
