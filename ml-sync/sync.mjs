@@ -5389,10 +5389,21 @@ async function main() {
     // lugar en 70x70x70 y cuántas por los 30 kg— y manda el más chico, igual que en "Armar caja".
     // El supuesto es que la caja va llena de ESE producto. Una caja mezclada reparte distinto,
     // pero como reparte proporcionalmente el costo por unidad da parecido: sirve para comparar.
+    //
+    // CON :go ESCRIBE, y sólo el grupo "cargado de menos" — decisión suya del 27/08/2026 ("ponele
+    // eso que debería" a ese grupo). Los "cargado de más" NO se tocan: ahí están los 5 espejos, que
+    // llevan protección desde el 20/08 y por eso pueden tener de más A PROPÓSITO.
+    // Escribe el MISMO número que mostró la prueba, no una cuenta paralela: si algún día cambia la
+    // fórmula, cambian las dos juntas. Y recalcula costFullUSD explícito (lección del KO UNISEX:
+    // dejarlo librado deja el resto viejo adentro).
     if (/^embalaje(:|$)/.test(String(process.env.BILLING_PROBE || ''))) {
-      const CUANTOS = parseInt(String(process.env.BILLING_PROBE).split(':')[1] || '0', 10) || 0;
+      const _pe = String(process.env.BILLING_PROBE).split(':');
+      const APLICAR = _pe.includes('go');
+      const CUANTOS = parseInt(_pe[1] || '0', 10) || 0;
       const COSTO_CAJA = 16000;                       // el mismo número que usa el panel
       const tcE = parseFloat(((await db.get('cyc/finanzas')) || {}).tipo_cambio) || 1500;
+      // El % de reclamos VIVO, igual que poncosto: el guardado puede ser de hace meses.
+      const vpE = (await db.get('cyc/ventaprod')) || {}; setDevLive(vpE);
       const porCajaDe = (m) => {
         if (!m || !(m.largoCm > 0) || !(m.anchoCm > 0) || !(m.altoCm > 0)) return null;
         const n = Math.floor(70 / m.largoCm) * Math.floor(70 / m.anchoCm) * Math.floor(70 / m.altoCm);
@@ -5455,7 +5466,35 @@ async function main() {
       console.log(`unidad da parecido. Sirve para ver quién está MUY lejos, no para afinar centavos.`);
       console.log(`Y el embalaje de verdad (bolsita, burbuja) va ADEMÁS de esto: si un producto necesita`);
       console.log(`protección, lo que corresponde es MÁS que lo que dice acá, no menos.`);
-      console.log(`\nNo escribí nada. Para corregir uno: es el campo "Envío+embalaje US$" de la ficha.`);
+      if (!APLICAR) {
+        console.log(`\nPRUEBA: no escribí nada.`);
+        console.log(`Para poner el "debería" en los ${bajos.length} CARGADOS DE MENOS: embalaje:go`);
+        console.log(`(los "cargado de más" no se tocan ni con :go — ahí están los espejos, que llevan protección)`);
+        return;
+      }
+      console.log(`\n══ APLICANDO a los ${bajos.length} cargados de menos ══`);
+      let okE = 0;
+      for (const f of bajos) {
+        const p = f.p;
+        const usd = Math.round((f.deberia / tcE) * 100) / 100;   // el debería, pasado a dólares
+        const costUSD = parseFloat(p.costUSD) || 0;
+        const dev = DEV_LIVE[p.id] != null ? DEV_LIVE[p.id] : (parseFloat(p.devPct) || 0);
+        const fullUSD = Math.round((costUSD * (1 + dev / 100) + usd) * 100) / 100;
+        const antesFull = costoPesos(p, 1, tcE).costo;
+        const despuesFull = costoPesos({ ...p, shipUSD: usd, costFullUSD: fullUSD }, 1, tcE).costo;
+        await db.set('cyc/products/' + p.id + '/shipUSD', usd);
+        await db.set('cyc/products/' + p.id + '/costFullUSD', fullUSD);
+        // Releer de la base: que el comando diga "guardado" no alcanza.
+        const rel = await db.get('cyc/products/' + p.id);
+        const bien = rel && Math.abs((parseFloat(rel.shipUSD) || 0) - usd) < 0.005
+                         && Math.abs((parseFloat(rel.costFullUSD) || 0) - fullUSD) < 0.005;
+        if (bien) okE++; else console.log(`   ✗ NO QUEDÓ: ${p.name}`);
+        console.log(`   ${String(p.name).slice(0, 34).padEnd(34)} envío $0→${money(Math.round(f.deberia))}`
+          + `   ·   costo full ${money(antesFull)} → ${money(despuesFull)}`);
+      }
+      console.log(`\n${okE === bajos.length ? '✓' : '✗'} ${okE} de ${bajos.length} guardadas y releídas de la base.`);
+      console.log(`\nOJO: subió el costo, así que los márgenes BAJARON. No toqué ningún precio.`);
+      console.log(`Ahora hay que correr netoweb y después bajopiso para ver quién quedó abajo del piso.`);
       return;
     }
 
