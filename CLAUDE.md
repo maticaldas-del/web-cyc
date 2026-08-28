@@ -960,6 +960,16 @@ Lo que quedó abierto. Borrá de acá lo que se vaya cerrando.
   mercadería del depósito: sigue pagando almacenamiento y ML la descarta igual. El 16/08 decidió:
   **las retira**. El retiro se pide desde ML (Full → Estado de tu stock → Retirar), no hay API para
   eso: lo hace él. Falta confirmar que las 54 unidades salieron. Los pendrives NO se tocaron.
+- **HAY UNA LISTA EN GASTOS DE LO QUE SE CARGA A MANO CADA MES** (28/08/2026, pedido suyo: *"que
+  haya un lugar que me indique si se cargó los gastos del mes de las cosas que te tengo que pasar
+  manual, para que al terminar el mes no falte cargar ninguno"*). Va arriba de los movimientos:
+  ❌ rojo lo que falta, ✅ verde lo cargado con su monto. Se define en `GASTOS_DEL_MES`.
+  Reconoce por categoría, y donde varias comparten categoría además por una palabra de la
+  descripción (`pal`) o descartando una (`no`: "Servicios" excluye el Sancor). **Si un gasto se
+  carga con otro nombre lo marca en rojo aunque esté**: es un falso faltante, a propósito — dar por
+  cargado algo que falta sería mucho peor, y eso se dice en pantalla.
+  Sólo se muestra en la vista por MES.
+
 - **Faltan gastos de agosto**: servicios ($150.000, en julio figura como "Claude"). El alquiler
   ($100.000), los honorarios ($100.000) y la obra social Sancor ($65.227) ya están.
 - **OSDE es PERSONAL, no es de CYC. No cargarlo nunca.** Aparece en los comprobantes recibidos de

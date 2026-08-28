@@ -1690,6 +1690,9 @@ footer{margin-top:32px;padding-top:14px;border-top:1px solid var(--border);font-
     <button class="btn btn-add" onclick="addCompra()">+ Agregar</button>
   </div>
 
+  <div class="stitle">¿Falta cargar algún gasto de este mes?</div>
+  <div id="compras-checklist"></div>
+
   <div class="stitle">Movimientos del mes</div>
   <div id="compras-list"><div class="empty-msg">Sin registros este mes.</div></div>
 
@@ -2284,7 +2287,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='18.1';
+const APP_VERSION='18.2';
 // El problema real que esto resuelve no es curiosidad: es que el celular guarda la app y sigue
 // mostrando la de ayer sin avisar. Varias veces se revisó un cambio que ya estaba subido y no se
 // veía. Por eso, además del número, el chip avisa cuando hay una versión nueva esperando.
@@ -9856,7 +9859,7 @@ function getCompraTipo(x){return (x&&x.tipo==='mercaderia')?'mercaderia':'gasto'
 function initComprasPage(){
   _initScopeDefaults('cmp');
   onCmpTipo();
-  renderComprasList();renderComprasCats();renderComprasHist();updateComprasTotals();renderComprasComp();
+  renderComprasChecklist();renderComprasList();renderComprasCats();renderComprasHist();updateComprasTotals();renderComprasComp();
 }
 
 // Muestra/oculta el selector de categoría: la mercadería no lleva categoría de gasto.
@@ -9932,6 +9935,63 @@ function renderComprasList(){
       <span class="pi-nota">${x.desc||''}</span>
       <button class="btn btn-del" onclick="delCompra('${x.id}')">✕</button>
     </div>`;}).join('');
+}
+
+// ── LOS GASTOS QUE HAY QUE CARGAR A MANO TODOS LOS MESES ───────────────────
+// Pedido suyo del 28/08/2026: "que haya un lugar que me indique si se cargó los gastos del mes de
+// las cosas que te tengo que pasar manual, para que al terminar el mes no falte cargar ninguno.
+// Que aparezca con cruz roja lo que todavía no mandé y en verde cuando ya lo cargamos".
+//
+// Por qué hace falta: estos gastos NO los puede traer nadie solo. El monotributo se descuenta como
+// % en cada venta, la mercadería vive en Facturas → Recibidas, y todo lo demás —honorarios,
+// alquiler, la obra social, los recargos de envío que cobra ML— entra sólo si alguien lo carga.
+// Un mes al que le falta uno muestra una ganancia MÁS ALTA de la real, y no lo avisa nada.
+//
+// CÓMO RECONOCE QUE YA ESTÁ: por categoría, y cuando varios comparten categoría, además por una
+// palabra de la descripción. Si lo cargaste con otro nombre te lo va a marcar en ROJO aunque esté:
+// es un falso faltante, molesto pero inofensivo. Lo contrario —dar por cargado algo que falta—
+// sería mucho peor, así que el criterio es estricto a propósito y se dice en pantalla.
+const GASTOS_DEL_MES=[
+  {n:'Honorarios contables',   cat:'Honorarios contables', nota:'~$100.000'},
+  {n:'Alquiler',               cat:'Alquiler',             nota:'~$100.000'},
+  {n:'Servicios',              cat:'Servicios', no:['sancor'], nota:'luz, internet, etc.'},
+  {n:'Sancor Salud (Ayelen)',  pal:['sancor'],  nota:'el monto CAMBIA todos los meses: va el de la factura, no un promedio'},
+  {n:'Autónomos + obra social de Ayelen', cat:'Monotributo / Impuestos', pal:['autonomo','autónomo','obra social'], nota:'~$113.083 · el VEP del monotributo NO va acá, ya se descuenta en cada venta'},
+  {n:'Resumen de ML/MP',       cat:'Envios', pal:['resumen','recargo','almacenamiento','full'],
+   nota:'recargos de envío, almacenamiento de Full, retiros de stock · lo pasás vos y se carga en el mes en curso'},
+];
+function renderComprasChecklist(){
+  const el=document.getElementById('compras-checklist');if(!el)return;
+  // Sólo tiene sentido por MES: "los gastos de este mes" no significa nada mirando un día o un año.
+  if(cmpScopeMode!=='mes'){el.innerHTML='';return;}
+  const pref=getKey('cmp','mes');
+  const gastos=getComprasByPrefix(pref).filter(x=>getCompraTipo(x)==='gasto');
+  const norm=(t)=>String(t||'').toLowerCase();
+  const buscar=(g)=>gastos.filter(x=>{
+    if(g.cat&&(x.cat||'')!==g.cat)return false;
+    const d=norm(x.desc);
+    if(g.pal&&!g.pal.some(w=>d.includes(norm(w))))return false;
+    if(g.no&&g.no.some(w=>d.includes(norm(w))))return false;
+    return true;
+  });
+  const filas=GASTOS_DEL_MES.map(g=>{const m=buscar(g);return{g,hay:m.length>0,monto:m.reduce((s,x)=>s+(x.monto||0),0),n:m.length};});
+  const faltan=filas.filter(f=>!f.hay).length;
+  const col=faltan?'var(--red)':'var(--green)';
+  el.innerHTML=`<div style="background:var(--surface);border:1px solid ${faltan?'var(--red)':'var(--border)'};border-radius:var(--r);padding:14px">
+    <div style="font-size:.86rem;font-weight:700;color:${col};margin-bottom:10px">
+      ${faltan?`❌ Faltan ${faltan} de ${filas.length}`:`✅ Están los ${filas.length}`}
+      <span style="font-weight:400;font-size:.68rem;color:var(--muted)">· lo que no puede cargarse solo</span>
+    </div>
+    ${filas.map(f=>`<div style="display:flex;align-items:baseline;gap:10px;flex-wrap:wrap;padding:7px 0;border-top:1px solid var(--border)">
+      <span style="font-size:.9rem;flex-shrink:0">${f.hay?'✅':'❌'}</span>
+      <span style="font-size:.76rem;font-weight:600;min-width:150px;flex:1">${f.g.n}</span>
+      <span style="font-family:'DM Mono',monospace;font-size:.76rem;color:${f.hay?'var(--text)':'var(--red)'}">${f.hay?fmt(f.monto)+(f.n>1?` · ${f.n} renglones`:''):'falta'}</span>
+      <span style="font-size:.62rem;color:var(--muted);flex-basis:100%">${f.g.nota}</span>
+    </div>`).join('')}
+    <div style="font-size:.62rem;color:var(--muted);margin-top:10px;line-height:1.6">
+      Lo reconoce por la categoría y por palabras de la descripción. <strong>Si lo cargaste con otro nombre te lo va a marcar en rojo aunque esté</strong> — es preferible una alarma de más que dar por cargado algo que falta.
+    </div>
+  </div>`;
 }
 
 function renderComprasCats(){
