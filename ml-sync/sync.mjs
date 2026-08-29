@@ -3913,6 +3913,36 @@ async function main() {
       const totSinFicha = R.reduce((a, r) => a + r.sinFicha.length, 0);
       if (totFaltan) L.push(`👻 <b>${totFaltan}</b> publicación(es) de ML que el panel NO conoce · no se les cuenta stock ni margen · <code>pubfaltan:go</code>`);
       if (totSinFicha) L.push(`🔗 <b>${totSinFicha}</b> publicación(es) sin ficha de producto · sin costo no hay margen · <code>vincular</code>`);
+      // LOS CARGOS DE FULL DEL MES: recordárselo hasta que estén cargados.
+      // Pedido suyo del 29/08/2026: "quiero cargarlos todos los meses, quiero que me haga acordar".
+      //
+      // Por qué hace falta un recordatorio ACTIVO y no alcanza con la lista de Gastos: esa lista
+      // sólo se ve entrando a la pantalla de Gastos y eligiendo la vista por mes. Este gasto no lo
+      // trae nadie solo —hay que bajar 4 reportes de la web de ML— así que si nadie lo nombra, no
+      // se carga, y el mes cierra mostrando una ganancia más alta que la real. En julio fueron
+      // $127.835 entre las cuatro cuentas.
+      //
+      // Recién a partir del día 15: ML cierra la facturación entre el 12 y el 14, así que antes de
+      // esa fecha el reporte del mes anterior todavía no existe y el aviso sería ruido.
+      //
+      // La condición es la MISMA que usa la lista de Gastos de la web (categoría Envios + una de
+      // esas palabras en la descripción). Si los dos midieran distinto, la pantalla podría decir
+      // "ya está" mientras el chequeo lo sigue pidiendo.
+      try {
+        const _hoyAR = new Date(new Date().toLocaleString('en-US', { timeZone: 'America/Argentina/Buenos_Aires' }));
+        if (_hoyAR.getDate() >= 15) {
+          const _ymNow = mesActualAR();
+          const _compras = (await db.get('cyc/compras')) || {};
+          const _PAL = ['almacenamiento', 'full', 'stock antiguo', 'retiro'];
+          const _hay = Object.values(_compras).some((g) => g && String(g.dayKey || '').startsWith(_ymNow)
+            && (g.cat || '') === 'Envios' && _PAL.some((w) => String(g.desc || '').toLowerCase().includes(w)));
+          if (!_hay) {
+            L.push(`\n📄 <b>Faltan los cargos de Full del mes</b> · almacenamiento + stock antiguo + retiros`);
+            L.push(`   └ ML → Facturación → el mes → Ir al detalle → bajar el <b>Reporte de Facturación</b> de las 4 cuentas`);
+            L.push(`   └ en julio fueron <b>${money(127835)}</b> · sin esto el mes cierra con una ganancia más alta que la real`);
+          }
+        }
+      } catch (e) { D.push(`(no pude chequear los cargos de Full: ${String(e.message || e).slice(0, 60)})`); }
       // Lo único de todo el chequeo que se arregla con un comando y da plata el mismo día.
       if (baj.filas.length) {
         L.push(`\n🏷️ <b>${baj.filas.length} para bajar poquito y que roten</b> · ${money(Math.round($baj))} parados`);

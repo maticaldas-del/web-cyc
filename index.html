@@ -2287,7 +2287,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='18.2';
+const APP_VERSION='18.3';
 // El problema real que esto resuelve no es curiosidad: es que el celular guarda la app y sigue
 // mostrando la de ayer sin avisar. Varias veces se revisó un cambio que ya estaba subido y no se
 // veía. Por eso, además del número, el chip avisa cuando hay una versión nueva esperando.
@@ -9957,8 +9957,10 @@ const GASTOS_DEL_MES=[
   {n:'Servicios',              cat:'Servicios', no:['sancor'], nota:'luz, internet, etc.'},
   {n:'Sancor Salud (Ayelen)',  pal:['sancor'],  nota:'el monto CAMBIA todos los meses: va el de la factura, no un promedio'},
   {n:'Autónomos + obra social de Ayelen', cat:'Monotributo / Impuestos', pal:['autonomo','autónomo','obra social'], nota:'~$113.083 · el VEP del monotributo NO va acá, ya se descuenta en cada venta'},
-  {n:'Resumen de ML/MP',       cat:'Envios', pal:['resumen','recargo','almacenamiento','full'],
-   nota:'recargos de envío, almacenamiento de Full, retiros de stock · lo pasás vos y se carga en el mes en curso'},
+  {n:'Cargos de Full de ML (las 4 cuentas)', cat:'Envios', pal:['almacenamiento','full','stock antiguo','retiro'],
+   nota:'ML → Facturación → el mes → Ir al detalle → bajar el "Reporte de Facturación" de CADA cuenta y pasármelo. '
+      + 'Son almacenamiento + stock antiguo + retiro de stock. Julio fueron $127.835. '
+      + 'OJO: NO se carga el total de la factura de ML — casi toda son percepciones de IIBB y comisiones, que ya se descuentan en cada venta.'},
 ];
 function renderComprasChecklist(){
   const el=document.getElementById('compras-checklist');if(!el)return;
