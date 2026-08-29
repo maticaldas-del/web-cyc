@@ -890,20 +890,20 @@ siempre. Los verificadores tienen que llamar a la misma función que el código 
 
 Lo que quedó abierto. Borrá de acá lo que se vaya cerrando.
 
-- **REBARBADOR MANUAL GIRATORIO: falta el COSTO DE COMPRA. Pedírselo en cada chat hasta que lo mande.**
-  Pedido suyo del 26/08/2026: quiere publicarlo NUEVO en **Ayelen** y darlo de alta en el panel.
-  Dijo textual *"el costo de compra te lo paso más tarde. haceme acordar"*.
-  Producto: "Rebarbador Manual Giratorio Para Resina, Jabón, Etc" · la competencia lo tiene desde
-  **$6.000** · +100 vendidos · 4,7 (93 opiniones).
-  **NO se creó la ficha todavía, a propósito:** una ficha sin costo cae en la trampa del 24/08 con
-  el KO UNISEX (`costFullUSD` sin escribir = cualquier resto viejo adentro). Se crea cuando llegue
-  el costo, con el número puesto a mano.
-  **Cuenta que ya está hecha, para cuando lo mande:** a $6.000 en Ayelen el neto queda en ~$2.490
-  (comisión ~32% + cargo fijo $1.230 + 5,95% de percepciones), así que **para llegar al 32% hay que
-  comprarlo a menos de ~$1.900**. Si el proveedor pide más, a $6.000 no cierra: o se vende más caro
-  o no va. Ojo que el ~32% de comisión es el general, no el de esa categoría.
-  **Lo que falta además del costo:** fotos PROPIAS (las del screenshot son de otro vendedor, no se
-  usan), stock real, y la categoría de ML.
+- **REBARBADOR MANUAL GIRATORIO: RESUELTO el 29/08/2026.** Él pasó el costo: **$1.505**. Se cargó con
+  `poncosto:p1787783558381|1505|go` y quedó releído: US$ 0,98 de mercadería · full US$ 1,01 = $1.550
+  (envío US$ 0,03 · 0% de reclamos).
+  **La ficha YA EXISTÍA** (`p1787783558381`) y **la publicación también**: `MLA2039134465`, Ayelen,
+  hoy **pausada**. O sea que la nota vieja de acá —"no se creó la ficha todavía, a propósito"— estaba
+  desactualizada, y `nuevoprod` lo frenó solo antes de crear una repetida. Es exactamente para lo que
+  está ese chequeo: **no confiar en lo que dice esta lista sin correr el comando y mirar.**
+  Cuenta al precio de la competencia ($6.000, en Ayelen): neto ~$2.850 (comisión ~32% + cargo fijo
+  $1.230) contra un costo total de ~$2.028 (mercadería + embalaje + IIBB 5,95% + monotributo) →
+  **~40% de margen**. Cierra cómodo; el techo que se había calculado era comprarlo a menos de $1.900.
+  Ojo: el ~32% es la comisión general, no la de esa categoría, y el número real recién sale de
+  `unapub:MLA2039134465` cuando la publicación esté activa y venda.
+  **Lo que falta es de él:** reactivar la publicación, fotos PROPIAS (las del screenshot son de otro
+  vendedor) y el stock real.
 
 - **PREGUNTARLE POR LAS FACTURAS DE LOS PRODUCTOS "IMITABLES".** Él las tiene y las va a pasar;
   pidió expresamente que se le haga acordar. **Sacarlo en cada chat hasta que las mande.** ML le
