@@ -220,6 +220,7 @@ Los que más se usan:
 | `cajasllegaron[:go]` | marca las cajas que ya entraron a Full · **sale sola una vez por hora** |
 | `variantes:<palabra>` | qué variantes tiene un producto y el título real de cada publicación, para cargar las que falten |
 | `sinvincular[:cuenta]` | las publicaciones que NO tienen producto: el robot no les ve stock ni margen |
+| `altanuevas[:go]` | las publicaciones nuevas que el panel todavía no conoce, con la ficha a la que se engancharían · **el robot lo hace solo cada hora**, esto es para mirarlo antes |
 | `nomas:<MLA,...>[:go]` | "esto no lo vendemos más": oculta la publicación del panel · no toca nada en ML |
 | `nomandar:<cuenta>[:<palabras>][:go]` | "este producto no se vende más en ESTA cuenta": la saca del reparto de Armar caja · nombre con `=` adelante = exacto · sin `:go` solo muestra |
 | `preguntas[:cuenta]` | las preguntas sin responder ENTERAS, con el producto de cada una |
@@ -260,6 +261,7 @@ rompe el archivo entero y deja de correr TODO, sin aviso. Si hace falta algo nue
 |---|---|
 | cada 2 minutos | trae las ventas nuevas |
 | 1 vez por hora | robot de precios |
+| 1 vez por hora | da de alta las publicaciones nuevas de ML y las engancha a su ficha |
 | 1 vez por hora | la caja de compra de cada publicación (para la columna "Caja ML") |
 | 00:03 | resumen del día por Telegram |
 | 00:03 | junto con el resumen: facturas emitidas + recalcular Margen ML al precio de hoy |
@@ -432,10 +434,23 @@ existen, nunca hizo un alta, y publicar sin costo cargado rompería la regla del
 
 El comando es `nuevoprod:<nombre>[|costo=<pesos>][|mla=<MLA>][|go]`.
 
+**DESDE EL 30/08/2026 EL PANEL LAS RECONOCE SOLO.** Pedido suyo, textual: *"quiero que el panel
+reconozca todos los productos nuevos aunque se hayan vendido — sino es un lío, quiero cargar una caja
+y si el producto es nuevo tengo que decirte a vos"*. Una vez por hora el robot enumera los cuatro
+catálogos de ML, da de alta lo que falta en `cyc/mllinks` y lo engancha a su ficha con el MISMO
+match que ya usan las ventas (`matchProduct`: dos palabras distintivas y un ganador claro; ante la
+duda la deja sin producto y la lista para vincular a mano). La variante sale del título.
+Antes de eso una publicación entraba al panel **sólo cuando vendía**, así que hasta la primera venta
+no tenía stock de Full, ni margen, ni caja de compra, y **no aparecía en Armar caja**.
+El freno: mientras no haya vendido queda marcada `altaSinVender` y `activarPausadasFull` no la toca
+— su costo lo eligió el match por el título y todavía no lo probó ninguna venta real. La marca se
+cae sola en cuanto vende. Para mirarlo antes de que pase: `altanuevas`.
+
+**Lo que SIGUE necesitando que él avise: el producto que no tiene ficha.** Si el título no engancha
+con ninguna, no hay de dónde sacar un costo y nadie lo puede inventar. Ahí va `nuevoprod`.
+
 **Lo que hay que pedirle cada vez:**
-1. **El número MLA** (o el link). Una publicación recién creada NO figura todavía en `cyc/mllinks`:
-   el catálogo entero se enumera en la vuelta del robot de precios, una por hora. Sin el número no
-   hay con qué vincular, y `sinvincular` no la va a mostrar.
+1. **El número MLA** (o el link) — sólo si no querés esperar la vuelta de la hora.
 2. **El costo de compra.** Si no lo tiene todavía, se puede crear igual con costo 0 —él eligió eso
    el 26/08— pero **hay que decírselo**: hasta que llegue el costo el producto se ve como si fuera
    todo ganancia y puede aparecer arriba de todo en Rotación de Stock como si fuera un éxito.
