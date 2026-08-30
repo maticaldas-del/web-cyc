@@ -529,7 +529,12 @@ async function activarPausadasFull(db, links, tokensRun, DRY, products, piso) {
     };
     const m = (mlExtraPct(label) + monoP) / 100;
     const ids = Object.entries(links)
-      .filter(([mla, e]) => e && e.cuenta === label && !e.ignored && !e.noAutoActivar && e.prodId && /^MLA/i.test(mla))
+      // `altaSinVender`: publicación que se dio de alta sola desde el catálogo y todavía no vendió
+      // ninguna vez. Su producto lo eligió `matchProduct` por el título, así que el costo —y por lo
+      // tanto el margen que decide si "llega al piso"— no está probado contra ninguna venta real.
+      // Activar es lo único que ESCRIBE en ML sin que medie una venta: hasta que venda, no se toca.
+      // La marca se cae sola en cuanto vende (la vuelta de las ventas reescribe el renglón entero).
+      .filter(([mla, e]) => e && e.cuenta === label && !e.ignored && !e.noAutoActivar && !e.altaSinVender && e.prodId && /^MLA/i.test(mla))
       .map(([mla]) => mla);
     for (let k = 0; k < ids.length; k += 20) {
       let arr;
@@ -841,6 +846,93 @@ async function catalogoDeCuenta(sellerId, tok) {
     } while (scan && ++vueltas < 60);
   }
   return { mios, total };
+}
+
+// ── LAS PUBLICACIONES NUEVAS SE DAN DE ALTA SOLAS ──────────────────────────
+// Pedido suyo del 30/08/2026, textual: "quiero que el panel reconozca todos los productos nuevos
+// aunque no se hayan vendido. Sino es un lío: quiero cargar una caja y si el producto es nuevo
+// tengo que decirte a vos para que lo agregues a mano, y si no tengo más tokens yo no sé cómo
+// cargarlo a mano."
+//
+// EL AGUJERO: una publicación entraba a `cyc/mllinks` SOLO cuando VENDÍA. Hasta esa primera venta
+// era invisible para todo el panel: no se le contaba el stock de Full (falta plata en el Arqueo),
+// no tenía margen, no se le miraba la caja de compra, no se le sacaban las promociones y —lo que
+// lo hacía insoportable en el día a día— NO APARECÍA EN "ARMAR CAJA", porque esa pantalla lista lo
+// que la cuenta tiene publicado (`cuentasConPublicacion`) y eso sale de `cyc/mllinks`.
+// O sea que cada publicación nueva dependía de que él me avisara. Eso es exactamente lo que pidió
+// que deje de pasar.
+//
+// `pubfaltan` ya hacía el alta, pero A MANO y dejando el producto vacío a propósito. Esto es lo
+// mismo corriendo solo, una vez por hora, y CON el match — porque sin producto la publicación
+// sigue sin aparecer en Armar caja, que es el problema que él plantea.
+//
+// EL MATCH ES EL MISMO QUE YA USAN LAS VENTAS (`matchProduct`), a propósito y no por comodidad:
+// hoy, cuando una publicación vende, se la engancha con esa misma función y ese mismo criterio.
+// Adelantar el alta no la hace menos confiable — sólo la hace antes. `matchProduct` es
+// conservadora: pide 2 palabras distintivas en común y un ganador CLARO contra el segundo. Ante la
+// duda devuelve null, y ahí la publicación queda dada de alta SIN producto, listada en
+// `sinvincular` para vincularla mirándola.
+//
+// EL FRENO QUE SÍ HACE FALTA: un match equivocado le pega un costo ajeno, y de ese costo sale el
+// margen con el que el robot mueve precios en ML. Mientras la publicación no haya vendido, ese
+// costo NO está probado contra ninguna venta real. Por eso el alta va marcada `altaSinVender` y
+// `activarPausadasFull` —lo único que ESCRIBE en ML sin que medie una venta— la saltea. En cuanto
+// vende, la vuelta de las ventas reescribe el renglón, la marca desaparece sola y la publicación
+// pasa a tratarse como cualquier otra.
+//
+// Lo que esto NO puede hacer, y conviene tenerlo claro: si el producto no existe como ficha en el
+// panel, no hay con qué matchear ni de dónde sacar un costo. Esa sigue siendo una decisión suya
+// (`nuevoprod`). Lo que se arregla acá es el caso real y frecuente: una publicación NUEVA de un
+// producto que YA está cargado (otro color, otra cuenta, un repuesto de una que se cerró).
+async function altaDeNuevas(db, accounts, labels, map, index, DRY) {
+  const nuevas = [], sinFicha = [];
+  const upd = {};
+  for (const label of labels) {
+    const acc = accounts[label];
+    if (!acc?.refresh_token) continue;
+    let t;
+    try { t = await mlRefresh(ML_CLIENT_ID, ML_CLIENT_SECRET, acc.refresh_token); }
+    catch { console.log(`  · ${label}: no pude renovar el token para buscar publicaciones nuevas.`); continue; }
+    await db.patch('mlapi/tokens/' + label, { refresh_token: t.refresh_token, updated_ts: Date.now() });
+    const tok = t.access_token;
+    // El catálogo lo trae `catalogoDeCuenta`, la MISMA función que usan `pubfaltan` y el chequeo de
+    // la mañana. Tres enumeraciones distintas podrían discrepar y el chequeo diría "no falta
+    // ninguna" mientras el alta no ve la mitad.
+    let mios;
+    try { ({ mios } = await catalogoDeCuenta(acc.seller_id, tok)); }
+    catch (err) { console.log(`  · ${label}: ML no me dio el catálogo — ${String(err.message || err).slice(0, 80)}`); continue; }
+    const faltan = mios.filter((m) => !map[m]);
+    if (!faltan.length) continue;
+    for (let k = 0; k < faltan.length; k += 20) {
+      let arr;
+      try { arr = await mlGet('/items?ids=' + faltan.slice(k, k + 20).join(',') + '&attributes=id,title,status,sub_status,price,shipping', tok); }
+      catch { continue; }
+      for (const row of (arr || [])) {
+        const b = row.body || {}; const mla = b.id;
+        if (!mla || !/^MLA/i.test(mla)) continue;
+        const title = b.title || '';
+        const p = matchProduct(title, index);
+        const entry = {
+          prodId: p ? p.id : null,
+          // La variante sale del TÍTULO con la misma regla que la web (`varianteDeTitulo`): hay
+          // productos donde cada color es una publicación aparte (los aromas del Paulvic, las
+          // sábanas), y sin esto el stock de Full no se le imputa a ninguna variante.
+          variant: p ? varianteDeTitulo(title, p.variantes) : '',
+          title, cuenta: label,
+          status: b.status || '', subStatus: (b.sub_status || []).join(','),
+          auto: true, altaPorCatalogo: true, altaTs: Date.now(),
+          // El freno: no vendió nunca todavía, así que su costo no está probado. Se va solo en
+          // cuanto venda (la vuelta de las ventas reescribe el renglón entero).
+          altaSinVender: true,
+          candidatos: p ? null : candidatesFor(title, index),
+        };
+        upd[mla] = entry; map[mla] = entry;
+        (p ? nuevas : sinFicha).push({ mla, label, title, prod: p ? p.name : '', variant: entry.variant });
+      }
+    }
+  }
+  if (Object.keys(upd).length && !DRY) await db.patch('cyc/mllinks', upd);
+  return { nuevas, sinFicha };
 }
 
 // ── EL DÓLAR OFICIAL DE VENTA, SOLO ────────────────────────────────────────
@@ -13124,6 +13216,41 @@ async function main() {
       return;
     }
 
+    // BILLING_PROBE=altanuevas[:go] → CORRE AHORA EL ALTA DE PUBLICACIONES NUEVAS.
+    //
+    // Es lo MISMO que el robot hace solo una vez por hora, llamando a la MISMA función
+    // (`altaDeNuevas`), para poder mirar qué haría antes de que lo haga. Sin `:go` no escribe nada.
+    // Un verificador con la fórmula copiada adentro diría "todo bien" para siempre; por eso llama
+    // al código de verdad y no a una copia.
+    if (/^altanuevas(:|$)/.test(String(process.env.BILLING_PROBE || ''))) {
+      const APLICAR = String(process.env.BILLING_PROBE).split(':').includes('go');
+      const mapA = (await db.get('cyc/mllinks')) || {};
+      const alt = await altaDeNuevas(db, accounts, labels, mapA, index, !APLICAR);
+      if (!alt.nuevas.length && !alt.sinFicha.length) {
+        console.log('No hay ninguna publicación nueva: el panel conoce todas las de ML.');
+        return;
+      }
+      if (alt.nuevas.length) {
+        console.log(`\n🆕 ${alt.nuevas.length} se engancharían solas a su ficha:`);
+        alt.nuevas.forEach((n) => console.log(`   ${n.mla}  ${n.label.padEnd(8)} → ${n.prod}${n.variant ? '  · variante: ' + n.variant : '  · SIN VARIANTE'}\n            título ML: ${n.title}`));
+      }
+      if (alt.sinFicha.length) {
+        console.log(`\n🆕 ${alt.sinFicha.length} quedarían SIN producto (no hay ficha clara):`);
+        alt.sinFicha.forEach((n) => console.log(`   ${n.mla}  ${n.label.padEnd(8)} ${n.title}`));
+        console.log('   Se vinculan a mano: vincular:<MLA>=<palabra o id>:go');
+      }
+      if (!APLICAR) { console.log('\nPRUEBA: no escribí nada. Para aplicarlo ahora: altanuevas:go'); return; }
+      // Releído de la base, que es lo único que prueba que quedó.
+      const rel = (await db.get('cyc/mllinks')) || {};
+      const todas = [...alt.nuevas, ...alt.sinFicha];
+      const ok = todas.filter((n) => rel[n.mla]).length;
+      const okProd = alt.nuevas.filter((n) => rel[n.mla] && rel[n.mla].prodId).length;
+      console.log(`\nReleído del panel: ${ok} de ${todas.length} quedaron dadas de alta ${ok === todas.length ? '✓' : '✗ REVISALO'}`);
+      console.log(`Con producto enganchado: ${okProd} de ${alt.nuevas.length} ${okProd === alt.nuevas.length ? '✓' : '✗ REVISALO'}`);
+      console.log('Ahora corré netoweb para que la pantalla les muestre el margen.');
+      return;
+    }
+
     // BILLING_PROBE=pubfaltan[:<cuenta>][:go] → LAS PUBLICACIONES QUE EL PANEL NO CONOCE
     //
     // EL AGUJERO QUE ARREGLA (encontrado el 22/08/2026): una publicación entra a `cyc/mllinks`
@@ -15982,6 +16109,26 @@ async function main() {
   // ACCOUNT: si está seteado, procesa solo esa cuenta (para backfills por tandas).
   const onlyAcc = (process.env.ACCOUNT || '').trim().toLowerCase();
   const tokensRun = {}; // token de cada cuenta, para nivelar los grupos de precio al final
+
+  // LAS PUBLICACIONES NUEVAS, ANTES DE TODO LO DEMÁS. Va acá y no al final a propósito: todo lo que
+  // sigue —el stock de Full, las promociones, el estado de la publicación— recorre `map`, así que
+  // una publicación dada de alta después de eso tendría que esperar otra hora para que la miren.
+  // Va en la vuelta horaria (no en las de 2 minutos) porque enumerar los cuatro catálogos son
+  // varias llamadas por cuenta para un dato que cambia cuando él publica algo, no cada 2 minutos.
+  if (parseInt(process.env.BACKFILL_DAYS || '0', 10) === 0 && !onlyAcc && !SKIP_PRICES) {
+    try {
+      const alt = await altaDeNuevas(db, accounts, labels, map, index, DRY);
+      if (alt.nuevas.length) {
+        console.log(`\n🆕 ${alt.nuevas.length} publicación(es) nueva(s) dadas de alta y enganchadas solas:`);
+        alt.nuevas.forEach((n) => console.log(`   ${n.mla}  ${n.label.padEnd(8)} → ${n.prod}${n.variant ? ' · ' + n.variant : ''}   (${n.title.slice(0, 46)})`));
+      }
+      if (alt.sinFicha.length) {
+        console.log(`\n🆕 ${alt.sinFicha.length} publicación(es) nueva(s) dadas de alta SIN producto (no encontré una ficha clara):`);
+        alt.sinFicha.forEach((n) => console.log(`   ${n.mla}  ${n.label.padEnd(8)} ${n.title.slice(0, 60)}`));
+        console.log(`   Se vinculan con: vincular:<MLA>=<palabra o id>:go`);
+      }
+    } catch (e) { console.log('No pude buscar publicaciones nuevas: ' + e.message); }
+  }
   for (const label of labels) {
     if (onlyAcc && label.toLowerCase() !== onlyAcc) continue;
     const acc = accounts[label];
@@ -16042,6 +16189,13 @@ async function main() {
               // arrastre acá se PIERDE. El estado de la publicación se perdía así, y el aviso
               // de "problema en una publicación" lo repetía cada 2 minutos.
               status: (e && e.status) || '', subStatus: (e && e.subStatus) || '',
+              // El freno MANUAL (`nolevantar`) se arrastra o se perdía acá: este objeto pisa al
+              // guardado entero, y una publicación frenada a mano volvía a ser activable con
+              // vender una sola vez. El freno AUTOMÁTICO (`altaSinVender`) NO se arrastra a
+              // propósito: es justo lo que tiene que caerse cuando la publicación vende.
+              noAutoActivar: (e && e.noAutoActivar) || null,
+              frenoMotivo: (e && e.frenoMotivo) || null,
+              frenoTs: (e && e.frenoTs) || null,
               candidatos: p ? null : candidatesFor(title, index),
             };
             map[mla] = entry; mapUpd[mla] = entry;
