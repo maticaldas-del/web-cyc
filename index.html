@@ -2287,7 +2287,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='18.3';
+const APP_VERSION='18.4';
 // El problema real que esto resuelve no es curiosidad: es que el celular guarda la app y sigue
 // mostrando la de ayer sin avisar. Varias veces se revisó un cambio que ya estaba subido y no se
 // veía. Por eso, además del número, el chip avisa cuando hay una versión nueva esperando.
@@ -3791,6 +3791,9 @@ function reservadoEnOtras(pid,va,ctaActual){
   });
   return n;
 }
+// YA NO SE USA COMO TOPE (30/08/2026, pedido suyo): la casilla deja cargar todo lo que hay en
+// casa aunque esté apartado en otra caja. Queda porque el dato sirve para MOSTRAR el "(N en otra
+// caja)" del renglón. NO volver a usarla para frenar la carga sin que él lo pida.
 const cajaMax=(f,cta)=>Math.max(0,f.hay-reservadoEnOtras(f.p.id,f.variante,cta));
 // ── CUÁNTAS UNIDADES ENTRAN EN UNA CAJA ────────────────────────────────────
 // La caja es un cubo de 70x70x70, así que da igual de qué lado se apoye cada cosa: el resultado
@@ -3839,6 +3842,8 @@ function cajaOcupacion(items,filas){
 // después lo que ya tenía puesto sería contarlas dos veces y dejar cargar el doble.
 // Sin medida devuelve Infinity: no se puede cortar lo que no se puede medir, y trabar la casilla
 // por falta de un dato sería peor que dejarlo pasar (el medidor lo avisa igual).
+// YA NO SE USA (30/08/2026): trababa la carga cuando la caja se pasaba de lugar o de peso, y las
+// medidas son aproximadas. Las barras siguen mostrando cuánto se pasó; el freno se sacó.
 function cajaCabenDe(f,items,filas){
   const n=porCaja(f.p);
   if(n==null)return Infinity;
@@ -3872,44 +3877,24 @@ async function cajaSugerida(){
   const cand=[];
   filas.forEach(f=>(f.sug||[]).forEach(x=>{
     if(x.cuenta!==ofiFiltroCuenta||!(x.mandar>0))return;
-    const u=Math.min(x.mandar,cajaMax(f,ofiFiltroCuenta));
+    const u=Math.min(x.mandar,f.hay);
     if(u>0)cand.push({f,u,enCero:!!x.enCero,dias:x.dias});
   }));
   if(!cand.length){await _guardarCajaArmando(ofiFiltroCuenta,{});return renderOfiCaja();}
-  // Sin medidas no se puede cortar: se carga todo lo sugerido, como antes, y el cartel lo avisa.
-  if(cand.some(c=>porCaja(c.f.p)==null)){
-    const items={};cand.forEach(c=>items[_ck(c.f.p.id,c.f.variante)]=c.u);
-    await _guardarCajaArmando(ofiFiltroCuenta,items);
-    toast('Falta la medida de algún producto: cargué todo lo sugerido sin cortar la caja',4000);
-    return renderOfiCaja();
-  }
+  // CARGA TODO LO SUGERIDO, AUNQUE SE PASE DE LA CAJA. Decisión suya del 30/08/2026: "al clickear
+  // cargar lo recomendado me cargue TODO, no importa si se pasa de los límites. Yo después saco lo
+  // que no entra y lo mando en otra caja".
+  //
+  // Antes esto iba llenando la caja de a una unidad, eligiendo por ganancia y cortando al llegar al
+  // 100% de lugar o a los 30 kg. Se sacó: el corte se hacía con medidas aproximadas, dejaba afuera
+  // mercadería que en la vida real entraba, y encima no decía qué había quedado afuera —así que el
+  // que armaba la caja no sabía si faltaba algo o si de verdad no hacía falta más.
+  //
+  // Ahora se carga la sugerencia entera y las dos barras muestran cuánto se pasó. Sacar de más es
+  // un segundo, adivinar qué faltó no.
   const items={};
-  let restoLugar=1, restoPeso=CAJA_KG*1000;   // 1 caja entera de lugar, 30.000 g
-  const restante={};cand.forEach((c,i)=>restante[i]=c.u);
-  const gan=(c)=>{const g=gananciaUnidad(c.f.p);return g!=null&&g>0?g:1;};
-  for(;;){
-    let mejor=-1,mejorPunt=-1;
-    cand.forEach((c,i)=>{
-      if(restante[i]<=0)return;
-      const n=porCaja(c.f.p), pe=(c.f.p.medida?.pesoG)||0;
-      if(!n)return;                              // no entra ni una: se manda aparte
-      const fl=1/n;
-      if(fl>restoLugar+1e-9||pe>restoPeso+1e-9)return;
-      // Lo que está en CERO vale el doble: es venta que no se está haciendo, no un ajuste.
-      const punt=gan(c)*(c.enCero?2:1)/((fl/Math.max(restoLugar,1e-6))+(pe/Math.max(restoPeso,1)));
-      if(punt>mejorPunt){mejorPunt=punt;mejor=i;}
-    });
-    if(mejor<0)break;
-    const c=cand[mejor];
-    const k=_ck(c.f.p.id,c.f.variante);
-    items[k]=(items[k]||0)+1;restante[mejor]--;
-    restoLugar-=1/porCaja(c.f.p);
-    restoPeso-=(c.f.p.medida?.pesoG)||0;
-  }
+  cand.forEach(c=>{const k=_ck(c.f.p.id,c.f.variante);items[k]=(items[k]||0)+c.u;});
   await _guardarCajaArmando(ofiFiltroCuenta,items);
-  // LO QUE NO ENTRÓ NO SE AVISA. Pedido suyo del 27/08/2026: "si sobra no decir nada, me daré
-  // cuenta una vez que ya envíe la caja, que siga recomendándome más mercadería". El sobrante no
-  // se pierde: sigue en la oficina y vuelve a salir sugerido en la caja siguiente.
   renderOfiCaja();
 }
 async function cajaVaciar(){
@@ -4214,8 +4199,20 @@ function renderOfiCaja(){
     // Y ADEMÁS lo que todavía entra en ESTA caja por lugar y por peso (27/08/2026: "que nunca
     // cargue más de lo que se permite en esa caja"). Sin medidas cargadas no se puede cortar y
     // manda el stock: el medidor de arriba avisa que la barra se quedó corta.
-    const cabenAqui=armando?cajaCabenDe(f,cajaAct,vis):Infinity;
-    const tope=armando?Math.min(cajaMax(f,ofiFiltroCuenta),cabenAqui):f.hay;
+    // EL TOPE ES LO QUE HAY EN CASA Y NADA MÁS. Decisión suya del 30/08/2026, textual: "quiero que
+    // no me trabe al querer cargar un producto a la caja, aunque no entre por medidas o por peso,
+    // porque no es exacto eso. Capaz la caja físicamente entra y en la web se pasa por poquito y no
+    // me deja cargarlo". Y sobre lo apartado en otras cajas: "sacar también lo de cargar en otra
+    // caja".
+    //
+    // Las medidas vienen de ML o cargadas a mano y tienen error: el tendedero venía como 72 cm en
+    // una caja de 70 y el panel se negaba a cargar UNA sola unidad de algo que en la vida real
+    // entra. Trabar por un número aproximado cuesta más que el problema que evita — el que arma la
+    // caja la está viendo y sabe si cierra.
+    //
+    // Las dos barras SIGUEN, y se ponen en rojo arriba del 100%: la información no se saca, lo que
+    // se saca es el freno. Y al cerrar, si algo ya no está en casa, se avisa antes (ver cerrarCaja).
+    const tope=f.hay;
     const otras=f.hay-tope;
     const casilla=armando?`<input type="number" inputmode="numeric" value="${enCaja||''}" placeholder="0" max="${tope}"
         style="flex:none;width:66px;text-align:center;background:var(--bg);border:1px solid ${enCaja>0?'var(--accent2)':'var(--border2)'};border-radius:8px;color:var(--text);font-family:'DM Mono',monospace;font-size:.95rem;padding:8px 4px;outline:none"
@@ -4428,10 +4425,19 @@ async function cerrarCaja(cuenta){
   const idx={};filas.forEach(f=>{idx[_ck(f.p.id,f.variante)]={p:f.p,variante:f.variante||'',hay:f.hay};});
   const guardada=cajaDe(cuenta);
   const items=[];
+  // SI ALGO YA NO ESTÁ EN CASA, SE AVISA ANTES DE DESPACHAR. Desde el 30/08/2026 la casilla no
+  // descuenta lo que está apartado en las cajas de las otras cuentas —él lo pidió expreso— así que
+  // dos cajas pueden tener cargadas las mismas unidades. La primera que se cierra se las lleva, y
+  // la segunda se recortaba sola con Math.min y despachaba de menos SIN DECIR NADA: una caja que
+  // sale con 6 cuando decía 9 y nadie se entera es peor que cualquier traba.
+  const recortes=[];
   for(const [k,u] of Object.entries(guardada)){
     const f=idx[k];if(!f||!(u>0))continue;
-    items.push({prodId:f.p.id,nombre:f.p.name,variante:f.variante,u:Math.min(u,f.hay)});
+    const real=Math.min(u,f.hay);
+    if(real<u)recortes.push(`${f.p.name}${f.variante?' · '+f.variante:''}: cargaste ${u} y quedan ${f.hay}`);
+    if(real>0)items.push({prodId:f.p.id,nombre:f.p.name,variante:f.variante,u:real});
   }
+  if(recortes.length&&!confirm(`OJO: hay ${recortes.length} renglón(es) con menos mercadería de la que cargaste. Seguro se fue en otra caja.\n\n${recortes.join('\n')}\n\nSi seguís, la caja sale con lo que hay de verdad.\n¿Cerrar igual?`))return;
   if(!items.length){toast('La caja está vacía','err');return;}
   const uTot=items.reduce((a,x)=>a+x.u,0);
   const track=(prompt(`Caja para ${cuenta} · ${uTot} unidades en ${items.length} renglón(es).\n\nNúmero de seguimiento (podés dejarlo vacío y ponerlo después):`,'')||'').replace(/[^0-9]/g,'');
