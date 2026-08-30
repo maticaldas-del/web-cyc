@@ -1,61 +1,59 @@
-🌅 CHEQUEO · sábado, 29 de agosto
+🌅 CHEQUEO · domingo, 30 de agosto
 
 🔴 PARA HOY
-   ⏰ Luciana: reclamo de hoy — todavía podés contestarlo
    💬 6 mensaje(s) de comprador sin leer
-   📥 0 cajas a Full en 7 días, y 52 publicaciones sin stock
+   📥 0 cajas a Full en 7 días, y 54 publicaciones sin stock
 
-🔻 Ayer $423.195 · -19% vs la semana
-💸 52 sin stock → $163.633/día
-   · Filtro Purificador Descartable — $13.737/día
+🔻 Ayer $368.584 · -26% vs la semana
+💸 54 sin stock → $172.774/día
+   · Filtro Purificador Descartable — $13.622/día
    · Perfume Femenino Paulvic Good  — $11.786/día
    · Cabotine Eau De Toilette 30ml  — $10.770/día
 
-❓ 95 preguntas sin responder · la más vieja hace 243 días
-⚠️ 1 reclamo(s) abierto(s) · 1 te espera(n)
-🏭 Full: 9 u. con problema · 0 caja(s) llegada(s) en 7 días
-🟠 35 con stock y sin vender hace 30 días · $3.933.041
-   └ 19 no las ve NADIE (menos de 20 visitas): el precio no es el problema
+❓ 94 preguntas sin responder · la más vieja hace 244 días
+⚠️ 0 reclamo(s) abierto(s) · los maneja ML, no hay nada para hacer
+🏭 Full: 7 u. con problema · 0 caja(s) llegada(s) en 7 días
+🟠 38 con stock y sin vender hace 30 días · $4.132.339
+   └ 20 no las ve NADIE (menos de 20 visitas): el precio no es el problema
    └ 4 las ven y no compran (50+ visitas): ahí sí mirar el precio
 🔗 13 publicación(es) sin ficha de producto · sin costo no hay margen · vincular
 
 ════════ DETALLE ════════
 
 ── Preguntas por cuenta ──
-   Adriana: 18 · la más vieja hace 187 días
-   Ayelen: 33 · la más vieja hace 243 días
-   Luciana: 19 · la más vieja hace 205 días
-   Matias: 25 · la más vieja hace 229 días
+   Adriana: 18 · la más vieja hace 188 días
+   Ayelen: 33 · la más vieja hace 244 días
+   Luciana: 18 · la más vieja hace 206 días
+   Matias: 25 · la más vieja hace 230 días
 
 ── Reclamos ──
-   Luciana: PDD9949 · 0 días · podés: send_message_to_mediator
+   ninguno
 
-── Pausadas ── 155 sin stock · 46 a mano · 0 por ML
+── Pausadas ── 158 sin stock · 47 a mano · 0 por ML
 
-── Sin stock y vendían · 52 ──
-   Matias · Filtro Purificador Descartable Agua Carbón — $13.737/día
+── Sin stock y vendían · 54 ──
+   Matias · Filtro Purificador Descartable Agua Carbón — $13.622/día
    Adriana · Perfume Femenino Paulvic Good Eau De Parfu — $11.786/día
    Adriana · Cabotine Eau De Toilette 30ml Mujer Floral — $10.770/día
    Ayelen · Joystick Bluetooth Inalambrico Celular Pc  — $10.508/día
    Adriana · Victoria's Secret Amber Romance Body Splas — $7.550/día
    Ayelen · Cinta Métrica 7.5 Metros Jctop Reforzada P — $7.522/día
-   Ayelen · Corta Pelo De Nariz Oreja Cejas Portatil S — $6.672/día
    Adriana · Splash Victoria's Secret Pure Seduction Bl — $6.539/día
    Matias · Xiaomi Redmi Watch 4 Smartwatch Negro Gris — $6.500/día
+   Ayelen · Corta Pelo De Nariz Oreja Cejas Portatil S — $5.843/día
    Adriana · Animale Mujer Eau De Parfum — $5.333/día
    Adriana · Aromatizante Ambiental Colgante Para Auto  — $5.130/día
    Ayelen · Adaptador Enchufe Universal América Europa — $4.590/día
+   Luciana · Mazo Cartas De Poker O Magia Playing Cards — $4.373/día
    Adriana · Perfume Azzaro Pour Homme Edt Para Hombre  — $4.333/día
-   Ayelen · Cinta Métrica 5 Metros Reforzada Gancho Tr — $4.000/día
    Luciana · Sabanas 2 Plazas Y Media Juego Para Colchó — $3.904/día
-   Ayelen · Espejo 8 Pulgadas Con Aumento De Maquillaj — $3.835/día
    Luciana · Centímetro Automático Retráctil Costura Mo — $3.799/día
-   Ayelen · Limpia Pantallas Kit Liquido Franela Tv Ce — $3.764/día
+   Ayelen · Limpia Pantallas Kit Liquido Franela Tv Ce — $3.589/día
+   Ayelen · Espejo 8 Pulgadas Con Aumento De Maquillaj — $3.587/día
+   Luciana · Sabanas 1 Plazas Y Media Juego Para Colchó — $3.472/día
    Matias · Auriculares Xiaomi Redmi Buds 6 Color Negr — $3.395/día
-   Luciana · Sabanas 2 Plazas Y Media Juego Para Colchó — $3.251/día
 
 ── Full: unidades con problema ──
-   Adriana · Perfume Para Hombre Ferrari Scuderia Ferra: 2 u. (internalProcess 2)
    Ayelen · Espejo Redondo Giratorio C/ Soporte Metal : 1 u. (lost 1)
    Ayelen · Espejo Con Aumento Doble Faz Maquillaje 6 : 6 u. (notSupported 6)
 
@@ -63,50 +61,50 @@
    (las visitas dicen si el problema es que no la ve nadie o que la ven y no compran)
    Matias · Tablet Xiaomi Redmi Pad 2, 4gb Ram, 128gb  — 2 u. ($597.576) · 1 visitas → NO LA VE NADIE, no es el precio
    Matias · Reloj Xiaomi Watch S5 Negro Negro Milanés — 2 u. ($445.150) · 6 visitas → NO LA VE NADIE, no es el precio
-   Adriana · Ferrari Scuderia Ferrari Black Hombre Eau  — 14 u. ($434.532) · 32 visitas
-   Matias · Adaptador Hub 8 En 1 Color Gris 100mbps — 50 u. ($403.700) · 2 visitas → NO LA VE NADIE, no es el precio
+   Adriana · Ferrari Scuderia Ferrari Black Hombre Eau  — 14 u. ($434.532) · 41 visitas
+   Matias · Adaptador Hub 8 En 1 Color Gris 100mbps — 50 u. ($403.700) · 9 visitas → NO LA VE NADIE, no es el precio
    Matias · Audifonos Galaxy Buds Core Black Samsung — 3 u. ($212.061) · 8 visitas → NO LA VE NADIE, no es el precio
    Matias · Joystick Xbox Microsoft Qat-00001 Inalámbr — 2 u. ($194.792) · 8 visitas → NO LA VE NADIE, no es el precio
    Matias · Kit Afeitadora Corta Barba+nariz+bigote+oi — 7 u. ($122.493) · 0 visitas → NO LA VE NADIE, no es el precio
-   Adriana · Perfume Paulvic Debutante Parfum Floral 50 — 17 u. ($118.218) · 15 visitas → NO LA VE NADIE, no es el precio
-   Ayelen · Balanza P/valija Equipaje Digital Portátil — 30 u. ($110.520) · 5 visitas → NO LA VE NADIE, no es el precio
+   Adriana · Perfume Paulvic Debutante Parfum Floral 50 — 17 u. ($118.218) · 17 visitas → NO LA VE NADIE, no es el precio
+   Ayelen · Balanza P/valija Equipaje Digital Portátil — 30 u. ($110.520) · 4 visitas → NO LA VE NADIE, no es el precio
    Matias · Pendrive Sandisk 128g Usb 3.0 Ultra Shift  — 4 u. ($110.520) · 1 visitas → NO LA VE NADIE, no es el precio
    Matias · Control Inalámbrico Xbox Series X|s, Xbox  — 1 u. ($97.396) · 1 visitas → NO LA VE NADIE, no es el precio
-   Adriana · Perfume Grés Cabotine Turquoise Eau De Par — 3 u. ($87.864) · 204 visitas → la ven y no compran, mirar precio
-   Ayelen · Recortadora De Pelos 4 En 1 Nariz Oreja Ce — 5 u. ($87.495) · 23 visitas
-   Luciana · Tira Luces Led 5050 Rgb, Kit Completo,cont — 11 u. ($77.330) · 40 visitas
-   Adriana · De La Patagonia Eau De Perfum 50ml - Ko Ge — 4 u. ($76.688) · 21 visitas
+   Adriana · Perfume Eau De Parfum Paulvic Luna 60ml Du — 13 u. ($90.402) · 30 visitas
+   Adriana · Perfume Grés Cabotine Turquoise Eau De Par — 3 u. ($87.864) · 200 visitas → la ven y no compran, mirar precio
+   Ayelen · Recortadora De Pelos 4 En 1 Nariz Oreja Ce — 5 u. ($87.495) · 20 visitas
+   Luciana · Tira Luces Led 5050 Rgb, Kit Completo,cont — 11 u. ($77.330) · 39 visitas
+   Adriana · De La Patagonia Eau De Perfum 50ml - Ko Ge — 4 u. ($76.688) · 20 visitas
    Matias · Smartwatch Xiaomi Redmi 5 Lite 1.96 Negro  — 1 u. ($71.654) · 1 visitas → NO LA VE NADIE, no es el precio
-   Adriana · Victoria's Secret Love Spell Body Mist 250 — 3 u. ($65.667) · 45 visitas
-   Ayelen · Piedra Pómez Piedra China X6 Para Eliminar — 8 u. ($57.720) · 15 visitas → NO LA VE NADIE, no es el precio
-   Adriana · Perfume Paulvic Scarf 50ml Amaderado Parfu — 8 u. ($55.632) · 12 visitas → NO LA VE NADIE, no es el precio
-   Luciana · Funda Cubre Colchón Protector Pvc Ajustabl — 6 u. ($50.010) · 46 visitas
+   Adriana · Victoria's Secret Love Spell Body Mist 250 — 3 u. ($65.667) · 44 visitas
+   Ayelen · Piedra Pómez Piedra China X6 Para Eliminar — 8 u. ($57.720) · 18 visitas → NO LA VE NADIE, no es el precio
+   Adriana · Perfume Paulvic Scarf 50ml Amaderado Parfu — 8 u. ($55.632) · 13 visitas → NO LA VE NADIE, no es el precio
 
 ── Para bajar y que roten · 0 ──
    ninguna
-   (+ 28 Paulvic salteados: regla suya, no se tocan)
+   (+ 29 Paulvic salteados: regla suya, no se tocan)
 
-── Perdieron la caja pero NO conviene bajarlas · 20 ──
+── Perdieron la caja pero NO conviene bajarlas · 25 ──
    Matias · Tablet Xiaomi Redmi Pad 2, 4gb Ram, 128g · al precio de la caja queda en 11%
    Matias · Pendrive Sandisk Cruzer Blade 32gb 2.0 N · al precio de la caja queda en 3%
    Matias · Pendrive Sandisk Cruzer Blade Sdcz50-016 · al precio de la caja queda en 3%
    Matias · Reloj Xiaomi Watch S5 Negro Negro Milané · al precio de la caja queda en -18%
    Matias · Reloj Xiaomi Watch S5 Negro Negro Milané · al precio de la caja queda en 0%
+   Matias · Adaptador Hub 8 En 1 Color Gris 100mbps · al precio de la caja queda en -4%
    Adriana · Victoria's Secret Coconut Passion Mujer  · al precio de la caja queda en 19%
+   Adriana · De La Patagonia Eau De Parfum Asher Perf · al precio de la caja queda en 22%
    Matias · Audifonos Galaxy Buds Core Black Samsung · al precio de la caja queda en 3%
    Matias · Philips 2000 Series Tat2206 Negro · al precio de la caja queda en 25%
    Matias · Joystick Xbox Microsoft Qat-00001 Inalám · al precio de la caja queda en 15%
    Luciana · Batidor Eléctrico Usb Espumadora Café Le · al precio de la caja queda en 7%
-   Adriana · Animale For Men Tradicional Hombre Eau D · al precio de la caja queda en 21%
+   Adriana · Animale For Men Tradicional Hombre Eau D · al precio de la caja queda en 20%
    Matias · Recortadora De Pelos 4 En 1 Nariz Oreja  · al precio de la caja queda en 6%
    Matias · Pendrive Sandisk 128g Usb 3.0 Ultra Shif · al precio de la caja queda en -2%
-   Matias · Control Inalámbrico Xbox Series X|s, Xbo · al precio de la caja queda en 10%
-   Ayelen · Recortadora De Pelos 4 En 1 Nariz Oreja  · al precio de la caja queda en 4%
 
 ── El panel contra ML ──
    Adriana: ML tiene 144 · el panel no conoce 0 · sin ficha 2
    Ayelen: ML tiene 90 · el panel no conoce 0 · sin ficha 3
-   Luciana: ML tiene 71 · el panel no conoce 0 · sin ficha 0
+   Luciana: ML tiene 73 · el panel no conoce 0 · sin ficha 0
    Matias: ML tiene 76 · el panel no conoce 0 · sin ficha 8
 
 ── En el panel pero sin ficha de producto · 13 ──
