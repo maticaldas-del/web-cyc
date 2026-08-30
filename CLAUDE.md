@@ -245,6 +245,29 @@ Los que más se usan:
 
 Casi todos son de solo lectura. Los que escriben piden `:go` explícito.
 
+### Cómo leer el resultado de un comando SIN gastar tokens al pedo
+
+**El chequeo de la mañana se lee del ARCHIVO, no de GitHub.** Queda guardado en `chequeo/ultimo.txt`
+del repo: `git fetch` + `cat`, 126 líneas. Listo.
+
+**NUNCA usar la lista de corridas de GitHub (`list_workflow_runs`) para encontrar un resultado.**
+Esa llamada devuelve las últimas ~25 corridas **con el mensaje de commit COMPLETO de cada una**, y
+los commits de este repo son largos a propósito. Son ~20.000 tokens por llamada y no hay parámetro
+que la achique (`per_page` lo ignora). El 30/08/2026 se pidió 5 veces en una mañana: **~100.000
+tokens tirados** para sacar un número de corrida.
+Lo que sí sirve: `list_workflow_jobs` con el id de la corrida, y `get_job_logs` con `tail_lines`
+chico. La salida de los probes va toda al final del log, así que con 30 o 40 líneas alcanza.
+
+**EL REPO ES PÚBLICO Y LOS REGISTROS DE GITHUB TAMBIÉN.** Verificado el 30/08/2026 (`private:false`).
+O sea que todo lo que un probe imprime en pantalla queda en una página que puede leer cualquiera.
+Por eso `chequeo/ultimo.txt` NO lleva números de orden ni el texto de las preguntas — eso ya estaba
+pensado. Pero `posventa` sí imprime los mensajes de los compradores con su número de paquete, y esos
+quedaron públicos. **No correr `posventa` salvo que él lo pida**, y no meter datos de compradores en
+ningún archivo del repo.
+Pasarlo a privado NO es gratis: en repos públicos GitHub no cobra el tiempo de las corridas y en
+privados sí, con tope mensual — con el robot corriendo cada 2 minutos ese tope se pasa enseguida.
+Queda como decisión suya.
+
 **SIEMPRE, después de correr un comando: volver a prender el ciclo** disparando `ml-sync` con
 `billing_probe` = `ciclo`. Cada corrida a mano **mata** el ciclo automático (es el mismo candado),
 y el ciclo NO se recupera solo: solo lo arranca el reloj de GitHub, que saltea corridas. La noche
