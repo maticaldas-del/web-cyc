@@ -2287,7 +2287,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='18.4';
+const APP_VERSION='18.5';
 // El problema real que esto resuelve no es curiosidad: es que el celular guarda la app y sigue
 // mostrando la de ayer sin avisar. Varias veces se revisó un cambio que ya estaba subido y no se
 // veía. Por eso, además del número, el chip avisa cuando hay una versión nueva esperando.
@@ -3030,10 +3030,10 @@ function renderProds(){
         <button class="btn btn-del" onclick="delProd('${p.id}')">✕</button>
       </div>
       <div style="display:flex;flex-wrap:wrap;gap:14px;align-items:flex-end">
-        <div><label>Costo US$</label><br><input type="number" min="0" step="0.01" value="${usdVal(cu)}" onchange="updCostUSD('${p.id}',this.value)"></div>
-        <div><label>Costo $</label><br><input class="money" type="text" inputmode="numeric" value="${moneyVal(cp)}" onchange="updCostPesos('${p.id}',this.value)"></div>
-        <div><label>${shipLabel}</label><br><input type="number" min="0" step="0.01" value="${ship}" onchange="updShipUSD('${p.id}',this.value)"></div>
-        <div><label title="Lo que ML te cobra de gestión/logística Full por cada venta (lo ves en una venta ya hecha). Es aprox., varía un poco por destino.">Gestión Full $ ⓘ</label><br><input class="money" type="text" inputmode="numeric" value="${moneyVal(gest)}" onchange="updGestFull('${p.id}',this.value)" placeholder="p. ej. 6.653"></div>
+        <div><label>Costo US$</label><br><input type="number" min="0" step="0.01" value="${usdVal(cu)}" oninput="guardarProdLuego('${p.id}',this.value,updCostUSD)" onchange="updCostUSD('${p.id}',this.value)"></div>
+        <div><label>Costo $</label><br><input class="money" type="text" inputmode="numeric" value="${moneyVal(cp)}" oninput="guardarProdLuego('${p.id}',this.value,updCostPesos)" onchange="updCostPesos('${p.id}',this.value)"></div>
+        <div><label>${shipLabel}</label><br><input type="number" min="0" step="0.01" value="${ship}" oninput="guardarProdLuego('${p.id}',this.value,updShipUSD)" onchange="updShipUSD('${p.id}',this.value)"></div>
+        <div><label title="Lo que ML te cobra de gestión/logística Full por cada venta (lo ves en una venta ya hecha). Es aprox., varía un poco por destino.">Gestión Full $ ⓘ</label><br><input class="money" type="text" inputmode="numeric" value="${moneyVal(gest)}" oninput="guardarProdLuego('${p.id}',this.value,updGestFull)" onchange="updGestFull('${p.id}',this.value)" placeholder="p. ej. 6.653"></div>
         ${medidaHtml(p)}
         <div style="display:flex;flex-direction:column;gap:4px;background:rgba(255,255,255,.04);border:1px solid var(--border);border-radius:8px;padding:8px 12px">
           <div style="font-size:.58rem;color:var(--muted);text-transform:uppercase;letter-spacing:.08em;margin-bottom:2px">Reclamos / Ventas totales <span style="text-transform:none;letter-spacing:0;font-size:.92em">· automático desde Ventas x Producto</span></div>
@@ -3338,6 +3338,29 @@ async function recalcAndSaveFullUSD(p){
     if(uEl)uEl.textContent=fU(full);
     if(pEl)pEl.textContent=fP(cfp);
   }
+}
+// ── EN EL CELULAR NO ALCANZA CON GUARDAR AL SALIR DEL CAMPO ──────────────────
+// Reportado por él el 31/08/2026, textual: "no me deja modificar el costo".
+// El campo NO estaba bloqueado. Guardaba sólo con `onchange`, que salta cuando SALÍS del campo
+// (blur), y en el celular ese evento es frágil: si cerrás el teclado con el botón de atrás, te vas
+// a otra app o tocás en cualquier lado, el change no llega nunca. La base no se entera, y el
+// siguiente re-dibujado —que llega solo, porque el robot escribe cada 2 minutos— le devuelve al
+// campo el valor viejo. Desde afuera se ve EXACTAMENTE como si el campo no dejara escribir.
+//
+// Es el MISMO problema que ya se había arreglado en Finanzas, y está anotado ahí con estas
+// palabras: "en el celu el 'change'/blur es frágil y se revertía". Lo que faltó entonces fue
+// aplicarlo también acá. La solución es la misma: guardar MIENTRAS escribe, con un respiro de
+// 700 ms para no escribir una vez por tecla.
+//
+// El `onchange` se deja puesto igual: guardar dos veces el mismo número no rompe nada, y cubre el
+// caso de que el teclado dispare los eventos distinto.
+// Se puede escribir un valor a medio tipear (escribís "12", frenás, sigue "12.50"): eso ya pasa en
+// Finanzas y no molesta, porque el último que se guarda es el bueno. Preferible a perder el dato.
+const _prodTimers={};
+function guardarProdLuego(id,val,fn){
+  const k=id+'|'+fn.name;
+  clearTimeout(_prodTimers[k]);
+  _prodTimers[k]=setTimeout(()=>{delete _prodTimers[k];fn(id,val);},700);
 }
 async function updCostUSD(id,val){
   const p=state.products.find(x=>x.id===id);if(!p)return;
