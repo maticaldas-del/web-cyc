@@ -3433,6 +3433,95 @@ async function main() {
       console.log(`completo se puede cortar la caja sola; si no, hay que cargar peso y medidas a mano.`);
       return;
     }
+    // BILLING_PROBE=probaralmacena[:MLA] → ¿ML NOS DICE QUÉ PRODUCTOS PAGAN ALMACENAMIENTO?
+    //
+    // Pregunta suya del 02/09/2026: "la api de ml te puede decir que productos estan pagando o por
+    // pagar por stock almacenado?". Hoy el panel deduce el stock parado cruzando el stock de Full
+    // con las ventas, que es un dato NUESTRO. Si ML publicara la antigüedad del stock o el cargo de
+    // almacenamiento por producto, sería un dato exacto y no una deducción.
+    // Esto NO adivina: prueba los candidatos uno por uno y dice qué contesta cada uno. Mismo método
+    // que `probarsaldo` (403 en los tres) y `probarinbound` (404 en los siete): lo que salga queda
+    // documentado en CLAUDE.md para no volver a intentarlo cada dos meses.
+    //
+    // OJO con el ritmo: el billing de ML permite 5 llamadas por minuto. Por eso hay una espera
+    // entre las rutas de /billing. Un 429 NO quiere decir que el endpoint no exista — eso ya hizo
+    // perder un intento entero con las percepciones el 21/08/2026.
+    if (String(process.env.BILLING_PROBE || '').startsWith('probaralmacena')) {
+      const soloMLA = (String(process.env.BILLING_PROBE).split(':')[1] || '').trim().toUpperCase();
+      const per = new Date().toISOString().slice(0, 7).replace('-', '');
+      for (const label of labels) {
+        const acc = accounts[label]; if (!acc?.refresh_token) continue;
+        let tok, sid;
+        try {
+          const t = await mlRefresh(ML_CLIENT_ID, ML_CLIENT_SECRET, acc.refresh_token);
+          await db.patch('mlapi/tokens/' + label, { refresh_token: t.refresh_token, updated_ts: Date.now() });
+          tok = t.access_token; sid = acc.seller_id;
+        } catch (e) { console.log(`${label}: no pude entrar (${e.message})`); continue; }
+        console.log(`\n══ ${label} · seller ${sid} ══`);
+
+        // Un inventory_id de verdad para probar las rutas que lo piden. Sin él dan 400 y el
+        // resultado no valdría nada (es lo que pasó con operations/search en el probe de inbound).
+        let inv = null, invMLA = null;
+        const mlas = soloMLA ? [soloMLA] : Object.entries(map || {}).filter(([, v]) => v && v.cuenta === label).map(([k]) => k).slice(0, 40);
+        for (let k = 0; k < mlas.length && !inv; k += 20) {
+          let arr; try { arr = await mlGet('/items?ids=' + mlas.slice(k, k + 20).join(',') + '&attributes=id,title,inventory_id,variations,shipping', tok); } catch { continue; }
+          for (const w of (arr || [])) {
+            const b = w.body || w; if (!b?.id) continue;
+            if (((b.shipping && b.shipping.logistic_type) || '') !== 'fulfillment') continue;
+            const cand = b.inventory_id || (b.variations || []).map((v) => v.inventory_id).find(Boolean);
+            if (cand) { inv = cand; invMLA = b.id; break; }
+          }
+        }
+        console.log(`  inventory_id de prueba: ${inv || '(no encontré ninguno en Full)'}${invMLA ? ' · ' + invMLA : ''}`);
+
+        const rutas = [];
+        if (inv) rutas.push(
+          // 1. El que YA usamos: se imprime ENTERO para ver si trae algún campo de antigüedad o
+          //    de cargo que hoy estemos ignorando (hoy sólo se leen available/not_available).
+          `/inventories/${inv}/stock/fulfillment`,
+          `/inventories/${inv}/stock/fulfillment/aging`,
+          `/inventories/${inv}/stock/fulfillment/storage`,
+          `/inventories/${inv}/stock/fulfillment/detail`,
+          `/inventories/${inv}/stock`,
+        );
+        rutas.push(
+          `/users/${sid}/stock/fulfillment/storage`,
+          `/stock/fulfillment/storage?seller_id=${sid}`,
+          `/stock/fulfillment/storage/search?seller_id=${sid}`,
+          `/marketplace/fulfillment/storage?seller_id=${sid}`,
+          `/fulfillment/storage/summary?seller_id=${sid}`,
+        );
+        for (const r of rutas) {
+          try {
+            const d = await mlGet(r, tok);
+            console.log(`  ✅ ${r}`);
+            console.log(`      ${JSON.stringify(d).slice(0, 700)}`);
+          } catch (e) {
+            console.log(`  ✗ ${r}  →  ${String(e.message || e).slice(0, 90)}`);
+          }
+        }
+        // Las de facturación van aparte y despacio (5 por minuto).
+        const bill = [
+          `/billing/integration/monthly/periods/key/${per}/group/ML/document_type/BILL/details?limit=5`,
+          `/billing/integration/monthly/periods/key/${per}/group/ML/details?limit=5`,
+          `/billing/integration/monthly/periods?group=ML&document_type=BILL&limit=3`,
+        ];
+        for (const r of bill) {
+          try {
+            const d = await mlGet(r, tok);
+            console.log(`  ✅ ${r}`);
+            console.log(`      ${JSON.stringify(d).slice(0, 700)}`);
+          } catch (e) {
+            console.log(`  ✗ ${r}  →  ${String(e.message || e).slice(0, 90)}`);
+          }
+          await new Promise((res) => setTimeout(res, 14000));
+        }
+        if (soloMLA) break;   // con un MLA puntual alcanza con la cuenta que lo tiene
+      }
+      console.log('\nLo que diga ✅ y traiga fecha de entrada o cargo por producto sirve para marcar');
+      console.log('el stock parado con un dato de ML en vez de deducirlo de nuestras ventas.');
+      return;
+    }
     // BILLING_PROBE=probarinbound → ¿ML NOS DEJA VER LAS CAJAS QUE VAN EN CAMINO A FULL?
     //
     // Hoy el robot solo ve la ENTRADA (cuando la mercadería ya está adentro de Full). Mientras la
