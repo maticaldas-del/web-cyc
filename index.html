@@ -2287,7 +2287,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='18.8';
+const APP_VERSION='18.9';
 // El problema real que esto resuelve no es curiosidad: es que el celular guarda la app y sigue
 // mostrando la de ayer sin avisar. Varias veces se revisó un cambio que ya estaba subido y no se
 // veía. Por eso, además del número, el chip avisa cuando hay una versión nueva esperando.
@@ -5933,11 +5933,18 @@ function vpGetYM(){
 //   20% = equilibrio real: abajo de eso, si TODO fuera así, CYC no cierra (el retiro es fijo, así que
 //         los dueños igual cobran, pero la empresa se descapitaliza).
 //   30% = el piso que fijamos: ahí CYC se queda ~$1,16M/mes para reponer mercadería.
-const VP_MIN_PCT=30;   // piso objetivo (antes 40, en la escala vieja sin impuestos)
+// ── EL PISO SALE DE LA CONFIGURACIÓN, NO ESTÁ ESCRITO A MANO ──────────────────
+// Estaba clavado en 30 y por eso el 01/09/2026, después de bajar el piso a 25%, una venta al 28%
+// seguía saliendo NARANJA como si estuviera abajo del piso — cuando estaba arriba. Él lo marcó:
+// "¿y por qué 28% sigue apareciendo en naranja?".
+// Ahora sale del mismo lugar que usa el robot (cyc/mlconfig → minPct), así que cambiar el piso con
+// el comando `meta:` mueve TAMBIÉN los colores y las etiquetas. Un piso que la pantalla no respeta
+// es un piso que no existe.
+const vpMinPct=()=>metaMargenML();
 const VP_EQUIL_PCT=20; // equilibrio: abajo de acá el negocio no cierra
-const pctCls=pct=>(pct==null)?'nc':(pct>=VP_MIN_PCT?'up':'dn');
-const pctColor=pct=>{if(pct==null)return'var(--muted)';const p=Math.round(pct);return p>=200?'#f59e0b':p>=130?'#a78bfa':p>=70?'#60a5fa':p>=45?'#14b8a6':p>=30?'#22c55e':p>=20?'#f97316':'#ef4444';};
-const pctLabel=pct=>{if(pct==null)return'';const p=Math.round(pct);return p>=200?'🟡 JOYA':p>=130?'🟣 Estrella':p>=70?'🔵 Excelente':p>=45?'🩵 Bueno':p>=30?'🟢 Objetivo':p>=20?'🟠 Aceptable':'🔴 Bajo';};
+const pctCls=pct=>(pct==null)?'nc':(pct>=vpMinPct()?'up':'dn');
+const pctColor=pct=>{if(pct==null)return'var(--muted)';const p=Math.round(pct),P=vpMinPct();return p>=200?'#f59e0b':p>=130?'#a78bfa':p>=70?'#60a5fa':p>=45?'#14b8a6':p>=P?'#22c55e':p>=P-10?'#f97316':'#ef4444';};
+const pctLabel=pct=>{if(pct==null)return'';const p=Math.round(pct),P=vpMinPct();return p>=200?'🟡 JOYA':p>=130?'🟣 Estrella':p>=70?'🔵 Excelente':p>=45?'🩵 Bueno':p>=P?'🟢 Objetivo':p>=P-10?'🟠 Aceptable':'🔴 Bajo';};
 // EL COLOR DE LA BARRA SALE DE LA CONFIG, NO CLAVADO. Los dos escalones de abajo decían 40 y 30:
 // el 40 es el piso VIEJO, de cuando el margen se medía sin IIBB ni monotributo. Resultado: todo lo
 // que estaba entre 30% y 39% —o sea, en el objetivo o arriba— se pintaba NARANJA como si estuviera
@@ -6016,7 +6023,7 @@ function vpCostHint(){
   if(!p){el.innerHTML='⚠️ Este producto no está cargado en la web — se guardará igual, pero sin costo no se calcula el % de ganancia. Cargalo en Productos para vincularlo.';return;}
   const unit=costFullP(p);const costo=unit*qty;
   let txt=`Costo Full del producto: <strong>${fmt(unit)}</strong> c/u${qty>1?` · costo total ${fmt(costo)}`:''}`;
-  if(neto>0&&costo>0){const g=neto-costo;const pct=g/costo*100;txt+=` · Ganancia ${fmt(g)} → <strong style="color:${pctColor(pct)}">${pct>=0?'+':''}${pct.toFixed(1)}%</strong>${pct<VP_MIN_PCT?' ⚠️ (bajo el '+VP_MIN_PCT+'%)':''}`;}
+  if(neto>0&&costo>0){const g=neto-costo;const pct=g/costo*100;txt+=` · Ganancia ${fmt(g)} → <strong style="color:${pctColor(pct)}">${pct>=0?'+':''}${pct.toFixed(1)}%</strong>${pct<vpMinPct()?' ⚠️ (bajo el '+vpMinPct()+'%)':''}`;}
   el.innerHTML=txt;
 }
 // Devuelve el TC histórico del mes YYYY_MM: usa el snapshot si existe, sino el actual
@@ -6223,7 +6230,7 @@ function renderVpCart(){
   }).join('');
   const g=totNeto-totCosto;const pct=totCosto>0?g/totCosto*100:null;
   el.innerHTML=`<div class="stitle" style="margin:0 0 6px">En esta venta (${vpCart.length} ${vpCart.length===1?'producto':'productos'})</div>${items}
-    <div style="text-align:right;font-size:.68rem;margin-top:6px;color:var(--muted)">${totTotal>0?`Total <strong style="color:var(--text)">${fmt(totTotal)}</strong> · `:''}Neto <strong style="color:var(--green)">${fmt(totNeto)}</strong>${pct!==null?` · Ganancia ${fmt(g)} (<strong style="color:${pctColor(pct)}">${pct>=0?'+':''}${pct.toFixed(1)}%</strong>)${pct<VP_MIN_PCT?' ⚠️':''}`:''}</div>`;
+    <div style="text-align:right;font-size:.68rem;margin-top:6px;color:var(--muted)">${totTotal>0?`Total <strong style="color:var(--text)">${fmt(totTotal)}</strong> · `:''}Neto <strong style="color:var(--green)">${fmt(totNeto)}</strong>${pct!==null?` · Ganancia ${fmt(g)} (<strong style="color:${pctColor(pct)}">${pct>=0?'+':''}${pct.toFixed(1)}%</strong>)${pct<vpMinPct()?' ⚠️':''}`:''}</div>`;
 }
 async function recalcTodayCostos(prodId){
   // recalcula ventas de los últimos 7 días al modificar un precio
@@ -9266,7 +9273,7 @@ function renderPctChartFromScope(scope){
     buckets.forEach(keys=>{MET_ACCTS.forEach(a=>{let g=0,c=0;keys.forEach(k=>{g+=metGetValDay(k,a,'ganancia');c+=metGetCostoDay(k,a);});gan[a].push(g);cos[a].push(c);});});
     datasets=MET_ACCTS.map(a=>({label:MET_LABELS[a],data:metPctMode==='promedio'?runAvg(gan[a],cos[a]):labels.map((_,i)=>pct(gan[a][i],cos[a][i])),borderColor:MET_COLORS[a],backgroundColor:MET_COLORS[a]+'22',borderWidth:2,tension:.3,pointRadius:2,spanGaps:true}));
   }
-  datasets.push({label:'Meta '+VP_MIN_PCT+'%',data:labels.map(()=>VP_MIN_PCT),borderColor:'#6b6b7a',borderDash:[5,4],borderWidth:1,pointRadius:0,fill:false,tension:0});
+  datasets.push({label:'Meta '+vpMinPct()+'%',data:labels.map(()=>vpMinPct()),borderColor:'#6b6b7a',borderDash:[5,4],borderWidth:1,pointRadius:0,fill:false,tension:0});
   metCortarEnHoy(datasets,buckets);
   if(sinPrev)datasets=datasets.filter(ds=>ds.label!==CMP_LBL_PREV);
   if(metChartPct){metChartPct.data.labels=labels;metChartPct.data.datasets=datasets;metChartPct.update();return;}
