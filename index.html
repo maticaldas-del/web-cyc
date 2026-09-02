@@ -2287,7 +2287,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='18.7';
+const APP_VERSION='18.8';
 // El problema real que esto resuelve no es curiosidad: es que el celular guarda la app y sigue
 // mostrando la de ayer sin avisar. Varias veces se revisó un cambio que ya estaba subido y no se
 // veía. Por eso, además del número, el chip avisa cuando hay una versión nueva esperando.
@@ -2943,6 +2943,48 @@ function _prodIncompletosBanner(){
 // precio, y era el mismo producto en los dos lados.
 // Usa margenMLDe() y visitasDe(), las MISMAS funciones que Rotación de Stock: una sola cuenta.
 function metaMargenML(){return parseFloat((state.mlconfig||{}).minPct)||30;}
+// ── CÓMO PASA LA PLATA, DE PUNTA A PUNTA ──────────────────────────────────────
+// Pedido suyo del 01/09/2026, textual: "me gustaría que sea una línea de cómo pasa el dinero desde
+// que el comprador paga hasta el dinero que me queda final después de pagar factura a ml a fin de
+// mes (o sea COMPLETO)".
+//
+// Existe porque los números sueltos lo hacían equivocarse SIEMPRE en el mismo punto: agarraba el
+// "costo de vender en Full" (que YA incluye lo que cobra Full) y le restaba el "Neto ML" (al que
+// ML YA le sacó lo que cobra Full). Pagaba Full dos veces y le daba una pérdida que no existía.
+// Puesto en fila, ese error no se puede cometer: cada peso aparece UNA vez y en un solo renglón.
+//
+// Los impuestos van al final y aparte a propósito: no se descuentan en el momento de la venta,
+// llegan en la factura de ML de fin de mes. Es lo que él llama "lo que termina descontándome MP".
+function flujoPlataHTML(p,r){
+  const precio=Math.round(Number(p.netoCalcPrecio)||0);
+  if(!(precio>0)||r.netoCalc==null||!(r.costoBase>0))return '';
+  const gest=r.gest||0;
+  const com=Math.round(precio-r.netoCalc-gest);   // lo que cobró ML de comisión, deducido del neto
+  const imp=Math.round(r.mlExtra||0);
+  const merc=Math.round(r.costoBase-imp);         // mercadería + envío/embalaje + % reclamos
+  const gan=Math.round(r.netoCalc-r.costoBase);
+  const fila=(txt,val,signo,color)=>`<div style="display:flex;justify-content:space-between;gap:14px;padding:1px 0"><span style="color:${color||'var(--muted)'}">${signo||''} ${txt}</span><span style="font-family:'DM Mono',monospace;color:${color||'var(--text)'}">${fmt(val)}</span></div>`;
+  const raya=`<div style="border-top:1px solid var(--border);margin:3px 0"></div>`;
+  return `<details style="margin-top:8px">
+    <summary style="cursor:pointer;font-size:.58rem;color:#38bdf8;letter-spacing:.04em">▸ cómo pasa la plata en una venta</summary>
+    <div style="font-size:.6rem;line-height:1.6;margin-top:6px;background:rgba(0,0,0,.18);border-radius:6px;padding:8px 10px">
+      ${fila('El comprador paga',precio,'','var(--text)')}
+      ${fila('comisión de ML',com,'−')}
+      ${gest>0?fila('envío de Full',gest,'−'):fila('envío de Full (no cobra)',0,'−')}
+      ${raya}
+      ${fila('te deposita ML',r.netoCalc,'=','#38bdf8')}
+      ${fila('IIBB + monotributo',imp,'−')}
+      <div style="font-size:.52rem;color:var(--muted);margin:-1px 0 3px 12px">llega en la factura de ML de fin de mes</div>
+      ${fila('mercadería + envío/embalaje',merc,'−')}
+      ${raya}
+      <div style="display:flex;justify-content:space-between;gap:14px;padding:2px 0">
+        <span style="font-weight:700;color:${gan>=0?'var(--green)':'var(--red)'}">= TE QUEDA</span>
+        <span style="font-family:'DM Mono',monospace;font-weight:700;color:${gan>=0?'var(--green)':'var(--red)'}">${fmt(gan)}</span>
+      </div>
+      <div style="font-size:.52rem;color:var(--muted);margin-top:3px">${fmt(gan)} sobre un costo total de ${fmt(Math.round(r.costo))} = <strong style="color:${pctColor(r.margen)}">${r.margen!=null?r.margen.toFixed(0)+'%':'—'}</strong></div>
+    </div>
+  </details>`;
+}
 function mmlBoxHTML(p){
   const META=metaMargenML();
   const r=margenMLDe(p);
@@ -2982,6 +3024,7 @@ function mmlBoxHTML(p){
     ${r.netoReal!=null?`<div style="font-size:.55rem;color:var(--muted);margin-top:2px">ventas reales: ${fmt(r.netoReal)}</div>`:''}
     <div style="font-size:.58rem;color:var(--muted);margin-top:5px;line-height:1.5">${objetivo?`neto p/ ${META}%: <strong style="color:var(--text)">${fmt(objetivo)}</strong> · `:''}<span title="${visTitle}">lo miran <strong style="color:${visColor}">${visTxt}</strong></span></div>
     ${flag||visFlag?`<div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:6px">${flag}${visFlag}</div>`:''}
+    ${flujoPlataHTML(p,r)}
   </div>`;
 }
 function renderProds(){
