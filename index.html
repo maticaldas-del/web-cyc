@@ -901,6 +901,7 @@ footer{margin-top:32px;padding-top:14px;border-top:1px solid var(--border);font-
   <!-- Lo que ya salió y todavía no llegó. Va ARRIBA de todo y en las tres secciones porque es la
        explicación de por qué algunos números de compra bajaron: esa mercadería ya está paga. -->
   <div id="ped-camino"></div>
+  <div id="ped-pausaprecio-aviso"></div>
 
   <!-- ── SECCIÓN PRIORIDAD (mezclado, ordenado por $ en riesgo) ── -->
   <div id="ped-section-prioridad" style="display:none">
@@ -2299,7 +2300,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='19.4';
+const APP_VERSION='19.5';
 // El problema real que esto resuelve no es curiosidad: es que el celular guarda la app y sigue
 // mostrando la de ayer sin avisar. Varias veces se revisó un cambio que ya estaba subido y no se
 // veía. Por eso, además del número, el chip avisa cuando hay una versión nueva esperando.
@@ -2967,6 +2968,24 @@ function metaMargenML(){return parseFloat((state.mlconfig||{}).minPct)||30;}
 //
 // Los impuestos van al final y aparte a propósito: no se descuentan en el momento de la venta,
 // llegan en la factura de ML de fin de mes. Es lo que él llama "lo que termina descontándome MP".
+// ── LA LÍNEA DEL DINERO: DE IZQUIERDA A DERECHA, SIEMPRE A LA VISTA ─────────────
+// Pedido suyo del 02/09/2026, y es el arreglo de raíz de una confusión que ya volvió tres veces:
+// "creo que lo entendí, el problema es que el neto no es el 24% del costo de vender en full sino
+// que es lo que le gano al producto sin la gestión de full. entonces es difícil de entender así.
+// que me muestre la línea de cómo pasa el dinero como default."
+//
+// El Ferrari Rojo es el ejemplo exacto: "Costo vender en Full $36.691" y "Neto ML $38.823" están
+// uno al lado del otro y NO se restan entre sí. La gestión de Full ($6.836) está adentro de los
+// dos, pero de maneras distintas: en el costo está SUMADA, y del neto ML ya viene DESCONTADA.
+// Restar esos dos números da $2.132, que no es la ganancia de nada. La ganancia real es $8.969.
+// Mientras esos dos números estén sueltos, la cuenta mental que sale es la equivocada.
+//
+// DOS CAMBIOS Y LOS DOS PEDIDOS POR ÉL:
+//  1. Se ve SIEMPRE. Antes era un <details> que había que abrir — y encima se cerraba solo, porque
+//     cualquier cambio en la base redibuja la ficha entera y un <details> vuelve a nacer cerrado.
+//     Sacándolo, el bug desaparece: no queda nada que se pueda cerrar.
+//  2. Va en fila, de izquierda a derecha, del peso que paga el comprador al peso que queda. Con
+//     flex-wrap, así en el celular baja de renglón en vez de recortarse.
 function flujoPlataHTML(p,r){
   const precio=Math.round(Number(p.netoCalcPrecio)||0);
   if(!(precio>0)||r.netoCalc==null||!(r.costoBase>0))return '';
@@ -2975,27 +2994,31 @@ function flujoPlataHTML(p,r){
   const imp=Math.round(r.mlExtra||0);
   const merc=Math.round(r.costoBase-imp);         // mercadería + envío/embalaje + % reclamos
   const gan=Math.round(r.netoCalc-r.costoBase);
-  const fila=(txt,val,signo,color)=>`<div style="display:flex;justify-content:space-between;gap:14px;padding:1px 0"><span style="color:${color||'var(--muted)'}">${signo||''} ${txt}</span><span style="font-family:'DM Mono',monospace;color:${color||'var(--text)'}">${fmt(val)}</span></div>`;
-  const raya=`<div style="border-top:1px solid var(--border);margin:3px 0"></div>`;
-  return `<details style="margin-top:8px">
-    <summary style="cursor:pointer;font-size:.58rem;color:#38bdf8;letter-spacing:.04em">▸ cómo pasa la plata en una venta</summary>
-    <div style="font-size:.6rem;line-height:1.6;margin-top:6px;background:rgba(0,0,0,.18);border-radius:6px;padding:8px 10px">
-      ${fila('El comprador paga',precio,'','var(--text)')}
-      ${fila('comisión de ML',com,'−')}
-      ${gest>0?fila('envío de Full',gest,'−'):fila('envío de Full (no cobra)',0,'−')}
-      ${raya}
-      ${fila('te deposita ML',r.netoCalc,'=','#38bdf8')}
-      ${fila('IIBB + monotributo',imp,'−')}
-      <div style="font-size:.52rem;color:var(--muted);margin:-1px 0 3px 12px">llega en la factura de ML de fin de mes</div>
-      ${fila('mercadería + envío/embalaje',merc,'−')}
-      ${raya}
-      <div style="display:flex;justify-content:space-between;gap:14px;padding:2px 0">
-        <span style="font-weight:700;color:${gan>=0?'var(--green)':'var(--red)'}">= TE QUEDA</span>
-        <span style="font-family:'DM Mono',monospace;font-weight:700;color:${gan>=0?'var(--green)':'var(--red)'}">${fmt(gan)}</span>
-      </div>
-      <div style="font-size:.52rem;color:var(--muted);margin-top:3px">${fmt(gan)} sobre un costo total de ${fmt(Math.round(r.costo))} = <strong style="color:${pctColor(r.margen)}">${r.margen!=null?r.margen.toFixed(0)+'%':'—'}</strong></div>
+  const ganCol=gan>=0?'var(--green)':'var(--red)';
+  // Cada escalón: etiqueta chica arriba, número grande abajo. Los que RESTAN van en gris con el −
+  // adelante; los dos hitos —lo que deposita ML y lo que queda— van en color y en negrita, porque
+  // son los únicos dos números que él necesita retener.
+  const paso=(lbl,val,col,signo,peso)=>`<div style="text-align:center;padding:0 2px;min-width:74px">
+      <div style="font-size:.5rem;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;line-height:1.3;margin-bottom:2px">${lbl}</div>
+      <div style="font-family:'DM Mono',monospace;font-size:${peso?'.78rem':'.68rem'};font-weight:${peso?'700':'500'};color:${col};white-space:nowrap">${signo||''}${fmt(val)}</div>
+    </div>`;
+  const flecha=`<div style="color:var(--border2);font-size:.7rem;align-self:center;padding-bottom:2px">→</div>`;
+  return `<div style="grid-column:1/-1;width:100%;background:rgba(0,0,0,.18);border:1px solid var(--border);border-radius:8px;padding:10px 12px;margin-top:4px">
+    <div style="font-size:.58rem;color:#38bdf8;letter-spacing:.05em;margin-bottom:7px">💸 CÓMO PASA LA PLATA EN UNA VENTA</div>
+    <div style="display:flex;align-items:flex-end;gap:4px;flex-wrap:wrap">
+      ${paso('paga el comprador',precio,'var(--text)','',true)}
+      ${flecha}${paso('comisión ML',com,'var(--muted)','−')}
+      ${flecha}${paso(gest>0?'envío de Full':'envío de Full (no cobra)',gest,'var(--muted)','−')}
+      ${flecha}${paso('te deposita ML',r.netoCalc,'#38bdf8','',true)}
+      ${flecha}${paso('IIBB + mono',imp,'var(--muted)','−')}
+      ${flecha}${paso('mercadería + envío',merc,'var(--muted)','−')}
+      ${flecha}${paso('te queda',gan,ganCol,'',true)}
     </div>
-  </details>`;
+    <div style="font-size:.56rem;color:var(--muted);margin-top:7px;line-height:1.5;border-top:1px solid var(--border);padding-top:6px">
+      <strong style="color:${ganCol}">${fmt(gan)}</strong> sobre el costo total de <strong style="color:var(--text)">${fmt(Math.round(r.costo))}</strong> = <strong style="color:${pctColor(r.margen)};font-size:.72rem">${r.margen!=null?r.margen.toFixed(0)+'%':'—'}</strong>
+      · el IIBB y el monotributo llegan después, en la factura de ML de fin de mes.
+    </div>
+  </div>`;
 }
 function mmlBoxHTML(p){
   const META=metaMargenML();
@@ -3036,8 +3059,8 @@ function mmlBoxHTML(p){
     ${r.netoReal!=null?`<div style="font-size:.55rem;color:var(--muted);margin-top:2px">ventas reales: ${fmt(r.netoReal)}</div>`:''}
     <div style="font-size:.58rem;color:var(--muted);margin-top:5px;line-height:1.5">${objetivo?`neto p/ ${META}%: <strong style="color:var(--text)">${fmt(objetivo)}</strong> · `:''}<span title="${visTitle}">lo miran <strong style="color:${visColor}">${visTxt}</strong></span></div>
     ${flag||visFlag?`<div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:6px">${flag}${visFlag}</div>`:''}
-    ${flujoPlataHTML(p,r)}
-  </div>`;
+  </div>
+  ${flujoPlataHTML(p,r)}`;
 }
 function renderProds(){
   _impPromCache=null; // los impuestos por unidad se recalculan con las ventas actuales
@@ -7831,14 +7854,46 @@ async function vaciarPapelera(){
 //
 // Mide con margenMLDe() y metaMargenML(), las MISMAS funciones que la ficha y Rotación de Stock.
 // Si acá se copiara la fórmula, un día la lista diría "ya llega al piso" y la ficha diría que no.
+// ── POR QUÉ ADEMÁS VUELVE SOLO CADA TANTO ──────────────────────────────────────
+// Se lo marcó él el 02/09/2026: "yo ahora voy a marcar todos los productos que los precios ya no
+// dan. perfecto. pero quizás de acá a 20 días ya sí conseguimos y me sigue sin aparecer porque
+// está pausado".
+//
+// Tenía razón y el agujero era real. La revisión automática mira el margen, y el margen se mueve
+// por DOS motivos: que suba el precio en ML (eso el panel lo ve solo) o que el proveedor te lo
+// venda más barato — y ESE número el panel no lo conoce hasta que alguien carga el costo nuevo.
+// O sea que el caso que a él le importa, el del proveedor, no lo iba a avisar NUNCA: quedaba
+// pausado para siempre esperando un aviso que no podía existir.
+// Por eso cada pausado vence: a los 30 días vuelve a la superficie pidiendo que le mires el precio.
+// Y vuelve a la LISTA marcado, no a Pedidos: si volviera a Pedidos empezaría a restar puntaje otra
+// vez sin decir por qué, y habría que encontrarlo entre cuarenta. Marcado son cinco minutos.
+const PAUSA_REVISAR_DIAS=30;
 function _pausaPrecioLista(){
-  const piso=metaMargenML();
+  const piso=metaMargenML(),ahora=Date.now();
   return Object.entries(state.pausaPrecio||{}).map(([pid,e])=>{
     const prod=(state.products||[]).find(x=>x.id===pid);
     const m=prod?margenMLDe(prod):null;
     const margen=(m&&m.margen!=null)?m.margen:null;
-    return {pid,e,prod,margen,piso,ok:(margen!=null&&margen>=piso)};
-  }).sort((a,b)=>((b.ok?1:0)-(a.ok?1:0))||((b.margen==null?-999:b.margen)-(a.margen==null?-999:a.margen)));
+    // Las pausas viejas no tienen revisarTs: se les cuenta desde que se pausaron, así ninguna
+    // queda escondida para siempre por haberse guardado antes de que esto existiera.
+    const rev=Number(e.revisarTs)||((Number(e.ts)||ahora)+PAUSA_REVISAR_DIAS*86400000);
+    const ok=(margen!=null&&margen>=piso);
+    return {pid,e,prod,margen,piso,ok,rev,
+      tocaRevisar:(!ok&&ahora>=rev),
+      diasRev:Math.ceil((rev-ahora)/86400000)};
+  }).sort((a,b)=>((b.ok?1:0)-(a.ok?1:0))||((b.tocaRevisar?1:0)-(a.tocaRevisar?1:0))||(a.rev-b.rev));
+}
+
+// "Lo miré, sigue sin dar": lo vuelve a dormir otros 30 días. Es el botón que hace que la lista
+// no se convierta en un cartel de alarma permanente que se termina ignorando.
+async function posponerPrecio(pid){
+  const e=(state.pausaPrecio||{})[pid];if(!e)return;
+  const rev=Date.now()+PAUSA_REVISAR_DIAS*86400000;
+  e.revisarTs=rev;e.revisadoTs=Date.now();
+  await db.ref('cyc').update({['pausado_precio/'+pid+'/revisarTs']:rev,['pausado_precio/'+pid+'/revisadoTs']:e.revisadoTs});
+  await log('Revisó el precio y lo dejó pausado: '+(e.producto||pid));
+  renderPedidos();
+  toast('Lo vuelvo a preguntar en '+PAUSA_REVISAR_DIAS+' días','info');
 }
 
 // Saca un producto de Pedidos porque el precio no da. Mismo camino que la papelera (el robot lo
@@ -7856,7 +7911,8 @@ async function pausarPrecio(id){
   const entry={prodId:pid,producto:p.producto||'',ts:Date.now(),coll:path.replace('/',''),
     auto:p.auto===true,
     margenAlPausar:(m&&m.margen!=null)?Math.round(m.margen*10)/10:null,
-    piso:metaMargenML()};
+    piso:metaMargenML(),
+    revisarTs:Date.now()+PAUSA_REVISAR_DIAS*86400000};
   // Igual que en la papelera: los pedidos cargados a mano se guardan enteros, si no devolverlos
   // perdería la cantidad y la nota (los automáticos los rearma el robot solo).
   if(!p.auto)entry.ped={...p};
@@ -8587,11 +8643,31 @@ function renderPedidos(){
   // verde es el aviso de "este ya vuelve a dar". Es lo único que hace que la lista no se muera.
   const _ppL=_pausaPrecioLista();
   const _ppOk=_ppL.filter(x=>x.ok).length;
+  const _ppRev=_ppL.filter(x=>x.tocaRevisar).length;
   const _ppTab=document.getElementById('tab-pausaprecio-n');
   if(_ppTab){
-    _ppTab.textContent=_ppL.length?(_ppOk?'('+_ppL.length+' · '+_ppOk+' ✓)':'('+_ppL.length+')'):'';
-    _ppTab.style.color=_ppOk?'var(--green)':'';
-    _ppTab.style.fontWeight=_ppOk?'700':'';
+    // Verde ✓ = uno volvió a dar solo (subió el precio en ML). Ámbar 🔔 = venció el plazo y hay
+    // que ir a preguntarle el precio al proveedor, que es lo que el panel NO puede saber solo.
+    const extra=_ppOk?' · '+_ppOk+' ✓':(_ppRev?' · '+_ppRev+' 🔔':'');
+    _ppTab.textContent=_ppL.length?'('+_ppL.length+extra+')':'';
+    _ppTab.style.color=_ppOk?'var(--green)':(_ppRev?'var(--amber)':'');
+    _ppTab.style.fontWeight=(_ppOk||_ppRev)?'700':'';
+  }
+  // El aviso va TAMBIÉN arriba de Pedidos, donde él sí entra todos los días. Una solapa que hay
+  // que acordarse de abrir es una solapa que no se abre, y ahí la lista se muere.
+  const _ppAv=document.getElementById('ped-pausaprecio-aviso');
+  if(_ppAv){
+    if(!_ppOk&&!_ppRev)_ppAv.innerHTML='';
+    else{
+      const col=_ppOk?'var(--green)':'var(--amber)';
+      const partes=[];
+      if(_ppOk)partes.push(`<strong style="color:var(--green)">${_ppOk} volvió a dar el ${metaMargenML()}%</strong>`);
+      if(_ppRev)partes.push(`<strong style="color:var(--amber)">${_ppRev} toca revisarle el precio al proveedor</strong>`);
+      _ppAv.innerHTML=`<div style="background:var(--surface);border:1px solid ${col};border-radius:var(--r);padding:11px 14px;margin-bottom:12px;display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap">
+        <div style="font-size:.72rem">⏸️ De los pausados por precio: ${partes.join(' · ')}</div>
+        <button class="btn" style="font-size:.62rem;padding:5px 10px" onclick="setPedidoSection('pausaprecio',document.getElementById('tab-pausaprecio-btn'))">Verlos →</button>
+      </div>`;
+    }
   }
   if(pedidoSection==='pausaprecio'){
     const el=document.getElementById('pedidos-pausaprecio-list');if(!el)return;
@@ -8599,6 +8675,7 @@ function renderPedidos(){
     const cntEl=document.getElementById('pedidos-pausaprecio-count');
     if(cntEl)cntEl.innerHTML=`<div class="pcount"><strong>${items.length}</strong>Pausados</div>`+
       (_ppOk?`<div class="pcount"><strong style="color:var(--green)">${_ppOk}</strong>Ya llegan al piso</div>`:'')+
+      (_ppRev?`<div class="pcount"><strong style="color:var(--amber)">${_ppRev}</strong>Toca revisar</div>`:'')+
       `<div class="pcount"><strong>${metaMargenML()}%</strong>Piso de hoy</div>`;
     const q=normTxt(document.getElementById('ped-pausaprecio-search')?.value||'');
     if(q)items=items.filter(x=>normTxt((x.prod?x.prod.name:x.e.producto)||'').includes(q));
@@ -8611,13 +8688,28 @@ function renderPedidos(){
       const mTxt=(x.margen==null)?'<span style="color:var(--amber)">no se puede medir todavía: falta el neto de ML</span>'
         :`hoy da <strong style="color:${pctColor(x.margen)}">${x.margen.toFixed(1)}%</strong>`;
       const antes=(x.e.margenAlPausar!=null)?` · cuando lo pausaste daba ${x.e.margenAlPausar}%`:'';
-      return `<div class="pedido-item ${x.ok?'suficiente':'poco_stock'}">
+      let txt,cls,botones;
+      if(x.ok){
+        cls='suficiente';
+        txt=`<strong style="color:var(--green)">✓ Volvió a dar</strong> — ${mTxt}, el piso es ${x.piso}%. Ya se puede comprar de nuevo.`;
+        botones=`<button class="btn" onclick="despausarPrecio('${x.pid}')">↩︎ Volver a Pedidos</button>`;
+      } else if(x.tocaRevisar){
+        cls='pendiente';
+        // Acá el panel NO puede contestar solo: lo que cambia es lo que te cobra el proveedor.
+        // Por eso el texto pide una acción concreta y los dos botones son las dos respuestas.
+        txt=`<strong style="color:var(--amber)">🔔 Preguntá el precio del proveedor</strong> — ${mTxt} al precio de venta de hoy${antes}. Si lo conseguís más barato, vuelve a dar.`;
+        botones=`<button class="btn" onclick="posponerPrecio('${x.pid}')" title="Sigue sin dar: te lo vuelvo a preguntar en ${PAUSA_REVISAR_DIAS} días">😴 Sigue sin dar</button>`+
+          `<button class="btn" onclick="despausarPrecio('${x.pid}')">↩︎ Volver a Pedidos</button>`;
+      } else {
+        cls='poco_stock';
+        txt=`${mTxt}, el piso es ${x.piso}%${antes} · <span style="color:var(--muted)">te lo vuelvo a preguntar en ${Math.max(0,x.diasRev)} d</span>`;
+        botones=`<button class="btn" onclick="despausarPrecio('${x.pid}')">↩︎ Volver a Pedidos</button>`;
+      }
+      return `<div class="pedido-item ${cls}">
         <span class="pi-prod">${nom}</span>
-        <span class="pi-nota" style="flex:1">${x.ok
-          ?`<strong style="color:var(--green)">✓ Volvió a dar</strong> — ${mTxt}, el piso es ${x.piso}%. Ya se puede comprar de nuevo.`
-          :`${mTxt}, el piso es ${x.piso}%${antes}`}</span>
+        <span class="pi-nota" style="flex:1">${txt}</span>
         <span class="pi-nota">${dias===0?'pausado hoy':'pausado hace '+dias+' día'+(dias===1?'':'s')}</span>
-        <button class="btn" onclick="despausarPrecio('${x.pid}')">↩︎ Volver a Pedidos</button>
+        ${botones}
         <span class="pi-ts">${x.e.ts?ts2s(x.e.ts):''}</span>
       </div>`;
     }).join('');
