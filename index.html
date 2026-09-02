@@ -2287,7 +2287,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='18.5';
+const APP_VERSION='18.6';
 // El problema real que esto resuelve no es curiosidad: es que el celular guarda la app y sigue
 // mostrando la de ayer sin avisar. Varias veces se revisó un cambio que ya estaba subido y no se
 // veía. Por eso, además del número, el chip avisa cuando hay una versión nueva esperando.
@@ -2946,7 +2946,9 @@ function metaMargenML(){return parseFloat((state.mlconfig||{}).minPct)||30;}
 function mmlBoxHTML(p){
   const META=metaMargenML();
   const r=margenMLDe(p);
-  const objetivo=r.costo>0?Math.round(r.costo*(1+META/100)):null;
+  // El neto que hace falta para llegar a la meta: el costo base MÁS la meta aplicada sobre el
+  // costo TOTAL (con la gestión adentro). Se compara contra netoCalc, que ya viene sin la gestión.
+  const objetivo=r.costo>0?Math.round(r.costoBase+r.costo*META/100):null;
   let margenTxt,margenColor;
   if(r.costo<=0){margenTxt='sin costo';margenColor='var(--muted)';}
   else if(r.neto==null){margenTxt='—';margenColor='var(--muted)';}
@@ -4642,7 +4644,10 @@ const COSTO_CAJA=16000;
 function gananciaUnidad(p){
   const m=margenMLDe(p);
   if(!m||m.neto==null||!(m.costo>0))return null;   // sin neto de ML no se inventa
-  return m.neto-m.costo;
+  // Contra costoBase y NO contra el costo total: el neto que paga ML ya tiene la gestión de Full
+  // descontada, así que restarle el costo total la cobraría dos veces. La ganancia en pesos es la
+  // misma de siempre; lo que cambió es sólo el divisor del porcentaje.
+  return m.neto-m.costoBase;
 }
 // Plata por día que destraba la caja de una cuenta, separada en la que se pierde HOY (publicaciones
 // en cero) y la que no (relleno de las que todavía tienen). Se mide sobre lo SUGERIDO, no sobre lo
@@ -6708,10 +6713,26 @@ function margenMLDe(p){
     mlExtra=Math.round(Number(p.netoCalcPrecio)*(mlExtraPct(p.netoCalcCuenta)+monoPct())/100);
     mlExtraEstimado=true;
   }
-  const costo=costFullP(p)+mlExtra;
+  // ── LA GESTIÓN DE FULL VA ADENTRO DEL COSTO ────────────────────────────────
+  // Regla suya del 01/09/2026, textual: "al vender un producto y pagar TODO lo que descuentan en el
+  // momento y lo que termina descontándome MP luego en facturas de ML por vender ese producto me
+  // tiene que quedar un 30%". O sea: el costo tiene que incluir lo que cobra Full.
+  //
+  // Antes el costo era mercadería + impuestos, y lo que cobra Full sólo aparecía restado del neto.
+  // Con eso el porcentaje salía MÁS ALTO de lo que él considera su ganancia: el mismo perfume daba
+  // 33% cuando por su cuenta daba 27%.
+  //
+  // EL DETALLE QUE HAY QUE TENER CLARO PARA NO CONTARLO DOS VECES: `netoCalc` es lo que ML te
+  // deposita y YA tiene la gestión descontada. Así que la ganancia en pesos se sigue midiendo
+  // contra `costoBase` (sin la gestión) — si se midiera contra el costo total, la gestión se
+  // pagaría dos veces en el papel y todos los márgenes se hundirían de mentira.
+  // Lo único que cambia es el DIVISOR. La ganancia en pesos no se mueve ni un peso.
+  const gest=Math.round(Number(p.gestFull)||0);
+  const costoBase=costFullP(p)+mlExtra;   // mercadería + envío/embalaje + % reclamos + impuestos
+  const costo=costoBase+gest;             // el costo TOTAL, el que él quiere ver
   const netoCalc=(p.netoCalc!=null&&p.netoCalc!=='')?Number(p.netoCalc):null;
-  const margen=(netoCalc!=null&&costo>0)?((netoCalc-costo)/costo*100):null;
-  return {costo,neto:netoCalc,netoCalc,margen,mlExtra,mlExtraEstimado,
+  const margen=(netoCalc!=null&&costo>0)?((netoCalc-costoBase)/costo*100):null;
+  return {costo,costoBase,gest,neto:netoCalc,netoCalc,margen,mlExtra,mlExtraEstimado,
     fuente:netoCalc!=null?'calc':null,
     netoReal:(a&&a.u>0)?Math.round(a.neto/a.u):null,
     sinEnvio:p.netoCalcSinEnvio===true,
