@@ -212,6 +212,7 @@ Los que más se usan:
 | `limpiarclaves[:go]` | borra las claves de inventario basura (cuentas mal escritas, negativos, productos que no existen) |
 | `ordenped[:cuántos]` | compara el orden de Pedidos Bs As antes y después de medir sobre los días con stock |
 | `liquidar[:días]` | **qué mercadería conviene rematar**: separa muerto de sobrecomprado y de caja perdida |
+| `probaralmacena[:MLA]` | **prueba si ML publica el almacenamiento por producto** · 13 rutas candidatas por cuenta |
 | `patagoniako[:go]` | parte "De la Patagonia" en dos fichas por el costo distinto del KO UNISEX |
 | `frenados[:díasStock]` | si conviene bajarle el precio al stock parado, con la cuenta hecha |
 | `bajarcaja[:días][:piso][:maxBaja]` | qué bajar **poquito** para que vuelva a vender: las que tienen stock, no venden y perdieron la caja de compra por poca plata · **sale solo en el chequeo de las 8** |
@@ -515,6 +516,46 @@ con ninguna, no hay de dónde sacar un costo y nadie lo puede inventar. Ahí va 
   **La lección: un filtro que descarta por omisión es un filtro que apaga cosas en silencio.** El
   que escribe un aviso nuevo no se entera de que existe el tipo hasta que alguien pregunta por qué
   no le llegó. Es el mismo patrón que el `catch {}` vacío: el dato no se pierde con ruido.
+
+- **"MUERTO" CONFUNDÍA MERCADERÍA RECIÉN LLEGADA CON MERCADERÍA PARADA HACE MESES (02/09/2026).**
+  Él lo marcó: *"me marca los 8 en 1 como que están muertos y tengo un montón. pero acaban de llegar
+  a ml. no es lo mismo que un producto que está hace 2 meses con stock y no vende nada hace 1 mes."*
+  El estado salía SOLO de ventas ÷ stock, así que una caja que llegó ayer daba el mismo rojo que
+  mercadería parada hace medio año — y los remedios son opuestos: a una hay que darle tiempo, a la
+  otra bajarle el precio o rematarla. La única gracia que había eran 7 días desde `restockTs`, un
+  campo que sólo se escribe cuando el robot ve el stock pasar de cero.
+  Ahora hay **🆕 Recién llegado hasta los 30 días** (`ROT_GRACIA_DIAS`) y no cuenta como capital
+  muerto, y al lado del estado va el aviso de almacenamiento: *"empieza a pagar en N d"* en ámbar y
+  *"paga almacenamiento hace N d"* en rojo (`ALMAC_DIAS` = 60). Va pegado al estado y no en una
+  columna aparte porque él dijo que lo único que mira es cuando algo se pone naranja.
+  **Sólo con fecha REAL de entrada.** `diasEnStockDe` puede devolver una fecha aproximada (cuando el
+  robot empezó a anotar el producto ya tenía stock): decir "recién llegado" sobre eso taparía justo
+  la mercadería más vieja, que es la que está pagando. Sin fecha real no se opina.
+  Y la clasificación pasó a vivir en **una** función (`rotEstadoDe`): estaba copiada en la tabla y en
+  el puntaje de Inicio, así que la tabla podía decir "Reciente" mientras el puntaje contaba ese
+  mismo producto como capital muerto.
+
+- **EL % DE MÉTRICAS NO SE GUARDA POR VENTA: SE CALCULA AL ABRIR LA PANTALLA (02/09/2026).**
+  Pregunta suya: *"los % del 25% no se aplicó a todas las ventas desde mayo... me va a mostrar que
+  venía a un 40% y pasé a un 32% cuando en realidad el % es el mismo"*. **No hay nada que migrar.**
+  El % sale de `neto` y `costo` en el momento, así que cambiar la fórmula recalcula mayo igual que
+  hoy: la comparación contra el período anterior y el gráfico siguen siendo honestos, sin escalón.
+  El divisor quedó en **una** función (`metCostoPctDay`) — estaba escrito cinco veces (tarjetas,
+  promedio y las dos vistas del gráfico) y con cinco copias las tarjetas podían decir un número y el
+  gráfico otro sobre los MISMOS días.
+  Lo que sí cambia de criterio: la gestión de Full sale del costo de **hoy** del producto, no de lo
+  que ML cobró en aquella venta. Es la misma convención que ya usaba `efectivoCostoVP` para el envío
+  y el embalaje, no una excepción nueva.
+
+- **PEDIDOS: "PAUSADO POR PRECIO", UN ESTADO QUE SE REVISA SOLO (02/09/2026).** Planteo suyo:
+  *"hay productos que están en 'pedidos' que el precio no da... pero me sigue diciendo que es el
+  mayor error, cuando en realidad no depende taanto de nosotros"*. Un producto que no se repone A
+  PROPÓSITO sumaba plata en riesgo y hundía el Puntaje del mes como si fuera un olvido.
+  Es una lista aparte de la papelera y no la misma: la papelera es "esto no se vende más" y a los 7
+  días es definitiva; esto es "no lo compro POR AHORA", y lo que cambia la decisión es un número que
+  se mueve solo. El panel lo vuelve a medir en cada dibujado y **el número de la solapa se pone
+  verde con un ✓** cuando alguno volvió a llegar al piso. Sin ese aviso la lista se convertiría en
+  un cementerio. Vive en `cyc/pausado_precio/<prodId>`.
 
 - **GitHub demora las corridas programadas**, a veces horas. Por eso los crons se piden 3 veces y
   el robot guarda el último día que mandó cada aviso, para no repetir.
