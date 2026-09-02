@@ -13216,6 +13216,162 @@ async function main() {
       return;
     }
 
+    // BILLING_PROBE=pisogest[:piso] → QUÉ PASA SI LA GESTIÓN DE FULL ENTRA EN EL COSTO.
+    //
+    // Regla suya del 01/09/2026, textual: "al vender un producto y pagar TODO lo que descuentan en
+    // el momento y lo que termina descontándome MP luego en facturas de ML por vender ese producto
+    // me tiene que quedar un 30%".
+    //
+    // QUÉ CAMBIA. Hasta hoy el margen se mide así:
+    //     margen = (neto − mercadería − impuestos) ÷ (mercadería + impuestos)
+    // y el neto ya viene con la gestión de Full descontada. O sea que la gestión se resta del
+    // INGRESO y no aparece en el costo. Con la base nueva pasa a estar TAMBIÉN en el costo:
+    //     margen = (neto − mercadería − impuestos) ÷ (mercadería + impuestos + gestión de Full)
+    //
+    // LA GANANCIA EN PESOS NO CAMBIA NI UN PESO: es exactamente el mismo número arriba. Lo único
+    // que cambia es contra qué se divide, y por eso el porcentaje BAJA. Cuánto baja depende de lo
+    // que cobre Full: en lo barato la gestión es $0 y no cambia nada; en lo de arriba de $33.000
+    // son ~$5.600 y ahí el porcentaje se cae varios puntos.
+    //
+    // Ejemplo suyo (De la Patagonia KO UNISEX): 48% con la base vieja, 37% con la nueva, y la
+    // ganancia es $10.272 en las dos.
+    //
+    // ESTE COMANDO NO TOCA NINGÚN PRECIO NI ESCRIBE NADA. Es para ver la lista ANTES de cambiar la
+    // base en el resto del panel, que es lo que él pidió.
+    if (/^pisogest(:|$)/.test(String(process.env.BILLING_PROBE || ''))) {
+      const _pg = String(process.env.BILLING_PROBE).split(':');
+      const MIN = (parseFloat(_pg[1]) || 30) / 100;
+      const DIAS = 60;
+      const fin = (await db.get('cyc/finanzas')) || {};
+      const tc = parseFloat(fin.tipo_cambio) || 1500;
+      const monoP = parseFloat(((await db.get('cyc/monotributo')) || {}).pct) || 0;
+      const links = (await db.get('cyc/mllinks')) || {};
+      const products = Object.values((await db.get('cyc/products')) || {});
+      const pIdx = {}; for (const p of products) pIdx[p.id] = p;
+      const vp = (await db.get('cyc/ventaprod')) || {}; setDevLive(vp);
+      // Ventas por publicación, para deducir la gestión real (igual que bajopiso).
+      const vtaMla = {};
+      const desde = Date.now() - DIAS * 864e5;
+      for (const ents of Object.values(vp)) {
+        for (const v of Object.values(ents || {})) {
+          if (!v || v.cancelada || (v.ts || 0) < desde || !v.mla) continue;
+          const q = v.qty || 1, tot = (v.total || 0) / q, net = (v.neto || 0) / q;
+          if (tot > 0 && net > 0) (vtaMla[v.mla] = vtaMla[v.mla] || []).push({ tot, net });
+        }
+      }
+      const feeCache = {};
+      const nuevas = [], yaEstaban = [], sinDato = [];
+      let mirados = 0, sinCambio = 0;
+      for (const label of labels) {
+        const acc = accounts[label]; if (!acc?.refresh_token) continue;
+        let t; try { t = await mlRefresh(ML_CLIENT_ID, ML_CLIENT_SECRET, acc.refresh_token); } catch { continue; }
+        await db.patch('mlapi/tokens/' + label, { refresh_token: t.refresh_token, updated_ts: Date.now() });
+        const tok = t.access_token;
+        const feeAt = async (site, price, lt, cat) => {
+          const k = site + '|' + lt + '|' + cat + '|' + Math.round(price);
+          if (feeCache[k] !== undefined) return feeCache[k];
+          let out = null;
+          try {
+            const d = await mlGet(`/sites/${site}/listing_prices?price=${Math.round(price)}&listing_type_id=${lt}&category_id=${cat}`, tok);
+            const o = Array.isArray(d) ? d[0] : d;
+            if (typeof o?.sale_fee_amount === 'number') out = o.sale_fee_amount;
+          } catch { out = null; }
+          feeCache[k] = out; return out;
+        };
+        const m = (mlExtraPct(label) + monoP) / 100;
+        const ids = Object.entries(links)
+          .filter(([mla, e]) => e && e.cuenta === label && !e.ignored && e.prodId && /^MLA/i.test(mla))
+          .map(([mla]) => mla);
+        for (let k = 0; k < ids.length; k += 20) {
+          let arr;
+          try { arr = await mlGet('/items?ids=' + ids.slice(k, k + 20).join(',') + '&attributes=id,status,price,variations,title,listing_type_id,category_id,site_id,catalog_listing', tok); }
+          catch { continue; }
+          for (const row of (arr || [])) {
+            const b = row.body || {}; const mla = b.id;
+            if (!mla || !links[mla] || b.error || typeof b.status === 'number') continue;
+            if (b.status !== 'active' && b.status !== 'paused') continue;
+            const e = links[mla];
+            const nom = (e.title || b.title || mla).slice(0, 36);
+            const p = pIdx[e.prodId]; if (!p) continue;
+            const costo = costoPesos(p, 1, tc).costo; if (!costo) continue;
+            const vars = Array.isArray(b.variations) ? b.variations : [];
+            const precio = vars.length ? (vars[0].price || 0) : (b.price || 0);
+            if (!precio) continue;
+            const com = await feeAt(b.site_id || 'MLA', precio, b.listing_type_id, b.category_id);
+            if (com == null) continue;
+            // LA GESTIÓN DE FULL. Primero la deducida de sus ventas (peor caso), que es el criterio
+            // conservador de todo el panel. Si nunca vendió no hay nada que deducir, y ahí se usa el
+            // `gestFull` de la ficha, que es el MISMO número que muestra la pantalla del producto.
+            let env = null, fuente = '';
+            const ventas = vtaMla[mla] || [];
+            if (ventas.length) {
+              const extras = [];
+              for (const pv of [...new Set(ventas.map((v) => Math.round(v.tot)))].slice(-8)) {
+                const cv = await feeAt(b.site_id || 'MLA', pv, b.listing_type_id, b.category_id); if (cv == null) continue;
+                for (const v of ventas) if (Math.round(v.tot) === pv) extras.push(Math.max(0, v.tot - v.net - cv));
+              }
+              if (extras.length) { extras.sort((a, c) => a - c); env = extras[extras.length - 1]; fuente = 'de sus ventas'; }
+            }
+            if (env == null && Number(p.gestFull) > 0) { env = Number(p.gestFull); fuente = 'de la ficha'; }
+            if (env == null) { sinDato.push({ label, mla, nom, why: 'no sé cuánto le cobra Full (nunca vendió y la ficha no tiene gestión cargada)' }); continue; }
+            mirados++;
+            const cuo = pctCuotas(mla), mlx = precio * m;
+            const gan = (precio - com - env - precio * cuo) - costo - mlx;   // pesos: NO cambia entre bases
+            const mgViejo = gan / (costo + mlx) * 100;
+            const mgNuevo = gan / (costo + mlx + env) * 100;
+            if (env <= 0) { sinCambio++; continue; }                          // sin gestión las dos bases dan igual
+            if (mgNuevo >= MIN * 100) continue;                               // llega al piso con la base nueva
+            // Precio que la deja EXACTA en el piso con la base nueva. Se despeja de
+            //   (P − com − env − P·cuo − costo − P·m) = MIN·(costo + P·m + env)
+            //   P = [costo(1+MIN) + com + env(1+MIN)] / (1 − cuo − m(1+MIN))
+            // La ÚNICA diferencia con la fórmula de hoy es que el envío va multiplicado por (1+MIN).
+            const den = 1 - cuo - m * (1 + MIN);
+            let nuevoP = 0;
+            if (den > 0) {
+              let P = precio, comP = com, bien = true;
+              for (let it = 0; it < 4; it++) {
+                const Pn = (costo * (1 + MIN) + comP + env * (1 + MIN)) / den;
+                const c2 = await feeAt(b.site_id || 'MLA', Pn, b.listing_type_id, b.category_id);
+                if (c2 == null) { bien = false; break; }
+                if (Math.abs(Pn - P) < 1 && it > 0) { P = Pn; comP = c2; break; }
+                P = Pn; comP = c2;
+              }
+              if (bien) nuevoP = Math.ceil(P / 10) * 10;
+            }
+            const fila = { label, mla, nom, precio, env, fuente, gan, mgViejo, mgNuevo, nuevoP,
+              pausada: b.status === 'paused', variantes: vars.length > 0, catalogo: !!b.catalog_listing };
+            if (mgViejo >= MIN * 100) nuevas.push(fila); else yaEstaban.push(fila);
+          }
+        }
+      }
+      const money2 = (n) => '$' + Math.round(n).toLocaleString('es-AR');
+      console.log(`═══ PISO DEL ${(MIN * 100).toFixed(0)}% CON LA GESTIÓN DE FULL ADENTRO DEL COSTO ═══\n`);
+      console.log(`La ganancia en PESOS no cambia. Lo único que cambia es contra qué se divide:`);
+      console.log(`   base de hoy : ganancia ÷ (mercadería + impuestos)`);
+      console.log(`   base nueva  : ganancia ÷ (mercadería + impuestos + gestión de Full)\n`);
+      console.log(`Publicaciones miradas: ${mirados} · sin gestión de Full (no cambian): ${sinCambio}\n`);
+      const linea = (f) => `  ${f.mla}  ${f.label.padEnd(8)} ${String(Math.round(f.mgViejo)).padStart(4)}% → ${String(Math.round(f.mgNuevo)).padStart(4)}%  ·  hoy ${money2(f.precio).padStart(10)} · para el ${(MIN * 100).toFixed(0)}%: ${f.nuevoP ? money2(f.nuevoP).padStart(10) : '     (no pude)'}`
+        + `\n      gana ${money2(f.gan)} por venta · Full le cobra ${money2(f.env)} (${f.fuente})${f.pausada ? ' · PAUSADA' : ''}${f.variantes ? ' · TIENE VARIANTES' : ''}${f.catalogo ? ' · de catálogo' : ''}`
+        + `\n      ${f.nom}`;
+      nuevas.sort((a, c) => a.mgNuevo - c.mgNuevo);
+      yaEstaban.sort((a, c) => a.mgNuevo - c.mgNuevo);
+      console.log(`── LAS QUE CAEN ABAJO DEL PISO SOLO POR EL CAMBIO DE BASE · ${nuevas.length} ──`);
+      console.log(`   (hoy figuran arriba del ${(MIN * 100).toFixed(0)}% y con la medida nueva quedan abajo)\n`);
+      nuevas.forEach((f) => console.log(linea(f) + '\n'));
+      if (!nuevas.length) console.log('   ninguna\n');
+      console.log(`── LAS QUE YA ESTABAN ABAJO CON LAS DOS MEDIDAS · ${yaEstaban.length} ──\n`);
+      yaEstaban.forEach((f) => console.log(linea(f) + '\n'));
+      if (!yaEstaban.length) console.log('   ninguna\n');
+      if (sinDato.length) {
+        console.log(`── NO LAS PUDE MEDIR · ${sinDato.length} ──`);
+        sinDato.slice(0, 25).forEach((x) => console.log(`  ${x.mla}  ${x.label.padEnd(8)} ${x.why} · ${x.nom}`));
+        if (sinDato.length > 25) console.log(`  … y ${sinDato.length - 25} más`);
+        console.log('');
+      }
+      console.log(`NO TOQUÉ NINGÚN PRECIO NI CAMBIÉ LA BASE. Esto solo muestra.`);
+      return;
+    }
+
     // BILLING_PROBE=altanuevas[:go] → CORRE AHORA EL ALTA DE PUBLICACIONES NUEVAS.
     //
     // Es lo MISMO que el robot hace solo una vez por hora, llamando a la MISMA función
