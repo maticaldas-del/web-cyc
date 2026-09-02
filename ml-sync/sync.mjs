@@ -13216,7 +13216,13 @@ async function main() {
       return;
     }
 
-    // BILLING_PROBE=pisogest[:piso] → QUÉ PASA SI LA GESTIÓN DE FULL ENTRA EN EL COSTO.
+    // BILLING_PROBE=gestadentro[:piso] → QUÉ PASA SI LA GESTIÓN DE FULL ENTRA EN EL COSTO.
+    //
+    // OJO CON EL NOMBRE: primero se llamó `pisogest` y NUNCA corrió. Más arriba, en la línea 12524,
+    // hay un probe que se dispara con `startsWith('piso')`, así que se quedaba con `pisogest` y
+    // contestaba otra cosa — un informe de márgenes que se parecía lo suficiente como para
+    // confundir. El despachador va por PREFIJO y en orden: el primero que engancha gana. Antes de
+    // bautizar un probe nuevo hay que buscar si algún nombre existente es prefijo del nuevo.
     //
     // Regla suya del 01/09/2026, textual: "al vender un producto y pagar TODO lo que descuentan en
     // el momento y lo que termina descontándome MP luego en facturas de ML por vender ese producto
@@ -13238,7 +13244,7 @@ async function main() {
     //
     // ESTE COMANDO NO TOCA NINGÚN PRECIO NI ESCRIBE NADA. Es para ver la lista ANTES de cambiar la
     // base en el resto del panel, que es lo que él pidió.
-    if (/^pisogest(:|$)/.test(String(process.env.BILLING_PROBE || ''))) {
+    if (/^gestadentro(:|$)/.test(String(process.env.BILLING_PROBE || ''))) {
       const _pg = String(process.env.BILLING_PROBE).split(':');
       const MIN = (parseFloat(_pg[1]) || 30) / 100;
       const DIAS = 60;
