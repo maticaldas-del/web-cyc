@@ -2299,7 +2299,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='19.2';
+const APP_VERSION='19.3';
 // El problema real que esto resuelve no es curiosidad: es que el celular guarda la app y sigue
 // mostrando la de ayer sin avisar. Varias veces se revisó un cambio que ya estaba subido y no se
 // veía. Por eso, además del número, el chip avisa cuando hay una versión nueva esperando.
@@ -7996,6 +7996,51 @@ function ultimaEntradaDe(p){
   const d=Math.floor((Date.now()-ms)/86400000);
   return d>=0?d:0;
 }
+// ── CUÁNTO HACE QUE ESTA MERCADERÍA ESTÁ PARADA ADENTRO DE FULL ────────────────────
+// Planteo suyo del 02/09/2026, textual: "hoy esa parte me marca, por ejemplo los 8 en 1 como que
+// están muertos y tengo un montón. pero acaban de llegar a ml. no es lo mismo que un producto que
+// está hace 2 meses con stock y no vende nada hace 1 mes."
+//
+// Tenía razón y el error era grueso: "Muerto" se calculaba SOLO con ventas ÷ stock, así que una
+// caja que llegó ayer y todavía no vendió nada daba exactamente el mismo rojo que mercadería
+// parada hace medio año. Y son cosas opuestas: a una hay que darle tiempo, a la otra hay que
+// bajarle el precio o rematarla. Encima la única gracia que había eran 7 días desde `restockTs`,
+// un campo que solo se escribe cuando el robot ve el stock pasar de cero.
+//
+// FECHA REAL SOLAMENTE. `diasEnStockDe` puede devolver una fecha aproximada (cuando el robot
+// empezó a anotar, el producto YA tenía stock): esa NO sirve acá. Decir "recién llegado" sobre una
+// fecha aproximada sería el peor error posible — taparía justo la mercadería más vieja, que es la
+// que está pagando. Sin fecha real, no se opina: se sigue tratando como antes.
+// De los dos datos reales se toma el MÁS RECIENTE, igual que la columna "En stock desde": lo que
+// contesta es "¿esto acaba de entrar?", y para eso manda la última entrada.
+const ROT_GRACIA_DIAS=30;   // recién llegado: no se le juzga la rotación todavía
+const ALMAC_DIAS=60;        // a los ~2 meses parado ML empieza a cobrar almacenamiento
+function edadStockDe(p){
+  const e=diasEnStockDe(p), c=ultimaEntradaDe(p), cand=[];
+  if(e&&e.aprox===false)cand.push(e.dias);
+  if(c!=null)cand.push(c);
+  return cand.length?Math.min.apply(null,cand):null;
+}
+// LA CLASIFICACIÓN VIVE EN UN SOLO LUGAR. Estaba copiada en dos: la tabla de Rotación y el puntaje
+// de la tarjeta de Inicio. Con dos copias, cambiar la regla en una sola deja la tabla diciendo
+// "Reciente" y el puntaje contando ese mismo producto como capital muerto.
+function rotEstadoDe(p,stock,rotNorm,ventasPeriodo,now){
+  if(stock===0)return{k:ventasPeriodo>0?'sano':'sinstock',edad:null};
+  if(rotNorm>=0.75)return{k:'sano',edad:null};
+  if(rotNorm>=0.20)return{k:'lento',edad:edadStockDe(p)};
+  const edad=edadStockDe(p);
+  if(p.restockTs&&(now-p.restockTs)<7*86400000)return{k:'reciente',edad};
+  if(edad!=null&&edad<ROT_GRACIA_DIAS)return{k:'reciente',edad};
+  return{k:'muerto',edad};
+}
+// El avisito de almacenamiento. Va PEGADO al estado y no en una columna aparte a propósito: él
+// dijo que lo único que mira es cuando algo se pone naranja, así que el dato tiene que estar
+// donde ya mira. Sin fecha real no dice nada — mejor callado que inventando un plazo.
+function almacenaHtml(edad){
+  if(edad==null)return'';
+  if(edad>=ALMAC_DIAS)return`<div style="font-size:.57rem;color:var(--red);margin-top:2px" title="Lleva ${edad} días adentro de Full. ML cobra almacenamiento a partir de los ${ALMAC_DIAS} días de mercadería parada.">💸 paga almacenamiento hace ${edad-ALMAC_DIAS} d</div>`;
+  return`<div style="font-size:.57rem;color:var(--amber);margin-top:2px" title="Lleva ${edad} días adentro de Full. ML cobra almacenamiento a partir de los ${ALMAC_DIAS} días de mercadería parada.">⏳ empieza a pagar en ${ALMAC_DIAS-edad} d</div>`;
+}
 function rotEnStockHtml(r){
   // Una caja que llegó es un dato exacto y observado; el registro de stock del robot puede ser
   // aproximado. Si hay caja, manda la caja. Si hay las dos, la más reciente: las dos son entradas
@@ -8085,13 +8130,7 @@ function calcRotScore(){
     let ventasPeriodo=0;
     vKeys.forEach(k=>Object.values(state.ventaprod[k]||{}).forEach(v=>{if(ventaEsDe(v,p)&&!_esCancelada(v))ventasPeriodo+=v.qty||0;}));
     const rotNorm=stock>0?(ventasPeriodo/stock)*factor:(ventasPeriodo>0?Infinity:0);
-    const graciaReciente=stock>0&&p.restockTs&&(now-p.restockTs)<7*86400000;
-    let estadoKey;
-    if(stock===0)estadoKey=ventasPeriodo>0?'sano':'sinstock';
-    else if(rotNorm>=0.75)estadoKey='sano';
-    else if(rotNorm>=0.20)estadoKey='lento';
-    else if(graciaReciente)estadoKey='reciente';
-    else estadoKey='muerto';
+    const estadoKey=rotEstadoDe(p,stock,rotNorm,ventasPeriodo,now).k;
     capTotal+=capital;
     if(estadoKey==='muerto'){capMuerto+=capital;nMuerto++;}
     else if(estadoKey==='lento'){capLento+=capital;nLento++;}
@@ -8318,16 +8357,16 @@ function renderRotacionStock(){
     // Rotación normalizada: usa stock como denominador (unidades / unidades)
     const rotNorm=stock>0?(ventasPeriodo/stock)*factor:ventasPeriodo>0?Infinity:0;
 
-    const graciaReciente=stock>0&&p.restockTs&&(now-p.restockTs)<7*86400000;
-    let estadoKey,estadoHtml;
-    if(stock===0){
-      if(ventasPeriodo>0){estadoKey='sano';estadoHtml='<span style="color:var(--green)" title="Vendiste todo el stock">🟢 Sin stock</span>';}
-      else{estadoKey='sinstock';estadoHtml='<span style="color:var(--muted)" title="Sin stock cargado: no puede venderse, no se evalúa la rotación">⚪ Sin stock</span>';}
-    }
-    else if(rotNorm>=0.75){estadoKey='sano';estadoHtml='<span style="color:var(--green)">🟢 Sano</span>';}
-    else if(rotNorm>=0.20){estadoKey='lento';estadoHtml='<span style="color:var(--amber)">🟠 Lento</span>';}
-    else if(graciaReciente){estadoKey='reciente';estadoHtml='<span style="color:var(--blue)" title="Repuesto hace poco · 7 días de gracia para empezar a venderse">🆕 Reciente</span>';}
-    else{estadoKey='muerto';estadoHtml='<span style="color:var(--red)">🔴 Muerto</span>';}
+    const _rt=rotEstadoDe(p,stock,rotNorm,ventasPeriodo,now);
+    const estadoKey=_rt.k;
+    let estadoHtml;
+    if(estadoKey==='sinstock')estadoHtml='<span style="color:var(--muted)" title="Sin stock cargado: no puede venderse, no se evalúa la rotación">⚪ Sin stock</span>';
+    else if(estadoKey==='sano')estadoHtml=stock===0
+      ?'<span style="color:var(--green)" title="Vendiste todo el stock">🟢 Sin stock</span>'
+      :'<span style="color:var(--green)">🟢 Sano</span>';
+    else if(estadoKey==='lento')estadoHtml='<span style="color:var(--amber)">🟠 Lento</span>'+almacenaHtml(_rt.edad);
+    else if(estadoKey==='reciente')estadoHtml=`<span style="color:var(--blue)" title="Entró a Full hace poco. No se le juzga la rotación hasta los ${ROT_GRACIA_DIAS} días: todavía no tuvo tiempo de venderse.">🆕 Recién llegado</span>`+(_rt.edad!=null?`<div style="font-size:.57rem;color:var(--muted);margin-top:2px">entró hace ${_rt.edad} d</div>`:'');
+    else estadoHtml='<span style="color:var(--red)">🔴 Muerto</span>'+almacenaHtml(_rt.edad);
 
     // Margen de HOY, con la MISMA cuenta que la ficha del producto (misma función, no una copia).
     // Es lo que contesta "¿puedo bajarle el precio?" sin salir de esta pantalla: un producto
