@@ -557,6 +557,25 @@ con ninguna, no hay de dónde sacar un costo y nadie lo puede inventar. Ahí va 
   verde con un ✓** cuando alguno volvió a llegar al piso. Sin ese aviso la lista se convertiría en
   un cementerio. Vive en `cyc/pausado_precio/<prodId>`.
 
+- **EL ALMACENAMIENTO DE FULL NO SALE POR LA API. Probado el 02/09/2026** con `probaralmacena` en
+  las cuatro cuentas: 10 rutas candidatas fallan (404, o directamente una página web — o sea que ni
+  siquiera es una ruta de la API): `/inventories/<id>/stock/fulfillment/aging`, `/storage`,
+  `/detail`, `/inventories/<id>/stock`, `/users/<sid>/stock/fulfillment/storage`,
+  `/stock/fulfillment/storage`, `/stock/fulfillment/storage/search`,
+  `/marketplace/fulfillment/storage`, `/fulfillment/storage/summary`, y las dos de
+  `/billing/.../details`.
+  El único que contesta del lado del stock es el que YA usamos, y devuelve **exactamente esto y nada
+  más**: `{inventory_id, total, available_quantity, not_available_quantity, not_available_detail,
+  external_references}`. **Ni antigüedad, ni fecha de entrada, ni cargo.** Del lado de facturación
+  contesta el de siempre (`/billing/integration/monthly/periods?group=ML&document_type=BILL`) y trae
+  **solo el total del período**, sin abrir el concepto — el mismo techo que con las percepciones.
+  **Conclusión: la antigüedad del stock hay que deducirla de lo nuestro** (las cajas marcadas como
+  llegadas + `cyc/stockhist`), que es lo que hace la columna "En stock desde" y ahora el aviso de
+  almacenamiento en Rotación. No hay dato de ML con el que cruzarlo.
+  Salvedad de la corrida: en Matías una de las rutas de billing dio **429** (5 llamadas por minuto),
+  o sea que ahí quedó sin probar — pero esa MISMA ruta dio 404 limpio en Ayelen y en Luciana, así
+  que la conclusión no cambia. Un 429 nunca es prueba de que un endpoint no exista.
+
 - **GitHub demora las corridas programadas**, a veces horas. Por eso los crons se piden 3 veces y
   el robot guarda el último día que mandó cada aviso, para no repetir.
 - **Las compras con carrito** llegan con el número del paquete, no el de la orden. Hay que
