@@ -2299,7 +2299,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='19.3';
+const APP_VERSION='19.4';
 // El problema real que esto resuelve no es curiosidad: es que el celular guarda la app y sigue
 // mostrando la de ayer sin avisar. Varias veces se revisó un cambio que ya estaba subido y no se
 // veía. Por eso, además del número, el chip avisa cuando hay una versión nueva esperando.
@@ -8896,6 +8896,20 @@ function metGetCostoDay(key,acct){
     .reduce((s,v)=>s+efectivoCostoVP({...v,_dateKey:key}),0);
 }
 
+// Lo que cobra Full en las ventas de un día y una cuenta. Va APARTE de metGetCostoDay a propósito:
+// la ganancia en PESOS se sigue midiendo contra el costo sin la gestión (el neto que deposita ML ya
+// la trae descontada, sumarla ahí la cobraría dos veces y hundiría el mes de mentira). Lo único que
+// cambia es el DIVISOR del %, igual que en la ficha del producto y en Ventas x Producto.
+function metGetGestDay(key,acct){
+  return Object.values(state.ventaprod[key]||{})
+    .filter(v=>!v.cancelada&&(v.cuenta||'').toLowerCase()===acct)
+    .reduce((s,v)=>s+gestDeVenta(v),0);
+}
+// EL DIVISOR DEL % — uno solo para toda la pantalla de Métricas: las tarjetas de arriba, el
+// promedio y las dos vistas del gráfico. Estaba escrito cinco veces; con cinco copias, cambiar la
+// vara en una sola dejaría las tarjetas diciendo un número y el gráfico otro, sobre los MISMOS días.
+function metCostoPctDay(key,acct){return metGetCostoDay(key,acct)+metGetGestDay(key,acct);}
+
 // Suma los valores de todos los keys para todas las cuentas.
 function sumMetFields(keys,field){
   const t={};MET_ACCTS.forEach(a=>t[a]=0);
@@ -9113,7 +9127,15 @@ function renderMetricas(){
   const cmpLine=(c,base,lbl)=>{if(!(base>0))return'';const dd=c-base;return`<div style="font-size:.58rem;margin-top:3px;color:${dd>=0?'var(--green)':'var(--red)'}">${dd>=0?'▲':'▼'} ${fmt(Math.abs(dd))} vs ${lbl}</div>`;};
   const kpiEl=document.getElementById('met-kpis');
   if(kpiEl){
-    // % de ganancia (markup = ganancia/costo·100) por cuenta, con variación en puntos vs el período anterior.
+    // % DE GANANCIA SOBRE EL COSTO TOTAL — el mismo que la ficha, Rotación y Ventas x Producto.
+    // Pregunta suya del 02/09/2026: "los % del 25% no se aplicó a todas las ventas desde mayo... me
+    // va a mostrar que venía a un 40% y pasé a un 32% cuando en realidad el % es el mismo".
+    // NO hay nada que migrar: el % nunca se guardó por venta, se calcula cada vez que se abre la
+    // pantalla a partir del neto y el costo. Cambiando la fórmula acá, TODOS los meses —mayo
+    // incluido— se recalculan solos con la misma vara, así que la comparación contra el período
+    // anterior y el gráfico de % siguen siendo honestos. No hay escalón falso.
+    // La gestión de Full va en el DIVISOR y no restada de la ganancia: el neto de ML ya la tiene
+    // descontada, restarla otra vez la cobraría dos veces.
     const mkLine=(g,c,pg,pc)=>{
       if(!(c>0))return'';
       const mk=g/c*100;
@@ -9127,8 +9149,8 @@ function renderMetricas(){
       const cv=cur[a];
       const pctStr=curTotal>0?((cv/curTotal)*100).toFixed(1)+'%':'—';
       let g=0,c=0,pg=0,pc=0;
-      curKeys.forEach(k=>{g+=metGetValDay(k,a,'ganancia');c+=metGetCostoDay(k,a);});
-      prevKeys.forEach(k=>{pg+=metGetValDay(k,a,'ganancia');pc+=metGetCostoDay(k,a);});
+      curKeys.forEach(k=>{g+=metGetValDay(k,a,'ganancia');c+=metCostoPctDay(k,a);});
+      prevKeys.forEach(k=>{pg+=metGetValDay(k,a,'ganancia');pc+=metCostoPctDay(k,a);});
       ganTot+=g;cosTot+=c;ganTotPrev+=pg;cosTotPrev+=pc;
       const cmpStr=cmpLine(cv,prev[a],prevLbl)+cmpLine(cv,year[a],'año pasado');
       return`<div class="met-kpi ${acctColors[i]}"><div class="mk-lbl">${MET_LABELS[a]}</div><div class="mk-val">${fmt(cv)}</div><div class="mk-sub">${pctStr} del total</div>${mkLine(g,c,pg,pc)}${cmpStr}</div>`;
@@ -9415,7 +9437,7 @@ function setMetPctMode(m,btn){
 // de los % diarios), que es el markup real del período completo.
 function renderMetPctAvg(buckets,bucketsPrev,bucketsYear){
   const el=document.getElementById('met-pct-avg');if(!el)return;
-  const avgPct=(bkts)=>{let g=0,c=0;bkts.forEach(keys=>keys.forEach(k=>MET_ACCTS.forEach(a=>{g+=metGetValDay(k,a,'ganancia');c+=metGetCostoDay(k,a);})));return c>0?g/c*100:null;};
+  const avgPct=(bkts)=>{let g=0,c=0;bkts.forEach(keys=>keys.forEach(k=>MET_ACCTS.forEach(a=>{g+=metGetValDay(k,a,'ganancia');c+=metCostoPctDay(k,a);})));return c>0?g/c*100:null;};
   const cur=avgPct(buckets),prev=avgPct(bucketsPrev),year=avgPct(bucketsYear);
   const fmtP=v=>v==null?'s/datos':v.toFixed(1)+'%';
   const delta=(a,b,ref)=>{if(a==null||b==null)return'';const d=a-b,up=d>=0;
@@ -9440,7 +9462,7 @@ function renderPctChartFromScope(scope){
   // anterior → así se ve cómo el promedio de markup sube o baja. Termina en el "Promedio actual".
   const runAvg=(g,c)=>{let sg=0,sc=0;return g.map((gg,i)=>{sg+=(gg||0);sc+=(c[i]||0);return sc>0?+(sg/sc*100).toFixed(1):null;});};
   // g y c por bucket (todas las cuentas juntas).
-  const gcSeries=(bkts)=>{const g=[],c=[];bkts.forEach(keys=>{let gg=0,cc=0;keys.forEach(k=>MET_ACCTS.forEach(a=>{gg+=metGetValDay(k,a,'ganancia');cc+=metGetCostoDay(k,a);}));g.push(gg);c.push(cc);});return{g,c};};
+  const gcSeries=(bkts)=>{const g=[],c=[];bkts.forEach(keys=>{let gg=0,cc=0;keys.forEach(k=>MET_ACCTS.forEach(a=>{gg+=metGetValDay(k,a,'ganancia');cc+=metCostoPctDay(k,a);}));g.push(gg);c.push(cc);});return{g,c};};
   const serie=(bkts)=>{const{g,c}=gcSeries(bkts);return metPctMode==='promedio'?runAvg(g,c):g.map((gg,i)=>pct(gg,c[i]));};
   let datasets;
   if(metPctLineView==='general'){
@@ -9451,7 +9473,7 @@ function renderPctChartFromScope(scope){
     ];
   } else {
     const gan={},cos={};MET_ACCTS.forEach(a=>{gan[a]=[];cos[a]=[];});
-    buckets.forEach(keys=>{MET_ACCTS.forEach(a=>{let g=0,c=0;keys.forEach(k=>{g+=metGetValDay(k,a,'ganancia');c+=metGetCostoDay(k,a);});gan[a].push(g);cos[a].push(c);});});
+    buckets.forEach(keys=>{MET_ACCTS.forEach(a=>{let g=0,c=0;keys.forEach(k=>{g+=metGetValDay(k,a,'ganancia');c+=metCostoPctDay(k,a);});gan[a].push(g);cos[a].push(c);});});
     datasets=MET_ACCTS.map(a=>({label:MET_LABELS[a],data:metPctMode==='promedio'?runAvg(gan[a],cos[a]):labels.map((_,i)=>pct(gan[a][i],cos[a][i])),borderColor:MET_COLORS[a],backgroundColor:MET_COLORS[a]+'22',borderWidth:2,tension:.3,pointRadius:2,spanGaps:true}));
   }
   datasets.push({label:'Meta '+vpMinPct()+'%',data:labels.map(()=>vpMinPct()),borderColor:'#6b6b7a',borderDash:[5,4],borderWidth:1,pointRadius:0,fill:false,tension:0});
