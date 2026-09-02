@@ -3462,7 +3462,9 @@ async function main() {
         // Un inventory_id de verdad para probar las rutas que lo piden. Sin él dan 400 y el
         // resultado no valdría nada (es lo que pasó con operations/search en el probe de inbound).
         let inv = null, invMLA = null;
-        const mlas = soloMLA ? [soloMLA] : Object.entries(map || {}).filter(([, v]) => v && v.cuenta === label).map(([k]) => k).slice(0, 40);
+        // `map` (cyc/mllinks) se arma mucho más abajo en el archivo, así que acá se lee de nuevo.
+        const _links = await db.get('cyc/mllinks') || {};
+        const mlas = soloMLA ? [soloMLA] : Object.entries(_links).filter(([, v]) => v && v.cuenta === label).map(([k]) => k).slice(0, 40);
         for (let k = 0; k < mlas.length && !inv; k += 20) {
           let arr; try { arr = await mlGet('/items?ids=' + mlas.slice(k, k + 20).join(',') + '&attributes=id,title,inventory_id,variations,shipping', tok); } catch { continue; }
           for (const w of (arr || [])) {
