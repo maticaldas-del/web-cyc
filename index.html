@@ -894,6 +894,7 @@ footer{margin-top:32px;padding-top:14px;border-top:1px solid var(--border);font-
     <button class="tab active ped-section-tab" id="tab-bsas-btn" onclick="setPedidoSection('bsas',this)">Pedidos BS AS</button>
     <button class="tab ped-section-tab" id="tab-py-btn" onclick="setPedidoSection('paraguay',this)">Pedidos Paraguay</button>
     <button class="tab ped-section-tab" id="tab-paulvic-btn" onclick="setPedidoSection('paulvic',this)">Paulvic</button>
+    <button class="tab ped-section-tab" id="tab-pausaprecio-btn" onclick="setPedidoSection('pausaprecio',this)">⏸️ Pausados por precio <span id="tab-pausaprecio-n"></span></button>
     <button class="tab ped-section-tab" id="tab-papelera-btn" onclick="setPedidoSection('papelera',this)">🗑️ Papelera <span id="tab-papelera-n"></span></button>
   </div>
 
@@ -985,6 +986,16 @@ footer{margin-top:32px;padding-top:14px;border-top:1px solid var(--border);font-
        robot los volvía a crear a los pocos segundos, porque los pedidos se arman solos a partir de
        las ventas y el stock. Estando acá, el robot los saltea, y tampoco cuentan para el Puntaje
        del mes ni para el stock en riesgo. Se pueden devolver cuando se quiera. -->
+  <!-- PAUSADOS POR PRECIO. Distinto de la papelera: la papelera es "esto no se vende mas" y a los
+       7 dias es definitiva. Esto es "no lo compro POR AHORA porque el precio no da", y el panel lo
+       sigue mirando todos los dias: el dia que vuelve a llegar al piso lo avisa solo. -->
+  <div id="ped-section-pausaprecio" style="display:none">
+    <div style="font-size:.66rem;color:var(--muted);margin-bottom:10px">Productos que no comprás porque el precio no da. No aparecen en Pedidos y no cuentan para el Puntaje del mes ni para el stock en riesgo. <strong style="color:var(--text)">El panel los sigue mirando: el día que vuelven a llegar al piso te avisa acá.</strong></div>
+    <div class="pedidos-count" id="pedidos-pausaprecio-count"></div>
+    <input class="search-box" id="ped-pausaprecio-search" type="search" placeholder="Buscar en los pausados..." oninput="renderPedidos()" style="margin-bottom:10px">
+    <div id="pedidos-pausaprecio-list"><div class="empty-msg">No hay ninguno pausado por precio.</div></div>
+  </div>
+
   <div id="ped-section-papelera" style="display:none">
     <div style="font-size:.66rem;color:var(--muted);margin-bottom:10px">Productos que sacaste de Pedidos. No se vuelven a crear solos y no cuentan para el Puntaje del mes ni para el stock en riesgo. Tenés <strong>7 días</strong> para arrepentirte con "Devolver"; pasado ese plazo la eliminación queda definitiva.</div>
     <div class="pedidos-count" id="pedidos-papelera-count"></div>
@@ -1855,7 +1866,7 @@ function toggleTheme(){
 })();
 
 let db,whoAmI='',viewMode='mes',pedidoFilter='todos',pedidoSection='bsas',pedidoGroupByProv=false;
-let state={products:[],inventory:{},history:[],finanzas:{},snapshots:{},daily:{},ingresos:{},pedidos:[],pedidos_py:[],papelera:{},metricas:{},compras:{},ventaprod:{},proveedores:[],puntaje:{},stockDiario:{},tc_mes:{},precios_hist_prod:{},fact_mes:{},fact_cancel:{}};
+let state={products:[],inventory:{},history:[],finanzas:{},snapshots:{},daily:{},ingresos:{},pedidos:[],pedidos_py:[],papelera:{},pausaPrecio:{},metricas:{},compras:{},ventaprod:{},proveedores:[],puntaje:{},stockDiario:{},tc_mes:{},precios_hist_prod:{},fact_mes:{},fact_cancel:{}};
 let _knownVentaprodIds=null; // null = primera carga; Set después
 let currentPage='home';
 let firstDataLoad=true;
@@ -1896,6 +1907,7 @@ function startApp(){
     // Papelera de Pedidos: clave = id interno del producto. Lo que está acá el robot no lo vuelve
     // a crear, y no cuenta ni en el Puntaje del mes ni en el stock en riesgo.
     state.papelera =d.pedidos_papelera||{};
+    state.pausaPrecio=d.pausado_precio||{};   // 'no lo compro por ahora, el precio no da' (se revisa solo)
     _limpiarEnCamino(); // borra los "en camino" que hayan quedado marcados (la función ya no existe)
     state.proveedores=d.proveedores?Object.values(d.proveedores).sort((a,b)=>(a.nombre||'').localeCompare(b.nombre||'','es',{sensitivity:'base'})).map(pv=>({...pv,condiciones:pv.condiciones?Object.values(pv.condiciones).sort((a,b)=>(a.minUSD||0)-(b.minUSD||0)):[]})):[];
     state.metricas =d.metricas ||{};
@@ -2287,7 +2299,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='19.0';
+const APP_VERSION='19.2';
 // El problema real que esto resuelve no es curiosidad: es que el celular guarda la app y sigue
 // mostrando la de ayer sin avisar. Varias veces se revisó un cambio que ya estaba subido y no se
 // veía. Por eso, además del número, el chip avisa cuando hay una versión nueva esperando.
@@ -7002,6 +7014,7 @@ function setPedidoSection(sec,btn){
   document.getElementById('ped-section-bsas').style.display=sec==='bsas'?'':'none';
   document.getElementById('ped-section-paraguay').style.display=sec==='paraguay'?'':'none';
   document.getElementById('ped-section-paulvic').style.display=sec==='paulvic'?'':'none';
+  document.getElementById('ped-section-pausaprecio').style.display=sec==='pausaprecio'?'':'none';
   document.getElementById('ped-section-papelera').style.display=sec==='papelera'?'':'none';
   pedidoFilter='todos';pedidoGroupByProv=false;
   const secEl=document.getElementById('ped-section-'+sec);
@@ -7386,6 +7399,10 @@ async function syncPedidosAuto(){
     // aparecer en Pedidos y tampoco suma "riesgo", que es lo que alimenta el Puntaje del mes y el
     // stock en riesgo. Si se saltease más abajo, el producto seguiría restando puntaje sin verse.
     if(_pap[p.id])continue;
+    // Pausado por precio: mismo trato que la papelera — fuera de Pedidos, del Puntaje del mes y
+    // del stock en riesgo. La diferencia es que este vuelve solo cuando el precio da (ver la
+    // sección ⏸️). Se saltea ACÁ, antes de calcular, para que no sume riesgo sin verse.
+    if((state.pausaPrecio||{})[p.id])continue;
     const {vendidos,vendidosNorm,diasHistorial,dConS,vDia}=pedVentasNorm(p);
     if(vendidos===0)continue;
     const stock=stockOf(p);
@@ -7797,6 +7814,70 @@ async function vaciarPapelera(){
   await log('Devolvió de la papelera ('+n+')');
   renderPedidos();
   toast('Papelera vacía ✓');
+  syncPedidosAuto();
+}
+
+// ── PAUSADO POR PRECIO ────────────────────────────────────────────────────────
+// Planteo suyo del 02/09/2026, textual: "hay productos que están en 'pedidos' que el precio no da.
+// entonces no se van a traer más... pero me sigue diciendo que es el mayor error, cuando en
+// realidad no depende taanto de nosotros". Tenía razón: un producto que NO se repone a propósito
+// estaba sumando plata en riesgo y hundiendo el Puntaje del mes como si fuera un olvido.
+//
+// Por qué es una lista aparte y no la papelera: la papelera es "esto no se vende más" y a los 7
+// días es definitiva. Esto es "no lo compro POR AHORA", y lo que cambia la decisión es un número
+// que se mueve solo — el margen de hoy. Por eso el panel lo vuelve a medir en cada dibujado y
+// avisa cuando vuelve a dar. Si hubiera que acordarse de mirarlo a mano, la lista se convertiría
+// en un cementerio: productos parados para siempre porque el precio no daba hace medio año.
+//
+// Mide con margenMLDe() y metaMargenML(), las MISMAS funciones que la ficha y Rotación de Stock.
+// Si acá se copiara la fórmula, un día la lista diría "ya llega al piso" y la ficha diría que no.
+function _pausaPrecioLista(){
+  const piso=metaMargenML();
+  return Object.entries(state.pausaPrecio||{}).map(([pid,e])=>{
+    const prod=(state.products||[]).find(x=>x.id===pid);
+    const m=prod?margenMLDe(prod):null;
+    const margen=(m&&m.margen!=null)?m.margen:null;
+    return {pid,e,prod,margen,piso,ok:(margen!=null&&margen>=piso)};
+  }).sort((a,b)=>((b.ok?1:0)-(a.ok?1:0))||((b.margen==null?-999:b.margen)-(a.margen==null?-999:a.margen)));
+}
+
+// Saca un producto de Pedidos porque el precio no da. Mismo camino que la papelera (el robot lo
+// saltea leyendo el nodo), pero en cyc/pausado_precio para que las dos listas no se mezclen.
+async function pausarPrecio(id){
+  const allArr=[...(state.pedidos||[]),...(state.pedidos_py||[])];
+  const p=allArr.find(x=>x.id===id);
+  const pid=p?p.prodId:null;
+  // Sin ficha de producto no hay margen que mirar, o sea que no habría con qué despausarlo solo:
+  // quedaría escondido para siempre. Mejor no dejar pausar que dejar pausar y no poder avisar.
+  if(!pid){toast('Este pedido no está pegado a ningún producto: no se puede pausar por precio','err');return;}
+  const path=(state.pedidos||[]).some(x=>x.id===id)?'pedidos/':'pedidos_py/';
+  const prod=(state.products||[]).find(x=>x.id===pid);
+  const m=prod?margenMLDe(prod):null;
+  const entry={prodId:pid,producto:p.producto||'',ts:Date.now(),coll:path.replace('/',''),
+    auto:p.auto===true,
+    margenAlPausar:(m&&m.margen!=null)?Math.round(m.margen*10)/10:null,
+    piso:metaMargenML()};
+  // Igual que en la papelera: los pedidos cargados a mano se guardan enteros, si no devolverlos
+  // perdería la cantidad y la nota (los automáticos los rearma el robot solo).
+  if(!p.auto)entry.ped={...p};
+  state.pausaPrecio=state.pausaPrecio||{};state.pausaPrecio[pid]=entry;
+  state[path.replace('/','')]=(state[path.replace('/','')]||[]).filter(x=>x.id!==id);
+  await db.ref('cyc').update({['pausado_precio/'+pid]:entry,[path+id]:null});
+  await log('Pausado por precio: '+(p.producto||id));
+  renderPedidos();updatePedidosCosto();
+  toast('Pausado por precio ⏸️','info');
+}
+
+// Lo devuelve a Pedidos. El robot lo vuelve a tener en cuenta en la próxima pasada.
+async function despausarPrecio(pid){
+  const e=(state.pausaPrecio||{})[pid];if(!e)return;
+  const upd={['pausado_precio/'+pid]:null};
+  if(e.ped&&e.ped.id){upd[(e.coll||'pedidos')+'/'+e.ped.id]=e.ped;(state[e.coll||'pedidos']||[]).push(e.ped);}
+  delete state.pausaPrecio[pid];
+  await db.ref('cyc').update(upd);
+  await log('Volvió a Pedidos (estaba pausado por precio): '+(e.producto||pid));
+  renderPedidos();
+  toast('Vuelve a Pedidos ✓');
   syncPedidosAuto();
 }
 
@@ -8393,6 +8474,7 @@ function _pedidoItemHtml(p,opts){
       <button class="pi-prov ${p.proveedor?'':'sin-prov'}" onclick="setPedidoProveedor('${p.id}')">${p.proveedor?p.proveedor.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'):'+ proveedor'}</button>
       ${accionBtns}
       <span class="pi-ts">${p.ts?ts2s(p.ts):''}</span>
+      ${p.prodId?`<button class="btn" title="El precio no da para el ${metaMargenML()}%: sacalo de Pedidos hasta que vuelva a dar" onclick="pausarPrecio('${p.id}')">⏸️</button>`:''}
       <button class="btn btn-del" onclick="delPedido('${p.id}')">✕</button>
     </div>
   </details>`;
@@ -8462,6 +8544,46 @@ function renderPedidos(){
   const _papN=Object.values(state.papelera||{}).filter(x=>!x.definitivo).length;
   const _papTab=document.getElementById('tab-papelera-n');
   if(_papTab)_papTab.textContent=_papN?'('+_papN+')':'';
+  // Los pausados por precio se remiden SIEMPRE, se esté mirando esa solapa o no: ese número en
+  // verde es el aviso de "este ya vuelve a dar". Es lo único que hace que la lista no se muera.
+  const _ppL=_pausaPrecioLista();
+  const _ppOk=_ppL.filter(x=>x.ok).length;
+  const _ppTab=document.getElementById('tab-pausaprecio-n');
+  if(_ppTab){
+    _ppTab.textContent=_ppL.length?(_ppOk?'('+_ppL.length+' · '+_ppOk+' ✓)':'('+_ppL.length+')'):'';
+    _ppTab.style.color=_ppOk?'var(--green)':'';
+    _ppTab.style.fontWeight=_ppOk?'700':'';
+  }
+  if(pedidoSection==='pausaprecio'){
+    const el=document.getElementById('pedidos-pausaprecio-list');if(!el)return;
+    let items=_ppL;
+    const cntEl=document.getElementById('pedidos-pausaprecio-count');
+    if(cntEl)cntEl.innerHTML=`<div class="pcount"><strong>${items.length}</strong>Pausados</div>`+
+      (_ppOk?`<div class="pcount"><strong style="color:var(--green)">${_ppOk}</strong>Ya llegan al piso</div>`:'')+
+      `<div class="pcount"><strong>${metaMargenML()}%</strong>Piso de hoy</div>`;
+    const q=normTxt(document.getElementById('ped-pausaprecio-search')?.value||'');
+    if(q)items=items.filter(x=>normTxt((x.prod?x.prod.name:x.e.producto)||'').includes(q));
+    if(!items.length){el.innerHTML='<div class="empty-msg">'+(q?'Nada con esa búsqueda.':'No hay ninguno pausado por precio.')+'</div>';return;}
+    el.innerHTML=items.map(x=>{
+      const nom=(x.prod?x.prod.name:x.e.producto)||x.pid;
+      const dias=Math.floor((Date.now()-(x.e.ts||0))/86400000);
+      // Un producto sin neto de ML no se puede medir. Se dice, no se inventa un 0%: si dijera 0%
+      // quedaría abajo del piso para siempre y nunca avisaría, que es justo lo contrario de esto.
+      const mTxt=(x.margen==null)?'<span style="color:var(--amber)">no se puede medir todavía: falta el neto de ML</span>'
+        :`hoy da <strong style="color:${pctColor(x.margen)}">${x.margen.toFixed(1)}%</strong>`;
+      const antes=(x.e.margenAlPausar!=null)?` · cuando lo pausaste daba ${x.e.margenAlPausar}%`:'';
+      return `<div class="pedido-item ${x.ok?'suficiente':'poco_stock'}">
+        <span class="pi-prod">${nom}</span>
+        <span class="pi-nota" style="flex:1">${x.ok
+          ?`<strong style="color:var(--green)">✓ Volvió a dar</strong> — ${mTxt}, el piso es ${x.piso}%. Ya se puede comprar de nuevo.`
+          :`${mTxt}, el piso es ${x.piso}%${antes}`}</span>
+        <span class="pi-nota">${dias===0?'pausado hoy':'pausado hace '+dias+' día'+(dias===1?'':'s')}</span>
+        <button class="btn" onclick="despausarPrecio('${x.pid}')">↩︎ Volver a Pedidos</button>
+        <span class="pi-ts">${x.e.ts?ts2s(x.e.ts):''}</span>
+      </div>`;
+    }).join('');
+    return;
+  }
   if(pedidoSection==='papelera'){
     const el=document.getElementById('pedidos-papelera-list');if(!el)return;
     const todos=Object.values(state.papelera||{}).sort((a,b)=>(b.ts||0)-(a.ts||0));
