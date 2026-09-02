@@ -2287,7 +2287,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='18.9';
+const APP_VERSION='19.0';
 // El problema real que esto resuelve no es curiosidad: es que el celular guarda la app y sigue
 // mostrando la de ayer sin avisar. Varias veces se revisó un cambio que ya estaba subido y no se
 // veía. Por eso, además del número, el chip avisa cuando hay una versión nueva esperando.
@@ -6048,6 +6048,24 @@ function devPctActual(p){
 // — Costo USD, dólar y envío: CONGELADOS del momento de la venta (si se guardaron; si no,
 //   se reconstruyen del histórico del mes y, en último caso, del valor actual).
 // — % de devolución: SIEMPRE el actual (estadística global del producto, ver devPctActual).
+// ── LO QUE COBRA FULL, PARA EL DENOMINADOR DEL % ──────────────────────────────
+// Regla suya del 01/09/2026: el costo tiene que incluir lo que cobra Full. Este es el mismo número
+// que usa la ficha (margenMLDe), así que el renglón de la venta y la ficha no pueden discrepar.
+//
+// NO se suma a la ganancia en PESOS: el neto de la venta ya viene con la gestión descontada, así
+// que restarla otra vez la pagaría dos veces y hundiría la ganancia del mes y el Arqueo. Lo único
+// que toca es el DIVISOR del porcentaje.
+//
+// Sale del envío que dedujo el robot de las ventas reales (netoCalcEnvio) y, si todavía no pasó por
+// netoweb, del gestFull cargado a mano. Es el valor de HOY, no el del día de esa venta: para las
+// ventas viejas es una aproximación, y es la mejor que hay — el envío exacto de cada venta no
+// quedó guardado.
+function gestDeVenta(v){
+  if(!v||v.cancelada)return 0;
+  const p=prodDeVenta(v);if(!p)return 0;
+  const g=Number(p.netoCalcEnvio)>0?Number(p.netoCalcEnvio):(Number(p.gestFull)||0);
+  return g>0?g*(v.qty||1):0;
+}
 function efectivoCostoVP(v){
   if(v&&v.cancelada)return 0; // canceladas y reclamos no tienen costo (no afectan finanzas)
   // Cargo extra de ML (IIBB + almacenamiento) que ML cobra por débito, aparte de la venta: % del precio.
@@ -6558,8 +6576,10 @@ function renderVentaProd(){
     const VP_CAP=200;const shownGroups=filteredGroups.slice(0,VP_CAP);
     list.innerHTML=filteredGroups.length?shownGroups.map(grp=>{
       const isCancelled=grp.cancelada;
-      let gn=0,gc=0,gmlx=0;grp.items.forEach(v=>{if(!isCancelled){gn+=v.neto||0;gc+=efectivoCostoVP(v);gmlx+=impuestosDeVenta(v);}});
-      const gg=gn-gc;const gpct=gc>0?gg/gc*100:null;
+      let gn=0,gc=0,gmlx=0,ggest=0;grp.items.forEach(v=>{if(!isCancelled){gn+=v.neto||0;gc+=efectivoCostoVP(v);gmlx+=impuestosDeVenta(v);ggest+=gestDeVenta(v);}});
+      // La ganancia en PESOS se mide contra gc (sin la gestión): el neto ya la trae descontada.
+      // El PORCENTAJE se mide contra gc+ggest, que es el costo total como lo pidió él.
+      const gg=gn-gc;const gcTot=gc+ggest;const gpct=gcTot>0?gg/gcTot*100:null;
       const cuenta=grp.items[0].cuenta;
       const numVenta=grp.items[0].numVenta||'';
       const pctBox=isCancelled?'':gpct!==null?`<span class="db ${pctCls(gpct)}" style="font-size:.62rem;color:${pctColor(gpct)}">${gpct>=0?'+':''}${gpct.toFixed(0)}%</span><span style="font-size:.58rem;color:${pctColor(gpct)};margin-left:3px">${pctLabel(gpct)}</span>`:'<span class="db nc" style="font-size:.58rem">s/costo</span>';
@@ -6612,7 +6632,7 @@ function renderVentaProd(){
       const cancelBadge=isCancelled?(_esRec
         ?`<span style="padding:1px 7px;border-radius:4px;background:rgba(239,68,68,.15);color:#f87171;font-size:.58rem;font-weight:600;letter-spacing:.04em" title="Producto perdido · no volvió al stock · cuenta como reclamo">RECLAMO · sin stock</span>`
         :`<span style="padding:1px 7px;border-radius:4px;background:rgba(148,163,184,.18);color:#cbd5e1;font-size:.58rem;font-weight:600;letter-spacing:.04em" title="El comprador canceló · producto devuelto al stock">CANCELADA · devuelto</span>`):'';
-      const costLabel=(!isCancelled&&gc>0)?`<span style="font-size:.66rem;color:var(--muted)" title="Costo full ${fmt(gc)}: mercadería ${fmt(gc-gmlx)} (costo + envío + %devol + gestión Full) + impuestos ${fmt(gmlx)} (IIBB ${mlExtraPct(cuenta).toFixed(2)}% + monotributo ${monoPct().toFixed(2)}% del precio). Los impuestos también están sumados en el costo del producto, en Inventario.">costo ${fmt(gc)}</span>`:'';
+      const costLabel=(!isCancelled&&gc>0)?`<span style="font-size:.66rem;color:var(--muted)" title="Costo total ${fmt(gcTot)}: mercadería ${fmt(gc-gmlx)} (costo + envío/embalaje + % reclamos) + impuestos ${fmt(gmlx)} (IIBB ${mlExtraPct(cuenta).toFixed(2)}% + monotributo ${monoPct().toFixed(2)}% del precio)${ggest>0?' + '+fmt(ggest)+' que cobra Full':''}. El % se mide contra este total. La ganancia en pesos NO le resta la gestión de Full: el neto que paga ML ya la trae descontada.">costo ${fmt(gcTot)}</span>`:'';
       const ganLabel=isCancelled?'':(gc>0?`<span style="font-size:.66rem;color:${gg>=0?'var(--green)':'var(--red)'}">gan. ${fmt(gg)}</span>`:`<span style="font-size:.62rem;color:var(--muted)">neto ${fmt(gn)}</span>`);
       const lines=grp.items.map(v=>`<div style="display:flex;justify-content:space-between;font-size:.72rem;padding:2px 0;${isCancelled?'opacity:.45;text-decoration:line-through':''}"><span>${v.qty}× ${nombreDeVenta(v)}${v.variante?` <span style="padding:1px 5px;border-radius:3px;background:rgba(124,58,237,.12);color:#a78bfa;font-size:.62rem">${v.variante}</span>`:''}</span><span style="color:var(--muted)">${(!isCancelled&&(v.total||0)>0)?`total ${fmt(v.total)} · `:''}${isCancelled?'':'neto '+fmt(v.neto||0)}</span></div>`).join('');
       return`<div class="ingreso-item" style="flex-direction:column;align-items:stretch;gap:4px;${isCancelled?'border-color:rgba(239,68,68,.25);background:rgba(239,68,68,.04)':''}">
