@@ -582,7 +582,7 @@ async function activarPausadasFull(db, links, tokensRun, DRY, products, piso) {
         const cuoV = cuotasCfg[mla] && parseFloat(cuotasCfg[mla].pct);
         const cuo = isFinite(cuoV) && cuoV > 0 ? cuoV / 100 : 0;
         const mlx = precio * m;
-        const mg = ((precio - com - extra - precio * cuo) - costo - mlx) / (costo + mlx);
+        const mg = ((precio - com - extra - precio * cuo) - costo - mlx) / (costo + mlx + extra);
         if (mg < PISO) { noLlegan.push({ label, mla, nom, why: `queda en ${(mg * 100).toFixed(0)}%, abajo del ${(PISO * 100).toFixed(0)}%`, precio, stock: stockFull }); continue; }
         if (DRY) { activadas.push({ label, mla, nom, precio, stock: stockFull, mg: mg * 100, dry: true }); continue; }
         try {
@@ -1024,6 +1024,12 @@ async function anotarNetoWeb(db, pid, datos, DRY) {
     await db.patch('cyc/products/' + pid, {
       netoCalc: neto,
       netoCalcPrecio: Math.round(precio),
+      // El envío/gestión de Full que se usó para sacar este neto. Se guarda porque desde el
+      // 01/09/2026 el panel lo necesita: el costo que muestra lo incluye, y si la web lo sacara
+      // del `gestFull` cargado a mano (que puede estar vacío o viejo) mostraría un margen distinto
+      // del que usa el robot para decidir precios. Dos cuentas distintas para lo mismo es
+      // exactamente el error que ya se cometió tres veces con el envío.
+      netoCalcEnvio: Math.round(envio),
       netoCalcSinEnvio: !!datos.sinEnvio,
       netoCalcTs: Date.now(),
     });
@@ -1321,7 +1327,7 @@ async function bajarParaMover(db, accounts, labels, products, opts = {}) {
         // Peor caso a propósito: ver el comentario de arriba.
         const { envio: env } = await envioDeducido(ventas, precio, (pv) => feeAt(site, pv, lt, cat, t.access_token), { modo: 'max' });
         if (env == null) { sinCaja.push({ ...base, why: 'nunca vendió: no puedo deducir el envío' }); continue; }
-        const mgDe = (pr, com) => { const mlx = pr * m; return (pr - com - env - costo - mlx) / (costo + mlx) * 100; };
+        const mgDe = (pr, com) => { const mlx = pr * m; return (pr - com - env - costo - mlx) / (costo + mlx + env) * 100; };
         const comPw = await feeAt(site, pw, lt, cat, t.access_token);
         if (comPw == null) continue;
         const mgHoy = mgDe(precio, com0), mgPw = mgDe(pw, comPw);
@@ -4768,7 +4774,7 @@ async function main() {
             const MIN = 0.30, den = 1 - m * (1 + MIN);
             let P = b.price || 0, comP = (await feeAt(P)) || 0;
             for (let i = 0; i < 4; i++) {
-              const Pn = (costo * (1 + MIN) + comP + envio) / den;
+              const Pn = (costo * (1 + MIN) + comP + envio * (1 + MIN)) / den;
               const c2 = await feeAt(Pn); if (c2 == null) break;
               if (Math.abs(Pn - P) < 1 && i > 0) { P = Pn; break; }
               P = Pn; comP = c2;
@@ -6824,7 +6830,7 @@ async function main() {
                 if (den > 0) {
                   let P = precio, comP = com;
                   for (let it = 0; it < 3; it++) {
-                    const Pn = (costo * (1 + META) + comP + envio) / den;
+                    const Pn = (costo * (1 + META) + comP + envio * (1 + META)) / den;
                     const c2 = await feeAt(b.site_id || 'MLA', Pn, b.listing_type_id, b.category_id, t.access_token);
                     if (c2 == null) break;
                     if (Math.abs(Pn - P) < 1 && it > 0) { P = Pn; comP = c2; break; }
@@ -7028,14 +7034,14 @@ async function main() {
             if (envio < 0) envio = 0;
             const neto = base.precio - com - envio;
             const mlx = base.precio * m;
-            const mg = (neto - costo - mlx) / (costo + mlx) * 100;
+            const mg = (neto - costo - mlx) / (costo + mlx + envio) * 100;
             const fila = { ...base, mg, costo, com, envio, neto, mlx };
             if (mg < MG_ALTO) { normales.push(fila); continue; }
             const den = 1 - m * (1 + META);
             let P = base.precio, comP = com;
             if (den > 0) {
               for (let it = 0; it < 3; it++) {
-                const Pn = (costo * (1 + META) + comP + envio) / den;
+                const Pn = (costo * (1 + META) + comP + envio * (1 + META)) / den;
                 const c2 = await feeAt(b.site_id || 'MLA', Pn, b.listing_type_id, b.category_id, t.access_token);
                 if (c2 == null) break;
                 if (Math.abs(Pn - P) < 1 && it > 0) { P = Pn; comP = c2; break; }
@@ -8077,6 +8083,7 @@ async function main() {
           await db.set('cyc/products/' + pid + '/netoCalc', d.neto);
           await db.set('cyc/products/' + pid + '/netoCalcPrecio', d.precio);
           await db.set('cyc/products/' + pid + '/netoCalcPausada', !d.activa);
+          await db.set('cyc/products/' + pid + '/netoCalcEnvio', Math.round(Number(d.envio) || 0));
           await db.set('cyc/products/' + pid + '/netoCalcSinEnvio', !!d.sinEnvio);
           await db.set('cyc/products/' + pid + '/netoCalcEnvioML', !!d.envioDeML);
           await db.set('cyc/products/' + pid + '/netoCalcCuenta', d.cuenta);
@@ -8792,7 +8799,7 @@ async function main() {
             if (envio < 0) envio = 0;
             const neto = precio - com - envio;
             const mlx = precio * m;
-            const mg = (neto - costo - mlx) / (costo + mlx) * 100;
+            const mg = (neto - costo - mlx) / (costo + mlx + envio) * 100;
             const fila = { ...base, mg, costo, com, envio, neto, mlx };
             if (mg < MG_ALTO) { normales.push(fila); continue; }
             // Precio que dejaría el margen en la meta (mismo punto fijo, pero para BAJAR)
@@ -8800,7 +8807,7 @@ async function main() {
             let P = precio, comP = com;
             if (den > 0) {
               for (let it = 0; it < 3; it++) {
-                const Pn = (costo * (1 + META) + comP + envio) / den;
+                const Pn = (costo * (1 + META) + comP + envio * (1 + META)) / den;
                 const c2 = await feeAt(site, Pn, lt, cat, t.access_token);
                 if (c2 == null) break;
                 if (Math.abs(Pn - P) < 1 && it > 0) { P = Pn; comP = c2; break; }
@@ -9211,13 +9218,13 @@ async function main() {
           if (!isFinite(envioMin) || envioMin < 0) envioMin = 0;
           const neto = precio - com - envio;
           const mlx = precio * m;
-          const mg = (neto - costo - mlx) / (costo + mlx);
+          const mg = (neto - costo - mlx) / (costo + mlx + envio);
           // precio que dejaría el margen justo en la meta nueva (mismo punto fijo que 'precios')
           const den = 1 - m * (1 + META);
           let P = precio, comP = com;
           if (den > 0) {
             for (let it = 0; it < 3; it++) {
-              const Pn = (costo * (1 + META) + comP + envio) / den;
+              const Pn = (costo * (1 + META) + comP + envio * (1 + META)) / den;
               const c2 = await feeAt(site, Pn, lt, cat, t.access_token);
               if (c2 == null) break;
               if (Math.abs(Pn - P) < 1 && it > 0) { P = Pn; comP = c2; break; }
@@ -10464,7 +10471,7 @@ async function main() {
             extras.sort((a, c) => a - c);
             const med = extras[Math.floor(extras.length / 2)], mx = extras[extras.length - 1];
             const cuo = pctCuotas(mla), mlx = precio * m;
-            const mgDe = (env) => ((precio - com - env - precio * cuo) - costo - mlx) / (costo + mlx) * 100;
+            const mgDe = (env) => ((precio - com - env - precio * cuo) - costo - mlx) / (costo + mlx + env) * 100;
             const mgTip = mgDe(med), mgPeor = mgDe(mx);
             if (mgPeor >= MIN * 100) continue;    // ni en su peor venta baja del piso: no entra en la lista
             const den = 1 - cuo - m * (1 + MIN);
@@ -10472,7 +10479,7 @@ async function main() {
             if (den > 0) {
               let P = precio, comP = com, bien = true;
               for (let it = 0; it < 4; it++) {
-                const Pn = (costo * (1 + MIN) + comP + mx) / den;
+                const Pn = (costo * (1 + MIN) + comP + mx * (1 + MIN)) / den;
                 const c2 = await feeAt(site, Pn, lt, cat, t.access_token);
                 if (c2 == null) { bien = false; break; }
                 if (Math.abs(Pn - P) < 1 && it > 0) { P = Pn; comP = c2; break; }
@@ -10688,13 +10695,13 @@ async function main() {
             const cuo = pctCuotas(mla);
             const com = await feeAt(site, precio, lt, cat, t.access_token); if (com == null) continue;
             const mlx = precio * m;
-            const mgDe = (env) => ((precio - com - env - precio * cuo) - costo - mlx) / (costo + mlx) * 100;
+            const mgDe = (env) => ((precio - com - env - precio * cuo) - costo - mlx) / (costo + mlx + env) * 100;
             // precio para que la PEOR venta llegue al piso (mismo punto fijo, con el descuento máximo)
             const den = 1 - cuo - m * (1 + MIN);
             if (den <= 0) continue;
             let P = precio, comP = com, bien = true;
             for (let it = 0; it < 4; it++) {
-              const Pn = (costo * (1 + MIN) + comP + mx) / den;
+              const Pn = (costo * (1 + MIN) + comP + mx * (1 + MIN)) / den;
               const c2 = await feeAt(site, Pn, lt, cat, t.access_token);
               if (c2 == null) { bien = false; break; }
               if (Math.abs(Pn - P) < 1 && it > 0) { P = Pn; comP = c2; break; }
@@ -10940,7 +10947,7 @@ async function main() {
         const com = await feeAt(precio); if (com == null) return null;
         const neto = precio - com - envio - precio * cuo;
         const mlx = precio * m;
-        return { com, neto, mlx, mg: (neto - costo - mlx) / (costo + mlx) * 100 };
+        return { com, neto, mlx, mg: (neto - costo - mlx) / (costo + mlx + envio) * 100 };
       };
       const fmt = (precio, r, etiqueta) => r == null ? `  ${etiqueta}: ML no me dio la comisión`
         : `  ${etiqueta}: ${money(Math.round(precio))} − comisión ${money(Math.round(r.com))} − envío ${money(Math.round(envioMax))}`
@@ -10963,7 +10970,7 @@ async function main() {
       if (den > 0) {
         let P = b.price || 0, comP = (hoy && hoy.com) || 0;
         for (let it = 0; it < 4; it++) {
-          const Pn = (costo * (1 + MIN) + comP + envioMax) / den;
+          const Pn = (costo * (1 + MIN) + comP + envioMax * (1 + MIN)) / den;
           const c2 = await feeAt(Pn); if (c2 == null) break;
           if (Math.abs(Pn - P) < 1 && it > 0) { P = Pn; break; }
           P = Pn; comP = c2;
@@ -11317,14 +11324,14 @@ async function main() {
             const cuo = pctCuotas(mla);
             const neto = precio - com - envio - precio * cuo;
             const mlx = precio * m;
-            const mg = (neto - costo - mlx) / (costo + mlx);
+            const mg = (neto - costo - mlx) / (costo + mlx + envio);
             if (mg <= MIN + MARGEN_MINIMO_PARA_TOCAR) { yaEnPiso.push({ label, mla, nom, precio, mg: mg * 100 }); continue; }
             // Precio que deja el margen JUSTO en el piso (mismo punto fijo que el robot, con cuotas).
             const den = 1 - cuo - m * (1 + T);
             if (den <= 0) { sinDato.push({ label, mla, nom, why: 'el cargo de ML no deja margen a ningún precio' }); continue; }
             let P = precio, comP = com, bien = true;
             for (let it = 0; it < 4; it++) {
-              const Pn = (costo * (1 + T) + comP + envio) / den;
+              const Pn = (costo * (1 + T) + comP + envio * (1 + T)) / den;
               const c2 = await feeAt(site, Pn, lt, cat, t.access_token);
               if (c2 == null) { bien = false; break; }
               if (Math.abs(Pn - P) < 1 && it > 0) { P = Pn; comP = c2; break; }
@@ -11865,7 +11872,7 @@ async function main() {
             if (den <= 0) { noLlegan.push({ ...fila, why: 'el cargo de ML no deja margen a ningún precio' }); continue; }
             let P = precio, comP = com, bien = true;
             for (let it = 0; it < 3; it++) {
-              const Pn = (costo * (1 + T) + comP + envio) / den;
+              const Pn = (costo * (1 + T) + comP + envio * (1 + T)) / den;
               const c2 = await feeAt(site, Pn, lt, cat, t.access_token);
               if (c2 == null) { bien = false; break; }
               if (Math.abs(Pn - P) < 1 && it > 0) { P = Pn; comP = c2; break; }
@@ -12393,7 +12400,7 @@ async function main() {
               // Se itera porque la comisión depende del precio (y su parte fija salta por tramos).
               let P = u.precio, comP = comHoy, bien = true;
               for (let it = 0; it < 3; it++) {
-                const Pn = (costo * (1 + T) + comP + envio) / den;
+                const Pn = (costo * (1 + T) + comP + envio * (1 + T)) / den;
                 const c2 = await feeAt(site, Pn, lt, cat, t.access_token);
                 if (c2 == null) { bien = false; break; }
                 if (Math.abs(Pn - P) < 1 && it > 0) { P = Pn; comP = c2; break; }

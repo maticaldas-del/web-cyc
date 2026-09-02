@@ -2287,7 +2287,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='18.6';
+const APP_VERSION='18.7';
 // El problema real que esto resuelve no es curiosidad: es que el celular guarda la app y sigue
 // mostrando la de ayer sin avisar. Varias veces se revisó un cambio que ya estaba subido y no se
 // veía. Por eso, además del número, el chip avisa cuando hay una versión nueva esperando.
@@ -6727,7 +6727,12 @@ function margenMLDe(p){
   // contra `costoBase` (sin la gestión) — si se midiera contra el costo total, la gestión se
   // pagaría dos veces en el papel y todos los márgenes se hundirían de mentira.
   // Lo único que cambia es el DIVISOR. La ganancia en pesos no se mueve ni un peso.
-  const gest=Math.round(Number(p.gestFull)||0);
+  // De dónde sale lo que cobra Full: PRIMERO lo que dedujo el robot de las ventas reales
+  // (netoCalcEnvio), que es el mismo número con el que el robot decide los precios. El `gestFull`
+  // cargado a mano queda de respaldo, para los productos que todavía no pasaron por netoweb.
+  // Si la web usara uno y el robot otro, la pantalla diría un margen y el robot movería precios
+  // con otro — el error del envío repetido por cuarta vez.
+  const gest=Math.round(Number(p.netoCalcEnvio)>0?Number(p.netoCalcEnvio):(Number(p.gestFull)||0));
   const costoBase=costFullP(p)+mlExtra;   // mercadería + envío/embalaje + % reclamos + impuestos
   const costo=costoBase+gest;             // el costo TOTAL, el que él quiere ver
   const netoCalc=(p.netoCalc!=null&&p.netoCalc!=='')?Number(p.netoCalc):null;
