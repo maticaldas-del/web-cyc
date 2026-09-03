@@ -5942,6 +5942,59 @@ async function main() {
       return;
     }
 
+    // BILLING_PROBE=pongest:<palabra o id>|<pesos>[|go] → CARGA LA GESTIÓN DE FULL DE UN PRODUCTO.
+    //
+    // Es el mismo campo que el "Gestión Full $" de la ficha, pero desde acá. Nació el 03/09/2026
+    // con el Separador dedo Gordo: la ficha lo tenía en 0, y sin ese número `unapub` deducía envío
+    // $0 y mostraba 73,2% de margen cuando el real es ~38%. Un producto sin gestión cargada muestra
+    // TODOS sus números inflados, y es el peor lado para equivocarse.
+    // De dónde sale el número: de una venta REAL → precio − comisión de ML − lo que te depositó ML.
+    // Sin ':go' sólo muestra. Al aplicar, se relee de la base (que el comando diga "guardado" no
+    // alcanza) y se muestra el costo de vender antes y después.
+    if (String(process.env.BILLING_PROBE || '').startsWith('pongest:')) {
+      const _pg2 = String(process.env.BILLING_PROBE).slice(8).split('|');
+      const quien = (_pg2[0] || '').trim();
+      const APLICAR = (_pg2[2] || '').trim() === 'go';
+      let _s2 = String(_pg2[1] || '').replace(/[^\d.,]/g, '');
+      if (_s2.includes(',')) _s2 = _s2.replace(/\./g, '').replace(',', '.');
+      else if (/^\d{1,3}(\.\d{3})+$/.test(_s2)) _s2 = _s2.replace(/\./g, '');
+      const pesos = Math.round(parseFloat(_s2) || 0);
+      if (!quien || !(pesos >= 0) || !_s2) { console.log('Usá: pongest:<palabra o id>|<pesos>[|go] — ej pongest:separador dedo|335'); return; }
+      const tcG = parseFloat(((await db.get('cyc/finanzas')) || {}).tipo_cambio) || 1500;
+      const linksG = (await db.get('cyc/mllinks')) || {};
+      const objetivo = products.filter((p) => p.id === quien || norm(p.name || '').includes(norm(quien)));
+      if (!objetivo.length) { console.log(`No hay ningún producto que se llame como "${quien}".`); return; }
+      console.log(`=== PONER LA GESTIÓN DE FULL EN ${money(pesos)} ${APLICAR ? '(APLICANDO)' : '(PRUEBA)'} ===\n`);
+      for (const p of objetivo) {
+        const antes = Math.round(parseFloat(p.gestFull) || 0);
+        const merc = costoPesos(p, 1, tcG).costo;
+        console.log(`── ${p.name}   (${p.id})`);
+        console.log(`     gestión de Full: ${money(antes)} → ${money(pesos)}`);
+        console.log(`     costo de vender (mercadería ${money(Math.round(merc))} + gestión, sin impuestos): ${money(Math.round(merc + antes))} → ${money(Math.round(merc + pesos))}`);
+        const mias = Object.entries(linksG).filter(([, e]) => e && e.prodId === p.id);
+        if (!mias.length) console.log(`     sin publicaciones vinculadas`);
+        for (const [mla, e] of mias) {
+          console.log(`     ${mla} · ${String(e.cuenta || '').padEnd(8)} · ${String(e.title || '').slice(0, 44)}`
+            + `${e.ignored ? ' · OCULTA' : ''}${e.status ? ' · ' + e.status : ''}`);
+        }
+        console.log('');
+      }
+      // MIRAR LA LISTA ANTES DE APLICAR. El filtro por palabra ya se llevó puesto lo que no era
+      // más de una vez (las tarjetas de memoria el 15/08, los 42 productos de `nomandar` el 24/08).
+      if (objetivo.length > 1) console.log(`⚠️  OJO: el filtro "${quien}" agarró ${objetivo.length} productos. Mirá la lista de arriba antes de aplicar.`);
+      if (!APLICAR) { console.log(`\nPRUEBA: no escribí nada. Para aplicar: pongest:${quien}|${pesos}|go`); return; }
+      for (const p of objetivo) await db.set('cyc/products/' + p.id + '/gestFull', pesos);
+      const rele = (await db.get('cyc/products')) || {};
+      console.log('── RELEÍDO DE LA BASE ──');
+      let mal = 0;
+      for (const p of objetivo) {
+        const v = Math.round(parseFloat((rele[p.id] || {}).gestFull) || 0);
+        console.log(`  ${p.name}: ${money(v)}${v === pesos ? ' ✓' : ' ⚠️ NO QUEDÓ'}`);
+        if (v !== pesos) mal++;
+      }
+      if (!mal) console.log('\nListo. Corré netoweb para que el panel recalcule el margen con esto adentro.');
+      return;
+    }
     // BILLING_PROBE=poncosto:<palabra o id>|<pesos>[|go] → CORRIGE EL COSTO DE UN PRODUCTO.
     //
     // Es lo mismo que escribir el costo a mano en la ficha del producto en la web, pero desde acá.
