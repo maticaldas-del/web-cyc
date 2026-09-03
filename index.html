@@ -2300,7 +2300,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='19.9';
+const APP_VERSION='19.10';
 // El problema real que esto resuelve no es curiosidad: es que el celular guarda la app y sigue
 // mostrando la de ayer sin avisar. Varias veces se revisó un cambio que ya estaba subido y no se
 // veía. Por eso, además del número, el chip avisa cuando hay una versión nueva esperando.
@@ -2986,6 +2986,10 @@ function flujoPlataHTML(p){
   const precio=Math.round(Number(p.netoCalcPrecio)||0);
   const cfu=costFullUSDof(p);                       // costo full en dólares (mercadería+envío+reclamos)
   const impDet=impPromDet(p);
+  // Se perdió al pasar de mmlBoxHTML a flujoPlataHTML (03/09/2026): quedó USADO más abajo pero sin
+  // definir, y como nadie atajaba el error rompía TODA la pantalla de Productos —y de paso Finanzas,
+  // que se dibuja en la misma cadena sin cortes (ver renderAll)—, no sólo esta caja.
+  const fmtUSD=n=>n?'US$ '+n.toLocaleString('es-AR',{minimumFractionDigits:2,maximumFractionDigits:2}):'US$ 0';
   // ── LOS CHIPS DE ESTADO ──────────────────────────────────────────────────
   const chips=[];
   if(r.fuente==='calc'){
