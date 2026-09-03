@@ -11130,6 +11130,16 @@ async function main() {
       // venta real. Si el peor caso deducido no llega ni a la mitad de eso, el margen de abajo
       // está inflado y hay que decirlo antes de que alguien decida un precio con ese número.
       const _gestF = Number(p.gestFull) || 0;
+      // EL CASO PEOR DE TODOS: envío deducido $0 con dos o tres ventas. Ahí no hay ningún envío
+      // que deducir, y el margen sale altísimo — 73,2% en el Separador, cuando con el envío real
+      // que ML cobró en una venta de verdad da ~38%. Y como la ficha tampoco tiene la gestión de
+      // Full cargada, el aviso de abajo (que la usa de vara) tampoco saltaba. Este avisa igual.
+      if (isFinite(envioMax) && envioMax < 1 && usar.length < 8) {
+        console.log(`\n⚠️  OJO: el envío deducido dio ${money(Math.round(Math.max(0, envioMax)))} con sólo ${usar.length} venta(s) para medir.`);
+        console.log(`   Eso NO quiere decir que enviarlo sea gratis: quiere decir que no hay con qué medirlo.`);
+        console.log(`   EL MARGEN DE ABAJO ESTÁ INFLADO. Cargá la "Gestión Full $" en la ficha del producto`);
+        console.log(`   (sale de mirar una venta real: precio − comisión − lo que te depositó ML) y volvé a correr esto.`);
+      }
       if (_gestF > 0 && isFinite(envioMax) && envioMax < _gestF * 0.5) {
         console.log(`\n⚠️  OJO: el envío del peor caso que deduje es ${money(Math.round(envioMax))}, y la gestión de Full`);
         console.log(`   cargada en la ficha es ${money(Math.round(_gestF))}. No es que sea barato de enviar: a esta`);
