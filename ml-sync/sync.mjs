@@ -622,6 +622,21 @@ async function activarPausadasFull(db, links, tokensRun, DRY, products, piso) {
 // La regla es: TODAS al precio MÁS ALTO del grupo. Se nivela en cada corrida, así
 // da igual quién subió (el robot automático, el barrido a mano o vos desde ML).
 //
+// ── EL PISO SALE DE LA BASE, NO DE UN 30 ESCRITO EN CADA COMANDO ─────────────────
+// Encontrado el 03/09/2026 mirando por qué `unapub` decía 44,4% de un producto que en el panel
+// daba 12%. Una de las dos causas era ésta: OCHO comandos tenían `|| 30` como piso por defecto,
+// mientras el piso de verdad vive en cyc/mlconfig/minPct y él lo bajó a 25 el 02/09. O sea que
+// los comandos venían contestando "ya está arriba del piso" midiendo contra un piso que ya no
+// existe, y peor, el comando `meta:` que cambia el número no cambiaba nada de esto.
+// Es el mismo patrón que ya nos mordió tres veces: un valor copiado que se desincroniza del real.
+// Pasarle el número a mano (`bajopiso:25`) sigue funcionando y gana sobre el de la base.
+async function pisoConfig(db, fallback = 30) {
+  try {
+    const c = (await db.get('cyc/mlconfig')) || {};
+    const v = parseFloat(c.minPct);
+    return (isFinite(v) && v > 0) ? v : fallback;
+  } catch { return fallback; }
+}
 // Config en cyc/mlconfig/gruposPrecio = { paulvic: { palabra: 'paulvic' } }
 // La palabra se busca en el título de la publicación y en el nombre del producto,
 // así una publicación nueva entra al grupo sola, sin cargarla a mano.
@@ -5244,7 +5259,7 @@ async function main() {
     if (String(process.env.BILLING_PROBE || '').startsWith('hermanas:')) {
       const _h = String(process.env.BILLING_PROBE).split(':');
       const kw = (_h[1] || '').trim().toLowerCase();
-      const MIN = (parseFloat(_h[2]) || 30) / 100;
+      const MIN = (parseFloat(_h[2]) || await pisoConfig(db)) / 100;
       if (!kw) { console.log('Usá: hermanas:metatarso'); return; }
       const links = (await db.get('cyc/mllinks')) || {};
       const vp = (await db.get('cyc/ventaprod')) || {}; setDevLive(vp);
@@ -10470,7 +10485,7 @@ async function main() {
     // Y una recomendación por renglón, para que sea rápido decir sí o no. Solo LEE.
     if (String(process.env.BILLING_PROBE || '').startsWith('bajopiso')) {
       const _bp = String(process.env.BILLING_PROBE).split(':');
-      const MIN = (parseFloat(_bp[1]) || 30) / 100;
+      const MIN = (parseFloat(_bp[1]) || await pisoConfig(db)) / 100;
       const DIAS = parseFloat(_bp[2]) || 60;
       const APLICAR = _bp[3] === 'go';
       const DEST = (_bp[4] || '').trim();
@@ -10717,7 +10732,7 @@ async function main() {
     // No cambia nada: solo muestra los dos precios para poder decidir. Solo LEE.
     if (String(process.env.BILLING_PROBE || '').startsWith('disperso')) {
       const _d = String(process.env.BILLING_PROBE).split(':');
-      const MIN = (parseFloat(_d[1]) || 30) / 100;
+      const MIN = (parseFloat(_d[1]) || await pisoConfig(db)) / 100;
       const DIAS = parseFloat(_d[2]) || 60;
       const links = (await db.get('cyc/mllinks')) || {};
       const vp = (await db.get('cyc/ventaprod')) || {}; setDevLive(vp);
@@ -10917,7 +10932,7 @@ async function main() {
     if (String(process.env.BILLING_PROBE || '').startsWith('unapub')) {
       const _u = String(process.env.BILLING_PROBE).split(':');
       let MLA = (_u[1] || '').trim().toUpperCase();
-      const MIN = (parseFloat(_u[2]) || 30) / 100;
+      const MIN = (parseFloat(_u[2]) || await pisoConfig(db)) / 100;
       const DIAS = parseFloat(_u[3]) || 30;
       const links = (await db.get('cyc/mllinks')) || {};
       // También acepta una palabra del título (unapub:metatarso): buscarse el MLA a mano cada vez
@@ -11044,6 +11059,23 @@ async function main() {
         : `  ${etiqueta}: ${money(Math.round(precio))} − comisión ${money(Math.round(r.com))} − envío ${money(Math.round(envioMax))}`
           + (cuo ? ` − cuotas ${money(Math.round(precio * cuo))}` : '')
           + ` = neto ${money(Math.round(r.neto))} · costo ${money(Math.round(costo + r.mlx))} → margen ${r.mg.toFixed(1)}%`;
+      // ── AVISO: UN PEOR CASO SOSPECHOSAMENTE BARATO ───────────────────────────────
+      // Encontrado el 03/09/2026 con el Separador: unapub decía 44,4% y la venta real dio 12%.
+      // El envío del "peor caso" que dedujo era $28, cuando en la venta de verdad ML se quedó con
+      // unos $385. No es que sea barato de enviar: es que a esa publicación TODAVÍA no le tocó un
+      // envío caro, así que no hay con qué medirlo. Ya nos pasó con la Plantilla Metatarso el
+      // 14/08/2026 y quedó anotado, pero el comando seguía sin decirlo — o sea que había que
+      // acordarse de sospechar. Ahora lo dice él.
+      // La vara es la gestión de Full cargada en la ficha, que es un dato OBSERVADO por él en una
+      // venta real. Si el peor caso deducido no llega ni a la mitad de eso, el margen de abajo
+      // está inflado y hay que decirlo antes de que alguien decida un precio con ese número.
+      const _gestF = Number(p.gestFull) || 0;
+      if (_gestF > 0 && isFinite(envioMax) && envioMax < _gestF * 0.5) {
+        console.log(`\n⚠️  OJO: el envío del peor caso que deduje es ${money(Math.round(envioMax))}, y la gestión de Full`);
+        console.log(`   cargada en la ficha es ${money(Math.round(_gestF))}. No es que sea barato de enviar: a esta`);
+        console.log(`   publicación todavía no le tocó un envío caro, así que EL MARGEN DE ABAJO ESTÁ INFLADO.`);
+        console.log(`   Con ${money(Math.round(_gestF))} de envío el margen real sería bastante menor. No fijes un precio con este número.`);
+      }
       console.log(`\n── MARGEN (con el envío del PEOR caso, el criterio conservador) ──`);
       const hoy = await margenA(b.price || 0, envioMax);
       console.log(fmt(b.price || 0, hoy, 'precio de hoy   '));
@@ -11279,7 +11311,7 @@ async function main() {
     // para confirmar que quedó el que se pidió.
     if (String(process.env.BILLING_PROBE || '').startsWith('bajar')) {
       const _b = String(process.env.BILLING_PROBE).split(':');
-      const MIN = (parseFloat(_b[1]) || 30) / 100;   // piso = destino, sin colchón
+      const MIN = (parseFloat(_b[1]) || await pisoConfig(db)) / 100;   // piso = destino, sin colchón
       const DIAS = parseFloat(_b[2]) || 21;          // ventana para "no vendió a este precio"
       const APLICAR = _b[3] === 'go';
       const DEST = (_b[4] || '').trim();
@@ -12349,7 +12381,7 @@ async function main() {
       const APLICAR = _cp[0] === 'preciosgo';
       const DESTINO = (_cp[3] || '').trim();
       if (APLICAR && !DESTINO) { console.log('Para aplicar hace falta el destino: preciosgo:30:meses:MLA123 o preciosgo:30:meses:todos'); return; }
-      const MIN = (parseFloat(_cp[1]) || 30) / 100;      // piso: por debajo de esto se toca
+      const MIN = (parseFloat(_cp[1]) || await pisoConfig(db)) / 100;      // piso: por debajo de esto se toca
       const T = MIN;                                      // destino: el piso EXACTO, sin colchón
       const pickYM = (_cp[2] || '2026_06,2026_07').split(',').map((s) => s.trim()).filter(Boolean);
       const MAX_UP = 1.25;                                // mismo tope de seguridad que el robot
@@ -13344,7 +13376,7 @@ async function main() {
     // base en el resto del panel, que es lo que él pidió.
     if (/^gestadentro(:|$)/.test(String(process.env.BILLING_PROBE || ''))) {
       const _pg = String(process.env.BILLING_PROBE).split(':');
-      const MIN = (parseFloat(_pg[1]) || 30) / 100;
+      const MIN = (parseFloat(_pg[1]) || await pisoConfig(db)) / 100;
       const DIAS = 60;
       const fin = (await db.get('cyc/finanzas')) || {};
       const tc = parseFloat(fin.tipo_cambio) || 1500;
