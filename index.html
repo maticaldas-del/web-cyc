@@ -2300,7 +2300,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='19.8';
+const APP_VERSION='19.9';
 // El problema real que esto resuelve no es curiosidad: es que el celular guarda la app y sigue
 // mostrando la de ayer sin avisar. Varias veces se revisó un cambio que ya estaba subido y no se
 // veía. Por eso, además del número, el chip avisa cuando hay una versión nueva esperando.
@@ -8945,16 +8945,38 @@ document.addEventListener('keydown',(e)=>{if(e.key==='Escape')closeMetScopeMenu(
 
 // Retorna el valor de un campo (total|neto) para una clave de día y una cuenta,
 // usando ventaprod si tiene datos; si no, cae a state.metricas (solo para 'total').
-// Gastos operativos de CYC por mes. Los meses viejos (antes de empezar a cargarlos) no tienen
-// gastos → se usa un promedio fijo estimado, así la "Ganancia CYC" no queda inflada de más.
-const GASTO_MES_DEFAULT=800000;
+// ── GASTOS DEL MES: LOS QUE ESTÁN CARGADOS, SIN PRONÓSTICO ──────────────────────
+// Pedido suyo del 03/09/2026: "quiero sacar el pronóstico de ganancia de CYC de las métricas de
+// 'ganancia CYC', que baje cuando cargo los gastos y listo".
+//
+// Antes, un mes sin gastos cargados usaba $800.000 estimados. La intención era buena —que la
+// ganancia no quedara inflada— pero producía algo peor: el número SALTABA. Arrancabas el mes con
+// $800.000 de gastos supuestos, cargabas el primer gasto de $100.000 y la ganancia SUBÍA $700.000
+// de golpe; después bajaba de a poco a medida que cargabas el resto. O sea que el número se movía
+// para los dos lados por el mismo motivo y no había forma de leerlo.
+// Ahora es lo que hay cargado y nada más: empieza arriba y sólo BAJA a medida que se cargan los
+// gastos. Se mueve en una sola dirección, que es como él lo lee.
+//
+// LA CONTRA, dicha y no escondida: un mes al que le faltan gastos muestra una ganancia MÁS ALTA de
+// la real. Por eso la pantalla avisa cuando el período que estás mirando tiene meses sin ningún
+// gasto cargado (ver _mesesSinGastos), y la lista de "lo que se carga a mano cada mes" que está
+// arriba de Gastos sigue siendo el lugar donde se ve qué falta.
+// Se cambia acá y no sólo en Métricas a propósito: el Resumen y el Puntaje leen esta MISMA
+// función, y la regla de que "Ganancia CYC" diga lo mismo que el último renglón del Resumen es
+// anterior a esto. Tocar un lado solo los haría discrepar.
 let _gastoMesMemo={},_netoMesMemo={};
 function _gastosMes(ym){
   if(ym in _gastoMesMemo)return _gastoMesMemo[ym];
   let g=0;
   Object.values(state.compras||{}).forEach(x=>{if(getCompraTipo(x)==='gasto'&&(x.dayKey||'').startsWith(ym))g+=(x.monto||0);});
-  const val=g>0?g:GASTO_MES_DEFAULT;   // si ese mes no tiene gastos cargados, usar el estimado
-  _gastoMesMemo[ym]=val;return val;
+  _gastoMesMemo[ym]=g;return g;
+}
+// Los meses del período elegido que no tienen NI UN gasto cargado. Sin esto, sacar el pronóstico
+// dejaría la ganancia alta sin decir por qué — que es exactamente el error que este panel viene
+// arrastrando de otras pantallas: un número que miente en silencio.
+function _mesesSinGastos(keys){
+  const yms=[...new Set((keys||[]).map(k=>String(k).substring(0,7)))];
+  return yms.filter(ym=>_gastosMes(ym)<=0).sort();
 }
 // Neto del mes por cuenta y total — para repartir los gastos proporcional al neto de cada cuenta.
 function _netoMesData(ym){
@@ -9224,7 +9246,13 @@ function renderMetricas(){
   const lbl=getMetScopeLabel(metScopeMode),prevLbl=getPrevMetLabel(metScopeMode);
   const fieldLbl=metViewField==='neto'?'💚 Neto':metViewField==='ganancia'?'💰 Ganancia':metViewField==='gananciaCYC'?'🏢 Ganancia CYC':'💵 Total';
   const setTxt=(id,v)=>{const el=document.getElementById(id);if(el)el.textContent=v;};
-  setTxt('met-kpi-period','· '+lbl+' · '+fieldLbl);setTxt('met-line-period','· '+lbl+' · '+fieldLbl);
+  // Aviso de meses sin gastos: sólo en Ganancia CYC, que es la única vista que los resta.
+  let avisoG='';
+  if(metViewField==='gananciaCYC'){
+    const sinG=_mesesSinGastos(curKeys);
+    if(sinG.length)avisoG=' · ⚠ '+(sinG.length===1?'sin gastos cargados en '+sinG[0].replace('_','/'):sinG.length+' meses sin gastos cargados')+': la ganancia se ve más alta de la real';
+  }
+  setTxt('met-kpi-period','· '+lbl+' · '+fieldLbl+avisoG);setTxt('met-line-period','· '+lbl+' · '+fieldLbl+avisoG);
   const acctColors=['c1','c4','c2','c3'];
   // Mismo período un año atrás (alineado con las líneas del gráfico).
   const year=sumMetFields(metScopeBuckets(metScopeMode).bucketsYear.flat(),metViewField);
