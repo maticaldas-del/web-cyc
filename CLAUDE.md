@@ -576,6 +576,77 @@ con ninguna, no hay de dónde sacar un costo y nadie lo puede inventar. Ahí va 
   o sea que ahí quedó sin probar — pero esa MISMA ruta dio 404 limpio en Ayelen y en Luciana, así
   que la conclusión no cambia. Un 429 nunca es prueba de que un endpoint no exista.
 
+- **LOS COMANDOS MEDÍAN CONTRA UN PISO QUE YA NO EXISTE (03/09/2026).** `unapub` decía 44,4% de un
+  producto que en el panel daba 12%. Dos causas, y las dos inflaban el margen — el peor lado para
+  equivocarse, porque dicen "está cómodo" de algo que está al filo:
+  · **OCHO comandos tenían `|| 30` escrito adentro** (`hermanas`, `bajopiso`, `unapub`, `bajarcaja`,
+    `corregir`, `gestadentro` y dos más) mientras el piso real vive en `cyc/mlconfig/minPct`, que
+    pasó a 25 el 02/09. O sea que el comando `meta:<piso>:<meta>`, que existe justo para cambiar ese
+    número, no cambiaba nada de esto. Ahora sale de la base con `pisoConfig(db)`; pasarlo a mano
+    (`bajopiso:25`) sigue ganando sobre el de la base.
+  · **El envío del "peor caso" era $28** cuando en la venta real ML se quedó con ~$385. No es que sea
+    barato de enviar: a esa publicación todavía no le tocó un envío caro. Es EXACTAMENTE lo que pasó
+    con la Plantilla Metatarso el 14/08 y quedó anotado acá abajo — pero el comando seguía sin
+    decirlo, o sea que había que acordarse de sospechar. Ahora `unapub` avisa solo cuando el peor
+    caso no llega ni a la mitad de la `gestFull` de la ficha, que es un dato que él observó en una
+    venta real.
+  **La lección: anotar un error en este archivo no lo arregla. Si el que se puede equivocar es el
+  que lee la salida, el aviso tiene que estar en la salida.**
+
+- **LA FICHA TENÍA TRES CAJAS QUE ERAN LA MISMA CUENTA, Y JUNTAS MENTÍAN (03/09/2026).** Pedido suyo:
+  *"veo cosas repetidas. no se puede dejar solo la línea del dinero? que diga todo completo."*
+  Eran Costo real full, Costo vender en Full y Neto ML. El problema no era la repetición sino que
+  **"Costo vender en Full $36.691" y "Neto ML $38.912" quedaban uno al lado del otro y NO se restan
+  entre sí**: la gestión de Full está SUMADA en uno y ya DESCONTADA del otro. Restarlos da $2.221,
+  que no es la ganancia de nada; la real es $9.058. Esa confusión volvió tres veces en tres días.
+  Ahora hay UNA sola caja: la línea del dinero, de izquierda a derecha, con todo adentro (el costo
+  en dólares, el costo total y el %, el neto que haría falta para la meta y cuánto falta, las
+  visitas, si está pausada, el aviso de bajo piso). Sin publicación no devuelve vacío — dice qué le
+  falta y muestra igual lo que sí se sabe.
+  **Y se redibuja sola** (`repintarFlujo`): los campos de costo y gestión parchaban a mano el
+  pedacito de su caja, con la fórmula copiada adentro. Eran tres lugares más donde podía quedar
+  desincronizada.
+  **La lección: dos números correctos, puestos uno al lado del otro, pueden dar una conclusión
+  falsa. Si la resta que invita la pantalla no es la resta correcta, la pantalla está mal.**
+
+- **"¿POR QUÉ ME HACE COMPRAR 7?" — LA CUENTA ESTABA BIEN, LA TARJETA NO (03/09/2026).** Él lo marcó
+  con la Balanza Cocina: *"si hay 4 en camino y se vendieron 6 en 30 días, ¿por qué me hace comprar
+  7?"*. Verificado con `porquepedido`: vendió 6 en los **17 días que tuvo mercadería**, no en 30 —
+  los otros 13 estuvo en cero. A 0,36 por día, en 30 días vende 11; 11 − 4 en camino = 7. ✓
+  Pero la tarjeta mostraba "30d: 6 vendidos" y "4 en camino" uno al lado del otro, que es una
+  invitación a hacer 6 − 4 = 2. Los dos números que hacían falta —los días con stock y el objetivo—
+  se calculaban y se tiraban. Ahora se guardan con el pedido (`cuentaPed`) y se muestra la cuenta
+  entera al abrir la tarjeta.
+  Ojo al tocarlo: el update arma el pedido ENTERO de cero, así que un campo nuevo va en las TRES
+  ramas (alta, actualización y pedidos a mano) o se pierde en silencio.
+
+- **LA PAUSA POR PRECIO VENCE A LOS 30 DÍAS (03/09/2026).** Agujero que marcó él: *"voy a marcar
+  todos los productos que los precios ya no dan. perfecto. pero quizás de acá a 20 días ya sí
+  conseguimos y me sigue sin aparecer porque está pausado"*.
+  El margen se mueve por DOS motivos: que suba el precio en ML (el panel lo ve solo) o que el
+  proveedor te lo venda más barato — y **ese número el panel no lo conoce**. O sea que el caso que a
+  él le importa no se iba a avisar nunca. Ahora vence (`PAUSA_REVISAR_DIAS` = 30) y vuelve marcado
+  🔔 con dos botones: 😴 sigue sin dar (la duerme otros 30) y ↩︎ volver a Pedidos. Vuelve a la LISTA,
+  no a Pedidos, para no restar puntaje sin decir por qué. El aviso va también arriba de Pedidos.
+  **La lección: un aviso automático sólo sirve para lo que el panel puede ver solo. Para lo que
+  depende de un dato de afuera, hace falta un vencimiento.**
+
+- **DÓNDE ESTÁ EL TECHO DEL NEGOCIO (03/09/2026, medido con `proyec` y `catmono`).** Por cada $100
+  facturados quedan **$16,94** de contribución (ML deposita $67,68 · mercadería $45,95 · IIBB $4,79).
+  Con las cuatro en categoría H los fijos son $3.547.812/mes (mono 4×H $819.247 + gastos $675.167 +
+  retiro $1.800.000 + interés $253.398). De ahí:
+  · CYC queda en CERO facturando **$698.000/día**
+  · el techo antes de pasarse de H es **$840.000/día** — y NO son los $910.000 de cuatro cuentas
+    parejas, porque el tope ($81.924.660/año) es **por CUIT** y Ayelen se lleva el 27,1%
+  · **al ritmo de agosto ($934.015/día) ya se pasan**: anualizado da $84M por cuenta
+  **Emparejar el reparto entre las cuatro sube el techo de $840.000 a $910.000/día** — $2,1M/mes de
+  facturación que hoy no se puede hacer sólo por el desbalance. Es gratis.
+  Y la conclusión incómoda: **aun facturando el máximo que H permite, a CYC le quedan ~$700.000/mes.**
+  El techo no lo pone la capacidad de vender, lo pone la categoría. Un punto de margen vale
+  ~$230.000/mes; pasar el piso de 25% a 28% vale ~$700.000/mes sin vender un peso más.
+  Ojo con leer el promedio como si fuera el mes: **agosto dejó $1.714.396, no cero.** Lo que hunde el
+  promedio de 2 meses es julio ($18,3M contra $28,0M de agosto).
+
 - **GitHub demora las corridas programadas**, a veces horas. Por eso los crons se piden 3 veces y
   el robot guarda el último día que mandó cada aviso, para no repetir.
 - **Las compras con carrito** llegan con el número del paquete, no el de la orden. Hay que
