@@ -2300,7 +2300,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='19.6';
+const APP_VERSION='19.7';
 // El problema real que esto resuelve no es curiosidad: es que el celular guarda la app y sigue
 // mostrando la de ayer sin avisar. Varias veces se revisó un cambio que ya estaba subido y no se
 // veía. Por eso, además del número, el chip avisa cuando hay una versión nueva esperando.
@@ -2949,12 +2949,6 @@ function _prodIncompletosBanner(){
     <div style="line-height:1.9">${names}${inc.length>60?` <span style="color:var(--muted);font-size:.64rem">…y ${inc.length-60} más</span>`:''}</div>
   </div>`;
 }
-// ── LA CAJA "NETO ML" DE LA FICHA ────────────────────────────────────────────────────
-// Era la pantalla "Margen ML" aparte. Se unió a Productos el 24/08/2026 a pedido suyo: la ficha
-// ya tiene el costo, el envío y la gestión, así que lo único que le faltaba era lo que queda de
-// neto en ML y el %. Tener las dos pantallas obligaba a saltar de una a otra para decidir un
-// precio, y era el mismo producto en los dos lados.
-// Usa margenMLDe() y visitasDe(), las MISMAS funciones que Rotación de Stock: una sola cuenta.
 function metaMargenML(){return parseFloat((state.mlconfig||{}).minPct)||30;}
 // ── CÓMO PASA LA PLATA, DE PUNTA A PUNTA ──────────────────────────────────────
 // Pedido suyo del 01/09/2026, textual: "me gustaría que sea una línea de cómo pasa el dinero desde
@@ -2968,99 +2962,100 @@ function metaMargenML(){return parseFloat((state.mlconfig||{}).minPct)||30;}
 //
 // Los impuestos van al final y aparte a propósito: no se descuentan en el momento de la venta,
 // llegan en la factura de ML de fin de mes. Es lo que él llama "lo que termina descontándome MP".
-// ── LA LÍNEA DEL DINERO: DE IZQUIERDA A DERECHA, SIEMPRE A LA VISTA ─────────────
-// Pedido suyo del 02/09/2026, y es el arreglo de raíz de una confusión que ya volvió tres veces:
-// "creo que lo entendí, el problema es que el neto no es el 24% del costo de vender en full sino
-// que es lo que le gano al producto sin la gestión de full. entonces es difícil de entender así.
-// que me muestre la línea de cómo pasa el dinero como default."
+// ── LA LÍNEA DEL DINERO: LA ÚNICA CAJA DE RESULTADO DE LA FICHA ────────────────
+// Pedido suyo del 03/09/2026: "veo cosas repetidas. no se puede dejar solo la línea del dinero?
+// que diga todo completo. entonces no necesito más info que eso porque tiene toda la info que se
+// puede tener."
 //
-// El Ferrari Rojo es el ejemplo exacto: "Costo vender en Full $36.691" y "Neto ML $38.823" están
-// uno al lado del otro y NO se restan entre sí. La gestión de Full ($6.836) está adentro de los
-// dos, pero de maneras distintas: en el costo está SUMADA, y del neto ML ya viene DESCONTADA.
-// Restar esos dos números da $2.132, que no es la ganancia de nada. La ganancia real es $8.969.
-// Mientras esos dos números estén sueltos, la cuenta mental que sale es la equivocada.
+// Tenía razón: había TRES cajas —Costo real full, Costo vender en Full y Neto ML— y las tres eran
+// pedazos sueltos de esta misma cuenta. Peor que repetidas, eran engañosas juntas: "Costo vender
+// en Full $36.691" y "Neto ML $38.912" quedaban uno al lado del otro y NO se restan entre sí,
+// porque la gestión de Full está sumada en uno y ya descontada del otro. Restarlos daba $2.221,
+// que no es la ganancia de nada; la real es $9.058. Esa confusión volvió tres veces.
 //
-// DOS CAMBIOS Y LOS DOS PEDIDOS POR ÉL:
-//  1. Se ve SIEMPRE. Antes era un <details> que había que abrir — y encima se cerraba solo, porque
-//     cualquier cambio en la base redibuja la ficha entera y un <details> vuelve a nacer cerrado.
-//     Sacándolo, el bug desaparece: no queda nada que se pueda cerrar.
-//  2. Va en fila, de izquierda a derecha, del peso que paga el comprador al peso que queda. Con
-//     flex-wrap, así en el celular baja de renglón en vez de recortarse.
-function flujoPlataHTML(p,r){
+// Ahora hay UNA sola cuenta, en fila, del peso que paga el comprador al peso que queda. Todo lo
+// que decían las tres cajas está adentro: el costo en dólares, el costo total, el neto que haría
+// falta para llegar a la meta, las visitas, si la publicación está pausada y el aviso de bajo piso.
+//
+// Y se redibuja SOLA: los campos de costo y de gestión antes parchaban a mano el pedacito de cada
+// caja, o sea que la fórmula estaba escrita en tres lugares más. Ahora llaman a repintarFlujo, que
+// vuelve a llamar a esta función. Una sola fórmula, un solo lugar donde puede estar mal.
+function flujoPlataHTML(p){
+  const r=margenMLDe(p);
+  const META=metaMargenML();
   const precio=Math.round(Number(p.netoCalcPrecio)||0);
-  if(!(precio>0)||r.netoCalc==null||!(r.costoBase>0))return '';
+  const cfu=costFullUSDof(p);                       // costo full en dólares (mercadería+envío+reclamos)
+  const impDet=impPromDet(p);
+  // ── LOS CHIPS DE ESTADO ──────────────────────────────────────────────────
+  const chips=[];
+  if(r.fuente==='calc'){
+    chips.push(`<span title="Calculado con el precio de HOY en ML: precio − comisión oficial − envío del peor caso.${precio?' Precio usado: '+fmt(precio)+'.':''}" style="font-size:.5rem;color:${(p.netoCalcPausada||p.netoCalcSinEnvio)?'var(--amber)':'#60a5fa'};font-weight:700;letter-spacing:.04em">◉ PRECIO DE HOY${p.netoCalcPausada?' · PAUSADA':''}${p.netoCalcSinEnvio?' · SIN ENVÍO':''}</span>`);
+  } else {
+    chips.push(`<span title="ML no puede calcularlo: el producto no tiene ninguna publicación de la que sacar el precio." style="font-size:.5rem;color:var(--muted);font-weight:700">SIN PUBLICACIÓN</span>`);
+  }
+  if(r.margen!=null&&r.margen<META)chips.push(`<span style="background:rgba(239,68,68,.14);color:var(--red);border-radius:5px;padding:2px 7px;font-size:.58rem;font-weight:700;white-space:nowrap">⚠ bajo ${META}%</span>`);
+  const _v=visitasDe(p);
+  if(_v){
+    const _d=Math.round((Date.now()-_v.ts)/86400000);
+    const poco=_v.tot<VIS_POCAS;
+    const t=`${_v.tot} visitas en los últimos ${_v.dias} días, sumando las ${_v.pubs} publicación(es) vivas. Dato de hace ${_d<=0?'menos de un día':_d+' día(s)'}.`+(poco?' · NO LA VE NADIE: el problema no es el precio, es el título, las fotos o la caja de compra. Bajarlo no cambia nada.':'');
+    chips.push(`<span title="${t}" style="${poco?'background:rgba(251,191,36,.14);color:var(--amber);border-radius:5px;padding:2px 7px;font-weight:700;':'color:var(--muted);'}font-size:.58rem;white-space:nowrap">${poco?'🕳️ no la ve nadie · ':'👁 '}lo miran ${_v.tot.toLocaleString('es-AR')}</span>`);
+  }
+  const cab=`<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:8px">
+      <span style="font-size:.58rem;color:#38bdf8;letter-spacing:.05em">💸 CÓMO PASA LA PLATA EN UNA VENTA</span>
+      <span style="flex:1"></span>${chips.join('')}</div>`;
+  const marco=(dentro)=>`<div id="flujo-${p.id}" style="width:100%;background:rgba(0,0,0,.18);border:1px solid var(--border);border-radius:8px;padding:10px 12px;margin-top:4px">${cab}${dentro}</div>`;
+
+  // ── SIN PRECIO NO HAY LÍNEA, PERO EL COSTO SE MUESTRA IGUAL ──────────────
+  // Si acá devolviera vacío, un producto sin publicación se quedaría sin NINGÚN número de costo en
+  // la ficha, que es peor que antes. Se dice qué falta y se muestra lo que sí se sabe.
+  if(!(precio>0)||r.netoCalc==null||!(r.costoBase>0)){
+    const gestF=Math.round(Number(p.gestFull)||0);
+    const totF=Math.round(r.costoBase+gestF);
+    return marco(`<div style="font-size:.62rem;color:var(--muted);line-height:1.6">
+      No se puede armar la línea: ${!(precio>0)||r.netoCalc==null?'este producto no tiene publicación en ML de la que sacar el precio de hoy.':'todavía no hay costo cargado.'}
+      ${r.costoBase>0?`<br>Lo que sí se sabe: vender una unidad te sale <strong style="color:#34d399">${fmt(totF)}</strong> — mercadería y envío ${fmt(Math.round(r.costoBase-(r.mlExtra||0)))} (${fmtUSD(cfu)}) + impuestos ${fmt(Math.round(r.mlExtra||0))}${gestF>0?' + '+fmt(gestF)+' que cobra Full':''}.`:''}
+    </div>`);
+  }
+
   const gest=r.gest||0;
-  const com=Math.round(precio-r.netoCalc-gest);   // lo que cobró ML de comisión, deducido del neto
+  const com=Math.round(precio-r.netoCalc-gest);   // comisión de ML, deducida del neto
   const imp=Math.round(r.mlExtra||0);
   const merc=Math.round(r.costoBase-imp);         // mercadería + envío/embalaje + % reclamos
   const gan=Math.round(r.netoCalc-r.costoBase);
   const ganCol=gan>=0?'var(--green)':'var(--red)';
-  // Cada escalón: etiqueta chica arriba, número grande abajo. Los que RESTAN van en gris con el −
-  // adelante; los dos hitos —lo que deposita ML y lo que queda— van en color y en negrita, porque
-  // son los únicos dos números que él necesita retener.
-  const paso=(lbl,val,col,signo,peso)=>`<div style="text-align:center;padding:0 2px;min-width:74px">
+  // El neto que haría falta para llegar a la meta: costo base + meta sobre el costo TOTAL. Se
+  // compara contra netoCalc, que ya viene sin la gestión.
+  const objetivo=r.costo>0?Math.round(r.costoBase+r.costo*META/100):null;
+  const falta=objetivo!=null?objetivo-Math.round(r.netoCalc):null;
+  const paso=(lbl,val,col,signo,peso,pie)=>`<div style="text-align:center;padding:0 2px;min-width:76px">
       <div style="font-size:.5rem;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;line-height:1.3;margin-bottom:2px">${lbl}</div>
-      <div style="font-family:'DM Mono',monospace;font-size:${peso?'.78rem':'.68rem'};font-weight:${peso?'700':'500'};color:${col};white-space:nowrap">${signo||''}${fmt(val)}</div>
+      <div style="font-family:'DM Mono',monospace;font-size:${peso?'.8rem':'.68rem'};font-weight:${peso?'700':'500'};color:${col};white-space:nowrap">${signo||''}${fmt(val)}</div>
+      ${pie?`<div style="font-size:.48rem;color:var(--muted);margin-top:1px;white-space:nowrap">${pie}</div>`:''}
     </div>`;
-  const flecha=`<div style="color:var(--border2);font-size:.7rem;align-self:center;padding-bottom:2px">→</div>`;
-  return `<div style="grid-column:1/-1;width:100%;background:rgba(0,0,0,.18);border:1px solid var(--border);border-radius:8px;padding:10px 12px;margin-top:4px">
-    <div style="font-size:.58rem;color:#38bdf8;letter-spacing:.05em;margin-bottom:7px">💸 CÓMO PASA LA PLATA EN UNA VENTA</div>
-    <div style="display:flex;align-items:flex-end;gap:4px;flex-wrap:wrap">
+  const flecha=`<div style="color:var(--border2);font-size:.7rem;align-self:center;padding-bottom:8px">→</div>`;
+  return marco(`<div style="display:flex;align-items:flex-start;gap:4px;flex-wrap:wrap">
       ${paso('paga el comprador',precio,'var(--text)','',true)}
       ${flecha}${paso('comisión ML',com,'var(--muted)','−')}
       ${flecha}${paso(gest>0?'envío de Full':'envío de Full (no cobra)',gest,'var(--muted)','−')}
-      ${flecha}${paso('te deposita ML',r.netoCalc,'#38bdf8','',true)}
-      ${flecha}${paso('IIBB + mono',imp,'var(--muted)','−')}
-      ${flecha}${paso('mercadería + envío',merc,'var(--muted)','−')}
+      ${flecha}${paso('te deposita ML',r.netoCalc,'#38bdf8','',true,r.netoReal!=null?'real: '+fmt(r.netoReal):'')}
+      ${flecha}${paso('IIBB + mono',imp,'var(--muted)','−',false,impDet.estimado?'estimado':'')}
+      ${flecha}${paso('mercadería + envío',merc,'var(--muted)','−',false,fmtUSD(cfu))}
       ${flecha}${paso('te queda',gan,ganCol,'',true)}
     </div>
-    <div style="font-size:.56rem;color:var(--muted);margin-top:7px;line-height:1.5;border-top:1px solid var(--border);padding-top:6px">
-      <strong style="color:${ganCol}">${fmt(gan)}</strong> sobre el costo total de <strong style="color:var(--text)">${fmt(Math.round(r.costo))}</strong> = <strong style="color:${pctColor(r.margen)};font-size:.72rem">${r.margen!=null?r.margen.toFixed(0)+'%':'—'}</strong>
-      · el IIBB y el monotributo llegan después, en la factura de ML de fin de mes.
-    </div>
-  </div>`;
+    <div style="font-size:.58rem;color:var(--muted);margin-top:8px;line-height:1.6;border-top:1px solid var(--border);padding-top:7px">
+      <strong style="color:${ganCol}">${fmt(gan)}</strong> sobre el costo total de <strong style="color:var(--text)">${fmt(Math.round(r.costo))}</strong> = <strong style="color:${pctColor(r.margen)};font-size:.78rem">${r.margen!=null?r.margen.toFixed(0)+'%':'—'}</strong>
+      ${objetivo!=null?` &nbsp;·&nbsp; para llegar al ${META}% ML te tendría que depositar <strong style="color:var(--text)">${fmt(objetivo)}</strong>${falta>0?` <span style="color:var(--amber)">(faltan ${fmt(falta)})</span>`:' <span style="color:var(--green)">(ya llega ✓)</span>'}`:''}
+      <div style="font-size:.53rem;margin-top:3px;opacity:.85">El IIBB y el monotributo no se descuentan en el momento: llegan después, en la factura de ML de fin de mes. El envío de Full sí, ya está adentro de lo que te deposita.</div>
+    </div>`);
 }
-function mmlBoxHTML(p){
-  const META=metaMargenML();
-  const r=margenMLDe(p);
-  // El neto que hace falta para llegar a la meta: el costo base MÁS la meta aplicada sobre el
-  // costo TOTAL (con la gestión adentro). Se compara contra netoCalc, que ya viene sin la gestión.
-  const objetivo=r.costo>0?Math.round(r.costoBase+r.costo*META/100):null;
-  let margenTxt,margenColor;
-  if(r.costo<=0){margenTxt='sin costo';margenColor='var(--muted)';}
-  else if(r.neto==null){margenTxt='—';margenColor='var(--muted)';}
-  else {margenColor=pctColor(r.margen);margenTxt=(r.margen>=0?'+':'')+r.margen.toFixed(0)+'%';}
-  const _paus=r.fuente==='calc'&&p.netoCalcPausada===true;
-  const _sinEnv=r.fuente==='calc'&&p.netoCalcSinEnvio===true;
-  const fuenteTag=r.fuente==='calc'
-    ?`<span title="Calculado con el precio de HOY en ML: precio − comisión oficial de ML − envío del peor caso. Es lo que te queda si se vende ahora.${p.netoCalcPrecio?' Precio usado: $'+Math.round(p.netoCalcPrecio).toLocaleString('es-AR'):''}${_paus?' · La publicación está PAUSADA (sin stock): el precio es el que tiene cargado, no está vendiendo.':''}${_sinEnv?' · SIN ENVÍO DESCONTADO: este producto no tiene ninguna venta con la que deducir cuánto cuesta enviarlo, así que el margen real va a ser MENOR que el que se ve.':''}" style="font-size:.5rem;color:${_paus||_sinEnv?'var(--amber)':'var(--blue,#60a5fa)'};font-weight:700">◉ PRECIO DE HOY${_paus?' · PAUSADA':''}${_sinEnv?' · SIN ENVÍO':''}</span>`
-    :`<span title="ML no puede calcularlo: el producto no tiene ninguna publicación de la que sacar el precio." style="font-size:.5rem;color:var(--muted);font-weight:700">SIN PUBLICACIÓN</span>`;
-  const flag=(r.margen!=null&&r.margen<META)?`<span style="background:rgba(239,68,68,.14);color:var(--red);border-radius:5px;padding:2px 7px;font-size:.6rem;font-weight:700;white-space:nowrap">⚠ bajo ${META}%</span>`:'';
-  // ¿Lo ve alguien? Sin esto, "margen bajo" y "no lo mira nadie" se ven idénticos y se arreglan al revés.
-  const _v=visitasDe(p);
-  let visTxt,visColor,visTitle,visFlag='';
-  if(!_v){visTxt='—';visColor='var(--muted)';visTitle='Todavía no tenemos las visitas de este producto. Las trae el robot todas las noches.';}
-  else{
-    const _d=Math.round((Date.now()-_v.ts)/86400000);
-    visTxt=_v.tot.toLocaleString('es-AR');
-    visTitle=`${_v.tot} visitas en los últimos ${_v.dias} días, sumando las ${_v.pubs} publicación(es) vivas de este producto. Dato de hace ${_d<=0?'menos de un día':_d+' día(s)'}.`;
-    if(_v.tot<VIS_POCAS){
-      visColor='var(--amber)';
-      visTitle+=' · NO LA VE NADIE: el problema no es el precio, es el título, las fotos o la caja de compra. Bajarlo no cambia nada.';
-      visFlag=`<span title="${visTitle}" style="background:rgba(251,191,36,.14);color:var(--amber);border-radius:5px;padding:2px 7px;font-size:.6rem;font-weight:700;white-space:nowrap">🕳️ no la ve nadie</span>`;
-    } else visColor='var(--text)';
-  }
-  return `<div id="mml-${p.id}" style="background:rgba(56,189,248,.08);border:1px solid rgba(56,189,248,.28);border-radius:8px;padding:8px 14px;min-width:210px">
-    <div style="font-size:.6rem;color:var(--muted);text-transform:uppercase;letter-spacing:.1em;margin-bottom:5px">Neto ML ${fuenteTag}</div>
-    <div style="display:flex;align-items:baseline;gap:10px;flex-wrap:wrap">
-      <span title="${r.netoCalc!=null?'Lo que dice ML que te queda si se vende hoy a este precio.':'ML no lo puede calcular: el producto no está publicado.'}" style="font-size:.82rem;font-weight:600;font-family:'DM Mono',monospace;color:${r.netoCalc!=null?'#38bdf8':'var(--muted)'}">${r.netoCalc!=null?fmt(r.netoCalc):'—'}</span>
-      <span style="font-size:.9rem;font-weight:700;color:${margenColor}">${margenTxt}</span>
-    </div>
-    ${r.netoReal!=null?`<div style="font-size:.55rem;color:var(--muted);margin-top:2px">ventas reales: ${fmt(r.netoReal)}</div>`:''}
-    <div style="font-size:.58rem;color:var(--muted);margin-top:5px;line-height:1.5">${objetivo?`neto p/ ${META}%: <strong style="color:var(--text)">${fmt(objetivo)}</strong> · `:''}<span title="${visTitle}">lo miran <strong style="color:${visColor}">${visTxt}</strong></span></div>
-    ${flag||visFlag?`<div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:6px">${flag}${visFlag}</div>`:''}
-  </div>
-  ${flujoPlataHTML(p,r)}`;
+// Redibuja la línea sin re-renderizar toda la lista de productos. La llaman los campos de costo y
+// de gestión al guardarse: antes cada uno parchaba a mano el pedacito de su caja, con la fórmula
+// copiada adentro — tres lugares más donde podía quedar desincronizada.
+function repintarFlujo(id){
+  const p=(state.products||[]).find(x=>x.id===id);if(!p)return;
+  const el=document.getElementById('flujo-'+id);if(!el)return;
+  el.outerHTML=flujoPlataHTML(p);
 }
 function renderProds(){
   _impPromCache=null; // los impuestos por unidad se recalculan con las ventas actuales
@@ -3124,20 +3119,8 @@ function renderProds(){
             <div style="padding-top:18px"><span style="font-size:.7rem;color:var(--muted)">= </span><span id="devpct-disp-${p.id}" style="font-size:.82rem;font-weight:700;color:${devPctAuto>0?'var(--amber)':'var(--muted)'}">${devPctAuto.toFixed(1)}%</span></div>
           </div>
         </div>
-        <div id="fulldisp-${p.id}" style="background:rgba(124,58,237,.1);border:1px solid rgba(124,58,237,.25);border-radius:8px;padding:8px 14px;min-width:160px">
-          <div style="font-size:.6rem;color:var(--muted);text-transform:uppercase;letter-spacing:.1em;margin-bottom:5px">Costo real full</div>
-          <div class="full-usd" style="font-size:.82rem;font-weight:600;color:#a78bfa">${fmtUSD(cfu)}</div>
-          <div class="full-pesos" style="font-size:.75rem;color:var(--text);margin-top:2px">${fmtPesos(cfp)}</div>
-          <div style="font-size:.58rem;color:var(--muted);margin-top:5px;line-height:1.5">envío ${fmtUSD(ship)} + costo×(1+${devPctAuto.toFixed(1)}%)</div>
-        </div>
-        <div id="cvfull-${p.id}" title="Lo que sale vender una unidad por Full, para comparar contra el PRECIO de venta. OJO: la gestión de Full ya viene descontada de lo que te paga ML, así que en el Neto ML de al lado NO se vuelve a sumar — si se sumara, el envío quedaría contado dos veces y el margen saldría más bajo de lo que es." style="background:rgba(16,185,129,.1);border:1px solid rgba(16,185,129,.28);border-radius:8px;padding:8px 14px;min-width:175px">
-          <div style="font-size:.6rem;color:var(--muted);text-transform:uppercase;letter-spacing:.1em;margin-bottom:5px">Costo vender en Full</div>
-          <div class="cvfull-val" style="font-size:.82rem;font-weight:700;color:#34d399">${fmtPesos(cfp+gest+impP)}</div>
-          <div class="cvfull-desc" style="font-size:.58rem;color:var(--muted);margin-top:5px;line-height:1.5">costo real full ${fmtPesos(cfp)} + gestión ${fmtPesos(gest)}${impP>0?' + impuestos '+fmtPesos(impP)+(impDet.estimado?' <span style="color:var(--amber)">(estimado, sin ventas todavía)</span>':''):''}</div>
-          <div style="font-size:.55rem;color:var(--muted);margin-top:4px;line-height:1.45;opacity:.85">Se compara contra el <strong>precio</strong>. La gestión ya está descontada en lo que te paga ML: en el <strong>Neto ML</strong> de al lado no se suma de nuevo.</div>
-        </div>
-        ${mmlBoxHTML(p)}
       </div>
+      ${flujoPlataHTML(p)}
       <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;padding-top:8px;border-top:1px solid var(--border);margin-top:2px">
         <span style="font-size:.6rem;color:var(--muted);text-transform:uppercase;letter-spacing:.08em;white-space:nowrap">Variantes</span>
         <div style="display:flex;gap:5px;flex-wrap:wrap;align-items:center">${(p.variantes&&p.variantes.length)?(p.variantes||[]).map(v=>`<span style="display:inline-flex;align-items:center;gap:3px;padding:2px 8px;border-radius:5px;background:rgba(124,58,237,.1);color:#a78bfa;font-size:.68rem">${v}<button onclick="removeVariante('${p.id}','${v.replace(/'/g,"\\'")}')" style="background:none;border:none;color:#a78bfa;cursor:pointer;padding:0 0 0 3px;font-size:.75rem;line-height:1" title="Eliminar variante">✕</button></span>`).join(''):'<span style="font-size:.65rem;color:var(--muted);font-style:italic">sin variantes</span>'}</div>
@@ -3408,16 +3391,8 @@ async function recalcAndSaveFullUSD(p){
   p.costFullUSD=full;
   await fbSet('products/'+p.id+'/costFullUSD',full);
   await recalcTodayCostos(p.id);
-  /* Actualizar solo el recuadro Full de este producto, sin re-renderizar toda la lista */
-  const disp=document.getElementById('fulldisp-'+p.id);
-  if(disp){
-    const tc=curTC(),cfp=full*tc;
-    const fU=n=>n?'US$ '+n.toLocaleString('es-AR',{minimumFractionDigits:2,maximumFractionDigits:2}):'US$ 0';
-    const fP=n=>n?'$ '+Math.round(n).toLocaleString('es-AR'):'$ 0';
-    const uEl=disp.querySelector('.full-usd'),pEl=disp.querySelector('.full-pesos');
-    if(uEl)uEl.textContent=fU(full);
-    if(pEl)pEl.textContent=fP(cfp);
-  }
+  /* Redibujar la línea del dinero de este producto, sin re-renderizar toda la lista */
+  repintarFlujo(p.id);
 }
 // ── EN EL CELULAR NO ALCANZA CON GUARDAR AL SALIR DEL CAMPO ──────────────────
 // Reportado por él el 31/08/2026, textual: "no me deja modificar el costo".
@@ -3574,13 +3549,7 @@ async function updGestFull(id,val){
   p.gestFull=parseMoney(val)||0;
   await fbSet('products/'+id+'/gestFull',p.gestFull);
   await log('Gestión Full '+p.name+': $'+Math.round(p.gestFull));
-  const box=document.getElementById('cvfull-'+id);
-  if(box){
-    const cfp=costFullUSDof(p)*curTC();const impDet=impPromDet(p);const impP=impDet.imp;const tot=cfp+(p.gestFull||0)+impP;
-    const fp=n=>n?'$ '+Math.round(n).toLocaleString('es-AR'):'$ 0';
-    const vEl=box.querySelector('.cvfull-val');if(vEl)vEl.textContent=fp(tot);
-    const dEl=box.querySelector('.cvfull-desc');if(dEl)dEl.innerHTML='costo real full '+fp(cfp)+' + gestión '+fp(p.gestFull||0)+(impP>0?' + impuestos '+fp(impP)+(impDet.estimado?' <span style="color:var(--amber)">(estimado, sin ventas todavía)</span>':''):'');
-  }
+  repintarFlujo(id);
 }
 async function updDevCount(id,val){
   const p=state.products.find(x=>x.id===id);if(!p)return;
