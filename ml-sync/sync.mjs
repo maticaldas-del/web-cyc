@@ -7921,6 +7921,92 @@ async function main() {
       console.log(`\n(esto solo LEE: no toqué nada)`);
       return;
     }
+    // BILLING_PROBE=faltanventas[:días] → QUÉ VENTAS TIENE ML Y NO TIENE EL PANEL.
+    //
+    // Lo encontró él el 03/09/2026: la venta #2000014842321883 estaba en ML y en el panel no
+    // aparecía por ningún lado. Textual: "puede que haya más así. no lo sé". Y tiene razón en
+    // preocuparse: una venta que no entra no sólo falta en la lista — descuadra la facturación,
+    // el margen del mes, el stock y el Puntaje. Todos los números salen mal a la vez y en silencio.
+    //
+    // LA SOSPECHA QUE VIENE A PROBAR: el robot pide las órdenes con `order.status=paid`. Una venta
+    // recién hecha, o con el pago todavía en proceso, NO es `paid` todavía — así que no la trae.
+    // Acá se piden SIN filtro de estado y se comparan contra cyc/ventaprod, para ver si el patrón
+    // es ése o es otro. No adivina: lista cada faltante con su estado.
+    //
+    // Sólo LEE. Ojo: los registros de GitHub de este repo son públicos, así que imprime número,
+    // fecha, estado, monto y título — nunca nombre ni datos del comprador.
+    if (String(process.env.BILLING_PROBE || '').startsWith('faltanventas')) {
+      const DIAS_F = parseInt(String(process.env.BILLING_PROBE).split(':')[1], 10) || 7;
+      const desdeF = Date.now() - DIAS_F * 864e5;
+      const vpF = (await db.get('cyc/ventaprod')) || {};
+      // Índice de lo que YA está en el panel: por id de orden y por número visible (pack), porque
+      // con carrito ML muestra el número del paquete y no el de la orden.
+      const tengo = new Set();
+      for (const ents of Object.values(vpF)) {
+        for (const v of Object.values(ents || {})) {
+          if (!v) continue;
+          const m = String(v.saleId || v.id || '').match(/(\d{6,})/);
+          if (m) tengo.add(m[1]);
+          if (v.numVenta) tengo.add(String(v.numVenta));
+        }
+      }
+      console.log(`=== VENTAS DE ML QUE NO ESTÁN EN EL PANEL · últimos ${DIAS_F} días ===`);
+      console.log(`El panel tiene ${tengo.size} números de venta indexados.\n`);
+      let totalFalta = 0, nFalta = 0;
+      const porEstado = {};
+      for (const label of labels) {
+        const acc = accounts[label]; if (!acc?.refresh_token) continue;
+        let tok, sid;
+        try {
+          const t = await mlRefresh(ML_CLIENT_ID, ML_CLIENT_SECRET, acc.refresh_token);
+          await db.patch('mlapi/tokens/' + label, { refresh_token: t.refresh_token, updated_ts: Date.now() });
+          tok = t.access_token; sid = acc.seller_id;
+        } catch (e) { console.log(`${label}: no pude entrar (${e.message})`); continue; }
+        // SIN `order.status`: eso es justo lo que se quiere comprobar.
+        const isoT = (ms) => new Date(ms).toISOString().replace(/\.\d+Z$/, '.000-00:00');
+        const ordenes = [];
+        for (let offset = 0; offset < 400; offset += 50) {
+          const q = new URLSearchParams({
+            seller: String(sid), sort: 'date_desc',
+            'order.date_created.from': isoT(desdeF), 'order.date_created.to': isoT(Date.now()),
+            offset: String(offset), limit: '50',
+          });
+          let d; try { d = await mlGet('/orders/search?' + q.toString(), tok); } catch { break; }
+          const res = d.results || [];
+          ordenes.push(...res);
+          if (res.length < 50) break;
+        }
+        const faltan = ordenes.filter((o) => !tengo.has(String(o.id)) && !tengo.has(String(o.pack_id || '')));
+        console.log(`── ${label}: ML tiene ${ordenes.length} venta(s) · FALTAN ${faltan.length}`);
+        for (const o of faltan) {
+          const tot = Math.round(o.total_amount || 0);
+          const it = (o.order_items || [])[0] || {};
+          totalFalta += tot; nFalta++;
+          porEstado[o.status] = (porEstado[o.status] || 0) + 1;
+          console.log(`   #${o.pack_id || o.id} · ${String(o.date_created || '').slice(0, 16).replace('T', ' ')}`
+            + ` · estado ${o.status}${o.status_detail ? '/' + o.status_detail : ''} · ${money(tot)}`);
+          console.log(`      ${(it.quantity || 0)}× ${String(it.item?.title || '').slice(0, 52)}`
+            + `${it.item?.id ? ' · ' + it.item.id : ''}`);
+        }
+        console.log('');
+      }
+      if (!nFalta) { console.log('No falta ninguna venta. El panel tiene todo lo que tiene ML.'); return; }
+      console.log(`── RESUMEN ──`);
+      console.log(`  Faltan ${nFalta} venta(s) por ${money(totalFalta)} en ${DIAS_F} días.`);
+      console.log(`  Por estado en ML: ${Object.entries(porEstado).map(([k, v]) => `${k} ${v}`).join(' · ')}`);
+      // La conclusión importante, dicha en la salida y no en un comentario del código: si TODAS las
+      // que faltan tienen un estado distinto de "paid", el problema es el filtro y no otra cosa.
+      const noPaid = Object.entries(porEstado).filter(([k]) => k !== 'paid').reduce((a, [, v]) => a + v, 0);
+      if (noPaid === nFalta) {
+        console.log(`\n  ➜ NINGUNA está en estado "paid". El robot pide las órdenes con order.status=paid,`);
+        console.log(`     así que éstas no las trae. No se pierden: entran solas cuando ML las marca pagas.`);
+        console.log(`     Lo que SÍ hay que revisar es si alguna se queda para siempre sin pasar a paid.`);
+      } else {
+        console.log(`\n  ➜ OJO: ${nFalta - noPaid} de las que faltan SÍ están "paid" y aun así no entraron.`);
+        console.log(`     Eso NO lo explica el filtro de estado — hay otro problema y hay que mirarlo.`);
+      }
+      return;
+    }
     // BILLING_PROBE=unaorden:<número> → QUÉ DICE ML DE UNA VENTA Y QUÉ GUARDÓ EL PANEL.
     // Sirve cuando un número del panel no coincide con lo que muestra ML: acá se ven los dos
     // lados juntos, el neto que informa Mercado Pago y el que quedó guardado. Solo lee.
