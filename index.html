@@ -2300,7 +2300,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='19.7';
+const APP_VERSION='19.8';
 // El problema real que esto resuelve no es curiosidad: es que el celular guarda la app y sigue
 // mostrando la de ayer sin avisar. Varias veces se revisó un cambio que ya estaba subido y no se
 // veía. Por eso, además del número, el chip avisa cuando hay una versión nueva esperando.
@@ -6569,7 +6569,18 @@ function renderVentaProd(){
     const groups=[];const gmap={};
     source.forEach(v=>{const gid=v.saleId||v.id;if(!gmap[gid]){gmap[gid]={gid,saleId:v.saleId,_dateKey:v._dateKey,items:[],cancelada:!!v.cancelada,tipoCancelacion:v.tipoCancelacion||''};gmap[gid].order=groups.length;groups.push(gmap[gid]);}gmap[gid].items.push(v);if(v.cancelada){gmap[gid].cancelada=true;gmap[gid].tipoCancelacion=v.tipoCancelacion||gmap[gid].tipoCancelacion;}});
     const filteredGroups=groups.filter(grp=>{
-      const matchQ=!vpQ||grp.items.some(v=>nombreDeVenta(v).toLowerCase().includes(vpQ))||(grp.items[0].numVenta||'').toLowerCase().includes(vpQ);
+      // ── UNA VENTA TIENE DOS NÚMEROS Y ML TE MUESTRA UNO U OTRO SEGÚN LA PANTALLA ──
+      // El 03/09/2026 él dio por perdida la venta #2000014842321883: "esta venta no está en ningún
+      // lado. no se cargó". Estaba cargada, con el neto exacto ($9.435, igual que Mercado Pago) —
+      // lo que no estaba era el número por el que la buscó.
+      // ML le pone a cada venta un número de ORDEN y, cuando va en un paquete, además un número de
+      // PAQUETE. La pantalla de Envíos muestra el del paquete; el panel guarda el que ML haya
+      // informado en el momento de traerla, que no siempre es el mismo. Buscando por el otro, la
+      // venta existe y no aparece — y desde afuera eso se ve idéntico a una venta que se perdió.
+      // Ahora el buscador mira los DOS: el número guardado y el id de la orden (que vive adentro de
+      // saleId). Barrido con `faltanventas`: no falta ninguna venta, así que el problema era éste.
+      const _numsDe=(v)=>[(v.numVenta||''),String(v.saleId||'').replace(/^s/,''),String(v.id||'').replace(/^v/,'').replace(/_\d+$/,'')];
+      const matchQ=!vpQ||grp.items.some(v=>nombreDeVenta(v).toLowerCase().includes(vpQ)||_numsDe(v).some(n=>n&&n.toLowerCase().includes(vpQ)));
       const matchC=!vpFilterCuenta||grp.items[0].cuenta===vpFilterCuenta;
       return matchQ&&matchC;
     });
