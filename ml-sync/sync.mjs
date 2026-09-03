@@ -3448,6 +3448,66 @@ async function main() {
       console.log(`completo se puede cortar la caja sola; si no, hay que cargar peso y medidas a mano.`);
       return;
     }
+    // BILLING_PROBE=buscarpub:<texto> → ENCONTRAR UNA PUBLICACIÓN CUANDO NO SABÉS EL MLA.
+    //
+    // Nació el 03/09/2026: él pasó "7798104232115" para identificar el Separador dedo Gordo. Eso no
+    // es un MLA — empieza con 779, que es el prefijo de Argentina de los códigos de barras (EAN-13).
+    // `unapub` sólo busca por título, así que con un código de barras no encuentra nada, y el
+    // producto se llama distinto en la ficha del panel que en el título de ML.
+    // Busca el texto en TODOS lados: el MLA, el título, y los atributos de identificación de cada
+    // publicación (GTIN/EAN/SKU/código de fábrica). Sólo lee.
+    if (String(process.env.BILLING_PROBE || '').startsWith('buscarpub:')) {
+      const q = String(process.env.BILLING_PROBE).slice('buscarpub:'.length).trim();
+      if (!q) { console.log('Usá: buscarpub:7798104232115  (o parte de un título, o un SKU)'); return; }
+      const qn = norm(q);
+      const links = (await db.get('cyc/mllinks')) || {};
+      const hits = [];
+      console.log(`Buscando "${q}" en las publicaciones de las cuatro cuentas...\n`);
+      for (const label of labels) {
+        const acc = accounts[label]; if (!acc?.refresh_token) continue;
+        let tok;
+        try {
+          const t = await mlRefresh(ML_CLIENT_ID, ML_CLIENT_SECRET, acc.refresh_token);
+          await db.patch('mlapi/tokens/' + label, { refresh_token: t.refresh_token, updated_ts: Date.now() });
+          tok = t.access_token;
+        } catch (e) { console.log(`${label}: no pude entrar (${e.message})`); continue; }
+        const mlas = Object.entries(links).filter(([, v]) => v && v.cuenta === label).map(([k]) => k);
+        for (let k = 0; k < mlas.length; k += 20) {
+          let arr;
+          try { arr = await mlGet('/items?ids=' + mlas.slice(k, k + 20).join(',') + '&attributes=id,title,status,price,available_quantity,attributes,seller_custom_field', tok); }
+          catch { continue; }
+          for (const w of (arr || [])) {
+            const b = w.body || w; if (!b?.id) continue;
+            // Los códigos viven en los atributos de identificación; el SKU propio en
+            // seller_custom_field. Se junta todo y se busca ahí adentro.
+            const ids = (b.attributes || [])
+              .filter((a) => /GTIN|EAN|UPC|SKU|CODE|MODEL|PART_NUMBER/i.test(a.id || ''))
+              .map((a) => `${a.id}=${a.value_name || ''}`);
+            const bolsa = [b.id, b.title || '', b.seller_custom_field || '', ...ids].join(' | ');
+            if (b.id === q || norm(bolsa).includes(qn)) {
+              hits.push({ label, b, ids, prodId: (links[b.id] || {}).prodId || null });
+            }
+          }
+        }
+      }
+      if (!hits.length) {
+        console.log(`No encontré ninguna publicación con "${q}" ni en el MLA, ni en el título, ni en los códigos.`);
+        console.log('Si es un código de barras, puede que la publicación no lo tenga cargado en ML.');
+        return;
+      }
+      console.log(`${hits.length} publicación(es):\n`);
+      for (const h of hits) {
+        const pr = h.prodId ? products.find((x) => x.id === h.prodId) : null;
+        console.log(`  ${h.b.id} · ${h.label} · ${h.b.status} · ${money(Math.round(h.b.price || 0))} · stock ${h.b.available_quantity ?? '?'}`);
+        console.log(`     "${(h.b.title || '').slice(0, 70)}"`);
+        console.log(`     ficha del panel: ${pr ? pr.name + ' (' + pr.id + ')' : 'SIN VINCULAR'}`);
+        if (h.ids.length) console.log(`     códigos: ${h.ids.join(' · ')}`);
+        if (h.b.seller_custom_field) console.log(`     tu SKU: ${h.b.seller_custom_field}`);
+        console.log('');
+      }
+      console.log('Para ver el margen de una: unapub:<el MLA de arriba>');
+      return;
+    }
     // BILLING_PROBE=probaralmacena[:MLA] → ¿ML NOS DICE QUÉ PRODUCTOS PAGAN ALMACENAMIENTO?
     //
     // Pregunta suya del 02/09/2026: "la api de ml te puede decir que productos estan pagando o por
