@@ -2300,7 +2300,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='19.5';
+const APP_VERSION='19.6';
 // El problema real que esto resuelve no es curiosidad: es que el celular guarda la app y sigue
 // mostrando la de ayer sin avisar. Varias veces se revisó un cambio que ya estaba subido y no se
 // veía. Por eso, además del número, el chip avisa cuando hay una versión nueva esperando.
@@ -7511,7 +7511,11 @@ async function syncPedidosAuto(){
     // El desglose por variante ya NO se tira cuando hay stock en casa o en camino: se descuenta por
     // variante más arriba. Solo se saltea si el producto no tiene ventas por variante que repartir.
 
-    resumen[p.id]={p,vendidos,vendidosNorm,stock,diasHistorial,diasCubiertos,necesario,enOficina,enCamino,aComprar,variantesNec,coll,gan30d,riesgo,riesgoComprar,riesgoMandar,dConS,vDia};
+    // `objetivo` es el stock que habría que tener para cubrir TARGET_DIAS_P días a la velocidad
+    // real. Se guarda para poder MOSTRAR la cuenta en la tarjeta (ver cuentaPedidoHTML): sin eso,
+    // "6 vendidos" y "4 en camino" invitan a la resta equivocada.
+    const objetivoU=Math.max(necesario+stock,0);
+    resumen[p.id]={p,vendidos,vendidosNorm,stock,diasHistorial,diasCubiertos,necesario,enOficina,enCamino,aComprar,variantesNec,coll,gan30d,riesgo,riesgoComprar,riesgoMandar,dConS,vDia,objetivoU,targetDias:TARGET_DIAS_P};
   }
   // 3. IDs que deberían existir como auto-pedidos
   const expectedIds=new Set();
@@ -7555,6 +7559,8 @@ async function syncPedidosAuto(){
         +(r.aComprar===0?` · <span style="color:var(--green)">✓ con lo que tenés alcanza: la cuenta dice comprar 0</span>`:'');
       if(ped.nota===notaM&&ped.riesgo===r.riesgo&&ped.gan30d===r.gan30d)continue;
       ped.nota=notaM;ped.riesgo=r.riesgo;ped.riesgoComprar=r.riesgoComprar;ped.riesgoMandar=r.riesgoMandar;ped.gan30d=r.gan30d;
+      Object.assign(ped,cuentaPed(r));
+      for(const [k,v] of Object.entries(cuentaPed(r)))updates[coll+'/'+ped.id+'/'+k]=v;
       updates[coll+'/'+ped.id+'/nota']=notaM;
       updates[coll+'/'+ped.id+'/riesgo']=r.riesgo;
       updates[coll+'/'+ped.id+'/riesgoComprar']=r.riesgoComprar;
@@ -7580,14 +7586,14 @@ async function syncPedidosAuto(){
     if(existing){
       const same=existing.cantidad===r.aComprar&&existing.estado===estado&&existing.nota===nota&&existing.producto===r.p.name&&JSON.stringify(existing.variantesNec||null)===JSON.stringify(variantesNec)&&(existing.proveedor||null)===(provNom)&&existing.riesgo===r.riesgo&&existing.gan30d===r.gan30d;
       if(same)continue;
-      existing.cantidad=r.aComprar;existing.estado=estado;existing.nota=nota;existing.producto=r.p.name;existing.prodId=pid;existing.variantesNec=variantesNec;existing.proveedor=provNom;existing.riesgo=r.riesgo;existing.gan30d=r.gan30d;
+      existing.cantidad=r.aComprar;existing.estado=estado;existing.nota=nota;existing.producto=r.p.name;existing.prodId=pid;existing.variantesNec=variantesNec;existing.proveedor=provNom;existing.riesgo=r.riesgo;existing.gan30d=r.gan30d;Object.assign(existing,cuentaPed(r));
       delete existing.variante;
       // OJO: acá se arma un objeto NUEVO y se pisa el pedido entero. Todo campo que no se arrastre
       // se pierde en silencio — es el mismo agujero que ya se comió el estado de las publicaciones
       // en cyc/mllinks. Si algún día se agrega un campo que se edita a mano, hay que copiarlo acá.
-      updates[coll+'/'+id]={id,producto:r.p.name,prodId:pid,cantidad:r.aComprar,nota,estado,auto:true,ts:existing.ts||Date.now(),variantesNec:variantesNec||null,proveedor:provNom,riesgo:r.riesgo,riesgoComprar:r.riesgoComprar,riesgoMandar:r.riesgoMandar,gan30d:r.gan30d,compradoU:null,compradoTs:null};
+      updates[coll+'/'+id]={id,producto:r.p.name,prodId:pid,cantidad:r.aComprar,nota,estado,auto:true,ts:existing.ts||Date.now(),variantesNec:variantesNec||null,proveedor:provNom,riesgo:r.riesgo,riesgoComprar:r.riesgoComprar,riesgoMandar:r.riesgoMandar,gan30d:r.gan30d,compradoU:null,compradoTs:null,...cuentaPed(r)};
     } else {
-      const obj={id,producto:r.p.name,prodId:pid,cantidad:r.aComprar,nota,estado,auto:true,ts:Date.now(),variantesNec:variantesNec||null,proveedor:provNom,riesgo:r.riesgo,riesgoComprar:r.riesgoComprar,riesgoMandar:r.riesgoMandar,gan30d:r.gan30d};
+      const obj={id,producto:r.p.name,prodId:pid,cantidad:r.aComprar,nota,estado,auto:true,ts:Date.now(),variantesNec:variantesNec||null,proveedor:provNom,riesgo:r.riesgo,riesgoComprar:r.riesgoComprar,riesgoMandar:r.riesgoMandar,gan30d:r.gan30d,...cuentaPed(r)};
       arr.push(obj);
       updates[coll+'/'+id]=obj;
     }
@@ -8529,6 +8535,33 @@ function _setPedCardOpen(id,open){if(open)_openPedCards.add(id);else _openPedCar
 // El <details> maneja mostrar/ocultar de forma nativa; acá solo recordamos qué pedidos
 // quedaron abiertos para reabrirlos igual tras un re-render.
 function _setPedVarOpen(id,open){if(open)_openPedVars.add(id);else _openPedVars.delete(id);}
+// ── POR QUÉ DICE COMPRAR ESTO, EN CRIOLLO ────────────────────────────────────────
+// Planteo suyo del 03/09/2026, mirando la Balanza Cocina: "si hay 4 en camino y se vendieron 6 en
+// 30 días, ¿por qué me hace comprar 7?".
+// La cuenta estaba BIEN (lo confirmó `porquepedido`): vendió 6 en los 17 días que tuvo mercadería,
+// no en 30 — los otros 13 estuvo en cero. A esa velocidad, 0,36 por día, en 30 días vende 11;
+// 11 menos los 4 que viajan son 7.
+// El problema era la TARJETA, no el cálculo: mostraba "30d: 6 vendidos" y "4 en camino" uno al
+// lado del otro, que es una invitación a hacer 6 − 4 y que te dé 2. Los números que hacen falta
+// para entenderlo —los días con stock y el objetivo— se calculaban y se tiraban.
+// Ahora la cuenta se guarda con el pedido y se muestra entera. Es el mismo criterio que la línea
+// del dinero de la ficha: si un número sorprende, mostrar de dónde sale, no explicarlo aparte.
+function cuentaPed(r){
+  return{cObjetivo:r.objetivoU||0,cDias:Math.round(r.dConS||0),cVdia:Math.round((r.vDia||0)*100)/100,
+    cVend:r.vendidos||0,cCamino:r.enCamino||0,cCasa:r.enOficina||0,cTarget:r.targetDias||PED_MAX_DAYS};
+}
+function cuentaPedidoHTML(p){
+  if(!(p.cObjetivo>0)||!(p.cVdia>0))return '';
+  const pasos=[`<strong style="color:var(--text)">${fmtN(p.cVend)}</strong> vendidos en los <strong style="color:var(--text)">${p.cDias}</strong> días que tuvo stock = <strong style="color:var(--text)">${p.cVdia}</strong> por día`,
+    `para <strong style="color:var(--text)">${p.cTarget}</strong> días hacen falta <strong style="color:var(--text)">${fmtN(p.cObjetivo)}</strong>`];
+  if(p.cCasa>0)pasos.push(`− <strong style="color:var(--text)">${fmtN(p.cCasa)}</strong> que ya tenés en casa`);
+  if(p.cCamino>0)pasos.push(`− <strong style="color:var(--text)">${fmtN(p.cCamino)}</strong> que van en camino`);
+  pasos.push(`= <strong style="color:var(--amber)">${fmtN(p.cantidad||0)} a comprar</strong>`);
+  return `<div style="flex-basis:100%;font-size:.6rem;color:var(--muted);line-height:1.6;background:rgba(0,0,0,.16);border-radius:6px;padding:6px 9px;margin-top:2px">
+    🧮 ${pasos.join(' &nbsp;·&nbsp; ')}
+    <div style="font-size:.55rem;margin-top:3px;opacity:.85">La velocidad se mide sobre los días que hubo mercadería, no sobre los 30 del mes: los días en cero no vendió porque no había, no porque no se venda.</div>
+  </div>`;
+}
 function _pedidoItemHtml(p,opts){
   opts=opts||{};
   const NEXT={pendiente:'poco_stock',poco_stock:'suficiente',suficiente:'pendiente'};
@@ -8566,6 +8599,7 @@ function _pedidoItemHtml(p,opts){
       ${_enCam?'':riesgoBadge}
       ${origenBadge}
       ${varToggle}
+      ${cuentaPedidoHTML(p)}
       <button class="pi-prov ${p.proveedor?'':'sin-prov'}" onclick="setPedidoProveedor('${p.id}')">${p.proveedor?p.proveedor.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'):'+ proveedor'}</button>
       ${accionBtns}
       <span class="pi-ts">${p.ts?ts2s(p.ts):''}</span>
