@@ -2300,7 +2300,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='19.10';
+const APP_VERSION='19.11';
 // El problema real que esto resuelve no es curiosidad: es que el celular guarda la app y sigue
 // mostrando la de ayer sin avisar. Varias veces se revisó un cambio que ya estaba subido y no se
 // veía. Por eso, además del número, el chip avisa cuando hay una versión nueva esperando.
@@ -2980,6 +2980,20 @@ function metaMargenML(){return parseFloat((state.mlconfig||{}).minPct)||30;}
 // Y se redibuja SOLA: los campos de costo y de gestión antes parchaban a mano el pedacito de cada
 // caja, o sea que la fórmula estaba escrita en tres lugares más. Ahora llaman a repintarFlujo, que
 // vuelve a llamar a esta función. Una sola fórmula, un solo lugar donde puede estar mal.
+// Precio que se está simulando, por producto. Vive sólo en memoria a propósito: es una prueba
+// para decidir, no un dato del negocio. Si se guardara en la base, un número tanteado quedaría
+// para siempre pareciendo el precio real — que es exactamente el error del "neto escrito a mano"
+// que hubo que sacar el 13/08/2026.
+const _simPrecio={};
+function simPrecio(id,val){
+  const n=parseMoney(val);
+  if(n>0)_simPrecio[id]=Math.round(n); else delete _simPrecio[id];
+  repintarFlujo(id);
+  // Devolver el foco al campo: repintarFlujo redibuja el bloque entero y el teclado se cierra.
+  const el=document.getElementById('simp-'+id);
+  if(el){el.focus();try{el.setSelectionRange(el.value.length,el.value.length);}catch{}}
+}
+function simPrecioReset(id){delete _simPrecio[id];repintarFlujo(id);}
 function flujoPlataHTML(p){
   const r=margenMLDe(p);
   const META=metaMargenML();
@@ -3022,35 +3036,79 @@ function flujoPlataHTML(p){
     </div>`);
   }
 
+  // ── SIMULADOR: ¿A CUÁNTO PUEDO BAJARLO? ────────────────────────────────────
+  // Pedido suyo del 03/09/2026: "quiero poder modificar 'paga el comprador' para saber a cuánto
+  // puedo bajarlo y que me diga cuánto % me quedaría... entonces me ayuda a saber si un producto
+  // da el % o no vs un vendedor en ML". Su ejemplo: alguien tiene un Prêt à Porter a $16.000 y él
+  // lo consigue a $10.000 — ¿le da el 25%?
+  //
+  // Al mover el precio se recalcula TODO lo que depende de él, que es casi todo:
+  //   · la comisión de ML  → es un % del precio, y ese % se deduce del precio real de hoy
+  //   · el IIBB y el monotributo → también son % del precio
+  //   · lo que te deposita ML → precio − comisión − envío
+  //   · el % de ganancia final
+  // Lo único que NO se mueve es la mercadería y lo que cobra Full, que no dependen del precio.
+  //
+  // DE DÓNDE SALE EL % DE COMISIÓN: se deduce de la publicación real (comisión de hoy ÷ precio de
+  // hoy), no de una tabla escrita a mano. Así cada producto usa la comisión de SU categoría sin
+  // que nadie tenga que cargarla, y si ML la cambia, el simulador se entera solo en la próxima
+  // vuelta del robot. La contra, y por eso se dice en pantalla: ML cobra además un cargo fijo por
+  // venta en los productos baratos, y ese cargo NO se puede separar del % con un solo precio de
+  // referencia — así que cuanto más lejos del precio real, más aproximado es el número.
+  const simP=_simPrecio[p.id];
+  const precioUsado=(simP!=null&&simP>0)?simP:precio;
+  const simulando=precioUsado!==precio;
+  const comPctReal=precio>0?(precio-r.netoCalc-(r.gest||0))/precio:0;   // comisión de hoy ÷ precio de hoy
+  const impPctReal=precio>0?(r.mlExtra||0)/precio:0;                    // IIBB + mono, también % del precio
   const gest=r.gest||0;
-  const com=Math.round(precio-r.netoCalc-gest);   // comisión de ML, deducida del neto
-  const imp=Math.round(r.mlExtra||0);
-  const merc=Math.round(r.costoBase-imp);         // mercadería + envío/embalaje + % reclamos
-  const gan=Math.round(r.netoCalc-r.costoBase);
+  const com=Math.round(simulando?precioUsado*comPctReal:(precio-r.netoCalc-gest));
+  const neto=simulando?Math.round(precioUsado-com-gest):Math.round(r.netoCalc);
+  const imp=Math.round(simulando?precioUsado*impPctReal:(r.mlExtra||0));
+  const merc=Math.round(r.costoBase-(r.mlExtra||0));   // mercadería + envío/embalaje + % reclamos: NO depende del precio
+  const costoBaseSim=merc+imp;
+  const costoTotSim=costoBaseSim+gest;
+  const gan=neto-costoBaseSim;
+  const margenSim=costoTotSim>0?(gan/costoTotSim*100):null;
   const ganCol=gan>=0?'var(--green)':'var(--red)';
   // El neto que haría falta para llegar a la meta: costo base + meta sobre el costo TOTAL. Se
   // compara contra netoCalc, que ya viene sin la gestión.
-  const objetivo=r.costo>0?Math.round(r.costoBase+r.costo*META/100):null;
-  const falta=objetivo!=null?objetivo-Math.round(r.netoCalc):null;
+  const objetivo=costoTotSim>0?Math.round(costoBaseSim+costoTotSim*META/100):null;
+  const falta=objetivo!=null?objetivo-neto:null;
+  // El precio al que ese neto se alcanza: sirve para contestar "¿a cuánto lo puedo bajar?" sin
+  // ir moviendo el número a mano hasta pegarle.
+  const denP=1-comPctReal-impPctReal*(1+META/100);
+  const precioPiso=denP>0?Math.ceil((merc+gest)*(1+META/100)/denP/10)*10:null;
   const paso=(lbl,val,col,signo,peso,pie)=>`<div style="text-align:center;padding:0 2px;min-width:76px">
       <div style="font-size:.5rem;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;line-height:1.3;margin-bottom:2px">${lbl}</div>
       <div style="font-family:'DM Mono',monospace;font-size:${peso?'.8rem':'.68rem'};font-weight:${peso?'700':'500'};color:${col};white-space:nowrap">${signo||''}${fmt(val)}</div>
       ${pie?`<div style="font-size:.48rem;color:var(--muted);margin-top:1px;white-space:nowrap">${pie}</div>`:''}
     </div>`;
+  // El primer escalón es un campo de verdad, no un número pintado: es el que él mueve para probar.
+  // Se dispara con onchange (al salir del campo o dar Enter) y no con oninput, porque redibujar en
+  // cada tecla haría perder el foco a mitad de escribir un precio.
+  const pasoEdit=()=>`<div style="text-align:center;padding:0 2px;min-width:96px">
+      <div style="font-size:.5rem;color:${simulando?'var(--amber)':'var(--muted)'};text-transform:uppercase;letter-spacing:.05em;line-height:1.3;margin-bottom:2px">paga el comprador${simulando?' · PRUEBA':''}</div>
+      <input id="simp-${p.id}" class="money" type="text" inputmode="numeric" value="${fmt(precioUsado).replace('$ ','')}"
+        onchange="simPrecio('${p.id}',this.value)" onkeydown="if(event.key==='Enter')this.blur()"
+        title="Cambialo para probar a cuánto podrías venderlo. Se recalcula todo: la comisión de ML, los impuestos y el % que te queda."
+        style="width:92px;text-align:center;font-family:'DM Mono',monospace;font-size:.8rem;font-weight:700;padding:2px 4px;border-radius:5px;border:1px solid ${simulando?'var(--amber)':'var(--border2)'};background:var(--surface2);color:${simulando?'var(--amber)':'var(--text)'};outline:none">
+      ${simulando?`<div style="font-size:.48rem;margin-top:2px"><a onclick="simPrecioReset('${p.id}')" style="color:#38bdf8;cursor:pointer">↩︎ volver a ${fmt(precio)}</a></div>`:''}
+    </div>`;
   const flecha=`<div style="color:var(--border2);font-size:.7rem;align-self:center;padding-bottom:8px">→</div>`;
   return marco(`<div style="display:flex;align-items:flex-start;gap:4px;flex-wrap:wrap">
-      ${paso('paga el comprador',precio,'var(--text)','',true)}
-      ${flecha}${paso('comisión ML',com,'var(--muted)','−')}
+      ${pasoEdit()}
+      ${flecha}${paso('comisión ML',com,'var(--muted)','−',false,simulando?(comPctReal*100).toFixed(1)+'%':'')}
       ${flecha}${paso(gest>0?'envío de Full':'envío de Full (no cobra)',gest,'var(--muted)','−')}
-      ${flecha}${paso('te deposita ML',r.netoCalc,'#38bdf8','',true,r.netoReal!=null?'real: '+fmt(r.netoReal):'')}
-      ${flecha}${paso('IIBB + mono',imp,'var(--muted)','−',false,impDet.estimado?'estimado':'')}
+      ${flecha}${paso('te deposita ML',neto,'#38bdf8','',true,simulando?'':(r.netoReal!=null?'real: '+fmt(r.netoReal):''))}
+      ${flecha}${paso('IIBB + mono',imp,'var(--muted)','−',false,simulando?(impPctReal*100).toFixed(2)+'%':(impDet.estimado?'estimado':''))}
       ${flecha}${paso('mercadería + envío',merc,'var(--muted)','−',false,fmtUSD(cfu))}
       ${flecha}${paso('te queda',gan,ganCol,'',true)}
     </div>
     <div style="font-size:.58rem;color:var(--muted);margin-top:8px;line-height:1.6;border-top:1px solid var(--border);padding-top:7px">
-      <strong style="color:${ganCol}">${fmt(gan)}</strong> sobre el costo total de <strong style="color:var(--text)">${fmt(Math.round(r.costo))}</strong> = <strong style="color:${pctColor(r.margen)};font-size:.78rem">${r.margen!=null?r.margen.toFixed(0)+'%':'—'}</strong>
-      ${objetivo!=null?` &nbsp;·&nbsp; para llegar al ${META}% ML te tendría que depositar <strong style="color:var(--text)">${fmt(objetivo)}</strong>${falta>0?` <span style="color:var(--amber)">(faltan ${fmt(falta)})</span>`:' <span style="color:var(--green)">(ya llega ✓)</span>'}`:''}
-      <div style="font-size:.53rem;margin-top:3px;opacity:.85">El IIBB y el monotributo no se descuentan en el momento: llegan después, en la factura de ML de fin de mes. El envío de Full sí, ya está adentro de lo que te deposita.</div>
+      <strong style="color:${ganCol}">${fmt(gan)}</strong> sobre el costo total de <strong style="color:var(--text)">${fmt(costoTotSim)}</strong> = <strong style="color:${pctColor(margenSim)};font-size:.78rem">${margenSim!=null?margenSim.toFixed(0)+'%':'—'}</strong>
+      ${precioPiso?` &nbsp;·&nbsp; el ${META}% te da hasta <strong style="color:var(--text)">${fmt(precioPiso)}</strong>${precioPiso<precioUsado?` <span style="color:var(--green)">(podés bajar ${fmt(precioUsado-precioPiso)})</span>`:` <span style="color:var(--amber)">(hoy estás ${fmt(precioPiso-precioUsado)} abajo)</span>`}`:''}
+      <div style="font-size:.53rem;margin-top:3px;opacity:.85">El IIBB y el monotributo no se descuentan en el momento: llegan después, en la factura de ML de fin de mes. El envío de Full sí, ya está adentro de lo que te deposita.
+      ${simulando?`<br><span style="color:var(--amber)">SIMULANDO: la comisión y los impuestos se recalculan con el % que cobra ML en esta publicación. Ojo que ML además cobra un cargo fijo por venta en los productos baratos, y ese cargo no se puede separar del % — cuanto más lejos del precio real, más aproximado es el número.</span>`:''}</div>
     </div>`);
 }
 // Redibuja la línea sin re-renderizar toda la lista de productos. La llaman los campos de costo y
