@@ -662,6 +662,27 @@ con ninguna, no hay de dónde sacar un costo y nadie lo puede inventar. Ahí va 
   los números coinciden demasiado bien) y las VISITAS, que es el único dato que separa "no la ve
   nadie" de "la ven y no compran" en esos $757.238 parados.
 
+- **LOS PAULVIC ESTABAN TODOS AL MISMO PRECIO POR UNA REGLA, Y ESA REGLA TAPABA EL PROBLEMA
+  (04/09/2026).** Pedido suyo: *"los paulvic sacar la regla que estén todos al mismo precio. que sea
+  personalizado. quizás hay algunos que venden bien y otros que están perdiendo"*.
+  El grupo `cyc/mlconfig/gruposPrecio/paulvic` agrupa por la palabra "paulvic" en el título y nivela
+  **al precio MÁS ALTO** en cada corrida. Eran **47 publicaciones**, no 12 — y con aromas distintos
+  adentro (Phantom de hombre, Dream Way de mujer, Diva, Scandal Bliss). O sea que un aroma que
+  vendía bien y otro que no vendía nada estaban obligados a valer lo mismo sólo por compartir marca.
+  **Desactivado con `grupos:paulvic:off`. Eso NO cambia ningún precio**: sólo deja de forzarlos.
+  **Lo que apareció al mirarlos uno por uno es que el stock está al revés de las ventas:**
+  · `MLA3026120138` vende **25 por mes** (el que más vende de los 47) y está **PAUSADO EN CERO**
+  · `MLA3026299952` vende 3 por mes y tiene **40 unidades** — 13 meses de stock
+  · cuatro (`3026121450`, `3026302302`, `3026473440`, `3026476116`) no vendieron NADA en 30 días y
+    entre los cuatro tienen 32 unidades
+  **Y el precio queda descartado como causa por los propios números:** esos cuatro que no venden
+  tienen el margen MÁS ALTO del grupo (35,8% a 39%) y los dos que más venden tienen el MÁS BAJO
+  (35,2% y 32,8%), todos al mismo precio. Si el precio fuera el problema venderían todos igual.
+  Es el aroma, no el número.
+  **La lección: una regla que uniforma esconde justamente la diferencia que hay que ver.** Mientras
+  los 47 tuvieron el mismo precio, no había forma de notar que el mejor estaba en cero.
+  Para mirarlo: `hermanas:paulvic:25`, que desde hoy trae ventas de 30 y 60 días y días sin vender.
+
 - **GitHub demora las corridas programadas**, a veces horas. Por eso los crons se piden 3 veces y
   el robot guarda el último día que mandó cada aviso, para no repetir.
 - **Las compras con carrito** llegan con el número del paquete, no el de la orden. Hay que
