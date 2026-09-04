@@ -1063,7 +1063,22 @@ async function anotarNetoWeb(db, pid, datos, DRY) {
 // tiene que declarar en qué margen queda. Si no lo declara, o si queda abajo del piso, NO SE BAJA.
 // Un comando nuevo que se olvide de pasar el dato no baja nada — falla ruidoso, que es lo correcto
 // para algo que mueve plata.
-const PISO_DURO = 30;
+// ── EL PISO SIGUE SIENDO UN FRENO, PERO MIDE CONTRA EL PISO DE VERDAD (04/09/2026) ──
+// Estaba clavado en 30 desde el 20/08. El 02/09 él bajó el piso del negocio a 25 (cyc/mlconfig/
+// minPct) y este número quedó viejo — el mismo desfasaje que ese día ya había dejado a OCHO
+// comandos midiendo contra un piso que no existía. Con el freno clavado en 30, una bajada al 25%
+// autorizada por él era rechazada por el propio sistema.
+// Lo que NO cambia y es lo importante: sigue siendo OBLIGATORIO declarar en qué margen queda, y
+// si queda abajo del piso NO SE BAJA. Lo único que se sincroniza es contra qué número compara.
+// El mínimo absoluto de 20 es una red por si alguien escribe mal el minPct: un piso de 5% no
+// puede volverse un permiso para regalar la mercadería.
+let PISO_DURO = 30;
+const PISO_MINIMO_ABSOLUTO = 20;
+async function cargarPisoDuro(db) {
+  const v = await pisoConfig(db, 30);
+  PISO_DURO = Math.max(PISO_MINIMO_ABSOLUTO, v);
+  return PISO_DURO;
+}
 function _chequeoPiso(chequeo) {
   if (!chequeo || typeof chequeo.margen !== 'number' || !isFinite(chequeo.margen)) {
     return { ok: false, err: 'sin-margen-declarado (regla: no se baja sin saber en qué margen queda)' };
@@ -1767,6 +1782,11 @@ async function main() {
   const idToken = await fbSignIn(FIREBASE_API_KEY, FIREBASE_BOT_EMAIL, FIREBASE_BOT_PASSWORD);
   // reauth: en corridas largas el idToken caduca a la 1h → lo renovamos solo.
   const db = makeDB(FIREBASE_DB_URL, idToken, () => fbSignIn(FIREBASE_API_KEY, FIREBASE_BOT_EMAIL, FIREBASE_BOT_PASSWORD));
+
+  // El freno del piso, contra el piso REAL configurado (ver cargarPisoDuro). Se hace acá arriba,
+  // antes que cualquier cosa que pueda mover un precio: si esto no corrió, PISO_DURO vale 30 y lo
+  // único que puede pasar es que un comando se niegue a bajar. Fallar hacia el lado seguro.
+  try { await cargarPisoDuro(db); } catch { /* queda en 30, que es el lado conservador */ }
 
   // Telegram: descubrir/cachear el chat id (solo hace falta el token).
   TG_DB = db;
@@ -5307,6 +5327,154 @@ async function main() {
           console.log(`✅ ${nom}\n   ${JSON.stringify(d).slice(0, 1500)}\n`);
         } catch (e) { console.log(`❌ ${nom}: ${String(e.message || e).slice(0, 150)}\n`); }
       }
+      return;
+    }
+    // BILLING_PROBE=alpiso:<palabra>[:<piso>][:<maxVentas30>][:go] → BAJAR AL PISO LO QUE NO ROTA.
+    //
+    // Autorizado por él el 04/09/2026 para los Paulvic, después de que me corrigiera una cuenta que
+    // yo había hecho mal: "pero me queda un 33% los paulvic. ¿vos decís que esos que tienen mucho
+    // stock y están perdiendo, no vale la pena bajarlos al 25%?".
+    // Tenía razón. Yo comparaba los $610 de bajada contra "lo que el comprador nota", que es la
+    // comparación equivocada. La correcta es cuánta ganancia se resigna contra cuánto stock se
+    // libera: en el Dream Way se resignan $414 por unidad (16% de la ganancia) y con vender UNA
+    // unidad más por mes ya se gana más plata que hoy — además de liberar $267.475 parados que
+    // tardaban 13 meses en venderse pagando almacenamiento.
+    //
+    // LO QUE NO SE TOCA, y es una decisión y no un olvido: las publicaciones que VENDEN BIEN. Ahí
+    // bajar es regalar margen sin motivo — el stock rota solo. Por eso `maxVentas30` (3 por
+    // defecto): sólo entran las que venden POCO o nada. Las de arriba de ese número se listan
+    // aparte diciendo por qué quedaron afuera, porque una lista que esconde renglones sin decirlo
+    // es una lista que miente.
+    // Tampoco entran las pausadas ni las que no tienen stock: bajarle el precio a algo que no se
+    // puede comprar no hace nada.
+    //
+    // El precio sale del MISMO solver que usa `unapub` para "precio para quedar exacto en el piso",
+    // y la bajada pasa por `setPriceTo`, o sea por el freno del piso: hay que declarar en qué
+    // margen queda y si queda abajo, no baja. Sin ':go' sólo muestra.
+    if (String(process.env.BILLING_PROBE || '').startsWith('alpiso:')) {
+      const _ap = String(process.env.BILLING_PROBE).split(':');
+      const kw = (_ap[1] || '').trim();
+      const APLICAR = _ap.includes('go');
+      const MIN = (parseFloat(_ap[2]) || await pisoConfig(db)) / 100;
+      const MAXV = _ap[3] != null && !isNaN(parseFloat(_ap[3])) ? parseFloat(_ap[3]) : 3;
+      if (!kw) { console.log('Usá: alpiso:paulvic[:25][:3][:go]'); return; }
+      const links = (await db.get('cyc/mllinks')) || {};
+      const tc = parseFloat(((await db.get('cyc/finanzas')) || {}).tipo_cambio) || 1500;
+      const vpA = (await db.get('cyc/ventaprod')) || {}; setDevLive(vpA);
+      // ventas de 30 días por publicación
+      const v30 = {};
+      for (const ents of Object.values(vpA)) {
+        for (const v of Object.values(ents || {})) {
+          if (!v || v.cancelada || !v.mla) continue;
+          if ((Date.now() - (v.ts || 0)) / 864e5 <= 30) v30[v.mla] = (v30[v.mla] || 0) + (v.qty || 1);
+        }
+      }
+      const toks = {};
+      for (const label of labels) {
+        const acc = accounts[label]; if (!acc?.refresh_token) continue;
+        try {
+          const t = await mlRefresh(ML_CLIENT_ID, ML_CLIENT_SECRET, acc.refresh_token);
+          await db.patch('mlapi/tokens/' + label, { refresh_token: t.refresh_token, updated_ts: Date.now() });
+          toks[label] = t.access_token;
+        } catch { /* sigue */ }
+      }
+      const monoPctAlpiso = parseFloat(((await db.get('cyc/monotributo')) || {}).pct) || 0;
+      const pIdx = {}; for (const pp of products) pIdx[pp.id] = pp;
+      const cand = Object.entries(links).filter(([id, e2]) => id.startsWith('MLA') && e2 && !e2.ignored && e2.prodId
+        && ((e2.title || '') + ' ' + ((pIdx[e2.prodId] || {}).name || '')).toLowerCase().includes(kw.toLowerCase()));
+      console.log(`=== BAJAR AL PISO DEL ${(MIN * 100).toFixed(0)}% · "${kw}" · ${APLICAR ? 'APLICANDO' : 'PRUEBA'} ===`);
+      console.log(`Sólo activas, con stock, y que vendan ${MAXV} o menos en 30 días.\n`);
+      const plan = [], fuera = [];
+      for (const [mla, e2] of cand) {
+        const tok = toks[e2.cuenta] || Object.values(toks)[0]; if (!tok) continue;
+        let it; try { it = await mlGet(`/items/${mla}?attributes=id,title,status,sub_status,price,available_quantity,shipping,inventory_id,variations,listing_type_id,category_id,site_id`, tok); } catch { continue; }
+        const nom = String(it.title || mla).slice(0, 38);
+        if (it.status !== 'active') { fuera.push(`${mla} · ${nom} · ${it.status}`); continue; }
+        let stock = 0;
+        if (((it.shipping && it.shipping.logistic_type) || '') === 'fulfillment') {
+          const vars = Array.isArray(it.variations) ? it.variations : [];
+          const invs = vars.length ? vars.map((v) => v.inventory_id).filter(Boolean) : [it.inventory_id].filter(Boolean);
+          for (const inv of invs) { try { stock += Number((await mlGet('/inventories/' + inv + '/stock/fulfillment', tok))?.available_quantity) || 0; } catch { /* */ } }
+        }
+        if (stock <= 0) { fuera.push(`${mla} · ${nom} · sin stock en Full`); continue; }
+        const vv = v30[mla] || 0;
+        if (vv > MAXV) { fuera.push(`${mla} · ${nom} · vende ${vv}/mes — anda bien, no se toca`); continue; }
+        // ── el precio del piso, con el MISMO solver que unapub ──
+        const p = pIdx[e2.prodId];
+        const costo = costoPesos(p, 1, tc).costo;
+        const m = (mlExtraPct(e2.cuenta) + monoPctAlpiso) / 100;
+        const feeCache = {};
+        const feeAt = async (pp) => {
+          const k = Math.round(pp); if (feeCache[k] !== undefined) return feeCache[k];
+          let out = null;
+          try {
+            const d = await mlGet(`/sites/${it.site_id || 'MLA'}/listing_prices?price=${k}&listing_type_id=${it.listing_type_id}&category_id=${it.category_id}`, tok);
+            const o = Array.isArray(d) ? d[0] : d;
+            if (typeof o?.sale_fee_amount === 'number') out = o.sale_fee_amount;
+          } catch { out = null; }
+          feeCache[k] = out; return out;
+        };
+        // El envío del PEOR caso, deducido de las ventas de ESTA publicación — la misma cuenta que
+        // hace `unapub`. No se inventa: si nunca vendió, no hay con qué medirlo y no se toca.
+        const ventasA = [];
+        for (const ents of Object.values(vpA)) {
+          for (const v of Object.values(ents || {})) {
+            if (!v || v.cancelada || v.mla !== mla) continue;
+            const q = v.qty || 1;
+            if ((v.total || 0) > 0 && (v.neto || 0) > 0) ventasA.push({ tot: v.total / q, net: v.neto / q });
+          }
+        }
+        let envioMax = -Infinity;
+        for (const pv of [...new Set(ventasA.map((v) => Math.round(v.tot)))].slice(-8)) {
+          const cv = await feeAt(pv); if (cv == null) continue;
+          for (const v of ventasA) { if (Math.round(v.tot) !== pv) continue; const x = v.tot - v.net - cv; if (x > envioMax) envioMax = x; }
+        }
+        if (!isFinite(envioMax)) { fuera.push(`${mla} · ${nom} · sin envío que deducir (nunca vendió)`); continue; }
+        const den = 1 - m * (1 + MIN);
+        if (!(den > 0)) { fuera.push(`${mla} · ${nom} · la cuenta no cierra`); continue; }
+        let P = it.price || 0, comP = (await feeAt(P)) || 0;
+        for (let i = 0; i < 5; i++) {
+          const Pn = (costo * (1 + MIN) + comP + envioMax * (1 + MIN)) / den;
+          const c2 = await feeAt(Pn); if (c2 == null) break;
+          if (Math.abs(Pn - P) < 1 && i > 0) { P = Pn; break; }
+          P = Pn; comP = c2;
+        }
+        const nuevo = Math.ceil(P / 10) * 10;
+        if (nuevo >= it.price) { fuera.push(`${mla} · ${nom} · ya está en el piso o abajo (no se sube por acá)`); continue; }
+        // El margen REAL al precio nuevo, que es lo que se le declara al freno. No se asume que
+        // el solver acertó: se recalcula y se compara, porque es el número que autoriza la bajada.
+        const comN = await feeAt(nuevo);
+        const mgN = comN == null ? null : ((nuevo - comN - envioMax - nuevo * m - costo) / (costo + nuevo * m + envioMax)) * 100;
+        plan.push({ mla, nom, cuenta: e2.cuenta, precio: it.price, nuevo, stock, v30: vv, mgN });
+      }
+      if (!plan.length) { console.log('Ninguna publicación para bajar.'); }
+      for (const x of plan) {
+        console.log(`  ${x.mla} · ${String(x.cuenta).padEnd(8)} · ${x.nom}`);
+        console.log(`     ${money(Math.round(x.precio))} → ${money(x.nuevo)}  (−${((1 - x.nuevo / x.precio) * 100).toFixed(1)}%) · ${x.stock} u. · vende ${x.v30}/mes · queda en ${x.mgN == null ? '?' : x.mgN.toFixed(1) + '%'}`);
+      }
+      if (fuera.length) { console.log(`\n── NO SE TOCAN · ${fuera.length} ──`); fuera.forEach((f) => console.log('   ' + f)); }
+      if (!APLICAR) { console.log(`\nPRUEBA: no se tocó nada. Para aplicar: alpiso:${kw}:${(MIN * 100).toFixed(0)}:${MAXV}:go`); return; }
+      console.log(`\n── APLICANDO ──`);
+      const hechos = [];
+      for (const x of plan) {
+        const tok = toks[x.cuenta] || Object.values(toks)[0];
+        const r = await setPriceTo(x.mla, null, x.nuevo, tok, { margen: x.mgN });
+        console.log(`  ${x.mla} · ${r.ok ? `${money(r.from)} → ${money(r.to)} ✓` : 'NO se bajó: ' + r.err}`);
+        if (r.ok) hechos.push(x);
+      }
+      // RELEER DE ML. Que el PUT conteste OK no alcanza: es la regla del panel desde el 13/08.
+      if (hechos.length) {
+        console.log(`\n── RELEÍDO DE ML ──`);
+        for (const x of hechos) {
+          const tok = toks[x.cuenta] || Object.values(toks)[0];
+          try {
+            const it2 = await mlGet(`/items/${x.mla}?attributes=id,price`, tok);
+            const ok = Math.round(it2.price) === x.nuevo;
+            console.log(`  ${x.mla} · ahora ${money(Math.round(it2.price))} ${ok ? '✓' : '⚠️ NO quedó como pedí (esperaba ' + money(x.nuevo) + ')'}`);
+          } catch { console.log(`  ${x.mla} · no pude releerlo`); }
+        }
+      }
+      console.log(`\nDespués de esto va netoweb, para que el panel recalcule los márgenes.`);
       return;
     }
     // BILLING_PROBE=hermanas:<palabra>[:<piso>] → TODAS LAS PUBLICACIONES DEL MISMO PRODUCTO.
