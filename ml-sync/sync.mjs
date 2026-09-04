@@ -9447,7 +9447,19 @@ async function main() {
         const desparejos = act.filter((f) => f.precio < techo).length;
         console.log(`   ${act.length} activas · ${desparejos ? `${desparejos} por debajo del más alto (se van a nivelar solas)` : 'todas al mismo precio ✓'}\n`);
       }
-      console.log('Los grupos se nivelan solos en cada corrida del robot (cada 10 minutos).');
+      // ── EL ESTADO, AL FINAL Y NO SÓLO ARRIBA ────────────────────────────────────
+      // El 04/09/2026, después de correr `grupos:paulvic:off`, no hubo forma de confirmar que
+      // hubiera quedado desactivado: el estado se imprime en el encabezado de cada grupo y queda
+      // enterrado arriba de sesenta renglones de publicaciones. Y este pie decía "los grupos se
+      // nivelan solos en cada corrida" SIEMPRE — o sea que un grupo apagado seguía anunciando que
+      // nivelaba. Un mensaje que dice lo contrario de lo que pasa es peor que no decir nada.
+      const act = gs.filter((g) => (grupos[g] || {}).activo !== false);
+      const off = gs.filter((g) => (grupos[g] || {}).activo === false);
+      console.log('\n── ESTADO ──');
+      if (act.length) console.log(`  NIVELANDO (se igualan solos en cada corrida): ${act.join(' · ')}`);
+      else console.log('  Ningún grupo está nivelando: cada publicación queda con su propio precio.');
+      if (off.length) console.log(`  DESACTIVADOS (cada uno con su precio): ${off.join(' · ')}`);
+      console.log('  Para apagar uno: grupos:<nombre>:off  ·  para prenderlo: grupos:<nombre>:<palabra>');
       return;
     }
     // BILLING_PROBE=tocados[:<horas>][:bajar:<MLA|todos>] → QUÉ PRECIOS TOCÓ SOLO EL ROBOT en las
