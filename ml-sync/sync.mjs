@@ -5358,12 +5358,31 @@ async function main() {
           toks[label] = t.access_token;
         } catch { /* sigue */ }
       }
+      // ── VENTAS POR PUBLICACIÓN ────────────────────────────────────────────────
+      // Pedido suyo del 04/09/2026 mirando los Paulvic: "sacar la regla que estén todos al mismo
+      // precio, que sea personalizado. quizás hay algunos que venden bien y otros que están
+      // perdiendo". Tenía razón: hasta hoy este comando mostraba precio, margen y stock, pero NO
+      // cuánto vende cada una — que es justo el dato con el que se decide si a ese aroma le sobra
+      // precio o le falta. Sin él, doce publicaciones idénticas en pantalla se veían iguales.
+      const vpH = (await db.get('cyc/ventaprod')) || {};
+      const ventasMla = {};   // MLA → { d30, d60, ultTs }
+      for (const [k, ents] of Object.entries(vpH)) {
+        for (const v of Object.values(ents || {})) {
+          if (!v || v.cancelada || !v.mla) continue;
+          const ts = v.ts || Date.parse(String(k).replace(/_/g, '-')) || 0;
+          const dias = (Date.now() - ts) / 864e5;
+          const r = ventasMla[v.mla] || (ventasMla[v.mla] = { d30: 0, d60: 0, ultTs: 0 });
+          if (dias <= 30) r.d30 += v.qty || 1;
+          if (dias <= 60) r.d60 += v.qty || 1;
+          if (ts > r.ultTs) r.ultTs = ts;
+        }
+      }
       for (const pid of prodIds) {
         const p = pIdx[pid];
         const costo = costoPesos(p, 1, tc).costo;
         console.log(`\n══ ${(p && p.nombre) || pid} · mercadería ${money(costo)} ══`);
         const mlas = Object.entries(links).filter(([id, e2]) => id.startsWith('MLA') && e2 && e2.prodId === pid);
-        console.log(`  ${'publicación'.padEnd(15)} ${'cuenta'.padEnd(9)} ${'estado'.padEnd(26)} ${'stock'.padStart(14)} ${'precio'.padStart(10)} ${'margen'.padStart(8)}  ${('para el ' + (MIN * 100).toFixed(0) + '%').padStart(11)}`);
+        console.log(`  ${'publicación'.padEnd(15)} ${'cuenta'.padEnd(9)} ${'estado'.padEnd(22)} ${'stock'.padStart(12)} ${'precio'.padStart(9)} ${'margen'.padStart(7)} ${('piso ' + (MIN * 100).toFixed(0) + '%').padStart(10)} ${'30d'.padStart(5)} ${'60d'.padStart(5)} ${'sin vender'.padStart(11)}`);
         for (const [id, e2] of mlas) {
           const tok = toks[e2.cuenta] || Object.values(toks)[0];
           let it = null;
@@ -5432,12 +5451,20 @@ async function main() {
           const est = it.status + ((it.sub_status || []).length ? ' (' + it.sub_status.join(',') + ')' : '');
           const marca = margen != null && margen < MIN ? ' ⚠' : '';
           const colPiso = margen == null ? '?' : (paraPiso != null ? money(paraPiso) : '— ya está');
-          console.log(`  ${id.padEnd(15)} ${String(e2.cuenta || '?').padEnd(9)} ${est.slice(0, 26).padEnd(26)} ${(stock + ' u. ' + dondeStock).padStart(14)}`
-            + ` ${money(Math.round(precio)).padStart(10)} ${(margen != null ? (margen * 100).toFixed(1) + '%' : '?').padStart(8)}  ${colPiso.padStart(11)}${marca}`);
+          const vh = ventasMla[id] || { d30: 0, d60: 0, ultTs: 0 };
+          const sinVender = vh.ultTs ? Math.floor((Date.now() - vh.ultTs) / 864e5) + ' d' : 'nunca';
+          console.log(`  ${id.padEnd(15)} ${String(e2.cuenta || '?').padEnd(9)} ${est.slice(0, 22).padEnd(22)} ${(stock + ' u. ' + dondeStock).padStart(12)}`
+            + ` ${money(Math.round(precio)).padStart(9)} ${(margen != null ? (margen * 100).toFixed(1) + '%' : '?').padStart(7)} ${colPiso.padStart(10)}`
+            + ` ${String(vh.d30).padStart(5)} ${String(vh.d60).padStart(5)} ${sinVender.padStart(11)}${marca}`);
         }
       }
-      console.log(`\n(⚠ = está abajo del ${(MIN * 100).toFixed(0)}%. La última columna es el precio que la dejaría justo ahí.)`);
+      console.log(`\n(⚠ = está abajo del ${(MIN * 100).toFixed(0)}%. "piso ${(MIN * 100).toFixed(0)}%" es el precio que la dejaría justo ahí.)`);
       console.log(`Margen con el envío del PEOR caso, igual que bajopiso y unapub. "?" = sin ventas, no hay envío que deducir.`);
+      console.log(`CÓMO SE LEE PARA DECIDIR PRECIO UNO POR UNO:`);
+      console.log(`  · vende bien (30d alto) y margen cómodo  → no tocar, o incluso subir`);
+      console.log(`  · NO vende y el margen está lejos del piso → ahí hay aire para bajar; el precio del piso dice cuánto`);
+      console.log(`  · NO vende y el margen ya está en el piso  → bajar es vender perdiendo: el problema no es el precio`);
+      console.log(`  · con stock y "nunca" vendió              → mirar primero las visitas, no el precio`);
       return;
     }
     // BILLING_PROBE=volver:<MLA=precio,MLA=precio,...>[:go] → DEJA ESOS PRECIOS EXACTOS.
