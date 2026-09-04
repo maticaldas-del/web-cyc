@@ -647,6 +647,21 @@ con ninguna, no hay de dónde sacar un costo y nadie lo puede inventar. Ahí va 
   Ojo con leer el promedio como si fuera el mes: **agosto dejó $1.714.396, no cero.** Lo que hunde el
   promedio de 2 meses es julio ($18,3M contra $28,0M de agosto).
 
+- **BAJAR PRECIOS NO ES UNA PALANCA HOY. Medido el 04/09/2026** con `bajarcaja:21:25`, cuando él
+  pidió "hay productos que estén perdiendo, se pueda bajar el precio y no vendan hace un tiempo?
+  necesitamos vender más". La respuesta del comando fue **"Ninguna. No hay nada que bajar que valga
+  la pena hoy"**, y el detalle explica por qué:
+  · **14 candidatas** (activas, con stock, sin vender hace 21+ días, con la caja perdida): bajarlas
+    al precio de la caja las dejaría entre **−8% y 20%**. Ninguna llega al 25%.
+  · **5 que YA ganan la caja y aun así no rotan · $757.238 parados** — Ferrari Scuderia (Adriana,
+    14 u., $434.532), Philips TAT2206, Kit Tira Luces LED, Perfume Salvador Dalí, Auriculares P47.
+    Ahí el precio está descartado por definición: ya son los más baratos del catálogo.
+  · **Paulvic: $610 de aire** (ver arriba).
+  **Conclusión: no hay plata escondida en los precios.** Las dos palancas que quedan son el STOCK
+  (las ventas cayeron $405.534/día y hay ~100 publicaciones sin stock que valían ~$500.000/día —
+  los números coinciden demasiado bien) y las VISITAS, que es el único dato que separa "no la ve
+  nadie" de "la ven y no compran" en esos $757.238 parados.
+
 - **GitHub demora las corridas programadas**, a veces horas. Por eso los crons se piden 3 veces y
   el robot guarda el último día que mandó cada aviso, para no repetir.
 - **Las compras con carrito** llegan con el número del paquete, no el de la orden. Hay que
@@ -1159,8 +1174,16 @@ Lo que quedó abierto. Borrá de acá lo que se vaya cerrando.
   MLA1452471312, MLA1377920253). Para llegar al 30% habría que cruzar la barrera, así que se quedan
   ahí. En dos de ellos `bajopiso` además dice que hay que BAJARLOS a ~$30.300 — un precio menor no
   puede dar más margen, así que ahí hay un error de cuenta que sigue sin explicarse.
-- **Grupo Paulvic: NO TOCAR.** 26 publicaciones entre 24% y 30% a $14.360. Subirlas todas a $14.840
-  las pondría arriba del piso (~$34.500/mes más), pero él dijo expresamente que no.
+- **Grupo Paulvic: NO TOCAR** (regla suya). Lo que decía esta nota —"26 publicaciones entre 24% y
+  30%, subirlas a $14.840 las pondría arriba del piso"— quedó VIEJO: era con el piso de 30% y la
+  fórmula anterior. Medido de nuevo el 04/09/2026: quedan **12 activas a $14.360 con 155 unidades**,
+  todas entre **30,8% y 39%**, o sea cómodas contra el piso de 25%. Ya no hay nada que subir.
+  **Pero tampoco hay nada que bajar, y ese es el dato que importa** (`unapub:MLA3026299952`):
+  · el precio que las deja justo en 25% es **$13.750**, o sea **$610 de margen** — un 4,2%
+  · para GANAR la caja de compra habría que bajar a **$10.696**, y ahí el margen es **−4,1%**
+  **La lección, y es general: un margen que se ve grande en % puede ser chico en PESOS.** 30,8%
+  sobre un perfume de $14.360 son $610 de aire — no alcanza ni para que el comprador lo note ni
+  para pelear la caja. Antes de decir "acá hay margen para bajar", mirar el número en pesos.
 - **Obra social privada: falta dejarla automática.** Son $83.333/mes. El pago de $250.000 del
   04/08 eran 3 meses atrasados y ya se repartió en mayo, junio y julio (`partirgasto`). Falta que
   él confirme si agosto ya tiene su cuota o si el primer mes del régimen nuevo es septiembre, y
