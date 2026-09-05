@@ -2709,12 +2709,17 @@ async function main() {
     // Solo Ayelen aporta: las otras tres figuran NO APORTANTE en la credencial (aportan por otro lado).
     if (String(process.env.BILLING_PROBE || '').startsWith('monoreal')) {
       const APLICAR = String(process.env.BILLING_PROBE).split(':')[1] === 'go';
-      // Credenciales ARCA de agosto 2026. Actualizar en cada recategorización (enero y julio).
+      // Credenciales ARCA. Actualizar en cada recategorización (enero y julio).
+      // LAS CUATRO PASAN A H (confirmado por él el 05/09/2026: "todas van a h y aye solo paga
+      // jubilación y autónomo"). Antes eran Adriana G, Luciana F, Ayelen H, Matías F.
+      // El integrado de H sale de la credencial de Ayelen, que ya estaba en H: $204.811,64.
+      // Sólo Ayelen aporta autónomos y obra social; las otras tres siguen NO APORTANTE — eso NO
+      // cambia con la categoría, depende de si aportan por otro lado.
       const ARCA = {
-        adriana: { cat: 'G', integrado: 71497.87, autonomo: 0, obra: 0 },
-        luciana: { cat: 'F', integrado: 57719.64, autonomo: 0, obra: 0 },
+        adriana: { cat: 'H', integrado: 204811.64, autonomo: 0, obra: 0 },
+        luciana: { cat: 'H', integrado: 204811.64, autonomo: 0, obra: 0 },
         ayelen: { cat: 'H', integrado: 204811.64, autonomo: 57598.04, obra: 55485.33 },
-        matias: { cat: 'F', integrado: 57719.64, autonomo: 0, obra: 0 },
+        matias: { cat: 'H', integrado: 204811.64, autonomo: 0, obra: 0 },
       };
       const mono = (await db.get('cyc/monotributo')) || {};
       const viejo = mono.impuesto || {};
