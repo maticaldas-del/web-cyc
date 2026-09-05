@@ -2300,7 +2300,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='19.12';
+const APP_VERSION='19.13';
 // El problema real que esto resuelve no es curiosidad: es que el celular guarda la app y sigue
 // mostrando la de ayer sin avisar. Varias veces se revisó un cambio que ya estaba subido y no se
 // veía. Por eso, además del número, el chip avisa cuando hay una versión nueva esperando.
@@ -8139,6 +8139,52 @@ function ultimaEntradaDe(p){
 // que está pagando. Sin fecha real, no se opina: se sigue tratando como antes.
 // De los dos datos reales se toma el MÁS RECIENTE, igual que la columna "En stock desde": lo que
 // contesta es "¿esto acaba de entrar?", y para eso manda la última entrada.
+// ── UNA FILA POR VARIANTE ─────────────────────────────────────────────────────────
+// Pedido suyo del 05/09/2026: "los victoria secret y paulvic están agrupados como uno. pero hay un
+// detalle: yo no puedo ver bien qué variante funciona mejor que otras. ¿se pueden ver como
+// publicaciones distintas? pero en métricas que se vean todas juntas como se ven hoy."
+//
+// Tenía razón y es el mismo problema que el grupo de precio que sacamos ayer: mientras las 12
+// publicaciones de Paulvic se ven como UNA fila, no hay forma de notar que el aroma que más vende
+// está en cero y el que no vende tiene 40 unidades. Sumadas, el promedio tapa las dos puntas.
+//
+// LO QUE SE SEPARA Y LO QUE NO, y es a propósito: acá (Rotación) se separa porque la pregunta es
+// "¿cuál funciona y cuál no?". En Métricas NO, porque ahí la pregunta es "¿cuánto ganó el negocio
+// este mes?" y para eso el aroma no importa.
+//
+// De dónde sale cada dato por variante — todos existían ya separados, sólo que nadie los miraba
+// juntos: el stock de `cyc/inventory` con la clave por variante, las ventas por `v.variante`, y la
+// caja de compra de la publicación que tiene esa variante en `cyc/mllinks`.
+// EL MARGEN NO: hoy el neto de ML se guarda por PRODUCTO, no por publicación. Así que las filas de
+// variante muestran el del producto y lo dicen — un % que parece de esa variante y en realidad es
+// el promedio de todas sería exactamente el número que miente que venimos sacando de la pantalla.
+function variantesConDatos(p){
+  const vs=(p.variantes||[]).filter(Boolean);
+  if(vs.length<2)return [];
+  // Sólo tiene sentido separar si de verdad hay algo distinto que mostrar: stock propio o ventas
+  // propias. Una ficha con veinte variantes cargadas y todo en cero sólo agrega ruido.
+  return vs.filter(v=>{
+    if(LOCS.some(l=>getQV(p.id,l,v)>0))return true;
+    return Object.values(state.ventaprod||{}).some(ents=>
+      Object.values(ents||{}).some(x=>x&&!x.cancelada&&x.variante===v&&ventaEsDe(x,p)));
+  });
+}
+const stockDeVariante=(p,v)=>LOCS.reduce((s,l)=>s+Math.max(0,getQV(p.id,l,v)),0);
+// La caja de compra de UNA variante: sólo las publicaciones que tienen esa variante marcada.
+function cajaMLDeVariante(p,v){
+  const L=state.mllinks||{};
+  const n={winning:0,sharing:0,losing:0,nocat:0,sincaja:0};let pubs=0;
+  for(const e of Object.values(L)){
+    if(!e||e.prodId!==p.id||e.ignored||(e.status||'')==='closed')continue;
+    if((e.variant||'')!==v)continue;
+    if(!e.caja||!(e.caja in n))continue;
+    n[e.caja]++;pubs++;
+  }
+  if(!pubs)return null;
+  // Con que UNA gane, el producto se vende: manda la mejor. Mismo criterio que cajaMLDe.
+  const st=n.winning?'winning':n.sharing?'sharing':n.losing?'losing':'nocat';
+  return {st,pubs};
+}
 const ROT_GRACIA_DIAS=30;   // recién llegado: no se le juzga la rotación todavía
 const ALMAC_DIAS=60;        // a los ~2 meses parado ML empieza a cobrar almacenamiento
 function edadStockDe(p){
@@ -8502,7 +8548,7 @@ function renderRotacionStock(){
     // La caja de compra va al lado del margen porque son las DOS razones distintas por las que un
     // producto puede estar frenado, y se arreglan al revés: margen bajo = hay que subir el precio;
     // caja perdida = el precio no tiene nada que ver, la venta se la lleva otro.
-    return{name:p.name,capital,ventasPeriodo,rotNorm,estadoKey,estadoHtml,stock,diasSinVender,
+    return{pid:p.id,name:p.name,capital,ventasPeriodo,rotNorm,estadoKey,estadoHtml,stock,diasSinVender,
       margen:mg.margen,margenSinEnvio:mg.sinEnvio,margenEnvioML:mg.envioML,margenNeto:mg.neto,margenCosto:mg.costo,
       caja:cajaMLDe(p),diasEnStock:diasEnStockDe(p),diasCaja:ultimaEntradaDe(p)};
   });
@@ -8577,6 +8623,56 @@ function renderRotacionStock(){
     tbody.innerHTML=`<tr><td colspan="10" style="text-align:center;color:var(--muted);padding:18px">Ningún producto con “${document.getElementById('rot-search').value}” (de ${_todas}).</td></tr>`;
     return;
   }
+  // ── LAS VARIANTES, DEBAJO DE SU PRODUCTO ────────────────────────────────────
+  // Van como sub-filas y no como filas sueltas para no romper el orden ni los totales de arriba:
+  // el producto sigue siendo la unidad que se ordena y se suma, y abajo se abre el detalle.
+  // El % NO se recalcula por variante (ver variantesConDatos): se muestra el del producto en gris,
+  // porque hoy el neto de ML es por producto y un número que parece de la variante mentiría.
+  const _subVars=(r)=>{
+    const p=(state.products||[]).find(x=>x.id===r.pid);
+    if(!p)return '';
+    const vs=variantesConDatos(p);
+    if(!vs.length)return '';
+    const filas=vs.map(v=>{
+      const st=stockDeVariante(p,v);
+      let vp=0,ultKey=null;
+      Object.keys(state.ventaprod||{}).forEach(k=>{
+        Object.values(state.ventaprod[k]||{}).forEach(x=>{
+          if(!x||x.cancelada||x.variante!==v||!ventaEsDe(x,p))return;
+          if(vKeys.includes(k))vp+=x.qty||0;
+          if(!ultKey||k>ultKey)ultKey=k;
+        });
+      });
+      let dsv=null;
+      if(ultKey){const[y,m,d]=ultKey.split('_').map(Number);
+        const t0=new Date(new Date().getFullYear(),new Date().getMonth(),new Date().getDate());
+        dsv=Math.max(0,Math.round((t0-new Date(y,m-1,d))/86400000));}
+      const cj=cajaMLDeVariante(p,v);
+      const cjTxt=cj?({winning:'<span style="color:var(--green)">🟢</span>',sharing:'<span style="color:var(--amber)">🟠</span>',losing:'<span style="color:var(--red)">🔴</span>',nocat:'<span style="color:var(--muted)">⚪</span>'}[cj.st]||'—'):'<span style="color:var(--muted)">—</span>';
+      // El estado de la variante se mide con la MISMA función que el producto (rotEstadoDe), no
+      // con una copia: si un día cambia la regla, cambian los dos juntos.
+      const vDia=st>0?vp/Math.max(1,diasHistorial):0;
+      const rotN=st>0?(vp/st)*factor:(vp>0?Infinity:0);
+      const est=rotEstadoDe(p,st,rotN,vp,new Date());
+      const estTxt={sano:'<span style="color:var(--green)">🟢</span>',lento:'<span style="color:var(--amber)">🟠</span>',
+        muerto:'<span style="color:var(--red)">🔴</span>',reciente:'<span style="color:var(--blue)">🆕</span>',
+        sinstock:'<span style="color:var(--muted)">⚪</span>'}[est.k]||'';
+      void vDia;
+      return `<tr style="background:rgba(255,255,255,.015)">
+        <td style="padding-left:22px;max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:.72rem;color:#a78bfa" title="${v}">↳ ${v}</td>
+        <td style="text-align:right;font-size:.72rem">${st} u.</td>
+        <td style="font-size:.72rem;color:var(--muted)">${st>0?fmt(st*(costFullP(p)||0)):'—'}</td>
+        <td style="text-align:right;font-size:.72rem">${vp} u.</td>
+        <td style="text-align:right;font-family:'DM Mono',monospace;font-size:.72rem">${st>0?rotN.toFixed(2):'—'}</td>
+        <td style="text-align:right;font-size:.72rem">${rotDiasSinVenderHtml(dsv)}</td>
+        <td style="text-align:right;font-size:.66rem;color:var(--muted)" title="El % de ganancia todavía se mide por producto, no por variante: el neto que informa ML se guarda por ficha. Este es el del producto entero.">${r.margen!=null?r.margen.toFixed(0)+'%':'—'} <span style="opacity:.6">(del prod.)</span></td>
+        <td style="text-align:right;font-size:.72rem">—</td>
+        <td style="text-align:right;font-size:.8rem">${cjTxt}</td>
+        <td style="font-size:.9rem">${estTxt}</td>
+      </tr>`;
+    }).join('');
+    return filas;
+  };
   tbody.innerHTML=rows.map(r=>`<tr>
     <td style="max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${r.name}">${r.name}</td>
     <td style="text-align:right">${r.stock} u.</td>
@@ -8588,7 +8684,7 @@ function renderRotacionStock(){
     <td style="text-align:right">${rotEnStockHtml(r)}</td>
     <td style="text-align:right">${rotCajaHtml(r)}</td>
     <td>${r.estadoHtml}</td>
-  </tr>`).join('');
+  </tr>`+_subVars(r)).join('');
 }
 
 const _openPedVars=new Set();
