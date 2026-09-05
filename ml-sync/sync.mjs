@@ -2756,7 +2756,26 @@ async function main() {
         await db.set('cyc/monotributo/fijoMensual', Math.round(fijo * 100) / 100);
         await db.set('cyc/monotributo/desde', dayKeyFromISO(new Date().toISOString()).slice(0, 7));
         await db.patch('cyc/monotributo', { cats: Object.fromEntries(Object.entries(ARCA).map(([c, x]) => [c, x.cat])) });
-        if (pctNuevo > 0) await db.patch('cyc/monotributo', { pct: pctNuevo, pctCalc: Date.now(), pctFact: Math.round(factMes) });
+        if (pctNuevo > 0) {
+          await db.patch('cyc/monotributo', { pct: pctNuevo, pctCalc: Date.now(), pctFact: Math.round(factMes) });
+          // ── EL % QUEDA FECHADO, NO PISA EL PASADO ──────────────────────────────────
+          // Él lo marcó el 05/09/2026: "el cambio de categoría viene de julio. pero antes lo que
+          // pagamos estaba bien, ¿no? si cambiamos TODOS los % me parece que está mal."
+          // Tenía razón: sin esto, las ventas de mayo se recalculaban con el monotributo de
+          // septiembre y los meses cerrados se veían peor de lo que fueron.
+          // El % viejo queda anclado en el mes anterior a la recategorización, así lo de antes
+          // sigue midiéndose con lo que de verdad se pagó entonces.
+          const desdeYM = process.env.MONO_DESDE || dayKeyFromISO(new Date().toISOString()).slice(0, 7);
+          const hist = { [desdeYM]: pctNuevo };
+          if (pctViejo > 0) {
+            const [yy, mm] = desdeYM.split('_').map(Number);
+            const prev = new Date(yy, mm - 2, 1);
+            hist[prev.getFullYear() + '_' + String(prev.getMonth() + 1).padStart(2, '0')] = pctViejo;
+          }
+          await db.patch('cyc/monotributo/hist', hist);
+          console.log(`  Histórico: hasta ${Object.keys(hist).sort()[0].replace('_', '-')} rige ${pctViejo.toFixed(2)}% · desde ${desdeYM.replace('_', '-')} rige ${pctNuevo.toFixed(2)}%`);
+          console.log(`  (los meses cerrados se siguen midiendo con el % que se pagaba entonces)`);
+        }
       }
       // El gasto del mes en curso puede estar ya creado con el monto viejo: el robot solo lo crea si
       // no existe, nunca lo corrige. Se pisa acá, si no agosto quedaría con el número de antes.

@@ -2300,7 +2300,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='19.14';
+const APP_VERSION='19.15';
 // El problema real que esto resuelve no es curiosidad: es que el celular guarda la app y sigue
 // mostrando la de ayer sin avisar. Varias veces se revisó un cambio que ya estaba subido y no se
 // veía. Por eso, además del número, el chip avisa cuando hay una versión nueva esperando.
@@ -2517,9 +2517,47 @@ const mlExtraPct=cuenta=>{const v=ML_EXTRA_PCT[(cuenta||'').toLowerCase()];retur
 // en cyc/monotributo/pct — acá solo se lee. Es UNO SOLO para las 4 cuentas a propósito: con un % por
 // cuenta, el mismo producto valdría distinto según dónde esté publicado y te empujaría a mudarlo.
 // El autónomo y la obra social NO están acá: no son costo del producto, van como gasto del mes.
-const monoPct=()=>{const v=parseFloat(state.monotributo&&state.monotributo.pct);return isFinite(v)&&v>0?v:0;};
+// ── EL MONOTRIBUTO CAMBIA CON EL TIEMPO, Y LAS VENTAS VIEJAS NO SE RECALCULAN ─────
+// Él lo marcó el 05/09/2026, y tenía razón: "el cambio de categoría viene de julio o junio. pero
+// antes lo que pagamos estaba bien, ¿no? si cambiamos TODOS los % me parece que está mal."
+//
+// Hasta acá `monoPct()` devolvía UN número para TODAS las ventas de la historia. Al pasar las
+// cuatro cuentas a categoría H el % subió de 1,94% a 4,06% — y con la versión vieja, las ventas de
+// mayo se recalculaban con un monotributo que en mayo NO se pagaba. Los meses cerrados se veían
+// peor de lo que fueron y el gráfico mostraba una caída que nunca pasó.
+//
+// Es lo contrario del caso de la BASE del margen (ver "el % de Métricas no se guarda por venta"):
+// ahí cambiar la fórmula para todos era lo correcto, porque la vara tiene que ser la misma para
+// comparar. Acá NO, porque el costo REAL de cada mes fue distinto. La regla que los separa: si
+// cambió cómo MEDIMOS, se aplica a todo; si cambió lo que PAGAMOS, cada mes con lo suyo.
+//
+// El histórico vive en cyc/monotributo/hist/<YYYY_MM>. Sin fecha, o sin histórico cargado, se usa
+// el vigente — el comportamiento de antes, que es lo correcto para "hoy".
+const monoPctVigente=()=>{const v=parseFloat(state.monotributo&&state.monotributo.pct);return isFinite(v)&&v>0?v:0;};
+function monoPct(ym){
+  if(!ym)return monoPctVigente();
+  const h=(state.monotributo||{}).hist;
+  if(!h)return monoPctVigente();
+  const k=String(ym).substring(0,7);
+  if(h[k]!=null){const v=parseFloat(h[k]);if(isFinite(v)&&v>=0)return v;}
+  // Sin dato de ese mes se usa el del mes ANTERIOR más cercano: un % rige desde que se cargó
+  // hasta que aparece otro, igual que una categoría de ARCA.
+  const antes=Object.keys(h).filter(x=>x<=k).sort();
+  if(antes.length){const v=parseFloat(h[antes[antes.length-1]]);if(isFinite(v)&&v>=0)return v;}
+  // Más viejo que todo lo cargado: se usa el más antiguo que haya, no el de hoy.
+  const todos=Object.keys(h).sort();
+  if(todos.length){const v=parseFloat(h[todos[0]]);if(isFinite(v)&&v>=0)return v;}
+  return monoPctVigente();
+}
+// El mes de una venta, para poder cobrarle el monotributo que regía ENTONCES.
+const _ymDeVenta=v=>{
+  if(!v)return null;
+  if(v._dateKey)return String(v._dateKey).substring(0,7);
+  if(v.ts){const d=new Date(v.ts);return d.getFullYear()+'_'+String(d.getMonth()+1).padStart(2,'0');}
+  return null;
+};
 // Impuestos que se suman al costo de una venta: IIBB (cargo ML, por cuenta) + monotributo (general).
-const impuestosDeVenta=v=>((v&&v.total)||0)*(mlExtraPct(v&&v.cuenta)+monoPct())/100;
+const impuestosDeVenta=v=>((v&&v.total)||0)*(mlExtraPct(v&&v.cuenta)+monoPct(_ymDeVenta(v)))/100;
 // Impuestos PROMEDIO por unidad vendida de cada producto. Los impuestos son un % del PRECIO, así que
 // para poder mostrarlos dentro del costo del producto (donde no hay precio) se usa lo que realmente
 // pagaste en sus ventas. Sale exacto y contempla que un mismo producto se venda por varias cuentas
