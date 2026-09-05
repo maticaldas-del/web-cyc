@@ -2300,7 +2300,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='19.13';
+const APP_VERSION='19.14';
 // El problema real que esto resuelve no es curiosidad: es que el celular guarda la app y sigue
 // mostrando la de ayer sin avisar. Varias veces se revisó un cambio que ya estaba subido y no se
 // veía. Por eso, además del número, el chip avisa cuando hay una versión nueva esperando.
@@ -2994,6 +2994,65 @@ function simPrecio(id,val){
   if(el){el.focus();try{el.setSelectionRange(el.value.length,el.value.length);}catch{}}
 }
 function simPrecioReset(id){delete _simPrecio[id];repintarFlujo(id);}
+// ── A QUÉ PRECIO ESTE PRODUCTO DEJA X% ────────────────────────────────────────────
+// Estaba adentro de flujoPlataHTML y ahora la usan dos pantallas (la ficha y Rotación), así que
+// vive en un solo lado. Si estuviera copiada, la ficha podría decir un precio de remate y la tabla
+// otro para el mismo producto — el patrón que ya nos mordió con el margen, el piso y el envío.
+//
+// Los dos porcentajes que cobra ML se DEDUCEN de la publicación real (lo que cobró hoy ÷ el precio
+// de hoy), no de una tabla: así cada producto usa la comisión de SU categoría sin que nadie la
+// cargue. Devuelve null cuando no hay con qué medir, en vez de inventar un número.
+function precioParaMargen(p,pct){
+  const r=margenMLDe(p);
+  const precio=Math.round(Number(p.netoCalcPrecio)||0);
+  if(!(precio>0)||r.netoCalc==null||!(r.costoBase>0))return null;
+  const gest=r.gest||0;
+  const comPct=(precio-r.netoCalc-gest)/precio;   // comisión de ML como % del precio
+  const impPct=(r.mlExtra||0)/precio;             // IIBB + monotributo, también % del precio
+  const merc=Math.round(r.costoBase-(r.mlExtra||0));
+  const m=pct/100;
+  const den=1-comPct-impPct*(1+m);
+  if(!(den>0))return null;
+  return Math.ceil((merc+gest)*(1+m)/den/10)*10;
+}
+
+// ── LIQUIDAR: CUANDO EL PORCENTAJE DEJA DE SER LA PREGUNTA ────────────────────────
+// Pedido suyo del 05/09/2026: "una regla para productos que no venden y necesitamos que roten sí o
+// sí o si no los retiro... quizás sí vale la pena venderlos a un % menos ya que 20% es mejor que
+// nada. pero quiero que sea universal para que no haya tanto lío".
+//
+// El número que importa acá NO es el margen: la mercadería YA está paga, así que esa plata no
+// vuelve se decida lo que se decida. Lo que se compara es cuánta plata VUELVE. Con mercadería de
+// $10.000 y un costo total de vender de $13.000: al 20% vuelven $12.600 (126% de lo que pusiste),
+// al 12% vuelven $11.560 (116%), y al 0% vuelven los $10.000 enteros. Retirando de Full vuelven
+// CERO: ML cobra el retiro y te quedás con el mismo producto sin vender, ocupando lugar en casa.
+// Por eso liquidar casi siempre le gana a retirar.
+//
+// Y por eso el piso NO baja a 0 aunque la cuenta lo permita: cada peso facturado barato consume el
+// MISMO tope de monotributo H que uno caro, y ese tope es el recurso escaso del negocio.
+const LIQ_DIAS_LIMPIAR=60, LIQ_PCT_LIMPIAR=20;
+const LIQ_DIAS_REMATAR=90, LIQ_PCT_REMATAR=12;
+function liquidarDe(p,diasSinVender,stock,edad){
+  if(!(stock>0))return null;                       // sin stock no hay nada que liquidar
+  const d=diasSinVender;
+  // "Nunca vendió" (d==null) con stock cuenta como parado: es el caso más viejo de todos.
+  const parado=(d==null)?Infinity:d;
+  const pagando=(edad!=null&&edad>=ALMAC_DIAS);    // ya paga almacenamiento de Full
+  if(parado>=LIQ_DIAS_REMATAR||pagando)
+    return {nivel:'rematar',pct:LIQ_PCT_REMATAR,precio:precioParaMargen(p,LIQ_PCT_REMATAR),
+      motivo:pagando&&parado<LIQ_DIAS_REMATAR?`ya paga almacenamiento`:`${parado===Infinity?'nunca vendió':parado+' días sin vender'}`};
+  if(parado>=LIQ_DIAS_LIMPIAR)
+    return {nivel:'limpiar',pct:LIQ_PCT_LIMPIAR,precio:precioParaMargen(p,LIQ_PCT_LIMPIAR),
+      motivo:`${parado} días sin vender`};
+  return null;
+}
+function liquidarHtml(l){
+  if(!l)return '';
+  const rem=l.nivel==='rematar';
+  const col=rem?'var(--red)':'var(--amber)';
+  const t=`${rem?'REMATAR':'LIMPIAR'} — ${l.motivo}. La mercadería ya está paga: vender al ${l.pct}% te devuelve más plata que retirarlo de Full, que te devuelve cero. No es ganar, es recuperar y liberar el lugar.`;
+  return `<div title="${t}" style="font-size:.57rem;color:${col};margin-top:2px;white-space:nowrap">${rem?'🔴 rematar':'🟠 limpiar'} al ${l.pct}%${l.precio?' · '+fmt(l.precio):''}</div>`;
+}
 function flujoPlataHTML(p){
   const r=margenMLDe(p);
   const META=metaMargenML();
@@ -3076,8 +3135,7 @@ function flujoPlataHTML(p){
   const falta=objetivo!=null?objetivo-neto:null;
   // El precio al que ese neto se alcanza: sirve para contestar "¿a cuánto lo puedo bajar?" sin
   // ir moviendo el número a mano hasta pegarle.
-  const denP=1-comPctReal-impPctReal*(1+META/100);
-  const precioPiso=denP>0?Math.ceil((merc+gest)*(1+META/100)/denP/10)*10:null;
+  const precioPiso=precioParaMargen(p,META);
   const paso=(lbl,val,col,signo,peso,pie)=>`<div style="text-align:center;padding:0 2px;min-width:76px">
       <div style="font-size:.5rem;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;line-height:1.3;margin-bottom:2px">${lbl}</div>
       <div style="font-family:'DM Mono',monospace;font-size:${peso?'.8rem':'.68rem'};font-weight:${peso?'700':'500'};color:${col};white-space:nowrap">${signo||''}${fmt(val)}</div>
@@ -8548,7 +8606,10 @@ function renderRotacionStock(){
     // La caja de compra va al lado del margen porque son las DOS razones distintas por las que un
     // producto puede estar frenado, y se arreglan al revés: margen bajo = hay que subir el precio;
     // caja perdida = el precio no tiene nada que ver, la venta se la lleva otro.
-    return{pid:p.id,name:p.name,capital,ventasPeriodo,rotNorm,estadoKey,estadoHtml,stock,diasSinVender,
+    // La regla de liquidar mira los MISMOS días sin vender y la MISMA edad de stock que el estado,
+    // no una cuenta propia: si un día cambia el criterio, cambian los dos juntos.
+    const _liq=liquidarDe(p,diasSinVender,stock,_rt.edad);
+    return{pid:p.id,name:p.name,capital,ventasPeriodo,rotNorm,estadoKey,estadoHtml,stock,diasSinVender,liq:_liq,
       margen:mg.margen,margenSinEnvio:mg.sinEnvio,margenEnvioML:mg.envioML,margenNeto:mg.neto,margenCosto:mg.costo,
       caja:cajaMLDe(p),diasEnStock:diasEnStockDe(p),diasCaja:ultimaEntradaDe(p)};
   });
@@ -8683,7 +8744,7 @@ function renderRotacionStock(){
     <td style="text-align:right">${rotMargenHtml(r)}</td>
     <td style="text-align:right">${rotEnStockHtml(r)}</td>
     <td style="text-align:right">${rotCajaHtml(r)}</td>
-    <td>${r.estadoHtml}</td>
+    <td>${r.estadoHtml}${liquidarHtml(r.liq)}</td>
   </tr>`+_subVars(r)).join('');
 }
 
