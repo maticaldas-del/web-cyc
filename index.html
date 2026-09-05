@@ -2300,7 +2300,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='19.11';
+const APP_VERSION='19.12';
 // El problema real que esto resuelve no es curiosidad: es que el celular guarda la app y sigue
 // mostrando la de ayer sin avisar. Varias veces se revisó un cambio que ya estaba subido y no se
 // veía. Por eso, además del número, el chip avisa cuando hay una versión nueva esperando.
@@ -4261,7 +4261,8 @@ function renderOfiCaja(){
         <div style="font-size:.9rem;font-weight:700;color:${col}">${veredicto}${motivo?` <span style="font-weight:400;font-size:.7rem;color:var(--muted)">· ${motivo}</span>`:''}</div>
         <div style="font-size:.72rem;margin-top:5px;line-height:1.6">
           Lleva <strong>${fmt(Math.round(cv.gTotal))}</strong> de ganancia en ${cv.uTot} u.
-          contra <strong>${fmt(COSTO_CAJA)}</strong> de envío.<br>
+          contra <strong>${fmt(COSTO_CAJA)}</strong> de envío.
+          <span style="font-size:.62rem;color:${cv.sobreLoCargado?'var(--green)':'var(--muted)'}">${cv.sobreLoCargado?'· sobre lo que cargaste en la caja':'· sobre lo sugerido (todavía no cargaste nada)'}</span><br>
           ${cv.gCero>0
             ? `Destraba <strong>${fmt(Math.round(cv.gCero))} por día</strong> (${cv.nCero} producto${cv.nCero===1?'':'s'} en cero, ${cv.uCero} u.): esperar una semana te cuesta <strong>${fmt(Math.round(cv.gCero*7))}</strong>.`
             : `Nada de la caja está en cero, así que hoy no destraba ninguna venta — pero esa plata no puede venderse mientras esté en tu casa.`}
@@ -4772,24 +4773,45 @@ function gananciaUnidad(p){
 // velocidad es 0— saldría como "podés esperar", que es justo al revés.
 // Por eso se miran los dos: en cuánto se paga la caja, y cuánta plata lleva.
 const CAJA_VALE_LA_PENA=10;   // si lleva 10 veces el costo del envío, va igual
+// ── EL CARTEL TIENE QUE HABLAR DE LA CAJA QUE ESTÁS ARMANDO, NO DE LA SUGERIDA ──
+// Pedido suyo del 05/09/2026: "quiero que actualice la recomendación de mandar la caja o no viendo
+// lo que tengo cargado en ese momento. por ejemplo si dice 'mandala ya' y yo le quito mercadería
+// por x razón, quiero que automáticamente evalúe de nuevo los números".
+//
+// Tenía razón y estaban desincronizados de una forma que engaña: el cartel decía "MANDALA YA ·
+// lleva $160.120 en 306 u." mientras el botón de abajo decía "Cerrar esta caja · 109 u.". Los dos
+// números en la misma pantalla, hablando de cajas distintas — y el que se despacha es el de abajo.
+// Sacar media caja no cambiaba una coma del veredicto.
+//
+// AHORA: si hay algo cargado, la cuenta se hace sobre LO CARGADO. Si la caja está vacía, se sigue
+// mostrando la sugerencia, que es lo único que se puede evaluar y además es la respuesta a "¿me
+// conviene armar una caja para esta cuenta?".
+// Ojo con lo que NO cambia: el buscador sigue sin mover el cartel. Filtrar la lista no saca
+// mercadería de la caja; sacarla del casillero sí. Son dos cosas distintas y por eso una mueve el
+// veredicto y la otra no.
 function convieneCaja(filas,cuenta){
   let gCero=0,gRelleno=0,gTotal=0,nCero=0,uCero=0,uTot=0,sinDato=0;
   const detalle=[];
+  const puestos=cajaDe(cuenta);
+  const hayPuesto=Object.values(puestos).some(n=>n>0);
   for(const f of filas){
     for(const s of (f.sug||[])){
-      if(s.cuenta!==cuenta||!(s.mandar>0))continue;
+      if(s.cuenta!==cuenta)continue;
+      // Cuántas unidades se están contando: las que ÉL cargó, o las sugeridas si no cargó nada.
+      const u=hayPuesto?(puestos[_ck(f.p.id,f.variante||'')]||0):s.mandar;
+      if(!(u>0))continue;
       const g=gananciaUnidad(f.p);
       if(g==null){sinDato++;continue;}
-      uTot+=s.mandar;
-      gTotal+=Math.max(0,g)*s.mandar;
+      uTot+=u;
+      gTotal+=Math.max(0,g)*u;
       const porDia=Math.max(0,g)*(s.vDia||0);
-      if(s.enCero){gCero+=porDia;nCero++;uCero+=s.mandar;detalle.push({p:f.p,variante:f.variante,porDia,mandar:s.mandar,gan:Math.max(0,g)*s.mandar});}
+      if(s.enCero){gCero+=porDia;nCero++;uCero+=u;detalle.push({p:f.p,variante:f.variante,porDia,mandar:u,gan:Math.max(0,g)*u});}
       else gRelleno+=porDia;
     }
   }
   detalle.sort((a,b)=>b.porDia-a.porDia||b.gan-a.gan);
   const diasPago=gCero>0?COSTO_CAJA/gCero:null;
-  return{gCero,gRelleno,gTotal,nCero,uCero,uTot,sinDato,detalle,diasPago,
+  return{gCero,gRelleno,gTotal,nCero,uCero,uTot,sinDato,detalle,diasPago,sobreLoCargado:hayPuesto,
     // Vale la pena por lo que lleva, aunque la velocidad no lo justifique sola.
     porTamano:gTotal>=COSTO_CAJA*CAJA_VALE_LA_PENA,
     vecesElEnvio:COSTO_CAJA>0?gTotal/COSTO_CAJA:0};
