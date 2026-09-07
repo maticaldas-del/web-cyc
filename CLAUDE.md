@@ -2,8 +2,9 @@
 ## PISO DURO: NINGÚN PRODUCTO SE BAJA POR DEBAJO DEL PISO CONFIGURADO
 
 Regla suya, textual, del 20/08/2026: **"NUNCA BAJAR NINGUN PRODUCTO A MENOS DE 30%."** Ese 30 era
-con la fórmula vieja. **Hoy el piso vale 28%** con la base nueva (05/09/2026), que es el MISMO
-lugar medido bien: 28% de ahora ≈ 30,1% de antes. La regla no se aflojó, se corrigió la vara.
+con la fórmula vieja y ya no rige. **Hoy el piso y la base valen 25%**, decisión suya del
+07/09/2026, textual: *"acordate que la base es de 25% ahora. no 30 ni 32%."* Antes de tocar
+cualquier precio, mirar el número de la base — NO el de esta línea: puede haber cambiado.
 
 **El número NO está escrito en el código: vive en `cyc/mlconfig/minPct`** y se cambia con
 `meta:<piso>:<meta>`. El robot lo lee al arrancar (`cargarPisoDuro`) y los comandos con
@@ -158,7 +159,11 @@ julio, a CYC le quedan **~$2.000.000/mes** después de todo eso.
    el 13/08/2026; antes había que preguntar cada vez.)
 3. **TECHO DURO: nunca subir un precio por encima de $600.000.** Regla suya del 13/08/2026. Si
    para llegar al 30% haría falta cruzar ese número, se deja donde está y se avisa.
-4. **El piso de margen es 28% y la BASE a la que se sube es 32%.** Regla suya del 19/08/2026:
+4. **El piso de margen es 25% y la BASE a la que se sube también es 25%** (07/09/2026, suyo:
+   *"acordate que la base es de 25% ahora. no 30 ni 32%"*). Lo de abajo es de cuando eran dos
+   números distintos y explica POR QUÉ conviene que lo sean; hoy no lo son, y la consecuencia es
+   que lo que se sube queda pegado al piso y cualquier cosa mínima lo vuelve a hundir. Está
+   avisado; el número lo elige él. Regla suya del 19/08/2026:
    *"ponele 32% como base a todo a partir de ahora a cada cosa que se aumente. no retroactiva"*.
    Los dos números son distintos a propósito: se toca lo que está **abajo del piso**, y cuando se
    toca se lo lleva al **32%**, no al piso justo. Con la meta pegada al piso cualquier cosa mínima
@@ -166,12 +171,11 @@ julio, a CYC le quedan **~$2.000.000/mes** después de todo eso.
    Patagonia hubo que subirlo dos días seguidos por eso. **No es retroactiva**: lo que hoy está
    entre el piso y 32% se deja donde está, no se sale a subir nada. Se mide sobre el costo total
    (mercadería + envío del peor caso + % de reclamos + IIBB + monotributo). En la base está como
-   `cyc/mlconfig` → piso 28 / meta 32 (se cambia con el comando `meta:<piso>:<meta>`), y a mano
-   los comandos van con el 32: `unapub:<MLA>:32`, `bajopiso:32`, `submargen:32`.
-   **El 28 no es una rebaja del 30 viejo: es el 30 viejo medido bien** (05/09/2026). Al corregir el
-   monotributo —las cuatro cuentas pasaron a categoría H y el % subió de 1,94% a 4,06%— todos los
-   márgenes bajaron ~2 puntos sin que cambiara nada del negocio. 28% con la base de hoy ≈ 30,1%
-   con la base vieja.
+   `cyc/mlconfig` → piso 25 / meta 25 (se cambia con el comando `meta:<piso>:<meta>`), y a mano
+   los comandos van con el 25: `unapub:<MLA>:25`, `bajopiso:25`, `submargen:25`.
+   **Ojo con comparar contra los números viejos.** Al corregir el monotributo —las cuatro cuentas
+   pasaron a categoría H y el % subió de 1,94% a 4,06%— todos los márgenes bajaron ~2 puntos sin
+   que cambiara nada del negocio. O sea que un 25% de hoy es más exigente que un 25% de agosto.
 5. **NUNCA bajar un precio por tu cuenta.** Regla suya del 13/08/2026. Si una cuenta dice que para
    llegar al piso hay que BAJAR, el número está mal: no se toca y se investiga.
    **Única excepción, y la pide ÉL cada vez:** recuperar la caja de compra de un producto que tiene
