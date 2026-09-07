@@ -10055,7 +10055,14 @@ async function main() {
     // último 30/06 o 31/12, con las mismas reglas raras que tiene la app —meses viejos congelados en
     // fact_mes, canceladas sumadas aparte, mes partido prorrateado—. Es para poder mirar el número
     // ANTES de que lo vea nadie en el celular, y no enterarse por una alarma roja equivocada.
-    if (String(process.env.BILLING_PROBE || '') === 'facarca') {
+    // `facarca:365` mira los ÚLTIMOS 365 DÍAS CORRIDOS hasta hoy, que NO es lo mismo. Pedido suyo
+    // del 07/09/2026: *"hablo de los ultimos 365 dias. ya que arca toma eso como referencia."*
+    // Los dos números son correctos y responden preguntas distintas: el de por defecto es la
+    // ventana YA CERRADA con la que ARCA recategorizó en julio (lo que pasó), y el de 365 es hacia
+    // dónde vas hoy — el que va a mirar la recategorización de enero. Salen los dos juntos para que
+    // no se confundan: uno solo, sin decir cuál es, invita a leer el que no corresponde.
+    if (/^facarca(:|$)/.test(String(process.env.BILLING_PROBE || ''))) {
+      const ROLLING = String(process.env.BILLING_PROBE || '').split(':')[1] === '365';
       const ACCTS = ['adriana', 'luciana', 'ayelen', 'matias'];
       const CATS = [['A', 12009410.45], ['B', 17595182.74], ['C', 24670494.31], ['D', 30628651.43],
         ['E', 36028231.33], ['F', 45151659.41], ['G', 53995798.87], ['H', 81924660.37],
@@ -10070,11 +10077,14 @@ async function main() {
       const cats = mono.cats || {};
       // Ventana de ARCA, igual que en la web.
       const now = new Date();
-      const winEnd = now.getMonth() >= 6 ? new Date(now.getFullYear(), 5, 30) : new Date(now.getFullYear() - 1, 11, 31);
+      const winEnd = ROLLING ? new Date(now.getFullYear(), now.getMonth(), now.getDate())
+        : (now.getMonth() >= 6 ? new Date(now.getFullYear(), 5, 30) : new Date(now.getFullYear() - 1, 11, 31));
       const winStart = new Date(winEnd); winStart.setDate(winStart.getDate() - 364);
       const kOf = (d) => d.getFullYear() + '_' + String(d.getMonth() + 1).padStart(2, '0') + '_' + String(d.getDate()).padStart(2, '0');
       const winStartK = kOf(winStart), winEndK = kOf(winEnd);
-      console.log(`Ventana que mira ARCA: ${winStartK} → ${winEndK}\n`);
+      console.log(ROLLING
+        ? `ÚLTIMOS 365 DÍAS CORRIDOS: ${winStartK} → ${winEndK} (hacia dónde vas hoy)\n`
+        : `Ventana YA CERRADA con la que ARCA recategorizó: ${winStartK} → ${winEndK}\n  (para los últimos 365 días corridos: facarca:365)\n`);
       const meses = [];
       { let y = winStart.getFullYear(), m = winStart.getMonth();
         while (y < winEnd.getFullYear() || (y === winEnd.getFullYear() && m <= winEnd.getMonth())) {
@@ -10102,6 +10112,10 @@ async function main() {
           if (real > 0 || canc > 0) { acc[a] += real + canc; continue; }
           if (man != null && man !== '') acc[a] += (parseFloat(man) || 0) * frac;
         }
+      }
+      if (ROLLING) {
+        console.log(`  OJO: los meses anteriores a ${FAC_CONGELADO_HASTA} salen de lo cargado a mano en`);
+        console.log(`  Ajustes → Facturación por mes, no de las ventas contadas una por una.\n`);
       }
       console.log('  cuenta     inscripta   facturado en la ventana   corresponde   estado');
       for (const a of ACCTS) {
