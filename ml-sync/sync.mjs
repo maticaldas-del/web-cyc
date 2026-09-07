@@ -8779,6 +8779,94 @@ async function main() {
       return;
     }
 
+    // BILLING_PROBE=pasara:<cuenta>[:<palabra,palabra,...>][:go|:borrar]
+    //
+    // "ESTE PRODUCTO LO QUIERO EN ESTA CUENTA, AUNQUE TODAVÍA NO ESTÉ PUBLICADO AHÍ." Pedido suyo
+    // del 07/09/2026 con los P47: *"puede que no haya publicacion hecha en la cuenta de ayelen de
+    // todos. se puede pasar igual? asi la proxima enviada a ayelen ya me aparecen los p47 ahi asi
+    // no me olvido de mandarlo y ahi creo la publicacion correcta"*.
+    //
+    // Es la marca CONTRARIA a `nomandar`, y hacía falta porque el reparto de "Armar caja" sólo mira
+    // las cuentas que YA tienen publicación: mudar un producto de una cuenta a otra era imposible
+    // de anotar. Sin publicación no se sugiere, sin sugerencia no entra en la caja, y sin caja no
+    // hay stock con qué estrenar la publicación.
+    //
+    // Escribe cyc/repoextra/<prodId>__<cuenta> = true. Con eso la cuenta entra al reparto igual y
+    // el renglón sale en ÁMBAR diciendo que falta crear la publicación. NO crea nada en ML, NO
+    // toca stock ni ventas: sólo hace que el producto aparezca en la caja de esa cuenta.
+    //
+    // Sin ":go" SOLO MUESTRA lo que agarró el filtro. Es la misma precaución de siempre: filtrar
+    // por palabras del título ya se llevó puesto de más dos veces (15/08 y 24/08 de 2026), y acá
+    // el riesgo es idéntico — pedir "p47" trae el "P47" y el "p47 oreja gato".
+    // Sin palabras lista lo que YA está marcado. Con ":borrar" saca la marca.
+    if (/^pasara(:|$)/.test(String(process.env.BILLING_PROBE || ''))) {
+      const _p = String(process.env.BILLING_PROBE).split(':');
+      const sidL = (x) => String(x).replace(/[^a-z0-9]/gi, '_');
+      const nm = (x) => String(x || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[^a-z0-9]+/g, ' ').trim();
+      const cta = labels.find((l) => nm(l) === nm(_p[1] || ''));
+      if (!cta) { console.log(`Usá: pasara:<cuenta>[:<palabra,palabra>][:go|:borrar]  ·  cuentas: ${labels.join(', ')}`); return; }
+      const ultimo = String(_p[_p.length - 1] || '').toLowerCase();
+      const GO = ultimo === 'go', BORRAR = ultimo === 'borrar';
+      const crudo = (GO || BORRAR) ? _p.slice(2, -1).join(':') : _p.slice(2).join(':');
+      const palabras = crudo.split(',').map((x) => (String(x).trim().startsWith('=') ? '=' + nm(x) : nm(x))).filter((x) => x && x !== '=');
+      const marcas = (await db.get('cyc/repoextra')) || {};
+      const links = (await db.get('cyc/mllinks')) || {};
+      const suf = '__' + sidL(cta);
+
+      // Qué cuentas tienen HOY publicación viva de cada producto. Es el dato que dice si la marca
+      // hace falta de verdad o si esa cuenta ya lo publica (y entonces no hay nada que marcar).
+      const pubDe = {};
+      for (const e of Object.values(links)) {
+        if (!e || !e.prodId || e.ignored) continue;
+        if ((e.status || '') === 'closed') continue;
+        if (!e.cuenta) continue;
+        (pubDe[e.prodId] = pubDe[e.prodId] || new Set()).add(e.cuenta);
+      }
+
+      if (!palabras.length) {
+        const yaM = Object.keys(marcas).filter((k) => marcas[k] === true && k.endsWith(suf));
+        console.log(`=== SE PASAN A ${cta.toUpperCase()} · ${yaM.length} producto(s) ===`);
+        for (const k of yaM) {
+          const pid = k.slice(0, k.length - suf.length);
+          const pr = products.find((x) => x.id === pid);
+          const ya = pubDe[pid] && pubDe[pid].has(cta);
+          console.log(`  · ${pr ? pr.name : '(ficha borrada) ' + pid}${ya ? ' — ✓ ya tiene publicación, la marca ya no hace falta' : ' — falta crear la publicación'}`);
+        }
+        if (!yaM.length) console.log('  (ninguno)');
+        console.log(`\nPara marcar: pasara:${cta}:<palabra,palabra>  (sin :go solo muestra)`);
+        console.log(`Para sacar la marca: pasara:${cta}:<palabra>:borrar`);
+        return;
+      }
+
+      // Un nombre con "=" adelante es EXACTO. Misma razón que en `nomandar`: "p47" agarra también
+      // el "p47 oreja gato", y puede ser lo que se quiere o no serlo. Por eso se mira la lista.
+      const elegidos = products.filter((pr) => {
+        const n = nm(pr.name);
+        return palabras.some((w) => w.startsWith('=')
+          ? n === w.slice(1).trim()
+          : (pr.id === w.replace(/ /g, '') || n === w || n.includes(w)));
+      });
+      console.log(`=== ${BORRAR ? 'SACAR LA MARCA' : 'PASAR A ' + cta.toUpperCase()} · ${elegidos.length} producto(s) ${GO || BORRAR ? '(APLICANDO)' : '(PRUEBA)'} ===`);
+      console.log(`Sólo hace que aparezcan en la caja de ${cta}. No crea publicaciones en ML ni toca stock.\n`);
+      let ok = 0;
+      for (const pr of elegidos) {
+        const ctas = [...(pubDe[pr.id] || [])];
+        const ya = ctas.includes(cta);
+        const yaEsta = marcas[pr.id + suf] === true;
+        const det = `publicado hoy en: ${ctas.length ? ctas.join(', ') : '(ninguna)'}${ya ? ` · ⚠️ ${cta} YA lo publica, no hace falta marcarlo` : ''}${yaEsta ? ' · ya estaba marcado' : ''}`;
+        if (!GO && !BORRAR) { console.log(`  · ${pr.name} — ${det}`); ok++; continue; }
+        await db.set('cyc/repoextra/' + pr.id + suf, BORRAR ? null : true);
+        const ver = await db.get('cyc/repoextra/' + pr.id + suf);
+        const bien = BORRAR ? (ver == null) : (ver === true);
+        console.log(`  ${bien ? '✓' : '✗'} ${pr.name} — ${det}`);
+        if (bien) ok++;
+      }
+      if (!elegidos.length) console.log('  (el filtro no agarró ningún producto)');
+      console.log(`\n${GO ? `${ok} marcados` : BORRAR ? `${ok} desmarcados` : `${ok} se marcarían`}.`);
+      if (!GO && !BORRAR) console.log('PRUEBA: no se escribió nada. MIRÁ LA LISTA y recién ahí agregá ":go".');
+      return;
+    }
+
     // BILLING_PROBE=nomas:<MLA,MLA,...>[:go] → "ESTO NO LO VENDEMOS MÁS".
     //
     // Marca la publicación como OCULTA en el panel (mllinks.ignored). A partir de ahí el robot la

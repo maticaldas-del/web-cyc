@@ -241,6 +241,7 @@ Los que más se usan:
 | `altanuevas[:go]` | las publicaciones nuevas que el panel todavía no conoce, con la ficha a la que se engancharían · **el robot lo hace solo cada hora**, esto es para mirarlo antes |
 | `nomas:<MLA,...>[:go]` | "esto no lo vendemos más": oculta la publicación del panel · no toca nada en ML |
 | `nomandar:<cuenta>[:<palabras>][:go]` | "este producto no se vende más en ESTA cuenta": la saca del reparto de Armar caja · nombre con `=` adelante = exacto · sin `:go` solo muestra |
+| `pasara:<cuenta>[:<palabras>][:go]` | lo contrario: "este producto lo quiero en ESTA cuenta", aunque todavía no esté publicado ahí · aparece en su Armar caja avisando en ámbar que falta crear la publicación |
 | `preguntas[:cuenta]` | las preguntas sin responder ENTERAS, con el producto de cada una |
 | `facarca` | lo facturado en la ventana que mira ARCA, por cuenta |
 | `catmono[:fecha]` | qué categoría de monotributo corresponde |
@@ -500,6 +501,37 @@ con ninguna, no hay de dónde sacar un costo y nadie lo puede inventar. Ahí va 
 **Y después de vincular va `netoweb`**, si no el producto sigue mostrando "—" en el panel.
 
 ## Cosas que ya pasaron (para no repetirlas)
+
+- **CANCELAR CERRABA LA CAJA IGUAL: UN `||` SE COMÍA LA RESPUESTA (07/09/2026).** Él lo contó así:
+  *"varias veces haciendo una caja apreto sin querer 'cerrar caja' me da dos opciones aceptar o
+  cancelar. cualquiera de las dos que elija me cierra la caja."* Era cierto y era grave: la caja
+  salía despachada, con el stock ya descontado de la oficina y SIN número de seguimiento — o sea
+  imposible de rastrear y de marcar como llegada, así que quedaba "en camino" para siempre.
+  El motivo cabe en un renglón: `const track=(prompt(...)||'').replace(...)`. Cancelar devuelve
+  `null`, el `||''` lo convertía en cadena vacía **antes** de mirarlo, y el `if(track===null)return`
+  de la línea siguiente no se cumplía nunca. Era código muerto que parecía el freno.
+  **La lección: el chequeo va ANTES del valor por defecto, nunca después.** Un `||` puesto para
+  "no romper si viene vacío" borra justo la diferencia entre *vacío* y *canceló*, que es la que
+  decidía todo. Es el mismo patrón que el `catch {}` vacío y el filtro que descarta por omisión:
+  el dato no se pierde con ruido.
+  Y de paso el **seguimiento pasó a ser obligatorio**, pedido suyo. Cancelar deja la caja intacta
+  para seguir armándola; aceptar sin número avisa y vuelve a preguntar.
+
+- **UNA CUENTA NO PODÍA RECIBIR UN PRODUCTO QUE TODAVÍA NO PUBLICABA (07/09/2026).** Pedido suyo
+  con los P47: *"puede que no haya publicacion hecha en la cuenta de ayelen de todos. se puede pasar
+  igual? asi la proxima enviada a ayelen ya me aparecen los p47 ahi asi no me olvido de mandarlo y
+  ahi creo la publicacion correcta"*.
+  No se podía, y era un huevo y una gallina: el reparto de Armar caja sólo mira las cuentas que YA
+  tienen publicación (`cuentasConPublicacion`), así que sin publicación no se sugiere, sin sugerencia
+  no entra en la caja, y sin caja no hay stock con qué estrenar la publicación. Mudar un producto de
+  una cuenta a otra era imposible de anotar en el panel.
+  Ahora está la marca contraria a `norepo`: **`cyc/repoextra/<prodId>__<cuenta>`**, que mete a esa
+  cuenta en el reparto igual. El renglón sale con un cartel **ámbar** diciendo que falta crear la
+  publicación —el aviso tiene que estar donde se lee, no en este archivo— y abajo de Armar caja hay
+  un desplegable con todo lo marcado, que se pone **verde** solo cuando la publicación ya existe:
+  sin eso la lista se volvería un cementerio de marcas viejas.
+  Se marca desde el chat con `pasara:<cuenta>:<palabras>[:go]`, mismo cuidado de siempre con los
+  filtros por palabra.
 
 - **UN SOLO TROPIEZO DE LECTURA BORRABA A UN DESTINATARIO DE TELEGRAM, EN SILENCIO (27/08/2026).**
   Su viejo dejó de recibir los resúmenes el 22/08 y se descubrió cinco días después, porque él lo

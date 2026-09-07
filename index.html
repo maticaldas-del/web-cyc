@@ -1939,6 +1939,7 @@ function startApp(){
     state.envios_full=d.envios_full||{};
     state.cajas_armando=d.cajas_armando||{};   // cajas a medio armar, una por cuenta
     state.norepo=d.norepo||{};                 // "este producto no va más a esta cuenta" (por producto×cuenta)
+    state.repoextra=d.repoextra||{};            // "mandáselo IGUAL, la publicación la hago después" (producto×cuenta)
     // HISTORIAL DE STOCK: desde cuándo cada producto×cuenta tiene mercadería (`desde`) y cuándo se
     // quedó en cero (`cero`). Lo viene anotando el robot. Sirve para medir a qué velocidad se vende
     // algo DIVIDIENDO POR LOS DÍAS QUE HUBO STOCK y no por 30 fijo (ver diasConStock).
@@ -2300,7 +2301,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='19.15';
+const APP_VERSION='19.16';
 // El problema real que esto resuelve no es curiosidad: es que el celular guarda la app y sigue
 // mostrando la de ayer sin avisar. Varias veces se revisó un cambio que ya estaba subido y no se
 // veía. Por eso, además del número, el chip avisa cuando hay una versión nueva esperando.
@@ -2627,6 +2628,27 @@ async function setNoRepo(pid,loc,val){
   await fbSet('norepo/'+invKey(pid,loc),val?true:null);
   const pr=(state.products||[]).find(x=>x.id===pid);
   await log((val?'No mandar más ':'Vuelve a reponerse ')+(pr?pr.name:pid)+' · '+loc);
+  renderOfiCaja();
+}
+// LA MARCA CONTRARIA: "MANDALE IGUAL AUNQUE TODAVÍA NO ESTÉ PUBLICADO" (07/09/2026).
+// Pedido suyo con los P47: *"puede que no haya publicacion hecha en la cuenta de ayelen de todos.
+// se puede pasar igual? asi la proxima enviada a ayelen ya me aparecen los p47 ahi asi no me olvido
+// de mandarlo y ahi creo la publicacion correcta"*.
+// El reparto sólo mira las cuentas que YA tienen publicación (cuentasConPublicacion), así que
+// mudar un producto de una cuenta a otra era imposible de anotar: hasta que no exista la
+// publicación el panel no lo sugiere, y como no lo sugiere no entra en la caja, y como no entra en
+// la caja no hay stock con qué estrenar la publicación. Un huevo y una gallina.
+// Con esta marca la cuenta entra al reparto igual y el renglón sale avisando EN ÁMBAR que falta
+// crear la publicación. No inventa ventas ni stock: como esa cuenta está en cero, cae en la regla
+// de "una cuenta en CERO siempre recibe" y le toca el piso de arranque.
+const repoExtraDe=(pid,loc)=>!!(state.repoextra||{})[invKey(pid,loc)];
+const cuentasExtra=(p)=>LOCS.filter(l=>repoExtraDe(p.id,l));
+async function setRepoExtra(pid,loc,val){
+  state.repoextra=state.repoextra||{};
+  if(val)state.repoextra[invKey(pid,loc)]=true; else delete state.repoextra[invKey(pid,loc)];
+  await fbSet('repoextra/'+invKey(pid,loc),val?true:null);
+  const pr=(state.products||[]).find(x=>x.id===pid);
+  await log((val?'Mandar igual (falta publicar) ':'Ya no se manda sin publicar ')+(pr?pr.name:pid)+' · '+loc);
   renderOfiCaja();
 }
 const invKeyV=(pid,loc,variant)=>pid+'__'+sid(loc)+'__v__'+sid(variant);
@@ -4205,6 +4227,8 @@ function renderOfiCaja(){
   const _pubVar={};
   const publicaLaCuenta=(f)=>{
     const p=f.p;
+    // Marcado "mandale igual": entra aunque todavía no exista la publicación (ver repoExtraDe).
+    if(repoExtraDe(p.id,ofiFiltroCuenta))return true;
     if((p.variantes||[]).length){
       const pv=_pubVar[p.id]||(_pubVar[p.id]=cuentasPorVariante(p));
       if(!f.variante)return Object.values(pv).some(x=>x.has(ofiFiltroCuenta));  // fila "sin variante"
@@ -4388,7 +4412,7 @@ function renderOfiCaja(){
   // Cuando no encuentra nada se dice, y con cuántos renglones había: una lista vacía sin
   // explicación se lee como "no tenés nada", que es otra cosa.
   if(_q&&!verLista.length){
-    cont.innerHTML=cartel+`<div class="empty-msg">Ningún producto de los ${vis.length} de esta lista dice "${_q}".</div>`+_noRepoPie();
+    cont.innerHTML=cartel+`<div class="empty-msg">Ningún producto de los ${vis.length} de esta lista dice "${_q}".</div>`+_noRepoPie()+_repoExtraPie();
     return;
   }
   cont.innerHTML=cartel+verLista.map(f=>{
@@ -4411,11 +4435,16 @@ function renderOfiCaja(){
       return `<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;padding:6px 0;border-top:1px solid var(--border)">
         <span class="pi-prov">${s.cuenta}</span>
         <strong style="font-family:'Syne',sans-serif;font-size:1rem;${urg?'color:var(--red)':''}">${s.mandar} u.</strong>
-        ${s.enCero?'<span style="background:rgba(239,68,68,.14);color:var(--red);border-radius:5px;padding:2px 7px;font-size:.6rem;font-weight:700">SIN STOCK · no vende</span>':''}
+        ${s.enCero&&!s.sinPub?'<span style="background:rgba(239,68,68,.14);color:var(--red);border-radius:5px;padding:2px 7px;font-size:.6rem;font-weight:700">SIN STOCK · no vende</span>':''}
+        ${s.sinPub?`<span style="background:rgba(245,158,11,.16);color:var(--amber);border-radius:5px;padding:2px 7px;font-size:.6rem;font-weight:700" title="Vos pediste que este producto pase a ${s.cuenta}, pero todavía no hay publicación hecha ahí. Mandá la mercadería en esta caja y creá la publicación: hasta que exista, esas unidades no se pueden vender.">FALTA CREAR LA PUBLICACIÓN EN ${s.cuenta.toUpperCase()}</span>`:''}
         <span style="font-size:.66rem;color:var(--muted)">le quedan ${s.enML!=null?s.enML:s.stock}${s.camino?` <span style="color:var(--amber)">+${s.camino} en camino</span>`:''} · ${dias} · ${ritmo}</span>
-        <button class="btn" style="margin-left:auto;font-size:.55rem;padding:2px 7px;background:transparent;color:var(--muted);border:1px solid var(--border2)"
-          onclick="setNoRepo('${f.p.id}','${s.cuenta}',true)"
-          title="Este producto no se vende en ${s.cuenta}: deja de sugerirse y de listarse para esa cuenta. No borra la ficha, no toca el stock ni ML, y sigue reponiéndose en las otras. Se deshace abajo de la lista.">no es de acá</button>
+        ${s.sinPub
+          ? `<button class="btn" style="margin-left:auto;font-size:.55rem;padding:2px 7px;background:transparent;color:var(--muted);border:1px solid var(--border2)"
+              onclick="setRepoExtra('${f.p.id}','${s.cuenta}',false)"
+              title="Saca la marca de 'mandale igual': ${s.cuenta} vuelve a quedar afuera hasta que tenga publicación propia.">ya no lo paso acá</button>`
+          : `<button class="btn" style="margin-left:auto;font-size:.55rem;padding:2px 7px;background:transparent;color:var(--muted);border:1px solid var(--border2)"
+              onclick="setNoRepo('${f.p.id}','${s.cuenta}',true)"
+              title="Este producto no se vende en ${s.cuenta}: deja de sugerirse y de listarse para esa cuenta. No borra la ficha, no toca el stock ni ML, y sigue reponiéndose en las otras. Se deshace abajo de la lista.">no es de acá</button>`}
       </div>`;
     }).join('');
     let pie='';
@@ -4456,7 +4485,38 @@ function renderOfiCaja(){
       </div>
       ${lineas}${pie}
     </div>`;
-  }).join('')+_noRepoPie();
+  }).join('')+_noRepoPie()+_repoExtraPie();
+}
+// EL PIE DE LOS "MANDALE IGUAL". Mismo criterio que el de arriba y por lo mismo: una marca que
+// mete renglones que no estaban tiene que verse, y tiene que poder deshacerse de un click. Va
+// aparte del otro a propósito — uno saca cosas de la lista y el otro las mete, y confundirlos sería
+// exactamente el error de leer dos listas como si fueran la misma.
+function _repoExtraPie(){
+  const marcas=Object.entries(state.repoextra||{}).filter(([,v])=>v===true);
+  if(!marcas.length)return '';
+  const filas=marcas.map(([k])=>{
+    const cta=LOCS.find(l=>k.endsWith('__'+sid(l)));
+    if(!cta)return null;
+    const pid=k.slice(0,k.length-('__'+sid(cta)).length);
+    const pr=(state.products||[]).find(x=>x.id===pid);
+    if(!pr)return null;
+    return {pid,cta,name:pr.name,yaPub:cuentasConPublicacion(pr).includes(cta)};
+  }).filter(Boolean).sort((a,b)=>a.cta.localeCompare(b.cta)||a.name.localeCompare(b.name));
+  if(!filas.length)return '';
+  const vis=ofiFiltroCuenta?filas.filter(f=>f.cta===ofiFiltroCuenta):filas;
+  if(!vis.length)return '';
+  // Las que YA tienen la publicación hecha se marcan en verde: la marca cumplió su función y se
+  // puede sacar. Sin eso la lista se llenaría de marcas viejas que ya no hacen nada.
+  const pend=vis.filter(f=>!f.yaPub).length;
+  return `<details style="margin-top:14px;background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:10px 14px">
+    <summary style="cursor:pointer;font-size:.7rem;color:var(--muted)">📌 <strong style="color:var(--text)">${vis.length}</strong> producto${vis.length===1?'':'s'} que pediste pasar${ofiFiltroCuenta?' a '+ofiFiltroCuenta:''} — ${pend?`<span style="color:var(--amber)">${pend} sin publicación todavía</span>`:'<span style="color:var(--green)">ya están todas publicadas</span>'}</summary>
+    <div style="margin-top:8px">${vis.map(f=>`<div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding:5px 0;border-top:1px solid var(--border)">
+      <span class="pi-prov">${f.cta}</span>
+      <span style="flex:1;min-width:150px;font-size:.72rem">${f.name}</span>
+      <span style="font-size:.6rem;color:${f.yaPub?'var(--green)':'var(--amber)'}">${f.yaPub?'✓ ya publicado':'falta crear la publicación'}</span>
+      <button class="btn" style="font-size:.58rem;padding:3px 8px" onclick="setRepoExtra('${f.pid}','${f.cta}',false)" title="Sacar la marca: ${f.cta} vuelve a depender de tener publicación propia">↩ sacar la marca</button>
+    </div>`).join('')}</div>
+  </details>`;
 }
 // EL PIE DE LOS MARCADOS. Va sí o sí: una lista que esconde renglones sin decirlo es una lista que
 // miente. Acá se ve qué se sacó y se deshace de un click.
@@ -4671,8 +4731,25 @@ async function cerrarCaja(cuenta){
   if(recortes.length&&!confirm(`OJO: hay ${recortes.length} renglón(es) con menos mercadería de la que cargaste. Seguro se fue en otra caja.\n\n${recortes.join('\n')}\n\nSi seguís, la caja sale con lo que hay de verdad.\n¿Cerrar igual?`))return;
   if(!items.length){toast('La caja está vacía','err');return;}
   const uTot=items.reduce((a,x)=>a+x.u,0);
-  const track=(prompt(`Caja para ${cuenta} · ${uTot} unidades en ${items.length} renglón(es).\n\nNúmero de seguimiento (podés dejarlo vacío y ponerlo después):`,'')||'').replace(/[^0-9]/g,'');
-  if(track===null)return;
+  // SIN NÚMERO DE SEGUIMIENTO NO SE CIERRA, Y CANCELAR ES CANCELAR (07/09/2026).
+  // Él lo reportó así: *"varias veces haciendo una caja apreto sin querer 'cerrar caja' me da dos
+  // opciones aceptar o cancelar. cualquiera de las dos que elija me cierra la caja"*. Y tenía razón:
+  // el código anterior hacía `(prompt(...)||'')`, o sea que el `null` que devuelve Cancelar se
+  // convertía en cadena vacía ANTES de mirarlo. El `if(track===null)` de abajo no se cumplía nunca
+  // — era código muerto — así que Cancelar despachaba la caja igual, sin seguimiento y con el
+  // stock ya descontado de la oficina. Un roce del dedo tiraba abajo el trabajo de armarla.
+  // LA LECCIÓN: `||` con un valor que puede ser vacío se come la respuesta que estabas por
+  // chequear. El chequeo va ANTES de cualquier valor por defecto, no después.
+  // Y el número pasa a ser obligatorio, pedido suyo: una caja despachada sin seguimiento no se
+  // puede rastrear ni marcar como llegada, así que queda en camino para siempre.
+  let track='';
+  for(;;){
+    const crudo=prompt(`Caja para ${cuenta} · ${uTot} unidades en ${items.length} renglón(es).\n\nNúmero de seguimiento (obligatorio):`,track);
+    if(crudo===null)return;                       // Cancelar: la caja queda como estaba, sin tocar nada
+    track=String(crudo).replace(/[^0-9]/g,'');
+    if(track)break;
+    alert('La caja no se cierra sin número de seguimiento.\n\nPonelo, o tocá Cancelar para seguir armándola.');
+  }
   const hoy=new Date().toISOString().slice(0,10);
   const id='env'+Date.now();
   const e={fecha:hoy,cuenta,correo:'Andreani',sucursal:'',cajas:1,seguimientos:track?[track]:[],obs:'',ts:Date.now(),
@@ -4701,7 +4778,7 @@ async function cerrarCaja(cuenta){
   }
   await _guardarCajaArmando(cuenta,{});   // la caja se cerró: deja de estar a medio armar
   await log('Caja despachada a '+cuenta+': '+uTot+' u.'+(track?' · '+track:''));
-  toast(track?'Caja cerrada ✓ · está en "En camino"':'Caja cerrada ✓ · pegale el seguimiento en "En camino"',5000);
+  toast('Caja cerrada ✓ · está en "En camino"',5000);
   syncOfiMati();renderOfiCaja();renderOfiContar();renderCajasEnCamino();
 }
 
@@ -7390,7 +7467,8 @@ function _repartoVariantes(p,hayTotal,tr){
     const hay=getQV(p.id,OFI,va);
     repartido+=hay;
     if(hay<=0)continue;
-    const publicadas=[...(pubV[va]||[])].filter(l=>!noRepoDe(p.id,l));
+    const reales=[...(pubV[va]||[])];
+    const publicadas=[...new Set([...reales,...cuentasExtra(p)])].filter(l=>!noRepoDe(p.id,l));
     const cand=publicadas.map(l=>{
       const vMes=(ventasV[l]||{})[va]||0;
       // El historial de stock es por producto×cuenta, no por variante: se usa como aproximación.
@@ -7409,7 +7487,7 @@ function _repartoVariantes(p,hayTotal,tr){
       if(vMes<=0&&stock<=0){hist=ventasHistoricas(p,l,va);if(hist)vDia=hist.vDia;}
       const dias=vDia>0?stock/vDia:(stock>0?999:null);
       const objetivo=Math.ceil(vDia*REPO_DIAS_TOTAL);
-      return{cuenta:l,vMes,vDia,dConS,stock,enML,camino,dias,hist,falta:Math.max(0,objetivo-stock)};
+      return{cuenta:l,vMes,vDia,dConS,stock,enML,camino,dias,hist,sinPub:!reales.includes(l),falta:Math.max(0,objetivo-stock)};
     }).sort((a,b)=>{
       const da=a.dias==null?9999:a.dias, db=b.dias==null?9999:b.dias;
       if(da!==db)return da-db;
@@ -7428,7 +7506,7 @@ function _repartoVariantes(p,hayTotal,tr){
       sug.push({...c,mandar,enCero:c.stock<=0});
     }
     filas.push({p,variante:va,hay,sug,sobra:quedan,
-      sinPublicar:publicadas.length===0,
+      sinPublicar:reales.length===0,
       nadieNecesita:sug.length===0&&publicadas.length>0});
   }
   // Lo contado sin aroma (la casilla del producto quedó con más que la suma de sus variantes):
@@ -7446,7 +7524,10 @@ function repartoOficina(){
     if(hay<=0)return;
     if((p.variantes||[]).length){ filas.push(..._repartoVariantes(p,hay,tr)); return; }
     const ventas=ventasPorCuenta(p);
-    const publicadas=cuentasConPublicacion(p).filter(l=>!noRepoDe(p.id,l));
+    const reales=cuentasConPublicacion(p);
+    // Se suman las cuentas marcadas "mandale igual": todavía no tienen la publicación hecha pero
+    // él quiere que el producto le aparezca en la caja para acordarse de mandarlo y publicarlo.
+    const publicadas=[...new Set([...reales,...cuentasExtra(p)])].filter(l=>!noRepoDe(p.id,l));
     const cand=publicadas.map(l=>{
       const dConS=diasConStock(p.id,l);
       const enML=getQ(p.id,l);
@@ -7457,7 +7538,7 @@ function repartoOficina(){
       if((ventas[l]||0)<=0&&stock<=0){hist=ventasHistoricas(p,l,'');if(hist)vDia=hist.vDia;}
       const dias=vDia>0?stock/vDia:(stock>0?999:null);   // sin ventas no se puede estimar
       const objetivo=Math.ceil(vDia*REPO_DIAS_TOTAL);
-      return{cuenta:l,vMes:ventas[l]||0,vDia,dConS,stock,enML,camino,dias,hist,falta:Math.max(0,objetivo-stock)};
+      return{cuenta:l,vMes:ventas[l]||0,vDia,dConS,stock,enML,camino,dias,hist,sinPub:!reales.includes(l),falta:Math.max(0,objetivo-stock)};
     }).sort((a,b)=>{
       // Primero a la que se le acaba antes. Las que no venden van al final.
       const da=a.dias==null?9999:a.dias, db=b.dias==null?9999:b.dias;
@@ -7479,7 +7560,7 @@ function repartoOficina(){
       sug.push({...c,mandar,enCero:c.stock<=0});
     }
     filas.push({p,hay,sug,sobra:quedan,
-      sinPublicar:publicadas.length===0,
+      sinPublicar:reales.length===0,
       nadieNecesita:sug.length===0&&publicadas.length>0});
   });
   // Primero lo que más urge mandar: la cuenta más apretada de cada producto.
