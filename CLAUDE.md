@@ -1112,6 +1112,16 @@ siempre. Los verificadores tienen que llamar a la misma función que el código 
 
 Lo que quedó abierto. Borrá de acá lo que se vaya cerrando.
 
+- **DOS DISCOS NUEVOS SIN COSTO DE COMPRA (07/09/2026).** Él pasó dos publicaciones nuevas y ya
+  quedaron vinculadas a su ficha: `MLA2067443797` → **WD Green SSD 480GB** (`p1788743899629`) y
+  `MLA3920081802` → **Seagate 500GB Expansion** (`p1788743923415`). Las dos son de Matías y las dos
+  están **pausadas**.
+  **Les falta el costo: la ficha tiene $0.** Por eso `unapub` devuelve **492%** y **489%** de margen
+  — no es que sean un negocio, es que están dividiendo por cero. Mientras siga así van a salir
+  arriba de todo en Rotación de Stock como si fueran un éxito. Se corrige con
+  `poncosto:p1788743899629|<pesos>|go` y `poncosto:p1788743923415|<pesos>|go`, y después `netoweb`.
+  El "Depósito: 1 u." que muestran no es mercadería (regla del 20/08): stock real, cero.
+
 - **REBARBADOR MANUAL GIRATORIO: RESUELTO el 29/08/2026.** Él pasó el costo: **$1.505**. Se cargó con
   `poncosto:p1787783558381|1505|go` y quedó releído: US$ 0,98 de mercadería · full US$ 1,01 = $1.550
   (envío US$ 0,03 · 0% de reclamos).
