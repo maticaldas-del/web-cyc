@@ -8690,6 +8690,126 @@ async function main() {
       return;
     }
 
+    // BILLING_PROBE=quefalta[:días] → LAS PUBLICACIONES QUE SE APAGARON, CRUZADAS CONTRA LO QUE YA TENÉS.
+    //
+    // Pedido suyo del 07/09/2026. El chequeo dice "79 sin stock → $272.716/día", pero no dice si esa
+    // mercadería HAY QUE COMPRARLA o si ya la tenés en otro lado. Son dos problemas distintos con
+    // remedios opuestos: uno se arregla con el proveedor y el otro moviendo lo que ya está pago.
+    // Él lo planteó así: *"lo que tengo en la oficina es mercaderia que ya hay o esta llegando a
+    // full y que cubre minimo 1 mes. no vale la pena enviar."* Justamente por eso hace falta el
+    // cruce: si tiene razón, ninguna de las 79 se cubre sola y TODAS hay que comprarlas.
+    //
+    // El criterio de "se apagó" es EL MISMO del chequeo, a propósito: pausada en ML con sub_status
+    // out_of_stock (no pausada a mano, no pausada por ML) y con ventas en la ventana. Si acá se
+    // escribiera otro criterio, las dos pantallas darían números distintos del mismo día.
+    // Solo LEE.
+    if (/^quefalta(:|$)/.test(String(process.env.BILLING_PROBE || ''))) {
+      const DIAS = parseFloat(String(process.env.BILLING_PROBE).split(':')[1]) || 30;
+      const OFI = 'Oficina Mati';                     // la misma clave que usa la web
+      const sidL = (x) => String(x).replace(/[^a-z0-9]/gi, '_');
+      const links = (await db.get('cyc/mllinks')) || {};
+      const inv = (await db.get('cyc/inventory')) || {};
+      const vp = (await db.get('cyc/ventaprod')) || {};
+      const envios = (await db.get('cyc/envios_full')) || {};
+      const pById = {}; for (const pr of products) pById[pr.id] = pr;
+
+      // Ventas por publicación en la ventana, igual que el chequeo.
+      const desde = Date.now() - DIAS * 864e5;
+      const ventaMla = {};
+      for (const [k, ents] of Object.entries(vp)) {
+        if (new Date(k.replace(/_/g, '-') + 'T00:00:00-03:00').getTime() < desde) continue;
+        for (const v of Object.values(ents || {})) {
+          if (!v || v.cancelada || !v.mla) continue;
+          const b = ventaMla[v.mla] = ventaMla[v.mla] || { total: 0, qty: 0 };
+          b.total += v.total || 0; b.qty += v.qty || 1;
+        }
+      }
+
+      // Lo que va EN CAMINO a Full, por producto y cuenta (cajas cerradas y todavía no recibidas).
+      const camino = {};
+      for (const e of Object.values(envios)) {
+        if (!e || !e.cuenta) continue;
+        for (const c of (e.cajasDet || [])) {
+          if (!c || c.recibida) continue;
+          for (const it of (c.items || [])) {
+            if (!it || !it.prodId) continue;
+            const k = it.prodId + '__' + sidL(e.cuenta);
+            camino[k] = (camino[k] || 0) + (it.u || 0);
+          }
+        }
+      }
+
+      console.log(`=== LO QUE SE APAGÓ, Y SI YA LO TENÉS · ventana ${DIAS} días ===`);
+      console.log(`Pausadas en ML por falta de stock que SÍ vendían. Solo lectura.\n`);
+
+      const filas = [];
+      for (const label of labels) {
+        const acc = accounts[label];
+        if (!acc?.refresh_token || !acc.seller_id) { console.log(`(${label}: sin token)`); continue; }
+        let t; try { t = await mlRefresh(ML_CLIENT_ID, ML_CLIENT_SECRET, acc.refresh_token); }
+        catch { console.log(`(${label}: no pude renovar token)`); continue; }
+        await db.patch('mlapi/tokens/' + label, { refresh_token: t.refresh_token, updated_ts: Date.now() });
+        const ids = Object.entries(links)
+          .filter(([m, e]) => e && e.cuenta === label && !e.ignored && /^MLA/i.test(m)).map(([m]) => m);
+        for (let k = 0; k < ids.length; k += 20) {
+          let arr;
+          try { arr = await mlGet('/items?ids=' + ids.slice(k, k + 20).join(',') + '&attributes=id,status,sub_status,title', t.access_token); }
+          catch { continue; }
+          for (const row of (arr || [])) {
+            const b = row.body || {};
+            if (!b.id || b.error || typeof b.status === 'number') continue;
+            if (b.status !== 'paused') continue;
+            const sub = [].concat(b.sub_status || []).filter(Boolean);
+            const DE_ELLOS = new Set(['out_of_stock', 'paused_by_seller']);
+            if (sub.filter((x) => !DE_ELLOS.has(x)).length) continue;   // la pausó ML: otro problema
+            if (!sub.includes('out_of_stock')) continue;                // la pausaron ellos a mano
+            const vta = ventaMla[b.id];
+            if (!vta || !(vta.total > 0)) continue;                     // sin stock de algo que no vendía no cuesta nada
+            const link = links[b.id] || {};
+            const pid = link.prodId || null;
+            const nom = (link.title || b.title || b.id).slice(0, 40);
+            const ofi = pid ? (parseInt(inv[pid + '__' + sidL(OFI)]) || 0) : 0;
+            const enOtras = {}; let otras = 0, viaje = 0;
+            if (pid) for (const l2 of labels) {
+              const q = Math.max(0, parseInt(inv[pid + '__' + sidL(l2)]) || 0);
+              const c = camino[pid + '__' + sidL(l2)] || 0;
+              viaje += c;
+              if (l2 !== label && q > 0) { enOtras[l2] = q; otras += q; }
+            }
+            filas.push({ cta: label, mla: b.id, nom, pid, porDia: vta.total / DIAS, ofi, otras, enOtras, viaje });
+          }
+        }
+      }
+      filas.sort((a, b) => b.porDia - a.porDia);
+
+      // El veredicto es lo único que importa acá: separa "moverlo" de "comprarlo".
+      const cubre = (f) => (f.ofi + f.otras + f.viaje) > 0;
+      const conStock = filas.filter(cubre), sinStock = filas.filter((f) => !cubre(f));
+      const $ = (a) => money(Math.round(a.reduce((s, x) => s + x.porDia, 0)));
+
+      console.log(`── YA LA TENÉS · ${conStock.length} · ${$(conStock)}/día ──`);
+      console.log(`   No hay que comprar nada: está en la oficina, en otra cuenta o en camino.\n`);
+      for (const f of conStock) {
+        const donde = [f.ofi ? `oficina ${f.ofi}` : '', f.viaje ? `en camino ${f.viaje}` : '',
+          ...Object.entries(f.enOtras).map(([l, q]) => `${l} ${q}`)].filter(Boolean).join(' · ');
+        console.log(`   ${f.cta.padEnd(9)} ${money(Math.round(f.porDia)).padStart(11)}/día · ${f.nom.padEnd(41)} → ${donde}`);
+      }
+      if (!conStock.length) console.log('   (ninguna)');
+
+      console.log(`\n── HAY QUE COMPRARLA · ${sinStock.length} · ${$(sinStock)}/día ──`);
+      console.log(`   Cero unidades en las cuatro cuentas, cero en la oficina y nada en camino.\n`);
+      for (const f of sinStock.slice(0, 40)) {
+        console.log(`   ${f.cta.padEnd(9)} ${money(Math.round(f.porDia)).padStart(11)}/día · ${f.nom}${f.pid ? '' : '  ⚠️ sin ficha de producto: no puedo mirar el stock'}`);
+      }
+      if (sinStock.length > 40) console.log(`   … y ${sinStock.length - 40} más`);
+      if (!sinStock.length) console.log('   (ninguna)');
+
+      const sinFicha = filas.filter((f) => !f.pid).length;
+      if (sinFicha) console.log(`\n⚠️ ${sinFicha} sin ficha de producto: de esas NO puedo saber si las tenés. Cuentan como "hay que comprar" sin serlo necesariamente.`);
+      console.log(`\nTOTAL ${filas.length} publicaciones apagadas · ${$(filas)}/día`);
+      return;
+    }
+
     // BILLING_PROBE=nomandar:<cuenta>[:<palabra,palabra,...>][:go|:borrar]
     //
     // "ESTE PRODUCTO NO SE VENDE MÁS EN ESTA CUENTA". Pedido suyo del 24/08/2026 mirando Armar
