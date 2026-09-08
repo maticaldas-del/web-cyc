@@ -973,6 +973,17 @@ con ninguna, no hay de dónde sacar un costo y nadie lo puede inventar. Ahí va 
     de aplicar.**
   Marcados en Adriana el 24/08/2026: 32 productos. La **balanza equipaje tiene 2 u. adentro del
   Full de Adriana** y se van a seguir vendiendo hasta que se acaben — marcar no retira stock.
+  **AMPLIADO EL 08/09/2026: la marca también saca el producto de "Contar lo que hay".** Pedido
+  suyo: *"todos los productos que marco como que no van mas a esa cuenta quiero que salga de contar
+  lo que hay. sino se me hace lio"*. Al filtrar por Adriana seguían apareciendo los 32.
+  **"Todas" los sigue mostrando a propósito** y el cartel de arriba dice cuántos quedaron afuera:
+  lo que se anota es lo que hay EN CASA, uno solo para las cuatro cuentas, así que esconder el
+  renglón no mueve ninguna unidad — pero si un producto quedara marcado en las cuatro y no
+  existiera esa salida, no habría dónde contarlo.
+  **A dónde va esto:** norma suya del mismo día — *"el objetivo final es que cada cuenta venda su
+  mercaderia unica. que NUNCA se cruce mercaderia entre cuentas (salvo excepciones como paulvic…
+  eso lo resuelvo yo)"*. Y en la misma frase el freno: *"pero no hagamos ningun lio por ahora"*. O
+  sea: la separación total es el rumbo, no el pedido de hoy. **No adelantarse.**
 
 - **EL COLOR ES UNA SEÑAL, NO UN ADORNO — Y LO IMPORTANTE VA PRIMERO.** El 26/08/2026 él marcó
   Finanzas: *"lo más importante de esa página es el total y se ve menos que lo que cobramos con mi
