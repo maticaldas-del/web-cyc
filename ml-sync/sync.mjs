@@ -6498,12 +6498,23 @@ async function main() {
       const _fvRaw = String(process.env.BILLING_PROBE).slice('fijarvar:'.length);
       const _fvPart = _fvRaw.split('|').map((s) => s.trim()).filter(Boolean);
       const APLICAR = _fvPart.some((s) => s.toLowerCase() === 'go');
+      // El nombre de la variante puede venir con la FICHA atrás de un `@`. Hace falta porque el
+      // mismo aroma vive en varias fichas: "Love Spell" está en Victoria's Secret, en la BLISS y en
+      // la STARLIT, y ahí el comando no adivina (y hace bien en no adivinar). Sin esto había que
+      // correr `vincular` una por una antes, o sea una corrida entera por publicación.
       const pares = _fvPart.filter((s) => s.toLowerCase() !== 'go').map((s) => {
         const i = s.indexOf('=');
-        return { mla: (i < 0 ? s : s.slice(0, i)).trim().toUpperCase(), va: (i < 0 ? '' : s.slice(i + 1)).trim() };
+        const crudo = (i < 0 ? '' : s.slice(i + 1)).trim();
+        const j = crudo.indexOf('@');
+        return {
+          mla: (i < 0 ? s : s.slice(0, i)).trim().toUpperCase(),
+          va: (j < 0 ? crudo : crudo.slice(0, j)).trim(),
+          ficha: (j < 0 ? '' : crudo.slice(j + 1)).trim(),
+        };
       });
       if (!pares.length || pares.some((x) => !/^MLA\d+$/.test(x.mla) || !x.va)) {
         console.log('Usá: fijarvar:MLA3233166506=Azul Marino|MLA3233166504=Beige Oscuro[|go]');
+        console.log('     Si el aroma está en varias fichas, decí cuál: fijarvar:MLA123=Love Spell@STARLIT');
         return;
       }
       const linksF = (await db.get('cyc/mllinks')) || {};
@@ -6515,17 +6526,19 @@ async function main() {
         const actual = e.prodId ? products.find((p) => p.id === e.prodId) : null;
         // ¿Qué producto tiene esa variante? Primero el suyo; si no, se busca.
         const tiene = (p) => (p.variantes || []).some((v) => norm(v) === norm(x.va));
-        let destino = actual && tiene(actual) ? actual : null;
+        const esLaFicha = (p) => !x.ficha || norm(p.name || '').includes(norm(x.ficha));
+        // Si nombró la ficha, manda ella: no se puede quedar con la que ya tenía puesta.
+        let destino = (!x.ficha && actual && tiene(actual)) ? actual : null;
         let ojo = '';
         if (!destino) {
-          const cand = products.filter(tiene);
+          const cand = products.filter((p) => tiene(p) && esLaFicha(p));
           if (!cand.length) {
-            console.log(`  ✗ ${x.mla} · ningún producto tiene la variante "${x.va}". Fijate cómo está escrita en la ficha.`);
+            console.log(`  ✗ ${x.mla} · ningún producto tiene la variante "${x.va}"${x.ficha ? ` en una ficha que diga "${x.ficha}"` : ''}. Fijate cómo está escrita en la ficha.`);
             continue;
           }
           if (cand.length > 1) {
             console.log(`  ✗ ${x.mla} · "${x.va}" existe en ${cand.length} productos: ${cand.map((p) => p.name).join(' · ')}.`);
-            console.log(`       No adivino: vinculá primero con vincular:${x.mla}=<id>:go y volvé a correr esto.`);
+            console.log(`       No adivino: decime cuál con ${x.mla}=${x.va}@<parte del nombre de la ficha>`);
             continue;
           }
           destino = cand[0];
