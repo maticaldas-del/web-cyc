@@ -222,8 +222,9 @@ Los que más se usan:
 | `poncosto:<palabra\|id>\|<pesos>[\|go]` | corrige el costo de un producto (lo mismo que el campo de la ficha) |
 | `ponmedida:<busca>\|<L>x<A>x<H>\|<peso>[;otro][;go]` | carga a mano el paquete (medidas y peso) de lo que ML no informa · sin eso el producto no entra en las barras de Armar caja |
 | `vincular:<MLA>=<palabra\|id>[:go]` | pega una publicación a un producto y la saca de oculta |
+| `buscarpub:<texto>` | **encontrar el MLA cuando no lo sabés**: busca el texto en el título, el SKU y los códigos de las 4 cuentas, y dice a qué ficha está vinculada hoy cada una |
 | `nuevoprod:<nombre>[\|costo=][\|mla=][\|go]` | da de alta un producto nuevo y lo vincula · avisa si ya hay una ficha parecida |
-| `fijarvar:<MLA>=<variante>\|…[\|go]` | dice a mano de qué color/aroma es cada publicación cuando el título de ML no lo nombra igual que la ficha |
+| `fijarvar:<MLA>=<variante>[@<ficha>]\|…[\|go]` | dice a mano de qué color/aroma es cada publicación cuando el título de ML no lo nombra igual que la ficha · si el aroma vive en varias fichas, se aclara con `@` · **vincula y fija la variante de una, y acepta varias por vez** |
 | `pausar:<busca>[!<saca>][:go]` | pausa varias de una · palabras con `+` · **mirar la lista antes** |
 | `cargargasto:<fecha>\|<monto>\|<cat>\|<desc>[\|prov=][\|fact=][\|cae=][\|go]` | carga un gasto con su comprobante |
 | `subirrecibidas[:go]` | sube las compras de ARCA a Facturas → Recibidas (lee `ml-sync/recibidas.json`) |
@@ -527,6 +528,29 @@ con ninguna, no hay de dónde sacar un costo y nadie lo puede inventar. Ahí va 
   **La lección: cuando dos renglones de la MISMA compra dan números opuestos, el problema no está en
   ninguno de los dos — está en cómo se repartió la plata entre ellos.** Los renglones siguen siendo
   uno por producto a propósito: cada uno tiene su costo y su ficha, lo que se junta es la plata.
+
+- **11 PUBLICACIONES CON STOCK EN FULL QUE EL PANEL NO SABÍA QUE EXISTÍAN (08/09/2026).** Él estaba
+  armando una caja y no le aparecían: *"necesito armar las cajas y no aparecen los productos"*. Eran
+  perfumes y body splash de Victoria's Secret, el Halloween Kiss Sexy y el Ted Lapidus Rumba, todos
+  de Adriana, **pausados** y con stock adentro de Full. En Armar caja salían como
+  *"sin publicar en ninguna cuenta"*, que es lo que dice el panel cuando ninguna publicación cae en
+  esa variante — y sin publicación no entran en el reparto, así que no hay forma de mandarles nada.
+  Las publicaciones existían: lo que faltaba era la vinculación.
+  **Dos cosas que costaron encontrarlas y conviene recordar:**
+  · **El "Código ML" que muestra la pantalla de enviar a Full NO es el MLA.** Es el código del
+    producto adentro de Full. Con eso no se puede vincular nada; el MLA sale de `buscarpub:<texto>`.
+  · **ML traduce los títulos y quedan irreconocibles.** "Electric Mango" figura como *"Salsa
+    Corporal Eléctrica Con Mango De Victoria Secret"* y el Melon Pear como *"Colección Archives De
+    Pear Glacé"*. Buscar por el nombre que él usa no encuentra nada: hay que buscar por una palabra
+    que sobreviva a la traducción (`mango`, `kiss`, `splash`).
+  Y apareció un tope real: **`fijarvar` se negaba a adivinar** porque "Love Spell", "Bare Vanilla" y
+  "Pure Seduction" existen en TRES fichas de VS a la vez (Victoria's Secret · BLISS · STARLIT). Se
+  negaba bien —adivinar ahí ensucia el stock de dos fichas y no se nota— pero la única salida era
+  correr `vincular` una por una, o sea una corrida entera de GitHub por publicación. Ahora la
+  variante puede llevar la ficha atrás de un `@`: `fijarvar:MLA123=Love Spell@STARLIT`, y cuando se
+  nombra la ficha manda ella.
+  **La lección: cuando un comando se niega a adivinar tiene razón, pero si la salida que ofrece es
+  más cara que el problema, la que hay que arreglar es la salida.**
 
 - **CANCELAR CERRABA LA CAJA IGUAL: UN `||` SE COMÍA LA RESPUESTA (07/09/2026).** Él lo contó así:
   *"varias veces haciendo una caja apreto sin querer 'cerrar caja' me da dos opciones aceptar o
@@ -1195,16 +1219,11 @@ Lo que quedó abierto. Borrá de acá lo que se vaya cerrando.
   **Lo que falta es de él:** reactivar la publicación, fotos PROPIAS (las del screenshot son de otro
   vendedor) y el stock real.
 
-- **PREGUNTARLE POR LAS FACTURAS DE LOS PRODUCTOS "IMITABLES".** Él las tiene y las va a pasar;
-  pidió expresamente que se le haga acordar. **Sacarlo en cada chat hasta que las mande.** ML le
-  exige factura de compra de todo lo que puede ser falsificado —Victoria's Secret, pendrives y
-  tarjetas de memoria, y todo lo de marca— y sin esa factura te frena la publicación (es lo que
-  pasó con el "Bare Vanilla") o te da el reclamo en contra (el "adulterado" del 11/08). Cuando
-  lleguen: cruzar contra el catálogo y decirle **de qué productos FALTA** la factura. Las de ARCA
-  que ya están en `cyc/facturas_recibidas` sirven de punto de partida, pero ahí falta 09/2025 a
-  12/2025 y no todas las compras salieron con comprobante. y los Excel de
-  compras de ARCA (Mis Comprobantes → Recibidos, una cuenta por vez). Cuando lleguen: vincular con
-  `huerfanos` de guía, y armar el cuadro de compras con factura por proveedor.
+- **LAS FACTURAS DE LOS PRODUCTOS "IMITABLES" YA LAS PRESENTÓ (08/09/2026).** Textual: *"ya
+  presente todas las facturas. listo con eso."* **NO hace falta seguir sacándolo en cada chat** —
+  durante semanas la nota decía que había que recordárselo y eso ya está cumplido.
+  Lo que queda es de ML: el "Bare Vanilla" (`MLA3546445862`) y los dos Termómetros de heladera
+  siguen en revisión hasta que ML acepte los papeles.
 - **NO son fichas repetidas: son 10 productos SIN NINGUNA publicación en ML.** El 16/08/2026 le
   pregunté con cuál ficha se quedaba de los tres pares (Batidora / Filtro / Separador) y contestó
   **"son 6 productos diferentes"**. Tenía razón y la nota vieja de acá estaba mal: el parecido de
