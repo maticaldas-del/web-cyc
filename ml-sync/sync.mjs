@@ -17109,6 +17109,47 @@ async function main() {
       orders = await fetchOrders(acc.seller_id, t.access_token, fromISO);
     }
 
+    // ── UNA COMPRA CON CARRITO SON VARIAS ÓRDENES Y UN SOLO NÚMERO DE VENTA ──
+    // Cuando el comprador se lleva dos productos juntos, ML arma una ORDEN por producto y les pone
+    // el mismo nº de paquete (pack_id) — el número que él ve en la web. El problema es que los
+    // costos del paquete NO se reparten: ML le carga el envío y las cuotas a UNA sola de las
+    // órdenes. Los dos Ferraris del 08/09/2026 (venta #2000014927347373) lo mostraron así:
+    //   · Negro $61.870 → neto $52.574 (ML se quedó 15%)  → el panel decía +39% de ganancia
+    //   · Rojo  $64.550 → neto $31.622 (ML se quedó 51%)  → el panel decía −1%, o sea perdiendo
+    // El Rojo cargaba SOLO los $14.580 del envío de los dos y los $8.649 de las cuotas. Juntos
+    // están perfectos (ML se quedó 33,4%, lo normal), pero repartidos así los dos números mienten:
+    // uno parece un éxito y el otro parece una pérdida, y ninguno de los dos es cierto.
+    // Es grave y no sólo cosmético: un producto que aparece "perdiendo" arrastra su margen para
+    // abajo y puede disparar una suba de precio que no hace falta.
+    // Por eso el neto y los cargos se juntan a nivel PAQUETE y se reparten entre TODOS los
+    // productos en proporción a lo que vale cada uno. Los renglones siguen siendo uno por producto
+    // (cada uno tiene su costo y su ficha), lo que se junta es la plata.
+    const packOrders = new Map();
+    for (const o of orders) {
+      if (!o.pack_id) continue;
+      const pk = String(o.pack_id);
+      if (!packOrders.has(pk)) packOrders.set(pk, []);
+      packOrders.get(pk).push(o);
+    }
+    const packPlata = new Map(); // pack_id -> { net, fee, gross }
+    for (const [pk, list] of packOrders) {
+      if (list.length < 2) continue;   // paquete de un solo producto: no hay nada que repartir
+      let net = 0, fee = 0, gross = 0, ok = true;
+      for (const o of list) {
+        const fo = {};
+        const n = await orderNet(o, t.access_token, fo);
+        // Si una sola de las órdenes todavía no está liquidada, el reparto saldría torcido:
+        // mejor no juntar nada y que cada una use su propia cuenta (se corrige en la próxima vuelta).
+        if (n == null) { ok = false; break; }
+        net += n; fee += fo.mlfee || 0;
+        gross += (o.order_items || []).reduce((s, it) => s + (it.unit_price || 0) * (it.quantity || 0), 0);
+      }
+      if (ok && gross > 0) {
+        packPlata.set(pk, { net, fee, gross });
+        if (!DRY) console.log(`  · venta #${pk}: ${list.length} órdenes en un mismo paquete → el neto ($${Math.round(net)}) se reparte entre los ${list.length} productos`);
+      }
+    }
+
     // 3) transformar cada venta → entradas ventaprod (solo las que enganchan)
     for (const o of orders) {
       const num = String(o.id);                       // ID interno de la orden (para dedup/cancelaciones)
@@ -17118,6 +17159,9 @@ async function main() {
       const saleId = 's' + o.id;
       const items = o.order_items || [];
       const orderGross = items.reduce((s, it) => s + (it.unit_price || 0) * (it.quantity || 0), 0);
+      // Si esta orden es parte de un carrito, la plata y el denominador son los del PAQUETE entero.
+      const pack = o.pack_id ? packPlata.get(String(o.pack_id)) : null;
+      const repartoGross = pack ? pack.gross : orderGross;
       let orderNetAmt = null, orderFeeAmt = 0, netFetched = false; // neto y cargos ML del pago (una vez por orden)
       let i = 0;
       for (const it of items) {
@@ -17162,16 +17206,17 @@ async function main() {
         // neto real del pago (una sola vez por orden)
         if (!netFetched) {
           const fo = {};
-          orderNetAmt = await orderNet(o, t.access_token, fo);
-          orderFeeAmt = fo.mlfee || 0; netFetched = true;
+          if (pack) { orderNetAmt = pack.net; orderFeeAmt = pack.fee; } // ya sumado arriba para todo el paquete
+          else { orderNetAmt = await orderNet(o, t.access_token, fo); orderFeeAmt = fo.mlfee || 0; }
+          netFetched = true;
           // Si ML todavía no descontó lo suyo, se avisa: la venta queda con el neto estimado y se
           // corrige sola en cuanto el pago se liquide (la ventana de sincronización son 2 días).
           if (orderNetAmt == null && !DRY) console.log(`  · venta ${o.id}: ML todavía no descontó su parte, uso el neto estimado (se corrige en la próxima vuelta)`);
         }
-        const neto = (orderNetAmt != null && orderGross > 0)
-          ? Math.round(orderNetAmt * (itemGross / orderGross))
+        const neto = (orderNetAmt != null && repartoGross > 0)
+          ? Math.round(orderNetAmt * (itemGross / repartoGross))
           : netoFallback(itemGross, it.sale_fee, qty);
-        const mlfee = (orderFeeAmt && orderGross > 0) ? Math.round(orderFeeAmt * (itemGross / orderGross)) : 0; // cargo ML por venta (para el almacenamiento mensual)
+        const mlfee = (orderFeeAmt && repartoGross > 0) ? Math.round(orderFeeAmt * (itemGross / repartoGross)) : 0; // cargo ML por venta (para el almacenamiento mensual)
         const { costo, costBaseUSD, shipUSD } = p ? costoPesos(p, qty, tc) : { costo: 0, costBaseUSD: 0, shipUSD: 0 };
         const id = 'v' + o.id + '_' + idx;
         const obj = {

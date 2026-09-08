@@ -2301,7 +2301,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='19.16';
+const APP_VERSION='19.17';
 // El problema real que esto resuelve no es curiosidad: es que el celular guarda la app y sigue
 // mostrando la de ayer sin avisar. Varias veces se revisó un cambio que ya estaba subido y no se
 // veía. Por eso, además del número, el chip avisa cuando hay una versión nueva esperando.
@@ -6610,6 +6610,16 @@ async function saveVenta(){
   await log((cancelada?'Venta CANCELADA':'Venta')+' ('+cuenta+')'+( numVenta?' #'+numVenta:'')+': '+nombres.join(', '));
   vpCart=[];renderVpCart();renderVentaProd();toast(cancelada?'Venta cancelada guardada ✓':'Venta guardada ✓');syncPedidosDebounced();
 }
+// ── UNA COMPRA CON DOS PRODUCTOS ES UNA SOLA VENTA, AUNQUE ML LA PARTA ──
+// Cuando el comprador se lleva dos cosas juntas, ML arma una ORDEN por producto y les pone el
+// mismo número de venta (el del paquete). El panel agrupaba por orden, así que la misma compra
+// aparecía como dos ventas separadas — y con los costos del paquete (envío y cuotas) cargados
+// enteros a una sola, una se veía ganando mucho y la otra perdiendo. Pasó el 08/09/2026 con los
+// dos Ferraris de Adriana (#2000014927347373): +39% y −1%, cuando la verdad es +20% en las dos.
+// Ahora se agrupa por el NÚMERO DE VENTA cuando lo hay: una compra, un renglón.
+const vpGrupoKey=(v)=>v.numVenta?('n'+v.numVenta):(v.saleId||v.id);
+// El segundo y el tercer caso son para los botones viejos, que mandaban el saleId o el id.
+const vpEsDelGrupo=(v,gid)=>vpGrupoKey(v)===gid||v.saleId===gid||v.id===gid;
 const vpEditingGroups=new Set();
 function vpToggleEdit(grpId){vpEditingGroups.has(grpId)?vpEditingGroups.delete(grpId):vpEditingGroups.add(grpId);renderVentaProd();}
 async function vpSaveEdit(grpId,grpKey){
@@ -6652,7 +6662,7 @@ async function vpSaveEdit(grpId,grpKey){
 // tipo='cancelada': el comprador canceló antes de recibir → el producto vuelve al stock, no es reclamo.
 // tipo='reclamo':   llegó al comprador, reclamó y se le devolvió el dinero → el producto se pierde (no vuelve al stock), cuenta como reclamo.
 async function vpCancelarGrupo(grpId,grpKey,tipo){
-  const entries=Object.values(state.ventaprod[grpKey]||{}).filter(v=>v.saleId===grpId||v.id===grpId);
+  const entries=Object.values(state.ventaprod[grpKey]||{}).filter(v=>vpEsDelGrupo(v,grpId));
   if(!entries.length){toast('Venta no encontrada','err');return;}
   const invUpdates={};const afectados=new Set();
   for(const o of entries){
@@ -6685,7 +6695,7 @@ async function vpCancelarGrupo(grpId,grpKey,tipo){
   toast(tipo==='cancelada'?'Cancelada · producto devuelto al stock ✓':'Reclamo · producto perdido (no vuelve al stock) ✓');
 }
 async function vpReactivarGrupo(grpId,grpKey){
-  const entries=Object.values(state.ventaprod[grpKey]||{}).filter(v=>v.saleId===grpId||v.id===grpId);
+  const entries=Object.values(state.ventaprod[grpKey]||{}).filter(v=>vpEsDelGrupo(v,grpId));
   if(!entries.length){toast('Venta no encontrada','err');return;}
   const invUpdates={};const afectados=new Set();const eraCancelada=_esCancelada(entries[0]);
   for(const o of entries){
@@ -6784,7 +6794,9 @@ async function _restoreStockEntries(entries){
 async function delVentaSale(saleId,key){
   if(!confirm('¿Eliminar toda esta venta?'))return;
   const o=state.ventaprod[key]||{};
-  const toDelete=Object.values(o).filter(x=>x.saleId===saleId);
+  // Borra la compra ENTERA: si el comprador se llevó dos productos, ML los parte en dos órdenes
+  // y las dos son la misma venta. Filtrar sólo por saleId dejaba la mitad adentro.
+  const toDelete=Object.values(o).filter(x=>vpEsDelGrupo(x,saleId));
   await _restoreStockEntries(toDelete);
   for(const it of toDelete){if(_knownVentaprodIds)_knownVentaprodIds.delete(it.id);await fbDel('ventaprod/'+key+'/'+it.id);delete o[it.id];}
   renderVentaProd();syncPedidosDebounced();toast('Venta eliminada','info');
@@ -6824,7 +6836,7 @@ function renderVentaProd(){
     const source=[...mesEntries].sort((a,b)=>{const dk=(b._dateKey||'').localeCompare(a._dateKey||'');return dk!==0?dk:((b.ts||0)-(a.ts||0));});
     // agrupar por saleId
     const groups=[];const gmap={};
-    source.forEach(v=>{const gid=v.saleId||v.id;if(!gmap[gid]){gmap[gid]={gid,saleId:v.saleId,_dateKey:v._dateKey,items:[],cancelada:!!v.cancelada,tipoCancelacion:v.tipoCancelacion||''};gmap[gid].order=groups.length;groups.push(gmap[gid]);}gmap[gid].items.push(v);if(v.cancelada){gmap[gid].cancelada=true;gmap[gid].tipoCancelacion=v.tipoCancelacion||gmap[gid].tipoCancelacion;}});
+    source.forEach(v=>{const gid=vpGrupoKey(v);if(!gmap[gid]){gmap[gid]={gid,saleId:v.saleId,_dateKey:v._dateKey,items:[],cancelada:!!v.cancelada,tipoCancelacion:v.tipoCancelacion||''};gmap[gid].order=groups.length;groups.push(gmap[gid]);}gmap[gid].items.push(v);if(v.cancelada){gmap[gid].cancelada=true;gmap[gid].tipoCancelacion=v.tipoCancelacion||gmap[gid].tipoCancelacion;}});
     const filteredGroups=groups.filter(grp=>{
       // ── UNA VENTA TIENE DOS NÚMEROS Y ML TE MUESTRA UNO U OTRO SEGÚN LA PANTALLA ──
       // El 03/09/2026 él dio por perdida la venta #2000014842321883: "esta venta no está en ningún
@@ -6856,7 +6868,7 @@ function renderVentaProd(){
       const numVenta=grp.items[0].numVenta||'';
       const pctBox=isCancelled?'':gpct!==null?`<span class="db ${pctCls(gpct)}" style="font-size:.62rem;color:${pctColor(gpct)}">${gpct>=0?'+':''}${gpct.toFixed(0)}%</span><span style="font-size:.58rem;color:${pctColor(gpct)};margin-left:3px">${pctLabel(gpct)}</span>`:'<span class="db nc" style="font-size:.58rem">s/costo</span>';
       const grpKey=grp._dateKey||key;
-      const delBtn=grp.saleId?`<button class="ii-del" onclick="delVentaSale('${grp.saleId}','${grpKey}')">✕</button>`:`<button class="ii-del" onclick="delVentaProd('${grp.items[0].id}')">✕</button>`;
+      const delBtn=grp.saleId?`<button class="ii-del" onclick="delVentaSale('${grp.gid}','${grpKey}')">✕</button>`:`<button class="ii-del" onclick="delVentaProd('${grp.items[0].id}')">✕</button>`;
       const fechaTag=grp._dateKey?`<span style="font-size:.58rem;color:var(--muted)">${grp._dateKey.replace(/_/g,'-')}</span>`:'';
       const numTag=`<span style="font-size:.68rem;color:${numVenta?'var(--accent2)':'var(--muted)'};font-family:'DM Mono',monospace">${numVenta?'#'+numVenta:'sin N°'}</span>`;
       const editing=vpEditingGroups.has(grp.gid);
@@ -6932,7 +6944,7 @@ function renderVentaProd(){
   const gMes=mNeto-mCosto;const pctMes=mCosto>0?gMes/mCosto*100:null;
   const retiroMes=Math.round(mNeto*0.15);const retMitadMes=Math.round(retiroMes/2);
   // cantidad de VENTAS (operaciones únicas por N° de venta); las viejas sin saleId cuentan 1 c/u
-  const ventasCount=new Set(kpiEntries.map(v=>v.saleId||v.id)).size;
+  const ventasCount=new Set(kpiEntries.map(vpGrupoKey)).size;
   const periodoLabel=sk.label;
   if(kpis)kpis.innerHTML=`
     <div class="met-kpi c3"><div class="mk-lbl">Ventas</div><div class="mk-val">${ventasCount}</div><div class="mk-sub">cargadas en el período</div></div>
@@ -6951,7 +6963,7 @@ function renderVpScopeBlocks(){
   const prev=vpAggByAccount(vpEntries(sk.prevKeys));
   // cantidad de VENTAS (operaciones únicas) por cuenta
   const ventasCta={};VP_ACCTS.forEach(a=>ventasCta[a]=new Set());
-  vpEntries(sk.keys).forEach(v=>{if(ventasCta[v.cuenta])ventasCta[v.cuenta].add(v.saleId||v.id);});
+  vpEntries(sk.keys).forEach(v=>{if(ventasCta[v.cuenta])ventasCta[v.cuenta].add(vpGrupoKey(v));});
   const baEl=document.getElementById('vp-by-account');
   if(baEl){
     const accs=[...VP_ACCTS].sort((a,b)=>cur[b].ganancia-cur[a].ganancia);
