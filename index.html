@@ -2301,7 +2301,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='19.17';
+const APP_VERSION='19.18';
 // El problema real que esto resuelve no es curiosidad: es que el celular guarda la app y sigue
 // mostrando la de ayer sin avisar. Varias veces se revisó un cambio que ya estaba subido y no se
 // veía. Por eso, además del número, el chip avisa cuando hay una versión nueva esperando.
@@ -4587,11 +4587,10 @@ function renderOfiContar(){
   const fcc=document.getElementById('ofi-contar-cuentas');
   if(fcc)fcc.innerHTML=`<button class="pf-btn${ofiContarCuenta===''?' active-all':''}" onclick="setOfiContarCuenta('')">Todas</button>`
     +LOCS.map(l=>`<button class="pf-btn${ofiContarCuenta===l?' active-all':''}" onclick="setOfiContarCuenta('${l}')">${l}</button>`).join('');
+  // El cartel de arriba se escribe MÁS ABAJO, después de filtrar: necesita saber cuántos
+  // productos quedaron afuera por estar marcados "no se manda más a esta cuenta".
   const nota=document.getElementById('ofi-contar-nota');
-  if(nota){
-    nota.style.display=ofiContarCuenta?'':'none';
-    nota.innerHTML=ofiContarCuenta?`Mostrando solo lo que <strong>${ofiContarCuenta}</strong> tiene publicado, con el stock en Full de esa cuenta. Lo que anotás es lo que tenés en casa, que es uno solo — el filtro no lo parte por cuenta.`:'';
-  }
+  if(nota)nota.style.display=ofiContarCuenta?'':'none';
   // OJO: el cuadro de acá se llama 'ofi-contar-search', NO 'ofi-search'. Había dos con el mismo
   // nombre —este y el de Arqueo → Inventario— y getElementById devuelve siempre el PRIMERO del
   // documento, que es el de la otra pantalla y está siempre vacío: el buscador no filtraba nada.
@@ -4606,8 +4605,19 @@ function renderOfiContar(){
   // aromas uno por uno más abajo).
   const cta=ofiContarCuenta;
   let pubVarCache={};
+  // ── LO QUE NO SE MANDA MÁS A UNA CUENTA TAMPOCO SE CUENTA EN ESA CUENTA (08/09/2026) ──
+  // Pedido suyo: *"todos los productos que marco como que no van mas a esa cuenta quiero que salga
+  // de contar lo que hay. sino se me hace lio"*. Hasta hoy la marca `norepo` sacaba el producto del
+  // reparto de Armar caja pero lo dejaba acá, así que la cuenta seguía mostrando medio catálogo que
+  // ya se decidió no vender ahí. El objetivo suyo es que cada cuenta tenga su mercadería y NUNCA se
+  // cruce entre cuentas; esto es el primer paso y a propósito no toca nada más.
+  // OJO: lo que se anota es lo que hay EN CASA, que es uno solo para las cuatro cuentas — esconder
+  // el renglón acá no borra ni mueve unidades. Por eso "Todas" lo sigue mostrando: si un producto
+  // quedara marcado en las cuatro, sin esa salida no habría dónde contarlo.
+  let ocultosNoRepo=0;
   if(cta){
     prods=prods.filter(p=>{
+      if(noRepoDe(p.id,cta)){ocultosNoRepo++;return false;}
       if((p.variantes||[]).length){
         const pv=pubVarCache[p.id]=cuentasPorVariante(p);
         return Object.values(pv).some(set=>set.has(cta));
@@ -4615,6 +4625,11 @@ function renderOfiContar(){
       return cuentasConPublicacion(p).includes(cta);
     });
   }
+  const _uno=ocultosNoRepo===1;
+  if(nota)nota.innerHTML=cta
+    ? `Mostrando solo lo que <strong>${cta}</strong> tiene publicado, con el stock en Full de esa cuenta. Lo que anotás es lo que tenés en casa, que es uno solo — el filtro no lo parte por cuenta.`
+      +(ocultosNoRepo?` <span style="color:var(--muted)">${ocultosNoRepo} producto${_uno?'':'s'} que ya no se manda${_uno?'':'n'} a ${cta} qued${_uno?'ó':'aron'} afuera de esta lista; ${_uno?'lo contás':'los contás'} en "Todas".</span>`:'')
+    : '';
   if(solo)prods=prods.filter(p=>stockOficina(p)>0);
   if(!prods.length){cont.innerHTML='<div class="empty-msg">Nada con esa búsqueda.</div>';return;}
   // Lista, NO tabla. En el celular la tabla dejaba la casilla fuera de pantalla y había que
