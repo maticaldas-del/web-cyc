@@ -505,6 +505,29 @@ con ninguna, no hay de dónde sacar un costo y nadie lo puede inventar. Ahí va 
 
 ## Cosas que ya pasaron (para no repetirlas)
 
+- **UNA COMPRA CON DOS PRODUCTOS SE VEÍA COMO UNA GANANDO Y OTRA PERDIENDO (08/09/2026).** Él lo
+  marcó: *"los ferraris negros lo habia bajado lo maximo y veo que le gane un monton y los rojos que
+  tenian bastante % de ganancia en teoria perdi plata. no tiene sentido."* Tenía razón, y **ninguno
+  de los dos números era cierto**: el Negro daba +39% y el Rojo −1%; juntos dan **+20%**, que es lo
+  real.
+  Es una sola compra (#2000014927347373, Adriana). Cuando el comprador se lleva dos productos, ML
+  arma **una ORDEN por producto** con el mismo nº de paquete —el número que él ve— y **no reparte
+  los gastos del paquete**: le cargó al Rojo los $14.580 de envío de los dos y los $8.649 de cuotas,
+  y al Negro nada. Verificado con `DUMP_ORDER` contra Mercado Pago: Negro $61.870→$52.574 (ML 15%),
+  Rojo $64.550→$31.622 (ML 51%), juntos 33,4% que es lo normal.
+  **No es cosmético:** el renglón que aparece "perdiendo" hunde el margen del producto y puede
+  disparar una suba de precio que no hace falta.
+  Arreglado en los dos lados: el robot junta el neto y los cargos a nivel PAQUETE y los reparte
+  entre todos los productos en proporción a lo que vale cada uno (si una orden del paquete todavía
+  no está liquidada no junta nada y se corrige en la vuelta siguiente); y la lista de Ventas agrupa
+  por **número de venta**, no por orden — una compra, un renglón (`vpGrupoKey`/`vpEsDelGrupo`, que
+  usan también cancelar, reactivar, borrar y el conteo de ventas: borrar por `saleId` dejaba la
+  mitad de la compra adentro). Releído: Negro $41.205 · Rojo $42.990, los dos al 33,4%, y el total
+  no se movió.
+  **La lección: cuando dos renglones de la MISMA compra dan números opuestos, el problema no está en
+  ninguno de los dos — está en cómo se repartió la plata entre ellos.** Los renglones siguen siendo
+  uno por producto a propósito: cada uno tiene su costo y su ficha, lo que se junta es la plata.
+
 - **CANCELAR CERRABA LA CAJA IGUAL: UN `||` SE COMÍA LA RESPUESTA (07/09/2026).** Él lo contó así:
   *"varias veces haciendo una caja apreto sin querer 'cerrar caja' me da dos opciones aceptar o
   cancelar. cualquiera de las dos que elija me cierra la caja."* Era cierto y era grave: la caja
