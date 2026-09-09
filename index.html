@@ -2301,7 +2301,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='19.19';
+const APP_VERSION='19.20';
 // El problema real que esto resuelve no es curiosidad: es que el celular guarda la app y sigue
 // mostrando la de ayer sin avisar. Varias veces se revisó un cambio que ya estaba subido y no se
 // veía. Por eso, además del número, el chip avisa cuando hay una versión nueva esperando.
@@ -4641,14 +4641,29 @@ function renderOfiContar(){
   // no vende, y esa es la diferencia entre vender y no vender.
   // Las que están en cero se marcan en rojo justamente por eso. Si no publica el producto, no
   // aparece: no tiene sentido mostrar una cuenta que no lo vende.
+  // ── LAS CUENTAS QUE YA NO SON DESTINO VAN APARTE (09/09/2026) ──
+  // Él marcó los dueños de cada producto y seguía viendo tres cuentas en este renglón:
+  // *"¿y por qué sigo viendo 3 cuentas para un solo producto?"*. La marca `norepo` saca a la
+  // cuenta del reparto, pero este renglón no muestra a dónde se manda: muestra dónde está
+  // PUBLICADO en ML, y la publicación sigue viva hasta que él la pause.
+  // Los dos datos son ciertos y hacen falta los dos, así que no se esconde ninguno: las dueñas
+  // van primero y las marcadas afuera van atrás, apagadas y con el cartel. Esconderlas sería
+  // peor — la Batidora tiene 1 unidad adentro del Full de Adriana y esa mercadería existe.
   const porCuenta=(p,variante)=>{
     const ctas=variante?[...(cuentasPorVariante(p,_varPorMla(p))[variante]||[])]
                        :cuentasConPublicacion(p);
     if(!ctas.length)return '<span style="color:var(--amber)">sin publicar en ninguna cuenta</span>';
-    return LOCS.filter(l=>ctas.includes(l)).map(l=>{
+    const pinta=(l,fuera)=>{
       const q=variante?getQV(p.id,l,variante):getQ(p.id,l);
-      return `<span style="margin-right:9px">${l} <strong style="color:${q>0?'var(--text)':'var(--red)'}">${fmtN(q)}</strong></span>`;
-    }).join('');
+      const col=fuera?'var(--muted)':(q>0?'var(--text)':'var(--red)');
+      return `<span style="margin-right:9px${fuera?';opacity:.6':''}">${l} <strong style="color:${col}">${fmtN(q)}</strong></span>`;
+    };
+    const hay=LOCS.filter(l=>ctas.includes(l));
+    const propias=hay.filter(l=>!noRepoDe(p.id,l));
+    const fuera=hay.filter(l=>noRepoDe(p.id,l));
+    const cola=fuera.length?`<span style="color:var(--muted)"> · ya no se manda a: ${fuera.map(l=>pinta(l,true)).join('')}</span>`:'';
+    if(!propias.length)return `<span style="color:var(--amber)">ninguna cuenta lo recibe</span>${cola}`;
+    return propias.map(l=>pinta(l,false)).join('')+cola;
   };
   const casilla=(val,hay,onch)=>`<input type="number" inputmode="numeric" value="${val||''}" placeholder="0"
         style="flex:none;width:72px;text-align:center;background:var(--bg);border:1px solid ${hay?'var(--accent2)':'var(--border2)'};border-radius:8px;color:var(--text);font-family:'DM Mono',monospace;font-size:1rem;padding:10px 4px;outline:none"
