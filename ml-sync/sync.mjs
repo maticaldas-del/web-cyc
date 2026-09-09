@@ -8874,7 +8874,15 @@ async function main() {
       const desde = Date.now() - 90 * 864e5;
       const vp = (await db.get('cyc/ventaprod')) || {};
       for (const [dia, day] of Object.entries(vp)) {
-        if (new Date(dia + 'T00:00:00-03:00').getTime() < desde) continue;
+        // OJO CON EL GUIÓN BAJO. Las claves de los días son `2026_09_09`, y
+        // `new Date('2026_09_09T00:00:00-03:00')` NO es una fecha inválida ruidosa: da NaN, y
+        // `NaN < desde` es FALSE, así que el `continue` no se cumplía NUNCA y esto contaba las
+        // ventas de TODA LA HISTORIA creyendo que contaba 90 días.
+        // El 09/09/2026 eso me hizo decirle que Ayelen había vendido 51 Adaptadores en 90 días
+        // cuando en 90 días no vendió ninguno: los 51 eran de siempre. El aviso "⚠️ VENDE" saltaba
+        // en casi todo, que es lo mismo que no avisar.
+        // Doce líneas más arriba, en `vercaja`, la MISMA cuenta está bien escrita con el replace.
+        if (new Date(dia.replace(/_/g, '-') + 'T00:00:00-03:00').getTime() < desde) continue;
         for (const v of Object.values(day || {})) {
           if (!v || v.cancelada || v.cuenta !== cta || !v.prodId) continue;
           vAcc[v.prodId] = (vAcc[v.prodId] || 0) + (v.qty || 0);
