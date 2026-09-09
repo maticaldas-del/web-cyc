@@ -2301,7 +2301,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='19.18';
+const APP_VERSION='19.19';
 // El problema real que esto resuelve no es curiosidad: es que el celular guarda la app y sigue
 // mostrando la de ayer sin avisar. Varias veces se revisó un cambio que ya estaba subido y no se
 // veía. Por eso, además del número, el chip avisa cuando hay una versión nueva esperando.
@@ -6885,7 +6885,10 @@ function renderVentaProd(){
       const grpKey=grp._dateKey||key;
       const delBtn=grp.saleId?`<button class="ii-del" onclick="delVentaSale('${grp.gid}','${grpKey}')">✕</button>`:`<button class="ii-del" onclick="delVentaProd('${grp.items[0].id}')">✕</button>`;
       const fechaTag=grp._dateKey?`<span style="font-size:.58rem;color:var(--muted)">${grp._dateKey.replace(/_/g,'-')}</span>`:'';
-      const numTag=`<span style="font-size:.68rem;color:${numVenta?'var(--accent2)':'var(--muted)'};font-family:'DM Mono',monospace">${numVenta?'#'+numVenta:'sin N°'}</span>`;
+      // El número de venta va en BLANCO, no en verde. Pedido suyo del 09/09/2026: en verde se
+      // confundía con el % de ganancia, que está en el mismo renglón y también en verde. El verde
+      // acá no significaba nada — el número es un dato, no una señal de que algo esté bien.
+      const numTag=`<span style="font-size:.68rem;color:${numVenta?'var(--text)':'var(--muted)'};font-family:'DM Mono',monospace">${numVenta?'#'+numVenta:'sin N°'}</span>`;
       const editing=vpEditingGroups.has(grp.gid);
       if(editing){
         const tipoCan=grp.items[0].tipoCancelacion||'';
