@@ -15291,24 +15291,32 @@ async function main() {
     // ultimamente y esa es la cuenta correcta"*. El ejemplo que mandó es el Adaptador universal:
     // publicado en Adriana, Ayelen y Matías, las tres en CERO.
     //
-    // CÓMO DECIDE. La primera versión medía **ventas por día CON STOCK** —la corrección del 20/08
-    // en la reposición— y él la corrigió en el momento, con razón:
-    //   *"si una cuenta vendio mas reciente que otra, es porque la otra no tiene stock y eso es
-    //    porque ya no quiero vender mas en esa cuenta que no tiene stock"*.
-    // O sea: acá quedarse sin stock NO es una desventaja que haya que compensar, **es la decisión
-    // ya tomada**. Dividir por los días con stock le devolvía el producto justo a la cuenta que él
-    // dejó vacía a propósito. La misma cuenta que es correcta para saber CUÁNTO reponer es la
-    // equivocada para saber DÓNDE vender.
-    //  · Decide por **unidades vendidas en los últimos 30 días**; a igualdad, por la ventana entera.
+    // CÓMO DECIDE: **gana la que vendió MÁS RECIENTE**. Nada más que eso.
+    //
+    // Llegó ahí en dos correcciones suyas, las dos el mismo día y las dos porque yo había elegido
+    // un criterio más elaborado y peor:
+    //  1) La primera versión medía ventas por día CON STOCK —la corrección del 20/08 en la
+    //     reposición—. Él: *"si una cuenta vendio mas reciente que otra, es porque la otra no tiene
+    //     stock y eso es porque ya no quiero vender mas en esa cuenta que no tiene stock"*. O sea:
+    //     acá quedarse sin stock no es una desventaja que compensar, **es la decisión ya tomada**.
+    //     Dividir por los días con stock le devolvía el producto a la cuenta que él dejó vacía.
+    //  2) La segunda medía unidades de los últimos 30 días. Él otra vez: *"si el producto está en
+    //     dos cuentas, en una vendió hace 40 días y en la otra hace 20, entonces el producto se
+    //     está vendiendo en la de hace 20. no es que hace 20 días que no vende: no se vende más
+    //     ahí. si o si en una cuenta se va a vender"*.
+    //     Es más simple y es lo correcto: **el producto no dejó de venderse, se mudó de cuenta.**
+    //     Contar unidades puede darle el producto a la que vendió 20 hace un mes por encima de la
+    //     que vendió 3 la semana pasada, y esa es justo la que lo está vendiendo hoy.
+    //
     //  · Si NADIE vendió en la ventana, no inventa: lo deja para que lo decida él.
-    //  · Si la segunda queda a menos del 25% de la primera, tampoco decide: con esa diferencia el
-    //    ganador puede ser una sola venta de casualidad.
+    //  · Si las dos últimas ventas caen dentro de la MISMA semana, tampoco decide: ahí el producto
+    //    se está vendiendo en las dos y no hay una que se lo haya llevado.
     //  · Muestra la CAJA DE COMPRA al lado porque puede dar vuelta la respuesta: si una cuenta gana
     //    la caja y la otra la pierde, la que gana es la que va a vender, venda lo que venda hoy.
-    //  · **Y avisa el único caso donde la regla de él se equivoca**: una cuenta que perdió pero que,
-    //    mientras TUVO mercadería, vendía más rápido que la ganadora. Esa no se quedó sin stock por
-    //    abandono, se quedó sin stock por vender bien — y es la que más urge reponer, no la que hay
-    //    que sacar. Va marcada ⚠️ en su renglón: el aviso tiene que estar en la salida, no acá.
+    //  · **Y avisa cuando la que pierde vendió MUCHAS más unidades** (el doble o más) que la
+    //    ganadora. Eso no cambia la decisión —la reciente sigue ganando— pero es el caso donde
+    //    conviene mirar dos veces antes de aplicar: puede ser una cuenta que vendía fuerte y se
+    //    quedó sin mercadería hace poco. El aviso va en la salida, no en un archivo aparte.
     // Al final dice cuánta facturación se movería de cuenta a cuenta, porque **el tope del
     // monotributo es POR CUIT**: juntar los productos que más venden en una sola cuenta la hace
     // pasar de categoría, y eso cuesta más que lo que se gana ordenando.
@@ -15349,9 +15357,10 @@ async function main() {
           if (!v || v.cancelada || !v.prodId || !LOCS.includes(v.cuenta)) continue;
           if (!(v.ts >= desde)) continue;
           const k = v.prodId + '|' + v.cuenta;
-          if (!ven[k]) ven[k] = { u: 0, $: 0, u30: 0 };
+          if (!ven[k]) ven[k] = { u: 0, $: 0, u30: 0, ult: 0 };
           ven[k].u += v.qty || 0; ven[k].$ += v.total || 0;
-          if (v.ts >= desde30) ven[k].u30 += v.qty || 0;   // lo RECIENTE, que es lo que decide
+          if (v.ts >= desde30) ven[k].u30 += v.qty || 0;
+          if (v.ts > ven[k].ult) ven[k].ult = v.ts;        // la ÚLTIMA venta: es la que decide
         }
       }
       // publicaciones VIVAS por producto × cuenta (cerradas y ocultas no cuentan: no venden nada)
@@ -15370,10 +15379,11 @@ async function main() {
         const ctas = LOCS.filter((l) => (porCta[l] || []).length);
         if (ctas.length < 2) continue;   // ya tiene una sola dueña: no hay nada que repartir
         const filas = ctas.map((l) => {
-          const vv = ven[p.id + '|' + l] || { u: 0, $: 0, u30: 0 };
+          const vv = ven[p.id + '|' + l] || { u: 0, $: 0, u30: 0, ult: 0 };
           const dcs = diasConStock(p.id, l);
           return {
-            cta: l, u: vv.u, u30: vv.u30, plata: vv.$, dcs,
+            cta: l, u: vv.u, u30: vv.u30, plata: vv.$, dcs, ult: vv.ult,
+            hace: vv.ult ? Math.floor((Date.now() - vv.ult) / 864e5) : null,
             porDia: dcs > 0 ? vv.u / dcs : 0,
             full: getQ(p.id, l),
             caja: (porCta[l] || []).map((x) => x.caja).find((c) => c === 'winning')
@@ -15382,12 +15392,13 @@ async function main() {
             pubs: (porCta[l] || []).length,
             yaFuera: !!marcas[p.id + '__' + sidL(l)],
           };
-        }).sort((a, b) => b.u30 - a.u30 || b.u - a.u);
+        }).sort((a, b) => b.ult - a.ult || b.u - a.u);   // manda la ÚLTIMA venta
         const g = filas[0], seg = filas[1];
-        // El aviso: perdió, pero mientras tuvo mercadería vendía MÁS RÁPIDO que la ganadora.
-        for (const f of filas) f.ojo = f.cta !== g.cta && f.u > 0 && f.porDia > g.porDia;
-        const nadieVendio = filas.every((f) => f.u === 0);
-        const empate = !nadieVendio && seg && g.u30 > 0 && (seg.u30 / g.u30) > 0.75;
+        // El aviso: perdió, pero vendió MUCHAS más unidades que la ganadora (el doble o más).
+        for (const f of filas) f.ojo = f.cta !== g.cta && f.u > 0 && f.u >= g.u * 2;
+        const nadieVendio = !g.ult;
+        // Las dos últimas ventas en la misma semana = el producto se vende en las dos.
+        const empate = !nadieVendio && seg && seg.ult > 0 && (g.ult - seg.ult) < 7 * 864e5;
         (nadieVendio || empate ? dudosos : claros).push({ p, filas, g, nadieVendio, empate });
       }
       console.log(`=== UNA SOLA CUENTA POR PRODUCTO · últimos ${DIAS} días ===`);
@@ -15396,15 +15407,16 @@ async function main() {
         console.log(`── ${r.p.name}`);
         const g0 = r.g;
         for (const f of r.filas) {
-          console.log(`     ${f.cta.padEnd(8)} 30d: ${String(f.u30).padStart(3)} u · ${String(DIAS) + 'd'}: ${String(f.u).padStart(3)} u · Full ${String(f.full).padStart(3)} · ${(cajaIcono[f.caja] || '⚪').padEnd(11)}${f.pubs > 1 ? ` · ${f.pubs} publicaciones` : ''}${f.yaFuera ? ' · YA marcada afuera' : ''}`);
-          if (f.ojo) console.log(`              ⚠️ ojo: mientras tuvo mercadería vendía ${f.porDia.toFixed(2)}/día contra ${g0.porDia.toFixed(2)} de ${g0.cta}. No se quedó sin stock por abandono: se quedó sin stock por vender bien.`);
+          const cuando = f.hace == null ? `no vendió en ${DIAS}d` : (f.hace === 0 ? 'vendió HOY' : `última venta hace ${f.hace}d`);
+          console.log(`     ${f.cta.padEnd(8)} ${cuando.padEnd(22)} · ${String(f.u).padStart(3)} u en ${DIAS}d · Full ${String(f.full).padStart(3)} · ${(cajaIcono[f.caja] || '⚪').padEnd(11)}${f.pubs > 1 ? ` · ${f.pubs} publicaciones` : ''}${f.yaFuera ? ' · YA marcada afuera' : ''}`);
+          if (f.ojo) console.log(`              ⚠️ ojo: vendió ${f.u} u. contra ${g0.u} de ${g0.cta}. Vendía mucho más y se cortó — mirá si fue por falta de stock antes de sacarla.`);
         }
         if (r.nadieVendio) console.log(`     → NO SÉ: ninguna vendió en ${DIAS} días. Elegís vos.`);
-        else if (r.empate) console.log(`     → NO SÉ: ${r.filas[0].cta} y ${r.filas[1].cta} venden casi igual. Elegís vos.`);
-        else console.log(`     → DUEÑA: ${r.g.cta} · ${r.g.u30} u. en los últimos 30 días contra ${r.filas[1].u30} de ${r.filas[1].cta}`);
+        else if (r.empate) console.log(`     → NO SÉ: ${r.filas[0].cta} y ${r.filas[1].cta} vendieron la misma semana. Se vende en las dos: elegís vos.`);
+        else console.log(`     → DUEÑA: ${r.g.cta} · vendió hace ${r.g.hace}d, ${r.filas[1].hace == null ? `y ${r.filas[1].cta} no vendió en ${DIAS} días` : `contra hace ${r.filas[1].hace}d de ${r.filas[1].cta}`}`);
       };
       console.log(`───── CON DUEÑA CLARA (${claros.length}) ─────`);
-      claros.sort((a, b) => b.g.u30 - a.g.u30 || b.g.u - a.g.u).forEach(pinta);
+      claros.sort((a, b) => b.g.ult - a.g.ult).forEach(pinta);
       console.log(`\n───── PARA QUE DECIDAS VOS (${dudosos.length}) ─────`);
       dudosos.forEach(pinta);
 
