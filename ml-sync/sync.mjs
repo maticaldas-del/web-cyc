@@ -15284,6 +15284,154 @@ async function main() {
       return;
     }
 
+    // BILLING_PROBE=repartir[:<días>] → UNA SOLA CUENTA POR PRODUCTO: QUIÉN SE QUEDA CON CADA UNO.
+    //
+    // Norma suya del 09/09/2026: *"quiero comenzar a dividir las publicaciones por cuentas. no
+    // quiero publicacion compartida (…) un parametro es mirar donde se venden los productos
+    // ultimamente y esa es la cuenta correcta"*. El ejemplo que mandó es el Adaptador universal:
+    // publicado en Adriana, Ayelen y Matías, las tres en CERO.
+    //
+    // CÓMO DECIDE, y por qué así:
+    //  · NO por unidades vendidas a secas. Una cuenta puede haber vendido más sólo porque tuvo
+    //    mercadería mientras las otras estaban en cero — es el mismo error del "dividir por 30
+    //    fijo" del 20/08. Se mide **ventas por día CON STOCK**, que es lo único comparable.
+    //  · Si NADIE vendió en la ventana, no inventa: lo deja para que lo decida él.
+    //  · Si la segunda queda a menos del 25% de la primera, tampoco decide: con esa diferencia el
+    //    ganador puede ser una sola venta de casualidad.
+    //  · Muestra la CAJA DE COMPRA al lado porque puede dar vuelta la respuesta: si una cuenta gana
+    //    la caja y la otra la pierde, la que gana es la que va a vender, venda lo que venda hoy.
+    // Al final dice cuánta facturación se movería de cuenta a cuenta, porque **el tope del
+    // monotributo es POR CUIT**: juntar los productos que más venden en una sola cuenta la hace
+    // pasar de categoría, y eso cuesta más que lo que se gana ordenando.
+    // Solo LEE. Imprime los comandos para aplicarlo, uno por cuenta.
+    if (/^repartir(:|$)/.test(String(process.env.BILLING_PROBE || ''))) {
+      const _rp = String(process.env.BILLING_PROBE).split(':');
+      const DIAS = Math.max(7, parseFloat(_rp[1]) || 60);
+      const LOCS = ['Adriana', 'Luciana', 'Ayelen', 'Matias'];
+      const DIAS_MIN = 7;
+      const sidL = (x) => String(x).replace(/[^a-z0-9]/gi, '_');
+      const inv = (await db.get('cyc/inventory')) || {};
+      const links = (await db.get('cyc/mllinks')) || {};
+      const vp = (await db.get('cyc/ventaprod')) || {};
+      const hist = (await db.get('cyc/stockhist')) || {};
+      const marcas = (await db.get('cyc/norepo')) || {};
+      const getQ = (pid, loc) => parseInt(inv[pid + '__' + sidL(loc)]) || 0;
+      // MISMA regla que la web: sin haber visto ENTRAR la mercadería no se puede decir "sólo tuvo
+      // stock N días", así que se mide la ventana entera. Sobreestimar los días hunde el promedio,
+      // que es el lado conservador: no le regala el producto a nadie.
+      const diasConStock = (pid, loc) => {
+        const h = hist[pid + '__' + sidL(loc)];
+        if (!h) return DIAS;
+        const now = Date.now(), ini = now - DIAS * 864e5;
+        let ms = null;
+        if (h.desde) { if (h.aprox !== false) return DIAS; ms = now - Math.max(h.desde, ini); }
+        else if (h.cero) ms = Math.max(0, h.cero - ini);
+        if (ms == null) return DIAS;
+        const d = ms / 864e5;
+        if (!isFinite(d) || d <= 0) return DIAS_MIN;
+        return Math.max(DIAS_MIN, Math.min(DIAS, d));
+      };
+      // ventas de la ventana, por producto × cuenta
+      const desde = Date.now() - DIAS * 864e5;
+      const ven = {};   // pid|cuenta -> {u, $}
+      for (const day of Object.values(vp)) {
+        for (const v of Object.values(day || {})) {
+          if (!v || v.cancelada || !v.prodId || !LOCS.includes(v.cuenta)) continue;
+          if (!(v.ts >= desde)) continue;
+          const k = v.prodId + '|' + v.cuenta;
+          if (!ven[k]) ven[k] = { u: 0, $: 0 };
+          ven[k].u += v.qty || 0; ven[k].$ += v.total || 0;
+        }
+      }
+      // publicaciones VIVAS por producto × cuenta (cerradas y ocultas no cuentan: no venden nada)
+      const pubs = {};  // pid -> { cuenta -> [{mla, caja, status}] }
+      for (const [mla, e] of Object.entries(links)) {
+        if (!mla.startsWith('MLA') || !e || !e.prodId || e.ignored) continue;
+        if (!LOCS.includes(e.cuenta)) continue;
+        if (String(e.status || '') === 'closed') continue;
+        (pubs[e.prodId] = pubs[e.prodId] || {});
+        (pubs[e.prodId][e.cuenta] = pubs[e.prodId][e.cuenta] || []).push({ mla, caja: e.caja || '', status: e.status || '' });
+      }
+      const cajaIcono = { winning: '🟢 gana', sharing: '🟠 comparte', losing: '🔴 pierde', sincaja: '⚪', nocat: '⚪' };
+      const claros = [], dudosos = [];
+      for (const p of products) {
+        const porCta = pubs[p.id]; if (!porCta) continue;
+        const ctas = LOCS.filter((l) => (porCta[l] || []).length);
+        if (ctas.length < 2) continue;   // ya tiene una sola dueña: no hay nada que repartir
+        const filas = ctas.map((l) => {
+          const vv = ven[p.id + '|' + l] || { u: 0, $: 0 };
+          const dcs = diasConStock(p.id, l);
+          return {
+            cta: l, u: vv.u, plata: vv.$, dcs,
+            porDia: dcs > 0 ? vv.u / dcs : 0,
+            full: getQ(p.id, l),
+            caja: (porCta[l] || []).map((x) => x.caja).find((c) => c === 'winning')
+               || (porCta[l] || []).map((x) => x.caja).find((c) => c === 'sharing')
+               || (porCta[l][0] || {}).caja || '',
+            pubs: (porCta[l] || []).length,
+            yaFuera: !!marcas[p.id + '__' + sidL(l)],
+          };
+        }).sort((a, b) => b.porDia - a.porDia || b.u - a.u);
+        const g = filas[0], seg = filas[1];
+        const nadieVendio = filas.every((f) => f.u === 0);
+        const empate = !nadieVendio && seg && g.porDia > 0 && (seg.porDia / g.porDia) > 0.75;
+        (nadieVendio || empate ? dudosos : claros).push({ p, filas, g, nadieVendio, empate });
+      }
+      console.log(`=== UNA SOLA CUENTA POR PRODUCTO · últimos ${DIAS} días ===`);
+      console.log(`${claros.length + dudosos.length} producto(s) publicados en más de una cuenta: ${claros.length} con dueña clara · ${dudosos.length} para que decidas vos.\n`);
+      const pinta = (r) => {
+        console.log(`── ${r.p.name}`);
+        for (const f of r.filas) {
+          console.log(`     ${f.cta.padEnd(8)} ${String(f.u).padStart(3)} u en ${String(Math.round(f.dcs)).padStart(2)}d c/stock = ${f.porDia.toFixed(2)}/día · Full ${String(f.full).padStart(3)} · ${(cajaIcono[f.caja] || '⚪').padEnd(11)}${f.pubs > 1 ? ` · ${f.pubs} publicaciones` : ''}${f.yaFuera ? ' · YA marcada afuera' : ''}`);
+        }
+        if (r.nadieVendio) console.log(`     → NO SÉ: ninguna vendió en ${DIAS} días. Elegís vos.`);
+        else if (r.empate) console.log(`     → NO SÉ: ${r.filas[0].cta} y ${r.filas[1].cta} venden casi igual. Elegís vos.`);
+        else console.log(`     → DUEÑA: ${r.g.cta} (vende ${(r.g.porDia / (r.filas[1].porDia || 0.0001)).toFixed(1)}× más por día que ${r.filas[1].cta})`);
+      };
+      console.log(`───── CON DUEÑA CLARA (${claros.length}) ─────`);
+      claros.sort((a, b) => b.g.porDia - a.g.porDia).forEach(pinta);
+      console.log(`\n───── PARA QUE DECIDAS VOS (${dudosos.length}) ─────`);
+      dudosos.forEach(pinta);
+
+      // ── LO QUE SE MUEVE DE CUENTA A CUENTA ──────────────────────────────────
+      // Es el número que puede arruinar el ordenamiento: el tope del monotributo es POR CUIT.
+      const mov = {}; LOCS.forEach((l) => mov[l] = { gana: 0, pierde: 0 });
+      for (const r of claros) {
+        for (const f of r.filas) {
+          if (f.cta === r.g.cta) continue;
+          mov[f.cta].pierde += f.plata; mov[r.g.cta].gana += f.plata;
+        }
+      }
+      const anual = (x) => Math.round(x * 365 / DIAS);
+      console.log(`\n───── FACTURACIÓN QUE SE MUEVE (anualizada, sólo los de dueña clara) ─────`);
+      console.log(`OJO: es el tope de lo que se movería. Mudar la publicación NO garantiza que la venta se repita en la otra cuenta.`);
+      for (const l of LOCS) {
+        const neto = mov[l].gana - mov[l].pierde;
+        console.log(`  ${l.padEnd(8)} ${neto >= 0 ? '+' : '−'}${money(Math.abs(anual(neto))).padStart(12)} al año  (suma ${money(anual(mov[l].gana))} · pierde ${money(anual(mov[l].pierde))})`);
+      }
+      console.log(`El tope de categoría H es por CUIT: si a una cuenta le entra de más, pasa de categoría y eso cuesta más que lo que se ordena. Chequealo con catmono.`);
+
+      // ── LOS COMANDOS, LISTOS PARA COPIAR ────────────────────────────────────
+      console.log(`\n───── PARA APLICARLO (sólo los de dueña clara) ─────`);
+      console.log(`Cada uno saca el producto del reparto de esa cuenta y de "Contar lo que hay". NO toca ML ni el stock que ya está adentro de Full.`);
+      const conComa = [];
+      for (const l of LOCS) {
+        const nombres = [];
+        for (const r of claros) {
+          const f = r.filas.find((x) => x.cta === l);
+          if (!f || f.cta === r.g.cta || f.yaFuera) continue;
+          if (String(r.p.name).includes(',')) { conComa.push(r.p.name); continue; }
+          nombres.push('=' + r.p.name);
+        }
+        if (nombres.length) console.log(`\n  nomandar:${l}:${nombres.join(',')}:go`);
+      }
+      if (conComa.length) {
+        console.log(`\n  ⚠️ Estos tienen una COMA en el nombre y el comando separa por comas, así que van a mano:`);
+        conComa.forEach((n) => console.log(`     · ${n}`));
+      }
+      console.log(`\nMirá la lista ANTES de aplicar. Sin :go el comando sólo muestra.`);
+      return;
+    }
     if (/^porquecaja(:|$)/.test(String(process.env.BILLING_PROBE || ''))) {
       const q = String(process.env.BILLING_PROBE).slice('porquecaja:'.length).trim();
       if (!q) { console.log('Usá: porquecaja:adaptador'); return; }
