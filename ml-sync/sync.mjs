@@ -15291,15 +15291,24 @@ async function main() {
     // ultimamente y esa es la cuenta correcta"*. El ejemplo que mandó es el Adaptador universal:
     // publicado en Adriana, Ayelen y Matías, las tres en CERO.
     //
-    // CÓMO DECIDE, y por qué así:
-    //  · NO por unidades vendidas a secas. Una cuenta puede haber vendido más sólo porque tuvo
-    //    mercadería mientras las otras estaban en cero — es el mismo error del "dividir por 30
-    //    fijo" del 20/08. Se mide **ventas por día CON STOCK**, que es lo único comparable.
+    // CÓMO DECIDE. La primera versión medía **ventas por día CON STOCK** —la corrección del 20/08
+    // en la reposición— y él la corrigió en el momento, con razón:
+    //   *"si una cuenta vendio mas reciente que otra, es porque la otra no tiene stock y eso es
+    //    porque ya no quiero vender mas en esa cuenta que no tiene stock"*.
+    // O sea: acá quedarse sin stock NO es una desventaja que haya que compensar, **es la decisión
+    // ya tomada**. Dividir por los días con stock le devolvía el producto justo a la cuenta que él
+    // dejó vacía a propósito. La misma cuenta que es correcta para saber CUÁNTO reponer es la
+    // equivocada para saber DÓNDE vender.
+    //  · Decide por **unidades vendidas en los últimos 30 días**; a igualdad, por la ventana entera.
     //  · Si NADIE vendió en la ventana, no inventa: lo deja para que lo decida él.
     //  · Si la segunda queda a menos del 25% de la primera, tampoco decide: con esa diferencia el
     //    ganador puede ser una sola venta de casualidad.
     //  · Muestra la CAJA DE COMPRA al lado porque puede dar vuelta la respuesta: si una cuenta gana
     //    la caja y la otra la pierde, la que gana es la que va a vender, venda lo que venda hoy.
+    //  · **Y avisa el único caso donde la regla de él se equivoca**: una cuenta que perdió pero que,
+    //    mientras TUVO mercadería, vendía más rápido que la ganadora. Esa no se quedó sin stock por
+    //    abandono, se quedó sin stock por vender bien — y es la que más urge reponer, no la que hay
+    //    que sacar. Va marcada ⚠️ en su renglón: el aviso tiene que estar en la salida, no acá.
     // Al final dice cuánta facturación se movería de cuenta a cuenta, porque **el tope del
     // monotributo es POR CUIT**: juntar los productos que más venden en una sola cuenta la hace
     // pasar de categoría, y eso cuesta más que lo que se gana ordenando.
@@ -15333,14 +15342,16 @@ async function main() {
       };
       // ventas de la ventana, por producto × cuenta
       const desde = Date.now() - DIAS * 864e5;
-      const ven = {};   // pid|cuenta -> {u, $}
+      const desde30 = Date.now() - 30 * 864e5;
+      const ven = {};   // pid|cuenta -> {u, $, u30}
       for (const day of Object.values(vp)) {
         for (const v of Object.values(day || {})) {
           if (!v || v.cancelada || !v.prodId || !LOCS.includes(v.cuenta)) continue;
           if (!(v.ts >= desde)) continue;
           const k = v.prodId + '|' + v.cuenta;
-          if (!ven[k]) ven[k] = { u: 0, $: 0 };
+          if (!ven[k]) ven[k] = { u: 0, $: 0, u30: 0 };
           ven[k].u += v.qty || 0; ven[k].$ += v.total || 0;
+          if (v.ts >= desde30) ven[k].u30 += v.qty || 0;   // lo RECIENTE, que es lo que decide
         }
       }
       // publicaciones VIVAS por producto × cuenta (cerradas y ocultas no cuentan: no venden nada)
@@ -15359,10 +15370,10 @@ async function main() {
         const ctas = LOCS.filter((l) => (porCta[l] || []).length);
         if (ctas.length < 2) continue;   // ya tiene una sola dueña: no hay nada que repartir
         const filas = ctas.map((l) => {
-          const vv = ven[p.id + '|' + l] || { u: 0, $: 0 };
+          const vv = ven[p.id + '|' + l] || { u: 0, $: 0, u30: 0 };
           const dcs = diasConStock(p.id, l);
           return {
-            cta: l, u: vv.u, plata: vv.$, dcs,
+            cta: l, u: vv.u, u30: vv.u30, plata: vv.$, dcs,
             porDia: dcs > 0 ? vv.u / dcs : 0,
             full: getQ(p.id, l),
             caja: (porCta[l] || []).map((x) => x.caja).find((c) => c === 'winning')
@@ -15371,25 +15382,29 @@ async function main() {
             pubs: (porCta[l] || []).length,
             yaFuera: !!marcas[p.id + '__' + sidL(l)],
           };
-        }).sort((a, b) => b.porDia - a.porDia || b.u - a.u);
+        }).sort((a, b) => b.u30 - a.u30 || b.u - a.u);
         const g = filas[0], seg = filas[1];
+        // El aviso: perdió, pero mientras tuvo mercadería vendía MÁS RÁPIDO que la ganadora.
+        for (const f of filas) f.ojo = f.cta !== g.cta && f.u > 0 && f.porDia > g.porDia;
         const nadieVendio = filas.every((f) => f.u === 0);
-        const empate = !nadieVendio && seg && g.porDia > 0 && (seg.porDia / g.porDia) > 0.75;
+        const empate = !nadieVendio && seg && g.u30 > 0 && (seg.u30 / g.u30) > 0.75;
         (nadieVendio || empate ? dudosos : claros).push({ p, filas, g, nadieVendio, empate });
       }
       console.log(`=== UNA SOLA CUENTA POR PRODUCTO · últimos ${DIAS} días ===`);
       console.log(`${claros.length + dudosos.length} producto(s) publicados en más de una cuenta: ${claros.length} con dueña clara · ${dudosos.length} para que decidas vos.\n`);
       const pinta = (r) => {
         console.log(`── ${r.p.name}`);
+        const g0 = r.g;
         for (const f of r.filas) {
-          console.log(`     ${f.cta.padEnd(8)} ${String(f.u).padStart(3)} u en ${String(Math.round(f.dcs)).padStart(2)}d c/stock = ${f.porDia.toFixed(2)}/día · Full ${String(f.full).padStart(3)} · ${(cajaIcono[f.caja] || '⚪').padEnd(11)}${f.pubs > 1 ? ` · ${f.pubs} publicaciones` : ''}${f.yaFuera ? ' · YA marcada afuera' : ''}`);
+          console.log(`     ${f.cta.padEnd(8)} 30d: ${String(f.u30).padStart(3)} u · ${String(DIAS) + 'd'}: ${String(f.u).padStart(3)} u · Full ${String(f.full).padStart(3)} · ${(cajaIcono[f.caja] || '⚪').padEnd(11)}${f.pubs > 1 ? ` · ${f.pubs} publicaciones` : ''}${f.yaFuera ? ' · YA marcada afuera' : ''}`);
+          if (f.ojo) console.log(`              ⚠️ ojo: mientras tuvo mercadería vendía ${f.porDia.toFixed(2)}/día contra ${g0.porDia.toFixed(2)} de ${g0.cta}. No se quedó sin stock por abandono: se quedó sin stock por vender bien.`);
         }
         if (r.nadieVendio) console.log(`     → NO SÉ: ninguna vendió en ${DIAS} días. Elegís vos.`);
         else if (r.empate) console.log(`     → NO SÉ: ${r.filas[0].cta} y ${r.filas[1].cta} venden casi igual. Elegís vos.`);
-        else console.log(`     → DUEÑA: ${r.g.cta} (vende ${(r.g.porDia / (r.filas[1].porDia || 0.0001)).toFixed(1)}× más por día que ${r.filas[1].cta})`);
+        else console.log(`     → DUEÑA: ${r.g.cta} · ${r.g.u30} u. en los últimos 30 días contra ${r.filas[1].u30} de ${r.filas[1].cta}`);
       };
       console.log(`───── CON DUEÑA CLARA (${claros.length}) ─────`);
-      claros.sort((a, b) => b.g.porDia - a.g.porDia).forEach(pinta);
+      claros.sort((a, b) => b.g.u30 - a.g.u30 || b.g.u - a.g.u).forEach(pinta);
       console.log(`\n───── PARA QUE DECIDAS VOS (${dudosos.length}) ─────`);
       dudosos.forEach(pinta);
 
