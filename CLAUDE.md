@@ -244,6 +244,7 @@ Los que más se usan:
 | `sinvincular[:cuenta]` | las publicaciones que NO tienen producto: el robot no les ve stock ni margen |
 | `altanuevas[:go]` | las publicaciones nuevas que el panel todavía no conoce, con la ficha a la que se engancharían · **el robot lo hace solo cada hora**, esto es para mirarlo antes |
 | `nomas:<MLA,...>[:go]` | "esto no lo vendemos más": oculta la publicación del panel · no toca nada en ML |
+| `repartir[:días]` | **una sola cuenta por producto**: los publicados en más de una, con la última venta de cada una y la dueña que le toca · imprime los `nomandar` listos · solo lee |
 | `nomandar:<cuenta>[:<palabras>][:go]` | "este producto no se vende más en ESTA cuenta": la saca del reparto de Armar caja · nombre con `=` adelante = exacto · sin `:go` solo muestra |
 | `pasara:<cuenta>[:<palabras>][:go]` | lo contrario: "este producto lo quiero en ESTA cuenta", aunque todavía no esté publicado ahí · aparece en su Armar caja avisando en ámbar que falta crear la publicación |
 | `preguntas[:cuenta]` | las preguntas sin responder ENTERAS, con el producto de cada una |
@@ -504,7 +505,67 @@ con ninguna, no hay de dónde sacar un costo y nadie lo puede inventar. Ahí va 
 
 **Y después de vincular va `netoweb`**, si no el producto sigue mostrando "—" en el panel.
 
+## UNA SOLA CUENTA POR PRODUCTO (09/09/2026)
+
+Norma suya: *"quiero comenzar a dividir las publicaciones por cuentas. no quiero publicacion
+compartida (…) el objetivo final es que cada cuenta venda su mercaderia unica. que NUNCA se cruce
+mercaderia entre cuentas"*.
+
+**Cómo se elige la dueña: gana la que vendió MÁS RECIENTE.** Nada más que eso. Lo corrigió dos
+veces el mismo día porque las dos primeras versiones eran más elaboradas y peores:
+ · medir **ventas por día con stock** (la corrección del 20/08 en la reposición) le devolvía el
+   producto a la cuenta que él dejó vacía a propósito — *"si una cuenta vendio mas reciente que
+   otra, es porque la otra no tiene stock y eso es porque ya no quiero vender mas en esa cuenta"*.
+   Quedarse sin stock acá **no es una desventaja que compensar, es la decisión ya tomada**.
+ · medir **unidades de los últimos 30 días** le daba el producto a la que vendió 20 hace un mes por
+   encima de la que vendió 3 la semana pasada — *"el producto se está vendiendo en la de hace 20.
+   no es que hace 20 días que no vende: no se vende más ahí"*. **El producto no dejó de venderse,
+   se mudó de cuenta.**
+**La lección: la misma cuenta que es correcta para saber CUÁNTO reponer es la equivocada para
+saber DÓNDE vender.**
+
+El comando es `repartir[:días]` y sólo lee. No decide cuando no puede: si nadie vendió, o si las
+dos últimas ventas caen en la misma semana, va a la lista de decidir a mano.
+
+**ESTADO AL 10/09/2026: el reparto en el PANEL está terminado.** 38 productos estaban en más de una
+cuenta; los 30 con dueña clara y los 8 dudosos ya tienen su cuenta única. `repartir` devuelve la
+sección "para aplicar" VACÍA, que es la forma de verificarlo.
+Decisiones suyas de ese día: balanza viaje → Ayelen · Kit Luces Bici → Luciana · De la Patagonia KO
+→ Adriana · Cortapelo 4 en 1 → Ayelen · Estimulador → Ayelen · **Indoor → Ayelen** (marcado con
+`pasara`: Ayelen todavía NO tiene la publicación y sale en ámbar hasta que la cree).
+
+**Las DOS excepciones, decididas por él:**
+ · **Paulvic: queda compartido entre Adriana y Luciana.** Todos los aromas van a Adriana **menos la
+   Persea, que va a Luciana**. **La marca es por PRODUCTO, no por aroma**, así que esto NO se puede
+   marcar con `nomandar` sin sacarle a Luciana los 70 aromas. Se deja compartido a propósito.
+ · **Termómetro horno: se deja como está** ("después vemos"). Ninguna cuenta lo vendió en 90 días.
+
+**LO QUE FALTA, Y ES LO GRANDE: ~58 publicaciones repetidas siguen VIVAS en ML.** `nomandar` saca a
+la cuenta del reparto y de "Contar lo que hay", **no borra ni pausa la publicación**. Hasta que se
+pausen, en ML siguen siendo publicación compartida. Las más cargadas: Pizarra Mágica 7 · P47 5 ·
+p47 oreja gato 4 · Balanza Cocina, F9, Batidora, Tira Led y 2 Separadores 3 cada uno.
+Pausarlas TOCA ML de verdad: no se hace sin que él lo pida expreso.
+
+**Un caso raro que quedó abierto: el P47 está marcado afuera de las TRES cuentas**, incluida Matías,
+que es la que lo vende (51 u. en 90 días). Viene de cuando el 07/09 pidió pasarlos todos a Ayelen.
+Si eso sigue en pie está bien, pero hoy nadie le puede mandar mercadería.
+
 ## Cosas que ya pasaron (para no repetirlas)
+
+- **UN FILTRO DE FECHA QUE NO FILTRABA NADA, POR UN GUIÓN BAJO (09/09/2026).** `nomandar` avisa
+  cuántas unidades vendió la cuenta que estás por sacar, "en 90 días". Contaba las de SIEMPRE.
+  Las claves de los días son `2026_09_09`, con guión bajo, y `new Date('2026_09_09T00:00:00-03:00')`
+  **no explota: devuelve NaN**. Como `NaN < desde` es **false**, el `continue` no se cumplía nunca y
+  la ventana de 90 días no descartaba ni un día.
+  Consecuencia real: le dije que Ayelen había vendido **51 Adaptadores universales y 41 Batidoras
+  "en 90 días"** cuando en 90 días no vendió ninguno — los 51 eran de toda la historia. Le pasé como
+  motivo para dudar algo que en realidad confirmaba lo contrario.
+  Y el aviso `⚠️ VENDE` saltaba en casi todos los productos, **que es lo mismo que no avisar**: un
+  aviso que suena siempre entrena a ignorarlo.
+  La MISMA cuenta está bien escrita 140 líneas más arriba, en `vercaja`, con el `.replace(/_/g,'-')`.
+  **La lección: una fecha inválida no avisa.** Comparar contra `NaN` da `false` y el filtro se
+  apaga solo, en silencio. Es el mismo patrón que el `catch {}` vacío y que el `||` que se comía el
+  cancelar: el dato no se pierde con ruido.
 
 - **UNA COMPRA CON DOS PRODUCTOS SE VEÍA COMO UNA GANANDO Y OTRA PERDIENDO (08/09/2026).** Él lo
   marcó: *"los ferraris negros lo habia bajado lo maximo y veo que le gane un monton y los rojos que
