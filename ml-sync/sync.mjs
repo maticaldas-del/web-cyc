@@ -16589,7 +16589,7 @@ async function main() {
     const vp = (await db.get('cyc/ventaprod')) || {}; setDevLive(vp);
     const map = (await db.get('cyc/mllinks')) || {};
     const tc = parseFloat(((await db.get('cyc/finanzas')) || {}).tipo_cambio) || 1500;
-    const updates = {}; let n = 0; const byProd = {};
+    const updates = {}; let n = 0; const byProd = {}; const cambiosCosto = [];
     for (const [dk, day] of Object.entries(vp)) {
       for (const [id, v] of Object.entries(day || {})) {
         if (!v || !v.mla) continue;
@@ -16607,10 +16607,23 @@ async function main() {
         const b = `${dk}/${id}/`;
         updates[b + 'prod'] = p.name; updates[b + 'prodId'] = p.id; updates[b + 'sinVincular'] = null;
         if (wantVar) updates[b + 'variante'] = wantVar; // solo si la publicación fija variante
-        // El costo de una venta YA HECHA no se toca nunca: es lo que costó esa mercadería ese día.
-        // Si se reescribiera con el costo de hoy, cambiar un precio o separar un producto te
-        // reescribiría la ganancia de meses cerrados. Solo se completa si la venta no tenía costo.
-        if (!v.cancelada && !(v.costo > 0)) { updates[b + 'costo'] = costo; updates[b + 'costBaseUSD'] = costBaseUSD; updates[b + 'shipUSD'] = shipUSD; }
+        // EL COSTO: se toca sólo cuando la venta CAMBIA DE PRODUCTO, o cuando no tenía ninguno.
+        // La regla general sigue siendo que el costo de una venta ya hecha no se reescribe —es lo
+        // que costó esa mercadería ese día, y pisarlo con el de hoy cambiaría la ganancia de meses
+        // cerrados—. Pero si la venta estaba pegada a OTRO producto, el costo que tiene guardado es
+        // el de ese otro producto: no es historia, es un número equivocado.
+        // Lo encontró él el 10/09/2026: un Batidor blanco de $17.800 quedó con costo $1.499 y
+        // +730% de ganancia porque su publicación estaba sin vincular. Arreglar sólo el nombre y
+        // dejar el costo habría dejado la ganancia igual de mentirosa.
+        // Ojo con el caso que NO entra: una venta ya vinculada al producto correcto y marcada
+        // `sinVincular` por otro motivo. Ahí el costo se respeta.
+        const arreglarCosto = !v.cancelada && (prodDiff || !(v.costo > 0));
+        if (arreglarCosto) {
+          updates[b + 'costo'] = costo; updates[b + 'costBaseUSD'] = costBaseUSD; updates[b + 'shipUSD'] = shipUSD;
+          if (prodDiff && v.costo > 0 && Math.round(v.costo) !== Math.round(costo)) {
+            cambiosCosto.push(`${dk} · ${(v.prod || '').slice(0, 34)} → ${p.name}: costo ${money(Math.round(v.costo))} → ${money(Math.round(costo))}`);
+          }
+        }
         byProd[`${v.prod || '(sin nombre)'} → ${p.name}`] = (byProd[`${v.prod || '(sin nombre)'} → ${p.name}`] || 0) + 1;
         n++;
       }
@@ -16618,6 +16631,12 @@ async function main() {
     console.log(`\n=== RE-SINCRONIZAR ventas al producto de su publicación ===`);
     console.log(`Ventas a corregir: ${n}`);
     Object.entries(byProd).sort((a, b) => b[1] - a[1]).forEach(([k, c]) => console.log(`  ${c} ×  ${k}`));
+    // Los costos que cambian van UNO POR UNO: es plata de ventas ya hechas y tiene que verse.
+    if (cambiosCosto.length) {
+      console.log(`\n── COSTOS QUE CAMBIAN (${cambiosCosto.length}) · sólo los que cambiaron de producto ──`);
+      cambiosCosto.slice(0, 60).forEach((x) => console.log(`  ${x}`));
+      if (cambiosCosto.length > 60) console.log(`  … y ${cambiosCosto.length - 60} más`);
+    }
     if (DRY) { console.log('\n(DRY: no se tocó nada.)'); return; }
     if (n) {
       await db.set('cyc/ventaprod_bak', vp);
