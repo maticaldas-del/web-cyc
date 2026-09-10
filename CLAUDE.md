@@ -451,6 +451,56 @@ contestado "todo bien" — por casualidad acertaba, pero por el motivo equivocad
 a cuenta de IIBB y él las usa todas cada mes, sin dejar saldo a favor. O sea que el impuesto se paga
 completo y no hay plata parada para recuperar.
 
+## ¿CONVIENE FULL O MANDARLO A MANO? MEDIDO EL 10/09/2026
+
+Pregunta suya: *"nosotros vendemos en full el 100% de las cosas. nos conviene vender ahi? o
+mandarlos nosotros a mano? que tipo de productos?"*
+
+**La respuesta es: Full, y no está cerca — salvo para lo que no rota.** Los números:
+
+**1. Por venta, Full es GRATIS abajo de $33.000.** Está en el código, no es opinión: el cargo
+`shp_fulfillment` que Mercado Pago descuenta sólo aparece arriba del umbral de envío gratis
+(`FILL_GESTFULL` usa `MIN_GROSS`, *"debajo del umbral el comprador paga el envío, no hay cargo
+Full al vendedor"*). Arriba de $33.000 son **~$5.900 a $6.190 por venta**, medidos en ventas reales.
+
+**2. Mandarlo a mano NO esquiva ese cargo.** Arriba de $33.000 el envío gratis es obligatorio lo
+mande quien lo mande: el vendedor paga el flete igual, sólo que sin el descuento de Full, y encima
+lo embala y lo despacha él. Abajo de $33.000 no hay nada que ahorrar porque Full no cobra nada.
+
+**3. Lo único que Full cobra de verdad es el ALMACENAMIENTO de lo que NO rota** (ML empieza a
+cobrar a los ~60 días parado, `ALMAC_DIAS`). Medido con `fast:2026-07-01` (período 15/06→14/07):
+
+| cuenta | facturó ML | cargos por venta | queda afuera |
+|---|---|---|---|
+| Adriana | $1.817.026 | $1.618.557 | $198.469 |
+| Ayelen | $1.826.477 | $1.091.721 | $734.756 |
+| Luciana | $2.420.347 | $1.739.380 | $680.967 |
+| Matías | $2.245.683 | $1.620.898 | $624.785 |
+| **total** | **$8.309.833** | **$6.070.556** | **$2.238.977** |
+
+**OJO: ese "queda afuera" NO es todo almacenamiento.** La factura mensual de ML trae adentro las
+**percepciones de IIBB**, que son ~$1.014.166/mes y **ya están contadas** en `ML_EXTRA_PCT` (ver la
+sección de percepciones). Descontándolas, Full cuesta **~$1.200.000/mes** entre almacenamiento,
+stock antiguo, retiros y publicidad si la hay. Es plata que el panel NO cuenta en ningún margen.
+
+**La conclusión operativa: no hay que sacar el catálogo de Full, hay que sacar la cola.** Ese
+$1.200.000 lo pagan las publicaciones paradas —las 29 con stock y sin vender hace 30 días
+($3.439.197) y las 230 u. "con problema"—, no las que venden. Lo que rota en menos de 2 meses paga
+CERO almacenamiento. Y el peor caso es lo **grande y liviano** que no rota (sábanas, cajas
+voluminosas): el almacenamiento se cobra por LUGAR, no por plata.
+
+**Y está el tiempo, que él mismo puso sobre la mesa.** Al ritmo de hoy son más de 40 paquetes por
+día. Embalar y despachar eso a mano no es "hacerse un rato", es una persona a tiempo completo — y
+lo que se ahorraría abajo de $33.000 es cero. La única versión que cierra es mandar a mano la cola
+lenta, que son pocas ventas por mes, y ahí lo que se gana no es el envío: es dejar de pagar
+almacenamiento por mercadería que no se mueve.
+
+**Lo que quedó sin medir:** el período 2026-08-01 la API de facturación de ML **no lo devuelve**
+(contesta "nada"). Por eso `fast:` ahora imprime qué períodos contestó ML y escribe "NO LO DIO ML"
+en vez de $0 — un almacenamiento en $0 se lee como buena noticia y era simplemente falta de dato.
+El número oficial y abierto por concepto está en ML → Facturación → Costos por servicio de
+almacenamiento, y se carga con `seedreal:<YYYY_MM>=<monto>`.
+
 ## EL STOCK QUE NO ESTÁ EN FULL NO EXISTE
 
 Regla suya del 20/08/2026, textual: **"todo lo que diga 'depósito' en ML no tener en cuenta nunca.
