@@ -16581,11 +16581,22 @@ async function main() {
     console.log(`\n✓ Borrados ${delIds.length} gastos (backup en cyc/compras_bak).`);
     return;
   }
-  // RESYNC_VP: re-sincroniza TODAS las ventas al producto que HOY tiene su publicación
+  // RESYNC_VP: re-sincroniza las ventas al producto que HOY tiene su publicación
   // (según cyc/mllinks). Arregla las ventas que quedaron con el nombre viejo cuando se
   // cambió un match y no se reflejó. Actualiza nombre, prodId, variante y costo. Backup
   // en cyc/ventaprod_bak. DRY_RUN=1 solo muestra cuántas cambiarían, por producto.
+  //
+  // SE PUEDE PASAR UN MLA Y ARREGLA SÓLO ESA PUBLICACIÓN: `RESYNC_VP=MLA3932382684`.
+  // Hace falta porque correrlo entero es mucho más grande de lo que parece. El 10/09/2026 él
+  // marcó UNA venta mal matcheada (un Batidor blanco) y la prueba en seco mostró que la corrida
+  // completa además movía ~30 ventas viejas entre fichas: "2 Separadores" → "Separador dedo
+  // Gordo", "Filtro agua" → "Filtro Con precito", "De la Patagonia" → "KO UNISEX".
+  // Esos son justo los pares que él dijo que **son productos diferentes** (16/08/2026), así que
+  // la corrida completa habría reescrito meses de historia sin que nadie lo pidiera.
+  // `RESYNC_VP=1` sigue haciendo todo, como antes.
   if (process.env.RESYNC_VP) {
+    const soloMla = String(process.env.RESYNC_VP).trim().toUpperCase();
+    const filtraMla = /^MLA\d+$/.test(soloMla) ? soloMla : null;
     const vp = (await db.get('cyc/ventaprod')) || {}; setDevLive(vp);
     const map = (await db.get('cyc/mllinks')) || {};
     const tc = parseFloat(((await db.get('cyc/finanzas')) || {}).tipo_cambio) || 1500;
@@ -16593,6 +16604,7 @@ async function main() {
     for (const [dk, day] of Object.entries(vp)) {
       for (const [id, v] of Object.entries(day || {})) {
         if (!v || !v.mla) continue;
+        if (filtraMla && v.mla !== filtraMla) continue;
         const e = map[v.mla];
         if (!e || !e.prodId || e.ignored) continue; // solo publicaciones vinculadas
         const p = products.find((pp) => pp.id === e.prodId);
@@ -16629,6 +16641,7 @@ async function main() {
       }
     }
     console.log(`\n=== RE-SINCRONIZAR ventas al producto de su publicación ===`);
+    console.log(filtraMla ? `SÓLO la publicación ${filtraMla}` : 'TODAS las publicaciones');
     console.log(`Ventas a corregir: ${n}`);
     Object.entries(byProd).sort((a, b) => b[1] - a[1]).forEach(([k, c]) => console.log(`  ${c} ×  ${k}`));
     // Los costos que cambian van UNO POR UNO: es plata de ventas ya hechas y tiene que verse.
