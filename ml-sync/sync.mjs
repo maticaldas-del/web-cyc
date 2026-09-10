@@ -2211,19 +2211,27 @@ async function main() {
             if (r.status === 429) { console.log(`   (${label} facturación 429, reintento...)`); continue; }
             const pr = await r.json();
             const per = (pr.results || []).find((x) => x.key === key);
+            // Decir SIEMPRE qué períodos contestó ML. Sin esto, un período que la API no tiene
+            // se ve igual que un rate-limit: los dos terminan en "facturado $0" y uno cree que
+            // el almacenamiento fue cero. Pasó con 2026-08-01 el 10/09.
+            console.log(`   (${label} facturación devolvió: ${(pr.results || []).map((x) => x.key).join(', ') || 'nada'})`);
             if (per) { bill = per.amount; }
             else break; // respondió pero no está el período → no reintentar
           } catch (e) { console.log(`   (facturación ${label}: ${String(e.message || '').slice(0, 40)})`); }
         }
         await sleepK(13000); // espaciar la próxima cuenta (límite 5/min)
         const a = label.toLowerCase();
+        // Respaldo: si la API no soltó el período pero YA lo habíamos leído en una corrida
+        // =totals, usar ese número en vez de dar almacenamiento $0 (que se lee como "no paga").
+        let deGuardada = false;
+        if (bill == null && KNOWN_BILL[key] && KNOWN_BILL[key][a] != null) { bill = KNOWN_BILL[key][a]; deGuardada = true; }
         const feesEst = Math.round((grossMinusNet[a] || 0) * TAXADJ);
         const storage = bill != null ? Math.round(bill - feesEst) : null;
-        perAcct[a] = { bill: bill != null ? Math.round(bill) : null, fees: feesEst, storage };
+        perAcct[a] = { bill: bill != null ? Math.round(bill) : null, fees: feesEst, storage, deGuardada };
         if (storage != null) { total += Math.max(0, storage); billsOk++; }
-        console.log(`▶ ${label} ${key}: facturado ${money(Math.round(bill || 0))} − cargos venta ${money(feesEst)} = almacenamiento ${money(storage || 0)}`);
+        console.log(`▶ ${label} ${key}: facturado ${bill == null ? 'NO LO DIO ML' : money(Math.round(bill))}${deGuardada ? ' (factura guardada)' : ''} − cargos venta ${money(feesEst)} = almacenamiento ${storage == null ? '?' : money(storage)}`);
       }
-      if (billsOk === 0) { console.log(`\n✗ No pude leer NINGUNA facturación de ML (rate-limit). NO sobrescribo ${key}. Reintentá más tarde.`); return; }
+      if (billsOk === 0) { console.log(`\n✗ No pude leer NINGUNA facturación de ML (rate-limit o el período no existe todavía). NO sobrescribo ${key}. Reintentá más tarde.`); return; }
       const rec = { key, from: new Date(win[0]).toISOString(), to: new Date(win[1]).toISOString(), days: Math.round((win[1] - win[0]) / 86400000) + 1, total: Math.round(total), perAcct, ts: Date.now(), metodo: 'fast' };
       await db.set('cyc/mlapi/storage/periods/' + key, rec);
       console.log(`\n✓ Guardado almacenamiento período ${key} (rápido): TOTAL ${money(Math.round(total))} · ${billsOk}/4 cuentas`);
