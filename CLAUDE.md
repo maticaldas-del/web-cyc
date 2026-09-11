@@ -602,6 +602,42 @@ Si eso sigue en pie está bien, pero hoy nadie le puede mandar mercadería.
 
 ## Cosas que ya pasaron (para no repetirlas)
 
+- **EL MARCADO AUTOMÁTICO DE CAJAS NUNCA FUNCIONÓ, Y EL SÍNTOMA ERA UN CERO (11/09/2026).** Él lo
+  marcó: *"hubo cajas que llegaron, pasaron aprox 8hr y el robot no había marcado nada. para mí no
+  funciona así como decís vos"*. Tenía razón, y yo le había contestado que sí funcionaba leyendo el
+  comentario del código en vez de correrlo. **Nunca marcó una caja. Ni una.**
+  Lo que mostraba la corrida eran dos renglones: *"Inventarios de Full mirados: 72 · Ninguna caja
+  abierta quedó cubierta"*. Eso se lee como "ML todavía no recibió nada". **Eran DOS errores
+  encadenados, los dos silenciosos:**
+  · **Faltaba `date_to`.** `/stock/fulfillment/operations/search` exige las DOS fechas y el robot
+    mandaba sólo `date_from`: las 72 consultas devolvían `400 {"message":"The field date_from and
+    date_to are required"}` y el `catch {}` vacío se las tragaba enteras.
+  · **La cantidad venía con otro nombre.** Una vez que ML contestó aparecieron 7 `inbound_reception`
+    … y seguían contando cero. El objeto crudo viene así:
+    `detail = {available_quantity, not_available_detail:[{status,quantity}]}` ← lo que entró en ESE
+    movimiento · `result = {total, available_quantity, …}` ← el stock que QUEDÓ después.
+    **No existe ningún `quantity` suelto**, y era justo el que se leía.
+    **Ojo con la tentación de usar `result`: sería peor que no arreglarlo.** Es el stock acumulado,
+    o sea que contaría el depósito entero en cada movimiento y marcaría como llegadas cajas que no
+    llegaron. Las `not_available` (ej. `internal_process`) SÍ se suman: entraron al depósito, sólo
+    que todavía no se pueden vender, y la pregunta que se contesta es si la caja llegó.
+  **Lo que sigue siendo cierto de la nota del 20/08:** lo que va EN CAMINO no se puede leer de ML.
+  `operations/search` muestra lo que YA ENTRÓ, que es otra cosa y es lo que se usa acá.
+  **El agujero que queda abierto:** la ventana arranca en la fecha de la caja abierta más vieja, así
+  que las entradas de una caja que él ya marcó a mano quedan adentro de la ventana y pueden
+  acreditarse a la caja abierta. Mientras nadie marque a mano no molesta; si empieza a marcar,
+  revisarlo.
+  **LA LECCIÓN, y es la misma que ya está anotada tres veces (el `catch {}` de Telegram, el filtro
+  que descarta por omisión, el `||` que se comía el cancelar): el dato no se pierde con ruido.**
+  Acá encima el síntoma era un CERO, que parece una buena noticia. Y la segunda lección es para mí:
+  **un comentario que dice "esto corre solo una vez por hora" no es prueba de que funcione.** Cuando
+  él dice que algo no anda, se corre y se mira — no se cita el código.
+  Por eso `cajasllegaron` ahora imprime: cuántas cajas abiertas hay, cuántas entradas informó ML,
+  **cuántas consultas fallaron y con qué error**, los tipos crudos de movimiento que devuelve ML al
+  lado de los que acepta el filtro, las unidades anotadas con su clave, y renglón por renglón de
+  cada caja lo que pide contra lo que ML dio.
+
+
 - **UN FILTRO DE FECHA QUE NO FILTRABA NADA, POR UN GUIÓN BAJO (09/09/2026).** `nomandar` avisa
   cuántas unidades vendió la cuenta que estás por sacar, "en 90 días". Contaba las de SIEMPRE.
   Las claves de los días son `2026_09_09`, con guión bajo, y `new Date('2026_09_09T00:00:00-03:00')`
