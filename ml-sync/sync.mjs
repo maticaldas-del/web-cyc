@@ -393,7 +393,19 @@ async function cajasQueLlegaron(db, accounts, labels, products, DRY) {
               tiposVistos[tipo || '(sin tipo)'] = (tiposVistos[tipo || '(sin tipo)'] || 0) + 1;
               opsTotal++;
               if (!tipo.includes('inbound') && !tipo.includes('reception')) continue;
-              const q = Number(x.quantity || x.detail?.quantity || 0) || 0;
+              // CÓMO MANDA ML LAS UNIDADES (visto el 11/09/2026, volcando el objeto crudo):
+              //   detail = {available_quantity, not_available_detail:[{status,quantity}]}  ← lo que
+              //            entró EN ESTE movimiento. Es el número que corresponde.
+              //   result = {total, available_quantity, ...}  ← el stock que QUEDÓ después.
+              // No existe ningún campo `quantity` suelto, que era el que se leía: por eso las
+              // entradas se contaban como cero aun cuando ML sí las informaba. Usar `result`
+              // sería peor que no arreglarlo: contaría el stock entero en cada movimiento.
+              // Las `not_available` (ej. status internal_process) SÍ entraron al depósito, sólo que
+              // todavía no están publicables: para saber si la caja llegó cuentan igual.
+              const det = x.detail || {};
+              let q = Number(det.available_quantity) || 0;
+              if (Array.isArray(det.not_available_detail)) for (const d of det.not_available_detail) q += Number(d.quantity) || 0;
+              if (!q) q = Number(x.quantity) || 0;   // respaldo por si ML cambia la forma
               if (q <= 0) { sinCantidad.push(`${tipo} · detail=${JSON.stringify(x.detail)} · result=${JSON.stringify(x.result)}`.slice(0, 400)); continue; }
               const k1 = kR(cta, p.id, par.va);
               recibido[k1] = (recibido[k1] || 0) + q;
