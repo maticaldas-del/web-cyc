@@ -401,12 +401,24 @@ entra de ese renglón (se descuenta a sí mismo del cálculo), no un incremento.
 sumaba encima lo que el renglón ya tenía puesto y dejaba cargar el DOBLE. Compilaba perfecto y en
 pantalla no se notaba: lo agarró probar la cuenta con números inventados antes de subir.
 
-**Lo que se sugiere mandar cubre 44 días, no 30.** Regla suya del 19/08/2026: desde que se arma
-la caja hasta que la mercadería se puede vender pasan unos **14 días** —~7 hasta que la caja sale
-y ~7 más hasta que ML la activa en Full— y en el medio la cuenta sigue vendiendo de lo que ya
-tiene. Mandar para 30 días hace que la caja llegue justo cuando la publicación se quedó sin nada.
-Los dos números están en `index.html` como `REPO_DIAS_COBERTURA` (**45**) y `REPO_DIAS_DEMORA` (**8**:
-él corrigió el 20/08 que en la práctica el viaje son 8 días, no 14).
+**LO QUE SE SUGIERE MANDAR CUBRE 30 DÍAS EN TOTAL, Y SE REDONDEA AL MÁS CERCANO (11/09/2026).**
+Pedido suyo, textual: *"quiero ser un poco más moderado con el tema de envío de productos. me
+gustaría cubrir los próximos 30 días máximo. así hay menos riesgo de stock parado."*
+Cambian **dos** cosas y las dos importan:
+ · **El objetivo son 30 días de stock TOTAL** (`REPO_DIAS_COBERTURA` = 30), contando lo que ya está
+   en Full y lo que va en camino. **Los días de viaje YA NO se suman.** Antes eran 45 + 8 = 53.
+   Tiene su costo y lo eligió sabiéndolo: con ~8 días de viaje, 30 días de stock desde hoy son unos
+   22 días de venta desde que la caja se activa.
+ · **Se redondea al MÁS CERCANO, no siempre para arriba** (`objetivoRepo`, antes `Math.ceil`). Lo
+   marcó con las Sábanas 140x190 Terracota: vende 1 por semana y tiene 1 unidad, así que 30 días
+   piden 4,29. Mandando 3 queda en 4 u. = **28 días**; mandando 4 queda en 5 u. = **35**. *"28 está
+   más cerca que 34 de 30"*. `Math.ceil` elegía siempre el 35.
+Verificado con sus números exactos antes de subir: objetivo 4 u., tiene 1, **manda 3**, queda en 28.
+`REPO_DIAS_DEMORA` (**8**) sigue existiendo: lo usa el texto de la pantalla y es la referencia del
+rojo de Pedidos, pero ya no entra en la cuenta de cuánto mandar.
+**Lo que NO cambió:** la cuenta sigue dividiendo por los días que el producto REALMENTE tuvo stock
+(no por 30 fijo), y una cuenta en CERO sigue recibiendo el piso de `REPO_PISO_CERO` (4 u.) aunque
+la cuenta dé 0 — en cero no vende, y eso no es reponer de más.
 
 **UNA CAJA A MEDIO ARMAR RETIENE MERCADERÍA, Y AHORA SE VE.** Lo planteó él el 27/08/2026:
 *"si no se cierra una caja no deja mercadería para una segunda no?"*. Es así, y es a propósito: el

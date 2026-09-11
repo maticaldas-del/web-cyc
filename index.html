@@ -2301,7 +2301,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='19.21';
+const APP_VERSION='19.22';
 // El problema real que esto resuelve no es curiosidad: es que el celular guarda la app y sigue
 // mostrando la de ayer sin avisar. Varias veces se revisó un cambio que ya estaba subido y no se
 // veía. Por eso, además del número, el chip avisa cuando hay una versión nueva esperando.
@@ -4338,7 +4338,7 @@ function renderOfiCaja(){
     barra.style.display=armando?'flex':'none';
     barra.innerHTML=armando?`<button class="pf-btn" onclick="cajaSugerida()">Cargar lo sugerido</button>`
       +`<button class="pf-btn" onclick="cajaVaciar()">Vaciar caja</button>`
-      +`<span style="font-size:.66rem;color:var(--muted);align-self:center">Poné cuántas unidades van en ESTA caja. Si no entra todo, cerrás ésta y armás la siguiente. Se guarda sola: podés dejarla a medias.<br>Lo sugerido cubre <strong>${REPO_DIAS_COBERTURA} días de venta más los ${REPO_DIAS_DEMORA} que tarda en llegar y activarse</strong>.</span>`:'';
+      +`<span style="font-size:.66rem;color:var(--muted);align-self:center">Poné cuántas unidades van en ESTA caja. Si no entra todo, cerrás ésta y armás la siguiente. Se guarda sola: podés dejarla a medias.<br>Lo sugerido deja <strong>${REPO_DIAS_COBERTURA} días de stock en total</strong>, contando lo que ya está en Full y lo que va en camino.</span>`:'';
   }
   if(!vis.length){
     // El vacío tiene que decir QUÉ HACER, no sólo que está vacío. Pedido suyo del 18/08/2026:
@@ -4450,7 +4450,7 @@ function renderOfiCaja(){
     let pie='';
     if(f.sinContarPorAroma)pie=`<div style="font-size:.66rem;color:var(--amber);margin-top:5px">⚠️ Estas ${f.hay} u. están contadas en el producto pero sin decir de qué variante. Anotalas en "Contar lo que hay", una por variante, y ahí te digo a dónde van.</div>`;
     else if(f.sinPublicar)pie=`<div style="font-size:.66rem;color:var(--amber);margin-top:5px">⚠️ No está publicado en ninguna cuenta. Mandarlo no sirve hasta que lo publiques.</div>`;
-    else if(f.nadieNecesita)pie=`<div style="font-size:.66rem;color:var(--green);margin-top:5px">✓ Ninguna cuenta lo necesita: a todas les alcanza para los ${REPO_DIAS_DEMORA} días que tarda en llegar más ${REPO_DIAS_COBERTURA} de venta. Dejalo en casa.</div>`;
+    else if(f.nadieNecesita)pie=`<div style="font-size:.66rem;color:var(--green);margin-top:5px">✓ Ninguna cuenta lo necesita: a todas les alcanza para ${REPO_DIAS_COBERTURA} días o más. Dejalo en casa.</div>`;
     else if(f.sobra>0)pie=`<div style="font-size:.66rem;color:var(--muted);margin-top:5px">Te sobran ${f.sobra} u. después de repartir. No hace falta mandarlas.</div>`;
 
     // En modo armar caja, cada renglón tiene su casilla: lo que va DE VERDAD en esta caja.
@@ -4816,7 +4816,7 @@ async function cerrarCaja(cuenta){
 // se puede vender pasan unos 8 días (era 14; él lo corrigió el 20/08 con lo que ve en la práctica).
 // Durante esos días la cuenta sigue vendiendo de lo que ya tiene. Si se manda para
 // "30 días", la caja llega justo cuando la publicación se quedó sin nada, que es el peor momento.
-// Por eso el objetivo son 30 días DE VENTA más los de demora (REPO_DIAS_TOTAL).
+// Por eso el objetivo son 30 días DE VENTA en total (REPO_DIAS_TOTAL).
 // ── A QUÉ VELOCIDAD SE VENDE: DIVIDIR POR LOS DÍAS QUE HUBO STOCK, NO POR 30 ──────────
 // Antes la cuenta era `ventas del mes ÷ 30` fijo, sin preguntar si en esos 30 días había
 // mercadería para vender. Eso mide MAL justo lo que más importa: un producto que vendió 10
@@ -4834,6 +4834,12 @@ async function cerrarCaja(cuenta){
 // venta el único día que hubo stock daría "1 por día" → 44 unidades, y capaz fue casualidad.
 // Preferimos quedarnos algo cortos antes que mandar una caja entera por una venta de suerte.
 const REPO_DIAS_MIN=7;
+// CUÁNTAS UNIDADES APUNTAR, REDONDEANDO AL MÁS CERCANO. Antes era `Math.ceil`, o sea que siempre
+// se iba para arriba. Él lo marcó el 11/09/2026 con las Sábanas Terracota: vende 1 por semana y
+// tiene 1 unidad, así que para 30 días hacen falta 4,29. Mandando 3 queda en 4 u. = 28 días;
+// mandando 4 queda en 5 u. = 35. **28 está más cerca de 30 que 35**, y encima deja menos
+// mercadería parada. Redondear para arriba siempre elegía el 35.
+const objetivoRepo=vDia=>Math.round(vDia*REPO_DIAS_TOTAL);
 // ── OJO CON LA FECHA APROXIMADA ─────────────────────────────────────────────────────
 // Error encontrado por él el 21/08/2026: "Armar caja" sugería mandar de más. Decía que el Paulvic
 // Barbarella vendía 1 por día "(7 u. en 7 días con stock)" cuando en 7 días había vendido 2.
@@ -4896,13 +4902,21 @@ function diasConStockProd(pid){
 // Lo que sí es una decisión y no una adivinanza es cuántos días cubrir, y eso es esta perilla.
 // La cuenta que la justifica: mandar de más a Full cuesta almacenamiento; quedarse sin stock
 // costaba $239.794 por día al 20/08/2026.
-const REPO_DIAS_COBERTURA=45;
+// CAMBIADO EL 11/09/2026, pedido suyo: *"quiero ser un poco más moderado con el tema de envío de
+// productos. me gustaría cubrir los próximos 30 días máximo. así hay menos riesgo de stock parado."*
+// Son 30 días EN TOTAL, contando lo que ya está en Full y lo que va en camino — los días de viaje
+// NO se suman más. Es una decisión suya y tiene su costo: con ~8 días de viaje, 30 días de stock
+// desde hoy son ~22 días de venta desde que la caja se activa. Lo eligió sabiendo eso, para que no
+// quede mercadería parada pagando almacenamiento.
+const REPO_DIAS_COBERTURA=30;
 // Cuánto tarda desde que se arma la caja hasta que ML la tiene a la venta. Estaba en 14 (7 de
 // despacho + 7 de activación); él corrigió el 20/08 que en la práctica son unos 8. Se sobreestima
 // la demora = se manda de más, así que el número importa. Cuando haya cajas marcadas como llegadas
 // se puede medir de verdad, con la fecha de despacho contra la de entrada a Full.
 const REPO_DIAS_DEMORA=8;
-const REPO_DIAS_TOTAL=REPO_DIAS_COBERTURA+REPO_DIAS_DEMORA;
+// Ya NO se le suma la demora: el objetivo son 30 días de stock total, punto. `REPO_DIAS_DEMORA`
+// sigue existiendo porque la pantalla lo nombra y porque el rojo de Pedidos lo usa de referencia.
+const REPO_DIAS_TOTAL=REPO_DIAS_COBERTURA;
 // CUÁNDO UN PEDIDO SE PINTA DE ROJO. Estaba en 7 días de stock y no se hablaba con la demora del
 // viaje: las Cartas Casino tenían 10 días de stock y salían AMARILLAS, cuando en 10 días no llega
 // ni la caja. O sea que el amarillo podía significar "ya está condenado a cortarse".
@@ -7545,7 +7559,7 @@ function _repartoVariantes(p,hayTotal,tr){
       // atribuía igual las 0,25/día de junio.
       if(vMes<=0&&stock<=0){hist=ventasHistoricas(p,l,va);if(hist)vDia=hist.vDia;}
       const dias=vDia>0?stock/vDia:(stock>0?999:null);
-      const objetivo=Math.ceil(vDia*REPO_DIAS_TOTAL);
+      const objetivo=objetivoRepo(vDia);
       return{cuenta:l,vMes,vDia,dConS,stock,enML,camino,dias,hist,sinPub:!reales.includes(l),falta:Math.max(0,objetivo-stock)};
     }).sort((a,b)=>{
       const da=a.dias==null?9999:a.dias, db=b.dias==null?9999:b.dias;
@@ -7596,7 +7610,7 @@ function repartoOficina(){
       // Solo si está en CERO — ver el comentario de la rama con variantes.
       if((ventas[l]||0)<=0&&stock<=0){hist=ventasHistoricas(p,l,'');if(hist)vDia=hist.vDia;}
       const dias=vDia>0?stock/vDia:(stock>0?999:null);   // sin ventas no se puede estimar
-      const objetivo=Math.ceil(vDia*REPO_DIAS_TOTAL);
+      const objetivo=objetivoRepo(vDia);
       return{cuenta:l,vMes:ventas[l]||0,vDia,dConS,stock,enML,camino,dias,hist,sinPub:!reales.includes(l),falta:Math.max(0,objetivo-stock)};
     }).sort((a,b)=>{
       // Primero a la que se le acaba antes. Las que no venden van al final.
