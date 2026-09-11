@@ -2301,7 +2301,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='19.22';
+const APP_VERSION='19.23';
 // El problema real que esto resuelve no es curiosidad: es que el celular guarda la app y sigue
 // mostrando la de ayer sin avisar. Varias veces se revisó un cambio que ya estaba subido y no se
 // veía. Por eso, además del número, el chip avisa cuando hay una versión nueva esperando.
@@ -3062,6 +3062,15 @@ function simPrecioReset(id){delete _simPrecio[id];repintarFlujo(id);}
 // Los dos porcentajes que cobra ML se DEDUCEN de la publicación real (lo que cobró hoy ÷ el precio
 // de hoy), no de una tabla: así cada producto usa la comisión de SU categoría sin que nadie la
 // cargue. Devuelve null cuando no hay con qué medir, en vez de inventar un número.
+// LA BARRERA DE LOS $33.000, QUE LA WEB NO CONOCÍA (11/09/2026).
+// Arriba de este precio ML te cobra el envío gratis. El robot lo tiene escrito en cuatro lugares
+// (`UMBRAL_ENVIO_GRATIS`, `TOPE_ENVIO`), pero en `index.html` NO ESTABA EN NINGUNO: ni el simulador
+// ni el "a cuánto llegás con el X%" sabían que existía. Resultado real que él marcó: el simulador
+// decía que a $35.600 este producto deja 23% con "envío de Full (no cobra) −$0", y ML en su propio
+// simulador daba $1.050 MENOS de depósito a ese precio. Peor todavía: la línea "el 23% te da hasta
+// $35.600" le estaba recomendando cruzar la barrera, que por su regla del 13/08/2026 no se cruza
+// nunca. Va con el MISMO número que el robot: si algún día ML lo cambia, hay que tocar los dos.
+const UMBRAL_ENVIO_GRATIS=33000;
 function precioParaMargen(p,pct){
   const r=margenMLDe(p);
   const precio=Math.round(Number(p.netoCalcPrecio)||0);
@@ -3196,6 +3205,18 @@ function flujoPlataHTML(p){
   // El precio al que ese neto se alcanza: sirve para contestar "¿a cuánto lo puedo bajar?" sin
   // ir moviendo el número a mano hasta pegarle.
   const precioPiso=precioParaMargen(p,META);
+  // ¿El precio que se está probando cruza la barrera del envío gratis? Ahí el número de esta línea
+  // NO sirve: falta el envío que ML empieza a cobrar, y este producto puede no tener ese dato
+  // medido (si nunca vendió arriba de la barrera, el envío que conocemos es $0). En vez de mostrar
+  // un porcentaje cómodo que no existe, se dice qué falta — el mismo criterio que el "SIN ENVÍO"
+  // en ámbar del margen.
+  // Sólo cuando está PROBANDO un precio. Hay productos que viven arriba de la barrera con permiso
+  // suyo (el Ferrari a $59.900, los Victoria's Secret a $49.000) y ésos ya pagaron el envío de
+  // verdad, así que su número está bien y un cartel rojo permanente sería ruido: cuando todo está
+  // pintado, nada resalta. El caso "precio real arriba de la barrera pero sin envío medido" ya
+  // tiene su propio aviso, el chip ámbar SIN ENVÍO.
+  const cruzaBarrera=simulando&&precioUsado>=UMBRAL_ENVIO_GRATIS&&gest<=0;
+  const pisoCruza=precioPiso!=null&&precioPiso>=UMBRAL_ENVIO_GRATIS;
   const paso=(lbl,val,col,signo,peso,pie)=>`<div style="text-align:center;padding:0 2px;min-width:76px">
       <div style="font-size:.5rem;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;line-height:1.3;margin-bottom:2px">${lbl}</div>
       <div style="font-family:'DM Mono',monospace;font-size:${peso?'.8rem':'.68rem'};font-weight:${peso?'700':'500'};color:${col};white-space:nowrap">${signo||''}${fmt(val)}</div>
@@ -3216,15 +3237,23 @@ function flujoPlataHTML(p){
   return marco(`<div style="display:flex;align-items:flex-start;gap:4px;flex-wrap:wrap">
       ${pasoEdit()}
       ${flecha}${paso('comisión ML',com,'var(--muted)','−',false,simulando?(comPctReal*100).toFixed(1)+'%':'')}
-      ${flecha}${paso(gest>0?'envío de Full':'envío de Full (no cobra)',gest,'var(--muted)','−')}
+      ${flecha}${cruzaBarrera
+        ?`<div style="text-align:center;padding:0 2px;min-width:76px"><div style="font-size:.5rem;color:var(--amber);text-transform:uppercase;letter-spacing:.05em;line-height:1.3;margin-bottom:2px">envío de Full</div><div style="font-family:'DM Mono',monospace;font-size:.68rem;font-weight:700;color:var(--amber)">−?</div><div style="font-size:.48rem;color:var(--amber);margin-top:1px;white-space:nowrap">ML SÍ cobra acá</div></div>`
+        :paso(gest>0?'envío de Full':'envío de Full (no cobra)',gest,'var(--muted)','−')}
       ${flecha}${paso('te deposita ML',neto,'#38bdf8','',true,simulando?'':(r.netoReal!=null?'real: '+fmt(r.netoReal):''))}
       ${flecha}${paso('IIBB + mono',imp,'var(--muted)','−',false,simulando?(impPctReal*100).toFixed(2)+'%':(impDet.estimado?'estimado':''))}
       ${flecha}${paso('mercadería + envío',merc,'var(--muted)','−',false,fmtUSD(cfu))}
       ${flecha}${paso('te queda',gan,ganCol,'',true)}
     </div>
     <div style="font-size:.58rem;color:var(--muted);margin-top:8px;line-height:1.6;border-top:1px solid var(--border);padding-top:7px">
-      <strong style="color:${ganCol}">${fmt(gan)}</strong> sobre el costo total de <strong style="color:var(--text)">${fmt(costoTotSim)}</strong> = <strong style="color:${pctColor(margenSim)};font-size:.78rem">${margenSim!=null?margenSim.toFixed(0)+'%':'—'}</strong>
-      ${precioPiso?` &nbsp;·&nbsp; el ${META}% te da hasta <strong style="color:var(--text)">${fmt(precioPiso)}</strong>${precioPiso<precioUsado?` <span style="color:var(--green)">(podés bajar ${fmt(precioUsado-precioPiso)})</span>`:` <span style="color:var(--amber)">(hoy estás ${fmt(precioPiso-precioUsado)} abajo)</span>`}`:''}
+      <strong style="color:${ganCol}">${fmt(gan)}</strong> sobre el costo total de <strong style="color:var(--text)">${fmt(costoTotSim)}</strong> = <strong style="color:${cruzaBarrera?'var(--amber)':pctColor(margenSim)};font-size:.78rem">${cruzaBarrera?'?':(margenSim!=null?margenSim.toFixed(0)+'%':'—')}</strong>
+      ${precioPiso?(pisoCruza
+        ?` &nbsp;·&nbsp; <span style="color:var(--amber)">para el ${META}% habría que cruzar los ${fmt(UMBRAL_ENVIO_GRATIS)}: no se cruza</span>`
+        :` &nbsp;·&nbsp; el ${META}% te da hasta <strong style="color:var(--text)">${fmt(precioPiso)}</strong>${precioPiso<precioUsado?` <span style="color:var(--green)">(podés bajar ${fmt(precioUsado-precioPiso)})</span>`:` <span style="color:var(--amber)">(hoy estás ${fmt(precioPiso-precioUsado)} abajo)</span>`}`):''}
+      ${simulando&&precioUsado>=UMBRAL_ENVIO_GRATIS?`<div style="margin-top:6px;padding:6px 8px;background:rgba(239,68,68,.12);border:1px solid var(--red);border-radius:6px;color:var(--red);font-size:.6rem;line-height:1.5">
+        ⚠ <strong>Cruzaste la barrera de los ${fmt(UMBRAL_ENVIO_GRATIS)}.</strong> Arriba de ese precio ML te cobra el envío gratis${gest>0?` (en este producto son ${fmt(gest)} por venta)`:`, y en este producto no tenemos medido cuánto: nunca vendió arriba de la barrera, así que acá figura $0 y el número sale MÁS ALTO de lo que va a ser`}.
+        Tu regla del 13/08/2026: se sube hasta ${fmt(UMBRAL_ENVIO_GRATIS-1)} y ahí se frena.
+      </div>`:''}
       <div style="font-size:.53rem;margin-top:3px;opacity:.85">El IIBB y el monotributo no se descuentan en el momento: llegan después, en la factura de ML de fin de mes. El envío de Full sí, ya está adentro de lo que te deposita.
       ${simulando?`<br><span style="color:var(--amber)">SIMULANDO: la comisión y los impuestos se recalculan con el % que cobra ML en esta publicación. Ojo que ML además cobra un cargo fijo por venta en los productos baratos, y ese cargo no se puede separar del % — cuanto más lejos del precio real, más aproximado es el número.</span>`:''}</div>
     </div>`);

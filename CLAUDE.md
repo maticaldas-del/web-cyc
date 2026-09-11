@@ -648,6 +648,36 @@ Si eso sigue en pie está bien, pero hoy nadie le puede mandar mercadería.
 
 ## Cosas que ya pasaron (para no repetirlas)
 
+- **EL SIMULADOR DE PRECIOS NO CONOCÍA LA BARRERA DE LOS $33.000 (11/09/2026).** Él lo marcó
+  comparando la ficha contra el simulador de ML: *"no coincide"*. Tenía razón y era del lado
+  peligroso — el panel daba **de más**.
+  El producto está a $24.000 (abajo de la barrera) y él probó **$35.600**. La ficha contestó
+  *"envío de Full (no cobra) −$0"*, te deposita **$24.738**, margen **23%**. El simulador de ML, al
+  mismo precio, daba **$23.619** de depósito: **~$1.050 menos**. La diferencia es el envío gratis
+  que ML empieza a cobrar arriba de $33.000 (en esa publicación, $6.190).
+  **La causa, en una línea:** en el simulador el envío es `const gest=r.gest||0` — un número FIJO
+  del producto que NO se mueve con el precio que él tipea. Vale $0 porque el precio real está abajo
+  de la barrera y ML nunca le cobró envío. Al simular arriba, sigue en $0.
+  **Y lo más grave no era la plata, era el consejo:** la línea *"el 23% te da hasta $35.600"* le
+  estaba recomendando un precio ARRIBA de la barrera, que por su regla del 13/08/2026 no se cruza
+  nunca. **`index.html` no tenía el número 33.000 escrito en ningún lado.** El robot lo tiene en
+  cuatro lugares (`UMBRAL_ENVIO_GRATIS`, `TOPE_ENVIO`); la web, en cero.
+  **Qué se hizo, y qué NO se hizo:** ahora la web tiene `UMBRAL_ENVIO_GRATIS=33000`, y al probar un
+  precio arriba de la barrera en un producto **sin envío medido** el margen muestra **"?"** en vez
+  de un porcentaje, la fila del envío dice **"−? · ML SÍ cobra acá"** y sale un cartel rojo. Y el
+  *"te da hasta"* pasa a decir *"para el 25% habría que cruzar los $33.000: no se cruza"*.
+  **NO se inventó un envío estimado a propósito:** el % de comisión que deduce el panel (30,5% acá)
+  no coincide con el que muestra ML (16%), así que meter un envío encima podía terminar en un
+  número distinto pero igual de falso — y contar el envío dos veces es el error que ya mordió
+  cuatro veces. Mientras no haya un envío MEDIDO para ese producto, la respuesta honesta es "?".
+  **El aviso sale SÓLO cuando está simulando.** Hay productos que viven arriba de la barrera con
+  permiso suyo (el Ferrari a $59.900, los VS a $49.000) y ésos ya pagaron el envío de verdad: un
+  cartel rojo permanente ahí sería ruido, y cuando todo está pintado nada resalta.
+  **LA LECCIÓN: una regla que vive en un solo lado del sistema no es una regla.** La barrera estaba
+  en el robot y en este archivo, pero no en la pantalla donde él decide los precios — así que la
+  pantalla lo invitaba a romperla. Es el mismo patrón que los ocho comandos con `|| 30` adentro.
+
+
 - **EL MARCADO AUTOMÁTICO DE CAJAS NUNCA FUNCIONÓ, Y EL SÍNTOMA ERA UN CERO (11/09/2026).** Él lo
   marcó: *"hubo cajas que llegaron, pasaron aprox 8hr y el robot no había marcado nada. para mí no
   funciona así como decís vos"*. Tenía razón, y yo le había contestado que sí funcionaba leyendo el
