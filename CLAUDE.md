@@ -348,8 +348,14 @@ que la caja llegó que ya la marque. y luego yo me fijo si hubo un problema o no
 que TODOS los renglones estuvieran cubiertos, y eso dejaba colgada para siempre justo la mercadería
 que NO coincide —rotura, faltante, o que ML no la dio de alta—: la caja se quedaba "en camino" y
 esas unidades seguían contando en el patrimonio como si existieran.
-El freno para no marcar de más: se exige que ML haya **dejado de procesar** la caja (3 días sin una
-entrada nueva de ninguno de sus renglones) y que haya entrado **algo**. Marcarla apenas entra la
+**Sólo cuentan las entradas POSTERIORES al despacho de la caja.** Antes las entradas se sumaban en
+un total suelto y la ventana arranca en la caja abierta más vieja, así que una recepción anterior al
+despacho se le acreditaba igual. Con la regla nueva eso era GRAVE: la primera prueba iba a marcar una
+caja de 64 u. despachada el 08/09 usando entradas del 07/09 —imposibles de ser suyas— y habría
+borrado **51 unidades reales** del patrimonio. Ahora cada entrada se guarda con su fecha y se
+consume de la más vieja a la más nueva, sólo entre las posteriores al despacho.
+Los otros dos frenos: se exige que ML haya **dejado de procesar** la caja (3 días sin una entrada
+nueva de ninguno de sus renglones) y que haya entrado **algo**. Marcarla apenas entra la
 primera unidad sacaría de "en camino" mercadería que ML todavía está dando de alta, y el patrimonio
 bajaría un día para volver a subir al otro. Una caja perdida entera (cero entradas) se queda abierta
 y en rojo, que es como tiene que verse.
@@ -641,10 +647,15 @@ Si eso sigue en pie está bien, pero hoy nadie le puede mandar mercadería.
     que todavía no se pueden vender, y la pregunta que se contesta es si la caja llegó.
   **Lo que sigue siendo cierto de la nota del 20/08:** lo que va EN CAMINO no se puede leer de ML.
   `operations/search` muestra lo que YA ENTRÓ, que es otra cosa y es lo que se usa acá.
-  **El agujero que queda abierto:** la ventana arranca en la fecha de la caja abierta más vieja, así
-  que las entradas de una caja que él ya marcó a mano quedan adentro de la ventana y pueden
-  acreditarse a la caja abierta. Mientras nadie marque a mano no molesta; si empieza a marcar,
-  revisarlo.
+  **El agujero que esto destapó, ya cerrado el mismo día:** la ventana arranca en la fecha de la caja
+  abierta más vieja y las entradas se sumaban en un total suelto, así que las de una caja anterior se
+  le acreditaban a la caja abierta. Con la regla vieja sólo retrasaba un verde; con la regla nueva
+  —marcar aunque falte— habría borrado 51 unidades reales del patrimonio. Ahora cada entrada se
+  guarda con su fecha y sólo cuenta para las cajas despachadas antes.
+  **Y la lección de eso: un cambio que parece chico cambia de gravedad según lo que haya alrededor.**
+  El mismo defecto era cosmético con la regla anterior y destructivo con la nueva. Por eso la prueba
+  en seco antes de soltarlo no es opcional: el número que la delató fue "marcaría la caja con 51 de
+  64 faltantes", que es demasiado para ser cierto.
   **LA LECCIÓN, y es la misma que ya está anotada tres veces (el `catch {}` de Telegram, el filtro
   que descarta por omisión, el `||` que se comía el cancelar): el dato no se pierde con ruido.**
   Acá encima el síntoma era un CERO, que parece una buena noticia. Y la segunda lección es para mí:

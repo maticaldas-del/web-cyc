@@ -335,13 +335,19 @@ async function cajasQueLlegaron(db, accounts, labels, products, DRY) {
     if (ab.fecha && ab.fecha < o.desde) o.desde = ab.fecha;
   }
   // Entradas a Full por cuenta+producto+variante desde la fecha de la caja más vieja.
-  const recibido = {};                       // "cuenta|prodId|variante" -> unidades
+  // LAS ENTRADAS SE GUARDAN CON SU FECHA, UNA POR UNA. Sumarlas en un total suelto mezclaba las
+  // entradas de una caja VIEJA con las de la caja abierta: la ventana arranca en la caja abierta
+  // más vieja, así que una recepción anterior al despacho de esta caja se le acreditaba igual.
+  // Con la regla nueva (marcar aunque falte) eso era grave: el 11/09/2026 la prueba iba a marcar
+  // una caja de 64 u. despachada el 08/09 dándole entradas del 07/09 — imposibles de ser suyas —
+  // y habría borrado 51 unidades REALES del patrimonio. Una entrada anterior al despacho no puede
+  // ser de esta caja.
+  const recEnt = {};                         // "cuenta|prodId|variante" -> [{ts, left}]
   const kR = (cta, pid, va) => cta + '|' + pid + '|' + (va || '');
   let mirados = 0, opsTotal = 0, fallos = 0;
   const tiposVistos = {};                    // tipo crudo de ML -> cuántas veces vino
   const erroresOp = {};                      // texto del error -> cuántas veces
   const sinCantidad = [];                    // entradas aceptadas pero sin unidades legibles
-  const ultimoPorClave = {};                 // clave -> fecha de la última entrada que informó ML
   for (const [cta, o] of Object.entries(porCta)) {
     const acc = accounts[cta]; if (!acc?.refresh_token) continue;
     let tok, sid;
@@ -409,12 +415,11 @@ async function cajasQueLlegaron(db, accounts, labels, products, DRY) {
               if (!q) q = Number(x.quantity) || 0;   // respaldo por si ML cambia la forma
               if (q <= 0) { sinCantidad.push(`${tipo} · detail=${JSON.stringify(x.detail)} · result=${JSON.stringify(x.result)}`.slice(0, 400)); continue; }
               const k1 = kR(cta, p.id, par.va);
-              recibido[k1] = (recibido[k1] || 0) + q;
-              // Cuándo fue la ÚLTIMA entrada de esta clave. Hace falta para saber si ML TERMINÓ de
-              // procesar la caja: mientras siga dando de alta unidades no se puede decir que faltó
-              // nada, recién cuando para unos días se sabe que lo que entró es todo lo que va a entrar.
+              // La fecha hace dos cosas: descartar las entradas anteriores al despacho de la caja,
+              // y saber si ML TERMINÓ de procesarla (mientras siga dando de alta unidades no se
+              // puede decir que faltó nada).
               const ts1 = Date.parse(x.date_created || '') || 0;
-              if (ts1 > (ultimoPorClave[k1] || 0)) ultimoPorClave[k1] = ts1;
+              (recEnt[k1] = recEnt[k1] || []).push({ ts: ts1, left: q });
             }
           } catch (eOp) {
             // GUARDAR EL MOTIVO. El catch vacío hacía que 72 consultas fallidas se vieran igual que
@@ -453,17 +458,22 @@ async function cajasQueLlegaron(db, accounts, labels, products, DRY) {
   // Y se exige que haya entrado ALGO: una caja perdida entera se queda abierta y en rojo, que es
   // como tiene que verse.
   const ESPERA_MS = 3 * 86400e3;
+  for (const arr of Object.values(recEnt)) arr.sort((a, b) => a.ts - b.ts);
   const marcadas = [], detalle = [];
   for (const ab of abiertas) {
+    // Sólo cuentan las entradas POSTERIORES al despacho de esta caja. Las de antes son de una caja
+    // anterior (ya marcada) y acreditárselas a ésta la daría por llegada sin que haya llegado.
+    const desdeCaja = Date.parse((ab.fecha || '1970-01-01') + 'T00:00:00-03:00') || 0;
     const faltan = [];
     const reng = [];
     let algo = false, ultima = 0;
     for (const it of ab.items) {
       const k1 = kR(ab.e.cuenta, it.prodId, it.variante || '');
-      const tiene = recibido[k1] || 0;
+      const ents = (recEnt[k1] || []).filter((e) => e.ts >= desdeCaja && e.left > 0);
+      const tiene = ents.reduce((a, e) => a + e.left, 0);
+      for (const e of ents) if (e.ts > ultima) ultima = e.ts;
       reng.push({ nombre: it.nombre || (pIdx[it.prodId] || {}).name || it.prodId, variante: it.variante || '', pide: it.u, tiene });
       if (tiene > 0) algo = true;
-      if ((ultimoPorClave[k1] || 0) > ultima) ultima = ultimoPorClave[k1];
       if (tiene >= it.u) continue;
       faltan.push({ prodId: it.prodId, variante: it.variante || '', nombre: it.nombre || (pIdx[it.prodId] || {}).name || it.prodId, pide: it.u, llego: tiene });
     }
@@ -472,16 +482,21 @@ async function cajasQueLlegaron(db, accounts, labels, products, DRY) {
     const marcar = !parcial || (algo && quieta);
     detalle.push({ cuenta: ab.e.cuenta, fecha: ab.fecha, track: ab.c.track || '', completa: !parcial, marcar, algo, quieta, reng });
     if (!marcar) continue;                             // ML todavía la está procesando: se deja abierta
-    // Descontar SÓLO lo que entró de verdad: si se restara lo que pedía el renglón, una caja
-    // posterior del mismo producto arrancaría con el saldo en negativo.
+    // Consumir SÓLO lo que entró de verdad, de la entrada más vieja a la más nueva. Si se restara
+    // lo que pedía el renglón, una caja posterior del mismo producto arrancaría en negativo.
     for (const it of ab.items) {
       const k1 = kR(ab.e.cuenta, it.prodId, it.variante || '');
-      recibido[k1] = Math.max(0, (recibido[k1] || 0) - Math.min(it.u, recibido[k1] || 0));
+      let queda = it.u;
+      for (const e of (recEnt[k1] || [])) {
+        if (queda <= 0) break;
+        if (e.ts < desdeCaja || e.left <= 0) continue;
+        const t = Math.min(queda, e.left); e.left -= t; queda -= t;
+      }
     }
     ab.faltan = parcial ? faltan : null;
     marcadas.push(ab);
   }
-  if (!marcadas.length) return { marcadas: [], mirados, msg: null, detalle, tiposVistos, opsTotal, fallos, erroresOp, sinCantidad, recibido, abiertas: abiertas.length };
+  if (!marcadas.length) return { marcadas: [], mirados, msg: null, detalle, tiposVistos, opsTotal, fallos, erroresOp, sinCantidad, recEnt, abiertas: abiertas.length };
   if (!DRY) {
     // Se escribe la lista COMPLETA de cajas del envío: cajasDet es un array y un patch parcial la
     // rompería, igual que pasa con las variantes de ML.
@@ -506,7 +521,7 @@ async function cajasQueLlegaron(db, accounts, labels, products, DRY) {
       + (uF ? ` — ⚠️ faltaron ${uF} u.` : '');
   }).join('\n');
   return {
-    marcadas, mirados, detalle, tiposVistos, opsTotal, fallos, erroresOp, sinCantidad, recibido, abiertas: abiertas.length,
+    marcadas, mirados, detalle, tiposVistos, opsTotal, fallos, erroresOp, sinCantidad, recEnt, abiertas: abiertas.length,
     msg: `📦 <b>${marcadas.length} caja(s) llegaron a Full</b>\n${det}\n\nYa cuentan como stock de la cuenta.`,
   };
 }
@@ -3792,12 +3807,13 @@ async function main() {
       // LAS UNIDADES QUE SÍ SE ANOTARON, CON SU CLAVE. Sin esto no se distingue "ML no informó
       // entradas" de "las informó pero quedaron guardadas bajo otra variante", que es el caso en
       // que todos los renglones dicen 0 teniendo entradas aceptadas.
-      const _r = Object.entries(r.recibido || {}).filter(([, n]) => n > 0);
-      console.log(`\nUNIDADES QUE ML INFORMÓ COMO ENTRADA, con la clave con que quedaron guardadas:`);
+      const _r = Object.entries(r.recEnt || {}).filter(([, arr]) => arr && arr.length);
+      console.log(`\nENTRADAS QUE INFORMÓ ML, CON SU FECHA (sólo cuentan las posteriores al despacho de cada caja):`);
       if (!_r.length) console.log('   ninguna');
-      for (const [k, n] of _r) {
+      for (const [k, arr] of _r) {
         const [cta, pid, va] = k.split('|');
-        console.log(`   ${String(n).padStart(4)} u. · ${cta} · ${(pIdxProbe[pid] || {}).name || pid}${va ? ' · ' + va : '  ⚠️ SIN VARIANTE'}`);
+        const _d = arr.map((e) => `${e.left} u. el ${new Date(e.ts).toISOString().slice(0, 10)}`).join(' · ');
+        console.log(`   ${cta} · ${(pIdxProbe[pid] || {}).name || pid}${va ? ' · ' + va : '  ⚠️ SIN VARIANTE'} → ${_d}`);
       }
       if (r.sinCantidad && r.sinCantidad.length) {
         console.log(`\n⚠️ ${r.sinCantidad.length} entrada(s) aceptada(s) pero sin unidades legibles:`);
