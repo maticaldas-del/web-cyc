@@ -341,6 +341,7 @@ async function cajasQueLlegaron(db, accounts, labels, products, DRY) {
   const tiposVistos = {};                    // tipo crudo de ML -> cuántas veces vino
   const erroresOp = {};                      // texto del error -> cuántas veces
   const sinCantidad = [];                    // entradas aceptadas pero sin unidades legibles
+  const ultimoPorClave = {};                 // clave -> fecha de la última entrada que informó ML
   for (const [cta, o] of Object.entries(porCta)) {
     const acc = accounts[cta]; if (!acc?.refresh_token) continue;
     let tok, sid;
@@ -409,6 +410,11 @@ async function cajasQueLlegaron(db, accounts, labels, products, DRY) {
               if (q <= 0) { sinCantidad.push(`${tipo} · detail=${JSON.stringify(x.detail)} · result=${JSON.stringify(x.result)}`.slice(0, 400)); continue; }
               const k1 = kR(cta, p.id, par.va);
               recibido[k1] = (recibido[k1] || 0) + q;
+              // Cuándo fue la ÚLTIMA entrada de esta clave. Hace falta para saber si ML TERMINÓ de
+              // procesar la caja: mientras siga dando de alta unidades no se puede decir que faltó
+              // nada, recién cuando para unos días se sabe que lo que entró es todo lo que va a entrar.
+              const ts1 = Date.parse(x.date_created || '') || 0;
+              if (ts1 > (ultimoPorClave[k1] || 0)) ultimoPorClave[k1] = ts1;
             }
           } catch (eOp) {
             // GUARDAR EL MOTIVO. El catch vacío hacía que 72 consultas fallidas se vieran igual que
@@ -434,20 +440,45 @@ async function cajasQueLlegaron(db, accounts, labels, products, DRY) {
   // naranja horas después. La corrida decía "mirados: 72 · ninguna quedó cubierta" y nada más, o
   // sea que no había forma de saber si ML no informaba nada, si el filtro de tipo no coincidía o
   // si fallaba el cruce de variante. Un cero sin detalle no se puede diagnosticar.
+  // UNA CAJA QUE LLEGA INCOMPLETA TAMBIÉN SE MARCA (11/09/2026, pedido suyo: *"cuando el robot vea
+  // que la caja llegó que ya la marque. y luego yo me fijo si hubo un problema o no"*).
+  // Antes se exigía que TODOS los renglones estuvieran cubiertos, así que una caja a la que le
+  // faltaban 2 unidades —rotura, faltante, o que ML no las dio de alta— no se marcaba NUNCA: se
+  // quedaba "en camino" para siempre y esas unidades seguían contando en el patrimonio como si
+  // existieran. Justo la mercadería que NO coincide era la única que no se resolvía sola.
+  // El freno para no marcar de más: se exige que ML haya dejado de procesar la caja
+  // (`ESPERA_MS` sin una entrada nueva de ninguno de sus renglones). Marcarla apenas entra la
+  // primera unidad sacaría de "en camino" mercadería que ML todavía está dando de alta, y el
+  // patrimonio bajaría un día para volver a subir al otro — plata que aparece y desaparece.
+  // Y se exige que haya entrado ALGO: una caja perdida entera se queda abierta y en rojo, que es
+  // como tiene que verse.
+  const ESPERA_MS = 3 * 86400e3;
   const marcadas = [], detalle = [];
   for (const ab of abiertas) {
     const faltan = [];
     const reng = [];
+    let algo = false, ultima = 0;
     for (const it of ab.items) {
       const k1 = kR(ab.e.cuenta, it.prodId, it.variante || '');
       const tiene = recibido[k1] || 0;
       reng.push({ nombre: it.nombre || (pIdx[it.prodId] || {}).name || it.prodId, variante: it.variante || '', pide: it.u, tiene });
+      if (tiene > 0) algo = true;
+      if ((ultimoPorClave[k1] || 0) > ultima) ultima = ultimoPorClave[k1];
       if (tiene >= it.u) continue;
-      faltan.push(it);
+      faltan.push({ prodId: it.prodId, variante: it.variante || '', nombre: it.nombre || (pIdx[it.prodId] || {}).name || it.prodId, pide: it.u, llego: tiene });
     }
-    detalle.push({ cuenta: ab.e.cuenta, fecha: ab.fecha, track: ab.c.track || '', completa: !faltan.length, reng });
-    if (faltan.length) continue;                       // esta caja no está completa: se deja abierta
-    for (const it of ab.items) recibido[kR(ab.e.cuenta, it.prodId, it.variante || '')] -= it.u;
+    const quieta = ultima > 0 && (Date.now() - ultima) >= ESPERA_MS;
+    const parcial = faltan.length > 0;
+    const marcar = !parcial || (algo && quieta);
+    detalle.push({ cuenta: ab.e.cuenta, fecha: ab.fecha, track: ab.c.track || '', completa: !parcial, marcar, algo, quieta, reng });
+    if (!marcar) continue;                             // ML todavía la está procesando: se deja abierta
+    // Descontar SÓLO lo que entró de verdad: si se restara lo que pedía el renglón, una caja
+    // posterior del mismo producto arrancaría con el saldo en negativo.
+    for (const it of ab.items) {
+      const k1 = kR(ab.e.cuenta, it.prodId, it.variante || '');
+      recibido[k1] = Math.max(0, (recibido[k1] || 0) - Math.min(it.u, recibido[k1] || 0));
+    }
+    ab.faltan = parcial ? faltan : null;
     marcadas.push(ab);
   }
   if (!marcadas.length) return { marcadas: [], mirados, msg: null, detalle, tiposVistos, opsTotal, fallos, erroresOp, sinCantidad, recibido, abiertas: abiertas.length };
@@ -459,8 +490,9 @@ async function cajasQueLlegaron(db, accounts, labels, products, DRY) {
     const hoy = dayKeyFromISO(new Date().toISOString()).replace(/_/g, '-');
     for (const [id, idxs] of Object.entries(porEnvio)) {
       const e = envios[id];
+      const faltaDe = {}; for (const m of marcadas) if (m.id === id) faltaDe[m.i] = m.faltan || null;
       const cajas = (e.cajasDet || []).map((c, i) => idxs.includes(i)
-        ? { ...c, recibida: true, recFecha: hoy, recAuto: true } : c);
+        ? { ...c, recibida: true, recFecha: hoy, recAuto: true, faltan: faltaDe[i] || null } : c);
       await db.set('cyc/envios_full/' + id + '/cajasDet', cajas);
       // Releído: que la escritura no dé error no prueba que haya quedado.
       const rel = (await db.get('cyc/envios_full/' + id + '/cajasDet')) || [];
@@ -468,7 +500,11 @@ async function cajasQueLlegaron(db, accounts, labels, products, DRY) {
       for (const i of idxs) if (!arrRel[i] || !arrRel[i].recibida) console.log(`⚠️ la caja ${i + 1} del envío ${id} NO quedó marcada`);
     }
   }
-  const det = marcadas.map((m) => `· ${m.e.cuenta} · caja del ${m.fecha}${m.c.track ? ' (' + m.c.track + ')' : ''} · ${m.items.reduce((a, x) => a + x.u, 0)} u.`).join('\n');
+  const det = marcadas.map((m) => {
+    const uF = (m.faltan || []).reduce((a, x) => a + (x.pide - x.llego), 0);
+    return `· ${m.e.cuenta} · caja del ${m.fecha}${m.c.track ? ' (' + m.c.track + ')' : ''} · ${m.items.reduce((a, x) => a + x.u, 0)} u.`
+      + (uF ? ` — ⚠️ faltaron ${uF} u.` : '');
+  }).join('\n');
   return {
     marcadas, mirados, detalle, tiposVistos, opsTotal, fallos, erroresOp, sinCantidad, recibido, abiertas: abiertas.length,
     msg: `📦 <b>${marcadas.length} caja(s) llegaron a Full</b>\n${det}\n\nYa cuentan como stock de la cuenta.`,
@@ -3777,7 +3813,9 @@ async function main() {
       if (!r.marcadas.length) { console.log('\nNinguna caja abierta quedó cubierta por las entradas que informa ML.'); return; }
       console.log(`\n${APLICAR ? 'MARCADAS' : '(PRUEBA) SE MARCARÍAN'} · ${r.marcadas.length}`);
       for (const m of r.marcadas) {
-        console.log(`  ${m.e.cuenta.padEnd(8)} · caja del ${m.fecha}${m.c.track ? ' · ' + m.c.track : ''} · ${m.items.reduce((a, x) => a + x.u, 0)} u.`);
+        const _uF = (m.faltan || []).reduce((a, x) => a + (x.pide - x.llego), 0);
+        console.log(`  ${m.e.cuenta.padEnd(8)} · caja del ${m.fecha}${m.c.track ? ' · ' + m.c.track : ''} · ${m.items.reduce((a, x) => a + x.u, 0)} u.${_uF ? '  ⚠️ FALTARON ' + _uF + ' u.' : ''}`);
+        for (const f of (m.faltan || [])) console.log(`      ⚠️ mandaste ${f.pide}, entraron ${f.llego} · ${f.nombre}${f.variante ? ' · ' + f.variante : ''}`);
         for (const it of m.items) console.log(`      ${String(it.u).padStart(4)}× ${(it.nombre || it.prodId)}${it.variante ? ' · ' + it.variante : ''}`);
       }
       if (!APLICAR) console.log('\nNo se escribió nada. Agregá ":go" para marcarlas.');

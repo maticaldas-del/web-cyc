@@ -341,8 +341,26 @@ Colores de cada caja, regla suya: **verde** llegó · **naranja** en camino · *
 sin llegar. **El verde lo pone el robot solo**, una vez por hora: ML publica las entradas a Full
 en `/stock/fulfillment/operations/search` y se cruzan con el contenido de cada caja. Cuando hay
 varias cajas del mismo producto se reparte **por orden de despacho, la más vieja primero** (ML no
-dice de qué caja vino cada unidad). Una caja se marca **solo si TODOS sus renglones** quedaron
-cubiertos: media caja recibida sigue siendo una caja en camino. A mano: `cajasllegaron`.
+dice de qué caja vino cada unidad). A mano: `cajasllegaron`.
+
+**UNA CAJA QUE LLEGA INCOMPLETA TAMBIÉN SE MARCA** (11/09/2026, pedido suyo: *"cuando el robot vea
+que la caja llegó que ya la marque. y luego yo me fijo si hubo un problema o no"*). Antes se exigía
+que TODOS los renglones estuvieran cubiertos, y eso dejaba colgada para siempre justo la mercadería
+que NO coincide —rotura, faltante, o que ML no la dio de alta—: la caja se quedaba "en camino" y
+esas unidades seguían contando en el patrimonio como si existieran.
+El freno para no marcar de más: se exige que ML haya **dejado de procesar** la caja (3 días sin una
+entrada nueva de ninguno de sus renglones) y que haya entrado **algo**. Marcarla apenas entra la
+primera unidad sacaría de "en camino" mercadería que ML todavía está dando de alta, y el patrimonio
+bajaría un día para volver a subir al otro. Una caja perdida entera (cero entradas) se queda abierta
+y en rojo, que es como tiene que verse.
+La caja marcada así **NO va en verde**: va en **ámbar**, dice *"llegó · faltaron N u."* y abajo
+lista renglón por renglón lo que mandaste contra lo que entró. El verde liso escondería justo lo que
+él quiere mirar. Se descuenta sólo lo que entró de verdad, así una caja posterior del mismo producto
+no arranca con el saldo en negativo.
+
+**Lo que ML tiene roto o vencido adentro de Full ya no cuenta, y nunca contó.** El robot se trae
+`available_quantity` y nada más: lo que ML marca como no disponible (roto, en proceso interno, para
+descartar) queda afuera del panel y del patrimonio solo. Ahí no hay nada que hacer.
 
 **La caja tiene DOS límites y se ven los dos: 70×70×70 y 30 kg** (27/08/2026, pedido suyo). Arriba
 de "Armar caja" van dos barritas —lugar y peso— con lo que llevás puesto. Van las dos y no una
