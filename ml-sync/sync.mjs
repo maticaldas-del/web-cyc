@@ -340,6 +340,7 @@ async function cajasQueLlegaron(db, accounts, labels, products, DRY) {
   let mirados = 0, opsTotal = 0, fallos = 0;
   const tiposVistos = {};                    // tipo crudo de ML -> cuántas veces vino
   const erroresOp = {};                      // texto del error -> cuántas veces
+  const sinCantidad = [];                    // entradas aceptadas pero sin unidades legibles
   for (const [cta, o] of Object.entries(porCta)) {
     const acc = accounts[cta]; if (!acc?.refresh_token) continue;
     let tok, sid;
@@ -393,7 +394,7 @@ async function cajasQueLlegaron(db, accounts, labels, products, DRY) {
               opsTotal++;
               if (!tipo.includes('inbound') && !tipo.includes('reception')) continue;
               const q = Number(x.quantity || x.detail?.quantity || 0) || 0;
-              if (q <= 0) continue;
+              if (q <= 0) { sinCantidad.push(`${tipo} · campos: ${Object.keys(x).join(',')}`); continue; }
               const k1 = kR(cta, p.id, par.va);
               recibido[k1] = (recibido[k1] || 0) + q;
             }
@@ -437,7 +438,7 @@ async function cajasQueLlegaron(db, accounts, labels, products, DRY) {
     for (const it of ab.items) recibido[kR(ab.e.cuenta, it.prodId, it.variante || '')] -= it.u;
     marcadas.push(ab);
   }
-  if (!marcadas.length) return { marcadas: [], mirados, msg: null, detalle, tiposVistos, opsTotal, fallos, erroresOp, abiertas: abiertas.length };
+  if (!marcadas.length) return { marcadas: [], mirados, msg: null, detalle, tiposVistos, opsTotal, fallos, erroresOp, sinCantidad, recibido, abiertas: abiertas.length };
   if (!DRY) {
     // Se escribe la lista COMPLETA de cajas del envío: cajasDet es un array y un patch parcial la
     // rompería, igual que pasa con las variantes de ML.
@@ -457,7 +458,7 @@ async function cajasQueLlegaron(db, accounts, labels, products, DRY) {
   }
   const det = marcadas.map((m) => `· ${m.e.cuenta} · caja del ${m.fecha}${m.c.track ? ' (' + m.c.track + ')' : ''} · ${m.items.reduce((a, x) => a + x.u, 0)} u.`).join('\n');
   return {
-    marcadas, mirados, detalle, tiposVistos, opsTotal, fallos, erroresOp, abiertas: abiertas.length,
+    marcadas, mirados, detalle, tiposVistos, opsTotal, fallos, erroresOp, sinCantidad, recibido, abiertas: abiertas.length,
     msg: `📦 <b>${marcadas.length} caja(s) llegaron a Full</b>\n${det}\n\nYa cuentan como stock de la cuenta.`,
   };
 }
@@ -3733,12 +3734,27 @@ async function main() {
     if (String(process.env.BILLING_PROBE || '').startsWith('cajasllegaron')) {
       const APLICAR = String(process.env.BILLING_PROBE).split(':')[1] === 'go';
       const r = await cajasQueLlegaron(db, accounts, labels, products, !APLICAR);
+      const pIdxProbe = {}; for (const p of products) pIdxProbe[p.id] = p;
       console.log(`Cajas abiertas: ${r.abiertas || 0} · inventarios de Full mirados: ${r.mirados} · entradas que informó ML: ${r.opsTotal || 0}${r.fallos ? ' · ' + r.fallos + ' consultas fallaron' : ''}`);
       const _e = Object.entries(r.erroresOp || {});
       if (_e.length) { console.log('\nPOR QUÉ FALLARON:'); for (const [m, n] of _e) console.log(`   ×${n}  ${m}`); }
       const _t = Object.entries(r.tiposVistos || {});
       console.log(`Tipos de movimiento que devolvió ML: ${_t.length ? _t.map(([k, n]) => k + ' ×' + n).join(' · ') : 'NINGUNO'}`);
       console.log(`   (sólo se aceptan los que dicen "inbound" o "reception")`);
+      // LAS UNIDADES QUE SÍ SE ANOTARON, CON SU CLAVE. Sin esto no se distingue "ML no informó
+      // entradas" de "las informó pero quedaron guardadas bajo otra variante", que es el caso en
+      // que todos los renglones dicen 0 teniendo entradas aceptadas.
+      const _r = Object.entries(r.recibido || {}).filter(([, n]) => n > 0);
+      console.log(`\nUNIDADES QUE ML INFORMÓ COMO ENTRADA, con la clave con que quedaron guardadas:`);
+      if (!_r.length) console.log('   ninguna');
+      for (const [k, n] of _r) {
+        const [cta, pid, va] = k.split('|');
+        console.log(`   ${String(n).padStart(4)} u. · ${cta} · ${(pIdxProbe[pid] || {}).name || pid}${va ? ' · ' + va : '  ⚠️ SIN VARIANTE'}`);
+      }
+      if (r.sinCantidad && r.sinCantidad.length) {
+        console.log(`\n⚠️ ${r.sinCantidad.length} entrada(s) aceptada(s) pero sin unidades legibles:`);
+        for (const x of r.sinCantidad.slice(0, 5)) console.log(`   ${x}`);
+      }
       if (r.detalle && r.detalle.length) {
         console.log('\nRENGLÓN POR RENGLÓN · "pide" es lo que va en la caja, "ML dio" lo que informó ML:');
         for (const d of r.detalle) {
