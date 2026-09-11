@@ -394,7 +394,7 @@ async function cajasQueLlegaron(db, accounts, labels, products, DRY) {
               opsTotal++;
               if (!tipo.includes('inbound') && !tipo.includes('reception')) continue;
               const q = Number(x.quantity || x.detail?.quantity || 0) || 0;
-              if (q <= 0) { sinCantidad.push(`${tipo} · campos: ${Object.keys(x).join(',')}`); continue; }
+              if (q <= 0) { sinCantidad.push(`${tipo} · detail=${JSON.stringify(x.detail)} · result=${JSON.stringify(x.result)}`.slice(0, 400)); continue; }
               const k1 = kR(cta, p.id, par.va);
               recibido[k1] = (recibido[k1] || 0) + q;
             }
