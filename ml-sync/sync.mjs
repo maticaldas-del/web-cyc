@@ -398,7 +398,12 @@ async function cajasQueLlegaron(db, accounts, labels, products, DRY) {
             // quedó cubierta". Es el mismo patrón del `catch {}` que borró un destinatario de
             // Telegram: el dato no se pierde con ruido, se pierde en silencio.
             fallos++;
-            const m = String(eOp && eOp.message || eOp).slice(0, 120);
+            // mlGet arma el mensaje como `ML GET <ruta>: <status> <cuerpo>`. La ruta sola mide ~115
+            // caracteres, así que recortar por el PRINCIPIO se comía justo el código de error, que
+            // es el único dato que sirve. Se corta desde el ": " para quedarse con status + cuerpo.
+            const raw = String((eOp && eOp.message) || eOp);
+            const corte = raw.indexOf(': ');
+            const m = corte > 0 ? raw.slice(corte + 2, corte + 202) : raw.slice(0, 200);
             erroresOp[m] = (erroresOp[m] || 0) + 1;
             /* si no contesta, esa caja se queda abierta: mejor eso que marcarla de más */
           }
