@@ -354,8 +354,18 @@ despacho se le acreditaba igual. Con la regla nueva eso era GRAVE: la primera pr
 caja de 64 u. despachada el 08/09 usando entradas del 07/09 —imposibles de ser suyas— y habría
 borrado **51 unidades reales** del patrimonio. Ahora cada entrada se guarda con su fecha y se
 consume de la más vieja a la más nueva, sólo entre las posteriores al despacho.
-Los otros dos frenos: se exige que ML haya **dejado de procesar** la caja (3 días sin una entrada
-nueva de ninguno de sus renglones) y que haya entrado **algo**. Marcarla apenas entra la
+**Son TRES frenos, no uno**, y hicieron falta los tres: con sólo *"ML dejó de recibir hace 3 días"*
+la prueba iba a marcar como llegada una caja despachada 3 días antes con **5 de 65 unidades** —las
+pocas entradas de esa fecha eran la cola de la caja anterior—. Marcar el 8% de una caja no es
+"llegó con faltantes", es "todavía no llegó".
+ · **ML dejó de dar de alta** (3 días sin entradas nuevas): si sigue procesando no se puede decir
+   que faltó nada.
+ · **La caja tiene 10 días o más** (`MIN_DIAS`): antes de eso ni siquiera tuvo tiempo de llegar, el
+   viaje son ~8 días.
+ · **Entró la mitad o más** (`MIN_PARTE` = 0,5): abajo de eso se queda abierta y se pone roja, que
+   es como tiene que verse algo que no llegó.
+Una caja **completa** se marca siempre, sin esperar ninguno de los tres. Y la salida de
+`cajasllegaron` dice, caja por caja, **cuál de los tres frenos la dejó abierta**. Marcarla apenas entra la
 primera unidad sacaría de "en camino" mercadería que ML todavía está dando de alta, y el patrimonio
 bajaría un día para volver a subir al otro. Una caja perdida entera (cero entradas) se queda abierta
 y en rojo, que es como tiene que verse.

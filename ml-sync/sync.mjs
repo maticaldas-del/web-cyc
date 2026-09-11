@@ -457,7 +457,20 @@ async function cajasQueLlegaron(db, accounts, labels, products, DRY) {
   // patrimonio bajaría un día para volver a subir al otro — plata que aparece y desaparece.
   // Y se exige que haya entrado ALGO: una caja perdida entera se queda abierta y en rojo, que es
   // como tiene que verse.
+  // TRES FRENOS, NO UNO. Con sólo "ML dejó de recibir hace 3 días" la prueba del 11/09/2026 iba a
+  // marcar como llegada una caja despachada 3 días antes con 5 de 65 unidades adentro: las pocas
+  // entradas que caían en esa fecha eran la cola de la caja ANTERIOR, no de ésta. Marcar el 8% de
+  // una caja no es "llegó con faltantes", es "todavía no llegó" — y habría borrado 60 unidades
+  // reales del patrimonio.
+  //   · ESPERA_MS  → ML dejó de dar de alta (si sigue procesando, no se puede decir que faltó nada)
+  //   · MIN_DIAS   → antes de esto la caja ni siquiera tuvo tiempo de llegar (el viaje son ~8 días,
+  //                  `REPO_DIAS_DEMORA` en el panel)
+  //   · MIN_PARTE  → tiene que haber entrado la mayor parte. Abajo de eso la caja se queda abierta
+  //                  y se pone roja, que es como tiene que verse algo que no llegó.
+  // Una caja COMPLETA se marca siempre, sin esperar ninguno de los tres.
   const ESPERA_MS = 3 * 86400e3;
+  const MIN_DIAS = 10;
+  const MIN_PARTE = 0.5;
   for (const arr of Object.values(recEnt)) arr.sort((a, b) => a.ts - b.ts);
   const marcadas = [], detalle = [];
   for (const ab of abiertas) {
@@ -478,9 +491,13 @@ async function cajasQueLlegaron(db, accounts, labels, products, DRY) {
       faltan.push({ prodId: it.prodId, variante: it.variante || '', nombre: it.nombre || (pIdx[it.prodId] || {}).name || it.prodId, pide: it.u, llego: tiene });
     }
     const quieta = ultima > 0 && (Date.now() - ultima) >= ESPERA_MS;
+    const pedidas = reng.reduce((a, x) => a + x.pide, 0);
+    const entraron = reng.reduce((a, x) => a + Math.min(x.pide, x.tiene), 0);
+    const parte = pedidas > 0 ? entraron / pedidas : 0;
+    const dias = Math.floor((Date.now() - desdeCaja) / 86400e3);
     const parcial = faltan.length > 0;
-    const marcar = !parcial || (algo && quieta);
-    detalle.push({ cuenta: ab.e.cuenta, fecha: ab.fecha, track: ab.c.track || '', completa: !parcial, marcar, algo, quieta, reng });
+    const marcar = !parcial || (algo && quieta && dias >= MIN_DIAS && parte >= MIN_PARTE);
+    detalle.push({ cuenta: ab.e.cuenta, fecha: ab.fecha, track: ab.c.track || '', completa: !parcial, marcar, algo, quieta, dias, parte, entraron, pedidas, reng });
     if (!marcar) continue;                             // ML todavía la está procesando: se deja abierta
     // Consumir SÓLO lo que entró de verdad, de la entrada más vieja a la más nueva. Si se restara
     // lo que pedía el renglón, una caja posterior del mismo producto arrancaría en negativo.
@@ -3823,7 +3840,15 @@ async function main() {
         console.log('\nRENGLÓN POR RENGLÓN · "pide" es lo que va en la caja, "ML dio" lo que informó ML:');
         for (const d of r.detalle) {
           console.log(`  ${d.completa ? '✓' : '✗'} ${d.cuenta} · caja del ${d.fecha}${d.track ? ' · ' + d.track : ''}`);
-          for (const g of d.reng) console.log(`       pide ${String(g.pide).padStart(4)} · ML dio ${String(g.tiene).padStart(4)}  ${g.nombre}${g.variante ? ' · ' + g.variante : ''}`);
+          if (!d.completa) {
+          const porque = !d.algo ? 'no entró NADA de esta caja'
+            : d.dias < 10 ? `salió hace ${d.dias} día(s): todavía no tuvo tiempo de llegar`
+            : !d.quieta ? 'ML la sigue procesando (dio de alta hace menos de 3 días)'
+            : d.parte < 0.5 ? `sólo entró el ${Math.round(d.parte * 100)}% (${d.entraron} de ${d.pedidas} u.)`
+            : null;
+          console.log(`     ${d.marcar ? '→ se marca con lo que entró' : '→ se deja abierta: ' + porque}`);
+        }
+        for (const g of d.reng) console.log(`       pide ${String(g.pide).padStart(4)} · ML dio ${String(g.tiene).padStart(4)}  ${g.nombre}${g.variante ? ' · ' + g.variante : ''}`);
         }
       }
       if (!r.marcadas.length) { console.log('\nNinguna caja abierta quedó cubierta por las entradas que informa ML.'); return; }
