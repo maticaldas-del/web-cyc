@@ -349,6 +349,7 @@ async function cajasQueLlegaron(db, accounts, labels, products, DRY) {
       tok = t.access_token; sid = acc.seller_id;
     } catch { continue; }
     const desdeISO = new Date(new Date((o.desde || '2020-01-01') + 'T00:00:00Z').getTime() - 86400e3).toISOString();
+    const hastaISO = new Date(Date.now() + 86400e3).toISOString();   // +1 día por si ML anota en otro huso
     // Publicaciones de esos productos en esta cuenta.
     const mlas = Object.entries(links).filter(([m, e2]) =>
       m.startsWith('MLA') && e2 && e2.cuenta === cta && !e2.ignored && o.prods.has(e2.prodId)).map(([m]) => m);
@@ -379,7 +380,11 @@ async function cajasQueLlegaron(db, accounts, labels, products, DRY) {
         for (const par of pares) {
           mirados++;
           try {
-            const op = await mlGet(`/stock/fulfillment/operations/search?seller_id=${sid}&inventory_id=${par.inv}&date_from=${desdeISO}&limit=50`, tok);
+            // ML EXIGE LAS DOS FECHAS. Mandando sólo `date_from` contesta
+            // 400 "The field date_from and date_to are required" — y como el catch estaba vacío,
+            // las 72 consultas fallaban en silencio y el resultado se leía como "ML no informó
+            // ninguna entrada". El marcado automático de cajas nunca funcionó por esto.
+            const op = await mlGet(`/stock/fulfillment/operations/search?seller_id=${sid}&inventory_id=${par.inv}&date_from=${desdeISO}&date_to=${hastaISO}&limit=50`, tok);
             for (const x of (op?.results || [])) {
               const tipo = String(x.type || x.operation_type || '').toLowerCase();
               // Guardar TODO lo que contesta ML, aceptado o no. Sin esto, un filtro de tipo que no
