@@ -6618,6 +6618,69 @@ async function main() {
       if (!mal) console.log('\nListo. Corré netoweb para que el panel recalcule el margen con esto adentro.');
       return;
     }
+    // BILLING_PROBE=ponenvio:<palabra o id>|<dólares>[|go] → EL ENVÍO/EMBALAJE DE UN PRODUCTO.
+    //
+    // El hermano de `poncosto`: aquél toca la MERCADERÍA (`costUSD`, en pesos), éste toca lo que te
+    // cuesta a vos mandarlo — la bolsita, el pluribol, el flete hasta casa. Va en DÓLARES porque así
+    // está guardado (`shipUSD`) y así lo muestra la ficha.
+    // Los dos suman al mismo costo full, con la MISMA función (`costoPesos`), no con una copia.
+    // Sin `|go` sólo muestra cuánto cambia el costo.
+    if (/^ponenvio:/.test(String(process.env.BILLING_PROBE || ''))) {
+      const _peRaw = String(process.env.BILLING_PROBE).slice(9);
+      const _pe = _peRaw.split('|').map((x) => x.trim());
+      const APLICAR = _pe.some((x) => /^go$/i.test(x));
+      const quien = _pe[0] || '';
+      const usdArg = parseFloat(String(_pe[1] || '').replace(',', '.'));
+      if (!quien || !isFinite(usdArg) || usdArg < 0) { console.log('Usá: ponenvio:<palabra o id>|<dólares>[|go] — ej ponenvio:p1789245120427|0.05|go'); return; }
+      const finE = (await db.get('cyc/finanzas')) || {};
+      const tcE = parseFloat(finE.tipo_cambio) || 0;
+      if (!tcE) { console.log('No hay tipo de cambio cargado: sin eso no puedo mostrar el costo en pesos. No toco nada.'); return; }
+      const linksE = (await db.get('cyc/mllinks')) || {};
+      const vpE = (await db.get('cyc/ventaprod')) || {}; setDevLive(vpE);
+      const nq = norm(quien);
+      // Igual que poncosto: el id exacto manda; si no, busca por nombre.
+      let objetivo = products.filter((p) => p.id === quien);
+      if (!objetivo.length) objetivo = products.filter((p) => norm(p.name || '').includes(nq));
+      if (!objetivo.length) { console.log(`No encontré ningún producto con "${quien}".`); return; }
+      if (objetivo.length > 1) {
+        console.log(`"${quien}" da ${objetivo.length} productos. Pasá el id exacto:`);
+        objetivo.forEach((p) => console.log(`   ${p.id} · ${p.name}`));
+        return;
+      }
+      console.log(`=== ENVÍO / EMBALAJE ${APLICAR ? '(APLICANDO)' : '(PRUEBA)'} ===\n`);
+      const plan = [];
+      for (const p of objetivo) {
+        const antes = costoPesos(p, 1, tcE).costo;
+        const shipAntes = parseFloat(p.shipUSD) || 0;
+        const dev = DEV_LIVE[p.id] != null ? DEV_LIVE[p.id] : (parseFloat(p.devPct) || 0);
+        const costUSD = parseFloat(p.costUSD) || 0;
+        const fullUSD = Math.round((costUSD * (1 + dev / 100) + usdArg) * 100) / 100;
+        const despues = costoPesos({ ...p, costFullUSD: fullUSD, shipUSD: usdArg }, 1, tcE).costo;
+        plan.push({ p, fullUSD });
+        console.log(`── ${p.name}   (${p.id})`);
+        console.log(`     envío/embalaje: US$ ${shipAntes.toFixed(2)} → US$ ${usdArg.toFixed(2)}`);
+        console.log(`     costo full:     ${money(antes)} → ${money(despues)}`
+          + `   (mercadería US$ ${costUSD.toFixed(2)} · reclamos ${dev.toFixed(1)}%)`);
+        const mias = Object.entries(linksE).filter(([, e]) => e && e.prodId === p.id);
+        if (!mias.length) console.log(`     sin publicaciones vinculadas`);
+        for (const [mla, e] of mias) console.log(`     ${mla} · ${String(e.cuenta || '').padEnd(8)} · ${String(e.title || '').slice(0, 44)}`);
+      }
+      if (!APLICAR) { console.log(`\nPRUEBA: no escribí nada. Para aplicar: ponenvio:${quien}|${usdArg}|go`); return; }
+      for (const x of plan) {
+        await db.set('cyc/products/' + x.p.id + '/shipUSD', usdArg);
+        await db.set('cyc/products/' + x.p.id + '/costFullUSD', x.fullUSD);
+      }
+      // Releído de la base: que el comando no dé error no prueba que haya quedado.
+      const desp = Object.values((await db.get('cyc/products')) || {});
+      for (const x of plan) {
+        const p2 = desp.find((q) => q.id === x.p.id) || {};
+        const ok = Math.abs((parseFloat(p2.shipUSD) || 0) - usdArg) < 0.005 && Math.abs((parseFloat(p2.costFullUSD) || 0) - x.fullUSD) < 0.005;
+        console.log(`\n✓ ${x.p.name}: envío US$ ${(parseFloat(p2.shipUSD) || 0).toFixed(2)} · full US$ ${(parseFloat(p2.costFullUSD) || 0).toFixed(2)} ${ok ? '✓' : '✗ NO quedó como pedí'}`);
+      }
+      console.log(`\nDespués corré netoweb, para que el margen del panel use el costo nuevo.`);
+      return;
+    }
+
     // BILLING_PROBE=poncosto:<palabra o id>|<pesos>[|go] → CORRIGE EL COSTO DE UN PRODUCTO.
     //
     // Es lo mismo que escribir el costo a mano en la ficha del producto en la web, pero desde acá.
@@ -17514,6 +17577,12 @@ async function main() {
   // Inventarios de Full ya contados, por producto×cuenta: dos publicaciones pueden compartir el
   // mismo inventario y sumarlas contaría la misma mercadería dos veces (ver el caso del Joystick).
   const invYaContado = new Set();
+  // El código de la etiqueta de Full (`inventory_id`) por publicación, para escribirlo al final en
+  // una sola pasada. Ver el comentario largo donde se llena.
+  // OJO CON EL NOMBRE: `invUpd` YA EXISTE más abajo (es el stock que se escribe en cyc/inventory) y
+  // es un `const` de un bloque interno, así que usar ese nombre acá tiraba "Cannot access before
+  // initialization" y rompía el robot ENTERO. El chequeo de sintaxis no lo agarra: compila igual.
+  const etiqUpd = {};
 
   const state = (await db.get('mlapi/state')) || {};
   let cargadas = 0;
@@ -18211,12 +18280,26 @@ async function main() {
                 try { return Number((await mlGet('/inventories/' + invId + '/stock/fulfillment', t.access_token))?.available_quantity) || 0; }
                 catch { return fallback; }                // si no contesta, lo de antes
               };
+              // ── EL CÓDIGO DE LA ETIQUETA DE FULL ─────────────────────────────────────
+              // Pedido suyo del 12/09/2026: *"al armar una caja quiero tener el numero de la
+              // etiqueta de esa publicacion que me da ML (…) teniendo ese codigo al lado de la
+              // publicacion en la web de cyc puedo corroborar que estoy mandando el producto
+              // correcto y etiquetado bien"*.
+              // Es el `inventory_id` (formato GAUL23741), el MISMO dato que el robot ya pedía para
+              // leer el stock — sólo que no lo guardaba. Ojo: NO es el MLA, es el código del
+              // producto ADENTRO de Full, y es distinto en cada cuenta, tal como él lo describió.
+              // Verificado el 12/09 con `DUMP_FULLSTOCK=lupa`: las DOS publicaciones de Lupa 90mm
+              // de Ayelen comparten el mismo PKTG71359, o sea que el código es del producto en esa
+              // cuenta y no de la publicación.
+              // Se guarda en cada vuelta de stock: si un renglón de mllinks se reescribe (pasa al
+              // vender), vuelve solo en la vuelta siguiente.
               if (Array.isArray(b.variations) && b.variations.length) {
                 for (const v of b.variations) {
                   const q = await stockDeInv(v.inventory_id, v.available_quantity || 0);
                   total += q;
                   const vals = (v.attribute_combinations || []).map((a) => norm(a.value_name || ''));
                   const pv = (p.variantes || []).find((x) => vals.includes(norm(x)));
+                  if (v.inventory_id && pv) { etiqUpd[mla] = etiqUpd[mla] || {}; (etiqUpd[mla].invVar = etiqUpd[mla].invVar || {})[sid(pv)] = v.inventory_id; }
                   if (pv) {
                     const vk = map[mla].prodId + '__' + sid(label) + '__v__' + sid(pv);
                     stockVar[vk] = (stockVar[vk] || 0) + q;
@@ -18225,6 +18308,7 @@ async function main() {
               } else {
                 const q = await stockDeInv(b.inventory_id, b.available_quantity || 0);
                 total += q;
+                if (b.inventory_id) { etiqUpd[mla] = etiqUpd[mla] || {}; etiqUpd[mla].inv = b.inventory_id; }
                 // ── UNA PUBLICACIÓN POR VARIANTE (los aromas del Paulvic) ──
                 // Acá el stock por variante solo se guardaba cuando la publicación tenía variantes
                 // ADENTRO (el desplegable de ML). El Paulvic no es así: cada aroma es una
@@ -18326,6 +18410,12 @@ async function main() {
       }
       if (Object.keys(histUpd).length) await db.patch('cyc/stockhist', histUpd);
       await db.patch('cyc/inventory', invUpd);
+      // El código de la etiqueta de Full, uno por publicación. Va con patch por MLA y no con un
+      // patch al padre, para no pisar el resto del renglón de mllinks.
+      if (Object.keys(etiqUpd).length) {
+        for (const [mla, v] of Object.entries(etiqUpd)) await db.patch('cyc/mllinks/' + mla, v);
+        console.log(`🏷️  Código de etiqueta de Full guardado en ${Object.keys(etiqUpd).length} publicación(es).`);
+      }
       if (depositoIgnorado.length) {
         const u = depositoIgnorado.reduce((a, x) => a + x.q, 0);
         console.log(`ℹ️  ${depositoIgnorado.length} publicación(es) fuera de Full: ${u} u. NO se contaron (regla suya: ese stock no existe).`);

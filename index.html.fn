@@ -156,6 +156,7 @@ function envDias
 function esPedidoPaulvic
 function esProductoPaulvic
 function estadoCaja
+function etiquetaFullDe
 function exportCSV
 function facFilas
 function facRecBuscar

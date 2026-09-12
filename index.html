@@ -2307,7 +2307,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='19.26';
+const APP_VERSION='19.27';
 // El problema real que esto resuelve no es curiosidad: es que el celular guarda la app y sigue
 // mostrando la de ayer sin avisar. Varias veces se revisó un cambio que ya estaba subido y no se
 // veía. Por eso, además del número, el chip avisa cuando hay una versión nueva esperando.
@@ -4482,6 +4482,7 @@ function renderOfiCaja(){
       return `<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;padding:6px 0;border-top:1px solid var(--border)">
         <span class="pi-prov">${s.cuenta}</span>
         <strong style="font-family:'Syne',sans-serif;font-size:1rem;${urg?'color:var(--red)':''}">${s.mandar} u.</strong>
+        ${s.etiq?`<span title="Es el código que ML le da a ESTE producto adentro del Full de ${s.cuenta} — el mismo que aparece en la etiqueta cuando armás el envío. Sirve para chequear que estás mandando el producto correcto y bien etiquetado. OJO: NO es el número de la publicación (MLA); es distinto en cada cuenta." style="font-family:'DM Mono',monospace;font-size:.66rem;background:rgba(255,255,255,.06);border:1px solid var(--border2);border-radius:5px;padding:2px 6px;letter-spacing:.04em">${s.etiq}</span>`:''}
         ${s.enCero&&!s.sinPub?'<span style="background:rgba(239,68,68,.14);color:var(--red);border-radius:5px;padding:2px 7px;font-size:.6rem;font-weight:700">SIN STOCK · no vende</span>':''}
         ${s.sinPub?`<span style="background:rgba(245,158,11,.16);color:var(--amber);border-radius:5px;padding:2px 7px;font-size:.6rem;font-weight:700" title="Vos pediste que este producto pase a ${s.cuenta}, pero todavía no hay publicación hecha ahí. Mandá la mercadería en esta caja y creá la publicación: hasta que exista, esas unidades no se pueden vender.">FALTA CREAR LA PUBLICACIÓN EN ${s.cuenta.toUpperCase()}</span>`:''}
         <span style="font-size:.66rem;color:var(--muted)">le quedan ${s.enML!=null?s.enML:s.stock}${s.camino?` <span style="color:var(--amber)">+${s.camino} en camino</span>`:''} · ${dias} · ${ritmo}</span>
@@ -7611,7 +7612,8 @@ function _repartoVariantes(p,hayTotal,tr){
       if(vMes<=0&&stock<=0){hist=ventasHistoricas(p,l,va);if(hist)vDia=hist.vDia;}
       const dias=vDia>0?stock/vDia:(stock>0?999:null);
       const objetivo=objetivoRepo(vDia);
-      return{cuenta:l,vMes,vDia,dConS,stock,enML,camino,dias,hist,sinPub:!reales.includes(l),falta:Math.max(0,objetivo-stock)};
+      return{cuenta:l,vMes,vDia,dConS,stock,enML,camino,dias,hist,sinPub:!reales.includes(l),falta:Math.max(0,objetivo-stock),
+        etiq:etiquetaFullDe(p.id,l,va)};
     }).sort((a,b)=>{
       const da=a.dias==null?9999:a.dias, db=b.dias==null?9999:b.dias;
       if(da!==db)return da-db;
@@ -7662,7 +7664,8 @@ function repartoOficina(){
       if((ventas[l]||0)<=0&&stock<=0){hist=ventasHistoricas(p,l,'');if(hist)vDia=hist.vDia;}
       const dias=vDia>0?stock/vDia:(stock>0?999:null);   // sin ventas no se puede estimar
       const objetivo=objetivoRepo(vDia);
-      return{cuenta:l,vMes:ventas[l]||0,vDia,dConS,stock,enML,camino,dias,hist,sinPub:!reales.includes(l),falta:Math.max(0,objetivo-stock)};
+      return{cuenta:l,vMes:ventas[l]||0,vDia,dConS,stock,enML,camino,dias,hist,sinPub:!reales.includes(l),falta:Math.max(0,objetivo-stock),
+        etiq:etiquetaFullDe(p.id,l,null)};
     }).sort((a,b)=>{
       // Primero a la que se le acaba antes. Las que no venden van al final.
       const da=a.dias==null?9999:a.dias, db=b.dias==null?9999:b.dias;
@@ -8344,6 +8347,43 @@ function liquidandoDe(p){
     if(f&&(!fecha||f<fecha))fecha=f;
   }
   return n?{n,fecha}:null;
+}
+// ── EL CÓDIGO DE LA ETIQUETA DE FULL ────────────────────────────────────────────────
+// Pedido suyo del 12/09/2026: *"al armar una caja quiero tener el numero de la etiqueta de esa
+// publicacion que me da ML (…) teniendo ese codigo al lado de la publicacion en la web de cyc
+// puedo corroborar que estoy mandando el producto correcto y etiquetado bien"*.
+// Es el `inventory_id` que devuelve ML (formato GAUL23741), lo guarda el robot en
+// cyc/mllinks/<MLA>/inv (y en /invVar cuando la publicación tiene variantes adentro).
+// ES POR CUENTA, NO POR PRODUCTO: el mismo producto en Adriana y en Ayelen tiene códigos
+// distintos, tal como él lo describió. Por eso se busca siempre con cuenta.
+// Y NO es el MLA: es el código del producto ADENTRO de Full — confundirlos ya costó una tarde
+// (08/09/2026), así que la pantalla lo dice con todas las letras.
+function etiquetaFullDe(prodId,cuenta,variante){
+  const L=state.mllinks||{};
+  for(const e of Object.values(L)){
+    if(!e||e.prodId!==prodId||e.ignored)continue;
+    if((e.cuenta||'')!==cuenta)continue;
+    if((e.status||'')==='closed')continue;
+    // Publicación con variantes adentro: el código es de la variante.
+    if(variante&&e.invVar&&e.invVar[sid(variante)])return e.invVar[sid(variante)];
+    // Publicación por variante (los aromas del Paulvic, los colores): una publicación = un color,
+    // así que sólo vale si ESA publicación es de esa variante.
+    // NO SE ADIVINA. Si el título no nombra ningún color, la publicación NO se acepta para la
+    // variante pedida: mostrar el código de otro color es peor que no mostrar nada — él usa este
+    // número justamente para chequear que está mandando lo correcto, así que un código equivocado
+    // le confirmaría un error en vez de evitarlo.
+    // Para esos casos está `fijarvar:<MLA>=<variante>:go`, que escribe `variant` y acá manda.
+    // (La primera versión sí adivinaba y lo agarró la prueba: con el Centímetro devolvía el código
+    // del Blanco cuando se le pedía el Rosa.)
+    if(variante){
+      // Misma función que usa el resto del panel para deducir el color del título (`_varPorMla`),
+      // no una copia: si un día cambia la regla, cambia en todos lados junta.
+      const pv=e.variant||_matchProdVariant(e.title||'',((state.products||[]).find(x=>x.id===prodId)||{}).variantes||[]);
+      if(!pv||normTxt(pv)!==normTxt(variante))continue;
+    }
+    if(e.inv)return e.inv;
+  }
+  return null;
 }
 function cajaMLDe(p){
   const L=state.mllinks||{};
