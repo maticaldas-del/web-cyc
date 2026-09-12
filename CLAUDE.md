@@ -547,6 +547,43 @@ en vez de $0 — un almacenamiento en $0 se lee como buena noticia y era simplem
 El número oficial y abierto por concepto está en ML → Facturación → Costos por servicio de
 almacenamiento, y se carga con `seedreal:<YYYY_MM>=<monto>`.
 
+## LO QUE COBRA ML POR VENDER: 28,3% PROMEDIO, Y NO ES LO MISMO QUE EL 16% (11/09/2026)
+
+Salió de que él comparó la ficha contra el simulador de ML y no coincidían: la ficha decía **30,5%**
+de comisión y ML **16%**. Medido con el comando nuevo `comisiones`, preguntándole a ML publicación
+por publicación (`/sites/MLA/listing_prices`, el MISMO endpoint con el que `netoweb` fija precios):
+
+| tipo | publicaciones | comisión promedio | vendidas en 30 días |
+|---|---|---|---|
+| **CLÁSICA** | **142** | **28,3%** | 1.276 u. |
+| PREMIUM (con cuotas) | 4 | 26,5% | 1 u. |
+
+**LOS DOS NÚMEROS SON CIERTOS Y NO SE CONTRADICEN.** El 16% es la comisión **base**; el panel
+muestra lo que ML cobra **completo**, con el **cargo fijo de ~$1.230** adentro. Ese cargo no depende
+del precio, así que **cuanto más barato el producto, más alto sale el %**. Medido por ML misma:
+
+| precio | lo que cobra ML |
+|---|---|
+| $14.360 | 24,3% |
+| $11.999 | 26,6% |
+| $9.230 | 29,9% |
+| $6.000 | 36,7% |
+| $4.880 | **41,6%** |
+
+Es la confirmación, con datos de ML, de lo que ya estaba anotado: **abajo de ~$4.000 el cargo fijo
+se come el producto.** Y explica el 30,5% de la ficha: esa publicación está en Premium (base ~25,9%)
+y a $24.000 el cargo fijo agrega ~5 puntos.
+
+**LO QUE APARECIÓ DE PASO, Y ES PLATA: el Xiaomi Redmi Watch 4 (`MLA1871169569`, Matías, $209.720)
+está en PREMIUM pagando 25,9% cuando en Clásica pagaría 12,5%.** Son **$28.102 en UNA sola venta**,
+y vendió 1 en 30 días. En un producto caro los 13 puntos de diferencia son mucha plata.
+**Pero no es un error que se arregle solo: Premium ofrece cuotas sin interés y por eso vende más**,
+y en un producto de $209.720 las cuotas pesan. Es decisión suya, y el comando no cambia nada.
+Las otras 3 Premium venden poco o nada, así que ahí la diferencia es chica.
+
+**El resto del catálogo (142 de 146) ya está en Clásica**, que para ellos es lo más barato: pasar
+esas a Premium costaría $1.458.931 más por mes. O sea que acá no había nada roto.
+
 ## EL STOCK QUE NO ESTÁ EN FULL NO EXISTE
 
 Regla suya del 20/08/2026, textual: **"todo lo que diga 'depósito' en ML no tener en cuenta nunca.
@@ -666,10 +703,11 @@ Si eso sigue en pie está bien, pero hoy nadie le puede mandar mercadería.
   precio arriba de la barrera en un producto **sin envío medido** el margen muestra **"?"** en vez
   de un porcentaje, la fila del envío dice **"−? · ML SÍ cobra acá"** y sale un cartel rojo. Y el
   *"te da hasta"* pasa a decir *"para el 25% habría que cruzar los $33.000: no se cruza"*.
-  **NO se inventó un envío estimado a propósito:** el % de comisión que deduce el panel (30,5% acá)
-  no coincide con el que muestra ML (16%), así que meter un envío encima podía terminar en un
-  número distinto pero igual de falso — y contar el envío dos veces es el error que ya mordió
-  cuatro veces. Mientras no haya un envío MEDIDO para ese producto, la respuesta honesta es "?".
+  **NO se inventó un envío estimado a propósito:** contar el envío dos veces es el error que ya
+  mordió cuatro veces, y sin un envío MEDIDO para ese producto la respuesta honesta es "?".
+  **Y el 30,5% contra el 16% quedó explicado el mismo día, con `comisiones`: no se contradicen.**
+  Ver la sección de abajo — el 16% es la comisión base y el panel muestra la comisión COMPLETA, con
+  el cargo fijo adentro; y esa publicación es de las 4 que están en Premium.
   **El aviso sale SÓLO cuando está simulando.** Hay productos que viven arriba de la barrera con
   permiso suyo (el Ferrari a $59.900, los VS a $49.000) y ésos ya pagaron el envío de verdad: un
   cartel rojo permanente ahí sería ruido, y cuando todo está pintado nada resalta.
