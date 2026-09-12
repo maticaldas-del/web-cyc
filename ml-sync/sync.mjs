@@ -230,6 +230,8 @@ async function raiseVariations(itemId, nuevos, token) {
 // cambió desde que se leyó, el resultado se pasa del objetivo.
 // Sube o deja igual, nunca baja. Tope de seguridad: no sube más de 25%.
 async function raisePriceTo(itemId, objetivo, token) {
+  const _ns = _chequeoNoSubir(itemId);
+  if (!_ns.ok) return { ok: false, err: _ns.err };
   let item;
   try { item = await mlGet('/items/' + itemId + '?attributes=id,price,status', token); }
   catch { return { ok: false, err: 'sin-item' }; }
@@ -1193,6 +1195,59 @@ async function cargarPisoDuro(db) {
   PISO_DURO = Math.max(PISO_MINIMO_ABSOLUTO, v);
   return PISO_DURO;
 }
+// ── "ESTO LO ESTOY LIQUIDANDO A PROPÓSITO: NO ME LO SUBAS" ────────────────────────
+// Pedido suyo del 12/09/2026 con el Pendrive Sandisk 128g, que vendió a −5% (−$1.722):
+// *"lo baje aproposito, hay que venderlo, porque nos van a cobrar por stock antiguo. pero el bot
+// quizas lo ve bajo y lo sube automaticamente."* Tenía razón: el robot mira el margen de cada venta
+// y, si cayó abajo del piso, sube el precio hasta la meta — o sea que la PRIMERA venta de algo que
+// él bajó para rematar le deshacía la decisión, y encima justo cuando empezaba a funcionar.
+//
+// El freno va acá y no en cada comando, por el mismo motivo que el piso: la regla no puede depender
+// de que el próximo que escriba algo se acuerde. Está adentro de `raisePrice` y `raisePriceTo`, que
+// son las DOS funciones que suben precios en ML.
+//
+// EL LADO SEGURO ACÁ ES AL REVÉS QUE EN EL PISO. Si la lista no se pudo leer, no se sabe qué está
+// marcado, así que NO SE SUBE NADA hasta la vuelta siguiente. Subir algo que él bajó a mano le
+// rompe una decisión suya y él se entera cuando ya vendió; no subir por una vuelta no rompe nada.
+let NOSUBIR = {};
+let NOSUBIR_OK = false;
+async function cargarNoSubir(db) {
+  const v = await db.get('cyc/nosubir');
+  NOSUBIR = v && typeof v === 'object' ? v : {};
+  NOSUBIR_OK = true;
+  return NOSUBIR;
+}
+// La marca se cae sola cuando se acabó el stock: ahí ya liquidaste y frenar la suba deja de tener
+// sentido. Sin esto la lista se vuelve un cementerio de marcas viejas que frenan subas que nadie
+// quiere frenar — es el mismo problema que ya apareció con `repoextra` y con la pausa por precio.
+// Devuelve las que sacó, para poder decirlo en pantalla. Ojo: stock DESCONOCIDO (publicación sin
+// producto vinculado) NO es stock cero — esas se dejan, porque borrarlas sería adivinar.
+async function limpiarNoSubir(db, DRY) {
+  const marcadas = (await db.get('cyc/nosubir')) || {};
+  const mlas = Object.keys(marcadas);
+  if (!mlas.length) return [];
+  const links = (await db.get('cyc/mllinks')) || {};
+  const inv = (await db.get('cyc/inventory')) || {};
+  const sidL = (x) => String(x).replace(/[^a-z0-9]/gi, '_');
+  const sacadas = [];
+  for (const mla of mlas) {
+    const e = links[mla] || {};
+    if (!e.prodId || !e.cuenta) continue;                       // no se sabe → no se toca
+    const st = parseInt(inv[e.prodId + '__' + sidL(e.cuenta)]) || 0;
+    if (st > 0) continue;
+    sacadas.push({ mla, cuenta: e.cuenta, title: e.title || mla });
+    if (!DRY) { await db.set('cyc/nosubir/' + mla, null); delete NOSUBIR[mla]; }
+  }
+  return sacadas;
+}
+
+function _chequeoNoSubir(itemId) {
+  if (!NOSUBIR_OK) return { ok: false, err: 'no-pude-leer-la-lista-de-liquidando: no subo nada esta vuelta' };
+  const m = NOSUBIR[String(itemId)];
+  if (m) return { ok: false, err: `liquidando-a-proposito${m.motivo ? ' (' + m.motivo + ')' : ''}: no se sube` };
+  return { ok: true };
+}
+
 function _chequeoPiso(chequeo) {
   if (!chequeo || typeof chequeo.margen !== 'number' || !isFinite(chequeo.margen)) {
     return { ok: false, err: 'sin-margen-declarado (regla: no se baja sin saber en qué margen queda)' };
@@ -1246,6 +1301,8 @@ async function setPriceTo(itemId, variationId, nuevo, token, chequeo) {
 // Sube (nunca baja) el precio de la publicación/variante. Multiplicador =
 // costo_full × (1+meta) / neto_real. Devuelve {ok, from, to} o {ok:false, err}.
 async function raisePrice(itemId, variationId, multiplier, token) {
+  const _ns = _chequeoNoSubir(itemId);
+  if (!_ns.ok) return { ok: false, err: _ns.err };
   let item;
   try { item = await mlGet('/items/' + itemId + '?attributes=id,price,status,variations', token); }
   catch { return { ok: false, err: 'sin-item' }; }
@@ -1901,6 +1958,15 @@ async function main() {
   // antes que cualquier cosa que pueda mover un precio: si esto no corrió, PISO_DURO vale 30 y lo
   // único que puede pasar es que un comando se niegue a bajar. Fallar hacia el lado seguro.
   try { await cargarPisoDuro(db); } catch { /* queda en 30, que es el lado conservador */ }
+  // La lista de "no me lo subas, lo estoy liquidando". Si esto falla, NOSUBIR_OK queda en false y
+  // raisePrice/raisePriceTo se niegan a subir NADA esta vuelta — ver el comentario de cargarNoSubir.
+  try {
+    await cargarNoSubir(db);
+    const _n = Object.keys(NOSUBIR).length;
+    if (_n) console.log(`🔒 Liquidando a propósito (el robot no les sube el precio): ${_n} publicación(es) · ${Object.keys(NOSUBIR).join(', ')}`);
+  } catch (e) {
+    console.log(`⚠️ NO pude leer cyc/nosubir (${e.message}): esta vuelta el robot NO sube ningún precio, por las dudas.`);
+  }
 
   // Telegram: descubrir/cachear el chat id (solo hace falta el token).
   TG_DB = db;
@@ -14880,6 +14946,107 @@ async function main() {
     //                      se lo lleva otro. Bajarle el precio NO lo arregla.
     // Y marca aparte los de PARAGUAY: reponer tarda 2 meses, así que matar uno por error ahí no se
     // recupera en una semana. Con esos hay que ser más conservador.
+    // BILLING_PROBE=liquidando[:<MLA|palabra>][:go] → "NO ME SUBAS EL PRECIO DE ESTO".
+    //
+    // Pedido suyo del 12/09/2026 con el Pendrive Sandisk 128g: lo bajó a mano para rematarlo antes
+    // de que ML le cobre stock antiguo, y el robot se lo iba a volver a subir en cuanto vendiera.
+    //
+    // Marca la publicación en `cyc/nosubir/<MLA>` y ahí el freno vive adentro de raisePrice y
+    // raisePriceTo (ver `_chequeoNoSubir`), no en cada comando: es el mismo criterio que el piso.
+    //
+    //   liquidando                  → lista lo marcado, con stock y precio de hoy
+    //   liquidando:<MLA|palabra>    → muestra qué agarraría (NO aplica)
+    //   liquidando:<...>:go         → marca
+    //   liquidando:-<MLA|palabra>:go→ desmarca
+    //
+    // LA MARCA SE CAE SOLA CUANDO SE ACABA EL STOCK, que es cuando deja de tener sentido: ya
+    // liquidaste. Sin eso la lista se volvería un cementerio de marcas viejas frenando subas que
+    // nadie quiere frenar — el mismo problema que ya apareció con `repoextra` y con la pausa por
+    // precio. La limpieza corre acá y en la vuelta de cada hora.
+    if (/^liquidando(:|$)/.test(String(process.env.BILLING_PROBE || ''))) {
+      const _ls = String(process.env.BILLING_PROBE).split(':');
+      const APLICAR = _ls[_ls.length - 1] === 'go';
+      let quien = (_ls[1] && _ls[1] !== 'go') ? _ls[1].trim() : '';
+      const SACAR = quien.startsWith('-');
+      if (SACAR) quien = quien.slice(1).trim();
+      const links = (await db.get('cyc/mllinks')) || {};
+      const inv = (await db.get('cyc/inventory')) || {};
+      const marcadas = (await db.get('cyc/nosubir')) || {};
+      const sidL = (x) => String(x).replace(/[^a-z0-9]/gi, '_');
+      const stockDe = (mla) => {
+        const e = links[mla] || {};
+        if (!e.prodId || !e.cuenta) return null;          // null = no se sabe, distinto de 0
+        return parseInt(inv[e.prodId + '__' + sidL(e.cuenta)]) || 0;
+      };
+      const linea = (mla) => {
+        const e = links[mla] || {};
+        const st = stockDe(mla);
+        return `${mla}  ${(e.cuenta || '?').padEnd(8)} ${st == null ? 'stock ?' : st + ' u.'}`
+          + `  ${e.precio ? money(Math.round(e.precio)) : '—'}  ${(e.title || '').slice(0, 46)}`;
+      };
+
+      // ── La limpieza: lo que ya no tiene stock sale solo ──
+      // Llama a la MISMA función que corre el robot cada hora, no una copia: si un día cambia el
+      // criterio, cambia en los dos lados juntos.
+      const sinStock = await limpiarNoSubir(db, DRY);
+      if (sinStock.length) {
+        console.log(`── SE ACABÓ EL STOCK, saco la marca · ${sinStock.length} ──`);
+        for (const x of sinStock) { console.log(`   ${linea(x.mla)}`); delete marcadas[x.mla]; }
+        console.log(DRY ? '   (DRY: no se borró)\n' : '   ✓ borradas\n');
+      }
+
+      if (!quien) {
+        const ks = Object.keys(marcadas);
+        console.log(`=== LIQUIDANDO A PROPÓSITO · ${ks.length} publicación(es) ===`);
+        console.log(`El robot NO les sube el precio aunque la venta quede abajo del piso.\n`);
+        if (!ks.length) console.log('── Ninguna. Hoy el robot puede subir cualquier publicación.');
+        for (const mla of ks) {
+          const m = marcadas[mla] || {};
+          console.log(`   ${linea(mla)}`);
+          console.log(`      desde ${m.fecha || '?'}${m.motivo ? ' · ' + m.motivo : ''}`);
+        }
+        console.log(`\nPara marcar:   liquidando:<MLA o palabra>:go`);
+        console.log(`Para sacarla:  liquidando:-<MLA o palabra>:go`);
+        console.log(`\nSOLO LECTURA.`);
+        return;
+      }
+
+      // ── A quién agarra ──
+      // Un MLA exacto manda; si no, busca la palabra en el título. Sin `:go` SOLO MUESTRA, que es
+      // la regla de siempre con los filtros por título: mirar la lista antes de aplicar.
+      const nq = norm(quien);
+      let objetivo = Object.keys(links).filter((mla) => mla.toUpperCase() === quien.toUpperCase());
+      if (!objetivo.length) objetivo = Object.keys(links).filter((mla) => norm(links[mla].title || '').includes(nq));
+      if (SACAR) objetivo = objetivo.filter((mla) => marcadas[mla]);
+      else objetivo = objetivo.filter((mla) => !marcadas[mla]);
+
+      console.log(`=== ${SACAR ? 'SACAR LA MARCA DE' : 'MARCAR COMO'} "LIQUIDANDO" · buscando "${quien}" ${APLICAR ? '(APLICANDO)' : '(PRUEBA)'} ===\n`);
+      if (!objetivo.length) {
+        console.log(`── Ninguna publicación para ${SACAR ? 'desmarcar' : 'marcar'} con "${quien}".`);
+        console.log(`   (si ya estaba ${SACAR ? 'sin marca' : 'marcada'}, no hay nada que hacer · para ver la lista: liquidando)`);
+        return;
+      }
+      console.log(`── Agarra ${objetivo.length} publicación(es):`);
+      for (const mla of objetivo) console.log(`   ${linea(mla)}`);
+      const sinDato = objetivo.filter((mla) => stockDe(mla) === null);
+      if (sinDato.length) console.log(`\n   ⚠️ ${sinDato.length} sin stock conocido (sin producto vinculado): la marca NO se va a caer sola.`);
+      if (!APLICAR) {
+        console.log(`\nSOLO PRUEBA: no se marcó nada. Mirá la lista y, si está bien, repetí con :go al final.`);
+        return;
+      }
+      const hoy = new Date(Date.now() - 3 * 3600e3).toISOString().slice(0, 10);
+      for (const mla of objetivo) {
+        if (SACAR) await db.set('cyc/nosubir/' + mla, null);
+        else await db.patch('cyc/nosubir/' + mla, { fecha: hoy, motivo: 'liquidando (bajado a mano)' });
+      }
+      // Releído de la base: que el comando no dé error no prueba que haya quedado.
+      const despues = (await db.get('cyc/nosubir')) || {};
+      const ok = objetivo.filter((mla) => (SACAR ? !despues[mla] : !!despues[mla]));
+      console.log(`\n✓ ${ok.length} de ${objetivo.length} ${SACAR ? 'desmarcadas' : 'marcadas'}. Releído de la base: ${ok.length === objetivo.length ? 'quedó ✓' : '✗ NO quedaron todas'}`);
+      console.log(`Ahora hay ${Object.keys(despues).length} publicación(es) que el robot no va a subir.`);
+      return;
+    }
+
     // Solo LEE: no toca precios ni borra nada. La decisión es de él, producto por producto.
     if (/^liquidar(:|$)/.test(String(process.env.BILLING_PROBE || ''))) {
       const DIAS = Math.max(30, parseInt(String(process.env.BILLING_PROBE).split(':')[1]) || 90);
@@ -18123,6 +18290,16 @@ async function main() {
       const rc = await cajasQueLlegaron(db, accounts, labels, products, DRY);
       if (rc.msg) { console.log(rc.msg.replace(/<[^>]+>/g, '')); await sendTelegram(rc.msg); }
     } catch (e) { console.log('No pude revisar las cajas en camino: ' + e.message); }
+  }
+
+  // SACAR LA MARCA DE "LIQUIDANDO" A LO QUE YA SE VENDIÓ ENTERO. Va en la vuelta horaria: el stock
+  // no cambia de un minuto al otro. No toca ML, sólo borra marcas del panel, así que va FUERA del
+  // bloque que apaga `robot:off`.
+  if (parseInt(process.env.BACKFILL_DAYS || '0', 10) === 0 && !onlyAcc && process.env.SKIP_PRICES !== '1') {
+    try {
+      const ls = await limpiarNoSubir(db, DRY);
+      for (const x of ls) console.log(`🔓 Se acabó el stock de ${x.title.slice(0, 40)} (${x.cuenta}): saco la marca de liquidando, el robot ya le puede subir el precio.`);
+    } catch (e) { console.log('No pude limpiar la lista de liquidando: ' + e.message); }
   }
 
   // LA CAJA DE COMPRA DE CADA PUBLICACIÓN. Va en la vuelta horaria por lo mismo que las cajas:
