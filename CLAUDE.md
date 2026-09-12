@@ -308,6 +308,7 @@ Los que más se usan:
 | `visitas[:cuenta][:días]` | **¿la ve alguien o no la ve nadie?** separa problema de visibilidad de problema de precio |
 | `cajacompra[:cuenta]` | **¿la venta es nuestra o del otro?** el estado de la caja de compra de cada publicación · lo corre solo el robot cada hora y pinta la columna "Caja ML" de Rotación de Stock |
 | `competencia:<MLA>` | los vendedores del catálogo con sus precios y **si la pelea se puede ganar** |
+| `subirpuede[:días]` | **dónde hay lugar para SUBIR sin perder ventas**: las que ganan la caja y tienen un competidor arriba · solo lee |
 | `envioml:<MLA>` | el envío que **dice ML** (por destino) vs el que deducimos de las ventas · `envioreal` es OTRO comando |
 | `apisnuevas:<MLA>` | qué endpoints de ML andan y no usamos |
 | `apis` | qué endpoints de ML contestan (para diagnosticar) |

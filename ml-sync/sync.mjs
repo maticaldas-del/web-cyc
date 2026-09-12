@@ -6721,6 +6721,8 @@ async function main() {
     if (/^subirpuede(:|$)/.test(String(process.env.BILLING_PROBE || ''))) {
       const DIAS = parseFloat(String(process.env.BILLING_PROBE).split(':')[1]) || 30;
       const COLCHON = 0.99;     // 1% abajo del competidor: quedar a $4 es demasiado al filo
+      const TOPE_DURO = 600000; // regla suya del 13/08/2026: nunca subir por encima de esto
+                                // (el TECHO_PRECIO de main() se declara más abajo: no se puede usar acá)
       const MIN_AIRE = 0.03;    // abajo de 3% de subida no vale la pena tocar nada
       const links = (await db.get('cyc/mllinks')) || {};
       const vp = (await db.get('cyc/ventaprod')) || {}; setDevLive(vp);
@@ -6737,9 +6739,19 @@ async function main() {
           uMes[v.mla] = (uMes[v.mla] || 0) + (v.qty || 1);
         }
       }
-      // Los seller_id nuestros, para no confundir una publicación hermana con un competidor.
-      const sids = {};
-      for (const l of labels) if (accounts[l]?.seller_id) sids[String(accounts[l].seller_id)] = l;
+      // Los tokens y los seller_id nuestros. OJO: `tokensRun` se declara MUCHO más abajo en esta
+      // misma función, así que usarlo acá tira "Cannot access before initialization" y corta la
+      // corrida entera — el mismo error que el `invUpd` del 12/09. Se arma el propio.
+      const tokSub = {}, sidsSub = {};
+      for (const l of labels) {
+        const acc = accounts[l]; if (!acc?.refresh_token) continue;
+        try {
+          const t = await mlRefresh(ML_CLIENT_ID, ML_CLIENT_SECRET, acc.refresh_token);
+          await db.patch('mlapi/tokens/' + l, { refresh_token: t.refresh_token, updated_ts: Date.now() });
+          tokSub[l] = t.access_token;
+          if (acc.seller_id) sidsSub[String(acc.seller_id)] = l;
+        } catch { console.log(`(${l}: no pude renovar el token)`); }
+      }
 
       console.log(`=== ¿DÓNDE HAY LUGAR PARA SUBIR? · vendidas en ${DIAS} días · SOLO LECTURA ===`);
       console.log(`Sólo publicaciones de CATÁLOGO que HOY GANAN la caja de compra: ahí el techo se`);
@@ -6759,7 +6771,7 @@ async function main() {
       const filas = [];
       for (const [mla, e] of cand) {
         const p = pIdx[e.prodId];
-        const tok = (tokensRun[e.cuenta] || {}).access_token;
+        const tok = tokSub[e.cuenta];
         if (!tok) continue;
         let b;
         try { b = await mlGet(`/items/${mla}?attributes=id,price,catalog_product_id,shipping,title`, tok); }
@@ -6768,7 +6780,7 @@ async function main() {
         if (!precio || !b?.catalog_product_id) { sinDato++; continue; }
         let comp = null;
         try { comp = await mlGet(`/products/${b.catalog_product_id}/items`, tok); } catch { sinDato++; continue; }
-        const res = (comp?.results || []).filter((x) => x && x.price > 0 && !sids[String(x.seller_id)]);
+        const res = (comp?.results || []).filter((x) => x && x.price > 0 && !sidsSub[String(x.seller_id)]);
         // El techo: el competidor más barato que está ARRIBA nuestro.
         const arriba = res.filter((x) => x.price > precio).sort((a, b2) => a.price - b2.price);
         if (!arriba.length) { sinLugar++; continue; }     // nadie arriba: no se puede acotar
@@ -6777,7 +6789,7 @@ async function main() {
         // LA BARRERA DE LOS $33.000 NO SE CRUZA (regla suya del 13/08/2026). Si el techo la pasa,
         // se topa en $32.999 — y si ya estamos arriba de la barrera, no aplica.
         const tope = (precio < UMBRAL_ENVIO_GRATIS && techo >= UMBRAL_ENVIO_GRATIS) ? UMBRAL_ENVIO_GRATIS - 1 : techo;
-        if (tope > TECHO_PRECIO) { sinLugar++; continue; }   // techo duro de $600.000
+        if (tope > TOPE_DURO) { sinLugar++; continue; }   // techo duro de $600.000
         if (tope <= precio * (1 + MIN_AIRE)) { sinLugar++; continue; }
         filas.push({ mla, cuenta: e.cuenta, nom: (p.name || '').slice(0, 34), precio, tope,
           rival: arriba[0].price, u: uMes[mla] || 0,
@@ -6789,7 +6801,7 @@ async function main() {
         // La plata que se gana: lo que sube el PRECIO menos lo que se lleva ML de ese aumento.
         // Se usa la comisión real de la publicación, no un % inventado.
         for (const f of filas) {
-          const tokF = (tokensRun[f.cuenta] || {}).access_token;
+          const tokF = tokSub[f.cuenta];
           let comHoy = 0, comNue = 0;
           try {
             const it = await mlGet(`/items/${f.mla}?attributes=listing_type_id,category_id,site_id`, tokF);
