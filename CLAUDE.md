@@ -670,6 +670,56 @@ en vez de $0 — un almacenamiento en $0 se lee como buena noticia y era simplem
 El número oficial y abierto por concepto está en ML → Facturación → Costos por servicio de
 almacenamiento, y se carga con `seedreal:<YYYY_MM>=<monto>`.
 
+## SUBIR EL PRECIO PUEDE HACERTE GANAR MENOS: LA COMISIÓN DE ML TIENE ESCALONES (12/09/2026)
+
+Salió midiendo si se podía automatizar la suba de precios (`subirpuede`). **Los Paulvic de $14.360
+a $15.790 dejan $312 MENOS por unidad. Quedándose en $14.840 dejan $369 MÁS.** El precio sube
+$1.430 y la plata baja: la comisión se llevó más de lo que subió el precio.
+
+**No es un error de cuenta, es cómo cobra ML.** Es el mismo cargo fijo que ya estaba anotado —
+*"~$1.230 por venta, sin importar el precio"*— visto del otro lado: **no es un % parejo, es una
+escalera**, y cruzar un escalón cuesta de golpe más que el aumento que lo cruzó. Hay uno cerca de
+los **$15.000**.
+
+**La consecuencia práctica, y vale para cualquier suba, la haga el robot o la mano:** entre un
+escalón y el siguiente hay una **zona muerta** donde cobrás más caro y cobrás menos. Antes de subir
+un precio hay que preguntarle a ML la comisión **en el precio nuevo**, no suponer el mismo %.
+
+**Cómo se esquiva sin tener que saber dónde están los escalones:** `subirpuede` prueba 12 precios
+entre el de hoy y el techo, le pregunta a ML la comisión de cada uno (`/sites/MLA/listing_prices`,
+el mismo endpoint que usa `netoweb`) y se queda con el que **más plata deja**, no con el más alto.
+
+**Y las filas que dan negativo NO salen con el comando al lado.** Un renglón que dice *"subí a
+$15.790"* y te hace ganar menos es peor que no tener el renglón: el comando invita a aplicarlo. Es
+la misma regla que el margen en verde sin envío descontado — **una conclusión sobre un número que
+sabemos que está mal no se muestra como si fuera una recomendación.**
+
+## ¿SE PUEDE AUTOMATIZAR LA SUBA DE PRECIOS? MEDIDO EL 12/09/2026
+
+Pregunta suya: *"se puede automatizar que se aumente sola una publicación que se esté vendiendo
+bien y tras un análisis vea que se pueda aumentar para ganar más y seguir vendiendo igual?"*.
+
+**Se hizo primero el que MIDE (`subirpuede`), a propósito, y no se automatizó nada.** Subir es la
+única operación del robot que puede **apagar las ventas de un producto que hoy funciona**, y eso se
+nota tarde: bajar de más se ve en la primera venta, subir de más simplemente deja de vender y
+parece que el producto se murió. Antes de dar esa palanca hay que saber cuánta plata hay en juego.
+
+**LA SEÑAL, y es la única dura que tenemos:** en una publicación de CATÁLOGO, si hoy GANAMOS la caja
+de compra, todos los que están más baratos **no están compitiendo** (sin stock o no califican) — ya
+verificado con el Ferrari el 25/08 y con el Pendrive 8gb hoy. El techo es entonces el competidor más
+barato que está ARRIBA nuestro.
+
+**ES UNA COTA, NO UNA RECOMENDACIÓN DE PRECIO**, y la primera corrida lo mostró feo: en los Paulvic
+ese competidor de arriba estaba al **DOBLE** ($14.360 contra $28.990) y el comando proponía **+99,9%**.
+No es el mismo perfume: es otra presentación que ML metió en el mismo catálogo. Es la misma lección
+que ya estaba anotada para `price_to_win` —*"que se gane a $900 no quiere decir que a $900 haya
+margen"*— sólo que para el otro lado. **Por eso se sube como mucho +10% por vez y se vuelve a
+medir**: un escalón chico se nota en las ventas del mes y se deshace; uno grande te deja un mes sin
+vender.
+
+**LO QUE NO SE PUEDE MEDIR: las 36 publicaciones que venden y NO son de catálogo.** Ahí no hay
+competidor contra el cual medir y las visitas solas no alcanzan. La única forma de saberlo es probar.
+
 ## LO QUE COBRA ML POR VENDER: 28,3% PROMEDIO, Y NO ES LO MISMO QUE EL 16% (11/09/2026)
 
 Salió de que él comparó la ficha contra el simulador de ML y no coincidían: la ficha decía **30,5%**

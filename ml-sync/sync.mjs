@@ -6809,7 +6809,7 @@ async function main() {
           rival: arriba[0].price, u: uMes[mla] || 0, techo, cortoPorEscalon,
           topeBarrera: tope !== techo2 });
       }
-      let noConvieneN = 0;
+      let noConvieneN = 0, resumenTotal = 0, resumenFilas = [];
       {
         // LA PLATA QUE SE GANA, Y POR QUÉ NO ALCANZA CON MIRAR EL PRECIO MÁS ALTO.
         //
@@ -6886,6 +6886,7 @@ async function main() {
           console.log(`     comando:  volver:${f.mla}=${f.tope}:go`);
         }
         noConvieneN = noConviene.length;
+        resumenTotal = total; resumenFilas = filas;
       }
       console.log(`\n── LO QUE QUEDÓ AFUERA ──`);
       console.log(`   ${sinCat} publicación(es) que venden pero NO son de catálogo: no hay competidor`);
@@ -6903,6 +6904,16 @@ async function main() {
       console.log(`puede tampoco estar compitiendo, y entonces hay MÁS lugar del que dice acá. ML sólo`);
       console.log(`informa el precio para ganar cuando se PIERDE la caja, nunca cuando se gana.`);
       console.log(`\nSOLO LECTURA: no se tocó ningún precio. Piso de hoy: ${PISO}%.`);
+      // EL RESUMEN VA AL FINAL A PROPÓSITO. Leer esta salida desde el chat cuesta tokens: el log
+      // de GitHub se lee por la cola, así que lo que importa tiene que estar en los últimos
+      // renglones. Con esto alcanza con mirar 20 líneas en vez de 180.
+      console.log(`\n══ RESUMEN ══`);
+      console.log(`   ${resumenFilas.length} publicación(es) para subir · ${money(resumenTotal)} más por mes`);
+      for (const f of resumenFilas.slice(0, 6)) {
+        console.log(`   · ${f.nom} (${f.cuenta}) ${money(f.precio)} → ${money(f.tope)} = ${money(f.extraMes)}/mes`);
+      }
+      if (resumenFilas.length > 6) console.log(`   · y ${resumenFilas.length - 6} más, todas abajo de`
+        + ` ${money(resumenFilas[6].extraMes)} por mes`);
       return;
     }
 
