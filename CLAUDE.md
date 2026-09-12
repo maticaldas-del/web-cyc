@@ -260,6 +260,9 @@ Los que más se usan:
 | `volver:<MLA=precio>[:go]` | deja un precio exacto (sin `:go` es prueba) · maneja variantes |
 | `huerfanos[:palabra]` | los productos en "—": por qué no tienen precio y cuál es su publicación |
 | `poncosto:<palabra\|id>\|<pesos>[\|go]` | corrige el costo de un producto (lo mismo que el campo de la ficha) |
+| `ponenvio:<palabra\|id>\|<dólares>[\|go]` | el envío/embalaje del producto (`shipUSD`) · el hermano de `poncosto`, que toca la mercadería |
+| `abrircaja:<seguimiento\|id>[:go]` | vuelve a poner una caja "en camino" · para deshacer un marcado equivocado |
+| `liquidando[:<MLA\|palabra>][:go]` | "esto lo estoy rematando: no me lo subas" · `-` adelante para sacar la marca |
 | `ponmedida:<busca>\|<L>x<A>x<H>\|<peso>[;otro][;go]` | carga a mano el paquete (medidas y peso) de lo que ML no informa · sin eso el producto no entra en las barras de Armar caja |
 | `vincular:<MLA>=<palabra\|id>[:go]` | pega una publicación a un producto y la saca de oculta |
 | `buscarpub:<texto>` | **encontrar el MLA cuando no lo sabés**: busca el texto en el título, el SKU y los códigos de las 4 cuentas, y dice a qué ficha está vinculada hoy cada una |
@@ -358,6 +361,39 @@ rompe el archivo entero y deja de correr TODO, sin aviso. Si hace falta algo nue
 El chequeo de las 8 lo pide Claude desde el chat: dispara `ml-chequeo.yml` (o `ml-sync.yml` con
 `billing_probe` = `chequeo:7:nomandar`), lee el resultado y escribe el resumen ahí mismo. Por
 Telegram va solo el resumen de ventas del día y el del mes.
+
+### EL CÓDIGO DE LA ETIQUETA DE FULL, EN ARMAR CAJA (12/09/2026)
+
+Pedido suyo: *"al armar una caja quiero tener el numero de la etiqueta de esa publicacion que me da
+ML (…) teniendo ese codigo al lado de la publicacion en la web de cyc puedo corroborar que estoy
+mandando el producto correcto y etiquetado bien"*. Y la aclaración, que resultó exacta: *"cada
+codigo cambia segun cada cuenta (…) el mismo producto, pero en diferente cuenta, es un codigo
+diferente"*.
+
+**Es el `inventory_id`** (formato `GAUL23741`), el MISMO dato que el robot ya pedía para leer el
+stock de Full — sólo que no lo guardaba. **Verificado con `DUMP_FULLSTOCK=lupa` ANTES de escribir
+nada**: ML devuelve `UTRJ34684` y `PKTG71359`, mismo formato que el que él ve en pantalla. Y
+confirma lo suyo: las DOS publicaciones de Lupa 90mm de Ayelen comparten `PKTG71359`, o sea que el
+código es **del producto EN ESA CUENTA**, no de la publicación.
+
+**NO ES EL MLA.** Es el código del producto ADENTRO de Full. Confundirlos ya costó una tarde el
+08/09, así que la pantalla lo aclara en el globito.
+
+El robot lo guarda en **`cyc/mllinks/<MLA>/inv`** (y en `/invVar` cuando la publicación tiene
+variantes adentro) en cada vuelta de stock, y Armar caja lo muestra al lado de cada cuenta.
+
+**NO SE ADIVINA:** si el título de la publicación no nombra el color, **no se muestra código**.
+Mostrar el de otro color sería peor que no mostrar nada — él usa este número justo para chequear
+que manda lo correcto, así que un código equivocado le confirmaría un error en vez de evitarlo.
+Para esos casos está `fijarvar:<MLA>=<variante>:go`, que escribe `variant` y ahí sí manda.
+(La primera versión SÍ adivinaba: con el Centímetro devolvía el código del Blanco cuando se le
+pedía el Rosa. Lo agarró la prueba con los códigos reales, no el chequeo de sintaxis.)
+
+**EL ERROR QUE CASI ROMPE EL ROBOT ENTERO, Y NO LO AGARRA `node --check`:** la variable se llamó
+primero `invUpd`, que **YA EXISTE** más abajo como `const` de un bloque interno (es el stock que se
+escribe en `cyc/inventory`). Eso tira *"Cannot access 'invUpd' before initialization"* en ejecución
+y **corta la corrida completa**. Compila perfecto. Se renombró a `etiqUpd`.
+**Antes de crear una variable en `sync.mjs`, buscar si el nombre ya está usado.**
 
 ### Los tres lugares donde está la mercadería
 
