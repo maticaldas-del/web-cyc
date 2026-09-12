@@ -6,7 +6,7 @@ const CAJA_VALE_LA_PENA
 const CMP_CUR
 const CMP_LBL_CUR
 const COLORS
-const COSTO_CAJA
+const COSTO_CAJA_FALLBACK
 const ENV_ROJO_DIAS
 const FAC_AUTO_DESDE
 const FAC_CONGELADO_HASTA
@@ -95,6 +95,7 @@ const costFullP
 const costFullUSDof
 const costP
 const costUSDof
+const costoCaja
 const cuentasExtra
 const curTC
 const deltaPct

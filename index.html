@@ -2307,7 +2307,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='19.27';
+const APP_VERSION='19.28';
 // El problema real que esto resuelve no es curiosidad: es que el celular guarda la app y sigue
 // mostrando la de ayer sin avisar. Varias veces se revisó un cambio que ya estaba subido y no se
 // veía. Por eso, además del número, el chip avisa cuando hay una versión nueva esperando.
@@ -4260,7 +4260,7 @@ function renderOfiCaja(){
     +LOCS.map(l=>{
       const u=Object.values(cajaDe(l)).reduce((a,x)=>a+x,0);
       const col=porCta[l]?(_listo[l]?'var(--green)':'var(--red)'):'';
-      const tit=porCta[l]?(_listo[l]?`La caja de ${l} ya se justifica: mandala`:`Todavía no da: juntá más antes de pagar los ${fmt(COSTO_CAJA)} del envío`):'';
+      const tit=porCta[l]?(_listo[l]?`La caja de ${l} ya se justifica: mandala`:`Todavía no da: juntá más antes de pagar los ${fmt(costoCaja())} del envío`):'';
       return `<button class="pf-btn${ofiFiltroCuenta===l?' active-all':''}" onclick="setOfiFiltro('${l}')">${l}${porCta[l]?` <strong style="color:${col}" title="${tit}">${porCta[l]}</strong>`:''}${u?` <span style="color:var(--accent2)" title="caja a medio armar">📦${u}</span>`:''}</button>`;
     }).join('');
   // Con una cuenta elegida se entra en MODO ARMAR CAJA: se listan TODOS los productos que hay en
@@ -4428,7 +4428,7 @@ function renderOfiCaja(){
         <div style="font-size:.9rem;font-weight:700;color:${col}">${veredicto}${motivo?` <span style="font-weight:400;font-size:.7rem;color:var(--muted)">· ${motivo}</span>`:''}</div>
         <div style="font-size:.72rem;margin-top:5px;line-height:1.6">
           Lleva <strong>${fmt(Math.round(cv.gTotal))}</strong> de ganancia en ${cv.uTot} u.
-          contra <strong>${fmt(COSTO_CAJA)}</strong> de envío.
+          contra <strong>${fmt(costoCaja())}</strong> de envío.
           <span style="font-size:.62rem;color:${cv.sobreLoCargado?'var(--green)':'var(--muted)'}">${cv.sobreLoCargado?'· sobre lo que cargaste en la caja':'· sobre lo sugerido (todavía no cargaste nada)'}</span><br>
           ${cv.gCero>0
             ? `Destraba <strong>${fmt(Math.round(cv.gCero))} por día</strong> (${cv.nCero} producto${cv.nCero===1?'':'s'} en cero, ${cv.uCero} u.): esperar una semana te cuesta <strong>${fmt(Math.round(cv.gCero*7))}</strong>.`
@@ -5003,19 +5003,32 @@ const REPO_PISO_CERO=4;
 // capaz que si conviene, porque son productos que se le gana mucho y nos perdemos de vender".
 // Tenía razón en las dos puntas, y la respuesta no es el volumen.
 //
-// El envío a Full sale $16.000 POR CAJA, plano: da igual si va llena o por la mitad, hasta
-// 70x70x70 cm y 30 kg (dato suyo del 23/08/2026). Tres cajas son tres veces $16.000 — se paga por
-// caja, no por despacho —, así que la decisión se toma caja por caja.
+// El envío a Full sale PLANO POR CAJA: da igual si va llena o por la mitad, hasta 70x70x70 cm y
+// 30 kg (dato suyo del 23/08/2026). Tres cajas son tres veces ese costo — se paga por caja, no por
+// despacho —, así que la decisión se toma caja por caja.
+// El número NO se escribe acá: vive en `cyc/mlconfig/costoCaja` (ver costoCaja() más abajo). Era
+// $16.000 y el 12/09/2026 pasó a $17.500.
 //
 // Del otro lado: cada día que una publicación está en CERO se pierde su ganancia de un día. Eso
 // corre igual, no es una oportunidad perdida abstracta. Entonces la pregunta no es "¿está llena?"
-// sino EN CUÁNTO SE PAGA: $16.000 ÷ la ganancia por día que la caja destraba.
+// sino EN CUÁNTO SE PAGA: lo que sale la caja ÷ la ganancia por día que esa caja destraba.
 //
 // Y el matiz que contesta justo su duda: lo que va a una publicación que YA TIENE stock no
 // destraba nada hoy — mandarlo ahora o dentro de una semana da casi igual. Lo que destraba plata
 // es solo lo que está en cero. Por eso "no lleno la caja" no es la pregunta: la pregunta es
 // cuánto de lo que falta estaba en cero.
-const COSTO_CAJA=16000;
+// EL NÚMERO VIVE EN LA BASE, NO ACÁ (12/09/2026). Pasó de $16.000 a $17.500 y va a volver a
+// cambiar, y estaba escrito A MANO en DOS archivos —acá y en el probe `embalaje` de sync.mjs, con
+// el comentario "el mismo número que usa el panel"—. Eso es exactamente lo que pasó con el piso de
+// margen: el 03/09 aparecieron ocho comandos midiendo contra un piso que ya no existía.
+// Ahora sale de `cyc/mlconfig/costoCaja` y se cambia con el comando `cajacosto:<pesos>`.
+// Si la lectura falla cae en el número ALTO, que es el lado seguro: con una caja más cara, el
+// envío por unidad sube, el costo sube y el margen se ve MENOR — nunca al revés.
+const COSTO_CAJA_FALLBACK=17500;
+const costoCaja=()=>{
+  const v=parseFloat((state.mlconfig||{}).costoCaja);
+  return (isFinite(v)&&v>0)?v:COSTO_CAJA_FALLBACK;
+};
 function gananciaUnidad(p){
   const m=margenMLDe(p);
   if(!m||m.neto==null||!(m.costo>0))return null;   // sin neto de ML no se inventa
@@ -5075,11 +5088,12 @@ function convieneCaja(filas,cuenta){
     }
   }
   detalle.sort((a,b)=>b.porDia-a.porDia||b.gan-a.gan);
-  const diasPago=gCero>0?COSTO_CAJA/gCero:null;
+  const _cc=costoCaja();
+  const diasPago=gCero>0?_cc/gCero:null;
   return{gCero,gRelleno,gTotal,nCero,uCero,uTot,sinDato,detalle,diasPago,sobreLoCargado:hayPuesto,
     // Vale la pena por lo que lleva, aunque la velocidad no lo justifique sola.
-    porTamano:gTotal>=COSTO_CAJA*CAJA_VALE_LA_PENA,
-    vecesElEnvio:COSTO_CAJA>0?gTotal/COSTO_CAJA:0};
+    porTamano:gTotal>=_cc*CAJA_VALE_LA_PENA,
+    vecesElEnvio:_cc>0?gTotal/_cc:0};
 }
 
 /* ═══════════ CAJAS EN CAMINO A FULL ═══════════

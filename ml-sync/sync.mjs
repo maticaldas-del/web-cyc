@@ -6379,8 +6379,9 @@ async function main() {
     // alto de lo que es y se fijan precios contra un costo que no existe. Nunca se había podido
     // chequear porque hasta hoy faltaban las medidas; ahora las tienen 135 de 140 productos.
     //
-    // LA CUENTA, y su supuesto: una caja a Full sale $16.000 (COSTO_CAJA del panel) y entran N
-    // unidades, así que a cada una le toca 16.000/N. N sale de los DOS límites —cuántas entran por
+    // LA CUENTA, y su supuesto: una caja a Full sale lo que diga `cyc/mlconfig/costoCaja` (el MISMO
+    // número que usa el panel, leído del mismo lado) y entran N unidades, así que a cada una le
+    // toca ese costo ÷ N. N sale de los DOS límites —cuántas entran por
     // lugar en 70x70x70 y cuántas por los 30 kg— y manda el más chico, igual que en "Armar caja".
     // El supuesto es que la caja va llena de ESE producto. Una caja mezclada reparte distinto,
     // pero como reparte proporcionalmente el costo por unidad da parecido: sirve para comparar.
@@ -6395,7 +6396,12 @@ async function main() {
       const _pe = String(process.env.BILLING_PROBE).split(':');
       const APLICAR = _pe.includes('go');
       const CUANTOS = parseInt(_pe[1] || '0', 10) || 0;
-      const COSTO_CAJA = 16000;                       // el mismo número que usa el panel
+      // EL COSTO DE LA CAJA SALE DE LA BASE, igual que el piso de margen. Estaba escrito a mano acá
+      // con el comentario "el mismo número que usa el panel" — y eso es una promesa que nadie
+      // controla: el 03/09 aparecieron ocho comandos midiendo contra un piso que ya no existía.
+      // Si la lectura falla cae en el número ALTO: con una caja más cara el envío por unidad sube,
+      // el costo sube y el margen se ve MENOR. Ese es el lado seguro.
+      const COSTO_CAJA = parseFloat(((await db.get('cyc/mlconfig')) || {}).costoCaja) || 17500;
       const tcE = parseFloat(((await db.get('cyc/finanzas')) || {}).tipo_cambio) || 1500;
       // El % de reclamos VIVO, igual que poncosto: el guardado puede ser de hace meses.
       const vpE = (await db.get('cyc/ventaprod')) || {}; setDevLive(vpE);
@@ -6618,6 +6624,47 @@ async function main() {
       if (!mal) console.log('\nListo. Corré netoweb para que el panel recalcule el margen con esto adentro.');
       return;
     }
+    // BILLING_PROBE=cajacosto[:<pesos>] → LO QUE SALE MANDAR UNA CAJA A FULL.
+    //
+    // Vive en `cyc/mlconfig/costoCaja` y lo usan DOS cosas que deciden plata:
+    //   · "¿conviene armar esta caja?" en Armar caja (el cartel y los días en que se paga)
+    //   · el probe `embalaje`, que reparte ese costo entre las unidades que entran y con eso fija
+    //     el "Envío+embalaje" de cada ficha — que va DENTRO del costo contra el que se miden todos
+    //     los márgenes y por lo tanto todos los precios.
+    // Por eso cambiarlo NO termina acá: después hay que correr `embalaje` para ver qué fichas
+    // quedaron cortas, y `netoweb` para que los márgenes usen el costo nuevo. El comando lo dice.
+    //
+    // Sin número sólo muestra cómo está.
+    if (/^cajacosto(:|$)/.test(String(process.env.BILLING_PROBE || ''))) {
+      const _cc = String(process.env.BILLING_PROBE).split(':')[1];
+      const cfgC = (await db.get('cyc/mlconfig')) || {};
+      const antes = parseFloat(cfgC.costoCaja) || 0;
+      if (!_cc) {
+        console.log(`Lo que sale mandar una caja a Full: ${antes ? money(antes) : 'NO ESTÁ CARGADO (se usa el respaldo de $17.500)'}`);
+        console.log(`\n(para cambiarlo: cajacosto:<pesos> — ej cajacosto:17500)`);
+        return;
+      }
+      const nuevo = parseFloat(String(_cc).replace(/[^0-9.,]/g, '').replace(/\./g, '').replace(',', '.')) || 0;
+      if (!(nuevo > 0)) { console.log('Usá: cajacosto:<pesos> — ej cajacosto:17500'); return; }
+      await db.set('cyc/mlconfig/costoCaja', nuevo);
+      // Releído de la base: que el comando no dé error no prueba que haya quedado.
+      const cfg2 = (await db.get('cyc/mlconfig')) || {};
+      const quedo = parseFloat(cfg2.costoCaja) || 0;
+      console.log(`Costo de la caja a Full: ${antes ? money(antes) : '(no estaba)'} → ${money(nuevo)}`);
+      console.log(`Releído de la base: quedó ${money(quedo)} ${quedo === nuevo ? '✓' : '✗ NO quedó como pedí'}`);
+      if (antes && nuevo !== antes) {
+        const pct = ((nuevo - antes) / antes) * 100;
+        console.log(`\nSubió ${pct.toFixed(1)}%. Eso quiere decir que el "Envío+embalaje" cargado en las fichas`);
+        console.log(`quedó corto en la misma proporción, y ese número está DENTRO del costo con el que se`);
+        console.log(`miden todos los márgenes.`);
+        console.log(`\nLo que falta, en este orden:`);
+        console.log(`   1. embalaje          → muestra qué fichas quedaron cortas (solo lee)`);
+        console.log(`   2. embalaje:<N>:go   → se lo aplica a las N peores`);
+        console.log(`   3. netoweb           → recalcula los márgenes con el costo nuevo`);
+      }
+      return;
+    }
+
     // BILLING_PROBE=ponenvio:<palabra o id>|<dólares>[|go] → EL ENVÍO/EMBALAJE DE UN PRODUCTO.
     //
     // El hermano de `poncosto`: aquél toca la MERCADERÍA (`costUSD`, en pesos), éste toca lo que te
