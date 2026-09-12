@@ -262,6 +262,7 @@ Los que más se usan:
 | `poncosto:<palabra\|id>\|<pesos>[\|go]` | corrige el costo de un producto (lo mismo que el campo de la ficha) |
 | `ponenvio:<palabra\|id>\|<dólares>[\|go]` | el envío/embalaje del producto (`shipUSD`) · el hermano de `poncosto`, que toca la mercadería |
 | `cajacosto[:<pesos>]` | lo que sale mandar una caja a Full · vive en `cyc/mlconfig/costoCaja` |
+| `codigos[:<palabra>]` | **el código de etiqueta de Full, variante por variante** · dice a quién le falta y por qué |
 | `embalaje[:<N>][:go]` | compara el envío/embalaje cargado en cada ficha contra lo que cuesta mandarlo de verdad |
 | `abrircaja:<seguimiento\|id>[:go]` | vuelve a poner una caja "en camino" · para deshacer un marcado equivocado |
 | `liquidando[:<MLA\|palabra>][:go]` | "esto lo estoy rematando: no me lo subas" · `-` adelante para sacar la marca |
@@ -396,6 +397,31 @@ primero `invUpd`, que **YA EXISTE** más abajo como `const` de un bloque interno
 escribe en `cyc/inventory`). Eso tira *"Cannot access 'invUpd' before initialization"* en ejecución
 y **corta la corrida completa**. Compila perfecto. Se renombró a `etiqUpd`.
 **Antes de crear una variable en `sync.mjs`, buscar si el nombre ya está usado.**
+
+### EL CÓDIGO DE LA ETIQUETA DE FULL: PARA QUÉ SIRVE Y A QUIÉN LE FALTA
+
+Para qué lo quiere, textual (12/09/2026): *"quiero ver por ejemplo que diga modista rosa codigo xxx
+mandar 100 / modista blanco codigo yyy mandar 50. entonces yo miro el codigo pegado al modista que
+tengo en la mano y me doy cuenta si esta bien lo que hago o no"*. **Es un control de que está
+mandando lo correcto**, no un dato de adorno — por eso NUNCA se adivina.
+
+Se revisa con **`codigos[:<palabra>]`** (solo lee), que muestra variante × cuenta × código y separa
+los DOS motivos por los que puede faltar, que se arreglan distinto:
+ · **"falta"** → el robot todavía no leyó esa publicación. Se llena solo en la vuelta de la hora.
+ · **"SIN COLOR"** → el título de ML no nombra ninguna variante de la ficha, así que el panel no
+   sabe de qué color es. Se arregla con `fijarvar:<MLA>=<color>:go`.
+
+**Estado de los Centímetro modista (Luciana) al 12/09/2026 — verificado contra la captura de ML:**
+
+| color | código | publicación |
+|---|---|---|
+| Blanco | `ZBGG56355` | MLA1699834745 |
+| Gris | `FIGM65688` | MLA3112784736 |
+| Rosa | `NJLU99914` | MLA3559540968 |
+| **⚠️ sin identificar** | **`TRZK95506`** | **MLA1841730099** |
+
+**Hay una QUINTA publicación de Centímetro que no estaba en su captura** y de la que el panel no
+sabe el color. **Falta que él diga cuál es**; hasta entonces no muestra código, que es lo correcto.
 
 ### Los tres lugares donde está la mercadería
 
