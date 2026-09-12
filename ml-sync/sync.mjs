@@ -5385,7 +5385,13 @@ async function main() {
           };
           const { envio } = await envioDeducido(ventas.filter((v) => v.tot > 0 && v.net > 0), b.price || 0, feeAt, { modo: 'max' });
           if (envio != null) {
-            const MIN = 0.30, den = 1 - m * (1 + MIN);
+            // EL PISO SALE DE LA BASE, no escrito acá. Estaba fijo en 0.30 cuando el piso real es
+            // 23% — o sea que este comando decía "abajo de nuestro piso" sobre publicaciones que
+            // están perfectamente arriba de él, y el precio que mostraba era el del 30%.
+            // Es el NOVENO comando con el piso viejo adentro: el 03/09 se arreglaron ocho y éste
+            // se pasó por alto. Misma lección de siempre: un número copiado es un número que se
+            // desincroniza.
+            const MIN = (await pisoConfig(db, 30)) / 100, den = 1 - m * (1 + MIN);
             let P = b.price || 0, comP = (await feeAt(P)) || 0;
             for (let i = 0; i < 4; i++) {
               const Pn = (costo * (1 + MIN) + comP + envio * (1 + MIN)) / den;
@@ -5394,7 +5400,7 @@ async function main() {
               P = Pn; comP = c2;
             }
             piso = Math.ceil(P / 10) * 10;
-            console.log(`  nuestro piso del 30%: ${money(piso)}`);
+            console.log(`  nuestro piso del ${(MIN * 100).toFixed(0)}%: ${money(piso)}`);
           }
         }
         let ptw = null;
