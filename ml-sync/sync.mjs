@@ -6624,6 +6624,65 @@ async function main() {
       if (!mal) console.log('\nListo. Corré netoweb para que el panel recalcule el margen con esto adentro.');
       return;
     }
+    // BILLING_PROBE=codigos[:<palabra>] → EL CÓDIGO DE ETIQUETA DE FULL, VARIANTE POR VARIANTE.
+    //
+    // Pedido suyo del 12/09/2026: *"quiero ver por ejemplo que diga modista rosa codigo xxx mandar
+    // 100 / modista blanco codigo yyy mandar 50. entonces yo miro el codigo pegado al modista que
+    // tengo en la mano y me doy cuenta si esta bien lo que hago o no"*.
+    // La pantalla ya lo muestra en Armar caja; esto es para revisarlo de una y ver A QUIÉN LE FALTA,
+    // que es la parte que no se ve desde la pantalla.
+    //
+    // Es el `inventory_id` que devuelve ML. NO es el MLA. Es distinto en cada cuenta.
+    // Sin palabra los lista TODOS, agrupados por producto.
+    if (/^codigos(:|$)/.test(String(process.env.BILLING_PROBE || ''))) {
+      const kw = norm(String(process.env.BILLING_PROBE).slice('codigos:'.length).trim());
+      const links = (await db.get('cyc/mllinks')) || {};
+      const pIdx = {}; for (const p of products) pIdx[p.id] = p;
+      const objetivo = products.filter((p) => !kw || norm(p.name || '').includes(kw));
+      if (!objetivo.length) { console.log(`No encontré ningún producto con "${kw}".`); return; }
+      console.log(`=== CÓDIGO DE ETIQUETA DE FULL${kw ? ' · "' + kw + '"' : ''} ===`);
+      console.log(`Es el código que ML le da al producto ADENTRO de Full — el de la etiqueta.`);
+      console.log(`NO es el número de la publicación, y es DISTINTO en cada cuenta.\n`);
+      let conCod = 0, sinCod = 0, sinVar = 0;
+      for (const p of objetivo) {
+        const mias = Object.entries(links).filter(([, e]) => e && e.prodId === p.id && !e.ignored && (e.status || '') !== 'closed');
+        if (!mias.length) continue;
+        console.log(`── ${p.name}`);
+        for (const [mla, e] of mias.sort((a, b) => String(a[1].cuenta || '').localeCompare(String(b[1].cuenta || '')))) {
+          // La variante sale del campo fijado a mano (fijarvar) o del título, igual que la web.
+          const pv = e.variant || varianteDeTitulo(e.title || '', p.variantes);
+          const tieneVars = (p.variantes || []).length > 0;
+          // Publicación con el desplegable de ML adentro: un código por variante.
+          if (e.invVar && Object.keys(e.invVar).length) {
+            for (const [vk, code] of Object.entries(e.invVar)) {
+              const nom = (p.variantes || []).find((x) => sid(x) === vk) || vk;
+              console.log(`   ${String(nom).padEnd(18)} ${String(e.cuenta || '?').padEnd(9)} ${String(code).padEnd(12)} ${mla}`);
+              conCod++;
+            }
+            continue;
+          }
+          const cod = e.inv || null;
+          const etiqVar = tieneVars ? (pv || '⚠️ SIN COLOR') : '—';
+          console.log(`   ${String(etiqVar).padEnd(18)} ${String(e.cuenta || '?').padEnd(9)} ${String(cod || '⚠️ falta').padEnd(12)} ${mla}  ${String(e.title || '').slice(0, 38)}`);
+          if (cod) conCod++; else sinCod++;
+          if (tieneVars && !pv) sinVar++;
+        }
+        console.log('');
+      }
+      console.log(`── RESUMEN ──`);
+      console.log(`   ${conCod} publicación(es) con código · ${sinCod} sin código`);
+      if (sinCod) console.log(`   Las que dicen "falta": el robot todavía no las leyó. Se llenan solas en la vuelta de la hora.`);
+      if (sinVar) {
+        console.log(`\n   ⚠️ ${sinVar} publicación(es) con "SIN COLOR": el título de ML no nombra ninguna variante`);
+        console.log(`      de la ficha, así que el panel NO SABE de qué color son y NO les muestra el código`);
+        console.log(`      en Armar caja. Adivinar sería peor: mostrarte el código de otro color te`);
+        console.log(`      confirmaría un error en vez de evitarlo.`);
+        console.log(`      Se arregla diciéndolo a mano:  fijarvar:<MLA>=<color>:go`);
+      }
+      console.log(`\nSOLO LECTURA.`);
+      return;
+    }
+
     // BILLING_PROBE=cajacosto[:<pesos>] → LO QUE SALE MANDAR UNA CAJA A FULL.
     //
     // Vive en `cyc/mlconfig/costoCaja` y lo usan DOS cosas que deciden plata:
