@@ -6689,6 +6689,151 @@ async function main() {
       return;
     }
 
+    // BILLING_PROBE=subirpuede[:<días>] → ¿DÓNDE HAY LUGAR PARA SUBIR SIN PERDER VENTAS?
+    //
+    // Pregunta suya del 12/09/2026: *"se puede automatizar que se aumente sola una publicacion que
+    // se este vendiendo bien y tras un analisis vea que se pueda aumentar para ganar mas y seguir
+    // vendiendo igual?"*.
+    //
+    // ESTO NO AUTOMATIZA NADA: MIDE. Y se hizo primero a propósito. Automatizar una suba a ciegas
+    // es la única operación del robot que puede APAGAR las ventas de un producto que hoy funciona,
+    // y eso se nota tarde. Antes de darle esa palanca hay que saber cuánta plata hay en juego: si
+    // son tres productos y $20.000 al mes, no vale la pena el riesgo; si son cuarenta, es otra
+    // conversación. Este comando contesta esa pregunta.
+    //
+    // LA SEÑAL, y es la única dura que tenemos: en una publicación de CATÁLOGO, si hoy GANAMOS la
+    // caja de compra, todos los que están más baratos NO están compitiendo (sin stock o no
+    // califican) — eso ya está verificado con el Ferrari el 25/08 y con el Pendrive 8gb hoy. Así
+    // que el techo es el precio del competidor más barato que esté ARRIBA nuestro: hasta ahí
+    // seguimos siendo los más baratos de los que pelean, y la caja no se mueve.
+    //
+    // ES UNA COTA CONSERVADORA, NO UN DATO. Ese competidor de arriba puede tampoco estar
+    // compitiendo, y entonces el techo real es más alto. ML no lo dice: `price_to_win` sólo informa
+    // cuando se PIERDE la caja. La única forma de saber el techo de verdad es subir y mirar.
+    //
+    // LO QUE NO MIDE, y hay que decirlo: las publicaciones que NO son de catálogo. Ahí no hay
+    // competidor contra el cual medir y las visitas solas no alcanzan para afirmar que el precio
+    // aguanta. Se cuentan aparte y se dice que quedaron afuera.
+    //
+    // No pide la lista de competidores a las ~140 publicaciones: filtra primero por las que el
+    // robot YA marcó como ganadoras en `cyc/mllinks/<MLA>/caja` (eso lo escribe `cajacompra` una
+    // vez por hora), así que las llamadas a ML son sólo las que pueden dar candidata.
+    if (/^subirpuede(:|$)/.test(String(process.env.BILLING_PROBE || ''))) {
+      const DIAS = parseFloat(String(process.env.BILLING_PROBE).split(':')[1]) || 30;
+      const COLCHON = 0.99;     // 1% abajo del competidor: quedar a $4 es demasiado al filo
+      const MIN_AIRE = 0.03;    // abajo de 3% de subida no vale la pena tocar nada
+      const links = (await db.get('cyc/mllinks')) || {};
+      const vp = (await db.get('cyc/ventaprod')) || {}; setDevLive(vp);
+      const monoP = parseFloat(((await db.get('cyc/monotributo')) || {}).pct) || 0;
+      const PISO = await pisoConfig(db, 30);
+      const pIdx = {}; for (const p of products) pIdx[p.id] = p;
+      // Unidades vendidas por publicación en la ventana: sin ventas no se opina.
+      const desde = Date.now() - DIAS * 864e5, uMes = {};
+      for (const [k, ents] of Object.entries(vp)) {
+        const ts = Date.parse(k.slice(0, 10).replace(/_/g, '-'));
+        if (!isFinite(ts) || ts < desde) continue;
+        for (const v of Object.values(ents || {})) {
+          if (!v || v.cancelada || !v.mla) continue;
+          uMes[v.mla] = (uMes[v.mla] || 0) + (v.qty || 1);
+        }
+      }
+      // Los seller_id nuestros, para no confundir una publicación hermana con un competidor.
+      const sids = {};
+      for (const l of labels) if (accounts[l]?.seller_id) sids[String(accounts[l].seller_id)] = l;
+
+      console.log(`=== ¿DÓNDE HAY LUGAR PARA SUBIR? · vendidas en ${DIAS} días · SOLO LECTURA ===`);
+      console.log(`Sólo publicaciones de CATÁLOGO que HOY GANAN la caja de compra: ahí el techo se`);
+      console.log(`puede medir (el competidor más barato que está arriba nuestro). En las que no son`);
+      console.log(`de catálogo no hay contra qué medir y quedan afuera.\n`);
+
+      const cand = Object.entries(links).filter(([mla, e]) =>
+        e && e.prodId && pIdx[e.prodId] && !e.ignored && (e.status || '') === 'active'
+        && e.caja === 'winning' && (uMes[mla] || 0) > 0);
+      let sinCat = 0, sinLugar = 0, sinDato = 0;
+      for (const [mla, e] of Object.entries(links)) {
+        if (!e || !e.prodId || e.ignored || (e.status || '') !== 'active') continue;
+        if (!(uMes[mla] > 0)) continue;
+        if (e.caja && e.caja !== 'winning' && e.caja !== 'nocat') continue;
+        if (e.caja === 'nocat' || !e.caja) sinCat++;
+      }
+      const filas = [];
+      for (const [mla, e] of cand) {
+        const p = pIdx[e.prodId];
+        const tok = (tokensRun[e.cuenta] || {}).access_token;
+        if (!tok) continue;
+        let b;
+        try { b = await mlGet(`/items/${mla}?attributes=id,price,catalog_product_id,shipping,title`, tok); }
+        catch { sinDato++; continue; }
+        const precio = Number(b?.price) || 0;
+        if (!precio || !b?.catalog_product_id) { sinDato++; continue; }
+        let comp = null;
+        try { comp = await mlGet(`/products/${b.catalog_product_id}/items`, tok); } catch { sinDato++; continue; }
+        const res = (comp?.results || []).filter((x) => x && x.price > 0 && !sids[String(x.seller_id)]);
+        // El techo: el competidor más barato que está ARRIBA nuestro.
+        const arriba = res.filter((x) => x.price > precio).sort((a, b2) => a.price - b2.price);
+        if (!arriba.length) { sinLugar++; continue; }     // nadie arriba: no se puede acotar
+        const techo = Math.floor((arriba[0].price * COLCHON) / 10) * 10;
+        if (techo <= precio * (1 + MIN_AIRE)) { sinLugar++; continue; }
+        // LA BARRERA DE LOS $33.000 NO SE CRUZA (regla suya del 13/08/2026). Si el techo la pasa,
+        // se topa en $32.999 — y si ya estamos arriba de la barrera, no aplica.
+        const tope = (precio < UMBRAL_ENVIO_GRATIS && techo >= UMBRAL_ENVIO_GRATIS) ? UMBRAL_ENVIO_GRATIS - 1 : techo;
+        if (tope > TECHO_PRECIO) { sinLugar++; continue; }   // techo duro de $600.000
+        if (tope <= precio * (1 + MIN_AIRE)) { sinLugar++; continue; }
+        filas.push({ mla, cuenta: e.cuenta, nom: (p.name || '').slice(0, 34), precio, tope,
+          rival: arriba[0].price, u: uMes[mla] || 0,
+          topeBarrera: tope !== techo });
+      }
+      if (!filas.length) {
+        console.log('── Ninguna. Hoy no hay ninguna publicación con lugar medible para subir.\n');
+      } else {
+        // La plata que se gana: lo que sube el PRECIO menos lo que se lleva ML de ese aumento.
+        // Se usa la comisión real de la publicación, no un % inventado.
+        for (const f of filas) {
+          const tokF = (tokensRun[f.cuenta] || {}).access_token;
+          let comHoy = 0, comNue = 0;
+          try {
+            const it = await mlGet(`/items/${f.mla}?attributes=listing_type_id,category_id,site_id`, tokF);
+            const fee = async (P) => {
+              try {
+                const r = await mlGet(`/sites/${it.site_id || 'MLA'}/listing_prices?price=${P}&listing_type_id=${it.listing_type_id}&category_id=${it.category_id}`, tokF);
+                return Number((Array.isArray(r) ? r[0] : r)?.sale_fee_amount) || 0;
+              } catch { return 0; }
+            };
+            comHoy = await fee(f.precio); comNue = await fee(f.tope);
+          } catch { /* queda en 0 y se nota */ }
+          const impPct = (mlExtraPct(f.cuenta) + monoP) / 100;
+          // Lo que queda EXTRA por unidad: el aumento, menos la comisión extra, menos los impuestos
+          // que también son % del precio.
+          f.extraU = (f.tope - f.precio) - (comNue - comHoy) - (f.tope - f.precio) * impPct;
+          f.extraMes = Math.round(f.extraU * f.u * (30 / DIAS));
+          f.subePct = ((f.tope - f.precio) / f.precio) * 100;
+        }
+        filas.sort((a, b2) => b2.extraMes - a.extraMes);
+        const total = filas.reduce((a, x) => a + Math.max(0, x.extraMes), 0);
+        console.log(`── ${filas.length} con lugar para subir · ${money(total)} más por mes si se suben TODAS ──\n`);
+        for (const f of filas) {
+          console.log(`── ${f.nom}   (${f.cuenta} · ${f.mla})`);
+          console.log(`     ${money(f.precio)} → ${money(f.tope)}  (+${f.subePct.toFixed(1)}%)`
+            + `   ·   vendió ${f.u} en ${DIAS} días`);
+          console.log(`     el competidor más barato que está arriba: ${money(f.rival)}`
+            + (f.topeBarrera ? `   ⚠️ topado en ${money(UMBRAL_ENVIO_GRATIS - 1)}: no se cruza la barrera` : ''));
+          console.log(`     quedarían ${money(Math.round(f.extraU))} más por unidad = ${money(f.extraMes)} por mes`);
+          console.log(`     comando:  volver:${f.mla}=${f.tope}:go`);
+        }
+      }
+      console.log(`\n── LO QUE QUEDÓ AFUERA ──`);
+      console.log(`   ${sinCat} publicación(es) que venden pero NO son de catálogo: no hay competidor`);
+      console.log(`      contra el cual medir, y las visitas solas no alcanzan para afirmar que el`);
+      console.log(`      precio aguanta. Ahí la única forma de saberlo es probar.`);
+      console.log(`   ${sinLugar} que ganan la caja pero no tienen aire medible (nadie arriba, o muy poco).`);
+      if (sinDato) console.log(`   ${sinDato} que ML no me contestó.`);
+      console.log(`\nOJO CON EL TECHO: es una cota CONSERVADORA, no un dato. Ese competidor de arriba`);
+      console.log(`puede tampoco estar compitiendo, y entonces hay MÁS lugar del que dice acá. ML sólo`);
+      console.log(`informa el precio para ganar cuando se PIERDE la caja, nunca cuando se gana.`);
+      console.log(`\nSOLO LECTURA: no se tocó ningún precio. Piso de hoy: ${PISO}%.`);
+      return;
+    }
+
     // BILLING_PROBE=cajacosto[:<pesos>] → LO QUE SALE MANDAR UNA CAJA A FULL.
     //
     // Vive en `cyc/mlconfig/costoCaja` y lo usan DOS cosas que deciden plata:
