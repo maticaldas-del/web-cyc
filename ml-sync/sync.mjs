@@ -6809,36 +6809,65 @@ async function main() {
           rival: arriba[0].price, u: uMes[mla] || 0, techo, cortoPorEscalon,
           topeBarrera: tope !== techo2 });
       }
-      if (!filas.length) {
-        console.log('── Ninguna. Hoy no hay ninguna publicación con lugar medible para subir.\n');
-      } else {
-        // La plata que se gana: lo que sube el PRECIO menos lo que se lleva ML de ese aumento.
-        // Se usa la comisión real de la publicación, no un % inventado.
+      let noConvieneN = 0;
+      {
+        // LA PLATA QUE SE GANA, Y POR QUÉ NO ALCANZA CON MIRAR EL PRECIO MÁS ALTO.
+        //
+        // La primera corrida con el escalón del 10% (12/09/2026) mostró algo que no estaba
+        // anotado en ningún lado: **subir el precio puede dejarte MENOS plata**. Los Paulvic de
+        // $14.360 a $15.790 daban **−$312 por unidad**, y los que se quedaban en $14.840 daban
+        // +$369. O sea que la comisión de ML tiene un ESCALÓN cerca de los $15.000 y cruzarlo se
+        // come más de lo que sube el precio.
+        // Es el mismo cargo fijo que ya está anotado ("~$1.230 por venta, sin importar el
+        // precio"), sólo que visto desde el otro lado: no es un % parejo, es una escalera.
+        //
+        // Por eso NO se propone el precio más alto que entra: se PRUEBAN varios precios entre el
+        // de hoy y el techo, se le pregunta a ML la comisión de cada uno, y se elige el que deja
+        // más plata. Así el escalón se esquiva solo, sin tener que saber dónde está.
+        const impPctDe = (cta) => (mlExtraPct(cta) + monoP) / 100;
         for (const f of filas) {
           const tokF = tokSub[f.cuenta];
-          let comHoy = 0, comNue = 0;
+          f.extraU = null;
           try {
             const it = await mlGet(`/items/${f.mla}?attributes=listing_type_id,category_id,site_id`, tokF);
+            const cache = {};
             const fee = async (P) => {
-              try {
-                const r = await mlGet(`/sites/${it.site_id || 'MLA'}/listing_prices?price=${P}&listing_type_id=${it.listing_type_id}&category_id=${it.category_id}`, tokF);
-                return Number((Array.isArray(r) ? r[0] : r)?.sale_fee_amount) || 0;
-              } catch { return 0; }
+              if (cache[P] != null) return cache[P];
+              const r = await mlGet(`/sites/${it.site_id || 'MLA'}/listing_prices?price=${P}&listing_type_id=${it.listing_type_id}&category_id=${it.category_id}`, tokF);
+              return (cache[P] = Number((Array.isArray(r) ? r[0] : r)?.sale_fee_amount) || 0);
             };
-            comHoy = await fee(f.precio); comNue = await fee(f.tope);
-          } catch { /* queda en 0 y se nota */ }
-          const impPct = (mlExtraPct(f.cuenta) + monoP) / 100;
-          // Lo que queda EXTRA por unidad: el aumento, menos la comisión extra, menos los impuestos
-          // que también son % del precio.
-          f.extraU = (f.tope - f.precio) - (comNue - comHoy) - (f.tope - f.precio) * impPct;
-          f.extraMes = Math.round(f.extraU * f.u * (30 / DIAS));
+            const comHoy = await fee(f.precio);
+            const imp = impPctDe(f.cuenta);
+            // 12 escalones entre el precio de hoy y el techo. Con eso el escalón de ML queda
+            // acotado a unos pocos pesos, y son 12 llamadas por publicación, no 100.
+            const PASOS = 12;
+            for (let i = PASOS; i >= 1; i--) {
+              const P = Math.floor((f.precio + ((f.tope - f.precio) * i) / PASOS) / 10) * 10;
+              if (P <= f.precio) continue;
+              let ex;
+              try { ex = (P - f.precio) - ((await fee(P)) - comHoy) - (P - f.precio) * imp; }
+              catch { continue; }
+              if (f.extraU == null || ex > f.extraU) { f.extraU = ex; f.mejor = P; }
+            }
+          } catch { /* queda en null y la fila se descarta abajo */ }
+          f.topeMax = f.tope;                       // el tope permitido, antes de elegir el mejor
+          f.tope = f.mejor != null ? f.mejor : f.tope;
+          f.extraMes = Math.round((f.extraU || 0) * f.u * (30 / DIAS));
           f.subePct = ((f.tope - f.precio) / f.precio) * 100;
         }
+        // LAS QUE DAN NEGATIVO NO SE MUESTRAN CON UN COMANDO AL LADO. Un renglón que dice
+        // "subí a $15.790" y te hace ganar menos es peor que no tener el renglón: el comando
+        // invita a aplicarlo. Se cuentan aparte y se dice por qué.
+        const noConviene = filas.filter((x) => !(x.extraU > 0) || !(x.subePct >= MIN_AIRE * 100));
+        for (let i = filas.length - 1; i >= 0; i--) if (noConviene.includes(filas[i])) filas.splice(i, 1);
         filas.sort((a, b2) => b2.extraMes - a.extraMes);
-        const total = filas.reduce((a, x) => a + Math.max(0, x.extraMes), 0);
+        const total = filas.reduce((a, x) => a + x.extraMes, 0);
+        if (!filas.length) console.log('── Ninguna. Hoy no hay ninguna publicación con lugar medible para subir.\n');
+        else {
         console.log(`── ${filas.length} con lugar para subir · ${money(total)} más por mes si se suben TODAS ──`);
-        console.log(`   (subiendo como mucho +${(MAX_SUBA * 100).toFixed(0)}% por vez. Para ver el techo entero:`
-          + ` subirpuede:${DIAS}:999)\n`);
+        console.log(`   (subiendo como mucho +${(MAX_SUBA * 100).toFixed(0)}% por vez, y al precio que MÁS deja`
+          + `, no al más alto. Para ver el techo entero: subirpuede:${DIAS}:999)\n`);
+        }
         for (const f of filas) {
           console.log(`── ${f.nom}   (${f.cuenta} · ${f.mla})`);
           console.log(`     ${money(f.precio)} → ${money(f.tope)}  (+${f.subePct.toFixed(1)}%)`
@@ -6848,15 +6877,27 @@ async function main() {
           if (f.cortoPorEscalon) console.log(`     ⚠️ el techo del competidor daba hasta ${money(f.techo)}`
             + ` (+${(((f.techo - f.precio) / f.precio) * 100).toFixed(0)}%): se frena en +${(MAX_SUBA * 100).toFixed(0)}%`
             + ` y se vuelve a medir el mes que viene`);
+          // Cuando el precio elegido se queda corto del tope permitido, es porque más arriba ML
+          // cobra un escalón de comisión que se come el aumento. Decirlo: si no, el renglón parece
+          // una suba tímida sin motivo.
+          if (f.tope < f.topeMax - 10) console.log(`     se podía llegar a ${money(f.topeMax)} pero`
+            + ` ahí ML cobra un escalón de comisión y te queda MENOS: se para en ${money(f.tope)}`);
           console.log(`     quedarían ${money(Math.round(f.extraU))} más por unidad = ${money(f.extraMes)} por mes`);
           console.log(`     comando:  volver:${f.mla}=${f.tope}:go`);
         }
+        noConvieneN = noConviene.length;
       }
       console.log(`\n── LO QUE QUEDÓ AFUERA ──`);
       console.log(`   ${sinCat} publicación(es) que venden pero NO son de catálogo: no hay competidor`);
       console.log(`      contra el cual medir, y las visitas solas no alcanzan para afirmar que el`);
       console.log(`      precio aguanta. Ahí la única forma de saberlo es probar.`);
       console.log(`   ${sinLugar} que ganan la caja pero no tienen aire medible (nadie arriba, o muy poco).`);
+      if (noConvieneN) {
+        console.log(`   ${noConvieneN} donde SUBIR TE HACE GANAR MENOS y por eso no van con comando al lado:`);
+        console.log(`      la comisión de ML no es un % parejo, tiene ESCALONES. Cruzar uno se lleva más`);
+        console.log(`      de lo que sube el precio. Medido hoy en los Paulvic: de $14.360 a $15.790 te`);
+        console.log(`      deja $312 MENOS por unidad; quedándote en $14.840 ganás $369 más.`);
+      }
       if (sinDato) console.log(`   ${sinDato} que ML no me contestó.`);
       console.log(`\nOJO CON EL TECHO: es una cota CONSERVADORA, no un dato. Ese competidor de arriba`);
       console.log(`puede tampoco estar compitiendo, y entonces hay MÁS lugar del que dice acá. ML sólo`);
