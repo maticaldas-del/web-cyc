@@ -1150,6 +1150,7 @@ footer{margin-top:32px;padding-top:14px;border-top:1px solid var(--border);font-
     </div>
   </div>
   <input class="search-box" id="rot-search" type="search" placeholder="Buscar producto..." oninput="renderRotacionStock()" style="margin-bottom:12px">
+  <div id="rot-sinmedir"></div>
   <div class="tbl-outer">
     <table id="rot-tbl">
       <thead><tr>
@@ -2301,7 +2302,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='19.24';
+const APP_VERSION='19.25';
 // El problema real que esto resuelve no es curiosidad: es que el celular guarda la app y sigue
 // mostrando la de ayer sin avisar. Varias veces se revisó un cambio que ya estaba subido y no se
 // veía. Por eso, además del número, el chip avisa cuando hay una versión nueva esperando.
@@ -3135,7 +3136,13 @@ function flujoPlataHTML(p){
   // ── LOS CHIPS DE ESTADO ──────────────────────────────────────────────────
   const chips=[];
   if(r.fuente==='calc'){
-    chips.push(`<span title="Calculado con el precio de HOY en ML: precio − comisión oficial − envío del peor caso.${precio?' Precio usado: '+fmt(precio)+'.':''}" style="font-size:.5rem;color:${(p.netoCalcPausada||p.netoCalcSinEnvio)?'var(--amber)':'#60a5fa'};font-weight:700;letter-spacing:.04em">◉ PRECIO DE HOY${p.netoCalcPausada?' · PAUSADA':''}${p.netoCalcSinEnvio?' · SIN ENVÍO':''}</span>`);
+    // EL CHIP MARCA LOS TRES ESTADOS DEL ENVÍO, no dos. Hasta el 12/09/2026 sólo salía con
+    // `netoCalcSinEnvio` (nunca vendió Y ML no dio tarifa). El caso del medio —envío sacado de la
+    // TARIFA de ML— no ponía ningún chip, así que la ficha mostraba un margen cómodo sin decir que
+    // ese envío no está medido. Es el mismo criterio que la columna de Rotación: misma función.
+    const _dud=margenDudosoDe(r);
+    const _avEnv=_dud==='falso'?' · SIN ENVÍO · ML SÍ COBRA':_dud==='corto'?(p.netoCalcSinEnvio?' · SIN ENVÍO':' · ENVÍO ESTIMADO POR ML'):'';
+    chips.push(`<span title="Calculado con el precio de HOY en ML: precio − comisión oficial − envío del peor caso.${precio?' Precio usado: '+fmt(precio)+'.':''}" style="font-size:.5rem;color:${_dud==='falso'?'var(--red)':(p.netoCalcPausada||_dud)?'var(--amber)':'#60a5fa'};font-weight:700;letter-spacing:.04em">◉ PRECIO DE HOY${p.netoCalcPausada?' · PAUSADA':''}${_avEnv}</span>`);
   } else {
     chips.push(`<span title="ML no puede calcularlo: el producto no tiene ninguna publicación de la que sacar el precio." style="font-size:.5rem;color:var(--muted);font-weight:700">SIN PUBLICACIÓN</span>`);
   }
@@ -3210,12 +3217,15 @@ function flujoPlataHTML(p){
   // medido (si nunca vendió arriba de la barrera, el envío que conocemos es $0). En vez de mostrar
   // un porcentaje cómodo que no existe, se dice qué falta — el mismo criterio que el "SIN ENVÍO"
   // en ámbar del margen.
-  // Sólo cuando está PROBANDO un precio. Hay productos que viven arriba de la barrera con permiso
-  // suyo (el Ferrari a $59.900, los Victoria's Secret a $49.000) y ésos ya pagaron el envío de
-  // verdad, así que su número está bien y un cartel rojo permanente sería ruido: cuando todo está
-  // pintado, nada resalta. El caso "precio real arriba de la barrera pero sin envío medido" ya
-  // tiene su propio aviso, el chip ámbar SIN ENVÍO.
-  const cruzaBarrera=simulando&&precioUsado>=UMBRAL_ENVIO_GRATIS&&gest<=0;
+  // VALE TAMBIÉN PARA EL PRECIO REAL, no sólo al simular (corregido el 12/09/2026). El comentario
+  // que estaba acá decía que el caso "precio real arriba de la barrera sin envío medido" ya lo
+  // avisaba el chip ámbar SIN ENVÍO. NO LO AVISABA: ese chip sólo sale con `netoCalcSinEnvio`, y el
+  // caso que apareció —el Xiaomi Watch 5 Lite— tiene el OTRO flag (envío sacado de la tarifa de ML),
+  // así que no salía ningún chip y la ficha mostraba un porcentaje cómodo que no existe.
+  // El ruido que se quería evitar no aparece igual: los productos que viven arriba de la barrera con
+  // permiso suyo (el Ferrari a $59.900, los VS a $49.000) YA pagaron el envío de verdad, o sea que
+  // tienen gest > 0 y esta condición no los toca. Sólo marca a los que no tienen el dato.
+  const cruzaBarrera=precioUsado>=UMBRAL_ENVIO_GRATIS&&gest<=0;
   const pisoCruza=precioPiso!=null&&precioPiso>=UMBRAL_ENVIO_GRATIS;
   const paso=(lbl,val,col,signo,peso,pie)=>`<div style="text-align:center;padding:0 2px;min-width:76px">
       <div style="font-size:.5rem;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;line-height:1.3;margin-bottom:2px">${lbl}</div>
@@ -3253,6 +3263,9 @@ function flujoPlataHTML(p){
       ${simulando&&precioUsado>=UMBRAL_ENVIO_GRATIS?`<div style="margin-top:6px;padding:6px 8px;background:rgba(239,68,68,.12);border:1px solid var(--red);border-radius:6px;color:var(--red);font-size:.6rem;line-height:1.5">
         ⚠ <strong>Cruzaste la barrera de los ${fmt(UMBRAL_ENVIO_GRATIS)}.</strong> Arriba de ese precio ML te cobra el envío gratis${gest>0?` (en este producto son ${fmt(gest)} por venta)`:`, y en este producto no tenemos medido cuánto: nunca vendió arriba de la barrera, así que acá figura $0 y el número sale MÁS ALTO de lo que va a ser`}.
         Tu regla del 13/08/2026: se sube hasta ${fmt(UMBRAL_ENVIO_GRATIS-1)} y ahí se frena.
+      </div>`:cruzaBarrera?`<div style="margin-top:6px;padding:6px 8px;background:rgba(239,68,68,.12);border:1px solid var(--red);border-radius:6px;color:var(--red);font-size:.6rem;line-height:1.5">
+        ⚠ <strong>Acá no se puede saber cuánto ganás.</strong> Está a ${fmt(precioUsado)}, arriba de los ${fmt(UMBRAL_ENVIO_GRATIS)}, y ahí ML te cobra el envío gratis siempre (unos $6.000 por venta). Este producto todavía no vendió, así que ese envío no está medido y figura $0: por eso arriba dice "?" en vez de un porcentaje.
+        Se arregla solo con la primera venta. Si querés el número antes, cargale el envío a mano en la ficha.
       </div>`:''}
       <div style="font-size:.53rem;margin-top:3px;opacity:.85">El IIBB y el monotributo no se descuentan en el momento: llegan después, en la factura de ML de fin de mes. El envío de Full sí, ya está adentro de lo que te deposita.
       ${simulando?`<br><span style="color:var(--amber)">SIMULANDO: la comisión y los impuestos se recalculan con el % que cobra ML en esta publicación. Ojo que ML además cobra un cargo fijo por venta en los productos baratos, y ese cargo no se puede separar del % — cuanto más lejos del precio real, más aproximado es el número.</span>`:''}</div>
@@ -7182,6 +7195,10 @@ function margenMLDe(p){
   const netoCalc=(p.netoCalc!=null&&p.netoCalc!=='')?Number(p.netoCalc):null;
   const margen=(netoCalc!=null&&costo>0)?((netoCalc-costoBase)/costo*100):null;
   return {costo,costoBase,gest,neto:netoCalc,netoCalc,margen,mlExtra,mlExtraEstimado,
+    // El precio sale acá para que quien muestre el margen pueda preguntarse si ese margen es
+    // POSIBLE: arriba de los $33.000 ML cobra el envío gratis siempre, así que un margen
+    // calculado con envío $0 a ese precio está inflado por varios puntos.
+    precio:Math.round(Number(p.netoCalcPrecio)||0),
     fuente:netoCalc!=null?'calc':null,
     netoReal:(a&&a.u>0)?Math.round(a.neto/a.u):null,
     sinEnvio:p.netoCalcSinEnvio===true,
@@ -8517,30 +8534,71 @@ function rotEnStockHtml(r){
   const color=d>=60?'var(--red)':d>=30?'var(--amber)':'var(--text)';
   return `<span style="color:${color}" title="Entró hace ${d} día(s) y el robot lo vio entrar, así que la fecha es exacta. Junto con los días sin vender es lo que dice si de verdad está parada: acá ya hubo tiempo de sobra para venderla.">${d}d</span>`;
 }
+// ── ¿EL MARGEN QUE MUESTRO ES CONFIABLE? ─────────────────────────────────────────────
+// Planteo suyo del 12/09/2026: "arregla el hecho de que yo vea mal el % de ganancia. porque el
+// 5 lite no debe ser el unico". Tenía razón: había productos mostrando un margen cómodo, en
+// verde, calculado SIN descontar el envío — y el color decía "acá hay aire" sobre un número que
+// el propio código sabía que se quedaba corto.
+//
+// Hay TRES estados, no dos, y se ven distinto a propósito:
+//   · 'falso'  → el margen es IMPOSIBLE, no optimista. Arriba de los $33.000 ML cobra el envío
+//                gratis SIEMPRE (~$6.000 por venta), así que un margen con envío $0 a ese precio
+//                está inflado por varios puntos. No se muestra número: se muestra "?".
+//   · 'corto'  → el envío no salió de tus ventas sino de la TARIFA de ML, que medido el 20/08/2026
+//                se quedó $246 corta en promedio. El número sirve, pero el real es MENOR.
+//   · null     → medido contra ventas reales. Este es el único que puede ir en verde.
+//
+// NO SE INVENTA UN ENVÍO ESTIMADO, a propósito: contar el envío dos veces es el error que ya
+// mordió cuatro veces, y sin un envío MEDIDO la respuesta honesta es "?". Es la misma regla que
+// el simulador de la ficha desde el 11/09 — y esta vez vive en los DOS lados, que es justamente
+// la lección que quedó anotada ese día: una regla que vive en un solo lado no es una regla.
+function margenDudosoDe(mg){
+  if(!mg||mg.margen==null)return null;
+  if(!(mg.gest>0)&&mg.precio>=UMBRAL_ENVIO_GRATIS)return 'falso';
+  if(mg.sinEnvio||mg.envioML)return 'corto';
+  return null;
+}
 function rotMargenHtml(r){
   const PISO=parseFloat((state.mlconfig||{}).minPct)||30;
   if(r.margen==null)
     return `<span style="color:var(--muted)" title="Este producto no tiene ninguna publicación viva en ML de la que sacar el precio, así que no hay margen que calcular.">—</span>`;
+  const dudoso=r.margenDudoso;
+  if(dudoso==='falso'){
+    const t=`NO SE PUEDE SABER. Está a ${fmt(r.margenPrecio)}, arriba de los ${fmt(UMBRAL_ENVIO_GRATIS)}, `
+      +`y ahí ML te cobra el envío gratis SIEMPRE (unos $6.000 por venta). Acá no hay ningún envío descontado, `
+      +`así que el ${r.margen.toFixed(0)}% que saldría es falso, no optimista: el real es varios puntos menor. `
+      +`No se inventa un envío estimado porque contarlo dos veces es peor. Para saberlo de verdad hace falta una venta `
+      +`de este producto, o cargarle el envío a mano en la ficha.`;
+    return `<span title="${t}" style="font-weight:700;color:var(--red)">?</span>`
+      +`<div style="font-size:.55rem;color:var(--red);margin-top:2px;white-space:nowrap">sin envío · ML sí cobra</div>`;
+  }
   const m=r.margen, aire=m-PISO;
   let color,tit;
   if(m<PISO){color='var(--red)';tit=`ABAJO DEL PISO de ${PISO}%: no hay nada para bajar, este habría que SUBIRLO.`;}
+  // EL VERDE ES SOLO PARA LO MEDIDO. Si el envío salió de la tarifa de ML, el margen real es
+  // MENOR que este, así que pintarlo verde sería decir "cómodo" sobre algo que no se sabe.
+  else if(dudoso==='corto'){color='var(--amber)';tit=`Daría ${aire.toFixed(0)} punto(s) de aire sobre el ${PISO}%, PERO el envío no está medido en tus ventas (ver abajo): el margen real es menor que este, así que no cuentes con ese aire.`;}
   else if(aire<5){color='var(--amber)';tit=`Pegado al piso: solo ${aire.toFixed(0)} punto(s) de aire sobre el ${PISO}%. Casi no se puede bajar.`;}
   else {color='var(--green)';tit=`${aire.toFixed(0)} puntos de aire sobre el piso de ${PISO}%. Acá sí hay margen para recortar si hace falta que rote.`;}
   tit+=` · Neto ML ${fmt(r.margenNeto)} contra un costo de ${fmt(r.margenCosto)}. Ojo: bajar el precio $100 NO baja el margen $100 (ML se queda con su comisión de lo que recortes).`;
-  if(r.margenSinEnvio)tit+=' · SIN ENVÍO DESCONTADO: nunca vendió y ML tampoco dio la tarifa, así que acá no hay ningún envío descontado y el margen real va a ser MENOR que este.';
   // El envío puede venir de dos lados y no es lo mismo. De nuestras ventas es el dato de la
   // realidad; de la tarifa de ML es lo que ML dice que cobra, y se usa en los que nunca vendieron
   // porque ahí la única alternativa era no descontar nada. Se marca para no confundirlos.
   // El control del 20/08/2026 midió las dos formas en 15 productos que SÍ vendieron: la tarifa de
   // ML dio $0 donde nuestras ventas mostraban entre $81 y $354, con $246 de diferencia promedio.
   // O sea que NO miden lo mismo — la tarifa es el flete solo, y lo que se deduce de una venta es
-  // todo lo que ML se queda además de la comisión (flete + SIRTAC + IIBB). Por eso la tarifa se usa
-  // (es mejor que no descontar nada) pero sigue marcada en ámbar: se queda CORTA, y un margen que
-  // se queda corto en los costos se ve más alto de lo que es.
-  else if(r.margenEnvioML)tit+=' · OJO: este producto nunca vendió, así que el envío no está medido en tus ventas sino sacado de la TARIFA de ML. Medido contra ventas reales, la tarifa se queda corta (dio $246 de menos en promedio), así que el margen real es MENOR que este.';
-  const marca=r.margenSinEnvio?'<span style="color:var(--amber);font-weight:400" > ⚠</span>'
-             :r.margenEnvioML?'<span style="color:var(--amber);font-weight:400;font-size:.85em" > ⚠ml</span>':'';
-  return `<span title="${tit}" style="font-weight:700;color:${color}">${m>=0?'+':''}${m.toFixed(0)}%${marca}</span>`;
+  // todo lo que ML se queda además de la comisión (flete + SIRTAC + IIBB).
+  let pie='';
+  if(dudoso==='corto'){
+    tit+=r.margenSinEnvio
+      ? ' · SIN ENVÍO DESCONTADO: nunca vendió y ML tampoco dio la tarifa, así que acá no hay ningún envío descontado y el margen real va a ser MENOR que este.'
+      : ' · El envío no está medido en tus ventas sino sacado de la TARIFA de ML. Medido contra ventas reales la tarifa se queda corta ($246 de menos en promedio), así que el margen real es MENOR que este.';
+    // EL AVISO VA EN UN RENGLÓN QUE SE LEE, no en un supraíndice. Antes era un "⚠ml" de 0,85em
+    // pegado al número: estaba, pero en una tabla de 137 renglones no lo ve nadie — y justo al
+    // lado había un porcentaje en verde diciendo lo contrario.
+    pie=`<div style="font-size:.55rem;color:var(--amber);margin-top:2px;white-space:nowrap">⚠ ${r.margenSinEnvio?'sin envío medido':'envío estimado por ML'}</div>`;
+  }
+  return `<span title="${tit}" style="font-weight:700;color:${color}">${m>=0?'+':''}${m.toFixed(0)}%</span>${pie}`;
 }
 function rotDiasSinVenderHtml(dias){
   if(dias===null||dias===undefined)return '<span style="color:var(--muted)">Sin ventas</span>';
@@ -8549,6 +8607,10 @@ function rotDiasSinVenderHtml(dias){
   return `<span style="color:${color}">${dot} ${dias}d</span>`;
 }
 let rotSortMode='estado'; // 'estado' | 'capital' | 'ventas' | 'rotacion' | 'margen' | 'caja'
+// "Ver solo los que no están medidos". Va como filtro y no como orden porque la pregunta que
+// contesta es "¿cuáles son?", no "¿cuál primero?".
+let rotSoloDudoso=false;
+function setRotDudoso(){rotSoloDudoso=!rotSoloDudoso;renderRotacionStock();}
 function setRotSort(mode,btn){
   rotSortMode=mode;
   document.querySelectorAll('[id^="rotsort-"]').forEach(b=>b.classList.remove('active'));
@@ -8876,6 +8938,7 @@ function renderRotacionStock(){
     const _liq=liquidarDe(p,diasSinVender,stock,_rt.edad);
     return{pid:p.id,name:p.name,capital,ventasPeriodo,rotNorm,estadoKey,estadoHtml,stock,diasSinVender,liq:_liq,
       margen:mg.margen,margenSinEnvio:mg.sinEnvio,margenEnvioML:mg.envioML,margenNeto:mg.neto,margenCosto:mg.costo,
+      margenPrecio:mg.precio,margenGest:mg.gest,margenDudoso:margenDudosoDe(mg),
       caja:cajaMLDe(p),diasEnStock:diasEnStockDe(p),diasCaja:ultimaEntradaDe(p)};
   });
 
@@ -8942,11 +9005,39 @@ function renderRotacionStock(){
   // Se filtra ACÁ, al final de todo, y no arriba a propósito: el puntaje y el banner de arriba
   // hablan del catálogo entero, y si el buscador los moviera diría "tenés 1 producto muerto"
   // cuando en realidad estás mirando uno solo. Lo único que se achica es la tabla.
+  // ── EL CARTEL DE LOS MARGENES QUE NO ESTÁN MEDIDOS ──────────────────────────────
+  // Va ANTES de filtrar, como el puntaje: habla del catálogo entero. Si el buscador lo moviera,
+  // buscar "watch" diría "hay 1 sin medir" cuando hay veinte.
+  // Y es clickeable porque su pregunta ("¿cuáles son?") no se contesta con un número.
+  const _falsos=rows.filter(r=>r.margenDudoso==='falso');
+  const _cortos=rows.filter(r=>r.margenDudoso==='corto');
+  const _smEl=document.getElementById('rot-sinmedir');
+  if(_smEl){
+    const n=_falsos.length+_cortos.length;
+    if(!n)_smEl.innerHTML='';
+    else{
+      const rojo=_falsos.length>0;
+      _smEl.innerHTML=`<div onclick="setRotDudoso()" style="cursor:pointer;padding:10px 12px;margin-bottom:12px;border-radius:8px;`
+        +`background:${rojo?'rgba(239,68,68,.10)':'rgba(245,158,11,.10)'};border:1px solid ${rojo?'rgba(239,68,68,.40)':'rgba(245,158,11,.40)'}">`
+        +`<div style="font-size:.78rem;font-weight:700;color:${rojo?'var(--red)':'var(--amber)'}">`
+        +`${rojo?'⚠️':'⚠'} ${n} producto${n===1?'':'s'} con el margen SIN MEDIR</div>`
+        +`<div style="font-size:.68rem;color:var(--muted);margin-top:4px">`
+        +(_falsos.length?`<b>${_falsos.length}</b> muestra${_falsos.length===1?'':'n'} <b>"?"</b>: está${_falsos.length===1?'':'n'} arriba de ${fmt(UMBRAL_ENVIO_GRATIS)} y no hay ningún envío descontado, así que el % sería falso. `:'')
+        +(_cortos.length?`<b>${_cortos.length}</b> tiene${_cortos.length===1?'':'n'} el envío sacado de la tarifa de ML en vez de tus ventas: el margen real es MENOR que el que ves. `:'')
+        +`Se arregla solo en cuanto el producto venda una vez.</div>`
+        +`<div style="font-size:.68rem;color:${rojo?'var(--red)':'var(--amber)'};font-weight:600;margin-top:5px">`
+        +`${rotSoloDudoso?'↩︎ Volver a ver todos':'👉 Tocá acá para ver solo estos'}</div></div>`;
+    }
+  }
+  if(rotSoloDudoso)rows=rows.filter(r=>r.margenDudoso);
   const _q=normTxt(document.getElementById('rot-search')?.value||'');
   const _todas=rows.length;
   if(_q)rows=rows.filter(r=>normTxt(r.name).includes(_q));
-  if(_q&&!rows.length){
-    tbody.innerHTML=`<tr><td colspan="10" style="text-align:center;color:var(--muted);padding:18px">Ningún producto con “${document.getElementById('rot-search').value}” (de ${_todas}).</td></tr>`;
+  if(!rows.length){
+    tbody.innerHTML=`<tr><td colspan="10" style="text-align:center;color:var(--muted);padding:18px">`
+      +(_q?`Ningún producto con “${document.getElementById('rot-search').value}”${rotSoloDudoso?' entre los que no están medidos':''} (de ${_todas}).`
+          :'Ningún producto tiene el margen sin medir. Están todos calculados con tus ventas reales.')
+      +`</td></tr>`;
     return;
   }
   // ── LAS VARIANTES, DEBAJO DE SU PRODUCTO ────────────────────────────────────

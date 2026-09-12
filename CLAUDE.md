@@ -685,6 +685,34 @@ Si eso sigue en pie está bien, pero hoy nadie le puede mandar mercadería.
 
 ## Cosas que ya pasaron (para no repetirlas)
 
+- **EL MARGEN SE VEÍA COMÓDO EN VERDE SIN TENER EL ENVÍO DESCONTADO (12/09/2026).** Él lo marcó
+  mirando Rotación de Stock: *"arregla el hecho de que yo vea mal el % de ganancia. porque el 5 lite
+  no debe ser el unico"*. Tenía razón. El Xiaomi Watch 5 Lite mostraba **+25%** con el envío en $0.
+  **El aviso EXISTÍA y no servía, que es peor que no tenerlo.** Había dos marcas, `⚠` (sin envío) y
+  `⚠ml` (envío sacado de la tarifa de ML), pero eran un supraíndice de 0,85em al lado del número —
+  y **el número se seguía pintando VERDE**, o sea que el color decía "acá hay aire" sobre algo que el
+  propio código sabía que se quedaba corto. En una tabla de 137 renglones eso no lo ve nadie.
+  **Y la ficha no avisaba NADA en ese caso.** El chip ámbar "SIN ENVÍO" sale con `netoCalcSinEnvio`,
+  y el 5 Lite tiene el OTRO flag (`netoCalcEnvioML`). Peor todavía: el comentario que dejé anteayer
+  en `flujoPlataHTML` decía textualmente que ese caso *"ya tiene su propio aviso, el chip ámbar SIN
+  ENVÍO"*. **No lo tenía.** Es la misma lección del marcado de cajas, dos días después: un comentario
+  que afirma que algo está cubierto no es prueba de que lo esté.
+  **Qué se hizo**, en UNA función (`margenDudosoDe`) que usan la tabla Y la ficha, con tres estados:
+   · **`falso`** → precio arriba de los $33.000 y envío $0. Ahí ML cobra el envío gratis SIEMPRE, así
+     que el margen no es optimista: es **falso**. Se muestra **"?"**, nunca un porcentaje.
+   · **`corto`** → el envío salió de la tarifa de ML, que medida el 20/08 se quedó $246 corta. El
+     número sirve, pero el real es MENOR: va en **ámbar**, con el motivo en un renglón que se lee.
+   · **medido** → contra ventas reales. **Es el único que puede ir en VERDE.**
+  Arriba de Rotación hay un cartel que dice cuántos son de cada tipo y **se toca para ver solo esos**
+  — su pregunta no era "¿cuánto es?" sino "¿cuáles son?". Y **no se inventa un envío estimado**:
+  contar el envío dos veces es el error que ya mordió cuatro veces.
+  **LA LECCIÓN: un aviso que no cambia el COLOR no es un aviso.** El verde es una conclusión, y una
+  conclusión sobre un dato que no está medido es una mentira aunque al lado haya una advertencia.
+  **Y la segunda, para mí: la columna "Capital" no es el precio.** Leyendo esa misma pantalla di por
+  roto el "rematar al 12% · $120.240" del 5 Lite porque lo comparé contra los $71.654 de al lado —
+  que son la plata parada, no el precio. El número estaba bien. Antes de decir que un número está
+  mal, mirar el encabezado de la columna.
+
 - **EL SIMULADOR DE PRECIOS NO CONOCÍA LA BARRERA DE LOS $33.000 (11/09/2026).** Él lo marcó
   comparando la ficha contra el simulador de ML: *"no coincide"*. Tenía razón y era del lado
   peligroso — el panel daba **de más**.

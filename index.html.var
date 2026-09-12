@@ -177,6 +177,7 @@ let prodSoloIncompletos
 let puntMesSel
 let qTimers
 let resScopeMode
+let rotSoloDudoso
 let rotSortMode
 let state
 let syncPedidosTimer
