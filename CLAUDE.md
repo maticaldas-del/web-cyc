@@ -261,6 +261,8 @@ Los que más se usan:
 | `huerfanos[:palabra]` | los productos en "—": por qué no tienen precio y cuál es su publicación |
 | `poncosto:<palabra\|id>\|<pesos>[\|go]` | corrige el costo de un producto (lo mismo que el campo de la ficha) |
 | `ponenvio:<palabra\|id>\|<dólares>[\|go]` | el envío/embalaje del producto (`shipUSD`) · el hermano de `poncosto`, que toca la mercadería |
+| `cajacosto[:<pesos>]` | lo que sale mandar una caja a Full · vive en `cyc/mlconfig/costoCaja` |
+| `embalaje[:<N>][:go]` | compara el envío/embalaje cargado en cada ficha contra lo que cuesta mandarlo de verdad |
 | `abrircaja:<seguimiento\|id>[:go]` | vuelve a poner una caja "en camino" · para deshacer un marcado equivocado |
 | `liquidando[:<MLA\|palabra>][:go]` | "esto lo estoy rematando: no me lo subas" · `-` adelante para sacar la marca |
 | `ponmedida:<busca>\|<L>x<A>x<H>\|<peso>[;otro][;go]` | carga a mano el paquete (medidas y peso) de lo que ML no informa · sin eso el producto no entra en las barras de Armar caja |
@@ -476,6 +478,24 @@ queda marcado `fuente:'mano'` y el robot no lo pisa.
 entra de ese renglón (se descuenta a sí mismo del cálculo), no un incremento. La primera versión le
 sumaba encima lo que el renglón ya tenía puesto y dejaba cargar el DOBLE. Compilaba perfecto y en
 pantalla no se notaba: lo agarró probar la cuenta con números inventados antes de subir.
+
+**LO QUE SALE MANDAR UNA CAJA A FULL VIVE EN LA BASE: `cyc/mlconfig/costoCaja`** (12/09/2026).
+Era **$16.000** y él lo subió a **$17.500**. Se cambia con **`cajacosto:<pesos>`**; sin número sólo
+muestra cómo está.
+Estaba escrito **a mano en DOS archivos** —`index.html` y el probe `embalaje` de `sync.mjs`, este
+último con el comentario *"el mismo número que usa el panel"*, que es una promesa que no controla
+nadie—. Es el mismo patrón de los ocho comandos con `|| 30` adentro. Ahora los dos leen del mismo
+lado. **Si la lectura falla cae en el número ALTO** ($17.500): con una caja más cara el envío por
+unidad sube, el costo sube y el margen se ve MENOR — ése es el lado seguro.
+Lo usan dos cosas que deciden plata: el *"¿conviene armar esta caja?"* de Armar caja, y el probe
+`embalaje`, que reparte ese costo entre las unidades que entran y con eso mide si el
+"Envío+embalaje" de cada ficha está bien cargado.
+**MEDIDO EL MISMO DÍA, y el resultado importa: subir la caja un 9,4% NO desajustó ningún costo.**
+`embalaje` dio **118 razonables de 142**, 2 cargados de menos y 14 sin medidas. Los desfasajes
+grandes que muestra la lista **son anteriores y por otro motivo** —los 4 espejos y el Kit Limpia
+están cargados de MÁS a propósito, porque llevan protección desde el 20/08—. Sobre un envío por
+unidad de entre $6 y $307, el 9,4% son centavos. **No hizo falta tocar ninguna ficha ni correr
+`netoweb`.**
 
 **LO QUE SE SUGIERE MANDAR CUBRE 30 DÍAS EN TOTAL, Y SE REDONDEA AL MÁS CERCANO (11/09/2026).**
 Pedido suyo, textual: *"quiero ser un poco más moderado con el tema de envío de productos. me
