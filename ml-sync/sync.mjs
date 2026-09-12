@@ -345,6 +345,10 @@ async function cajasQueLlegaron(db, accounts, labels, products, DRY) {
   // y habría borrado 51 unidades REALES del patrimonio. Una entrada anterior al despacho no puede
   // ser de esta caja.
   const recEnt = {};                         // "cuenta|prodId|variante" -> [{ts, left}]
+  // Recibido por ML pero TODAVÍA NO VENDIBLE (lo está procesando). No cuenta para marcar la caja
+  // —ver el comentario largo más abajo— pero se informa: es la diferencia entre "ML no recibió
+  // nada" y "ML lo recibió y lo está dando de alta", que se veían igual (un cero).
+  const enProceso = {};
   const kR = (cta, pid, va) => cta + '|' + pid + '|' + (va || '');
   let mirados = 0, opsTotal = 0, fallos = 0;
   const tiposVistos = {};                    // tipo crudo de ML -> cuántas veces vino
@@ -411,10 +415,34 @@ async function cajasQueLlegaron(db, accounts, labels, products, DRY) {
               // sería peor que no arreglarlo: contaría el stock entero en cada movimiento.
               // Las `not_available` (ej. status internal_process) SÍ entraron al depósito, sólo que
               // todavía no están publicables: para saber si la caja llegó cuentan igual.
+              // ── SÓLO CUENTA LO QUE ML YA DEJÓ VENDIBLE ────────────────────────────────
+              // Hasta el 12/09/2026 acá se sumaban también las `not_available` (lo que ML recibió
+              // pero todavía está procesando). El razonamiento era "la pregunta es si la caja
+              // llegó" — y para eso estaba bien, pero tenía una consecuencia que no se pensó:
+              // MARCAR la caja saca sus unidades de "En camino a Full", y el stock de Full cuenta
+              // SÓLO `available_quantity`. O sea que lo recibido-pero-no-procesado no lo contaba
+              // NADIE: ni la oficina, ni el camino, ni Full.
+              //
+              // Pasó de verdad y fue grande: la caja 76236266 de Luciana (05/09, 510 unidades,
+              // $338.913) se marcó verde el mismo día que ML la recibió en el depósito, con
+              // "Procesamiento en curso" y CERO unidades dadas de alta. Resultado: 510 unidades
+              // desaparecidas del patrimonio, y Armar caja pidiendo mandar 50 Centímetros Blancos
+              // más cuando ya había 150 ahí adentro.
+              //
+              // Ahora los DOS lados cuentan el mismo número. Si una unidad nunca llega a estar
+              // disponible (rota, descartada), la caja igual se marca por los tres frenos de abajo
+              // —10 días + entró la mitad + ML dejó de dar de alta— y sale en ámbar diciendo
+              // cuántas faltaron, que es exactamente lo que él quiere mirar.
               const det = x.detail || {};
               let q = Number(det.available_quantity) || 0;
-              if (Array.isArray(det.not_available_detail)) for (const d of det.not_available_detail) q += Number(d.quantity) || 0;
-              if (!q) q = Number(x.quantity) || 0;   // respaldo por si ML cambia la forma
+              // Las que entraron pero todavía no se pueden vender se anotan aparte, sólo para
+              // decirlo en pantalla: son mercadería que existe y que el panel todavía cuenta como
+              // "en camino", que es la verdad.
+              let qEsp = 0;
+              if (Array.isArray(det.not_available_detail)) for (const d of det.not_available_detail) qEsp += Number(d.quantity) || 0;
+              if (qEsp > 0) enProceso[kR(cta, p.id, par.va)] = (enProceso[kR(cta, p.id, par.va)] || 0) + qEsp;
+              if (!q && !qEsp) q = Number(x.quantity) || 0;   // respaldo por si ML cambia la forma
+              if (q <= 0 && qEsp > 0) continue;                // llegó pero ML no la dejó vendible todavía
               if (q <= 0) { sinCantidad.push(`${tipo} · detail=${JSON.stringify(x.detail)} · result=${JSON.stringify(x.result)}`.slice(0, 400)); continue; }
               const k1 = kR(cta, p.id, par.va);
               // La fecha hace dos cosas: descartar las entradas anteriores al despacho de la caja,
@@ -515,7 +543,7 @@ async function cajasQueLlegaron(db, accounts, labels, products, DRY) {
     ab.faltan = parcial ? faltan : null;
     marcadas.push(ab);
   }
-  if (!marcadas.length) return { marcadas: [], mirados, msg: null, detalle, tiposVistos, opsTotal, fallos, erroresOp, sinCantidad, recEnt, abiertas: abiertas.length };
+  if (!marcadas.length) return { marcadas: [], mirados, msg: null, detalle, tiposVistos, opsTotal, fallos, erroresOp, sinCantidad, recEnt, enProceso, abiertas: abiertas.length };
   if (!DRY) {
     // Se escribe la lista COMPLETA de cajas del envío: cajasDet es un array y un patch parcial la
     // rompería, igual que pasa con las variantes de ML.
@@ -540,7 +568,7 @@ async function cajasQueLlegaron(db, accounts, labels, products, DRY) {
       + (uF ? ` — ⚠️ faltaron ${uF} u.` : '');
   }).join('\n');
   return {
-    marcadas, mirados, detalle, tiposVistos, opsTotal, fallos, erroresOp, sinCantidad, recEnt, abiertas: abiertas.length,
+    marcadas, mirados, detalle, tiposVistos, opsTotal, fallos, erroresOp, sinCantidad, recEnt, enProceso, abiertas: abiertas.length,
     msg: `📦 <b>${marcadas.length} caja(s) llegaron a Full</b>\n${det}\n\nYa cuentan como stock de la cuenta.`,
   };
 }
@@ -3877,6 +3905,61 @@ async function main() {
     // BILLING_PROBE=cajasllegaron[:go] → MARCA LAS CAJAS QUE YA ENTRARON A FULL.
     // Sin ':go' solo dice cuáles marcaría. Es la misma función que corre sola una vez por hora, no
     // una copia: si un día se cambia la regla, se cambia en un solo lado.
+    // BILLING_PROBE=abrircaja:<seguimiento|idEnvio>[:go] → VUELVE A PONER UNA CAJA "EN CAMINO".
+    //
+    // Para deshacer un marcado equivocado. Hizo falta el 12/09/2026: la caja 76236266 de Luciana
+    // (510 unidades) se marcó verde el mismo día que ML la recibió en el depósito, cuando todavía
+    // no había dado de alta ni una unidad. Al salir de "en camino" y no estar todavía en Full, esas
+    // 510 unidades no las contaba NADIE — ni el patrimonio ni la reposición.
+    // Reabrirla las devuelve a "En camino a Full", que es donde tienen que estar hasta que ML
+    // termine de procesarlas.
+    // Sin `:go` sólo muestra qué caja tocaría y cuántas unidades vuelven.
+    if (/^abrircaja(:|$)/.test(String(process.env.BILLING_PROBE || ''))) {
+      const _ac = String(process.env.BILLING_PROBE).split(':');
+      const busca = (_ac[1] || '').trim();
+      const APLICAR = _ac[_ac.length - 1] === 'go';
+      if (!busca || busca === 'go') { console.log('Usá: abrircaja:<nº de seguimiento o id del envío>[:go]'); return; }
+      const envios = (await db.get('cyc/envios_full')) || {};
+      const pIdx = {}; for (const p of products) pIdx[p.id] = p;
+      const hits = [];
+      for (const [id, e] of Object.entries(envios)) {
+        const cajas = Array.isArray(e && e.cajasDet) ? e.cajasDet : [];
+        cajas.forEach((c, i) => {
+          if (!c || !c.recibida) return;                       // sólo tiene sentido en las marcadas
+          if (id !== busca && String(c.track || '') !== busca) return;
+          hits.push({ id, e, c, i });
+        });
+      }
+      console.log(`=== VOLVER A PONER EN CAMINO · buscando "${busca}" ${APLICAR ? '(APLICANDO)' : '(PRUEBA)'} ===\n`);
+      if (!hits.length) { console.log('── Ninguna caja MARCADA COMO RECIBIDA con ese seguimiento o id.'); return; }
+      for (const h of hits) {
+        const u = (h.c.items || []).reduce((a, x) => a + (Number(x && x.u) || 0), 0);
+        console.log(`── ${h.e.fecha || '?'} · ${h.e.cuenta || '?'} · caja ${h.c.n || h.i + 1} · seguimiento ${h.c.track || '—'}`);
+        console.log(`   id ${h.id} · ${(h.c.items || []).length} renglón(es) · ${u} unidades vuelven a "En camino a Full"`);
+        for (const it of (h.c.items || [])) {
+          if (!it || !it.prodId) continue;
+          console.log(`      ${it.u} u. · ${(pIdx[it.prodId] || {}).name || it.prodId}${it.variante ? ' · ' + it.variante : ''}`);
+        }
+      }
+      if (!APLICAR) { console.log(`\nSOLO PRUEBA: no se tocó nada. Mirá la lista y, si está bien, repetí con :go al final.`); return; }
+      for (const h of hits) {
+        // La lista de cajas se guarda ENTERA: un patch parcial la rompe (mismo cuidado que la web).
+        const cajas = (h.e.cajasDet || []).map((c, i) => (i === h.i
+          ? { ...c, recibida: false, recFecha: null, recAuto: null, faltan: null }
+          : c));
+        await db.set('cyc/envios_full/' + h.id + '/cajasDet', cajas);
+      }
+      // Releído de la base: que el comando no dé error no prueba que haya quedado.
+      const desp = (await db.get('cyc/envios_full')) || {};
+      let ok = 0;
+      for (const h of hits) {
+        const c2 = ((desp[h.id] || {}).cajasDet || [])[h.i];
+        if (c2 && !c2.recibida) ok++;
+      }
+      console.log(`\n✓ ${ok} de ${hits.length} volvieron a "en camino". Releído de la base: ${ok === hits.length ? 'quedó ✓' : '✗ NO quedaron todas'}`);
+      return;
+    }
+
     if (String(process.env.BILLING_PROBE || '').startsWith('cajasllegaron')) {
       const APLICAR = String(process.env.BILLING_PROBE).split(':')[1] === 'go';
       const r = await cajasQueLlegaron(db, accounts, labels, products, !APLICAR);
@@ -3890,6 +3973,18 @@ async function main() {
       // LAS UNIDADES QUE SÍ SE ANOTARON, CON SU CLAVE. Sin esto no se distingue "ML no informó
       // entradas" de "las informó pero quedaron guardadas bajo otra variante", que es el caso en
       // que todos los renglones dicen 0 teniendo entradas aceptadas.
+      // LO QUE ML RECIBIÓ Y TODAVÍA ESTÁ PROCESANDO. Va primero porque es la explicación de por qué
+      // una caja que "llegó" sigue abierta, y porque antes no se veía en ningún lado: se sumaba al
+      // marcado y las unidades desaparecían del patrimonio.
+      const _ep = Object.entries(r.enProceso || {}).filter(([, n]) => n > 0);
+      if (_ep.length) {
+        console.log(`\nML LAS RECIBIÓ PERO TODAVÍA NO LAS DEJÓ VENDIBLES (las está procesando):`);
+        for (const [k, n] of _ep) {
+          const [cta, pid, va] = k.split('|');
+          console.log(`   ${cta} · ${(pIdxProbe[pid] || {}).name || pid}${va ? ' · ' + va : ''} → ${n} u.`);
+        }
+        console.log(`   (siguen contando como "en camino", que es la verdad: son tuyas y todavía no se pueden vender)`);
+      }
       const _r = Object.entries(r.recEnt || {}).filter(([, arr]) => arr && arr.length);
       console.log(`\nENTRADAS QUE INFORMÓ ML, CON SU FECHA (sólo cuentan las posteriores al despacho de cada caja):`);
       if (!_r.length) console.log('   ninguna');

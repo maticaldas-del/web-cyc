@@ -725,6 +725,40 @@ Si eso sigue en pie está bien, pero hoy nadie le puede mandar mercadería.
 
 ## Cosas que ya pasaron (para no repetirlas)
 
+- **510 UNIDADES DESAPARECIERON DEL PATRIMONIO: LA CAJA SE MARCÓ ANTES DE QUE ML LA PROCESARA
+  (12/09/2026).** Él lo marcó desde Armar caja: *"porque me sigue recomendando que mande modista
+  blanco si hay 150 en camino?"*. Tenía razón, y el problema era mucho más grande que ese renglón.
+  **La cuenta de Armar caja estaba bien** —descuenta lo que va en camino, variante por variante—.
+  Lo que estaba mal es que el panel creía que esa caja YA HABÍA LLEGADO. Es la caja **76236266** de
+  Luciana (`env1788575390244`, 05/09, **9 renglones · 510 unidades · $338.913**), con 150 Centímetro
+  Blanco, 90 Gris y 107 Rosa — los números exactos que muestra ML. Estaba en **🟢 verde**, o sea
+  marcada como llegada COMPLETA. Y ML decía, en esa misma pantalla: *"Recibido en el centro de
+  almacenamiento · **Procesamiento en curso**"*, con **Procesadas "-"** y **Aptas para Full "-"**.
+  **LA CAUSA, Y ES UNA CONTRADICCIÓN ENTRE DOS LÍNEAS DE DOS ARCHIVOS:**
+   · para MARCAR la caja se sumaba `available_quantity` **+ `not_available_detail`** (lo que ML
+     recibió pero todavía está procesando),
+   · para contar el STOCK de Full se usa **sólo `available_quantity`**.
+  Entre las dos se abría un agujero: **lo recibido-pero-no-vendible no lo contaba NADIE.** No está
+  en la oficina (salió al cerrar la caja), no está en camino (la marca lo sacó) y no está en Full
+  (ML no lo dio de alta). 510 unidades y $338.913 evaporados del Arqueo — y Armar caja pidiendo
+  mandar 50 Centímetros Blancos más cuando ya había 150 ahí adentro.
+  **ES EXACTAMENTE EL PELIGRO QUE QUEDÓ ANOTADO EL 11/09** al soltar "marcar aunque llegue
+  incompleta": *"habría borrado 51 unidades reales del patrimonio"*. Pasó al día siguiente y con
+  diez veces más unidades. La nota estaba escrita; el freno, no.
+  **Arreglado así:** el marcado cuenta **sólo lo que ML ya dejó vendible**, el MISMO número con el
+  que el panel cuenta el stock de Full — si los dos lados usan el mismo número no puede quedar
+  mercadería en el limbo. Lo recibido y no procesado se informa aparte (`enProceso`) y **sigue
+  contando como "en camino", que es la verdad**: es tuyo y todavía no se puede vender.
+  Lo que NO cambió: los tres frenos siguen igual, así que una unidad que nunca llegue a estar
+  disponible (rota, descartada) igual cierra la caja a los 10 días, en ámbar y diciendo cuántas
+  faltaron.
+  **Comando nuevo para deshacer un marcado equivocado: `abrircaja:<seguimiento|id>[:go]`**, que
+  devuelve la caja a "En camino a Full". Sin `:go` sólo muestra.
+  **LA LECCIÓN: cuando dos partes del sistema cuentan la misma mercadería con números distintos, la
+  diferencia no se pierde — se cae en un agujero donde no la mira nadie.** Y la segunda: un cambio
+  aprobado por lo que hace ("marcá la caja cuando llegue") puede romper algo por lo que ADEMÁS
+  hace ("y sacá sus unidades de en camino"). Al soltarlo hay que preguntarse qué más mueve.
+
 - **EL MARGEN SE VEÍA COMÓDO EN VERDE SIN TENER EL ENVÍO DESCONTADO (12/09/2026).** Él lo marcó
   mirando Rotación de Stock: *"arregla el hecho de que yo vea mal el % de ganancia. porque el 5 lite
   no debe ser el unico"*. Tenía razón. El Xiaomi Watch 5 Lite mostraba **+25%** con el envío en $0.
