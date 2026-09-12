@@ -5088,6 +5088,89 @@ async function main() {
     // MUY abajo de nuestro piso, bajar es tirar margen sin recuperar la caja: la vuelve a perder
     // en cuanto el otro reaccione. Pasó con el pendrive 128gb: dos bajadas en cuatro días.
     // Esto trae la lista completa de competidores con sus precios y dice si la pelea es ganable.
+    // BILLING_PROBE=comisiones[:cuenta] → ¿CUÁNTO COBRA ML DE COMISIÓN, Y POR QUÉ TANTO?
+    //
+    // Nació el 11/09/2026 porque él comparó la ficha contra el simulador de ML y no coincidían: la
+    // ficha deducía **30,5%** de comisión donde el simulador de ML mostraba **16%**. La sospecha es
+    // que no son el mismo número: ML cobra MUCHO más caro la publicación PREMIUM (la que ofrece
+    // cuotas sin interés) que la CLÁSICA, y el simulador que él miró estaba en "sin cuotas".
+    //
+    // Esto NO toca nada: pregunta a ML, por cada publicación activa, cuánto cobra de venta a su
+    // precio de hoy (`/sites/MLA/listing_prices`, el MISMO endpoint que usa `netoweb` para fijar
+    // precios) y además cuánto cobraría la MISMA publicación en el otro tipo. Así se ve el número
+    // que importa: cuánto cuesta por mes tener una publicación en Premium.
+    //
+    // OJO AL LEER EL RESULTADO: Premium no es un error. Ofrece cuotas sin interés y por eso vende
+    // más — pasar todo a Clásica puede ahorrar comisión y perder ventas. El comando MIDE, no
+    // recomienda, y no cambia ningún tipo de publicación.
+    if (/^comisiones(:|$)/.test(String(process.env.BILLING_PROBE || ''))) {
+      const onlyC = (String(process.env.BILLING_PROBE).split(':')[1] || '').trim().toLowerCase();
+      const links = (await db.get('cyc/mllinks')) || {};
+      const vp = (await db.get('cyc/ventaprod')) || {};
+      // Unidades vendidas por publicación en los últimos 30 días: sirve para poner la comisión en
+      // plata POR MES, que es la única forma de saber si vale la pena mirarlo.
+      const desde = Date.now() - 30 * 86400e3, uMes = {};
+      for (const [dia, ents] of Object.entries(vp)) {
+        if (new Date(String(dia).replace(/_/g, '-') + 'T00:00:00-03:00').getTime() < desde) continue;
+        for (const v of Object.values(ents || {})) { if (v && !v.cancelada && v.mla) uMes[v.mla] = (uMes[v.mla] || 0) + (v.qty || 1); }
+      }
+      const feeCache = {};
+      const feeAt = async (site, price, ltype, cat, tok) => {
+        const key = site + '|' + ltype + '|' + cat + '|' + Math.round(price);
+        if (feeCache[key] !== undefined) return feeCache[key];
+        let out = null;
+        try {
+          const d = await mlGet(`/sites/${site}/listing_prices?price=${Math.round(price)}&listing_type_id=${ltype}&category_id=${cat}`, tok);
+          const o = Array.isArray(d) ? d[0] : d;
+          if (typeof o?.sale_fee_amount === 'number') out = o.sale_fee_amount;
+        } catch { /* si no contesta queda null y se dice */ }
+        feeCache[key] = out; return out;
+      };
+      const porTipo = {}; const filas = []; let sinDato = 0;
+      for (const label of labels) {
+        if (onlyC && label.toLowerCase() !== onlyC) continue;
+        const acc = accounts[label]; if (!acc?.refresh_token) continue;
+        let t; try { t = await mlRefresh(ML_CLIENT_ID, ML_CLIENT_SECRET, acc.refresh_token); } catch { continue; }
+        await db.patch('mlapi/tokens/' + label, { refresh_token: t.refresh_token, updated_ts: Date.now() });
+        const ids = Object.entries(links).filter(([m, e]) => e && e.cuenta === label && !e.ignored && /^MLA/i.test(m)).map(([m]) => m);
+        for (let k = 0; k < ids.length; k += 20) {
+          let arr; try { arr = await mlGet('/items?ids=' + ids.slice(k, k + 20).join(',') + '&attributes=id,title,status,price,listing_type_id,category_id,site_id,variations', t.access_token); } catch { continue; }
+          for (const row of (arr || [])) {
+            const b = row.body || {}; const mla = b.id;
+            if (!mla || b.status !== 'active') continue;
+            const vars = Array.isArray(b.variations) ? b.variations : [];
+            const precio = vars.length ? (vars[0].price || 0) : (b.price || 0);
+            if (!(precio > 0) || !b.category_id || !b.listing_type_id) continue;
+            const site = b.site_id || 'MLA';
+            const fee = await feeAt(site, precio, b.listing_type_id, b.category_id, t.access_token);
+            if (fee == null) { sinDato++; continue; }
+            // El MISMO producto en el otro tipo, para ver la diferencia en pesos.
+            const otro = b.listing_type_id === 'gold_pro' ? 'gold_special' : 'gold_pro';
+            const feeOtro = await feeAt(site, precio, otro, b.category_id, t.access_token);
+            const o = porTipo[b.listing_type_id] = porTipo[b.listing_type_id] || { n: 0, sumPct: 0, dif: 0, u: 0 };
+            o.n++; o.sumPct += fee / precio * 100;
+            const u = uMes[mla] || 0; o.u += u;
+            if (feeOtro != null) o.dif += (fee - feeOtro) * u;   // lo que cuesta POR MES estar en este tipo
+            filas.push({ label, mla, t: (b.title || '').slice(0, 40), precio, lt: b.listing_type_id, fee, pct: fee / precio * 100, feeOtro, u });
+          }
+        }
+      }
+      console.log(`\n══ LO QUE COBRA ML POR VENDER, SEGÚN ML ══  (${filas.length} publicaciones activas${sinDato ? ` · ${sinDato} sin dato` : ''})`);
+      console.log(`   Sale de /sites/MLA/listing_prices, el MISMO endpoint con el que se fijan los precios.\n`);
+      const nom = { gold_pro: 'PREMIUM (con cuotas)', gold_special: 'CLÁSICA' };
+      for (const [lt, o] of Object.entries(porTipo).sort((a, b) => b[1].n - a[1].n)) {
+        console.log(`   ${(nom[lt] || lt).padEnd(22)} ${String(o.n).padStart(4)} publicaciones · comisión promedio ${(o.sumPct / o.n).toFixed(1)}% · ${o.u} u. vendidas en 30 días`);
+        if (o.dif) console.log(`      ⇒ estar en este tipo costó ${money(Math.round(o.dif))} en los últimos 30 días (contra el otro tipo, al mismo precio)`);
+      }
+      console.log(`\n   OJO: Premium ofrece cuotas sin interés y por eso vende más. Esto MIDE lo que cuesta,`);
+      console.log(`   no dice que haya que cambiarlo — y este comando no cambia nada.`);
+      const top = filas.filter((f) => f.u > 0 && f.feeOtro != null).map((f) => ({ ...f, dif: (f.fee - f.feeOtro) * f.u })).sort((a, b) => b.dif - a.dif).slice(0, 12);
+      if (top.length) {
+        console.log(`\n   LAS 12 QUE MÁS COMISIÓN PAGAN DE MÁS POR SU TIPO (últimos 30 días):`);
+        for (const f of top) console.log(`   ${money(Math.round(f.dif)).padStart(11)} · ${f.label.padEnd(8)} ${f.mla} · ${f.u} u. · ${money(Math.round(f.precio))} · ${(nom[f.lt] || f.lt)} ${f.pct.toFixed(1)}% vs ${(f.feeOtro / f.precio * 100).toFixed(1)}% · ${f.t}`);
+      }
+      return;
+    }
     if (String(process.env.BILLING_PROBE || '').startsWith('competencia:')) {
       const kw = String(process.env.BILLING_PROBE).split(':')[1].trim();
       const links = (await db.get('cyc/mllinks')) || {};
