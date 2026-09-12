@@ -6724,6 +6724,16 @@ async function main() {
       const TOPE_DURO = 600000; // regla suya del 13/08/2026: nunca subir por encima de esto
                                 // (el TECHO_PRECIO de main() se declara más abajo: no se puede usar acá)
       const MIN_AIRE = 0.03;    // abajo de 3% de subida no vale la pena tocar nada
+      // EL ESCALÓN MÁXIMO POR VEZ. La primera corrida (12/09/2026) mostró por qué hace falta: en
+      // los Paulvic el "competidor más barato de arriba" estaba al DOBLE ($14.360 contra $28.990),
+      // y el comando proponía subir +99,9%. Ese de arriba no es el mismo perfume ni está
+      // compitiendo — es otra presentación que ML metió en el mismo catálogo. Subir así apaga la
+      // publicación. El techo del competidor es una cota, NO una recomendación de precio: la misma
+      // lección que ya está anotada para el `price_to_win` ("que se gane a $900 no quiere decir que
+      // a $900 haya margen"), sólo que para el otro lado.
+      // Por eso se sube de a poco y se vuelve a medir: un escalón chico se nota en las ventas del
+      // mes y se puede deshacer; uno grande te deja un mes sin vender y te enterás tarde.
+      const MAX_SUBA = (parseFloat(String(process.env.BILLING_PROBE).split(':')[2]) || 10) / 100;
       const links = (await db.get('cyc/mllinks')) || {};
       const vp = (await db.get('cyc/ventaprod')) || {}; setDevLive(vp);
       const monoP = parseFloat(((await db.get('cyc/monotributo')) || {}).pct) || 0;
@@ -6788,12 +6798,16 @@ async function main() {
         if (techo <= precio * (1 + MIN_AIRE)) { sinLugar++; continue; }
         // LA BARRERA DE LOS $33.000 NO SE CRUZA (regla suya del 13/08/2026). Si el techo la pasa,
         // se topa en $32.999 — y si ya estamos arriba de la barrera, no aplica.
-        const tope = (precio < UMBRAL_ENVIO_GRATIS && techo >= UMBRAL_ENVIO_GRATIS) ? UMBRAL_ENVIO_GRATIS - 1 : techo;
+        // El escalón: lo que sea MENOR entre el techo del competidor y el tope de suba por vez.
+        const escalon = Math.floor((precio * (1 + MAX_SUBA)) / 10) * 10;
+        const cortoPorEscalon = escalon < techo;
+        const techo2 = Math.min(techo, escalon);
+        const tope = (precio < UMBRAL_ENVIO_GRATIS && techo2 >= UMBRAL_ENVIO_GRATIS) ? UMBRAL_ENVIO_GRATIS - 1 : techo2;
         if (tope > TOPE_DURO) { sinLugar++; continue; }   // techo duro de $600.000
         if (tope <= precio * (1 + MIN_AIRE)) { sinLugar++; continue; }
         filas.push({ mla, cuenta: e.cuenta, nom: (p.name || '').slice(0, 34), precio, tope,
-          rival: arriba[0].price, u: uMes[mla] || 0,
-          topeBarrera: tope !== techo });
+          rival: arriba[0].price, u: uMes[mla] || 0, techo, cortoPorEscalon,
+          topeBarrera: tope !== techo2 });
       }
       if (!filas.length) {
         console.log('── Ninguna. Hoy no hay ninguna publicación con lugar medible para subir.\n');
@@ -6822,13 +6836,18 @@ async function main() {
         }
         filas.sort((a, b2) => b2.extraMes - a.extraMes);
         const total = filas.reduce((a, x) => a + Math.max(0, x.extraMes), 0);
-        console.log(`── ${filas.length} con lugar para subir · ${money(total)} más por mes si se suben TODAS ──\n`);
+        console.log(`── ${filas.length} con lugar para subir · ${money(total)} más por mes si se suben TODAS ──`);
+        console.log(`   (subiendo como mucho +${(MAX_SUBA * 100).toFixed(0)}% por vez. Para ver el techo entero:`
+          + ` subirpuede:${DIAS}:999)\n`);
         for (const f of filas) {
           console.log(`── ${f.nom}   (${f.cuenta} · ${f.mla})`);
           console.log(`     ${money(f.precio)} → ${money(f.tope)}  (+${f.subePct.toFixed(1)}%)`
             + `   ·   vendió ${f.u} en ${DIAS} días`);
           console.log(`     el competidor más barato que está arriba: ${money(f.rival)}`
             + (f.topeBarrera ? `   ⚠️ topado en ${money(UMBRAL_ENVIO_GRATIS - 1)}: no se cruza la barrera` : ''));
+          if (f.cortoPorEscalon) console.log(`     ⚠️ el techo del competidor daba hasta ${money(f.techo)}`
+            + ` (+${(((f.techo - f.precio) / f.precio) * 100).toFixed(0)}%): se frena en +${(MAX_SUBA * 100).toFixed(0)}%`
+            + ` y se vuelve a medir el mes que viene`);
           console.log(`     quedarían ${money(Math.round(f.extraU))} más por unidad = ${money(f.extraMes)} por mes`);
           console.log(`     comando:  volver:${f.mla}=${f.tope}:go`);
         }
