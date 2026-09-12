@@ -14978,11 +14978,14 @@ async function main() {
         if (!e.prodId || !e.cuenta) return null;          // null = no se sabe, distinto de 0
         return parseInt(inv[e.prodId + '__' + sidL(e.cuenta)]) || 0;
       };
+      // OJO: `cyc/mllinks` NO guarda el precio, así que acá no se puede mostrar (salía "—" en
+      // todas). Para el precio y el margen de una publicación está `unapub:<MLA>`.
       const linea = (mla) => {
         const e = links[mla] || {};
         const st = stockDe(mla);
-        return `${mla}  ${(e.cuenta || '?').padEnd(8)} ${st == null ? 'stock ?' : st + ' u.'}`
-          + `  ${e.precio ? money(Math.round(e.precio)) : '—'}  ${(e.title || '').slice(0, 46)}`;
+        const est = (e.status || '') === 'active' ? 'activa' : (e.status || '?');
+        return `${mla}  ${(e.cuenta || '?').padEnd(8)} ${String(st == null ? 'stock ?' : st + ' u.').padEnd(8)}`
+          + `${est.padEnd(9)} ${(e.title || '').slice(0, 46)}`;
       };
 
       // ── La limpieza: lo que ya no tiene stock sale solo ──

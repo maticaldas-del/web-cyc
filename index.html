@@ -1925,6 +1925,11 @@ function startApp(){
     state.retiro_mes=d.retiro_mes||{};
     state.stockDiario=d.stockDiario||{};
     state.mllinks=d.mllinks||{};     // publicaciones ML a mapear (activas + inactivas)
+    // "ESTO SE ESTÁ LIQUIDANDO: NO SUBIR EL PRECIO", por publicación. Lo marca él desde el chat
+    // (comando `liquidando`) y el robot lo respeta adentro de raisePrice/raisePriceTo. Acá se lee
+    // sólo para MOSTRARLO: un margen en rojo que está así a propósito tiene que verse distinto de
+    // uno que se hundió solo, porque el remedio es opuesto (a uno se lo deja, al otro se lo sube).
+    state.nosubir=d.nosubir||{};
     state.mlconfig=d.mlconfig||{};   // config del robot (auto-precio, meta, umbral)
     state.monotributo=d.monotributo||{}; // monotributo: montos por cuenta + % que calcula el robot
     // Facturas que emitió el facturador automático de ML, por cuenta. Las carga el robot una vez
@@ -2302,7 +2307,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='19.25';
+const APP_VERSION='19.26';
 // El problema real que esto resuelve no es curiosidad: es que el celular guarda la app y sigue
 // mostrando la de ayer sin avisar. Varias veces se revisó un cambio que ya estaba subido y no se
 // veía. Por eso, además del número, el chip avisa cuando hay una versión nueva esperando.
@@ -8325,6 +8330,21 @@ async function despausarPrecio(pid){
 // Un producto suele tener varias publicaciones y pueden estar en estados distintos. La regla es
 // "lo MEJOR que tenemos", porque con que una sola gane la caja el producto se vende:
 //   alguna gana → verde · si no, alguna comparte → naranja · si todas pierden → rojo.
+// ¿Alguna publicación de este producto está marcada como "liquidando"? Devuelve cuántas y desde
+// cuándo. Va por publicación porque es lo que marca el robot, pero se muestra en el producto, que
+// es como él mira la pantalla.
+function liquidandoDe(p){
+  const L=state.mllinks||{}, N=state.nosubir||{};
+  let n=0,fecha='';
+  for(const [mla,e] of Object.entries(L)){
+    if(!e||e.prodId!==p.id||e.ignored)continue;
+    if(!N[mla])continue;
+    n++;
+    const f=N[mla].fecha||'';
+    if(f&&(!fecha||f<fecha))fecha=f;
+  }
+  return n?{n,fecha}:null;
+}
 function cajaMLDe(p){
   const L=state.mllinks||{};
   const n={winning:0,sharing:0,losing:0,nocat:0,sincaja:0};
@@ -8598,6 +8618,11 @@ function rotMargenHtml(r){
     // lado había un porcentaje en verde diciendo lo contrario.
     pie=`<div style="font-size:.55rem;color:var(--amber);margin-top:2px;white-space:nowrap">⚠ ${r.margenSinEnvio?'sin envío medido':'envío estimado por ML'}</div>`;
   }
+  // EL CANDADO: este margen está bajo A PROPÓSITO. Sin esto, un producto que él bajó para rematar
+  // se ve igual que uno que se hundió solo — y el remedio es el contrario: a éste se lo deja en paz,
+  // al otro hay que subirlo. Va en la misma columna y no en una aparte porque es una aclaración
+  // SOBRE ese número, no un dato nuevo.
+  if(r.liq2)pie+=`<div title="Vos lo bajaste a mano para liquidarlo${r.liq2.fecha?' el '+r.liq2.fecha.split('-').reverse().join('/'):''}. El robot NO le va a subir el precio aunque la venta quede abajo del piso. La marca se saca sola cuando se acabe el stock." style="font-size:.55rem;color:#a78bfa;margin-top:2px;white-space:nowrap">🔒 liquidando a propósito</div>`;
   return `<span title="${tit}" style="font-weight:700;color:${color}">${m>=0?'+':''}${m.toFixed(0)}%</span>${pie}`;
 }
 function rotDiasSinVenderHtml(dias){
@@ -8938,7 +8963,7 @@ function renderRotacionStock(){
     const _liq=liquidarDe(p,diasSinVender,stock,_rt.edad);
     return{pid:p.id,name:p.name,capital,ventasPeriodo,rotNorm,estadoKey,estadoHtml,stock,diasSinVender,liq:_liq,
       margen:mg.margen,margenSinEnvio:mg.sinEnvio,margenEnvioML:mg.envioML,margenNeto:mg.neto,margenCosto:mg.costo,
-      margenPrecio:mg.precio,margenGest:mg.gest,margenDudoso:margenDudosoDe(mg),
+      margenPrecio:mg.precio,margenGest:mg.gest,margenDudoso:margenDudosoDe(mg),liq2:liquidandoDe(p),
       caja:cajaMLDe(p),diasEnStock:diasEnStockDe(p),diasCaja:ultimaEntradaDe(p)};
   });
 
