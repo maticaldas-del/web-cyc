@@ -1234,7 +1234,7 @@ footer{margin-top:32px;padding-top:14px;border-top:1px solid var(--border);font-
       <span style="font-size:.66rem;color:var(--muted);text-transform:uppercase;letter-spacing:.1em">Cuenta</span>
       <div class="view-toggle" id="fac-rec-filtro"></div>
     </div>
-    <input class="search-box" id="fac-rec-buscar" type="search" placeholder="Buscar por proveedor, factura o CUIT..." oninput="renderFacturas()" style="margin-bottom:10px">
+    <input class="search-box" id="fac-rec-buscar" type="search" placeholder="Buscar por proveedor, factura o CUIT..." oninput="facRecBuscar()" style="margin-bottom:10px">
     <div class="tbl-outer">
       <table>
         <thead><tr>
@@ -2301,7 +2301,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='19.23';
+const APP_VERSION='19.24';
 // El problema real que esto resuelve no es curiosidad: es que el celular guarda la app y sigue
 // mostrando la de ayer sin avisar. Varias veces se revisó un cambio que ya estaba subido y no se
 // veía. Por eso, además del número, el chip avisa cuando hay una versión nueva esperando.
@@ -8603,7 +8603,7 @@ function renderRotCardScore(){
    Lo que sí se hace es AGRUPAR bien: una compra con carrito son varias ventas y UNA factura, así
    que los totales se suman por factura (la clave ya es serie_número) y no por venta. */
 let FAC_CTA='todas';
-function setFacCta(c,btn){FAC_CTA=c;document.querySelectorAll('#fac-filtro .vbtn').forEach(b=>b.classList.remove('active'));if(btn)btn.classList.add('active');renderFacturas();}
+function setFacCta(c,btn){FAC_CTA=c;FAC_VER=FAC_PASO;document.querySelectorAll('#fac-filtro .vbtn').forEach(b=>b.classList.remove('active'));if(btn)btn.classList.add('active');renderFacturas();}
 function _facCuentas(){
   const set=new Set([...Object.keys(state.facturas||{}),...Object.keys(state.facturas_sin||{})]);
   return [...set].sort();
@@ -8620,23 +8620,73 @@ function _facTipo(t){
   return m[t]||(t?String(t).replace(/_/g,' '):'Comprobante');
 }
 let FAC_TAB='emitidas', FAC_REC_CTA='todas';
+// DE A CUÁNTAS FILAS SE DIBUJA LA TABLA. Con ~1.500 facturas emitidas, armar la tabla ENTERA en
+// cada dibujado hacía que la pantalla tardara varios segundos en abrir: el navegador tiene que
+// crear una fila por comprobante aunque él sólo mire las últimas. Se dibujan las más nuevas y el
+// botón "Ver más" agrega otro tanto. El total siempre se dice en pantalla, así una tabla cortada
+// nunca se puede confundir con una tabla que no tiene nada más.
+const FAC_PASO=150;
+let FAC_VER=FAC_PASO, FAC_REC_VER=FAC_PASO;
+function facVerMas(){FAC_VER+=FAC_PASO;renderFacturasBody();}
+function facRecVerMas(){FAC_REC_VER+=FAC_PASO;renderFacturasRecBody();}
 function setFacTab(t,btn){
   FAC_TAB=t;
   document.querySelectorAll('.fac-tab').forEach(b=>b.classList.remove('active'));
   if(btn)btn.classList.add('active');
   document.getElementById('fac-sec-emitidas').style.display=t==='emitidas'?'':'none';
   document.getElementById('fac-sec-recibidas').style.display=t==='recibidas'?'':'none';
+  FAC_VER=FAC_PASO;FAC_REC_VER=FAC_PASO;
   renderFacturas();
 }
-function setFacRecCta(c,btn){FAC_REC_CTA=c;document.querySelectorAll('#fac-rec-filtro .vbtn').forEach(b=>b.classList.remove('active'));if(btn)btn.classList.add('active');renderFacturas();}
+function setFacRecCta(c,btn){FAC_REC_CTA=c;FAC_REC_VER=FAC_PASO;document.querySelectorAll('#fac-rec-filtro .vbtn').forEach(b=>b.classList.remove('active'));if(btn)btn.classList.add('active');renderFacturasRecBody();}
+// El buscador de recibidas toca SOLO las filas: los totales por cuenta de arriba son de todo lo
+// cargado y no se filtran, así que redibujarlos en cada tecla era trabajo tirado.
+let _facRecT=null;
+function facRecBuscar(){clearTimeout(_facRecT);_facRecT=setTimeout(()=>{FAC_REC_VER=FAC_PASO;renderFacturasRecBody();},180);}
+// El número que va en la solapa. Es sólo contar claves, así que se puede hacer siempre, esté o no
+// dibujada la tabla de recibidas.
+function facRecContar(){
+  const rec=state.facturas_rec||{};
+  const n=Object.keys(rec).reduce((s,c)=>s+Object.keys(rec[c]||{}).length,0);
+  const tabN=document.getElementById('tab-fac-rec-n');
+  if(tabN)tabN.textContent=n?'('+n+')':'';
+  return n;
+}
+function facRecFilas(){
+  const rec=state.facturas_rec||{};
+  let filas=[];
+  for(const c of Object.keys(rec).sort()){
+    if(FAC_REC_CTA!=='todas'&&FAC_REC_CTA!==c)continue;
+    for(const x of Object.values(rec[c]||{}))if(x)filas.push({cta:c,...x});
+  }
+  const q=normTxt(document.getElementById('fac-rec-buscar')?.value||'');
+  if(q)filas=filas.filter(x=>normTxt((x.prov||'')+' '+(x.num||'')+' '+(x.cuit||'')).includes(q));
+  filas.sort((a,b)=>String(b.fecha||'').localeCompare(String(a.fecha||'')));
+  return filas;
+}
+function renderFacturasRecBody(){
+  const body=document.getElementById('fac-rec-body');
+  if(!body)return;
+  const filas=facRecFilas();
+  if(!filas.length){body.innerHTML=`<tr><td colspan="6" style="text-align:center;color:var(--muted);padding:18px;font-size:.76rem">${facRecContar()?'Sin comprobantes para mostrar':'Todavía no hay compras cargadas.'}</td></tr>`;return;}
+  const ver=Math.min(FAC_REC_VER,filas.length);
+  body.innerHTML=filas.slice(0,ver).map(x=>`<tr>
+    <td style="font-size:.72rem">${String(x.fecha||'').split('-').reverse().join('/')}</td>
+    <td style="text-align:left;font-size:.72rem">${_facLindo(x.cta)}</td>
+    <td style="text-align:left;font-size:.7rem;color:${x.nc?'var(--red,#ef4444)':'var(--muted)'}">${x.tipo||'—'}</td>
+    <td style="font-size:.7rem;font-family:'DM Mono',monospace">${x.num||'—'}</td>
+    <td style="text-align:left;font-size:.72rem">${(x.prov||'—').slice(0,42)}</td>
+    <td style="font-size:.74rem;font-family:'DM Mono',monospace;color:${x.nc?'var(--red,#ef4444)':'var(--text)'}">${x.nc?'−':''}${fmt(x.total||0)}</td>
+  </tr>`).join('')+(ver<filas.length?`<tr><td colspan="6" style="text-align:center;padding:10px">
+    <button class="vbtn" onclick="facRecVerMas()">Ver más</button>
+    <div style="font-size:.68rem;color:var(--muted);margin-top:5px">mostrando ${ver} de ${filas.length}</div></td></tr>`:'');
+}
 // Las recibidas: una fila por comprobante. Las notas de crédito restan (son devoluciones), por eso
 // se muestran en rojo y con el signo menos: si se sumaran, el total de compras saldría inflado.
 function renderFacturasRecibidas(){
   const rec=state.facturas_rec||{};
   const ctas=Object.keys(rec).sort();
-  const n=ctas.reduce((s,c)=>s+Object.keys(rec[c]||{}).length,0);
-  const tabN=document.getElementById('tab-fac-rec-n');
-  if(tabN)tabN.textContent=n?'('+n+')':'';
+  facRecContar();
   const filtro=document.getElementById('fac-rec-filtro');
   if(filtro)filtro.innerHTML=`<button class="vbtn${FAC_REC_CTA==='todas'?' active':''}" onclick="setFacRecCta('todas',this)">Todas</button>`
     +ctas.map(c=>`<button class="vbtn${FAC_REC_CTA===c?' active':''}" onclick="setFacRecCta('${c}',this)">${_facLindo(c)}</button>`).join('');
@@ -8652,29 +8702,43 @@ function renderFacturasRecibidas(){
       <div style="font-size:.66rem;color:var(--muted);margin-top:2px">${fechas.length?fechas[0].split('-').reverse().join('/')+' a '+fechas[fechas.length-1].split('-').reverse().join('/'):'—'}</div>
     </div>`;
   }).join('');
-  let filas=[];
-  for(const c of ctas){
-    if(FAC_REC_CTA!=='todas'&&FAC_REC_CTA!==c)continue;
-    for(const x of Object.values(rec[c]||{}))if(x)filas.push({cta:c,...x});
+  renderFacturasRecBody();
+}
+function facFilas(){
+  const filas=[];
+  for(const c of _facCuentas()){
+    if(FAC_CTA!=='todas'&&FAC_CTA!==c)continue;
+    for(const f of Object.values((state.facturas||{})[c]||{})){if(f)filas.push({cta:c,...f});}
   }
-  const q=normTxt(document.getElementById('fac-rec-buscar')?.value||'');
-  if(q)filas=filas.filter(x=>normTxt((x.prov||'')+' '+(x.num||'')+' '+(x.cuit||'')).includes(q));
   filas.sort((a,b)=>String(b.fecha||'').localeCompare(String(a.fecha||'')));
-  const body=document.getElementById('fac-rec-body');
+  return filas;
+}
+function renderFacturasBody(){
+  const body=document.getElementById('fac-body');
   if(!body)return;
-  if(!filas.length){body.innerHTML=`<tr><td colspan="6" style="text-align:center;color:var(--muted);padding:18px;font-size:.76rem">${n?'Sin comprobantes para mostrar':'Todavía no hay compras cargadas.'}</td></tr>`;return;}
-  body.innerHTML=filas.slice(0,400).map(x=>`<tr>
-    <td style="font-size:.72rem">${String(x.fecha||'').split('-').reverse().join('/')}</td>
-    <td style="text-align:left;font-size:.72rem">${_facLindo(x.cta)}</td>
-    <td style="text-align:left;font-size:.7rem;color:${x.nc?'var(--red,#ef4444)':'var(--muted)'}">${x.tipo||'—'}</td>
-    <td style="font-size:.7rem;font-family:'DM Mono',monospace">${x.num||'—'}</td>
-    <td style="text-align:left;font-size:.72rem">${(x.prov||'—').slice(0,42)}</td>
-    <td style="font-size:.74rem;font-family:'DM Mono',monospace;color:${x.nc?'var(--red,#ef4444)':'var(--text)'}">${x.nc?'−':''}${fmt(x.total||0)}</td>
-  </tr>`).join('')+(filas.length>400?`<tr><td colspan="6" style="text-align:center;color:var(--muted);padding:10px;font-size:.72rem">…y ${filas.length-400} más (usá el buscador)</td></tr>`:'');
+  const filas=facFilas();
+  if(!filas.length){body.innerHTML=`<tr><td colspan="7" style="text-align:center;color:var(--muted);padding:18px;font-size:.76rem">Sin facturas para mostrar</td></tr>`;return;}
+  const ver=Math.min(FAC_VER,filas.length);
+  body.innerHTML=filas.slice(0,ver).map(f=>{
+    const ok=f.estado==='authorized';
+    return `<tr>
+      <td style="font-size:.72rem">${_facFechaCorta(f.fecha)}</td>
+      <td style="text-align:left;font-size:.74rem">${_facLindo(f.cta)}</td>
+      <td style="font-size:.72rem">${_facTipo(f.tipo)}<div style="color:var(--muted);font-size:.66rem">${f.serie?'Pto vta '+f.serie+' · ':''}Nº ${f.num}</div></td>
+      <td style="text-align:left;font-size:.71rem">${(f.prod||'').slice(0,55)}${(f.ventas&&f.ventas.length>1)?`<div style="color:var(--muted);font-size:.64rem">y ${f.ventas.length-1} venta${f.ventas.length>2?'s':''} más (carrito)</div>`:''}</td>
+      <td style="font-weight:600">${fmt(f.monto||0)}</td>
+      <td style="font-size:.68rem;font-family:monospace">${f.cae||'—'}${f.caeVence?`<div style="color:var(--muted);font-size:.63rem;font-family:inherit">vence ${String(f.caeVence).slice(0,10).split('-').reverse().join('/')}</div>`:''}</td>
+      <td style="font-size:.7rem;color:${ok?'var(--green,#22c55e)':'var(--amber,#f59e0b)'};font-weight:600">${ok?'Autorizada':(f.estado||'—')}</td>
+    </tr>`;
+  }).join('')+(ver<filas.length?`<tr><td colspan="7" style="text-align:center;padding:10px">
+    <button class="vbtn" onclick="facVerMas()">Ver más</button>
+    <div style="font-size:.68rem;color:var(--muted);margin-top:5px">mostrando ${ver} de ${filas.length}</div></td></tr>`:'');
 }
 function renderFacturas(){
-  renderFacturasRecibidas();
-  if(FAC_TAB==='recibidas')return;
+  // SÓLO SE DIBUJA LA SOLAPA QUE SE ESTÁ MIRANDO. Antes se armaban las dos tablas siempre, así que
+  // abrir "Emitidas" pagaba además el precio de dibujar las 338 recibidas que no se ven.
+  facRecContar();
+  if(FAC_TAB==='recibidas'){renderFacturasRecibidas();return;}
   const ctas=_facCuentas();
   // Botones de filtro (se arman una sola vez por render, así aparecen las cuentas nuevas solas)
   const filtro=document.getElementById('fac-filtro');
@@ -8731,27 +8795,7 @@ function renderFacturas(){
   }
 
   // ── El detalle ──
-  const filas=[];
-  for(const c of ctas){
-    if(FAC_CTA!=='todas'&&FAC_CTA!==c)continue;
-    for(const f of Object.values((state.facturas||{})[c]||{})){if(f)filas.push({cta:c,...f});}
-  }
-  filas.sort((a,b)=>String(b.fecha||'').localeCompare(String(a.fecha||'')));
-  const body=document.getElementById('fac-body');
-  if(!body)return;
-  if(!filas.length){body.innerHTML=`<tr><td colspan="7" style="text-align:center;color:var(--muted);padding:18px;font-size:.76rem">Sin facturas para mostrar</td></tr>`;return;}
-  body.innerHTML=filas.map(f=>{
-    const ok=f.estado==='authorized';
-    return `<tr>
-      <td style="font-size:.72rem">${_facFechaCorta(f.fecha)}</td>
-      <td style="text-align:left;font-size:.74rem">${_facLindo(f.cta)}</td>
-      <td style="font-size:.72rem">${_facTipo(f.tipo)}<div style="color:var(--muted);font-size:.66rem">${f.serie?'Pto vta '+f.serie+' · ':''}Nº ${f.num}</div></td>
-      <td style="text-align:left;font-size:.71rem">${(f.prod||'').slice(0,55)}${(f.ventas&&f.ventas.length>1)?`<div style="color:var(--muted);font-size:.64rem">y ${f.ventas.length-1} venta${f.ventas.length>2?'s':''} más (carrito)</div>`:''}</td>
-      <td style="font-weight:600">${fmt(f.monto||0)}</td>
-      <td style="font-size:.68rem;font-family:monospace">${f.cae||'—'}${f.caeVence?`<div style="color:var(--muted);font-size:.63rem;font-family:inherit">vence ${String(f.caeVence).slice(0,10).split('-').reverse().join('/')}</div>`:''}</td>
-      <td style="font-size:.7rem;color:${ok?'var(--green,#22c55e)':'var(--amber,#f59e0b)'};font-weight:600">${ok?'Autorizada':(f.estado||'—')}</td>
-    </tr>`;
-  }).join('');
+  renderFacturasBody();
 }
 
 function renderRotacionStock(){
