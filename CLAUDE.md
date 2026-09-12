@@ -32,6 +32,46 @@ está tapado. Falta cerrarlo.
 bajaba a ciegas. Subir sigue funcionando igual. Para bajar: `bajarcaja` o `corregir`, que calculan.
 
 
+## "ESTO LO ESTOY LIQUIDANDO: NO ME LO SUBAS" (12/09/2026)
+
+Pedido suyo con el **Pendrive Sandisk 128g** (`MLA1787520621`, Matías), que vendió a **−5%**
+(−$1.722): *"lo baje aproposito, hay que venderlo, porque nos van a cobrar por stock antiguo. pero
+el bot quizas lo ve bajo y lo sube automaticamente."* Tenía razón — el robot mira el margen de cada
+venta y, si cayó abajo del piso, sube el precio hasta la meta. O sea que **la PRIMERA venta de un
+remate le deshacía la decisión**, justo cuando empezaba a funcionar.
+
+Se marca con **`liquidando:<MLA o palabra>[:go]`** y vive en **`cyc/nosubir/<MLA>`**:
+
+| comando | qué hace |
+|---|---|
+| `liquidando` | lista lo marcado, con stock y estado |
+| `liquidando:<MLA\|palabra>` | muestra qué agarraría · **NO aplica** |
+| `liquidando:<...>:go` | marca |
+| `liquidando:-<...>:go` | saca la marca |
+
+**El freno vive adentro de `raisePrice` y `raisePriceTo`** —las DOS funciones que suben precios en
+ML— y no en cada comando, por el mismo motivo que el piso: la regla no puede depender de que el
+próximo que escriba algo se acuerde.
+
+**EL LADO SEGURO ACÁ ES AL REVÉS QUE EN EL PISO.** Si la lista no se pudo leer, no se sabe qué está
+marcado, así que **no se sube NADA esa vuelta** y se avisa en el log. Subir algo que él bajó a mano
+le rompe una decisión suya y se entera cuando ya vendió; no subir por una vuelta no rompe nada.
+
+**LA MARCA SE CAE SOLA CUANDO SE ACABA EL STOCK**, que es cuando deja de tener sentido: ya
+liquidaste. Corre en el probe y en la vuelta de cada hora, con la MISMA función (`limpiarNoSubir`),
+no una copia. **Stock DESCONOCIDO no es stock cero**: una publicación sin producto vinculado se
+deja marcada, porque borrarla sería adivinar. Sin este vencimiento la lista se volvería un
+cementerio de marcas viejas frenando subas que nadie quiere frenar — el mismo problema que ya
+apareció con `repoextra` y con la pausa por precio.
+
+**Y se ve en el panel:** en Rotación de Stock el margen lleva un **🔒 liquidando a propósito**. Sin
+eso, un producto que él bajó para rematar se ve igual que uno que se hundió solo, **y el remedio es
+el contrario**: a éste se lo deja en paz, al otro hay que subirlo.
+
+Ojo con el filtro por palabra, la lección de siempre: `liquidando:sandisk` agarra **13
+publicaciones** (los Cruzer Blade de 8/16/32/64/128, las microSD, los discos externos). Por eso sin
+`:go` sólo muestra. **Marcado al 12/09/2026: sólo `MLA1787520621`.**
+
 # CYC · panel de MercadoLibre
 
 Esto lo lee Claude solo al abrir cualquier chat en este repo. **Sirve para no tener que explicar
