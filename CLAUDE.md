@@ -309,6 +309,8 @@ Los que más se usan:
 | `cajacompra[:cuenta]` | **¿la venta es nuestra o del otro?** el estado de la caja de compra de cada publicación · lo corre solo el robot cada hora y pinta la columna "Caja ML" de Rotación de Stock |
 | `competencia:<MLA>` | los vendedores del catálogo con sus precios y **si la pelea se puede ganar** |
 | `subirpuede[:días]` | **dónde hay lugar para SUBIR sin perder ventas**: las que ganan la caja y tienen un competidor arriba · solo lee |
+| `avisos[:go]` | **el aviso diario al canal privado**: qué subir, qué bajar y qué está parado · sin `:go` no manda nada |
+| `tgalertas[:<chat>]` | **el segundo canal de Telegram**, sólo para Mati · sin número muestra los chats que el bot conoce |
 | `envioml:<MLA>` | el envío que **dice ML** (por destino) vs el que deducimos de las ventas · `envioreal` es OTRO comando |
 | `apisnuevas:<MLA>` | qué endpoints de ML andan y no usamos |
 | `apis` | qué endpoints de ML contestan (para diagnosticar) |

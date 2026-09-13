@@ -781,6 +781,304 @@ async function pisoConfig(db, fallback = 30) {
     return (isFinite(v) && v > 0) ? v : fallback;
   } catch { return fallback; }
 }
+// ── ¿DÓNDE HAY LUGAR PARA SUBIR SIN PERDER VENTAS? ────────────────────────────────────
+// Vive acá afuera, y no adentro del probe, porque la usan DOS cosas: el comando
+// `subirpuede` y el aviso diario de Telegram. Si cada uno tuviera su copia, el aviso
+// podría decir un número y el comando otro sobre la MISMA publicación — que es el
+// problema que ya apareció con el piso repartido en ocho comandos y con el costo de la
+// caja escrito en dos archivos.
+//
+// LA SEÑAL, y es la única dura que tenemos: en una publicación de CATÁLOGO, si hoy
+// GANAMOS la caja de compra, todos los que están más baratos NO están compitiendo (sin
+// stock o no califican) — verificado con el Ferrari el 25/08 y con el Pendrive 8gb el
+// 12/09. El techo es entonces el competidor más barato que está ARRIBA nuestro.
+//
+// ES UNA COTA, NO UNA RECOMENDACIÓN DE PRECIO. En los Paulvic ese competidor de arriba
+// estaba al DOBLE y la primera versión proponía +99,9%: no es el mismo perfume, es otra
+// presentación que ML metió en el mismo catálogo. Por eso se sube como mucho `maxSuba`
+// por vez y se vuelve a medir.
+//
+// Y NO SE PROPONE EL PRECIO MÁS ALTO QUE ENTRA: se prueban varios entre el de hoy y el
+// techo, se le pregunta a ML la comisión de cada uno y se elige el que MÁS PLATA DEJA.
+// La comisión de ML tiene ESCALONES (hay uno cerca de los $15.000) y cruzar uno se lleva
+// más de lo que sube el precio: sin esto, el comando recomendaba subir a un precio que
+// dejaba $312 MENOS por unidad.
+async function calcSubirPuede(db, o) {
+  const { dias = 30, maxSuba = 0.10, products = [], labels = [], accounts = {} } = o || {};
+  const COLCHON = 0.99;      // 1% abajo del competidor: quedar a $4 es demasiado al filo
+  const TOPE_DURO = 600000;  // regla suya del 13/08/2026
+  const MIN_AIRE = 0.03;     // abajo de 3% no vale la pena tocar nada
+  const PASOS = 12;          // precios que se prueban entre el de hoy y el techo
+  const links = (await db.get('cyc/mllinks')) || {};
+  const vp = (await db.get('cyc/ventaprod')) || {}; setDevLive(vp);
+  const monoP = parseFloat(((await db.get('cyc/monotributo')) || {}).pct) || 0;
+  const pIdx = {}; for (const p of products) pIdx[p.id] = p;
+
+  // Unidades vendidas por publicación en la ventana: sin ventas no se opina.
+  const desde = Date.now() - dias * 864e5, uMes = {};
+  for (const [k, ents] of Object.entries(vp)) {
+    const ts = Date.parse(k.slice(0, 10).replace(/_/g, '-'));
+    if (!isFinite(ts) || ts < desde) continue;
+    for (const v of Object.values(ents || {})) {
+      if (!v || v.cancelada || !v.mla) continue;
+      uMes[v.mla] = (uMes[v.mla] || 0) + (v.qty || 1);
+    }
+  }
+
+  const tok = {}, sids = {}, fallos = [];
+  for (const l of labels) {
+    const acc = accounts[l]; if (!acc?.refresh_token) continue;
+    try {
+      const t = await mlRefresh(ML_CLIENT_ID, ML_CLIENT_SECRET, acc.refresh_token);
+      await db.patch('mlapi/tokens/' + l, { refresh_token: t.refresh_token, updated_ts: Date.now() });
+      tok[l] = t.access_token;
+      if (acc.seller_id) sids[String(acc.seller_id)] = l;
+    } catch { fallos.push(l); }
+  }
+
+  // Se filtra primero por las que el robot YA marcó como ganadoras en
+  // cyc/mllinks/<MLA>/caja (lo escribe `cajacompra` una vez por hora), así las llamadas a
+  // ML son sólo las que pueden dar candidata.
+  const cand = Object.entries(links).filter(([mla, e]) =>
+    e && e.prodId && pIdx[e.prodId] && !e.ignored && (e.status || '') === 'active'
+    && e.caja === 'winning' && (uMes[mla] || 0) > 0);
+  let sinCat = 0, sinLugar = 0, sinDato = 0;
+  for (const [mla, e] of Object.entries(links)) {
+    if (!e || !e.prodId || e.ignored || (e.status || '') !== 'active') continue;
+    if (!(uMes[mla] > 0)) continue;
+    if (e.caja === 'nocat' || !e.caja) sinCat++;
+  }
+
+  const filas = [];
+  for (const [mla, e] of cand) {
+    const p = pIdx[e.prodId];
+    const tk = tok[e.cuenta];
+    if (!tk) continue;
+    let b;
+    try { b = await mlGet(`/items/${mla}?attributes=id,price,catalog_product_id,shipping,title`, tk); }
+    catch { sinDato++; continue; }
+    const precio = Number(b?.price) || 0;
+    if (!precio || !b?.catalog_product_id) { sinDato++; continue; }
+    let comp = null;
+    try { comp = await mlGet(`/products/${b.catalog_product_id}/items`, tk); } catch { sinDato++; continue; }
+    const res = (comp?.results || []).filter((x) => x && x.price > 0 && !sids[String(x.seller_id)]);
+    const arriba = res.filter((x) => x.price > precio).sort((a, b2) => a.price - b2.price);
+    if (!arriba.length) { sinLugar++; continue; }          // nadie arriba: no se puede acotar
+    const techo = Math.floor((arriba[0].price * COLCHON) / 10) * 10;
+    if (techo <= precio * (1 + MIN_AIRE)) { sinLugar++; continue; }
+    const escalon = Math.floor((precio * (1 + maxSuba)) / 10) * 10;
+    const cortoPorEscalon = escalon < techo;
+    const techo2 = Math.min(techo, escalon);
+    // LA BARRERA DE LOS $33.000 NO SE CRUZA (regla suya del 13/08/2026).
+    const tope = (precio < UMBRAL_ENVIO_GRATIS && techo2 >= UMBRAL_ENVIO_GRATIS) ? UMBRAL_ENVIO_GRATIS - 1 : techo2;
+    if (tope > TOPE_DURO) { sinLugar++; continue; }
+    if (tope <= precio * (1 + MIN_AIRE)) { sinLugar++; continue; }
+    filas.push({ mla, cuenta: e.cuenta, nom: (p.name || '').slice(0, 34), precio, tope, topeMax: tope,
+      rival: arriba[0].price, u: uMes[mla] || 0, techo, cortoPorEscalon,
+      topeBarrera: tope !== techo2 });
+  }
+
+  // La plata: se prueban PASOS precios y gana el que más deja, con la comisión REAL de ML.
+  for (const f of filas) {
+    const tk = tok[f.cuenta];
+    f.extraU = null;
+    try {
+      const it = await mlGet(`/items/${f.mla}?attributes=listing_type_id,category_id,site_id`, tk);
+      const cache = {};
+      const fee = async (P) => {
+        if (cache[P] != null) return cache[P];
+        const r = await mlGet(`/sites/${it.site_id || 'MLA'}/listing_prices?price=${P}&listing_type_id=${it.listing_type_id}&category_id=${it.category_id}`, tk);
+        return (cache[P] = Number((Array.isArray(r) ? r[0] : r)?.sale_fee_amount) || 0);
+      };
+      const comHoy = await fee(f.precio);
+      const imp = (mlExtraPct(f.cuenta) + monoP) / 100;
+      for (let i = PASOS; i >= 1; i--) {
+        const P = Math.floor((f.precio + ((f.topeMax - f.precio) * i) / PASOS) / 10) * 10;
+        if (P <= f.precio) continue;
+        let ex;
+        try { ex = (P - f.precio) - ((await fee(P)) - comHoy) - (P - f.precio) * imp; }
+        catch { continue; }
+        if (f.extraU == null || ex > f.extraU) { f.extraU = ex; f.mejor = P; }
+      }
+    } catch { /* queda en null y la fila se descarta abajo */ }
+    f.tope = f.mejor != null ? f.mejor : f.tope;
+    f.extraMes = Math.round((f.extraU || 0) * f.u * (30 / dias));
+    f.subePct = ((f.tope - f.precio) / f.precio) * 100;
+  }
+
+  // LAS QUE DAN NEGATIVO NO VAN EN LA LISTA. Un renglón que dice "subí a $15.790" y te
+  // hace ganar menos es peor que no tener el renglón: invita a aplicarlo.
+  const noConviene = filas.filter((x) => !(x.extraU > 0) || !(x.subePct >= MIN_AIRE * 100));
+  const buenas = filas.filter((x) => !noConviene.includes(x)).sort((a, b2) => b2.extraMes - a.extraMes);
+  return {
+    filas: buenas, noConviene, sinCat, sinLugar, sinDato, fallos,
+    total: buenas.reduce((a, x) => a + x.extraMes, 0),
+    maxSuba, dias, MIN_AIRE,
+  };
+}
+
+// ── ¿CONVIENE BAJAR EL PRECIO PARA GANAR MÁS? (13/09/2026) ────────────────────────────
+// Pregunta suya, y con razón: *"me parece muy raro que vendiendo más barato ganemos más"*.
+// Es raro, y casi siempre es falso. Pero hay UN caso donde es cierto, y sale del hallazgo
+// del 12/09: la comisión de ML no es un % parejo, tiene ESCALONES (hay uno cerca de los
+// $15.000). Si una publicación está justo ARRIBA de un escalón, bajarla apenas por debajo
+// le saca de encima un cargo que es MÁS GRANDE que lo que baja el precio. Ahí cobrás menos
+// y te queda más, y encima sos más barato que antes, así que no podés vender menos.
+//
+// Fuera de ese caso bajar siempre deja menos, y este comando no va a encontrar nada — que
+// es exactamente la respuesta honesta a la pregunta.
+//
+// SÓLO MIDE. La regla suya del 13/08/2026 sigue mandando: el robot no baja nada solo.
+async function calcZonaMuerta(db, o) {
+  const { dias = 30, maxBaja = 0.12, products = [], labels = [], accounts = {} } = o || {};
+  const PASOS = 12;
+  const links = (await db.get('cyc/mllinks')) || {};
+  const vp = (await db.get('cyc/ventaprod')) || {}; setDevLive(vp);
+  const monoP = parseFloat(((await db.get('cyc/monotributo')) || {}).pct) || 0;
+  const pIdx = {}; for (const p of products) pIdx[p.id] = p;
+
+  const desde = Date.now() - dias * 864e5, uMes = {};
+  for (const [k, ents] of Object.entries(vp)) {
+    const ts = Date.parse(k.slice(0, 10).replace(/_/g, '-'));
+    if (!isFinite(ts) || ts < desde) continue;
+    for (const v of Object.values(ents || {})) {
+      if (!v || v.cancelada || !v.mla) continue;
+      uMes[v.mla] = (uMes[v.mla] || 0) + (v.qty || 1);
+    }
+  }
+  const tok = {};
+  for (const l of labels) {
+    const acc = accounts[l]; if (!acc?.refresh_token) continue;
+    try {
+      const t = await mlRefresh(ML_CLIENT_ID, ML_CLIENT_SECRET, acc.refresh_token);
+      await db.patch('mlapi/tokens/' + l, { refresh_token: t.refresh_token, updated_ts: Date.now() });
+      tok[l] = t.access_token;
+    } catch { /* sigue */ }
+  }
+  // Sólo las que VENDEN: bajarle el precio a algo que no vende no se decide con esta cuenta
+  // (ahí el problema es otro, y lo mira la lista de abajo).
+  const cand = Object.entries(links).filter(([mla, e]) =>
+    e && e.prodId && pIdx[e.prodId] && !e.ignored && (e.status || '') === 'active' && (uMes[mla] || 0) > 0);
+
+  const filas = [];
+  let mirados = 0;
+  for (const [mla, e] of cand) {
+    const tk = tok[e.cuenta]; if (!tk) continue;
+    let it;
+    try { it = await mlGet(`/items/${mla}?attributes=price,listing_type_id,category_id,site_id`, tk); }
+    catch { continue; }
+    const precio = Number(it?.price) || 0;
+    if (!precio) continue;
+    mirados++;
+    const cache = {};
+    const fee = async (P) => {
+      if (cache[P] != null) return cache[P];
+      const r = await mlGet(`/sites/${it.site_id || 'MLA'}/listing_prices?price=${P}&listing_type_id=${it.listing_type_id}&category_id=${it.category_id}`, tk);
+      return (cache[P] = Number((Array.isArray(r) ? r[0] : r)?.sale_fee_amount) || 0);
+    };
+    let comHoy;
+    try { comHoy = await fee(precio); } catch { continue; }
+    const imp = (mlExtraPct(e.cuenta) + monoP) / 100;
+    let mejor = null, mejorEx = 0;
+    for (let i = 1; i <= PASOS; i++) {
+      const P = Math.floor((precio * (1 - (maxBaja * i) / PASOS)) / 10) * 10;
+      if (P >= precio || P <= 0) continue;
+      let ex;
+      // Lo que queda de más por unidad: lo que BAJA el precio es negativo, pero la comisión
+      // que ML deja de cobrar puede ser mayor. Si la resta da positivo, bajar deja más plata.
+      try { ex = (P - precio) - ((await fee(P)) - comHoy) - (P - precio) * imp; }
+      catch { continue; }
+      if (ex > mejorEx) { mejorEx = ex; mejor = P; }
+    }
+    if (mejor == null || mejorEx <= 0) continue;
+    filas.push({
+      mla, cuenta: e.cuenta, nom: ((pIdx[e.prodId] || {}).name || e.title || mla).slice(0, 34),
+      precio, mejor, extraU: mejorEx, u: uMes[mla] || 0,
+      extraMes: Math.round(mejorEx * (uMes[mla] || 0) * (30 / dias)),
+      bajaPct: ((precio - mejor) / precio) * 100,
+    });
+  }
+  filas.sort((a, b) => b.extraMes - a.extraMes);
+  return { filas, mirados, total: filas.reduce((a, x) => a + x.extraMes, 0) };
+}
+
+// ── LO QUE HAY QUE BAJAR O REMATAR PORQUE NO SE MUEVE ─────────────────────────────────
+// Los motivos que él pidió que se miren (13/09/2026): que no venda hace 30 días, que haya
+// stock para más de 2 meses, y que YA esté pagando almacenamiento de Full (o esté por
+// empezar), que es a los ~60 días de haber llegado.
+//
+// Se ordena por PLATA PARADA, no por cantidad de unidades: 2 tablets quietas pesan más que
+// 200 talones.
+//
+// EL FRENO QUE HACE FALTA: la mercadería RECIÉN LLEGADA se ve exactamente igual que la
+// muerta —stock y cero ventas— y el remedio es el contrario: a una hay que darle tiempo.
+// Por eso no entra nada con menos de `graciaDias` desde que llegó, y sólo se opina cuando
+// la fecha de entrada es REAL (`aprox:false`): si es aproximada, esa fecha dice hace cuánto
+// miramos, no hace cuánto hay stock.
+async function calcBajarStock(db, o) {
+  const { dias = 30, graciaDias = 30, almacDias = 60, products = [], tc = 1500 } = o || {};
+  const links = (await db.get('cyc/mllinks')) || {};
+  const inv = (await db.get('cyc/inventory')) || {};
+  const hist = (await db.get('cyc/stockhist')) || {};
+  const vp = (await db.get('cyc/ventaprod')) || {}; setDevLive(vp);
+  const pIdx = {}; for (const p of products) pIdx[p.id] = p;
+  const sidL = (x) => String(x).replace(/[^a-z0-9]/gi, '_');
+  const hoy = Date.now();
+
+  // Ventas por PRODUCTO en la ventana (no por publicación: el producto puede estar en varias).
+  const desde = hoy - dias * 864e5, uProd = {};
+  for (const [k, ents] of Object.entries(vp)) {
+    const ts = Date.parse(k.slice(0, 10).replace(/_/g, '-'));
+    if (!isFinite(ts) || ts < desde) continue;
+    for (const v of Object.values(ents || {})) {
+      if (!v || v.cancelada || !v.prodId) continue;
+      uProd[v.prodId] = (uProd[v.prodId] || 0) + (v.qty || 1);
+    }
+  }
+  // Hace cuánto llegó el stock, por producto×cuenta. Sólo fechas REALES.
+  const edadDe = (pid, cta) => {
+    const h = hist[pid + '__' + sidL(cta)];
+    if (!h || !h.desde || h.aprox !== false) return null;
+    return Math.floor((hoy - h.desde) / 864e5);
+  };
+
+  const porProd = {};
+  for (const [mla, e] of Object.entries(links)) {
+    if (!e || !e.prodId || !e.cuenta || e.ignored) continue;
+    if ((e.status || '') !== 'active' && (e.status || '') !== 'paused') continue;
+    const p = pIdx[e.prodId]; if (!p) continue;
+    const st = parseInt(inv[e.prodId + '__' + sidL(e.cuenta)]) || 0;
+    if (st <= 0) continue;
+    const k = e.prodId + '__' + e.cuenta;
+    if (!porProd[k]) porProd[k] = { prodId: e.prodId, cuenta: e.cuenta, nom: (p.name || '').slice(0, 34), st, mlas: [], pausadas: 0, p };
+    porProd[k].mlas.push(mla);
+    if ((e.status || '') === 'paused') porProd[k].pausadas++;
+  }
+
+  const filas = [];
+  for (const r of Object.values(porProd)) {
+    const vend = uProd[r.prodId] || 0;
+    if (vend > 0) continue;                       // vendió: no es este problema
+    const edad = edadDe(r.prodId, r.cuenta);
+    if (edad == null) continue;                   // sin fecha real no se opina
+    if (edad < graciaDias) continue;              // recién llegado: hay que darle tiempo
+    const costoU = (parseFloat(r.p.costFullUSD) || parseFloat(r.p.costUSD) || 0) * tc;
+    filas.push({
+      ...r, vend, edad,
+      pagando: edad >= almacDias,
+      faltaPagar: Math.max(0, almacDias - edad),
+      capital: Math.round(costoU * r.st),
+    });
+  }
+  filas.sort((a, b) => b.capital - a.capital);
+  return {
+    filas,
+    total: filas.reduce((a, x) => a + x.capital, 0),
+    pagando: filas.filter((x) => x.pagando).length,
+    almacDias, graciaDias, dias,
+  };
+}
+
 // Config en cyc/mlconfig/gruposPrecio = { paulvic: { palabra: 'paulvic' } }
 // La palabra se busca en el título de la publicación y en el nombre del producto,
 // así una publicación nueva entra al grupo sola, sin cargarla a mano.
@@ -1726,6 +2024,15 @@ function netoFallback(itemGross, saleFeeUnit, qty) {
 let TG_TOKEN = process.env.TELEGRAM_BOT_TOKEN || '';
 let TG_CHAT = process.env.TELEGRAM_CHAT_ID || '';
 let TG_CHATS = []; // TODOS los chats a los que mandamos (vos, tu papá, etc.)
+// EL SEGUNDO CANAL: sólo para él, sólo para lo que hay que DECIDIR (13/09/2026).
+// Pedido suyo: *"quiero que me lo mande a otro chat de telegram así quedan dos, uno que mande el
+// resumen del día como siempre, y otro que voy a estar yo solo que me avise de cosas importantes
+// como por ejemplo esas, subir precios, bajar precios"*.
+// Vive en `cyc/mlconfig/tgAlertas` y se configura con el comando `tgalertas`.
+// SE SACA DE LA LISTA DE SUSCRIPTOS, que es todo el punto: si quedara adentro recibiría también
+// el resumen del día y no habría dos canales, habría uno repetido. Y al revés: los avisos NO van
+// a la lista general, porque ahí está el padre y estas son decisiones de precio que son suyas.
+let TG_ALERTAS = '';
 let TG_NAMES = {}; // id -> nombre (para mostrar quién está suscripto)
 async function tgApi(method, body) {
   if (!TG_TOKEN) return null;
@@ -1860,12 +2167,32 @@ async function resolveTgChat(db) {
   if (leyoBien && Object.keys(nuevos).length) {
     try { await db.patch('mlapi/telegram/chats', nuevos); } catch { /* */ }
   }
-  TG_CHATS = Object.keys(chats);
+  // El canal privado de avisos se saca de la lista general (ver arriba por qué).
+  try { TG_ALERTAS = String(((await db.get('cyc/mlconfig')) || {}).tgAlertas || ''); } catch { TG_ALERTAS = ''; }
+  TG_CHATS = Object.keys(chats).filter((id) => !TG_ALERTAS || id !== TG_ALERTAS);
   TG_NAMES = {}; for (const [id, v] of Object.entries(chats)) TG_NAMES[id] = (v && v.name) || '';
   if (!TG_CHAT && TG_CHATS.length) TG_CHAT = TG_CHATS[0];
   // Que el número quede SIEMPRE en el log: así, si un día alguien desaparece, se ve en la corrida
   // del día en vez de descubrirse cuando el que falta avisa que no le llega nada.
   console.log(`Telegram: ${TG_CHATS.length} suscripto(s)${TG_CHATS.length ? ' · ' + TG_CHATS.map((id) => id + (TG_NAMES[id] ? ' (' + TG_NAMES[id] + ')' : '')).join(' · ') : ''}`);
+  console.log(TG_ALERTAS
+    ? `Telegram avisos (sólo Mati): ${TG_ALERTAS}${TG_NAMES[TG_ALERTAS] ? ' (' + TG_NAMES[TG_ALERTAS] + ')' : ''}`
+    : `Telegram avisos: SIN CONFIGURAR — los avisos de subir/bajar precio no se mandan a nadie. Se arregla con el comando tgalertas.`);
+}
+
+// Manda SÓLO al canal privado de avisos. Si no está configurado NO manda nada y lo dice fuerte en
+// el log: mandarlo a la lista general sería peor que no mandarlo — ahí está el padre, y estas son
+// decisiones de precio que son de Mati. El lado seguro acá es no mandar.
+async function sendAlerta(text) {
+  if (!TG_TOKEN || TG_SILENCIO) return false;
+  if (!TG_ALERTAS) {
+    console.log('⚠️ Telegram: hay avisos para mandar pero el canal privado no está configurado (cyc/mlconfig/tgAlertas). Comando: tgalertas');
+    return false;
+  }
+  const r = await tgApi('sendMessage', { chat_id: TG_ALERTAS, text, parse_mode: 'HTML', disable_web_page_preview: true });
+  const ok = !!(r && r.ok);
+  console.log(ok ? '✓ Aviso mandado al canal privado.' : `✗ No pude mandar el aviso: ${r && r.description ? r.description : 'sin respuesta'}`);
+  return ok;
 }
 const money = (n) => '$' + Math.round(n).toLocaleString('es-AR');
 
@@ -2830,6 +3157,159 @@ async function main() {
         const vCut = cut.reduce((s, r) => s + r.ventas, 0);
         console.log(`  piso ${String(floor).padStart(2)}%: cortás ${String(cut.length).padStart(3)} prods · perdés ${money(Math.round(ganCut / spanDays * 30)).padStart(11)}/mes (${ganTot > 0 ? (ganCut / ganTot * 100).toFixed(1) : 0}% de la gan.) · liberás ${money(capCut).padStart(12)} de stock · ${Math.round(vCut / spanDays * 30)} ventas/mes menos de trabajo`);
       }
+      return;
+    }
+    // BILLING_PROBE=avisos[:go] → EL AVISO DIARIO AL CANAL PRIVADO (13/09/2026).
+    //
+    // Pedido suyo: *"se puede automatizar para que me mandes un mensaje por telegram cuando hay
+    // que subir un producto que vende bien porque la competencia está bastante arriba en precio
+    // (…) y también que me mande cuando haya que bajar precio de productos, teniendo en cuenta
+    // todo (que no venda hace 30 días, que tengamos stock para más de 2 meses, que esté pagando
+    // por stock almacenado…)"*.
+    //
+    // Junta TRES cosas y las manda en un mensaje corto:
+    //   · SUBIR    → `calcSubirPuede`: gana la caja de compra y tiene un competidor arriba.
+    //   · BAJAR    → `calcZonaMuerta`: está justo arriba de un escalón de comisión de ML, así que
+    //                bajando apenas queda MÁS plata por unidad (y encima más barato).
+    //   · PARADO   → `calcBajarStock`: con stock, sin vender hace 30 días y pagando almacenamiento.
+    //
+    // LAS TRES CUENTAS VIVEN EN FUNCIONES COMPARTIDAS, no acá adentro. El comando `subirpuede`
+    // usa la MISMA función que este aviso: si cada uno tuviera su copia, el aviso podría decir un
+    // número y el comando otro sobre la misma publicación. Es el problema que ya apareció con el
+    // piso repartido en ocho comandos y con el costo de la caja escrito en dos archivos.
+    //
+    // NO TOCA NINGÚN PRECIO, NI CON `:go`. `:go` sólo quiere decir "mandá el mensaje". Las
+    // decisiones de precio siguen siendo suyas — regla del 13/08/2026.
+    if (/^avisos(:|$)/.test(String(process.env.BILLING_PROBE || ''))) {
+      const MANDAR = /:go$/.test(String(process.env.BILLING_PROBE || ''));
+      const fin = (await db.get('cyc/finanzas')) || {};
+      const tc = parseFloat(fin.tipo_cambio) || 1500;
+      console.log(`=== AVISOS ${MANDAR ? '(SE MANDAN)' : '(PRUEBA: no se manda nada)'} ===\n`);
+
+      const sub = await calcSubirPuede(db, { dias: 30, maxSuba: 0.10, products, labels, accounts });
+      const zm = await calcZonaMuerta(db, { dias: 30, products, labels, accounts });
+      const par = await calcBajarStock(db, { dias: 30, products, tc });
+
+      console.log(`SUBIR:  ${sub.filas.length} · ${money(sub.total)}/mes`);
+      for (const f of sub.filas.slice(0, 8)) {
+        console.log(`   · ${f.nom} (${f.cuenta}) ${money(f.precio)} → ${money(f.tope)}`
+          + `  vendió ${f.u}  = ${money(f.extraMes)}/mes   volver:${f.mla}=${f.tope}:go`);
+      }
+      console.log(`\nBAJAR por escalón de comisión:  ${zm.filas.length} de ${zm.mirados} miradas`
+        + (zm.filas.length ? ` · ${money(zm.total)}/mes` : ''));
+      if (!zm.filas.length) {
+        console.log('   Ninguna. O sea: hoy NO hay ningún producto donde vender más barato deje más plata.');
+        console.log('   Es la respuesta esperada — el escalón sólo paga cuando estás justo arriba de uno.');
+      }
+      for (const f of zm.filas.slice(0, 8)) {
+        console.log(`   · ${f.nom} (${f.cuenta}) ${money(f.precio)} → ${money(f.mejor)} (−${f.bajaPct.toFixed(1)}%)`
+          + `  = ${money(f.extraMes)}/mes MÁS   volver:${f.mla}=${f.mejor}:go`);
+      }
+      console.log(`\nPARADO (con stock, sin vender hace ${par.dias} d):  ${par.filas.length}`
+        + ` · ${money(par.total)} quietos · ${par.pagando} ya pagan almacenamiento`);
+      for (const f of par.filas.slice(0, 10)) {
+        console.log(`   · ${f.nom} (${f.cuenta}) ${f.st} u. · ${money(f.capital)}`
+          + ` · ${f.edad} d en Full · ${f.pagando ? '💸 paga hace ' + (f.edad - par.almacDias) + ' d' : '⏳ paga en ' + f.faltaPagar + ' d'}`
+          + (f.pausadas ? ` · ${f.pausadas} pausada(s)` : ''));
+      }
+
+      // ── EL MENSAJE ────────────────────────────────────────────────────────────────────
+      // Corto a propósito: un aviso largo no se lee, y uno que llega todos los días con lo
+      // mismo entrena a ignorarlo. Va el titular y las 3 primeras de cada cosa; el detalle
+      // se pide desde el chat con el comando que va al final.
+      const L = [];
+      L.push('🔔 <b>CYC · para decidir</b>');
+      if (sub.filas.length) {
+        L.push(`\n📈 <b>Subir</b> · ${sub.filas.length} publicación(es) · +${money(sub.total)}/mes`);
+        for (const f of sub.filas.slice(0, 3)) {
+          L.push(`· ${f.nom} (${f.cuenta})\n   ${money(f.precio)} → ${money(f.tope)} · vendió ${f.u} · +${money(f.extraMes)}/mes`);
+        }
+        if (sub.filas.length > 3) L.push(`   …y ${sub.filas.length - 3} más`);
+      }
+      if (zm.filas.length) {
+        L.push(`\n📉 <b>Bajar y ganar MÁS</b> · ${zm.filas.length} · +${money(zm.total)}/mes`);
+        L.push('<i>Están justo arriba de un escalón de comisión de ML.</i>');
+        for (const f of zm.filas.slice(0, 3)) {
+          L.push(`· ${f.nom} (${f.cuenta})\n   ${money(f.precio)} → ${money(f.mejor)} · +${money(f.extraMes)}/mes`);
+        }
+      }
+      if (par.filas.length) {
+        L.push(`\n🧊 <b>Parado</b> · ${par.filas.length} · ${money(par.total)} quietos · ${par.pagando} pagan almacenamiento`);
+        for (const f of par.filas.slice(0, 3)) {
+          L.push(`· ${f.nom} (${f.cuenta}) · ${f.st} u. · ${money(f.capital)}\n   ${f.edad} d en Full${f.pagando ? ' · 💸 ya paga' : ''}`);
+        }
+        if (par.filas.length > 3) L.push(`   …y ${par.filas.length - 3} más`);
+      }
+      // SI NO HAY NADA NO SE MANDA NADA. Un aviso diario que dice "hoy no hay nada" es ruido, y
+      // el ruido entrena a no abrir el mensaje — que es justo lo que rompe el aviso del día que
+      // sí importa. Es la misma lección del "⚠️ VENDE" que saltaba en casi todos los productos.
+      if (L.length === 1) {
+        console.log('\n── No hay nada para avisar hoy. No se manda mensaje (un aviso vacío entrena a ignorarlos).');
+        return;
+      }
+      L.push('\n<i>Ninguno se aplicó solo: los precios los decidís vos.</i>');
+      const msg = L.join('\n');
+      console.log('\n── MENSAJE ──\n' + msg.replace(/<[^>]+>/g, ''));
+      if (MANDAR) await sendAlerta(msg);
+      else console.log('\n(PRUEBA: no se mandó. Agregá ":go" para que salga por Telegram.)');
+      return;
+    }
+    // BILLING_PROBE=tgalertas[:<chat_id>|:-] → EL SEGUNDO CANAL DE TELEGRAM (13/09/2026).
+    //
+    // Pedido suyo: *"quiero que me lo mande a otro chat de telegram así quedan dos, uno que mande
+    // el resumen del día como siempre, y otro que voy a estar yo solo que me avise de cosas
+    // importantes como por ejemplo esas, subir precios, bajar precios"*.
+    //
+    // Sin número: muestra cómo está y LISTA los chats que el bot conoce, para elegir.
+    // Con número: lo guarda en `cyc/mlconfig/tgAlertas`.
+    // Con `-`: lo saca (y los avisos dejan de mandarse a nadie).
+    //
+    // CÓMO CONSEGUIR EL NÚMERO DE UN CHAT NUEVO: el bot sólo ve los chats donde alguien le
+    // escribió. Para tener uno separado del que recibe el resumen hay que crear un GRUPO de
+    // Telegram, meter al bot adentro, mandarle un mensaje cualquiera, y ahí aparece en esta lista.
+    // Un chat privado con el bot NO sirve como segundo canal: es el mismo donde ya llega el
+    // resumen, y entonces no habría dos canales sino uno repetido.
+    if (/^tgalertas(:|$)/.test(String(process.env.BILLING_PROBE || ''))) {
+      const arg = String(process.env.BILLING_PROBE).split(':').slice(1).join(':').trim();
+      console.log('=== EL CANAL PRIVADO DE AVISOS (subir/bajar precios) ===\n');
+      if (!TG_TOKEN) { console.log('✗ Falta el secret TELEGRAM_BOT_TOKEN.'); return; }
+      const actual = String(((await db.get('cyc/mlconfig')) || {}).tgAlertas || '');
+      console.log(actual ? `Hoy los avisos van a: ${actual}${TG_NAMES[actual] ? ' (' + TG_NAMES[actual] + ')' : ''}`
+        : 'Hoy NO hay canal de avisos: los avisos de subir/bajar precio no se mandan a nadie.');
+      console.log(`El resumen del día sigue yendo a: ${TG_CHATS.length} chat(s)`
+        + (TG_CHATS.length ? ' · ' + TG_CHATS.map((id) => id + (TG_NAMES[id] ? ' (' + TG_NAMES[id] + ')' : '')).join(' · ') : ''));
+
+      if (!arg) {
+        const guardados = (await db.get('mlapi/telegram/chats')) || {};
+        console.log('\n── Chats que el bot conoce ──');
+        for (const [id, v] of Object.entries(guardados)) {
+          const quien = (v && v.name) || '(sin nombre)';
+          const rol = id === actual ? '  ← AVISOS' : '  (resumen del día)';
+          console.log(`   ${id}   ${quien}${rol}`);
+        }
+        console.log('\nPara elegir uno:  tgalertas:<número>');
+        console.log('Para sacarlo:     tgalertas:-');
+        console.log('\nSI EL QUE QUERÉS NO ESTÁ EN LA LISTA: creá un GRUPO de Telegram, metelo al bot');
+        console.log('adentro, mandale cualquier mensaje al grupo, y volvé a correr este comando.');
+        console.log('Un chat privado con el bot NO sirve: es el mismo donde ya te llega el resumen.');
+        return;
+      }
+      if (arg === '-') {
+        await db.patch('cyc/mlconfig', { tgAlertas: null });
+        console.log('\n✓ Canal de avisos SACADO. Ojo: los avisos de subir/bajar precio dejan de mandarse.');
+        return;
+      }
+      if (!/^-?\d+$/.test(arg)) { console.log(`\n✗ "${arg}" no parece un número de chat.`); return; }
+      // Se PRUEBA antes de guardar: si el bot no puede escribir ahí, guardarlo dejaría un canal
+      // que no manda nada y nadie se enteraría hasta que faltara un aviso.
+      const r = await tgApi('sendMessage', {
+        chat_id: arg, parse_mode: 'HTML',
+        text: '🔔 <b>Canal de avisos de CYC</b>\nAcá te van a llegar los avisos de subir y bajar precios.\nEl resumen del día sigue yendo al chat de siempre.',
+      });
+      if (!(r && r.ok)) { console.log(`\n✗ No pude escribir en ese chat: ${r && r.description ? r.description : 'sin respuesta'}. NO lo guardo.`); return; }
+      await db.patch('cyc/mlconfig', { tgAlertas: arg });
+      console.log(`\n✓ Listo: los avisos van a ${arg}. Te mandé un mensaje de prueba ahí.`);
+      console.log('   Ese chat queda FUERA del resumen del día, así no se mezclan.');
       return;
     }
     // BILLING_PROBE=tgchats → QUIÉN RECIBE LOS AVISOS DE TELEGRAM. Sólo lee, no manda nada.
