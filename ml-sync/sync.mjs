@@ -1006,7 +1006,10 @@ async function calcZonaMuerta(db, o) {
     // con el precio, así que sólo puede convenir un precio pegado abajo de un escalón. Primero
     // se miran 4 precios gruesos; si ninguno gana, no hay escalón en la ventana y se corta ahí
     // (4 consultas en vez de 12). Si alguno gana, se afina alrededor de ése.
-    const GRUESO = 4;
+    // 6 y no 4: con la caché compartida las consultas de más cuestan poco, y con 4 puntos la
+    // ventana del 12% deja huecos de 3 puntos donde un escalón puede esconderse entero. En la
+    // prueba del 13/09 la Piedra Pómez se coló por ahí: aparecía con 12 puntos y desaparecía con 4.
+    const GRUESO = 6;
     let mejor = null, mejorEx = 0, iGana = -1;
     for (let i = 1; i <= GRUESO; i++) {
       const P = Math.floor((precio * (1 - (maxBaja * i) / GRUESO)) / 10) * 10;
@@ -3272,6 +3275,33 @@ async function main() {
         if (tipo !== 'subir' && String(a.valor) !== String(valor)) return false;
         return (hoyTs - (a.ts || 0)) < dias * 864e5;
       };
+      // ── UNA PUBLICACIÓN NO PUEDE ESTAR EN LAS DOS LISTAS ──────────────────────────────
+      // En la prueba del 13/09 la Piedra Pómez salía a la vez en "subir a $18.160" y en "bajar a
+      // $14.850". Las dos cuentas pueden dar positivo a la vez y no se contradicen entre sí —una
+      // mira el competidor de arriba, la otra el escalón de comisión de abajo— pero juntas en el
+      // mismo mensaje son una instrucción imposible, y un aviso que se contradice es peor que
+      // ninguno: te hace desconfiar de los otros veinte renglones.
+      // Gana el que deja MÁS plata. El otro se saca y se dice en el log, no se esconde.
+      const enConflicto = [];
+      const mapZm = new Map(zm.filas.map((f) => [f.mla, f]));
+      sub.filas = sub.filas.filter((f) => {
+        const z = mapZm.get(f.mla);
+        if (!z) return true;
+        if (f.extraMes >= z.extraMes) { enConflicto.push(`${f.nom}: gana SUBIR (${money(f.extraMes)} vs ${money(z.extraMes)})`); return true; }
+        return (enConflicto.push(`${f.nom}: gana BAJAR (${money(z.extraMes)} vs ${money(f.extraMes)})`), false);
+      });
+      const mapSub = new Map(sub.filas.map((f) => [f.mla, f]));
+      zm.filas = zm.filas.filter((f) => !mapSub.has(f.mla));
+      if (enConflicto.length) {
+        console.log(`\n⚠️ ${enConflicto.length} publicación(es) daban subir Y bajar a la vez. Se deja la que más deja:`);
+        for (const t of enConflicto) console.log('   · ' + t);
+      }
+      // Los totales se recalculan DESPUÉS de sacar las que estaban en las dos listas. Si no, el
+      // título diría una plata que incluye un renglón que ya no está abajo — dos números correctos
+      // que juntos mienten, que es el error de las tres cajas de la ficha del 03/09.
+      sub.total = sub.filas.reduce((a, x) => a + x.extraMes, 0);
+      zm.total = zm.filas.reduce((a, x) => a + x.extraMes, 0);
+
       const paraAnotar = {};
       const nuevasSub = sub.filas.filter((f) => !yaAvisado(f.mla, 'subir', f.tope));
       const nuevasZm = zm.filas.filter((f) => !yaAvisado(f.mla, 'bajar', f.mejor));

@@ -696,6 +696,93 @@ $15.790"* y te hace ganar menos es peor que no tener el renglón: el comando inv
 la misma regla que el margen en verde sin envío descontado — **una conclusión sobre un número que
 sabemos que está mal no se muestra como si fuera una recomendación.**
 
+## EL SEGUNDO CANAL DE TELEGRAM: LO QUE HAY QUE DECIDIR (13/09/2026)
+
+Pedido suyo: *"quiero que me lo mande a otro chat de telegram así quedan dos, uno que mande el
+resumen del día como siempre, y otro que voy a estar yo solo que me avise de cosas importantes
+como por ejemplo esas, subir precios, bajar precios, o cosas importantes que pasen en las páginas
+de ml"*. Y el freno, el mismo día: **"no quiero que toques el telegram actual"**.
+
+**NO SE TOCÓ NADA DEL CANAL DE HOY.** El resumen del día sigue saliendo igual, a los mismos dos
+chats (Mati y Tito). `sendTelegram` y `TG_PERMITIDO` quedaron como estaban.
+
+El canal nuevo vive en **`cyc/mlconfig/tgAlertas`** y se configura con **`tgalertas[:<chat_id>]`**.
+Sin número muestra los chats que el bot conoce, para elegir; `tgalertas:-` lo saca.
+
+**Ese chat queda FUERA de la lista del resumen**, que es todo el punto: si quedara adentro no habría
+dos canales, habría uno repetido. Y al revés, los avisos **no** van a la lista general: ahí está el
+padre, y estas son decisiones de precio que son de Mati.
+
+**Si no está configurado NO se manda nada** y se dice en el log. Mandarlo a la lista general sería
+peor que no mandarlo — el lado seguro acá es no mandar.
+
+**CÓMO CONSEGUIR EL NÚMERO:** el bot sólo ve los chats donde alguien le escribió. Hay que crear un
+**GRUPO** de Telegram, meter al bot adentro, mandarle un mensaje, y ahí aparece en `tgalertas`. Un
+chat privado con el bot NO sirve: es el mismo donde ya llega el resumen.
+
+## EL AVISO DIARIO: QUÉ SUBIR, QUÉ BAJAR Y QUÉ ESTÁ PARADO (13/09/2026)
+
+El comando es **`avisos[:go]`** y corre solo al final de `ml-daily`, **después** de recalcular
+Margen ML — si corriera antes decidiría sobre netos del precio viejo. **No toca ningún precio, ni
+con `:go`**: `:go` sólo quiere decir "mandá el mensaje".
+
+Junta tres cosas, y **las tres cuentas viven en funciones compartidas** (`calcSubirPuede`,
+`calcZonaMuerta`, `calcBajarStock`), no adentro del comando: `subirpuede` usa la MISMA función que
+el aviso, así no pueden decir números distintos sobre la misma publicación. Es el mismo motivo por
+el que el piso salió de los ocho comandos y el costo de la caja salió de los dos archivos.
+
+**LOS CUATRO FRENOS QUE HICIERON FALTA, y ninguno era opcional:**
+
+1. **Lo marcado `liquidando` NO se recomienda subir.** Él lo bajó a propósito para rematarlo;
+   decirle "subí esto" es proponerle deshacer su propia decisión — el mismo problema que el freno
+   de `raisePrice` vino a resolver el 12/09. Si la lista no se puede leer no se recomienda nada.
+2. **Después de subir, NO se vuelve a pedir subir por 14 días** (`SUBIR_ESPERA_DIAS`). La prueba
+   lo mostró: en la misma corrida en que se aplicó el Infusor a $5.290, el comando ya pedía $5.740
+   —porque el escalón del 10% lo dejó corto del techo—. Avisar eso al día siguiente es una escalera
+   sin descanso: en una semana acumula +70% sobre algo que capaz dejó de venderse en el primer
+   escalón. **La gracia del escalón chico es poder MIRAR entre uno y otro; sin la espera no se
+   mira.** La espera es por PUBLICACIÓN y no por número, a propósito.
+3. **No repite lo mismo todos los días** (`cyc/avisados/<MLA>`, 7 días). Un aviso que llega todos
+   los días con los mismos seis renglones entrena a no abrirlo, y el día que hay algo nuevo tampoco
+   se lee. Se anotan **todas** las avisadas, no sólo las 3 que se muestran: el mensaje dice "y 19
+   más" y esas 19 ya fueron avisadas. Y se anota **sólo si el mensaje salió**: si falló el envío y
+   se anotara igual, esa publicación quedaría callada una semana por un aviso que nunca llegó.
+4. **Si no hay nada NUEVO no se manda mensaje.** Un aviso que dice "hoy no hay nada" es ruido.
+
+**EL CERO QUE ERA UN FILTRO MAL PUESTO.** La primera corrida dio **"PARADO: 0"** habiendo 29
+publicaciones que sí lo están. Contaba las ventas del PRODUCTO en las cuatro cuentas juntas, así que
+algo que vende bien en Matías y está quieto en Adriana daba "vendió" y se descartaba entero — justo
+el caso que hay que ver, porque **la que paga almacenamiento es la mercadería parada EN ESA
+CUENTA**. Es la misma confusión ya anotada en `repartir`: *la cuenta correcta para saber CUÁNTO
+reponer no es la correcta para saber DÓNDE está el problema.* Ahora cuenta por producto **y**
+cuenta, y **imprime por qué se descartó cada uno** (vendió / sin fecha real de entrada / recién
+llegado) — un cero sin explicación parece una buena noticia, que es como ya mordió `liquidar`
+(0 de 137) y el marcado de cajas.
+
+**Y LA VELOCIDAD, que también era un error de diseño:** la primera corrida tardó más de 9 minutos
+por ~1.300 consultas. La caché de comisiones era **por publicación** cuando la comisión depende de
+(sitio, tipo, categoría, precio) y **no** de cuál publicación sea: los 18 Paulvic, misma categoría y
+mismo precio, preguntaban 18 veces lo mismo. Ahora la caché es de toda la corrida, y se miran 4
+precios gruesos primero: si ninguno gana, no hay escalón en la ventana y se corta ahí.
+
+## ¿CONVIENE BAJAR UN PRECIO PARA GANAR MÁS? SÍ, PERO SON 2 DE 105 (13/09/2026)
+
+Pregunta suya, y la desconfianza era correcta: *"me parece muy raro que vendiendo más barato ganemos
+más"*. Es raro. Medido publicación por publicación con `avisos`, aparecen **dos de 105**:
+
+| | hoy | a | deja |
+|---|---|---|---|
+| **Pendrive Cruzer Blade 64gb** (Matías) | $24.110 | $23.860 (−1%) | **+$7.030/mes** |
+| Piedra Pómez X6 (Ayelen) | $16.510 | $14.850 (−10,1%) | +$667/mes |
+
+**El único caso donde bajar deja más es estar pegado ARRIBA de un escalón de comisión.** El Pendrive
+está $250 arriba de uno: bajando esos $250, el cargo que ML deja de cobrar es mucho más grande que
+lo que bajó el precio. Cobrás menos y te queda más — y encima quedás más barato, así que no podés
+vender menos.
+
+**Fuera de ese caso bajar siempre deja menos.** Por eso son 2 de 105 y no 50: si el comando
+empezara a devolver decenas, lo primero que hay que sospechar es la cuenta, no el negocio.
+
 ## ¿SE PUEDE AUTOMATIZAR LA SUBA DE PRECIOS? MEDIDO EL 12/09/2026
 
 Pregunta suya: *"se puede automatizar que se aumente sola una publicación que se esté vendiendo
