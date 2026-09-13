@@ -1129,6 +1129,112 @@ async function calcBajarStock(db, o) {
   };
 }
 
+// ── LAS OTRAS COSAS IMPORTANTES QUE PASAN EN ML (13/09/2026) ──────────────────────────
+// Pedido suyo: *"también quiero que me mande más cosas que vos consideres importantes. no sé
+// cuáles, pero si se te ocurre algo, agregalo al robot"*.
+//
+// El criterio para elegir cuáles: que sea algo que **cuesta plata HOY**, que el robot pueda ver
+// solo y con certeza, y que **se arregle distinto** de lo que ya se avisa. Un aviso que se
+// superpone con otro es ruido, y el ruido entrena a no abrir el mensaje.
+//
+// Quedaron cuatro, y las cuatro salen de errores que ya pasaron y están anotados acá:
+//
+//  1. SE QUEDÓ SIN STOCK ALGO QUE VENDÍA. Es LO MÁS CARO que le pasa a este negocio y ya está
+//     medido: *"~100 publicaciones sin stock que dejan de vender ~$500.000 por día"*. Y no se
+//     ve solo — una publicación sin stock no molesta, simplemente deja de aparecer.
+//  2. PERDIMOS LA CAJA DE COMPRA de algo que vendía. Es el caso que se confunde con "el precio
+//     está mal" y se arregla al revés: en catálogo ML muestra UN solo botón de comprar, y si se
+//     lo lleva otro podés tener stock, buen margen y cero ventas para siempre.
+//  3. PAUSADA CON STOCK ADENTRO DE FULL. No vende, paga almacenamiento todos los meses y el
+//     reloj del descarte corre igual. Ya está anotado como el peor de los casos de `paused`.
+//  4. PREGUNTAS SIN RESPONDER. Una pregunta sin contestar es una venta que se va.
+//
+// **DE LAS PREGUNTAS SÓLO SE CUENTA, NUNCA SE IMPRIME EL TEXTO.** El repo y los registros de
+// GitHub son PÚBLICOS: lo que un comando imprime queda en una página que puede leer cualquiera.
+// Es la misma razón por la que `chequeo/ultimo.txt` no lleva números de orden, y por la que
+// `posventa` no se corre salvo que él lo pida.
+async function calcImportantes(db, o) {
+  const { dias = 30, products = [], labels = [], accounts = {}, tc = 1500 } = o || {};
+  const links = (await db.get('cyc/mllinks')) || {};
+  const inv = (await db.get('cyc/inventory')) || {};
+  const vp = (await db.get('cyc/ventaprod')) || {}; setDevLive(vp);
+  const pIdx = {}; for (const p of products) pIdx[p.id] = p;
+  const sidL = (x) => String(x).replace(/[^a-z0-9]/gi, '_');
+  const desde = Date.now() - dias * 864e5;
+
+  // Vendidas por publicación y por producto×cuenta, en la ventana.
+  const uMla = {}, uProdCta = {}, precioProm = {};
+  for (const [k, ents] of Object.entries(vp)) {
+    const ts = Date.parse(k.slice(0, 10).replace(/_/g, '-'));
+    if (!isFinite(ts) || ts < desde) continue;
+    for (const v of Object.values(ents || {})) {
+      if (!v || v.cancelada) continue;
+      const q = v.qty || 1;
+      if (v.mla) {
+        uMla[v.mla] = (uMla[v.mla] || 0) + q;
+        const t = Number(v.total) || 0;
+        if (t > 0) { const a = precioProm[v.mla] || (precioProm[v.mla] = { s: 0, n: 0 }); a.s += t; a.n += q; }
+      }
+      if (v.prodId) uProdCta[v.prodId + '__' + (v.cuenta || '?')] = (uProdCta[v.prodId + '__' + (v.cuenta || '?')] || 0) + q;
+    }
+  }
+  const precioDe = (mla) => { const a = precioProm[mla]; return a && a.n ? a.s / a.n : 0; };
+
+  const quiebres = [], perdioCaja = [], pausadasConStock = [];
+  for (const [mla, e] of Object.entries(links)) {
+    if (!e || !e.prodId || !e.cuenta || e.ignored) continue;
+    const p = pIdx[e.prodId]; if (!p) continue;
+    const st = parseInt(inv[e.prodId + '__' + sidL(e.cuenta)]) || 0;
+    const vendio = uProdCta[e.prodId + '__' + e.cuenta] || 0;
+    const estado = e.status || '';
+    const nom = (p.name || e.title || mla).slice(0, 34);
+
+    // 1. QUIEBRE: vendía y hoy está en CERO en Full.
+    //    Se mide por producto×cuenta y no por publicación, porque el stock de Full es del
+    //    producto en esa cuenta — dos publicaciones del mismo producto comparten las unidades.
+    if (estado === 'active' && st === 0 && vendio > 0) {
+      const pr = precioDe(mla);
+      if (!quiebres.some((x) => x.prodId === e.prodId && x.cuenta === e.cuenta)) {
+        quiebres.push({ mla, prodId: e.prodId, cuenta: e.cuenta, nom, vendio,
+          porDia: Math.round((pr * vendio) / dias) });
+      }
+    }
+    // 2. PERDIÓ LA CAJA: vendía y hoy la tiene otro. `caja` la escribe el robot cada hora.
+    if (estado === 'active' && vendio > 0 && e.caja === 'losing') {
+      perdioCaja.push({ mla, cuenta: e.cuenta, nom, vendio, porDia: Math.round((precioDe(mla) * vendio) / dias) });
+    }
+    // 3. PAUSADA CON MERCADERÍA ADENTRO: no vende y paga almacenamiento igual.
+    if (estado === 'paused' && st > 0) {
+      const costoU = (parseFloat(p.costFullUSD) || parseFloat(p.costUSD) || 0) * tc;
+      pausadasConStock.push({ mla, cuenta: e.cuenta, nom, st, capital: Math.round(costoU * st) });
+    }
+  }
+  quiebres.sort((a, b) => b.porDia - a.porDia);
+  perdioCaja.sort((a, b) => b.porDia - a.porDia);
+  pausadasConStock.sort((a, b) => b.capital - a.capital);
+
+  // 4. PREGUNTAS SIN RESPONDER — SÓLO EL NÚMERO. Ver arriba por qué no va el texto.
+  const preguntas = [];
+  for (const l of labels) {
+    const acc = accounts[l]; if (!acc?.refresh_token || !acc.seller_id) continue;
+    try {
+      const t = await mlRefresh(ML_CLIENT_ID, ML_CLIENT_SECRET, acc.refresh_token);
+      await db.patch('mlapi/tokens/' + l, { refresh_token: t.refresh_token, updated_ts: Date.now() });
+      const r = await mlGet(`/questions/search?seller_id=${acc.seller_id}&status=UNANSWERED&limit=1`, t.access_token);
+      const n = Number(r?.total) || 0;
+      if (n > 0) preguntas.push({ cuenta: l, n });
+    } catch { /* si una cuenta no contesta, se sigue: mejor avisar de tres que de ninguna */ }
+  }
+  preguntas.sort((a, b) => b.n - a.n);
+
+  return {
+    quiebres, perdioCaja, pausadasConStock, preguntas, dias,
+    plataQuiebre: quiebres.reduce((a, x) => a + x.porDia, 0),
+    plataCaja: perdioCaja.reduce((a, x) => a + x.porDia, 0),
+    capitalPausado: pausadasConStock.reduce((a, x) => a + x.capital, 0),
+  };
+}
+
 // Config en cyc/mlconfig/gruposPrecio = { paulvic: { palabra: 'paulvic' } }
 // La palabra se busca en el título de la publicación y en el nombre del producto,
 // así una publicación nueva entra al grupo sola, sin cargarla a mano.
@@ -3209,6 +3315,93 @@ async function main() {
       }
       return;
     }
+    // BILLING_PROBE=verescalon:<MLA|palabra>[:marcar] → ¿ML COBRÓ MENOS DE VERDAD? (13/09/2026)
+    //
+    // Pedido suyo al bajar el Pendrive 64gb de $24.110 a $23.980: *"bajar pendrive 64gb (y quedar
+    // viendo si cuando vende realmente tiene menos comisión)"*. Tiene toda la razón en querer
+    // comprobarlo: el escalón salió de preguntarle a ML cuánto cobraría, no de una venta real, y
+    // **lo que ML dice que va a cobrar y lo que después descuenta no siempre es lo mismo** — es
+    // exactamente lo que pasó con la Plantilla Metatarso el 14/08.
+    //
+    // NO NECESITA QUE NADIE ANOTE NADA ANTES. Agrupa las ventas de esa publicación por el precio
+    // que pagó el comprador y, para cada precio, muestra lo que ML se quedó (total − neto). Si la
+    // teoría del escalón es cierta, el precio MÁS BAJO tiene que mostrar a ML quedándose con MENOS
+    // PLATA, no sólo con menos porcentaje. Sirve para cualquier publicación, no sólo ésta.
+    //
+    // Con `:marcar` además lo anota en `cyc/escalon/<MLA>`, y el aviso diario lo controla solo en
+    // cuanto aparezca la primera venta al precio nuevo.
+    if (/^verescalon(:|$)/.test(String(process.env.BILLING_PROBE || ''))) {
+      const partes = String(process.env.BILLING_PROBE).split(':');
+      const MARCAR = partes[partes.length - 1] === 'marcar';
+      const busca = (MARCAR ? partes.slice(1, -1) : partes.slice(1)).join(':').trim().toLowerCase();
+      if (!busca) { console.log('Usá: verescalon:<MLA o palabra>[:marcar]'); return; }
+      const links = (await db.get('cyc/mllinks')) || {};
+      const vp = (await db.get('cyc/ventaprod')) || {}; setDevLive(vp);
+      const pIdx = {}; for (const p of products) pIdx[p.id] = p;
+      const objetivo = Object.entries(links).filter(([mla, e]) => {
+        if (!e || e.ignored) return false;
+        if (mla.toLowerCase() === busca) return true;
+        const nom = ((pIdx[e.prodId] || {}).name || '') + ' ' + (e.title || '');
+        return nom.toLowerCase().includes(busca);
+      });
+      if (!objetivo.length) { console.log(`No encontré ninguna publicación con "${busca}".`); return; }
+      console.log(`=== ¿ML COBRÓ MENOS AL BAJAR EL PRECIO? · ${objetivo.length} publicación(es) ===\n`);
+      const marcas = {};
+      for (const [mla, e] of objetivo) {
+        const nom = ((pIdx[e.prodId] || {}).name || e.title || mla).slice(0, 40);
+        // Se agrupa por el precio que pagó el comprador, redondeado a la decena.
+        const porPrecio = {};
+        for (const [k, ents] of Object.entries(vp)) {
+          const ts = Date.parse(k.slice(0, 10).replace(/_/g, '-'));
+          for (const v of Object.values(ents || {})) {
+            if (!v || v.cancelada || v.mla !== mla) continue;
+            const tot = Number(v.total) || 0, net = Number(v.neto) || 0;
+            if (!(tot > 0) || !(net > 0)) continue;
+            const q = v.qty || 1;
+            const P = Math.round(tot / q / 10) * 10;
+            const a = porPrecio[P] || (porPrecio[P] = { u: 0, tot: 0, net: 0, ultima: 0 });
+            a.u += q; a.tot += tot; a.net += net;
+            if (isFinite(ts) && ts > a.ultima) a.ultima = ts;
+          }
+        }
+        const niveles = Object.entries(porPrecio).map(([P, a]) => ({
+          precio: Number(P), u: a.u,
+          quedaML: (a.tot - a.net) / a.u,           // lo que ML se quedó POR UNIDAD
+          pct: ((a.tot - a.net) / a.tot) * 100,
+          ultima: a.ultima,
+        })).sort((a, b) => b.precio - a.precio);
+
+        console.log(`── ${nom}  (${e.cuenta} · ${mla})`);
+        if (!niveles.length) { console.log('     todavía no vendió ninguna vez: no hay con qué comparar.\n'); }
+        else {
+          for (const n of niveles) {
+            console.log(`     ${money(n.precio).padStart(10)} · ${String(n.u).padStart(3)} u. · ML se queda ${money(n.quedaML)}`
+              + ` (${n.pct.toFixed(1)}%) · última ${n.ultima ? new Date(n.ultima).toISOString().slice(0, 10) : '—'}`);
+          }
+          // La comprobación: entre el precio más alto y el más bajo con ventas, ¿ML se quedó con
+          // MENOS PLATA abajo? Si sí, el escalón existe y se está cobrando de verdad.
+          if (niveles.length >= 2) {
+            const alto = niveles[0], bajo = niveles[niveles.length - 1];
+            const dif = alto.quedaML - bajo.quedaML;
+            const bajoPrecio = alto.precio - bajo.precio;
+            console.log(dif > 0
+              ? `     ✅ COMPROBADO: bajando ${money(bajoPrecio)} el precio, ML se queda ${money(dif)} MENOS por unidad.`
+                + (dif > bajoPrecio ? `  Te queda ${money(dif - bajoPrecio)} MÁS en el bolsillo.` : `  Aun así te queda ${money(bajoPrecio - dif)} menos: el escalón no alcanzó.`)
+              : `     ⚠️ NO se comprobó: al precio más bajo ML se queda ${money(-dif)} MÁS por unidad.`);
+          } else {
+            console.log(`     Sólo hay ventas a UN precio: falta que venda al precio nuevo para poder comparar.`);
+          }
+        }
+        console.log('');
+        if (MARCAR) marcas[mla] = { nom, cuenta: e.cuenta, desde: Date.now(), niveles: niveles.length };
+      }
+      if (MARCAR && Object.keys(marcas).length) {
+        await db.patch('cyc/escalon', marcas);
+        console.log(`✓ Marcada(s) ${Object.keys(marcas).length}: el aviso diario las controla solo en cuanto vendan al precio nuevo.`);
+      }
+      return;
+    }
+
     // BILLING_PROBE=avisos[:go] → EL AVISO DIARIO AL CANAL PRIVADO (13/09/2026).
     //
     // Pedido suyo: *"se puede automatizar para que me mandes un mensaje por telegram cuando hay
@@ -3239,6 +3432,12 @@ async function main() {
       const sub = await calcSubirPuede(db, { dias: 30, maxSuba: 0.10, products, labels, accounts });
       const zm = await calcZonaMuerta(db, { dias: 30, products, labels, accounts });
       const par = await calcBajarStock(db, { dias: 30, products, tc });
+      const imp = await calcImportantes(db, { dias: 30, products, labels, accounts, tc });
+      // Las ventas crudas, para la comprobación del escalón de más abajo. Va acá y no adentro del
+      // bloque: si se usara sin declararla, JavaScript la busca afuera, no la encuentra y CORTA LA
+      // CORRIDA ENTERA — y `node --check` compila igual. Es el mismo error que el `invUpd` del
+      // 12/09 y el `tokensRun` del 13/09, las dos veces en este mismo archivo.
+      const vpAv = (await db.get('cyc/ventaprod')) || {};
 
       // ── NO REPETIR TODOS LOS DÍAS LO MISMO ────────────────────────────────────────────
       // Un aviso que llega todos los días con los mismos seis renglones entrena a no abrirlo,
@@ -3335,12 +3534,97 @@ async function main() {
           + (f.pausadas ? ` · ${f.pausadas} pausada(s)` : ''));
       }
 
+      console.log(`\n── LO OTRO QUE IMPORTA ──`);
+      console.log(`   Sin stock y vendían: ${imp.quiebres.length} · ${money(imp.plataQuiebre)}/día que se deja de vender`);
+      for (const f of imp.quiebres.slice(0, 8)) console.log(`      · ${f.nom} (${f.cuenta}) vendió ${f.vendio} en ${imp.dias} d = ${money(f.porDia)}/día`);
+      console.log(`   Perdieron la caja de compra: ${imp.perdioCaja.length} · ${money(imp.plataCaja)}/día en juego`);
+      for (const f of imp.perdioCaja.slice(0, 8)) console.log(`      · ${f.nom} (${f.cuenta}) vendió ${f.vendio} · ${money(f.porDia)}/día`);
+      console.log(`   Pausadas CON stock en Full: ${imp.pausadasConStock.length} · ${money(imp.capitalPausado)} adentro`);
+      for (const f of imp.pausadasConStock.slice(0, 8)) console.log(`      · ${f.nom} (${f.cuenta}) ${f.st} u. · ${money(f.capital)}`);
+      console.log(`   Preguntas sin responder: ${imp.preguntas.reduce((a, x) => a + x.n, 0)}`
+        + (imp.preguntas.length ? ' · ' + imp.preguntas.map((x) => `${x.cuenta} ${x.n}`).join(' · ') : '')
+        + '   (el texto NO se imprime: este registro es público)');
+
       // ── EL MENSAJE ────────────────────────────────────────────────────────────────────
       // Corto a propósito: un aviso largo no se lee, y uno que llega todos los días con lo
       // mismo entrena a ignorarlo. Va el titular y las 3 primeras de cada cosa; el detalle
       // se pide desde el chat con el comando que va al final.
       const L = [];
       L.push('🔔 <b>CYC · para decidir</b>');
+      // LO QUE CUESTA PLATA HOY VA PRIMERO. Quedarse sin stock de algo que vende es lo más caro
+      // que pasa acá (~$500.000/día medidos), y subir un precio $400 no se le compara. Es la
+      // misma regla que se aplicó en Finanzas: primero la conclusión, después el detalle.
+      // Los tres primeros también pasan por la memoria de avisados, con su propia clave para no
+      // pisar la de subir/bajar (que va por MLA). El caso que persiste vuelve a los 7 días: eso
+      // es un recordatorio semanal, no un mensaje diario que se aprende a ignorar.
+      const nQuiebres = imp.quiebres.filter((f) => !yaAvisado('q_' + f.prodId + '__' + f.cuenta, 'quiebre', f.vendio));
+      const nCaja = imp.perdioCaja.filter((f) => !yaAvisado('c_' + f.mla, 'caja', f.vendio));
+      const nPausadas = imp.pausadasConStock.filter((f) => !yaAvisado('p_' + f.mla, 'pausada', f.st));
+      if (nQuiebres.length) {
+        L.push(`\n🚨 <b>Sin stock y vendían</b> · ${nQuiebres.length} · ${money(nQuiebres.reduce((a, x) => a + x.porDia, 0))}/día que NO se vende`);
+        for (const f of nQuiebres.slice(0, 4)) L.push(`· ${f.nom} (${f.cuenta}) — vendió ${f.vendio} en ${imp.dias} d`);
+        if (nQuiebres.length > 4) L.push(`   …y ${nQuiebres.length - 4} más`);
+        for (const f of nQuiebres) paraAnotar['q_' + f.prodId + '__' + f.cuenta] = { tipo: 'quiebre', valor: f.vendio, ts: hoyTs };
+      }
+      if (nCaja.length) {
+        L.push(`\n🥊 <b>Perdieron la caja de compra</b> · ${nCaja.length} · ${money(nCaja.reduce((a, x) => a + x.porDia, 0))}/día en juego`);
+        L.push('<i>Tienen stock y margen, pero el botón de comprar se lo lleva otro. Bajar el precio no siempre alcanza.</i>');
+        for (const f of nCaja.slice(0, 3)) L.push(`· ${f.nom} (${f.cuenta}) — vendía ${f.vendio}`);
+        if (nCaja.length > 3) L.push(`   …y ${nCaja.length - 3} más`);
+        for (const f of nCaja) paraAnotar['c_' + f.mla] = { tipo: 'caja', valor: f.vendio, ts: hoyTs };
+      }
+      if (nPausadas.length) {
+        L.push(`\n⏸ <b>Pausadas CON mercadería en Full</b> · ${nPausadas.length} · ${money(nPausadas.reduce((a, x) => a + x.capital, 0))}`);
+        L.push('<i>No venden y pagan almacenamiento igual: o se reactivan o se retira el stock.</i>');
+        for (const f of nPausadas.slice(0, 3)) L.push(`· ${f.nom} (${f.cuenta}) ${f.st} u.`);
+        if (nPausadas.length > 3) L.push(`   …y ${nPausadas.length - 3} más`);
+        for (const f of nPausadas) paraAnotar['p_' + f.mla] = { tipo: 'pausada', valor: f.st, ts: hoyTs };
+      }
+      // ── ¿SE COMPROBÓ EL ESCALÓN? ──────────────────────────────────────────────────────
+      // Lo que él pidió al bajar el Pendrive 64gb: *"quedar viendo si cuando vende realmente
+      // tiene menos comisión"*. Las publicaciones marcadas con `verescalon:<MLA>:marcar` se
+      // controlan acá: en cuanto aparece la primera venta al precio nuevo se compara contra las
+      // ventas al precio viejo y se avisa UNA vez, diga lo que diga.
+      // **Se avisa igual si NO se comprobó**, y eso es el punto: el escalón salió de preguntarle
+      // a ML cuánto iba a cobrar, no de una venta real, y lo que ML dice y lo que descuenta no
+      // siempre coinciden — es lo que pasó con la Plantilla Metatarso el 14/08. Un aviso que
+      // sólo sale cuando confirma no es una comprobación, es una felicitación.
+      try {
+        const marcadas = (await db.get('cyc/escalon')) || {};
+        for (const [mla, m] of Object.entries(marcadas)) {
+          if (!m || m.avisado) continue;
+          const porP = {};
+          for (const ents of Object.values(vpAv)) {
+            for (const v of Object.values(ents || {})) {
+              if (!v || v.cancelada || v.mla !== mla) continue;
+              const tot = Number(v.total) || 0, net = Number(v.neto) || 0, q = v.qty || 1;
+              if (!(tot > 0) || !(net > 0)) continue;
+              const P = Math.round(tot / q / 10) * 10;
+              const a = porP[P] || (porP[P] = { u: 0, tot: 0, net: 0 });
+              a.u += q; a.tot += tot; a.net += net;
+            }
+          }
+          const niv = Object.entries(porP).map(([P, a]) => ({ precio: Number(P), u: a.u, quedaML: (a.tot - a.net) / a.u }))
+            .sort((a, b) => b.precio - a.precio);
+          if (niv.length < 2) continue;              // todavía no vendió al precio nuevo
+          const alto = niv[0], bajo = niv[niv.length - 1];
+          const dif = alto.quedaML - bajo.quedaML, bajoP = alto.precio - bajo.precio;
+          L.push(`\n🔬 <b>Se comprobó el escalón</b>`);
+          L.push(dif > 0
+            ? `· ${m.nom} (${m.cuenta}): bajando ${money(bajoP)}, ML se queda ${money(dif)} MENOS por unidad.`
+              + (dif > bajoP ? ` Te queda ${money(dif - bajoP)} MÁS.` : ` Aun así te queda ${money(bajoP - dif)} menos.`)
+            : `· ${m.nom} (${m.cuenta}): ⚠️ NO se cumplió — al precio bajo ML se queda ${money(-dif)} MÁS por unidad.`);
+          paraAnotar['e_' + mla] = { tipo: 'escalon', valor: niv.length, ts: hoyTs };
+          if (MANDAR) { try { await db.patch('cyc/escalon/' + mla, { avisado: true, difML: Math.round(dif) }); } catch { /* */ } }
+        }
+      } catch { /* si no se puede leer, no se avisa: no es urgente */ }
+
+      // Las preguntas NO pasan por la memoria: el número cambia todos los días y una pregunta sin
+      // responder es urgente hoy, no dentro de una semana. Pero sólo sale si hay alguna.
+      if (imp.preguntas.length) {
+        L.push(`\n💬 <b>Preguntas sin responder</b> · ${imp.preguntas.reduce((a, x) => a + x.n, 0)}`);
+        L.push(imp.preguntas.map((x) => `${x.cuenta}: ${x.n}`).join(' · '));
+      }
       if (nuevasSub.length) {
         const t = nuevasSub.reduce((a, x) => a + x.extraMes, 0);
         L.push(`\n📈 <b>Subir</b> · ${nuevasSub.length} publicación(es) · +${money(t)}/mes`);
