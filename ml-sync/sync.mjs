@@ -813,6 +813,15 @@ async function calcSubirPuede(db, o) {
   const vp = (await db.get('cyc/ventaprod')) || {}; setDevLive(vp);
   const monoP = parseFloat(((await db.get('cyc/monotributo')) || {}).pct) || 0;
   const pIdx = {}; for (const p of products) pIdx[p.id] = p;
+  // LO MARCADO COMO "LIQUIDANDO" NO SE RECOMIENDA SUBIR, NUNCA. Él lo bajó a propósito para
+  // rematarlo; decirle "subí esto" es proponerle deshacer su propia decisión, que es exactamente
+  // el problema que el freno de `raisePrice` vino a resolver el 12/09. Si la lista no se puede
+  // leer no se recomienda NADA: el lado seguro acá es el mismo que allá.
+  let nosubir = {}, nosubirOk = true;
+  try {
+    const v = await db.get('cyc/nosubir');
+    nosubir = (v && typeof v === 'object') ? v : {};
+  } catch { nosubirOk = false; }
 
   // Unidades vendidas por publicación en la ventana: sin ventas no se opina.
   const desde = Date.now() - dias * 864e5, uMes = {};
@@ -839,9 +848,10 @@ async function calcSubirPuede(db, o) {
   // Se filtra primero por las que el robot YA marcó como ganadoras en
   // cyc/mllinks/<MLA>/caja (lo escribe `cajacompra` una vez por hora), así las llamadas a
   // ML son sólo las que pueden dar candidata.
-  const cand = Object.entries(links).filter(([mla, e]) =>
+  const cand = nosubirOk ? Object.entries(links).filter(([mla, e]) =>
     e && e.prodId && pIdx[e.prodId] && !e.ignored && (e.status || '') === 'active'
-    && e.caja === 'winning' && (uMes[mla] || 0) > 0);
+    && e.caja === 'winning' && (uMes[mla] || 0) > 0 && !nosubir[mla]) : [];
+  const liquidando = nosubirOk ? Object.keys(nosubir).length : 0;
   let sinCat = 0, sinLugar = 0, sinDato = 0;
   for (const [mla, e] of Object.entries(links)) {
     if (!e || !e.prodId || e.ignored || (e.status || '') !== 'active') continue;
@@ -913,7 +923,7 @@ async function calcSubirPuede(db, o) {
   return {
     filas: buenas, noConviene, sinCat, sinLugar, sinDato, fallos,
     total: buenas.reduce((a, x) => a + x.extraMes, 0),
-    maxSuba, dias, MIN_AIRE,
+    maxSuba, dias, MIN_AIRE, liquidando, nosubirOk,
   };
 }
 
@@ -960,6 +970,21 @@ async function calcZonaMuerta(db, o) {
   const cand = Object.entries(links).filter(([mla, e]) =>
     e && e.prodId && pIdx[e.prodId] && !e.ignored && (e.status || '') === 'active' && (uMes[mla] || 0) > 0);
 
+  // LA CACHÉ ES DE TODA LA CORRIDA, NO DE CADA PUBLICACIÓN. La comisión depende de
+  // (sitio, tipo de publicación, categoría, precio) y NO de cuál publicación sea, así que dos
+  // publicaciones del mismo producto al mismo precio preguntan lo mismo. En los Paulvic eso son
+  // 18 publicaciones con la misma categoría y el mismo precio: con la caché por publicación se
+  // preguntaba 18 veces lo mismo. La primera corrida tardó más de 9 minutos por esto.
+  const cache = {};
+  let llamadas = 0;
+  const feeDe = async (it, tk, P) => {
+    const k = `${it.site_id || 'MLA'}|${it.listing_type_id}|${it.category_id}|${P}`;
+    if (cache[k] != null) return cache[k];
+    llamadas++;
+    const r = await mlGet(`/sites/${it.site_id || 'MLA'}/listing_prices?price=${P}&listing_type_id=${it.listing_type_id}&category_id=${it.category_id}`, tk);
+    return (cache[k] = Number((Array.isArray(r) ? r[0] : r)?.sale_fee_amount) || 0);
+  };
+
   const filas = [];
   let mirados = 0;
   for (const [mla, e] of cand) {
@@ -970,25 +995,36 @@ async function calcZonaMuerta(db, o) {
     const precio = Number(it?.price) || 0;
     if (!precio) continue;
     mirados++;
-    const cache = {};
-    const fee = async (P) => {
-      if (cache[P] != null) return cache[P];
-      const r = await mlGet(`/sites/${it.site_id || 'MLA'}/listing_prices?price=${P}&listing_type_id=${it.listing_type_id}&category_id=${it.category_id}`, tk);
-      return (cache[P] = Number((Array.isArray(r) ? r[0] : r)?.sale_fee_amount) || 0);
-    };
     let comHoy;
-    try { comHoy = await fee(precio); } catch { continue; }
+    try { comHoy = await feeDe(it, tk, precio); } catch { continue; }
     const imp = (mlExtraPct(e.cuenta) + monoP) / 100;
-    let mejor = null, mejorEx = 0;
-    for (let i = 1; i <= PASOS; i++) {
-      const P = Math.floor((precio * (1 - (maxBaja * i) / PASOS)) / 10) * 10;
+    // Lo que queda de más por unidad al precio P: lo que BAJA el precio es negativo, pero la
+    // comisión que ML deja de cobrar puede ser MAYOR. Si da positivo, bajar deja más plata.
+    const extraEn = async (P) => (P - precio) - ((await feeDe(it, tk, P)) - comHoy) - (P - precio) * imp;
+
+    // DOS PASADAS EN VEZ DE DOCE PRECIOS. Entre un escalón y el siguiente la plata siempre sube
+    // con el precio, así que sólo puede convenir un precio pegado abajo de un escalón. Primero
+    // se miran 4 precios gruesos; si ninguno gana, no hay escalón en la ventana y se corta ahí
+    // (4 consultas en vez de 12). Si alguno gana, se afina alrededor de ése.
+    const GRUESO = 4;
+    let mejor = null, mejorEx = 0, iGana = -1;
+    for (let i = 1; i <= GRUESO; i++) {
+      const P = Math.floor((precio * (1 - (maxBaja * i) / GRUESO)) / 10) * 10;
       if (P >= precio || P <= 0) continue;
-      let ex;
-      // Lo que queda de más por unidad: lo que BAJA el precio es negativo, pero la comisión
-      // que ML deja de cobrar puede ser mayor. Si la resta da positivo, bajar deja más plata.
-      try { ex = (P - precio) - ((await fee(P)) - comHoy) - (P - precio) * imp; }
-      catch { continue; }
-      if (ex > mejorEx) { mejorEx = ex; mejor = P; }
+      let ex; try { ex = await extraEn(P); } catch { continue; }
+      if (ex > mejorEx) { mejorEx = ex; mejor = P; iGana = i; }
+    }
+    if (mejor != null) {
+      // Afinado: entre el punto anterior al que ganó y el que ganó, buscando el precio MÁS ALTO
+      // que sigue conviniendo (cuanto más alto, menos plata se resigna).
+      const desdeP = Math.floor((precio * (1 - (maxBaja * (iGana - 1)) / GRUESO)) / 10) * 10;
+      const hastaP = mejor;
+      for (let j = 1; j < PASOS; j++) {
+        const P = Math.floor((hastaP + ((desdeP - hastaP) * j) / PASOS) / 10) * 10;
+        if (P <= hastaP || P >= precio) continue;
+        let ex; try { ex = await extraEn(P); } catch { continue; }
+        if (ex > mejorEx) { mejorEx = ex; mejor = P; }
+      }
     }
     if (mejor == null || mejorEx <= 0) continue;
     filas.push({
@@ -999,7 +1035,7 @@ async function calcZonaMuerta(db, o) {
     });
   }
   filas.sort((a, b) => b.extraMes - a.extraMes);
-  return { filas, mirados, total: filas.reduce((a, x) => a + x.extraMes, 0) };
+  return { filas, mirados, llamadas, total: filas.reduce((a, x) => a + x.extraMes, 0) };
 }
 
 // ── LO QUE HAY QUE BAJAR O REMATAR PORQUE NO SE MUEVE ─────────────────────────────────
@@ -3190,12 +3226,43 @@ async function main() {
       const zm = await calcZonaMuerta(db, { dias: 30, products, labels, accounts });
       const par = await calcBajarStock(db, { dias: 30, products, tc });
 
+      // ── NO REPETIR TODOS LOS DÍAS LO MISMO ────────────────────────────────────────────
+      // Un aviso que llega todos los días con los mismos seis renglones entrena a no abrirlo,
+      // y el día que aparece algo nuevo tampoco se lee. Es la MISMA lección del "⚠️ VENDE" que
+      // saltaba en casi todos los productos (09/09) y la del filtro que descarta por omisión.
+      // Cada publicación avisada se anota en `cyc/avisados/<MLA>` con la fecha y el precio que
+      // se recomendó, y no se vuelve a avisar por AVISO_REPETIR_DIAS — salvo que el número
+      // cambie, que es cuando volvió a ser noticia.
+      const AVISO_REPETIR_DIAS = 7;
+      let avisados = {}, avisadosOk = true;
+      try {
+        const v = await db.get('cyc/avisados');
+        avisados = (v && typeof v === 'object') ? v : {};
+      } catch { avisadosOk = false; }
+      const hoyTs = Date.now();
+      // Si no se pudo leer la memoria NO se filtra nada: repetir un aviso es molesto, callarse
+      // uno que hacía falta es peor. Acá el lado seguro es mandar de más.
+      const yaAvisado = (mla, tipo, valor) => {
+        if (!avisadosOk) return false;
+        const a = avisados[mla];
+        if (!a || a.tipo !== tipo) return false;
+        if (String(a.valor) !== String(valor)) return false;   // cambió el número: vuelve a ser noticia
+        return (hoyTs - (a.ts || 0)) < AVISO_REPETIR_DIAS * 864e5;
+      };
+      const paraAnotar = {};
+      const nuevasSub = sub.filas.filter((f) => !yaAvisado(f.mla, 'subir', f.tope));
+      const nuevasZm = zm.filas.filter((f) => !yaAvisado(f.mla, 'bajar', f.mejor));
+      const nuevasPar = par.filas.filter((f) => !yaAvisado(f.prodId + '__' + f.cuenta, 'parado', f.st));
+      const calladas = (sub.filas.length - nuevasSub.length) + (zm.filas.length - nuevasZm.length)
+        + (par.filas.length - nuevasPar.length);
+
       console.log(`SUBIR:  ${sub.filas.length} · ${money(sub.total)}/mes`);
       for (const f of sub.filas.slice(0, 8)) {
         console.log(`   · ${f.nom} (${f.cuenta}) ${money(f.precio)} → ${money(f.tope)}`
           + `  vendió ${f.u}  = ${money(f.extraMes)}/mes   volver:${f.mla}=${f.tope}:go`);
       }
       console.log(`\nBAJAR por escalón de comisión:  ${zm.filas.length} de ${zm.mirados} miradas`
+        + ` (${zm.llamadas} consultas a ML)`
         + (zm.filas.length ? ` · ${money(zm.total)}/mes` : ''));
       if (!zm.filas.length) {
         console.log('   Ninguna. O sea: hoy NO hay ningún producto donde vender más barato deje más plata.');
@@ -3219,39 +3286,52 @@ async function main() {
       // se pide desde el chat con el comando que va al final.
       const L = [];
       L.push('🔔 <b>CYC · para decidir</b>');
-      if (sub.filas.length) {
-        L.push(`\n📈 <b>Subir</b> · ${sub.filas.length} publicación(es) · +${money(sub.total)}/mes`);
-        for (const f of sub.filas.slice(0, 3)) {
+      if (nuevasSub.length) {
+        const t = nuevasSub.reduce((a, x) => a + x.extraMes, 0);
+        L.push(`\n📈 <b>Subir</b> · ${nuevasSub.length} publicación(es) · +${money(t)}/mes`);
+        for (const f of nuevasSub.slice(0, 3)) {
           L.push(`· ${f.nom} (${f.cuenta})\n   ${money(f.precio)} → ${money(f.tope)} · vendió ${f.u} · +${money(f.extraMes)}/mes`);
+          paraAnotar[f.mla] = { tipo: 'subir', valor: f.tope, ts: hoyTs };
         }
-        if (sub.filas.length > 3) L.push(`   …y ${sub.filas.length - 3} más`);
+        if (nuevasSub.length > 3) L.push(`   …y ${nuevasSub.length - 3} más`);
       }
-      if (zm.filas.length) {
-        L.push(`\n📉 <b>Bajar y ganar MÁS</b> · ${zm.filas.length} · +${money(zm.total)}/mes`);
-        L.push('<i>Están justo arriba de un escalón de comisión de ML.</i>');
-        for (const f of zm.filas.slice(0, 3)) {
+      if (nuevasZm.length) {
+        const t = nuevasZm.reduce((a, x) => a + x.extraMes, 0);
+        L.push(`\n📉 <b>Bajar y ganar MÁS</b> · ${nuevasZm.length} · +${money(t)}/mes`);
+        L.push('<i>Están justo arriba de un escalón de comisión de ML: cobrás menos y te queda más.</i>');
+        for (const f of nuevasZm.slice(0, 3)) {
           L.push(`· ${f.nom} (${f.cuenta})\n   ${money(f.precio)} → ${money(f.mejor)} · +${money(f.extraMes)}/mes`);
+          paraAnotar[f.mla] = { tipo: 'bajar', valor: f.mejor, ts: hoyTs };
         }
       }
-      if (par.filas.length) {
-        L.push(`\n🧊 <b>Parado</b> · ${par.filas.length} · ${money(par.total)} quietos · ${par.pagando} pagan almacenamiento`);
-        for (const f of par.filas.slice(0, 3)) {
+      if (nuevasPar.length) {
+        const t = nuevasPar.reduce((a, x) => a + x.capital, 0);
+        L.push(`\n🧊 <b>Parado</b> · ${nuevasPar.length} · ${money(t)} quietos · ${nuevasPar.filter((x) => x.pagando).length} pagan almacenamiento`);
+        for (const f of nuevasPar.slice(0, 3)) {
           L.push(`· ${f.nom} (${f.cuenta}) · ${f.st} u. · ${money(f.capital)}\n   ${f.edad} d en Full${f.pagando ? ' · 💸 ya paga' : ''}`);
+          paraAnotar[f.prodId + '__' + f.cuenta] = { tipo: 'parado', valor: f.st, ts: hoyTs };
         }
-        if (par.filas.length > 3) L.push(`   …y ${par.filas.length - 3} más`);
+        if (nuevasPar.length > 3) L.push(`   …y ${nuevasPar.length - 3} más`);
       }
       // SI NO HAY NADA NO SE MANDA NADA. Un aviso diario que dice "hoy no hay nada" es ruido, y
       // el ruido entrena a no abrir el mensaje — que es justo lo que rompe el aviso del día que
       // sí importa. Es la misma lección del "⚠️ VENDE" que saltaba en casi todos los productos.
+      if (calladas) console.log(`\n(${calladas} ya avisada(s) en los últimos ${AVISO_REPETIR_DIAS} días con el mismo número: no se repiten.)`);
       if (L.length === 1) {
-        console.log('\n── No hay nada para avisar hoy. No se manda mensaje (un aviso vacío entrena a ignorarlos).');
+        console.log('\n── No hay nada NUEVO para avisar hoy. No se manda mensaje (un aviso vacío entrena a ignorarlos).');
         return;
       }
       L.push('\n<i>Ninguno se aplicó solo: los precios los decidís vos.</i>');
       const msg = L.join('\n');
       console.log('\n── MENSAJE ──\n' + msg.replace(/<[^>]+>/g, ''));
-      if (MANDAR) await sendAlerta(msg);
-      else console.log('\n(PRUEBA: no se mandó. Agregá ":go" para que salga por Telegram.)');
+      if (MANDAR) {
+        const ok = await sendAlerta(msg);
+        // Se anota SÓLO si el mensaje salió. Si falló el envío y se anotara igual, esa
+        // publicación quedaría callada una semana por un aviso que nunca llegó.
+        if (ok && Object.keys(paraAnotar).length) {
+          try { await db.patch('cyc/avisados', paraAnotar); } catch { /* */ }
+        }
+      } else console.log('\n(PRUEBA: no se mandó ni se anotó nada. Agregá ":go" para que salga por Telegram.)');
       return;
     }
     // BILLING_PROBE=tgalertas[:<chat_id>|:-] → EL SEGUNDO CANAL DE TELEGRAM (13/09/2026).
