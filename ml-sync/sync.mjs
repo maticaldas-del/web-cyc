@@ -1061,14 +1061,21 @@ async function calcBajarStock(db, o) {
   const sidL = (x) => String(x).replace(/[^a-z0-9]/gi, '_');
   const hoy = Date.now();
 
-  // Ventas por PRODUCTO en la ventana (no por publicación: el producto puede estar en varias).
-  const desde = hoy - dias * 864e5, uProd = {};
+  // Ventas por PRODUCTO **Y CUENTA**, no por producto solo.
+  // La primera versión contaba el producto entero y el resultado fue CERO parados, con 29 que
+  // sí lo están. El motivo: un producto que vende bien en Matías y está quieto en Adriana daba
+  // "vendió" y se descartaba entero, justo el caso que hay que ver — es la mercadería parada EN
+  // ESA CUENTA la que paga almacenamiento, no el producto en abstracto.
+  // Es la misma confusión que ya está anotada en `repartir`: la cuenta correcta para saber
+  // CUÁNTO reponer no es la correcta para saber DÓNDE está el problema.
+  const desde = hoy - dias * 864e5, uProdCta = {};
   for (const [k, ents] of Object.entries(vp)) {
     const ts = Date.parse(k.slice(0, 10).replace(/_/g, '-'));
     if (!isFinite(ts) || ts < desde) continue;
     for (const v of Object.values(ents || {})) {
       if (!v || v.cancelada || !v.prodId) continue;
-      uProd[v.prodId] = (uProd[v.prodId] || 0) + (v.qty || 1);
+      const kk = v.prodId + '__' + (v.cuenta || '?');
+      uProdCta[kk] = (uProdCta[kk] || 0) + (v.qty || 1);
     }
   }
   // Hace cuánto llegó el stock, por producto×cuenta. Sólo fechas REALES.
@@ -1091,13 +1098,17 @@ async function calcBajarStock(db, o) {
     if ((e.status || '') === 'paused') porProd[k].pausadas++;
   }
 
+  // POR QUÉ SE DESCARTA CADA UNO, CONTADO. Un cero acá parece una buena noticia y puede ser un
+  // filtro que descarta en silencio — ya pasó con `liquidar` (0 de 137) y con el marcado de
+  // cajas. Si el resultado da cero, estos números dicen cuál de los tres filtros se lo comió.
+  const fuera = { vendio: 0, sinFecha: 0, recienLlegado: 0 };
   const filas = [];
   for (const r of Object.values(porProd)) {
-    const vend = uProd[r.prodId] || 0;
-    if (vend > 0) continue;                       // vendió: no es este problema
+    const vend = uProdCta[r.prodId + '__' + r.cuenta] || 0;
+    if (vend > 0) { fuera.vendio++; continue; }            // vendió en ESA cuenta: no es este problema
     const edad = edadDe(r.prodId, r.cuenta);
-    if (edad == null) continue;                   // sin fecha real no se opina
-    if (edad < graciaDias) continue;              // recién llegado: hay que darle tiempo
+    if (edad == null) { fuera.sinFecha++; continue; }      // sin fecha real no se opina
+    if (edad < graciaDias) { fuera.recienLlegado++; continue; }  // recién llegado: hay que darle tiempo
     const costoU = (parseFloat(r.p.costFullUSD) || parseFloat(r.p.costUSD) || 0) * tc;
     filas.push({
       ...r, vend, edad,
@@ -1108,7 +1119,7 @@ async function calcBajarStock(db, o) {
   }
   filas.sort((a, b) => b.capital - a.capital);
   return {
-    filas,
+    filas, fuera, mirados: Object.keys(porProd).length,
     total: filas.reduce((a, x) => a + x.capital, 0),
     pagando: filas.filter((x) => x.pagando).length,
     almacDias, graciaDias, dias,
@@ -3234,6 +3245,15 @@ async function main() {
       // se recomendó, y no se vuelve a avisar por AVISO_REPETIR_DIAS — salvo que el número
       // cambie, que es cuando volvió a ser noticia.
       const AVISO_REPETIR_DIAS = 7;
+      // DESPUÉS DE SUBIR UN PRECIO NO SE VUELVE A PEDIR SUBIRLO HASTA VER SI LAS VENTAS
+      // AGUANTARON. La prueba de hoy lo mostró: al Infusor se le aplicó la suba a $5.290 y el
+      // comando, en la misma corrida, ya pedía $5.740 — porque el escalón del 10% lo dejó corto
+      // del techo. Avisar eso al día siguiente es una escalera sin descanso: en una semana
+      // acumula +70% sobre un producto que a lo mejor dejó de venderse en el primer escalón.
+      // La gracia del escalón chico es poder MIRAR entre uno y otro; sin la espera, no se mira.
+      // Por eso acá la espera es por PUBLICACIÓN y no por número: aunque el precio recomendado
+      // cambie, no se vuelve a pedir hasta que pasen estos días.
+      const SUBIR_ESPERA_DIAS = 14;
       let avisados = {}, avisadosOk = true;
       try {
         const v = await db.get('cyc/avisados');
@@ -3246,8 +3266,11 @@ async function main() {
         if (!avisadosOk) return false;
         const a = avisados[mla];
         if (!a || a.tipo !== tipo) return false;
-        if (String(a.valor) !== String(valor)) return false;   // cambió el número: vuelve a ser noticia
-        return (hoyTs - (a.ts || 0)) < AVISO_REPETIR_DIAS * 864e5;
+        const dias = tipo === 'subir' ? SUBIR_ESPERA_DIAS : AVISO_REPETIR_DIAS;
+        // En 'subir' la espera corre igual aunque cambie el número (ver arriba). En los otros
+        // dos un número distinto SÍ vuelve a ser noticia: cambió la situación.
+        if (tipo !== 'subir' && String(a.valor) !== String(valor)) return false;
+        return (hoyTs - (a.ts || 0)) < dias * 864e5;
       };
       const paraAnotar = {};
       const nuevasSub = sub.filas.filter((f) => !yaAvisado(f.mla, 'subir', f.tope));
@@ -3272,8 +3295,10 @@ async function main() {
         console.log(`   · ${f.nom} (${f.cuenta}) ${money(f.precio)} → ${money(f.mejor)} (−${f.bajaPct.toFixed(1)}%)`
           + `  = ${money(f.extraMes)}/mes MÁS   volver:${f.mla}=${f.mejor}:go`);
       }
-      console.log(`\nPARADO (con stock, sin vender hace ${par.dias} d):  ${par.filas.length}`
+      console.log(`\nPARADO (con stock, sin vender hace ${par.dias} d):  ${par.filas.length} de ${par.mirados} con stock`
         + ` · ${money(par.total)} quietos · ${par.pagando} ya pagan almacenamiento`);
+      console.log(`   quedaron afuera: ${par.fuera.vendio} porque vendieron · ${par.fuera.sinFecha} sin fecha real`
+        + ` de entrada a Full (no se puede opinar) · ${par.fuera.recienLlegado} recién llegados (menos de ${par.graciaDias} d)`);
       for (const f of par.filas.slice(0, 10)) {
         console.log(`   · ${f.nom} (${f.cuenta}) ${f.st} u. · ${money(f.capital)}`
           + ` · ${f.edad} d en Full · ${f.pagando ? '💸 paga hace ' + (f.edad - par.almacDias) + ' d' : '⏳ paga en ' + f.faltaPagar + ' d'}`
@@ -3291,9 +3316,12 @@ async function main() {
         L.push(`\n📈 <b>Subir</b> · ${nuevasSub.length} publicación(es) · +${money(t)}/mes`);
         for (const f of nuevasSub.slice(0, 3)) {
           L.push(`· ${f.nom} (${f.cuenta})\n   ${money(f.precio)} → ${money(f.tope)} · vendió ${f.u} · +${money(f.extraMes)}/mes`);
-          paraAnotar[f.mla] = { tipo: 'subir', valor: f.tope, ts: hoyTs };
         }
         if (nuevasSub.length > 3) L.push(`   …y ${nuevasSub.length - 3} más`);
+        // SE ANOTAN TODAS LAS QUE ENTRARON AL AVISO, no sólo las 3 que se muestran. El mensaje
+        // dice "y 19 más" y esas 19 YA fueron avisadas: si no se anotaran, mañana saldrían como
+        // nuevas y el aviso volvería a ser el mismo todos los días.
+        for (const f of nuevasSub) paraAnotar[f.mla] = { tipo: 'subir', valor: f.tope, ts: hoyTs };
       }
       if (nuevasZm.length) {
         const t = nuevasZm.reduce((a, x) => a + x.extraMes, 0);
@@ -3301,17 +3329,17 @@ async function main() {
         L.push('<i>Están justo arriba de un escalón de comisión de ML: cobrás menos y te queda más.</i>');
         for (const f of nuevasZm.slice(0, 3)) {
           L.push(`· ${f.nom} (${f.cuenta})\n   ${money(f.precio)} → ${money(f.mejor)} · +${money(f.extraMes)}/mes`);
-          paraAnotar[f.mla] = { tipo: 'bajar', valor: f.mejor, ts: hoyTs };
         }
+        for (const f of nuevasZm) paraAnotar[f.mla] = { tipo: 'bajar', valor: f.mejor, ts: hoyTs };
       }
       if (nuevasPar.length) {
         const t = nuevasPar.reduce((a, x) => a + x.capital, 0);
         L.push(`\n🧊 <b>Parado</b> · ${nuevasPar.length} · ${money(t)} quietos · ${nuevasPar.filter((x) => x.pagando).length} pagan almacenamiento`);
         for (const f of nuevasPar.slice(0, 3)) {
           L.push(`· ${f.nom} (${f.cuenta}) · ${f.st} u. · ${money(f.capital)}\n   ${f.edad} d en Full${f.pagando ? ' · 💸 ya paga' : ''}`);
-          paraAnotar[f.prodId + '__' + f.cuenta] = { tipo: 'parado', valor: f.st, ts: hoyTs };
         }
         if (nuevasPar.length > 3) L.push(`   …y ${nuevasPar.length - 3} más`);
+        for (const f of nuevasPar) paraAnotar[f.prodId + '__' + f.cuenta] = { tipo: 'parado', valor: f.st, ts: hoyTs };
       }
       // SI NO HAY NADA NO SE MANDA NADA. Un aviso diario que dice "hoy no hay nada" es ruido, y
       // el ruido entrena a no abrir el mensaje — que es justo lo que rompe el aviso del día que
