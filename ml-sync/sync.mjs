@@ -1129,6 +1129,88 @@ async function calcBajarStock(db, o) {
   };
 }
 
+// ── PERDIÓ LA CAJA DE COMPRA **Y SE FRENÓ** ──────────────────────────────────────────
+// Regla suya, textual (13/09/2026): *"que algo perdió caja, eso lo tiene que analizar el robot
+// para ver si conviene bajar o no. y tiene que ser algo claro para bajar el precio, ya que quizás
+// en perdiendo se sigue vendiendo igual. tiene que ser por ejemplo que venda 1 por día, pase a
+// perdiendo y no venda más por 1 semana, ahí se analiza si se baja o no"*.
+//
+// LO IMPORTANTE ES LO QUE **NO** ENTRA. Perder la caja por sí solo NO es noticia: hay
+// publicaciones que la pierden y siguen vendiendo igual, y avisar de todas sería el mismo error
+// del "⚠️ VENDE" que saltaba en casi todos los productos — un aviso que suena siempre entrena a
+// ignorarlo. Tienen que darse las TRES cosas juntas:
+//   1. VENDÍA DE VERDAD (`minPorDia`, por defecto 0,5 por día en los 30 días previos al frenazo).
+//   2. HOY tiene la caja PERDIDA.
+//   3. HACE `minDiasSin` días (7) que no vende, teniendo stock.
+//
+// Y el tercero es el que hace la diferencia entre "perdió la caja" y "perdió la caja Y le costó
+// plata". Sin él, esto sería una lista de 40 renglones que nadie mira.
+//
+// **NO BAJA NADA.** Deja el número: a qué precio habría que bajar para ganar la caja (eso lo dice
+// ML) y en qué margen quedaría. La decisión sigue siendo suya — regla del 13/08/2026. Y ojo con
+// el precio que informa ML: *que se gane a $900 no quiere decir que a $900 haya margen*.
+async function calcFrenoCaja(db, o) {
+  const { minPorDia = 0.5, minDiasSin = 7, ventana = 60, products = [], tc = 1500 } = o || {};
+  const links = (await db.get('cyc/mllinks')) || {};
+  const inv = (await db.get('cyc/inventory')) || {};
+  const vp = (await db.get('cyc/ventaprod')) || {}; setDevLive(vp);
+  const pIdx = {}; for (const p of products) pIdx[p.id] = p;
+  const sidL = (x) => String(x).replace(/[^a-z0-9]/gi, '_');
+  const hoy = Date.now();
+
+  // Por publicación: última venta, y unidades por día ANTES de frenarse.
+  // Se mide lo que vendía antes del frenazo, no el promedio de los últimos 30 días: si lleva 20
+  // días sin vender, ese promedio ya está aplastado por el propio frenazo y nunca llegaría al
+  // mínimo. Es el mismo error que la reposición dividiendo por 30 fijo (20/08).
+  const porMla = {};
+  for (const [k, ents] of Object.entries(vp)) {
+    const ts = Date.parse(k.slice(0, 10).replace(/_/g, '-'));
+    if (!isFinite(ts) || ts < hoy - ventana * 864e5) continue;
+    for (const v of Object.values(ents || {})) {
+      if (!v || v.cancelada || !v.mla) continue;
+      const a = porMla[v.mla] || (porMla[v.mla] = { ultima: 0, dias: {} });
+      if (ts > a.ultima) a.ultima = ts;
+      a.dias[k] = (a.dias[k] || 0) + (v.qty || 1);
+    }
+  }
+
+  const filas = [];
+  let conCajaPerdida = 0, seguianVendiendo = 0, vendianPoco = 0;
+  for (const [mla, e] of Object.entries(links)) {
+    if (!e || !e.prodId || !e.cuenta || e.ignored || (e.status || '') !== 'active') continue;
+    if (e.caja !== 'losing') continue;
+    conCajaPerdida++;
+    const p = pIdx[e.prodId]; if (!p) continue;
+    const st = parseInt(inv[e.prodId + '__' + sidL(e.cuenta)]) || 0;
+    if (st <= 0) continue;                       // sin stock el problema es otro, no el precio
+    const a = porMla[mla];
+    if (!a || !a.ultima) continue;               // nunca vendió: no hay frenazo que medir
+    const diasSin = Math.floor((hoy - a.ultima) / 864e5);
+    if (diasSin < minDiasSin) { seguianVendiendo++; continue; }
+    // Lo que vendía en los 30 días ANTERIORES a la última venta.
+    const desdeAntes = a.ultima - 30 * 864e5;
+    let u = 0;
+    for (const [k, q] of Object.entries(a.dias)) {
+      const ts = Date.parse(k.slice(0, 10).replace(/_/g, '-'));
+      if (isFinite(ts) && ts >= desdeAntes && ts <= a.ultima) u += q;
+    }
+    const porDia = u / 30;
+    if (porDia < minPorDia) { vendianPoco++; continue; }
+    filas.push({
+      mla, cuenta: e.cuenta, prodId: e.prodId, st, diasSin, porDia,
+      nom: (p.name || e.title || mla).slice(0, 34),
+      // Lo que ML dice que hace falta para ganar la caja. Lo escribe `cajacompra` cada hora.
+      // OJO CON EL NOMBRE: el robot lo guarda en `cajaPtw`, no en `cajaPrecio`. La primera
+      // versión leía `cajaPrecio` y habría dejado el precio SIEMPRE vacío, sin decir nada — el
+      // mismo patrón que leer `caja.st` cuando la caja se guarda como texto (24/08).
+      paraGanar: Number(e.cajaPtw) > 0 ? Math.round(Number(e.cajaPtw)) : null,
+      perdido: Math.round(porDia * diasSin),      // unidades que se dejaron de vender
+    });
+  }
+  filas.sort((a, b) => b.perdido - a.perdido);
+  return { filas, conCajaPerdida, seguianVendiendo, vendianPoco, minPorDia, minDiasSin };
+}
+
 // Config en cyc/mlconfig/gruposPrecio = { paulvic: { palabra: 'paulvic' } }
 // La palabra se busca en el título de la publicación y en el nombre del producto,
 // así una publicación nueva entra al grupo sola, sin cargarla a mano.
@@ -3209,6 +3291,87 @@ async function main() {
       }
       return;
     }
+    // BILLING_PROBE=verescalon:<MLA|palabra>[:marcar] → ¿ML COBRÓ MENOS DE VERDAD? (13/09/2026)
+    //
+    // Pedido suyo al bajar el Pendrive 64gb de $24.110 a $23.980: *"bajar pendrive 64gb (y quedar
+    // viendo si cuando vende realmente tiene menos comisión)"*. Tiene razón en querer comprobarlo:
+    // el escalón salió de preguntarle a ML cuánto iba a cobrar, no de una venta real, y **lo que
+    // ML dice que va a cobrar y lo que después descuenta no siempre es lo mismo** — es exactamente
+    // lo que pasó con la Plantilla Metatarso el 14/08.
+    //
+    // NO NECESITA QUE NADIE ANOTE NADA ANTES. Agrupa las ventas de esa publicación por el precio
+    // que pagó el comprador y, para cada precio, muestra lo que ML se quedó (total − neto). Si la
+    // teoría del escalón es cierta, el precio MÁS BAJO tiene que mostrar a ML quedándose con MENOS
+    // PLATA, no sólo con menos porcentaje.
+    //
+    // Con `:marcar` además lo anota en `cyc/escalon/<MLA>`, y el aviso diario lo controla solo en
+    // cuanto aparezca la primera venta al precio nuevo.
+    if (/^verescalon(:|$)/.test(String(process.env.BILLING_PROBE || ''))) {
+      const partes = String(process.env.BILLING_PROBE).split(':');
+      const MARCAR = partes[partes.length - 1] === 'marcar';
+      const busca = (MARCAR ? partes.slice(1, -1) : partes.slice(1)).join(':').trim().toLowerCase();
+      if (!busca) { console.log('Usá: verescalon:<MLA o palabra>[:marcar]'); return; }
+      const links = (await db.get('cyc/mllinks')) || {};
+      const vp = (await db.get('cyc/ventaprod')) || {}; setDevLive(vp);
+      const pIdx = {}; for (const p of products) pIdx[p.id] = p;
+      const objetivo = Object.entries(links).filter(([mla, e]) => {
+        if (!e || e.ignored) return false;
+        if (mla.toLowerCase() === busca) return true;
+        const nom = ((pIdx[e.prodId] || {}).name || '') + ' ' + (e.title || '');
+        return nom.toLowerCase().includes(busca);
+      });
+      if (!objetivo.length) { console.log(`No encontré ninguna publicación con "${busca}".`); return; }
+      console.log(`=== ¿ML COBRÓ MENOS AL BAJAR EL PRECIO? · ${objetivo.length} publicación(es) ===\n`);
+      const marcas = {};
+      for (const [mla, e] of objetivo) {
+        const nom = ((pIdx[e.prodId] || {}).name || e.title || mla).slice(0, 40);
+        const porPrecio = {};
+        for (const [k, ents] of Object.entries(vp)) {
+          const ts = Date.parse(k.slice(0, 10).replace(/_/g, '-'));
+          for (const v of Object.values(ents || {})) {
+            if (!v || v.cancelada || v.mla !== mla) continue;
+            const tot = Number(v.total) || 0, net = Number(v.neto) || 0;
+            if (!(tot > 0) || !(net > 0)) continue;
+            const q = v.qty || 1;
+            const P = Math.round(tot / q / 10) * 10;
+            const a = porPrecio[P] || (porPrecio[P] = { u: 0, tot: 0, net: 0, ultima: 0 });
+            a.u += q; a.tot += tot; a.net += net;
+            if (isFinite(ts) && ts > a.ultima) a.ultima = ts;
+          }
+        }
+        const niveles = Object.entries(porPrecio).map(([P, a]) => ({
+          precio: Number(P), u: a.u,
+          quedaML: (a.tot - a.net) / a.u,
+          pct: ((a.tot - a.net) / a.tot) * 100,
+          ultima: a.ultima,
+        })).sort((a, b) => b.precio - a.precio);
+
+        console.log(`── ${nom}  (${e.cuenta} · ${mla})`);
+        if (!niveles.length) console.log('     todavía no vendió ninguna vez: no hay con qué comparar.');
+        else {
+          for (const n of niveles) {
+            console.log(`     ${money(n.precio).padStart(10)} · ${String(n.u).padStart(3)} u. · ML se queda ${money(n.quedaML)}`
+              + ` (${n.pct.toFixed(1)}%) · última ${n.ultima ? new Date(n.ultima).toISOString().slice(0, 10) : '—'}`);
+          }
+          if (niveles.length >= 2) {
+            const alto = niveles[0], bajo = niveles[niveles.length - 1];
+            const dif = alto.quedaML - bajo.quedaML, bajoP = alto.precio - bajo.precio;
+            console.log(dif > 0
+              ? `     ✅ COMPROBADO: bajando ${money(bajoP)} el precio, ML se queda ${money(dif)} MENOS por unidad.`
+                + (dif > bajoP ? `  Te queda ${money(dif - bajoP)} MÁS en el bolsillo.` : `  Aun así te queda ${money(bajoP - dif)} menos: el escalón no alcanzó.`)
+              : `     ⚠️ NO se comprobó: al precio más bajo ML se queda ${money(-dif)} MÁS por unidad.`);
+          } else console.log('     Sólo hay ventas a UN precio: falta que venda al nuevo para comparar.');
+        }
+        console.log('');
+        if (MARCAR) marcas[mla] = { nom, cuenta: e.cuenta, desde: Date.now(), niveles: niveles.length };
+      }
+      if (MARCAR && Object.keys(marcas).length) {
+        await db.patch('cyc/escalon', marcas);
+        console.log(`✓ Marcada(s) ${Object.keys(marcas).length}: el aviso diario las controla solo en cuanto vendan al precio nuevo.`);
+      }
+      return;
+    }
+
     // BILLING_PROBE=avisos[:go] → EL AVISO DIARIO AL CANAL PRIVADO (13/09/2026).
     //
     // Pedido suyo: *"se puede automatizar para que me mandes un mensaje por telegram cuando hay
@@ -3239,6 +3402,12 @@ async function main() {
       const sub = await calcSubirPuede(db, { dias: 30, maxSuba: 0.10, products, labels, accounts });
       const zm = await calcZonaMuerta(db, { dias: 30, products, labels, accounts });
       const par = await calcBajarStock(db, { dias: 30, products, tc });
+      const frn = await calcFrenoCaja(db, { products, tc });
+      // Las ventas crudas, para la comprobación del escalón de más abajo. Va acá y no adentro del
+      // bloque: si se usara sin declararla, JavaScript la busca afuera, no la encuentra y CORTA LA
+      // CORRIDA ENTERA — y `node --check` compila igual. Es el mismo error que el `invUpd` del
+      // 12/09 y el `tokensRun` del 13/09, las dos veces en este mismo archivo.
+      const vpAv = (await db.get('cyc/ventaprod')) || {};
 
       // ── NO REPETIR TODOS LOS DÍAS LO MISMO ────────────────────────────────────────────
       // Un aviso que llega todos los días con los mismos seis renglones entrena a no abrirlo,
@@ -3335,6 +3504,15 @@ async function main() {
           + (f.pausadas ? ` · ${f.pausadas} pausada(s)` : ''));
       }
 
+      console.log(`\nPERDIERON LA CAJA **Y SE FRENARON**:  ${frn.filas.length}`);
+      console.log(`   de ${frn.conCajaPerdida} con la caja perdida hoy: ${frn.seguianVendiendo} SIGUEN vendiendo`
+        + ` (perder la caja no las frenó) · ${frn.vendianPoco} vendían menos de ${frn.minPorDia}/día antes`);
+      for (const f of frn.filas.slice(0, 10)) {
+        console.log(`   · ${f.nom} (${f.cuenta}) · vendía ${f.porDia.toFixed(2)}/día · hace ${f.diasSin} d que no vende`
+          + ` · ${f.st} u. paradas · ~${f.perdido} u. que se dejaron de vender`
+          + (f.paraGanar ? ` · ML: se gana la caja a ${money(f.paraGanar)}` : ' · ML no dice a qué precio se gana'));
+      }
+
       // ── EL MENSAJE ────────────────────────────────────────────────────────────────────
       // Corto a propósito: un aviso largo no se lee, y uno que llega todos los días con lo
       // mismo entrena a ignorarlo. Va el titular y las 3 primeras de cada cosa; el detalle
@@ -3379,6 +3557,58 @@ async function main() {
         console.log('\n── No hay nada NUEVO para avisar hoy. No se manda mensaje (un aviso vacío entrena a ignorarlos).');
         return;
       }
+      // ── SE FRENÓ AL PERDER LA CAJA ────────────────────────────────────────────────────
+      // Regla suya, textual (13/09/2026): *"que algo perdió caja, eso lo tiene que analizar el
+      // robot para ver si conviene bajar o no. y tiene que ser algo claro para bajar el precio,
+      // ya que quizás en perdiendo se sigue vendiendo igual. tiene que ser por ejemplo que venda
+      // 1 por día, pase a perdiendo y no venda más por 1 semana, ahí se analiza si se baja o no"*.
+      // O sea: perder la caja NO es noticia por sí solo. Es noticia cuando VENDÍA BIEN y DEJÓ DE
+      // VENDER. Los tres tienen que darse juntos, y el que decide si se baja sigue siendo él.
+      const nFrn = frn.filas.filter((f) => !yaAvisado('f_' + f.mla, 'frenocaja', f.diasSin));
+      if (nFrn.length) {
+        L.push(`\n🥊 <b>Perdieron la caja y se frenaron</b> · ${nFrn.length}`);
+        for (const f of nFrn.slice(0, 4)) {
+          L.push(`· ${f.nom} (${f.cuenta})\n   vendía ${f.porDia.toFixed(1)}/día · hace ${f.diasSin} d que no vende`
+            + (f.paraGanar ? ` · ML dice que se gana la caja a ${money(f.paraGanar)}` : ' · ML no dice a qué precio se gana'));
+        }
+        if (nFrn.length > 4) L.push(`   …y ${nFrn.length - 4} más`);
+        for (const f of nFrn) paraAnotar['f_' + f.mla] = { tipo: 'frenocaja', valor: f.diasSin, ts: hoyTs };
+      }
+
+      // ── ¿SE COMPROBÓ EL ESCALÓN? ──────────────────────────────────────────────────────
+      // Lo que él pidió al bajar el Pendrive 64gb: *"quedar viendo si cuando vende realmente
+      // tiene menos comisión"*. Se avisa UNA vez, diga lo que diga. **Se avisa igual si NO se
+      // comprobó**, y eso es el punto: un aviso que sólo sale cuando confirma no es una
+      // comprobación, es una felicitación.
+      try {
+        const marcadas = (await db.get('cyc/escalon')) || {};
+        for (const [mla, m] of Object.entries(marcadas)) {
+          if (!m || m.avisado) continue;
+          const porP = {};
+          for (const ents of Object.values(vpAv)) {
+            for (const v of Object.values(ents || {})) {
+              if (!v || v.cancelada || v.mla !== mla) continue;
+              const tot = Number(v.total) || 0, net = Number(v.neto) || 0, q = v.qty || 1;
+              if (!(tot > 0) || !(net > 0)) continue;
+              const P = Math.round(tot / q / 10) * 10;
+              const a = porP[P] || (porP[P] = { u: 0, tot: 0, net: 0 });
+              a.u += q; a.tot += tot; a.net += net;
+            }
+          }
+          const niv = Object.entries(porP).map(([P, a]) => ({ precio: Number(P), u: a.u, quedaML: (a.tot - a.net) / a.u }))
+            .sort((a, b) => b.precio - a.precio);
+          if (niv.length < 2) continue;              // todavía no vendió al precio nuevo
+          const alto = niv[0], bajo = niv[niv.length - 1];
+          const dif = alto.quedaML - bajo.quedaML, bajoP = alto.precio - bajo.precio;
+          L.push('\n🔬 <b>Se comprobó el escalón</b>');
+          L.push(dif > 0
+            ? `· ${m.nom} (${m.cuenta}): bajando ${money(bajoP)}, ML se queda ${money(dif)} MENOS por unidad.`
+              + (dif > bajoP ? ` Te queda ${money(dif - bajoP)} MÁS.` : ` Aun así te queda ${money(bajoP - dif)} menos.`)
+            : `· ${m.nom} (${m.cuenta}): ⚠️ NO se cumplió — al precio bajo ML se queda ${money(-dif)} MÁS por unidad.`);
+          if (MANDAR) { try { await db.patch('cyc/escalon/' + mla, { avisado: true, difML: Math.round(dif) }); } catch { /* */ } }
+        }
+      } catch { /* si no se puede leer, no se avisa: no es urgente */ }
+
       L.push('\n<i>Ninguno se aplicó solo: los precios los decidís vos.</i>');
       const msg = L.join('\n');
       console.log('\n── MENSAJE ──\n' + msg.replace(/<[^>]+>/g, ''));
