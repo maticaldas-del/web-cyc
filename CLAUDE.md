@@ -858,6 +858,43 @@ vender.
 **LO QUE NO SE PUEDE MEDIR: las 36 publicaciones que venden y NO son de catálogo.** Ahí no hay
 competidor contra el cual medir y las visitas solas no alcanzan. La única forma de saberlo es probar.
 
+**NO SE RECOMIENDA SUBIR LO QUE NECESITÁS VENDER (14/09/2026).** Él lo marcó con el Ferrari Negro:
+*"dice que vendió 3, pero hacía como 1 mes que no vendía y tenemos 12 en stock. yo lo bajé para que
+venda y no paguemos stock antiguo. o sea estamos 'desesperados' en vender, si lo aumento quizás se
+vende menos aún. yo creo que el robot no tiene en cuenta nada de eso"*.
+Tenía razón: `calcSubirPuede` miraba **cuántas** vendió en 30 días y nunca **cuándo** ni **cuánto
+stock hay**. Así, algo que vendió 3 el primer día de la ventana y NADA en los 29 siguientes se leía
+igual que algo que vende todas las semanas — y son situaciones opuestas.
+**Dos frenos, y hacen falta los dos porque agarran casos distintos:**
+ · **`SUBIR_MAX_DIAS_SIN` (15 días)** → si dejó de vender, subirle el precio no lo despierta.
+   2 unidades que se frenaron pasan el freno de stock, así que ese solo no alcanza.
+ · **`SUBIR_MAX_DIAS_STOCK` (60 días)** → con más stock del que vendés en 60 días ya vas camino a
+   pagar almacenamiento (`ALMAC_DIAS`), o sea que subir empeora justo lo que hay que resolver.
+   200 u. que venden todos los días pasan el freno de días sin vender, así que ése solo tampoco.
+**Medido el mismo día:** Ferrari Negro **11 u. = 110 d de stock** → afuera (su caso exacto) ·
+Batidora de Luciana **39 u. = 65 d** → afuera · 5 Paulvic afuera por 17-25 días sin vender · los
+Paulvic que quedan tienen **46 d de stock** y vendieron hace 3-9 días, o sea que rotan.
+Y cada renglón del aviso ahora dice **vendió N · última hace X d · N u. en Full**: los tres juntos
+son justo lo que le faltó para no tener que dudar.
+
+**LOS DÍAS DE STOCK VAN POR PRODUCTO×CUENTA, NO POR PUBLICACIÓN**, y la primera prueba mostró por
+qué. `cyc/inventory` guarda el stock por producto×cuenta, así que en el Paulvic —donde cada aroma
+es una publicación aparte de la MISMA ficha— las 236 unidades se le imputaban ENTERAS a cada una:
+el renglón decía *"236 u. = 7.080 días de stock"*. **La conclusión daba bien igual, y ése es el
+peligro**: un número absurdo al lado de una conclusión correcta pasa desapercibido hasta que
+alguien lo mira. Dividiendo por lo que ese producto vende en esa cuenta da 46 días, que quiere
+decir algo. Misma clave que usa `calcBajarStock`.
+
+**Y APARECIÓ ALGO PEOR AL TOCARLO: el probe `subirpuede` tenía la cuenta COPIADA adentro**, no
+llamaba a la función compartida — **y este archivo afirmaba que sí**. Las dos copias ya se habían
+separado: a la del probe le **faltaba el freno de `liquidando`**, o sea que proponía subir lo que él
+bajó a propósito para rematar. Es el mismo patrón de los ocho comandos con `|| 30` adentro y del
+costo de la caja escrito en dos archivos, con el agravante de que acá **el comentario prometía lo
+contrario**. Ya llama a `calcSubirPuede` y se borraron las 94 líneas duplicadas.
+**La lección, otra vez: un comentario que dice que dos cosas comparten código no es prueba de que
+lo compartan.** Si dos comandos tienen que dar el mismo número, la forma de garantizarlo es que
+llamen a la misma función — y eso se verifica corriéndolos, no leyéndolos.
+
 ## LO QUE COBRA ML POR VENDER: 28,3% PROMEDIO, Y NO ES LO MISMO QUE EL 16% (11/09/2026)
 
 Salió de que él comparó la ficha contra el simulador de ML y no coincidían: la ficha decía **30,5%**
