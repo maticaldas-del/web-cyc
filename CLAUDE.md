@@ -440,6 +440,17 @@ Los tres números **ya se calculaban**; lo que fallaba era mostrarlos, y de dos 
    igual que uno donde nadie los midió, y son justo las dos cosas que cambian la decisión: con 141
    en casa **no hay que comprar, hay que MANDAR**.
 Ahora el renglón dice **📦 N en ML · 🚚 N en camino · 🏠 N en tu oficina**, siempre, aunque sean cero.
+
+**Y EN LOS PRODUCTOS CON VARIANTES VA ADEMÁS EN CADA CHIP** (mismo día, corrección suya: *"no veo el
+cambio, yo decia de las variantes"*). En un producto con colores o aromas el total del producto no
+alcanza para decidir: *"150 en camino"* no dice de qué color. Cada variante lleva ahora sus tres
+lugares abajo del nombre, y **salen TODAS las que le faltan a ML, no sólo las que hay que comprar**:
+la variante que ya está cubierta desde casa dice **✓ mandar** en verde en vez de un número, y es
+justo la que cambia la decisión — antes desaparecía del desglose y se leía igual que una que nadie
+midió, el MISMO error que tenía el renglón del producto.
+Un pedido viejo, guardado antes de este cambio, no tiene los tres números adentro: ahí el chip sale
+como antes (sólo el nombre y cuánto comprar) hasta que el panel lo vuelva a calcular. **No se
+inventa un cero**, que se leería como "no hay nada en ningún lado".
 **Vive en UNA función (`pedTresLugares`)**: la nota se arma en dos lugares —el refresco de los
 pedidos cargados a mano y el alta/actualización de los automáticos— y con dos copias el mismo
 producto podía decir una cosa en un renglón y otra en el otro.

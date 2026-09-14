@@ -162,6 +162,8 @@ input.qty:focus{border-color:var(--accent2)}
 .pi-var-det .pi-var-list{display:flex;margin-top:6px}
 .pi-var-chip{font-size:.68rem;padding:3px 9px;border-radius:5px;background:rgba(124,58,237,.15);color:#a78bfa;white-space:nowrap}
 .pi-var-chip strong{color:var(--text);margin-left:4px}
+.pi-var-chip-col{display:inline-flex;flex-direction:column;gap:2px;align-items:flex-start;line-height:1.35}
+.pi-var-lug{font-size:.58rem;color:var(--muted);letter-spacing:.2px}
 .inv-var-row{background:rgba(124,58,237,.04)}
 .inv-var-row td:first-child{padding-left:22px;font-size:.71rem;color:var(--muted)}
 .inv-var-row input.qty{width:52px;font-size:.68rem}
@@ -2307,7 +2309,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='19.29';
+const APP_VERSION='19.30';
 // El problema real que esto resuelve no es curiosidad: es que el celular guarda la app y sigue
 // mostrando la de ayer sin avisar. Varias veces se revisó un cambio que ya estaba subido y no se
 // veía. Por eso, además del número, el chip avisa cuando hay una versión nueva esperando.
@@ -7839,14 +7841,21 @@ async function syncPedidosAuto(){
         const vCasa=parseInt(state.inventory[invKeyV(p.id,OFI,v)])||0; // de esta variante, en casa
         const vCam=LOCS.reduce((a,l)=>a+transitoDe(_trPed,p.id,l,v),0);// de esta variante, viajando
         const vComprar=Math.max(0,vFalta-vCasa-vCam);
-        return{v,vFalta,vComprar};
+        return{v,vFalta,vComprar,vStock,vCasa,vCam};
       }).filter(x=>x.vFalta>0);
       necesario=varDefs.reduce((s,x)=>s+x.vFalta,0);
       // El desglose muestra lo que hay que COMPRAR de cada una: si de una variante ya tenés en casa
       // lo que falta, no entra en el pedido aunque ML esté en cero (hay que mandarla, no comprarla).
       const _aComp=varDefs.filter(x=>x.vComprar>0);
       aComprarVar=_aComp.reduce((s,x)=>s+x.vComprar,0);
-      variantesNec=_aComp.length?_aComp.map(({v,vComprar:q})=>({v,q})):null;
+      // ── LOS TRES LUGARES, VARIANTE POR VARIANTE (14/09/2026) ───────────────────────
+      // Pedido suyo: el renglón del producto ya dice los tres lugares, pero en un producto con
+      // variantes ese total no sirve para decidir — "150 en camino" no dice de qué color.
+      // Y van TODAS las que le faltan a ML, no sólo las que hay que comprar: justo la variante que
+      // ya está cubierta desde casa es la que cambia la decisión (no comprar, MANDAR). Antes
+      // desaparecía del desglose y se leía igual que una que nadie midió, que es el mismo error
+      // que tenía el renglón del producto.
+      variantesNec=varDefs.length?varDefs.map(({v,vComprar:q,vStock,vCam,vCasa})=>({v,q,ml:vStock,cam:vCam,casa:vCasa})):null;
     } else {
       const targetStock=Math.ceil(vDia*TARGET_DIAS_P);
       necesario=Math.max(0,targetStock-stock);
@@ -9213,6 +9222,23 @@ function cuentaPedidoHTML(p){
     <div style="font-size:.55rem;margin-top:3px;opacity:.85">La velocidad se mide sobre los días que hubo mercadería, no sobre los 30 del mes: los días en cero no vendió porque no había, no porque no se venda.</div>
   </div>`;
 }
+// ── EL CHIP DE CADA VARIANTE: QUÉ COMPRAR Y DÓNDE ESTÁ LO QUE YA TENÉS ─────────────
+// Pedido suyo del 14/09/2026. Los tres lugares van SIEMPRE, aunque sean cero: un chip sin el
+// renglón se lee igual que uno donde nadie lo midió, y son justo los dos números que cambian la
+// decisión (con unidades en casa no hay que comprar, hay que MANDAR).
+// Los pedidos viejos no tienen estos campos guardados: ahí no se inventa nada, se muestra el chip
+// como antes hasta que el panel lo vuelva a calcular.
+function pedVarChip(x){
+  const q=x.q||0;
+  const tieneLugares=(x.ml!=null||x.cam!=null||x.casa!=null);
+  const cab=q>0
+    ? `${x.v}<strong>×${q}</strong>`
+    : `${x.v}<strong style="color:var(--green)">✓ mandar</strong>`;
+  if(!tieneLugares)return `<span class="pi-var-chip">${cab}</span>`;
+  const n=v=>fmtN(v||0);
+  const lug=`<span class="pi-var-lug">📦 ${n(x.ml)} en ML · 🚚 ${n(x.cam)} en camino · 🏠 ${n(x.casa)} en casa</span>`;
+  return `<span class="pi-var-chip pi-var-chip-col" title="${q>0?`Hay que COMPRAR ${n(q)} de ${x.v}.`:`De ${x.v} no hay que comprar: con lo que tenés en casa o en camino alcanza. Hay que MANDARLA.`}">${cab}${lug}</span>`;
+}
 function _pedidoItemHtml(p,opts){
   opts=opts||{};
   const NEXT={pendiente:'poco_stock',poco_stock:'suficiente',suficiente:'pendiente'};
@@ -9223,7 +9249,7 @@ function _pedidoItemHtml(p,opts){
   const vars=Array.isArray(p.variantesNec)&&p.variantesNec.length?p.variantesNec:null;
   const varsSorted=vars?[...vars].sort((a,b)=>b.q-a.q):null;
   const _vOpen=varsSorted&&_openPedVars.has(p.id);
-  const varToggle=varsSorted?`<details class="pi-var-det"${_vOpen?' open':''} ontoggle="_setPedVarOpen('${p.id}',this.open)"><summary class="pi-var-toggle">Variantes (${varsSorted.length})</summary><div class="pi-var-list">${varsSorted.map(x=>`<span class="pi-var-chip">${x.v}<strong>×${x.q}</strong></span>`).join('')}</div></details>`:'';
+  const varToggle=varsSorted?`<details class="pi-var-det"${_vOpen?' open':''} ontoggle="_setPedVarOpen('${p.id}',this.open)"><summary class="pi-var-toggle">Variantes (${varsSorted.length})</summary><div class="pi-var-list">${varsSorted.map(x=>pedVarChip(x)).join('')}</div></details>`:'';
   const _prod=(state.products||[]).find(x=>x.id===p.prodId||(x.name&&normTxt(x.name)===normTxt(p.producto||'')));
   const fotoBtn=(_prod&&_prod.foto)?`<button class="pi-var-toggle" style="background:rgba(56,189,248,.12);color:#38bdf8;border-color:rgba(56,189,248,.3)" onclick="verFoto('${_prod.id}')" title="Ver foto del producto">📷 Foto</button>`:'';
   // UN SOLO NÚMERO: lo que queda en riesgo DESPUÉS de mandar lo que ya tenés en casa o viajando.
