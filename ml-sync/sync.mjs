@@ -2036,7 +2036,7 @@ async function bajarParaMover(db, accounts, labels, products, opts = {}) {
     } catch { out = null; }
     feeCache[key] = out; return out;
   };
-  const filas = [], ganando = [], sinCaja = [], noConviene = [], paulvic = [];
+  const filas = [], ganando = [], sinCaja = [], noConviene = [];
   for (const label of labels) {
     const acc = accounts[label];
     if (!acc?.refresh_token) continue;
@@ -2069,9 +2069,6 @@ async function bajarParaMover(db, accounts, labels, products, opts = {}) {
           label, mla, nom, precio, stock, diasSin: diasSin === 9999 ? null : diasSin,
           plata: Math.round(stock * costo), nVar: vars.length,
         };
-        // Paulvic no se toca (regla suya del 13/08/2026) y además es un GRUPO de precio: bajar una
-        // arrastra a las 26. Se cuentan aparte para que se vea que están, no se esconden.
-        if (/paulvic/i.test((p.name || '') + ' ' + nom)) { paulvic.push(base); continue; }
         // Sin caja de compra no hay palanca conocida: bajar sería adivinar. Se cuenta y se sigue.
         if (!b.catalog_listing) { sinCaja.push(base); continue; }
         let caja = null;
@@ -2131,7 +2128,7 @@ async function bajarParaMover(db, accounts, labels, products, opts = {}) {
   }
   filas.sort((a, b) => b.plata - a.plata);
   noConviene.sort((a, b) => b.plata - a.plata);
-  return { filas, ganando, sinCaja, noConviene, paulvic, DIAS, PISO, MAX_BAJA };
+  return { filas, ganando, sinCaja, noConviene, DIAS, PISO, MAX_BAJA };
 }
 
 // Mes actual YYYY_MM en hora argentina (no la del servidor de GitHub, que va en UTC: el 1º de
@@ -5681,7 +5678,6 @@ async function main() {
         D.push(`      ${money(Math.round(f.precio))} → ${money(f.pw)} (−${f.baja.toFixed(1)}%) · margen ${f.mgHoy.toFixed(0)}% → ${f.mgPw.toFixed(0)}% · volver:${f.mla}=${f.pw}:go`);
       }
       if (!baj.filas.length) D.push('   ninguna');
-      if (baj.paulvic.length) D.push(`   (+ ${baj.paulvic.length} Paulvic salteados: regla suya, no se tocan)`);
       if (baj.noConviene.length) {
         D.push(`\n── Perdieron la caja pero NO conviene bajarlas · ${baj.noConviene.length} ──`);
         for (const f of baj.noConviene.slice(0, 15)) D.push(`   ${f.label} · ${f.nom} · ${f.why}`);
@@ -9452,8 +9448,6 @@ async function main() {
             const b = row.body || {}; const mla = b.id; if (!mla || !links[mla]) continue;
             if (b.status !== 'active' && b.status !== 'paused') continue;
             const p = pIdx[links[mla].prodId]; if (!p) continue;
-            // Paulvic no se toca (regla suya): subir uno sube el grupo entero.
-            if (/paulvic/i.test((p.name || '') + ' ' + (links[mla].title || ''))) continue;
             const vars = Array.isArray(b.variations) ? b.variations : [];
             const precio0 = vars.length ? (vars[0].price || 0) : (b.price || 0);
             if (!precio0) continue;
@@ -11072,7 +11066,6 @@ async function main() {
       for (const f of R.ganando.slice(0, 15)) console.log(`   ${f.label.padEnd(8)} · ${f.nom.padEnd(40)} ${f.stock} u. · ${money(f.plata)}`);
       if (R.ganando.length > 15) console.log(`   … y ${R.ganando.length - 15} más`);
       console.log(`\n── Sin caja de compra que medir · ${R.sinCaja.length} ── (no son de catálogo o ML no dio el dato)`);
-      console.log(`── Paulvic salteados (regla suya: no se tocan) · ${R.paulvic.length} ──`);
       console.log(`\nSOLO LECTURA: no se tocó ningún precio.`);
       return;
     }

@@ -1986,16 +1986,24 @@ Lo que quedó abierto. Borrá de acá lo que se vaya cerrando.
   MLA1452471312, MLA1377920253). Para llegar al 30% habría que cruzar la barrera, así que se quedan
   ahí. En dos de ellos `bajopiso` además dice que hay que BAJARLOS a ~$30.300 — un precio menor no
   puede dar más margen, así que ahí hay un error de cuenta que sigue sin explicarse.
-- **Grupo Paulvic: NO TOCAR** (regla suya). Lo que decía esta nota —"26 publicaciones entre 24% y
-  30%, subirlas a $14.840 las pondría arriba del piso"— quedó VIEJO: era con el piso de 30% y la
-  fórmula anterior. Medido de nuevo el 04/09/2026: quedan **12 activas a $14.360 con 155 unidades**,
-  todas entre **30,8% y 39%**, o sea cómodas contra el piso de 25%. Ya no hay nada que subir.
-  **Pero tampoco hay nada que bajar, y ese es el dato que importa** (`unapub:MLA3026299952`):
-  · el precio que las deja justo en 25% es **$13.750**, o sea **$610 de margen** — un 4,2%
-  · para GANAR la caja de compra habría que bajar a **$10.696**, y ahí el margen es **−4,1%**
+- **PAULVIC: LA REGLA DE "NO TOCAR" SE SACÓ (14/09/2026).** Pedido suyo, textual: *"sacar regla
+  que dice que los paulvic no se pueden tocar"*. **Estaba en el CÓDIGO, no sólo en esta nota**, y
+  en dos comandos: `bajarcaja` los apartaba en una lista "Paulvic salteados" y `submargen` los
+  salteaba en silencio con un `continue`. Los dos motivos que decía el comentario ya no valían: la
+  regla del grupo de precio (*"bajar una arrastra a las 26"*) se desactivó el 04/09 con
+  `grupos:paulvic:off`, así que cada aroma ya tiene precio propio. Sacado de los dos lados y
+  verificado que no quedó ninguna referencia colgada.
+  **Ojo: `calcSubirPuede` nunca los salteó**, así que los Paulvic YA venían saliendo en el aviso
+  diario. Lo que cambia es que ahora también entran en los dos comandos que los apartaban.
+  **Lo que NO se tocó:** el reparto de cuentas (Paulvic sigue compartido entre Adriana y Luciana,
+  con la Persea en Luciana) es otra regla y sigue en pie.
+  **Los números medidos, que siguen valiendo** (04/09/2026, `unapub:MLA3026299952`): 12 activas a
+  $14.360, todas entre **30,8% y 39%** — cómodas contra el piso. El precio que las deja justo en
+  25% es **$13.750**, o sea **$610 de aire**; para GANAR la caja de compra habría que bajar a
+  **$10.696** y ahí el margen es **−4,1%**.
   **La lección, y es general: un margen que se ve grande en % puede ser chico en PESOS.** 30,8%
-  sobre un perfume de $14.360 son $610 de aire — no alcanza ni para que el comprador lo note ni
-  para pelear la caja. Antes de decir "acá hay margen para bajar", mirar el número en pesos.
+  sobre un perfume de $14.360 son $610 — no alcanza ni para que el comprador lo note ni para
+  pelear la caja. Antes de decir "acá hay margen para bajar", mirar el número en pesos.
 - **Obra social privada: falta dejarla automática.** Son $83.333/mes. El pago de $250.000 del
   04/08 eran 3 meses atrasados y ya se repartió en mayo, junio y julio (`partirgasto`). Falta que
   él confirme si agosto ya tiene su cuota o si el primer mes del régimen nuevo es septiembre, y
