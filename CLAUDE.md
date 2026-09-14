@@ -430,6 +430,22 @@ sabe el color. **Falta que él diga cuál es**; hasta entonces no muestra códig
 
 ### Los tres lugares donde está la mercadería
 
+**Y SE VEN LOS TRES EN CADA RENGLÓN DE PEDIDOS (14/09/2026).** Pedido suyo: *"quiero que en todos
+los productos de pedidos muestre cuanto stock hay en ml, en camino y en mi oficina"*.
+Los tres números **ya se calculaban**; lo que fallaba era mostrarlos, y de dos formas:
+ · **"264 en stock" no decía que ese número es sólo lo de ML.** `stockOf` deja la oficina afuera a
+   propósito —para que el "dinero en riesgo" mida el quiebre real— así que "en stock" se leía como
+   el total, y el total es otro.
+ · **La oficina y el camino salían SÓLO cuando eran mayores a cero.** Un renglón sin ellos se leía
+   igual que uno donde nadie los midió, y son justo las dos cosas que cambian la decisión: con 141
+   en casa **no hay que comprar, hay que MANDAR**.
+Ahora el renglón dice **📦 N en ML · 🚚 N en camino · 🏠 N en tu oficina**, siempre, aunque sean cero.
+**Vive en UNA función (`pedTresLugares`)**: la nota se arma en dos lugares —el refresco de los
+pedidos cargados a mano y el alta/actualización de los automáticos— y con dos copias el mismo
+producto podía decir una cosa en un renglón y otra en el otro.
+Probado con números inventados antes de subir, incluido el caso que antes no se veía (cero en casa
+y cero en camino) y el de 0 en ML con 150 en casa, que es el que hay que leer al revés.
+
 Desde el 19/08/2026 el panel distingue **tres**, no dos:
 
 1. **Mi oficina** — lo que está en casa, contado a mano (por variante si el producto tiene).

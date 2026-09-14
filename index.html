@@ -2307,7 +2307,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='19.28';
+const APP_VERSION='19.29';
 // El problema real que esto resuelve no es curiosidad: es que el celular guarda la app y sigue
 // mostrando la de ayer sin avisar. Varias veces se revisó un cambio que ya estaba subido y no se
 // veía. Por eso, además del número, el chip avisa cuando hay una versión nueva esperando.
@@ -7934,10 +7934,8 @@ async function syncPedidosAuto(){
     for(const ped of (state[coll]||[])){
       if(ped.auto!==false||!ped.prodId)continue;
       const r=resumen[ped.prodId];if(!r)continue;
-      const _tiM=r.enCamino>0?transitoInfoDe(r.p.id):null;
-      const notaM=`30d: ${r.vendidosNorm} vendidos · ${r.stock} en stock · ~${r.diasCubiertos}d cubiertos`
-        +(r.enOficina>0?` · ${r.enOficina} ya en tu oficina`:'')
-        +(_tiM?` · 🚚 ${_tiM.u} en camino, hace ${_tiM.diasMax}d`:'')
+      const notaM=`30d: ${r.vendidosNorm} vendidos · ~${r.diasCubiertos}d cubiertos`
+        +pedTresLugares(r)
         +(r.aComprar===0?` · <span style="color:var(--green)">✓ con lo que tenés alcanza: la cuenta dice comprar 0</span>`:'');
       if(ped.nota===notaM&&ped.riesgo===r.riesgo&&ped.gan30d===r.gan30d)continue;
       ped.nota=notaM;ped.riesgo=r.riesgo;ped.riesgoComprar=r.riesgoComprar;ped.riesgoMandar=r.riesgoMandar;ped.gan30d=r.gan30d;
@@ -7957,10 +7955,7 @@ async function syncPedidosAuto(){
     const estado=r.diasCubiertos<=pedDiasRojoDe(r.p)?'pendiente':'poco_stock';
     const notaHist=r.diasHistorial<PED_MAX_DAYS?` (${r.vendidos} en ${r.diasHistorial}d)`:'';
     const variantesNec=r.variantesNec||null;
-    const _ti=r.enCamino>0?transitoInfoDe(r.p.id):null;
-    const notaOfi=(r.enOficina>0?` · ${r.enOficina} ya en tu oficina`:'')
-                 +(_ti?` · <span style="color:${_ti.diasMax>=ENV_ROJO_DIAS?'var(--red)':'var(--amber)'}" title="${_ti.u} unidades despachadas en ${_ti.cajas} caja(s) que todavía no llegaron a Full: ${Object.entries(_ti.ctas).map(([c,q])=>q+' a '+c).join(' · ')}. Como ya están compradas, no entran en lo que hay que comprar.${_ti.diasMax>=ENV_ROJO_DIAS?' OJO: la más vieja lleva '+_ti.diasMax+' días, revisá si ya entró.':''}">🚚 ${_ti.u} en camino${_ti.cajas>1?` (${_ti.cajas} cajas)`:''}, hace ${_ti.diasMax}d</span>`:'');
-    const nota=`30d: ${r.vendidosNorm} vendidos${notaHist} · ${r.stock} en stock · ~${r.diasCubiertos}d cubiertos${notaOfi}`;
+    const nota=`30d: ${r.vendidosNorm} vendidos${notaHist} · ~${r.diasCubiertos}d cubiertos`+pedTresLugares(r);
     const pvMatch=r.p.proveedorId?(state.proveedores||[]).find(x=>x.id===r.p.proveedorId):null;
     const provNom=pvMatch?.nombre||null;
     const id='pedauto_'+pid;
@@ -9279,6 +9274,30 @@ const _pedSortFnRiesgo=(a,b)=>{
 // Devuelve además de las unidades: en cuántas cajas van, hace cuántos días salió la más vieja y a
 // qué cuentas. Sin eso, en Pedidos el número de compra baja "porque sí" y parece un error del
 // sistema; con esto se ve QUÉ hay viajando y si está tardando.
+// ── LOS TRES LUGARES DONDE ESTÁ LA MERCADERÍA, EN CADA RENGLÓN DE PEDIDOS (14/09/2026) ──
+// Pedido suyo: *"quiero que en todos los productos de pedidos muestre cuanto stock hay en ml, en
+// camino y en mi oficina"*.
+// Los tres números YA se calculaban. Lo que fallaba era MOSTRARLOS, y de dos formas:
+//  · **"264 en stock" no decía que ese número es sólo lo que está en ML.** `stockOf` deja la
+//    oficina afuera a propósito (para que el "dinero en riesgo" mida el quiebre real), así que
+//    "en stock" se leía como el total y el total es otro.
+//  · **la oficina y el camino salían SÓLO cuando eran mayores a cero.** Un renglón sin ellos se
+//    leía igual que uno donde nadie los midió — y son justo las dos cosas que cambian la decisión:
+//    con 141 en casa no hay que COMPRAR, hay que MANDAR.
+// Ahora van los tres siempre y con su nombre.
+// VIVE EN UNA SOLA FUNCIÓN porque la nota se arma en DOS lugares —el refresco de los pedidos
+// cargados a mano y el alta/actualización de los automáticos—: con dos copias, el mismo producto
+// podía decir una cosa en un renglón y otra en el otro. Es el mismo motivo por el que el piso salió
+// de los ocho comandos.
+function pedTresLugares(r){
+  const ti=r.enCamino>0?transitoInfoDe(r.p.id):null;
+  const camino=ti
+    ?`<span style="color:${ti.diasMax>=ENV_ROJO_DIAS?'var(--red)':'var(--amber)'}" title="${ti.u} unidades despachadas en ${ti.cajas} caja(s) que todavía no llegaron a Full: ${Object.entries(ti.ctas).map(([c,q])=>q+' a '+c).join(' · ')}. Como ya están compradas, no entran en lo que hay que comprar.${ti.diasMax>=ENV_ROJO_DIAS?' OJO: la más vieja lleva '+ti.diasMax+' días, revisá si ya entró.':''}">🚚 ${ti.u} en camino${ti.cajas>1?` (${ti.cajas} cajas)`:''}, hace ${ti.diasMax}d</span>`
+    :`<span style="color:var(--muted)">🚚 0 en camino</span>`;
+  const ofi=r.enOficina>0?`🏠 ${r.enOficina} en tu oficina`:`<span style="color:var(--muted)">🏠 0 en tu oficina</span>`;
+  return ` · 📦 ${r.stock} en ML · ${camino} · ${ofi}`;
+}
+
 function transitoInfoDe(pid){
   let u=0,cajas=0,diasMax=0;const ctas={};
   Object.values(state.envios_full||{}).forEach(e=>{
