@@ -784,6 +784,19 @@ vender menos.
 **Fuera de ese caso bajar siempre deja menos.** Por eso son 2 de 105 y no 50: si el comando
 empezara a devolver decenas, lo primero que hay que sospechar es la cuenta, no el negocio.
 
+**EL FILTRO AGUA, EL PRIMERO QUE PASÓ EL FRENO DE LA CAJA: NO CONVIENE (14/09/2026).** Es el caso
+que él quiso que el robot detectara —vendía 4,13 por día, perdió la caja de compra y se frenó 18
+días con 70 u. adentro de Full—, y medido con `hermanas:filtro agua:23` la respuesta es **que no**:
+la publicación viva (`MLA1459229525`, Matías, $3.560) ya está en **23,2%**, o sea **justo en el
+piso**, y ML pide **$2.721** para ganar la caja. Son $839 abajo del piso: a ese precio se vende
+perdiendo.
+**La lección, y es la que hace útil al freno: que el robot marque una publicación NO quiere decir
+que haya que bajarla.** El freno contesta *"acá hay algo para mirar"*; el margen contesta *"y no se
+puede"*. Cuando el precio de la caja está abajo del piso, el competidor la vende más barata de lo
+que a nosotros nos cuesta y **el precio no es el problema**: lo que queda es rematarlo a propósito
+(`liquidando`) o retirar el stock de Full para dejar de pagar almacenamiento, las dos decisiones
+suyas. Por eso `calcFrenoCaja` deja el precio y no baja nada.
+
 ## ¿SE PUEDE AUTOMATIZAR LA SUBA DE PRECIOS? MEDIDO EL 12/09/2026
 
 Pregunta suya: *"se puede automatizar que se aumente sola una publicación que se esté vendiendo
