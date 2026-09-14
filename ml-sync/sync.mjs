@@ -1205,6 +1205,19 @@ async function calcFrenoCaja(db, o) {
       // mismo patrón que leer `caja.st` cuando la caja se guarda como texto (24/08).
       paraGanar: Number(e.cajaPtw) > 0 ? Math.round(Number(e.cajaPtw)) : null,
       perdido: Math.round(porDia * diasSin),      // unidades que se dejaron de vender
+      // LO QUE CUESTA LA MERCADERÍA, para poder decir cuándo el precio de la caja es imposible.
+      // El 14/09/2026 el aviso le mostró *"Filtro agua · ML dice que se gana la caja a $1.000"*
+      // y la mercadería sola cuesta $1.059: ese renglón lo estaba invitando a bajar a menos de
+      // lo que le sale comprarlo. Es la misma regla que ya está anotada para `price_to_win`
+      // —*"que se gane a $900 no quiere decir que a $900 haya margen"*— y la misma que el margen
+      // en verde sin el envío descontado: **una conclusión sobre un número que sabemos que está
+      // mal no se muestra como si fuera una recomendación.**
+      // OJO CON EL ALCANCE, y por eso el nombre es `bajoCosto` y no `noConviene`: esto compara
+      // contra la MERCADERÍA SOLA, sin comisión de ML, sin envío ni impuestos. Un precio que
+      // pasa este chequeo **todavía puede no convenir** (a los Paulvic ganar la caja los deja
+      // en −4,1% estando muy arriba del costo). Agarra el caso imposible, no decide el dudoso:
+      // ése se mide de a uno con `unapub` o `bajarcaja`, que sí tienen la cuenta completa.
+      costo: Math.round(costoPesos(p, 1, tc).costo || 0),
     });
   }
   filas.sort((a, b) => b.perdido - a.perdido);
@@ -2321,10 +2334,31 @@ async function sendAlerta(text) {
     console.log('⚠️ Telegram: hay avisos para mandar pero el canal privado no está configurado (cyc/mlconfig/tgAlertas). Comando: tgalertas');
     return false;
   }
-  const r = await tgApi('sendMessage', { chat_id: TG_ALERTAS, text, parse_mode: 'HTML', disable_web_page_preview: true });
-  const ok = !!(r && r.ok);
-  console.log(ok ? '✓ Aviso mandado al canal privado.' : `✗ No pude mandar el aviso: ${r && r.description ? r.description : 'sin respuesta'}`);
-  return ok;
+  // TELEGRAM CORTA EN 4096 CARACTERES Y NO AVISA: manda un 400 y el mensaje no sale.
+  // Como el aviso ahora lleva la lista COMPLETA (ver abajo por qué), puede pasarse de largo,
+  // así que se parte en varios mensajes cortando SIEMPRE en fin de renglón — las etiquetas
+  // <b>/<i> viven adentro de un renglón, así que cortar ahí no parte ninguna.
+  const partes = [];
+  let act = '';
+  for (const ln of String(text).split('\n')) {
+    if (act && (act.length + ln.length + 1) > 3800) { partes.push(act); act = ''; }
+    act = act ? act + '\n' + ln : ln;
+  }
+  if (act) partes.push(act);
+  let n = 0;
+  for (const p of partes) {
+    const cab = partes.length > 1 ? `<i>(${++n} de ${partes.length})</i>\n` : '';
+    const r = await tgApi('sendMessage', { chat_id: TG_ALERTAS, text: cab + p, parse_mode: 'HTML', disable_web_page_preview: true });
+    if (!(r && r.ok)) {
+      // UN ENVÍO A MEDIAS ES PEOR QUE NINGUNO: si devolviera true, las publicaciones de las
+      // partes que NO salieron quedarían anotadas como avisadas y calladas una semana. Con
+      // false se repite el aviso entero mañana, que es el lado seguro.
+      console.log(`✗ No pude mandar el aviso${partes.length > 1 ? ` (parte ${n} de ${partes.length})` : ''}: ${r && r.description ? r.description : 'sin respuesta'}`);
+      return false;
+    }
+  }
+  console.log(`✓ Aviso mandado al canal privado${partes.length > 1 ? ` en ${partes.length} mensajes` : ''}.`);
+  return true;
 }
 const money = (n) => '$' + Math.round(n).toLocaleString('es-AR');
 
@@ -3393,11 +3427,47 @@ async function main() {
     //
     // NO TOCA NINGÚN PRECIO, NI CON `:go`. `:go` sólo quiere decir "mandá el mensaje". Las
     // decisiones de precio siguen siendo suyas — regla del 13/08/2026.
+    // ── `lista` · VOLVER A VER EL AVISO CON SUS NÚMEROS ───────────────────────────────
+    // Pedido suyo del 14/09/2026: *"¿cómo hago para decirte que subas o bajes lo que quiero?"*.
+    // El aviso diario ahora numera cada renglón, pero un mensaje de Telegram se pierde abajo de
+    // otros mensajes. Esto lo vuelve a imprimir igual, con el mismo número, para que "el 4"
+    // siga queriendo decir la misma publicación cuando se lo pide.
+    // SOLO LEE: no toca precios, no manda nada.
+    if (/^lista$/.test(String(process.env.BILLING_PROBE || ''))) {
+      const g = (await db.get('cyc/avisolista')) || {};
+      const filas = Array.isArray(g.filas) ? g.filas : [];
+      if (!filas.length) { console.log('No hay ninguna lista guardada todavía. Sale sola con el aviso de las 00:03, o a mano con `avisos`.'); return; }
+      const dias = Math.floor((Date.now() - (Number(g.ts) || 0)) / 864e5);
+      console.log(`=== LISTA DEL AVISO · ${g.fecha || '?'}${dias > 0 ? ` (hace ${dias} día(s))` : ' (hoy)'} ===`);
+      // SE AVISA CUANDO ESTÁ VIEJA. Los precios de ML se mueven y el margen también: aplicar un
+      // renglón de hace una semana es decidir con un número que ya no es el de hoy. No se
+      // esconde la lista —él igual puede querer mirarla— pero no se calla que está vencida.
+      if (dias >= 3) console.log(`⚠️ Tiene ${dias} días. Antes de aplicar algo de acá, correr \`avisos\` de nuevo: los precios se movieron.`);
+      console.log('');
+      for (const f of filas) {
+        console.log(`${String(f.n).padStart(3)}. [${f.tipo === 'subir' ? 'SUBIR' : 'BAJAR'}] ${f.nom} (${f.cuenta})`);
+        console.log(`     ${f.mla} · ${money(f.de)} → ${money(f.a)} · +${money(f.extraMes)}/mes`);
+      }
+      console.log(`\nPara aplicar el número N: volver:<MLA>=<precio>:go  (el MLA y el precio están en el renglón)`);
+      return;
+    }
+
     if (/^avisos(:|$)/.test(String(process.env.BILLING_PROBE || ''))) {
       const MANDAR = /:go$/.test(String(process.env.BILLING_PROBE || ''));
+      const RESET = /:reset(:|$)/.test(String(process.env.BILLING_PROBE || ''));
       const fin = (await db.get('cyc/finanzas')) || {};
       const tc = parseFloat(fin.tipo_cambio) || 1500;
       console.log(`=== AVISOS ${MANDAR ? '(SE MANDAN)' : '(PRUEBA: no se manda nada)'} ===\n`);
+      // `avisos:reset[:go]` → OLVIDAR LO YA AVISADO Y VOLVER A MANDAR TODO.
+      // Existe por un daño concreto: mientras el mensaje mostraba sólo 3 renglones y decía
+      // "…y 13 más", esas 13 quedaban anotadas como avisadas igual, así que se callaban 14 días
+      // sin que él las hubiera visto NUNCA. Arreglar el mensaje no las devuelve solo — hay que
+      // poder borrar la memoria una vez. No se usa de rutina: sin esto, el aviso repetiría lo
+      // mismo todos los días y eso entrena a no abrirlo.
+      if (RESET) {
+        try { await db.set('cyc/avisados', null); console.log('🧹 Memoria de avisos borrada: esta vuelta sale TODO como nuevo.\n'); }
+        catch { console.log('⚠️ No pude borrar la memoria de avisos; sigue igual.\n'); }
+      }
 
       const sub = await calcSubirPuede(db, { dias: 30, maxSuba: 0.10, products, labels, accounts });
       const zm = await calcZonaMuerta(db, { dias: 30, products, labels, accounts });
@@ -3510,43 +3580,58 @@ async function main() {
       for (const f of frn.filas.slice(0, 10)) {
         console.log(`   · ${f.nom} (${f.cuenta}) · vendía ${f.porDia.toFixed(2)}/día · hace ${f.diasSin} d que no vende`
           + ` · ${f.st} u. paradas · ~${f.perdido} u. que se dejaron de vender`
-          + (f.paraGanar ? ` · ML: se gana la caja a ${money(f.paraGanar)}` : ' · ML no dice a qué precio se gana'));
+          + (f.paraGanar ? ` · ML: se gana la caja a ${money(f.paraGanar)}` : ' · ML no dice a qué precio se gana')
+          + (f.paraGanar && f.costo > 0 && f.paraGanar <= f.costo ? ` · ⚠️ IMPOSIBLE: la mercadería sola cuesta ${money(f.costo)}` : ''));
       }
 
       // ── EL MENSAJE ────────────────────────────────────────────────────────────────────
-      // Corto a propósito: un aviso largo no se lee, y uno que llega todos los días con lo
-      // mismo entrena a ignorarlo. Va el titular y las 3 primeras de cada cosa; el detalle
-      // se pide desde el chat con el comando que va al final.
+      // VA LA LISTA COMPLETA, NUMERADA. Antes salían sólo las 3 primeras de cada cosa y abajo
+      // un "…y 13 más", y él lo marcó el 14/09/2026: *"Me paso la lista pero incompleta no?"*.
+      // Tenía razón, y el agujero era peor que incómodo: **esas 13 quedaban anotadas como
+      // avisadas igual**, así que no volvían a salir por 7 días. O sea que el aviso le prometía
+      // 13 decisiones y después se las callaba una semana — nunca las iba a ver.
+      // Cortar tenía sentido cuando el mensaje era el final del camino; no lo tiene cuando es
+      // la lista sobre la que él decide. Si se hace largo, `sendAlerta` lo parte en varios.
+      //
+      // EL NÚMERO DE CADA RENGLÓN es para que pueda contestar "aplicá el 3 y el 7" sin tener
+      // que copiar nombres largos. Y la lista se GUARDA en `cyc/avisolista` con ese mismo
+      // número: un mensaje de Telegram se pierde entre otros mensajes, y si el número sólo
+      // viviera ahí no habría forma de saber a qué publicación apuntaba. Se lee con `lista`.
       const L = [];
+      const guardaFilas = [];
+      let nro = 0;
+      const numerar = (o) => { guardaFilas.push({ n: ++nro, ...o }); return nro; };
       L.push('🔔 <b>CYC · para decidir</b>');
       if (nuevasSub.length) {
         const t = nuevasSub.reduce((a, x) => a + x.extraMes, 0);
         L.push(`\n📈 <b>Subir</b> · ${nuevasSub.length} publicación(es) · +${money(t)}/mes`);
-        for (const f of nuevasSub.slice(0, 3)) {
-          L.push(`· ${f.nom} (${f.cuenta})\n   ${money(f.precio)} → ${money(f.tope)} · vendió ${f.u} · +${money(f.extraMes)}/mes`);
+        for (const f of nuevasSub) {
+          const n = numerar({ tipo: 'subir', mla: f.mla, nom: f.nom, cuenta: f.cuenta, de: f.precio, a: f.tope, extraMes: f.extraMes });
+          L.push(`<b>${n}.</b> ${f.nom} (${f.cuenta})\n   ${money(f.precio)} → ${money(f.tope)} · vendió ${f.u} · +${money(f.extraMes)}/mes`);
         }
-        if (nuevasSub.length > 3) L.push(`   …y ${nuevasSub.length - 3} más`);
-        // SE ANOTAN TODAS LAS QUE ENTRARON AL AVISO, no sólo las 3 que se muestran. El mensaje
-        // dice "y 19 más" y esas 19 YA fueron avisadas: si no se anotaran, mañana saldrían como
-        // nuevas y el aviso volvería a ser el mismo todos los días.
+        // SE ANOTAN TODAS LAS QUE ENTRARON AL AVISO. Ahora salen todas, así que anotar todas
+        // ya no esconde nada: lo que se anota es exactamente lo que él leyó.
         for (const f of nuevasSub) paraAnotar[f.mla] = { tipo: 'subir', valor: f.tope, ts: hoyTs };
       }
       if (nuevasZm.length) {
         const t = nuevasZm.reduce((a, x) => a + x.extraMes, 0);
         L.push(`\n📉 <b>Bajar y ganar MÁS</b> · ${nuevasZm.length} · +${money(t)}/mes`);
         L.push('<i>Están justo arriba de un escalón de comisión de ML: cobrás menos y te queda más.</i>');
-        for (const f of nuevasZm.slice(0, 3)) {
-          L.push(`· ${f.nom} (${f.cuenta})\n   ${money(f.precio)} → ${money(f.mejor)} · +${money(f.extraMes)}/mes`);
+        for (const f of nuevasZm) {
+          const n = numerar({ tipo: 'bajar', mla: f.mla, nom: f.nom, cuenta: f.cuenta, de: f.precio, a: f.mejor, extraMes: f.extraMes });
+          L.push(`<b>${n}.</b> ${f.nom} (${f.cuenta})\n   ${money(f.precio)} → ${money(f.mejor)} · +${money(f.extraMes)}/mes`);
         }
         for (const f of nuevasZm) paraAnotar[f.mla] = { tipo: 'bajar', valor: f.mejor, ts: hoyTs };
       }
       if (nuevasPar.length) {
         const t = nuevasPar.reduce((a, x) => a + x.capital, 0);
         L.push(`\n🧊 <b>Parado</b> · ${nuevasPar.length} · ${money(t)} quietos · ${nuevasPar.filter((x) => x.pagando).length} pagan almacenamiento`);
-        for (const f of nuevasPar.slice(0, 3)) {
+        // Éstos NO llevan número: no hay ningún precio para aplicar. Lo que se hace con un
+        // producto parado (rematarlo, retirarlo de Full) no es un renglón que yo pueda ejecutar,
+        // así que darle número invitaría a pedir algo que el número no sabe hacer.
+        for (const f of nuevasPar) {
           L.push(`· ${f.nom} (${f.cuenta}) · ${f.st} u. · ${money(f.capital)}\n   ${f.edad} d en Full${f.pagando ? ' · 💸 ya paga' : ''}`);
         }
-        if (nuevasPar.length > 3) L.push(`   …y ${nuevasPar.length - 3} más`);
         for (const f of nuevasPar) paraAnotar[f.prodId + '__' + f.cuenta] = { tipo: 'parado', valor: f.st, ts: hoyTs };
       }
       // SI NO HAY NADA NO SE MANDA NADA. Un aviso diario que dice "hoy no hay nada" es ruido, y
@@ -3567,11 +3652,17 @@ async function main() {
       const nFrn = frn.filas.filter((f) => !yaAvisado('f_' + f.mla, 'frenocaja', f.diasSin));
       if (nFrn.length) {
         L.push(`\n🥊 <b>Perdieron la caja y se frenaron</b> · ${nFrn.length}`);
-        for (const f of nFrn.slice(0, 4)) {
+        // TAMPOCO LLEVAN NÚMERO, y es a propósito. El precio que informa ML acá es lo que hace
+        // falta para GANAR LA CAJA, no un precio con margen: el 14/09 el Filtro agua salió con
+        // "se gana la caja a $1.000" teniendo la mercadería sola a $1.059. Un número al lado
+        // invitaría a contestar "aplicá el 17" sobre algo que todavía no se midió.
+        L.push('<i>Acá el precio de ML es para ganar la caja, NO un precio con ganancia. Pedime que lo mida antes de tocar nada.</i>');
+        for (const f of nFrn) {
+          const imposible = f.paraGanar && f.costo > 0 && f.paraGanar <= f.costo;
           L.push(`· ${f.nom} (${f.cuenta})\n   vendía ${f.porDia.toFixed(1)}/día · hace ${f.diasSin} d que no vende`
-            + (f.paraGanar ? ` · ML dice que se gana la caja a ${money(f.paraGanar)}` : ' · ML no dice a qué precio se gana'));
+            + (f.paraGanar ? ` · ML dice que se gana la caja a ${money(f.paraGanar)}` : ' · ML no dice a qué precio se gana')
+            + (imposible ? `\n   ⚠️ <b>No se puede</b>: la mercadería sola te cuesta ${money(f.costo)}` : ''));
         }
-        if (nFrn.length > 4) L.push(`   …y ${nFrn.length - 4} más`);
         for (const f of nFrn) paraAnotar['f_' + f.mla] = { tipo: 'frenocaja', valor: f.diasSin, ts: hoyTs };
       }
 
@@ -3609,7 +3700,10 @@ async function main() {
         }
       } catch { /* si no se puede leer, no se avisa: no es urgente */ }
 
-      L.push('\n<i>Ninguno se aplicó solo: los precios los decidís vos.</i>');
+      // CÓMO CONTESTAR. Sin esto la lista es información y no una herramienta: él la lee, quiere
+      // aplicar tres renglones y no tiene forma de nombrarlos sin copiar títulos largos.
+      if (guardaFilas.length) L.push(`\n<i>Para aplicar, decime los números: "subí el 1 y el 4". Los precios los aplico yo y después los releo de ML.</i>`);
+      else L.push('\n<i>Ninguno se aplicó solo: los precios los decidís vos.</i>');
       const msg = L.join('\n');
       console.log('\n── MENSAJE ──\n' + msg.replace(/<[^>]+>/g, ''));
       if (MANDAR) {
@@ -3619,7 +3713,18 @@ async function main() {
         if (ok && Object.keys(paraAnotar).length) {
           try { await db.patch('cyc/avisados', paraAnotar); } catch { /* */ }
         }
-      } else console.log('\n(PRUEBA: no se mandó ni se anotó nada. Agregá ":go" para que salga por Telegram.)');
+        // LA LISTA GUARDADA TIENE QUE SER EXACTAMENTE LA QUE ÉL RECIBIÓ, y por eso se escribe
+        // acá adentro y no antes. Los renglones que salen son los que NO estaban avisados, así
+        // que una corrida de prueba al otro día devuelve pocos —o ninguno— y guardándola igual
+        // le pisaría la lista de anoche: él tendría en el teléfono los números 1 al 16 y `lista`
+        // le contestaría otra cosa con los mismos números. Un número que apunta a otra
+        // publicación es peor que no tener número — con esto se aplica un precio equivocado.
+        // Si el envío falló no se guarda nada, por lo mismo: no recibió ninguna lista.
+        if (ok && guardaFilas.length) {
+          try { await db.set('cyc/avisolista', { ts: hoyTs, fecha: new Date(hoyTs).toISOString().slice(0, 10), filas: guardaFilas }); }
+          catch { console.log('⚠️ No pude guardar la lista numerada (cyc/avisolista).'); }
+        }
+      } else console.log('\n(PRUEBA: no se mandó, no se anotó y NO se pisó la lista guardada. Agregá ":go" para que salga por Telegram.)');
       return;
     }
     // BILLING_PROBE=tgalertas[:<chat_id>|:-] → EL SEGUNDO CANAL DE TELEGRAM (13/09/2026).
