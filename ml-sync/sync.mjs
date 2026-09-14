@@ -841,7 +841,7 @@ async function calcSubirPuede(db, o) {
 
   // Unidades vendidas por publicación en la ventana: sin ventas no se opina.
   // Y la FECHA de la última, que es lo que separa "vende" de "vendió una vez y se frenó".
-  const desde = Date.now() - dias * 864e5, uMes = {}, ultVta = {};
+  const desde = Date.now() - dias * 864e5, uMes = {}, ultVta = {}, uProdCta = {};
   for (const [k, ents] of Object.entries(vp)) {
     const ts = Date.parse(k.slice(0, 10).replace(/_/g, '-'));
     if (!isFinite(ts) || ts < desde) continue;
@@ -849,18 +849,28 @@ async function calcSubirPuede(db, o) {
       if (!v || v.cancelada || !v.mla) continue;
       uMes[v.mla] = (uMes[v.mla] || 0) + (v.qty || 1);
       if (ts > (ultVta[v.mla] || 0)) ultVta[v.mla] = ts;
+      // Las del PRODUCTO en esa CUENTA, para los días de stock (ver abajo por qué no sirve el MLA).
+      if (v.prodId && v.cuenta) uProdCta[v.prodId + '__' + v.cuenta] = (uProdCta[v.prodId + '__' + v.cuenta] || 0) + (v.qty || 1);
     }
   }
   const hoyTsSub = Date.now();
   const diasSinDe = (mla) => (ultVta[mla] ? Math.floor((hoyTsSub - ultVta[mla]) / 864e5) : null);
-  // Días de stock: lo que tenés dividido lo que vendés por día. STOCK DESCONOCIDO NO ES CERO —
-  // si la clave no está no se puede decir que sobre mercadería, así que no frena y se muestra
-  // con "?" para que se vea. Adivinar acá taparía una suba que sí convenía.
-  const diasStockDe = (mla, e) => {
+  // Días de stock: lo que tenés dividido lo que vendés por día.
+  //
+  // VA POR PRODUCTO Y CUENTA, NO POR PUBLICACIÓN, y la primera prueba mostró por qué. El stock
+  // de `cyc/inventory` está guardado por producto×cuenta, así que en el Paulvic —donde cada aroma
+  // es una publicación aparte de la MISMA ficha— las 236 unidades se le imputaban ENTERAS a cada
+  // una: el renglón decía "236 u. = 7.080 días de stock", que es un número absurdo. La conclusión
+  // igual daba bien, pero mostrar un número que sabemos que está mal al lado de una conclusión es
+  // el error que ya está anotado tres veces. Dividiendo el stock del producto por lo que ese
+  // producto vende en esa cuenta el número vuelve a querer decir algo.
+  // STOCK DESCONOCIDO NO ES CERO: si la clave no está no se puede decir que sobre mercadería, así
+  // que no frena y se muestra "?" — adivinar acá taparía una suba que sí convenía.
+  const diasStockDe = (e) => {
     const k = e.prodId + '__' + sidLSub(e.cuenta);
     if (invSub[k] == null) return null;
     const st = parseInt(invSub[k]) || 0;
-    const porDia = (uMes[mla] || 0) / dias;
+    const porDia = (uProdCta[e.prodId + '__' + e.cuenta] || 0) / dias;
     if (!(porDia > 0)) return null;
     return { st, dias: Math.round(st / porDia) };
   };
@@ -892,7 +902,7 @@ async function calcSubirPuede(db, o) {
       frenadas.push({ mla, nom: (pIdx[e.prodId].name || '').slice(0, 34), cuenta: e.cuenta, u: uMes[mla], diasSin: dSin });
       return false;
     }
-    const ds = diasStockDe(mla, e);
+    const ds = diasStockDe(e);
     if (ds && ds.dias > SUBIR_MAX_DIAS_STOCK) {
       sobreStock.push({ mla, nom: (pIdx[e.prodId].name || '').slice(0, 34), cuenta: e.cuenta, u: uMes[mla], st: ds.st, diasStock: ds.dias });
       return false;
@@ -931,7 +941,7 @@ async function calcSubirPuede(db, o) {
     const tope = (precio < UMBRAL_ENVIO_GRATIS && techo2 >= UMBRAL_ENVIO_GRATIS) ? UMBRAL_ENVIO_GRATIS - 1 : techo2;
     if (tope > TOPE_DURO) { sinLugar++; continue; }
     if (tope <= precio * (1 + MIN_AIRE)) { sinLugar++; continue; }
-    const dsF = diasStockDe(mla, e);
+    const dsF = diasStockDe(e);
     filas.push({ mla, cuenta: e.cuenta, nom: (p.name || '').slice(0, 34), precio, tope, topeMax: tope,
       rival: arriba[0].price, u: uMes[mla] || 0, techo, cortoPorEscalon,
       topeBarrera: tope !== techo2,
