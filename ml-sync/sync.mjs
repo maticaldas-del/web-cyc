@@ -809,7 +809,23 @@ async function calcSubirPuede(db, o) {
   const TOPE_DURO = 600000;  // regla suya del 13/08/2026
   const MIN_AIRE = 0.03;     // abajo de 3% no vale la pena tocar nada
   const PASOS = 12;          // precios que se prueban entre el de hoy y el techo
+  // ── NO SE RECOMIENDA SUBIR LO QUE NECESITÁS VENDER (14/09/2026) ──────────────────────
+  // Él lo marcó con el Ferrari Negro: *"dice que vendió 3, pero hacía como 1 mes que no vendía
+  // y tenemos 12 en stock. yo lo bajé para que venda y no paguemos stock antiguo. o sea estamos
+  // 'desesperados' en vender, si lo aumento quizás se vende menos aún"*. Tenía razón: esta
+  // función miraba **cuántas** vendió en 30 días y nunca **cuándo** ni **cuánto stock hay**.
+  // Con eso, algo que vendió 3 el primer día de la ventana y NADA en los 29 siguientes se lee
+  // igual que algo que vende todas las semanas — y son situaciones opuestas.
+  //   · `SUBIR_MAX_DIAS_SIN` → si dejó de vender, subirle el precio no lo va a despertar.
+  //   · `SUBIR_MAX_DIAS_STOCK` → con más stock del que vendés en 60 días ya estás yendo a pagar
+  //     almacenamiento (`ALMAC_DIAS`), así que subir empeora justo lo que hay que resolver.
+  // Los dos hacen falta y agarran casos distintos: 2 unidades que dejaron de venderse pasan el
+  // de stock, y 200 unidades que venden todos los días pasan el de días sin vender.
+  const SUBIR_MAX_DIAS_SIN = 15;     // sin vender hace más de esto → no se propone subir
+  const SUBIR_MAX_DIAS_STOCK = 60;   // más días de stock que esto → primero hay que vender
   const links = (await db.get('cyc/mllinks')) || {};
+  const invSub = (await db.get('cyc/inventory')) || {};
+  const sidLSub = (x) => String(x).replace(/[^a-z0-9]/gi, '_');
   const vp = (await db.get('cyc/ventaprod')) || {}; setDevLive(vp);
   const monoP = parseFloat(((await db.get('cyc/monotributo')) || {}).pct) || 0;
   const pIdx = {}; for (const p of products) pIdx[p.id] = p;
@@ -824,15 +840,30 @@ async function calcSubirPuede(db, o) {
   } catch { nosubirOk = false; }
 
   // Unidades vendidas por publicación en la ventana: sin ventas no se opina.
-  const desde = Date.now() - dias * 864e5, uMes = {};
+  // Y la FECHA de la última, que es lo que separa "vende" de "vendió una vez y se frenó".
+  const desde = Date.now() - dias * 864e5, uMes = {}, ultVta = {};
   for (const [k, ents] of Object.entries(vp)) {
     const ts = Date.parse(k.slice(0, 10).replace(/_/g, '-'));
     if (!isFinite(ts) || ts < desde) continue;
     for (const v of Object.values(ents || {})) {
       if (!v || v.cancelada || !v.mla) continue;
       uMes[v.mla] = (uMes[v.mla] || 0) + (v.qty || 1);
+      if (ts > (ultVta[v.mla] || 0)) ultVta[v.mla] = ts;
     }
   }
+  const hoyTsSub = Date.now();
+  const diasSinDe = (mla) => (ultVta[mla] ? Math.floor((hoyTsSub - ultVta[mla]) / 864e5) : null);
+  // Días de stock: lo que tenés dividido lo que vendés por día. STOCK DESCONOCIDO NO ES CERO —
+  // si la clave no está no se puede decir que sobre mercadería, así que no frena y se muestra
+  // con "?" para que se vea. Adivinar acá taparía una suba que sí convenía.
+  const diasStockDe = (mla, e) => {
+    const k = e.prodId + '__' + sidLSub(e.cuenta);
+    if (invSub[k] == null) return null;
+    const st = parseInt(invSub[k]) || 0;
+    const porDia = (uMes[mla] || 0) / dias;
+    if (!(porDia > 0)) return null;
+    return { st, dias: Math.round(st / porDia) };
+  };
 
   const tok = {}, sids = {}, fallos = [];
   for (const l of labels) {
@@ -848,9 +879,26 @@ async function calcSubirPuede(db, o) {
   // Se filtra primero por las que el robot YA marcó como ganadoras en
   // cyc/mllinks/<MLA>/caja (lo escribe `cajacompra` una vez por hora), así las llamadas a
   // ML son sólo las que pueden dar candidata.
-  const cand = nosubirOk ? Object.entries(links).filter(([mla, e]) =>
+  const cand0 = nosubirOk ? Object.entries(links).filter(([mla, e]) =>
     e && e.prodId && pIdx[e.prodId] && !e.ignored && (e.status || '') === 'active'
     && e.caja === 'winning' && (uMes[mla] || 0) > 0 && !nosubir[mla]) : [];
+  // LOS DOS FRENOS NUEVOS, con el motivo guardado para poder imprimirlo. Un descarte mudo se
+  // lee como "no había nada" y ya mordió tres veces (el PARADO en 0, el `liquidar` 0 de 137,
+  // el marcado de cajas): si algo queda afuera, tiene que decir por qué.
+  const frenadas = [], sobreStock = [];
+  const cand = cand0.filter(([mla, e]) => {
+    const dSin = diasSinDe(mla);
+    if (dSin != null && dSin > SUBIR_MAX_DIAS_SIN) {
+      frenadas.push({ mla, nom: (pIdx[e.prodId].name || '').slice(0, 34), cuenta: e.cuenta, u: uMes[mla], diasSin: dSin });
+      return false;
+    }
+    const ds = diasStockDe(mla, e);
+    if (ds && ds.dias > SUBIR_MAX_DIAS_STOCK) {
+      sobreStock.push({ mla, nom: (pIdx[e.prodId].name || '').slice(0, 34), cuenta: e.cuenta, u: uMes[mla], st: ds.st, diasStock: ds.dias });
+      return false;
+    }
+    return true;
+  });
   const liquidando = nosubirOk ? Object.keys(nosubir).length : 0;
   let sinCat = 0, sinLugar = 0, sinDato = 0;
   for (const [mla, e] of Object.entries(links)) {
@@ -883,9 +931,11 @@ async function calcSubirPuede(db, o) {
     const tope = (precio < UMBRAL_ENVIO_GRATIS && techo2 >= UMBRAL_ENVIO_GRATIS) ? UMBRAL_ENVIO_GRATIS - 1 : techo2;
     if (tope > TOPE_DURO) { sinLugar++; continue; }
     if (tope <= precio * (1 + MIN_AIRE)) { sinLugar++; continue; }
+    const dsF = diasStockDe(mla, e);
     filas.push({ mla, cuenta: e.cuenta, nom: (p.name || '').slice(0, 34), precio, tope, topeMax: tope,
       rival: arriba[0].price, u: uMes[mla] || 0, techo, cortoPorEscalon,
-      topeBarrera: tope !== techo2 });
+      topeBarrera: tope !== techo2,
+      diasSin: diasSinDe(mla), st: dsF ? dsF.st : null, diasStock: dsF ? dsF.dias : null });
   }
 
   // La plata: se prueban PASOS precios y gana el que más deja, con la comisión REAL de ML.
@@ -924,6 +974,7 @@ async function calcSubirPuede(db, o) {
     filas: buenas, noConviene, sinCat, sinLugar, sinDato, fallos,
     total: buenas.reduce((a, x) => a + x.extraMes, 0),
     maxSuba, dias, MIN_AIRE, liquidando, nosubirOk,
+    frenadas, sobreStock, maxDiasSin: SUBIR_MAX_DIAS_SIN, maxDiasStock: SUBIR_MAX_DIAS_STOCK,
   };
 }
 
@@ -3551,7 +3602,19 @@ async function main() {
       console.log(`SUBIR:  ${sub.filas.length} · ${money(sub.total)}/mes`);
       for (const f of sub.filas.slice(0, 8)) {
         console.log(`   · ${f.nom} (${f.cuenta}) ${money(f.precio)} → ${money(f.tope)}`
-          + `  vendió ${f.u}  = ${money(f.extraMes)}/mes   volver:${f.mla}=${f.tope}:go`);
+          + `  vendió ${f.u}${f.diasSin != null ? ` · última hace ${f.diasSin} d` : ''}`
+          + `${f.diasStock != null ? ` · ${f.st} u. = ${f.diasStock} d de stock` : ' · stock ?'}`
+          + `  = ${money(f.extraMes)}/mes   volver:${f.mla}=${f.tope}:go`);
+      }
+      // POR QUÉ QUEDARON AFUERA. Sin esto, los dos frenos nuevos serían invisibles y la lista
+      // más corta se leería como "hoy hay menos para subir" en vez de "estos dos no van, y por esto".
+      if (sub.frenadas?.length) {
+        console.log(`   ${sub.frenadas.length} NO se proponen porque dejaron de vender (más de ${sub.maxDiasSin} d sin una venta):`);
+        for (const f of sub.frenadas.slice(0, 8)) console.log(`      · ${f.nom} (${f.cuenta}) · vendió ${f.u} en el mes pero hace ${f.diasSin} d que no vende`);
+      }
+      if (sub.sobreStock?.length) {
+        console.log(`   ${sub.sobreStock.length} NO se proponen por stock de sobra (más de ${sub.maxDiasStock} d):`);
+        for (const f of sub.sobreStock.slice(0, 8)) console.log(`      · ${f.nom} (${f.cuenta}) · ${f.st} u. = ${f.diasStock} d de stock · subir lo deja más tiempo pagando almacenamiento`);
       }
       console.log(`\nBAJAR por escalón de comisión:  ${zm.filas.length} de ${zm.mirados} miradas`
         + ` (${zm.llamadas} consultas a ML)`
@@ -3607,7 +3670,11 @@ async function main() {
         L.push(`\n📈 <b>Subir</b> · ${nuevasSub.length} publicación(es) · +${money(t)}/mes`);
         for (const f of nuevasSub) {
           const n = numerar({ tipo: 'subir', mla: f.mla, nom: f.nom, cuenta: f.cuenta, de: f.precio, a: f.tope, extraMes: f.extraMes });
-          L.push(`<b>${n}.</b> ${f.nom} (${f.cuenta})\n   ${money(f.precio)} → ${money(f.tope)} · vendió ${f.u} · +${money(f.extraMes)}/mes`);
+          // "vendió 3" sin decir CUÁNDO fue la última ni cuánto stock queda es justo el dato
+          // que lo hizo dudar del Ferrari, y tenía razón. Los tres juntos se leen de un vistazo.
+          L.push(`<b>${n}.</b> ${f.nom} (${f.cuenta})\n   ${money(f.precio)} → ${money(f.tope)} · +${money(f.extraMes)}/mes`
+            + `\n   vendió ${f.u}${f.diasSin != null ? ` · última hace ${f.diasSin} d` : ''}`
+            + `${f.diasStock != null ? ` · ${f.st} u. en Full (${f.diasStock} d)` : ''}`);
         }
         // SE ANOTAN TODAS LAS QUE ENTRARON AL AVISO. Ahora salen todas, así que anotar todas
         // ya no esconde nada: lo que se anota es exactamente lo que él leyó.
@@ -7673,10 +7740,8 @@ async function main() {
     // vez por hora), así que las llamadas a ML son sólo las que pueden dar candidata.
     if (/^subirpuede(:|$)/.test(String(process.env.BILLING_PROBE || ''))) {
       const DIAS = parseFloat(String(process.env.BILLING_PROBE).split(':')[1]) || 30;
-      const COLCHON = 0.99;     // 1% abajo del competidor: quedar a $4 es demasiado al filo
-      const TOPE_DURO = 600000; // regla suya del 13/08/2026: nunca subir por encima de esto
-                                // (el TECHO_PRECIO de main() se declara más abajo: no se puede usar acá)
-      const MIN_AIRE = 0.03;    // abajo de 3% de subida no vale la pena tocar nada
+      // El colchón contra el competidor, el techo duro de $600.000 y el aire mínimo YA NO VIVEN
+      // ACÁ: están en `calcSubirPuede`, que es la que hace la cuenta (ver abajo por qué).
       // EL ESCALÓN MÁXIMO POR VEZ. La primera corrida (12/09/2026) mostró por qué hace falta: en
       // los Paulvic el "competidor más barato de arriba" estaba al DOBLE ($14.360 contra $28.990),
       // y el comando proponía subir +99,9%. Ese de arriba no es el mismo perfume ni está
@@ -7687,134 +7752,30 @@ async function main() {
       // Por eso se sube de a poco y se vuelve a medir: un escalón chico se nota en las ventas del
       // mes y se puede deshacer; uno grande te deja un mes sin vender y te enterás tarde.
       const MAX_SUBA = (parseFloat(String(process.env.BILLING_PROBE).split(':')[2]) || 10) / 100;
-      const links = (await db.get('cyc/mllinks')) || {};
-      const vp = (await db.get('cyc/ventaprod')) || {}; setDevLive(vp);
-      const monoP = parseFloat(((await db.get('cyc/monotributo')) || {}).pct) || 0;
       const PISO = await pisoConfig(db, 30);
-      const pIdx = {}; for (const p of products) pIdx[p.id] = p;
-      // Unidades vendidas por publicación en la ventana: sin ventas no se opina.
-      const desde = Date.now() - DIAS * 864e5, uMes = {};
-      for (const [k, ents] of Object.entries(vp)) {
-        const ts = Date.parse(k.slice(0, 10).replace(/_/g, '-'));
-        if (!isFinite(ts) || ts < desde) continue;
-        for (const v of Object.values(ents || {})) {
-          if (!v || v.cancelada || !v.mla) continue;
-          uMes[v.mla] = (uMes[v.mla] || 0) + (v.qty || 1);
-        }
-      }
-      // Los tokens y los seller_id nuestros. OJO: `tokensRun` se declara MUCHO más abajo en esta
-      // misma función, así que usarlo acá tira "Cannot access before initialization" y corta la
-      // corrida entera — el mismo error que el `invUpd` del 12/09. Se arma el propio.
-      const tokSub = {}, sidsSub = {};
-      for (const l of labels) {
-        const acc = accounts[l]; if (!acc?.refresh_token) continue;
-        try {
-          const t = await mlRefresh(ML_CLIENT_ID, ML_CLIENT_SECRET, acc.refresh_token);
-          await db.patch('mlapi/tokens/' + l, { refresh_token: t.refresh_token, updated_ts: Date.now() });
-          tokSub[l] = t.access_token;
-          if (acc.seller_id) sidsSub[String(acc.seller_id)] = l;
-        } catch { console.log(`(${l}: no pude renovar el token)`); }
-      }
 
       console.log(`=== ¿DÓNDE HAY LUGAR PARA SUBIR? · vendidas en ${DIAS} días · SOLO LECTURA ===`);
       console.log(`Sólo publicaciones de CATÁLOGO que HOY GANAN la caja de compra: ahí el techo se`);
       console.log(`puede medir (el competidor más barato que está arriba nuestro). En las que no son`);
       console.log(`de catálogo no hay contra qué medir y quedan afuera.\n`);
 
-      const cand = Object.entries(links).filter(([mla, e]) =>
-        e && e.prodId && pIdx[e.prodId] && !e.ignored && (e.status || '') === 'active'
-        && e.caja === 'winning' && (uMes[mla] || 0) > 0);
-      let sinCat = 0, sinLugar = 0, sinDato = 0;
-      for (const [mla, e] of Object.entries(links)) {
-        if (!e || !e.prodId || e.ignored || (e.status || '') !== 'active') continue;
-        if (!(uMes[mla] > 0)) continue;
-        if (e.caja && e.caja !== 'winning' && e.caja !== 'nocat') continue;
-        if (e.caja === 'nocat' || !e.caja) sinCat++;
-      }
-      const filas = [];
-      for (const [mla, e] of cand) {
-        const p = pIdx[e.prodId];
-        const tok = tokSub[e.cuenta];
-        if (!tok) continue;
-        let b;
-        try { b = await mlGet(`/items/${mla}?attributes=id,price,catalog_product_id,shipping,title`, tok); }
-        catch { sinDato++; continue; }
-        const precio = Number(b?.price) || 0;
-        if (!precio || !b?.catalog_product_id) { sinDato++; continue; }
-        let comp = null;
-        try { comp = await mlGet(`/products/${b.catalog_product_id}/items`, tok); } catch { sinDato++; continue; }
-        const res = (comp?.results || []).filter((x) => x && x.price > 0 && !sidsSub[String(x.seller_id)]);
-        // El techo: el competidor más barato que está ARRIBA nuestro.
-        const arriba = res.filter((x) => x.price > precio).sort((a, b2) => a.price - b2.price);
-        if (!arriba.length) { sinLugar++; continue; }     // nadie arriba: no se puede acotar
-        const techo = Math.floor((arriba[0].price * COLCHON) / 10) * 10;
-        if (techo <= precio * (1 + MIN_AIRE)) { sinLugar++; continue; }
-        // LA BARRERA DE LOS $33.000 NO SE CRUZA (regla suya del 13/08/2026). Si el techo la pasa,
-        // se topa en $32.999 — y si ya estamos arriba de la barrera, no aplica.
-        // El escalón: lo que sea MENOR entre el techo del competidor y el tope de suba por vez.
-        const escalon = Math.floor((precio * (1 + MAX_SUBA)) / 10) * 10;
-        const cortoPorEscalon = escalon < techo;
-        const techo2 = Math.min(techo, escalon);
-        const tope = (precio < UMBRAL_ENVIO_GRATIS && techo2 >= UMBRAL_ENVIO_GRATIS) ? UMBRAL_ENVIO_GRATIS - 1 : techo2;
-        if (tope > TOPE_DURO) { sinLugar++; continue; }   // techo duro de $600.000
-        if (tope <= precio * (1 + MIN_AIRE)) { sinLugar++; continue; }
-        filas.push({ mla, cuenta: e.cuenta, nom: (p.name || '').slice(0, 34), precio, tope,
-          rival: arriba[0].price, u: uMes[mla] || 0, techo, cortoPorEscalon,
-          topeBarrera: tope !== techo2 });
-      }
+      // ── LA CUENTA NO VIVE ACÁ ─────────────────────────────────────────────────────────
+      // La hace `calcSubirPuede`, la MISMA función que usa el aviso diario de Telegram.
+      // Hasta el 14/09/2026 este comando tenía la cuenta COPIADA adentro, y las dos copias YA se
+      // habían separado sin que nadie se enterara:
+      //   · acá FALTABA el freno de `liquidando`, así que este comando proponía subir lo que él
+      //     bajó a propósito para rematar — exactamente lo que ese freno existe para impedir,
+      //   · y le faltaron los dos frenos del 14/09 (dejó de vender · stock de sobra).
+      // Es el mismo patrón de los ocho comandos con `|| 30` adentro y del costo de la caja escrito
+      // en dos archivos: una promesa de que dos números coinciden, que no controla nadie. Y encima
+      // este archivo ya AFIRMABA que compartían función, que es la peor versión — un comentario
+      // que dice que algo está cubierto no es prueba de que lo esté.
+      const R = await calcSubirPuede(db, { dias: DIAS, maxSuba: MAX_SUBA, products, labels, accounts });
+      const filas = R.filas, sinCat = R.sinCat, sinLugar = R.sinLugar, sinDato = R.sinDato;
       let noConvieneN = 0, resumenTotal = 0, resumenFilas = [];
       {
-        // LA PLATA QUE SE GANA, Y POR QUÉ NO ALCANZA CON MIRAR EL PRECIO MÁS ALTO.
-        //
-        // La primera corrida con el escalón del 10% (12/09/2026) mostró algo que no estaba
-        // anotado en ningún lado: **subir el precio puede dejarte MENOS plata**. Los Paulvic de
-        // $14.360 a $15.790 daban **−$312 por unidad**, y los que se quedaban en $14.840 daban
-        // +$369. O sea que la comisión de ML tiene un ESCALÓN cerca de los $15.000 y cruzarlo se
-        // come más de lo que sube el precio.
-        // Es el mismo cargo fijo que ya está anotado ("~$1.230 por venta, sin importar el
-        // precio"), sólo que visto desde el otro lado: no es un % parejo, es una escalera.
-        //
-        // Por eso NO se propone el precio más alto que entra: se PRUEBAN varios precios entre el
-        // de hoy y el techo, se le pregunta a ML la comisión de cada uno, y se elige el que deja
-        // más plata. Así el escalón se esquiva solo, sin tener que saber dónde está.
-        const impPctDe = (cta) => (mlExtraPct(cta) + monoP) / 100;
-        for (const f of filas) {
-          const tokF = tokSub[f.cuenta];
-          f.extraU = null;
-          try {
-            const it = await mlGet(`/items/${f.mla}?attributes=listing_type_id,category_id,site_id`, tokF);
-            const cache = {};
-            const fee = async (P) => {
-              if (cache[P] != null) return cache[P];
-              const r = await mlGet(`/sites/${it.site_id || 'MLA'}/listing_prices?price=${P}&listing_type_id=${it.listing_type_id}&category_id=${it.category_id}`, tokF);
-              return (cache[P] = Number((Array.isArray(r) ? r[0] : r)?.sale_fee_amount) || 0);
-            };
-            const comHoy = await fee(f.precio);
-            const imp = impPctDe(f.cuenta);
-            // 12 escalones entre el precio de hoy y el techo. Con eso el escalón de ML queda
-            // acotado a unos pocos pesos, y son 12 llamadas por publicación, no 100.
-            const PASOS = 12;
-            for (let i = PASOS; i >= 1; i--) {
-              const P = Math.floor((f.precio + ((f.tope - f.precio) * i) / PASOS) / 10) * 10;
-              if (P <= f.precio) continue;
-              let ex;
-              try { ex = (P - f.precio) - ((await fee(P)) - comHoy) - (P - f.precio) * imp; }
-              catch { continue; }
-              if (f.extraU == null || ex > f.extraU) { f.extraU = ex; f.mejor = P; }
-            }
-          } catch { /* queda en null y la fila se descarta abajo */ }
-          f.topeMax = f.tope;                       // el tope permitido, antes de elegir el mejor
-          f.tope = f.mejor != null ? f.mejor : f.tope;
-          f.extraMes = Math.round((f.extraU || 0) * f.u * (30 / DIAS));
-          f.subePct = ((f.tope - f.precio) / f.precio) * 100;
-        }
-        // LAS QUE DAN NEGATIVO NO SE MUESTRAN CON UN COMANDO AL LADO. Un renglón que dice
-        // "subí a $15.790" y te hace ganar menos es peor que no tener el renglón: el comando
-        // invita a aplicarlo. Se cuentan aparte y se dice por qué.
-        const noConviene = filas.filter((x) => !(x.extraU > 0) || !(x.subePct >= MIN_AIRE * 100));
-        for (let i = filas.length - 1; i >= 0; i--) if (noConviene.includes(filas[i])) filas.splice(i, 1);
-        filas.sort((a, b2) => b2.extraMes - a.extraMes);
-        const total = filas.reduce((a, x) => a + x.extraMes, 0);
+        const noConviene = R.noConviene;
+        const total = R.total;
         if (!filas.length) console.log('── Ninguna. Hoy no hay ninguna publicación con lugar medible para subir.\n');
         else {
         console.log(`── ${filas.length} con lugar para subir · ${money(total)} más por mes si se suben TODAS ──`);
@@ -7824,7 +7785,9 @@ async function main() {
         for (const f of filas) {
           console.log(`── ${f.nom}   (${f.cuenta} · ${f.mla})`);
           console.log(`     ${money(f.precio)} → ${money(f.tope)}  (+${f.subePct.toFixed(1)}%)`
-            + `   ·   vendió ${f.u} en ${DIAS} días`);
+            + `   ·   vendió ${f.u} en ${DIAS} días`
+            + (f.diasSin != null ? ` · última hace ${f.diasSin} d` : '')
+            + (f.diasStock != null ? ` · ${f.st} u. = ${f.diasStock} d de stock` : ' · stock ?'));
           console.log(`     el competidor más barato que está arriba: ${money(f.rival)}`
             + (f.topeBarrera ? `   ⚠️ topado en ${money(UMBRAL_ENVIO_GRATIS - 1)}: no se cruza la barrera` : ''));
           if (f.cortoPorEscalon) console.log(`     ⚠️ el techo del competidor daba hasta ${money(f.techo)}`
@@ -7846,6 +7809,16 @@ async function main() {
       console.log(`      contra el cual medir, y las visitas solas no alcanzan para afirmar que el`);
       console.log(`      precio aguanta. Ahí la única forma de saberlo es probar.`);
       console.log(`   ${sinLugar} que ganan la caja pero no tienen aire medible (nadie arriba, o muy poco).`);
+      // LOS DOS FRENOS DEL 14/09, salidos del Ferrari Negro: "vendió 3" no quiere decir que se
+      // esté vendiendo, y con mercadería de sobra lo que hace falta es vender, no subir.
+      if (R.frenadas?.length) {
+        console.log(`   ${R.frenadas.length} que DEJARON DE VENDER (más de ${R.maxDiasSin} d sin una venta): subirles el precio no las despierta.`);
+        for (const f of R.frenadas.slice(0, 10)) console.log(`      · ${f.nom} (${f.cuenta}) · vendió ${f.u} en el mes · hace ${f.diasSin} d que no vende`);
+      }
+      if (R.sobreStock?.length) {
+        console.log(`   ${R.sobreStock.length} con STOCK DE SOBRA (más de ${R.maxDiasStock} d): subir las deja más tiempo pagando almacenamiento.`);
+        for (const f of R.sobreStock.slice(0, 10)) console.log(`      · ${f.nom} (${f.cuenta}) · ${f.st} u. = ${f.diasStock} d de stock`);
+      }
       if (noConvieneN) {
         console.log(`   ${noConvieneN} donde SUBIR TE HACE GANAR MENOS y por eso no van con comando al lado:`);
         console.log(`      la comisión de ML no es un % parejo, tiene ESCALONES. Cruzar uno se lleva más`);
