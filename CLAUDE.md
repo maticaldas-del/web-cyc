@@ -309,7 +309,8 @@ Los que más se usan:
 | `cajacompra[:cuenta]` | **¿la venta es nuestra o del otro?** el estado de la caja de compra de cada publicación · lo corre solo el robot cada hora y pinta la columna "Caja ML" de Rotación de Stock |
 | `competencia:<MLA>` | los vendedores del catálogo con sus precios y **si la pelea se puede ganar** |
 | `subirpuede[:días]` | **dónde hay lugar para SUBIR sin perder ventas**: las que ganan la caja y tienen un competidor arriba · solo lee |
-| `avisos[:go]` | **el aviso diario al canal privado**: qué subir, qué bajar y qué está parado · sin `:go` no manda nada |
+| `avisos[:go]` | **el aviso diario al canal privado**: qué subir, qué bajar y qué está parado · sin `:go` no manda nada · `avisos:reset[:go]` olvida lo ya avisado y vuelve a mandar TODO |
+| `lista` | **vuelve a imprimir el último aviso con sus números**, para saber a qué publicación apunta "el 4" · solo lee |
 | `tgalertas[:<chat>]` | **el segundo canal de Telegram**, sólo para Mati · sin número muestra los chats que el bot conoce |
 | `verescalon:<MLA\|palabra>[:marcar]` | **¿ML cobró menos de verdad al bajar?** agrupa las ventas por precio y muestra lo que ML se quedó en cada uno |
 | `envioml:<MLA>` | el envío que **dice ML** (por destino) vs el que deducimos de las ventas · `envioreal` es OTRO comando |
@@ -749,6 +750,40 @@ el que el piso salió de los ocho comandos y el costo de la caja salió de los d
    más" y esas 19 ya fueron avisadas. Y se anota **sólo si el mensaje salió**: si falló el envío y
    se anotara igual, esa publicación quedaría callada una semana por un aviso que nunca llegó.
 4. **Si no hay nada NUEVO no se manda mensaje.** Un aviso que dice "hoy no hay nada" es ruido.
+
+**LA LISTA VA ENTERA Y NUMERADA (14/09/2026).** Él lo marcó mirando el mensaje en el teléfono:
+*"Me paso la lista pero incompleta no? Y como hago para decirte que subas o bajes lo que quiero?"*.
+Salían 3 renglones y un *"…y 13 más"*.
+**No era sólo incómodo: se comía decisiones.** El freno 3 anotaba las 16 como avisadas —eso estaba
+escrito acá arriba a propósito, para no repetir— pero mostraba 3. O sea que **esas 13 quedaban
+calladas 14 días sin que él las hubiera visto nunca**: el aviso le prometía 13 decisiones y después
+se las escondía. Cortar tenía sentido cuando el mensaje era el final del camino; no lo tiene cuando
+el mensaje **es la lista sobre la que él decide**.
+ · Sale entera, y cada renglón lleva **número** para poder contestar *"subí el 1 y el 4"*.
+ · `sendAlerta` **parte el mensaje en varios**: Telegram corta en 4096 caracteres y contesta 400
+   sin que se note. Si una parte falla devuelve `false` y **no se anota nada** — un envío a medias
+   silenciaría una semana justo lo que no salió.
+ · La lista se guarda en **`cyc/avisolista`** y se lee con **`lista`**. Un mensaje de Telegram queda
+   enterrado abajo de otros; si el número viviera sólo ahí, mañana "el 4" no querría decir nada.
+ · **`avisos:reset[:go]`** borra la memoria de avisados. Hizo falta una vez: arreglar el mensaje no
+   devuelve solo las 16 que ya estaban calladas.
+
+**EL ERROR QUE SE AGARRÓ ANTES DE SUBIR, y era del peor tipo:** la primera versión guardaba la lista
+**antes** de mandar y sin mirar si había salido. Como los renglones que salen son los que NO estaban
+avisados, una corrida de prueba al otro día devuelve pocos o ninguno **y le pisaba la lista de
+anoche**: él tendría en el teléfono los números 1 al 16 y `lista` le contestaría otra cosa con los
+mismos números. **Un número que apunta a otra publicación es PEOR que no tener número** — con eso se
+aplica un precio equivocado. Ahora se guarda sólo si el mensaje salió.
+
+**Y UN RENGLÓN QUE INVITABA A VENDER PERDIENDO.** El aviso del 14/09 decía *"Filtro agua · ML dice
+que se gana la caja a $1.000"* y la mercadería sola cuesta **$1.059**. Es la regla que ya estaba
+anotada para `price_to_win` —*"que se gane a $900 no quiere decir que a $900 haya margen"*— sin
+aplicar. Ahora esos renglones **no llevan número**, avisan que el precio de ML no es un precio con
+ganancia, y cuando está abajo del costo lo dicen: **"No se puede"**.
+**El alcance es corto a propósito** (`bajoCosto`, no `noConviene`): compara contra la mercadería
+**sola**, sin comisión de ML ni impuestos. Agarra el caso imposible y **no decide el dudoso** — los
+Paulvic están muy arriba del costo y aun así ganar la caja los deja en −4,1%. Ése se mide de a uno
+con `unapub` o `bajarcaja`, que sí tienen la cuenta completa.
 
 **EL CERO QUE ERA UN FILTRO MAL PUESTO.** La primera corrida dio **"PARADO: 0"** habiendo 29
 publicaciones que sí lo están. Contaba las ventas del PRODUCTO en las cuatro cuentas juntas, así que
