@@ -972,7 +972,16 @@ async function calcSubirPuede(db, o) {
       }
     } catch { /* queda en null y la fila se descarta abajo */ }
     f.tope = f.mejor != null ? f.mejor : f.tope;
-    f.extraMes = Math.round((f.extraU || 0) * f.u * (30 / dias));
+    // LA PLATA DEL MES NO PUEDE SUPONER STOCK QUE NO TENÉS. La Linterna Minera vende 12 por mes
+    // y le queda **1 unidad**: el "+$5.856/mes" salía de multiplicar por 12 unidades que no se
+    // pueden vender. Hasta reponer, subirla deja $488, no $5.856 — y ese número es el que decide
+    // si vale la pena tocarla, así que inflado invita a mover un precio por nada.
+    // Es la misma regla de siempre: una conclusión apoyada en un número que sabemos que no se
+    // cumple no se muestra como si fuera una recomendación.
+    const uProy = f.u * (30 / dias);
+    const uReal = f.st != null ? Math.min(uProy, f.st) : uProy;
+    f.topeStock = f.st != null && f.st < uProy;   // para decirlo en pantalla, no esconderlo
+    f.extraMes = Math.round((f.extraU || 0) * uReal);
     f.subePct = ((f.tope - f.precio) / f.precio) * 100;
   }
 
@@ -7798,6 +7807,8 @@ async function main() {
             + `   ·   vendió ${f.u} en ${DIAS} días`
             + (f.diasSin != null ? ` · última hace ${f.diasSin} d` : '')
             + (f.diasStock != null ? ` · ${f.st} u. = ${f.diasStock} d de stock` : ' · stock ?'));
+          if (f.topeStock) console.log(`     ⚠️ con ${f.st} u. no llegás a vender lo del mes: la plata de arriba ya está`
+            + ` topeada por el stock. Reponiendo, sube.`);
           console.log(`     el competidor más barato que está arriba: ${money(f.rival)}`
             + (f.topeBarrera ? `   ⚠️ topado en ${money(UMBRAL_ENVIO_GRATIS - 1)}: no se cruza la barrera` : ''));
           if (f.cortoPorEscalon) console.log(`     ⚠️ el techo del competidor daba hasta ${money(f.techo)}`
