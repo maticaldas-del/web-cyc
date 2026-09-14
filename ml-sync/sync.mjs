@@ -353,6 +353,7 @@ async function cajasQueLlegaron(db, accounts, labels, products, DRY) {
   let mirados = 0, opsTotal = 0, fallos = 0;
   const tiposVistos = {};                    // tipo crudo de ML -> cuántas veces vino
   const erroresOp = {};                      // texto del error -> cuántas veces
+  const sinLeer = {};                        // renglones cuya consulta a ML falló: NO se pueden dar por faltantes
   const sinCantidad = [];                    // entradas aceptadas pero sin unidades legibles
   for (const [cta, o] of Object.entries(porCta)) {
     const acc = accounts[cta]; if (!acc?.refresh_token) continue;
@@ -457,6 +458,15 @@ async function cajasQueLlegaron(db, accounts, labels, products, DRY) {
             // quedó cubierta". Es el mismo patrón del `catch {}` que borró un destinatario de
             // Telegram: el dato no se pierde con ruido, se pierde en silencio.
             fallos++;
+            // QUÉ RENGLÓN QUEDÓ SIN LEER. El comentario de abajo decía "si no contesta, esa caja se
+            // queda abierta" — **y no era cierto**: `fallos` era un contador suelto y nada ataba una
+            // consulta fallida a la caja que la necesitaba. Con 50 de 131 consultas rechazadas por
+            // el límite de ML (429 over_quota, visto el 14/09/2026), los renglones de esos productos
+            // leen 0, que es indistinguible de "no llegó". Si esa caja además pasa los tres frenos,
+            // se marca "llegó con faltantes" y se borran del patrimonio unidades que SÍ están.
+            // Es el daño exacto del 12/09 (510 unidades) por otro camino.
+            // FALTA DE DATO NO ES FALTA DE MERCADERÍA.
+            sinLeer[kR(cta, p.id, par.va)] = true;
             // mlGet arma el mensaje como `ML GET <ruta>: <status> <cuerpo>`. La ruta sola mide ~115
             // caracteres, así que recortar por el PRINCIPIO se comía justo el código de error, que
             // es el único dato que sirve. Se corta desde el ": " para quedarse con status + cuerpo.
@@ -509,13 +519,15 @@ async function cajasQueLlegaron(db, accounts, labels, products, DRY) {
     const desdeCaja = Date.parse((ab.fecha || '1970-01-01') + 'T00:00:00-03:00') || 0;
     const faltan = [];
     const reng = [];
-    let algo = false, ultima = 0;
+    let algo = false, ultima = 0, hayCiego = false;
     for (const it of ab.items) {
       const k1 = kR(ab.e.cuenta, it.prodId, it.variante || '');
       const ents = (recEnt[k1] || []).filter((e) => e.ts >= desdeCaja && e.left > 0);
       const tiene = ents.reduce((a, e) => a + e.left, 0);
       for (const e of ents) if (e.ts > ultima) ultima = e.ts;
-      reng.push({ nombre: it.nombre || (pIdx[it.prodId] || {}).name || it.prodId, variante: it.variante || '', pide: it.u, tiene });
+      const noLeido = !!sinLeer[k1];
+      if (noLeido) hayCiego = true;
+      reng.push({ nombre: it.nombre || (pIdx[it.prodId] || {}).name || it.prodId, variante: it.variante || '', pide: it.u, tiene, noLeido });
       if (tiene > 0) algo = true;
       if (tiene >= it.u) continue;
       faltan.push({ prodId: it.prodId, variante: it.variante || '', nombre: it.nombre || (pIdx[it.prodId] || {}).name || it.prodId, pide: it.u, llego: tiene });
@@ -526,8 +538,12 @@ async function cajasQueLlegaron(db, accounts, labels, products, DRY) {
     const parte = pedidas > 0 ? entraron / pedidas : 0;
     const dias = Math.floor((Date.now() - desdeCaja) / 86400e3);
     const parcial = faltan.length > 0;
-    const marcar = !parcial || (algo && quieta && dias >= MIN_DIAS && parte >= MIN_PARTE);
-    detalle.push({ cuenta: ab.e.cuenta, fecha: ab.fecha, track: ab.c.track || '', completa: !parcial, marcar, algo, quieta, dias, parte, entraron, pedidas, reng });
+    // EL CUARTO FRENO: si alguna consulta a ML falló, esta caja NO se marca. Un renglón que no se
+    // pudo leer vale 0 igual que uno que no llegó, y marcar sobre eso borra mercadería real. Una
+    // caja completa tampoco se salva del freno: si un renglón quedó ciego, "completa" puede ser
+    // falso. Esperar una vuelta no rompe nada; borrar unidades del patrimonio sí.
+    const marcar = !hayCiego && (!parcial || (algo && quieta && dias >= MIN_DIAS && parte >= MIN_PARTE));
+    detalle.push({ cuenta: ab.e.cuenta, fecha: ab.fecha, track: ab.c.track || '', completa: !parcial, marcar, algo, quieta, dias, parte, entraron, pedidas, reng, hayCiego });
     if (!marcar) continue;                             // ML todavía la está procesando: se deja abierta
     // Consumir SÓLO lo que entró de verdad, de la entrada más vieja a la más nueva. Si se restara
     // lo que pedía el renglón, una caja posterior del mismo producto arrancaría en negativo.
@@ -5041,14 +5057,16 @@ async function main() {
         for (const d of r.detalle) {
           console.log(`  ${d.completa ? '✓' : '✗'} ${d.cuenta} · caja del ${d.fecha}${d.track ? ' · ' + d.track : ''}`);
           if (!d.completa) {
-          const porque = !d.algo ? 'no entró NADA de esta caja'
+          const porque = d.hayCiego ? 'ML rechazó alguna consulta (429): hay renglones que NO se pudieron leer, así que un 0 acá no quiere decir que falte'
+            : !d.algo ? 'no entró NADA de esta caja'
             : d.dias < 10 ? `salió hace ${d.dias} día(s): todavía no tuvo tiempo de llegar`
             : !d.quieta ? 'ML la sigue procesando (dio de alta hace menos de 3 días)'
             : d.parte < 0.5 ? `sólo entró el ${Math.round(d.parte * 100)}% (${d.entraron} de ${d.pedidas} u.)`
             : null;
           console.log(`     ${d.marcar ? '→ se marca con lo que entró' : '→ se deja abierta: ' + porque}`);
         }
-        for (const g of d.reng) console.log(`       pide ${String(g.pide).padStart(4)} · ML dio ${String(g.tiene).padStart(4)}  ${g.nombre}${g.variante ? ' · ' + g.variante : ''}`);
+        for (const g of d.reng) console.log(`       pide ${String(g.pide).padStart(4)} · ML dio ${String(g.tiene).padStart(4)}  ${g.nombre}${g.variante ? ' · ' + g.variante : ''}`
+          + (g.noLeido ? '   ⚠️ SIN LEER (ML rechazó la consulta): este 0 no es un faltante' : ''));
         }
       }
       if (!r.marcadas.length) { console.log('\nNinguna caja abierta quedó cubierta por las entradas que informa ML.'); return; }
