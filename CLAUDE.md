@@ -1992,6 +1992,20 @@ Lo que quedó abierto. Borrá de acá lo que se vaya cerrando.
   carga con otro nombre lo marca en rojo aunque esté**: es un falso faltante, a propósito — dar por
   cargado algo que falta sería mucho peor, y eso se dice en pantalla.
   Sólo se muestra en la vista por MES.
+  **AMPLIADA EL 15/09/2026, pedido suyo: *"en gastos falta hacerme acordar de intereses, y otros
+  gastos que hubo en meses anteriores"*.** Faltaban dos de los ocho, y los dos venían saliendo todos
+  los meses:
+   · **Intereses financieros** — son **DOS por mes**, no uno: el interés del capital de los socios
+     (~$240.000) y otro más chico (~$30.000). Junio, julio y agosto tuvieron los dos.
+   · **Obra social privada** (~$83.333, categoría "Otros gastos operativos") — **es APARTE del
+     Sancor**, se cargan las dos. Se distinguen porque el Sancor lleva la palabra en la descripción.
+  **Y apareció un estado nuevo que hacía falta: PARCIAL (⚠️ ámbar).** Con `min:2` en los intereses,
+  cargar uno solo ya NO pinta verde: dice *"1 de 2 · falta 1"* y cuenta como faltante arriba. Un ✅
+  con la mitad adentro cierra el mes sin que nadie vuelva a mirar, que es peor que un ❌.
+  **Verificado contra los gastos REALES de agosto y julio antes de subir**: agosto da 7 de 8 (le
+  falta la obra social privada, que es justo lo que está pendiente de confirmar) y julio 6 de 8.
+  Las categorías se revisaron hasta febrero con `vergastos`: de marzo a mayo sólo hay el "Gasto
+  mensual estimado" viejo, así que **no hay ninguna otra categoría real que agregar**.
 
 - **Faltan gastos de agosto**: servicios ($150.000, en julio figura como "Claude"). El alquiler
   ($100.000), los honorarios ($100.000) y la obra social Sancor ($65.227) ya están.
