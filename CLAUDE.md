@@ -1908,15 +1908,32 @@ siempre. Los verificadores tienen que llamar a la misma función que el código 
 
 Lo que quedó abierto. Borrá de acá lo que se vaya cerrando.
 
-- **DOS DISCOS NUEVOS SIN COSTO DE COMPRA (07/09/2026).** Él pasó dos publicaciones nuevas y ya
-  quedaron vinculadas a su ficha: `MLA2067443797` → **WD Green SSD 480GB** (`p1788743899629`) y
-  `MLA3920081802` → **Seagate 500GB Expansion** (`p1788743923415`). Las dos son de Matías y las dos
-  están **pausadas**.
-  **Les falta el costo: la ficha tiene $0.** Por eso `unapub` devuelve **492%** y **489%** de margen
-  — no es que sean un negocio, es que están dividiendo por cero. Mientras siga así van a salir
-  arriba de todo en Rotación de Stock como si fueran un éxito. Se corrige con
-  `poncosto:p1788743899629|<pesos>|go` y `poncosto:p1788743923415|<pesos>|go`, y después `netoweb`.
-  El "Depósito: 1 u." que muestran no es mercadería (regla del 20/08): stock real, cero.
+- **LOS DOS DISCOS: YA TIENEN COSTO Y ESTÁN ACTIVOS, PERO NINGUNO VENDIÓ NUNCA (15/09/2026).**
+  La nota vieja de acá decía "pausadas y con la ficha en $0" y **las dos cosas ya no son ciertas** —
+  otra vez lo mismo: no confiar en esta lista sin correr el comando. Medido con `unapub:<MLA>:23`:
+
+  | | WD Green SSD 480GB | Seagate 500GB Expansion |
+  |---|---|---|
+  | publicación | `MLA2067443797` · Matías · **activa** | `MLA3920081802` · Matías · **activa** |
+  | precio | $189.999 | $187.469 |
+  | mercadería | $97.964 | $75.000 |
+  | caja de compra | 🟢 **GANANDO** | 🔴 **PERDIENDO** · se gana a $180.046 |
+  | margen | **23,7%** | **49,2%** |
+  | ventas | 0 en 30 días · **0 en toda la historia** | idem |
+
+  **Son dos casos OPUESTOS y el remedio es distinto en cada uno:**
+   · El **WD gana la caja y aun así no vendió nunca**, así que el precio y la caja están descartados
+     como causa: lo que queda es VISIBILIDAD (`visitas`). Y **no hay lugar para tocarle nada**: con
+     23,7% está a 0,7 puntos del piso, el precio que lo deja exacto en 23% es $188.830.
+   · El **Seagate pierde la caja teniendo 49,2%**: bajando a $180.046 todavía deja **44,2%**. Es de
+     los pocos casos donde bajar tiene sentido de verdad — pero **la decisión es suya** (regla 5).
+
+  **EL MARGEN DEL WD NO ESTÁ MEDIDO, Y A 0,7 PUNTOS DEL PISO ESO IMPORTA.** El envío ($15.500) sale
+  de la **tarifa de ML**, no de ventas reales — ninguna de las dos vendió nunca —, y esa tarifa ya
+  se midió **$246 corta** el 20/08. O sea que el 23,7% es el techo optimista: el real puede estar
+  ABAJO del piso. No es "está justo", es "no sabemos si llega".
+  El "stock 2" y "stock 1" que muestra ML puede ser el 1 del formulario, no mercadería (regla del
+  20/08): antes de contarlos como capital, mirar si es Full.
 
 - **REBARBADOR MANUAL GIRATORIO: RESUELTO el 29/08/2026.** Él pasó el costo: **$1.505**. Se cargó con
   `poncosto:p1787783558381|1505|go` y quedó releído: US$ 0,98 de mercadería · full US$ 1,01 = $1.550
