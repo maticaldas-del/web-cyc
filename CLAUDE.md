@@ -904,6 +904,14 @@ a lo que devolvió ML con `unapub` — que es la forma de saber que la fórmula 
 copia que se va a separar. Los tres casos que NO tienen que salir tampoco salen: el WD Green (baja
 mínima pero margen 22,9%), una baja del 12% con margen sano, y una baja del 2% con margen flaco.
 
+**PRIMERA CORRIDA EN SECO, y el resultado es el correcto: 0 candidatas, con el motivo de cada
+descarte.** De 40 con la caja perdida: 25 vendieron, **14 habría que bajar más del 5%** y 1 quedó
+"sin dato" — y ese 1 **es el propio Seagate**, que después de bajarlo ya gana la caja, así que el
+precio para ganarla no es menor al de hoy. O sea que el comando se lee a sí mismo bien.
+**Y las 14 que quedaron afuera por poco se imprimen con su nombre y su %**, ordenadas de menor a
+mayor: un *"14 habría que bajar más del 5%"* sin decir cuáles esconde justo la que está en 5,2% con
+60% de margen. Va **sólo al log, no al mensaje** — en Telegram sería ruido sobre algo sin medir.
+
 **EL SEAGATE, APLICADO EL MISMO DÍA CON SU AUTORIZACIÓN** (*"baja seagate hasta ganar. ojo no bajar
 mucho %"*): `MLA3920081802` pasó de **$187.469 a $180.046** (−4,0%). Releído de ML: la caja de
 compra pasó de **PERDIENDO a GANANDO** y el margen quedó en **44,2%**.

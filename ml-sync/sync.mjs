@@ -1367,6 +1367,11 @@ async function calcCajaBarata(db, o) {
   // (`caja` y `cajaPtw`). Recién después se le pregunta algo a ML, así las llamadas son sólo
   // las que pueden terminar en candidata — la lección de velocidad del 13/09.
   const fuera = { vendio: 0, sinStock: 0, sinPtw: 0, bajaGrande: 0 };
+  // Las que quedaron AFUERA por poco. Un "14 habría que bajar más del 5%" sin decir cuáles
+  // esconde justo la que está en 5,2% con 60% de margen — y ésa la quiero ver yo antes de que
+  // él la pierda. Va sólo al log, NO al mensaje: en Telegram sería ruido sobre algo que todavía
+  // no se midió. Es la misma regla que el cero sin explicación, pero para el lado del borde.
+  const cerca = [];
   const cand = [];
   for (const [mla, e] of Object.entries(links)) {
     if (!e || !e.prodId || !e.cuenta || e.ignored || (e.status || '') !== 'active') continue;
@@ -1415,7 +1420,11 @@ async function calcCajaBarata(db, o) {
     const baja = (1 - c.ptw / precio) * 100;
     // "RE POQUITO": si hay que bajar mucho, esto no es el caso que él pidió y se descarta acá,
     // ANTES de gastar llamadas a ML en la cuenta del margen.
-    if (baja > maxBaja) { fuera.bajaGrande++; continue; }
+    if (baja > maxBaja) {
+      fuera.bajaGrande++;
+      cerca.push({ mla: c.mla, cuenta: c.e.cuenta, nom: (p.name || b.title || c.mla).slice(0, 34), baja, precio, ptw: Math.round(c.ptw) });
+      continue;
+    }
     const costo = costoPesos(p, 1, tc).costo;
     if (!(costo > 0)) { sinDato.push({ mla: c.mla, why: 'la ficha no tiene costo cargado' }); continue; }
     const site = b.site_id || 'MLA', lt = b.listing_type_id, cat = b.category_id;
@@ -1439,7 +1448,8 @@ async function calcCajaBarata(db, o) {
     else noSano.push({ ...fila, why: `al precio de la caja queda en ${mgPw.toFixed(0)}%, y con el envío sin medir hace falta ${exigido}%` });
   }
   filas.sort((a, b2) => b2.mgPw - a.mgPw);
-  return { filas, noSano, sinDato, fuera, fallos, mirados: cand.length, dias, maxBaja, minSano, colchonEstimado };
+  cerca.sort((a, b2) => a.baja - b2.baja);
+  return { filas, noSano, sinDato, fuera, fallos, cerca, mirados: cand.length, dias, maxBaja, minSano, colchonEstimado };
 }
 
 // Config en cyc/mlconfig/gruposPrecio = { paulvic: { palabra: 'paulvic' } }
@@ -3832,6 +3842,12 @@ async function main() {
         for (const f of cbr.noSano.slice(0, 6)) console.log(`     · ${f.nom} (${f.cuenta}) · ${f.why}`);
       }
       if (cbr.sinDato.length) console.log(`   ${cbr.sinDato.length} sin dato suficiente (ej: ${cbr.sinDato[0].why})`);
+      if (cbr.cerca.length) {
+        console.log(`   las que quedaron más cerca del ${cbr.maxBaja}% (habría que medirlas de a una con unapub):`);
+        for (const f of cbr.cerca.slice(0, 8)) {
+          console.log(`     · ${f.nom.padEnd(34)} ${f.cuenta.padEnd(8)} ${money(f.precio)} → ${money(f.ptw)} = bajar ${f.baja.toFixed(1)}%`);
+        }
+      }
       for (const f of cbr.filas.slice(0, 10)) {
         console.log(`   · ${f.nom.padEnd(34)} ${f.cuenta.padEnd(8)} ${money(f.precio)} → ${money(f.ptw)}`
           + ` (−${f.baja.toFixed(1)}%) · queda en ${f.mgPw.toFixed(1)}% · ${f.st} u.`);
