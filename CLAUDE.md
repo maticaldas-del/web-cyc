@@ -90,12 +90,17 @@ derecho y proponé qué hacer.
 
 Cuatro cuentas de vendedor, todas de la misma familia, cada una con su CUIT y su monotributo:
 
-| cuenta | quién | categoría ARCA | impuesto integrado |
-|---|---|---|---|
-| Adriana | Adriana Mabel Moyano · 27-23443755-6 | G | $71.497,87 |
-| Luciana | Luciana Diamela Caldas · 27-27194694-0 | F | $57.719,64 |
-| Ayelen | Ayelen Forti · 27-42950142-9 | H | $204.811,64 |
-| Matías | Matías José Caldas · 20-42574066-1 | F | $57.719,64 |
+| cuenta | categoría ARCA | impuesto integrado |
+|---|---|---|
+| Adriana | G | $71.497,87 |
+| Luciana | F | $57.719,64 |
+| Ayelen | H | $204.811,64 |
+| Matías | F | $57.719,64 |
+
+**Los apellidos, los CUIT y los domicilios NO van en este archivo: el repo es PÚBLICO.** Se sacaron
+el 15/09/2026. Están en la constancia de ARCA de cada una y Mati los tiene. Acá alcanza con el
+nombre de pila, que es el que usa el código (`cyc/inventory/<producto>__ayelen`, las cuatro
+cuentas de ML, etc.).
 
 Solo Ayelen aporta autónomos ($57.598,04) y obra social ($55.485,33); las otras tres figuran NO
 APORTANTE. Total a ARCA: **$504.832/mes**.
@@ -139,12 +144,14 @@ Regla suya del 13/08/2026, y es la correcta: *"no puedo vender 10 y comprar 1"*.
 **Qué se decidió hacer:** NO comprar más (hay $12M de stock parado). Comprar lo MISMO pero
 **pidiendo siempre factura** a nombre de la cuenta que corresponda, repartiendo así de cada $100:
 
-| cuenta | cuánto | CUIT para pedir la factura |
+| cuenta | cuánto | a nombre de |
 |---|---|---|
-| **Ayelen** | **$40** | 27-42950142-9 |
-| **Adriana** | **$35** | 27-23443755-6 |
-| **Luciana** | **$25** | 27-27194694-0 |
+| **Ayelen** | **$40** | Ayelen |
+| **Adriana** | **$35** | Adriana |
+| **Luciana** | **$25** | Luciana |
 | Matías | $0 — ya está ordenada | — |
+
+(El CUIT de cada una sale de su constancia de ARCA. **No se escribe acá**: repo público.)
 
 Para emparejarlas al nivel de Matías hacen falta $22,6M/año más con factura (Ayelen $9,5M ·
 Adriana $7,4M · Luciana $5,7M). Si un proveedor no factura, ese proveedor es parte del problema.
@@ -170,9 +177,9 @@ Datos de las constancias de ARCA (03/08/2026), los que pide MercadoLibre al conf
 | Ayelen | 01/05/2024 | 2 | **listo** |
 | Matías | 01/12/2020 | 2 | **listo** · actividad "venta al por menor por internet" |
 
-Las cuatro quedaron configuradas el 05/08/2026. El domicilio distingue de quién es cada pantalla
-cuando ARCA no muestra el nombre: Adriana **Av. Ceballos 18 PB**, Matías **Av. Ceballos 18 1ºA**,
-Luciana **Pascual Grisolía 1383**, Ayelen **Pintos 646**.
+Las cuatro quedaron configuradas el 05/08/2026. Cuando ARCA no muestra el nombre, **el domicilio
+distingue de quién es cada pantalla** — los cuatro son distintos. **No se listan acá porque el repo
+es público**; los tiene Mati.
 
 El trámite son 5 pasos en ML **más uno que ML no avisa**: después de subir el certificado da error
 y hay que ir a ARCA → *Administrador de Relaciones de Clave Fiscal* → **Nueva Relación** →
@@ -273,7 +280,7 @@ Los que más se usan:
 | `fijarvar:<MLA>=<variante>[@<ficha>]\|…[\|go]` | dice a mano de qué color/aroma es cada publicación cuando el título de ML no lo nombra igual que la ficha · si el aroma vive en varias fichas, se aclara con `@` · **vincula y fija la variante de una, y acepta varias por vez** |
 | `pausar:<busca>[!<saca>][:go]` | pausa varias de una · palabras con `+` · **mirar la lista antes** |
 | `cargargasto:<fecha>\|<monto>\|<cat>\|<desc>[\|prov=][\|fact=][\|cae=][\|go]` | carga un gasto con su comprobante |
-| `subirrecibidas[:go]` | sube las compras de ARCA a Facturas → Recibidas (lee `ml-sync/recibidas.json`) |
+| `subirrecibidas[:go]` | sube las compras de ARCA a Facturas → Recibidas · **el archivo semilla se borró** (ver abajo) |
 | `porquepedido:<palabra>` | **por qué Pedidos dice lo que dice**: claves crudas de inventario, ventas, días con stock y qué camino toma la cuenta |
 | `revisarpedidos` | barre TODO: claves de inventario basura + pedidos que ya no coinciden con la realidad de hoy |
 | `limpiarclaves[:go]` | borra las claves de inventario basura (cuentas mal escritas, negativos, productos que no existen) |
@@ -348,6 +355,47 @@ ningún archivo del repo.
 Pasarlo a privado NO es gratis: en repos públicos GitHub no cobra el tiempo de las corridas y en
 privados sí, con tope mensual — con el robot corriendo cada 2 minutos ese tope se pasa enseguida.
 Queda como decisión suya.
+
+### LA LIMPIEZA DEL 15/09/2026: QUÉ SE SACÓ DEL REPO PÚBLICO Y POR QUÉ
+
+Él lo planteó así: *"es muy peligroso que los datos estén públicos (…) tratemos de tener la máxima
+seguridad que podamos. sin hacer pavadas."*
+
+**LO PRIMERO QUE SE REVISÓ, Y ES LA BUENA NOTICIA: NUNCA SE SUBIÓ NINGUNA CLAVE.** Se listaron
+TODOS los archivos que existieron alguna vez en los 768 commits: no hay `.env`, ni archivo de
+credenciales, ni token escrito a mano. Los secretos de ML siempre vivieron en los secretos de
+GitHub. **No hubo nada que rotar** — que es la diferencia entre un susto y una emergencia.
+
+**Lo que sí estaba expuesto, en orden de gravedad:**
+ · **`ml-sync/recibidas.json` — BORRADO.** 338 comprobantes con el **CUIT y el nombre de cada
+   proveedor**, el número de factura, el CAE y el monto. **Datos de 338 terceros**, y es lo peor
+   que había. Los 338 **ya estaban cargados en `cyc/facturas_recibidas`**, así que borrarlo no
+   perdió absolutamente nada: el archivo era el sobrante de cuando se subieron.
+ · **`CLAUDE.md` — limpiado.** Tenía el **apellido completo, el CUIT, la categoría y la
+   facturación anual de las cuatro**, y los **cuatro domicilios**. Más el CAE de una factura del
+   contador y un número de VEP. Todo eso salió; quedan los nombres de pila, que son los que usa el
+   código.
+
+**LA CORRECCIÓN QUE HUBO QUE HACERLE A OTRA IA, y vale como regla:** dijo que el `CLAUDE.md`
+*"es tu manual, no datos de nadie más"*. **Es falso**: tenía el nombre y el CUIT de Adriana, de
+Luciana y de Ayelen. Son tres personas más. El mismo problema que el JSON de proveedores, pero con
+la familia. **Antes de decir "esto es sólo mío", contar cuántas personas aparecen adentro.**
+
+**LO QUE NO SE HIZO, Y ES UNA DECISIÓN, NO UN OLVIDO: el repo SIGUE PÚBLICO.** Pasarlo a privado
+suena a la solución obvia y **apaga el robot**. Medido: el ciclo no son corridas de 2 minutos, es
+**una sola corrida de casi 6 horas** (`timeout-minutes: 355`), cuatro por día → **~43.000 minutos
+por mes**. GitHub regala **2.000** en privado. O sea: **el robot se muere a la semana y media, o
+salen ~USD 330 por mes.** Público + sin datos adentro es más seguro que privado + robot apagado.
+
+**Y LO QUE HAY QUE SABER IGUAL: lo que estuvo público, estuvo público.** Esos datos estuvieron
+accesibles desde julio. Sacarlos corta el sangrado hacia adelante; **no des-publica lo que alguien
+ya haya copiado.** No es para asustarse —un CUIT en Argentina es semi-público— pero no es "como si
+nunca hubiera pasado", y decirle eso sería mentirle.
+
+**LA REGLA QUE QUEDA, y es la que falló tres veces (dos en la wallet, una acá):** *todo lo que
+entra a este repo lo lee cualquiera, para siempre, sin contraseña.* Antes de commitear un archivo
+con números adentro, la pregunta no es "¿esto es secreto?" sino **"¿de quién es este dato?"**. Si
+aparece alguien que no es Mati, no va.
 
 **SIEMPRE, después de correr un comando: volver a prender el ciclo** disparando `ml-sync` con
 `billing_probe` = `ciclo`. Cada corrida a mano **mata** el ciclo automático (es el mismo candado),
@@ -2155,8 +2203,8 @@ Lo que quedó abierto. Borrá de acá lo que se vaya cerrando.
 - **Faltan gastos de agosto**: servicios ($150.000, en julio figura como "Claude"). El alquiler
   ($100.000), los honorarios ($100.000) y la obra social Sancor ($65.227) ya están.
 - **SEPTIEMBRE 2026, al 15/09.** Cargados: alquiler $100.000 (12/09) · honorarios $100.000 (14/09,
-  factura C 00001-00000944 de Cavallo, CAE 86373008063187) · autónomo + obra social de Ayelen
-  $113.083 (VEP 1680597910, vence 09/10). **Faltan**: servicios y la obra social privada Sancor de
+  factura C del contador · el número y el CAE están en el comprobante) · autónomo + obra social de Ayelen
+  $113.083 (VEP de septiembre, vence 09/10). **Faltan**: servicios y la obra social privada Sancor de
   Ayelen (el monto cambia todos los meses, va el de la factura). Los cargos de Full de agosto
   también, cuando él baje el reporte de facturación de cada cuenta.
 - **LOS VEPs DE MONOTRIBUTO DE 09/2026 CONFIRMAN QUE LAS CATEGORÍAS NO CAMBIARON.** Ayelen

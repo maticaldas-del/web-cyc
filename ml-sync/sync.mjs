@@ -10669,7 +10669,13 @@ async function main() {
     //
     // Las "recibidas" son las compras: lo que ARCA muestra en Mis Comprobantes → Recibidos, una
     // cuenta por vez. ML no las tiene y no hay API: salen del PDF que baja él de ARCA. Por eso el
-    // dato viaja en un archivo del repo (ml-sync/recibidas.json) en vez de pedirse a una API.
+    // dato viajaba en un archivo del repo (ml-sync/recibidas.json) en vez de pedirse a una API.
+    //
+    // OJO: ESE ARCHIVO YA NO ESTÁ (15/09/2026). Tenía 338 comprobantes con el CUIT, el nombre, el
+    // número de factura y el monto de cada PROVEEDOR — datos de 338 terceros — y ESTE REPO ES
+    // PÚBLICO. Los 338 ya estaban cargados en `cyc/facturas_recibidas`, así que borrarlo no perdió
+    // nada. Para cargar comprobantes nuevos: dejar el JSON a mano un momento, correr el comando y
+    // BORRARLO en el mismo commit. Nunca dejarlo subido.
     //
     // Van a `cyc/facturas_recibidas`, NO a `cyc/compras`. Es a propósito: `cyc/compras` es la lista
     // de GASTOS y entra en el cálculo de la ganancia del mes. Si las compras entraran ahí se
