@@ -332,6 +332,12 @@ que la achique (`per_page` lo ignora). El 30/08/2026 se pidió 5 veces en una ma
 tokens tirados** para sacar un número de corrida.
 Lo que sí sirve: `list_workflow_jobs` con el id de la corrida, y `get_job_logs` con `tail_lines`
 chico. La salida de los probes va toda al final del log, así que con 30 o 40 líneas alcanza.
+**ACTUALIZACIÓN 15/09/2026: la herramienta cambió y `perPage` AHORA SÍ se respeta.** Con
+`perPage:1` la lista devuelve UNA corrida (~800 tokens) y es la forma barata de sacar el id de la
+que acabás de disparar. Lo que sigue prohibido es pedirla sin `perPage`: ahí vuelven las ~25 con el
+commit entero de cada una. Y ojo con otro cambio del mismo día: **el repo se renombró a `web-cyc`**
+—las URLs de los logs lo muestran— pero las herramientas siguen aceptando `maticaldas-del/a`.
+Pedirle la API de GitHub a mano con `curl` NO funciona: el proxy contesta 403.
 
 **EL REPO ES PÚBLICO Y LOS REGISTROS DE GITHUB TAMBIÉN.** Verificado el 30/08/2026 (`private:false`).
 O sea que todo lo que un probe imprime en pantalla queda en una página que puede leer cualquiera.
@@ -827,6 +833,46 @@ por ~1.300 consultas. La caché de comisiones era **por publicación** cuando la
 (sitio, tipo, categoría, precio) y **no** de cuál publicación sea: los 18 Paulvic, misma categoría y
 mismo precio, preguntaban 18 veces lo mismo. Ahora la caché es de toda la corrida, y se miran 4
 precios gruesos primero: si ninguno gana, no hay escalón en la ventana y se corta ahí.
+
+## EL ROBOT YA SUBE PRECIOS SOLO, Y LAS PRIMERAS 36 HORAS DIERON 4 DE 5 (15/09/2026)
+
+El interruptor (`cyc/mlconfig/autoSubeVenta`, se prende con `subeventa:on`) **ya estaba PRENDIDO**:
+al correr `subeventa:on` el 15/09 contestó *"PRENDIDA → PRENDIDA"*. O sea que el robot **ya venía
+tocando precios solo desde el 14/09** y nadie se había enterado — porque los dos avisos que lo
+contaban (`Precio subido automático` y el `subilo vos`) llamaban a `sendTelegram` sin declarar el
+tipo y el filtro los tiraba. Arreglado el mismo día: ahora van por `sendAlerta`, al canal de precios.
+
+**Lo que hizo, medido con `tocados:36` (solo lee) — 5 publicaciones:**
+
+| | quedó | precio | debería | cuenta |
+|---|---|---|---|---|
+| Temporizador Digital Cocina | 22% | $6.310 | $6.450 | Ayelen |
+| **Funda Cubre Colchón queen** (`MLA1750080411`) | **25%** | $17.630 | $17.610 | Luciana |
+| Linterna Led Multifunción | 26% | $10.340 | $10.290 | Ayelen |
+| Joystick Bluetooth | 26% | $27.110 | $26.960 | Ayelen |
+| **Funda Cubre Colchón twin** (`MLA1750080409`) | **33%** ⚠️ | $21.020 | $19.860 | Luciana |
+
+**Cuatro clavadas en la meta y UNA que se pasó 8 puntos ($1.160 de más).** Y la causa es exactamente
+la que él nombró sin ver el código: *"si no aumentamos mucho solo por algunos envíos"*.
+
+**POR QUÉ SE PASA: el robot calcula con el neto de ESA venta, no con el envío típico.** El
+multiplicador sale de `mult = costo × (1+meta) / (neto − cargoML × (1+meta))`, y `neto` es el de la
+venta que disparó la suba. Si a esa venta le tocó un envío caro, el neto viene bajo y el precio que
+"hace falta" sale más alto del que hace falta de verdad. En la twin ML se quedó $5.311 de una venta
+de $17.610; al precio nuevo el peor envío visto es $53 y el margen quedó en 32,6%.
+**No es lo mismo que el error del 20/08** (aquel era usar el envío más BARATO y quedar corto): acá
+el sesgo va para el otro lado, hacia subir de más. `unapub` y `bajopiso` miran el PEOR caso de
+TODAS las ventas; esta cuenta mira UNA sola.
+
+**Decisión suya del 15/09, con los números a la vista:** *"claro, si son excepciones esas ventas al
+10% y lo gral es arriba del 25% joya. lo dejamos asi. sino aumentamos mucho solo por algunos
+envios"*. O sea: **se deja como está y no se cambia la fórmula.** 4 de 5 en la meta es un resultado
+sano, y el caso que se pasó queda arriba del piso, que es el lado seguro para equivocarse.
+**Lo que NO se hizo, a propósito: bajar la twin a $19.860.** Bajar un precio no lo decide el robot
+ni yo (regla 5). Si la twin deja de vender, ése es el primer lugar donde mirar.
+
+**Para revisarlo cuando quiera: `tocados[:horas]`**, que lista lo que tocó el robot, en qué margen
+quedó hoy y a qué precio debería estar. Sin `bajar` SOLO LEE.
 
 ## ¿CONVIENE BAJAR UN PRECIO PARA GANAR MÁS? SÍ, PERO SON 2 DE 105 (13/09/2026)
 
