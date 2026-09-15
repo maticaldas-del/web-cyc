@@ -1324,24 +1324,32 @@ async function calcFrenoCaja(db, o) {
 // antes— pero dejan afuera justo el caso de él: **algo que no vendió NUNCA**. Ahí no hay frenazo
 // que medir y la pregunta es otra: ¿por poca plata se gana la caja, y con qué margen queda?
 //
-// LOS TRES FILTROS SON LOS TRES QUE ÉL DIJO, ni uno más:
-//   1. **NO VENDE** — cero ventas de esa publicación en la ventana (30 días).
-//   2. **RE POQUITO** — la baja hasta el precio de la caja es del `maxBaja` (5%) o menos.
-//   3. **% SANO** — al precio nuevo el margen queda en `minSano` (30%) o más. Ojo: SANO no es
-//      "arriba del piso". El piso (23%) es el "no vender perdiendo"; acá se pide bien arriba,
-//      porque bajar para quedar al filo es regalar margen para ganar una caja que no aguanta el
-//      primer envío caro. Son dos números distintos a propósito, igual que el piso y la meta.
+// **LA PRIMERA VERSIÓN TENÍA LA REGLA MAL Y ÉL LA CORRIGIÓ EL MISMO DÍA**, textual: *"la regla de
+// re poquito está mal. porque en ese caso le ganábamos más del 40%. hasta el 25% se puede bajar sin
+// problema y es mucho mejor que no vender nada. así que ese re poquito está mal, porque yo lo
+// bajaría hasta el 25% si es necesario. y el % sano es de 25 hacia arriba"*.
+// Yo había leído "re poquito" como un TOPE al cuánto se baja (5%) y no era eso: en el Seagate
+// alcanzó con poquito, pero el límite no es el tamaño de la baja — **es el margen que queda**.
+// Poner un tope al % escondía justo lo que él quiere ver: algo que no vende y que bajando 20%
+// pasa a vender quedando en 30%. **No vender no deja 0% de margen: deja CERO PESOS.**
 //
-// **EL ENVÍO NO MEDIDO PIDE MÁS COLCHÓN.** Estas publicaciones nunca vendieron, así que no hay
-// envío que deducir y se usa la TARIFA de ML (lo mismo que hace `unapub`). Esa tarifa ya se midió
-// **$246 CORTA** el 20/08, o sea que el margen sale optimista. Por eso, cuando el envío es de la
-// tarifa, se exige `minSano + COLCHON_ESTIMADO`. Sin eso, esta función recomendaría bajar usando
-// un número que sabemos que está mal — el mismo error del margen en verde sin el envío descontado.
+// SON DOS FILTROS, no tres:
+//   1. **NO VENDE** — cero ventas de esa publicación en la ventana (30 días).
+//   2. **% SANO = 25 PARA ARRIBA** — al precio que gana la caja el margen tiene que quedar en
+//      `minSano` (25%) o más. Cuánto haya que bajar para llegar ahí no importa: si el margen
+//      aguanta, la baja está bien. El % de baja se muestra igual, porque es lo que él mira para
+//      decidir, pero **no descarta nada**.
+//
+// **EL ENVÍO DE ESTAS NO ESTÁ MEDIDO Y HAY QUE DECIRLO.** Nunca vendieron, así que sale de la
+// TARIFA de ML (lo mismo que hace `unapub`), y esa tarifa se midió **$246 CORTA** el 20/08. El
+// aviso lo dice en el renglón. No se le suma un colchón por arriba del 25 **porque el 25 es el
+// número que puso él**; lo que corresponde es que sepa que ese margen tiene un envío estimado
+// adentro, no cambiarle la vara por mi cuenta.
 //
 // **NO BAJA NADA.** Devuelve las filas; la decisión sigue siendo suya (regla del 13/08/2026).
 async function calcCajaBarata(db, o) {
   const {
-    dias = 30, maxBaja = 5, minSano = 30, colchonEstimado = 5,
+    dias = 30, minSano = 25,
     products = [], labels = [], accounts = {}, tc = 1500,
   } = o || {};
   const links = (await db.get('cyc/mllinks')) || {};
@@ -1366,12 +1374,7 @@ async function calcCajaBarata(db, o) {
   // Primer filtro, GRATIS: sale de lo que el robot ya escribió en `cyc/mllinks` cada hora
   // (`caja` y `cajaPtw`). Recién después se le pregunta algo a ML, así las llamadas son sólo
   // las que pueden terminar en candidata — la lección de velocidad del 13/09.
-  const fuera = { vendio: 0, sinStock: 0, sinPtw: 0, bajaGrande: 0 };
-  // Las que quedaron AFUERA por poco. Un "14 habría que bajar más del 5%" sin decir cuáles
-  // esconde justo la que está en 5,2% con 60% de margen — y ésa la quiero ver yo antes de que
-  // él la pierda. Va sólo al log, NO al mensaje: en Telegram sería ruido sobre algo que todavía
-  // no se midió. Es la misma regla que el cero sin explicación, pero para el lado del borde.
-  const cerca = [];
+  const fuera = { vendio: 0, sinStock: 0, sinPtw: 0 };
   const cand = [];
   for (const [mla, e] of Object.entries(links)) {
     if (!e || !e.prodId || !e.cuenta || e.ignored || (e.status || '') !== 'active') continue;
@@ -1417,14 +1420,8 @@ async function calcCajaBarata(db, o) {
     catch { sinDato.push({ mla: c.mla, why: 'ML no contestó por la publicación' }); continue; }
     const precio = Number(b?.price) || 0;
     if (!precio || c.ptw >= precio) { sinDato.push({ mla: c.mla, why: 'el precio de la caja no es menor al de hoy' }); continue; }
+    // El % de baja se calcula para MOSTRARLO, no para descartar: lo que decide es el margen.
     const baja = (1 - c.ptw / precio) * 100;
-    // "RE POQUITO": si hay que bajar mucho, esto no es el caso que él pidió y se descarta acá,
-    // ANTES de gastar llamadas a ML en la cuenta del margen.
-    if (baja > maxBaja) {
-      fuera.bajaGrande++;
-      cerca.push({ mla: c.mla, cuenta: c.e.cuenta, nom: (p.name || b.title || c.mla).slice(0, 34), baja, precio, ptw: Math.round(c.ptw) });
-      continue;
-    }
     const costo = costoPesos(p, 1, tc).costo;
     if (!(costo > 0)) { sinDato.push({ mla: c.mla, why: 'la ficha no tiene costo cargado' }); continue; }
     const site = b.site_id || 'MLA', lt = b.listing_type_id, cat = b.category_id;
@@ -1437,7 +1434,7 @@ async function calcCajaBarata(db, o) {
     const m = (mlExtraPct(c.e.cuenta) + monoP) / 100;
     const mlx = c.ptw * m;
     const mgPw = (c.ptw - comPw - envio - costo - mlx) / (costo + mlx + envio) * 100;
-    const exigido = minSano + colchonEstimado;   // el envío siempre es estimado en este caso
+    const exigido = minSano;   // 25%, el número que puso él. No se le suma colchón por mi cuenta.
     const fila = {
       mla: c.mla, cuenta: c.e.cuenta, prodId: c.e.prodId,
       nom: (p.name || b.title || c.mla).slice(0, 34),
@@ -1445,11 +1442,11 @@ async function calcCajaBarata(db, o) {
       st: c.st, envioEstimado: true, exigido,
     };
     if (mgPw >= exigido) filas.push(fila);
-    else noSano.push({ ...fila, why: `al precio de la caja queda en ${mgPw.toFixed(0)}%, y con el envío sin medir hace falta ${exigido}%` });
+    else noSano.push({ ...fila, why: `bajando ${baja.toFixed(0)}% queda en ${mgPw.toFixed(0)}%, y el sano es ${exigido}%` });
   }
   filas.sort((a, b2) => b2.mgPw - a.mgPw);
-  cerca.sort((a, b2) => a.baja - b2.baja);
-  return { filas, noSano, sinDato, fuera, fallos, cerca, mirados: cand.length, dias, maxBaja, minSano, colchonEstimado };
+  noSano.sort((a, b2) => b2.mgPw - a.mgPw);
+  return { filas, noSano, sinDato, fuera, fallos, mirados: cand.length, dias, minSano };
 }
 
 // Config en cyc/mlconfig/gruposPrecio = { paulvic: { palabra: 'paulvic' } }
@@ -3833,21 +3830,20 @@ async function main() {
           + (f.pausadas ? ` · ${f.pausadas} pausada(s)` : ''));
       }
 
-      console.log(`\nSE GANA LA CAJA BAJANDO POQUITO (y no venden): ${cbr.filas.length}`);
+      console.log(`\nSE GANA LA CAJA Y EL MARGEN AGUANTA (no venden · sano ${cbr.minSano}%): ${cbr.filas.length}`);
       console.log(`   candidatas miradas ${cbr.mirados} · descartadas: ${cbr.fuera.vendio} vendieron`
-        + ` · ${cbr.fuera.sinStock} sin stock · ${cbr.fuera.sinPtw} sin precio de caja de ML`
-        + ` · ${cbr.fuera.bajaGrande} habría que bajar más del ${cbr.maxBaja}%`);
+        + ` · ${cbr.fuera.sinStock} sin stock · ${cbr.fuera.sinPtw} sin precio de caja de ML`);
+      // Las que NO llegan al margen sano se listan igual, con cuánto habría que bajar y en cuánto
+      // quedarían. Un "8 quedaron con margen flaco" sin decir cuáles esconde la que está en 24%
+      // por dos pesos — y ésa la quiero ver yo. Van al log, no al mensaje.
       if (cbr.noSano.length) {
-        console.log(`   ${cbr.noSano.length} quedaban con margen flaco:`);
-        for (const f of cbr.noSano.slice(0, 6)) console.log(`     · ${f.nom} (${f.cuenta}) · ${f.why}`);
-      }
-      if (cbr.sinDato.length) console.log(`   ${cbr.sinDato.length} sin dato suficiente (ej: ${cbr.sinDato[0].why})`);
-      if (cbr.cerca.length) {
-        console.log(`   las que quedaron más cerca del ${cbr.maxBaja}% (habría que medirlas de a una con unapub):`);
-        for (const f of cbr.cerca.slice(0, 8)) {
-          console.log(`     · ${f.nom.padEnd(34)} ${f.cuenta.padEnd(8)} ${money(f.precio)} → ${money(f.ptw)} = bajar ${f.baja.toFixed(1)}%`);
+        console.log(`   ${cbr.noSano.length} NO llegan al ${cbr.minSano}% de margen sano:`);
+        for (const f of cbr.noSano.slice(0, 8)) {
+          console.log(`     · ${f.nom.padEnd(34)} ${f.cuenta.padEnd(8)} ${money(f.precio)} → ${money(f.ptw)} · ${f.why}`);
         }
       }
+      if (cbr.sinDato.length) console.log(`   ${cbr.sinDato.length} sin dato suficiente (ej: ${cbr.sinDato[0].why})`);
+
       for (const f of cbr.filas.slice(0, 10)) {
         console.log(`   · ${f.nom.padEnd(34)} ${f.cuenta.padEnd(8)} ${money(f.precio)} → ${money(f.ptw)}`
           + ` (−${f.baja.toFixed(1)}%) · queda en ${f.mgPw.toFixed(1)}% · ${f.st} u.`);
@@ -3915,8 +3911,8 @@ async function main() {
       // ya se midió se puede aplicar; uno que no, no.
       const nuevasCbr = cbr.filas.filter((f) => !yaAvisado('c_' + f.mla, 'cajabarata', f.ptw));
       if (nuevasCbr.length) {
-        L.push(`\n🥊 <b>Se gana la caja bajando poquito</b> · ${nuevasCbr.length}`);
-        L.push('<i>No venden, y por poca plata pasan a ser el botón de comprar. El margen de abajo ya tiene todo descontado.</i>');
+        L.push(`\n🥊 <b>Se gana la caja y el margen aguanta</b> · ${nuevasCbr.length}`);
+        L.push(`<i>No venden. Bajando a este precio pasás a ser el botón de comprar y quedás del ${cbr.minSano}% para arriba. El margen ya tiene todo descontado.</i>`);
         for (const f of nuevasCbr) {
           const n2 = numerar({ tipo: 'bajar', mla: f.mla, nom: f.nom, cuenta: f.cuenta, de: f.precio, a: f.ptw, extraMes: 0 });
           L.push(`<b>${n2}.</b> ${f.nom} (${f.cuenta})\n   ${money(f.precio)} → ${money(f.ptw)} (−${f.baja.toFixed(1)}%) · queda en ${f.mgPw.toFixed(0)}% · ${f.st} u.`);
@@ -3924,7 +3920,7 @@ async function main() {
         // EL ENVÍO DE ESTAS NO ESTÁ MEDIDO y hay que decirlo donde se lee, no sólo acá adentro:
         // ninguna vendió nunca, así que sale de la tarifa de ML, que el 20/08 se midió $246 corta.
         // Por eso además se les exige más margen que a las demás (ver `calcCajaBarata`).
-        L.push(`<i>Ojo: como nunca vendieron, el envío sale de la tarifa de ML y puede quedarse corto. Por eso acá pido ${cbr.minSano + cbr.colchonEstimado}% y no el piso.</i>`);
+        L.push(`<i>Ojo: como nunca vendieron, el envío sale de la tarifa de ML y puede quedarse corto, así que el margen real puede ser un poco menor.</i>`);
         for (const f of nuevasCbr) paraAnotar['c_' + f.mla] = { tipo: 'cajabarata', valor: f.ptw, ts: hoyTs };
       }
       if (nuevasPar.length) {

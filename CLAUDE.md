@@ -859,7 +859,7 @@ que a nosotros nos cuesta y **el precio no es el problema**: lo que queda es rem
 (`liquidando`) o retirar el stock de Full para dejar de pagar almacenamiento, las dos decisiones
 suyas. Por eso `calcFrenoCaja` deja el precio y no baja nada.
 
-## "BAJAR RE POQUITO, QUEDAR EN % SANO Y GANAR LA CAJA": EL AVISO QUE FALTABA (15/09/2026)
+## "GANAR LA CAJA DE ALGO QUE NO VENDE, MIENTRAS EL MARGEN AGUANTE" (15/09/2026)
 
 Pedido suyo, con el Seagate 500GB en la mano: *"ese es un claro ejemplo de lo que me tiene que
 mandar el robot. bajar re poquito, quedar en % sano y ganar caja de algo que no vende"*.
@@ -870,23 +870,35 @@ perdida lo descartaban por el MISMO motivo: **exigen haber vendido antes**.
  · `bajarParaMover` (el probe `bajarcaja`) → sin ventas no puede deducir el envío y lo tira.
 Las dos están bien para lo que fueron hechas —para medir un FRENAZO hay que saber qué vendía
 antes— pero dejan afuera justo su caso: **algo que no vendió NUNCA**. Ahí no hay frenazo que medir
-y la pregunta es otra: *¿por poca plata se gana la caja, y con qué margen queda?*
+y la pregunta es otra: *¿a qué precio se gana la caja, y con qué margen queda?*
 
-El comando nuevo es **`calcCajaBarata`** y sale en el aviso diario. Los tres filtros son los tres
-que dijo él, ni uno más:
+### LA REGLA LA TUVE MAL Y ÉL LA CORRIGIÓ EL MISMO DÍA
+
+Primero puse un tope al **cuánto se baja** (5%, "re poquito"). Él lo cortó, textual:
+*"la regla de re poquito está mal. porque en ese caso le ganábamos más del 40%. hasta el 25% se
+puede bajar sin problema y es mucho mejor que no vender nada. así que ese re poquito está mal,
+porque yo lo bajaría hasta el 25% si es necesario. y el % sano es de 25 hacia arriba"*.
+
+Yo había leído "re poquito" como un límite; no lo era. En el Seagate **alcanzó** con poquito, pero
+el límite no es el tamaño de la baja — **es el margen que queda**. Un tope al % escondía justo lo
+que él quiere ver: algo que no vende y que bajando 20% pasa a vender quedando en 30%.
+**No vender no deja 0% de margen: deja CERO PESOS.**
+
+**LA LECCIÓN, y es de las que se repiten: un ejemplo no es una regla.** Él mostró un caso donde la
+baja era chica y yo convertí esa circunstancia en un filtro. Lo que hay que preguntar es qué DECIDE,
+no qué se vio en el único caso que había sobre la mesa.
+
+### CÓMO QUEDÓ: `calcCajaBarata`, dos filtros y ninguno más
+
  1. **NO VENDE** — cero ventas de esa publicación en 30 días.
- 2. **RE POQUITO** — la baja hasta el precio de la caja es del **5%** o menos.
- 3. **% SANO** — al precio nuevo el margen queda en **30%** o más.
+ 2. **% SANO = 25 PARA ARRIBA** — al precio que gana la caja el margen tiene que quedar en 25% o
+    más. **Cuánto haya que bajar no importa**: si el margen aguanta, la baja está bien. El % de
+    baja se muestra igual, porque es lo que él mira para decidir, pero no descarta nada.
 
-**SANO NO ES "ARRIBA DEL PISO", y son dos números distintos a propósito.** El piso (23%) es el
-"no vender perdiendo"; acá se pide bien arriba, porque bajar para quedar al filo es regalar margen
-por una caja que no aguanta el primer envío caro. Es la misma razón por la que el piso y la meta
-son dos números y no uno.
-
-**EL ENVÍO NO MEDIDO PIDE MÁS COLCHÓN: 35%, no 30%.** Estas publicaciones nunca vendieron, así que
-no hay envío que deducir y sale de la **tarifa de ML** — la misma que usa `unapub`, y que el 20/08
-se midió **$246 CORTA**. Sin el colchón, esto recomendaría bajar usando un número que sabemos que
-se queda corto: el mismo error del margen en verde sin el envío descontado.
+**EL ENVÍO DE ESTAS NO ESTÁ MEDIDO Y SE DICE EN EL RENGLÓN.** Nunca vendieron, así que sale de la
+**tarifa de ML** (lo mismo que hace `unapub`), y esa tarifa se midió **$246 CORTA** el 20/08. **No
+se le suma un colchón por arriba del 25 porque el 25 es el número que puso él**: lo que corresponde
+es que sepa que ese margen tiene un envío estimado adentro, no cambiarle la vara por mi cuenta.
 
 **ESTOS SÍ LLEVAN NÚMERO, al revés que "perdieron la caja y se frenaron".** La diferencia no es de
 forma: allá el precio de ML es para ganar la caja **y nada más** —el Filtro agua salió con *"se gana
@@ -899,18 +911,15 @@ se pisan cuando algo vendió hace más de 30 días: para una es un frenazo, para
 Saldría dos veces, una con número y otra sin él. Gana la medida, y lo descartado se dice en el log.
 Es la misma lección de la Piedra Pómez, que salía en subir y bajar a la vez.
 
-**Probado con los números REALES del Seagate antes de subirlo**, y la cuenta da **44,2%**, idéntico
-a lo que devolvió ML con `unapub` — que es la forma de saber que la fórmula es la misma y no una
-copia que se va a separar. Los tres casos que NO tienen que salir tampoco salen: el WD Green (baja
-mínima pero margen 22,9%), una baja del 12% con margen sano, y una baja del 2% con margen flaco.
+**Y las que NO llegan al 25% se listan igual en el log**, con cuánto habría que bajar y en cuánto
+quedarían: un *"8 con margen flaco"* sin decir cuáles esconde la que está en 24% por dos pesos.
+Al log y no al mensaje — en Telegram sería ruido sobre algo que no se va a aplicar.
 
-**PRIMERA CORRIDA EN SECO, y el resultado es el correcto: 0 candidatas, con el motivo de cada
-descarte.** De 40 con la caja perdida: 25 vendieron, **14 habría que bajar más del 5%** y 1 quedó
-"sin dato" — y ese 1 **es el propio Seagate**, que después de bajarlo ya gana la caja, así que el
-precio para ganarla no es menor al de hoy. O sea que el comando se lee a sí mismo bien.
-**Y las 14 que quedaron afuera por poco se imprimen con su nombre y su %**, ordenadas de menor a
-mayor: un *"14 habría que bajar más del 5%"* sin decir cuáles esconde justo la que está en 5,2% con
-60% de margen. Va **sólo al log, no al mensaje** — en Telegram sería ruido sobre algo sin medir.
+**Probado con los números REALES del Seagate**: da **44,2%**, idéntico a lo que devolvió ML con
+`unapub` — que es la forma de saber que la fórmula es la misma y no una copia que se va a separar.
+Probados también los casos que la regla vieja se comía (bajar 20% y quedar en 36%, bajar 35% y
+quedar en 30%: los dos SALEN) y los tres que no tienen que salir (el WD Green en 22,9%, una baja
+chica con margen flaco, y una baja del 45% que hunde el margen a 1,7%).
 
 **EL SEAGATE, APLICADO EL MISMO DÍA CON SU AUTORIZACIÓN** (*"baja seagate hasta ganar. ojo no bajar
 mucho %"*): `MLA3920081802` pasó de **$187.469 a $180.046** (−4,0%). Releído de ML: la caja de
