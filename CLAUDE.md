@@ -1995,6 +1995,19 @@ Lo que quedó abierto. Borrá de acá lo que se vaya cerrando.
 
 - **Faltan gastos de agosto**: servicios ($150.000, en julio figura como "Claude"). El alquiler
   ($100.000), los honorarios ($100.000) y la obra social Sancor ($65.227) ya están.
+- **SEPTIEMBRE 2026, al 15/09.** Cargados: alquiler $100.000 (12/09) · honorarios $100.000 (14/09,
+  factura C 00001-00000944 de Cavallo, CAE 86373008063187) · autónomo + obra social de Ayelen
+  $113.083 (VEP 1680597910, vence 09/10). **Faltan**: servicios y la obra social privada Sancor de
+  Ayelen (el monto cambia todos los meses, va el de la factura). Los cargos de Full de agosto
+  también, cuando él baje el reporte de facturación de cada cuenta.
+- **LOS VEPs DE MONOTRIBUTO DE 09/2026 CONFIRMAN QUE LAS CATEGORÍAS NO CAMBIARON.** Ayelen
+  $204.811,64 (H) + autónomo $57.598,04 + obra social $55.485,33 = **$317.895,01** · Adriana
+  $71.497,87 (G) · Luciana $57.719,64 (F) · Matías $57.719,64 (F). **Total $504.832,16**, el mismo
+  número de siempre. O sea que **la recategorización de Luciana y Matías sigue sin hacerse** — es lo
+  primero de la lista del contador. Ojo con la nota de `proyec` que habla de "las cuatro en H":
+  ése es un escenario calculado, NO lo que están pagando hoy.
+  Del VEP lo único que se carga como gasto es **autónomo + obra social de Ayelen ($113.083)**; el
+  impuesto integrado ya se descuenta como % en cada venta.
 - **OSDE es PERSONAL, no es de CYC. No cargarlo nunca.** Aparece en los comprobantes recibidos de
   ARCA ($321.796 de Adriana + $200.414 de Luciana el 25/07) y es tentador tomarlo por un gasto del
   negocio. Él lo dijo expreso el 13/08/2026. Lo mismo el colegio (Asociación Hijas de Nuestra
