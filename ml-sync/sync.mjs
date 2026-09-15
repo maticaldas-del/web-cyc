@@ -1444,7 +1444,9 @@ async function calcCajaBarata(db, o) {
         mla: c.mla, cuenta: c.e.cuenta, nom: (p.name || b.title || c.mla).slice(0, 34),
         precio, ptw: Math.round(c.ptw), baja, mgPw: mgTope, envio: 0, costo: Math.round(costo),
         st: c.st, envioEstimado: true, exigido: minSano,
-        why: `bajando ${baja.toFixed(0)}% no llega ni a ${minSano}% ANTES de descontar el envío (${mgTope.toFixed(0)}%)`,
+        // Un decimal, no cero: con 24,6% redondeado a "25%" el renglón se lee como
+        // "no llega ni a 25% (25%)", que parece una contradicción y hace dudar del número.
+        why: `bajando ${baja.toFixed(0)}% no llega ni a ${minSano}% ANTES de descontar el envío (${mgTope.toFixed(1)}%)`,
       });
       continue;
     }
@@ -1472,7 +1474,7 @@ async function calcCajaBarata(db, o) {
       st: c.st, envioEstimado: true, exigido,
     };
     if (mgPw >= exigido) filas.push(fila);
-    else noSano.push({ ...fila, why: `bajando ${baja.toFixed(0)}% queda en ${mgPw.toFixed(0)}%, y el sano es ${exigido}%` });
+    else noSano.push({ ...fila, why: `bajando ${baja.toFixed(0)}% queda en ${mgPw.toFixed(1)}%, y el sano es ${exigido}%` });
   }
   filas.sort((a, b2) => b2.mgPw - a.mgPw);
   noSano.sort((a, b2) => b2.mgPw - a.mgPw);
