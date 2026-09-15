@@ -915,6 +915,15 @@ Es la misma lección de la Piedra Pómez, que salía en subir y bajar a la vez.
 quedarían: un *"8 con margen flaco"* sin decir cuáles esconde la que está en 24% por dos pesos.
 Al log y no al mensaje — en Telegram sería ruido sobre algo que no se va a aplicar.
 
+**Y HUBO QUE HACERLO MÁS RÁPIDO, porque sacar el tope lo puso lento.** Con el filtro del 5% las
+que había que bajar mucho se descartaban GRATIS; sin él, todas pasaban a pedir el envío a ML, que
+es la llamada cara (`envioSegunML` consulta varios códigos postales por publicación). La corrida se
+fue de 1,5 minutos a más de 20 — el mismo problema de velocidad que ya había mordido en la primera
+versión de `avisos`.
+**El atajo, y no cambia ningún resultado:** el margen SIN envío es el **TECHO** —con envío sólo
+puede ser menor—, así que si ni ese techo llega al 25% no hace falta preguntar el envío. Verificado
+con 7 casos con y sin atajo: **los 7 dan exactamente lo mismo**.
+
 **Probado con los números REALES del Seagate**: da **44,2%**, idéntico a lo que devolvió ML con
 `unapub` — que es la forma de saber que la fórmula es la misma y no una copia que se va a separar.
 Probados también los casos que la regla vieja se comía (bajar 20% y quedar en 36%, bajar 35% y

@@ -1427,6 +1427,26 @@ async function calcCajaBarata(db, o) {
     const site = b.site_id || 'MLA', lt = b.listing_type_id, cat = b.category_id;
     const comPw = await feeCb(site, c.ptw, lt, cat, tk);
     if (comPw == null) { sinDato.push({ mla: c.mla, why: 'ML no me dio la comisión al precio nuevo' }); continue; }
+    // ── DESCARTE BARATO ANTES DE PEDIR EL ENVÍO ──────────────────────────────────────
+    // Pedir el envío es la llamada CARA: `envioSegunML` consulta varios códigos postales por
+    // publicación. Al sacar el tope del 5% (corrección suya) dejaron de descartarse gratis las
+    // que había que bajar mucho, y la corrida se fue a más de 20 minutos — el mismo problema de
+    // velocidad que ya había mordido en la primera versión de `avisos`.
+    // El margen SIN envío es el TECHO: con envío sólo puede ser MENOR. Así que si ni siquiera
+    // ese techo llega al mínimo, esta publicación no va a entrar nunca y no hace falta gastar
+    // la consulta. No cambia ningún resultado: sólo evita preguntar lo que ya está decidido.
+    const mTope = (mlExtraPct(c.e.cuenta) + monoP) / 100;
+    const mlxTope = c.ptw * mTope;
+    const mgTope = (c.ptw - comPw - costo - mlxTope) / (costo + mlxTope) * 100;
+    if (mgTope < minSano) {
+      noSano.push({
+        mla: c.mla, cuenta: c.e.cuenta, nom: (p.name || b.title || c.mla).slice(0, 34),
+        precio, ptw: Math.round(c.ptw), baja, mgPw: mgTope, envio: 0, costo: Math.round(costo),
+        st: c.st, envioEstimado: true, exigido: minSano,
+        why: `bajando ${baja.toFixed(0)}% no llega ni a ${minSano}% ANTES de descontar el envío (${mgTope.toFixed(0)}%)`,
+      });
+      continue;
+    }
     // El envío: estas nunca vendieron, así que sale de la TARIFA de ML. Queda MARCADO.
     const rT = await envioSegunML(c.mla, tk);
     if (!rT) { sinDato.push({ mla: c.mla, why: 'ni ventas ni tarifa de ML: sin envío el margen sería un invento' }); continue; }
