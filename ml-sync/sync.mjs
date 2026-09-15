@@ -19106,6 +19106,22 @@ async function main() {
   // descuentos automáticos de ML ni subir en loop)
   const priced = (await db.get('mlapi/priced')) || {};
   const pricedUpd = {};
+  // ── NO MANDAR EL MISMO AVISO DE PRECIO EN CADA VENTA (15/09/2026) ────────────────────
+  // Hasta hoy estos avisos NO LLEGABAN (se tiraban por no declarar el tipo), así que repetirse
+  // no molestaba a nadie. Ahora que van al canal de precios sí molesta: una publicación abajo
+  // del piso que vende cinco veces en el día mandaba cinco mensajes iguales, y un aviso que
+  // suena siempre entrena a no abrirlo — la misma lección del "⚠️ VENDE" del 09/09 y de por qué
+  // el aviso diario no repite lo mismo todos los días.
+  // Es por PUBLICACIÓN y por 12 h, la misma ventana que ya usa `priced` para no tocar dos veces.
+  // Si la lectura falla NO se filtra nada: repetir un aviso molesta, callar uno que hacía falta
+  // es peor — el mismo lado seguro que en `avisos`.
+  let avisoPrecio = {}, avisoPrecioOk = true;
+  try {
+    const _ap = await db.get('mlapi/avisoprecio');
+    avisoPrecio = (_ap && typeof _ap === 'object') ? _ap : {};
+  } catch { avisoPrecioOk = false; }
+  const avisoPrecioUpd = {};
+  const AVISO_PRECIO_HS = 12;
   let pubAlerts = 0; // tope de avisos de publicaciones por corrida (anti-spam)
   // stock a escribir en el inventario del panel (producto×cuenta y por variante)
   const stockTot = {}; // prodId__Cuenta -> unidades (suma de sus publicaciones EN FULL)
@@ -19636,7 +19652,14 @@ async function main() {
               if (rp.ok) {
                 pricedUpd[mla] = { ts: Date.now(), to: rp.to };
                 priced[mla] = pricedUpd[mla];
-                await sendTelegram(`🔼 <b>Precio subido automático</b>\n${head}`
+                // VA AL CANAL DE PRECIOS (`sendAlerta`), NO al del resumen. Hasta el 15/09/2026
+                // esto llamaba a `sendTelegram` SIN declarar el tipo, y el filtro de
+                // `TG_PERMITIDO` lo tiraba antes de intentar mandarlo: el robot podía subir un
+                // precio y él no se enteraba NUNCA. Es el mismo bug del aviso del dólar, que ya
+                // estaba anotado —*"un filtro que descarta por omisión apaga cosas en silencio"*—
+                // y que acá seguía vivo justo en los dos mensajes que deciden plata.
+                // El canal del resumen NO se toca, que es lo que él pidió el 13/09.
+                await sendAlerta(`🔼 <b>Precio subido automático</b>\n${head}`
                   + `Estaba en margen ${(margen * 100).toFixed(0)}% → lo subí de `
                   + `${money(rp.from)} a <b>${money(rp.to)}</b> para llegar al ${targetPct}%`
                   + (rp.variantes ? `\n(${rp.variantes} variantes, la lista completa · releído de ML)` : ''));
@@ -19644,7 +19667,9 @@ async function main() {
               }
             }
             // si no se pudo subir solo (apagado, tope, catálogo, error…): avisar
-            if (!done) {
+            const yaAvisadoPrecio = avisoPrecioOk
+              && avisoPrecio[mla] && (Date.now() - (avisoPrecio[mla].ts || 0)) < AVISO_PRECIO_HS * 3600e3;
+            if (!done && !yaAvisadoPrecio) {
               const motivo = cruzaUmbral
                 ? `\n\n🛑 <b>NO lo subí solo: cruza los $33.000.</b>\nDe ${money(unit)} pasaría a ${money(sugUnit)}, y arriba de $33.000 el envío gratis lo paga CYC (~$6.000 por venta). Con ese envío el precio que hace falta es bastante más alto que ${money(sugUnit)}. Decidilo vos.`
                 : pasaTecho
@@ -19654,9 +19679,15 @@ async function main() {
                     : (!autoSubeVenta ? '\n(el robot no sube precios solo: está apagado · subeventa:on)' : (mult > MAX_UP
                       ? '\n⚠️ Subida grande (más de +25%), revisalo vos'
                       : (yaTocado ? '\n(ya lo toqué hace poco)' : '\n(no pude subirlo solo)')));
-              await sendTelegram(`⚠️ <b>${head}</b>Precio actual: <b>${money(unit)}</b>\n`
+              // Mismo canal que la suba: éste es JUSTO el que más falta hacía. Cuando la suba
+              // que hace falta pasa el tope del +25% —o sea en los casos PEORES— el robot no
+              // toca y avisa… y ese aviso era el que se perdía. La Funda Cubre Colchón vino
+              // meses al 10% por esto: el robot la veía, decidía no tocarla, y nadie se enteraba.
+              await sendAlerta(`⚠️ <b>${head}</b>Precio actual: <b>${money(unit)}</b>\n`
                 + `Neto: ${money(neto)} · Costo: ${money(costo)}\n`
                 + `👉 Subilo a <b>${money(sugUnit)}</b> para llegar al ${targetPct}%${motivo}`);
+              avisoPrecio[mla] = { ts: Date.now(), a: sugUnit };
+              avisoPrecioUpd[mla] = avisoPrecio[mla];
             }
             alerted[id] = true; alertUpd[id] = obj.ts;
           }
@@ -19916,6 +19947,9 @@ async function main() {
   if (!DRY && Object.keys(mapUpd).length) await db.patch('cyc/mllinks', mapUpd);
   // guardar los avisos que ya mandamos (para no repetirlos)
   if (!DRY && Object.keys(alertUpd).length) await db.patch('mlapi/alerted', alertUpd);
+  // Con `patch` y sólo los nuevos, nunca con `set`: pisar el nodo entero es el bug que borró a un
+  // destinatario de Telegram el 22/08 y se descubrió cinco días después.
+  if (!DRY && Object.keys(avisoPrecioUpd).length) await db.patch('mlapi/avisoprecio', avisoPrecioUpd);
   // guardar por qué publicación ya avisamos (para no repetir el aviso cada 2 minutos)
   if (!DRY && Object.keys(pubAlertUpd).length) await db.patch('mlapi/pubalert', pubAlertUpd);
   // guardar los precios que subimos solos (para no pisarlos en loop)
