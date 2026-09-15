@@ -392,6 +392,19 @@ accesibles desde julio. Sacarlos corta el sangrado hacia adelante; **no des-publ
 ya haya copiado.** No es para asustarse —un CUIT en Argentina es semi-público— pero no es "como si
 nunca hubiera pasado", y decirle eso sería mentirle.
 
+**Y APARECIÓ ALGO PEOR QUE GITHUB, QUE NADIE HABÍA MIRADO: LA WEB SERVÍA EL REPO ENTERO.**
+Cloudflare publica la web de CYC con **`assets.directory = "."`** (se ve en la rama
+`cloudflare/workers-autoconfig`, que la creó Cloudflare sola) y **el repo no tenía
+`.assetsignore`**. O sea que `recibidas.json`, el `CLAUDE.md`, `chequeo/ultimo.txt`,
+`precios/bajopiso.txt` y `ml-sync/sync.mjs` entero **se bajaban desde la dirección de la web**, sin
+GitHub y sin contraseña. Es exactamente el mismo agujero por el que se filtró el `CLAUDE.md` de la
+wallet el 11/08 — **y acá era peor, porque nadie lo había pensado siquiera.**
+**Arreglado: se creó `.assetsignore`.** La app sólo necesita CUATRO archivos —`index.html`,
+`sw.js`, `manifest.webmanifest`, `icon.svg`— y se verificó antes de escribirlo: el service worker
+cachea esos cuatro y `index.html` no busca ningún otro archivo del repo. Todo lo demás queda afuera.
+**Al agregar un archivo nuevo al repo, preguntarse si tiene que estar en la WEB.** Si no, va al
+`.assetsignore`. Lo que no está listado se publica: el lado por defecto es el peligroso.
+
 **LA REGLA QUE QUEDA, y es la que falló tres veces (dos en la wallet, una acá):** *todo lo que
 entra a este repo lo lee cualquiera, para siempre, sin contraseña.* Antes de commitear un archivo
 con números adentro, la pregunta no es "¿esto es secreto?" sino **"¿de quién es este dato?"**. Si

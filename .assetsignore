@@ -1,0 +1,18 @@
+# Lo que Cloudflare NO publica en la web de CYC.
+# Cloudflare sirve el repo ENTERO (assets.directory = "."), así que todo lo que
+# no esté acá queda descargable por cualquiera que sepa la dirección, SIN login.
+# La app sólo necesita: index.html, sw.js, manifest.webmanifest, icon.svg.
+
+.git
+.github
+.assetsignore
+CLAUDE.md
+README.md
+ml-sync
+tools
+chequeo
+precios
+wrangler.jsonc
+index.html.fn
+index.html.id
+index.html.var
