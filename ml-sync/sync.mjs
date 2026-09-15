@@ -1310,6 +1310,138 @@ async function calcFrenoCaja(db, o) {
   return { filas, conCajaPerdida, seguianVendiendo, vendianPoco, minPorDia, minDiasSin };
 }
 
+// ── BAJAR RE POQUITO, QUEDAR EN % SANO Y GANAR LA CAJA DE ALGO QUE NO VENDE ──────────
+// Pedido suyo del 15/09/2026, con el Seagate 500GB en la mano: *"ese es un claro ejemplo de lo
+// que me tiene que mandar el robot. bajar re poquito, quedar en % sano y ganar caja de algo que
+// no vende"*.
+//
+// POR QUÉ NO ALCANZABA CON LO QUE YA HABÍA, y esto es lo importante: el Seagate **no salía en
+// ningún lado**, y no por casualidad. Las dos cuentas que miran la caja perdida lo descartaban
+// por el MISMO motivo — exigen que haya vendido antes:
+//   · `calcFrenoCaja` (la del aviso diario): `if (!a || !a.ultima) continue;  // nunca vendió`.
+//   · `bajarParaMover` (el probe `bajarcaja`): sin ventas no puede deducir el envío y lo tira.
+// Las dos están bien para lo que fueron hechas —medir un FRENAZO hace falta saber qué vendía
+// antes— pero dejan afuera justo el caso de él: **algo que no vendió NUNCA**. Ahí no hay frenazo
+// que medir y la pregunta es otra: ¿por poca plata se gana la caja, y con qué margen queda?
+//
+// LOS TRES FILTROS SON LOS TRES QUE ÉL DIJO, ni uno más:
+//   1. **NO VENDE** — cero ventas de esa publicación en la ventana (30 días).
+//   2. **RE POQUITO** — la baja hasta el precio de la caja es del `maxBaja` (5%) o menos.
+//   3. **% SANO** — al precio nuevo el margen queda en `minSano` (30%) o más. Ojo: SANO no es
+//      "arriba del piso". El piso (23%) es el "no vender perdiendo"; acá se pide bien arriba,
+//      porque bajar para quedar al filo es regalar margen para ganar una caja que no aguanta el
+//      primer envío caro. Son dos números distintos a propósito, igual que el piso y la meta.
+//
+// **EL ENVÍO NO MEDIDO PIDE MÁS COLCHÓN.** Estas publicaciones nunca vendieron, así que no hay
+// envío que deducir y se usa la TARIFA de ML (lo mismo que hace `unapub`). Esa tarifa ya se midió
+// **$246 CORTA** el 20/08, o sea que el margen sale optimista. Por eso, cuando el envío es de la
+// tarifa, se exige `minSano + COLCHON_ESTIMADO`. Sin eso, esta función recomendaría bajar usando
+// un número que sabemos que está mal — el mismo error del margen en verde sin el envío descontado.
+//
+// **NO BAJA NADA.** Devuelve las filas; la decisión sigue siendo suya (regla del 13/08/2026).
+async function calcCajaBarata(db, o) {
+  const {
+    dias = 30, maxBaja = 5, minSano = 30, colchonEstimado = 5,
+    products = [], labels = [], accounts = {}, tc = 1500,
+  } = o || {};
+  const links = (await db.get('cyc/mllinks')) || {};
+  const invCb = (await db.get('cyc/inventory')) || {};
+  const vpCb = (await db.get('cyc/ventaprod')) || {}; setDevLive(vpCb);
+  const monoP = parseFloat(((await db.get('cyc/monotributo')) || {}).pct) || 0;
+  const pIdx = {}; for (const p of products) pIdx[p.id] = p;
+  const sidCb = (x) => String(x).replace(/[^a-z0-9]/gi, '_');
+
+  // Unidades vendidas por publicación en la ventana. Acá se busca lo CONTRARIO que en `subirpuede`:
+  // las que NO vendieron.
+  const desdeCb = Date.now() - dias * 864e5, uCb = {};
+  for (const [k, ents] of Object.entries(vpCb)) {
+    const ts = Date.parse(k.slice(0, 10).replace(/_/g, '-'));
+    if (!isFinite(ts) || ts < desdeCb) continue;
+    for (const v of Object.values(ents || {})) {
+      if (!v || v.cancelada || !v.mla) continue;
+      uCb[v.mla] = (uCb[v.mla] || 0) + (v.qty || 1);
+    }
+  }
+
+  // Primer filtro, GRATIS: sale de lo que el robot ya escribió en `cyc/mllinks` cada hora
+  // (`caja` y `cajaPtw`). Recién después se le pregunta algo a ML, así las llamadas son sólo
+  // las que pueden terminar en candidata — la lección de velocidad del 13/09.
+  const fuera = { vendio: 0, sinStock: 0, sinPtw: 0, bajaGrande: 0 };
+  const cand = [];
+  for (const [mla, e] of Object.entries(links)) {
+    if (!e || !e.prodId || !e.cuenta || e.ignored || (e.status || '') !== 'active') continue;
+    if (!pIdx[e.prodId]) continue;
+    if (e.caja !== 'losing') continue;
+    if ((uCb[mla] || 0) > 0) { fuera.vendio++; continue; }          // vende: no es este caso
+    const st = parseInt(invCb[e.prodId + '__' + sidCb(e.cuenta)]) || 0;
+    if (st <= 0) { fuera.sinStock++; continue; }                    // sin mercadería no hay nada que desbloquear
+    const ptw = Number(e.cajaPtw) || 0;
+    if (!(ptw > 0)) { fuera.sinPtw++; continue; }                   // ML no dice a qué precio se gana
+    cand.push({ mla, e, st, ptw });
+  }
+
+  const tokCb = {}, fallos = [];
+  for (const l of labels) {
+    const acc = accounts[l]; if (!acc?.refresh_token) continue;
+    try {
+      const t = await mlRefresh(ML_CLIENT_ID, ML_CLIENT_SECRET, acc.refresh_token);
+      await db.patch('mlapi/tokens/' + l, { refresh_token: t.refresh_token, updated_ts: Date.now() });
+      tokCb[l] = t.access_token;
+    } catch { fallos.push(l); }
+  }
+  const feeCacheCb = {};
+  const feeCb = async (site, precio, lt, cat, token) => {
+    const key = site + '|' + lt + '|' + cat + '|' + Math.round(precio);
+    if (feeCacheCb[key] !== undefined) return feeCacheCb[key];
+    let out = null;
+    try {
+      const d = await mlGet(`/sites/${site}/listing_prices?price=${Math.round(precio)}&listing_type_id=${lt}&category_id=${cat}`, token);
+      const ob = Array.isArray(d) ? d[0] : d;
+      if (typeof ob?.sale_fee_amount === 'number') out = ob.sale_fee_amount;
+    } catch { out = null; }
+    feeCacheCb[key] = out; return out;
+  };
+
+  const filas = [], noSano = [], sinDato = [];
+  for (const c of cand) {
+    const p = pIdx[c.e.prodId];
+    const tk = tokCb[c.e.cuenta];
+    if (!tk) continue;
+    let b;
+    try { b = await mlGet(`/items/${c.mla}?attributes=id,price,title,listing_type_id,category_id,site_id,available_quantity`, tk); }
+    catch { sinDato.push({ mla: c.mla, why: 'ML no contestó por la publicación' }); continue; }
+    const precio = Number(b?.price) || 0;
+    if (!precio || c.ptw >= precio) { sinDato.push({ mla: c.mla, why: 'el precio de la caja no es menor al de hoy' }); continue; }
+    const baja = (1 - c.ptw / precio) * 100;
+    // "RE POQUITO": si hay que bajar mucho, esto no es el caso que él pidió y se descarta acá,
+    // ANTES de gastar llamadas a ML en la cuenta del margen.
+    if (baja > maxBaja) { fuera.bajaGrande++; continue; }
+    const costo = costoPesos(p, 1, tc).costo;
+    if (!(costo > 0)) { sinDato.push({ mla: c.mla, why: 'la ficha no tiene costo cargado' }); continue; }
+    const site = b.site_id || 'MLA', lt = b.listing_type_id, cat = b.category_id;
+    const comPw = await feeCb(site, c.ptw, lt, cat, tk);
+    if (comPw == null) { sinDato.push({ mla: c.mla, why: 'ML no me dio la comisión al precio nuevo' }); continue; }
+    // El envío: estas nunca vendieron, así que sale de la TARIFA de ML. Queda MARCADO.
+    const rT = await envioSegunML(c.mla, tk);
+    if (!rT) { sinDato.push({ mla: c.mla, why: 'ni ventas ni tarifa de ML: sin envío el margen sería un invento' }); continue; }
+    const envio = Math.max(0, rT.envio);
+    const m = (mlExtraPct(c.e.cuenta) + monoP) / 100;
+    const mlx = c.ptw * m;
+    const mgPw = (c.ptw - comPw - envio - costo - mlx) / (costo + mlx + envio) * 100;
+    const exigido = minSano + colchonEstimado;   // el envío siempre es estimado en este caso
+    const fila = {
+      mla: c.mla, cuenta: c.e.cuenta, prodId: c.e.prodId,
+      nom: (p.name || b.title || c.mla).slice(0, 34),
+      precio, ptw: Math.round(c.ptw), baja, mgPw, envio, costo: Math.round(costo),
+      st: c.st, envioEstimado: true, exigido,
+    };
+    if (mgPw >= exigido) filas.push(fila);
+    else noSano.push({ ...fila, why: `al precio de la caja queda en ${mgPw.toFixed(0)}%, y con el envío sin medir hace falta ${exigido}%` });
+  }
+  filas.sort((a, b2) => b2.mgPw - a.mgPw);
+  return { filas, noSano, sinDato, fuera, fallos, mirados: cand.length, dias, maxBaja, minSano, colchonEstimado };
+}
+
 // Config en cyc/mlconfig/gruposPrecio = { paulvic: { palabra: 'paulvic' } }
 // La palabra se busca en el título de la publicación y en el nombre del producto,
 // así una publicación nueva entra al grupo sola, sin cargarla a mano.
@@ -3556,6 +3688,10 @@ async function main() {
       const zm = await calcZonaMuerta(db, { dias: 30, products, labels, accounts });
       const par = await calcBajarStock(db, { dias: 30, products, tc });
       const frn = await calcFrenoCaja(db, { products, tc });
+      // El caso del Seagate (15/09/2026): no vende, se gana la caja bajando poquísimo y el margen
+      // queda sano. Va aparte de `frn` a propósito — aquélla mide un FRENAZO y por eso exige haber
+      // vendido antes; ésta agarra justo lo que nunca vendió, que era lo que no salía en ningún lado.
+      const cbr = await calcCajaBarata(db, { dias: 30, products, labels, accounts, tc });
       // Las ventas crudas, para la comprobación del escalón de más abajo. Va acá y no adentro del
       // bloque: si se usara sin declararla, JavaScript la busca afuera, no la encuentra y CORTA LA
       // CORRIDA ENTERA — y `node --check` compila igual. Es el mismo error que el `invUpd` del
@@ -3623,6 +3759,24 @@ async function main() {
       // que juntos mienten, que es el error de las tres cajas de la ficha del 03/09.
       sub.total = sub.filas.reduce((a, x) => a + x.extraMes, 0);
       zm.total = zm.filas.reduce((a, x) => a + x.extraMes, 0);
+      // ── Y LA MISMA PUBLICACIÓN TAMPOCO PUEDE SALIR EN DOS SECCIONES (15/09/2026) ──────
+      // `calcCajaBarata` y `calcFrenoCaja` miran las dos la caja perdida, y se pisan cuando algo
+      // vendió hace más de 30 días: para aquélla es un frenazo, para ésta "no vende". El mensaje
+      // lo mostraría DOS VECES, una con número y otra sin él — y dos renglones del mismo producto
+      // que dicen cosas distintas hacen desconfiar de los otros veinte. Es la misma lección de la
+      // Piedra Pómez (13/09), que salía en subir y en bajar a la vez.
+      // GANA `calcCajaBarata` porque es la que se puede aplicar: tiene la cuenta del margen hecha
+      // entera. La otra sólo dice "acá hay algo para mirar". No se esconde: se dice en el log.
+      const mapCbr = new Map(cbr.filas.map((f) => [f.mla, f]));
+      const dobles = frn.filas.filter((f) => mapCbr.has(f.mla));
+      if (dobles.length) {
+        frn.filas = frn.filas.filter((f) => !mapCbr.has(f.mla));
+        console.log(`\n⚠️ ${dobles.length} salían en las DOS listas de caja perdida. Queda la medida (se gana bajando poquito):`);
+        for (const f of dobles) console.log(`   · ${f.nom} (${f.cuenta})`);
+      }
+      // Y al revés: si una está en "bajar y ganar más" (que mide con ventas REALES), esa manda.
+      const mapZm2 = new Map(zm.filas.map((f) => [f.mla, f]));
+      cbr.filas = cbr.filas.filter((f) => !mapZm2.has(f.mla));
 
       const paraAnotar = {};
       const nuevasSub = sub.filas.filter((f) => !yaAvisado(f.mla, 'subir', f.tope));
@@ -3669,6 +3823,19 @@ async function main() {
           + (f.pausadas ? ` · ${f.pausadas} pausada(s)` : ''));
       }
 
+      console.log(`\nSE GANA LA CAJA BAJANDO POQUITO (y no venden): ${cbr.filas.length}`);
+      console.log(`   candidatas miradas ${cbr.mirados} · descartadas: ${cbr.fuera.vendio} vendieron`
+        + ` · ${cbr.fuera.sinStock} sin stock · ${cbr.fuera.sinPtw} sin precio de caja de ML`
+        + ` · ${cbr.fuera.bajaGrande} habría que bajar más del ${cbr.maxBaja}%`);
+      if (cbr.noSano.length) {
+        console.log(`   ${cbr.noSano.length} quedaban con margen flaco:`);
+        for (const f of cbr.noSano.slice(0, 6)) console.log(`     · ${f.nom} (${f.cuenta}) · ${f.why}`);
+      }
+      if (cbr.sinDato.length) console.log(`   ${cbr.sinDato.length} sin dato suficiente (ej: ${cbr.sinDato[0].why})`);
+      for (const f of cbr.filas.slice(0, 10)) {
+        console.log(`   · ${f.nom.padEnd(34)} ${f.cuenta.padEnd(8)} ${money(f.precio)} → ${money(f.ptw)}`
+          + ` (−${f.baja.toFixed(1)}%) · queda en ${f.mgPw.toFixed(1)}% · ${f.st} u.`);
+      }
       console.log(`\nPERDIERON LA CAJA **Y SE FRENARON**:  ${frn.filas.length}`);
       console.log(`   de ${frn.conCajaPerdida} con la caja perdida hoy: ${frn.seguianVendiendo} SIGUEN vendiendo`
         + ` (perder la caja no las frenó) · ${frn.vendianPoco} vendían menos de ${frn.minPorDia}/día antes`);
@@ -3721,6 +3888,28 @@ async function main() {
           L.push(`<b>${n}.</b> ${f.nom} (${f.cuenta})\n   ${money(f.precio)} → ${money(f.mejor)} · +${money(f.extraMes)}/mes`);
         }
         for (const f of nuevasZm) paraAnotar[f.mla] = { tipo: 'bajar', valor: f.mejor, ts: hoyTs };
+      }
+      // ── EL CASO QUE ÉL PIDIÓ CON EL SEAGATE (15/09/2026) ─────────────────────────────
+      // Textual: *"bajar re poquito, quedar en % sano y ganar caja de algo que no vende"*.
+      // ESTOS SÍ LLEVAN NÚMERO, al revés que los de "perdieron la caja y se frenaron". La
+      // diferencia no es de forma: allá el número de ML es el precio para ganar la caja Y NADA
+      // MÁS —el Filtro agua salió con "se gana a $1.000" teniendo la mercadería a $1.059—,
+      // mientras que acá la cuenta ya está hecha ENTERA (comisión al precio nuevo, envío,
+      // IIBB, monotributo y costo) y sólo entran las que quedan en margen sano. Un renglón que
+      // ya se midió se puede aplicar; uno que no, no.
+      const nuevasCbr = cbr.filas.filter((f) => !yaAvisado('c_' + f.mla, 'cajabarata', f.ptw));
+      if (nuevasCbr.length) {
+        L.push(`\n🥊 <b>Se gana la caja bajando poquito</b> · ${nuevasCbr.length}`);
+        L.push('<i>No venden, y por poca plata pasan a ser el botón de comprar. El margen de abajo ya tiene todo descontado.</i>');
+        for (const f of nuevasCbr) {
+          const n2 = numerar({ tipo: 'bajar', mla: f.mla, nom: f.nom, cuenta: f.cuenta, de: f.precio, a: f.ptw, extraMes: 0 });
+          L.push(`<b>${n2}.</b> ${f.nom} (${f.cuenta})\n   ${money(f.precio)} → ${money(f.ptw)} (−${f.baja.toFixed(1)}%) · queda en ${f.mgPw.toFixed(0)}% · ${f.st} u.`);
+        }
+        // EL ENVÍO DE ESTAS NO ESTÁ MEDIDO y hay que decirlo donde se lee, no sólo acá adentro:
+        // ninguna vendió nunca, así que sale de la tarifa de ML, que el 20/08 se midió $246 corta.
+        // Por eso además se les exige más margen que a las demás (ver `calcCajaBarata`).
+        L.push(`<i>Ojo: como nunca vendieron, el envío sale de la tarifa de ML y puede quedarse corto. Por eso acá pido ${cbr.minSano + cbr.colchonEstimado}% y no el piso.</i>`);
+        for (const f of nuevasCbr) paraAnotar['c_' + f.mla] = { tipo: 'cajabarata', valor: f.ptw, ts: hoyTs };
       }
       if (nuevasPar.length) {
         const t = nuevasPar.reduce((a, x) => a + x.capital, 0);

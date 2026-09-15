@@ -859,6 +859,55 @@ que a nosotros nos cuesta y **el precio no es el problema**: lo que queda es rem
 (`liquidando`) o retirar el stock de Full para dejar de pagar almacenamiento, las dos decisiones
 suyas. Por eso `calcFrenoCaja` deja el precio y no baja nada.
 
+## "BAJAR RE POQUITO, QUEDAR EN % SANO Y GANAR LA CAJA": EL AVISO QUE FALTABA (15/09/2026)
+
+Pedido suyo, con el Seagate 500GB en la mano: *"ese es un claro ejemplo de lo que me tiene que
+mandar el robot. bajar re poquito, quedar en % sano y ganar caja de algo que no vende"*.
+
+**EL SEAGATE NO SALÍA EN NINGÚN LADO, Y NO ERA CASUALIDAD.** Las dos cuentas que ya miraban la caja
+perdida lo descartaban por el MISMO motivo: **exigen haber vendido antes**.
+ · `calcFrenoCaja` (la del aviso diario) → `if (!a || !a.ultima) continue;  // nunca vendió`.
+ · `bajarParaMover` (el probe `bajarcaja`) → sin ventas no puede deducir el envío y lo tira.
+Las dos están bien para lo que fueron hechas —para medir un FRENAZO hay que saber qué vendía
+antes— pero dejan afuera justo su caso: **algo que no vendió NUNCA**. Ahí no hay frenazo que medir
+y la pregunta es otra: *¿por poca plata se gana la caja, y con qué margen queda?*
+
+El comando nuevo es **`calcCajaBarata`** y sale en el aviso diario. Los tres filtros son los tres
+que dijo él, ni uno más:
+ 1. **NO VENDE** — cero ventas de esa publicación en 30 días.
+ 2. **RE POQUITO** — la baja hasta el precio de la caja es del **5%** o menos.
+ 3. **% SANO** — al precio nuevo el margen queda en **30%** o más.
+
+**SANO NO ES "ARRIBA DEL PISO", y son dos números distintos a propósito.** El piso (23%) es el
+"no vender perdiendo"; acá se pide bien arriba, porque bajar para quedar al filo es regalar margen
+por una caja que no aguanta el primer envío caro. Es la misma razón por la que el piso y la meta
+son dos números y no uno.
+
+**EL ENVÍO NO MEDIDO PIDE MÁS COLCHÓN: 35%, no 30%.** Estas publicaciones nunca vendieron, así que
+no hay envío que deducir y sale de la **tarifa de ML** — la misma que usa `unapub`, y que el 20/08
+se midió **$246 CORTA**. Sin el colchón, esto recomendaría bajar usando un número que sabemos que
+se queda corto: el mismo error del margen en verde sin el envío descontado.
+
+**ESTOS SÍ LLEVAN NÚMERO, al revés que "perdieron la caja y se frenaron".** La diferencia no es de
+forma: allá el precio de ML es para ganar la caja **y nada más** —el Filtro agua salió con *"se gana
+a $1.000"* teniendo la mercadería a $1.059—, mientras que acá la cuenta ya está hecha ENTERA
+(comisión al precio nuevo, envío, IIBB, monotributo y costo) y sólo entran las que quedan sanas.
+**Un renglón medido se puede aplicar; uno que no, no.**
+
+**Y LA MISMA PUBLICACIÓN NO PUEDE SALIR EN LAS DOS SECCIONES.** `calcCajaBarata` y `calcFrenoCaja`
+se pisan cuando algo vendió hace más de 30 días: para una es un frenazo, para la otra "no vende".
+Saldría dos veces, una con número y otra sin él. Gana la medida, y lo descartado se dice en el log.
+Es la misma lección de la Piedra Pómez, que salía en subir y bajar a la vez.
+
+**Probado con los números REALES del Seagate antes de subirlo**, y la cuenta da **44,2%**, idéntico
+a lo que devolvió ML con `unapub` — que es la forma de saber que la fórmula es la misma y no una
+copia que se va a separar. Los tres casos que NO tienen que salir tampoco salen: el WD Green (baja
+mínima pero margen 22,9%), una baja del 12% con margen sano, y una baja del 2% con margen flaco.
+
+**EL SEAGATE, APLICADO EL MISMO DÍA CON SU AUTORIZACIÓN** (*"baja seagate hasta ganar. ojo no bajar
+mucho %"*): `MLA3920081802` pasó de **$187.469 a $180.046** (−4,0%). Releído de ML: la caja de
+compra pasó de **PERDIENDO a GANANDO** y el margen quedó en **44,2%**.
+
 ## ¿SE PUEDE AUTOMATIZAR LA SUBA DE PRECIOS? MEDIDO EL 12/09/2026
 
 Pregunta suya: *"se puede automatizar que se aumente sola una publicación que se esté vendiendo
