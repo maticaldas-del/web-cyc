@@ -924,6 +924,13 @@ versión de `avisos`.
 puede ser menor—, así que si ni ese techo llega al 25% no hace falta preguntar el envío. Verificado
 con 7 casos con y sin atajo: **los 7 dan exactamente lo mismo**.
 
+**Y UN TOPE DE 15 CONSULTAS DE ENVÍO POR CORRIDA** (`maxEnvios`). Esto corre adentro de `ml-daily`
+todas las noches: si un día hay 40 candidatas, el aviso se cuelga y **se lleva puesto el resto del
+paso nocturno**. Un aviso que no sale porque tardó es peor que uno incompleto.
+**Las que quedan sin medir se cuentan y se imprimen con nombre**, aclarando que no es que no
+sirvan sino que no se alcanzó a mirarlas y salen en la corrida siguiente. Un tope mudo sería el
+descarte por omisión que ya mordió tres veces.
+
 **Probado con los números REALES del Seagate**: da **44,2%**, idéntico a lo que devolvió ML con
 `unapub` — que es la forma de saber que la fórmula es la misma y no una copia que se va a separar.
 Probados también los casos que la regla vieja se comía (bajar 20% y quedar en 36%, bajar 35% y

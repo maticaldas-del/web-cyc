@@ -1349,7 +1349,7 @@ async function calcFrenoCaja(db, o) {
 // **NO BAJA NADA.** Devuelve las filas; la decisión sigue siendo suya (regla del 13/08/2026).
 async function calcCajaBarata(db, o) {
   const {
-    dias = 30, minSano = 25,
+    dias = 30, minSano = 25, maxEnvios = 15,
     products = [], labels = [], accounts = {}, tc = 1500,
   } = o || {};
   const links = (await db.get('cyc/mllinks')) || {};
@@ -1410,7 +1410,8 @@ async function calcCajaBarata(db, o) {
     feeCacheCb[key] = out; return out;
   };
 
-  const filas = [], noSano = [], sinDato = [];
+  const filas = [], noSano = [], sinDato = [], topeados = [];
+  let envios = 0;
   for (const c of cand) {
     const p = pIdx[c.e.prodId];
     const tk = tokCb[c.e.cuenta];
@@ -1447,6 +1448,15 @@ async function calcCajaBarata(db, o) {
       });
       continue;
     }
+    // ── TOPE DE CONSULTAS DE ENVÍO POR CORRIDA ───────────────────────────────────────
+    // Esto corre adentro de `ml-daily` todas las noches. `envioSegunML` pega a varios códigos
+    // postales por publicación, y si un día hay 40 candidatas el aviso se cuelga y **se lleva
+    // puesto el resto del paso nocturno**. Un aviso que no sale porque tardó demasiado es peor
+    // que un aviso incompleto, así que se corta acá.
+    // NO SE ESCONDE: las que quedan sin medir se cuentan y se imprimen. Un tope mudo sería el
+    // mismo error del descarte por omisión que ya mordió tres veces.
+    if (envios >= maxEnvios) { topeados.push({ mla: c.mla, cuenta: c.e.cuenta, nom: (p.name || b.title || c.mla).slice(0, 34), baja, mgTope }); continue; }
+    envios++;
     // El envío: estas nunca vendieron, así que sale de la TARIFA de ML. Queda MARCADO.
     const rT = await envioSegunML(c.mla, tk);
     if (!rT) { sinDato.push({ mla: c.mla, why: 'ni ventas ni tarifa de ML: sin envío el margen sería un invento' }); continue; }
@@ -1466,7 +1476,8 @@ async function calcCajaBarata(db, o) {
   }
   filas.sort((a, b2) => b2.mgPw - a.mgPw);
   noSano.sort((a, b2) => b2.mgPw - a.mgPw);
-  return { filas, noSano, sinDato, fuera, fallos, mirados: cand.length, dias, minSano };
+  topeados.sort((a, b2) => b2.mgTope - a.mgTope);
+  return { filas, noSano, sinDato, fuera, fallos, topeados, mirados: cand.length, dias, minSano, maxEnvios };
 }
 
 // Config en cyc/mlconfig/gruposPrecio = { paulvic: { palabra: 'paulvic' } }
@@ -3863,6 +3874,11 @@ async function main() {
         }
       }
       if (cbr.sinDato.length) console.log(`   ${cbr.sinDato.length} sin dato suficiente (ej: ${cbr.sinDato[0].why})`);
+      if (cbr.topeados.length) {
+        console.log(`   ⚠️ ${cbr.topeados.length} quedaron SIN MEDIR por el tope de ${cbr.maxEnvios} consultas de envío por corrida.`);
+        console.log(`      No es que no sirvan: es que no se alcanzó a mirarlas. Van a salir en la corrida siguiente.`);
+        for (const f of cbr.topeados.slice(0, 6)) console.log(`      · ${f.nom} (${f.cuenta}) · bajar ${f.baja.toFixed(0)}% · sin envío daría ${f.mgTope.toFixed(0)}%`);
+      }
 
       for (const f of cbr.filas.slice(0, 10)) {
         console.log(`   · ${f.nom.padEnd(34)} ${f.cuenta.padEnd(8)} ${money(f.precio)} → ${money(f.ptw)}`
