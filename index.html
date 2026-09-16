@@ -1870,7 +1870,7 @@ function toggleTheme(){
 })();
 
 let db,whoAmI='',viewMode='mes',pedidoFilter='todos',pedidoSection='bsas',pedidoGroupByProv=false;
-let state={products:[],inventory:{},history:[],finanzas:{},snapshots:{},daily:{},ingresos:{},pedidos:[],pedidos_py:[],papelera:{},pausaPrecio:{},metricas:{},compras:{},ventaprod:{},proveedores:[],puntaje:{},stockDiario:{},tc_mes:{},precios_hist_prod:{},fact_mes:{},fact_cancel:{}};
+let state={products:[],inventory:{},history:[],finanzas:{},snapshots:{},daily:{},ingresos:{},pedidos:[],pedidos_py:[],papelera:{},pausaPrecio:{},pySinStock:{},metricas:{},compras:{},ventaprod:{},proveedores:[],puntaje:{},stockDiario:{},tc_mes:{},precios_hist_prod:{},fact_mes:{},fact_cancel:{}};
 let _knownVentaprodIds=null; // null = primera carga; Set después
 let currentPage='home';
 let firstDataLoad=true;
@@ -1912,6 +1912,7 @@ function startApp(){
     // a crear, y no cuenta ni en el Puntaje del mes ni en el stock en riesgo.
     state.papelera =d.pedidos_papelera||{};
     state.pausaPrecio=d.pausado_precio||{};   // 'no lo compro por ahora, el precio no da' (se revisa solo)
+    state.pySinStock=d.py_sinstock||{};       // 'el mayorista no tenía esto hoy' (ver la canasta de US$1.000)
     _limpiarEnCamino(); // borra los "en camino" que hayan quedado marcados (la función ya no existe)
     state.proveedores=d.proveedores?Object.values(d.proveedores).sort((a,b)=>(a.nombre||'').localeCompare(b.nombre||'','es',{sensitivity:'base'})).map(pv=>({...pv,condiciones:pv.condiciones?Object.values(pv.condiciones).sort((a,b)=>(a.minUSD||0)-(b.minUSD||0)):[]})):[];
     state.metricas =d.metricas ||{};
@@ -2309,7 +2310,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='19.33';
+const APP_VERSION='19.34';
 // El problema real que esto resuelve no es curiosidad: es que el celular guarda la app y sigue
 // mostrando la de ayer sin avisar. Varias veces se revisó un cambio que ya estaba subido y no se
 // veía. Por eso, además del número, el chip avisa cuando hay una versión nueva esperando.
@@ -8131,6 +8132,112 @@ function esPedidoPaulvic(ped){
   if(normTxt(ped.proveedor||'').includes('paulvic'))return true;
   return normTxt(prod?.name||ped.producto||'').includes('paulvic');
 }
+// ── LA CANASTA DE US$ 1.000 DE PARAGUAY (16/09/2026) ─────────────────────────────────
+// Regla suya: *"tenemos que juntar minimo y maximo 1.000 por compra, o sea no podemos mas ni
+// menos y tenemos que esperar a que llegue y recien ahi hacemos otro pedido"*. O sea que en
+// Paraguay la pregunta NO es "cuántos días cubro" —eso lo contesta el objetivo de 20 días— sino
+// **QUÉ entra en esos US$ 1.000**, que es un problema distinto y no lo resolvía ninguna pantalla.
+//
+// CÓMO SE ELIGE QUÉ ENTRA, Y POR QUÉ NO ES UN SOLO ORDEN. La primera versión ordenaba por
+// "plata destrabada POR DÓLAR", con el razonamiento de que si lo escaso es el presupuesto, manda
+// el rendimiento y no el total. **Probarlo con números lo desmintió**: con un producto de US$600
+// que destraba $40.000 y varios de US$150 que destraban $20.000, ordenar por dólar daba $80.000
+// y ordenar por total $92.000 — el caro quedaba afuera porque ya no entraba, y el hueco se
+// llenaba con lo peor de la lista. Ninguno de los dos órdenes gana siempre: por dólar gana
+// cuando hay muchos baratos buenos, por total gana cuando hay uno caro que vale la pena.
+// Así que se prueban los tres y **gana el que más plata destraba**. No puede dar peor que
+// cualquiera de ellos por separado, y cuesta nada. Es lo mismo que hace `subirpuede`, que prueba
+// 12 precios y se queda con el que más deja en vez de suponer cuál es.
+// LA LECCIÓN, otra vez: una regla que suena bien no es una regla hasta que se prueba con números.
+const PY_PRESUPUESTO_USD=1000;
+function _pyLlenar(orden){
+  let queda=PY_PRESUPUESTO_USD,val=0;const out=[];
+  for(const f of orden){
+    if(queda<=0){out.push({...f,lleva:0});continue;}
+    if(f.total<=queda){queda-=f.total;val+=f.destraba;out.push({...f,lleva:f.u});}
+    else{
+      // EL ÚLTIMO ENTRA A MEDIAS, y es a propósito: el pedido tiene que dar US$1.000 EXACTOS, así
+      // que cortar por producto entero dejaría plata sin usar en cada compra.
+      const cabe=Math.max(0,Math.floor(queda/f.cu));
+      queda-=cabe*f.cu;val+=f.destraba*(f.u?cabe/f.u:0);out.push({...f,lleva:cabe});
+    }
+  }
+  return{out,usado:PY_PRESUPUESTO_USD-queda,val};
+}
+function pyCanasta(){
+  const sin=state.pySinStock||{};
+  const filas=((state.pedidos_py)||[]).filter(x=>!esPedidoPaulvic(x)).map(ped=>{
+    const pr=(state.products||[]).find(x=>x.id===ped.prodId)||prodByName(ped.producto);
+    const u=ped.cantidad||0, cu=pr?(costUSDof(pr)||0):0;
+    const destraba=(ped.riesgoComprar!=null?ped.riesgoComprar:ped.riesgo)||0;
+    const total=cu*u;
+    return{ped,u,cu,destraba,total,porDolar:total>0?destraba/total:0,sinStock:!!sin[ped.prodId]};
+  }).filter(x=>x.u>0&&x.cu>0);
+  // Lo que el mayorista no tenía sale del reparto pero NO se esconde: se muestra abajo, en gris.
+  // Esconderlo haría que la canasta cambie sola sin decir por qué.
+  const vivos=filas.filter(x=>!x.sinStock);
+  let mejor=null;
+  for(const [nom,ord] of [
+    ['lo que más rinde por dólar', [...vivos].sort((a,b)=>b.porDolar-a.porDolar||b.destraba-a.destraba)],
+    ['lo que más plata destraba',  [...vivos].sort((a,b)=>b.destraba-a.destraba||b.porDolar-a.porDolar)],
+    ['lo más barato primero',      [...vivos].sort((a,b)=>a.total-b.total||b.porDolar-a.porDolar)],
+  ]){
+    const r=_pyLlenar(ord);
+    if(!mejor||r.val>mejor.val)mejor={...r,nom};
+  }
+  const usado=mejor?mejor.usado:0;
+  return{filas:mejor?mejor.out:[],sinStock:filas.filter(x=>x.sinStock),criterio:mejor?mejor.nom:'',
+    destrabado:mejor?mejor.val:0,usado,falta:Math.max(0,PY_PRESUPUESTO_USD-usado)};
+}
+async function pyNoHabia(pid,pon){
+  if(pon)await fbSet('py_sinstock/'+pid,{ts:Date.now()});
+  else await db.ref('cyc/py_sinstock/'+pid).remove();
+  state.pySinStock=state.pySinStock||{};
+  if(pon)state.pySinStock[pid]={ts:Date.now()};else delete state.pySinStock[pid];
+  renderPedidos();
+}
+async function pyCanastaReset(){
+  if(!confirm('¿Empezar una canasta nueva? Se olvida todo lo que marcaste como "no había".'))return;
+  await db.ref('cyc/py_sinstock').remove();
+  state.pySinStock={};renderPedidos();
+}
+function pyCanastaHTML(){
+  const c=pyCanasta();
+  if(!c.filas.length&&!c.sinStock.length)return '';
+  const tc=curTC();
+  const pct=Math.min(100,Math.round(c.usado/PY_PRESUPUESTO_USD*100));
+  const col=c.falta<=20?'var(--green)':'var(--amber)';
+  const fila=(f,gris)=>{
+    const sub=f.lleva>0&&f.lleva<f.u?` <span style="color:var(--amber)">(de ${f.u}, entra lo que da la plata)</span>`:'';
+    return `<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;padding:6px 0;border-top:1px solid var(--border);${gris?'opacity:.45':''}">
+      <strong style="font-family:'Syne',sans-serif;font-size:.95rem;min-width:52px;${f.lleva?'':'color:var(--muted)'}">${gris?'—':f.lleva+' u.'}</strong>
+      <span style="flex:1;min-width:150px;font-size:.75rem">${f.ped.producto||''}${sub}</span>
+      <span style="font-size:.68rem;color:#38bdf8;font-weight:700">US$${Math.round(f.cu*(f.lleva||f.u))}</span>
+      <span style="font-size:.62rem;color:var(--muted)" title="Plata que se destraba por cada dólar que gastás en este producto. Es el número que define el orden: con presupuesto fijo, lo que más rinde por dólar entra primero.">${fmt(Math.round(f.porDolar))}/US$</span>
+      <button class="btn" style="font-size:.58rem;padding:3px 8px" onclick="pyNoHabia('${f.ped.prodId}',${gris?'false':'true'})">${gris?'↩︎ sí había':'✗ no había'}</button>
+    </div>`;
+  };
+  return `<div style="background:var(--surface);border:1px solid ${col};border-radius:var(--r);padding:12px 14px;margin-bottom:14px">
+    <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:8px">
+      <div style="font-size:.78rem;font-weight:700">🇵🇾 El pedido de US$ ${PY_PRESUPUESTO_USD}</div>
+      <div style="font-family:'Syne',sans-serif;font-size:1.5rem;color:${col}">US$ ${Math.round(c.usado)} <span style="font-size:.8rem;color:var(--muted)">de ${PY_PRESUPUESTO_USD}</span></div>
+    </div>
+    <div style="height:9px;background:rgba(255,255,255,.07);border-radius:5px;overflow:hidden;margin-bottom:6px">
+      <div style="height:100%;width:${pct}%;background:${col}"></div>
+    </div>
+    <div style="font-size:.63rem;color:var(--muted);margin-bottom:4px">${
+      c.falta<=20?'✓ Llegaste. El pedido tiene que ser de US$ '+PY_PRESUPUESTO_USD+' exactos.'
+      :`Faltan <strong style="color:var(--amber)">US$ ${Math.round(c.falta)}</strong>${tc?' ('+fmt(Math.round(c.falta*tc))+')':''} para llegar a los US$ ${PY_PRESUPUESTO_USD}. Si no llegás con esta lista, agregá de lo de más arriba.`}</div>
+    <div style="font-size:.58rem;color:var(--muted);margin-bottom:6px">Con esta canasta destrabás <strong style="color:var(--green)">${fmt(Math.round(c.destrabado))}</strong> por mes. Se probaron tres formas de armarla y ganó <em>${c.criterio}</em>.</div>
+    ${c.filas.filter(f=>f.lleva>0).map(f=>fila(f,false)).join('')}
+    ${(()=>{const fuera=c.filas.filter(f=>!f.lleva);return fuera.length?`<div style="font-size:.6rem;color:var(--muted);margin-top:9px">No entran en estos US$ ${PY_PRESUPUESTO_USD} (${fuera.length}) — van en el pedido siguiente:</div>`+fuera.slice(0,6).map(f=>fila(f,true)).join(''):'';})()}
+    ${c.sinStock.length?`<div style="font-size:.6rem;color:var(--muted);margin-top:9px">El mayorista no tenía (${c.sinStock.length}) — la plata se repartió sola entre el resto:</div>`+c.sinStock.map(f=>fila(f,true)).join(''):''}
+    <div style="margin-top:10px;display:flex;gap:8px;flex-wrap:wrap;align-items:center">
+      <button class="btn" style="font-size:.6rem;padding:4px 10px" onclick="pyCanastaReset()">Empezar una canasta nueva</button>
+      <span style="font-size:.58rem;color:var(--muted)">Marcá lo que no había y la plata se reparte sola entre lo que sigue.</span>
+    </div>
+  </div>`;
+}
 function _pedsCostoReponer(peds){
   const tc=curTC();let usd=0;
   (peds||[]).forEach(ped=>{
@@ -9660,6 +9767,11 @@ function renderPedidos(){
   } else {
     el.innerHTML=peds.slice().sort(_pedSortFnRiesgo).map(p=>_pedidoItemHtml(p,{showRiesgo:true})).join('');
   }
+  // LA CANASTA VA ARRIBA DE TODO Y EN UN SOLO LUGAR. Se pega acá, después de que la lista ya se
+  // dibujó, y no adentro de cada rama: la lista de Paraguay se arma en dos caminos distintos
+  // (agrupada por proveedor y suelta) y con la inyección repetida una de las dos iba a quedarse
+  // sin canasta la próxima vez que alguien toque una de las dos.
+  if(!isBsas)el.innerHTML=pyCanastaHTML()+el.innerHTML;
 }
 
 async function setPedidoProveedor(id){
