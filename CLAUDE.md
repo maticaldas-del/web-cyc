@@ -2500,8 +2500,18 @@ Azzaro Pour Homme 200ml (sólo 100ML, `97699`). Hoy se sacan con el botón **"no
 marca es por vuelta: al tocar "Empezar una canasta nueva" vuelven. **Falta una marca permanente de
 "esto Nissei no lo tiene"**, si él la quiere.
 
-**ARREGLADO EL 16/09/2026: `activarPausadasFull` YA AVISA.** Eran **dos** cosas, no una, y la
-segunda era peor que la primera:
+**ARREGLADO EL 16/09/2026: `activarPausadasFull` YA AVISA — PERO SÓLO DE LO QUE **NO** ACTIVÓ.**
+
+**LO QUE SE ACTIVA NO SE AVISA, decisión suya del mismo día**, textual: *"no quiero que mande al
+telegram, solo que revise si el producto que esta con stock en full (que siempre son productos que
+acaban de llegar a full) tienen minimo el 25% de ganancia. si esta por abajo de eso que no las
+active y ahi si avise por telegram"*. Y tiene razón: **activar algo que llega al piso es lo que el
+robot TIENE que hacer, no una noticia.** Un aviso que llega cuando todo salió bien entrena a no
+abrirlos — el mismo motivo por el que el aviso diario no manda nada cuando no hay nada nuevo.
+Lo activado sigue yendo al LOG, renglón por renglón, que es donde se mira cuando se quiere mirar.
+**La primera versión mandaba las dos cosas y estaba de más.**
+
+Lo que sí se arregló, y eran **dos** cosas:
  · **Los mensajes no salían nunca.** Iban con `sendTelegram(a)` **sin declarar el tipo**, y
    `TG_PERMITIDO` descarta por omisión: se tiraban ANTES de intentar mandarlos, en una línea del
    log. O sea que el robot venía activando publicaciones solo y no avisó ni una vez. Es el bug del
@@ -2527,8 +2537,9 @@ segunda era peor que la primera:
    y cuántas no tienen stock adentro.
  · **Ojo al tocarlo:** la función ahora devuelve `{ avisos, anotar }`, no un arreglo.
  **Probado con el bloque REAL sacado del archivo** (no una copia, que diría "todo bien" para
- siempre) y seis casos: primera vuelta · una hora después sin cambios (no repite) · motivo distinto
- (vuelve) · 8 días (vuelve) · memoria ilegible (manda todo) · modo prueba (avisa y no anota).
+ siempre) y siete casos: primera vuelta · una hora después sin cambios (**activa y NO manda nada**)
+ · motivo distinto (vuelve) · 8 días (vuelve) · memoria ilegible (manda todo) · modo prueba (avisa
+ y no anota) · todo en cero (el cero explicado).
 
 **Pendiente de arreglar, medido hoy:**
  · **El chequeo automático de "este renglón no tiene sentido"** en Pedidos. Se ofreció tres veces

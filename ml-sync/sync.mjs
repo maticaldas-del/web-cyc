@@ -788,10 +788,15 @@ async function activarPausadasFull(db, links, tokensRun, DRY, products, piso) {
   // solo —y dejando otras pausadas con stock adentro— sin avisar ni una vez. Mismo patrón que
   // el aviso del dólar (27/08) y que las subas automáticas (15/09). Ahora van por `sendAlerta`,
   // al canal privado de precios, que es donde viven las decisiones de precio de Mati.
-  const hayDry = activadas.some((a) => a.dry);
-  if (activadas.length) {
-    avisos.push(`▶️ <b>Publicaciones activadas (tenían stock en Full)</b>${hayDry ? ' <i>— PRUEBA: no se activó nada</i>' : ''}\n`
-      + activadas.map((a) => `· ${a.nom} · ${a.label} · ${a.stock} u. · ${money(Math.round(a.precio))} · ${Math.round(a.mg)}%`).join('\n'));
+  // ── LO QUE SE ACTIVÓ NO VA POR TELEGRAM, A PROPÓSITO (16/09/2026) ──────────────────────
+  // Decisión suya, textual: *"no quiero que mande al telegram, solo que revise si el producto que
+  // esta con stock en full tiene minimo el 25% de ganancia. si esta por abajo de eso que no las
+  // active y ahi si avise"*. Tiene razón: activar algo que llega al piso es lo que el robot TIENE
+  // que hacer, no una noticia — y un aviso que llega cuando todo salió bien entrena a no abrirlos,
+  // que es el mismo motivo por el que el aviso diario no manda nada cuando no hay nada nuevo.
+  // El detalle sigue yendo al LOG, que es donde se mira cuando se quiere mirar.
+  for (const a of activadas) {
+    console.log(`▶️ ${a.dry ? '(PRUEBA) ' : ''}Activada: ${a.nom} · ${a.label} · ${a.stock} u. · ${money(Math.round(a.precio))} · ${Math.round(a.mg)}%`);
   }
   // ── NO REPETIR LO MISMO TODAS LAS HORAS ────────────────────────────────────────────────
   // Esto corre una vez por hora. Una publicación que hoy no llega al piso tampoco llega dentro
