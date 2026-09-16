@@ -1102,11 +1102,36 @@ lección de `liquidar` (0 de 137) y del marcado de cajas:
  · Y 32 descartadas por recientes + 4 sin fecha real de entrada.
 **Que no haya nada para rematar hoy es un resultado, no una falla.**
 
-**LO QUE FALTA, Y ES UNA DECISIÓN SUYA:** hoy `rematar` hay que correrlo a mano. Meterlo en el aviso
-diario de Telegram se puede, pero conviene hacerlo con **la misma llamada** que ya usa `avisos` para
-`calcCajaBarata` —clasificando en tres secciones en vez de dos— y no con una segunda consulta a ML,
-que duplicaría el trabajo del paso nocturno. Y hay que deduplicar: algo con margen sano saldría en
-las dos secciones, que es el bug que ya está anotado entre `calcCajaBarata` y `calcFrenoCaja`.
+### YA SALE SOLO EN EL AVISO DIARIO (16/09/2026)
+
+Pedido suyo: *"dale, meteselo al aviso diario"*. Ya no hay que correr `rematar` a mano: los dos
+escalones salen todas las noches en el mensaje de Telegram, numerados, para poder contestar
+*"bajá el 3"*. El comando `rematar` sigue existiendo para mirarlo cuando quiera.
+
+**Se hizo con la MISMA llamada a `calcCajaBarata` que ya usaba el aviso**, no con una segunda
+consulta a ML: se pide con el piso MÁS FLOJO (el 15% del escalón 2) y se clasifica después en tres
+niveles. Pedirla dos veces duplicaba el trabajo del paso nocturno sin cambiar un solo resultado.
+
+**Gana SIEMPRE el nivel que menos margen resigna.** Si algo llega al 25% sale en la sección sana y
+NO como remate al 15% — sería proponerle regalar plata que no hace falta regalar. Por eso el orden
+es: sano 25% → escalón 2 (90 d / 15%) → escalón 1 (45 d / 20%).
+
+**Cada renglón del remate dice la plata que resigna EN PESOS**, que es el número con el que se
+decide. Es la lección de la Pad 2: 7,6% se lee como *"se puede"* y son $109.500 por dos unidades.
+
+**Tres cosas que hicieron falta y no eran opcionales:**
+ · **La deduplicación se arma con lo que SE MUESTRA, no con la lista entera.** Al pedir con el piso
+   flojo quedan adentro filas que no entran en ningún nivel; si ésas taparan el renglón de
+   `calcFrenoCaja`, la publicación no saldría en NINGUNA lista. El descarte silencioso de siempre.
+ · **Las que no las ve nadie (menos de 20 visitas) van al log y SIN precio al lado.** Bajarlas
+   regala el margen sin vender: te quedás sin la ganancia *y* con el stock adentro.
+ · **Las que pasan el piso flojo y no entran en ningún escalón se listan igual**, con cuánto habría
+   que bajar. La que hoy está en 17% con 50 días entra sola dentro de 40, y conviene saberlo.
+
+**Y APARECIÓ UN AGUJERO VIEJO AL TOCARLO:** el chequeo de *"no hay nada nuevo, no mando mensaje"*
+estaba **antes** del bloque *"perdieron la caja y se frenaron"*. O sea que un día en que eso fuera
+lo único nuevo, el aviso se cortaba y no salía nada — justo la sección que él pidió expreso el
+13/09. Se movió al final, después de todas las secciones.
 
 **OJO AL APLICAR UNO DEL ESCALÓN 2:** `setPriceTo` tiene el tope duro de `PISO_MINIMO_ABSOLUTO`
 (20%) que **no se pasa ni configurando**, así que un precio del 15% lo va a rechazar. Es a propósito:
