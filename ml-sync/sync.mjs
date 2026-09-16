@@ -1349,7 +1349,7 @@ async function calcFrenoCaja(db, o) {
 // **NO BAJA NADA.** Devuelve las filas; la decisión sigue siendo suya (regla del 13/08/2026).
 async function calcCajaBarata(db, o) {
   const {
-    dias = 30, minSano = 25, maxEnvios = 15, diasQuieta = 0, minVisitas = 20,
+    dias = 30, minSano = 25, maxEnvios = 15, diasQuieta = 0, minVisitas = 20, conVisitas = false,
     products = [], labels = [], accounts = {}, tc = 1500,
   } = o || {};
   const links = (await db.get('cyc/mllinks')) || {};
@@ -1405,10 +1405,13 @@ async function calcCajaBarata(db, o) {
     if (!e || !e.prodId || !e.cuenta || e.ignored || (e.status || '') !== 'active') continue;
     if (!pIdx[e.prodId]) continue;
     if (e.caja !== 'losing') continue;
-    let quieta = null;
+    // El reloj se CALCULA SIEMPRE, pero sólo FILTRA cuando se pide (`diasQuieta`). Así UNA sola
+    // llamada sirve para las dos secciones del aviso diario: la de margen sano usa la ventana de
+    // siempre, y la de remate clasifica después por estos días. Correrla dos veces duplicaría las
+    // consultas a ML sin cambiar un resultado.
+    const quieta = quietaDe(mla, e.prodId, e.cuenta);
     if (diasQuieta > 0) {
       // MODO REMATE: manda el reloj, no la ventana. Ver el comentario de `quietaDe`.
-      quieta = quietaDe(mla, e.prodId, e.cuenta);
       // Sin fecha real de entrada NO se opina: decir "parada hace X" sobre una fecha aproximada
       // es inventar. Se cuenta y se dice, nunca se descarta en silencio.
       if (quieta == null) { fuera.sinFecha++; continue; }
@@ -1494,7 +1497,7 @@ async function calcCajaBarata(db, o) {
     // NO SE ESCONDE: sale en su propia lista, con el motivo y SIN precio al lado — un renglón
     // con precio invita a aplicarlo, que es la lección del Filtro agua del 14/09.
     let visCb = null;
-    if (diasQuieta > 0) {
+    if (conVisitas) {
       try { visCb = Number((await mlGet(`/items/${c.mla}/visits/time_window?last=30&unit=day`, tk))?.total_visits); } catch { visCb = null; }
       if (!isFinite(visCb)) visCb = null;
       if (visCb != null && visCb < minVisitas) {
@@ -3829,7 +3832,7 @@ async function main() {
       // UNA sola pasada con el filtro más flojo (el escalón 2) y después se clasifica. Correrlo
       // dos veces duplicaría las consultas a ML sin cambiar un solo resultado.
       const rm = await calcCajaBarata(db, {
-        dias: 30, diasQuieta: Math.min(D1, D2), minSano: Math.min(P1, P2),
+        dias: 30, diasQuieta: Math.min(D1, D2), minSano: Math.min(P1, P2), conVisitas: true,
         products, labels, accounts, tc: tcRm,
       });
       const e1 = [], e2 = [], todavia = [];
@@ -3898,7 +3901,21 @@ async function main() {
       // El caso del Seagate (15/09/2026): no vende, se gana la caja bajando poquísimo y el margen
       // queda sano. Va aparte de `frn` a propósito — aquélla mide un FRENAZO y por eso exige haber
       // vendido antes; ésta agarra justo lo que nunca vendió, que era lo que no salía en ningún lado.
-      const cbr = await calcCajaBarata(db, { dias: 30, products, labels, accounts, tc });
+      // UNA SOLA LLAMADA para las dos secciones (16/09/2026). Se pide con el piso MÁS FLOJO
+      // (el del escalón 2 del remate) y después se clasifica acá: pedirla dos veces duplicaría las
+      // consultas a ML del paso nocturno sin cambiar un solo resultado.
+      // LOS NÚMEROS DEL REMATE SALEN DE LA BASE, NO DEL CÓDIGO — los MISMOS que lee el comando
+      // `rematar`, para que no puedan separarse. Es el motivo por el que el piso salió de los ocho
+      // comandos que lo tenían escrito adentro y el costo de la caja salió de los dos archivos.
+      const cfgAv = (await db.get('cyc/mlconfig')) || {};
+      const REM_D1 = parseFloat(cfgAv.rematarDias1) || 45;   // escalón 1: 45 d parada…
+      const REM_P1 = parseFloat(cfgAv.rematarPct1) || 20;    // …hasta 20% (ML cobra almacenamiento a los 60)
+      const REM_D2 = parseFloat(cfgAv.rematarDias2) || 90;   // escalón 2: 90 d parada…
+      const REM_P2 = parseFloat(cfgAv.rematarPct2) || 15;    // …hasta 15% (ya lleva un mes pagando)
+      // El "% sano" suyo, textual (15/09): *"el % sano es de 25 hacia arriba"*. Lo que llega acá
+      // no hace falta rematarlo: se baja, se gana la caja y no se resigna nada.
+      const CBR_SANO = 25;
+      const cbr = await calcCajaBarata(db, { dias: 30, minSano: REM_P2, conVisitas: true, products, labels, accounts, tc });
       // Las ventas crudas, para la comprobación del escalón de más abajo. Va acá y no adentro del
       // bloque: si se usara sin declararla, JavaScript la busca afuera, no la encuentra y CORTA LA
       // CORRIDA ENTERA — y `node --check` compila igual. Es el mismo error que el `invUpd` del
@@ -3966,6 +3983,27 @@ async function main() {
       // que juntos mienten, que es el error de las tres cajas de la ficha del 03/09.
       sub.total = sub.filas.reduce((a, x) => a + x.extraMes, 0);
       zm.total = zm.filas.reduce((a, x) => a + x.extraMes, 0);
+      // Lo que ya salió en "bajar y ganar MÁS" no vuelve a salir acá: aquélla mide con ventas
+      // REALES y además deja MÁS plata, así que manda. Dos renglones del mismo producto con
+      // precios distintos son una instrucción imposible (la lección de la Piedra Pómez, 13/09).
+      const mapZm2 = new Map(zm.filas.map((f) => [f.mla, f]));
+      cbr.filas = cbr.filas.filter((f) => !mapZm2.has(f.mla));
+
+      // ── LOS TRES NIVELES DE "BAJAR PARA QUE SALGA" (16/09/2026) ───────────────────────
+      // Salen de la MISMA lista, clasificada por cuánto hace que no vende y en qué margen queda:
+      //   · margen SANO (25%+)      → no hace falta sacrificar nada: es la de siempre.
+      //   · 90+ días parada, 15%+   → escalón 2: ya paga almacenamiento, se recupera la caja.
+      //   · 45+ días parada, 20%+   → escalón 1: se actúa antes de que ML empiece a cobrar (60 d).
+      // El ORDEN importa y no es arbitrario: gana SIEMPRE el que menos margen resigna. Si algo
+      // llega al 25% no tiene por qué salir como remate al 15% — sería proponerle regalar plata
+      // que no hace falta regalar.
+      const sanasCbr = [], remE1 = [], remE2 = [], remNo = [];
+      for (const f of cbr.filas) {
+        if (f.mgPw >= CBR_SANO) sanasCbr.push(f);
+        else if (f.quieta != null && f.quieta >= REM_D2 && f.mgPw >= REM_P2) remE2.push(f);
+        else if (f.quieta != null && f.quieta >= REM_D1 && f.mgPw >= REM_P1) remE1.push(f);
+        else remNo.push(f);
+      }
       // ── Y LA MISMA PUBLICACIÓN TAMPOCO PUEDE SALIR EN DOS SECCIONES (15/09/2026) ──────
       // `calcCajaBarata` y `calcFrenoCaja` miran las dos la caja perdida, y se pisan cuando algo
       // vendió hace más de 30 días: para aquélla es un frenazo, para ésta "no vende". El mensaje
@@ -3974,16 +4012,17 @@ async function main() {
       // Piedra Pómez (13/09), que salía en subir y en bajar a la vez.
       // GANA `calcCajaBarata` porque es la que se puede aplicar: tiene la cuenta del margen hecha
       // entera. La otra sólo dice "acá hay algo para mirar". No se esconde: se dice en el log.
-      const mapCbr = new Map(cbr.filas.map((f) => [f.mla, f]));
+      // OJO: el mapa se arma con las que SE VAN A MOSTRAR, no con `cbr.filas` entera. Con el piso
+      // flojo del remate quedan adentro filas que no entran en ningún nivel (`remNo`), y si ésas
+      // taparan el renglón del frenazo la publicación no saldría en NINGUNA lista — el descarte
+      // silencioso que ya mordió tres veces.
+      const mapCbr = new Map([...sanasCbr, ...remE1, ...remE2].map((f) => [f.mla, f]));
       const dobles = frn.filas.filter((f) => mapCbr.has(f.mla));
       if (dobles.length) {
         frn.filas = frn.filas.filter((f) => !mapCbr.has(f.mla));
         console.log(`\n⚠️ ${dobles.length} salían en las DOS listas de caja perdida. Queda la medida (se gana bajando poquito):`);
         for (const f of dobles) console.log(`   · ${f.nom} (${f.cuenta})`);
       }
-      // Y al revés: si una está en "bajar y ganar más" (que mide con ventas REALES), esa manda.
-      const mapZm2 = new Map(zm.filas.map((f) => [f.mla, f]));
-      cbr.filas = cbr.filas.filter((f) => !mapZm2.has(f.mla));
 
       const paraAnotar = {};
       const nuevasSub = sub.filas.filter((f) => !yaAvisado(f.mla, 'subir', f.tope));
@@ -4030,14 +4069,14 @@ async function main() {
           + (f.pausadas ? ` · ${f.pausadas} pausada(s)` : ''));
       }
 
-      console.log(`\nSE GANA LA CAJA Y EL MARGEN AGUANTA (no venden · sano ${cbr.minSano}%): ${cbr.filas.length}`);
+      console.log(`\nSE GANA LA CAJA Y EL MARGEN AGUANTA (no venden · sano ${CBR_SANO}%): ${sanasCbr.length}`);
       console.log(`   candidatas miradas ${cbr.mirados} · descartadas: ${cbr.fuera.vendio} vendieron`
         + ` · ${cbr.fuera.sinStock} sin stock · ${cbr.fuera.sinPtw} sin precio de caja de ML`);
       // Las que NO llegan al margen sano se listan igual, con cuánto habría que bajar y en cuánto
       // quedarían. Un "8 quedaron con margen flaco" sin decir cuáles esconde la que está en 24%
       // por dos pesos — y ésa la quiero ver yo. Van al log, no al mensaje.
       if (cbr.noSano.length) {
-        console.log(`   ${cbr.noSano.length} NO llegan al ${cbr.minSano}% de margen sano:`);
+        console.log(`   ${cbr.noSano.length} NO llegan ni al ${REM_P2}% (el piso más flojo, el del escalón 2):`);
         for (const f of cbr.noSano.slice(0, 8)) {
           console.log(`     · ${f.nom.padEnd(34)} ${f.cuenta.padEnd(8)} ${money(f.precio)} → ${money(f.ptw)} · ${f.why}`);
         }
@@ -4049,9 +4088,35 @@ async function main() {
         for (const f of cbr.topeados.slice(0, 6)) console.log(`      · ${f.nom} (${f.cuenta}) · bajar ${f.baja.toFixed(0)}% · sin envío daría ${f.mgTope.toFixed(0)}%`);
       }
 
-      for (const f of cbr.filas.slice(0, 10)) {
+      for (const f of sanasCbr.slice(0, 10)) {
         console.log(`   · ${f.nom.padEnd(34)} ${f.cuenta.padEnd(8)} ${money(f.precio)} → ${money(f.ptw)}`
           + ` (−${f.baja.toFixed(1)}%) · queda en ${f.mgPw.toFixed(1)}% · ${f.st} u.`);
+      }
+      // ── LOS DOS ESCALONES DEL REMATE ─────────────────────────────────────────────────
+      // Cada renglón dice la plata que se resigna EN PESOS, que es el número con el que se
+      // decide. La Pad 2 lo mostró: 7,6% "suena a se puede" y son $109.500 por dos unidades.
+      const rengRem = (f) => {
+        console.log(`   · ${f.nom} (${f.cuenta}) · ${f.mla}`);
+        console.log(`       ${money(f.precio)} → ${money(f.ptw)} (−${f.baja.toFixed(0)}%) · queda en ${f.mgPw.toFixed(1)}%`
+          + ` · ${f.st} u. · sin vender hace ${f.quieta} d · ${f.vis == null ? 'visitas: sin dato' : f.vis + ' visitas'}`);
+        console.log(`       ${f.resigna == null ? 'no pude medir cuánto resignás' : `resignás ${money(f.resigna)} por unidad · ${money(f.resignaTot)} por las ${f.st}`}`);
+      };
+      console.log(`\nREMATE 🔴 ESCALÓN 2 (${REM_D2}+ d parada · hasta ${REM_P2}%): ${remE2.length}`);
+      for (const f of remE2) rengRem(f);
+      console.log(`REMATE 🟠 ESCALÓN 1 (${REM_D1}+ d parada · hasta ${REM_P1}%): ${remE1.length}`);
+      for (const f of remE1) rengRem(f);
+      // Las que pasan el piso flojo pero no entran en ningún escalón. No se esconden: la que hoy
+      // está en 17% con 50 días entra sola dentro de 40, y conviene saber que existe.
+      if (remNo.length) {
+        console.log(`   todavía no entran en ningún escalón · ${remNo.length}:`);
+        for (const f of remNo.slice(0, 8)) console.log(`      · ${f.nom} (${f.cuenta}) · ${f.quieta == null ? 'sin fecha real de entrada' : f.quieta + ' d parada'} · bajando ${f.baja.toFixed(0)}% queda en ${f.mgPw.toFixed(1)}%`);
+      }
+      // MENOS DE 20 VISITAS = NO LA VE NADIE, y ahí bajar el precio REGALA el margen SIN vender:
+      // te quedás sin la ganancia y con el stock adentro, el peor de los dos resultados. Van al
+      // log y SIN precio al lado, nunca al mensaje: un renglón con precio invita a aplicarlo.
+      if (cbr.sinVisitas?.length) {
+        console.log(`   👁 NO LA VE NADIE · ${cbr.sinVisitas.length} · el precio NO es el problema:`);
+        for (const f of cbr.sinVisitas.slice(0, 8)) console.log(`      · ${f.nom} (${f.cuenta}) · ${f.why}`);
       }
       console.log(`\nPERDIERON LA CAJA **Y SE FRENARON**:  ${frn.filas.length}`);
       console.log(`   de ${frn.conCajaPerdida} con la caja perdida hoy: ${frn.seguianVendiendo} SIGUEN vendiendo`
@@ -4114,10 +4179,10 @@ async function main() {
       // mientras que acá la cuenta ya está hecha ENTERA (comisión al precio nuevo, envío,
       // IIBB, monotributo y costo) y sólo entran las que quedan en margen sano. Un renglón que
       // ya se midió se puede aplicar; uno que no, no.
-      const nuevasCbr = cbr.filas.filter((f) => !yaAvisado('c_' + f.mla, 'cajabarata', f.ptw));
+      const nuevasCbr = sanasCbr.filter((f) => !yaAvisado('c_' + f.mla, 'cajabarata', f.ptw));
       if (nuevasCbr.length) {
         L.push(`\n🥊 <b>Se gana la caja y el margen aguanta</b> · ${nuevasCbr.length}`);
-        L.push(`<i>No venden. Bajando a este precio pasás a ser el botón de comprar y quedás del ${cbr.minSano}% para arriba. El margen ya tiene todo descontado.</i>`);
+        L.push(`<i>No venden. Bajando a este precio pasás a ser el botón de comprar y quedás del ${CBR_SANO}% para arriba. El margen ya tiene todo descontado.</i>`);
         for (const f of nuevasCbr) {
           const n2 = numerar({ tipo: 'bajar', mla: f.mla, nom: f.nom, cuenta: f.cuenta, de: f.precio, a: f.ptw, extraMes: 0 });
           L.push(`<b>${n2}.</b> ${f.nom} (${f.cuenta})\n   ${money(f.precio)} → ${money(f.ptw)} (−${f.baja.toFixed(1)}%) · queda en ${f.mgPw.toFixed(0)}% · ${f.st} u.`);
@@ -4127,6 +4192,32 @@ async function main() {
         // Por eso además se les exige más margen que a las demás (ver `calcCajaBarata`).
         L.push(`<i>Ojo: como nunca vendieron, el envío sale de la tarifa de ML y puede quedarse corto, así que el margen real puede ser un poco menor.</i>`);
         for (const f of nuevasCbr) paraAnotar['c_' + f.mla] = { tipo: 'cajabarata', valor: f.ptw, ts: hoyTs };
+      }
+      // ── MODO REMATAR: DOS ESCALONES (16/09/2026) ─────────────────────────────────────
+      // Pedido suyo: *"a los 45 días de que un producto llega a full y no vendió ni un solo día,
+      // activar modo 'ganar competencia/vender' (…) obviamente que no sea automático, que avise.
+      // y cada caso se analiza manualmente"*.
+      // Van DESPUÉS de la sección sana y en su propia lista porque son otra decisión: acá sí se
+      // resigna margen a propósito, y por eso cada renglón lleva **la plata que resignás EN
+      // PESOS**. La Pad 2 es el motivo: 7,6% se lee como "se puede" y son $109.500 por 2 u.
+      // LLEVAN NÚMERO igual que la sección sana —la cuenta está hecha entera— pero el renglón
+      // dice qué se está regalando, que es lo que él mira para decidir.
+      const remTodo = [
+        { esc: 2, ico: '🔴', dias: REM_D2, pct: REM_P2, filas: remE2 },
+        { esc: 1, ico: '🟠', dias: REM_D1, pct: REM_P1, filas: remE1 },
+      ];
+      for (const g of remTodo) {
+        const nuevasRem = g.filas.filter((f) => !yaAvisado('r_' + f.mla, 'rematar', f.ptw));
+        if (!nuevasRem.length) continue;
+        L.push(`\n${g.ico} <b>Rematar · escalón ${g.esc}</b> · ${nuevasRem.length}`);
+        L.push(`<i>Hace ${g.dias}+ días que no venden. Acá SÍ se resigna margen a propósito: se puede bajar hasta el ${g.pct}%. Mirá los pesos que resignás antes de decidir.</i>`);
+        for (const f of nuevasRem) {
+          const n3 = numerar({ tipo: 'bajar', mla: f.mla, nom: f.nom, cuenta: f.cuenta, de: f.precio, a: f.ptw, extraMes: 0 });
+          L.push(`<b>${n3}.</b> ${f.nom} (${f.cuenta})\n   ${money(f.precio)} → ${money(f.ptw)} (−${f.baja.toFixed(0)}%) · queda en ${f.mgPw.toFixed(0)}% · ${f.st} u.`
+            + `\n   sin vender hace ${f.quieta} d${f.vis == null ? '' : ` · ${f.vis} visitas`}`
+            + (f.resigna == null ? '\n   ⚠️ no pude medir cuánta plata resignás' : `\n   resignás ${money(f.resigna)} por unidad · <b>${money(f.resignaTot)}</b> por las ${f.st}`));
+        }
+        for (const f of nuevasRem) paraAnotar['r_' + f.mla] = { tipo: 'rematar', valor: f.ptw, ts: hoyTs };
       }
       if (nuevasPar.length) {
         const t = nuevasPar.reduce((a, x) => a + x.capital, 0);
@@ -4143,10 +4234,6 @@ async function main() {
       // el ruido entrena a no abrir el mensaje — que es justo lo que rompe el aviso del día que
       // sí importa. Es la misma lección del "⚠️ VENDE" que saltaba en casi todos los productos.
       if (calladas) console.log(`\n(${calladas} ya avisada(s) en los últimos ${AVISO_REPETIR_DIAS} días con el mismo número: no se repiten.)`);
-      if (L.length === 1) {
-        console.log('\n── No hay nada NUEVO para avisar hoy. No se manda mensaje (un aviso vacío entrena a ignorarlos).');
-        return;
-      }
       // ── SE FRENÓ AL PERDER LA CAJA ────────────────────────────────────────────────────
       // Regla suya, textual (13/09/2026): *"que algo perdió caja, eso lo tiene que analizar el
       // robot para ver si conviene bajar o no. y tiene que ser algo claro para bajar el precio,
@@ -4205,6 +4292,14 @@ async function main() {
         }
       } catch { /* si no se puede leer, no se avisa: no es urgente */ }
 
+      // EL CHEQUEO VA ACÁ ABAJO, DESPUÉS DE TODAS LAS SECCIONES, no en el medio. Estaba antes
+      // del bloque de "perdieron la caja y se frenaron", así que un día en que ESO fuera lo único
+      // nuevo se cortaba sin mandar nada — el descarte silencioso de siempre, y encima sobre la
+      // sección que él pidió expreso el 13/09.
+      if (L.length === 1) {
+        console.log('\n── No hay nada NUEVO para avisar hoy. No se manda mensaje (un aviso vacío entrena a ignorarlos).');
+        return;
+      }
       // CÓMO CONTESTAR. Sin esto la lista es información y no una herramienta: él la lee, quiere
       // aplicar tres renglones y no tiene forma de nombrarlos sin copiar títulos largos.
       if (guardaFilas.length) L.push(`\n<i>Para aplicar, decime los números: "subí el 1 y el 4". Los precios los aplico yo y después los releo de ML.</i>`);
