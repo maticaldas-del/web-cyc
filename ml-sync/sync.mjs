@@ -1349,11 +1349,12 @@ async function calcFrenoCaja(db, o) {
 // **NO BAJA NADA.** Devuelve las filas; la decisión sigue siendo suya (regla del 13/08/2026).
 async function calcCajaBarata(db, o) {
   const {
-    dias = 30, minSano = 25, maxEnvios = 15,
+    dias = 30, minSano = 25, maxEnvios = 15, diasQuieta = 0, minVisitas = 20,
     products = [], labels = [], accounts = {}, tc = 1500,
   } = o || {};
   const links = (await db.get('cyc/mllinks')) || {};
   const invCb = (await db.get('cyc/inventory')) || {};
+  const histCb = (await db.get('cyc/stockhist')) || {};
   const vpCb = (await db.get('cyc/ventaprod')) || {}; setDevLive(vpCb);
   const monoP = parseFloat(((await db.get('cyc/monotributo')) || {}).pct) || 0;
   const pIdx = {}; for (const p of products) pIdx[p.id] = p;
@@ -1361,31 +1362,65 @@ async function calcCajaBarata(db, o) {
 
   // Unidades vendidas por publicación en la ventana. Acá se busca lo CONTRARIO que en `subirpuede`:
   // las que NO vendieron.
-  const desdeCb = Date.now() - dias * 864e5, uCb = {};
+  const desdeCb = Date.now() - dias * 864e5, uCb = {}, ultVentaCb = {};
   for (const [k, ents] of Object.entries(vpCb)) {
     const ts = Date.parse(k.slice(0, 10).replace(/_/g, '-'));
-    if (!isFinite(ts) || ts < desdeCb) continue;
+    if (!isFinite(ts)) continue;
     for (const v of Object.values(ents || {})) {
       if (!v || v.cancelada || !v.mla) continue;
+      // La ÚLTIMA venta se busca en TODO el historial, no sólo en la ventana: es el reloj
+      // del modo remate y tiene que poder decir "hace 71 días", no "0 en 30".
+      if (ts > (ultVentaCb[v.mla] || 0)) ultVentaCb[v.mla] = ts;
+      if (ts < desdeCb) continue;
       uCb[v.mla] = (uCb[v.mla] || 0) + (v.qty || 1);
     }
   }
 
+  // ── EL RELOJ DEL MODO REMATE (16/09/2026) ────────────────────────────────────────
+  // Él lo pidió como *"llega a Full y no vendió ni un solo día"*, y la Pad 2 —el ejemplo que
+  // eligió él mismo para probarlo— **quedaba afuera con esa redacción**: vendió 4 unidades, la
+  // última hace 71 días. O sea que "nunca vendió" se come justo el caso que hay que ver.
+  // Lo que decide es HACE CUÁNTO que no vende. Y para las que no vendieron nunca el reloj
+  // arranca cuando llegó la mercadería a Full.
+  // **Sólo con fecha REAL de entrada** (`aprox:false`), igual que `calcBajarStock`: una fecha
+  // aproximada dice hace cuánto MIRAMOS, no hace cuánto hay stock, y usarla haría que algo que
+  // llegó ayer figure como parado hace meses.
+  const edadFullCb = (pid, cta) => {
+    const h = histCb[pid + '__' + sidCb(cta)];
+    if (!h || !h.desde || h.aprox !== false) return null;
+    return Math.floor((Date.now() - h.desde) / 864e5);
+  };
+  const quietaDe = (mla, pid, cta) => {
+    const uv = ultVentaCb[mla] || 0;
+    if (uv > 0) return Math.floor((Date.now() - uv) / 864e5);
+    return edadFullCb(pid, cta);   // nunca vendió → desde que llegó (null si no es fecha real)
+  };
+
   // Primer filtro, GRATIS: sale de lo que el robot ya escribió en `cyc/mllinks` cada hora
   // (`caja` y `cajaPtw`). Recién después se le pregunta algo a ML, así las llamadas son sólo
   // las que pueden terminar en candidata — la lección de velocidad del 13/09.
-  const fuera = { vendio: 0, sinStock: 0, sinPtw: 0 };
+  const fuera = { vendio: 0, sinStock: 0, sinPtw: 0, reciente: 0, sinFecha: 0 };
   const cand = [];
   for (const [mla, e] of Object.entries(links)) {
     if (!e || !e.prodId || !e.cuenta || e.ignored || (e.status || '') !== 'active') continue;
     if (!pIdx[e.prodId]) continue;
     if (e.caja !== 'losing') continue;
-    if ((uCb[mla] || 0) > 0) { fuera.vendio++; continue; }          // vende: no es este caso
+    let quieta = null;
+    if (diasQuieta > 0) {
+      // MODO REMATE: manda el reloj, no la ventana. Ver el comentario de `quietaDe`.
+      quieta = quietaDe(mla, e.prodId, e.cuenta);
+      // Sin fecha real de entrada NO se opina: decir "parada hace X" sobre una fecha aproximada
+      // es inventar. Se cuenta y se dice, nunca se descarta en silencio.
+      if (quieta == null) { fuera.sinFecha++; continue; }
+      if (quieta < diasQuieta) { fuera.reciente++; continue; }
+    } else if ((uCb[mla] || 0) > 0) {
+      fuera.vendio++; continue;                                     // vende: no es este caso
+    }
     const st = parseInt(invCb[e.prodId + '__' + sidCb(e.cuenta)]) || 0;
     if (st <= 0) { fuera.sinStock++; continue; }                    // sin mercadería no hay nada que desbloquear
     const ptw = Number(e.cajaPtw) || 0;
     if (!(ptw > 0)) { fuera.sinPtw++; continue; }                   // ML no dice a qué precio se gana
-    cand.push({ mla, e, st, ptw });
+    cand.push({ mla, e, st, ptw, quieta });
   }
 
   const tokCb = {}, fallos = [];
@@ -1410,7 +1445,7 @@ async function calcCajaBarata(db, o) {
     feeCacheCb[key] = out; return out;
   };
 
-  const filas = [], noSano = [], sinDato = [], topeados = [];
+  const filas = [], noSano = [], sinDato = [], topeados = [], sinVisitas = [];
   let envios = 0;
   for (const c of cand) {
     const p = pIdx[c.e.prodId];
@@ -1450,6 +1485,27 @@ async function calcCajaBarata(db, o) {
       });
       continue;
     }
+    // ── ¿LA VE ALGUIEN? (16/09/2026) ─────────────────────────────────────────────────
+    // Regla ya medida el 20/08: **menos de 20 visitas = no la ve nadie**, y ahí bajar el precio
+    // no hace absolutamente nada. Si se le baja el margen igual, se REGALA la plata Y NO SE
+    // VENDE: te quedás sin la ganancia y con el stock adentro, que es el peor de los dos
+    // resultados. El problema es el título, la foto o la categoría, no el número.
+    // Va ANTES de pedir el envío a propósito: es una llamada barata que evita la cara.
+    // NO SE ESCONDE: sale en su propia lista, con el motivo y SIN precio al lado — un renglón
+    // con precio invita a aplicarlo, que es la lección del Filtro agua del 14/09.
+    let visCb = null;
+    if (diasQuieta > 0) {
+      try { visCb = Number((await mlGet(`/items/${c.mla}/visits/time_window?last=30&unit=day`, tk))?.total_visits); } catch { visCb = null; }
+      if (!isFinite(visCb)) visCb = null;
+      if (visCb != null && visCb < minVisitas) {
+        sinVisitas.push({
+          mla: c.mla, cuenta: c.e.cuenta, nom: (p.name || b.title || c.mla).slice(0, 34),
+          precio, vis: visCb, st: c.st, quieta: c.quieta,
+          why: `${visCb} visitas en 30 días: no la ve nadie, el problema no es el precio`,
+        });
+        continue;
+      }
+    }
     // ── TOPE DE CONSULTAS DE ENVÍO POR CORRIDA ───────────────────────────────────────
     // Esto corre adentro de `ml-daily` todas las noches. `envioSegunML` pega a varios códigos
     // postales por publicación, y si un día hay 40 candidatas el aviso se cuelga y **se lleva
@@ -1466,12 +1522,28 @@ async function calcCajaBarata(db, o) {
     const m = (mlExtraPct(c.e.cuenta) + monoP) / 100;
     const mlx = c.ptw * m;
     const mgPw = (c.ptw - comPw - envio - costo - mlx) / (costo + mlx + envio) * 100;
-    const exigido = minSano;   // 25%, el número que puso él. No se le suma colchón por mi cuenta.
+    const exigido = minSano;   // el número que puso él. No se le suma colchón por mi cuenta.
+    // ── CUÁNTA PLATA RESIGNÁS, EN PESOS (16/09/2026) ─────────────────────────────────
+    // Lo destapó la Pad 2, que eligió él para probar la regla: bajarla para ganar la caja la
+    // deja en 7,6%, que en % suena a "se puede", y en plata son **$54.750 por unidad**.
+    // Es la misma lección de los Paulvic al revés: allá 30,8% eran $610 (un margen que se ve
+    // grande y es chico); acá 16 puntos son cien mil pesos. **Un piso en % trata igual a un
+    // perfume de $14.000 que a una tablet de medio millón, y no son lo mismo.**
+    // Por eso el renglón lleva los PESOS al lado: es el número con el que se decide.
+    const comHoy = await feeCb(site, precio, lt, cat, tk);
+    let resigna = null;
+    if (comHoy != null) {
+      const gHoy = precio - comHoy - envio - costo - precio * m;
+      const gPw = c.ptw - comPw - envio - costo - mlx;
+      resigna = Math.round(gHoy - gPw);
+    }
     const fila = {
       mla: c.mla, cuenta: c.e.cuenta, prodId: c.e.prodId,
       nom: (p.name || b.title || c.mla).slice(0, 34),
       precio, ptw: Math.round(c.ptw), baja, mgPw, envio, costo: Math.round(costo),
       st: c.st, envioEstimado: true, exigido,
+      quieta: c.quieta, vis: visCb,
+      resigna, resignaTot: resigna == null ? null : resigna * c.st,
     };
     if (mgPw >= exigido) filas.push(fila);
     else noSano.push({ ...fila, why: `bajando ${baja.toFixed(0)}% queda en ${mgPw.toFixed(1)}%, y el sano es ${exigido}%` });
@@ -1479,7 +1551,7 @@ async function calcCajaBarata(db, o) {
   filas.sort((a, b2) => b2.mgPw - a.mgPw);
   noSano.sort((a, b2) => b2.mgPw - a.mgPw);
   topeados.sort((a, b2) => b2.mgTope - a.mgTope);
-  return { filas, noSano, sinDato, fuera, fallos, topeados, mirados: cand.length, dias, minSano, maxEnvios };
+  return { filas, noSano, sinDato, sinVisitas, fuera, fallos, topeados, mirados: cand.length, dias, minSano, maxEnvios, diasQuieta, minVisitas };
 }
 
 // Config en cyc/mlconfig/gruposPrecio = { paulvic: { palabra: 'paulvic' } }
@@ -3704,6 +3776,101 @@ async function main() {
         console.log(`     ${f.mla} · ${money(f.de)} → ${money(f.a)} · +${money(f.extraMes)}/mes`);
       }
       console.log(`\nPara aplicar el número N: volver:<MLA>=<precio>:go  (el MLA y el precio están en el renglón)`);
+      return;
+    }
+
+    // BILLING_PROBE=rematar[:días1[:pct1[:días2[:pct2]]]] → ¿QUÉ CONVIENE REMATAR PARA QUE SALGA?
+    //
+    // Pedido suyo del 15/09/2026: *"a los 45 días de que un producto llega a full y no vendió ni un
+    // solo día, activar modo 'ganar competencia/vender': bajar el precio hasta ganar. obviamente que
+    // no sea automático, que avise. y cada caso se analiza manualmente"*.
+    //
+    // **SON DOS ESCALONES, no uno**, porque la situación a los 45 días y a los 90 no es la misma y
+    // con un solo número les das la misma respuesta:
+    //   · **45 días → hasta 20%.** ML empieza a cobrar almacenamiento a los 60 (`ALMAC_DIAS`), así
+    //     que a los 45 quedan 15 días para reaccionar ANTES de empezar a pagar. Sacrificio chico.
+    //   · **90 días → hasta 15%.** Ya lleva un mes pagando almacenamiento y el reloj del descarte
+    //     corre. Acá la pregunta ya no es cuánto gano sino cuánto recupero.
+    // Abajo de eso no baja: para rematar de verdad está `liquidando`, que lo decide él uno por uno.
+    //
+    // **POR QUÉ EL ESCALÓN 2 NO ES 0%, que era lo que él pidió.** Lo cambió el ejemplo que eligió
+    // él mismo para probar la regla, la Tablet Xiaomi Redmi Pad 2 (`MLA1782639641`, Matías):
+    // $497.310, 2 u., 71 días sin vender, margen 23,5%, caja PERDIDA y ML pide $425.741 para
+    // ganarla — que la deja en **7,6%**. En % suena a "se puede"; en plata son **$54.750 por
+    // unidad, $109.500 por las dos**. Con piso 0% ese renglón salía recomendado.
+    // Y no hay que rematarla, por dos cosas ya medidas: el almacenamiento **se cobra por LUGAR, no
+    // por plata** (una tablet es chica: paga casi nada por estar ahí), y *"la plata ya no es el
+    // límite, es el proveedor"* — o sea que liberar $597.576 que no se pueden gastar vale mucho
+    // menos que los $109.500 que se resignan para liberarlos.
+    //
+    // **Y POR ESO CADA RENGLÓN LLEVA LOS PESOS AL LADO.** Un piso en % trata igual a un perfume de
+    // $14.000 que a una tablet de medio millón. Es la lección de los Paulvic al revés: allá 30,8%
+    // eran $610. Con "queda en 7,6%" no se ve nada; con "resignás $109.500" se ve todo.
+    //
+    // **LAS VISITAS MANDAN SOBRE TODO LO ANTERIOR** (regla del 20/08): menos de 20 visitas = no la
+    // ve nadie, y ahí bajar el precio regala el margen SIN vender. Esas salen en su propia lista,
+    // con el motivo y SIN precio — un renglón con precio invita a aplicarlo.
+    //
+    // **SOLO LEE.** No toca ningún precio. La decisión es suya (regla 5 del 13/08/2026).
+    // OJO al aplicar uno del escalón 2: `setPriceTo` tiene un tope duro en `PISO_MINIMO_ABSOLUTO`
+    // (20%) que NO se puede pasar ni configurando, así que un precio de 15% lo va a rechazar. Es a
+    // propósito: esa red se abre el día que él quiera aplicar uno, no antes.
+    if (/^rematar(:|$)/.test(String(process.env.BILLING_PROBE || ''))) {
+      const _rm = String(process.env.BILLING_PROBE).split(':');
+      const cfgRm = (await db.get('cyc/mlconfig')) || {};
+      const D1 = parseFloat(_rm[1]) || parseFloat(cfgRm.rematarDias1) || 45;
+      const P1 = parseFloat(_rm[2]) || parseFloat(cfgRm.rematarPct1) || 20;
+      const D2 = parseFloat(_rm[3]) || parseFloat(cfgRm.rematarDias2) || 90;
+      const P2 = parseFloat(_rm[4]) || parseFloat(cfgRm.rematarPct2) || 15;
+      const finRm = (await db.get('cyc/finanzas')) || {};
+      const tcRm = parseFloat(finRm.tipo_cambio) || 1500;
+      console.log(`=== REMATAR · escalón 1: ${D1} d → hasta ${P1}% · escalón 2: ${D2} d → hasta ${P2}% ===`);
+      console.log('SOLO LECTURA: no se toca ningún precio en ML.\n');
+      // UNA sola pasada con el filtro más flojo (el escalón 2) y después se clasifica. Correrlo
+      // dos veces duplicaría las consultas a ML sin cambiar un solo resultado.
+      const rm = await calcCajaBarata(db, {
+        dias: 30, diasQuieta: Math.min(D1, D2), minSano: Math.min(P1, P2),
+        products, labels, accounts, tc: tcRm,
+      });
+      const e1 = [], e2 = [], todavia = [];
+      for (const f of rm.filas) {
+        if (f.quieta >= D2 && f.mgPw >= P2) e2.push(f);
+        else if (f.quieta >= D1 && f.mgPw >= P1) e1.push(f);
+        else todavia.push(f);
+      }
+      const reng = (f) => {
+        const pl = f.resigna == null ? 'no pude medir cuánto resignás'
+          : `resignás ${money(f.resigna)} por unidad · ${money(f.resignaTot)} por las ${f.st}`;
+        console.log(`  ${f.nom} (${f.cuenta}) · ${f.mla}`);
+        console.log(`     ${money(f.precio)} → ${money(f.ptw)} (−${f.baja.toFixed(0)}%) · queda en ${f.mgPw.toFixed(1)}%`);
+        console.log(`     ${pl}`);
+        console.log(`     ${f.st} u. · sin vender hace ${f.quieta} d · ${f.vis == null ? 'visitas: sin dato' : f.vis + ' visitas'} · envío estimado de la tarifa de ML`);
+      };
+      console.log(`── 🔴 ESCALÓN 2 · ${D2}+ días parada, hasta ${P2}% · ${e2.length} ──`);
+      if (!e2.length) console.log('  (ninguna)');
+      for (const f of e2) reng(f);
+      console.log(`\n── 🟠 ESCALÓN 1 · ${D1}+ días parada, hasta ${P1}% · ${e1.length} ──`);
+      if (!e1.length) console.log('  (ninguna)');
+      for (const f of e1) reng(f);
+      // Las que llegan al piso flojo pero NO al de su escalón. No se esconden: la que hoy está
+      // en 17% con 50 días entra sola dentro de 40 días, y conviene saber que existe.
+      if (todavia.length) {
+        console.log(`\n── todavía no, pero están cerca · ${todavia.length} ──`);
+        for (const f of todavia) console.log(`  ${f.nom} (${f.cuenta}) · ${f.quieta} d parada · bajando ${f.baja.toFixed(0)}% queda en ${f.mgPw.toFixed(1)}%`);
+      }
+      if (rm.sinVisitas?.length) {
+        console.log(`\n── 👁 NO LA VE NADIE · ${rm.sinVisitas.length} · el precio NO es el problema ──`);
+        console.log('  (sin precio a propósito: bajarlas regala el margen y no vende)');
+        for (const f of rm.sinVisitas) console.log(`  ${f.nom} (${f.cuenta}) · ${f.mla} · ${f.why}`);
+      }
+      if (rm.noSano.length) {
+        console.log(`\n── ❌ no se puede: ni bajando llega al piso · ${rm.noSano.length} ──`);
+        for (const f of rm.noSano) console.log(`  ${f.nom} (${f.cuenta}) · ${f.why}`);
+      }
+      if (rm.topeados.length) console.log(`\n⚠️ ${rm.topeados.length} sin medir por el tope de ${rm.maxEnvios} consultas de envío; salen en la corrida siguiente: ${rm.topeados.map((x) => x.nom).join(', ')}`);
+      if (rm.sinDato.length) { console.log(`\n── sin dato suficiente · ${rm.sinDato.length} ──`); for (const f of rm.sinDato) console.log(`  ${f.mla} · ${f.why}`); }
+      console.log(`\nMiradas ${rm.mirados} · descartadas: ${rm.fuera.reciente} recién llegadas o que vendieron hace poco · ${rm.fuera.sinFecha} sin fecha REAL de entrada · ${rm.fuera.sinStock} sin stock · ${rm.fuera.sinPtw} sin precio de caja de ML`);
+      if (rm.fallos.length) console.log(`⚠️ No pude entrar a: ${rm.fallos.join(', ')}`);
       return;
     }
 
