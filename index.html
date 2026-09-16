@@ -2310,7 +2310,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='19.35';
+const APP_VERSION='19.36';
 // El problema real que esto resuelve no es curiosidad: es que el celular guarda la app y sigue
 // mostrando la de ayer sin avisar. Varias veces se revisó un cambio que ya estaba subido y no se
 // veía. Por eso, además del número, el chip avisa cuando hay una versión nueva esperando.
@@ -8221,7 +8221,7 @@ function pyCanastaHTML(){
       <span style="flex:1;min-width:150px;font-size:.75rem">${f.ped.producto||''}${sub}</span>
       ${f.cod
         ? `<span style="font-family:'DM Mono',monospace;font-size:.66rem;background:rgba(255,255,255,.06);border:1px solid var(--border2);border-radius:5px;padding:2px 6px;letter-spacing:.04em">${f.cod}</span>`
-        : `<span style="font-size:.6rem;color:var(--amber)" title="Sin el código del mayorista este renglón no entra en el mensaje. No se inventa ninguno: un código equivocado hace que llegue otro producto.">⚠ falta el código</span>`}
+        : `<span style="font-size:.6rem;color:var(--amber)" title="Sin el código de Nissei este renglón no entra en el mensaje. No se inventa ninguno: un código equivocado hace que llegue otro producto. Se carga una vez por producto con el comando codpy.">⚠ falta el código de Nissei</span>`}
       <span style="font-size:.68rem;color:#38bdf8;font-weight:700">US$${Math.round(f.cu*(f.lleva||f.u))}</span>
       <span style="font-size:.62rem;color:var(--muted)" title="Plata que se destraba por cada dólar que gastás en este producto. Es el número que define el orden: con presupuesto fijo, lo que más rinde por dólar entra primero.">${fmt(Math.round(f.porDolar))}/US$</span>
       <button class="btn" style="font-size:.58rem;padding:3px 8px" onclick="pyNoHabia('${f.ped.prodId}',${gris?'false':'true'})">${gris?'↩︎ sí había':'✗ no había'}</button>
@@ -8251,7 +8251,7 @@ function pyCanastaHTML(){
       if(!conCod.length&&!sinCod.length)return '';
       const txt=conCod.map(f=>`${f.cod} x ${f.lleva}`).join('\n');
       return `<div style="margin-top:10px;border-top:1px solid var(--border);padding-top:9px">
-        <div style="font-size:.63rem;color:var(--muted);margin-bottom:5px">Para mandarle al mayorista${sinCod.length?` · <span style="color:var(--amber)">${sinCod.length} no entra(n): falta cargarle el código</span>`:''}</div>
+        <div style="font-size:.63rem;color:var(--muted);margin-bottom:5px">Para mandarle a <strong>Nissei</strong> — código y unidades${sinCod.length?` · <span style="color:var(--amber)">${sinCod.length} no entra(n): falta cargarle el código</span>`:''}</div>
         ${conCod.length?`<textarea readonly onclick="this.select()" style="width:100%;min-height:${Math.min(160,22+conCod.length*17)}px;background:rgba(0,0,0,.28);border:1px solid var(--border2);border-radius:6px;color:var(--text);font-family:'DM Mono',monospace;font-size:.7rem;padding:7px 9px;resize:vertical">${txt}</textarea>`
           :`<div style="font-size:.63rem;color:var(--amber)">Todavía no hay ningún código cargado, así que no hay mensaje que mandar.</div>`}
       </div>`;
