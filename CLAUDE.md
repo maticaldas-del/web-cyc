@@ -2461,20 +2461,38 @@ Lo que quedó abierto. Borrá de acá lo que se vaya cerrando.
 
 ### LO QUE QUEDÓ ABIERTO EL 16/09/2026
 
+**RESUELTO EL MISMO DÍA (16/09/2026):**
+ · **PS Portal → PAPELERA**, decidido por él: *"papelera ps portal, lo voy a borrar de ml"*. O sea
+   que de las tres opciones eligió la del panel, y **la publicación la borra él en ML** — el robot
+   no pausa ni borra nada. Se manda con la ✕ del renglón en Pedidos (vuelve atrás durante 7 días).
+ · **Los Redmi Buds son los "6 PLAY", y por eso el código no coincidía.** Él confirmó: *"buds 6
+   play es correcto. me falto ponerle el play al nombre de la web de cyc"*. O sea que el `131119`
+   que él pasó y los `133818`/`133821` del reporte son **productos distintos**, no un error de
+   nadie: el reporte buscó "Redmi Buds 6" a secas. Cargado y releído: `131119`.
+   **Falta que la ficha se llame "Xiaomi Redmi Buds 6 Play"** — si no, la próxima vez que alguien
+   busque el código vuelve a buscar el modelo equivocado. Se corrige tocando el nombre en la ficha.
+   **La lección: cuando el código que él pasa no coincide con el que encontró la búsqueda, lo
+   primero a sospechar NO es el código: es que los dos nombres no sean el mismo producto.**
+ · **CELULARES: son DOS y ya están marcados** — *"todo lo que es celular se tiene que traer con mi
+   papa"*. Verificado con una corrida en seco antes de aplicar, buscando `celular`, `galaxy`,
+   `moto`, `iphone`, `redmi note`, `xiaomi`, `samsung` y `telefono` en las 137 fichas: los únicos
+   teléfonos del catálogo son **Samsung Galaxy A07 LTE 64GB** y **Samsung Galaxy A06 128GB Black**.
+   Todo lo demás que suena a celular NO lo es: la Redmi Pad 2 es tablet, el Redmi Watch 4 / Watch
+   S5 / Watch 5 Lite son relojes y los Redmi Buds 6 Play / Samsung Buds Core son auriculares.
+   Marcados los dos Galaxy con `celuviaje:galaxy;go` · releído: 2 de 2.
+   **Por eso la marca se puso a mano y no por palabra**: `samsung` sola agarraba los auriculares y
+   `xiaomi` sola agarraba la tablet y los tres relojes. La palabra que sirve es `galaxy`, y eso se
+   sabe DESPUÉS de mirar la lista, no antes.
+
 **Esperando una decisión suya:**
- · **PS Portal** — dijo *"sacalo, no lo vamos a vender mas"*. Falta definir CUÁL de las tres cosas:
-   sacarlo de Pedidos (papelera), ocultarlo del panel (`nomas`), o **pausar la publicación en ML**
-   (eso toca ML de verdad). Y antes hay que mirar si tiene stock en Full: si queda mercadería
-   adentro sigue pagando almacenamiento aunque se saque del panel — es lo que pasó con las 7
-   tarjetas de memoria y sus 54 unidades.
- · **El código de Nissei de los Redmi Buds 6.** Él pasó `131119`; el reporte de búsqueda decía
-   Night Black `133818` / Cloud White `133821`. No se cargó ninguno hasta que confirme.
  · **Tres códigos más**, todos por color o tamaño: Xiaomi Watch S5 · Samsung Galaxy A07 (ojo:
    Preto `SM-A075M` y Black `SM-A075F` son modelos distintos) · el Victoria's Secret que no dice
    qué línea es (65 opciones).
- · **Qué productos pasan como CELULAR** para el viaje de fin de mes (van gratis, sin gastar del
-   cupo de US$4.000). Candidatos: Galaxy A07 (US$205, hoy se come el 20% del envío semanal),
-   Xiaomi Watch S5, Redmi Buds 6. **Lo sabe él, no el panel** — se marcan con `celuviaje`.
+ · **Los dos perfumes de Adriana que quedaron abajo del 25%** al reactivar las pausadas: el **Kiss
+   Sexy Edt 100ml** (`MLA3928198284`, $79.999) y el **Body Splash Victoria's Secret Love Spell**
+   (`MLA3928173150`, $45.000). **NO se tocaron y no hay que tocarlos a ciegas**: ninguno de los dos
+   vendió nunca, así que su envío sale de la TARIFA de ML, que se midió **$246 corta** el 20/08 —
+   el margen que se ve es el techo optimista y la suba que propone el comando puede quedar corta.
 
 **Tres productos que NISSEI NO VENDE y ocupan lugar en los US$1.000:** Cabotine 30ml (sólo hay de
 100ML, `91832`) · Animale Mujer EDP (sólo el "Animale Love", `103997`, que es otro perfume) ·
