@@ -2500,14 +2500,31 @@ Azzaro Pour Homme 200ml (sólo 100ML, `97699`). Hoy se sacan con el botón **"no
 marca es por vuelta: al tocar "Empezar una canasta nueva" vuelven. **Falta una marca permanente de
 "esto Nissei no lo tiene"**, si él la quiere.
 
+**ARREGLADO EL 16/09/2026: `activarPausadasFull` YA AVISA.** Eran **dos** cosas, no una, y la
+segunda era peor que la primera:
+ · **Los mensajes no salían nunca.** Iban con `sendTelegram(a)` **sin declarar el tipo**, y
+   `TG_PERMITIDO` descarta por omisión: se tiraban ANTES de intentar mandarlos, en una línea del
+   log. O sea que el robot venía activando publicaciones solo y no avisó ni una vez. Es el bug del
+   aviso del dólar (27/08) y el de las subas automáticas (15/09), por tercera vez. Ahora van por
+   **`sendAlerta`**, al canal privado de precios.
+ · **Y el mensaje se comía la mitad de los casos.** La lista filtraba por `x.precio`, así que sólo
+   salían las descartadas **por margen** — y las que fallan antes de tener precio quedaban fuera de
+   todo, incluida la que deja una publicación pausada PARA SIEMPRE: **"nunca vendió: no hay con qué
+   medir el margen"**. Es el círculo de la Lupa 75mm: no se activa porque no vendió, y no vende
+   porque está pausada. **El freno está BIEN** (sin ventas no se puede deducir el descuento de ML y
+   activarla sería a ciegas); lo que estaba mal es que se callara. Ahora TODO motivo lleva stock,
+   precio y por qué, y el mensaje va en **dos bloques**, porque el remedio es distinto: las de
+   margen se arreglan **subiendo el precio**, las otras las tiene que mirar él de a una.
+ · **Y no repite cada hora** (`cyc/avisopausadas/<MLA>`, 7 días). Esto corre una vez por hora: sin
+   memoria serían 24 mensajes por día con los mismos renglones. Se vuelve a avisar antes si CAMBIA
+   el motivo, y **se anota sólo si el mensaje salió**, igual que el aviso diario. Si la memoria no
+   se puede leer no se filtra nada: repetir molesta, callarse deja stock pagando almacenamiento.
+ · **Ojo al tocarlo:** la función ahora devuelve `{ avisos, anotar }`, no un arreglo.
+ **Probado con el bloque REAL sacado del archivo** (no una copia, que diría "todo bien" para
+ siempre) y seis casos: primera vuelta · una hora después sin cambios (no repite) · motivo distinto
+ (vuelve) · 8 días (vuelve) · memoria ilegible (manda todo) · modo prueba (avisa y no anota).
+
 **Pendiente de arreglar, medido hoy:**
- · **`activarPausadasFull` no avisa NUNCA.** Manda sus dos mensajes —"activé estas" y "con stock en
-   Full pero NO las activé, y por esto"— con `sendTelegram(a)` **sin declarar el tipo**, así que el
-   filtro los tira. Es el bug del aviso del dólar, otra vez. Va por `sendAlerta`.
-   Y el freno que lo frena de verdad: **exige ventas de los últimos 120 días** para medir el
-   margen, así que la publicación que lleva mucho pausada nunca se reactiva sola — el mismo círculo
-   de la Lupa 75mm. El freno está BIEN (sin ventas no se puede medir el descuento de ML); lo que
-   está mal es que se calle.
  · **El chequeo automático de "este renglón no tiene sentido"** en Pedidos. Se ofreció tres veces
    hoy y no se hizo. La idea: un producto no puede destrabar más por mes que lo que deja lo que
    vende, y algo con stock que no vende hace 55 días no puede estar en la lista de comprar. Hoy eso

@@ -718,18 +718,26 @@ async function activarPausadasFull(db, links, tokensRun, DRY, products, piso) {
         }
         if (stockFull <= 0) continue;
         const nom = (links[mla].title || b.title || mla).slice(0, 40);
+        // TODO motivo por el que NO se activa se anota con las mismas tres cosas —stock, precio y
+        // por qué—, no sólo los del margen. Antes el mensaje filtraba por `x.precio` y se comía
+        // justo el caso que deja una publicación pausada PARA SIEMPRE: "sin ventas para medir el
+        // margen". Es el descarte por omisión de siempre.
+        // El precio va por parámetro y NO se lee de la variable de abajo: los tres primeros
+        // motivos ocurren ANTES de que `precio` exista, y leerlo ahí corta la corrida entera
+        // ("Cannot access 'precio' before initialization"), que es el error del `invUpd`.
+        const noVa = (why, pr) => noLlegan.push({ label, mla, nom, stock: stockFull, precio: pr || 0, why });
         // Freno 3: ¿llega al piso con el precio de hoy?
         const p = pIdx[links[mla].prodId];
-        if (!p) { noLlegan.push({ label, mla, nom, why: 'sin producto en la web' }); continue; }
+        if (!p) { noVa('sin producto en la web'); continue; }
         const costo = costoPesos(p, 1, tc).costo;
-        if (!costo) { noLlegan.push({ label, mla, nom, why: 'sin costo cargado' }); continue; }
+        if (!costo) { noVa('sin costo cargado'); continue; }
         const precio = vars.length ? (vars[0].price || 0) : (b.price || 0);
-        if (!precio) { noLlegan.push({ label, mla, nom, why: 'sin precio' }); continue; }
+        if (!precio) { noVa('sin precio'); continue; }
         const site = b.site_id || 'MLA', lt = b.listing_type_id, cat = b.category_id;
         const com = await feeAt(site, precio, lt, cat);
-        if (com == null) { noLlegan.push({ label, mla, nom, why: 'ML no devolvió la comisión' }); continue; }
+        if (com == null) { noVa('ML no devolvió la comisión', precio); continue; }
         const ventas = (vtaMla[mla] && vtaMla[mla].length) ? vtaMla[mla] : (vtaProd[p.id] || []);
-        if (!ventas.length) { noLlegan.push({ label, mla, nom, why: 'sin ventas para medir el margen' }); continue; }
+        if (!ventas.length) { noVa('nunca vendió: no hay con qué medir el margen', precio); continue; }
         // El descuento PEOR visto, igual que cuando se bajan precios: si aun así llega al piso,
         // activarla es seguro. Con el descuento típico, la mitad de las ventas quedaría abajo.
         let extra = -Infinity;
@@ -737,13 +745,13 @@ async function activarPausadasFull(db, links, tokensRun, DRY, products, piso) {
           const cv = await feeAt(site, pv, lt, cat); if (cv == null) continue;
           for (const v of ventas) if (Math.round(v.tot) === pv) extra = Math.max(extra, v.tot - v.net - cv);
         }
-        if (!isFinite(extra)) { noLlegan.push({ label, mla, nom, why: 'no pude deducir el descuento' }); continue; }
+        if (!isFinite(extra)) { noVa('no pude deducir el descuento', precio); continue; }
         extra = Math.max(0, extra);
         const cuoV = cuotasCfg[mla] && parseFloat(cuotasCfg[mla].pct);
         const cuo = isFinite(cuoV) && cuoV > 0 ? cuoV / 100 : 0;
         const mlx = precio * m;
         const mg = ((precio - com - extra - precio * cuo) - costo - mlx) / (costo + mlx + extra);
-        if (mg < PISO) { noLlegan.push({ label, mla, nom, why: `queda en ${(mg * 100).toFixed(0)}%, abajo del ${(PISO * 100).toFixed(0)}%`, precio, stock: stockFull }); continue; }
+        if (mg < PISO) { noVa(`queda en ${(mg * 100).toFixed(0)}%, abajo del ${(PISO * 100).toFixed(0)}%`, precio); continue; }
         if (DRY) { activadas.push({ label, mla, nom, precio, stock: stockFull, mg: mg * 100, dry: true }); continue; }
         try {
           const r = await fetch(ML_API + '/items/' + mla, {
@@ -751,27 +759,71 @@ async function activarPausadasFull(db, links, tokensRun, DRY, products, piso) {
             headers: { Authorization: 'Bearer ' + tok, 'Content-Type': 'application/json' },
             body: JSON.stringify({ status: 'active' }),
           });
-          if (!r.ok) { noLlegan.push({ label, mla, nom, why: 'ML rechazó la activación (' + r.status + ')' }); continue; }
-        } catch { noLlegan.push({ label, mla, nom, why: 'error de red al activar' }); continue; }
+          if (!r.ok) { noVa('ML rechazó la activación (' + r.status + ')', precio); continue; }
+        } catch { noVa('error de red al activar', precio); continue; }
         // Verificación obligatoria: se relee y tiene que estar activa de verdad.
         let quedo = null;
         try { quedo = (await mlGet('/items/' + mla + '?attributes=id,status', tok)).status; } catch { /* */ }
-        if (quedo !== 'active') { noLlegan.push({ label, mla, nom, why: `pedí activarla pero quedó "${quedo || 'no pude leer'}"` }); continue; }
+        if (quedo !== 'active') { noVa(`pedí activarla pero quedó "${quedo || 'no pude leer'}"`, precio); continue; }
         activadas.push({ label, mla, nom, precio, stock: stockFull, mg: mg * 100 });
       }
     }
   }
+  // ── ESTOS DOS MENSAJES NO SALIERON NUNCA, Y ES EL BUG DEL AVISO DEL DÓLAR OTRA VEZ ──────
+  // Hasta el 16/09/2026 el que llama a esta función mandaba los avisos con `sendTelegram(a)`
+  // SIN declarar el tipo, y `TG_PERMITIDO` descarta por omisión: el mensaje se tiraba ANTES de
+  // intentar mandarlo, en una línea del log. O sea que el robot venía activando publicaciones
+  // solo —y dejando otras pausadas con stock adentro— sin avisar ni una vez. Mismo patrón que
+  // el aviso del dólar (27/08) y que las subas automáticas (15/09). Ahora van por `sendAlerta`,
+  // al canal privado de precios, que es donde viven las decisiones de precio de Mati.
+  const hayDry = activadas.some((a) => a.dry);
   if (activadas.length) {
-    avisos.push(`▶️ <b>Publicaciones activadas (tenían stock en Full)</b>\n`
+    avisos.push(`▶️ <b>Publicaciones activadas (tenían stock en Full)</b>${hayDry ? ' <i>— PRUEBA: no se activó nada</i>' : ''}\n`
       + activadas.map((a) => `· ${a.nom} · ${a.label} · ${a.stock} u. · ${money(Math.round(a.precio))} · ${Math.round(a.mg)}%`).join('\n'));
   }
-  const bajas = noLlegan.filter((x) => x.precio);
-  if (bajas.length) {
-    avisos.push(`⏸️ <b>Con stock en Full pero NO las activé</b>\nNo llegan al ${(PISO * 100).toFixed(0)}% con su precio de hoy:\n`
-      + bajas.map((x) => `· ${x.nom} · ${x.label} · ${x.stock} u. · ${money(Math.round(x.precio))} → ${x.why}`).join('\n'));
+  // ── NO REPETIR LO MISMO TODAS LAS HORAS ────────────────────────────────────────────────
+  // Esto corre una vez por hora. Una publicación que hoy no llega al piso tampoco llega dentro
+  // de una hora, así que sin memoria serían 24 mensajes por día con los mismos renglones — la
+  // forma más rápida de que deje de abrirlos, la misma lección del "⚠️ VENDE" que saltaba en
+  // casi todos los productos. Cada una se anota en `cyc/avisopausadas/<MLA>` y no se repite por
+  // PAUSADAS_REAVISO_DIAS, salvo que CAMBIE el motivo: eso sí es noticia nueva.
+  const PAUSADAS_REAVISO_DIAS = 7;
+  let memPausadas = {}, memOk = true;
+  try { const v = await db.get('cyc/avisopausadas'); memPausadas = (v && typeof v === 'object') ? v : {}; }
+  catch { memOk = false; console.log('⚠️ No pude leer la memoria de avisos de pausadas: esta vuelta puede repetir alguno.'); }
+  const ahoraP = Date.now();
+  // Si la memoria no se pudo leer NO se filtra nada. Repetir un aviso molesta; callarse uno deja
+  // una publicación pausada con stock adentro pagando almacenamiento sin que nadie se entere.
+  const nuevasP = noLlegan.filter((x) => {
+    if (!memOk) return true;
+    const a = memPausadas[x.mla];
+    if (!a || String(a.why) !== String(x.why)) return true;
+    return (ahoraP - (a.ts || 0)) >= PAUSADAS_REAVISO_DIAS * 864e5;
+  });
+  const lineaP = (x) => `· ${x.nom} · ${x.label} · ${x.stock} u.${x.precio ? ' · ' + money(Math.round(x.precio)) : ''} → ${x.why}`;
+  const porMargen = nuevasP.filter((x) => /^queda en /.test(x.why));
+  const sinMedir = nuevasP.filter((x) => !/^queda en /.test(x.why));
+  if (porMargen.length) {
+    avisos.push(`⏸️ <b>Con stock en Full y siguen pausadas</b>\nNo llegan al ${(PISO * 100).toFixed(0)}% con su precio de hoy:\n`
+      + porMargen.map(lineaP).join('\n')
+      + `\n<i>Para poder activarlas hay que subirles el precio primero.</i>`);
   }
-  console.log(`Activar pausadas con Full: ${activadas.length} activadas · ${noLlegan.length} no (${bajas.length} por margen).`);
-  return avisos;
+  // ESTE SEGUNDO BLOQUE NO EXISTÍA Y ERA EL QUE MÁS FALTABA. El mensaje filtraba por `x.precio`
+  // y se comía justo el caso que deja una publicación pausada PARA SIEMPRE: la que nunca vendió,
+  // donde no hay ventas con qué deducir el descuento de ML. Ese freno está BIEN —sin ese dato,
+  // activarla es a ciegas— pero callarlo lo vuelve un círculo: no se activa porque no vendió, y
+  // no vende porque está pausada. Es el descarte por omisión de siempre.
+  if (sinMedir.length) {
+    avisos.push(`⏸️ <b>Con stock en Full y no las puedo medir</b>\nNo las activo porque no puedo calcular en qué margen quedarían:\n`
+      + sinMedir.map(lineaP).join('\n')
+      + `\n<i>El freno está bien: sin ese dato activarla sería a ciegas. Pero mientras siga pausada con stock adentro, paga almacenamiento igual — decime cuál querés que mire de a una.</i>`);
+  }
+  const anotarP = {};
+  if (!DRY) for (const x of nuevasP) anotarP[x.mla] = { ts: ahoraP, why: x.why, nom: x.nom, cuenta: x.label };
+  console.log(`Activar pausadas con Full: ${activadas.length} activadas · ${noLlegan.length} no (${porMargen.length} por margen, ${sinMedir.length} sin poder medir, ${noLlegan.length - nuevasP.length} ya avisadas antes).`);
+  // Renglón por renglón al log SIEMPRE, avisadas o no: un total sin el detalle esconde cuál es.
+  for (const x of noLlegan) console.log(`   ⏸️ ${x.nom} · ${x.label} · ${x.stock} u. → ${x.why}`);
+  return { avisos, anotar: anotarP };
 }
 
 // ── GRUPOS DE PRECIO: publicaciones que tienen que valer todas lo mismo ────
@@ -20483,8 +20535,14 @@ async function main() {
     try {
       const cfgP = (await db.get('cyc/mlconfig')) || {};
       const piso = (parseFloat(cfgP.minPct) || 30) / 100;
-      const avisos = await activarPausadasFull(db, map, tokensRun, DRY, products, piso);
-      for (const a of avisos) await sendTelegram(a);
+      const rAct = await activarPausadasFull(db, map, tokensRun, DRY, products, piso);
+      let okAct = true;
+      for (const a of rAct.avisos) if (!(await sendAlerta(a))) okAct = false;
+      // Se anota SÓLO si el mensaje salió. Anotarlo igual dejaría esas publicaciones calladas una
+      // semana por un aviso que nunca llegó — la misma regla que el aviso diario.
+      if (okAct && Object.keys(rAct.anotar).length) {
+        try { await db.patch('cyc/avisopausadas', rAct.anotar); } catch { /* */ }
+      }
     } catch (e) { console.log('No pude activar las pausadas con Full: ' + e.message); }
   }
 
