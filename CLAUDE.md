@@ -2519,6 +2519,12 @@ segunda era peor que la primera:
    memoria serían 24 mensajes por día con los mismos renglones. Se vuelve a avisar antes si CAMBIA
    el motivo, y **se anota sólo si el mensaje salió**, igual que el aviso diario. Si la memoria no
    se puede leer no se filtra nada: repetir molesta, callarse deja stock pagando almacenamiento.
+ · **Y EL CERO VIENE EXPLICADO.** La corrida de ese día imprimió *"0 activadas · 0 no"*, que se lee
+   como buena noticia y puede ser un filtro comiéndose todo en silencio — lo que ya mordió con
+   `liquidar` (0 de 137), con el marcado de cajas y con el *"PARADO: 0"* del aviso diario. Ahora el
+   renglón dice de dónde sale: cuántas se miraron, cuántas quedaron afuera por no haber vendido
+   nunca (`altaSinVender`), cuántas ya están activas, cuántas las pausó ML, cuántas no son de Full
+   y cuántas no tienen stock adentro.
  · **Ojo al tocarlo:** la función ahora devuelve `{ avisos, anotar }`, no un arreglo.
  **Probado con el bloque REAL sacado del archivo** (no una copia, que diría "todo bien" para
  siempre) y seis casos: primera vuelta · una hora después sin cambios (no repite) · motivo distinto

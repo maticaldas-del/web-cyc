@@ -675,6 +675,12 @@ async function activarPausadasFull(db, links, tokensRun, DRY, products, piso) {
   }
   const feeCache = {};
   const avisos = [], activadas = [], noLlegan = [];
+  // ── UN CERO TIENE QUE VENIR EXPLICADO ──────────────────────────────────────────────────
+  // El 16/09/2026 esto imprimió "0 activadas · 0 no" y ese renglón se lee como buena noticia
+  // cuando puede ser un filtro comiéndose todo en silencio — es lo que ya mordió con `liquidar`
+  // (0 de 137), con el marcado de cajas y con el "PARADO: 0" del aviso diario. Ahora se cuenta
+  // en qué freno se fue cada una, así el cero dice POR QUÉ es cero.
+  const conteo = { candidatas: 0, sinAlta: 0, noAuto: 0, miradas: 0, activas: 0, mlLasPauso: 0, noFull: 0, sinStock: 0 };
   for (const [label, tok] of Object.entries(tokensRun)) {
     const feeAt = async (site, price, lt, cat) => {
       const k = site + '|' + lt + '|' + cat + '|' + Math.round(price);
@@ -694,7 +700,12 @@ async function activarPausadasFull(db, links, tokensRun, DRY, products, piso) {
       // tanto el margen que decide si "llega al piso"— no está probado contra ninguna venta real.
       // Activar es lo único que ESCRIBE en ML sin que medie una venta: hasta que venda, no se toca.
       // La marca se cae sola en cuanto vende (la vuelta de las ventas reescribe el renglón entero).
-      .filter(([mla, e]) => e && e.cuenta === label && !e.ignored && !e.noAutoActivar && !e.altaSinVender && e.prodId && /^MLA/i.test(mla))
+      .filter(([mla, e]) => {
+        if (!e || e.cuenta !== label || e.ignored || !e.prodId || !/^MLA/i.test(mla)) return false;
+        if (e.altaSinVender) { conteo.sinAlta++; return false; }
+        if (e.noAutoActivar) { conteo.noAuto++; return false; }
+        conteo.candidatas++; return true;
+      })
       .map(([mla]) => mla);
     for (let k = 0; k < ids.length; k += 20) {
       let arr;
@@ -703,12 +714,13 @@ async function activarPausadasFull(db, links, tokensRun, DRY, products, piso) {
       for (const row of (arr || [])) {
         const b = row.body || {}; const mla = b.id;
         if (!mla || !links[mla] || b.error || typeof b.status === 'number') continue;
-        if (b.status !== 'paused') continue;
+        conteo.miradas++;
+        if (b.status !== 'paused') { conteo.activas++; continue; }
         // Freno 2: pausada por ML (infracción, revisión…) → no se toca.
         const sub = [].concat(b.sub_status || []).filter(Boolean).filter((s) => s !== 'out_of_stock');
-        if (sub.length) continue;
+        if (sub.length) { conteo.mlLasPauso++; continue; }
         // Freno 1: tiene que ser Full y tener stock EN Full.
-        if (((b.shipping && b.shipping.logistic_type) || '') !== 'fulfillment') continue;
+        if (((b.shipping && b.shipping.logistic_type) || '') !== 'fulfillment') { conteo.noFull++; continue; }
         const vars = Array.isArray(b.variations) ? b.variations : [];
         const invIds = vars.length ? vars.map((v) => v.inventory_id).filter(Boolean) : [b.inventory_id].filter(Boolean);
         let stockFull = 0;
@@ -716,7 +728,7 @@ async function activarPausadasFull(db, links, tokensRun, DRY, products, piso) {
           try { stockFull += Number((await mlGet('/inventories/' + inv + '/stock/fulfillment', tok))?.available_quantity) || 0; }
           catch { /* si no contesta, cuenta 0 */ }
         }
-        if (stockFull <= 0) continue;
+        if (stockFull <= 0) { conteo.sinStock++; continue; }
         const nom = (links[mla].title || b.title || mla).slice(0, 40);
         // TODO motivo por el que NO se activa se anota con las mismas tres cosas —stock, precio y
         // por qué—, no sólo los del margen. Antes el mensaje filtraba por `x.precio` y se comía
@@ -821,6 +833,10 @@ async function activarPausadasFull(db, links, tokensRun, DRY, products, piso) {
   const anotarP = {};
   if (!DRY) for (const x of nuevasP) anotarP[x.mla] = { ts: ahoraP, why: x.why, nom: x.nom, cuenta: x.label };
   console.log(`Activar pausadas con Full: ${activadas.length} activadas · ${noLlegan.length} no (${porMargen.length} por margen, ${sinMedir.length} sin poder medir, ${noLlegan.length - nuevasP.length} ya avisadas antes).`);
+  console.log(`   De dónde sale ese número: ${conteo.candidatas} publicación(es) miradas de ${conteo.candidatas + conteo.sinAlta + conteo.noAuto}`
+    + ` (${conteo.sinAlta} todavía no vendieron nunca y por eso no se tocan · ${conteo.noAuto} marcadas "no activar sola")`
+    + ` → ${conteo.activas} ya están activas · ${conteo.mlLasPauso} las pausó ML · ${conteo.noFull} no son de Full`
+    + ` · ${conteo.sinStock} no tienen stock adentro de Full. Quedaron ${activadas.length + noLlegan.length} para decidir.`);
   // Renglón por renglón al log SIEMPRE, avisadas o no: un total sin el detalle esconde cuál es.
   for (const x of noLlegan) console.log(`   ⏸️ ${x.nom} · ${x.label} · ${x.stock} u. → ${x.why}`);
   return { avisos, anotar: anotarP };
