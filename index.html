@@ -2310,7 +2310,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='19.38';
+const APP_VERSION='19.39';
 // El problema real que esto resuelve no es curiosidad: es que el celular guarda la app y sigue
 // mostrando la de ayer sin avisar. Varias veces se revisó un cambio que ya estaba subido y no se
 // veía. Por eso, además del número, el chip avisa cuando hay una versión nueva esperando.
@@ -7945,9 +7945,24 @@ async function syncPedidosAuto(){
     // las tiene, y se arreglan mandando la caja, no comprando.
     // Esta pantalla decide CUÁNTO COMPRAR, así que el riesgo se parte en dos y se muestran los dos:
     // lo que se tapa despachando lo que ya está en casa o viajando, y lo que de verdad falta comprar.
+    // ── LA COMPRA SÓLO DESTRABA LO QUE LA COMPRA ALCANZA A CUBRIR (16/09/2026) ──────
+    // Lo marcó él mirando la canasta: *"si se vendio 1 animale en 30 dias y yo mando dos no
+    // destraba nada. ya esta destrabado el producto"*. Tenía razón y el número estaba MUY
+    // inflado: el Animale salía tercero de la canasta con $1.257 por dólar, o sea ~$32.000
+    // destrabados por UNA unidad de un producto que vende UNA POR MES. Imposible.
+    // EL ERROR: se medía "cuántos días de los 30 quedan descubiertos después de lo que ya tenés"
+    // y se le acreditaba TODO eso a la compra, sin preguntar si la compra los tapa. Con 2 en
+    // camino quedaban 16 días descubiertos, pero comprando 1 unidad a 0,14/día tapás 7, no 16.
+    // Ahora cada parte se lleva SÓLO los días que tapa de verdad, y se calculan las dos por
+    // separado en vez de una por resta: con la resta, al achicarse la compra el mandar crecía
+    // solo y se quedaba con días que tampoco tapa.
+    // Puede quedar un resto sin cubrir por ninguna de las dos, y está bien que quede: son los
+    // días que no tapás ni comprando esto ni mandando lo que tenés.
+    const diasTapaCasa=vDia>0?Math.min(diasEnRiesgo,(enOficina+enCamino)/vDia):0;
+    const diasTapaCompra=vDia>0?Math.min(Math.max(0,diasEnRiesgo-diasTapaCasa),aComprar/vDia):0;
     const cubreCasa=vDia>0?Math.round((stock+enOficina+enCamino)/vDia):999;
-    const riesgoComprar=Math.round((gan30d/30)*Math.max(0,RIESGO_DIAS-cubreCasa));
-    const riesgoMandar=Math.max(0,riesgo-riesgoComprar);
+    const riesgoComprar=Math.round((gan30d/30)*diasTapaCompra);
+    const riesgoMandar=Math.round((gan30d/30)*diasTapaCasa);
     // Si hay unidades en casa no se puede repartir el pedido por variante con confianza (no se
     // sabe de qué variante son las de la oficina), así que se deja el pedido sin desglose.
     // El desglose por variante ya NO se tira cuando hay stock en casa o en camino: se descuenta por
