@@ -53,6 +53,19 @@ Se marca con **`liquidando:<MLA o palabra>[:go]`** y vive en **`cyc/nosubir/<MLA
 ML— y no en cada comando, por el mismo motivo que el piso: la regla no puede depender de que el
 próximo que escriba algo se acuerde.
 
+**EL FRENO NO VIVÍA EN LAS DOS FUNCIONES QUE DECÍA ESTE ARCHIVO (16/09/2026).** La frase de
+arriba —*"vive adentro de `raisePrice` y `raisePriceTo`, las DOS funciones que suben precios"*—
+**era falsa**. `submargen` sube precios con un **PUT directo** y se salteaba el freno entero.
+Salió al chequear los precios después de que él reactivara publicaciones pausadas: `submargen`
+proponía subir el **Pendrive Sandisk 128g de $42.326 a $56.620**, que es *justo* el único marcado
+en `cyc/nosubir` y el que él bajó a propósito para rematarlo antes de que ML le cobre stock
+antiguo. Corriendo `submargen:25:go` le deshacía la decisión.
+Es el MISMO agujero que `volver` con el piso, y la misma lección por tercera vez: **un comentario
+que promete que algo está cubierto no es prueba de que lo esté.** Ya está tapado en `submargen`,
+con el mismo lado seguro que `raisePrice`: si la lista no se puede leer, el comando no corre.
+**Lo que queda por revisar: hay 17 comandos con el mismo filtro de publicaciones.** Los demás son
+de sólo lectura, pero antes de que alguno empiece a escribir hay que mirar si pasa por el freno.
+
 **EL LADO SEGURO ACÁ ES AL REVÉS QUE EN EL PISO.** Si la lista no se pudo leer, no se sabe qué está
 marcado, así que **no se sube NADA esa vuelta** y se avisa en el log. Subir algo que él bajó a mano
 le rompe una decisión suya y se entera cuando ya vendió; no subir por una vuelta no rompe nada.

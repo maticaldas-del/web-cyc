@@ -10035,6 +10035,21 @@ async function main() {
       const finS = (await db.get('cyc/finanzas')) || {};
       const tcS = parseFloat(finS.tipo_cambio) || 1500;
       const monoS = parseFloat(((await db.get('cyc/monotributo')) || {}).pct) || 0;
+      // ── LO MARCADO `liquidando` NO SE SUBE (16/09/2026) ──────────────────────────────
+      // Salió al chequear los precios después de que él reactivara publicaciones: `submargen`
+      // proponía subir el Pendrive Sandisk 128g de $42.326 a $56.620 — justo el que él bajó A
+      // PROPÓSITO para rematarlo antes de que ML le cobre stock antiguo, y el ÚNICO marcado en
+      // `cyc/nosubir`. CLAUDE.md afirmaba que esto no podía pasar: dice que el freno vive "en
+      // raisePrice y raisePriceTo, las DOS funciones que suben precios en ML". Es FALSO —
+      // `submargen` escribe con un PUT directo, igual que `volver` con el piso. Un comentario
+      // que promete que algo está cubierto no es prueba de que lo esté: van tres veces.
+      // SI LA LISTA NO SE PUEDE LEER NO SE CORRE NADA, que es el mismo lado seguro que eligió
+      // él para `raisePrice`: subir algo que bajó a mano le rompe una decisión y se entera
+      // cuando ya vendió; no correr el comando una vez no rompe nada.
+      try { await cargarNoSubir(db); }
+      catch { console.log('❌ No pude leer la lista de `liquidando` (cyc/nosubir). NO corro: podría subirte algo que bajaste a propósito.'); return; }
+      const nSub = Object.keys(NOSUBIR).length;
+      if (nSub) console.log(`🔒 ${nSub} publicación(es) marcadas "liquidando": quedan afuera de este comando.\n`);
       const links = (await db.get('cyc/mllinks')) || {};
       const vpS = (await db.get('cyc/ventaprod')) || {}; setDevLive(vpS);
       const pIdx = {}; for (const p of products) pIdx[p.id] = p;
@@ -10081,7 +10096,8 @@ async function main() {
         let t; try { t = await mlRefresh(ML_CLIENT_ID, ML_CLIENT_SECRET, acc.refresh_token); } catch { continue; }
         await db.patch('mlapi/tokens/' + label, { refresh_token: t.refresh_token, updated_ts: Date.now() });
         const ids = Object.entries(links)
-          .filter(([mla, e]) => e && e.cuenta === label && !e.ignored && e.prodId && /^MLA/i.test(mla))
+          .filter(([mla, e]) => e && e.cuenta === label && !e.ignored && e.prodId && /^MLA/i.test(mla)
+            && !NOSUBIR[mla])   // ← lo marcado `liquidando` NO se sube (ver arriba)
           .map(([mla]) => mla);
         for (let k = 0; k < ids.length; k += 20) {
           let arr;
