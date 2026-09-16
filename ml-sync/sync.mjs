@@ -8493,6 +8493,78 @@ async function main() {
       return;
     }
 
+    // BILLING_PROBE=codpy:<palabra o id>=<codigo>[;otro=otro][;go] → EL CÓDIGO DEL MAYORISTA DE PY.
+    //
+    // Pedido suyo del 16/09/2026: *"la mayorista de paraguay necesita que le pase el codigo del
+    // producto con las unidades (…) tenes que estar super seguro con el codigo, para no pedir algo
+    // distinto. tiene que ser IDENTICO"*.
+    //
+    // POR QUÉ SE CARGA A MANO Y NO SE BUSCA SOLO: el código vive en la web del mayorista
+    // (nissei.com), que desde acá está bloqueada — pero aunque no lo estuviera, emparejar NUESTRO
+    // nombre con el de SU catálogo es el mismo filtro por palabras que ya falló cuatro veces
+    // ("Cruzer Blade" agarraba 5 pendrives, "metatarso" el Metatarso Fuerte, "P47" el p47 oreja
+    // gato). Allá el castigo era una lista mal filtrada; acá es que llegue OTRO PRODUCTO a los 7
+    // días, adentro de un pedido de US$1.000 que no se puede rehacer hasta que llegue. Es el peor
+    // lugar del sistema para adivinar, así que el código lo pone él y esto sólo lo guarda.
+    //
+    // SE CARGA UNA VEZ POR PRODUCTO, NO POR PEDIDO. Después la canasta de Paraguay arma sola el
+    // mensaje "<código> x <unidades>" para mandarle al mayorista.
+    // Sin `;go` sólo muestra qué agarró, que es la regla de siempre con los filtros por palabra.
+    if (/^codpy:/.test(String(process.env.BILLING_PROBE || ''))) {
+      const _cp = String(process.env.BILLING_PROBE).slice(6);
+      const APLICAR = /(^|;)go\s*$/.test(_cp);
+      const pares = _cp.replace(/(^|;)go\s*$/, '').split(';').map((x) => x.trim()).filter(Boolean);
+      if (!pares.length) { console.log('Usá: codpy:<palabra o id>=<codigo>[;otro=otro][;go] — ej codpy:lupa 75=AB-1234;pizarra=CD-99'); return; }
+      console.log(`=== CÓDIGO DEL MAYORISTA DE PARAGUAY ${APLICAR ? '(APLICANDO)' : '(PRUEBA: no escribo nada)'} ===\n`);
+      const plan = [];
+      let ambiguos = 0;
+      for (const par of pares) {
+        const i = par.indexOf('=');
+        if (i < 0) { console.log(`⚠️ "${par}" no tiene el formato <producto>=<codigo>. Se saltea.`); continue; }
+        const quien = par.slice(0, i).trim();
+        // El código se guarda TAL CUAL lo escribió él: no se pasa a mayúsculas, no se le sacan
+        // guiones ni puntos. "Idéntico" quiere decir idéntico, y cualquier arreglo automático es
+        // exactamente la clase de ayuda que termina pidiendo otra cosa.
+        const cod = par.slice(i + 1).trim();
+        if (!quien || !cod) { console.log(`⚠️ "${par}" le falta el producto o el código. Se saltea.`); continue; }
+        const objetivo = products.filter((p) => p.id === quien || norm(p.name || '').includes(norm(quien)));
+        if (!objetivo.length) { console.log(`❌ "${quien}" → no hay ningún producto que se llame así.\n`); continue; }
+        if (objetivo.length > 1) {
+          // NO SE ELIGE UNO. Con el código de por medio, agarrar el producto equivocado es pedirle
+          // otra cosa al mayorista. Se muestran todos y él desempata con el id exacto.
+          ambiguos++;
+          console.log(`⚠️ "${quien}" agarra ${objetivo.length} productos y NO se aplica a ninguno. Repetilo con el id exacto:`);
+          for (const p of objetivo) console.log(`     ${p.id}  ·  ${p.name}${p.codPy ? '  (hoy: ' + p.codPy + ')' : ''}`);
+          console.log('');
+          continue;
+        }
+        const p = objetivo[0];
+        console.log(`✓ ${p.name}  (${p.id})`);
+        console.log(`     código: ${p.codPy ? p.codPy + ' → ' + cod : cod}${p.origen === 'py' ? '' : '   ⚠️ OJO: este producto NO está marcado como de Paraguay'}`);
+        console.log('');
+        plan.push({ p, cod });
+      }
+      if (!plan.length) { console.log('No quedó nada para aplicar.'); return; }
+      if (!APLICAR) {
+        console.log(`PRUEBA: no escribí nada.${ambiguos ? ` ${ambiguos} quedaron sin resolver por ambiguas.` : ''}`);
+        console.log(`Para aplicar, repetí el mismo comando agregando ";go" al final.`);
+        return;
+      }
+      for (const x of plan) await db.set('cyc/products/' + x.p.id + '/codPy', x.cod);
+      // Releído de la base, que es de donde lee la web: decir "guardado" sin volver a mirarlo es
+      // justo lo que este archivo dice que no hay que hacer.
+      console.log('── Releído de la base ──');
+      let ok = 0;
+      for (const x of plan) {
+        const v = await db.get('cyc/products/' + x.p.id + '/codPy');
+        const bien = String(v || '') === x.cod;
+        if (bien) ok++;
+        console.log(`  ${bien ? '✓' : '❌'} ${x.p.name}: ${v == null ? '(vacío)' : v}`);
+      }
+      console.log(`\n${ok} de ${plan.length} quedaron bien.`);
+      return;
+    }
+
     // BILLING_PROBE=poncosto:<palabra o id>|<pesos>[|go] → CORRIGE EL COSTO DE UN PRODUCTO.
     //
     // Es lo mismo que escribir el costo a mano en la ficha del producto en la web, pero desde acá.

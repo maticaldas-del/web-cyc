@@ -2310,7 +2310,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='19.34';
+const APP_VERSION='19.35';
 // El problema real que esto resuelve no es curiosidad: es que el celular guarda la app y sigue
 // mostrando la de ayer sin avisar. Varias veces se revisó un cambio que ya estaba subido y no se
 // veía. Por eso, además del número, el chip avisa cuando hay una versión nueva esperando.
@@ -8171,7 +8171,14 @@ function pyCanasta(){
     const u=ped.cantidad||0, cu=pr?(costUSDof(pr)||0):0;
     const destraba=(ped.riesgoComprar!=null?ped.riesgoComprar:ped.riesgo)||0;
     const total=cu*u;
-    return{ped,u,cu,destraba,total,porDolar:total>0?destraba/total:0,sinStock:!!sin[ped.prodId]};
+    // EL CÓDIGO DEL MAYORISTA. Vive en la ficha (`codPy`) y se carga UNA VEZ por producto: el
+    // mayorista de Paraguay pide código + unidades, y sin esto habría que ir a buscarlo a su web
+    // en cada pedido. NO SE ADIVINA NUNCA —misma regla que el código de etiqueta de Full—: un
+    // código equivocado no se nota acá, se nota cuando llega otra cosa a los 7 días, adentro de
+    // un pedido de US$1.000 que no se puede rehacer hasta que llegue. Sin código, el renglón lo
+    // dice en ámbar y queda afuera del mensaje.
+    return{ped,u,cu,destraba,total,porDolar:total>0?destraba/total:0,sinStock:!!sin[ped.prodId],
+      cod:(pr&&pr.codPy)?String(pr.codPy).trim():''};
   }).filter(x=>x.u>0&&x.cu>0);
   // Lo que el mayorista no tenía sale del reparto pero NO se esconde: se muestra abajo, en gris.
   // Esconderlo haría que la canasta cambie sola sin decir por qué.
@@ -8212,6 +8219,9 @@ function pyCanastaHTML(){
     return `<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;padding:6px 0;border-top:1px solid var(--border);${gris?'opacity:.45':''}">
       <strong style="font-family:'Syne',sans-serif;font-size:.95rem;min-width:52px;${f.lleva?'':'color:var(--muted)'}">${gris?'—':f.lleva+' u.'}</strong>
       <span style="flex:1;min-width:150px;font-size:.75rem">${f.ped.producto||''}${sub}</span>
+      ${f.cod
+        ? `<span style="font-family:'DM Mono',monospace;font-size:.66rem;background:rgba(255,255,255,.06);border:1px solid var(--border2);border-radius:5px;padding:2px 6px;letter-spacing:.04em">${f.cod}</span>`
+        : `<span style="font-size:.6rem;color:var(--amber)" title="Sin el código del mayorista este renglón no entra en el mensaje. No se inventa ninguno: un código equivocado hace que llegue otro producto.">⚠ falta el código</span>`}
       <span style="font-size:.68rem;color:#38bdf8;font-weight:700">US$${Math.round(f.cu*(f.lleva||f.u))}</span>
       <span style="font-size:.62rem;color:var(--muted)" title="Plata que se destraba por cada dólar que gastás en este producto. Es el número que define el orden: con presupuesto fijo, lo que más rinde por dólar entra primero.">${fmt(Math.round(f.porDolar))}/US$</span>
       <button class="btn" style="font-size:.58rem;padding:3px 8px" onclick="pyNoHabia('${f.ped.prodId}',${gris?'false':'true'})">${gris?'↩︎ sí había':'✗ no había'}</button>
@@ -8232,6 +8242,20 @@ function pyCanastaHTML(){
     ${c.filas.filter(f=>f.lleva>0).map(f=>fila(f,false)).join('')}
     ${(()=>{const fuera=c.filas.filter(f=>!f.lleva);return fuera.length?`<div style="font-size:.6rem;color:var(--muted);margin-top:9px">No entran en estos US$ ${PY_PRESUPUESTO_USD} (${fuera.length}) — van en el pedido siguiente:</div>`+fuera.slice(0,6).map(f=>fila(f,true)).join(''):'';})()}
     ${c.sinStock.length?`<div style="font-size:.6rem;color:var(--muted);margin-top:9px">El mayorista no tenía (${c.sinStock.length}) — la plata se repartió sola entre el resto:</div>`+c.sinStock.map(f=>fila(f,true)).join(''):''}
+    ${(()=>{
+      // EL MENSAJE PARA EL MAYORISTA, que es para lo que existe todo esto: él pide código y
+      // unidades. Sólo entran los renglones que TIENEN código cargado; los que no, se cuentan
+      // aparte y se dicen. Mandar una línea sin código o con uno inventado es pedir otra cosa.
+      const conCod=c.filas.filter(f=>f.lleva>0&&f.cod);
+      const sinCod=c.filas.filter(f=>f.lleva>0&&!f.cod);
+      if(!conCod.length&&!sinCod.length)return '';
+      const txt=conCod.map(f=>`${f.cod} x ${f.lleva}`).join('\n');
+      return `<div style="margin-top:10px;border-top:1px solid var(--border);padding-top:9px">
+        <div style="font-size:.63rem;color:var(--muted);margin-bottom:5px">Para mandarle al mayorista${sinCod.length?` · <span style="color:var(--amber)">${sinCod.length} no entra(n): falta cargarle el código</span>`:''}</div>
+        ${conCod.length?`<textarea readonly onclick="this.select()" style="width:100%;min-height:${Math.min(160,22+conCod.length*17)}px;background:rgba(0,0,0,.28);border:1px solid var(--border2);border-radius:6px;color:var(--text);font-family:'DM Mono',monospace;font-size:.7rem;padding:7px 9px;resize:vertical">${txt}</textarea>`
+          :`<div style="font-size:.63rem;color:var(--amber)">Todavía no hay ningún código cargado, así que no hay mensaje que mandar.</div>`}
+      </div>`;
+    })()}
     <div style="margin-top:10px;display:flex;gap:8px;flex-wrap:wrap;align-items:center">
       <button class="btn" style="font-size:.6rem;padding:4px 10px" onclick="pyCanastaReset()">Empezar una canasta nueva</button>
       <span style="font-size:.58rem;color:var(--muted)">Marcá lo que no había y la plata se reparte sola entre lo que sigue.</span>
