@@ -1363,6 +1363,38 @@ Pausarlas TOCA ML de verdad: no se hace sin que él lo pida expreso.
 que es la que lo vende (51 u. en 90 días). Viene de cuando el 07/09 pidió pasarlos todos a Ayelen.
 Si eso sigue en pie está bien, pero hoy nadie le puede mandar mercadería.
 
+## LA IDEA GRANDE QUE QUEDÓ ANOTADA: BUSCAR QUÉ CONVIENE COMPRAR (16/09/2026)
+
+Pedido suyo, textual: *"nosotros compramos de comprasparaguai y vendemos en ML. quiero que vos
+automaticamente busques y me digas este producto da el precio, la gente compra, no pasa cierto
+costo, no tenemos problemas con marcas. cosas asi. hay mucho que afinar."*
+
+O sea: **pasar de "¿a qué precio vendo lo que ya tengo?" a "¿qué me conviene empezar a vender?"**.
+Es el cambio más grande que se pidió hasta ahora, y **todavía no está hecho**.
+
+**LO QUE HACE FALTA ANTES DE ESCRIBIR UNA LÍNEA, y es lo que él llama "afinar":**
+ · **El margen.** Es lo único que ya sabemos calcular: costo en Nissei → precio en ML → comisión
+   (con el escalón, preguntándole a ML) → envío → IIBB → monotributo. La cuenta ya existe entera.
+ · **"la gente compra"** — hay que definirlo con un número. Ventas del catálogo de ML, visitas,
+   cantidad de vendedores. **No hay dato propio**: es todo de afuera.
+ · **"no pasa cierto costo"** — hay que fijar el tope, y no es sólo la plata: con US$1.000 por
+   pedido, un producto caro se come el pedido entero (el Galaxy A07 son US$205 de los 1.000).
+ · **"no tenemos problemas con marcas"** — el más importante y el que más caro sale si se
+   equivoca. Ya hay tres publicaciones frenadas por ML pidiendo documentación (el Bare Vanilla y
+   los dos Termómetros) y un reclamo de "adulterado" perdido. Perfumes y electrónica de marca son
+   justo lo que ML mira. **Esto probablemente NO se pueda decidir solo: lo sabe él.**
+
+**EL FRENO QUE YA SE APRENDIÓ HOY Y VALE ACÁ:** emparejar el catálogo de Nissei con el nuestro por
+el nombre es el filtro por palabras que ya falló cuatro veces. Para un producto NUEVO es peor,
+porque no hay ficha contra la cual contrastar. Lo que funcionó con los códigos fue: **el agente
+trae pruebas (título exacto, código, precio, link) y NO elige; la decisión la toma él.** Cualquier
+versión de esto tiene que respetar eso.
+
+**Y EL TOPE TÉCNICO DE HOY: desde esta sesión no hay salida a internet.** `nissei.com` y
+`comprasparaguay.com.ar` están bloqueados por la política de red del entorno — probado hasta con
+`example.com`. Se abre en la configuración del entorno (Network access → Custom) y **sólo agarra en
+sesiones NUEVAS**: cambiarlo no afecta a una sesión ya arrancada. Sin eso, esto no se puede hacer.
+
 ## Cosas que ya pasaron (para no repetirlas)
 
 - **510 UNIDADES DESAPARECIERON DEL PATRIMONIO: LA CAJA SE MARCÓ ANTES DE QUE ML LA PROCESARA
@@ -2426,6 +2458,43 @@ Lo que quedó abierto. Borrá de acá lo que se vaya cerrando.
   TRES compradores distintos pidiendo factura en Luciana, uno ya insistió dos veces.
 - **El robot NO sabe reembolsar ni contestar reclamos**: solo lee. Si alguna vez se programa,
   probarlo primero con un reclamo chico, nunca con uno grande.
+
+### LO QUE QUEDÓ ABIERTO EL 16/09/2026
+
+**Esperando una decisión suya:**
+ · **PS Portal** — dijo *"sacalo, no lo vamos a vender mas"*. Falta definir CUÁL de las tres cosas:
+   sacarlo de Pedidos (papelera), ocultarlo del panel (`nomas`), o **pausar la publicación en ML**
+   (eso toca ML de verdad). Y antes hay que mirar si tiene stock en Full: si queda mercadería
+   adentro sigue pagando almacenamiento aunque se saque del panel — es lo que pasó con las 7
+   tarjetas de memoria y sus 54 unidades.
+ · **El código de Nissei de los Redmi Buds 6.** Él pasó `131119`; el reporte de búsqueda decía
+   Night Black `133818` / Cloud White `133821`. No se cargó ninguno hasta que confirme.
+ · **Tres códigos más**, todos por color o tamaño: Xiaomi Watch S5 · Samsung Galaxy A07 (ojo:
+   Preto `SM-A075M` y Black `SM-A075F` son modelos distintos) · el Victoria's Secret que no dice
+   qué línea es (65 opciones).
+ · **Qué productos pasan como CELULAR** para el viaje de fin de mes (van gratis, sin gastar del
+   cupo de US$4.000). Candidatos: Galaxy A07 (US$205, hoy se come el 20% del envío semanal),
+   Xiaomi Watch S5, Redmi Buds 6. **Lo sabe él, no el panel** — se marcan con `celuviaje`.
+
+**Tres productos que NISSEI NO VENDE y ocupan lugar en los US$1.000:** Cabotine 30ml (sólo hay de
+100ML, `91832`) · Animale Mujer EDP (sólo el "Animale Love", `103997`, que es otro perfume) ·
+Azzaro Pour Homme 200ml (sólo 100ML, `97699`). Hoy se sacan con el botón **"no había"**, pero esa
+marca es por vuelta: al tocar "Empezar una canasta nueva" vuelven. **Falta una marca permanente de
+"esto Nissei no lo tiene"**, si él la quiere.
+
+**Pendiente de arreglar, medido hoy:**
+ · **`activarPausadasFull` no avisa NUNCA.** Manda sus dos mensajes —"activé estas" y "con stock en
+   Full pero NO las activé, y por esto"— con `sendTelegram(a)` **sin declarar el tipo**, así que el
+   filtro los tira. Es el bug del aviso del dólar, otra vez. Va por `sendAlerta`.
+   Y el freno que lo frena de verdad: **exige ventas de los últimos 120 días** para medir el
+   margen, así que la publicación que lleva mucho pausada nunca se reactiva sola — el mismo círculo
+   de la Lupa 75mm. El freno está BIEN (sin ventas no se puede medir el descuento de ML); lo que
+   está mal es que se calle.
+ · **El chequeo automático de "este renglón no tiene sentido"** en Pedidos. Se ofreció tres veces
+   hoy y no se hizo. La idea: un producto no puede destrabar más por mes que lo que deja lo que
+   vende, y algo con stock que no vende hace 55 días no puede estar en la lista de comprar. Hoy eso
+   lo agarra él mirando; el panel lo puede agarrar solo.
+ · **`revisarpedidos` sin correr**: no se verificó si quedan más casos como el Watch S5.
 
 ### Lo grande, que no se arregla con precios
 
