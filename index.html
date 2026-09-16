@@ -2310,7 +2310,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='19.40';
+const APP_VERSION='19.41';
 // El problema real que esto resuelve no es curiosidad: es que el celular guarda la app y sigue
 // mostrando la de ayer sin avisar. Varias veces se revisó un cambio que ya estaba subido y no se
 // veía. Por eso, además del número, el chip avisa cuando hay una versión nueva esperando.
@@ -7511,10 +7511,31 @@ function pedVentasNorm(prodOrName){
   // acá se LLAMA a la misma función, no se copia la fórmula.
   // Queda marcado con `hist` para que la pantalla lo pueda decir: es un ritmo VIEJO, no una
   // medición de hoy, y el que compra tiene que poder verlo (igual que en Mi oficina, en ámbar).
+  // ── Y SÓLO SI ADEMÁS ESTÁ EN CERO. ESTA CONDICIÓN ME LA COMÍ AL COPIAR (16/09/2026) ──
+  // Lo marcó él con el Xiaomi Watch S5: 2 unidades en Full, 55 DÍAS SIN VENDER, pagando stock
+  // antiguo y perdiendo la caja de compra… y el panel le decía que comprara otro. Textual:
+  // *"el s5 esta hace muchisimo, tengo stock. esta pagando por stock antiguo y me decis que
+  // compre?? no lo entiendo ni cerca"*.
+  // La regla correcta son DOS condiciones y ya estaba bien escrita en Armar caja desde el 19/08:
+  //     if (vMes <= 0 && stock <= 0) → recién ahí se mira el ritmo viejo
+  // Yo porté sólo la primera (`vendidos===0`) y dejé afuera `stock<=0`. Sin esa condición las dos
+  // situaciones OPUESTAS se ven iguales:
+  //   · en CERO y sin ventas  → no vendió porque no había. Hay que reponer. (la Lupa 75mm)
+  //   · CON stock y sin ventas → tuvo la mercadería ahí y no se vendió igual. Comprar más es lo
+  //     último que hay que hacer: eso es para rematar o retirar de Full, no para reponer.
+  // El ritmo viejo sirve para estimar lo que vendería SI HUBIERA stock. Cuando hay stock y aun
+  // así no vende, ese ritmo ya quedó desmentido por los hechos.
   let hist=null;
-  if(vendidos===0&&target){
+  if(vendidos===0&&target&&stockOf(target)<=0){
     hist=ventasHistoricas(target,'','');
-    if(hist&&hist.vDia>0)vDia=hist.vDia; else hist=null;
+    if(hist&&hist.vDia>0){
+      // LA MISMA REGLA DE ARRIBA, POR LA OTRA PUERTA. Con una o dos ventas viejas el `dias` de
+      // `ventasHistoricas` cae en su piso de 7 y devuelve el mismo ruido ×4: una sola venta de
+      // hace dos meses daba "0,14 por día" y pedía 3 unidades. Acá se divide por los días que
+      // pasaron DE VERDAD desde esa venta. Lo encontró la prueba del S5, no un reporte suyo.
+      vDia=(hist.u<PED_MIN_VENTAS_RITMO&&hist.desdeDias>hist.dias)?hist.u/hist.desdeDias:hist.vDia;
+      hist={...hist,vDia};
+    } else hist=null;
   }
   return{vendidos,vendidosNorm,diasHistorial,factor,dConS,vDia,hist,pocasVentas};
 }
@@ -7594,7 +7615,11 @@ function ventasHistoricas(p,cuenta,variante){
   // Piso de REPO_DIAS_MIN por el mismo motivo de siempre: con 1 o 2 días medidos una venta de
   // casualidad daría una velocidad enorme y pediría una caja entera.
   const dias=Math.max(REPO_DIAS_MIN,(tMax-tMin)/86400000+1);
-  return{u,dias,vDia:u/dias,gan,ganDia:gan/dias};
+  // Cuánto hace que vendió la PRIMERA de esas ventas. Con una o dos ventas el `dias` de arriba
+  // se va al piso de 7 y la velocidad sale inflada: una venta hace dos meses daría "0,14 por
+  // día". Quien use esto para estimar un ritmo con pocas ventas tiene que dividir por esto.
+  const desdeDias=Math.max(1,(Date.now()-tMin)/86400000+1);
+  return{u,dias,vDia:u/dias,gan,ganDia:gan/dias,desdeDias};
 }
 function cuentasConPublicacion(p){
   const s=new Set();
