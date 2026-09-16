@@ -2310,7 +2310,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='19.39';
+const APP_VERSION='19.40';
 // El problema real que esto resuelve no es curiosidad: es que el celular guarda la app y sigue
 // mostrando la de ayer sin avisar. Varias veces se revisó un cambio que ya estaba subido y no se
 // veía. Por eso, además del número, el chip avisa cuando hay una versión nueva esperando.
@@ -5001,6 +5001,9 @@ const PED_DIAS_ROJO=14;
 // la Kangoo (compartido con la perfumería) y que el mayorista tenga—: ir ancho sirve más que ir
 // hondo, porque si de tres productos hay uno, con la lista ancha igual traés algo.
 const PED_TARGET_DIAS=20;   // los tres proveedores: pedir para cubrir los próximos 20 días
+// Abajo de estas ventas en la ventana NO se corrige por días con stock: no alcanza para medir un
+// ritmo. Ver el comentario largo en pedVentasNorm — lo destapó el Animale Mujer EDP.
+const PED_MIN_VENTAS_RITMO=3;
 const pedDiasRojoDe=()=>PED_DIAS_ROJO;
 // EL NÚMERO VIVE EN LA BASE, NO ACÁ (16/09/2026). El probe `porquepedido` tenía su propia copia
 // (`TARGET_DAYS = 30`) y al bajar el panel a 20 quedaron diciendo cosas distintas del MISMO
@@ -7480,7 +7483,22 @@ function pedVentasNorm(prodOrName){
   // no sobre los 30 del mes. Si el producto estuvo agotado media ventana, dividir por 30 dice que
   // vende la mitad de lo que vende — y es justo el que hay que reponer primero.
   const dConS=target?diasConStockProd(target.id):PED_MAX_DAYS;
-  let vDia=vendidos/Math.min(dConS,diasHistorial);
+  // ── CON DOS VENTAS NO SE EXTRAPOLA (16/09/2026) ───────────────────────────────────
+  // Lo destapó él con el Animale Mujer EDP: *"si hay 2 en camino ya esta destrabado el
+  // producto (…) en un pedido que hay TANTOS productos para comprar me sugeris uno que ya esta
+  // destrabado"*. Tenía razón, y el problema no estaba en el "destraba" sino acá, un paso antes.
+  // Vendió 1 unidad en 30 días. Pero la velocidad se mide sobre los DÍAS CON STOCK, que fueron
+  // 7 —y 7 es el PISO, no una medición—, así que daba 0,14/día: CUATRO VECES más rápido de lo
+  // que vende. Con esa velocidad inflada, 2 unidades en camino parecen durar 14 días en vez de
+  // 60, el producto sale "descubierto" y se cuela en un pedido de US$1.000 donde hay decenas de
+  // cosas que sí hacen falta.
+  // La corrección por días con stock es buena y se puso a propósito (20/08: uno que vendió 10 en
+  // 5 días y se agotó vende 2/día, no 0,33). Pero eso vale cuando HAY señal. Con una o dos
+  // ventas no se está midiendo un ritmo: se está multiplicando ruido por cuatro.
+  // El lado seguro acá es NO extrapolar: pedir de menos de algo que vende una vez por mes cuesta
+  // casi nada; pedir de más ocupa el lugar de algo que sí se vende.
+  const pocasVentas=vendidos>0&&vendidos<PED_MIN_VENTAS_RITMO;
+  let vDia=vendidos/(pocasVentas?diasHistorial:Math.min(dConS,diasHistorial));
   // ── EL QUE NO VENDIÓ PORQUE NO HABÍA (16/09/2026) ─────────────────────────────────
   // Planteo suyo, y es el agujero más grande que tenía Pedidos: *"productos que se venden re
   // bien y no conseguimos stock por 2 meses ya aparece que no compre porque no vende, y no vende
@@ -7498,7 +7516,7 @@ function pedVentasNorm(prodOrName){
     hist=ventasHistoricas(target,'','');
     if(hist&&hist.vDia>0)vDia=hist.vDia; else hist=null;
   }
-  return{vendidos,vendidosNorm,diasHistorial,factor,dConS,vDia,hist};
+  return{vendidos,vendidosNorm,diasHistorial,factor,dConS,vDia,hist,pocasVentas};
 }
 // ── A QUÉ CUENTA MANDAR LO QUE HAY EN LA OFICINA ───────────────────────────
 // El problema que resuelve: cuando está armando la caja tiene mercadería de varios productos y no
@@ -7776,7 +7794,11 @@ function pedGananciaNorm(p){
   // lado: cuanto más rápido se vende algo, antes se agota y peor mide justo el que más urge.
   // El piso de 7 días ya viene adentro de diasConStockProd().
   const dConS=Math.min(diasConStockProd(p.id),diasHistorial);
-  const factor=PED_MAX_DAYS/Math.max(1,dConS);
+  // La MISMA regla que en las unidades: con una o dos ventas no se extrapola. Si se corrigiera
+  // acá y no allá (o al revés), el mismo producto tendría una velocidad y una ganancia medidas
+  // con criterios distintos, y `gan30d` es justo lo que ORDENA la lista.
+  const uVent=pedVentasNorm(p).vendidos;
+  const factor=(uVent>0&&uVent<PED_MIN_VENTAS_RITMO)?1:PED_MAX_DAYS/Math.max(1,dConS);
   // ── Y ACÁ TAMBIÉN, O EL ARREGLO DE ARRIBA NO SIRVE DE NADA ────────────────────────
   // `gan30d` es lo que DECIDE EL ORDEN de la lista. Si un producto no vendió nada en 30 días su
   // ganancia da 0, así que aunque ahora aparezca en Pedidos se iría derecho al último puesto —
@@ -9437,13 +9459,15 @@ function cuentaPed(r){
   // es la resta que hace el sistema, la pantalla está mal aunque el número final esté bien.
   // `cHist` marca que la velocidad NO salió de este mes sino del ritmo viejo (ver pedVentasNorm).
   return{cObjetivo:r.objetivoU||0,cDias:Math.round(r.dConS||0),cVdia:Math.round((r.vDia||0)*100)/100,
-    cVend:r.vendidos||0,cCamino:r.enCamino||0,cCasa:r.enOficina||0,cML:r.stock||0,
+    cVend:r.vendidos||0,cCamino:r.enCamino||0,cCasa:r.enOficina||0,cML:r.stock||0,cPocas:!!r.pocasVentas,
     cHist:r.hist?{u:r.hist.u,dias:Math.round(r.hist.dias)}:null,cTarget:r.targetDias||PED_MAX_DAYS};
 }
 function cuentaPedidoHTML(p){
   if(!(p.cObjetivo>0)||!(p.cVdia>0))return '';
   const pasos=[p.cHist
     ? `<span style="color:var(--amber)">este mes no vendió porque estuvo en CERO</span> · vendía <strong style="color:var(--text)">${p.cVdia}</strong> por día cuando tenía (<strong style="color:var(--text)">${fmtN(p.cHist.u)}</strong> en ${p.cHist.dias} días)`
+    : p.cPocas
+    ? `<strong style="color:var(--text)">${fmtN(p.cVend)}</strong> vendido(s) en 30 días = <strong style="color:var(--text)">${p.cVdia}</strong> por día`
     : `<strong style="color:var(--text)">${fmtN(p.cVend)}</strong> vendidos en los <strong style="color:var(--text)">${p.cDias}</strong> días que tuvo stock = <strong style="color:var(--text)">${p.cVdia}</strong> por día`,
     `para <strong style="color:var(--text)">${p.cTarget}</strong> días hacen falta <strong style="color:var(--text)">${fmtN(p.cObjetivo)}</strong>`];
   // Los tres descuentos van SIEMPRE que sean mayores a cero, y el de ML iba faltando: sin él la
@@ -9452,7 +9476,9 @@ function cuentaPedidoHTML(p){
   if(p.cCasa>0)pasos.push(`− <strong style="color:var(--text)">${fmtN(p.cCasa)}</strong> que ya tenés en casa`);
   if(p.cCamino>0)pasos.push(`− <strong style="color:var(--text)">${fmtN(p.cCamino)}</strong> que van en camino`);
   pasos.push(`= <strong style="color:var(--amber)">${fmtN(p.cantidad||0)} a comprar</strong>`);
-  const pie=p.cHist
+  const pie=p.cPocas
+    ? `Con ${p.cVend===1?'una sola venta':'tan pocas ventas'} no se corrige por los días que tuvo stock: no alcanza para medir un ritmo y corregir multiplicaría ruido. Se usa el mes entero, que es lo conservador.`
+    : p.cHist
     ? `Este ritmo NO es de este mes: sale de las últimas ventas que tuvo cuando había mercadería (hasta ${REPO_HIST_DIAS} días atrás). Aparece acá justamente porque no vendió por falta de stock, no porque no se venda.`
     : `La velocidad se mide sobre los días que hubo mercadería, no sobre los 30 del mes: los días en cero no vendió porque no había, no porque no se venda.`;
   return `<div style="flex-basis:100%;font-size:.6rem;color:var(--muted);line-height:1.6;background:rgba(0,0,0,.16);border-radius:6px;padding:6px 9px;margin-top:2px">
