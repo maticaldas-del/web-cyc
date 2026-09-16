@@ -6506,8 +6506,18 @@ async function main() {
         console.log(`\n  ${g.dayKey} · ${money(Math.round(g.monto || 0))} · ${g.cat || '(sin categoría)'}`);
         console.log(`      desc : ${g.desc || '(sin descripción)'}`);
         console.log(`      clave: ${id}${g.auto ? '  · lo creó el robot' : '  · cargado a mano'}`);
+        // ── EL COMPROBANTE SE DICE QUE ESTÁ, PERO NO SE IMPRIME (16/09/2026) ──────────
+        // Esto sale por el registro de GitHub, que es PÚBLICO. Y adentro de un gasto viven el
+        // CUIT y el NOMBRE del proveedor —el contador, el del alquiler—, o sea datos de OTRA
+        // persona. Es el mismo agujero que `ml-sync/recibidas.json` (338 proveedores, borrado el
+        // 15/09), sólo que por otra puerta: allá era un archivo, acá es lo que el comando escribe.
+        // La regla del repo: antes de sacar algo afuera, "¿de quién es este dato?".
+        // POR QUÉ SE LISTAN LAS CLAVES Y NO LOS VALORES: para revisar el mes alcanza con saber si
+        // el gasto TIENE su comprobante cargado; el número no decide nada. Y así una clave nueva
+        // que alguien agregue mañana queda tapada sola — el lado por defecto tiene que ser el
+        // seguro, que es justo lo que fallaba: el `otros:` viejo imprimía TODO lo que no conocía.
         const otros = Object.entries(g).filter(([k]) => !['monto', 'cat', 'desc', 'dayKey', 'ts', 'auto', 'tipo', 'id'].includes(k));
-        if (otros.length) console.log(`      otros: ${otros.map(([k, v]) => k + '=' + JSON.stringify(v)).join(' · ')}`);
+        if (otros.length) console.log(`      comprobante: ${otros.map(([k]) => k).sort().join(' ✓ · ')} ✓  (no se muestran: el registro de GitHub es público)`);
       }
       console.log(`\n  TOTAL ${YM.replace('_', '-')}: ${money(tot)} en ${delMes.length} gasto(s)`);
       // Los mismos gastos de los 3 meses anteriores, para ver cuáles se repiten todos los meses y

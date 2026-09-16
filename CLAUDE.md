@@ -399,6 +399,20 @@ cachea esos cuatro y `index.html` no busca ningún otro archivo del repo. Todo l
 **Al agregar un archivo nuevo al repo, preguntarse si tiene que estar en la WEB.** Si no, va al
 `.assetsignore`. Lo que no está listado se publica: el lado por defecto es el peligroso.
 
+**Y VOLVIÓ A PASAR EL 16/09, POR OTRA PUERTA: `vergastos` IMPRIMÍA EL CUIT Y EL NOMBRE DEL
+PROVEEDOR.** Salió al chequear si los honorarios del contador ya estaban cargados: el renglón
+`otros:` volcaba el **CUIT y el nombre completo del contador** al registro de GitHub, que es
+público. Mismo dato de tercero que `recibidas.json`, sólo que allá era un archivo y acá es lo que
+el comando escribe en pantalla.
+**La causa era el lado por defecto, igual que el `.assetsignore`:** `otros:` imprimía **todo campo
+que no conociera**, así que cualquier dato nuevo salía solo. Ahora se listan **las claves y no los
+valores** (*"comprobante: cae ✓ · cuit ✓ · fact ✓ · prov ✓"*): para revisar el mes alcanza con
+saber que el gasto TIENE su comprobante, el número no decide nada — y una clave que alguien agregue
+mañana queda tapada sola. Autorizado por él (*"si tapalo"*). `subirrecibidas` se revisó el mismo
+día y está limpio: sólo imprime totales por cuenta.
+**Antes de escribir un dato en la salida de un probe, la pregunta es la misma que antes de
+commitear un archivo: ¿de quién es este dato?**
+
 **LA REGLA QUE QUEDA, y es la que falló tres veces (dos en la wallet, una acá):** *todo lo que
 entra a este repo lo lee cualquiera, para siempre, sin contraseña.* Antes de commitear un archivo
 con números adentro, la pregunta no es "¿esto es secreto?" sino **"¿de quién es este dato?"**. Si
@@ -2304,11 +2318,22 @@ Lo que quedó abierto. Borrá de acá lo que se vaya cerrando.
 
 - **Faltan gastos de agosto**: servicios ($150.000, en julio figura como "Claude"). El alquiler
   ($100.000), los honorarios ($100.000) y la obra social Sancor ($65.227) ya están.
-- **SEPTIEMBRE 2026, al 15/09.** Cargados: alquiler $100.000 (12/09) · honorarios $100.000 (14/09,
-  factura C del contador · el número y el CAE están en el comprobante) · autónomo + obra social de Ayelen
-  $113.083 (VEP de septiembre, vence 09/10). **Faltan**: servicios y la obra social privada Sancor de
-  Ayelen (el monto cambia todos los meses, va el de la factura). Los cargos de Full de agosto
-  también, cuando él baje el reporte de facturación de cada cuenta.
+- **SEPTIEMBRE 2026 · verificado con `vergastos:2026_09` el 16/09: $313.083 en 3 gastos.**
+  Cargados: alquiler $100.000 (12/09) · autónomo + obra social de Ayelen $113.083 (VEP de
+  septiembre, vence 09/10) · **honorarios del contador $100.000 (14/09)**, con su factura y su CAE
+  adentro — él avisó el 16/09 que ya lo había pagado y **ya estaba**: cargarlo de nuevo dejaba el
+  mes en $413.083 y la ganancia $100.000 abajo de lo real. *No confiar en esta lista sin correr el
+  comando*, otra vez.
+  **SERVICIOS: ESTE MES ES CERO**, dicho por él el 16/09 (*"servicios este mes sera 0"*). O sea que
+  el ❌ que va a mostrar la lista de Gastos NO es un olvido. **El panel no sabe distinguir "falta
+  cargarlo" de "este mes no va"** y no hay forma de marcárselo: queda pendiente decidir si se
+  agrega, porque un renglón rojo permanente entrena a no mirar la lista — el mismo problema del
+  cementerio de marcas viejas que ya apareció con `repoextra` y con la pausa por precio.
+  **Faltan de verdad**: los **DOS intereses** (septiembre no tiene ninguno; en agosto fueron
+  $250.000 y $30.000) · la **obra social Sancor de Ayelen** (el monto cambia todos los meses, va el
+  de la factura) · la **obra social privada** (~$83.333), que es **APARTE del Sancor** — la nota
+  vieja de acá las mezclaba en una sola y son dos · y los **cargos de Full de agosto**, cuando él
+  baje el reporte de facturación de cada cuenta.
 - **LOS VEPs DE MONOTRIBUTO DE 09/2026 CONFIRMAN QUE LAS CATEGORÍAS NO CAMBIARON.** Ayelen
   $204.811,64 (H) + autónomo $57.598,04 + obra social $55.485,33 = **$317.895,01** · Adriana
   $71.497,87 (G) · Luciana $57.719,64 (F) · Matías $57.719,64 (F). **Total $504.832,16**, el mismo
