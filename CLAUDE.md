@@ -278,6 +278,7 @@ Los que más se usan:
 | `revisarpedidos` | barre TODO: claves de inventario basura + pedidos que ya no coinciden con la realidad de hoy |
 | `limpiarclaves[:go]` | borra las claves de inventario basura (cuentas mal escritas, negativos, productos que no existen) |
 | `ordenped[:cuántos]` | compara el orden de Pedidos Bs As antes y después de medir sobre los días con stock |
+| `rematar[:d1[:p1[:d2[:p2]]]]` | **qué bajar para que salga**: parada 45 d → hasta 20% · 90 d → hasta 15% · con las visitas y los PESOS que resignás · solo lee |
 | `liquidar[:días]` | **qué mercadería conviene rematar**: separa muerto de sobrecomprado y de caja perdida |
 | `probaralmacena[:MLA]` | **prueba si ML publica el almacenamiento por producto** · 13 rutas candidatas por cuenta |
 | `patagoniako[:go]` | parte "De la Patagonia" en dos fichas por el costo distinto del KO UNISEX |
@@ -1040,6 +1041,76 @@ chica con margen flaco, y una baja del 45% que hunde el margen a 1,7%).
 **EL SEAGATE, APLICADO EL MISMO DÍA CON SU AUTORIZACIÓN** (*"baja seagate hasta ganar. ojo no bajar
 mucho %"*): `MLA3920081802` pasó de **$187.469 a $180.046** (−4,0%). Releído de ML: la caja de
 compra pasó de **PERDIENDO a GANANDO** y el margen quedó en **44,2%**.
+
+## MODO REMATAR: DOS ESCALONES, Y LA PAD 2 ES LA QUE DEFINIÓ LOS NÚMEROS (16/09/2026)
+
+Pedido suyo: *"a los 45 días de que un producto llega a full y no vendió ni un solo día, activar
+modo 'ganar competencia/vender' (…) obviamente que no sea automático, que avise. y cada caso se
+analiza manualmente"*.
+
+El comando es **`rematar[:días1[:pct1[:días2[:pct2]]]]`** y **SOLO LEE**. Los números viven en
+`cyc/mlconfig` (`rematarDias1/rematarPct1/rematarDias2/rematarPct2`).
+
+| escalón | cuándo | hasta qué margen | por qué ese número |
+|---|---|---|---|
+| **1** | **45 días** sin vender | **20%** | ML cobra almacenamiento a los 60 (`ALMAC_DIAS`): a los 45 quedan 15 días para reaccionar **antes de empezar a pagar**. |
+| **2** | **90 días** | **15%** | Ya lleva un mes pagando almacenamiento y el reloj del descarte corre. |
+
+**NO ES UN COMANDO NUEVO: extiende `calcCajaBarata`**, que ya medía esto con piso 25% y ventana de
+30 días. Dos copias de la misma cuenta es el error que ya mordió cuatro veces en este archivo.
+Y hace **UNA sola pasada** a ML con el filtro más flojo, clasificando después: correrlo dos veces
+duplicaba las consultas sin cambiar un resultado.
+
+### LO QUE CAMBIÓ LA PAD 2, QUE ES EL EJEMPLO QUE ELIGIÓ ÉL
+
+Él pidió bajar **hasta 0%**. Probar la regla contra la **Tablet Xiaomi Redmi Pad 2**
+(`MLA1782639641`, Matías) mostró que 0% es demasiado suelto, y por tres motivos distintos:
+
+**1. EL RELOJ, tal como él lo dijo, se comía su propio ejemplo.** *"No vendió ni un solo día"* deja
+afuera a la Pad 2, que **vendió 4 unidades, la última hace 71 días**. Ahora se mide **días SIN
+VENDER**, y para las que no vendieron nunca el reloj arranca cuando llegó a Full — **sólo con fecha
+REAL de entrada** (`aprox:false`), igual que `calcBajarStock`: una fecha aproximada dice hace cuánto
+MIRAMOS, no hace cuánto hay stock.
+
+**2. EL % ES EL CONTROL EQUIVOCADO PARA LAS CARAS.** La Pad 2 está a $497.310 con margen 23,5%;
+ganar la caja pide $425.741 y la deja en **7,6%**. En porcentaje suena a "se puede"; en plata son
+**$54.750 por unidad, $109.500 por las dos**. Es la lección de los Paulvic **al revés** —allá 30,8%
+eran $610—: un piso en % trata igual a un perfume de $14.000 y a una tablet de medio millón.
+**Por eso cada renglón dice cuánta plata resignás, en pesos.** Es el número con el que se decide.
+
+**3. Y A ESA TABLET NO HAY QUE REMATARLA**, por dos cosas ya medidas: el almacenamiento **se cobra
+por LUGAR, no por plata** (una tablet es chica: paga casi nada por estar ahí), y *"la plata ya no es
+el límite, es el proveedor"* — liberar $597.576 que no se pueden gastar vale mucho menos que los
+$109.500 que se resignan. **Con piso 0% ese renglón salía recomendado.** Con 15% queda afuera.
+
+**El 0% no se perdió: vive en `liquidando`**, que lo decide él uno por uno y es exactamente para eso.
+
+### LAS VISITAS MANDAN SOBRE TODO LO DEMÁS
+
+Regla ya medida el 20/08: **menos de 20 visitas = no la ve nadie**, y ahí bajar el precio **regala el
+margen SIN vender** — te quedás sin la ganancia *y* con el stock adentro, el peor de los dos
+resultados. Esas salen en su propia lista, con el motivo y **SIN precio al lado**: un renglón con
+precio invita a aplicarlo (la lección del Filtro agua del 14/09). La consulta va **después** del
+descarte gratis del margen, para preguntar menos.
+
+### LA PRIMERA CORRIDA: CERO, Y CON EL PORQUÉ DE CADA UNA
+
+Miró 9 candidatas y **ninguna entró en ningún escalón** — pero el cero viene explicado, que es la
+lección de `liquidar` (0 de 137) y del marcado de cajas:
+ · **2 que no las ve nadie**: Samsung Buds Core Black (**2 visitas**) y Lapidus (**0 visitas**).
+ · **7 que no llegan al piso ni bajando**, la Pad 2 entre ellas (11,1% antes del envío).
+ · Y 32 descartadas por recientes + 4 sin fecha real de entrada.
+**Que no haya nada para rematar hoy es un resultado, no una falla.**
+
+**LO QUE FALTA, Y ES UNA DECISIÓN SUYA:** hoy `rematar` hay que correrlo a mano. Meterlo en el aviso
+diario de Telegram se puede, pero conviene hacerlo con **la misma llamada** que ya usa `avisos` para
+`calcCajaBarata` —clasificando en tres secciones en vez de dos— y no con una segunda consulta a ML,
+que duplicaría el trabajo del paso nocturno. Y hay que deduplicar: algo con margen sano saldría en
+las dos secciones, que es el bug que ya está anotado entre `calcCajaBarata` y `calcFrenoCaja`.
+
+**OJO AL APLICAR UNO DEL ESCALÓN 2:** `setPriceTo` tiene el tope duro de `PISO_MINIMO_ABSOLUTO`
+(20%) que **no se pasa ni configurando**, así que un precio del 15% lo va a rechazar. Es a propósito:
+esa red se abre el día que él quiera aplicar uno, no antes.
 
 ## ¿SE PUEDE AUTOMATIZAR LA SUBA DE PRECIOS? MEDIDO EL 12/09/2026
 
