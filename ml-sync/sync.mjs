@@ -8493,6 +8493,65 @@ async function main() {
       return;
     }
 
+    // BILLING_PROBE=celuviaje:<palabra o id>[;otro][;go] → "ESTO VIAJA GRATIS CON MI VIEJO".
+    //
+    // Dato suyo del 16/09/2026: a fin de mes viaja el padre y puede traer **US$4.000** de
+    // mercadería, y los **celulares los trae GRATIS, sin gastar de ese cupo**. O sea que en el
+    // viaje esos productos no compiten con nada: se llevan todos los que hagan falta y los
+    // US$4.000 se reparten entre el resto. En el envío semanal de US$1.000 NO hay excepción:
+    // ahí pagan como cualquiera, y por eso la marca sólo aplica en el modo Viaje de la canasta.
+    //
+    // POR QUÉ SE MARCA A MANO Y NO SE ADIVINA POR EL NOMBRE: la ficha no guarda la categoría, así
+    // que habría que buscar "Samsung", "Redmi", "Moto"… y eso agarra las TABLETS y los RELOJES,
+    // que no pasan como celular. Es el filtro por palabras que ya falló cuatro veces acá, y el
+    // que sabe qué pasa como celular en la aduana es él, no el panel. Lo eligió así.
+    // Con `-` adelante saca la marca. Sin `;go` sólo muestra.
+    if (/^celuviaje(:|$)/.test(String(process.env.BILLING_PROBE || ''))) {
+      const _cv = String(process.env.BILLING_PROBE).replace(/^celuviaje:?/, '');
+      const APLICAR = /(^|;)go\s*$/.test(_cv);
+      const pedidos = _cv.replace(/(^|;)go\s*$/, '').split(';').map((x) => x.trim()).filter(Boolean);
+      const marcados = products.filter((p) => p.gratisViaje);
+      if (!pedidos.length) {
+        console.log(`=== VIAJAN GRATIS CON TU VIEJO · ${marcados.length} producto(s) ===\n`);
+        if (!marcados.length) console.log('  (ninguno marcado todavía)');
+        for (const p of marcados) console.log(`  ${p.name}  (${p.id})${p.origen === 'py' ? '' : '   ⚠️ no está marcado como de Paraguay'}`);
+        console.log('\nPara marcar: celuviaje:<palabra o id>[;otro][;go] · para sacar: celuviaje:-<palabra>;go');
+        return;
+      }
+      console.log(`=== VIAJAN GRATIS ${APLICAR ? '(APLICANDO)' : '(PRUEBA: no escribo nada)'} ===\n`);
+      const plan = [];
+      for (const raw of pedidos) {
+        const sacar = raw.startsWith('-');
+        const quien = (sacar ? raw.slice(1) : raw).trim();
+        if (!quien) continue;
+        const objetivo = products.filter((p) => p.id === quien || norm(p.name || '').includes(norm(quien)));
+        if (!objetivo.length) { console.log(`❌ "${quien}" → no hay ningún producto que se llame así.\n`); continue; }
+        // Acá SÍ se puede aplicar a varios de una: marcar de más no pide otra cosa, sólo saca un
+        // producto del reparto del cupo. Es al revés que el código, donde equivocarse hace que
+        // llegue otra cosa. Pero se lista TODO lo que agarró para que lo mire antes del :go.
+        for (const p of objetivo) {
+          const ya = !!p.gratisViaje;
+          if (ya === !sacar) { console.log(`   ${p.name} — ya estaba ${ya ? 'marcado' : 'sin marcar'}, no cambia`); continue; }
+          console.log(`${sacar ? '➖' : '✈️'} ${p.name}  (${p.id})${p.origen === 'py' ? '' : '   ⚠️ no está marcado como de Paraguay'}`);
+          plan.push({ p, val: !sacar });
+        }
+        console.log('');
+      }
+      if (!plan.length) { console.log('No hay nada que cambiar.'); return; }
+      if (!APLICAR) { console.log(`PRUEBA: no escribí nada. Mirá la lista de arriba y, si está bien, repetí agregando ";go".`); return; }
+      for (const x of plan) await db.set('cyc/products/' + x.p.id + '/gratisViaje', x.val ? true : null);
+      console.log('── Releído de la base ──');
+      let ok = 0;
+      for (const x of plan) {
+        const v = await db.get('cyc/products/' + x.p.id + '/gratisViaje');
+        const bien = (!!v) === x.val;
+        if (bien) ok++;
+        console.log(`  ${bien ? '✓' : '❌'} ${x.p.name}: ${v ? 'viaja gratis' : 'no'}`);
+      }
+      console.log(`\n${ok} de ${plan.length} quedaron bien.`);
+      return;
+    }
+
     // BILLING_PROBE=codpy:<palabra o id>=<codigo>[;otro=otro][;go] → EL CÓDIGO DEL MAYORISTA DE PY.
     //
     // Pedido suyo del 16/09/2026: *"la mayorista de paraguay necesita que le pase el codigo del

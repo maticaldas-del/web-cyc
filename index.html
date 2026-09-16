@@ -2310,7 +2310,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='19.36';
+const APP_VERSION='19.37';
 // El problema real que esto resuelve no es curiosidad: es que el celular guarda la app y sigue
 // mostrando la de ayer sin avisar. Varias veces se revisó un cambio que ya estaba subido y no se
 // veía. Por eso, además del número, el chip avisa cuando hay una versión nueva esperando.
@@ -8149,9 +8149,17 @@ function esPedidoPaulvic(ped){
 // cualquiera de ellos por separado, y cuesta nada. Es lo mismo que hace `subirpuede`, que prueba
 // 12 precios y se queda con el que más deja en vez de suponer cuál es.
 // LA LECCIÓN, otra vez: una regla que suena bien no es una regla hasta que se prueba con números.
-const PY_PRESUPUESTO_USD=1000;
+// DOS CANALES, NO UNO (16/09/2026). El envío normal son US$1.000 exactos cada ~7 días, pero a
+// fin de mes viaja el padre y puede traer US$4.000 — y los CELULARES los trae **gratis, sin
+// gastar del cupo**. Eso cambia la decisión, no es un número más grande: lo que viaja gratis
+// conviene guardarlo para el viaje en vez de gastarle el envío semanal, y dentro del viaje no
+// compite con nada porque no ocupa presupuesto.
+const PY_ENVIO_USD=1000, PY_VIAJE_USD=4000;
+let pyModo='envio';
+function pySetModo(m){pyModo=m;renderPedidos();}
+const pyTope=()=>pyModo==='viaje'?PY_VIAJE_USD:PY_ENVIO_USD;
 function _pyLlenar(orden){
-  let queda=PY_PRESUPUESTO_USD,val=0;const out=[];
+  let queda=pyTope(),val=0;const out=[];
   for(const f of orden){
     if(queda<=0){out.push({...f,lleva:0});continue;}
     if(f.total<=queda){queda-=f.total;val+=f.destraba;out.push({...f,lleva:f.u});}
@@ -8162,7 +8170,7 @@ function _pyLlenar(orden){
       queda-=cabe*f.cu;val+=f.destraba*(f.u?cabe/f.u:0);out.push({...f,lleva:cabe});
     }
   }
-  return{out,usado:PY_PRESUPUESTO_USD-queda,val};
+  return{out,usado:pyTope()-queda,val};
 }
 function pyCanasta(){
   const sin=state.pySinStock||{};
@@ -8178,11 +8186,18 @@ function pyCanasta(){
     // un pedido de US$1.000 que no se puede rehacer hasta que llegue. Sin código, el renglón lo
     // dice en ámbar y queda afuera del mensaje.
     return{ped,u,cu,destraba,total,porDolar:total>0?destraba/total:0,sinStock:!!sin[ped.prodId],
-      cod:(pr&&pr.codPy)?String(pr.codPy).trim():''};
+      gratis:!!(pr&&pr.gratisViaje),cod:(pr&&pr.codPy)?String(pr.codPy).trim():''};
   }).filter(x=>x.u>0&&x.cu>0);
   // Lo que el mayorista no tenía sale del reparto pero NO se esconde: se muestra abajo, en gris.
   // Esconderlo haría que la canasta cambie sola sin decir por qué.
-  const vivos=filas.filter(x=>!x.sinStock);
+  const vivos0=filas.filter(x=>!x.sinStock);
+  // ── LO QUE VIAJA GRATIS NO ENTRA AL REPARTO ─────────────────────────────────────────
+  // En el viaje los celulares no gastan del cupo, así que no compiten con nada: se llevan TODOS
+  // los que hagan falta y el presupuesto se reparte entre el resto. Meterlos en la misma bolsa
+  // sería hacerles pagar un lugar que no ocupan, y dejaría afuera mercadería que sí lo necesita.
+  // En el envío normal NO hay excepción: ahí pagan como cualquiera.
+  const gratis=pyModo==='viaje'?vivos0.filter(x=>x.gratis):[];
+  const vivos=pyModo==='viaje'?vivos0.filter(x=>!x.gratis):vivos0;
   let mejor=null;
   for(const [nom,ord] of [
     ['lo que más rinde por dólar', [...vivos].sort((a,b)=>b.porDolar-a.porDolar||b.destraba-a.destraba)],
@@ -8193,8 +8208,11 @@ function pyCanasta(){
     if(!mejor||r.val>mejor.val)mejor={...r,nom};
   }
   const usado=mejor?mejor.usado:0;
-  return{filas:mejor?mejor.out:[],sinStock:filas.filter(x=>x.sinStock),criterio:mejor?mejor.nom:'',
-    destrabado:mejor?mejor.val:0,usado,falta:Math.max(0,PY_PRESUPUESTO_USD-usado)};
+  const gratisOut=gratis.map(x=>({...x,lleva:x.u}));
+  return{filas:mejor?mejor.out:[],gratis:gratisOut,sinStock:filas.filter(x=>x.sinStock),
+    criterio:mejor?mejor.nom:'',destrabado:(mejor?mejor.val:0)+gratisOut.reduce((a,x)=>a+x.destraba,0),
+    usado,tope:pyTope(),falta:Math.max(0,pyTope()-usado),
+    gratisUSD:gratisOut.reduce((a,x)=>a+x.total,0)};
 }
 async function pyNoHabia(pid,pon){
   if(pon)await fbSet('py_sinstock/'+pid,{ts:Date.now()});
@@ -8212,8 +8230,9 @@ function pyCanastaHTML(){
   const c=pyCanasta();
   if(!c.filas.length&&!c.sinStock.length)return '';
   const tc=curTC();
-  const pct=Math.min(100,Math.round(c.usado/PY_PRESUPUESTO_USD*100));
+  const pct=Math.min(100,Math.round(c.usado/c.tope*100));
   const col=c.falta<=20?'var(--green)':'var(--amber)';
+  const btn=(m,txt)=>`<button class="btn" style="font-size:.6rem;padding:4px 10px;${pyModo===m?'background:var(--blue);color:#fff;font-weight:700':''}" onclick="pySetModo('${m}')">${txt}</button>`;
   const fila=(f,gris)=>{
     const sub=f.lleva>0&&f.lleva<f.u?` <span style="color:var(--amber)">(de ${f.u}, entra lo que da la plata)</span>`:'';
     return `<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;padding:6px 0;border-top:1px solid var(--border);${gris?'opacity:.45':''}">
@@ -8222,32 +8241,40 @@ function pyCanastaHTML(){
       ${f.cod
         ? `<span style="font-family:'DM Mono',monospace;font-size:.66rem;background:rgba(255,255,255,.06);border:1px solid var(--border2);border-radius:5px;padding:2px 6px;letter-spacing:.04em">${f.cod}</span>`
         : `<span style="font-size:.6rem;color:var(--amber)" title="Sin el código de Nissei este renglón no entra en el mensaje. No se inventa ninguno: un código equivocado hace que llegue otro producto. Se carga una vez por producto con el comando codpy.">⚠ falta el código de Nissei</span>`}
-      <span style="font-size:.68rem;color:#38bdf8;font-weight:700">US$${Math.round(f.cu*(f.lleva||f.u))}</span>
+      <span style="font-size:.68rem;color:${f.gratis&&pyModo==='viaje'?'var(--green)':'#38bdf8'};font-weight:700">US$${Math.round(f.cu*(f.lleva||f.u))}${f.gratis&&pyModo==='viaje'?' ✈️':''}</span>
       <span style="font-size:.62rem;color:var(--muted)" title="Plata que se destraba por cada dólar que gastás en este producto. Es el número que define el orden: con presupuesto fijo, lo que más rinde por dólar entra primero.">${fmt(Math.round(f.porDolar))}/US$</span>
       <button class="btn" style="font-size:.58rem;padding:3px 8px" onclick="pyNoHabia('${f.ped.prodId}',${gris?'false':'true'})">${gris?'↩︎ sí había':'✗ no había'}</button>
     </div>`;
   };
   return `<div style="background:var(--surface);border:1px solid ${col};border-radius:var(--r);padding:12px 14px;margin-bottom:14px">
     <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:8px">
-      <div style="font-size:.78rem;font-weight:700">🇵🇾 El pedido de US$ ${PY_PRESUPUESTO_USD}</div>
-      <div style="font-family:'Syne',sans-serif;font-size:1.5rem;color:${col}">US$ ${Math.round(c.usado)} <span style="font-size:.8rem;color:var(--muted)">de ${PY_PRESUPUESTO_USD}</span></div>
+      <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap">
+        <span style="font-size:.78rem;font-weight:700">🇵🇾</span>
+        ${btn('envio','📦 Envío · US$ '+PY_ENVIO_USD)}${btn('viaje','✈️ Viaje · US$ '+PY_VIAJE_USD)}
+      </div>
+      <div style="font-family:'Syne',sans-serif;font-size:1.5rem;color:${col}">US$ ${Math.round(c.usado)} <span style="font-size:.8rem;color:var(--muted)">de ${c.tope}</span></div>
     </div>
     <div style="height:9px;background:rgba(255,255,255,.07);border-radius:5px;overflow:hidden;margin-bottom:6px">
       <div style="height:100%;width:${pct}%;background:${col}"></div>
     </div>
     <div style="font-size:.63rem;color:var(--muted);margin-bottom:4px">${
-      c.falta<=20?'✓ Llegaste. El pedido tiene que ser de US$ '+PY_PRESUPUESTO_USD+' exactos.'
-      :`Faltan <strong style="color:var(--amber)">US$ ${Math.round(c.falta)}</strong>${tc?' ('+fmt(Math.round(c.falta*tc))+')':''} para llegar a los US$ ${PY_PRESUPUESTO_USD}. Si no llegás con esta lista, agregá de lo de más arriba.`}</div>
+      c.falta<=20?(pyModo==='viaje'?'✓ Llenaste los US$ '+c.tope+' del viaje.':'✓ Llegaste. El pedido tiene que ser de US$ '+c.tope+' exactos.')
+      :`Faltan <strong style="color:var(--amber)">US$ ${Math.round(c.falta)}</strong>${tc?' ('+fmt(Math.round(c.falta*tc))+')':''} para llegar a los US$ ${c.tope}. Si no llegás con esta lista, agregá de lo de más arriba.`}</div>
+    ${pyModo==='viaje'&&c.gratis.length?`<div style="font-size:.62rem;color:var(--green);margin-bottom:4px">✈️ ${c.gratis.length} producto(s) viajan GRATIS y no gastan del cupo (US$ ${Math.round(c.gratisUSD)} que no se descuentan).</div>`:''}
+    ${pyModo==='viaje'&&!c.gratis.length?`<div style="font-size:.6rem;color:var(--muted);margin-bottom:4px">Ningún producto está marcado como "viaja gratis". Se marcan con el comando <strong>celuviaje</strong>.</div>`:''}
     <div style="font-size:.58rem;color:var(--muted);margin-bottom:6px">Con esta canasta destrabás <strong style="color:var(--green)">${fmt(Math.round(c.destrabado))}</strong> por mes. Se probaron tres formas de armarla y ganó <em>${c.criterio}</em>.</div>
+    ${c.gratis&&c.gratis.length?`<div style="font-size:.6rem;color:var(--green);margin-top:8px">Viajan gratis — no gastan del cupo:</div>`+c.gratis.map(f=>fila(f,false)).join(''):''}
+    ${c.filas.filter(f=>f.lleva>0).length?`<div style="font-size:.6rem;color:var(--muted);margin-top:8px">${pyModo==='viaje'?'Con los US$ '+c.tope+' del viaje:':'En este envío:'}</div>`:''}
     ${c.filas.filter(f=>f.lleva>0).map(f=>fila(f,false)).join('')}
-    ${(()=>{const fuera=c.filas.filter(f=>!f.lleva);return fuera.length?`<div style="font-size:.6rem;color:var(--muted);margin-top:9px">No entran en estos US$ ${PY_PRESUPUESTO_USD} (${fuera.length}) — van en el pedido siguiente:</div>`+fuera.slice(0,6).map(f=>fila(f,true)).join(''):'';})()}
+    ${(()=>{const fuera=c.filas.filter(f=>!f.lleva);return fuera.length?`<div style="font-size:.6rem;color:var(--muted);margin-top:9px">No entran en estos US$ ${c.tope} (${fuera.length}) — van en el pedido siguiente:</div>`+fuera.slice(0,6).map(f=>fila(f,true)).join(''):'';})()}
     ${c.sinStock.length?`<div style="font-size:.6rem;color:var(--muted);margin-top:9px">El mayorista no tenía (${c.sinStock.length}) — la plata se repartió sola entre el resto:</div>`+c.sinStock.map(f=>fila(f,true)).join(''):''}
     ${(()=>{
       // EL MENSAJE PARA EL MAYORISTA, que es para lo que existe todo esto: él pide código y
       // unidades. Sólo entran los renglones que TIENEN código cargado; los que no, se cuentan
       // aparte y se dicen. Mandar una línea sin código o con uno inventado es pedir otra cosa.
-      const conCod=c.filas.filter(f=>f.lleva>0&&f.cod);
-      const sinCod=c.filas.filter(f=>f.lleva>0&&!f.cod);
+      const todo=[...(c.gratis||[]),...c.filas];
+      const conCod=todo.filter(f=>f.lleva>0&&f.cod);
+      const sinCod=todo.filter(f=>f.lleva>0&&!f.cod);
       if(!conCod.length&&!sinCod.length)return '';
       const txt=conCod.map(f=>`${f.cod} x ${f.lleva}`).join('\n');
       return `<div style="margin-top:10px;border-top:1px solid var(--border);padding-top:9px">
