@@ -17453,7 +17453,14 @@ async function main() {
     if (/^revisarpedidos(:|$)/.test(String(process.env.BILLING_PROBE || ''))) {
       const LOCS = ['Adriana', 'Luciana', 'Ayelen', 'Matias'];
       const OFI = 'Oficina Mati';
-      const MAX_DAYS = 30, DIAS_MIN = 7, TARGET_DAYS = 30;
+      const MAX_DAYS = 30, DIAS_MIN = 7;
+      // EL MISMO NÚMERO QUE USA LA PANTALLA, leído de la base (16/09/2026). Estaba clavado en 30
+      // acá adentro —y en DOS comandos, `revisarpedidos` y `porquepedido`— mientras el panel
+      // bajaba a 20. O sea que estos comandos, que existen justamente para EXPLICAR lo que
+      // muestra la pantalla, decían objetivo 5 donde la pantalla dice 3. Un verificador con la
+      // fórmula vieja copiada adentro dice "todo bien" para siempre: es la regla que ya está
+      // escrita en CLAUDE.md desde el 13/08 y que igual volvió a morder, ahora por duplicado.
+      const TARGET_DAYS = parseInt(((await db.get('cyc/mlconfig')) || {}).pedTargetDias) || 20;
       const sidL = (x) => String(x).replace(/[^a-z0-9]/gi, '_');
       const inv = (await db.get('cyc/inventory')) || {};
       const hist = (await db.get('cyc/stockhist')) || {};
@@ -17575,7 +17582,14 @@ async function main() {
       if (!q) { console.log('Usá: porquepedido:termometro'); return; }
       const LOCS = ['Adriana', 'Luciana', 'Ayelen', 'Matias'];
       const OFI = 'Oficina Mati';
-      const MAX_DAYS = 30, DIAS_MIN = 7, TARGET_DAYS = 30;
+      const MAX_DAYS = 30, DIAS_MIN = 7;
+      // EL MISMO NÚMERO QUE USA LA PANTALLA, leído de la base (16/09/2026). Estaba clavado en 30
+      // acá adentro —y en DOS comandos, `revisarpedidos` y `porquepedido`— mientras el panel
+      // bajaba a 20. O sea que estos comandos, que existen justamente para EXPLICAR lo que
+      // muestra la pantalla, decían objetivo 5 donde la pantalla dice 3. Un verificador con la
+      // fórmula vieja copiada adentro dice "todo bien" para siempre: es la regla que ya está
+      // escrita en CLAUDE.md desde el 13/08 y que igual volvió a morder, ahora por duplicado.
+      const TARGET_DAYS = parseInt(((await db.get('cyc/mlconfig')) || {}).pedTargetDias) || 20;
       const sidL = (x) => String(x).replace(/[^a-z0-9]/gi, '_');
       const inv = (await db.get('cyc/inventory')) || {};
       const hist = (await db.get('cyc/stockhist')) || {};
@@ -17654,6 +17668,21 @@ async function main() {
         //    la de variantes sólo mira las claves __v__.
         const hasVars = (p.variantes || []).length > 0;
         const tieneVentaVar = Object.keys(porVariante).length > 0;
+        // 6. LO QUE VA EN CAMINO — SE CALCULA ANTES DE USARLO.
+        // Estaba declarado DESPUÉS del bloque que lo imprime, y al meterlo en la línea de la
+        // cuenta eso pasaba a ser "Cannot access 'cam' before initialization": revienta en
+        // ejecución y `node --check` compila igual. Es EXACTAMENTE el error del `invUpd` del
+        // 12/09 que cortó una corrida entera, y lo agarró mirar dónde estaba declarada la
+        // variable, no el chequeo de sintaxis.
+        let cam = 0;
+        for (const e of Object.values(envios)) {
+          if (!e || !e.cuenta || !LOCS.includes(e.cuenta)) continue;
+          for (const c of (Array.isArray(e.cajasDet) ? e.cajasDet : [])) {
+            if (c.recibida) continue;
+            for (const it of (c.items || [])) if (it && it.prodId === p.id && it.u > 0) cam += it.u;
+          }
+        }
+        console.log(`  en camino a Full = ${cam}`);
         console.log(`\n  ── QUÉ CAMINO TOMA EL CÁLCULO ──`);
         if (hasVars && tieneVentaVar) {
           console.log(`  POR VARIANTE (la ficha tiene variantes y hay ventas con variante).`);
@@ -17674,19 +17703,13 @@ async function main() {
           const targetStock = Math.ceil(vDia * TARGET_DAYS);
           const nec = Math.max(0, targetStock - stockFull);
           console.log(`  POR PRODUCTO (sin variantes${hasVars ? ', porque no hay ventas con variante' : ''}).`);
-          console.log(`     objetivo ${targetStock} − stock ${stockFull} = necesario ${nec} · − casa ${enOficina} → a comprar ${Math.max(0, nec - enOficina)}`);
+          // SE RESTA LO QUE VA EN CAMINO EN LA MISMA LÍNEA. Antes se imprimía dos renglones más
+          // abajo y la cuenta de arriba quedaba sin cerrar: en el Animale decía "a comprar 5"
+          // cuando el panel pide 1, porque 2 ya venían viajando. Es el mismo error que tenía la
+          // tarjeta de Pedidos con el stock de ML.
+          console.log(`     objetivo ${targetStock} (${TARGET_DAYS} d) − stock ${stockFull} = necesario ${nec} · − casa ${enOficina} · − camino ${cam} → a comprar ${Math.max(0, nec - enOficina - cam)}`);
         }
 
-        // 6. LO QUE VA EN CAMINO
-        let cam = 0;
-        for (const e of Object.values(envios)) {
-          if (!e || !e.cuenta || !LOCS.includes(e.cuenta)) continue;
-          for (const c of (Array.isArray(e.cajasDet) ? e.cajasDet : [])) {
-            if (c.recibida) continue;
-            for (const it of (c.items || [])) if (it && it.prodId === p.id && it.u > 0) cam += it.u;
-          }
-        }
-        console.log(`  en camino a Full = ${cam}`);
       }
       return;
     }
