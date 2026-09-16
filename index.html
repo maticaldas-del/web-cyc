@@ -2309,7 +2309,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='19.31';
+const APP_VERSION='19.32';
 // El problema real que esto resuelve no es curiosidad: es que el celular guarda la app y sigue
 // mostrando la de ayer sin avisar. Varias veces se revisó un cambio que ya estaba subido y no se
 // veía. Por eso, además del número, el chip avisa cuando hay una versión nueva esperando.
@@ -4976,23 +4976,27 @@ const REPO_DIAS_TOTAL=REPO_DIAS_COBERTURA;
 // Va aparte de REPO_DIAS_DEMORA a propósito: aquel mide sólo el tramo caja→ML, y este arranca
 // antes, cuando todavía hay que comprar la mercadería.
 const PED_DIAS_ROJO=14;
-// ── EL PROVEEDOR NO TARDA LO MISMO SEGÚN DE DÓNDE VENGA ──────────────────────────────
-// Plazos que él pasó el 24/08/2026: Bs As 1 semana · Paulvic 1 semana · Paraguay 2 MESES.
-// Hasta ahora el panel trataba a los tres igual y el único lugar donde figuraba el origen era
-// en qué pestaña aparecía el pedido: no cambiaba ninguna cuenta. Con 2 meses de viaje eso deja
-// el aviso inservible — un producto de Paraguay con 20 días de stock salía AMARILLO cuando ya
-// estaba condenado a 40 días sin vender, comprándolo esa misma tarde.
-// Y la otra mitad, peor: comprando cada 2 meses PARA 30 días te quedás corto siempre, por
-// diseño. De Paraguay hay que comprar para el viaje MÁS el período de venta.
-// Los dos números los eligió él: rojo a 50 días y comprar para 95.
-const PED_DIAS_ROJO_PY=50;
-const PED_TARGET_PY=95;
-const PED_TARGET_DIAS=30;   // Bs As y Paulvic: pedir para cubrir los próximos 30 días
-// El Paulvic viene en 1 semana como Bs As, así que NO entra en el plazo de Paraguay aunque su
-// ficha esté marcada con origen py.
-const esPaisLento=p=>!!p&&p.origen==='py'&&!esProductoPaulvic(p);
-const pedDiasRojoDe=p=>esPaisLento(p)?PED_DIAS_ROJO_PY:PED_DIAS_ROJO;
-const pedTargetDiasDe=p=>esPaisLento(p)?PED_TARGET_PY:PED_TARGET_DIAS;
+// ── PARAGUAY YA NO ES UN CASO APARTE DE PLAZO (16/09/2026) ───────────────────────────
+// El 24/08 los plazos eran: Bs As 1 semana · Paulvic 1 semana · Paraguay 2 MESES, y por eso
+// Paraguay tenía objetivo 95 días y rojo a los 50. **Eso caducó**: él avisó el 16/09 que
+// Paraguay pasó a tardar **5 días hábiles**, o sea lo mismo que los otros dos.
+// Dejarlo como estaba no era cosmético: le pedía TRES VECES lo que hace falta (95 días en vez
+// de 30), y ésa es la "muchísima mercadería pedida" que él marcó sin saber de dónde salía.
+// Al emparejarse los tres plazos, la excepción que había que hacerle al Paulvic —que viene en
+// una semana aunque su ficha diga origen py— **se disuelve sola**: ya no hay ninguna bolsa de
+// "país lento" de la que sacarlo. Por eso se fueron `esPaisLento`, `PED_DIAS_ROJO_PY` y
+// `PED_TARGET_PY` enteros en vez de quedar apuntando al mismo número: una excepción que no
+// distingue nada es código que promete una regla que ya no existe.
+// LO QUE SÍ HACE ESPECIAL A PARAGUAY AHORA ES OTRA COSA, Y NO ES UN PLAZO: el pedido tiene que
+// sumar **exactamente US$ 1.000**, ni más ni menos, y hasta que no llega no se puede pedir de
+// nuevo. Eso no se resuelve con días de cobertura: se resuelve eligiendo QUÉ entra en esos
+// US$ 1.000, que es otra pantalla.
+// POR QUÉ 30 DÍAS Y NO MENOS, con el tope de US$ 1.000 encima: el objetivo NO define cuánto se
+// compra —lo define el presupuesto—, así que un objetivo generoso no infla la compra: sólo da
+// más candidatos entre los que elegir. Apretarlo a 14 o 21 sólo achica la lista de dónde sacar.
+const PED_TARGET_DIAS=30;   // los tres proveedores: pedir para cubrir los próximos 30 días
+const pedDiasRojoDe=()=>PED_DIAS_ROJO;
+const pedTargetDiasDe=()=>PED_TARGET_DIAS;
 // PISO PARA LA PUBLICACIÓN QUE ESTÁ EN CERO. Decisión suya del 23/08/2026, el mismo número que usa
 // ML (lo mostró en la Linterna Blanco Azul: 0 ventas, 0 stock → "Sugerencia: 4 u.").
 // Por qué un piso y no la cuenta normal: en cero la publicación NO VENDE, así que tampoco tiene
