@@ -121,25 +121,20 @@ similares", que no es lo que venden; la que corresponde es "venta al por menor p
 compras + gastos de la actividad, **por CUIT** (no se suman entre las cuatro). Las comisiones y
 envíos de ML cuentan; los peajes, la salud y el colegio no.
 
-Estado al 13/08/2026 (facturación de la ventana 07/2025→06/2026, compras proyectadas a 12 meses):
+**Los números por cuenta NO se escriben acá: el repo es público** (sacados el 16/09/2026). Se
+rehacen en el momento con **`facarca`** (lo facturado en la ventana que mira ARCA, por cuenta) y
+**`catmono`** (qué categoría corresponde), que leen de la base — o sea que anotarlos nunca hizo
+falta y quedaban viejos igual.
+**La conclusión medida el 13/08/2026, que es lo único que hay que recordar: ni el tope de
+facturación ni el límite del 80% aprietan.** Ninguna cuenta pasaba de la mitad del límite.
 
-| cuenta | factura al año | % del tope | compras+gastos | % del límite | mercadería con factura | merc/venta |
-|---|---|---|---|---|---|---|
-| Ayelen | $62.341.557 | 49% | $40.872.143 | 40% | $1.395.352 | **2,2%** |
-| Adriana | $57.183.498 | 45% | $32.614.043 | 32% | $2.596.360 | **4,5%** |
-| Luciana | $56.416.951 | 45% | $37.118.588 | 37% | $4.170.038 | 7,4% |
-| Matías | $54.388.754 | 43% | $52.061.940 | 51% | $9.502.998 | 17,5% |
+### COMPRAR CON FACTURA: LA DECISIÓN QUE YA ESTÁ TOMADA
 
-**Ni el tope de facturación ni el límite del 80% aprietan.** Ninguna pasa del 51%.
+El diagnóstico completo se midió el 13/08/2026 y **no se escribe en este archivo, que es público**
+(sacado el 16/09/2026). Se habla por chat y con el contador. Lo que hay que saber acá es **la
+decisión**, porque es la que se aplica todos los días.
 
-### EL problema con ARCA: venden $230M y compran $17,7M con factura
-
-Entre las cuatro facturan **$230.330.760** al año y tienen **$17.664.749** de mercadería con
-comprobante: el **7,7%**. Haciendo la cuenta al revés —ML se lleva ~32%, y el margen es 30% sobre
-el costo— esa venta necesita unos **$120 millones** de mercadería. **Faltan ~$102 millones sin
-respaldo.** La pregunta que hace ARCA no es el 80%: es *de dónde salió lo que vendiste*.
-
-Regla suya del 13/08/2026, y es la correcta: *"no puedo vender 10 y comprar 1"*. Están en 13 a 1.
+Regla suya del 13/08/2026: *"no puedo vender 10 y comprar 1"*.
 
 **Qué se decidió hacer:** NO comprar más (hay $12M de stock parado). Comprar lo MISMO pero
 **pidiendo siempre factura** a nombre de la cuenta que corresponda, repartiendo así de cada $100:
@@ -153,18 +148,16 @@ Regla suya del 13/08/2026, y es la correcta: *"no puedo vender 10 y comprar 1"*.
 
 (El CUIT de cada una sale de su constancia de ARCA. **No se escribe acá**: repo público.)
 
-Para emparejarlas al nivel de Matías hacen falta $22,6M/año más con factura (Ayelen $9,5M ·
-Adriana $7,4M · Luciana $5,7M). Si un proveedor no factura, ese proveedor es parte del problema.
+La idea del reparto es emparejarlas al nivel de Matías, que es la que ya está ordenada. **Si un
+proveedor no factura, ese proveedor es parte del problema.**
 
-### Se facturan entre ellas: $17.163.842 en 2026
+### Se facturan entre ellas
 
-Ayelen→Matías $6.029.405 · Luciana→Adriana $4.095.941 · Luciana→Ayelen $2.798.300 ·
-Adriana→Matías $1.304.000 · Ayelen→Adriana $1.261.496 · Ayelen→Luciana $1.063.500 ·
-Luciana→Matías $576.000.
-
-Para ARCA cada una de esas facturas es una VENTA de quien la emite, así que infla la facturación
-de las cuatro sin que entre un peso nuevo ni aparezca mercadería nueva. **Va al contador junto con
-la recategorización y lo de las compras: es una sola conversación.**
+Las cuatro cuentas se emiten facturas unas a otras. **Los montos no van acá** (repo público, sacados
+el 16/09/2026). Lo que importa recordar: para ARCA cada una de esas facturas es una VENTA de quien
+la emite, así que **infla la facturación de las cuatro sin que entre un peso nuevo ni aparezca
+mercadería nueva**. Va al contador junto con la recategorización y lo de las compras: es una sola
+conversación.
 
 ### El facturador automático de ML
 
@@ -1629,7 +1622,7 @@ Si eso sigue en pie está bien, pero hoy nadie le puede mandar mercadería.
   · CYC queda en CERO facturando **$698.000/día**
   · el techo antes de pasarse de H es **$840.000/día** — y NO son los $910.000 de cuatro cuentas
     parejas, porque el tope ($81.924.660/año) es **por CUIT** y Ayelen se lleva el 27,1%
-  · **al ritmo de agosto ($934.015/día) ya se pasan**: anualizado da $84M por cuenta
+  · el ritmo de agosto quedaba por ARRIBA de ese techo — se recalcula con `catmono`, no se anota
   **Emparejar el reparto entre las cuatro sube el techo de $840.000 a $910.000/día** — $2,1M/mes de
   facturación que hoy no se puede hacer sólo por el desbalance. Es gratis.
   Y la conclusión incómoda: **aun facturando el máximo que H permite, a CYC le quedan ~$700.000/mes.**
