@@ -7566,6 +7566,97 @@ async function main() {
       console.log(`${ok} de ${plan.length} quedaron bien.`);
       return;
     }
+    // BILLING_PROBE=nisseificha:<texto o link> → QUÉ DATOS TRAE LA PÁGINA DE UN PRODUCTO. SOLO LEE.
+    // Existe para MEDIR ANTES DE ESCRIBIR, no para usarse todos los días.
+    // Él fijó el 17/09/2026 cuatro topes para los productos nuevos: margen 25%, US$250 la unidad,
+    // marcas que ML frena, y **40 cm por lado y 3 kg**. Los dos primeros los sabemos calcular; los
+    // dos últimos dependen de un dato que **no sabemos si Nissei publica**.
+    // Prometer un filtro que después no se puede aplicar es peor que no tenerlo: la lista saldría
+    // con productos que no entran en la caja y nadie se enteraría. Así que primero se mira.
+    //
+    // Vuelca la tabla de atributos ENTERA, no los campos que yo espere encontrar: si me quedo con
+    // los que se me ocurren, un dato que está pero se llama distinto se pierde en silencio — que es
+    // el descarte por omisión de siempre.
+    if (/^nisseificha:/.test(String(process.env.BILLING_PROBE || ''))) {
+      const arg = String(process.env.BILLING_PROBE).slice('nisseificha:'.length).trim();
+      if (!arg) { console.log('Usá: nisseificha:<texto o link de Nissei>'); return; }
+      const traer = async (u) => {
+        const ctrl = new AbortController();
+        const t0 = setTimeout(() => ctrl.abort(), 30000);
+        try {
+          const r = await fetch(u, { signal: ctrl.signal, headers: { 'User-Agent': 'Mozilla/5.0 (compatible; CYC/1.0)' } });
+          clearTimeout(t0);
+          const h = await r.text();
+          return { ok: r.ok, status: r.status, html: h };
+        } catch (err) { clearTimeout(t0); return { ok: false, status: 0, html: '', err: String(err.message || err) }; }
+      };
+      const limpia = (t) => String(t).replace(/<[^>]*>/g, ' ').replace(/&amp;/g, '&')
+        .replace(/&#\d+;/g, '').replace(/&[a-z]+;/g, ' ').replace(/\s+/g, ' ').trim();
+      console.log(`=== FICHA DE NISSEI · "${arg}" (solo lectura) ===\n`);
+      let url = arg;
+      if (!/^https?:\/\//i.test(arg)) {
+        const b = await traer('https://www.nissei.com/py/catalogsearch/result/?q=' + encodeURIComponent(arg));
+        if (!b.ok) { console.log(`❌ El buscador contestó ${b.status}${b.err ? ' · ' + b.err : ''}. No sigo.`); return; }
+        const m = b.html.match(/class="[^"]*product-item-link[^"]*"\s+href="([^"]+)"/i);
+        if (!m) { console.log('❌ El buscador no devolvió ningún producto para ese texto.'); return; }
+        url = m[1].replace(/&amp;/g, '&');
+        console.log(`El buscador devolvió como primero: ${url}`);
+        console.log('OJO: el buscador de Nissei es flojo (busca palabra por palabra). Mirá que sea el que querías.\n');
+      }
+      const p = await traer(url);
+      console.log(`La página contestó ${p.status} · ${Math.round(p.html.length / 1024)} KB${p.err ? ' · ' + p.err : ''}`);
+      if (!p.ok || p.html.length < 5000) {
+        console.log('No sirve: o no contestó bien o vino un cascarón vacío (armada con JavaScript).');
+        return;
+      }
+      const H = p.html;
+      const uno = (re) => { const m = H.match(re); return m ? limpia(m[1]) : ''; };
+      console.log(`\nTítulo: ${uno(/<h1[^>]*>([\s\S]{0,300}?)<\/h1>/i) || '(no lo encontré)'}`);
+      console.log(`Marca:  ${uno(/itemprop="brand"[^>]*>([\s\S]{0,120}?)</i) || uno(/"brand"\s*:\s*"([^"]{0,80})"/i) || '(no la encontré)'}`);
+      const gs = (H.match(/data-price-amount="([\d.]+)"/i) || [])[1];
+      const usd = (H.match(/US\$\s*([\d.,]+)/i) || [])[1];
+      console.log(`Precio: ${gs ? 'Gs. ' + Number(gs).toLocaleString('es-AR') : '(sin Gs.)'}   ·   ${usd ? 'US$ ' + usd : 'SIN precio en dólares en la página'}`);
+      // Todos los códigos que aparecen, sin elegir: el de pedido NO es el de la lista (Cabotine:
+      // la lista da 91144 y el de pedido es 91832), así que acá se muestran todos los candidatos.
+      const cods = new Set();
+      for (const re of [/data-product-id="(\d+)"/gi, /"sku"\s*:\s*"([^"]{1,40})"/gi, /itemprop="sku"[^>]*>\s*([^<]{1,40})/gi, /\/product\/(\d+)/gi, /[Cc]&oacute;digo[^<]{0,20}<[^>]*>\s*([A-Za-z0-9-]{3,20})/g]) {
+        let m; while ((m = re.exec(H))) cods.add(limpia(m[1]));
+      }
+      console.log(`Códigos que aparecen en la página: ${cods.size ? [...cods].join(' · ') : '(ninguno)'}`);
+      console.log('   (el de PEDIDO no es necesariamente el de la lista — hay que mirar cuál usa él)');
+      // ── LO QUE VINE A MEDIR: MEDIDAS Y PESO ──────────────────────────────────────────
+      console.log('\n── TABLA DE ATRIBUTOS (entera, tal como viene) ──');
+      const tab = H.match(/<table[^>]*additional-attributes[\s\S]{0,20000}?<\/table>/i);
+      if (!tab) {
+        console.log('   ⚠️ NO hay tabla de atributos en esta página.');
+      } else {
+        const filas = tab[0].split(/<tr/i).slice(1);
+        if (!filas.length) console.log('   ⚠️ la tabla está pero vino vacía.');
+        for (const f of filas) {
+          const th = limpia((f.match(/<th[^>]*>([\s\S]{0,200}?)<\/th>/i) || [])[1] || '');
+          const td = limpia((f.match(/<td[^>]*>([\s\S]{0,400}?)<\/td>/i) || [])[1] || '');
+          if (th || td) console.log(`   ${th || '(sin nombre)'}: ${td || '(vacío)'}`);
+        }
+      }
+      console.log('\n── BÚSQUEDA DE MEDIDAS Y PESO EN TODA LA PÁGINA ──');
+      let hubo = 0;
+      for (const pal of ['peso', 'kg', 'gramos', 'dimension', 'medidas', 'altura', 'ancho', 'profundidad', 'largo', 'cm']) {
+        const re = new RegExp('.{0,90}' + pal + '.{0,90}', 'gi');
+        const vistos = new Set();
+        let m, n = 0;
+        while ((m = re.exec(limpia(H))) && n < 2) {
+          const t = m[0].trim();
+          if (vistos.has(t)) continue;
+          vistos.add(t); n++; hubo++;
+          console.log(`   "${pal}" → …${t}…`);
+        }
+        if (!n) console.log(`   "${pal}" → no aparece`);
+      }
+      if (!hubo) console.log('   ⚠️ Ni una sola mención: esta página NO informa medidas ni peso.');
+      console.log('\nCONCLUSIÓN A SACAR: si acá no hay medidas ni peso, los topes de 40 cm y 3 kg');
+      console.log('NO se pueden aplicar solos y hay que decirlo en la lista en vez de filtrar a ciegas.');
+      return;
+    }
     // BILLING_PROBE=nissei:<texto o código> → EL PRECIO DE NISSEI, LEÍDO POR EL ROBOT.
     // Primera mitad del pedido del 17/09/2026: *"que mire los precios y productos nuevos (…) por un
     // lado vemos si los productos que ya compramos dan bien todavía y por otro que muestre
