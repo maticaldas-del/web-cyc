@@ -1526,16 +1526,22 @@ del repo, se pega y listo.
  · `comprasparaguay.com.ar` · `nissei.com` · MercadoLibre Argentina
 
 **EL REPARTO DE TAREAS, y es lo que hace que la cuenta no se pueda romper:**
- · **el chat carga el COSTO, el panel calcula el MARGEN.** El chat hace UNA cuenta sola —
-   `precio en US$ de comprasparaguay × 1,15` → el campo **"Costo US$"** de la ficha — y de ahí en
-   más el panel pone la caja a Full, la comisión con sus escalones, el envío de arriba de los
-   $33.000, IIBB y monotributo. **El chat NO calcula el margen final**: lo lee de la ficha.
-   Así no puede haber dos fórmulas diciendo cosas distintas, que es el error que ya mordió cinco
-   veces en este archivo.
+ · **ESTA LÍNEA DECÍA "el chat carga el COSTO" Y ES FALSA DESDE EL 17/09/2026 A LA TARDE.**
+   El chat **NO toca el `Costo US$`. Nunca.** Carga el **`Precio Nissei US$`** (crudo, en su propio
+   campo) y el **`Código Nissei`**, y el panel hace todo lo demás. El botón "Usar este costo", que
+   era el puente entre los dos, **se sacó**. Ver la sección "EL PRECIO DE PARAGUAY NO PISA EL COSTO".
+   El motivo, suyo: *"lo que compre a un precio se vende a ese precio. si aumenta no compro"* — el
+   costo es lo que PAGÓ y el precio de Paraguay es si conviene REPONER; que uno pise al otro le
+   mueve los márgenes de lo ya comprado y, con la suba automática prendida, le sube precios.
+ · **El chat NO calcula ningún margen**: los lee de la ficha, que muestra los dos. Así no puede
+   haber dos fórmulas diciendo cosas distintas, que es el error que ya mordió seis veces acá.
  · **NO ELIGE**: trae título exacto, código, precio y link, y decide él.
- · **Lo único que puede escribir**: el `Costo US$`, una ficha nueva, y el botón "pausar por precio".
-   Nada de tocar precios de ML, cerrar cajas, stock, ni publicar. El panel escribe directo en la
-   base, sin prueba y sin deshacer.
+ · **Lo único que puede escribir**: `Precio Nissei US$` · `Código Nissei` · el botón "no había"
+   (Nissei no lo tiene) · "no lo compro por ahora" · cargar candidatos en "Para probar" · una ficha
+   nueva. **El `Costo US$` NO.** Nada de tocar precios de ML, cerrar cajas, stock, ni publicar. El
+   panel escribe directo en la base, sin prueba y sin deshacer.
+ · **El link del catálogo de ML es obligatorio al cargar un candidato**, desde el 17/09: sin él el
+   robot empareja por nombre y ya devolvió el "Watch 3" cuando se le pidió el "Watch 4".
 
 **Los topes que él fijó:** US$250 por unidad · 40×40×40 cm · nada de marcas que ML frena (Lancôme y
 ese nivel) · prioridad a lo ya probado · suma si sirve para la perfumería, porque ahí hay segunda
@@ -2867,11 +2873,34 @@ Lo que quedó abierto. Borrá de acá lo que se vaya cerrando.
    vendió nunca, así que su envío sale de la TARIFA de ML, que se midió **$246 corta** el 20/08 —
    el margen que se ve es el techo optimista y la suba que propone el comando puede quedar corta.
 
-**Tres productos que NISSEI NO VENDE y ocupan lugar en los US$1.000:** Cabotine 30ml (sólo hay de
+**RESUELTO EL 17/09/2026 · "NISSEI NO LO TIENE" ES UN ESTADO QUE SE CORRIGE SOLO.** Pedido suyo:
+*"que aparezca cuando no esta en stock o no lo encuentra y que cuando si lo encuentre que vuelva a
+marcar que si esta en stock"*. Antes la marca se borraba al "Empezar una canasta nueva" y los que
+Nissei no vende volvían al reparto en cada vuelta. Ahora **dura hasta que vuelva a haber stock** y
+**se cae sola** en cuanto alguien carga un precio de Paraguay para ese producto: si hay precio, lo
+encontró; si lo encontró, lo tiene. Nadie tiene que acordarse de destildar nada — una marca que se
+saca a mano es la que se queda vieja y termina escondiendo mercadería que sí se puede comprar.
+**Cuatro productos que Nissei NO vende** y que hay que dejar marcados: Cabotine 30ml (sólo hay de
 100ML, `91832`) · Animale Mujer EDP (sólo el "Animale Love", `103997`, que es otro perfume) ·
-Azzaro Pour Homme 200ml (sólo 100ML, `97699`). Hoy se sacan con el botón **"no había"**, pero esa
-marca es por vuelta: al tocar "Empezar una canasta nueva" vuelven. **Falta una marca permanente de
-"esto Nissei no lo tiene"**, si él la quiere.
+Azzaro Pour Homme 200ml (sólo 100ML, `97699`) · **SanDisk Ultra 128gb CON adaptador** (Nissei sólo
+tiene la versión sin adaptador, a US$19 — **es otro producto y su precio no se carga acá**).
+
+### EL EMBUDO DE PARAGUAY (17/09/2026)
+
+Pedido suyo: *"que haga embudo en pedidos paraguay"*. Pedidos → 🇵🇾 Paraguay tiene ahora las cuatro
+decisiones en una pantalla y **en el orden en que se toman**:
+ 1. **🛒 la canasta** — lo que estás comprando, con los US$1.000 repartidos
+ 2. **📋 los pedidos** — lo que falta, con costo, margen, código y precio de Paraguay
+ 3. **🔻 ya no conviene comprarlos** — los que YA vendés y que al precio de Paraguay de hoy quedan
+    abajo del 25%. Muestra los dos márgenes al lado (*"tenés 23% · reponer −16%"*) y el único botón
+    es "no lo compro por ahora". **No toca ningún precio de venta.**
+ 4. **🆕 para probar** — los que todavía no vendés
+
+**El punto 3 lo hace el PANEL solo, sin el robot**, y se puede porque para un producto que ya vendés
+el panel ya sabe lo que ML deposita hoy (`netoCalc`, que el robot recalcula todas las noches): lo
+único que faltaba era el precio de Paraguay. Llama a `margenMLDe`, no calcula nada nuevo.
+Probado con seis productos inventados: sale sólo el que subió, y quedan afuera el que sigue barato,
+el que no tiene precio cargado, el que Nissei no tiene, el ya pausado y el de Bs As.
 
 **ARREGLADO EL 16/09/2026: `activarPausadasFull` YA AVISA — PERO SÓLO DE LO QUE **NO** ACTIVÓ.**
 
