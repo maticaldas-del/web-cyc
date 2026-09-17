@@ -7567,21 +7567,46 @@ async function main() {
       // Se mira el TAMAÑO y si aparece un precio adentro, no sólo que conteste 200. Una página
       // que se arma con JavaScript contesta 200 y baja un cascarón vacío: eso NO sirve y hay que
       // poder distinguirlo, que es el mismo error de leer "0" como buena noticia.
+      // ── COMPRASPARAGUAY ES LA QUE IMPORTA, Y LA PRIMERA VUELTA DIO 403 ─────────────────
+      // Él lo aclaró el 17/09: el precio en DÓLARES y el código de Nissei que se usa para pedir
+      // están los dos en comprasparaguay, no en Nissei. Nissei sólo muestra guaraníes y su número
+      // interno. O sea que sin esta página no hay circuito automático.
+      // El 403 de la primera vuelta puede ser sólo el User-Agent: iba como "CYC/1.0", que grita
+      // robot. Acá se prueba con uno de navegador de verdad y con las cabeceras que manda Chrome.
+      // NO es una forma de colarse: es pedir la misma página pública que él abre en su navegador.
+      const UA_NAV = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/129.0.0.0 Safari/537.36';
+      const H_NAV = {
+        'User-Agent': UA_NAV,
+        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8',
+        'Accept-Language': 'es-AR,es;q=0.9',
+        'Upgrade-Insecure-Requests': '1',
+      };
       const webs = [
-        ['comprasparaguay', 'https://comprasparaguay.com.ar/'],
-        ['nissei', 'https://www.nissei.com/py/'],
-        ['nissei (buscador)', 'https://www.nissei.com/py/catalogsearch/result/?q=azzaro'],
+        ['comprasparaguay', 'https://comprasparaguay.com.ar/', H_NAV],
+        ['comprasparaguay buscar', 'https://comprasparaguay.com.ar/?s=' + q, H_NAV],
+        ['comprasparaguay (bot)', 'https://comprasparaguay.com.ar/', { 'User-Agent': 'Mozilla/5.0 (compatible; CYC/1.0)' }],
+        ['nissei', 'https://www.nissei.com/py/', H_NAV],
+        ['nissei (buscador)', 'https://www.nissei.com/py/catalogsearch/result/?q=' + q, H_NAV],
       ];
-      for (const [nom, url] of webs) {
+      for (const [nom, url, hh] of webs) {
         try {
           const ctrl = new AbortController();
-          const t0 = setTimeout(() => ctrl.abort(), 20000);
-          const r = await fetch(url, { signal: ctrl.signal, headers: { 'User-Agent': 'Mozilla/5.0 (compatible; CYC/1.0)' } });
+          const t0 = setTimeout(() => ctrl.abort(), 25000);
+          const r = await fetch(url, { signal: ctrl.signal, headers: hh });
           clearTimeout(t0);
           const html = await r.text();
+          // Se miran los DOS por separado: que haya un precio no quiere decir que haya un precio
+          // en DÓLARES, y el dólar es justo lo que falta.
           const conPrecio = /(?:US\$|Gs\.?|\$)\s?\d[\d.,]{2,}/.test(html);
-          console.log(`${r.ok ? '✅' : '⚠️ '} ${nom.padEnd(20)} ${r.status} · ${Math.round(html.length / 1024)} KB · ${conPrecio ? 'HAY PRECIOS ADENTRO' : 'sin precios en el HTML (se arma con JavaScript → no sirve)'}`);
-        } catch (err) { console.log(`❌ ${nom.padEnd(20)} ${String(err.message || err).slice(0, 110)}`); }
+          const conUsd = /US\$\s?\d[\d.,]{2,}/.test(html);
+          console.log(`${r.ok ? '✅' : '⚠️ '} ${nom.padEnd(24)} ${r.status} · ${Math.round(html.length / 1024)} KB`
+            + ` · ${conPrecio ? 'con precios' : 'SIN precios en el HTML (se arma con JavaScript)'}`
+            + ` · ${conUsd ? 'y trae DÓLARES ✔' : 'sin dólares'}`);
+          if (r.ok && conUsd) {
+            const i = html.search(/US\$\s?\d[\d.,]{2,}/);
+            console.log('     muestra: ' + html.slice(Math.max(0, i - 260), i + 260).replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim().slice(0, 300));
+          }
+        } catch (err) { console.log(`❌ ${nom.padEnd(24)} ${String(err.message || err).slice(0, 110)}`); }
       }
       console.log('\nQué quiere decir esto:');
       console.log(' · Si el bloque 1 dio ✅ → puedo sacar los precios de ML yo, sin navegador y sin copiar nada.');
