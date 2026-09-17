@@ -1549,6 +1549,52 @@ se comprobó el 17/09 cuando él le pasó el link al chat local y entró de una.
 ahí (costos, márgenes, ventas) salen de Firebase, y **si sus reglas están abiertas, los ve cualquiera
 con esa dirección**. Queda como pendiente para mirar, no se tocó nada.
 
+## EL DATO DE PARAGUAY, EN LA FICHA Y EN PEDIDOS (17/09/2026)
+
+Pedido suyo: *"quiero que en la web aparezca todo, o sea el costo y eso, no solo si da o no (…)
+que toda esa info se agregue a pedidos - paraguay"* y después *"agregar todos esos datos que lo va
+a tener el chat corriendo en local. se me ocurren, codigo, precio, etc"*.
+Antes la tarjeta de Pedidos decía **cuánto** comprar y **por qué**, y de plata no decía nada: para
+saber si un producto de Paraguay todavía convenía había que salir, buscar la ficha y volver.
+
+**SON DOS NÚMEROS DISTINTOS Y CONFUNDIRLOS ARRUINA TODOS LOS MÁRGENES:**
+ · **`nisseiUSD`** = el precio en dólares que muestra comprasparaguay, **CRUDO**.
+ · **`costUSD`** = ese precio **× 1,15** (`RECARGO_PY`), o sea puesto en la oficina. **Es el que usa
+   TODO el panel** para calcular márgenes y valuar el stock.
+**Por eso el precio de Paraguay NO pisa solo al `costUSD`.** La ficha muestra lo que daría, avisa en
+ámbar cuando no coinciden y hay un botón **"Usar este costo"** que pregunta antes, con los dos
+números a la vista. Pisar a ciegas el número que define todos los precios no se nota hasta que ya
+vendiste — el mismo motivo por el que `submargen` pide `:go`.
+
+**EL CÓDIGO (`nisseiCod`) ES EL QUE TERMINA CON EL EMPAREJADO POR NOMBRE.** Es el de Nissei que se
+usa para pedir, y **no** es el número interno que muestra la lista (Cabotine 100mL: la lista da
+`91144`, el de pedido es `91832`). Con el código guardado, buscar por nombre deja de existir — que
+es el filtro por palabras que ya falló cinco veces en este panel. Por eso **primero el código y
+después el nombre**, y no al revés.
+
+**EN PEDIDOS → PARAGUAY** cada tarjeta muestra ahora: 💵 costo en US$ y en pesos · 📈 margen ·
+🏷️ precio en ML · 🔖 código · 🇵🇾 precio de Paraguay **con la fecha en que se miró**.
+
+**Tres cosas que no son adorno:**
+ · **El margen respeta el COLOR de siempre**: verde SÓLO si está medido contra ventas reales,
+   ámbar si el envío salió de la tarifa de ML, y **"?" en vez de un porcentaje** arriba de los
+   $33.000 con envío $0. **No calcula nada nuevo**: llama a `margenMLDe` y `margenDudosoDe`, las
+   mismas que usan Rotación de Stock y la ficha. Con su propia cuenta, la tarjeta podía decir un
+   margen y la ficha otro sobre el mismo producto.
+ · **La FECHA del precio de Paraguay va siempre, y arriba de 30 días en ámbar.** Un precio de hace
+   dos meses al lado de una decisión de compra se lee como si estuviera al día.
+ · **Sin costo cargado lo dice en ROJO.** Un producto sin costo se ve como si fuera todo ganancia
+   y puede aparecer arriba de todo como un éxito que no existe.
+ · **Y si el `costUSD` no es el precio de Paraguay + 15%, la tarjeta avisa** que el margen de al
+   lado está calculado con otro número. Dos números correctos uno al lado del otro pueden dar una
+   conclusión falsa — la lección de las tres cajas de la ficha del 03/09.
+
+**Va SÓLO en Paraguay**, que es lo que pidió. Ponerlo también en Bs As es un renglón, pero un
+pedido sobre una sección no es permiso para tocar las otras (la lección del 24/08 con Adriana).
+Probado con las TRES funciones reales sacadas del archivo y 14 casos, incluidos los cuatro que
+tienen que salir en ámbar o rojo. Y corrido el chequeo de las tres listas: no falta ninguna función,
+ninguna variable ni ningún `id` — sólo se agregaron 7 nombres, ninguno repetido.
+
 ## Cosas que ya pasaron (para no repetirlas)
 
 - **510 UNIDADES DESAPARECIERON DEL PATRIMONIO: LA CAJA SE MARCÓ ANTES DE QUE ML LA PROCESARA

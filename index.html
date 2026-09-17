@@ -2310,7 +2310,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='19.42';
+const APP_VERSION='19.43';
 // El problema real que esto resuelve no es curiosidad: es que el celular guarda la app y sigue
 // mostrando la de ayer sin avisar. Varias veces se revisó un cambio que ya estaba subido y no se
 // veía. Por eso, además del número, el chip avisa cuando hay una versión nueva esperando.
@@ -3080,6 +3080,14 @@ function simPrecioReset(id){delete _simPrecio[id];repintarFlujo(id);}
 // $35.600" le estaba recomendando cruzar la barrera, que por su regla del 13/08/2026 no se cruza
 // nunca. Va con el MISMO número que el robot: si algún día ML lo cambia, hay que tocar los dos.
 const UMBRAL_ENVIO_GRATIS=33000;
+// ── LO QUE SE LE SUMA AL PRECIO DE PARAGUAY PARA LLEGAR A LA OFICINA (17/09/2026) ──────
+// Textual suyo: *"mercaderia + comprar dolar (siempre es mas por comisiones) + traslado =
+// mercaderia + el 15%"*. O sea que el 15% YA incluye la compra del dólar con sus comisiones y el
+// flete: no se le suma NADA más para llegar a la oficina.
+// El precio en dólares sale de comprasparaguay (Nissei muestra guaraníes), y el robot NO puede
+// leer esa página: contesta 403 aunque se le pida igual que un navegador. Por eso lo carga él,
+// o el chat que mira los precios.
+const RECARGO_PY=1.15;
 function precioParaMargen(p,pct){
   const r=margenMLDe(p);
   const precio=Math.round(Number(p.netoCalcPrecio)||0);
@@ -3340,6 +3348,7 @@ function renderProds(){
         <div><label>${shipLabel}</label><br><input type="number" min="0" step="0.01" value="${ship}" oninput="guardarProdLuego('${p.id}',this.value,updShipUSD)" onchange="updShipUSD('${p.id}',this.value)"></div>
         <div><label title="Lo que ML te cobra de gestión/logística Full por cada venta (lo ves en una venta ya hecha). Es aprox., varía un poco por destino.">Gestión Full $ ⓘ</label><br><input class="money" type="text" inputmode="numeric" value="${moneyVal(gest)}" oninput="guardarProdLuego('${p.id}',this.value,updGestFull)" onchange="updGestFull('${p.id}',this.value)" placeholder="p. ej. 6.653"></div>
         ${medidaHtml(p)}
+        ${paraguayHtml(p)}
         <div style="display:flex;flex-direction:column;gap:4px;background:rgba(255,255,255,.04);border:1px solid var(--border);border-radius:8px;padding:8px 12px">
           <div style="font-size:.58rem;color:var(--muted);text-transform:uppercase;letter-spacing:.08em;margin-bottom:2px">Reclamos / Ventas totales <span style="text-transform:none;letter-spacing:0;font-size:.92em">· automático desde Ventas x Producto</span></div>
           <div style="display:flex;align-items:center;gap:8px">
@@ -3646,6 +3655,70 @@ function guardarProdLuego(id,val,fn){
   const k=id+'|'+fn.name;
   clearTimeout(_prodTimers[k]);
   _prodTimers[k]=setTimeout(()=>{delete _prodTimers[k];fn(id,val);},700);
+}
+// ── EL PRODUCTO EN PARAGUAY: CÓDIGO Y PRECIO (17/09/2026) ───────────────────────────────
+// Pedido suyo: *"agregar todos esos datos que lo va a tener el chat corriendo en local. se me
+// ocurren, codigo, precio, etc"*.
+// SON DOS NÚMEROS DISTINTOS Y CONFUNDIRLOS ARRUINA TODOS LOS MÁRGENES:
+//  · **Precio Nissei US$** = lo que muestra comprasparaguay, CRUDO.
+//  · **Costo US$** (el de arriba) = ese precio **× 1,15**, o sea puesto en tu oficina. Es el que
+//    usa todo el panel para calcular márgenes y para valuar el stock.
+// Por eso el precio de Paraguay NO pisa solo al Costo US$: se muestra lo que daría y hay un botón
+// para aplicarlo. Pisar a ciegas el número que define todos los precios es exactamente el tipo de
+// cosa que no se nota hasta que ya vendiste — la misma razón por la que `submargen` pide `:go`.
+//
+// EL CÓDIGO ES EL DE NISSEI, el que se usa para pedir, y NO es el mismo que el interno que
+// muestra la lista de Nissei (en el Cabotine 100mL la lista da 91144 y el de pedido es 91832).
+// **Con el código guardado, emparejar por NOMBRE deja de existir** — que es el filtro por palabras
+// que ya falló cinco veces en este panel.
+function paraguayHtml(p){
+  if(!p||p.origen!=='py')return '';
+  const nu=(p.nisseiUSD!=null&&p.nisseiUSD!=='')?parseFloat(p.nisseiUSD)||0:0;
+  const cu=costUSDof(p);
+  const puesto=nu>0?Math.round(nu*RECARGO_PY*100)/100:0;
+  // Se comparan al centavo redondeado, igual que se guardan. Si no coinciden se AVISA y se ofrece
+  // el botón: un costo viejo al lado de un precio nuevo se lee como si estuviera al día.
+  const difiere=nu>0&&Math.abs(puesto-cu)>0.01;
+  const cuando=p.nisseiTs?`hace ${Math.max(0,Math.round((Date.now()-p.nisseiTs)/86400000))} d`:'nunca';
+  return `<div style="display:flex;flex-direction:column;gap:4px;background:rgba(239,68,68,.05);border:1px solid rgba(239,68,68,.25);border-radius:8px;padding:8px 12px">
+    <div style="font-size:.58rem;color:#f87171;text-transform:uppercase;letter-spacing:.08em;margin-bottom:2px">🇵🇾 Paraguay <span style="text-transform:none;letter-spacing:0;font-size:.92em;color:var(--muted)">· mirado ${cuando}</span></div>
+    <div style="display:flex;align-items:flex-end;gap:10px;flex-wrap:wrap">
+      <div><label title="El código de NISSEI, el que se usa para hacer el pedido. NO es el número interno que muestra la lista de Nissei.">Código Nissei ⓘ</label><br><input type="text" style="width:110px" value="${(p.nisseiCod||'').replace(/"/g,'&quot;')}" oninput="guardarProdLuego('${p.id}',this.value,updNisseiCod)" onchange="updNisseiCod('${p.id}',this.value)" placeholder="p. ej. 91832"></div>
+      <div><label title="El precio en dólares que muestra comprasparaguay, CRUDO, sin el 15%.">Precio Nissei US$ ⓘ</label><br><input type="number" min="0" step="0.01" style="width:100px" value="${nu||''}" oninput="guardarProdLuego('${p.id}',this.value,updNisseiUSD)" onchange="updNisseiUSD('${p.id}',this.value)"></div>
+      ${nu>0?`<div style="font-size:.66rem;padding-bottom:6px;color:${difiere?'var(--amber)':'var(--muted)'}" title="El 15% incluye la compra del dólar con sus comisiones y el traslado hasta tu oficina.">
+        × 1,15 = <b>US$ ${puesto.toFixed(2)}</b> puesto
+        ${difiere?`<br><span style="color:var(--amber)">⚠️ el Costo US$ de arriba dice ${cu.toFixed(2)}</span>`:'<br>✓ coincide con el Costo US$'}
+      </div>
+      ${difiere?`<button class="btn" style="color:var(--amber);border-color:rgba(245,158,11,.4)" onclick="aplicarNissei('${p.id}')" title="Pone US$ ${puesto.toFixed(2)} como Costo US$ del producto. Eso cambia el margen de todas sus publicaciones, así que mirá el número antes.">Usar este costo</button>`:''}`:''}
+    </div>
+  </div>`;
+}
+async function updNisseiCod(id,val){
+  const p=state.products.find(x=>x.id===id);if(!p)return;
+  const c=String(val||'').trim();
+  p.nisseiCod=c;p.nisseiTs=Date.now();
+  await fbSet('products/'+id+'/nisseiCod',c);await fbSet('products/'+id+'/nisseiTs',p.nisseiTs);
+  await log('Código Nissei de '+p.name+': '+(c||'(vacío)'));
+  renderProds();
+}
+async function updNisseiUSD(id,val){
+  const p=state.products.find(x=>x.id===id);if(!p)return;
+  const u=parseFloat(val)||0;
+  p.nisseiUSD=u;p.nisseiTs=Date.now();
+  await fbSet('products/'+id+'/nisseiUSD',u);await fbSet('products/'+id+'/nisseiTs',p.nisseiTs);
+  await log('Precio Nissei de '+p.name+': US$'+u);
+  renderProds();
+}
+// APLICAR ES UN PASO APARTE Y PREGUNTA. Cambia el Costo US$, que es el número con el que se
+// calculan TODOS los márgenes y se valúa el stock: no se toca sin que se vea qué se está tocando.
+async function aplicarNissei(id){
+  const p=state.products.find(x=>x.id===id);if(!p)return;
+  const nu=parseFloat(p.nisseiUSD)||0;if(!(nu>0))return;
+  const nuevo=Math.round(nu*RECARGO_PY*100)/100, antes=costUSDof(p);
+  if(!confirm(`Pasar el Costo US$ de ${p.name}\n\nde US$ ${antes.toFixed(2)}  a  US$ ${nuevo.toFixed(2)}\n(precio de Nissei US$ ${nu.toFixed(2)} + 15%)\n\nEsto cambia el margen de TODAS las publicaciones de este producto.`))return;
+  await updCostUSD(id,nuevo);
+  renderProds();
+  toast('Costo actualizado desde Paraguay ✓');
 }
 async function updCostUSD(id,val){
   const p=state.products.find(x=>x.id===id);if(!p)return;
@@ -9528,6 +9601,87 @@ function pedVarChip(x){
   const lug=`<span class="pi-var-lug">📦 ${n(x.ml)} en ML · 🚚 ${n(x.cam)} en camino · 🏠 ${n(x.casa)} en casa</span>`;
   return `<span class="pi-var-chip pi-var-chip-col" title="${q>0?`Hay que COMPRAR ${n(q)} de ${x.v}.`:`De ${x.v} no hay que comprar: con lo que tenés en casa o en camino alcanza. Hay que MANDARLA.`}">${cab}${lug}</span>`;
 }
+// ── LA PLATA DEL PRODUCTO, EN LA TARJETA DE PEDIDOS (17/09/2026) ─────────────────────
+// Pedido suyo: *"quiero que en la web aparezca todo, o sea el costo y eso, no solo si da o no.
+// quiero que toda esa info se agregue a pedidos - paraguay"*.
+// Antes la tarjeta decía CUÁNTO comprar y POR QUÉ, y de plata no decía NADA: para saber si un
+// producto de Paraguay todavía convenía había que salir de Pedidos, buscar la ficha y volver.
+//
+// NO CALCULA NADA NUEVO. Llama a `margenMLDe` y `margenDudosoDe`, las MISMAS funciones que usan
+// Rotación de Stock y la ficha. Si esta tarjeta tuviera su propia cuenta, podría decir un margen
+// y la ficha otro sobre el mismo producto — el error que ya mordió cinco veces en este archivo.
+//
+// Y RESPETA EL COLOR, que es lo que hace que el número sirva: el VERDE es sólo para el margen
+// medido contra ventas reales. Si el envío salió de la tarifa de ML el real es MENOR, así que va
+// en ámbar; y arriba de los $33.000 con envío $0 el margen no es optimista, es FALSO, y se
+// muestra "?" en vez de un porcentaje.
+function pedPlataHTML(prod){
+  if(!prod)return '';
+  const chip=(txt,col,tit)=>`<span class="pi-var-toggle" style="cursor:default;background:color-mix(in srgb,${col} 12%,transparent);color:${col};border-color:color-mix(in srgb,${col} 35%,transparent)" title="${String(tit).replace(/"/g,'&quot;')}">${txt}</span>`;
+  const out=[];
+  const usd=costUSDof(prod), full=costFullUSDof(prod), tc=curTC();
+  // SIN COSTO NO SE DISIMULA. Un producto sin costo cargado se ve como si fuera TODO ganancia y
+  // puede aparecer arriba de todo como un éxito que no existe. Decirlo en rojo es el punto.
+  if(!(usd>0)){
+    out.push(chip('⚠️ sin costo cargado','var(--red)',
+      'Este producto no tiene el Costo US$ cargado en su ficha. Sin eso el margen que ves es mentira: sale como si fuera todo ganancia. Cargalo en la ficha antes de decidir nada.'));
+  }else{
+    out.push(chip(`💵 US$ ${usd.toFixed(2)} · ${fmt(Math.round(full*tc))} puesto`,'var(--fg)',
+      `Mercadería US$ ${usd.toFixed(2)}. Puesto en tu oficina son US$ ${full.toFixed(2)} (con el % de reclamos y el envío/embalaje adentro) = ${fmt(Math.round(full*tc))} al dólar de hoy (${fmt(tc)}). Todavía NO tiene la comisión de ML, ni el envío de arriba de los $33.000, ni IIBB, ni monotributo: eso está en el margen de al lado.`));
+  }
+  const mg=margenMLDe(prod);
+  if(!mg||mg.margen==null){
+    out.push(chip('📈 margen —','var(--muted)',
+      'Este producto no tiene ninguna publicación viva en ML de la que sacar el precio, así que no hay margen que calcular.'));
+    return out.join('');
+  }
+  const PISO=parseFloat((state.mlconfig||{}).minPct)||30;
+  const d=margenDudosoDe(mg);
+  if(d==='falso'){
+    out.push(chip('📈 margen ?','var(--red)',
+      `NO SE PUEDE SABER. Está a ${fmt(mg.precio)}, arriba de los ${fmt(UMBRAL_ENVIO_GRATIS)}, y ahí ML cobra el envío gratis SIEMPRE (~$6.000 por venta). Acá no hay ningún envío descontado, así que el porcentaje que saldría es FALSO, no optimista. Para saberlo hace falta una venta de este producto, o cargarle el envío a mano en la ficha.`));
+  }else{
+    const aire=mg.margen-PISO;
+    let col,tit;
+    if(mg.margen<PISO){col='var(--red)';tit=`ABAJO DEL PISO de ${PISO}%. Si es de Paraguay, mirá el precio del proveedor antes de volver a comprarlo: puede que ya no dé.`;}
+    else if(d==='corto'){col='var(--amber)';tit=`Daría ${aire.toFixed(0)} punto(s) de aire sobre el ${PISO}%, PERO el envío NO está medido en tus ventas: salió de la tarifa de ML, que se midió $246 corta. El margen real es MENOR que este — no cuentes con ese aire.`;}
+    else if(aire<5){col='var(--amber)';tit=`Pegado al piso: sólo ${aire.toFixed(0)} punto(s) de aire sobre el ${PISO}%.`;}
+    else {col='var(--green)';tit=`${aire.toFixed(0)} puntos de aire sobre el piso de ${PISO}%. Medido contra ventas reales.`;}
+    tit+=` · ML te deposita ${fmt(mg.neto)} contra un costo total de ${fmt(mg.costo)}.`;
+    out.push(chip(`📈 ${mg.margen.toFixed(0)}% de margen`,col,tit));
+  }
+  if(mg.precio>0)out.push(chip(`🏷️ en ML ${fmt(mg.precio)}`,'var(--muted)',
+    `Precio al que está publicado hoy en ML. Es con el que se calculó el margen de al lado.`));
+  return out.join('');
+}
+// ── EL DATO DE PARAGUAY EN LA TARJETA DE PEDIDOS ───────────────────────────────────────
+// El código de pedido y el precio que muestra comprasparaguay, con la fecha en que se miró.
+// LA FECHA NO ES ADORNO: un precio de hace dos meses al lado de una decisión de compra se lee
+// como si estuviera al día. Arriba de 30 días va en ámbar, y si nunca se cargó lo dice.
+function pedGuayHTML(prod){
+  if(!prod)return '';
+  const chip=(txt,col,tit)=>`<span class="pi-var-toggle" style="cursor:default;background:color-mix(in srgb,${col} 12%,transparent);color:${col};border-color:color-mix(in srgb,${col} 35%,transparent)" title="${String(tit).replace(/"/g,'&quot;')}">${txt}</span>`;
+  const out=[];
+  const cod=(prod.nisseiCod||'').trim();
+  const nu=parseFloat(prod.nisseiUSD)||0;
+  if(cod)out.push(chip(`🔖 ${cod}`,'var(--muted)','Código de Nissei: el que se usa para hacer el pedido. Con esto no hace falta buscar por nombre, que es donde se confunden los productos parecidos.'));
+  if(!(nu>0)){
+    out.push(chip('🇵🇾 sin precio de Paraguay','var(--muted)','Nadie cargó todavía el precio de comprasparaguay de este producto. Se carga en la ficha, y hasta entonces no se puede saber si todavía conviene comprarlo.'));
+    return out.join('');
+  }
+  const dias=prod.nisseiTs?Math.max(0,Math.round((Date.now()-prod.nisseiTs)/86400000)):null;
+  const viejo=dias==null||dias>30;
+  out.push(chip(`🇵🇾 US$ ${nu.toFixed(2)}${dias!=null?` · hace ${dias} d`:' · sin fecha'}`,viejo?'var(--amber)':'var(--muted)',
+    viejo?`Precio de comprasparaguay, pero ${dias==null?'sin fecha de cuándo se miró':`mirado hace ${dias} días`}. Antes de decidir una compra conviene volver a mirarlo: el proveedor se mueve.`
+         :`Precio de comprasparaguay, mirado hace ${dias} días. Puesto en tu oficina son US$ ${(nu*RECARGO_PY).toFixed(2)} (con el 15%).`));
+  // Si el costo de la ficha NO es este precio + 15%, el margen de al lado está calculado con otro
+  // número. Eso se avisa: dos números correctos, uno al lado del otro, pueden dar una conclusión
+  // falsa — es la lección de las tres cajas de la ficha del 03/09.
+  const puesto=Math.round(nu*RECARGO_PY*100)/100, cu=costUSDof(prod);
+  if(Math.abs(puesto-cu)>0.01)out.push(chip('⚠️ el costo no está al día','var(--amber)',
+    `El precio de Paraguay + 15% da US$ ${puesto.toFixed(2)}, pero la ficha tiene cargado US$ ${cu.toFixed(2)}. El margen que ves está calculado con ${cu.toFixed(2)}. Entrá a la ficha y tocá "Usar este costo" si el de Paraguay es el bueno.`));
+  return out.join('');
+}
 function _pedidoItemHtml(p,opts){
   opts=opts||{};
   const NEXT={pendiente:'poco_stock',poco_stock:'suficiente',suficiente:'pendiente'};
@@ -9576,6 +9730,7 @@ function _pedidoItemHtml(p,opts){
       ${p.nota?`<span class="pi-nota">${p.nota}</span>`:'<span class="pi-nota" style="flex:0"></span>'}
       ${_enCam?'':riesgoBadge}
       ${origenBtn}
+      ${_esPy===true?pedPlataHTML(_prod)+pedGuayHTML(_prod):''}
       ${varToggle}
       ${cuentaPedidoHTML(p)}
       <button class="pi-prov ${p.proveedor?'':'sin-prov'}" onclick="setPedidoProveedor('${p.id}')">${p.proveedor?p.proveedor.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'):'+ proveedor'}</button>
