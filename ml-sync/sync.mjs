@@ -7377,6 +7377,91 @@ async function main() {
       console.log('Los ✅ son los que podríamos empezar a usar.');
       return;
     }
+    // BILLING_PROBE=nissei:<texto o código> → EL PRECIO DE NISSEI, LEÍDO POR EL ROBOT.
+    // Primera mitad del pedido del 17/09/2026: *"que mire los precios y productos nuevos (…) por un
+    // lado vemos si los productos que ya compramos dan bien todavía y por otro que muestre
+    // potenciales productos que funcionen"*.
+    // Esto es el MOTOR y SOLO LEE: trae el título exacto, el código y el precio en dólares, y le
+    // aplica la cuenta que ya conocemos para decir cuánto sale puesto en la oficina.
+    // El lado de ML (a cuánto se vende, quién tiene la caja) va en el paso siguiente, a propósito:
+    // primero hay que estar seguro de que el precio que leemos es el precio que Nissei muestra.
+    //
+    // NO ELIGE NINGÚN PRODUCTO. Devuelve los candidatos con su título completo y su código, y la
+    // decisión la toma él. Emparejar el catálogo de Nissei con el nuestro por el NOMBRE es el
+    // filtro por palabras que ya falló cuatro veces en este archivo, y con un producto nuevo es
+    // peor todavía porque no hay ficha contra la cual contrastar.
+    //
+    // SI NO PUEDE LEER LA PÁGINA LO DICE FUERTE Y MUESTRA EL HTML CRUDO. Una página que contesta
+    // 200 y viene vacía (armada con JavaScript) se lee igual que una sin resultados: es el cero
+    // que parece buena noticia, el que ya mordió con `liquidar`, con el marcado de cajas y con el
+    // "PARADO: 0" del aviso diario.
+    if (String(process.env.BILLING_PROBE || '').startsWith('nissei:')) {
+      const busca = String(process.env.BILLING_PROBE).slice('nissei:'.length).trim();
+      if (!busca) { console.log('Falta qué buscar. Ej: nissei:azzaro sport'); return; }
+      const fin = (await db.get('cyc/finanzas')) || {};
+      const tc = parseFloat(fin.tipo_cambio) || 1500;
+      // El 15% lo puso él y "incluye todo: compra dólar, transporte hasta llegar a la oficina".
+      const RECARGO_PY = 1.15;
+      const url = 'https://www.nissei.com/py/catalogsearch/result/?q=' + encodeURIComponent(busca);
+      console.log(`=== NISSEI · "${busca}" ===`);
+      console.log(`Dólar ${money(tc)} · recargo hasta tu oficina ${Math.round((RECARGO_PY - 1) * 100)}%\n`);
+      let html = '';
+      try {
+        const ctrl = new AbortController();
+        const t0 = setTimeout(() => ctrl.abort(), 30000);
+        const r = await fetch(url, { signal: ctrl.signal, headers: { 'User-Agent': 'Mozilla/5.0 (compatible; CYC/1.0)' } });
+        clearTimeout(t0);
+        html = await r.text();
+        console.log(`La página contestó ${r.status} · ${Math.round(html.length / 1024)} KB`);
+        if (!r.ok) { console.log('No contestó bien: no sigo.'); return; }
+      } catch (err) { console.log('❌ No pude abrir Nissei: ' + String(err.message || err).slice(0, 140)); return; }
+
+      // Cada producto de la lista es un bloque; se corta por bloque y NO se cruzan precios con
+      // títulos de otro renglón, que es como se arma un número que parece bien y es de otro.
+      const bloques = html.split(/<li[^>]*class="[^"]*product-item[^"]*"/i).slice(1);
+      const limpia = (t) => t.replace(/<[^>]*>/g, ' ').replace(/&amp;/g, '&').replace(/&#\d+;/g, '')
+        .replace(/&[a-z]+;/g, ' ').replace(/\s+/g, ' ').trim();
+      const filas = [];
+      for (const bl of bloques) {
+        const tit = (bl.match(/class="[^"]*product-item-link[^"]*"[^>]*>([\s\S]{0,300}?)<\/a>/i) || [])[1];
+        // `data-price-amount` es el número que Magento usa para calcular: viene sin símbolo ni
+        // separadores de miles, así que no hay que adivinar si el punto es coma.
+        const pr = (bl.match(/data-price-amount="([\d.]+)"/i) || [])[1];
+        const cod = (bl.match(/data-product-id="(\d+)"/i) || [])[1]
+          || (bl.match(/\/product\/(\d+)/i) || [])[1] || '';
+        const link = (bl.match(/class="[^"]*product-item-link[^"]*"\s+href="([^"]+)"/i) || [])[1]
+          || (bl.match(/href="(https:\/\/www\.nissei\.com\/py\/[^"]+)"/i) || [])[1] || '';
+        if (!tit && !pr) continue;
+        filas.push({ tit: tit ? limpia(tit) : '(sin título)', usd: pr ? parseFloat(pr) : null, cod, link });
+      }
+
+      if (!filas.length) {
+        console.log(`\n⚠️ NO PUDE LEER NINGÚN PRODUCTO. Bloques encontrados: ${bloques.length}.`);
+        console.log('   Esto NO quiere decir que Nissei no lo tenga: puede ser que la página cambió de forma.');
+        console.log('   Muestras del HTML crudo para poder arreglarlo (no invento nada con esto):\n');
+        for (const marca of ['product-item-link', 'data-price-amount', 'price-wrapper', 'product-item']) {
+          const i = html.indexOf(marca);
+          console.log(`   ── alrededor de "${marca}" ${i < 0 ? '→ NO APARECE en la página' : ''}`);
+          if (i >= 0) console.log('   ' + html.slice(Math.max(0, i - 200), i + 300).replace(/\s+/g, ' ') + '\n');
+        }
+        return;
+      }
+
+      console.log(`\n${filas.length} producto(s). Los precios son de Nissei, tal cual:\n`);
+      for (const f of filas.slice(0, 12)) {
+        const pesos = f.usd != null ? Math.round(f.usd * RECARGO_PY * tc) : null;
+        console.log(`  ${f.tit.slice(0, 74)}`);
+        console.log(`    código ${String(f.cod || '?').padEnd(10)} · Nissei US$ ${f.usd != null ? f.usd.toFixed(2).padStart(7) : '      ?'}`
+          + (pesos != null ? ` → puesto en tu oficina ${money(pesos)}` : ' → sin precio: no calculo nada'));
+        if (f.link) console.log(`    ${f.link.slice(0, 110)}`);
+        console.log('');
+      }
+      if (filas.length > 12) console.log(`  … y ${filas.length - 12} más. Afiná la búsqueda.\n`);
+      console.log('El "puesto en tu oficina" es la mercadería sola: US$ de Nissei + 15% × dólar.');
+      console.log('Todavía NO tiene la caja a Full, ni la comisión de ML, ni el envío, ni IIBB, ni monotributo.');
+      console.log('Y NO elijo ninguno: el título y el código están enteros para que decidas vos.');
+      return;
+    }
     // BILLING_PROBE=probarweb[:<texto a buscar>] → ¿PUEDE EL ROBOT MIRAR PRECIOS SOLO?
     // Pregunta suya del 17/09/2026: *"me encantaria que vos puedas entrar en ml, no hay forma
     // alguna que vos extraigas esos precios?"*. Manejar dos chats —uno que mira ML con Chrome y
