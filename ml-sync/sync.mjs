@@ -399,8 +399,42 @@ async function cajasQueLlegaron(db, accounts, labels, products, DRY) {
             // 400 "The field date_from and date_to are required" — y como el catch estaba vacío,
             // las 72 consultas fallaban en silencio y el resultado se leía como "ML no informó
             // ninguna entrada". El marcado automático de cajas nunca funcionó por esto.
-            const op = await mlGet(`/stock/fulfillment/operations/search?seller_id=${sid}&inventory_id=${par.inv}&date_from=${desdeISO}&date_to=${hastaISO}&limit=50`, tok);
-            for (const x of (op?.results || [])) {
+            // ── HAY QUE PEDIR TODAS LAS PÁGINAS, NO LAS PRIMERAS 50 ──────────────────
+            // Esta lista trae TODOS los movimientos del inventario, ventas incluidas, y las
+            // entradas son una minoría: en la corrida del 17/09/2026, de 291 movimientos 215 eran
+            // `sale_confirmation` y sólo 47 `inbound_reception`. Pidiendo una sola página de 50,
+            // en un producto que vende mucho las VENTAS EMPUJAN A LAS ENTRADAS FUERA DE LA LISTA
+            // y el renglón lee 0 sin que falle nada — indistinguible de "no llegó".
+            //
+            // Eso rompió la caja 76236266 de Luciana (05/09): ML dice "511 procesadas, 511 a la
+            // venta" y el panel la marcó "llegó · faltaron 218 u.", dando por perdidas 115 Cartas
+            // Casino (0 leídas) y 103 Centímetro Blanco (47 de 150) que SÍ estaban. Los dos son
+            // justo los que más venden; las sábanas, que casi no venden, leyeron bien. El sesgo
+            // del error lo delata: fallaba donde había más ventas tapando las entradas.
+            //
+            // El corte se detecta SIN confiar en que ML respete `offset`: se cuentan los
+            // movimientos nuevos de cada página. Si una página viene llena y no aporta ninguno
+            // nuevo, `offset` no está haciendo nada y NO se puede seguir leyendo → el renglón
+            // queda marcado como no leído y la caja no se marca. FALTA DE DATO NO ES FALTA DE
+            // MERCADERÍA: es la misma regla que ya estaba para el 429.
+            const PAG = 50, MAX_PAG = 20;            // hasta 1.000 movimientos por inventario
+            const opsInv = [], vistosOp = new Set();
+            let cortado = false;
+            for (let pag = 0; ; pag++) {
+              const op = await mlGet(`/stock/fulfillment/operations/search?seller_id=${sid}&inventory_id=${par.inv}&date_from=${desdeISO}&date_to=${hastaISO}&limit=${PAG}&offset=${pag * PAG}`, tok);
+              const res = (op && op.results) || [];
+              let nuevos = 0;
+              for (const x of res) {
+                const kOp = String(x.id || x.operation_id || '') || JSON.stringify(x).slice(0, 300);
+                if (vistosOp.has(kOp)) continue;
+                vistosOp.add(kOp); opsInv.push(x); nuevos++;
+              }
+              if (res.length < PAG) break;           // última página: se leyó todo
+              if (!nuevos) { cortado = true; break; }// ML ignora `offset`: no se puede leer más
+              if (pag + 1 >= MAX_PAG) { cortado = true; break; }
+            }
+            if (cortado) sinLeer[kR(cta, p.id, par.va)] = true;
+            for (const x of opsInv) {
               const tipo = String(x.type || x.operation_type || '').toLowerCase();
               // Guardar TODO lo que contesta ML, aceptado o no. Sin esto, un filtro de tipo que no
               // coincide se ve igual que "ML no informó nada": los dos terminan en cero.

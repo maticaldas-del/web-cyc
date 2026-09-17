@@ -1761,6 +1761,35 @@ ninguna variable ni ningún `id` — sólo se agregaron 7 nombres, ninguno repet
 
 ## Cosas que ya pasaron (para no repetirlas)
 
+- **LA CAJA 76236266 DIO POR PERDIDAS 218 UNIDADES QUE ESTABAN A LA VENTA (17/09/2026).** Él mandó
+  la pantalla de ML al lado de la del panel y no coincidían. **ML: *"Procesamiento finalizado ·
+  511 u. procesadas: 511 están a la venta"*. El panel: *"llegó el 2026-09-16 · faltaron 218 u."***,
+  con `115 Cartas Casino → entraron 0` y `150 Centímetro Blanco → entraron 47`. Esas 218 unidades
+  salieron del patrimonio como rotas o faltantes **y nunca faltaron**.
+  **LA CAUSA: se pedía UNA sola página de 50 movimientos.** `/stock/fulfillment/operations/search`
+  devuelve TODOS los movimientos del inventario —ventas incluidas— y las entradas son una minoría:
+  en la corrida del 17/09, de **291 movimientos 215 eran `sale_confirmation` y sólo 47
+  `inbound_reception`**. En un producto que vende mucho **las ventas empujan a las entradas fuera de
+  la página**, el renglón lee 0 y eso es indistinguible de "no llegó".
+  **El sesgo del error lo delata, y es lo que lo hizo encontrable:** falló exactamente en los dos que
+  más venden (Cartas Casino ~484/mes → 0 de 115 · Centímetro Blanco → 47 de 150) y acertó en las
+  sábanas, que casi no venden. **Un error que se concentra donde hay más de algo no es azar: ese
+  algo es la causa.**
+  **Arreglado pidiendo TODAS las páginas** (`offset`, hasta 1.000 movimientos por inventario).
+  Y con el freno que hacía falta: **el corte se detecta sin confiar en que ML respete `offset`** —
+  se cuentan los movimientos NUEVOS de cada página, y si una página viene llena y no aporta ninguno
+  nuevo, `offset` no está haciendo nada, no se puede seguir leyendo y el renglón queda marcado como
+  **no leído**, así que la caja NO se marca. Sin ese freno, un `offset` ignorado haría 20 vueltas
+  contando 20 veces los mismos movimientos — el error contrario y peor.
+  Probado con el bloque REAL sacado del archivo (no una copia) y 7 casos: 1 página · una página
+  justo llena · los 291 de la corrida real · 600 movimientos (el caso Cartas Casino) · 1.500 (corta
+  y avisa) · **ML ignorando `offset`** (corta a la 2ª llamada, no infla) · sin movimientos.
+  **LA LECCIÓN, y es la tercera vez que la misma caja la enseña: el marcado de cajas borra
+  mercadería del patrimonio, así que todo lo que lea mal es destructivo.** El 11/09 el problema era
+  no leer nada (faltaba `date_to`), el 12/09 era leer de más (`not_available` contadas), y ahora era
+  **leer SÓLO EL PRINCIPIO**. Las tres veces el síntoma fue un número bajo que parecía un dato.
+  **Y la de siempre: falta de dato no es falta de mercadería.**
+
 - **510 UNIDADES DESAPARECIERON DEL PATRIMONIO: LA CAJA SE MARCÓ ANTES DE QUE ML LA PROCESARA
   (12/09/2026).** Él lo marcó desde Armar caja: *"porque me sigue recomendando que mande modista
   blanco si hay 150 en camino?"*. Tenía razón, y el problema era mucho más grande que ese renglón.
