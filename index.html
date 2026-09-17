@@ -1870,7 +1870,7 @@ function toggleTheme(){
 })();
 
 let db,whoAmI='',viewMode='mes',pedidoFilter='todos',pedidoSection='bsas',pedidoGroupByProv=false;
-let state={products:[],inventory:{},history:[],finanzas:{},snapshots:{},daily:{},ingresos:{},pedidos:[],pedidos_py:[],papelera:{},pausaPrecio:{},pySinStock:{},metricas:{},compras:{},ventaprod:{},proveedores:[],puntaje:{},stockDiario:{},tc_mes:{},precios_hist_prod:{},fact_mes:{},fact_cancel:{}};
+let state={products:[],inventory:{},history:[],finanzas:{},snapshots:{},daily:{},ingresos:{},pedidos:[],pedidos_py:[],papelera:{},pausaPrecio:{},pySinStock:{},candidatos:{},metricas:{},compras:{},ventaprod:{},proveedores:[],puntaje:{},stockDiario:{},tc_mes:{},precios_hist_prod:{},fact_mes:{},fact_cancel:{}};
 let _knownVentaprodIds=null; // null = primera carga; Set después
 let currentPage='home';
 let firstDataLoad=true;
@@ -1913,6 +1913,7 @@ function startApp(){
     state.papelera =d.pedidos_papelera||{};
     state.pausaPrecio=d.pausado_precio||{};   // 'no lo compro por ahora, el precio no da' (se revisa solo)
     state.pySinStock=d.py_sinstock||{};       // 'el mayorista no tenía esto hoy' (ver la canasta de US$1.000)
+    state.candidatos=d.candidatos_py||{};     // 'Para probar': productos que todavía no vendemos
     _limpiarEnCamino(); // borra los "en camino" que hayan quedado marcados (la función ya no existe)
     state.proveedores=d.proveedores?Object.values(d.proveedores).sort((a,b)=>(a.nombre||'').localeCompare(b.nombre||'','es',{sensitivity:'base'})).map(pv=>({...pv,condiciones:pv.condiciones?Object.values(pv.condiciones).sort((a,b)=>(a.minUSD||0)-(b.minUSD||0)):[]})):[];
     state.metricas =d.metricas ||{};
@@ -2310,7 +2311,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='19.45';
+const APP_VERSION='19.46';
 // El problema real que esto resuelve no es curiosidad: es que el celular guarda la app y sigue
 // mostrando la de ayer sin avisar. Varias veces se revisó un cambio que ya estaba subido y no se
 // veía. Por eso, además del número, el chip avisa cuando hay una versión nueva esperando.
@@ -8368,6 +8369,185 @@ function _pyLlenar(orden){
   }
   return{out,usado:pyTope()-queda,val};
 }
+// ── "PARA PROBAR": LOS PRODUCTOS QUE TODAVÍA NO VENDEMOS ───────────────────────────────
+// Pedido suyo del 17/09/2026: *"lo que no veo en la web de cyc es los productos que pueden ser
+// nuevos ingresos"*. Hasta hoy el panel sólo sabía de productos CON ficha, así que contestaba
+// *"¿este que ya vendo todavía conviene?"* y nunca *"¿qué me conviene EMPEZAR a vender?"*.
+//
+// QUIÉN LLENA ESTA LISTA, Y POR QUÉ NO ES EL ROBOT: el lugar donde hay que mirar es
+// **comprasparaguay** (suyo, 17/09: *"nissei tiene peor informacion de su stock que
+// comprasparaguai"*), y esa página le contesta **403 al robot** — probado dos veces, la segunda
+// con las cabeceras de un Chrome de verdad. O sea que la parte de BUSCAR la tiene que hacer un
+// navegador: el chat que corre en su PC.
+// El robot sí puede el otro lado —preguntarle a ML a cuánto se vende y cuánto cobra de comisión—
+// y ésa es la parte que define si da o no da. Así que el reparto es el MISMO que ya funciona con
+// los costos: **el chat trae el dato, la cuenta la hace una sola parte.**
+// Por eso esta pantalla no calcula ningún margen: lo muestra. Dos fórmulas midiendo lo mismo es
+// el error que ya mordió cinco veces en este panel.
+//
+// NO ELIGE NADA. Muestra los DOS títulos —el de comprasparaguay y el del catálogo de ML que el
+// robot encontró— uno arriba del otro, para que se vea de un vistazo si son el mismo producto.
+// Emparejar por nombre es el filtro que ya falló cinco veces, y con un producto nuevo es peor
+// porque no hay ficha contra la cual contrastar. Si el robot no pudo emparejarlo, **no inventa un
+// margen**: lo dice.
+function candList(){
+  return Object.entries(state.candidatos||{}).map(([id,c])=>({...c,id})).filter(c=>c&&c.nombre);
+}
+// VENCEN SOLOS. Sin esto la lista se vuelve un cementerio de tarjetas viejas que nadie mira —
+// el mismo problema que ya apareció con `repoextra` y con la pausa por precio. Un precio de
+// Paraguay de hace 45 días al lado de una decisión de compra se lee como si estuviera al día.
+const CAND_VENCE_DIAS=45;
+function candDias(c){return c&&c.ts?Math.max(0,Math.round((Date.now()-c.ts)/86400000)):null;}
+function candidatosHTML(){
+  const todos=candList();
+  const vivos=todos.filter(c=>!c.no&&!c.prodId&&(candDias(c)==null||candDias(c)<=CAND_VENCE_DIAS));
+  const fuera=todos.length-vivos.length;
+  const chip=(txt,col,tit)=>`<span class="pi-var-toggle" style="cursor:default;background:color-mix(in srgb,${col} 12%,transparent);color:${col};border-color:color-mix(in srgb,${col} 35%,transparent)" title="${String(tit||'').replace(/"/g,'&quot;')}">${txt}</span>`;
+  const cab=`<div style="margin:22px 0 10px;padding-top:16px;border-top:1px solid var(--border)">
+    <div style="font-size:.82rem;font-weight:700">🆕 Para probar <span style="font-weight:400;color:var(--muted);font-size:.9em">· productos que todavía no vendés</span></div>
+    <div style="font-size:.64rem;color:var(--muted);margin-top:4px;line-height:1.5">
+      Van <b>aparte del pedido</b> a propósito: son para evaluar, no para comprar de una. Los trae el chat de Paraguay desde comprasparaguay; el robot les pregunta a ML a cuánto se venden y hace la cuenta.
+      ${fuera?`<br><span style="color:var(--muted)">${fuera} quedaron afuera (descartados, ya con ficha o vencidos a los ${CAND_VENCE_DIAS} días).</span>`:''}
+    </div>
+  </div>`;
+  if(!vivos.length){
+    return cab+`<div class="empty-msg" style="font-size:.68rem;line-height:1.6">Todavía no hay ninguno.<br>
+      El chat de Paraguay los carga cuando encuentra algo en comprasparaguay <b>que Nissei ofrezca</b> (ahí salen juntos el código, el precio y que hay stock), cueste menos de US$ 250 puesto y no sea de una marca que ML frena.</div>`;
+  }
+  // El que más margen deja, primero. Los que todavía no tienen la cuenta hecha van al final:
+  // no se pueden comparar contra los medidos y ponerlos arriba sería invitar a decidir sin número.
+  vivos.sort((a,b)=>(b.margen??-999)-(a.margen??-999));
+  return cab+vivos.map(c=>{
+    const d=candDias(c);
+    const usd=parseFloat(c.usd)||0;
+    const puesto=usd>0?Math.round(usd*RECARGO_PY*100)/100:0;
+    const pesos=puesto>0?Math.round(puesto*curTC()):0;
+    const tieneCuenta=c.margen!=null&&isFinite(c.margen);
+    const col=!tieneCuenta?'var(--muted)':(c.margen>=40?'var(--green)':c.margen>=25?'var(--green)':'var(--amber)');
+    const info=[];
+    if(c.cod)info.push(chip('🔖 '+c.cod,'var(--muted)','El código con el que se pide. Es el de Nissei que usa comprasparaguay, no el número interno de la lista de Nissei.'));
+    if(c.marca)info.push(chip('🏷️ '+c.marca,'var(--muted)','La marca, para poder frenarla entera si ML la pide documentar.'));
+    if(d!=null)info.push(chip('🇵🇾 hace '+d+' d',d>30?'var(--amber)':'var(--muted)',d>30?'Este precio se miró hace más de un mes. Antes de decidir conviene volver a mirarlo.':'Cuándo se miró el precio en comprasparaguay.'));
+    // MEDIDAS Y PESO: si no están, se DICE. Sus topes son 40 cm por lado y 3 kg, y un producto
+    // que no entra en la caja colado en la lista no lo agarraría nadie. Inventar un tamaño sería
+    // peor: acá se avisa y lo mira él.
+    info.push((c.medidas||c.peso)
+      ? chip('📦 '+[c.medidas,c.peso].filter(Boolean).join(' · '),'var(--muted)','Medidas y peso tal como los informa la página. Tus topes son 40 cm por lado y 3 kg.')
+      : chip('📦 sin medidas','var(--amber)','La página no informa medidas ni peso, así que no se puede chequear solo que entre en tus topes de 40 cm y 3 kg. Miralo antes de pedirlo.'));
+    // LA OFERTA DE NISSEI ES LA QUE VALE, Y ES LA REGLA QUE DECIDE SI ENTRA O NO ────────────
+    // Suyo, 17/09/2026 con la Nikon P950 en la mano: *"mira este producto y ve que no está
+    // nissei. listo lo descarta"* y *"tiene que aparecer así ver, que diga nissei. entonces ahí
+    // ya sabés el código, precio y que tienen stock"*.
+    // comprasparaguay lista VARIAS tiendas por producto, cada una con SU código y SU precio. Si
+    // ninguna es de Nissei, no se compra y se descarta sin mirar nada más. Y si hay una de
+    // Nissei, ESA fila da las tres cosas de una: el código de pedido, el precio en dólares y que
+    // hay stock — que es justo lo que Nissei en su propia página informa peor.
+    // POR ESO EL CÓDIGO NO SE PUEDE TOMAR DE OTRA FILA: el de Mobile Zone o el de Pro Digital es
+    // de ELLOS. Ése es el caso del Cabotine (la lista daba 91144 y el de pedido era 91832), y
+    // pedir con el código equivocado es que llegue otra cosa a los 7 días.
+    info.push(c.enNissei===false
+      ? chip('⛔ sin oferta de Nissei','var(--red)','En comprasparaguay ninguna de las tiendas que lo ofrecen es Nissei. No se compra: descartalo.')
+      : chip('✓ oferta de Nissei','var(--green)','Nissei lo ofrece en comprasparaguay, así que el código y el precio de acá son los suyos y hay stock.'));
+    return `<div class="ingreso-item" style="flex-direction:column;align-items:stretch;gap:8px;border-left:3px solid ${col}">
+      <div style="display:flex;align-items:flex-start;gap:10px;flex-wrap:wrap">
+        <div style="flex:1;min-width:200px">
+          <div style="font-size:.76rem;font-weight:600;line-height:1.35">${c.link?`<a href="${c.link}" target="_blank" rel="noopener" style="color:inherit">${c.nombre}</a>`:c.nombre}</div>
+          <div style="font-size:.6rem;color:var(--muted);margin-top:3px">como lo llama comprasparaguay</div>
+        </div>
+        <div style="text-align:right;font-size:.7rem;line-height:1.5">
+          ${usd>0?`<div><b>US$ ${usd.toFixed(2)}</b> <span style="color:var(--muted)">de lista</span></div>
+          <div style="color:var(--muted)">× 1,15 = <b style="color:var(--text)">US$ ${puesto.toFixed(2)}</b> puesto${pesos?` · ${fmt(pesos)}`:''}</div>`
+          :`<div style="color:var(--red)">sin precio cargado</div>`}
+        </div>
+      </div>
+      <div style="display:flex;gap:6px;flex-wrap:wrap">${info.join('')}</div>
+      <div style="background:var(--surface2);border-radius:8px;padding:8px 10px;font-size:.68rem;line-height:1.55">
+        ${c.mlTit?`<div style="color:var(--muted);font-size:.9em">lo que encontró en ML</div>
+          <div style="font-weight:600;margin:2px 0 4px">${c.mlLink?`<a href="${c.mlLink}" target="_blank" rel="noopener" style="color:inherit">${c.mlTit}</a>`:c.mlTit}</div>
+          <div style="color:var(--muted)">se vende a <b style="color:var(--text)">${fmt(c.mlPrecio||0)}</b>${c.mlVendedores?` · ${c.mlVendedores} vendedor${c.mlVendedores===1?'':'es'} compitiendo`:''}</div>
+          <div style="font-size:.86em;color:var(--amber);margin-top:5px">⚠️ Mirá que los dos títulos sean el MISMO producto. Misma marca no quiere decir mismo producto — ya pasó con el Cabotine de 100 y de 30 ml.</div>`
+        :`<div style="color:var(--muted)">${c.motivo?c.motivo:'Todavía no le preguntó a ML a cuánto se vende. Lo hace el robot esta noche.'}</div>`}
+      </div>
+      ${tieneCuenta?`<div style="display:flex;align-items:baseline;gap:10px;flex-wrap:wrap">
+        <span style="font-size:1.35rem;font-weight:700;color:${col}">${c.margen.toFixed(0)}%</span>
+        <span style="font-size:.68rem;color:var(--muted)">de margen${c.ganancia?` · te quedarían <b style="color:var(--text)">${fmt(Math.round(c.ganancia))}</b> por unidad</span>`:'</span>'}
+        <span style="font-size:.6rem;color:var(--amber)" title="El envío sale de la tarifa de ML porque este producto nunca vendió, y esa tarifa se midió $246 corta el 20/08. El margen real puede ser un poco menor.">· estimado</span>
+      </div>`:`<div style="font-size:.68rem;color:var(--muted)">⏳ falta la cuenta de ML. <b>No se muestra ningún porcentaje</b> hasta tenerla: un margen inventado acá se aplica y recién se nota cuando ya compraste.</div>`}
+      <div style="display:flex;gap:6px;flex-wrap:wrap">
+        <button class="btn btn-add" style="font-size:.66rem;padding:5px 12px" onclick="candCrearFicha('${c.id}')" title="Crea la ficha del producto con su costo y su código ya cargados, marcada como Paraguay. No compra nada ni publica nada en ML.">👍 Crear ficha</button>
+        <button class="btn" style="font-size:.66rem;padding:5px 12px;color:var(--muted)" onclick="candDescartar('${c.id}')" title="No vuelve a aparecer. Se puede deshacer desde acá abajo.">👎 No me interesa</button>
+        ${c.marca?`<button class="btn" style="font-size:.66rem;padding:5px 12px;color:var(--red);border-color:rgba(239,68,68,.35)" onclick="candMarcaNo('${c.id}')" title="Saca de la lista TODO lo de esta marca, para siempre. Para las marcas que ML te pide documentar.">🚫 ${c.marca} no</button>`:''}
+      </div>
+    </div>`;
+  }).join('')+candDescartadosHTML();
+}
+// LO DESCARTADO NO SE ESCONDE. Una lista que saca renglones sin decirlo es una lista que miente —
+// la misma regla que el desplegable de `nomandar` en Armar caja.
+function candDescartadosHTML(){
+  const desc=candList().filter(c=>c.no);
+  if(!desc.length)return '';
+  return `<details style="margin-top:10px"><summary style="cursor:pointer;font-size:.66rem;color:var(--muted)">${desc.length} descartado${desc.length===1?'':'s'} · tocá para verlos y devolverlos</summary>
+    <div style="display:flex;flex-direction:column;gap:5px;margin-top:8px">
+    ${desc.map(c=>`<div style="display:flex;align-items:center;gap:8px;font-size:.66rem;color:var(--muted)">
+      <span style="flex:1">${c.nombre}${c.usd?` · US$ ${parseFloat(c.usd).toFixed(2)}`:''}</span>
+      <button class="btn" style="font-size:.6rem;padding:3px 8px" onclick="candVolver('${c.id}')">↩︎ Devolver</button>
+    </div>`).join('')}
+    </div></details>`;
+}
+async function candDescartar(id){
+  const c=(state.candidatos||{})[id];if(!c)return;
+  c.no=true;c.noTs=Date.now();
+  await fbSet('candidatos_py/'+id+'/no',true);
+  await fbSet('candidatos_py/'+id+'/noTs',c.noTs);
+  renderPedidos();toast('Descartado ✓');
+}
+async function candVolver(id){
+  const c=(state.candidatos||{})[id];if(!c)return;
+  delete c.no;delete c.noTs;
+  await fbDel('candidatos_py/'+id+'/no');await fbDel('candidatos_py/'+id+'/noTs');
+  renderPedidos();toast('Vuelve a la lista ✓');
+}
+// FRENAR UNA MARCA ENTERA. Pregunta antes: saca de la lista todo lo de esa marca, incluido lo que
+// todavía no apareció. Es para las que ML pide documentar (el Bare Vanilla y los dos Termómetros
+// están frenados por eso), y esa decisión no la puede tomar la máquina.
+async function candMarcaNo(id){
+  const c=(state.candidatos||{})[id];if(!c||!c.marca)return;
+  if(!confirm(`Frenar la marca "${c.marca}"\n\nNo va a volver a aparecer NINGÚN producto de esta marca en "Para probar".\n\nUsalo para las marcas que ML te pide documentar.`))return;
+  await fbSet('mlconfig/marcasFrenadas/'+encodeURIComponent(String(c.marca).toLowerCase()),true);
+  const marca=String(c.marca).toLowerCase();
+  for(const [k,v] of Object.entries(state.candidatos||{})){
+    if(v&&String(v.marca||'').toLowerCase()===marca&&!v.no){
+      v.no=true;v.noTs=Date.now();
+      await fbSet('candidatos_py/'+k+'/no',true);
+      await fbSet('candidatos_py/'+k+'/noTs',v.noTs);
+    }
+  }
+  renderPedidos();toast('Marca frenada ✓');
+}
+// CREAR LA FICHA. Es el único camino de salida hacia el panel de verdad, y deja el producto igual
+// que si lo hubieras cargado a mano: costo puesto en tu oficina (precio × 1,15), código de pedido
+// y origen Paraguay. Pregunta antes porque a partir de ahí el producto entra en el Arqueo, en
+// Pedidos y en todos los márgenes.
+// NO publica nada en ML ni compra nada: la publicación la hace él, que es la norma del 26/08.
+async function candCrearFicha(id){
+  const c=(state.candidatos||{})[id];if(!c)return;
+  const usd=parseFloat(c.usd)||0;
+  const puesto=usd>0?Math.round(usd*RECARGO_PY*100)/100:0;
+  const rep=(state.products||[]).filter(p=>normTxt(p.name||'').includes(normTxt(String(c.nombre).split(' ').slice(0,2).join(' '))));
+  if(!confirm(`Crear la ficha de:\n\n${c.nombre}\n\nCosto US$ ${puesto.toFixed(2)} (precio de Paraguay ${usd.toFixed(2)} + 15%)\nCódigo de pedido: ${c.cod||'(sin código)'}\nOrigen: Paraguay\n`
+    +(rep.length?`\n⚠️ OJO: ya hay ${rep.length} ficha(s) con un nombre parecido:\n${rep.slice(0,4).map(p=>'· '+p.name).join('\n')}\nSi es el mismo producto, no crees otra.\n`:'')
+    +`\nNo publica nada en ML ni compra nada.`))return;
+  const tc=curTC();
+  const p={id:'p'+Date.now(),name:String(c.nombre).slice(0,90),costUSD:puesto,cost:puesto*tc,origen:'py'};
+  p.costFullUSD=Math.round(puesto*100)/100;
+  if(c.cod)p.codPy=String(c.cod);
+  if(usd>0){p.nisseiUSD=usd;p.nisseiTs=c.ts||Date.now();}
+  await fbSet('products/'+p.id,p);
+  await fbSet('candidatos_py/'+id+'/prodId',p.id);
+  c.prodId=p.id;
+  await log('Ficha nueva desde Para probar: '+p.name+' · US$'+puesto);
+  renderPedidos();toast('Ficha creada ✓ · cargale el envío y las medidas cuando las tengas');
+}
 function pyCanasta(){
   const sin=state.pySinStock||{};
   const filas=((state.pedidos_py)||[]).filter(x=>!esPedidoPaulvic(x)).map(ped=>{
@@ -10117,7 +10297,10 @@ function renderPedidos(){
   // dibujó, y no adentro de cada rama: la lista de Paraguay se arma en dos caminos distintos
   // (agrupada por proveedor y suelta) y con la inyección repetida una de las dos iba a quedarse
   // sin canasta la próxima vez que alguien toque una de las dos.
-  if(!isBsas)el.innerHTML=pyCanastaHTML()+el.innerHTML;
+  // La canasta va ARRIBA (es el pedido de US$1.000, lo que estás armando) y "Para probar" va
+  // ABAJO DE TODO, pedido suyo: *"mas abajo o en otro lado, para poder evaluarlos aparte y ver si
+  // los metemos en el pedido o no"*. Son dos decisiones distintas y no se mezclan.
+  if(!isBsas)el.innerHTML=pyCanastaHTML()+el.innerHTML+candidatosHTML();
 }
 
 async function setPedidoProveedor(id){

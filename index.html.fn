@@ -111,6 +111,14 @@ function calcArqueo
 function calcDescuento
 function calcPuntajeMes
 function calcRotScore
+function candCrearFicha
+function candDescartadosHTML
+function candDescartar
+function candDias
+function candList
+function candMarcaNo
+function candVolver
+function candidatosHTML
 function catLim
 function cerrarCaja
 function cerrarGraficoFS

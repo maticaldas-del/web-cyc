@@ -3,6 +3,7 @@ const ALMAC_DIAS
 const APP_VERSION
 const CAJA_CM3
 const CAJA_VALE_LA_PENA
+const CAND_VENCE_DIAS
 const CMP_CUR
 const CMP_LBL_CUR
 const COLORS
