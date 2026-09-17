@@ -92,7 +92,6 @@ function aggregateYear
 function ajPreciosHist
 function ajToggle
 function almacenaHtml
-function aplicarNissei
 function arqClearHistCostoProd
 function arqSaveHistCostoProd
 function autoLinkFamilies

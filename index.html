@@ -2311,7 +2311,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='19.49';
+const APP_VERSION='19.50';
 // El problema real que esto resuelve no es curiosidad: es que el celular guarda la app y sigue
 // mostrando la de ayer sin avisar. Varias veces se revisó un cambio que ya estaba subido y no se
 // veía. Por eso, además del número, el chip avisa cuando hay una versión nueva esperando.
@@ -3677,21 +3677,56 @@ function paraguayHtml(p){
   const nu=(p.nisseiUSD!=null&&p.nisseiUSD!=='')?parseFloat(p.nisseiUSD)||0:0;
   const cu=costUSDof(p);
   const puesto=nu>0?Math.round(nu*RECARGO_PY*100)/100:0;
-  // Se comparan al centavo redondeado, igual que se guardan. Si no coinciden se AVISA y se ofrece
-  // el botón: un costo viejo al lado de un precio nuevo se lee como si estuviera al día.
-  const difiere=nu>0&&Math.abs(puesto-cu)>0.01;
+  // ── EL PRECIO DE PARAGUAY NO TOCA EL COSTO, Y NO HAY BOTÓN PARA QUE LO TOQUE ──────────
+  // Regla suya del 17/09/2026: *"sacar que el precio nuevo modifique el anterior. o sea que el
+  // precio que pone el chat mirando compraparaguai ponga el precio en un lugar nuevo que no
+  // modifique nada de lo que se vende"*. Y el motivo: *"lo que compre a un precio se vende a ese
+  // precio. si aumenta no compro"*.
+  // Antes había un botón "Usar este costo" que pisaba el `costUSD`. Se SACÓ: ese número decide
+  // los márgenes, el patrimonio y —con la suba automática prendida, que él la quiere prendida—
+  // si el robot le sube el precio a lo que ya tiene comprado. Un aumento del proveedor no puede
+  // disparar eso: son dos decisiones distintas y una no manda sobre la otra.
+  // Lo que se muestra son los DOS márgenes, uno al lado del otro:
+  //   · el de lo que TENÉS (con el costo que pagaste) — el que ya vendés, no se toca
+  //   · el de REPONERLO hoy (con el precio de Paraguay + 15%) — el que decide si comprar
   const cuando=p.nisseiTs?`hace ${Math.max(0,Math.round((Date.now()-p.nisseiTs)/86400000))} d`:'nunca';
+  const diasPy=p.nisseiTs?Math.max(0,Math.round((Date.now()-p.nisseiTs)/86400000)):null;
+  // El margen de reponer se calcula con la MISMA función que el resto del panel, sólo que
+  // pasándole un producto con el costo de Paraguay adentro. No es una fórmula nueva: si lo fuera,
+  // la ficha podría decir un número y Rotación de Stock otro sobre el mismo producto.
+  // `margenMLDe` devuelve el porcentaje en `margen`, NO en `pct`. Con `pct` los dos números salían
+  // siempre "—" y la caja parecía andar. Lo agarró leer la función en vez de suponerla.
+  // Al de reponer se le pasa el producto con el costo de Paraguay adentro y `shipUSD`/`devPct`
+  // intactos: `costFullUSDof` recalcula solo cuando alguno de esos está cargado, así que el
+  // `costFullUSD` guardado (que tiene el costo VIEJO adentro) no puede tapar la cuenta.
+  const mgHoy=margenMLDe(p);
+  const mgRepo=puesto>0?margenMLDe({...p,costUSD:puesto,costFullUSD:null,shipUSD:(p.shipUSD!=null?p.shipUSD:0)}):null;
+  const pintar=(m)=>(!m||m.margen==null)?'var(--muted)':(m.margen>=25?'var(--green)':m.margen>=23?'var(--amber)':'var(--red)');
   return `<div style="display:flex;flex-direction:column;gap:4px;background:rgba(239,68,68,.05);border:1px solid rgba(239,68,68,.25);border-radius:8px;padding:8px 12px">
     <div style="font-size:.58rem;color:#f87171;text-transform:uppercase;letter-spacing:.08em;margin-bottom:2px">🇵🇾 Paraguay <span style="text-transform:none;letter-spacing:0;font-size:.92em;color:var(--muted)">· mirado ${cuando}</span></div>
     <div style="display:flex;align-items:flex-end;gap:10px;flex-wrap:wrap">
       <div><label title="El código de NISSEI, el que se usa para hacer el pedido. NO es el número interno que muestra la lista de Nissei.">Código Nissei ⓘ</label><br><input type="text" style="width:110px" value="${(p.codPy||'').replace(/"/g,'&quot;')}" oninput="guardarProdLuego('${p.id}',this.value,updNisseiCod)" onchange="updNisseiCod('${p.id}',this.value)" placeholder="p. ej. 91832"></div>
       <div><label title="El precio en dólares que muestra comprasparaguay, CRUDO, sin el 15%.">Precio Nissei US$ ⓘ</label><br><input type="number" min="0" step="0.01" style="width:100px" value="${nu||''}" oninput="guardarProdLuego('${p.id}',this.value,updNisseiUSD)" onchange="updNisseiUSD('${p.id}',this.value)"></div>
-      ${nu>0?`<div style="font-size:.66rem;padding-bottom:6px;color:${difiere?'var(--amber)':'var(--muted)'}" title="El 15% incluye la compra del dólar con sus comisiones y el traslado hasta tu oficina.">
-        × 1,15 = <b>US$ ${puesto.toFixed(2)}</b> puesto
-        ${difiere?`<br><span style="color:var(--amber)">⚠️ el Costo US$ de arriba dice ${cu.toFixed(2)}</span>`:'<br>✓ coincide con el Costo US$'}
-      </div>
-      ${difiere?`<button class="btn" style="color:var(--amber);border-color:rgba(245,158,11,.4)" onclick="aplicarNissei('${p.id}')" title="Pone US$ ${puesto.toFixed(2)} como Costo US$ del producto. Eso cambia el margen de todas sus publicaciones, así que mirá el número antes.">Usar este costo</button>`:''}`:''}
+      ${nu>0?`<div style="font-size:.66rem;padding-bottom:6px;color:var(--muted)" title="El 15% incluye la compra del dólar con sus comisiones y el traslado hasta tu oficina.">
+        × 1,15 = <b style="color:var(--text)">US$ ${puesto.toFixed(2)}</b> puesto
+      </div>`:''}
     </div>
+    ${nu>0?`<div style="display:flex;gap:16px;flex-wrap:wrap;margin-top:6px;padding-top:7px;border-top:1px solid rgba(239,68,68,.18)">
+      <div style="font-size:.64rem;line-height:1.45">
+        <div style="color:var(--muted)">lo que TENÉS · costo US$ ${cu.toFixed(2)}</div>
+        <div style="font-size:1.15rem;font-weight:700;color:${pintar(mgHoy)}">${mgHoy&&mgHoy.margen!=null?mgHoy.margen.toFixed(0)+'%':'—'}</div>
+      </div>
+      <div style="font-size:.64rem;line-height:1.45">
+        <div style="color:var(--muted)">si lo REPONÉS hoy · US$ ${puesto.toFixed(2)}</div>
+        <div style="font-size:1.15rem;font-weight:700;color:${pintar(mgRepo)}">${mgRepo&&mgRepo.margen!=null?mgRepo.margen.toFixed(0)+'%':'—'}</div>
+      </div>
+      <div style="flex:1;min-width:190px;font-size:.62rem;color:var(--muted);line-height:1.5;padding-top:2px">
+        ${mgRepo&&mgRepo.margen!=null&&mgRepo.margen<25
+          ? `<span style="color:var(--amber)"><b>A este precio no conviene comprarlo.</b> El de la izquierda no cambia: lo que ya tenés se sigue vendiendo igual.</span>`
+          : `El precio de Paraguay <b>no toca</b> el costo ni ningún precio de venta. Sólo dice si conviene volver a comprarlo.`}
+        ${diasPy!=null&&diasPy>30?`<br><span style="color:var(--amber)">⚠️ este precio se miró hace ${diasPy} días.</span>`:''}
+      </div>
+    </div>`:''}
   </div>`;
 }
 // EL CÓDIGO VIVE EN `codPy` Y EN NINGÚN LADO MÁS. Es el MISMO campo que ya usaba la canasta de
@@ -3720,17 +3755,9 @@ async function updNisseiUSD(id,val){
   await log('Precio Nissei de '+p.name+': US$'+u);
   renderProds();
 }
-// APLICAR ES UN PASO APARTE Y PREGUNTA. Cambia el Costo US$, que es el número con el que se
-// calculan TODOS los márgenes y se valúa el stock: no se toca sin que se vea qué se está tocando.
-async function aplicarNissei(id){
-  const p=state.products.find(x=>x.id===id);if(!p)return;
-  const nu=parseFloat(p.nisseiUSD)||0;if(!(nu>0))return;
-  const nuevo=Math.round(nu*RECARGO_PY*100)/100, antes=costUSDof(p);
-  if(!confirm(`Pasar el Costo US$ de ${p.name}\n\nde US$ ${antes.toFixed(2)}  a  US$ ${nuevo.toFixed(2)}\n(precio de Nissei US$ ${nu.toFixed(2)} + 15%)\n\nEsto cambia el margen de TODAS las publicaciones de este producto.`))return;
-  await updCostUSD(id,nuevo);
-  renderProds();
-  toast('Costo actualizado desde Paraguay ✓');
-}
+// `aplicarNissei` SE SACÓ el 17/09/2026: era el botón que pisaba el Costo US$ con el precio de
+// Paraguay. Ver el comentario de arriba — el costo es lo que pagaste y el precio de Paraguay es si
+// conviene comprar. Que uno pise al otro le sube los precios de lo que ya tiene comprado.
 // ── EL COSTO NUEVO NO PUEDE CAMBIAR LO QUE YA GANASTE ──────────────────────────────────
 // Regla suya del 17/09/2026, con los dos Victoria's Secret vendidos ese día en la mano:
 // *"no quiero que me actualice el precio anterior con el que esta ahora. ya que yo lo pague
