@@ -1761,6 +1761,36 @@ ninguna variable ni ningún `id` — sólo se agregaron 7 nombres, ninguno repet
 
 ## Cosas que ya pasaron (para no repetirlas)
 
+- **SE ACTIVA SOLA SIEMPRE QUE ESTÉ PAUSADA, CON STOCK EN FULL Y ARRIBA DEL 25% (17/09/2026).**
+  Regla suya, textual, después de tener que activar a mano los dos P47 Cat Ear de Ayelen:
+  *"quiero que se active automaticamente siempre que el producto este pausado con stock en full y
+  tenga mas del 25% de ganancia"*. **Son esas tres condiciones y ninguna más.**
+  Hasta ese día `activarPausadasFull` tenía **dos frenos que contradecían la regla**, y los dos
+  dejaban la publicación pausada PARA SIEMPRE con mercadería adentro pagando almacenamiento:
+   · **`altaSinVender`** — "se dio de alta sola y todavía no vendió". El motivo era cierto (su costo
+     salió del título, no de una venta) pero el remedio era peor: la marca **se cae sola cuando
+     vende**, y pausada no vendía nunca. **Ya no frena.** El margen se sigue midiendo igual: si no
+     llega al piso, no se activa. Queda anotado en el renglón del log.
+   · **"nunca vendió: no hay con qué medir el margen"** — y **sí se podía medir**. Lo único que
+     faltaba era el envío, y para eso no hacen falta ventas propias: **abajo de los $33.000 ML no le
+     cobra envío al vendedor**, así que ahí el cargo es **CERO de verdad**, no una estimación (los
+     dos P47 están a $9.660). Arriba de la barrera se usa el **peor envío de Full medido en ventas
+     reales** (`CAND_ENVIO_ARRIBA`, el mismo número que usa `candidatos`): errar para el lado caro
+     hace ver el margen MENOR, que es el lado seguro cuando el número decide escribir en ML.
+     El renglón del log dice cuándo el envío es estimado — un margen medido y uno estimado no se
+     muestran igual.
+  **Los frenos que QUEDAN, y por qué:** la pausó ML (no se puede activar, no es una decisión
+  nuestra) · marcada `nomas` (es una decisión suya, activarla la desharía) · `noAutoActivar`
+  (freno que puso él a mano) · sin ficha o sin costo (ahí el *"más del 25%"* no se puede evaluar).
+  Probado con el bloque REAL del archivo y 4 casos: el P47 a $9.660 sin ventas **se activa con
+  43,9%** · uno caro sin ventas usa los $6.190 · uno CON ventas sigue deduciendo el envío de sus
+  ventas y no estima nada · y **$33.000 justos NO es cero** (la barrera es "menor que").
+  **Y hay un comando nuevo para diagnosticar esto: `pausadas[:piso]`, que SOLO LEE.** Llama a la
+  MISMA función que corre el robot cada hora y dice, renglón por renglón, en qué freno se fue cada
+  pausada con stock adentro. Hizo falta porque el probe `activarfull` tiene la cuenta **copiada
+  adentro**: sirve para aplicar, pero no contesta por qué el robot dejó algo pausado — y dos copias
+  de la misma cuenta ya se separaron seis veces en este archivo.
+
 - **LA CAJA 76236266 DIO POR PERDIDAS 218 UNIDADES QUE ESTABAN A LA VENTA (17/09/2026).** Él mandó
   la pantalla de ML al lado de la del panel y no coincidían. **ML: *"Procesamiento finalizado ·
   511 u. procesadas: 511 están a la venta"*. El panel: *"llegó el 2026-09-16 · faltaron 218 u."***,

@@ -792,12 +792,16 @@ async function activarPausadasFull(db, links, tokensRun, DRY, products, piso) {
         // Marcada "no la vendemos más" (`nomas`). El freno está bien; lo que hay que saber es que
         // adentro de Full quedó mercadería de algo que decidiste no vender: o se retira o paga.
         if (linkRow.ignored) { noVa('la marcaste "no la vendemos más" y quedó mercadería adentro de Full'); continue; }
-        // `altaSinVender`: se dio de alta sola desde el catálogo y todavía no vendió ninguna vez.
-        // Su producto lo eligió `matchProduct` por el TÍTULO, así que el costo —y por lo tanto el
-        // margen que decide si llega al piso— no está probado contra ninguna venta real. Activar
-        // es lo único que ESCRIBE en ML sin que medie una venta: hasta que venda, no se toca.
-        // La marca se cae sola en cuanto vende. Para sacarla antes: `altanuevas`.
-        if (linkRow.altaSinVender) { noVa('se dio de alta sola y todavía no vendió: su costo salió del título, no de una venta'); continue; }
+        // `altaSinVender` YA NO FRENA LA ACTIVACIÓN (17/09/2026). Regla suya, textual: *"quiero que
+        // se active automaticamente siempre que el producto este pausado con stock en full y tenga
+        // mas del 25% de ganancia"*, después de tener que activar a mano los dos P47 Cat Ear.
+        // Frenaba porque el costo de una publicación dada de alta sola sale del título y no de una
+        // venta real. El motivo sigue siendo cierto, pero el remedio estaba peor que la enfermedad:
+        // dejaba la publicación pausada PARA SIEMPRE con mercadería adentro pagando almacenamiento,
+        // y no vendía nunca, así que la marca —que se cae sola en cuanto vende— no se caía jamás.
+        // El círculo de la Lupa 75mm, otra vez. El margen se sigue midiendo igual: si no llega al
+        // piso no se activa. Queda anotado en el renglón del log para poder mirarlo.
+        const costoSinProbar = !!linkRow.altaSinVender;
         if (linkRow.noAutoActivar) { noVa(`frenada a mano${linkRow.frenoMotivo ? ': ' + String(linkRow.frenoMotivo).slice(0, 60) : ''}`); continue; }
         // Freno: ¿llega al piso con el precio de hoy?
         const p = linkRow.prodId ? pIdx[linkRow.prodId] : null;
@@ -810,7 +814,6 @@ async function activarPausadasFull(db, links, tokensRun, DRY, products, piso) {
         const com = await feeAt(site, precio, lt, cat);
         if (com == null) { noVa('ML no devolvió la comisión', precio); continue; }
         const ventas = (vtaMla[mla] && vtaMla[mla].length) ? vtaMla[mla] : (vtaProd[p.id] || []);
-        if (!ventas.length) { noVa('nunca vendió: no hay con qué medir el margen', precio); continue; }
         // El descuento PEOR visto, igual que cuando se bajan precios: si aun así llega al piso,
         // activarla es seguro. Con el descuento típico, la mitad de las ventas quedaría abajo.
         let extra = -Infinity;
@@ -818,14 +821,31 @@ async function activarPausadasFull(db, links, tokensRun, DRY, products, piso) {
           const cv = await feeAt(site, pv, lt, cat); if (cv == null) continue;
           for (const v of ventas) if (Math.round(v.tot) === pv) extra = Math.max(extra, v.tot - v.net - cv);
         }
-        if (!isFinite(extra)) { noVa('no pude deducir el descuento', precio); continue; }
+        // ── SIN VENTAS TAMBIÉN SE PUEDE MEDIR, Y NO HACE FALTA ADIVINAR NADA (17/09/2026) ──
+        // Antes esto era `noVa('nunca vendió: no hay con qué medir el margen')` y dejaba la
+        // publicación pausada para siempre — el círculo de la Lupa 75mm: no se activa porque no
+        // vendió, y no vende porque está pausada. Pero el cargo que falta es el ENVÍO, y para eso
+        // no hacen falta ventas propias:
+        //   · ABAJO de los $33.000 ML NO cobra envío al vendedor. No es una estimación: es la
+        //     barrera que ya está en cuatro lugares del robot y en el panel. Ahí el cargo es CERO
+        //     de verdad. (Los dos P47 Cat Ear están a $9.660: entran acá.)
+        //   · ARRIBA de la barrera se usa el PEOR envío de Full medido en ventas reales, el mismo
+        //     número que usa `candidatos`. Errar para el lado caro hace ver el margen MENOR, que
+        //     es el lado seguro cuando el número decide si se escribe en ML.
+        // Se marca `envioEstimado` para que el renglón del log lo diga: un margen medido y uno
+        // estimado no se muestran igual, que es la lección del verde sin envío descontado.
+        let envioEstimado = false;
+        if (!isFinite(extra)) {
+          extra = precio < UMBRAL_ENVIO_GRATIS ? 0 : CAND_ENVIO_ARRIBA;
+          envioEstimado = true;
+        }
         extra = Math.max(0, extra);
         const cuoV = cuotasCfg[mla] && parseFloat(cuotasCfg[mla].pct);
         const cuo = isFinite(cuoV) && cuoV > 0 ? cuoV / 100 : 0;
         const mlx = precio * m;
         const mg = ((precio - com - extra - precio * cuo) - costo - mlx) / (costo + mlx + extra);
         if (mg < PISO) { noVa(`queda en ${(mg * 100).toFixed(0)}%, abajo del ${(PISO * 100).toFixed(0)}%`, precio); continue; }
-        if (DRY) { activadas.push({ label, mla, nom, precio, stock: stockFull, mg: mg * 100, dry: true }); continue; }
+        if (DRY) { activadas.push({ label, mla, nom, precio, stock: stockFull, mg: mg * 100, dry: true, envioEstimado, costoSinProbar }); continue; }
         try {
           const r = await fetch(ML_API + '/items/' + mla, {
             method: 'PUT',
@@ -838,7 +858,7 @@ async function activarPausadasFull(db, links, tokensRun, DRY, products, piso) {
         let quedo = null;
         try { quedo = (await mlGet('/items/' + mla + '?attributes=id,status', tok)).status; } catch { /* */ }
         if (quedo !== 'active') { noVa(`pedí activarla pero quedó "${quedo || 'no pude leer'}"`, precio); continue; }
-        activadas.push({ label, mla, nom, precio, stock: stockFull, mg: mg * 100 });
+        activadas.push({ label, mla, nom, precio, stock: stockFull, mg: mg * 100, envioEstimado, costoSinProbar });
       }
     }
   }
@@ -857,7 +877,9 @@ async function activarPausadasFull(db, links, tokensRun, DRY, products, piso) {
   // que es el mismo motivo por el que el aviso diario no manda nada cuando no hay nada nuevo.
   // El detalle sigue yendo al LOG, que es donde se mira cuando se quiere mirar.
   for (const a of activadas) {
-    console.log(`▶️ ${a.dry ? '(PRUEBA) ' : ''}Activada: ${a.nom} · ${a.label} · ${a.stock} u. · ${money(Math.round(a.precio))} · ${Math.round(a.mg)}%`);
+    console.log(`▶️ ${a.dry ? '(PRUEBA) ' : ''}Activada: ${a.nom} · ${a.label} · ${a.stock} u. · ${money(Math.round(a.precio))} · ${Math.round(a.mg)}%`
+      + (a.envioEstimado ? `  ⚠️ envío ESTIMADO (nunca vendió)${a.precio < UMBRAL_ENVIO_GRATIS ? ': abajo de los $33.000 ML no cobra, es cero de verdad' : ': se usó el peor de Full, ' + money(CAND_ENVIO_ARRIBA)}` : '')
+      + (a.costoSinProbar ? `  ⚠️ costo sin probar (se dio de alta sola y todavía no vendió)` : ''));
   }
   // ── NO REPETIR LO MISMO TODAS LAS HORAS ────────────────────────────────────────────────
   // Esto corre una vez por hora. Una publicación que hoy no llega al piso tampoco llega dentro
@@ -887,10 +909,13 @@ async function activarPausadasFull(db, links, tokensRun, DRY, products, piso) {
       + `\n<i>Para poder activarlas hay que subirles el precio primero.</i>`);
   }
   // ESTE SEGUNDO BLOQUE NO EXISTÍA Y ERA EL QUE MÁS FALTABA. El mensaje filtraba por `x.precio`
-  // y se comía justo el caso que deja una publicación pausada PARA SIEMPRE: la que nunca vendió,
-  // donde no hay ventas con qué deducir el descuento de ML. Ese freno está BIEN —sin ese dato,
-  // activarla es a ciegas— pero callarlo lo vuelve un círculo: no se activa porque no vendió, y
-  // no vende porque está pausada. Es el descarte por omisión de siempre.
+  // y se comía los motivos que se resuelven ANTES de mirar el precio, que son justo los que dejan
+  // una publicación pausada PARA SIEMPRE con mercadería adentro.
+  // OJO: el motivo "nunca vendió" YA NO EXISTE (17/09/2026). Se podía medir sin ventas —abajo de
+  // los $33.000 el envío es cero de verdad, arriba se usa el peor de Full— y frenar por eso era el
+  // círculo de la Lupa 75mm: no se activa porque no vendió, y no vende porque está pausada.
+  // Los que quedan acá son los que de verdad no se pueden resolver solos: sin ficha, sin costo,
+  // marcada `nomas`, frenada a mano, o la pausó ML.
   if (sinMedir.length) {
     avisos.push(`⏸️ <b>Con stock en Full y no las puedo medir</b>\nNo las activo porque no puedo calcular en qué margen quedarían:\n`
       + sinMedir.map(lineaP).join('\n')
