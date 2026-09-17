@@ -1510,6 +1510,45 @@ no se distinguen por cómo se llaman, se distinguen por de dónde vinieron.**
 HTML. Una página armada con JavaScript contesta 200 y baja un cascarón vacío — leer eso como que
 anduvo es el mismo error que leer un cero como buena noticia.
 
+## EL "PROMPT GUAY": EL CHAT QUE MIRA LOS PRECIOS DE PARAGUAY (17/09/2026)
+
+Pedido suyo: *"pasame el prompt que le tengo que mandar al chat nuevo (…) seguramente te vuelva a
+pedir el texto muchas veces, pongamosle un nombre asi siempre te pido eso y ya sabes de lo que
+hablo"*. **Se llama `PROMPT GUAY`.** Cuando lo pida por ese nombre, se le pasa el texto entero.
+
+**POR QUÉ EXISTE:** comprasparaguay bloquea al robot (403, ver arriba) y ahí están el **precio en
+dólares** y el **código de pedido**. O sea que esa parte la tiene que mirar un chat con navegador.
+**Él usa 4 PCs y se mueve entre ellas**, así que el prompt es **autónomo**: no necesita la carpeta
+del repo, se pega y listo.
+
+**Las direcciones que usa ese chat:**
+ · panel de CYC → **https://maticaldas-del.github.io/web-cyc/** (GitHub Pages · **sin contraseña**)
+ · `comprasparaguay.com.ar` · `nissei.com` · MercadoLibre Argentina
+
+**EL REPARTO DE TAREAS, y es lo que hace que la cuenta no se pueda romper:**
+ · **el chat carga el COSTO, el panel calcula el MARGEN.** El chat hace UNA cuenta sola —
+   `precio en US$ de comprasparaguay × 1,15` → el campo **"Costo US$"** de la ficha — y de ahí en
+   más el panel pone la caja a Full, la comisión con sus escalones, el envío de arriba de los
+   $33.000, IIBB y monotributo. **El chat NO calcula el margen final**: lo lee de la ficha.
+   Así no puede haber dos fórmulas diciendo cosas distintas, que es el error que ya mordió cinco
+   veces en este archivo.
+ · **NO ELIGE**: trae título exacto, código, precio y link, y decide él.
+ · **Lo único que puede escribir**: el `Costo US$`, una ficha nueva, y el botón "pausar por precio".
+   Nada de tocar precios de ML, cerrar cajas, stock, ni publicar. El panel escribe directo en la
+   base, sin prueba y sin deshacer.
+
+**Los topes que él fijó:** US$250 por unidad · 40×40×40 cm · nada de marcas que ML frena (Lancôme y
+ese nivel) · prioridad a lo ya probado · suma si sirve para la perfumería, porque ahí hay segunda
+salida (el caso Victoria's Secret).
+
+**Y el aviso que hay que repetirle al chat:** *misma marca ≠ mismo producto*. Ya ofreció el Cabotine
+de **100 ml** cuando vendemos el de **30 ml**, y el Animale **Black** cuando vendemos el **For Men**.
+
+**OJO CON LA DIRECCIÓN DEL PANEL: es pública y sin contraseña.** Cualquiera que la tenga entra —
+se comprobó el 17/09 cuando él le pasó el link al chat local y entró de una. Los datos que se ven
+ahí (costos, márgenes, ventas) salen de Firebase, y **si sus reglas están abiertas, los ve cualquiera
+con esa dirección**. Queda como pendiente para mirar, no se tocó nada.
+
 ## Cosas que ya pasaron (para no repetirlas)
 
 - **510 UNIDADES DESAPARECIERON DEL PATRIMONIO: LA CAJA SE MARCÓ ANTES DE QUE ML LA PROCESARA
