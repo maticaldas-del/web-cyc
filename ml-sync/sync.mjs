@@ -5913,6 +5913,32 @@ async function main() {
       return;
     }
 
+    // BILLING_PROBE=pausadas[:<piso>] → POR QUÉ NO SE ACTIVÓ CADA PAUSADA CON STOCK EN FULL.
+    //
+    // Llama a `activarPausadasFull` en seco, que es LA MISMA función que corre el robot cada hora.
+    // Existe porque el probe `activarfull` tiene la cuenta COPIADA adentro: sirve para aplicar,
+    // pero no contesta por qué el robot dejó algo pausado, y dos copias de la misma cuenta ya se
+    // separaron seis veces en este repo. Para diagnosticar hay que correr la de verdad.
+    // SOLO LEE: va con DRY en true, así que no activa ninguna publicación ni manda ningún Telegram.
+    if (/^pausadas(:|$)/.test(String(process.env.BILLING_PROBE || ''))) {
+      const _pa = String(process.env.BILLING_PROBE).split(':');
+      const PISO = (parseFloat(_pa[1]) || (await pisoConfig(db, 30))) / 100;
+      const links = (await db.get('cyc/mllinks')) || {};
+      const toks = {};
+      for (const l of labels) {
+        const acc = accounts[l]; if (!acc?.refresh_token) continue;
+        try {
+          const t = await mlRefresh(ML_CLIENT_ID, ML_CLIENT_SECRET, acc.refresh_token);
+          await db.patch('mlapi/tokens/' + l, { refresh_token: t.refresh_token, updated_ts: Date.now() });
+          toks[l] = t.access_token;
+        } catch (e) { console.log(`No pude entrar a ${l}: ${e.message}`); }
+      }
+      console.log(`=== PAUSADAS CON STOCK EN FULL · piso ${(PISO * 100).toFixed(0)}% · SOLO LEE ===\n`);
+      await activarPausadasFull(db, links, toks, true, products, PISO);
+      console.log(`\n(No se activó nada ni se mandó ningún Telegram: es una prueba.)`);
+      return;
+    }
+
     if (String(process.env.BILLING_PROBE || '').startsWith('cajasllegaron')) {
       const APLICAR = String(process.env.BILLING_PROBE).split(':')[1] === 'go';
       const r = await cajasQueLlegaron(db, accounts, labels, products, !APLICAR);
