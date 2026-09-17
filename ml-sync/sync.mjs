@@ -7407,19 +7407,23 @@ async function main() {
         ['buscar publicaciones', `/sites/MLA/search?q=${q}&limit=5`],
         ['buscar en el catálogo', `/products/search?site_id=MLA&q=${q}&limit=5`],
       ];
-      let prodId = null, unaML = null;
+      let prodId = null;
+      // OJO: el id de un CATÁLOGO también empieza con "MLA" (ej. MLA22364117), igual que el de una
+      // publicación. La primera versión los separaba por el prefijo y por eso imprimió los
+      // catálogos como si fueran publicaciones —"$0 · vendidas ?"— y nunca llegó a probar el
+      // endpoint que importa. No se distinguen por el nombre: se distinguen por DE DÓNDE VINIERON.
       for (const [nom, ruta] of rutasML) {
+        const esCatalogo = ruta.startsWith('/products/search');
         try {
           const d = await mlGet(ruta, tok);
           const res = d.results || [];
           console.log(`✅ ${nom.padEnd(24)} → ${res.length} resultado(s) de ${d.paging?.total ?? '?'} en total`);
           for (const r of res.slice(0, 3)) {
-            if (r.id && String(r.id).startsWith('MLA')) {
-              unaML = unaML || r.id;
-              console.log(`     ${money(Math.round(r.price || 0)).padStart(12)} · vendidas ${String(r.sold_quantity ?? '?').padStart(5)} · ${r.shipping?.logistic_type || '-'} · ${String(r.title || '').slice(0, 52)}`);
-            } else {
+            if (esCatalogo) {
               prodId = prodId || r.id;
-              console.log(`     catálogo ${r.id} · ${String(r.name || r.title || '').slice(0, 60)}`);
+              console.log(`     catálogo ${String(r.id).padEnd(14)} · ${String(r.name || '').slice(0, 64)}`);
+            } else {
+              console.log(`     ${money(Math.round(r.price || 0)).padStart(12)} · vendidas ${String(r.sold_quantity ?? '?').padStart(5)} · ${r.shipping?.logistic_type || '-'} · ${String(r.title || '').slice(0, 52)}`);
             }
           }
         } catch (err) { console.log(`❌ ${nom.padEnd(24)} ${String(err.message || err).slice(0, 110)}`); }
