@@ -1549,6 +1549,73 @@ se comprobó el 17/09 cuando él le pasó el link al chat local y entró de una.
 ahí (costos, márgenes, ventas) salen de Firebase, y **si sus reglas están abiertas, los ve cualquiera
 con esa dirección**. Queda como pendiente para mirar, no se tocó nada.
 
+## "PARA PROBAR": QUÉ CONVIENE EMPEZAR A VENDER (17/09/2026)
+
+Pedido suyo: *"lo que no veo en la web de cyc es los productos que pueden ser nuevos ingresos"*.
+Hasta ese día el panel sólo sabía de productos CON ficha, así que contestaba *"¿este que ya vendo
+todavía conviene?"* y nunca *"¿qué me conviene EMPEZAR a vender?"*.
+
+**LA REGLA QUE DECIDE TODO, y la puso él mirando una Nikon P950:** *"mira este producto y ve que
+no está nissei. listo lo descarta"* y *"tiene que aparecer así ver, que diga nissei. entonces ahí
+ya sabés el código, precio y que tienen stock"*.
+comprasparaguay lista **varias tiendas por producto, cada una con SU código y SU precio**. Si
+ninguna es Nissei, se descarta sin mirar nada más. Y si hay una de Nissei, **esa fila da las tres
+cosas juntas** —código de pedido, precio en dólares y que hay stock—, que es justo lo que Nissei en
+su propia página informa peor (*"nissei tiene peor informacion de su stock que comprasparaguai"*).
+**El código NO se puede tomar de otra fila**: el de Mobile Zone o el de Pro Digital es de ELLOS.
+Ése es exactamente el caso del Cabotine, donde la lista daba `91144` y el de pedido era `91832`.
+**Y se recorre comprasparaguay ENTERO, no Nissei** (suyo, textual: *"NO NISSEI"*).
+
+**QUIÉN HACE QUÉ, y no es una preferencia:**
+ · **BUSCAR lo hace el chat de su PC**, porque comprasparaguay le contesta **403 al robot** —
+   probado dos veces, la segunda con las cabeceras de un Chrome de verdad.
+ · **LA CUENTA la hace el robot** (`candidatos`, todas las noches en `ml-daily`), porque
+   preguntarle a ML a cuánto se vende algo y cuánto cobra de comisión necesita el token.
+ · **La pantalla no calcula nada: muestra.** Dos fórmulas midiendo lo mismo es el error que ya
+   mordió cinco veces en este archivo.
+
+**DÓNDE SE VE:** Pedidos → Paraguay, **abajo de todo**, separado del pedido de verdad — pedido
+suyo: *"para poder evaluarlos aparte y ver si los metemos en el pedido o no"*. Vive en
+`cyc/candidatos_py/<id>`.
+
+**SUS CUATRO TOPES, y cuáles se pueden aplicar solos:**
+
+| tope | ¿lo aplica la máquina? |
+|---|---|
+| margen **25%** o más | **sí** · lo que no llega cae en "descartados" con el número |
+| **US$250** la unidad puesto | **sí** |
+| **40 cm** por lado y **3 kg** | **NO**: la página los informa o no. Inventar un tamaño es peor que no filtrar, así que la tarjeta lo dice en ámbar |
+| marcas que **ML frena** | **NO**: lo marca él con el botón 🚫 de la tarjeta, y queda en `cyc/mlconfig/marcasFrenadas` |
+
+**NO ELIGE NINGÚN PRODUCTO.** La tarjeta muestra **los DOS títulos** —el de comprasparaguay y el
+del catálogo de ML que encontró el robot— uno arriba del otro, para que él vea de un vistazo si son
+el mismo. Emparejar por nombre es el filtro que ya falló cinco veces, y en un producto nuevo es
+**peor**, porque no hay ficha contra la cual contrastar. Si el robot no pudo emparejarlo, **no
+inventa un margen: lo dice**.
+
+**EL ENVÍO NO SE INVENTA.** Abajo de los $33.000 ML no lo cobra y es CERO de verdad; arriba lo cobra
+siempre, y como el producto nunca vendió se usa el **peor medido en ventas reales ($6.190)**. Errar
+para el lado caro hace ver el margen MENOR, que es el lado seguro cuando el número decide una
+compra. Probado con las líneas reales y cinco casos: **$32.999 da 71% y $33.000 da 21,5%** — la
+barrera funcionando.
+
+**Tres frenos que no eran opcionales:**
+ · **Tope de 40 consultas a ML por vuelta.** Esto corre adentro de `ml-daily`: si una noche entran
+   300 candidatos, el paso nocturno se cuelga y se lleva puesto el resumen. Las que quedan sin
+   medir **se cuentan y se nombran** y salen en la corrida siguiente — un tope mudo es el descarte
+   por omisión de siempre.
+ · **Lo descartado no se esconde**: va en un desplegable con el motivo y el número, y se puede
+   devolver. Una lista que saca renglones sin decirlo es una lista que miente.
+ · **Vence a los 45 días**, si no se vuelve el cementerio de marcas viejas que ya apareció con
+   `repoextra` y con la pausa por precio.
+
+**El aviso** va al canal privado de precios, **sólo lo NUEVO** (`cyc/avisocand`), y **se anota sólo
+si el mensaje salió**. Si no hay nada nuevo que dé margen, no manda nada.
+
+**El botón "Crear ficha"** deja el producto con su costo puesto (precio × 1,15), su código y origen
+Paraguay, y avisa si ya hay una ficha con nombre parecido. **No publica nada en ML ni compra nada**:
+la publicación la hace él, que es la norma del 26/08.
+
 ## EL DATO DE PARAGUAY, EN LA FICHA Y EN PEDIDOS (17/09/2026)
 
 Pedido suyo: *"quiero que en la web aparezca todo, o sea el costo y eso, no solo si da o no (…)
