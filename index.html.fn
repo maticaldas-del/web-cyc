@@ -248,6 +248,8 @@ function mlVarRefresh
 function monoCat
 function monoPct
 function nombreDeVenta
+function ofiSumar
+function ofiSumarVar
 function onCmpTipo
 function paraguayHtml
 function pausarPrecio
