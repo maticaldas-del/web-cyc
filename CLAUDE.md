@@ -998,6 +998,28 @@ siempre) y cuatro casos: el Mango Temptation da 21,0% igual que la pantalla · e
 exactamente 25,00% · abajo de los $33.000 no cambia ni un decimal · y `submargen` pide el neto que
 deja 25,00% y 23,00% clavados.
 
+**Y LA MISMA NOCHE SALIÓ EL PRIMER AGUJERO DEL ARREGLO, con el Filtro agua.** A la 1:07 el robot
+subió bien el **VS Mango Temptation** (21% → $45.000 a $46.930), que es exactamente el caso que el
+arreglo vino a resolver. A la 1:10 avisó *"Margen bajo: **4%** · Filtro agua · subilo a $9.470"*
+—de $3.560, o sea **+166%**— de una publicación que **la ficha muestra en 28%**.
+**La causa: el envío y el neto salían de lugares distintos.** Cuando ML todavía no liquidó el pago,
+`orderNet` devuelve null y el `neto` sale del fallback (precio − comisión), que **NO tiene el envío
+restado**; el envío, en cambio, sí podía venir cargado. Con eso el envío se cobraba **una sola vez,
+del lado del divisor**, y el margen se hundía de mentira.
+**Dos frenos, y hacen falta los dos:** el envío se usa sólo si el neto es el REAL, y nunca puede ser
+más grande que lo que ML se quedó en esa venta (`itemGross − neto`) — si lo es, los dos números no
+son de la misma venta y se avisa en el log con el nombre del producto. Si alguno no da, el envío
+queda en **cero**, que es la cuenta de antes: el margen se ve un poco mejor y el robot no toca nada.
+Equivocarse para arriba no rompe ningún precio.
+**Y AHORA EL AVISO LLEVA EL ENVÍO Y LOS IMPUESTOS ADENTRO.** Sin esos dos números el mensaje no se
+puede chequear contra la ficha, que es justo lo que hubo que hacer a mano esa noche.
+Probado con el bloque REAL del archivo y cuatro casos: el Filtro agua da 27% (la ficha dice 28) por
+los dos caminos, el Mango Temptation sigue dando 21% y un carrito reparte el envío por lo que vale
+cada producto.
+**LA LECCIÓN: al meter un número nuevo en una cuenta, la pregunta no es si el número es correcto
+sino si sale de la MISMA venta que los otros.** Es la misma del 12/09 con las cajas: cuando dos
+partes cuentan la misma plata con números distintos, la diferencia no se pierde.
+
 **LA LECCIÓN, otra vez la misma: si dos partes del sistema miden la misma plata con fórmulas
 distintas, una está mal — y la que está sola no es la que está bien por ser el robot.** Y la
 segunda: el agujero se escondió un año porque **abajo de la barrera las dos fórmulas coinciden**;

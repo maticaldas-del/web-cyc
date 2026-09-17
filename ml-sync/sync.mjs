@@ -20264,7 +20264,26 @@ async function main() {
         // El envío de ESTA venta, repartido igual que el neto y los cargos cuando la compra lleva
         // varios productos (misma proporción que ya usa `mlfee`: si no, el que pagó el envío de
         // los dos aparecería perdiendo y el otro ganando — el bug de los Ferrari del 08/09).
-        const envioVenta = (orderEnvAmt && repartoGross > 0) ? Math.round(orderEnvAmt * (itemGross / repartoGross)) : 0;
+        //
+        // ── EL ENVÍO Y EL NETO TIENEN QUE SALIR DE LA MISMA VENTA (17/09/2026) ──────────────
+        // Lo agarró el Filtro agua esa misma noche: el aviso decía **4%** de una publicación que
+        // la pantalla muestra en **28%**, y proponía subirla de $3.560 a $9.470 (+166%).
+        // El motivo: cuando ML todavía no liquidó el pago, `orderNet` devuelve null y el `neto`
+        // sale del fallback (precio − comisión), que **NO tiene el envío restado**. Pero el envío
+        // sí podía venir cargado. Con eso el envío se cobraba UNA SOLA VEZ, del lado del divisor,
+        // y el margen se hundía de mentira.
+        // Dos frenos, y hacen falta los dos:
+        //  · el envío se usa SOLO si el neto es el real (`orderNetAmt != null`);
+        //  · y nunca puede ser más grande que lo que ML se quedó en esta venta
+        //    (`itemGross − neto`): si lo es, los dos números no son de la misma venta.
+        // Si alguno no da, el envío queda en CERO, que es la cuenta de antes: el margen se ve un
+        // poco MEJOR y el robot no toca nada. Equivocarse para arriba no rompe ningún precio.
+        let envioVenta = (orderNetAmt != null && orderEnvAmt && repartoGross > 0)
+          ? Math.round(orderEnvAmt * (itemGross / repartoGross)) : 0;
+        if (envioVenta > Math.max(0, itemGross - neto)) {
+          console.log(`  ⚠️ venta ${o.id} (${(p && p.name) || title}): el envío que informa ML ($${envioVenta}) es más grande que lo que ML se quedó ($${Math.round(itemGross - neto)}). No lo cuento: el margen se mide sin envío.`);
+          envioVenta = 0;
+        }
         const { costo, costBaseUSD, shipUSD } = p ? costoPesos(p, qty, tc) : { costo: 0, costBaseUSD: 0, shipUSD: 0 };
         const id = 'v' + o.id + '_' + idx;
         const obj = {
@@ -20392,8 +20411,12 @@ async function main() {
               // que hace falta pasa el tope del +25% —o sea en los casos PEORES— el robot no
               // toca y avisa… y ese aviso era el que se perdía. La Funda Cubre Colchón vino
               // meses al 10% por esto: el robot la veía, decidía no tocarla, y nadie se enteraba.
+              // EL ENVÍO VA EN EL AVISO. El margen se mide dividiendo por costo + impuestos +
+              // envío, así que sin ese número el mensaje no se puede chequear contra la ficha —
+              // que es justo lo que hizo falta la noche del 17/09 con el Filtro agua.
               await sendAlerta(`⚠️ <b>${head}</b>Precio actual: <b>${money(unit)}</b>\n`
-                + `Neto: ${money(neto)} · Costo: ${money(costo)}\n`
+                + `Neto: ${money(neto)} · Costo: ${money(costo)}`
+                + ` · Impuestos: ${money(Math.round(mlx))} · Envío: ${money(envioVenta)}\n`
                 + `👉 Subilo a <b>${money(sugUnit)}</b> para llegar al ${targetPct}%${motivo}`);
               avisoPrecio[mla] = { ts: Date.now(), a: sugUnit };
               avisoPrecioUpd[mla] = avisoPrecio[mla];
