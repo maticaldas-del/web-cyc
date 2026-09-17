@@ -2877,13 +2877,34 @@ async function correrCandidatos(db, products, labels, accounts, soloPrueba, prue
       const prod = res[0];
       if (!prod || !prod.id) {
         if (!soloPrueba) await db.set(`cyc/candidatos_py/${id}/motivo`, 'ML no tiene este producto en su catálogo. Hay que mirarlo a mano.');
-        console.log(`  · ${c.nombre} → ML no lo tiene en catálogo`);
+        console.log(`  · ${c.nombre}\n      → ML no tiene este producto en su catálogo. Hay que mirarlo a mano.`);
         continue;
       }
       mlTit = String(prod.name || prod.title || '').slice(0, 120);
       mlLink = `https://www.mercadolibre.com.ar/p/${prod.id}`;
-      const it = await mlGet(`/products/${prod.id}/items?limit=20`, tok);
-      const ofertas = (it && it.results) || [];
+      // EL TÍTULO SE IMPRIME SIEMPRE, ANTES DE PEDIR LOS VENDEDORES. Es la prueba de con qué lo
+      // emparejó: si el paso siguiente falla, sin esto no quedaría registro de qué encontró y no
+      // se podría saber si el emparejado era bueno.
+      console.log(`  · ${c.nombre}\n      ML lo emparejó con: "${mlTit}"  (${prod.id})`);
+      // EL 404 ACÁ NO ES UN ERROR: es lo que contesta ML cuando ese catálogo no tiene ningún
+      // vendedor activo ("No winners found"). Ya está anotado en CLAUDE.md y la primera prueba
+      // cayó justo en uno así — tratarlo como falla haría creer que el comando no anda.
+      // Va en su propio try para no confundirse con un problema de red del paso anterior, y sin
+      // `limit`, que es lo que devolvió 404 en la primera corrida.
+      let ofertas = [];
+      try {
+        const it = await mlGet(`/products/${prod.id}/items`, tok);
+        ofertas = (it && it.results) || [];
+      } catch (e2) {
+        const txt = String(e2.message || e2);
+        if (/404/.test(txt)) {
+          if (!soloPrueba) await db.set(`cyc/candidatos_py/${id}/motivo`, `ML tiene el catálogo ("${mlTit}") pero hoy no hay ningún vendedor activo: no hay precio contra el cual medir.`);
+          console.log('      → ML no tiene vendedores activos en ese catálogo (404 "no winners"). No es un error: no hay precio que mirar.');
+        } else {
+          console.log(`      → no pude pedir los vendedores (${txt.slice(0, 80)})`);
+        }
+        continue;
+      }
       vendedores = ofertas.length;
       // El precio de referencia es el MÁS BARATO que hoy se vende: es contra el que habría que
       // competir. Tomar el más caro haría ver un margen que no existe.
@@ -2893,18 +2914,18 @@ async function correrCandidatos(db, products, labels, accounts, soloPrueba, prue
       cat = ref && ref.category_id ? ref.category_id : null;
       if (ref && ref.listing_type_id) lt = ref.listing_type_id;
     } catch (err) {
-      console.log(`  · ${c.nombre} → no pude preguntarle a ML (${String(err.message || err).slice(0, 60)})`);
+      console.log(`  · ${c.nombre}\n      → no pude buscarlo en el catálogo de ML (${String(err.message || err).slice(0, 80)})`);
       continue;
     }
     if (!(mlPrecio > 0) || !cat) {
       if (!soloPrueba) await db.set(`cyc/candidatos_py/${id}/motivo`, 'ML tiene el catálogo pero hoy nadie lo vende: no hay precio contra el cual medir.');
-      console.log(`  · ${c.nombre} → catálogo sin vendedores activos`);
+      console.log('      → el catálogo existe pero no saqué precio ni categoría de ningún vendedor.');
       continue;
     }
     const fee = await feeAt(mlPrecio, lt, cat);
     if (fee == null) {
       if (!soloPrueba) await db.set(`cyc/candidatos_py/${id}/motivo`, 'ML no me contestó cuánto cobra de comisión a ese precio. Lo reintento la próxima vuelta.');
-      console.log(`  · ${c.nombre} → ML no dio la comisión`);
+      console.log('      → ML no contestó cuánto cobra de comisión a ese precio. Lo reintento la próxima vuelta.');
       continue;
     }
     const envio = mlPrecio >= 33000 ? CAND_ENVIO_ARRIBA : 0;
@@ -2915,8 +2936,7 @@ async function correrCandidatos(db, products, labels, accounts, soloPrueba, prue
     const ganancia = neto - costoTot;
     const margen = (costoTot + envio) > 0 ? (ganancia / (costoTot + envio)) * 100 : 0;
     calculados++;
-    console.log(`  · ${c.nombre}`);
-    console.log(`      ML: "${mlTit}" · ${money(Math.round(mlPrecio))} · ${vendedores} vendedor(es)`);
+    console.log(`      se vende a ${money(Math.round(mlPrecio))} · ${vendedores} vendedor(es) compitiendo`);
     console.log(`      costo ${money(Math.round(costo))} + impuestos ${money(Math.round(impuestos))} + envío ${money(envio)} → ${margen.toFixed(1)}% · ${money(Math.round(ganancia))} por unidad`);
     if (!soloPrueba) {
       await db.patch(`cyc/candidatos_py/${id}`, {
