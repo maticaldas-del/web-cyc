@@ -2769,6 +2769,213 @@ async function resolveTgChat(db) {
 // Manda SÓLO al canal privado de avisos. Si no está configurado NO manda nada y lo dice fuerte en
 // el log: mandarlo a la lista general sería peor que no mandarlo — ahí está el padre, y estas son
 // decisiones de precio que son de Mati. El lado seguro acá es no mandar.
+// ── "PARA PROBAR": LA CUENTA DE ML DE UN PRODUCTO QUE TODAVÍA NO VENDEMOS ──────────────────
+// Corre sola todas las noches en `ml-daily` y a mano con el probe `candidatos`.
+// Toma lo que el chat de Paraguay dejó en `cyc/candidatos_py` y le contesta la única pregunta
+// que falta: **¿a cuánto se vende esto en ML y cuánto queda?**
+//
+// SUS CUATRO TOPES (17/09/2026): margen 25% · US$250 la unidad puesto · 40 cm por lado y 3 kg ·
+// marcas que ML frena. Los dos primeros se aplican acá. Los otros dos NO se pueden aplicar solos:
+//  · las medidas y el peso los informa la página o no los informa, y **inventar un tamaño sería
+//    peor que no filtrar** — la pantalla lo dice en ámbar y lo mira él;
+//  · las marcas las marca él, producto por producto, con el botón de la tarjeta. Esa decisión
+//    (qué marca le va a pedir documentación ML) no la puede tomar la máquina.
+//
+// EL MARGEN SE MIDE CON LA CONVENCIÓN DE SIEMPRE, la que él fijó el 01/09:
+//   margen = (neto − costo − impuestos) / (costo + impuestos + ENVÍO)
+// El envío NO se inventa: abajo de los $33.000 ML no lo cobra y es CERO de verdad; arriba lo
+// cobra siempre, y como este producto nunca vendió se usa el PEOR de los medidos en ventas
+// reales ($6.190). Errar para el lado caro hace ver el margen MENOR, que es el lado seguro
+// cuando el número decide una compra.
+const CAND_TOPE_USD = 250;      // suyo: un producto caro se come el pedido de US$1.000 entero
+const CAND_PISO_PCT = 25;       // suyo: "el % sano es de 25 hacia arriba"
+const CAND_ENVIO_ARRIBA = 6190; // el peor envío de Full medido en ventas reales, arriba de la barrera
+const CAND_MAX_ML = 40;         // tope de consultas a ML por vuelta (ver abajo)
+async function correrCandidatos(db, products, labels, accounts, soloPrueba) {
+  const cands = (await db.get('cyc/candidatos_py')) || {};
+  const entradas = Object.entries(cands).filter(([, c]) => c && c.nombre);
+  const fin = (await db.get('cyc/finanzas')) || {};
+  const tc = parseFloat(fin.tipo_cambio) || 1500;
+  const monoP = parseFloat(((await db.get('cyc/monotributo')) || {}).pct) || 0;
+  // LAS MARCAS FRENADAS SE LEEN, Y SI NO SE PUEDEN LEER NO SE RECOMIENDA NADA NUEVO. Es el mismo
+  // lado seguro que `liquidando`: proponerle comprar una marca que ML le frena le hace gastar
+  // US$ de un pedido que no se puede rehacer, y se entera cuando la publicación queda en revisión.
+  let marcasNo = null;
+  try { marcasNo = (await db.get('cyc/mlconfig/marcasFrenadas')) || {}; } catch { marcasNo = null; }
+  if (!marcasNo) {
+    console.log('⚠️ No pude leer las marcas frenadas: no toco ningún candidato esta vuelta.');
+    return { mirados: 0, calculados: 0, avisados: 0 };
+  }
+  console.log(`=== PARA PROBAR · la cuenta de ML ${soloPrueba ? '(PRUEBA)' : ''} ===`);
+  console.log(`${entradas.length} candidato(s) en la lista · dólar ${money(tc)} · piso ${CAND_PISO_PCT}% · tope US$ ${CAND_TOPE_USD}`);
+  if (!entradas.length) {
+    console.log('La lista está vacía: el chat de Paraguay todavía no cargó ninguno. No es un error.');
+    return { mirados: 0, calculados: 0, avisados: 0 };
+  }
+  // Un token cualquiera alcanza: el catálogo y la comisión son del SITIO, no de la cuenta.
+  let tok = null;
+  for (const label of labels) {
+    const acc = accounts[label];
+    if (!acc?.refresh_token) continue;
+    try {
+      const t = await mlRefresh(ML_CLIENT_ID, ML_CLIENT_SECRET, acc.refresh_token);
+      await db.patch('mlapi/tokens/' + label, { refresh_token: t.refresh_token, updated_ts: Date.now() });
+      tok = t.access_token; break;
+    } catch { /* probamos con la siguiente */ }
+  }
+  if (!tok) { console.log('❌ No pude sacar token de ninguna cuenta: no hago ninguna cuenta esta vuelta.'); return { mirados: 0, calculados: 0, avisados: 0 }; }
+
+  const feeCache = {};
+  const feeAt = async (price, lt, cat) => {
+    // La caché es de TODA la corrida y por (tipo, categoría, precio) — NO por producto. La
+    // comisión no depende de cuál producto sea, y con la caché por producto el aviso diario tardó
+    // 9 minutos preguntando 18 veces lo mismo.
+    const k = lt + '|' + cat + '|' + Math.round(price);
+    if (feeCache[k] !== undefined) return feeCache[k];
+    let out = null;
+    try {
+      const d = await mlGet(`/sites/MLA/listing_prices?price=${Math.round(price)}&listing_type_id=${lt}&category_id=${cat}`, tok);
+      const o = Array.isArray(d) ? d[0] : d;
+      if (typeof o?.sale_fee_amount === 'number') out = o.sale_fee_amount;
+    } catch { out = null; }
+    feeCache[k] = out; return out;
+  };
+
+  const nuevosQueDan = [];
+  let mirados = 0, calculados = 0, consultas = 0, sinCuenta = 0;
+  const descartes = [];
+  for (const [id, c] of entradas) {
+    if (c.no || c.prodId) continue;            // ya decidido por él
+    mirados++;
+    const usd = parseFloat(c.usd) || 0;
+    const puesto = usd > 0 ? Math.round(usd * 1.15 * 100) / 100 : 0;
+    const fuera = async (motivo) => {
+      descartes.push(`${c.nombre} → ${motivo}`);
+      if (!soloPrueba) { await db.set(`cyc/candidatos_py/${id}/no`, true); await db.set(`cyc/candidatos_py/${id}/motivo`, motivo); await db.set(`cyc/candidatos_py/${id}/noTs`, Date.now()); }
+    };
+    // ── LOS DESCARTES BARATOS PRIMERO, que no cuestan ninguna consulta ──
+    if (c.enNissei === false) { await fuera('en comprasparaguay no lo ofrece Nissei: no se compra'); continue; }
+    if (!(usd > 0)) { await fuera('sin precio cargado: no se puede medir nada'); continue; }
+    if (puesto > CAND_TOPE_USD) { await fuera(`puesto sale US$ ${puesto.toFixed(2)}, pasa tu tope de US$ ${CAND_TOPE_USD}`); continue; }
+    if (c.marca && marcasNo[encodeURIComponent(String(c.marca).toLowerCase())]) { await fuera(`marca frenada: ${c.marca}`); continue; }
+    if (c.margen != null && isFinite(c.margen)) continue;   // ya tiene la cuenta hecha
+    // ── EL TOPE DE CONSULTAS. Esto corre adentro de `ml-daily`: si una noche entran 300
+    // candidatos, el paso nocturno se cuelga y se lleva puesto el resumen del día. Las que quedan
+    // sin medir se CUENTAN Y SE NOMBRAN —no es que no sirvan, es que no se alcanzó a mirarlas— y
+    // salen en la vuelta siguiente. Un tope mudo es el descarte por omisión de siempre.
+    if (consultas >= CAND_MAX_ML) { sinCuenta++; continue; }
+    consultas++;
+    let cat = null, mlTit = '', mlPrecio = 0, vendedores = 0, mlLink = '', lt = 'gold_special';
+    try {
+      const q = encodeURIComponent(String(c.nombre).slice(0, 80));
+      const bus = await mlGet(`/products/search?site_id=MLA&q=${q}&limit=3`, tok);
+      const res = (bus && (bus.results || bus.paging ? bus.results : null)) || [];
+      const prod = res[0];
+      if (!prod || !prod.id) {
+        if (!soloPrueba) await db.set(`cyc/candidatos_py/${id}/motivo`, 'ML no tiene este producto en su catálogo. Hay que mirarlo a mano.');
+        console.log(`  · ${c.nombre} → ML no lo tiene en catálogo`);
+        continue;
+      }
+      mlTit = String(prod.name || prod.title || '').slice(0, 120);
+      mlLink = `https://www.mercadolibre.com.ar/p/${prod.id}`;
+      const it = await mlGet(`/products/${prod.id}/items?limit=20`, tok);
+      const ofertas = (it && it.results) || [];
+      vendedores = ofertas.length;
+      // El precio de referencia es el MÁS BARATO que hoy se vende: es contra el que habría que
+      // competir. Tomar el más caro haría ver un margen que no existe.
+      const precios = ofertas.map((o) => parseFloat(o.price) || 0).filter((x) => x > 0);
+      mlPrecio = precios.length ? Math.min(...precios) : 0;
+      const ref = ofertas.find((o) => (parseFloat(o.price) || 0) === mlPrecio) || ofertas[0];
+      cat = ref && ref.category_id ? ref.category_id : null;
+      if (ref && ref.listing_type_id) lt = ref.listing_type_id;
+    } catch (err) {
+      console.log(`  · ${c.nombre} → no pude preguntarle a ML (${String(err.message || err).slice(0, 60)})`);
+      continue;
+    }
+    if (!(mlPrecio > 0) || !cat) {
+      if (!soloPrueba) await db.set(`cyc/candidatos_py/${id}/motivo`, 'ML tiene el catálogo pero hoy nadie lo vende: no hay precio contra el cual medir.');
+      console.log(`  · ${c.nombre} → catálogo sin vendedores activos`);
+      continue;
+    }
+    const fee = await feeAt(mlPrecio, lt, cat);
+    if (fee == null) {
+      if (!soloPrueba) await db.set(`cyc/candidatos_py/${id}/motivo`, 'ML no me contestó cuánto cobra de comisión a ese precio. Lo reintento la próxima vuelta.');
+      console.log(`  · ${c.nombre} → ML no dio la comisión`);
+      continue;
+    }
+    const envio = mlPrecio >= 33000 ? CAND_ENVIO_ARRIBA : 0;
+    const costo = puesto * tc;
+    const impuestos = mlPrecio * (4.8 + monoP) / 100;   // IIBB promedio + monotributo
+    const costoTot = costo + impuestos;
+    const neto = mlPrecio - fee - envio;
+    const ganancia = neto - costoTot;
+    const margen = (costoTot + envio) > 0 ? (ganancia / (costoTot + envio)) * 100 : 0;
+    calculados++;
+    console.log(`  · ${c.nombre}`);
+    console.log(`      ML: "${mlTit}" · ${money(Math.round(mlPrecio))} · ${vendedores} vendedor(es)`);
+    console.log(`      costo ${money(Math.round(costo))} + impuestos ${money(Math.round(impuestos))} + envío ${money(envio)} → ${margen.toFixed(1)}% · ${money(Math.round(ganancia))} por unidad`);
+    if (!soloPrueba) {
+      await db.patch(`cyc/candidatos_py/${id}`, {
+        mlTit, mlPrecio: Math.round(mlPrecio), mlVendedores: vendedores, mlLink,
+        margen: Math.round(margen * 10) / 10, ganancia: Math.round(ganancia),
+        puestoUSD: puesto, calcTs: Date.now(), motivo: null,
+      });
+    }
+    // ABAJO DEL PISO NO SE ESCONDE: cae en "descartados" CON el motivo y el número, así él puede
+    // devolverlo si el precio de Paraguay baja. Un renglón que desaparece sin decir por qué es la
+    // lista que miente.
+    if (margen < CAND_PISO_PCT) { await fuera(`da ${margen.toFixed(1)}%, abajo de tu piso de ${CAND_PISO_PCT}%`); continue; }
+    nuevosQueDan.push({ id, c, margen, ganancia, mlPrecio, mlTit, puesto });
+  }
+  console.log(`\n── ${mirados} mirados · ${calculados} con la cuenta hecha · ${consultas} consultas a ML · ${descartes.length} descartados ──`);
+  for (const d of descartes) console.log(`   ✕ ${d}`);
+  if (sinCuenta) console.log(`   ⏳ ${sinCuenta} quedaron sin medir por el tope de ${CAND_MAX_ML} consultas por vuelta. No es que no sirvan: salen en la corrida siguiente.`);
+
+  // ── EL AVISO ────────────────────────────────────────────────────────────────────────────
+  // Va al canal privado de precios, que es el suyo. SÓLO lo nuevo: un aviso que repite los mismos
+  // renglones todas las noches entrena a no abrirlo, y el día que hay algo nuevo tampoco se lee.
+  // Y se anota SÓLO SI EL MENSAJE SALIÓ: si falla el envío y se anotara igual, ese candidato
+  // quedaría callado para siempre por un aviso que nunca llegó.
+  let avisados = 0;
+  if (nuevosQueDan.length) {
+    let yaAvisado = null;
+    try { yaAvisado = (await db.get('cyc/avisocand')) || {}; } catch { yaAvisado = null; }
+    if (yaAvisado == null) {
+      console.log('⚠️ No pude leer de qué candidatos ya avisé: mando todo, repetir molesta menos que callarse.');
+      yaAvisado = {};
+    }
+    const frescos = nuevosQueDan.filter((x) => !yaAvisado[x.id]);
+    if (!frescos.length) {
+      console.log('No hay ninguno NUEVO para avisar (los que dan ya se avisaron). No mando nada.');
+    } else {
+      frescos.sort((a, b) => b.margen - a.margen);
+      const L = [`🆕 *Para probar* · ${frescos.length} producto${frescos.length === 1 ? '' : 's'} nuevo${frescos.length === 1 ? '' : 's'} de Paraguay que dan margen`, ''];
+      frescos.forEach((x, i) => {
+        L.push(`${i + 1}. *${x.c.nombre}*`);
+        L.push(`   US$ ${x.puesto.toFixed(2)} puesto · se vende a ${money(x.mlPrecio)} · *${x.margen.toFixed(0)}%* (${money(x.ganancia)}/u.)`);
+        L.push(`   ML: ${x.mlTit}`);
+      });
+      L.push('');
+      L.push('Están en Pedidos → Paraguay, abajo de todo. Mirá que los dos títulos sean el mismo producto antes de pedirlo.');
+      if (soloPrueba) {
+        console.log('\n── El mensaje que mandaría ──\n' + L.join('\n'));
+      } else {
+        const ok = await sendAlerta(L.join('\n'));
+        if (ok) {
+          for (const x of frescos) await db.set(`cyc/avisocand/${x.id}`, Date.now());
+          avisados = frescos.length;
+          console.log(`✓ Avisé ${frescos.length} candidato(s) al canal de precios.`);
+        } else {
+          console.log('⚠️ El mensaje NO salió: no anoto ninguno como avisado, así vuelven a salir mañana.');
+        }
+      }
+    }
+  } else {
+    console.log('Ninguno llega al piso hoy. No mando nada: un aviso que dice "no hay nada" es ruido.');
+  }
+  return { mirados, calculados, avisados };
+}
+
 async function sendAlerta(text) {
   if (!TG_TOKEN || TG_SILENCIO) return false;
   if (!TG_ALERTAS) {
@@ -7564,6 +7771,32 @@ async function main() {
         else console.log(`  ❌ ${x.p.name} ${x.ym}: ${v == null ? '(vacío)' : v}`);
       }
       console.log(`${ok} de ${plan.length} quedaron bien.`);
+      return;
+    }
+    // BILLING_PROBE=candidatos[:go] → LA CUENTA DE ML DE LOS PRODUCTOS "PARA PROBAR".
+    // Segunda mitad del pedido del 17/09/2026: *"lo que no veo en la web de cyc es los productos
+    // que pueden ser nuevos ingresos"*.
+    //
+    // EL REPARTO DE TAREAS, Y POR QUÉ ES ASÍ Y NO AL REVÉS:
+    //  · **BUSCAR lo hace el chat de su PC**, en comprasparaguay. No es una decisión de diseño,
+    //    es que esa página le contesta **403 al robot** — probado dos veces, la segunda con las
+    //    cabeceras de un Chrome de verdad. Y es la página que hay que mirar: suyo, *"nissei tiene
+    //    peor informacion de su stock que comprasparaguai"*.
+    //  · **La CUENTA la hace acá**, porque preguntarle a ML a cuánto se vende algo y cuánto cobra
+    //    de comisión necesita el token, y el token lo tiene el robot. Es el mismo camino que la
+    //    caja de compra y las visitas, a propósito.
+    // Así hay UNA sola parte haciendo la cuenta. Dos fórmulas midiendo lo mismo es el error que ya
+    // mordió cinco veces en este archivo.
+    //
+    // NO ELIGE NINGÚN PRODUCTO. Guarda el título EXACTO del catálogo de ML que encontró al lado
+    // del de comprasparaguay, y la pantalla los muestra juntos para que él vea si son el mismo.
+    // Emparejar por nombre es el filtro que ya falló cinco veces, y en un producto nuevo es peor
+    // porque no hay ficha contra la cual contrastar.
+    // Sin `:go` calcula y muestra pero NO escribe ni manda nada.
+    if (/^candidatos(:|$)/.test(String(process.env.BILLING_PROBE || ''))) {
+      const APLICAR = /(^|:)go$/.test(String(process.env.BILLING_PROBE));
+      const r = await correrCandidatos(db, products, labels, accounts, !APLICAR);
+      if (!APLICAR) console.log('\nPRUEBA: no escribí nada ni mandé ningún mensaje. Para aplicar: candidatos:go');
       return;
     }
     // BILLING_PROBE=nisseificha:<texto o link> → QUÉ DATOS TRAE LA PÁGINA DE UN PRODUCTO. SOLO LEE.

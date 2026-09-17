@@ -122,5 +122,30 @@ jobs:
           BILLING_PROBE: avisos:go
         run: node ml-sync/sync.mjs
 
+      # "PARA PROBAR": LA CUENTA DE ML DE LOS PRODUCTOS QUE TODAVÍA NO VENDEMOS (17/09/2026).
+      #
+      # El chat de Paraguay deja en la lista lo que encuentra en comprasparaguay (código, precio y
+      # que Nissei lo ofrece). Este paso contesta lo único que falta: a cuánto se vende en ML y
+      # cuánto queda. BUSCAR no lo puede hacer el robot —comprasparaguay le contesta 403— así que
+      # el reparto es: el chat trae el dato, la cuenta la hace una sola parte, acá.
+      #
+      # Va DESPUÉS del aviso de precios: son mensajes distintos y el de precios es el importante.
+      # Si la lista está vacía no hace nada y lo dice; si no hay ninguno nuevo que dé margen, no
+      # manda ningún mensaje.
+      #
+      # NO COMPRA NADA NI TOCA NINGÚN PRECIO: sólo calcula y avisa.
+      - name: Para probar · candidatos de Paraguay
+        env:
+          ML_CLIENT_ID: ${{ secrets.ML_CLIENT_ID }}
+          ML_CLIENT_SECRET: ${{ secrets.ML_CLIENT_SECRET }}
+          FIREBASE_API_KEY: ${{ secrets.FIREBASE_API_KEY }}
+          FIREBASE_DB_URL: ${{ secrets.FIREBASE_DB_URL }}
+          FIREBASE_BOT_EMAIL: ${{ secrets.FIREBASE_BOT_EMAIL }}
+          FIREBASE_BOT_PASSWORD: ${{ secrets.FIREBASE_BOT_PASSWORD }}
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+          BILLING_PROBE: candidatos:go
+        run: node ml-sync/sync.mjs
+
       # (El almacenamiento Full y los cargos de ML por débito —IIBB, etc.— ya NO se cargan como gasto
       # mensual: ahora se descuentan como un % por cuenta sobre cada venta, en la web. Ver ML_EXTRA_PCT.)
