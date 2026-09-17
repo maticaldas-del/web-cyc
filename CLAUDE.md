@@ -232,7 +232,8 @@ julio, a CYC le quedan **~$2.000.000/mes** después de todo eso.
    llegar al piso hay que BAJAR, el número está mal: no se toca y se investiga.
    **Única excepción, y la pide ÉL cada vez:** recuperar la caja de compra de un producto que tiene
    stock y no vende. El 16/08/2026 autorizó las tres primeras (pendrive 128gb, Ferrari, De La
-   Patagonia). Aun así: nunca se baja sin que lo apruebe, nunca abajo del piso del 30%, y el robot
+   Patagonia). Aun así: nunca se baja sin que lo apruebe, nunca abajo del piso CONFIGURADO (hoy
+   23%, `cyc/mlconfig/minPct` — este renglón decía "30%" hasta el 17/09/2026 y era el piso viejo), y el robot
    **no baja nada solo** — `bajarcaja` deja la lista y el comando, la decisión es suya.
 6. Después de aplicar un precio en ML, **volvé a leerlo de ML para confirmar** que quedó.
 7. **Las publicaciones con variantes también se suben.** No alcanza con el precio de la
