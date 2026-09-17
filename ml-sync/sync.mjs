@@ -13646,6 +13646,155 @@ async function main() {
       console.log(`Desde ahora el panel y ML cuentan las ventas en el mismo día.`);
       return;
     }
+    // BILLING_PROBE=comparo[:<piso>][:<días>] → LAS QUE EL ROBOT DEJA PASAR POR MEDIR DISTINTO.
+    //
+    // Encontrado el 17/09/2026. Él mostró una venta del Victoria's Secret Mango Temptation
+    // (`MLA3928197940`, Adriana, $45.000) que el panel marcaba en **21%** y preguntó por qué el
+    // robot no la había subido. La respuesta: **el robot la ve en 26%**.
+    //
+    // LAS DOS CUENTAS SACAN LA MISMA GANANCIA EN PESOS Y DIVIDEN POR COSAS DISTINTAS:
+    //   · `unapub` (14231), `bajopiso` (13755) y el panel →  ÷ (costo + impuestos + ENVÍO)
+    //   · el robot que sube solo    (~20146)               →  ÷ (costo + impuestos)
+    // Tres lugares contra uno: el raro es el robot.
+    //
+    // POR QUÉ NO SE NOTÓ NUNCA: abajo de $33.000 el envío es $0 y las dos cuentas dan lo mismo.
+    // Arriba de $33.000 ML cobra ~$6.000 y ahí se abren ~5 puntos. O sea que esto afecta SÓLO a
+    // los productos caros —perfumes, relojes, discos, tablets—, justo donde hay más plata por
+    // unidad. El robot viene dejando pasar publicaciones que para él están cómodas y para el panel
+    // están abajo del piso, y como no las toca TAMPOCO avisa: no se entera nadie.
+    //
+    // ESTE COMANDO SOLO LEE. No toca ML, no escribe en la base, no cambia ningún precio. Está para
+    // ver el TAMAÑO del problema antes de decidir si se corrige la fórmula del robot.
+    //
+    // LAS DOS CUENTAS SALEN DE LA MISMA LÍNEA (`mgDe`, con un interruptor), no de dos fórmulas
+    // copiadas: si fueran dos copias se separarían con el primer cambio, que es el error que ya
+    // mordió con los ocho `|| 30`, con el costo de la caja en dos archivos y con `subirpuede`.
+    //
+    // Se mide con el envío del PEOR caso y el precio de HOY, igual que `bajopiso`, para que los
+    // números se puedan comparar contra ese comando renglón por renglón.
+    if (String(process.env.BILLING_PROBE || '').startsWith('comparo')) {
+      const _cp = String(process.env.BILLING_PROBE).split(':');
+      const MIN = (parseFloat(_cp[1]) || await pisoConfig(db)) / 100;
+      const DIAS = parseFloat(_cp[2]) || 60;
+      const links = (await db.get('cyc/mllinks')) || {};
+      const vp = (await db.get('cyc/ventaprod')) || {}; setDevLive(vp);
+      const fin = (await db.get('cyc/finanzas')) || {};
+      const tc = parseFloat(fin.tipo_cambio) || 1500;
+      const monoP = parseFloat(((await db.get('cyc/monotributo')) || {}).pct) || 0;
+      const cuotasCfg = (await db.get('cyc/mlcuotas')) || {};
+      const pctCuotas = (mla) => { const v = cuotasCfg[mla] && parseFloat(cuotasCfg[mla].pct); return isFinite(v) && v > 0 ? v / 100 : 0; };
+      const pIdx = {}; for (const pr of products) pIdx[pr.id] = pr;
+      const desde = Date.now() - DIAS * 864e5;
+      const vtaMla = {};
+      for (const ents of Object.values(vp)) {
+        for (const v of Object.values(ents || {})) {
+          if (!v || v.cancelada || !v.mla || (v.ts || 0) < desde) continue;
+          const q = v.qty || 1, tot = (v.total || 0) / q, net = (v.neto || 0) / q;
+          if (tot > 0 && net > 0) (vtaMla[v.mla] = vtaMla[v.mla] || []).push({ tot, net });
+        }
+      }
+      const feeCache = {};
+      const feeAt = async (site, price, ltype, cat, token) => {
+        const k = site + '|' + ltype + '|' + cat + '|' + Math.round(price);
+        if (feeCache[k] !== undefined) return feeCache[k];
+        let out = null;
+        try {
+          const d = await mlGet(`/sites/${site}/listing_prices?price=${Math.round(price)}&listing_type_id=${ltype}&category_id=${cat}`, token);
+          const o = Array.isArray(d) ? d[0] : d;
+          if (typeof o?.sale_fee_amount === 'number') out = o.sale_fee_amount;
+        } catch { out = null; }
+        feeCache[k] = out; return out;
+      };
+      console.log(`=== LAS QUE EL ROBOT DEJA PASAR · piso ${(MIN * 100).toFixed(0)}% · ventas de ${DIAS} días ===`);
+      console.log('SOLO LEE: no se toca ningún precio ni se escribe nada.\n');
+      const dejaPasar = [], lasVeLosDos = [], sinDato = [];
+      for (const label of labels) {
+        const acc = accounts[label];
+        if (!acc?.refresh_token) continue;
+        let t; try { t = await mlRefresh(ML_CLIENT_ID, ML_CLIENT_SECRET, acc.refresh_token); } catch { continue; }
+        await db.patch('mlapi/tokens/' + label, { refresh_token: t.refresh_token, updated_ts: Date.now() });
+        const m = (mlExtraPct(label) + monoP) / 100;
+        const ids = Object.entries(links)
+          .filter(([mla, e]) => e && e.cuenta === label && !e.ignored && e.prodId && /^MLA/i.test(mla))
+          .map(([mla]) => mla);
+        for (let k = 0; k < ids.length; k += 20) {
+          let arr;
+          try { arr = await mlGet('/items?ids=' + ids.slice(k, k + 20).join(',') + '&attributes=id,status,price,variations,title,listing_type_id,category_id,site_id', t.access_token); } catch { continue; }
+          for (const row of (arr || [])) {
+            const b = row.body || {}; const mla = b.id;
+            if (!mla || !links[mla] || b.error || typeof b.status === 'number') continue;
+            if (b.status !== 'active' && b.status !== 'paused') continue;
+            const e = links[mla];
+            const nom = (e.title || b.title || mla).slice(0, 36);
+            const pr = pIdx[e.prodId];
+            if (!pr) { sinDato.push({ label, mla, nom, why: 'sin producto en la web' }); continue; }
+            const costo = costoPesos(pr, 1, tc).costo;
+            if (!costo) { sinDato.push({ label, mla, nom, why: 'sin costo cargado' }); continue; }
+            const vars = Array.isArray(b.variations) ? b.variations : [];
+            const precio = vars.length ? (vars[0].price || 0) : (b.price || 0);
+            if (!precio) { sinDato.push({ label, mla, nom, why: 'sin precio' }); continue; }
+            const ventas = vtaMla[mla] || [];
+            if (!ventas.length) { sinDato.push({ label, mla, nom, why: `sin ventas en ${DIAS} días` }); continue; }
+            const site = b.site_id || 'MLA', lt = b.listing_type_id, cat = b.category_id;
+            const com = await feeAt(site, precio, lt, cat, t.access_token);
+            if (com == null) { sinDato.push({ label, mla, nom, why: 'ML no devolvió la comisión' }); continue; }
+            const extras = [];
+            for (const pv of [...new Set(ventas.map((v) => Math.round(v.tot)))].slice(-8)) {
+              const cv = await feeAt(site, pv, lt, cat, t.access_token); if (cv == null) continue;
+              for (const v of ventas) if (Math.round(v.tot) === pv) extras.push(Math.max(0, v.tot - v.net - cv));
+            }
+            if (!extras.length) { sinDato.push({ label, mla, nom, why: 'no pude deducir el descuento' }); continue; }
+            extras.sort((a, c) => a - c);
+            const mx = extras[extras.length - 1];
+            const cuo = pctCuotas(mla), mlx = precio * m;
+            // ── LAS DOS CUENTAS, UNA SOLA LÍNEA ──────────────────────────────────────────
+            // `conEnv` es la ÚNICA diferencia entre lo que ve el panel y lo que ve el robot.
+            const mgDe = (env, conEnv) => ((precio - com - env - precio * cuo) - costo - mlx) / (costo + mlx + (conEnv ? env : 0)) * 100;
+            const mgPanel = mgDe(mx, true);
+            const mgRobot = mgDe(mx, false);
+            if (mgPanel >= MIN * 100) continue;         // para el panel está bien: no hay nada que mirar
+            // El precio que la deja en el piso CON la cuenta buena (la del panel).
+            const den = 1 - cuo - m * (1 + MIN);
+            let nuevo = 0;
+            if (den > 0) {
+              let P = precio, comP = com, bien = true;
+              for (let it = 0; it < 4; it++) {
+                const Pn = (costo * (1 + MIN) + comP + mx * (1 + MIN)) / den;
+                const c2 = await feeAt(site, Pn, lt, cat, t.access_token);
+                if (c2 == null) { bien = false; break; }
+                if (Math.abs(Pn - P) < 1 && it > 0) { P = Pn; comP = c2; break; }
+                P = Pn; comP = c2;
+              }
+              if (bien) nuevo = Math.ceil(P / 10) * 10;
+            }
+            const fila = { label, mla, nom, precio, mgPanel, mgRobot, nuevo, envio: mx, pausada: b.status === 'paused' };
+            if (mgRobot >= MIN * 100) dejaPasar.push(fila); else lasVeLosDos.push(fila);
+          }
+        }
+      }
+      const linea = (f) => `  ${f.label.padEnd(8)} · ${f.nom.padEnd(36)}\n`
+        + `      hoy ${money(Math.round(f.precio))}  →  vos ves ${f.mgPanel.toFixed(0)}%  ·  el robot ve ${f.mgRobot.toFixed(0)}%  (envío ${money(Math.round(f.envio))})\n`
+        + (f.nuevo ? `      para el ${(MIN * 100).toFixed(0)}% habría que ponerlo en ${money(f.nuevo)}  (+${money(f.nuevo - f.precio)})\n` : '      no pude calcular el precio del piso\n')
+        + (f.pausada ? '      ⏸️ está PAUSADA\n' : '') + `      ${f.mla}\n`;
+      dejaPasar.sort((a, c) => (c.mgRobot - c.mgPanel) - (a.mgRobot - a.mgPanel));
+      console.log(`── EL ROBOT LAS DEJA PASAR: vos las ves abajo del piso y él no · ${dejaPasar.length} ──`);
+      console.log('   Estas son las que cambiarían si se corrige la fórmula. Hoy no las toca NI te avisa.\n');
+      if (!dejaPasar.length) console.log('  (ninguna)\n');
+      for (const f of dejaPasar) console.log(linea(f));
+      const plata = dejaPasar.reduce((sum, f) => sum + (f.nuevo ? f.nuevo - f.precio : 0), 0);
+      if (dejaPasar.length) console.log(`  Subirlas todas al piso sería ${money(plata)} más, sumando una unidad de cada una.\n`);
+      console.log(`── ABAJO DEL PISO PARA LAS DOS CUENTAS · ${lasVeLosDos.length} ──`);
+      console.log('   A éstas el robot ya las agarra cuando venden: no cambia nada con la corrección.\n');
+      for (const f of lasVeLosDos) console.log(linea(f));
+      if (!lasVeLosDos.length) console.log('  (ninguna)\n');
+      console.log(`── NO SE PUDIERON MEDIR · ${sinDato.length} ──`);
+      const porQue = {};
+      for (const x of sinDato) porQue[x.why] = (porQue[x.why] || 0) + 1;
+      for (const [w, n] of Object.entries(porQue)) console.log(`   ${n} · ${w}`);
+      console.log('\nSOLO LECTURA: no se tocó ningún precio.');
+      return;
+    }
+
     // BILLING_PROBE=bajopiso[:<piso>][:<días>] → TODAS LAS QUE ESTÁN ABAJO DEL PISO, PARA DECIDIR UNA POR UNA
     //
     // Una sola lista con todo lo que hace falta para decidir si subirla o no:
