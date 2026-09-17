@@ -280,6 +280,7 @@ function pyCanastaHTML
 function pyCanastaReset
 function pyNoHabia
 function pySetModo
+function pyVolvioATener
 function quitarFoto
 function reasignVentasMla
 function rebuildReclamoStats

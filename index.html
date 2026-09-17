@@ -2311,7 +2311,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='19.50';
+const APP_VERSION='19.51';
 // El problema real que esto resuelve no es curiosidad: es que el celular guarda la app y sigue
 // mostrando la de ayer sin avisar. Varias veces se revisó un cambio que ya estaba subido y no se
 // veía. Por eso, además del número, el chip avisa cuando hay una versión nueva esperando.
@@ -3753,6 +3753,9 @@ async function updNisseiUSD(id,val){
   p.nisseiUSD=u;p.nisseiTs=Date.now();
   await fbSet('products/'+id+'/nisseiUSD',u);await fbSet('products/'+id+'/nisseiTs',p.nisseiTs);
   await log('Precio Nissei de '+p.name+': US$'+u);
+  // SI HAY PRECIO, NISSEI LO TIENE. La marca de "no lo tiene" se cae sola acá: pedirle a alguien
+  // que la destilde a mano es pedirle que se acuerde, y eso es lo que falla siempre.
+  if(u>0&&await pyVolvioATener(id))toast('Nissei volvió a tenerlo ✓ · vuelve a la canasta');
   renderProds();
 }
 // `aplicarNissei` SE SACÓ el 17/09/2026: era el botón que pisaba el Costo US$ con el precio de
@@ -8728,6 +8731,17 @@ function pyCanasta(){
     usado,tope:pyTope(),falta:Math.max(0,pyTope()-usado),
     gratisUSD:gratisOut.reduce((a,x)=>a+x.total,0)};
 }
+// ── "NISSEI NO LO TIENE": ES UN ESTADO, NO UNA MARCA FIJA (17/09/2026) ────────────────
+// Pedido suyo: *"marca de nissei no lo tiene, que aparezca cuando no esta en stock o no lo
+// encuentra y que cuando si lo encuentre que vuelva a marcar que si esta en stock"*.
+// Antes la marca se borraba al "Empezar una canasta nueva", así que los cuatro que Nissei no
+// vende (Cabotine 30ml, Animale Mujer, Azzaro 200ml, SanDisk con adaptador) volvían a la canasta
+// en cada vuelta y había que sacarlos a mano otra vez.
+// Ahora **dura hasta que Nissei vuelva a tenerlo**, y eso NO hay que acordarse de destildarlo:
+// se cae solo en cuanto alguien carga un precio de Paraguay para ese producto (ver updNisseiUSD).
+// Si hay precio, es que lo encontró; si lo encontró, lo tiene. Una marca que hay que sacar a mano
+// es la que se queda vieja y termina escondiendo mercadería que sí se puede comprar — el mismo
+// cementerio que ya apareció con `repoextra` y con la pausa por precio.
 async function pyNoHabia(pid,pon){
   if(pon)await fbSet('py_sinstock/'+pid,{ts:Date.now()});
   else await db.ref('cyc/py_sinstock/'+pid).remove();
@@ -8735,8 +8749,20 @@ async function pyNoHabia(pid,pon){
   if(pon)state.pySinStock[pid]={ts:Date.now()};else delete state.pySinStock[pid];
   renderPedidos();
 }
+// LO SACA SOLO. Se llama desde updNisseiUSD: nadie tiene que acordarse.
+async function pyVolvioATener(pid){
+  if(!pid||!(state.pySinStock||{})[pid])return false;
+  await db.ref('cyc/py_sinstock/'+pid).remove();
+  delete state.pySinStock[pid];
+  return true;
+}
+// EL BOTÓN DICE LO QUE HACE. Antes se llamaba "Empezar una canasta nueva" y lo que hacía era
+// borrar todas las marcas de "no había" — dos cosas distintas con un nombre solo. Ahora dice que
+// borra las marcas, que es lo único que toca.
 async function pyCanastaReset(){
-  if(!confirm('¿Empezar una canasta nueva? Se olvida todo lo que marcaste como "no había".'))return;
+  const n=Object.keys(state.pySinStock||{}).length;
+  if(!n){toast('No hay ninguno marcado');return;}
+  if(!confirm(`¿Marcar que Nissei volvió a tener los ${n} que están marcados?\n\nVuelven a entrar en el reparto de la canasta.`))return;
   await db.ref('cyc/py_sinstock').remove();
   state.pySinStock={};renderPedidos();
 }
@@ -8781,7 +8807,7 @@ function pyCanastaHTML(){
     ${c.filas.filter(f=>f.lleva>0).length?`<div style="font-size:.6rem;color:var(--muted);margin-top:8px">${pyModo==='viaje'?'Con los US$ '+c.tope+' del viaje:':'En este envío:'}</div>`:''}
     ${c.filas.filter(f=>f.lleva>0).map(f=>fila(f,false)).join('')}
     ${(()=>{const fuera=c.filas.filter(f=>!f.lleva);return fuera.length?`<div style="font-size:.6rem;color:var(--muted);margin-top:9px">No entran en estos US$ ${c.tope} (${fuera.length}) — van en el pedido siguiente:</div>`+fuera.slice(0,6).map(f=>fila(f,true)).join(''):'';})()}
-    ${c.sinStock.length?`<div style="font-size:.6rem;color:var(--muted);margin-top:9px">El mayorista no tenía (${c.sinStock.length}) — la plata se repartió sola entre el resto:</div>`+c.sinStock.map(f=>fila(f,true)).join(''):''}
+    ${c.sinStock.length?`<div style="font-size:.6rem;color:var(--muted);margin-top:9px">Nissei no lo tiene (${c.sinStock.length}) — la plata se repartió sola entre el resto. <b style="color:var(--text)">La marca se saca sola</b> en cuanto alguien le cargue un precio de Paraguay:</div>`+c.sinStock.map(f=>fila(f,true)).join(''):''}
     ${(()=>{
       // EL MENSAJE PARA EL MAYORISTA, que es para lo que existe todo esto: él pide código y
       // unidades. Sólo entran los renglones que TIENEN código cargado; los que no, se cuentan
@@ -8798,7 +8824,7 @@ function pyCanastaHTML(){
       </div>`;
     })()}
     <div style="margin-top:10px;display:flex;gap:8px;flex-wrap:wrap;align-items:center">
-      <button class="btn" style="font-size:.6rem;padding:4px 10px" onclick="pyCanastaReset()">Empezar una canasta nueva</button>
+      <button class="btn" style="font-size:.6rem;padding:4px 10px" onclick="pyCanastaReset()" title="Saca la marca de todos los que están como que Nissei no tiene, y vuelven al reparto.">Nissei volvió a tener todo</button>
       <span style="font-size:.58rem;color:var(--muted)">Marcá lo que no había y la plata se reparte sola entre lo que sigue.</span>
     </div>
   </div>`;
