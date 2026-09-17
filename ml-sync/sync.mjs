@@ -7377,6 +7377,33 @@ async function main() {
       console.log('Los ✅ son los que podríamos empezar a usar.');
       return;
     }
+    // BILLING_PROBE=gsdolar[:<guaraníes por dólar>] → EL CAMBIO CON EL QUE SE LEE NISSEI.
+    // Hace falta porque **comprasparaguay bloquea al robot (403, probado con cabeceras de
+    // navegador de verdad el 17/09/2026)** y es la única página que muestra el precio en DÓLARES.
+    // Nissei muestra guaraníes y nada más. O sea que el puente entre las dos es este número, y
+    // **no se inventa**: lo pone él mirando un producto en las dos páginas.
+    // Vive en `cyc/mlconfig/gsPorDolar`. Sin número, sólo muestra cómo está.
+    // Si NO está cargado, `nissei` informa en guaraníes y no convierte nada — el lado seguro es
+    // no dar un costo en pesos que después se mete en todos los márgenes.
+    if (String(process.env.BILLING_PROBE || '').startsWith('gsdolar')) {
+      const _gd = String(process.env.BILLING_PROBE).split(':');
+      const cfgG = (await db.get('cyc/mlconfig')) || {};
+      const antesG = parseFloat(cfgG.gsPorDolar) || 0;
+      const nuevoG = parseFloat(String(_gd[1] || '').replace(/[^\d.]/g, ''));
+      console.log('=== GUARANÍES POR DÓLAR (para leer Nissei) ===');
+      console.log(`Ahora: ${antesG ? antesG.toLocaleString('es-AR') + ' Gs. por US$ 1' : '(sin cargar — no se convierte nada)'}`);
+      if (!isFinite(nuevoG) || nuevoG <= 0) {
+        console.log('\nPara cambiarlo: gsdolar:<número>');
+        console.log('Cómo se saca: mirá un producto en comprasparaguay (precio en US$) y el MISMO en');
+        console.log('Nissei (precio en Gs.), y dividís. Ej: Gs. 117.000 ÷ US$ 13 = 9.000.');
+        console.log('Conviene rehacerlo cada tanto: si el cambio se mueve, todos los costos se mueven.');
+        return;
+      }
+      await db.set('cyc/mlconfig/gsPorDolar', nuevoG);
+      const rel = parseFloat(((await db.get('cyc/mlconfig')) || {}).gsPorDolar) || 0;
+      console.log(`\n${rel === nuevoG ? '✓' : '⚠️'} Quedó en ${rel.toLocaleString('es-AR')} Gs. por US$ 1 (releído de la base).`);
+      return;
+    }
     // BILLING_PROBE=nissei:<texto o código> → EL PRECIO DE NISSEI, LEÍDO POR EL ROBOT.
     // Primera mitad del pedido del 17/09/2026: *"que mire los precios y productos nuevos (…) por un
     // lado vemos si los productos que ya compramos dan bien todavía y por otro que muestre
@@ -7402,9 +7429,13 @@ async function main() {
       const tc = parseFloat(fin.tipo_cambio) || 1500;
       // El 15% lo puso él y "incluye todo: compra dólar, transporte hasta llegar a la oficina".
       const RECARGO_PY = 1.15;
+      // El cambio NO se inventa: sale de la base y lo carga él con `gsdolar`. Sin él no se
+      // convierte nada y se informa en guaraníes, que es la verdad de lo que dice la página.
+      const GS_USD = parseFloat(((await db.get('cyc/mlconfig')) || {}).gsPorDolar) || 0;
       const url = 'https://www.nissei.com/py/catalogsearch/result/?q=' + encodeURIComponent(busca);
       console.log(`=== NISSEI · "${busca}" ===`);
-      console.log(`Dólar ${money(tc)} · recargo hasta tu oficina ${Math.round((RECARGO_PY - 1) * 100)}%\n`);
+      console.log(`Dólar ${money(tc)} · recargo hasta tu oficina ${Math.round((RECARGO_PY - 1) * 100)}%`
+        + ` · cambio ${GS_USD ? GS_USD.toLocaleString('es-AR') + ' Gs. = US$ 1' : '⚠️ SIN CARGAR (no convierto: gsdolar:<n>)'}\n`);
       let html = '';
       try {
         const ctrl = new AbortController();
@@ -7441,7 +7472,10 @@ async function main() {
           || (bl.match(/href="(https:\/\/www\.nissei\.com\/py\/[^"]+)"/i) || [])[1] || '';
         if (!tit && !pr) continue;
         // "1.234,56" (formato de acá) → 1234.56
-        const usd = usdTxt ? parseFloat(usdTxt.replace(/\./g, '').replace(',', '.')) : null;
+        // Primero el US$ que diga la página (hoy Nissei no lo trae), y si no, el guaraní dividido
+        // por el cambio que él cargó. Nunca un cambio adivinado.
+        let usd = usdTxt ? parseFloat(usdTxt.replace(/\./g, '').replace(',', '.')) : null;
+        if (usd == null && pr && GS_USD > 0) usd = parseFloat(pr) / GS_USD;
         filas.push({ tit: tit ? limpia(tit) : '(sin título)', gs: pr ? parseFloat(pr) : null, usd, cod, link });
       }
 
@@ -7480,10 +7514,32 @@ async function main() {
       }
       if (filas.length > 12) console.log(`  … y ${filas.length - 12} más. Afiná la búsqueda.\n`);
       if (sinUsd) {
-        console.log(`⚠️ ${sinUsd} de los mostrados no traen el precio en US$ en la página, así que no los convertí.`);
-        console.log('   Muestra cruda del primer producto, para poder arreglarlo sin adivinar:\n');
-        const i = html.indexOf('data-price-amount');
-        if (i >= 0) console.log('   ' + html.slice(Math.max(0, i - 700), i + 700).replace(/\s+/g, ' ') + '\n');
+        console.log(`⚠️ ${sinUsd} sin precio en US$: Nissei sólo muestra guaraníes y el cambio no está cargado.`);
+        console.log('   Cargalo con  gsdolar:<guaraníes por dólar>  y vuelven a salir en pesos.\n');
+      }
+      // ── EL CÓDIGO QUE ÉL USA PARA PEDIR NO ES EL QUE SE VE EN LA LISTA ──────────────────
+      // El de la lista (`data-product-id`) es el número interno de Nissei: en el Cabotine dio
+      // 91144 y el que él maneja es 91832. Son dos cosas distintas, así que se abre la ficha del
+      // primer producto y se muestra TODO lo que parezca un código, sin elegir ninguno.
+      const primero = filas.find((f) => f.link);
+      if (primero) {
+        console.log(`── LA FICHA DE "${primero.tit.slice(0, 50)}" · buscando el código de pedido ──`);
+        try {
+          const ctrl2 = new AbortController();
+          const t1 = setTimeout(() => ctrl2.abort(), 25000);
+          const r2 = await fetch(primero.link, { signal: ctrl2.signal, headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/129.0.0.0 Safari/537.36', 'Accept-Language': 'es-AR,es;q=0.9' } });
+          clearTimeout(t1);
+          const h2 = await r2.text();
+          console.log(`   la ficha contestó ${r2.status} · ${Math.round(h2.length / 1024)} KB`);
+          const vistos = new Set();
+          for (const re of [/"sku"\s*:\s*"([^"]{2,24})"/gi, /itemprop="sku"[^>]*>\s*([^<]{2,24})/gi,
+            /product[_-]?id"?\s*[:=]\s*"?(\d{3,12})/gi, /C[oó]digo[^<>]{0,20}[:\s]\s*([A-Z0-9-]{3,24})/gi]) {
+            let m; while ((m = re.exec(h2))) { const v = String(m[1]).trim(); if (v && !vistos.has(v)) { vistos.add(v); } }
+          }
+          console.log(vistos.size ? `   códigos que aparecen en la ficha: ${[...vistos].slice(0, 12).join(' · ')}`
+            : '   no encontré ningún código en la ficha — hay que mirarla a mano.');
+          console.log('   ⚠️ NO elijo cuál es: decime vos cuál de éstos es el que usás para pedir y lo guardo.\n');
+        } catch (err) { console.log('   ❌ no pude abrir la ficha: ' + String(err.message || err).slice(0, 100) + '\n'); }
       }
       console.log('El "puesto en tu oficina" es la mercadería sola: US$ de Nissei + 15% × dólar.');
       console.log('Todavía NO tiene la caja a Full, ni la comisión de ML, ni el envío, ni IIBB, ni monotributo.');

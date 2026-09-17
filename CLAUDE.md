@@ -1470,10 +1470,32 @@ Medido con **`probarweb[:<texto>]`** (solo lee, no toca ML ni la base):
 | | |
 |---|---|
 | `nissei.com` (home y buscador) | ✅ **200 · 798 KB · los precios están en el HTML** |
-| `comprasparaguay.com.ar` | ❌ 403 · bloquea robots — no importa: el precio que manda es el de Nissei |
+| `comprasparaguay.com.ar` | ❌ **403, y NO es el User-Agent** · reintentado con las cabeceras de Chrome el 17/09: mismo 403 |
 | `/products/search?site_id=MLA&q=…` | ✅ busca el CATÁLOGO por texto ("azzaro sport" → 3.547) |
 | `/products/<id>/items` | ✅ vendedores con precio, **stock** y quién tiene la caja |
 | `/sites/MLA/search?q=…` | ❌ **403 forbidden** · ML cerró la búsqueda libre de publicaciones |
+
+**EL 403 DE COMPRASPARAGUAY ES EL PROBLEMA GRANDE, Y NO SE ARREGLA.** Aclaración suya del 17/09:
+*"en esta pagina esta en pesos y dolar. vos el dolar tomalo como dice ahi y mas el gasto queda el
+15%"* y *"el que importa para hacer el pedido es el de nissei en compra paraguay"*. O sea que
+**las DOS cosas que definen la compra —el precio en DÓLARES y el código de pedido— viven ahí**, y
+esa página bloquea al robot. Se reintentó con el User-Agent y las cabeceras de un Chrome de verdad:
+**mismo 403**, así que no era cómo nos presentábamos. No se insiste.
+**Nissei muestra guaraníes y su número INTERNO**, que no es el código de pedido: en el Cabotine 100mL
+la lista da `91144` y el que él usa es `91832`.
+**El puente es un solo número y lo pone él: `cyc/mlconfig/gsPorDolar`, con el comando `gsdolar`.**
+Se saca mirando un producto en las dos páginas y dividiendo (Gs. 117.000 ÷ US$ 13 = 9.000). Si no
+está cargado, `nissei` informa en guaraníes y **no convierte nada** — dar un costo en pesos con un
+cambio adivinado se mete en todos los márgenes y no se nota. Conviene rehacerlo cada tanto.
+**El desglose de los US$1.000, textual:** *"mercaderia + comprar dolar (siempre es mas por
+comisiones) + traslado = mercaderia + el 15%"*. O sea que el 15% YA incluye la compra del dólar con
+sus comisiones y el flete: no se le suma nada más para llegar a la oficina.
+
+**Y ÉL PIDIÓ RENOMBRAR LAS FICHAS con el nombre resumido de comprasparaguay** (*"sino da a errores
+de nombre o se confunde"*). Está bien, pero **el orden importa: primero el CÓDIGO, después el
+nombre.** Con el código guardado en la ficha el emparejado deja de ser por palabras y el riesgo se
+termina; renombrar primero deja el mismo filtro por palabras que ya falló cuatro veces, sólo que
+con nombres nuevos. El nombre es para que lo lea ÉL, no para que lo use la máquina.
 
 **Lo único que se pierde es buscar publicaciones que NO están en catálogo** — y eso tampoco lo
 podía el chat con Chrome (lo dejó anotado con el Animale Black). Perfumes y electrónica viven casi
