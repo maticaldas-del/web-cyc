@@ -7404,6 +7404,80 @@ async function main() {
       console.log(`\n${rel === nuevoG ? '✓' : '⚠️'} Quedó en ${rel.toLocaleString('es-AR')} Gs. por US$ 1 (releído de la base).`);
       return;
     }
+    // BILLING_PROBE=guay → QUÉ CARGÓ DE VERDAD EL ASISTENTE DE COMPRAS. SOLO LEE.
+    // Existe por una razón sola: **lo que un chat dice que hizo no es lo que quedó en la base.**
+    // El asistente que corre en la PC de Mati (el "PROMPT GUAY") escribe el código de Nissei
+    // (`nisseiCod`), el precio de Paraguay (`nisseiUSD`) y, si él aprieta el botón, el costo
+    // (`costUSD`). Esto lee esos tres campos de `cyc/products` y los pone al lado, sin tocar nada.
+    //
+    // Los DOS números son distintos y confundirlos arruina todos los márgenes:
+    //   nisseiUSD = el precio CRUDO de comprasparaguay
+    //   costUSD   = ese precio × 1,15 (RECARGO_PY), o sea puesto en la oficina — el que usa el panel.
+    // Por eso se marca ⚠️ cuando el costo NO es el precio de Paraguay + 15%: ahí el margen que
+    // muestra la web está calculado con otro número.
+    //
+    // Y mira los de Bs As también: si el asistente cargó un precio de Paraguay en una ficha que
+    // está marcada como Bs As, el dato existe y la pantalla de Paraguay no lo muestra — que es el
+    // descarte silencioso de siempre.
+    if (String(process.env.BILLING_PROBE || '') === 'guay') {
+      const RECARGO_PY = 1.15;
+      const fin = (await db.get('cyc/finanzas')) || {};
+      const tcG = parseFloat(fin.tipo_cambio) || 1500;
+      const hoy = Date.now();
+      const dias = (ts) => (ts ? Math.floor((hoy - ts) / 86400000) : null);
+      const py = products.filter((p) => String(p.origen || '') === 'py');
+      const otros = products.filter((p) => String(p.origen || '') !== 'py'
+        && (p.nisseiCod || p.nisseiUSD != null));
+      console.log('=== LO QUE CARGÓ EL ASISTENTE DE COMPRAS (solo lectura) ===');
+      console.log(`Dólar ${money(tcG)} · el costo puesto en tu oficina es el precio de Paraguay + ${Math.round((RECARGO_PY - 1) * 100)}%`);
+      console.log(`Fichas marcadas Paraguay: ${py.length} de ${products.length}\n`);
+      let conCod = 0, conPre = 0, desfasados = 0, completos = 0;
+      const filas = py.slice().sort((a, b) => (b.nisseiTs || 0) - (a.nisseiTs || 0));
+      for (const p of filas) {
+        const cod = String(p.nisseiCod || '').trim();
+        const nu = parseFloat(p.nisseiUSD);
+        const cu = parseFloat(p.costUSD);
+        const d = dias(parseFloat(p.nisseiTs) || 0);
+        if (cod) conCod++;
+        if (isFinite(nu) && nu > 0) conPre++;
+        const esperado = isFinite(nu) && nu > 0 ? Math.round(nu * RECARGO_PY * 100) / 100 : null;
+        const ok = esperado != null && isFinite(cu) && Math.abs(cu - esperado) <= 0.01;
+        if (esperado != null && !ok) desfasados++;
+        if (cod && esperado != null && ok) completos++;
+        console.log(`── ${p.name}   (${p.id})`);
+        console.log(`     código Nissei: ${cod || '— falta'}`
+          + `   ·   precio Paraguay: ${isFinite(nu) && nu > 0 ? 'US$ ' + nu.toFixed(2) : '— falta'}`
+          + (d != null ? `   ·   mirado hace ${d} d${d > 30 ? ' ⚠️ viejo' : ''}` : '   ·   sin fecha'));
+        console.log(`     costo en la ficha: ${isFinite(cu) && cu > 0 ? 'US$ ' + cu.toFixed(2) + ' = ' + money(Math.round(cu * tcG)) : '— SIN COSTO (se ve como todo ganancia)'}`
+          + (esperado != null ? `   ·   debería ser US$ ${esperado.toFixed(2)}   ${ok ? '✓' : '⚠️ NO COINCIDE'}` : ''));
+        console.log('');
+      }
+      if (!py.length) console.log('(ninguna ficha está marcada como Paraguay)\n');
+      console.log('── RESUMEN ──');
+      console.log(`Con código: ${conCod} de ${py.length}   ·   con precio de Paraguay: ${conPre} de ${py.length}`);
+      console.log(`Listas del todo (código + precio + costo al día): ${completos}`);
+      console.log(`Con el costo desfasado del precio de Paraguay: ${desfasados}`);
+      if (otros.length) {
+        console.log(`\n⚠️ ${otros.length} ficha(s) que NO están marcadas Paraguay y sin embargo tienen datos de Nissei cargados.`);
+        console.log('   No salen en Pedidos → Paraguay, o sea que ese dato hoy no lo ve nadie:');
+        for (const p of otros) {
+          console.log(`   · ${p.name} (${p.id}) · origen "${p.origen || '—'}"`
+            + ` · código ${p.nisseiCod || '—'} · US$ ${p.nisseiUSD != null ? p.nisseiUSD : '—'}`);
+        }
+      }
+      // Lo pausado por precio: es lo único más que el asistente puede escribir.
+      const pau = (await db.get('cyc/pausado_precio')) || {};
+      const ent = Object.entries(pau);
+      console.log(`\n── PAUSADOS POR PRECIO: ${ent.length} ──`);
+      for (const [pid, r] of ent) {
+        const d = dias(parseFloat(r && r.ts) || 0);
+        console.log(`   · ${(r && r.producto) || pid}`
+          + (d != null ? ` · hace ${d} d` : '')
+          + (r && r.margenAlPausar != null ? ` · quedaba en ${Number(r.margenAlPausar).toFixed(1)}%` : '')
+          + (r && r.piso != null ? ` (piso ${r.piso}%)` : ''));
+      }
+      return;
+    }
     // BILLING_PROBE=nissei:<texto o código> → EL PRECIO DE NISSEI, LEÍDO POR EL ROBOT.
     // Primera mitad del pedido del 17/09/2026: *"que mire los precios y productos nuevos (…) por un
     // lado vemos si los productos que ya compramos dan bien todavía y por otro que muestre
