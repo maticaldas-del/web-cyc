@@ -2870,11 +2870,32 @@ async function correrCandidatos(db, products, labels, accounts, soloPrueba, prue
     if (consultas >= CAND_MAX_ML) { sinCuenta++; continue; }
     consultas++;
     let cat = null, mlTit = '', mlPrecio = 0, vendedores = 0, mlLink = '', lt = 'gold_special';
+    // ¿EMPAREJADO POR NOMBRE O POR CÓDIGO? No es un detalle: la primera prueba real buscó
+    // "Xiaomi Redmi Watch 4" y ML devolvió **"Xiaomi Redmi Redmi Watch 3"**. Si ese catálogo
+    // hubiera tenido vendedores, habría salido un margen perfectamente calculado… del producto
+    // equivocado. Es el filtro por palabras que ya falló seis veces en este panel.
+    // Por eso el candidato puede traer `mlId` (el código del catálogo de ML, que el chat copia del
+    // navegador): si está, no se busca nada y no hay nada que adivinar. Si no está, se busca por
+    // nombre y **queda marcado como NO verificado**, para que el renglón no se pueda aplicar como
+    // si fuera seguro.
+    let porNombre = false;
     try {
-      const q = encodeURIComponent(String(c.nombre).slice(0, 80));
-      const bus = await mlGet(`/products/search?site_id=MLA&q=${q}&limit=3`, tok);
-      const res = (bus && (bus.results || bus.paging ? bus.results : null)) || [];
-      const prod = res[0];
+      let prod = null;
+      const idFijo = String(c.mlId || '').trim().toUpperCase().replace(/^.*\/P\//, '').split(/[?#]/)[0];
+      if (/^MLA\d+$/.test(idFijo)) {
+        try { prod = await mlGet(`/products/${idFijo}`, tok); } catch { prod = null; }
+        if (!prod || !prod.id) {
+          console.log(`  · ${c.nombre}\n      → el código de ML que trae (${idFijo}) no existe o no es un catálogo. No invento otro.`);
+          if (!soloPrueba) await db.set(`cyc/candidatos_py/${id}/motivo`, `El código de ML ${idFijo} no existe. Revisalo.`);
+          continue;
+        }
+      } else {
+        porNombre = true;
+        const q = encodeURIComponent(String(c.nombre).slice(0, 80));
+        const bus = await mlGet(`/products/search?site_id=MLA&q=${q}&limit=3`, tok);
+        const res = (bus && (bus.results || bus.paging ? bus.results : null)) || [];
+        prod = res[0];
+      }
       if (!prod || !prod.id) {
         if (!soloPrueba) await db.set(`cyc/candidatos_py/${id}/motivo`, 'ML no tiene este producto en su catálogo. Hay que mirarlo a mano.');
         console.log(`  · ${c.nombre}\n      → ML no tiene este producto en su catálogo. Hay que mirarlo a mano.`);
@@ -2885,7 +2906,7 @@ async function correrCandidatos(db, products, labels, accounts, soloPrueba, prue
       // EL TÍTULO SE IMPRIME SIEMPRE, ANTES DE PEDIR LOS VENDEDORES. Es la prueba de con qué lo
       // emparejó: si el paso siguiente falla, sin esto no quedaría registro de qué encontró y no
       // se podría saber si el emparejado era bueno.
-      console.log(`  · ${c.nombre}\n      ML lo emparejó con: "${mlTit}"  (${prod.id})`);
+      console.log(`  · ${c.nombre}\n      ML${porNombre ? ' lo emparejó POR NOMBRE (⚠️ chequear que sea el mismo producto)' : ' (por el código que trajo el chat)'}: "${mlTit}"  (${prod.id})`);
       // EL 404 ACÁ NO ES UN ERROR: es lo que contesta ML cuando ese catálogo no tiene ningún
       // vendedor activo ("No winners found"). Ya está anotado en CLAUDE.md y la primera prueba
       // cayó justo en uno así — tratarlo como falla haría creer que el comando no anda.
@@ -2914,7 +2935,10 @@ async function correrCandidatos(db, products, labels, accounts, soloPrueba, prue
       cat = ref && ref.category_id ? ref.category_id : null;
       if (ref && ref.listing_type_id) lt = ref.listing_type_id;
     } catch (err) {
-      console.log(`  · ${c.nombre}\n      → no pude buscarlo en el catálogo de ML (${String(err.message || err).slice(0, 80)})`);
+      // El mensaje de error va DESPUÉS de la URL en el texto que tira mlGet, así que cortando a
+      // 80 caracteres se veía la URL y no el motivo — que es justo lo único que sirve. Ahora se
+      // imprime entero: un error que no dice qué pasó es lo mismo que no avisar.
+      console.log(`  · ${c.nombre}\n      → no pude buscarlo en el catálogo de ML: ${String(err.message || err)}`);
       continue;
     }
     if (!(mlPrecio > 0) || !cat) {
@@ -2940,7 +2964,7 @@ async function correrCandidatos(db, products, labels, accounts, soloPrueba, prue
     console.log(`      costo ${money(Math.round(costo))} + impuestos ${money(Math.round(impuestos))} + envío ${money(envio)} → ${margen.toFixed(1)}% · ${money(Math.round(ganancia))} por unidad`);
     if (!soloPrueba) {
       await db.patch(`cyc/candidatos_py/${id}`, {
-        mlTit, mlPrecio: Math.round(mlPrecio), mlVendedores: vendedores, mlLink,
+        mlTit, mlPrecio: Math.round(mlPrecio), mlVendedores: vendedores, mlLink, mlPorNombre: porNombre,
         margen: Math.round(margen * 10) / 10, ganancia: Math.round(ganancia),
         puestoUSD: puesto, calcTs: Date.now(), motivo: null,
       });
@@ -2977,7 +3001,7 @@ async function correrCandidatos(db, products, labels, accounts, soloPrueba, prue
       frescos.forEach((x, i) => {
         L.push(`${i + 1}. *${x.c.nombre}*`);
         L.push(`   US$ ${x.puesto.toFixed(2)} puesto · se vende a ${money(x.mlPrecio)} · *${x.margen.toFixed(0)}%* (${money(x.ganancia)}/u.)`);
-        L.push(`   ML: ${x.mlTit}`);
+        L.push(`   ML: ${x.mlTit}${x.c.mlId ? '' : ' ⚠️ emparejado por nombre, chequealo'}`);
       });
       L.push('');
       L.push('Están en Pedidos → Paraguay, abajo de todo. Mirá que los dos títulos sean el mismo producto antes de pedirlo.');
@@ -7830,8 +7854,8 @@ async function main() {
       const mP = _cd.match(/^candidatos:prueba:(.+)$/);
       if (mP) {
         prueba = mP[1].split(';').map((x) => x.trim()).filter(Boolean).map((par) => {
-          const [nom, u] = par.split('|');
-          return { nombre: (nom || '').trim(), usd: parseFloat(u) || 0, enNissei: true, fuente: 'prueba' };
+          const [nom, u, ml] = par.split('|');
+          return { nombre: (nom || '').trim(), usd: parseFloat(u) || 0, mlId: (ml || '').trim(), enNissei: true, fuente: 'prueba' };
         }).filter((x) => x.nombre && x.usd > 0);
         if (!prueba.length) { console.log('Usá: candidatos:prueba:<nombre>|<US$>[;<otro>|<US$>]'); return; }
         console.log(`(PRUEBA con ${prueba.length} producto(s) inventado(s) — no escribo ni mando nada)\n`);

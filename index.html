@@ -2311,7 +2311,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='19.48';
+const APP_VERSION='19.49';
 // El problema real que esto resuelve no es curiosidad: es que el celular guarda la app y sigue
 // mostrando la de ayer sin avisar. Varias veces se revisó un cambio que ya estaba subido y no se
 // veía. Por eso, además del número, el chip avisa cuando hay una versión nueva esperando.
@@ -8462,6 +8462,7 @@ function candFormHTML(){
         ${i('usd','Precio US$','number','110px')}
       </div>
       <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
+        ${i('mlid','Link o código de ML','text','200px')}
         ${i('marca','Marca','text','140px')}
         ${i('medidas','Medidas (si las dice)','text','170px')}
         ${i('peso','Peso (si lo dice)','text','120px')}
@@ -8487,9 +8488,14 @@ async function candAgregar(){
   const id='c'+Date.now();
   const c={id,ts:Date.now(),fuente:'chat',nombre:nombre.slice(0,120),usd,enNissei:true};
   for(const k of ['cod','marca','medidas','peso','link'])if(v(k))c[k]=v(k).slice(0,200);
+  // EL CÓDIGO DEL CATÁLOGO DE ML ES LO QUE EVITA EL EMPAREJADO POR NOMBRE, y hace falta:
+  // la primera prueba real buscó "Xiaomi Redmi Watch 4" y ML devolvió "Xiaomi Redmi Redmi Watch 3".
+  // Si ese catálogo hubiera tenido vendedores, salía un margen bien calculado del producto
+  // EQUIVOCADO. Con el código no hay nada que adivinar. Es la misma lección que el codPy.
+  if(v('mlid'))c.mlId=v('mlid').slice(0,200);
   await fbSet('candidatos_py/'+id,c);
   state.candidatos=state.candidatos||{};state.candidatos[id]=c;
-  ['nombre','cod','usd','marca','medidas','peso','link'].forEach(k=>{const e=document.getElementById('cand-'+k);if(e)e.value='';});
+  ['nombre','cod','usd','marca','medidas','peso','link','mlid'].forEach(k=>{const e=document.getElementById('cand-'+k);if(e)e.value='';});
   await log('Candidato de Paraguay: '+c.nombre+' · US$'+usd);
   renderPedidos();
   toast('Agregado ✓ · el robot le hace la cuenta de ML esta noche');
@@ -8569,7 +8575,8 @@ function candidatosHTML(){
         ${c.mlTit?`<div style="color:var(--muted);font-size:.9em">lo que encontró en ML</div>
           <div style="font-weight:600;margin:2px 0 4px">${c.mlLink?`<a href="${c.mlLink}" target="_blank" rel="noopener" style="color:inherit">${c.mlTit}</a>`:c.mlTit}</div>
           <div style="color:var(--muted)">se vende a <b style="color:var(--text)">${fmt(c.mlPrecio||0)}</b>${c.mlVendedores?` · ${c.mlVendedores} vendedor${c.mlVendedores===1?'':'es'} compitiendo`:''}</div>
-          <div style="font-size:.86em;color:var(--amber);margin-top:5px">⚠️ Mirá que los dos títulos sean el MISMO producto. Misma marca no quiere decir mismo producto — ya pasó con el Cabotine de 100 y de 30 ml.</div>`
+          ${c.mlPorNombre===false&&c.mlId?`<div style="font-size:.86em;color:var(--green);margin-top:5px">✓ Emparejado por el código de ML, no por el nombre: es seguro que es este producto.</div>`
+            :`<div style="font-size:.86em;color:var(--amber);margin-top:5px">⚠️ <b>Emparejado por el NOMBRE</b>, no por código: mirá que los dos títulos sean el MISMO producto. Buscando "Xiaomi Redmi Watch 4" ML ya devolvió el "Watch 3". Si cargás el link de ML en la ficha del candidato, esto deja de pasar.</div>`}`
         :`<div style="color:var(--muted)">${c.motivo?c.motivo:'Todavía no le preguntó a ML a cuánto se vende. Lo hace el robot esta noche.'}</div>`}
       </div>
       ${tieneCuenta?`<div style="display:flex;align-items:baseline;gap:10px;flex-wrap:wrap">
