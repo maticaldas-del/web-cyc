@@ -7426,13 +7426,23 @@ async function main() {
         const tit = (bl.match(/class="[^"]*product-item-link[^"]*"[^>]*>([\s\S]{0,300}?)<\/a>/i) || [])[1];
         // `data-price-amount` es el número que Magento usa para calcular: viene sin símbolo ni
         // separadores de miles, así que no hay que adivinar si el punto es coma.
+        // ── PERO VIENE EN GUARANÍES, NO EN DÓLARES (17/09/2026) ──────────────────────────
+        // La primera corrida lo tomó por dólares y devolvió *"Perfume Giorgio Armani · US$
+        // 733000 → puesto en tu oficina $1.293.928.257"*. Gs. 733.000 es ~US$ 100, que es lo que
+        // sale ese perfume. El parse ANDUVO; lo que estaba mal era la unidad.
+        // El dólar de Nissei NO se inventa: se saca de la MISMA página, del precio en US$ que
+        // muestra al lado. Si no está, se informa en guaraníes y se dice que no se pudo convertir
+        // — un cambio inventado se arrastra a todos los márgenes y no se nota.
         const pr = (bl.match(/data-price-amount="([\d.]+)"/i) || [])[1];
+        const usdTxt = (bl.match(/US\$\s*([\d.,]+)/i) || [])[1];
         const cod = (bl.match(/data-product-id="(\d+)"/i) || [])[1]
           || (bl.match(/\/product\/(\d+)/i) || [])[1] || '';
         const link = (bl.match(/class="[^"]*product-item-link[^"]*"\s+href="([^"]+)"/i) || [])[1]
           || (bl.match(/href="(https:\/\/www\.nissei\.com\/py\/[^"]+)"/i) || [])[1] || '';
         if (!tit && !pr) continue;
-        filas.push({ tit: tit ? limpia(tit) : '(sin título)', usd: pr ? parseFloat(pr) : null, cod, link });
+        // "1.234,56" (formato de acá) → 1234.56
+        const usd = usdTxt ? parseFloat(usdTxt.replace(/\./g, '').replace(',', '.')) : null;
+        filas.push({ tit: tit ? limpia(tit) : '(sin título)', gs: pr ? parseFloat(pr) : null, usd, cod, link });
       }
 
       if (!filas.length) {
@@ -7447,16 +7457,34 @@ async function main() {
         return;
       }
 
-      console.log(`\n${filas.length} producto(s). Los precios son de Nissei, tal cual:\n`);
+      // EL BUSCADOR DE NISSEI ES FLOJO Y HAY QUE DECIRLO. "azzaro sport" devolvió perfumes Giorgio
+      // Armani y CUBIERTAS de auto: busca cada palabra por separado. Es el mismo peligro que el
+      // filtro por palabras del título, y acá NO hay ficha contra la cual contrastar. Por eso el
+      // título sale entero y la elección es suya.
+      console.log(`\n${filas.length} producto(s), en el orden que los devuelve Nissei.`);
+      console.log('⚠️ El buscador de Nissei busca cada palabra por separado: puede traer cualquier cosa.');
+      console.log('   Leé el título completo — no des por hecho que el primero es el que buscabas.\n');
+      let sinUsd = 0;
       for (const f of filas.slice(0, 12)) {
+        // El precio de la página es en GUARANÍES. Sólo se convierte a pesos si la misma página
+        // dio el precio en dólares: el cambio no se inventa.
         const pesos = f.usd != null ? Math.round(f.usd * RECARGO_PY * tc) : null;
+        if (f.usd == null) sinUsd++;
         console.log(`  ${f.tit.slice(0, 74)}`);
-        console.log(`    código ${String(f.cod || '?').padEnd(10)} · Nissei US$ ${f.usd != null ? f.usd.toFixed(2).padStart(7) : '      ?'}`
-          + (pesos != null ? ` → puesto en tu oficina ${money(pesos)}` : ' → sin precio: no calculo nada'));
+        console.log(`    código ${String(f.cod || '?').padEnd(10)}`
+          + ` · Gs. ${f.gs != null ? f.gs.toLocaleString('es-AR') : '?'}`
+          + (f.usd != null ? ` · US$ ${f.usd.toFixed(2)}` : ' · US$ —')
+          + (pesos != null ? ` → puesto en tu oficina ${money(pesos)}` : ' → sin el precio en US$ no convierto nada'));
         if (f.link) console.log(`    ${f.link.slice(0, 110)}`);
         console.log('');
       }
       if (filas.length > 12) console.log(`  … y ${filas.length - 12} más. Afiná la búsqueda.\n`);
+      if (sinUsd) {
+        console.log(`⚠️ ${sinUsd} de los mostrados no traen el precio en US$ en la página, así que no los convertí.`);
+        console.log('   Muestra cruda del primer producto, para poder arreglarlo sin adivinar:\n');
+        const i = html.indexOf('data-price-amount');
+        if (i >= 0) console.log('   ' + html.slice(Math.max(0, i - 700), i + 700).replace(/\s+/g, ' ') + '\n');
+      }
       console.log('El "puesto en tu oficina" es la mercadería sola: US$ de Nissei + 15% × dólar.');
       console.log('Todavía NO tiene la caja a Full, ni la comisión de ML, ni el envío, ni IIBB, ni monotributo.');
       console.log('Y NO elijo ninguno: el título y el código están enteros para que decidas vos.');
