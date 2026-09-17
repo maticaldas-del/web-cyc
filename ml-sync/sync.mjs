@@ -2797,7 +2797,7 @@ const CAND_MAX_ML = 40;         // tope de consultas a ML por vuelta (ver abajo)
 async function correrCandidatos(db, products, labels, accounts, soloPrueba, prueba) {
   const cands = (await db.get('cyc/candidatos_py')) || {};
   const entradas = Object.entries(cands).filter(([, c]) => c && c.nombre);
-  if (prueba) entradas.unshift(['__prueba__', prueba]);
+  if (prueba) [].concat(prueba).forEach((x, i) => entradas.unshift(['__prueba' + i + '__', x]));
   const fin = (await db.get('cyc/finanzas')) || {};
   const tc = parseFloat(fin.tipo_cambio) || 1500;
   const monoP = parseFloat(((await db.get('cyc/monotributo')) || {}).pct) || 0;
@@ -7823,13 +7823,18 @@ async function main() {
       // candidatos:prueba:<nombre>|<US$> → corre el camino ENTERO sobre un producto inventado, sin
       // escribir nada. Es la única forma de probar la consulta a ML y la cuenta sin cargar datos
       // de mentira en la base, que después quedan.
+      // Acepta VARIOS separados por ";" — probar de a uno no muestra lo que importa, que es cómo
+      // se comporta el filtro entero: uno que pasa, uno que se cae por el tope de US$250 y uno que
+      // ML no tiene. Un caso solo siempre parece que anda.
       let prueba = null;
       const mP = _cd.match(/^candidatos:prueba:(.+)$/);
       if (mP) {
-        const [nom, u] = mP[1].split('|');
-        prueba = { nombre: (nom || '').trim(), usd: parseFloat(u) || 0, enNissei: true, fuente: 'prueba' };
-        if (!prueba.nombre || !(prueba.usd > 0)) { console.log('Usá: candidatos:prueba:<nombre>|<US$>'); return; }
-        console.log(`(PRUEBA con un producto inventado: "${prueba.nombre}" a US$ ${prueba.usd} — no escribo nada)\n`);
+        prueba = mP[1].split(';').map((x) => x.trim()).filter(Boolean).map((par) => {
+          const [nom, u] = par.split('|');
+          return { nombre: (nom || '').trim(), usd: parseFloat(u) || 0, enNissei: true, fuente: 'prueba' };
+        }).filter((x) => x.nombre && x.usd > 0);
+        if (!prueba.length) { console.log('Usá: candidatos:prueba:<nombre>|<US$>[;<otro>|<US$>]'); return; }
+        console.log(`(PRUEBA con ${prueba.length} producto(s) inventado(s) — no escribo ni mando nada)\n`);
       }
       const r = await correrCandidatos(db, products, labels, accounts, !APLICAR || !!prueba, prueba);
       if (!APLICAR || prueba) console.log('\nPRUEBA: no escribí nada ni mandé ningún mensaje. Para aplicar: candidatos:go');
