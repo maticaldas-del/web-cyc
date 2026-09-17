@@ -1616,6 +1616,89 @@ si el mensaje salió**. Si no hay nada nuevo que dé margen, no manda nada.
 Paraguay, y avisa si ya hay una ficha con nombre parecido. **No publica nada en ML ni compra nada**:
 la publicación la hace él, que es la norma del 26/08.
 
+## EL PRECIO DE PARAGUAY NO PISA EL COSTO. NUNCA. (17/09/2026)
+
+Es la regla más importante del día y la puso él en dos frases:
+*"no quiero que me actualice el precio anterior con el que esta ahora. ya que yo lo pague 13.8 y le
+gane un 21 no lo pague 16.1"* · *"lo que compre a un precio se vende a ese precio. si aumenta no
+compro"* · *"sacar que el precio nuevo modifique el anterior (…) que ponga el precio en un lugar
+nuevo que no modifique nada de lo que se vende"*.
+
+**SON DOS NÚMEROS Y MIDEN COSAS DISTINTAS:**
+
+| | qué es | qué decide |
+|---|---|---|
+| **`costUSD`** | lo que **PAGASTE** por la mercadería que tenés | todos los márgenes, el patrimonio, y **si el robot sube un precio al vender** |
+| **`nisseiUSD`** | lo que te saldría **REPONERLO** hoy (precio de comprasparaguay, crudo) | **sólo** si conviene comprar |
+
+**QUÉ PASÓ, PARA NO REPETIRLO.** El asistente de compras cargó los precios de Paraguay **encima**
+del `costUSD` de 20 fichas. Con eso:
+ · se movieron los márgenes de todo lo que ya estaba vendido —los dos Victoria's Secret de ese día
+   pasaron de **~21% a 9%** sin que cambiara nada de esas ventas—,
+ · y con la **suba automática prendida** (que él la quiere prendida), la próxima venta le habría
+   subido el precio a mercadería que ya tenía comprada a otro costo.
+**Reparado con `pycosto:<id>=<costoViejo>/<precioPY>[;go]`**: 20 de 20 devueltos y el precio de
+Paraguay a su propio campo.
+
+**Y SE SACÓ EL BOTÓN QUE LO PERMITÍA.** `aplicarNissei` ("Usar este costo") ya no existe. En su
+lugar la ficha de un producto de Paraguay muestra **los DOS márgenes**:
+ · **"lo que TENÉS"** (con el costo pagado) — no se mueve nunca
+ · **"si lo REPONÉS hoy"** (precio de Paraguay + 15%) — el único que decide comprar
+y cuando el de reponer no llega al 25% lo dice: *"a este precio no conviene comprarlo; el de la
+izquierda no cambia"*. **No calcula nada nuevo**: llama a `margenMLDe`, la misma de Rotación de
+Stock. Probado con las funciones reales: 13,80 → 22,5% · 16,10 → 10,0% · si el proveedor baja a
+US$10 sube a 50,9% · si sube a US$40 da −46,7%.
+**Ojo al tocarlo: `margenMLDe` devuelve el porcentaje en `margen`, NO en `pct`.** Con `pct` los dos
+números salían siempre "—" y la caja parecía andar.
+
+**LA SUBA AUTOMÁTICA QUEDA PRENDIDA**, decisión suya del mismo día (*"no desactiva suba automatica
+de precios"*). Lo que la hacía peligrosa no era ella: era el costo pisado.
+
+**Y LA CONSECUENCIA QUE HAY QUE TENER CLARA: el costo que sube NO es motivo para subir un precio.**
+Él lo dijo así: *"no quiero que me digas que tengo que subir (…) la idea de esto no es que me haga
+aumentar por el hecho que aumentó, sino ver si vale la pena comprar productos viejos y nuevos"*.
+Si el proveedor aumenta, la respuesta es **pausar por precio**, no tocar ML.
+
+### EL EMPAREJADO CON EL CATÁLOGO DE ML POR NOMBRE FALLÓ EN LA PRIMERA PRUEBA REAL
+
+Buscando **"Xiaomi Redmi Watch 4"** el catálogo de ML devolvió **"Xiaomi Redmi Redmi Watch 3"**.
+Zafamos porque ese catálogo no tenía vendedores; si los hubiera tenido, salía un margen
+perfectamente calculado **del producto equivocado**, y con eso se decide una compra de US$1.000 que
+no se puede rehacer hasta que llegue. Es el filtro por palabras que ya falló **seis** veces acá.
+
+**Y hay un segundo daño, más silencioso: cae en catálogos VIEJOS.** El Cruzer Blade 64gb lo
+emparejó BIEN por título… con `MLA6078538`, un catálogo de hace años y sin vendedores. O sea que
+buscar por nombre no sólo trae otro producto: **también trae el catálogo muerto del producto
+correcto**, y ahí no hay precio contra el cual medir.
+
+**La salida es la misma que funcionó con el `codPy`: no emparejar, cargar el identificador.** El
+candidato puede traer `mlId` (el link o el código del catálogo, que el chat copia del navegador).
+Si está, no se busca nada. Si no está, se busca por nombre y **queda marcado** —en la tarjeta en
+ámbar con este mismo ejemplo, y en el aviso de Telegram—.
+
+## CONTAR LO QUE HAY: EL CUADRADITO PARA SUMAR (17/09/2026)
+
+Pedido suyo con las Cartas Casino en 228: *"agregar otro cuadradito para seleccionar cuántas
+unidades nuevas ingresaron, así no tengo que sumarlas (…) en TODOS los productos, no solo el que te
+pasé"*. Va en el renglón de cada producto **y en cada variante**.
+La casilla grande sigue siendo el **TOTAL** —la que vale para el patrimonio— y la chica es lo que
+llegó hoy. Por eso la chica va **punteada y con un "+"**: escribir el total ahí sumaría 228 + 228.
+El aviso dice el **antes y el después** (*"228 + 50 = 278"*), que es la única forma de darse cuenta
+en el momento de que se sumó en la fila equivocada. Con la casilla vacía el botón no hace nada y el
+total nunca baja de cero.
+
+## EL COSTO NUEVO NO PUEDE REESCRIBIR LO QUE YA GANASTE (17/09/2026)
+
+El costo de una venta vieja **no se guarda con la venta**: se calcula al abrir la pantalla
+(`efectivoCostoVP`) y, si ese mes no tiene precio histórico cargado, **cae en el costo de HOY**.
+O sea que cambiar un costo le reescribe la ganancia a todas las ventas viejas de ese producto.
+El mecanismo para evitarlo **ya existía** (`precios_hist_prod`, Ajustes → Precios históricos) y se
+llenaba a mano, así que no lo llenaba nadie.
+**Ahora se llena solo** (`congelarCostoAnterior`): antes de pisar un costo, el viejo queda congelado
+en cada mes que tenga ventas de ese producto y todavía no tenga precio propio. No pisa nada cargado
+a mano y sólo toca meses con ventas. El congelado es **por mes**, que es la granularidad del panel.
+Reparado lo que ya había pasado con **`costohist:`**: 56 meses de producto, 56 de 56.
+
 ## EL DATO DE PARAGUAY, EN LA FICHA Y EN PEDIDOS (17/09/2026)
 
 Pedido suyo: *"quiero que en la web aparezca todo, o sea el costo y eso, no solo si da o no (…)
@@ -1628,12 +1711,15 @@ saber si un producto de Paraguay todavía convenía había que salir, buscar la 
  · **`nisseiUSD`** = el precio en dólares que muestra comprasparaguay, **CRUDO**.
  · **`costUSD`** = ese precio **× 1,15** (`RECARGO_PY`), o sea puesto en la oficina. **Es el que usa
    TODO el panel** para calcular márgenes y valuar el stock.
-**Por eso el precio de Paraguay NO pisa solo al `costUSD`.** La ficha muestra lo que daría, avisa en
-ámbar cuando no coinciden y hay un botón **"Usar este costo"** que pregunta antes, con los dos
-números a la vista. Pisar a ciegas el número que define todos los precios no se nota hasta que ya
-vendiste — el mismo motivo por el que `submargen` pide `:go`.
+**EL BOTÓN "USAR ESTE COSTO" YA NO EXISTE (sacado el 17/09/2026, misma tarde).** La primera versión
+de esta pantalla lo tenía, con confirmación y los dos números a la vista, y aun así estaba mal: el
+precio de Paraguay **no puede pisar el costo por ningún camino**. Ver la sección "EL PRECIO DE
+PARAGUAY NO PISA EL COSTO" más arriba — la ficha muestra ahora los dos márgenes separados.
 
-**EL CÓDIGO (`nisseiCod`) ES EL QUE TERMINA CON EL EMPAREJADO POR NOMBRE.** Es el de Nissei que se
+**EL CÓDIGO VIVE EN `codPy`, NO EN `nisseiCod`.** La primera versión de este campo escribía en uno
+nuevo y la canasta de Paraguay arma el pedido con OTRO: el código que él tipeaba **no era el que
+salía en el pedido**. Corregido el mismo día; no hubo nada que migrar porque el campo nuevo estaba
+vacío en las 31 fichas. **El código ES el que termina con el emparejado por nombre.** Es el de Nissei que se
 usa para pedir, y **no** es el número interno que muestra la lista (Cabotine 100mL: la lista da
 `91144`, el de pedido es `91832`). Con el código guardado, buscar por nombre deja de existir — que
 es el filtro por palabras que ya falló cinco veces en este panel. Por eso **primero el código y
