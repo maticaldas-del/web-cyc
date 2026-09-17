@@ -2310,7 +2310,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='19.41';
+const APP_VERSION='19.42';
 // El problema real que esto resuelve no es curiosidad: es que el celular guarda la app y sigue
 // mostrando la de ayer sin avisar. Varias veces se revisó un cambio que ya estaba subido y no se
 // veía. Por eso, además del número, el chip avisa cuando hay una versión nueva esperando.
@@ -9548,7 +9548,19 @@ function _pedidoItemHtml(p,opts){
   // El desglose completo no se pierde: está en el globito al apoyar el dedo.
   const _riesgoNeto=(p.riesgoComprar!=null?p.riesgoComprar:p.riesgo)||0;
   const riesgoBadge=(opts.showRiesgo&&_riesgoNeto>0)?`<span class="pi-var-toggle" style="background:rgba(239,68,68,.12);color:var(--red);border-color:rgba(239,68,68,.3);cursor:default" title="${p.riesgoMandar>0?`De ${fmt(p.riesgo)} que se pierden por estar sin stock, ${fmt(p.riesgoMandar)} se tapan mandando lo que ya tenés en casa o en camino. Esto es lo que necesita COMPRA.`:'Ganancia de un mes de este producto × los días que vas a pasar sin stock en ML si no se repone.'}">💸 ${fmt(_riesgoNeto)} en riesgo</span>`:'';
-  const origenBadge=opts.origen?`<span class="pi-var-toggle" style="cursor:default">${opts.origen}</span>`:'';
+  // ── EL ORIGEN SE CAMBIA DESDE ACÁ (17/09/2026, pedido suyo) ─────────────────────────────
+  // Antes este renglón era una ETIQUETA MUERTA que sólo aparecía en la solapa "Prioridad", y el
+  // botón para cambiar el origen vivía únicamente en la ficha del producto: para mover algo de
+  // Bs As a Paraguay había que salir de Pedidos, buscar el producto, tocarlo y volver.
+  // Ahora está en TODAS las solapas y se toca.
+  // **Llama a `toggleProdOrigen`, la MISMA función que usa la ficha**, no una copia: el origen
+  // vive en el producto y tiene que haber un solo lugar donde se escriba. Dos copias de esto
+  // dejarían la ficha diciendo una cosa y Pedidos otra sobre el mismo producto.
+  // Sin ficha no hay origen que cambiar, y eso se DICE en vez de mostrar un botón que no hace nada.
+  const _esPy=_prod?(_prod.origen==='py'):null;
+  const origenBtn=_prod
+    ? `<button class="pi-var-toggle" style="background:${_esPy?'rgba(239,68,68,.12)':'rgba(59,130,246,.12)'};color:${_esPy?'#f87171':'#60a5fa'};border-color:${_esPy?'rgba(239,68,68,.3)':'rgba(59,130,246,.3)'}" onclick="togglePedidoOrigen('${p.id}','${_prod.id}')" title="De dónde se compra: 🇦🇷 BS AS lo compra tu viejo en persona · 🇵🇾 Paraguay se pide por la web. Tocá para cambiarlo — el pedido se mueve a la otra sección.">${_esPy?'🇵🇾 Paraguay':'🇦🇷 BS AS'}</button>`
+    : `<span class="pi-var-toggle" style="cursor:default;opacity:.6" title="Este pedido no está pegado a ninguna ficha de producto, así que no tiene origen. Vinculalo primero.">🏳️ sin ficha</span>`;
   const accionBtns=`<button class="pi-status ${p.estado||'pendiente'}" onclick="setPedidoEstado('${p.id}','${NEXT[p.estado||'pendiente']}')">${LABEL[p.estado||'pendiente']}</button>`;
   // A LA VISTA: nombre y cuántas unidades comprar. Nada más. Todo lo demás está a un toque.
   const _est=_enCam?'suficiente':(p.estado||'pendiente');
@@ -9563,7 +9575,7 @@ function _pedidoItemHtml(p,opts){
       ${fotoBtn}
       ${p.nota?`<span class="pi-nota">${p.nota}</span>`:'<span class="pi-nota" style="flex:0"></span>'}
       ${_enCam?'':riesgoBadge}
-      ${origenBadge}
+      ${origenBtn}
       ${varToggle}
       ${cuentaPedidoHTML(p)}
       <button class="pi-prov ${p.proveedor?'':'sin-prov'}" onclick="setPedidoProveedor('${p.id}')">${p.proveedor?p.proveedor.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'):'+ proveedor'}</button>
@@ -9772,10 +9784,11 @@ function renderPedidos(){
   }
   if(pedidoSection==='prioridad'){
     const el=document.getElementById('pedidos-prioridad-list');if(!el)return;
-    let peds=[
-      ...(state.pedidos||[]).map(p=>({...p,_origen:'🏢 BS AS'})),
-      ...(state.pedidos_py||[]).map(p=>({...p,_origen:'🇵🇾 Paraguay'})),
-    ].filter(p=>(p.estado||'pendiente')!=='suficiente');
+    // El origen ya no se pega acá como etiqueta: lo pone el botón de cada tarjeta leyéndolo de la
+    // ficha, que es la fuente de la verdad. La etiqueta vieja salía de en qué lista estaba el
+    // pedido, y eso puede quedar viejo un rato después de cambiarlo.
+    let peds=[...(state.pedidos||[]),...(state.pedidos_py||[])]
+      .filter(p=>(p.estado||'pendiente')!=='suficiente');
     const cnt={pendiente:0,poco_stock:0};peds.forEach(p=>cnt[p.estado||'pendiente']=(cnt[p.estado||'pendiente']||0)+1);
     const riesgoTotal=peds.reduce((s,p)=>s+(p.riesgo||0),0);
     const cntEl=document.getElementById('pedidos-prioridad-count');
@@ -9787,7 +9800,7 @@ function renderPedidos(){
     const q=normTxt(document.getElementById('ped-prioridad-search')?.value||'');
     if(q)peds=peds.filter(p=>normTxt(p.producto||'').includes(q)||normTxt(p.nota||'').includes(q));
     if(!peds.length){el.innerHTML='<div class="empty-msg">Nada urgente por ahora ✓</div>';return;}
-    el.innerHTML=peds.slice().sort(_pedSortFnRiesgo).map(p=>_pedidoItemHtml(p,{showRiesgo:true,origen:p._origen})).join('');
+    el.innerHTML=peds.slice().sort(_pedSortFnRiesgo).map(p=>_pedidoItemHtml(p,{showRiesgo:true})).join('');
     return;
   }
   if(pedidoSection==='paulvic'){
@@ -9915,6 +9928,33 @@ async function setPedidoProveedor(id){
   if(nv===null)return;
   await fbSet(path+id+'/proveedor',nv.trim());
   if(ped)ped.proveedor=nv.trim();
+  renderPedidos();
+}
+
+// CAMBIAR EL ORIGEN DESDE PEDIDOS (17/09/2026, pedido suyo).
+// El origen vive en la FICHA del producto, así que lo único que se toca es eso — con la misma
+// función que usa la ficha. Lo demás se acomoda solo… salvo un caso, y es el que hay que cuidar:
+//
+// **UN PEDIDO CARGADO A MANO NO LO MUEVE NADIE.** La limpieza automática filtra `x=>x.auto` y la
+// creación sólo escribe los `auto`, así que un pedido a mano se quedaría para siempre en la
+// sección vieja mientras la ficha dice la otra — el MISMO agujero que dejó al Termómetro pincha
+// congelado desde el 27/06 con "0 en stock". Por eso acá se mueve a mano cuando `auto===false`.
+// Los automáticos sí los mueve `syncPedidosAuto` solo (su limpieza compara `r.coll!==coll`).
+async function togglePedidoOrigen(pedId,prodId){
+  if(!prodId||!(state.products||[]).some(x=>x.id===prodId)){
+    toast('Este pedido no está pegado a ninguna ficha: no tiene origen que cambiar','error');return;
+  }
+  const desdeBsas=(state.pedidos||[]).some(x=>x.id===pedId);
+  const arrDesde=(desdeBsas?state.pedidos:state.pedidos_py)||[];
+  const ped=arrDesde.find(x=>x.id===pedId);
+  await toggleProdOrigen(prodId);
+  if(ped&&ped.auto===false){
+    const pathDesde=desdeBsas?'pedidos/':'pedidos_py/';
+    const collHacia=desdeBsas?'pedidos_py':'pedidos';
+    await db.ref('cyc').update({[pathDesde+pedId]:null,[collHacia+'/'+pedId]:ped});
+    state[desdeBsas?'pedidos':'pedidos_py']=arrDesde.filter(x=>x.id!==pedId);
+    (state[collHacia]=state[collHacia]||[]).push(ped);
+  }
   renderPedidos();
 }
 

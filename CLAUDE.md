@@ -2052,20 +2052,40 @@ sesiones NUEVAS**: cambiarlo no afecta a una sesión ya arrancada. Sin eso, esto
     productos · $2.767.075.
   **La lección: un comando nuevo hay que leerlo con la misma desconfianza que a los viejos, y un
   grupo que da CERO merece tanta sospecha como uno que da de más.**
-- **EL PROVEEDOR NO TARDA LO MISMO SEGÚN DE DÓNDE VENGA, Y EL PANEL LOS TRATABA IGUAL.** Plazos
-  que él pasó el 24/08/2026: **Bs As 1 semana · Paulvic 1 semana · Paraguay 2 MESES**. Hasta ese
-  día el origen sólo decidía en qué pestaña aparecía el pedido; no cambiaba ninguna cuenta. Con 2
-  meses de viaje eso deja el aviso inservible: un producto de Paraguay con 20 días de stock salía
-  **amarillo** cuando ya estaba condenado a ~40 días sin vender aunque se comprara esa tarde. Y la
-  otra mitad es peor — comprando cada 2 meses **para 30 días** te quedás corto siempre, por diseño.
-  Números elegidos por él: **Paraguay rojo a 50 días y comprar para 95**; Bs As y Paulvic quedan
-  en 14 y 30. Están en `index.html` como `PED_DIAS_ROJO_PY` / `PED_TARGET_PY` y se aplican con
-  `pedDiasRojoDe(p)` / `pedTargetDiasDe(p)`.
-  **El Paulvic NO entra en el plazo de Paraguay** aunque su ficha esté marcada `origen:'py'`: viene
-  en una semana. Lo separa `esPaisLento()` usando `esProductoPaulvic()`.
+- **EL ORIGEN DE CADA PRODUCTO: BS AS o PARAGUAY, y son dos mundos que NO se mezclan.**
+  Cada ficha tiene `origen` (`'bsas'` o `'py'`) y eso decide en qué sección de Pedidos aparece.
+  · **🇦🇷 BS AS** — lo compra el padre EN PERSONA en el mayorista de Bs As. Los límites son la
+    plata (~$3M), el lugar en la Kangoo —que va compartida con la perfumería— y que el mayorista
+    tenga. Tarda 1 semana.
+  · **🇵🇾 PARAGUAY** — se pide por la web, buscando en `comprasparaguay.com.ar` y **siempre con el
+    precio y el código de NISSEI** (el mismo producto aparece en varias tiendas con precio y código
+    distintos). **US$1.000 exactos por pedido, uno a la vez**, 5 días hábiles. Más el **viaje de fin
+    de mes con US$4.000**, donde los celulares viajan gratis y no gastan del cupo (`celuviaje`).
+  **LA NOTA VIEJA DE ACÁ DECÍA "Paraguay 2 MESES" y nombraba `PED_DIAS_ROJO_PY`, `PED_TARGET_PY` y
+  `esPaisLento`: las tres cosas YA NO EXISTEN.** Paraguay pasó a 5 días (16/09/2026), así que la
+  excepción se borró entera en vez de dejarla apuntando al mismo número — una excepción que no
+  distingue nada es peor que no tenerla. Hoy los tres proveedores usan lo mismo:
+  `PED_TARGET_DIAS` = 20 días y `PED_DIAS_ROJO` = 14.
   Ojo con no confundir dos plazos que se parecen: `REPO_DIAS_DEMORA` (8 días) es el tramo
-  caja→Full y es igual para todos, porque sale de la misma oficina. Este otro es el del PROVEEDOR
-  y arranca antes, cuando todavía hay que comprar la mercadería.
+  caja→Full y es igual para todos, porque sale de la misma oficina. El del PROVEEDOR arranca antes,
+  cuando todavía hay que comprar la mercadería.
+  **EL ORIGEN SE CAMBIA DESDE PEDIDOS, NO SÓLO DESDE LA FICHA (17/09/2026, pedido suyo:** *"quiero
+  que en pedidos esté la opción si es bs as o paraguay el producto"*). Antes el botón vivía sólo en
+  la ficha del producto: para mover algo había que salir de Pedidos, buscar el producto y volver.
+  Ahora cada tarjeta de Pedidos tiene el botón 🇦🇷/🇵🇾 y **llama a `toggleProdOrigen`, la MISMA
+  función que usa la ficha** — el origen vive en el producto y tiene que haber un solo lugar donde
+  se escriba; dos copias dejarían la ficha diciendo una cosa y Pedidos otra.
+  **EL CASO QUE HABÍA QUE CUIDAR, y es el agujero de siempre: un pedido cargado A MANO no lo mueve
+  nadie.** La limpieza automática filtra `x=>x.auto` y la creación sólo escribe los `auto`, así que
+  un pedido a mano se quedaba en la sección vieja para siempre mientras la ficha decía la otra — el
+  MISMO agujero que dejó al Termómetro pincha congelado desde el 27/06. Por eso `togglePedidoOrigen`
+  lo mueve a mano cuando `auto===false`; los automáticos los mueve `syncPedidosAuto` solo (su
+  limpieza compara `r.coll!==coll`).
+  **Y sin ficha no hay origen que cambiar**: ahí el botón no aparece y en su lugar dice "🏳️ sin
+  ficha" con el motivo. Un botón que no hace nada es peor que no tener botón.
+  Probado con las dos funciones REALES sacadas del archivo (no una copia) y seis casos: automático
+  ida · a mano ida · a mano vuelta · sin `prodId` · ficha inexistente · ida y vuelta completa.
+  Ninguno duplica el pedido ni lo deja fuera de las dos listas.
 - **LA PLATA YA NO ES EL LÍMITE: EL PROVEEDOR SÍ.** Dicho por él el 24/08/2026: *"siempre el límite
   fue el dinero, pero hoy es el proveedor"* — hacen falta $3.400.000 para reponer y hay $5.000.000.
   Importa para la pregunta de qué mercadería conviene rematar: **con plata sobrando, liberar caja
