@@ -2791,9 +2791,13 @@ const CAND_TOPE_USD = 250;      // suyo: un producto caro se come el pedido de U
 const CAND_PISO_PCT = 25;       // suyo: "el % sano es de 25 hacia arriba"
 const CAND_ENVIO_ARRIBA = 6190; // el peor envío de Full medido en ventas reales, arriba de la barrera
 const CAND_MAX_ML = 40;         // tope de consultas a ML por vuelta (ver abajo)
-async function correrCandidatos(db, products, labels, accounts, soloPrueba) {
+// `prueba` es un candidato INVENTADO que se le pasa desde el probe para correr el camino entero
+// —consulta al catálogo de ML, comisión al precio real, la cuenta— sin tener que cargar nada en la
+// base. Que el comando no se rompa con la lista vacía no prueba nada de lo que importa.
+async function correrCandidatos(db, products, labels, accounts, soloPrueba, prueba) {
   const cands = (await db.get('cyc/candidatos_py')) || {};
   const entradas = Object.entries(cands).filter(([, c]) => c && c.nombre);
+  if (prueba) entradas.unshift(['__prueba__', prueba]);
   const fin = (await db.get('cyc/finanzas')) || {};
   const tc = parseFloat(fin.tipo_cambio) || 1500;
   const monoP = parseFloat(((await db.get('cyc/monotributo')) || {}).pct) || 0;
@@ -7794,9 +7798,21 @@ async function main() {
     // porque no hay ficha contra la cual contrastar.
     // Sin `:go` calcula y muestra pero NO escribe ni manda nada.
     if (/^candidatos(:|$)/.test(String(process.env.BILLING_PROBE || ''))) {
-      const APLICAR = /(^|:)go$/.test(String(process.env.BILLING_PROBE));
-      const r = await correrCandidatos(db, products, labels, accounts, !APLICAR);
-      if (!APLICAR) console.log('\nPRUEBA: no escribí nada ni mandé ningún mensaje. Para aplicar: candidatos:go');
+      const _cd = String(process.env.BILLING_PROBE);
+      const APLICAR = /(^|:)go$/.test(_cd);
+      // candidatos:prueba:<nombre>|<US$> → corre el camino ENTERO sobre un producto inventado, sin
+      // escribir nada. Es la única forma de probar la consulta a ML y la cuenta sin cargar datos
+      // de mentira en la base, que después quedan.
+      let prueba = null;
+      const mP = _cd.match(/^candidatos:prueba:(.+)$/);
+      if (mP) {
+        const [nom, u] = mP[1].split('|');
+        prueba = { nombre: (nom || '').trim(), usd: parseFloat(u) || 0, enNissei: true, fuente: 'prueba' };
+        if (!prueba.nombre || !(prueba.usd > 0)) { console.log('Usá: candidatos:prueba:<nombre>|<US$>'); return; }
+        console.log(`(PRUEBA con un producto inventado: "${prueba.nombre}" a US$ ${prueba.usd} — no escribo nada)\n`);
+      }
+      const r = await correrCandidatos(db, products, labels, accounts, !APLICAR || !!prueba, prueba);
+      if (!APLICAR || prueba) console.log('\nPRUEBA: no escribí nada ni mandé ningún mensaje. Para aplicar: candidatos:go');
       return;
     }
     // BILLING_PROBE=nisseificha:<texto o link> → QUÉ DATOS TRAE LA PÁGINA DE UN PRODUCTO. SOLO LEE.
