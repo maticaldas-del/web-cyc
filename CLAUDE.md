@@ -2625,6 +2625,28 @@ Lo que sí se arregló, y eran **dos** cosas:
    renglón dice de dónde sale: cuántas se miraron, cuántas quedaron afuera por no haber vendido
    nunca (`altaSinVender`), cuántas ya están activas, cuántas las pausó ML, cuántas no son de Full
    y cuántas no tienen stock adentro.
+ · **EL ARREGLO DEL 16/09 QUEDÓ A MEDIAS Y ÉL LO AGARRÓ AL DÍA SIGUIENTE (17/09/2026).** Mandó la
+   captura de Full con **dos P47 Cat Ear de Ayelen** (`MLA3869746828` Celeste y `MLA3869720850`
+   Azul, $9.660, **2 u. aptas para vender cada uno**), pausados: *"porque no se activaron ni
+   aviso?"*. La frase de arriba —*"ahora TODO motivo lleva stock, precio y por qué"*— **era falsa**:
+   sólo avisaban los motivos que se resuelven DESPUÉS de mirar el precio. Los otros **cinco
+   seguían saliendo callados**, y son justo los que dejan una publicación pausada PARA SIEMPRE con
+   mercadería adentro pagando almacenamiento: *sin ficha* · *marcada `nomas`* · *`altaSinVender`* ·
+   *frenada a mano* · *la pausó ML*. Tres de ésos ni siquiera se contaban.
+   **La causa era el ORDEN**: los frenos se aplicaban en el filtro, ANTES de preguntarle a ML si la
+   publicación estaba pausada y con stock. O sea que se descartaba a ciegas — no se puede saber si
+   hay mercadería esperando sin preguntar. Ahora el filtro sólo separa por cuenta y **todos los
+   frenos se aplican después de saber que está pausada, es de Full y tiene stock adentro**.
+   **La regla queda dura y el código la chequea solo:** `activadas + avisadas === pausadas con
+   stock`. Si no cierra, la corrida imprime **"⚠️ NO CIERRA · hay N saliendo en silencio"** — es el
+   `continue` callado de siempre, y ahora se delata solo en vez de esperar a que él mande una foto.
+   Lo único que sigue saliendo sin avisar es lo que no tiene nada adentro (activa · no es Full ·
+   sin stock), que es como tiene que ser: ahí no hay nada esperando.
+   Probado con la cadena REAL sacada del archivo y 8 casos, uno por freno: los 6 que tienen que
+   avisar avisan, `out_of_stock` no cuenta como pausa de ML, y la sana sigue al chequeo del margen.
+   **LA LECCIÓN, por segunda vez en dos días: un freno puesto ANTES de tener el dato es un descarte
+   a ciegas.** Y la otra: cuando arreglás un descarte silencioso, contá cuántas salidas tiene la
+   función — yo tapé cuatro de nueve y escribí que las había tapado todas.
  · **Ojo al tocarlo:** la función ahora devuelve `{ avisos, anotar }`, no un arreglo.
  **Probado con el bloque REAL sacado del archivo** (no una copia, que diría "todo bien" para
  siempre) y siete casos: primera vuelta · una hora después sin cambios (**activa y NO manda nada**)

@@ -680,7 +680,19 @@ async function activarPausadasFull(db, links, tokensRun, DRY, products, piso) {
   // cuando puede ser un filtro comiéndose todo en silencio — es lo que ya mordió con `liquidar`
   // (0 de 137), con el marcado de cajas y con el "PARADO: 0" del aviso diario. Ahora se cuenta
   // en qué freno se fue cada una, así el cero dice POR QUÉ es cero.
-  const conteo = { candidatas: 0, sinAlta: 0, noAuto: 0, miradas: 0, activas: 0, mlLasPauso: 0, noFull: 0, sinStock: 0 };
+  //
+  // ── Y TODA PAUSADA CON STOCK ADENTRO TIENE QUE SALIR POR ALGÚN LADO (17/09/2026) ────────
+  // El arreglo del 16/09 quedó a MEDIAS: decía *"ahora TODO motivo lleva stock, precio y por
+  // qué"* y no era cierto. Los frenos que se resuelven ANTES de mirar el precio —sin ficha,
+  // marcada `nomas`, `altaSinVender`, frenada a mano, la pausó ML— seguían saliendo CALLADOS,
+  // y son justo los que dejan una publicación pausada PARA SIEMPRE con mercadería adentro
+  // pagando almacenamiento. Lo agarró él con los dos P47 Cat Ear: 2 u. aptas para vender en
+  // Full, pausadas, y ni se activaron ni avisaron.
+  // Ahora los frenos se aplican DESPUÉS de saber que está pausada, es Full y tiene stock, así
+  // que la regla queda dura y se puede chequear: `activadas + noLlegan === conteo.conStock`.
+  // Lo que sigue saliendo callado es lo que no tiene nada adentro (activa, no es Full, sin
+  // stock), que es como tiene que ser: ahí no hay nada esperando.
+  const conteo = { enCuenta: 0, miradas: 0, activas: 0, noFull: 0, sinStock: 0, conStock: 0 };
   for (const [label, tok] of Object.entries(tokensRun)) {
     const feeAt = async (site, price, lt, cat) => {
       const k = site + '|' + lt + '|' + cat + '|' + Math.round(price);
@@ -694,17 +706,14 @@ async function activarPausadasFull(db, links, tokensRun, DRY, products, piso) {
       feeCache[k] = out; return out;
     };
     const m = (mlExtraPct(label) + monoP) / 100;
+    // ACÁ NO SE DESCARTA POR NINGÚN FRENO, a propósito. Los frenos se aplican más abajo, cuando
+    // ya sabemos si la publicación está pausada CON STOCK adentro de Full — que es la única
+    // situación que hay que avisar. Descartarlos acá era descartar a ciegas: no se puede saber
+    // si hay mercadería esperando sin preguntárselo a ML.
     const ids = Object.entries(links)
-      // `altaSinVender`: publicación que se dio de alta sola desde el catálogo y todavía no vendió
-      // ninguna vez. Su producto lo eligió `matchProduct` por el título, así que el costo —y por lo
-      // tanto el margen que decide si "llega al piso"— no está probado contra ninguna venta real.
-      // Activar es lo único que ESCRIBE en ML sin que medie una venta: hasta que venda, no se toca.
-      // La marca se cae sola en cuanto vende (la vuelta de las ventas reescribe el renglón entero).
       .filter(([mla, e]) => {
-        if (!e || e.cuenta !== label || e.ignored || !e.prodId || !/^MLA/i.test(mla)) return false;
-        if (e.altaSinVender) { conteo.sinAlta++; return false; }
-        if (e.noAutoActivar) { conteo.noAuto++; return false; }
-        conteo.candidatas++; return true;
+        if (!e || e.cuenta !== label || !/^MLA/i.test(mla)) return false;
+        conteo.enCuenta++; return true;
       })
       .map(([mla]) => mla);
     for (let k = 0; k < ids.length; k += 20) {
@@ -716,10 +725,8 @@ async function activarPausadasFull(db, links, tokensRun, DRY, products, piso) {
         if (!mla || !links[mla] || b.error || typeof b.status === 'number') continue;
         conteo.miradas++;
         if (b.status !== 'paused') { conteo.activas++; continue; }
-        // Freno 2: pausada por ML (infracción, revisión…) → no se toca.
-        const sub = [].concat(b.sub_status || []).filter(Boolean).filter((s) => s !== 'out_of_stock');
-        if (sub.length) { conteo.mlLasPauso++; continue; }
-        // Freno 1: tiene que ser Full y tener stock EN Full.
+        // Los DOS únicos descartes que siguen siendo callados, y está bien que lo sean: si no es
+        // Full o no tiene stock adentro, no hay mercadería esperando y no hay nada que avisar.
         if (((b.shipping && b.shipping.logistic_type) || '') !== 'fulfillment') { conteo.noFull++; continue; }
         const vars = Array.isArray(b.variations) ? b.variations : [];
         const invIds = vars.length ? vars.map((v) => v.inventory_id).filter(Boolean) : [b.inventory_id].filter(Boolean);
@@ -729,6 +736,11 @@ async function activarPausadasFull(db, links, tokensRun, DRY, products, piso) {
           catch { /* si no contesta, cuenta 0 */ }
         }
         if (stockFull <= 0) { conteo.sinStock++; continue; }
+        conteo.conStock++;
+        // ── DE ACÁ PARA ABAJO: PAUSADA, EN FULL Y CON MERCADERÍA ADENTRO ──────────────────
+        // Toda publicación que llega hasta este renglón termina activada o avisada. Ninguna se
+        // va callada, porque cada una de éstas está pagando almacenamiento con el reloj del
+        // descarte corriendo.
         const nom = (links[mla].title || b.title || mla).slice(0, 40);
         // TODO motivo por el que NO se activa se anota con las mismas tres cosas —stock, precio y
         // por qué—, no sólo los del margen. Antes el mensaje filtraba por `x.precio` y se comía
@@ -738,9 +750,24 @@ async function activarPausadasFull(db, links, tokensRun, DRY, products, piso) {
         // motivos ocurren ANTES de que `precio` exista, y leerlo ahí corta la corrida entera
         // ("Cannot access 'precio' before initialization"), que es el error del `invUpd`.
         const noVa = (why, pr) => noLlegan.push({ label, mla, nom, stock: stockFull, precio: pr || 0, why });
-        // Freno 3: ¿llega al piso con el precio de hoy?
-        const p = pIdx[links[mla].prodId];
-        if (!p) { noVa('sin producto en la web'); continue; }
+        // Pausada por ML (infracción, documentación, revisión). NO se toca —activarla no depende
+        // de nosotros— pero sí se avisa: es mercadería trabada que no se puede vender.
+        const sub = [].concat(b.sub_status || []).filter(Boolean).filter((s) => s !== 'out_of_stock');
+        if (sub.length) { noVa(`la pausó ML (${sub.join(', ')}): no la puedo activar yo`); continue; }
+        const linkRow = links[mla] || {};
+        // Marcada "no la vendemos más" (`nomas`). El freno está bien; lo que hay que saber es que
+        // adentro de Full quedó mercadería de algo que decidiste no vender: o se retira o paga.
+        if (linkRow.ignored) { noVa('la marcaste "no la vendemos más" y quedó mercadería adentro de Full'); continue; }
+        // `altaSinVender`: se dio de alta sola desde el catálogo y todavía no vendió ninguna vez.
+        // Su producto lo eligió `matchProduct` por el TÍTULO, así que el costo —y por lo tanto el
+        // margen que decide si llega al piso— no está probado contra ninguna venta real. Activar
+        // es lo único que ESCRIBE en ML sin que medie una venta: hasta que venda, no se toca.
+        // La marca se cae sola en cuanto vende. Para sacarla antes: `altanuevas`.
+        if (linkRow.altaSinVender) { noVa('se dio de alta sola y todavía no vendió: su costo salió del título, no de una venta'); continue; }
+        if (linkRow.noAutoActivar) { noVa(`frenada a mano${linkRow.frenoMotivo ? ': ' + String(linkRow.frenoMotivo).slice(0, 60) : ''}`); continue; }
+        // Freno: ¿llega al piso con el precio de hoy?
+        const p = linkRow.prodId ? pIdx[linkRow.prodId] : null;
+        if (!p) { noVa(linkRow.prodId ? 'su ficha ya no existe en la web' : 'no está pegada a ninguna ficha: sin costo no puedo medir el margen'); continue; }
         const costo = costoPesos(p, 1, tc).costo;
         if (!costo) { noVa('sin costo cargado'); continue; }
         const precio = vars.length ? (vars[0].price || 0) : (b.price || 0);
@@ -838,10 +865,15 @@ async function activarPausadasFull(db, links, tokensRun, DRY, products, piso) {
   const anotarP = {};
   if (!DRY) for (const x of nuevasP) anotarP[x.mla] = { ts: ahoraP, why: x.why, nom: x.nom, cuenta: x.label };
   console.log(`Activar pausadas con Full: ${activadas.length} activadas · ${noLlegan.length} no (${porMargen.length} por margen, ${sinMedir.length} sin poder medir, ${noLlegan.length - nuevasP.length} ya avisadas antes).`);
-  console.log(`   De dónde sale ese número: ${conteo.candidatas} publicación(es) miradas de ${conteo.candidatas + conteo.sinAlta + conteo.noAuto}`
-    + ` (${conteo.sinAlta} todavía no vendieron nunca y por eso no se tocan · ${conteo.noAuto} marcadas "no activar sola")`
-    + ` → ${conteo.activas} ya están activas · ${conteo.mlLasPauso} las pausó ML · ${conteo.noFull} no son de Full`
-    + ` · ${conteo.sinStock} no tienen stock adentro de Full. Quedaron ${activadas.length + noLlegan.length} para decidir.`);
+  console.log(`   De dónde sale ese número: ${conteo.enCuenta} publicación(es) de las 4 cuentas · ${conteo.miradas} contestó ML`
+    + ` → ${conteo.activas} ya están activas · ${conteo.noFull} no son de Full · ${conteo.sinStock} están pausadas pero sin stock adentro`
+    + ` → quedaron ${conteo.conStock} PAUSADAS CON MERCADERÍA ADENTRO DE FULL.`);
+  // Chequeo duro: toda pausada con stock termina activada o avisada. Si esto no cierra, hay un
+  // `continue` nuevo saliendo callado — que es exactamente el bug del 16/09 y el de los P47.
+  const cierra = activadas.length + noLlegan.length;
+  if (cierra !== conteo.conStock) {
+    console.log(`   ⚠️ NO CIERRA: ${conteo.conStock} pausadas con stock pero sólo ${cierra} tienen explicación (${activadas.length} activadas + ${noLlegan.length} avisadas). Hay ${conteo.conStock - cierra} saliendo en silencio.`);
+  }
   // Renglón por renglón al log SIEMPRE, avisadas o no: un total sin el detalle esconde cuál es.
   for (const x of noLlegan) console.log(`   ⏸️ ${x.nom} · ${x.label} · ${x.stock} u. → ${x.why}`);
   return { avisos, anotar: anotarP };
