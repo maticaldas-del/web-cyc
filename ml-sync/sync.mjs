@@ -8683,6 +8683,7 @@ async function main() {
         return { mla: (mla || '').trim(), precio: Math.round(parseFloat(pr) || 0) };
       }).filter((x) => /^MLA/i.test(x.mla) && x.precio > 0);
       if (!lista.length) { console.log('Usá: volver:MLA123=45300,MLA456=14360[:go]'); return; }
+      console.log(`(volver SUBE o deja igual. Para BAJAR usá alpiso o bajarcaja: calculan el margen y respetan el piso de ${PISO_DURO}%.)`);
       const links = (await db.get('cyc/mllinks')) || {};
       console.log(`=== VOLVER PRECIOS ${APLICAR ? '(APLICANDO)' : '(PRUEBA)'} · ${lista.length} ===\n`);
       const toks = {}, sids = {};
@@ -8742,6 +8743,24 @@ async function main() {
           continue;
         }
         if (Math.abs(actual - x.precio) < 1) { console.log(`  = ${x.mla} · ${nom}: ya está en ${money(x.precio)}`); continue; }
+        // ── `volver` YA NO PUEDE BAJAR (17/09/2026) ──────────────────────────────────────
+        // Este era el ÚLTIMO camino por el que un precio podía bajar sin pasar por el piso.
+        // Quedó anotado el 25/08 —*"la frase 'setPriceTo es la ÚNICA función que baja precios' no
+        // es cierta hoy"*— y siguió abierto 23 días. Acá abajo hay un PUT directo a ML: sin
+        // variantes no pasa por `setPriceTo` ni por `_chequeoPiso`, así que bajaba a cualquier
+        // precio sin que nada mirara en qué margen quedaba.
+        // NO se arregla calculando el margen acá: esa cuenta ya vive en `alpiso` y en `bajarcaja`,
+        // y una tercera copia es el error que este archivo tiene anotado seis veces. `volver` pone
+        // un precio EXACTO sin calcular nada, igual que `fijar` — y a `fijar` se le sacó bajar por
+        // exactamente el mismo motivo.
+        // SUBIR sigue funcionando igual: ahí no hay piso que romper.
+        if (x.precio < actual) {
+          err++;
+          console.log(`  ✗ ${x.mla} · ${nom}: volver NO puede BAJAR (${money(Math.round(actual))} → ${money(x.precio)}).`);
+          console.log(`      No calcula el margen, así que el piso de ${PISO_DURO}% no se puede verificar.`);
+          console.log(`      Para bajar: alpiso o bajarcaja, que sí calculan en cuánto queda.`);
+          continue;
+        }
         if (!APLICAR) { console.log(`  · ${x.mla} · ${nom}: ${money(Math.round(actual))} → ${money(x.precio)}`); continue; }
         try {
           const r = await fetch(ML_API + '/items/' + x.mla, {

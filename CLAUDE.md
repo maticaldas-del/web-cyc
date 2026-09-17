@@ -24,9 +24,14 @@ el próximo comando que se escribiera se acordara de aplicarla. Un solo olvido =
 Es el mismo motivo por el que el número salió del código y se fue a la base: el 03/09 aparecieron
 **ocho comandos con `|| 30` adentro** midiendo contra un piso que ya no existía.
 
-**El agujero que sigue abierto:** `volver:<MLA>=<precio>` en una publicación SIN variantes hace un
-PUT directo y no pasa por `setPriceTo`, así que se saltea el freno (25/08/2026). Con variantes sí
-está tapado. Falta cerrarlo.
+**EL AGUJERO DE `volver` SE CERRÓ EL 17/09/2026, después de 23 días abierto.** Era el último camino
+por el que un precio podía bajar sin que nada mirara el piso: en una publicación SIN variantes hacía
+un PUT directo, salteando `setPriceTo` y `_chequeoPiso` (con variantes ya estaba tapado).
+**`volver` ya no BAJA.** Sube o deja igual, y si le pedís un precio más bajo lo dice y manda a
+`alpiso` o `bajarcaja`, que calculan el margen. **No se arregló calculando el margen adentro de
+`volver`**: esa cuenta ya vive en esos dos comandos y una tercera copia es el error anotado seis
+veces en este archivo. Es exactamente lo mismo que se le hizo a `fijar`, y por el mismo motivo:
+un comando que pone un precio a mano sin calcular nada no puede bajar.
 
 `fijar:<grupo>:<precio>` YA NO PUEDE BAJAR. Pone un precio a mano sin calcular ningún margen, o sea
 bajaba a ciegas. Subir sigue funcionando igual. Para bajar: `bajarcaja` o `corregir`, que calculan.
@@ -2344,10 +2349,10 @@ ninguna variable ni ningún `id` — sólo se agregaron 7 nombres, ninguno repet
   **La explicación de por qué ganamos teniendo dos vendedores a $53.900:** esos dos **no están
   compitiendo** (sin stock o no califican). Por eso ML pedía $59.966 y no $53.900. **Si alguno se
   reactiva, se pierde la caja y quedamos con el margen bajo sin la ventaja** — hay que mirarlo.
-  **Y el agujero que salió a la luz: `volver` NO pasa por el freno del piso.** En una publicación
-  sin variantes hace un PUT directo a ML, salteando `setPriceTo` y `_chequeoPiso`. O sea que la
-  frase "setPriceTo es la ÚNICA función que baja precios" **no es cierta hoy**. Con variantes sí
-  está tapado (`raiseVariations` se niega a bajar). Queda pendiente cerrarlo.
+  **Y el agujero que salió a la luz: `volver` NO pasaba por el freno del piso.** En una publicación
+  sin variantes hacía un PUT directo a ML, salteando `setPriceTo` y `_chequeoPiso`. **CERRADO el
+  17/09/2026: `volver` ya no baja** (ver arriba). Tardó 23 días, y eso es la lección: una nota que
+  dice "queda pendiente cerrarlo" no cierra nada — mientras tanto el agujero sigue abierto.
 
 - **UNA CUENTA PUEDE NO QUERER UN PRODUCTO, Y EL PANEL NO TENÍA CÓMO DECIRLO.** El 24/08/2026
   miró Armar caja de Adriana y le aparecía medio catálogo: mercadería mezclada de un experimento
