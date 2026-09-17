@@ -7407,7 +7407,7 @@ async function main() {
     // BILLING_PROBE=guay → QUÉ CARGÓ DE VERDAD EL ASISTENTE DE COMPRAS. SOLO LEE.
     // Existe por una razón sola: **lo que un chat dice que hizo no es lo que quedó en la base.**
     // El asistente que corre en la PC de Mati (el "PROMPT GUAY") escribe el código de Nissei
-    // (`nisseiCod`), el precio de Paraguay (`nisseiUSD`) y, si él aprieta el botón, el costo
+    // (`codPy`, el MISMO que usa la canasta para armar el pedido), el precio de Paraguay (`nisseiUSD`) y, si él aprieta el botón, el costo
     // (`costUSD`). Esto lee esos tres campos de `cyc/products` y los pone al lado, sin tocar nada.
     //
     // Los DOS números son distintos y confundirlos arruina todos los márgenes:
@@ -7427,14 +7427,14 @@ async function main() {
       const dias = (ts) => (ts ? Math.floor((hoy - ts) / 86400000) : null);
       const py = products.filter((p) => String(p.origen || '') === 'py');
       const otros = products.filter((p) => String(p.origen || '') !== 'py'
-        && (p.nisseiCod || p.nisseiUSD != null));
+        && (p.codPy || p.nisseiUSD != null));
       console.log('=== LO QUE CARGÓ EL ASISTENTE DE COMPRAS (solo lectura) ===');
       console.log(`Dólar ${money(tcG)} · el costo puesto en tu oficina es el precio de Paraguay + ${Math.round((RECARGO_PY - 1) * 100)}%`);
       console.log(`Fichas marcadas Paraguay: ${py.length} de ${products.length}\n`);
       let conCod = 0, conPre = 0, desfasados = 0, completos = 0;
       const filas = py.slice().sort((a, b) => (b.nisseiTs || 0) - (a.nisseiTs || 0));
       for (const p of filas) {
-        const cod = String(p.nisseiCod || '').trim();
+        const cod = String(p.codPy || '').trim();
         const nu = parseFloat(p.nisseiUSD);
         const cu = parseFloat(p.costUSD);
         const d = dias(parseFloat(p.nisseiTs) || 0);
@@ -7462,7 +7462,7 @@ async function main() {
         console.log('   No salen en Pedidos → Paraguay, o sea que ese dato hoy no lo ve nadie:');
         for (const p of otros) {
           console.log(`   · ${p.name} (${p.id}) · origen "${p.origen || '—'}"`
-            + ` · código ${p.nisseiCod || '—'} · US$ ${p.nisseiUSD != null ? p.nisseiUSD : '—'}`);
+            + ` · código ${p.codPy || '—'} · US$ ${p.nisseiUSD != null ? p.nisseiUSD : '—'}`);
         }
       }
       // Lo pausado por precio: es lo único más que el asistente puede escribir.

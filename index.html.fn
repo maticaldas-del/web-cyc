@@ -58,6 +58,7 @@ function _puntMesesConDatos
 function _puntProdMarkup
 function _puntStockMesCerrado
 function _puntSugerencias
+function _pyLlenar
 function _readRange
 function _repartoVariantes
 function _repoExtraPie
@@ -91,6 +92,7 @@ function aggregateYear
 function ajPreciosHist
 function ajToggle
 function almacenaHtml
+function aplicarNissei
 function arqClearHistCostoProd
 function arqSaveHistCostoProd
 function autoLinkFamilies
@@ -236,9 +238,14 @@ function monoCat
 function monoPct
 function nombreDeVenta
 function onCmpTipo
+function paraguayHtml
 function pausarPrecio
 function pedAutoFill
 function pedGananciaNorm
+function pedGuayHTML
+function pedPlataHTML
+function pedTresLugares
+function pedVarChip
 function pedVentasNorm
 function pegarFotoUrl
 function pickFoto
@@ -256,6 +263,11 @@ function puntCfg
 function puntColor
 function puntNav
 function puntNivel
+function pyCanasta
+function pyCanastaHTML
+function pyCanastaReset
+function pyNoHabia
+function pySetModo
 function quitarFoto
 function reasignVentasMla
 function rebuildReclamoStats
@@ -389,6 +401,7 @@ function toggleMetScopeMenu
 function toggleMlFilter
 function toggleMlHidden
 function togglePedidoGroupProv
+function togglePedidoOrigen
 function toggleProdBajoMeta
 function toggleProdIncompletos
 function toggleProdOrigen
@@ -405,6 +418,8 @@ function updDevCount
 function updDevPct
 function updGestFull
 function updMedida
+function updNisseiCod
+function updNisseiUSD
 function updProdName
 function updProdProveedor
 function updProveedorDireccion

@@ -2310,7 +2310,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='19.43';
+const APP_VERSION='19.44';
 // El problema real que esto resuelve no es curiosidad: es que el celular guarda la app y sigue
 // mostrando la de ayer sin avisar. Varias veces se revisó un cambio que ya estaba subido y no se
 // veía. Por eso, además del número, el chip avisa cuando hay una versión nueva esperando.
@@ -3683,7 +3683,7 @@ function paraguayHtml(p){
   return `<div style="display:flex;flex-direction:column;gap:4px;background:rgba(239,68,68,.05);border:1px solid rgba(239,68,68,.25);border-radius:8px;padding:8px 12px">
     <div style="font-size:.58rem;color:#f87171;text-transform:uppercase;letter-spacing:.08em;margin-bottom:2px">🇵🇾 Paraguay <span style="text-transform:none;letter-spacing:0;font-size:.92em;color:var(--muted)">· mirado ${cuando}</span></div>
     <div style="display:flex;align-items:flex-end;gap:10px;flex-wrap:wrap">
-      <div><label title="El código de NISSEI, el que se usa para hacer el pedido. NO es el número interno que muestra la lista de Nissei.">Código Nissei ⓘ</label><br><input type="text" style="width:110px" value="${(p.nisseiCod||'').replace(/"/g,'&quot;')}" oninput="guardarProdLuego('${p.id}',this.value,updNisseiCod)" onchange="updNisseiCod('${p.id}',this.value)" placeholder="p. ej. 91832"></div>
+      <div><label title="El código de NISSEI, el que se usa para hacer el pedido. NO es el número interno que muestra la lista de Nissei.">Código Nissei ⓘ</label><br><input type="text" style="width:110px" value="${(p.codPy||'').replace(/"/g,'&quot;')}" oninput="guardarProdLuego('${p.id}',this.value,updNisseiCod)" onchange="updNisseiCod('${p.id}',this.value)" placeholder="p. ej. 91832"></div>
       <div><label title="El precio en dólares que muestra comprasparaguay, CRUDO, sin el 15%.">Precio Nissei US$ ⓘ</label><br><input type="number" min="0" step="0.01" style="width:100px" value="${nu||''}" oninput="guardarProdLuego('${p.id}',this.value,updNisseiUSD)" onchange="updNisseiUSD('${p.id}',this.value)"></div>
       ${nu>0?`<div style="font-size:.66rem;padding-bottom:6px;color:${difiere?'var(--amber)':'var(--muted)'}" title="El 15% incluye la compra del dólar con sus comisiones y el traslado hasta tu oficina.">
         × 1,15 = <b>US$ ${puesto.toFixed(2)}</b> puesto
@@ -3693,11 +3693,21 @@ function paraguayHtml(p){
     </div>
   </div>`;
 }
+// EL CÓDIGO VIVE EN `codPy` Y EN NINGÚN LADO MÁS. Es el MISMO campo que ya usaba la canasta de
+// Paraguay para armar el mensaje "<código> x <unidades>" que se le manda al mayorista, y el que
+// carga el comando `codpy:`. La primera versión de este campo escribía en uno nuevo (`nisseiCod`)
+// y con eso el código que él tipeaba acá NO era el que salía en el pedido: la pantalla mostraba
+// uno y al mayorista le llegaba otro. Es el mismo error del costo de la caja escrito en dos
+// archivos y del piso repartido en ocho comandos, pero en el peor lugar posible — un código
+// equivocado no se nota hoy, se nota cuando llega otra cosa a los 7 días adentro de un pedido de
+// US$1.000 que no se puede rehacer.
+// NO toca `nisseiTs` a propósito: esa fecha quiere decir "cuándo se miró el PRECIO", y el código
+// casi no cambia. Si la pisara, un precio viejo se vería recién mirado.
 async function updNisseiCod(id,val){
   const p=state.products.find(x=>x.id===id);if(!p)return;
   const c=String(val||'').trim();
-  p.nisseiCod=c;p.nisseiTs=Date.now();
-  await fbSet('products/'+id+'/nisseiCod',c);await fbSet('products/'+id+'/nisseiTs',p.nisseiTs);
+  p.codPy=c;
+  await fbSet('products/'+id+'/codPy',c);
   await log('Código Nissei de '+p.name+': '+(c||'(vacío)'));
   renderProds();
 }
@@ -9662,7 +9672,7 @@ function pedGuayHTML(prod){
   if(!prod)return '';
   const chip=(txt,col,tit)=>`<span class="pi-var-toggle" style="cursor:default;background:color-mix(in srgb,${col} 12%,transparent);color:${col};border-color:color-mix(in srgb,${col} 35%,transparent)" title="${String(tit).replace(/"/g,'&quot;')}">${txt}</span>`;
   const out=[];
-  const cod=(prod.nisseiCod||'').trim();
+  const cod=(prod.codPy||'').trim();
   const nu=parseFloat(prod.nisseiUSD)||0;
   if(cod)out.push(chip(`🔖 ${cod}`,'var(--muted)','Código de Nissei: el que se usa para hacer el pedido. Con esto no hace falta buscar por nombre, que es donde se confunden los productos parecidos.'));
   if(!(nu>0)){

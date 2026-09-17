@@ -40,11 +40,10 @@ const OFI_VIEJAS
 const PAP_DIAS
 const PAUSA_REVISAR_DIAS
 const PED_DIAS_ROJO
-const PED_DIAS_ROJO_PY
 const PED_HIST_START
 const PED_MAX_DAYS
+const PED_MIN_VENTAS_RITMO
 const PED_TARGET_DIAS
-const PED_TARGET_PY
 const PUNT_CURVA_STOCK
 const PUNT_DEF
 const PUNT_FAC_BASE
@@ -54,6 +53,8 @@ const PUNT_MONO_H
 const PUNT_PISO_USD_PP
 const PUNT_RETIRO_PCT
 const PUNT_SOCIOS
+const PY_ENVIO_USD
+const RECARGO_PY
 const REPO_DIAS_COBERTURA
 const REPO_DIAS_DEMORA
 const REPO_DIAS_MIN
@@ -99,7 +100,6 @@ const costoCaja
 const cuentasExtra
 const curTC
 const deltaPct
-const esPaisLento
 const fmt
 const fmtCost
 const fmtN
@@ -121,6 +121,7 @@ const pctGradient
 const pctLabel
 const pedDiasRojoDe
 const pedTargetDiasDe
+const pyTope
 const repoExtraDe
 const retiroDefMes
 const scoreColor
@@ -176,6 +177,7 @@ let pendingRender
 let prodSoloBajoMeta
 let prodSoloIncompletos
 let puntMesSel
+let pyModo
 let qTimers
 let resScopeMode
 let rotSoloDudoso
