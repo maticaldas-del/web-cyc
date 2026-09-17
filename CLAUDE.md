@@ -2975,7 +2975,27 @@ Lo que sí se arregló, y eran **dos** cosas:
    hoy y no se hizo. La idea: un producto no puede destrabar más por mes que lo que deja lo que
    vende, y algo con stock que no vende hace 55 días no puede estar en la lista de comprar. Hoy eso
    lo agarra él mirando; el panel lo puede agarrar solo.
- · **`revisarpedidos` sin correr**: no se verificó si quedan más casos como el Watch S5.
+ · **`revisarpedidos` CORRIDO el 17/09/2026, y el resultado cambia el chequeo automático.** No
+   quedan casos como el Watch S5: **0 pedidos cargados a mano de 54** (el panel los arma y los borra
+   solo) y **0 claves de inventario con problema de 529** — las 13 basura del 24/08 ya no están, y
+   ningún producto pierde stock con el arreglo de `stockOf`.
+   Lo que sí apareció son **dos cosas mal en el propio comando**, las dos arregladas el mismo día:
+    · **El chequeo de stock se había apagado solo, en silencio.** Leía la nota del pedido con
+      `/N en stock/` y la nota cambió el 14/09 a *"📦 N en ML"*: `stockGuardado` daba **null en los
+      54**, así que de los dos chequeos sólo quedaba vivo el de la cantidad y los 41 renglones
+      imprimían *"dice: null en stock"*. Ahora acepta las dos formas. Es el patrón de siempre —
+      **el dato no se pierde con ruido**.
+    · **Y el 🔴 "NO HAY QUE COMPRAR NADA" estaba invitando a sacar de la lista justo lo que falta
+      reponer.** De los 25 que daban comprar 0, **21 tenían 0 en Full, 0 en casa y 0 ventas**: no
+      vendieron porque no había qué vender. La cuenta divide por los días con stock, así que un
+      producto agotado los 30 días da `vDia` = 0 y `hoyComprar` = 0 — **eso no es "no comprarlo", es
+      "no se puede medir"**. Son las ~100 publicaciones sin stock que ya están anotadas al final de
+      este archivo. Ahora salen aparte con **⚪ AGOTADO** y el resumen los cuenta en su propio
+      renglón. Los que SÍ sobran de verdad son **4**: Paulvic (249 en Full + 134 en casa), Sábanas
+      105x190, p47 oreja gato y Funda Cubre Colchón twin.
+   **La lección para el chequeo automático de "este renglón no tiene sentido" que sigue pendiente:
+   "la cuenta da comprar 0" NO alcanza para sacar un renglón.** Hay que mirar antes si hay stock en
+   algún lado; si no lo hay, el 0 es falta de dato, no una conclusión.
 
 ### Lo grande, que no se arregla con precios
 

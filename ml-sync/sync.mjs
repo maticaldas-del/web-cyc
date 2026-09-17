@@ -18749,11 +18749,22 @@ async function main() {
         const vDia = vendidos / Math.min(dConS, MAX_DAYS);
         const hoyComprar = Math.max(0, Math.max(0, Math.ceil(vDia * TARGET_DAYS) - stock) - casa);
         // Lo que el pedido dice que había cuando se calculó, sacado de su propia nota.
-        const m = /·\s*(-?\d+)\s+en stock/.exec(ped.nota || '');
+        // Acepta las DOS formas porque la nota cambió el 14/09/2026: antes decía "N en stock" y
+        // ahora "📦 N en ML". Leyendo sólo la vieja, `stockGuardado` daba null en los 54 pedidos y
+        // el chequeo de stock se apagaba solo, en silencio — el patrón que este repo ya tiene
+        // anotado tres veces (el catch {} vacío, el filtro que descarta por omisión, el || que se
+        // comía el cancelar). La corrida del 17/09 lo mostró: 41 renglones diciendo "dice: null".
+        const m = /(-?\d+)\s+en (?:stock|ML)\b/.exec(ped.nota || '');
         const stockGuardado = m ? parseInt(m[1]) : null;
         const difStock = stockGuardado != null && stockGuardado !== stock;
         const difCant = (ped.cantidad || 0) !== hoyComprar;
-        if (difStock || difCant) malos.push({ ped, nom: p.name, stockGuardado, stock, casa, cant: ped.cantidad || 0, hoyComprar, auto: ped.auto !== false, vendidos });
+        // Un producto SIN NADA en ningún lado y CERO ventas no es "no hay que comprarlo": es que no
+        // se puede medir. La cuenta divide las ventas por los días con stock, y si estuvo agotado
+        // los 30 días no vendió porque no había qué vender, así que vDia da 0 y hoyComprar da 0.
+        // Sin esta marca el renglón sale con el 🔴 "NO HAY QUE COMPRAR NADA" y eso invita a sacar
+        // de la lista justo la mercadería que falta reponer.
+        const agotado = hoyComprar === 0 && stock === 0 && casa === 0 && vendidos === 0;
+        if (difStock || difCant) malos.push({ ped, nom: p.name, stockGuardado, stock, casa, cant: ped.cantidad || 0, hoyComprar, auto: ped.auto !== false, vendidos, agotado });
       }
       // ── (a2) ¿QUÉ CAMBIA AL SUMAR SOLO LAS 4 CUENTAS? ────────────────────────────
       // El arreglo de stockOf() pasa de "sumar toda clave que empiece con el id" a "sumar las 4
@@ -18783,16 +18794,21 @@ async function main() {
 
       console.log(`\n══ (b) PEDIDOS QUE NO COINCIDEN CON LO DE HOY ══  ${malos.length} de ${Object.values(peds).filter(Boolean).length}`);
       if (!malos.length) console.log('   ninguno ✓');
-      const sobran = malos.filter((x) => x.hoyComprar === 0);
+      const sobran = malos.filter((x) => x.hoyComprar === 0 && !x.agotado);
+      const agotados = malos.filter((x) => x.agotado);
       malos.sort((a, b) => (b.cant || 0) - (a.cant || 0)).forEach((x) => {
         if (x.por) { console.log(`   ${x.nom} → ${x.por}`); return; }
         console.log(`   ${x.nom}${x.auto ? '' : '  (cargado A MANO: el panel no lo toca nunca)'}`);
         console.log(`      dice: ${x.stockGuardado} en stock · comprar ${x.cant}`);
-        console.log(`      hoy : ${x.stock} en Full · ${x.casa} en la oficina · ${x.vendidos} vendidas 30d → comprar ${x.hoyComprar}${x.hoyComprar === 0 ? '   🔴 NO HAY QUE COMPRAR NADA' : ''}`);
+        const cola = x.agotado
+          ? '   ⚪ AGOTADO: no vendió porque no había. La cuenta no puede medirlo — NO es "no comprar"'
+          : (x.hoyComprar === 0 ? '   🔴 NO HAY QUE COMPRAR NADA' : '');
+        console.log(`      hoy : ${x.stock} en Full · ${x.casa} en la oficina · ${x.vendidos} vendidas 30d → comprar ${x.hoyComprar}${cola}`);
       });
       console.log(`\n── RESUMEN ──`);
-      console.log(`  ${sobran.length} pedido(s) NO deberían estar en la lista: hoy la cuenta da comprar 0.`);
-      console.log(`  ${malos.length - sobran.length} tienen la cantidad desactualizada.`);
+      console.log(`  ${sobran.length} pedido(s) NO deberían estar en la lista: TIENEN stock o ventas y aun así la cuenta da comprar 0.`);
+      console.log(`  ${agotados.length} están AGOTADOS (0 en Full, 0 en casa, 0 vendidas): la cuenta da 0 porque no hay con qué medir, NO porque no haya que comprarlos.`);
+      console.log(`  ${malos.length - sobran.length - agotados.length} tienen la cantidad desactualizada.`);
       return;
     }
 
