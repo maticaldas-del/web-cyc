@@ -2535,7 +2535,7 @@ async function removeStartedPromos(itemId, token) {
 // fallback (precio − comisión de la orden), que es mucho más cercano. En la próxima corrida, ya
 // con el pago liquidado, la venta se vuelve a escribir con el neto exacto.
 async function orderNet(order, token, feeOut) {
-  let net = 0, ok = false, mlfee = 0, tieneCargosML = false;
+  let net = 0, ok = false, mlfee = 0, tieneCargosML = false, envio = 0;
   for (const p of (order.payments || [])) {
     if (!p.id) continue;
     try {
@@ -2552,11 +2552,17 @@ async function orderNet(order, token, feeOut) {
         const n = (c.name || '').toLowerCase();
         if (n.startsWith('tax_withholding')) continue;
         mlfee += c.amounts?.original || 0;
+        // EL ENVÍO, APARTE. Está ADENTRO de `mlfee` (que junta todos los cargos de ML), pero hace
+        // falta suelto: el margen se mide dividiendo por costo + impuestos + ENVÍO, igual que la
+        // pantalla y que `unapub`. Es el mismo cargo `shp_fulfillment` con el que `FILL_GESTFULL`
+        // arma el `gestFull` de cada ficha, o sea el MISMO número que él ve en "Costo vender en
+        // Full". Abajo de los $33.000 ML no lo cobra y viene en cero, que también es correcto.
+        if (n.includes('shp_fulfillment')) envio += c.amounts?.original || 0;
         tieneCargosML = true;   // apareció al menos un cargo propio de ML → el pago ya está liquidado
       }
     } catch { /* ignore */ }
   }
-  if (feeOut) { feeOut.mlfee = Math.round(mlfee); feeOut.liquidado = tieneCargosML; }
+  if (feeOut) { feeOut.mlfee = Math.round(mlfee); feeOut.envio = Math.round(envio); feeOut.liquidado = tieneCargosML; }
   // Sin cargos de ML el neto no sirve todavía: mejor el fallback que un número inflado.
   return (ok && tieneCargosML) ? net : null;
 }
@@ -7667,7 +7673,10 @@ async function main() {
           if (fee != null && envioMax != null) {
             const neto = precio - fee - envioMax - precio * cuo;
             const costoTot = costo + precio * impPct;
-            margen = costoTot > 0 ? (neto - costoTot) / costoTot : 0;
+            // El envío va en el DIVISOR (17/09/2026), como en la pantalla, `unapub` y el robot.
+            // Restado del neto y además abajo NO es contarlo dos veces: la ganancia en pesos se
+            // mide contra el costo sin envío y lo único que cambia es contra qué se compara.
+            margen = costoTot > 0 ? (neto - costoTot) / (costoTot + envioMax) : 0;
             // Solo tiene sentido buscar el precio del piso si HOY está abajo. Si ya está arriba, la
             // búsqueda arrancaría con el piso ya cumplido y devolvería el precio de hoy + 1, que
             // parece un número pero no dice nada.
@@ -7680,7 +7689,7 @@ async function main() {
               const f2 = await feeAt(mid);
               if (f2 == null) break;
               const c2 = costo + mid * impPct;
-              const m2 = c2 > 0 ? (mid - f2 - envioMax - mid * cuo - c2) / c2 : 0;
+              const m2 = c2 > 0 ? (mid - f2 - envioMax - mid * cuo - c2) / (c2 + envioMax) : 0;
               if (m2 < MIN) lo = mid; else hi = mid;
               if (hi - lo <= 1) break;
             }
@@ -10248,10 +10257,17 @@ async function main() {
             // La meta se mide contra el costo AL PRECIO QUE SE ESTÁ PROBANDO: si el impuesto es un
             // % del precio, subir el precio sube también el costo, y con un costo fijo la cuenta
             // se quedaba corta.
-            const metaDe = (P) => costoTotDe(P) * (1 + META);
+            // EL ENVÍO VA EN EL DIVISOR (17/09/2026), igual que en la pantalla y que en el robot.
+            // El margen es (neto − costo − impuestos) ÷ (costo + impuestos + ENVÍO), así que pedir
+            // margen ≥ X es pedir neto ≥ costoTot×(1+X) + X×envío. Sin el término del envío este
+            // comando calculaba el precio contra un divisor MÁS CHICO y devolvía un precio CORTO:
+            // subía y dejaba la publicación abajo del piso diciendo que había llegado — que es
+            // exactamente el error del 13/08, cuando se subieron 62 y en la pantalla seguían en
+            // 27-29%. Abajo de los $33.000 el envío es cero y no cambia nada.
+            const metaDe = (P) => costoTotDe(P) * (1 + META) + META * envio;
             // El piso decide SI se toca; la meta decide HASTA DÓNDE. Con los dos pegados, cualquier
             // cosa mínima —un envío un peso más caro— volvía a hundir lo recién subido.
-            const pisoDe = (P) => costoTotDe(P) * (1 + PISO);
+            const pisoDe = (P) => costoTotDe(P) * (1 + PISO) + PISO * envio;
             let P = Math.round(precio0), ok = false, n0 = null, m0 = null;
             for (let it = 0; it < 14; it++) {
               const n = await netoDe(P); if (n == null) break;
@@ -10273,7 +10289,7 @@ async function main() {
             let final = P, nota = '';
             if (precio0 < TOPE_ENVIO && P >= TOPE_ENVIO) { final = 32999; nota = ` (frenado en la barrera de los ${money(TOPE_ENVIO)}; para el piso hacían falta ${money(P)})`; }
             if (final <= precio0) { frenados.push({ mla, label, nom, why: `ya está en la barrera de los ${money(TOPE_ENVIO)}` }); continue; }
-            subir.push({ mla, label, nom, prod: p.name, de: Math.round(precio0), a: final, nota, vars, tok: t.access_token, pct: ((n0 - costoTot) / costoTot * 100), envioDeTarifa });
+            subir.push({ mla, label, nom, prod: p.name, de: Math.round(precio0), a: final, nota, vars, tok: t.access_token, pct: ((n0 - costoTot) / (costoTot + envio) * 100), envioDeTarifa });
           }
         }
       }
@@ -20159,21 +20175,21 @@ async function main() {
       if (!packOrders.has(pk)) packOrders.set(pk, []);
       packOrders.get(pk).push(o);
     }
-    const packPlata = new Map(); // pack_id -> { net, fee, gross }
+    const packPlata = new Map(); // pack_id -> { net, fee, env, gross }
     for (const [pk, list] of packOrders) {
       if (list.length < 2) continue;   // paquete de un solo producto: no hay nada que repartir
-      let net = 0, fee = 0, gross = 0, ok = true;
+      let net = 0, fee = 0, env = 0, gross = 0, ok = true;
       for (const o of list) {
         const fo = {};
         const n = await orderNet(o, t.access_token, fo);
         // Si una sola de las órdenes todavía no está liquidada, el reparto saldría torcido:
         // mejor no juntar nada y que cada una use su propia cuenta (se corrige en la próxima vuelta).
         if (n == null) { ok = false; break; }
-        net += n; fee += fo.mlfee || 0;
+        net += n; fee += fo.mlfee || 0; env += fo.envio || 0;
         gross += (o.order_items || []).reduce((s, it) => s + (it.unit_price || 0) * (it.quantity || 0), 0);
       }
       if (ok && gross > 0) {
-        packPlata.set(pk, { net, fee, gross });
+        packPlata.set(pk, { net, fee, env, gross });
         if (!DRY) console.log(`  · venta #${pk}: ${list.length} órdenes en un mismo paquete → el neto ($${Math.round(net)}) se reparte entre los ${list.length} productos`);
       }
     }
@@ -20190,7 +20206,7 @@ async function main() {
       // Si esta orden es parte de un carrito, la plata y el denominador son los del PAQUETE entero.
       const pack = o.pack_id ? packPlata.get(String(o.pack_id)) : null;
       const repartoGross = pack ? pack.gross : orderGross;
-      let orderNetAmt = null, orderFeeAmt = 0, netFetched = false; // neto y cargos ML del pago (una vez por orden)
+      let orderNetAmt = null, orderFeeAmt = 0, orderEnvAmt = 0, netFetched = false; // neto, cargos ML y envío del pago (una vez por orden)
       let i = 0;
       for (const it of items) {
         const mla = it.item?.id;
@@ -20234,8 +20250,8 @@ async function main() {
         // neto real del pago (una sola vez por orden)
         if (!netFetched) {
           const fo = {};
-          if (pack) { orderNetAmt = pack.net; orderFeeAmt = pack.fee; } // ya sumado arriba para todo el paquete
-          else { orderNetAmt = await orderNet(o, t.access_token, fo); orderFeeAmt = fo.mlfee || 0; }
+          if (pack) { orderNetAmt = pack.net; orderFeeAmt = pack.fee; orderEnvAmt = pack.env; } // ya sumado arriba para todo el paquete
+          else { orderNetAmt = await orderNet(o, t.access_token, fo); orderFeeAmt = fo.mlfee || 0; orderEnvAmt = fo.envio || 0; }
           netFetched = true;
           // Si ML todavía no descontó lo suyo, se avisa: la venta queda con el neto estimado y se
           // corrige sola en cuanto el pago se liquide (la ventana de sincronización son 2 días).
@@ -20245,6 +20261,10 @@ async function main() {
           ? Math.round(orderNetAmt * (itemGross / repartoGross))
           : netoFallback(itemGross, it.sale_fee, qty);
         const mlfee = (orderFeeAmt && repartoGross > 0) ? Math.round(orderFeeAmt * (itemGross / repartoGross)) : 0; // cargo ML por venta (para el almacenamiento mensual)
+        // El envío de ESTA venta, repartido igual que el neto y los cargos cuando la compra lleva
+        // varios productos (misma proporción que ya usa `mlfee`: si no, el que pagó el envío de
+        // los dos aparecería perdiendo y el otro ganando — el bug de los Ferrari del 08/09).
+        const envioVenta = (orderEnvAmt && repartoGross > 0) ? Math.round(orderEnvAmt * (itemGross / repartoGross)) : 0;
         const { costo, costBaseUSD, shipUSD } = p ? costoPesos(p, qty, tc) : { costo: 0, costBaseUSD: 0, shipUSD: 0 };
         const id = 'v' + o.id + '_' + idx;
         const obj = {
@@ -20290,12 +20310,31 @@ async function main() {
           // publicación se cayó abajo del piso dos días seguidos y me enteré porque él mandó la
           // captura. La pantalla y `unapub` siempre sumaron los dos; este era el único lugar que no.
           const mlx = itemGross * (mlExtraPct(label) + monoVenta) / 100;
+          // ── EL ENVÍO VA EN EL DIVISOR (17/09/2026) ──────────────────────────────────────
+          // Hasta hoy acá se dividía por costo + impuestos, y la pantalla, `unapub` y `bajopiso`
+          // dividen por costo + impuestos + ENVÍO. Tres contra uno, y el que estaba solo era éste.
+          // Abajo de los $33.000 ML no cobra envío, así que las dos cuentas daban igual y nadie lo
+          // notó; arriba de la barrera se abrían ~5 puntos y SIEMPRE para el lado peligroso — el
+          // robot veía la venta más cómoda de lo que estaba, no la subía y tampoco avisaba.
+          // Medido con `comparo:23:60` antes de tocar nada: 17 publicaciones abajo del piso en la
+          // pantalla que acá pasaban como sanas (el Tendedero de Luciana, 21% real contra 36%).
+          // Es el envío REAL de esta venta (el cargo `shp_fulfillment`), el mismo con el que se
+          // arma el `gestFull` de la ficha. Si el pago todavía no está liquidado viene en cero,
+          // pero ahí el `neto` también es estimado y sale MÁS ALTO de lo real: el margen se ve
+          // mejor, o sea que no dispara ninguna suba y se corrige solo en la vuelta siguiente.
+          // Ése es el lado seguro para equivocarse.
           const costoTot = costo + mlx;
-          const margen = (neto - costoTot) / costoTot;
+          const baseMargen = costoTot + envioVenta;
+          const margen = (neto - costoTot) / baseMargen;
           if (margen < minPct / 100) {
             const T = targetPct / 100;
             const _den = neto - mlx * (1 + T);
-            const mult = _den > 0 ? (costo * (1 + T)) / _den : Infinity; // Infinity → cae en el aviso, no toca
+            // El multiplicador tiene que llevar el margen a la meta con el envío ADENTRO del
+            // divisor. El envío NO se mueve al subir el precio (es un cargo fijo de Full), así que
+            // entra como constante: k = (costo×(1+meta) + meta×envío) / (neto − impuestos×(1+meta)).
+            // Sin el término del envío el precio nuevo quedaba corto justo en las caras, que son
+            // las únicas donde el envío existe.
+            const mult = _den > 0 ? (costo * (1 + T) + T * envioVenta) / _den : Infinity; // Infinity → cae en el aviso, no toca
             const unit = itemGross / qty;
             const sugUnit = isFinite(mult) ? Math.ceil((mult * unit) / 10) * 10 : 0;
             const head = `Margen bajo: ${(margen * 100).toFixed(0)}%\n`

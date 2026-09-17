@@ -956,6 +956,53 @@ ni yo (regla 5). Si la twin deja de vender, ése es el primer lugar donde mirar.
 **Para revisarlo cuando quiera: `tocados[:horas]`**, que lista lo que tocó el robot, en qué margen
 quedó hoy y a qué precio debería estar. Sin `bajar` SOLO LEE.
 
+## EL ROBOT MEDÍA EL MARGEN SIN EL ENVÍO Y DEJABA PASAR 17 PUBLICACIONES (17/09/2026)
+
+Salió de una venta que él vio en **+21%** y que el robot no subió ni avisó. **El Telegram estaba
+bien** (el aviso de la suba del Kiss Sexy le llegó): lo que estaba mal era la cuenta.
+
+**El margen se mide dividiendo por costo + impuestos + ENVÍO**, y eso lo decidió él el 01/09
+(*"al vender un producto y pagar TODO lo que descuentan (…) me tiene que quedar un 30%"*). La
+pantalla lo hace así y lo dice en el código: *"lo único que cambia es el DIVISOR"*. La ganancia en
+pesos NO se mueve — el envío ya está restado del neto y sumarlo abajo no es contarlo dos veces.
+
+**Tres comandos dividían sin el envío**, o sea que veían todo más cómodo de lo que estaba:
+ · **el robot que sube solo al vender** — el grave: no subía y **tampoco avisaba**.
+ · **`submargen`** — peor todavía: calculaba el precio contra un divisor más chico y devolvía un
+   precio **CORTO**. Medido con los números reales del VS Mango Temptation: subía y quedaba en
+   **20,19%**, o sea ABAJO del piso, **diciendo que había llegado a la meta**. Es exactamente el
+   error del 13/08, cuando se subieron 62 y en la pantalla seguían en 27-29%.
+ · **`hermanas`** — solo muestra, pero mostraba de más.
+
+**Abajo de los $33.000 las dos cuentas dan IGUAL** (ML no cobra envío), y por eso nadie lo notó en
+un año: el agujero se abre sólo arriba de la barrera, donde están los productos caros.
+
+**Medido ANTES de tocar nada con `comparo:23:60`** (comando nuevo, solo lee, hace las dos cuentas
+en **una sola línea** para que no se puedan separar): **17 publicaciones abajo del piso en la
+pantalla que el robot daba por sanas**. La peor, el Tendedero Vertical de Luciana: **21% real
+contra 36%** que veía el robot. Subirlas todas al piso son $23.120. Ocho están pausadas.
+
+**El multiplicador también cambió.** El envío es un cargo FIJO de Full: no se mueve al subir el
+precio, así que entra como constante →
+`k = (costo×(1+meta) + meta×envío) / (neto − impuestos×(1+meta))`. Sin ese término el precio nuevo
+quedaba corto justo en las caras, que son las únicas donde el envío existe.
+
+**De dónde sale el envío en el robot:** del cargo `shp_fulfillment` de ESA venta, el mismo con el
+que `FILL_GESTFULL` arma el `gestFull` de cada ficha. Se reparte igual que el neto cuando la compra
+lleva varios productos (si no, vuelve el bug de los Ferrari del 08/09). Si el pago todavía no está
+liquidado viene en cero, **pero ahí el `neto` también es estimado y sale MÁS ALTO**: el margen se ve
+mejor, no dispara ninguna suba y se corrige solo en la vuelta siguiente. Ése es el lado seguro.
+
+**Probado con las líneas REALES sacadas del archivo** (no una copia, que diría "todo bien" para
+siempre) y cuatro casos: el Mango Temptation da 21,0% igual que la pantalla · el multiplicador deja
+exactamente 25,00% · abajo de los $33.000 no cambia ni un decimal · y `submargen` pide el neto que
+deja 25,00% y 23,00% clavados.
+
+**LA LECCIÓN, otra vez la misma: si dos partes del sistema miden la misma plata con fórmulas
+distintas, una está mal — y la que está sola no es la que está bien por ser el robot.** Y la
+segunda: el agujero se escondió un año porque **abajo de la barrera las dos fórmulas coinciden**;
+un error que sólo aparece en la mitad de los casos parece que no existe.
+
 ## ¿CONVIENE BAJAR UN PRECIO PARA GANAR MÁS? SÍ, PERO SON 2 DE 105 (13/09/2026)
 
 Pregunta suya, y la desconfianza era correcta: *"me parece muy raro que vendiendo más barato ganemos
