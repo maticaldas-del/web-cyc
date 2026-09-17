@@ -7864,6 +7864,84 @@ async function main() {
       if (!APLICAR || prueba) console.log('\nPRUEBA: no escribí nada ni mandé ningún mensaje. Para aplicar: candidatos:go');
       return;
     }
+    // BILLING_PROBE=pycosto:<id>=<costoViejoUS$>/<precioParaguayUS$>[;otro][;go]
+    // EL PRECIO DE PARAGUAY NO PISA EL COSTO. NUNCA.
+    // Regla suya del 17/09/2026, textual: *"sacar que el precio nuevo modifique el anterior. o sea
+    // que el precio que pone el chat mirando compraparaguai ponga el precio en un lugar nuevo que
+    // no modifique nada de lo que se vende"*. Y el motivo, de la misma tarde: *"lo que compre a un
+    // precio se vende a ese precio. si aumenta no compro"*.
+    //
+    // SON DOS NÚMEROS Y MIDEN COSAS DISTINTAS:
+    //   costUSD    = lo que PAGASTE por la mercadería que tenés. Decide todos los márgenes, el
+    //                patrimonio y —esto es lo importante— si el robot sube un precio al vender.
+    //   nisseiUSD  = lo que te saldría REPONERLO hoy. Decide si comprar o no. Y nada más.
+    // Confundirlos hace que un aumento del proveedor te suba los precios de lo que ya tenés
+    // comprado, que es exactamente lo que él NO quiere.
+    //
+    // Esto repara lo que pasó el 17/09: el asistente cargó los precios de Paraguay ENCIMA del
+    // costo, y con eso se movieron márgenes, patrimonio y la decisión del robot. Devuelve cada
+    // costo a lo que pagó y deja el precio de Paraguay en su propio campo.
+    // Sin `;go` sólo muestra.
+    if (/^pycosto:/.test(String(process.env.BILLING_PROBE || ''))) {
+      const _pc2 = String(process.env.BILLING_PROBE).slice('pycosto:'.length);
+      const APLICAR = /(^|;)go\s*$/.test(_pc2);
+      const pares = _pc2.replace(/(^|;)go\s*$/, '').split(';').map((x) => x.trim()).filter(Boolean);
+      if (!pares.length) { console.log('Usá: pycosto:<id>=<costoViejoUS$>/<precioParaguayUS$>[;otro][;go]'); return; }
+      const tcP2 = parseFloat(((await db.get('cyc/finanzas')) || {}).tipo_cambio) || 1500;
+      const vpP2 = (await db.get('cyc/ventaprod')) || {}; setDevLive(vpP2);
+      console.log(`=== DEVOLVER EL COSTO A LO QUE PAGASTE ${APLICAR ? '(APLICANDO)' : '(PRUEBA: no escribo nada)'} ===`);
+      console.log(`Dólar ${money(tcP2)}. El precio de Paraguay queda en su propio campo y NO toca ningún margen.\n`);
+      const plan = [];
+      for (const par of pares) {
+        const i = par.indexOf('=');
+        if (i < 0) { console.log(`⚠️ "${par}" mal escrito. Se saltea.`); continue; }
+        const quien = par.slice(0, i).trim();
+        const [vA, vB] = par.slice(i + 1).split('/');
+        const viejo = parseFloat(String(vA || '').replace(',', '.'));
+        const py = parseFloat(String(vB || '').replace(',', '.'));
+        if (!quien || !isFinite(viejo) || viejo <= 0) { console.log(`⚠️ "${par}" le falta el costo viejo. Se saltea.`); continue; }
+        const p = products.find((x) => x.id === quien);
+        if (!p) { console.log(`❌ "${quien}" → no hay ninguna ficha con ese id.\n`); continue; }
+        // El costo full se arma con la MISMA cuenta que usa `poncosto` y que usa la web:
+        // costo × (1 + % de reclamos) + envío. Dejarlo librado es el error de la ficha nueva del
+        // 24/08, donde la web y el robot mostraban dos costos distintos del mismo producto.
+        const ship = parseFloat(p.shipUSD) || 0;
+        const dev = DEV_LIVE[p.id] != null ? DEV_LIVE[p.id] : (parseFloat(p.devPct) || 0);
+        const fullUSD = Math.round((viejo * (1 + dev / 100) + ship) * 100) / 100;
+        const hoy = parseFloat(p.costUSD) || 0;
+        console.log(`── ${p.name}  (${p.id})`);
+        console.log(`     costo: US$ ${hoy.toFixed(2)} → US$ ${viejo.toFixed(2)}   (${money(Math.round(hoy * tcP2))} → ${money(Math.round(viejo * tcP2))})`
+          + `${Math.abs(hoy - viejo) < 0.005 ? '   (ya estaba)' : ''}`);
+        console.log(`     full:  US$ ${fullUSD.toFixed(2)}   (envío US$ ${ship.toFixed(2)} · reclamos ${dev.toFixed(1)}%)`);
+        if (isFinite(py) && py > 0) console.log(`     precio de Paraguay: US$ ${py.toFixed(2)}  → va a su propio campo, no toca el margen`);
+        console.log('');
+        plan.push({ p, viejo, fullUSD, py: isFinite(py) && py > 0 ? py : null });
+      }
+      if (!plan.length) { console.log('No quedó nada para aplicar.'); return; }
+      if (!APLICAR) { console.log(`PRUEBA: no escribí nada. Para aplicar, agregá ";go" al final.`); return; }
+      const ahora = Date.now();
+      for (const x of plan) {
+        await db.set(`cyc/products/${x.p.id}/costUSD`, x.viejo);
+        await db.set(`cyc/products/${x.p.id}/cost`, Math.round(x.viejo * tcP2));
+        await db.set(`cyc/products/${x.p.id}/costFullUSD`, x.fullUSD);
+        if (x.py != null) {
+          await db.set(`cyc/products/${x.p.id}/nisseiUSD`, x.py);
+          await db.set(`cyc/products/${x.p.id}/nisseiTs`, ahora);
+        }
+      }
+      console.log('── Releído de la base ──');
+      let ok = 0;
+      for (const x of plan) {
+        const c = parseFloat(await db.get(`cyc/products/${x.p.id}/costUSD`));
+        const n = x.py != null ? parseFloat(await db.get(`cyc/products/${x.p.id}/nisseiUSD`)) : null;
+        const bien = Math.abs(c - x.viejo) < 0.005 && (x.py == null || Math.abs(n - x.py) < 0.005);
+        if (bien) ok++;
+        console.log(`  ${bien ? '✓' : '❌'} ${x.p.name}: costo US$ ${isFinite(c) ? c.toFixed(2) : '?'}`
+          + (x.py != null ? ` · Paraguay US$ ${isFinite(n) ? n.toFixed(2) : '?'}` : ''));
+      }
+      console.log(`\n${ok} de ${plan.length} quedaron bien.`);
+      return;
+    }
     // BILLING_PROBE=nisseificha:<texto o link> → QUÉ DATOS TRAE LA PÁGINA DE UN PRODUCTO. SOLO LEE.
     // Existe para MEDIR ANTES DE ESCRIBIR, no para usarse todos los días.
     // Él fijó el 17/09/2026 cuatro topes para los productos nuevos: margen 25%, US$250 la unidad,
