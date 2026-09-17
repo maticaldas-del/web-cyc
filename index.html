@@ -2311,7 +2311,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='19.51';
+const APP_VERSION='19.52';
 // El problema real que esto resuelve no es curiosidad: es que el celular guarda la app y sigue
 // mostrando la de ayer sin avisar. Varias veces se revisó un cambio que ya estaba subido y no se
 // veía. Por eso, además del número, el chip avisa cuando hay una versión nueva esperando.
@@ -8530,6 +8530,71 @@ async function candAgregar(){
   renderPedidos();
   toast('Agregado ✓ · el robot le hace la cuenta de ML esta noche');
 }
+// ── EL EMBUDO DE PARAGUAY: "¿ESTO TODAVÍA CONVIENE COMPRARLO?" ────────────────────────
+// Pedido suyo del 17/09/2026: *"ver si vale la pena comprar productos viejos y nuevos"* y
+// *"que haga embudo en pedidos paraguay"*.
+// Lo de los NUEVOS ya está ("Para probar"). Esto es la otra mitad: los que YA vendés y que al
+// precio de Paraguay de hoy dejaron de convenir.
+//
+// LO HACE EL PANEL SOLO, SIN EL ROBOT, y se puede: para un producto que ya vendés, el panel ya
+// sabe lo que ML te deposita hoy (`netoCalc`, que el robot recalcula todas las noches). Lo único
+// que faltaba era el costo de reponer, y ése es el precio de Paraguay × 1,15. No hace falta
+// preguntarle nada a ML.
+//
+// NO CALCULA NADA NUEVO: llama a `margenMLDe`, la misma que usa Rotación de Stock y la ficha. Si
+// tuviera su propia cuenta, esta lista podría decir un número y la ficha otro sobre el mismo
+// producto — el error que ya mordió seis veces acá.
+//
+// Y NO TOCA NINGÚN PRECIO DE VENTA. Que el proveedor aumente no es motivo para subir un precio;
+// es motivo para no comprar. Regla suya del mismo día: *"lo que compre a un precio se vende a ese
+// precio. si aumenta no compro"*. Por eso el único botón es "pausar por precio".
+const EMBUDO_PISO=25;
+function embudoRepo(){
+  const out=[];
+  for(const p of (state.products||[])){
+    if(String(p.origen||'')!=='py')continue;
+    if((state.pausaPrecio||{})[p.id])continue;          // ya lo sacaste vos
+    if((state.pySinStock||{})[p.id])continue;           // Nissei no lo tiene: no hay nada que decidir
+    const nu=parseFloat(p.nisseiUSD)||0;
+    if(!(nu>0))continue;                                 // sin precio de Paraguay no se opina
+    const puesto=Math.round(nu*RECARGO_PY*100)/100;
+    const mgHoy=margenMLDe(p);
+    const mgRepo=margenMLDe({...p,costUSD:puesto,costFullUSD:null,shipUSD:(p.shipUSD!=null?p.shipUSD:0)});
+    if(!mgRepo||mgRepo.margen==null)continue;            // no se puede medir → no se inventa
+    if(mgRepo.margen>=EMBUDO_PISO)continue;              // sigue conviniendo
+    const dias=p.nisseiTs?Math.max(0,Math.round((Date.now()-p.nisseiTs)/86400000)):null;
+    out.push({p,puesto,nu,repo:mgRepo.margen,hoy:(mgHoy&&mgHoy.margen!=null)?mgHoy.margen:null,dias});
+  }
+  // El que MÁS bajó primero: es donde más plata se pierde si lo comprás sin mirar.
+  out.sort((a,b)=>a.repo-b.repo);
+  return out;
+}
+function embudoHTML(){
+  const lista=embudoRepo();
+  if(!lista.length)return '';
+  const chip=(t,col)=>`<span class="pi-var-toggle" style="cursor:default;background:color-mix(in srgb,${col} 12%,transparent);color:${col};border-color:color-mix(in srgb,${col} 35%,transparent)">${t}</span>`;
+  return `<div style="margin:22px 0 10px;padding-top:16px;border-top:1px solid var(--border)">
+    <div style="font-size:.82rem;font-weight:700">🔻 Ya no conviene comprarlos <span style="font-weight:400;color:var(--muted);font-size:.9em">· ${lista.length}</span></div>
+    <div style="font-size:.64rem;color:var(--muted);margin-top:4px;line-height:1.5">
+      Productos que <b>ya vendés</b> y que al precio de Paraguay de hoy quedarían abajo del ${EMBUDO_PISO}%.
+      <b style="color:var(--text)">Lo que tenés en Full se sigue vendiendo igual</b>: acá no se toca ningún precio de venta, sólo se decide si volver a comprarlo.
+    </div>
+  </div>`
+  +lista.map(x=>`<div class="ingreso-item" style="flex-direction:column;align-items:stretch;gap:7px;border-left:3px solid var(--amber)">
+    <div style="display:flex;align-items:flex-start;gap:10px;flex-wrap:wrap">
+      <div style="flex:1;min-width:190px;font-size:.76rem;font-weight:600;line-height:1.35">${x.p.name}</div>
+      <div style="display:flex;gap:14px;text-align:right">
+        <div><div style="font-size:.58rem;color:var(--muted)">tenés</div><div style="font-size:1.05rem;font-weight:700;color:${x.hoy!=null&&x.hoy>=25?'var(--green)':'var(--muted)'}">${x.hoy!=null?x.hoy.toFixed(0)+'%':'—'}</div></div>
+        <div><div style="font-size:.58rem;color:var(--muted)">reponer</div><div style="font-size:1.05rem;font-weight:700;color:var(--red)">${x.repo.toFixed(0)}%</div></div>
+      </div>
+    </div>
+    <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center">
+      ${chip(`🇵🇾 US$ ${x.nu.toFixed(2)} → US$ ${x.puesto.toFixed(2)} puesto`,'var(--muted)')}
+      ${x.dias!=null?chip(`mirado hace ${x.dias} d`,x.dias>30?'var(--amber)':'var(--muted)'):chip('sin fecha','var(--amber)')}
+      <button class="btn" style="font-size:.64rem;padding:4px 11px;margin-left:auto" onclick="pausarPrecio('${x.p.id}')" title="Lo saca de la lista de compras. No toca ningún precio de venta. El panel lo vuelve a mirar solo a los 30 días.">⏸️ No lo compro por ahora</button>
+    </div>
+  </div>`).join('');
+}
 function candList(){
   return Object.entries(state.candidatos||{}).map(([id,c])=>({...c,id})).filter(c=>c&&c.nombre);
 }
@@ -10464,7 +10529,11 @@ function renderPedidos(){
   // La canasta va ARRIBA (es el pedido de US$1.000, lo que estás armando) y "Para probar" va
   // ABAJO DE TODO, pedido suyo: *"mas abajo o en otro lado, para poder evaluarlos aparte y ver si
   // los metemos en el pedido o no"*. Son dos decisiones distintas y no se mezclan.
-  if(!isBsas)el.innerHTML=pyCanastaHTML()+el.innerHTML+candidatosHTML();
+  // EL EMBUDO, DE ARRIBA HACIA ABAJO: lo que estás comprando (la canasta) · lo que falta (los
+  // pedidos) · lo que dejó de convenir · lo que todavía no vendés. Pedido suyo: *"que haga embudo
+  // en pedidos paraguay"* — las cuatro decisiones de Paraguay en una sola pantalla y en el orden
+  // en que se toman.
+  if(!isBsas)el.innerHTML=pyCanastaHTML()+el.innerHTML+embudoHTML()+candidatosHTML();
 }
 
 async function setPedidoProveedor(id){

@@ -158,6 +158,8 @@ function doLogin
 function edadStockDe
 function efectivoCostP
 function efectivoCostoVP
+function embudoHTML
+function embudoRepo
 function enTransito
 function enterAjustes
 function enterEnviosFull
