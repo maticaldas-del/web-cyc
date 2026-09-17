@@ -1460,10 +1460,33 @@ porque no hay ficha contra la cual contrastar. Lo que funcionó con los códigos
 trae pruebas (título exacto, código, precio, link) y NO elige; la decisión la toma él.** Cualquier
 versión de esto tiene que respetar eso.
 
-**Y EL TOPE TÉCNICO DE HOY: desde esta sesión no hay salida a internet.** `nissei.com` y
-`comprasparaguay.com.ar` están bloqueados por la política de red del entorno — probado hasta con
-`example.com`. Se abre en la configuración del entorno (Network access → Custom) y **sólo agarra en
-sesiones NUEVAS**: cambiarlo no afecta a una sesión ya arrancada. Sin eso, esto no se puede hacer.
+**EL TOPE TÉCNICO SE CAYÓ: EL ROBOT PUEDE LEER NISSEI Y EL CATÁLOGO DE ML SOLO (17/09/2026).**
+La nota vieja decía que sin salida a internet esto no se podía hacer. **Era cierto para el CHAT y
+falso para el ROBOT**: `sync.mjs` corre en las máquinas de GitHub, que tienen internet abierto.
+Pregunta suya que lo destapó: *"me encantaria que vos puedas entrar en ml, no hay forma alguna que
+vos extraigas esos precios?"* — manejar dos chats lo obligaba a copiar listas a mano.
+Medido con **`probarweb[:<texto>]`** (solo lee, no toca ML ni la base):
+
+| | |
+|---|---|
+| `nissei.com` (home y buscador) | ✅ **200 · 798 KB · los precios están en el HTML** |
+| `comprasparaguay.com.ar` | ❌ 403 · bloquea robots — no importa: el precio que manda es el de Nissei |
+| `/products/search?site_id=MLA&q=…` | ✅ busca el CATÁLOGO por texto ("azzaro sport" → 3.547) |
+| `/products/<id>/items` | ✅ vendedores con precio, **stock** y quién tiene la caja |
+| `/sites/MLA/search?q=…` | ❌ **403 forbidden** · ML cerró la búsqueda libre de publicaciones |
+
+**Lo único que se pierde es buscar publicaciones que NO están en catálogo** — y eso tampoco lo
+podía el chat con Chrome (lo dejó anotado con el Animale Black). Perfumes y electrónica viven casi
+todos en catálogo, así que para lo que se compra no falta nada.
+**El 404 "No winners found" NO es un error**: es la respuesta cuando ese catálogo no tiene ningún
+vendedor activo. La primera corrida cayó justo en uno así y parecía que el endpoint no andaba.
+**El error que cometí al escribir el probe, y vale como regla: el id de un CATÁLOGO también
+empieza con "MLA"** (`MLA22364117`). Los separé por el prefijo, imprimió los catálogos como si
+fueran publicaciones —"$0 · vendidas ?"— y no llegó a probar el endpoint que importaba. **Dos cosas
+no se distinguen por cómo se llaman, se distinguen por de dónde vinieron.**
+**Y por eso el probe no se conforma con un 200:** mira el TAMAÑO y si hay algún precio adentro del
+HTML. Una página armada con JavaScript contesta 200 y baja un cascarón vacío — leer eso como que
+anduvo es el mismo error que leer un cero como buena noticia.
 
 ## Cosas que ya pasaron (para no repetirlas)
 
