@@ -7377,6 +7377,101 @@ async function main() {
       console.log('Los ✅ son los que podríamos empezar a usar.');
       return;
     }
+    // BILLING_PROBE=probarweb[:<texto a buscar>] → ¿PUEDE EL ROBOT MIRAR PRECIOS SOLO?
+    // Pregunta suya del 17/09/2026: *"me encantaria que vos puedas entrar en ml, no hay forma
+    // alguna que vos extraigas esos precios?"*. Manejar dos chats —uno que mira ML con Chrome y
+    // otro que toca el código— le obliga a copiar y pegar listas a mano, y encima ninguno de los
+    // dos tiene todo. Esto mide si hace falta.
+    // Son DOS preguntas distintas y hay que contestarlas por separado:
+    //  · ¿ML? Por la API, con el token que el robot ya usa todos los días. Devuelve MÁS que la
+    //    pantalla: cuántas unidades vendió cada publicación y si el más barato tiene stock, que
+    //    es justo lo que decide si le podés ganar la caja de compra y el navegador no muestra.
+    //  · ¿Nissei / comprasparaguay? Eso NO es ML: es una web cualquiera. Desde el chat están
+    //    bloqueadas por la política de red, pero el robot corre en las máquinas de GitHub, que
+    //    tienen internet abierto. Puede andar o puede no andar — si la página se arma con
+    //    JavaScript en el navegador, lo que baja es un cascarón sin precios.
+    // SOLO LEE. No toca ML, no toca la base, no escribe nada.
+    if (String(process.env.BILLING_PROBE || '').startsWith('probarweb')) {
+      const _pw = String(process.env.BILLING_PROBE).split(':');
+      const busca = (_pw.slice(1).join(':') || 'perfume azzaro').trim();
+      const label = labels.find((l) => accounts[l]?.refresh_token);
+      if (!label) { console.log('No hay ninguna cuenta con token.'); return; }
+      let tok;
+      try { tok = (await mlRefresh(ML_CLIENT_ID, ML_CLIENT_SECRET, accounts[label].refresh_token)).access_token; }
+      catch { console.log('No pude renovar el token.'); return; }
+
+      console.log(`=== ¿PUEDE EL ROBOT MIRAR PRECIOS SOLO? · buscando "${busca}" ===\n`);
+      console.log('── 1) MERCADOLIBRE, por la API (con nuestro token) ──');
+      const q = encodeURIComponent(busca);
+      const rutasML = [
+        ['buscar publicaciones', `/sites/MLA/search?q=${q}&limit=5`],
+        ['buscar en el catálogo', `/products/search?site_id=MLA&q=${q}&limit=5`],
+      ];
+      let prodId = null, unaML = null;
+      for (const [nom, ruta] of rutasML) {
+        try {
+          const d = await mlGet(ruta, tok);
+          const res = d.results || [];
+          console.log(`✅ ${nom.padEnd(24)} → ${res.length} resultado(s) de ${d.paging?.total ?? '?'} en total`);
+          for (const r of res.slice(0, 3)) {
+            if (r.id && String(r.id).startsWith('MLA')) {
+              unaML = unaML || r.id;
+              console.log(`     ${money(Math.round(r.price || 0)).padStart(12)} · vendidas ${String(r.sold_quantity ?? '?').padStart(5)} · ${r.shipping?.logistic_type || '-'} · ${String(r.title || '').slice(0, 52)}`);
+            } else {
+              prodId = prodId || r.id;
+              console.log(`     catálogo ${r.id} · ${String(r.name || r.title || '').slice(0, 60)}`);
+            }
+          }
+        } catch (err) { console.log(`❌ ${nom.padEnd(24)} ${String(err.message || err).slice(0, 110)}`); }
+      }
+      // El dato que de verdad decide: los vendedores de UN catálogo, con su precio y si tienen stock.
+      // Mirando la página no se ve quién está sin stock, y sin eso "el más barato" no quiere decir
+      // nada: ya pasó con el Ferrari el 25/08 (dos más baratos que no competían).
+      if (prodId) {
+        for (const [nom, ruta] of [
+          ['vendedores del catálogo', `/products/${prodId}/items?limit=10`],
+          ['ficha del catálogo', `/products/${prodId}`],
+        ]) {
+          try {
+            const d = await mlGet(ruta, tok);
+            const res = d.results || (Array.isArray(d) ? d : [d]);
+            console.log(`✅ ${nom.padEnd(24)} → ${res.length} fila(s)`);
+            for (const r of res.slice(0, 5)) {
+              if (r.price != null) console.log(`     ${money(Math.round(r.price)).padStart(12)} · stock ${String(r.available_quantity ?? '?').padStart(4)} · vendidas ${String(r.sold_quantity ?? '?').padStart(5)} · vendedor ${r.seller_id ?? '?'}`);
+            }
+            if (d.buy_box_winner) console.log(`     🥊 la caja de compra la tiene ${d.buy_box_winner.seller_id} a ${money(Math.round(d.buy_box_winner.price || 0))}`);
+          } catch (err) { console.log(`❌ ${nom.padEnd(24)} ${String(err.message || err).slice(0, 110)}`); }
+        }
+      } else {
+        console.log('   (no salió ningún catálogo para esa búsqueda: probá con otro texto)');
+      }
+
+      console.log('\n── 2) LAS WEBS DE PARAGUAY (no son ML: es una web cualquiera) ──');
+      // Se mira el TAMAÑO y si aparece un precio adentro, no sólo que conteste 200. Una página
+      // que se arma con JavaScript contesta 200 y baja un cascarón vacío: eso NO sirve y hay que
+      // poder distinguirlo, que es el mismo error de leer "0" como buena noticia.
+      const webs = [
+        ['comprasparaguay', 'https://comprasparaguay.com.ar/'],
+        ['nissei', 'https://www.nissei.com/py/'],
+        ['nissei (buscador)', 'https://www.nissei.com/py/catalogsearch/result/?q=azzaro'],
+      ];
+      for (const [nom, url] of webs) {
+        try {
+          const ctrl = new AbortController();
+          const t0 = setTimeout(() => ctrl.abort(), 20000);
+          const r = await fetch(url, { signal: ctrl.signal, headers: { 'User-Agent': 'Mozilla/5.0 (compatible; CYC/1.0)' } });
+          clearTimeout(t0);
+          const html = await r.text();
+          const conPrecio = /(?:US\$|Gs\.?|\$)\s?\d[\d.,]{2,}/.test(html);
+          console.log(`${r.ok ? '✅' : '⚠️ '} ${nom.padEnd(20)} ${r.status} · ${Math.round(html.length / 1024)} KB · ${conPrecio ? 'HAY PRECIOS ADENTRO' : 'sin precios en el HTML (se arma con JavaScript → no sirve)'}`);
+        } catch (err) { console.log(`❌ ${nom.padEnd(20)} ${String(err.message || err).slice(0, 110)}`); }
+      }
+      console.log('\nQué quiere decir esto:');
+      console.log(' · Si el bloque 1 dio ✅ → puedo sacar los precios de ML yo, sin navegador y sin copiar nada.');
+      console.log(' · Si el bloque 2 dio "HAY PRECIOS ADENTRO" → también puedo leer Paraguay, y no hacen falta dos chats.');
+      console.log(' · Si el bloque 2 dio "se arma con JavaScript" → Paraguay sigue necesitando el chat con Chrome.');
+      return;
+    }
     if (String(process.env.BILLING_PROBE || '').startsWith('apis')) {
       const soloCta = (String(process.env.BILLING_PROBE).split(':')[1] || '').trim().toLowerCase();
       const label = labels.find((l) => (!soloCta || l.toLowerCase() === soloCta) && accounts[l]?.refresh_token);
