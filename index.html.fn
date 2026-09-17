@@ -111,10 +111,12 @@ function calcArqueo
 function calcDescuento
 function calcPuntajeMes
 function calcRotScore
+function candAgregar
 function candCrearFicha
 function candDescartadosHTML
 function candDescartar
 function candDias
+function candFormHTML
 function candList
 function candMarcaNo
 function candVolver

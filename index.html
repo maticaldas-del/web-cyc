@@ -2311,7 +2311,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='19.46';
+const APP_VERSION='19.47';
 // El problema real que esto resuelve no es curiosidad: es que el celular guarda la app y sigue
 // mostrando la de ayer sin avisar. Varias veces se revisó un cambio que ya estaba subido y no se
 // veía. Por eso, además del número, el chip avisa cuando hay una versión nueva esperando.
@@ -8390,6 +8390,59 @@ function _pyLlenar(orden){
 // Emparejar por nombre es el filtro que ya falló cinco veces, y con un producto nuevo es peor
 // porque no hay ficha contra la cual contrastar. Si el robot no pudo emparejarlo, **no inventa un
 // margen**: lo dice.
+// ── POR DÓNDE ENTRA UN CANDIDATO ──────────────────────────────────────────────────────
+// El chat de Paraguay carga acá lo que encuentra, igual que lo cargaría una persona: el panel no
+// tiene otra puerta de entrada y no hace falta que la tenga. Sin este formulario la lista existiría
+// y no se podría llenar, que es tener la mitad de la cosa.
+//
+// EL CHECK DE NISSEI NO ES UN CAMPO MÁS: ES LA REGLA. Si en comprasparaguay ninguna de las tiendas
+// que ofrecen el producto es Nissei, no se compra y el panel no lo deja cargar. Y el código y el
+// precio tienen que salir de ESA fila, la de Nissei, no de la de otra tienda — el de Mobile Zone
+// es de ellos. Ése es el caso del Cabotine (la lista daba 91144 y el de pedido era 91832), y pedir
+// con el código equivocado es que llegue otra cosa a los 7 días adentro de un pedido de US$1.000
+// que no se puede rehacer.
+function candFormHTML(){
+  const i=(id,ph,tipo,w)=>`<input id="cand-${id}" type="${tipo||'text'}" ${tipo==='number'?'min="0" step="0.01"':''} placeholder="${ph}" style="width:${w||'150px'};font-size:.7rem;padding:5px 8px;background:var(--surface2);border:1px solid var(--border);border-radius:6px;color:var(--text)">`;
+  return `<details style="margin:10px 0 4px"><summary style="cursor:pointer;font-size:.68rem;color:var(--muted)">+ Agregar un candidato a mano</summary>
+    <div style="display:flex;flex-direction:column;gap:8px;margin-top:10px;padding:10px;background:var(--surface2);border-radius:8px">
+      <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
+        ${i('nombre','Nombre tal como lo llama comprasparaguay','text','290px')}
+        ${i('cod','Código de la fila de Nissei','text','180px')}
+        ${i('usd','Precio US$','number','110px')}
+      </div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
+        ${i('marca','Marca','text','140px')}
+        ${i('medidas','Medidas (si las dice)','text','170px')}
+        ${i('peso','Peso (si lo dice)','text','120px')}
+        ${i('link','Link de comprasparaguay','text','220px')}
+      </div>
+      <label style="display:flex;align-items:center;gap:7px;font-size:.66rem;color:var(--muted);cursor:pointer">
+        <input type="checkbox" id="cand-nissei" checked>
+        <span><b style="color:var(--text)">Nissei lo ofrece en comprasparaguay</b> — y el código y el precio de arriba son los de ESA fila, no los de otra tienda.</span>
+      </label>
+      <div><button class="btn btn-add" style="font-size:.68rem;padding:6px 16px" onclick="candAgregar()">Agregar a "Para probar"</button></div>
+    </div></details>`;
+}
+async function candAgregar(){
+  const v=id=>{const e=document.getElementById('cand-'+id);return e?String(e.value||'').trim():'';};
+  const nombre=v('nombre'), usd=parseFloat(v('usd'))||0;
+  if(!nombre){toast('Falta el nombre','err');document.getElementById('cand-nombre')?.focus();return;}
+  if(!(usd>0)){toast('Falta el precio en US$','err');document.getElementById('cand-usd')?.focus();return;}
+  // La regla, aplicada en la puerta: sin oferta de Nissei no se compra, así que no entra.
+  if(!document.getElementById('cand-nissei')?.checked){
+    alert('Si en comprasparaguay ninguna de las tiendas que lo ofrecen es Nissei, no se compra.\n\nNo lo agrego.');
+    return;
+  }
+  const id='c'+Date.now();
+  const c={id,ts:Date.now(),fuente:'chat',nombre:nombre.slice(0,120),usd,enNissei:true};
+  for(const k of ['cod','marca','medidas','peso','link'])if(v(k))c[k]=v(k).slice(0,200);
+  await fbSet('candidatos_py/'+id,c);
+  state.candidatos=state.candidatos||{};state.candidatos[id]=c;
+  ['nombre','cod','usd','marca','medidas','peso','link'].forEach(k=>{const e=document.getElementById('cand-'+k);if(e)e.value='';});
+  await log('Candidato de Paraguay: '+c.nombre+' · US$'+usd);
+  renderPedidos();
+  toast('Agregado ✓ · el robot le hace la cuenta de ML esta noche');
+}
 function candList(){
   return Object.entries(state.candidatos||{}).map(([id,c])=>({...c,id})).filter(c=>c&&c.nombre);
 }
@@ -8411,13 +8464,13 @@ function candidatosHTML(){
     </div>
   </div>`;
   if(!vivos.length){
-    return cab+`<div class="empty-msg" style="font-size:.68rem;line-height:1.6">Todavía no hay ninguno.<br>
+    return cab+candFormHTML()+`<div class="empty-msg" style="font-size:.68rem;line-height:1.6">Todavía no hay ninguno.<br>
       El chat de Paraguay los carga cuando encuentra algo en comprasparaguay <b>que Nissei ofrezca</b> (ahí salen juntos el código, el precio y que hay stock), cueste menos de US$ 250 puesto y no sea de una marca que ML frena.</div>`;
   }
   // El que más margen deja, primero. Los que todavía no tienen la cuenta hecha van al final:
   // no se pueden comparar contra los medidos y ponerlos arriba sería invitar a decidir sin número.
   vivos.sort((a,b)=>(b.margen??-999)-(a.margen??-999));
-  return cab+vivos.map(c=>{
+  return cab+candFormHTML()+vivos.map(c=>{
     const d=candDias(c);
     const usd=parseFloat(c.usd)||0;
     const puesto=usd>0?Math.round(usd*RECARGO_PY*100)/100:0;
