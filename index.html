@@ -2310,7 +2310,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='19.44';
+const APP_VERSION='19.45';
 // El problema real que esto resuelve no es curiosidad: es que el celular guarda la app y sigue
 // mostrando la de ayer sin avisar. Varias veces se revisó un cambio que ya estaba subido y no se
 // veía. Por eso, además del número, el chip avisa cuando hay una versión nueva esperando.
@@ -3730,21 +3730,64 @@ async function aplicarNissei(id){
   renderProds();
   toast('Costo actualizado desde Paraguay ✓');
 }
+// ── EL COSTO NUEVO NO PUEDE CAMBIAR LO QUE YA GANASTE ──────────────────────────────────
+// Regla suya del 17/09/2026, con los dos Victoria's Secret vendidos ese día en la mano:
+// *"no quiero que me actualice el precio anterior con el que esta ahora. ya que yo lo pague
+// 13.8 y le gane un 21 no lo pague 16.1"*. Y el motivo, en la misma frase: *"porque si esta a
+// ese precio yo no lo compraria y listo"* — el costo nuevo es una decisión de COMPRA, no una
+// corrección de lo que ya pasó.
+// El costo de una venta vieja se calcula al abrir la pantalla (`efectivoCostoVP`) y, si ese mes
+// no tiene precio histórico guardado, cae en el costo de HOY. O sea que subir el costo de
+// reposición reescribía la ganancia de TODAS las ventas viejas del producto: esas dos ventas
+// pasaron de ~21% a 9% sin que cambiara nada de ellas.
+// EL MECANISMO YA EXISTÍA (`precios_hist_prod`, Ajustes → Precios históricos) y se llenaba a
+// mano, así que no lo llenaba nadie. Ahora se llena solo: antes de pisar el costo, el VIEJO
+// queda congelado en cada mes que tenga ventas de ese producto y todavía no tenga precio propio.
+// VA ACÁ Y NO EN EL PROMPT DEL ASISTENTE, a propósito: una regla que depende de que el próximo
+// que cargue un costo se acuerde es justo la que falla. Es el mismo motivo por el que el piso
+// salió de los ocho comandos y el costo de la caja salió de los dos archivos.
+// NO PISA lo que ya esté cargado: un precio histórico puesto a mano gana siempre.
+// El congelado es POR MES, que es la granularidad que tiene el panel. Si en el mismo mes comprás
+// al precio nuevo y vendés, ese mes sigue midiendo con el viejo hasta que empiece el siguiente.
+// Errar para ese lado es medir lo que PAGASTE, que es lo que él pidió.
+async function congelarCostoAnterior(p,antesUSD){
+  if(!p||!(antesUSD>0))return 0;
+  const meses=new Set();
+  Object.entries(state.ventaprod||{}).forEach(([dk,o])=>{
+    const ym=String(dk).substring(0,7);
+    Object.values(o||{}).forEach(v=>{if(ventaEsDe(v,p))meses.add(ym);});
+  });
+  let n=0;
+  for(const ym of meses){
+    if(state.precios_hist_prod?.[ym]?.[p.id]!=null)continue;
+    if(!state.precios_hist_prod[ym])state.precios_hist_prod[ym]={};
+    state.precios_hist_prod[ym][p.id]=antesUSD;
+    await fbSet('precios_hist_prod/'+ym+'/'+p.id,antesUSD);
+    n++;
+  }
+  return n;
+}
 async function updCostUSD(id,val){
   const p=state.products.find(x=>x.id===id);if(!p)return;
   const u=parseFloat(val)||0;const tc=curTC();
+  const antes=costUSDof(p);
+  const cong=Math.abs(u-antes)>0.005?await congelarCostoAnterior(p,antes):0;
   p.costUSD=u;p.cost=u*tc;
   await fbSet('products/'+id+'/costUSD',u);await fbSet('products/'+id+'/cost',p.cost);
-  await log('Costo '+p.name+': US$'+u);updateTotals();
+  await log('Costo '+p.name+': US$'+u+(cong?' (se congeló US$'+antes+' en '+cong+' mes/es con ventas)':''));updateTotals();
   await recalcAndSaveFullUSD(p);
+  if(cong)toast('Las ventas viejas siguen midiendo con US$ '+antes.toFixed(2) ,'ok');
 }
 async function updCostPesos(id,val){
   const p=state.products.find(x=>x.id===id);if(!p)return;
   const pesos=parseMoney(val);const tc=curTC();const u=tc>0?pesos/tc:0;
+  const antes=costUSDof(p);
+  const cong=Math.abs(u-antes)>0.005?await congelarCostoAnterior(p,antes):0;
   p.costUSD=u;p.cost=pesos;
   await fbSet('products/'+id+'/costUSD',u);await fbSet('products/'+id+'/cost',pesos);
-  await log('Costo '+p.name+': '+fmt(pesos));updateTotals();
+  await log('Costo '+p.name+': '+fmt(pesos)+(cong?' (se congeló US$'+antes+' en '+cong+' mes/es con ventas)':''));updateTotals();
   await recalcAndSaveFullUSD(p);
+  if(cong)toast('Las ventas viejas siguen midiendo con US$ '+antes.toFixed(2),'ok');
 }
 // ── Estadísticas de reclamos por producto (cacheadas) ──
 // Se reconstruyen cuando cambia ventaprod. El % de reclamos = reclamos ÷ ventas totales.

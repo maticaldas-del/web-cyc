@@ -7478,6 +7478,94 @@ async function main() {
       }
       return;
     }
+    // BILLING_PROBE=costohist:<idFicha>=<costoUS$viejo>[;otro=otro][;go] → CONGELAR LO QUE PAGASTE.
+    // Regla suya del 17/09/2026: *"no quiero que me actualice el precio anterior con el que esta
+    // ahora. ya que yo lo pague 13.8 y le gane un 21 no lo pague 16.1"*.
+    //
+    // POR QUÉ HACE FALTA: el costo de una venta vieja NO se guarda por venta, se calcula al abrir
+    // la pantalla. Si el mes de esa venta no tiene precio histórico cargado, cae en el costo de
+    // HOY — o sea que cambiar el costo de reposición le reescribe la ganancia a todas las ventas
+    // viejas del producto. Los dos Victoria's Secret vendidos el 17/09 pasaron de ~21% a 9% sin
+    // que cambiara nada de esas ventas.
+    //
+    // Esto es la REPARACIÓN de lo que ya pasó. De acá en adelante el panel lo hace solo
+    // (`congelarCostoAnterior` en index.html), que es donde tiene que estar: una regla que depende
+    // de que el próximo se acuerde de aplicarla es la que falla.
+    //
+    // SÓLO ESCRIBE DONDE NO HAY NADA. Un precio histórico cargado a mano gana siempre, y sólo se
+    // tocan los meses que TIENEN ventas de ese producto: inventar un precio para un mes sin ventas
+    // no arregla ningún número y ensucia la pantalla de Precios históricos.
+    // Sin `;go` sólo muestra, que es la regla de siempre.
+    if (/^costohist:/.test(String(process.env.BILLING_PROBE || ''))) {
+      const _ch = String(process.env.BILLING_PROBE).slice('costohist:'.length);
+      const APLICAR = /(^|;)go\s*$/.test(_ch);
+      const pares = _ch.replace(/(^|;)go\s*$/, '').split(';').map((x) => x.trim()).filter(Boolean);
+      if (!pares.length) { console.log('Usá: costohist:<idFicha>=<costoUS$ viejo>[;otro=otro][;go]'); return; }
+      const vpH = (await db.get('cyc/ventaprod')) || {};
+      const histH = (await db.get('cyc/precios_hist_prod')) || {};
+      console.log(`=== CONGELAR EL COSTO QUE SE PAGÓ ${APLICAR ? '(APLICANDO)' : '(PRUEBA: no escribo nada)'} ===\n`);
+      const plan = [];
+      for (const par of pares) {
+        const i = par.indexOf('=');
+        if (i < 0) { console.log(`⚠️ "${par}" no tiene el formato <id>=<costo>. Se saltea.`); continue; }
+        const quien = par.slice(0, i).trim();
+        const viejo = parseFloat(String(par.slice(i + 1)).replace(',', '.'));
+        if (!quien || !isFinite(viejo) || viejo <= 0) { console.log(`⚠️ "${par}" le falta el producto o el costo. Se saltea.`); continue; }
+        const objetivo = products.filter((p) => p.id === quien || norm(p.name || '').includes(norm(quien)));
+        if (!objetivo.length) { console.log(`❌ "${quien}" → no hay ninguna ficha así.\n`); continue; }
+        if (objetivo.length > 1) {
+          // NO SE ELIGE UNA. Congelar el costo de la ficha equivocada le cambia la ganancia
+          // histórica a un producto que nadie tocó.
+          console.log(`⚠️ "${quien}" agarra ${objetivo.length} fichas y NO se aplica a ninguna. Repetilo con el id exacto:`);
+          for (const p of objetivo) console.log(`     ${p.id}  ·  ${p.name}`);
+          console.log('');
+          continue;
+        }
+        const p = objetivo[0];
+        // Los meses que TIENEN ventas de este producto. La venta se reconoce por id, y si es de
+        // las viejas que no lo tienen, por nombre — el mismo criterio que usa la web.
+        const meses = new Map();
+        for (const [dk, ents] of Object.entries(vpH)) {
+          const ym = String(dk).slice(0, 7);
+          for (const v of Object.values(ents || {})) {
+            if (!v) continue;
+            const esDe = v.prodId ? v.prodId === p.id : norm(v.prod || '') === norm(p.name || '');
+            if (!esDe) continue;
+            const m = meses.get(ym) || { u: 0, yaTiene: histH[ym] && histH[ym][p.id] != null ? histH[ym][p.id] : null };
+            m.u += v.qty || 0;
+            meses.set(ym, m);
+          }
+        }
+        const hoyUSD = parseFloat(p.costUSD) || 0;
+        console.log(`── ${p.name}  (${p.id})`);
+        console.log(`     costo de hoy US$ ${hoyUSD.toFixed(2)}  →  se congela US$ ${viejo.toFixed(2)} en los meses con ventas`);
+        if (!meses.size) { console.log(`     (sin ventas: no hay ningún mes que arreglar)\n`); continue; }
+        for (const [ym, m] of [...meses.entries()].sort()) {
+          if (m.yaTiene != null) {
+            console.log(`     ${ym.replace('_', '-')} · ${m.u} u. · ya tiene US$ ${Number(m.yaTiene).toFixed(2)} cargado a mano → NO se toca`);
+            continue;
+          }
+          console.log(`     ${ym.replace('_', '-')} · ${m.u} u. · quedaba midiendo con ${hoyUSD.toFixed(2)} → pasa a ${viejo.toFixed(2)}`);
+          plan.push({ p, ym, viejo });
+        }
+        console.log('');
+      }
+      if (!plan.length) { console.log('No quedó ningún mes para arreglar.'); return; }
+      console.log(`── ${plan.length} mes(es) de producto para congelar ──`);
+      if (!APLICAR) { console.log('PRUEBA: no escribí nada. Para aplicar, agregá ";go" al final.'); return; }
+      for (const x of plan) await db.set(`cyc/precios_hist_prod/${x.ym}/${x.p.id}`, x.viejo);
+      // Releído de la base, que es de donde lee la web.
+      console.log('\n── Releído de la base ──');
+      let ok = 0;
+      for (const x of plan) {
+        const v = await db.get(`cyc/precios_hist_prod/${x.ym}/${x.p.id}`);
+        const bien = Math.abs((parseFloat(v) || 0) - x.viejo) < 0.005;
+        if (bien) ok++;
+        else console.log(`  ❌ ${x.p.name} ${x.ym}: ${v == null ? '(vacío)' : v}`);
+      }
+      console.log(`${ok} de ${plan.length} quedaron bien.`);
+      return;
+    }
     // BILLING_PROBE=nissei:<texto o código> → EL PRECIO DE NISSEI, LEÍDO POR EL ROBOT.
     // Primera mitad del pedido del 17/09/2026: *"que mire los precios y productos nuevos (…) por un
     // lado vemos si los productos que ya compramos dan bien todavía y por otro que muestre

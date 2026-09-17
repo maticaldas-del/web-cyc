@@ -118,6 +118,7 @@ function checkCierrePendiente
 function clearTCMes
 function closeMetScopeMenu
 function closeVpPeriodMenu
+function congelarCostoAnterior
 function convieneCaja
 function cuentaPed
 function cuentaPedidoHTML
