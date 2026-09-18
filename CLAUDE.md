@@ -2795,6 +2795,24 @@ ninguna variable ni ningún `id` — sólo se agregaron 7 nombres, ninguno repet
   web" para la Lupa 60mm x10 y era el COSTO ($11.638). Se aplicó como precio de venta. No alcanza
   con aplicarlo: hay que mirar el margen que queda ANTES de tocar ML.
 
+- **"POR PROVEEDOR" SE SACÓ DE PEDIDOS (18/09/2026).** Decisión suya: *"eliminar el por proveedor,
+  nunca se uso. borrar lo relacionado. si tenes duda solo sacalo que no se vea y listo"*.
+  Era un botón en Bs As y en Paraguay que agrupaba los pedidos por proveedor y le sumaba a cada
+  grupo el descuento por volumen de ese proveedor. Nunca se apretó.
+  **Se borró entero, no sólo escondido**: los dos botones, la variable, el bloque que los
+  sincronizaba, la función del botón, la rama de agrupado y las tres clases de CSS que sólo usaba
+  esa vista. La lista queda siempre ordenada por la plata que se pierde si no se repone, que es
+  como se usa siempre.
+  **LO QUE NO SE TOCÓ, y era la trampa: el campo "Proveedor" de cada pedido SIGUE VIVO.** No es lo
+  mismo que el botón — ese dato lo usa **`esPedidoPaulvic`**, que es lo que manda los Paulvic a su
+  propia pestaña. Borrarlo de paso habría mezclado los Paulvic con Bs As, que es justo el bug que
+  se arregló el 23/08.
+  Para borrarlo se marcaron los bordes a mano y se corrió el chequeo de las tres listas (más las
+  clases de CSS): falta **exactamente** `togglePedidoGroupProv`, los `id` `pf-prov` y `pf-py-prov`
+  y las dos clases `ped-prov-*`. Nada más.
+  Quedan sin usar dos ayudantes de dos renglones (`provByNombre` y `calcDescuento`): no se tocaron
+  porque viven con el resto de Proveedores y sacarlos era más riesgo que beneficio.
+
 ## BORRAR CÓDIGO A OJO ROMPIÓ LA APP DOS VECES SEGUIDAS (21/08/2026)
 
 Al sacar la pantalla "Envíos a Full" se borró `renderEnviosFull` buscando **"el próximo cierre de

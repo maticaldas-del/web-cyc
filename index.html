@@ -420,9 +420,6 @@ input.qty:focus{border-color:var(--accent2)}
 .ped-body{display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding:11px 14px 12px;border-top:1px solid var(--border)}
 .inp-prov{flex:1;min-width:120px}
 .pf-btn.active-prov{background:rgba(56,189,248,.12);color:#38bdf8;border-color:rgba(56,189,248,.25)}
-.ped-prov-group{margin-bottom:18px}
-.ped-prov-title{font-family:'Syne',sans-serif;font-weight:800;font-size:.78rem;color:#38bdf8;text-transform:uppercase;letter-spacing:.06em;margin-bottom:8px;padding:7px 12px;background:rgba(56,189,248,.06);border-radius:7px;border-left:3px solid #38bdf8}
-.ped-prov-title.sin-prov-title{color:var(--muted);background:var(--surface2);border-left-color:var(--border2)}
 .pedidos-count{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:14px}
 .pcount{background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:10px 14px;font-size:.65rem;color:var(--muted)}
 .pcount strong{font-family:'Syne',sans-serif;font-size:.95rem;color:var(--text);display:block;margin-bottom:2px}
@@ -938,7 +935,6 @@ footer{margin-top:32px;padding-top:14px;border-top:1px solid var(--border);font-
       <button class="pf-btn" id="pf-pendiente" onclick="setPedidoFilter('pendiente',this)">🔴 Urgente</button>
       <button class="pf-btn" id="pf-poco_stock" onclick="setPedidoFilter('poco_stock',this)">🟡 Poco stock</button>
       <button class="pf-btn" id="pf-suficiente" onclick="setPedidoFilter('suficiente',this)">🟢 Suficiente</button>
-      <button class="pf-btn" id="pf-prov" onclick="togglePedidoGroupProv(this)">🏭 Por proveedor</button>
     </div>
     <div id="pedidos-list"><div class="empty-msg">Sin pedidos cargados.</div></div>
   </div>
@@ -967,7 +963,6 @@ footer{margin-top:32px;padding-top:14px;border-top:1px solid var(--border);font-
       <button class="pf-btn" id="pf-py-pendiente" onclick="setPedidoFilter('pendiente',this)">🔴 Urgente</button>
       <button class="pf-btn" id="pf-py-poco_stock" onclick="setPedidoFilter('poco_stock',this)">🟡 Poco stock</button>
       <button class="pf-btn" id="pf-py-suficiente" onclick="setPedidoFilter('suficiente',this)">🟢 Suficiente</button>
-      <button class="pf-btn" id="pf-py-prov" onclick="togglePedidoGroupProv(this)">🏭 Por proveedor</button>
     </div>
     <div id="pedidos-py-list"><div class="empty-msg">Sin pedidos cargados.</div></div>
   </div>
@@ -1870,7 +1865,7 @@ function toggleTheme(){
   }
 })();
 
-let db,whoAmI='',viewMode='mes',pedidoFilter='todos',pedidoSection='bsas',pedidoGroupByProv=false;
+let db,whoAmI='',viewMode='mes',pedidoFilter='todos',pedidoSection='bsas';
 let state={products:[],inventory:{},history:[],finanzas:{},snapshots:{},daily:{},ingresos:{},pedidos:[],pedidos_py:[],papelera:{},pausaPrecio:{},pySinStock:{},candidatos:{},metricas:{},compras:{},ventaprod:{},proveedores:[],puntaje:{},stockDiario:{},tc_mes:{},precios_hist_prod:{},fact_mes:{},fact_cancel:{}};
 let _knownVentaprodIds=null; // null = primera carga; Set después
 let currentPage='home';
@@ -2312,7 +2307,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='19.57';
+const APP_VERSION='19.58';
 // El problema real que esto resuelve no es curiosidad: es que el celular guarda la app y sigue
 // mostrando la de ayer sin avisar. Varias veces se revisó un cambio que ya estaba subido y no se
 // veía. Por eso, además del número, el chip avisa cuando hay una versión nueva esperando.
@@ -7657,7 +7652,7 @@ function setPedidoSection(sec,btn){
   document.getElementById('ped-section-paulvic').style.display=sec==='paulvic'?'':'none';
   document.getElementById('ped-section-pausaprecio').style.display=sec==='pausaprecio'?'':'none';
   document.getElementById('ped-section-papelera').style.display=sec==='papelera'?'':'none';
-  pedidoFilter='todos';pedidoGroupByProv=false;
+  pedidoFilter='todos';
   const secEl=document.getElementById('ped-section-'+sec);
   if(secEl)secEl.querySelectorAll('.pf-btn').forEach(b=>{
     const isTodos=b.id==='pf-todos'||b.id==='pf-py-todos'||b.id==='pf-paulvic-todos';
@@ -10560,10 +10555,6 @@ function renderPedidos(){
   const listId=isBsas?'pedidos-list':'pedidos-py-list';
   const countId=isBsas?'pedidos-count':'pedidos-py-count';
   const el=document.getElementById(listId);if(!el)return;
-  // Sync "Por proveedor" button state
-  const provBtnId=isBsas?'pf-prov':'pf-py-prov';
-  const provBtn=document.getElementById(provBtnId);
-  if(provBtn)provBtn.className='pf-btn'+(pedidoGroupByProv?' active-prov':'');
   // EL PAULVIC TIENE SU PROPIA PESTAÑA Y NO VA ACÁ. Reportado por él el 23/08/2026: "en pedidos
   // bs as aparecen cosas que son de otra categoría". Bs As mostraba TODO state.pedidos sin sacar
   // los del Paulvic, así que el mismo pedido salía en las dos listas y el total de "Falta reponer"
@@ -10581,53 +10572,11 @@ function renderPedidos(){
   const q=normTxt(document.getElementById(searchId)?.value||'');
   if(q)peds=peds.filter(p=>normTxt(p.producto||'').includes(q)||normTxt(p.nota||'').includes(q));
   if(!peds.length){el.innerHTML='<div class="empty-msg">Sin pedidos'+(pedidoFilter!=='todos'?' en esta categoría':'')+'.</div>';return;}
-  if(pedidoGroupByProv){
-    const tc=curTC();
-    const groups={};
-    peds.forEach(p=>{
-      const prod=prodByName(p.producto);
-      const pvCat=prod?.proveedorId?(state.proveedores||[]).find(x=>x.id===prod.proveedorId):null;
-      const k=pvCat?.nombre||p.proveedor||'';
-      if(!groups[k])groups[k]=[];groups[k].push(p);
-    });
-    const keys=Object.keys(groups).sort((a,b)=>!a&&b?1:a&&!b?-1:a.localeCompare(b,'es',{sensitivity:'base'}));
-    el.innerHTML=keys.map(key=>{
-      const items=groups[key].slice().sort(_pedSortFnRiesgo);
-      const isSin=!key;
-      // Costo total del grupo (excluye suficiente y en camino)
-      let totalUSD=0;
-      items.forEach(ped=>{
-        const est=ped.estado||'pendiente';
-        if(est==='suficiente')return;
-        const p=prodByName(ped.producto);
-        if(p)totalUSD+=(costUSDof(p)||0)*(ped.cantidad||1);
-      });
-      // Descuento según condiciones del proveedor
-      const pvMatch=isSin?null:provByNombre(key);
-      const desc=pvMatch?calcDescuento(pvMatch.condiciones||[],totalUSD):{pct:0,minUSD:0};
-      const netoUSD=totalUSD*(1-desc.pct/100);
-      let costoHtml='';
-      if(totalUSD>0){
-        const brutStr=`US$${totalUSD.toLocaleString('es-AR',{minimumFractionDigits:0,maximumFractionDigits:0})}`;
-        if(desc.pct>0){
-          const netoStr=`US$${netoUSD.toLocaleString('es-AR',{minimumFractionDigits:0,maximumFractionDigits:0})}`;
-          const netoArs=tc?` · ${fmt(Math.round(netoUSD*tc))}`:'';
-          costoHtml=`<span style="margin-left:10px;font-size:.72rem;color:var(--muted);text-decoration:line-through">${brutStr}</span>`+
-            `<span style="margin-left:6px;font-size:.68rem;background:rgba(56,189,248,.15);color:#38bdf8;border-radius:4px;padding:2px 6px">-${desc.pct}%</span>`+
-            `<span style="margin-left:6px;font-weight:700;color:#38bdf8;font-size:.75rem">${netoStr}${netoArs}</span>`;
-        } else {
-          costoHtml=`<span style="margin-left:10px;font-weight:700;color:#38bdf8;font-size:.75rem">${brutStr}${tc?' · '+fmt(Math.round(totalUSD*tc)):''}</span>`;
-        }
-      }
-      const keyEsc=key.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
-      return `<div class="ped-prov-group">
-        <div class="ped-prov-title${isSin?' sin-prov-title':''}">🏭 ${isSin?'Sin proveedor':keyEsc} <span style="font-weight:400;font-size:.7rem;opacity:.7">(${items.length})</span>${costoHtml}</div>
-        ${items.map(p=>_pedidoItemHtml(p,{showRiesgo:true})).join('')}
-      </div>`;
-    }).join('');
-  } else {
-    el.innerHTML=peds.slice().sort(_pedSortFnRiesgo).map(p=>_pedidoItemHtml(p,{showRiesgo:true})).join('');
-  }
+  // "POR PROVEEDOR" SE SACÓ EL 18/09/2026. Decisión suya: *"eliminar el por proveedor, nunca se
+  // uso. borrar lo relacionado"*. Agrupaba los pedidos por proveedor y le sumaba el descuento por
+  // volumen de cada uno; nunca se apretó el botón. La lista va siempre ordenada por la plata que
+  // se pierde si no se repone a tiempo, que es la única forma en que se usa.
+  el.innerHTML=peds.slice().sort(_pedSortFnRiesgo).map(p=>_pedidoItemHtml(p,{showRiesgo:true})).join('');
   // LA CANASTA VA ARRIBA DE TODO Y EN UN SOLO LUGAR. Se pega acá, después de que la lista ya se
   // dibujó, y no adentro de cada rama: la lista de Paraguay se arma en dos caminos distintos
   // (agrupada por proveedor y suelta) y con la inyección repetida una de las dos iba a quedarse
@@ -10698,10 +10647,6 @@ async function togglePedidoOrigen(pedId,prodId){
   renderPedidos();
 }
 
-function togglePedidoGroupProv(btn){
-  pedidoGroupByProv=!pedidoGroupByProv;
-  renderPedidos();
-}
 
 
 /* ═══════════ MÉTRICAS ML ═══════════ */
