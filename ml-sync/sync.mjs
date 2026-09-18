@@ -186,6 +186,10 @@ function costoPesos(p, qty, tc) {
 // coincide, devuelve ok:false para que el que llama frene todo lo demás.
 // 'nuevos' = { idVariante: precioNuevo }.  Devuelve {ok, cambios:[{id,from,to}]} o {ok:false, err}.
 async function raiseVariations(itemId, nuevos, token) {
+  // Mismo freno que `raisePriceTo`: esta función también SUBE precios en ML y se salteaba la
+  // lista de "liquidando". Ver la nota en `volver`.
+  const _nsRV = _chequeoNoSubir(itemId);
+  if (!_nsRV.ok) return { ok: false, err: _nsRV.err };
   let item;
   try { item = await mlGet('/items/' + itemId + '?attributes=id,price,status,variations', token); }
   catch { return { ok: false, err: 'sin-item' }; }
@@ -208,8 +212,14 @@ async function raiseVariations(itemId, nuevos, token) {
       headers: { Authorization: 'Bearer ' + token, 'Content-Type': 'application/json' },
       body: JSON.stringify({ variations: payload }),
     });
-    if (!r.ok) return { ok: false, err: 'ML-' + r.status };
-  } catch { return { ok: false, err: 'red' }; }
+    if (!r.ok) {
+      // El motivo de ML, no sólo el número: un 403 o un 400 se arreglan distinto y sin el texto
+      // no hay forma de saber cuál es.
+      let _d = '';
+      try { _d = (await r.text() || '').slice(0, 300); } catch { _d = ''; }
+      return { ok: false, err: 'ML-' + r.status + (_d ? ' · ' + _d : '') };
+    }
+  } catch (e) { return { ok: false, err: 'red · ' + String(e.message || e).slice(0, 120) }; }
   // Verificación obligatoria: que no se haya borrado ninguna variante y que los precios sean los pedidos.
   let after;
   try { after = await mlGet('/items/' + itemId + '?attributes=id,variations', token); }
@@ -9169,6 +9179,16 @@ async function main() {
           if (vars.length) actual = vars[0].price || actual;
         } catch { /* sigue */ }
         const nom = ((links[x.mla] || {}).title || x.mla).slice(0, 38);
+        // ── EL FRENO DE "ESTO LO ESTOY LIQUIDANDO: NO ME LO SUBAS" (18/09/2026) ──────────
+        // `volver` era el CUARTO camino que subía precios salteando este freno, y los dos suyos:
+        // el PUT directo de abajo y `raiseVariations`. Es el mismo agujero que tenía `submargen`
+        // —tapado el 16/09— y lo que quedó anotado ese día: *"hay 17 comandos con el mismo filtro
+        // de publicaciones; antes de que alguno empiece a escribir hay que mirar si pasa por el
+        // freno"*. Subir algo que él bajó a propósito para rematar le deshace una decisión suya y
+        // se entera cuando ya vendió.
+        // El lado seguro es el mismo que en `raisePriceTo`: si la lista no se pudo leer, NO se sube.
+        const _nsV = _chequeoNoSubir(x.mla);
+        if (!_nsV.ok) { err++; console.log(`  ✗ ${x.mla} · ${nom}: ${_nsV.err}`); continue; }
         // ── PUBLICACIÓN CON VARIANTES ──
         // Mandar solo { price } acá NO sirve: el precio que vale es el de cada variante, así que la
         // publicación quedaba igual y el comando decía "✓". Y mandar la lista de variantes
@@ -9225,8 +9245,18 @@ async function main() {
             body: JSON.stringify({ price: x.precio }),
           });
           if (r.ok) { ok++; console.log(`  ✓ ${x.mla} · ${nom}: ${money(Math.round(actual))} → ${money(x.precio)}`); }
-          else { err++; console.log(`  ✗ ${x.mla} · ${nom}: ML-${r.status}`); }
-        } catch { err++; console.log(`  ✗ ${x.mla} · ${nom}: red`); }
+          else {
+            // EL MOTIVO DE ML VA ENTERO (18/09/2026). Acá decía sólo `ML-403` y con eso no se
+            // puede hacer nada: un 403 puede ser la publicación de otra cuenta, una campaña que
+            // congela el precio, una restricción del catálogo… y cada una se arregla distinto.
+            // Es la regla que este archivo ya tiene anotada para `mlGet`: *un error que no dice
+            // qué pasó es lo mismo que no avisar*.
+            err++;
+            let _det = '';
+            try { _det = (await r.text() || '').slice(0, 300); } catch { _det = '(no pude leer el motivo)'; }
+            console.log(`  ✗ ${x.mla} · ${nom}: ML-${r.status} · ${_det}`);
+          }
+        } catch (e) { err++; console.log(`  ✗ ${x.mla} · ${nom}: red · ${String(e.message || e).slice(0, 120)}`); }
       }
       console.log(`\n${APLICAR ? `${ok} aplicados, ${err} con error.` : 'PRUEBA: no se escribió nada. Agregá ":go" para aplicar.'}`);
       return;
