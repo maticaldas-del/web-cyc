@@ -3139,14 +3139,26 @@ async function correrCandidatos(db, products, labels, accounts, soloPrueba, prue
     // que ser más exigente que lo que lo muestra.
     // Hace falta que DOS mediciones seguidas den abajo del piso. La primera guarda el número —el
     // panel lo muestra en ámbar, que es la verdad de hoy— y avisa en el log.
+    //
+    // Y LA PRIMERA MEDICIÓN DE TODAS CUENTA IGUAL (18/09/2026). Hasta hoy este freno protegía
+    // SÓLO al que ya tenía una medición buena guardada: el que nunca se había medido se descartaba
+    // en el primer intento. **Es justo el momento más frágil**, y se vio el mismo día: al chat le
+    // faltaba el link de ML en cinco candidatos, se los cargó, y tres se fueron con UNA sola
+    // lectura. Uno de esos cinco es el Armaf Blue Iconic, que es el caso anotado arriba donde ML
+    // contestó "no lo vende nadie" de un catálogo que dos minutos antes tenía 3 vendedores — o sea
+    // que si esa respuesta le tocaba a otro, se iba para siempre por un número que no era.
+    // Ahora la primera lectura SÓLO guarda el número y avisa; el que descarta es el segundo.
+    // No hace falta nada más para que funcione: el margen se guarda unas líneas más arriba, así
+    // que en la vuelta siguiente `antesM` ya existe y, si sigue abajo, cae en el descarte.
     if (margen < CAND_PISO_PCT) {
       const antesM = (c.margen != null && isFinite(c.margen)) ? Number(c.margen) : null;
-      if (antesM != null && antesM >= CAND_PISO_PCT) {
-        console.log(`      ⚠️ da ${margen.toFixed(1)}%, abajo del piso, pero la medición anterior daba ${antesM.toFixed(1)}%. NO lo descarto por un solo número: si la próxima vuelta sigue abajo, ahí sí.`);
-        enObserva.push(`${c.nombre} → cayó a ${margen.toFixed(1)}% (antes ${antesM.toFixed(1)}%)`);
+      const primera = antesM == null;
+      if (primera || antesM >= CAND_PISO_PCT) {
+        console.log(`      ⚠️ da ${margen.toFixed(1)}%, abajo del piso, ${primera ? 'y es la PRIMERA medición' : `pero la medición anterior daba ${antesM.toFixed(1)}%`}. NO lo descarto por un solo número: si la próxima vuelta sigue abajo, ahí sí.`);
+        enObserva.push(`${c.nombre} → ${primera ? `primera medición: ${margen.toFixed(1)}%` : `cayó a ${margen.toFixed(1)}% (antes ${antesM.toFixed(1)}%)`}`);
         continue;
       }
-      await fuera(`da ${margen.toFixed(1)}%, abajo de tu piso de ${CAND_PISO_PCT}%`); continue;
+      await fuera(`da ${margen.toFixed(1)}%, abajo de tu piso de ${CAND_PISO_PCT}% por segunda vez (antes ${antesM.toFixed(1)}%)`); continue;
     }
     nuevosQueDan.push({ id, c, margen, ganancia, mlPrecio, mlTit, puesto, mlMax, mlVendedores: vendedores });
   }
@@ -3154,7 +3166,7 @@ async function correrCandidatos(db, products, labels, accounts, soloPrueba, prue
   console.log(`   ${consultas} consultas a ML · ${descartes.length} descartados en total · ${enObserva.length} en observación · ${nuevosQueDan.length} que dan`);
   for (const d of descartes) console.log(`   ✕ ${d}`);
   if (enObserva.length) {
-    console.log(`   — ${enObserva.length} cayeron abajo del piso PERO la medición anterior llegaba. NO los descarto por un solo número:`);
+    console.log(`   — ${enObserva.length} dieron abajo del piso con UNA sola medición. NO los descarto por un solo número:`);
     for (const d of enObserva) console.log(`      ⚠️ ${d}`);
   }
   if (sinDato.length) {

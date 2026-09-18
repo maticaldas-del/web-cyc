@@ -2307,7 +2307,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='19.62';
+const APP_VERSION='19.63';
 // El problema real que esto resuelve no es curiosidad: es que el celular guarda la app y sigue
 // mostrando la de ayer sin avisar. Varias veces se revisó un cambio que ya estaba subido y no se
 // veía. Por eso, además del número, el chip avisa cuando hay una versión nueva esperando.
@@ -8636,7 +8636,7 @@ function candFormHTML(){
         ${i('usd','Precio US$','number','110px')}
       </div>
       <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
-        ${i('mlid','Link o código de ML','text','200px')}
+        ${i('mlid','Link o código de ML (obligatorio)','text','230px')}
         ${i('marca','Marca','text','140px')}
         ${i('medidas','Medidas (si las dice)','text','170px')}
         ${i('peso','Peso (si lo dice)','text','120px')}
@@ -8654,6 +8654,19 @@ async function candAgregar(){
   const nombre=v('nombre'), usd=parseFloat(v('usd'))||0;
   if(!nombre){toast('Falta el nombre','err');document.getElementById('cand-nombre')?.focus();return;}
   if(!(usd>0)){toast('Falta el precio en US$','err');document.getElementById('cand-usd')?.focus();return;}
+  // EL LINK DE ML ES OBLIGATORIO, Y ACÁ SE EXIGE (18/09/2026).
+  // El texto del chat de compras ya decía "obligatorio" desde el 17/09 y **igual entraron cinco
+  // candidatos sin él**: el panel los aceptaba y sólo el comentario de abajo decía que hacía falta.
+  // Es la regla que vive en un solo lado, otra vez. Sin link el robot busca por nombre, y esa
+  // misma tanda lo probó: pidió "Dark Door Sport" y ML devolvió "Dark Door Intense", y los DOS
+  // Armaf distintos cayeron en el MISMO catálogo equivocado. Zafaron porque esos catálogos no
+  // tenían vendedores; con vendedores salía un margen bien calculado del producto EQUIVOCADO, y
+  // con eso se decide una compra que no se rehace hasta que llega.
+  // Se frena en la puerta igual que el tilde de Nissei, que es el único freno que sí funcionó.
+  if(!v('mlid')){
+    alert('Falta el link del catálogo de ML.\n\nSin él el robot busca por nombre y ya trajo el producto equivocado (le pediste "Dark Door Sport" y encontró "Dark Door Intense").\n\nCopiá el link del listado MÁS BARATO de ML y volvé a intentar.');
+    document.getElementById('cand-mlid')?.focus();return;
+  }
   // La regla, aplicada en la puerta: sin oferta de Nissei no se compra, así que no entra.
   if(!document.getElementById('cand-nissei')?.checked){
     alert('Si en comprasparaguay ninguna de las tiendas que lo ofrecen es Nissei, no se compra.\n\nNo lo agrego.');
@@ -8662,11 +8675,9 @@ async function candAgregar(){
   const id='c'+Date.now();
   const c={id,ts:Date.now(),fuente:'chat',nombre:nombre.slice(0,120),usd,enNissei:true};
   for(const k of ['cod','marca','medidas','peso','link'])if(v(k))c[k]=v(k).slice(0,200);
-  // EL CÓDIGO DEL CATÁLOGO DE ML ES LO QUE EVITA EL EMPAREJADO POR NOMBRE, y hace falta:
-  // la primera prueba real buscó "Xiaomi Redmi Watch 4" y ML devolvió "Xiaomi Redmi Redmi Watch 3".
-  // Si ese catálogo hubiera tenido vendedores, salía un margen bien calculado del producto
-  // EQUIVOCADO. Con el código no hay nada que adivinar. Es la misma lección que el codPy.
-  if(v('mlid'))c.mlId=v('mlid').slice(0,200);
+  // El código del catálogo de ML es lo que evita el emparejado por nombre. Ya se exigió arriba,
+  // así que acá sólo se guarda.
+  c.mlId=v('mlid').slice(0,200);
   await fbSet('candidatos_py/'+id,c);
   state.candidatos=state.candidatos||{};state.candidatos[id]=c;
   ['nombre','cod','usd','marca','medidas','peso','link','mlid'].forEach(k=>{const e=document.getElementById('cand-'+k);if(e)e.value='';});

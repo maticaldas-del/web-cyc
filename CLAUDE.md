@@ -1668,6 +1668,69 @@ nota**: ese 43% de una ficha incluye la mercadería adentro, así que son dos co
 compararlas asusta al pedo. Lo que sí queda pendiente es **decidir si el robot tiene que pedir las
 unidades por caja** para cerrar esa diferencia.
 
+## LA REVISIÓN DEL CHAT DE COMPRAS, Y LOS DOS FRENOS QUE FALTABAN (18/09/2026)
+
+Él preguntó lo correcto —*"hay que revisar cuando termine?"*— y sí: se revisó con `guay` y con
+`candidatos`, y apareció lo que ningún prompt iba a arreglar.
+
+**LA BUENA: EL COSTO NO SE PISÓ.** Las 31 fichas de Paraguay tienen el `costUSD` que pagó y el
+`nisseiUSD` de hoy separados; el Victoria's Secret sigue con los US$ 13,80 que restauró `pycosto`.
+El daño del 17/09 no se repitió, y no se podía repetir: el botón ya no existe.
+
+**LO QUE APARECIÓ: cinco candidatos cargados SIN el link de ML**, o sea emparejados por nombre.
+Cuatro de los cinco eran otro producto —Dark Door **Sport** → Dark Door **Intense** · Club de Nuit
+**Sillage** y **Blue Iconic** → los DOS al mismo catálogo de **Woman** · **Dynasty** → **Mayar**—.
+**Zafaron porque esos catálogos no tenían vendedores** y no hubo precio que medir: con vendedores
+salía un margen perfectamente calculado del producto equivocado, que es el caso Watch 3 / Watch 4.
+Al cargarle los links, el Blue Iconic pasó a medir **42,4% y entra**, y los otros tres dieron
+−4,2%, 15,9% y 18,1%.
+
+### PRIMER FRENO: EL LINK DE ML SE EXIGE EN LA PUERTA, NO EN EL TEXTO
+
+Pregunta suya: *"¿le tengo que pasar un prompt nuevo o algo para que no se equivoque de nuevo?"*
+**No.** El texto del chat ya decía *"obligatorio"* desde el 17/09 **y los cinco entraron igual**:
+el panel los aceptaba y lo único que exigía el link era un comentario adentro del código.
+Es la regla que vive en un solo lado, la misma lección que la barrera de los $33.000 que estaba en
+el robot y no en la pantalla. **Agregarle palabras a una regla que ya estaba escrita y no se
+cumplió es el arreglo más débil que hay.**
+Ahora `candAgregar` lo frena igual que al tilde de Nissei —que es el único freno que sí funcionó— y
+el aviso explica el caso real. Probado con las funciones REALES y 9 casos, incluidos los tres
+frenos viejos, que siguen andando.
+
+### SEGUNDO FRENO: LA PRIMERA MEDICIÓN TAMPOCO DESCARTA
+
+El freno de las DOS mediciones protegía **sólo al que ya tenía una medición buena guardada**. El
+que nunca se había medido se descartaba en el primer intento — **y es el momento más frágil**.
+Se vio el mismo día: los tres de arriba se fueron con UNA sola lectura. Y uno de esos cinco es el
+**Armaf Blue Iconic**, que es justo el caso anotado de ML contestando *"no lo vende nadie"* de un
+catálogo que dos minutos antes tenía 3 vendedores: si esa respuesta le tocaba a otro, se iba para
+siempre por un número que no era.
+**No pasó nada porque la corrida fue en prueba y no escribe**, pero el paso automático de la noche
+sí escribe. Ahora la primera lectura sólo guarda el número y avisa; **descarta la segunda**.
+No hizo falta nada más: el margen ya se guarda antes del chequeo, así que en la vuelta siguiente
+`antesM` existe y el descarte cae solo. Probado con el bloque REAL y 9 casos (primera abajo →
+observación · segunda abajo → descarta · el Yara Moi de siempre · 25,0% justo entra · 24,9% no
+descarta · y un margen guardado que es texto o `NaN` cuenta como "nunca medido").
+
+**LA LECCIÓN, y es la de siempre del otro lado: cuando alguien no cumple una regla escrita, el
+arreglo no es escribirla más fuerte — es que el sistema no lo deje.**
+
+### LO QUE QUEDÓ ABIERTO Y NO ES DEL PANEL
+
+ · **Dos precios de ML que no coinciden.** El robot mide el **Ophidian Mango Bliss** a $99.999
+   (1 vendedor) y el chat vio **$75.271**; el **Armaf Odyssey Toffee Coffee** a $81.601 (4 vend.) y
+   el chat vio **$72.251**. En los dos el robot ve MENOS vendedores. Con el precio del chat esos
+   márgenes (48,5% y 45,9%) se caen mucho — el Ophidian a ~13%. **No se piden hasta saber cuál es.**
+ · **El Lattafa Fahad 80ML no se puede medir**: el catálogo existe y hoy no lo vende nadie.
+ · **Reponer salió más caro en 14 de 21 fichas** (Galaxy A07 +31% · A06 +24% · Cabotine +21% ·
+   SSD 1TB +18% · VS +17% · Ferrari Negro +15%). El panel ya sacó 4 de Pedidos por precio. Las 7
+   que bajaron son las únicas donde conviene reponer.
+ · **Faltan datos a medias en 4 fichas**: Victoria's Secret y Galaxy A07 tienen precio y **no
+   código**; Redmi Buds 6 y VS BLISS tienen código y **no precio**. Ninguna entra en el pedido así.
+   Y **Victoria Secret STARLIT** no tiene ni uno ni otro y no está en ninguna lista de descarte.
+ · **Un código para mirar de cerca: el Cruzer Blade 64gb quedó en `07112`**, el único de los 21 que
+   empieza con cero.
+
 ## "PARA PROBAR": QUÉ CONVIENE EMPEZAR A VENDER (17/09/2026)
 
 Pedido suyo: *"lo que no veo en la web de cyc es los productos que pueden ser nuevos ingresos"*.
