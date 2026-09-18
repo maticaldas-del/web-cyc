@@ -2311,7 +2311,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='19.52';
+const APP_VERSION='19.53';
 // El problema real que esto resuelve no es curiosidad: es que el celular guarda la app y sigue
 // mostrando la de ayer sin avisar. Varias veces se revisó un cambio que ya estaba subido y no se
 // veía. Por eso, además del número, el chip avisa cuando hay una versión nueva esperando.
@@ -4658,7 +4658,17 @@ function renderOfiCaja(){
     let pie='';
     if(f.sinContarPorAroma)pie=`<div style="font-size:.66rem;color:var(--amber);margin-top:5px">⚠️ Estas ${f.hay} u. están contadas en el producto pero sin decir de qué variante. Anotalas en "Contar lo que hay", una por variante, y ahí te digo a dónde van.</div>`;
     else if(f.sinPublicar)pie=`<div style="font-size:.66rem;color:var(--amber);margin-top:5px">⚠️ No está publicado en ninguna cuenta. Mandarlo no sirve hasta que lo publiques.</div>`;
-    else if(f.nadieNecesita)pie=`<div style="font-size:.66rem;color:var(--green);margin-top:5px">✓ Ninguna cuenta lo necesita: a todas les alcanza para ${REPO_DIAS_COBERTURA} días o más. Dejalo en casa.</div>`;
+    else if(f.nadieNecesita){
+      // Se dice la CUENTA, no sólo la conclusión: cuántas hay en Full, cuántas van en camino y a
+      // qué ritmo vende. Es el número con el que se decide cuando ML dice lo contrario.
+      const det=(f.porQueNo||[]).map(c=>`${c.cuenta}: ${c.enML} en Full`
+        +(c.camino>0?` + ${c.camino} en camino`:'')
+        +` · vende ${c.vMes} por mes`
+        +(c.dias!=null&&c.dias<900?` → le alcanza ${Math.round(c.dias)} días`:(c.vMes<=0?' → no vendió ninguna':''))).join(' · ');
+      pie=`<div style="font-size:.66rem;color:var(--green);margin-top:5px">✓ Ninguna cuenta lo necesita: a todas les alcanza para ${REPO_DIAS_COBERTURA} días o más. Dejalo en casa.`
+        +(det?`<div style="color:var(--muted);margin-top:2px">${det}</div>`:'')
+        +`<div style="color:var(--muted);margin-top:2px">Si ML te pide mandar igual, es porque su mínimo son 4 u. y no descuenta lo que va en camino.</div></div>`;
+    }
     else if(f.sobra>0)pie=`<div style="font-size:.66rem;color:var(--muted);margin-top:5px">Te sobran ${f.sobra} u. después de repartir. No hace falta mandarlas.</div>`;
 
     // En modo armar caja, cada renglón tiene su casilla: lo que va DE VERDAD en esta caja.
@@ -7939,7 +7949,14 @@ function _repartoVariantes(p,hayTotal,tr){
     }
     filas.push({p,variante:va,hay,sug,sobra:quedan,
       sinPublicar:reales.length===0,
-      nadieNecesita:sug.length===0&&publicadas.length>0});
+      nadieNecesita:sug.length===0&&publicadas.length>0,
+      // POR QUÉ no hace falta, con los números. Sin esto el renglón decía sólo "Dejalo en casa" y
+      // no había forma de contrastarlo contra lo que pide ML, que en su pantalla te sugiere mandar
+      // igual (su mínimo es 4 u. y NO descuenta lo que va en camino). Él lo marcó el 18/09/2026:
+      // *"ml me pide que mande y la web de cyc no, que hago?"*. Dos pantallas que se contradicen
+      // sin decir por qué obligan a elegir a ciegas — la misma lección del cero sin explicación.
+      porQueNo:sug.length===0&&publicadas.length>0?cand.slice(0,4).map(c=>({
+        cuenta:c.cuenta,enML:c.enML,camino:c.camino,vMes:c.vMes,dias:c.dias})):null});
   }
   // Lo contado sin aroma (la casilla del producto quedó con más que la suma de sus variantes):
   // se muestra aparte para que no desaparezca de la pantalla sin decir nada.

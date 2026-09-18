@@ -1763,6 +1763,35 @@ ninguna variable ni ningún `id` — sólo se agregaron 7 nombres, ninguno repet
 
 ## Cosas que ya pasaron (para no repetirlas)
 
+- **ML TE PIDE MANDAR Y EL PANEL DICE QUE NO: LOS DOS ESTÁN BIEN (18/09/2026).** Él mandó las dos
+  pantallas al lado: ML decía *"Enviá 4 u."* del Sábanas 105x190 Negro y del Gris Oscuro, y Armar
+  caja decía *"Ninguna cuenta lo necesita. Dejalo en casa"*. Pregunta suya: *"que hago? me gustaría
+  que las dos digan lo mismo"*.
+  **NO van a coincidir, y no es un error de ninguno: miden cosas distintas.**
+   · **El panel cuenta lo que va EN CAMINO y ML no lo descuenta en esa pantalla.** El Gris Oscuro
+     tenía 2 en Full **+ 2 viajando** en la caja del 15/09. Para el panel ya están.
+   · **El "Enviá 4 u." de ML es su MÍNIMO, no una medición.** Es el mismo 4 que está en
+     `REPO_PISO_CERO`, tomado de ML el 23/08. Lo muestra igual tengas 0 o tengas 2.
+   · **Y el objetivo es de él:** 30 días de cobertura (11/09, *"cubrir los próximos 30 días máximo,
+     así hay menos riesgo de stock parado"*). A ML le conviene tu mercadería en su depósito.
+  **MEDIDO con `hermanas:105 x 190:25` antes de contestar:** la ficha tiene **13 publicaciones,
+  todas de Luciana**, y entre las 13 vendieron **15 u. en 30 días** — o sea **0 a 2 por color** (el
+  que más vende, 7). Con 2 en Full esos dos colores ya tienen para un mes o más. Los totales cierran
+  contra `revisarpedidos` (18 en Full, 15 vendidas), que es la forma de saber que la lista está
+  completa.
+  **Y lo que sí importaba estaba en la misma lista: 6 de las 13 están PAUSADAS por falta de stock**
+  (0 en Full). Ésas no venden nada — pero esos colores no los tiene en casa.
+  **QUÉ SE CAMBIÓ, y no es la regla:** el renglón decía sólo *"Dejalo en casa"*, así que contra una
+  pantalla de ML que dice lo contrario no había con qué decidir. **Ahora dice la CUENTA**:
+  *"Luciana: 2 en Full + 2 en camino · vende 1 por mes → le alcanza 120 días"*, y abajo aclara que
+  si ML pide mandar es porque su mínimo son 4 u. y no descuenta lo que va en camino.
+  **Dos pantallas que se contradicen sin decir por qué obligan a elegir a ciegas** — la misma
+  lección del cero sin explicación. Un pedido viejo sin ese detalle no inventa nada: no lo muestra.
+  Probado con 5 casos (con y sin camino, con stock y cero ventas —el centinela 999—, dos cuentas, y
+  sin detalle) y corrido el chequeo de las tres listas: **0 funciones, 0 variables y 0 `id` de
+  diferencia** con la versión anterior, que es lo que corresponde a un cambio adentro de una
+  función.
+
 - **SE ACTIVA SOLA SIEMPRE QUE ESTÉ PAUSADA, CON STOCK EN FULL Y ARRIBA DEL 25% (17/09/2026).**
   Regla suya, textual, después de tener que activar a mano los dos P47 Cat Ear de Ayelen:
   *"quiero que se active automaticamente siempre que el producto este pausado con stock en full y
