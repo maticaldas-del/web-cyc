@@ -3042,12 +3042,35 @@ Lo que quedó abierto. Borrá de acá lo que se vaya cerrando.
   Sandisk 32gb (30 u., $238.290). Y **1 pausada con stock adentro**: Filtros Purificador de Agua
   de Matías, 20 u., $20.840 — o la reactiva o retira el stock. De las 44 pausadas a mano, es la
   única con mercadería adentro.
-- **Las 7 tarjetas de memoria quedaron TODAS pausadas** (15/08, decisión suya: "son para
-  problemas"). Son todas de Matías. Pero **quedan 54 unidades adentro de Full**: Sandisk 32gb 28 u.
-  · Kingston Canvas 64gb 15 u. · Kingston con adaptador 7 u. · Sandisk 128gb 4 u. Pausar NO saca la
-  mercadería del depósito: sigue pagando almacenamiento y ML la descarta igual. El 16/08 decidió:
-  **las retira**. El retiro se pide desde ML (Full → Estado de tu stock → Retirar), no hay API para
-  eso: lo hace él. Falta confirmar que las 54 unidades salieron. Los pendrives NO se tocaron.
+- **LAS TARJETAS DE MEMORIA: 53 DE 54 RETIRADAS. QUEDA UNA, Y SU PUBLICACIÓN SE REACTIVÓ SOLA
+  (18/09/2026).** Él avisó *"ya las retire, no deberia haber stock en full. corroborar."* y se
+  corroboró contra ML con `stockreal`, publicación por publicación:
+
+  | ficha | publicación | estado | ML dice |
+  |---|---|---|---|
+  | SanDisk 32GB | `MLA1809285407` | **ACTIVA** ⚠️ | **1 u.** |
+  | SanDisk 16GB | `MLA1843219973` | pausada | 0 ✓ |
+  | SanDisk 128GB | `MLA1843206589` | pausada | 0 ✓ |
+  | Kingston 32GB | `MLA1843207099` (+ `MLA1624998155` cerrada) | pausada | 0 ✓ |
+  | Kingston MicroSD 256GB | `MLA3531510088` | pausada | 0 ✓ |
+  | Kingston 64GB | `MLA3628501030` | pausada | 0 ✓ |
+
+  El panel coincide con ML en las seis y en la que queda. Eran 54 unidades (Sandisk 32gb 28 ·
+  Kingston 64gb 15 · Kingston con adaptador 7 · Sandisk 128gb 4): **salieron 53**.
+
+  **Y LO QUE IMPORTA MÁS QUE LA UNIDAD: esa publicación está ACTIVA, y la prendió el robot.** Es
+  `activarPausadasFull` haciendo exactamente lo que él pidió el 17/09 —*"que se active
+  automáticamente siempre que el producto esté pausado con stock en Full y tenga más del 25% de
+  ganancia"*— sobre una publicación que estaba pausada por la decisión del 15/08 (*"son para
+  problemas"*). **Dos decisiones suyas que se contradicen**, y gana la nueva porque es la que está
+  en el código.
+  **Mientras esa unidad esté en Full, pausarla a mano no sirve: el robot la vuelve a prender a la
+  hora.** Se corta con un freno que `activarPausadasFull` sí respeta (`nomas` o `noAutoActivar`), y
+  eso lo decide él.
+  **LA LECCIÓN: una regla automática nueva puede deshacer una decisión manual vieja, y el único
+  lugar donde eso se ve es cuando alguien mira.** Al escribir un automatismo hay que preguntarse qué
+  decisiones anteriores pisa — no sólo qué hace.
+  Los pendrives NO se tocaron.
 - **HAY UNA LISTA EN GASTOS DE LO QUE SE CARGA A MANO CADA MES** (28/08/2026, pedido suyo: *"que
   haya un lugar que me indique si se cargó los gastos del mes de las cosas que te tengo que pasar
   manual, para que al terminar el mes no falte cargar ninguno"*). Va arriba de los movimientos:
@@ -3199,11 +3222,36 @@ Lo que quedó abierto. Borrá de acá lo que se vaya cerrando.
  · **Tres códigos más**, todos por color o tamaño: Xiaomi Watch S5 · Samsung Galaxy A07 (ojo:
    Preto `SM-A075M` y Black `SM-A075F` son modelos distintos) · el Victoria's Secret que no dice
    qué línea es (65 opciones).
- · **Los dos perfumes de Adriana que quedaron abajo del 25%** al reactivar las pausadas: el **Kiss
-   Sexy Edt 100ml** (`MLA3928198284`, $79.999) y el **Body Splash Victoria's Secret Love Spell**
-   (`MLA3928173150`, $45.000). **NO se tocaron y no hay que tocarlos a ciegas**: ninguno de los dos
-   vendió nunca, así que su envío sale de la TARIFA de ML, que se midió **$246 corta** el 20/08 —
-   el margen que se ve es el techo optimista y la suba que propone el comando puede quedar corta.
+ · **LOS DOS PERFUMES DE ADRIANA: MEDIDOS EL 18/09, Y ML NO DEJA CAMBIARLES EL PRECIO.**
+   Él pidió *"subir al 25%, salvo que esten hace mucho tiempo"* y después *"aumentar todas, ya que
+   el costo del envio es lo mismo para todas"*. Se midió con `hermanas` y **la nota vieja de acá
+   estaba desactualizada en las dos cosas**: el Kiss Sexy ya NO está a $79.999 —el robot se lo subió
+   solo a **$82.460** después de una venta— y **YA VENDIÓ**, hace 1 día, así que su margen está
+   medido de verdad: **22,0%**, y el 25% es **$84.780**.
+   **PERO ML RECHAZA EL CAMBIO.** Tres intentos, tres veces el mismo error:
+   `403 · {"code":"PA_UNAUTHORIZED_RESULT_FROM_POLICIES","blocked_by":"PolicyAgent"}`.
+   No es un error del robot ni del número: es el motor de políticas de ML. Encaja con lo que ya está
+   abierto —el "Bare Vanilla" y el reclamo de "adulterado", donde ML pide documentación de esas
+   marcas—, pero **no está confirmado**: el precio del Kiss Sexy SÍ cambió después del 16/09, así
+   que el bloqueo es nuevo o es por publicación.
+   **Lo que falta y lo tiene que hacer él: cambiarle el precio a UNA a mano en ML.** Si lo deja, el
+   bloqueo es sólo para la aplicación; si no lo deja, es la restricción de marca y no se destraba
+   hasta que ML acepte los papeles.
+   **Los números quedan calculados para cuando se destrabe** (piso 25%, medidos con ventas reales):
+
+   | publicación | hoy | al 25% | sin vender |
+   |---|---|---|---|
+   | Kiss Sexy `MLA3928198284` | $82.460 | **$84.780** | 1 d |
+   | VS `MLA3374364116` (está al **15,8%**) | $52.440 | **$57.160** | 3 d |
+   | VS `MLA3928248200` | $45.000 | **$46.500** | 0 d |
+   | VS `MLA1771209909` | $51.570 | **$55.350** | **53 d** |
+   | VS `MLA3546661648` | $49.000 | **$49.850** | **46 d** |
+
+   **El Love Spell (`MLA3928173150`) NO tiene margen medido: nunca vendió** y está arriba de los
+   $33.000, que es justo donde el envío pesa. Su ficha hermana de costo idéntico ($21.490) mide
+   **25,8% a $46.430**, que es la única referencia real que hay.
+   **Y hay tres Kiss Sexy, no una** (`MLA2070620477` a $99.600 y `MLA3928173584` a $79.999, las dos
+   sin vender nunca y sin margen medido). Ésas se miran por visitas, no por precio.
 
 **RESUELTO EL 17/09/2026 · "NISSEI NO LO TIENE" ES UN ESTADO QUE SE CORRIGE SOLO.** Pedido suyo:
 *"que aparezca cuando no esta en stock o no lo encuentra y que cuando si lo encuentre que vuelva a
