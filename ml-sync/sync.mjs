@@ -5883,6 +5883,68 @@ async function main() {
     // BILLING_PROBE=cajasllegaron[:go] → MARCA LAS CAJAS QUE YA ENTRARON A FULL.
     // Sin ':go' solo dice cuáles marcaría. Es la misma función que corre sola una vez por hora, no
     // una copia: si un día se cambia la regla, se cambia en un solo lado.
+    // BILLING_PROBE=cajallego:<seguimiento|idEnvio>[:go] → MARCA UNA CAJA COMO LLEGADA COMPLETA.
+    //
+    // Es el hermano al revés de `abrircaja`, y hace falta por un caso concreto: **ML dice que la
+    // caja llegó entera y el robot no lo puede leer.** Pasó con la 76236266 (Luciana, 05/09): la
+    // pantalla de ML dice "Procesamiento finalizado · 511 u. procesadas: 511 están a la venta",
+    // los 9 renglones con 0 diferencias, y el robot la deja abierta porque ML le rechaza consultas
+    // (429) y porque una de las publicaciones del Centímetro no nombra el color en el título, así
+    // que sus entradas no se pueden imputar a la variante.
+    // Que el robot NO la marque es lo correcto —falta de dato no es falta de mercadería— pero
+    // mientras siga abierta su mercadería se cuenta DOS veces: está en Full y además en "En camino
+    // a Full". Por eso hace falta poder cerrarla a mano con el dato de ML, que es la fuente buena.
+    //
+    // La marca SIEMPRE como completa, sin faltantes, a propósito: se usa cuando ML ya confirmó que
+    // entró todo. Si faltara algo de verdad, eso se mira en la pantalla de ML y se resuelve ahí
+    // ("Iniciar reclamo por diferencias"), no inventando un faltante acá.
+    // Sin `:go` sólo muestra. Se relee de la base antes de decir que quedó.
+    if (/^cajallego(:|$)/.test(String(process.env.BILLING_PROBE || ''))) {
+      const _cl = String(process.env.BILLING_PROBE).split(':');
+      const busca = (_cl[1] || '').trim();
+      const APLICAR = _cl[_cl.length - 1] === 'go';
+      if (!busca || busca === 'go') { console.log('Usá: cajallego:<nº de seguimiento o id del envío>[:go]'); return; }
+      const envios = (await db.get('cyc/envios_full')) || {};
+      const pIdx = {}; for (const p of products) pIdx[p.id] = p;
+      const hits = [];
+      for (const [id, e] of Object.entries(envios)) {
+        const cajas = Array.isArray(e && e.cajasDet) ? e.cajasDet : [];
+        cajas.forEach((c, i) => {
+          if (!c || c.recibida) return;                        // sólo tiene sentido en las ABIERTAS
+          if (id !== busca && String(c.track || '') !== busca) return;
+          hits.push({ id, e, c, i });
+        });
+      }
+      console.log(`=== MARCAR COMO LLEGADA COMPLETA · buscando "${busca}" ${APLICAR ? '(APLICANDO)' : '(PRUEBA)'} ===\n`);
+      if (!hits.length) { console.log('── Ninguna caja ABIERTA con ese seguimiento o id. (Si ya está marcada, no hay nada que hacer.)'); return; }
+      for (const h of hits) {
+        const u = (h.c.items || []).reduce((a, x) => a + (Number(x && x.u) || 0), 0);
+        console.log(`── ${h.e.fecha || '?'} · ${h.e.cuenta || '?'} · caja ${h.c.n || h.i + 1} · seguimiento ${h.c.track || '—'}`);
+        console.log(`   id ${h.id} · ${(h.c.items || []).length} renglón(es) · ${u} unidades pasan a contar como stock de Full`);
+        for (const it of (h.c.items || [])) {
+          if (!it || !it.prodId) continue;
+          console.log(`      ${it.u} u. · ${(pIdx[it.prodId] || {}).name || it.prodId}${it.variante ? ' · ' + it.variante : ''}`);
+        }
+      }
+      if (!APLICAR) { console.log(`\nSOLO PRUEBA: no se tocó nada. Confirmá contra la pantalla de ML y repetí con :go al final.`); return; }
+      const hoyCl = dayKeyFromISO(new Date().toISOString()).replace(/_/g, '-');
+      for (const h of hits) {
+        // La lista de cajas se guarda ENTERA: un patch parcial la rompe (mismo cuidado que la web).
+        const cajas = (h.e.cajasDet || []).map((c, i) => (i === h.i
+          ? { ...c, recibida: true, recFecha: hoyCl, recAuto: false, faltan: null }
+          : c));
+        await db.set('cyc/envios_full/' + h.id + '/cajasDet', cajas);
+      }
+      const desp = (await db.get('cyc/envios_full')) || {};
+      let ok = 0;
+      for (const h of hits) {
+        const c2 = ((desp[h.id] || {}).cajasDet || [])[h.i];
+        if (c2 && c2.recibida && !c2.faltan) ok++;
+      }
+      console.log(`\n✓ ${ok} de ${hits.length} quedaron como llegadas COMPLETAS. Releído de la base: ${ok === hits.length ? 'quedó ✓' : '✗ NO quedaron todas'}`);
+      return;
+    }
+
     // BILLING_PROBE=abrircaja:<seguimiento|idEnvio>[:go] → VUELVE A PONER UNA CAJA "EN CAMINO".
     //
     // Para deshacer un marcado equivocado. Hizo falta el 12/09/2026: la caja 76236266 de Luciana
