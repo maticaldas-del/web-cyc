@@ -3059,6 +3059,19 @@ async function correrCandidatos(db, products, labels, accounts, soloPrueba, prue
   console.log(`\n── ${mirados} mirados · ${calculados} medidos hoy · ${yaCalc} ya venían medidos · ${consultas} consultas a ML · ${descartes.length} descartados · ${nuevosQueDan.length} que dan ──`);
   for (const d of descartes) console.log(`   ✕ ${d}`);
   if (sinCuenta) console.log(`   ⏳ ${sinCuenta} quedaron sin medir por el tope de ${CAND_MAX_ML} consultas por vuelta. No es que no sirvan: salen en la corrida siguiente.`);
+  // ── LA LISTA DE LOS QUE DAN VA SIEMPRE AL LOG, AVISE O NO AVISE ──────────────────────
+  // El MENSAJE de Telegram manda sólo lo NUEVO, a propósito (repetir todas las noches entrena a
+  // no abrirlo). Pero el LOG es donde se mira cuando se quiere mirar, y ahí tiene que estar la
+  // lista COMPLETA: si no, un día en que todos ya fueron avisados el comando imprime "no mando
+  // nada" y parece que no hay ninguno. Es la misma separación que ya usa `calcCajaBarata`.
+  if (nuevosQueDan.length) {
+    console.log(`\n── LOS ${nuevosQueDan.length} QUE DAN ${CAND_PISO_PCT}% O MÁS (de mejor a peor) ──`);
+    [...nuevosQueDan].sort((a, b) => b.margen - a.margen).forEach((x, i) => {
+      console.log(`${String(i + 1).padStart(3)}. ${x.margen.toFixed(1).padStart(5)}%  ·  US$ ${x.puesto.toFixed(2).padStart(7)} puesto (US$ ${(x.puesto / 1.15).toFixed(2)} + 15%)`
+        + `  ·  se vende a ${money(Math.round(x.mlPrecio))}  ·  ${money(Math.round(x.ganancia))}/u.`);
+      console.log(`      ${x.c.nombre}${x.c.mlId ? '' : '   ⚠️ emparejado por NOMBRE, chequealo'}`);
+    });
+  }
 
   // ── EL AVISO ────────────────────────────────────────────────────────────────────────────
   // Va al canal privado de precios, que es el suyo. SÓLO lo nuevo: un aviso que repite los mismos
