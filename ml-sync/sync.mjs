@@ -2933,20 +2933,18 @@ async function correrCandidatos(db, products, labels, accounts, soloPrueba, prue
     // `cyc/avisocand`, así que este freno era redundante además de dañino.
     // Lo que SÍ hay que evitar es volver a preguntarle a ML: eso se respeta igual, la cuenta
     // guardada se usa tal cual y no se gasta ninguna consulta.
-    // Y SE VUELVE A MEDIR CUANDO FALTA UN NÚMERO NUEVO (18/09/2026). `mlCaja` se empezó a
-    // guardar ese día: sin esta condición, los candidatos ya medidos se saltaban para siempre y
-    // el renglón de la caja de compra quedaba vacío en TODOS los que ya estaban cargados — el
-    // dato nuevo sólo aparecería en los que se carguen de acá en adelante, que es el peor lado:
-    // la pantalla mostraría la mitad de los renglones completos y la otra mitad no, y eso se lee
-    // como que ML no informa, no como que falta medirlos. Se guarda SIEMPRE como número (0 = ML
-    // no informa quién tiene la caja) justo para poder distinguir "no lo miramos" de "no hay".
-    if (c.margen != null && isFinite(c.margen) && c.mlCaja !== undefined) {
+    // Y SE VUELVE A MEDIR CUANDO FALTA UN NÚMERO NUEVO (18/09/2026). `mlMax` se empezó a guardar
+    // ese día: sin esta condición, los candidatos ya medidos se saltaban para siempre y el dato
+    // nuevo sólo aparecería en los que se carguen de acá en adelante — la pantalla mostraría la
+    // mitad de los renglones completos y la otra mitad no, que se lee como que ML no informa y no
+    // como que falta medirlos.
+    if (c.margen != null && isFinite(c.margen) && c.mlMax !== undefined) {
       yaCalc++;
       const mGuard = Number(c.margen);
       if (mGuard >= CAND_PISO_PCT) {
         nuevosQueDan.push({ id, c, margen: mGuard, ganancia: Number(c.ganancia) || 0,
           mlPrecio: Number(c.mlPrecio) || 0, mlTit: c.mlTit || '', puesto,
-          mlCaja: Number(c.mlCaja) || 0, margenCaja: (c.margenCaja != null && isFinite(c.margenCaja)) ? Number(c.margenCaja) : null });
+          mlMax: Number(c.mlMax) || 0, mlVendedores: Number(c.mlVendedores) || 0 });
       } else {
         await fuera(`da ${mGuard.toFixed(1)}%, abajo de tu piso de ${CAND_PISO_PCT}%`);
       }
@@ -2959,16 +2957,21 @@ async function correrCandidatos(db, products, labels, accounts, soloPrueba, prue
     if (consultas >= CAND_MAX_ML) { sinCuenta++; continue; }
     consultas++;
     let cat = null, mlTit = '', mlPrecio = 0, vendedores = 0, mlLink = '', lt = 'gold_special';
-    // LA CAJA DE COMPRA DEL CATÁLOGO, que es a cuánto se vende de verdad. En una ficha de
-    // catálogo ML le muestra al comprador UN SOLO vendedor —el que gana la caja— y los demás no
-    // existen. O sea que el más barato publicado y el precio al que el producto se vende pueden
-    // ser dos números distintos: pasó con el Ferrari el 25/08, donde había dos más baratos que
-    // NO estaban compitiendo (sin stock o sin calificar) y ML igual pedía el precio del ganador.
-    // Los dos hacen falta y contestan preguntas distintas:
-    //   · `pCaja`     → para GANAR la caja hay que estar acá o abajo. Es el precio al que se vende.
-    //   · `mlPrecio`  → el más barato publicado. Es el peor caso: el día que ése tenga stock, es
-    //                   contra ese precio que hay que pelear. Por eso el PISO se mide contra él.
-    let pCaja = 0, ltCaja = '', catCaja = null;
+    // ── EL PRECIO DE LA CAJA DE COMPRA NO SE PUEDE SABER ACÁ. MEDIDO EL 18/09/2026 ──────────
+    // Se intentó con `buy_box_winner` de la ficha del catálogo y **vino `null` en los TRES**
+    // catálogos probados, incluidos los DOS donde sí vendemos (el Ferrari y el Seagate). O sea
+    // que ese campo no distingue nada: un "ML no informa" ahí es una propiedad de la API, no del
+    // catálogo — el error de siempre, falta de dato leída como dato.
+    // El que sí contesta es `/items/<MLA>/price_to_win`, con el estado, el precio para ganar y el
+    // del ganador… pero **sólo sobre una publicación NUESTRA**: sobre la de otro vendedor devuelve
+    // `403 "Item does not belong to caller"`. Y un producto de "Para probar" por definición no
+    // tiene publicación nuestra, así que no hay de dónde sacarlo.
+    // **Y NO SE PUEDE DEDUCIR DEL MÁS BARATO**, que era la tentación: en el Seagate el ganador
+    // está a $149.975 y a nosotros ML nos pide $175.655 para ganar —$25.680 MÁS CARO que él—, y
+    // en el Ferrari el más barato está a $68.000 y la caja la tenemos nosotros a $68.510. Ser el
+    // más barato no es ni necesario ni suficiente.
+    // Lo que sí se puede medir es el RANGO de la ficha, y eso es lo que se guarda.
+    let mlMax = 0;
     // ¿EMPAREJADO POR NOMBRE O POR CÓDIGO? No es un detalle: la primera prueba real buscó
     // "Xiaomi Redmi Watch 4" y ML devolvió **"Xiaomi Redmi Redmi Watch 3"**. Si ese catálogo
     // hubiera tenido vendedores, habría salido un margen perfectamente calculado… del producto
@@ -2999,18 +3002,6 @@ async function correrCandidatos(db, products, labels, accounts, soloPrueba, prue
         if (!soloPrueba) await db.set(`cyc/candidatos_py/${id}/motivo`, 'ML no tiene este producto en su catálogo. Hay que mirarlo a mano.');
         console.log(`  · ${c.nombre}\n      → ML no tiene este producto en su catálogo. Hay que mirarlo a mano.`);
         continue;
-      }
-      // EL GANADOR DE LA CAJA VIENE EN LA FICHA DEL CATÁLOGO (`buy_box_winner`), no en la
-      // búsqueda: `/products/search` devuelve el catálogo sin ese campo. Cuando el chat trajo el
-      // código de ML ya pedimos la ficha entera más arriba y no hace falta ninguna consulta más;
-      // cuando se buscó por nombre, sí. Si ML no lo informa queda en 0 y se DICE — un cero que se
-      // lee como "no hay caja" cuando en realidad no lo miramos es el error de siempre.
-      let boxWin = prod.buy_box_winner || null;
-      if (!boxWin) {
-        try {
-          const ficha = await mlGet(`/products/${prod.id}`, tok);
-          if (ficha && ficha.id) { if (ficha.buy_box_winner) boxWin = ficha.buy_box_winner; if (ficha.name || ficha.title) prod = ficha; }
-        } catch { /* sin ficha completa seguimos: el más barato alcanza para el piso */ }
       }
       mlTit = String(prod.name || prod.title || '').slice(0, 120);
       mlLink = `https://www.mercadolibre.com.ar/p/${prod.id}`;
@@ -3045,14 +3036,10 @@ async function correrCandidatos(db, products, labels, accounts, soloPrueba, prue
       const ref = ofertas.find((o) => (parseFloat(o.price) || 0) === mlPrecio) || ofertas[0];
       cat = ref && ref.category_id ? ref.category_id : null;
       if (ref && ref.listing_type_id) lt = ref.listing_type_id;
-      // La comisión depende de la categoría y del tipo de publicación, así que la del ganador se
-      // pide con LOS SUYOS, no con los del más barato: son dos publicaciones distintas y pueden
-      // no coincidir. Si no aparece en la lista de vendedores se usan los del más barato y al
-      // menos el precio es el bueno.
-      const refCaja = boxWin ? ofertas.find((o) => String(o.item_id) === String(boxWin.item_id)) : null;
-      pCaja = Math.round(parseFloat(boxWin && boxWin.price) || parseFloat(refCaja && refCaja.price) || 0);
-      ltCaja = (refCaja && refCaja.listing_type_id) || lt;
-      catCaja = (refCaja && refCaja.category_id) || cat;
+      // El MÁS CARO de la ficha. Con el más barato arma el RANGO, que es lo único honesto que se
+      // puede decir de "a cuánto se vende" en un catálogo donde todavía no vendemos: la lista
+      // viene ordenada por precio y NO dice cuál gana la caja (probado el 18/09).
+      mlMax = precios.length ? Math.round(Math.max(...precios)) : 0;
     } catch (err) {
       // El mensaje de error va DESPUÉS de la URL en el texto que tira mlGet, así que cortando a
       // 80 caracteres se veía la URL y no el motivo — que es justo lo único que sirve. Ahora se
@@ -3091,26 +3078,17 @@ async function correrCandidatos(db, products, labels, accounts, soloPrueba, prue
       continue;
     }
     const { costo, impuestos, envio, ganancia, margen } = rMin;
-    // La cuenta a precio de caja no se pide de nuevo si es el MISMO precio: la comisión ya está
-    // en la caché de la corrida, pero igual se evita el renglón repetido.
-    const rCaja = (pCaja > 0 && pCaja !== Math.round(mlPrecio)) ? await cuentaCand(pCaja, ltCaja, catCaja)
-      : (pCaja > 0 ? rMin : null);
     calculados++;
-    console.log(`      el más barato publicado ${money(Math.round(mlPrecio))} · ${vendedores} vendedor(es) en la ficha`);
-    console.log(`      costo ${money(Math.round(costo))} + impuestos ${money(Math.round(impuestos))} + envío ${money(envio)} → ${margen.toFixed(1)}% · ${money(Math.round(ganancia))} por unidad`);
-    if (pCaja > 0 && rCaja) console.log(`      🥊 la caja de compra se gana en ${money(pCaja)} o abajo → ahí queda ${rCaja.margen.toFixed(1)}% · ${money(Math.round(rCaja.ganancia))} por unidad`);
-    else if (pCaja > 0) console.log(`      🥊 la caja se gana en ${money(pCaja)} o abajo · ML no contestó la comisión a ese precio, así que el margen de la caja queda sin medir`);
-    else console.log('      🥊 ML no informa quién tiene la caja de compra de este catálogo.');
+    console.log(`      se vende ${mlMax > mlPrecio ? `de ${money(Math.round(mlPrecio))} a ${money(mlMax)}` : money(Math.round(mlPrecio))} · ${vendedores} vendedor(es) en la ficha`);
+    console.log(`      medido contra el MÁS BARATO (el peor caso): costo ${money(Math.round(costo))} + impuestos ${money(Math.round(impuestos))} + envío ${money(envio)} → ${margen.toFixed(1)}% · ${money(Math.round(ganancia))} por unidad`);
     if (!soloPrueba) {
       await db.patch(`cyc/candidatos_py/${id}`, {
-        mlTit, mlPrecio: Math.round(mlPrecio), mlVendedores: vendedores, mlLink, mlPorNombre: porNombre,
+        mlTit, mlPrecio: Math.round(mlPrecio), mlMax, mlVendedores: vendedores, mlLink, mlPorNombre: porNombre,
         margen: Math.round(margen * 10) / 10, ganancia: Math.round(ganancia),
-        // SIEMPRE un número, nunca null: con `patch` un null BORRA la clave, y una clave borrada
-        // es indistinguible de "todavía no lo miramos" — que es justo lo que decide si se vuelve
-        // a medir. 0 quiere decir "ML no informa ganador", y así se muestra en la pantalla.
-        mlCaja: pCaja > 0 ? pCaja : 0,
-        margenCaja: rCaja ? Math.round(rCaja.margen * 10) / 10 : null,
-        gananciaCaja: rCaja ? Math.round(rCaja.ganancia) : null,
+        // Los tres de la caja de compra se BORRAN: se escribieron en la corrida del 18/09 y
+        // siempre valían 0 porque `buy_box_winner` viene null (ver arriba). Dejarlos sería dejar
+        // un cero que se lee como un dato.
+        mlCaja: null, margenCaja: null, gananciaCaja: null,
         puestoUSD: puesto, calcTs: Date.now(), motivo: null,
       });
     }
@@ -3118,8 +3096,7 @@ async function correrCandidatos(db, products, labels, accounts, soloPrueba, prue
     // devolverlo si el precio de Paraguay baja. Un renglón que desaparece sin decir por qué es la
     // lista que miente.
     if (margen < CAND_PISO_PCT) { await fuera(`da ${margen.toFixed(1)}%, abajo de tu piso de ${CAND_PISO_PCT}%`); continue; }
-    nuevosQueDan.push({ id, c, margen, ganancia, mlPrecio, mlTit, puesto,
-      mlCaja: pCaja > 0 ? pCaja : 0, margenCaja: rCaja ? rCaja.margen : null });
+    nuevosQueDan.push({ id, c, margen, ganancia, mlPrecio, mlTit, puesto, mlMax, mlVendedores: vendedores });
   }
   console.log(`\n── ${mirados} mirados · ${calculados} medidos hoy · ${yaCalc} ya venían medidos · ${consultas} consultas a ML · ${descartes.length} descartados · ${nuevosQueDan.length} que dan ──`);
   for (const d of descartes) console.log(`   ✕ ${d}`);
@@ -3133,8 +3110,7 @@ async function correrCandidatos(db, products, labels, accounts, soloPrueba, prue
     console.log(`\n── LOS ${nuevosQueDan.length} QUE DAN ${CAND_PISO_PCT}% O MÁS (de mejor a peor) ──`);
     [...nuevosQueDan].sort((a, b) => b.margen - a.margen).forEach((x, i) => {
       console.log(`${String(i + 1).padStart(3)}. ${x.margen.toFixed(1).padStart(5)}%  ·  US$ ${x.puesto.toFixed(2).padStart(7)} puesto (US$ ${(x.puesto / 1.15).toFixed(2)} + 15%)`
-        + `  ·  el más barato ${money(Math.round(x.mlPrecio))}  ·  ${money(Math.round(x.ganancia))}/u.`
-        + (x.mlCaja > 0 ? `  ·  🥊 caja ${money(x.mlCaja)}${x.margenCaja != null ? ` = ${x.margenCaja.toFixed(0)}%` : ''}` : '  ·  🥊 sin dato de caja'));
+        + `  ·  en ML ${x.mlMax > x.mlPrecio ? `de ${money(Math.round(x.mlPrecio))} a ${money(x.mlMax)}` : money(Math.round(x.mlPrecio))} (${x.mlVendedores} vend.)  ·  ${money(Math.round(x.ganancia))}/u.`);
       console.log(`      ${x.c.nombre}${x.c.mlId ? '' : '   ⚠️ emparejado por NOMBRE, chequealo'}`);
     });
   }
@@ -3160,8 +3136,7 @@ async function correrCandidatos(db, products, labels, accounts, soloPrueba, prue
       const L = [`🆕 *Para probar* · ${frescos.length} producto${frescos.length === 1 ? '' : 's'} nuevo${frescos.length === 1 ? '' : 's'} de Paraguay que dan margen`, ''];
       frescos.forEach((x, i) => {
         L.push(`${i + 1}. *${x.c.nombre}*`);
-        L.push(`   US$ ${x.puesto.toFixed(2)} puesto · el más barato de ML ${money(x.mlPrecio)} · *${x.margen.toFixed(0)}%* (${money(x.ganancia)}/u.)`);
-        if (x.mlCaja > 0) L.push(`   🥊 ganás la caja en ${money(x.mlCaja)} o abajo${x.margenCaja != null ? ` · ahí queda ${x.margenCaja.toFixed(0)}%` : ' · margen de la caja sin medir'}`);
+        L.push(`   US$ ${x.puesto.toFixed(2)} puesto · en ML ${x.mlMax > x.mlPrecio ? `de ${money(x.mlPrecio)} a ${money(x.mlMax)}` : money(x.mlPrecio)} (${x.mlVendedores} vend.) · *${x.margen.toFixed(0)}%* contra el más barato (${money(x.ganancia)}/u.)`);
         L.push(`   ML: ${x.mlTit}${x.c.mlId ? '' : ' ⚠️ emparejado por nombre, chequealo'}`);
       });
       L.push('');

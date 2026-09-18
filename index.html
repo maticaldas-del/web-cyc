@@ -2307,7 +2307,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='19.59';
+const APP_VERSION='19.60';
 // El problema real que esto resuelve no es curiosidad: es que el celular guarda la app y sigue
 // mostrando la de ayer sin avisar. Varias veces se revisó un cambio que ya estaba subido y no se
 // veía. Por eso, además del número, el chip avisa cuando hay una versión nueva esperando.
@@ -8649,41 +8649,48 @@ function candDias(c){return c&&c.ts?Math.max(0,Math.round((Date.now()-c.ts)/8640
 // si vivieran aparte, un candidato descartado o vencido a los 45 días dejaría unidades colgadas
 // apuntando a algo que ya no está — el cementerio de marcas viejas que ya apareció con
 // `repoextra`, con la pausa por precio y con "Nissei no lo tiene".
-// ── LOS TRES PRECIOS DE UN CANDIDATO, EN UNA SOLA FUNCIÓN (18/09/2026) ────────────────────
+// ── A CUÁNTO SE VENDE EN ML, EN UNA SOLA FUNCIÓN (18/09/2026) ─────────────────────────────
 // Pedido suyo mirando el pedido ya armado: *"aca quiero que aparezca toda la info, precio
 // compraparaguai + 15% a cuanto se vende en ml a cuanto esta para ganar la caja y cuanto % de
 // ganancia tiene ganar la caja y cuanto % tiene vs mejor precio ml"*.
 //
-// SON DOS PRECIOS DE ML Y NO UNO, y contestan preguntas distintas:
-//  · 🥊 LA CAJA DE COMPRA — en una ficha de catálogo ML le muestra al comprador UN SOLO vendedor:
-//    el que gana la caja. Los demás no existen. Para venderle a alguien hay que estar en ese
-//    precio o abajo, así que ÉSE es "a cuánto se vende" y "a cuánto hay que estar para ganarla".
-//  · EL MÁS BARATO PUBLICADO — puede estar más abajo que la caja y no estar compitiendo (sin
-//    stock o sin calificar): pasó con el Ferrari el 25/08, donde había dos más baratos y ML igual
-//    pedía el precio del ganador. Es el PEOR caso —el día que ése tenga stock hay que pelear
-//    contra ese precio— y por eso es el que manda para el piso del 25%.
+// DE LAS CINCO COSAS QUE PIDIÓ, TRES SE PUEDEN Y DOS NO, Y ESO SE MIDIÓ ANTES DE ESCRIBIR ESTO:
+// el precio de la caja de compra de un catálogo donde TODAVÍA NO VENDEMOS **no se puede saber**.
+//  · `buy_box_winner` de la ficha del catálogo vino **null en los tres catálogos probados**,
+//    incluidos los DOS donde sí vendemos (Ferrari y Seagate): el campo no distingue nada.
+//  · `/items/<MLA>/price_to_win` sí contesta —estado, precio para ganar y precio del ganador—
+//    pero **sólo sobre una publicación NUESTRA**: sobre la de otro devuelve
+//    `403 "Item does not belong to caller"`. Y un producto de "Para probar", por definición, no
+//    tiene publicación nuestra.
+//  · **Y NO se deduce del más barato**, que era la tentación: en el Seagate el ganador está a
+//    $149.975 y ML nos pide $175.655 para ganarla —más CARO que él—, y en el Ferrari el más
+//    barato está a $68.000 y la caja la tenemos nosotros a $68.510. Ser el más barato no es ni
+//    necesario ni suficiente, así que inventarlo sería inventar el número con el que se decide
+//    una compra de US$1.000 que no se puede rehacer hasta que llegue.
 //
-// ACÁ NO SE CALCULA NINGÚN MARGEN: los dos los mide el robot con la MISMA función (`cuentaCand`)
-// y esta pantalla sólo los muestra. Con una cuenta propia, la tarjeta podría decir un número y el
-// robot otro sobre el mismo producto — el error anotado seis veces en CLAUDE.md.
-//
-// Y HAY TRES ESTADOS, NO DOS: sin `mlCaja` quiere decir que todavía no lo miramos (candidato
-// cargado antes de este cambio), `mlCaja` en 0 quiere decir que ML no informa ganador. Mostrarlos
-// igual sería leer falta de dato como falta de caja, que es el error de siempre.
+// LO QUE SÍ SE MIDE Y ES LO QUE VA ACÁ: el RANGO de la ficha (del más barato al más caro), con
+// cuántos vendedores hay, y el margen medido contra **el más barato**, que es el peor caso.
+// ACÁ NO SE CALCULA NINGÚN MARGEN: lo mide el robot con `cuentaCand` y esta pantalla sólo lo
+// muestra — con una cuenta propia la tarjeta podría decir un número y el robot otro.
 function candPreciosHTML(c){
-  const pct=(m)=>`<b style="color:${m>=25?'var(--green)':'var(--amber)'}">${Number(m).toFixed(0)}%</b>`;
-  const caja=Number(c.mlCaja)||0;
-  const mCaja=(c.margenCaja!=null&&isFinite(c.margenCaja))?Number(c.margenCaja):null;
   const min=Number(c.mlPrecio)||0;
-  const mMin=(c.margen!=null&&isFinite(c.margen))?Number(c.margen):null;
   if(!min)return '';
-  const L=[];
-  if(c.mlCaja===undefined)L.push(`🥊 <span style="color:var(--muted)">la caja de compra todavía no se midió · sale en la vuelta de esta noche</span>`);
-  else if(!caja)L.push(`🥊 <span style="color:var(--amber)">ML no informa quién tiene la caja de este catálogo</span>`);
-  else L.push(`🥊 ganás la caja en <b>${fmt(caja)}</b> o abajo${mCaja!=null?` → ${pct(mCaja)}`:` · <span style="color:var(--amber)">margen sin medir</span>`}`);
-  L.push(`el más barato de ML <b>${fmt(min)}</b>${mMin!=null?` → ${pct(mMin)}`:''}`);
+  const max=Number(c.mlMax)||0;
+  const vend=Number(c.mlVendedores)||0;
+  const mMin=(c.margen!=null&&isFinite(c.margen))?Number(c.margen):null;
+  const L=[`se vende ${max>min?`de <b>${fmt(min)}</b> a <b>${fmt(max)}</b>`:`a <b>${fmt(min)}</b>`}`];
+  if(vend)L.push(`${vend} vendedor${vend===1?'':'es'} en la ficha`);
+  if(mMin!=null)L.push(`contra el más barato → <b style="color:${mMin>=25?'var(--green)':'var(--amber)'}">${mMin.toFixed(0)}%</b>`);
   return L.join(' &nbsp;·&nbsp; ');
 }
+// EL RENGLÓN QUE EXPLICA LO QUE FALTA VA UNA SOLA VEZ, NO EN LOS 17. Repetirlo en cada producto
+// es ruido y a los tres renglones no lo lee nadie; pero no decirlo nunca sería peor, porque él
+// pidió ese número expreso y tiene que saber por qué no está.
+const CAND_NOTA_CAJA='🥊 <b>A cuánto se gana la caja de compra no se puede saber hasta publicarlo.</b> '
+  +'ML sólo contesta ese precio sobre una publicación tuya (sobre la de otro vendedor da error), y '
+  +'<b>no se deduce del más barato</b>: en el Seagate el ganador está a $149.975 y a nosotros ML nos '
+  +'pide $175.655 para ganarla. Por eso acá va el rango de la ficha y el margen contra el más barato, '
+  +'que es el peor caso.';
 async function candSetPedir(id,v){
   const n=Math.max(0,parseInt(v)||0);
   const c=(state.candidatos||{})[id];if(c)c.pedirU=n;
@@ -8718,6 +8725,7 @@ function pedNuevosHTML(vivos){
       <div style="font-size:.76rem;font-weight:700">🧾 Armar el pedido</div>
       <div style="font-size:.6rem;color:var(--muted)">poné las unidades en cada producto de abajo · la web sólo hace las cuentas</div>
     </div>
+    <div style="font-size:.6rem;color:var(--muted);line-height:1.6;margin:-4px 0 9px">${CAND_NOTA_CAJA}</div>
     <div style="background:var(--surface);border-radius:9px;padding:11px 13px;margin-bottom:9px">
       <div style="font-size:.6rem;color:var(--muted);letter-spacing:.04em">TOTAL DEL PEDIDO · mercadería, sin el 15%</div>
       <div style="font-size:2.1rem;font-weight:700;line-height:1.15;margin:2px 0 3px">US$ ${P.crudo.toFixed(2)}</div>
@@ -8759,6 +8767,7 @@ function candidatosHTML(){
     <div style="font-size:.64rem;color:var(--muted);margin-top:4px;line-height:1.5">
       Van <b>aparte del pedido</b> a propósito: son para evaluar, no para comprar de una. Los trae el chat de Paraguay desde comprasparaguay; el robot les pregunta a ML a cuánto se venden y hace la cuenta.
       ${fuera?`<br><span style="color:var(--muted)">${fuera} quedaron afuera (descartados, ya con ficha o vencidos a los ${CAND_VENCE_DIAS} días).</span>`:''}
+      <br>${CAND_NOTA_CAJA}
     </div>
   </div>`;
   if(!vivos.length){

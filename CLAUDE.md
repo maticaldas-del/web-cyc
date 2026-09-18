@@ -337,6 +337,7 @@ Los que más se usan:
 | `verescalon:<MLA\|palabra>[:marcar]` | **¿ML cobró menos de verdad al bajar?** agrupa las ventas por precio y muestra lo que ML se quedó en cada uno |
 | `envioml:<MLA>` | el envío que **dice ML** (por destino) vs el que deducimos de las ventas · `envioreal` es OTRO comando |
 | `apisnuevas:<MLA>` | qué endpoints de ML andan y no usamos |
+| `probarcaja:<MLA>[;otro]` | **¿ML dice quién tiene la caja de un catálogo?** vale el código del catálogo o el de una publicación tuya · solo lee |
 | `verweb:<direccion>` | **leer una página de afuera y mostrar su texto** · el chat no tiene internet y el robot sí · solo lee · **lo que imprime queda en el registro PÚBLICO** |
 | `apis` | qué endpoints de ML contestan (para diagnosticar) |
 | `ciclo` | **no es un comando: vuelve a prender el ciclo de 2 minutos** (ver abajo) |
@@ -1694,47 +1695,63 @@ full. ya que no es de aca. va en mi oficina"*). Se mira en **Mi oficina → En c
 vive. **Lo que NO cambió: la cuenta de Pedidos sigue descontando lo que va en camino**, así que
 abajo no se vuelve a pedir — se sacó el aviso, no la regla.
 
-## LOS TRES PRECIOS DE UN PRODUCTO NUEVO, EN EL RENGLÓN (18/09/2026)
+## A CUÁNTO SE VENDE EN ML UN PRODUCTO NUEVO — Y POR QUÉ LA CAJA NO SE PUEDE SABER (18/09/2026)
 
 Pedido suyo mirando el pedido ya armado: *"aca quiero que aparezca toda la info, precio
 compraparaguai + 15% a cuanto se vende en ml a cuanto esta para ganar la caja y cuanto % de
 ganancia tiene ganar la caja y cuanto % tiene vs mejor precio ml"*.
 
-Hasta ese día el renglón decía **un** precio de ML —el más barato publicado— y un solo porcentaje.
-Con eso no se puede decidir una compra: falta justo el precio al que el producto **se vende**.
+**De las cinco cosas, TRES se pueden y DOS no.** Y las dos que no son justo las de la caja de
+compra. Se midió **antes** de escribir el renglón, con el comando nuevo **`probarcaja`** (solo lee).
 
-**SON DOS PRECIOS DE ML Y NO UNO, y contestan preguntas distintas:**
+### LO QUE SE MIDIÓ, Y ES DEFINITIVO
 
-| | qué es | para qué sirve |
-|---|---|---|
-| **🥊 la caja de compra** (`mlCaja`) | lo que cobra el que HOY tiene la caja | en una ficha de catálogo ML le muestra al comprador **un solo vendedor**. Para venderle a alguien hay que estar en ese precio **o abajo**: ése es "a cuánto se vende" y "a cuánto hay que estar para ganarla" |
-| **el más barato publicado** (`mlPrecio`) | el precio más bajo de la ficha | puede estar **abajo de la caja y no estar compitiendo** (sin stock o sin calificar) — pasó con el Ferrari el 25/08. Es el **peor caso**, y por eso es el que manda para el piso del 25% |
+| | resultado |
+|---|---|
+| `buy_box_winner` de la ficha del catálogo | **`null` en los TRES catálogos probados**, incluidos los DOS donde SÍ vendemos (Ferrari `MLA38580480` y Seagate `MLA27400519`) |
+| `/items/<MLA>/price_to_win` sobre algo **NUESTRO** | ✅ contesta entero: estado, precio para ganar y precio del ganador |
+| `/items/<MLA>/price_to_win` sobre algo **AJENO** | ❌ **403 `"Item does not belong to caller"`** |
 
-Cada uno va con **su** margen, los dos medidos por el robot con la **MISMA** función (`cuentaCand`),
-que es nueva y reemplaza la cuenta que estaba escrita suelta: se mide a dos precios distintos y con
-dos copias de la fórmula los dos números se separan solos — el error anotado seis veces acá.
-**La pantalla no calcula nada**: `candPreciosHTML` sólo muestra, y la usan los DOS lugares (el
-renglón del pedido armado y la tarjeta del candidato), así que no pueden decir cosas distintas.
+**El `buy_box_winner` no distingue nada: viene vacío siempre.** Un *"ML no informa quién tiene la
+caja"* sacado de ahí es una propiedad de la API, no del catálogo — el error de siempre, falta de
+dato leída como dato. La primera versión de este renglón lo mostraba así en los 27 candidatos.
+**Hay que sacarlo de donde esté**: quedó otro lugar usándolo (ver más abajo).
 
-**El precio de la caja sale de `buy_box_winner`**, el campo de la ficha del catálogo que el robot ya
-usaba en otros dos lados. Cuando el chat trajo el código de ML no cuesta ninguna consulta más
-(la ficha ya se pidió); cuando se emparejó por nombre hay que pedirla.
+**Y NO SE DEDUCE DEL MÁS BARATO, que era la tentación.** Los dos números de la misma corrida:
+ · **Seagate**: el ganador está a **$149.975** y a nosotros ML nos pide **$175.655** para ganarla —
+   o sea **$25.680 MÁS CARO que él**.
+ · **Ferrari**: el más barato de la ficha está a **$68.000** y **la caja la tenemos nosotros a
+   $68.510**.
+**Ser el más barato no es ni necesario ni suficiente.** Inventar ese precio sería inventar el
+número con el que se decide una compra de US$1.000 que no se puede rehacer hasta que llegue.
 
-**HAY TRES ESTADOS Y NO DOS, a propósito:** sin `mlCaja` = todavía no lo miramos · `mlCaja` en **0**
-= ML no informa ganador · mayor a 0 = el precio. Mostrar los dos primeros igual sería leer **falta de
-dato como falta de caja**, que es el error de siempre. Por eso se guarda **siempre como número** (0,
-nunca null): con `patch` un null BORRA la clave y una clave borrada es indistinguible de "no lo
-miramos" — que es justo lo que decide si se vuelve a medir.
+**Consecuencia: para un producto de "Para probar" —que por definición no tiene publicación
+nuestra— el precio de la caja no existe hasta publicarlo.** Se dice en la pantalla, UNA vez por
+sección y no en los 17 renglones: repetirlo es ruido, y no decirlo nunca sería peor porque él pidió
+ese número expreso.
 
-**Y HUBO QUE TOCAR EL FRENO DE "ya tiene la cuenta hecha".** Ese `if` saltea los candidatos ya
-medidos para no gastar consultas, así que **los 17 que ya estaban cargados nunca iban a recibir el
-dato nuevo**: la pantalla habría mostrado la mitad de los renglones completos y la otra mitad no, y
-eso se lee como que ML no informa. Ahora el freno pide **además** que `mlCaja` exista.
+### LO QUE SÍ VA EN EL RENGLÓN
 
-Probado con la función REAL sacada del archivo: la cuenta nueva da **exactamente** lo mismo que la
-vieja en cuatro casos (incluidos $32.999 y $33.000, la barrera), y el renglón se probó con siete
-casos — medido entero, la caja igual al más barato, ML sin ganador, candidato viejo sin medir,
-margen de la caja sin medir, margen flaco en ámbar y sin nada de ML.
+ · **el costo puesto**: `US$ X + 15% = US$ Y c/u`, y en pesos
+ · **el rango de la ficha**: *"se vende de $75.999 a $92.800 · 2 vendedores"* (`mlPrecio` y `mlMax`)
+ · **el margen contra el MÁS BARATO**, que es el peor caso y el que manda para el piso del 25%
+
+La cuenta vive en **una** función (`cuentaCand`) y reemplaza la que estaba suelta; la pantalla no
+calcula nada (`candPreciosHTML`, que usan los DOS lugares: el renglón del pedido y la tarjeta del
+candidato). Probado con las funciones REALES: la cuenta nueva da **exactamente** lo mismo que la
+vieja en 4 casos (incluidos $32.999 y $33.000, la barrera) y el renglón en 7 casos.
+
+**Y hubo que tocar el freno de "ya tiene la cuenta hecha"**: ese `if` saltea los ya medidos para no
+gastar consultas, así que los 27 ya cargados nunca iban a recibir un dato nuevo. Ahora pide además
+que `mlMax` exista. Cuando se agregue otro dato, lo mismo.
+
+### LO QUE QUEDA ABIERTO Y HAY QUE MIRAR
+
+**Hay OTRO lugar en el robot leyendo `buy_box_winner`**, en el informe que dice si una publicación
+gana o pierde la caja de catálogo. Si el campo viene siempre null, ese informe viene diciendo
+*"catálogo, pero ML no informa ganador"* de TODO, y nadie lo notó. **El dato correcto ya lo tiene
+el panel**: el robot escribe `price_to_win` en `cyc/mllinks/<MLA>/caja` una vez por hora, que es de
+donde sale la columna "Caja ML". Hay que hacerlo leer de ahí.
 
 ## EL PRECIO DE PARAGUAY NO PISA EL COSTO. NUNCA. (17/09/2026)
 
