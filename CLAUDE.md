@@ -1630,6 +1630,47 @@ si el mensaje salió**. Si no hay nada nuevo que dé margen, no manda nada.
 Paraguay, y avisa si ya hay una ficha con nombre parecido. **No publica nada en ML ni compra nada**:
 la publicación la hace él, que es la norma del 26/08.
 
+## EL PEDIDO DE PRUEBA: LA WEB LO GUARDA, EL CHAT LO ARMA (18/09/2026)
+
+Pedido suyo: *"voy a hacer un pedido de todos productos nuevos con una combinacion, que el costo
+de los productos sin el 15% de $500 dolares. que sean maximo 2 unidades de cada producto (asi
+puedo probar varios productos con pocas unidades) y que sean altos % (o lo mas alto posible, un
+producto que se le gana un 25% sirve igual)"*.
+
+**LA ACLARACIÓN ES LO QUE DEFINE TODO, Y HUBO QUE PEDIRLA DOS VECES.** Primero se hizo una canasta
+que ordenaba por margen y llenaba los US$ 500 sola. Él lo cortó: *"no que la web no lo arme. que
+permita que el otro chat lo arme"* y *"el otro chat va a encontrar productos nuevos y arme la
+lista, el ya va a saber cuales productos son"*. Se borró entera y se rehízo.
+**ACÁ NO HAY NINGÚN ALGORITMO, a propósito.** El que elige es el chat, que es el único que vio
+comprasparaguay. La web pone el lugar donde se carga y hace **las cuentas**, que es lo que el chat
+no puede hacer sin equivocarse: el 15%, el total y el mensaje con los códigos. Es la misma
+división que ya funciona con el precio y el código — el chat trae el dato, la cuenta la hace UNA
+sola parte.
+
+**DÓNDE ESTÁ:** Pedidos → 🇵🇾 Paraguay → **🧪 Pedido de prueba**, arriba de "Para probar".
+Cada tarjeta de candidato tiene ahora una casilla **"pedir __ u."** (`cyc/candidatos_py/<id>/pedirU`)
+y el bloque de arriba suma solo: US$ crudos, con el 15%, en pesos, cuántos productos y unidades,
+lo que dejaría si se vende todo, y el **mensaje código × unidades para Nissei**.
+
+**LAS UNIDADES VIVEN CON EL CANDIDATO, no en una lista aparte**: si vivieran aparte, un candidato
+descartado o vencido a los 45 días dejaría unidades colgadas apuntando a algo que ya no está — el
+cementerio de marcas viejas que ya apareció con `repoextra`, con la pausa por precio y con
+"Nissei no lo tiene".
+
+**EL TOPE Y EL MÁXIMO POR PRODUCTO NO FRENAN NADA.** Viven en `cyc/mlconfig/pruebaTopeUSD` (500) y
+`cyc/mlconfig/pruebaMaxU` (2) —en la base, para que el chat vea los mismos que él— y la pantalla
+**avisa en ámbar** cuando un renglón se pasa o cuando el total cruza el tope. Frenar la carga
+sería que la web decida, y eso es justo lo que no tiene que hacer.
+**El tope se mide sobre el precio CRUDO** (sin el 15%), como lo pidió; el 15% se muestra al lado.
+Probado con las funciones reales y 5 casos: lo que pidió · uno que se pasa del máximo y del tope ·
+sin precio cargado · vacío · sin margen medido. Chequeo de las tres listas: **0 funciones, 0
+variables y 0 `id` faltantes**, sólo los 9 nombres nuevos.
+
+**LO QUE FALTABA Y POR QUÉ LA CANASTA DE ARRIBA NO SERVÍA:** esa arma el pedido de REPOSICIÓN —lo
+que YA vendés, con las unidades que hacen falta, ordenando por la plata que destrabás si se corta,
+con tope de US$1.000— y **los de "Para probar" no entran**. Un producto que no vendés nunca no
+destraba nada, así que ese criterio acá no dice nada.
+
 ## EL PRECIO DE PARAGUAY NO PISA EL COSTO. NUNCA. (17/09/2026)
 
 Es la regla más importante del día y la puso él en dos frases:

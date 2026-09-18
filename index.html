@@ -2311,7 +2311,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='19.54';
+const APP_VERSION='19.55';
 // El problema real que esto resuelve no es curiosidad: es que el celular guarda la app y sigue
 // mostrando la de ayer sin avisar. Varias veces se revisó un cambio que ya estaba subido y no se
 // veía. Por eso, además del número, el chip avisa cuando hay una versión nueva esperando.
@@ -8620,6 +8620,115 @@ function candList(){
 // Paraguay de hace 45 días al lado de una decisión de compra se lee como si estuviera al día.
 const CAND_VENCE_DIAS=45;
 function candDias(c){return c&&c.ts?Math.max(0,Math.round((Date.now()-c.ts)/86400000)):null;}
+// ── EL PEDIDO DE PRUEBA: LA WEB LO GUARDA, EL CHAT LO ARMA (18/09/2026) ───────────────
+// Pedido suyo: *"voy a hacer un pedido de todos productos nuevos con una combinacion, que el
+// costo de los productos sin el 15% de $500 dolares. que sean maximo 2 unidades de cada producto
+// (asi puedo probar varios productos con pocas unidades) y que sean altos %"*.
+// Y la aclaración, que es la que define TODO lo que sigue y la pedí dos veces mal antes de
+// entenderla: *"no que la web no lo arme. que permita que el otro chat lo arme"* ·
+// *"el otro chat va a encontrar productos nuevos y arme la lista, el ya va a saber cuales
+// productos son"*.
+//
+// O SEA QUE ACÁ NO HAY NINGÚN ALGORITMO, Y ES A PROPÓSITO. La primera versión ordenaba por margen
+// y llenaba los US$ 500 sola. Estaba mal: **el que elige es el chat**, que es el único que vio
+// comprasparaguay. La web pone el lugar donde se carga y hace las CUENTAS, que es lo que el chat
+// no puede hacer sin equivocarse: el 15%, el total, y el mensaje con los códigos.
+// Es la misma división que ya funciona con el precio y el código: el chat trae el dato, la cuenta
+// la hace UNA sola parte.
+//
+// Es la misma decisión que "Armar caja": la recomendación es el punto de partida, no la orden, y
+// cada renglón tiene su casilla. Acá ni siquiera hay recomendación.
+// EL TOPE Y EL MÁXIMO POR PRODUCTO NO FRENAN NADA: son los números que él puso y se MUESTRAN,
+// con el aviso en ámbar cuando un renglón se pasa. Frenar la carga sería que la web decida, y
+// justo eso es lo que no tiene que hacer.
+const PRUEBA_TOPE_DEF=500, PRUEBA_MAXU_DEF=2;
+const pruebaTope=()=>{const v=parseFloat((state.mlconfig||{}).pruebaTopeUSD);return v>0?v:PRUEBA_TOPE_DEF;};
+const pruebaMaxU=()=>{const v=parseInt((state.mlconfig||{}).pruebaMaxU);return v>0?v:PRUEBA_MAXU_DEF;};
+// Los dos números viven en la BASE y no en la pantalla: el chat de Paraguay tiene que ver los
+// mismos que él. Es el mismo motivo por el que el piso y el costo de la caja salieron del código.
+async function pruebaSetTope(v){const n=parseFloat(v)||0;if(!(n>0))return;if(!state.mlconfig)state.mlconfig={};state.mlconfig.pruebaTopeUSD=n;await fbSet('mlconfig/pruebaTopeUSD',n);renderPedidos();}
+async function pruebaSetMaxU(v){const n=parseInt(v)||0;if(!(n>0))return;if(!state.mlconfig)state.mlconfig={};state.mlconfig.pruebaMaxU=n;await fbSet('mlconfig/pruebaMaxU',n);renderPedidos();}
+// Las unidades viven CON el candidato (`cyc/candidatos_py/<id>/pedirU`), no en una lista aparte:
+// si vivieran aparte, un candidato descartado o vencido dejaría unidades colgadas apuntando a algo
+// que ya no está — el cementerio de marcas viejas que ya apareció tres veces en este panel.
+async function candSetPedir(id,v){
+  const n=Math.max(0,parseInt(v)||0);
+  const c=(state.candidatos||{})[id];if(c)c.pedirU=n;
+  await fbSet('candidatos_py/'+id+'/pedirU',n);
+  renderPedidos();
+}
+async function pruebaVaciar(){
+  const con=candList().filter(c=>(parseInt(c.pedirU)||0)>0);
+  if(!con.length)return;
+  if(!confirm(`¿Vaciar el pedido de prueba?\n\nSon ${con.length} producto(s) cargados. Las unidades vuelven a cero; no se borra ningún candidato.`))return;
+  for(const c of con){c.pedirU=0;await fbSet('candidatos_py/'+c.id+'/pedirU',0);}
+  renderPedidos();toast('Pedido de prueba vaciado');
+}
+function pruebaPedido(vivos){
+  const tope=pruebaTope(), maxU=pruebaMaxU();
+  const filas=(vivos||[]).map(c=>({c,u:Math.max(0,parseInt(c.pedirU)||0),usd:parseFloat(c.usd)||0}))
+    .filter(f=>f.u>0);
+  const crudo=filas.reduce((t,f)=>t+f.usd*f.u,0);
+  return{filas,tope,maxU,
+    crudo:Math.round(crudo*100)/100,
+    unidades:filas.reduce((n,f)=>n+f.u,0),
+    sinPrecio:filas.filter(f=>!(f.usd>0)),
+    sinCod:filas.filter(f=>!String(f.c.cod||'').trim()),
+    pasados:filas.filter(f=>f.u>maxU),
+    ganancia:filas.reduce((g,f)=>g+(Number(f.c.ganancia)||0)*f.u,0)};
+}
+function pruebaPedidoHTML(vivos){
+  const P=pruebaPedido(vivos), tc=curTC();
+  const puesto=Math.round(P.crudo*RECARGO_PY*100)/100;
+  const pct=P.tope>0?Math.min(100,Math.round(P.crudo/P.tope*100)):0;
+  const col=pct>=98?'var(--green)':pct>=60?'var(--amber)':'var(--red)';
+  const conCod=P.filas.filter(f=>String(f.c.cod||'').trim());
+  const txt=conCod.map(f=>`${String(f.c.cod).trim()} x ${f.u}`).join('\n');
+  const dif=Math.round((P.tope-P.crudo)*100)/100;
+  return `<div style="margin:14px 0 4px;padding:12px 13px;background:var(--surface2);border-radius:10px;border:1px solid var(--border)">
+    <div style="display:flex;align-items:baseline;gap:8px;flex-wrap:wrap;margin-bottom:8px">
+      <div style="font-size:.76rem;font-weight:700">🧪 Pedido de prueba</div>
+      <div style="font-size:.6rem;color:var(--muted)">cargá las unidades en cada producto de abajo · la web sólo hace las cuentas</div>
+    </div>
+    <div style="display:flex;gap:14px;flex-wrap:wrap;align-items:center;margin-bottom:10px;font-size:.64rem;color:var(--muted)">
+      <label style="display:flex;align-items:center;gap:5px">Tope US$ <span title="El tope se mide sobre el precio de lista de comprasparaguay, SIN el 15%. El 15% se muestra aparte." style="cursor:help">(sin el 15%) ⓘ</span>
+        <input type="number" min="1" step="10" value="${P.tope}" onchange="pruebaSetTope(this.value)" style="width:78px;font-size:.68rem;padding:4px 6px;background:var(--surface);border:1px solid var(--border);border-radius:6px;color:var(--text)"></label>
+      <label style="display:flex;align-items:center;gap:5px" title="No frena nada: es el número que pusiste vos y la pantalla avisa si un renglón se pasa.">Máx. por producto
+        <input type="number" min="1" step="1" value="${P.maxU}" onchange="pruebaSetMaxU(this.value)" style="width:58px;font-size:.68rem;padding:4px 6px;background:var(--surface);border:1px solid var(--border);border-radius:6px;color:var(--text)"></label>
+    </div>
+    <div style="height:7px;background:var(--surface);border-radius:4px;overflow:hidden;margin-bottom:5px">
+      <div style="height:100%;width:${pct}%;background:${col}"></div>
+    </div>
+    <div style="font-size:.64rem;color:var(--muted);margin-bottom:8px;line-height:1.6">
+      <b style="color:var(--text)">US$ ${P.crudo.toFixed(2)}</b> de ${P.tope} en mercadería · con el 15% son <b style="color:var(--text)">US$ ${puesto.toFixed(2)}</b>${tc?` (${fmt(Math.round(puesto*tc))})`:''}
+      · ${P.filas.length} producto${P.filas.length===1?'':'s'} · ${P.unidades} unidad${P.unidades===1?'':'es'}
+      ${dif>0.5?`<br><span style="color:var(--amber)">Faltan US$ ${dif.toFixed(2)} para el tope.</span>`:dif<-0.5?`<br><span style="color:var(--red)">Te pasaste US$ ${Math.abs(dif).toFixed(2)} del tope.</span>`:'<br><span style="color:var(--green)">✓ Llegaste al tope.</span>'}
+      ${P.ganancia>0?`<br>Si se vende todo, deja <b style="color:var(--green)">${fmt(Math.round(P.ganancia))}</b>.`:''}
+      ${P.pasados.length?`<br><span style="color:var(--amber)">⚠️ ${P.pasados.length} renglón(es) pasan las ${P.maxU} u. que pusiste: ${P.pasados.slice(0,4).map(f=>f.c.nombre+' ('+f.u+')').join(' · ')}</span>`:''}
+      ${P.sinPrecio.length?`<br><span style="color:var(--red)">⚠️ ${P.sinPrecio.length} sin precio cargado: no suman al total y no se puede saber cuánto gastás.</span>`:''}
+    </div>
+    ${P.filas.length?P.filas.map(f=>`<div class="ingreso-item" style="gap:10px;align-items:center">
+      <div style="flex:1;min-width:150px">
+        <div style="font-size:.71rem;font-weight:600;line-height:1.3">${f.c.nombre}</div>
+        <div style="font-size:.59rem;color:var(--muted);margin-top:2px">
+          ${String(f.c.cod||'').trim()?'🔖 '+String(f.c.cod).trim():'<span style="color:var(--amber)">🔖 sin código — no entra en el mensaje a Nissei</span>'}
+          ${f.usd>0?` · US$ ${f.usd.toFixed(2)} c/u`:' · <span style="color:var(--red)">sin precio</span>'}
+          ${(f.c.margen!=null&&isFinite(f.c.margen))?` · <b style="color:var(--green)">${Number(f.c.margen).toFixed(0)}%</b>`:' · <span style="color:var(--amber)">sin margen medido</span>'}
+        </div>
+      </div>
+      <div style="text-align:right;font-size:.68rem;white-space:nowrap">
+        <b style="color:${f.u>P.maxU?'var(--amber)':'var(--text)'}">${f.u} u.</b>
+        <div style="color:var(--muted)">${f.usd>0?'US$ '+(f.usd*f.u).toFixed(2):'—'}</div>
+      </div>
+    </div>`).join('')
+    :`<div style="font-size:.64rem;color:var(--muted);padding:6px 0">Todavía no cargaste ninguno. Poné las unidades en los productos de abajo y el pedido se arma solo acá.</div>`}
+    ${conCod.length?`<div style="margin-top:10px;border-top:1px solid var(--border);padding-top:9px">
+      <div style="font-size:.63rem;color:var(--muted);margin-bottom:5px">Para mandarle a <strong>Nissei</strong> — código y unidades${P.sinCod.length?` · <span style="color:var(--amber)">${P.sinCod.length} no entra(n): falta cargarle el código</span>`:''}</div>
+      <textarea readonly onclick="this.select()" style="width:100%;min-height:${Math.min(160,22+conCod.length*17)}px;background:rgba(0,0,0,.28);border:1px solid var(--border2);border-radius:6px;color:var(--text);font-family:'DM Mono',monospace;font-size:.7rem;padding:7px 9px;resize:vertical">${txt}</textarea>
+    </div>`:''}
+    ${P.filas.length?`<div style="margin-top:9px"><button class="btn" style="font-size:.6rem;padding:4px 10px" onclick="pruebaVaciar()">Vaciar el pedido</button></div>`:''}
+  </div>`;
+}
 function candidatosHTML(){
   const todos=candList();
   const vivos=todos.filter(c=>!c.no&&!c.prodId&&(candDias(c)==null||candDias(c)<=CAND_VENCE_DIAS));
@@ -8639,7 +8748,7 @@ function candidatosHTML(){
   // El que más margen deja, primero. Los que todavía no tienen la cuenta hecha van al final:
   // no se pueden comparar contra los medidos y ponerlos arriba sería invitar a decidir sin número.
   vivos.sort((a,b)=>(b.margen??-999)-(a.margen??-999));
-  return cab+candFormHTML()+vivos.map(c=>{
+  return cab+pruebaPedidoHTML(vivos)+candFormHTML()+vivos.map(c=>{
     const d=candDias(c);
     const usd=parseFloat(c.usd)||0;
     const puesto=usd>0?Math.round(usd*RECARGO_PY*100)/100:0;
@@ -8696,7 +8805,9 @@ function candidatosHTML(){
         <span style="font-size:.68rem;color:var(--muted)">de margen${c.ganancia?` · te quedarían <b style="color:var(--text)">${fmt(Math.round(c.ganancia))}</b> por unidad</span>`:'</span>'}
         <span style="font-size:.6rem;color:var(--amber)" title="El envío sale de la tarifa de ML porque este producto nunca vendió, y esa tarifa se midió $246 corta el 20/08. El margen real puede ser un poco menor.">· estimado</span>
       </div>`:`<div style="font-size:.68rem;color:var(--muted)">⏳ falta la cuenta de ML. <b>No se muestra ningún porcentaje</b> hasta tenerla: un margen inventado acá se aplica y recién se nota cuando ya compraste.</div>`}
-      <div style="display:flex;gap:6px;flex-wrap:wrap">
+      <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center">
+        <label style="display:flex;align-items:center;gap:5px;font-size:.64rem;color:var(--muted)" title="Las unidades de este producto para el pedido de prueba. Se suman arriba. No compra nada: sólo arma la lista.">pedir
+          <input type="number" min="0" step="1" value="${parseInt(c.pedirU)||0}" onchange="candSetPedir('${c.id}',this.value)" style="width:56px;font-size:.68rem;padding:4px 6px;background:var(--surface2);border:1px solid var(--border);border-radius:6px;color:var(--text)"> u.</label>
         <button class="btn btn-add" style="font-size:.66rem;padding:5px 12px" onclick="candCrearFicha('${c.id}')" title="Crea la ficha del producto con su costo y su código ya cargados, marcada como Paraguay. No compra nada ni publica nada en ML.">👍 Crear ficha</button>
         <button class="btn" style="font-size:.66rem;padding:5px 12px;color:var(--muted)" onclick="candDescartar('${c.id}')" title="No vuelve a aparecer. Se puede deshacer desde acá abajo.">👎 No me interesa</button>
         ${c.marca?`<button class="btn" style="font-size:.66rem;padding:5px 12px;color:var(--red);border-color:rgba(239,68,68,.35)" onclick="candMarcaNo('${c.id}')" title="Saca de la lista TODO lo de esta marca, para siempre. Para las marcas que ML te pide documentar.">🚫 ${c.marca} no</button>`:''}
