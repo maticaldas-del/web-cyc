@@ -1649,8 +1649,15 @@ funciona con el precio y el código — el chat trae el dato, la cuenta la hace 
 se lo digo yo en el chat"*. **Un límite que la pantalla inventa es la pantalla decidiendo.** Lo
 único que va es el TOTAL, grande, que es el número contra el que compara mientras arma.
 
-**DÓNDE ESTÁ:** Pedidos → 🇵🇾 Paraguay → **🧾 Armar el pedido**, arriba de "Para probar" y abajo de
-todo lo demás — arriba queda igual, con la reposición de lo que ya vendés.
+**DÓNDE ESTÁ: Pedidos → 🇵🇾 Paraguay, y adentro hay DOS PESTAÑAS** (pedido suyo del mismo día:
+*"que haya dos botoncitos, uno que diga productos probados y otro productos nuevos. asi no se
+mezclan las cosas, despues que el chat vaya a la que necesite para armar la lista"*):
+ · **✅ Productos probados** — la canasta de US$ 1.000, los pedidos de reposición y "ya no conviene
+   comprarlos". Es lo que YA vendés y no se tocó nada.
+ · **🆕 Productos nuevos** — "Para probar" y **🧾 Armar el pedido**.
+**Son dos pedidos distintos y por eso se separan:** reponer lo que ya vendés contesta *"cuánto
+falta para no cortarme"*, y probar algo nuevo contesta *"cuánto arriesgo en algo que no sé si
+vende"*. Mezclados en una sola pantalla larga, armar uno obligaba a pasar por el otro.
 Cada tarjeta de candidato tiene una casilla **"pedir __ u."** (`cyc/candidatos_py/<id>/pedirU`) y
 el bloque de arriba suma solo: US$ crudos, con el 15%, en pesos, cuántos productos y unidades, lo
 que dejaría si se vende todo, y el **mensaje código × unidades para Nissei**.

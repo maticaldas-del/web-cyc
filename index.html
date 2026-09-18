@@ -2312,7 +2312,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='19.56';
+const APP_VERSION='19.57';
 // El problema real que esto resuelve no es curiosidad: es que el celular guarda la app y sigue
 // mostrando la de ayer sin avisar. Varias veces se revisó un cambio que ya estaba subido y no se
 // veía. Por eso, además del número, el chip avisa cuando hay una versión nueva esperando.
@@ -8453,6 +8453,17 @@ function esPedidoPaulvic(ped){
 const PY_ENVIO_USD=1000, PY_VIAJE_USD=4000;
 let pyModo='envio';
 function pySetModo(m){pyModo=m;renderPedidos();}
+// ── DOS PESTAÑAS EN PARAGUAY: PROBADOS Y NUEVOS (18/09/2026) ──────────────────────────
+// Pedido suyo: *"que haya dos botoncitos, uno que diga productos probados y otro productos
+// nuevos. asi no se mezclan las cosas, despues que el chat vaya a la que necesite para armar la
+// lista, si va a armar productos nuevos elije ese boton"*.
+// Son DOS PEDIDOS DISTINTOS y se arman por separado: reponer lo que ya vendés es una decisión
+// (cuánto falta para no cortarme) y probar algo nuevo es otra (cuánto arriesgo en algo que no sé
+// si vende). Mezclados en una sola pantalla larga, armar uno obligaba a pasar por el otro.
+// NO se esconde nada que decida: lo que cambia es CUÁL de los dos pedidos estás armando, y el
+// botón dice siempre en cuál estás.
+let pyVista='probados';
+function pySetVista(v){pyVista=v;renderPedidos();}
 const pyTope=()=>pyModo==='viaje'?PY_VIAJE_USD:PY_ENVIO_USD;
 function _pyLlenar(orden){
   let queda=pyTope(),val=0;const out=[];
@@ -10628,7 +10639,17 @@ function renderPedidos(){
   // pedidos) · lo que dejó de convenir · lo que todavía no vendés. Pedido suyo: *"que haga embudo
   // en pedidos paraguay"* — las cuatro decisiones de Paraguay en una sola pantalla y en el orden
   // en que se toman.
-  if(!isBsas)el.innerHTML=pyCanastaHTML()+el.innerHTML+embudoHTML()+candidatosHTML();
+  // Las dos pestañas parten el embudo en los dos pedidos que son de verdad distintos:
+  //  · PROBADOS → la canasta de US$ 1.000, los pedidos de reposición y lo que dejó de convenir
+  //  · NUEVOS   → "Para probar" y el armado del pedido de productos nuevos
+  if(!isBsas){
+    const _tab=(v,txt,tit)=>`<button class="btn" style="font-size:.64rem;padding:5px 13px;${pyVista===v?'background:var(--blue);color:#fff;font-weight:700':''}" title="${tit}" onclick="pySetVista('${v}')">${txt}</button>`;
+    const _tabs=`<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px">
+      ${_tab('probados','✅ Productos probados','Lo que YA vendés: cuánto hay que reponer para no quedarte sin stock, y lo que dejó de convenir al precio de Paraguay de hoy.')}
+      ${_tab('nuevos','🆕 Productos nuevos','Lo que todavía NO vendés: los candidatos que trae el chat de Paraguay y el armado de ese pedido.')}
+    </div>`;
+    el.innerHTML=_tabs+(pyVista==='nuevos'?candidatosHTML():(pyCanastaHTML()+el.innerHTML+embudoHTML()));
+  }
 }
 
 async function setPedidoProveedor(id){
