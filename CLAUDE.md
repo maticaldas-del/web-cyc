@@ -1574,6 +1574,56 @@ probaste. Ahí manda el margen.)
 **Y el aviso que hay que repetirle al chat:** *misma marca ≠ mismo producto*. Ya ofreció el Cabotine
 de **100 ml** cuando vendemos el de **30 ml**, y el Animale **Black** cuando vendemos el **For Men**.
 
+### EL TEXTO DEL SIMULADOR QUE VA ADENTRO DEL `PROMPT GUAY` (18/09/2026)
+
+El prompt que él arma decía *"Matías tiene un SIMULADOR: pedíselo"* **sin decir dónde está ni cómo
+se carga**, así que el chat no lo iba a encontrar. Éste es el bloque que va en su lugar, listo para
+pegar. Cuando pida el `PROMPT GUAY`, va adentro.
+
+> **EL SIMULADOR REAL DE PRECIO — es el que decide, no el % del robot**
+>
+> Está en el panel: **Pedidos → 🇵🇾 Paraguay → 🆕 Productos nuevos → 🧮 Simulador real de precio**.
+> Es un desplegable; se abre y se carga a mano. **No guarda nada ni toca ningún precio: sólo
+> calcula.** Se puede usar todas las veces que quieras.
+>
+> **Qué le cargás, campo por campo:**
+> 1. **precio en comprasparaguay (US$)** — el de la fila de NISSEI, **CRUDO, sin sumarle el 15%**.
+>    El simulador le suma el 15% solo. Si le cargás el precio ya con el 15%, el margen sale mal.
+> 2. **a cuánto lo vendés en ML** — el listado **MÁS BARATO** del producto exacto, que es el peor
+>    caso y el que manda.
+> 3. **en qué cuenta** — cambia el IIBB (Adriana 4,07 · Luciana 4,37 · Ayelen 5,95 · Matías 4,58).
+>    Si no sabés en cuál va, poné Ayelen: es la que más paga y deja el margen más bajo.
+> 4. **cuotas sin interés (%)** — **dejalo VACÍO** salvo que el vendedor más barato ofrezca cuotas
+>    sin interés DE VERDAD. La promo de 2 cuotas que ML muestra en todas las publicaciones **no
+>    cuesta nada** y no se carga.
+> 5. **cuántas entran en una caja** — de una caja de 70×70×70 cm. Mandar una caja a Full sale
+>    $17.500 y eso se reparte entre las unidades. Un perfume de 100 ml son ~100 por caja. **Si lo
+>    dejás vacío, ese costo no se cuenta y el simulador te avisa en ámbar** que el margen se ve
+>    mejor de lo que va a ser.
+> 6. **% de reclamos** — vacío. En un producto nuevo no hay con qué medirlo.
+> 7. **la comisión** — elegí de la lista un producto que ya vendemos **de la misma categoría y de
+>    precio parecido**. Si tenés el % exacto del simulador de ML, ponelo en la casilla de al lado:
+>    ése manda sobre el producto copiado y es el más seguro.
+>
+> **Qué te contesta:**
+> · la línea entera de la plata: comisión de ML, envío de Full, IIBB + monotributo, la mercadería
+>   puesta, lo que sale mandarlo a Full y los reclamos;
+> · **cuánto te queda en pesos y el margen** — **verde si llega al 25%**, ámbar si no;
+> · **a qué precio llegarías al 25%**, por si querés saber cuánto falta;
+> · y un desplegable *"¿y si lo vendo más caro?"*.
+>
+> **Tres cosas que el simulador te avisa y hay que respetar:**
+> · **La barrera de los $33.000.** Abajo de ese precio ML no cobra envío; arriba lo cobra siempre
+>   (~$6.190) y el margen se cae de golpe. **Ese precio no se cruza.**
+> · **La tabla de precios más altos NO ve los escalones de la comisión de ML.** Siempre te va a
+>   decir que más caro deja más, y eso es falso en algunos tramos. Sirve para mirar, no para
+>   decidir un precio.
+> · **En un producto nuevo el precio no lo elegís vos: lo pone el competidor más barato.** Un
+>   margen calculado a un precio más alto que el de él es el margen de una venta que no va a pasar.
+>
+> **El número del simulador gana sobre el % del robot.** Si no coinciden, el bueno es el del
+> simulador: el robot no puede saber cuántas unidades entran en una caja.
+
 **OJO CON LA DIRECCIÓN DEL PANEL: es pública y sin contraseña.** Cualquiera que la tenga entra —
 se comprobó el 17/09 cuando él le pasó el link al chat local y entró de una. Los datos que se ven
 ahí (costos, márgenes, ventas) salen de Firebase, y **si sus reglas están abiertas, los ve cualquiera
