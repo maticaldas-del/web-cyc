@@ -8356,6 +8356,11 @@ async function main() {
     // con datos de alguien adentro, la pregunta es la de siempre: ¿de quién es este dato?
     // Y no se conforma con un 200: mide el tamaño y avisa cuando la página se arma con JavaScript
     // y baja un cascarón vacío, que es el mismo error que leer un cero como buena noticia.
+    // **INSTAGRAM NO SE PUEDE LEER, probado el 18/09/2026**: contesta 200 con 615 KB y adentro no
+    // hay NADA —título "Instagram" y listo—, porque el texto sólo se lo sirve a los rastreadores
+    // que él conoce. Presentarse como uno de ésos sería hacerse pasar por otro, así que no se
+    // insiste: para un posteo de Instagram va una captura. Es lo mismo que se decidió con el 403
+    // de comprasparaguay.
     if (String(process.env.BILLING_PROBE || '').startsWith('verweb:')) {
       const _vwUrl = String(process.env.BILLING_PROBE).slice('verweb:'.length).trim();
       if (!/^https?:\/\//i.test(_vwUrl)) { console.log('Falta la dirección. Se usa así: verweb:https://...'); return; }
