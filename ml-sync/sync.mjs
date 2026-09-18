@@ -7955,15 +7955,18 @@ async function main() {
     }
     // BILLING_PROBE=guay → QUÉ CARGÓ DE VERDAD EL ASISTENTE DE COMPRAS. SOLO LEE.
     // Existe por una razón sola: **lo que un chat dice que hizo no es lo que quedó en la base.**
-    // El asistente que corre en la PC de Mati (el "PROMPT GUAY") escribe el código de Nissei
-    // (`codPy`, el MISMO que usa la canasta para armar el pedido), el precio de Paraguay (`nisseiUSD`) y, si él aprieta el botón, el costo
-    // (`costUSD`). Esto lee esos tres campos de `cyc/products` y los pone al lado, sin tocar nada.
+    // El asistente que corre en la PC de Mati (el "PROMPT GUAY") escribe SÓLO dos campos: el código
+    // de Nissei (`codPy`, el MISMO que usa la canasta para armar el pedido) y el precio de Paraguay
+    // (`nisseiUSD`). Esto los lee de `cyc/products` y los pone al lado del costo, sin tocar nada.
     //
-    // Los DOS números son distintos y confundirlos arruina todos los márgenes:
-    //   nisseiUSD = el precio CRUDO de comprasparaguay
-    //   costUSD   = ese precio × 1,15 (RECARGO_PY), o sea puesto en la oficina — el que usa el panel.
-    // Por eso se marca ⚠️ cuando el costo NO es el precio de Paraguay + 15%: ahí el margen que
-    // muestra la web está calculado con otro número.
+    // ESTAS LÍNEAS DECÍAN OTRA COSA HASTA EL 18/09/2026 y estaban al revés de la regla del 17/09:
+    // decían que el chat también escribe el `costUSD` *"si él aprieta el botón"* y que se marca ⚠️
+    // *"cuando el costo NO es el precio de Paraguay + 15%"*. Las dos cosas son falsas hoy: ese botón
+    // ("Usar este costo") SE SACÓ, y que los dos números sean distintos es lo NORMAL —
+    //   costUSD   = lo que PAGÓ por la mercadería que tiene
+    //   nisseiUSD = lo que saldría REPONERLA hoy (crudo; puesto en la oficina es × 1,15)
+    // El cuerpo del comando ya estaba arreglado; lo que quedó viejo fue este comentario, que es
+    // justo como se reintroduce un error: el próximo que lo lea va a "arreglar" lo que está bien.
     //
     // Y mira los de Bs As también: si el asistente cargó un precio de Paraguay en una ficha que
     // está marcada como Bs As, el dato existe y la pantalla de Paraguay no lo muestra — que es el
