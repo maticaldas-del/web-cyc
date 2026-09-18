@@ -1756,6 +1756,22 @@ Ahora cada salida deja **su nombre y su motivo**, el resumen los cuenta aparte (
 **chequea que los números sumen**: si no cierra imprime *"⚠️ NO CIERRA · hay N saliendo en
 silencio"*. Es el mismo freno que ya se le puso a `activarPausadasFull` el 17/09.
 
+### Y NO SE DESCARTA UN CANDIDATO POR UNA SOLA MEDICIÓN
+
+Dos corridas con **minutos** de diferencia dieron números muy distintos del mismo producto: el
+**Lattafa Fakhar 29,4% → 19,8%** y el **Yara Moi 28,3% → −2,7%**. Y en la misma tanda ML contestó
+*"no lo vende nadie"* de un catálogo que **dos minutos antes tenía 3 vendedores** (el Armaf Club de
+Nuit Blue Iconic, que es el primero de su pantalla).
+
+**El margen se mide contra el MÁS BARATO de la ficha**, así que alcanza con que un competidor baje
+un rato —o con que ML devuelva la lista incompleta— para hundirlo. Y descartar con eso escribe
+`no:true` y **saca el producto de la lista para siempre**.
+
+Ahora hace falta que **DOS mediciones seguidas** den abajo del piso. La primera guarda el número
+—el panel lo muestra en ámbar, que es la verdad de hoy— y queda *"en observación"* en el log.
+**Es la misma lección del marcado de cajas: lo que BORRA algo tiene que ser más exigente que lo que
+lo muestra.**
+
 ### LO QUE QUEDA ABIERTO Y HAY QUE MIRAR
 
 **Hay OTRO lugar en el robot leyendo `buy_box_winner`**, en el informe que dice si una publicación

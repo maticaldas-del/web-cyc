@@ -2915,6 +2915,13 @@ async function correrCandidatos(db, products, labels, accounts, soloPrueba, prue
   // el que la mira da por hecho que no había más. Ahora cada salida deja su nombre y su motivo, y
   // el resumen CHEQUEA que los números sumen.
   const sinDato = [];
+  // Los que se midieron y cayeron abajo del piso por primera vez. No se descartan (ver abajo) y
+  // tampoco entran en "los que dan": van a su propia lista para que la cuenta cierre.
+  const enObserva = [];
+  // Los descartados ANTES de preguntarle nada a ML (sin oferta de Nissei, sin precio, pasan el
+  // tope de US$250, marca frenada). Se cuentan aparte porque no consumen ninguna consulta y si se
+  // mezclan con los medidos la cuenta del final no cierra.
+  let baratos = 0;
   for (const [id, c] of entradas) {
     if (c.no || c.prodId) continue;            // ya decidido por él
     mirados++;
@@ -2925,10 +2932,10 @@ async function correrCandidatos(db, products, labels, accounts, soloPrueba, prue
       if (!soloPrueba) { await db.set(`cyc/candidatos_py/${id}/no`, true); await db.set(`cyc/candidatos_py/${id}/motivo`, motivo); await db.set(`cyc/candidatos_py/${id}/noTs`, Date.now()); }
     };
     // ── LOS DESCARTES BARATOS PRIMERO, que no cuestan ninguna consulta ──
-    if (c.enNissei === false) { await fuera('en comprasparaguay no lo ofrece Nissei: no se compra'); continue; }
-    if (!(usd > 0)) { await fuera('sin precio cargado: no se puede medir nada'); continue; }
-    if (puesto > CAND_TOPE_USD) { await fuera(`puesto sale US$ ${puesto.toFixed(2)}, pasa tu tope de US$ ${CAND_TOPE_USD}`); continue; }
-    if (c.marca && marcasNo[encodeURIComponent(String(c.marca).toLowerCase())]) { await fuera(`marca frenada: ${c.marca}`); continue; }
+    if (c.enNissei === false) { baratos++; await fuera('en comprasparaguay no lo ofrece Nissei: no se compra'); continue; }
+    if (!(usd > 0)) { baratos++; await fuera('sin precio cargado: no se puede medir nada'); continue; }
+    if (puesto > CAND_TOPE_USD) { baratos++; await fuera(`puesto sale US$ ${puesto.toFixed(2)}, pasa tu tope de US$ ${CAND_TOPE_USD}`); continue; }
+    if (c.marca && marcasNo[encodeURIComponent(String(c.marca).toLowerCase())]) { baratos++; await fuera(`marca frenada: ${c.marca}`); continue; }
     // ── EL QUE YA TIENE LA CUENTA HECHA SE EVALÚA IGUAL (18/09/2026) ────────────────────
     // Acá había un `continue` pelado con el comentario *"ya tiene la cuenta hecha"*. Lo que hacía
     // era **sacarlo de la lista de los que dan**: no se contaba en ningún contador, no entraba en
@@ -3110,21 +3117,44 @@ async function correrCandidatos(db, products, labels, accounts, soloPrueba, prue
     // ABAJO DEL PISO NO SE ESCONDE: cae en "descartados" CON el motivo y el número, así él puede
     // devolverlo si el precio de Paraguay baja. Un renglón que desaparece sin decir por qué es la
     // lista que miente.
-    if (margen < CAND_PISO_PCT) { await fuera(`da ${margen.toFixed(1)}%, abajo de tu piso de ${CAND_PISO_PCT}%`); continue; }
+    //
+    // PERO NO SE DESCARTA POR UNA SOLA MEDICIÓN QUE CONTRADICE A LA ANTERIOR (18/09/2026).
+    // Dos corridas con MINUTOS de diferencia dieron números muy distintos del mismo producto: el
+    // Lattafa Fakhar **29,4% → 19,8%** y el Yara Moi **28,3% → −2,7%**. El margen se mide contra
+    // el MÁS BARATO de la ficha, así que basta con que un competidor baje un rato —o con que ML
+    // devuelva la lista incompleta, que en la misma tanda contestó "no lo vende nadie" de un
+    // catálogo que dos minutos antes tenía 3 vendedores— para hundirlo.
+    // Descartar con eso marca `no:true` y **saca el producto de la lista para siempre** por un
+    // número que mañana vuelve. Es la misma lección del marcado de cajas: lo que borra algo tiene
+    // que ser más exigente que lo que lo muestra.
+    // Hace falta que DOS mediciones seguidas den abajo del piso. La primera guarda el número —el
+    // panel lo muestra en ámbar, que es la verdad de hoy— y avisa en el log.
+    if (margen < CAND_PISO_PCT) {
+      const antesM = (c.margen != null && isFinite(c.margen)) ? Number(c.margen) : null;
+      if (antesM != null && antesM >= CAND_PISO_PCT) {
+        console.log(`      ⚠️ da ${margen.toFixed(1)}%, abajo del piso, pero la medición anterior daba ${antesM.toFixed(1)}%. NO lo descarto por un solo número: si la próxima vuelta sigue abajo, ahí sí.`);
+        enObserva.push(`${c.nombre} → cayó a ${margen.toFixed(1)}% (antes ${antesM.toFixed(1)}%)`);
+        continue;
+      }
+      await fuera(`da ${margen.toFixed(1)}%, abajo de tu piso de ${CAND_PISO_PCT}%`); continue;
+    }
     nuevosQueDan.push({ id, c, margen, ganancia, mlPrecio, mlTit, puesto, mlMax, mlVendedores: vendedores });
   }
-  console.log(`\n── ${mirados} mirados · ${calculados} medidos hoy · ${yaCalc} ya venían medidos · ${consultas} consultas a ML · ${descartes.length} descartados · ${sinDato.length} sin dato · ${sinCuenta} sin alcanzar · ${nuevosQueDan.length} que dan ──`);
+  console.log(`\n── ${mirados} mirados = ${baratos} descartados sin preguntar + ${yaCalc} ya venían medidos + ${calculados} medidos hoy + ${sinDato.length} sin dato + ${sinCuenta} sin alcanzar ──`);
+  console.log(`   ${consultas} consultas a ML · ${descartes.length} descartados en total · ${enObserva.length} en observación · ${nuevosQueDan.length} que dan`);
   for (const d of descartes) console.log(`   ✕ ${d}`);
+  if (enObserva.length) {
+    console.log(`   — ${enObserva.length} cayeron abajo del piso PERO la medición anterior llegaba. NO los descarto por un solo número:`);
+    for (const d of enObserva) console.log(`      ⚠️ ${d}`);
+  }
   if (sinDato.length) {
     console.log(`   — ${sinDato.length} que NO se pudieron medir (no es que no sirvan: no hubo con qué hacer la cuenta):`);
     for (const d of sinDato) console.log(`      ? ${d}`);
   }
   if (sinCuenta) console.log(`   ⏳ ${sinCuenta} quedaron sin medir por el tope de ${CAND_MAX_ML} consultas por vuelta. No es que no sirvan: salen en la corrida siguiente.`);
-  // LA CUENTA TIENE QUE CERRAR, Y SI NO CIERRA SE DICE. Los descartados salen de los medidos, así
-  // que lo que se mira es: mirados = medidos + los que ya venían + los que no se pudieron + los
-  // que no se alcanzó a mirar. Si falta uno, se fue por un `continue` callado — y un candidato que
-  // desaparece en silencio puede ser justo el que daba 50%.
-  const _cierra = calculados + yaCalc + sinDato.length + sinCuenta;
+  // LA CUENTA TIENE QUE CERRAR, Y SI NO CIERRA SE DICE. Si falta uno, se fue por un `continue`
+  // callado — y un candidato que desaparece en silencio puede ser justo el que daba 50%.
+  const _cierra = baratos + yaCalc + calculados + sinDato.length + sinCuenta;
   if (_cierra !== mirados) console.log(`   ⚠️ NO CIERRA: miré ${mirados} y sólo puedo explicar ${_cierra}. Hay ${mirados - _cierra} saliendo en silencio.`);
   // ── LA LISTA DE LOS QUE DAN VA SIEMPRE AL LOG, AVISE O NO AVISE ──────────────────────
   // El MENSAJE de Telegram manda sólo lo NUEVO, a propósito (repetir todas las noches entrena a
