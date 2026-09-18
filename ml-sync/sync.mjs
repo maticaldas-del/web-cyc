@@ -7842,23 +7842,37 @@ async function main() {
         const d = dias(parseFloat(p.nisseiTs) || 0);
         if (cod) conCod++;
         if (isFinite(nu) && nu > 0) conPre++;
-        const esperado = isFinite(nu) && nu > 0 ? Math.round(nu * RECARGO_PY * 100) / 100 : null;
-        const ok = esperado != null && isFinite(cu) && Math.abs(cu - esperado) <= 0.01;
-        if (esperado != null && !ok) desfasados++;
-        if (cod && esperado != null && ok) completos++;
+        // ── LOS DOS NÚMEROS NO TIENEN QUE COINCIDIR, Y DECIR QUE SÍ ERA PELIGROSO ──────
+        // Hasta el 18/09/2026 este renglón decía *"debería ser US$ X ⚠️ NO COINCIDE"* y el resumen
+        // contaba *"con el costo desfasado: 21"* y *"listas del todo: 0"*. **Todo eso estaba al
+        // revés de la regla del 17/09**: `costUSD` es lo que PAGÓ y `nisseiUSD` lo que saldría
+        // REPONERLO hoy, así que lo NORMAL es que sean distintos. El texto invitaba a "arreglar"
+        // las 21 pisando el costo con el precio de Paraguay — que es exactamente el daño que hubo
+        // que reparar con `pycosto` el día anterior, y que con la suba automática prendida le
+        // habría subido precios de mercadería ya comprada más barata.
+        // Es la misma regla de siempre: **un renglón que invita a aplicarlo tiene que estar
+        // medido**. Ahora los dos números salen con su nombre y la conclusión es la que él usa
+        // para decidir: reponerlo hoy sale MÁS BARATO o MÁS CARO que lo que pagó.
+        const puesto = isFinite(nu) && nu > 0 ? Math.round(nu * RECARGO_PY * 100) / 100 : null;
+        const difPct = puesto != null && isFinite(cu) && cu > 0 ? ((puesto - cu) / cu) * 100 : null;
+        if (puesto != null && difPct != null && difPct > 1) desfasados++;   // más caro reponerlo
+        if (cod && puesto != null) completos++;                            // listo para pedir
         console.log(`── ${p.name}   (${p.id})`);
         console.log(`     código Nissei: ${cod || '— falta'}`
           + `   ·   precio Paraguay: ${isFinite(nu) && nu > 0 ? 'US$ ' + nu.toFixed(2) : '— falta'}`
           + (d != null ? `   ·   mirado hace ${d} d${d > 30 ? ' ⚠️ viejo' : ''}` : '   ·   sin fecha'));
-        console.log(`     costo en la ficha: ${isFinite(cu) && cu > 0 ? 'US$ ' + cu.toFixed(2) + ' = ' + money(Math.round(cu * tcG)) : '— SIN COSTO (se ve como todo ganancia)'}`
-          + (esperado != null ? `   ·   debería ser US$ ${esperado.toFixed(2)}   ${ok ? '✓' : '⚠️ NO COINCIDE'}` : ''));
+        console.log(`     pagaste: ${isFinite(cu) && cu > 0 ? 'US$ ' + cu.toFixed(2) + ' = ' + money(Math.round(cu * tcG)) : '— SIN COSTO (se ve como todo ganancia)'}`
+          + (puesto != null ? `   ·   reponerlo hoy: US$ ${puesto.toFixed(2)} (precio + 15%)` : '')
+          + (difPct != null ? `   ·   ${difPct > 1 ? '🔴 ' + difPct.toFixed(0) + '% MÁS CARO' : difPct < -1 ? '🟢 ' + Math.abs(difPct).toFixed(0) + '% MÁS BARATO' : '= igual'}` : ''));
         console.log('');
       }
       if (!py.length) console.log('(ninguna ficha está marcada como Paraguay)\n');
       console.log('── RESUMEN ──');
       console.log(`Con código: ${conCod} de ${py.length}   ·   con precio de Paraguay: ${conPre} de ${py.length}`);
-      console.log(`Listas del todo (código + precio + costo al día): ${completos}`);
-      console.log(`Con el costo desfasado del precio de Paraguay: ${desfasados}`);
+      console.log(`Listas para pedir (código + precio): ${completos}`);
+      console.log(`Más CARO reponerlo hoy que lo que pagaste: ${desfasados}  ·  el resto está igual o más barato.`);
+      console.log(`   (que el costo y el precio de Paraguay sean distintos es lo NORMAL: uno es lo que pagaste`);
+      console.log(`    y el otro lo que saldría reponerlo. El costo NO se pisa nunca con el precio de Paraguay.)`);
       if (otros.length) {
         console.log(`\n⚠️ ${otros.length} ficha(s) que NO están marcadas Paraguay y sin embargo tienen datos de Nissei cargados.`);
         console.log('   No salen en Pedidos → Paraguay, o sea que ese dato hoy no lo ve nadie:');

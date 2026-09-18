@@ -1763,6 +1763,25 @@ ninguna variable ni ningún `id` — sólo se agregaron 7 nombres, ninguno repet
 
 ## Cosas que ya pasaron (para no repetirlas)
 
+- **EL COMANDO `guay` DECÍA QUE EL COSTO "DEBERÍA SER" EL PRECIO DE PARAGUAY (18/09/2026).** Al
+  revisar qué había cargado el chat de compras, el renglón de cada ficha decía *"costo en la ficha:
+  US$ 13,80 · **debería ser US$ 16,10** ⚠️ NO COINCIDE"*, y el resumen cerraba con *"listas del
+  todo: **0**"* y *"con el costo **desfasado**: **21**"*.
+  **Todo eso está al revés de la regla del 17/09.** `costUSD` es lo que PAGÓ y `nisseiUSD` lo que
+  saldría REPONERLO hoy: **que sean distintos es lo normal, no un error**. El texto invitaba a
+  "arreglar" las 21 pisando el costo con el precio de Paraguay — que es **exactamente el daño que
+  hubo que reparar con `pycosto` el día anterior**, y que con la suba automática prendida le habría
+  subido precios de mercadería ya comprada más barata.
+  **El comando se escribió ANTES de esa regla y nadie le tocó el texto.** Es el patrón de siempre:
+  un renglón que invita a aplicarlo tiene que estar medido — y éste invitaba a romper la regla más
+  importante del día anterior.
+  **Cómo quedó:** los dos números salen con su nombre (*"pagaste US$ 27,90 · reponerlo hoy US$ 23,00
+  (precio + 15%)"*) y la conclusión es la que él usa para decidir: **🟢 más barato** o **🔴 más caro**
+  que lo que pagó. El resumen dice *"listas para pedir (código + precio)"* y *"más caro reponerlo
+  hoy que lo que pagaste: N"*, con la aclaración de que el costo no se pisa nunca.
+  Probado con los 6 casos reales de la corrida: Animale For Men −18% · Joystick Xbox −13% ·
+  Watch 5 Lite −1% · Salvador Dali = igual · VS +17% · Galaxy A07 +31%.
+
 - **ML TE PIDE MANDAR Y EL PANEL DICE QUE NO: LOS DOS ESTÁN BIEN (18/09/2026).** Él mandó las dos
   pantallas al lado: ML decía *"Enviá 4 u."* del Sábanas 105x190 Negro y del Gris Oscuro, y Armar
   caja decía *"Ninguna cuenta lo necesita. Dejalo en casa"*. Pregunta suya: *"que hago? me gustaría
