@@ -8525,6 +8525,50 @@ async function main() {
       } catch (err) { console.log('❌ ' + String(err.message || err).slice(0, 200)); }
       return;
     }
+    // BILLING_PROBE=probarcaja:<MLA del catálogo> → ¿ML DICE QUIÉN TIENE LA CAJA DE COMPRA?
+    //
+    // Nació el 18/09/2026: al empezar a guardar el precio de la caja de los candidatos, la primera
+    // corrida devolvió "ML no informa quién tiene la caja" en los 27, incluidos catálogos con
+    // vendedores adentro. Eso o es cierto o es que estamos mirando el campo equivocado, y las dos
+    // cosas se ven igual — que es exactamente el error anotado tantas veces acá: un cero que
+    // parece un dato. Esto NO toca nada: pide el catálogo de las tres formas posibles e imprime
+    // lo que ML contesta, para poder decidir mirando y no suponiendo.
+    if (String(process.env.BILLING_PROBE || '').startsWith('probarcaja:')) {
+      const _pcId = String(process.env.BILLING_PROBE).split(':')[1].trim().toUpperCase();
+      if (!/^MLA\d+$/.test(_pcId)) { console.log('Usá: probarcaja:MLA12345678 (el código del CATÁLOGO, el que empieza con /p/)'); return; }
+      let tokPC = null;
+      for (const label of labels) {
+        const acc = accounts[label]; if (!acc?.refresh_token) continue;
+        try {
+          const t = await mlRefresh(ML_CLIENT_ID, ML_CLIENT_SECRET, acc.refresh_token);
+          await db.patch('mlapi/tokens/' + label, { refresh_token: t.refresh_token, updated_ts: Date.now() });
+          tokPC = t.access_token; break;
+        } catch { /* probamos con la siguiente */ }
+      }
+      if (!tokPC) { console.log('❌ No pude sacar token de ninguna cuenta.'); return; }
+      console.log(`\n══ ¿QUÉ DICE ML DE LA CAJA DE COMPRA DE ${_pcId}? (solo lee) ══\n`);
+      for (const ruta of [`/products/${_pcId}`, `/products/${_pcId}?attributes=id,name,buy_box_winner`]) {
+        try {
+          const d = await mlGet(ruta, tokPC);
+          console.log(`✅ ${ruta}`);
+          console.log(`   campos que trae: ${Object.keys(d || {}).join(', ')}`);
+          console.log(`   buy_box_winner → ${d && d.buy_box_winner ? JSON.stringify(d.buy_box_winner).slice(0, 300) : (d && 'buy_box_winner' in d ? 'VIENE EL CAMPO PERO VACÍO' : 'NO VIENE EL CAMPO')}`);
+        } catch (e) { console.log(`❌ ${ruta} → ${String(e.message || e).slice(0, 140)}`); }
+      }
+      try {
+        const it = await mlGet(`/products/${_pcId}/items`, tokPC);
+        const res = (it && it.results) || [];
+        console.log(`\n✅ /products/${_pcId}/items → ${res.length} vendedor(es)`);
+        if (res[0]) console.log(`   campos de cada vendedor: ${Object.keys(res[0]).join(', ')}`);
+        for (const r of res.slice(0, 8)) {
+          console.log(`   ${money(Math.round(r.price || 0)).padStart(12)} · ${String(r.item_id || '?').padEnd(14)} · stock ${String(r.available_quantity ?? '?').padStart(4)} · ${(r.tags || []).join('/') || 'sin tags'}`);
+        }
+        console.log(`\n   crudo del primero: ${JSON.stringify(res[0] || {}).slice(0, 700)}`);
+      } catch (e) { console.log(`❌ /products/${_pcId}/items → ${String(e.message || e).slice(0, 140)}`); }
+      console.log('\n   Si el campo NO VIENE en ninguna de las dos formas, entonces ML dejó de publicarlo acá');
+      console.log('   y el precio de la caja hay que sacarlo de otro lado — NO inventarlo.');
+      return;
+    }
     // BILLING_PROBE=probarweb[:<texto a buscar>] → ¿PUEDE EL ROBOT MIRAR PRECIOS SOLO?
     // Pregunta suya del 17/09/2026: *"me encantaria que vos puedas entrar en ml, no hay forma
     // alguna que vos extraigas esos precios?"*. Manejar dos chats —uno que mira ML con Chrome y
