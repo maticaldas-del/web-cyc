@@ -2307,7 +2307,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='19.60';
+const APP_VERSION='19.61';
 // El problema real que esto resuelve no es curiosidad: es que el celular guarda la app y sigue
 // mostrando la de ayer sin avisar. Varias veces se revisó un cambio que ya estaba subido y no se
 // veía. Por eso, además del número, el chip avisa cuando hay una versión nueva esperando.
@@ -3085,6 +3085,62 @@ const UMBRAL_ENVIO_GRATIS=33000;
 // leer esa página: contesta 403 aunque se le pida igual que un navegador. Por eso lo carga él,
 // o el chat que mira los precios.
 const RECARGO_PY=1.15;
+// ── EL CARGO FIJO DE ML, Y POR QUÉ LA COMISIÓN NO ES UN % PAREJO ──────────────────────────
+// Medido con `comisiones` el 11/09/2026 preguntándole a ML publicación por publicación: la
+// comisión NO es un porcentaje parejo, es **un % del precio MÁS un cargo fijo por venta**. Por eso
+// el mismo producto paga 24,3% a $14.360 y 41,6% a $4.880 — el cargo fijo pesa cada vez más cuanto
+// más barato es. Sacando el cargo de esos cinco números medidos, el % de base queda entre 16,0% y
+// 16,6% en los cinco: o sea que el modelo cierra.
+const ML_CARGO_FIJO=1230;
+// El peor envío de Full medido en ventas REALES arriba de la barrera. Es el MISMO número que usa
+// el robot para los candidatos de Paraguay (`CAND_ENVIO_ARRIBA`). Errar para el lado caro hace ver
+// el margen MENOR, que es el lado seguro cuando el número decide una compra.
+const SIM_ENVIO_ARRIBA=6190;
+// ── LA COMISIÓN DE ML LLEVADA A OTRO PRECIO, EN UNA SOLA FUNCIÓN (18/09/2026) ─────────────
+// La usan los DOS simuladores: el de la ficha (mismo producto, otro precio) y el de Paraguay
+// (producto nuevo, tomando la comisión de uno parecido). Son el mismo problema, así que tiene que
+// ser la misma cuenta — con dos copias, la ficha diría un número y Paraguay otro.
+//
+// Hasta hoy el simulador de la ficha estiraba un % PAREJO, y eso está mal a propósito y lo decía
+// en pantalla: *"ML cobra además un cargo fijo por venta y ese cargo NO se puede separar del % con
+// un solo precio de referencia"*. **Sí se puede**, si se sabe cuánto es el cargo fijo — y se midió.
+// Sacándolo primero, lo que queda es el % de la categoría, que ese sí es parejo.
+//
+// CUÁNDO NO SE SEPARA: en un producto muy barato el cargo fijo es casi toda la comisión y la resta
+// da un % sin sentido (negativo o enorme). Ahí se vuelve al % parejo y **se avisa**, en vez de
+// devolver un número inventado.
+function comisionEnPrecio(comRef,precioRef,precioNuevo){
+  const cR=Number(comRef)||0, pR=Number(precioRef)||0, pN=Number(precioNuevo)||0;
+  if(!(cR>0)||!(pR>0)||!(pN>0))return null;
+  const basePct=(cR-ML_CARGO_FIJO)/pR;
+  // La banda de lo CREÍBLE sale de lo medido: ML cobró entre 15,7% y 16,6% de base en los cinco
+  // productos del 11/09, y la Clásica más barata que se vio es 12,5% (el Watch 4). Fuera de 8%-30%
+  // la resta no está separando nada real — pasa cuando el producto de referencia es mucho más
+  // barato que el que se simula y el cargo fijo se come casi toda su comisión. Ahí no se elige
+  // entre dos números malos: se devuelve el % parejo y se AVISA que esa referencia no sirve.
+  if(!(basePct>0.08&&basePct<0.30))return {com:Math.round(pN*(cR/pR)),basePct:null,plano:true};
+  return {com:Math.round(basePct*pN+ML_CARGO_FIJO),basePct,plano:false};
+}
+// ── LA LÍNEA DEL DINERO, EN UNA SOLA FUNCIÓN ──────────────────────────────────────────────
+// Es la MISMA cuenta que `margenMLDe`, con las partes sueltas en vez de sacadas de una ficha:
+//   costoBase = mercadería (con envío/embalaje y % de reclamos adentro) + IIBB + monotributo
+//   costo     = costoBase + lo que cobra Full          ← el divisor, regla suya del 01/09
+//   ganancia  = lo que te deposita ML − costoBase      ← NO se le resta Full dos veces
+// La gestión de Full se suma al COSTO o se resta del PRECIO, nunca las dos cosas.
+function simMargen(x){
+  const precio=Math.round(Number(x.precio)||0);
+  const merc=Math.round(Number(x.mercaderia)||0);
+  const gest=Math.round(Number(x.gest)||0);
+  const com=Math.round(Number(x.comision)||0);
+  const imp=Math.round(precio*(Number(x.impPct)||0)/100);
+  const cuo=Math.round(precio*(Number(x.cuotasPct)||0)/100);
+  const neto=precio-com-gest-cuo;
+  const costoBase=merc+imp;
+  const costo=costoBase+gest;
+  const ganancia=neto-costoBase;
+  return {precio,com,gest,cuo,neto,imp,merc,costoBase,costo,ganancia,
+    margen:costo>0?(ganancia/costo*100):null};
+}
 function precioParaMargen(p,pct){
   const r=margenMLDe(p);
   const precio=Math.round(Number(p.netoCalcPrecio)||0);
@@ -3209,7 +3265,13 @@ function flujoPlataHTML(p){
   const comPctReal=precio>0?(precio-r.netoCalc-(r.gest||0))/precio:0;   // comisión de hoy ÷ precio de hoy
   const impPctReal=precio>0?(r.mlExtra||0)/precio:0;                    // IIBB + mono, también % del precio
   const gest=r.gest||0;
-  const com=Math.round(simulando?precioUsado*comPctReal:(precio-r.netoCalc-gest));
+  const comHoy=Math.round(precio-r.netoCalc-gest);
+  // Al simular otro precio la comisión se lleva con `comisionEnPrecio`, que separa el cargo fijo
+  // del % de la categoría. Antes se estiraba el % parejo y el número quedaba corto en los precios
+  // bajos y largo en los altos — el propio cartel de abajo lo decía. Es la MISMA función que usa el
+  // simulador de Paraguay: si estuvieran separadas, las dos pantallas darían números distintos.
+  const _cSim=simulando?comisionEnPrecio(comHoy,precio,precioUsado):null;
+  const com=simulando?(_cSim?_cSim.com:Math.round(precioUsado*comPctReal)):comHoy;
   const neto=simulando?Math.round(precioUsado-com-gest):Math.round(r.netoCalc);
   const imp=Math.round(simulando?precioUsado*impPctReal:(r.mlExtra||0));
   const merc=Math.round(r.costoBase-(r.mlExtra||0));   // mercadería + envío/embalaje + % reclamos: NO depende del precio
@@ -8757,6 +8819,157 @@ function pedNuevosHTML(vivos){
     ${P.filas.length?`<div style="margin-top:9px"><button class="btn" style="font-size:.6rem;padding:4px 10px" onclick="pedNuevosVaciar()">Vaciar el pedido</button></div>`:''}
   </div>`;
 }
+// ── SIMULADOR REAL DE PRECIO (18/09/2026) ─────────────────────────────────────────────────
+// Pedido suyo: *"el chat local que busca precios en compraparaguai tiene problemas al saber cuanto
+// quedaria exactamente a un producto de ganancia. no lo que nos da ml, sino con todo incluido,
+// impuesto, ganancia, full. TODO."*
+//
+// POR QUÉ NO ALCANZA EL SIMULADOR DE ML, y lo dijo él mismo: *"ese simulador no tiene en cuenta
+// todo (por ejemplo impuestos, ganancias, full)"*. Es exacto — ML te dice cuánto te deposita y
+// nada más: no sabe de la mercadería, ni del 15% de Paraguay, ni del IIBB, ni del monotributo, ni
+// de lo que cobra Full, ni del % de reclamos. Todo eso es nuestro y es lo que decide si conviene.
+//
+// DE DÓNDE SALE CADA NÚMERO, que es lo único que importa acá:
+//  · la MERCADERÍA  → el precio de comprasparaguay en US$ × 1,15 × el dólar de hoy. El 15% ya
+//    incluye la compra del dólar y el flete: no se le suma nada más.
+//  · la COMISIÓN    → decisión suya del 18/09: **se copia de un producto que ya vendés**. Es el
+//    único número REAL que la web puede tener: preguntarle a ML cuánto cobra necesita la llave y
+//    eso sólo lo puede hacer el robot. Se lleva al precio nuevo con `comisionEnPrecio`, que separa
+//    el cargo fijo del % de la categoría. **Si la categoría no es la misma, el número se va** — por
+//    eso se puede pisar con el % exacto que muestra ML.
+//  · el ENVÍO DE FULL → la barrera de los $33.000: abajo ML no le cobra nada al vendedor y es CERO
+//    de verdad; arriba cobra siempre, y se usa el PEOR medido en ventas reales.
+//  · IIBB + MONOTRIBUTO → por cuenta, los mismos % que usa todo el panel.
+//  · las CUOTAS → arrancan en CERO, y no es un descuido. Ver abajo.
+//
+// LO DE LAS CUOTAS, QUE LO MARCÓ ÉL Y ESTÁ MEDIDO: *"ml tiene una promo de 2 cuotas, quizas el bot
+// ve que tiene 2 cuotas y quiere agregarlas, en verdad esa promo esta en todas aunque vos elijas
+// 'sin cuotas'"*. Tiene razón, y el panel NUNCA miró si la publicación muestra cuotas: el costo
+// sale de lo que Mercado Pago COBRÓ de verdad en cada venta (`financing_add_on_fee`, que mide el
+// comando `cuotas`). O sea que la promo de 2 cuotas suma CERO, porque no se cobra. Cuando hay
+// cuotas sin interés de verdad el cargo es enorme —en un Samsung fueron 19,2% del precio, más que
+// toda la ganancia de esa venta— y por eso el campo existe, pero vacío.
+//
+// NO CALCULA NADA PROPIO: llama a `simMargen` y a `comisionEnPrecio`, las mismas que usa la ficha.
+function simPYRefs(){
+  // Los productos que sirven de referencia son los que tienen comisión MEDIDA: el robot les
+  // calculó el neto al precio de hoy. Sin eso no hay comisión que copiar.
+  return (state.products||[]).map(p=>{
+    const r=margenMLDe(p);
+    const precio=Math.round(Number(r.precio)||0);
+    if(!(precio>0)||r.netoCalc==null)return null;
+    const com=Math.round(precio-r.netoCalc-(r.gest||0));
+    if(!(com>0))return null;
+    return {id:p.id,nombre:p.name||p.id,precio,com,pct:com/precio*100};
+  }).filter(Boolean).sort((a,b)=>String(a.nombre).localeCompare(String(b.nombre),'es'));
+}
+function simPYHTML(){
+  const refs=simPYRefs();
+  const tc=curTC();
+  const cuentas=['Adriana','Luciana','Ayelen','Matias'];
+  const inp=(id,ph,val,w)=>`<input id="${id}" value="${val||''}" placeholder="${ph}" oninput="simPYCalc()" style="width:${w||96}px;font-size:.7rem;padding:5px 7px;background:var(--surface2);border:1px solid var(--border);border-radius:6px;color:var(--text);font-family:'DM Mono',monospace">`;
+  const lab=(t,tit)=>`<div style="font-size:.57rem;color:var(--muted);margin-bottom:3px"${tit?` title="${String(tit).replace(/"/g,'&quot;')}"`:''}>${t}</div>`;
+  return `<details style="margin:12px 0 4px">
+    <summary style="cursor:pointer;font-size:.74rem;font-weight:700">🧮 Simulador real de precio <span style="font-weight:400;color:var(--muted);font-size:.85em">· cuánto te queda DE VERDAD, con todo adentro</span></summary>
+    <div style="margin-top:9px;padding:12px 13px;background:var(--surface2);border-radius:10px;border:1px solid var(--border)">
+      <div style="font-size:.61rem;color:var(--muted);line-height:1.6;margin-bottom:10px">
+        El simulador de ML te dice cuánto te deposita y nada más. Éste le suma lo que ML no sabe:
+        la mercadería con el 15% de Paraguay, el IIBB, el monotributo, lo que cobra Full y los reclamos.
+        ${tc?'':'<br><span style="color:var(--red)">⚠️ No hay dólar cargado: el costo en pesos va a dar cero.</span>'}
+      </div>
+      <div style="display:flex;gap:12px;flex-wrap:wrap;align-items:flex-start">
+        <div>${lab('precio en comprasparaguay','El precio en DÓLARES que muestra comprasparaguay, crudo. El panel le suma el 15%.')}
+          <div style="display:flex;align-items:center;gap:5px">US$ ${inp('spy-usd','0,00','',78)}</div></div>
+        <div>${lab('a cuánto lo vendés en ML','El precio que va a pagar el comprador.')}$ ${inp('spy-precio','0','',100)}</div>
+        <div>${lab('en qué cuenta','Cada cuenta tiene su % de IIBB: Adriana 4,07 · Luciana 4,37 · Ayelen 5,95 · Matías 4,58.')}
+          <select id="spy-cuenta" onchange="simPYCalc()" style="font-size:.7rem;padding:5px 7px;background:var(--surface2);border:1px solid var(--border);border-radius:6px;color:var(--text)">
+            ${cuentas.map(c=>`<option value="${c}">${c}</option>`).join('')}
+          </select></div>
+        <div>${lab('cuotas sin interés (%)','Dejalo VACÍO salvo que vayas a ofrecer cuotas sin interés de verdad. La promo de 2 cuotas que ML pone en todas las publicaciones NO cuesta nada: el panel mide lo que Mercado Pago cobró de verdad, y ahí da cero. Cuando hay cuotas posta el cargo es enorme (19,2% en un Samsung).')}${inp('spy-cuo','0',' ',70)}</div>
+      </div>
+      <div style="display:flex;gap:12px;flex-wrap:wrap;align-items:flex-start;margin-top:10px">
+        <div style="flex:1;min-width:260px">${lab('copiá la comisión de un producto parecido','La web no le puede preguntar a ML cuánto cobra (eso necesita la llave, y sólo la tiene el robot). Así que se toma la comisión REAL de un producto que ya vendés. Tiene que ser de la MISMA categoría: si no, el número se va.')}
+          <select id="spy-ref" onchange="simPYCalc()" style="width:100%;max-width:380px;font-size:.68rem;padding:5px 7px;background:var(--surface2);border:1px solid var(--border);border-radius:6px;color:var(--text)">
+            <option value="">— elegí uno —</option>
+            ${refs.map(r=>`<option value="${r.id}">${String(r.nombre).slice(0,52)} · ${r.pct.toFixed(1)}% a ${fmt(r.precio)}</option>`).join('')}
+          </select>
+          ${refs.length?'':'<div style="font-size:.58rem;color:var(--amber);margin-top:3px">No hay ningún producto con comisión medida todavía. Corré <b>netoweb</b> o poné el % a mano acá al lado.</div>'}
+        </div>
+        <div>${lab('…o poné el % exacto de ML','Si lo tenés del simulador de ML, éste manda sobre el producto parecido. Es el número más seguro.')}${inp('spy-compct','',' ',70)} %</div>
+      </div>
+      <div id="spy-out" style="margin-top:11px"></div>
+    </div>
+  </details>`;
+}
+function simPYCalc(){
+  const out=document.getElementById('spy-out');
+  if(!out)return;
+  const g=(id)=>{const e=document.getElementById(id);return e?e.value:'';};
+  const usd=parseFloat(String(g('spy-usd')).replace(',','.'))||0;
+  const precio=Math.round(parseMoney(g('spy-precio'))||0);
+  const cuenta=g('spy-cuenta')||'Matias';
+  const cuoPct=parseFloat(String(g('spy-cuo')).replace(',','.'))||0;
+  const comPctMano=parseFloat(String(g('spy-compct')).replace(',','.'))||0;
+  const refId=g('spy-ref');
+  const tc=curTC();
+  const falta=[];
+  if(!(usd>0))falta.push('el precio de comprasparaguay');
+  if(!(precio>0))falta.push('a cuánto lo vendés');
+  if(!(comPctMano>0)&&!refId)falta.push('de dónde sacar la comisión');
+  if(falta.length){
+    out.innerHTML=`<div style="font-size:.64rem;color:var(--muted)">Falta ${falta.join(' · ')}.</div>`;
+    return;
+  }
+  // La mercadería PUESTA en la oficina: el precio de Paraguay más el 15%, pasado a pesos.
+  const puestoUSD=Math.round(usd*RECARGO_PY*100)/100;
+  const merc=Math.round(puestoUSD*tc);
+  // La comisión: manda el % tipeado a mano; si no, la del producto parecido llevada a este precio.
+  let com=0,notaCom='',plano=false;
+  if(comPctMano>0){
+    com=Math.round(precio*comPctMano/100);
+    notaCom=`el ${comPctMano.toFixed(1)}% que pusiste a mano`;
+  }else{
+    const ref=simPYRefs().find(r=>r.id===refId);
+    if(!ref){out.innerHTML='<div style="font-size:.64rem;color:var(--red)">Ese producto ya no tiene comisión medida. Elegí otro.</div>';return;}
+    const c=comisionEnPrecio(ref.com,ref.precio,precio);
+    if(!c){out.innerHTML='<div style="font-size:.64rem;color:var(--red)">No pude llevar esa comisión a este precio.</div>';return;}
+    com=c.com;plano=c.plano;
+    notaCom=plano
+      ? `copiada de <b>${String(ref.nombre).slice(0,40)}</b> como % parejo (${ref.pct.toFixed(1)}%): en ese producto el cargo fijo es casi toda la comisión y no se puede separar`
+      : `copiada de <b>${String(ref.nombre).slice(0,40)}</b> · ${(c.basePct*100).toFixed(1)}% de su categoría + ${fmt(ML_CARGO_FIJO)} de cargo fijo`;
+  }
+  // El envío de Full: la barrera de los $33.000. Abajo es CERO de verdad, arriba ML cobra siempre.
+  const gest=precio<UMBRAL_ENVIO_GRATIS?0:SIM_ENVIO_ARRIBA;
+  const impPct=mlExtraPct(cuenta)+monoPct();
+  const r=simMargen({precio,mercaderia:merc,gest,comision:com,impPct,cuotasPct:cuoPct});
+  const col=r.margen==null?'var(--muted)':(r.margen>=25?'var(--green)':r.margen>=0?'var(--amber)':'var(--red)');
+  const fila=(t,v,sg,tit)=>`<div style="display:flex;justify-content:space-between;gap:10px;padding:2px 0;font-size:.66rem"${tit?` title="${String(tit).replace(/"/g,'&quot;')}"`:''}><span style="color:var(--muted)">${t}</span><span style="font-family:'DM Mono',monospace">${sg||''}${fmt(Math.abs(v))}</span></div>`;
+  out.innerHTML=`<div style="background:var(--surface);border-radius:9px;padding:11px 13px">
+    ${fila('paga el comprador',r.precio,'')}
+    ${fila('comisión de ML',r.com,'−')}
+    ${fila(precio<UMBRAL_ENVIO_GRATIS?'envío de Full (abajo de $33.000 no cobra)':'envío de Full',r.gest,'−','Abajo de los $33.000 ML no le cobra envío al vendedor: ahí es CERO de verdad, no una estimación. Arriba cobra siempre, y se usa el peor medido en ventas reales.')}
+    ${r.cuo?fila('cuotas sin interés',r.cuo,'−'):''}
+    <div style="border-top:1px solid var(--border);margin:4px 0"></div>
+    ${fila('te deposita ML',r.neto,'')}
+    ${fila('IIBB + monotributo ('+impPct.toFixed(2)+'%)',r.imp,'−')}
+    ${fila('mercadería puesta (US$ '+puestoUSD.toFixed(2)+')',r.merc,'−','US$ '+usd.toFixed(2)+' de comprasparaguay + 15% = US$ '+puestoUSD.toFixed(2)+', al dólar de hoy.')}
+    <div style="border-top:1px solid var(--border);margin:6px 0"></div>
+    <div style="display:flex;justify-content:space-between;align-items:baseline;gap:10px">
+      <span style="font-size:.66rem;color:var(--muted)">te queda</span>
+      <span style="font-size:1.5rem;font-weight:700;color:${col}">${fmt(Math.round(r.ganancia))}</span>
+    </div>
+    <div style="display:flex;justify-content:space-between;align-items:baseline;gap:10px">
+      <span style="font-size:.66rem;color:var(--muted)">de margen</span>
+      <span style="font-size:1.1rem;font-weight:700;color:${col}">${r.margen==null?'—':r.margen.toFixed(1)+'%'}</span>
+    </div>
+    <div style="font-size:.58rem;color:var(--muted);line-height:1.6;margin-top:7px">
+      comisión: ${notaCom}.
+      ${plano?'<br><span style="color:var(--amber)">⚠️ Ese producto no sirve para separar el cargo fijo. Elegí uno de precio parecido al que estás simulando, o poné el % exacto de ML.</span>':''}
+      ${precio>=UMBRAL_ENVIO_GRATIS?'<br><span style="color:var(--amber)">⚠️ Arriba de los $33.000 el envío es obligatorio y lo pagás vos. Acá va el PEOR medido ('+fmt(SIM_ENVIO_ARRIBA)+'): el real puede ser menor, así que el margen de verdad puede ser un poco mejor.</span>':''}
+      ${r.margen!=null&&r.margen<25?'<br><span style="color:var(--amber)">Abajo de tu piso del 25%.</span>':''}
+    </div>
+  </div>`;
+}
 function candidatosHTML(){
   const todos=candList();
   const vivos=todos.filter(c=>!c.no&&!c.prodId&&(candDias(c)==null||candDias(c)<=CAND_VENCE_DIAS));
@@ -8771,13 +8984,13 @@ function candidatosHTML(){
     </div>
   </div>`;
   if(!vivos.length){
-    return cab+candFormHTML()+`<div class="empty-msg" style="font-size:.68rem;line-height:1.6">Todavía no hay ninguno.<br>
+    return cab+simPYHTML()+candFormHTML()+`<div class="empty-msg" style="font-size:.68rem;line-height:1.6">Todavía no hay ninguno.<br>
       El chat de Paraguay los carga cuando encuentra algo en comprasparaguay <b>que Nissei ofrezca</b> (ahí salen juntos el código, el precio y que hay stock), cueste menos de US$ 250 puesto y no sea de una marca que ML frena.</div>`;
   }
   // El que más margen deja, primero. Los que todavía no tienen la cuenta hecha van al final:
   // no se pueden comparar contra los medidos y ponerlos arriba sería invitar a decidir sin número.
   vivos.sort((a,b)=>(b.margen??-999)-(a.margen??-999));
-  return cab+pedNuevosHTML(vivos)+candFormHTML()+vivos.map(c=>{
+  return cab+simPYHTML()+pedNuevosHTML(vivos)+candFormHTML()+vivos.map(c=>{
     const d=candDias(c);
     const usd=parseFloat(c.usd)||0;
     const puesto=usd>0?Math.round(usd*RECARGO_PY*100)/100:0;

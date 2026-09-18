@@ -1780,6 +1780,77 @@ gana o pierde la caja de catálogo. Si el campo viene siempre null, ese informe 
 el panel**: el robot escribe `price_to_win` en `cyc/mllinks/<MLA>/caja` una vez por hora, que es de
 donde sale la columna "Caja ML". Hay que hacerlo leer de ahí.
 
+## EL SIMULADOR REAL DE PRECIO (18/09/2026)
+
+Pedido suyo: *"el chat local que busca precios en compraparaguai tiene problemas al saber cuanto
+quedaria exactamente a un producto de ganancia. no lo que nos da ml, sino con todo incluido,
+impuesto, ganancia, full. TODO."*
+
+**Y por qué no alcanza con el simulador de ML, dicho por él:** *"ese simulador no tiene en cuenta
+todo (por ejemplo impuestos, ganancias, full)"*. Es exacto: ML te dice cuánto te deposita y nada
+más. No sabe de la mercadería, ni del 15% de Paraguay, ni del IIBB, ni del monotributo, ni de lo
+que cobra Full, ni del % de reclamos.
+
+**Dónde está:** Pedidos → 🇵🇾 Paraguay → 🆕 Productos nuevos → **🧮 Simulador real de precio**
+(elegido por él). Es un desplegable: no empuja hacia abajo el pedido.
+
+### DE DÓNDE SALE CADA NÚMERO
+
+| | de dónde |
+|---|---|
+| mercadería | el precio de comprasparaguay en US$ **× 1,15** × el dólar de hoy |
+| **comisión de ML** | **se copia de un producto que ya vendés** — decisión suya |
+| envío de Full | la barrera: **cero de verdad** abajo de $33.000 · el **peor medido** ($6.190) arriba |
+| IIBB + monotributo | por cuenta, los mismos % que usa todo el panel |
+| cuotas | **arranca en CERO**, y no es un olvido (ver abajo) |
+
+**LA COMISIÓN SE COPIA PORQUE LA WEB NO LE PUEDE PREGUNTAR A ML.** El endpoint existe
+(`/sites/MLA/listing_prices`) pero necesita el token, y eso sólo lo tiene el robot. Él eligió
+copiarla de un producto parecido, que es el único número **REAL** disponible al instante. Se puede
+pisar con el % exacto de ML, y ése manda.
+
+### LO DE LAS CUOTAS, QUE LO MARCÓ ÉL Y YA ESTABA CUBIERTO
+
+Textual: *"ml tiene una promo de 2 cuotas, quizas el bot ve que tiene 2 cuotas y quiere agregarlas,
+en verdad esa promo esta en todas aunque vos elijas 'sin cuotas'"*.
+**Tenía razón en el riesgo y el panel nunca cayó en él**, porque no mira lo que la publicación
+MUESTRA: el costo sale de lo que Mercado Pago **cobró de verdad** en cada venta
+(`financing_add_on_fee`, que mide el comando `cuotas`). La promo de 2 cuotas suma **cero**, porque
+no se cobra. Cuando hay cuotas sin interés de verdad el cargo es enorme —en un Samsung **19,2% del
+precio, más que toda la ganancia de esa venta**— y por eso el campo existe, pero vacío.
+
+### Y DE PASO SE ARREGLÓ EL SIMULADOR DE LA FICHA: LA COMISIÓN NO ES UN % PAREJO
+
+El simulador de la ficha estiraba un **% parejo** al cambiar el precio, y él mismo lo avisaba en
+pantalla: *"ML cobra además un cargo fijo por venta y ese cargo NO se puede separar del % con un
+solo precio de referencia"*. **Sí se puede separar**, porque el cargo fijo está medido
+(**$1.230**, `ML_CARGO_FIJO`): se le resta primero y lo que queda es el % de la categoría, que ése
+sí es parejo.
+
+**Medido contra los números de ML del 11/09** (tomando el de $14.360 como referencia):
+
+| precio | ML cobró | modelo nuevo | % parejo (lo de antes) |
+|---|---|---|---|
+| $11.999 | 26,6% | 26,0% (−0,6) | 24,3% (**−2,3**) |
+| $9.230 | 29,9% | 29,1% (−0,8) | 24,3% (**−5,6**) |
+| $6.000 | 36,7% | 36,2% (−0,5) | 24,3% (**−12,4**) |
+| $4.880 | 41,6% | 40,9% (−0,7) | 24,3% (**−17,3**) |
+
+**Erra menos de 1 punto donde el método viejo erraba hasta 17.** Y sacando el cargo fijo de los
+cinco precios medidos, la base queda entre **15,7% y 16,6%** en los cinco: el modelo cierra solo.
+
+**Vive en UNA función (`comisionEnPrecio`) que usan los DOS simuladores**, y la línea del dinero en
+otra (`simMargen`, la misma cuenta que `margenMLDe`). Con dos copias, la ficha diría un número y
+Paraguay otro sobre el mismo producto — el error anotado siete veces en este archivo.
+
+**CUÁNDO LA REFERENCIA NO SIRVE Y SE AVISA:** si al restar el cargo fijo la base queda fuera de
+**8%–30%**, la resta no está separando nada real (pasa cuando el producto de referencia es mucho
+más barato que el simulado y el cargo fijo se come casi toda su comisión). Ahí **no se elige entre
+dos números malos**: se vuelve al % parejo y el renglón dice que esa referencia no sirve.
+La banda sale de lo medido: 15,7%–16,6% en los cinco de ML, y 12,5% la Clásica más barata vista
+(el Watch 4). Probado: una referencia con base 5,7% y otra con 40% **avisan**, y la Clásica de
+electrónica al 12,5% **pasa**.
+
 ## EL PRECIO DE PARAGUAY NO PISA EL COSTO. NUNCA. (17/09/2026)
 
 Es la regla más importante del día y la puso él en dos frases:
