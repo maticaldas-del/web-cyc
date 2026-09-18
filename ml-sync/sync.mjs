@@ -8534,39 +8534,62 @@ async function main() {
     // parece un dato. Esto NO toca nada: pide el catálogo de las tres formas posibles e imprime
     // lo que ML contesta, para poder decidir mirando y no suponiendo.
     if (String(process.env.BILLING_PROBE || '').startsWith('probarcaja:')) {
-      const _pcId = String(process.env.BILLING_PROBE).split(':')[1].trim().toUpperCase();
-      if (!/^MLA\d+$/.test(_pcId)) { console.log('Usá: probarcaja:MLA12345678 (el código del CATÁLOGO, el que empieza con /p/)'); return; }
-      let tokPC = null;
-      for (const label of labels) {
-        const acc = accounts[label]; if (!acc?.refresh_token) continue;
-        try {
-          const t = await mlRefresh(ML_CLIENT_ID, ML_CLIENT_SECRET, acc.refresh_token);
-          await db.patch('mlapi/tokens/' + label, { refresh_token: t.refresh_token, updated_ts: Date.now() });
-          tokPC = t.access_token; break;
-        } catch { /* probamos con la siguiente */ }
-      }
-      if (!tokPC) { console.log('❌ No pude sacar token de ninguna cuenta.'); return; }
-      console.log(`\n══ ¿QUÉ DICE ML DE LA CAJA DE COMPRA DE ${_pcId}? (solo lee) ══\n`);
-      for (const ruta of [`/products/${_pcId}`, `/products/${_pcId}?attributes=id,name,buy_box_winner`]) {
-        try {
-          const d = await mlGet(ruta, tokPC);
-          console.log(`✅ ${ruta}`);
-          console.log(`   campos que trae: ${Object.keys(d || {}).join(', ')}`);
-          console.log(`   buy_box_winner → ${d && d.buy_box_winner ? JSON.stringify(d.buy_box_winner).slice(0, 300) : (d && 'buy_box_winner' in d ? 'VIENE EL CAMPO PERO VACÍO' : 'NO VIENE EL CAMPO')}`);
-        } catch (e) { console.log(`❌ ${ruta} → ${String(e.message || e).slice(0, 140)}`); }
-      }
-      try {
-        const it = await mlGet(`/products/${_pcId}/items`, tokPC);
-        const res = (it && it.results) || [];
-        console.log(`\n✅ /products/${_pcId}/items → ${res.length} vendedor(es)`);
-        if (res[0]) console.log(`   campos de cada vendedor: ${Object.keys(res[0]).join(', ')}`);
-        for (const r of res.slice(0, 8)) {
-          console.log(`   ${money(Math.round(r.price || 0)).padStart(12)} · ${String(r.item_id || '?').padEnd(14)} · stock ${String(r.available_quantity ?? '?').padStart(4)} · ${(r.tags || []).join('/') || 'sin tags'}`);
+      // Acepta VARIOS separados por ";" y acepta las DOS cosas: el código de un catálogo y el de
+      // una publicación NUESTRA. El caso de control no es opcional: sin una publicación propia
+      // adentro, un "viene vacío" no distingue "ML no lo publica nunca" de "ese catálogo no tiene
+      // ganador", y son conclusiones opuestas.
+      const _pcIds = String(process.env.BILLING_PROBE).slice('probarcaja:'.length).split(';').map((x) => x.trim().toUpperCase()).filter((x) => /^MLA\d+$/.test(x));
+      if (!_pcIds.length) { console.log('Usá: probarcaja:MLA12345678[;MLA...] · vale el código del catálogo o el de una publicación tuya'); return; }
+      const linksPC = (await db.get('cyc/mllinks')) || {};
+      console.log('\n══ ¿QUÉ DICE ML DE LA CAJA DE COMPRA? (solo lee) ══');
+      for (const pedido of _pcIds) {
+        // Si es una publicación nuestra, primero hay que sacarle el catálogo al que pertenece.
+        const ePC = linksPC[pedido] || null;
+        let tokPC = null;
+        const cuentasPC = ePC && ePC.cuenta ? [ePC.cuenta, ...labels] : labels;
+        for (const label of cuentasPC) {
+          const acc = accounts[label]; if (!acc?.refresh_token) continue;
+          try {
+            const t = await mlRefresh(ML_CLIENT_ID, ML_CLIENT_SECRET, acc.refresh_token);
+            await db.patch('mlapi/tokens/' + label, { refresh_token: t.refresh_token, updated_ts: Date.now() });
+            tokPC = t.access_token; break;
+          } catch { /* probamos con la siguiente */ }
         }
-        console.log(`\n   crudo del primero: ${JSON.stringify(res[0] || {}).slice(0, 700)}`);
-      } catch (e) { console.log(`❌ /products/${_pcId}/items → ${String(e.message || e).slice(0, 140)}`); }
-      console.log('\n   Si el campo NO VIENE en ninguna de las dos formas, entonces ML dejó de publicarlo acá');
-      console.log('   y el precio de la caja hay que sacarlo de otro lado — NO inventarlo.');
+        if (!tokPC) { console.log('❌ No pude sacar token de ninguna cuenta.'); return; }
+        let cpid = pedido, nuestro = null;
+        if (ePC) {
+          try {
+            const b = await mlGet('/items/' + pedido + '?attributes=id,title,price,catalog_product_id,catalog_listing', tokPC);
+            if (b && b.catalog_product_id) { cpid = b.catalog_product_id; nuestro = b; }
+            else { console.log(`\n── ${pedido} (${ePC.cuenta}) · NO es de catálogo: no hay caja de compra que mirar.`); continue; }
+          } catch (e) { console.log(`\n── ${pedido} → no pude leer la publicación: ${String(e.message || e).slice(0, 100)}`); continue; }
+        }
+        console.log(`\n── ${cpid}${nuestro ? `   (el catálogo de NUESTRA ${pedido}, ${ePC.cuenta}, a ${money(Math.round(nuestro.price || 0))})` : ''}`);
+        try {
+          const d = await mlGet(`/products/${cpid}`, tokPC);
+          console.log(`   nombre: ${String((d && d.name) || '').slice(0, 70)}`);
+          console.log(`   status: ${d && d.status} · pdp_types: ${JSON.stringify((d && d.pdp_types) || [])} · tags: ${JSON.stringify((d && d.tags) || [])}`);
+          console.log(`   buy_box_winner CRUDO → ${JSON.stringify((d && d.buy_box_winner) ?? null)}`);
+        } catch (e) { console.log(`   ❌ /products/${cpid} → ${String(e.message || e).slice(0, 120)}`); }
+        // EL CONTROL: sobre una publicación NUESTRA, ML sí contesta el precio para ganar la caja.
+        // Si acá contesta y en `buy_box_winner` viene vacío, entonces el dato existe pero sólo se
+        // puede pedir sobre algo propio — y para un producto que todavía no vendemos no hay forma.
+        if (nuestro) {
+          try {
+            const ptw = await mlGet('/items/' + pedido + '/price_to_win?version=v2', tokPC);
+            console.log(`   price_to_win (sólo funciona sobre algo NUESTRO) → estado ${ptw?.status || '?'}${ptw?.price_to_win ? ` · para ganar ${money(Math.round(ptw.price_to_win))}` : ''}${ptw?.winner ? ` · el ganador está a ${money(Math.round(ptw.winner.price || 0))}` : ''}`);
+          } catch (e) { console.log(`   price_to_win → ${String(e.message || e).slice(0, 120)}`); }
+        }
+        try {
+          const it = await mlGet(`/products/${cpid}/items`, tokPC);
+          const res = (it && it.results) || [];
+          console.log(`   /items → ${res.length} vendedor(es), en el orden en que los devuelve ML:`);
+          for (const r of res.slice(0, 8)) console.log(`      ${money(Math.round(r.price || 0)).padStart(12)} · ${String(r.item_id || '?').padEnd(14)} · ${(r.tags || []).join('/') || 'sin tags'}`);
+        } catch (e) { console.log(`   ❌ /products/${cpid}/items → ${String(e.message || e).slice(0, 120)}`); }
+      }
+      console.log('\n   Lo que hay que mirar: si en el catálogo de una publicación NUESTRA el buy_box_winner');
+      console.log('   viene lleno y en uno ajeno viene vacío, el dato existe pero sólo se puede pedir sobre');
+      console.log('   algo propio — y para un producto que todavía no vendemos NO hay forma. No se inventa.');
       return;
     }
     // BILLING_PROBE=probarweb[:<texto a buscar>] → ¿PUEDE EL ROBOT MIRAR PRECIOS SOLO?
