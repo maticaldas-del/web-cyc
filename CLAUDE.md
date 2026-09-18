@@ -1579,6 +1579,45 @@ se comprobó el 17/09 cuando él le pasó el link al chat local y entró de una.
 ahí (costos, márgenes, ventas) salen de Firebase, y **si sus reglas están abiertas, los ve cualquiera
 con esa dirección**. Queda como pendiente para mirar, no se tocó nada.
 
+## LO QUE EL CHAT DE COMPRAS YA BARRIÓ, PARA NO HACERLO DOS VECES (18/09/2026)
+
+El chat que mira comprasparaguay hizo el primer barrido grande y **el estado vivo lo lleva él en su
+propio texto** (el `PROMPT GUAY`, que él va actualizando). Acá va sólo lo que hay que recordar para
+no mandarlo a repetir trabajo caro.
+
+**PERFUMERÍA: BARRIDA ENTERA.** Las 1.227 filas de Nissei en comprasparaguay. De ahí salieron
+**491 que valía la pena mirar** en ML, **169 que existen como producto EXACTO**, **21 con ventas** y
+**9 que pasaron todo**. Las demás quedaron descartadas con motivo. **No se vuelve a mirar**, con una
+excepción: las de **más de US$40 y las de menos de US$10**, que el filtro dejó afuera y él todavía
+no decidió si valen (arriba de US$40 el producto tiene que venderse por encima de $150.000 para dar).
+
+**ELECTRÓNICA: la que ya se miró y no dio** — los Redmi Buds y Smart Band, los Redmi Watch y Watch
+S5/5 Lite, la Redmi Pad 2, los Galaxy A06/A07 y los Buds Core, los JBL Go y Tune, el Philips
+TAT2206, los controles de Xbox, el PS Portal, los SanDisk (Cruzer Blade, Ultra Shift, microSD, SSD
+E30) y la power bank de Xiaomi. **Los 31 productos que YA tienen ficha con origen Paraguay no son
+"nuevos"**: no se cargan como candidatos.
+
+**LO QUE FALTA BARRER, y es la mayor parte:** cosmético (702 filas), auriculares (659), relojes
+(434), varios (385), teclados (313), mouse (267), parlantes (262), cables, fundas, shampú,
+cargadores, labiales, anillos inteligentes, discos, termos, tarjetas de memoria, routers,
+secadores, controles y rubor. **Celulares, notebooks, tablets, TV, cámaras, monitores, impresoras y
+placas no se miran**: pasan el tope de US$250 o el de 40×40×40 cm y 3 kg.
+
+**SUS TOPES PARA EL PEDIDO DE NUEVOS (18/09/2026):** se llena hasta **US$500 de costo crudo** (sin
+el 15%) y se corta · **máximo 2 unidades por producto** · sólo lo que da **más de 25% medido por el
+panel o por el simulador, nunca a ojo** · en ML tiene que haber ventas de verdad (**+25 vendidos**
+para arriba): un vendedor solo no molesta, uno sin ventas no sirve.
+
+**EL AVISO QUE ÉL MISMO ANOTÓ SOBRE EL % DEL ROBOT**, y conviene mirarlo con calma antes de darlo
+por cierto: sospecha que el margen de `candidatos` *"está unos puntos arriba de lo real"*. Medido
+contra el simulador con el Animale Gold (US$21 a $95.000 en Adriana): el robot dio **57%** y la
+cuenta completa da **54,1%**. La diferencia es chica y tiene dos motivos conocidos —el robot no
+cuenta lo que sale **mandarlo a Full** (no puede: no sabe cuántas entran en una caja) y usa el IIBB
+por defecto (4,8%) en vez del de la cuenta—. **No es el "descuenta 30% contra 43%" que dice su
+nota**: ese 43% de una ficha incluye la mercadería adentro, así que son dos cosas distintas y
+compararlas asusta al pedo. Lo que sí queda pendiente es **decidir si el robot tiene que pedir las
+unidades por caja** para cerrar esa diferencia.
+
 ## "PARA PROBAR": QUÉ CONVIENE EMPEZAR A VENDER (17/09/2026)
 
 Pedido suyo: *"lo que no veo en la web de cyc es los productos que pueden ser nuevos ingresos"*.
@@ -1842,6 +1881,61 @@ cinco precios medidos, la base queda entre **15,7% y 16,6%** en los cinco: el mo
 **Vive en UNA función (`comisionEnPrecio`) que usan los DOS simuladores**, y la línea del dinero en
 otra (`simMargen`, la misma cuenta que `margenMLDe`). Con dos copias, la ficha diría un número y
 Paraguay otro sobre el mismo producto — el error anotado siete veces en este archivo.
+
+### LO QUE LE FALTABA, Y LO MARCÓ ÉL (18/09/2026)
+
+Textual: *"que sea independiente, o sea que muestre lo que realmente le queda a cyc. teniendo en
+cuenta TODO y siempre vamos a vender por full"*. **Independiente ya era** —de ML sólo toma la
+comisión, que es el único número que la web no puede calcular sola—, pero *"TODO"* no era cierto:
+**faltaban las dos partes del costo que el panel sí le cuenta a cualquier ficha**, y el cartelito
+de arriba del simulador las prometía igual (el comentario que promete algo que no está, por
+séptima vez en este archivo).
+
+ · **Lo que sale mandarlo a Full**, que es el `Envío+embalaje` de la ficha: `costoCaja()` (hoy
+   $17.500, de `cyc/mlconfig`) dividido por **cuántas entran en una caja**, que es el dato que él
+   sabe. **Si no lo carga NO se inventa un número**: se pone en cero y sale un aviso en ámbar
+   diciendo que ese costo no está contado y que el margen se ve mejor de lo que va a ser.
+ · **El % de reclamos**, el mismo `%Dev` de la ficha. En un producto nuevo no hay con qué medirlo:
+   vacío = cero, que es exactamente lo que hace el panel con una ficha recién creada.
+
+**Y SE AGREGÓ LO QUE PIDIÓ ANTES: *"no conviene probar precios mas altos? por las dudas"*.** Sí
+conviene, y ahora están las dos direcciones:
+
+ · **"para llegar al 25% tenés que venderlo a $X"** — es `simMargen` **dada vuelta**
+   (`simPrecioParaMargen`). Como el envío de Full no es un % sino un cargo que aparece de golpe
+   arriba de los $33.000, la cuenta se hace DOS veces y se queda con la que cae del lado que le
+   toca. Si el precio que hace falta cruza la barrera, **lo dice y no lo propone**.
+ · **la tabla "¿y si lo vendo más caro?"** con +5/+10/+20/+30%, cuánta plata deja cada uno y
+   cuánto más que hoy.
+
+**LOS DOS AVISOS QUE HACEN QUE LA TABLA NO MIENTA, y sin ellos no se podía mostrar:**
+ 1. **No ve los escalones de la comisión.** El modelo es una línea pareja, así que **siempre** va a
+    decir que más caro deja más — y eso es falso en las zonas muertas (12/09: los Paulvic de
+    $14.360 a $15.790 dejaban **$312 menos**). Lo único que sí es un salto de verdad y sí se ve es
+    la barrera de los $33.000. Para los escalones hay que preguntarle a ML precio por precio, que
+    es lo que hace `subirpuede`.
+ 2. **En un producto NUEVO el precio no lo elegís vos: lo pone el más barato del catálogo.** Un
+    renglón que dice *"a $123.500 te queda 92%"* es el margen de una venta que no va a pasar. Es la
+    misma regla del Filtro agua: un renglón que invita a aplicarlo tiene que estar medido.
+
+**EL DETALLE QUE PARECÍA DE ADORNO Y NO LO ERA: el precio del 25% se VERIFICA contra `simMargen`
+antes de mostrarse.** La fórmula despejada es exacta, pero `simMargen` redondea la comisión y los
+impuestos, así que el precio caía en **24,999%** en algunos casos. Ese número es justo el que
+decide: habría salido *"para llegar al 25% vendelo a $53.930"* con el cartel *"abajo de tu piso del
+25%"* pegado al lado. Ahora se prueba con la MISMA función que dibuja la pantalla y se sube de a
+$10 hasta que dé.
+
+**Probado con las funciones REALES sacadas del archivo, en tres tandas:**
+ · **`simComEn` da EXACTAMENTE lo mismo que `comisionEnPrecio`** en 4.373 precios × 5 referencias:
+   0 diferencias. No son dos fórmulas, son la misma partida en dos.
+ · **Barrido de 48.960 combinaciones** (6 precios de referencia × 6 comisiones × 4 cuentas ×
+   4 escenarios de cuotas × 5 metas × 17 costos): el precio que devuelve **siempre** llega al
+   margen pedido, **nunca** se pasa de un escalón de $10, **nunca** declara un lado de la barrera
+   que no es, y **nunca** sale negativo ni sin redondear.
+ · **Prueba de PANTALLA contra un DOM de mentira**, 40 casos: los campos que faltan se dicen en vez
+   de inventarse, la barrera sale de los dos lados, el aviso de Full sin contar aparece y
+   desaparece cuando corresponde, y **12 formas de tipear mal** (texto en los números, negativos,
+   $1, cuotas al 95%, reclamos al 100%) no sacan ni un `NaN`.
 
 **CUÁNDO LA REFERENCIA NO SIRVE Y SE AVISA:** si al restar el cargo fijo la base queda fuera de
 **8%–30%**, la resta no está separando nada real (pasa cuando el producto de referencia es mucho
