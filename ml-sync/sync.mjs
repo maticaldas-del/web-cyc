@@ -8585,6 +8585,16 @@ async function main() {
           const res = (it && it.results) || [];
           console.log(`   /items → ${res.length} vendedor(es), en el orden en que los devuelve ML:`);
           for (const r of res.slice(0, 8)) console.log(`      ${money(Math.round(r.price || 0)).padStart(12)} · ${String(r.item_id || '?').padEnd(14)} · ${(r.tags || []).join('/') || 'sin tags'}`);
+          // LA PRUEBA QUE DECIDE TODO: ¿contesta `price_to_win` sobre una publicación AJENA?
+          // Si contesta, el precio de la caja se puede saber de cualquier catálogo y el renglón de
+          // un producto nuevo se puede completar. Si no, no hay forma hasta publicarlo.
+          const ajeno = res.find((r) => String(r.item_id) !== String(pedido));
+          if (ajeno) {
+            try {
+              const p2 = await mlGet('/items/' + ajeno.item_id + '/price_to_win?version=v2', tokPC);
+              console.log(`   price_to_win sobre una publicación AJENA (${ajeno.item_id}) → ${JSON.stringify(p2).slice(0, 260)}`);
+            } catch (e) { console.log(`   price_to_win sobre una publicación AJENA (${ajeno.item_id}) → ${String(e.message || e).slice(0, 140)}`); }
+          }
         } catch (e) { console.log(`   ❌ /products/${cpid}/items → ${String(e.message || e).slice(0, 120)}`); }
       }
       console.log('\n   Lo que hay que mirar: si en el catálogo de una publicación NUESTRA el buy_box_winner');
