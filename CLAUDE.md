@@ -284,6 +284,8 @@ Los que más se usan:
 | `codigos[:<palabra>]` | **el código de etiqueta de Full, variante por variante** · dice a quién le falta y por qué |
 | `embalaje[:<N>][:go]` | compara el envío/embalaje cargado en cada ficha contra lo que cuesta mandarlo de verdad |
 | `abrircaja:<seguimiento\|id>[:go]` | vuelve a poner una caja "en camino" · para deshacer un marcado equivocado |
+| `cajallego:<seguimiento\|id>[:go]` | **el hermano al revés**: marca una caja como llegada COMPLETA cuando ML ya lo confirmó y el robot no lo puede leer |
+| `pausadas[:piso]` | **por qué el robot dejó pausada cada publicación con stock en Full** · llama a la MISMA función que corre sola cada hora · solo lee |
 | `liquidando[:<MLA\|palabra>][:go]` | "esto lo estoy rematando: no me lo subas" · `-` adelante para sacar la marca |
 | `ponmedida:<busca>\|<L>x<A>x<H>\|<peso>[;otro][;go]` | carga a mano el paquete (medidas y peso) de lo que ML no informa · sin eso el producto no entra en las barras de Armar caja |
 | `vincular:<MLA>=<palabra\|id>[:go]` | pega una publicación a un producto y la saca de oculta |
@@ -1814,6 +1816,22 @@ ninguna variable ni ningún `id` — sólo se agregaron 7 nombres, ninguno repet
   Probado con el bloque REAL sacado del archivo (no una copia) y 7 casos: 1 página · una página
   justo llena · los 291 de la corrida real · 600 movimientos (el caso Cartas Casino) · 1.500 (corta
   y avisa) · **ML ignorando `offset`** (corta a la 2ª llamada, no infla) · sin movimientos.
+  **CÓMO QUEDÓ LA CAJA:** con el arreglo, la corrida ya no borra nada — el Centímetro Gris pasó a
+  leer 90 de 90 y el Rosa 107 de 107, y **la caja se deja ABIERTA** avisando *"ML rechazó alguna
+  consulta (429): un 0 acá no quiere decir que falte"*, que es como tiene que verse. Se cerró a mano
+  con **`cajallego:76236266:go`** usando el dato de ML (511 de 511 a la venta), porque una caja
+  abierta cuya mercadería YA está en Full se cuenta dos veces en el patrimonio.
+  **LO QUE QUEDA ABIERTO Y HAY QUE MIRAR** (no es lo mismo que el bug de las páginas):
+   · **Los 429 de ML.** Pedir todas las páginas multiplica las consultas, así que el límite de ML
+     pega más seguido. El lado seguro está cubierto —un renglón sin leer NO se marca como faltante
+     y la caja se queda abierta— pero una caja puede tardar varias vueltas en cerrarse sola.
+   · **El Centímetro Blanco sigue leyendo 47 de 150 SIN estar marcado como no leído.** Ahí no es el
+     429: es que **una de las publicaciones del Centímetro no nombra el color en el título**
+     (`MLA1841730099`, código `TRZK95506`, la quinta, de la que el panel no sabe el color — ya está
+     anotado más arriba). Sus entradas no se pueden imputar a ninguna variante, así que se van a
+     otra clave. Se arregla con `fijarvar:MLA1841730099=<color>:go`, **y para eso falta que él diga
+     de qué color es.**
+
   **LA LECCIÓN, y es la tercera vez que la misma caja la enseña: el marcado de cajas borra
   mercadería del patrimonio, así que todo lo que lea mal es destructivo.** El 11/09 el problema era
   no leer nada (faltaba `date_to`), el 12/09 era leer de más (`not_available` contadas), y ahora era
