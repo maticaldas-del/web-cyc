@@ -2311,7 +2311,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='19.53';
+const APP_VERSION='19.54';
 // El problema real que esto resuelve no es curiosidad: es que el celular guarda la app y sigue
 // mostrando la de ayer sin avisar. Varias veces se revisó un cambio que ya estaba subido y no se
 // veía. Por eso, además del número, el chip avisa cuando hay una versión nueva esperando.
@@ -3664,9 +3664,9 @@ function guardarProdLuego(id,val,fn){
 //  · **Precio Nissei US$** = lo que muestra comprasparaguay, CRUDO.
 //  · **Costo US$** (el de arriba) = ese precio **× 1,15**, o sea puesto en tu oficina. Es el que
 //    usa todo el panel para calcular márgenes y para valuar el stock.
-// Por eso el precio de Paraguay NO pisa solo al Costo US$: se muestra lo que daría y hay un botón
-// para aplicarlo. Pisar a ciegas el número que define todos los precios es exactamente el tipo de
-// cosa que no se nota hasta que ya vendiste — la misma razón por la que `submargen` pide `:go`.
+// Por eso el precio de Paraguay NO PISA NUNCA al Costo US$, y NO hay ningún botón para aplicarlo:
+// el que existía se sacó el 17/09/2026. Pisar a ciegas el número que define todos los precios es
+// exactamente el tipo de cosa que no se nota hasta que ya vendiste.
 //
 // EL CÓDIGO ES EL DE NISSEI, el que se usa para pedir, y NO es el mismo que el interno que
 // muestra la lista de Nissei (en el Cabotine 100mL la lista da 91144 y el de pedido es 91832).
@@ -10153,12 +10153,27 @@ function pedGuayHTML(prod){
   out.push(chip(`🇵🇾 US$ ${nu.toFixed(2)}${dias!=null?` · hace ${dias} d`:' · sin fecha'}`,viejo?'var(--amber)':'var(--muted)',
     viejo?`Precio de comprasparaguay, pero ${dias==null?'sin fecha de cuándo se miró':`mirado hace ${dias} días`}. Antes de decidir una compra conviene volver a mirarlo: el proveedor se mueve.`
          :`Precio de comprasparaguay, mirado hace ${dias} días. Puesto en tu oficina son US$ ${(nu*RECARGO_PY).toFixed(2)} (con el 15%).`));
-  // Si el costo de la ficha NO es este precio + 15%, el margen de al lado está calculado con otro
-  // número. Eso se avisa: dos números correctos, uno al lado del otro, pueden dar una conclusión
-  // falsa — es la lección de las tres cajas de la ficha del 03/09.
+  // ── QUE EL COSTO Y EL PRECIO DE PARAGUAY SEAN DISTINTOS ES LO NORMAL (18/09/2026) ──────
+  // Hasta hoy acá salía **"⚠️ el costo no está al día"** cada vez que el costo no era el precio de
+  // Paraguay + 15%, y el globito cerraba con *"tocá Usar este costo si el de Paraguay es el
+  // bueno"*. Las dos cosas están mal, y es el MISMO error que tenía el comando `guay`:
+  //  · `costUSD` es lo que PAGASTE y `nisseiUSD` lo que saldría REPONERLO hoy. Que sean distintos
+  //    no es un desajuste: **es la información**. Regla suya del 17/09: *"lo que compre a un precio
+  //    se vende a ese precio. si aumenta no compro"*.
+  //  · El botón **"Usar este costo" NO EXISTE desde el 17/09**, justo porque pisar el costo con el
+  //    precio de Paraguay le mueve los márgenes de lo ya comprado y —con la suba automática
+  //    prendida— le sube precios. Es el daño que hubo que reparar con `pycosto`. O sea que el chip
+  //    mandaba a hacer exactamente lo que está prohibido, y a apretar un botón que ya no está.
+  // Ahora dice lo que sirve para decidir, y muestra **los dos lados en las mismas unidades**: el
+  // Joystick Xbox mostraba "reponerlo hoy US$ 55,20" al lado de un precio pagado de US$ 55 en
+  // Paraguay y parecía un error, cuando uno es crudo y el otro ya lleva el 15%.
   const puesto=Math.round(nu*RECARGO_PY*100)/100, cu=costUSDof(prod);
-  if(Math.abs(puesto-cu)>0.01)out.push(chip('⚠️ el costo no está al día','var(--amber)',
-    `El precio de Paraguay + 15% da US$ ${puesto.toFixed(2)}, pero la ficha tiene cargado US$ ${cu.toFixed(2)}. El margen que ves está calculado con ${cu.toFixed(2)}. Entrá a la ficha y tocá "Usar este costo" si el de Paraguay es el bueno.`));
+  if(cu>0){
+    const dif=((puesto-cu)/cu)*100;
+    const txt=dif>1?`🔴 reponerlo sale ${Math.round(dif)}% más caro`:dif<-1?`🟢 reponerlo sale ${Math.round(Math.abs(dif))}% más barato`:'= reponerlo sale igual';
+    out.push(chip(txt,dif>1?'var(--red)':dif<-1?'var(--green)':'var(--muted)',
+      `Pagaste US$ ${cu.toFixed(2)} puesto en tu oficina (unos US$ ${(cu/RECARGO_PY).toFixed(2)} en Paraguay + 15%). Reponerlo hoy sale US$ ${puesto.toFixed(2)} puesto (US$ ${nu.toFixed(2)} en Paraguay + 15%). Que los dos números sean distintos es lo normal: uno es lo que pagaste y decide los márgenes de lo que ya tenés, el otro sólo dice si conviene volver a comprarlo. El costo NO se pisa nunca con el precio de Paraguay.`));
+  }
   return out.join('');
 }
 function _pedidoItemHtml(p,opts){

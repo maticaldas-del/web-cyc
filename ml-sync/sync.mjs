@@ -7861,9 +7861,19 @@ async function main() {
         console.log(`     código Nissei: ${cod || '— falta'}`
           + `   ·   precio Paraguay: ${isFinite(nu) && nu > 0 ? 'US$ ' + nu.toFixed(2) : '— falta'}`
           + (d != null ? `   ·   mirado hace ${d} d${d > 30 ? ' ⚠️ viejo' : ''}` : '   ·   sin fecha'));
-        console.log(`     pagaste: ${isFinite(cu) && cu > 0 ? 'US$ ' + cu.toFixed(2) + ' = ' + money(Math.round(cu * tcG)) : '— SIN COSTO (se ve como todo ganancia)'}`
-          + (puesto != null ? `   ·   reponerlo hoy: US$ ${puesto.toFixed(2)} (precio + 15%)` : '')
-          + (difPct != null ? `   ·   ${difPct > 1 ? '🔴 ' + difPct.toFixed(0) + '% MÁS CARO' : difPct < -1 ? '🟢 ' + Math.abs(difPct).toFixed(0) + '% MÁS BARATO' : '= igual'}` : ''));
+        // ── LOS DOS LADOS, TAMBIÉN EN PRECIO DE PARAGUAY (18/09/2026) ─────────────────
+        // Él leyó del Joystick Xbox *"reponerlo hoy: US$ 55.20"* y dijo que estaba mal, porque lo
+        // había pagado a **US$ 55 en Paraguay**. La cuenta estaba BIEN —hoy está a US$ 48, que con
+        // el 15% da 55,20 contra los 63,25 que le salió puesto— pero los dos números se parecían
+        // y son cosas distintas: 55 es el precio CRUDO que pagó y 55,20 es el de hoy YA con el 15%.
+        // El renglón mostraba un lado crudo y el otro puesto, así que invitaba a compararlos.
+        // Ahora cada lado muestra las DOS formas. El precio de Paraguay de lo que pagó sale de
+        // dividir por 1,15 y va con ~ porque en las compras viejas el recargo no siempre fue
+        // exacto (suyo: *"si no da justo el 15% es porque en ese caso gastamos menos o mas"*).
+        const crudoPago = isFinite(cu) && cu > 0 ? cu / RECARGO_PY : null;
+        console.log(`     pagaste: ${isFinite(cu) && cu > 0 ? 'US$ ' + cu.toFixed(2) + ' puesto en tu oficina = ' + money(Math.round(cu * tcG)) + `   (~US$ ${crudoPago.toFixed(2)} en Paraguay + 15%)` : '— SIN COSTO (se ve como todo ganancia)'}`);
+        if (puesto != null) console.log(`     reponerlo hoy: US$ ${puesto.toFixed(2)} puesto   (US$ ${nu.toFixed(2)} en Paraguay + 15%)`
+          + (difPct != null ? `   ·   ${difPct > 1 ? '🔴 ' + difPct.toFixed(0) + '% MÁS CARO' : difPct < -1 ? '🟢 ' + Math.abs(difPct).toFixed(0) + '% MÁS BARATO' : '= igual'} que lo que pagaste` : ''));
         console.log('');
       }
       if (!py.length) console.log('(ninguna ficha está marcada como Paraguay)\n');

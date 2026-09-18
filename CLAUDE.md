@@ -1751,9 +1751,10 @@ después el nombre**, y no al revés.
    dos meses al lado de una decisión de compra se lee como si estuviera al día.
  · **Sin costo cargado lo dice en ROJO.** Un producto sin costo se ve como si fuera todo ganancia
    y puede aparecer arriba de todo como un éxito que no existe.
- · **Y si el `costUSD` no es el precio de Paraguay + 15%, la tarjeta avisa** que el margen de al
-   lado está calculado con otro número. Dos números correctos uno al lado del otro pueden dar una
-   conclusión falsa — la lección de las tres cajas de la ficha del 03/09.
+ · **Y la tarjeta dice si reponerlo hoy sale MÁS BARATO o MÁS CARO que lo que pagaste**, con los
+   dos números en las mismas unidades. **Este renglón decía otra cosa hasta el 18/09/2026** —
+   *"⚠️ el costo no está al día · tocá Usar este costo"*— y estaba al revés de la regla del 17/09
+   y mandaba a apretar un botón que ya no existe. Ver abajo.
 
 **Va SÓLO en Paraguay**, que es lo que pidió. Ponerlo también en Bs As es un renglón, pero un
 pedido sobre una sección no es permiso para tocar las otras (la lección del 24/08 con Adriana).
@@ -1762,6 +1763,38 @@ tienen que salir en ámbar o rojo. Y corrido el chequeo de las tres listas: no f
 ninguna variable ni ningún `id` — sólo se agregaron 7 nombres, ninguno repetido.
 
 ## Cosas que ya pasaron (para no repetirlas)
+
+- **"PAGUÉ 55 Y DICE 55: ESTO ESTÁ MAL" — EL NÚMERO ESTABA BIEN Y EL RENGLÓN LO ESCONDÍA
+  (18/09/2026).** Él leyó del **Mando Joystick Xbox** *"reponerlo hoy: US$ 55,20 · 🟢 13% MÁS
+  BARATO"* y lo marcó: *"lo pagamos 55 igual que dice ahí. En la web dice 63.25 porque le agregué
+  los costos y traslado o sea + el 15%"*.
+  **La cuenta estaba bien, y su propia regla lo confirma.** Él mismo puso la condición: *"salvo que
+  el joystick esté menos de 55 dólares y con el 15% de 55 final. Ahí sí"* — y es exactamente el
+  caso: hoy comprasparaguay lo tiene a **US$ 48**, que con el 15% da **US$ 55,20** contra los
+  **US$ 63,25** que le salió puesto. O sea que reponerlo hoy sale 13% menos.
+  **Lo que estaba mal es que el renglón mostraba un lado CRUDO y el otro PUESTO.** Los US$ 55 que
+  él pagó son el precio de Paraguay de aquel día; los US$ 55,20 son el de hoy YA con el 15%. Dos
+  números casi iguales que miden cosas distintas, uno al lado del otro: la lección de las tres
+  cajas de la ficha del 03/09, otra vez.
+  **Cómo quedó, en los DOS lados:** cada uno muestra las dos formas —*"pagaste US$ 63,25 puesto
+  (~US$ 55,00 en Paraguay + 15%) · reponerlo hoy US$ 55,20 puesto (US$ 48,00 + 15%)"*—. El precio
+  de Paraguay de lo que pagó sale de dividir por 1,15 y va con **~** porque en las compras viejas
+  el recargo no siempre fue exacto (suyo: *"si no da justo el 15% es porque en ese caso gastamos
+  menos o mas. Pero a partir de ahora siempre es el 15"*).
+  **Y AL MIRARLO APARECIÓ EL MISMO ERROR DEL `guay`, PERO EN LA PANTALLA.** La tarjeta de
+  Pedidos → Paraguay sacaba **"⚠️ el costo no está al día"** cada vez que el costo no era el precio
+  de Paraguay + 15% —o sea en casi todas, porque **eso es lo normal**— y el globito cerraba con
+  *"entrá a la ficha y tocá **Usar este costo**"*. Ese botón **no existe desde el 17/09**, y se
+  sacó justo porque pisar el costo le mueve los márgenes de lo ya comprado y, con la suba
+  automática prendida, le sube precios. El chip mandaba a hacer lo único que está prohibido.
+  Ahora dice **🟢 reponerlo sale N% más barato** o **🔴 N% más caro**, que es la decisión.
+  Probado con 5 casos usando la función REAL sacada del archivo (el Joystick, el Salvador Dalí que
+  da igual, el Galaxy A07 que da 31% más caro, sin costo y sin precio de Paraguay) y corrido el
+  chequeo de las tres listas: **0 funciones, 0 variables y 0 `id` de diferencia**.
+  **LA LECCIÓN: cuando él dice que un número está mal, la primera pregunta no es si la cuenta está
+  bien — es si la pantalla deja ver contra qué se está comparando.** Acá la cuenta era correcta y
+  el renglón igual lo llevó a desconfiar, que es tan caro como un número equivocado: si no confía
+  en el renglón, no lo usa.
 
 - **EL COMANDO `guay` DECÍA QUE EL COSTO "DEBERÍA SER" EL PRECIO DE PARAGUAY (18/09/2026).** Al
   revisar qué había cargado el chat de compras, el renglón de cada ficha decía *"costo en la ficha:
