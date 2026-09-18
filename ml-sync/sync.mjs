@@ -8364,14 +8364,38 @@ async function main() {
         'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
         'Accept-Language': 'es-AR,es;q=0.9',
       };
-      console.log(`=== MIRANDO ${_vwUrl} (solo lee) ===\n`);
+      // ── LA DIRECCIÓN SE IMPRIME SIN LO QUE VIENE DESPUÉS DEL "?" (18/09/2026) ──────────
+      // Un link compartido puede traer un código de acceso adentro (Instagram manda `?stkn=…`,
+      // que es una llave para ver el posteo). Eso NO se escribe: el registro de GitHub es
+      // PÚBLICO y sería regalar la llave. Se usa entera para pedir la página y se muestra cortada.
+      const _vwLimpia = (u) => String(u).split('?')[0] + (String(u).includes('?') ? ' (+ código, tapado)' : '');
+      console.log(`=== MIRANDO ${_vwLimpia(_vwUrl)} (solo lee) ===\n`);
       try {
         const _vwC = new AbortController();
         const _vwT = setTimeout(() => _vwC.abort(), 25000);
         const _vwR = await fetch(_vwUrl, { signal: _vwC.signal, headers: _vwH, redirect: 'follow' });
         clearTimeout(_vwT);
         const _vwHtml = await _vwR.text();
-        console.log(`${_vwR.ok ? '✅' : '⚠️ '} ${_vwR.status} · ${Math.round(_vwHtml.length / 1024)} KB · llegó a ${_vwR.url}`);
+        console.log(`${_vwR.ok ? '✅' : '⚠️ '} ${_vwR.status} · ${Math.round(_vwHtml.length / 1024)} KB · llegó a ${_vwLimpia(_vwR.url)}`);
+        // ── LA FICHA DE LA PÁGINA VA APARTE, Y NO ES ADORNO (18/09/2026) ────────────────
+        // En muchas páginas el texto que importa NO está en el cuerpo: vive en las etiquetas que
+        // el sitio pone para que el link se vea lindo al compartirlo (`og:title`, `og:description`).
+        // Instagram es el caso puro: el cuerpo es un cascarón armado con JavaScript y lo único
+        // legible es eso. Sacarlo con el resto de las etiquetas era tirar justo el dato.
+        const _vwMeta = [];
+        const _vwTit = /<title[^>]*>([\s\S]*?)<\/title>/i.exec(_vwHtml);
+        if (_vwTit) _vwMeta.push(['título', _vwTit[1]]);
+        for (const m of _vwHtml.matchAll(/<meta[^>]+(?:property|name)=["'](og:[a-z:]+|description|twitter:[a-z:]+)["'][^>]*>/gi)) {
+          const _k = /(?:property|name)=["']([^"']+)["']/i.exec(m[0]);
+          const _v = /content=["']([\s\S]*?)["']/i.exec(m[0]);
+          if (_k && _v && _v[1].trim()) _vwMeta.push([_k[1], _v[1]]);
+        }
+        if (_vwMeta.length) {
+          console.log('\n── LA FICHA DE LA PÁGINA (lo que se ve al compartir el link) ──');
+          for (const [k, v] of _vwMeta.slice(0, 12)) {
+            console.log(`   ${k}: ${v.replace(/&#\d+;/g, ' ').replace(/&quot;/g, '"').replace(/&amp;/g, '&').replace(/\s+/g, ' ').trim().slice(0, 600)}`);
+          }
+        }
         const _vwTxt = _vwHtml
           .replace(/<script[\s\S]*?<\/script>/gi, ' ')
           .replace(/<style[\s\S]*?<\/style>/gi, ' ')
