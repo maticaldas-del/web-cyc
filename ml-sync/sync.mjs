@@ -2907,6 +2907,14 @@ async function correrCandidatos(db, products, labels, accounts, soloPrueba, prue
   const nuevosQueDan = [];
   let mirados = 0, calculados = 0, consultas = 0, sinCuenta = 0, yaCalc = 0;
   const descartes = [];
+  // ── LOS QUE SE CAEN SIN LLEGAR A TENER NÚMERO SE CUENTAN Y SE NOMBRAN (18/09/2026) ────────
+  // La corrida de ese día imprimió **"16 mirados · 11 medidos · 0 ya medidos · 2 descartados"**,
+  // que NO CIERRA: 3 se fueron por un `continue` callado (ML no contestó la comisión, el catálogo
+  // sin vendedores, el código que no existe). Es el descarte por omisión de siempre, y acá hace
+  // un daño concreto: un producto que da 50% desaparece de la lista sin que nadie se entere, y
+  // el que la mira da por hecho que no había más. Ahora cada salida deja su nombre y su motivo, y
+  // el resumen CHEQUEA que los números sumen.
+  const sinDato = [];
   for (const [id, c] of entradas) {
     if (c.no || c.prodId) continue;            // ya decidido por él
     mirados++;
@@ -2989,6 +2997,7 @@ async function correrCandidatos(db, products, labels, accounts, soloPrueba, prue
         if (!prod || !prod.id) {
           console.log(`  · ${c.nombre}\n      → el código de ML que trae (${idFijo}) no existe o no es un catálogo. No invento otro.`);
           if (!soloPrueba) await db.set(`cyc/candidatos_py/${id}/motivo`, `El código de ML ${idFijo} no existe. Revisalo.`);
+          sinDato.push(`${c.nombre} → el código de ML ${idFijo} no existe`);
           continue;
         }
       } else {
@@ -3001,6 +3010,7 @@ async function correrCandidatos(db, products, labels, accounts, soloPrueba, prue
       if (!prod || !prod.id) {
         if (!soloPrueba) await db.set(`cyc/candidatos_py/${id}/motivo`, 'ML no tiene este producto en su catálogo. Hay que mirarlo a mano.');
         console.log(`  · ${c.nombre}\n      → ML no tiene este producto en su catálogo. Hay que mirarlo a mano.`);
+        sinDato.push(`${c.nombre} → ML no lo tiene en su catálogo`);
         continue;
       }
       mlTit = String(prod.name || prod.title || '').slice(0, 120);
@@ -3023,8 +3033,10 @@ async function correrCandidatos(db, products, labels, accounts, soloPrueba, prue
         if (/404/.test(txt)) {
           if (!soloPrueba) await db.set(`cyc/candidatos_py/${id}/motivo`, `ML tiene el catálogo ("${mlTit}") pero hoy no hay ningún vendedor activo: no hay precio contra el cual medir.`);
           console.log('      → ML no tiene vendedores activos en ese catálogo (404 "no winners"). No es un error: no hay precio que mirar.');
+          sinDato.push(`${c.nombre} → el catálogo existe pero hoy no lo vende nadie`);
         } else {
           console.log(`      → no pude pedir los vendedores (${txt.slice(0, 80)})`);
+          sinDato.push(`${c.nombre} → no pude pedirle los vendedores a ML`);
         }
         continue;
       }
@@ -3045,11 +3057,13 @@ async function correrCandidatos(db, products, labels, accounts, soloPrueba, prue
       // 80 caracteres se veía la URL y no el motivo — que es justo lo único que sirve. Ahora se
       // imprime entero: un error que no dice qué pasó es lo mismo que no avisar.
       console.log(`  · ${c.nombre}\n      → no pude buscarlo en el catálogo de ML: ${String(err.message || err)}`);
+      sinDato.push(`${c.nombre} → no pude buscarlo en el catálogo de ML`);
       continue;
     }
     if (!(mlPrecio > 0) || !cat) {
       if (!soloPrueba) await db.set(`cyc/candidatos_py/${id}/motivo`, 'ML tiene el catálogo pero hoy nadie lo vende: no hay precio contra el cual medir.');
       console.log('      → el catálogo existe pero no saqué precio ni categoría de ningún vendedor.');
+      sinDato.push(`${c.nombre} → el catálogo existe pero no saqué precio de ningún vendedor`);
       continue;
     }
     // ── LA CUENTA VIVE EN UNA SOLA FUNCIÓN, y ahora se usa DOS veces (18/09/2026) ──────────
@@ -3075,6 +3089,7 @@ async function correrCandidatos(db, products, labels, accounts, soloPrueba, prue
     if (!rMin) {
       if (!soloPrueba) await db.set(`cyc/candidatos_py/${id}/motivo`, 'ML no me contestó cuánto cobra de comisión a ese precio. Lo reintento la próxima vuelta.');
       console.log('      → ML no contestó cuánto cobra de comisión a ese precio. Lo reintento la próxima vuelta.');
+      sinDato.push(`${c.nombre} → ML no contestó la comisión a ese precio (se reintenta solo)`);
       continue;
     }
     const { costo, impuestos, envio, ganancia, margen } = rMin;
@@ -3098,9 +3113,19 @@ async function correrCandidatos(db, products, labels, accounts, soloPrueba, prue
     if (margen < CAND_PISO_PCT) { await fuera(`da ${margen.toFixed(1)}%, abajo de tu piso de ${CAND_PISO_PCT}%`); continue; }
     nuevosQueDan.push({ id, c, margen, ganancia, mlPrecio, mlTit, puesto, mlMax, mlVendedores: vendedores });
   }
-  console.log(`\n── ${mirados} mirados · ${calculados} medidos hoy · ${yaCalc} ya venían medidos · ${consultas} consultas a ML · ${descartes.length} descartados · ${nuevosQueDan.length} que dan ──`);
+  console.log(`\n── ${mirados} mirados · ${calculados} medidos hoy · ${yaCalc} ya venían medidos · ${consultas} consultas a ML · ${descartes.length} descartados · ${sinDato.length} sin dato · ${sinCuenta} sin alcanzar · ${nuevosQueDan.length} que dan ──`);
   for (const d of descartes) console.log(`   ✕ ${d}`);
+  if (sinDato.length) {
+    console.log(`   — ${sinDato.length} que NO se pudieron medir (no es que no sirvan: no hubo con qué hacer la cuenta):`);
+    for (const d of sinDato) console.log(`      ? ${d}`);
+  }
   if (sinCuenta) console.log(`   ⏳ ${sinCuenta} quedaron sin medir por el tope de ${CAND_MAX_ML} consultas por vuelta. No es que no sirvan: salen en la corrida siguiente.`);
+  // LA CUENTA TIENE QUE CERRAR, Y SI NO CIERRA SE DICE. Los descartados salen de los medidos, así
+  // que lo que se mira es: mirados = medidos + los que ya venían + los que no se pudieron + los
+  // que no se alcanzó a mirar. Si falta uno, se fue por un `continue` callado — y un candidato que
+  // desaparece en silencio puede ser justo el que daba 50%.
+  const _cierra = calculados + yaCalc + sinDato.length + sinCuenta;
+  if (_cierra !== mirados) console.log(`   ⚠️ NO CIERRA: miré ${mirados} y sólo puedo explicar ${_cierra}. Hay ${mirados - _cierra} saliendo en silencio.`);
   // ── LA LISTA DE LOS QUE DAN VA SIEMPRE AL LOG, AVISE O NO AVISE ──────────────────────
   // El MENSAJE de Telegram manda sólo lo NUEVO, a propósito (repetir todas las noches entrena a
   // no abrirlo). Pero el LOG es donde se mira cuando se quiere mirar, y ahí tiene que estar la

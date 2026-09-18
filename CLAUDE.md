@@ -1745,6 +1745,17 @@ vieja en 4 casos (incluidos $32.999 y $33.000, la barrera) y el renglón en 7 ca
 gastar consultas, así que los 27 ya cargados nunca iban a recibir un dato nuevo. Ahora pide además
 que `mlMax` exista. Cuando se agregue otro dato, lo mismo.
 
+### Y EL RESUMEN NO CERRABA: 3 SE IBAN EN SILENCIO
+
+La corrida del 18/09 imprimió **"16 mirados · 11 medidos · 0 ya medidos · 2 descartados"**, que no
+suma. Los 3 que faltan se iban por un `continue` callado —ML no contestó la comisión, el catálogo
+sin vendedores activos, el código de ML que no existe—. Es el descarte por omisión de siempre, y
+acá hace un daño concreto: **un producto que da 50% desaparece de la lista sin que nadie se entere**,
+y el que la mira da por hecho que no había más.
+Ahora cada salida deja **su nombre y su motivo**, el resumen los cuenta aparte (*"sin dato"*) y
+**chequea que los números sumen**: si no cierra imprime *"⚠️ NO CIERRA · hay N saliendo en
+silencio"*. Es el mismo freno que ya se le puso a `activarPausadasFull` el 17/09.
+
 ### LO QUE QUEDA ABIERTO Y HAY QUE MIRAR
 
 **Hay OTRO lugar en el robot leyendo `buy_box_winner`**, en el informe que dice si una publicación
