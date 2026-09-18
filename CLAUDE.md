@@ -337,6 +337,7 @@ Los que más se usan:
 | `verescalon:<MLA\|palabra>[:marcar]` | **¿ML cobró menos de verdad al bajar?** agrupa las ventas por precio y muestra lo que ML se quedó en cada uno |
 | `envioml:<MLA>` | el envío que **dice ML** (por destino) vs el que deducimos de las ventas · `envioreal` es OTRO comando |
 | `apisnuevas:<MLA>` | qué endpoints de ML andan y no usamos |
+| `verweb:<direccion>` | **leer una página de afuera y mostrar su texto** · el chat no tiene internet y el robot sí · solo lee · **lo que imprime queda en el registro PÚBLICO** |
 | `apis` | qué endpoints de ML contestan (para diagnosticar) |
 | `ciclo` | **no es un comando: vuelve a prender el ciclo de 2 minutos** (ver abajo) |
 

@@ -8346,6 +8346,49 @@ async function main() {
       console.log('Y NO elijo ninguno: el título y el código están enteros para que decidas vos.');
       return;
     }
+    // BILLING_PROBE=verweb:<direccion> → LEER UNA PÁGINA DE AFUERA Y MOSTRAR SU TEXTO.
+    // Existe porque el CHAT no tiene salida a internet (la política de red lo bloquea) y el robot
+    // SÍ: corre en las máquinas de GitHub. Cuando él manda un link —una app de la competencia, una
+    // página de un proveedor, lo que sea— ésta es la única forma de mirarlo sin adivinar.
+    // SOLO LEE: no toca ML, no toca la base, no escribe nada.
+    // **OJO, Y ES LA REGLA DE SIEMPRE: lo que imprime queda en el registro de GitHub, que es
+    // PÚBLICO.** O sea que esto va sobre páginas públicas y nada más. Antes de correrlo sobre algo
+    // con datos de alguien adentro, la pregunta es la de siempre: ¿de quién es este dato?
+    // Y no se conforma con un 200: mide el tamaño y avisa cuando la página se arma con JavaScript
+    // y baja un cascarón vacío, que es el mismo error que leer un cero como buena noticia.
+    if (String(process.env.BILLING_PROBE || '').startsWith('verweb:')) {
+      const _vwUrl = String(process.env.BILLING_PROBE).slice('verweb:'.length).trim();
+      if (!/^https?:\/\//i.test(_vwUrl)) { console.log('Falta la dirección. Se usa así: verweb:https://...'); return; }
+      const _vwH = {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/129.0.0.0 Safari/537.36',
+        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+        'Accept-Language': 'es-AR,es;q=0.9',
+      };
+      console.log(`=== MIRANDO ${_vwUrl} (solo lee) ===\n`);
+      try {
+        const _vwC = new AbortController();
+        const _vwT = setTimeout(() => _vwC.abort(), 25000);
+        const _vwR = await fetch(_vwUrl, { signal: _vwC.signal, headers: _vwH, redirect: 'follow' });
+        clearTimeout(_vwT);
+        const _vwHtml = await _vwR.text();
+        console.log(`${_vwR.ok ? '✅' : '⚠️ '} ${_vwR.status} · ${Math.round(_vwHtml.length / 1024)} KB · llegó a ${_vwR.url}`);
+        const _vwTxt = _vwHtml
+          .replace(/<script[\s\S]*?<\/script>/gi, ' ')
+          .replace(/<style[\s\S]*?<\/style>/gi, ' ')
+          .replace(/<[^>]*>/g, '\n')
+          .replace(/&nbsp;/g, ' ').replace(/&amp;/g, '&').replace(/&quot;/g, '"')
+          .replace(/&#39;|&apos;/g, "'").replace(/&lt;/g, '<').replace(/&gt;/g, '>')
+          .split('\n').map((x) => x.trim()).filter(Boolean).join('\n');
+        if (_vwTxt.length < 400) {
+          console.log('\n⚠️ Casi no hay texto adentro: la página se arma con JavaScript en el navegador.');
+          console.log('   Lo que baja es un cascarón vacío, así que esto NO alcanza para leerla.');
+        }
+        console.log(`\n── TEXTO (${_vwTxt.length} caracteres, se muestran hasta 12.000) ──`);
+        console.log(_vwTxt.slice(0, 12000));
+        if (_vwTxt.length > 12000) console.log(`\n… y ${_vwTxt.length - 12000} caracteres más.`);
+      } catch (err) { console.log('❌ ' + String(err.message || err).slice(0, 200)); }
+      return;
+    }
     // BILLING_PROBE=probarweb[:<texto a buscar>] → ¿PUEDE EL ROBOT MIRAR PRECIOS SOLO?
     // Pregunta suya del 17/09/2026: *"me encantaria que vos puedas entrar en ml, no hay forma
     // alguna que vos extraigas esos precios?"*. Manejar dos chats —uno que mira ML con Chrome y
