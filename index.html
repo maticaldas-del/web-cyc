@@ -2307,7 +2307,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='19.58';
+const APP_VERSION='19.59';
 // El problema real que esto resuelve no es curiosidad: es que el celular guarda la app y sigue
 // mostrando la de ayer sin avisar. Varias veces se revisó un cambio que ya estaba subido y no se
 // veía. Por eso, además del número, el chip avisa cuando hay una versión nueva esperando.
@@ -8649,6 +8649,41 @@ function candDias(c){return c&&c.ts?Math.max(0,Math.round((Date.now()-c.ts)/8640
 // si vivieran aparte, un candidato descartado o vencido a los 45 días dejaría unidades colgadas
 // apuntando a algo que ya no está — el cementerio de marcas viejas que ya apareció con
 // `repoextra`, con la pausa por precio y con "Nissei no lo tiene".
+// ── LOS TRES PRECIOS DE UN CANDIDATO, EN UNA SOLA FUNCIÓN (18/09/2026) ────────────────────
+// Pedido suyo mirando el pedido ya armado: *"aca quiero que aparezca toda la info, precio
+// compraparaguai + 15% a cuanto se vende en ml a cuanto esta para ganar la caja y cuanto % de
+// ganancia tiene ganar la caja y cuanto % tiene vs mejor precio ml"*.
+//
+// SON DOS PRECIOS DE ML Y NO UNO, y contestan preguntas distintas:
+//  · 🥊 LA CAJA DE COMPRA — en una ficha de catálogo ML le muestra al comprador UN SOLO vendedor:
+//    el que gana la caja. Los demás no existen. Para venderle a alguien hay que estar en ese
+//    precio o abajo, así que ÉSE es "a cuánto se vende" y "a cuánto hay que estar para ganarla".
+//  · EL MÁS BARATO PUBLICADO — puede estar más abajo que la caja y no estar compitiendo (sin
+//    stock o sin calificar): pasó con el Ferrari el 25/08, donde había dos más baratos y ML igual
+//    pedía el precio del ganador. Es el PEOR caso —el día que ése tenga stock hay que pelear
+//    contra ese precio— y por eso es el que manda para el piso del 25%.
+//
+// ACÁ NO SE CALCULA NINGÚN MARGEN: los dos los mide el robot con la MISMA función (`cuentaCand`)
+// y esta pantalla sólo los muestra. Con una cuenta propia, la tarjeta podría decir un número y el
+// robot otro sobre el mismo producto — el error anotado seis veces en CLAUDE.md.
+//
+// Y HAY TRES ESTADOS, NO DOS: sin `mlCaja` quiere decir que todavía no lo miramos (candidato
+// cargado antes de este cambio), `mlCaja` en 0 quiere decir que ML no informa ganador. Mostrarlos
+// igual sería leer falta de dato como falta de caja, que es el error de siempre.
+function candPreciosHTML(c){
+  const pct=(m)=>`<b style="color:${m>=25?'var(--green)':'var(--amber)'}">${Number(m).toFixed(0)}%</b>`;
+  const caja=Number(c.mlCaja)||0;
+  const mCaja=(c.margenCaja!=null&&isFinite(c.margenCaja))?Number(c.margenCaja):null;
+  const min=Number(c.mlPrecio)||0;
+  const mMin=(c.margen!=null&&isFinite(c.margen))?Number(c.margen):null;
+  if(!min)return '';
+  const L=[];
+  if(c.mlCaja===undefined)L.push(`🥊 <span style="color:var(--muted)">la caja de compra todavía no se midió · sale en la vuelta de esta noche</span>`);
+  else if(!caja)L.push(`🥊 <span style="color:var(--amber)">ML no informa quién tiene la caja de este catálogo</span>`);
+  else L.push(`🥊 ganás la caja en <b>${fmt(caja)}</b> o abajo${mCaja!=null?` → ${pct(mCaja)}`:` · <span style="color:var(--amber)">margen sin medir</span>`}`);
+  L.push(`el más barato de ML <b>${fmt(min)}</b>${mMin!=null?` → ${pct(mMin)}`:''}`);
+  return L.join(' &nbsp;·&nbsp; ');
+}
 async function candSetPedir(id,v){
   const n=Math.max(0,parseInt(v)||0);
   const c=(state.candidatos||{})[id];if(c)c.pedirU=n;
@@ -8695,10 +8730,10 @@ function pedNuevosHTML(vivos){
     ${P.filas.length?P.filas.map(f=>`<div class="ingreso-item" style="gap:10px;align-items:center">
       <div style="flex:1;min-width:150px">
         <div style="font-size:.71rem;font-weight:600;line-height:1.3">${f.c.nombre}</div>
-        <div style="font-size:.59rem;color:var(--muted);margin-top:2px">
+        <div style="font-size:.59rem;color:var(--muted);margin-top:2px;line-height:1.7">
           ${String(f.c.cod||'').trim()?'🔖 '+String(f.c.cod).trim():'<span style="color:var(--amber)">🔖 sin código — no entra en el mensaje a Nissei</span>'}
-          ${f.usd>0?` · US$ ${f.usd.toFixed(2)} c/u`:' · <span style="color:var(--red)">sin precio</span>'}
-          ${(f.c.margen!=null&&isFinite(f.c.margen))?` · <b style="color:var(--green)">${Number(f.c.margen).toFixed(0)}%</b>`:' · <span style="color:var(--amber)">sin margen medido</span>'}
+          ${f.usd>0?` · te sale US$ ${f.usd.toFixed(2)} + 15% = <b style="color:var(--text)">US$ ${(Math.round(f.usd*RECARGO_PY*100)/100).toFixed(2)}</b> c/u${tc?` · ${fmt(Math.round(f.usd*RECARGO_PY*tc))}`:''}`:' · <span style="color:var(--red)">sin precio</span>'}
+          ${candPreciosHTML(f.c)?`<br>${candPreciosHTML(f.c)}`:' · <span style="color:var(--amber)">sin margen medido</span>'}
         </div>
       </div>
       <div style="text-align:right;font-size:.68rem;white-space:nowrap">
@@ -8780,14 +8815,14 @@ function candidatosHTML(){
       <div style="background:var(--surface2);border-radius:8px;padding:8px 10px;font-size:.68rem;line-height:1.55">
         ${c.mlTit?`<div style="color:var(--muted);font-size:.9em">lo que encontró en ML</div>
           <div style="font-weight:600;margin:2px 0 4px">${c.mlLink?`<a href="${c.mlLink}" target="_blank" rel="noopener" style="color:inherit">${c.mlTit}</a>`:c.mlTit}</div>
-          <div style="color:var(--muted)">se vende a <b style="color:var(--text)">${fmt(c.mlPrecio||0)}</b>${c.mlVendedores?` · ${c.mlVendedores} vendedor${c.mlVendedores===1?'':'es'} compitiendo`:''}</div>
+          <div style="color:var(--muted);line-height:1.8">${candPreciosHTML(c)}${c.mlVendedores?`<br>${c.mlVendedores} vendedor${c.mlVendedores===1?'':'es'} en la ficha`:''}</div>
           ${c.mlPorNombre===false&&c.mlId?`<div style="font-size:.86em;color:var(--green);margin-top:5px">✓ Emparejado por el código de ML, no por el nombre: es seguro que es este producto.</div>`
             :`<div style="font-size:.86em;color:var(--amber);margin-top:5px">⚠️ <b>Emparejado por el NOMBRE</b>, no por código: mirá que los dos títulos sean el MISMO producto. Buscando "Xiaomi Redmi Watch 4" ML ya devolvió el "Watch 3". Si cargás el link de ML en la ficha del candidato, esto deja de pasar.</div>`}`
         :`<div style="color:var(--muted)">${c.motivo?c.motivo:'Todavía no le preguntó a ML a cuánto se vende. Lo hace el robot esta noche.'}</div>`}
       </div>
       ${tieneCuenta?`<div style="display:flex;align-items:baseline;gap:10px;flex-wrap:wrap">
         <span style="font-size:1.35rem;font-weight:700;color:${col}">${c.margen.toFixed(0)}%</span>
-        <span style="font-size:.68rem;color:var(--muted)">de margen${c.ganancia?` · te quedarían <b style="color:var(--text)">${fmt(Math.round(c.ganancia))}</b> por unidad</span>`:'</span>'}
+        <span style="font-size:.68rem;color:var(--muted)">contra el más barato de ML${c.ganancia?` · te quedarían <b style="color:var(--text)">${fmt(Math.round(c.ganancia))}</b> por unidad</span>`:'</span>'}
         <span style="font-size:.6rem;color:var(--amber)" title="El envío sale de la tarifa de ML porque este producto nunca vendió, y esa tarifa se midió $246 corta el 20/08. El margen real puede ser un poco menor.">· estimado</span>
       </div>`:`<div style="font-size:.68rem;color:var(--muted)">⏳ falta la cuenta de ML. <b>No se muestra ningún porcentaje</b> hasta tenerla: un margen inventado acá se aplica y recién se nota cuando ya compraste.</div>`}
       <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center">

@@ -1552,8 +1552,23 @@ del repo, se pega y listo.
    robot empareja por nombre y ya devolvió el "Watch 3" cuando se le pidió el "Watch 4".
 
 **Los topes que él fijó:** US$250 por unidad · 40×40×40 cm · nada de marcas que ML frena (Lancôme y
-ese nivel) · prioridad a lo ya probado · suma si sirve para la perfumería, porque ahí hay segunda
-salida (el caso Victoria's Secret).
+ese nivel).
+
+**SE MIRA TODO EL CATÁLOGO, NO SÓLO PERFUMES. Regla suya del 18/09/2026.** Este renglón decía
+*"suma si sirve para la perfumería, porque ahí hay segunda salida (el caso Victoria's Secret)"* y
+él lo sacó mirando el primer pedido armado —**17 productos y los 17 perfumes**—: *"eliminar eso.
+porque al ser solo dos unidades, si no se vende no pasa nada. sacar esa regla. mira todo (eso no
+significa que no pongas perfumes, significa que midas los mejores productos)"*.
+**El argumento es suyo y es el que hace que la regla vieja sobre.** La segunda salida importaba
+cuando probar algo costaba caro; acá se prueba con **2 unidades**, así que lo que se arriesga es
+mínimo y lo único que tiene que decidir es **el margen**. Una preferencia de categoría acá no
+protege de nada: sólo tapa productos mejores.
+**No era una regla del panel ni del robot** —ninguno de los dos mira la categoría— sino de este
+texto, o sea del chat que busca. Los perfumes siguen entrando cuando son de los mejores; lo que no
+entra es preferirlos por ser perfumes.
+(Ojo con el otro renglón que quedó: *"prioridad a lo ya probado"* es de la **canasta de
+reposición** —lo que YA vendés— y no de "Para probar", que por definición es lo que todavía no
+probaste. Ahí manda el margen.)
 
 **Y el aviso que hay que repetirle al chat:** *misma marca ≠ mismo producto*. Ya ofreció el Cabotine
 de **100 ml** cuando vendemos el de **30 ml**, y el Animale **Black** cuando vendemos el **For Men**.
@@ -1678,6 +1693,48 @@ que ese criterio acá no dice nada.
 full. ya que no es de aca. va en mi oficina"*). Se mira en **Mi oficina → En camino**, que es donde
 vive. **Lo que NO cambió: la cuenta de Pedidos sigue descontando lo que va en camino**, así que
 abajo no se vuelve a pedir — se sacó el aviso, no la regla.
+
+## LOS TRES PRECIOS DE UN PRODUCTO NUEVO, EN EL RENGLÓN (18/09/2026)
+
+Pedido suyo mirando el pedido ya armado: *"aca quiero que aparezca toda la info, precio
+compraparaguai + 15% a cuanto se vende en ml a cuanto esta para ganar la caja y cuanto % de
+ganancia tiene ganar la caja y cuanto % tiene vs mejor precio ml"*.
+
+Hasta ese día el renglón decía **un** precio de ML —el más barato publicado— y un solo porcentaje.
+Con eso no se puede decidir una compra: falta justo el precio al que el producto **se vende**.
+
+**SON DOS PRECIOS DE ML Y NO UNO, y contestan preguntas distintas:**
+
+| | qué es | para qué sirve |
+|---|---|---|
+| **🥊 la caja de compra** (`mlCaja`) | lo que cobra el que HOY tiene la caja | en una ficha de catálogo ML le muestra al comprador **un solo vendedor**. Para venderle a alguien hay que estar en ese precio **o abajo**: ése es "a cuánto se vende" y "a cuánto hay que estar para ganarla" |
+| **el más barato publicado** (`mlPrecio`) | el precio más bajo de la ficha | puede estar **abajo de la caja y no estar compitiendo** (sin stock o sin calificar) — pasó con el Ferrari el 25/08. Es el **peor caso**, y por eso es el que manda para el piso del 25% |
+
+Cada uno va con **su** margen, los dos medidos por el robot con la **MISMA** función (`cuentaCand`),
+que es nueva y reemplaza la cuenta que estaba escrita suelta: se mide a dos precios distintos y con
+dos copias de la fórmula los dos números se separan solos — el error anotado seis veces acá.
+**La pantalla no calcula nada**: `candPreciosHTML` sólo muestra, y la usan los DOS lugares (el
+renglón del pedido armado y la tarjeta del candidato), así que no pueden decir cosas distintas.
+
+**El precio de la caja sale de `buy_box_winner`**, el campo de la ficha del catálogo que el robot ya
+usaba en otros dos lados. Cuando el chat trajo el código de ML no cuesta ninguna consulta más
+(la ficha ya se pidió); cuando se emparejó por nombre hay que pedirla.
+
+**HAY TRES ESTADOS Y NO DOS, a propósito:** sin `mlCaja` = todavía no lo miramos · `mlCaja` en **0**
+= ML no informa ganador · mayor a 0 = el precio. Mostrar los dos primeros igual sería leer **falta de
+dato como falta de caja**, que es el error de siempre. Por eso se guarda **siempre como número** (0,
+nunca null): con `patch` un null BORRA la clave y una clave borrada es indistinguible de "no lo
+miramos" — que es justo lo que decide si se vuelve a medir.
+
+**Y HUBO QUE TOCAR EL FRENO DE "ya tiene la cuenta hecha".** Ese `if` saltea los candidatos ya
+medidos para no gastar consultas, así que **los 17 que ya estaban cargados nunca iban a recibir el
+dato nuevo**: la pantalla habría mostrado la mitad de los renglones completos y la otra mitad no, y
+eso se lee como que ML no informa. Ahora el freno pide **además** que `mlCaja` exista.
+
+Probado con la función REAL sacada del archivo: la cuenta nueva da **exactamente** lo mismo que la
+vieja en cuatro casos (incluidos $32.999 y $33.000, la barrera), y el renglón se probó con siete
+casos — medido entero, la caja igual al más barato, ML sin ganador, candidato viejo sin medir,
+margen de la caja sin medir, margen flaco en ámbar y sin nada de ML.
 
 ## EL PRECIO DE PARAGUAY NO PISA EL COSTO. NUNCA. (17/09/2026)
 
