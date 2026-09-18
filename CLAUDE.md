@@ -3174,6 +3174,23 @@ ninguna variable ni ningún `id` — sólo se agregaron 7 nombres, ninguno repet
   web" para la Lupa 60mm x10 y era el COSTO ($11.638). Se aplicó como precio de venta. No alcanza
   con aplicarlo: hay que mirar el margen que queda ANTES de tocar ML.
 
+- **"REGISTRAR VENTA" SE SACÓ DE VENTAS x PRODUCTO (18/09/2026).** Decisión suya: *"sacar el
+  registrar manual, ya que nunca se va a usar. ya se hace automatico (ojo, que siga funcionando
+  como viene lo de cargar ventas, simplemente eso no lo uso nunca yo)"*.
+  Era el formulario de arriba de todo —cuenta, N° de venta, producto, cantidad, total, neto, el
+  carrito y el botón de guardar—. **Las ventas las trae el robot solo cada 2 minutos y eso no se
+  tocó**, ni tampoco **editar una venta ya cargada**, que sigue igual abajo en la lista.
+  Se borró entero: el formulario y las seis funciones que sólo lo servían (`vpCostHint`,
+  `vpAddToCart`, `vpRemoveCartItem`, `vpClearCart`, `renderVpCart`, `saveVenta`), la variable
+  `vpCart` y la clase de CSS `ii-monto`, que no la usaba nadie más.
+  **LA TRAMPA, Y ES LA DEL 21/08 OTRA VEZ: adentro del bloque a borrar vivía la lista de productos**
+  (`<datalist id="vp-prod-list">`), que **la usan otras tres pantallas** — Pedidos Bs As, Pedidos
+  Paraguay y el renglón de editar una venta. Borrarla de paso dejaba esos tres campos sin sugerencias
+  y no lo habría agarrado ningún chequeo de sintaxis. Se sacó del formulario y quedó suelta, con el
+  motivo escrito al lado.
+  Marcados los bordes a mano (HTML 1409-1445 y tres bloques de código) y corrido el chequeo de las
+  tres listas: falta **exactamente** lo que se quiso sacar y **0 nombres nuevos**.
+
 - **"POR PROVEEDOR" SE SACÓ DE PEDIDOS (18/09/2026).** Decisión suya: *"eliminar el por proveedor,
   nunca se uso. borrar lo relacionado. si tenes duda solo sacalo que no se vea y listo"*.
   Era un botón en Bs As y en Paraguay que agrupaba los pedidos por proveedor y le sumaba a cada

@@ -288,7 +288,6 @@ input.qty:focus{border-color:var(--accent2)}
 @media (min-width:900px){#vp-day-list{max-width:calc(100% - 170px)}}
 .ingreso-item{display:flex;align-items:center;gap:8px;padding:10px 12px;background:var(--surface);border:1px solid var(--border);border-radius:8px;flex-wrap:wrap}
 .ii-time{font-size:.62rem;color:var(--muted);white-space:nowrap;min-width:40px}
-.ii-monto{font-family:'Syne',sans-serif;font-weight:800;font-size:.88rem;flex:1}
 .ii-nota{font-size:.67rem;color:var(--muted);flex:2;min-width:60px}
 .ii-del{background:none;border:none;color:var(--muted);cursor:pointer;font-size:.8rem;padding:2px 6px;border-radius:4px;transition:color .15s}
 .ii-del:hover{color:var(--red)}
@@ -1406,43 +1405,12 @@ footer{margin-top:32px;padding-top:14px;border-top:1px solid var(--border);font-
     </div>
   </div>
 
-  <div class="stitle" style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
-    <span>Registrar venta</span>
-    <span style="font-weight:400;color:var(--muted);font-size:.68rem;text-transform:none;letter-spacing:0">Fecha:</span>
-    <input type="date" id="vp-reg-date" class="cal-select" style="font-size:.68rem;padding:4px 8px">
-  </div>
-  <div class="pedidos-add" style="margin-bottom:8px">
-    <span style="font-size:.7rem;color:var(--muted)">Cuenta:</span>
-    <select id="vp-cuenta" class="cal-select">
-      <option value="Adriana">Adriana</option>
-      <option value="Luciana">Luciana</option>
-      <option value="Ayelen">Ayelen</option>
-      <option value="Matias">Matias</option>
-    </select>
-    <span style="font-size:.7rem;color:var(--muted)">N° venta: <span style="color:var(--red)">*</span></span>
-    <input id="vp-num-venta" type="text" class="cal-select" placeholder="obligatorio" required style="width:130px;font-size:.72rem">
-    <label style="font-size:.7rem;color:var(--muted);display:inline-flex;align-items:center;gap:5px;cursor:pointer" title="El comprador canceló antes de recibir: el producto queda en stock y no suma a finanzas. (El 'reclamo' se marca al editar la venta, no acá.)">
-      <input type="checkbox" id="vp-cancelada" style="accent-color:#f87171;width:14px;height:14px"> 🚫 Venta cancelada
-    </label>
-  </div>
-  <div class="pedidos-add">
-    <input class="inp-prod" id="vp-prod" type="text" list="vp-prod-list" placeholder="Producto vendido" oninput="vpCostHint()" onchange="vpCostHint()" onkeydown="if(event.key==='Enter')vpAddToCart()">
-    <datalist id="vp-prod-list"></datalist>
-    <input class="inp-qty" id="vp-qty" type="number" min="1" placeholder="Cant. *" oninput="vpCostHint()" onkeydown="if(event.key==='Enter')vpAddToCart()">
-    <input class="ingreso-inp money" id="vp-total" type="text" inputmode="numeric" placeholder="Total $" style="width:120px" oninput="vpCostHint()" onkeydown="if(event.key==='Enter')vpAddToCart()">
-    <input class="ingreso-inp money" id="vp-neto" type="text" inputmode="numeric" placeholder="Neto $" style="width:120px" oninput="vpCostHint()" onkeydown="if(event.key==='Enter')vpAddToCart()">
-    <button class="btn btn-add" onclick="vpAddToCart()">+ Sumar producto</button>
-  </div>
-  <div id="vp-variante-row" style="display:none;align-items:center;gap:8px;margin:-2px 0 8px">
-    <span style="font-size:.7rem;color:var(--muted)">Variante:</span>
-    <select id="vp-variante" class="cal-select" style="font-size:.72rem;min-width:140px"><option value="">— cualquiera —</option></select>
-  </div>
-  <div id="vp-cost-hint" style="font-size:.66rem;color:var(--muted);margin:-4px 0 12px"></div>
-  <div id="vp-cart" style="margin-bottom:12px"></div>
-  <div class="pedidos-add" id="vp-save-row" style="display:none;align-items:center;flex-wrap:wrap;gap:8px">
-    <button class="btn btn-add" id="vp-save-btn" onclick="saveVenta()">💾 Guardar venta</button>
-    <button class="btn btn-del" onclick="vpClearCart()">Vaciar</button>
-  </div>
+  <!-- SE SACÓ "REGISTRAR VENTA" (18/09/2026, pedido suyo: *"nunca se va a usar, ya se hace
+       automático"*). Las ventas las carga el robot solo cada 2 minutos; EDITAR una venta ya
+       cargada sigue funcionando igual, abajo en la lista.
+       ESTA LISTA DE PRODUCTOS SE QUEDA aunque el formulario se haya ido: la usan Pedidos Bs As,
+       Pedidos Paraguay y el renglón de editar una venta. Borrarla de paso era el corte de más -->
+  <datalist id="vp-prod-list"></datalist>
 
   <div class="met-kpi-grid" id="vp-kpis"></div>
 
@@ -2307,7 +2275,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='19.63';
+const APP_VERSION='19.64';
 // El problema real que esto resuelve no es curiosidad: es que el celular guarda la app y sigue
 // mostrando la de ayer sin avisar. Varias veces se revisó un cambio que ya estaba subido y no se
 // veía. Por eso, además del número, el chip avisa cuando hay una versión nueva esperando.
@@ -6741,29 +6709,6 @@ async function migrarVinculoPorId(){
   if(currentPage==='inventario'){renderProds();renderInv();}
   if(currentPage==='ventaprod')renderVentaProd();
 }
-function vpCostHint(){
-  const el=document.getElementById('vp-cost-hint');if(!el)return;
-  const name=(document.getElementById('vp-prod')?.value||'').trim();
-  const qty=parseInt(document.getElementById('vp-qty')?.value)||1;
-  const neto=parseMoney(document.getElementById('vp-neto')?.value);
-  const varRow=document.getElementById('vp-variante-row');
-  const varSel=document.getElementById('vp-variante');
-  if(!name){el.innerHTML='';if(varRow)varRow.style.display='none';return;}
-  const p=prodByName(name);
-  if(varRow&&varSel){
-    const vars=(p&&p.variantes&&p.variantes.length)?p.variantes:[];
-    if(vars.length){
-      const cur=varSel.value;
-      varSel.innerHTML='<option value="">— cualquiera —</option>'+[...vars].sort((a,b)=>a.localeCompare(b,'es',{sensitivity:'base'})).map(v=>`<option${v===cur?' selected':''}>${v}</option>`).join('');
-      varRow.style.display='flex';
-    } else {varSel.value='';varRow.style.display='none';}
-  }
-  if(!p){el.innerHTML='⚠️ Este producto no está cargado en la web — se guardará igual, pero sin costo no se calcula el % de ganancia. Cargalo en Productos para vincularlo.';return;}
-  const unit=costFullP(p);const costo=unit*qty;
-  let txt=`Costo Full del producto: <strong>${fmt(unit)}</strong> c/u${qty>1?` · costo total ${fmt(costo)}`:''}`;
-  if(neto>0&&costo>0){const g=neto-costo;const pct=g/costo*100;txt+=` · Ganancia ${fmt(g)} → <strong style="color:${pctColor(pct)}">${pct>=0?'+':''}${pct.toFixed(1)}%</strong>${pct<vpMinPct()?' ⚠️ (bajo el '+vpMinPct()+'%)':''}`;}
-  el.innerHTML=txt;
-}
 // Devuelve el TC histórico del mes YYYY_MM: usa el snapshot si existe, sino el actual
 function histTCforYM(ym){const s=state.snapshots?.[ym];return s&&s.tipoCambio?parseFloat(s.tipoCambio):curTC();}
 // Dólar EFECTIVO de un mes (formato ym "YYYY_MM"):
@@ -6892,102 +6837,13 @@ function initVentaProd(){
   // rango personalizado (default: últimos 7 días)
   const rf=document.getElementById('vp-range-from');if(rf&&!rf.value){const f=new Date(now);f.setDate(f.getDate()-6);rf.value=f.toISOString().split('T')[0];}
   const rt=document.getElementById('vp-range-to');if(rt&&!rt.value)rt.value=todayStr();
-  // fecha de registro (para guardar ventas)
-  const rdEl=document.getElementById('vp-reg-date');if(rdEl&&!rdEl.value)rdEl.value=vpDate;
   // aplicar visibilidad del período activo (id usa guión bajo en 30d/365d → OK)
   setVpPeriod(vpPeriod,document.getElementById('vpperiod-'+vpPeriod));
   const dl=document.getElementById('vp-prod-list');
   if(dl)dl.innerHTML=productsSorted().map(p=>`<option value="${(p.name||'').replace(/"/g,'&quot;')}">`).join('');
-  renderVpCart();vpCostHint();renderVentaProd();
+  renderVentaProd();
 }
 function getVentasDia(key){const o=state.ventaprod[key]||{};return Object.values(o).sort((a,b)=>(b.ts||0)-(a.ts||0));}
-let vpCart=[];
-function vpAddToCart(){
-  const prodEl=document.getElementById('vp-prod');
-  const qtyEl=document.getElementById('vp-qty');
-  const totalEl=document.getElementById('vp-total');
-  const netoEl=document.getElementById('vp-neto');
-  const prod=(prodEl?.value||'').trim();
-  const qty=parseInt(qtyEl?.value)||0;
-  const total=parseMoney(totalEl?.value);
-  const neto=parseMoney(netoEl?.value);
-  if(!prod){prodEl?.focus();return;}
-  if(qty<1){if(qtyEl){qtyEl.style.outline='2px solid var(--red)';qtyEl.focus();}toast('⚠ Poné la cantidad de unidades vendidas antes de sumar el producto.','err',5000);return;}
-  if(qtyEl)qtyEl.style.outline='';
-  const _cancelada=!!document.getElementById('vp-cancelada')?.checked;
-  // El producto DEBE existir en el catálogo de la web (elegir uno de la lista)
-  const _p=prodByName(prod);
-  if(!_p){
-    if(prodEl){prodEl.style.outline='2px solid var(--red)';prodEl.style.borderColor='var(--red)';prodEl.focus();}
-    toast('⚠ Ese producto no existe en el catálogo. Elegí uno de la lista de Productos.','err',6000);return;
-  }
-  if(prodEl){prodEl.style.outline='';prodEl.style.borderColor='';}
-  const varRow=document.getElementById('vp-variante-row');
-  const varSel=document.getElementById('vp-variante');
-  const varVisible=varRow&&varRow.style.display!=='none';
-  const variante=(varVisible&&varSel)?varSel.value:'';
-  if(varVisible&&!variante){
-    if(varSel){varSel.style.outline='2px solid var(--red)';varSel.style.borderColor='var(--red)';varSel.focus();}
-    toast('⚠ Elegí la variante antes de agregar','err');return;
-  }
-  if(varSel){varSel.style.outline='';varSel.style.borderColor='';}
-  // En ventas NORMALES (no canceladas): Total y Neto obligatorios y diferencia mínima de 15%.
-  if(!_cancelada){
-    if(!(total>0)){if(totalEl){totalEl.style.outline='2px solid var(--red)';totalEl.focus();}toast('⚠ Completá el Total de la venta','err');return;}
-    if(!(neto>0)){if(netoEl){netoEl.style.outline='2px solid var(--red)';netoEl.focus();}toast('⚠ Completá el Neto de la venta','err');return;}
-    if(neto>total*0.85){
-      if(netoEl){netoEl.style.outline='2px solid var(--red)';netoEl.focus();}
-      toast('⚠ El Neto no puede superar el 85% del Total (diferencia mínima 15%). Total '+fmt(total)+' → Neto máximo '+fmt(Math.floor(total*0.85)),'err',7000);return;
-    }
-    if(totalEl)totalEl.style.outline='';if(netoEl)netoEl.style.outline='';
-    // Bloquear si el stock de la cuenta no alcanza
-    const _cuenta=document.getElementById('vp-cuenta')?.value||'';
-    const _cuentaStock=variante?
-      (parseInt(state.inventory[invKeyV(_p.id,_cuenta,variante)])||0):
-      (parseInt(state.inventory[invKey(_p.id,_cuenta)])||0);
-    const _totalStock=variante?(LOCS.reduce((s,l)=>s+(parseInt(state.inventory[invKeyV(_p.id,l,variante)])||0),0)):stockOf(_p);
-    const _enCarrito=vpCart.filter(x=>normTxt(x.prod)===normTxt(prod)&&x.variante===variante).reduce((s,x)=>s+x.qty,0);
-    if(qty+_enCarrito>_cuentaStock){
-      const totalMsg=_totalStock>_cuentaStock?` (hay ${_totalStock} entre todas las cuentas)`:'';
-      toast(`⚠ Stock insuficiente en ${_cuenta} — hay ${_cuentaStock}${variante?' ('+variante+')':''}${totalMsg}${_enCarrito?' · '+_enCarrito+' ya en carrito':''}`, 'err', 5000);
-      return;
-    }
-  }
-  vpCart.push({prod,qty,total,neto,variante});
-  qtyEl.value='';qtyEl.style.outline='';if(totalEl)totalEl.value='';netoEl.value='';
-  if(varVisible){
-    // producto con variantes: quedar en el mismo producto, resetear solo la variante
-    if(varSel)varSel.value='';
-    renderVpCart();vpCostHint();
-    if(varSel)varSel.focus();
-  } else {
-    prodEl.value='';
-    if(varSel)varSel.value='';if(varRow)varRow.style.display='none';
-    renderVpCart();vpCostHint();prodEl.focus();
-  }
-}
-function vpRemoveCartItem(i){vpCart.splice(i,1);renderVpCart();}
-function vpClearCart(){vpCart=[];renderVpCart();}
-function renderVpCart(){
-  const el=document.getElementById('vp-cart');const row=document.getElementById('vp-save-row');
-  if(!el)return;
-  if(!vpCart.length){el.innerHTML='';if(row)row.style.display='none';return;}
-  if(row)row.style.display='flex';
-  let totNeto=0,totCosto=0,totTotal=0;
-  const items=vpCart.map((it,i)=>{
-    const p=prodByName(it.prod);const costo=p?costFullP(p)*it.qty:0;totNeto+=it.neto||0;totCosto+=costo;totTotal+=it.total||0;
-    return`<div class="ingreso-item">
-      <span class="ii-monto" style="flex:2;font-size:.76rem">${it.qty}× ${it.prod}${it.variante?` <span style="padding:1px 6px;border-radius:4px;background:rgba(124,58,237,.15);color:#a78bfa;font-size:.65rem">${it.variante}</span>`:''}</span>
-      ${(it.total||0)>0?`<span style="font-size:.66rem;color:var(--muted)">total ${fmt(it.total)}</span>`:''}
-      <span style="font-size:.66rem;color:var(--green)">neto ${fmt(it.neto||0)}</span>
-      <span style="font-size:.6rem;color:var(--muted)">${costo>0?'costo '+fmt(costo):'sin costo'}</span>
-      <button class="ii-del" onclick="vpRemoveCartItem(${i})">✕</button>
-    </div>`;
-  }).join('');
-  const g=totNeto-totCosto;const pct=totCosto>0?g/totCosto*100:null;
-  el.innerHTML=`<div class="stitle" style="margin:0 0 6px">En esta venta (${vpCart.length} ${vpCart.length===1?'producto':'productos'})</div>${items}
-    <div style="text-align:right;font-size:.68rem;margin-top:6px;color:var(--muted)">${totTotal>0?`Total <strong style="color:var(--text)">${fmt(totTotal)}</strong> · `:''}Neto <strong style="color:var(--green)">${fmt(totNeto)}</strong>${pct!==null?` · Ganancia ${fmt(g)} (<strong style="color:${pctColor(pct)}">${pct>=0?'+':''}${pct.toFixed(1)}%</strong>)${pct<vpMinPct()?' ⚠️':''}`:''}</div>`;
-}
 async function recalcTodayCostos(prodId){
   // recalcula ventas de los últimos 7 días al modificar un precio
   const now=new Date();const todayKey=dateToKey(now);
@@ -7014,79 +6870,6 @@ async function recalcTodayCostos(prodId){
   if(changed&&currentPage==='ventaprod')renderVentaProd();
 }
 
-async function saveVenta(){
-  if(!vpCart.length){toast('Sumá al menos un producto','err');return;}
-  const cuenta=document.getElementById('vp-cuenta')?.value||'';
-  const numVenta=(document.getElementById('vp-num-venta')?.value||'').trim();
-  const cancelada=!!document.getElementById('vp-cancelada')?.checked;
-  if(!numVenta){toast('⚠️ El N° de venta es obligatorio','err');const ne=document.getElementById('vp-num-venta');if(ne)ne.focus();return;}
-  const dup=Object.values(state.ventaprod||{}).flatMap(d=>Object.values(d||{})).find(e=>e.numVenta===numVenta);
-  if(dup){toast('⚠️ Venta #'+numVenta+' ya está cargada ('+dup.cuenta+' · '+dup.prod+')','err');return;}
-  vpDate=document.getElementById('vp-reg-date')?.value||document.getElementById('vp-date')?.value||todayStr();
-  const key=vpKey();const saleId='s'+Date.now();
-  if(!state.ventaprod[key])state.ventaprod[key]={};
-  let nombres=[];
-  const invUpdates={};
-  for(let i=0;i<vpCart.length;i++){
-    const it=vpCart[i];const p=prodByName(it.prod);
-    const costo=(p&&!cancelada)?costFullP(p)*it.qty:0;
-    const id='v'+Date.now()+'_'+i;
-    // Componentes congelados del momento: costo USD base, dólar y envío.
-    // El % de devolución NO se congela (se recalcula siempre, ver efectivoCostoVP).
-    const obj={id,saleId,prod:it.prod,prodId:p?p.id:null,cuenta,qty:it.qty,
-      total:cancelada?0:(it.total||0),neto:cancelada?0:(it.neto||0),costo,
-      costBaseUSD:(p&&!cancelada)?costUSDof(p):0,tcSale:curTC(),shipUSD:p?(parseFloat(p.shipUSD)||0):0,ts:Date.now()};
-    if(cancelada){obj.cancelada=true;obj.tipoCancelacion='cancelada';}
-    if(numVenta)obj.numVenta=numVenta;
-    if(it.variante)obj.variante=it.variante;
-    if(_knownVentaprodIds)_knownVentaprodIds.add(id);
-    await fbSet('ventaprod/'+key+'/'+id,obj);
-    state.ventaprod[key][id]=obj;
-    nombres.push(it.qty+'× '+it.prod+(it.variante?' ('+it.variante+')':''));
-    // Acumular descuento de stock directamente en la cuenta de venta (permite negativo)
-    // Si es cancelada, el producto quedó en stock → no se descuenta.
-    if(VENTAS_TOCAN_STOCK&&p&&!cancelada){
-      const hasVars=(p.variantes||[]).length>0;
-      const variant=it.variante||'';
-      if(hasVars&&variant){
-        // Con variantes: descontar clave de variante y recalcular producto-nivel
-        const vk=invKeyV(p.id,cuenta,variant);
-        const curV=invUpdates[vk]!==undefined?invUpdates[vk]:(parseInt(state.inventory[vk])||0);
-        invUpdates[vk]=clamp0(curV-it.qty);
-        const pk=invKey(p.id,cuenta);
-        const newSum=(p.variantes||[]).reduce((s,v)=>{
-          const k2=invKeyV(p.id,cuenta,v);
-          return s+(invUpdates[k2]!==undefined?invUpdates[k2]:(parseInt(state.inventory[k2])||0));
-        },0);
-        invUpdates[pk]=newSum;
-      } else {
-        // Sin variantes: descontar clave producto-nivel
-        const k=invKey(p.id,cuenta);
-        const cur=invUpdates[k]!==undefined?invUpdates[k]:(parseInt(state.inventory[k])||0);
-        invUpdates[k]=clamp0(cur-it.qty);
-      }
-    }
-  }
-  for(const [k,nv] of Object.entries(invUpdates)){
-    state.inventory[k]=nv;
-    await fbSet('inventory/'+k,nv);
-  }
-  if(cancelada){
-    toast('🚫 Venta cancelada cargada · stock intacto · no afecta finanzas',4000);
-  } else if(VENTAS_TOCAN_STOCK&&Object.keys(invUpdates).length){
-    updateTotals();
-    const dbgLines=Object.entries(invUpdates).map(([k,nv])=>{const parts=k.split('__');return parts.slice(1).join('__')+': →'+nv;});
-    console.log('[stock descuento]',dbgLines);
-    toast('Stock: '+dbgLines.join(', '),'ok',4000);
-  } else if(VENTAS_TOCAN_STOCK){
-    toast('⚠ Sin descuento de stock (producto no encontrado en catálogo)','err',4000);
-  }
-  rebuildReclamoStats();
-  document.getElementById('vp-num-venta').value='';
-  const canEl=document.getElementById('vp-cancelada');if(canEl)canEl.checked=false;
-  await log((cancelada?'Venta CANCELADA':'Venta')+' ('+cuenta+')'+( numVenta?' #'+numVenta:'')+': '+nombres.join(', '));
-  vpCart=[];renderVpCart();renderVentaProd();toast(cancelada?'Venta cancelada guardada ✓':'Venta guardada ✓');syncPedidosDebounced();
-}
 // ── UNA COMPRA CON DOS PRODUCTOS ES UNA SOLA VENTA, AUNQUE ML LA PARTA ──
 // Cuando el comprador se lleva dos cosas juntas, ML arma una ORDEN por producto y les pone el
 // mismo número de venta (el del paquete). El panel agrupaba por orden, así que la misma compra
