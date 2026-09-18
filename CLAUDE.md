@@ -1481,7 +1481,7 @@ Medido con **`probarweb[:<texto>]`** (solo lee, no toca ML ni la base):
 | `nissei.com` (home y buscador) | ✅ **200 · 798 KB · los precios están en el HTML** |
 | `comprasparaguay.com.ar` | ❌ **403, y NO es el User-Agent** · reintentado con las cabeceras de Chrome el 17/09: mismo 403 |
 | `/products/search?site_id=MLA&q=…` | ✅ busca el CATÁLOGO por texto ("azzaro sport" → 3.547) |
-| `/products/<id>/items` | ✅ vendedores con precio, **stock** y quién tiene la caja |
+| `/products/<id>/items` | ✅ vendedores con precio · **NO trae stock ni ventas** (medido el 18/09: contesta `?` en los dos) · tampoco dice quién tiene la caja |
 | `/sites/MLA/search?q=…` | ❌ **403 forbidden** · ML cerró la búsqueda libre de publicaciones |
 
 **EL 403 DE COMPRASPARAGUAY ES EL PROBLEMA GRANDE, Y NO SE ARREGLA.** Aclaración suya del 17/09:
@@ -1797,6 +1797,65 @@ si el mensaje salió**. Si no hay nada nuevo que dé margen, no manda nada.
 **El botón "Crear ficha"** deja el producto con su costo puesto (precio × 1,15), su código y origen
 Paraguay, y avisa si ya hay una ficha con nombre parecido. **No publica nada en ML ni compra nada**:
 la publicación la hace él, que es la norma del 26/08.
+
+## LAS VENTAS DEL PRODUCTO EN ML, EN "PARA PROBAR" (18/09/2026)
+
+Pregunta suya: *"tiene en cuenta la cantidad de ventas del producto? podria mostrarlas de cada
+producto?"*. **No las tenía en cuenta y no las mostraba** — y es su propia regla del 18/09:
+*"en ML tiene que haber ventas de verdad (+25 vendidos para arriba): un vendedor solo no molesta,
+uno sin ventas no sirve"*. Lo único que había era cuántos **VENDEDORES** tiene la ficha, que es
+otra cosa: "4 vend." dice que hay competencia, no que el producto se venda.
+
+**Él sospechó que el robot sí las miraba y que lo que faltaba era dónde cargarlas. Tenía razón a
+medias, y la mitad importa:** el formulario de cargar un candidato tiene ocho casillas —nombre,
+código de Nissei, precio US$, link de ML, marca, medidas, peso y link— y **ninguna de ventas**, eso
+es cierto. Pero el robot tampoco las miraba: de la respuesta de ML usaba el precio, la categoría y
+el tipo de publicación, y nada más.
+
+**NO VIENEN GRATIS, y eso se midió ANTES de escribir una línea** (con `probarweb`):
+`/products/<id>/items` contesta **`vendidas ?` y `stock ?`** — esos dos campos NO están ahí.
+**De paso eso corrige una nota de este archivo que estaba mal**: decía que ese endpoint trae
+*"vendedores con precio, **stock** y quién tiene la caja"*. El stock tampoco viene.
+
+**Pero salen casi gratis: `/items?ids=` acepta 20 publicaciones por consulta**, así que los ~70
+vendedores de los 25 candidatos entran en 3 o 4 llamadas para TODA la corrida — contra las decenas
+que ya gasta preguntando la comisión. Por eso se hizo igual, y el número real está dicho acá para
+que se pueda revisar la decisión.
+
+**Se guardan DOS números, porque contestan preguntas distintas:**
+ · **`mlVendidas`** — la SUMA de la ficha: *¿este producto se vende en ML?*
+ · **`mlVendidasMin`** — las del **más barato**, que es contra el que se mide el margen.
+
+**SE MUESTRA, NO SE FILTRA**, y es a propósito por dos motivos: las ventas que informa ML son de
+toda la vida de cada publicación (no de los últimos 30 días), así que un número bajo no siempre
+quiere decir que no se venda; y **lo que BORRA algo tiene que ser más exigente que lo que lo
+muestra** — la lección del marcado de cajas y del descarte de candidatos. Va en verde de 25 para
+arriba y en ámbar abajo, que es su regla a la vista sin que la máquina decida.
+
+**Y si ML no las contesta se DICE, no se pone cero.** Un cero ahí se leería como "no vende nada" y
+sería descartar un producto por falta de dato — el error anotado de punta a punta en este archivo.
+
+Va en `candPreciosHTML`, la MISMA función que dibuja el renglón del pedido y la tarjeta del
+candidato, así que no puede decir una cosa en un lado y otra en el otro.
+
+### LO QUE VA EN EL `PROMPT GUAY` (bloque listo para pegar)
+
+> **LAS VENTAS EN ML YA NO LAS CARGÁS VOS: LAS TRAE EL ROBOT**
+>
+> El panel muestra ahora, en cada candidato de *Para probar* y en cada renglón del pedido:
+> **🛒 N vendidas en la ficha** — la suma de lo que vendieron TODOS los vendedores de ese catálogo
+> de ML. Va en **verde de 25 para arriba** y en **ámbar abajo de 25**, que es el corte de Matías
+> (*"un vendedor solo no molesta, uno sin ventas no sirve"*).
+>
+> **Qué hacer con eso:**
+> · **No hay dónde cargarlas y no hace falta**: el robot se las pide a ML solo, todas las noches.
+> · **Un ámbar no descarta el producto por sí solo.** El número que informa ML es de toda la vida
+>   de la publicación, no del último mes, así que un catálogo nuevo puede vender bien y mostrar
+>   poco. Sirve para ordenar, no para tirar.
+> · **Lo que sí es una señal fea: ámbar con muchos vendedores.** Varios vendiendo y casi nada
+>   vendido quiere decir que el producto no se mueve, no que falte competencia.
+> · Si dice **"ventas: ML no las contestó"**, no es cero: es que no se pudieron leer esa vuelta.
+>   Se arregla solo en la corrida siguiente.
 
 ## EL PEDIDO DE PRODUCTOS NUEVOS: LA WEB LO GUARDA, EL CHAT LO ARMA (18/09/2026)
 

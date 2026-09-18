@@ -2275,7 +2275,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='19.64';
+const APP_VERSION='19.65';
 // El problema real que esto resuelve no es curiosidad: es que el celular guarda la app y sigue
 // mostrando la de ayer sin avisar. Varias veces se revisó un cambio que ya estaba subido y no se
 // veía. Por eso, además del número, el chip avisa cuando hay una versión nueva esperando.
@@ -8594,6 +8594,18 @@ function candPreciosHTML(c){
   const mMin=(c.margen!=null&&isFinite(c.margen))?Number(c.margen):null;
   const L=[`se vende ${max>min?`de <b>${fmt(min)}</b> a <b>${fmt(max)}</b>`:`a <b>${fmt(min)}</b>`}`];
   if(vend)L.push(`${vend} vendedor${vend===1?'':'es'} en la ficha`);
+  // LAS VENTAS DEL PRODUCTO EN ML (18/09/2026, pedido suyo). Regla suya: *"en ML tiene que haber
+  // ventas de verdad (+25 vendidos para arriba): un vendedor solo no molesta, uno sin ventas no
+  // sirve"*. Hasta hoy el panel sólo mostraba VENDEDORES, que es otra cosa — y era su propia regla
+  // la que no se podía aplicar. Las trae el robot de ML; acá sólo se muestran.
+  // NO SE FILTRA CON ESTO, SE MUESTRA. Las ventas que informa ML son de toda la vida de cada
+  // publicación, no de los últimos 30 días, así que un número bajo no siempre quiere decir que no
+  // se venda. Lo que BORRA algo tiene que ser más exigente que lo que lo muestra.
+  // Y si ML no las contestó se dice: un CERO acá se leería como "no vende nada" y sería descartar
+  // un producto por falta de dato, que es el error anotado de punta a punta en CLAUDE.md.
+  const vdas=(c.mlVendidas!=null&&isFinite(c.mlVendidas))?Number(c.mlVendidas):null;
+  if(vdas!=null)L.push(`🛒 <b style="color:${vdas>=25?'var(--green)':'var(--amber)'}">${vdas}</b> vendida${vdas===1?'':'s'} en la ficha`);
+  else L.push(`🛒 <span style="color:var(--muted)">ventas: ML no las contestó</span>`);
   if(mMin!=null)L.push(`contra el más barato → <b style="color:${mMin>=25?'var(--green)':'var(--amber)'}">${mMin.toFixed(0)}%</b>`);
   return L.join(' &nbsp;·&nbsp; ');
 }

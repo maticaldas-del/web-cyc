@@ -2996,7 +2996,19 @@ async function correrCandidatos(db, products, labels, accounts, soloPrueba, prue
     // en el Ferrari el más barato está a $68.000 y la caja la tenemos nosotros a $68.510. Ser el
     // más barato no es ni necesario ni suficiente.
     // Lo que sí se puede medir es el RANGO de la ficha, y eso es lo que se guarda.
-    let mlMax = 0;
+  let mlMax = 0;
+  // ── LAS VENTAS DEL PRODUCTO EN ML (18/09/2026, pedido suyo) ──────────────────────────────
+  // Regla suya del 18/09: *"en ML tiene que haber ventas de verdad (+25 vendidos para arriba):
+  // un vendedor solo no molesta, uno sin ventas no sirve"*. Hasta hoy nadie la aplicaba ni la
+  // mostraba: lo único que había era cuántos VENDEDORES tiene la ficha, que es otra cosa.
+  // NO VIENEN EN LA MISMA RESPUESTA. Medido con `probarweb` antes de escribir esto:
+  // `/products/<id>/items` contesta `vendidas ?` y `stock ?` — esos dos campos NO están ahí.
+  // (Y por eso la nota de CLAUDE.md que decía que ese endpoint trae "vendedores con precio,
+  //  STOCK y quién tiene la caja" estaba mal: el stock tampoco viene.)
+  // Se piden aparte, pero NO es una consulta por vendedor: `/items?ids=` acepta 20 de una, así
+  // que toda la corrida gasta 3 o 4 llamadas en total.
+  let mlVendidas = null;      // la SUMA de la ficha: ¿este producto se vende en ML?
+  let mlVendidasMin = null;   // las del MÁS BARATO, que es contra el que se mide el margen
     // ¿EMPAREJADO POR NOMBRE O POR CÓDIGO? No es un detalle: la primera prueba real buscó
     // "Xiaomi Redmi Watch 4" y ML devolvió **"Xiaomi Redmi Redmi Watch 3"**. Si ese catálogo
     // hubiera tenido vendedores, habría salido un margen perfectamente calculado… del producto
@@ -3069,6 +3081,28 @@ async function correrCandidatos(db, products, labels, accounts, soloPrueba, prue
       // puede decir de "a cuánto se vende" en un catálogo donde todavía no vendemos: la lista
       // viene ordenada por precio y NO dice cuál gana la caja (probado el 18/09).
       mlMax = precios.length ? Math.round(Math.max(...precios)) : 0;
+      // Las VENTAS, en una sola consulta para todos los vendedores de esta ficha (ver arriba).
+      // Si ML no contesta, quedan en null y la pantalla dice que no las sabe: un CERO acá se
+      // leería como "no vende nada" y es la diferencia entre descartar un producto y no medirlo.
+      const idsOfertas = ofertas.map((o) => String(o.item_id || "")).filter((x) => /^MLA\d+$/.test(x));
+      if (idsOfertas.length) {
+        const ventasPorId = {};
+        for (let k = 0; k < idsOfertas.length; k += 20) {
+          try {
+            const arrV = await mlGet("/items?ids=" + idsOfertas.slice(k, k + 20).join(",") + "&attributes=id,sold_quantity", tok);
+            for (const row of (arrV || [])) {
+              const b = (row && row.body) || {};
+              if (b.id != null && b.sold_quantity != null) ventasPorId[String(b.id)] = Number(b.sold_quantity) || 0;
+            }
+          } catch { /* se reintenta solo en la vuelta siguiente */ }
+        }
+        const leidas = Object.keys(ventasPorId);
+        if (leidas.length) {
+          mlVendidas = leidas.reduce((s, k2) => s + ventasPorId[k2], 0);
+          const idMin = ref && ref.item_id ? String(ref.item_id) : null;
+          if (idMin && ventasPorId[idMin] != null) mlVendidasMin = ventasPorId[idMin];
+        }
+      }
     } catch (err) {
       // El mensaje de error va DESPUÉS de la URL en el texto que tira mlGet, así que cortando a
       // 80 caracteres se veía la URL y no el motivo — que es justo lo único que sirve. Ahora se
@@ -3112,10 +3146,14 @@ async function correrCandidatos(db, products, labels, accounts, soloPrueba, prue
     const { costo, impuestos, envio, ganancia, margen } = rMin;
     calculados++;
     console.log(`      se vende ${mlMax > mlPrecio ? `de ${money(Math.round(mlPrecio))} a ${money(mlMax)}` : money(Math.round(mlPrecio))} · ${vendedores} vendedor(es) en la ficha`);
+    // Las VENTAS van en su propio renglón y con el nombre completo: "vendedores" y "vendidas"
+    // se confunden leyendo rápido, y son la diferencia entre "hay competencia" y "esto se vende".
+    console.log(`      ventas en ML: ${mlVendidas == null ? 'ML no las contestó (no es cero: es que no las sé)'
+      : `${mlVendidas} en toda la ficha${mlVendidasMin != null ? ` · ${mlVendidasMin} el más barato` : ''}`}`);
     console.log(`      medido contra el MÁS BARATO (el peor caso): costo ${money(Math.round(costo))} + impuestos ${money(Math.round(impuestos))} + envío ${money(envio)} → ${margen.toFixed(1)}% · ${money(Math.round(ganancia))} por unidad`);
     if (!soloPrueba) {
       await db.patch(`cyc/candidatos_py/${id}`, {
-        mlTit, mlPrecio: Math.round(mlPrecio), mlMax, mlVendedores: vendedores, mlLink, mlPorNombre: porNombre,
+        mlTit, mlPrecio: Math.round(mlPrecio), mlMax, mlVendedores: vendedores, mlVendidas, mlVendidasMin, mlLink, mlPorNombre: porNombre,
         margen: Math.round(margen * 10) / 10, ganancia: Math.round(ganancia),
         // Los tres de la caja de compra se BORRAN: se escribieron en la corrida del 18/09 y
         // siempre valían 0 porque `buy_box_winner` viene null (ver arriba). Dejarlos sería dejar
@@ -3187,7 +3225,7 @@ async function correrCandidatos(db, products, labels, accounts, soloPrueba, prue
     console.log(`\n── LOS ${nuevosQueDan.length} QUE DAN ${CAND_PISO_PCT}% O MÁS (de mejor a peor) ──`);
     [...nuevosQueDan].sort((a, b) => b.margen - a.margen).forEach((x, i) => {
       console.log(`${String(i + 1).padStart(3)}. ${x.margen.toFixed(1).padStart(5)}%  ·  US$ ${x.puesto.toFixed(2).padStart(7)} puesto (US$ ${(x.puesto / 1.15).toFixed(2)} + 15%)`
-        + `  ·  en ML ${x.mlMax > x.mlPrecio ? `de ${money(Math.round(x.mlPrecio))} a ${money(x.mlMax)}` : money(Math.round(x.mlPrecio))} (${x.mlVendedores} vend.)  ·  ${money(Math.round(x.ganancia))}/u.`);
+        + `  ·  en ML ${x.mlMax > x.mlPrecio ? `de ${money(Math.round(x.mlPrecio))} a ${money(x.mlMax)}` : money(Math.round(x.mlPrecio))} (${x.mlVendedores} vend.${x.mlVendidas != null ? ` · ${x.mlVendidas} vendidas` : ' · ventas ?'})  ·  ${money(Math.round(x.ganancia))}/u.`);
       console.log(`      ${x.c.nombre}${x.c.mlId ? '' : '   ⚠️ emparejado por NOMBRE, chequealo'}`);
     });
   }
@@ -3213,7 +3251,7 @@ async function correrCandidatos(db, products, labels, accounts, soloPrueba, prue
       const L = [`🆕 *Para probar* · ${frescos.length} producto${frescos.length === 1 ? '' : 's'} nuevo${frescos.length === 1 ? '' : 's'} de Paraguay que dan margen`, ''];
       frescos.forEach((x, i) => {
         L.push(`${i + 1}. *${x.c.nombre}*`);
-        L.push(`   US$ ${x.puesto.toFixed(2)} puesto · en ML ${x.mlMax > x.mlPrecio ? `de ${money(x.mlPrecio)} a ${money(x.mlMax)}` : money(x.mlPrecio)} (${x.mlVendedores} vend.) · *${x.margen.toFixed(0)}%* contra el más barato (${money(x.ganancia)}/u.)`);
+        L.push(`   US$ ${x.puesto.toFixed(2)} puesto · en ML ${x.mlMax > x.mlPrecio ? `de ${money(x.mlPrecio)} a ${money(x.mlMax)}` : money(x.mlPrecio)} (${x.mlVendedores} vend.${x.mlVendidas != null ? ` · ${x.mlVendidas} vendidas` : ' · ventas ?'}) · *${x.margen.toFixed(0)}%* contra el más barato (${money(x.ganancia)}/u.)`);
         L.push(`   ML: ${x.mlTit}${x.c.mlId ? '' : ' ⚠️ emparejado por nombre, chequealo'}`);
       });
       L.push('');
