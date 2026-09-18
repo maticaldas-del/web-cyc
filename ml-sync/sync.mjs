@@ -2905,7 +2905,7 @@ async function correrCandidatos(db, products, labels, accounts, soloPrueba, prue
   };
 
   const nuevosQueDan = [];
-  let mirados = 0, calculados = 0, consultas = 0, sinCuenta = 0;
+  let mirados = 0, calculados = 0, consultas = 0, sinCuenta = 0, yaCalc = 0;
   const descartes = [];
   for (const [id, c] of entradas) {
     if (c.no || c.prodId) continue;            // ya decidido por él
@@ -2921,7 +2921,29 @@ async function correrCandidatos(db, products, labels, accounts, soloPrueba, prue
     if (!(usd > 0)) { await fuera('sin precio cargado: no se puede medir nada'); continue; }
     if (puesto > CAND_TOPE_USD) { await fuera(`puesto sale US$ ${puesto.toFixed(2)}, pasa tu tope de US$ ${CAND_TOPE_USD}`); continue; }
     if (c.marca && marcasNo[encodeURIComponent(String(c.marca).toLowerCase())]) { await fuera(`marca frenada: ${c.marca}`); continue; }
-    if (c.margen != null && isFinite(c.margen)) continue;   // ya tiene la cuenta hecha
+    // ── EL QUE YA TIENE LA CUENTA HECHA SE EVALÚA IGUAL (18/09/2026) ────────────────────
+    // Acá había un `continue` pelado con el comentario *"ya tiene la cuenta hecha"*. Lo que hacía
+    // era **sacarlo de la lista de los que dan**: no se contaba en ningún contador, no entraba en
+    // `nuevosQueDan` y no aparecía en los descartes. Con 20 candidatos cargados el resumen imprimía
+    // **"10 mirados · 0 con la cuenta hecha · 0 consultas · 0 descartados"** —que no cierra— y
+    // cerraba con *"Ninguno llega al piso hoy"*, que es una conclusión sobre algo que no miró.
+    // Es el `continue` callado de siempre, y acá encima el síntoma era un CERO.
+    // Y hacía un segundo daño más silencioso: **un candidato bueno se avisaba UNA vez y nunca más**,
+    // porque en cuanto quedaba con margen guardado desaparecía. Para no repetir ya está
+    // `cyc/avisocand`, así que este freno era redundante además de dañino.
+    // Lo que SÍ hay que evitar es volver a preguntarle a ML: eso se respeta igual, la cuenta
+    // guardada se usa tal cual y no se gasta ninguna consulta.
+    if (c.margen != null && isFinite(c.margen)) {
+      yaCalc++;
+      const mGuard = Number(c.margen);
+      if (mGuard >= CAND_PISO_PCT) {
+        nuevosQueDan.push({ id, c, margen: mGuard, ganancia: Number(c.ganancia) || 0,
+          mlPrecio: Number(c.mlPrecio) || 0, mlTit: c.mlTit || '', puesto });
+      } else {
+        await fuera(`da ${mGuard.toFixed(1)}%, abajo de tu piso de ${CAND_PISO_PCT}%`);
+      }
+      continue;
+    }
     // ── EL TOPE DE CONSULTAS. Esto corre adentro de `ml-daily`: si una noche entran 300
     // candidatos, el paso nocturno se cuelga y se lleva puesto el resumen del día. Las que quedan
     // sin medir se CUENTAN Y SE NOMBRAN —no es que no sirvan, es que no se alcanzó a mirarlas— y
@@ -3034,7 +3056,7 @@ async function correrCandidatos(db, products, labels, accounts, soloPrueba, prue
     if (margen < CAND_PISO_PCT) { await fuera(`da ${margen.toFixed(1)}%, abajo de tu piso de ${CAND_PISO_PCT}%`); continue; }
     nuevosQueDan.push({ id, c, margen, ganancia, mlPrecio, mlTit, puesto });
   }
-  console.log(`\n── ${mirados} mirados · ${calculados} con la cuenta hecha · ${consultas} consultas a ML · ${descartes.length} descartados ──`);
+  console.log(`\n── ${mirados} mirados · ${calculados} medidos hoy · ${yaCalc} ya venían medidos · ${consultas} consultas a ML · ${descartes.length} descartados · ${nuevosQueDan.length} que dan ──`);
   for (const d of descartes) console.log(`   ✕ ${d}`);
   if (sinCuenta) console.log(`   ⏳ ${sinCuenta} quedaron sin medir por el tope de ${CAND_MAX_ML} consultas por vuelta. No es que no sirvan: salen en la corrida siguiente.`);
 
@@ -3078,7 +3100,12 @@ async function correrCandidatos(db, products, labels, accounts, soloPrueba, prue
       }
     }
   } else {
-    console.log('Ninguno llega al piso hoy. No mando nada: un aviso que dice "no hay nada" es ruido.');
+    // EL CERO VIENE EXPLICADO. Decir "ninguno llega al piso" cuando en realidad no se miró
+    // ninguno es una conclusión sobre algo que no se midió — el error que ya mordió con
+    // `liquidar` (0 de 137), con el marcado de cajas y con el "PARADO: 0" del aviso diario.
+    if (!mirados) console.log(`No quedó ninguno para mirar: los ${entradas.length} de la lista ya están decididos (marcados "no" o con ficha creada).`);
+    else if (!calculados && !yaCalc) console.log(`Miré ${mirados} y a ninguno se le pudo hacer la cuenta. Fijate los descartes de arriba.`);
+    else console.log(`Ninguno de los ${calculados + yaCalc} medidos llega al piso de ${CAND_PISO_PCT}%. No mando nada: un aviso que dice "no hay nada" es ruido.`);
   }
   return { mirados, calculados, avisados };
 }
