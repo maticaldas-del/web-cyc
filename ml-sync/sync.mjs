@@ -2985,8 +2985,17 @@ async function correrCandidatos(db, products, labels, accounts, soloPrueba, prue
   // No es que esté mal saltearlos —son decisiones ya tomadas— es que hay que DECIR cuántos son:
   // sin eso, "69 en la lista" y "30 mirados" no se pueden conciliar mirando la pantalla.
   let yaNo = 0, yaFicha = 0;
+  // Y AGRUPADOS POR MOTIVO, no uno por uno: con 39 descartados la lista entera es ruido, pero
+  // "39 descartados" a secas no deja ver si se descartaron por la cuenta o a mano desde el panel.
+  // Lo que decide es el MOTIVO, y son pocos distintos.
+  const motivosNo = {};
   for (const [id, c] of entradas) {
-    if (c.no) { yaNo++; continue; }            // ya descartado (queda en el desplegable del panel)
+    if (c.no) {
+      yaNo++;
+      const m = String(c.motivo || 'sin motivo anotado (lo descartaron a mano desde el panel)').slice(0, 90);
+      motivosNo[m] = (motivosNo[m] || 0) + 1;
+      continue;                                // ya descartado (queda en el desplegable del panel)
+    }
     if (c.prodId) { yaFicha++; continue; }     // ya se le creó la ficha: dejó de ser candidato
     mirados++;
     const usd = parseFloat(c.usd) || 0;
@@ -3276,6 +3285,10 @@ async function correrCandidatos(db, products, labels, accounts, soloPrueba, prue
     nuevosQueDan.push({ id, c, margen, ganancia, mlPrecio, mlTit, puesto, mlMax, mlVendedores: vendedores });
   }
   console.log(`\n── ${entradas.length} en la lista = ${mirados} mirados + ${yaNo} ya descartados antes + ${yaFicha} que ya tienen ficha ──`);
+  if (yaNo) {
+    console.log(`   — por qué están descartados esos ${yaNo} (se pueden devolver desde el panel):`);
+    for (const [m, n] of Object.entries(motivosNo).sort((a, b) => b[1] - a[1])) console.log(`      ${String(n).padStart(3)} × ${m}`);
+  }
   console.log(`── ${mirados} mirados = ${baratos} descartados sin preguntar + ${yaCalc} ya venían medidos + ${calculados} medidos hoy + ${sinDato.length} sin dato + ${sinCuenta} sin alcanzar ──`);
   console.log(`   ${consultas} consultas a ML · ${descartes.length} descartados en total · ${enObserva.length} en observación · ${nuevosQueDan.length} que dan`);
   for (const d of descartes) console.log(`   ✕ ${d}`);
