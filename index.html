@@ -47,8 +47,22 @@ body{font-family:'DM Mono',monospace;background:var(--bg);color:var(--text);min-
 /* LOADING */
 #loading{position:fixed;inset:0;background:var(--bg);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px;z-index:200}
 #loading p{font-size:.72rem;color:var(--muted)}
-.spinner{width:28px;height:28px;border:3px solid var(--border2);border-top-color:var(--accent2);border-radius:50%;animation:spin .7s linear infinite}
-@keyframes spin{to{transform:rotate(360deg)}}
+/* Pedido suyo del 19/09/2026: en vez del circulito girando, "CYC" con el puntito verde
+   recorriendo las letras. Mientras arranca, lo que se ve es la marca y no un cargador generico.
+   El puntito va de izquierda a derecha y cada letra se prende cuando el punto le pasa por abajo:
+   Las tres demoras NO estan a ojo: se MIDIO en el navegador donde cae el centro de cada letra
+   (17,1% - 50,0% - 82,9% del ancho) y de ahi sale cada demora. A ojo quedaban ~0,07s tarde y el
+   punto pasaba por abajo de una letra que todavia estaba apagada. */
+.cyc-load{position:relative;display:inline-block;font-family:'Syne',sans-serif;font-weight:800;font-size:2.8rem;letter-spacing:.08em;line-height:1}
+.cyc-load span{color:var(--border2);animation:cycLit 1.6s linear infinite}
+.cyc-load span:nth-of-type(1){animation-delay:.177s}
+.cyc-load span:nth-of-type(2){animation-delay:.704s}
+.cyc-load span:nth-of-type(3){animation-delay:1.231s}
+@keyframes cycLit{0%{color:var(--border2);text-shadow:none}6%{color:var(--accent2);text-shadow:0 0 16px rgba(34,197,94,.5)}22%{color:var(--border2);text-shadow:none}100%{color:var(--border2);text-shadow:none}}
+.cyc-dot{position:absolute;bottom:-9px;left:0;width:7px;height:7px;margin-left:-3.5px;border-radius:50%;background:var(--accent2);box-shadow:0 0 12px var(--accent2);animation:cycRun 1.6s linear infinite}
+@keyframes cycRun{0%{left:0;opacity:0}8%{opacity:1}92%{opacity:1}100%{left:100%;opacity:0}}
+/* Si el telefono tiene pedido "menos movimiento", no parpadea nada: queda CYC en verde. */
+@media(prefers-reduced-motion:reduce){.cyc-load span,.cyc-dot{animation:none}.cyc-load span{color:var(--accent2)}.cyc-dot{left:50%;opacity:1}}
 
 /* LOGIN */
 #login-screen{position:fixed;inset:0;background:var(--bg);z-index:500;display:none;align-items:center;justify-content:center;flex-direction:column;gap:18px;padding:20px}
@@ -453,7 +467,7 @@ footer{margin-top:32px;padding-top:14px;border-top:1px solid var(--border);font-
 
 <!-- LOADING -->
 <div id="loading">
-  <div class="spinner"></div>
+  <div class="cyc-load" role="img" aria-label="CYC · cargando"><span>C</span><span>Y</span><span>C</span><i class="cyc-dot"></i></div>
   <p id="load-msg">Conectando...</p>
 </div>
 
@@ -2243,7 +2257,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='19.73';
+const APP_VERSION='19.74';
 // El problema real que esto resuelve no es curiosidad: es que el celular guarda la app y sigue
 // mostrando la de ayer sin avisar. Varias veces se revisó un cambio que ya estaba subido y no se
 // veía. Por eso, además del número, el chip avisa cuando hay una versión nueva esperando.

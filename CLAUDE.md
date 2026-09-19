@@ -3934,6 +3934,28 @@ si él le cambia el precio a mano**. Para sacarla: `liquidando:-MLA1782639641:go
   web" para la Lupa 60mm x10 y era el COSTO ($11.638). Se aplicó como precio de venta. No alcanza
   con aplicarlo: hay que mirar el margen que queda ANTES de tocar ML.
 
+- **LA PANTALLA DE CARGA: "CYC" CON EL PUNTITO VERDE (19/09/2026).** Pedido suyo: *"al cargar la
+  web puede ser que en vez de mostrar cargando y un circulo girando, muestre CYC y el puntito verde
+  recorriendo las letras"*. Reemplaza al circulito que giraba: mientras arranca, lo que se ve es la
+  marca y no un cargador genérico. El texto de abajo (`load-msg`) **no se tocó**: es el que dice
+  *"Error: …"* cuando la conexión falla, así que sacarlo dejaba el fallo mudo.
+  **LAS DEMORAS NO SE PUSIERON A OJO, Y HACÍA FALTA MEDIRLAS.** La primera versión las estimó en
+  16% / 47% / 78% del ancho y quedaron **~0,07s tarde**: el punto pasaba por abajo de una letra que
+  todavía estaba apagada, o sea que "recorrer las letras" no se veía. Se midió en el navegador
+  dónde cae el centro de cada letra —**17,1% · 50,0% · 82,9%**— y de ahí salen las tres demoras.
+  Y la cola de encendido pasó de 26% a 22% de la vuelta: con 26% terminaba en 1,65s sobre una vuelta
+  de 1,6s, o sea que la tercera C volvía a prenderse al arrancar la vuelta siguiente.
+  **SE VERIFICÓ MIRÁNDOLO, no leyendo el código**: se sacaron el CSS y el HTML REALES del archivo,
+  se congeló la animación en cuatro puntos de la vuelta y se sacó una foto con el navegador. En las
+  tres primeras el punto queda **abajo de la letra encendida**, y en la cuarta sale apagándose.
+  Probado en los **dos temas**: en claro las letras apagadas quedan grises y el punto verde se ve.
+  **Ojo al sacar una foto con el navegador sin cabeza: la primera dio "no hay punto" y el punto
+  estaba — lo cortaba la ventana**, que era 9px más baja que el punto. Un elemento que no aparece en
+  una captura no es un elemento que no existe: antes de salir a buscar el bug, agrandar la ventana.
+  Y `index.html` entero **no se puede fotografiar**: se cuelga intentando conectarse a Firebase. Por
+  eso la prueba es del pedazo, con el código real.
+  Si el teléfono tiene pedido *"menos movimiento"*, no parpadea nada: queda CYC en verde.
+
 - **"NUEVO PEDIDO" A MANO SE SACÓ DE PEDIDOS (19/09/2026).** Decisión suya: *"sacar eso de agregar
   manual. ya que va a ser todo por el bot o vos"*.
   Era el formulario de arriba de Pedidos —producto, cantidad, Urgente/Poco stock/Suficiente, nota,
