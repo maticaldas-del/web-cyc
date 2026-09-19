@@ -6259,6 +6259,81 @@ async function main() {
       return;
     }
 
+    // BILLING_PROBE=verofertas:<catálogo MLA>[;otro] → ¿ML DICE CUÁLES SON DE ENVÍO INTERNACIONAL?
+    //
+    // POR QUÉ (19/09/2026, regla suya): *"estaba tomando envíos internacionales. esos no quiero que
+    // se fije."* Lo dijo por el chat de compras, pero **el robot tiene el mismo problema y ahí no
+    // lo ve nadie**: `candidatos` mide el margen contra el MÁS BARATO de la ficha y no mira de
+    // dónde es ese vendedor. Si el más barato viene del exterior, el margen sale hundido contra un
+    // precio con el que no competimos — y con el freno de las dos mediciones ese producto termina
+    // descartado. Es candidato a explicar los márgenes de −18% que aparecieron ese día.
+    // Esto MIDE si se puede filtrar, antes de escribir el filtro. Si ML no lo dice, no se puede y
+    // hay que decirlo, no inventarlo — que es el error anotado de punta a punta en CLAUDE.md.
+    //
+    // NO IMPRIME NI EL NOMBRE NI EL ID DE NINGÚN VENDEDOR. El repo y los registros son PÚBLICOS y
+    // los vendedores de ML son terceros: acá alcanza con el precio y los campos de logística.
+    // Solo lee.
+    if (/^verofertas:/.test(String(process.env.BILLING_PROBE || ''))) {
+      const cats = String(process.env.BILLING_PROBE).slice('verofertas:'.length).split(';')
+        .map((x) => x.trim().toUpperCase()).filter((x) => /^MLA\d+$/.test(x));
+      if (!cats.length) { console.log('Usá: verofertas:<código del catálogo, MLA…>[;otro]'); return; }
+      let tk = null;
+      for (const label of labels) {
+        const acc = accounts[label];
+        if (!acc?.refresh_token) continue;
+        try { const t = await mlRefresh(ML_CLIENT_ID, ML_CLIENT_SECRET, acc.refresh_token);
+          await db.patch('mlapi/tokens/' + label, { refresh_token: t.refresh_token, updated_ts: Date.now() });
+          tk = t.access_token; break; } catch { /* siguiente */ }
+      }
+      if (!tk) { console.log('❌ No pude sacar token de ninguna cuenta.'); return; }
+      console.log('=== QUÉ DICE ML DE CADA VENDEDOR DE UN CATÁLOGO (solo lee) ===\n');
+      for (const cat of cats) {
+        console.log(`── catálogo ${cat}`);
+        let ofertas = null;
+        try {
+          const it = await mlGet(`/products/${cat}/items`, tk);
+          ofertas = (it && it.results) || [];
+        } catch (e) { console.log(`   ❌ no pude pedir los vendedores: ${String(e.message || e).slice(0, 120)}\n`); continue; }
+        if (!ofertas.length) { console.log('   ML no devolvió ningún vendedor activo.\n'); continue; }
+        // 1) LAS CLAVES que trae cada oferta, unidas. Es la pregunta de fondo: ¿hay con qué?
+        const claves = new Set();
+        for (const o of ofertas) for (const k of Object.keys(o || {})) claves.add(k);
+        console.log(`   ${ofertas.length} vendedor(es) · campos que devuelve ML por oferta:`);
+        console.log(`      ${[...claves].sort().join(' · ')}`);
+        // 2) Los campos CANDIDATOS a distinguir un envío internacional, oferta por oferta.
+        console.log('   precio · los campos que podrían decir de dónde sale:');
+        ofertas.forEach((o, i) => {
+          const sh = (o && o.shipping) || {};
+          const partes = [];
+          if (sh.logistic_type != null) partes.push(`logistic_type=${sh.logistic_type}`);
+          if (sh.mode != null) partes.push(`mode=${sh.mode}`);
+          if (sh.tags && sh.tags.length) partes.push(`tags=${sh.tags.join(',')}`);
+          if (sh.free_shipping != null) partes.push(`free_shipping=${sh.free_shipping}`);
+          if (o.international_delivery_mode != null) partes.push(`international_delivery_mode=${o.international_delivery_mode}`);
+          if (o.listing_type_id != null) partes.push(`tipo=${o.listing_type_id}`);
+          const dir = (o && o.seller_address) || {};
+          if (dir.country && dir.country.id) partes.push(`pais=${dir.country.id}`);
+          if (dir.state && dir.state.name) partes.push(`provincia=${dir.state.name}`);
+          console.log(`      ${String(i + 1).padStart(2)}. ${money(Math.round(Number(o.price) || 0)).padStart(12)}  ${partes.length ? partes.join(' · ') : '— ML no dio ninguno de estos campos —'}`);
+        });
+        // 3) Y SI ARRIBA NO VINO NADA, probar la publicación suelta: el 403 medido el 19/09 fue con
+        //    `/items?ids=…` (varias de una). Una sola puede contestar distinto, y eso no se sabe
+        //    sin probarlo — un 403 en una ruta no es prueba sobre otra.
+        const uno = String((ofertas[0] || {}).item_id || '');
+        if (/^MLA\d+$/.test(uno)) {
+          try {
+            const d = await mlGet(`/items/${uno}`, tk);
+            const sh2 = (d && d.shipping) || {};
+            const dir2 = (d && d.seller_address) || {};
+            console.log(`   una sola publicación (/items/<MLA>): ✅ contesta · logistic_type=${sh2.logistic_type || '—'} · mode=${sh2.mode || '—'} · pais=${(dir2.country || {}).id || '—'} · international_delivery_mode=${d.international_delivery_mode || '—'} · vendidas=${d.sold_quantity != null ? d.sold_quantity : '?'}`);
+          } catch (e) { console.log(`   una sola publicación (/items/<MLA>): ❌ ${String(e.message || e).slice(0, 100)}`); }
+        }
+        console.log('');
+      }
+      console.log('Si ninguna fila trae país ni un campo de internacional, el robot NO los puede distinguir y hay que decirlo.');
+      return;
+    }
+
     // BILLING_PROBE=devolvercand[:go] → DEVUELVE A "PARA PROBAR" LO QUE SE TACHÓ CON UNA SOLA
     // MEDICIÓN.
     //
