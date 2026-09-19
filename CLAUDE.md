@@ -337,6 +337,7 @@ Los que más se usan:
 | `verescalon:<MLA\|palabra>[:marcar]` | **¿ML cobró menos de verdad al bajar?** agrupa las ventas por precio y muestra lo que ML se quedó en cada uno |
 | `envioml:<MLA>` | el envío que **dice ML** (por destino) vs el que deducimos de las ventas · `envioreal` es OTRO comando |
 | `apisnuevas:<MLA>` | qué endpoints de ML andan y no usamos |
+| `pedir:<palabra>=<u>[;otra=<u>][;go]` | **carga las unidades del pedido de Paraguay** · `=0` lo saca · sin `;go` sólo muestra |
 | `revisarcompra[:<palabras>]` | **la última mirada antes de gastar los dólares**: código, precio, ¿es el mismo producto?, margen de HOY y si la podés publicar · solo lee |
 | `probarcaja:<MLA>[;otro]` | **¿ML dice quién tiene la caja de un catálogo?** vale el código del catálogo o el de una publicación tuya · solo lee |
 | `verweb:<direccion>` | **leer una página de afuera y mostrar su texto** · el chat no tiene internet y el robot sí · solo lee · **lo que imprime queda en el registro PÚBLICO** |
@@ -2024,6 +2025,52 @@ no quiere decir que el freno sobre — quiere decir que hoy tuvimos suerte. El Y
 a −2,7% en dos corridas con minutos de diferencia, y eso es exactamente lo que el freno agarra.
 **Lo que sí queda medido es cuánto de "inestable" tiene el precio de ML: mucho menos de lo que
 parecía.** De 27 casos, cero cambiaron de lado.
+
+### EL PEDIDO QUEDA CARGADO DESDE EL CHAT: `pedir` (19/09/2026)
+
+Pedido suyo: *"podés armarme el pedido por favor?"* y *"cargalo en la web"*. Hasta ese día las
+unidades se cargaban casilla por casilla en el panel, que está bien con cuatro y es un suplicio
+con once.
+
+**NO ELIGE NADA.** Escribe las unidades que se le dicen en los productos que se le dicen — quién
+entra al pedido lo decide él, regla suya del 18/09 (*"no que la web lo arme"*). Sin `;go` sólo
+muestra, y después de escribir **relee de la base y compara**, que es la regla 6.
+
+**EL FRENO DE LAS PALABRAS SALVÓ LA PRIMERA CORRIDA.** Se le pasó `mercedes=2` y contestó
+*"agarra 3: The Move | Club Black | B. Sign Your Power"* y **no escribió nada**. Es el filtro por
+palabras que ya falló seis veces en este panel, y acá habría cargado 2 unidades del perfume
+equivocado en un pedido que no se rehace hasta que llega. Se resolvió con `club black=2`.
+**Y si UN solo término no se entiende, no se escribe NINGUNO**: un pedido cargado a medias deja el
+total bien y le falta un renglón, que es el error que no se ve.
+
+**EL TOTAL CONTABA DESCARTADOS, Y AVISÓ DE UN TOPE QUE NO SE PASABA.** La primera corrida con `;go`
+imprimió **US$ 833,70** cuando lo cargado eran **US$ 495,70**: sumaba candidatos ya **descartados**
+que tenían unidades viejas colgadas — el panel no los muestra y no van en el pedido. Un total
+inflado dispara el *"pasa tu tope"* sobre un pedido que no lo pasa, **y el aviso que suena cuando no
+tiene que sonar es el que después no se mira**. Ahora cuenta lo mismo que la pantalla, y los
+descartados con unidades colgadas se dicen aparte.
+**Quedan 9 así** (Lattafa Opulent Dubai, Animale Gold, Armaf Odyssey Toffee Coffee, Maison
+Alhambra, Ard Al Zaafaran, Paris Corner Mysterium y 3 más). No hacen daño hoy, pero si alguno se
+devuelve a la lista reaparece con unidades que nadie puso. **Pendiente de limpiar.**
+
+### EL PEDIDO DE PRODUCTOS NUEVOS CARGADO EL 19/09/2026
+
+**11 productos · 22 unidades · US$ 526,70 crudos · US$ 605,71 puestos.** Se eligieron por **la plata
+que deja cada DÓLAR gastado**, no por la que deja cada unidad: con presupuesto fijo, ordenar por
+unidad hace comprar caro. Por eso el Mercedes-Benz Club Black va primero aunque no sea el que más
+deja — son US$ 32,75 que devuelven $84.027.
+
+**Pasa el tope de US$ 500 por US$ 26,70**, y es a propósito: el Adyan Oud entraba justo afuera y él
+pidió *"agregalo 2 unidades sin sacar nada"*.
+
+**Salieron 3 de los 4 que ya tenía cargados** — Paris Corner Rifaaqat y Manaal (50 ventas) y Mirada
+Verato Night (**0 ventas**) — por la vara de +100 que puso ese día. El Manaal además tenía el aviso
+de que **ML no nombra "Paris Corner"** en el título del catálogo al que lo emparejó.
+
+**Los cuatro con aviso, para mirar antes de mandar:** la **microSD Pokémon** (el renglón más caro,
+US$ 124, y hay una ficha parecida — chequear que no sea una de las que tiró por truchas) · el
+**Corsair Scimitar** (ML no nombra el número de parte) · y los **dos Sony EX15**, cuyo margen saltó
+hoy de 26→43% y de 31→66%: alguien subió el precio en ML, así que es un precio que se mueve.
 
 ## LA ÚLTIMA REVISIÓN ANTES DE GASTAR LOS DÓLARES: `revisarcompra` (19/09/2026)
 
