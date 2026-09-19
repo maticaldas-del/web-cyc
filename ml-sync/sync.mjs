@@ -6331,6 +6331,7 @@ async function main() {
           if (sh.logistic_type != null) partes.push(`logistic_type=${sh.logistic_type}`);
           if (sh.mode != null) partes.push(`mode=${sh.mode}`);
           if (sh.tags && sh.tags.length) partes.push(`tags=${sh.tags.join(',')}`);
+          if (o.tags && o.tags.length) partes.push(`tagsItem=${o.tags.join(',')}`);
           if (sh.free_shipping != null) partes.push(`free_shipping=${sh.free_shipping}`);
           if (o.international_delivery_mode != null) partes.push(`international_delivery_mode=${o.international_delivery_mode}`);
           if (o.listing_type_id != null) partes.push(`tipo=${o.listing_type_id}`);
@@ -6345,7 +6346,19 @@ async function main() {
         // EL RESUMEN QUE CONTESTA LA PREGUNTA: ¿cambia el precio de referencia si saco los de
         // afuera? El margen se mide contra el MÁS BARATO, así que lo único que importa es si el
         // más barato es internacional. Si no lo es, sacarlos no mueve un peso.
+        // ── CÓMO SE RECONOCE UNO DE AFUERA, Y NO ES EL CAMPO QUE PARECE (19/09/2026) ────────
+        // La primera versión de esto miró `international_delivery_mode` —que es el que SUENA a
+        // correcto— e imprimió **"internacionales: 0 de 17"** en un catálogo donde había uno de
+        // **Texas** a la vista, dos renglones más arriba. Ese vendedor trae
+        // `international_delivery_mode=none` igual: el campo NO sirve para esto.
+        // El marcador real es el tag **`cbt_fulfillment`** (CBT = comercio transfronterizo), y la
+        // provincia lo confirma. Se miran los DOS: el tag decide y la provincia queda impresa para
+        // poder revisar a ojo, porque un filtro que no se puede auditar es el que se apaga solo.
+        // Es el cero que parece una buena noticia, otra vez — y acá lo delató el dato de al lado,
+        // no el resumen.
         const inter = ofertas.filter((o) => {
+          const tg = ((o && o.shipping && o.shipping.tags) || []).concat((o && o.tags) || []);
+          if (tg.some((t) => /cbt/i.test(String(t)))) return true;
           const m = String((o && o.international_delivery_mode) || 'none');
           return m && m !== 'none';
         });
