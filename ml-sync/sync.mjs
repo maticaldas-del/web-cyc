@@ -6317,8 +6317,13 @@ async function main() {
     // endpoint sin arriesgar un peso, y por eso se hace así y no subiendo $10 "para probar".
     // Después prueba un campo que NO es el precio, para ver si la escritura general vive.
     if (/^probarput:/.test(String(process.env.BILLING_PROBE || ''))) {
-      const MLA = String(process.env.BILLING_PROBE).split(':')[1].trim().toUpperCase();
-      if (!/^MLA\d+$/.test(MLA)) { console.log('Usá: probarput:<MLA de una publicación NUESTRA>'); return; }
+      // ACEPTA VARIAS, SEPARADAS POR ";". Con una sola no se puede distinguir "ML bloqueó la app"
+      // de "esta publicación tiene algo": hacen falta varias, y de CUENTAS distintas.
+      const _mlas = String(process.env.BILLING_PROBE).slice('probarput:'.length).split(';')
+        .map((x) => x.trim().toUpperCase()).filter((x) => /^MLA\d+$/.test(x));
+      if (!_mlas.length) { console.log('Usá: probarput:<MLA de una publicación NUESTRA>[;otra]'); return; }
+      const _res = [];
+      for (const MLA of _mlas) {
       const lnk = ((await db.get('cyc/mllinks/' + MLA)) || {});
       // EL NOMBRE DE LA CUENTA SE COMPARA SIN TILDES NI MAYÚSCULAS. La primera versión hacía
       // `accounts[cuenta.toLowerCase()]` y falló al toque: la publicación dice "matias" y la clave
@@ -6329,19 +6334,19 @@ async function main() {
       const acc = cta ? accounts[cta] : null;
       if (!acc?.refresh_token) {
         console.log(`No encuentro token para la cuenta de ${MLA}: la publicación dice "${lnk.cuenta || '—'}" y las cuentas conectadas son: ${labels.join(' · ') || '(ninguna)'}`);
-        return;
+        continue;
       }
       let t = null;
       try { t = await mlRefresh(ML_CLIENT_ID, ML_CLIENT_SECRET, acc.refresh_token);
         await db.patch('mlapi/tokens/' + cta, { refresh_token: t.refresh_token, updated_ts: Date.now() }); }
-      catch (e) { console.log(`❌ No pude sacar token de ${cta}: ${String(e.message || e).slice(0, 120)}`); return; }
+      catch (e) { console.log(`❌ No pude sacar token de ${cta}: ${String(e.message || e).slice(0, 120)}`); continue; }
       console.log(`=== QUÉ DEJA ESCRIBIR ML · ${MLA} · cuenta ${cta} ===\n`);
       let it = null;
       try { it = await mlGet('/items/' + MLA, t.access_token); }
-      catch (e) { console.log(`❌ Ni siquiera puedo LEERLA: ${String(e.message || e).slice(0, 160)}`); return; }
+      catch (e) { console.log(`❌ Ni siquiera puedo LEERLA: ${String(e.message || e).slice(0, 160)}`); continue; }
       const precioHoy = Number(it.price) || 0;
       console.log(`Leer la publicación: ✅  ·  precio hoy ${money(precioHoy)}  ·  estado ${it.status}  ·  ${it.title || ''}`.slice(0, 200));
-      if (!(precioHoy > 0)) { console.log('Sin precio: no hay nada que probar.'); return; }
+      if (!(precioHoy > 0)) { console.log('Sin precio: no hay nada que probar.'); continue; }
       // 1) EL PRECIO, con el MISMO valor. No cambia nada pase lo que pase.
       const _put = async (cuerpo) => {
         const r = await fetch('https://api.mercadolibre.com/items/' + MLA, {
@@ -6360,12 +6365,21 @@ async function main() {
       const b = await _put({ warranty: String(it.warranty || 'Sin garantía') });
       console.log(`2) Mandar la MISMA garantía (un campo que no es el precio): ${b.ok ? '✅ ML lo acepta' : '❌ ' + b.status}`);
       if (!b.ok) console.log(`   ${b.txt}`);
+      _res.push({ MLA, cta, precio: a.ok, otro: b.ok });
+      }
       console.log('\n── QUÉ QUIERE DECIR ──');
-      if (a.ok && b.ok) console.log('   La aplicación SÍ puede escribir hoy. El freno de los 3 intentos era por el VALOR que se mandaba o ya se levantó: hay que reintentar uno de verdad.');
-      else if (!a.ok && b.ok) console.log('   La aplicación puede escribir, pero ML le bloquea EL PRECIO en particular. Es una política sobre precios, no un permiso perdido.');
-      else if (!a.ok && !b.ok) console.log('   La aplicación NO puede escribir NADA en esta publicación. No es cosa de precios: es el permiso de la app o algo de esta publicación.');
-      else console.log('   El precio pasa y la garantía no: raro, mirar el detalle de arriba.');
-      console.log('   (El precio no se movió: se mandó el mismo que ya tenía.)');
+      if (!_res.length) { console.log('   No se pudo probar ninguna.'); return; }
+      const _ctas = [...new Set(_res.map((x) => x.cta))];
+      const _todasNo = _res.every((x) => !x.precio && !x.otro);
+      const _todasSi = _res.every((x) => x.precio && x.otro);
+      const _soloPrecio = _res.every((x) => !x.precio) && _res.every((x) => x.otro);
+      for (const r of _res) console.log(`   ${r.MLA} (${r.cta}): precio ${r.precio ? '✅' : '❌'} · otro campo ${r.otro ? '✅' : '❌'}`);
+      if (_todasNo && _ctas.length > 1) console.log(`\n   La aplicación NO puede escribir NADA, en ${_ctas.length} cuentas distintas. No es una publicación ni una marca: ML le cerró la escritura a la aplicación.`);
+      else if (_todasNo) console.log('\n   No puede escribir nada, pero se probó una sola cuenta. Probar con otra para saber si es la app o la cuenta.');
+      else if (_todasSi) console.log('\n   La aplicación SÍ puede escribir hoy. El freno se levantó o era por el VALOR: hay que reintentar uno de verdad.');
+      else if (_soloPrecio) console.log('\n   Puede escribir, pero ML le bloquea EL PRECIO en particular.');
+      else console.log('\n   Mezclado: algunas sí y otras no. Mirar el renglón de cada una — ahí está la pista de qué las separa.');
+      console.log('   (Ningún precio se movió: se mandó el mismo que ya tenía cada una.)');
       return;
     }
 
