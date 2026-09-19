@@ -8778,6 +8778,80 @@ async function main() {
     // Emparejar por nombre es el filtro que ya falló cinco veces, y en un producto nuevo es peor
     // porque no hay ficha contra la cual contrastar.
     // Sin `:go` calcula y muestra pero NO escribe ni manda nada.
+    // BILLING_PROBE=pedir:<palabra>=<unidades>[;<otra>=<u>][;go] → CARGA LAS UNIDADES DEL PEDIDO
+    // DE PARAGUAY. **Sin `go` SOLO MUESTRA.**
+    //
+    // Pedido suyo del 19/09/2026: *"podes armarme el pedido por favor?"*. Hasta hoy las unidades
+    // se cargaban a mano casilla por casilla en el panel, que está bien cuando son cuatro y es un
+    // suplicio cuando son diez.
+    //
+    // **NO ELIGE NADA.** Escribe las unidades que se le dicen, en los productos que se le dicen.
+    // Quién entra al pedido lo decide él — regla suya del 18/09: *"no que la web lo arme"*. Esto
+    // es la mano que carga, no la cabeza que decide.
+    //
+    // NO ADIVINA CUANDO LA PALABRA AGARRA VARIOS. Es el filtro por palabras que ya falló seis
+    // veces en este panel: `liquidando:sandisk` agarraba 13 publicaciones. Si una palabra cae en
+    // más de un candidato, los lista y **no escribe ninguno** — cargar 2 unidades del producto
+    // equivocado es plata de un pedido que no se rehace hasta que llega.
+    if (/^pedir(:|$)/.test(String(process.env.BILLING_PROBE || ''))) {
+      const _pd = String(process.env.BILLING_PROBE);
+      const APLICAR = /(^|;)go$/.test(_pd);
+      const pares = _pd.replace(/^pedir:?/, '').replace(/(^|;)go$/, '').split(';')
+        .map((x) => x.trim()).filter(Boolean)
+        .map((x) => { const m = x.match(/^(.+?)=(\d+)$/); return m ? { busca: m[1].trim(), u: parseInt(m[2], 10) } : { busca: x, u: null }; });
+      if (!pares.length) { console.log('Usá: pedir:<palabra>=<unidades>[;<otra>=<u>][;go]  ·  =0 lo saca del pedido'); return; }
+      const malForm = pares.filter((p) => p.u == null);
+      if (malForm.length) { console.log(`No entendí: ${malForm.map((p) => p.busca).join(' · ')}\nCada uno va como <palabra>=<unidades>, por ejemplo  pedir:mercedes=2;sutoor=2:go`); return; }
+      const cands = (await db.get('cyc/candidatos_py')) || {};
+      const fin = (await db.get('cyc/finanzas')) || {};
+      const tcp = parseFloat(fin.tipo_cambio) || 1500;
+      const nrmP = (t) => String(t || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[^a-z0-9]+/g, ' ').trim();
+      const vivos = Object.entries(cands).filter(([, c]) => c && c.nombre && !c.prodId);
+      console.log(`=== CARGAR UNIDADES DEL PEDIDO ${APLICAR ? '' : '(PRUEBA — no escribo nada)'} ===`);
+      const cambios = [], problemas = [];
+      for (const p of pares) {
+        const q = nrmP(p.busca);
+        const hits = vivos.filter(([, c]) => nrmP(c.nombre).includes(q));
+        if (!hits.length) { problemas.push(`"${p.busca}" → no encontré ningún candidato con eso`); continue; }
+        if (hits.length > 1) { problemas.push(`"${p.busca}" → agarra ${hits.length}: ${hits.map(([, c]) => c.nombre).join(' | ')}. Poné una palabra más precisa.`); continue; }
+        const [id, c] = hits[0];
+        const antes = Number(c.pedirU) || 0;
+        cambios.push({ id, c, antes, u: p.u });
+      }
+      // SI ALGO NO SE ENTENDIÓ, NO SE ESCRIBE NADA. Un pedido cargado a medias es peor que uno sin
+      // cargar: el total de la pantalla queda bien y le falta un renglón, que es el error que no
+      // se ve. O entra todo o no entra nada.
+      if (problemas.length) {
+        console.log('❌ NO ESCRIBO NADA. Primero hay que resolver esto:');
+        for (const x of problemas) console.log(`   ${x}`);
+        return;
+      }
+      for (const x of cambios) {
+        const usd = parseFloat(x.c.usd) || 0;
+        console.log(`  ${x.antes} u. → ${x.u} u.  ·  US$ ${(usd * x.u).toFixed(2)}  ·  ${x.c.nombre}`
+          + (x.c.no ? '   ❌ OJO: este candidato está DESCARTADO' : '')
+          + (x.u > 2 ? '   ⚠️ pasa tu máximo de 2 u. por producto' : ''));
+      }
+      // El total se arma con la lista ENTERA, no sólo con lo que se toca: lo que ya estaba cargado
+      // y no se nombra sigue adentro del pedido, y sin contarlo el total mentiría.
+      const final = vivos.map(([id, c]) => {
+        const ch = cambios.find((x) => x.id === id);
+        return { c, u: ch ? ch.u : (Number(c.pedirU) || 0) };
+      }).filter((x) => x.u > 0);
+      const crudo = final.reduce((s, x) => s + (parseFloat(x.c.usd) || 0) * x.u, 0);
+      console.log(`\n🧾 EL PEDIDO QUEDA EN: ${final.length} producto(s) · ${final.reduce((s, x) => s + x.u, 0)} u. · US$ ${crudo.toFixed(2)} crudos · US$ ${(crudo * 1.15).toFixed(2)} puestos · ${money(Math.round(crudo * 1.15 * tcp))}`);
+      if (crudo > 500) console.log(`   ⚠️ pasa tu tope de US$ 500 crudos por US$ ${(crudo - 500).toFixed(2)}`);
+      if (!APLICAR) { console.log('\nPRUEBA: no escribí nada. Para aplicar, agregá  ;go  al final.'); return; }
+      let ok = 0;
+      for (const x of cambios) { try { await db.set(`cyc/candidatos_py/${x.id}/pedirU`, x.u); ok++; } catch (e) { console.log(`   ❌ no pude guardar ${x.c.nombre}: ${e.message}`); } }
+      // SE RELEE DE LA BASE, no se confía en que la escritura haya andado. Es la regla 6 aplicada
+      // acá: después de escribir, volver a leer y comparar.
+      const rele = (await db.get('cyc/candidatos_py')) || {};
+      const malos = cambios.filter((x) => (Number((rele[x.id] || {}).pedirU) || 0) !== x.u);
+      console.log(`\n✓ Guardados ${ok} de ${cambios.length}. Releído de la base: ${cambios.length - malos.length} de ${cambios.length} quedaron bien.`);
+      for (const x of malos) console.log(`   ❌ ${x.c.nombre} quedó en ${Number((rele[x.id] || {}).pedirU) || 0} y le pedí ${x.u}`);
+      return;
+    }
     // BILLING_PROBE=revisarcompra[:<palabras,separadas,por,coma>] → LA ÚLTIMA MIRADA ANTES DE
     // GASTAR LOS DÓLARES. **SOLO LEE: no escribe nada, no descarta nada, no toca ML.**
     //
