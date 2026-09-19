@@ -3484,6 +3484,22 @@ async function correrCandidatos(db, products, labels, accounts, soloPrueba, prue
   // bucle). Sin éste, 39 candidatos podían no aparecer en ningún renglón y la cuenta "cerraba".
   const _cierraTodo = mirados + yaNo + yaFicha;
   if (_cierraTodo !== entradas.length) console.log(`   ⚠️ NO CIERRA LA LISTA: hay ${entradas.length} y sólo puedo explicar ${_cierraTodo}. Faltan ${entradas.length - _cierraTodo}.`);
+  // ── LAS VENTAS QUE SE MUESTRAN SON LAS QUE CARGÓ EL CHAT (19/09/2026) ────────────────
+  // El comando imprimía `ventas ?` en los 42 y eso se leía como "nadie sabe cuántas vende".
+  // Era falso: el chat YA las había cargado en el panel. Lo que se estaba imprimiendo es el
+  // número del ROBOT (`mlVendidas`), que ML le niega con un 403 y por lo tanto es `?` SIEMPRE.
+  // O sea: el dato existía, estaba guardado, y el comando miraba el campo equivocado — la misma
+  // variante del error de la comisión (un dato medido que nadie mostraba), esta vez peor porque
+  // el "?" invitaba a pedirle al chat algo que ya había hecho.
+  // Manda el del chat; el del robot queda como CRUCE, igual que en la tarjeta del panel.
+  const _ventasTxt = (c) => {
+    const v = Number(c && c.vendCarga);
+    const r = Number(c && c.mlVendidas);
+    if (!isFinite(v)) return isFinite(r) ? `${r} vendidas (las vio el robot)` : 'ventas: NO las cargó el chat';
+    const cruce = (isFinite(r) && r !== v) ? ` (el robot ve ${r})` : '';
+    return `${v} vendidas${v >= 25 ? '' : ' ⚠️ POCAS'}${cruce}`;
+  };
+
   // ── LA LISTA DE LOS QUE DAN VA SIEMPRE AL LOG, AVISE O NO AVISE ──────────────────────
   // El MENSAJE de Telegram manda sólo lo NUEVO, a propósito (repetir todas las noches entrena a
   // no abrirlo). Pero el LOG es donde se mira cuando se quiere mirar, y ahí tiene que estar la
@@ -3493,8 +3509,8 @@ async function correrCandidatos(db, products, labels, accounts, soloPrueba, prue
     console.log(`\n── LOS ${nuevosQueDan.length} QUE DAN ${CAND_PISO_PCT}% O MÁS (de mejor a peor) ──`);
     [...nuevosQueDan].sort((a, b) => b.margen - a.margen).forEach((x, i) => {
       console.log(`${String(i + 1).padStart(3)}. ${x.margen.toFixed(1).padStart(5)}%  ·  US$ ${x.puesto.toFixed(2).padStart(7)} puesto (US$ ${(x.puesto / 1.15).toFixed(2)} + 15%)`
-        + `  ·  en ML ${x.mlMax > x.mlPrecio ? `de ${money(Math.round(x.mlPrecio))} a ${money(x.mlMax)}` : money(Math.round(x.mlPrecio))} (${x.mlVendedores} vend.${x.mlVendidas != null ? ` · ${x.mlVendidas} vendidas` : ' · ventas ?'})  ·  ${money(Math.round(x.ganancia))}/u.`);
-      console.log(`      ${x.c.nombre}${x.c.mlId ? '' : '   ⚠️ emparejado por NOMBRE, chequealo'}`);
+        + `  ·  en ML ${x.mlMax > x.mlPrecio ? `de ${money(Math.round(x.mlPrecio))} a ${money(x.mlMax)}` : money(Math.round(x.mlPrecio))} (${x.mlVendedores} vend. · ${_ventasTxt(x.c)})  ·  ${money(Math.round(x.ganancia))}/u.`);
+      console.log(`      ${x.c.nombre}${x.c.mlId ? '' : '   ⚠️ emparejado por NOMBRE, chequealo'}${Number(x.c.pedirU) > 0 ? `   🧾 ya lo pediste: ${Number(x.c.pedirU)} u.` : ''}`);
     });
   }
 
@@ -3519,7 +3535,7 @@ async function correrCandidatos(db, products, labels, accounts, soloPrueba, prue
       const L = [`🆕 *Para probar* · ${frescos.length} producto${frescos.length === 1 ? '' : 's'} nuevo${frescos.length === 1 ? '' : 's'} de Paraguay que dan margen`, ''];
       frescos.forEach((x, i) => {
         L.push(`${i + 1}. *${x.c.nombre}*`);
-        L.push(`   US$ ${x.puesto.toFixed(2)} puesto · en ML ${x.mlMax > x.mlPrecio ? `de ${money(x.mlPrecio)} a ${money(x.mlMax)}` : money(x.mlPrecio)} (${x.mlVendedores} vend.${x.mlVendidas != null ? ` · ${x.mlVendidas} vendidas` : ' · ventas ?'}) · *${x.margen.toFixed(0)}%* contra el más barato (${money(x.ganancia)}/u.)`);
+        L.push(`   US$ ${x.puesto.toFixed(2)} puesto · en ML ${x.mlMax > x.mlPrecio ? `de ${money(x.mlPrecio)} a ${money(x.mlMax)}` : money(x.mlPrecio)} (${x.mlVendedores} vend. · ${_ventasTxt(x.c)}) · *${x.margen.toFixed(0)}%* contra el más barato (${money(x.ganancia)}/u.)`);
         L.push(`   ML: ${x.mlTit}${x.c.mlId ? '' : ' ⚠️ emparejado por nombre, chequealo'}`);
       });
       L.push('');
