@@ -2450,6 +2450,51 @@ salieron porque él pidió tocar un precio a mano; si no, la suba automática se
 las noches sin cambiar nada y nadie se enteraba. **Un automatismo que no puede hacer su trabajo
 tiene que gritarlo, no seguir corriendo.**
 
+### YA LO GRITA: EL ROBOT AVISA CUANDO ML NO LO DEJA ESCRIBIR (19/09/2026)
+
+Es el arreglo de la lección de arriba, y lo que cambia no es el bloqueo —eso lo tiene que
+destrabar ML— sino **que no vuelva a pasar en silencio**.
+
+**El freno vive en UNA función (`_anotarEscrituraML`) a la que llaman las CINCO que escriben solas
+en ML** —`raisePrice`, `raisePriceTo` y `raiseVariations` (suben), `setPriceTo` (baja) y
+`activarPausadasFull` (activa)— y no adentro de cada comando, por el mismo motivo que el piso
+duro: la regla no puede depender de que el próximo que escriba algo se acuerde.
+
+**Mira el TEXTO de ML, no el 403.** Un 403 también sale con el token vencido, y eso se arregla solo
+en la vuelta siguiente; lo que hay que avisar es `PolicyAgent` /
+`PA_UNAUTHORIZED_RESULT_FROM_POLICIES`, que es el motor de políticas. Con **un solo** intento
+frenado ya sale el aviso: un mensaje de más molesta un minuto, el silencio deja al robot haciendo
+la mímica de trabajar dos días.
+
+**Va al canal privado de precios** (`sendAlerta`) y **no se tocó el Telegram del resumen del día**,
+regla suya del 13/09. El mensaje dice qué quedó sin hacer, en cuántas publicaciones, que **no es un
+error del robot** (leer sigue andando) y qué puede hacer él.
+
+**Memoria de UN día** en `cyc/avisobloqueo`: el ciclo son ~4 corridas diarias y el mismo bloqueo
+mandaría 4 mensajes iguales. **Se anota sólo si el mensaje salió** — si falla el envío y se anotara
+igual, el bloqueo quedaría callado un día por un aviso que nunca llegó. Es lo mismo que el aviso
+diario.
+
+**Y AVISA TAMBIÉN CUANDO SE DESTRABA**, que es la mitad que siempre se olvida: si había marca y
+esta vuelta ML aceptó una escritura, sale el 🔓. Sin eso él se queda creyendo que el robot sigue
+frenado y toca todo a mano al pedo. Ojo con el detalle: hace falta que ML haya aceptado **algo** de
+verdad — una vuelta en la que no hubo nada para escribir **no canta victoria**.
+
+**De paso se emparejó el error de `raisePrice` y `raisePriceTo`**, que devolvían `ML-403` a secas.
+`setPriceTo` ya se había arreglado ese mismo día y `raiseVariations` lo hacía desde antes: eran las
+dos copias que quedaban atrás. **Un error que no dice el motivo obliga a adivinar.**
+
+Probado con el bloque REAL sacado del archivo (no una copia, que diría "todo bien" para siempre) y
+10 casos: PolicyAgent avisa y anota · el mismo día no repite · un 403 de token vencido NO dispara
+nada · si Telegram falla no anota · en prueba avisa y no anota · el destrabe avisa y borra la marca
+· una vuelta sana no manda nada · marca vieja sin escrituras no canta victoria · el tope de 40 ·
+y si la memoria no se puede leer, avisa igual.
+
+**Lo que NO está cubierto y conviene saberlo: sacar las promociones.** Ese camino borra con DELETE,
+no con PUT, y no pasa por estas cinco funciones. Si ML también le cerró eso, se va a ver en el log
+de `sacapromos` (hoy dio *"0 sacadas · 0 con error"*, o sea que no había ninguna aplicada y no hubo
+nada que probar).
+
 ### EL PISO SE PUEDE ABRIR A MANO, CON TRES FRENOS (19/09/2026)
 
 Quedó anotado el 16/09 que *"esa red se abre el día que él quiera aplicar uno, no antes"*. Llegó ese

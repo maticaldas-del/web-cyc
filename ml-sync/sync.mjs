@@ -176,6 +176,72 @@ function costoPesos(p, qty, tc) {
   return { costo: Math.round(fullUSD * tc * qty), costBaseUSD: costUSD, shipUSD };
 }
 
+// ── CUANDO ML NO DEJA ESCRIBIR, EL ROBOT TIENE QUE GRITARLO (19/09/2026) ───────────────────
+// Salió del peor modo posible: él pidió bajar la Pad 2 a mano, ML contestó 403 con
+// `PA_UNAUTHORIZED_RESULT_FROM_POLICIES` / `blocked_by: PolicyAgent`, y al medirlo apareció que
+// la aplicación NO puede escribir NADA en ML desde el 17/09 — probado con 4 publicaciones, 3
+// cuentas, precio Y garantía: 403 en los 12 intentos. Leer sigue andando perfecto.
+//
+// LO GRAVE NO FUE EL BLOQUEO, FUE EL SILENCIO. La suba automática venía corriendo todas las
+// noches sin lograr cambiar un solo precio, y nadie se enteró en dos días. Cada intento fallido
+// se imprimía en una línea del log y ahí moría — el MISMO patrón del `catch {}` vacío, del filtro
+// que descarta por omisión y del aviso del dólar que no declaraba su tipo: el dato no se pierde
+// con ruido, se pierde en silencio.
+//
+// Por eso esto vive en UNA función a la que llaman las CINCO que escriben solas en ML (las tres
+// que suben, la que baja y la que activa pausadas), y no en cada comando: la regla no puede
+// depender de que el próximo que escriba algo se acuerde. Es el mismo motivo que el piso duro.
+//
+// EL LADO SEGURO ACÁ ES AVISAR DE MÁS. Un mensaje que llega cuando el bloqueo ya se destrabó
+// molesta un minuto; no avisar deja al robot haciendo la mímica de trabajar. Por eso alcanza con
+// UN intento bloqueado para que salga el aviso.
+let BLOQUEO_ML = { frenados: [], ok: 0 };
+function _anotarEscrituraML(res, itemId, que, cuerpo) {
+  if (res && res.ok) { BLOQUEO_ML.ok++; return; }
+  const t = String(cuerpo || '');
+  // Se mira el TEXTO de ML, no sólo el 403: un 403 también sale con el token vencido, y eso se
+  // arregla solo en la vuelta siguiente. Lo que hay que avisar es el freno de políticas.
+  if (!/PolicyAgent|PA_UNAUTHORIZED_RESULT_FROM_POLICIES/i.test(t)) return;
+  if (BLOQUEO_ML.frenados.length < 40) BLOQUEO_ML.frenados.push({ mla: String(itemId), que: String(que || 'escribir') });
+}
+// Se llama UNA vez al final de la corrida, con la db en la mano. Manda al canal privado de
+// precios (sendAlerta), que es donde ya van las decisiones de precio — el canal del resumen del
+// día no se toca, regla suya del 13/09.
+// Memoria de UN día en `cyc/avisobloqueo`: el ciclo son ~4 corridas diarias y el mismo bloqueo
+// mandaría 4 mensajes iguales. Se anota SÓLO si el mensaje salió, igual que el aviso diario: si
+// falló el envío y se anotara igual, el bloqueo quedaría callado un día por un aviso que nunca
+// llegó.
+// Y AVISA TAMBIÉN CUANDO SE DESTRABA, que es la mitad que siempre se olvida: si ayer estaba
+// bloqueado y hoy ML aceptó una escritura, sale el mensaje de que ya puede de nuevo. Sin eso él
+// se queda creyendo que el robot sigue frenado y toca todo a mano al pedo.
+async function avisarBloqueoML(db, DRY) {
+  const hoy = new Date(Date.now() - 3 * 3600e3).toISOString().slice(0, 10);
+  let marca = '';
+  try { marca = String((await db.get('cyc/avisobloqueo')) || ''); } catch { marca = ''; }
+  const fren = BLOQUEO_ML.frenados;
+  if (!fren.length) {
+    if (marca && BLOQUEO_ML.ok > 0) {
+      console.log(`🔓 ML volvió a dejar escribir: ${BLOQUEO_ML.ok} cambio(s) aceptado(s) esta vuelta.`);
+      const ok = await sendAlerta('🔓 <b>ML volvió a dejarme tocar precios.</b>\n\nEsta vuelta aceptó ' + BLOQUEO_ML.ok + ' cambio(s). El robot vuelve a trabajar solo.');
+      if (ok && !DRY) { try { await db.set('cyc/avisobloqueo', null); } catch { /* se reintenta mañana */ } }
+    }
+    return;
+  }
+  const mlas = [...new Set(fren.map((f) => f.mla))];
+  console.log(`\n🚫 ML ME FRENÓ ${fren.length} intento(s) de escritura por políticas (PolicyAgent), en ${mlas.length} publicación(es): ${mlas.slice(0, 12).join(', ')}${mlas.length > 12 ? '…' : ''}`);
+  if (marca === hoy) { console.log('   (ya avisé por Telegram hoy, no repito)'); return; }
+  const ques = [...new Set(fren.map((f) => f.que))];
+  const msg = '🚫 <b>ML no me deja tocar las publicaciones.</b>\n\n'
+    + 'Esta vuelta intenté ' + fren.length + ' cambio(s) en ' + mlas.length + ' publicación(es) y ML los rechazó <b>todos</b>, siempre con el mismo motivo: su motor de políticas (<i>PolicyAgent</i>).\n\n'
+    + 'Lo que quedó sin hacer: ' + ques.join(' · ') + '.\n'
+    + 'Publicaciones: ' + mlas.slice(0, 10).join(', ') + (mlas.length > 10 ? ` y ${mlas.length - 10} más` : '') + '\n\n'
+    + '<b>No es un error del robot ni de la cuenta:</b> leer sigue andando bien. Es ML que le cerró la escritura a la aplicación.\n\n'
+    + '<b>Qué podés hacer vos:</b> probá cambiarle el precio a una a mano en ML. Si a mano te deja, el freno es sólo contra la aplicación y hay que entrar al panel de desarrolladores de ML con la cuenta que la creó, ver si hay algún aviso y volver a autorizarla.\n\n'
+    + '<i>Mientras tanto el robot NO está cambiando ningún precio, aunque el resto siga funcionando.</i>';
+  const ok = await sendAlerta(msg);
+  if (ok && !DRY) { try { await db.set('cyc/avisobloqueo', hoy); } catch { /* se reintenta en la vuelta siguiente */ } }
+}
+
 // ── Subir el precio de TODAS las variantes de una publicación ──────────────
 // PELIGRO que esto evita: si a ML le mandás la lista de variantes incompleta,
 // BORRA las que faltan (te comés el historial y el stock de esa variante). Por
@@ -217,8 +283,10 @@ async function raiseVariations(itemId, nuevos, token) {
       // no hay forma de saber cuál es.
       let _d = '';
       try { _d = (await r.text() || '').slice(0, 300); } catch { _d = ''; }
+      _anotarEscrituraML(r, itemId, 'subir el precio de las variantes', _d);
       return { ok: false, err: 'ML-' + r.status + (_d ? ' · ' + _d : '') };
     }
+    _anotarEscrituraML(r, itemId, 'subir el precio de las variantes', '');
   } catch (e) { return { ok: false, err: 'red · ' + String(e.message || e).slice(0, 120) }; }
   // Verificación obligatoria: que no se haya borrado ninguna variante y que los precios sean los pedidos.
   let after;
@@ -256,7 +324,15 @@ async function raisePriceTo(itemId, objetivo, token) {
       headers: { Authorization: 'Bearer ' + token, 'Content-Type': 'application/json' },
       body: JSON.stringify({ price: to }),
     });
-    if (!r.ok) return { ok: false, err: 'ML-' + r.status };
+    // El cuerpo del error, no sólo el número: `setPriceTo` y `raiseVariations` ya lo hacían y
+    // acá quedaba la copia vieja, que decía "ML-403" a secas y obligaba a adivinar.
+    if (!r.ok) {
+      let _d = '';
+      try { _d = (await r.text() || '').slice(0, 300); } catch { _d = ''; }
+      _anotarEscrituraML(r, itemId, 'subir el precio', _d);
+      return { ok: false, err: 'ML-' + r.status + (_d ? ' · ' + _d : '') };
+    }
+    _anotarEscrituraML(r, itemId, 'subir el precio', '');
     return { ok: true, from: Math.round(item.price), to };
   } catch { return { ok: false, err: 'red' }; }
 }
@@ -862,7 +938,14 @@ async function activarPausadasFull(db, links, tokensRun, DRY, products, piso) {
             headers: { Authorization: 'Bearer ' + tok, 'Content-Type': 'application/json' },
             body: JSON.stringify({ status: 'active' }),
           });
-          if (!r.ok) { noVa('ML rechazó la activación (' + r.status + ')', precio); continue; }
+          if (!r.ok) {
+            let _d = '';
+            try { _d = (await r.text() || '').slice(0, 300); } catch { _d = ''; }
+            _anotarEscrituraML(r, mla, 'activar publicaciones pausadas con stock', _d);
+            noVa('ML rechazó la activación (' + r.status + (/PolicyAgent/i.test(_d) ? ' · ML la tiene frenada por políticas' : '') + ')', precio);
+            continue;
+          }
+          _anotarEscrituraML(r, mla, 'activar publicaciones pausadas con stock', '');
         } catch { noVa('error de red al activar', precio); continue; }
         // Verificación obligatoria: se relee y tiene que estar activa de verdad.
         let quedo = null;
@@ -2301,8 +2384,10 @@ async function setPriceTo(itemId, variationId, nuevo, token, chequeo) {
     if (!r.ok) {
       let _d = '';
       try { _d = (await r.text() || '').slice(0, 300); } catch { _d = ''; }
+      _anotarEscrituraML(r, itemId, 'bajar el precio', _d);
       return { ok: false, err: 'ML-' + r.status + (_d ? ' · ' + _d : '') };
     }
+    _anotarEscrituraML(r, itemId, 'bajar el precio', '');
     return { ok: true, from: Math.round(base), to };
   } catch (e) { return { ok: false, err: 'red · ' + String(e.message || e).slice(0, 120) }; }
 }
@@ -2358,7 +2443,13 @@ async function raisePrice(itemId, variationId, multiplier, token) {
       headers: { Authorization: 'Bearer ' + token, 'Content-Type': 'application/json' },
       body: JSON.stringify({ price: to }),
     });
-    if (!r.ok) return { ok: false, err: 'ML-' + r.status };
+    if (!r.ok) {
+      let _d = '';
+      try { _d = (await r.text() || '').slice(0, 300); } catch { _d = ''; }
+      _anotarEscrituraML(r, itemId, 'subir el precio', _d);
+      return { ok: false, err: 'ML-' + r.status + (_d ? ' · ' + _d : '') };
+    }
+    _anotarEscrituraML(r, itemId, 'subir el precio', '');
     return { ok: true, from: Math.round(base), to };
   } catch { return { ok: false, err: 'red' }; }
 }
@@ -22825,6 +22916,11 @@ async function main() {
       }
     } catch (e) { console.log('No pude mirar el dólar: ' + e.message); }
   }
+
+  // ── ¿ML ME DEJÓ TRABAJAR? ───────────────────────────────────────────────
+  // Va al FINAL, después de todo lo que escribe en ML, y fuera de cualquier `if`: un aviso que
+  // depende de que el robot de precios esté prendido no serviría justo el día que se apague.
+  try { await avisarBloqueoML(db, DRY); } catch (e) { console.log('No pude mirar si ML me frenó: ' + e.message); }
 
   if (!precioAuto && !SKIP_PRICES) console.log('\n⏸️  Robot de precios APAGADO (mlconfig.autoPrice=false): no ajusté, no nivelé y no activé nada. Para prenderlo: robot:on');
   const pend = Object.values(map).filter((x) => x && !x.prodId).length;
