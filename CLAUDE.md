@@ -2051,6 +2051,61 @@ a −2,7% en dos corridas con minutos de diferencia, y eso es exactamente lo que
 **Lo que sí queda medido es cuánto de "inestable" tiene el precio de ML: mucho menos de lo que
 parecía.** De 27 casos, cero cambiaron de lado.
 
+### UN DESCARTE POR MARGEN YA NO ES "NUNCA MÁS" (19/09/2026)
+
+Regla suya, textual: *"yo no pondría ningún producto en NUNCA MÁS. salvo producto que después de
+varias corridas siempre estén lejos, ahí sí. lo que sí se da de baja, pero eso el chat lo sabe,
+son productos con marcas que no se pueden y todo eso"*.
+
+**ÉL CREÍA QUE YA FUNCIONABA ASÍ** — *"si sacás un producto que no da, la corrida lo vuelve a
+evaluar más adelante"*— **y no era cierto**: un `no:true` se salteaba para siempre con un
+`continue` y a los 45 días se borraba. Los tres mal descartados que encontró la revisión de ese
+mismo día no habrían vuelto jamás. **Su modelo mental era el diseño correcto; el código era el que
+estaba mal.**
+
+**SON DOS DESCARTES DISTINTOS Y AHORA SE TRATAN DISTINTO:**
+ · **BLANDO** — no llegó al piso. El margen se mide contra el MÁS BARATO de ML, que se mueve todos
+   los días: **se vuelve a medir a los 7 días** (`CAND_REMEDIR_DIAS`). Si da, se le saca la cruz
+   sola y vuelve a la lista; si no, se re-descarta y suma a la cuenta de abajo.
+ · **DURO** — marca que ML frena, no lo ofrece Nissei, sin precio, pasa el tope de US$250, o lo
+   bajó él a mano. Eso no cambia solo, así que queda.
+
+**"SIEMPRE LEJOS" ES SU CONDICIÓN PARA EL NUNCA MÁS, Y HUBO QUE PONERLE NÚMERO:** **4 mediciones**
+(`CAND_BAJAS_NUNCA`) quedando **10 puntos o más abajo del piso** (`CAND_LEJOS_PTS`), o sea 15% o
+menos. **El que ronda el 23% NO entra nunca en esa cuenta** y se sigue midiendo — que es justo lo
+que él quiere: ése puede cruzar cualquier día.
+
+**Los descartes VIEJOS no tienen el tipo guardado**, así que se deduce del texto del motivo; de acá
+en adelante se escribe `noTipo` y no hay que adivinar más.
+**Y los que vuelven se NOMBRAN en el resumen**: un producto que reaparece sin que nadie lo diga es
+el descarte silencioso al revés.
+
+Probado con la función REAL y 17 casos: vuelve a los 8 días y no a los 3, la marca frenada y la
+baja a mano no vuelven nunca, los motivos viejos se clasifican bien, el 23% repetido cuatro veces
+**no** llega al nunca más y la cuarta medición muy abajo sí.
+
+### LOS DESCARTADOS, REVISADOS: 3 MAL DE 47 (19/09/2026)
+
+Comando **`descartados`** (solo lee, no pregunta nada a ML, no devuelve nada). Compara el nombre de
+comprasparaguay contra el título de ML **contra el que se midió** — que es lo único que hay que
+revisar cuando la sospecha es haber medido contra el producto equivocado.
+
+De ~47 descartados: **34 se midieron bien**, 1 nunca llegó a medirse y **12 salieron marcados**. De
+esos 12, **nueve son falsas alarmas**: ML escribe el título distinto y nada más (*"Banderas"* sin
+*"Antonio"*, *"Bahamas"* junto, *"premium"* de adjetivo, el número de parte que ML no repite).
+
+**LOS TRES QUE ESTÁN MAL DE VERDAD, y los tres se midieron contra OTRO perfume:**
+
+| producto | ML lo midió contra | dio |
+|---|---|---|
+| **Armaf Delights Yum Yum** | *"Armaf Odyssey **Aoud**"* | −16,3% |
+| **Armaf Odyssey Toffee Coffee** | *"Armaf Odyssey **Aoud**"* | 6,0% |
+| **Lattafa Asad** | *"Asad Lattafa **Intense**"* | −1,2% |
+
+**Los dos Armaf cayeron en el MISMO catálogo equivocado** (`MLA23592967`): el chat pegó el link del
+Aoud en dos productos distintos. Sus márgenes reales no los sabe nadie — y con la regla nueva se
+vuelven a medir solos.
+
 ### EL PEDIDO QUEDA CARGADO DESDE EL CHAT: `pedir` (19/09/2026)
 
 Pedido suyo: *"podés armarme el pedido por favor?"* y *"cargalo en la web"*. Hasta ese día las

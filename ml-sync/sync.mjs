@@ -3012,6 +3012,36 @@ const CAND_MAX_ML = 40;         // tope de consultas a ML por vuelta (ver abajo)
 // igual que un campo nuevo.**
 const CAND_CALC_VER = 5;
 
+// ── UN DESCARTE POR MARGEN NO ES "NUNCA MÁS" (19/09/2026) ─────────────────────────────────
+// Regla suya, textual: *"yo no pondría ningún producto en NUNCA MÁS. salvo producto que después
+// de varias corridas siempre estén lejos, ahí sí. lo que sí se da de baja, pero eso el chat lo
+// sabe, son productos con marcas que no se pueden y todo eso"*.
+// Y hacía falta, porque él creía que ya funcionaba así: *"si sacás un producto que no da, la
+// corrida lo vuelve a evaluar más adelante"*. **No lo volvía a evaluar nunca**: un `no:true` se
+// salteaba para siempre y a los 45 días se borraba. Los tres mal descartados que encontró la
+// revisión de hoy —el Yum Yum y el Toffee Coffee medidos contra el "Armaf Odyssey **Aoud**", y
+// el Asad medido contra el "Asad **Intense**"— no habrían vuelto jamás.
+//
+// SON DOS DESCARTES DISTINTOS Y SE TRATAN DISTINTO:
+//  · **BLANDO** — no llegó al piso. El margen se mide contra el MÁS BARATO de ML, que se mueve
+//    todos los días: **se vuelve a medir a los 7 días**.
+//  · **DURO** — la marca la frena ML, no lo ofrece Nissei, no tiene precio, pasa el tope de
+//    US$250, o lo bajó él a mano. Eso no cambia solo, así que queda.
+const CAND_REMEDIR_DIAS = 7;
+// "SIEMPRE LEJOS" ES SU CONDICIÓN PARA EL NUNCA MÁS, y hay que ponerle número: **4 mediciones**
+// seguidas quedando **10 puntos o más abajo del piso** (o sea 15% o menos con el piso en 25).
+// El que anda rondando el 23% NO entra nunca en esa cuenta y se sigue midiendo, que es justo lo
+// que él quiere: ése puede cruzar cualquier día.
+const CAND_BAJAS_NUNCA = 4;
+const CAND_LEJOS_PTS = 10;
+// Un descarte VIEJO no tiene `noTipo` guardado, así que se deduce del texto del motivo. Se
+// escribe `noTipo` de acá en adelante para no tener que adivinar más.
+function candDescarteBlando(c) {
+  if (!c || !c.no || c.nunca) return false;
+  if (c.noTipo) return c.noTipo === 'margen';
+  return /abajo de tu piso/i.test(String(c.motivo || ''));
+}
+
 // ── ¿ESTA OFERTA ES DE UN VENDEDOR DE AFUERA? (19/09/2026) ─────────────────────────────────
 // Regla suya del 19/09: **"estaba tomando envíos internacionales. esos no quiero que se fije."**
 // Lo dijo por el chat de compras, pero el robot tenía el mismo problema y ahí no lo veía nadie:
@@ -3198,12 +3228,24 @@ async function correrCandidatos(db, products, labels, accounts, soloPrueba, prue
   // No es que esté mal saltearlos —son decisiones ya tomadas— es que hay que DECIR cuántos son:
   // sin eso, "69 en la lista" y "30 mirados" no se pueden conciliar mirando la pantalla.
   let yaNo = 0, yaFicha = 0;
+  // Los que estaban descartados por margen y hoy les toca volver a medirse. Se nombran en el
+  // resumen: un producto que reaparece sin que nadie lo diga es el descarte silencioso al revés.
+  const revividos = [];
   // Y AGRUPADOS POR MOTIVO, no uno por uno: con 39 descartados la lista entera es ruido, pero
   // "39 descartados" a secas no deja ver si se descartaron por la cuenta o a mano desde el panel.
   // Lo que decide es el MOTIVO, y son pocos distintos.
   const motivosNo = {};
   for (const [id, c] of entradas) {
     if (c.no) {
+      // ── EL DESCARTE BLANDO VUELVE A MEDIRSE A LOS 7 DÍAS (19/09/2026) ────────────────────
+      // Acá estaba el `continue` que hacía que un descartado no se mirara NUNCA MÁS. El margen se
+      // mide contra el más barato de ML, que se mueve todos los días: dar de baja para siempre por
+      // una foto de un momento es justo lo que él no quiere.
+      // No se desmarca antes de medir: se mide, y el RESULTADO decide. Si da, se limpia la cruz
+      // más abajo; si no da, `fuera()` lo vuelve a marcar y le suma una a la cuenta del "nunca".
+      if (candDescarteBlando(c) && (Date.now() - (Number(c.noTs) || 0)) >= CAND_REMEDIR_DIAS * 86400000) {
+        revividos.push(c.nombre);
+      } else {
       yaNo++;
       // POR TIPO, NO POR TEXTO: la primera versión agrupaba el motivo entero y como cada uno
       // lleva su % adentro ("da 8.4%…", "da 15.7%…") no agrupaba NADA — salían 39 renglones de
@@ -3219,14 +3261,31 @@ async function correrCandidatos(db, products, labels, accounts, soloPrueba, prue
         : _t.slice(0, 80);
       motivosNo[m] = (motivosNo[m] || 0) + 1;
       continue;                                // ya descartado (queda en el desplegable del panel)
+      }
     }
     if (c.prodId) { yaFicha++; continue; }     // ya se le creó la ficha: dejó de ser candidato
     mirados++;
     const usd = parseFloat(c.usd) || 0;
     const puesto = usd > 0 ? Math.round(usd * 1.15 * 100) / 100 : 0;
-    const fuera = async (motivo) => {
-      descartes.push(`${c.nombre} → ${motivo}`);
-      if (!soloPrueba) { await db.set(`cyc/candidatos_py/${id}/no`, true); await db.set(`cyc/candidatos_py/${id}/motivo`, motivo); await db.set(`cyc/candidatos_py/${id}/noTs`, Date.now()); }
+    const fuera = async (motivo, margenHoy) => {
+      // `margenHoy` sólo viene cuando el descarte es por NO LLEGAR AL PISO. Es lo que distingue el
+      // descarte BLANDO (se vuelve a medir a los 7 días) del DURO (marca frenada, sin Nissei, sin
+      // precio, pasa el tope): esos no cambian solos y quedan.
+      const blando = margenHoy != null && isFinite(margenHoy);
+      const lejos = blando && margenHoy < (CAND_PISO_PCT - CAND_LEJOS_PTS);
+      const bajas = (Number(c.bajasLejos) || 0) + (lejos ? 1 : 0);
+      const nunca = blando ? bajas >= CAND_BAJAS_NUNCA : true;
+      descartes.push(`${c.nombre} → ${motivo}`
+        + (blando && !nunca ? `  (lo vuelvo a medir en ${CAND_REMEDIR_DIAS} días${lejos ? ` · ${bajas} de ${CAND_BAJAS_NUNCA} mediciones muy abajo` : ''})` : '')
+        + (blando && nunca ? `  ⛔ ${bajas} mediciones seguidas muy abajo del piso: NO lo mido más` : ''));
+      if (!soloPrueba) {
+        await db.set(`cyc/candidatos_py/${id}/no`, true);
+        await db.set(`cyc/candidatos_py/${id}/motivo`, motivo);
+        await db.set(`cyc/candidatos_py/${id}/noTs`, Date.now());
+        await db.set(`cyc/candidatos_py/${id}/noTipo`, blando ? 'margen' : 'duro');
+        if (blando) await db.set(`cyc/candidatos_py/${id}/bajasLejos`, bajas);
+        if (nunca) await db.set(`cyc/candidatos_py/${id}/nunca`, true);
+      }
     };
     // ── LOS DESCARTES BARATOS PRIMERO, que no cuestan ninguna consulta ──
     if (c.enNissei === false) { baratos++; await fuera('en comprasparaguay no lo ofrece Nissei: no se compra'); continue; }
@@ -3527,11 +3586,22 @@ async function correrCandidatos(db, products, labels, accounts, soloPrueba, prue
         enObserva.push(`${c.nombre} → ${primera ? `primera medición: ${margen.toFixed(1)}%` : `cayó a ${margen.toFixed(1)}% (antes ${antesM.toFixed(1)}%)`}`);
         continue;
       }
-      await fuera(`da ${margen.toFixed(1)}%, abajo de tu piso de ${CAND_PISO_PCT}% por segunda vez (antes ${antesM.toFixed(1)}%)`); continue;
+      await fuera(`da ${margen.toFixed(1)}%, abajo de tu piso de ${CAND_PISO_PCT}% por segunda vez (antes ${antesM.toFixed(1)}%)`, margen); continue;
     }
+    // SI ESTABA DESCARTADO Y AHORA DA, SE LE SACA LA CRUZ. Es la otra mitad de volver a medir:
+    // sin esto se mediría todas las semanas y seguiría escondido en el desplegable de descartados.
+    if (c.no && !soloPrueba) {
+      await db.set(`cyc/candidatos_py/${id}/no`, null);
+      await db.set(`cyc/candidatos_py/${id}/motivo`, null);
+      await db.set(`cyc/candidatos_py/${id}/noTs`, null);
+      await db.set(`cyc/candidatos_py/${id}/noTipo`, null);
+      await db.set(`cyc/candidatos_py/${id}/bajasLejos`, null);
+    }
+    if (c.no) console.log(`      \u{1F504} estaba descartado y hoy da ${margen.toFixed(1)}%: vuelve a la lista.`);
     nuevosQueDan.push({ id, c, margen, ganancia, mlPrecio, mlTit, puesto, mlMax, mlVendedores: vendedores });
   }
   console.log(`\n── ${entradas.length} en la lista = ${mirados} mirados + ${yaNo} ya descartados antes + ${yaFicha} que ya tienen ficha ──`);
+  if (revividos.length) console.log(`   \u{1F504} ${revividos.length} estaban descartados por margen y hoy les tocaba volver a medirse: ${revividos.slice(0, 8).join(' · ')}${revividos.length > 8 ? ' …' : ''}`);
   if (yaNo) {
     console.log(`   — por qué están descartados esos ${yaNo} (se pueden devolver desde el panel):`);
     for (const [m, n] of Object.entries(motivosNo).sort((a, b) => b[1] - a[1])) console.log(`      ${String(n).padStart(3)} × ${m}`);
