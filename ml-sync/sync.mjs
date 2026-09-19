@@ -2976,8 +2976,18 @@ async function correrCandidatos(db, products, labels, accounts, soloPrueba, prue
   // tope de US$250, marca frenada). Se cuentan aparte porque no consumen ninguna consulta y si se
   // mezclan con los medidos la cuenta del final no cierra.
   let baratos = 0;
+  // ── LOS YA DECIDIDOS TAMBIÉN SE CUENTAN (19/09/2026) ─────────────────────────────────
+  // Acá había un `continue` pelado. La corrida de esa noche imprimió **"69 candidatos en la
+  // lista"** y abajo **"30 mirados"**, y los 39 que faltaban no aparecían en ningún renglón:
+  // el chequeo de "la cuenta tiene que cerrar" mide contra `mirados`, que es un número que ya
+  // los había dejado afuera, así que cerraba perfecto igual. Es el descarte por omisión de
+  // siempre, con el agravante de que el freno que estaba puesto para detectarlo no lo veía.
+  // No es que esté mal saltearlos —son decisiones ya tomadas— es que hay que DECIR cuántos son:
+  // sin eso, "69 en la lista" y "30 mirados" no se pueden conciliar mirando la pantalla.
+  let yaNo = 0, yaFicha = 0;
   for (const [id, c] of entradas) {
-    if (c.no || c.prodId) continue;            // ya decidido por él
+    if (c.no) { yaNo++; continue; }            // ya descartado (queda en el desplegable del panel)
+    if (c.prodId) { yaFicha++; continue; }     // ya se le creó la ficha: dejó de ser candidato
     mirados++;
     const usd = parseFloat(c.usd) || 0;
     const puesto = usd > 0 ? Math.round(usd * 1.15 * 100) / 100 : 0;
@@ -3265,7 +3275,8 @@ async function correrCandidatos(db, products, labels, accounts, soloPrueba, prue
     }
     nuevosQueDan.push({ id, c, margen, ganancia, mlPrecio, mlTit, puesto, mlMax, mlVendedores: vendedores });
   }
-  console.log(`\n── ${mirados} mirados = ${baratos} descartados sin preguntar + ${yaCalc} ya venían medidos + ${calculados} medidos hoy + ${sinDato.length} sin dato + ${sinCuenta} sin alcanzar ──`);
+  console.log(`\n── ${entradas.length} en la lista = ${mirados} mirados + ${yaNo} ya descartados antes + ${yaFicha} que ya tienen ficha ──`);
+  console.log(`── ${mirados} mirados = ${baratos} descartados sin preguntar + ${yaCalc} ya venían medidos + ${calculados} medidos hoy + ${sinDato.length} sin dato + ${sinCuenta} sin alcanzar ──`);
   console.log(`   ${consultas} consultas a ML · ${descartes.length} descartados en total · ${enObserva.length} en observación · ${nuevosQueDan.length} que dan`);
   for (const d of descartes) console.log(`   ✕ ${d}`);
   if (enObserva.length) {
@@ -3281,6 +3292,10 @@ async function correrCandidatos(db, products, labels, accounts, soloPrueba, prue
   // callado — y un candidato que desaparece en silencio puede ser justo el que daba 50%.
   const _cierra = baratos + yaCalc + calculados + sinDato.length + sinCuenta;
   if (_cierra !== mirados) console.log(`   ⚠️ NO CIERRA: miré ${mirados} y sólo puedo explicar ${_cierra}. Hay ${mirados - _cierra} saliendo en silencio.`);
+  // Y el chequeo de arriba, contra la lista ENTERA: es el que faltaba (ver el comentario del
+  // bucle). Sin éste, 39 candidatos podían no aparecer en ningún renglón y la cuenta "cerraba".
+  const _cierraTodo = mirados + yaNo + yaFicha;
+  if (_cierraTodo !== entradas.length) console.log(`   ⚠️ NO CIERRA LA LISTA: hay ${entradas.length} y sólo puedo explicar ${_cierraTodo}. Faltan ${entradas.length - _cierraTodo}.`);
   // ── LA LISTA DE LOS QUE DAN VA SIEMPRE AL LOG, AVISE O NO AVISE ──────────────────────
   // El MENSAJE de Telegram manda sólo lo NUEVO, a propósito (repetir todas las noches entrena a
   // no abrirlo). Pero el LOG es donde se mira cuando se quiere mirar, y ahí tiene que estar la
