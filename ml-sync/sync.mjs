@@ -2903,7 +2903,30 @@ const CAND_MAX_ML = 40;         // tope de consultas a ML por vuelta (ver abajo)
 // `mlComision`, que se escribieron y NO se guardaron en ninguno de los 27 porque el `if` no los
 // nombraba. Acordarse de agregar cada campo a una condición es justo lo que falló las dos veces:
 // por eso ahora es UN solo número y no una lista que se puede quedar corta.
-const CAND_CALC_VER = 3;
+const CAND_CALC_VER = 4;
+
+// ── ¿ESTA OFERTA ES DE UN VENDEDOR DE AFUERA? (19/09/2026) ─────────────────────────────────
+// Regla suya del 19/09: **"estaba tomando envíos internacionales. esos no quiero que se fije."**
+// Lo dijo por el chat de compras, pero el robot tenía el mismo problema y ahí no lo veía nadie:
+// el margen se mide contra el MÁS BARATO de la ficha, y si ése viene del exterior se mide contra
+// un precio que no hay que igualar. **Medido: en el catálogo del Antonio Banderas King Of
+// Seduction el más barato es internacional a $31.093 y el más barato argentino está a $37.999**,
+// o sea 22% más arriba. Ese solo caso da vuelta el margen del producto.
+//
+// EL CAMPO QUE PARECE EL CORRECTO NO SIRVE. `international_delivery_mode` viene en **`none`**
+// también en el vendedor de **Texas** del catálogo del Hawas Tropical — la primera versión de la
+// medición imprimió *"internacionales: 0 de 17"* con ese renglón a la vista. El marcador real es
+// el tag **`cbt`** (comercio transfronterizo, aparece como `cbt_fulfillment`).
+//
+// Vive acá, en UNA función, porque la usan el probe que lo mide (`verofertas`) y la cuenta que
+// decide la compra (`candidatos`). Con dos copias, el comando diría que un producto está limpio y
+// el margen se seguiría calculando contra el de afuera — el error anotado ocho veces en CLAUDE.md.
+function esOfertaDeAfuera(o) {
+  const tg = ((o && o.shipping && o.shipping.tags) || []).concat((o && o.tags) || []);
+  if (tg.some((t) => /cbt/i.test(String(t)))) return true;
+  const m = String((o && o.international_delivery_mode) || 'none');
+  return !!m && m !== 'none';
+}
 // `prueba` es un candidato INVENTADO que se le pasa desde el probe para correr el camino entero
 // —consulta al catálogo de ML, comisión al precio real, la cuenta— sin tener que cargar nada en la
 // base. Que el comando no se rompa con la lista vacía no prueba nada de lo que importa.
@@ -3151,6 +3174,23 @@ async function correrCandidatos(db, products, labels, accounts, soloPrueba, prue
         }
         continue;
       }
+      // ── LOS VENDEDORES DE AFUERA NO CUENTAN (19/09/2026, regla suya) ─────────────────────
+      // No es contra ésos que competimos: tardan semanas y salen del exterior. Y como el margen
+      // se mide contra el MÁS BARATO, alcanza con que UNO de afuera esté abajo de todos para que
+      // el número del producto salga mal. **Medido en el King Of Seduction: el más barato es
+      // internacional a $31.093 y el más barato argentino está a $37.999.**
+      // Si TODOS son de afuera no se inventa un precio: se dice y el producto no se mide, que es
+      // lo mismo que se hace cuando el catálogo no tiene vendedores.
+      const ofsAfuera = ofertas.filter(esOfertaDeAfuera);
+      const ofsAca = ofertas.filter((o) => !esOfertaDeAfuera(o));
+      if (ofsAfuera.length && !ofsAca.length) {
+        if (!soloPrueba) await db.set(`cyc/candidatos_py/${id}/motivo`, 'En ML sólo lo venden desde el exterior: no hay contra qué medir.');
+        console.log(`      → los ${ofertas.length} vendedores son del exterior. No lo mido: no es contra ésos que competimos.`);
+        sinDato.push(`${c.nombre} → en ML sólo lo venden desde el exterior`);
+        continue;
+      }
+      if (ofsAfuera.length) console.log(`      (saco ${ofsAfuera.length} vendedor(es) del exterior: no es contra ésos que competimos)`);
+      ofertas = ofsAca;
       vendedores = ofertas.length;
       // El precio de referencia es el MÁS BARATO que hoy se vende: es contra el que habría que
       // competir. Tomar el más caro haría ver un margen que no existe.
@@ -6332,12 +6372,7 @@ async function main() {
         // porque el margen se mide contra el mínimo. El resto se cuenta y se dice.
         const _vTop = 8;
         const ordenadas = ofertas.map((o, i) => ({ o, i })).sort((a, b) => (Number(a.o.price) || 0) - (Number(b.o.price) || 0));
-        const esInter = (o) => {
-          const tg = ((o && o.shipping && o.shipping.tags) || []).concat((o && o.tags) || []);
-          if (tg.some((t) => /cbt/i.test(String(t)))) return true;
-          const m = String((o && o.international_delivery_mode) || 'none');
-          return m && m !== 'none';
-        };
+        const esInter = esOfertaDeAfuera;   // la MISMA función que usa la cuenta, a propósito
         const muestro = ordenadas.filter((x, k) => k < _vTop || esInter(x.o));
         console.log(`   precio · de dónde sale (los ${Math.min(_vTop, ordenadas.length)} más baratos + TODOS los de afuera; ${ordenadas.length - muestro.length} más caros no se listan):`);
         muestro.forEach(({ o }, i) => {
@@ -6371,12 +6406,7 @@ async function main() {
         // poder revisar a ojo, porque un filtro que no se puede auditar es el que se apaga solo.
         // Es el cero que parece una buena noticia, otra vez — y acá lo delató el dato de al lado,
         // no el resumen.
-        const inter = ofertas.filter((o) => {   // misma regla que `esInter`, ver el comentario de arriba
-          const tg = ((o && o.shipping && o.shipping.tags) || []).concat((o && o.tags) || []);
-          if (tg.some((t) => /cbt/i.test(String(t)))) return true;
-          const m = String((o && o.international_delivery_mode) || 'none');
-          return m && m !== 'none';
-        });
+        const inter = ofertas.filter(esOfertaDeAfuera);
         const precios0 = ofertas.map((o) => Number(o.price) || 0).filter((x) => x > 0);
         const soloArg = ofertas.filter((o) => !inter.includes(o)).map((o) => Number(o.price) || 0).filter((x) => x > 0);
         const min0 = precios0.length ? Math.min(...precios0) : 0;
