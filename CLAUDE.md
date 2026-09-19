@@ -2114,8 +2114,18 @@ no está. Decirle que no mire, apoyándome en un control cuyo punto ciego yo no 
 de fondo — y es el mismo *"un comentario que promete que algo está cubierto no es prueba de que lo
 esté"*, sólo que dicho en voz alta a la persona que decide la compra.
 
-Probado con las funciones REALES y 15 casos: el DualSense de él avisa, el DualSense correcto NO
-avisa, saltan `Lite`, `Pack`, `Pro` y `Reacondicionado`, y los diez que ya andaban siguen igual.
+**Y SE ME FUE DE MANO PARA EL OTRO LADO EN LA PRIMERA CORRIDA.** La primera versión avisaba con
+**3 o más palabras de más**, y saltó en **6 de los 11 del pedido** — todos verificados a mano como
+correctos: ML simplemente describe más largo (*"auriculares, micrófono, plegables"*, *"especias,
+maderas"*). **Un aviso que suena en la mitad de la lista entrena a ignorarlo**, que es la lección
+del `⚠️ VENDE` de `nomandar` y del aviso diario, ya escritas acá.
+**La señal no es CUÁNTAS palabras sobran: es CUÁLES.** Una edición, un pack o un *"Lite"* cambian
+el producto; *"plegables"* no. Avisa sólo `RV_VARIANTE`; el resto se imprime en el log para poder
+mirarlo cuando uno ya sospecha.
+
+Probado con las funciones REALES y **los 11 títulos de la corrida de verdad**: el DualSense avisa,
+**los 8 que él verificó a mano no avisan ninguno**, y siguen saltando `Lite`, `Pack`, el Blue
+Iconic, el Dark Door Sport y el Cabotine de 30 contra el de 100.
 
 ### EL PEDIDO DE PRODUCTOS NUEVOS CARGADO EL 19/09/2026
 

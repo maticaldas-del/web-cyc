@@ -9084,9 +9084,17 @@ async function main() {
         if (extraVar.length) {
           reparos.push(`ML dice "${extraVar.join(', ')}" y el candidato no: puede ser OTRA versión`);
           console.log(`     ⚠️ OJO: el título de ML dice **${extraVar.join(', ')}** y el del candidato no. Una edición especial o un pack valen mucho más, y el margen queda medido contra un precio que no es el de lo que comprás (pasó con el DualSense: ML tenía la edición "The Last Of Us" a $349.999).`);
-        } else if (extras.length >= 3) {
-          reparos.push(`el título de ML trae ${extras.length} palabras de más: ${extras.join(', ')}`);
-          console.log(`     ⚠️ MIRALO: el título de ML trae ${extras.length} palabras que el candidato no tiene (${extras.join(', ')}). Puede ser un combo, otra versión o simplemente que ML lo describe más largo — abrilo y fijate.`);
+        } else if (extras.length) {
+          // LAS PALABRAS DE MÁS SE IMPRIMEN PERO **NO AVISAN**, y eso se corrigió en la primera
+          // corrida real (19/09/2026). La primera versión avisaba con 3 o más, y saltó en **6 de
+          // los 11 del pedido** — todos verificados a mano como correctos: ML simplemente describe
+          // más largo ("auriculares, micrófono, plegables", "especias, maderas"). **Un aviso que
+          // suena en la mitad de la lista entrena a ignorarlo**, que es la lección del `⚠️ VENDE`
+          // y del aviso de márgenes que ya están escritas en CLAUDE.md.
+          // La señal no es CUÁNTAS palabras sobran: es CUÁLES. Una edición, un pack o un "Lite"
+          // cambian el producto; "plegables" no. Por eso avisa sólo `RV_VARIANTE`, y el resto queda
+          // acá para poder mirarlo cuando uno ya sospecha.
+          console.log(`       (el título de ML trae además: ${extras.join(', ')} — no aviso por esto: ML casi siempre describe más largo)`);
         }
         if (modCP.length && modOK.length) {
           console.log(`     ✓ el modelo ${modOK.join(', ')} está en el título de ML${extraVar.length || extras.length >= 3 ? ', pero mirá el aviso de arriba' : ''}.`);
