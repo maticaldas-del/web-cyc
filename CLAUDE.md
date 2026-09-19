@@ -2414,6 +2414,42 @@ un token vencido de un freno de políticas. `raiseVariations` ya lo hacía bien 
 la copia que se había quedado atrás. **Un error que no dice el motivo obliga a adivinar, y adivinar
 sobre precios es lo que este archivo entero viene tratando de evitar.**
 
+### CONFIRMADO: ML LE CERRÓ LA ESCRITURA A LA APLICACIÓN ENTERA (19/09/2026, de madrugada)
+
+**ÉL HIZO LA PRUEBA QUE FALTABA Y ML SÍ LO DEJA CAMBIAR EL PRECIO A MANO.** O sea que el freno no
+es de la cuenta ni de esas publicaciones: **es contra la aplicación**.
+
+**Y NO ES SÓLO EL PRECIO.** Medido con **`probarput:<MLA>[;otra]`** (comando nuevo, **no cambia
+nada**: le manda a ML el MISMO precio que la publicación ya tiene, y como segundo intento la MISMA
+garantía, que es un campo de texto que no mueve un peso):
+
+| publicación | cuenta | precio | otro campo |
+|---|---|---|---|
+| Pad 2 `MLA1782639641` | Matías | ❌ 403 | ❌ 403 |
+| P47 Cat Ear `MLA3869746828` | Ayelen | ❌ 403 | ❌ 403 |
+| Funda Cubre Colchón `MLA1750080409` | Luciana | ❌ 403 | ❌ 403 |
+| Filtro agua `MLA1459229525` | Matías | ❌ 403 | ❌ 403 |
+
+**4 publicaciones · 3 cuentas · los dos campos · el mismo `PA_UNAUTHORIZED_RESULT_FROM_POLICIES`.**
+Leer sigue andando perfecto (ventas, stock, precios, comisiones): lo único que se cerró es ESCRIBIR.
+
+**LO QUE ESTO ROMPE, Y ES MÁS QUE LOS PRECIOS.** Todo lo que el robot hace escribiendo en ML está
+muerto mientras dure, y **ninguna de las tres cosas avisa sola**:
+ 1. **La suba automática al vender** (`autoSubeVenta`, que él quiere prendida).
+ 2. **Sacar las promociones** — regla 8, *"SACAR SIEMPRE TODAS LAS PROMOCIONES"*. Es la más cara:
+    una promo aplicada le BAJA el precio y el robot ya no la puede sacar.
+ 3. **Activar las pausadas con stock en Full** (`activarPausadasFull`, su regla del 17/09).
+
+**LO QUE FALTA, Y ES DE ÉL:** entrar al panel de desarrolladores de ML con la cuenta que creó la
+aplicación y ver si hay algún aviso, y si hace falta volver a autorizarla. **No se sabe todavía qué
+la disparó**: el freno apareció entre el 17 y el 18/09 (`tocados:96` muestra tres cambios con éxito
+el 17/09 y ninguno después).
+
+**LA LECCIÓN, y es de las caras: el robot venía fallando en silencio.** Los tres intentos rechazados
+salieron porque él pidió tocar un precio a mano; si no, la suba automática seguía "corriendo" todas
+las noches sin cambiar nada y nadie se enteraba. **Un automatismo que no puede hacer su trabajo
+tiene que gritarlo, no seguir corriendo.**
+
 ### EL PISO SE PUEDE ABRIR A MANO, CON TRES FRENOS (19/09/2026)
 
 Quedó anotado el 16/09 que *"esa red se abre el día que él quiera aplicar uno, no antes"*. Llegó ese
