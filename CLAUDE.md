@@ -337,6 +337,7 @@ Los que más se usan:
 | `verescalon:<MLA\|palabra>[:marcar]` | **¿ML cobró menos de verdad al bajar?** agrupa las ventas por precio y muestra lo que ML se quedó en cada uno |
 | `envioml:<MLA>` | el envío que **dice ML** (por destino) vs el que deducimos de las ventas · `envioreal` es OTRO comando |
 | `apisnuevas:<MLA>` | qué endpoints de ML andan y no usamos |
+| `revisarcompra[:<palabras>]` | **la última mirada antes de gastar los dólares**: código, precio, ¿es el mismo producto?, margen de HOY y si la podés publicar · solo lee |
 | `probarcaja:<MLA>[;otro]` | **¿ML dice quién tiene la caja de un catálogo?** vale el código del catálogo o el de una publicación tuya · solo lee |
 | `verweb:<direccion>` | **leer una página de afuera y mostrar su texto** · el chat no tiene internet y el robot sí · solo lee · **lo que imprime queda en el registro PÚBLICO** |
 | `apis` | qué endpoints de ML contestan (para diagnosticar) |
@@ -1658,6 +1659,20 @@ el 15%) y se corta · **máximo 2 unidades por producto** · sólo lo que da **m
 panel o por el simulador, nunca a ojo** · en ML tiene que haber ventas de verdad (**+25 vendidos**
 para arriba): un vendedor solo no molesta, uno sin ventas no sirve.
 
+**Y PARA EL PEDIDO DE HOY LA VARA DE VENTAS SUBIÓ A +100 (19/09/2026), SIN BORRAR NADA.** Textual:
+*"para eliminar riesgos lo máximo posible, intentar que todos los productos que metemos en el
+pedido tengan más de 100 ventas en ml. **no elimines nada, solo reemplaza si hay que hacerlo**.
+para asegurar que se vende y todo"*.
+**Son DOS números que conviven, no uno que reemplaza al otro:** **25** sigue siendo el corte para
+que un candidato valga la pena mirarse, y **100** es la vara de este pedido. Por eso `revisarcompra`
+lo pinta en ámbar y **no descarta nada**: un candidato de 40 ventas sigue sirviendo el día que no
+haya uno de 100 para poner en su lugar, y borrarlo hoy sería decidir por él una compra que todavía
+no tocó. Los que no llegan se listan igual, con su número, justo abajo de los que sí — *"una lista
+que saca renglones sin decirlo es una lista que miente"*, y acá el renglón que falta puede ser el
+único reemplazo que hay.
+**Y el número que informa ML es de TODA LA VIDA de la publicación, no del último mes**, así que
+ordena, no borra.
+
 **EL AVISO QUE ÉL MISMO ANOTÓ SOBRE EL % DEL ROBOT**, y conviene mirarlo con calma antes de darlo
 por cierto: sospecha que el margen de `candidatos` *"está unos puntos arriba de lo real"*. Medido
 contra el simulador con el Animale Gold (US$21 a $95.000 en Adriana): el robot dio **57%** y la
@@ -2009,6 +2024,58 @@ no quiere decir que el freno sobre — quiere decir que hoy tuvimos suerte. El Y
 a −2,7% en dos corridas con minutos de diferencia, y eso es exactamente lo que el freno agarra.
 **Lo que sí queda medido es cuánto de "inestable" tiene el precio de ML: mucho menos de lo que
 parecía.** De 27 casos, cero cambiaron de lado.
+
+## LA ÚLTIMA REVISIÓN ANTES DE GASTAR LOS DÓLARES: `revisarcompra` (19/09/2026)
+
+Pedido suyo: *"tengo que darle la última revisión para estar seguro del pedido, por ejemplo
+código, si el costo da, si la publicación puedo publicarla, si el producto es el mismo y todo"*.
+
+**POR QUÉ NO ALCANZABA CON `candidatos`:** ese comando decide QUIÉN entra en la lista y, para no
+gastar consultas, **saltea a los que ya tienen la cuenta hecha**. O sea que el margen que muestra
+puede ser de anoche — y el precio de ML se mueve: medido, el **Yara Moi pasó de 28,3% a −2,7% en
+dos corridas con MINUTOS de diferencia**. Lo que sigue después de mirar esa lista es gastar plata
+que no se recupera hasta que llegue la caja, así que acá se vuelve a preguntar TODO sin atajo.
+
+**SOLO LEE.** No escribe, no descarta y no toca ML.
+
+Chequea, producto por producto, y cada renglón termina en ✅ / ⚠️ / ❌:
+ · **el código de Nissei** — sin él no se puede pedir, y avisa si empieza con cero (el caso del
+   Cruzer Blade, `07112`);
+ · **el precio y hace cuánto se cargó**, diciendo que eso **no es** cuándo se miró en
+   comprasparaguay — esa fecha todavía no se guarda;
+ · **¿es el mismo producto?** — si lo emparejó por código o adivinando por nombre, los DOS títulos
+   uno abajo del otro, qué palabras no coinciden y **los números aparte**;
+ · **a cuánto se vende hoy**, con los vendedores del exterior sacados y **diciendo cuántos sacó**;
+ · **las ventas** contra las dos varas (25 y 100);
+ · **el margen de HOY**, con la comisión preguntada a ML a ese precio, y **cuánto se movió** contra
+   la medición guardada;
+ · **si la podés publicar**: marca frenada y si ya tenés una ficha con nombre parecido.
+
+**LOS NÚMEROS SE COMPARAN APARTE DE LAS PALABRAS, y hacía falta.** En perfumería la misma marca con
+otro tamaño es OTRO producto, y en el conteo de palabras eso se diluye. La primera versión pegó
+dos veces por lo mismo: **"100ML" es UNA sola palabra para la computadora**, así que hacía coincidir
+el **Hamidi Addicted** con el **Hamidi Imensity** (los dos de 100 mL) justo arriba de la mitad, que
+era el corte. Separando el número de la unidad, "100" cuenta como número y "ml" se cae por corta.
+Y los números de **UN solo dígito cuentan igual**: *"Xiaomi Redmi Watch 4"* contra *"Xiaomi Redmi
+Redmi Watch 3"* comparten TODAS las palabras — el único aviso posible es el número. Un número de
+más pinta ámbar y nunca descarta: **un aviso de más cuesta una mirada, el producto equivocado
+cuesta el pedido.**
+
+**LA CUENTA SALIÓ DE ADENTRO DE `correrCandidatos` Y AHORA ES COMPARTIDA (`cuentaCandidato`).** La
+usan el comando que decide la compra y el que la revisa. Con dos copias, **el que revisa diría
+"está todo bien" midiendo con una fórmula distinta de la que decidió** — que es el verificador con
+la cuenta vieja adentro, el error anotado nueve veces en este archivo.
+
+**LO QUE NO PUEDE CHEQUEAR, y lo dice en vez de callarlo:** si el precio de comprasparaguay sigue
+vigente (esa página le contesta **403** al robot, probado dos veces) y las medidas y el peso de lo
+que la página no informa. **Publicar en ML lo hace él**: el freno de escritura de ML es contra la
+aplicación, no contra su cuenta.
+
+Probado con las funciones REALES sacadas del archivo y 16 casos: los seis emparejados equivocados
+ya conocidos (Cabotine 30/100, Animale For Men/Black, Watch 4/3, Hamidi Addicted/Imensity, Blue
+Iconic/Woman, Dark Door Sport/Intense) **salen avisados**, los cuatro que sí son el mismo producto
+**no avisan nada**, y la cuenta da exactamente lo mismo que la que decide la compra, con la barrera
+de los $33.000 funcionando de los dos lados.
 
 ## EL PEDIDO DE PRODUCTOS NUEVOS: LA WEB LO GUARDA, EL CHAT LO ARMA (18/09/2026)
 

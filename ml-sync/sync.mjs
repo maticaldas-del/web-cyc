@@ -3034,6 +3034,30 @@ function esOfertaDeAfuera(o) {
   const m = String((o && o.international_delivery_mode) || 'none');
   return !!m && m !== 'none';
 }
+// ── LA CUENTA DE UN CANDIDATO, EN UNA SOLA FUNCIÓN (19/09/2026) ───────────────────────────
+// Vivía adentro de `correrCandidatos`, que es el que decide la compra. Salió afuera porque ahora
+// la usan DOS comandos: ése y `revisarcompra`, que vuelve a chequear lo mismo justo antes de
+// gastar los dólares. **Con dos copias, el que revisa diría "está todo bien" midiendo con una
+// fórmula distinta de la que decidió** — que es exactamente el verificador con la cuenta vieja
+// adentro, el error anotado nueve veces en CLAUDE.md. Si tienen que dar el mismo número, la
+// forma de garantizarlo es que llamen a la misma función.
+//
+// El envío es el criterio de siempre: abajo de los $33.000 ML no le cobra envío al vendedor y es
+// CERO de verdad; arriba se usa el PEOR de Full medido en ventas reales ($6.190), que hace ver el
+// margen MENOR — el lado seguro cuando el número decide una compra que no se puede rehacer hasta
+// que llegue.
+async function cuentaCandidato(precio, ltx, catx, puestoUSD, tc, monoP, feeAt) {
+  if (!(precio > 0) || !catx) return null;
+  const fee2 = await feeAt(precio, ltx, catx);
+  if (fee2 == null) return null;
+  const envio2 = precio >= UMBRAL_ENVIO_GRATIS ? CAND_ENVIO_ARRIBA : 0;
+  const costo2 = puestoUSD * tc;
+  const impuestos2 = precio * (4.8 + monoP) / 100;   // IIBB promedio + monotributo
+  const costoTot2 = costo2 + impuestos2;
+  const ganancia2 = (precio - fee2 - envio2) - costoTot2;
+  return { fee: fee2, envio: envio2, costo: costo2, impuestos: impuestos2, ganancia: ganancia2,
+    margen: (costoTot2 + envio2) > 0 ? (ganancia2 / (costoTot2 + envio2)) * 100 : 0 };
+}
 // `prueba` es un candidato INVENTADO que se le pasa desde el probe para correr el camino entero
 // —consulta al catálogo de ML, comisión al precio real, la cuenta— sin tener que cargar nada en la
 // base. Que el comando no se rompa con la lista vacía no prueba nada de lo que importa.
@@ -3379,18 +3403,7 @@ async function correrCandidatos(db, products, labels, accounts, soloPrueba, prue
     // abajo de los $33.000 ML no le cobra envío al vendedor y es CERO de verdad; arriba se usa el
     // peor de Full medido en ventas reales, que hace ver el margen MENOR — el lado seguro cuando
     // el número decide una compra que no se puede rehacer hasta que llegue.
-    const cuentaCand = async (precio, ltx, catx) => {
-      if (!(precio > 0) || !catx) return null;
-      const fee2 = await feeAt(precio, ltx, catx);
-      if (fee2 == null) return null;
-      const envio2 = precio >= UMBRAL_ENVIO_GRATIS ? CAND_ENVIO_ARRIBA : 0;
-      const costo2 = puesto * tc;
-      const impuestos2 = precio * (4.8 + monoP) / 100;   // IIBB promedio + monotributo
-      const costoTot2 = costo2 + impuestos2;
-      const ganancia2 = (precio - fee2 - envio2) - costoTot2;
-      return { fee: fee2, envio: envio2, costo: costo2, impuestos: impuestos2, ganancia: ganancia2,
-        margen: (costoTot2 + envio2) > 0 ? (ganancia2 / (costoTot2 + envio2)) * 100 : 0 };
-    };
+    const cuentaCand = (precio, ltx, catx) => cuentaCandidato(precio, ltx, catx, puesto, tc, monoP, feeAt);
     const rMin = await cuentaCand(mlPrecio, lt, cat);
     if (!rMin) {
       if (!soloPrueba) await db.set(`cyc/candidatos_py/${id}/motivo`, 'ML no me contestó cuánto cobra de comisión a ese precio. Lo reintento la próxima vuelta.');
@@ -8765,6 +8778,276 @@ async function main() {
     // Emparejar por nombre es el filtro que ya falló cinco veces, y en un producto nuevo es peor
     // porque no hay ficha contra la cual contrastar.
     // Sin `:go` calcula y muestra pero NO escribe ni manda nada.
+    // BILLING_PROBE=revisarcompra[:<palabras,separadas,por,coma>] → LA ÚLTIMA MIRADA ANTES DE
+    // GASTAR LOS DÓLARES. **SOLO LEE: no escribe nada, no descarta nada, no toca ML.**
+    //
+    // Pedido suyo del 19/09/2026: *"tengo que darle la última revisión para estar seguro del
+    // pedido, por ejemplo código, si el costo da, si la publicación puedo publicarla, si el
+    // producto es el mismo y todo"*.
+    //
+    // POR QUÉ NO ALCANZA CON `candidatos`: ese comando decide QUIÉN entra en la lista y, para no
+    // gastar consultas, **saltea a los que ya tienen la cuenta hecha**. O sea que el margen que
+    // muestra puede ser de anoche — y el precio de ML se mueve: medido, el Yara Moi pasó de 28,3%
+    // a −2,7% en dos corridas con MINUTOS de diferencia. Acá se vuelve a preguntar todo sin
+    // atajo, porque lo que sigue es gastar plata que no se recupera hasta que llegue la caja.
+    //
+    // LA CUENTA ES LA MISMA (`cuentaCandidato`), no una copia. Un verificador con la fórmula vieja
+    // adentro dice "todo bien" para siempre, que es la lección escrita al final de CLAUDE.md.
+    //
+    // QUÉ NO PUEDE CHEQUEAR, y lo dice en vez de callarlo:
+    //  · **si el precio de comprasparaguay sigue vigente** — esa página le contesta 403 al robot
+    //    (probado dos veces, la segunda con las cabeceras de un Chrome de verdad). Lo único que
+    //    sabe es CUÁNDO SE CARGÓ el candidato, que no es lo mismo que cuándo se miró el precio.
+    //  · **las medidas y el peso** — la página los informa o no los informa. Inventar un tamaño
+    //    para chequear su tope de 40 cm sería peor que no chequearlo.
+    if (/^revisarcompra(:|$)/.test(String(process.env.BILLING_PROBE || ''))) {
+      const _rc = String(process.env.BILLING_PROBE);
+      const filtro = (_rc.split(':')[1] || '').split(',').map((x) => x.trim().toLowerCase()).filter(Boolean);
+      const cands = (await db.get('cyc/candidatos_py')) || {};
+      const fin = (await db.get('cyc/finanzas')) || {};
+      const tc = parseFloat(fin.tipo_cambio) || 1500;
+      const monoP = parseFloat(((await db.get('cyc/monotributo')) || {}).pct) || 0;
+      // Las marcas frenadas: si no se pueden leer NO se dice que están todas limpias. Es el mismo
+      // lado seguro que en `candidatos` — proponerle comprar una marca que ML le frena le hace
+      // gastar dólares de un pedido que no se rehace, y se entera cuando queda en revisión.
+      let marcasNo = null;
+      try { marcasNo = (await db.get('cyc/mlconfig/marcasFrenadas')) || {}; } catch { marcasNo = null; }
+
+      // ── ¿ES EL MISMO PRODUCTO? Las palabras que distinguen, y los NÚMEROS aparte ──────────
+      // El emparejado por nombre ya falló seis veces en este panel, y en perfumería es peor: la
+      // misma marca con otro tamaño es OTRO producto. Ya pasó con el Cabotine (ofreció el de
+      // 100 mL vendiendo el de 30) y con el Animale (el Black por el For Men).
+      // Por eso los números se miran POR SEPARADO de las palabras: "100" y "30" son la diferencia
+      // entre el producto correcto y uno que no se vende, y en el conteo de palabras se diluyen.
+      // LA VARA DEL PEDIDO DE HOY. No reemplaza al corte de 25 que ya estaba: convive con él.
+      const RV_VENT_PEDIDO = 100;
+      const RV_VACIAS = new Set(['perfume','eau','parfum','toilette','edp','edt','para','hombre','mujer','unisex','los','las','con','sin','original','importado','spray','vaporizador','set','kit','fragancia','colonia','del','por','una','pack','uds','unidad','unidades','the','and']);
+      // El numero se despega de la unidad ANTES de comparar: "100ML" es UNA palabra para la
+      // computadora, y como palabra hacia coincidir el Hamidi Addicted con el Hamidi Imensity
+      // (los dos de 100 mL) justo arriba de la mitad, que era el corte. Separado, "100" cuenta
+      // como numero -- que es donde tiene que contar -- y "ml" se cae por corta.
+      const _rvNorm = (t) => String(t || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[^a-z0-9]+/g, ' ').replace(/(\d)([a-z])/g, '$1 $2').replace(/([a-z])(\d)/g, '$1 $2').trim();
+      const _rvPal = (t) => new Set(_rvNorm(t).split(' ').filter((w) => w && !RV_VACIAS.has(w) && w.length >= 3 && !/^\d+$/.test(w)));
+      // TODOS los numeros, incluidos los de UN digito. La primera version pedia dos o mas y se
+      // comia justo el caso anotado: "Xiaomi Redmi Watch 4" contra "Xiaomi Redmi Redmi Watch 3"
+      // comparten TODAS las palabras, asi que el unico aviso posible es el numero. Un numero de
+      // mas solo pinta el renglon en AMBAR ("miralo"), nunca lo descarta: un aviso de mas cuesta
+      // una mirada, el producto equivocado cuesta el pedido.
+      const _rvNum = (t) => new Set(_rvNorm(t).match(/\d+/g) || []);
+      const _rvDias = (ts) => (ts > 0 ? Math.floor((Date.now() - ts) / 86400000) : null);
+
+      // Qué se revisa: lo que él nombre, o si no todo lo que hoy está VIVO (ni descartado ni con
+      // ficha creada). No se filtra por margen: un candidato que anoche daba 40% y hoy da 12% es
+      // justo el que hay que ver, y filtrando por el margen guardado desaparecería.
+      let lista = Object.entries(cands).filter(([, c]) => c && c.nombre && !c.no && !c.prodId);
+      if (filtro.length) lista = lista.filter(([, c]) => filtro.some((f) => _rvNorm(c.nombre).includes(_rvNorm(f))));
+      // El orden es por la plata que deja cada unidad, que es como se decide qué entra al pedido.
+      lista.sort((a, b) => (Number(b[1].ganancia) || 0) - (Number(a[1].ganancia) || 0));
+
+      console.log('=== LA ÚLTIMA REVISIÓN ANTES DE PEDIR · SOLO LEE ===');
+      console.log(`Dólar ${money(tc)} · piso ${CAND_PISO_PCT}% · tope US$ ${CAND_TOPE_USD} la unidad puesta · corte de ventas en ML: 25`);
+      if (!marcasNo) console.log('⚠️ NO pude leer las marcas que ML te frena. No puedo decir que ninguna lo esté: chequealo vos.');
+      if (!lista.length) { console.log(filtro.length ? `Ningún candidato vivo coincide con: ${filtro.join(', ')}` : 'No hay ningún candidato vivo en la lista.'); return; }
+      console.log(`${lista.length} producto(s) a revisar${filtro.length ? ` (filtrados por: ${filtro.join(', ')})` : ''}\n`);
+
+      let tok = null;
+      for (const label of labels) {
+        const acc = accounts[label];
+        if (!acc?.refresh_token) continue;
+        try {
+          const t = await mlRefresh(ML_CLIENT_ID, ML_CLIENT_SECRET, acc.refresh_token);
+          await db.patch('mlapi/tokens/' + label, { refresh_token: t.refresh_token, updated_ts: Date.now() });
+          tok = t.access_token; break;
+        } catch { /* probamos con la siguiente */ }
+      }
+      if (!tok) { console.log('❌ No pude sacar token de ninguna cuenta: sin eso no puedo preguntarle nada a ML. No reviso nada a medias.'); return; }
+      const feeCache = {};
+      const feeAt = async (price, lt, cat) => {
+        const k = lt + '|' + cat + '|' + Math.round(price);
+        if (feeCache[k] !== undefined) return feeCache[k];
+        let out = null;
+        try {
+          const d = await mlGet(`/sites/MLA/listing_prices?price=${Math.round(price)}&listing_type_id=${lt}&category_id=${cat}`, tok);
+          const o = Array.isArray(d) ? d[0] : d;
+          if (typeof o?.sale_fee_amount === 'number') out = o.sale_fee_amount;
+        } catch { out = null; }
+        feeCache[k] = out; return out;
+      };
+
+      const verdes = [], ambar = [], rojos = [];
+      let n = 0;
+      for (const [id, c] of lista) {
+        n++;
+        const usd = parseFloat(c.usd) || 0;
+        const puesto = usd > 0 ? Math.round(usd * 1.15 * 100) / 100 : 0;
+        const reparos = [], frenos = [];
+        console.log(`━━ ${n}. ${c.nombre} ━━`);
+
+        // 1 · EL CÓDIGO DE NISSEI. Sin él el producto NO se puede pedir: el pedido se arma con
+        // códigos, no con nombres. Y no se puede tomar de otra tienda — el de Mobile Zone es de
+        // ellos (el caso Cabotine, donde la lista daba 91144 y el de pedido era 91832).
+        const cod = String(c.cod || c.codPy || '').trim();
+        if (!cod) { frenos.push('no tiene el código de Nissei'); console.log('  🔖 código Nissei: ❌ FALTA — sin código no se puede pedir'); }
+        else console.log(`  🔖 código Nissei: ${cod}${/^0/.test(cod) ? '  ⚠️ empieza con cero: chequeá que no se haya perdido un dígito' : ''}`);
+
+        // 2 · EL PRECIO Y SU ANTIGÜEDAD. El panel sabe cuándo se CARGÓ, no cuándo se miró.
+        const dCarga = _rvDias(Number(c.ts) || 0);
+        if (!(usd > 0)) { frenos.push('no tiene precio de Paraguay'); console.log('  💵 precio de Paraguay: ❌ FALTA'); }
+        else {
+          console.log(`  💵 Paraguay: US$ ${usd.toFixed(2)} crudo → US$ ${puesto.toFixed(2)} puesto (+15%) = ${money(Math.round(puesto * tc))}`);
+          console.log(`     cargado hace ${dCarga == null ? '?' : dCarga} día(s). ⚠️ Ojo: eso es cuándo se CARGÓ, no cuándo se miró el precio en comprasparaguay — esa fecha todavía no se guarda.`);
+          if (puesto > CAND_TOPE_USD) { frenos.push(`puesto sale US$ ${puesto.toFixed(2)}, pasa tu tope de US$ ${CAND_TOPE_USD}`); console.log(`     ❌ pasa tu tope de US$ ${CAND_TOPE_USD} la unidad`); }
+        }
+
+        // 3 · ¿ES EL MISMO PRODUCTO? Primero: ¿lo emparejó por código o adivinando por nombre?
+        const idFijo = String(c.mlId || '').trim().toUpperCase().replace(/^.*\/P\//, '').split(/[?#]/)[0];
+        const porCodigo = /^MLA\d+$/.test(idFijo);
+        if (!porCodigo) { reparos.push('lo emparejó POR NOMBRE (no trae el link de ML)'); console.log('  🔗 catálogo de ML: ⚠️ POR NOMBRE — el chat no dejó el link. Ya trajo el producto equivocado 3 veces.'); }
+
+        let prod = null;
+        try {
+          if (porCodigo) prod = await mlGet(`/products/${idFijo}`, tok);
+          else {
+            const bus = await mlGet(`/products/search?site_id=MLA&q=${encodeURIComponent(String(c.nombre).slice(0, 80))}&limit=3`, tok);
+            prod = ((bus && bus.results) || [])[0];
+          }
+        } catch { prod = null; }
+        if (!prod || !prod.id) {
+          frenos.push('ML no tiene ese catálogo');
+          console.log(`  🔗 ML: ❌ ${porCodigo ? `el código ${idFijo} no existe` : 'no encontré el producto en el catálogo'}`);
+          rojos.push({ c, frenos, reparos }); console.log(''); continue;
+        }
+        const mlTit = String(prod.name || prod.title || '');
+        if (porCodigo) console.log(`  🔗 catálogo de ML: ${prod.id} (por el link que dejó el chat) ✓`);
+        console.log(`     comprasparaguay: "${c.nombre}"`);
+        console.log(`     ML dice        : "${mlTit}"`);
+        console.log(`     https://www.mercadolibre.com.ar/p/${prod.id}`);
+        // Las palabras y los números, por separado.
+        const pCP = _rvPal(c.nombre), pML = _rvPal(mlTit);
+        const comunes = [...pCP].filter((w) => pML.has(w));
+        const faltan = [...pCP].filter((w) => !pML.has(w));
+        const nCP = _rvNum(c.nombre), nML = _rvNum(mlTit);
+        const numFaltan = [...nCP].filter((x) => !nML.has(x));
+        const pctPal = pCP.size ? comunes.length / pCP.size : 1;
+        if (pctPal < 0.5) { reparos.push('los dos títulos casi no comparten palabras'); console.log(`     ⚠️ MIRALO: sólo coinciden ${comunes.length} de ${pCP.size} palabras. No están en ML: ${faltan.join(', ')}`); }
+        else if (faltan.length) console.log(`     coinciden ${comunes.length} de ${pCP.size} palabras. No están en el título de ML: ${faltan.join(', ')}`);
+        else console.log('     ✓ todas las palabras del nombre están en el título de ML');
+        if (numFaltan.length) { reparos.push(`el tamaño/capacidad no coincide (${numFaltan.join(', ')} no está en ML)`); console.log(`     ⚠️ TAMAÑO: ${numFaltan.join(', ')} no aparece en el título de ML. Misma marca y otro tamaño es OTRO producto (pasó con el Cabotine 100 vs 30 mL).`); }
+
+        // 4 · ¿A CUÁNTO SE VENDE HOY, Y CONTRA QUIÉN? Sólo vendedores argentinos.
+        let ofertas = [];
+        try { const it = await mlGet(`/products/${prod.id}/items`, tok); ofertas = (it && it.results) || []; }
+        catch (e2) {
+          const txt = String(e2.message || e2);
+          frenos.push(/404/.test(txt) ? 'hoy no lo vende nadie en ML: no hay precio contra el cual medir' : 'ML no me dio los vendedores');
+          console.log(`  🏷️ ${/404/.test(txt) ? '❌ hoy no hay ningún vendedor activo en ese catálogo. Sin precio no hay margen que chequear.' : `❌ no pude pedir los vendedores (${txt.slice(0, 80)})`}`);
+          rojos.push({ c, frenos, reparos }); console.log(''); continue;
+        }
+        const afuera = ofertas.filter(esOfertaDeAfuera);
+        const aca = ofertas.filter((o) => !esOfertaDeAfuera(o));
+        if (!aca.length) {
+          frenos.push('en ML sólo lo venden desde el exterior');
+          console.log(`  🏷️ ❌ los ${ofertas.length} vendedores son del EXTERIOR. No es contra ésos que competís, así que no hay con qué medir.`);
+          rojos.push({ c, frenos, reparos }); console.log(''); continue;
+        }
+        const precios = aca.map((o) => parseFloat(o.price) || 0).filter((x) => x > 0);
+        const mlPrecio = precios.length ? Math.min(...precios) : 0;
+        const mlMax = precios.length ? Math.round(Math.max(...precios)) : 0;
+        const ref = aca.find((o) => (parseFloat(o.price) || 0) === mlPrecio) || aca[0];
+        console.log(`  🏷️ hoy en ML: ${mlMax > mlPrecio ? `de ${money(Math.round(mlPrecio))} a ${money(mlMax)}` : money(Math.round(mlPrecio))} · ${aca.length} vendedor(es) argentino(s)${afuera.length ? ` (saqué ${afuera.length} del exterior)` : ''}`);
+        console.log(`     el más barato es la publicación ${ref && ref.item_id ? ref.item_id : '?'} — ése es el precio que tenés que igualar`);
+        if (afuera.length && afuera.length >= aca.length) console.log('     ⚠️ hay tantos o más vendedores de afuera que argentinos: es un catálogo que manejan de afuera.');
+
+        // 5 · LAS VENTAS. Las carga el chat: ML contesta 403 de publicaciones ajenas (probado).
+        // ── LAS VENTAS: +100 PARA EL PEDIDO DE HOY (19/09/2026) ──────────────────────
+        // Regla suya del 19/09: *"para eliminar riesgos lo máximo posible, intentar que todos los
+        // productos que metemos en el pedido tengan más de 100 ventas en ml. no elimines nada,
+        // solo reemplaza si hay que hacerlo. para asegurar que se vende y todo"*.
+        // SON DOS NÚMEROS Y NO SE PISAN: **25 sigue siendo el corte para que algo valga la pena
+        // mirarse** (su regla del 18/09) y **100 es la vara del PEDIDO DE HOY**. Por eso acá pinta
+        // ÁMBAR y NO DESCARTA NADA — él lo dijo expreso: *"no elimines nada, solo reemplaza"*. Un
+        // candidato de 40 ventas sigue sirviendo el día que no haya uno de 100 para poner en su
+        // lugar; borrarlo hoy sería decidir por él una compra que todavía no tocó.
+        // Y el número que informa ML es de TODA LA VIDA de la publicación, no del último mes: un
+        // catálogo nuevo puede vender bien y mostrar poco. Por eso ordena, no borra.
+        const vChat = Number(c.vendCarga);
+        if (!isFinite(vChat)) { reparos.push('no tiene las ventas cargadas'); console.log('  🛒 ventas en ML: ⚠️ NO LAS CARGÓ EL CHAT. Sin eso no sé si se vende.'); }
+        else if (vChat < 25) { reparos.push(`sólo ${vChat} vendidas (tu corte de siempre es 25)`); console.log(`  🛒 ventas en ML: ${vChat} ⚠️ abajo hasta de tu corte de siempre (25)`); }
+        else if (vChat < RV_VENT_PEDIDO) { reparos.push(`${vChat} vendidas: para ESTE pedido buscás +${RV_VENT_PEDIDO}`); console.log(`  🛒 ventas en ML: ${vChat} — pasa tu corte de 25 pero NO llega a las +${RV_VENT_PEDIDO} que pediste para este pedido. Si hay uno de +${RV_VENT_PEDIDO} que dé parecido, reemplazalo.`); }
+        else console.log(`  🛒 ventas en ML: ${vChat} ✓ (+${RV_VENT_PEDIDO})`);
+
+        // 6 · LA CUENTA, HECHA DE NUEVO Y CONTRA EL PRECIO DE HOY.
+        const r = await cuentaCandidato(mlPrecio, (ref && ref.listing_type_id) || 'gold_special', ref && ref.category_id, puesto, tc, monoP, feeAt);
+        if (!r) {
+          frenos.push('ML no contestó la comisión a ese precio');
+          console.log('  🧮 ❌ ML no me dijo cuánto cobra de comisión a ese precio. Sin eso no hay margen.');
+          rojos.push({ c, frenos, reparos }); console.log(''); continue;
+        }
+        const pctCom = mlPrecio > 0 ? (r.fee / mlPrecio) * 100 : 0;
+        console.log(`  🧮 la cuenta de HOY, contra el más barato (${money(Math.round(mlPrecio))}):`);
+        console.log(`     ML se queda ${money(Math.round(r.fee))} (${pctCom.toFixed(1)}%, preguntado a ML) · envío de Full ${money(r.envio)}${r.envio === 0 ? ' (abajo de $33.000 no cobra)' : ' (el peor medido)'} · IIBB+monotributo ${money(Math.round(r.impuestos))}`);
+        console.log(`     mercadería puesta ${money(Math.round(r.costo))}  →  te quedan ${money(Math.round(r.ganancia))} por unidad · margen ${r.margen.toFixed(1)}%`);
+        const antes = (c.margen != null && isFinite(c.margen)) ? Number(c.margen) : null;
+        if (antes != null) {
+          const dif = r.margen - antes;
+          if (Math.abs(dif) >= 5) { reparos.push(`el margen se movió de ${antes.toFixed(1)}% a ${r.margen.toFixed(1)}%`); console.log(`     ⚠️ SE MOVIÓ: la medición guardada decía ${antes.toFixed(1)}% y hoy da ${r.margen.toFixed(1)}% (${dif > 0 ? '+' : ''}${dif.toFixed(1)} puntos). Alguien cambió el precio.`); }
+          else console.log(`     (la medición anterior daba ${antes.toFixed(1)}% · se movió ${dif > 0 ? '+' : ''}${dif.toFixed(1)} puntos)`);
+        }
+        if (r.margen < CAND_PISO_PCT) { frenos.push(`hoy da ${r.margen.toFixed(1)}%, abajo de tu piso de ${CAND_PISO_PCT}%`); console.log(`     ❌ ABAJO DE TU PISO DE ${CAND_PISO_PCT}%`); }
+
+        // 7 · ¿LA PODÉS PUBLICAR? La marca, y si ya tenés una ficha parecida.
+        const marcaTxt = String(c.marca || '').trim();
+        if (marcasNo && marcaTxt && marcasNo[encodeURIComponent(marcaTxt.toLowerCase())]) { frenos.push(`marca frenada por ML: ${marcaTxt}`); console.log(`  🚫 MARCA FRENADA: ${marcaTxt} — ML te va a pedir documentación`); }
+        else if (marcasNo) console.log(`  🚫 marcas que ML te frena: ${marcaTxt ? `"${marcaTxt}" no figura ✓` : 'no cargaste la marca, así que no pude chequearla'}`);
+        const parecidas = (products || []).filter((p) => { const pp = _rvPal(p.name); const com = [...pCP].filter((w) => pp.has(w)); return com.length >= 2 && pCP.size > 0; }).slice(0, 3);
+        if (parecidas.length) { reparos.push('ya tenés una ficha parecida'); console.log(`  📄 ⚠️ ya tenés ficha(s) con nombre parecido: ${parecidas.map((p) => p.name).join(' · ')} — chequeá que no sea el mismo producto`); }
+
+        // 8 · MEDIDAS Y PESO: sus topes de 40 cm y 3 kg. No se inventan.
+        if (!c.medidas && !c.peso) console.log('  📦 medidas y peso: no los informó la página. No puedo chequear tus topes de 40 cm y 3 kg — miralo vos.');
+        else console.log(`  📦 ${c.medidas ? `medidas: ${c.medidas}` : 'sin medidas'}${c.peso ? ` · peso: ${c.peso}` : ''}`);
+
+        // 9 · LAS UNIDADES QUE YA TIENE CARGADAS EN LA CANASTA
+        const u = Number(c.pedirU) || 0;
+        if (u > 0) console.log(`  🧾 en el pedido: ${u} u. = US$ ${(usd * u).toFixed(2)} crudos · US$ ${(puesto * u).toFixed(2)} puestos`);
+
+        const destino = frenos.length ? rojos : reparos.length ? ambar : verdes;
+        destino.push({ c, frenos, reparos, margen: r.margen, ganancia: r.ganancia, u, usd, vend: isFinite(vChat) ? vChat : null });
+        console.log(`  ${frenos.length ? '❌ NO LO PIDAS: ' + frenos.join(' · ') : reparos.length ? '⚠️ SE PUEDE PEDIR PERO MIRALO: ' + reparos.join(' · ') : '✅ LISTO PARA PEDIR'}\n`);
+      }
+
+      console.log('════════ RESUMEN ════════');
+      console.log(`✅ ${verdes.length} listos · ⚠️ ${ambar.length} con algo para mirar · ❌ ${rojos.length} que no hay que pedir`);
+      if (verdes.length + ambar.length + rojos.length !== lista.length) console.log(`⚠️ NO CIERRA: revisé ${lista.length} y clasifiqué ${verdes.length + ambar.length + rojos.length}. Hay ${lista.length - (verdes.length + ambar.length + rojos.length)} saliendo en silencio.`);
+      if (rojos.length) { console.log('\n❌ NO PEDIR:'); for (const x of rojos) console.log(`   ${x.c.nombre} → ${x.frenos.join(' · ')}`); }
+      if (ambar.length) { console.log('\n⚠️ MIRALOS ANTES:'); for (const x of ambar) console.log(`   ${x.c.nombre} (${x.margen != null ? x.margen.toFixed(1) + '%' : '?'}) → ${x.reparos.join(' · ')}`); }
+      if (verdes.length) { console.log('\n✅ LISTOS:'); for (const x of verdes) console.log(`   ${x.c.nombre} → ${x.margen.toFixed(1)}% · ${money(Math.round(x.ganancia))} por unidad`); }
+      // ── LA LISTA QUE ÉL PIDIÓ: sin ningún freno Y con +100 vendidas (19/09/2026) ────────
+      // Los de abajo NO se borran ni se esconden: se listan con su número, porque su regla fue
+      // *"no elimines nada, solo reemplaza si hay que hacerlo"*. Una lista que saca renglones sin
+      // decirlo es una lista que miente, y acá encima el renglon que falta puede ser el único
+      // reemplazo disponible.
+      const paraPedir = [...verdes, ...ambar].filter((x) => x.vend != null && x.vend >= RV_VENT_PEDIDO).sort((a, b) => b.ganancia - a.ganancia);
+      const casi = [...verdes, ...ambar].filter((x) => !(x.vend != null && x.vend >= RV_VENT_PEDIDO)).sort((a, b) => b.ganancia - a.ganancia);
+      console.log(`\n\u{1F3AF} CON +${RV_VENT_PEDIDO} VENDIDAS EN ML — la vara que pediste para este pedido — son ${paraPedir.length}:`);
+      if (!paraPedir.length) console.log('   Ninguno llega a esa vara. No quiere decir que no sirvan: quiere decir que hoy no hay con qué reemplazar.');
+      for (const x of paraPedir) console.log(`   ${String(x.vend).padStart(5)} vendidas · ${x.margen.toFixed(1).padStart(5)}% · ${money(Math.round(x.ganancia))} por unidad · ${x.c.nombre}${x.reparos.length ? '   ⚠️ ' + x.reparos.filter((z) => !/vendidas/.test(z)).join(' · ') : ''}`);
+      if (casi.length) {
+        console.log(`\n   Estos ${casi.length} pasan el piso de margen pero NO llegan a +${RV_VENT_PEDIDO}. No los borré: quedan por si hace falta reemplazar alguno de arriba.`);
+        for (const x of casi) console.log(`      ${x.vend == null ? 'ventas SIN CARGAR' : String(x.vend) + ' vendidas'} · ${x.margen.toFixed(1)}% · ${money(Math.round(x.ganancia))} · ${x.c.nombre}`);
+      }
+      const conU = [...verdes, ...ambar, ...rojos].filter((x) => x.u > 0);
+      if (conU.length) {
+        const crudo = conU.reduce((s, x) => s + x.usd * x.u, 0);
+        console.log(`\n🧾 EL PEDIDO CARGADO HOY: ${conU.length} producto(s) · ${conU.reduce((s, x) => s + x.u, 0)} u. · US$ ${crudo.toFixed(2)} crudos · US$ ${(crudo * 1.15).toFixed(2)} puestos`);
+        const malos = conU.filter((x) => x.frenos.length);
+        if (malos.length) console.log(`   ❌ OJO: ${malos.length} de esos tienen un freno arriba. Sacalos antes de mandar el pedido.`);
+      } else console.log('\n🧾 Todavía no cargaste unidades en ninguna tarjeta, así que no puedo sumarte el total del pedido.');
+      console.log('\nLo que este comando NO puede chequear, y hay que mirarlo a mano:');
+      console.log(' · si el precio de comprasparaguay sigue siendo ése (esa página le contesta 403 al robot)');
+      console.log(' · las medidas y el peso de lo que no las informa');
+      console.log(' · publicar en ML lo hacés vos: el freno de escritura que tiene ML es contra el robot, no contra tu cuenta.');
+      return;
+    }
     if (/^candidatos(:|$)/.test(String(process.env.BILLING_PROBE || ''))) {
       const _cd = String(process.env.BILLING_PROBE);
       const APLICAR = /(^|:)go$/.test(_cd);
