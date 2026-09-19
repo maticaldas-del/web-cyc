@@ -2509,8 +2509,8 @@ nada · si Telegram falla no anota · en prueba avisa y no anota · el destrabe 
 · una vuelta sana no manda nada · marca vieja sin escrituras no canta victoria · el tope de 40 ·
 y si la memoria no se puede leer, avisa igual.
 
-**Y SACAR LAS PROMOCIONES TAMBIÉN ESTÁ CUBIERTO, aunque no sea una de las cinco.** Ese camino
-borra con **DELETE**, no con PUT, así que no pasa por ninguna función de precio — si se dejaba
+**LA SEXTA ES SACAR LAS PROMOCIONES, Y CASI QUEDA AFUERA.** Ese camino borra con **DELETE**, no
+con PUT, así que no pasa por ninguna función de precio — si se dejaba
 afuera, el freno de ML se iba a ver en todo **menos en lo más caro**: una promo aplicada le BAJA el
 precio, y si el robot no la puede sacar el descuento se queda puesto. Es la regla 8.
 (Hoy no se pudo probar contra ML: `sacapromos` dio *"0 sacadas · 0 con error · 431 revisadas"*, o
