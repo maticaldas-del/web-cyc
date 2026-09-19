@@ -2455,10 +2455,11 @@ tiene que gritarlo, no seguir corriendo.**
 Es el arreglo de la lección de arriba, y lo que cambia no es el bloqueo —eso lo tiene que
 destrabar ML— sino **que no vuelva a pasar en silencio**.
 
-**El freno vive en UNA función (`_anotarEscrituraML`) a la que llaman las CINCO que escriben solas
-en ML** —`raisePrice`, `raisePriceTo` y `raiseVariations` (suben), `setPriceTo` (baja) y
-`activarPausadasFull` (activa)— y no adentro de cada comando, por el mismo motivo que el piso
-duro: la regla no puede depender de que el próximo que escriba algo se acuerde.
+**El freno vive en UNA función (`_anotarEscrituraML`) a la que llaman las SEIS que escriben solas
+en ML** —`raisePrice`, `raisePriceTo` y `raiseVariations` (suben), `setPriceTo` (baja),
+`activarPausadasFull` (activa) y `sacapromos` (borra el descuento)— y no adentro de cada comando,
+por el mismo motivo que el piso duro: la regla no puede depender de que el próximo que escriba algo
+se acuerde.
 
 **Mira el TEXTO de ML, no el 403.** Un 403 también sale con el token vencido, y eso se arregla solo
 en la vuelta siguiente; lo que hay que avisar es `PolicyAgent` /
@@ -2490,10 +2491,12 @@ nada · si Telegram falla no anota · en prueba avisa y no anota · el destrabe 
 · una vuelta sana no manda nada · marca vieja sin escrituras no canta victoria · el tope de 40 ·
 y si la memoria no se puede leer, avisa igual.
 
-**Lo que NO está cubierto y conviene saberlo: sacar las promociones.** Ese camino borra con DELETE,
-no con PUT, y no pasa por estas cinco funciones. Si ML también le cerró eso, se va a ver en el log
-de `sacapromos` (hoy dio *"0 sacadas · 0 con error"*, o sea que no había ninguna aplicada y no hubo
-nada que probar).
+**Y SACAR LAS PROMOCIONES TAMBIÉN ESTÁ CUBIERTO, aunque no sea una de las cinco.** Ese camino
+borra con **DELETE**, no con PUT, así que no pasa por ninguna función de precio — si se dejaba
+afuera, el freno de ML se iba a ver en todo **menos en lo más caro**: una promo aplicada le BAJA el
+precio, y si el robot no la puede sacar el descuento se queda puesto. Es la regla 8.
+(Hoy no se pudo probar contra ML: `sacapromos` dio *"0 sacadas · 0 con error · 431 revisadas"*, o
+sea que no hay ninguna promo aplicada en este momento y no hubo nada que intentar.)
 
 ### EL PISO SE PUEDE ABRIR A MANO, CON TRES FRENOS (19/09/2026)
 

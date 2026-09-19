@@ -2739,8 +2739,16 @@ async function removeStartedPromos(itemId, token) {
       const r = await fetch(ML_API + '/seller-promotions/items/' + itemId + '?' + qs.toString(), {
         method: 'DELETE', headers: { Authorization: 'Bearer ' + token },
       });
-      if (r.ok) removed.push(pr.type || 'descuento');
-      else failed.push((pr.type || 'descuento') + ':' + r.status);
+      if (r.ok) { _anotarEscrituraML(r, itemId, 'sacar las promociones de ML', ''); removed.push(pr.type || 'descuento'); }
+      else {
+        // ESTE CAMINO BORRA CON DELETE, NO CON PUT, así que no pasa por las funciones de precio:
+        // hay que anotarlo acá o el freno de ML se vería en todo menos en lo más caro. Una promo
+        // aplicada le BAJA el precio, y si el robot no la puede sacar el descuento se queda puesto.
+        let _d = '';
+        try { _d = (await r.text() || '').slice(0, 300); } catch { _d = ''; }
+        _anotarEscrituraML(r, itemId, 'sacar las promociones de ML', _d);
+        failed.push((pr.type || 'descuento') + ':' + r.status + (/PolicyAgent/i.test(_d) ? ' (ML la tiene frenada por políticas)' : ''));
+      }
     } catch { failed.push((pr.type || 'descuento') + ':red'); }
   }
   return { removed, failed };
