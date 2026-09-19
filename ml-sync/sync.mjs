@@ -3036,16 +3036,25 @@ async function correrCandidatos(db, products, labels, accounts, soloPrueba, prue
     // arriba): si el candidato quedó guardado con una versión vieja, se vuelve a medir una vez y
     // listo. La primera versión de esto nombraba los campos de a uno en este mismo `if` y se
     // olvidó DOS en dos días — por eso ahora es un número y no una lista.
-    if (c.margen != null && isFinite(c.margen) && Number(c.calcVer) === CAND_CALC_VER) {
+    // ── EL ATAJO ES SÓLO PARA LOS QUE DAN, Y ESO SE ARREGLÓ EL 19/09/2026 ────────────────
+    // ACÁ VIVÍA EL AGUJERO QUE DESACTIVABA EL FRENO DE LAS DOS MEDICIONES. El atajo agarraba
+    // también a los que tenían el margen guardado ABAJO del piso y los descartaba con ese
+    // número, sin volver a preguntarle nada a ML. O sea que la "segunda medición" no era una
+    // segunda medición: **era la primera, leída dos veces**. Y el comentario de más abajo
+    // afirmaba lo contrario —*"en la vuelta siguiente `antesM` ya existe y, si sigue abajo, cae
+    // en el descarte"*— dando por hecho que la vuelta siguiente volvía a medir. No volvía.
+    // Medido: de los 39 candidatos descartados, **27 se fueron con UNA sola medición**. Es el
+    // comentario que promete que algo está cubierto sin estarlo, por octava vez en este panel.
+    // Ahora el que quedó abajo del piso NO se saltea: sigue de largo y se vuelve a medir de
+    // verdad, y ahí sí el bloque de abajo compara contra `antesM` y descarta si vuelve a dar
+    // abajo. Cuesta una consulta más por candidato flojo, una sola vez, y es el lado seguro:
+    // lo que BORRA algo tiene que ser más exigente que lo que lo muestra.
+    if (c.margen != null && isFinite(c.margen) && Number(c.calcVer) === CAND_CALC_VER
+        && Number(c.margen) >= CAND_PISO_PCT) {
       yaCalc++;
-      const mGuard = Number(c.margen);
-      if (mGuard >= CAND_PISO_PCT) {
-        nuevosQueDan.push({ id, c, margen: mGuard, ganancia: Number(c.ganancia) || 0,
-          mlPrecio: Number(c.mlPrecio) || 0, mlTit: c.mlTit || '', puesto,
-          mlMax: Number(c.mlMax) || 0, mlVendedores: Number(c.mlVendedores) || 0 });
-      } else {
-        await fuera(`da ${mGuard.toFixed(1)}%, abajo de tu piso de ${CAND_PISO_PCT}%`);
-      }
+      nuevosQueDan.push({ id, c, margen: Number(c.margen), ganancia: Number(c.ganancia) || 0,
+        mlPrecio: Number(c.mlPrecio) || 0, mlTit: c.mlTit || '', puesto,
+        mlMax: Number(c.mlMax) || 0, mlVendedores: Number(c.mlVendedores) || 0 });
       continue;
     }
     // ── EL TOPE DE CONSULTAS. Esto corre adentro de `ml-daily`: si una noche entran 300
@@ -3281,8 +3290,12 @@ async function correrCandidatos(db, products, labels, accounts, soloPrueba, prue
     // contestó "no lo vende nadie" de un catálogo que dos minutos antes tenía 3 vendedores — o sea
     // que si esa respuesta le tocaba a otro, se iba para siempre por un número que no era.
     // Ahora la primera lectura SÓLO guarda el número y avisa; el que descarta es el segundo.
-    // No hace falta nada más para que funcione: el margen se guarda unas líneas más arriba, así
-    // que en la vuelta siguiente `antesM` ya existe y, si sigue abajo, cae en el descarte.
+    // El margen se guarda unas líneas más arriba, así que en la vuelta siguiente `antesM` ya
+    // existe y, si sigue abajo, cae en el descarte.
+    // ESTA FRASE DECÍA "no hace falta nada más para que funcione" Y ERA FALSA hasta el 19/09:
+    // faltaba que la vuelta siguiente VOLVIERA a medir, y el atajo de "ya tiene la cuenta hecha"
+    // se lo comía antes (ver el comentario largo de ese `if`). 27 candidatos se descartaron con
+    // una sola lectura mientras esta línea afirmaba que no podía pasar.
     if (margen < CAND_PISO_PCT) {
       const antesM = (c.margen != null && isFinite(c.margen)) ? Number(c.margen) : null;
       const primera = antesM == null;
