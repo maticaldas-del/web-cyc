@@ -2992,7 +2992,18 @@ async function correrCandidatos(db, products, labels, accounts, soloPrueba, prue
   for (const [id, c] of entradas) {
     if (c.no) {
       yaNo++;
-      const m = String(c.motivo || 'sin motivo anotado (lo descartaron a mano desde el panel)').slice(0, 90);
+      // POR TIPO, NO POR TEXTO: la primera versión agrupaba el motivo entero y como cada uno
+      // lleva su % adentro ("da 8.4%…", "da 15.7%…") no agrupaba NADA — salían 39 renglones de
+      // uno, que es la lista completa otra vez. Lo que hay que contar es de QUÉ se murieron.
+      const _t = String(c.motivo || '');
+      const m = !_t ? 'lo descartaron a mano desde el panel (sin motivo anotado)'
+        : /por segunda vez/.test(_t) ? `abajo de tu piso de ${CAND_PISO_PCT}%, medido DOS veces`
+        : /abajo de tu piso/.test(_t) ? `abajo de tu piso de ${CAND_PISO_PCT}% con UNA sola medición`
+        : /Nissei/i.test(_t) ? 'en comprasparaguay no lo ofrece Nissei'
+        : /sin precio/i.test(_t) ? 'sin precio cargado'
+        : /tope/i.test(_t) ? `pasa tu tope de US$ ${CAND_TOPE_USD}`
+        : /marca frenada/i.test(_t) ? 'marca que ML frena'
+        : _t.slice(0, 80);
       motivosNo[m] = (motivosNo[m] || 0) + 1;
       continue;                                // ya descartado (queda en el desplegable del panel)
     }
