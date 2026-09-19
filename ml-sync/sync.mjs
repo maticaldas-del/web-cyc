@@ -6324,8 +6324,23 @@ async function main() {
         console.log(`   ${ofertas.length} vendedor(es) · campos que devuelve ML por oferta:`);
         console.log(`      ${[...claves].sort().join(' · ')}`);
         // 2) Los campos CANDIDATOS a distinguir un envío internacional, oferta por oferta.
-        console.log('   precio · los campos que podrían decir de dónde sale:');
-        ofertas.forEach((o, i) => {
+        // ── NO SE IMPRIMEN LOS 60, SE IMPRIME LO QUE DECIDE (19/09/2026) ───────────────────
+        // La primera corrida sobre un catálogo con 60 vendedores volcó 60 renglones y el resumen
+        // quedó enterrado. Una lista que no se puede leer es una lista que nadie mira — y acá el
+        // dato que importaba (un vendedor de Texas) se encontró justamente LEYENDO los renglones.
+        // Entonces: los de afuera van SIEMPRE, y de los argentinos alcanzan los más baratos,
+        // porque el margen se mide contra el mínimo. El resto se cuenta y se dice.
+        const _vTop = 8;
+        const ordenadas = ofertas.map((o, i) => ({ o, i })).sort((a, b) => (Number(a.o.price) || 0) - (Number(b.o.price) || 0));
+        const esInter = (o) => {
+          const tg = ((o && o.shipping && o.shipping.tags) || []).concat((o && o.tags) || []);
+          if (tg.some((t) => /cbt/i.test(String(t)))) return true;
+          const m = String((o && o.international_delivery_mode) || 'none');
+          return m && m !== 'none';
+        };
+        const muestro = ordenadas.filter((x, k) => k < _vTop || esInter(x.o));
+        console.log(`   precio · de dónde sale (los ${Math.min(_vTop, ordenadas.length)} más baratos + TODOS los de afuera; ${ordenadas.length - muestro.length} más caros no se listan):`);
+        muestro.forEach(({ o }, i) => {
           const sh = (o && o.shipping) || {};
           const partes = [];
           if (sh.logistic_type != null) partes.push(`logistic_type=${sh.logistic_type}`);
@@ -6338,7 +6353,7 @@ async function main() {
           const dir = (o && o.seller_address) || {};
           if (dir.country && dir.country.id) partes.push(`pais=${dir.country.id}`);
           if (dir.state && dir.state.name) partes.push(`provincia=${dir.state.name}`);
-          console.log(`      ${String(i + 1).padStart(2)}. ${money(Math.round(Number(o.price) || 0)).padStart(12)}  ${partes.length ? partes.join(' · ') : '— ML no dio ninguno de estos campos —'}`);
+          console.log(`      ${esInter(o) ? '🌎' : '  '} ${money(Math.round(Number(o.price) || 0)).padStart(12)}  ${partes.length ? partes.join(' · ') : '— ML no dio ninguno de estos campos —'}`);
         });
         // 3) Y SI ARRIBA NO VINO NADA, probar la publicación suelta: el 403 medido el 19/09 fue con
         //    `/items?ids=…` (varias de una). Una sola puede contestar distinto, y eso no se sabe
@@ -6356,7 +6371,7 @@ async function main() {
         // poder revisar a ojo, porque un filtro que no se puede auditar es el que se apaga solo.
         // Es el cero que parece una buena noticia, otra vez — y acá lo delató el dato de al lado,
         // no el resumen.
-        const inter = ofertas.filter((o) => {
+        const inter = ofertas.filter((o) => {   // misma regla que `esInter`, ver el comentario de arriba
           const tg = ((o && o.shipping && o.shipping.tags) || []).concat((o && o.tags) || []);
           if (tg.some((t) => /cbt/i.test(String(t)))) return true;
           const m = String((o && o.international_delivery_mode) || 'none');
