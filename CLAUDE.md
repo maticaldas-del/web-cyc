@@ -2299,6 +2299,66 @@ Probado con las TRES funciones reales sacadas del archivo y 14 casos, incluidos 
 tienen que salir en ámbar o rojo. Y corrido el chequeo de las tres listas: no falta ninguna función,
 ninguna variable ni ningún `id` — sólo se agregaron 7 nombres, ninguno repetido.
 
+## ML FRENÓ LOS CAMBIOS DE PRECIO DE LA APLICACIÓN: 3 DE 3, Y NO ES POR MARCA (19/09/2026)
+
+Pedido suyo con la Tablet Xiaomi Redmi Pad 2 (`MLA1782639641`, Matías): *"bajar pad 2 hasta empatar
+caja"*. Se abrió el piso a mano (ver abajo), se calculó todo bien, y **ML rechazó el PUT**:
+
+```
+403 · {"code":"PA_UNAUTHORIZED_RESULT_FROM_POLICIES","blocked_by":"PolicyAgent",
+       "message":"At least one policy returned UNAUTHORIZED.","status":403}
+```
+
+**El precio NO cambió** — releído de ML: sigue en $497.310, y la caja sigue pidiendo $425.741.
+
+**ES EL MISMO ERROR DE LOS DOS PERFUMES DE ADRIANA DEL 18/09, Y ESO CAMBIA EL DIAGNÓSTICO.** Ahí
+quedó anotado que *"encaja con lo que ya está abierto —el Bare Vanilla y el reclamo de adulterado,
+donde ML pide documentación de esas marcas"*. **Esa explicación ya no se sostiene**: la Pad 2 es una
+tablet Xiaomi en OTRA cuenta y otra categoría. Van **3 publicaciones, 2 cuentas y 2 rubros que no
+tienen nada que ver**, todas con el mismo 403 de PolicyAgent. No es la marca.
+
+**LO QUE SÍ SE SABE, medido con `tocados:96`:** el robot cambió precios **con éxito el 17/09** —tres
+Victoria's Secret de Adriana a las 04:07, 10:06 y 16:58 UTC— y desde entonces no cambió ninguno.
+O sea que **el freno apareció entre el 17 y el 18 de septiembre**. Que no haya tocado nada desde
+entonces NO es prueba de que esté bloqueado (puede ser que no hiciera falta), pero los 3 intentos
+que sí hubo fallaron los 3.
+
+**LA PRUEBA QUE FALTA Y SÓLO LA PUEDE HACER ÉL: cambiarle el precio a UNA publicación A MANO en ML.**
+Si lo deja, el bloqueo es contra la aplicación y hay que hablar con ML. Si no lo deja, es una
+restricción de la cuenta o de esas publicaciones. **Mientras tanto hay que dar por hecho que el
+robot no puede tocar precios**, que es justo lo que hace de noche con la suba automática.
+
+**Y DE PASO SE ARREGLÓ POR QUÉ TARDÓ EN VERSE:** `setPriceTo` devolvía **`ML-403` a secas**, sin el
+cuerpo de la respuesta, así que el log decía *"NO se bajó: ML-403"* y no había forma de distinguir
+un token vencido de un freno de políticas. `raiseVariations` ya lo hacía bien desde antes — ésta era
+la copia que se había quedado atrás. **Un error que no dice el motivo obliga a adivinar, y adivinar
+sobre precios es lo que este archivo entero viene tratando de evitar.**
+
+### EL PISO SE PUEDE ABRIR A MANO, CON TRES FRENOS (19/09/2026)
+
+Quedó anotado el 16/09 que *"esa red se abre el día que él quiera aplicar uno, no antes"*. Llegó ese
+día. `_chequeoPiso` acepta ahora `autorizado`, y **los tres frenos hicieron falta**:
+ · hay que pasar un **TEXTO** que diga quién y por qué. Un comando que se olvide del campo cae en el
+   piso de siempre, que es el lado seguro;
+ · **`PISO_AUTORIZADO` = 0**: ni con autorización se vende abajo del costo total. Para rematar de
+   verdad a 0% o menos está `liquidando`, que lo decide él de a uno;
+ · se **imprime en el log** cada vez que se abre, con el margen en el que queda.
+
+Se aplica con **`unapub:<MLA>:<piso>:<días>:empatar[:go]`**, y va adentro de `unapub` a propósito:
+ese comando **ya calcula** el precio de la caja y su margen con `margenA`. Un comando nuevo sería una
+segunda copia de la cuenta que decide un precio — el error anotado siete veces acá.
+
+**DOS DETALLES QUE NO SON DE FORMA:**
+ · **El precio se redondea PARA ABAJO.** `setPriceTo` hace `Math.ceil` a la decena, así que pasarle
+   los $425.741 dejaría **$425.750 — nueve pesos MÁS CARO que lo que ML pide**, o sea sin empatar
+   nada. Bajando a la decena de abajo queda en el precio o debajo.
+ · **La marca `liquidando` va ANTES de bajar, y si falla no se baja.** Al quedar abajo del piso, la
+   PRIMERA venta dispara la suba automática y el robot deshace la decisión — exactamente lo del
+   Pendrive del 12/09. Bajar sin la marca es lo peor de los dos mundos.
+**OJO: la marca de la Pad 2 quedó puesta aunque el precio no cambió**, porque se escribe primero. No
+hace daño (a $497.310 está en 23,7%, arriba del piso, así que el robot no la subiría igual) y **sirve
+si él le cambia el precio a mano**. Para sacarla: `liquidando:-MLA1782639641:go`.
+
 ## Cosas que ya pasaron (para no repetirlas)
 
 - **"PAGUÉ 55 Y DICE 55: ESTO ESTÁ MAL" — EL NÚMERO ESTABA BIEN Y EL RENGLÓN LO ESCONDÍA
