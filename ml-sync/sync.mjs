@@ -8907,8 +8907,11 @@ async function main() {
       // Las que NO distinguen nada. Van las castellanas Y las portuguesas, porque comprasparaguay
       // escribe en portugués y ML en castellano: sin esto, "preto" o "feminino" se leen como una
       // palabra que falta cuando lo único que cambia es el idioma.
-      const RV_VACIAS = new Set(['perfume','eau','parfum','toilette','edp','edt','para','hombre','mujer','unisex','los','las','con','sin','original','importado','spray','vaporizador','set','kit','fragancia','colonia','del','por','una','pack','uds','unidad','unidades','the','and',
-        'masculino','feminino','femenino','unissex','preto','preta','branco','branca','negro','negra','blanco','blanca','fone','ouvido','fio','cabo','caixa','som','portatil','sem','com','cor','color','edicion','edition']);
+      // OJO: 'pack', 'set' y 'kit' NO van acá aunque parezcan relleno. Son justo lo que delata otra
+      // versión, y estando acá se filtraban ANTES de que el chequeo de lo que sobra los pudiera ver:
+      // "Pack X2 Lattafa Sutoor" pasaba como si fuera el perfume suelto. Viven en RV_VARIANTE.
+      const RV_VACIAS = new Set(['perfume','eau','parfum','toilette','edp','edt','para','hombre','mujer','unisex','los','las','con','sin','original','importado','spray','vaporizador','fragancia','colonia','del','por','una','uds','unidad','unidades','the','and',
+        'masculino','feminino','femenino','unissex','preto','preta','branco','branca','negro','negra','blanco','blanca','fone','ouvido','fio','cabo','caixa','som','portatil','sem','com','cor','color']);
       // El numero se despega de la unidad ANTES de comparar: "100ML" es UNA palabra para la
       // computadora, y como palabra hacia coincidir el Hamidi Addicted con el Hamidi Imensity
       // (los dos de 100 mL) justo arriba de la mitad, que era el corte. Separado, "100" cuenta
@@ -8926,6 +8929,19 @@ async function main() {
       // mas solo pinta el renglon en AMBAR ("miralo"), nunca lo descarta: un aviso de mas cuesta
       // una mirada, el producto equivocado cuesta el pedido.
       const _rvNum = (t) => new Set(_rvNorm(t).match(/\d+/g) || []);
+      // ── LAS PALABRAS QUE DELATAN OTRA VERSIÓN DEL MISMO PRODUCTO (19/09/2026) ──────────────
+      // **LO ENCONTRÓ ÉL, NO EL COMANDO, Y ERA PLATA.** El robot emparejó el *"Controle Sem Fio
+      // Sony Playstation Dualsense para PS5 - Preto"* (US$ 60) con el catálogo del **"DualSense
+      // The Last Of Us Edición Limitada"**, que en ML vale **$349.999**. El margen sali� 57% y
+      // estaba medido contra el precio de una edición de colección: es un número falso, y con él
+      // se iban US$ 120 del pedido.
+      // **EL CHEQUEO SÓLO MIRABA LAS PALABRAS QUE FALTAN, NUNCA LAS QUE SOBRAN.** Y una edición
+      // especial, un pack, un combo o un "Pro/Lite/Max" no le QUITAN palabras al título: se las
+      // AGREGAN. Todo el chequeo estaba mirando para el lado por el que este error no pasa.
+      const RV_VARIANTE = new Set(['edicion','edition','limitada','limited','coleccionista','collector',
+        'aniversario','anniversary','bundle','combo','pack','kit','especial','special','deluxe','premium',
+        'refurbished','reacondicionado','usado','replica','generico','compatible','alternativo','copia',
+        'pro','plus','max','mini','lite','slim','ultra','neo','xl','gen','generacion','duo','doble','triple']);
       const _rvDias = (ts) => (ts > 0 ? Math.floor((Date.now() - ts) / 86400000) : null);
 
       // Qué se revisa: lo que él nombre, o si no todo lo que hoy está VIVO (ni descartado ni con
@@ -9036,8 +9052,25 @@ async function main() {
         const mlPlano = _rvBase(mlTit).replace(/ /g, '');
         const modCP = _rvMod(c.nombre);
         const modOK = modCP.filter((m) => mlPlano.includes(m));
+        // ── LO QUE SOBRA EN EL TÍTULO DE ML SE MIRA SIEMPRE, PASE LO QUE PASE ARRIBA ──────────
+        // Es el arreglo del DualSense. Va ANTES y APARTE de todo lo demás porque el agujero era
+        // justamente que el modelo coincidía —"ps5" está en los dos títulos— y con eso el chequeo
+        // daba "✓ ES EL MISMO" y **se saltaba todos los otros controles**. Un atajo que da por
+        // bueno el producto entero porque coincidió UNA cosa es el mismo error que el atajo de
+        // "ya tiene la cuenta hecha", que ya mordió tres veces en este archivo.
+        // "ps5" además no es un modelo: es la CONSOLA. Lo comparten el control común, el de
+        // edición limitada y cualquier accesorio.
+        const extras = [...pML].filter((w) => !pCP.has(w));
+        const extraVar = extras.filter((w) => RV_VARIANTE.has(w));
+        if (extraVar.length) {
+          reparos.push(`ML dice "${extraVar.join(', ')}" y el candidato no: puede ser OTRA versión`);
+          console.log(`     ⚠️ OJO: el título de ML dice **${extraVar.join(', ')}** y el del candidato no. Una edición especial o un pack valen mucho más, y el margen queda medido contra un precio que no es el de lo que comprás (pasó con el DualSense: ML tenía la edición "The Last Of Us" a $349.999).`);
+        } else if (extras.length >= 3) {
+          reparos.push(`el título de ML trae ${extras.length} palabras de más: ${extras.join(', ')}`);
+          console.log(`     ⚠️ MIRALO: el título de ML trae ${extras.length} palabras que el candidato no tiene (${extras.join(', ')}). Puede ser un combo, otra versión o simplemente que ML lo describe más largo — abrilo y fijate.`);
+        }
         if (modCP.length && modOK.length) {
-          console.log(`     ✓ ES EL MISMO: el modelo ${modOK.join(', ')} está en el título de ML.`);
+          console.log(`     ✓ el modelo ${modOK.join(', ')} está en el título de ML${extraVar.length || extras.length >= 3 ? ', pero mirá el aviso de arriba' : ''}.`);
           if (faltan.length) console.log(`       (las palabras que no coinciden son del idioma: comprasparaguay escribe en portugués — ${faltan.join(', ')})`);
         } else if (modCP.length) {
           reparos.push(`el modelo (${modCP.join(', ')}) no aparece en el título de ML`);
@@ -9122,6 +9155,12 @@ async function main() {
           else console.log(`     (la medición anterior daba ${antes.toFixed(1)}% · se movió ${dif > 0 ? '+' : ''}${dif.toFixed(1)} puntos)`);
         }
         if (r.margen < CAND_PISO_PCT) { frenos.push(`hoy da ${r.margen.toFixed(1)}%, abajo de tu piso de ${CAND_PISO_PCT}%`); console.log(`     ❌ ABAJO DE TU PISO DE ${CAND_PISO_PCT}%`); }
+        // UN MARGEN MUY ALTO NO ES UNA BUENA NOTICIA: ES UNA SEÑAL (19/09/2026).
+        // Sale del DualSense. Cuando el catálogo de ML no es el mismo producto —una edición
+        // limitada, un pack, un combo— el precio contra el que se mide es mucho más alto, y eso
+        // **no se ve como un error: se ve como un negoción**. Es el mismo patrón que el cero que
+        // parece una buena noticia, dado vuelta. No descarta nada: manda a mirar.
+        if (r.margen >= 80) { reparos.push(`margen muy alto (${r.margen.toFixed(0)}%): chequeá que el catálogo de ML sea el mismo producto`); console.log(`     ⚠️ ${r.margen.toFixed(0)}% es MUCHO. Antes de festejar, abrí el link: si el catálogo de ML es una edición especial o un pack, el margen está medido contra un precio que no vas a poder cobrar.`); }
 
         // 7 · ¿LA PODÉS PUBLICAR? La marca, y si ya tenés una ficha parecida.
         const marcaTxt = String(c.marca || '').trim();

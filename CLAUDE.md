@@ -2078,6 +2078,45 @@ descartados con unidades colgadas se dicen aparte.
 Alhambra, Ard Al Zaafaran, Paris Corner Mysterium y 3 más). No hacen daño hoy, pero si alguno se
 devuelve a la lista reaparece con unidades que nadie puso. **Pendiente de limpiar.**
 
+### EL CHEQUEO MIRABA SÓLO LO QUE FALTA Y NUNCA LO QUE SOBRA — LO ENCONTRÓ ÉL (19/09/2026)
+
+**ES EL ERROR MÁS CARO DEL Día y lo agarró él abriendo un link, no el comando.** El robot emparejó
+el *"Controle Sem Fio Sony Playstation Dualsense para PS5 - Preto"* (US$ 60) con el catálogo del
+**"DualSense The Last Of Us Edición Limitada"**, que en ML vale **$349.999**. Salió **57% de
+margen** medido contra el precio de una edición de colección: un número perfectamente calculado y
+perfectamente falso, con **US$ 120 del pedido** adentro.
+
+**LA CAUSA, Y ES DE LAS QUE SE REPITEN: el chequeo de títulos sólo miraba las palabras que FALTAN
+en ML, nunca las que SOBRAN.** Y una edición especial, un pack, un combo o un *"Pro/Lite/Max"* no
+le quitan palabras al título: **se las agregan**. Todo el control estaba mirando para el único lado
+por el que este error no pasa.
+
+**Y EL ATAJO DEL MODELO LO TAPÓ ENCIMA.** *"ps5"* está en los dos títulos, así que el chequeo
+imprimió **"✓ ES EL MISMO"** y se salteó todo lo demás. **"ps5" no es un modelo: es la CONSOLA**, y
+la comparten el control común, el de edición limitada y cualquier accesorio. Un atajo que da por
+bueno el producto ENTERO porque coincidió UNA cosa es el mismo error que el atajo de *"ya tiene la
+cuenta hecha"*, que ya mordió tres veces en este archivo. Ahora lo que sobra se mira **siempre**,
+antes y aparte de todo lo demás.
+
+**Y `pack`, `set` y `kit` estaban en la lista de palabras a ignorar**, o sea que se filtraban
+ANTES de que el chequeo nuevo los pudiera ver: *"Pack X2 Lattafa Sutoor"* pasaba como si fuera el
+perfume suelto. Parecían relleno y son justo la señal.
+
+**UN MARGEN MUY ALTO PASÓ A SER UNA SEÑAL, NO UNA BUENA NOTICIA.** De 80% para arriba el renglón
+avisa que se chequee el catálogo: cuando el de ML no es el mismo producto, el precio contra el que
+se mide es mucho más alto **y eso no se ve como un error, se ve como un negoción**. Es el cero que
+parece una buena noticia, dado vuelta.
+
+**LA LECCIÓN PARA MÍ, Y ES LA PEOR DEL DÍA:** le dije *"no los revises uno por uno, el chequeo que
+encuentra productos equivocados es justo el que te marcó los 4"*. **Y en el primero que abrió
+encontró esto.** Un chequeo que pasa no prueba que esté bien: prueba que **esa** forma de estar mal
+no está. Decirle que no mire, apoyándome en un control cuyo punto ciego yo no conocía, es el error
+de fondo — y es el mismo *"un comentario que promete que algo está cubierto no es prueba de que lo
+esté"*, sólo que dicho en voz alta a la persona que decide la compra.
+
+Probado con las funciones REALES y 15 casos: el DualSense de él avisa, el DualSense correcto NO
+avisa, saltan `Lite`, `Pack`, `Pro` y `Reacondicionado`, y los diez que ya andaban siguen igual.
+
 ### EL PEDIDO DE PRODUCTOS NUEVOS CARGADO EL 19/09/2026
 
 **11 productos · 22 unidades · US$ 526,70 crudos · US$ 605,71 puestos.** Se eligieron por **la plata
