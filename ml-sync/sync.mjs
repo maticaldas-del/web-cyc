@@ -8834,13 +8834,22 @@ async function main() {
       }
       // El total se arma con la lista ENTERA, no sólo con lo que se toca: lo que ya estaba cargado
       // y no se nombra sigue adentro del pedido, y sin contarlo el total mentiría.
-      const final = vivos.map(([id, c]) => {
+      // Y CUENTA LO MISMO QUE LA PANTALLA, que es lo que se le manda a Nissei. La primera versión
+      // sumaba TAMBIÉN los candidatos **descartados** que todavía tienen unidades viejas cargadas
+      // —el panel no los muestra, así que no van en el pedido— y el total salió **US$ 833,70**
+      // cuando lo cargado eran **US$ 495,70**: US$ 338 de productos que nadie va a pedir.
+      // Un total inflado dispara el aviso de "pasa tu tope" sobre un pedido que no lo pasa, y el
+      // aviso que suena cuando no tiene que sonar es el que después no se mira. Los descartados
+      // con unidades colgadas se dicen aparte, que es el sobrante real que hay que limpiar.
+      const final = vivos.filter(([, c]) => !c.no).map(([id, c]) => {
         const ch = cambios.find((x) => x.id === id);
         return { c, u: ch ? ch.u : (Number(c.pedirU) || 0) };
       }).filter((x) => x.u > 0);
+      const colgados = vivos.filter(([id, c]) => c.no && ((cambios.find((x) => x.id === id) || {}).u ?? (Number(c.pedirU) || 0)) > 0);
       const crudo = final.reduce((s, x) => s + (parseFloat(x.c.usd) || 0) * x.u, 0);
       console.log(`\n🧾 EL PEDIDO QUEDA EN: ${final.length} producto(s) · ${final.reduce((s, x) => s + x.u, 0)} u. · US$ ${crudo.toFixed(2)} crudos · US$ ${(crudo * 1.15).toFixed(2)} puestos · ${money(Math.round(crudo * 1.15 * tcp))}`);
       if (crudo > 500) console.log(`   ⚠️ pasa tu tope de US$ 500 crudos por US$ ${(crudo - 500).toFixed(2)}`);
+      if (colgados.length) console.log(`   (aparte: ${colgados.length} candidato(s) DESCARTADO(s) tienen unidades viejas cargadas. El panel no los muestra y no van en el pedido: ${colgados.map(([, c]) => c.nombre).slice(0, 6).join(' · ')}${colgados.length > 6 ? ' …' : ''})`);
       if (!APLICAR) { console.log('\nPRUEBA: no escribí nada. Para aplicar, agregá  ;go  al final.'); return; }
       let ok = 0;
       for (const x of cambios) { try { await db.set(`cyc/candidatos_py/${x.id}/pedirU`, x.u); ok++; } catch (e) { console.log(`   ❌ no pude guardar ${x.c.nombre}: ${e.message}`); } }
