@@ -2275,7 +2275,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='19.69';
+const APP_VERSION='19.70';
 // El problema real que esto resuelve no es curiosidad: es que el celular guarda la app y sigue
 // mostrando la de ayer sin avisar. Varias veces se revisó un cambio que ya estaba subido y no se
 // veía. Por eso, además del número, el chip avisa cuando hay una versión nueva esperando.
@@ -12402,8 +12402,14 @@ const GASTOS_DEL_MES=[
   // interés del capital de los socios, ~$240.000) y otro más chico (~$30.000). Con `min:2`, cargar
   // uno solo NO pinta verde: queda en ámbar diciendo que falta el otro. Un ✅ con la mitad adentro
   // es peor que un ❌, porque cierra el mes sin que nadie vuelva a mirar.
-  {n:'Intereses financieros',  cat:'Intereses financieros', min:2,
-   nota:'son DOS todos los meses: el interés del capital de los socios (~$240.000) y otro más chico (~$30.000)'},
+  // ÁBAJO DE 2 A 1 EL 19/09/2026, Y NO ES UN AJUSTE COSMÉTICO. Dicho por él: *"yo ya no le saco %
+  // porque no tengo dólares o muy poco"*. El grande de los dos era el **2% sobre el capital que los
+  // socios tenían puesto en dólares** (~$240.000/mes) y ese ya no se paga.
+  // **Pedir DOS cuando sólo va uno deja el mes en ámbar para siempre**, y un renglón que avisa de
+  // algo que nunca va a llegar entrena a no mirar la lista — el mismo problema del cementerio de
+  // marcas viejas y del «⚠️ VENDE» que saltaba en todos.
+  {n:'Intereses financieros',  cat:'Intereses financieros',
+   nota:'el interés del capital en dólares de los socios ya NO se paga (19/09/2026): queda sólo el otro'},
   {n:'Obra social privada',    cat:'Otros gastos operativos', no:['sancor'],
    nota:'~$83.333/mes · es APARTE del Sancor, no la misma cosa'},
   {n:'Cargos de Full de ML (las 4 cuentas)', cat:'Envios', pal:['almacenamiento','full','stock antiguo','retiro'],
