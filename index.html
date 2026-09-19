@@ -2275,7 +2275,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='19.70';
+const APP_VERSION='19.71';
 // El problema real que esto resuelve no es curiosidad: es que el celular guarda la app y sigue
 // mostrando la de ayer sin avisar. Varias veces se revisó un cambio que ya estaba subido y no se
 // veía. Por eso, además del número, el chip avisa cuando hay una versión nueva esperando.
@@ -8549,6 +8549,36 @@ function candList(){
 // el mismo problema que ya apareció con `repoextra` y con la pausa por precio. Un precio de
 // Paraguay de hace 45 días al lado de una decisión de compra se lee como si estuviera al día.
 const CAND_VENCE_DIAS=45;
+// ── NUNCA SE CARGA EN EL PEDIDO ALGO QUE NO LLEGA AL PISO (19/09/2026) ────────────────
+// Regla suya, textual: *"Nunca puede suceder eso que la web no permita menos de 25%"*. Y salió de
+// un caso real: el **Perfume Mirada Muse Rose Musc** entró al pedido con 2 unidades teniendo
+// **-4,2%** anotado en esta misma pantalla, al lado de la casilla donde se cargaron.
+//
+// LA REGLA DEL 25% ESTABA ESCRITA EN TRES LUGARES Y EN NINGUNO DE LOS QUE PODÍA FRENARLO: en el
+// texto del chat, en el resumen de `revisarcompra` y en el color del número de la tarjeta. Los
+// tres AVISAN; ninguno IMPIDE. Es exactamente la lección del link de ML del 18/09 —
+// *"cuando alguien no cumple una regla escrita, el arreglo no es escribirla más fuerte, es que el
+// sistema no lo deje"*— y la de la barrera de los $33.000: una regla que vive en un solo lado del
+// sistema, o que sólo pinta un número, no es una regla.
+//
+// SIN MEDIR TAMPOCO SE PUEDE, y es el mismo lado seguro que en todo este archivo: de un producto
+// que todavía no se midió no se sabe si da, y cargarlo es apostar plata que no se recupera hasta
+// que llegue la caja. Se mide solo en la vuelta de la noche y ahí la casilla se abre.
+//
+// LO QUE NO HACE, A PROPÓSITO: sacar solo lo que ya estaba cargado. Bajarle las unidades sin que
+// él lo vea le cambia el total del pedido en silencio, que es el descarte por omisión anotado de
+// punta a punta acá. Lo que ya estaba queda EN ROJO, se cuenta arriba con su aviso y tiene un
+// botón para sacarlo de un toque. Y BAJAR siempre se puede, aunque el producto ya no dé: si no,
+// lo que se cargó cuando todavía daba quedaría trabado adentro del pedido para siempre.
+const CAND_PISO_PCT=25;
+function candPuedePedir(c){
+  if(!c)return{ok:false,motivo:'no existe'};
+  if(c.no)return{ok:false,motivo:'está descartado de la lista'};
+  const m=Number(c.margen);
+  if(c.margen==null||!isFinite(m))return{ok:false,motivo:'todavía no está medido en ML'};
+  if(m<CAND_PISO_PCT)return{ok:false,motivo:`da ${m.toFixed(1)}% y tu piso es ${CAND_PISO_PCT}%`};
+  return{ok:true,motivo:''};
+}
 function candDias(c){return c&&c.ts?Math.max(0,Math.round((Date.now()-c.ts)/86400000)):null;}
 // ── EL PEDIDO DE PRODUCTOS NUEVOS: LA WEB LO GUARDA, EL CHAT LO ARMA (18/09/2026) ─────
 // Pedido suyo: *"voy a hacer un pedido de todos productos nuevos con una combinacion (…) que sean
@@ -8675,7 +8705,16 @@ const CAND_NOTA_CAJA='🥊 <b>A cuánto se gana la caja de compra no se puede sa
   +'que es el peor caso.';
 async function candSetPedir(id,v){
   const n=Math.max(0,parseInt(v)||0);
-  const c=(state.candidatos||{})[id];if(c)c.pedirU=n;
+  const c=(state.candidatos||{})[id];
+  const antes=Math.max(0,parseInt(c&&c.pedirU)||0);
+  // EL FRENO VA ACÁ Y NO EN LA CASILLA: por esta función pasa TODA carga de unidades, venga del
+  // cuadradito de la tarjeta o del renglón del pedido. Una casilla apagada se puede esquivar.
+  const P=candPuedePedir(c);
+  if(!P.ok&&n>antes){
+    alert(`No se puede pedir este producto.\n\n${c?c.nombre:''}\n\nMotivo: ${P.motivo}.\n\nTu piso es ${CAND_PISO_PCT}%. Si el precio en ML cambió, el robot lo vuelve a medir esta noche y la casilla se abre sola.`);
+    renderPedidos();return;
+  }
+  if(c)c.pedirU=n;
   await fbSet('candidatos_py/'+id+'/pedirU',n);
   renderPedidos();
 }
@@ -8695,6 +8734,7 @@ function pedNuevos(vivos){
     unidades:filas.reduce((n,f)=>n+f.u,0),
     sinPrecio:filas.filter(f=>!(f.usd>0)),
     sinCod:filas.filter(f=>!String(f.c.cod||'').trim()),
+    noDan:filas.filter(f=>!candPuedePedir(f.c).ok),
     ganancia:filas.reduce((g,f)=>g+(Number(f.c.ganancia)||0)*f.u,0)};
 }
 function pedNuevosHTML(vivos){
@@ -8716,6 +8756,7 @@ function pedNuevosHTML(vivos){
         <br>${P.filas.length} producto${P.filas.length===1?'':'s'} · ${P.unidades} unidad${P.unidades===1?'':'es'}${P.ganancia>0?` · si se vende todo deja <b style="color:var(--green)">${fmt(Math.round(P.ganancia))}</b>`:''}
       </div>
       ${P.sinPrecio.length?`<div style="font-size:.62rem;color:var(--red);margin-top:5px">⚠️ ${P.sinPrecio.length} sin precio cargado: no suman al total, así que el número de arriba está corto.</div>`:''}
+      ${P.noDan.length?`<div style="font-size:.62rem;color:var(--red);margin-top:5px">🚫 <b>${P.noDan.length} ya no llega(n) a tu piso de ${CAND_PISO_PCT}%</b> y están sumando en el total. Se cargaron cuando todavía daban. No los saco solo: abajo tienen el botón.</div>`:''}
     </div>
     ${P.filas.length?P.filas.map(f=>`<div class="ingreso-item" style="gap:10px;align-items:center">
       <div style="flex:1;min-width:150px">
@@ -8724,6 +8765,7 @@ function pedNuevosHTML(vivos){
           ${String(f.c.cod||'').trim()?'🔖 '+String(f.c.cod).trim():'<span style="color:var(--amber)">🔖 sin código — no entra en el mensaje a Nissei</span>'}
           ${f.usd>0?` · te sale US$ ${f.usd.toFixed(2)} + 15% = <b style="color:var(--text)">US$ ${(Math.round(f.usd*RECARGO_PY*100)/100).toFixed(2)}</b> c/u${tc?` · ${fmt(Math.round(f.usd*RECARGO_PY*tc))}`:''}`:' · <span style="color:var(--red)">sin precio</span>'}
           ${candPreciosHTML(f.c)?`<br>${candPreciosHTML(f.c)}`:' · <span style="color:var(--amber)">sin margen medido</span>'}
+          ${candPuedePedir(f.c).ok?'':`<br><span style="color:var(--red);font-weight:700">🚫 ${candPuedePedir(f.c).motivo}</span> · <a href="#" onclick="event.preventDefault();candSetPedir('${f.c.id}',0)" style="color:var(--red);font-weight:700">sacarlo del pedido</a>`}
         </div>
       </div>
       <div style="text-align:right;font-size:.68rem;white-space:nowrap">
@@ -8998,7 +9040,7 @@ function candidatosHTML(){
     const puesto=usd>0?Math.round(usd*RECARGO_PY*100)/100:0;
     const pesos=puesto>0?Math.round(puesto*curTC()):0;
     const tieneCuenta=c.margen!=null&&isFinite(c.margen);
-    const col=!tieneCuenta?'var(--muted)':(c.margen>=40?'var(--green)':c.margen>=25?'var(--green)':'var(--amber)');
+    const col=!tieneCuenta?'var(--muted)':(c.margen>=CAND_PISO_PCT?'var(--green)':'var(--red)');
     const info=[];
     if(c.cod)info.push(chip('🔖 '+c.cod,'var(--muted)','El código con el que se pide. Es el de Nissei que usa comprasparaguay, no el número interno de la lista de Nissei.'));
     if(c.marca)info.push(chip('🏷️ '+c.marca,'var(--muted)','La marca, para poder frenarla entera si ML la pide documentar.'));
@@ -9050,8 +9092,12 @@ function candidatosHTML(){
         <span style="font-size:.6rem;color:var(--amber)" title="El envío sale de la tarifa de ML porque este producto nunca vendió, y esa tarifa se midió $246 corta el 20/08. El margen real puede ser un poco menor.">· estimado</span>
       </div>`:`<div style="font-size:.68rem;color:var(--muted)">⏳ falta la cuenta de ML. <b>No se muestra ningún porcentaje</b> hasta tenerla: un margen inventado acá se aplica y recién se nota cuando ya compraste.</div>`}
       <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center">
-        <label style="display:flex;align-items:center;gap:5px;font-size:.64rem;color:var(--muted)" title="Las unidades de este producto para el pedido. Se suman arriba. No compra nada: sólo arma la lista.">pedir
-          <input type="number" min="0" step="1" value="${parseInt(c.pedirU)||0}" onchange="candSetPedir('${c.id}',this.value)" style="width:56px;font-size:.68rem;padding:4px 6px;background:var(--surface2);border:1px solid var(--border);border-radius:6px;color:var(--text)"> u.</label>
+        ${(()=>{const Q=candPuedePedir(c),uu=Math.max(0,parseInt(c.pedirU)||0);
+          if(Q.ok)return `<label style="display:flex;align-items:center;gap:5px;font-size:.64rem;color:var(--muted)" title="Las unidades de este producto para el pedido. Se suman arriba. No compra nada: sólo arma la lista.">pedir
+          <input type="number" min="0" step="1" value="${uu}" onchange="candSetPedir('${c.id}',this.value)" style="width:56px;font-size:.68rem;padding:4px 6px;background:var(--surface2);border:1px solid var(--border);border-radius:6px;color:var(--text)"> u.</label>`;
+          return `<span style="font-size:.64rem;color:var(--red);font-weight:600" title="Tu piso es ${CAND_PISO_PCT}%. El robot lo vuelve a medir todas las noches: si el precio de ML cambia y pasa el piso, la casilla se abre sola.">🚫 no se puede pedir: ${Q.motivo}</span>`
+            +(uu>0?` <span style="font-size:.64rem;color:var(--red);font-weight:700">· tiene ${uu} u. cargadas</span> <button class="btn" style="font-size:.62rem;padding:4px 10px;color:var(--red);border-color:rgba(239,68,68,.35)" onclick="candSetPedir('${c.id}',0)">✕ sacarlo del pedido</button>`:'');
+        })()}
         <button class="btn btn-add" style="font-size:.66rem;padding:5px 12px" onclick="candCrearFicha('${c.id}')" title="Crea la ficha del producto con su costo y su código ya cargados, marcada como Paraguay. No compra nada ni publica nada en ML.">👍 Crear ficha</button>
         <button class="btn" style="font-size:.66rem;padding:5px 12px;color:var(--muted)" onclick="candDescartar('${c.id}')" title="No vuelve a aparecer. Se puede deshacer desde acá abajo.">👎 No me interesa</button>
         ${c.marca?`<button class="btn" style="font-size:.66rem;padding:5px 12px;color:var(--red);border-color:rgba(239,68,68,.35)" onclick="candMarcaNo('${c.id}')" title="Saca de la lista TODO lo de esta marca, para siempre. Para las marcas que ML te pide documentar.">🚫 ${c.marca} no</button>`:''}

@@ -2201,6 +2201,53 @@ US$ 124, y hay una ficha parecida — chequear que no sea una de las que tiró p
 **Corsair Scimitar** (ML no nombra el número de parte) · y los **dos Sony EX15**, cuyo margen saltó
 hoy de 26→43% y de 31→66%: alguien subió el precio en ML, así que es un precio que se mueve.
 
+## NO SE PUEDE CARGAR EN EL PEDIDO ALGO QUE NO LLEGA AL 25% (19/09/2026)
+
+Regla suya, textual: **"Nunca puede suceder eso que la web no permita menos de 25%."** Salió de un
+caso real: el **Perfume Mirada Muse Rose Musc** entró al pedido con **2 unidades** teniendo
+**−4,2%** anotado en la misma tarjeta, tres centímetros arriba de la casilla donde se cargaron.
+
+**LA REGLA DEL 25% ESTABA ESCRITA EN TRES LUGARES Y EN NINGUNO DE LOS QUE PODÍA FRENARLO:** en el
+texto del `PROMPT GUAY`, en el resumen de `revisarcompra` y en el color del número de la tarjeta.
+Los tres **avisan**; ninguno **impide**. Es la misma lección del link de ML del 18/09 —*"cuando
+alguien no cumple una regla escrita, el arreglo no es escribirla más fuerte, es que el sistema no
+lo deje"*— y la de la barrera de los $33.000, que vivía en el robot y no en la pantalla donde él
+decide.
+
+**El freno vive en `candSetPedir`** (la ÚNICA función por la que pasa cualquier carga de unidades,
+venga del cuadradito de la tarjeta o del renglón del pedido) **y en el comando `pedir`**, que es la
+otra puerta. En los dos lados y no en uno: una casilla apagada se esquiva, y un freno que vive sólo
+en la pantalla deja al chat cargando por atrás.
+
+| estado | qué pasa |
+|---|---|
+| margen **25% o más** | casilla normal |
+| margen **abajo de 25%** | 🚫 no deja, y dice el número |
+| **todavía no medido** | 🚫 tampoco: de lo que no se midió no se sabe si da |
+| **descartado** | 🚫 |
+
+**SIN MEDIR TAMPOCO SE PUEDE, y es el mismo lado seguro de siempre:** cargar algo sin medir es
+apostar plata que no se recupera hasta que llegue la caja. Se mide solo en la vuelta de la noche y
+ahí la casilla se abre.
+
+**LO QUE NO HACE, A PROPÓSITO: sacar solo lo que ya estaba cargado.** Bajarle las unidades sin que
+él lo vea le cambia el total del pedido en silencio, que es el descarte por omisión anotado de
+punta a punta en este archivo. Lo que ya estaba queda **EN ROJO**, se cuenta arriba con su aviso
+(*"N ya no llegan a tu piso y están sumando en el total"*) y tiene un botón **✕ sacarlo del
+pedido**. Y **BAJAR siempre se puede**, aunque el producto ya no dé: si no, lo que se cargó cuando
+todavía daba quedaría trabado adentro del pedido para siempre.
+
+**EL COSTO QUE TIENE Y HAY QUE SABERLO: el panel frena con el número GUARDADO, que puede estar
+viejo.** El Mirada es justo el ejemplo — guardado −4,2%, medido hoy **26,3%**, porque el vendedor
+de ML subió el precio. O sea que el freno puede tapar algo que hoy sí da. **No se afloja por eso**:
+el que sobra por un día vuelve solo en la vuelta de la noche, y el que entra por un número viejo se
+compra. Para el número fresco está `revisarcompra`, que vuelve a preguntar todo sin atajo y es la
+última mirada antes de gastar.
+
+Probado con la función REAL sacada del archivo y 12 casos (el Mirada de los dos lados, 25,0% justo
+entra, 24,9% no, sin medir por cuatro caminos distintos, descartado con 60%, 0% y −100%) y corrido
+el chequeo de las tres listas: **0 funciones y 0 `id` de diferencia, 2 nombres nuevos**.
+
 ## LA ÚLTIMA REVISIÓN ANTES DE GASTAR LOS DÓLARES: `revisarcompra` (19/09/2026)
 
 Pedido suyo: *"tengo que darle la última revisión para estar seguro del pedido, por ejemplo

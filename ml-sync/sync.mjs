@@ -9019,6 +9019,19 @@ async function main() {
         if (hits.length > 1) { problemas.push(`"${p.busca}" → agarra ${hits.length}: ${hits.map(([, c]) => c.nombre).join(' | ')}. Poné una palabra más precisa.`); continue; }
         const [id, c] = hits[0];
         const antes = Number(c.pedirU) || 0;
+        // EL MISMO FRENO QUE EL PANEL, Y TIENE QUE ESTAR EN LOS DOS LADOS (19/09/2026) ──────────
+        // Regla suya: *"Nunca puede suceder eso que la web no permita menos de 25%"*. Si el freno
+        // viviera sólo en la pantalla, este comando seguiría siendo la puerta por la que entra un
+        // producto que no da — que es exactamente lo que pasó con `volver` y el piso de precios,
+        // abierto 23 días, y con el link de ML, que el panel aceptaba porque la regla estaba sólo
+        // escrita. Una regla que vive en un solo lado del sistema no es una regla.
+        // SUBIR se frena; BAJAR y `=baja` siempre se pueden, que es la salida para sacar del
+        // pedido lo que se cargó cuando todavía daba.
+        const mg = Number(c.margen);
+        const puede = c.no ? 'está descartado de la lista'
+          : (c.margen == null || !isFinite(mg)) ? 'todavía no está medido en ML'
+          : (mg < CAND_PISO_PCT) ? `da ${mg.toFixed(1)}% y tu piso es ${CAND_PISO_PCT}%` : '';
+        if (puede && p.u > antes) { problemas.push(`"${p.busca}" → ${c.nombre}: NO se puede pedir, ${puede}`); continue; }
         cambios.push({ id, c, antes, u: p.u, baja: !!p.baja });
       }
       // SI ALGO NO SE ENTENDIÓ, NO SE ESCRIBE NADA. Un pedido cargado a medias es peor que uno sin
