@@ -8798,8 +8798,16 @@ async function main() {
       const APLICAR = /(^|;)go$/.test(_pd);
       const pares = _pd.replace(/^pedir:?/, '').replace(/(^|;)go$/, '').split(';')
         .map((x) => x.trim()).filter(Boolean)
-        .map((x) => { const m = x.match(/^(.+?)=(\d+)$/); return m ? { busca: m[1].trim(), u: parseInt(m[2], 10) } : { busca: x, u: null }; });
-      if (!pares.length) { console.log('Usá: pedir:<palabra>=<unidades>[;<otra>=<u>][;go]  ·  =0 lo saca del pedido'); return; }
+        // `=baja` da de baja el candidato ADEMÁS de ponerlo en cero, y las dos cosas van juntas a
+        // propósito: un candidato descartado que se queda con unidades cargadas es el sobrante que
+        // ya apareció hoy — 9 descartados con unidades colgadas, que el panel no muestra y que
+        // reaparecen si alguno se devuelve a la lista.
+        .map((x) => {
+          const mb = x.match(/^(.+?)=baja$/i);
+          if (mb) return { busca: mb[1].trim(), u: 0, baja: true };
+          const m = x.match(/^(.+?)=(\d+)$/); return m ? { busca: m[1].trim(), u: parseInt(m[2], 10) } : { busca: x, u: null };
+        });
+      if (!pares.length) { console.log('Usá: pedir:<palabra>=<unidades>[;<otra>=<u>][;go]  ·  =0 lo saca del pedido  ·  =baja lo saca Y lo da de baja de la lista'); return; }
       const malForm = pares.filter((p) => p.u == null);
       if (malForm.length) { console.log(`No entendí: ${malForm.map((p) => p.busca).join(' · ')}\nCada uno va como <palabra>=<unidades>, por ejemplo  pedir:mercedes=2;sutoor=2:go`); return; }
       const cands = (await db.get('cyc/candidatos_py')) || {};
@@ -8816,7 +8824,7 @@ async function main() {
         if (hits.length > 1) { problemas.push(`"${p.busca}" → agarra ${hits.length}: ${hits.map(([, c]) => c.nombre).join(' | ')}. Poné una palabra más precisa.`); continue; }
         const [id, c] = hits[0];
         const antes = Number(c.pedirU) || 0;
-        cambios.push({ id, c, antes, u: p.u });
+        cambios.push({ id, c, antes, u: p.u, baja: !!p.baja });
       }
       // SI ALGO NO SE ENTENDIÓ, NO SE ESCRIBE NADA. Un pedido cargado a medias es peor que uno sin
       // cargar: el total de la pantalla queda bien y le falta un renglón, que es el error que no
@@ -8830,7 +8838,8 @@ async function main() {
         const usd = parseFloat(x.c.usd) || 0;
         console.log(`  ${x.antes} u. → ${x.u} u.  ·  US$ ${(usd * x.u).toFixed(2)}  ·  ${x.c.nombre}`
           + (x.c.no ? '   ❌ OJO: este candidato está DESCARTADO' : '')
-          + (x.u > 2 ? '   ⚠️ pasa tu máximo de 2 u. por producto' : ''));
+          + (x.u > 2 ? '   ⚠️ pasa tu máximo de 2 u. por producto' : '')
+          + (x.baja ? '   👎 y lo DOY DE BAJA de la lista (se puede devolver desde el panel)' : ''));
       }
       // El total se arma con la lista ENTERA, no sólo con lo que se toca: lo que ya estaba cargado
       // y no se nombra sigue adentro del pedido, y sin contarlo el total mentiría.
@@ -8852,11 +8861,21 @@ async function main() {
       if (colgados.length) console.log(`   (aparte: ${colgados.length} candidato(s) DESCARTADO(s) tienen unidades viejas cargadas. El panel no los muestra y no van en el pedido: ${colgados.map(([, c]) => c.nombre).slice(0, 6).join(' · ')}${colgados.length > 6 ? ' …' : ''})`);
       if (!APLICAR) { console.log('\nPRUEBA: no escribí nada. Para aplicar, agregá  ;go  al final.'); return; }
       let ok = 0;
-      for (const x of cambios) { try { await db.set(`cyc/candidatos_py/${x.id}/pedirU`, x.u); ok++; } catch (e) { console.log(`   ❌ no pude guardar ${x.c.nombre}: ${e.message}`); } }
+      for (const x of cambios) {
+        try {
+          await db.set(`cyc/candidatos_py/${x.id}/pedirU`, x.u);
+          if (x.baja) {
+            await db.set(`cyc/candidatos_py/${x.id}/no`, true);
+            await db.set(`cyc/candidatos_py/${x.id}/motivo`, 'Dado de baja a mano desde el chat');
+            await db.set(`cyc/candidatos_py/${x.id}/noTs`, Date.now());
+          }
+          ok++;
+        } catch (e) { console.log(`   ❌ no pude guardar ${x.c.nombre}: ${e.message}`); }
+      }
       // SE RELEE DE LA BASE, no se confía en que la escritura haya andado. Es la regla 6 aplicada
       // acá: después de escribir, volver a leer y comparar.
       const rele = (await db.get('cyc/candidatos_py')) || {};
-      const malos = cambios.filter((x) => (Number((rele[x.id] || {}).pedirU) || 0) !== x.u);
+      const malos = cambios.filter((x) => (Number((rele[x.id] || {}).pedirU) || 0) !== x.u || (x.baja && !(rele[x.id] || {}).no));
       console.log(`\n✓ Guardados ${ok} de ${cambios.length}. Releído de la base: ${cambios.length - malos.length} de ${cambios.length} quedaron bien.`);
       for (const x of malos) console.log(`   ❌ ${x.c.nombre} quedó en ${Number((rele[x.id] || {}).pedirU) || 0} y le pedí ${x.u}`);
       return;
