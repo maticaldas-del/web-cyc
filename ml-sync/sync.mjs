@@ -22507,7 +22507,12 @@ async function main() {
               } else if (/PolicyAgent|PA_UNAUTHORIZED_RESULT_FROM_POLICIES/i.test(String(rp.err || ''))) {
                 porQueNo = '\n\n🚫 <b>ML no me deja cambiar el precio de esta publicación.</b>\nNo es un error del robot: ML le cerró la escritura a la aplicación. <b>Subilo vos a mano</b> y miralo en el panel de desarrolladores de ML.';
               } else if (rp.err) {
-                porQueNo = `\n(no pude subirlo solo: ${String(rp.err).replace(/<[^>]*>/g, '').slice(0, 120)})`;
+                // El texto viene de ML y va a un mensaje con formato HTML: un `&` suelto o un `<`
+                // hacen que Telegram conteste 400 y el aviso NO salga. Se escapa, no se recorta a
+                // ciegas — justo este mensaje es el que tiene que llegar cuando algo falla.
+                porQueNo = '\n(no pude subirlo solo: '
+                  + String(rp.err).slice(0, 140).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+                  + ')';
               }
             }
             // si no se pudo subir solo (apagado, tope, catálogo, error…): avisar
