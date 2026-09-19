@@ -22478,6 +22478,12 @@ async function main() {
             // Eso no lo decide el robot solo.
             const enGrupo = palabrasGrupo.some((w) => ((p.name || '') + ' ' + title).toLowerCase().includes(w));
             let done = false;
+            // POR QUÉ NO SE PUDO, en el mensaje. El aviso decía *"(no pude subirlo solo)"* a secas
+            // y eso no distingue un token vencido de ML con la escritura cerrada — que es
+            // exactamente lo que pasó entre el 17 y el 18/09 y tardó dos días en verse. Un error
+            // que no dice el motivo obliga a adivinar, y adivinar sobre precios es lo que este
+            // archivo entero viene tratando de evitar.
+            let porQueNo = '';
             // subir solo: interruptor prendido, dentro del tope de seguridad, sin haberlo tocado
             // hace poco, sin cruzar la barrera de los $33.000, sin pasar el techo y sin ser de un
             // grupo de precio
@@ -22498,6 +22504,10 @@ async function main() {
                   + `${money(rp.from)} a <b>${money(rp.to)}</b> para llegar al ${targetPct}%`
                   + (rp.variantes ? `\n(${rp.variantes} variantes, la lista completa · releído de ML)` : ''));
                 done = true;
+              } else if (/PolicyAgent|PA_UNAUTHORIZED_RESULT_FROM_POLICIES/i.test(String(rp.err || ''))) {
+                porQueNo = '\n\n🚫 <b>ML no me deja cambiar el precio de esta publicación.</b>\nNo es un error del robot: ML le cerró la escritura a la aplicación. <b>Subilo vos a mano</b> y miralo en el panel de desarrolladores de ML.';
+              } else if (rp.err) {
+                porQueNo = `\n(no pude subirlo solo: ${String(rp.err).replace(/<[^>]*>/g, '').slice(0, 120)})`;
               }
             }
             // si no se pudo subir solo (apagado, tope, catálogo, error…): avisar
@@ -22512,7 +22522,7 @@ async function main() {
                     ? '\n\n🛑 <b>NO lo subí solo: es de un grupo de precio.</b>\nSubir uno mueve a todo el grupo.'
                     : (!autoSubeVenta ? '\n(el robot no sube precios solo: está apagado · subeventa:on)' : (mult > MAX_UP
                       ? '\n⚠️ Subida grande (más de +25%), revisalo vos'
-                      : (yaTocado ? '\n(ya lo toqué hace poco)' : '\n(no pude subirlo solo)')));
+                      : (yaTocado ? '\n(ya lo toqué hace poco)' : (porQueNo || '\n(no pude subirlo solo)'))));
               // Mismo canal que la suba: éste es JUSTO el que más falta hacía. Cuando la suba
               // que hace falta pasa el tope del +25% —o sea en los casos PEORES— el robot no
               // toca y avisa… y ese aviso era el que se perdía. La Funda Cubre Colchón vino

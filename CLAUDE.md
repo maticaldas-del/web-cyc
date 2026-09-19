@@ -2492,6 +2492,13 @@ esta vuelta ML aceptó una escritura, sale el 🔓. Sin eso él se queda creyend
 frenado y toca todo a mano al pedo. Ojo con el detalle: hace falta que ML haya aceptado **algo** de
 verdad — una vuelta en la que no hubo nada para escribir **no canta victoria**.
 
+**Y EL AVISO DE CADA VENTA DICE POR QUÉ NO PUDO.** Cuando el robot no logra subir, ya mandaba un
+mensaje por venta con el precio que haría falta (el *"subilo vos"*), pero el motivo decía
+**"(no pude subirlo solo)"** a secas — que no distingue un token vencido de ML con la escritura
+cerrada. **Ése es el mensaje que llegó durante dos días sin que se entendiera qué pasaba.** Ahora,
+cuando el motivo es PolicyAgent, dice *"ML no me deja cambiar el precio de esta publicación · no es
+un error del robot · subilo vos a mano"*, y para cualquier otro error imprime el texto de ML.
+
 **De paso se emparejó el error de `raisePrice` y `raisePriceTo`**, que devolvían `ML-403` a secas.
 `setPriceTo` ya se había arreglado ese mismo día y `raiseVariations` lo hacía desde antes: eran las
 dos copias que quedaban atrás. **Un error que no dice el motivo obliga a adivinar.**
