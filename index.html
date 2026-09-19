@@ -369,7 +369,6 @@ input.qty:focus{border-color:var(--accent2)}
 .pedidos-add{display:flex;gap:10px;flex-wrap:wrap;padding:14px;background:var(--surface);border:1px solid var(--border);border-radius:var(--r);margin-bottom:14px;align-items:center}
 .pedidos-add input,.pedidos-add select{background:var(--surface2);border:1px solid var(--border2);border-radius:6px;color:var(--text);font-family:'DM Mono',monospace;font-size:.74rem;padding:8px 12px;outline:none;transition:border .15s}
 .pedidos-add input:focus,.pedidos-add select:focus{border-color:var(--accent2)}
-.inp-prod{flex:2;min-width:150px}.inp-qty{width:80px}.inp-nota{flex:2;min-width:120px}
 .pedido-filters{display:flex;gap:8px;margin-bottom:14px;flex-wrap:wrap}
 .pf-btn{padding:6px 14px;border-radius:7px;border:1px solid var(--border2);background:var(--surface);font-family:'DM Mono',monospace;font-size:.67rem;cursor:pointer;color:var(--muted);transition:all .15s}
 .pf-btn:hover{border-color:var(--border2);color:var(--text)}
@@ -417,7 +416,6 @@ input.qty:focus{border-color:var(--accent2)}
 .ped-caret{display:inline-block;font-size:.62rem;color:var(--muted);width:16px;text-align:center;flex-shrink:0;transition:transform .15s}
 .ped-card[open] .ped-caret{transform:rotate(180deg)}
 .ped-body{display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding:11px 14px 12px;border-top:1px solid var(--border)}
-.inp-prov{flex:1;min-width:120px}
 .pf-btn.active-prov{background:rgba(56,189,248,.12);color:#38bdf8;border-color:rgba(56,189,248,.25)}
 .pedidos-count{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:14px}
 .pcount{background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:10px 14px;font-size:.65rem;color:var(--muted)}
@@ -912,21 +910,6 @@ footer{margin-top:32px;padding-top:14px;border-top:1px solid var(--border);font-
 
   <!-- ── SECCIÓN BS AS ── -->
   <div id="ped-section-bsas" style="display:none">
-    <div class="stitle">Nuevo pedido</div>
-    <div class="pedidos-add">
-      <input class="inp-prod" id="ped-prod" type="text" placeholder="Producto a pedir" list="vp-prod-list" oninput="pedAutoFill('ped-prod','ped-qty','ped-hint','ped-variante')" onchange="pedAutoFill('ped-prod','ped-qty','ped-hint','ped-variante')" onkeydown="if(event.key==='Enter')addPedido()">
-      <select id="ped-variante" class="cal-select" style="display:none;font-size:.72rem;min-width:120px"><option value="">— variante —</option></select>
-      <input class="inp-qty" id="ped-qty" type="number" min="1" placeholder="Cant." onkeydown="if(event.key==='Enter')addPedido()">
-      <select id="ped-estado" class="cal-select">
-        <option value="pendiente">Urgente</option>
-        <option value="poco_stock">Poco stock</option>
-        <option value="suficiente">Suficiente</option>
-      </select>
-      <input class="inp-nota" id="ped-nota" type="text" placeholder="Nota (opcional)" onkeydown="if(event.key==='Enter')addPedido()">
-      <input class="inp-prov" id="ped-prov" type="text" placeholder="Proveedor (opcional)" onkeydown="if(event.key==='Enter')addPedido()">
-      <button class="btn btn-add" onclick="addPedido()">+ Agregar</button>
-    </div>
-    <div id="ped-hint" style="font-size:.66rem;color:var(--muted);margin:-8px 0 10px;padding:0 4px"></div>
     <div class="pedidos-count" id="pedidos-count"></div>
     <input class="search-box" id="ped-search" type="search" placeholder="Buscar pedido..." oninput="renderPedidos()" style="margin-bottom:10px">
     <div class="pedido-filters">
@@ -940,21 +923,6 @@ footer{margin-top:32px;padding-top:14px;border-top:1px solid var(--border);font-
 
   <!-- ── SECCIÓN PARAGUAY ── -->
   <div id="ped-section-paraguay" style="display:none">
-    <div class="stitle">Nuevo pedido</div>
-    <div class="pedidos-add">
-      <input class="inp-prod" id="ped-py-prod" type="text" placeholder="Producto a pedir" list="vp-prod-list" oninput="pedAutoFill('ped-py-prod','ped-py-qty','ped-py-hint','ped-py-variante')" onchange="pedAutoFill('ped-py-prod','ped-py-qty','ped-py-hint','ped-py-variante')" onkeydown="if(event.key==='Enter')addPedido()">
-      <select id="ped-py-variante" class="cal-select" style="display:none;font-size:.72rem;min-width:120px"><option value="">— variante —</option></select>
-      <input class="inp-qty" id="ped-py-qty" type="number" min="1" placeholder="Cant." onkeydown="if(event.key==='Enter')addPedido()">
-      <select id="ped-py-estado" class="cal-select">
-        <option value="pendiente">Urgente</option>
-        <option value="poco_stock">Poco stock</option>
-        <option value="suficiente">Suficiente</option>
-      </select>
-      <input class="inp-nota" id="ped-py-nota" type="text" placeholder="Nota (opcional)" onkeydown="if(event.key==='Enter')addPedido()">
-      <input class="inp-prov" id="ped-py-prov" type="text" placeholder="Proveedor (opcional)" onkeydown="if(event.key==='Enter')addPedido()">
-      <button class="btn btn-add" onclick="addPedido()">+ Agregar</button>
-    </div>
-    <div id="ped-py-hint" style="font-size:.66rem;color:var(--muted);margin:-8px 0 10px;padding:0 4px"></div>
     <div class="pedidos-count" id="pedidos-py-count"></div>
     <input class="search-box" id="ped-py-search" type="search" placeholder="Buscar pedido..." oninput="renderPedidos()" style="margin-bottom:10px">
     <div class="pedido-filters">
@@ -2275,7 +2243,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='19.72';
+const APP_VERSION='19.73';
 // El problema real que esto resuelve no es curiosidad: es que el celular guarda la app y sigue
 // mostrando la de ayer sin avisar. Varias veces se revisó un cambio que ya estaba subido y no se
 // veía. Por eso, además del número, el chip avisa cuando hay una versión nueva esperando.
@@ -7960,34 +7928,6 @@ function pedGananciaNorm(p){
   return Math.round(ganancia*factor);
 }
 
-function pedAutoFill(prodElId,qtyElId,hintElId,varElId){
-  const hintEl=document.getElementById(hintElId);
-  const qtyEl=document.getElementById(qtyElId);
-  const name=(document.getElementById(prodElId)?.value||'').trim();
-  if(varElId){const vs=document.getElementById(varElId);if(vs){vs.style.display='none';vs.value='';}}
-  if(!name){if(hintEl)hintEl.innerHTML='';return;}
-  const p=prodByName(name);
-  if(!p){if(hintEl)hintEl.innerHTML='';return;}
-  if(varElId){
-    const vs=document.getElementById(varElId);
-    const vars=(p.variantes&&p.variantes.length)?p.variantes:[];
-    if(vs&&vars.length){
-      vs.innerHTML='<option value="">— variante —</option>'+[...vars].sort((a,b)=>a.localeCompare(b,'es',{sensitivity:'base'})).map(v=>`<option>${v}</option>`).join('');
-      vs.style.display='';
-    }
-  }
-  // ventas normalizadas a 30 días (proporcional al historial disponible)
-  const {vendidos,vendidosNorm,diasHistorial,factor}=pedVentasNorm(name);
-  // stock actual (suma todos los depósitos)
-  const stock=stockOf(p);
-  const sugerido=Math.max(0,vendidosNorm-stock);
-  if(sugerido>0&&!qtyEl.value){qtyEl.value=sugerido;}
-  if(hintEl){
-    const color=sugerido>0?'var(--amber)':'var(--green)';
-    const normTxt2=diasHistorial<PED_MAX_DAYS?` <span style="color:var(--muted)">(${vendidos} reales en ${diasHistorial}d ×${factor.toFixed(2)})</span>`:'';
-    hintEl.innerHTML=`Vendidos 30d: <strong>${vendidosNorm}</strong>${normTxt2} · Stock actual: <strong>${stock}</strong> · <span style="color:${color}">Sugerido: <strong>${sugerido}</strong></span>`;
-  }
-}
 let syncPedidosTimer=null;
 async function syncPedidosAuto(){
   // El objetivo de compra ya no es uno solo: depende de cuánto tarde el proveedor de ese producto
@@ -9453,36 +9393,6 @@ function _pedCostoChip(peds){
   const c=_pedsCostoReponer(peds);
   const val=c.ars?fmt(c.ars):'US$'+Math.round(c.usd).toLocaleString('es-AR');
   return `<div class="pcount" title="Plata para comprar las unidades que faltan (costo base, sin envío) · US$${Math.round(c.usd).toLocaleString('es-AR')}"><strong style="color:var(--blue)">${val}</strong>Falta reponer</div>`;
-}
-async function addPedido(){
-  const isBsas=pedidoSection==='bsas';
-  const prodId=isBsas?'ped-prod':'ped-py-prod';
-  const qtyId=isBsas?'ped-qty':'ped-py-qty';
-  const estadoId=isBsas?'ped-estado':'ped-py-estado';
-  const notaId=isBsas?'ped-nota':'ped-py-nota';
-  const provId=isBsas?'ped-prov':'ped-py-prov';
-  const varSelId=isBsas?'ped-variante':'ped-py-variante';
-  const prod=document.getElementById(prodId).value.trim();
-  const qty=parseInt(document.getElementById(qtyId).value)||1;
-  const estado=document.getElementById(estadoId)?.value||'pendiente';
-  const nota=document.getElementById(notaId).value.trim();
-  const proveedor=(document.getElementById(provId)?.value||'').trim();
-  const variante=(document.getElementById(varSelId)?.value||'').trim();
-  if(!prod){document.getElementById(prodId).focus();return;}
-  const id='ped'+Date.now();
-  const path=isBsas?'pedidos/':'pedidos_py/';
-  const obj={id,producto:prod,cantidad:qty,nota,estado,ts:Date.now()};
-  if(proveedor)obj.proveedor=proveedor;
-  if(variante)obj.variante=variante;
-  await fbSet(path+id,obj);
-  await log('Pedido ('+(isBsas?'BS AS':'PY')+'):'+prod+(variante?' ['+variante+']':'')+' x'+qty+(proveedor?' ['+proveedor+']':''));
-  document.getElementById(prodId).value='';
-  document.getElementById(qtyId).value='';
-  document.getElementById(notaId).value='';
-  if(document.getElementById(provId))document.getElementById(provId).value='';
-  const varEl=document.getElementById(varSelId);if(varEl){varEl.value='';varEl.style.display='none';}
-  document.getElementById(prodId).focus();
-  toast('Pedido agregado');
 }
 
 async function setPedidoEstado(id,estado){

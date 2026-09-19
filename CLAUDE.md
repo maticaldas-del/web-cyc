@@ -3934,6 +3934,29 @@ si él le cambia el precio a mano**. Para sacarla: `liquidando:-MLA1782639641:go
   web" para la Lupa 60mm x10 y era el COSTO ($11.638). Se aplicó como precio de venta. No alcanza
   con aplicarlo: hay que mirar el margen que queda ANTES de tocar ML.
 
+- **"NUEVO PEDIDO" A MANO SE SACÓ DE PEDIDOS (19/09/2026).** Decisión suya: *"sacar eso de agregar
+  manual. ya que va a ser todo por el bot o vos"*.
+  Era el formulario de arriba de Pedidos —producto, cantidad, Urgente/Poco stock/Suficiente, nota,
+  proveedor y **+ Agregar**—. **Estaba DOS veces, en Bs As y en Paraguay**, idéntico; él mandó la
+  captura de una sola y se sacaron las dos, porque el motivo que dio ("todo por el bot o vos") no es
+  de una sección. Se sacó el formulario, `addPedido` y `pedAutoFill`, y las cuatro clases de CSS que
+  sólo usaba él (`inp-prod`, `inp-qty`, `inp-nota`, `inp-prov`).
+  **LO QUE NO SE TOCÓ, y son las tres trampas que había adentro:**
+   · **La lista de productos** (`<datalist id="vp-prod-list">`) la sigue usando **el renglón de
+     editar una venta**. Es la MISMA trampa del 18/09 con "Registrar venta", una pantalla más allá.
+   · **La clase `.pedidos-add`** la usan otras **tres** pantallas (líneas 765, 1076 y 1650): se
+     borraron sólo las clases de los campos, no el contenedor.
+   · **`pedVentasNorm` y `PED_MAX_DAYS`** los usan ~25 lugares. `pedAutoFill` era uno más.
+  **Y NO SE TOCÓ NADA DE LOS PEDIDOS `auto:false`** (`togglePedidoOrigen`, el refresco de la nota,
+  `esPedidoPaulvic` con el campo Proveedor). Hoy hay **0 pedidos a mano** de 54 —medido con
+  `revisarpedidos` el 17/09— pero ese código es lo que los mueve de Bs As a Paraguay y lo que hace
+  que un pedido viejo no quede congelado; sacarlo es más riesgo que beneficio.
+  **Los pedidos los sigue armando el panel solo** (`syncPedidosAuto`), que es lo que ya venía
+  pasando: la pantalla no pierde ninguna forma de crear un renglón que se usara.
+  Marcados los bordes a mano (los dos bloques de HTML y el cierre exacto de las dos funciones) y
+  corrido el chequeo de las tres listas **más las clases de CSS**: falta **exactamente** lo que se
+  quiso sacar —2 funciones, 14 `id`, 4 clases— y **0 nombres nuevos**.
+
 - **"REGISTRAR VENTA" SE SACÓ DE VENTAS x PRODUCTO (18/09/2026).** Decisión suya: *"sacar el
   registrar manual, ya que nunca se va a usar. ya se hace automatico (ojo, que siga funcionando
   como viene lo de cargar ventas, simplemente eso no lo uso nunca yo)"*.
