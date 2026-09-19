@@ -2168,6 +2168,12 @@ async function anotarNetoWeb(db, pid, datos, DRY) {
 // puede volverse un permiso para regalar la mercadería.
 let PISO_DURO = 30;
 const PISO_MINIMO_ABSOLUTO = 20;
+// LO ÚNICO QUE NO SE CRUZA NI CON AUTORIZACIÓN EXPRESA: vender abajo del costo total.
+// El piso configurado (hoy 23%) se puede abrir a mano para un caso puntual —ver `_chequeoPiso`—
+// porque a veces conviene resignar margen para volver a vender. Pero un margen NEGATIVO no es una
+// decisión de negocio: es plata que se pierde en cada venta. Para rematar de verdad a 0% o menos
+// está `liquidando`, que lo decide él uno por uno y con la publicación marcada.
+const PISO_AUTORIZADO = 0;
 async function cargarPisoDuro(db) {
   const v = await pisoConfig(db, 30);
   PISO_DURO = Math.max(PISO_MINIMO_ABSOLUTO, v);
@@ -2229,6 +2235,24 @@ function _chequeoNoSubir(itemId) {
 function _chequeoPiso(chequeo) {
   if (!chequeo || typeof chequeo.margen !== 'number' || !isFinite(chequeo.margen)) {
     return { ok: false, err: 'sin-margen-declarado (regla: no se baja sin saber en qué margen queda)' };
+  }
+  // ── LA RED SE ABRE A MANO, PARA UNA PUBLICACIÓN Y CON MOTIVO ESCRITO (19/09/2026) ────────
+  // Quedó anotado el 16/09: *"esa red se abre el día que él quiera aplicar uno, no antes"*. Llegó
+  // ese día con la Tablet Xiaomi Redmi Pad 2 (`MLA1782639641`, Matías): 74 días sin vender, la caja
+  // de compra perdida, y ML pide $425.741 para empatarla — ahí el margen queda en 7,8%, abajo del
+  // piso configurado. Él lo pidió con los dos números a la vista (*"empata la caja"*, y antes
+  // *"hasta ganar o al 10%"*), que es la excepción de la regla 5: la pide ÉL, cada vez.
+  // TRES cosas hacen que esto no se pueda disparar solo:
+  //   · hay que pasar `autorizado` con un TEXTO que diga quién y por qué. Un comando que se olvide
+  //     del campo cae en el piso de siempre, que es el lado seguro;
+  //   · igual NO se vende perdiendo: abajo de `PISO_AUTORIZADO` no baja ni con autorización;
+  //   · se imprime en el log, para que quede el rastro de que se abrió y en cuánto quedó.
+  if (chequeo.autorizado) {
+    if (chequeo.margen < PISO_AUTORIZADO) {
+      return { ok: false, err: `quedaria-en-${chequeo.margen.toFixed(1)}%-y-ni-autorizado-se-vende-abajo-del-${PISO_AUTORIZADO}%` };
+    }
+    console.log(`   ⚠️  PISO ABIERTO A MANO: queda en ${chequeo.margen.toFixed(1)}% (el piso es ${PISO_DURO}%) · ${chequeo.autorizado}`);
+    return { ok: true };
   }
   if (chequeo.margen < PISO_DURO) {
     // Con un decimal a propósito: redondeando, un 29,9% se leía "quedaría en 30%, abajo del piso
@@ -15983,6 +16007,46 @@ async function main() {
         if (r) console.log(r.mg >= MIN * 100
           ? `  ✅ AL PRECIO PARA GANAR LA CAJA TODAVÍA DEJA ${r.mg.toFixed(1)}%, arriba del piso del ${(MIN * 100).toFixed(0)}%: se puede recuperar.`
           : `  ❌ Al precio para ganar la caja el margen cae a ${r.mg.toFixed(1)}%, abajo del piso del ${(MIN * 100).toFixed(0)}%: NO conviene pelearla.`);
+
+        // ── `unapub:<MLA>:<piso>:<días>:empatar[:go]` → BAJAR HASTA EMPATAR LA CAJA (19/09/2026)
+        // Pedido suyo con la Pad 2: *"bajar pad 2 hasta empatar caja"*, después de ver que ganar la
+        // caja la deja en 7,8%. Es la excepción de la regla 5, y la pide él cada vez.
+        // VA ACÁ ADENTRO Y NO EN UN COMANDO NUEVO a propósito: el precio de la caja y su margen ya
+        // están calculados dos renglones más arriba, con `margenA`. Un comando aparte sería una
+        // segunda copia de la cuenta que decide un precio — el error anotado siete veces.
+        if (_u.includes('empatar')) {
+          const _GO = _u.includes('go');
+          // SE REDONDEA PARA ABAJO, no para arriba. `setPriceTo` hace `Math.ceil` a la decena, así
+          // que pasarle los $425.741 tal cual dejaría $425.750 — NUEVE PESOS MÁS CARO que lo que ML
+          // pide, o sea sin empatar nada. Bajando a la decena de abajo queda en el precio o debajo.
+          const _pw = Math.floor(Number(ptw.price_to_win) / 10) * 10;
+          const _r2 = await margenA(_pw, envioMax);
+          console.log(`\n── EMPATAR LA CAJA ──`);
+          if (!_r2) { console.log('  ML no me dio la comisión a ese precio. No toco nada.'); return; }
+          console.log(`  ${money(Math.round(b.price || 0))} → ${money(_pw)}  (−${((1 - _pw / (b.price || 1)) * 100).toFixed(1)}%) · queda en ${_r2.mg.toFixed(1)}%`);
+          console.log(`  Por unidad pasás de ganar ${money(Math.round((hoy && (hoy.neto - costo - hoy.mlx)) || 0))} a ${money(Math.round(_r2.neto - costo - _r2.mlx))}.`);
+          if (!_GO) { console.log(`\n  PRUEBA: no toqué nada. Para aplicar: unapub:${MLA}:${(MIN * 100).toFixed(0)}:${DIAS}:empatar:go`); return; }
+          // LA MARCA `liquidando` VA ANTES DE BAJAR, Y SI FALLA NO SE BAJA. Al quedar abajo del
+          // piso, la PRIMERA venta dispara la suba automática y el robot deshace la decisión — es
+          // exactamente lo que pasó con el Pendrive el 12/09. Bajar sin la marca es dejar el
+          // precio bajo y que se lo vuelvan a subir solo: lo peor de los dos mundos.
+          try {
+            await db.patch('cyc/nosubir/' + MLA, { fecha: new Date().toISOString().slice(0, 10),
+              motivo: `bajado a mano para empatar la caja (queda en ${_r2.mg.toFixed(1)}%)` });
+            console.log(`  🔒 marcada "liquidando": el robot NO le va a subir el precio.`);
+          } catch (eM) { console.log(`  ❌ no pude marcarla como "liquidando" (${String(eM.message || eM).slice(0, 80)}). NO la bajo: la primera venta te la subiría sola.`); return; }
+          const _res = await setPriceTo(MLA, null, _pw, t.access_token, { margen: _r2.mg,
+            autorizado: `lo pidió Matías para empatar la caja de compra (${MLA})` });
+          console.log(_res.ok ? `  ✓ ${money(_res.from)} → ${money(_res.to)}` : `  ❌ NO se bajó: ${_res.err}`);
+          // RELEER DE ML. Que el PUT conteste OK no alcanza: es la regla 6 del panel.
+          try {
+            const _v = await mlGet('/items/' + MLA + '?attributes=id,price', t.access_token);
+            console.log(`  releído de ML: ${money(Math.round(_v.price))}`);
+            const _c2 = await mlGet('/items/' + MLA + '/price_to_win?version=v2', t.access_token);
+            console.log(`  caja de compra ahora: ${_c2?.status || '?'}${_c2?.price_to_win ? ` · para ganar ${money(Math.round(_c2.price_to_win))}` : ''}`);
+          } catch (eR) { console.log(`  no pude releerlo de ML: ${String(eR.message || eR).slice(0, 80)}`); }
+          return;
+        }
       }
       // Precio para el piso
       const den = 1 - cuo - m * (1 + MIN);
