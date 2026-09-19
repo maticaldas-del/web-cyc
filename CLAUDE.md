@@ -2248,6 +2248,62 @@ Probado con la función REAL sacada del archivo y 12 casos (el Mirada de los dos
 entra, 24,9% no, sin medir por cuatro caminos distintos, descartado con 60%, 0% y −100%) y corrido
 el chequeo de las tres listas: **0 funciones y 0 `id` de diferencia, 2 nombres nuevos**.
 
+## EL PEDIDO SE MANEJA DESDE LA PANTALLA: TOPE, UNIDADES Y LLENADO (19/09/2026)
+
+Pedido suyo: *"quiero poder modificar el pedido. sacar productos, modificar u, tope del pedido,
+vaciar pedido, llenar hasta el tope con los mejores productos, poder elegir tope de unidades por
+producto"*.
+
+**ESTO DA VUELTA SU DECISIÓN DEL 18/09, Y ES A PROPÓSITO.** Ese día sacó el tope y el máximo por
+producto —*"sin tope solo una barra que marque el total del pedido, ya que el tope se lo digo yo en
+el chat"*— y borró el llenado automático: *"no que la web lo arme. que permita que el otro chat lo
+arme"*. **La diferencia es quién aprieta el botón.** Allá la pantalla ponía un límite que él no
+había pedido y armaba la lista sola al dibujarse (*"un límite que la pantalla inventa es la
+pantalla decidiendo"*); acá los tres números los tipea él y el llenado es un botón que aprieta
+cuando quiere. La web sigue sin decidir nada sola.
+
+**Los tres números viven en `cyc/mlconfig`** (`pedTopeUSD` 500 · `pedMaxU` 2 · `pedMinVent` 100) y
+se tipean arriba de "Armar el pedido".
+
+**NINGUNO DE LOS DOS TOPES FRENA, y eso importa.** La barra se pone roja y dice por cuánto te
+pasás; la casilla que supera el máximo por producto se pone en ámbar. Los dos dejan seguir. **Hoy
+mismo el pedido se pasó US$ 24,70 a propósito** porque él pidió *"agregalo 2 unidades sin sacar
+nada"* con el Adyan Oud: un tope duro le habría comido esa decisión. **El único freno duro sigue
+siendo el 25%**, que es el que evita comprar para vender perdiendo.
+
+### EL BOTÓN 🪄 LLENAR HASTA EL TOPE
+
+**"Los mejores" es la plata que deja cada DÓLAR gastado, no la que deja cada unidad.** Es el mismo
+criterio con el que se armó a mano el pedido del 19/09, ahora escrito en el código en vez de en mi
+cabeza: el Mercedes-Benz Club Black deja $83.029 por unidad y el JBL Tour One $185.032, pero cuestan
+US$ 32,75 y US$ 128 — con los mismos dólares el Mercedes devuelve casi el triple. **Con presupuesto
+fijo, ordenar por unidad hace comprar caro.**
+
+ · **SÓLO SUMA, NUNCA SACA.** Lo que él cargó a mano se queda; bajarle unidades para meter otra
+   cosa sería la web deshaciendo su decisión. Para empezar de cero está **🗑️ Vaciar el pedido**.
+ · **No se corta en el primero que no entra:** uno barato más abajo en la lista todavía puede
+   aprovechar los dólares que sobran.
+ · **Pasa por el MISMO `candPuedePedir` del 25%** y además exige la vara de ventas. **Un candidato
+   sin el número de ventas cargado NO entra**: no se puede decir que algo es "de los mejores" sin
+   saber si se vende. Cuántos quedaron afuera por eso se dice en el aviso — un descarte mudo es el
+   error anotado de punta a punta acá.
+ · **La vara de ventas hacía falta para que "mejores" quiera decir algo.** Sin ella el llenado
+   metía primero el Mirada Verato Night (41,3% de margen y **0 ventas**) y el Al Wataniah (29,2%,
+   0 ventas).
+
+**Y las ventas salen de UNA función (`candVentasDe`)** que usan el renglón y el llenado: con dos
+copias la tarjeta podía decir 100 y el llenado descartarlo por tener 0.
+
+**La cuenta va aparte de la pantalla (`pedLlenarPlan`)** para poder probarla con la función REAL y
+no con una copia — que es la regla de este archivo. Probado con **los 21 productos REALES del pedido
+de hoy** y 25 casos: de cero llena 12 productos en US$ 494,30 sin pasarse · el Mercedes sale primero
+y el JBL no entra · respeta las unidades ya cargadas a mano · topes de 500/1000, máximos de 1/2/4 y
+varas de 0/100/5000 · no se corta en el primero que no entra · y no entran el de 24,9%, el
+descartado, el sin precio, el sin ganancia ni el sin margen medido.
+**Y una prueba estaba MAL planteada, no el código:** daba por hecho que con la vara en 0 el Verato
+Night tenía que entrar, y con tope 500 queda afuera **por presupuesto**. Para medir un filtro hay
+que sacar del medio al otro — si no, el resultado no dice cuál de los dos actuó.
+
 ## LA ÚLTIMA REVISIÓN ANTES DE GASTAR LOS DÓLARES: `revisarcompra` (19/09/2026)
 
 Pedido suyo: *"tengo que darle la última revisión para estar seguro del pedido, por ejemplo

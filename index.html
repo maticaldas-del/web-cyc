@@ -2275,7 +2275,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='19.71';
+const APP_VERSION='19.72';
 // El problema real que esto resuelve no es curiosidad: es que el celular guarda la app y sigue
 // mostrando la de ayer sin avisar. Varias veces se revisó un cambio que ya estaba subido y no se
 // veía. Por eso, además del número, el chip avisa cuando hay una versión nueva esperando.
@@ -8571,6 +8571,40 @@ const CAND_VENCE_DIAS=45;
 // botón para sacarlo de un toque. Y BAJAR siempre se puede, aunque el producto ya no dé: si no,
 // lo que se cargó cuando todavía daba quedaría trabado adentro del pedido para siempre.
 const CAND_PISO_PCT=25;
+// ── LOS TRES NÚMEROS DEL PEDIDO LOS ELIGE ÉL, Y VIVEN EN LA BASE (19/09/2026) ────────
+// Pedido suyo: *"tope del pedido (…) poder elegir tope de unidades por producto"*.
+// ESTO DA VUELTA SU DECISIÓN DEL 18/09 —*"sin tope solo una barra que marque el total del pedido,
+// ya que el tope se lo digo yo en el chat"*— y es a propósito: allá el tope lo ponía la PANTALLA
+// sola (*"un límite que la pantalla inventa es la pantalla decidiendo"*), acá los tres números los
+// tipea él y se guardan. Es la diferencia entre que la web decida y que la web le haga la cuenta.
+// POR ESO NINGUNO DE LOS DOS TOPES FRENA: avisan en rojo y siguen dejando cargar. Hoy mismo el
+// pedido se pasó US$ 24,70 a propósito, porque él pidió sumar el Adyan Oud sin sacar nada — un
+// tope duro le habría comido esa decisión. El ÚNICO freno duro sigue siendo el 25%, que es el que
+// evita vender perdiendo.
+// La vara de ventas la puso él el 19/09 (*"que todos tengan más de 100 ventas en ML"*) y acá hace
+// falta además para que *"los mejores"* quiera decir algo: sin ella el llenado automático metería
+// primero los que tienen 0 ventas y 41% de margen.
+const PED_TOPE_USD=500, PED_MAX_U=2, PED_MIN_VENT=100;
+const pedTopeUSD =()=>{const v=parseFloat((state.mlconfig||{}).pedTopeUSD); return (isFinite(v)&&v>0)?v:PED_TOPE_USD;};
+const pedMaxU    =()=>{const v=parseInt((state.mlconfig||{}).pedMaxU);      return (isFinite(v)&&v>0)?v:PED_MAX_U;};
+const pedMinVent =()=>{const v=parseInt((state.mlconfig||{}).pedMinVent);   return (isFinite(v)&&v>=0)?v:PED_MIN_VENT;};
+async function pedNuevosCfg(campo,valor){
+  const n=parseFloat(valor);
+  if(!isFinite(n)||n<0){renderPedidos();return;}
+  if(!state.mlconfig)state.mlconfig={};
+  state.mlconfig[campo]=n;
+  await fbSet('mlconfig/'+campo,n);
+  renderPedidos();
+}
+// LAS VENTAS SALEN DE UNA SOLA FUNCIÓN, que usan el renglón y el llenado automático. Con dos
+// copias, la tarjeta podría decir 100 y el llenado descartarlo por tener 0 — el error anotado
+// nueve veces en este archivo.
+function candVentasDe(c){
+  if(!c)return null;
+  const vChat=(c.vendCarga!=null&&isFinite(c.vendCarga))?Number(c.vendCarga):null;
+  const vBot=(c.mlVendidas!=null&&isFinite(c.mlVendidas))?Number(c.mlVendidas):null;
+  return vChat!=null?vChat:vBot;
+}
 function candPuedePedir(c){
   if(!c)return{ok:false,motivo:'no existe'};
   if(c.no)return{ok:false,motivo:'está descartado de la lista'};
@@ -8666,7 +8700,7 @@ function candPreciosHTML(c){
   // "no vende nada" y es la diferencia entre descartar un producto y no haberlo medido.
   const vChat=(c.vendCarga!=null&&isFinite(c.vendCarga))?Number(c.vendCarga):null;
   const vBot=(c.mlVendidas!=null&&isFinite(c.mlVendidas))?Number(c.mlVendidas):null;
-  const vUsa=vChat!=null?vChat:vBot;
+  const vUsa=candVentasDe(c);
   if(vUsa!=null){
     L.push(`🛒 <b style="color:${vUsa>=25?'var(--green)':'var(--amber)'}">${vUsa}</b> vendida${vUsa===1?'':'s'} en ML`
       +(vChat!=null&&vBot!=null&&vBot!==vChat?` <span style="color:var(--amber)">(el robot ve ${vBot})</span>`:''));
@@ -8718,6 +8752,66 @@ async function candSetPedir(id,v){
   await fbSet('candidatos_py/'+id+'/pedirU',n);
   renderPedidos();
 }
+// ── LLENAR HASTA EL TOPE CON LOS MEJORES (19/09/2026) ────────────────────────────────
+// Pedido suyo: *"llenar hasta el tope con los mejores productos"*.
+//
+// "LOS MEJORES" ES LA PLATA QUE DEJA CADA DÓLAR GASTADO, no la que deja cada unidad. Con un
+// presupuesto fijo ordenar por unidad hace comprar caro: el Mercedes-Benz Club Black deja $83.029
+// por unidad y el JBL Tour One $185.032, pero el Mercedes cuesta US$ 32,75 y el JBL US$ 128 — con
+// los mismos dólares el Mercedes devuelve el triple. Es el MISMO criterio con el que se armó a
+// mano el pedido del 19/09, ahora escrito en el código en vez de en mi cabeza.
+//
+// SÓLO SUMA, NUNCA SACA. Lo que él ya cargó a mano se queda: bajarle unidades para meter otra cosa
+// sería la web deshaciendo su decisión. Para empezar de cero está "Vaciar el pedido".
+//
+// Y NO ELIGE LO QUE NO SE PUEDE MEDIR: pasa por el mismo `candPuedePedir` del 25%, y además exige
+// la vara de ventas. Un candidato SIN el número de ventas cargado no entra — no se puede decir que
+// algo es "de los mejores" sin saber si se vende. Se dicen cuántos quedaron afuera por eso.
+// LA CUENTA VA APARTE DE LA PANTALLA, para poder probarla con la función REAL y no con una copia
+// —la regla de este archivo—. `pedNuevosLlenar` pregunta y escribe; ésta sólo decide.
+function pedLlenarPlan(vivos,tope,maxU,minV){
+  let sinVentas=0, flojos=0;
+  const elegibles=(vivos||[]).filter(c=>{
+    if(!candPuedePedir(c).ok)return false;
+    if(!((parseFloat(c.usd)||0)>0)||!(Number(c.ganancia)>0))return false;
+    const v=candVentasDe(c);
+    if(v==null){sinVentas++;return false;}
+    if(v<minV){flojos++;return false;}
+    return true;
+  }).sort((a,b)=>(Number(b.ganancia)/parseFloat(b.usd))-(Number(a.ganancia)/parseFloat(a.usd)));
+  let total=(vivos||[]).reduce((t,c)=>t+(parseFloat(c.usd)||0)*Math.max(0,parseInt(c.pedirU)||0),0);
+  const suma=[];
+  for(const c of elegibles){
+    const usd=parseFloat(c.usd)||0;
+    const antes=Math.max(0,parseInt(c.pedirU)||0);
+    let u=antes;
+    // No se corta en el primero que no entra: uno barato más abajo en la lista todavía puede
+    // aprovechar los dólares que quedan.
+    while(u<maxU&&total+usd<=tope+0.0001){u++;total+=usd;}
+    if(u>antes)suma.push({c,antes,u});
+  }
+  return {suma,total:Math.round(total*100)/100,sinVentas,flojos};
+}
+async function pedNuevosLlenar(){
+  const tope=pedTopeUSD(), maxU=pedMaxU(), minV=pedMinVent();
+  const vivos=candList().filter(c=>!c.no&&!c.prodId);
+  const {suma,total,sinVentas,flojos}=pedLlenarPlan(vivos,tope,maxU,minV);
+  if(!suma.length){
+    alert(`No hay nada para agregar.\n\nTope: US$ ${tope.toFixed(2)} · ya cargado: US$ ${total.toFixed(2)}\n\n`
+      +(sinVentas?`${sinVentas} candidato(s) quedaron afuera porque no tienen cargadas las ventas de ML.\n`:'')
+      +(flojos?`${flojos} no llegan a tus ${minV} ventas.\n`:'')
+      +`\nSi querés más, subí el tope o el máximo por producto.`);
+    return;
+  }
+  const uNuevas=suma.reduce((n,x)=>n+(x.u-x.antes),0);
+  const det=suma.slice(0,12).map(x=>`  +${x.u-x.antes} u. · US$ ${(parseFloat(x.c.usd)*(x.u-x.antes)).toFixed(2)} · ${x.c.nombre}`).join('\n');
+  if(!confirm(`Agregar ${uNuevas} unidad(es) en ${suma.length} producto(s)?\n\n${det}${suma.length>12?`\n  …y ${suma.length-12} más`:''}\n\n`
+    +`El pedido queda en US$ ${total.toFixed(2)} de US$ ${tope.toFixed(2)}.\n`
+    +`No saco nada de lo que ya cargaste.`))return;
+  for(const x of suma){x.c.pedirU=x.u;await fbSet('candidatos_py/'+x.c.id+'/pedirU',x.u);}
+  renderPedidos();
+  toast(`Agregadas ${uNuevas} u. · el pedido queda en US$ ${total.toFixed(2)}`);
+}
 async function pedNuevosVaciar(){
   const con=candList().filter(c=>(parseInt(c.pedirU)||0)>0);
   if(!con.length)return;
@@ -8740,6 +8834,8 @@ function pedNuevos(vivos){
 function pedNuevosHTML(vivos){
   const P=pedNuevos(vivos), tc=curTC();
   const puesto=Math.round(P.crudo*RECARGO_PY*100)/100;
+  const tope=pedTopeUSD(), maxU=pedMaxU(), minV=pedMinVent();
+  const pasa=Math.round((P.crudo-tope)*100)/100;
   const conCod=P.filas.filter(f=>String(f.c.cod||'').trim());
   const txt=conCod.map(f=>`${String(f.c.cod).trim()} x ${f.u}`).join('\n');
   return `<div style="margin:14px 0 4px;padding:12px 13px;background:var(--surface2);border-radius:10px;border:1px solid var(--border)">
@@ -8755,8 +8851,32 @@ function pedNuevosHTML(vivos){
         con el 15% son <b style="color:var(--text)">US$ ${puesto.toFixed(2)}</b>${tc?` · ${fmt(Math.round(puesto*tc))}`:''}
         <br>${P.filas.length} producto${P.filas.length===1?'':'s'} · ${P.unidades} unidad${P.unidades===1?'':'es'}${P.ganancia>0?` · si se vende todo deja <b style="color:var(--green)">${fmt(Math.round(P.ganancia))}</b>`:''}
       </div>
+      <div style="margin-top:8px">
+        <div style="height:9px;background:var(--surface2);border-radius:5px;overflow:hidden">
+          <div style="height:100%;width:${Math.min(100,tope>0?P.crudo/tope*100:0).toFixed(1)}%;background:${pasa>0?'var(--red)':'var(--green)'};transition:width .2s"></div>
+        </div>
+        <div style="font-size:.62rem;margin-top:4px;color:${pasa>0?'var(--red)':'var(--muted)'}">
+          ${pasa>0?`🔴 <b>te pasás por US$ ${pasa.toFixed(2)}</b> de tu tope de US$ ${tope.toFixed(2)} — igual te dejo seguir, el tope lo decidís vos`
+            :`de tu tope de <b style="color:var(--text)">US$ ${tope.toFixed(2)}</b> · te quedan <b style="color:var(--green)">US$ ${(tope-P.crudo).toFixed(2)}</b>`}
+        </div>
+      </div>
       ${P.sinPrecio.length?`<div style="font-size:.62rem;color:var(--red);margin-top:5px">⚠️ ${P.sinPrecio.length} sin precio cargado: no suman al total, así que el número de arriba está corto.</div>`:''}
       ${P.noDan.length?`<div style="font-size:.62rem;color:var(--red);margin-top:5px">🚫 <b>${P.noDan.length} ya no llega(n) a tu piso de ${CAND_PISO_PCT}%</b> y están sumando en el total. Se cargaron cuando todavía daban. No los saco solo: abajo tienen el botón.</div>`:''}
+    </div>
+    <div style="display:flex;gap:7px;flex-wrap:wrap;align-items:flex-end;margin-bottom:9px">
+      ${[['pedTopeUSD',tope,'Tope del pedido (US$)','Hasta cuántos dólares de mercadería CRUDA (sin el 15%) querés gastar. No frena: si te pasás lo dice en rojo y seguís.'],
+         ['pedMaxU',maxU,'Máx. u. por producto','Cuántas unidades como mucho de cada producto pone el botón de llenar. A mano podés cargar más: sólo avisa.'],
+         ['pedMinVent',minV,'Mín. vendidas en ML','Tu vara para este pedido. El botón de llenar no agarra nada que venda menos, ni nada sin el dato cargado.']]
+        .map(([k,v,t,ay])=>`<label style="flex:1;min-width:105px" title="${ay}">
+          <div style="font-size:.58rem;color:var(--muted);line-height:1.3;margin-bottom:3px">${t}</div>
+          <input type="number" min="0" step="${k==='pedTopeUSD'?'10':'1'}" value="${v}" onchange="pedNuevosCfg('${k}',this.value)"
+            style="width:100%;font-size:.72rem;padding:5px 7px;background:var(--surface2);border:1px solid var(--border);border-radius:6px;color:var(--text)">
+        </label>`).join('')}
+    </div>
+    <div style="display:flex;gap:7px;flex-wrap:wrap;margin-bottom:9px">
+      <button class="btn btn-add" style="font-size:.66rem;padding:6px 12px" onclick="pedNuevosLlenar()"
+        title="Agrega los que más plata dejan por cada dólar gastado hasta llegar al tope. NO saca nada de lo que ya cargaste, y sólo agarra los que pasan el ${CAND_PISO_PCT}% y tu vara de ventas.">🪄 Llenar hasta el tope</button>
+      ${P.filas.length?`<button class="btn" style="font-size:.66rem;padding:6px 12px;color:var(--red);border-color:rgba(239,68,68,.35)" onclick="pedNuevosVaciar()">🗑️ Vaciar el pedido</button>`:''}
     </div>
     ${P.filas.length?P.filas.map(f=>`<div class="ingreso-item" style="gap:10px;align-items:center">
       <div style="flex:1;min-width:150px">
@@ -8768,9 +8888,16 @@ function pedNuevosHTML(vivos){
           ${candPuedePedir(f.c).ok?'':`<br><span style="color:var(--red);font-weight:700">🚫 ${candPuedePedir(f.c).motivo}</span> · <a href="#" onclick="event.preventDefault();candSetPedir('${f.c.id}',0)" style="color:var(--red);font-weight:700">sacarlo del pedido</a>`}
         </div>
       </div>
-      <div style="text-align:right;font-size:.68rem;white-space:nowrap">
-        <b>${f.u} u.</b>
-        <div style="color:var(--muted)">${f.usd>0?'US$ '+(f.usd*f.u).toFixed(2):'—'}</div>
+      <div style="text-align:right;font-size:.68rem;white-space:nowrap;display:flex;align-items:center;gap:6px">
+        <div>
+          <input type="number" min="0" step="1" value="${f.u}" onchange="candSetPedir('${f.c.id}',this.value)"
+            title="Las unidades de este producto. Se puede cambiar de acá o desde su tarjeta: es la misma casilla."
+            style="width:52px;font-size:.7rem;padding:4px 6px;text-align:center;background:var(--surface2);border:1px solid ${f.u>maxU?'var(--amber)':'var(--border)'};border-radius:6px;color:var(--text)"> u.
+          <div style="color:var(--muted);font-size:.9em;margin-top:2px">${f.usd>0?'US$ '+(f.usd*f.u).toFixed(2):'—'}</div>
+          ${f.u>maxU?`<div style="color:var(--amber);font-size:.85em;margin-top:2px">pasa tu máximo de ${maxU}</div>`:''}
+        </div>
+        <button class="btn" title="Sacarlo del pedido. No lo descarta de la lista: queda para volver a cargarlo." onclick="candSetPedir('${f.c.id}',0)"
+          style="font-size:.7rem;padding:3px 8px;color:var(--red);border-color:rgba(239,68,68,.35)">✕</button>
       </div>
     </div>`).join('')
     :`<div style="font-size:.64rem;color:var(--muted);padding:2px 0 4px">Todavía no cargaste ninguno. Poné las unidades en los productos de abajo y el pedido se arma solo acá.</div>`}
@@ -8778,7 +8905,6 @@ function pedNuevosHTML(vivos){
       <div style="font-size:.63rem;color:var(--muted);margin-bottom:5px">Para mandarle a <strong>Nissei</strong> — código y unidades${P.sinCod.length?` · <span style="color:var(--amber)">${P.sinCod.length} no entra(n): falta cargarle el código</span>`:''}</div>
       <textarea readonly onclick="this.select()" style="width:100%;min-height:${Math.min(160,22+conCod.length*17)}px;background:rgba(0,0,0,.28);border:1px solid var(--border2);border-radius:6px;color:var(--text);font-family:'DM Mono',monospace;font-size:.7rem;padding:7px 9px;resize:vertical">${txt}</textarea>
     </div>`:''}
-    ${P.filas.length?`<div style="margin-top:9px"><button class="btn" style="font-size:.6rem;padding:4px 10px" onclick="pedNuevosVaciar()">Vaciar el pedido</button></div>`:''}
   </div>`;
 }
 // ── SIMULADOR REAL DE PRECIO (18/09/2026) ─────────────────────────────────────────────────
