@@ -1914,6 +1914,27 @@ adivinando un número que el sistema ya sabe.
 > · El robot sigue pidiéndolas como CRUCE por si ML lo abre algún día: si los dos números existen
 >   y no coinciden, la tarjeta dice **"(el robot ve N)"**.
 
+### NADA DE ENVÍOS INTERNACIONALES (19/09/2026)
+
+Regla suya, avisada mientras el chat barría comprasparaguay: **"estaba tomando envíos
+internacionales. esos no quiero que se fije."** Ya se lo dijo al chat esa vez; **va en el próximo
+`PROMPT GUAY`** para no tener que repetirlo.
+
+> **NO MIRES PUBLICACIONES DE ENVÍO INTERNACIONAL.** Las de vendedores de afuera (las que dicen
+> *"Envío internacional"*, tardan semanas y salen del exterior) no cuentan: no es contra ésas que
+> competimos. Si el más barato de un catálogo es internacional, **saltealo y tomá el más barato
+> ARGENTINO** — y si no hay ninguno argentino, el producto no sirve para medir.
+
+**Y LO QUE HAY QUE MIRAR ACÁ, QUE ÉL NO PIDIÓ PERO SE DESPRENDE SOLO: el ROBOT tiene el mismo
+problema y es peor, porque nadie lo ve.** `candidatos` mide el margen **contra el MÁS BARATO de la
+ficha** (`Math.min` de los precios que devuelve `/products/<id>/items`) y **no mira de dónde es ese
+vendedor**. Si el más barato es internacional, el margen sale hundido contra un precio que no es el
+que hay que igualar — y con el freno de las dos mediciones ese producto termina descartado.
+**Es candidato a explicar los márgenes muy negativos** que aparecieron el 19/09 (Antonio Banderas
+King Of Seduction −18,3%, Lattafa Khamrah −18,2%, Armaf Yum Yum −16,3%). **No está medido todavía**:
+hay que ver primero si la respuesta de ML trae con qué distinguirlos (un campo de logística o de
+país del vendedor). Si no lo trae, no se puede filtrar y hay que decirlo, no inventarlo.
+
 ### EL FRENO DE LAS DOS MEDICIONES ESTABA DESACTIVADO, Y EL RESCATE DIO CERO (19/09/2026)
 
 Salió al revisar lo que cargó el chat de compras. **De 69 candidatos, 39 estaban tachados y el
