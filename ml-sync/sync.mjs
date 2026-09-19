@@ -3161,7 +3161,11 @@ async function correrCandidatos(db, products, labels, accounts, soloPrueba, prue
       if (ref && ref.listing_type_id) lt = ref.listing_type_id;
       // El MÁS CARO de la ficha. Con el más barato arma el RANGO, que es lo único honesto que se
       // puede decir de "a cuánto se vende" en un catálogo donde todavía no vendemos: la lista
-      // viene ordenada por precio y NO dice cuál gana la caja (probado el 18/09).
+      // NO dice cuál gana la caja (probado el 18/09).
+      // ESTA LÍNEA DECÍA "la lista viene ordenada por precio" Y ES FALSO (medido el 19/09 con
+      // `verofertas`): en el catálogo del JBL Partylight Beam el renglón 13 venía a $234.999
+      // después de uno de $273.999. No cambia ningún resultado porque acá se usa `Math.min` y
+      // `Math.max`, pero el que lea esto y confíe en el orden se va a equivocar.
       mlMax = precios.length ? Math.round(Math.max(...precios)) : 0;
       // Las VENTAS, en una sola consulta para todos los vendedores de esta ficha (ver arriba).
       // Si ML no contesta, quedan en null y la pantalla dice que no las sabe: un CERO acá se

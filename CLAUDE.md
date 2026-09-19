@@ -1925,8 +1925,25 @@ internacionales. esos no quiero que se fije."** Ya se lo dijo al chat esa vez; *
 > competimos. Si el más barato de un catálogo es internacional, **saltealo y tomá el más barato
 > ARGENTINO** — y si no hay ninguno argentino, el producto no sirve para medir.
 
-**Y LO QUE HAY QUE MIRAR ACÁ, QUE ÉL NO PIDIÓ PERO SE DESPRENDE SOLO: el ROBOT tiene el mismo
-problema y es peor, porque nadie lo ve.** `candidatos` mide el margen **contra el MÁS BARATO de la
+**MEDIDO EL MISMO DÍA CON `verofertas` (comando nuevo, solo lee): SE PUEDEN DISTINGUIR, Y EN LOS
+DOS CATÁLOGOS PROBADOS NO HABÍA NINGUNO.** ML devuelve **`international_delivery_mode`** en cada
+oferta, más la **provincia** del vendedor. En el Azzaro Forever Wanted Elixir (15 vendedores) y en
+el JBL Partylight Beam (16), **los 31 dieron `international_delivery_mode=none` y provincia
+argentina** (Buenos Aires, Misiones, Córdoba, Tucumán, Santa Fe, Capital).
+**O SEA QUE MI HIPÓTESIS NO SE SOSTIENE con estos datos:** los márgenes de −18% NO se explican por
+vendedores internacionales, al menos no en los que se midieron. El Azzaro da 10,4% midiendo contra
+un vendedor argentino. **Queda por medir en los catálogos que dieron NEGATIVO**, que son otros.
+**Lo que sí quedó probado es que el filtro SE PUEDE escribir** el día que aparezca uno: el campo
+existe y viene en todas las ofertas. Escribirlo ahora sería un filtro que no filtra nada.
+Dos cosas más que salieron de la misma corrida:
+ · **`/items/<MLA>` de una publicación ajena también da 403**, no sólo `/items?ids=`. Ya está
+   probado por las dos vías: las ventas de publicaciones ajenas no se pueden leer y punto.
+ · **La lista de ofertas NO viene ordenada por precio**, aunque un comentario del código lo decía:
+   en el JBL el renglón 13 venía a $234.999 después de uno de $273.999. No cambia ningún resultado
+   (se usa `Math.min`/`Math.max`), pero el comentario estaba mal y se corrigió.
+
+**EL RIESGO DE FONDO SIGUE EN PIE, aunque hoy no haya mordido: el ROBOT no mira de dónde es el
+vendedor.** `candidatos` mide el margen **contra el MÁS BARATO de la
 ficha** (`Math.min` de los precios que devuelve `/products/<id>/items`) y **no mira de dónde es ese
 vendedor**. Si el más barato es internacional, el margen sale hundido contra un precio que no es el
 que hay que igualar — y con el freno de las dos mediciones ese producto termina descartado.
