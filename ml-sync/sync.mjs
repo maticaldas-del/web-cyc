@@ -3002,7 +3002,15 @@ const CAND_MAX_ML = 40;         // tope de consultas a ML por vuelta (ver abajo)
 // `mlComision`, que se escribieron y NO se guardaron en ninguno de los 27 porque el `if` no los
 // nombraba. Acordarse de agregar cada campo a una condición es justo lo que falló las dos veces:
 // por eso ahora es UN solo número y no una lista que se puede quedar corta.
-const CAND_CALC_VER = 4;
+//
+// PASÓ UNA TERCERA VEZ EL MISMO DÍA, Y CASI SE ME ESCAPA: al agregar el filtro de vendedores del
+// exterior (`esOfertaDeAfuera`) cambió la CUENTA, no un campo — y el atajo de "ya tiene la cuenta
+// hecha" sólo agarra a los que DAN, o sea que los cuatro catálogos que hoy miden bien porque el
+// más barato es de afuera (Hamidi Addicted Silver 74%, Armaf Blue Iconic 42,4%, Armaf Odyssey
+// Toffee Coffee 38,4% y el CK One) se iban a quedar con ese margen FALSO para siempre: están todos
+// arriba del piso, así que ninguna vuelta los volvía a medir. **Un cambio en la fórmula cuenta
+// igual que un campo nuevo.**
+const CAND_CALC_VER = 5;
 
 // ── ¿ESTA OFERTA ES DE UN VENDEDOR DE AFUERA? (19/09/2026) ─────────────────────────────────
 // Regla suya del 19/09: **"estaba tomando envíos internacionales. esos no quiero que se fije."**

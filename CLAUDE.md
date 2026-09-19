@@ -1925,6 +1925,17 @@ internacionales. esos no quiero que se fije."** Ya se lo dijo al chat esa vez; *
 > competimos. Si el más barato de un catálogo es internacional, **saltealo y tomá el más barato
 > ARGENTINO** — y si no hay ninguno argentino, el producto no sirve para medir.
 
+**Y HUBO QUE SUBIR `CAND_CALC_VER` A 5, QUE CASI SE ESCAPA.** El atajo de *"ya tiene la cuenta
+hecha"* sólo vuelve a medir cuando cambia ese número, y el filtro nuevo no agrega un campo: **cambia
+la CUENTA**. Como el atajo agarra a los que DAN, los cuatro catálogos que hoy miden lindo porque el
+más barato es de afuera —Hamidi Addicted Silver **74%**, Armaf Blue Iconic **42,4%**, Armaf Odyssey
+Toffee Coffee **38,4%** y el CK One— se quedaban con ese margen **falso para siempre**: están todos
+arriba del piso, así que ninguna vuelta los volvía a mirar. **Un cambio en la fórmula cuenta igual
+que un campo nuevo** — es la tercera vez en dos días que este `if` se queda corto.
+Se vuelven a medir los 69, de a 40 por vuelta (`CAND_MAX_ML`), o sea en dos noches; las que quedan
+salen nombradas en el log. Y el freno de las dos mediciones los protege: como el margen guardado
+está arriba del piso, una primera lectura nueva abajo los deja **en observación**, no tachados.
+
 **MEDIDO EL MISMO DÍA CON `verofertas` (comando nuevo, solo lee): SE PUEDEN DISTINGUIR, Y EN LOS
 DOS CATÁLOGOS PROBADOS NO HABÍA NINGUNO.** ML devuelve **`international_delivery_mode`** en cada
 oferta, más la **provincia** del vendedor. En el Azzaro Forever Wanted Elixir (15 vendedores) y en
