@@ -6278,9 +6278,28 @@ async function main() {
     // los vendedores de ML son terceros: acá alcanza con el precio y los campos de logística.
     // Solo lee.
     if (/^verofertas:/.test(String(process.env.BILLING_PROBE || ''))) {
-      const cats = String(process.env.BILLING_PROBE).slice('verofertas:'.length).split(';')
-        .map((x) => x.trim().toUpperCase()).filter((x) => /^MLA\d+$/.test(x));
-      if (!cats.length) { console.log('Usá: verofertas:<código del catálogo, MLA…>[;otro]'); return; }
+      // ACEPTA EL CÓDIGO DEL CATÁLOGO O UNA PALABRA DEL CANDIDATO (19/09/2026). Pedir el MLA a
+      // mano obligaba a ir a buscarlo al log de `candidatos` renglón por renglón, y los que hay
+      // que mirar son justamente los que dieron mal — que están enterrados en la lista larga.
+      // Con la palabra se busca en `cyc/candidatos_py` y se usa el `mlId` que cargó el chat.
+      const _vo = String(process.env.BILLING_PROBE).slice('verofertas:'.length).split(';')
+        .map((x) => x.trim()).filter(Boolean);
+      const cats = [], nombres = {};
+      const _candVO = (await db.get('cyc/candidatos_py')) || {};
+      for (const t of _vo) {
+        if (/^MLA\d+$/i.test(t)) { cats.push(t.toUpperCase()); continue; }
+        const q = t.toLowerCase();
+        let hall = 0;
+        for (const c of Object.values(_candVO)) {
+          if (!c || !String(c.nombre || '').toLowerCase().includes(q)) continue;
+          const id = String(c.mlId || '').trim().toUpperCase().replace(/^.*\/P\//, '').split(/[?#]/)[0];
+          if (!/^MLA\d+$/.test(id)) { console.log(`⚠️ "${c.nombre}" no tiene código de ML cargado: no lo puedo mirar.`); continue; }
+          if (!cats.includes(id)) { cats.push(id); nombres[id] = c.nombre; }
+          hall++;
+        }
+        if (!hall) console.log(`⚠️ Ningún candidato con "${t}" en el nombre.`);
+      }
+      if (!cats.length) { console.log('Usá: verofertas:<código del catálogo o una palabra del candidato>[;otro]'); return; }
       let tk = null;
       for (const label of labels) {
         const acc = accounts[label];
@@ -6292,7 +6311,7 @@ async function main() {
       if (!tk) { console.log('❌ No pude sacar token de ninguna cuenta.'); return; }
       console.log('=== QUÉ DICE ML DE CADA VENDEDOR DE UN CATÁLOGO (solo lee) ===\n');
       for (const cat of cats) {
-        console.log(`── catálogo ${cat}`);
+        console.log(`── catálogo ${cat}${nombres[cat] ? '  ·  ' + nombres[cat] : ''}`);
         let ofertas = null;
         try {
           const it = await mlGet(`/products/${cat}/items`, tk);
@@ -6323,6 +6342,21 @@ async function main() {
         // 3) Y SI ARRIBA NO VINO NADA, probar la publicación suelta: el 403 medido el 19/09 fue con
         //    `/items?ids=…` (varias de una). Una sola puede contestar distinto, y eso no se sabe
         //    sin probarlo — un 403 en una ruta no es prueba sobre otra.
+        // EL RESUMEN QUE CONTESTA LA PREGUNTA: ¿cambia el precio de referencia si saco los de
+        // afuera? El margen se mide contra el MÁS BARATO, así que lo único que importa es si el
+        // más barato es internacional. Si no lo es, sacarlos no mueve un peso.
+        const inter = ofertas.filter((o) => {
+          const m = String((o && o.international_delivery_mode) || 'none');
+          return m && m !== 'none';
+        });
+        const precios0 = ofertas.map((o) => Number(o.price) || 0).filter((x) => x > 0);
+        const soloArg = ofertas.filter((o) => !inter.includes(o)).map((o) => Number(o.price) || 0).filter((x) => x > 0);
+        const min0 = precios0.length ? Math.min(...precios0) : 0;
+        const minArg = soloArg.length ? Math.min(...soloArg) : 0;
+        console.log(`   → internacionales: ${inter.length} de ${ofertas.length}`);
+        if (!inter.length) console.log('     Ninguno. Sacarlos no cambiaría nada acá: el precio de referencia es el mismo.');
+        else if (min0 === minArg) console.log(`     Hay ${inter.length}, pero el más barato NO es uno de ellos: el precio de referencia no cambia (${money(Math.round(min0))}).`);
+        else console.log(`     ⚠️ EL MÁS BARATO ES INTERNACIONAL: hoy se mide contra ${money(Math.round(min0))} y debería medirse contra ${money(Math.round(minArg))}.`);
         const uno = String((ofertas[0] || {}).item_id || '');
         if (/^MLA\d+$/.test(uno)) {
           try {
