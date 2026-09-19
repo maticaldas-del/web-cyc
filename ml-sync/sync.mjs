@@ -2294,9 +2294,17 @@ async function setPriceTo(itemId, variationId, nuevo, token, chequeo) {
       headers: { Authorization: 'Bearer ' + token, 'Content-Type': 'application/json' },
       body: JSON.stringify(body),
     });
-    if (!r.ok) return { ok: false, err: 'ML-' + r.status };
+    // EL MOTIVO DE ML, NO SÓLO EL NÚMERO (19/09/2026). Esto devolvía `ML-403` a secas y el log
+    // decía "NO se bajó: ML-403", que no distingue un token vencido de una publicación que ML
+    // tiene frenada por políticas. Pasó con la Pad 2 y no había forma de saber cuál era.
+    // `raiseVariations` ya lo hacía así desde antes: acá estaba la copia que se había quedado atrás.
+    if (!r.ok) {
+      let _d = '';
+      try { _d = (await r.text() || '').slice(0, 300); } catch { _d = ''; }
+      return { ok: false, err: 'ML-' + r.status + (_d ? ' · ' + _d : '') };
+    }
     return { ok: true, from: Math.round(base), to };
-  } catch { return { ok: false, err: 'red' }; }
+  } catch (e) { return { ok: false, err: 'red · ' + String(e.message || e).slice(0, 120) }; }
 }
 
 // ── Subir el precio en ML para llegar al margen objetivo ───────────────────
