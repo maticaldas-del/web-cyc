@@ -1834,6 +1834,18 @@ donde ya aparecieron diferencias reales.
 contestó" y "ML contestó sin el campo" se veían igual y no había forma de saber cuál era. Ahora se
 distinguen y se imprimen. **Tardó una corrida entera en descubrirse, y sólo porque él preguntó.**
 
+**EL MOTIVO, YA MEDIDO Y SIN ADIVINAR (19/09/2026):** apenas se destapó el error, la corrida dijo
+**`ML contestó 403`** en los 26 candidatos, uno por uno. O sea que `/items?ids=…` está **prohibido
+para publicaciones ajenas**, igual que `/sites/MLA/search` y que el saldo de MercadoPago. No es un
+límite de consultas ni un problema de red: es un permiso que la aplicación no tiene y no puede
+pedir. **No se insiste** — se deja el pedido hecho como CRUCE por si algún día lo abren, y el
+número lo carga el chat.
+
+**Y EN ESA MISMA CORRIDA EL FRENO DE LAS DOS MEDICIONES HIZO SU PRIMER DESCARTE REAL:** el
+**Lattafa Opulent Dubai** (38,9% → 23,6%) y el **Ophidian Mango Bliss** (48,5% → 23,2%) se cayeron
+abajo del piso **dos veces seguidas** y salieron. El Ophidian era justo uno de los dos que estaban
+en duda por precio, así que ese pendiente se cerró solo. Quedan **23 que dan 25% o más**.
+
 **Se guardan DOS números, porque contestan preguntas distintas:**
  · **`mlVendidas`** — la SUMA de la ficha: *¿este producto se vende en ML?*
  · **`mlVendidasMin`** — las del **más barato**, que es contra el que se mide el margen.
