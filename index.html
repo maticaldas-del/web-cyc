@@ -2275,7 +2275,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='19.68';
+const APP_VERSION='19.69';
 // El problema real que esto resuelve no es curiosidad: es que el celular guarda la app y sigue
 // mostrando la de ayer sin avisar. Varias veces se revisó un cambio que ya estaba subido y no se
 // veía. Por eso, además del número, el chip avisa cuando hay una versión nueva esperando.
@@ -8597,7 +8597,10 @@ function candDias(c){return c&&c.ts?Math.max(0,Math.round((Date.now()-c.ts)/8640
 // muestra — con una cuenta propia la tarjeta podría decir un número y el robot otro.
 function candPreciosHTML(c){
   const min=Number(c.mlPrecio)||0;
-  if(!min)return '';
+  // SIN PRECIO MEDIDO YA NO DEVUELVE VACÍO (19/09/2026). Devolvía '' y el renglón entero
+  // desaparecía — **incluidos los dos enlaces**, que son justo lo que hay que mirar cuando el
+  // robot NO pudo medir: un candidato sin medición es el que más necesita que lo abras con los
+  // ojos. Ahora dice que no está medido y muestra los enlaces igual.
   const max=Number(c.mlMax)||0;
   const vend=Number(c.mlVendedores)||0;
   const mMin=(c.margen!=null&&isFinite(c.margen))?Number(c.margen):null;
@@ -8641,7 +8644,26 @@ function candPreciosHTML(c){
     L.push(`🛒 <span style="color:var(--amber)">faltan las ventas</span> <span style="color:var(--muted)">— las carga el chat</span>`);
   }
   if(mMin!=null)L.push(`contra el más barato → <b style="color:${mMin>=25?'var(--green)':'var(--amber)'}">${mMin.toFixed(0)}%</b>`);
-  return L.join(' &nbsp;·&nbsp; ');
+  if(!min)L.length=0,L.push('<span style="color:var(--amber)">todavía no está medido en ML</span>');
+  // ── LOS DOS ENLACES, PARA MIRARLO CON LOS OJOS (19/09/2026, pedido suyo) ──────────────────
+  // Textual: *"quiero que acá aparezcan los url del producto de ml y de compras paraguay, así
+  // puedo mirarlo de ahí"*. Es el chequeo que ningún número reemplaza: si el robot se emparejó
+  // con el producto equivocado, el margen sale perfectamente calculado y perfectamente inútil.
+  // Ya pasó seis veces en este panel, la última con el Dark Door Sport y el Blue Iconic.
+  //
+  // EL LINK DE ML ES EL DEL CATÁLOGO QUE EL ROBOT **MIDIÓ** (`mlLink`), no una búsqueda nueva.
+  // Si fuera una búsqueda, podría llevar a un producto distinto del que dio ese margen — que es
+  // exactamente lo que se quiere verificar. Si no está, se arma con el código que dejó el chat,
+  // que es el mismo que usó el robot.
+  // Vive acá, en la función que dibujan LOS DOS lugares (el renglón del pedido y la tarjeta del
+  // candidato), para que no puedan mostrar links distintos del mismo producto.
+  const idML=String(c.mlId||'').trim().toUpperCase().replace(/^.*\/P\//,'').split(/[?#]/)[0];
+  const hrefML=String(c.mlLink||'').trim()||(/^MLA\d+$/.test(idML)?'https://www.mercadolibre.com.ar/p/'+idML:'');
+  const hrefPY=String(c.link||'').trim();
+  const A=(h,t)=>`<a href="${h.replace(/"/g,'&quot;')}" target="_blank" rel="noopener" style="color:var(--accent);text-decoration:none;font-weight:600">${t}</a>`;
+  const E=[hrefML?A(hrefML,'🔗 verlo en ML'):'<span style="color:var(--amber)">🔗 sin link de ML — el robot lo buscó por nombre</span>',
+    hrefPY?A(hrefPY,'🇵🇾 verlo en comprasparaguay'):'<span style="color:var(--muted)">🇵🇾 el chat no dejó el link</span>'];
+  return L.join(' &nbsp;·&nbsp; ')+'<br>'+E.join(' &nbsp;·&nbsp; ');
 }
 // EL RENGLÓN QUE EXPLICA LO QUE FALTA VA UNA SOLA VEZ, NO EN LOS 17. Repetirlo en cada producto
 // es ruido y a los tres renglones no lo lee nadie; pero no decirlo nunca sería peor, porque él

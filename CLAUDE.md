@@ -1747,6 +1747,31 @@ arreglo no es escribirla más fuerte — es que el sistema no lo deje.**
  · **Un código para mirar de cerca: el Cruzer Blade 64gb quedó en `07112`**, el único de los 21 que
    empieza con cero.
 
+### LOS DOS ENLACES EN EL RENGLÓN, PARA MIRARLO CON LOS OJOS (19/09/2026)
+
+Pedido suyo: *"quiero que acá aparezcan los url del producto de ml y de compras paraguay, así
+puedo mirarlo de ahí"*. Es el chequeo que **ningún número reemplaza**: si el robot se emparejó con
+el producto equivocado, el margen sale perfectamente calculado y perfectamente inútil. Ya pasó
+seis veces en este panel.
+
+**EL LINK DE ML ES EL DEL CATÁLOGO QUE EL ROBOT MIDIÓ** (`mlLink`), no una búsqueda nueva. Si fuera
+una búsqueda podría llevar a un producto **distinto del que dio ese margen**, que es justo lo que
+se quiere verificar. Si no está, se arma con el código que dejó el chat, que es el mismo que usó el
+robot. Y si no hay ninguno de los dos, **lo dice en ámbar** — eso quiere decir que el robot lo
+buscó por nombre, que es cuando más hay que mirarlo.
+
+Vive en `candPreciosHTML`, la función que dibujan **los dos lugares** (el renglón del pedido y la
+tarjeta del candidato), para que no puedan mostrar links distintos del mismo producto.
+
+**Y DE PASO SE TAPÓ UN AGUJERO: sin precio medido la función devolvía VACÍO** y el renglón entero
+desaparecía — **incluidos los enlaces**. O sea que el candidato que el robot NO pudo medir, que es
+**el que más necesita que lo abras con los ojos**, era justamente el único que se quedaba sin
+links. Ahora dice que no está medido y muestra los dos igual, sin inventar ningún precio.
+
+Probado con la función REAL sacada del archivo y 12 casos, incluidos los cuatro que hay que
+avisar (sin link de ML, sin link de Paraguay, sin medir, y el código del chat con basura al final).
+Chequeo de las tres listas: **0 funciones, 0 variables y 0 `id` de diferencia**.
+
 ## "PARA PROBAR": QUÉ CONVIENE EMPEZAR A VENDER (17/09/2026)
 
 Pedido suyo: *"lo que no veo en la web de cyc es los productos que pueden ser nuevos ingresos"*.
