@@ -3098,14 +3098,36 @@ async function correrCandidatos(db, products, labels, accounts, soloPrueba, prue
       const idsOfertas = ofertas.map((o) => String(o.item_id || "")).filter((x) => /^MLA\d+$/.test(x));
       if (idsOfertas.length) {
         const ventasPorId = {};
+        // EL CATCH VACÍO QUE HABÍA ACÁ ES EL ERROR ANOTADO SEIS VECES EN CLAUDE.md (19/09/2026).
+        // La primera versión se tragaba el fallo entero, así que la corrida imprimía "ventas ?" en
+        // los 23 y era indistinguible de "ML contestó cero". Tardó una corrida entera en
+        // descubrirse y sólo porque él preguntó. Ahora TODO lo que salga mal se dice, y se dice
+        // UNA vez por candidato (no 20) para que el log siga siendo legible.
+        let vErr = null, vSinCampo = 0;
         for (let k = 0; k < idsOfertas.length; k += 20) {
+          const lote = idsOfertas.slice(k, k + 20);
           try {
-            const arrV = await mlGet("/items?ids=" + idsOfertas.slice(k, k + 20).join(",") + "&attributes=id,sold_quantity", tok);
-            for (const row of (arrV || [])) {
+            const arrV = await mlGet("/items?ids=" + lote.join(",") + "&attributes=id,sold_quantity", tok);
+            if (!Array.isArray(arrV)) { vErr = vErr || `ML no devolvió una lista (${typeof arrV})`; continue; }
+            for (const row of arrV) {
               const b = (row && row.body) || {};
-              if (b.id != null && b.sold_quantity != null) ventasPorId[String(b.id)] = Number(b.sold_quantity) || 0;
+              // Un 200 con el cuerpo vacío NO es lo mismo que un error de red: quiere decir que ML
+              // contestó y NO manda ese campo para publicaciones que no son nuestras. Hay que
+              // poder distinguirlos, porque uno se reintenta y el otro no se arregla nunca.
+              if (row && row.code && row.code !== 200) { vErr = vErr || `ML contestó ${row.code}`; continue; }
+              if (b.id == null) { vErr = vErr || 'ML no devolvió ni el id'; continue; }
+              if (b.sold_quantity == null) { vSinCampo++; continue; }
+              ventasPorId[String(b.id)] = Number(b.sold_quantity) || 0;
             }
-          } catch { /* se reintenta solo en la vuelta siguiente */ }
+          } catch (eV) { vErr = vErr || String(eV.message || eV).slice(0, 120); }
+        }
+        if (!Object.keys(ventasPorId).length) {
+          console.log(`      ⚠️  ventas: no pude leer ninguna de ${idsOfertas.length} publicación(es).`
+            + (vErr ? ` Motivo: ${vErr}` : '')
+            + (vSinCampo ? ` · ${vSinCampo} contestaron OK pero SIN el campo sold_quantity (ML no lo da de publicaciones ajenas).` : ''));
+        } else if (vErr || vSinCampo) {
+          console.log(`      ⚠️  ventas: leí ${Object.keys(ventasPorId).length} de ${idsOfertas.length}.`
+            + (vErr ? ` Un fallo: ${vErr}.` : '') + (vSinCampo ? ` ${vSinCampo} sin el campo.` : ''));
         }
         const leidas = Object.keys(ventasPorId);
         if (leidas.length) {

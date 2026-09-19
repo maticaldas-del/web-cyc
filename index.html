@@ -2275,7 +2275,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='19.66';
+const APP_VERSION='19.67';
 // El problema real que esto resuelve no es curiosidad: es que el celular guarda la app y sigue
 // mostrando la de ayer sin avisar. Varias veces se revisó un cambio que ya estaba subido y no se
 // veía. Por eso, además del número, el chip avisa cuando hay una versión nueva esperando.
@@ -8420,6 +8420,7 @@ function candFormHTML(){
       </div>
       <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
         ${i('mlid','Link o código de ML (obligatorio)','text','230px')}
+        ${i('vend','Vendidos en ML','number','130px')}
         ${i('marca','Marca','text','140px')}
         ${i('medidas','Medidas (si las dice)','text','170px')}
         ${i('peso','Peso (si lo dice)','text','120px')}
@@ -8461,9 +8462,17 @@ async function candAgregar(){
   // El código del catálogo de ML es lo que evita el emparejado por nombre. Ya se exigió arriba,
   // así que acá sólo se guarda.
   c.mlId=v('mlid').slice(0,200);
+  // LAS VENDIDAS QUE VE EL CHAT (19/09/2026, pedido suyo: *"agregaste que pueda poner ese dato en
+  // la web de cyc?"*). Tenía razón y yo había supuesto lo contrario: se hizo primero que el robot
+  // las trajera solo, y la corrida de esa noche imprimió "ventas ?" en los 23 — ML no las da de
+  // publicaciones ajenas. El ÚNICO que las ve es el chat, que lee la página del listado.
+  // Va como NÚMERO y vacío es vacío: un cero acá se leería como "no vende nada", que es el error
+  // anotado de punta a punta en CLAUDE.md. Si no lo cargó, la tarjeta lo dice.
+  const _vd=parseInt(v('vend'),10);
+  if(isFinite(_vd)&&_vd>=0)c.vendCarga=_vd;
   await fbSet('candidatos_py/'+id,c);
   state.candidatos=state.candidatos||{};state.candidatos[id]=c;
-  ['nombre','cod','usd','marca','medidas','peso','link','mlid'].forEach(k=>{const e=document.getElementById('cand-'+k);if(e)e.value='';});
+  ['nombre','cod','usd','marca','medidas','peso','link','mlid','vend'].forEach(k=>{const e=document.getElementById('cand-'+k);if(e)e.value='';});
   await log('Candidato de Paraguay: '+c.nombre+' · US$'+usd);
   renderPedidos();
   toast('Agregado ✓ · el robot le hace la cuenta de ML esta noche');
@@ -8614,9 +8623,23 @@ function candPreciosHTML(c){
   const com=(c.mlComision!=null&&isFinite(c.mlComision))?Number(c.mlComision):null;
   const pr=Number(c.mlPrecio)||0;
   if(com!=null&&pr>0)L.push(`ML se queda <b>${(com/pr*100).toFixed(1)}%</b> <span style="color:var(--muted)">(${fmt(com)} · preguntado a ML)</span>`);
-  const vdas=(c.mlVendidas!=null&&isFinite(c.mlVendidas))?Number(c.mlVendidas):null;
-  if(vdas!=null)L.push(`🛒 <b style="color:${vdas>=25?'var(--green)':'var(--amber)'}">${vdas}</b> vendida${vdas===1?'':'s'} en la ficha`);
-  else L.push(`🛒 <span style="color:var(--muted)">ventas: ML no las contestó</span>`);
+  // DE DÓNDE SALEN LAS VENTAS, Y POR QUÉ SON DOS NÚMEROS (19/09/2026)
+  //  · `vendCarga` → lo que VIO EL CHAT en la publicación de ML. Es la fuente buena: ML no da
+  //    `sold_quantity` de publicaciones ajenas por la API, medido el 19/09 (la corrida imprimió
+  //    "ventas ?" en los 23). El chat lo lee de la página, así que es el único que lo tiene.
+  //  · `mlVendidas` → lo que pudo leer el robot. Casi siempre no va a estar; si algún día ML lo
+  //    abre, sirve de CRUCE — la misma idea que con el precio, donde ya aparecieron diferencias.
+  // Si no está ninguno NO se pone cero: se pide que lo carguen. Un cero acá se leería como
+  // "no vende nada" y es la diferencia entre descartar un producto y no haberlo medido.
+  const vChat=(c.vendCarga!=null&&isFinite(c.vendCarga))?Number(c.vendCarga):null;
+  const vBot=(c.mlVendidas!=null&&isFinite(c.mlVendidas))?Number(c.mlVendidas):null;
+  const vUsa=vChat!=null?vChat:vBot;
+  if(vUsa!=null){
+    L.push(`🛒 <b style="color:${vUsa>=25?'var(--green)':'var(--amber)'}">${vUsa}</b> vendida${vUsa===1?'':'s'} en ML`
+      +(vChat!=null&&vBot!=null&&vBot!==vChat?` <span style="color:var(--amber)">(el robot ve ${vBot})</span>`:''));
+  } else {
+    L.push(`🛒 <span style="color:var(--amber)">faltan las ventas</span> <span style="color:var(--muted)">— las carga el chat</span>`);
+  }
   if(mMin!=null)L.push(`contra el más barato → <b style="color:${mMin>=25?'var(--green)':'var(--amber)'}">${mMin.toFixed(0)}%</b>`);
   return L.join(' &nbsp;·&nbsp; ');
 }

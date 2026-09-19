@@ -1817,10 +1817,22 @@ el tipo de publicación, y nada más.
 **De paso eso corrige una nota de este archivo que estaba mal**: decía que ese endpoint trae
 *"vendedores con precio, **stock** y quién tiene la caja"*. El stock tampoco viene.
 
-**Pero salen casi gratis: `/items?ids=` acepta 20 publicaciones por consulta**, así que los ~70
-vendedores de los 25 candidatos entran en 3 o 4 llamadas para TODA la corrida — contra las decenas
-que ya gasta preguntando la comisión. Por eso se hizo igual, y el número real está dicho acá para
-que se pueda revisar la decisión.
+**Y EL ROBOT TAMPOCO PUEDE TRAERLAS: LAS CARGA EL CHAT (19/09/2026).** La primera versión pidió
+las ventas con `/items?ids=…&attributes=id,sold_quantity` (20 por consulta, 3 o 4 llamadas para
+toda la corrida) dando por hecho que ML las contestaría. **La corrida imprimió `ventas ?` en los
+23**: ML **no da `sold_quantity` de publicaciones ajenas**. Lo destapó él preguntando
+*"agregaste que pueda poner ese dato en la web de cyc?"* — la respuesta correcta era sí, y yo había
+diseñado lo contrario.
+**El ÚNICO que ve ese número es el chat de compras**, que lee la página del listado de ML (su propio
+texto ya lo dice: `printed_result` trae `sold_quantity`). Por eso el formulario de cargar un
+candidato tiene ahora el campo **"Vendidos en ML"** → `vendCarga`. Vacío es vacío: la tarjeta dice
+*"faltan las ventas — las carga el chat"*, nunca un cero.
+El pedido del robot **se deja igual**, como CRUCE por si ML lo abre algún día: si los dos números
+existen y no coinciden, la tarjeta muestra *"(el robot ve N)"* — la misma idea que con el precio,
+donde ya aparecieron diferencias reales.
+**Y EL CATCH VACÍO ERA EL ERROR ANOTADO SEIS VECES.** El fallo se tragaba entero, así que "ML no
+contestó" y "ML contestó sin el campo" se veían igual y no había forma de saber cuál era. Ahora se
+distinguen y se imprimen. **Tardó una corrida entera en descubrirse, y sólo porque él preguntó.**
 
 **Se guardan DOS números, porque contestan preguntas distintas:**
  · **`mlVendidas`** — la SUMA de la ficha: *¿este producto se vende en ML?*
