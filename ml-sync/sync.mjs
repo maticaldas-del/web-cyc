@@ -9093,6 +9093,10 @@ async function main() {
       if (conU.length) {
         const crudo = conU.reduce((s, x) => s + x.usd * x.u, 0);
         console.log(`\n🧾 EL PEDIDO CARGADO HOY: ${conU.length} producto(s) · ${conU.reduce((s, x) => s + x.u, 0)} u. · US$ ${crudo.toFixed(2)} crudos · US$ ${(crudo * 1.15).toFixed(2)} puestos`);
+        // Y SE NOMBRAN, no sólo se cuentan. "4 producto(s) · 8 u." obliga a salir del comando e ir a
+        // buscarlos al panel para saber si son los mismos que uno está por recomendar — y si no lo son,
+        // el total del pedido es otro. Un número sin los nombres no deja decidir nada.
+        for (const x of conU.sort((a, b) => b.usd * b.u - a.usd * a.u)) console.log(`   ${x.u} u. · US$ ${(x.usd * x.u).toFixed(2)} · ${x.c.nombre}${x.frenos.length ? '   ❌ ' + x.frenos.join(' · ') : x.reparos.length ? '   ⚠️ ' + x.reparos.join(' · ') : ''}`);
         const malos = conU.filter((x) => x.frenos.length);
         if (malos.length) console.log(`   ❌ OJO: ${malos.length} de esos tienen un freno arriba. Sacalos antes de mandar el pedido.`);
       } else console.log('\n🧾 Todavía no cargaste unidades en ninguna tarjeta, así que no puedo sumarte el total del pedido.');
