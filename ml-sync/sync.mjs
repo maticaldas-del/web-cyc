@@ -3058,6 +3058,65 @@ async function cuentaCandidato(precio, ltx, catx, puestoUSD, tc, monoP, feeAt) {
   return { fee: fee2, envio: envio2, costo: costo2, impuestos: impuestos2, ganancia: ganancia2,
     margen: (costoTot2 + envio2) > 0 ? (ganancia2 / (costoTot2 + envio2)) * 100 : 0 };
 }
+// ── ¿ES EL MISMO PRODUCTO? EL CHEQUEO DE TÍTULOS, COMPARTIDO (19/09/2026) ───────────
+// Vivía adentro de `revisarcompra`. Salió afuera cuando hubo que usarlo también sobre los
+// candidatos YA DESCARTADOS — pregunta suya: *"también pudo dar de baja productos que sí daban
+// porque vio otro que era más barato"*. Con dos copias, el comando que revisa los descartados
+// diría que están limpios usando una regla distinta de la que mira el pedido, que es el error
+// anotado nueve veces en CLAUDE.md.
+// Las que NO distinguen nada. Van las castellanas Y las portuguesas, porque comprasparaguay
+// escribe en portugués y ML en castellano: sin esto, "preto" o "feminino" se leen como una
+// palabra que falta cuando lo único que cambia es el idioma.
+// OJO: 'pack', 'set' y 'kit' NO van acá aunque parezcan relleno. Son justo lo que delata otra
+// versión, y estando acá se filtraban ANTES de que el chequeo de lo que sobra los pudiera ver:
+// "Pack X2 Lattafa Sutoor" pasaba como si fuera el perfume suelto. Viven en RV_VARIANTE.
+const RV_VACIAS = new Set(['perfume','eau','parfum','toilette','edp','edt','para','hombre','mujer','unisex','los','las','con','sin','original','importado','spray','vaporizador','fragancia','colonia','del','por','una','uds','unidad','unidades','the','and',
+  'masculino','feminino','femenino','unissex','preto','preta','branco','branca','negro','negra','blanco','blanca','fone','ouvido','fio','cabo','caixa','som','portatil','sem','com','cor','color']);
+// El numero se despega de la unidad ANTES de comparar: "100ML" es UNA palabra para la
+// computadora, y como palabra hacia coincidir el Hamidi Addicted con el Hamidi Imensity
+// (los dos de 100 mL) justo arriba de la mitad, que era el corte. Separado, "100" cuenta
+// como numero -- que es donde tiene que contar -- y "ml" se cae por corta.
+const _rvBase = (t) => String(t || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[^a-z0-9]+/g, ' ');
+const _rvNorm = (t) => _rvBase(t).replace(/(\d)([a-z])/g, '$1 $2').replace(/([a-z])(\d)/g, '$1 $2').trim();
+// EL CODIGO DE MODELO: los pedacitos que mezclan letras y numeros (mdr zx310ap, tl wn822n,
+// m612, h101). Se sacan los que son la MEDIDA y no el modelo -- 100ml, 256gb -- porque esos
+// los tiene cualquier producto de la misma familia y no distinguen nada.
+const _rvMod = (t) => (_rvBase(t).match(/[a-z0-9]+/g) || []).filter((w) => w.length >= 3 && /[a-z]/.test(w) && /\d/.test(w) && !/^\d+(ml|gb|mb|tb|kg|mm|cm|hz|mah|w|v|g|l)$/.test(w));
+const _rvPal = (t) => new Set(_rvNorm(t).split(' ').filter((w) => w && !RV_VACIAS.has(w) && w.length >= 3 && !/^\d+$/.test(w)));
+// TODOS los numeros, incluidos los de UN digito. La primera version pedia dos o mas y se
+// comia justo el caso anotado: "Xiaomi Redmi Watch 4" contra "Xiaomi Redmi Redmi Watch 3"
+// comparten TODAS las palabras, asi que el unico aviso posible es el numero. Un numero de
+// mas solo pinta el renglon en AMBAR ("miralo"), nunca lo descarta: un aviso de mas cuesta
+// una mirada, el producto equivocado cuesta el pedido.
+const _rvNum = (t) => new Set(_rvNorm(t).match(/\d+/g) || []);
+// ── LAS PALABRAS QUE DELATAN OTRA VERSIÓN DEL MISMO PRODUCTO (19/09/2026) ──────────────
+// **LO ENCONTRÓ ÉL, NO EL COMANDO, Y ERA PLATA.** El robot emparejó el *"Controle Sem Fio
+// Sony Playstation Dualsense para PS5 - Preto"* (US$ 60) con el catálogo del **"DualSense
+// The Last Of Us Edición Limitada"**, que en ML vale **$349.999**. El margen sali� 57% y
+// estaba medido contra el precio de una edición de colección: es un número falso, y con él
+// se iban US$ 120 del pedido.
+// **EL CHEQUEO SÓLO MIRABA LAS PALABRAS QUE FALTAN, NUNCA LAS QUE SOBRAN.** Y una edición
+// especial, un pack, un combo o un "Pro/Lite/Max" no le QUITAN palabras al título: se las
+// AGREGAN. Todo el chequeo estaba mirando para el lado por el que este error no pasa.
+// Y VAN TAMBIÉN LAS DEL ERROR AL REVÉS, que lo marcó él: *"pudo dar de baja productos que sí
+// daban porque vio otro que era más barato"*. Si el catálogo que eligió el chat tiene como
+// más barato un **decant, un tester, una muestra, una réplica o una recarga**, el precio
+// contra el que se mide se hunde, el margen sale bajo y **el producto se descarta solo**.
+// Es el MISMO error que el DualSense con el signo cambiado, y es peor: el que hace ver un
+// negocio se investiga, el que hace ver una pérdida se tira a la basura sin mirarlo.
+const RV_VARIANTE = new Set(['edicion','edition','limitada','limited','coleccionista','collector',
+  'aniversario','anniversary','bundle','combo','pack','kit','especial','special','deluxe','premium',
+  'refurbished','reacondicionado','usado','replica','generico','compatible','alternativo','copia','tester','decant','muestra','sample','inspirado','miniatura','recarga','refill','travel',
+  'pro','plus','max','mini','lite','slim','ultra','neo','xl','gen','generacion','duo','doble','triple']);
+
+// El link del catalogo que el robot MIDIO, no una busqueda nueva: es el mismo criterio que el
+// renglon del pedido, para que los dos manden al mismo lado.
+function c_link(c) {
+  const l = String((c && c.mlLink) || '').trim();
+  if (l) return l;
+  const idf = String((c && c.mlId) || '').trim().toUpperCase().replace(/^.*\/P\//, '').split(/[?#]/)[0];
+  return /^MLA\d+$/.test(idf) ? 'https://www.mercadolibre.com.ar/p/' + idf : '(sin link: el robot lo busco por nombre)';
+}
 // `prueba` es un candidato INVENTADO que se le pasa desde el probe para correr el camino entero
 // —consulta al catálogo de ML, comisión al precio real, la cuenta— sin tener que cargar nada en la
 // base. Que el comando no se rompa con la lista vacía no prueba nada de lo que importa.
@@ -8778,6 +8837,72 @@ async function main() {
     // Emparejar por nombre es el filtro que ya falló cinco veces, y en un producto nuevo es peor
     // porque no hay ficha contra la cual contrastar.
     // Sin `:go` calcula y muestra pero NO escribe ni manda nada.
+    // BILLING_PROBE=descartados → ¿A CUÁNTOS DESCARTAMOS POR EMPAREJARLOS MAL? **SOLO LEE.**
+    //
+    // Pregunta suya del 19/09/2026, y es la mejor del día: *"acá se equivocó dando por correcto un
+    // producto. pero también pudo dar de baja productos que sí daban porque vio otro que era más
+    // barato también"*.
+    //
+    // **ES EL MISMO ERROR DEL DUALSENSE CON EL SIGNO CAMBIADO, Y ES PEOR.** Si el catálogo que
+    // eligió el chat tiene como más barato un **decant, un tester, una muestra, una réplica o una
+    // recarga**, el precio contra el que se mide se hunde, el margen sale bajo y el producto se
+    // descarta solo. **Un error que hace ver un negoción se investiga; uno que hace ver una
+    // pérdida se tira a la basura sin mirarlo.**
+    //
+    // NO PREGUNTA NADA A ML: compara el nombre de comprasparaguay contra el título de ML que quedó
+    // GUARDADO de la medición que lo descartó. Es justo lo que hay que revisar — el título contra
+    // el que se midió — y además así el comando es instantáneo y se puede correr cuantas veces
+    // haga falta. Usa `RV_VARIANTE` y los mismos ayudantes que `revisarcompra`, no una copia.
+    //
+    // **NO DEVUELVE NINGUNO.** Deja la lista para que la mire él: devolver algo es una decisión
+    // suya y ya existe `devolvercand` para eso.
+    if (/^descartados(:|$)/.test(String(process.env.BILLING_PROBE || ''))) {
+      const cands = (await db.get('cyc/candidatos_py')) || {};
+      const muertos = Object.entries(cands).filter(([, c]) => c && c.nombre && c.no);
+      console.log('=== LOS DESCARTADOS, REVISADOS CON EL CHEQUEO NUEVO · SOLO LEE ===');
+      console.log(`${muertos.length} descartado(s). No devuelvo ninguno: eso lo decidís vos con devolvercand.\n`);
+      if (!muertos.length) { console.log('No hay ninguno descartado.'); return; }
+      const sospechosos = [], sinTitulo = [], limpios = [];
+      for (const [id, c] of muertos) {
+        const mlTit = String(c.mlTit || '').trim();
+        const m = (c.margen != null && isFinite(c.margen)) ? Number(c.margen) : null;
+        if (!mlTit) { sinTitulo.push({ id, c, m }); continue; }
+        const pCP = _rvPal(c.nombre), pML = _rvPal(mlTit);
+        const faltan = [...pCP].filter((w) => !pML.has(w));
+        const extraVar = [...pML].filter((w) => !pCP.has(w) && RV_VARIANTE.has(w));
+        const mlPlano = _rvBase(mlTit).replace(/ /g, '');
+        const modCP = _rvMod(c.nombre), modOK = modCP.filter((x) => mlPlano.includes(x));
+        const numFaltan = [...(_rvNum(c.nombre))].filter((x) => !_rvNum(mlTit).has(x));
+        const motivos = [];
+        if (extraVar.length) motivos.push(`ML dice "${extraVar.join(', ')}" y el candidato no`);
+        if (modCP.length && !modOK.length) motivos.push(`el modelo (${modCP.join(', ')}) no está en el título de ML`);
+        if (!modCP.length && faltan.length) motivos.push(`en ML no está(n): ${faltan.join(', ')}`);
+        if (!modCP.length && numFaltan.length) motivos.push(`el tamaño ${numFaltan.join(', ')} no está en ML`);
+        if (motivos.length) sospechosos.push({ id, c, m, mlTit, motivos });
+        else limpios.push({ id, c, m });
+      }
+      // Los ordeno por margen DESCENDENTE: el que se cayó por poco es el que más duele si el
+      // descarte estaba mal, y es el más fácil de revisar mirando un link.
+      sospechosos.sort((a, b) => (b.m == null ? -1 : b.m) - (a.m == null ? -1 : a.m));
+      console.log(`⚠️ ${sospechosos.length} SE DESCARTARON CONTRA UN TÍTULO QUE NO PARECE EL MISMO PRODUCTO:`);
+      if (!sospechosos.length) console.log('   Ninguno. Los descartes se midieron contra el producto correcto.');
+      for (const x of sospechosos) {
+        console.log(`   ${x.m != null ? (x.m.toFixed(1) + '%').padStart(7) : '   sin%'} · ${x.c.nombre}`);
+        console.log(`        ML midió contra: "${x.mlTit}"`);
+        console.log(`        ⚠️ ${x.motivos.join(' · ')}`);
+        console.log(`        🔗 ${c_link(x.c)}`);
+      }
+      if (sinTitulo.length) {
+        console.log(`\n📋 ${sinTitulo.length} se descartaron SIN llegar a medirse contra ningún título de ML:`);
+        for (const x of sinTitulo) console.log(`   ${x.c.nombre} → ${String(x.c.motivo || 'sin motivo anotado').slice(0, 90)}`);
+      }
+      console.log(`\n✓ ${limpios.length} se midieron contra un título que sí parece el mismo producto.`);
+      // LA CUENTA TIENE QUE CERRAR, que es el freno de siempre contra el descarte silencioso.
+      const suma = sospechosos.length + sinTitulo.length + limpios.length;
+      if (suma !== muertos.length) console.log(`⚠️ NO CIERRA: ${muertos.length} descartados y clasifiqué ${suma}.`);
+      console.log('\nPara devolver alguno a la lista: devolvercand (los devuelve TODOS) o el botón del panel.');
+      return;
+    }
     // BILLING_PROBE=pedir:<palabra>=<unidades>[;<otra>=<u>][;go] → CARGA LAS UNIDADES DEL PEDIDO
     // DE PARAGUAY. **Sin `go` SOLO MUESTRA.**
     //
@@ -8923,50 +9048,6 @@ async function main() {
       // entre el producto correcto y uno que no se vende, y en el conteo de palabras se diluyen.
       // LA VARA DEL PEDIDO DE HOY. No reemplaza al corte de 25 que ya estaba: convive con él.
       const RV_VENT_PEDIDO = 100;
-      // Las que NO distinguen nada. Van las castellanas Y las portuguesas, porque comprasparaguay
-      // escribe en portugués y ML en castellano: sin esto, "preto" o "feminino" se leen como una
-      // palabra que falta cuando lo único que cambia es el idioma.
-      // OJO: 'pack', 'set' y 'kit' NO van acá aunque parezcan relleno. Son justo lo que delata otra
-      // versión, y estando acá se filtraban ANTES de que el chequeo de lo que sobra los pudiera ver:
-      // "Pack X2 Lattafa Sutoor" pasaba como si fuera el perfume suelto. Viven en RV_VARIANTE.
-      const RV_VACIAS = new Set(['perfume','eau','parfum','toilette','edp','edt','para','hombre','mujer','unisex','los','las','con','sin','original','importado','spray','vaporizador','fragancia','colonia','del','por','una','uds','unidad','unidades','the','and',
-        'masculino','feminino','femenino','unissex','preto','preta','branco','branca','negro','negra','blanco','blanca','fone','ouvido','fio','cabo','caixa','som','portatil','sem','com','cor','color']);
-      // El numero se despega de la unidad ANTES de comparar: "100ML" es UNA palabra para la
-      // computadora, y como palabra hacia coincidir el Hamidi Addicted con el Hamidi Imensity
-      // (los dos de 100 mL) justo arriba de la mitad, que era el corte. Separado, "100" cuenta
-      // como numero -- que es donde tiene que contar -- y "ml" se cae por corta.
-      const _rvBase = (t) => String(t || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[^a-z0-9]+/g, ' ');
-      const _rvNorm = (t) => _rvBase(t).replace(/(\d)([a-z])/g, '$1 $2').replace(/([a-z])(\d)/g, '$1 $2').trim();
-      // EL CODIGO DE MODELO: los pedacitos que mezclan letras y numeros (mdr zx310ap, tl wn822n,
-      // m612, h101). Se sacan los que son la MEDIDA y no el modelo -- 100ml, 256gb -- porque esos
-      // los tiene cualquier producto de la misma familia y no distinguen nada.
-      const _rvMod = (t) => (_rvBase(t).match(/[a-z0-9]+/g) || []).filter((w) => w.length >= 3 && /[a-z]/.test(w) && /\d/.test(w) && !/^\d+(ml|gb|mb|tb|kg|mm|cm|hz|mah|w|v|g|l)$/.test(w));
-      const _rvPal = (t) => new Set(_rvNorm(t).split(' ').filter((w) => w && !RV_VACIAS.has(w) && w.length >= 3 && !/^\d+$/.test(w)));
-      // TODOS los numeros, incluidos los de UN digito. La primera version pedia dos o mas y se
-      // comia justo el caso anotado: "Xiaomi Redmi Watch 4" contra "Xiaomi Redmi Redmi Watch 3"
-      // comparten TODAS las palabras, asi que el unico aviso posible es el numero. Un numero de
-      // mas solo pinta el renglon en AMBAR ("miralo"), nunca lo descarta: un aviso de mas cuesta
-      // una mirada, el producto equivocado cuesta el pedido.
-      const _rvNum = (t) => new Set(_rvNorm(t).match(/\d+/g) || []);
-      // ── LAS PALABRAS QUE DELATAN OTRA VERSIÓN DEL MISMO PRODUCTO (19/09/2026) ──────────────
-      // **LO ENCONTRÓ ÉL, NO EL COMANDO, Y ERA PLATA.** El robot emparejó el *"Controle Sem Fio
-      // Sony Playstation Dualsense para PS5 - Preto"* (US$ 60) con el catálogo del **"DualSense
-      // The Last Of Us Edición Limitada"**, que en ML vale **$349.999**. El margen sali� 57% y
-      // estaba medido contra el precio de una edición de colección: es un número falso, y con él
-      // se iban US$ 120 del pedido.
-      // **EL CHEQUEO SÓLO MIRABA LAS PALABRAS QUE FALTAN, NUNCA LAS QUE SOBRAN.** Y una edición
-      // especial, un pack, un combo o un "Pro/Lite/Max" no le QUITAN palabras al título: se las
-      // AGREGAN. Todo el chequeo estaba mirando para el lado por el que este error no pasa.
-      // Y VAN TAMBIÉN LAS DEL ERROR AL REVÉS, que lo marcó él: *"pudo dar de baja productos que sí
-      // daban porque vio otro que era más barato"*. Si el catálogo que eligió el chat tiene como
-      // más barato un **decant, un tester, una muestra, una réplica o una recarga**, el precio
-      // contra el que se mide se hunde, el margen sale bajo y **el producto se descarta solo**.
-      // Es el MISMO error que el DualSense con el signo cambiado, y es peor: el que hace ver un
-      // negocio se investiga, el que hace ver una pérdida se tira a la basura sin mirarlo.
-      const RV_VARIANTE = new Set(['edicion','edition','limitada','limited','coleccionista','collector',
-        'aniversario','anniversary','bundle','combo','pack','kit','especial','special','deluxe','premium',
-        'refurbished','reacondicionado','usado','replica','generico','compatible','alternativo','copia','tester','decant','muestra','sample','inspirado','miniatura','recarga','refill','travel',
-        'pro','plus','max','mini','lite','slim','ultra','neo','xl','gen','generacion','duo','doble','triple']);
       const _rvDias = (ts) => (ts > 0 ? Math.floor((Date.now() - ts) / 86400000) : null);
 
       // Qué se revisa: lo que él nombre, o si no todo lo que hoy está VIVO (ni descartado ni con
