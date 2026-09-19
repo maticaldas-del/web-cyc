@@ -6320,9 +6320,17 @@ async function main() {
       const MLA = String(process.env.BILLING_PROBE).split(':')[1].trim().toUpperCase();
       if (!/^MLA\d+$/.test(MLA)) { console.log('Usá: probarput:<MLA de una publicación NUESTRA>'); return; }
       const lnk = ((await db.get('cyc/mllinks/' + MLA)) || {});
-      const cta = String(lnk.cuenta || '').toLowerCase();
-      const acc = accounts[cta] || null;
-      if (!acc?.refresh_token) { console.log(`No sé de qué cuenta es ${MLA} (dice "${cta || '—'}"). Probá con otra.`); return; }
+      // EL NOMBRE DE LA CUENTA SE COMPARA SIN TILDES NI MAYÚSCULAS. La primera versión hacía
+      // `accounts[cuenta.toLowerCase()]` y falló al toque: la publicación dice "matias" y la clave
+      // de los tokens puede tener tilde o mayúscula. Y si no la encuentra, ahora IMPRIME las que
+      // hay en vez de mandar a "probá con otra", que no dice nada.
+      const _norm = (x) => String(x || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim();
+      const cta = labels.find((L) => _norm(L) === _norm(lnk.cuenta)) || '';
+      const acc = cta ? accounts[cta] : null;
+      if (!acc?.refresh_token) {
+        console.log(`No encuentro token para la cuenta de ${MLA}: la publicación dice "${lnk.cuenta || '—'}" y las cuentas conectadas son: ${labels.join(' · ') || '(ninguna)'}`);
+        return;
+      }
       let t = null;
       try { t = await mlRefresh(ML_CLIENT_ID, ML_CLIENT_SECRET, acc.refresh_token);
         await db.patch('mlapi/tokens/' + cta, { refresh_token: t.refresh_token, updated_ts: Date.now() }); }
