@@ -1838,6 +1838,31 @@ sería descartar un producto por falta de dato — el error anotado de punta a p
 Va en `candPreciosHTML`, la MISMA función que dibuja el renglón del pedido y la tarjeta del
 candidato, así que no puede decir una cosa en un lado y otra en el otro.
 
+### LA COMISIÓN REAL YA ESTABA MEDIDA Y SE TIRABA (19/09/2026)
+
+Pregunta suya, y tenía razón: *"no entiendo el % exacto de comision, me explicas que falta saber?
+vos tenes todos los datos de lo que cobra ml"*. **No faltaba ningún dato de él.**
+
+El robot le pregunta a ML la comisión **a ese precio exacto** (`feeAt` → `/sites/MLA/listing_prices`,
+el MISMO pedido con el que el panel fija precios), la usa para calcular el margen y **la tiraba**:
+no la guardaba en ningún lado, así que ni el panel ni el chat de compras la veían nunca.
+
+**Y ése era el origen del "problema abierto" que el chat arrastraba hace días.** El simulador de la
+web NO le puede preguntar a ML —no tiene el token, eso ya estaba decidido— así que **copia la
+comisión de otro producto**, y las medidas van de **16% (Cabotine Turquoise) a 27% (Animale For
+Men)**. Con esa horquilla el mismo Animale Gold daba **57% con el robot y 29% o 49% con el
+simulador** según qué referencia eligiera. El chat concluyó que había que preguntarle a Mati el %
+exacto; lo que había que hacer era **guardar el número que el robot ya tenía**.
+
+Ahora se guarda en `cyc/candidatos_py/<id>/mlComision` (en pesos) y la tarjeta muestra
+**"ML se queda N% ($X · preguntado a ML)"**, en la MISMA función que dibuja el renglón del pedido
+(`candPreciosHTML`). El chat copia ese número al simulador y deja de adivinar.
+
+**LA LECCIÓN, y es una variante nueva de la de siempre: no era falta de dato, era un dato medido
+que no se guardaba.** El error conocido es leer una falta de dato como si fuera un dato; éste es el
+espejo — tener el dato, usarlo para una cuenta interna y no mostrarlo, que deja a todos los demás
+adivinando un número que el sistema ya sabe.
+
 ### LO QUE VA EN EL `PROMPT GUAY` (bloque listo para pegar)
 
 > **LAS VENTAS EN ML YA NO LAS CARGÁS VOS: LAS TRAE EL ROBOT**

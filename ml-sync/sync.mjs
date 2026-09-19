@@ -3143,7 +3143,7 @@ async function correrCandidatos(db, products, labels, accounts, soloPrueba, prue
       sinDato.push(`${c.nombre} → ML no contestó la comisión a ese precio (se reintenta solo)`);
       continue;
     }
-    const { costo, impuestos, envio, ganancia, margen } = rMin;
+    const { costo, impuestos, envio, ganancia, margen, fee } = rMin;
     calculados++;
     console.log(`      se vende ${mlMax > mlPrecio ? `de ${money(Math.round(mlPrecio))} a ${money(mlMax)}` : money(Math.round(mlPrecio))} · ${vendedores} vendedor(es) en la ficha`);
     // Las VENTAS van en su propio renglón y con el nombre completo: "vendedores" y "vendidas"
@@ -3153,7 +3153,7 @@ async function correrCandidatos(db, products, labels, accounts, soloPrueba, prue
     console.log(`      medido contra el MÁS BARATO (el peor caso): costo ${money(Math.round(costo))} + impuestos ${money(Math.round(impuestos))} + envío ${money(envio)} → ${margen.toFixed(1)}% · ${money(Math.round(ganancia))} por unidad`);
     if (!soloPrueba) {
       await db.patch(`cyc/candidatos_py/${id}`, {
-        mlTit, mlPrecio: Math.round(mlPrecio), mlMax, mlVendedores: vendedores, mlVendidas, mlVendidasMin, mlLink, mlPorNombre: porNombre,
+        mlTit, mlPrecio: Math.round(mlPrecio), mlMax, mlVendedores: vendedores, mlVendidas, mlVendidasMin, mlComision: Math.round(fee), mlLink, mlPorNombre: porNombre,
         margen: Math.round(margen * 10) / 10, ganancia: Math.round(ganancia),
         // Los tres de la caja de compra se BORRAN: se escribieron en la corrida del 18/09 y
         // siempre valían 0 porque `buy_box_winner` viene null (ver arriba). Dejarlos sería dejar

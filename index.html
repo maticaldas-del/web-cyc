@@ -2275,7 +2275,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='19.65';
+const APP_VERSION='19.66';
 // El problema real que esto resuelve no es curiosidad: es que el celular guarda la app y sigue
 // mostrando la de ayer sin avisar. Varias veces se revisó un cambio que ya estaba subido y no se
 // veía. Por eso, además del número, el chip avisa cuando hay una versión nueva esperando.
@@ -8603,6 +8603,17 @@ function candPreciosHTML(c){
   // se venda. Lo que BORRA algo tiene que ser más exigente que lo que lo muestra.
   // Y si ML no las contestó se dice: un CERO acá se leería como "no vende nada" y sería descartar
   // un producto por falta de dato, que es el error anotado de punta a punta en CLAUDE.md.
+  // LA COMISIÓN REAL DE ML, LA QUE EL ROBOT YA PREGUNTÓ (19/09/2026). Pregunta suya: *"no
+  // entiendo el % exacto de comision, me explicas que falta saber? vos tenes todos los datos de lo
+  // que cobra ml"*. Tenía razón: no falta ningún dato suyo. El robot le pregunta a ML la comisión
+  // a ESE precio exacto (`feeAt` → /sites/MLA/listing_prices, el mismo pedido con el que el panel
+  // fija precios) y hasta hoy la usaba para la cuenta y **la tiraba**. Ahora se guarda y se muestra.
+  // Para qué sirve verla: el simulador de la web NO le puede preguntar a ML (no tiene el token) y
+  // por eso copia la comisión de otro producto — y ahí está el 20% de diferencia que le aparecía
+  // entre el % del robot y el del simulador. Con este número se copia el REAL y deja de adivinar.
+  const com=(c.mlComision!=null&&isFinite(c.mlComision))?Number(c.mlComision):null;
+  const pr=Number(c.mlPrecio)||0;
+  if(com!=null&&pr>0)L.push(`ML se queda <b>${(com/pr*100).toFixed(1)}%</b> <span style="color:var(--muted)">(${fmt(com)} · preguntado a ML)</span>`);
   const vdas=(c.mlVendidas!=null&&isFinite(c.mlVendidas))?Number(c.mlVendidas):null;
   if(vdas!=null)L.push(`🛒 <b style="color:${vdas>=25?'var(--green)':'var(--amber)'}">${vdas}</b> vendida${vdas===1?'':'s'} en la ficha`);
   else L.push(`🛒 <span style="color:var(--muted)">ventas: ML no las contestó</span>`);
