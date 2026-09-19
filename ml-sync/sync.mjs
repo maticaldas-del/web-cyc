@@ -9075,10 +9075,19 @@ async function main() {
       const casi = [...verdes, ...ambar].filter((x) => !(x.vend != null && x.vend >= RV_VENT_PEDIDO)).sort((a, b) => b.ganancia - a.ganancia);
       console.log(`\n\u{1F3AF} CON +${RV_VENT_PEDIDO} VENDIDAS EN ML — la vara que pediste para este pedido — son ${paraPedir.length}:`);
       if (!paraPedir.length) console.log('   Ninguno llega a esa vara. No quiere decir que no sirvan: quiere decir que hoy no hay con qué reemplazar.');
-      for (const x of paraPedir) console.log(`   ${String(x.vend).padStart(5)} vendidas · ${x.margen.toFixed(1).padStart(5)}% · ${money(Math.round(x.ganancia))} por unidad · ${x.c.nombre}${x.reparos.length ? '   ⚠️ ' + x.reparos.filter((z) => !/vendidas/.test(z)).join(' · ') : ''}`);
+      // EL PRECIO EN DÓLARES VA EN EL RENGLÓN, y al lado el acumulado con 2 u. de cada uno, que
+      // es su tope por producto. **NO arma el pedido**: eso lo decide él — regla suya del 18/09,
+      // *"no que la web lo arme"* y *"sin tope, sólo una barra que marque el total del pedido, ya
+      // que el tope se lo digo yo"*. Acá lo único que se hace es sumar, que es lo que él no puede
+      // hacer de memoria mirando 21 renglones.
+      let acum = 0;
+      for (const x of paraPedir) {
+        acum += (parseFloat(x.c.usd) || 0) * 2;
+        console.log(`   ${String(x.vend).padStart(5)} vendidas · ${x.margen.toFixed(1).padStart(5)}% · ${money(Math.round(x.ganancia))} por unidad · US$ ${(parseFloat(x.c.usd) || 0).toFixed(2)} c/u · acum. con 2 u.: US$ ${acum.toFixed(2)} · ${x.c.nombre}${x.reparos.length ? '   ⚠️ ' + x.reparos.filter((z) => !/vendidas/.test(z)).join(' · ') : ''}`);
+      }
       if (casi.length) {
         console.log(`\n   Estos ${casi.length} pasan el piso de margen pero NO llegan a +${RV_VENT_PEDIDO}. No los borré: quedan por si hace falta reemplazar alguno de arriba.`);
-        for (const x of casi) console.log(`      ${x.vend == null ? 'ventas SIN CARGAR' : String(x.vend) + ' vendidas'} · ${x.margen.toFixed(1)}% · ${money(Math.round(x.ganancia))} · ${x.c.nombre}`);
+        for (const x of casi) console.log(`      ${x.vend == null ? 'ventas SIN CARGAR' : String(x.vend) + ' vendidas'} · ${x.margen.toFixed(1)}% · ${money(Math.round(x.ganancia))} · US$ ${(parseFloat(x.c.usd) || 0).toFixed(2)} c/u · ${x.c.nombre}`);
       }
       const conU = [...verdes, ...ambar, ...rojos].filter((x) => x.u > 0);
       if (conU.length) {
