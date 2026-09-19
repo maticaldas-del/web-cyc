@@ -2860,6 +2860,18 @@ const CAND_TOPE_USD = 250;      // suyo: un producto caro se come el pedido de U
 const CAND_PISO_PCT = 25;       // suyo: "el % sano es de 25 hacia arriba"
 const CAND_ENVIO_ARRIBA = 6190; // el peor envío de Full medido en ventas reales, arriba de la barrera
 const CAND_MAX_ML = 40;         // tope de consultas a ML por vuelta (ver abajo)
+// ── EL NÚMERO QUE OBLIGA A VOLVER A MEDIR CUANDO SE AGREGA UN DATO (19/09/2026) ───────────
+// **SUBILO DE 1 EN 1 CADA VEZ QUE AGREGUES UN CAMPO NUEVO AL `db.patch` de más abajo.**
+// Los candidatos ya medidos se saltean para no gastar consultas a ML, y eso está bien — pero
+// entonces un campo nuevo sólo aparece en los que se carguen de acá en adelante, y la pantalla
+// queda con la mitad de los renglones completos y la otra mitad vacíos, que se lee como que ML
+// no informa y no como que falta medirlos.
+// Ya pasó DOS veces en dos días: el 18/09 con `mlMax` (se tapó agregándolo al `if`, y el propio
+// comentario decía "cuando se agregue otro dato, lo mismo") y el 19/09 con `mlVendidas` y
+// `mlComision`, que se escribieron y NO se guardaron en ninguno de los 27 porque el `if` no los
+// nombraba. Acordarse de agregar cada campo a una condición es justo lo que falló las dos veces:
+// por eso ahora es UN solo número y no una lista que se puede quedar corta.
+const CAND_CALC_VER = 2;
 // `prueba` es un candidato INVENTADO que se le pasa desde el probe para correr el camino entero
 // —consulta al catálogo de ML, comisión al precio real, la cuenta— sin tener que cargar nada en la
 // base. Que el comando no se rompa con la lista vacía no prueba nada de lo que importa.
@@ -2958,12 +2970,11 @@ async function correrCandidatos(db, products, labels, accounts, soloPrueba, prue
     // `cyc/avisocand`, así que este freno era redundante además de dañino.
     // Lo que SÍ hay que evitar es volver a preguntarle a ML: eso se respeta igual, la cuenta
     // guardada se usa tal cual y no se gasta ninguna consulta.
-    // Y SE VUELVE A MEDIR CUANDO FALTA UN NÚMERO NUEVO (18/09/2026). `mlMax` se empezó a guardar
-    // ese día: sin esta condición, los candidatos ya medidos se saltaban para siempre y el dato
-    // nuevo sólo aparecería en los que se carguen de acá en adelante — la pantalla mostraría la
-    // mitad de los renglones completos y la otra mitad no, que se lee como que ML no informa y no
-    // como que falta medirlos.
-    if (c.margen != null && isFinite(c.margen) && c.mlMax !== undefined) {
+    // Y SE VUELVE A MEDIR CUANDO SE AGREGA UN NÚMERO NUEVO. Eso lo decide `CAND_CALC_VER` (ver
+    // arriba): si el candidato quedó guardado con una versión vieja, se vuelve a medir una vez y
+    // listo. La primera versión de esto nombraba los campos de a uno en este mismo `if` y se
+    // olvidó DOS en dos días — por eso ahora es un número y no una lista.
+    if (c.margen != null && isFinite(c.margen) && Number(c.calcVer) === CAND_CALC_VER) {
       yaCalc++;
       const mGuard = Number(c.margen);
       if (mGuard >= CAND_PISO_PCT) {
@@ -3159,7 +3170,7 @@ async function correrCandidatos(db, products, labels, accounts, soloPrueba, prue
         // siempre valían 0 porque `buy_box_winner` viene null (ver arriba). Dejarlos sería dejar
         // un cero que se lee como un dato.
         mlCaja: null, margenCaja: null, gananciaCaja: null,
-        puestoUSD: puesto, calcTs: Date.now(), motivo: null,
+        puestoUSD: puesto, calcTs: Date.now(), calcVer: CAND_CALC_VER, motivo: null,
       });
     }
     // ABAJO DEL PISO NO SE ESCONDE: cae en "descartados" CON el motivo y el número, así él puede
