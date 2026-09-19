@@ -6259,6 +6259,68 @@ async function main() {
       return;
     }
 
+    // BILLING_PROBE=devolvercand[:go] → DEVUELVE A "PARA PROBAR" LO QUE SE TACHÓ CON UNA SOLA
+    // MEDICIÓN.
+    //
+    // POR QUÉ EXISTE (19/09/2026): el freno de las DOS mediciones estaba desactivado por el atajo
+    // de "ya tiene la cuenta hecha" (ver el comentario largo en `candidatos`), así que **27 de los
+    // 39 descartados se fueron con UNA sola lectura**. El margen se mide contra el MÁS BARATO de
+    // la ficha de ML, y alcanza con que un competidor remate un rato —o con que ML devuelva la
+    // lista incompleta— para hundirlo: el Yara Moi pasó de 28,3% a −2,7% en dos corridas con
+    // minutos de diferencia. O sea que esos 27 están tachados por un número que puede no ser.
+    //
+    // NO SÓLO SACA LA CRUZ: TAMBIÉN BORRA EL MARGEN GUARDADO, y sin eso no serviría de nada.
+    // El descarte necesita dos lecturas seguidas abajo del piso, y la primera la saca de `margen`.
+    // Devolviéndolo con el número viejo adentro, la próxima medición contaría como la SEGUNDA y lo
+    // volvería a tachar al toque — o sea que "devolver" sería devolverlo para que se muera igual.
+    // Borrando `margen` y `calcVer` vuelve a arrancar de cero: se mide, y si da mal queda en
+    // observación una vuelta más antes de caerse.
+    //
+    // NO toca los que descartó ÉL a mano desde el panel (ésos no tienen motivo anotado y son una
+    // decisión suya) ni los que ya se midieron DOS veces, que están bien tachados.
+    // Sin `:go` sólo muestra la lista.
+    if (/^devolvercand(:|$)/.test(String(process.env.BILLING_PROBE || ''))) {
+      const APLICAR = String(process.env.BILLING_PROBE).split(':')[1] === 'go';
+      const cands = (await db.get('cyc/candidatos_py')) || {};
+      const vuelven = [], quedan = { mano: 0, dosVeces: 0, otro: 0 };
+      for (const [id, c] of Object.entries(cands)) {
+        if (!c || !c.no) continue;
+        const mot = String(c.motivo || '');
+        if (!mot) { quedan.mano++; continue; }                       // lo tachó él desde el panel
+        if (/por segunda vez/.test(mot)) { quedan.dosVeces++; continue; }  // bien tachado
+        if (!/abajo de tu piso/.test(mot)) { quedan.otro++; continue; }    // sin precio, tope, marca…
+        vuelven.push({ id, nombre: c.nombre || id, mot, margen: c.margen });
+      }
+      console.log(`=== DEVOLVER A "PARA PROBAR" ${APLICAR ? '(APLICANDO)' : '(PRUEBA)'} ===\n`);
+      console.log(`${vuelven.length} tachado(s) con UNA sola medición · se quedan tachados: ${quedan.mano} que descartaste a mano · ${quedan.dosVeces} medidos dos veces · ${quedan.otro} por otro motivo (sin precio, tope, marca)\n`);
+      if (!vuelven.length) { console.log('No hay ninguno para devolver.'); return; }
+      for (const v of vuelven) console.log(`   ↩︎ ${v.nombre}  ·  decía: ${v.mot}`);
+      if (!APLICAR) { console.log(`\nSOLO PRUEBA: no se tocó nada. Si está bien: devolvercand:go`); return; }
+      let ok = 0;
+      for (const v of vuelven) {
+        // Uno por uno y con su propio try: si falla el de al lado, éste igual vuelve. Y se borra
+        // el margen ANTES de sacar la cruz, para que no quede ni un instante visible con el
+        // número viejo adentro.
+        try {
+          await db.set(`cyc/candidatos_py/${v.id}/margen`, null);
+          await db.set(`cyc/candidatos_py/${v.id}/calcVer`, null);
+          await db.set(`cyc/candidatos_py/${v.id}/ganancia`, null);
+          await db.set(`cyc/candidatos_py/${v.id}/motivo`, null);
+          await db.set(`cyc/candidatos_py/${v.id}/noTs`, null);
+          await db.set(`cyc/candidatos_py/${v.id}/no`, null);
+          ok++;
+        } catch (e) { console.log(`   ❌ ${v.nombre}: ${String(e.message || e).slice(0, 80)}`); }
+      }
+      console.log(`\n✓ Devueltos ${ok} de ${vuelven.length}. Se vuelven a medir solos en la próxima vuelta de "candidatos".`);
+      // RELEER (regla 6): no alcanza con que el escribir no haya fallado.
+      const rele = (await db.get('cyc/candidatos_py')) || {};
+      const sigueTachado = vuelven.filter((v) => (rele[v.id] || {}).no).length;
+      const conMargen = vuelven.filter((v) => (rele[v.id] || {}).margen != null).length;
+      console.log(`   Releído de la base: ${sigueTachado} siguen tachados · ${conMargen} todavía tienen el margen viejo adentro.`);
+      if (sigueTachado || conMargen) console.log('   ⚠️ Alguno no quedó bien: mirá la lista de arriba.');
+      return;
+    }
+
     // BILLING_PROBE=abrircaja:<seguimiento|idEnvio>[:go] → VUELVE A PONER UNA CAJA "EN CAMINO".
     //
     // Para deshacer un marcado equivocado. Hizo falta el 12/09/2026: la caja 76236266 de Luciana
