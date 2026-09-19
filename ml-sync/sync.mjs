@@ -8957,9 +8957,15 @@ async function main() {
       // **EL CHEQUEO SÓLO MIRABA LAS PALABRAS QUE FALTAN, NUNCA LAS QUE SOBRAN.** Y una edición
       // especial, un pack, un combo o un "Pro/Lite/Max" no le QUITAN palabras al título: se las
       // AGREGAN. Todo el chequeo estaba mirando para el lado por el que este error no pasa.
+      // Y VAN TAMBIÉN LAS DEL ERROR AL REVÉS, que lo marcó él: *"pudo dar de baja productos que sí
+      // daban porque vio otro que era más barato"*. Si el catálogo que eligió el chat tiene como
+      // más barato un **decant, un tester, una muestra, una réplica o una recarga**, el precio
+      // contra el que se mide se hunde, el margen sale bajo y **el producto se descarta solo**.
+      // Es el MISMO error que el DualSense con el signo cambiado, y es peor: el que hace ver un
+      // negocio se investiga, el que hace ver una pérdida se tira a la basura sin mirarlo.
       const RV_VARIANTE = new Set(['edicion','edition','limitada','limited','coleccionista','collector',
         'aniversario','anniversary','bundle','combo','pack','kit','especial','special','deluxe','premium',
-        'refurbished','reacondicionado','usado','replica','generico','compatible','alternativo','copia',
+        'refurbished','reacondicionado','usado','replica','generico','compatible','alternativo','copia','tester','decant','muestra','sample','inspirado','miniatura','recarga','refill','travel',
         'pro','plus','max','mini','lite','slim','ultra','neo','xl','gen','generacion','duo','doble','triple']);
       const _rvDias = (ts) => (ts > 0 ? Math.floor((Date.now() - ts) / 86400000) : null);
 
