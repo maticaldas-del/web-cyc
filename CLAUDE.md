@@ -1953,6 +1953,19 @@ Dos cosas más que salieron de la misma corrida:
    en el JBL el renglón 13 venía a $234.999 después de uno de $273.999. No cambia ningún resultado
    (se usa `Math.min`/`Math.max`), pero el comentario estaba mal y se corrigió.
 
+### EL FILTRO DEL EXTERIOR AGARRÓ LOS CUATRO QUE SE SOSPECHABAN, EN SU PRIMERA CORRIDA REAL
+
+Corrido el 19/09 después de que el chat terminara el barrido: de 38 candidatos medidos, **5 no se
+pudieron medir y CUATRO son por esto** — *"en ML sólo lo venden desde el exterior"*:
+**Calvin Klein CK One · Armaf Odyssey Toffee Coffee · Armaf Club de Nuit Blue Iconic · Hamidi
+Addicted Silver**. Son **exactamente** los cuatro que estaban anotados arriba como sospechosos de
+tener el margen falso (74%, 42,4%, 38,4%). O sea que esos márgenes **eran falsos** y el freno los
+sacó antes de que entraran a una compra. El quinto es el Lattafa Fahad, que ya estaba anotado: el
+catálogo existe y hoy no lo vende nadie.
+**Lo que NO se puede decir todavía:** que los márgenes muy negativos (King Of Seduction −18,3%,
+Khamrah −18,2%, Yum Yum −16,3%) se expliquen por lo mismo. Ésos ya estaban descartados antes de
+esta corrida, así que no se volvieron a medir.
+
 **EL RIESGO DE FONDO SIGUE EN PIE, aunque hoy no haya mordido: el ROBOT no mira de dónde es el
 vendedor.** `candidatos` mide el margen **contra el MÁS BARATO de la
 ficha** (`Math.min` de los precios que devuelve `/products/<id>/items`) y **no mira de dónde es ese
