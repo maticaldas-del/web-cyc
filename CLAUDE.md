@@ -1914,6 +1914,40 @@ adivinando un número que el sistema ya sabe.
 > · El robot sigue pidiéndolas como CRUCE por si ML lo abre algún día: si los dos números existen
 >   y no coinciden, la tarjeta dice **"(el robot ve N)"**.
 
+### EL FRENO DE LAS DOS MEDICIONES ESTABA DESACTIVADO, Y EL RESCATE DIO CERO (19/09/2026)
+
+Salió al revisar lo que cargó el chat de compras. **De 69 candidatos, 39 estaban tachados y el
+comando no lo decía en ningún renglón**: imprimía *"69 en la lista"* y abajo *"30 mirados"*. Los
+que ya tienen `no` o `prodId` se salteaban con un `continue` pelado, sin contarse — **y el chequeo
+de "la cuenta tiene que cerrar" medía contra `mirados`, que es un número que ya los había dejado
+afuera, así que cerraba perfecto igual.** El freno puesto para detectar descartes silenciosos no
+veía éste. Ahora el resumen arranca por la lista ENTERA y hay un segundo chequeo contra ella.
+
+**Y AL VER EL DESGLOSE APARECIÓ LO GRAVE: 27 de los 39 se habían descartado con UNA sola medición.**
+La regla del 18/09 pide DOS, y la causa es el atajo de *"ya tiene la cuenta hecha"*, que existe para
+no gastar consultas: agarraba también a los que tenían el margen guardado ABAJO del piso y los
+descartaba con ese número, **sin volver a preguntarle nada a ML**. O sea que la "segunda medición"
+no era una segunda medición: **era la primera, leída dos veces.** Y el comentario de abajo afirmaba
+lo contrario —*"en la vuelta siguiente `antesM` ya existe y, si sigue abajo, cae en el descarte"*—
+dando por hecho que la vuelta siguiente volvía a medir. No volvía. Es el comentario que promete que
+algo está cubierto sin estarlo, **por octava vez en este archivo**.
+**Arreglado:** el atajo es sólo para los que DAN. El que quedó abajo del piso se vuelve a medir de
+verdad y recién la segunda lectura real descarta. Verificado en la corrida siguiente: los dos que
+estaban en observación siguieron en observación en vez de tacharse.
+
+**LOS 27 SE DEVOLVIERON (autorizado por él) Y NINGUNO SE RESCATÓ. Eso también es un resultado.**
+Comando nuevo **`devolvercand[:go]`**, que además de sacar la cruz **borra el margen guardado** —
+sin eso no serviría de nada: la próxima medición contaría como la SEGUNDA y los tacharía al toque.
+27 de 27 devueltos, releído de la base. Al volver a medirlos, **los números dieron casi idénticos**
+(Pride Nebras 24,9% las dos veces, Montblanc 22,7 → 22,8, Jouri 20,9 → 21,0). O sea que **en estos
+27 las lecturas eran estables y estaban bien tachados**; se van a volver a caer solos, ahora sí con
+dos mediciones REALES.
+**No invalida el arreglo, y conviene tenerlo claro:** que esta vez no hubiera ninguno mal tachado
+no quiere decir que el freno sobre — quiere decir que hoy tuvimos suerte. El Yara Moi pasó de 28,3%
+a −2,7% en dos corridas con minutos de diferencia, y eso es exactamente lo que el freno agarra.
+**Lo que sí queda medido es cuánto de "inestable" tiene el precio de ML: mucho menos de lo que
+parecía.** De 27 casos, cero cambiaron de lado.
+
 ## EL PEDIDO DE PRODUCTOS NUEVOS: LA WEB LO GUARDA, EL CHAT LO ARMA (18/09/2026)
 
 Pedido suyo: *"voy a hacer un pedido de todos productos nuevos con una combinacion (…) que sean
