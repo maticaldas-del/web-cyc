@@ -1889,22 +1889,30 @@ adivinando un número que el sistema ya sabe.
 
 ### LO QUE VA EN EL `PROMPT GUAY` (bloque listo para pegar)
 
-> **LAS VENTAS EN ML YA NO LAS CARGÁS VOS: LAS TRAE EL ROBOT**
+> **LAS VENTAS EN ML LAS CARGÁS VOS, Y SOS EL ÚNICO QUE PUEDE**
 >
-> El panel muestra ahora, en cada candidato de *Para probar* y en cada renglón del pedido:
-> **🛒 N vendidas en la ficha** — la suma de lo que vendieron TODOS los vendedores de ese catálogo
-> de ML. Va en **verde de 25 para arriba** y en **ámbar abajo de 25**, que es el corte de Matías
-> (*"un vendedor solo no molesta, uno sin ventas no sirve"*).
+> **ESTE BLOQUE DECÍA LO CONTRARIO HASTA EL 19/09 A LA NOCHE** —*"ya no las cargás vos: las trae
+> el robot"*— y era falso: se escribió ANTES de medirlo. El robot pide las ventas y **ML contesta
+> 403 en los 26 candidatos, uno por uno**. Pegar la versión vieja le decía al chat justo lo que NO
+> hay que hacer. Es el comentario que promete algo que no está, otra vez.
 >
-> **Qué hacer con eso:**
-> · **No hay dónde cargarlas y no hace falta**: el robot se las pide a ML solo, todas las noches.
+> En el formulario de *"Agregar un candidato a mano"* hay un campo **"Vendidos en ML"**.
+> **Cargalo siempre**, con los vendidos de la publicación **MÁS BARATA**, que es contra la que se
+> mide el margen (si ML dice *"+1000 vendidos"*, poné 1000).
+>
+> El panel lo muestra como **🛒 N vendidas en ML**, en **verde de 25 para arriba** y **ámbar abajo**,
+> que es el corte de Matías (*"un vendedor solo no molesta, uno sin ventas no sirve"*). Si no lo
+> cargaste dice **"faltan las ventas — las carga el chat"**, nunca un cero.
+>
 > · **Un ámbar no descarta el producto por sí solo.** El número que informa ML es de toda la vida
 >   de la publicación, no del último mes, así que un catálogo nuevo puede vender bien y mostrar
 >   poco. Sirve para ordenar, no para tirar.
 > · **Lo que sí es una señal fea: ámbar con muchos vendedores.** Varios vendiendo y casi nada
 >   vendido quiere decir que el producto no se mueve, no que falte competencia.
-> · Si dice **"ventas: ML no las contestó"**, no es cero: es que no se pudieron leer esa vuelta.
->   Se arregla solo en la corrida siguiente.
+> · **Los candidatos cargados antes del 19/09 no tienen el dato**, porque el campo no existía.
+>   Cuando vuelvas a pasar por uno, cargáselo; no hace falta ir a buscarlos todos de una.
+> · El robot sigue pidiéndolas como CRUCE por si ML lo abre algún día: si los dos números existen
+>   y no coinciden, la tarjeta dice **"(el robot ve N)"**.
 
 ## EL PEDIDO DE PRODUCTOS NUEVOS: LA WEB LO GUARDA, EL CHAT LO ARMA (18/09/2026)
 
