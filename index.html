@@ -2275,7 +2275,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='19.67';
+const APP_VERSION='19.68';
 // El problema real que esto resuelve no es curiosidad: es que el celular guarda la app y sigue
 // mostrando la de ayer sin avisar. Varias veces se revisó un cambio que ya estaba subido y no se
 // veía. Por eso, además del número, el chip avisa cuando hay una versión nueva esperando.
@@ -8765,37 +8765,52 @@ function simPYHTML(){
   const refs=simPYRefs();
   const tc=curTC();
   const cuentas=['Adriana','Luciana','Ayelen','Matias'];
-  const inp=(id,ph,val,w)=>`<input id="${id}" value="${val||''}" placeholder="${ph}" oninput="simPYCalc()" style="width:${w||96}px;font-size:.7rem;padding:5px 7px;background:var(--surface2);border:1px solid var(--border);border-radius:6px;color:var(--text);font-family:'DM Mono',monospace">`;
-  const lab=(t,tit)=>`<div style="font-size:.57rem;color:var(--muted);margin-bottom:3px"${tit?` title="${String(tit).replace(/"/g,'&quot;')}"`:''}>${t}</div>`;
+  const inp=(id,ph,val,w)=>`<input id="${id}" value="${val||''}" placeholder="${ph}" oninput="simPYCalc()" style="width:${w||96}px;font-size:.78rem;padding:7px 9px;background:var(--surface2);border:1px solid var(--border);border-radius:6px;color:var(--text);font-family:'DM Mono',monospace">`;
+  // ── CADA CASILLA CON SU NOMBRE Y QUÉ VA ADENTRO (19/09/2026, pedido suyo) ─────────────────
+  // Textual: *"armalo mejor con nombre de que hay que poner en cada cuadrado"*. Antes los seis
+  // campos iban en una fila con el nombre en letra de 0,57rem arriba, y con el ancho de la
+  // pantalla los nombres se corrían de su casilla: el de "cuántas entran en una caja" quedaba
+  // arriba de otra. **Un formulario donde no se sabe qué va en cada casilla se llena mal, y acá
+  // llenarlo mal da un margen equivocado con el que se decide una compra.**
+  // Ahora cada campo es una tarjeta con NÚMERO, nombre y la explicación A LA VISTA. Estaba toda
+  // escrita en el `title`, o sea escondida atrás de pasar el mouse por encima — y en el teléfono
+  // no hay mouse. La explicación que hay que leer para no equivocarse no puede estar oculta.
+  const campo=(n,titulo,estado,ayuda,control)=>`<div style="background:var(--surface);border:1px solid var(--border);border-radius:9px;padding:10px 11px">
+      <div style="font-size:.7rem;font-weight:700;margin-bottom:3px;line-height:1.3">${n}. ${titulo}${estado?` <span style="font-weight:400;font-size:.84em;color:${estado==='obligatorio'?'var(--red)':'var(--muted)'}">· ${estado}</span>`:''}</div>
+      <div style="font-size:.6rem;color:var(--muted);line-height:1.55;margin-bottom:7px">${ayuda}</div>
+      ${control}
+    </div>`;
   return `<details style="margin:12px 0 4px">
     <summary style="cursor:pointer;font-size:.74rem;font-weight:700">🧮 Simulador real de precio <span style="font-weight:400;color:var(--muted);font-size:.85em">· cuánto te queda DE VERDAD, con todo adentro</span></summary>
     <div style="margin-top:9px;padding:12px 13px;background:var(--surface2);border-radius:10px;border:1px solid var(--border)">
-      <div style="font-size:.61rem;color:var(--muted);line-height:1.6;margin-bottom:10px">
+      <div style="font-size:.61rem;color:var(--muted);line-height:1.6;margin-bottom:11px">
         El simulador de ML te dice cuánto te deposita y nada más. Éste le suma lo que ML no sabe:
         la mercadería con el 15% de Paraguay, el IIBB, el monotributo, lo que cobra Full y los reclamos.
+        <b>No guarda nada ni toca ningún precio: sólo calcula.</b>
         ${tc?'':'<br><span style="color:var(--red)">⚠️ No hay dólar cargado: el costo en pesos va a dar cero.</span>'}
       </div>
-      <div style="display:flex;gap:12px;flex-wrap:wrap;align-items:flex-start">
-        <div>${lab('precio en comprasparaguay','El precio en DÓLARES que muestra comprasparaguay, crudo. El panel le suma el 15%.')}
-          <div style="display:flex;align-items:center;gap:5px">US$ ${inp('spy-usd','0,00','',78)}</div></div>
-        <div>${lab('a cuánto lo vendés en ML','El precio que va a pagar el comprador.')}$ ${inp('spy-precio','0','',100)}</div>
-        <div>${lab('en qué cuenta','Cada cuenta tiene su % de IIBB: Adriana 4,07 · Luciana 4,37 · Ayelen 5,95 · Matías 4,58.')}
-          <select id="spy-cuenta" onchange="simPYCalc()" style="font-size:.7rem;padding:5px 7px;background:var(--surface2);border:1px solid var(--border);border-radius:6px;color:var(--text)">
-            ${cuentas.map(c=>`<option value="${c}">${c}</option>`).join('')}
-          </select></div>
-        <div>${lab('cuotas sin interés (%)','Dejalo VACÍO salvo que vayas a ofrecer cuotas sin interés de verdad. La promo de 2 cuotas que ML pone en todas las publicaciones NO cuesta nada: el panel mide lo que Mercado Pago cobró de verdad, y ahí da cero. Cuando hay cuotas posta el cargo es enorme (19,2% en un Samsung).')}${inp('spy-cuo','0',' ',70)}</div>
-        <div>${lab('cuántas entran en una caja','Mandar una caja a Full sale '+fmt(costoCaja())+' y eso se reparte entre las unidades que entran. Es parte del costo de TODO producto del panel (el campo Envío+embalaje de la ficha). Si lo dejás vacío, ese costo NO se cuenta y el margen se ve mejor de lo que es.')}${inp('spy-caja','',' ',70)}</div>
-        <div>${lab('% de reclamos','Lo que se pierde por devoluciones y roturas, igual que el %Dev de la ficha. En un producto nuevo no hay con qué medirlo: dejalo vacío y va en cero, que es lo mismo que hace el panel con una ficha nueva.')}${inp('spy-dev','0',' ',62)}</div>
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(232px,1fr));gap:10px">
+        ${campo(1,'Precio en comprasparaguay','obligatorio','El precio en <b>dólares</b> de la fila de <b>NISSEI</b>, <b>crudo</b>: sin sumarle el 15%. El panel se lo suma solo. Si lo cargás con el 15% adentro, el margen sale mal.',
+          `<div style="display:flex;align-items:center;gap:6px;font-size:.78rem">US$ ${inp('spy-usd','0,00','',96)}</div>`)}
+        ${campo(2,'A cuánto lo vendés en ML','obligatorio','El precio que va a pagar el comprador. En un producto nuevo no lo elegís vos: poné el del vendedor <b>MÁS BARATO</b>, que es contra el que vas a competir.',
+          `<div style="display:flex;align-items:center;gap:6px;font-size:.78rem">$ ${inp('spy-precio','0','',118)}</div>`)}
+        ${campo(3,'En qué cuenta lo vas a vender','','Cambia el IIBB: Adriana 4,07% · Luciana 4,37% · Ayelen 5,95% · Matías 4,58%. <b>Si no sabés en cuál va, poné Ayelen</b>: es la que más paga, así el margen sale por el lado seguro.',
+          `<select id="spy-cuenta" onchange="simPYCalc()" style="width:100%;font-size:.78rem;padding:7px 9px;background:var(--surface2);border:1px solid var(--border);border-radius:6px;color:var(--text)">${cuentas.map(c=>`<option value="${c}">${c}</option>`).join('')}</select>`)}
+        ${campo(4,'Cuántas entran en una caja','si no la sabés, dejala vacía','De una caja de 70×70×70 cm. Mandar una caja a Full sale '+fmt(costoCaja())+' y eso se reparte entre las unidades que entran (un perfume de 100 ml son ~100 por caja). <b>Vacío = ese costo no se cuenta</b> y el simulador te avisa en ámbar que el margen se ve mejor de lo que va a ser.',
+          `<div style="display:flex;align-items:center;gap:6px;font-size:.78rem">${inp('spy-caja','ej: 100','',96)} unidades</div>`)}
+        ${campo(5,'Cuotas sin interés','casi siempre vacío','Sólo si el vendedor más barato ofrece cuotas sin interés <b>DE VERDAD</b>. La promo de 2 cuotas que ML muestra en todas las publicaciones <b>no cuesta nada</b> y no se carga. Cuando hay cuotas posta el cargo es enorme: 19,2% en un Samsung.',
+          `<div style="display:flex;align-items:center;gap:6px;font-size:.78rem">${inp('spy-cuo','0','',80)} %</div>`)}
+        ${campo(6,'% de reclamos','en un producto nuevo, vacío','Lo que se pierde por devoluciones y roturas, el mismo <b>%Dev</b> de la ficha. En algo que nunca vendiste no hay con qué medirlo: vacío va en cero, igual que hace el panel con una ficha recién creada.',
+          `<div style="display:flex;align-items:center;gap:6px;font-size:.78rem">${inp('spy-dev','0','',80)} %</div>`)}
       </div>
-      <div style="display:flex;gap:12px;flex-wrap:wrap;align-items:flex-start;margin-top:10px">
-        <div style="flex:1;min-width:260px">${lab('copiá la comisión de un producto parecido','La web no le puede preguntar a ML cuánto cobra (eso necesita la llave, y sólo la tiene el robot). Así que se toma la comisión REAL de un producto que ya vendés. Tiene que ser de la MISMA categoría: si no, el número se va.')}
-          <select id="spy-ref" onchange="simPYCalc()" style="width:100%;max-width:380px;font-size:.68rem;padding:5px 7px;background:var(--surface2);border:1px solid var(--border);border-radius:6px;color:var(--text)">
-            <option value="">— elegí uno —</option>
+      <div style="margin-top:10px;display:grid;grid-template-columns:repeat(auto-fit,minmax(232px,1fr));gap:10px">
+        ${campo(7,'La comisión de ML','elegí una de las dos','La web <b>no le puede preguntar a ML</b> cuánto cobra: eso necesita la llave y sólo la tiene el robot. Así que se copia la comisión <b>REAL</b> de un producto que ya vendés. Tiene que ser de la <b>MISMA categoría y de precio parecido</b>; si no, el número se va.',
+          `<select id="spy-ref" onchange="simPYCalc()" style="width:100%;font-size:.72rem;padding:7px 9px;background:var(--surface2);border:1px solid var(--border);border-radius:6px;color:var(--text)">
+            <option value="">— elegí un producto parecido —</option>
             ${refs.map(r=>`<option value="${r.id}">${String(r.nombre).slice(0,52)} · ${r.pct.toFixed(1)}% a ${fmt(r.precio)}</option>`).join('')}
-          </select>
-          ${refs.length?'':'<div style="font-size:.58rem;color:var(--amber);margin-top:3px">No hay ningún producto con comisión medida todavía. Corré <b>netoweb</b> o poné el % a mano acá al lado.</div>'}
-        </div>
-        <div>${lab('…o poné el % exacto de ML','Si lo tenés del simulador de ML, éste manda sobre el producto parecido. Es el número más seguro.')}${inp('spy-compct','',' ',70)} %</div>
+          </select>${refs.length?'':'<div style="font-size:.58rem;color:var(--amber);margin-top:4px">No hay ningún producto con comisión medida todavía. Corré <b>netoweb</b> o poné el % a mano acá al lado.</div>'}`)}
+        ${campo(8,'…o el % exacto que te dio ML','el más seguro','Si lo sacaste del simulador de ML, poné ese número acá: <b>manda sobre el producto parecido</b> de al lado y es el más confiable de los dos.',
+          `<div style="display:flex;align-items:center;gap:6px;font-size:.78rem">${inp('spy-compct','ej: 17,2','',90)} %</div>`)}
       </div>
       <div id="spy-out" style="margin-top:11px"></div>
     </div>

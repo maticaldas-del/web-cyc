@@ -2348,6 +2348,30 @@ cinco precios medidos, la base queda entre **15,7% y 16,6%** en los cinco: el mo
 otra (`simMargen`, la misma cuenta que `margenMLDe`). Con dos copias, la ficha diría un número y
 Paraguay otro sobre el mismo producto — el error anotado siete veces en este archivo.
 
+### CADA CASILLA CON SU NOMBRE Y QUÉ VA ADENTRO (19/09/2026)
+
+Pedido suyo, mirando la pantalla: *"armalo mejor con nombre de que hay que poner en cada cuadrado"*.
+
+Los seis campos iban en **una sola fila**, con el nombre en letra de **0,57rem** arriba, y al
+angostarse la pantalla **los nombres se corrían de su casilla**: el de *"cuántas entran en una
+caja"* quedaba arriba de otra. **Un formulario donde no se sabe qué va en cada casilla se llena
+mal, y acá llenarlo mal da un margen equivocado con el que se decide una compra.**
+
+Ahora cada campo es una tarjeta con **número, nombre y la explicación A LA VISTA**. Eso último es
+lo que más cambia: **toda la ayuda estaba escrita en el `title`**, o sea escondida atrás de pasar
+el mouse por encima — **y en el teléfono no hay mouse**. La explicación que hay que leer para no
+equivocarse no puede estar oculta.
+Se agregó además, en cada una, si es **obligatoria** o si **va vacía** (las cuotas y el % de
+reclamos casi siempre van vacíos, y eso no se sabía mirando la pantalla).
+
+**No cambió ninguna cuenta**: los `id` de las ocho casillas son los mismos, así que `simPYCalc`
+sigue leyendo exactamente lo de antes. Corrido el chequeo de las tres listas: **0 funciones, 0
+variables y 0 `id` de diferencia**, que es lo que corresponde a un cambio que sólo toca cómo se ve.
+Probado además con la función REAL sacada del archivo y 19 casos: están las ocho casillas, cada
+una con su número, el costo de la caja sale del número de la base, no queda ningún `undefined` ni
+ningún `${` sin reemplazar, y los dos casos que hay que avisar —sin dólar cargado y sin ningún
+producto de referencia— avisan.
+
 ### LO QUE LE FALTABA, Y LO MARCÓ ÉL (18/09/2026)
 
 Textual: *"que sea independiente, o sea que muestre lo que realmente le queda a cyc. teniendo en
