@@ -8821,12 +8821,21 @@ async function main() {
       // entre el producto correcto y uno que no se vende, y en el conteo de palabras se diluyen.
       // LA VARA DEL PEDIDO DE HOY. No reemplaza al corte de 25 que ya estaba: convive con él.
       const RV_VENT_PEDIDO = 100;
-      const RV_VACIAS = new Set(['perfume','eau','parfum','toilette','edp','edt','para','hombre','mujer','unisex','los','las','con','sin','original','importado','spray','vaporizador','set','kit','fragancia','colonia','del','por','una','pack','uds','unidad','unidades','the','and']);
+      // Las que NO distinguen nada. Van las castellanas Y las portuguesas, porque comprasparaguay
+      // escribe en portugués y ML en castellano: sin esto, "preto" o "feminino" se leen como una
+      // palabra que falta cuando lo único que cambia es el idioma.
+      const RV_VACIAS = new Set(['perfume','eau','parfum','toilette','edp','edt','para','hombre','mujer','unisex','los','las','con','sin','original','importado','spray','vaporizador','set','kit','fragancia','colonia','del','por','una','pack','uds','unidad','unidades','the','and',
+        'masculino','feminino','femenino','unissex','preto','preta','branco','branca','negro','negra','blanco','blanca','fone','ouvido','fio','cabo','caixa','som','portatil','sem','com','cor','color','edicion','edition']);
       // El numero se despega de la unidad ANTES de comparar: "100ML" es UNA palabra para la
       // computadora, y como palabra hacia coincidir el Hamidi Addicted con el Hamidi Imensity
       // (los dos de 100 mL) justo arriba de la mitad, que era el corte. Separado, "100" cuenta
       // como numero -- que es donde tiene que contar -- y "ml" se cae por corta.
-      const _rvNorm = (t) => String(t || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[^a-z0-9]+/g, ' ').replace(/(\d)([a-z])/g, '$1 $2').replace(/([a-z])(\d)/g, '$1 $2').trim();
+      const _rvBase = (t) => String(t || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[^a-z0-9]+/g, ' ');
+      const _rvNorm = (t) => _rvBase(t).replace(/(\d)([a-z])/g, '$1 $2').replace(/([a-z])(\d)/g, '$1 $2').trim();
+      // EL CODIGO DE MODELO: los pedacitos que mezclan letras y numeros (mdr zx310ap, tl wn822n,
+      // m612, h101). Se sacan los que son la MEDIDA y no el modelo -- 100ml, 256gb -- porque esos
+      // los tiene cualquier producto de la misma familia y no distinguen nada.
+      const _rvMod = (t) => (_rvBase(t).match(/[a-z0-9]+/g) || []).filter((w) => w.length >= 3 && /[a-z]/.test(w) && /\d/.test(w) && !/^\d+(ml|gb|mb|tb|kg|mm|cm|hz|mah|w|v|g|l)$/.test(w));
       const _rvPal = (t) => new Set(_rvNorm(t).split(' ').filter((w) => w && !RV_VACIAS.has(w) && w.length >= 3 && !/^\d+$/.test(w)));
       // TODOS los numeros, incluidos los de UN digito. La primera version pedia dos o mas y se
       // comia justo el caso anotado: "Xiaomi Redmi Watch 4" contra "Xiaomi Redmi Redmi Watch 3"
@@ -8923,16 +8932,52 @@ async function main() {
         console.log(`     ML dice        : "${mlTit}"`);
         console.log(`     https://www.mercadolibre.com.ar/p/${prod.id}`);
         // Las palabras y los números, por separado.
+        // ── EL CÓDIGO DE MODELO MANDA SOBRE LAS PALABRAS (19/09/2026) ───────────────────
+        // LA PRIMERA CORRIDA REAL LO DESTAPÓ: pintó en ámbar DOCE productos de electrónica que
+        // estaban perfectos, con el aviso *"los dos títulos casi no comparten palabras"*. La causa
+        // no era el producto: **comprasparaguay escribe en PORTUGUÉS** (*"Fone de Ouvido ... Preto"*)
+        // **y ML en castellano** (*"Auriculares ... Negro"*), así que no comparten casi ninguna
+        // palabra aunque sean exactamente lo mismo. Un aviso que suena en casi todos entrena a
+        // ignorarlo — el mismo problema que el `⚠️ VENDE` de `nomandar`, que saltaba siempre.
+        // **En electrónica la identidad no son las palabras: es el MODELO** (MDR-ZX310AP,
+        // TL-WN822N, M612, H101). Si ese código está en el título de ML es el mismo producto y no
+        // hay nada que mirar; y si el candidato TIENE código y ML no lo nombra, eso sí es un aviso
+        // fuerte. El chequeo por palabras queda para la perfumería, que es donde sí funciona (ahí
+        // agarró los seis emparejados equivocados conocidos).
         const pCP = _rvPal(c.nombre), pML = _rvPal(mlTit);
         const comunes = [...pCP].filter((w) => pML.has(w));
         const faltan = [...pCP].filter((w) => !pML.has(w));
         const nCP = _rvNum(c.nombre), nML = _rvNum(mlTit);
         const numFaltan = [...nCP].filter((x) => !nML.has(x));
         const pctPal = pCP.size ? comunes.length / pCP.size : 1;
-        if (pctPal < 0.5) { reparos.push('los dos títulos casi no comparten palabras'); console.log(`     ⚠️ MIRALO: sólo coinciden ${comunes.length} de ${pCP.size} palabras. No están en ML: ${faltan.join(', ')}`); }
-        else if (faltan.length) console.log(`     coinciden ${comunes.length} de ${pCP.size} palabras. No están en el título de ML: ${faltan.join(', ')}`);
-        else console.log('     ✓ todas las palabras del nombre están en el título de ML');
-        if (numFaltan.length) { reparos.push(`el tamaño/capacidad no coincide (${numFaltan.join(', ')} no está en ML)`); console.log(`     ⚠️ TAMAÑO: ${numFaltan.join(', ')} no aparece en el título de ML. Misma marca y otro tamaño es OTRO producto (pasó con el Cabotine 100 vs 30 mL).`); }
+        const mlPlano = _rvBase(mlTit).replace(/ /g, '');
+        const modCP = _rvMod(c.nombre);
+        const modOK = modCP.filter((m) => mlPlano.includes(m));
+        if (modCP.length && modOK.length) {
+          console.log(`     ✓ ES EL MISMO: el modelo ${modOK.join(', ')} está en el título de ML.`);
+          if (faltan.length) console.log(`       (las palabras que no coinciden son del idioma: comprasparaguay escribe en portugués — ${faltan.join(', ')})`);
+        } else if (modCP.length) {
+          reparos.push(`el modelo (${modCP.join(', ')}) no aparece en el título de ML`);
+          console.log(`     ⚠️ MIRALO: el candidato trae el modelo ${modCP.join(', ')} y el título de ML no lo nombra. En electrónica el modelo es el producto.`);
+        } else {
+          // AVISA SI FALTA **CUALQUIER** PALABRA QUE DISTINGA, no si faltan muchas (19/09/2026).
+          // La primera versión pedía que coincidiera menos de la MITAD, y con eso se comía dos de
+          // los seis emparejados equivocados conocidos: **"Club de Nuit Blue Iconic" contra "Club
+          // de Nuit Woman"** coincide en 4 de 5 palabras (0,8) y **"Dark Door Sport" contra "Dark
+          // Door Intense"** en 2 de 3 (0,67) — los dos pasaban limpios. **Y son exactamente los dos
+          // casos reales que ya habían entrado mal en septiembre.**
+          // La palabra que falta ES el producto: lo que distingue a un perfume de su hermano es una
+          // sola palabra, no la mitad del título. Por eso alcanza con que falte una.
+          // Lo que hace que esto no sea ruido es lo de arriba: en electrónica manda el modelo y acá
+          // no se llega, y las palabras de idioma están en `RV_VACIAS`.
+          if (faltan.length) { reparos.push(`en el título de ML no está(n): ${faltan.join(', ')}`); console.log(`     ⚠️ MIRALO: coinciden ${comunes.length} de ${pCP.size} palabras y **no está(n) en ML: ${faltan.join(', ')}**. Una sola palabra distinta puede ser otro perfume (pasó con "Blue Iconic" y "Woman").`); }
+          else console.log('     ✓ todas las palabras del nombre están en el título de ML');
+          // EL TAMAÑO SÓLO SE MIRA CUANDO NO HAY MODELO. En electrónica el nombre trae las
+          // especificaciones adentro ("Cabo 3.5 MM", "100 MB/s", "1600 W") y ML no las repite: la
+          // primera corrida avisó por el 3,5 del plug y por el 220 de los volts, que no distinguen
+          // nada. En perfumería sí distingue todo, que es para lo que se puso (Cabotine 30 vs 100).
+          if (numFaltan.length) { reparos.push(`el tamaño/capacidad no coincide (${numFaltan.join(', ')} no está en ML)`); console.log(`     ⚠️ TAMAÑO: ${numFaltan.join(', ')} no aparece en el título de ML. Misma marca y otro tamaño es OTRO producto (pasó con el Cabotine 100 vs 30 mL).`); }
+        }
 
         // 4 · ¿A CUÁNTO SE VENDE HOY, Y CONTRA QUIÉN? Sólo vendedores argentinos.
         let ofertas = [];

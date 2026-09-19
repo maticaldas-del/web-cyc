@@ -2071,11 +2071,38 @@ vigente (esa página le contesta **403** al robot, probado dos veces) y las medi
 que la página no informa. **Publicar en ML lo hace él**: el freno de escritura de ML es contra la
 aplicación, no contra su cuenta.
 
-Probado con las funciones REALES sacadas del archivo y 16 casos: los seis emparejados equivocados
-ya conocidos (Cabotine 30/100, Animale For Men/Black, Watch 4/3, Hamidi Addicted/Imensity, Blue
-Iconic/Woman, Dark Door Sport/Intense) **salen avisados**, los cuatro que sí son el mismo producto
-**no avisan nada**, y la cuenta da exactamente lo mismo que la que decide la compra, con la barrera
-de los $33.000 funcionando de los dos lados.
+### LA PRIMERA CORRIDA REAL ROMPIÓ EL CHEQUEO DE LOS TÍTULOS, DE LOS DOS LADOS
+
+Pintó en ámbar **DOCE productos de electrónica que estaban perfectos**, con el aviso *"los dos
+títulos casi no comparten palabras"*. **La causa no era el producto: comprasparaguay escribe en
+PORTUGUÉS** (*"Fone de Ouvido Sony MDR-ZX310AP - Preto"*) **y ML en castellano** (*"Auriculares
+Sony MDR-ZX310AP Negro"*). Es el mismo auricular y no comparten casi ninguna palabra. Un aviso que
+suena en casi todos entrena a ignorarlo — el mismo problema que el `⚠️ VENDE` de `nomandar`.
+**En electrónica la identidad no son las palabras: es el MODELO.** Si `zx310ap` está en el título
+de ML, es el mismo producto y no hay nada que mirar; si el candidato trae modelo y ML no lo nombra,
+**eso sí** es un aviso fuerte. El código de modelo manda, y las palabras quedan para la perfumería.
+De paso se apagó el chequeo de tamaño cuando el modelo coincide: en electrónica el nombre trae las
+especificaciones adentro y avisaba por el **3,5 del plug** y por los **220 volts**.
+
+**Y DEL OTRO LADO ERA DEMASIADO FLOJO, QUE ES PEOR.** El corte era *"que coincida menos de la
+MITAD de las palabras"*, y con eso **se comía DOS de los seis emparejados equivocados conocidos**:
+*"Club de Nuit **Blue Iconic**"* contra *"Club de Nuit **Woman**"* coincide en 4 de 5 palabras
+(0,8) y *"Dark Door **Sport**"* contra *"Dark Door **Intense**"* en 2 de 3 (0,67) — **los dos
+pasaban limpios, y son exactamente los dos casos reales que ya habían entrado mal en septiembre.**
+Ahora avisa si falta **CUALQUIER** palabra que distinga: lo que separa a un perfume de su hermano
+es UNA palabra, no la mitad del título.
+
+**Y ESTO CORRIGE ALGO QUE ESTE ARCHIVO AFIRMABA HACE UNA HORA:** decía que la prueba había agarrado
+*"los seis emparejados equivocados"*. **Agarraba cuatro.** La prueba miraba el renglón informativo
+que lista las palabras que faltan, no el AVISO — o sea que verificaba que el dato estuviera
+calculado, no que el comando hiciera algo con él. **Es el verificador que se prueba a sí mismo, otra
+variante del mismo error: una prueba que mide la cosa de al lado dice "todo bien" igual.**
+
+Probado con las funciones REALES sacadas del archivo y **23 casos**: los 13 de electrónica de la
+corrida real (portugués contra castellano) **no avisan nada** porque el modelo coincide, los seis
+emparejados equivocados **sí avisan**, los tres perfumes que sí son el mismo producto no avisan, y
+la cuenta da exactamente lo mismo que la que decide la compra, con la barrera de los $33.000
+funcionando de los dos lados.
 
 ## EL PEDIDO DE PRODUCTOS NUEVOS: LA WEB LO GUARDA, EL CHAT LO ARMA (18/09/2026)
 
