@@ -6303,6 +6303,64 @@ async function main() {
       return;
     }
 
+    // BILLING_PROBE=probarput:<MLA> → ¿QUÉ PUEDE ESCRIBIR TODAVÍA LA APLICACIÓN EN ML?
+    //
+    // POR QUÉ (19/09/2026): ML rechazó **3 de 3** cambios de precio con
+    // `PA_UNAUTHORIZED_RESULT_FROM_POLICIES` (2 perfumes de Adriana subiendo, la Pad 2 bajando),
+    // y **él probó a mano y ML SÍ lo deja**. O sea que el freno es contra la APLICACIÓN, no
+    // contra la cuenta ni contra esas publicaciones. Lo que falta saber es el alcance: si la app
+    // perdió la escritura entera o si es una política sólo sobre el PRECIO. Son dos problemas
+    // distintos y se arreglan distinto.
+    //
+    // **NO CAMBIA NINGÚN PRECIO: manda el MISMO que la publicación ya tiene.** Si ML lo acepta,
+    // el precio queda igual; si lo rechaza, tampoco pasa nada. Es la única forma de tocar ese
+    // endpoint sin arriesgar un peso, y por eso se hace así y no subiendo $10 "para probar".
+    // Después prueba un campo que NO es el precio, para ver si la escritura general vive.
+    if (/^probarput:/.test(String(process.env.BILLING_PROBE || ''))) {
+      const MLA = String(process.env.BILLING_PROBE).split(':')[1].trim().toUpperCase();
+      if (!/^MLA\d+$/.test(MLA)) { console.log('Usá: probarput:<MLA de una publicación NUESTRA>'); return; }
+      const lnk = ((await db.get('cyc/mllinks/' + MLA)) || {});
+      const cta = String(lnk.cuenta || '').toLowerCase();
+      const acc = accounts[cta] || null;
+      if (!acc?.refresh_token) { console.log(`No sé de qué cuenta es ${MLA} (dice "${cta || '—'}"). Probá con otra.`); return; }
+      let t = null;
+      try { t = await mlRefresh(ML_CLIENT_ID, ML_CLIENT_SECRET, acc.refresh_token);
+        await db.patch('mlapi/tokens/' + cta, { refresh_token: t.refresh_token, updated_ts: Date.now() }); }
+      catch (e) { console.log(`❌ No pude sacar token de ${cta}: ${String(e.message || e).slice(0, 120)}`); return; }
+      console.log(`=== QUÉ DEJA ESCRIBIR ML · ${MLA} · cuenta ${cta} ===\n`);
+      let it = null;
+      try { it = await mlGet('/items/' + MLA, t.access_token); }
+      catch (e) { console.log(`❌ Ni siquiera puedo LEERLA: ${String(e.message || e).slice(0, 160)}`); return; }
+      const precioHoy = Number(it.price) || 0;
+      console.log(`Leer la publicación: ✅  ·  precio hoy ${money(precioHoy)}  ·  estado ${it.status}  ·  ${it.title || ''}`.slice(0, 200));
+      if (!(precioHoy > 0)) { console.log('Sin precio: no hay nada que probar.'); return; }
+      // 1) EL PRECIO, con el MISMO valor. No cambia nada pase lo que pase.
+      const _put = async (cuerpo) => {
+        const r = await fetch('https://api.mercadolibre.com/items/' + MLA, {
+          method: 'PUT',
+          headers: { Authorization: 'Bearer ' + t.access_token, 'Content-Type': 'application/json' },
+          body: JSON.stringify(cuerpo),
+        });
+        let txt = ''; try { txt = (await r.text() || '').slice(0, 260); } catch { txt = ''; }
+        return { ok: r.ok, status: r.status, txt };
+      };
+      const a = await _put({ price: precioHoy });
+      console.log(`\n1) Mandar el MISMO precio (${money(precioHoy)}): ${a.ok ? '✅ ML lo acepta' : '❌ ' + a.status}`);
+      if (!a.ok) console.log(`   ${a.txt}`);
+      // 2) UN CAMPO QUE NO ES EL PRECIO. La garantía es texto libre y no cambia lo que se cobra ni
+      //    lo que se vende; se manda la MISMA que ya tiene, así tampoco se modifica nada.
+      const b = await _put({ warranty: String(it.warranty || 'Sin garantía') });
+      console.log(`2) Mandar la MISMA garantía (un campo que no es el precio): ${b.ok ? '✅ ML lo acepta' : '❌ ' + b.status}`);
+      if (!b.ok) console.log(`   ${b.txt}`);
+      console.log('\n── QUÉ QUIERE DECIR ──');
+      if (a.ok && b.ok) console.log('   La aplicación SÍ puede escribir hoy. El freno de los 3 intentos era por el VALOR que se mandaba o ya se levantó: hay que reintentar uno de verdad.');
+      else if (!a.ok && b.ok) console.log('   La aplicación puede escribir, pero ML le bloquea EL PRECIO en particular. Es una política sobre precios, no un permiso perdido.');
+      else if (!a.ok && !b.ok) console.log('   La aplicación NO puede escribir NADA en esta publicación. No es cosa de precios: es el permiso de la app o algo de esta publicación.');
+      else console.log('   El precio pasa y la garantía no: raro, mirar el detalle de arriba.');
+      console.log('   (El precio no se movió: se mandó el mismo que ya tenía.)');
+      return;
+    }
+
     // BILLING_PROBE=verofertas:<catálogo MLA>[;otro] → ¿ML DICE CUÁLES SON DE ENVÍO INTERNACIONAL?
     //
     // POR QUÉ (19/09/2026, regla suya): *"estaba tomando envíos internacionales. esos no quiero que
