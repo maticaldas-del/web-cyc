@@ -3729,6 +3729,16 @@ Lo que quedó abierto. Borrá de acá lo que se vaya cerrando.
   lugar donde eso se ve es cuando alguien mira.** Al escribir un automatismo hay que preguntarse qué
   decisiones anteriores pisa — no sólo qué hace.
   Los pendrives NO se tocaron.
+  **POR QUÉ LAS RETIRÓ, ACLARADO POR ÉL EL 19/09/2026: *"las microsd las tire porque eran truchas,
+  estas son originales"*.** La nota decía *"son para problemas"* y eso se lee como *"las tarjetas de
+  memoria son un rubro problemático"* — y con eso yo descarté de los candidatos nuevos una **microSD
+  SanDisk Pokémon 256GB original de Nissei que da 63% y tiene 100 vendidas**. El motivo NO era el
+  rubro: era que ESAS eran falsificadas. **Una tarjeta de memoria original entra como cualquier otro
+  producto.**
+  **LA LECCIÓN: una decisión suya anotada sin el MOTIVO se convierte en una regla que él nunca
+  puso.** "Son para problemas" no dice si el problema era el producto, la marca, el proveedor o el
+  precio — y cada una lleva a una conclusión distinta. Al anotar una decisión hay que escribir por
+  qué, no sólo qué.
 - **HAY UNA LISTA EN GASTOS DE LO QUE SE CARGA A MANO CADA MES** (28/08/2026, pedido suyo: *"que
   haya un lugar que me indique si se cargó los gastos del mes de las cosas que te tengo que pasar
   manual, para que al terminar el mes no falte cargar ninguno"*). Va arriba de los movimientos:
