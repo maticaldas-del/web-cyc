@@ -2871,7 +2871,7 @@ const CAND_MAX_ML = 40;         // tope de consultas a ML por vuelta (ver abajo)
 // `mlComision`, que se escribieron y NO se guardaron en ninguno de los 27 porque el `if` no los
 // nombraba. Acordarse de agregar cada campo a una condición es justo lo que falló las dos veces:
 // por eso ahora es UN solo número y no una lista que se puede quedar corta.
-const CAND_CALC_VER = 2;
+const CAND_CALC_VER = 3;
 // `prueba` es un candidato INVENTADO que se le pasa desde el probe para correr el camino entero
 // —consulta al catálogo de ML, comisión al precio real, la cuenta— sin tener que cargar nada en la
 // base. Que el comando no se rompa con la lista vacía no prueba nada de lo que importa.
