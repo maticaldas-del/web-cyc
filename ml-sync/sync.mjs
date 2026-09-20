@@ -12606,15 +12606,22 @@ async function main() {
         }
       } catch (e) { console.log(`   no pude contrastarlo contra las ventas: ${String(e.message || e).slice(0, 80)}`); }
 
-      let aMano = null;
-      try { aMano = parseFloat((await db.get('cyc/finanzas/mp_liq')) || 0) || 0; } catch { aMano = null; }
+      // CONTRA LO QUE HAY EN LA PANTALLA, Y EN LA MISMA MONEDA. `mp_liq` está en DÓLARES y
+      // `totalLiq` en PESOS: compararlos derecho da un porcentaje absurdo y suena una alarma que
+      // no es. Es exactamente el error que se acaba de cometer, una línea más abajo.
+      let aMano = null, tcCmp = 0;
+      try {
+        aMano = parseFloat((await db.get('cyc/finanzas/mp_liq')) || 0) || 0;
+        tcCmp = parseFloat((await db.get('cyc/finanzas/tipo_cambio')) || 0) || 0;
+      } catch { aMano = null; }
       if (aMano == null) console.log('   no pude leer lo que hay cargado a mano.');
+      else if (!tcCmp) console.log('   no se compara: sin tipo de cambio no se pueden poner los dos en la misma moneda.');
       else if (!aMano) console.log('   a mano hoy hay CERO cargado, así que no hay con qué comparar.');
       else if (!cuentasOk) console.log('   no se calculó ninguna cuenta: no hay con qué comparar.');
       else {
-        const dif = (totalLiq - aMano) / aMano * 100;
+        const dif = (totalLiq / tcCmp - aMano) / aMano * 100;
         const s = dif >= 0 ? '+' : '';
-        console.log(`   calculado vs. lo cargado a mano: ${s}${dif.toFixed(1)}% ${Math.abs(dif) <= 15 ? '✅ se parecen' : '⚠️ NO se parecen — antes de usarlo hay que mirar por qué'}`);
+        console.log(`   calculado vs. lo que muestra la pantalla (los dos en dólares): ${s}${dif.toFixed(1)}% ${Math.abs(dif) <= 15 ? '✅ se parecen' : '⚠️ NO se parecen — antes de usarlo hay que mirar por qué'}`);
         console.log(`   (lo cargado a mano puede ser simplemente viejo: eso también explica una diferencia.)`);
       }
 
