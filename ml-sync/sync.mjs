@@ -12227,6 +12227,137 @@ async function main() {
       return;
     }
 
+    // BILLING_PROBE=mptoken → ¿LA LLAVE PROPIA DE MERCADO PAGO ABRE EL SALDO? · SOLO LEE
+    //
+    // POR QUÉ (20/09/2026). El disponible por cuenta del Arqueo se carga a mano porque ML no deja
+    // leerlo: `/billing/integration/balance` contesta **403 de PolicyAgent** y las rutas de saldo
+    // de MercadoPago venían dando 403 o 404 con el token de la aplicación de **MercadoLibre**.
+    // Un 403 quiere decir *"la puerta existe y vos no"*, no *"la puerta no existe"* — así que una
+    // credencial DISTINTA puede abrirla. Él creó una aplicación propia en mercadopago.com.ar y su
+    // Access Token entra por `MP_TOKEN_MATIAS`, en los secretos de GitHub.
+    //
+    // SE PRUEBAN LAS MISMAS PUERTAS QUE `saldo3`, a propósito: lo único que cambia es la llave, así
+    // que la comparación dice algo. Puertas nuevas mezcladas harían imposible saber qué cambió.
+    //
+    // LO PRIMERO ES DE QUIÉN ES LA LLAVE. Si la aplicación se creó con otra cuenta, todo lo demás
+    // no significa nada — y es el error más fácil de cometer, porque las cuatro cuentas son de la
+    // misma familia. Se compara contra el id que ya tenemos guardado y se imprime ✓ o ✗, **nunca
+    // el número**: el registro de GitHub es público.
+    //
+    // NO SE IMPRIME NI UN PESO. Sólo los NOMBRES de los campos que contesta cada puerta, que es lo
+    // que hace falta para saber si el dato existe. Mismo criterio con el que se tapó el CUIT del
+    // proveedor en `vergastos`.
+    //
+    // SOLO LEE: ni un POST. Esta llave puede mover plata (cobrar, devolver) y por eso no se usa
+    // para nada que escriba mientras no haya una decisión suya.
+    if (String(process.env.BILLING_PROBE || '') === 'mptoken') {
+      const TK = String(process.env.MP_TOKEN_MATIAS || '').trim();
+      console.log('=== ¿LA LLAVE DE MERCADO PAGO ABRE EL SALDO? ===\n');
+      if (!TK) {
+        console.log('❌ No está cargada la llave. Falta el secreto MP_TOKEN_MATIAS en GitHub');
+        console.log('   (Settings → Secrets and variables → Actions), o el workflow no lo pasa.');
+        return;
+      }
+      if (/^TEST-/.test(TK)) {
+        console.log('⚠️ La llave empieza con TEST-: ésas son las credenciales de PRUEBA, de una');
+        console.log('   cuenta inventada, y no ven un peso real. Hay que copiar las de PRODUCCIÓN.');
+      } else if (!/^APP_USR-/.test(TK)) {
+        console.log('⚠️ La llave no empieza con APP_USR- ni con TEST-. Puede estar cortada o ser');
+        console.log('   otro dato (la Public Key o el Client ID no sirven acá).');
+      }
+      const MP = 'https://api.mercadopago.com';
+      const lblMat = labels.find((L) => /mat/i.test(L)) || labels[0];
+      const sidGuardado = String((accounts[lblMat] || {}).seller_id || '');
+      let probados = 0, abiertos = 0;
+      const ver = async (nom, url, pausa) => {
+        if (pausa) await new Promise((r) => setTimeout(r, 13000));
+        probados++;
+        try {
+          const r = await fetch(url, { headers: { Authorization: `Bearer ${TK}` }, signal: AbortSignal.timeout(25000) });
+          const txt = (await r.text()) || '';
+          let resumen;
+          try {
+            const j = JSON.parse(txt);
+            const obj = Array.isArray(j) ? (j[0] || {}) : (j.results ? (j.results[0] || {}) : j);
+            const ks = Object.keys(obj || {});
+            resumen = Array.isArray(j) ? `lista de ${j.length} · campos: ${ks.join(', ').slice(0, 200)}`
+              : `campos: ${ks.join(', ').slice(0, 240) || '(ninguno)'}`;
+            if (!r.ok) {
+              // El MOTIVO sí se imprime: no es plata, es por qué frena, y es lo que decide el paso
+              // siguiente. Un 403 de políticas y un token vencido se arreglan distinto.
+              const m = [j.message, j.error, j.code, j.blocked_by].filter(Boolean).join(' · ');
+              if (m) resumen += ` · ${String(m).slice(0, 170)}`;
+            }
+          } catch { resumen = txt.replace(/\s+/g, ' ').slice(0, 150) || '(sin cuerpo)'; }
+          if (r.ok) abiertos++;
+          console.log(`${r.ok ? '✅' : '❌'} ${nom}  ·  HTTP ${r.status}`);
+          console.log(`   ${resumen}`);
+          return r.ok ? txt : null;
+        } catch (e) { console.log(`❌ ${nom}\n   ERROR ${String(e.message || e).slice(0, 110)}`); return null; }
+      };
+
+      // ── 0) DE QUIÉN ES LA LLAVE ─────────────────────────────────────────────────────────────
+      console.log('── 0) ¿DE QUIÉN ES ESTA LLAVE? ──');
+      let idDueno = '';
+      try {
+        const r = await fetch(`${MP}/users/me`, { headers: { Authorization: `Bearer ${TK}` }, signal: AbortSignal.timeout(25000) });
+        const txt = (await r.text()) || '';
+        probados++;
+        if (r.ok) {
+          abiertos++;
+          const j = JSON.parse(txt);
+          idDueno = String(j.id || '');
+          const coincide = sidGuardado && idDueno === sidGuardado;
+          console.log(`✅ La llave contesta. Sitio ${j.site_id || '?'} · tipo ${j.user_type || '?'}`);
+          if (!sidGuardado) console.log('   (no tengo guardado el id de Matías para comparar)');
+          else if (coincide) console.log('   ✓ ES LA CUENTA DE MATÍAS · la aplicación se creó donde correspondía');
+          else {
+            console.log('   ✗ NO ES LA CUENTA DE MATÍAS. La aplicación se creó con otra cuenta.');
+            console.log('     Todo lo que sigue no dice nada sobre el saldo de Matías: hay que');
+            console.log('     rehacerla entrando con la cuenta correcta. (El número no se imprime:');
+            console.log('     este registro es público.)');
+          }
+        } else {
+          console.log(`❌ La llave NO contesta ni para decir quién es · HTTP ${r.status}`);
+          console.log(`   ${txt.replace(/\s+/g, ' ').slice(0, 160)}`);
+          console.log('   → Si dice "invalid access token", la llave está mal copiada o es la de');
+          console.log('     prueba. No tiene sentido probar las otras puertas: se corta acá.');
+          return;
+        }
+      } catch (e) { console.log(`❌ No pude preguntar quién es: ${String(e.message || e).slice(0, 110)}`); return; }
+      const sid = idDueno || sidGuardado;
+
+      // ── 1) LAS PUERTAS DEL SALDO, QUE SON LAS QUE IMPORTAN ──────────────────────────────────
+      console.log('\n── 1) LAS PUERTAS DEL SALDO (las que con la llave de ML daban 403) ──');
+      await ver('Saldo de la cuenta', `${MP}/v1/account/balance`);
+      if (sid) await ver('Saldo MP (otra ruta)', `${MP}/users/${sid}/mercadopago_account/balance`);
+      if (sid) await ver('Saldo por usuario', `${MP}/v1/users/${sid}/balance`);
+      await ver('Resumen de la cuenta MP', `${MP}/v1/account/summary`);
+
+      // ── 2) LO QUE YA ANDABA CON LA LLAVE DE ML: ¿sigue andando con ésta? ────────────────────
+      // Importa por algo concreto: si esta llave abriera el saldo PERO cerrara el reporte de
+      // liquidación, cambiar de llave rompería lo que hoy ya funciona. Hay que saberlo antes.
+      console.log('\n── 2) LO QUE HOY YA FUNCIONA CON LA LLAVE DE ML ──');
+      await ver('Reporte de liquidación · configuración', `${MP}/v1/account/settlement_report/config`);
+      await ver('Reporte de liquidación · lista', `${MP}/v1/account/settlement_report/list`);
+      await ver('Pagos recibidos', `${MP}/v1/payments/search?limit=1`);
+
+      // ── 3) LAS QUE DABAN 404: no se espera nada, pero medir es gratis ───────────────────────
+      console.log('\n── 3) LAS QUE DABAN 404 CON LA OTRA LLAVE ──');
+      await ver('Retiros del vendedor', `${MP}/v1/withdrawals/search?limit=1`);
+      await ver('Movimientos de la cuenta', `${MP}/v1/account/movements?limit=1`);
+      await ver('Cuenta bancaria · reporte', `${MP}/v1/account/bank_report/config`);
+      await ver('Reporte de liberaciones · configuración', `${MP}/v1/account/release_report/config`);
+
+      console.log(`\n── RESUMEN ──`);
+      console.log(`   Se probaron ${probados} · contestaron ${abiertos} · cerradas ${probados - abiertos}`);
+      console.log('   Lo que decide es el bloque 1: si alguna de esas cuatro contesta 200 y trae un');
+      console.log('   campo de saldo, el disponible sale solo y se termina el punto de partida a');
+      console.log('   mano. Si las cuatro siguen cerradas, la llave nueva no sirve para esto y hay');
+      console.log('   que borrarla de Mercado Pago y de los secretos de GitHub.');
+      console.log('\n   (Solo se leyó. Ni un POST, y no se imprimió ningún monto: el registro es público.)');
+      return;
+    }
     // BILLING_PROBE=saldobill → ¿EL SALDO DE FACTURACIÓN SE ABRIÓ AL DEVOLVER "MÉTRICAS"? · SOLO LEE
     //
     // POR QUÉ (20/09/2026). `saldo3` venía dando **403 de PolicyAgent** en
