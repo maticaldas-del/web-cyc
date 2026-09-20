@@ -12152,6 +12152,103 @@ async function main() {
       console.log('\n   (Solo se leyó. No se tocó nada.)');
       return;
     }
+
+    // BILLING_PROBE=saldo3 → AGOTAR LAS POSIBILIDADES DE LEER EL SALDO (20/09/2026)
+    //
+    // Pedido suyo: *"tener el saldo puede ser algo MUY importante, estaría bueno agotar
+    // posibilidades para sacar esa info"*. Es el disponible por cuenta del Arqueo, que hoy carga
+    // a mano todos los meses.
+    //
+    // POR QUÉ HACE FALTA ESTE Y NO ALCANZA CON `probarsaldo2`: yo leí el FINAL de su salida y
+    // dije "sigue cerrado". **Era falso**: arriba, donde no miré, había TRES que contestan 200 —
+    // el reporte de liquidación (con un archivo real de julio), los pagos recibidos (con pagos de
+    // hoy) y el reporte de liberaciones (vacío, pero la ruta abre). Es el error anotado cinco
+    // veces en este archivo: leer un pedazo y concluir. Por eso acá el resumen va **arriba y
+    // abajo**, y cuenta cuántos se probaron contra cuántos contestaron.
+    //
+    // SOLO LEE. Ni un POST: generar un reporte nuevo es una escritura y eso se decide con él.
+    //
+    // EL REGISTRO ES PÚBLICO: no se imprime ningún monto ni el nombre completo de un archivo de
+    // liquidación (lleva el número de cuenta adentro). Se imprime QUÉ campos trae, que es lo que
+    // hace falta para saber si el dato existe. El monto se mira aparte.
+    if (String(process.env.BILLING_PROBE || '') === 'saldo3') {
+      const label = labels.find((L) => /mat/i.test(L)) || labels[0];
+      const acc = accounts[label];
+      if (!acc?.refresh_token || !acc.seller_id) { console.log('Sin token para probar.'); return; }
+      let t; try { t = await mlRefresh(ML_CLIENT_ID, ML_CLIENT_SECRET, acc.refresh_token); }
+      catch (e) { console.log('No pude renovar el token: ' + String(e.message || e).slice(0, 120)); return; }
+      await db.patch('mlapi/tokens/' + label, { refresh_token: t.refresh_token, updated_ts: Date.now() });
+      const sid = acc.seller_id, MP = 'https://api.mercadopago.com';
+      console.log(`=== AGOTAR EL SALDO · cuenta ${label} ===\n`);
+      let probados = 0, abiertos = 0;
+      const ver = async (nom, url, esperar) => {
+        if (esperar) await new Promise((r) => setTimeout(r, 13000));
+        probados++;
+        try {
+          const r = await fetch(url, { headers: { Authorization: `Bearer ${t.access_token}` }, signal: AbortSignal.timeout(25000) });
+          const txt = (await r.text() || '');
+          let resumen;
+          // SE IMPRIMEN LAS CLAVES, NO LOS VALORES — mismo criterio con el que se tapó el CUIT del
+          // proveedor en `vergastos`: para saber si el dato existe alcanza con el nombre del campo.
+          try {
+            const j = JSON.parse(txt);
+            const obj = Array.isArray(j) ? (j[0] || {}) : (j.results ? (j.results[0] || {}) : j);
+            const ks = Object.keys(obj || {});
+            resumen = Array.isArray(j) ? `lista de ${j.length} · campos: ${ks.join(', ').slice(0, 200)}`
+              : `campos: ${ks.join(', ').slice(0, 240)}`;
+          } catch { resumen = txt.replace(/\s+/g, ' ').slice(0, 150); }
+          if (r.ok) abiertos++;
+          console.log(`${r.ok ? '✅' : '❌'} ${nom}  ·  HTTP ${r.status}`);
+          console.log(`   ${resumen}`);
+          return r.ok ? txt : null;
+        } catch (e) { console.log(`❌ ${nom}\n   ERROR ${String(e.message || e).slice(0, 110)}`); return null; }
+      };
+
+      console.log('── 1) LO QUE YA SABEMOS QUE ABRE: ¿trae el saldo adentro? ──');
+      const liq = await ver('Reporte de liquidación · lista', `${MP}/v1/account/settlement_report/list`);
+      await ver('Reporte de liquidación · configuración', `${MP}/v1/account/settlement_report/config`);
+      await ver('Reporte de liberaciones · configuración', `${MP}/v1/account/release_report/config`);
+      // EL ARCHIVO DE LIQUIDACIÓN: si tiene el saldo adentro, el tema está resuelto sin depender
+      // de ningún endpoint de "balance". Se pide el MÁS NUEVO.
+      try {
+        const arr = JSON.parse(liq || '[]');
+        const f = (arr || []).map((x) => x && x.file_name).filter(Boolean).pop();
+        if (f) {
+          console.log(`   (bajando el reporte más nuevo · nombre tapado, lleva el número de cuenta)`);
+          probados++;
+          const r = await fetch(`${MP}/v1/account/settlement_report/${encodeURIComponent(f)}`, { headers: { Authorization: `Bearer ${t.access_token}` }, signal: AbortSignal.timeout(25000) });
+          const txt = (await r.text() || '');
+          if (r.ok) abiertos++;
+          // Es un CSV: se imprime SÓLO el encabezado, que son los nombres de las columnas.
+          const cab = (txt.split('\n')[0] || '').slice(0, 400);
+          console.log(`${r.ok ? '✅' : '❌'} Bajar el reporte de liquidación  ·  HTTP ${r.status} · ${txt.length} caracteres`);
+          console.log(`   columnas: ${cab || '(vacío)'}`);
+        } else { console.log('   (la lista no trae ningún archivo para bajar)'); }
+      } catch { console.log('   (no pude leer la lista de reportes)'); }
+
+      console.log('\n── 2) LOS QUE QUEDARON SIN PROBAR DE VERDAD ──');
+      // EL 429 NO ES "NO EXISTE": es el límite de 5 llamadas por minuto. Se reintenta espaciado.
+      await ver('Facturación · movimientos (dio 429, se reintenta)', `${ML_API}/billing/integration/periods/movements?site_id=MLA&group=ML&limit=1`, true);
+      await ver('Facturación · saldo (dio 403 de PolicyAgent)', `${ML_API}/billing/integration/balance?site_id=MLA`, true);
+
+      console.log('\n── 3) OTRAS PUERTAS QUE NUNCA SE PROBARON ──');
+      await ver('Saldo MP (otra ruta)', `${MP}/users/${sid}/mercadopago_account/balance`);
+      await ver('Saldo por usuario', `${MP}/v1/users/${sid}/balance`);
+      await ver('Resumen de la cuenta MP', `${MP}/v1/account/summary`);
+      await ver('Cuenta bancaria · reporte', `${MP}/v1/account/bank_report/config`);
+      await ver('Retiros del vendedor', `${MP}/v1/withdrawals/search?limit=1`);
+      await ver('Movimientos (otra ruta)', `${MP}/v1/account/movements?limit=1`);
+      await ver('Saldo del marketplace', `${ML_API}/marketplace/users/${sid}/balance`);
+      await ver('Facturación · saldo sin sitio', `${ML_API}/billing/integration/balance`, true);
+
+      console.log(`\n── RESUMEN ──`);
+      console.log(`   Se probaron ${probados} · contestaron ${abiertos} · cerrados ${probados - abiertos}`);
+      console.log('   OJO: que conteste NO quiere decir que ahí esté "el disponible". Lo que');
+      console.log('   decide es si alguno trae un campo de saldo, y eso está en las columnas de');
+      console.log('   arriba. Un 429 sigue sin contar como "no existe".');
+      console.log('\n   (Solo se leyó. Ni un POST: generar un reporte es escribir y eso lo decide él.)');
+      return;
+    }
     // BILLING_PROBE=repbliss[:go] → REPARA LAS PUBLICACIONES BLISS HUÉRFANAS.
     // Qué pasó: splitbliss creó su propio producto Bliss y repuntó 3 publicaciones hacia él. Ese
     // producto después se borró, así que esas 3 publicaciones quedaron apuntando a un producto
