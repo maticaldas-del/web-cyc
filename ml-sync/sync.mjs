@@ -12249,6 +12249,105 @@ async function main() {
       console.log('\n   (Solo se leyó. Ni un POST: generar un reporte es escribir y eso lo decide él.)');
       return;
     }
+
+    // BILLING_PROBE=versaldo → ¿EL REPORTE DE LIQUIDACIÓN ALCANZA PARA CALCULAR EL DISPONIBLE?
+    //
+    // POR QUÉ (20/09/2026): `saldo3` probó que el reporte SE BAJA y que sus columnas traen
+    // `MONEY_RELEASE_DATE` (cuándo la plata queda disponible) y `REAL_AMOUNT` (cuánto queda neto).
+    // Eso dice que el dato EXISTE; no dice que la cuenta cierre. Antes de escribir una sola cosa
+    // en la cuenta de MercadoPago hay que abrir el archivo y mirar qué hay adentro:
+    //   · ¿aparecen los RETIROS? Sin ellos el disponible da de MÁS — se ve plata ya sacada.
+    //   · ¿qué tipos de movimiento hay? (ventas, devoluciones, contracargos, retiros)
+    //   · ¿cuántas filas ya están liberadas y cuántas son a futuro?
+    // Pedido suyo: *"arma saldo automatico"*. Esto es el paso previo: medir antes de escribir.
+    //
+    // **NO IMPRIME NI UN PESO.** El registro de GitHub es público y esto es la plata de la cuenta.
+    // Se imprime la ESTRUCTURA —filas, fechas, tipos de movimiento, cuántas liberadas— que es lo
+    // que hace falta para saber si la cuenta se puede hacer. Los montos van al panel, no al log.
+    // Es el mismo criterio con el que se tapó el CUIT del proveedor en `vergastos`.
+    //
+    // SOLO LEE. Ni un POST: generar o programar un reporte es escribir y eso se decide con él.
+    if (String(process.env.BILLING_PROBE || '').startsWith('versaldo')) {
+      const soloUna = String(process.env.BILLING_PROBE).split(':')[1] || '';
+      const MP = 'https://api.mercadopago.com';
+      const hoy = Date.now();
+      for (const label of labels) {
+        if (soloUna && !new RegExp(soloUna, 'i').test(label)) continue;
+        const acc = accounts[label];
+        if (!acc?.refresh_token) { console.log(`\n[${label}] sin token`); continue; }
+        let t; try { t = await mlRefresh(ML_CLIENT_ID, ML_CLIENT_SECRET, acc.refresh_token); }
+        catch { console.log(`\n[${label}] no pude renovar el token`); continue; }
+        await db.patch('mlapi/tokens/' + label, { refresh_token: t.refresh_token, updated_ts: Date.now() });
+        const H = { Authorization: `Bearer ${t.access_token}` };
+        console.log(`\n══════ ${label} ══════`);
+        // 1) LA CONFIGURACIÓN: acá está si el reporte trae los retiros adentro.
+        try {
+          const r = await fetch(`${MP}/v1/account/settlement_report/config`, { headers: H, signal: AbortSignal.timeout(20000) });
+          const c = await r.json();
+          if (!r.ok) { console.log(`  configuración: ❌ HTTP ${r.status}`); }
+          else {
+            console.log(`  configuración: retiros adentro = ${c.include_withdraw === true ? '✅ SÍ' : '❌ NO'} · programado = ${c.scheduled ? 'sí (' + (c.frequency && c.frequency.type || '?') + ')' : 'no'} · separador "${c.separator || ';'}"`);
+            if (c.include_withdraw !== true) console.log(`     ⚠️ sin los retiros el disponible va a dar de MÁS: se ve plata que ya sacaste.`);
+          }
+        } catch (e) { console.log(`  configuración: ❌ ${String(e.message || e).slice(0, 90)}`); }
+        // 2) LA LISTA DE REPORTES YA GENERADOS.
+        let arch = null, rango = '';
+        try {
+          const r = await fetch(`${MP}/v1/account/settlement_report/list`, { headers: H, signal: AbortSignal.timeout(20000) });
+          const arr = await r.json();
+          if (!r.ok || !Array.isArray(arr)) { console.log(`  reportes: ❌ HTTP ${r.status}`); continue; }
+          console.log(`  reportes ya generados: ${arr.length}`);
+          // El MÁS NUEVO por fecha de creación, no el último del arreglo: el orden no está prometido.
+          const ok = arr.filter((x) => x && x.file_name);
+          ok.sort((a, b) => new Date(a.date_created || 0) - new Date(b.date_created || 0));
+          const u = ok[ok.length - 1];
+          if (!u) { console.log('  no hay ningún archivo para abrir.'); continue; }
+          arch = u.file_name; rango = `${String(u.begin_date || '').slice(0, 10)} → ${String(u.end_date || '').slice(0, 10)}`;
+          console.log(`  el más nuevo cubre ${rango} · estado ${u.status || '?'}`);
+        } catch (e) { console.log(`  reportes: ❌ ${String(e.message || e).slice(0, 90)}`); continue; }
+        // 3) ABRIRLO Y MIRAR LA ESTRUCTURA. Ni un monto al log.
+        try {
+          const r = await fetch(`${MP}/v1/account/settlement_report/${encodeURIComponent(arch)}`, { headers: H, signal: AbortSignal.timeout(30000) });
+          if (!r.ok) { console.log(`  abrirlo: ❌ HTTP ${r.status}`); continue; }
+          const csv = await r.text();
+          const li = csv.split('\n').filter((x) => x.trim());
+          const sep = (li[0] || '').includes(';') ? ';' : ',';
+          const cols = (li[0] || '').split(sep).map((x) => x.trim().replace(/^"|"$/g, ''));
+          const iTipo = cols.indexOf('TRANSACTION_TYPE');
+          const iReal = cols.indexOf('REAL_AMOUNT');
+          const iLib = cols.indexOf('MONEY_RELEASE_DATE');
+          console.log(`  filas: ${li.length - 1} · separador "${sep}"`);
+          if (iTipo < 0 || iReal < 0 || iLib < 0) {
+            console.log(`  ❌ FALTA UNA COLUMNA CLAVE (tipo ${iTipo} · neto ${iReal} · liberación ${iLib}): así no se puede calcular.`);
+            console.log(`     columnas: ${cols.join(' · ').slice(0, 300)}`);
+            continue;
+          }
+          const tipos = {}; let libOk = 0, libFut = 0, libVacia = 0, netoVacio = 0;
+          for (let n = 1; n < li.length; n++) {
+            const f = li[n].split(sep);
+            const tp = String(f[iTipo] || '').replace(/"/g, '').trim() || '(vacío)';
+            tipos[tp] = (tipos[tp] || 0) + 1;
+            const lib = String(f[iLib] || '').replace(/"/g, '').trim();
+            if (!lib) libVacia++;
+            else if (new Date(lib).getTime() <= hoy) libOk++; else libFut++;
+            if (!String(f[iReal] || '').trim()) netoVacio++;
+          }
+          console.log(`  tipos de movimiento: ${Object.entries(tipos).map(([k, v]) => `${k} (${v})`).join(' · ').slice(0, 320)}`);
+          console.log(`  liberación: ${libOk} ya liberadas · ${libFut} a futuro · ${libVacia} sin fecha`);
+          if (netoVacio) console.log(`  ⚠️ ${netoVacio} filas sin el neto cargado: ésas no se pueden sumar.`);
+          // ¿HAY RETIROS? Es la pregunta que decide si el número va a dar bien.
+          const hayRetiro = Object.keys(tipos).some((k) => /withdraw|payout|retir|transfer/i.test(k));
+          console.log(`  ¿aparecen retiros?: ${hayRetiro ? '✅ sí' : '❌ NO'}`);
+        } catch (e) { console.log(`  abrirlo: ❌ ${String(e.message || e).slice(0, 110)}`); }
+      }
+      console.log('\n── QUÉ MIRAR ──');
+      console.log('   Para que el disponible se calcule solo hacen falta TRES cosas: que el reporte');
+      console.log('   traiga los RETIROS, que las filas tengan fecha de liberación, y que el neto');
+      console.log('   esté cargado. Si falta alguna, el número va a dar mal y es peor que no tenerlo.');
+      console.log('\n   (Solo se leyó. No se escribió nada, ni en ML ni en MercadoPago ni en la base.)');
+      console.log('   (Y no se imprimió ningún monto a propósito: este registro es público.)');
+      return;
+    }
     // BILLING_PROBE=repbliss[:go] → REPARA LAS PUBLICACIONES BLISS HUÉRFANAS.
     // Qué pasó: splitbliss creó su propio producto Bliss y repuntó 3 publicaciones hacia él. Ese
     // producto después se borró, así que esas 3 publicaciones quedaron apuntando a un producto
