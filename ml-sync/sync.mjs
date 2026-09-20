@@ -12205,6 +12205,7 @@ async function main() {
       console.log('=== ¿SE ABRIÓ EL SALDO DE FACTURACIÓN? ===');
       console.log('(de a una, con 15 segundos en el medio, para que el 429 no ensucie el resultado)\n');
       let abiertas = 0, cerradas = 0, dudosas = 0;
+      const respondieron = new Set(), sinRespuesta = new Set();
       for (const label of labels) {
         const acc = accounts[label];
         if (!acc?.refresh_token) { console.log(`── ${label} ── sin token`); continue; }
@@ -12229,21 +12230,29 @@ async function main() {
             const veredicto = r.ok ? '✅ ABRE' : (r.status === 429 ? '⏳ 429 · sigue sin contestar de verdad' : `❌ ${r.status}`);
             console.log(`   ${nom}: ${veredicto}`);
             console.log(`      ${detalle}`);
-            if (r.ok) abiertas++; else if (r.status === 429) dudosas++; else cerradas++;
+            if (r.ok) abiertas++; else if (r.status === 429) { dudosas++; sinRespuesta.add(label); } else { cerradas++; respondieron.add(label); }
           } catch (e) { console.log(`   ${nom}: ❌ ${String(e.message || e).slice(0, 90)}`); cerradas++; }
         }
       }
       console.log(`\n── RESUMEN ──`);
       console.log(`   abren ${abiertas} · cerradas ${cerradas} · siguen dando 429 ${dudosas}`);
+      // LA CONCLUSIÓN SALE DE LAS QUE CONTESTARON, NO DE CAER EN EL `else`.
+      // La primera versión imprimió "CERRADO" simplemente porque no entraba en los dos casos de
+      // arriba, con 5 de 8 llamadas sin contestar. Acertó por casualidad —había 403 limpios— pero
+      // el renglón no estaba mirando eso: es el mismo error de `permisos` de esta mañana, que
+      // contestó con seguridad una cosa que no estaba midiendo.
+      const faltan = [...sinRespuesta].filter((l) => !respondieron.has(l));
       if (abiertas) {
         console.log('   → EL SALDO SE PUEDE LEER DERECHO DE ML. No hace falta ningún punto de');
         console.log('     partida cargado a mano: hay que mirar qué campo trae el disponible.');
-      } else if (dudosas && !cerradas) {
-        console.log('   → SIGUE SIN SABERSE. El 429 es el límite de llamadas, no una negativa:');
-        console.log('     no se puede concluir que esté cerrado. Conviene reintentar más tarde.');
+      } else if (cerradas) {
+        console.log(`   → CERRADO. ${cerradas} llamada(s) contestaron 403 de PolicyAgent, que es una`);
+        console.log('     negativa de verdad y no el límite de llamadas. Devolver "Métricas del');
+        console.log('     negocio" NO lo abrió: esa sospecha queda descartada.');
+        if (faltan.length) console.log(`     (${faltan.join(', ')} no contestó ninguna de las dos: ahí sólo hubo 429.)`);
       } else {
-        console.log('   → CERRADO. Devolver "Métricas del negocio" NO lo abrió, así que esa');
-        console.log('     sospecha queda descartada y el disponible necesita el punto de partida.');
+        console.log('   → SIGUE SIN SABERSE. Ninguna llamada contestó: todas dieron 429, que es el');
+        console.log('     límite de llamadas y NO una negativa. No se puede concluir nada todavía.');
       }
       console.log('   (Solo se leyó. No se imprimió ningún monto: este registro es público.)');
       return;
