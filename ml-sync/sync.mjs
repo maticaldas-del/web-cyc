@@ -12349,6 +12349,164 @@ async function main() {
       return;
     }
 
+    // BILLING_PROBE=saldoml[:go] → LO QUE FALTA COBRAR DE ML, CUENTA POR CUENTA, CALCULADO SOLO
+    //
+    // POR QUÉ (20/09/2026). Pedido suyo: *"hay un armado de cuánto tiene cada cuenta de ML y cuánto
+    // a liquidar en arqueo finanzas (…) armalo como creas mejor"*. En Finanzas esos números se
+    // tipean a mano y **se desactualizan solos**: la nota del panel dice que ML no da el saldo por
+    // la API, que era cierto hasta hoy.
+    //
+    // DE LAS DOS CASILLAS, ÉSTA SE PUEDE Y LA OTRA NO, Y LA DIFERENCIA NO ES DE ESFUERZO:
+    //  · **"A liquidar en ML"** = la plata de ventas ya hechas que ML todavía no liberó. Sale
+    //    ENTERA del reporte: son las filas con fecha de liberación **a futuro**. ML libera en días
+    //    o pocas semanas, así que una ventana de 90 días las contiene TODAS. **No hace falta
+    //    ningún punto de partida** y el número es completo por sí solo.
+    //  · **"Disponible"** = plata acumulada desde que la cuenta existe. El reporte es una VENTANA,
+    //    no "todo": sumar 90 días da el MOVIMIENTO de 90 días, no el saldo. Haría falta que él
+    //    cargue el disponible UNA vez y de ahí sumar y restar — y **cualquier movimiento que el
+    //    reporte no traiga se acumula para siempre y en silencio**. Por eso acá **no se calcula**:
+    //    un saldo que se va despegando de a poco es peor que uno cargado a mano, porque el cargado
+    //    a mano al menos se nota viejo.
+    //
+    // NO IMPRIME NI UN PESO. El registro de GitHub es público (regla de este panel: *"¿de quién es
+    // este dato?"*). Al log van cantidades, fechas y una comparación RELATIVA contra lo que él
+    // tiene cargado hoy; los montos se guardan en la base, que es donde ya vive su plata.
+    //
+    // SIN `:go` NO ESCRIBE NADA.
+    if (String(process.env.BILLING_PROBE || '').startsWith('saldoml')) {
+      const APLICAR = String(process.env.BILLING_PROBE).split(':').includes('go');
+      const MP = 'https://api.mercadopago.com';
+      const hoy = Date.now();
+      console.log('=== LO QUE FALTA COBRAR DE ML, POR CUENTA ===');
+      console.log(APLICAR ? '(APLICANDO · se guarda en la base)\n' : '(PRUEBA · no se escribe nada · agregá ":go")\n');
+
+      // Partir una línea del CSV RESPETANDO LAS COMILLAS. Un `split(';')` pelado se rompe si un
+      // texto trae el separador adentro, y ahí las columnas se corren: el neto de una fila pasaría
+      // a leerse de otra columna. Con plata de por medio eso no se puede dejar al azar.
+      const partir = (linea, sep) => {
+        const out = []; let cur = '', dentro = false;
+        for (let i = 0; i < linea.length; i++) {
+          const c = linea[i];
+          if (c === '"') { if (dentro && linea[i + 1] === '"') { cur += '"'; i++; } else dentro = !dentro; }
+          else if (c === sep && !dentro) { out.push(cur); cur = ''; }
+          else cur += c;
+        }
+        out.push(cur);
+        return out.map((x) => x.trim());
+      };
+      // El número puede venir "1234.56" o "1.234,56" según cómo esté configurada la cuenta.
+      // Devuelve null si no se entiende, y esas filas SE CUENTAN Y SE AVISAN: tratarlas como cero
+      // sería el error anotado de punta a punta en este panel (falta de dato leída como dato).
+      const num = (txt) => {
+        let x = String(txt == null ? '' : txt).replace(/"/g, '').trim();
+        if (!x) return null;
+        if (x.includes(',') && x.includes('.')) x = x.lastIndexOf(',') > x.lastIndexOf('.')
+          ? x.replace(/\./g, '').replace(',', '.') : x.replace(/,/g, '');
+        else if (x.includes(',')) x = x.replace(',', '.');
+        const v = parseFloat(x);
+        return Number.isFinite(v) ? v : null;
+      };
+      const ES_RETIRO = /withdraw|payout|retir|transfer/i;
+
+      const res = {}; let totalLiq = 0, cuentasOk = 0, cuentasMal = 0;
+      for (const label of labels) {
+        const acc = accounts[label];
+        if (!acc?.refresh_token) { console.log(`── ${label} ── sin token`); cuentasMal++; continue; }
+        let t; try { t = await mlRefresh(ML_CLIENT_ID, ML_CLIENT_SECRET, acc.refresh_token); }
+        catch { console.log(`── ${label} ── ❌ no pude renovar el token`); cuentasMal++; continue; }
+        await db.patch('mlapi/tokens/' + label, { refresh_token: t.refresh_token, updated_ts: Date.now() });
+        const H = { Authorization: `Bearer ${t.access_token}` };
+        console.log(`── ${label} ──`);
+        // El reporte MÁS NUEVO por fecha de creación, no el último del arreglo: el orden no está
+        // prometido por Mercado Pago y ya mordió una vez.
+        let arch = null, rango = '', creado = '';
+        try {
+          const r = await fetch(`${MP}/v1/account/settlement_report/list`, { headers: H, signal: AbortSignal.timeout(20000) });
+          const arr = await r.json();
+          if (!r.ok || !Array.isArray(arr)) { console.log(`   ❌ no pude listar los reportes (HTTP ${r.status})`); cuentasMal++; continue; }
+          const ok = arr.filter((x) => x && x.file_name && x.status !== 'pending');
+          ok.sort((a, b) => new Date(a.date_created || 0) - new Date(b.date_created || 0));
+          const u = ok[ok.length - 1];
+          if (!u) { console.log('   ❌ no hay ningún reporte listo todavía'); cuentasMal++; continue; }
+          arch = u.file_name;
+          rango = `${String(u.begin_date || '').slice(0, 10)} → ${String(u.end_date || '').slice(0, 10)}`;
+          creado = String(u.date_created || '').slice(0, 10);
+          const diasViejo = creado ? Math.round((hoy - new Date(creado).getTime()) / 864e5) : null;
+          console.log(`   reporte: ${rango} · pedido el ${creado || '?'}${diasViejo != null && diasViejo > 2 ? ` ⚠️ tiene ${diasViejo} días` : ''}`);
+        } catch (e) { console.log(`   ❌ ${String(e.message || e).slice(0, 90)}`); cuentasMal++; continue; }
+
+        try {
+          const r = await fetch(`${MP}/v1/account/settlement_report/${encodeURIComponent(arch)}`, { headers: H, signal: AbortSignal.timeout(30000) });
+          if (!r.ok) { console.log(`   ❌ no pude abrirlo (HTTP ${r.status})`); cuentasMal++; continue; }
+          const csv = await r.text();
+          const li = csv.split('\n').filter((x) => x.trim());
+          const sep = (li[0] || '').includes(';') ? ';' : ',';
+          const cols = partir(li[0] || '', sep).map((x) => x.replace(/^"|"$/g, ''));
+          const iTipo = cols.indexOf('TRANSACTION_TYPE');
+          const iReal = cols.indexOf('REAL_AMOUNT');
+          const iLib = cols.indexOf('MONEY_RELEASE_DATE');
+          if (iTipo < 0 || iReal < 0 || iLib < 0) {
+            console.log(`   ❌ le falta una columna clave (tipo ${iTipo} · neto ${iReal} · liberación ${iLib})`);
+            cuentasMal++; continue;
+          }
+          let liq = 0, nLiq = 0, nLib = 0, nSinFecha = 0, nRetiro = 0, nSinNeto = 0, nFechaMala = 0;
+          let ultima = 0;
+          for (let n = 1; n < li.length; n++) {
+            const f = partir(li[n], sep);
+            const tp = String(f[iTipo] || '').trim();
+            if (ES_RETIRO.test(tp)) { nRetiro++; continue; }   // un retiro no es plata por cobrar
+            const txt = String(f[iLib] || '').trim();
+            if (!txt) { nSinFecha++; continue; }
+            const ts = new Date(txt).getTime();
+            if (!Number.isFinite(ts)) { nFechaMala++; continue; }
+            if (ts <= hoy) { nLib++; continue; }               // ya está disponible, no es "a liquidar"
+            const v = num(f[iReal]);
+            if (v == null) { nSinNeto++; continue; }
+            liq += v; nLiq++; if (ts > ultima) ultima = ts;
+          }
+          // EL CHEQUEO QUE NO PUEDE FALTAR: si alguna fila no se pudo leer, el total queda CORTO y
+          // eso no se ve en el número. Se avisa fuerte en vez de guardarlo callado.
+          const sucias = nSinNeto + nFechaMala;
+          console.log(`   filas: ${li.length - 1} · por cobrar ${nLiq} · ya liberadas ${nLib} · retiros ${nRetiro} · sin fecha ${nSinFecha}`);
+          if (ultima) console.log(`   la última se libera el ${new Date(ultima).toISOString().slice(0, 10)}`);
+          if (sucias) console.log(`   ⚠️ ${sucias} filas no se pudieron leer (${nSinNeto} sin neto · ${nFechaMala} con fecha rara): el total queda CORTO`);
+          res[label] = { aLiquidar: Math.round(liq), filas: nLiq, sucias, rango, creado, ts: Date.now() };
+          totalLiq += liq; cuentasOk++;
+          console.log(`   ✅ calculado (el monto va a la base, no al registro público)`);
+        } catch (e) { console.log(`   ❌ ${String(e.message || e).slice(0, 110)}`); cuentasMal++; }
+      }
+
+      console.log(`\n── RESUMEN ──`);
+      console.log(`   cuentas calculadas: ${cuentasOk} · con problema: ${cuentasMal}`);
+      if (cuentasMal) console.log('   ⚠️ con una cuenta afuera el total está INCOMPLETO y no se guarda como bueno.');
+
+      // CONTRA LO QUE ÉL TIENE CARGADO A MANO. Es la regla del panel: un número automático que no
+      // coincide con el que él ya conoce NO se muestra, se investiga. Se compara en PORCENTAJE
+      // para no volcar un solo peso al registro público.
+      let aMano = null;
+      try { aMano = parseFloat((await db.get('cyc/finanzas/mp_liq')) || 0) || 0; } catch { aMano = null; }
+      if (aMano == null) console.log('   no pude leer lo que hay cargado a mano.');
+      else if (!aMano) console.log('   a mano hoy hay CERO cargado, así que no hay con qué comparar.');
+      else if (!cuentasOk) console.log('   no se calculó ninguna cuenta: no hay con qué comparar.');
+      else {
+        const dif = (totalLiq - aMano) / aMano * 100;
+        const s = dif >= 0 ? '+' : '';
+        console.log(`   calculado vs. lo cargado a mano: ${s}${dif.toFixed(1)}% ${Math.abs(dif) <= 15 ? '✅ se parecen' : '⚠️ NO se parecen — antes de usarlo hay que mirar por qué'}`);
+        console.log(`   (lo cargado a mano puede ser simplemente viejo: eso también explica una diferencia.)`);
+      }
+
+      if (APLICAR && cuentasOk) {
+        await db.patch('cyc/saldoml', { ...res, _total: Math.round(totalLiq), _ts: Date.now(), _cuentas: cuentasOk });
+        const rele = (await db.get('cyc/saldoml')) || {};
+        console.log(`   guardado y releído: ${Object.keys(rele).filter((k) => !k.startsWith('_')).length} cuentas · coincide: ${Math.round(rele._total) === Math.round(totalLiq) ? '✅' : '❌'}`);
+      } else if (APLICAR) {
+        console.log('   NO se guardó nada: no se pudo calcular ninguna cuenta.');
+      }
+      console.log('\n   OJO: esto es lo que FALTA COBRAR, no el disponible. El disponible necesita un');
+      console.log('   punto de partida que el reporte no da, así que ése se sigue cargando a mano.');
+      console.log('   (No se movió un peso, no se tocó ML y no se tocó ningún precio.)');
+      return;
+    }
     // BILLING_PROBE=probarrep → ¿POR QUÉ MERCADO PAGO NO DEJA PEDIR EL REPORTE? · SOLO LEE SALVO EL PEDIDO
     //
     // POR QUÉ EXISTE (20/09/2026). `armarsaldo:90:go` prendió los retiros en las 4 cuentas (eso
