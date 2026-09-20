@@ -214,6 +214,36 @@ function _anotarEscrituraML(res, itemId, que, cuerpo) {
 // Y AVISA TAMBIÉN CUANDO SE DESTRABA, que es la mitad que siempre se olvida: si ayer estaba
 // bloqueado y hoy ML aceptó una escritura, sale el mensaje de que ya puede de nuevo. Sin eso él
 // se queda creyendo que el robot sigue frenado y toca todo a mano al pedo.
+// LEER EL CSV DEL REPORTE DE MERCADO PAGO. Las dos viven acá y no adentro de un comando porque
+// las usan VARIOS, y dos copias de la misma cuenta ya se separaron nueve veces en este panel.
+//
+// SE RESPETAN LAS COMILLAS: un `split(';')` pelado corre las columnas si un texto trae el
+// separador adentro, y ahí el neto de una fila se lee de otra columna. Con plata de por medio eso
+// no se puede dejar al azar.
+function csvPartir(linea, sep) {
+  const out = []; let cur = '', dentro = false;
+  for (let i = 0; i < linea.length; i++) {
+    const c = linea[i];
+    if (c === '"') { if (dentro && linea[i + 1] === '"') { cur += '"'; i++; } else dentro = !dentro; }
+    else if (c === sep && !dentro) { out.push(cur); cur = ''; }
+    else cur += c;
+  }
+  out.push(cur);
+  return out.map((x) => x.trim());
+}
+// El número puede venir "1234.56" o "1.234,56" según cómo esté configurada la cuenta.
+// Devuelve null si no se entiende, y el que la llama TIENE que contar esas filas y avisarlas:
+// tratarlas como cero es el error anotado de punta a punta en este panel.
+function csvNum(txt) {
+  let x = String(txt == null ? '' : txt).replace(/"/g, '').trim();
+  if (!x) return null;
+  if (x.includes(',') && x.includes('.')) x = x.lastIndexOf(',') > x.lastIndexOf('.')
+    ? x.replace(/\./g, '').replace(',', '.') : x.replace(/,/g, '');
+  else if (x.includes(',')) x = x.replace(',', '.');
+  const v = parseFloat(x);
+  return Number.isFinite(v) ? v : null;
+}
+
 // PEDIR EL REPORTE DE LIQUIDACIÓN DE MERCADO PAGO. Vive acá y no adentro de cada comando porque
 // lo usan DOS (`armarsaldo` y `saldoml`) y dos copias de la misma cuenta ya se separaron nueve
 // veces en este panel.
@@ -12519,6 +12549,113 @@ async function main() {
       console.log('   (Solo se leyó: no se escribió nada, ni en ML ni en la base.)');
       return;
     }
+    // BILLING_PROBE=medirsaldo → LAS DOS COSAS QUE HAY QUE SABER ANTES DE MANTENER EL DISPONIBLE
+    //
+    // POR QUÉ (20/09/2026). Él aceptó cargar el disponible **una vez por mes** y que el robot lo
+    // mantenga en el medio. Antes de escribir esa cuenta hay DOS cosas que se dieron por sabidas y
+    // NUNCA se midieron — las dos hacen que el saldo quede de MÁS, que es el lado peor:
+    //
+    //  1. **¿LOS RETIROS TRAEN FECHA DE LIBERACIÓN?** La cuenta fecha cada movimiento por
+    //     `MONEY_RELEASE_DATE`. Un retiro no se "libera": es plata que sale. Si esa columna viene
+    //     vacía en los retiros, la fórmula **los saltea** y el disponible nunca baja. En Matías ya
+    //     se vieron 31 retiros y 69 filas sin esa fecha, así que la sospecha tiene con qué.
+    //  2. **¿QUÉ SIGNO TIENEN LAS DEVOLUCIONES Y LAS DISPUTAS?** Si `REAL_AMOUNT` ya viene en
+    //     negativo, sumarlo derecho está bien; si viene positivo, sumarlo **agrega** plata que en
+    //     realidad se fue. Nadie lo verificó por tipo.
+    //
+    // Y de paso contesta una tercera que decide cuánto se despega: **¿aparece algún tipo de
+    // movimiento que el código no conoce?** Los cargos mensuales de ML (almacenamiento, stock
+    // antiguo, percepciones) salen de la cuenta y si no están en el reporte el saldo se infla.
+    //
+    // NO IMPRIME NI UN PESO: sólo cantidades de filas y SIGNOS. El registro de GitHub es público.
+    // SOLO LEE.
+    if (String(process.env.BILLING_PROBE || '') === 'medirsaldo') {
+      const MP = 'https://api.mercadopago.com';
+      const CONOCIDOS = new Set(['SETTLEMENT', 'SETTLEMENT_SHIPPING', 'DISPUTE', 'DISPUTE_SHIPPING',
+        'REFUND', 'REFUND_SHIPPING', 'PAYOUTS', 'CASHBACK']);
+      console.log('=== LAS DOS COSAS QUE FALTAN MEDIR PARA EL DISPONIBLE ===');
+      console.log('(no se imprime ningún monto: sólo cuántas filas y qué signo)\n');
+      const global = {};
+      let desconocidos = new Set();
+      for (const label of labels) {
+        const acc = accounts[label];
+        if (!acc?.refresh_token) { console.log(`── ${label} ── sin token`); continue; }
+        let t; try { t = await mlRefresh(ML_CLIENT_ID, ML_CLIENT_SECRET, acc.refresh_token); }
+        catch { console.log(`── ${label} ── ❌ no pude renovar el token`); continue; }
+        await db.patch('mlapi/tokens/' + label, { refresh_token: t.refresh_token, updated_ts: Date.now() });
+        const H = { Authorization: `Bearer ${t.access_token}` };
+        let arch = null;
+        try {
+          const r = await fetch(`${MP}/v1/account/settlement_report/list`, { headers: H, signal: AbortSignal.timeout(20000) });
+          const arr = await r.json();
+          if (!r.ok || !Array.isArray(arr)) { console.log(`── ${label} ── ❌ no pude listar (HTTP ${r.status})`); continue; }
+          const ok = arr.filter((x) => x && x.file_name && x.status !== 'pending');
+          ok.sort((a, b) => new Date(a.date_created || 0) - new Date(b.date_created || 0));
+          arch = ok.length ? ok[ok.length - 1].file_name : null;
+          if (!arch) { console.log(`── ${label} ── ❌ no hay reporte listo`); continue; }
+        } catch (e) { console.log(`── ${label} ── ❌ ${String(e.message || e).slice(0, 80)}`); continue; }
+        try {
+          const r = await fetch(`${MP}/v1/account/settlement_report/${encodeURIComponent(arch)}`, { headers: H, signal: AbortSignal.timeout(30000) });
+          if (!r.ok) { console.log(`── ${label} ── ❌ no pude abrirlo (HTTP ${r.status})`); continue; }
+          const li = (await r.text()).split('\n').filter((x) => x.trim());
+          const sep = (li[0] || '').includes(';') ? ';' : ',';
+          const cols = csvPartir(li[0] || '', sep).map((x) => x.replace(/^"|"$/g, ''));
+          const iT = cols.indexOf('TRANSACTION_TYPE'), iR = cols.indexOf('REAL_AMOUNT');
+          const iL = cols.indexOf('MONEY_RELEASE_DATE'), iD = cols.indexOf('TRANSACTION_DATE');
+          const iS = cols.indexOf('SETTLEMENT_DATE');
+          if (iT < 0 || iR < 0 || iL < 0) { console.log(`── ${label} ── ❌ le falta una columna clave`); continue; }
+          console.log(`── ${label} ── ${li.length - 1} filas`);
+          const por = {};
+          for (let n = 1; n < li.length; n++) {
+            const f = csvPartir(li[n], sep);
+            const tp = String(f[iT] || '').trim() || '(vacío)';
+            if (!CONOCIDOS.has(tp)) desconocidos.add(tp);
+            const g = por[tp] = por[tp] || { n: 0, conLib: 0, sinLib: 0, pos: 0, neg: 0, cero: 0, ilegible: 0, conTrans: 0, conSett: 0 };
+            g.n++;
+            if (String(f[iL] || '').trim()) g.conLib++; else g.sinLib++;
+            if (iD >= 0 && String(f[iD] || '').trim()) g.conTrans++;
+            if (iS >= 0 && String(f[iS] || '').trim()) g.conSett++;
+            const v = csvNum(f[iR]);
+            if (v == null) g.ilegible++; else if (v > 0) g.pos++; else if (v < 0) g.neg++; else g.cero++;
+          }
+          for (const [tp, g] of Object.entries(por).sort((a, b) => b[1].n - a[1].n)) {
+            const signo = g.neg === g.n ? 'TODAS negativas' : g.pos === g.n ? 'TODAS positivas'
+              : `${g.pos} positivas · ${g.neg} negativas${g.cero ? ' · ' + g.cero + ' en cero' : ''}`;
+            console.log(`   ${tp.padEnd(20)} ${String(g.n).padStart(4)} filas · fecha de liberación: ${g.sinLib ? `⚠️ FALTA en ${g.sinLib}` : 'todas la tienen'} · ${signo}${g.ilegible ? ` · ⚠️ ${g.ilegible} ilegibles` : ''}`);
+            if (g.sinLib) console.log(`   ${' '.repeat(20)}      (de ésas: ${g.conTrans} tienen fecha de movimiento y ${g.conSett} fecha de acreditación)`);
+            const G = global[tp] = global[tp] || { n: 0, sinLib: 0, pos: 0, neg: 0 };
+            G.n += g.n; G.sinLib += g.sinLib; G.pos += g.pos; G.neg += g.neg;
+          }
+        } catch (e) { console.log(`── ${label} ── ❌ ${String(e.message || e).slice(0, 100)}`); }
+      }
+
+      console.log('\n── LAS RESPUESTAS ──');
+      const pay = global['PAYOUTS'];
+      if (!pay) console.log('1) RETIROS: no apareció ninguno, así que no se puede contestar.');
+      else if (pay.sinLib === pay.n) {
+        console.log(`1) RETIROS: ❌ NINGUNO trae fecha de liberación (${pay.n} de ${pay.n}).`);
+        console.log('   → La fórmula que fechaba todo por esa columna SE LOS SALTEABA ENTEROS y el');
+        console.log('     disponible nunca habría bajado. Hay que fecharlos por la fecha del movimiento.');
+      } else if (pay.sinLib) console.log(`1) RETIROS: ⚠️ ${pay.sinLib} de ${pay.n} sin fecha de liberación — hay que fecharlos por la otra columna.`);
+      else console.log(`1) RETIROS: ✅ los ${pay.n} traen fecha de liberación.`);
+
+      for (const tp of ['REFUND', 'DISPUTE', 'REFUND_SHIPPING', 'DISPUTE_SHIPPING', 'PAYOUTS', 'CASHBACK']) {
+        const g = global[tp]; if (!g) continue;
+        const cual = g.neg === g.n ? '✅ TODAS negativas: se suman derecho y restan solas'
+          : g.pos === g.n ? '⚠️ TODAS POSITIVAS: sumarlas AGREGA plata que en realidad se fue — hay que restarlas'
+            : `⚠️ MEZCLADAS (${g.pos} positivas · ${g.neg} negativas): no se puede decidir por el tipo`;
+        console.log(`2) ${tp}: ${cual}`);
+      }
+
+      console.log(`3) TIPOS QUE EL CÓDIGO NO CONOCE: ${desconocidos.size ? '⚠️ ' + [...desconocidos].join(' · ') : '✅ ninguno'}`);
+      if (!desconocidos.size) {
+        console.log('   → Ojo: que no aparezca ninguno NO quiere decir que los cargos mensuales de');
+        console.log('     ML estén adentro. Quiere decir que, si están, vienen con uno de los ocho');
+        console.log('     nombres de siempre. Eso se mide aparte.');
+      }
+      console.log('\n   (Solo se leyó. No se escribió nada y no se imprimió ningún monto.)');
+      return;
+    }
     // BILLING_PROBE=saldoml[:go] → LO QUE FALTA COBRAR DE ML, CUENTA POR CUENTA, CALCULADO SOLO
     //
     // POR QUÉ (20/09/2026). Pedido suyo: *"hay un armado de cuánto tiene cada cuenta de ML y cuánto
@@ -12550,32 +12687,6 @@ async function main() {
       console.log('=== LO QUE FALTA COBRAR DE ML, POR CUENTA ===');
       console.log(APLICAR ? '(APLICANDO · se guarda en la base)\n' : '(PRUEBA · no se escribe nada · agregá ":go")\n');
 
-      // Partir una línea del CSV RESPETANDO LAS COMILLAS. Un `split(';')` pelado se rompe si un
-      // texto trae el separador adentro, y ahí las columnas se corren: el neto de una fila pasaría
-      // a leerse de otra columna. Con plata de por medio eso no se puede dejar al azar.
-      const partir = (linea, sep) => {
-        const out = []; let cur = '', dentro = false;
-        for (let i = 0; i < linea.length; i++) {
-          const c = linea[i];
-          if (c === '"') { if (dentro && linea[i + 1] === '"') { cur += '"'; i++; } else dentro = !dentro; }
-          else if (c === sep && !dentro) { out.push(cur); cur = ''; }
-          else cur += c;
-        }
-        out.push(cur);
-        return out.map((x) => x.trim());
-      };
-      // El número puede venir "1234.56" o "1.234,56" según cómo esté configurada la cuenta.
-      // Devuelve null si no se entiende, y esas filas SE CUENTAN Y SE AVISAN: tratarlas como cero
-      // sería el error anotado de punta a punta en este panel (falta de dato leída como dato).
-      const num = (txt) => {
-        let x = String(txt == null ? '' : txt).replace(/"/g, '').trim();
-        if (!x) return null;
-        if (x.includes(',') && x.includes('.')) x = x.lastIndexOf(',') > x.lastIndexOf('.')
-          ? x.replace(/\./g, '').replace(',', '.') : x.replace(/,/g, '');
-        else if (x.includes(',')) x = x.replace(',', '.');
-        const v = parseFloat(x);
-        return Number.isFinite(v) ? v : null;
-      };
       const ES_RETIRO = /withdraw|payout|retir|transfer/i;
 
       const res = {}; let totalLiq = 0, cuentasOk = 0, cuentasMal = 0;
@@ -12611,7 +12722,7 @@ async function main() {
           const csv = await r.text();
           const li = csv.split('\n').filter((x) => x.trim());
           const sep = (li[0] || '').includes(';') ? ';' : ',';
-          const cols = partir(li[0] || '', sep).map((x) => x.replace(/^"|"$/g, ''));
+          const cols = csvPartir(li[0] || '', sep).map((x) => x.replace(/^"|"$/g, ''));
           const iTipo = cols.indexOf('TRANSACTION_TYPE');
           const iReal = cols.indexOf('REAL_AMOUNT');
           const iLib = cols.indexOf('MONEY_RELEASE_DATE');
@@ -12622,7 +12733,7 @@ async function main() {
           let liq = 0, nLiq = 0, nLib = 0, nSinFecha = 0, nRetiro = 0, nSinNeto = 0, nFechaMala = 0;
           let ultima = 0;
           for (let n = 1; n < li.length; n++) {
-            const f = partir(li[n], sep);
+            const f = csvPartir(li[n], sep);
             const tp = String(f[iTipo] || '').trim();
             if (ES_RETIRO.test(tp)) { nRetiro++; continue; }   // un retiro no es plata por cobrar
             const txt = String(f[iLib] || '').trim();
@@ -12630,7 +12741,7 @@ async function main() {
             const ts = new Date(txt).getTime();
             if (!Number.isFinite(ts)) { nFechaMala++; continue; }
             if (ts <= hoy) { nLib++; continue; }               // ya está disponible, no es "a liquidar"
-            const v = num(f[iReal]);
+            const v = csvNum(f[iReal]);
             if (v == null) { nSinNeto++; continue; }
             liq += v; nLiq++; if (ts > ultima) ultima = ts;
           }
