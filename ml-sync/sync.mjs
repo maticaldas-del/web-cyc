@@ -12227,6 +12227,109 @@ async function main() {
       return;
     }
 
+    // BILLING_PROBE=saldocuenta → EL REPORTE "SALDO EN CUENTA", QUE PUEDE TRAER EL DISPONIBLE · SOLO LEE
+    //
+    // POR QUÉ (20/09/2026). `mptoken` probó que ninguna puerta de "balance" se abre: la única que
+    // existe de verdad (`/users/<id>/mercadopago_account/balance`) contesta **403 forbidden**, y la
+    // documentación de MercadoPago lo dice con todas las letras — *"Public access not allowed"*.
+    //
+    // PERO EN ESA MISMA CORRIDA YO LEÍ MAL UN RESULTADO. `/v1/account/bank_report/config` contestó
+    // **404 `config_not_found_for_user`**, y lo conté junto a los 404 de *"este recurso no existe"*.
+    // **No es lo mismo**: ese 404 dice que la puerta existe y que ESTA CUENTA todavía no tiene la
+    // configuración armada. Es la falta de dato leída como dato, anotada diez veces en este panel.
+    //
+    // QUÉ CAMBIA SI ANDA: el "Reporte de saldo en cuenta" de MercadoPago trae, entre sus tipos de
+    // renglón, **`initial_available_balance`** y el de cierre — o sea **el disponible de verdad**,
+    // no una cuenta deducida. Con eso no haría falta ningún punto de partida cargado a mano ni
+    // volver a cargarlo una vez por mes, que es lo que hoy lo hace frágil.
+    //
+    // ESTO SOLO LEE, y es a propósito: armar la configuración de un reporte ESCRIBE en su cuenta de
+    // MercadoPago. Primero se mira qué hay, después se decide. Mismo orden que con `versaldo`.
+    //
+    // SE PRUEBA CON EL TOKEN DE ML, no con la llave nueva: si con el de siempre alcanza, la llave
+    // nueva no hace falta para nada y hay que borrarla igual.
+    //
+    // NO IMPRIME NI UN PESO: nombres de campos, tipos de renglón y cantidades. El registro es público.
+    if (String(process.env.BILLING_PROBE || '') === 'saldocuenta') {
+      const MP = 'https://api.mercadopago.com';
+      console.log('=== ¿EXISTE EL REPORTE "SALDO EN CUENTA"? ===\n');
+      console.log('(solo lee · no arma ninguna configuración · no pide ningún reporte)\n');
+      let existen = 0, sinConfig = 0, cerradas = 0;
+      for (const label of labels) {
+        const acc = accounts[label];
+        if (!acc?.refresh_token) { console.log(`── ${label} ── sin token`); continue; }
+        let t; try { t = await mlRefresh(ML_CLIENT_ID, ML_CLIENT_SECRET, acc.refresh_token); }
+        catch { console.log(`── ${label} ── ❌ no pude renovar el token`); continue; }
+        await db.patch('mlapi/tokens/' + label, { refresh_token: t.refresh_token, updated_ts: Date.now() });
+        console.log(`── ${label} ──`);
+        const H = { Authorization: `Bearer ${t.access_token}` };
+        const ver = async (nom, url) => {
+          try {
+            const r = await fetch(url, { headers: H, signal: AbortSignal.timeout(25000) });
+            const txt = (await r.text()) || '';
+            let j = null; try { j = JSON.parse(txt); } catch {}
+            const causa = j ? String(j.cause || j.error || '') : '';
+            const msg = j ? String(j.message || '') : txt.replace(/\s+/g, ' ').slice(0, 120);
+            if (r.ok) {
+              const obj = Array.isArray(j) ? (j[0] || {}) : (j || {});
+              const ks = Object.keys(obj);
+              console.log(`   ✅ ${nom} · HTTP 200${Array.isArray(j) ? ` · lista de ${j.length}` : ''}`);
+              console.log(`      campos: ${ks.join(', ').slice(0, 240) || '(ninguno)'}`);
+              return j;
+            }
+            console.log(`   ❌ ${nom} · HTTP ${r.status} · ${causa || '(sin causa)'} · ${msg.slice(0, 120)}`);
+            return null;
+          } catch (e) { console.log(`   ❌ ${nom} · ERROR ${String(e.message || e).slice(0, 100)}`); return null; }
+        };
+        const cfg = await ver('configuración del reporte', `${MP}/v1/account/bank_report/config`);
+        const lista = await ver('reportes ya generados', `${MP}/v1/account/bank_report/list`);
+        // EL VEREDICTO POR CUENTA SALE DE LO QUE CONTESTÓ, NO DE CAER EN UN `else`: es el error
+        // que ya cometí con `saldobill` y con `permisos`, los dos el mismo mes.
+        if (cfg) { existen++; console.log('   → LA CONFIGURACIÓN YA EXISTE: se puede pedir el reporte sin escribir nada.'); }
+        else { console.log('   → sin configuración armada (o cerrado, ver el código de arriba).'); }
+        // Si hay algún reporte ya generado, se baja el más nuevo y se miran SUS COLUMNAS y los
+        // TIPOS DE RENGLÓN. Ahí es donde estaría el disponible, y es lo único que decide.
+        const arr = Array.isArray(lista) ? lista : [];
+        const f = arr.map((x) => x && x.file_name).filter(Boolean).pop();
+        if (f) {
+          try {
+            const r = await fetch(`${MP}/v1/account/bank_report/${encodeURIComponent(f)}`, { headers: H, signal: AbortSignal.timeout(25000) });
+            const txt = (await r.text()) || '';
+            if (!r.ok) { console.log(`   ❌ bajar el reporte · HTTP ${r.status}`); }
+            else {
+              const lineas = txt.split('\n').filter((x) => x.trim());
+              const cab = (lineas[0] || '');
+              console.log(`   ✅ bajar el reporte · ${lineas.length} renglones`);
+              console.log(`      columnas: ${cab.slice(0, 400)}`);
+              // Los TIPOS de renglón: es donde MercadoPago pone initial_available_balance.
+              const cols = csvPartir(cab, cab.includes(';') ? ';' : ',').map((x) => x.replace(/^"|"$/g, '').trim().toUpperCase());
+              const iTipo = cols.indexOf('RECORD_TYPE');
+              if (iTipo < 0) console.log('      (no hay columna RECORD_TYPE: los tipos de renglón no se pueden listar)');
+              else {
+                const tipos = new Map();
+                for (const ln of lineas.slice(1)) {
+                  const c = csvPartir(ln, cab.includes(';') ? ';' : ',');
+                  const tp = String(c[iTipo] || '').replace(/^"|"$/g, '').trim() || '(vacío)';
+                  tipos.set(tp, (tipos.get(tp) || 0) + 1);
+                }
+                console.log('      tipos de renglón: ' + [...tipos.entries()].map(([k, v]) => `${k} (${v})`).join(' · ').slice(0, 400));
+                const hay = [...tipos.keys()].some((k) => /balance/i.test(k));
+                console.log(hay ? '      🎯 HAY RENGLONES DE SALDO ADENTRO: el disponible sale de acá.'
+                                : '      (ningún renglón de saldo en este reporte)');
+              }
+            }
+          } catch (e) { console.log(`   ❌ bajar el reporte · ERROR ${String(e.message || e).slice(0, 100)}`); }
+        } else if (lista) { console.log('   (no hay ningún reporte generado todavía)'); }
+        if (!cfg && !lista) cerradas++; else if (!cfg) sinConfig++;
+      }
+      console.log(`\n── RESUMEN ──`);
+      console.log(`   con configuración ${existen} · sin configuración ${sinConfig} · sin acceso ${cerradas}`);
+      console.log('   Si dice `config_not_found_for_user`, la puerta EXISTE y lo único que falta es');
+      console.log('   armar la configuración — y eso ESCRIBE en la cuenta de MercadoPago, así que');
+      console.log('   se decide con él. Si dice 403 o "no existe", ahí sí está cerrado.');
+      console.log('\n   (Solo se leyó. Ni un POST, y no se imprimió ningún monto: el registro es público.)');
+      return;
+    }
     // BILLING_PROBE=mptoken → ¿LA LLAVE PROPIA DE MERCADO PAGO ABRE EL SALDO? · SOLO LEE
     //
     // POR QUÉ (20/09/2026). El disponible por cuenta del Arqueo se carga a mano porque ML no deja
