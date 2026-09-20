@@ -12374,6 +12374,72 @@ async function main() {
       return;
     }
 
+    // BILLING_PROBE=clavesmalas → ¿HAY NOMBRES DE VARIANTE QUE FIREBASE NO PUEDE GUARDAR? · SOLO LEE
+    //
+    // POR QUÉ (20/09/2026). Él avisó: *"al clickear cargar lo sugerido en adriana, no anda. no sé
+    // si se rompió solo en adriana o todos"*. Leyendo el panel aparece un sospechoso concreto:
+    // la caja a medio armar se guarda con una clave por renglón que es
+    // `<id del producto>|<nombre de la variante>` (`_ck` en index.html), o sea que **el nombre de
+    // la variante va ADENTRO de la clave**. Y Firebase **no acepta** `.` `#` `$` `[` `]` `/` en una
+    // clave: si una sola variante de la sugerencia tiene uno de esos caracteres, el guardado falla
+    // ENTERO, la pantalla no se redibuja y el botón parece que no hace nada.
+    //
+    // Eso explicaría por qué falla en UNA cuenta y no en las otras: falla donde la sugerencia
+    // incluye esa variante. Acá no se adivina: se listan las que tienen el problema.
+    //
+    // SOLO LEE. No escribe nada, no toca ML y no toca ningún precio.
+    if (String(process.env.BILLING_PROBE || '') === 'clavesmalas') {
+      const PROHIBIDOS = /[.#$\[\]\/]/;
+      const links = (await db.get('cyc/mllinks')) || {};
+      // Qué cuentas publican cada producto, para decir a cuál le rompe el botón.
+      const ctaDe = {};
+      for (const [mla, L] of Object.entries(links)) {
+        if (!L || !L.prodId) continue;
+        const c = L.cuenta || L.account || '';
+        if (!c) continue;
+        (ctaDe[L.prodId] = ctaDe[L.prodId] || new Set()).add(c);
+      }
+      console.log('=== NOMBRES QUE FIREBASE NO PUEDE USAR COMO CLAVE ===');
+      console.log('(los caracteres que rompen son  .  #  $  [  ]  /  )\n');
+      let malos = 0, conVar = 0, totalVar = 0;
+      const porCuenta = {};
+      for (const p of products) {
+        const vs = p.variantes || [];
+        if (vs.length) conVar++;
+        totalVar += vs.length;
+        const rotas = vs.filter((v) => PROHIBIDOS.test(String(v || '')));
+        if (!rotas.length) continue;
+        malos += rotas.length;
+        const ctas = [...(ctaDe[p.id] || [])];
+        for (const c of ctas) porCuenta[c] = (porCuenta[c] || 0) + rotas.length;
+        console.log(`❌ ${String(p.name || p.id).slice(0, 48)}`);
+        for (const v of rotas) {
+          const cual = [...String(v)].filter((ch) => PROHIBIDOS.test(ch)).join(' ');
+          console.log(`     "${String(v).slice(0, 44)}"  → rompe por:  ${cual}`);
+        }
+        console.log(`     se publica en: ${ctas.length ? ctas.join(' · ') : '(ninguna cuenta)'}`);
+      }
+      // Y EL ID DEL PRODUCTO TAMBIÉN VA EN LA CLAVE: si alguno tuviera un carácter prohibido
+      // rompería hasta en los productos SIN variantes. Se mira igual, que es barato.
+      const idsMalos = products.filter((p) => PROHIBIDOS.test(String(p.id || '')));
+      if (idsMalos.length) {
+        console.log(`\n❌ Y ${idsMalos.length} productos tienen el problema en el ID, no en la variante:`);
+        for (const p of idsMalos.slice(0, 10)) console.log(`     ${p.id} · ${String(p.name || '').slice(0, 40)}`);
+      }
+      console.log(`\n── RESUMEN ──`);
+      console.log(`   productos: ${products.length} · con variantes: ${conVar} · variantes en total: ${totalVar}`);
+      console.log(`   variantes que rompen la clave: ${malos}`);
+      if (malos) {
+        console.log(`   por cuenta: ${Object.entries(porCuenta).map(([k, v]) => `${k} ${v}`).join(' · ') || '—'}`);
+        console.log('   → CONFIRMADO: el botón "Cargar lo sugerido" falla en la cuenta donde la');
+        console.log('     sugerencia incluye una de éstas, y falla CALLADO.');
+      } else {
+        console.log('   ✅ ninguna. Entonces la causa del botón es OTRA y hay que seguir buscando —');
+        console.log('     este cero es un resultado, no una respuesta.');
+      }
+      console.log('   (Solo se leyó: no se escribió nada, ni en ML ni en la base.)');
+      return;
+    }
     // BILLING_PROBE=saldoml[:go] → LO QUE FALTA COBRAR DE ML, CUENTA POR CUENTA, CALCULADO SOLO
     //
     // POR QUÉ (20/09/2026). Pedido suyo: *"hay un armado de cuánto tiene cada cuenta de ML y cuánto
