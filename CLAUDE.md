@@ -341,6 +341,7 @@ Los que más se usan:
 | `revisarcompra[:<palabras>]` | **la última mirada antes de gastar los dólares**: código, precio, ¿es el mismo producto?, margen de HOY y si la podés publicar · solo lee |
 | `probarcaja:<MLA>[;otro]` | **¿ML dice quién tiene la caja de un catálogo?** vale el código del catálogo o el de una publicación tuya · solo lee |
 | `permisos` | **por qué ML no deja escribir**: qué le deja hacer a la aplicación, traducido · solo lee |
+| `probarsaldo2` | **¿se puede leer el saldo de la cuenta?** 11 endpoints que `probarsaldo` no probaba · solo lee |
 | `verweb:<direccion>` | **leer una página de afuera y mostrar su texto** · el chat no tiene internet y el robot sí · solo lee · **lo que imprime queda en el registro PÚBLICO** |
 | `apis` | qué endpoints de ML contestan (para diagnosticar) |
 | `ciclo` | **no es un comando: vuelve a prender el ciclo de 2 minutos** (ver abajo) |
@@ -2961,6 +2962,45 @@ por el que conviene pedir lo mínimo. Queda a decisión suya volverlos atrás.
 **La Pad 2 ya está a $425.700**: la bajó ÉL a mano el 19/09, cuando probó si ML lo dejaba. Le quedó
 **margen 7,8%** y la caja de compra pasó a **GANANDO**. Está marcada `liquidando`, así que el robot
 no se la sube — que es exactamente para lo que se dejó puesta esa marca.
+
+### EL SALDO SIGUE SIN PODERSE LEER, PERO AHORA SE SABE POR QUÉ (20/09/2026)
+
+Pedido suyo al ver que el permiso de Facturación habilitaba algo: *"si me automatiza algo que yo
+hacía a mano, es oro puro"*. Es el **disponible por cuenta del Arqueo**, que hoy carga a mano.
+
+**`probarsaldo` (los 3 de siempre) sigue dando 403 · 404 · 403**, igual que en agosto. Pero esos
+tres son de **MercadoPago** y el permiso nuevo es el de **Facturación de ML** — dos puertas
+distintas, y sólo se había probado una. Comando nuevo **`probarsaldo2`**, 11 endpoints nuevos:
+
+| | |
+|---|---|
+| `/billing/integration/balance` | ❌ **403 `PolicyAgent`** ← el endpoint EXISTE y nos lo niega una política |
+| `/billing/.../periods?group=MP` | ✅ 200 · trae lo que ML COBRA, no el disponible. **No sirve** |
+| `/billing/.../movements` | ⚠️ **429 · QUEDÓ SIN PROBAR** |
+| los otros 8 (liberaciones, liquidación, movimientos MP, pagos, retiros, cuenta) | ❌ 404 · 405 |
+
+**LO QUE CAMBIA RESPECTO DE AGOSTO, y es la parte útil: el 403 de `/billing/integration/balance`
+es de `PolicyAgent`, el MISMO motor que frenaba los precios.** O sea que **el endpoint existe y el
+problema es un permiso**, no que el dato no exista — que es exactamente lo contrario de un 404. La
+nota vieja decía *"la app no tiene ni puede pedir ese permiso"*; **eso ya no se puede afirmar.**
+La sospecha más probable es que ML lo pida para aplicaciones **CERTIFICADAS** (la de CYC figura
+*"Aplicación no certificada"*), pero **eso NO está medido** y no se escribe como si lo estuviera.
+
+**Y UNO QUEDÓ SIN PROBAR DE VERDAD: el 429 de `movements`.** Un 429 es el límite de 5 llamadas por
+minuto, **no** es "no existe" — la lección del 21/08 y del 02/09. Hay que reintentarlo solo antes
+de dar el tema por cerrado.
+
+**Mientras tanto el disponible se sigue cargando a mano.** No se muestra ningún número inventado.
+
+### LA PRUEBA DE ESCRITURA LE FALTABA UNA CUENTA, Y LO AGARRÓ ÉL (20/09/2026)
+
+Le dije *"3 publicaciones de 3 cuentas"* y él contestó: *"pero por qué 3? son 4 cuentas"*. **Tenía
+razón: faltaba Adriana** — y no es una cuenta cualquiera, es justo donde ML tenía perfumes en
+revisión por marca, o sea la única donde un freno DISTINTO podía seguir en pie. Probada:
+**3 de 3 ✅**, incluido el **"Bare Vanilla"** (`MLA3546445862`), que desde agosto rechazaba todo
+cambio con ML-400 por falta de documentación y **hoy acepta**. Total: **12 de 12, las 4 cuentas.**
+**LA LECCIÓN: una prueba que cubre 3 de 4 no prueba el caso que falta, y el que falta suele ser el
+distinto.** Elegí tres al azar y la cuarta era la única con un motivo propio para fallar.
 
 ### YA LO GRITA: EL ROBOT AVISA CUANDO ML NO LO DEJA ESCRIBIR (19/09/2026)
 
