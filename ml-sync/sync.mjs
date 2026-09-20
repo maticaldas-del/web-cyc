@@ -12079,6 +12079,79 @@ async function main() {
       console.log('\n(esto solo lee: no toqué nada)');
       return;
     }
+
+    // BILLING_PROBE=probarsaldo2 → ¿EL PERMISO DE FACTURACIÓN ABRE EL SALDO? (20/09/2026)
+    //
+    // POR QUÉ: `probarsaldo` probó TRES endpoints y los tres siguen cerrados hoy. Pero esos tres
+    // son de **MercadoPago**, y el 20/09 él puso en escritura el permiso de **Facturación de ML**,
+    // cuya descripción dice textual *"monitorear los ingresos, movimientos y SALDOS de la cuenta"*.
+    // Son dos puertas distintas y sólo se probó una. Si el saldo sale por acá, se deja de cargar a
+    // mano en el Arqueo todos los meses.
+    //
+    // SE PRUEBA EN UNA SOLA CUENTA a propósito: si alguno contesta, después se prueba en las otras
+    // tres. Barrer las cuatro de entrada son 4 veces más llamadas contra un billing que permite
+    // **5 por minuto** — y un 429 NO es prueba de que el endpoint no exista (lección del 21/08).
+    // Por eso además se espera entre las de billing.
+    //
+    // SOLO LEE. No escribe en ML ni en la base (salvo el refresh_token, que ML rota y es
+    // obligatorio guardar).
+    //
+    // EL REGISTRO DE GITHUB ES PÚBLICO: se imprime el ESTADO y los primeros caracteres de la
+    // respuesta, que es lo que hace falta para saber si anda. Si alguno devuelve plata de verdad,
+    // el monto NO se copia acá: se dice que contestó y se lee aparte.
+    if (String(process.env.BILLING_PROBE || '') === 'probarsaldo2') {
+      const label = labels.find((L) => /mat/i.test(L)) || labels[0];
+      const acc = accounts[label];
+      if (!acc?.refresh_token || !acc.seller_id) { console.log('Sin token para probar.'); return; }
+      let t; try { t = await mlRefresh(ML_CLIENT_ID, ML_CLIENT_SECRET, acc.refresh_token); }
+      catch (e) { console.log('No pude renovar el token: ' + String(e.message || e).slice(0, 120)); return; }
+      await db.patch('mlapi/tokens/' + label, { refresh_token: t.refresh_token, updated_ts: Date.now() });
+      const sid = acc.seller_id;
+      const MP = 'https://api.mercadopago.com';
+      const hoy = new Date(); const ini = new Date(Date.now() - 7 * 864e5);
+      const f = (d) => d.toISOString().slice(0, 10);
+      console.log(`=== ¿SE PUEDE LEER EL SALDO? · cuenta ${label} ===\n`);
+      console.log('(los 3 que ya se probaban siguen cerrados · acá van los que NUNCA se probaron)\n');
+      const pruebas = [
+        ['Reporte de liberaciones (lista)', `${MP}/v1/account/release_report/list`, true],
+        ['Reporte de liquidación (lista)', `${MP}/v1/account/settlement_report/list`, true],
+        ['Movimientos de la cuenta', `${MP}/v1/account/movements/search?limit=1`, true],
+        ['Pagos recibidos', `${MP}/v1/payments/search?limit=1&sort=date_created&criteria=desc`, true],
+        ['Facturación · saldo del período', `${ML_API}/billing/integration/balance?site_id=MLA`, false],
+        ['Facturación · resumen', `${ML_API}/billing/integration/monthly/summary?site_id=MLA&group=ML`, false],
+        ['Facturación · movimientos', `${ML_API}/billing/integration/periods/movements?site_id=MLA&group=ML&limit=1`, false],
+        ['Facturación · documentos del período', `${ML_API}/billing/integration/monthly/periods?group=MP&document_type=BILL&offset=0&limit=1&site_id=MLA`, false],
+        ['Cuenta del vendedor', `${ML_API}/users/${sid}/mercadopago_account`, true],
+        ['Retiros (withdrawals)', `${MP}/v1/account/withdrawals/search?limit=1`, true],
+        ['Liberaciones por fecha', `${MP}/v1/account/release_report?begin_date=${f(ini)}T00:00:00Z&end_date=${f(hoy)}T00:00:00Z`, true],
+      ];
+      let algunoAnduvo = false;
+      for (const [nom, url, rapido] of pruebas) {
+        // LAS DE BILLING VAN ESPACIADAS: ese servicio permite 5 llamadas por minuto y un 429 se
+        // leería como "no existe", que es el error anotado el 21/08 y el 02/09.
+        if (!rapido) await new Promise((r) => setTimeout(r, 13000));
+        try {
+          const r = await fetch(url, { headers: { Authorization: `Bearer ${t.access_token}` }, signal: AbortSignal.timeout(20000) });
+          const txt = (await r.text() || '').replace(/\s+/g, ' ').slice(0, 180);
+          const ok = r.ok;
+          if (ok) algunoAnduvo = true;
+          console.log(`${ok ? '✅' : '❌'} ${nom}`);
+          console.log(`   HTTP ${r.status} · ${txt}`);
+        } catch (e) { console.log(`❌ ${nom}\n   ERROR ${String(e.message || e).slice(0, 120)}`); }
+      }
+      console.log('\n── QUÉ QUIERE DECIR ──');
+      if (algunoAnduvo) {
+        console.log('   Hay al menos uno que contesta. HAY QUE MIRAR QUÉ TRAE ADENTRO antes de');
+        console.log('   mostrar un peso en el Arqueo: que conteste no quiere decir que ese número');
+        console.log('   sea "el disponible". Después se prueba en las otras tres cuentas.');
+      } else {
+        console.log('   Ninguno. Sumado a los 3 de `probarsaldo`, el saldo NO se puede leer con');
+        console.log('   esta aplicación y se sigue cargando a mano. **Un 429 no cuenta como "no');
+        console.log('   existe"**: si alguno dio 429, ése queda sin probar y hay que reintentarlo.');
+      }
+      console.log('\n   (Solo se leyó. No se tocó nada.)');
+      return;
+    }
     // BILLING_PROBE=repbliss[:go] → REPARA LAS PUBLICACIONES BLISS HUÉRFANAS.
     // Qué pasó: splitbliss creó su propio producto Bliss y repuntó 3 publicaciones hacia él. Ese
     // producto después se borró, así que esas 3 publicaciones quedaron apuntando a un producto
