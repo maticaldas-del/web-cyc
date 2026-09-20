@@ -12348,6 +12348,97 @@ async function main() {
       console.log('   (Y no se imprimió ningún monto a propósito: este registro es público.)');
       return;
     }
+
+    // BILLING_PROBE=armarsaldo[:días][:go] → PREPARAR EL REPORTE PARA QUE EL SALDO SE CALCULE SOLO
+    //
+    // POR QUÉ (20/09/2026). Pedido suyo: *"arma saldo automatico"*. `versaldo` midió el reporte que
+    // ya existe y encontró DOS cosas que lo hacen imposible tal como está:
+    //   · **los RETIROS no vienen adentro** (`include_withdraw` en NO). Sin ellos el disponible da
+    //     de MÁS: se ve plata que él ya sacó. Un saldo inflado es peor que no tener saldo.
+    //   · **el reporte más nuevo es de JULIO** y no está programado, así que no hay con qué
+    //     calcular el día de hoy.
+    // Esto arregla las dos: prende los retiros y pide un reporte nuevo.
+    //
+    // ESCRIBE EN MERCADO PAGO, y por eso pide `:go`. Las dos escrituras son de bajo riesgo y se
+    // pueden deshacer: la configuración vuelve con otro `PUT` y un reporte de más no molesta a
+    // nadie. **No mueve un peso, no toca ML y no toca ningún precio.**
+    //
+    // NO SE PROGRAMA EL REPORTE a propósito. Dejarlo automático genera un archivo por día en su
+    // cuenta para siempre; el robot puede pedirlo cuando lo necesita y eso no le ensucia nada.
+    //
+    // NO IMPRIME NI UN PESO: el registro de GitHub es público. Y después de escribir RELEE la
+    // configuración de MP y la compara, que es la regla 6 de este panel.
+    if (String(process.env.BILLING_PROBE || '').startsWith('armarsaldo')) {
+      const _p = String(process.env.BILLING_PROBE).split(':');
+      const APLICAR = _p.includes('go');
+      const DIAS = Math.max(1, Math.min(180, parseInt(_p[1]) || 90));
+      const MP = 'https://api.mercadopago.com';
+      const hasta = new Date(); const desde = new Date(Date.now() - DIAS * 864e5);
+      const iso = (d) => d.toISOString().slice(0, 19) + 'Z';
+      console.log(`=== PREPARAR EL SALDO AUTOMÁTICO · ventana de ${DIAS} días ===`);
+      console.log(APLICAR ? '(APLICANDO)\n' : '(PRUEBA · no se escribe nada · agregá ":go")\n');
+      let ok = 0, fall = 0;
+      for (const label of labels) {
+        const acc = accounts[label];
+        if (!acc?.refresh_token) { console.log(`${label}: sin token`); fall++; continue; }
+        let t; try { t = await mlRefresh(ML_CLIENT_ID, ML_CLIENT_SECRET, acc.refresh_token); }
+        catch { console.log(`${label}: ❌ no pude renovar el token`); fall++; continue; }
+        await db.patch('mlapi/tokens/' + label, { refresh_token: t.refresh_token, updated_ts: Date.now() });
+        const H = { Authorization: `Bearer ${t.access_token}`, 'Content-Type': 'application/json' };
+        console.log(`── ${label} ──`);
+        // 1) LA CONFIGURACIÓN. Se LEE primero y se manda de vuelta COMPLETA con el retiro
+        //    prendido: mandar sólo el campo que cambia puede borrar el resto, y eso sería tocarle
+        //    una configuración suya que nadie pidió cambiar.
+        let cfg = null;
+        try {
+          const r = await fetch(`${MP}/v1/account/settlement_report/config`, { headers: H, signal: AbortSignal.timeout(20000) });
+          if (!r.ok) { console.log(`   configuración: ❌ no la pude leer (HTTP ${r.status})`); fall++; continue; }
+          cfg = await r.json();
+        } catch (e) { console.log(`   configuración: ❌ ${String(e.message || e).slice(0, 90)}`); fall++; continue; }
+        if (cfg.include_withdraw === true) {
+          console.log('   retiros adentro: ✅ ya estaban prendidos');
+        } else if (!APLICAR) {
+          console.log('   retiros adentro: ❌ apagados · con ":go" se prenden');
+        } else {
+          try {
+            const r = await fetch(`${MP}/v1/account/settlement_report/config`, {
+              method: 'PUT', headers: H,
+              body: JSON.stringify({ ...cfg, include_withdraw: true }),
+              signal: AbortSignal.timeout(20000),
+            });
+            const txt = (await r.text() || '').replace(/\s+/g, ' ').slice(0, 140);
+            if (!r.ok) { console.log(`   retiros adentro: ❌ ML no dejó (HTTP ${r.status}) · ${txt}`); fall++; continue; }
+            // RELEER Y COMPARAR — regla 6: no alcanza con que el PUT diga que sí.
+            const v = await fetch(`${MP}/v1/account/settlement_report/config`, { headers: H, signal: AbortSignal.timeout(20000) });
+            const c2 = v.ok ? await v.json() : {};
+            console.log(`   retiros adentro: ${c2.include_withdraw === true ? '✅ PRENDIDOS y verificado' : '⚠️ el PUT no falló pero al releer siguen apagados'}`);
+            if (c2.include_withdraw !== true) { fall++; continue; }
+          } catch (e) { console.log(`   retiros adentro: ❌ ${String(e.message || e).slice(0, 90)}`); fall++; continue; }
+        }
+        // 2) PEDIR EL REPORTE NUEVO. Tarda en procesarse: no se baja acá, se baja después.
+        if (!APLICAR) { console.log(`   reporte ${iso(desde).slice(0, 10)} → ${iso(hasta).slice(0, 10)}: con ":go" se pide`); continue; }
+        try {
+          const r = await fetch(`${MP}/v1/account/settlement_report`, {
+            method: 'POST', headers: H,
+            body: JSON.stringify({ begin_date: iso(desde), end_date: iso(hasta) }),
+            signal: AbortSignal.timeout(25000),
+          });
+          const txt = (await r.text() || '').replace(/\s+/g, ' ').slice(0, 160);
+          console.log(`   pedir el reporte (${iso(desde).slice(0, 10)} → ${iso(hasta).slice(0, 10)}): ${r.ok ? '✅ pedido' : '❌ HTTP ' + r.status + ' · ' + txt}`);
+          if (r.ok) ok++; else fall++;
+        } catch (e) { console.log(`   pedir el reporte: ❌ ${String(e.message || e).slice(0, 90)}`); fall++; }
+      }
+      console.log(`\n── RESUMEN ──`);
+      console.log(`   cuentas listas: ${ok} · con problema: ${fall}`);
+      if (APLICAR) {
+        console.log('   El reporte TARDA en procesarse (minutos). No se baja acá.');
+        console.log('   Cuando esté, `versaldo` tiene que decir "¿aparecen retiros?: ✅ sí" y la');
+        console.log('   fecha del reporte tiene que ser la de hoy. Recién ahí se puede calcular.');
+      }
+      console.log('   (No se movió un peso, no se tocó ML y no se tocó ningún precio.)');
+      console.log('   (Y no se imprimió ningún monto: este registro es público.)');
+      return;
+    }
     // BILLING_PROBE=repbliss[:go] → REPARA LAS PUBLICACIONES BLISS HUÉRFANAS.
     // Qué pasó: splitbliss creó su propio producto Bliss y repuntó 3 publicaciones hacia él. Ese
     // producto después se borró, así que esas 3 publicaciones quedaron apuntando a un producto
