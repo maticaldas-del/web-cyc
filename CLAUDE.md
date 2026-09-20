@@ -346,6 +346,8 @@ Los que más se usan:
 | `versaldo[:cuenta]` | **cómo viene el reporte de liquidación**: filas, tipos de movimiento, si trae los retiros · **no imprime ni un peso** · solo lee |
 | `armarsaldo[:días][:go]` | **prepara el reporte del saldo**: prende los retiros y lo pide · escribe en Mercado Pago, por eso pide `:go` · no mueve un peso |
 | `probarrep` | **por qué Mercado Pago no deja pedir el reporte**: 7 formas en una sola corrida · solo lee |
+| `saldoml[:go]` | **lo que falta cobrar de ML, por cuenta** · escribe "A liquidar en ML" del Arqueo **en dólares** · no imprime ni un peso |
+| `clavesmalas` | **nombres de variante que Firebase no puede guardar** (rompen "Cargar lo sugerido") · solo lee |
 | `verweb:<direccion>` | **leer una página de afuera y mostrar su texto** · el chat no tiene internet y el robot sí · solo lee · **lo que imprime queda en el registro PÚBLICO** |
 | `apis` | qué endpoints de ML contestan (para diagnosticar) |
 | `ciclo` | **no es un comando: vuelve a prender el ciclo de 2 minutos** (ver abajo) |
@@ -3143,6 +3145,104 @@ segunda copia de la cuenta que decide un precio — el error anotado siete veces
 **OJO: la marca de la Pad 2 quedó puesta aunque el precio no cambió**, porque se escribe primero. No
 hace daño (a $497.310 está en 23,7%, arriba del piso, así que el robot no la subiría igual) y **sirve
 si él le cambia el precio a mano**. Para sacarla: `liquidando:-MLA1782639641:go`.
+
+## EL ARQUEO DE FINANZAS ESTÁ EN DÓLARES, Y YO ESCRIBÍ PESOS (20/09/2026)
+
+Lo marcó él: *"en finanzas para hacer el mes se hace solo en dólares. o de última poner en dólares
+y en chiquito al lado en pesos. pero ahí pusiste ese número como si fuera dólares y descoordina
+todo"*. **Tenía razón y el error fue mío, sobre su plata.**
+
+`saldoml:go` escribió el total **en PESOS** en `cyc/finanzas/mp_liq` y el panel lo mostró como
+dólares: *"A liquidar en ML **4.790.531**"* con un **+272.244%** al lado. Todo el patrimonio del
+Arqueo quedó descoordinado hasta que se corrigió.
+
+**Y ESO EXPLICA UNA CONCLUSIÓN MÍA QUE ERA FALSA.** El comando comparaba lo calculado contra lo
+cargado a mano y daba **+242.941%**; yo escribí —y le dije— que *"el número cargado a mano está mal
+por 2.400 veces"*. **No estaba mal:** estaba en dólares y era razonable. Lo que comparaba pesos
+contra dólares era mi comando.
+**El único chequeo que sí funcionó fue el que no dependía de ninguna unidad ajena**: lo pendiente
+equivale a **11,8 días de venta**, que es lo esperable — ahí los dos lados estaban en pesos.
+
+**LA LECCIÓN: antes de escribir un número en un campo que YA EXISTE, la pregunta no es si el número
+está bien calculado sino EN QUÉ UNIDAD lo lee el que lo va a mostrar.** Es la variante nueva de
+*"dos números que miden cosas distintas puestos uno al lado del otro"*, y la más cara: acá el
+número no estaba al lado, estaba ADENTRO del campo equivocado.
+
+**Cómo quedó:** el robot convierte con `cyc/finanzas/tipo_cambio`, y **sin el dólar cargado NO
+ESCRIBE NADA** — convertir con un cambio adivinado se mete en el patrimonio entero y no se nota,
+el mismo motivo por el que `nissei` no convierte guaraníes sin `gsPorDolar`. El detalle por cuenta
+se guarda en PESOS y queda marcado con `_moneda`.
+**Y la comparación tenía el MISMO error una línea más abajo**, que casi se escapa: en la corrida
+siguiente iba a gritar *"NO se parecen"* sin que pasara nada, y ese aviso es justo el freno que
+decide si se pisa el número del Arqueo. Ahora convierte antes de comparar, y sin tipo de cambio no
+compara en vez de comparar mal.
+
+**Pendiente que él pidió:** mostrarlo **en dólares y en chiquito al lado en pesos**. Todavía no está.
+
+## "A LIQUIDAR EN ML" YA SE CALCULA SOLO; EL DISPONIBLE NO (20/09/2026)
+
+Pedido suyo: *"hay un armado de cuánto tiene cada cuenta de ML y cuánto a liquidar en arqueo
+finanzas. pero vos sabés más que yo y tenés más info. armalo como creas mejor"*.
+
+**DE LAS DOS CASILLAS SÓLO UNA SE PUEDE, Y LA DIFERENCIA NO ES DE ESFUERZO:**
+
+| | ¿se puede? | por qué |
+|---|---|---|
+| **A liquidar en ML** | ✅ **sí, y ya corre** | son las filas del reporte con fecha de liberación **a futuro**. ML libera en días o pocas semanas, así que una ventana de 90 días las contiene TODAS: el número es completo por sí solo. |
+| **Disponible por cuenta** | ❌ **no** | es plata acumulada desde que la cuenta existe y el reporte es una VENTANA. Sumar 90 días da el MOVIMIENTO de 90 días, no el saldo. |
+
+**El disponible se sigue cargando a mano, y es una decisión.** Para automatizarlo haría falta que él
+cargue el disponible UNA vez y de ahí sumar y restar, y **cualquier movimiento que el reporte no
+traiga se acumula para siempre y en silencio**. Un saldo que se va despegando de a poco es peor que
+uno cargado a mano, porque el cargado a mano al menos **se nota viejo**.
+
+El comando es **`saldoml[:go]`**. **No imprime ni un peso**: al registro público van cantidades,
+fechas y proporciones; los montos se guardan en la base, que es donde ya vive su plata.
+
+**LOS DOS FRENOS PARA PISAR EL NÚMERO DEL ARQUEO**, y hacen falta los dos porque ese número entra en
+el patrimonio: que estén las **CUATRO cuentas** (con una afuera el total está corto) y que **cierre
+contra las ventas** (entre 2 y 30 días de venta). Si alguno no da, se guarda el detalle y **no se
+toca lo que él tiene cargado**.
+
+**Detalles que no son de forma:**
+ · El CSV se parte **respetando las comillas**: un `split(';')` pelado corre las columnas si un
+   texto trae el separador adentro, y ahí el neto de una fila se lee de otra.
+ · Las filas que no se pueden leer **se cuentan y se avisan**, nunca se cuentan como cero.
+ · **No se toca `finanzas/_ts/mp`**: esa fecha es la del DISPONIBLE, que él carga a mano. Pisarla
+   haría ver al disponible más fresco de lo que está.
+ · Después de calcular **se pide el reporte de la próxima vuelta**, que es lo que mantiene el número
+   al día sin que nadie se acuerde.
+
+## "CARGAR LO SUGERIDO" NO ANDABA EN DOS CUENTAS, POR UN PUNTO EN UN NOMBRE (20/09/2026)
+
+Él lo reportó así: *"al clickear cargar lo sugerido en adriana, no anda. no sé si se rompió solo en
+adriana o todos"*. Fallaba en **DOS de las cuatro**.
+
+**LA CAUSA:** la caja a medio armar se guarda con una clave por renglón que es
+`<id del producto>|<nombre de la variante>` (`_ck`), o sea que **el nombre de la variante va ADENTRO
+de la clave** — y Firebase **no acepta** `.` `#` `$` `[` `]` `/` en una clave. Los tres aromas
+Paulvic **"1.4 Sexy Men"**, **"1.4 W Mujer"** y **"1.4M Hombre"** tienen un punto.
+
+Con uno solo de ésos en la sugerencia **el guardado falla ENTERO**, y como el que falla es un
+`await`, la pantalla no se vuelve a dibujar: **el botón parece que no hace nada.** Los Paulvic se
+publican en Adriana y Luciana, que es exactamente donde falló; en Ayelen y Matías andaba.
+
+**NO SE ADIVINÓ: se midió con `clavesmalas`** (solo lee), que lista las variantes cuyo nombre rompe
+la clave, con qué carácter y en qué cuentas se publican. Y si diera cero lo dice como resultado, no
+como respuesta.
+
+**SE ESCAPAN SÓLO ESOS SEIS CARACTERES, y no se usa `sid()` como en el inventario a propósito:**
+`sid` además cambia los espacios, así que *"Azul Marino"* pasaría a *"Azul_Marino"* y **las cajas a
+medio armar quedarían huérfanas** — había una con 246 unidades cargadas a mano. Escapando sólo lo
+prohibido, toda clave que hoy funciona queda **idéntica**.
+
+**Y EL FALLO YA NO ES MUDO:** si el guardado falla se deshace el cambio en memoria —si no, la
+pantalla mostraría una caja que en la base no existe y al recargar desaparecería— y sale un aviso
+con el motivo. Es el `catch {}` vacío anotado cuatro veces: **el dato no se pierde con ruido.**
+
+**LA LECCIÓN, y es nueva: un nombre que escribe una PERSONA puede terminar adentro de una clave de
+base de datos.** El inventario ya lo tenía resuelto con `sid()`; las cajas no, y nadie lo notó hasta
+que él cargó un aroma con un punto. Antes de meter un texto libre en una clave, hay que limpiarlo.
 
 ## Cosas que ya pasaron (para no repetirlas)
 
