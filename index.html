@@ -2257,7 +2257,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='19.75';
+const APP_VERSION='19.76';
 // El problema real que esto resuelve no es curiosidad: es que el celular guarda la app y sigue
 // mostrando la de ayer sin avisar. Varias veces se revisó un cambio que ya estaba subido y no se
 // veía. Por eso, además del número, el chip avisa cuando hay una versión nueva esperando.
@@ -5943,6 +5943,24 @@ function updateArqueo(){
     const cur=parseFloat(state.finanzas[f.k])||0;
     const pv=prev?parseFloat(prev.finanzas?.[f.k])||0:null;
     el.innerHTML=pv!==null?deltaBadge(cur,pv,!f.pos&&!f.neutral):'';
+    // LOS PESOS EN CHIQUITO AL LADO. Pedido suyo del 20/09/2026: *"en finanzas para hacer el mes
+    // se hace solo en dólares. o de última poner en dólares y en chiquito al lado en pesos"*.
+    // Todo el Arqueo está en DÓLARES —el stock se valúa con el costo en US$— y eso no se toca:
+    // el número grande sigue siendo el dólar. Esto es sólo una ayuda para leerlo.
+    // Salió de que yo escribí un total en PESOS adentro de un campo que la pantalla lee en
+    // DÓLARES y el patrimonio se fue a la luna: con el equivalente a la vista, un número en la
+    // moneda equivocada se nota de una.
+    // El renglón se crea acá y no en el HTML a propósito: son dieciséis campos y tocarlos uno por
+    // uno es justo el borrado a ojo que ya rompió la app dos veces (21/08).
+    let ars=document.getElementById('ars_'+f.k);
+    if(!ars&&el.parentNode){
+      ars=document.createElement('span');ars.id='ars_'+f.k;
+      ars.style.cssText='font-size:.58rem;color:var(--muted);margin-left:6px;white-space:nowrap';
+      el.parentNode.appendChild(ars);
+    }
+    // SIN DÓLAR CARGADO NO SE INVENTA NADA: se deja vacío. Un equivalente calculado con un cambio
+    // adivinado es peor que no tenerlo, y es la misma regla que ya rige para los guaraníes.
+    if(ars){const tc=curTC();ars.textContent=(tc>0&&cur)?('≈ '+fmt(cur*tc)+' pesos'):'';}
   });
   // Aviso de transición: antes el disponible era UN número solo. Si ese número sigue cargado y
   // todavía no se repartió entre las cuatro cuentas, hay que decirlo — si no, alguien abre la
