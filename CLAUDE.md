@@ -340,6 +340,7 @@ Los que más se usan:
 | `pedir:<palabra>=<u>[;otra=<u>][;go]` | **carga las unidades del pedido de Paraguay** · `=0` lo saca · sin `;go` sólo muestra |
 | `revisarcompra[:<palabras>]` | **la última mirada antes de gastar los dólares**: código, precio, ¿es el mismo producto?, margen de HOY y si la podés publicar · solo lee |
 | `probarcaja:<MLA>[;otro]` | **¿ML dice quién tiene la caja de un catálogo?** vale el código del catálogo o el de una publicación tuya · solo lee |
+| `permisos` | **por qué ML no deja escribir**: qué le deja hacer a la aplicación, traducido · solo lee |
 | `verweb:<direccion>` | **leer una página de afuera y mostrar su texto** · el chat no tiene internet y el robot sí · solo lee · **lo que imprime queda en el registro PÚBLICO** |
 | `apis` | qué endpoints de ML contestan (para diagnosticar) |
 | `ciclo` | **no es un comando: vuelve a prender el ciclo de 2 minutos** (ver abajo) |
@@ -2871,10 +2872,69 @@ salieron porque él pidió tocar un precio a mano; si no, la suba automática se
 las noches sin cambiar nada y nadie se enteraba. **Un automatismo que no puede hacer su trabajo
 tiene que gritarlo, no seguir corriendo.**
 
+### EL MOTIVO, ENCONTRADO Y MEDIDO: EL PERMISO DE PUBLICACIONES ESTÁ EN "SÓLO LEE" (20/09/2026)
+
+Pregunta suya: *"hagamos los pasos para arreglar el bot"*. El primer paso era saber **por qué** ML
+frena, porque "contra la aplicación" son dos problemas distintos: que la app haya **perdido** el
+permiso (lo arregla él en diez minutos) o que lo **tenga** y ML la frene igual (no hay nada que
+tocar de este lado). Comando nuevo **`permisos`**, que SOLO LEE.
+
+**LOS PERMISOS DE ML SON DOS SISTEMAS A LA VEZ, Y MIRAR EL VIEJO DA LA RESPUESTA AL REVÉS.** El
+viejo es una palabra suelta (`read`, `write`). El nuevo son renglones
+`urn:ml:mktp:<para qué>:/read-only` o `/read-write`, uno por cada cosa que se puede hacer. **Manda
+el nuevo**: `PolicyAgent` —el que aparece en el 403— mira ESE.
+
+**Lo que devolvió ML, idéntico en las CUATRO cuentas:**
+
+| qué | cómo está |
+|---|---|
+| **cambiar publicaciones** (precio, título, activar, pausar) · `publish-sync` | ❌ **SÓLO LEE** |
+| sacar y poner promociones · `offers` | ✅ escribe |
+| contestar preguntas y mensajes · `comunication` | ✅ escribe |
+| ventas y envíos · facturación · métricas | sólo lee (y está bien: el robot sólo lee eso) |
+| el `write` VIEJO | lo tienen las 4 — **y no sirve de nada** |
+
+**`publish-sync` en sólo lectura explica EXACTAMENTE lo medido**: leer anda perfecto y escribir da
+403 en 4 publicaciones de 3 cuentas. No está roto nada del robot ni de las cuentas.
+
+**LA BUENA, Y NO ES MENOR: LAS PROMOCIONES SE PUEDEN SEGUIR SACANDO.** `sacapromos` pega en
+`/seller-promotions/...`, que cae bajo `offers`, y ese permiso SÍ escribe. Era lo más caro de dar
+por perdido —una promo aplicada BAJA el precio y es la regla 8—. **No está confirmado contra ML**
+porque hoy no hay ninguna promo aplicada que sacar (`sacapromos` dio *"0 sacadas · 431 revisadas"*),
+así que es una deducción del permiso, no una prueba.
+
+**EL ERROR QUE COMETÍ, Y ES DEL PEOR TIPO: LA PRIMERA VERSIÓN DE `permisos` CONTESTÓ AL REVÉS.**
+Miraba el `write` viejo, lo encontró en las 4 cuentas y concluyó, con todas las letras: *"la
+aplicación SÍ tiene el permiso de escribir y ML la frena igual; volver a autorizarla NO lo va a
+arreglar, hay que reclamárselo a ML"*. **Es falso**, y era el peor lado para equivocarse: lo mandaba
+a un reclamo que no hacía falta y le escondía el arreglo, que lo puede hacer él solo.
+**Un chequeo que mira el campo equivocado no se calla: contesta con seguridad una cosa que no es** —
+y el mío venía con la conclusión escrita al lado, que es justo lo que la hacía creíble. Es la
+variante nueva de *"un comentario que promete que algo está cubierto no es prueba de que lo esté"*.
+Ahora mira los permisos nuevos y los traduce uno por uno; probado con el texto REAL que devolvió ML
+y 4 casos (el de hoy, arreglado por cada uno de los dos caminos, y sin el permiso por ningún lado).
+
+**LOS PASOS PARA ARREGLARLO, y los tiene que hacer él porque son de su cuenta de ML:**
+ 1. Entrar a **developers.mercadolibre.com.ar** con la cuenta que creó la aplicación → *Mis
+    aplicaciones* → la de CYC → editar.
+ 2. En los permisos (*scopes*), poner **publicaciones / `publish-sync` en lectura Y escritura**.
+    Hoy está en sólo lectura. Lo demás se puede dejar como está.
+ 3. **Volver a autorizar la aplicación en las CUATRO cuentas.** Sin esto no sirve: el permiso
+    guardado es el de la última autorización, no el que diga el panel.
+ 4. Correr **`permisos`** y verificar que las 4 digan *"cambiar publicaciones ✅"*, y después
+    **`probarput`** para confirmar contra ML de verdad. **Los dos, no uno**: el panel puede decir
+    una cosa y ML otra, que es todo lo que viene pasando.
+
+**OJO CON EL PASO 3: re-autorizar rota los tokens y hay que guardarlos.** ML entrega un código que
+se cambia por un token nuevo, y el `refresh_token` viejo deja de servir. Eso lo tiene que hacer el
+robot en el momento — si él autoriza y nadie guarda el código, las cuatro cuentas se quedan sin
+token y **el robot deja de leer también**, que hoy es lo único que anda. **No arrancar el paso 3 sin
+tener eso resuelto primero.**
+
 ### YA LO GRITA: EL ROBOT AVISA CUANDO ML NO LO DEJA ESCRIBIR (19/09/2026)
 
-Es el arreglo de la lección de arriba, y lo que cambia no es el bloqueo —eso lo tiene que
-destrabar ML— sino **que no vuelva a pasar en silencio**.
+Es el arreglo de la lección de arriba, y lo que cambia no es el bloqueo —para eso están los pasos
+de la sección de arriba— sino **que no vuelva a pasar en silencio**.
 
 **El freno vive en UNA función (`_anotarEscrituraML`) a la que llaman las SEIS que escriben solas
 en ML** —`raisePrice`, `raisePriceTo` y `raiseVariations` (suben), `setPriceTo` (baja),
