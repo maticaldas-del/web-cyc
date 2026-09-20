@@ -12446,18 +12446,32 @@ async function main() {
       const APLICAR = _p.includes('go');
       const DIAS = Math.max(1, Math.min(180, parseInt(_p[1]) || 90));
       const MP = 'https://api.mercadopago.com';
-      // LAS FECHAS TIENEN QUE CAER EN UNA HORA REDONDA. Medido con `probarrep` el 20/09/2026:
-      // el primer intento mandó la hora exacta del momento (`...T18:06:32Z`) y Mercado Pago
-      // contestó **400 "Error creating Statement"** en las CUATRO cuentas, sin decir qué campo
-      // estaba mal. Probadas 7 formas de una sola vez, **las 6 que caen en hora redonda andan**
-      // —incluida la MISMA ventana de 90 días que había fallado— y la única que falla de verdad
-      // es mandar la fecha sin hora. O sea que **no era ni el formato ni el largo de la ventana:
-      // eran los minutos y los segundos.**
-      // Por eso el final se corta a la hora en punto ANTERIOR y no se redondea para arriba: una
-      // fecha en el futuro es lo único que no se probó, y acá el lado seguro es quedarse corto.
-      const hasta = new Date(Math.floor(Date.now() / 36e5) * 36e5);
-      const desde = new Date(new Date(Date.now() - DIAS * 864e5).toISOString().slice(0, 10) + 'T00:00:00Z');
-      const iso = (d) => d.toISOString().slice(0, 19) + 'Z';
+      // EL REPORTE NO PUEDE LLEGAR HASTA HOY: EL ÚLTIMO DÍA TIENE QUE ESTAR CERRADO.
+      // Medido el 20/09/2026, después de equivocarme una vez (ver abajo). Mercado Pago contesta
+      // **400 "Error creating Statement"** sin decir qué campo está mal, y comparando los intentos
+      // que anduvieron contra los que no, lo único que los separa es el final:
+      //   ✅ 2026-09-19T00:00:00Z (18/09 21:00 de acá) · ✅ 2026-09-20T00:00:00Z (19/09 21:00)
+      //   ❌ 2026-09-20T18:06:32Z (HOY 15:06)          · ❌ 2026-09-20T18:00:00Z (HOY 15:00)
+      // O sea: **el día de hoy todavía no cerró y no se puede pedir.** Es la misma forma del
+      // reporte que Mercado Pago ya tenía guardado, que va de las 00:00 a las 23:59:59 locales.
+      //
+      // ME EQUIVOQUÉ ANTES Y VALE ANOTARLO: primero dije que el problema eran "los minutos y los
+      // segundos" porque los 6 intentos que anduvieron caían en hora redonda. **El reporte viejo
+      // de la propia cuenta termina en `T02:59:59Z`**, o sea con los segundos en 59 — la prueba
+      // de que ésa no era la causa estaba en la misma pantalla y la pasé por alto. Una explicación
+      // que encaja con los casos nuevos **y contradice un dato viejo que ya tenías** está mal.
+      //
+      // Las fechas van con el huso de acá (`-03:00`, que es lo que informa la configuración de las
+      // cuatro cuentas) en vez de convertir a UTC: así se lee qué día es sin hacer la cuenta.
+      // CONSECUENCIA QUE HAY QUE TENER PRESENTE: lo de HOY nunca entra en el reporte. El saldo que
+      // salga de acá es el de ayer al cierre, y eso se dice cuando se muestre — un saldo que dice
+      // "hoy" y es de ayer es peor que uno que avisa que le falta el último día.
+      const HUSO = '-03:00';
+      const diaLocal = (t) => new Date(t - 3 * 36e5).toISOString().slice(0, 10);
+      const desdeTxt = diaLocal(Date.now() - DIAS * 864e5) + 'T00:00:00' + HUSO;
+      const hastaTxt = diaLocal(Date.now() - 864e5) + 'T23:59:59' + HUSO;
+      const iso = (x) => x;
+      const desde = desdeTxt, hasta = hastaTxt;
       console.log(`=== PREPARAR EL SALDO AUTOMÁTICO · ventana de ${DIAS} días ===`);
       console.log(APLICAR ? '(APLICANDO)\n' : '(PRUEBA · no se escribe nada · agregá ":go")\n');
       let ok = 0, fall = 0;
