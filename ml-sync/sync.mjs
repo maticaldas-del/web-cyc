@@ -12627,19 +12627,37 @@ async function main() {
       if (APLICAR && cuentasOk) {
         await db.patch('cyc/saldoml', {
           ...res, _total: Math.round(totalLiq), _ts: Date.now(), _cuentas: cuentasOk, _sano: puedePisar,
+          _moneda: 'ARS',   // el detalle por cuenta va en PESOS; `finanzas/mp_liq` va en DÓLARES
         });
         const rele = (await db.get('cyc/saldoml')) || {};
         console.log(`   guardado y releído: ${Object.keys(rele).filter((k) => !k.startsWith('_')).length} cuentas · coincide: ${Math.round(rele._total) === Math.round(totalLiq) ? '✅' : '❌'}`);
-        if (puedePisar) {
+        // EL ARQUEO DE FINANZAS ESTÁ EN DÓLARES, NO EN PESOS. Lo marcó él el 20/09/2026:
+        // *"en finanzas para hacer el mes se hace solo en dólares (…) ahí pusiste ese número como
+        // si fuera dólares y descoordina todo"*. La primera versión escribió el total EN PESOS en
+        // `mp_liq` y el panel lo mostró como si fueran dólares: el patrimonio se fue a la luna.
+        // Es el error anotado de punta a punta en este archivo —dos números que miden cosas
+        // distintas puestos uno al lado del otro— cometido por mí sobre su plata.
+        // Y explica de dónde salía el "+242.941%": yo comparaba PESOS contra DÓLARES. El número
+        // que él tenía cargado NO estaba mal; el que estaba mal era el mío.
+        //
+        // SIN EL DÓLAR CARGADO NO SE ESCRIBE NADA. Convertir con un cambio adivinado se mete en el
+        // patrimonio entero y no se nota — el mismo motivo por el que `nissei` no convierte
+        // guaraníes sin `gsPorDolar`.
+        const tc = parseFloat((await db.get('cyc/finanzas/tipo_cambio')) || 0) || 0;
+        if (puedePisar && !tc) {
+          console.log('   NO se tocó "A liquidar en ML": no hay tipo de cambio cargado y el Arqueo');
+          console.log('   está en DÓLARES. Convertir con un cambio adivinado mueve todo el patrimonio.');
+        } else if (puedePisar) {
           // Se escribe en `cyc/finanzas/mp_liq`, que es EL MISMO campo que ya usa el Arqueo. No se
           // crea un número paralelo a propósito: dos lugares con la misma plata es el error
           // anotado de punta a punta en este archivo.
           // NO se toca `finanzas/_ts/mp`: esa fecha es la del DISPONIBLE, que él sigue cargando a
           // mano. Pisarla haría ver al disponible más fresco de lo que está, que es justo la
           // confusión de dos números distintos pegados uno al lado del otro.
-          await db.set('cyc/finanzas/mp_liq', Math.round(totalLiq));
+          const enUSD = Math.round(totalLiq / tc);
+          await db.set('cyc/finanzas/mp_liq', enUSD);
           const v = parseFloat(await db.get('cyc/finanzas/mp_liq'));
-          console.log(`   "A liquidar en ML" del Arqueo: ${Math.round(v) === Math.round(totalLiq) ? '✅ actualizado y releído' : '❌ no quedó'}`);
+          console.log(`   "A liquidar en ML" del Arqueo: ${Math.round(v) === enUSD ? '✅ actualizado y releído · en DÓLARES' : '❌ no quedó'}`);
         } else {
           console.log(`   NO se tocó "A liquidar en ML" del Arqueo: ${cuentasOk !== labels.length
             ? 'falta alguna cuenta y el total estaría corto'
