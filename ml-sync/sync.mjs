@@ -12227,6 +12227,162 @@ async function main() {
       return;
     }
 
+    // BILLING_PROBE=armarcuenta[:go] → ARMAR EL REPORTE "SALDO EN CUENTA" Y VER SI TRAE EL DISPONIBLE
+    //
+    // POR QUÉ (20/09/2026). `saldocuenta` midió que la puerta está ABIERTA en las cuatro cuentas:
+    // `/v1/account/bank_report/list` contesta **200** con el token de siempre (el de MercadoLibre,
+    // así que la aplicación nueva de MercadoPago no hacía falta). Lo único que falta es que la
+    // cuenta tenga armada la CONFIGURACIÓN del reporte — el 404 decía `Configuration not found
+    // for user`, que no es "no existe" sino "todavía no la armaste".
+    //
+    // QUÉ SE GANA: ese reporte trae, entre sus tipos de renglón, el **saldo disponible** al inicio
+    // y al cierre del período. Eso es el disponible DE VERDAD, no una cuenta deducida, así que no
+    // haría falta ningún punto de partida cargado a mano ni volver a cargarlo cada mes.
+    //
+    // ESCRIBE EN MERCADOPAGO, Y POR ESO PIDE `:go`. No mueve un peso: crea la configuración de un
+    // reporte y pide que lo generen. Es la misma clase de escritura que `armarsaldo`.
+    //
+    // SÓLO MATÍAS, a propósito. Si sale bien se repite en las otras tres sabiendo que funciona; si
+    // sale mal, quedó tocada una sola cuenta. Es el mismo criterio con el que se creó la
+    // aplicación de MercadoPago en una sola cuenta.
+    //
+    // NO IMPRIME NI UN PESO: columnas, tipos de renglón y cantidades. El registro es público.
+    if (/^armarcuenta(:|$)/.test(String(process.env.BILLING_PROBE || ''))) {
+      const GO = /:go\b/.test(String(process.env.BILLING_PROBE || '')) && !DRY;
+      const MP = 'https://api.mercadopago.com';
+      const label = labels.find((L) => /mat/i.test(L)) || labels[0];
+      const acc = accounts[label];
+      if (!acc?.refresh_token) { console.log('Sin token para ' + label); return; }
+      let t; try { t = await mlRefresh(ML_CLIENT_ID, ML_CLIENT_SECRET, acc.refresh_token); }
+      catch (e) { console.log('No pude renovar el token: ' + String(e.message || e).slice(0, 110)); return; }
+      await db.patch('mlapi/tokens/' + label, { refresh_token: t.refresh_token, updated_ts: Date.now() });
+      const H = { Authorization: `Bearer ${t.access_token}` };
+      const HJ = { ...H, 'Content-Type': 'application/json' };
+      console.log(`=== ARMAR EL REPORTE "SALDO EN CUENTA" · cuenta ${label} ===\n`);
+
+      // La configuración va con lo MÍNIMO y sin programar: `scheduled:false` quiere decir que
+      // MercadoPago no va a generar un archivo por día en su cuenta para siempre — el robot lo
+      // pide cuando lo necesita. Es la misma decisión que se tomó con el reporte de liquidación.
+      const CFG = {
+        file_name_prefix: 'cyc-saldo',
+        scheduled: false,
+        separator: ';',
+        display_timezone: 'GMT-03',
+      };
+      // La fecha de fin NO puede caer en el día de HOY: MercadoPago sólo deja pedir hasta el
+      // último día CERRADO, y eso ya costó siete corridas averiguarlo con el otro reporte.
+      const HUSO = '-03:00';
+      const diaLocal = (ms) => new Date(ms - 3 * 36e5).toISOString().slice(0, 10);
+      const desde = diaLocal(Date.now() - 30 * 864e5) + 'T00:00:00' + HUSO;
+      const hasta = diaLocal(Date.now() - 864e5) + 'T23:59:59' + HUSO;
+
+      if (!GO) {
+        console.log('MODO PRUEBA · no se escribe nada. Esto es lo que haría:');
+        console.log('  1) crear la configuración del reporte con: ' + JSON.stringify(CFG));
+        console.log('  2) volver a leerla de MercadoPago para confirmar que quedó');
+        console.log(`  3) pedir el reporte del ${desde.slice(0, 10)} al ${hasta.slice(0, 10)}`);
+        console.log('  4) bajarlo y mirar sus columnas y sus tipos de renglón, para ver si el');
+        console.log('     saldo disponible está adentro');
+        console.log('\nPara aplicarlo: armarcuenta:go');
+        return;
+      }
+
+      // ── 1) CREAR LA CONFIGURACIÓN ───────────────────────────────────────────────────────────
+      // Se prueba POST y, si no, PUT: MercadoPago no documenta igual los dos reportes y no se
+      // adivina cuál es — se prueban los dos y se dice cuál anduvo.
+      console.log('── 1) crear la configuración ──');
+      let creada = false;
+      for (const metodo of ['POST', 'PUT']) {
+        try {
+          const r = await fetch(`${MP}/v1/account/bank_report/config`, {
+            method: metodo, headers: HJ, body: JSON.stringify(CFG), signal: AbortSignal.timeout(25000),
+          });
+          const txt = ((await r.text()) || '').replace(/\s+/g, ' ').slice(0, 220);
+          console.log(`   ${metodo} · HTTP ${r.status}${txt ? ' · ' + txt : ''}`);
+          if (r.ok) { creada = true; break; }
+        } catch (e) { console.log(`   ${metodo} · ERROR ${String(e.message || e).slice(0, 110)}`); }
+      }
+      if (!creada) {
+        console.log('\n❌ No se pudo crear la configuración. El motivo está arriba, tal como lo');
+        console.log('   contestó MercadoPago. NO se pidió ningún reporte.');
+        return;
+      }
+
+      // ── 2) RELEERLA (regla 6: después de escribir, se vuelve a leer de la fuente) ───────────
+      console.log('\n── 2) releer la configuración de MercadoPago ──');
+      try {
+        const r = await fetch(`${MP}/v1/account/bank_report/config`, { headers: H, signal: AbortSignal.timeout(25000) });
+        const txt = (await r.text()) || '';
+        if (!r.ok) { console.log(`   ❌ HTTP ${r.status} · ${txt.replace(/\s+/g, ' ').slice(0, 160)}`); console.log('   Quedó a medias: se creó pero no se puede leer. No se pide el reporte.'); return; }
+        const j = JSON.parse(txt);
+        console.log('   ✅ quedó · campos: ' + Object.keys(j || {}).join(', ').slice(0, 260));
+      } catch (e) { console.log('   ❌ ' + String(e.message || e).slice(0, 110)); return; }
+
+      // ── 3) PEDIR EL REPORTE ─────────────────────────────────────────────────────────────────
+      console.log(`\n── 3) pedir el reporte (${desde.slice(0, 10)} → ${hasta.slice(0, 10)}) ──`);
+      try {
+        const r = await fetch(`${MP}/v1/account/bank_report`, {
+          method: 'POST', headers: HJ, body: JSON.stringify({ begin_date: desde, end_date: hasta }), signal: AbortSignal.timeout(25000),
+        });
+        const txt = ((await r.text()) || '').replace(/\s+/g, ' ').slice(0, 220);
+        console.log(`   HTTP ${r.status}${txt ? ' · ' + txt : ''}`);
+        if (!r.ok) { console.log('   ❌ No se pudo pedir. La configuración YA quedó creada, así que se puede reintentar.'); return; }
+      } catch (e) { console.log('   ❌ ' + String(e.message || e).slice(0, 110)); return; }
+
+      // ── 4) ESPERAR A QUE ESTÉ Y MIRAR QUÉ TRAE ──────────────────────────────────────────────
+      // El reporte se genera en un rato, no al instante. Se mira unas pocas veces y se corta: si
+      // todavía no está, no es un fracaso — se vuelve a mirar con `saldocuenta`, que sólo lee.
+      console.log('\n── 4) esperar el archivo y mirar qué trae adentro ──');
+      let archivo = '';
+      for (let i = 1; i <= 8 && !archivo; i++) {
+        await new Promise((r) => setTimeout(r, 15000));
+        try {
+          const r = await fetch(`${MP}/v1/account/bank_report/list`, { headers: H, signal: AbortSignal.timeout(25000) });
+          const arr = JSON.parse((await r.text()) || '[]');
+          archivo = (Array.isArray(arr) ? arr : []).map((x) => x && x.file_name).filter(Boolean).pop() || '';
+          console.log(`   intento ${i}: ${Array.isArray(arr) ? arr.length : 0} reporte(s) en la lista`);
+        } catch { console.log(`   intento ${i}: no pude leer la lista`); }
+      }
+      if (!archivo) {
+        console.log('   Todavía no está generado. NO es un fracaso: la configuración quedó armada');
+        console.log('   y el pedido entró. Se vuelve a mirar con `saldocuenta`, que sólo lee.');
+        return;
+      }
+      try {
+        const r = await fetch(`${MP}/v1/account/bank_report/${encodeURIComponent(archivo)}`, { headers: H, signal: AbortSignal.timeout(30000) });
+        const txt = (await r.text()) || '';
+        if (!r.ok) { console.log(`   ❌ bajar el archivo · HTTP ${r.status}`); return; }
+        const lineas = txt.split('\n').filter((x) => x.trim());
+        const cab = lineas[0] || '';
+        const sep = cab.includes(';') ? ';' : ',';
+        console.log(`   ✅ bajado · ${lineas.length} renglones`);
+        console.log(`   columnas: ${cab.slice(0, 420)}`);
+        const cols = csvPartir(cab, sep).map((x) => x.replace(/^"|"$/g, '').trim().toUpperCase());
+        const iTipo = cols.indexOf('RECORD_TYPE');
+        if (iTipo < 0) {
+          console.log('   (no hay columna RECORD_TYPE: en este reporte el saldo no viene como renglón)');
+          return;
+        }
+        const tipos = new Map();
+        for (const ln of lineas.slice(1)) {
+          const c = csvPartir(ln, sep);
+          const tp = String(c[iTipo] || '').replace(/^"|"$/g, '').trim() || '(vacío)';
+          tipos.set(tp, (tipos.get(tp) || 0) + 1);
+        }
+        console.log('   tipos de renglón: ' + [...tipos.entries()].map(([k, v]) => `${k} (${v})`).join(' · ').slice(0, 420));
+        const saldos = [...tipos.keys()].filter((k) => /balance|saldo/i.test(k));
+        if (saldos.length) {
+          console.log(`   🎯 HAY SALDO ADENTRO: ${saldos.join(' · ')}`);
+          console.log('   → El disponible sale de acá, sin punto de partida cargado a mano. Falta');
+          console.log('     leerlo y llevarlo al Arqueo, y repetir la configuración en las otras 3.');
+        } else {
+          console.log('   Ningún renglón de saldo. El reporte sirve para los movimientos, pero el');
+          console.log('   disponible NO está adentro: se sigue con el punto de partida a mano.');
+        }
+      } catch (e) { console.log('   ❌ ' + String(e.message || e).slice(0, 110)); }
+      console.log('\n   (No se imprimió ningún monto: el registro es público.)');
+      return;
+    }
     // BILLING_PROBE=saldocuenta → EL REPORTE "SALDO EN CUENTA", QUE PUEDE TRAER EL DISPONIBLE · SOLO LEE
     //
     // POR QUÉ (20/09/2026). `mptoken` probó que ninguna puerta de "balance" se abre: la única que
