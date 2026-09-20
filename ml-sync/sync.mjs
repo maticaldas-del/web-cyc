@@ -6671,9 +6671,23 @@ async function main() {
     // mañana queda tapado solo.
     if (String(process.env.BILLING_PROBE || '') === 'permisos') {
       const _tapar = (x) => { const s = String(x || ''); return s.length <= 4 ? '****' : '…' + s.slice(-4); };
+      // LOS PERMISOS DE ML SON DOS SISTEMAS A LA VEZ, Y MIRAR EL VIEJO DA LA RESPUESTA AL REVÉS.
+      // El viejo es una palabra suelta ("read", "write"). El nuevo son renglones
+      // `urn:ml:mktp:<para qué>:/read-only` o `/read-write`, uno por cosa que se puede hacer.
+      // **Manda el nuevo**: el motor de políticas de ML (`PolicyAgent`) mira ESE. Por eso una
+      // aplicación puede tener el "write" viejo y no poder escribir nada — que es exactamente lo
+      // que pasa acá y lo que la primera versión de este comando leyó mal.
+      const QUE_ES = [
+        ['publish-sync', 'CAMBIAR PUBLICACIONES (precio, título, activar/pausar)'],
+        ['offers', 'sacar y poner promociones'],
+        ['comunication', 'contestar preguntas y mensajes'],
+        ['orders-shipments', 'ventas y envíos'],
+        ['invoices', 'facturación'],
+        ['metrics', 'métricas y visitas'],
+      ];
       console.log('=== QUÉ PERMISOS LE DA ML A LA APLICACIÓN ===\n');
       console.log(`Aplicación ${_tapar(ML_CLIENT_ID)} (tapada a propósito: este registro es público)\n`);
-      let unToken = null, algunoEscribe = false, algunoNo = false, miradas = 0;
+      let miradas = 0; const porCuenta = [];
       for (const label of labels) {
         const acc = accounts[label];
         if (!acc?.refresh_token) { console.log(`${label}: sin token conectado`); continue; }
@@ -6687,50 +6701,51 @@ async function main() {
           console.log(`${label}: ❌ no pude renovar el permiso · ${String(e.message || e).slice(0, 160)}`);
           continue;
         }
+        if (t.scope == null) { console.log(`${label}: ML no informó los permisos en esta renovación (no se puede concluir)`); continue; }
         miradas++;
-        if (!unToken) unToken = t.access_token;
-        // ML devuelve `scope` como texto separado por espacios: "offline_access read write".
-        // Si el campo NO viene, no se puede concluir nada y se dice.
-        const sc = (t.scope == null) ? null : String(t.scope).toLowerCase().split(/\s+/).filter(Boolean);
-        if (sc == null) { console.log(`${label}: ML no informó los permisos en esta renovación (no se puede concluir)`); continue; }
-        const escribe = sc.includes('write');
-        const lee = sc.includes('read');
-        if (escribe) algunoEscribe = true; else algunoNo = true;
-        console.log(`${label}: ${escribe ? '✅ ESCRIBIR sí' : '❌ ESCRIBIR no'} · ${lee ? 'leer sí' : 'leer no'}  ·  permisos: ${sc.join(' ')}`);
-      }
-      // LA FICHA DE LA APLICACIÓN, por si ML la marcó de alguna forma.
-      if (unToken) {
-        console.log('\n── LA FICHA DE LA APLICACIÓN, SEGÚN ML ──');
-        try {
-          const app = await mlGet('/applications/' + ML_CLIENT_ID, unToken);
-          const SEGUROS = new Set(['scopes', 'grant_types', 'active', 'status', 'audit_status', 'certification',
-            'blocked', 'restrictions', 'policies', 'date_created', 'last_updated', 'app_status']);
-          const claves = Object.keys(app || {}).sort();
-          console.log(`   campos que devuelve ML: ${claves.join(' · ') || '(ninguno)'}`);
-          for (const k of claves) {
-            if (!SEGUROS.has(k) && !/scope|status|active|audit|cert|polic|restrict|block|grant/i.test(k)) continue;
-            let v = app[k];
-            v = (v && typeof v === 'object') ? JSON.stringify(v).slice(0, 220) : String(v);
-            console.log(`   ${k}: ${v}`);
-          }
-        } catch (e) {
-          console.log(`   ❌ ML no deja leer la ficha de la aplicación: ${String(e.message || e).slice(0, 180)}`);
-          console.log('      (No es concluyente: ese dato puede estar cerrado siempre, no sólo ahora.)');
+        const sc = String(t.scope).toLowerCase().split(/\s+/).filter(Boolean);
+        // Para cada cosa, ¿hay ALGÚN renglón que la deje escribir? Alcanza con uno: ML manda el
+        // mismo permiso por dos caminos (`urn:ml:all:` y `urn:ml:mktp:`) y basta con que uno diga
+        // read-write. Si NINGUNO lo dice pero el permiso existe en read-only, está cerrado de
+        // verdad; si no aparece por ningún lado, no se puede opinar y se dice.
+        const estado = {};
+        for (const [clave] of QUE_ES) {
+          const reng = sc.filter((s) => s.includes(':' + clave + ':'));
+          estado[clave] = !reng.length ? 'no figura' : reng.some((s) => s.endsWith('/read-write')) ? 'escribe' : 'solo lee';
         }
+        porCuenta.push({ label, estado, viejoWrite: sc.includes('write') });
+        const resumen = QUE_ES.map(([c]) => `${c} ${estado[c] === 'escribe' ? '✅' : estado[c] === 'solo lee' ? '❌ solo lee' : '⚠️ no figura'}`).join(' · ');
+        console.log(`${label}: ${resumen}`);
+      }
+      if (porCuenta.length) {
+        console.log('\n── QUÉ PUEDE Y QUÉ NO ──');
+        for (const [clave, texto] of QUE_ES) {
+          const est = [...new Set(porCuenta.map((p) => p.estado[clave]))];
+          const igual = est.length === 1;
+          const marca = igual ? (est[0] === 'escribe' ? '✅ SÍ' : est[0] === 'solo lee' ? '❌ NO (sólo lee)' : '⚠️ no figura') : '⚠️ distinto según la cuenta';
+          console.log(`   ${texto}: ${marca}`);
+        }
+        console.log(`\n   El permiso VIEJO "write" lo tienen ${porCuenta.filter((p) => p.viejoWrite).length} de ${porCuenta.length} cuentas — y NO sirve de nada: ML mira los de arriba.`);
       }
       console.log('\n── QUÉ QUIERE DECIR ──');
       if (!miradas) {
         console.log('   No se pudo mirar ninguna cuenta. No se puede concluir nada.');
-      } else if (algunoNo && !algunoEscribe) {
-        console.log('   LA APLICACIÓN PERDIÓ EL PERMISO DE ESCRIBIR. Eso explica el rechazo de ML y');
-        console.log('   se arregla volviendo a autorizar la aplicación en cada cuenta. No hay nada roto');
-        console.log('   en el robot.');
-      } else if (algunoNo && algunoEscribe) {
-        console.log('   Unas cuentas lo tienen y otras no: hay que volver a autorizar SÓLO las que dicen NO.');
       } else {
-        console.log('   LA APLICACIÓN SÍ TIENE EL PERMISO DE ESCRIBIR y ML la frena igual. O sea que');
-        console.log('   volver a autorizarla NO lo va a arreglar: el freno es una política de ML sobre');
-        console.log('   la aplicación y hay que reclamárselo a ML.');
+        const pub = [...new Set(porCuenta.map((p) => p.estado['publish-sync']))];
+        if (pub.length === 1 && pub[0] === 'solo lee') {
+          console.log('   ACÁ ESTÁ EL FRENO. La aplicación tiene el permiso de CAMBIAR PUBLICACIONES en');
+          console.log('   "sólo lee", así que ML rechaza todo cambio de precio aunque el permiso viejo');
+          console.log('   diga "write". No es un problema del robot ni de las cuentas.');
+          console.log('   Se arregla en el panel de desarrolladores de ML: ponerle a la aplicación el');
+          console.log('   permiso de publicaciones en lectura Y escritura, y después volver a');
+          console.log('   autorizarla en las 4 cuentas para que el permiso nuevo quede guardado.');
+        } else if (pub.length === 1 && pub[0] === 'escribe') {
+          console.log('   La aplicación SÍ tiene el permiso de cambiar publicaciones. O sea que el');
+          console.log('   rechazo de ML NO es por permisos y hay que buscarlo en otro lado.');
+        } else {
+          console.log('   El permiso de cambiar publicaciones no está igual en todas las cuentas, o ML');
+          console.log('   no lo informó. Mirar el renglón de cada una arriba.');
+        }
       }
       console.log('\n   (Solo se leyó. No se cambió ningún precio ni ninguna publicación.)');
       return;
