@@ -12446,7 +12446,17 @@ async function main() {
       const APLICAR = _p.includes('go');
       const DIAS = Math.max(1, Math.min(180, parseInt(_p[1]) || 90));
       const MP = 'https://api.mercadopago.com';
-      const hasta = new Date(); const desde = new Date(Date.now() - DIAS * 864e5);
+      // LAS FECHAS TIENEN QUE CAER EN UNA HORA REDONDA. Medido con `probarrep` el 20/09/2026:
+      // el primer intento mandó la hora exacta del momento (`...T18:06:32Z`) y Mercado Pago
+      // contestó **400 "Error creating Statement"** en las CUATRO cuentas, sin decir qué campo
+      // estaba mal. Probadas 7 formas de una sola vez, **las 6 que caen en hora redonda andan**
+      // —incluida la MISMA ventana de 90 días que había fallado— y la única que falla de verdad
+      // es mandar la fecha sin hora. O sea que **no era ni el formato ni el largo de la ventana:
+      // eran los minutos y los segundos.**
+      // Por eso el final se corta a la hora en punto ANTERIOR y no se redondea para arriba: una
+      // fecha en el futuro es lo único que no se probó, y acá el lado seguro es quedarse corto.
+      const hasta = new Date(Math.floor(Date.now() / 36e5) * 36e5);
+      const desde = new Date(new Date(Date.now() - DIAS * 864e5).toISOString().slice(0, 10) + 'T00:00:00Z');
       const iso = (d) => d.toISOString().slice(0, 19) + 'Z';
       console.log(`=== PREPARAR EL SALDO AUTOMÁTICO · ventana de ${DIAS} días ===`);
       console.log(APLICAR ? '(APLICANDO)\n' : '(PRUEBA · no se escribe nada · agregá ":go")\n');
