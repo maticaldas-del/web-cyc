@@ -2257,7 +2257,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='19.74';
+const APP_VERSION='19.75';
 // El problema real que esto resuelve no es curiosidad: es que el celular guarda la app y sigue
 // mostrando la de ayer sin avisar. Varias veces se revisó un cambio que ya estaba subido y no se
 // veía. Por eso, además del número, el chip avisa cuando hay una versión nueva esperando.
@@ -4286,7 +4286,20 @@ function enterOficina(){migrarOficina().then(()=>{
 // El stock de la oficina NO baja hasta cerrar la caja, así que dos cajas a medio armar podrían
 // pedir las mismas unidades. Por eso el máximo de cada renglón descuenta lo que ya está reservado
 // en las cajas de las OTRAS cuentas (ver cajaMax).
-const _ck=(pid,va)=>pid+'|'+(va||'');
+// LA CLAVE DE CADA RENGLÓN DE LA CAJA. Lleva el NOMBRE DE LA VARIANTE adentro, y Firebase NO
+// ACEPTA  .  #  $  [  ]  /  en una clave: con uno solo de esos caracteres el guardado falla
+// ENTERO y, como el que falla es un `await`, la pantalla no se vuelve a dibujar — el botón parece
+// que no hace nada. Lo reportó él el 20/09/2026: *"al clickear cargar lo sugerido en adriana, no
+// anda"*. Medido con el comando `clavesmalas`: son los tres aromas Paulvic **"1.4 Sexy Men"**,
+// **"1.4 W Mujer"** y **"1.4M Hombre"**, publicados en Adriana y en Luciana — o sea que rompía en
+// esas dos cuentas y andaba en las otras dos, que es exactamente lo que él vio.
+//
+// SE ESCAPAN SÓLO ESOS SEIS CARACTERES, y no se usa `sid()` como en el inventario a propósito:
+// `sid` además cambia los espacios, así que "Azul Marino" pasaría a "Azul_Marino" y **las cajas
+// que hoy están a medio armar quedarían huérfanas** — hay una con 246 unidades cargadas a mano.
+// Escapando sólo lo prohibido, toda clave que hoy funciona queda IDÉNTICA.
+const _ckSafe=s=>String(s||'').replace(/[.#$\[\]\/]/g,c=>'%'+c.charCodeAt(0).toString(16).toUpperCase());
+const _ck=(pid,va)=>pid+'|'+_ckSafe(va);
 const cajaDe=(cta)=>((state.cajas_armando||{})[cta]||{}).items||{};
 function setOfiFiltro(c){
   ofiFiltroCuenta=(ofiFiltroCuenta===c?'':c);
@@ -4300,12 +4313,24 @@ function setOfiFiltro(c){
   // Ahora se abre como estaba: vacia si nunca se armo, o con lo que haya quedado a medias.
   renderOfiCaja();
 }
+// Y SI EL GUARDADO FALLA, QUE SE VEA. Antes el error subía sin que nadie lo agarrara: la pantalla
+// no se redibujaba y el botón parecía roto, sin decir por qué. Es el mismo patrón del `catch {}`
+// vacío anotado cuatro veces en CLAUDE.md — el dato no se pierde con ruido, se pierde en silencio.
 async function _guardarCajaArmando(cta,items){
   state.cajas_armando=state.cajas_armando||{};
   const hay=Object.keys(items||{}).length;
+  const antes=state.cajas_armando[cta];
   if(hay)state.cajas_armando[cta]={items,ts:Date.now()};
   else delete state.cajas_armando[cta];
-  await fbSet('cajas_armando/'+cta,hay?{items,ts:Date.now()}:null);
+  try{
+    await fbSet('cajas_armando/'+cta,hay?{items,ts:Date.now()}:null);
+  }catch(e){
+    // Se deshace lo que se había cambiado en memoria: si no, la pantalla mostraría una caja
+    // armada que en la base no existe, y al recargar desaparecería sin aviso.
+    if(antes)state.cajas_armando[cta]=antes;else delete state.cajas_armando[cta];
+    toast('No se pudo guardar la caja de '+cta+': '+String(e&&e.message||e).slice(0,60),'err');
+    throw e;
+  }
 }
 // Unidades de un producto/variante ya reservadas en las cajas de las OTRAS cuentas.
 function reservadoEnOtras(pid,va,ctaActual){
