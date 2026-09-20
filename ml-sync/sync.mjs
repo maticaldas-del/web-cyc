@@ -12178,6 +12178,76 @@ async function main() {
       return;
     }
 
+    // BILLING_PROBE=saldobill → ¿EL SALDO DE FACTURACIÓN SE ABRIÓ AL DEVOLVER "MÉTRICAS"? · SOLO LEE
+    //
+    // POR QUÉ (20/09/2026). `saldo3` venía dando **403 de PolicyAgent** en
+    // `/billing/integration/balance`, y quedó anotada la sospecha de que lo cerraba el permiso
+    // "Métricas del negocio" —que dice textual *"la información impositiva, **balances** y reportes
+    // de operaciones"*— porque él lo había puesto en SIN ACCESO. Lo devolvió a Lectura, y al
+    // reintentar **esos dos endpoints pasaron de 403 a 429**.
+    //
+    // **UN 429 NO ES UNA RESPUESTA.** El billing de ML permite 5 llamadas por minuto y `saldo3`
+    // dispara catorce seguidas: es su propio ruido. Esto prueba SÓLO esas dos puertas, de a una,
+    // **esperando 15 segundos entre llamada y llamada**, que es lo que ya está anotado en este
+    // panel desde el 21/08 con las percepciones.
+    //
+    // Si contesta 200, el disponible sale DERECHO de ML y no hace falta ningún punto de partida
+    // cargado a mano. Si vuelve el 403, la sospecha del permiso queda descartada.
+    //
+    // IMPRIME LAS CLAVES, NO LOS VALORES: el registro de GitHub es público y acá lo que vendría
+    // adentro es justo su saldo.
+    if (String(process.env.BILLING_PROBE || '') === 'saldobill') {
+      const esperar = (ms) => new Promise((r) => setTimeout(r, ms));
+      const PUERTAS = [
+        ['saldo de facturación (con sitio)', 'https://api.mercadolibre.com/billing/integration/balance?site_id=MLA'],
+        ['saldo de facturación (sin sitio)', 'https://api.mercadolibre.com/billing/integration/balance'],
+      ];
+      console.log('=== ¿SE ABRIÓ EL SALDO DE FACTURACIÓN? ===');
+      console.log('(de a una, con 15 segundos en el medio, para que el 429 no ensucie el resultado)\n');
+      let abiertas = 0, cerradas = 0, dudosas = 0;
+      for (const label of labels) {
+        const acc = accounts[label];
+        if (!acc?.refresh_token) { console.log(`── ${label} ── sin token`); continue; }
+        let t; try { t = await mlRefresh(ML_CLIENT_ID, ML_CLIENT_SECRET, acc.refresh_token); }
+        catch { console.log(`── ${label} ── ❌ no pude renovar el token`); continue; }
+        await db.patch('mlapi/tokens/' + label, { refresh_token: t.refresh_token, updated_ts: Date.now() });
+        console.log(`── ${label} ──`);
+        for (const [nom, url] of PUERTAS) {
+          await esperar(15000);
+          try {
+            const r = await fetch(url, { headers: { Authorization: `Bearer ${t.access_token}` }, signal: AbortSignal.timeout(20000) });
+            const txt = (await r.text()) || '';
+            let detalle = '';
+            try {
+              const j = JSON.parse(txt);
+              // SÓLO LAS CLAVES. Lo que viene adentro es su saldo y este registro es público.
+              const ks = Array.isArray(j) ? (j[0] ? Object.keys(j[0]) : []) : Object.keys(j || {});
+              detalle = `campos: ${ks.join(', ').slice(0, 220) || '(ninguno)'}`;
+              if (!r.ok && j && j.code) detalle += ` · code ${j.code}`;
+              if (!r.ok && j && j.blocked_by) detalle += ` · lo frena ${j.blocked_by}`;
+            } catch { detalle = `(no es JSON · ${txt.length} caracteres)`; }
+            const veredicto = r.ok ? '✅ ABRE' : (r.status === 429 ? '⏳ 429 · sigue sin contestar de verdad' : `❌ ${r.status}`);
+            console.log(`   ${nom}: ${veredicto}`);
+            console.log(`      ${detalle}`);
+            if (r.ok) abiertas++; else if (r.status === 429) dudosas++; else cerradas++;
+          } catch (e) { console.log(`   ${nom}: ❌ ${String(e.message || e).slice(0, 90)}`); cerradas++; }
+        }
+      }
+      console.log(`\n── RESUMEN ──`);
+      console.log(`   abren ${abiertas} · cerradas ${cerradas} · siguen dando 429 ${dudosas}`);
+      if (abiertas) {
+        console.log('   → EL SALDO SE PUEDE LEER DERECHO DE ML. No hace falta ningún punto de');
+        console.log('     partida cargado a mano: hay que mirar qué campo trae el disponible.');
+      } else if (dudosas && !cerradas) {
+        console.log('   → SIGUE SIN SABERSE. El 429 es el límite de llamadas, no una negativa:');
+        console.log('     no se puede concluir que esté cerrado. Conviene reintentar más tarde.');
+      } else {
+        console.log('   → CERRADO. Devolver "Métricas del negocio" NO lo abrió, así que esa');
+        console.log('     sospecha queda descartada y el disponible necesita el punto de partida.');
+      }
+      console.log('   (Solo se leyó. No se imprimió ningún monto: este registro es público.)');
+      return;
+    }
     // BILLING_PROBE=saldo3 → AGOTAR LAS POSIBILIDADES DE LEER EL SALDO (20/09/2026)
     //
     // Pedido suyo: *"tener el saldo puede ser algo MUY importante, estaría bueno agotar
