@@ -347,6 +347,9 @@ Los que más se usan:
 | `armarsaldo[:días][:go]` | **prepara el reporte del saldo**: prende los retiros y lo pide · escribe en Mercado Pago, por eso pide `:go` · no mueve un peso |
 | `probarrep` | **por qué Mercado Pago no deja pedir el reporte**: 7 formas en una sola corrida · solo lee |
 | `saldoml[:go]` | **lo que falta cobrar de ML, por cuenta** · escribe "A liquidar en ML" del Arqueo **en dólares** · no imprime ni un peso |
+| `dispo[:go]` | **el disponible de ML** a partir del número que él carga · sin `:go` sólo muestra |
+| `medirsaldo` | **cómo viene cada tipo de movimiento** del reporte: fechas y signos · solo lee |
+| `saldobill` | **¿se abrió el saldo directo de ML?** de a una y espaciado, para que el 429 no ensucie · solo lee |
 | `clavesmalas` | **nombres de variante que Firebase no puede guardar** (rompen "Cargar lo sugerido") · solo lee |
 | `verweb:<direccion>` | **leer una página de afuera y mostrar su texto** · el chat no tiene internet y el robot sí · solo lee · **lo que imprime queda en el registro PÚBLICO** |
 | `apis` | qué endpoints de ML contestan (para diagnosticar) |
@@ -3008,6 +3011,64 @@ endpoint existe y lo niega un permiso, que es lo contrario de un 404. **Hipótes
 permiso **"Métricas del negocio"** dice textual *"la información impositiva, **balances** y
 reportes de operaciones"* y él lo puso en SIN ACCESO ese mismo día. Devolverlo y reintentar es
 gratis; **hasta que se mida, es una sospecha y no un hecho.**
+
+### EL DISPONIBLE DE ML: ÉL PONE EL PUNTO DE PARTIDA, EL ROBOT LO MANTIENE (20/09/2026)
+
+Pedido suyo: *"si te digo cuánto hay, no podés tomar eso y ya después lo seguís vos?"*, y la vara:
+*"lo que más me interesa es que el saldo de MP sea correcto en la web de CYC. después los
+movimientos no me interesan tanto."*
+
+**ML NO DEJA LEER EL SALDO, Y ESO QUEDÓ CERRADO EL MISMO DÍA.** `/billing/integration/balance` da
+**403 de PolicyAgent**, y la sospecha de que lo tapaba el permiso *"Métricas del negocio"* quedó
+**descartada**: él lo devolvió a Lectura y `saldobill` midió **403 limpio en Adriana, Ayelen y
+Luciana, en las dos variantes de la dirección**. (Matías dio 429 las dos veces, o sea que ahí no se
+midió; no cambia la conclusión porque los permisos de la aplicación son idénticos en las cuatro.)
+
+**Entonces se hace al revés:** él escribe el disponible de cada cuenta en el Arqueo, **eso queda
+como punto de partida con su fecha** (`cyc/saldoancla/<cuenta>`), y el robot le suma y le resta lo
+que pasa después. El comando es **`dispo[:go]`**.
+
+### LA CUENTA SALIÓ MÁS SIMPLE DE LO QUE PARECÍA, Y LO DECIDIÓ LA MEDICIÓN
+
+`disponible = punto de partida + la suma de REAL_AMOUNT de TODAS las filas posteriores`
+
+**No se clasifica por tipo de movimiento, y es a propósito.** `medirsaldo` mostró que `REAL_AMOUNT`
+**ya trae su propio signo**: los retiros vienen negativos, las devoluciones negativas, y las
+disputas salen positivas o negativas según cómo se resolvieron. Sumar todo derecho es correcto **y
+además aguanta lo que no conocemos**: en esa misma corrida apareció un tipo que el código no
+conocía (**`SHIPPING`**). Con una lista de tipos ése se habría caído en silencio; sumando todo,
+entra solo.
+
+**LO QUE LA MEDICIÓN DESTAPÓ Y HABRÍA ROTO EL NÚMERO: los 93 RETIROS de las cuatro cuentas vienen
+SIN `MONEY_RELEASE_DATE`.** Es lógico —un retiro no se "libera", es plata que sale— y la primera
+fórmula fechaba todo por esa columna: **se los salteaba enteros y el disponible no habría bajado
+NUNCA.** Los 93 sí traen fecha de movimiento y de acreditación, así que `fechaMov` cae a ésas en
+orden; si no hay ninguna de las tres devuelve `null` y la fila **se cuenta aparte**, no suma cero
+callada.
+**Es exactamente el caso que la nota vieja daba por sabido sin haberlo mirado.**
+
+**LOS FRENOS, y cada uno tapa algo medido:**
+ · **el punto de partida tiene que estar DENTRO de la ventana del reporte.** Si es más viejo,
+   faltan movimientos del medio: no se escribe y se pide el número de nuevo.
+ · **las CUATRO cuentas o ninguna** — `mp_disp` es la suma y es la que entra al patrimonio.
+ · **sin tipo de cambio no se escribe**: el Arqueo está en DÓLARES y el reporte en PESOS.
+ · las filas ilegibles **se cuentan y se avisan**.
+
+**EL PUNTO DE PARTIDA SE GUARDA EN PESOS, no en dólares.** La casilla está en dólares —todo el
+Arqueo lo está— pero los movimientos vienen en pesos: si el ancla quedara en dólares, **cada
+movimiento del tipo de cambio movería el saldo de una cuenta bancaria que no se movió**. Se
+convierte UNA vez, con el cambio del día en que lo escribe.
+
+**LO QUE NO TAPA NINGÚN FRENO Y HAY QUE TENER PRESENTE:** los cargos mensuales de ML
+—almacenamiento, stock antiguo, percepciones de IIBB— **salen de la cuenta de Mercado Pago y NO
+están en este reporte**. Son **~$2.200.000 por mes** entre las cuatro (ya medido en la sección de
+Full). O sea que el número **se va yendo para arriba** con las semanas.
+**Por eso el punto de partida se vuelve a cargar UNA VEZ POR MES**, decisión suya del 20/09. Eso
+acota el error a un mes en vez de dejarlo crecer para siempre.
+
+**ESTADO AL 20/09/2026: el código está listo y esperando.** `dispo` corrido en prueba contestó
+*"sin punto de partida cargado"* en las cuatro y **no tocó nada**, que es exactamente lo que tiene
+que hacer. Arranca en cuanto él escriba los cuatro números en el Arqueo.
 
 ### LOS DOS FRENOS DEL REPORTE, YA DESTRABADOS (20/09/2026)
 
