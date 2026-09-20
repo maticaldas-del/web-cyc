@@ -6648,6 +6648,94 @@ async function main() {
       return;
     }
 
+    // BILLING_PROBE=permisos → ¿QUÉ PERMISOS LE ESTÁ DANDO ML A LA APLICACIÓN?
+    //
+    // POR QUÉ (20/09/2026): ML rechaza TODA escritura con `PA_UNAUTHORIZED_RESULT_FROM_POLICIES`
+    // —medido en 4 publicaciones de 3 cuentas con `probarput`— y él SÍ puede cambiar precios a
+    // mano. O sea que el freno es contra la aplicación. Pero "contra la aplicación" son DOS cosas
+    // distintas y se arreglan distinto:
+    //   · la app PERDIÓ el permiso de escribir → se arregla volviendo a autorizarla, y lo puede
+    //     hacer él solo;
+    //   · la app TIENE el permiso y ML la frena igual → no hay nada que tocar de este lado, hay
+    //     que hablar con ML.
+    // Adivinar cuál de las dos es lleva a mandarlo a hacer un trámite que capaz no sirve. Esto lo
+    // mide: cada vez que se renueva el permiso, ML contesta QUÉ nos deja hacer (`scope`).
+    //
+    // SOLO LEE. No escribe en ML. Lo único que toca es guardar el refresh_token nuevo, que es
+    // obligatorio: ML lo rota en cada renovación y no guardarlo deja la cuenta afuera.
+    //
+    // EL REGISTRO DE GITHUB ES PÚBLICO, así que acá NO se imprime ningún token, ni el secreto, ni
+    // el número entero de la aplicación. De la ficha de la app se listan las CLAVES y sólo se
+    // muestran los valores de una lista corta que no tiene nada sensible — el mismo criterio con
+    // el que se tapó el CUIT del proveedor en `vergastos` el 16/09: un campo nuevo que agregue ML
+    // mañana queda tapado solo.
+    if (String(process.env.BILLING_PROBE || '') === 'permisos') {
+      const _tapar = (x) => { const s = String(x || ''); return s.length <= 4 ? '****' : '…' + s.slice(-4); };
+      console.log('=== QUÉ PERMISOS LE DA ML A LA APLICACIÓN ===\n');
+      console.log(`Aplicación ${_tapar(ML_CLIENT_ID)} (tapada a propósito: este registro es público)\n`);
+      let unToken = null, algunoEscribe = false, algunoNo = false, miradas = 0;
+      for (const label of labels) {
+        const acc = accounts[label];
+        if (!acc?.refresh_token) { console.log(`${label}: sin token conectado`); continue; }
+        let t = null;
+        try {
+          t = await mlRefresh(ML_CLIENT_ID, ML_CLIENT_SECRET, acc.refresh_token);
+          await db.patch('mlapi/tokens/' + label, { refresh_token: t.refresh_token, updated_ts: Date.now() });
+        } catch (e) {
+          // UN FALLO ACÁ NO ES "NO TIENE PERMISO": es que no se pudo ni preguntar. Se distingue,
+          // que es la lección de todo este archivo — falta de dato no es dato.
+          console.log(`${label}: ❌ no pude renovar el permiso · ${String(e.message || e).slice(0, 160)}`);
+          continue;
+        }
+        miradas++;
+        if (!unToken) unToken = t.access_token;
+        // ML devuelve `scope` como texto separado por espacios: "offline_access read write".
+        // Si el campo NO viene, no se puede concluir nada y se dice.
+        const sc = (t.scope == null) ? null : String(t.scope).toLowerCase().split(/\s+/).filter(Boolean);
+        if (sc == null) { console.log(`${label}: ML no informó los permisos en esta renovación (no se puede concluir)`); continue; }
+        const escribe = sc.includes('write');
+        const lee = sc.includes('read');
+        if (escribe) algunoEscribe = true; else algunoNo = true;
+        console.log(`${label}: ${escribe ? '✅ ESCRIBIR sí' : '❌ ESCRIBIR no'} · ${lee ? 'leer sí' : 'leer no'}  ·  permisos: ${sc.join(' ')}`);
+      }
+      // LA FICHA DE LA APLICACIÓN, por si ML la marcó de alguna forma.
+      if (unToken) {
+        console.log('\n── LA FICHA DE LA APLICACIÓN, SEGÚN ML ──');
+        try {
+          const app = await mlGet('/applications/' + ML_CLIENT_ID, unToken);
+          const SEGUROS = new Set(['scopes', 'grant_types', 'active', 'status', 'audit_status', 'certification',
+            'blocked', 'restrictions', 'policies', 'date_created', 'last_updated', 'app_status']);
+          const claves = Object.keys(app || {}).sort();
+          console.log(`   campos que devuelve ML: ${claves.join(' · ') || '(ninguno)'}`);
+          for (const k of claves) {
+            if (!SEGUROS.has(k) && !/scope|status|active|audit|cert|polic|restrict|block|grant/i.test(k)) continue;
+            let v = app[k];
+            v = (v && typeof v === 'object') ? JSON.stringify(v).slice(0, 220) : String(v);
+            console.log(`   ${k}: ${v}`);
+          }
+        } catch (e) {
+          console.log(`   ❌ ML no deja leer la ficha de la aplicación: ${String(e.message || e).slice(0, 180)}`);
+          console.log('      (No es concluyente: ese dato puede estar cerrado siempre, no sólo ahora.)');
+        }
+      }
+      console.log('\n── QUÉ QUIERE DECIR ──');
+      if (!miradas) {
+        console.log('   No se pudo mirar ninguna cuenta. No se puede concluir nada.');
+      } else if (algunoNo && !algunoEscribe) {
+        console.log('   LA APLICACIÓN PERDIÓ EL PERMISO DE ESCRIBIR. Eso explica el rechazo de ML y');
+        console.log('   se arregla volviendo a autorizar la aplicación en cada cuenta. No hay nada roto');
+        console.log('   en el robot.');
+      } else if (algunoNo && algunoEscribe) {
+        console.log('   Unas cuentas lo tienen y otras no: hay que volver a autorizar SÓLO las que dicen NO.');
+      } else {
+        console.log('   LA APLICACIÓN SÍ TIENE EL PERMISO DE ESCRIBIR y ML la frena igual. O sea que');
+        console.log('   volver a autorizarla NO lo va a arreglar: el freno es una política de ML sobre');
+        console.log('   la aplicación y hay que reclamárselo a ML.');
+      }
+      console.log('\n   (Solo se leyó. No se cambió ningún precio ni ninguna publicación.)');
+      return;
+    }
+
     // BILLING_PROBE=verofertas:<catálogo MLA>[;otro] → ¿ML DICE CUÁLES SON DE ENVÍO INTERNACIONAL?
     //
     // POR QUÉ (19/09/2026, regla suya): *"estaba tomando envíos internacionales. esos no quiero que
