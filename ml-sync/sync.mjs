@@ -214,6 +214,25 @@ function _anotarEscrituraML(res, itemId, que, cuerpo) {
 // Y AVISA TAMBIÉN CUANDO SE DESTRABA, que es la mitad que siempre se olvida: si ayer estaba
 // bloqueado y hoy ML aceptó una escritura, sale el mensaje de que ya puede de nuevo. Sin eso él
 // se queda creyendo que el robot sigue frenado y toca todo a mano al pedo.
+// LA FECHA CON LA QUE SE UBICA UN MOVIMIENTO EN EL TIEMPO.
+// MEDIDO el 20/09/2026 con `medirsaldo`, y no se adivina: **los 93 RETIROS de las cuatro cuentas
+// vienen SIN `MONEY_RELEASE_DATE`** — es lógico, un retiro no se "libera", es plata que sale— y
+// también hay 131 ventas sin esa columna. Fechar todo por ahí **se salteaba los retiros enteros**
+// y el disponible no habría bajado nunca: el peor lado para equivocarse.
+// Los 93 SÍ traen fecha de movimiento y fecha de acreditación, así que se cae a ésas en orden.
+// Si no hay ninguna de las tres, devuelve null y el que llama TIENE que contar esa fila aparte:
+// saltearla en silencio es el descarte por omisión anotado cuatro veces en este panel.
+function fechaMov(f, iLib, iSett, iTrans) {
+  for (const i of [iLib, iSett, iTrans]) {
+    if (i < 0) continue;
+    const txt = String(f[i] || '').trim();
+    if (!txt) continue;
+    const ts = new Date(txt).getTime();
+    if (Number.isFinite(ts)) return ts;
+  }
+  return null;
+}
+
 // LEER EL CSV DEL REPORTE DE MERCADO PAGO. Las dos viven acá y no adentro de un comando porque
 // las usan VARIOS, y dos copias de la misma cuenta ya se separaron nueve veces en este panel.
 //
@@ -12547,6 +12566,144 @@ async function main() {
         console.log('     este cero es un resultado, no una respuesta.');
       }
       console.log('   (Solo se leyó: no se escribió nada, ni en ML ni en la base.)');
+      return;
+    }
+    // BILLING_PROBE=dispo[:go] → MANTENER EL DISPONIBLE DE ML A PARTIR DEL NÚMERO QUE ÉL CARGA
+    //
+    // POR QUÉ (20/09/2026). Pedido suyo: *"si te digo cuánto hay, no podés tomar eso y ya después
+    // lo seguís vos?"* y *"lo que más me interesa es que el saldo de MP sea correcto en la web"*.
+    // ML **no deja leer el saldo**: `/billing/integration/balance` contesta 403 de PolicyAgent, y
+    // el 20/09 se verificó que devolver el permiso "Métricas del negocio" NO lo abre (403 limpio en
+    // Adriana, Ayelen y Luciana, en las dos variantes de la dirección).
+    //
+    // ASÍ QUE SE HACE AL REVÉS: él escribe el disponible de cada cuenta en el Arqueo —eso queda
+    // como ANCLA, con su fecha— y el robot le suma y le resta los movimientos posteriores.
+    //
+    // LA CUENTA, Y ES MÁS SIMPLE DE LO QUE PARECÍA:
+    //   disponible = ancla + (suma de REAL_AMOUNT de TODAS las filas posteriores al ancla)
+    // **No se clasifica por tipo de movimiento, y es a propósito.** `medirsaldo` mostró que
+    // `REAL_AMOUNT` ya trae su propio signo: los retiros vienen negativos, las devoluciones
+    // negativas, y las disputas salen positivas o negativas según cómo se resolvieron. Sumar todo
+    // derecho es correcto **y además aguanta lo que no conocemos**: en esa misma corrida apareció
+    // un tipo que el código no conocía (`SHIPPING`). Con una lista de tipos, ése se habría caído en
+    // silencio; sumando todo, entra solo.
+    //
+    // LOS FRENOS, y cada uno tapa algo medido:
+    //  · **el ancla tiene que estar DENTRO de la ventana del reporte.** Si es más vieja, faltan
+    //    movimientos del medio y el número da cualquier cosa. Ahí no se escribe y se avisa.
+    //  · **las CUATRO cuentas o ninguna**: `mp_disp` es la suma y es el que entra al patrimonio.
+    //  · **sin tipo de cambio no se escribe**: el Arqueo está en DÓLARES y el reporte en PESOS.
+    //    Es el error que cometí hoy en el campo de al lado.
+    //  · **las filas que no se pueden leer se cuentan y se avisan**, nunca se cuentan como cero.
+    //
+    // LO QUE NO TAPA NINGÚN FRENO, Y HAY QUE SABERLO: los cargos mensuales de ML (almacenamiento,
+    // stock antiguo, percepciones de IIBB) salen de la cuenta de Mercado Pago y **no aparecen en
+    // este reporte**. Son ~$2.200.000 por mes entre las cuatro. O sea que el número se va yendo
+    // para ARRIBA con el correr de las semanas, y por eso el ancla **se vuelve a cargar una vez por
+    // mes** — decisión suya del 20/09. El panel avisa cuando está vieja.
+    if (String(process.env.BILLING_PROBE || '').startsWith('dispo')) {
+      const APLICAR = String(process.env.BILLING_PROBE).split(':').includes('go');
+      const MP = 'https://api.mercadopago.com';
+      const hoy = Date.now();
+      console.log('=== EL DISPONIBLE DE ML, A PARTIR DE TU NÚMERO ===');
+      console.log(APLICAR ? '(APLICANDO)\n' : '(PRUEBA · no se escribe nada · agregá ":go")\n');
+
+      const anclas = (await db.get('cyc/saldoancla')) || {};
+      const tc = parseFloat((await db.get('cyc/finanzas/tipo_cambio')) || 0) || 0;
+      if (!tc) {
+        console.log('❌ No hay tipo de cambio cargado en el panel, y el Arqueo está en DÓLARES.');
+        console.log('   Convertir con un cambio adivinado se mete en todo el patrimonio: no se toca nada.');
+        return;
+      }
+      const res = {}; let listas = 0, problemas = 0;
+      for (const label of labels) {
+        const clave = 'mp_' + label.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '');
+        const anc = anclas[label];
+        console.log(`── ${label} ──`);
+        if (!anc || !(parseFloat(anc.ars) || 0) || !anc.ts) {
+          console.log('   sin punto de partida cargado · escribí el disponible en el Arqueo y queda anotado solo');
+          problemas++; continue;
+        }
+        const diasAnc = Math.round((hoy - anc.ts) / 864e5);
+        const acc = accounts[label];
+        if (!acc?.refresh_token) { console.log('   ❌ sin token'); problemas++; continue; }
+        let t; try { t = await mlRefresh(ML_CLIENT_ID, ML_CLIENT_SECRET, acc.refresh_token); }
+        catch { console.log('   ❌ no pude renovar el token'); problemas++; continue; }
+        await db.patch('mlapi/tokens/' + label, { refresh_token: t.refresh_token, updated_ts: Date.now() });
+        const H = { Authorization: `Bearer ${t.access_token}` };
+        let arch = null, desdeRep = 0;
+        try {
+          const r = await fetch(`${MP}/v1/account/settlement_report/list`, { headers: H, signal: AbortSignal.timeout(20000) });
+          const arr = await r.json();
+          if (!r.ok || !Array.isArray(arr)) { console.log(`   ❌ no pude listar los reportes (HTTP ${r.status})`); problemas++; continue; }
+          const ok = arr.filter((x) => x && x.file_name && x.status !== 'pending');
+          ok.sort((a, b) => new Date(a.date_created || 0) - new Date(b.date_created || 0));
+          const u = ok[ok.length - 1];
+          if (!u) { console.log('   ❌ no hay ningún reporte listo'); problemas++; continue; }
+          arch = u.file_name; desdeRep = new Date(u.begin_date || 0).getTime();
+          console.log(`   tu número es del ${new Date(anc.ts).toISOString().slice(0, 10)} (hace ${diasAnc} días) · el reporte arranca el ${String(u.begin_date || '').slice(0, 10)}`);
+        } catch (e) { console.log(`   ❌ ${String(e.message || e).slice(0, 80)}`); problemas++; continue; }
+
+        // EL FRENO QUE MÁS IMPORTA: si tu número es más viejo que el reporte, faltan movimientos
+        // del medio y el resultado sería inventado. No se escribe: se pide el número de nuevo.
+        if (Number.isFinite(desdeRep) && desdeRep > anc.ts) {
+          console.log('   ❌ tu número es MÁS VIEJO que el reporte: faltarían movimientos del medio.');
+          console.log('      Volvé a escribir el disponible en el Arqueo y listo.');
+          problemas++; continue;
+        }
+
+        try {
+          const r = await fetch(`${MP}/v1/account/settlement_report/${encodeURIComponent(arch)}`, { headers: H, signal: AbortSignal.timeout(30000) });
+          if (!r.ok) { console.log(`   ❌ no pude abrirlo (HTTP ${r.status})`); problemas++; continue; }
+          const li = (await r.text()).split('\n').filter((x) => x.trim());
+          const sep = (li[0] || '').includes(';') ? ';' : ',';
+          const cols = csvPartir(li[0] || '', sep).map((x) => x.replace(/^"|"$/g, ''));
+          const iR = cols.indexOf('REAL_AMOUNT'), iL = cols.indexOf('MONEY_RELEASE_DATE');
+          const iS = cols.indexOf('SETTLEMENT_DATE'), iD = cols.indexOf('TRANSACTION_DATE');
+          if (iR < 0 || (iL < 0 && iS < 0 && iD < 0)) { console.log('   ❌ le falta una columna clave'); problemas++; continue; }
+          let mov = 0, nMov = 0, nAntes = 0, nFuturo = 0, sinFecha = 0, sinNeto = 0;
+          for (let n = 1; n < li.length; n++) {
+            const f = csvPartir(li[n], sep);
+            const ts = fechaMov(f, iL, iS, iD);
+            if (ts == null) { sinFecha++; continue; }
+            if (ts <= anc.ts) { nAntes++; continue; }      // ya estaba adentro del número que él dio
+            if (ts > hoy) { nFuturo++; continue; }          // todavía no pasó: eso es "a liquidar"
+            const v = csvNum(f[iR]);
+            if (v == null) { sinNeto++; continue; }
+            mov += v; nMov++;
+          }
+          const sucias = sinFecha + sinNeto;
+          console.log(`   movimientos posteriores: ${nMov} · anteriores ${nAntes} · a futuro ${nFuturo}`);
+          if (sucias) console.log(`   ⚠️ ${sucias} filas no se pudieron ubicar (${sinFecha} sin ninguna fecha · ${sinNeto} sin el neto): el número queda CORTO`);
+          const ars = (parseFloat(anc.ars) || 0) + mov;
+          res[label] = { clave, usd: Math.round(ars / tc), ars: Math.round(ars), movs: nMov, sucias, anclaTs: anc.ts, ts: Date.now() };
+          console.log(`   ✅ calculado (el monto va a la base, no al registro público)`);
+          listas++;
+        } catch (e) { console.log(`   ❌ ${String(e.message || e).slice(0, 100)}`); problemas++; }
+      }
+
+      console.log(`\n── RESUMEN ──`);
+      console.log(`   cuentas al día: ${listas} · con problema: ${problemas}`);
+      if (listas !== labels.length) {
+        console.log('   NO se toca el Arqueo: con una cuenta afuera, el total que entra al');
+        console.log('   patrimonio quedaría corto y nadie lo notaría.');
+        return;
+      }
+      if (!APLICAR) { console.log('   Con ":go" se escribe en el Arqueo.'); return; }
+      const patch = {};
+      for (const [, r2] of Object.entries(res)) patch[r2.clave] = r2.usd;
+      patch.mp_disp = Object.values(res).reduce((a, x) => a + x.usd, 0);
+      await db.patch('cyc/finanzas', patch);
+      await db.patch('cyc/saldoml', { _dispTs: Date.now() });
+      // RELEER Y COMPARAR, que es la regla 6 de este panel.
+      const fin = (await db.get('cyc/finanzas')) || {};
+      const bien = Object.values(res).every((r2) => Math.round(parseFloat(fin[r2.clave]) || 0) === r2.usd)
+        && Math.round(parseFloat(fin.mp_disp) || 0) === patch.mp_disp;
+      console.log(`   Arqueo actualizado y releído: ${bien ? '✅ las 4 cuentas y el total coinciden' : '❌ algo no quedó'}`);
+      console.log('   (en DÓLARES, que es la moneda del Arqueo · el reporte viene en pesos y se convierte)');
+      console.log('\n   OJO: los cargos mensuales de ML (almacenamiento, stock antiguo, percepciones)');
+      console.log('   NO están en este reporte, así que el número se va yendo para arriba. Por eso');
+      console.log('   el punto de partida se vuelve a cargar UNA VEZ POR MES.');
       return;
     }
     // BILLING_PROBE=medirsaldo → LAS DOS COSAS QUE HAY QUE SABER ANTES DE MANTENER EL DISPONIBLE

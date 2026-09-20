@@ -2257,7 +2257,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='19.76';
+const APP_VERSION='19.77';
 // El problema real que esto resuelve no es curiosidad: es que el celular guarda la app y sigue
 // mostrando la de ayer sin avisar. Varias veces se revisó un cambio que ya estaba subido y no se
 // veía. Por eso, además del número, el chip avisa cuando hay una versión nueva esperando.
@@ -4174,6 +4174,11 @@ function renderRetirosPorMes(){
 // comparten UNA sola: se leen juntos, de la misma pantalla, en el mismo momento.
 // Las cuatro cuentas van al mismo grupo que "mp": tocar cualquiera actualiza el "cargado hace…".
 const MP_CUENTAS=['mp_adriana','mp_luciana','mp_ayelen','mp_matias'];
+// De qué cuenta es cada casilla. El robot guarda el punto de partida con el nombre de la cuenta
+// (Adriana, Luciana, Ayelen, Matias), que es como se llaman en ML, y la casilla se llama mp_<algo>.
+// Vive acá y no repetido en cada lugar: si los dos nombres se separan, el robot escribiría el
+// disponible de una cuenta en la casilla de otra y eso no se ve.
+const MP_LABEL={mp_adriana:'Adriana',mp_luciana:'Luciana',mp_ayelen:'Ayelen',mp_matias:'Matias'};
 const FIN_TS_GRUPO={efectivo:'efectivo',mp_disp:'mp',mp_liq:'mp',
   mp_adriana:'mp',mp_luciana:'mp',mp_ayelen:'mp',mp_matias:'mp'};
 function _finTsTxt(ts){
@@ -4209,6 +4214,26 @@ async function saveFin(key,val){
   if(MP_CUENTAS.includes(key)){
     totMP=MP_CUENTAS.reduce((s,k)=>s+(parseFloat(state.finanzas[k])||0),0);
     state.finanzas.mp_disp=totMP;_finPending.mp_disp=totMP;
+    // EL NÚMERO QUE ESCRIBÍS ACÁ ES EL PUNTO DE PARTIDA, Y QUEDA ANOTADO CON SU FECHA.
+    // Pedido suyo del 20/09/2026: *"si te digo cuánto hay, no podés tomar eso y ya después lo
+    // seguís vos?"*. ML no deja leer el saldo (403 de PolicyAgent, verificado ese mismo día), así
+    // que el robot arranca de este número y le suma y le resta los movimientos que vienen después.
+    // SE GUARDA EN PESOS, no en dólares. La casilla está en dólares —el Arqueo entero lo está—
+    // pero los movimientos del reporte vienen en pesos: si el ancla quedara en dólares, cada
+    // cambio del tipo de cambio movería el saldo de una cuenta bancaria que no se movió. Se
+    // convierte UNA vez, con el cambio del día en que lo escribís, y de ahí la cuenta es toda en
+    // pesos hasta que se muestra.
+    // SIN TIPO DE CAMBIO CARGADO NO SE ANOTA NADA: convertir con un número adivinado se mete en
+    // todo el patrimonio y no se nota. Es la misma regla que ya rige para los guaraníes.
+    const _tcA=curTC();
+    if(_tcA>0){
+      state.saldoancla=state.saldoancla||{};
+      const _cta=MP_LABEL[key];
+      if(_cta){
+        state.saldoancla[_cta]={ars:Math.round(num*_tcA),usd:num,tc:_tcA,ts:Date.now()};
+        fbSet('saldoancla/'+_cta,state.saldoancla[_cta]).catch(()=>{});
+      }
+    }
   }
   updateArqueo();updateHeaderTotal();
   const grupo=FIN_TS_GRUPO[key],ahora=Date.now();
