@@ -214,6 +214,31 @@ function _anotarEscrituraML(res, itemId, que, cuerpo) {
 // Y AVISA TAMBIÉN CUANDO SE DESTRABA, que es la mitad que siempre se olvida: si ayer estaba
 // bloqueado y hoy ML aceptó una escritura, sale el mensaje de que ya puede de nuevo. Sin eso él
 // se queda creyendo que el robot sigue frenado y toca todo a mano al pedo.
+// PEDIR EL REPORTE DE LIQUIDACIÓN DE MERCADO PAGO. Vive acá y no adentro de cada comando porque
+// lo usan DOS (`armarsaldo` y `saldoml`) y dos copias de la misma cuenta ya se separaron nueve
+// veces en este panel.
+//
+// LAS FECHAS: el día de HOY no se puede pedir porque todavía no cerró — medido el 20/09/2026, es
+// lo único que separa los pedidos que Mercado Pago acepta de los que rechaza con
+// 400 "Error creating Statement". Por eso termina AYER a las 23:59:59 hora de acá.
+// Devuelve { ok, txt, desde, hasta }.
+async function pedirReporteMP(H, dias) {
+  const HUSO = '-03:00';
+  const diaLocal = (t) => new Date(t - 3 * 36e5).toISOString().slice(0, 10);
+  const desde = diaLocal(Date.now() - Math.max(1, dias) * 864e5) + 'T00:00:00' + HUSO;
+  const hasta = diaLocal(Date.now() - 864e5) + 'T23:59:59' + HUSO;
+  try {
+    const r = await fetch('https://api.mercadopago.com/v1/account/settlement_report', {
+      method: 'POST',
+      headers: { ...H, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ begin_date: desde, end_date: hasta }),
+      signal: AbortSignal.timeout(25000),
+    });
+    const txt = ((await r.text()) || '').replace(/\s+/g, ' ').slice(0, 160);
+    return { ok: r.ok, txt: r.ok ? '' : `HTTP ${r.status} · ${txt}`, desde, hasta };
+  } catch (e) { return { ok: false, txt: String(e.message || e).slice(0, 90), desde, hasta }; }
+}
+
 async function avisarBloqueoML(db, DRY) {
   const hoy = new Date(Date.now() - 3 * 3600e3).toISOString().slice(0, 10);
   let marca = '';
@@ -12483,6 +12508,7 @@ async function main() {
       // CONTRA LO QUE ÉL TIENE CARGADO A MANO. Es la regla del panel: un número automático que no
       // coincide con el que él ya conoce NO se muestra, se investiga. Se compara en PORCENTAJE
       // para no volcar un solo peso al registro público.
+      let cierraVentas = false;   // ¿lo pendiente equivale a días de venta razonables?
       // PRIMERO, EL CHEQUEO QUE NO DEPENDE DE ÉL: ¿cuántos DÍAS DE VENTA es lo que falta cobrar?
       // ML libera la plata de una venta en días o pocas semanas, así que lo pendiente tiene que
       // equivaler a más o menos eso de ventas. Si diera 300 días, el que está mal es este comando.
@@ -12502,8 +12528,9 @@ async function main() {
         if (neto30 > 0 && cuentasOk === labels.length) {
           const porDia = neto30 / 30;
           const dias = totalLiq / porDia;
+          cierraVentas = dias >= 2 && dias <= 30;
           console.log(`   lo que falta cobrar = ${dias.toFixed(1)} días de venta (sobre ${nVentas} ventas de 30 días)`);
-          console.log(`   ${dias >= 2 && dias <= 30
+          console.log(`   ${cierraVentas
             ? '✅ es lo esperable: ML libera la plata en días o pocas semanas'
             : '⚠️ ESO NO CIERRA — ML libera en días o pocas semanas, así que este número está mal'}`);
         } else if (cuentasOk !== labels.length) {
@@ -12525,12 +12552,52 @@ async function main() {
         console.log(`   (lo cargado a mano puede ser simplemente viejo: eso también explica una diferencia.)`);
       }
 
+      // LOS DOS FRENOS PARA PISAR EL NÚMERO DE LA PANTALLA, y hacen falta los dos.
+      // Este número entra en el patrimonio del Arqueo, así que escribirlo mal le mueve la plata
+      // de todo el panel. Si cualquiera de los dos no da, se guarda el detalle para poder mirarlo
+      // y NO se toca lo que él tiene cargado: quedarse con un número viejo se nota, quedarse con
+      // uno equivocado no.
+      const puedePisar = cuentasOk === labels.length && cierraVentas;
       if (APLICAR && cuentasOk) {
-        await db.patch('cyc/saldoml', { ...res, _total: Math.round(totalLiq), _ts: Date.now(), _cuentas: cuentasOk });
+        await db.patch('cyc/saldoml', {
+          ...res, _total: Math.round(totalLiq), _ts: Date.now(), _cuentas: cuentasOk, _sano: puedePisar,
+        });
         const rele = (await db.get('cyc/saldoml')) || {};
         console.log(`   guardado y releído: ${Object.keys(rele).filter((k) => !k.startsWith('_')).length} cuentas · coincide: ${Math.round(rele._total) === Math.round(totalLiq) ? '✅' : '❌'}`);
+        if (puedePisar) {
+          // Se escribe en `cyc/finanzas/mp_liq`, que es EL MISMO campo que ya usa el Arqueo. No se
+          // crea un número paralelo a propósito: dos lugares con la misma plata es el error
+          // anotado de punta a punta en este archivo.
+          // NO se toca `finanzas/_ts/mp`: esa fecha es la del DISPONIBLE, que él sigue cargando a
+          // mano. Pisarla haría ver al disponible más fresco de lo que está, que es justo la
+          // confusión de dos números distintos pegados uno al lado del otro.
+          await db.set('cyc/finanzas/mp_liq', Math.round(totalLiq));
+          const v = parseFloat(await db.get('cyc/finanzas/mp_liq'));
+          console.log(`   "A liquidar en ML" del Arqueo: ${Math.round(v) === Math.round(totalLiq) ? '✅ actualizado y releído' : '❌ no quedó'}`);
+        } else {
+          console.log(`   NO se tocó "A liquidar en ML" del Arqueo: ${cuentasOk !== labels.length
+            ? 'falta alguna cuenta y el total estaría corto'
+            : 'la cuenta no cierra contra las ventas'}.`);
+        }
       } else if (APLICAR) {
         console.log('   NO se guardó nada: no se pudo calcular ninguna cuenta.');
+      }
+
+      // Y SE PIDE EL REPORTE DE LA PRÓXIMA VUELTA. El de hoy ya se usó y mañana va a estar viejo;
+      // pedirlo ahora es lo que hace que el número esté al día sin que nadie se acuerde. Va con la
+      // MISMA función que usa `armarsaldo`.
+      if (APLICAR) {
+        let ped = 0;
+        for (const label of labels) {
+          const acc = accounts[label]; if (!acc?.refresh_token) continue;
+          try {
+            const t = await mlRefresh(ML_CLIENT_ID, ML_CLIENT_SECRET, acc.refresh_token);
+            await db.patch('mlapi/tokens/' + label, { refresh_token: t.refresh_token, updated_ts: Date.now() });
+            const q = await pedirReporteMP({ Authorization: `Bearer ${t.access_token}` }, 90);
+            if (q.ok) ped++; else console.log(`   reporte de mañana · ${label}: ❌ ${q.txt}`);
+          } catch { console.log(`   reporte de mañana · ${label}: ❌ no pude renovar el token`); }
+        }
+        console.log(`   reporte para la próxima vuelta: ${ped} de ${labels.length} pedidos`);
       }
       console.log('\n   OJO: esto es lo que FALTA COBRAR, no el disponible. El disponible necesita un');
       console.log('   punto de partida que el reporte no da, así que ése se sigue cargando a mano.');
@@ -12701,17 +12768,14 @@ async function main() {
           } catch (e) { console.log(`   retiros adentro: ❌ ${String(e.message || e).slice(0, 90)}`); fall++; continue; }
         }
         // 2) PEDIR EL REPORTE NUEVO. Tarda en procesarse: no se baja acá, se baja después.
+        //    Va por `pedirReporteMP`, la MISMA función que usa `saldoml`: si las fechas se
+        //    calcularan en dos lugares, uno se arregla y el otro se queda con el 400.
         if (!APLICAR) { console.log(`   reporte ${iso(desde).slice(0, 10)} → ${iso(hasta).slice(0, 10)}: con ":go" se pide`); continue; }
-        try {
-          const r = await fetch(`${MP}/v1/account/settlement_report`, {
-            method: 'POST', headers: H,
-            body: JSON.stringify({ begin_date: iso(desde), end_date: iso(hasta) }),
-            signal: AbortSignal.timeout(25000),
-          });
-          const txt = (await r.text() || '').replace(/\s+/g, ' ').slice(0, 160);
-          console.log(`   pedir el reporte (${iso(desde).slice(0, 10)} → ${iso(hasta).slice(0, 10)}): ${r.ok ? '✅ pedido' : '❌ HTTP ' + r.status + ' · ' + txt}`);
-          if (r.ok) ok++; else fall++;
-        } catch (e) { console.log(`   pedir el reporte: ❌ ${String(e.message || e).slice(0, 90)}`); fall++; }
+        {
+          const q = await pedirReporteMP(H, DIAS);
+          console.log(`   pedir el reporte (${q.desde.slice(0, 10)} → ${q.hasta.slice(0, 10)}): ${q.ok ? '✅ pedido' : '❌ ' + q.txt}`);
+          if (q.ok) ok++; else fall++;
+        }
       }
       console.log(`\n── RESUMEN ──`);
       console.log(`   cuentas listas: ${ok} · con problema: ${fall}`);
