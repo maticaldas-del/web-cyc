@@ -343,6 +343,9 @@ Los que más se usan:
 | `permisos` | **por qué ML no deja escribir**: qué le deja hacer a la aplicación, traducido · solo lee |
 | `probarsaldo2` | **¿se puede leer el saldo de la cuenta?** 11 endpoints que `probarsaldo` no probaba · solo lee |
 | `saldo3` | **agotar el saldo**: 14 puertas · baja el reporte de liquidación y muestra sus columnas · solo lee |
+| `versaldo[:cuenta]` | **cómo viene el reporte de liquidación**: filas, tipos de movimiento, si trae los retiros · **no imprime ni un peso** · solo lee |
+| `armarsaldo[:días][:go]` | **prepara el reporte del saldo**: prende los retiros y lo pide · escribe en Mercado Pago, por eso pide `:go` · no mueve un peso |
+| `probarrep` | **por qué Mercado Pago no deja pedir el reporte**: 7 formas en una sola corrida · solo lee |
 | `verweb:<direccion>` | **leer una página de afuera y mostrar su texto** · el chat no tiene internet y el robot sí · solo lee · **lo que imprime queda en el registro PÚBLICO** |
 | `apis` | qué endpoints de ML contestan (para diagnosticar) |
 | `ciclo` | **no es un comando: vuelve a prender el ciclo de 2 minutos** (ver abajo) |
@@ -3003,6 +3006,53 @@ endpoint existe y lo niega un permiso, que es lo contrario de un 404. **Hipótes
 permiso **"Métricas del negocio"** dice textual *"la información impositiva, **balances** y
 reportes de operaciones"* y él lo puso en SIN ACCESO ese mismo día. Devolverlo y reintentar es
 gratis; **hasta que se mida, es una sospecha y no un hecho.**
+
+### LOS DOS FRENOS DEL REPORTE, YA DESTRABADOS (20/09/2026)
+
+`versaldo` (solo lee) midió el reporte que ya existía en las cuatro cuentas y encontró las DOS
+cosas que lo hacían inservible tal como estaba. **Las dos quedaron arregladas con `armarsaldo:90:go`
+y verificadas releyendo de Mercado Pago (regla 6).**
+
+| | antes | ahora |
+|---|---|---|
+| **los RETIROS adentro** (`include_withdraw`) | ❌ apagado en las 4 | ✅ **prendido y verificado en las 4** |
+| el reporte más nuevo | **JULIO**, y no programado | ✅ **pedido 22/06 → 19/09 en las 4** |
+
+Sin los retiros el disponible da **de MÁS**: se ve plata que él ya sacó. **Un saldo inflado es peor
+que no tener saldo**, que es el mismo lado seguro de siempre.
+
+**NO SE PROGRAMÓ EL REPORTE, a propósito.** Dejarlo automático genera un archivo por día en su
+cuenta para siempre; el robot lo pide cuando lo necesita y eso no le ensucia nada.
+
+**EL DÍA DE HOY NUNCA ENTRA EN EL REPORTE, y eso hay que decirlo cuando se muestre el número.**
+Mercado Pago sólo deja pedir hasta el último día CERRADO. O sea que el saldo que salga de acá es
+**el de ayer al cierre**. Un saldo que dice "hoy" y es de ayer es peor que uno que avisa que le
+falta el último día.
+
+**CÓMO SE ENCONTRÓ, Y EL ERROR QUE COMETÍ EN EL MEDIO.** Mercado Pago contesta
+**400 `"Error creating Statement"`** sin decir qué campo está mal. Probar de a uno era **una corrida
+de GitHub por intento, o sea el ciclo del robot muerto siete veces**, así que se hizo `probarrep`:
+7 formas en UNA sola corrida, en UNA cuenta, cambiando **una sola cosa** por intento.
+**Y la primera conclusión fue la equivocada.** Como las 6 que anduvieron caían en hora redonda,
+escribí que la causa eran *"los minutos y los segundos"*. La corrida siguiente lo desmintió: el
+MISMO pedido de 90 días volvió a dar 400 en las 4. Lo que de verdad los separa es el final —
+`2026-09-19T00:00:00Z` ✅ y `2026-09-20T00:00:00Z` ✅ son días CERRADOS; `2026-09-20T18:06:32Z` ❌ y
+`2026-09-20T18:00:00Z` ❌ son el día de HOY.
+**Y la prueba de que los segundos no eran la causa estaba en la misma pantalla**: el reporte viejo
+de la propia cuenta termina en `T02:59:59Z`, con los segundos en 59.
+**LA LECCIÓN: una explicación que encaja con los casos nuevos y CONTRADICE un dato viejo que ya
+tenías está mal.** La primera se quedó mirando los casos nuevos nomás. Es la variante del *"leí el
+final de la salida y concluí"* que ya está anotada arriba en esta misma sección, dos horas antes.
+**Lo que SÍ hizo bien el método:** probar de a uno habría "arreglado" el 400 bajando la ventana a
+30 días, y el largo de la ventana no tenía nada que ver.
+
+De paso quedó medido: la zona horaria de las cuatro cuentas es **GMT-03** y el separador y las
+columnas del reporte salen de `settlement_report/config`.
+
+**LO QUE FALTA, y es la parte que decide plata:** sumar el reporte (`REAL_AMOUNT` de lo que tenga
+`MONEY_RELEASE_DATE` hasta hoy, menos los retiros), guardarlo y mostrarlo en el Arqueo.
+**Antes de mostrarlo hay que compararlo contra el número que él ya conoce**: un saldo automático
+que no coincide con el de la pantalla de Mercado Pago no se muestra, se investiga.
 
 ### LA PRUEBA DE ESCRITURA LE FALTABA UNA CUENTA, Y LO AGARRÓ ÉL (20/09/2026)
 
