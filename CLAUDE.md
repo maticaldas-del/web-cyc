@@ -2931,6 +2931,37 @@ robot en el momento — si él autoriza y nadie guarda el código, las cuatro cu
 token y **el robot deja de leer también**, que hoy es lo único que anda. **No arrancar el paso 3 sin
 tener eso resuelto primero.**
 
+### ARREGLADO EL 20/09/2026, Y NO HIZO FALTA RE-AUTORIZAR NADA
+
+Él entró al panel de desarrolladores y puso **"Publicación y sincronización"** en **Lectura y
+escritura**. Medido inmediatamente después:
+ · **`permisos`** → `publish-sync ✅` en las cuatro cuentas.
+ · **`probarput`** → **3 publicaciones de 3 cuentas, el precio y el otro campo: los 6 ✅**. ML
+   acepta escribir de nuevo.
+
+**LO QUE MÁS SORPRENDIÓ, y hay que anotarlo porque cambia el procedimiento: el permiso nuevo llegó
+SOLO, sin volver a autorizar.** Los cuatro pasos escritos arriba daban por hecho que había que
+rehacer la autorización en las cuatro cuentas —el paso caro y riesgoso, el que rota los tokens—.
+**No hizo falta**: alcanzó con cambiarlo en el panel, y en la renovación siguiente del permiso ML
+ya devolvió `publish-sync:/read-write`. **La próxima vez, probar primero y recién después planear
+la re-autorización.**
+
+**Y APARECIÓ UN DAÑO AL PASO, que no estaba pedido: él puso "Métricas del negocio" en SIN ACCESO**
+(estaba en Lectura). Ahí viven **las VISITAS de cada publicación**, que el robot pide en **seis
+lugares** —el chequeo de la mañana, `visitas`, `rematar`, `avisos` y las dos cuentas que deciden
+qué bajar—. `permisos` lo confirmó: el permiso **desapareció entero** de las cuatro cuentas
+(`metrics ⚠️ no figura`). **Hay que devolverlo a Lectura**; es sólo lectura y no tiene riesgo.
+**Lo que NO está medido** es si ML ya lo está rechazando o si todavía contesta por inercia — y no
+cambia la decisión, así que no se midió.
+
+**Puso también en escritura Publicidad y Facturación**, que nadie pidió. No rompen nada hoy (no hay
+código que escriba ahí) pero **agrandan el daño si algún día se filtra una llave**, que es el motivo
+por el que conviene pedir lo mínimo. Queda a decisión suya volverlos atrás.
+
+**La Pad 2 ya está a $425.700**: la bajó ÉL a mano el 19/09, cuando probó si ML lo dejaba. Le quedó
+**margen 7,8%** y la caja de compra pasó a **GANANDO**. Está marcada `liquidando`, así que el robot
+no se la sube — que es exactamente para lo que se dejó puesta esa marca.
+
 ### YA LO GRITA: EL ROBOT AVISA CUANDO ML NO LO DEJA ESCRIBIR (19/09/2026)
 
 Es el arreglo de la lección de arriba, y lo que cambia no es el bloqueo —para eso están los pasos
