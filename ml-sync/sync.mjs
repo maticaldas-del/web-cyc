@@ -12483,6 +12483,36 @@ async function main() {
       // CONTRA LO QUE ÉL TIENE CARGADO A MANO. Es la regla del panel: un número automático que no
       // coincide con el que él ya conoce NO se muestra, se investiga. Se compara en PORCENTAJE
       // para no volcar un solo peso al registro público.
+      // PRIMERO, EL CHEQUEO QUE NO DEPENDE DE ÉL: ¿cuántos DÍAS DE VENTA es lo que falta cobrar?
+      // ML libera la plata de una venta en días o pocas semanas, así que lo pendiente tiene que
+      // equivaler a más o menos eso de ventas. Si diera 300 días, el que está mal es este comando.
+      // Se dice en DÍAS a propósito: es una proporción y no vuelca ningún monto al registro público.
+      try {
+        const vp = (await db.get('cyc/ventaprod')) || {};
+        const desde30 = Date.now() - 30 * 864e5;
+        let neto30 = 0, nVentas = 0;
+        for (const [k, ents] of Object.entries(vp)) {
+          const ts = Date.parse(String(k).slice(0, 10).replace(/_/g, '-'));
+          if (!isFinite(ts) || ts < desde30) continue;
+          for (const v of Object.values(ents || {})) {
+            if (!v || v.cancelada) continue;
+            const n = parseFloat(v.neto); if (Number.isFinite(n)) { neto30 += n; nVentas++; }
+          }
+        }
+        if (neto30 > 0 && cuentasOk === labels.length) {
+          const porDia = neto30 / 30;
+          const dias = totalLiq / porDia;
+          console.log(`   lo que falta cobrar = ${dias.toFixed(1)} días de venta (sobre ${nVentas} ventas de 30 días)`);
+          console.log(`   ${dias >= 2 && dias <= 30
+            ? '✅ es lo esperable: ML libera la plata en días o pocas semanas'
+            : '⚠️ ESO NO CIERRA — ML libera en días o pocas semanas, así que este número está mal'}`);
+        } else if (cuentasOk !== labels.length) {
+          console.log('   no se compara contra las ventas: falta alguna cuenta y el total estaría corto.');
+        } else {
+          console.log('   no pude leer las ventas de 30 días para contrastarlo.');
+        }
+      } catch (e) { console.log(`   no pude contrastarlo contra las ventas: ${String(e.message || e).slice(0, 80)}`); }
+
       let aMano = null;
       try { aMano = parseFloat((await db.get('cyc/finanzas/mp_liq')) || 0) || 0; } catch { aMano = null; }
       if (aMano == null) console.log('   no pude leer lo que hay cargado a mano.');
