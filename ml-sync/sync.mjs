@@ -12349,6 +12349,79 @@ async function main() {
       return;
     }
 
+    // BILLING_PROBE=probarrep → ¿POR QUÉ MERCADO PAGO NO DEJA PEDIR EL REPORTE? · SOLO LEE SALVO EL PEDIDO
+    //
+    // POR QUÉ EXISTE (20/09/2026). `armarsaldo:90:go` prendió los retiros en las 4 cuentas (eso
+    // quedó verificado) pero el pedido del reporte contestó **400 "Error creating Statement"** en
+    // las 4, sin decir qué campo está mal. Adivinar formato por formato es una corrida de GitHub
+    // por intento, y **cada corrida a mano mata el ciclo del robot**. Esto prueba TODAS las formas
+    // de una, en UNA cuenta sola, y dice cuál anda.
+    //
+    // NO IMPRIME NI UN PESO y no toca ML ni ningún precio. Lo único que escribe son los pedidos de
+    // reporte, que es lo que se está probando: un reporte de más no molesta a nadie y se puede
+    // borrar. No cambia ninguna configuración.
+    if (String(process.env.BILLING_PROBE || '') === 'probarrep') {
+      const MP = 'https://api.mercadopago.com';
+      const label = 'Matias';
+      const acc = accounts[label];
+      if (!acc?.refresh_token) { console.log('sin token'); return; }
+      const t = await mlRefresh(ML_CLIENT_ID, ML_CLIENT_SECRET, acc.refresh_token);
+      await db.patch('mlapi/tokens/' + label, { refresh_token: t.refresh_token, updated_ts: Date.now() });
+      const H = { Authorization: `Bearer ${t.access_token}`, 'Content-Type': 'application/json' };
+      console.log('=== ¿POR QUÉ NO DEJA PEDIR EL REPORTE? · cuenta ' + label + ' ===\n');
+
+      // 1) La configuración, MOSTRANDO LAS CLAVES Y NO LOS VALORES. Puede haber un campo que haga
+      //    falta (la zona horaria, el idioma) y un valor puede ser un dato suyo: el registro de
+      //    GitHub es público. Los tres campos que deciden se muestran porque no son plata.
+      try {
+        const r = await fetch(`${MP}/v1/account/settlement_report/config`, { headers: H, signal: AbortSignal.timeout(20000) });
+        const c = r.ok ? await r.json() : {};
+        console.log(`configuración (HTTP ${r.status}) · campos: ${Object.keys(c).sort().join(' · ') || '—'}`);
+        console.log(`   retiros adentro: ${c.include_withdraw} · programado: ${c.scheduled} · zona: ${c.display_timezone || '—'}`);
+        if (c.frequency) console.log(`   frecuencia: ${JSON.stringify(c.frequency)}`);
+      } catch (e) { console.log('configuración: ❌ ' + String(e.message || e).slice(0, 90)); }
+
+      // 2) CÓMO ES EL REPORTE QUE YA EXISTE. Es la única prueba de un pedido que SÍ funcionó, así
+      //    que sus fechas dicen qué formato acepta Mercado Pago. Se imprimen sólo las fechas.
+      try {
+        const r = await fetch(`${MP}/v1/account/settlement_report/list`, { headers: H, signal: AbortSignal.timeout(20000) });
+        const l = r.ok ? await r.json() : [];
+        const arr = Array.isArray(l) ? l : (l.results || []);
+        console.log(`\nreportes que ya tiene: ${arr.length}`);
+        for (const x of arr.slice(-3)) {
+          console.log(`   ${x.begin_date} → ${x.end_date} · creado ${x.date_created} · ${x.status || '—'}`);
+        }
+        if (arr.length) console.log(`   campos de un reporte: ${Object.keys(arr[arr.length - 1]).sort().join(' · ')}`);
+      } catch (e) { console.log('lista: ❌ ' + String(e.message || e).slice(0, 90)); }
+
+      // 3) LOS INTENTOS. Cada uno cambia UNA sola cosa respecto del anterior, si no no se sabe cuál
+      //    de los cambios fue el que destrabó. Van de la ventana más chica a la más grande: si la
+      //    corta anda y la larga no, el problema es el LARGO y no el formato.
+      const d = (s) => s;
+      const intentos = [
+        ['ventana corta, los dos a medianoche', `${MP}/v1/account/settlement_report`, { begin_date: '2026-09-01T00:00:00Z', end_date: '2026-09-19T00:00:00Z' }],
+        ['30 días, termina ayer', `${MP}/v1/account/settlement_report`, { begin_date: '2026-08-20T00:00:00Z', end_date: '2026-09-19T00:00:00Z' }],
+        ['60 días', `${MP}/v1/account/settlement_report`, { begin_date: '2026-07-21T00:00:00Z', end_date: '2026-09-19T00:00:00Z' }],
+        ['90 días (la que falló)', `${MP}/v1/account/settlement_report`, { begin_date: '2026-06-22T00:00:00Z', end_date: '2026-09-19T00:00:00Z' }],
+        ['corta, con milésimas y huso -04:00', `${MP}/v1/account/settlement_report`, { begin_date: '2026-09-01T00:00:00.000-04:00', end_date: '2026-09-19T00:00:00.000-04:00' }],
+        ['corta, sólo la fecha sin hora', `${MP}/v1/account/settlement_report`, { begin_date: '2026-09-01', end_date: '2026-09-19' }],
+        ['corta, terminando HOY', `${MP}/v1/account/settlement_report`, { begin_date: '2026-09-01T00:00:00Z', end_date: '2026-09-20T00:00:00Z' }],
+      ];
+      console.log('\n── intentos ──');
+      for (const [comoSeLlama, url, body] of intentos) {
+        try {
+          const r = await fetch(url, { method: 'POST', headers: H, body: JSON.stringify(body), signal: AbortSignal.timeout(25000) });
+          const txt = ((await r.text()) || '').replace(/\s+/g, ' ').slice(0, 130);
+          console.log(`${r.ok ? '✅' : '❌'} ${comoSeLlama} · HTTP ${r.status}${r.ok ? '' : ' · ' + txt}`);
+          if (r.ok) console.log('   ⬆ ÉSTA ANDA. Es la forma que hay que usar.');
+        } catch (e) { console.log(`❌ ${comoSeLlama} · ${String(e.message || e).slice(0, 80)}`); }
+        await new Promise((s2) => setTimeout(s2, 1200));
+      }
+      console.log(d('\n(No se movió un peso, no se tocó ML, no se tocó ningún precio'));
+      console.log('  y no se cambió ninguna configuración. Tampoco se imprimió ningún monto:');
+      console.log('  este registro es público.)');
+      return;
+    }
     // BILLING_PROBE=armarsaldo[:días][:go] → PREPARAR EL REPORTE PARA QUE EL SALDO SE CALCULE SOLO
     //
     // POR QUÉ (20/09/2026). Pedido suyo: *"arma saldo automatico"*. `versaldo` midió el reporte que
