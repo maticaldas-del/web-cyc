@@ -342,6 +342,7 @@ Los que más se usan:
 | `probarcaja:<MLA>[;otro]` | **¿ML dice quién tiene la caja de un catálogo?** vale el código del catálogo o el de una publicación tuya · solo lee |
 | `permisos` | **por qué ML no deja escribir**: qué le deja hacer a la aplicación, traducido · solo lee |
 | `probarsaldo2` | **¿se puede leer el saldo de la cuenta?** 11 endpoints que `probarsaldo` no probaba · solo lee |
+| `saldo3` | **agotar el saldo**: 14 puertas · baja el reporte de liquidación y muestra sus columnas · solo lee |
 | `verweb:<direccion>` | **leer una página de afuera y mostrar su texto** · el chat no tiene internet y el robot sí · solo lee · **lo que imprime queda en el registro PÚBLICO** |
 | `apis` | qué endpoints de ML contestan (para diagnosticar) |
 | `ciclo` | **no es un comando: vuelve a prender el ciclo de 2 minutos** (ver abajo) |
@@ -2963,34 +2964,45 @@ por el que conviene pedir lo mínimo. Queda a decisión suya volverlos atrás.
 **margen 7,8%** y la caja de compra pasó a **GANANDO**. Está marcada `liquidando`, así que el robot
 no se la sube — que es exactamente para lo que se dejó puesta esa marca.
 
-### EL SALDO SIGUE SIN PODERSE LEER, PERO AHORA SE SABE POR QUÉ (20/09/2026)
+### EL SALDO SÍ SE PUEDE SACAR, Y EL TÍTULO DE ESTA SECCIÓN DECÍA LO CONTRARIO (20/09/2026)
 
-Pedido suyo al ver que el permiso de Facturación habilitaba algo: *"si me automatiza algo que yo
-hacía a mano, es oro puro"*. Es el **disponible por cuenta del Arqueo**, que hoy carga a mano.
+**ESTA SECCIÓN SE LLAMABA *"EL SALDO SIGUE SIN PODERSE LEER"* Y ERA FALSO.** La escribí leyendo el
+FINAL de la salida de `probarsaldo2`; arriba, donde no miré, había **TRES endpoints contestando
+200**. Es el error anotado cinco veces acá —leer un pedazo y concluir— y esta vez lo cometí yo
+sobre el dato que él acababa de llamar *"oro puro"*. Lo destapó él pidiendo agotar las
+posibilidades, no un chequeo.
 
-**`probarsaldo` (los 3 de siempre) sigue dando 403 · 404 · 403**, igual que en agosto. Pero esos
-tres son de **MercadoPago** y el permiso nuevo es el de **Facturación de ML** — dos puertas
-distintas, y sólo se había probado una. Comando nuevo **`probarsaldo2`**, 11 endpoints nuevos:
+**LO QUE ABRE, medido con `saldo3` (14 puertas · 3 contestan):**
 
 | | |
 |---|---|
-| `/billing/integration/balance` | ❌ **403 `PolicyAgent`** ← el endpoint EXISTE y nos lo niega una política |
-| `/billing/.../periods?group=MP` | ✅ 200 · trae lo que ML COBRA, no el disponible. **No sirve** |
-| `/billing/.../movements` | ⚠️ **429 · QUEDÓ SIN PROBAR** |
-| los otros 8 (liberaciones, liquidación, movimientos MP, pagos, retiros, cuenta) | ❌ 404 · 405 |
+| **Reporte de liquidación · bajar el archivo** | ✅ **200 · 80.762 caracteres de datos reales** |
+| Reporte de liquidación · lista y configuración | ✅ 200 |
+| Pagos recibidos (`/v1/payments/search`) | ✅ 200 · con pagos del día |
+| `/billing/integration/balance` (con y sin sitio) | ❌ 403 **`PolicyAgent`** |
+| las otras 10 (saldo MP, retiros, movimientos, resumen…) | ❌ 403 · 404 |
 
-**LO QUE CAMBIA RESPECTO DE AGOSTO, y es la parte útil: el 403 de `/billing/integration/balance`
-es de `PolicyAgent`, el MISMO motor que frenaba los precios.** O sea que **el endpoint existe y el
-problema es un permiso**, no que el dato no exista — que es exactamente lo contrario de un 404. La
-nota vieja decía *"la app no tiene ni puede pedir ese permiso"*; **eso ya no se puede afirmar.**
-La sospecha más probable es que ML lo pida para aplicaciones **CERTIFICADAS** (la de CYC figura
-*"Aplicación no certificada"*), pero **eso NO está medido** y no se escribe como si lo estuviera.
+**Y EL ARCHIVO DE LIQUIDACIÓN TRAE JUSTO LO QUE HACE FALTA.** Sus columnas:
+`SOURCE_ID · PAYMENT_METHOD_TYPE · TRANSACTION_TYPE · TRANSACTION_AMOUNT · TRANSACTION_DATE ·
+FEE_AMOUNT · SETTLEMENT_DATE · REAL_AMOUNT · TAXES_AMOUNT · BUSINESS_UNIT · SUB_UNIT ·
+MONEY_RELEASE_DATE`.
+**`MONEY_RELEASE_DATE` es cuándo la plata queda disponible y `REAL_AMOUNT` es cuánto queda neto.**
+O sea que el disponible **se calcula**: lo liberado hasta hoy menos los retiros. **El disponible no
+sale de un endpoint de "saldo": sale de sumar el reporte.**
 
-**Y UNO QUEDÓ SIN PROBAR DE VERDAD: el 429 de `movements`.** Un 429 es el límite de 5 llamadas por
-minuto, **no** es "no existe" — la lección del 21/08 y del 02/09. Hay que reintentarlo solo antes
-de dar el tema por cerrado.
+**LO QUE FALTA PARA QUE FUNCIONE, y NO es gratis — son decisiones suyas:**
+ · el reporte hay que **generarlo** (POST) o dejarlo **programado**: la configuración tiene
+   `scheduled`, `frequency` e **`include_withdraw`**. Sin los retiros adentro el número queda alto;
+ · hace falta **un punto de partida**: el reporte cubre un rango, no "todo". O se pide una ventana
+   larga, o él carga el disponible UNA vez y de ahí en más el robot suma y resta;
+ · y **nada de esto se escribió todavía**: `saldo3` SOLO LEE, ni un POST. Generar o programar un
+   reporte es escribir en la cuenta de MercadoPago y eso se decide con él.
 
-**Mientras tanto el disponible se sigue cargando a mano.** No se muestra ningún número inventado.
+**LOS DOS 403 SON DE `PolicyAgent`, el MISMO motor que frenaba los precios** — o sea que el
+endpoint existe y lo niega un permiso, que es lo contrario de un 404. **Hipótesis NO medida:** el
+permiso **"Métricas del negocio"** dice textual *"la información impositiva, **balances** y
+reportes de operaciones"* y él lo puso en SIN ACCESO ese mismo día. Devolverlo y reintentar es
+gratis; **hasta que se mida, es una sospecha y no un hecho.**
 
 ### LA PRUEBA DE ESCRITURA LE FALTABA UNA CUENTA, Y LO AGARRÓ ÉL (20/09/2026)
 
