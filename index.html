@@ -2294,7 +2294,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='19.88';
+const APP_VERSION='19.89';
 // El problema real que esto resuelve no es curiosidad: es que el celular guarda la app y sigue
 // mostrando la de ayer sin avisar. Varias veces se revisó un cambio que ya estaba subido y no se
 // veía. Por eso, además del número, el chip avisa cuando hay una versión nueva esperando.
@@ -7836,21 +7836,10 @@ function renderVentaProd(){
         :`<span style="padding:1px 7px;border-radius:4px;background:rgba(148,163,184,.18);color:#cbd5e1;font-size:.58rem;font-weight:600;letter-spacing:.04em" title="El comprador canceló · producto devuelto al stock">CANCELADA · devuelto</span>`):'';
       const costLabel=(!isCancelled&&gc>0)?`<span style="font-size:.66rem;color:var(--muted)" title="Costo total ${fmt(gcTot)}: mercadería ${fmt(gc-gmlx)} (costo + envío/embalaje + % reclamos) + impuestos ${fmt(gmlx)} (IIBB ${mlExtraPct(cuenta).toFixed(2)}% + monotributo ${monoPct().toFixed(2)}% del precio)${ggest>0?' + '+fmt(ggest)+' que cobra Full':''}. El % se mide contra este total. La ganancia en pesos NO le resta la gestión de Full: el neto que paga ML ya la trae descontada.">costo ${fmt(gcTot)}</span>`:'';
       const ganLabel=isCancelled?'':(gc>0?`<span style="font-size:.66rem;color:${gg>=0?'var(--green)':'var(--red)'}">gan. ${fmt(gg)}</span>`:`<span style="font-size:.62rem;color:var(--muted)">neto ${fmt(gn)}</span>`);
-      // LO QUE SE QUEDÓ ML EN ESA VENTA (21/09/2026). Estaba a la vista y había que hacer la resta
-      // de cabeza: el renglón muestra el total y el neto, y la diferencia es lo de ML.
-      // **Se calcula como total − neto y NO se usa el `mlfee` guardado, a propósito.** `mlfee` deja
-      // AFUERA las retenciones (SIRTAC y compañía) mientras que el neto las trae descontadas, así
-      // que poner ese número acá daría MENOS que la resta del mismo renglón. Dos números correctos,
-      // uno al lado del otro, dando una conclusión falsa — la lección de las tres cajas del 03/09.
-      // Y VA SIN PORCENTAJE (21/09/2026, pedido suyo: *"dame un solo %, el real"*). La primera
-      // versión ponía "ML $1.749 (65%)" al lado del "+22%" de ganancia, y los dos % del mismo
-      // renglón miden cosas distintas: uno es la tajada de ML sobre el PRECIO, el otro la ganancia
-      // sobre el COSTO. Los dos eran correctos y juntos invitaban a compararlos, que es la lección
-      // de las tres cajas de la ficha otra vez. **El % del renglón es uno solo y es el de ganancia**,
-      // que es el que decide; la tajada de ML queda en pesos, que es como se lee sin confundirse.
-      let _gt=0;grp.items.forEach(v=>{if(!isCancelled)_gt+=v.total||0;});
-      const _ml=_gt-gn;
-      const mlLabel=(isCancelled||!(_gt>0)||!(_ml>0))?'':`<span style="font-size:.62rem;color:var(--muted)" title="Lo que ML se quedó de esta venta: comisión, cargo fijo, envío de Full y retenciones. Es el total que pagó el comprador menos lo que te depositan. NO incluye el IIBB ni el monotributo, que ML factura aparte y ya están contados en el costo. Va SIN porcentaje a propósito: el único % del renglón es el de ganancia.">ML ${fmt(_ml)}</span>`;
+      // EL RENGLÓN NO MUESTRA LO QUE SE QUEDÓ ML (21/09/2026). Estuvo un rato y él lo sacó:
+      // *"que no se vea ml, total no me sirve para nada a mi"*. El dato era correcto —total −
+      // neto, los dos del MISMO renglón— pero no decide nada: lo que mira es la ganancia.
+      // Un número de más en un renglón de una lista larga es ruido, y el ruido se saca.
       // ── CUÁNDO LLEGÓ, Y SI VOLVIÓ (21/09/2026) ────────────────────────────────────
       // Lo trae el robot del envío de ML una vez por día y vive en `cyc/entregas`, aparte de la
       // venta (el ciclo de 2 minutos reescribe la venta entera y ahí adentro se borraría solo).
@@ -7882,7 +7871,6 @@ function renderVentaProd(){
           ${cancelBadge}
           ${grp.items.length>1?`<span style="font-size:.64rem;color:var(--muted)">${grp.items.length} prod.</span>`:''}
           <span style="flex:1"></span>
-          ${mlLabel}
           ${entLabel}
           ${costLabel}
           ${ganLabel}

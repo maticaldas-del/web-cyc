@@ -4233,9 +4233,13 @@ Probado con el bloque REAL del archivo y 7 casos.
    juntos invitaban a compararlos**: uno es la tajada de ML sobre el PRECIO y el otro la ganancia
    sobre el COSTO, así que restarlos o mirar uno como explicación del otro no da nada. Es la misma
    lección de las tres cajas de la ficha, con dos por cientos en vez de tres pesos.
-   **El % del renglón es UNO solo y es el de ganancia**, que es el que decide; la tajada de ML
-   queda en pesos. Probado con las líneas REALES del archivo y 6 casos: los que tienen margen
-   muestran exactamente un %, y el sin costo y la cancelada no muestran ninguno.
+   **El % del renglón es UNO solo y es el de ganancia**, que es el que decide.
+   **Y AL RATO ÉL SACÓ EL RENGLÓN ENTERO:** *"que no se vea ml, total no me sirve para nada a mi"*.
+   O sea que el dato estaba bien calculado y **no contestaba ninguna pregunta suya** — lo que mira
+   es la ganancia. **Sacar el % no alcanzaba: sobraba el número.** Es la misma lección del color
+   del 26/08 puesta en datos: un número de más en un renglón de una lista larga es ruido, y el
+   ruido tapa lo que sí decide. Probado con las líneas REALES del archivo y 6 casos: el renglón
+   queda en costo · ganancia · **un solo %**, y ML no aparece por ningún lado.
  · **En Vinculaciones**: desde cuándo el panel conoce la publicación (`altaTs`) y las marcas que le
    puso el robot (`noVendemosMas`, `altaSinVender`, `altaPorCatalogo`).
  · **`upid` se deja sin mostrar a propósito**: es el id con el que ML agrupa sus publicaciones y ya
