@@ -359,6 +359,7 @@ Los que más se usan:
 | `armarcuenta[:go]` | **crear el reporte "saldo en cuenta"** · hoy no se puede por API, queda para cuando él lo cree |
 | `saldobill` | **¿se abrió el saldo directo de ML?** de a una y espaciado, para que el 429 no ensucie · solo lee |
 | `clavesmalas` | **nombres de variante que Firebase no puede guardar** (rompen "Cargar lo sugerido") · solo lee |
+| `cupofull` | **¿la API dice cuántas unidades se pueden mandar a Full?** (medido: NO, 14 puertas × 4 cuentas) · solo lee |
 | `apidoc:<direccion>` | **las direcciones de API que aparecen en una página de documentación** · sólo las rutas, no el texto entero · solo lee |
 | `verweb:<direccion>` | **leer una página de afuera y mostrar su texto** · el chat no tiene internet y el robot sí · solo lee · **lo que imprime queda en el registro PÚBLICO** |
 | `apis` | qué endpoints de ML contestan (para diagnosticar) |
@@ -3221,9 +3222,19 @@ ver con el cupo de Full. Es exactamente el error anotado el 17/09 con los catál
 se distinguen por cómo se llaman.** Dar ese número como si fuera el cupo de Full sería darle un
 número que no es el que mira.
 
-**Lo que NO se hizo, y hay que decirlo:** se leyó la documentación, no se golpeó puerta por puerta
-con el token. Queda ofrecido el barrido (8 o 10 direcciones candidatas, una corrida) para cerrarlo
-con datos en vez de con la documentación.
+**Y EL BARRIDO SE CORRIÓ EL MISMO DÍA, así que esto ya NO es una deducción de la documentación:
+`cupofull` probó 14 direcciones × 4 cuentas = 56 intentos.** De 56, **contestaron 4 — y las 4 son
+la MISMA dirección**: `/users/<id>/shipping_preferences`, o sea la configuración de envíos, que
+trae los modos de logística y **ningún número de capacidad**. Las 14 de cupo fallaron en las
+cuatro cuentas: **36 con 404** y **20 que ni siquiera son rutas de la API** (devuelven una página
+web, que no es lo mismo que un 404 y por eso se distinguen).
+Se probaron las de capacidad por vendedor (`/users/<id>/stock/fulfillment/capacity`,
+`/stock/fulfillment/inbound/capacity`, `/inbound/limits`, `/fbm/capacity`, `/marketplace/...`), las
+de "cuánto conviene reponer" según ML (`restock`, `inbound/recommendations`), la del sitio
+(`/sites/MLA/fulfillment/capacity`) y las dos por inventario, con un `inventory_id` REAL de Full en
+cada cuenta —sin él dan 400 y el resultado no valdría nada, que es lo que pasó con
+`operations/search` en el probe de inbound—.
+**El cupo de Full queda CERRADO. No se vuelve a probar sin un dato nuevo.**
 
 **Y DE PASO SE ARREGLÓ `apidoc`, QUE DEVOLVÍA CERO EN LA DOCUMENTACIÓN DE ML.** El patrón sólo
 miraba `/v1/…` y `/v2/…`, que es como escribe MercadoPago; las de MercadoLibre no llevan versión
