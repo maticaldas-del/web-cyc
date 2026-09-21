@@ -12997,7 +12997,16 @@ async function main() {
           const l = r.ok ? await r.json() : [];
           const arr = Array.isArray(l) ? l : (l.results || []);
           if (!arr.length) { console.log('   (todavía no hay ningún archivo generado)'); continue; }
-          const ult = arr[arr.length - 1];
+          // EL MÁS NUEVO SE ELIGE POR FECHA, no por ser el último de la lista. Que MercadoPago
+          // devuelva los reportes ordenados es una suposición que nadie midió, y acá decide si se
+          // está mirando el archivo viejo o el nuevo — o sea, si el chequeo dice la verdad.
+          // Es la misma trampa que la lista de ofertas de ML, que un comentario daba por ordenada
+          // por precio y no lo estaba.
+          const conFecha = arr.filter((x) => x && (x.date_created || x.begin_date));
+          const ult = conFecha.length
+            ? conFecha.reduce((a2, b2) => (String(b2.date_created || b2.begin_date) > String(a2.date_created || a2.begin_date) ? b2 : a2))
+            : arr[arr.length - 1];
+          console.log(`   archivos generados: ${arr.length}${conFecha.length ? '' : ' (ninguno trae fecha: se mira el último de la lista)'}`);
           const nom = String(ult.file_name || ult.fileName || ult.id || '');
           const r2 = await fetch(`${MP}/v1/account/settlement_report/${encodeURIComponent(nom)}`, { headers: H, signal: AbortSignal.timeout(30000) });
           const txt = r2.ok ? await r2.text() : '';
