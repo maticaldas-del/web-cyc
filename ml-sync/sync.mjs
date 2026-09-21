@@ -24739,6 +24739,90 @@ async function main() {
       console.log(`\nEl panel usa 15% fijo para TODOS los tamaños (RECARGO_PY). Con una sola compra medida esto es una referencia, no un número para cambiar el panel: hacen falta dos o tres para separar bien lo fijo de lo variable.`);
       return;
     }
+    // BILLING_PROBE=pesopedido → ¿CUÁNTO PESA EL PEDIDO DE PARAGUAY QUE ESTÁ CARGADO?
+    //
+    // Pedido suyo del 21/09/2026: *"no podes sacar un aprox del peso de este pedido? ahi ya tenes
+    // el costo"*. Hace falta porque el correo de Vía Cargo **se cobra por PESO** (la guía del
+    // 09/09: 5,50 kg → $12.950), así que el peso de la caja es lo que decide esa parte del costo.
+    //
+    // **NO INVENTA NINGÚN PESO.** El peso de cada candidato lo carga el chat de compras a mano y
+    // es un texto libre (`peso`), así que puede venir de cualquier forma o no venir. Acá se lee lo
+    // que hay, se convierte SÓLO cuando la unidad está escrita, y **lo que no se puede leer se
+    // cuenta y se nombra** en vez de contarse como cero — un cero en un peso se lee como "no pesa"
+    // y es el error anotado de punta a punta en este archivo.
+    //
+    // **Y el total dice contra CUÁNTOS productos se midió.** Un peso "total" sacado de la mitad de
+    // la lista no es el peso del pedido: es un piso. Se dice con esas palabras.
+    //
+    // **Lo que NO puede saber, y lo aclara:** lo que pesa el EMBALAJE (la caja, el relleno) y si
+    // el correo cobra por peso real o por volumen. Eso lo sabe el que despacha.
+    //
+    // SOLO LEE. No escribe nada, no toca ML ni la base.
+    if (/^pesopedido(:|$)/.test(String(process.env.BILLING_PROBE || ''))) {
+      const cands = (await db.get('cyc/candidatos_py')) || {};
+      // Convierte el texto del peso a kilos SÓLO si dice la unidad. Sin unidad no adivina.
+      const aKg = (txt) => {
+        const t = String(txt == null ? '' : txt).toLowerCase().replace(/\s+/g, ' ').trim();
+        if (!t) return { kg: null, por: 'vacío' };
+        const m = t.match(/(\d+(?:[.,]\d+)?)\s*(kgs?|kilos?|kilogramos?|grs?|gramos?|g\b)?/);
+        if (!m) return { kg: null, por: 'no se entiende' };
+        const n = parseFloat(m[1].replace(',', '.'));
+        if (!isFinite(n) || n <= 0) return { kg: null, por: 'no se entiende' };
+        const u = (m[2] || '').trim();
+        if (/^k/.test(u)) return { kg: n, por: 'kg' };
+        if (/^g/.test(u)) return { kg: n / 1000, por: 'gramos' };
+        return { kg: null, por: 'SIN UNIDAD (no adivino si son kilos o gramos)' };
+      };
+
+      const filas = [];
+      for (const [cid, c] of Object.entries(cands)) {
+        const u = parseInt(c && c.pedirU) || 0;
+        if (!(u > 0)) continue;
+        if (c && (c.no || c.prodId)) { filas.push({ nom: String(c.nombre || cid).slice(0, 60), u, descartado: true }); continue; }
+        const p = aKg(c.peso);
+        filas.push({ nom: String(c.nombre || cid).slice(0, 60), u, kg: p.kg, por: p.por, crudo: String(c.peso || '').slice(0, 40), med: String(c.medidas || '').slice(0, 40) });
+      }
+
+      console.log('=== CUÁNTO PESA EL PEDIDO DE PARAGUAY CARGADO (solo lee) ===');
+      console.log('El correo de Vía Cargo se cobra POR PESO, así que esto es lo que define esa parte del costo.\n');
+      if (!filas.length) { console.log('No hay ningún candidato con unidades cargadas en el pedido.'); return; }
+
+      const vivos = filas.filter((f) => !f.descartado);
+      const conPeso = vivos.filter((f) => f.kg != null);
+      const sinPeso = vivos.filter((f) => f.kg == null);
+      let totU = 0, totKg = 0, uMedidas = 0;
+      for (const f of vivos) totU += f.u;
+      for (const f of conPeso) { totKg += f.kg * f.u; uMedidas += f.u; }
+
+      for (const f of vivos.sort((a, b) => (b.kg || 0) * b.u - (a.kg || 0) * a.u)) {
+        if (f.kg != null) console.log(`  ${String(f.u).padStart(2)} u × ${f.kg.toFixed(3)} kg = ${(f.kg * f.u).toFixed(2)} kg · ${f.nom}`);
+        else console.log(`  ${String(f.u).padStart(2)} u × ?  ⚠️ ${f.por}${f.crudo ? ` (dice "${f.crudo}")` : ''}${f.med ? ` · medidas "${f.med}"` : ''} · ${f.nom}`);
+      }
+
+      const desc = filas.filter((f) => f.descartado);
+      if (desc.length) {
+        console.log(`\n${desc.length} con unidades colgadas que NO van en el pedido (descartados o ya con ficha), no se cuentan:`);
+        desc.forEach((f) => console.log(`  ${f.u} u · ${f.nom}`));
+      }
+
+      console.log(`\n───── LO QUE SE PUDO MEDIR ─────`);
+      console.log(`${vivos.length} producto(s) · ${totU} unidades en el pedido`);
+      console.log(`Con peso cargado: ${conPeso.length} producto(s) · ${uMedidas} unidades · ${totKg.toFixed(2)} kg`);
+      if (sinPeso.length) {
+        console.log(`SIN peso: ${sinPeso.length} producto(s) · ${totU - uMedidas} unidades`);
+        console.log(`⚠️ Entonces esos ${totKg.toFixed(2)} kg son un PISO, no el peso del pedido: le faltan ${totU - uMedidas} unidades.`);
+        if (conPeso.length) {
+          const prom = totKg / uMedidas;
+          console.log(`   Si las que faltan pesaran lo mismo que el promedio medido (${prom.toFixed(3)} kg), el total daría ${(prom * totU).toFixed(2)} kg — pero eso es una REGLA DE TRES, no una medición.`);
+        }
+      } else {
+        console.log(`✓ Todos los productos del pedido tienen el peso cargado.`);
+      }
+      console.log(`\nLo que esto NO incluye y lo sabe el que despacha: lo que pesa el EMBALAJE (caja y relleno),`);
+      console.log(`y si el correo cobra por peso real o por volumen. Para cargarle el peso a un candidato que no lo tiene,`);
+      console.log(`se escribe en su tarjeta de "Para probar".`);
+      return;
+    }
     if (/^porquecaja(:|$)/.test(String(process.env.BILLING_PROBE || ''))) {
       const q = String(process.env.BILLING_PROBE).slice('porquecaja:'.length).trim();
       if (!q) { console.log('Usá: porquecaja:adaptador'); return; }
