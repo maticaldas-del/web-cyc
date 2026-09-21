@@ -6751,13 +6751,18 @@ async function main() {
       // **Manda el nuevo**: el motor de políticas de ML (`PolicyAgent`) mira ESE. Por eso una
       // aplicación puede tener el "write" viejo y no poder escribir nada — que es exactamente lo
       // que pasa acá y lo que la primera versión de este comando leyó mal.
+      // El tercer campo dice si el robot NECESITA escribir o le alcanza con leer. Sin eso, un
+      // permiso en "sólo lee" salía con ❌ aunque fuera EXACTAMENTE lo que corresponde —el robot
+      // sólo LEE las ventas y las visitas— y un ❌ sobre algo que está bien entrena a ignorar los
+      // ❌. Es la misma lección del `⚠️ VENDE` de `nomandar` y del aviso diario: un aviso que suena
+      // cuando no tiene que sonar es el que después no se mira.
       const QUE_ES = [
-        ['publish-sync', 'CAMBIAR PUBLICACIONES (precio, título, activar/pausar)'],
-        ['offers', 'sacar y poner promociones'],
-        ['comunication', 'contestar preguntas y mensajes'],
-        ['orders-shipments', 'ventas y envíos'],
-        ['invoices', 'facturación'],
-        ['metrics', 'métricas y visitas'],
+        ['publish-sync', 'CAMBIAR PUBLICACIONES (precio, título, activar/pausar)', true],
+        ['offers', 'sacar y poner promociones', true],
+        ['comunication', 'contestar preguntas y mensajes', true],
+        ['orders-shipments', 'ventas y envíos (el robot sólo lee)', false],
+        ['invoices', 'facturación (el robot sólo lee)', false],
+        ['metrics', 'métricas y visitas (el robot sólo lee)', false],
       ];
       console.log('=== QUÉ PERMISOS LE DA ML A LA APLICACIÓN ===\n');
       console.log(`Aplicación ${_tapar(ML_CLIENT_ID)} (tapada a propósito: este registro es público)\n`);
@@ -6788,15 +6793,23 @@ async function main() {
           estado[clave] = !reng.length ? 'no figura' : reng.some((s) => s.endsWith('/read-write')) ? 'escribe' : 'solo lee';
         }
         porCuenta.push({ label, estado, viejoWrite: sc.includes('write') });
-        const resumen = QUE_ES.map(([c]) => `${c} ${estado[c] === 'escribe' ? '✅' : estado[c] === 'solo lee' ? '❌ solo lee' : '⚠️ no figura'}`).join(' · ');
+        const resumen = QUE_ES.map(([c, , necesitaEscribir]) => {
+          const e = estado[c];
+          if (e === 'no figura') return `${c} ⚠️ no figura`;
+          if (e === 'escribe') return `${c} ✅`;
+          return `${c} ${necesitaEscribir ? '❌ solo lee' : '✅ solo lee (alcanza)'}`;
+        }).join(' · ');
         console.log(`${label}: ${resumen}`);
       }
       if (porCuenta.length) {
         console.log('\n── QUÉ PUEDE Y QUÉ NO ──');
-        for (const [clave, texto] of QUE_ES) {
+        for (const [clave, texto, necesitaEscribir] of QUE_ES) {
           const est = [...new Set(porCuenta.map((p) => p.estado[clave]))];
           const igual = est.length === 1;
-          const marca = igual ? (est[0] === 'escribe' ? '✅ SÍ' : est[0] === 'solo lee' ? '❌ NO (sólo lee)' : '⚠️ no figura') : '⚠️ distinto según la cuenta';
+          const marca = !igual ? '⚠️ distinto según la cuenta'
+            : est[0] === 'escribe' ? '✅ SÍ'
+            : est[0] === 'no figura' ? '⚠️ no figura'
+            : (necesitaEscribir ? '❌ NO (sólo lee, y hace falta que escriba)' : '✅ sólo lee, que es lo que hace falta');
           console.log(`   ${texto}: ${marca}`);
         }
         console.log(`\n   El permiso VIEJO "write" lo tienen ${porCuenta.filter((p) => p.viejoWrite).length} de ${porCuenta.length} cuentas — y NO sirve de nada: ML mira los de arriba.`);
@@ -6814,8 +6827,15 @@ async function main() {
           console.log('   permiso de publicaciones en lectura Y escritura, y después volver a');
           console.log('   autorizarla en las 4 cuentas para que el permiso nuevo quede guardado.');
         } else if (pub.length === 1 && pub[0] === 'escribe') {
-          console.log('   La aplicación SÍ tiene el permiso de cambiar publicaciones. O sea que el');
-          console.log('   rechazo de ML NO es por permisos y hay que buscarlo en otro lado.');
+          // ESTE TEXTO DECÍA *"el rechazo de ML NO es por permisos y hay que buscarlo en otro
+          // lado"*, y se escribió el 20/09 cuando ML estaba frenando la escritura. Desde que él
+          // puso publish-sync en lectura Y escritura eso quedó resuelto, así que la frase daba
+          // por hecho un rechazo que ya no existe. Es el comentario que promete algo que no está,
+          // esta vez al revés: promete un problema.
+          console.log('   La aplicación TIENE el permiso de cambiar publicaciones. Por acá está todo bien.');
+          console.log('   Si aun así ML rechaza una escritura, NO se concluye desde acá: se confirma');
+          console.log('   contra ML con `probarput`. El panel puede decir una cosa y ML otra, que es');
+          console.log('   exactamente lo que pasó entre el 17 y el 20/09.');
         } else {
           console.log('   El permiso de cambiar publicaciones no está igual en todas las cuentas, o ML');
           console.log('   no lo informó. Mirar el renglón de cada una arriba.');
