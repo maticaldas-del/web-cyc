@@ -12934,13 +12934,14 @@ async function main() {
     // proveedores y de la familia adentro, y el registro de GitHub es público.
     if (String(process.env.BILLING_PROBE || '') === 'extracto') {
       const MP = 'https://api.mercadopago.com';
-      const cuentas = Object.entries(ACCOUNTS);
       let probados = 0, abiertos = 0;
       const conFirma = [];
-      for (const [label, acc] of cuentas) {
+      for (const label of labels) {
+        const acc = accounts[label];
+        if (!acc?.refresh_token) { console.log(`── ${label} ── sin token`); continue; }
         let t;
-        try { t = await getToken(label, acc); }
-        catch (e) { console.log(`── ${label} ── no pude renovar el token: ${String(e.message || e).slice(0, 90)}`); continue; }
+        try { t = await mlRefresh(ML_CLIENT_ID, ML_CLIENT_SECRET, acc.refresh_token); }
+        catch { console.log(`── ${label} ── ❌ no pude renovar el token`); continue; }
         await db.patch('mlapi/tokens/' + label, { refresh_token: t.refresh_token, updated_ts: Date.now() });
         const H = { Authorization: `Bearer ${t.access_token}` };
         console.log(`\n── ${label} ──`);
