@@ -1858,6 +1858,12 @@ detectar la filtración SERÍA la filtración.
 usuario y contraseña** (`FIREBASE_BOT_EMAIL` / `FIREBASE_BOT_PASSWORD`, en los secretos de GitHub)
 y trabaja con un token, no anónimo. Verificado en el código antes de proponer nada.
 
+**MEDIDO EL 21/09/2026: LAS REGLAS YA ESTÁN CERRADAS.** Las tres puertas —la base entera, `cyc` y
+`cyc/ventas`— contestan **401** sin token. O sea que **nadie puede bajarse los datos salteando el
+login**, y la contraseña de la pantalla está protegiendo de verdad. **No hay nada que tocar.**
+Y el pendiente de seguridad que arrastraba esta lista desde el 17/09 **no existía**: era una
+conclusión mía sobre un dato que nunca había medido.
+
 ## LO QUE EL CHAT DE COMPRAS YA BARRIÓ, PARA NO HACERLO DOS VECES (18/09/2026)
 
 El chat que mira comprasparaguay hizo el primer barrido grande y **el estado vivo lo lleva él en su
