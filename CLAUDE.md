@@ -1580,6 +1580,85 @@ Muscular** (Adriana `MLA3128212002` · Ayelen `MLA2209052420` `MLA2681075136`) �
 `MLA3128218754` · Matías `MLA899532398`) · **De la Patagonia KO UNISEX** (Adriana `MLA3082882284`
 con 4 u. · Luciana `MLA3013798466`).
 
+## EL PEDIDO YA HECHO: "EN CAMINO", Y LA COMPRA DEL 21/09 MEDIDA ENTERA (21/09/2026)
+
+Pedido suyo: *"ya esta hecho el pedido de los productos de paraguay que en este momento estan en la
+lista. podes ponerlo en otro lado? que diga en camino y que al clickearla me muestre como fue ese
+pedido, los productos, costos totales, gastos. dias de compras y llegada, pesos aprox. TODO"*.
+
+En Armar el pedido hay un botón **✅ Ya lo pedí**: congela lo cargado y lo pasa a **🚚 Pedidos en
+camino**, arriba del armado. Cada uno se abre y muestra la plata, los días (incluido cuándo
+llegaría, **5 días HÁBILES**, y dice "aprox" porque no sabemos los feriados), el peso, los gastos
+reales y producto por producto con sus dos links.
+
+**VIVE EN `cyc/compraspy/<id>`, QUE ES DONDE YA ESCRIBE `compray`**, a propósito: es la MISMA
+compra. El panel guarda el detalle —lo único que el robot no puede reconstruir— y `compray` le
+agrega los pesos. **El dólar se congela al día del pedido**: con el de hoy, un pedido de la semana
+pasada cambiaría de precio solo.
+
+**Y EL CANDIDATO QUEDA MARCADO `pedidoEn`**, que no es un detalle: sin eso el botón 🪄 Llenar hasta
+el tope volvía a cargar lo que YA está viajando y se compraba dos veces. A mano se sigue pudiendo.
+
+### EL `set` QUE PISABA EL DETALLE, Y LOS DOS INTENTOS QUE ME SALIERON MAL
+
+**PERDÍ 4 DE LOS 12 PRODUCTOS EN LA PRIMERA CORRIDA REAL.** `compray` armaba `items` con los
+candidatos que tuvieran `pedirU > 0`; al apretar "Ya lo pedí" el panel los deja en CERO, así que
+cargar los pesos reales después traía sólo los pocos que él hubiera vuelto a cargar **y los escribía
+encima del detalle bueno**. Guardó 8 donde había 12.
+
+**Mi primer arreglo tapaba sólo la lista VACÍA y no alcanzó**: con 8 de 12 pasaba igual. **Una lista
+más corta no es una corrección, es una pérdida.**
+**Y el segundo intento era peor**: sacaba las unidades de `c.pedidoU`, un campo **que no existe** —
+habría escrito los 12 renglones con 0 unidades. *Antes de leer un campo, mirar que exista.*
+**Cómo quedó: si el pedido ya tiene detalle, NO se toca.** `compray` sólo le agrega los pesos. Las
+unidades viven ÚNICAMENTE en ese detalle, así que volver a armarlo nunca puede mejorarlo.
+
+### LA COMPRA DEL 21/09, MEDIDA CONTRA LA FACTURA DEL MAYORISTA
+
+Él mandó la factura y ahí cerró todo: **12 productos · 23 unidades · US$ 469,40**.
+
+| | |
+|---|---|
+| mercadería | US$ 469,40 · **$760.343** (dólar comprado a $1.620) |
+| el que retira y despacha | **$74.260** |
+| diferencia de la transferencia | $10.367 |
+| correo | **falta** |
+| **recargo real hasta acá** | **17,3%** · con los $25.000 del correo daría **20,7%** |
+
+**EL NÚMERO QUE LE HABÍA DADO A LA MAÑANA (19,4%) ESTABA CORTO, y la causa vale como regla.** Yo
+había sacado la mercadería de lo que se *transfirió* (475,80 USDt menos ~1 del cambista = 474,80) y
+la factura dice **469,40**. **Lo que se mandó no es lo que se compró**: entre las dos cosas hay
+US$ 6,40 que no son mercadería. Con la base más chica el recargo sube. *Cuando hay dos números para
+la misma cosa, el que manda es el del comprobante, no el deducido de un pago.*
+
+**`retira=` es un campo propio y no "otros"**, porque es el gasto FIJO más grande del pedido —
+$74.260 sobre US$ 469,40 son **11,7 puntos** del recargo — y un renglón que dice "otros" no se mira.
+**El correo sin cargar dice "falta", nunca $0**, y el renglón avisa que con eso el recargo está
+CORTO: un cero ahí se lee como "no costó nada".
+
+**LOS PRECIOS DEL PANEL NO SON LOS QUE SE PAGAN.** El panel guarda los de la **lista de Nissei** y
+la factura trae otros: el Corsair figuraba a US$ 29,90 y salió **28,00**, el Sennheiser 45,00 →
+**43,00**, el Sony ZX310 17,50 → **17,00**. Por eso `compray` acepta
+**`det=<cod>*<unidades>*<precio>;…`**, que reescribe el detalle con lo que de verdad se pagó. El
+nombre y los links NO se pasan: se buscan por el código.
+
+**Y APARECIÓ ALGO PARA MIRAR: A LOS CÓDIGOS QUE GUARDA EL CHAT LES FALTA EL PRIMER DÍGITO.** La
+factura dice `7128673` y el panel tiene `128673`; `8104067`→`104067`; `8152721`→`152721`;
+`7151150`→`151150`; `720139`→`20139`. **Cinco de cinco.** No son dos sistemas de códigos distintos
+—eso sería el caso del Cabotine, donde cambia el número entero—: es un dígito que se pierde. Si
+alguna vez arma el pedido copiando del panel, esos códigos están mal. Por eso `det=` compara el
+código **también por el final**. **Falta decírselo al chat de compras.**
+
+### LA MISMA ADVERTENCIA SALÍA DOS VECES EN LA PANTALLA
+
+Él lo planteó como *"hay mucha info en pantalla y no se entiende nada, no me doy cuenta dónde está
+el error"*. **Había un error concreto**: el renglón rojo de la caja de compra (`CAND_NOTA_CAJA`,
+cuatro líneas) estaba impreso en el encabezado de "Para probar" **y otra vez adentro de "Armar el
+pedido"**, a 20 líneas de distancia — se lee como dos avisos distintos y no lo son. Queda UNA, y la
+explicación larga de la sección pasó a un desplegable.
+**Lo que sigue apretado y él todavía no decidió:** cada renglón de producto tira seis datos en una
+sola línea gris del mismo tamaño, y el margen —que es lo que decide— queda en el medio.
+
 ## CADA COMPRA A PARAGUAY, CON SUS COSTOS REALES: `compray` (21/09/2026)
 
 Pedido suyo: *"cuando me lo envien quiero que vayas guardando todos los pedidos con costos de cada
@@ -1590,7 +1669,9 @@ cosa. asi sabemos mejor que % ponerle al precio que aparece en la web de comprap
 ficha nueva, o sea en todos los márgenes y en el patrimonio. Es un número a ojo decidiendo plata.
 
 **Y LO QUE LA PRIMERA COMPRA YA MOSTRÓ: NO ES UN % PAREJO, TIENE UNA PARTE FIJA.** Medido sobre la
-compra real: **19,4%**, que se abre en **5,5% de comprar los dólares** (eso SÍ escala con el tamaño
+compra real: **17,3% sin el correo y ~20,7% con él** (medido contra la FACTURA el 21/09; la primera
+cuenta dio 19,4% porque tomé la mercadería de lo transferido y no del comprobante), que se abre en
+**5,5% de comprar los dólares** (eso SÍ escala con el tamaño
 del pedido) y **13,9% de flete y despacho**, que son **pesos FIJOS por pedido** y no escalan. O sea
 que el mismo 15% es **demasiado en un pedido grande y demasiado poco en uno chico** — es la misma
 forma que el cargo fijo de ML, que hace que el % de comisión suba cuanto más barato es el producto.
