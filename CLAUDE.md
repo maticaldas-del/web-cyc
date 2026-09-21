@@ -362,6 +362,8 @@ Los que más se usan:
 | `cupofull` | **¿la API dice cuántas unidades se pueden mandar a Full?** (medido: NO, 14 puertas × 4 cuentas) · solo lee |
 | `apidoc:<direccion>` | **las direcciones de API que aparecen en una página de documentación** · sólo las rutas, no el texto entero · solo lee |
 | `verweb:<direccion>` | **leer una página de afuera y mostrar su texto** · el chat no tiene internet y el robot sí · solo lee · **lo que imprime queda en el registro PÚBLICO** |
+| `campos[:<MLA>]` | **qué datos manda ML adentro de las puertas que YA usamos** y el código nunca nombra · sólo nombres, ningún valor · solo lee |
+| `reputa` | la reputación de las 4 cuentas y el nombre de los rubros · **escribe** `cyc/reputacion` |
 | `apis` | qué endpoints de ML contestan (para diagnosticar) |
 | `ciclo` | **no es un comando: vuelve a prender el ciclo de 2 minutos** (ver abajo) |
 
@@ -3758,6 +3760,131 @@ con el motivo. Es el `catch {}` vacío anotado cuatro veces: **el dato no se pie
 **LA LECCIÓN, y es nueva: un nombre que escribe una PERSONA puede terminar adentro de una clave de
 base de datos.** El inventario ya lo tenía resuelto con `sid()`; las cajas no, y nadie lo notó hasta
 que él cargó un aroma con un punto. Antes de meter un texto libre en una clave, hay que limpiarlo.
+
+## LO QUE MOSTRABA LUMELÍ Y NOSOTROS NO: MEDIDO Y AGREGADO (21/09/2026)
+
+Él mandó nueve capturas de **Lumelí**, una app para vendedores de ML, con el pedido de siempre:
+*"fijate si hay algo que sirva y no tengamos"*. Comparado contra el panel, de todo lo que muestra
+sobraban **tres** cosas; el resto ya lo teníamos o no aplica.
+
+| | decisión |
+|---|---|
+| **PUBLICIDAD** (inversión y ROAS) | **NO se hace**, decisión suya: *"nuestra estrategia es minimizar los gastos al extremo, para ser los mejores en precios"* |
+| **margen por RUBRO** | hecho |
+| **REPUTACIÓN de las 4 cuentas** | hecho |
+
+**Lo que muestra y ya teníamos:** ganancias con su composición, margen por producto, publicaciones
+activas/pausadas/en revisión, preguntas sin contestar, reclamos, stock y el aviso de "sin costo".
+**Lo que muestra y no nos sirve: "envíos para despachar"** — se vende todo por Full, los despacha ML.
+**Lo que ellos pueden y nosotros no hacemos: contestar las preguntas solas con IA.** Técnicamente se
+puede (el permiso `comunication` escribe, medido el 20/09). **Es una decisión suya y no se tocó.**
+
+**Y UNA COMPARACIÓN QUE ASUSTA AL PEDO: su comisión dice 12,9% y la nuestra 28,3%.** No pagan menos:
+venden celulares de $200.000 y el cargo fijo de ~$1.230 se les diluye. En un perfume de $6.000 ese
+mismo cargo son 20 puntos. Ya estaba medido el 11/09; no hay nada que corregir.
+
+### LAS DOS SE MIDIERON ANTES DE ESCRIBIR UNA LÍNEA DE PANEL (`reputa`)
+
+ · **La reputación NO está en `/users/<id>/seller_reputation`**, que es donde parecía: esa ruta
+   **devuelve una página web**, no un 404. Leer eso como *"ML no da la reputación"* habría cerrado
+   el tema con el error anotado de punta a punta en este archivo. Viene **adentro de `/users/<id>`**.
+ · **El nombre del rubro sale de `path_from_root[0]` de `/categories/<id>`.** El id solo
+   (`MLA352679`) no le dice nada a nadie; lo que sirve es la **raíz** del árbol
+   (*"Belleza y Cuidado Personal"*), que es la granularidad de un margen por rubro.
+
+**Medido en las cuatro cuentas:** las cuatro en **5_green**, con demoras y cancelaciones en **0%**
+(de los envíos se encarga Full). Adriana, Luciana y Matías **platinum**; **Ayelen es la única gold**
+y la que más reclamos tiene (**0,92%**, contra 0,49% de Matías, 0,36% de Luciana y 0% de Adriana).
+
+### CÓMO QUEDÓ, Y LAS DECISIONES QUE NO SON DE FORMA
+
+**La categoría NO cuesta una consulta más:** se pide en la MISMA llamada que la caja de compra ya
+hacía cada hora, agregándola a los `attributes`. **Y se sella ANTES del filtro de activas**: abajo
+se saltean las pausadas porque no pelean ninguna caja, pero **una publicación pausada sigue teniendo
+rubro y su producto sigue habiendo vendido** — sellándola después, todo lo pausado quedaba "sin
+rubro" para siempre y el margen por rubro tenía un agujero mudo.
+
+**El NOMBRE se pide una vez por CATEGORÍA, no por publicación.** La categoría no depende de cuál
+publicación sea: sin esa caché las ~140 preguntaban lo mismo decenas de veces, que es el problema de
+velocidad de la primera versión de `avisos`. Tope de **30 por vuelta** y **no mudo**: las que quedan
+se dicen en el log.
+
+**Si ML no contesta la reputación de una cuenta NO se borra lo que había**: queda el dato anterior
+con su fecha y **la pantalla avisa en ámbar si tiene 2 días o más**. Mismo criterio que la caja de
+compra: un "no sé" que pisa lo que sabíamos es peor que un dato de hace una hora.
+
+**El margen por rubro usa la MISMA cuenta que todo el panel** — la ganancia en pesos contra el costo
+**sin** la gestión de Full (el neto que deposita ML ya la trae descontada) y la gestión **sólo en el
+divisor** del %. Con una cuenta propia, esta tarjeta diría un margen y los KPIs de arriba otro sobre
+las mismas ventas.
+
+**Lo que todavía no tiene rubro se CUENTA Y SE DICE**, no desaparece: si esas ventas se escondieran,
+el total no cerraría contra los KPIs sin que nada lo avise. Y **una venta sin costo cargado no
+entra**: sin costo no hay margen que medir, y contarla daría un 100% inventado.
+
+**El color de la reputación va por el PORCENTAJE, no por el nombre del nivel.** `5_green` es el techo
+de ML y no distingue una cuenta sana de una que viene subiendo reclamos.
+
+**Y la reputación no depende del período elegido arriba, así que el título lo aclara.** Un número que
+no se mueve al cambiar el período, metido en una pantalla que sí lo hace, se lee mal.
+
+**EL ERROR QUE COMETÍ Y AGARRÉ ANTES DE SUBIR: el probe `reputa` tenía la lectura COPIADA adentro**
+en vez de llamar a `reputacionML`. Es el verificador con la cuenta propia, el error anotado una
+docena de veces acá, cometido justo en la herramienta hecha para medir. Ya llama a la función
+compartida — **y su encabezado decía "SOLO LEE", que dejó de ser cierto en ese mismo cambio**: ahora
+escribe `cyc/reputacion`. Las dos cosas se corrigieron juntas.
+
+Probado con las funciones REALES sacadas del archivo: **19 casos de la cuenta y 14 del dibujado**,
+incluidos período vacío, TODO sin rubro, margen negativo, un dato de 5 días y lo que ML no contesta.
+Chequeo de las tres listas más las clases de CSS: **0 funciones, 0 variables, 0 `id` y 0 clases de
+diferencia**.
+
+### EL "+60%" DE UNA VENTA CONTRA EL "44%" DEL PANEL: LOS DOS ESTÁN BIEN
+
+Él lo marcó mirando el renglón del Seagate: *"no entiendo los %. porque dice que da menos y cuando se
+vende da distinto."* **La fórmula es la misma en los dos lados; lo que cambia es el NETO.**
+
+| | de dónde sale |
+|---|---|
+| **44,2%** (15/09) | estimación de **antes de vender**: el envío salía de la **tarifa de ML**, no de una venta |
+| **56,8%** (`unapub`, 21/09) | el real, con el envío **deducido de su primera venta: $6.853** |
+| **+60%** (el renglón de la venta) | el mismo real, pero **sin el cargo de Full en el divisor** |
+
+**Y ese tercer número tiene una causa concreta, no es un error de cuenta:** `gestDeVenta` lee lo que
+cobra Full **de la ficha del producto**, y la ficha del Seagate no lo tenía cargado **porque nunca
+había vendido** — hasta ese día. En cuanto el robot la complete, el renglón pasa solo a ~57%.
+
+**La lección, y es la de siempre del otro lado:** cuando dos números del panel sobre la misma venta
+no coinciden, antes de buscar el error hay que preguntar **cuál de los dos es una estimación**. Acá
+ninguno estaba mal y no había ningún precio que tocar.
+**Y un error mío en el medio, para no repetirlo:** contesté primero que la diferencia eran "~$14.700
+de envío estimado" **antes de correr nada**. El número era inventado: medido, el envío real fueron
+$6.853 y lo que faltaba era el cargo de Full en el divisor. **Una explicación que suena razonable y
+no está medida es una adivinanza con buena redacción.**
+
+## ¿QUÉ DATOS MANDA ML QUE NO ESTAMOS GUARDANDO? `campos` (21/09/2026)
+
+Pedido suyo: *"fijate si hay más info que da ML y no tenemos. por ejemplo el código para enviar
+mercadería a Full (Codera - XCUU22662) que fue re útil. quizás encontrás pequeños datos así para ir
+llenando la web."*
+
+**Su ejemplo es exactamente el motivo del comando.** El `inventory_id` **ya venía** en la respuesta
+que el robot pedía todas las horas para leer el stock de Full, y no se guardaba. No era un endpoint
+nuevo ni un permiso que faltara: **era un campo que pasaba por al lado.**
+
+**`apisnuevas` prueba PUERTAS; `campos` mira ADENTRO de las que ya están abiertas**, que es donde
+estaba el `inventory_id`. Mira la publicación, el stock de Full, la cuenta, una venta y su envío.
+
+**DOS DECISIONES QUE NO SON DE FORMA:**
+ · **NO IMPRIME NI UN VALOR, sólo nombres de campo.** Una orden trae el **nombre, el documento y la
+   dirección del comprador**, y el registro de GitHub es PÚBLICO. Un volcado crudo acá sería el
+   mismo error de `recibidas.json` con otra ropa.
+ · **NO decide por el nombre cuáles ya usamos: lee el CÓDIGO REAL** del robot y del panel y busca
+   ahí. Marcar a ojo cuáles conocemos es justo como se cuelan los que pasan por al lado. Los
+   nombres de menos de 4 letras se dan por conocidos porque dan falsos positivos.
+
+Lista las claves hasta **dos niveles**: el campo útil suele estar adentro de un objeto
+(`shipping.logistic_type`), no suelto arriba de todo.
 
 ## Cosas que ya pasaron (para no repetirlas)
 
