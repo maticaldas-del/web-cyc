@@ -1851,6 +1851,7 @@ function startApp(){
     state.pausaPrecio=d.pausado_precio||{};   // 'no lo compro por ahora, el precio no da' (se revisa solo)
     state.pySinStock=d.py_sinstock||{};       // 'el mayorista no tenía esto hoy' (ver la canasta de US$1.000)
     state.candidatos=d.candidatos_py||{};     // 'Para probar': productos que todavía no vendemos
+    state.compraspy=d.compraspy||{};          // los pedidos a Paraguay ya hechos: en camino y llegados
     _limpiarEnCamino(); // borra los "en camino" que hayan quedado marcados (la función ya no existe)
     state.proveedores=d.proveedores?Object.values(d.proveedores).sort((a,b)=>(a.nombre||'').localeCompare(b.nombre||'','es',{sensitivity:'base'})).map(pv=>({...pv,condiciones:pv.condiciones?Object.values(pv.condiciones).sort((a,b)=>(a.minUSD||0)-(b.minUSD||0)):[]})):[];
     state.metricas =d.metricas ||{};
@@ -2270,7 +2271,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='19.92';
+const APP_VERSION='19.93';
 // El problema real que esto resuelve no es curiosidad: es que el celular guarda la app y sigue
 // mostrando la de ayer sin avisar. Varias veces se revisó un cambio que ya estaba subido y no se
 // veía. Por eso, además del número, el chip avisa cuando hay una versión nueva esperando.
@@ -9300,8 +9301,12 @@ async function candSetPedir(id,v){
 // LA CUENTA VA APARTE DE LA PANTALLA, para poder probarla con la función REAL y no con una copia
 // —la regla de este archivo—. `pedNuevosLlenar` pregunta y escribe; ésta sólo decide.
 function pedLlenarPlan(vivos,tope,maxU,minV){
-  let sinVentas=0, flojos=0;
+  let sinVentas=0, flojos=0, viajando=0;
   const elegibles=(vivos||[]).filter(c=>{
+    // NO VUELVE A CARGAR LO QUE YA ESTÁ VIAJANDO (21/09/2026). Al marcar un pedido como hecho el
+    // candidato queda con `pedidoEn`; sin este filtro el botón lo volvía a meter en el pedido
+    // siguiente y se compraba dos veces. A mano sigue permitido: el que decide es él.
+    if(c.pedidoEn&&((state.compraspy||{})[c.pedidoEn]||{}).estado!=='llego'){viajando++;return false;}
     if(!candPuedePedir(c).ok)return false;
     if(!((parseFloat(c.usd)||0)>0)||!(Number(c.ganancia)>0))return false;
     const v=candVentasDe(c);
@@ -9320,16 +9325,17 @@ function pedLlenarPlan(vivos,tope,maxU,minV){
     while(u<maxU&&total+usd<=tope+0.0001){u++;total+=usd;}
     if(u>antes)suma.push({c,antes,u});
   }
-  return {suma,total:Math.round(total*100)/100,sinVentas,flojos};
+  return {suma,total:Math.round(total*100)/100,sinVentas,flojos,viajando};
 }
 async function pedNuevosLlenar(){
   const tope=pedTopeUSD(), maxU=pedMaxU(), minV=pedMinVent();
   const vivos=candList().filter(c=>!c.no&&!c.prodId);
-  const {suma,total,sinVentas,flojos}=pedLlenarPlan(vivos,tope,maxU,minV);
+  const {suma,total,sinVentas,flojos,viajando}=pedLlenarPlan(vivos,tope,maxU,minV);
   if(!suma.length){
     alert(`No hay nada para agregar.\n\nTope: US$ ${tope.toFixed(2)} · ya cargado: US$ ${total.toFixed(2)}\n\n`
       +(sinVentas?`${sinVentas} candidato(s) quedaron afuera porque no tienen cargadas las ventas de ML.\n`:'')
       +(flojos?`${flojos} no llegan a tus ${minV} ventas.\n`:'')
+      +(viajando?`${viajando} ya están en un pedido en camino (a mano los podés cargar igual).\n`:'')
       +`\nSi querés más, subí el tope o el máximo por producto.`);
     return;
   }
@@ -9337,7 +9343,8 @@ async function pedNuevosLlenar(){
   const det=suma.slice(0,12).map(x=>`  +${x.u-x.antes} u. · US$ ${(parseFloat(x.c.usd)*(x.u-x.antes)).toFixed(2)} · ${x.c.nombre}`).join('\n');
   if(!confirm(`Agregar ${uNuevas} unidad(es) en ${suma.length} producto(s)?\n\n${det}${suma.length>12?`\n  …y ${suma.length-12} más`:''}\n\n`
     +`El pedido queda en US$ ${total.toFixed(2)} de US$ ${tope.toFixed(2)}.\n`
-    +`No saco nada de lo que ya cargaste.`))return;
+    +`No saco nada de lo que ya cargaste.`
+    +(viajando?`\n\n${viajando} no entraron porque ya están en un pedido en camino.`:'')))return;
   for(const x of suma){x.c.pedirU=x.u;await fbSet('candidatos_py/'+x.c.id+'/pedirU',x.u);}
   renderPedidos();
   toast(`Agregadas ${uNuevas} u. · el pedido queda en US$ ${total.toFixed(2)}`);
@@ -9361,6 +9368,218 @@ function pedNuevos(vivos){
     noDan:filas.filter(f=>!candPuedePedir(f.c).ok),
     ganancia:filas.reduce((g,f)=>g+(Number(f.c.ganancia)||0)*f.u,0)};
 }
+// ── EL PEDIDO YA HECHO: "🚚 EN CAMINO" (21/09/2026) ───────────────────────────────────────
+// Pedido suyo: *"ya esta hecho el pedido de los productos de paraguay que en este momento estan
+// en la lista. podes ponerlo en otro lado? que diga en camino y que al clickearla me muestre como
+// fue ese pedido, los productos, costos totales, gastos. dias de compras y llegada, pesos aprox.
+// TODO lo que se te ocurra"*.
+//
+// VIVE EN `cyc/compraspy/<id>`, QUE ES DONDE YA ESCRIBE `compray`, a propósito: es la MISMA compra.
+// El panel la crea cuando él la pide (con el detalle de cada producto, que es lo único que el
+// robot no puede reconstruir después) y `compray` le agrega los pesos REALES cuando llegan la
+// factura y el flete. Dos ramas distintas para la misma compra terminarían diciendo números
+// distintos de lo mismo, que es el error anotado de punta a punta en este archivo.
+//
+// SE CONGELA EL DÓLAR DEL DÍA. Si los pesos se recalcularan con el dólar de hoy, un pedido de la
+// semana pasada cambiaría de precio solo. Es la misma regla que el costo: *"lo que compré a un
+// precio se vende a ese precio"*.
+//
+// Y LOS CANDIDATOS QUEDAN MARCADOS `pedidoEn`, que no es un detalle: sin eso el botón
+// 🪄 Llenar hasta el tope volvía a cargar lo que YA está viajando, y eso se paga dos veces.
+const PY_DIAS_LLEGADA=5;   // días HÁBILES que tarda el pedido de Paraguay (CLAUDE.md, 16/09/2026)
+// Días hábiles desde una fecha, para decir cuándo llegaría. No cuenta feriados: no los sabemos, y
+// por eso el renglón dice "aprox" en vez de dar una fecha como si fuera una promesa.
+function pyMasHabiles(f,n){
+  const d=new Date(f+'T12:00:00-03:00'); let q=n;
+  while(q>0){d.setDate(d.getDate()+1);const dw=d.getDay();if(dw!==0&&dw!==6)q--;}
+  return d;
+}
+// El peso a kilos SÓLO si el texto dice la unidad. Sin unidad no adivina si son kilos o gramos:
+// un cero o un número mal leído en un peso decide lo que cobra el correo. Mismas reglas que el
+// probe `pesopedido` — ahí se mide contra los candidatos de hoy y acá contra los ya pedidos.
+function pyPesoKg(txt){
+  const t=String(txt==null?'':txt).toLowerCase().replace(/\s+/g,' ').trim();
+  if(!t)return null;
+  const m=t.match(/(\d+(?:[.,]\d+)?)\s*(kgs?|kilos?|kilogramos?|grs?|gramos?|g\b)?/);
+  if(!m)return null;
+  const n=parseFloat(m[1].replace(',','.'));
+  if(!isFinite(n)||n<=0)return null;
+  const u=(m[2]||'').trim();
+  if(/^k/.test(u))return n;
+  if(/^g/.test(u))return n/1000;
+  return null;
+}
+function pyCompras(){
+  return Object.entries(state.compraspy||{}).map(([id,c])=>({...c,id})).sort((a,b)=>(b.ts||0)-(a.ts||0));
+}
+// "Ya lo pedí": congela lo que está cargado y lo saca de la lista de armado.
+async function pyPedidoHecho(){
+  const P=pedNuevos(candList().filter(c=>!c.no&&!c.prodId));
+  if(!P.filas.length){toast('No hay nada cargado en el pedido','err');return;}
+  const hoy=new Date(Date.now()-3*3600e3).toISOString().slice(0,10);
+  const id='py'+hoy.replace(/-/g,'');
+  if((state.compraspy||{})[id]&&!confirm(`Ya hay un pedido guardado con la fecha de hoy (${hoy}).\n\n¿Lo pisás con éste?`))return;
+  if(!confirm(`Marcar el pedido como HECHO\n\n${P.filas.length} producto(s) · ${P.unidades} unidad(es) · US$ ${P.crudo.toFixed(2)} crudos\n\nSale de "Armar el pedido" y pasa a "En camino". Las unidades se guardan con su código y su precio de hoy.`))return;
+  const tc=curTC()||0;
+  let kg=0,uKg=0;
+  const items=P.filas.map(f=>{
+    const pk=pyPesoKg(f.c.peso);
+    if(pk!=null){kg+=pk*f.u;uKg+=f.u;}
+    const it={id:f.c.id,nom:String(f.c.nombre||'').slice(0,120),cod:String(f.c.cod||'').trim(),u:f.u,usd:f.usd||null};
+    // Se guarda lo que hace falta para MIRAR el pedido después sin depender de que el candidato
+    // siga existiendo: vence a los 45 días y el detalle se quedaría sin nombre ni links.
+    if(f.c.mlId)it.mlId=String(f.c.mlId).slice(0,200);
+    if(f.c.link)it.link=String(f.c.link).slice(0,300);
+    if(f.c.margen!=null&&isFinite(f.c.margen))it.margen=Math.round(f.c.margen*10)/10;
+    if(Number(f.c.ganancia)>0)it.ganancia=Math.round(Number(f.c.ganancia));
+    if(pk!=null)it.pesoKg=Math.round(pk*1000)/1000;
+    if(f.c.peso)it.pesoTxt=String(f.c.peso).slice(0,40);
+    return it;
+  });
+  const rec={fecha:hoy,ts:Date.now(),estado:'camino',origen:'panel',
+    usdCrudo:Math.round(P.crudo*100)/100, recargo:RECARGO_PY, tcPedido:tc||null,
+    productos:P.filas.length, unidades:P.unidades,
+    gananciaEst:P.ganancia>0?Math.round(P.ganancia):null,
+    pesoKg:uKg>0?Math.round(kg*1000)/1000:null, pesoUnidades:uKg, items};
+  await fbSet('compraspy/'+id,rec);
+  state.compraspy=state.compraspy||{};state.compraspy[id]=rec;
+  // Marcar y vaciar. Si la marca falla se dice: un candidato sin marcar lo vuelve a cargar el
+  // botón de llenar y se compra dos veces.
+  for(const f of P.filas){
+    try{
+      await fbSet('candidatos_py/'+f.c.id+'/pedidoEn',id);
+      await fbSet('candidatos_py/'+f.c.id+'/pedirU',0);
+      f.c.pedidoEn=id;f.c.pedirU=0;
+    }catch(e){toast('No se pudo marcar "'+f.c.nombre+'": revisalo','err',5000);}
+  }
+  await log('Pedido a Paraguay marcado como hecho: '+id+' · US$'+P.crudo.toFixed(2));
+  renderPedidos();toast('Pedido en camino ✓');
+}
+async function pyPedidoLlego(id){
+  const c=(state.compraspy||{})[id];if(!c)return;
+  if(!confirm(`Marcar como LLEGADO el pedido del ${c.fecha}\n\nSale de "En camino". Los productos vuelven a poder cargarse en un pedido nuevo.`))return;
+  const hoy=new Date(Date.now()-3*3600e3).toISOString().slice(0,10);
+  await fbSet('compraspy/'+id+'/estado','llego');
+  await fbSet('compraspy/'+id+'/fechaLlego',hoy);
+  c.estado='llego';c.fechaLlego=hoy;
+  for(const it of (c.items||[])){
+    const k=(state.candidatos||{})[it.id];
+    if(k&&k.pedidoEn===id){try{await fbDel('candidatos_py/'+it.id+'/pedidoEn');delete k.pedidoEn;}catch(e){}}
+  }
+  await log('Pedido de Paraguay llegado: '+id);
+  renderPedidos();toast('Marcado como llegado ✓');
+}
+async function pyPedidoBorrar(id){
+  const c=(state.compraspy||{})[id];if(!c)return;
+  if(!confirm(`Borrar el pedido del ${c.fecha}\n\nSe usa si lo marcaste por error. No devuelve las unidades al armado: eso se vuelve a cargar a mano.`))return;
+  for(const it of (c.items||[])){
+    const k=(state.candidatos||{})[it.id];
+    if(k&&k.pedidoEn===id){try{await fbDel('candidatos_py/'+it.id+'/pedidoEn');delete k.pedidoEn;}catch(e){}}
+  }
+  await fbSet('compraspy/'+id,null);
+  delete state.compraspy[id];
+  await log('Pedido de Paraguay borrado: '+id);
+  renderPedidos();toast('Borrado');
+}
+function pyPedidoDetalleHTML(c){
+  const tc=c.tcPedido||0;
+  const puesto=Math.round((c.usdCrudo||0)*(c.recargo||RECARGO_PY)*100)/100;
+  const pagos=c.pagos||{};
+  const totARS=(Number(pagos.mercaderia)||0)+(Number(pagos.cambista)||0)+(Number(pagos.envio)||0)+(Number(pagos.otros)||0);
+  const hayPagos=totARS>0;
+  const sinPeso=(c.unidades||0)-(c.pesoUnidades||0);
+  const fila=(k,v,ay)=>`<div style="display:flex;justify-content:space-between;gap:10px;font-size:.66rem;padding:2px 0"${ay?` title="${String(ay).replace(/"/g,'&quot;')}"`:''}><span style="color:var(--muted)">${k}</span><span>${v}</span></div>`;
+  return `<div style="padding:4px 2px 2px">
+    <div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:10px">
+      <div style="flex:1;min-width:190px;background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:9px 11px">
+        <div style="font-size:.58rem;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:4px">La plata</div>
+        ${fila('mercadería cruda','US$ '+(c.usdCrudo||0).toFixed(2),'El precio de comprasparaguay, sin el 15%.')}
+        ${fila('con el '+Math.round(((c.recargo||RECARGO_PY)-1)*100)+'%','US$ '+puesto.toFixed(2),'Ese 15% ya incluye comprar los dólares y el flete hasta la oficina.')}
+        ${tc?fila('en pesos',fmt(Math.round(puesto*tc))+' <span style="color:var(--muted);font-size:.9em">· dólar '+fmt(Math.round(tc))+'</span>','Con el dólar del DÍA del pedido, no el de hoy: lo que compraste a un precio no cambia solo.'):fila('en pesos','<span style="color:var(--amber)">no había dólar cargado ese día</span>')}
+        ${c.gananciaEst?fila('si se vende todo deja','<b style="color:var(--green)">'+fmt(c.gananciaEst)+'</b>','Estimado con el margen medido de cada producto al momento del pedido.'):''}
+      </div>
+      <div style="flex:1;min-width:190px;background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:9px 11px">
+        <div style="font-size:.58rem;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:4px">Los días</div>
+        ${fila('pedido el',c.fecha)}
+        ${c.estado==='llego'
+          ? fila('llegó el',(c.fechaLlego||'—')+(c.fechaLlego?' <span style="color:var(--muted)">· '+Math.max(0,Math.round((Date.parse(c.fechaLlego+'T12:00:00-03:00')-Date.parse(c.fecha+'T12:00:00-03:00'))/86400e3))+' d</span>':''))
+          : fila('hace','<b>'+Math.max(0,Math.floor((Date.now()-Date.parse(c.fecha+'T12:00:00-03:00'))/86400e3))+' días</b>')}
+        ${c.estado==='camino'?(()=>{const lleg=pyMasHabiles(c.fecha,PY_DIAS_LLEGADA);const f=lleg.toISOString().slice(0,10);const tarde=Date.now()>lleg.getTime()+86400e3;
+          return fila('llegaría aprox.',`<span style="color:${tarde?'var(--amber)':'var(--text)'}">${f}${tarde?' · ya se pasó':''}</span>`,'Son '+PY_DIAS_LLEGADA+' días hábiles, que es lo que tarda el pedido de Paraguay. No cuenta feriados: por eso dice "aprox".');})():''}
+        ${fila('productos / unidades',(c.productos||0)+' / '+(c.unidades||0))}
+        ${c.pesoKg!=null
+          ? fila('peso aprox.', (c.pesoKg).toFixed(2)+' kg'+(sinPeso>0?` <span style="color:var(--amber)">· es un PISO</span>`:''), sinPeso>0?`Medido sobre ${c.pesoUnidades} de ${c.unidades} unidades: a ${sinPeso} no les habían cargado el peso, así que el pedido pesa MÁS que esto. El correo cobra por peso.`:'Todas las unidades tenían el peso cargado.')
+          : fila('peso aprox.','<span style="color:var(--amber)">no se pudo medir</span>','Ningún producto tenía el peso cargado con su unidad. Un peso inventado decide mal lo que cobra el correo, así que no se inventa.')}
+        ${sinPeso>0&&c.pesoKg!=null?`<div style="font-size:.58rem;color:var(--muted);margin-top:3px;line-height:1.5">le faltan ${sinPeso} unidad${sinPeso===1?'':'es'} sin peso cargado</div>`:''}
+      </div>
+    </div>
+    <div style="background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:9px 11px;margin-bottom:10px">
+      <div style="font-size:.58rem;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:4px">Los gastos reales</div>
+      ${hayPagos?`${fila('mercadería',fmt(Math.round(Number(pagos.mercaderia)||0)))}
+        ${Number(pagos.cambista)>0?fila('cambista',fmt(Math.round(Number(pagos.cambista)))):''}
+        ${fila('envío',fmt(Math.round(Number(pagos.envio)||0)))}
+        ${Number(pagos.otros)>0?fila('otros',fmt(Math.round(Number(pagos.otros)))):''}
+        ${fila('<b>TOTAL</b>','<b>'+fmt(Math.round(totARS))+'</b>')}
+        ${tc&&c.usdCrudo>0?fila('recargo REAL de esta compra','<b>'+(((totARS/tc)/c.usdCrudo-1)*100).toFixed(1)+'%</b> <span style="color:var(--muted)">· el panel usa '+Math.round(((c.recargo||RECARGO_PY)-1)*100)+'%</span>','Lo que de verdad te salió poner esta mercadería en la oficina, contra el 15% que el panel le suma a todo.'):''}
+        ${c.incompleto?`<div style="font-size:.6rem;color:var(--amber);margin-top:4px">⚠️ Marcado INCOMPLETO: le falta el envío, así que ese recargo sale más barato de lo real.</div>`:''}`
+      :`<div style="font-size:.63rem;color:var(--muted);line-height:1.6">Todavía no están cargados. Van cuando tengas la factura y el flete, con <code style="font-size:.95em">compray:${c.fecha}|usd=${(c.usdCrudo||0).toFixed(2)}|merc=&lt;pesos&gt;|envio=&lt;pesos&gt;|go</code> desde el chat.<br>Sin eso el recargo real de esta compra no se puede medir y el panel sigue usando el 15% de siempre.</div>`}
+    </div>
+    <div style="font-size:.58rem;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:5px">Los productos</div>
+    ${(c.items||[]).slice().sort((a,b)=>((b.usd||0)*b.u)-((a.usd||0)*a.u)).map(it=>{
+      const sub=(it.usd||0)*it.u;
+      const lML=it.mlId?(/^https?:/i.test(it.mlId)?it.mlId:'https://www.mercadolibre.com.ar/p/'+String(it.mlId).trim()):'';
+      return `<div class="ingreso-item" style="gap:8px;align-items:flex-start">
+        <div style="flex:1;min-width:150px">
+          <div style="font-size:.7rem;font-weight:600;line-height:1.3">${it.nom||'—'}</div>
+          <div style="font-size:.58rem;color:var(--muted);margin-top:2px;line-height:1.7">
+            ${it.cod?'🔖 '+it.cod:'<span style="color:var(--amber)">🔖 sin código</span>'}
+            ${it.usd?` · US$ ${it.usd.toFixed(2)} + 15% = US$ ${(Math.round(it.usd*RECARGO_PY*100)/100).toFixed(2)} c/u`:' · <span style="color:var(--amber)">sin precio</span>'}
+            ${it.margen!=null?` · margen medido al pedirlo <b style="color:${it.margen>=CAND_PISO_PCT?'var(--green)':'var(--amber)'}">${it.margen.toFixed(1)}%</b>`:' · <span style="color:var(--muted)">sin margen medido</span>'}
+            ${it.pesoKg!=null?` · ${it.pesoKg.toFixed(3)} kg c/u`:(it.pesoTxt?` · peso "${it.pesoTxt}" <span style="color:var(--amber)">(sin unidad, no lo cuento)</span>`:'')}
+            ${(lML||it.link)?`<br>${lML?`<a href="${lML}" target="_blank" rel="noopener" style="color:#60a5fa">ver en ML</a>`:''}${lML&&it.link?' · ':''}${it.link?`<a href="${it.link}" target="_blank" rel="noopener" style="color:#60a5fa">ver en comprasparaguay</a>`:''}`:'<br><span style="color:var(--amber)">sin links guardados</span>'}
+          </div>
+        </div>
+        <div style="text-align:right;font-size:.68rem;white-space:nowrap">
+          <div><b>${it.u}</b> u.</div>
+          <div style="color:var(--muted);font-size:.9em;margin-top:2px">${it.usd?'US$ '+sub.toFixed(2):'—'}</div>
+        </div>
+      </div>`;}).join('')||'<div style="font-size:.63rem;color:var(--muted)">Sin detalle por producto.</div>'}
+    <div style="display:flex;gap:7px;flex-wrap:wrap;margin-top:10px">
+      ${c.estado==='camino'?`<button class="btn btn-add" style="font-size:.66rem;padding:6px 12px" onclick="pyPedidoLlego('${c.id}')">📦 Ya llegó</button>`:''}
+      <button class="btn" style="font-size:.66rem;padding:6px 12px;color:var(--red);border-color:rgba(239,68,68,.35)" onclick="pyPedidoBorrar('${c.id}')" title="Sólo si lo marcaste por error.">🗑️ Borrar este pedido</button>
+    </div>
+  </div>`;
+}
+function pyEnCaminoHTML(){
+  const todas=pyCompras();
+  const camino=todas.filter(c=>c.estado!=='llego');
+  const llegados=todas.filter(c=>c.estado==='llego').slice(0,6);
+  if(!camino.length&&!llegados.length)return '';
+  const tarjeta=(c,enCamino)=>{
+    const puesto=Math.round((c.usdCrudo||0)*(c.recargo||RECARGO_PY)*100)/100;
+    const dias=Math.max(0,Math.floor((Date.now()-Date.parse(c.fecha+'T12:00:00-03:00'))/86400e3));
+    const lleg=enCamino?pyMasHabiles(c.fecha,PY_DIAS_LLEGADA):null;
+    const tarde=lleg?Date.now()>lleg.getTime()+86400e3:false;
+    return `<details style="margin-bottom:7px;background:var(--surface);border:1px solid ${enCamino?(tarde?'var(--amber)':'rgba(56,189,248,.35)'):'var(--border)'};border-radius:9px">
+      <summary style="cursor:pointer;padding:9px 11px;display:flex;align-items:center;gap:9px;flex-wrap:wrap;list-style:none">
+        <span style="font-size:.95rem">${enCamino?'🚚':'📦'}</span>
+        <span style="font-size:.72rem;font-weight:700">Pedido del ${c.fecha}</span>
+        <span style="font-size:.64rem;color:var(--muted)">${c.productos||0} producto${c.productos===1?'':'s'} · ${c.unidades||0} u. · US$ ${puesto.toFixed(2)} puesto</span>
+        <span style="margin-left:auto;font-size:.62rem;color:${enCamino?(tarde?'var(--amber)':'#38bdf8'):'var(--green)'};font-weight:700">
+          ${enCamino?`en camino · hace ${dias} d${tarde?' · ya se pasó':''}`:`llegó${c.fechaLlego?' el '+c.fechaLlego:''}`}
+        </span>
+        <span style="font-size:.6rem;color:var(--muted)">▼</span>
+      </summary>
+      ${pyPedidoDetalleHTML(c)}
+    </details>`;
+  };
+  return `<div style="margin:14px 0 4px">
+    ${camino.length?`<div style="font-size:.7rem;font-weight:700;margin-bottom:6px">🚚 Pedidos en camino <span style="font-weight:400;color:var(--muted);font-size:.9em">· tocá uno para ver cómo fue</span></div>
+      ${camino.map(c=>tarjeta(c,true)).join('')}`:''}
+    ${llegados.length?`<details style="margin-top:6px"><summary style="cursor:pointer;font-size:.64rem;color:var(--muted)">📦 Pedidos que ya llegaron (${llegados.length})</summary>
+      <div style="margin-top:6px">${llegados.map(c=>tarjeta(c,false)).join('')}</div></details>`:''}
+  </div>`;
+}
 function pedNuevosHTML(vivos){
   const P=pedNuevos(vivos), tc=curTC();
   const puesto=Math.round(P.crudo*RECARGO_PY*100)/100;
@@ -9373,7 +9592,6 @@ function pedNuevosHTML(vivos){
       <div style="font-size:.76rem;font-weight:700">🧾 Armar el pedido</div>
       <div style="font-size:.6rem;color:var(--muted)">poné las unidades en cada producto de abajo · la web sólo hace las cuentas</div>
     </div>
-    <div style="font-size:.6rem;color:var(--muted);line-height:1.6;margin:-4px 0 9px">${CAND_NOTA_CAJA}</div>
     <div style="background:var(--surface);border-radius:9px;padding:11px 13px;margin-bottom:9px">
       <div style="font-size:.6rem;color:var(--muted);letter-spacing:.04em">TOTAL DEL PEDIDO · mercadería, sin el 15%</div>
       <div style="font-size:2.1rem;font-weight:700;line-height:1.15;margin:2px 0 3px">US$ ${P.crudo.toFixed(2)}</div>
@@ -9406,6 +9624,8 @@ function pedNuevosHTML(vivos){
     <div style="display:flex;gap:7px;flex-wrap:wrap;margin-bottom:9px">
       <button class="btn btn-add" style="font-size:.66rem;padding:6px 12px" onclick="pedNuevosLlenar()"
         title="Agrega los que más plata dejan por cada dólar gastado hasta llegar al tope. NO saca nada de lo que ya cargaste, y sólo agarra los que pasan el ${CAND_PISO_PCT}% y tu vara de ventas.">🪄 Llenar hasta el tope</button>
+      ${P.filas.length?`<button class="btn btn-add" style="font-size:.66rem;padding:6px 12px;background:rgba(56,189,248,.15);color:#38bdf8;border:1px solid rgba(56,189,248,.35)" onclick="pyPedidoHecho()"
+        title="Congela este pedido y lo pasa a 'En camino', con el código, el precio y el margen de cada producto. Sale de acá y deja de recomendarse.">✅ Ya lo pedí</button>`:''}
       ${P.filas.length?`<button class="btn" style="font-size:.66rem;padding:6px 12px;color:var(--red);border-color:rgba(239,68,68,.35)" onclick="pedNuevosVaciar()">🗑️ Vaciar el pedido</button>`:''}
     </div>
     ${P.filas.length?P.filas.map(f=>`<div class="ingreso-item" style="gap:10px;align-items:center">
@@ -9677,20 +9897,24 @@ function candidatosHTML(){
   const chip=(txt,col,tit)=>`<span class="pi-var-toggle" style="cursor:default;background:color-mix(in srgb,${col} 12%,transparent);color:${col};border-color:color-mix(in srgb,${col} 35%,transparent)" title="${String(tit||'').replace(/"/g,'&quot;')}">${txt}</span>`;
   const cab=`<div style="margin:22px 0 10px;padding-top:16px;border-top:1px solid var(--border)">
     <div style="font-size:.82rem;font-weight:700">🆕 Para probar <span style="font-weight:400;color:var(--muted);font-size:.9em">· productos que todavía no vendés</span></div>
-    <div style="font-size:.64rem;color:var(--muted);margin-top:4px;line-height:1.5">
-      Van <b>aparte del pedido</b> a propósito: son para evaluar, no para comprar de una. Los trae el chat de Paraguay desde comprasparaguay; el robot les pregunta a ML a cuánto se venden y hace la cuenta.
-      ${fuera?`<br><span style="color:var(--muted)">${fuera} quedaron afuera (descartados, ya con ficha o vencidos a los ${CAND_VENCE_DIAS} días).</span>`:''}
-      <br>${CAND_NOTA_CAJA}
+    <div style="font-size:.62rem;color:var(--muted);margin-top:3px">
+      ${vivos.length} para evaluar${fuera?` · ${fuera} afuera (descartados, con ficha o vencidos)`:''}
+      <details style="display:inline"><summary style="display:inline;cursor:pointer;color:#60a5fa">· cómo funciona esto</summary>
+        <div style="margin-top:6px;line-height:1.6;font-size:.98em">
+          Van <b>aparte del pedido</b> a propósito: son para evaluar, no para comprar de una. Los trae el chat de Paraguay desde comprasparaguay; el robot les pregunta a ML a cuánto se venden y hace la cuenta.
+          <br>${CAND_NOTA_CAJA}
+        </div>
+      </details>
     </div>
   </div>`;
   if(!vivos.length){
-    return cab+simPYHTML()+`<div class="empty-msg" style="font-size:.68rem;line-height:1.6">Todavía no hay ninguno.<br>
+    return cab+simPYHTML()+pyEnCaminoHTML()+`<div class="empty-msg" style="font-size:.68rem;line-height:1.6">Todavía no hay ninguno.<br>
       El chat de Paraguay los carga cuando encuentra algo en comprasparaguay <b>que Nissei ofrezca</b> (ahí salen juntos el código, el precio y que hay stock), cueste menos de US$ 250 puesto y no sea de una marca que ML frena.</div>`;
   }
   // El que más margen deja, primero. Los que todavía no tienen la cuenta hecha van al final:
   // no se pueden comparar contra los medidos y ponerlos arriba sería invitar a decidir sin número.
   vivos.sort((a,b)=>(b.margen??-999)-(a.margen??-999));
-  return cab+simPYHTML()+pedNuevosHTML(vivos)+vivos.map(c=>{
+  return cab+simPYHTML()+pyEnCaminoHTML()+pedNuevosHTML(vivos)+vivos.map(c=>{
     const d=candDias(c);
     const usd=parseFloat(c.usd)||0;
     const puesto=usd>0?Math.round(usd*RECARGO_PY*100)/100:0;
@@ -9748,6 +9972,9 @@ function candidatosHTML(){
         <span style="font-size:.6rem;color:var(--amber)" title="El envío sale de la tarifa de ML porque este producto nunca vendió, y esa tarifa se midió $246 corta el 20/08. El margen real puede ser un poco menor.">· estimado</span>
       </div>`:`<div style="font-size:.68rem;color:var(--muted)">⏳ falta la cuenta de ML. <b>No se muestra ningún porcentaje</b> hasta tenerla: un margen inventado acá se aplica y recién se nota cuando ya compraste.</div>`}
       <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center">
+        ${(()=>{const pe=c.pedidoEn&&(state.compraspy||{})[c.pedidoEn];
+          if(!pe||pe.estado==='llego')return '';
+          return `<span style="font-size:.64rem;color:#38bdf8;font-weight:700" title="Ya está en el pedido del ${pe.fecha}, que está en camino. El botón de llenar no lo vuelve a cargar; si querés más igual lo podés poner a mano.">🚚 en el pedido del ${pe.fecha}</span>`;})()}
         ${(()=>{const Q=candPuedePedir(c),uu=Math.max(0,parseInt(c.pedirU)||0);
           if(Q.ok)return `<label style="display:flex;align-items:center;gap:5px;font-size:.64rem;color:var(--muted)" title="Las unidades de este producto para el pedido. Se suman arriba. No compra nada: sólo arma la lista.">pedir
           <input type="number" min="0" step="1" value="${uu}" onchange="candSetPedir('${c.id}',this.value)" style="width:56px;font-size:.68rem;padding:4px 6px;background:var(--surface2);border:1px solid var(--border);border-radius:6px;color:var(--text)"> u.</label>`;
