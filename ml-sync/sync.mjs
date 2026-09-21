@@ -6487,6 +6487,110 @@ async function main() {
       console.log('Para ver el margen de una: unapub:<el MLA de arriba>');
       return;
     }
+    // BILLING_PROBE=cupofull → ¿LA API DICE CUÁNTAS UNIDADES SE PUEDEN MANDAR A FULL?
+    //
+    // Pregunta suya del 21/09/2026: "la api te dice cuantas unidades puedo enviar a full? o sea el
+    // cupo que tengo para enviar?". La documentación de Envíos Fulfillment documenta TRES
+    // direcciones y ninguna es de cupo (medido con `apidoc` el mismo día), pero **leer la
+    // documentación no es golpear la puerta**: acá se prueban los candidatos uno por uno contra ML
+    // con el token de verdad, que es lo que cierra el tema con datos.
+    //
+    // Mismo método que `probarsaldo` (403 en los tres), `probarinbound` (404 en los siete) y
+    // `probaralmacena` (404 en los diez): lo que salga queda anotado en CLAUDE.md para no volver a
+    // intentarlo cada dos meses.
+    //
+    // SOLO LEE: todas las llamadas son GET. No escribe en ML, ni en MercadoPago, ni en la base.
+    //
+    // OJO CON LO QUE SE IMPRIME: el registro de GitHub es público. Por eso se corta la respuesta y
+    // estas rutas son de CAPACIDAD, no de plata ni de compradores. Si alguna devolviera algo que no
+    // corresponde, se recorta el `slice` antes de volver a correrlo.
+    //
+    // Y VA UNA DE FLEX A PROPÓSITO, que es la trampa de este tema: ML SÍ tiene una API de
+    // "capacidad de envío", pero es la de Flex —cuántos paquetes despachás VOS por día desde tu
+    // casa, con su `capacity_max`— y no tiene NADA que ver con el cupo de Full. Se prueba para
+    // poder decir en qué se diferencian con el dato adelante, en vez de confundirlas por el nombre.
+    // Es el error del 17/09 con los catálogos: dos cosas no se distinguen por cómo se llaman.
+    if (String(process.env.BILLING_PROBE || '') === 'cupofull') {
+      console.log('=== ¿SE PUEDE LEER EL CUPO PARA MANDAR A FULL? (solo lee) ===\n');
+      const RES = { ok: 0, no: 0, raro: 0 };
+      for (const label of labels) {
+        const acc = accounts[label]; if (!acc?.refresh_token) continue;
+        let tok, sid;
+        try {
+          const t = await mlRefresh(ML_CLIENT_ID, ML_CLIENT_SECRET, acc.refresh_token);
+          await db.patch('mlapi/tokens/' + label, { refresh_token: t.refresh_token, updated_ts: Date.now() });
+          tok = t.access_token; sid = acc.seller_id;
+        } catch (e) { console.log(`${label}: no pude entrar (${String(e.message || e).slice(0, 80)})`); continue; }
+        console.log(`══ ${label} · seller ${sid} ══`);
+
+        // Un inventory_id REAL para las rutas que lo piden. Sin él dan 400 y el resultado no vale
+        // nada — es exactamente lo que pasó con `operations/search` en el probe de inbound.
+        let inv = null;
+        const _links = (await db.get('cyc/mllinks')) || {};
+        const mlas = Object.entries(_links)
+          .filter(([m, v]) => m.startsWith('MLA') && v && v.cuenta === label && !v.ignored && (v.status || '') !== 'closed')
+          .map(([m]) => m).slice(0, 40);
+        for (let k = 0; k < mlas.length && !inv; k += 20) {
+          let arr;
+          try { arr = await mlGet('/items?ids=' + mlas.slice(k, k + 20).join(',') + '&attributes=id,inventory_id,variations,shipping', tok); } catch { continue; }
+          for (const w of (arr || [])) {
+            const b = w.body || w; if (!b?.id) continue;
+            if (((b.shipping && b.shipping.logistic_type) || '') !== 'fulfillment') continue;
+            const cand = b.inventory_id || (b.variations || []).map((v) => v.inventory_id).find(Boolean);
+            if (cand) { inv = cand; break; }
+          }
+        }
+        console.log(`  inventory_id de prueba: ${inv || '(no encontré ninguno en Full)'}`);
+
+        const rutas = [
+          // A. Capacidad / cupo de Full, por vendedor
+          `/users/${sid}/stock/fulfillment/capacity`,
+          `/stock/fulfillment/capacity?seller_id=${sid}`,
+          `/stock/fulfillment/inbound/capacity?seller_id=${sid}`,
+          `/stock/fulfillment/inbound/limits?seller_id=${sid}`,
+          `/marketplace/fulfillment/capacity?seller_id=${sid}`,
+          `/fbm/capacity?seller_id=${sid}`,
+          `/users/${sid}/fulfillment/capacity`,
+          `/users/${sid}/inbound/capacity`,
+          // B. "Cuánto conviene reponer" según ML, que sería el primo del cupo
+          `/stock/fulfillment/restock?seller_id=${sid}`,
+          `/users/${sid}/stock/fulfillment/restock`,
+          `/stock/fulfillment/inbound/recommendations?seller_id=${sid}`,
+          // C. Por sitio
+          `/sites/MLA/fulfillment/capacity`,
+          // D. LA DE FLEX, que NO es la de Full: se prueba para poder distinguirlas con el dato
+          //    adelante en vez de por el nombre.
+          `/users/${sid}/shipping_preferences`,
+        ];
+        if (inv) rutas.push(
+          `/inventories/${inv}/stock/fulfillment/capacity`,
+          `/inventories/${inv}/stock/fulfillment/restock`,
+        );
+
+        for (const r of rutas) {
+          try {
+            const d = await mlGet(r, tok);
+            const txt = JSON.stringify(d);
+            console.log(`  ✅ ${r}`);
+            console.log(`      ${txt.slice(0, 500)}`);
+            RES.ok++;
+          } catch (e) {
+            const m = String(e.message || e);
+            // Un error de JSON quiere decir que ML devolvió una PÁGINA WEB, o sea que esa ruta ni
+            // siquiera es de la API. No es lo mismo que un 404, y conviene distinguirlo.
+            if (/Unexpected token|JSON/i.test(m) && !/ML GET/.test(m)) { console.log(`  ✗ ${r}  →  no es una ruta de la API (devolvió una página)`); RES.raro++; }
+            else { console.log(`  ✗ ${r}  →  ${m.slice(0, 110)}`); RES.no++; }
+          }
+        }
+        console.log('');
+      }
+      console.log(`── RESUMEN ── contestaron ${RES.ok} · fallaron ${RES.no} · no son de la API ${RES.raro}`);
+      console.log('Lo que diga ✅ y traiga un número de unidades o de capacidad es el cupo.');
+      console.log('OJO: `shipping_preferences` es la capacidad de FLEX (paquetes que despachás vos por día),');
+      console.log('     NO el cupo de Full. Si contesta, eso NO contesta la pregunta.');
+      console.log('\n   (Solo lecturas. No se tocó ML, ni MercadoPago, ni la base.)');
+      return;
+    }
     // BILLING_PROBE=probaralmacena[:MLA] → ¿ML NOS DICE QUÉ PRODUCTOS PAGAN ALMACENAMIENTO?
     //
     // Pregunta suya del 02/09/2026: "la api de ml te puede decir que productos estan pagando o por
