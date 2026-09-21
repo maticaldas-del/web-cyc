@@ -4136,20 +4136,65 @@ async function fetchCancelled(sellerId, token, fromISO) {
   return out;
 }
 
+// ── CUÁNDO SE ENTREGÓ CADA VENTA Y CUÁLES VOLVIERON ───────────────────────────────
+// Medido el 21/09/2026 con `campos`: el envío trae `status_history` (`date_shipped`,
+// `date_delivered`, `date_not_delivered`, `date_returned`) y `return_details`. Hasta hoy nada de
+// eso se guardaba: el panel sabe cuándo se VENDIÓ y nunca cuándo llegó.
+//
+// ⚠️ OJO, Y ES LO MÁS IMPORTANTE DE ESTA FUNCIÓN: la MISMA respuesta trae el NOMBRE, el TELÉFONO
+// y la DIRECCIÓN del comprador (`receiver_address.receiver_name`, `receiver_phone`,
+// `address_line`, la geolocalización). Son datos de terceros y el registro de GitHub es PÚBLICO.
+// Acá se leen SÓLO fechas y estados, y no se devuelve ni se imprime un solo campo del comprador.
+// Es la misma regla que obligó a borrar `recibidas.json` el 15/09 y a tapar el CUIT del proveedor
+// en `vergastos` el 16/09: antes de escribir un dato, ¿de quién es este dato?
+//
+// Devuelve null cuando no se pudo leer. Un null NO es "no se entregó": es "no sé", y quien lo use
+// tiene que distinguirlo — el error anotado de punta a punta en este archivo.
+async function leerEntrega(order, token) {
+  const shipId = order?.shipping?.id;
+  if (!shipId) return null;
+  let s;
+  try { s = await mlGet('/shipments/' + shipId, token); } catch { return null; }
+  if (!s) return null;
+  const h = s.status_history || {};
+  const ms = (x) => { const t = x ? Date.parse(x) : NaN; return isFinite(t) ? t : null; };
+  const out = {
+    est: String(s.status || '') + (s.substatus ? '/' + s.substatus : ''),
+    env: ms(h.date_shipped), ent: ms(h.date_delivered),
+    noEnt: ms(h.date_not_delivered), dev: ms(h.date_returned),
+    ts: Date.now(),
+  };
+  // `return_details` puede venir como objeto o como lista según el caso; lo único que se guarda es
+  // que HUBO devolución y su fecha. El motivo lo escribe el comprador y puede traer datos suyos.
+  const rd = s.return_details;
+  if (rd && (Array.isArray(rd) ? rd.length : Object.keys(rd).length)) {
+    out.devuelto = true;
+    if (out.dev == null) {
+      const uno = Array.isArray(rd) ? rd[0] : rd;
+      out.dev = ms(uno?.date_created || uno?.date_closed);
+    }
+  }
+  if (out.dev != null) out.devuelto = true;
+  return out;
+}
 // ¿el comprador llegó a RECIBIR el producto? (para distinguir reclamo de cancelada)
 // delivered = lo recibió → si además se le devolvió el dinero, es una pérdida (reclamo).
+// El atajo por `tags` se queda porque es GRATIS (no pide nada a ML); cuando hay que preguntar, se
+// pregunta con `leerEntrega` y NO con una segunda lectura propia del envío: dos lugares leyendo y
+// parseando la misma respuesta se separan, que es el error anotado una docena de veces acá.
 async function wasDelivered(order, token) {
   const tags = order.tags || [];
   if (tags.includes('delivered')) return true;
   if (tags.includes('not_delivered')) return false;
-  const shipId = order.shipping?.id;
-  if (!shipId) return false;
-  try {
-    const s = await mlGet('/shipments/' + shipId, token);
-    const st = (s.status || '').toLowerCase();
-    const sub = (s.substatus || '').toLowerCase();
-    return st === 'delivered' || sub === 'delivered';
-  } catch { return false; }
+  const e = await leerEntrega(order, token);
+  if (!e) return false;
+  if (e.ent != null) return true;
+  // MISMA condición que tenía antes, y hay que respetarla al pie: esto decide si una cancelada
+  // cuenta como RECLAMO, o sea el % que encarece el costo del producto y con eso mueve precios.
+  // `est` es "status/substatus", así que se parte y se miran las DOS partes por separado: con un
+  // `endsWith` alcanzaba para "algo/delivered" pero se comía "delivered/otra_cosa".
+  const [_st, _sub] = String(e.est || '').split('/');
+  return String(_st || '').toLowerCase() === 'delivered' || String(_sub || '').toLowerCase() === 'delivered';
 }
 
 // ¿la cancelación fue una DEVOLUCIÓN (el comprador devolvió el producto y volvió
@@ -9394,6 +9439,93 @@ async function main() {
       if (partes.length) console.log(`  partes del costo que devuelve ML: ${partes.join(' | ')}`);
       console.log('\nCÓMO SE LEE: si coinciden, el robot YA usa el número real y no hay nada que');
       console.log('cambiar. Si ML dice MÁS, esa diferencia es plata que hoy no está en ningún margen.');
+      return;
+    }
+    // BILLING_PROBE=entregas[:días][:go] → CUÁNDO LLEGÓ CADA VENTA Y CUÁLES VOLVIERON.
+    //
+    // Pedido suyo del 21/09/2026 ("agrega todo"), sobre lo que `campos` había medido y nadie usaba:
+    // el envío trae `status_history` con `date_shipped`, `date_delivered`, `date_not_delivered` y
+    // `date_returned`, más `return_details`. El panel sabía cuándo se VENDIÓ y nunca cuándo llegó.
+    //
+    // POR QUÉ VIVE EN `cyc/entregas` Y NO ADENTRO DE LA VENTA, que era lo natural: el ciclo de 2
+    // minutos reescribe la venta ENTERA con `db.set` sobre una ventana de 2 días, y todo campo que
+    // no esté en ese objeto se PIERDE. Una entrega que cae dentro de esos 2 días se borraría sola
+    // y en silencio — es exactamente el bug de `cyc/mllinks` del 05/08. Guardándolo aparte no lo
+    // puede pisar nadie.
+    //
+    // NO SE VUELVE A PREGUNTAR LO QUE YA ESTÁ CERRADO. Una venta entregada no se des-entrega, así
+    // que sólo se miran las que todavía no tienen final. Sin eso, cada corrida pediría el envío de
+    // todas las ventas del mes y se llevaría puesto el paso nocturno.
+    //
+    // NO IMPRIME NI GUARDA UN SOLO DATO DEL COMPRADOR. La respuesta del envío trae su nombre,
+    // teléfono y dirección; `leerEntrega` lee sólo fechas y estados. El registro es PÚBLICO.
+    if (String(process.env.BILLING_PROBE || '').startsWith('entregas')) {
+      const _pe = String(process.env.BILLING_PROBE).split(':');
+      const DIAS_E = Math.max(1, Math.min(120, parseInt(_pe[1] || '30', 10) || 30));
+      const GO_E = _pe.includes('go');
+      const MAX_E = 250;   // tope por corrida: esto va adentro de ml-daily y no se puede colgar
+      const ya = (await db.get('cyc/entregas')) || {};
+      const cerrada = (e) => !!(e && (e.ent != null || e.dev != null || e.noEnt != null));
+      let pedidas = 0, escritas = 0, sinEnvio = 0, yaCerradas = 0, sinLeer = 0, cortado = 0;
+      const nuevas = {};
+      const resumen = { entregadas: 0, devueltas: 0, noEntregadas: 0, enCamino: 0 };
+      const demoras = [];
+      for (const label of labels) {
+        const acc = accounts[label]; if (!acc?.refresh_token) continue;
+        let t;
+        try { t = await mlRefresh(ML_CLIENT_ID, ML_CLIENT_SECRET, acc.refresh_token); }
+        catch { console.log(`  ${label}: no pude renovar el token.`); continue; }
+        await db.patch('mlapi/tokens/' + label, { refresh_token: t.refresh_token, updated_ts: Date.now() });
+        let orders = [];
+        try { orders = await fetchOrdersRange(acc.seller_id, t.access_token, Date.now() - DIAS_E * 864e5, Date.now()); }
+        catch (e) { console.log(`  ${label}: no pude leer las ventas · ${String(e.message || e).slice(0, 80)}`); continue; }
+        for (const o of orders) {
+          const key = 's' + o.id;
+          if (cerrada(ya[key]) || cerrada(nuevas[key])) { yaCerradas++; continue; }
+          if (!o?.shipping?.id) { sinEnvio++; continue; }
+          if (pedidas >= MAX_E) { cortado++; continue; }
+          pedidas++;
+          const e = await leerEntrega(o, t.access_token);
+          // Un null es "no pude leerlo", NO "no se entregó": no se escribe nada y se cuenta aparte.
+          if (!e) { sinLeer++; continue; }
+          nuevas[key] = e;
+          const venta = new Date(o.date_created || o.date_closed).getTime();
+          if (e.dev != null) resumen.devueltas++;
+          else if (e.ent != null) { resumen.entregadas++; if (venta > 0) demoras.push((e.ent - venta) / 864e5); }
+          else if (e.noEnt != null) resumen.noEntregadas++;
+          else resumen.enCamino++;
+        }
+      }
+      console.log(`=== CUÁNDO LLEGÓ CADA VENTA · últimos ${DIAS_E} días ===`);
+      console.log(`${GO_E ? 'SE GUARDA' : 'PRUEBA: no se escribe nada'}\n`);
+      console.log(`  envíos preguntados a ML: ${pedidas}`);
+      console.log(`     entregadas ${resumen.entregadas} · devueltas ${resumen.devueltas} · no entregadas ${resumen.noEntregadas} · todavía en camino ${resumen.enCamino}`);
+      console.log(`  ya estaban cerradas (no se vuelven a pedir): ${yaCerradas}`);
+      console.log(`  sin envío (retiro en persona o sin despachar): ${sinEnvio}`);
+      if (sinLeer) console.log(`  ⚠️ ${sinLeer} no se pudieron leer: NO se guardó nada de ésas (un "no sé" no es un "no llegó")`);
+      if (cortado) console.log(`  ⏳ ${cortado} quedaron sin mirar por el tope de ${MAX_E} por corrida · salen en la vuelta siguiente`);
+      // El chequeo de que la cuenta cierre: si no suma, hay algo saliendo en silencio.
+      const suma = resumen.entregadas + resumen.devueltas + resumen.noEntregadas + resumen.enCamino + sinLeer;
+      if (suma !== pedidas) console.log(`  ⚠️ NO CIERRA · pedí ${pedidas} y clasifiqué ${suma}: hay ${pedidas - suma} saliendo en silencio`);
+      if (demoras.length) {
+        demoras.sort((a, b) => a - b);
+        const prom = demoras.reduce((a, b) => a + b, 0) / demoras.length;
+        const med = demoras[Math.floor(demoras.length / 2)];
+        console.log(`\n  Cuánto tarda en llegar, desde la venta: promedio ${prom.toFixed(1)} días · la mitad llega en ${med.toFixed(1)} o menos`);
+        console.log(`  (la más rápida ${demoras[0].toFixed(1)} · la más lenta ${demoras[demoras.length - 1].toFixed(1)})`);
+      }
+      const nK = Object.keys(nuevas);
+      if (!GO_E) { console.log(`\n(PRUEBA) se guardarían ${nK.length}. Agregá :go.`); return; }
+      if (!nK.length) { console.log('\nNo hay nada nuevo que guardar.'); return; }
+      for (let i = 0; i < nK.length; i += 200) {
+        const chunk = {}; for (const k of nK.slice(i, i + 200)) chunk[k] = nuevas[k];
+        await db.patch('cyc/entregas', chunk);
+        escritas += Object.keys(chunk).length;
+      }
+      // Releer y comparar: que el patch no tire error no prueba que haya quedado (regla 6).
+      const rele = (await db.get('cyc/entregas')) || {};
+      let ok = 0; for (const k of nK) if (rele[k] && rele[k].ts === nuevas[k].ts) ok++;
+      console.log(`\n✓ Guardadas ${escritas} · releídas de la base ${ok} de ${nK.length}${ok === nK.length ? ' ✓' : ' ✗ alguna no quedó'}`);
       return;
     }
     // BILLING_PROBE=mismoprod → ¿ML DICE SOLO CUÁLES PUBLICACIONES SON EL MISMO PRODUCTO? SOLO LEE.

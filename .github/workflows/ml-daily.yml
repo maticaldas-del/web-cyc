@@ -99,6 +99,25 @@ jobs:
           FIREBASE_BOT_PASSWORD: ${{ secrets.FIREBASE_BOT_PASSWORD }}
           CANCEL_AGG: '400'
         run: node ml-sync/sync.mjs
+      # CUÁNDO LLEGÓ CADA VENTA Y CUÁLES VOLVIERON (21/09/2026).
+      #
+      # ML lo manda adentro del envío (`status_history` y `return_details`) y nunca se guardaba:
+      # el panel sabía cuándo se VENDIÓ y no cuándo llegó. Va acá y no en el ciclo de 2 minutos
+      # porque pide una consulta por venta, igual que las facturas.
+      #
+      # NO vuelve a preguntar por una venta ya entregada o devuelta, así que después de la primera
+      # corrida son pocas por día. Y NO guarda ni un dato del comprador: el envío trae su nombre,
+      # teléfono y dirección, y se leen sólo las fechas.
+      - name: Cuándo llegó cada venta
+        env:
+          ML_CLIENT_ID: ${{ secrets.ML_CLIENT_ID }}
+          ML_CLIENT_SECRET: ${{ secrets.ML_CLIENT_SECRET }}
+          FIREBASE_API_KEY: ${{ secrets.FIREBASE_API_KEY }}
+          FIREBASE_DB_URL: ${{ secrets.FIREBASE_DB_URL }}
+          FIREBASE_BOT_EMAIL: ${{ secrets.FIREBASE_BOT_EMAIL }}
+          FIREBASE_BOT_PASSWORD: ${{ secrets.FIREBASE_BOT_PASSWORD }}
+          BILLING_PROBE: entregas:30:go
+        run: node ml-sync/sync.mjs
       # EL AVISO DE QUÉ SUBIR Y QUÉ BAJAR, al canal privado de Telegram (13/09/2026).
       #
       # Va ACÁ, al final y no al principio, porque necesita el "Margen ML al precio de hoy" ya

@@ -1922,6 +1922,13 @@ function startApp(){
     // problemas que se ven igual en pantalla y se arreglan al revés: si no la ve nadie el precio no
     // es el problema; si la ven y no compran, ahí sí.
     state.visitas=d.visitas||{};
+    // CUÁNDO LLEGÓ CADA VENTA Y CUÁLES VOLVIERON. Lo escribe el robot una vez por día (probe
+    // `entregas`) leyéndolo del envío de ML. Vive APARTE de la venta a propósito: el ciclo de 2
+    // minutos reescribe la venta entera con `set` sobre una ventana de 2 días, así que adentro se
+    // borraría sola y en silencio (el bug de `cyc/mllinks` del 05/08).
+    // Del envío se guardan SÓLO fechas y estados: el nombre, el teléfono y la dirección del
+    // comprador vienen en la misma respuesta y no entran acá.
+    state.entregas=d.entregas||{};
     // detectar entradas nuevas de ventaprod escritas externamente (p.ej. cowork)
     const _newVP=d.ventaprod||{};
     const _allIds=new Set();
@@ -7660,6 +7667,29 @@ function renderVentaProd(){
       let _gt=0;grp.items.forEach(v=>{if(!isCancelled)_gt+=v.total||0;});
       const _ml=_gt-gn;
       const mlLabel=(isCancelled||!(_gt>0)||!(_ml>0))?'':`<span style="font-size:.62rem;color:var(--muted)" title="Lo que ML se quedó de esta venta: comisión, cargo fijo, envío de Full y retenciones. Es el total que pagó el comprador menos lo que te depositan. NO incluye el IIBB ni el monotributo, que ML factura aparte y ya están contados en el costo.">ML ${fmt(_ml)} (${(_ml/_gt*100).toFixed(0)}%)</span>`;
+      // ── CUÁNDO LLEGÓ, Y SI VOLVIÓ (21/09/2026) ────────────────────────────────────
+      // Lo trae el robot del envío de ML una vez por día y vive en `cyc/entregas`, aparte de la
+      // venta (el ciclo de 2 minutos reescribe la venta entera y ahí adentro se borraría solo).
+      // Lo que NO se hace: inventar un estado cuando no hay dato. Una venta sin registro no dice
+      // nada — "todavía no se midió" y "no llegó" son cosas distintas y el remedio es opuesto.
+      const _eKey=grp.items.map(v=>v.saleId).find(x=>x);
+      const _e=_eKey?((state.entregas||{})[_eKey]||null):null;
+      // La fecha se arma a mano y no con `toLocaleDateString`: pidiéndole sólo día y mes, cada
+      // navegador elige un patrón distinto (medido acá mismo: "18/9" en vez de "18/09"). Para dos
+      // números no vale la pena depender de eso.
+      const _fDia=t=>{const x=new Date(t);return String(x.getDate()).padStart(2,'0')+'/'+String(x.getMonth()+1).padStart(2,'0');};
+      let entLabel='';
+      if(_e&&!isCancelled){
+        if(_e.dev!=null)entLabel=`<span style="font-size:.62rem;color:var(--red)" title="ML informó una devolución de esta venta.">↩ volvió ${_fDia(_e.dev)}</span>`;
+        else if(_e.ent!=null){
+          // Cuántos días tardó: es el número que contesta "¿cuánto tarda en llegar?", y sólo se
+          // muestra si la venta tiene hora guardada. Sin eso no se estima: se dice la fecha sola.
+          const _t0=_hs.length?Math.min(..._hs):0;
+          const _d=_t0>0?Math.round((_e.ent-_t0)/86400000):null;
+          entLabel=`<span style="font-size:.62rem;color:var(--green)" title="Fecha en que ML marcó el envío como entregado.">📬 llegó ${_fDia(_e.ent)}${_d!=null&&_d>=0?` · ${_d} d`:''}</span>`;
+        }
+        else if(_e.noEnt!=null)entLabel=`<span style="font-size:.62rem;color:var(--amber)" title="ML marcó el envío como NO entregado.">⚠ no se entregó</span>`;
+      }
       const lines=grp.items.map(v=>`<div style="display:flex;justify-content:space-between;font-size:.72rem;padding:2px 0;${isCancelled?'opacity:.45;text-decoration:line-through':''}"><span>${v.qty}× ${nombreDeVenta(v)}${v.variante?` <span style="padding:1px 5px;border-radius:3px;background:rgba(124,58,237,.12);color:#a78bfa;font-size:.62rem">${v.variante}</span>`:''}</span><span style="color:var(--muted)">${(!isCancelled&&(v.total||0)>0)?`total ${fmt(v.total)} · `:''}${isCancelled?'':'neto '+fmt(v.neto||0)}</span></div>`).join('');
       return`<div class="ingreso-item" style="flex-direction:column;align-items:stretch;gap:4px;${isCancelled?'border-color:rgba(239,68,68,.25);background:rgba(239,68,68,.04)':''}">
         <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
@@ -7669,6 +7699,7 @@ function renderVentaProd(){
           ${grp.items.length>1?`<span style="font-size:.64rem;color:var(--muted)">${grp.items.length} prod.</span>`:''}
           <span style="flex:1"></span>
           ${mlLabel}
+          ${entLabel}
           ${costLabel}
           ${ganLabel}
           ${pctBox}
