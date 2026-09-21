@@ -4346,6 +4346,60 @@ el piso del margen.**
 está entrando, clarito lo que está en un plan de envío). Así que el corte entre chico y grande
 sigue sin saberse, y hoy no importa porque el cupo de grandes no lo toca nadie.
 
+## CARGAR LO QUE ENTRA EN EL CUPO, SIN METER TODO EN UN PRODUCTO (21/09/2026)
+
+Pedido suyo mirando una caja de Ayelen con **287 u. cargadas y 52 de cupo**: *"quiero que haya otro
+botón que diga cargar lo sugerido, pero que tenga en cuenta las unidades que podemos mandar y que no
+se pase. Y obviamente tiene que ser inteligente, porque si puedo mandar 50 unidades no conviene
+mandar las 50 en un mismo producto, sino tapar el agujero lo mejor posible para poder sacar más
+dinero, o sea mandar 10 unidades de 5 productos sin stock."*
+
+**Son DOS botones y la diferencia importa:** *"Cargar lo sugerido"* carga TODO aunque se pase
+(decisión suya del 30/08: *"cargame todo, yo después saco lo que no entra"*), y **🎯 "Cargar lo que
+entra en el cupo"** llena hasta donde ML te deja mandar hoy. El segundo **sólo aparece si esa cuenta
+tiene el cupo cargado**: un botón que no puede hacer nada es peor que no tener botón.
+
+**LA CUENTA: se maximiza la PLATA que se destraba, no las unidades.** Una unidad sólo produce
+ganancia si esa cuenta la alcanza a vender, así que vale *"lo que deja ese producto por unidad"*
+hasta tapar el hueco y **cero después**. Eso ya reparte solo entre productos —el hueco de cada uno
+es finito—, que es exactamente lo que él pide.
+
+**PERO ORDENAR POR PLATA Y LLENAR NO ALCANZA, y ése es el punto de su pedido:** si el primero
+necesita 60 y el cupo son 50, se lleva TODO. Por eso van **dos rondas**, y se explica en una línea:
+**primero que ninguno se quede sin nada, después llenar.**
+
+**Y LA PRUEBA AGARRÓ QUE LA RONDA 1 TAMBIÉN PODÍA CONCENTRAR.** Un producto que vende 10 por día
+pide 80 unidades, y con un cupo de 20 se llevaba las 20 **en la primera ronda** — o sea exactamente
+lo que la función vino a evitar. Ahora la ronda 1 reparte además **una parte pareja del cupo**; el
+desequilibrio se arregla en la ronda 2, donde sí manda la plata.
+**Con su ejemplo de 50 unidades y cinco productos en cero, reparte 18/8/8/8/8.**
+
+**Lo que no entró se DICE**, abajo de las barras y no en un aviso que se va solo: son unidades que el
+panel dice que hay que mandar y que quedaron para la caja siguiente.
+
+**El que no se pudo medir va último pero NO se descarta**: si sobra cupo lo recibe igual, y la ronda
+1 le garantiza algo. Es un producto que el panel dice que hay que mandar, no uno descartado.
+
+## LAS FOTOS ESTABAN MAL: ERAN DEL PRODUCTO Y NO DE LA VARIANTE (21/09/2026)
+
+Lo marcó él mirando Armar caja: *"las fotos están mal"*. Los **nueve aromas del Paulvic mostraban la
+MISMA foto**. Y era cierto: la foto se buscaba por **PRODUCTO**, y el Paulvic es UNA ficha con muchos
+aromas, cada uno con su publicación aparte. Se mostraba la del primero que apareciera, para todos.
+
+**Es el mismo caso que el código de etiqueta de Full, que ya estaba resuelto hace semanas**: cuando
+el renglón nombra una variante, el dato es de la PUBLICACIÓN de esa variante, no de la ficha. Por eso
+las dos cosas pasan ahora por **`pubDeVariante`**, una sola función — con dos copias el código
+podría ser de un aroma y la foto de otro, **que es peor que no tener ninguno de los dos**: él usa
+las dos cosas justamente para chequear que está mandando lo correcto.
+
+**NO SE ADIVINA**, igual que con el código: si el título no nombra ninguna variante de la ficha, se
+cae a la foto genérica en vez de mostrar la de otro aroma.
+
+**Cuándo gana la de la variante sobre la que él cargó a mano:** sólo cuando el renglón pide una
+variante **y** se pudo identificar su publicación. La de la ficha es genérica (vale para los 70
+aromas) y la de la publicación es de ÉSE, así que para ese renglón es la correcta. En un renglón sin
+variante manda lo de siempre: lo que él cargó.
+
 ## CUÁNDO LLEGÓ CADA VENTA Y CUÁLES VOLVIERON (21/09/2026)
 
 `campos` había medido el 21/09 que el envío trae `status_history` (`date_shipped`,
