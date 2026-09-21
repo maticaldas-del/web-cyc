@@ -9201,6 +9201,100 @@ async function main() {
       console.log('Si la raíz sale bien, el "margen por rubro" se puede armar sin adivinar ningún nombre.');
       return;
     }
+    // BILLING_PROBE=envio3[:cuenta[:cuántas]] → ¿CUÁL ES EL ENVÍO REAL? SOLO LEE.
+    //
+    // Pregunta suya del 21/09/2026: *"fijate vos cual es el real. si el que manda ML o el que
+    // sabemos nosotros desglosando todo (seguramente el real sea el que más plata se lleve ML o se
+    // pague más)"*.
+    //
+    // **SU CORAZONADA ES EL LADO SEGURO, PERO NO HACE FALTA SUPONER.** "El que más se lleva ML" es
+    // una regla para elegir cuando no se sabe; acá SÍ se puede saber, porque uno de los dos números
+    // es literalmente lo que Mercado Pago le descontó. Elegir por "el más caro" cuando el dato
+    // existe sería el mismo error que dar por buena una explicación sin medirla.
+    //
+    // LOS DOS NÚMEROS Y DE DÓNDE SALEN:
+    //  · **lo que COBRÓ Mercado Pago** — el cargo `shp_fulfillment` de `charges_details` del pago.
+    //    Es el que el robot ya usa en TODOS lados (`FILL_GESTFULL`, el margen, la suba automática).
+    //  · **lo que dice ML que costó el envío** — `/shipments/<id>`: `base_cost`, `list_cost` y
+    //    `cost_components` (los descuentos: `loyal_discount`, `special_discount`, `gap_discount`).
+    //    Ése es el campo nuevo que apareció el 21/09 con `campos`.
+    //
+    // La hipótesis a chequear es simple: **base_cost menos los descuentos tendría que dar lo que
+    // cobró MP.** Si da, no hay nada que arreglar y el robot ya usa el real. Si no da, la
+    // diferencia es plata que hoy no está en ningún margen.
+    //
+    // NO IMPRIME NI UN DATO DEL COMPRADOR. Del envío se leen sólo los costos; el nombre, el
+    // teléfono y la dirección vienen en la misma respuesta y NO se tocan (el registro es público).
+    if (String(process.env.BILLING_PROBE || '').startsWith('envio3')) {
+      const _p3 = String(process.env.BILLING_PROBE).split(':');
+      const ctaE = (_p3[1] || '').trim().toLowerCase();
+      const CUANTAS = Math.max(1, Math.min(40, parseInt(_p3[2] || '12', 10) || 12));
+      let mirados = 0, coinciden = 0, diferen = 0, sinCargo = 0, sinEnvio = 0;
+      const filas = [];
+      for (const label of labels) {
+        if (ctaE && label.toLowerCase() !== ctaE) continue;
+        const acc = accounts[label]; if (!acc?.refresh_token) continue;
+        let t;
+        try { t = await mlRefresh(ML_CLIENT_ID, ML_CLIENT_SECRET, acc.refresh_token); }
+        catch { console.log(`  ${label}: no pude renovar el token.`); continue; }
+        await db.patch('mlapi/tokens/' + label, { refresh_token: t.refresh_token, updated_ts: Date.now() });
+        const tok = t.access_token;
+        let orders = [];
+        try { orders = await fetchOrdersRange(acc.seller_id, tok, Date.now() - 30 * 864e5, Date.now()); }
+        catch (e) { console.log(`  ${label}: no pude leer las ventas · ${String(e.message || e).slice(0, 80)}`); continue; }
+        // Sólo las de ARRIBA de la barrera: abajo de $33.000 ML no le cobra envío al vendedor, así
+        // que comparar ahí sería comparar dos ceros y no diría nada.
+        const caras = orders.filter((o) => (o.order_items || []).reduce((s, it) => s + (it.unit_price || 0) * (it.quantity || 0), 0) >= MIN_GROSS);
+        for (const o of caras.slice(0, CUANTAS)) {
+          mirados++;
+          // 1) lo que COBRÓ Mercado Pago
+          let cobrado = 0, hayCargo = false;
+          for (const p of (o.payments || [])) {
+            try {
+              const r = await fetch('https://api.mercadopago.com/v1/payments/' + p.id, { headers: { Authorization: 'Bearer ' + tok } });
+              const b = await r.json();
+              for (const c of (b?.charges_details || [])) if (String(c.name).includes('shp_fulfillment')) { cobrado += (c.amounts?.original || 0); hayCargo = true; }
+            } catch { /* sigue */ }
+          }
+          if (!hayCargo) { sinCargo++; continue; }   // todavía no liquidado: no hay con qué comparar
+          // 2) lo que dice ML que costó el envío
+          let sh = null;
+          try {
+            const s1 = await mlGet('/orders/' + o.id + '/shipments', tok);
+            if (s1 && s1.id) sh = await mlGet('/shipments/' + s1.id, tok);
+          } catch { /* sigue */ }
+          if (!sh) { sinEnvio++; continue; }
+          const cc = sh.cost_components || {};
+          const desc = (Number(cc.loyal_discount) || 0) + (Number(cc.special_discount) || 0) + (Number(cc.gap_discount) || 0);
+          const base = Number(sh.base_cost) || 0;
+          const lista = Number(sh.list_cost) || 0;
+          const neto = base - desc;
+          const dif = Math.round(neto - cobrado);
+          if (Math.abs(dif) <= 1) coinciden++; else diferen++;
+          filas.push({ label, ord: String(o.id).slice(-6), base, lista, desc, neto, cobrado, dif, cc: Object.keys(cc).join(',') });
+        }
+      }
+      console.log(`=== ¿CUÁL ES EL ENVÍO REAL? · ${mirados} venta(s) de arriba de ${money(MIN_GROSS)} miradas ===\n`);
+      if (!filas.length) {
+        console.log('No se pudo comparar ninguna.');
+        console.log(`  sin el cargo de MP todavía (no liquidadas): ${sinCargo} · sin envío legible: ${sinEnvio}`);
+        return;
+      }
+      console.log('  base = lo que ML dice que costó · desc = descuentos de ML · cobrado = lo que te');
+      console.log('  descontó Mercado Pago (el que usa el robot hoy)\n');
+      for (const f of filas) {
+        console.log(`  ${f.label.padEnd(8)} …${f.ord} · base ${money(f.base).padStart(10)} · desc ${money(f.desc).padStart(10)}`
+          + ` → queda ${money(f.neto).padStart(10)} · MP cobró ${money(f.cobrado).padStart(10)}`
+          + `  ${f.dif === 0 ? '✅ igual' : (f.dif > 0 ? `⚠️ ML ${money(f.dif)} MÁS` : `⚠️ ML ${money(-f.dif)} menos`)}`);
+      }
+      console.log(`\n  coinciden: ${coinciden} · NO coinciden: ${diferen}`);
+      console.log(`  sin el cargo de MP todavía: ${sinCargo} · sin envío legible: ${sinEnvio}`);
+      const partes = [...new Set(filas.map((f) => f.cc).filter(Boolean))];
+      if (partes.length) console.log(`  partes del costo que devuelve ML: ${partes.join(' | ')}`);
+      console.log('\nCÓMO SE LEE: si coinciden, el robot YA usa el número real y no hay nada que');
+      console.log('cambiar. Si ML dice MÁS, esa diferencia es plata que hoy no está en ningún margen.');
+      return;
+    }
     // BILLING_PROBE=mismoprod → ¿ML DICE SOLO CUÁLES PUBLICACIONES SON EL MISMO PRODUCTO? SOLO LEE.
     //
     // Es la medición que tiene que ir ANTES de tocar nada. Hoy el panel adivina qué publicación va
