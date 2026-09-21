@@ -804,7 +804,7 @@ async function cajasQueLlegaron(db, accounts, labels, products, DRY) {
 async function cajaDeCompraML(db, accounts, labels, DRY, soloCta) {
   const links = (await db.get('cyc/mllinks')) || {};
   const upd = {};
-  const res = { winning: 0, sharing: 0, losing: 0, nocat: 0, sincaja: 0, mirados: 0, filas: [], cats: new Set(), catsNuevas: 0, catsFaltan: 0 };
+  const res = { winning: 0, sharing: 0, losing: 0, nocat: 0, sincaja: 0, mirados: 0, filas: [], cats: new Set(), catsNuevas: 0, catsFaltan: 0, fotos: 0 };
   let tokUno = null;
   for (const label of labels) {
     if (soloCta && label.toLowerCase() !== String(soloCta).toLowerCase()) continue;
@@ -820,7 +820,7 @@ async function cajaDeCompraML(db, accounts, labels, DRY, soloCta) {
       m.startsWith('MLA') && e && e.cuenta === label && !e.ignored && (e.status || '') !== 'closed').map(([m]) => m);
     for (let k = 0; k < ids.length; k += 20) {
       let arr;
-      try { arr = await mlGet('/items?ids=' + ids.slice(k, k + 20).join(',') + '&attributes=id,title,status,price,catalog_listing,category_id', tok); }
+      try { arr = await mlGet('/items?ids=' + ids.slice(k, k + 20).join(',') + '&attributes=id,title,status,price,catalog_listing,category_id,secure_thumbnail,thumbnail,domain_id', tok); }
       catch { continue; }
       for (const row of (arr || [])) {
         const b = row.body || {}; const mla = b.id; if (!mla || !links[mla]) continue;
@@ -830,6 +830,18 @@ async function cajaDeCompraML(db, accounts, labels, DRY, soloCta) {
         // quedaría "sin rubro" para siempre y el margen por rubro tendría un agujero mudo.
         if (b.category_id && links[mla].cat !== b.category_id) upd[mla + '/cat'] = b.category_id;
         if (b.category_id) res.cats.add(b.category_id);
+        // LA FOTO DE LA PUBLICACIÓN, por el mismo motivo que el código de Full: es para que él
+        // MIRE y confirme que está pensando en el producto correcto. Va acá arriba, junto con la
+        // categoría, para que también la tengan las pausadas.
+        //
+        // SE GUARDA LA `secure_thumbnail` (https) Y NO LA OTRA. El panel se sirve por https, y un
+        // navegador BLOQUEA una imagen http adentro de una página https: la foto no se vería y no
+        // habría ningún error a la vista — el fallo mudo de siempre. `thumbnail` queda de respaldo
+        // sólo si ya viene en https.
+        const fotoML = b.secure_thumbnail || (/^https:/i.test(String(b.thumbnail || '')) ? b.thumbnail : null);
+        if (fotoML && links[mla].foto !== fotoML) upd[mla + '/foto'] = fotoML;
+        if (fotoML) res.fotos++;
+        if (b.domain_id && links[mla].dom !== b.domain_id) upd[mla + '/dom'] = b.domain_id;
         if (b.status !== 'active') continue;      // pausada o cerrada: no está peleando ninguna caja
         res.mirados++;
         const stamp = (st, ptw) => {
@@ -8901,6 +8913,7 @@ async function main() {
       console.log(`\n── RUBROS (para el margen por rubro de Métricas) ──`);
       console.log(`   ${r.cats.size} categoría(s) distintas entre las publicaciones miradas · ${r.catsNuevas} nombre(s) nuevo(s) esta vuelta`
         + (r.catsFaltan ? ` · quedan ${r.catsFaltan} para la vuelta siguiente` : ''));
+      console.log(`   📷 ${r.fotos} publicación(es) con foto de ML guardada`);
       console.log(`\nGuardado en cada publicación. Ya se ve en Rotación de Stock, columna "Caja ML".`);
       return;
     }
@@ -26804,7 +26817,7 @@ async function main() {
     try {
       const rb = await cajaDeCompraML(db, accounts, labels, DRY, null);
       console.log(`🥊 Caja de compra · ${rb.mirados} publicaciones activas · ganamos ${rb.winning} · compartimos ${rb.sharing} · perdemos ${rb.losing} · sin catálogo ${rb.nocat}`);
-      console.log(`🏷️  Rubros · ${rb.cats.size} categorías distintas · ${rb.catsNuevas} nombre(s) nuevo(s)${rb.catsFaltan ? ` · quedan ${rb.catsFaltan} para la vuelta siguiente` : ''}`);
+      console.log(`🏷️  Rubros · ${rb.cats.size} categorías distintas · ${rb.catsNuevas} nombre(s) nuevo(s)${rb.catsFaltan ? ` · quedan ${rb.catsFaltan} para la vuelta siguiente` : ''} · 📷 ${rb.fotos} con foto`);
     } catch (e) { console.log('No pude leer la caja de compra: ' + e.message); }
 
     // LA REPUTACIÓN DE LAS CUATRO CUENTAS. Va acá al lado y no en un bloque propio porque es lo

@@ -2275,7 +2275,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='19.82';
+const APP_VERSION='19.83';
 // El problema real que esto resuelve no es curiosidad: es que el celular guarda la app y sigue
 // mostrando la de ayer sin avisar. Varias veces se revisó un cambio que ya estaba subido y no se
 // veía. Por eso, además del número, el chip avisa cuando hay una versión nueva esperando.
@@ -2745,12 +2745,63 @@ async function verFoto(prodId,nombre){
     // 1) si tiene URL vinculada (ej: imagen de Mercado Libre), mostrarla directo
     if(pp&&pp.fotoUrl){_mostrarLightbox(pp.fotoUrl,nombre||'');return;}
     // 2) si no, foto subida (base64 guardada aparte)
-    toast('Cargando foto…');
-    const snap=await db.ref('fotos/'+prodId).once('value');
-    const src=snap.val();
-    if(!src){toast('Este producto no tiene foto','err');return;}
-    _mostrarLightbox(src,nombre||'');
+    if(pp&&pp.foto){
+      toast('Cargando foto…');
+      const snap=await db.ref('fotos/'+prodId).once('value');
+      const src=snap.val();
+      if(src){_mostrarLightbox(src,nombre||'');return;}
+    }
+    // 3) y si no, la de la publicación de ML, que guarda el robot. Va ÚLTIMA a propósito: lo que
+    // él cargó a mano manda siempre, porque si eligió una foto es porque la de ML no le servía.
+    // Sin este paso, un producto con la foto automática y sin foto propia decía "no tiene foto"
+    // teniéndola — el fallo mudo de siempre.
+    const auto=fotoDeProducto(pp);
+    if(auto&&auto.url){_mostrarLightbox(auto.url,nombre||'');return;}
+    toast('Este producto no tiene foto','err');
   }catch(e){toast('Error: '+e.message,'err');}
+}
+// ── LA FOTO DE UN PRODUCTO (21/09/2026) ──────────────────────────────────────────────────────
+// Pedido suyo: "fijate si las fotos las podés poner en pedidos también, así mi viejo sabe. hay un
+// sector que había puesto fotos yo pero es antiguo y no lo terminé de llenar, si esto lo trae
+// directo hacelo así que es mejor".
+//
+// El sistema de fotos YA EXISTÍA ENTERO (`verFoto`, el lightbox, el botón 📷 de Productos y de
+// Armar caja). Lo único que le faltaba era llenarse: había que cargar cada foto a mano, y por eso
+// quedó a medias. Ahora el robot guarda la de ML en cada publicación (`cyc/mllinks/<MLA>/foto`) y
+// todo lo que ya estaba hecho empieza a funcionar solo.
+//
+// LO QUE CARGÓ ÉL MANDA SIEMPRE. Si eligió una foto, es porque la de ML no le servía; pisarla con
+// la automática sería deshacerle una decisión, que es el mismo motivo por el que el robot no toca
+// las medidas cargadas a mano ni el precio de Paraguay pisa el costo.
+//
+// NO INVENTA NADA: si no hay foto propia ni publicación con foto, devuelve null y el renglón no
+// muestra ningún recuadro. Un cuadrito roto es peor que no tener foto.
+function fotoDeProducto(p){
+  if(!p)return null;
+  if(p.fotoUrl)return {url:p.fotoUrl,fuente:'mano'};
+  if(p.foto)return {url:null,fuente:'subida'};   // está guardada aparte: la abre verFoto, no se puede mostrar inline
+  const L=state.mllinks||{};
+  let cerrada=null;
+  for(const e of Object.values(L)){
+    if(!e||e.prodId!==p.id||e.ignored||!e.foto)continue;
+    // Gana una publicación VIVA: la foto de una cerrada puede ser de una versión que ya no vendés.
+    if((e.status||'')==='closed'){if(!cerrada)cerrada=e.foto;continue;}
+    return {url:e.foto,fuente:'ml'};
+  }
+  return cerrada?{url:cerrada,fuente:'ml'}:null;
+}
+// El recuadrito que se muestra al lado de un renglón. `px` es el lado en píxeles.
+// Se toca para abrir la foto grande, que es la que ya sabía hacer `verFoto`.
+function fotoChipHTML(p,px){
+  const f=fotoDeProducto(p);
+  if(!f)return '';
+  const lado=px||34;
+  const comun=`width:${lado}px;height:${lado}px;border-radius:6px;flex:0 0 auto;cursor:zoom-in`;
+  // La foto subida a mano vive en otra rama de la base y no se baja al abrir la app (pesa), así
+  // que acá va un botón en vez de la imagen: mostrarla inline obligaría a descargarlas todas.
+  if(!f.url)return `<span onclick="verFoto('${p.id}')" title="Ver la foto cargada a mano" style="${comun};display:inline-flex;align-items:center;justify-content:center;background:rgba(56,189,248,.12);border:1px solid rgba(56,189,248,.3);font-size:${Math.round(lado*0.45)}px">📷</span>`;
+  const tit=f.fuente==='mano'?'Foto cargada por vos · tocá para verla grande':'Foto de la publicación de ML · tocá para verla grande';
+  return `<img src="${f.url}" alt="" loading="lazy" onclick="verFoto('${p.id}')" title="${tit}" style="${comun};object-fit:cover;background:#fff;border:1px solid rgba(148,163,184,.25)" onerror="this.style.display='none'">`;
 }
 // Vincular una foto por URL (ej: imagen de la publicacion de ML). Pensado para que lo use cowork.
 async function setFotoUrl(prodId,url){
@@ -4831,6 +4882,7 @@ function renderOfiCaja(){
         onchange="setCajaItem('${f.p.id}',${JSON.stringify(f.variante||'').replace(/"/g,'&quot;')},this.value,${tope})">`:'';
     return `<div style="padding:12px 14px;background:var(--surface);border:1px solid ${enCaja>0?'var(--accent2)':'var(--border)'};border-radius:var(--r);margin-bottom:8px">
       <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap">
+        ${fotoChipHTML(f.p,36)}
         <div class="pi-prod" style="flex:1;min-width:150px">${f.p.name}${f.variante?` <span style="color:var(--accent2);font-weight:700">· ${f.variante}</span>`:(f.sinContarPorAroma?' <span style="color:var(--muted);font-weight:400">· sin variante</span>':'')}</div>
         <div style="font-size:.68rem;color:var(--muted)">tenés ${f.hay} u.${otras>0?` <span style="color:var(--amber)">(${otras} en otra caja)</span>`:''}</div>
         ${casilla}
@@ -10748,7 +10800,7 @@ function renderRotacionStock(){
     return filas;
   };
   tbody.innerHTML=rows.map(r=>`<tr>
-    <td style="max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${r.name}">${r.name}</td>
+    <td style="max-width:200px" title="${r.name}"><div style="display:flex;align-items:center;gap:7px;min-width:0">${fotoChipHTML(prodById(r.pid),26)}<span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0">${r.name}</span></div></td>
     <td style="text-align:right">${r.stock} u.</td>
     <td>${r.capital>0?fmt(r.capital):'—'}</td>
     <td style="text-align:right">${r.ventasPeriodo} u.</td>
@@ -10940,7 +10992,9 @@ function _pedidoItemHtml(p,opts){
   const _vOpen=varsSorted&&_openPedVars.has(p.id);
   const varToggle=varsSorted?`<details class="pi-var-det"${_vOpen?' open':''} ontoggle="_setPedVarOpen('${p.id}',this.open)"><summary class="pi-var-toggle">Variantes (${varsSorted.length})</summary><div class="pi-var-list">${varsSorted.map(x=>pedVarChip(x)).join('')}</div></details>`:'';
   const _prod=(state.products||[]).find(x=>x.id===p.prodId||(x.name&&normTxt(x.name)===normTxt(p.producto||'')));
-  const fotoBtn=(_prod&&_prod.foto)?`<button class="pi-var-toggle" style="background:rgba(56,189,248,.12);color:#38bdf8;border-color:rgba(56,189,248,.3)" onclick="verFoto('${_prod.id}')" title="Ver foto del producto">📷 Foto</button>`:'';
+  // El botón sale con CUALQUIER foto, no sólo con la cargada a mano: antes miraba `_prod.foto`,
+  // que sólo se prende al subir una, así que con la foto automática de ML el botón no aparecía.
+  const fotoBtn=(_prod&&fotoDeProducto(_prod))?`<button class="pi-var-toggle" style="background:rgba(56,189,248,.12);color:#38bdf8;border-color:rgba(56,189,248,.3)" onclick="verFoto('${_prod.id}')" title="Ver foto del producto">📷 Foto</button>`:'';
   // UN SOLO NÚMERO: lo que queda en riesgo DESPUÉS de mandar lo que ya tenés en casa o viajando.
   // Se probó mostrar los tres (el riesgo entero, lo que se tapa mandando y lo que hay que comprar)
   // y él lo cortó el 23/08/2026: "sacá el 'se tapa mandando', dejá sólo la resta y listo". Tiene
@@ -10967,6 +11021,7 @@ function _pedidoItemHtml(p,opts){
   const _abierto=_openPedCards.has(p.id);
   return `<details class="ped-card ${_est}"${_abierto?' open':''} ontoggle="_setPedCardOpen('${p.id}',this.open)">
     <summary class="ped-head">
+      ${_prod?fotoChipHTML(_prod,38):''}
       <span class="ped-name">${p.producto||'—'}${p.variante?` <span style="padding:1px 6px;border-radius:4px;background:rgba(124,58,237,.15);color:#a78bfa;font-size:.65rem;font-family:'DM Mono',monospace;font-weight:400">${p.variante}</span>`:''}</span>
       <span class="ped-buy"><b>${fmtN(p.cantidad||1)}</b><i>u. a comprar${p.auto===false?' · a mano':''}</i></span>
       <span class="ped-caret">▼</span>
