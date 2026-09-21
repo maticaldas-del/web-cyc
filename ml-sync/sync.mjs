@@ -12274,10 +12274,22 @@ async function main() {
       const vp = (await db.get('cyc/ventaprod')) || {};
       const pan = {};            // 'cuenta|AAAA-MM' → {bruto, quedoML, n}
       const panOrden = {};       // 'cuenta|<nº de orden de ML>' → {total, neto, n}
+      // Las CANCELADAS se guardan aparte en vez de tirarse. Una orden que el reporte tiene y el
+      // panel "no" puede ser simplemente una venta que se canceló y que nosotros ya conocemos —
+      // y contarla como venta faltante sería inventar un problema.
+      const panCanc = new Set();     // 'cuenta|<nº de orden>'
+      const panDesde = {};           // cuenta → la venta más vieja que tiene el panel
       let nVentas = 0, nCanc = 0, nRaras = 0;
       for (const [dia, ents] of Object.entries(vp)) {
         for (const v of Object.values(ents || {})) {
-          if (!v || v.cancelada) { if (v && v.cancelada) nCanc++; continue; }
+          if (!v || v.cancelada) {
+            if (v && v.cancelada) {
+              nCanc++;
+              const oc = String(v.saleId || '').replace(/^s/, '').trim();
+              if (oc) panCanc.add(String(v.cuenta || '?') + '|' + oc);
+            }
+            continue;
+          }
           const ts = Number(v.ts) || Date.parse(String(dia).replace(/_/g, '-') + 'T12:00:00Z');
           const tot = Number(v.total), net = Number(v.neto);
           if (!isFinite(ts) || !Number.isFinite(tot) || !Number.isFinite(net) || tot <= 0) { nRaras++; continue; }
@@ -12287,6 +12299,8 @@ async function main() {
           // Y por ORDEN, para el cruce fila por fila. `saleId` es 's' + el número de orden de ML,
           // que es el mismo `ORDER_ID` del reporte. Una orden puede tener más de un renglón
           // nuestro (un producto por renglón), así que se suman.
+          const cta0 = String(v.cuenta || '?');
+          if (!panDesde[cta0] || ts < panDesde[cta0]) panDesde[cta0] = ts;
           const oid = String(v.saleId || '').replace(/^s/, '').trim();
           if (oid) {
             const k2 = String(v.cuenta || '?') + '|' + oid;
@@ -12451,7 +12465,8 @@ async function main() {
             if (!id) continue;
             const tp = String(f[iTipo] || '').trim().toUpperCase();
             const bruto = csvNum(f[iBruto]), real = csvNum(f[iReal]);
-            const o = ord.get(id) || { bruto: 0, real: 0, tax: 0, env: 0, mkp: 0, lib: null, sucia: false, nf: 0 };
+            const o = ord.get(id) || { bruto: 0, real: 0, tax: 0, env: 0, mkp: 0, lib: null, sucia: false, nf: 0, ts: 0 };
+            { const tsF = Date.parse(String(f[iFecha] || '').trim()); if (isFinite(tsF) && (!o.ts || tsF < o.ts)) o.ts = tsF; }
             if (!/^SETTLEMENT/.test(tp)) o.sucia = true;     // devolución, disputa, retiro…
             if (bruto != null && real != null) { o.bruto += bruto; o.real += real; }
             if (iTax >= 0) { const x = csvNum(f[iTax]); if (x != null) o.tax += Math.abs(x); }
@@ -12539,6 +12554,34 @@ async function main() {
 
           console.log(`   venta por venta: ${nCruz} órdenes cruzadas · ${nSucia} con devolución o disputa (afuera) · `
             + `${nSinPanel} que el panel no tiene · ${nSinRep} que el reporte no tiene`);
+
+          // ── ¿LE FALTAN VENTAS AL PANEL? Es lo único de todo esto que puede ser plata ───────
+          // Una orden que el reporte tiene y el panel no puede ser tres cosas MUY distintas, y
+          // contarlas juntas es lo que hace sonar una alarma falsa:
+          //  · una venta CANCELADA, que el panel conoce y aparta a propósito;
+          //  · una venta anterior a la primera que el panel tiene de esa cuenta (nada que ver);
+          //  · una venta de verdad que NO se cargó. **Ésa sí es plata**, y es la que hay que ver.
+          // Se imprime la PARTE que representan sobre lo vendido del reporte, nunca los pesos.
+          {
+            let cCanc = 0, cViejas = 0, cFaltan = 0, brFaltan = 0, brTotal = 0;
+            const desde = panDesde[label] || 0;
+            for (const [id, r] of ord) {
+              if (r.bruto > 0) brTotal += r.bruto;
+              if (mio.has(id) || r.sucia || !(r.bruto > 0)) continue;
+              if (panCanc.has(label + '|' + id)) { cCanc++; continue; }
+              if (r.ts && desde && r.ts < desde) { cViejas++; continue; }
+              cFaltan++; brFaltan += r.bruto;
+            }
+            console.log(`      de las ${nSinPanel} que el panel no tiene: ${cCanc} son ventas CANCELADAS que ya conoce · `
+              + `${cViejas} son anteriores a la primera venta que tiene · ${cFaltan} quedan sin explicar`);
+            if (cFaltan && brTotal > 0) {
+              const parte = brFaltan / brTotal * 100;
+              console.log(`      esas ${cFaltan} son el ${parte.toFixed(1)}% de lo vendido del reporte `
+                + (parte >= 3 ? '⚠️ vale la pena mirarlas de a una' : '✅ es chico'));
+            } else if (!cFaltan) {
+              console.log('      ✅ ninguna sin explicar: al panel no le falta ninguna venta.');
+            }
+          }
           if (nCruz && bR > 0 && bP > 0) {
             const pR = qR / bR * 100, pP = qP / bP * 100;
             console.log(`   sobre esas ${nCruz}: ML se quedó ${pR.toFixed(1)}% (real) vs ${pP.toFixed(1)}% (panel) · `
