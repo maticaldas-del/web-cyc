@@ -1380,6 +1380,10 @@ footer{margin-top:32px;padding-top:14px;border-top:1px solid var(--border);font-
     <canvas id="chart-bar-dia" height="90"></canvas>
   </div>
 
+  <!-- ¿A qué hora te compran? (21/09/2026) · va al final de todo, pedido suyo -->
+  <div class="stitle">¿A qué hora te compran? <span id="met-horas-period" style="font-weight:400;color:var(--muted);text-transform:none;letter-spacing:0;font-family:'DM Mono',monospace;font-size:.65rem"></span></div>
+  <div id="met-horas"></div>
+
   <footer>CYC · Métricas ML · datos independientes</footer>
 </div>
 </div>
@@ -2294,7 +2298,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='19.89';
+const APP_VERSION='19.90';
 // El problema real que esto resuelve no es curiosidad: es que el celular guarda la app y sigue
 // mostrando la de ayer sin avisar. Varias veces se revisó un cambio que ya estaba subido y no se
 // veía. Por eso, además del número, el chip avisa cuando hay una versión nueva esperando.
@@ -12300,6 +12304,82 @@ function metMargenRubro(keys){
   }).sort((x,y)=>y.ganancia-x.ganancia);
   return {filas,sinRubro};
 }
+// ── ¿A QUÉ HORA TE COMPRAN? (21/09/2026) ─────────────────────────────────────────
+// Pedido suyo: *"se puede hacer una metrica de horarios de ventas? que este en metricas al final
+// de todo"*. **No hizo falta ningún dato nuevo**: el robot guarda `ts` con la hora REAL en que ML
+// cerró cada venta desde siempre, y hasta hoy sólo se usaba para ordenar. Es la misma historia
+// del `inventory_id` y de la comisión — un dato que ya estaba pago y que nadie mostraba.
+//
+// SE CUENTA POR COMPRA, NO POR RENGLÓN, y no es un detalle: un carrito con 3 productos es UNA
+// compra a UNA hora. Contando los renglones, esa hora se infla el triple. Se agrupa con
+// `vpGrupoKey`, la misma función con la que Ventas x Producto arma sus renglones, y se toma la
+// venta MÁS TEMPRANA del grupo, que es cuando empezó la compra.
+//
+// Y SIN `ts` NO SE INVENTA UNA HORA: esas compras se cuentan aparte y se dicen. Meterlas en las
+// 00:00 pondría un pico de madrugada que no existe — el error anotado de punta a punta acá de
+// leer una falta de dato como si fuera un dato.
+function metVentasPorHora(keys){
+  const g={};
+  keys.forEach(k=>{
+    Object.values(state.ventaprod[k]||{}).forEach(v=>{
+      if(!v||v.cancelada)return;                 // canceladas y reclamos no cuentan, igual que en todo el panel
+      const gid=vpGrupoKey(v);
+      const o=g[gid]||(g[gid]={t:null,total:0,neto:0,u:0});
+      const t=Number(v.ts)||0;
+      if(t>0&&(o.t===null||t<o.t))o.t=t;
+      o.total+=v.total||0;o.neto+=v.neto||0;o.u+=v.qty||0;
+    });
+  });
+  const H=Array.from({length:24},()=>({compras:0,u:0,total:0,neto:0}));
+  let sinHora=0,conHora=0;
+  Object.values(g).forEach(o=>{
+    const d=o.t>0?new Date(o.t):null;
+    const h=d&&isFinite(d.getTime())?d.getHours():null;
+    if(h===null||!(h>=0&&h<24)){sinHora++;return;}
+    H[h].compras++;H[h].u+=o.u;H[h].total+=o.total;H[h].neto+=o.neto;conHora++;
+  });
+  // La franja fuerte es la ventana de 4 horas SEGUIDAS con más compras, y el reloj da la vuelta
+  // (las 23 y las 0 son seguidas). Sin el módulo, una franja de madrugada se partiría al medio.
+  let fIni=null,fN=-1;
+  for(let i=0;i<24;i++){let n=0;for(let j=0;j<4;j++)n+=H[(i+j)%24].compras;if(n>fN){fN=n;fIni=i;}}
+  let pico=null;
+  H.forEach((x,i)=>{if(x.compras>0&&(pico===null||x.compras>H[pico].compras))pico=i;});
+  return {H,sinHora,conHora,pico,franja:conHora?{ini:fIni,n:fN}:null};
+}
+function renderMetHoras(keys){
+  const el=document.getElementById('met-horas');if(!el)return;
+  const per=document.getElementById('met-horas-period');
+  if(per)per.textContent='· '+getMetScopeLabel(metScopeMode);
+  const {H,sinHora,conHora,pico,franja}=metVentasPorHora(keys);
+  const hh=(i)=>String(i).padStart(2,'0');
+  if(!conHora){
+    el.innerHTML='<div class="chart-box" style="color:var(--muted);font-size:.72rem">No hay ninguna venta con hora guardada en este período'+(sinHora?' ('+sinHora+' compra'+(sinHora===1?'':'s')+' sin hora)':'')+'.</div>';
+    return;
+  }
+  const max=Math.max(1,...H.map(x=>x.compras));
+  const barras=H.map((x,i)=>{
+    const alto=x.compras?Math.max(4,Math.round(x.compras/max*100)):0;
+    const esPico=(i===pico);
+    const enFranja=franja&&[0,1,2,3].some(j=>(franja.ini+j)%24===i);
+    const col=esPico?'var(--green)':(enFranja?'rgba(52,211,153,.45)':'rgba(148,163,184,.4)');
+    return '<div style="flex:1 1 0;min-width:0;display:flex;flex-direction:column;align-items:center;gap:3px" title="'+hh(i)+':00 a '+hh(i)+':59 · '+x.compras+' compra'+(x.compras===1?'':'s')+' · '+x.u+' u. · '+fmt(x.total)+'">'
+      +'<div style="height:86px;width:100%;display:flex;align-items:flex-end">'
+      +'<div style="width:100%;border-radius:2px 2px 0 0;height:'+alto+'%;background:'+col+'"></div></div>'
+      +'<div style="font-size:.5rem;color:var(--muted);font-family:\'DM Mono\',monospace;line-height:1">'+(i%3===0?hh(i):'')+'</div></div>';
+  }).join('');
+  const pctFranja=conHora?Math.round(franja.n/conHora*100):0;
+  const resumen='<div style="display:flex;flex-wrap:wrap;gap:14px;margin-top:14px;font-size:.68rem">'
+    +'<div>🏆 <b>La hora que más vende:</b> '+hh(pico)+':00 a '+hh(pico)+':59 · '+H[pico].compras+' compra'+(H[pico].compras===1?'':'s')+' · '+fmt(H[pico].total)+'</div>'
+    +'<div>🕒 <b>Franja fuerte:</b> '+hh(franja.ini)+':00 a '+hh((franja.ini+4)%24)+':00 · '+franja.n+' de '+conHora+' compras ('+pctFranja+'%)</div>'
+    +'</div>';
+  const aviso=sinHora?'<div style="font-size:.62rem;color:#fbbf24;margin-top:8px">⚠ '+sinHora+' compra'+(sinHora===1?' no tiene':'s no tienen')+' hora guardada y '+(sinHora===1?'no entró':'no entraron')+' en el gráfico. No se las pone en las 00:00: sería un pico de madrugada inventado.</div>':'';
+  el.innerHTML='<div class="chart-box">'
+    +'<div class="ch-title">Compras por hora · '+conHora+' compra'+(conHora===1?'':'s')+' medida'+(conHora===1?'':'s')+'</div>'
+    +'<div style="display:flex;align-items:flex-end;gap:2px;margin-top:10px">'+barras+'</div>'
+    +resumen+aviso
+    +'<div style="font-size:.58rem;color:var(--muted);margin-top:10px">Un carrito con varios productos cuenta como UNA compra, a la hora en que empezó. La hora es la de tu reloj.</div>'
+    +'</div>';
+}
 function renderMetRubros(keys){
   const el=document.getElementById('met-rubros');if(!el)return;
   const per=document.getElementById('met-rubro-period');
@@ -12389,6 +12469,7 @@ function renderMetricas(){
   // ninguno, y por eso su título lo aclara en vez de dejar que se lea como si fuera del período.
   renderMetRubros(curKeys);
   renderMetReputacion();
+  renderMetHoras(curKeys);   // ¿a qué hora te compran? · al final de todo
   const acctColors=['c1','c4','c2','c3'];
   // Mismo período un año atrás (alineado con las líneas del gráfico).
   const year=sumMetFields(metScopeBuckets(metScopeMode).bucketsYear.flat(),metViewField);
