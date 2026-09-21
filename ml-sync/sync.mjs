@@ -9128,6 +9128,116 @@ async function main() {
       console.log('Si la raíz sale bien, el "margen por rubro" se puede armar sin adivinar ningún nombre.');
       return;
     }
+    // BILLING_PROBE=mismoprod → ¿ML DICE SOLO CUÁLES PUBLICACIONES SON EL MISMO PRODUCTO? SOLO LEE.
+    //
+    // Es la medición que tiene que ir ANTES de tocar nada. Hoy el panel adivina qué publicación va
+    // con qué ficha leyendo el TÍTULO (`matchProduct`), y ése es el filtro por palabras que ya
+    // falló SEIS veces en este archivo: el Watch 3 por el Watch 4, el Dark Door Sport por el
+    // Intense, los dos Armaf contra el mismo Aoud, el DualSense de edición limitada.
+    //
+    // `user_product_id` es el identificador con el que ML agrupa las publicaciones que son el
+    // MISMO producto. Si de verdad agrupa, deja de hacer falta adivinar por palabras. Pero eso no
+    // se da por cierto porque el nombre suene bien: **se mide contra las fichas que ya tenemos**,
+    // que son la única verdad disponible.
+    //
+    // Mide de una tres cosas más que hacían falta para lo mismo:
+    //  · `family_id` — el "producto padre" de ML (el Watch S5 de 46mm en todos sus colores).
+    //  · `domain_id` — el rubro fino (MLA-SMARTWATCHES), más preciso que la raíz de la categoría.
+    //  · `thumbnail`  — si ML da la foto de cada publicación, que es lo que él quiere ver al lado
+    //    de cada renglón en Pedidos y en Armar caja.
+    //
+    // NO escribe nada. Imprime títulos (que son públicos) y ningún dato de ningún comprador.
+    if (String(process.env.BILLING_PROBE || '').startsWith('mismoprod')) {
+      const soloM = (String(process.env.BILLING_PROBE).split(':')[1] || '').trim().toLowerCase();
+      const linksM = (await db.get('cyc/mllinks')) || {};
+      const prodNom = {};
+      for (const pr of products) prodNom[pr.id] = pr.name || pr.id;
+      const filas = [];     // {mla, cuenta, titulo, upid, famId, dom, foto, prodId}
+      let sinToken = 0;
+      for (const label of labels) {
+        if (soloM && label.toLowerCase() !== soloM) continue;
+        const acc = accounts[label]; if (!acc?.refresh_token) { sinToken++; continue; }
+        let tok;
+        try {
+          const t = await mlRefresh(ML_CLIENT_ID, ML_CLIENT_SECRET, acc.refresh_token);
+          await db.patch('mlapi/tokens/' + label, { refresh_token: t.refresh_token, updated_ts: Date.now() });
+          tok = t.access_token;
+        } catch { sinToken++; continue; }
+        const ids = Object.entries(linksM)
+          .filter(([m, e]) => m.startsWith('MLA') && e && e.cuenta === label && !e.ignored && (e.status || '') !== 'closed')
+          .map(([m]) => m);
+        for (let k = 0; k < ids.length; k += 20) {
+          let arr;
+          try { arr = await mlGet('/items?ids=' + ids.slice(k, k + 20).join(',') + '&attributes=id,title,user_product_id,family_id,domain_id,thumbnail', tok); }
+          catch (e) { console.log(`  ✗ ${label}: un lote de ${ids.slice(k, k + 20).length} no se pudo leer · ${String(e.message || e).slice(0, 80)}`); continue; }
+          for (const row of (arr || [])) {
+            const b = row.body || {}; if (!b.id) continue;
+            filas.push({
+              mla: b.id, cuenta: label, titulo: String(b.title || '').slice(0, 44),
+              upid: b.user_product_id || null, famId: b.family_id || null,
+              dom: b.domain_id || null, foto: !!b.thumbnail,
+              prodId: (linksM[b.id] || {}).prodId || null,
+            });
+          }
+        }
+      }
+      if (!filas.length) { console.log('No se pudo leer ninguna publicación.' + (sinToken ? ` ${sinToken} cuenta(s) sin token.` : '')); return; }
+      const n = filas.length;
+      const cuenta = (f) => filas.filter(f).length;
+      console.log(`=== ${n} publicaciones miradas${sinToken ? ` · ${sinToken} cuenta(s) sin token` : ''} ===\n`);
+      console.log(`  user_product_id : ${cuenta((f) => f.upid)} de ${n}`);
+      console.log(`  family_id       : ${cuenta((f) => f.famId)} de ${n}`);
+      console.log(`  domain_id       : ${cuenta((f) => f.dom)} de ${n}`);
+      console.log(`  foto (thumbnail): ${cuenta((f) => f.foto)} de ${n}`);
+      console.log(`  ya vinculadas a una ficha: ${cuenta((f) => f.prodId)} de ${n}\n`);
+
+      // ── ¿AGRUPA IGUAL QUE NUESTRAS FICHAS? ──
+      // Se mira en los DOS sentidos, y hacen falta los dos: que ML junte lo que nosotros separamos
+      // es tan informativo como lo contrario, y cada caso se arregla distinto.
+      const porUp = {};
+      for (const f of filas) if (f.upid) (porUp[f.upid] || (porUp[f.upid] = [])).push(f);
+      const gruposUp = Object.entries(porUp).filter(([, g]) => g.length > 1);
+      let coinciden = 0; const chocan = [];
+      for (const [up, g] of gruposUp) {
+        const fichas = [...new Set(g.map((x) => x.prodId).filter(Boolean))];
+        if (fichas.length <= 1) coinciden++;
+        else chocan.push({ up, g, fichas });
+      }
+      console.log(`── ML dice "mismo producto" (user_product_id) ──`);
+      console.log(`   ${gruposUp.length} grupo(s) de 2 o más publicaciones.`);
+      console.log(`   ${coinciden} coinciden con nuestra ficha · ${chocan.length} NO\n`);
+      for (const c of chocan.slice(0, 8)) {
+        console.log(`   ⚠ ML las junta y nosotros las tenemos en ${c.fichas.length} fichas distintas:`);
+        for (const x of c.g) console.log(`      ${x.mla} · ${x.cuenta.padEnd(8)} · ficha ${x.prodId ? prodNom[x.prodId] || x.prodId : '(ninguna)'} · ${x.titulo}`);
+        console.log('');
+      }
+      if (chocan.length > 8) console.log(`   … y ${chocan.length - 8} grupo(s) más\n`);
+
+      // El otro sentido: una ficha nuestra repartida en varios user_product_id.
+      const porFicha = {};
+      for (const f of filas) if (f.prodId && f.upid) (porFicha[f.prodId] || (porFicha[f.prodId] = [])).push(f);
+      const partidas = Object.entries(porFicha)
+        .map(([pid, g]) => ({ pid, g, ups: [...new Set(g.map((x) => x.upid))] }))
+        .filter((x) => x.ups.length > 1);
+      console.log(`── Nuestras fichas que ML NO junta ──`);
+      console.log(`   ${partidas.length} ficha(s) repartidas en más de un user_product_id.`);
+      // ESTO ES LO QUE DECIDE SI SIRVE ENTRE CUENTAS. Si el id es POR VENDEDOR —como pasa con el
+      // código de Full, que ya está medido— entonces el mismo producto en dos cuentas va a tener
+      // dos ids, y no sirve para juntar cuentas aunque sirva adentro de una.
+      let mismaCta = 0, variasCta = 0;
+      for (const x of partidas) ([...new Set(x.g.map((y) => y.cuenta))].length > 1 ? variasCta++ : mismaCta++);
+      console.log(`   de ésas: ${variasCta} están en VARIAS cuentas · ${mismaCta} en una sola\n`);
+      for (const x of partidas.slice(0, 6)) {
+        console.log(`   ${prodNom[x.pid] || x.pid} → ${x.ups.length} ids de ML`);
+        for (const y of x.g) console.log(`      ${y.mla} · ${y.cuenta.padEnd(8)} · ${y.titulo}`);
+        console.log('');
+      }
+      if (partidas.length > 6) console.log(`   … y ${partidas.length - 6} más\n`);
+      console.log('CÓMO SE LEE: si "están en VARIAS cuentas" es alto, el id es POR VENDEDOR y NO');
+      console.log('sirve para juntar el mismo producto entre las cuatro cuentas — igual que el');
+      console.log('código de Full, que ya está medido así. Adentro de UNA cuenta puede servir igual.');
+      return;
+    }
     // BILLING_PROBE=campos[:<MLA>] → ¿QUÉ CAMPOS MANDA ML QUE NO ESTAMOS GUARDANDO? SOLO LEE.
     //
     // Pedido suyo del 21/09/2026: "fijate si hay más info que da ML y no tenemos. por ejemplo el
@@ -9198,18 +9308,29 @@ async function main() {
       await mirar('LA CUENTA', '/users/' + sid);
       // La orden y el envío se miran por sus claves justamente porque son los que más datos de
       // terceros traen adentro.
+      // LA BÚSQUEDA VA CON LOS MISMOS PARÁMETROS QUE USA EL ROBOT, no con unos inventados.
+      // La primera versión pedía `/orders/search?seller=...&sort=date_desc` SIN `order.status=paid`
+      // y **se tragaba el error con un catch vacío**, así que imprimió "no se pudo encontrar una
+      // orden reciente" — que se lee como "ML no tiene ventas" y era el probe pidiendo mal.
+      // Es el `catch {}` mudo anotado cuatro veces en CLAUDE.md, cometido en la herramienta hecha
+      // justamente para encontrar lo que se pasa por al lado.
       let ordId = null;
       try {
-        const o = await mlGet(`/orders/search?seller=${sid}&sort=date_desc&limit=1`, tok);
+        const q = new URLSearchParams({ seller: String(sid), 'order.status': 'paid', sort: 'date_desc', limit: '1' });
+        const o = await mlGet('/orders/search?' + q.toString(), tok);
         ordId = ((o.results || [])[0] || {}).id || null;
-      } catch { /* sigue */ }
+        if (!ordId) console.log('\n── UNA VENTA ──  ML contestó bien pero sin ninguna orden pagada.');
+      } catch (e) { console.log(`\n── UNA VENTA ──  ✗ la búsqueda falló: ${String(e.message || e).slice(0, 140)}`); }
       if (ordId) {
         await mirar('UNA VENTA', '/orders/' + ordId);
-        try {
-          const sh = await mlGet('/orders/' + ordId + '/shipments', tok);
-          if (sh && sh.id) await mirar('SU ENVÍO', '/shipments/' + sh.id);
-        } catch { /* sigue */ }
-      } else { console.log('\n── UNA VENTA ──  no se pudo encontrar una orden reciente'); }
+        // El envío se pide por su propia ruta y también por la de la orden: si una no anda, la otra
+        // puede. Un solo camino que falla se lee como "ML no da el envío".
+        let shId = null;
+        try { const sh = await mlGet('/orders/' + ordId + '/shipments', tok); shId = (sh && sh.id) || null; }
+        catch (e) { console.log(`   (el envío por /orders/<id>/shipments falló: ${String(e.message || e).slice(0, 90)})`); }
+        if (shId) await mirar('SU ENVÍO', '/shipments/' + shId);
+        else console.log('   Sin id de envío: no se pudo mirar el envío.');
+      }
       console.log('\nLos 🆕 son campos que ML ya nos manda y el código nunca nombra. No todos sirven:');
       console.log('hay que mirar cuál contesta una pregunta que hoy no se puede contestar.');
       return;
