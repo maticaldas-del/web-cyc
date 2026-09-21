@@ -4207,6 +4207,30 @@ temprana** del grupo, que es cuando empezó la compra. Y **sin `ts` no se invent
 sólo la fecha — una hora inventada al lado de un número de venta es peor que no tenerla.
 Probado con el bloque REAL del archivo y 7 casos.
 
+### LO QUE SE AGREGÓ CON ESO (21/09/2026, *"agrega todo"*)
+
+ · **`subStatus` — el MOTIVO por el que ML tiene frenada una publicación.** Va en el chip de la
+   ficha, pegado al `PAUSADA`, y en Vinculaciones. **Importa porque "pausada" son cosas distintas
+   con remedios CONTRARIOS**: *sin stock* se arregla mandando mercadería y *ML pide documentación*
+   no se arregla con nada del panel. Es lo que costó entender con el Bare Vanilla.
+   **Lo que ML manda y no conocemos sale CRUDO** (`SUBEST` traduce los diez que se conocen):
+   traducir a la fuerza un código nuevo sería adivinar, y un código feo pero verdadero es mejor.
+   Un producto con todo activo **no muestra nada**: un cartel que sale siempre no lo lee nadie.
+ · **Lo que se quedó ML en cada venta**, en el renglón de Ventas x Producto.
+   **Se calcula como `total − neto` y NO con el `mlfee` guardado, a propósito.** `mlfee` deja
+   AFUERA las retenciones y el neto las trae descontadas, así que ese número daría **menos** que la
+   resta del mismo renglón: dos números correctos, uno al lado del otro, dando una conclusión falsa
+   — la lección de las tres cajas del 03/09.
+ · **En Vinculaciones**: desde cuándo el panel conoce la publicación (`altaTs`) y las marcas que le
+   puso el robot (`noVendemosMas`, `altaSinVender`, `altaPorCatalogo`).
+ · **`upid` se deja sin mostrar a propósito**: es el id con el que ML agrupa sus publicaciones y ya
+   lo usa el emparejado de las nuevas. En pantalla no contesta ninguna pregunta.
+
+**Y UNO QUE PARECÍA UN HALLAZGO Y NO LO ERA:** `margenMLDe` devuelve `pausada` y nadie lo usa, así
+que el barrido de funciones lo marcó. **Pero la ficha SÍ muestra "PAUSADA"** — lo lee de
+`p.netoCalcPausada`, el campo crudo. O sea que era código repetido, no un dato tapado. **Se
+verificó antes de decirlo**, que es lo que corresponde después de la lección de la hora.
+
 ### EL BARRIDO QUE SALIÓ DE AHÍ, Y LO QUE **NO** ENCUENTRA
 
 **`guardadosinver`** (solo lee) compara **lo que está en la base contra lo que `index.html`
