@@ -9211,7 +9211,7 @@ async function main() {
       const prodNom = {};
       for (const pr of products) prodNom[pr.id] = pr.name || pr.id;
       const filas = [];     // {mla, cuenta, titulo, upid, famId, dom, foto, prodId}
-      let sinToken = 0;
+      let sinToken = 0, tokPic = null;
       for (const label of labels) {
         if (soloM && label.toLowerCase() !== soloM) continue;
         const acc = accounts[label]; if (!acc?.refresh_token) { sinToken++; continue; }
@@ -9221,6 +9221,7 @@ async function main() {
           await db.patch('mlapi/tokens/' + label, { refresh_token: t.refresh_token, updated_ts: Date.now() });
           tok = t.access_token;
         } catch { sinToken++; continue; }
+        if (!tokPic) tokPic = tok;
         const ids = Object.entries(linksM)
           .filter(([m, e]) => m.startsWith('MLA') && e && e.cuenta === label && !e.ignored && (e.status || '') !== 'closed')
           .map(([m]) => m);
@@ -9241,6 +9242,7 @@ async function main() {
               seg: !!b.secure_thumbnail,
               esq: /^https:/i.test(String(b.thumbnail || '')) ? 'https' : (/^http:/i.test(String(b.thumbnail || '')) ? 'http' : '—'),
               host: (String(b.thumbnail || '').match(/^[a-z]+:\/\/[^/]+/i) || [''])[0],
+              urlFoto: b.thumbnail || null,
               prodId: (linksM[b.id] || {}).prodId || null,
             });
           }
@@ -9258,7 +9260,25 @@ async function main() {
       // Un ejemplo del comienzo de la dirección, para saber de qué servidor sale. No es dato de
       // nadie: es la foto pública de una publicación.
       const _ej = filas.find((f) => f.foto);
-      if (_ej) console.log(`  (de dónde sale la foto: ${String((filas.find((x) => x.mla === _ej.mla) || {}).host || '')})`);
+      if (_ej) console.log(`  (de dónde sale la foto: ${String(_ej.host || '')})`);
+      // ── LAS DOS SALIDAS POSIBLES, MEDIDAS Y NO ELEGIDAS A OJO ────────────────────────────────
+      // ML manda la foto por http y el panel va por https, así que la imagen quedaría bloqueada.
+      // Hay dos caminos y ninguno se da por bueno sin probarlo:
+      //   1) el MISMO servidor por https (lo normal en un CDN, pero "lo normal" no es una medición)
+      //   2) `pictures[0].secure_url`, que ML documenta como la versión segura
+      if (_ej && _ej.urlFoto) {
+        const httpsUrl = _ej.urlFoto.replace(/^http:/i, 'https:');
+        try {
+          const r = await fetch(httpsUrl, { method: 'GET' });
+          const ct = r.headers.get('content-type') || '';
+          console.log(`\n  ¿el mismo servidor sirve por https? → ${r.status} · ${ct}${r.ok && /^image\//.test(ct) ? '  ✅ sirve' : '  ❌ no sirve'}`);
+        } catch (e) { console.log(`\n  ¿el mismo servidor sirve por https? → no contestó · ${String(e.message || e).slice(0, 70)}`); }
+        try {
+          const it = await mlGet('/items/' + _ej.mla + '?attributes=pictures', tokPic);
+          const pic = ((it.pictures || [])[0] || {});
+          console.log(`  ¿pictures trae secure_url? → ${pic.secure_url ? 'SÍ · ' + (String(pic.secure_url).match(/^[a-z]+:\/\/[^/]+/i) || [''])[0] : 'no'}`);
+        } catch (e) { console.log(`  ¿pictures trae secure_url? → no se pudo leer · ${String(e.message || e).slice(0, 70)}`); }
+      }
       console.log(`  ya vinculadas a una ficha: ${cuenta((f) => f.prodId)} de ${n}\n`);
 
       // ── ¿AGRUPA IGUAL QUE NUESTRAS FICHAS? ──
