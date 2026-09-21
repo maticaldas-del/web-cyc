@@ -4767,20 +4767,34 @@ function cajaLlenarCupoPlan(cands,topePeq,topeGra){
     ||((a.dias==null?9999:a.dias)-(b.dias==null?9999:b.dias)));
   const sumar=(c,n)=>{const b=c.grande?'gra':'peq';const dar=Math.min(n,lib[b],c.u-(dado[c.key]||0));
     if(dar>0){dado[c.key]=(dado[c.key]||0)+dar;lib[b]-=dar;}return dar>0?dar:0;};
-  // RONDA 1: que ninguno se quede sin nada.
-  // EL TOPE DE LA RONDA 1 NO PUEDE SER SÓLO "lo que vende en el viaje": lo agarró la prueba. Un
-  // producto que vende 10 por día pide 80 unidades en esa cuenta y, con un cupo de 20, se lleva
-  // las 20 en la PRIMERA ronda — o sea exactamente lo que esta función vino a evitar.
-  // Por eso la ronda 1 reparte además una parte pareja del cupo (`share`): nadie puede llevarse
-  // más que su porción hasta que todos hayan recibido su mínimo. El desequilibrio se arregla en la
-  // ronda 2, donde sí manda la plata.
-  const nBolsa={peq:0,gra:0};
-  for(const c of orden)if(c.u>0)nBolsa[c.grande?'gra':'peq']++;
-  const share={peq:lib.peq===Infinity?Infinity:Math.max(1,Math.floor(lib.peq/Math.max(1,nBolsa.peq))),
-    gra:lib.gra===Infinity?Infinity:Math.max(1,Math.floor(lib.gra/Math.max(1,nBolsa.gra)))};
+  // RONDA 1: UNA unidad a cada uno, y nada más.
+  //
+  // LA PRIMERA VERSIÓN REPARTÍA MUCHO MÁS Y ESO COSTABA PLATA. Le daba a cada producto lo que
+  // vende en los días del viaje (con un tope de parte pareja del cupo), y él lo cuestionó bien:
+  // *"¿tuviste en cuenta que quizás mandar 50 a uno es mejor que dividirlo?"*. Medido con su
+  // propio ejemplo —cupo 50, cinco productos en cero, el mejor deja $5.000 por unidad y el peor
+  // $1.000— el reparto 18/8/8/8/8 dejaba **$170.000** contra **$230.000** de ir derecho al que más
+  // deja. **Un 35% tirado.**
+  //
+  // Y DE SUS DOS ARGUMENTOS, UNO VALE Y EL OTRO NO, lo que importa para no volver a tocarlo:
+  //  · *"se le gana el doble de %"* → **eso ya lo mira**: el orden es por la plata que deja cada
+  //    unidad, así que el de más margen va primero y se lleva más.
+  //  · *"vende 50 en un día"* → **la velocidad no cambia nada**, y esto es lo que sorprende: un
+  //    producto que vende más rápido necesita proporcionalmente más stock para sostener ese ritmo,
+  //    así que por unidad de lugar en Full deja lo mismo. Se cancela. Lo que decide es cuánto deja
+  //    cada unidad, no qué tan rápido sale.
+  //
+  // POR QUÉ QUEDA UNA UNIDAD Y NO CERO: una publicación en CERO no vende nada, y ésa es su regla
+  // del 19/08 (*"en cero no vende — eso no es reponer, es la diferencia entre vender y no"*).
+  // Medido con la función corriendo, no a ojo: con 1 unidad a cada uno el mismo caso deja
+  // **$224.000** de los $230.000 posibles (reparto 30/17/1/1/1) — se pierde un 2,6% y no queda
+  // ninguna publicación vacía. Con la ronda vieja se perdía el 26%.
+  //
+  // Si el cupo no alcanza ni para una a cada uno, la reciben los que más dejan: el orden manda
+  // también acá.
   for(const c of orden){
     if(!(c.u>0))continue;
-    sumar(c,Math.min(Math.max(1,Math.ceil((c.vDia||0)*REPO_DIAS_DEMORA)),share[c.grande?'gra':'peq']));
+    sumar(c,1);
   }
   // RONDA 2: llenar con lo que más deja.
   for(const c of orden){

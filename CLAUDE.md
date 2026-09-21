@@ -4364,15 +4364,41 @@ ganancia si esa cuenta la alcanza a vender, así que vale *"lo que deja ese prod
 hasta tapar el hueco y **cero después**. Eso ya reparte solo entre productos —el hueco de cada uno
 es finito—, que es exactamente lo que él pide.
 
-**PERO ORDENAR POR PLATA Y LLENAR NO ALCANZA, y ése es el punto de su pedido:** si el primero
-necesita 60 y el cupo son 50, se lleva TODO. Por eso van **dos rondas**, y se explica en una línea:
-**primero que ninguno se quede sin nada, después llenar.**
+**VAN DOS RONDAS: una unidad a cada uno, y después llenar por plata.**
 
-**Y LA PRUEBA AGARRÓ QUE LA RONDA 1 TAMBIÉN PODÍA CONCENTRAR.** Un producto que vende 10 por día
-pide 80 unidades, y con un cupo de 20 se llevaba las 20 **en la primera ronda** — o sea exactamente
-lo que la función vino a evitar. Ahora la ronda 1 reparte además **una parte pareja del cupo**; el
-desequilibrio se arregla en la ronda 2, donde sí manda la plata.
-**Con su ejemplo de 50 unidades y cinco productos en cero, reparte 18/8/8/8/8.**
+### LA PRIMERA VERSIÓN REPARTÍA DEMASIADO Y ÉL LO CUESTIONÓ BIEN
+
+Yo había puesto una ronda 1 generosa —a cada producto, lo que vende en los 8 días del viaje, con
+tope de parte pareja del cupo— y con su ejemplo repartía **18/8/8/8/8**. Él preguntó:
+*"¿tuviste en cuenta que quizás mandar 50 a uno es mejor que dividirlo? porque ese de 50 se venden
+todas en un día y se le gana el doble de % por ejemplo"*.
+
+**MEDIDO CON LA FUNCIÓN CORRIENDO, y tenía razón:** cupo 50, cinco productos en cero, el mejor deja
+$5.000 por unidad y el peor $1.000.
+
+| | deja |
+|---|---|
+| el reparto 18/8/8/8/8 | **$170.000** |
+| ir derecho por plata (30 al primero, 20 al segundo) | **$230.000** |
+| **1 unidad a cada uno y el resto por plata** (30/17/1/1/1) | **$224.000** |
+
+**Mi reparto tiraba el 26%.** Con una unidad a cada uno se pierde **2,6%** y **ninguna publicación
+queda vacía**, que es su regla del 19/08 (*"en cero no vende — eso no es reponer, es la diferencia
+entre vender y no"*). Quedó así.
+
+### DE SUS DOS ARGUMENTOS, UNO VALE Y EL OTRO NO — Y ESTO ES LO QUE NO HAY QUE VOLVER A TOCAR
+
+ · *"se le gana el doble de %"* → **ya estaba cubierto**: el orden es por la plata que deja cada
+   unidad, así que el de más margen va primero y se lleva más. Medido: cuando el que vuela deja el
+   doble se lleva 19 de 20; cuando deja menos, se lo lleva el otro.
+ · *"vende 50 en un día"* → **la velocidad NO cambia nada, y esto es lo que sorprende.** Un producto
+   que vende más rápido necesita proporcionalmente más stock para sostener ese ritmo, así que **por
+   unidad de lugar en Full deja lo mismo**: se cancela. Lo que decide es cuánto deja cada unidad, no
+   qué tan rápido sale. La velocidad quedó sólo como desempate, para el que se queda sin stock antes.
+
+**LA LECCIÓN, y es para mí:** la ronda 1 la puse para cumplir su pedido de *"no meter las 50 en uno
+solo"*, y la puse **sin medir cuánto costaba**. Costaba un cuarto de la plata. Un freno que se pone
+"por las dudas" también tiene precio, y ese precio se mide igual que todo lo demás.
 
 **Lo que no entró se DICE**, abajo de las barras y no en un aviso que se va solo: son unidades que el
 panel dice que hay que mandar y que quedaron para la caja siguiente.
