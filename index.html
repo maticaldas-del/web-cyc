@@ -2275,7 +2275,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='19.84';
+const APP_VERSION='19.85';
 // El problema real que esto resuelve no es curiosidad: es que el celular guarda la app y sigue
 // mostrando la de ayer sin avisar. Varias veces se revisó un cambio que ya estaba subido y no se
 // veía. Por eso, además del número, el chip avisa cuando hay una versión nueva esperando.
@@ -7391,7 +7391,19 @@ function renderVentaProd(){
       const pctBox=isCancelled?'':gpct!==null?`<span class="db ${pctCls(gpct)}" style="font-size:.62rem;color:${pctColor(gpct)}">${gpct>=0?'+':''}${gpct.toFixed(0)}%</span><span style="font-size:.58rem;color:${pctColor(gpct)};margin-left:3px">${pctLabel(gpct)}</span>`:'<span class="db nc" style="font-size:.58rem">s/costo</span>';
       const grpKey=grp._dateKey||key;
       const delBtn=grp.saleId?`<button class="ii-del" onclick="delVentaSale('${grp.gid}','${grpKey}')">✕</button>`:`<button class="ii-del" onclick="delVentaProd('${grp.items[0].id}')">✕</button>`;
-      const fechaTag=grp._dateKey?`<span style="font-size:.58rem;color:var(--muted)">${grp._dateKey.replace(/_/g,'-')}</span>`:'';
+      // LA HORA DE LA VENTA (21/09/2026). Pedido suyo: *"se le puede agregar la hora de venta a
+      // las ventas?"* — y el dato **ya estaba guardado desde siempre**: el robot escribe
+      // `ts: new Date(o.date_created || o.date_closed)`, o sea la hora REAL en que ML cerró la
+      // venta, no la hora en que el robot la trajo. Estaba y no se mostraba, que es la variante
+      // del error anotado el 19/09 con la comisión: un dato que el sistema ya sabe y deja a todos
+      // adivinando.
+      // Se toma la venta MÁS TEMPRANA del grupo: un carrito son varios renglones de la misma
+      // compra y la hora de la compra es cuando empezó.
+      // Y si no hay `ts` NO se inventa una hora: se muestra sólo la fecha. Una hora inventada al
+      // lado de un número de venta es peor que no tenerla.
+      const _hs=grp.items.map(v=>Number(v.ts)||0).filter(t=>t>0);
+      const _hora=_hs.length?new Date(Math.min(..._hs)).toLocaleTimeString('es-AR',{hour:'2-digit',minute:'2-digit',hour12:false}):'';
+      const fechaTag=grp._dateKey?`<span style="font-size:.58rem;color:var(--muted)">${grp._dateKey.replace(/_/g,'-')}${_hora?' · '+_hora:''}</span>`:'';
       // El número de venta va en BLANCO, no en verde. Pedido suyo del 09/09/2026: en verde se
       // confundía con el % de ganancia, que está en el mismo renglón y también en verde. El verde
       // acá no significaba nada — el número es un dato, no una señal de que algo esté bien.
