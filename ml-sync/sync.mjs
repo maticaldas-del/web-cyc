@@ -14960,7 +14960,14 @@ async function main() {
     // `:go` NO TOCA NADA y dice, producto por producto, si ML tiene una foto para reemplazarla o
     // si ese producto va a quedar SIN NINGUNA — que es la única parte que él necesita decidir.
     if (String(process.env.BILLING_PROBE || '').startsWith('sacarfotos')) {
-      const go = /:go$/.test(String(process.env.BILLING_PROBE || ''));
+      const _arg = String(process.env.BILLING_PROBE || '');
+      const go = /(^|:)go(:|$)/.test(_arg);
+      // DECISIÓN SUYA (21/09/2026), con los 77 medidos a la vista: *"sacar 76 y dejar la
+      // Calculadora"*. O sea que **el que quedaría sin NINGUNA foto no se toca**: su foto a mano
+      // es la única que tiene, porque no hay publicación viva de dónde traer otra. Sacarla no
+      // deja la de ML — deja un hueco, y borrar una imagen subida no se puede deshacer.
+      // Es el lado seguro por defecto. Para sacarlas igual hay que pedirlo: `sacarfotos:go:todas`.
+      const todas = /(^|:)todas(:|$)/.test(_arg);
       const prods = (await db.get('cyc/products')) || {};
       const links = (await db.get('cyc/mllinks')) || {};
       // Qué publicaciones VIVAS con foto tiene cada producto: es el reemplazo que va a quedar.
@@ -14989,10 +14996,16 @@ async function main() {
         console.log(`\n⚠️  ${quedanSin.length} de ${conMano.length} van a quedar SIN NINGUNA foto: ML no tiene una para reemplazarla.`);
         console.log('   (son productos sin publicación viva con foto guardada)');
       }
-      if (!go) { console.log('\nPRUEBA: no se tocó nada. Para aplicarlo: sacarfotos:go'); return; }
+      const aSacar = todas ? conMano : conMano.filter((x) => x.ml.length);
+      if (quedanSin.length && !todas) {
+        console.log(`\n🔒 ${quedanSin.length} NO se toca(n): es su única foto y no hay de ML para reemplazarla.`);
+        console.log('   Para sacarlas igual (quedan sin ninguna): sacarfotos:go:todas');
+      }
+      console.log(`\n${go ? 'Se sacan' : 'Se sacarían'} ${aSacar.length} de ${conMano.length}.`);
+      if (!go) { console.log('PRUEBA: no se tocó nada. Para aplicarlo: sacarfotos:go'); return; }
       // ── APLICAR ──────────────────────────────────────────────────────────────────
       let ok = 0, err = 0;
-      for (const x of conMano) {
+      for (const x of aSacar) {
         try {
           await db.patch('cyc/products/' + x.id, { foto: null, fotoUrl: null });
           await db.set('cyc/fotos/' + x.id, null);
@@ -15002,8 +15015,10 @@ async function main() {
       // RELEER Y COMPARAR (regla 6): que el comando diga "listo" no es prueba de que quedó.
       const prods2 = (await db.get('cyc/products')) || {};
       const quedan = Object.entries(prods2).filter(([, q]) => q && !q.borrado && (q.fotoUrl || q.foto === true)).length;
+      const esperadas = conMano.length - aSacar.length;   // las que se dejaron a propósito
       console.log(`\n✓ Sacadas ${ok} · ${err} con error`);
-      console.log(`Releído de la base: quedan ${quedan} ficha(s) con foto a mano${quedan ? ' ⚠️ NO quedó limpio' : ' 🟢'}`);
+      console.log(`Releído de la base: quedan ${quedan} ficha(s) con foto a mano · se esperaban ${esperadas}`
+        + (quedan === esperadas ? ' 🟢' : ' ⚠️ NO COINCIDE: mirarlo'));
       return;
     }
 
