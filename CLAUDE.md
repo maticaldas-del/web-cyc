@@ -351,6 +351,8 @@ Los que más se usan:
 | `medirsaldo` | **cómo viene cada tipo de movimiento** del reporte: fechas y signos · solo lee |
 | `realml[:cuenta]` | **¿el panel mide bien lo que ML descuenta?** lo real contra lo calculado, por cuenta y mes · solo lee |
 | `saldocuenta` | **el reporte "saldo en cuenta"**, que trae el disponible de verdad · dice si falta crearlo · solo lee |
+| `extracto` | **¿se puede pedir por robot el extracto de cuenta?** (medido: NO, 32 puertas) · solo lee |
+| `columnas` | **¿quedaron las 7 columnas nuevas del reporte?** cuenta por cuenta · avisa si hay datos del comprador · solo lee |
 | `mptoken` | **¿la llave propia de Mercado Pago abre algo que la de ML no?** (medido: no) · solo lee |
 | `saldo4` · `saldo5` | **agotar el saldo**: 13 puertas más y las tres formas de pedir el reporte de liberaciones |
 | `diario[:go]` | **dejar el reporte generándose solo todos los días** · MP lo ignora: se hace desde su panel |
@@ -3127,6 +3129,75 @@ MercadoPago lo dice: la puerta del saldo contesta *"Public access not allowed"* 
 no se le da a ninguna aplicación común. El reporte de "Dinero disponible" lo dieron de baja en
 marzo de 2022.
 
+### EL EXTRACTO DE CUENTA ES EL BUENO, Y SE BAJA A MANO (21/09/2026)
+
+Él creó el reporte y mandó el archivo. **La deducción de la sección de abajo —"los dos que fallan
+son los dos sin configuración"— quedó DESMENTIDA**, y eso es justo para lo que estaba escrita así:
+`saldocuenta`, corrido después de que él lo creara, sigue contestando `config_not_found_for_user`
+en las **cuatro** y la lista sigue **vacía**. O sea que el "Extracto de cuenta" del panel **NO es
+el `bank_report` de la API**: mismo formato de columnas, otro lugar.
+**Y no hay ninguna otra puerta:** `extracto` (comando nuevo, solo lee) probó **32** —la lista de
+`bank_report` paginada, `account_statement`, `statement`, `reports/…`, `account_movements`— y
+**ninguna** trajo un archivo con el saldo adentro. **El extracto lo baja ÉL del panel, a mano.**
+El reconocimiento no fue por el nombre del endpoint sino por las COLUMNAS, a propósito: un 200 no
+prueba nada, ya mordió con la página que devolvía un cascarón vacío.
+
+**EL ARCHIVO ES EXACTAMENTE LO QUE HACÍA FALTA, y cierra al peso.** Trae `INITIAL_BALANCE`,
+`FINAL_BALANCE` y un `PARTIAL_BALANCE` **fila por fila**: el saldo de verdad, no uno deducido.
+Medido contra el de julio: **los 652 movimientos encadenan sin un solo desvío** y el último saldo
+parcial coincide clavado con el final. No hace falta ningún punto de partida cargado a mano.
+
+**Y TRAE LO QUE EL REPORTE DE LIQUIDACIÓN NO VE — ESTO CORRIGE UN NÚMERO DE ESTE ARCHIVO.** De los
+652, **144 no aparecen en el de liquidación**: transferencias a proveedores, la tarjeta, los
+peajes, los débitos de deuda de ML y los rendimientos. La nota de abajo dice que lo que faltaba
+eran *"~$2.200.000 por mes"*; en julio, en UNA sola cuenta, son **$8,8 millones netos**. O sea que
+la cuenta "ancla + liquidaciones" **no se iba desviando de a poco: se despegaba millones por mes**.
+La estimación vieja salió de la factura mensual de ML y nunca contó la plata que sale por fuera de
+ML, que es la mayor parte.
+
+**OJO: ESE ARCHIVO TIENE NOMBRES Y APELLIDOS DE TERCEROS ADENTRO** (proveedores y familia, en cada
+transferencia). **No va al repo ni a ningún archivo**, y ningún probe lo imprime. Es el mismo dato
+que obligó a borrar `recibidas.json` el 15/09.
+
+### LAS SIETE COLUMNAS QUE ABREN LA COMPARACIÓN VENTA POR VENTA (21/09/2026)
+
+`realml` compara por cuenta y por MES, y la sección de abajo deja escrito por qué fila por fila era
+imposible. **Dos de esos tres motivos se resuelven con columnas que el reporte SÍ tiene y nadie
+había tildado.** Él las tildó en el panel de MercadoPago:
+
+| columna | qué destraba |
+|---|---|
+| `ORDER_ID` · `PACK_ID` | **la clave.** La venta guarda `saleId`/`numVenta` —de ML— y el reporte no traía ninguno de los dos. Sin clave no hay cruce. |
+| `SHIPPING_FEE_AMOUNT` · `MKP_FEE_AMOUNT` | separan el envío de la comisión. Sin eso la brecha daba el tamaño del envío **y sólo arriba de los $33.000** — la forma exacta del agujero del 17/09: habría salido como hallazgo siendo un artefacto. |
+| `TAXES_DISAGGREGATED` · `TAX_DETAIL` | las retenciones, una por una |
+| `IS_RELEASED` | si el neto de esa venta es real o todavía estimado |
+
+**NO SE PIDIÓ NINGUNA COLUMNA CON DATOS DEL COMPRADOR** (nombre, documento, tarjeta, últimos 4
+dígitos, número de autorización). El robot baja este archivo en un lugar público. `columnas` avisa
+fuerte si alguna aparece.
+
+**AGREGAR COLUMNAS NO ROMPE NADA, y se verificó ANTES de pedírselas:** todos los lugares que leen
+este CSV buscan por NOMBRE (`cols.indexOf('REAL_AMOUNT')`), nunca por posición.
+
+**SE VERIFICÓ CUENTA POR CUENTA Y FALTABA UNA.** `columnas` (solo lee) midió: Adriana, Luciana y
+Matías con las 7; **Ayelen con 18 columnas, sin `SHIPPING_FEE_AMOUNT`**. Las cuatro quedaron con
+`scheduled:true`, `include_withdraw:true` y frecuencia diaria. **Un cambio hecho a mano en cuatro
+pantallas iguales se equivoca en una**, y la única forma de saber cuál es mirarlas las cuatro.
+
+**Y LA CONFIGURACIÓN NO ES EL ARCHIVO.** Los reportes ya generados siguen con las columnas viejas
+—los que había eran del 24/07— y eso NO es una falla: la configuración es lo que va a tener el
+PRÓXIMO. `columnas` mira las dos cosas por separado y lo dice, para que un archivo viejo no se lea
+como que el cambio no quedó.
+
+**EL CANDIDATO A EXPLICAR LOS 6 A 9 PUNTOS CAMBIÓ, y hay que anotarlo porque yo lo tenía al revés.**
+La nota de arriba pone a las retenciones primero. Mirando `orderNet`, **las retenciones ya están
+adentro del neto que guardamos** (`net_received_amount` es neto de todo), así que no explican la
+brecha. Lo que sí la explica en dirección y en signo es **el neto ESTIMADO**: cuando ML todavía no
+liquidó, el neto sale del respaldo (precio − comisión), que **no descuenta las retenciones** — o
+sea que esas ventas se ven **mejores de lo que son**. `IS_RELEASED` es exactamente la columna que
+lo separa, y la pedí por otro motivo. **Sigue siendo una hipótesis: no se toca ningún precio hasta
+medirla.**
+
 ### EL SALDO NO SE LEE, PERO HAY UN REPORTE QUE LO TRAE — Y SE CREA A MANO (21/09/2026)
 
 **EL ERROR DEL DÍA, Y ES EL ANOTADO DIEZ VECES ACÁ.** En la corrida de `mptoken`,
@@ -3154,7 +3225,8 @@ certeza, y se comprueba sola en cuanto él la cree.
 si ofrece frecuencia, **diaria**. Ese reporte trae entre sus tipos de renglón
 **`initial_available_balance`**: o sea **el disponible de verdad**, no una cuenta deducida. Con eso
 se termina el punto de partida cargado a mano y su recarga mensual.
-**Al 21/09 está pendiente**: él dijo *"ni bien llego lo activo"*.
+**LO HIZO EL 21/09 Y NO ALCANZÓ**: el reporte se crea y se baja bien desde el panel, pero la API
+sigue sin verlo. Ver la sección de arriba — el extracto se baja a mano y punto.
 
 **`PROGRAMARLO` TAMPOCO SE PUEDE POR API, Y EL CHEQUEO DE RELEER LO SALVÓ.** `diario:go` mandó
 `scheduled:true` en las cuatro, **MercadoPago aceptó sin error** y al releer seguía en `false`: lo
