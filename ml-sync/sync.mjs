@@ -12368,6 +12368,109 @@ async function main() {
       return;
     }
 
+    // BILLING_PROBE=cupo[:<cuenta>=<chicos>/<grandes>[;otra=…][;go]] → EL CUPO DE FULL.
+    //
+    // Pedido suyo del 21/09/2026. **ML NO DA ESTE NÚMERO POR API y eso está medido**: `cupofull`
+    // probó 14 direcciones × 4 cuentas = 56 intentos y ninguna lo trae. Lo único que contesta es
+    // la configuración de envíos, que no tiene ninguna capacidad adentro. Así que el número lo lee
+    // ÉL en ML (Full → "Podés enviar hasta N u.") y se carga acá.
+    //
+    // SON DOS CUPOS. ML separa "pequeños y medianos" de "grandes y extragrandes", y medido el
+    // 21/09 el que aprieta es el primero: Adriana 97 · Luciana 484 · Ayelen 42 (en ámbar, casi al
+    // tope) · Matías 163, contra 86-100 de grandes que nadie toca.
+    //
+    // OJO CON QUÉ NÚMERO ES: "podés enviar hasta N" es lo que te QUEDA libre en ese momento, no el
+    // cupo total. Por eso se guarda con la FECHA y el panel lo trata como una lectura que envejece:
+    // descuenta lo despachado y suma lo vendido desde entonces, y a los 7 días avisa que lo vuelvas
+    // a mirar. Un cupo de hace un mes no es un cupo.
+    //
+    // QUÉ ES "GRANDE": regla suya, textual — *"el único producto que es 'grande' son los tenders.
+    // nada más"*. La lista vive en `cyc/mlconfig/cupoGrandes` y cada ficha la puede pisar con
+    // `grandeFull`. Sin argumentos este comando IMPRIME qué productos agarra esa lista, que es el
+    // "mirar la lista antes" de siempre: filtrar por palabras ya falló seis veces acá.
+    if (/^cupo(:|$)/.test(String(process.env.BILLING_PROBE || ''))) {
+      const crudo = String(process.env.BILLING_PROBE).slice(4).replace(/^:/, '');
+      const cfgU = (await db.get('cyc/mlconfig')) || {};
+      const yaU = cfgU.cupoFull || {};
+      const palG = (Array.isArray(cfgU.cupoGrandes) ? cfgU.cupoGrandes
+        : (typeof cfgU.cupoGrandes === 'string' ? cfgU.cupoGrandes.split(',') : null)
+      ) || ['tendedero', 'tender'];
+      const esGrande = (p) => {
+        if (!p) return false;
+        if (p.grandeFull === true) return true;
+        if (p.grandeFull === false) return false;
+        const n = norm(p.name || '');
+        return palG.some((w) => w && n.includes(norm(String(w).trim())));
+      };
+      const verLista = () => {
+        const gr = products.filter(esGrande);
+        console.log(`\nQué cuenta como GRANDE hoy (palabras: ${palG.join(', ')}):`);
+        if (!gr.length) console.log('   ninguno — ojo, entonces TODO va al cupo de chicos y medianos.');
+        else gr.forEach((x) => console.log(`   · ${x.name}${x.grandeFull === true ? '  (marcado a mano en la ficha)' : ''}`));
+        console.log(`   (${products.length - gr.length} productos van al cupo de chicos y medianos)`);
+      };
+      if (!crudo) {
+        console.log('=== CUPO DE FULL POR CUENTA ===');
+        console.log('ML no lo da por API (medido: 56 intentos). Lo leés vos en Full y se carga acá.\n');
+        let hay = 0;
+        for (const label of labels) {
+          const c = yaU[label];
+          if (!c || !(c.ts > 0)) { console.log(`  ${label.padEnd(8)} — sin cargar`); continue; }
+          hay++;
+          const d = Math.floor((Date.now() - c.ts) / 864e5);
+          console.log(`  ${label.padEnd(8)} chicos y medianos ${String(c.peq != null ? c.peq : '?').padStart(5)} u.`
+            + ` · grandes ${String(c.gra != null ? c.gra : '?').padStart(5)} u.`
+            + `   (leído hace ${d} día${d === 1 ? '' : 's'}${d >= 7 ? ' ⚠️ conviene mirarlo de nuevo' : ''})`);
+        }
+        if (!hay) console.log('\n  Todavía no hay ninguno cargado.');
+        verLista();
+        console.log('\nPara cargarlo:  cupo:ayelen=42/100;matias=163/100;go');
+        console.log('El primer número es "pequeños y medianos" y el segundo "grandes y extragrandes".');
+        return;
+      }
+      const GOU = /(^|;)\s*go\s*(;|$)/i.test(crudo);
+      const partes = crudo.split(';').map((x) => x.trim()).filter((x) => x && !/^go$/i.test(x));
+      // SI UN SOLO TÉRMINO NO SE ENTIENDE, NO SE ESCRIBE NINGUNO. Media carga deja dos cuentas con
+      // el cupo nuevo y dos con el viejo, y eso no se ve: es el error que ya mordió en `pedir`.
+      const plan = [];
+      const malos = [];
+      for (const t of partes) {
+        const m = t.match(/^([^=]+)=\s*(\d+)\s*\/\s*(\d+)\s*$/);
+        if (!m) { malos.push(`${t} — se escribe cuenta=chicos/grandes, ej ayelen=42/100`); continue; }
+        const cta = labels.find((l) => l.toLowerCase() === norm(m[1].trim()) || norm(l) === norm(m[1].trim()));
+        if (!cta) { malos.push(`${t} — no conozco la cuenta "${m[1].trim()}" (son: ${labels.join(', ')})`); continue; }
+        plan.push({ cta, peq: parseInt(m[2], 10), gra: parseInt(m[3], 10) });
+      }
+      if (malos.length) {
+        console.log('No escribí NADA. Estos términos no los entendí:');
+        malos.forEach((x) => console.log('   ✗ ' + x));
+        return;
+      }
+      if (!plan.length) { console.log('No pasaste ninguna cuenta. Ej: cupo:ayelen=42/100;go'); return; }
+      console.log(`=== ${GOU ? 'CARGANDO' : 'PRUEBA (no se escribe nada)'} EL CUPO DE FULL ===\n`);
+      for (const x of plan) {
+        const antes = yaU[x.cta] || {};
+        console.log(`  ${x.cta.padEnd(8)} chicos y medianos ${String(antes.peq != null ? antes.peq : '—').padStart(5)} → ${String(x.peq).padStart(5)}`
+          + ` · grandes ${String(antes.gra != null ? antes.gra : '—').padStart(5)} → ${String(x.gra).padStart(5)}`);
+      }
+      verLista();
+      if (!GOU) { console.log('\nAgregá `;go` para que quede guardado.'); return; }
+      const ts = Date.now();
+      for (const x of plan) await db.set('cyc/mlconfig/cupoFull/' + x.cta, { peq: x.peq, gra: x.gra, ts });
+      // Releer y comparar: que el set no tire error no prueba que haya quedado (regla 6).
+      const cfg2U = (await db.get('cyc/mlconfig/cupoFull')) || {};
+      let ok = 0;
+      for (const x of plan) {
+        const g = cfg2U[x.cta] || {};
+        const bien = Number(g.peq) === x.peq && Number(g.gra) === x.gra;
+        if (bien) ok++;
+        console.log(`  ${x.cta.padEnd(8)} releído: ${g.peq}/${g.gra} ${bien ? '✓' : '✗ NO quedó como pedí'}`);
+      }
+      console.log(`\n✓ ${ok} de ${plan.length} guardados.`);
+      console.log('Ya sale en Armar caja: abajo de las dos barras, con lo que mandaste y vendiste desde hoy');
+      console.log('descontado, y avisa antes de cerrar si la caja se pasa. A los 7 días te pide mirarlo de nuevo.');
+      return;
+    }
     // BILLING_PROBE=cajacosto[:<pesos>] → LO QUE SALE MANDAR UNA CAJA A FULL.
     //
     // Vive en `cyc/mlconfig/costoCaja` y lo usan DOS cosas que deciden plata:

@@ -2286,7 +2286,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='19.86';
+const APP_VERSION='19.87';
 // El problema real que esto resuelve no es curiosidad: es que el celular guarda la app y sigue
 // mostrando la de ayer sin avisar. Varias veces se revisó un cambio que ya estaba subido y no se
 // veía. Por eso, además del número, el chip avisa cuando hay una versión nueva esperando.
@@ -4538,6 +4538,94 @@ function cajaOcupacion(items,filas){
   });
   return {lugar,gramos,sinDim,sinPeso};
 }
+// ── EL CUPO DE FULL: CUÁNTAS UNIDADES TE DEJA MANDAR ML ────────────────────────────
+// Pedido suyo del 21/09/2026, después de mandar las cuatro pantallas de Full.
+//
+// ML NO DA ESTE NÚMERO POR API, y eso está medido: `cupofull` probó 14 direcciones × 4 cuentas
+// = 56 intentos y ninguna lo trae (lo único que contesta es la configuración de envíos, que no
+// tiene ninguna capacidad adentro). O sea que el número lo lee ÉL en la pantalla de Full y se
+// carga a mano con `cupo:<cuenta>=<chicos>/<grandes>:go`. Por eso VENCE: un cupo de hace un mes
+// no es un cupo, y hacerle confiar en él sería peor que no mostrarlo.
+//
+// SON DOS CUPOS, NO UNO. ML separa "pequeños y medianos" de "grandes y extragrandes". Medido el
+// 21/09 en las cuatro cuentas, el que aprieta es el primero (Ayelen 42 u. y en ámbar); el de
+// grandes está casi vacío en todas.
+//
+// QUÉ ES "GRANDE": regla suya, textual — *"el único producto que es 'grande' son los tenders.
+// nada más"*. Por eso NO se adivina con las medidas de la ficha: la lista de palabras vive en
+// `cyc/mlconfig/cupoGrandes` (se cambia sin tocar código) y cada ficha la puede pisar expreso con
+// `grandeFull`. Filtrar por palabras ya falló seis veces en este panel, así que la pantalla DICE
+// cuántas unidades mandó a cada lado en vez de decidir callada.
+const CUPO_GRANDES_DEF=['tendedero','tender'];
+const CUPO_VIEJO_DIAS=7;
+function cupoPalabrasGrandes(){
+  const c=(state.mlconfig||{}).cupoGrandes;
+  const arr=Array.isArray(c)?c:(typeof c==='string'?c.split(','):null);
+  const lim=(arr||CUPO_GRANDES_DEF).map(x=>normTxt(String(x||'').trim())).filter(Boolean);
+  return lim.length?lim:CUPO_GRANDES_DEF.map(x=>normTxt(x));
+}
+// La ficha manda sobre la palabra: si alguien dijo expreso que este producto es grande (o que no
+// lo es), esa decisión no la pisa un filtro de texto.
+function esGrandeFull(p){
+  if(!p)return false;
+  if(p.grandeFull===true)return true;
+  if(p.grandeFull===false)return false;
+  const n=normTxt(p.name||'');
+  return cupoPalabrasGrandes().some(w=>w&&n.includes(w));
+}
+// Cuántas unidades de ESTA caja van a cada cupo.
+function cupoDeCaja(items,filas){
+  let peq=0,gra=0;
+  const byK={};(filas||[]).forEach(f=>{byK[_ck(f.p.id,f.variante)]=f;});
+  Object.entries(items||{}).forEach(([k,u])=>{
+    if(!(u>0))return;
+    const f=byK[k];if(!f)return;
+    if(esGrandeFull(f.p))gra+=u; else peq+=u;
+  });
+  return {peq,gra};
+}
+// ── EL CUPO QUE QUEDA HOY, CON LA RESTA A LA VISTA ─────────────────────────────────
+// Lo que él lee en ML es lo que le quedaba EN ESE MOMENTO, y se mueve solo: baja cuando despacha
+// una caja y sube cuando vende (esa unidad sale de Full y libera lugar). Así que el número
+// cargado envejece desde el minuto uno.
+// Se estiman los dos movimientos y SE MUESTRAN LOS TRES TÉRMINOS, no sólo el resultado: si la
+// resta que invita la pantalla no es la que hace el sistema, la pantalla está mal aunque el
+// número final esté bien (la lección de la Balanza Cocina del 03/09).
+// Devuelve null cuando esa cuenta no tiene cupo cargado: de lo que no se midió no se opina.
+function cupoRestante(cta){
+  const todo=(state.mlconfig||{}).cupoFull||{};
+  const cfg=todo[cta]||todo[sid(cta)]||todo[String(cta||'').toLowerCase()];
+  if(!cfg||!(cfg.ts>0))return null;
+  const peqCargado=Number(cfg.peq); const graCargado=Number(cfg.gra);
+  if(!isFinite(peqCargado)&&!isFinite(graCargado))return null;
+  const pIdx={};(state.products||[]).forEach(x=>{pIdx[x.id]=x;});
+  // Lo despachado DESPUÉS de la lectura: ocupa cupo (ML cuenta lo que está en el plan de envío).
+  let mandPeq=0,mandGra=0;
+  Object.values(state.envios_full||{}).forEach(e=>{
+    if(!e||e.cuenta!==cta)return;
+    if(!(Number(e.ts)>cfg.ts))return;
+    for(const c of cajasDe(e))for(const it of (c.items||[])){
+      if(!it||!(it.u>0))continue;
+      if(esGrandeFull(pIdx[it.prodId]))mandGra+=it.u; else mandPeq+=it.u;
+    }
+  });
+  // Lo vendido después: esa mercadería salió de Full, así que devuelve cupo.
+  let vendPeq=0,vendGra=0;
+  const desdeK=dateToKey(new Date(cfg.ts));
+  Object.keys(state.ventaprod||{}).filter(k=>k>=desdeK).forEach(k=>{
+    Object.values(state.ventaprod[k]||{}).forEach(v=>{
+      if(!v||v.cuenta!==cta||_esCancelada(v))return;
+      const q=v.qty||0; if(!(q>0))return;
+      if(esGrandeFull(pIdx[v.prodId]))vendGra+=q; else vendPeq+=q;
+    });
+  });
+  const dias=Math.floor((Date.now()-cfg.ts)/86400000);
+  const est=(base,mand,vend)=>isFinite(base)?Math.max(0,Math.round(base-mand+vend)):null;
+  return {peq:isFinite(peqCargado)?peqCargado:null,gra:isFinite(graCargado)?graCargado:null,
+    mandPeq,mandGra,vendPeq,vendGra,dias,ts:cfg.ts,
+    estPeq:est(peqCargado,mandPeq,vendPeq),estGra:est(graCargado,mandGra,vendGra),
+    viejo:dias>=CUPO_VIEJO_DIAS};
+}
 // Cuántas unidades de este renglón entran EN TOTAL, contra lo que la caja tiene puesto de TODO LO
 // DEMÁS. Devuelve el tope del renglón, no un incremento: las unidades propias se descuentan de la
 // cuenta a propósito, porque la casilla de la pantalla guarda el total de ese renglón. Sumarle
@@ -4774,11 +4862,43 @@ function renderOfiCaja(){
       if(pLugar>100.5||pPeso>100.5)avisos.push(`<span style="color:var(--red)">Esta caja está pasada: sacá unidades hasta que las dos barras entren.</span>`);
       if(oc.sinDim)avisos.push(`${oc.sinDim} u. sin medidas cargadas: no entran en la barra del lugar, así que la caja está <strong>más llena</strong> de lo que muestra.`);
       if(oc.sinPeso)avisos.push(`${oc.sinPeso} u. sin peso cargado: lo mismo con la barra del peso.`);
+      // ── EL CUPO DE FULL DE ESTA CUENTA ────────────────────────────────────────────
+      // Va abajo de las dos barras y no mezclado con ellas: las barras miden LA CAJA (lugar y
+      // peso, que son de esta caja y de ninguna otra) y el cupo mide LA CUENTA. Meterlos en la
+      // misma fila haría leer los tres como límites del mismo bulto.
+      // Si esa cuenta no tiene cupo cargado no se muestra NADA: inventar un cupo es peor que no
+      // tenerlo, porque un aviso que no corresponde es el que después no se mira.
+      const _cu=cupoRestante(ofiFiltroCuenta);
+      const _cajaU=_cu?cupoDeCaja(cajaAct,vis):null;
+      let cupoHTML='';
+      if(_cu&&_cajaU){
+        const fila=(tit,cargado,mand,vend,est,uCaja)=>{
+          if(cargado==null)return '';
+          const pasa=(est!=null)&&(uCaja>est);
+          const col=pasa?'var(--red)':(uCaja>0?'var(--accent2)':'var(--muted)');
+          return `<div style="display:flex;gap:8px;align-items:baseline;flex-wrap:wrap;font-size:.63rem;color:var(--muted);padding:3px 0">
+            <span style="min-width:120px">${tit}</span>
+            <strong style="font-family:'DM Mono',monospace;font-size:.78rem;color:${col}">${fmtN(uCaja)} u.</strong>
+            <span>de <strong style="color:var(--text)">${est==null?'?':fmtN(est)}</strong> que te quedan</span>
+            <span style="opacity:.8">(leíste ${fmtN(cargado)}${mand?` − ${fmtN(mand)} que mandaste`:''}${vend?` + ${fmtN(vend)} que vendiste`:''})</span>
+            ${pasa?`<strong style="color:var(--red)">se pasa por ${fmtN(uCaja-est)} u.</strong>`:''}
+          </div>`;
+        };
+        const cuerpo=fila('Cupo · chicos y medianos',_cu.peq,_cu.mandPeq,_cu.vendPeq,_cu.estPeq,_cajaU.peq)
+          +fila('Cupo · grandes',_cu.gra,_cu.mandGra,_cu.vendGra,_cu.estGra,_cajaU.gra);
+        // El cupo cargado VENCE, y se dice con todas las letras: ML no lo da por API (medido, 56
+        // intentos), así que lo único que evita que él confíe en un número viejo es este aviso.
+        const pie=_cu.viejo
+          ? `<div style="font-size:.6rem;color:var(--amber);margin-top:4px">⚠️ Este cupo lo cargaste hace ${_cu.dias} día${_cu.dias===1?'':'s'}: miralo de nuevo en ML. Se carga a mano porque ML no lo da por API.</div>`
+          : `<div style="font-size:.58rem;color:var(--muted);margin-top:4px;opacity:.8">Cupo leído en ML hace ${_cu.dias===0?'menos de un día':_cu.dias+' día'+(_cu.dias===1?'':'s')}. Lo que se mandó y se vendió desde entonces es una estimación del panel.</div>`;
+        cupoHTML=`<div style="border-top:1px solid var(--border);margin-top:9px;padding-top:7px">${cuerpo}${pie}</div>`;
+      }
       med.innerHTML=`<div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:10px 14px">
         <div style="display:flex;gap:16px;flex-wrap:wrap">
           ${barrita(pLugar,colL,'Lugar · caja de 70×70×70',`${Math.round(pLugar)}%`)}
           ${barrita(pPeso,colP,'Peso · tope 30 kg',`${kg.toFixed(1)} kg`)}
         </div>
+        ${cupoHTML}
         ${avisos.length?`<div style="font-size:.62rem;color:var(--muted);margin-top:8px;line-height:1.6">${avisos.join('<br>')}</div>`:''}
       </div>`;
     }
@@ -5274,6 +5394,24 @@ async function cerrarCaja(cuenta){
   if(recortes.length&&!confirm(`OJO: hay ${recortes.length} renglón(es) con menos mercadería de la que cargaste. Seguro se fue en otra caja.\n\n${recortes.join('\n')}\n\nSi seguís, la caja sale con lo que hay de verdad.\n¿Cerrar igual?`))return;
   if(!items.length){toast('La caja está vacía','err');return;}
   const uTot=items.reduce((a,x)=>a+x.u,0);
+  // ── SI LA CAJA SE PASA DEL CUPO DE FULL, SE AVISA ANTES DE CERRAR ────────────────
+  // Pedido suyo del 21/09/2026. AVISA, NO FRENA: el cupo se carga a mano porque ML no lo da por
+  // API, así que puede estar viejo — trabar el despacho con un número que quizá ya no es el de
+  // hoy sería peor que dejarlo pasar. Mismo criterio que el tope del pedido de Paraguay.
+  // Se mira contra la MISMA función que dibuja las barras (`cupoRestante` y `cupoDeCaja`): si acá
+  // contara distinto, la pantalla diría que entra y el cierre diría que no.
+  {
+    const _cu=cupoRestante(cuenta);
+    if(_cu){
+      const _pIdx={};(state.products||[]).forEach(x=>{_pIdx[x.id]=x;});
+      let _p=0,_g=0;
+      for(const it of items){if(esGrandeFull(_pIdx[it.prodId]))_g+=it.u;else _p+=it.u;}
+      const se=[];
+      if(_cu.estPeq!=null&&_p>_cu.estPeq)se.push(`chicos y medianos: mandás ${_p} u. y te quedaban ${_cu.estPeq}`);
+      if(_cu.estGra!=null&&_g>_cu.estGra)se.push(`grandes: mandás ${_g} u. y te quedaban ${_cu.estGra}`);
+      if(se.length&&!confirm(`OJO: esta caja se pasa del cupo de Full de ${cuenta}.\n\n${se.join('\n')}\n\nEl cupo lo cargaste hace ${_cu.dias} día(s) y lo leés vos en ML: puede estar desactualizado.\n¿Cerrar igual?`))return;
+    }
+  }
   // SIN NÚMERO DE SEGUIMIENTO NO SE CIERRA, Y CANCELAR ES CANCELAR (07/09/2026).
   // Él lo reportó así: *"varias veces haciendo una caja apreto sin querer 'cerrar caja' me da dos
   // opciones aceptar o cancelar. cualquiera de las dos que elija me cierra la caja"*. Y tenía razón:
