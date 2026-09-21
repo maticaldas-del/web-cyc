@@ -25192,7 +25192,7 @@ async function main() {
     //
     // CÓMO SE USA:
     //   compray                                  → lo guardado hasta hoy y el recargo medido
-    //   compray:<AAAA-MM-DD>|usd=<crudo>|merc=<pesos>|envio=<pesos>[|cambio=<pesos>][|otros=<pesos>][|nota=...][|go]
+    //   compray:<AAAA-MM-DD>|usd=<crudo>|merc=<pesos>|envio=<pesos>[|cambio=][|retira=][|otros=][|nota=][|go]
     //
     //  · `usd` son los dólares CRUDOS de comprasparaguay, SIN el 15%. Es contra ese número que se
     //    mide todo: cargarle el precio ya recargado da un recargo falso, chico.
@@ -25223,6 +25223,11 @@ async function main() {
       if (fecha) {
         const usd = num(campos.usd), merc = num(campos.merc);
         const envio = num(campos.envio), cambio = num(campos.cambio) || 0, otros = num(campos.otros) || 0;
+        // `retira` es lo que cobra el que retira en Paraguay y despacha. Tiene su propio nombre y no
+        // va metido en `otros` porque es el gasto FIJO más grande que tiene el pedido (medido el
+        // 21/09: $74.260 sobre una compra de US$ 474,80, o sea 10 puntos del recargo) y un renglón
+        // que dice "otros" no se puede mirar. Cuenta como fijo, igual que el envío.
+        const retira = num(campos.retira) || 0;
         if (!(usd > 0)) { console.log('Falta `usd=` (los dólares CRUDOS de comprasparaguay, sin el 15%). Sin eso no hay contra qué medir.'); return; }
         if (!(merc > 0)) { console.log('Falta `merc=` (los pesos que salieron por la mercadería).'); return; }
         if (envio == null) { console.log('Falta `envio=` (los pesos del correo). Si todavía no lo sabés poné `envio=0`: queda marcado INCOMPLETO y no entra en el promedio.'); return; }
@@ -25239,20 +25244,33 @@ async function main() {
           // cada compra guardada hasta hoy está vacío. Se leen los dos, empezando por el bueno.
           items.push({ id: cid, nom: String(c.nombre || c.nom || '').slice(0, 80), cod: String(c.cod || c.codPy || '').trim(), u, usd: parseFloat(c.usd != null ? c.usd : c.nisseiUSD) || null });
         }
+        // NO SE PISA EL DETALLE QUE YA ESTABA. El panel guarda este mismo registro al apretar
+        // "Ya lo pedí", con el código, el precio, el margen y los links de CADA producto — y ahí
+        // deja los candidatos en `pedirU` 0. O sea que al cargar los pesos reales después, el
+        // `items` que se arma acá viene VACÍO y un `set` borraba todo el detalle: el `set` que
+        // pisa al padre, el error anotado desde el 05/08. Si ya hay detalle guardado, se respeta.
+        const itemsFin = items.length ? items : ((ya && Array.isArray(ya.items) && ya.items.length) ? ya.items : items);
+        const usaViejos = !items.length && itemsFin.length > 0;
+        // Si el panel había anotado otro total (lo que se cargó) y lo que de verdad se mandó es
+        // otro, se guardan los DOS: el recargo se mide contra lo que se mandó, pero el detalle
+        // sigue sumando lo otro y sin esto no se entiende por qué no cierra.
+        const usdPanel = (ya && parseFloat(ya.usdCrudo) > 0 && Math.abs(parseFloat(ya.usdCrudo) - usd) > 0.5) ? parseFloat(ya.usdCrudo) : null;
         const rec = {
+          ...(ya || {}),
           fecha, usdCrudo: usd,
-          pagos: { mercaderia: Math.round(merc), cambista: Math.round(cambio), envio: Math.round(envio), otros: Math.round(otros) },
-          items, nota: campos.nota || '', tcPanel: tcPanel || null,
+          pagos: { mercaderia: Math.round(merc), cambista: Math.round(cambio), envio: Math.round(envio), retira: Math.round(retira), otros: Math.round(otros) },
+          items: itemsFin, nota: campos.nota || (ya && ya.nota) || '', tcPanel: tcPanel || null,
+          usdPanel,
           incompleto: !(envio > 0), ts: Date.now(),
         };
-        const totARS = merc + cambio + envio + otros;
+        const totARS = merc + cambio + envio + retira + otros;
         const dolarMerc = merc / usd;                       // el dólar efectivo de la mercadería
-        const fijos = envio + otros;
+        const fijos = envio + retira + otros;
         console.log(`=== COMPRA A PARAGUAY DEL ${fecha} ===`);
         if (ya) console.log(`⚠️ Ya había una compra guardada con esta fecha (${ya.usdCrudo} US$ crudos). Se pisa.`);
         console.log(`  mercadería en Paraguay   US$ ${usd.toFixed(2)} crudos`);
         console.log(`  pagado por la mercadería ${money(Math.round(merc))}${cambio ? ` · cambista aparte ${money(Math.round(cambio))}` : ''}`);
-        console.log(`  envío                    ${money(Math.round(envio))}${otros ? ` · otros ${money(Math.round(otros))}` : ''}`);
+        console.log(`  envío                    ${money(Math.round(envio))}${retira ? ` · el que retira y despacha ${money(Math.round(retira))}` : ''}${otros ? ` · otros ${money(Math.round(otros))}` : ''}`);
         console.log(`  TOTAL                    ${money(Math.round(totARS))}`);
         console.log('');
         console.log(`  el dólar que pagaste por la mercadería: ${money(Math.round(dolarMerc))}${tcPanel ? ` · el del panel es ${money(Math.round(tcPanel))} (${(((dolarMerc + (cambio / usd)) / tcPanel - 1) * 100).toFixed(1)}% más caro con el cambista adentro)` : ''}`);
@@ -25267,8 +25285,10 @@ async function main() {
           console.log(`  ⚠️ No hay tipo de cambio cargado en Finanzas, así que el recargo en % no se puede calcular. Se guarda igual.`);
         }
         if (rec.incompleto) console.log(`  ⚠️ INCOMPLETO: sin el envío. Queda guardado pero NO entra en el promedio — un recargo sin el flete sale más barato de lo real.`);
-        console.log(`\n  ${items.length} producto(s) del pedido guardados con su código y sus unidades.`);
-        if (!items.length) console.log(`  ⚠️ No había ningún candidato con unidades cargadas en el panel, así que el detalle por producto queda vacío.`);
+        if (usaViejos) console.log(`\n  ${itemsFin.length} producto(s) ya estaban guardados con este pedido: NO se tocan.`);
+        else console.log(`\n  ${items.length} producto(s) del pedido guardados con su código y sus unidades.`);
+        if (!itemsFin.length) console.log(`  ⚠️ No había ningún candidato con unidades cargadas en el panel ni detalle guardado, así que el detalle por producto queda vacío.`);
+        if (usdPanel) console.log(`  ⚠️ El panel tenía anotado US$ ${usdPanel.toFixed(2)} y vos mandás US$ ${usd.toFixed(2)}: el recargo se mide contra lo que MANDASTE. Los dos quedan guardados.`);
         if (!GO) { console.log(`\nNo se guardó nada (falta |go).`); return; }
         await db.set('cyc/compraspy/' + id, rec);
         const rel = await db.get('cyc/compraspy/' + id);
