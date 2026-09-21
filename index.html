@@ -816,34 +816,6 @@ footer{margin-top:32px;padding-top:14px;border-top:1px solid var(--border);font-
 
   <!-- PRODUCTOS -->
   <div id="tab-productos" style="display:none">
-    <div class="stitle">Nuevo producto</div>
-    <div class="add-form" style="flex-direction:column;align-items:stretch;gap:12px">
-      <div style="display:flex;flex-wrap:wrap;gap:10px;align-items:flex-end">
-        <div style="flex:2;min-width:180px">
-          <label style="font-size:.6rem;color:var(--muted);text-transform:uppercase;letter-spacing:.08em;display:block;margin-bottom:4px">Nombre *</label>
-          <input class="inp-name" id="new-name" type="text" placeholder="Nombre del producto" style="width:100%" onkeydown="if(event.key==='Enter')addProd()">
-        </div>
-        <div style="min-width:110px">
-          <label style="font-size:.6rem;color:var(--muted);text-transform:uppercase;letter-spacing:.08em;display:block;margin-bottom:4px">Costo US$</label>
-          <input id="new-cost" type="number" min="0" step="0.01" placeholder="0.00" style="width:100%">
-        </div>
-        <div style="min-width:130px">
-          <label style="font-size:.6rem;color:var(--muted);text-transform:uppercase;letter-spacing:.08em;display:block;margin-bottom:4px">Envío+embalaje US$</label>
-          <input id="new-ship" type="number" min="0" step="0.01" placeholder="0.00" style="width:100%">
-        </div>
-        <div style="min-width:100px">
-          <label style="font-size:.6rem;color:var(--muted);text-transform:uppercase;letter-spacing:.08em;display:block;margin-bottom:4px">% Devolución</label>
-          <input id="new-dev" type="number" min="0" step="0.1" placeholder="0" style="width:100%">
-        </div>
-      </div>
-      <div style="display:flex;flex-wrap:wrap;gap:10px;align-items:flex-end;justify-content:space-between">
-        <div style="min-width:180px">
-          <label style="font-size:.6rem;color:var(--muted);text-transform:uppercase;letter-spacing:.08em;display:block;margin-bottom:4px">Proveedor</label>
-          <select id="new-prov-id" class="cal-select" style="width:100%"><option value="">Sin proveedor</option></select>
-        </div>
-        <button class="btn btn-add" onclick="addProd()" style="padding:8px 22px">+ Agregar producto</button>
-      </div>
-    </div>
     <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;margin-top:18px;margin-bottom:10px">
       <div class="stitle" style="margin:0">Listado</div>
       <div style="display:flex;gap:8px;flex-wrap:wrap">
@@ -2298,7 +2270,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='19.91';
+const APP_VERSION='19.92';
 // El problema real que esto resuelve no es curiosidad: es que el celular guarda la app y sigue
 // mostrando la de ayer sin avisar. Varias veces se revisó un cambio que ya estaba subido y no se
 // veía. Por eso, además del número, el chip avisa cuando hay una versión nueva esperando.
@@ -2900,14 +2872,8 @@ async function quitarFoto(prodId){
   if(currentPage==='pedidos')renderPedidos();
 }
 
-function _syncNewProvSelect(){
-  const sel=document.getElementById('new-prov-id');if(!sel)return;
-  const cur=sel.value;
-  sel.innerHTML='<option value="">Sin proveedor</option>'+(state.proveedores||[]).map(pv=>`<option value="${pv.id}">${(pv.nombre||'').replace(/"/g,'&quot;')}</option>`).join('');
-  sel.value=cur;
-}
 function renderAll(){
-  updateHdr();updateAct();populateSelects();_syncNewProvSelect();
+  updateHdr();updateAct();populateSelects();
   if(currentPage==='inventario'){renderInv();renderProds();renderHist();renderProveedores();loadFinInputs();updateArqueo();updateTotals();}
   if(currentPage==='pedidos')renderPedidos();
   if(currentPage==='compras')initComprasPage();
@@ -3647,26 +3613,6 @@ function setQ(pid,loc,val,variant=''){
 }
 function setQVar(el){setQ(el.dataset.pid,el.dataset.loc,el.value,el.dataset.variant);}
 
-async function addProd(){
-  const name=document.getElementById('new-name').value.trim();
-  if(!name){document.getElementById('new-name').focus();return;}
-  const costUSD=parseFloat(document.getElementById('new-cost').value)||0;
-  const shipUSD=parseFloat(document.getElementById('new-ship').value)||0;
-  const devPct=parseFloat(document.getElementById('new-dev').value)||0;
-  const proveedorId=document.getElementById('new-prov-id')?.value||'';
-  const tc=curTC();
-  const p={id:'p'+Date.now(),name,costUSD,cost:costUSD*tc};
-  if(shipUSD)p.shipUSD=shipUSD;
-  if(devPct)p.devPct=devPct;
-  if(proveedorId)p.proveedorId=proveedorId;
-  p.costFullUSD=Math.round((costUSD*(1+(devPct/100))+shipUSD)*100)/100;
-  await fbSet('products/'+p.id,p);
-  await log('Agregó: '+name);
-  ['new-name','new-cost','new-ship','new-dev'].forEach(id=>{const e=document.getElementById(id);if(e)e.value='';});
-  const np=document.getElementById('new-prov-id');if(np)np.value='';
-  document.getElementById('new-name').focus();
-  toast('Producto agregado ✓');
-}
 
 async function addVariante(prodId,varName){
   const p=state.products.find(x=>x.id===prodId);if(!p)return;
@@ -9061,74 +9007,6 @@ function _pyLlenar(orden){
 // es de ellos. Ése es el caso del Cabotine (la lista daba 91144 y el de pedido era 91832), y pedir
 // con el código equivocado es que llegue otra cosa a los 7 días adentro de un pedido de US$1.000
 // que no se puede rehacer.
-function candFormHTML(){
-  const i=(id,ph,tipo,w)=>`<input id="cand-${id}" type="${tipo||'text'}" ${tipo==='number'?'min="0" step="0.01"':''} placeholder="${ph}" style="width:${w||'150px'};font-size:.7rem;padding:5px 8px;background:var(--surface2);border:1px solid var(--border);border-radius:6px;color:var(--text)">`;
-  return `<details style="margin:10px 0 4px"><summary style="cursor:pointer;font-size:.68rem;color:var(--muted)">+ Agregar un candidato a mano</summary>
-    <div style="display:flex;flex-direction:column;gap:8px;margin-top:10px;padding:10px;background:var(--surface2);border-radius:8px">
-      <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
-        ${i('nombre','Nombre tal como lo llama comprasparaguay','text','290px')}
-        ${i('cod','Código de la fila de Nissei','text','180px')}
-        ${i('usd','Precio US$','number','110px')}
-      </div>
-      <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
-        ${i('mlid','Link o código de ML (obligatorio)','text','230px')}
-        ${i('vend','Vendidos en ML','number','130px')}
-        ${i('marca','Marca','text','140px')}
-        ${i('medidas','Medidas (si las dice)','text','170px')}
-        ${i('peso','Peso (si lo dice)','text','120px')}
-        ${i('link','Link de comprasparaguay','text','220px')}
-      </div>
-      <label style="display:flex;align-items:center;gap:7px;font-size:.66rem;color:var(--muted);cursor:pointer">
-        <input type="checkbox" id="cand-nissei" checked>
-        <span><b style="color:var(--text)">Nissei lo ofrece en comprasparaguay</b> — y el código y el precio de arriba son los de ESA fila, no los de otra tienda.</span>
-      </label>
-      <div><button class="btn btn-add" style="font-size:.68rem;padding:6px 16px" onclick="candAgregar()">Agregar a "Para probar"</button></div>
-    </div></details>`;
-}
-async function candAgregar(){
-  const v=id=>{const e=document.getElementById('cand-'+id);return e?String(e.value||'').trim():'';};
-  const nombre=v('nombre'), usd=parseFloat(v('usd'))||0;
-  if(!nombre){toast('Falta el nombre','err');document.getElementById('cand-nombre')?.focus();return;}
-  if(!(usd>0)){toast('Falta el precio en US$','err');document.getElementById('cand-usd')?.focus();return;}
-  // EL LINK DE ML ES OBLIGATORIO, Y ACÁ SE EXIGE (18/09/2026).
-  // El texto del chat de compras ya decía "obligatorio" desde el 17/09 y **igual entraron cinco
-  // candidatos sin él**: el panel los aceptaba y sólo el comentario de abajo decía que hacía falta.
-  // Es la regla que vive en un solo lado, otra vez. Sin link el robot busca por nombre, y esa
-  // misma tanda lo probó: pidió "Dark Door Sport" y ML devolvió "Dark Door Intense", y los DOS
-  // Armaf distintos cayeron en el MISMO catálogo equivocado. Zafaron porque esos catálogos no
-  // tenían vendedores; con vendedores salía un margen bien calculado del producto EQUIVOCADO, y
-  // con eso se decide una compra que no se rehace hasta que llega.
-  // Se frena en la puerta igual que el tilde de Nissei, que es el único freno que sí funcionó.
-  if(!v('mlid')){
-    alert('Falta el link del catálogo de ML.\n\nSin él el robot busca por nombre y ya trajo el producto equivocado (le pediste "Dark Door Sport" y encontró "Dark Door Intense").\n\nCopiá el link del listado MÁS BARATO de ML y volvé a intentar.');
-    document.getElementById('cand-mlid')?.focus();return;
-  }
-  // La regla, aplicada en la puerta: sin oferta de Nissei no se compra, así que no entra.
-  if(!document.getElementById('cand-nissei')?.checked){
-    alert('Si en comprasparaguay ninguna de las tiendas que lo ofrecen es Nissei, no se compra.\n\nNo lo agrego.');
-    return;
-  }
-  const id='c'+Date.now();
-  const c={id,ts:Date.now(),fuente:'chat',nombre:nombre.slice(0,120),usd,enNissei:true};
-  for(const k of ['cod','marca','medidas','peso','link'])if(v(k))c[k]=v(k).slice(0,200);
-  // El código del catálogo de ML es lo que evita el emparejado por nombre. Ya se exigió arriba,
-  // así que acá sólo se guarda.
-  c.mlId=v('mlid').slice(0,200);
-  // LAS VENDIDAS QUE VE EL CHAT (19/09/2026, pedido suyo: *"agregaste que pueda poner ese dato en
-  // la web de cyc?"*). Tenía razón y yo había supuesto lo contrario: se hizo primero que el robot
-  // las trajera solo, y la corrida de esa noche imprimió "ventas ?" en los 23 — ML no las da de
-  // publicaciones ajenas. El ÚNICO que las ve es el chat, que lee la página del listado.
-  // Va como NÚMERO y vacío es vacío: un cero acá se leería como "no vende nada", que es el error
-  // anotado de punta a punta en CLAUDE.md. Si no lo cargó, la tarjeta lo dice.
-  const _vd=parseInt(v('vend'),10);
-  if(isFinite(_vd)&&_vd>=0)c.vendCarga=_vd;
-  await fbSet('candidatos_py/'+id,c);
-  state.candidatos=state.candidatos||{};state.candidatos[id]=c;
-  ['nombre','cod','usd','marca','medidas','peso','link','mlid','vend'].forEach(k=>{const e=document.getElementById('cand-'+k);if(e)e.value='';});
-  await log('Candidato de Paraguay: '+c.nombre+' · US$'+usd);
-  renderPedidos();
-  toast('Agregado ✓ · el robot le hace la cuenta de ML esta noche');
-}
 // ── EL EMBUDO DE PARAGUAY: "¿ESTO TODAVÍA CONVIENE COMPRARLO?" ────────────────────────
 // Pedido suyo del 17/09/2026: *"ver si vale la pena comprar productos viejos y nuevos"* y
 // *"que haga embudo en pedidos paraguay"*.
@@ -9806,13 +9684,13 @@ function candidatosHTML(){
     </div>
   </div>`;
   if(!vivos.length){
-    return cab+simPYHTML()+candFormHTML()+`<div class="empty-msg" style="font-size:.68rem;line-height:1.6">Todavía no hay ninguno.<br>
+    return cab+simPYHTML()+`<div class="empty-msg" style="font-size:.68rem;line-height:1.6">Todavía no hay ninguno.<br>
       El chat de Paraguay los carga cuando encuentra algo en comprasparaguay <b>que Nissei ofrezca</b> (ahí salen juntos el código, el precio y que hay stock), cueste menos de US$ 250 puesto y no sea de una marca que ML frena.</div>`;
   }
   // El que más margen deja, primero. Los que todavía no tienen la cuenta hecha van al final:
   // no se pueden comparar contra los medidos y ponerlos arriba sería invitar a decidir sin número.
   vivos.sort((a,b)=>(b.margen??-999)-(a.margen??-999));
-  return cab+simPYHTML()+pedNuevosHTML(vivos)+candFormHTML()+vivos.map(c=>{
+  return cab+simPYHTML()+pedNuevosHTML(vivos)+vivos.map(c=>{
     const d=candDias(c);
     const usd=parseFloat(c.usd)||0;
     const puesto=usd>0?Math.round(usd*RECARGO_PY*100)/100:0;

@@ -25140,7 +25140,11 @@ async function main() {
         const items = [];
         for (const [cid, c] of Object.entries(cands)) {
           const u = parseInt(c && c.pedirU) || 0; if (!(u > 0)) continue;
-          items.push({ id: cid, nom: String(c.nombre || c.nom || '').slice(0, 80), cod: String(c.codPy || ''), u, usd: parseFloat(c.nisseiUSD) || null });
+          // El candidato guarda `cod` y `usd`; `codPy`/`nisseiUSD` son los nombres de la FICHA de
+          // un producto, no de un candidato. Con los de la ficha el detalle salía con el código
+          // vacío y el precio en null en TODAS las filas — o sea, el detalle por producto de
+          // cada compra guardada hasta hoy está vacío. Se leen los dos, empezando por el bueno.
+          items.push({ id: cid, nom: String(c.nombre || c.nom || '').slice(0, 80), cod: String(c.cod || c.codPy || '').trim(), u, usd: parseFloat(c.usd != null ? c.usd : c.nisseiUSD) || null });
         }
         const rec = {
           fecha, usdCrudo: usd,
