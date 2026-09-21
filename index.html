@@ -920,6 +920,7 @@ footer{margin-top:32px;padding-top:14px;border-top:1px solid var(--border);font-
        En camino, que es donde vive. LO QUE NO CAMBIÓ: la cuenta de Pedidos SIGUE descontando lo
        que va en camino, así que abajo no se vuelve a pedir. Lo que se sacó es el aviso, no la regla. -->
   <div id="ped-pausaprecio-aviso"></div>
+  <div id="ped-raro-aviso"></div>
 
   <!-- ── SECCIÓN PRIORIDAD (mezclado, ordenado por $ en riesgo) ── -->
   <div id="ped-section-prioridad" style="display:none">
@@ -11145,6 +11146,54 @@ function cuentaPed(r){
     cVend:r.vendidos||0,cCamino:r.enCamino||0,cCasa:r.enOficina||0,cML:r.stock||0,cPocas:!!r.pocasVentas,
     cHist:r.hist?{u:r.hist.u,dias:Math.round(r.hist.dias)}:null,cTarget:r.targetDias||PED_MAX_DAYS};
 }
+// ── "ESTE RENGLÓN NO CIERRA": EL CHEQUEO AUTOMÁTICO DE PEDIDOS ─────────────────────
+// Pedido suyo, anotado desde el 16/09/2026: *"un producto no puede destrabar más por mes que lo
+// que deja lo que vende, y algo con stock que no vende hace 55 días no puede estar en la lista de
+// comprar. Hoy eso lo agarra él mirando; el panel lo puede agarrar solo."*
+//
+// LOS DOS EJEMPLOS QUE ÉL DIO YA ESTÁN TAPADOS EN EL ORIGEN, y conviene decirlo en vez de escribir
+// un filtro que nunca va a saltar:
+//   · "destraba más de lo que deja" — desde el 16/09 `riesgoComprar` se calcula sobre los días que
+//     la compra TAPA de verdad, así que por construcción no puede pasar de `gan30d`.
+//   · "tiene stock y no vende hace 55 días" — desde el 16/09 el ritmo viejo sólo se usa cuando el
+//     producto está en CERO (el caso del Watch S5).
+// Los dos siguen acá igual, pero como GUARDA: si alguna vez alguien toca esas cuentas y se rompe,
+// el renglón lo dice en vez de esperar a que él lo note mirando.
+//
+// LO QUE SÍ PUEDE PASAR HOY es lo otro: un pedido cargado A MANO (a ésos no los recalcula nadie),
+// una ficha sin costo (la plata en riesgo sale inventada, porque el producto se ve como si fuera
+// todo ganancia), un ritmo sacado de UNA sola venta, o un renglón sin ficha.
+//
+// AVISA, NO BORRA. Nunca saca el renglón de la lista: "una lista que saca renglones sin decirlo es
+// una lista que miente", y acá encima el que decide qué comprar es él. Y cada motivo está elegido
+// para ser RARO: un aviso que suena en la mitad de la lista entrena a ignorarlo, que es la lección
+// del `⚠️ VENDE` de `nomandar`.
+function pedSinSentido(p){
+  if(!p)return null;
+  const pr=p.prodId?(state.products||[]).find(x=>x.id===p.prodId):null;
+  const pedir=p.cantidad||0;
+  const m=[];
+  if(!p.prodId)m.push('no está pegado a ninguna ficha, así que no hay con qué medir nada de este renglón');
+  else if(!pr)m.push('apunta a una ficha que ya no existe');
+  else if(!(parseFloat(pr.costUSD)>0))m.push('la ficha no tiene costo cargado: la plata en riesgo de al lado está inventada (sin costo el producto se ve como si fuera todo ganancia)');
+  // La resta que muestra la tarjeta tiene que cerrar: si con lo que ya tenés alcanza para el
+  // objetivo, no hay nada que comprar. Hoy los pedidos automáticos no pueden llegar acá (no se
+  // crean con `aComprar` en 0), pero uno cargado a mano sí.
+  if(pedir>0&&p.cObjetivo>0){
+    const tenes=(p.cML||0)+(p.cCasa||0)+(p.cCamino||0);
+    if(tenes>=p.cObjetivo)m.push(`pide comprar ${fmtN(pedir)} y entre ML, tu casa y lo que va en camino ya tenés ${fmtN(tenes)} para un objetivo de ${fmtN(p.cObjetivo)}`);
+  }
+  if(pedir>=3&&p.cPocas&&(p.cVend||0)<=1)m.push(`el ritmo sale de ${p.cVend===1?'UNA sola venta':'ninguna venta'} en 30 días y aun así pide ${fmtN(pedir)} unidades`);
+  // GUARDA: el ritmo viejo (de hasta 180 días atrás) sólo vale cuando el producto está en CERO.
+  if(p.cHist&&(p.cML||0)>0)m.push(`usa el ritmo viejo (de hace meses) teniendo ${fmtN(p.cML)} en ML: ese ritmo sirve para estimar lo que vendería SI hubiera stock, y acá hay`);
+  // GUARDA: no podés destrabar por mes más de lo que el producto deja por mes.
+  if((p.gan30d||0)>0&&(p.riesgoComprar||0)>(p.gan30d||0)+1)m.push(`dice que destraba ${fmt(p.riesgoComprar)} y el producto entero deja ${fmt(p.gan30d)} por mes`);
+  if(p.auto===false){
+    const d=Math.floor((Date.now()-(p.ts||0))/86400000);
+    if(d>30)m.push(`está cargado a mano y sin tocar hace ${d} días: a los pedidos a mano el panel no les recalcula la cantidad, así que ese número es el del día que se escribió`);
+  }
+  return m.length?{n:m.length,det:m}:null;
+}
 function cuentaPedidoHTML(p){
   if(!(p.cObjetivo>0)||!(p.cVdia>0))return '';
   const pasos=[p.cHist
@@ -11332,6 +11381,7 @@ function _pedidoItemHtml(p,opts){
       ${fotoBtn}
       ${p.nota?`<span class="pi-nota">${p.nota}</span>`:'<span class="pi-nota" style="flex:0"></span>'}
       ${_enCam?'':riesgoBadge}
+      ${(()=>{const _r=pedSinSentido(p);return _r?`<span class="pi-var-toggle" style="background:rgba(245,158,11,.14);color:var(--amber);border-color:rgba(245,158,11,.35);cursor:default" title="${_r.det.join(' · ').replace(/"/g,'&quot;')}">⚠️ este renglón no cierra${_r.n>1?' ('+_r.n+')':''}</span>`:'';})()}
       ${origenBtn}
       ${_esPy===true?pedPlataHTML(_prod)+pedGuayHTML(_prod):''}
       ${varToggle}
@@ -11436,6 +11486,28 @@ function renderPedidos(){
         <div style="font-size:.72rem">⏸️ De los pausados por precio: ${partes.join(' · ')}</div>
         <button class="btn" style="font-size:.62rem;padding:5px 10px" onclick="setPedidoSection('pausaprecio',document.getElementById('tab-pausaprecio-btn'))">Verlos →</button>
       </div>`;
+    }
+  }
+  // ── EL CHEQUEO DE "ESTE RENGLÓN NO CIERRA" ────────────────────────────────────────
+  // Se mide SIEMPRE, se esté mirando la solapa que se esté mirando: es el aviso de que hay un
+  // renglón sobre el que no se puede decidir, y una solapa que hay que acordarse de abrir es una
+  // solapa que no se abre.
+  // Si no hay ninguno NO se dibuja nada. Un cartel que dice "hoy está todo bien" es ruido, y el
+  // día que aparezca algo tampoco se va a leer.
+  {
+    const _raroAv=document.getElementById('ped-raro-aviso');
+    if(_raroAv){
+      const _raros=[...(state.pedidos||[]),...(state.pedidos_py||[])].map(x=>({x,r:pedSinSentido(x)})).filter(y=>y.r);
+      if(!_raros.length)_raroAv.innerHTML='';
+      else _raroAv.innerHTML=`<details style="background:var(--surface);border:1px solid var(--amber);border-radius:var(--r);padding:11px 14px;margin-bottom:12px">
+        <summary style="cursor:pointer;font-size:.72rem">⚠️ <strong style="color:var(--amber)">${_raros.length}</strong> renglón${_raros.length===1?'':'es'} de Pedidos con un número que no cierra
+          <span style="color:var(--muted);font-weight:400">— no se sacan de la lista: mirálos antes de comprarlos</span>
+        </summary>
+        <div style="margin-top:8px;font-size:.64rem;line-height:1.7">${_raros.map(y=>`<div style="padding:6px 0;border-top:1px solid var(--border)">
+          <strong>${(y.x.producto||'—').replace(/</g,'&lt;')}</strong> · pide ${fmtN(y.x.cantidad||0)} u.<br>
+          <span style="color:var(--muted)">${y.r.det.map(d=>'· '+d).join('<br>')}</span>
+        </div>`).join('')}</div>
+      </details>`;
     }
   }
   if(pedidoSection==='pausaprecio'){
