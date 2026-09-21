@@ -1460,11 +1460,13 @@ Decisiones suyas de ese día: balanza viaje → Ayelen · Kit Luces Bici → Luc
    marcar con `nomandar` sin sacarle a Luciana los 70 aromas. Se deja compartido a propósito.
  · **Termómetro horno: se deja como está** ("después vemos"). Ninguna cuenta lo vendió en 90 días.
 
-**LO QUE FALTA, Y ES LO GRANDE: ~58 publicaciones repetidas siguen VIVAS en ML.** `nomandar` saca a
-la cuenta del reparto y de "Contar lo que hay", **no borra ni pausa la publicación**. Hasta que se
-pausen, en ML siguen siendo publicación compartida. Las más cargadas: Pizarra Mágica 7 · P47 5 ·
-p47 oreja gato 4 · Balanza Cocina, F9, Batidora, Tira Led y 2 Separadores 3 cada uno.
-Pausarlas TOCA ML de verdad: no se hace sin que él lo pida expreso.
+**ESTE RENGLÓN DECÍA "~58 publicaciones repetidas siguen VIVAS en ML" Y NO ERA CIERTO.** Se midió
+el 21/09/2026 con `repetidas:90`: son **60** y **59 ya están pausadas o dadas de baja**. Sólo UNA
+sigue activa (el Cortapelo 4 en 1 de Ayelen). El número nunca se había medido — era un cálculo a
+ojo, y el trabajo ya estaba casi todo hecho sin que nadie lo anotara.
+`nomandar` saca a la cuenta del reparto y de "Contar lo que hay", **no borra ni pausa la
+publicación**: eso sigue siendo cierto. La lista con dueña y copias está más abajo.
+Pausar TOCA ML de verdad: no se hace sin que él lo pida expreso.
 
 **Un caso raro que quedó abierto: el P47 está marcado afuera de las TRES cuentas**, incluida Matías,
 que es la que lo vende (51 u. en 90 días). Viene de cuando el 07/09 pidió pasarlos todos a Ayelen.
@@ -1511,6 +1513,66 @@ vendieron dos la misma semana.
 Pausar una de ésas deja la mercadería adentro sin vender, pagando almacenamiento y con el reloj del
 descarte corriendo. Hoy es una sola (las 5 u. del Cortapelo), pero es la primera que hay que mirar
 y por eso va en su propia lista al final.
+
+### LA LISTA GUARDADA: DUEÑA Y COPIAS A BORRAR (21/09/2026)
+
+Pedido suyo: *"guardate la lista que te la voy a pedir y pone en que cuenta es la dueña y en que
+cuenta es la 'copia' a borrar"*. **Queda acá para no tener que volver a correr el comando** — y si
+pasa el tiempo conviene rehacerla con `repetidas:90`, porque la dueña se mueve con las ventas.
+
+**Casi todo ya está pausado: de las 60 copias, 59 están `paused` o `inactive` y sólo UNA está
+activa** (la marcada ⚠️). O sea que el trabajo grande ya estaba hecho.
+
+| # | producto | DUEÑA | COPIAS a borrar |
+|---|---|---|---|
+| 1 | Filtro agua | **Matías** | Adriana `MLA3128219416` |
+| 2 | metatarso | **Ayelen** | Adriana `MLA1729580691` |
+| 3 | Termómetro pincha | **Ayelen** | Adriana `MLA3127876638` |
+| 4 | Batidora | **Luciana** | Adriana `MLA3127992752` `MLA3127992918` · Ayelen `MLA2031302632` |
+| 5 | P47 | **Matías** | Adriana `MLA1729618067` `MLA1729628225` `MLA1729663575` `MLA3128216770` · Luciana `MLA1892750708` |
+| 6 | Adaptador universal | **Matías** | Adriana `MLA3128214374` · Ayelen `MLA1471727091` |
+| 7 | Joystick x3 | **Ayelen** | Adriana `MLA3127876822` |
+| 8 | Pendrive Cruzer Blade 64gb | **Matías** | Adriana `MLA3132423648` |
+| 9 | Infusor de té cajita | **Matías** | Adriana `MLA3128238720` |
+| 10 | Cartas Casino | **Luciana** | Adriana `MLA1729501999` |
+| 11 | Pack X5 Cubreasiento de inodoro | **Luciana** | Adriana `MLA1729482317` |
+| 12 | Piedra Pómez X6 | **Ayelen** | Adriana `MLA1729659935` |
+| 13 | Timer | **Ayelen** | Adriana `MLA1729614209` `MLA3380724592` |
+| 14 | Kit Limpia | **Ayelen** | Adriana `MLA3128004284` |
+| 15 | Balanza Cocina | **Ayelen** | Adriana `MLA3127991910` · Matías `MLA1708104767` `MLA2900475258` |
+| 16 | p47 oreja gato | **Ayelen** | Matías `MLA1455432525` `MLA1709796225` `MLA3070709576` `MLA3572658428` · **⚠️ Matías vendió 10 contra 4 de Ayelen** |
+| 17 | Termómetro Cable | **Luciana** | Adriana `MLA3127911548` |
+| 18 | Luz Bicicleta la de siempre | **Ayelen** | Adriana `MLA1729519493` |
+| 19 | F9 | **Matías** | Luciana `MLA2856310650` `MLA3278287038` · Adriana `MLA3132423886` · **⚠️ Luciana vendió 19 contra 7 de Matías** |
+| 20 | Juguete Gato Bola | **Ayelen** | Adriana `MLA1729579287` `MLA3127994848` |
+| 21 | Pezoneras | **Ayelen** | Matías `MLA1478541491` (ya dada de baja) |
+| 22 | Luz Led Delantera nueva | **Ayelen** | Adriana `MLA1729509605` |
+| 23 | Luz led Bicicleta 918 individual | **Ayelen** | Adriana `MLA1729521573` `MLA3127619910` |
+| 24 | CortaPelo 2 En 1 | **Ayelen** | Adriana `MLA1729525145` · Matías `MLA1751077020` |
+| 25 | 2 Separadores Protector de Dedos | **Ayelen** | Adriana `MLA1729573459` `MLA1729581457` `MLA3127916876` |
+| 26 | Cortapelo 1 en 1 | **Ayelen** | Adriana `MLA3127623938` |
+| 27 | Pizarra Mágica Multicolor 8.5 | **Luciana** | Adriana `MLA1729481979` `MLA1729481981` `MLA1729481983` `MLA1729481985` `MLA3127615928` · Ayelen `MLA2819223720` `MLA2843976154` |
+| 28 | Linterna Minera barata | **Ayelen** | Luciana `MLA3426093884` |
+| 29 | Xiaomi Redmi Pad 2 | **Matías** | Luciana `MLA1782601577` |
+| 30 | Cortapelo 4 en 1 | **Matías** | Adriana `MLA1729511183` `MLA1729524451` · Luciana `MLA1377920253` `MLA1452471312` · **Ayelen `MLA1474502515` ⚠️ ACTIVA, 5 u. en Full, GANA la caja** |
+
+**DOS RENGLONES DONDE LA REGLA PUEDE ESTAR EQUIVOCÁNDOSE, y por eso van marcados:**
+ · **el 30 (Cortapelo 4 en 1)** — la dueña por la regla es Matías, que vendió hace 89 días y tiene
+   1 unidad, y la copia de Ayelen está **activa, con 5 u. y ganando la caja**. Aplicarlo al pie de
+   la letra sería apagar la única que puede vender.
+ · **los 16 y 19** — la copia vendió el DOBLE o más que la dueña y se cortó. Puede ser falta de
+   stock, no que el producto se haya mudado de cuenta.
+**La regla dice quién vendió más reciente, no quién está en mejores condiciones de vender hoy.**
+
+**LOS 8 QUE NO SE DECIDEN SOLOS** (o ninguna vendió en 90 días, o dos vendieron la misma semana):
+**Paulvic** (Adriana 51 publicaciones / 217 u. · Luciana 2 / 15 u. — **excepción suya del 10/09,
+queda compartido**) · **Kit Luces Bici 2218** (Adriana `MLA1729506823` · Ayelen `MLA1539342257`) ·
+**Tira Led** (Adriana `MLA1729432599` · Luciana `MLA1977323590` `MLA3903897892` con 10 u. · Ayelen
+`MLA1471679657` · Matías `MLA1956328566`) · **Termómetro horno** (Adriana `MLA1729569547` · Ayelen
+`MLA2012564400`) · **balanza equipaje** (Ayelen 5 publicaciones · Adriana 3) · **Estimulador
+Muscular** (Adriana `MLA3128212002` · Ayelen `MLA2209052420` `MLA2681075136`) · **Indoor** (Adriana
+`MLA3128218754` · Matías `MLA899532398`) · **De la Patagonia KO UNISEX** (Adriana `MLA3082882284`
+con 4 u. · Luciana `MLA3013798466`).
 
 ## CADA COMPRA A PARAGUAY, CON SUS COSTOS REALES: `compray` (21/09/2026)
 
