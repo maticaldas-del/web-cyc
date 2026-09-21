@@ -7,7 +7,7 @@
 //   FIREBASE_API_KEY, FIREBASE_DB_URL, FIREBASE_BOT_EMAIL, FIREBASE_BOT_PASSWORD
 
 import { fbSignIn, makeDB, mlRefresh, mlGet, ML_API } from './lib.mjs';
-import { writeFileSync, mkdirSync } from 'node:fs';
+import { writeFileSync, mkdirSync, readFileSync } from 'node:fs';
 
 const {
   ML_CLIENT_ID, ML_CLIENT_SECRET,
@@ -9120,6 +9120,92 @@ async function main() {
       }
       console.log(`Categorías: ${ok} contestaron · ${mal} no.`);
       console.log('Si la raíz sale bien, el "margen por rubro" se puede armar sin adivinar ningún nombre.');
+      return;
+    }
+    // BILLING_PROBE=campos[:<MLA>] → ¿QUÉ CAMPOS MANDA ML QUE NO ESTAMOS GUARDANDO? SOLO LEE.
+    //
+    // Pedido suyo del 21/09/2026: "fijate si hay más info que da ML y no tenemos. por ejemplo el
+    // código para enviar mercadería a Full (Codera - XCUU22662) que fue re útil. quizás encontrás
+    // pequeños datos así para ir llenando la web."
+    //
+    // Ese ejemplo es exacto y es el motivo de este comando: el `inventory_id` **ya venía** en la
+    // respuesta que el robot pedía todas las horas para leer el stock de Full, y no se guardaba.
+    // No era un endpoint nuevo ni un permiso que faltara: era un campo que pasaba por al lado.
+    // `apisnuevas` prueba PUERTAS; esto mira ADENTRO de las que ya abrimos, que es donde estaba.
+    //
+    // NO IMPRIME NI UN VALOR, SÓLO NOMBRES DE CAMPO, y eso no es prudencia de más: una orden trae
+    // el nombre, el documento y la dirección del comprador, y el registro de GitHub es PÚBLICO
+    // (la lección de `recibidas.json` y de `vergastos`). Un volcado crudo acá sería el mismo
+    // error con otra ropa. Por eso se listan las CLAVES y nunca lo que hay adentro.
+    //
+    // Y NO DECIDE POR EL NOMBRE: para saber si un campo ya se usa, lee el CÓDIGO REAL del robot y
+    // del panel y busca el nombre ahí. Marcar a ojo cuáles conocemos es justo como se cuelan los
+    // que pasan por al lado.
+    if (String(process.env.BILLING_PROBE || '').startsWith('campos')) {
+      const MLAc = (String(process.env.BILLING_PROBE).split(':')[1] || '').trim().toUpperCase();
+      let fuenteRobot = '', fuenteWeb = '';
+      try { fuenteRobot = readFileSync(new URL('./sync.mjs', import.meta.url), 'utf8'); } catch { /* sigue */ }
+      try { fuenteWeb = readFileSync(new URL('../index.html', import.meta.url), 'utf8'); } catch { /* sigue */ }
+      if (!fuenteRobot) { console.log('No pude leer mi propio código: sin eso no puedo decir qué campo ya se usa, y marcarlo a ojo es adivinar.'); return; }
+      const linksC = (await db.get('cyc/mllinks')) || {};
+      const ec = MLAc ? (linksC[MLAc] || {}) : {};
+      const label = labels.find((l) => l === ec.cuenta && accounts[l]?.refresh_token) || labels.find((l) => accounts[l]?.refresh_token);
+      if (!label) { console.log('No hay cuenta con token.'); return; }
+      const acc = accounts[label];
+      const t = await mlRefresh(ML_CLIENT_ID, ML_CLIENT_SECRET, acc.refresh_token);
+      await db.patch('mlapi/tokens/' + label, { refresh_token: t.refresh_token, updated_ts: Date.now() });
+      const tok = t.access_token, sid = acc.seller_id;
+      const MLA = MLAc || Object.keys(linksC).find((m) => m.startsWith('MLA') && linksC[m] && linksC[m].cuenta === label && !linksC[m].ignored);
+      // Se listan las claves hasta DOS niveles: el campo útil suele estar adentro de un objeto
+      // (`shipping.logistic_type`, `seller_reputation.metrics`), no suelto arriba de todo.
+      const claves = (o, pre = '', prof = 0) => {
+        const out = [];
+        if (!o || typeof o !== 'object') return out;
+        for (const [k, v] of Object.entries(o)) {
+          const full = pre ? pre + '.' + k : k;
+          out.push(full);
+          if (prof < 1 && v && typeof v === 'object' && !Array.isArray(v)) out.push(...claves(v, full, prof + 1));
+        }
+        return out;
+      };
+      const usado = (k) => {
+        const hoja = k.split('.').pop();
+        if (hoja.length < 4) return true;   // nombres muy cortos dan falsos positivos: se dan por conocidos
+        return fuenteRobot.includes(hoja) || fuenteWeb.includes(hoja);
+      };
+      const mirar = async (nombre, ruta) => {
+        console.log(`\n── ${nombre} ──  ${ruta}`);
+        let d;
+        try { d = await mlGet(ruta, tok); } catch (e) { console.log(`   ✗ ${String(e.message || e).slice(0, 120)}`); return; }
+        const raiz = Array.isArray(d) ? (d[0] || {}) : ((d.results && d.results[0]) || d);
+        const ks = claves(raiz);
+        const nuevos = ks.filter((k) => !usado(k));
+        console.log(`   ${ks.length} campos · ${nuevos.length} que no aparecen en el código`);
+        if (nuevos.length) console.log(`   🆕 ${nuevos.join(' · ')}`);
+      };
+      console.log(`Cuenta ${label}${MLA ? ' · publicación ' + MLA : ''}`);
+      console.log('Sólo NOMBRES de campo. Ningún valor: una orden trae datos del comprador y este registro es público.');
+      if (MLA) {
+        await mirar('LA PUBLICACIÓN', '/items/' + MLA);
+        await mirar('EL STOCK DE FULL', '/inventories/' + (ec.inv || '') + '/stock/fulfillment');
+      }
+      await mirar('LA CUENTA', '/users/' + sid);
+      // La orden y el envío se miran por sus claves justamente porque son los que más datos de
+      // terceros traen adentro.
+      let ordId = null;
+      try {
+        const o = await mlGet(`/orders/search?seller=${sid}&sort=date_desc&limit=1`, tok);
+        ordId = ((o.results || [])[0] || {}).id || null;
+      } catch { /* sigue */ }
+      if (ordId) {
+        await mirar('UNA VENTA', '/orders/' + ordId);
+        try {
+          const sh = await mlGet('/orders/' + ordId + '/shipments', tok);
+          if (sh && sh.id) await mirar('SU ENVÍO', '/shipments/' + sh.id);
+        } catch { /* sigue */ }
+      } else { console.log('\n── UNA VENTA ──  no se pudo encontrar una orden reciente'); }
+      console.log('\nLos 🆕 son campos que ML ya nos manda y el código nunca nombra. No todos sirven:');
+      console.log('hay que mirar cuál contesta una pregunta que hoy no se puede contestar.');
       return;
     }
     // BILLING_PROBE=apisnuevas:<MLA> → ¿QUÉ MÁS NOS DEJA VER ML QUE HOY NO ESTAMOS USANDO?
