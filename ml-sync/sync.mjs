@@ -9323,7 +9323,7 @@ async function main() {
         catch (e) { console.log(`  ${label}: no pude leer las ventas · ${String(e.message || e).slice(0, 80)}`); continue; }
         // Sólo las de ARRIBA de la barrera: abajo de $33.000 ML no le cobra envío al vendedor, así
         // que comparar ahí sería comparar dos ceros y no diría nada.
-        const caras = orders.filter((o) => (o.order_items || []).reduce((s, it) => s + (it.unit_price || 0) * (it.quantity || 0), 0) >= MIN_GROSS);
+        const caras = orders.filter((o) => (o.order_items || []).reduce((s, it) => s + (it.unit_price || 0) * (it.quantity || 0), 0) >= UMBRAL_ENVIO_GRATIS);
         for (const o of caras.slice(0, CUANTAS)) {
           mirados++;
           // 1) lo que COBRÓ Mercado Pago
@@ -9353,7 +9353,7 @@ async function main() {
           filas.push({ label, ord: String(o.id).slice(-6), base, lista, desc, neto, cobrado, dif, cc: Object.keys(cc).join(',') });
         }
       }
-      console.log(`=== ¿CUÁL ES EL ENVÍO REAL? · ${mirados} venta(s) de arriba de ${money(MIN_GROSS)} miradas ===\n`);
+      console.log(`=== ¿CUÁL ES EL ENVÍO REAL? · ${mirados} venta(s) de arriba de ${money(UMBRAL_ENVIO_GRATIS)} miradas ===\n`);
       if (!filas.length) {
         console.log('No se pudo comparar ninguna.');
         console.log(`  sin el cargo de MP todavía (no liquidadas): ${sinCargo} · sin envío legible: ${sinEnvio}`);
