@@ -13450,6 +13450,13 @@ async function main() {
 
       const ES_RETIRO = /withdraw|payout|retir|transfer/i;
 
+      // LA AGENDA DE LO QUE SE LIBERA CADA DÍA. Pedido suyo (21/09/2026): *"yo te voy a preguntar
+      // cuánto hay disponible, cuánto va a haber disponible mañana"*.
+      // Sale del MISMO archivo y del MISMO recorrido que "a liquidar": es exactamente la misma
+      // plata, abierta por día en vez de sumada. Hacerlo en otro comando sería una segunda copia
+      // de la cuenta, que es el error anotado nueve veces en este archivo — y acá se notaría feo:
+      // los días sumarían distinto del total que está al lado.
+      const agenda = {};   // 'AAAA-MM-DD' → pesos que se liberan ese día (las cuatro cuentas)
       const res = {}; let totalLiq = 0, cuentasOk = 0, cuentasMal = 0;
       for (const label of labels) {
         const acc = accounts[label];
@@ -13505,6 +13512,11 @@ async function main() {
             const v = csvNum(f[iReal]);
             if (v == null) { nSinNeto++; continue; }
             liq += v; nLiq++; if (ts > ultima) ultima = ts;
+            // El día se toma con el huso de acá (-03:00), no en UTC: si no, todo lo que se libera
+            // después de las 21:00 se anotaría al día siguiente y la respuesta a "¿cuánto entra
+            // mañana?" saldría corrida un día justo en las horas de más movimiento.
+            const dia = new Date(ts - 3 * 36e5).toISOString().slice(0, 10);
+            agenda[dia] = (agenda[dia] || 0) + v;
           }
           // EL CHEQUEO QUE NO PUEDE FALTAR: si alguna fila no se pudo leer, el total queda CORTO y
           // eso no se ve en el número. Se avisa fuerte en vez de guardarlo callado.
@@ -13616,6 +13628,19 @@ async function main() {
           await db.set('cyc/finanzas/mp_liq', enUSD);
           const v = parseFloat(await db.get('cyc/finanzas/mp_liq'));
           console.log(`   "A liquidar en ML" del Arqueo: ${Math.round(v) === enUSD ? '✅ actualizado y releído · en DÓLARES' : '❌ no quedó'}`);
+          // LA AGENDA, EN DÓLARES Y CON LOS MISMOS FRENOS. Va bajo el mismo `puedePisar` que el
+          // total: si la cuenta no cierra o falta una cuenta, una agenda incompleta es peor que
+          // ninguna — él la va a usar para decidir cuándo comprar, y un día que dice de menos le
+          // hace postergar una compra que sí podía hacer.
+          const dias = Object.keys(agenda).sort();
+          const porDiaUSD = {};
+          for (const d of dias) porDiaUSD[d] = Math.round(agenda[d] / tc);
+          await db.set('cyc/finanzas/agenda', { dias: porDiaUSD, _ts: Date.now(), _moneda: 'usd', _hasta: dias[dias.length - 1] || '' });
+          const rel = (await db.get('cyc/finanzas/agenda')) || {};
+          const nrel = Object.keys(rel.dias || {}).length;
+          console.log(`   agenda de liberaciones: ${nrel} día(s) guardado(s) y releído(s) ${nrel === dias.length ? '✅' : '❌'}`);
+          // Al registro público van los DÍAS y las cantidades de filas, nunca los montos.
+          if (dias.length) console.log(`   (del ${dias[0]} al ${dias[dias.length - 1]} · los montos van a la base)`);
         } else {
           console.log(`   NO se tocó "A liquidar en ML" del Arqueo: ${cuentasOk !== labels.length
             ? 'falta alguna cuenta y el total estaría corto'
@@ -13762,10 +13787,13 @@ async function main() {
         console.log(`   hoy: programado ${cfg.scheduled === true ? 'SÍ' : 'NO'} · frecuencia ${JSON.stringify(cfg.frequency ?? null)} · huso ${cfg.display_timezone || '?'}`);
         if (cfg.scheduled === true) { console.log('   ✅ ya se genera solo'); ya++; continue; }
         if (!APLICAR) { console.log('   con ":go" se programa diario'); continue; }
-        // La frecuencia se arma SOBRE la que ya tiene, no de cero: así se respeta la forma exacta
-        // que usa MercadoPago (que recién se ve al leerla) y sólo se cambia lo que hace falta.
-        const frecVieja = (cfg.frequency && typeof cfg.frequency === 'object') ? cfg.frequency : {};
-        const cuerpo = { ...cfg, scheduled: true, frequency: { ...frecVieja, type: 'daily', value: 1, hour: 6 } };
+        // LA FRECUENCIA NO SE TOCA, Y ESO SALIÓ DE MEDIRLA. La corrida en prueba del 21/09 mostró
+        // que las cuatro cuentas ya la tienen en `{"format":"CSV","hour":0,"type":"daily",
+        // "value":null}` — o sea **ya es diaria**: lo único apagado es `scheduled`.
+        // La primera versión iba a mandar `value: 1` y `hour: 6` por su cuenta. Habría pisado una
+        // forma que MercadoPago ya usa con otra inventada por mí, sin necesidad y sin saber qué
+        // hace `value` acá. Se cambia UN campo y nada más.
+        const cuerpo = { ...cfg, scheduled: true };
         try {
           const r = await fetch(`${MP}/v1/account/settlement_report/config`, { method: 'PUT', headers: H, body: JSON.stringify(cuerpo), signal: AbortSignal.timeout(25000) });
           const txt = ((await r.text()) || '').replace(/\s+/g, ' ').slice(0, 180);
