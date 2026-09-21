@@ -12905,6 +12905,117 @@ async function main() {
       console.log('\n   (Solo se leyó. Ni un POST, y no se imprimió ningún monto: el registro es público.)');
       return;
     }
+    // BILLING_PROBE=columnas → ¿QUEDARON LAS COLUMNAS NUEVAS DEL REPORTE? · SOLO LEE
+    //
+    // POR QUÉ (21/09/2026). Él tildó en el panel de MercadoPago siete columnas del reporte de
+    // liquidación y programó las cuatro cuentas. Las siete existen para UNA cosa: poder comparar
+    // el reporte con nuestras ventas **fila por fila**, que es lo que hoy no se puede.
+    //
+    // LO QUE DESTRABA CADA UNA:
+    //  · `ORDER_ID` y `PACK_ID` → la CLAVE. `realml` compara por cuenta y mes, no fila por fila,
+    //    porque la venta guarda `saleId`/`numVenta` (los de MercadoLibre) y el reporte no traía
+    //    ninguno de los dos. Sin clave no hay cruce posible.
+    //  · `SHIPPING_FEE_AMOUNT` y `MKP_FEE_AMOUNT` → separan el envío de la comisión. Ése era el
+    //    segundo motivo por el que no se podía comparar: nuestro `mlfee` junta todo con el envío
+    //    adentro y el `FEE_AMOUNT` del reporte no, así que la diferencia daba **exactamente el
+    //    tamaño del envío y sólo arriba de los $33.000** — o sea, la forma del agujero del 17/09.
+    //    Habría salido como hallazgo y era un artefacto.
+    //  · `TAXES_DISAGGREGATED` → las retenciones, el primer candidato a explicar los 6 a 9 puntos.
+    //  · `IS_RELEASED` → si el neto de esa venta es real o todavía estimado. Hoy eso NO queda
+    //    marcado en la venta, así que las estimadas no se pueden separar de las medidas.
+    //
+    // NO SE PIDIÓ NINGUNA COLUMNA CON DATOS DEL COMPRADOR (nombre, documento, tarjeta, los cuatro
+    // dígitos, el número de autorización). El robot baja este archivo en un lugar público y ese
+    // dato es de un tercero. Este probe además **avisa** si alguna de ésas aparece.
+    //
+    // AGREGAR COLUMNAS NO ROMPE NADA, y eso se verificó antes de pedírselo: todos los lugares que
+    // leen este CSV buscan cada columna por NOMBRE (`cols.indexOf('REAL_AMOUNT')`), nunca por
+    // posición. Un orden distinto les da igual.
+    //
+    // ESTO SOLO LEE. No pide ningún reporte y no cambia ninguna configuración: primero se mira si
+    // quedó lo que él tildó, y recién después se pide un archivo nuevo. Y se mira la configuración
+    // **y** el último archivo bajado, porque son dos cosas distintas: la configuración es lo que
+    // va a tener el PRÓXIMO reporte, y los ya generados siguen con las columnas viejas.
+    //
+    // NO IMPRIME NI UN PESO: nombres de columnas, cantidades de filas y ✓/✗. El registro es público.
+    if (String(process.env.BILLING_PROBE || '') === 'columnas') {
+      const MP = 'https://api.mercadopago.com';
+      // Las siete que él tildó, con el nombre en criollo al lado para que el renglón se entienda.
+      const QUIERO = [
+        ['ORDER_ID', 'ID de la orden'],
+        ['PACK_ID', 'ID del paquete'],
+        ['MKP_FEE_AMOUNT', 'comisión de ML + IVA'],
+        ['SHIPPING_FEE_AMOUNT', 'costo de envío'],
+        ['FINANCING_FEE_AMOUNT', 'costo de las cuotas'],
+        ['TAXES_DISAGGREGATED', 'impuestos desagregados'],
+        ['IS_RELEASED', 'liquidado'],
+      ];
+      // Lo que NO tiene que estar: datos del comprador. Si aparece alguna, se avisa fuerte.
+      const PROHIBIDAS = ['PAYER_NAME', 'PAYER_ID_NUMBER', 'PAYER_ID_TYPE', 'CARD_INITIAL_NUMBER',
+        'LAST_FOUR_DIGITS', 'AUTHORIZATION_CODE'];
+      console.log('=== ¿QUEDARON LAS COLUMNAS NUEVAS DEL REPORTE DE LIQUIDACIÓN? ===\n');
+      console.log('(solo lee · no pide ningún reporte · no cambia ninguna configuración)\n');
+      let okConfig = 0, okArchivo = 0, cuentas = 0;
+      for (const label of labels) {
+        const acc = accounts[label];
+        if (!acc?.refresh_token) { console.log(`── ${label} ── sin token`); continue; }
+        let t; try { t = await mlRefresh(ML_CLIENT_ID, ML_CLIENT_SECRET, acc.refresh_token); }
+        catch { console.log(`── ${label} ── ❌ no pude renovar el token`); continue; }
+        await db.patch('mlapi/tokens/' + label, { refresh_token: t.refresh_token, updated_ts: Date.now() });
+        const H = { Authorization: `Bearer ${t.access_token}` };
+        cuentas++;
+        console.log(`── ${label} ──`);
+
+        // 1) LA CONFIGURACIÓN: lo que va a tener el PRÓXIMO reporte.
+        let cfgCols = null;
+        try {
+          const r = await fetch(`${MP}/v1/account/settlement_report/config`, { headers: H, signal: AbortSignal.timeout(20000) });
+          const c = r.ok ? await r.json() : {};
+          // MercadoPago devuelve las columnas como lista de objetos {key} o de textos, según el caso.
+          const crudo = c.columns || c.column || [];
+          cfgCols = (Array.isArray(crudo) ? crudo : []).map((x) => String(typeof x === 'string' ? x : (x && (x.key || x.name)) || '').toUpperCase()).filter(Boolean);
+          console.log(`   configuración · HTTP ${r.status} · ${cfgCols.length} columnas · programado: ${c.scheduled} · retiros adentro: ${c.include_withdraw}`);
+          if (c.frequency) console.log(`      frecuencia: ${JSON.stringify(c.frequency)}`);
+          if (!cfgCols.length) console.log('      ⚠️ la configuración no devolvió columnas: no se puede verificar por acá.');
+          else {
+            const faltan = QUIERO.filter(([k]) => !cfgCols.includes(k));
+            if (!faltan.length) { okConfig++; console.log('      ✅ están las 7 que pediste'); }
+            else console.log('      ❌ faltan: ' + faltan.map(([k, n]) => `${n} (${k})`).join(' · '));
+            const malas = PROHIBIDAS.filter((k) => cfgCols.includes(k));
+            if (malas.length) console.log('      🚨 HAY DATOS DEL COMPRADOR ADENTRO: ' + malas.join(', ') + ' — destildalas, el registro es público.');
+          }
+        } catch (e) { console.log('   configuración · ❌ ' + String(e.message || e).slice(0, 90)); }
+
+        // 2) EL ÚLTIMO ARCHIVO YA GENERADO: todavía puede tener las columnas viejas, y eso NO es un
+        //    error — es que se generó antes del cambio. Se dice, no se confunde con una falla.
+        try {
+          const r = await fetch(`${MP}/v1/account/settlement_report/list`, { headers: H, signal: AbortSignal.timeout(20000) });
+          const l = r.ok ? await r.json() : [];
+          const arr = Array.isArray(l) ? l : (l.results || []);
+          if (!arr.length) { console.log('   (todavía no hay ningún archivo generado)'); continue; }
+          const ult = arr[arr.length - 1];
+          const nom = String(ult.file_name || ult.fileName || ult.id || '');
+          const r2 = await fetch(`${MP}/v1/account/settlement_report/${encodeURIComponent(nom)}`, { headers: H, signal: AbortSignal.timeout(30000) });
+          const txt = r2.ok ? await r2.text() : '';
+          const cab = (txt.split(/\r?\n/)[0] || '');
+          const sep = cab.includes(';') ? ';' : ',';
+          const cols = csvPartir(cab, sep).map((x) => x.replace(/^"|"$/g, '').trim().toUpperCase());
+          const filas = txt.split(/\r?\n/).filter((x) => x.trim()).length - 1;
+          console.log(`   último archivo · creado ${ult.date_created || '—'} · ${cols.length} columnas · ${filas} filas`);
+          const faltan = QUIERO.filter(([k]) => !cols.includes(k));
+          if (!faltan.length) { okArchivo++; console.log('      ✅ el archivo YA trae las 7 columnas nuevas'); }
+          else console.log('      · todavía con las columnas viejas (le faltan ' + faltan.length + '): es de antes del cambio, hay que pedir uno nuevo');
+        } catch (e) { console.log('   último archivo · ❌ ' + String(e.message || e).slice(0, 90)); }
+      }
+      console.log(`\n── RESUMEN ──`);
+      console.log(`   cuentas miradas: ${cuentas} · con las 7 en la configuración: ${okConfig} · con las 7 en el archivo: ${okArchivo}`);
+      if (okConfig === cuentas && okArchivo < cuentas) {
+        console.log('   La configuración quedó bien. Falta pedir un reporte NUEVO para que el archivo');
+        console.log('   las traiga: eso lo hace `armarsaldo:90:go`, que escribe en MercadoPago.');
+      }
+      console.log('\n   (Solo se leyó. No se imprimió ningún monto: el registro es público.)');
+      return;
+    }
     // BILLING_PROBE=extracto → ¿DÓNDE VIVE EL "EXTRACTO DE CUENTA" QUE ÉL BAJA A MANO? · SOLO LEE
     //
     // POR QUÉ (21/09/2026). Él creó en el panel de MercadoPago el reporte de "Todas las
