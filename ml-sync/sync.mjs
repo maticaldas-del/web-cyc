@@ -11140,6 +11140,99 @@ async function main() {
       } catch (err) { console.log('❌ ' + String(err.message || err).slice(0, 200)); }
       return;
     }
+    // BILLING_PROBE=ventascat:<MLA>[;otro] → ¿CUÁNTAS VENTAS TIENE EL CATÁLOGO DE UN PRODUCTO?
+    //
+    // Pregunta suya del 21/09/2026 sobre el Seagate, que acaba de dejar 56,9% y $55.180 en UNA
+    // venta: *"+100 ventas, que mide el catálogo de ML, no tu publicación. ¿y cuántas ventas
+    // tiene? porque eso sí sería un problema"*. Tiene razón en que sería un problema: si su vara
+    // de +100 hubiera descartado un producto que rinde así, la vara está mal.
+    //
+    // LO QUE YA ESTÁ MEDIDO Y HAY QUE RESPETAR (19/09/2026): ML contesta **403** a las ventas de
+    // publicaciones AJENAS, probado por las dos vías (`/items?ids=` y `/items/<MLA>`). Pero hay un
+    // caso que nunca se probó y es justo éste: un catálogo donde **tenemos publicación propia**.
+    // La nuestra sí se puede leer, y la pregunta es si el CATÁLOGO publica un total.
+    //
+    // Prueba 4 puertas e imprime lo que contesta cada una, **sin decidir por el nombre del campo**:
+    // busca cualquier clave que hable de vendidas y la lista. Un campo que no conocemos no se
+    // puede encontrar mirando sólo los que ya conocemos — es el agujero del `inventory_id`.
+    //
+    // NO IMPRIME NINGÚN DATO DE COMPRADOR: sólo números de ventas y nombres de campo. El registro
+    // de GitHub es público.
+    //
+    // SOLO LEE. No escribe nada, no toca ML ni la base.
+    if (String(process.env.BILLING_PROBE || '').startsWith('ventascat:')) {
+      const _vcIds = String(process.env.BILLING_PROBE).slice('ventascat:'.length).split(';').map((x) => x.trim().toUpperCase()).filter((x) => /^MLA\d+$/.test(x));
+      if (!_vcIds.length) { console.log('Usá: ventascat:MLA12345678[;MLA...] · vale una publicación tuya o un código de catálogo'); return; }
+      const linksVC = (await db.get('cyc/mllinks')) || {};
+      // Junta toda clave que hable de ventas, esté donde esté, hasta 2 niveles.
+      const buscaVend = (o, pre = '', hondo = 0, out = []) => {
+        if (!o || typeof o !== 'object' || hondo > 2) return out;
+        for (const [k, v] of Object.entries(o)) {
+          if (/sold|sale|vend|quantity_sold|purchase/i.test(k) && (typeof v === 'number' || typeof v === 'string')) out.push(`${pre}${k}=${v}`);
+          else if (v && typeof v === 'object') buscaVend(v, pre + k + '.', hondo + 1, out);
+        }
+        return out;
+      };
+      console.log('\n══ ¿CUÁNTAS VENTAS INFORMA ML DE UN CATÁLOGO? (solo lee) ══');
+      console.log('Ya está medido que las ventas de publicaciones AJENAS dan 403. Lo que se prueba acá');
+      console.log('es si el CATÁLOGO publica un total, que es otra puerta y nunca se probó.\n');
+      for (const pedido of _vcIds) {
+        const eVC = linksVC[pedido] || null;
+        let tokVC = null;
+        for (const label of (eVC && eVC.cuenta ? [eVC.cuenta, ...labels] : labels)) {
+          const acc = accounts[label]; if (!acc?.refresh_token) continue;
+          try {
+            const t = await mlRefresh(ML_CLIENT_ID, ML_CLIENT_SECRET, acc.refresh_token);
+            await db.patch('mlapi/tokens/' + label, { refresh_token: t.refresh_token, updated_ts: Date.now() });
+            tokVC = t.access_token; break;
+          } catch { /* siguiente */ }
+        }
+        if (!tokVC) { console.log('❌ No pude sacar token de ninguna cuenta.'); return; }
+        console.log(`── ${pedido}${eVC && eVC.cuenta ? ' · nuestra, en ' + eVC.cuenta : ''}`);
+        let cpid = pedido, propio = null;
+        if (eVC) {
+          try {
+            propio = await mlGet(`/items/${pedido}?attributes=id,title,sold_quantity,catalog_product_id,catalog_listing`, tokVC);
+            cpid = propio?.catalog_product_id || null;
+            console.log(`   NUESTRA publicación: vendidas ${propio?.sold_quantity != null ? propio.sold_quantity : '?'} · catálogo ${cpid || 'NO es de catálogo'}`);
+          } catch (e) { console.log(`   ❌ no pude leer nuestra publicación: ${e && e.message ? e.message : e}`); }
+        }
+        if (!cpid) { console.log('   Sin catálogo no hay nada más que preguntar.\n'); continue; }
+        // 1) la ficha del catálogo
+        try {
+          const pr = await mlGet(`/products/${cpid}`, tokVC);
+          const hall = buscaVend(pr);
+          console.log(`   /products/${cpid} → 200 · ${Object.keys(pr || {}).length} claves`);
+          console.log(`      ${hall.length ? 'campos de ventas: ' + hall.join(' · ') : '⚠️ NINGÚN campo que hable de ventas'}`);
+        } catch (e) { console.log(`   /products/${cpid} → ❌ ${e && e.message ? e.message : e}`); }
+        // 2) los vendedores del catálogo
+        try {
+          const it = await mlGet(`/products/${cpid}/items`, tokVC);
+          const res = it?.results || [];
+          console.log(`   /products/${cpid}/items → 200 · ${res.length} vendedor(es)`);
+          let conDato = 0;
+          for (const r of res.slice(0, 12)) {
+            const v = r?.sold_quantity;
+            if (v != null) conDato++;
+            console.log(`      ${String(r?.item_id || r?.id || '?').padEnd(14)} vendidas ${v != null ? v : '?'}`);
+          }
+          console.log(`      ${conDato} de ${res.length} traen las ventas${conDato ? '' : ' — es el "?" ya medido el 18/09'}`);
+        } catch (e) { console.log(`   /products/${cpid}/items → ❌ ${e && e.message ? e.message : e}`); }
+        // 3) la puerta que ML usa para las "más vendidas" de una categoría
+        for (const ruta of [`/highlights/MLA/item/${cpid}`, `/products/${cpid}/search_metadata`]) {
+          try {
+            const r = await mlGet(ruta, tokVC);
+            const hall = buscaVend(r);
+            console.log(`   ${ruta} → 200 · ${hall.length ? hall.join(' · ') : 'sin campos de ventas'}`);
+          } catch (e) { console.log(`   ${ruta} → ❌ ${e && e.message ? e.message : e}`); }
+        }
+        console.log('');
+      }
+      console.log('Si ninguna puerta lo da, el número lo tiene que leer el chat de compras de la página de ML,');
+      console.log('que es lo único que hoy lo ve. Y entonces la vara de +100 se aplica sobre un dato que');
+      console.log('carga una persona, no el robot: donde falta, falta.');
+      return;
+    }
     // BILLING_PROBE=probarcaja:<MLA del catálogo> → ¿ML DICE QUIÉN TIENE LA CAJA DE COMPRA?
     //
     // Nació el 18/09/2026: al empezar a guardar el precio de la caja de los candidatos, la primera
