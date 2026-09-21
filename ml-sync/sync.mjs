@@ -14940,6 +14940,73 @@ async function main() {
       return;
     }
 
+    // BILLING_PROBE=sacarfotos[:go] → SACAR LAS FOTOS QUE CARGÓ ÉL Y DEJAR LAS DE ML
+    //
+    // Pedido suyo (21/09/2026): *"saca TODAS las que puse yo. y deja las nuevas que da ml"*.
+    //
+    // POR QUÉ NO ALCANZABA CON `fotos`, Y ES EL ERROR QUE CASI HACE BORRAR MAL: ese comando
+    // pregunta primero si hay foto de ML y, si la hay, **sigue de largo con un `continue` sin
+    // mirar si ADEMÁS hay una cargada a mano**. Para contar faltantes da igual; para esto no,
+    // porque en `fotoDeProducto` **la de él GANA sobre la genérica de ML** (`p.fotoUrl` y
+    // `p.foto` se miran ANTES de recorrer las publicaciones). O sea que un producto con las dos
+    // está mostrando la suya y `fotos` lo contó como "de ML". Contar con el filtro equivocado y
+    // después borrar sobre ese número es la receta del descarte silencioso, pero destructivo.
+    //
+    // SE BORRAN LAS TRES COSAS, que es donde vive una foto a mano:
+    //   `cyc/products/<id>/fotoUrl` (el link pegado) · `cyc/products/<id>/foto` (la marca)
+    //   `cyc/fotos/<id>` (la imagen en sí, que pesa)
+    //
+    // **ESTO NO SE PUEDE DESHACER.** La imagen subida no está en ningún otro lado. Por eso sin
+    // `:go` NO TOCA NADA y dice, producto por producto, si ML tiene una foto para reemplazarla o
+    // si ese producto va a quedar SIN NINGUNA — que es la única parte que él necesita decidir.
+    if (String(process.env.BILLING_PROBE || '').startsWith('sacarfotos')) {
+      const go = /:go$/.test(String(process.env.BILLING_PROBE || ''));
+      const prods = (await db.get('cyc/products')) || {};
+      const links = (await db.get('cyc/mllinks')) || {};
+      // Qué publicaciones VIVAS con foto tiene cada producto: es el reemplazo que va a quedar.
+      const mlDe = {};
+      for (const [mla, e] of Object.entries(links)) {
+        if (!e || !e.prodId || e.ignored || !e.foto) continue;
+        if ((e.status || '') === 'closed') continue;   // una cerrada puede ser de una versión que ya no vendés
+        (mlDe[e.prodId] = mlDe[e.prodId] || []).push(mla);
+      }
+      const conMano = [];
+      for (const [id, p] of Object.entries(prods)) {
+        if (!p || p.borrado) continue;
+        const tieneLink = !!p.fotoUrl, tieneSubida = p.foto === true;
+        if (!tieneLink && !tieneSubida) continue;      // acá NO se mira ML primero: ése fue el error
+        conMano.push({ id, nom: String(p.name || id).slice(0, 44), tieneLink, tieneSubida, ml: mlDe[id] || [] });
+      }
+      const quedanSin = conMano.filter((x) => !x.ml.length);
+      console.log(`=== ${go ? 'SACANDO' : 'QUÉ SE SACARÍA:'} LAS FOTOS CARGADAS A MANO ===\n`);
+      console.log(`Fichas con foto puesta por vos: ${conMano.length} (de ${Object.keys(prods).length} miradas)\n`);
+      if (!conMano.length) { console.log('No hay ninguna foto cargada a mano. No hay nada que sacar.'); return; }
+      for (const x of conMano) {
+        const qtiene = [x.tieneLink ? 'link pegado' : null, x.tieneSubida ? 'imagen subida' : null].filter(Boolean).join(' + ');
+        console.log(`   ${x.ml.length ? '🖼️ ' : '⚠️ '} ${x.nom.padEnd(46)} · ${qtiene} · ${x.ml.length ? `queda la de ML (${x.ml[0]})` : 'QUEDA SIN NINGUNA FOTO'}`);
+      }
+      if (quedanSin.length) {
+        console.log(`\n⚠️  ${quedanSin.length} de ${conMano.length} van a quedar SIN NINGUNA foto: ML no tiene una para reemplazarla.`);
+        console.log('   (son productos sin publicación viva con foto guardada)');
+      }
+      if (!go) { console.log('\nPRUEBA: no se tocó nada. Para aplicarlo: sacarfotos:go'); return; }
+      // ── APLICAR ──────────────────────────────────────────────────────────────────
+      let ok = 0, err = 0;
+      for (const x of conMano) {
+        try {
+          await db.patch('cyc/products/' + x.id, { foto: null, fotoUrl: null });
+          await db.set('cyc/fotos/' + x.id, null);
+          ok++;
+        } catch (e) { err++; console.log(`   ✗ ${x.nom}: ${String(e.message || e).slice(0, 60)}`); }
+      }
+      // RELEER Y COMPARAR (regla 6): que el comando diga "listo" no es prueba de que quedó.
+      const prods2 = (await db.get('cyc/products')) || {};
+      const quedan = Object.entries(prods2).filter(([, q]) => q && !q.borrado && (q.fotoUrl || q.foto === true)).length;
+      console.log(`\n✓ Sacadas ${ok} · ${err} con error`);
+      console.log(`Releído de la base: quedan ${quedan} ficha(s) con foto a mano${quedan ? ' ⚠️ NO quedó limpio' : ' 🟢'}`);
+      return;
+    }
+
     // BILLING_PROBE=fotos → ¿A QUÉ PRODUCTOS LES FALTA LA FOTO, Y POR QUÉ? · SOLO LEE
     //
     // POR QUÉ (21/09/2026). Él mandó Armar caja: *"faltan fotos a los productos. revisar"*.
