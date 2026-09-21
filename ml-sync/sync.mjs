@@ -9226,7 +9226,7 @@ async function main() {
           .map(([m]) => m);
         for (let k = 0; k < ids.length; k += 20) {
           let arr;
-          try { arr = await mlGet('/items?ids=' + ids.slice(k, k + 20).join(',') + '&attributes=id,title,user_product_id,family_id,domain_id,thumbnail', tok); }
+          try { arr = await mlGet('/items?ids=' + ids.slice(k, k + 20).join(',') + '&attributes=id,title,user_product_id,family_id,domain_id,thumbnail,secure_thumbnail', tok); }
           catch (e) { console.log(`  ✗ ${label}: un lote de ${ids.slice(k, k + 20).length} no se pudo leer · ${String(e.message || e).slice(0, 80)}`); continue; }
           for (const row of (arr || [])) {
             const b = row.body || {}; if (!b.id) continue;
@@ -9234,6 +9234,13 @@ async function main() {
               mla: b.id, cuenta: label, titulo: String(b.title || '').slice(0, 44),
               upid: b.user_product_id || null, famId: b.family_id || null,
               dom: b.domain_id || null, foto: !!b.thumbnail,
+              // LA FOTO SE MIDE POR SEPARADO Y CON SU ESQUEMA. El panel se sirve por https y el
+              // navegador BLOQUEA una imagen http adentro de una página https: se vería un hueco
+              // y NO habría ningún error. Por eso no alcanza con "¿viene la foto?": hay que saber
+              // si viene por https. La primera vuelta guardó 0 fotos justamente por esto.
+              seg: !!b.secure_thumbnail,
+              esq: /^https:/i.test(String(b.thumbnail || '')) ? 'https' : (/^http:/i.test(String(b.thumbnail || '')) ? 'http' : '—'),
+              host: (String(b.thumbnail || '').match(/^[a-z]+:\/\/[^/]+/i) || [''])[0],
               prodId: (linksM[b.id] || {}).prodId || null,
             });
           }
@@ -9246,7 +9253,12 @@ async function main() {
       console.log(`  user_product_id : ${cuenta((f) => f.upid)} de ${n}`);
       console.log(`  family_id       : ${cuenta((f) => f.famId)} de ${n}`);
       console.log(`  domain_id       : ${cuenta((f) => f.dom)} de ${n}`);
-      console.log(`  foto (thumbnail): ${cuenta((f) => f.foto)} de ${n}`);
+      console.log(`  foto (thumbnail): ${cuenta((f) => f.foto)} de ${n}  · por https: ${cuenta((f) => f.esq === 'https')} · por http: ${cuenta((f) => f.esq === 'http')}`);
+      console.log(`  secure_thumbnail: ${cuenta((f) => f.seg)} de ${n}`);
+      // Un ejemplo del comienzo de la dirección, para saber de qué servidor sale. No es dato de
+      // nadie: es la foto pública de una publicación.
+      const _ej = filas.find((f) => f.foto);
+      if (_ej) console.log(`  (de dónde sale la foto: ${String((filas.find((x) => x.mla === _ej.mla) || {}).host || '')})`);
       console.log(`  ya vinculadas a una ficha: ${cuenta((f) => f.prodId)} de ${n}\n`);
 
       // ── ¿AGRUPA IGUAL QUE NUESTRAS FICHAS? ──
