@@ -13719,6 +13719,73 @@ async function main() {
       console.log('  este registro es público.)');
       return;
     }
+    // BILLING_PROBE=diario[:go] → DEJAR EL REPORTE DE LIQUIDACIÓN GENERÁNDOSE SOLO TODOS LOS DÍAS
+    //
+    // POR QUÉ (21/09/2026). Decisión suya: *"activamos las dos"*. Hoy el robot PIDE el reporte
+    // cuando lo necesita; dejarlo programado hace que siempre haya uno fresco sin depender de que
+    // alguien se acuerde, y es lo que mantiene vivo el disponible entre carga y carga.
+    //
+    // ESTO CAMBIA UNA DECISIÓN ANTERIOR, Y CONVIENE QUE SE VEA. `armarsaldo` dice, con todas las
+    // letras, *"NO SE PROGRAMA EL REPORTE a propósito: dejarlo automático genera un archivo por
+    // día en su cuenta para siempre"*. Ese motivo sigue siendo cierto — lo que cambió es que ahora
+    // el disponible del Arqueo se apoya en estos movimientos, así que un archivo por día pasó a
+    // tener para qué. Gana la decisión nueva porque es la que él pidió sabiendo el costo.
+    //
+    // SIN `:go` SÓLO MIRA, y eso no es formalidad: hace falta ver **cómo viene la frecuencia**
+    // antes de escribirla. Mandar una forma inventada pisaría la configuración con algo que
+    // MercadoPago capaz acepta y hace otra cosa. Primero se mide, después se escribe.
+    //
+    // La configuración se manda COMPLETA, como en `armarsaldo`: mandar sólo el campo que cambia
+    // puede borrar el resto, y eso sería tocarle algo que nadie pidió cambiar.
+    //
+    // NO IMPRIME NI UN PESO. La frecuencia y el huso no son plata, así que ésos sí se muestran.
+    if (String(process.env.BILLING_PROBE || '').startsWith('diario')) {
+      const APLICAR = String(process.env.BILLING_PROBE).split(':').includes('go') && !DRY;
+      const MP = 'https://api.mercadopago.com';
+      console.log('=== DEJAR EL REPORTE GENERÁNDOSE SOLO TODOS LOS DÍAS ===');
+      console.log(APLICAR ? '(APLICANDO)\n' : '(PRUEBA · no se escribe nada · agregá ":go")\n');
+      let ok = 0, ya = 0, fall = 0;
+      for (const label of labels) {
+        const acc = accounts[label];
+        if (!acc?.refresh_token) { console.log(`${label}: sin token`); fall++; continue; }
+        let t; try { t = await mlRefresh(ML_CLIENT_ID, ML_CLIENT_SECRET, acc.refresh_token); }
+        catch { console.log(`${label}: ❌ no pude renovar el token`); fall++; continue; }
+        await db.patch('mlapi/tokens/' + label, { refresh_token: t.refresh_token, updated_ts: Date.now() });
+        const H = { Authorization: `Bearer ${t.access_token}`, 'Content-Type': 'application/json' };
+        console.log(`── ${label} ──`);
+        let cfg = null;
+        try {
+          const r = await fetch(`${MP}/v1/account/settlement_report/config`, { headers: H, signal: AbortSignal.timeout(20000) });
+          if (!r.ok) { console.log(`   ❌ no pude leer la configuración (HTTP ${r.status})`); fall++; continue; }
+          cfg = await r.json();
+        } catch (e) { console.log(`   ❌ ${String(e.message || e).slice(0, 90)}`); fall++; continue; }
+        console.log(`   hoy: programado ${cfg.scheduled === true ? 'SÍ' : 'NO'} · frecuencia ${JSON.stringify(cfg.frequency ?? null)} · huso ${cfg.display_timezone || '?'}`);
+        if (cfg.scheduled === true) { console.log('   ✅ ya se genera solo'); ya++; continue; }
+        if (!APLICAR) { console.log('   con ":go" se programa diario'); continue; }
+        // La frecuencia se arma SOBRE la que ya tiene, no de cero: así se respeta la forma exacta
+        // que usa MercadoPago (que recién se ve al leerla) y sólo se cambia lo que hace falta.
+        const frecVieja = (cfg.frequency && typeof cfg.frequency === 'object') ? cfg.frequency : {};
+        const cuerpo = { ...cfg, scheduled: true, frequency: { ...frecVieja, type: 'daily', value: 1, hour: 6 } };
+        try {
+          const r = await fetch(`${MP}/v1/account/settlement_report/config`, { method: 'PUT', headers: H, body: JSON.stringify(cuerpo), signal: AbortSignal.timeout(25000) });
+          const txt = ((await r.text()) || '').replace(/\s+/g, ' ').slice(0, 180);
+          if (!r.ok) { console.log(`   ❌ no se pudo programar · HTTP ${r.status}${txt ? ' · ' + txt : ''}`); fall++; continue; }
+        } catch (e) { console.log(`   ❌ ${String(e.message || e).slice(0, 90)}`); fall++; continue; }
+        // REGLA 6: después de escribir, se vuelve a leer de MercadoPago y se confirma.
+        try {
+          const r = await fetch(`${MP}/v1/account/settlement_report/config`, { headers: H, signal: AbortSignal.timeout(20000) });
+          const j = await r.json();
+          if (j && j.scheduled === true) { console.log(`   ✅ quedó programado · frecuencia ${JSON.stringify(j.frequency ?? null)}`); ok++; }
+          else { console.log(`   ⚠️ MercadoPago aceptó pero al releer sigue en ${JSON.stringify(j && j.scheduled)} · NO cuenta como hecho`); fall++; }
+        } catch (e) { console.log(`   ⚠️ no pude releer: ${String(e.message || e).slice(0, 80)} · NO cuenta como hecho`); fall++; }
+      }
+      console.log(`\n── RESUMEN ── programadas ${ok} · ya estaban ${ya} · fallaron ${fall}`);
+      if (!APLICAR) console.log('   (no se escribió nada · para aplicarlo: diario:go)');
+      console.log('   OJO: el reporte sigue llegando hasta el último día CERRADO. Programarlo');
+      console.log('   diario da un archivo fresco por día, no el movimiento del día de hoy.');
+      return;
+    }
+
     // BILLING_PROBE=armarsaldo[:días][:go] → PREPARAR EL REPORTE PARA QUE EL SALDO SE CALCULE SOLO
     //
     // POR QUÉ (20/09/2026). Pedido suyo: *"arma saldo automatico"*. `versaldo` midió el reporte que
