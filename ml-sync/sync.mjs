@@ -718,7 +718,13 @@ async function cajasQueLlegaron(db, accounts, labels, products, DRY) {
       const k1 = kR(ab.e.cuenta, it.prodId, it.variante || '');
       const ents = (recEnt[k1] || []).filter((e) => e.ts >= desdeCaja && e.left > 0);
       const tiene = ents.reduce((a, e) => a + e.left, 0);
-      for (const e of ents) if (e.ts > ultima) ultima = e.ts;
+      // `ultima` contesta "¿ML sigue dando de alta ESTA caja?", así que sólo cuentan las entradas
+      // que esta caja se lleva de verdad: las primeras `it.u`, de la más vieja a la más nueva —
+      // el MISMO recorrido con el que se consumen más abajo. Contando TODAS las que sobran, una
+      // entrada de una caja POSTERIOR del mismo producto le reseteaba el reloj a la vieja, y con
+      // cajas saliendo cada pocos días la vieja no se quedaba quieta NUNCA.
+      let _q = it.u;
+      for (const e of ents) { if (_q <= 0) break; _q -= Math.min(_q, e.left); if (e.ts > ultima) ultima = e.ts; }
       const noLeido = !!sinLeer[k1];
       if (noLeido) hayCiego = true;
       reng.push({ nombre: it.nombre || (pIdx[it.prodId] || {}).name || it.prodId, variante: it.variante || '', pide: it.u, tiene, noLeido });
