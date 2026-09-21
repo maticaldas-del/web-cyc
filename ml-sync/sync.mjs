@@ -12227,6 +12227,91 @@ async function main() {
       return;
     }
 
+    // BILLING_PROBE=saldo4 → SEGUIR PROBANDO: TODAS LAS FORMAS QUE QUEDABAN DE SACAR EL SALDO
+    //
+    // POR QUÉ (21/09/2026). Pedido suyo: *"segui probando todo"*. Lo medido hasta acá:
+    //   · las puertas de "balance" están cerradas con LAS DOS llaves (403 / 404);
+    //   · el reporte "saldo en cuenta" SE LEE (`/bank_report/list` da 200) pero NO se puede crear
+    //     por API: `POST /v1/account/bank_report` contesta *"Resource not found"*, o sea que esa
+    //     dirección no existe para escribir, y `/config` no acepta ni POST ni PUT (405).
+    // Falta probar si la generación vive en OTRA dirección. Si aparece, el reporte se pide solo y
+    // él no tiene que entrar al panel de MercadoPago nunca.
+    //
+    // LOS POST SON SÓLO PARA PEDIR UN REPORTE. Ninguno cobra, devuelve ni mueve un peso: lo peor
+    // que puede pasar es que quede un archivo de más en su cuenta. Nada que toque plata se prueba
+    // "a ver qué pasa".
+    //
+    // SÓLO MATÍAS, y no se imprime ningún monto: el registro es público.
+    if (String(process.env.BILLING_PROBE || '') === 'saldo4') {
+      const MP = 'https://api.mercadopago.com';
+      const label = labels.find((L) => /mat/i.test(L)) || labels[0];
+      const acc = accounts[label];
+      if (!acc?.refresh_token) { console.log('Sin token para ' + label); return; }
+      let t; try { t = await mlRefresh(ML_CLIENT_ID, ML_CLIENT_SECRET, acc.refresh_token); }
+      catch (e) { console.log('No pude renovar el token: ' + String(e.message || e).slice(0, 110)); return; }
+      await db.patch('mlapi/tokens/' + label, { refresh_token: t.refresh_token, updated_ts: Date.now() });
+      const H = { Authorization: `Bearer ${t.access_token}` };
+      const HJ = { ...H, 'Content-Type': 'application/json' };
+      const sid = String(acc.seller_id || '');
+      const HUSO = '-03:00';
+      const diaLocal = (ms) => new Date(ms - 3 * 36e5).toISOString().slice(0, 10);
+      const desde = diaLocal(Date.now() - 30 * 864e5) + 'T00:00:00' + HUSO;
+      const hasta = diaLocal(Date.now() - 864e5) + 'T23:59:59' + HUSO;
+      console.log(`=== SEGUIR PROBANDO EL SALDO · cuenta ${label} ===\n`);
+      let probados = 0, abiertos = 0;
+      const hallazgos = [];
+      const ver = async (nom, url, metodo, cuerpo) => {
+        probados++;
+        try {
+          const op = { method: metodo || 'GET', headers: cuerpo ? HJ : H, signal: AbortSignal.timeout(25000) };
+          if (cuerpo) op.body = JSON.stringify(cuerpo);
+          const r = await fetch(url, op);
+          const txt = (await r.text()) || '';
+          let det;
+          try {
+            const j = JSON.parse(txt);
+            const obj = Array.isArray(j) ? (j[0] || {}) : (j.results ? (j.results[0] || {}) : j);
+            // SÓLO LAS CLAVES: lo que vendría adentro es su plata y esto queda público.
+            det = (Array.isArray(j) ? `lista de ${j.length} · ` : '') + 'campos: ' + Object.keys(obj || {}).join(', ').slice(0, 200);
+            if (!r.ok) det = String(j.message || j.error || '').slice(0, 130) || det;
+          } catch { det = txt.replace(/\s+/g, ' ').slice(0, 130) || '(sin cuerpo)'; }
+          console.log(`${r.ok ? '✅' : '❌'} ${nom} · HTTP ${r.status}\n   ${det}`);
+          if (r.ok) { abiertos++; hallazgos.push(nom); }
+        } catch (e) { console.log(`❌ ${nom} · ERROR ${String(e.message || e).slice(0, 100)}`); }
+      };
+
+      console.log('── A) OTRAS DIRECCIONES PARA PEDIR EL REPORTE "SALDO EN CUENTA" ──');
+      console.log('(si alguna anda, el reporte se pide solo y no hay que entrar al panel)\n');
+      const cuerpo = { begin_date: desde, end_date: hasta };
+      await ver('POST /v1/account/bank_report/', `${MP}/v1/account/bank_report/`, 'POST', cuerpo);
+      await ver('POST /v1/account/bank_report/create', `${MP}/v1/account/bank_report/create`, 'POST', cuerpo);
+      await ver('POST /v1/account/release_report', `${MP}/v1/account/release_report`, 'POST', cuerpo);
+      await ver('POST /reports/bank_report', `${MP}/reports/bank_report`, 'POST', cuerpo);
+      await ver('POST /v1/reports/bank_report', `${MP}/v1/reports/bank_report`, 'POST', cuerpo);
+      await ver('POST /v1/account/account_money_report', `${MP}/v1/account/account_money_report`, 'POST', cuerpo);
+
+      console.log('\n── B) PUERTAS DE SALDO QUE NUNCA SE PROBARON ──');
+      await ver('Billetera', `${MP}/v1/wallet/balance`);
+      await ver('Saldo por cuenta', `${MP}/v1/account/balance/summary`);
+      if (sid) await ver('Saldo del usuario (ML)', `${ML_API}/users/${sid}/mercadopago_account`);
+      await ver('Cuentas del usuario', `${MP}/v1/account`);
+      await ver('Dinero disponible (el reporte viejo)', `${MP}/v1/account/available_balance_report/list`);
+      await ver('Liberaciones · lista', `${MP}/v1/account/release_report/list`);
+
+      console.log('\n── C) LO QUE YA ANDA: ¿trae el saldo y no lo vimos? ──');
+      // Se mira el reporte de liquidación que YA se usa, por si alguna columna o algún tipo de
+      // movimiento trae el saldo adentro. Sería la respuesta más barata de todas.
+      await ver('Liquidación · configuración', `${MP}/v1/account/settlement_report/config`);
+
+      console.log(`\n── RESUMEN ──`);
+      console.log(`   Se probaron ${probados} · contestaron ${abiertos}`);
+      if (hallazgos.length) console.log('   Abren: ' + hallazgos.join(' · '));
+      console.log('   OJO: que conteste NO quiere decir que traiga el saldo. Lo que decide es si');
+      console.log('   alguna trae un campo de saldo adentro, y eso son las claves de arriba.');
+      console.log('\n   (No se imprimió ningún monto: el registro es público.)');
+      return;
+    }
+
     // BILLING_PROBE=armarcuenta[:go] → ARMAR EL REPORTE "SALDO EN CUENTA" Y VER SI TRAE EL DISPONIBLE
     //
     // POR QUÉ (20/09/2026). `saldocuenta` midió que la puerta está ABIERTA en las cuatro cuentas:
