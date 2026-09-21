@@ -834,11 +834,26 @@ async function cajaDeCompraML(db, accounts, labels, DRY, soloCta) {
         // MIRE y confirme que está pensando en el producto correcto. Va acá arriba, junto con la
         // categoría, para que también la tengan las pausadas.
         //
-        // SE GUARDA LA `secure_thumbnail` (https) Y NO LA OTRA. El panel se sirve por https, y un
-        // navegador BLOQUEA una imagen http adentro de una página https: la foto no se vería y no
-        // habría ningún error a la vista — el fallo mudo de siempre. `thumbnail` queda de respaldo
-        // sólo si ya viene en https.
-        const fotoML = b.secure_thumbnail || (/^https:/i.test(String(b.thumbnail || '')) ? b.thumbnail : null);
+        // LA FOTO SE GUARDA SIEMPRE POR https, Y ESO NO ES UN DETALLE: el panel se sirve por
+        // https y un navegador BLOQUEA una imagen http adentro de una página https. La foto no se
+        // vería y NO habría ningún error a la vista — el fallo mudo de siempre.
+        //
+        // MEDIDO el 21/09/2026 con `mismoprod`, porque la primera versión guardó 0 de 384:
+        //  · ML manda `thumbnail` **por http** en 69 de 69 · `secure_thumbnail` **NO viene** (0/69)
+        //  · el MISMO servidor contesta por https: **200 · image/webp** ✅
+        // Así que alcanza con cambiarle el http por https, sin una consulta más. No se da por
+        // bueno "porque un CDN normalmente sirve las dos": se probó.
+        //
+        // Sólo se cambia el esquema en los servidores de ML. Una dirección de otro lado se deja
+        // como está y, si es http, no se guarda: preferimos no tener foto antes que un hueco.
+        //
+        // EL DOMINIO SE COMPARA ENTERO, no "que contenga mlstatic". La primera versión usaba
+        // `[^/]*mlstatic\.com` sin cerrar el final, y con eso `mlstatic.com.malo.net` pasaba el
+        // filtro: alcanzaba con poner el nombre adelante para que el panel cargara una imagen de
+        // cualquier servidor. Lo agarró la prueba, no la lectura.
+        const _th = String(b.secure_thumbnail || b.thumbnail || '');
+        const fotoML = /^https:/i.test(_th) ? _th
+          : (/^http:\/\/(?:[^/]*\.)?mlstatic\.com(?:[:/]|$)/i.test(_th) ? _th.replace(/^http:/i, 'https:') : null);
         if (fotoML && links[mla].foto !== fotoML) upd[mla + '/foto'] = fotoML;
         if (fotoML) res.fotos++;
         if (b.domain_id && links[mla].dom !== b.domain_id) upd[mla + '/dom'] = b.domain_id;
