@@ -1324,13 +1324,6 @@ footer{margin-top:32px;padding-top:14px;border-top:1px solid var(--border);font-
   <div class="stitle">KPIs <span id="met-kpi-period" style="font-weight:400;color:var(--muted);text-transform:none;letter-spacing:0;font-family:'DM Mono',monospace;font-size:.65rem"></span></div>
   <div class="met-kpi-grid" id="met-kpis"></div>
 
-  <!-- Margen por rubro (21/09/2026) y reputación de las cuatro cuentas -->
-  <div class="stitle">Margen por rubro <span id="met-rubro-period" style="font-weight:400;color:var(--muted);text-transform:none;letter-spacing:0;font-family:'DM Mono',monospace;font-size:.65rem"></span></div>
-  <div id="met-rubros"></div>
-
-  <div class="stitle">Reputación de las cuentas <span style="font-weight:400;color:var(--muted);text-transform:none;letter-spacing:0;font-family:'DM Mono',monospace;font-size:.65rem">· no depende del período</span></div>
-  <div id="met-reputacion"></div>
-
   <!-- Gráfico línea -->
   <div class="stitle" id="met-tendencia">Tendencia <span id="met-line-period" style="font-weight:400;color:var(--muted);text-transform:none;letter-spacing:0;font-family:'DM Mono',monospace;font-size:.65rem"></span></div>
   <div class="chart-box">
@@ -1371,6 +1364,13 @@ footer{margin-top:32px;padding-top:14px;border-top:1px solid var(--border);font-
     <div style="overflow-x:auto;-webkit-overflow-scrolling:touch"><canvas id="chart-pct-mes" height="120" style="min-width:500px"></canvas></div>
     <div id="met-pct-avg" style="display:flex;flex-wrap:wrap;gap:10px;margin-top:16px"></div>
   </div>
+
+  <!-- Margen por rubro (21/09/2026) y reputación de las cuatro cuentas -->
+  <div class="stitle">Margen por rubro <span id="met-rubro-period" style="font-weight:400;color:var(--muted);text-transform:none;letter-spacing:0;font-family:'DM Mono',monospace;font-size:.65rem"></span></div>
+  <div id="met-rubros"></div>
+
+  <div class="stitle">Reputación de las cuentas <span style="font-weight:400;color:var(--muted);text-transform:none;letter-spacing:0;font-family:'DM Mono',monospace;font-size:.65rem">· no depende del período</span></div>
+  <div id="met-reputacion"></div>
 
   <!-- Gráfico barras -->
   <div class="stitle">Participación por cuenta</div>
@@ -2275,7 +2275,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='19.81';
+const APP_VERSION='19.82';
 // El problema real que esto resuelve no es curiosidad: es que el celular guarda la app y sigue
 // mostrando la de ayer sin avisar. Varias veces se revisó un cambio que ya estaba subido y no se
 // veía. Por eso, además del número, el chip avisa cuando hay una versión nueva esperando.
