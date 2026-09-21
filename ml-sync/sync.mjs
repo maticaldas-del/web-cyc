@@ -10030,6 +10030,71 @@ async function main() {
     // que él conoce. Presentarse como uno de ésos sería hacerse pasar por otro, así que no se
     // insiste: para un posteo de Instagram va una captura. Es lo mismo que se decidió con el 403
     // de comprasparaguay.
+    // BILLING_PROBE=apidoc:<dirección> → SACAR LAS DIRECCIONES DE UNA PÁGINA DE DOCUMENTACIÓN
+    //
+    // POR QUÉ (21/09/2026). `verweb` vuelca el texto de una página y **corta a los ~4.000
+    // caracteres**; en la documentación de MercadoPago eso se cortó justo antes de la lista de
+    // endpoints, que era lo único que hacía falta. Volcar 30.000 caracteres al registro para
+    // encontrar seis renglones es al pedo y además el registro es público.
+    //
+    // Esto NO reemplaza a `verweb`: aquél sirve para LEER una página, éste para sacarle las
+    // direcciones de API. Imprime cada ruta `/v1/...` que aparezca, una sola vez, con el verbo
+    // (GET/POST/PUT/DELETE) cuando está pegado al lado.
+    //
+    // SOLO LEE una página pública. No toca ML, ni MercadoPago, ni la base.
+    if (String(process.env.BILLING_PROBE || '').startsWith('apidoc:')) {
+      const _adUrl = String(process.env.BILLING_PROBE).slice('apidoc:'.length).trim();
+      if (!/^https?:\/\//i.test(_adUrl)) { console.log('Falta la dirección. Se usa así: apidoc:https://...'); return; }
+      console.log(`=== DIRECCIONES DE API EN ${_adUrl.split('?')[0]} (solo lee) ===\n`);
+      try {
+        const _adC = new AbortController();
+        const _adT = setTimeout(() => _adC.abort(), 25000);
+        const r = await fetch(_adUrl, {
+          signal: _adC.signal,
+          headers: {
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/129.0.0.0 Safari/537.36',
+            'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+            'Accept-Language': 'es-AR,es;q=0.9',
+          },
+          redirect: 'follow',
+        });
+        clearTimeout(_adT);
+        const html = await r.text();
+        console.log(`${r.ok ? '✅' : '⚠️ '} HTTP ${r.status} · ${Math.round(html.length / 1024)} KB`);
+        // Una página armada con JavaScript contesta 200 y baja un cascarón vacío. Si es chica,
+        // se avisa: leer eso como "no hay endpoints" sería el error de siempre.
+        if (html.length < 20000) console.log('   ⚠️ la página es muy chica: puede ser un cascarón armado con JavaScript');
+        const txt = html
+          .replace(/<script[\s\S]*?<\/script>/gi, ' ')
+          .replace(/<style[\s\S]*?<\/style>/gi, ' ')
+          .replace(/<[^>]+>/g, ' ')
+          .replace(/&#x2F;/g, '/').replace(/&#x27;/g, "'").replace(/&amp;/g, '&')
+          .replace(/&quot;/g, '"').replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&nbsp;/g, ' ');
+        // Las rutas: /v1/... /v2/... Se limpian los restos de puntuación del final.
+        const rutas = new Map();
+        for (const m of txt.matchAll(/\/v\d\/[A-Za-z0-9_\-\/{}]+/g)) {
+          const ruta = m[0].replace(/[.,;:)\]}]+$/, '');
+          if (ruta.length < 6) continue;
+          // ¿Hay un verbo justo antes? Se mira la ventana anterior.
+          const antes = txt.slice(Math.max(0, m.index - 40), m.index).toUpperCase();
+          const v = (antes.match(/\b(GET|POST|PUT|DELETE|PATCH)\b(?!.*\b(GET|POST|PUT|DELETE|PATCH)\b)/) || [])[1] || '';
+          const clave = (v ? v + ' ' : '') + ruta;
+          rutas.set(clave, (rutas.get(clave) || 0) + 1);
+        }
+        if (!rutas.size) console.log('\n   No apareció ninguna ruta /v1/… ni /v2/… en esta página.');
+        else {
+          console.log(`\n── ${rutas.size} dirección(es) distintas ──`);
+          for (const [k, n] of [...rutas.entries()].sort()) console.log(`   ${k}${n > 1 ? `  (×${n})` : ''}`);
+        }
+        // Y las palabras que decidirían si esta página sirve para el saldo.
+        const clavesInteres = ['initial_available_balance', 'available_balance', 'bank_report', 'account_money',
+          'settlement_report', 'release_report', 'balance', 'saldo'];
+        const hay = clavesInteres.filter((k) => new RegExp(k, 'i').test(txt));
+        console.log(`\n── palabras clave presentes ──\n   ${hay.length ? hay.join(' · ') : '(ninguna)'}`);
+      } catch (e) { console.log(`❌ ERROR ${String(e.message || e).slice(0, 140)}`); }
+      console.log('\n   (Solo se leyó una página pública. No se tocó ML, ni MercadoPago, ni la base.)');
+      return;
+    }
     if (String(process.env.BILLING_PROBE || '').startsWith('verweb:')) {
       const _vwUrl = String(process.env.BILLING_PROBE).slice('verweb:'.length).trim();
       if (!/^https?:\/\//i.test(_vwUrl)) { console.log('Falta la dirección. Se usa así: verweb:https://...'); return; }
