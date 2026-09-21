@@ -12501,6 +12501,42 @@ async function main() {
           }
           for (const id of mio.keys()) if (!ord.has(id)) nSinRep++;
 
+          // ── EL CHEQUEO QUE DECIDE SI HAY ALGO ROTO O NO ─────────────────────────────────
+          // La primera corrida dio: arriba de los $33.000 el panel da EXACTAMENTE igual que
+          // MercadoPago (0,0 puntos) y abajo difiere 7,9. Un error que aparece sólo de un lado de
+          // la barrera no es un error de la cuenta: es que los dos lados no están sumando lo
+          // mismo. Abajo de $33.000 **el envío lo paga el COMPRADOR**, así que la operación de
+          // MercadoPago vale producto + envío, y nuestra venta guarda sólo el producto. Con eso
+          // el reporte tiene más bruto Y más "lo que ML se quedó", y el % sube de mentira.
+          //
+          // LO QUE DECIDE NO ES EL BRUTO, ES EL NETO: el margen se calcula con la plata que entra.
+          // Si el neto del panel coincide con el del reporte venta por venta, el panel está bien
+          // y la brecha de arriba es del denominador. Se mide, no se deduce.
+          let netoIgual = 0, netoDif = 0, brutoIgual = 0;
+          let sumaBrutoRep = 0, sumaBrutoPan = 0;
+          const bruAb = { rep: 0, pan: 0, n: 0 }, bruAr = { rep: 0, pan: 0, n: 0 };
+          for (const [id, r] of ord) {
+            const p = mio.get(id);
+            if (!p || r.sucia || !(r.bruto > 0) || !(p.total > 0)) continue;
+            const tolN = Math.max(1, Math.abs(r.real) * 0.01);
+            if (Math.abs(r.real - p.neto) <= tolN) netoIgual++; else netoDif++;
+            if (Math.abs(r.bruto - p.total) <= Math.max(1, r.bruto * 0.01)) brutoIgual++;
+            sumaBrutoRep += r.bruto; sumaBrutoPan += p.total;
+            const g = (p.total / Math.max(1, p.n)) < 33000 ? bruAb : bruAr;
+            g.rep += r.bruto; g.pan += p.total; g.n++;
+          }
+          const totCmp = netoIgual + netoDif;
+          if (totCmp) {
+            console.log(`   ¿el NETO del panel es el mismo que el de MercadoPago? ${netoIgual} de ${totCmp} `
+              + `(${(netoIgual / totCmp * 100).toFixed(1)}%) ${netoIgual / totCmp >= 0.95 ? '✅ sí' : '⚠️ no siempre'}`);
+            console.log(`   ¿y el BRUTO? ${brutoIgual} de ${totCmp} (${(brutoIgual / totCmp * 100).toFixed(1)}%)`);
+            console.log(`      lo que cobró MercadoPago vs lo que guarda el panel: ×${(sumaBrutoRep / Math.max(1, sumaBrutoPan)).toFixed(3)} en total`
+              + ` · abajo de $33.000 ×${bruAb.pan ? (bruAb.rep / bruAb.pan).toFixed(3) : '—'}`
+              + ` · arriba ×${bruAr.pan ? (bruAr.rep / bruAr.pan).toFixed(3) : '—'}`);
+            console.log('      (si el neto coincide y el bruto NO, la diferencia de arriba es el envío');
+            console.log('       que paga el comprador abajo de la barrera, no un error del panel)');
+          }
+
           console.log(`   venta por venta: ${nCruz} órdenes cruzadas · ${nSucia} con devolución o disputa (afuera) · `
             + `${nSinPanel} que el panel no tiene · ${nSinRep} que el reporte no tiene`);
           if (nCruz && bR > 0 && bP > 0) {
