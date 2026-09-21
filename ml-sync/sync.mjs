@@ -12273,6 +12273,7 @@ async function main() {
       // ── EL LADO DEL PANEL: lo que NOSOTROS decimos que ML se quedó ────────────────────────
       const vp = (await db.get('cyc/ventaprod')) || {};
       const pan = {};            // 'cuenta|AAAA-MM' → {bruto, quedoML, n}
+      const panOrden = {};       // 'cuenta|<nº de orden de ML>' → {total, neto, n}
       let nVentas = 0, nCanc = 0, nRaras = 0;
       for (const [dia, ents] of Object.entries(vp)) {
         for (const v of Object.values(ents || {})) {
@@ -12283,6 +12284,15 @@ async function main() {
           const k = String(v.cuenta || '?') + '|' + mesDe(ts);
           const o = pan[k] || (pan[k] = { bruto: 0, quedoML: 0, n: 0 });
           o.bruto += tot; o.quedoML += (tot - net); o.n++; nVentas++;
+          // Y por ORDEN, para el cruce fila por fila. `saleId` es 's' + el número de orden de ML,
+          // que es el mismo `ORDER_ID` del reporte. Una orden puede tener más de un renglón
+          // nuestro (un producto por renglón), así que se suman.
+          const oid = String(v.saleId || '').replace(/^s/, '').trim();
+          if (oid) {
+            const k2 = String(v.cuenta || '?') + '|' + oid;
+            const o2 = panOrden[k2] || (panOrden[k2] = { total: 0, neto: 0, n: 0 });
+            o2.total += tot; o2.neto += net; o2.n++;
+          }
         }
       }
       console.log(`Panel: ${nVentas} ventas leídas · ${nCanc} canceladas (afuera) · ${nRaras} sin números legibles (afuera)\n`);
@@ -12411,6 +12421,114 @@ async function main() {
               ? '✅ miden la misma plata, así que el % de arriba SÍ dice algo'
               : `⚠️ NO miden la misma plata — ${razon > 1 ? 'el reporte suma de MÁS (la misma venta debe estar entrando varias veces)' : 'al panel le faltan ventas de ese mes'}. El % de arriba NO sirve todavía.`));
           comparados++;
+        }
+
+        // ── 3) VENTA POR VENTA, QUE ES LO QUE ANTES NO SE PODÍA (21/09/2026) ────────────────
+        // La comparación de arriba es por mes y aguanta que las bases no sean idénticas, pero no
+        // puede decir POR QUÉ difieren. Con `ORDER_ID` en el reporte hay clave, y con el envío y
+        // la comisión abiertos se puede separar qué parte de la brecha es de cada cosa.
+        //
+        // SÓLO SE COMPARAN LAS ÓRDENES LIMPIAS: las que en el reporte tienen únicamente renglones
+        // de venta (`SETTLEMENT` / `SETTLEMENT_SHIPPING`). Una orden con devolución o disputa
+        // adentro difiere por algo que NO es un error del panel —nuestra venta guarda la venta,
+        // no su devolución— y mezclarlas haría aparecer una brecha que no existe. Las apartadas
+        // se CUENTAN, no se esconden.
+        //
+        // NO SE IMPRIME NI UN PESO: porcentajes, proporciones y cantidades. El registro es público.
+        const iOrd = cols.indexOf('ORDER_ID');
+        const iLib = cols.indexOf('IS_RELEASED');
+        const iEnv = cols.indexOf('SHIPPING_FEE_AMOUNT');
+        const iMkp = cols.indexOf('MKP_FEE_AMOUNT');
+        if (iOrd < 0) {
+          console.log('   (el reporte todavía no trae ORDER_ID: la comparación venta por venta necesita esa columna)');
+        } else {
+          // a) el reporte, agrupado por orden
+          const ord = new Map();          // orderId → {bruto, real, tax, env, mkp, lib, sucia, nf}
+          const valoresLib = new Map();   // los valores CRUDOS de IS_RELEASED, sin suponer cuáles son
+          for (let n = 1; n < li.length; n++) {
+            const f = csvPartir(li[n], sep);
+            const id = String(f[iOrd] || '').replace(/^"|"$/g, '').trim();
+            if (!id) continue;
+            const tp = String(f[iTipo] || '').trim().toUpperCase();
+            const bruto = csvNum(f[iBruto]), real = csvNum(f[iReal]);
+            const o = ord.get(id) || { bruto: 0, real: 0, tax: 0, env: 0, mkp: 0, lib: null, sucia: false, nf: 0 };
+            if (!/^SETTLEMENT/.test(tp)) o.sucia = true;     // devolución, disputa, retiro…
+            if (bruto != null && real != null) { o.bruto += bruto; o.real += real; }
+            if (iTax >= 0) { const x = csvNum(f[iTax]); if (x != null) o.tax += Math.abs(x); }
+            if (iEnv >= 0) { const x = csvNum(f[iEnv]); if (x != null) o.env += Math.abs(x); }
+            if (iMkp >= 0) { const x = csvNum(f[iMkp]); if (x != null) o.mkp += Math.abs(x); }
+            if (iLib >= 0) {
+              const v = String(f[iLib] || '').replace(/^"|"$/g, '').trim();
+              valoresLib.set(v || '(vacío)', (valoresLib.get(v || '(vacío)') || 0) + 1);
+              if (o.lib == null) o.lib = v;
+            }
+            o.nf++;
+            ord.set(id, o);
+          }
+          if (iLib >= 0) {
+            console.log(`   "liquidado" viene como: ${[...valoresLib.entries()].map(([k, v]) => `${k} (${v})`).join(' · ').slice(0, 160)}`);
+          }
+
+          // b) el panel, agrupado por orden (una orden puede tener más de un renglón nuestro)
+          const mio = new Map();
+          for (const [k, v] of Object.entries(panOrden)) {
+            const [cta, id] = k.split('|');
+            if (cta !== label) continue;
+            mio.set(id, v);
+          }
+
+          // c) el cruce
+          let nCruz = 0, nSucia = 0, nSinPanel = 0, nSinRep = 0;
+          let bP = 0, qP = 0, bR = 0, qR = 0;             // bruto y lo que quedó ML, los dos lados
+          let tax = 0, env = 0;
+          const porLib = { si: { b: 0, qP: 0, qR: 0, n: 0 }, no: { b: 0, qP: 0, qR: 0, n: 0 } };
+          const porBarrera = { abajo: { b: 0, qP: 0, qR: 0, n: 0 }, arriba: { b: 0, qP: 0, qR: 0, n: 0 } };
+          for (const [id, r] of ord) {
+            const p = mio.get(id);
+            if (!p) { nSinPanel++; continue; }
+            if (r.sucia) { nSucia++; continue; }
+            if (!(r.bruto > 0) || !(p.total > 0)) continue;
+            nCruz++;
+            bP += p.total; qP += (p.total - p.neto);
+            bR += r.bruto; qR += (r.bruto - r.real);
+            tax += r.tax; env += r.env;
+            const lib = String(r.lib || '').toLowerCase();
+            const esLib = lib === 'true' || lib === '1' || lib === 'yes' || lib === 'si' || lib === 'sí';
+            const g = esLib ? porLib.si : porLib.no;
+            g.b += r.bruto; g.qP += (p.total - p.neto); g.qR += (r.bruto - r.real); g.n++;
+            const b2 = (p.total / Math.max(1, p.n)) < 33000 ? porBarrera.abajo : porBarrera.arriba;
+            b2.b += r.bruto; b2.qP += (p.total - p.neto); b2.qR += (r.bruto - r.real); b2.n++;
+          }
+          for (const id of mio.keys()) if (!ord.has(id)) nSinRep++;
+
+          console.log(`   venta por venta: ${nCruz} órdenes cruzadas · ${nSucia} con devolución o disputa (afuera) · `
+            + `${nSinPanel} que el panel no tiene · ${nSinRep} que el reporte no tiene`);
+          if (nCruz && bR > 0 && bP > 0) {
+            const pR = qR / bR * 100, pP = qP / bP * 100;
+            console.log(`   sobre esas ${nCruz}: ML se quedó ${pR.toFixed(1)}% (real) vs ${pP.toFixed(1)}% (panel) · `
+              + `${(pP - pR) >= 0 ? '+' : ''}${(pP - pR).toFixed(1)} puntos`);
+            console.log(`      (acá los dos lados miran EXACTAMENTE las mismas ventas, así que esta`);
+            console.log(`       diferencia sí es del panel y no del recorte)`);
+            if (iTax >= 0) console.log(`      retenciones del reporte: ${(tax / bR * 100).toFixed(2)}% de lo vendido`);
+            if (iEnv >= 0) console.log(`      envío del reporte: ${(env / bR * 100).toFixed(2)}% de lo vendido`);
+            // LA HIPÓTESIS QUE HAY QUE PROBAR: las ventas con el neto todavía ESTIMADO se ven
+            // mejores de lo que son, porque el respaldo (precio − comisión) no descuenta las
+            // retenciones. Si la brecha está concentrada en las NO liquidadas, es eso.
+            for (const [nom, g] of [['liquidadas', porLib.si], ['NO liquidadas', porLib.no]]) {
+              if (!g.n || !g.b) { console.log(`      ${nom}: ninguna`); continue; }
+              console.log(`      ${nom} (${g.n}): real ${(g.qR / g.b * 100).toFixed(1)}% vs panel ${(g.qP / g.b * 100).toFixed(1)}% · `
+                + `${((g.qP - g.qR) / g.b * 100) >= 0 ? '+' : ''}${((g.qP - g.qR) / g.b * 100).toFixed(1)} puntos`);
+            }
+            // Y LA OTRA: si la brecha sólo aparece ARRIBA de los $33.000, es el envío — que es
+            // exactamente la forma del agujero del 17/09 y sería un artefacto, no un hallazgo.
+            for (const [nom, g] of [['abajo de $33.000', porBarrera.abajo], ['arriba de $33.000', porBarrera.arriba]]) {
+              if (!g.n || !g.b) { console.log(`      ${nom}: ninguna`); continue; }
+              console.log(`      ${nom} (${g.n}): real ${(g.qR / g.b * 100).toFixed(1)}% vs panel ${(g.qP / g.b * 100).toFixed(1)}% · `
+                + `${((g.qP - g.qR) / g.b * 100) >= 0 ? '+' : ''}${((g.qP - g.qR) / g.b * 100).toFixed(1)} puntos`);
+            }
+          } else if (nCruz) {
+            console.log('   (no se pudo calcular: alguno de los dos lados dio cero)');
+          }
         }
         if (!comparados) console.log('   no hubo ningún mes con datos de los dos lados.');
         cuentasOk++;
