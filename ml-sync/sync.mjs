@@ -24758,6 +24758,73 @@ async function main() {
     // el correo cobra por peso real o por volumen. Eso lo sabe el que despacha.
     //
     // SOLO LEE. No escribe nada, no toca ML ni la base.
+    // BILLING_PROBE=guardadosinver → QUÉ DATOS YA ESTÁN GUARDADOS Y LA PANTALLA NO MUESTRA.
+    //
+    // Pedido suyo del 21/09/2026, después de pedir la hora de cada venta: *"la hora de venta por
+    // ejemplo era uno de los pequeños detalles que ml da. no me lo dijiste. fijate si no hay mas
+    // como esos, son pequeños detalles, pero ya que estan tomemoslos"*. **Tenía razón**: la hora
+    // estaba guardada desde siempre (el robot escribe el `date_created` de ML en `ts`) y la
+    // pantalla mostraba sólo la fecha.
+    //
+    // ES EL ESPEJO DE `campos`, Y LA DIFERENCIA IMPORTA:
+    //   · `campos` compara lo que MANDA ML contra lo que el código usa → encuentra lo que nunca
+    //     llegó a guardarse (así apareció el `inventory_id` de las etiquetas de Full).
+    //   · éste compara lo que YA ESTÁ EN LA BASE contra lo que la PANTALLA dibuja → encuentra lo
+    //     que se guarda hace meses y nadie ve. Es el caso de la hora.
+    // Un dato puede estar tapado en cualquiera de los dos lugares y el remedio es distinto: allá
+    // hay que salir a buscarlo, acá ya está pago y sólo falta mostrarlo.
+    //
+    // **NO IMPRIME NI UN VALOR, sólo nombres de campo.** Una venta trae el número de la compra y
+    // la base tiene datos de la familia; el registro de GitHub es PÚBLICO. Misma regla que `campos`.
+    //
+    // **NO decide a ojo cuáles se muestran: lee `index.html` de verdad** y busca el nombre ahí.
+    // Marcar de memoria cuáles conocemos es justo como se cuelan los que pasan por al lado.
+    //
+    // SOLO LEE. No escribe nada, no toca ML.
+    if (/^guardadosinver(:|$)/.test(String(process.env.BILLING_PROBE || ''))) {
+      let panel = '';
+      try { panel = readFileSync('index.html', 'utf8'); }
+      catch (e) { console.log(`No pude leer index.html: ${e && e.message ? e.message : e}. Sin eso no puedo decir qué muestra la pantalla, así que no invento: corto acá.`); return; }
+      console.log('=== LO QUE YA ESTÁ GUARDADO Y LA PANTALLA NO MUESTRA (solo lee) ===');
+      console.log('Sólo nombres de campo, ningún valor: el registro de GitHub es público.\n');
+
+      // De cada rama se mira una MUESTRA y se juntan los nombres que aparecen, con en cuántos.
+      const ramas = [
+        { nom: 'una VENTA', path: 'cyc/ventaprod', hondo: 2 },
+        { nom: 'una PUBLICACIÓN (cyc/mllinks)', path: 'cyc/mllinks', hondo: 1 },
+        { nom: 'un PRODUCTO (cyc/products)', path: 'cyc/products', hondo: 1 },
+      ];
+      for (const r of ramas) {
+        let raw = null;
+        try { raw = await db.get(r.path); } catch (e) { console.log(`── ${r.nom}: no se pudo leer (${e && e.message ? e.message : e})`); continue; }
+        if (!raw || typeof raw !== 'object') { console.log(`── ${r.nom}: vacío o ilegible — NO quiere decir que no haya campos, quiere decir que no se pudo mirar`); continue; }
+        // Aplanar hasta llegar a los objetos que interesan (ventaprod está por DÍA adentro).
+        let objs = Object.values(raw);
+        for (let h = 1; h < r.hondo; h++) {
+          const sig = [];
+          for (const o of objs) if (o && typeof o === 'object') sig.push(...Object.values(o));
+          objs = sig;
+        }
+        objs = objs.filter((o) => o && typeof o === 'object' && !Array.isArray(o));
+        // los más nuevos primero, para no mirar sólo renglones viejos
+        objs.sort((a, b) => (Number(b.ts) || 0) - (Number(a.ts) || 0));
+        const muestra = objs.slice(0, 400);
+        const cuenta = {};
+        for (const o of muestra) for (const k of Object.keys(o)) cuenta[k] = (cuenta[k] || 0) + 1;
+        const nombres = Object.keys(cuenta).sort((a, b) => cuenta[b] - cuenta[a]);
+        // ¿lo nombra la pantalla? Los de menos de 3 letras dan falsos positivos, se dan por vistos.
+        const fuera = nombres.filter((k) => k.length >= 3 && !panel.includes(k));
+        console.log(`── ${r.nom} · ${objs.length} renglón(es), mirados ${muestra.length} · ${nombres.length} campos distintos`);
+        if (!fuera.length) { console.log(`   ✓ la pantalla nombra todos.\n`); continue; }
+        console.log(`   ${fuera.length} que la pantalla NO nombra (con en cuántos de los ${muestra.length} aparece):`);
+        for (const k of fuera) console.log(`      ${k}  ·  ${cuenta[k]} de ${muestra.length}`);
+        console.log('');
+      }
+      console.log('OJO CON LEER ESTA LISTA: que la pantalla no nombre un campo NO quiere decir que sirva para algo.');
+      console.log('Hay campos que son de adentro del robot y no tienen nada que mostrar. Lo que esto hace es');
+      console.log('poner sobre la mesa los que están pagos, para decidir de a uno cuáles valen.');
+      return;
+    }
     if (/^pesopedido(:|$)/.test(String(process.env.BILLING_PROBE || ''))) {
       const cands = (await db.get('cyc/candidatos_py')) || {};
       // Convierte el texto del peso a kilos SÓLO si dice la unidad. Sin unidad no adivina.
