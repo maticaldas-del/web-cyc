@@ -2294,7 +2294,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='19.87';
+const APP_VERSION='19.88';
 // El problema real que esto resuelve no es curiosidad: es que el celular guarda la app y sigue
 // mostrando la de ayer sin avisar. Varias veces se revisó un cambio que ya estaba subido y no se
 // veía. Por eso, además del número, el chip avisa cuando hay una versión nueva esperando.
@@ -7842,9 +7842,15 @@ function renderVentaProd(){
       // AFUERA las retenciones (SIRTAC y compañía) mientras que el neto las trae descontadas, así
       // que poner ese número acá daría MENOS que la resta del mismo renglón. Dos números correctos,
       // uno al lado del otro, dando una conclusión falsa — la lección de las tres cajas del 03/09.
+      // Y VA SIN PORCENTAJE (21/09/2026, pedido suyo: *"dame un solo %, el real"*). La primera
+      // versión ponía "ML $1.749 (65%)" al lado del "+22%" de ganancia, y los dos % del mismo
+      // renglón miden cosas distintas: uno es la tajada de ML sobre el PRECIO, el otro la ganancia
+      // sobre el COSTO. Los dos eran correctos y juntos invitaban a compararlos, que es la lección
+      // de las tres cajas de la ficha otra vez. **El % del renglón es uno solo y es el de ganancia**,
+      // que es el que decide; la tajada de ML queda en pesos, que es como se lee sin confundirse.
       let _gt=0;grp.items.forEach(v=>{if(!isCancelled)_gt+=v.total||0;});
       const _ml=_gt-gn;
-      const mlLabel=(isCancelled||!(_gt>0)||!(_ml>0))?'':`<span style="font-size:.62rem;color:var(--muted)" title="Lo que ML se quedó de esta venta: comisión, cargo fijo, envío de Full y retenciones. Es el total que pagó el comprador menos lo que te depositan. NO incluye el IIBB ni el monotributo, que ML factura aparte y ya están contados en el costo.">ML ${fmt(_ml)} (${(_ml/_gt*100).toFixed(0)}%)</span>`;
+      const mlLabel=(isCancelled||!(_gt>0)||!(_ml>0))?'':`<span style="font-size:.62rem;color:var(--muted)" title="Lo que ML se quedó de esta venta: comisión, cargo fijo, envío de Full y retenciones. Es el total que pagó el comprador menos lo que te depositan. NO incluye el IIBB ni el monotributo, que ML factura aparte y ya están contados en el costo. Va SIN porcentaje a propósito: el único % del renglón es el de ganancia.">ML ${fmt(_ml)}</span>`;
       // ── CUÁNDO LLEGÓ, Y SI VOLVIÓ (21/09/2026) ────────────────────────────────────
       // Lo trae el robot del envío de ML una vez por día y vive en `cyc/entregas`, aparte de la
       // venta (el ciclo de 2 minutos reescribe la venta entera y ahí adentro se borraría solo).
