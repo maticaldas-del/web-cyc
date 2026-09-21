@@ -12905,6 +12905,89 @@ async function main() {
       console.log('\n   (Solo se leyó. Ni un POST, y no se imprimió ningún monto: el registro es público.)');
       return;
     }
+    // BILLING_PROBE=extracto → ¿DÓNDE VIVE EL "EXTRACTO DE CUENTA" QUE ÉL BAJA A MANO? · SOLO LEE
+    //
+    // POR QUÉ (21/09/2026). Él creó en el panel de MercadoPago el reporte de "Todas las
+    // transacciones" y mandó el archivo. **Es el que hacía falta**: trae `INITIAL_BALANCE`,
+    // `FINAL_BALANCE` y un `PARTIAL_BALANCE` fila por fila, o sea el saldo de verdad y no uno
+    // deducido. Medido contra el archivo: los 652 movimientos de julio encadenan al peso y el
+    // último saldo parcial coincide clavado con el final.
+    //
+    // Y TRAE LO QUE EL REPORTE DE LIQUIDACIÓN NO VE: transferencias a proveedores, la tarjeta,
+    // los peajes, los débitos de deuda de ML y los rendimientos. En julio son **144 movimientos**
+    // que el otro reporte ni menciona. Eso confirma —y corrige— la nota del 20/09: lo que faltaba
+    // no eran ~$2,2M por mes, es varias veces eso. La cuenta "ancla + liquidaciones" se despegaba
+    // millones por mes.
+    //
+    // PERO `saldocuenta` MIDIÓ, DESPUÉS DE QUE ÉL LO CREARA, que `/v1/account/bank_report/config`
+    // sigue contestando `config_not_found_for_user` en las CUATRO y que la lista viene VACÍA. O
+    // sea que el reporte que él generó **NO es el `bank_report` de la API**: son dos cosas con el
+    // mismo formato de columnas y distinto lugar. Por eso este probe no vuelve a insistir con
+    // `bank_report`: busca DÓNDE está el que él sí generó.
+    //
+    // EL RECONOCIMIENTO NO ES POR NOMBRE, ES POR LAS COLUMNAS. Un endpoint que conteste 200 no
+    // prueba nada —ya pasó con la página web que devolvía un cascarón—, así que cada puerta que
+    // abre se mira si trae `INITIAL_BALANCE`/`PARTIAL_BALANCE` adentro, que es la firma del
+    // archivo real. Dos cosas no se distinguen por cómo se llaman.
+    //
+    // NO SE IMPRIME NI UN PESO ni ningún nombre de tercero: ese extracto tiene los nombres de los
+    // proveedores y de la familia adentro, y el registro de GitHub es público.
+    if (String(process.env.BILLING_PROBE || '') === 'extracto') {
+      const MP = 'https://api.mercadopago.com';
+      const cuentas = Object.entries(ACCOUNTS);
+      let probados = 0, abiertos = 0;
+      const conFirma = [];
+      for (const [label, acc] of cuentas) {
+        let t;
+        try { t = await getToken(label, acc); }
+        catch (e) { console.log(`── ${label} ── no pude renovar el token: ${String(e.message || e).slice(0, 90)}`); continue; }
+        await db.patch('mlapi/tokens/' + label, { refresh_token: t.refresh_token, updated_ts: Date.now() });
+        const H = { Authorization: `Bearer ${t.access_token}` };
+        console.log(`\n── ${label} ──`);
+        const ver = async (nom, url) => {
+          probados++;
+          try {
+            const r = await fetch(url, { headers: H, signal: AbortSignal.timeout(25000) });
+            const txt = (await r.text()) || '';
+            let det = '';
+            let firma = false;
+            try {
+              const j = JSON.parse(txt);
+              const obj = Array.isArray(j) ? (j[0] || {}) : (j.results ? (j.results[0] || {}) : j);
+              det = (Array.isArray(j) ? `lista de ${j.length} · ` : '')
+                + 'campos: ' + (Object.keys(obj || {}).join(', ') || '(ninguno)').slice(0, 180);
+              if (!r.ok) det = String(j.message || j.error || '').slice(0, 120) || det;
+            } catch {
+              // No es JSON: puede ser el CSV. Ahí SÍ se mira la firma, que es lo que decide.
+              const cab = (txt.split(/\r?\n/)[0] || '').toUpperCase();
+              firma = /INITIAL_BALANCE|PARTIAL_BALANCE/.test(txt.slice(0, 4000).toUpperCase());
+              det = `${txt.length} caracteres · primera línea: ${cab.slice(0, 120)}`;
+            }
+            console.log(`   ${r.ok ? '✅' : '❌'} ${nom} · HTTP ${r.status}\n      ${det}`);
+            if (r.ok) abiertos++;
+            if (firma) { conFirma.push(`${label} · ${nom}`); console.log('      🎯 TIENE LA FIRMA DEL EXTRACTO (saldo adentro)'); }
+          } catch (e) { console.log(`   ❌ ${nom} · ERROR ${String(e.message || e).slice(0, 90)}`); }
+        };
+        // A) la lista de bank_report, pero PAGINADA: una lista vacía puede ser falta de parámetros
+        //    y no falta de reportes. Es la misma trampa del `offset` de las cajas.
+        await ver('bank_report · lista paginada', `${MP}/v1/account/bank_report/list?offset=0&limit=50`);
+        // B) los nombres que usa el panel nuevo de MercadoPago para "todas las transacciones"
+        await ver('account_statement · lista', `${MP}/v1/account/account_statement/list`);
+        await ver('account_statement · configuración', `${MP}/v1/account/account_statement/config`);
+        await ver('statement · lista', `${MP}/v1/account/statement/list`);
+        await ver('reports/account_statement', `${MP}/reports/account_statement`);
+        await ver('v1/reports/account_statement · lista', `${MP}/v1/reports/account_statement/list`);
+        await ver('reports (el índice)', `${MP}/v1/reports`);
+        await ver('account_movements · lista', `${MP}/v1/account/account_movements/list`);
+      }
+      console.log(`\n── RESUMEN ──`);
+      console.log(`   Se probaron ${probados} · contestaron ${abiertos}`);
+      if (conFirma.length) console.log('   🎯 Traen el extracto de verdad: ' + conFirma.join(' · '));
+      else console.log('   Ninguna trajo un archivo con el saldo adentro. Si todas dan 404, el extracto');
+      console.log('   se baja del panel a mano y no hay forma de pedirlo por el robot.');
+      console.log('\n   (Solo se leyó. No se imprimió ningún monto ni ningún nombre: el registro es público.)');
+      return;
+    }
     // BILLING_PROBE=mptoken → ¿LA LLAVE PROPIA DE MERCADO PAGO ABRE EL SALDO? · SOLO LEE
     //
     // POR QUÉ (20/09/2026). El disponible por cuenta del Arqueo se carga a mano porque ML no deja
