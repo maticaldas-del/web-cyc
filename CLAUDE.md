@@ -1659,6 +1659,50 @@ explicación larga de la sección pasó a un desplegable.
 **Lo que sigue apretado y él todavía no decidió:** cada renglón de producto tira seis datos en una
 sola línea gris del mismo tamaño, y el margen —que es lo que decide— queda en el medio.
 
+### EL HISTORIAL POR PRODUCTO: EL RECARGO **NO ES PAREJO** (21/09/2026)
+
+Pedido suyo: *"que se vaya haciendo un historial y cuando sale mas % en que compra y producto por
+tamaño, peso unidades, costo. todo asi sabemos mejor que comprar"*. Sale con **`compray`** sin
+argumentos, abajo del historial por compra.
+
+**LA PREGUNTA QUE CONTESTA NO ES LA QUE PARECE.** La mayor parte del recargo es un gasto **FIJO del
+pedido** (el que retira y despacha, y el correo). Repartido entre las unidades pesa **lo mismo** en
+un auricular de US$ 5,75 que en una memoria de US$ 62 — o sea que **en porcentaje el barato paga
+muchísimo más**. Medido sobre la compra del 21/09, con el correo todavía pendiente:
+
+| recargo real | US$ c/u | puesto | producto |
+|---|---|---|---|
+| **47,2%** | 5,75 | $12.993 | Sony MDR-EX15LP |
+| 34,8% | 8,20 | $16.962 | TP-Link TL-WN822N |
+| 33,7% | 8,50 | $17.448 | Sony MDR-EX15AP |
+| 23,3% | 13,50 | $25.547 | Lattafa Sutoor |
+| 19,6% | 17,00 | $31.216 | Sony MDR-ZX310AP |
+| 12,8% | 32,75 | $56.729 | Mercedes Club Black |
+| **9,4%** | 62,00 | $104.108 | microSD Pokémon |
+
+**EL PANEL LE SUMA 15% A TODOS POR IGUAL, y eso está mal para los dos lados: en lo BARATO el margen
+que muestra está INFLADO y en lo CARO está CASTIGADO.** Con el correo cargado los baratos empeoran
+más todavía ($3.679 → $4.766 de fijo por unidad). **Es lo que cambia qué conviene traer de
+Paraguay: lo barato no conviene, y no porque deje poco margen sino porque el flete se lo come.**
+
+**EL REPARTO ES POR UNIDAD Y ES UNA APROXIMACIÓN, Y SE DICE EN PANTALLA.** El correo cobra por
+**PESO**, así que lo correcto sería repartir por kilo — y los candidatos casi no tienen el peso
+cargado (**0 de 12** en esta compra). **No se inventa ningún peso**: se imprime cuántos hay. Para
+que esto se pueda hacer bien, el chat de compras tiene que cargar el peso de cada candidato.
+
+**DOS BUGS QUE APARECIERON ARMÁNDOLO, los dos para el lado peligroso:**
+ · el historial **no sumaba `retira`**, así que daba el recargo CORTO justo por el gasto fijo más
+   grande ($74.260 de $84.627). Un recargo que sale menor dice que comprar es más barato de lo que
+   es.
+ · había un `return` cuando no hay ninguna compra **COMPLETA**, y con eso el historial por producto
+   **no iba a correr NUNCA mientras faltara el correo** — que es el estado normal de una compra
+   recién hecha. Ahora avisa que el número está corto y sigue.
+
+**Y EL ERROR QUE CASI COMETO, que es el del `MIN_GROSS` del mismo día:** iba a leer `RECARGO_PY`,
+que existe **adentro de otro bloque** (el probe `guay`). Compila perfecto y muere en ejecución
+llevándose la corrida entera. *Antes de usar un nombre en `sync.mjs`, mirar si está definido EN ESE
+bloque.*
+
 ## CADA COMPRA A PARAGUAY, CON SUS COSTOS REALES: `compray` (21/09/2026)
 
 Pedido suyo: *"cuando me lo envien quiero que vayas guardando todos los pedidos con costos de cada
