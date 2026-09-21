@@ -24530,6 +24530,152 @@ async function main() {
       console.log(`\nPausar TOCA ML de verdad y no lo hace este comando: la lista es para que la mires y decidas.`);
       return;
     }
+    // BILLING_PROBE=compray[:...] → EL REGISTRO DE CADA COMPRA A PARAGUAY, CON SUS COSTOS REALES.
+    //
+    // Pedido suyo del 21/09/2026: *"cuando me lo envien quiero que vayas guardando todos los
+    // pedidos con costos de cada cosa. asi sabemos mejor que % ponerle al precio que aparece en la
+    // web de compraparaguai"*.
+    //
+    // POR QUÉ HACE FALTA: todo el panel calcula el costo puesto como **precio de Paraguay + 15%**
+    // (`RECARGO_PY`), un número que él fijó a ojo —*"mercaderia + comprar dolar (siempre es mas por
+    // comisiones) + traslado = mercaderia + el 15%"*— y que nadie midió nunca contra una compra de
+    // verdad. Ese 15% se mete en el costo de cada ficha nueva, o sea en todos los márgenes y en el
+    // patrimonio. **Medirlo no es un adorno: es el número con el que se decide qué comprar.**
+    //
+    // Y LO MÁS IMPORTANTE, QUE UN % SOLO NO PUEDE DECIR: el recargo NO es un porcentaje parejo.
+    // Tiene una parte **VARIABLE** (comprar los dólares: escala con la plata) y una parte **FIJA**
+    // por pedido (el flete, el despacho): la fija se reparte entre lo que hayas pedido, así que
+    // **el mismo 15% es demasiado en un pedido grande y demasiado poco en uno chico**. Por eso acá
+    // se guardan los pagos SEPARADOS y no un total: con dos o tres compras se puede separar una
+    // cosa de la otra. Es la misma idea que el cargo fijo de ML, que hace que el % de comisión
+    // suba cuanto más barato es el producto.
+    //
+    // CÓMO SE USA:
+    //   compray                                  → lo guardado hasta hoy y el recargo medido
+    //   compray:<AAAA-MM-DD>|usd=<crudo>|merc=<pesos>|envio=<pesos>[|cambio=<pesos>][|otros=<pesos>][|nota=...][|go]
+    //
+    //  · `usd` son los dólares CRUDOS de comprasparaguay, SIN el 15%. Es contra ese número que se
+    //    mide todo: cargarle el precio ya recargado da un recargo falso, chico.
+    //  · `merc` son los pesos que salieron por la mercadería, `cambio` lo que se llevó el cambista
+    //    encima, `envio` el correo y `otros` lo que no entra en ninguno.
+    //  · Sin `|go` NO escribe: muestra la cuenta para revisarla.
+    //  · Un pedido al que todavía le falta el envío se puede guardar igual con `envio=0`, y el
+    //    renglón queda marcado **INCOMPLETO**: entra en la lista pero NO en el promedio. Un
+    //    recargo calculado sin el flete sale más barato de lo real, que es el lado peligroso — es
+    //    el mismo motivo por el que el simulador avisa en ámbar cuando no se contó lo de Full.
+    if (/^compray(:|$)/.test(String(process.env.BILLING_PROBE || ''))) {
+      const raw = String(process.env.BILLING_PROBE).slice('compray'.length).replace(/^:/, '');
+      const partes = raw.split('|').map((x) => x.trim()).filter(Boolean);
+      const GO = partes.some((x) => /^go$/i.test(x));
+      const campos = {};
+      for (const x of partes) {
+        const m = x.match(/^([a-záéíóúñ]+)\s*=\s*(.*)$/i);
+        if (m) campos[m[1].toLowerCase()] = m[2].trim();
+      }
+      const fecha = (partes[0] && /^\d{4}-\d{2}-\d{2}$/.test(partes[0])) ? partes[0] : null;
+      const num = (s) => { const v = parseFloat(String(s == null ? '' : s).replace(/[^\d.,-]/g, '').replace(/\.(?=\d{3}\b)/g, '').replace(',', '.')); return isFinite(v) ? v : null; };
+
+      const guardadas = (await db.get('cyc/compraspy')) || {};
+      const fin = (await db.get('cyc/finanzas')) || {};
+      const tcPanel = parseFloat(fin.tipo_cambio) || 0;
+
+      // ── GUARDAR UNA COMPRA ────────────────────────────────────────────────
+      if (fecha) {
+        const usd = num(campos.usd), merc = num(campos.merc);
+        const envio = num(campos.envio), cambio = num(campos.cambio) || 0, otros = num(campos.otros) || 0;
+        if (!(usd > 0)) { console.log('Falta `usd=` (los dólares CRUDOS de comprasparaguay, sin el 15%). Sin eso no hay contra qué medir.'); return; }
+        if (!(merc > 0)) { console.log('Falta `merc=` (los pesos que salieron por la mercadería).'); return; }
+        if (envio == null) { console.log('Falta `envio=` (los pesos del correo). Si todavía no lo sabés poné `envio=0`: queda marcado INCOMPLETO y no entra en el promedio.'); return; }
+        const id = 'py' + fecha.replace(/-/g, '');
+        const ya = guardadas[id];
+        // Snapshot de lo que está cargado HOY en el pedido, para tener el costo de CADA cosa.
+        const cands = (await db.get('cyc/candidatos_py')) || {};
+        const items = [];
+        for (const [cid, c] of Object.entries(cands)) {
+          const u = parseInt(c && c.pedirU) || 0; if (!(u > 0)) continue;
+          items.push({ id: cid, nom: String(c.nombre || c.nom || '').slice(0, 80), cod: String(c.codPy || ''), u, usd: parseFloat(c.nisseiUSD) || null });
+        }
+        const rec = {
+          fecha, usdCrudo: usd,
+          pagos: { mercaderia: Math.round(merc), cambista: Math.round(cambio), envio: Math.round(envio), otros: Math.round(otros) },
+          items, nota: campos.nota || '', tcPanel: tcPanel || null,
+          incompleto: !(envio > 0), ts: Date.now(),
+        };
+        const totARS = merc + cambio + envio + otros;
+        const dolarMerc = merc / usd;                       // el dólar efectivo de la mercadería
+        const fijos = envio + otros;
+        console.log(`=== COMPRA A PARAGUAY DEL ${fecha} ===`);
+        if (ya) console.log(`⚠️ Ya había una compra guardada con esta fecha (${ya.usdCrudo} US$ crudos). Se pisa.`);
+        console.log(`  mercadería en Paraguay   US$ ${usd.toFixed(2)} crudos`);
+        console.log(`  pagado por la mercadería ${money(Math.round(merc))}${cambio ? ` · cambista aparte ${money(Math.round(cambio))}` : ''}`);
+        console.log(`  envío                    ${money(Math.round(envio))}${otros ? ` · otros ${money(Math.round(otros))}` : ''}`);
+        console.log(`  TOTAL                    ${money(Math.round(totARS))}`);
+        console.log('');
+        console.log(`  el dólar que pagaste por la mercadería: ${money(Math.round(dolarMerc))}${tcPanel ? ` · el del panel es ${money(Math.round(tcPanel))} (${(((dolarMerc + (cambio / usd)) / tcPanel - 1) * 100).toFixed(1)}% más caro con el cambista adentro)` : ''}`);
+        if (tcPanel > 0) {
+          const puestoUSD = totARS / tcPanel;
+          const rec1 = (puestoUSD / usd - 1) * 100;
+          console.log(`  RECARGO REAL DE ESTA COMPRA: ${rec1.toFixed(1)}%  (el panel usa ${Math.round((1.15 - 1) * 100)}%)`);
+          console.log(`     · parte que ESCALA (los dólares): ${(((merc + cambio) / tcPanel / usd - 1) * 100).toFixed(1)}%`);
+          console.log(`     · parte FIJA por pedido (envío${otros ? ' + otros' : ''}): ${money(Math.round(fijos))} = US$ ${(fijos / tcPanel).toFixed(2)}, o sea ${((fijos / tcPanel) / usd * 100).toFixed(1)}% en ESTE pedido`);
+          console.log(`       OJO: la parte fija NO cambia si el pedido es más grande. En un pedido del doble pesaría la mitad.`);
+        } else {
+          console.log(`  ⚠️ No hay tipo de cambio cargado en Finanzas, así que el recargo en % no se puede calcular. Se guarda igual.`);
+        }
+        if (rec.incompleto) console.log(`  ⚠️ INCOMPLETO: sin el envío. Queda guardado pero NO entra en el promedio — un recargo sin el flete sale más barato de lo real.`);
+        console.log(`\n  ${items.length} producto(s) del pedido guardados con su código y sus unidades.`);
+        if (!items.length) console.log(`  ⚠️ No había ningún candidato con unidades cargadas en el panel, así que el detalle por producto queda vacío.`);
+        if (!GO) { console.log(`\nNo se guardó nada (falta |go).`); return; }
+        await db.set('cyc/compraspy/' + id, rec);
+        const rel = await db.get('cyc/compraspy/' + id);
+        console.log(rel && rel.usdCrudo === usd ? `\n✓ Guardado y releído: cyc/compraspy/${id}` : `\n⚠️ Se escribió pero al releer no coincide. Mirar a mano.`);
+        return;
+      }
+
+      // ── LA LISTA Y EL RECARGO MEDIDO ──────────────────────────────────────
+      const todas = Object.entries(guardadas).map(([id, c]) => ({ id, ...c })).sort((a, b) => String(a.fecha).localeCompare(String(b.fecha)));
+      console.log(`=== COMPRAS A PARAGUAY GUARDADAS (${todas.length}) ===`);
+      if (!todas.length) {
+        console.log(`Todavía no hay ninguna. Se carga así:`);
+        console.log(`  compray:2026-09-19|usd=526.70|merc=580000|cambio=12000|envio=25000|go`);
+        console.log(`\nMientras tanto el panel sigue usando el 15% de siempre.`);
+        return;
+      }
+      let sumU = 0, sumFijoU = 0, sumVar = 0, n = 0;
+      for (const c of todas) {
+        const p = c.pagos || {};
+        const totARS = (p.mercaderia || 0) + (p.cambista || 0) + (p.envio || 0) + (p.otros || 0);
+        const tc = parseFloat(c.tcPanel) || tcPanel || 0;
+        const usd = parseFloat(c.usdCrudo) || 0;
+        const recPct = (tc > 0 && usd > 0) ? (totARS / tc / usd - 1) * 100 : null;
+        console.log(`\n── ${c.fecha}${c.incompleto ? '  ⚠️ INCOMPLETO (falta el envío)' : ''}`);
+        console.log(`     US$ ${usd.toFixed(2)} crudos · ${(c.items || []).length} producto(s) · ${(c.items || []).reduce((a, x) => a + (x.u || 0), 0)} unidades`);
+        console.log(`     recargo real: ${recPct == null ? '? (faltaba el tipo de cambio)' : recPct.toFixed(1) + '%'}`);
+        if (c.nota) console.log(`     ${c.nota}`);
+        if (recPct == null || c.incompleto) continue;
+        const fijoUSD = ((p.envio || 0) + (p.otros || 0)) / tc;
+        const varPct = ((p.mercaderia || 0) + (p.cambista || 0)) / tc / usd - 1;
+        sumU += usd; sumFijoU += fijoUSD; sumVar += varPct * usd; n++;
+      }
+      console.log(`\n───── EL RECARGO MEDIDO ─────`);
+      if (!n) {
+        console.log(`Ninguna compra completa todavía (o falta el tipo de cambio), así que no hay promedio que sacar.`);
+        console.log(`El panel sigue con el 15% de siempre.`);
+        return;
+      }
+      const varProm = sumVar / sumU, fijoProm = sumFijoU / n;
+      console.log(`Sobre ${n} compra(s) completa(s), por US$ ${sumU.toFixed(2)} crudos:`);
+      console.log(`  · los DÓLARES cuestan ${(varProm * 100).toFixed(1)}% de más (eso escala con el tamaño del pedido)`);
+      console.log(`  · y hay US$ ${fijoProm.toFixed(2)} FIJOS por pedido (flete y despacho), que NO escalan`);
+      console.log(`\nO sea que el costo puesto en tu oficina es:`);
+      console.log(`   mercadería × ${(1 + varProm).toFixed(3)}  +  US$ ${fijoProm.toFixed(2)} repartidos entre lo que pidas`);
+      for (const tam of [300, 500, 1000, 2000]) {
+        const pct = ((tam * (1 + varProm) + fijoProm) / tam - 1) * 100;
+        console.log(`   pedido de US$ ${String(tam).padStart(5)} →  ${pct.toFixed(1)}%`);
+      }
+      console.log(`\nEl panel usa 15% fijo para TODOS los tamaños (RECARGO_PY). Con una sola compra medida esto es una referencia, no un número para cambiar el panel: hacen falta dos o tres para separar bien lo fijo de lo variable.`);
+      return;
+    }
     if (/^porquecaja(:|$)/.test(String(process.env.BILLING_PROBE || ''))) {
       const q = String(process.env.BILLING_PROBE).slice('porquecaja:'.length).trim();
       if (!q) { console.log('Usá: porquecaja:adaptador'); return; }

@@ -313,6 +313,8 @@ Los que más se usan:
 | `altanuevas[:go]` | las publicaciones nuevas que el panel todavía no conoce, con la ficha a la que se engancharían · **el robot lo hace solo cada hora**, esto es para mirarlo antes |
 | `nomas:<MLA,...>[:go]` | "esto no lo vendemos más": oculta la publicación del panel · no toca nada en ML |
 | `repartir[:días]` | **una sola cuenta por producto**: los publicados en más de una, con la última venta de cada una y la dueña que le toca · imprime los `nomandar` listos · solo lee |
+| `repetidas[:días]` | **lo que sobra VIVO en ML**: el mismo producto publicado en más de una cuenta, con los MLA, su estado y el stock de Full · marca aparte las que tienen mercadería adentro · solo lee |
+| `compray[:...]` | **cada compra a Paraguay con sus costos reales** · mide el recargo de verdad y lo abre en parte que escala y parte fija · sin `\|go` sólo muestra |
 | `nomandar:<cuenta>[:<palabras>][:go]` | "este producto no se vende más en ESTA cuenta": la saca del reparto de Armar caja · nombre con `=` adelante = exacto · sin `:go` solo muestra |
 | `pasara:<cuenta>[:<palabras>][:go]` | lo contrario: "este producto lo quiero en ESTA cuenta", aunque todavía no esté publicado ahí · aparece en su Armar caja avisando en ámbar que falta crear la publicación |
 | `preguntas[:cuenta]` | las preguntas sin responder ENTERAS, con el producto de cada una |
@@ -1467,6 +1469,115 @@ Pausarlas TOCA ML de verdad: no se hace sin que él lo pida expreso.
 **Un caso raro que quedó abierto: el P47 está marcado afuera de las TRES cuentas**, incluida Matías,
 que es la que lo vende (51 u. en 90 días). Viene de cuando el 07/09 pidió pasarlos todos a Ayelen.
 Si eso sigue en pie está bien, pero hoy nadie le puede mandar mercadería.
+
+## UN PRODUCTO NO PUEDE ESTAR PUBLICADO EN MÁS DE UNA CUENTA (21/09/2026)
+
+Norma suya: *"quiero que no haya publicaciones del mismo producto en mas de una cuenta. despues
+no me molesta que se repitan en la misma cuenta."*
+
+**Es la continuación de la norma del 09/09, no otra cosa** — y la diferencia es dónde se aplica.
+`repartir` decide quién es la dueña **en el PANEL** (a qué cuenta se le manda mercadería) y eso ya
+está terminado desde el 10/09: su sección "para aplicar" sale vacía. Lo que quedó sin hacer es lo
+de ML: **`nomandar` saca del reparto, no pausa ni borra**, así que en ML el producto seguía siendo
+publicación compartida.
+
+El comando es **`repetidas[:<días>]`** y **SOLO LEE**: no pausa, no borra y no toca ML. La dueña la
+decide **`calcDuenaCuenta`**, la MISMA función que usa `repartir` — salió del probe justamente para
+esto: con dos copias los dos comandos podían nombrar dueñas distintas del mismo producto.
+
+### LA PRIMERA CORRIDA (21/09/2026): 38 PRODUCTOS, Y CASI NO HAY NADA QUE HACER
+
+**30 con dueña clara · 60 publicaciones de más · y 59 de esas 60 YA ESTÁN pausadas o inactivas.**
+O sea que el trabajo grande ya estaba hecho sin que nadie lo anotara: lo que quedó vivo es una sola
+publicación. Adriana 40 · Matías 8 · Luciana 7 · Ayelen 5.
+
+**LA ÚNICA ACTIVA ES EL CASO QUE HAY QUE DECIDIR, Y LA REGLA SE EQUIVOCA SOLA.** El
+**Cortapelo 4 en 1** de **Ayelen** (`MLA1474502515`) está **activa, con 5 u. adentro de Full y
+GANANDO la caja de compra** — y la dueña por la regla es **Matías**, que vendió hace 89 días y
+tiene 1 unidad. Aplicar la norma al pie de la letra sería pausar la única que puede vender, dejando
+5 unidades pagando almacenamiento. **La regla dice quién vendió más reciente, no quién está en
+mejores condiciones de vender hoy**, y acá las dos cosas no coinciden.
+
+**Y LA EXCEPCIÓN PAULVIC SIGUE EN PIE, PORQUE EL COMANDO NO DECIDE CUANDO NO PUEDE.** Adriana
+(51 publicaciones, 217 u. en Full) y Luciana (2, 15 u.) **vendieron las dos el MISMO día**, así que
+cae en "para que decidas vos" y no propone nada — que es exactamente lo que corresponde: esa
+excepción la puso él el 10/09 y una norma nueva no la borra sola.
+
+**Los otros 7 a decidir** son Kit Luces Bici, Tira Led, Termómetro horno, balanza equipaje,
+Estimulador Muscular, Indoor y De la Patagonia KO UNISEX: ninguna cuenta vendió en 90 días, o
+vendieron dos la misma semana.
+
+**LO QUE EL COMANDO MARCA APARTE Y NO ES UN DETALLE DE FORMA: las repetidas CON STOCK EN FULL.**
+Pausar una de ésas deja la mercadería adentro sin vender, pagando almacenamiento y con el reloj del
+descarte corriendo. Hoy es una sola (las 5 u. del Cortapelo), pero es la primera que hay que mirar
+y por eso va en su propia lista al final.
+
+## CADA COMPRA A PARAGUAY, CON SUS COSTOS REALES: `compray` (21/09/2026)
+
+Pedido suyo: *"cuando me lo envien quiero que vayas guardando todos los pedidos con costos de cada
+cosa. asi sabemos mejor que % ponerle al precio que aparece en la web de compraparaguai"*.
+
+**EL 15% NUNCA SE MIDIÓ.** `RECARGO_PY` sale de una frase suya —*"mercaderia + comprar dolar
+(siempre es mas por comisiones) + traslado = mercaderia + el 15%"*— y se mete en el costo de cada
+ficha nueva, o sea en todos los márgenes y en el patrimonio. Es un número a ojo decidiendo plata.
+
+**Y LO QUE LA PRIMERA COMPRA YA MOSTRÓ: NO ES UN % PAREJO, TIENE UNA PARTE FIJA.** Medido sobre la
+compra real: **19,4%**, que se abre en **5,5% de comprar los dólares** (eso SÍ escala con el tamaño
+del pedido) y **13,9% de flete y despacho**, que son **pesos FIJOS por pedido** y no escalan. O sea
+que el mismo 15% es **demasiado en un pedido grande y demasiado poco en uno chico** — es la misma
+forma que el cargo fijo de ML, que hace que el % de comisión suba cuanto más barato es el producto.
+Por eso el comando guarda los pagos **SEPARADOS** y no un total: con dos o tres compras se puede
+separar una cosa de la otra y decir *"mercadería × 1,055 + US$ 66 repartidos entre lo que pidas"*,
+que es mucho más exacto que cualquier porcentaje único.
+
+```
+compray                                   → lo guardado y el recargo medido
+compray:<AAAA-MM-DD>|usd=<crudo>|merc=<pesos>|envio=<pesos>[|cambio=][|otros=][|nota=][|go]
+```
+
+ · **`usd` son los dólares CRUDOS de comprasparaguay, SIN el 15%.** Cargarle el precio ya recargado
+   da un recargo falso y chico, que es el lado peligroso.
+ · **Guarda el detalle por producto solo**: toma los candidatos que tengan unidades cargadas en el
+   panel, con su código y su precio. Si no hay ninguno, lo dice en vez de guardar vacío callado.
+ · **Un pedido sin el envío se puede guardar con `envio=0` y queda marcado INCOMPLETO**: entra en
+   la lista y **NO en el promedio**. Un recargo sin el flete sale más barato de lo real.
+ · Sin `|go` no escribe. Después de escribir relee y compara (regla 6).
+ · **No cambia `RECARGO_PY`.** Con una sola compra medida el número es una referencia, no un dato
+   para mover todos los márgenes del panel.
+
+## LO QUE VUELVE A DAR EL PISO VUELVE SOLO A PEDIDOS (21/09/2026)
+
+Pedido suyo mirando "Pausados por precio" con tres en verde: *"esto que sea automatico. si el
+precio da que se ponga a candidatos para el pedido o en el pedido si es que se da todo para
+meterlo"*.
+
+**ESTE ARCHIVO Y EL CÓDIGO DECÍAN LO CONTRARIO, CON SU MOTIVO ESCRITO AL LADO:** *"vuelve a la
+LISTA marcado, no a Pedidos: si volviera a Pedidos empezaría a restar puntaje otra vez sin decir
+por qué"*. El motivo era real pero el remedio estaba al revés: **eso se arregla DICIÉNDOLO, no
+dejándolo pausado.** Ahora vuelve solo y el aviso nombra cuáles volvieron.
+
+**SE AUTOMATIZA UNA DE LAS DOS SEÑALES, NO LAS DOS**, y la diferencia es si el panel puede
+contestar solo:
+ · **"volvió a dar el piso"** lo mide el panel (subió el precio en ML o bajó el de Paraguay). No
+   hay nada que preguntarle a nadie → **vuelve solo**.
+ · **"vencieron los 30 días"** no es una medición, es un recordatorio de ir a preguntarle el precio
+   al proveedor. Ése sigue esperando que conteste él.
+
+**Tres frenos, y los tres hicieron falta:**
+ · **Sólo entra el que tiene el margen MEDIDO.** Sin neto de ML el margen es `null` y no se toca:
+   de lo que no se midió no se sabe si da.
+ · **No lo hace en silencio.** Devolver un renglón cambia lo que falta comprar y el puntaje del
+   mes; queda en el registro de cambios y el aviso los nombra.
+ · **Si la escritura falla NO se saca de la lista en memoria.** Si no, la pantalla mostraría un
+   producto devuelto que en la base sigue pausado, y al recargar volvería a aparecer.
+
+**Volver a Pedidos no gasta un peso** —sólo devuelve el renglón a la lista de lo que falta comprar,
+y de ahí lo toma la canasta— así que el lado seguro acá es devolverlo: **un producto que ya da el
+piso y sigue escondido es una compra que no se hace.**
+
+Probado con la función REAL sacada del archivo y 14 casos: los 3 que dan vuelven y el de 21,3% se
+queda · el pedido cargado a mano vuelve entero · sin margen medido no toca nada · si la escritura
+falla no saca nada y lo dice · y dos llamadas a la vez no duplican.
 
 ## LA IDEA GRANDE QUE QUEDÓ ANOTADA: BUSCAR QUÉ CONVIENE COMPRAR (16/09/2026)
 

@@ -2275,7 +2275,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='19.83';
+const APP_VERSION='19.84';
 // El problema real que esto resuelve no es curiosidad: es que el celular guarda la app y sigue
 // mostrando la de ayer sin avisar. Varias veces se revisó un cambio que ya estaba subido y no se
 // veía. Por eso, además del número, el chip avisa cuando hay una versión nueva esperando.
@@ -9810,8 +9810,21 @@ async function vaciarPapelera(){
 // O sea que el caso que a él le importa, el del proveedor, no lo iba a avisar NUNCA: quedaba
 // pausado para siempre esperando un aviso que no podía existir.
 // Por eso cada pausado vence: a los 30 días vuelve a la superficie pidiendo que le mires el precio.
-// Y vuelve a la LISTA marcado, no a Pedidos: si volviera a Pedidos empezaría a restar puntaje otra
-// vez sin decir por qué, y habría que encontrarlo entre cuarenta. Marcado son cinco minutos.
+//
+// ── Y CUANDO EL PRECIO VUELVE A DAR, VUELVE SOLO A PEDIDOS (21/09/2026) ────────
+// Pedido suyo, mirando la lista con tres en verde: *"esto que sea automatico. si el precio da que
+// se ponga a candidatos para el pedido o en el pedido si es que se da todo para meterlo"*.
+// ESTE COMENTARIO DECÍA LO CONTRARIO —*"vuelve a la LISTA marcado, no a Pedidos"*— y el motivo
+// que daba era que volver a Pedidos "restaría puntaje sin decir por qué". Eso se arregla
+// DICIÉNDOLO, no dejándolo pausado: ahora vuelve solo y el aviso nombra cuáles volvieron.
+// Son DOS cosas distintas y por eso sólo se automatiza una:
+//  · **"volvió a dar el piso"** lo mide el panel solo (subió el precio en ML o bajó el de
+//    Paraguay), así que no hay nada que preguntarle a nadie: vuelve.
+//  · **"venció el plazo de 30 días"** NO es una medición, es un recordatorio de ir a preguntarle
+//    el precio al proveedor. Ése sigue esperando que conteste él.
+// Volver a Pedidos no gasta un peso —sólo devuelve el renglón a la lista de lo que falta
+// comprar— así que el lado seguro acá es devolverlo: un producto que ya da el piso y sigue
+// escondido es una compra que no se hace.
 const PAUSA_REVISAR_DIAS=30;
 function _pausaPrecioLista(){
   const piso=metaMargenML(),ahora=Date.now();
@@ -9880,6 +9893,46 @@ async function despausarPrecio(pid){
   renderPedidos();
   toast('Vuelve a Pedidos ✓');
   syncPedidosAuto();
+}
+
+// Los que volvieron a dar el piso vuelven SOLOS, sin que haya que apretar nada (21/09/2026).
+// Corre en cada dibujado de Pedidos, que es donde él entra todos los días.
+//  · Sólo entra el que tiene el margen MEDIDO y en o arriba del piso. Sin neto de ML el margen es
+//    null y no se toca: de lo que no se midió no se sabe si da.
+//  · NO se hace en silencio. Devolver un renglón cambia lo que falta comprar y el puntaje del mes,
+//    y un cambio que nadie anuncia es el descarte por omisión al revés. Se nombra en el aviso y
+//    queda en el registro de cambios.
+//  · Si la escritura falla NO se saca de la lista en memoria: la pantalla mostraría un producto
+//    devuelto que en la base sigue pausado, y al recargar volvería a aparecer.
+let _autoDespausando=false;
+async function autoDespausarPrecio(lista){
+  if(_autoDespausando)return false;
+  const vuelven=(lista||[]).filter(x=>x.ok&&x.margen!=null);
+  if(!vuelven.length)return false;
+  _autoDespausando=true;
+  try{
+    const upd={};
+    for(const x of vuelven){
+      const e=x.e||{};
+      upd['pausado_precio/'+x.pid]=null;
+      if(e.ped&&e.ped.id)upd[(e.coll||'pedidos')+'/'+e.ped.id]=e.ped;
+    }
+    await db.ref('cyc').update(upd);
+    for(const x of vuelven){
+      const e=x.e||{};
+      if(e.ped&&e.ped.id)(state[e.coll||'pedidos']=state[e.coll||'pedidos']||[]).push(e.ped);
+      delete state.pausaPrecio[x.pid];
+      await log('Volvió solo a Pedidos (el precio volvió a dar '+x.margen.toFixed(1)+'%, piso '+x.piso+'%): '+((x.prod?x.prod.name:e.producto)||x.pid));
+    }
+    const noms=vuelven.map(x=>(x.prod?x.prod.name:(x.e||{}).producto)||x.pid);
+    toast('↩︎ '+(noms.length===1?'Volvió a Pedidos: '+noms[0]:noms.length+' volvieron a Pedidos: '+noms.slice(0,3).join(', ')+(noms.length>3?' y '+(noms.length-3)+' más':'')),'ok');
+    syncPedidosAuto();
+    return true;
+  }catch(err){
+    // El dato no se pierde con ruido: si no se pudo escribir, se dice y quedan pausados.
+    toast('No pude devolverlos a Pedidos: '+(err&&err.message?err.message:err),'err');
+    return false;
+  }finally{_autoDespausando=false;}
 }
 
 // ── MARGEN EN LA TABLA DE ROTACIÓN ────────────────────────────────────────────────────
@@ -11107,6 +11160,8 @@ function renderPedidos(){
   // Los pausados por precio se remiden SIEMPRE, se esté mirando esa solapa o no: ese número en
   // verde es el aviso de "este ya vuelve a dar". Es lo único que hace que la lista no se muera.
   const _ppL=_pausaPrecioLista();
+  // Los que ya volvieron a dar el piso se devuelven SOLOS a Pedidos y se vuelve a dibujar.
+  if(_ppL.some(x=>x.ok&&x.margen!=null)){autoDespausarPrecio(_ppL).then(v=>{if(v)renderPedidos();});}
   const _ppOk=_ppL.filter(x=>x.ok).length;
   const _ppRev=_ppL.filter(x=>x.tocaRevisar).length;
   const _ppTab=document.getElementById('tab-pausaprecio-n');
@@ -11156,7 +11211,9 @@ function renderPedidos(){
       let txt,cls,botones;
       if(x.ok){
         cls='suficiente';
-        txt=`<strong style="color:var(--green)">✓ Volvió a dar</strong> — ${mTxt}, el piso es ${x.piso}%. Ya se puede comprar de nuevo.`;
+        // Éste ya se está devolviendo solo (autoDespausarPrecio). El renglón se ve un instante, y
+        // si la escritura falla se queda acá con el botón a mano, que es el lado seguro.
+        txt=`<strong style="color:var(--green)">✓ Volvió a dar</strong> — ${mTxt}, el piso es ${x.piso}%. <span style="color:var(--muted)">Vuelve solo a Pedidos.</span>`;
         botones=`<button class="btn" onclick="despausarPrecio('${x.pid}')">↩︎ Volver a Pedidos</button>`;
       } else if(x.tocaRevisar){
         cls='pendiente';
