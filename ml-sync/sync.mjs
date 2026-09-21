@@ -8895,6 +8895,12 @@ async function main() {
         console.log('   La caja es nuestra a medias: ML reparte. Subirle el precio nos saca del reparto.');
         for (const f of comp.slice(0, 25)) console.log(`  ${f.mla} · ${f.label.padEnd(8)} · ${money(f.precio).padStart(11)} · ${f.nom}`);
       }
+      // EL RUBRO SE GUARDA EN LA MISMA VUELTA, así que el comando tiene que decirlo. Un probe que
+      // calla la mitad de lo que hizo su función no sirve para comprobar que quedó — y comprobar
+      // releyendo es la regla 6.
+      console.log(`\n── RUBROS (para el margen por rubro de Métricas) ──`);
+      console.log(`   ${r.cats.size} categoría(s) distintas entre las publicaciones miradas · ${r.catsNuevas} nombre(s) nuevo(s) esta vuelta`
+        + (r.catsFaltan ? ` · quedan ${r.catsFaltan} para la vuelta siguiente` : ''));
       console.log(`\nGuardado en cada publicación. Ya se ve en Rotación de Stock, columna "Caja ML".`);
       return;
     }
