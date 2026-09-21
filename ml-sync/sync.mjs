@@ -24818,6 +24818,34 @@ async function main() {
       } else {
         console.log(`✓ Todos los productos del pedido tienen el peso cargado.`);
       }
+      // ── LA REFERENCIA MEDIDA: LO QUE PESAN LOS PERFUMES QUE YA VENDEMOS ──────
+      // Si los candidatos no traen peso, la respuesta honesta no es "no sé": el panel YA tiene el
+      // peso REAL de las fichas que vendemos, bajado de ML con `bajarmedidas` (`medida.pesoG`).
+      // Un perfume de 100 mL pesa lo mismo sea de la marca que sea, así que sirve de referencia.
+      // **Es una REFERENCIA, no el peso de estos productos**, y se dice con esas palabras: se
+      // muestra de dónde sale y cuántas fichas la sostienen.
+      const refs = products
+        .filter((p) => p && p.medida && (p.medida.pesoG > 0) && /perfum|edp|edt|parfum|colonia/i.test(String(p.name || '')))
+        .map((p) => ({ nom: String(p.name).slice(0, 45), g: p.medida.pesoG }))
+        .sort((a, b) => a.g - b.g);
+      if (refs.length) {
+        const med = refs[Math.floor(refs.length / 2)].g;
+        const prom = refs.reduce((a, x) => a + x.g, 0) / refs.length;
+        console.log(`\n───── REFERENCIA: LO QUE PESAN LOS PERFUMES QUE YA VENDEMOS ─────`);
+        console.log(`Son ${refs.length} ficha(s) con el peso REAL que informa ML (no es el peso de los productos del pedido).`);
+        console.log(`   el del medio: ${(med / 1000).toFixed(3)} kg · promedio: ${(prom / 1000).toFixed(3)} kg · del más liviano (${(refs[0].g / 1000).toFixed(3)}) al más pesado (${(refs[refs.length - 1].g / 1000).toFixed(3)})`);
+        for (const r of refs.slice(0, 8)) console.log(`      ${(r.g / 1000).toFixed(3)} kg · ${r.nom}`);
+        if (refs.length > 8) console.log(`      … y ${refs.length - 8} más`);
+        const faltanU = totU - uMedidas;
+        if (faltanU > 0) {
+          console.log(`\n   Si las ${faltanU} unidades sin peso pesaran como el del medio, el pedido daría ~${((totKg * 1000 + med * faltanU) / 1000).toFixed(1)} kg`);
+          console.log(`   (con el promedio, ~${((totKg * 1000 + prom * faltanU) / 1000).toFixed(1)} kg · con el más pesado, ~${((totKg * 1000 + refs[refs.length - 1].g * faltanU) / 1000).toFixed(1)} kg)`);
+          console.log(`   ⚠️ Eso es una REFERENCIA de productos parecidos, NO una medición de éstos. Sirve para tener un orden de magnitud.`);
+        }
+      } else {
+        console.log(`\nNo hay ninguna ficha de perfume con el peso cargado, así que no tengo con qué comparar.`);
+        console.log(`Se llenan solas con bajarmedidas, que baja el peso que ML declara de cada publicación.`);
+      }
       console.log(`\nLo que esto NO incluye y lo sabe el que despacha: lo que pesa el EMBALAJE (caja y relleno),`);
       console.log(`y si el correo cobra por peso real o por volumen. Para cargarle el peso a un candidato que no lo tiene,`);
       console.log(`se escribe en su tarjeta de "Para probar".`);
