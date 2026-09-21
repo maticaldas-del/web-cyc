@@ -25235,8 +25235,23 @@ async function main() {
         const ya = guardadas[id];
         // Snapshot de lo que está cargado HOY en el pedido, para tener el costo de CADA cosa.
         const cands = (await db.get('cyc/candidatos_py')) || {};
+        // DE DÓNDE SALE EL DETALLE, Y EL ORDEN IMPORTA (21/09/2026, arreglado el mismo día que
+        // rompió). Al apretar "Ya lo pedí" el panel congela los productos Y deja los candidatos en
+        // `pedirU` 0, marcándolos con `pedidoEn`. Esta lista se armaba SÓLO con `pedirU > 0`, así
+        // que al cargar los pesos reales después venía con los pocos que él hubiera vuelto a
+        // cargar y los escribía encima del detalle bueno: la primera corrida guardó 8 productos
+        // donde el panel tenía 12, y los 4 que faltaban se perdían sin que nadie lo dijera.
+        // `pedidoEn` es la lista REAL de lo que se pidió, así que manda.
+        // SI EL PEDIDO YA TIENE DETALLE GUARDADO, NO SE TOCA. Punto.
+        // El panel lo congela al apretar "Ya lo pedí" —con el código, el precio, el margen, el peso
+        // y los links de cada producto— y deja los candidatos en `pedirU` 0. Esta lista se arma
+        // con `pedirU > 0`, así que al cargar los pesos reales después trae sólo los que él haya
+        // vuelto a cargar y los escribía ENCIMA: la primera corrida guardó 8 donde había 12 y los
+        // otros 4 se perdieron sin que nadie lo dijera. Las unidades sólo viven en ese detalle
+        // —el candidato queda en cero— así que un rebuild NUNCA puede mejorar lo guardado.
+        const yaItems = (ya && Array.isArray(ya.items)) ? ya.items : [];
         const items = [];
-        for (const [cid, c] of Object.entries(cands)) {
+        for (const [cid, c] of (yaItems.length ? [] : Object.entries(cands))) {
           const u = parseInt(c && c.pedirU) || 0; if (!(u > 0)) continue;
           // El candidato guarda `cod` y `usd`; `codPy`/`nisseiUSD` son los nombres de la FICHA de
           // un producto, no de un candidato. Con los de la ficha el detalle salía con el código
@@ -25249,8 +25264,11 @@ async function main() {
         // deja los candidatos en `pedirU` 0. O sea que al cargar los pesos reales después, el
         // `items` que se arma acá viene VACÍO y un `set` borraba todo el detalle: el `set` que
         // pisa al padre, el error anotado desde el 05/08. Si ya hay detalle guardado, se respeta.
-        const itemsFin = items.length ? items : ((ya && Array.isArray(ya.items) && ya.items.length) ? ya.items : items);
-        const usaViejos = !items.length && itemsFin.length > 0;
+        // Y AUNQUE LA LISTA NUEVA NO VENGA VACÍA, SI ES MÁS CORTA QUE LA GUARDADA GANA LA GUARDADA.
+        // Un detalle que se achica no es una corrección, es una pérdida — y el `set` que pisa al
+        // padre ya borró datos tres veces en este archivo.
+        const itemsFin = yaItems.length ? yaItems : items;
+        const usaViejos = yaItems.length > 0;
         // Si el panel había anotado otro total (lo que se cargó) y lo que de verdad se mandó es
         // otro, se guardan los DOS: el recargo se mide contra lo que se mandó, pero el detalle
         // sigue sumando lo otro y sin esto no se entiende por qué no cierra.
@@ -25285,8 +25303,8 @@ async function main() {
           console.log(`  ⚠️ No hay tipo de cambio cargado en Finanzas, así que el recargo en % no se puede calcular. Se guarda igual.`);
         }
         if (rec.incompleto) console.log(`  ⚠️ INCOMPLETO: sin el envío. Queda guardado pero NO entra en el promedio — un recargo sin el flete sale más barato de lo real.`);
-        if (usaViejos) console.log(`\n  ${itemsFin.length} producto(s) ya estaban guardados con este pedido: NO se tocan.`);
-        else console.log(`\n  ${items.length} producto(s) del pedido guardados con su código y sus unidades.`);
+        if (usaViejos) console.log(`\n  ${yaItems.length} producto(s) ya estaban guardados con este pedido: NO se tocan, sólo se agregan los pesos.`);
+        else console.log(`\n  ${items.length} producto(s) guardados con su código y sus unidades.`);
         if (!itemsFin.length) console.log(`  ⚠️ No había ningún candidato con unidades cargadas en el panel ni detalle guardado, así que el detalle por producto queda vacío.`);
         if (usdPanel) console.log(`  ⚠️ El panel tenía anotado US$ ${usdPanel.toFixed(2)} y vos mandás US$ ${usd.toFixed(2)}: el recargo se mide contra lo que MANDASTE. Los dos quedan guardados.`);
         if (!GO) { console.log(`\nNo se guardó nada (falta |go).`); return; }
