@@ -14940,6 +14940,69 @@ async function main() {
       return;
     }
 
+    // BILLING_PROBE=reglas → ¿LA BASE SE PUEDE LEER SIN CONTRASEÑA? · SOLO LEE
+    //
+    // POR QUÉ (21/09/2026). Pedido suyo: *"poner contraseña YA"*. Al mirarlo, el panel **ya la
+    // tiene** —pantalla de login, `signInWithEmailAndPassword`, y `startApp()` no corre sin
+    // sesión—, así que la nota de CLAUDE.md que decía *"público y sin contraseña"* era FALSA.
+    //
+    // PERO LA CONTRASEÑA DE LA PANTALLA NO PROTEGE LA BASE. Los datos no los sirve la web: los
+    // sirve Firebase, y la dirección de la base (`databaseURL`) está escrita adentro de
+    // `index.html`, que es público — eso es normal y no es un secreto. Lo que decide si alguien
+    // los puede leer son las REGLAS de la base. Con las reglas abiertas, cualquiera le pide los
+    // datos a Firebase directo y **nunca pasa por el login**: la pantalla sería decoración.
+    //
+    // NO IMPRIME NI UN DATO, A PROPÓSITO. El registro de GitHub es PÚBLICO: si las reglas están
+    // abiertas y este comando volcara la respuesta, el comando hecho para detectar la filtración
+    // SERÍA la filtración. Imprime sólo el código que contesta Firebase y CUÁNTAS claves trajo,
+    // nunca un nombre ni un valor. Es la misma regla de `campos`.
+    //
+    // Se pregunta SIN TOKEN a propósito: es exactamente lo que puede hacer un desconocido.
+    if (String(process.env.BILLING_PROBE || '') === 'reglas') {
+      console.log('=== ¿LA BASE SE PUEDE LEER SIN CONTRASEÑA? ===');
+      console.log('Se le pide a Firebase SIN token, que es lo que puede hacer cualquiera.');
+      console.log('No se imprime ningún dato: sólo el código de respuesta y cuántas claves trajo.\n');
+      const base = String(FIREBASE_DB_URL || '').replace(/\/+$/, '');
+      if (!base) { console.log('⚠️  No hay dirección de base configurada: no se puede medir.'); return; }
+      // `shallow=true` trae sólo los nombres de las claves de primer nivel, no el contenido.
+      // Aun así NO se imprimen: se cuentan.
+      const puertas = [
+        ['la base entera', base + '/.json?shallow=true'],
+        ['el panel (cyc)', base + '/cyc.json?shallow=true'],
+        ['un pedazo con plata adentro (cyc/ventas)', base + '/cyc/ventas.json?shallow=true'],
+      ];
+      let abierta = false, cerrada = 0;
+      for (const [nom, url] of puertas) {
+        let st = 0, n = null, err = '';
+        try {
+          const r = await fetch(url);
+          st = r.status;
+          if (r.ok) {
+            const j = await r.json().catch(() => null);
+            n = (j && typeof j === 'object') ? Object.keys(j).length : (j === null ? 0 : 1);
+          }
+        } catch (e) { err = String(e.message || e).slice(0, 60); }
+        if (st === 200 && n) { abierta = true; console.log(`🔴 ${nom}: ABIERTA · contestó ${st} y trajo ${n} clave(s) SIN contraseña`); }
+        else if (st === 401 || st === 403) { cerrada++; console.log(`🟢 ${nom}: cerrada · Firebase contestó ${st} (pide permiso)`); }
+        else if (st === 200) { cerrada++; console.log(`🟢 ${nom}: contestó ${st} pero VACÍA · no entregó nada`); }
+        else console.log(`⚪ ${nom}: contestó ${st || '—'}${err ? ' · ' + err : ''} · no concluyente`);
+        await new Promise((r) => setTimeout(r, 400));
+      }
+      console.log('');
+      if (abierta) {
+        console.log('🔴 LA BASE SE LEE SIN CONTRASEÑA. La pantalla de login NO protege nada:');
+        console.log('   cualquiera con la dirección se baja costos, márgenes y ventas sin pasar por ella.');
+        console.log('   Se arregla en Firebase → Realtime Database → Reglas, poniendo que haya que');
+        console.log('   estar logueado. El robot NO se rompe: entra con su propio usuario y contraseña.');
+      } else if (cerrada === puertas.length) {
+        console.log('🟢 La base NO se puede leer sin contraseña. Las reglas están cerradas y la');
+        console.log('   pantalla de login sí está protegiendo de verdad.');
+      } else {
+        console.log('⚪ No alcanza para concluir: alguna puerta no contestó. Volver a correrlo.');
+      }
+      return;
+    }
+
     // BILLING_PROBE=clavesmalas → ¿HAY NOMBRES DE VARIANTE QUE FIREBASE NO PUEDE GUARDAR? · SOLO LEE
     //
     // POR QUÉ (20/09/2026). Él avisó: *"al clickear cargar lo sugerido en adriana, no anda. no sé

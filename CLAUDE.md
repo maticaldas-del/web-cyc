@@ -1838,10 +1838,25 @@ pegar. Cuando pida el `PROMPT GUAY`, va adentro.
 > **El número del simulador gana sobre el % del robot.** Si no coinciden, el bueno es el del
 > simulador: el robot no puede saber cuántas unidades entran en una caja.
 
-**OJO CON LA DIRECCIÓN DEL PANEL: es pública y sin contraseña.** Cualquiera que la tenga entra —
-se comprobó el 17/09 cuando él le pasó el link al chat local y entró de una. Los datos que se ven
-ahí (costos, márgenes, ventas) salen de Firebase, y **si sus reglas están abiertas, los ve cualquiera
-con esa dirección**. Queda como pendiente para mirar, no se tocó nada.
+**ESTA NOTA DECÍA "el panel es PÚBLICO Y SIN CONTRASEÑA" Y ERA FALSA (21/09/2026).** Salió de que
+el 17/09 él le pasó el link al chat local y *"entró de una"* — y de ahí concluí que no había login.
+**Nunca lo miré en el código.** `index.html` tiene pantalla de login desde antes
+(`signInWithEmailAndPassword`, recuperar contraseña, cerrar sesión) y `onAuthStateChanged` **no
+llama a `startApp()` si no hay sesión**: sin usuario no se dibuja nada. Es el error anotado una
+docena de veces acá —concluir sobre el dato que decide, sin medirlo— y esta vez lo arrastré cuatro
+días adentro de una lista de pendientes de seguridad.
+
+**LO QUE SÍ HAY QUE MIRAR, Y ES OTRA COSA: las REGLAS de la base.** La contraseña de la pantalla
+protege la PANTALLA; los datos los sirve Firebase, y su dirección está adentro de `index.html`, que
+es público (eso es normal y no es un secreto). **Si las reglas están abiertas, cualquiera le pide
+los datos a Firebase directo y nunca pasa por el login** — ahí la contraseña es decoración.
+Se mide con **`reglas`** (comando nuevo, SOLO LEE), que pregunta **sin token** —que es lo que puede
+hacer un desconocido— e imprime **únicamente el código de respuesta y cuántas claves trajo, ningún
+dato**: si las reglas estuvieran abiertas y el comando volcara la respuesta, el comando hecho para
+detectar la filtración SERÍA la filtración.
+**Y cerrarlas NO apaga el robot**, que era el miedo razonable: `sync.mjs` entra con **su propio
+usuario y contraseña** (`FIREBASE_BOT_EMAIL` / `FIREBASE_BOT_PASSWORD`, en los secretos de GitHub)
+y trabaja con un token, no anónimo. Verificado en el código antes de proponer nada.
 
 ## LO QUE EL CHAT DE COMPRAS YA BARRIÓ, PARA NO HACERLO DOS VECES (18/09/2026)
 
