@@ -9298,9 +9298,16 @@ async function main() {
     //    `cost_components` (los descuentos: `loyal_discount`, `special_discount`, `gap_discount`).
     //    Ése es el campo nuevo que apareció el 21/09 con `campos`.
     //
-    // La hipótesis a chequear es simple: **base_cost menos los descuentos tendría que dar lo que
-    // cobró MP.** Si da, no hay nada que arreglar y el robot ya usa el real. Si no da, la
-    // diferencia es plata que hoy no está en ningún margen.
+    // LA PRIMERA HIPÓTESIS ERA "base_cost menos los descuentos = lo que cobró MP" Y ESTÁ
+    // DESMENTIDA (21/09/2026). La corrida dio 0 de 13, y con un patrón que se lee solo: base
+    // $11.240 → MP cobró $5.620, base $21.520 → $10.760. La MITAD clavada. Y entre las partes que
+    // devuelve ML aparece una que yo no estaba usando: **`ratio`**.
+    // O sea que `base_cost` NO es lo que pagás vos: es el envío ENTERO, y ML lo reparte entre el
+    // comprador y el vendedor. Leer ese número como nuestro costo habría inflado el envío al doble
+    // en todos los márgenes — el error más caro posible, y para el lado de "está todo mal" cuando
+    // no lo está.
+    // Por eso ahora se prueban los DOS caminos y se imprime el valor CRUDO de cada parte, en vez
+    // de deducir cuál manda: deducir es lo que hizo fallar la primera versión.
     //
     // NO IMPRIME NI UN DATO DEL COMPRADOR. Del envío se leen sólo los costos; el nombre, el
     // teléfono y la dirección vienen en la misma respuesta y NO se tocan (el registro es público).
@@ -9347,10 +9354,21 @@ async function main() {
           const desc = (Number(cc.loyal_discount) || 0) + (Number(cc.special_discount) || 0) + (Number(cc.gap_discount) || 0);
           const base = Number(sh.base_cost) || 0;
           const lista = Number(sh.list_cost) || 0;
+          // `ratio` es la PARTE del envío que paga el vendedor. La primera corrida (21/09) lo
+          // mostró sin lugar a dudas: base $11.240 → MP cobró $5.620, y base $21.520 → $10.760,
+          // o sea la mitad clavada en las dos. `base_cost` NO es lo que pagás vos: es el envío
+          // ENTERO, y ML lo reparte. Por eso acá se prueban los dos caminos y se imprime el valor
+          // CRUDO de cada parte, en vez de deducir cuál es. Todos son números de nuestro costo:
+          // del envío no se lee ni un dato del comprador.
+          const ratio = (cc.ratio != null && isFinite(Number(cc.ratio))) ? Number(cc.ratio) : null;
+          const comp = Number(cc.compensation) || 0;
           const neto = base - desc;
+          const conRatio = ratio != null ? Math.round(base * ratio - desc - comp) : null;
           const dif = Math.round(neto - cobrado);
-          if (Math.abs(dif) <= 1) coinciden++; else diferen++;
-          filas.push({ label, ord: String(o.id).slice(-6), base, lista, desc, neto, cobrado, dif, cc: Object.keys(cc).join(',') });
+          const difR = conRatio != null ? Math.round(conRatio - cobrado) : null;
+          if (difR != null ? Math.abs(difR) <= 1 : Math.abs(dif) <= 1) coinciden++; else diferen++;
+          const crudo = Object.entries(cc).map(([k, v]) => `${k}=${v}`).join(' ');
+          filas.push({ label, ord: String(o.id).slice(-6), base, lista, desc, neto, cobrado, dif, ratio, comp, conRatio, difR, crudo, cc: Object.keys(cc).join(',') });
         }
       }
       console.log(`=== ¿CUÁL ES EL ENVÍO REAL? · ${mirados} venta(s) de arriba de ${money(UMBRAL_ENVIO_GRATIS)} miradas ===\n`);
@@ -9359,12 +9377,16 @@ async function main() {
         console.log(`  sin el cargo de MP todavía (no liquidadas): ${sinCargo} · sin envío legible: ${sinEnvio}`);
         return;
       }
-      console.log('  base = lo que ML dice que costó · desc = descuentos de ML · cobrado = lo que te');
-      console.log('  descontó Mercado Pago (el que usa el robot hoy)\n');
+      console.log('  base = el envío ENTERO según ML · parte = la fracción que paga el vendedor (`ratio`)');
+      console.log('  cobrado = lo que te descontó Mercado Pago, que es el que usa el robot hoy\n');
       for (const f of filas) {
-        console.log(`  ${f.label.padEnd(8)} …${f.ord} · base ${money(f.base).padStart(10)} · desc ${money(f.desc).padStart(10)}`
-          + ` → queda ${money(f.neto).padStart(10)} · MP cobró ${money(f.cobrado).padStart(10)}`
-          + `  ${f.dif === 0 ? '✅ igual' : (f.dif > 0 ? `⚠️ ML ${money(f.dif)} MÁS` : `⚠️ ML ${money(-f.dif)} menos`)}`);
+        const calc = f.conRatio != null ? f.conRatio : f.neto;
+        const d = f.difR != null ? f.difR : f.dif;
+        console.log(`  ${f.label.padEnd(8)} …${f.ord} · base ${money(f.base).padStart(10)}`
+          + ` · parte ${(f.ratio != null ? f.ratio : '?')}`
+          + ` → te tocaría ${money(calc).padStart(10)} · MP cobró ${money(f.cobrado).padStart(10)}`
+          + `  ${Math.abs(d) <= 1 ? '✅ igual' : (d > 0 ? `⚠️ ML ${money(d)} MÁS` : `⚠️ ML ${money(-d)} menos`)}`);
+        console.log(`             crudo: ${f.crudo || '(sin cost_components)'}  ·  list_cost ${money(f.lista)}`);
       }
       console.log(`\n  coinciden: ${coinciden} · NO coinciden: ${diferen}`);
       console.log(`  sin el cargo de MP todavía: ${sinCargo} · sin envío legible: ${sinEnvio}`);
