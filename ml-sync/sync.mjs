@@ -12948,6 +12948,10 @@ async function main() {
         ['SHIPPING_FEE_AMOUNT', 'costo de envío'],
         ['FINANCING_FEE_AMOUNT', 'costo de las cuotas'],
         ['TAXES_DISAGGREGATED', 'impuestos desagregados'],
+        // Las DOS de impuestos, a propósito: por el nombre no se puede saber cuál trae los números
+        // y cuál el texto, y las retenciones son el tema abierto. Tildar las dos sale cero y saca
+        // la duda sin tener que volver a pedirle nada.
+        ['TAX_DETAIL', 'detalle de impuestos'],
         ['IS_RELEASED', 'liquidado'],
       ];
       // Lo que NO tiene que estar: datos del comprador. Si aparece alguna, se avisa fuerte.
@@ -12979,7 +12983,7 @@ async function main() {
           if (!cfgCols.length) console.log('      ⚠️ la configuración no devolvió columnas: no se puede verificar por acá.');
           else {
             const faltan = QUIERO.filter(([k]) => !cfgCols.includes(k));
-            if (!faltan.length) { okConfig++; console.log('      ✅ están las 7 que pediste'); }
+            if (!faltan.length) { okConfig++; console.log(`      ✅ están las ${QUIERO.length} que pediste`); }
             else console.log('      ❌ faltan: ' + faltan.map(([k, n]) => `${n} (${k})`).join(' · '));
             const malas = PROHIBIDAS.filter((k) => cfgCols.includes(k));
             if (malas.length) console.log('      🚨 HAY DATOS DEL COMPRADOR ADENTRO: ' + malas.join(', ') + ' — destildalas, el registro es público.');
@@ -13003,12 +13007,12 @@ async function main() {
           const filas = txt.split(/\r?\n/).filter((x) => x.trim()).length - 1;
           console.log(`   último archivo · creado ${ult.date_created || '—'} · ${cols.length} columnas · ${filas} filas`);
           const faltan = QUIERO.filter(([k]) => !cols.includes(k));
-          if (!faltan.length) { okArchivo++; console.log('      ✅ el archivo YA trae las 7 columnas nuevas'); }
+          if (!faltan.length) { okArchivo++; console.log(`      ✅ el archivo YA trae las ${QUIERO.length} columnas nuevas`); }
           else console.log('      · todavía con las columnas viejas (le faltan ' + faltan.length + '): es de antes del cambio, hay que pedir uno nuevo');
         } catch (e) { console.log('   último archivo · ❌ ' + String(e.message || e).slice(0, 90)); }
       }
       console.log(`\n── RESUMEN ──`);
-      console.log(`   cuentas miradas: ${cuentas} · con las 7 en la configuración: ${okConfig} · con las 7 en el archivo: ${okArchivo}`);
+      console.log(`   cuentas miradas: ${cuentas} · con las ${QUIERO.length} en la configuración: ${okConfig} · en el archivo: ${okArchivo}`);
       if (okConfig === cuentas && okArchivo < cuentas) {
         console.log('   La configuración quedó bien. Falta pedir un reporte NUEVO para que el archivo');
         console.log('   las traiga: eso lo hace `armarsaldo:90:go`, que escribe en MercadoPago.');
