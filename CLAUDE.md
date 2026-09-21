@@ -349,6 +349,11 @@ Los que más se usan:
 | `saldoml[:go]` | **lo que falta cobrar de ML, por cuenta** · escribe "A liquidar en ML" del Arqueo **en dólares** · no imprime ni un peso |
 | `dispo[:go]` | **el disponible de ML** a partir del número que él carga · sin `:go` sólo muestra |
 | `medirsaldo` | **cómo viene cada tipo de movimiento** del reporte: fechas y signos · solo lee |
+| `saldocuenta` | **el reporte "saldo en cuenta"**, que trae el disponible de verdad · dice si falta crearlo · solo lee |
+| `mptoken` | **¿la llave propia de Mercado Pago abre algo que la de ML no?** (medido: no) · solo lee |
+| `saldo4` · `saldo5` | **agotar el saldo**: 13 puertas más y las tres formas de pedir el reporte de liberaciones |
+| `diario[:go]` | **dejar el reporte generándose solo todos los días** · MP lo ignora: se hace desde su panel |
+| `armarcuenta[:go]` | **crear el reporte "saldo en cuenta"** · hoy no se puede por API, queda para cuando él lo cree |
 | `saldobill` | **¿se abrió el saldo directo de ML?** de a una y espaciado, para que el 429 no ensucie · solo lee |
 | `clavesmalas` | **nombres de variante que Firebase no puede guardar** (rompen "Cargar lo sugerido") · solo lee |
 | `verweb:<direccion>` | **leer una página de afuera y mostrar su texto** · el chat no tiene internet y el robot sí · solo lee · **lo que imprime queda en el registro PÚBLICO** |
@@ -3011,6 +3016,117 @@ endpoint existe y lo niega un permiso, que es lo contrario de un 404. **Hipótes
 permiso **"Métricas del negocio"** dice textual *"la información impositiva, **balances** y
 reportes de operaciones"* y él lo puso en SIN ACCESO ese mismo día. Devolverlo y reintentar es
 gratis; **hasta que se mida, es una sospecha y no un hecho.**
+
+### LA APLICACIÓN PROPIA DE MERCADO PAGO: CREADA, MEDIDA TRES VECES, NO APORTA NADA (21/09/2026)
+
+Él la creó entero a mano (*"voy a intentar ingresar en mi cuenta y hacer app de mercadopago,
+guiame"*). Quedó bien hecha: **Checkout API · API de Payments · cuenta de Matías**, con las
+credenciales de PRODUCCIÓN, y el Access Token entra por el secreto **`MP_TOKEN_MATIAS`** de GitHub
+(nunca por el chat: esa llave **no vence sola y puede mover plata**).
+
+**LO PRIMERO QUE MIRA `mptoken` ES DE QUIÉN ES LA LLAVE**, comparándola contra el id guardado e
+imprimiendo ✓ o ✗, nunca el número. Las cuatro cuentas son de la misma familia y crear la
+aplicación con la equivocada deja todo lo demás sin significado. Dio ✓.
+
+**RESULTADO, en tres mediciones: hace EXACTAMENTE lo mismo que la llave de MercadoLibre.**
+
+| | con la llave de ML | con la de MP |
+|---|---|---|
+| las 4 puertas del saldo | ❌ 403 / 404 | ❌ **igual** |
+| reportes y pagos recibidos | ✅ | ✅ igual |
+| pedir el reporte de saldo en cuenta | ❌ 404 | ❌ **igual** |
+
+**No se borró todavía**, decisión suya (*"no tomemos decisiones apresuradas"*) y tenía razón: yo
+dije "borrala" **antes** de probarla para ESCRIBIR, que era lo único que faltaba. Se borra cuando
+cierre el tema. Lo que sí queda medido es que **para esto no servía**, y la documentación de
+MercadoPago lo dice: la puerta del saldo contesta *"Public access not allowed"* — está reservada y
+no se le da a ninguna aplicación común. El reporte de "Dinero disponible" lo dieron de baja en
+marzo de 2022.
+
+### EL SALDO NO SE LEE, PERO HAY UN REPORTE QUE LO TRAE — Y SE CREA A MANO (21/09/2026)
+
+**EL ERROR DEL DÍA, Y ES EL ANOTADO DIEZ VECES ACÁ.** En la corrida de `mptoken`,
+`/v1/account/bank_report/config` contestó **404 `config_not_found_for_user`** y yo lo conté junto a
+los 404 de *"este recurso no existe"*. **No es lo mismo:** ese 404 dice que la puerta existe y que
+la cuenta **todavía no tiene armada la configuración**. Lo di por cerrado sobre el dato que abría
+o cerraba el tema. Lo destapó él preguntando *"¿seguro que no?"*.
+
+**Medido con `saldocuenta` (solo lee): la puerta está ABIERTA en las CUATRO cuentas** —
+`/bank_report/list` contesta 200 con el token de siempre.
+
+**Y APARECIÓ EL PATRÓN QUE LO EXPLICA TODO:**
+
+| reporte | ¿tiene configuración? | ¿se puede pedir por robot? |
+|---|---|---|
+| Liquidación (el que ya usamos) | **sí** | ✅ |
+| Saldo en cuenta (`bank_report`) | no | ❌ 404 |
+| Liberaciones (`release_report`) | no | ❌ 400 |
+
+Los dos que fallan son **exactamente** los dos sin configuración. Es una deducción, no una
+certeza, y se comprueba sola en cuanto él la cree.
+
+**LO QUE TIENE QUE HACER ÉL, UNA SOLA VEZ:** Mercado Pago → **Informes y facturación** →
+**Reportes de ventas y extractos de cuenta** → **Todas las transacciones** → **Crear reporte**, y
+si ofrece frecuencia, **diaria**. Ese reporte trae entre sus tipos de renglón
+**`initial_available_balance`**: o sea **el disponible de verdad**, no una cuenta deducida. Con eso
+se termina el punto de partida cargado a mano y su recarga mensual.
+**Al 21/09 está pendiente**: él dijo *"ni bien llego lo activo"*.
+
+**`PROGRAMARLO` TAMPOCO SE PUEDE POR API, Y EL CHEQUEO DE RELEER LO SALVÓ.** `diario:go` mandó
+`scheduled:true` en las cuatro, **MercadoPago aceptó sin error** y al releer seguía en `false`: lo
+ignora en silencio. Sin la relectura obligatoria (regla 6) el comando habría cantado "listo" cuatro
+veces sobre algo que no pasó. **Aceptar no es haber hecho.**
+De paso quedó medido que **la frecuencia YA es diaria** en las cuatro
+(`{"format":"CSV","hour":0,"type":"daily","value":null}`): lo único apagado es `scheduled`. La
+primera versión iba a mandar `value:1` y `hour:6` inventados por mí y habría pisado una forma que
+MercadoPago ya usa. **Se mide primero y se cambia UN campo.**
+
+**UN 400 DE "TE FALTA UN PARÁMETRO" ES UNA PUERTA ABIERTA, NO UN FRACASO.** De 13 puertas probadas
+en `saldo4`, doce dieron 404 o 403 y **una** dio *"Must specify begin_date parameter"*. Contarla
+entre los fracasos habría cerrado el único camino que quedaba. Se probó en `saldo5` con tres
+formas de mandar las fechas: las tres dieron lo mismo, y eso es lo que destapó el patrón de la
+configuración faltante.
+
+**El saldo directo queda CERRADO, ahora sí con ~30 puertas medidas** (`probarsaldo`, `probarsaldo2`,
+`saldo3`, `saldobill`, `mptoken`, `saldo4`, `saldo5`). No se vuelve a probar sin un dato nuevo.
+
+### LA AGENDA: CUÁNTA PLATA SE LIBERA CADA DÍA (21/09/2026)
+
+Pedido suyo: *"yo te voy a preguntar cuánto hay disponible, cuánto va a haber disponible mañana"*.
+
+Vive en **`cyc/finanzas/agenda`** (`{dias: {'AAAA-MM-DD': dólares}}`) y la arma **`saldoml`**, con
+el **MISMO archivo y el MISMO recorrido** con el que calcula "A liquidar en ML". No es un comando
+aparte a propósito: es la misma plata, abierta por día en vez de sumada, y con dos copias los días
+sumarían distinto del total que está al lado — el error anotado nueve veces acá.
+
+**El día se toma con el huso de acá (−03:00), no en UTC.** Si no, todo lo que se libera después de
+las 21:00 se anotaría al día siguiente y la respuesta a *"¿cuánto entra mañana?"* saldría corrida
+justo en las horas de más movimiento.
+
+**Va bajo los MISMOS frenos que el total**: si falta una cuenta o la cuenta no cierra contra las
+ventas, no se escribe. Una agenda incompleta es peor que ninguna — un día que dice de menos le hace
+postergar una compra que sí podía hacer.
+
+**Pendiente: mostrarla en el Arqueo**, que es donde la va a mirar.
+
+### PARA QUÉ SIRVEN LOS MOVIMIENTOS, MÁS ALLÁ DEL SALDO
+
+Pregunta suya. El reporte trae, venta por venta, **lo que Mercado Pago se quedó de verdad**
+(`FEE_AMOUNT`, `TAXES_AMOUNT`), **los retiros**, **las devoluciones y contracargos con su costo
+real** y **la fecha exacta de liberación**. De ahí salen tres cosas, en orden de lo que valen:
+
+1. **La agenda de plata que entra** (hecha) — para decidir cuándo comprar.
+2. **Chequear los márgenes contra la realidad.** Hoy el panel CALCULA lo que ML descuenta; esto
+   dice lo que descontó. Si no coinciden, hay márgenes mal medidos. **No está hecho, y es el que
+   más plata puede destapar.**
+3. **Las devoluciones con su costo en pesos**, en vez de contarlas como cantidad.
+
+**Y EL LÍMITE QUE NO SE VA A IR SOLO, PORQUE ÉL PREGUNTÓ JUSTO ESO** (*"eso se actualiza muchas
+veces durante el día"*): **no**. MercadoPago entrega el reporte **hasta el último día CERRADO**.
+Aunque el robot pregunte cada dos minutos, la respuesta sigue siendo la de ayer. Su razonamiento
+sobre el mecanismo —ancla + entradas y salidas— es exactamente el que está construido; lo que no se
+puede es el "muchas veces por día". **Por eso el reporte de saldo en cuenta importa: trae el número
+real y corrige solo el desvío**, que hoy se tapa recargando el ancla una vez por mes.
 
 ### EL DISPONIBLE DE ML: ÉL PONE EL PUNTO DE PARTIDA, EL ROBOT LO MANTIENE (20/09/2026)
 
