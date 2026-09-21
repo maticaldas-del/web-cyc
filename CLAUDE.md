@@ -349,7 +349,7 @@ Los que más se usan:
 | `saldoml[:go]` | **lo que falta cobrar de ML, por cuenta** · escribe "A liquidar en ML" del Arqueo **en dólares** · no imprime ni un peso |
 | `dispo[:go]` | **el disponible de ML** a partir del número que él carga · sin `:go` sólo muestra |
 | `medirsaldo` | **cómo viene cada tipo de movimiento** del reporte: fechas y signos · solo lee |
-| `realml[:cuenta]` | **¿el panel mide bien lo que ML descuenta?** lo real contra lo calculado, por cuenta y mes · solo lee |
+| `realml[:cuenta]` | **¿el panel mide bien lo que ML descuenta?** lo real contra lo calculado, **venta por venta** · solo lee |
 | `saldocuenta` | **el reporte "saldo en cuenta"**, que trae el disponible de verdad · dice si falta crearlo · solo lee |
 | `extracto` | **¿se puede pedir por robot el extracto de cuenta?** (medido: NO, 32 puertas) · solo lee |
 | `columnas` | **¿quedaron las 7 columnas nuevas del reporte?** cuenta por cuenta · avisa si hay datos del comprador · solo lee |
@@ -3020,7 +3020,70 @@ permiso **"Métricas del negocio"** dice textual *"la información impositiva, *
 reportes de operaciones"* y él lo puso en SIN ACCESO ese mismo día. Devolverlo y reintentar es
 gratis; **hasta que se mida, es una sospecha y no un hecho.**
 
-### LOS MÁRGENES CONTRA LA REALIDAD: 8 PUNTOS DE DIFERENCIA, Y VAN PARA EL LADO FEO (21/09/2026)
+### LOS MÁRGENES NO ESTABAN MAL: LA ALARMA DE AYER ERA UN ARTEFACTO (21/09/2026, de madrugada)
+
+**LA SECCIÓN DE ABAJO DICE QUE "ML SE QUEDÓ ENTRE 6 Y 9 PUNTOS MÁS DE LO QUE EL PANEL CREE" Y ESO
+ESTÁ MAL.** Se midió venta por venta con las columnas nuevas y el resultado es el contrario: **el
+neto que guarda el panel es el MISMO que el de MercadoPago entre el 95% y el 99,5% de las veces.**
+No hay márgenes mal medidos y **no hay ningún precio que tocar por esto.**
+
+| cuenta | órdenes cruzadas | ¿el NETO coincide? | ¿y el bruto? |
+|---|---|---|---|
+| Adriana | 785 | **781 · 99,5%** | 89,4% |
+| Ayelen | 981 | **932 · 95,0%** | 83,5% |
+| Luciana | 2.037 | **2.023 · 99,3%** | 88,9% |
+| Matías | 989 | **958 · 96,9%** | 87,2% |
+
+**QUÉ ERA LA BRECHA: EL DENOMINADOR, NO LA CUENTA.** Abajo de los $33.000 **el envío lo paga el
+COMPRADOR**, así que la operación que cobra MercadoPago vale *producto + envío* y nuestra venta
+guarda **sólo el producto**. Con eso el reporte tiene más bruto Y más "lo que ML se quedó", y el
+porcentaje sube de mentira. Medido, y el patrón es perfecto en las cuatro cuentas:
+
+| cuenta | bruto del reporte ÷ bruto del panel | la "brecha" abajo de $33.000 | **arriba de $33.000** |
+|---|---|---|---|
+| Adriana | ×1,025 · abajo ×1,046 · arriba ×1,003 | −4,4 puntos | **−0,3** |
+| Ayelen | ×1,155 · abajo ×1,170 · arriba ×1,000 | −14,6 puntos | **−0,0** |
+| Luciana | ×1,080 · abajo ×1,092 · arriba ×1,020 | −8,5 puntos | **−0,8** |
+| Matías | ×1,038 · abajo ×1,086 · arriba ×1,001 | −7,9 puntos | **−0,0** |
+
+**ARRIBA DE LA BARRERA LA DIFERENCIA ES CERO EN LAS CUATRO.** Arriba de $33.000 el envío es gratis
+para el comprador, así que los dos lados suman lo mismo y coinciden clavado. Ése es el dato que lo
+cierra: **un error que aparece sólo de un lado de la barrera no es un error de la cuenta — es que
+los dos lados no están sumando lo mismo.** Y el tamaño de la brecha sigue al de la proporción del
+bruto, cuenta por cuenta: Ayelen tiene la mayor de las dos cosas y Adriana la menor.
+
+**MI HIPÓTESIS ERA OTRA Y TAMBIÉN ESTABA MAL.** Había anotado que el candidato fuerte era el **neto
+ESTIMADO** de las ventas que ML todavía no liquidó. Se midió separando por `IS_RELEASED` y da **al
+revés**: las **liquidadas** difieren MÁS (−2,6 · −14,0 · −7,5 · −3,9) que las **no liquidadas**
+(−0,5 · −9,2 · −4,7 · −1,9). O sea que el neto estimado no explica nada: lo que explica todo es de
+qué lado de la barrera está la venta.
+**Las retenciones tampoco:** el reporte las abre y son **0,10% a 1,17% de lo vendido**, no nueve
+puntos. Los dos candidatos que yo tenía primeros quedaron descartados con números.
+
+**POR QUÉ LA COMPARACIÓN POR MES NO PODÍA VER ESTO, y vale como método:** mezclaba tres cosas
+—ventas que un lado tiene y el otro no, el recorte de la ventana del reporte, y el envío del
+comprador— y las tres tiran para el mismo lado. Recién cruzando **la misma orden en los dos lados**
+se puede preguntar *"¿el neto es el mismo?"*, que es la única pregunta que decide si un margen está
+bien. **La clave la dio `ORDER_ID`, una columna que estaba ahí y nadie había tildado.**
+
+**LO QUE QUEDA ABIERTO, y es chico:**
+ · **entre el 0,5% y el 5% de las órdenes el neto NO coincide** (Ayelen es la peor, 49 de 981). No
+   se miró todavía de a una; con la clave puesta, ahora se puede.
+ · **las órdenes que un lado tiene y el otro no** (entre 182 y 314 que al panel le faltan, y entre
+   508 y 1.082 que el reporte no trae). Parte es el recorte de la ventana de 90 días, pero no está
+   medido cuánto. **Eso es lo que hay que mirar antes de creerle a cualquier total por mes.**
+ · **el ×0,54 de agosto en Matías** que quedó anotado abajo es de la comparación por mes, o sea de
+   lo mismo que acabó siendo un artefacto. Se vuelve a mirar con la clave, no con el total.
+
+**LA LECCIÓN, y es una variante nueva de la de siempre:** el chequeo del 20/09 ya avisaba que los
+dos lados no miraban la misma plata (la proporción ×0,54, ×0,90) y **aun así yo saqué una
+conclusión del porcentaje**. El freno estaba puesto, imprimía lo correcto, y lo leí igual. **Un
+aviso que uno mismo escribió no protege de nada si después se lee el número de al lado.**
+Y la segunda: **cuando dos sistemas miden "lo mismo" y difieren, antes de buscar el error hay que
+preguntar qué mete cada uno adentro del número.** Acá uno contaba el envío del comprador y el otro
+no, y eso solo explicaba toda la diferencia.
+
+### LOS MÁRGENES CONTRA LA REALIDAD: 8 PUNTOS DE DIFERENCIA — ⚠️ DESMENTIDO, VER ARRIBA (21/09/2026)
 
 Pedido suyo: *"fijate todo, si los márgenes dan bien (…) hacé un análisis profundo"*. El comando es
 **`realml[:cuenta]`** y **SOLO LEE**. Compara lo que el panel CALCULA que ML se queda contra lo que
@@ -3514,7 +3577,9 @@ siguiente iba a gritar *"NO se parecen"* sin que pasara nada, y ese aviso es jus
 decide si se pisa el número del Arqueo. Ahora convierte antes de comparar, y sin tipo de cambio no
 compara en vez de comparar mal.
 
-**Pendiente que él pidió:** mostrarlo **en dólares y en chiquito al lado en pesos**. Todavía no está.
+**HECHO el 20/09**: los dieciséis campos del Arqueo muestran el equivalente en pesos en chiquito
+al lado, armado en `updateArqueo` y no campo por campo — tocarlos de a uno es el borrado a ojo que
+ya rompió la app dos veces.
 
 ## "A LIQUIDAR EN ML" YA SE CALCULA SOLO; EL DISPONIBLE NO (20/09/2026)
 
