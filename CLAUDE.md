@@ -3158,6 +3158,82 @@ esos ya se descuentan aparte en el margen.
 público, y los dos lados no cubren exactamente las mismas ventas. Un porcentaje aguanta que las
 bases no sean idénticas; una resta de totales, no.
 
+### A QUÉ % HAY QUE BAJAR PARA GANAR LA CAJA, EN ROTACIÓN DE STOCK (21/09/2026)
+
+Pedido suyo mirando el Xiaomi Watch S5: *"se puede agregar ahi? que ponga a que % hay que bajarlo
+para ganar caja. a todos los productos"*.
+
+**EL DATO YA ESTABA GUARDADO Y VIVÍA ESCONDIDO EN EL GLOBITO.** El robot escribe el precio que pide
+ML en `cyc/mllinks/<MLA>/cajaPtw` una vez por hora, pero la pantalla sólo lo mostraba al pasar el
+mouse por encima, renglón por renglón — **y en el teléfono no hay mouse**. Es el mismo error de la
+ayuda del simulador del 19/09: el dato que decide no puede estar tapado. Es la variante del "dato
+medido que no se guardaba" del 19/09, sólo que acá se guardaba y no se mostraba.
+
+**EL % DE BAJA SOLO NO SE MUESTRA NUNCA.** Es la lección del Filtro agua del 14/09: ML dice a qué
+precio se GANA la caja, no a qué precio queda ganancia — ese día el aviso decía *"se gana a $1.000"*
+y la mercadería sola costaba $1.059. Por eso el renglón lleva **siempre los dos números**:
+
+| |  |
+|---|---|
+| llega al piso | `bajar 16% → $372.722` · **queda en 31%** en VERDE |
+| no llega | idem · **quedás en 6% ✕** en ROJO |
+| sin margen medido | dice *"margen sin medir"*, nunca un número inventado |
+| el precio de ML ya está abajo del tuyo | *"no es cuestión de bajar"* — el dato es de hace una hora o la caja se pierde por otra cosa |
+
+**NO ES UNA CUENTA NUEVA:** `cajaBajarDe` usa `comisionEnPrecio` (la comisión de ML al precio nuevo,
+la misma de los dos simuladores) y `simMargen` (la línea del dinero, la misma de `margenMLDe`).
+**Probado con las funciones REALES sacadas del archivo:** al MISMO precio da EXACTAMENTE el mismo
+margen que la ficha en los 5 casos (30,14% contra 30,14%), que es la forma de saber que no es una
+copia que se va a separar. Y el cruce contra ML: `unapub:MLA3550882216:23` dio **6,5%** al precio de
+la caja y la columna da lo mismo.
+
+**LO QUE COBRA FULL NO SE TOCA**, aunque el precio nuevo cruce para abajo los $33.000 y ahí ML deje
+de cobrarlo. Mantenerlo hace ver el margen MENOR que el real, que es el lado seguro cuando el número
+decide si se baja un precio. Se avisa en el globito para que no sorprenda.
+
+**Y ENTRAN LAS QUE COMPARTEN LA CAJA**, no sólo las que la pierden: compartir no es ganar —ML
+reparte las ventas con otro— y ML informa igual a qué precio se gana entera. Dejarlas afuera
+escondía justo el caso en que falta poquito. El producto que tiene **alguna** publicación ganando no
+muestra nada: ahí no hay nada que bajar.
+
+Probado con 21 casos de la cuenta y 16 del renglón. Chequeo de las tres listas más las clases de
+CSS: **0 funciones, 0 variables, 0 `id` y 0 clases de diferencia**; sólo lo que se agregó.
+
+**EL WATCH S5, QUE ES EL QUE LO DISPARÓ:** `MLA3550882216` (Matías) está a $445.120 con 24,3% y ML
+pide **$372.722** para ganar la caja, o sea bajar 16%. **A ese precio el margen cae a 6,5%** — muy
+abajo del piso. **No conviene pelearla.** Hay una segunda publicación del mismo reloj
+(`MLA3535547790`, $449.530) que **nunca vendió**, así que no tiene margen medido.
+
+### EL CUPO PARA MANDAR A FULL NO SALE POR LA API (21/09/2026)
+
+Pregunta suya: *"la api te dice cuantas unidades puedo enviar a full? o sea el cupo que tengo para
+enviar?"*. **No.**
+
+Medido leyendo la documentación de ML con `apidoc`: la página entera de Envíos Fulfillment
+documenta **TRES direcciones y nada más** —el stock que ya está adentro
+(`/inventories/<id>/stock/fulfillment`), los movimientos de un inventario y la búsqueda de
+movimientos (`/stock/fulfillment/operations/search`)—. **Ninguna dice cuánto se puede mandar.**
+Se suma a lo ya medido el 20/08: las 7 direcciones de "envíos entrantes" fallan en las 4 cuentas.
+
+**OJO CON UNA QUE SE LLAMA PARECIDO Y ES OTRA COSA: la "capacidad de envío" de la API es de FLEX**
+—cuántos paquetes despachás VOS por día desde tu casa, con su `capacity_max`— y no tiene nada que
+ver con el cupo de Full. Es exactamente el error anotado el 17/09 con los catálogos: **dos cosas no
+se distinguen por cómo se llaman.** Dar ese número como si fuera el cupo de Full sería darle un
+número que no es el que mira.
+
+**Lo que NO se hizo, y hay que decirlo:** se leyó la documentación, no se golpeó puerta por puerta
+con el token. Queda ofrecido el barrido (8 o 10 direcciones candidatas, una corrida) para cerrarlo
+con datos en vez de con la documentación.
+
+**Y DE PASO SE ARREGLÓ `apidoc`, QUE DEVOLVÍA CERO EN LA DOCUMENTACIÓN DE ML.** El patrón sólo
+miraba `/v1/…` y `/v2/…`, que es como escribe MercadoPago; las de MercadoLibre no llevan versión
+adelante (`/items/…`, `/inventories/…`). O sea que un barrido de la documentación de ML habría
+devuelto **cero rutas, y un cero ahí se lee como "no existe el endpoint"** — el error anotado de
+punta a punta en este archivo, en el comando hecho justamente para no cometerlo.
+Las raíces se listan a propósito en vez de aceptar cualquier `/palabra/`: si no, entra cada pedazo
+de URL de la página. Probado con un texto que mezcla las dos formas: salen las 5 rutas esperadas
+con su verbo y el link de la página NO entra.
+
 ### LA AGENDA YA SE VE EN EL ARQUEO, Y SE ACTUALIZA SOLA (21/09/2026)
 
 En Finanzas, abajo de las cuatro tarjetas y arriba de todo lo que se carga a mano (la regla del
