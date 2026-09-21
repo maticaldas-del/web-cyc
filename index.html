@@ -701,6 +701,13 @@ footer{margin-top:32px;padding-top:14px;border-top:1px solid var(--border);font-
       <div class="bk-card"><div class="bk-lbl">Lo que nos deben</div><div class="bk-val pos" id="bk_deben">$0</div><div id="dbk_deben" style="margin-top:5px"></div></div>
       <div class="bk-card"><div class="bk-lbl">Lo que debemos</div><div class="bk-val neg" id="bk_deudas">$0</div><div id="dbk_deudas" style="margin-top:5px"></div></div>
     </div>
+    <!-- LA AGENDA DE LIBERACIONES (21/09/2026). Pedido suyo: "yo te voy a preguntar cuánto hay
+         disponible, cuánto va a haber disponible mañana". La llena renderAgenda() leyendo de
+         cyc/finanzas/agenda, que escribe el robot con el MISMO recorrido con el que calcula
+         "A liquidar en ML" — es la misma plata abierta por día.
+         VA ACÁ, entre las cuatro tarjetas y el buscador: abajo de la conclusión y su detalle, y
+         arriba de todo lo que se carga a mano (la regla del 26/08). -->
+    <div id="arqueo-agenda" style="margin-bottom:14px"></div>
     <input class="search-box" id="arqueo-search" type="search" placeholder="Buscar producto..." oninput="updateArqueo()">
     <div id="arqueo-product-results"></div>
     <div id="arqueo-missing-costs" style="margin-bottom:14px"></div>
@@ -2257,7 +2264,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='19.77';
+const APP_VERSION='19.78';
 // El problema real que esto resuelve no es curiosidad: es que el celular guarda la app y sigue
 // mostrando la de ayer sin avisar. Varias veces se revisó un cambio que ya estaba subido y no se
 // veía. Por eso, además del número, el chip avisa cuando hay una versión nueva esperando.
@@ -5800,6 +5807,115 @@ function renderReconciliacion(){
   `,col);
 }
 
+// ── LA AGENDA DE LIBERACIONES: CUÁNTA PLATA SE LIBERA CADA DÍA (21/09/2026) ──────────────────
+//
+// Pedido suyo: *"yo te voy a preguntar cuánto hay disponible, cuánto va a haber disponible
+// mañana"*. La arma el robot en `cyc/finanzas/agenda`, con el MISMO archivo y el MISMO recorrido
+// con el que calcula "A liquidar en ML": es la misma plata, abierta por día en vez de sumada.
+// La pantalla NO calcula ningún margen ni ninguna comisión — sólo agrupa y muestra.
+//
+// LA CUENTA VA APARTE DE LA PANTALLA (`agendaCalc`) para poder probarla con la función REAL y no
+// con una copia, que es la regla de este archivo.
+//
+// EL DÍA SE TOMA CON EL HUSO DE ACÁ (−03:00), el MISMO que usa el robot al armarla. Si una punta
+// usara la hora del teléfono y la otra otra cosa, "mañana" apuntaría a días distintos en cada
+// lado y el número no querría decir nada.
+function agendaHoy(){ return new Date(Date.now()-3*3600e3).toISOString().slice(0,10); }
+function agendaMasDias(txt,n){
+  const t=Date.parse(txt+'T12:00:00Z'); if(!isFinite(t))return txt;
+  return new Date(t+n*864e5).toISOString().slice(0,10);
+}
+function agendaCalc(ag,hoyTxt){
+  // LA FECHA TIENE QUE EXISTIR DE VERDAD, no sólo tener forma de fecha. La prueba lo agarró:
+  // `2026-13-99` pasa el patrón de "cuatro-dos-dos" y sumaba plata en un día que no existe, y
+  // después salía dibujado con el nombre de día vacío. Se comprueba que al parsearla vuelva
+  // igual. Y un valor `null` NO es cero: es un dato que falta, así que la fila se descarta en
+  // vez de agregar un renglón en cero que se lee como "ese día no entra nada".
+  const dias=Object.entries((ag&&ag.dias)||{})
+    .map(([d,v])=>({d:String(d),usd:(v===null||v===undefined||v==='')?NaN:Number(v)}))
+    .filter(x=>{
+      if(!/^\d{4}-\d{2}-\d{2}$/.test(x.d)||!Number.isFinite(x.usd))return false;
+      const t=Date.parse(x.d+'T12:00:00Z');
+      return isFinite(t)&&new Date(t).toISOString().slice(0,10)===x.d;
+    })
+    .sort((a,b)=>a.d<b.d?-1:1);
+  const suma=(desde,hasta)=>dias.reduce((t,x)=>t+((x.d>=desde&&x.d<=hasta)?x.usd:0),0);
+  const manana=agendaMasDias(hoyTxt,1);
+  // LOS DÍAS QUE YA PASARON NO SE ESCONDEN NI SE CUENTAN COMO "POR VENIR". El robot sólo escribe
+  // días futuros, pero la agenda se calcula de noche: si hoy es más tarde que el día que se
+  // calculó, esos días YA se liberaron. Llamarlos "va a entrar" sería prometer plata que ya está
+  // adentro, y borrarlos sería esconder la diferencia. Se muestran aparte.
+  const pasados=dias.filter(x=>x.d<hoyTxt);
+  const porVenir=dias.filter(x=>x.d>=hoyTxt);
+  return {
+    hay:dias.length>0,
+    dias:porVenir,
+    hoy:suma(hoyTxt,hoyTxt),
+    manana:suma(manana,manana),
+    semana:suma(hoyTxt,agendaMasDias(hoyTxt,6)),
+    total:porVenir.reduce((t,x)=>t+x.usd,0),
+    yaLiberado:pasados.reduce((t,x)=>t+x.usd,0),
+    nPasados:pasados.length,
+    primero:porVenir.length?porVenir[0].d:'',
+    ultimo:porVenir.length?porVenir[porVenir.length-1].d:'',
+    ts:Number(ag&&ag._ts)||0,
+  };
+}
+// Dibuja la agenda. NO se muestra cuando se está mirando un mes CERRADO: la agenda es de acá en
+// adelante, y un mes guardado no tiene una que tenga sentido (los cierres viejos ni siquiera la
+// tienen adentro, así que además saldría vacía).
+function renderAgenda(){
+  const box=document.getElementById('arqueo-agenda'); if(!box) return;
+  if(_arqViewYM){ box.innerHTML=''; return; }
+  const a=agendaCalc(state.finanzas&&state.finanzas.agenda, agendaHoy());
+  const tc=curTC();
+  // Los dólares son la moneda del Arqueo; los pesos van al lado en chiquito, que es lo que él
+  // pidió el 20/09. SIN dólar cargado no se inventa una conversión: simplemente no se muestran.
+  const enPesos=(usd)=>tc>0?` <span style="color:var(--muted);font-size:.72em">≈ ${fmt(Math.round(usd*tc))}</span>`:'';
+  if(!a.hay){
+    box.innerHTML='<div class="bk-card" style="padding:12px"><div class="bk-lbl">Se libera de ML</div>'
+      +'<div style="font-size:.72rem;color:var(--muted);margin-top:6px">Todavía no se calculó. '
+      +'Se hace solo todas las noches junto con el resumen del día.</div></div>';
+    return;
+  }
+  // El aviso de viejo: la agenda se rehace todas las noches, así que más de 2 días es que algo no
+  // corrió. Un número viejo en una pantalla de plata se lee como si estuviera al día.
+  const diasVieja=a.ts?Math.floor((Date.now()-a.ts)/864e5):null;
+  const vieja=diasVieja!=null&&diasVieja>=2;
+  const maxD=a.dias.reduce((m,x)=>Math.max(m,x.usd),0)||1;
+  const NOMBRE=['dom','lun','mar','mié','jue','vie','sáb'];
+  const filas=a.dias.slice(0,14).map(x=>{
+    const t=Date.parse(x.d+'T12:00:00Z');
+    const dia=isFinite(t)?NOMBRE[new Date(t).getUTCDay()]:'';
+    const dd=x.d.slice(8,10)+'/'+x.d.slice(5,7);
+    const pct=Math.max(2,Math.round(x.usd/maxD*100));
+    const esHoy=x.d===agendaHoy();
+    return '<div style="display:flex;align-items:center;gap:8px;margin-top:4px">'
+      +`<div style="width:64px;font-size:.66rem;color:var(--muted);font-family:'DM Mono',monospace">${dia} ${dd}</div>`
+      +`<div style="flex:1;height:8px;background:var(--line,#2a2a2a);border-radius:4px;overflow:hidden">`
+      +`<div style="width:${pct}%;height:100%;background:${esHoy?'var(--ok,#4caf50)':'var(--accent,#7c9cff)'}"></div></div>`
+      +`<div style="width:86px;text-align:right;font-size:.7rem;font-family:'DM Mono',monospace">${fmt(Math.round(x.usd))}</div>`
+      +'</div>';
+  }).join('');
+  const resto=a.dias.length>14?`<div style="font-size:.64rem;color:var(--muted);margin-top:6px">y ${a.dias.length-14} día(s) más, hasta el ${a.ultimo.slice(8,10)}/${a.ultimo.slice(5,7)}</div>`:'';
+  box.innerHTML='<div class="bk-card" style="padding:12px">'
+    +'<div style="display:flex;justify-content:space-between;align-items:baseline;flex-wrap:wrap;gap:8px">'
+    +'<div class="bk-lbl">Se libera de ML</div>'
+    +`<div style="font-size:.64rem;color:${vieja?'var(--warn,#e0a63a)':'var(--muted)'};font-family:'DM Mono',monospace">`
+    +(diasVieja==null?'':(diasVieja<=0?'calculado hoy':diasVieja===1?'calculado ayer':`⚠️ calculado hace ${diasVieja} días`))+'</div></div>'
+    +'<div style="display:flex;gap:18px;flex-wrap:wrap;margin-top:8px">'
+    +`<div><div style="font-size:.62rem;color:var(--muted)">hoy</div><div style="font-size:1.25rem;font-weight:600">${fmt(Math.round(a.hoy))}${enPesos(a.hoy)}</div></div>`
+    +`<div><div style="font-size:.62rem;color:var(--muted)">mañana</div><div style="font-size:1.25rem;font-weight:600">${fmt(Math.round(a.manana))}${enPesos(a.manana)}</div></div>`
+    +`<div><div style="font-size:.62rem;color:var(--muted)">7 días</div><div style="font-size:1.25rem;font-weight:600">${fmt(Math.round(a.semana))}${enPesos(a.semana)}</div></div>`
+    +`<div><div style="font-size:.62rem;color:var(--muted)">todo lo pendiente</div><div style="font-size:1.25rem;font-weight:600">${fmt(Math.round(a.total))}${enPesos(a.total)}</div></div>`
+    +'</div>'
+    +(a.nPasados?`<div style="font-size:.64rem;color:var(--muted);margin-top:6px">Ya se liberó desde que se calculó: ${fmt(Math.round(a.yaLiberado))} en ${a.nPasados} día(s). Eso ya está en el disponible.</div>`:'')
+    +'<div style="margin-top:10px">'+filas+'</div>'+resto
+    +'<div style="font-size:.62rem;color:var(--muted);margin-top:8px;line-height:1.45">'
+    +'Es plata YA VENDIDA que ML todavía no liberó, con el día en que la vas a poder usar. '
+    +'Sale del mismo cálculo que «A liquidar en ML», así que los dos números miden lo mismo.</div>'
+    +'</div>';
+}
 function updateArqueo(){
   // Si hay un snapshot seleccionado, usar sus finanzas temporalmente
   const selKey=document.getElementById('fin-view-sel')?.value;
@@ -5813,6 +5929,7 @@ function updateArqueo(){
     _arqViewYM=null;
     return;
   }
+  renderAgenda();
   const c=calcArqueo();
   // Si estamos viendo un snapshot, usar sus valores guardados de stock (no recalcular)
   // así el display y las comparaciones son consistentes.
@@ -6109,8 +6226,14 @@ async function saveSnapshot(){
   const prodValues={};
   (state.products||[]).forEach(p=>{let v=0;LOCS.forEach(l=>v+=getQ(p.id,l)*costP(p));prodValues[p.id]={name:p.name,value:v};});
   const tipoCambio=parseFloat(state.finanzas['tipo_cambio'])||0;
+  // LA AGENDA NO ENTRA EN EL CIERRE DEL MES, a propósito. Es una lista de días FUTUROS: dentro de
+  // un cierre guardado no quiere decir nada, y si se copiara quedaría una copia congelada de la
+  // misma plata adentro de cada mes para siempre — dos lugares con el mismo dinero es el error
+  // anotado de punta a punta en este archivo. Los cierres viejos tampoco la tienen, así que
+  // `renderAgenda` no la muestra cuando se mira un mes cerrado.
+  const {agenda:_sinAgenda, ...finSnap}=state.finanzas||{};
   const snap={label,ts:Date.now(),stock:c.stockVal,stockML:c.stockML,stockLocal:c.stockLocal,total:c.total,tipoCambio,
-    finanzas:{...state.finanzas},
+    finanzas:finSnap,
     locValues:Object.fromEntries(LOCS.map(l=>{let v=0;(state.products||[]).forEach(p=>v+=getQ(p.id,l)*costP(p));return[sid(l),v];})),
     prodValues};
   await fbSet('snapshots/'+key,snap);await log('Cerró mes: '+label);toast('Mes '+label+' guardado ✓');

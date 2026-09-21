@@ -147,5 +147,35 @@ jobs:
           BILLING_PROBE: candidatos:go
         run: node ml-sync/sync.mjs
 
+      # EL SALDO DE ML Y LA AGENDA DE LIBERACIONES (21/09/2026).
+      #
+      # Calcula "A liquidar en ML" del Arqueo y la agenda de cuánta plata se libera cada día, que
+      # es lo que contesta *"¿cuánto va a haber disponible mañana?"*.
+      #
+      # POR QUÉ ESTÁ ACÁ Y NO SE CORRE A MANO, que es el motivo por el que se agregó: hasta hoy
+      # `saldoml` sólo existía adentro de `BILLING_PROBE`, o sea que la agenda se actualizaba
+      # ÚNICAMENTE cuando alguien lo disparaba — y cada corrida a mano MATA el ciclo de 2 minutos
+      # del robot. O sea que el estado NORMAL de ese número era estar viejo, y un número viejo en
+      # una pantalla de plata es peor que no tenerlo. Acá se refresca solo todas las noches.
+      #
+      # LOS DOS FRENOS SIGUEN ADENTRO DEL COMANDO: si falta una cuenta o la cuenta no cierra contra
+      # las ventas, NO pisa lo que él tiene cargado. Y sin tipo de cambio no escribe nada, porque
+      # el Arqueo está en dólares y el reporte viene en pesos.
+      #
+      # NO MUEVE UN PESO, NO TOCA ML Y NO TOCA NINGÚN PRECIO. Y no imprime montos: el registro es
+      # público.
+      - name: Saldo a liquidar y agenda de liberaciones
+        env:
+          ML_CLIENT_ID: ${{ secrets.ML_CLIENT_ID }}
+          ML_CLIENT_SECRET: ${{ secrets.ML_CLIENT_SECRET }}
+          FIREBASE_API_KEY: ${{ secrets.FIREBASE_API_KEY }}
+          FIREBASE_DB_URL: ${{ secrets.FIREBASE_DB_URL }}
+          FIREBASE_BOT_EMAIL: ${{ secrets.FIREBASE_BOT_EMAIL }}
+          FIREBASE_BOT_PASSWORD: ${{ secrets.FIREBASE_BOT_PASSWORD }}
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+          BILLING_PROBE: saldoml:go
+        run: node ml-sync/sync.mjs
+
       # (El almacenamiento Full y los cargos de ML por débito —IIBB, etc.— ya NO se cargan como gasto
       # mensual: ahora se descuentan como un % por cuenta sobre cada venta, en la web. Ver ML_EXTRA_PCT.)
