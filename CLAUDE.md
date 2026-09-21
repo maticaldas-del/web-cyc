@@ -359,6 +359,7 @@ Los que más se usan:
 | `armarcuenta[:go]` | **crear el reporte "saldo en cuenta"** · hoy no se puede por API, queda para cuando él lo cree |
 | `saldobill` | **¿se abrió el saldo directo de ML?** de a una y espaciado, para que el 429 no ensucie · solo lee |
 | `clavesmalas` | **nombres de variante que Firebase no puede guardar** (rompen "Cargar lo sugerido") · solo lee |
+| `apidoc:<direccion>` | **las direcciones de API que aparecen en una página de documentación** · sólo las rutas, no el texto entero · solo lee |
 | `verweb:<direccion>` | **leer una página de afuera y mostrar su texto** · el chat no tiene internet y el robot sí · solo lee · **lo que imprime queda en el registro PÚBLICO** |
 | `apis` | qué endpoints de ML contestan (para diagnosticar) |
 | `ciclo` | **no es un comando: vuelve a prender el ciclo de 2 minutos** (ver abajo) |
@@ -3311,7 +3312,16 @@ se termina el punto de partida cargado a mano y su recarga mensual.
 **LO HIZO EL 21/09 Y NO ALCANZÓ**: el reporte se crea y se baja bien desde el panel, pero la API
 sigue sin verlo. Ver la sección de arriba — el extracto se baja a mano y punto.
 
-**`PROGRAMARLO` TAMPOCO SE PUEDE POR API, Y EL CHEQUEO DE RELEER LO SALVÓ.** `diario:go` mandó
+**`PROGRAMARLO` SÍ SE PUEDE POR API — YO ESTABA GOLPEANDO LA PUERTA EQUIVOCADA (21/09/2026).**
+El barrido de la documentación con `apidoc` encontró **`POST /v1/account/settlement_report/schedule`**
+y su `DELETE`, dos endpoints que **nunca probé**. La frase que estaba acá —*"programarlo tampoco se
+puede por API"*— salió de mandar `scheduled:true` DENTRO de la configuración, que es otra cosa.
+**No lo busqué en la documentación: lo deduje de un intento fallido.**
+Hoy no cambia nada práctico (él lo programó a mano desde el panel y quedó andando en las cuatro),
+pero la conclusión era falsa. **La lección: "no se puede" sólo se escribe después de leer la
+documentación, no después de que falle el primer intento.**
+
+**LO QUE SÍ QUEDÓ BIEN DE ESA CORRIDA, Y ES EL CHEQUEO DE RELEER.** `diario:go` mandó
 `scheduled:true` en las cuatro, **MercadoPago aceptó sin error** y al releer seguía en `false`: lo
 ignora en silencio. Sin la relectura obligatoria (regla 6) el comando habría cantado "listo" cuatro
 veces sobre algo que no pasó. **Aceptar no es haber hecho.**
