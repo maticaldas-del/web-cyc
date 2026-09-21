@@ -3169,7 +3169,7 @@ había tildado.** Él las tildó en el panel de MercadoPago:
 |---|---|
 | `ORDER_ID` · `PACK_ID` | **la clave.** La venta guarda `saleId`/`numVenta` —de ML— y el reporte no traía ninguno de los dos. Sin clave no hay cruce. |
 | `SHIPPING_FEE_AMOUNT` · `MKP_FEE_AMOUNT` | separan el envío de la comisión. Sin eso la brecha daba el tamaño del envío **y sólo arriba de los $33.000** — la forma exacta del agujero del 17/09: habría salido como hallazgo siendo un artefacto. |
-| `TAXES_DISAGGREGATED` · `TAX_DETAIL` | las retenciones, una por una |
+| `TAXES_DISAGGREGATED` · `TAX_DETAIL` | las retenciones, una por una. **Se pidieron las DOS** porque por el nombre no se puede saber cuál trae los números y cuál el texto, y tildar la de más sale cero |
 | `IS_RELEASED` | si el neto de esa venta es real o todavía estimado |
 
 **NO SE PIDIÓ NINGUNA COLUMNA CON DATOS DEL COMPRADOR** (nombre, documento, tarjeta, últimos 4
@@ -3179,10 +3179,14 @@ fuerte si alguna aparece.
 **AGREGAR COLUMNAS NO ROMPE NADA, y se verificó ANTES de pedírselas:** todos los lugares que leen
 este CSV buscan por NOMBRE (`cols.indexOf('REAL_AMOUNT')`), nunca por posición.
 
-**SE VERIFICÓ CUENTA POR CUENTA Y FALTABA UNA.** `columnas` (solo lee) midió: Adriana, Luciana y
-Matías con las 7; **Ayelen con 18 columnas, sin `SHIPPING_FEE_AMOUNT`**. Las cuatro quedaron con
-`scheduled:true`, `include_withdraw:true` y frecuencia diaria. **Un cambio hecho a mano en cuatro
-pantallas iguales se equivoca en una**, y la única forma de saber cuál es mirarlas las cuatro.
+**SE VERIFICÓ CUENTA POR CUENTA Y HICIERON FALTA TRES VUELTAS.** `columnas` (solo lee) midió, en
+cada tanda, una cuenta distinta incompleta: primero **Ayelen sin `SHIPPING_FEE_AMOUNT`**, después
+**Adriana y Luciana sin `TAX_DETAIL`**, y recién en la tercera **4 de 4**. Las cuatro quedaron con
+`scheduled:true`, `include_withdraw:true` y frecuencia diaria.
+**Un cambio hecho a mano en cuatro pantallas iguales se equivoca en alguna, y nunca en la misma.**
+La única forma de saberlo es mirar las cuatro, cada vez — dar por hecho que "ya las tildó todas"
+porque tildó las anteriores habría dejado dos cuentas sin el dato de impuestos, y el hueco recién
+se iba a notar al comparar los márgenes, o sea cuando el número ya decide precios.
 
 **Y LA CONFIGURACIÓN NO ES EL ARCHIVO.** Los reportes ya generados siguen con las columnas viejas
 —los que había eran del 24/07— y eso NO es una falla: la configuración es lo que va a tener el
