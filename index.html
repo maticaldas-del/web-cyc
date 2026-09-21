@@ -2298,7 +2298,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='19.90';
+const APP_VERSION='19.91';
 // El problema real que esto resuelve no es curiosidad: es que el celular guarda la app y sigue
 // mostrando la de ayer sin avisar. Varias veces se revisó un cambio que ya estaba subido y no se
 // veía. Por eso, además del número, el chip avisa cuando hay una versión nueva esperando.
@@ -3562,18 +3562,11 @@ function renderProds(){
     const v365=ventasProd365(p);
     const devCount=devCountOf(p);
     const devPctAuto=devCount>0&&v365>0?Math.round(devCount/v365*1000)/10:0;
-    const provOpts=(state.proveedores||[]).map(pv=>`<option value="${pv.id}"${p.proveedorId===pv.id?' selected':''}>${pv.nombre.replace(/"/g,'&quot;')}</option>`).join('');
     return`<div class="prod-item" style="flex-direction:column;align-items:stretch;gap:10px">
       <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+        ${fotoChipHTML(p,64)}
         <input class="pname-edit" type="text" value="${p.name.replace(/"/g,'&quot;')}" onchange="updProdName('${p.id}',this.value)" title="Editar nombre (el vínculo de ventas es por ID interno, no se pierde nada)">
         <button class="btn" style="white-space:nowrap;background:${p.origen==='py'?'rgba(239,68,68,.15)':'rgba(59,130,246,.12)'};color:${p.origen==='py'?'#f87171':'#60a5fa'};border:1px solid ${p.origen==='py'?'rgba(239,68,68,.3)':'rgba(59,130,246,.3)'}" onclick="toggleProdOrigen('${p.id}')" title="Origen del producto: define en qué sección de Pedidos aparece (BS AS o Paraguay)">${p.origen==='py'?'🇵🇾 Paraguay':'🇦🇷 BS AS'}</button>
-        <select class="cal-select" style="font-size:.68rem;padding:5px 10px" onchange="updProdProveedor('${p.id}',this.value)"><option value="">🏭 Sin proveedor</option>${provOpts}</select>
-        ${p.foto
-          ? `<button class="btn" style="white-space:nowrap;background:rgba(56,189,248,.12);color:#38bdf8;border:1px solid rgba(56,189,248,.3)" onclick="verFoto('${p.id}')" title="Ver foto">📷 Ver</button>
-             <button class="btn" style="white-space:nowrap;font-size:.62rem;padding:4px 8px" onclick="pickFoto('${p.id}')" title="Subir otra foto desde el celu/PC">Cambiar</button>
-             <button class="btn" style="white-space:nowrap;font-size:.62rem;padding:4px 8px;color:var(--red)" onclick="quitarFoto('${p.id}')" title="Quitar foto">🗑</button>`
-          : `<button class="btn" style="white-space:nowrap;background:rgba(148,163,184,.12);color:var(--muted);border:1px solid var(--border2)" onclick="pickFoto('${p.id}')" title="Subir una foto desde el celu/PC">📷 Subir</button>
-             <button class="btn" style="white-space:nowrap;font-size:.62rem;padding:4px 8px;color:#38bdf8" onclick="pegarFotoUrl('${p.id}')" title="Pegar el link de una imagen (ej: foto de Mercado Libre)">🔗 Link</button>`}
         <button class="btn btn-del" onclick="delProd('${p.id}')">✕</button>
       </div>
       <div style="display:flex;flex-wrap:wrap;gap:14px;align-items:flex-end">
