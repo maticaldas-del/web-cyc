@@ -12396,8 +12396,20 @@ async function main() {
             + `${dif >= 0 ? '+' : ''}${dif.toFixed(1)} puntos ${cerca ? '✅' : '⚠️'}`
             + (pctRepE != null && Math.abs(pctRepE - pctRep) > 0.1 ? ` · con los envíos aparte: ${pctRepE.toFixed(1)}%` : '')
             + (borde ? ' · (mes cortado por la ventana del reporte)' : ''));
+          // EL CHEQUEO QUE DECIDE SI HAY QUE CREERLE AL PORCENTAJE DE ARRIBA, y hace falta:
+          // la primera corrida dio "ML se quedó 73,5%" en Matías en agosto, que es imposible — con
+          // eso habría vendido a pérdida todo el mes. Antes de creerle a una diferencia hay que
+          // saber si los dos lados están mirando la MISMA plata. Si el reporte suma mucho más
+          // bruto que el panel, la misma venta está entrando más de una vez y el % de arriba es
+          // un artefacto, no un hallazgo. Se imprime como PROPORCIÓN, que no vuelca ningún monto.
+          const razon = r.bruto / p.bruto;
+          const sano = razon >= 0.85 && razon <= 1.15;
           console.log(`      ventas: ${p.n} en el panel · ${r.n} filas SETTLEMENT en el reporte`
-            + (Math.abs(p.n - r.n) > Math.max(5, p.n * 0.15) ? '  ⚠️ no se parecen: son universos distintos y el % puede no decir nada' : ''));
+            + (Math.abs(p.n - r.n) > Math.max(5, p.n * 0.15) ? '  ⚠️ no se parecen' : ''));
+          console.log(`      lo vendido del reporte vs lo del panel: ×${razon.toFixed(2)} `
+            + (sano
+              ? '✅ miden la misma plata, así que el % de arriba SÍ dice algo'
+              : `⚠️ NO miden la misma plata — ${razon > 1 ? 'el reporte suma de MÁS (la misma venta debe estar entrando varias veces)' : 'al panel le faltan ventas de ese mes'}. El % de arriba NO sirve todavía.`));
           comparados++;
         }
         if (!comparados) console.log('   no hubo ningún mes con datos de los dos lados.');
