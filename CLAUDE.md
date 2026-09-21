@@ -3972,11 +3972,38 @@ misma**: la medición ya destapó que Luciana tiene **dos Tira Led con el mismo 
 ### LO QUE QUEDA ABIERTO
 
  · **`family_id`** (380 de 384) no se usa todavía. Es el "producto padre" de ML.
- · **Los campos de la ORDEN y del ENVÍO.** La primera corrida de `campos` no encontró una orden
-   porque pedía `/orders/search` **sin `order.status=paid`** —el robot sí lo manda— **y se tragaba
-   el error con un `catch {}` vacío**, así que imprimió *"no se pudo encontrar una orden reciente"*,
-   que se lee como *"ML no tiene ventas"*. Es el `catch` mudo anotado cuatro veces, cometido en la
-   herramienta hecha para encontrar lo que se pasa por al lado. Ya está arreglado; falta correrlo.
+ · **`family_id`** (380 de 384) no se usa todavía y no se le encontró una pregunta que conteste.
+
+### LA ORDEN Y EL ENVÍO, YA MEDIDOS (21/09/2026)
+
+La primera corrida de `campos` no encontró ninguna orden porque pedía `/orders/search` **sin
+`order.status=paid`** —el robot sí lo manda— **y se tragaba el error con un `catch {}` vacío**, así
+que imprimió *"no se pudo encontrar una orden reciente"*, que se lee como *"ML no tiene ventas"*.
+Es el `catch` mudo anotado cuatro veces, cometido en la herramienta hecha justamente para encontrar
+lo que se pasa por al lado. Corregido y corrido:
+
+| | campos nuevos |
+|---|---|
+| la ORDEN | **10 de 45** |
+| el ENVÍO | **84 de 125** |
+
+**De la orden no sale casi nada:** `fulfilled`, `buying_mode`, `static_tags`, `feedback`,
+`related_orders`, `order_request`. Lo único con algún valor es `feedback.buyer`.
+
+**Del ENVÍO salen DOS cosas que sí valen:**
+ · **`cost_components`** (`loyal_discount`, `special_discount`, `gap_discount`) — **el desglose de
+   lo que cobró Full, con los descuentos abiertos.** Hoy el envío se DEDUCE del neto en todos lados;
+   esto es el número de ML. Es lo que más puede mover márgenes de todo lo que apareció hoy.
+ · **`status_history`** (`date_shipped`, `date_delivered`, `date_not_delivered`, `date_returned`) y
+   **`return_details`** — cuándo se entregó cada venta de verdad y cuáles volvieron.
+
+**OJO, Y ES LO MÁS IMPORTANTE DE ESTA SECCIÓN: el envío trae el NOMBRE, el TELÉFONO y la DIRECCIÓN
+del comprador** (`receiver_address.receiver_name`, `receiver_phone`, `address_line`, la
+geolocalización). Son datos de terceros y el registro de GitHub es PÚBLICO. Por eso `campos`
+imprime **sólo nombres de campo y ningún valor** — un volcado crudo acá sería el mismo error de
+`recibidas.json` con otra ropa. Si algún día se usan estos campos, **se guardan sólo los números**.
+
+**Nada de esto está implementado: está medido y esperando que él elija.**
 
 ## Cosas que ya pasaron (para no repetirlas)
 
