@@ -366,6 +366,8 @@ Los que más se usan:
 | `verweb:<direccion>` | **leer una página de afuera y mostrar su texto** · el chat no tiene internet y el robot sí · solo lee · **lo que imprime queda en el registro PÚBLICO** |
 | `verwebs:<d1>;<d2>;…` | **varias páginas en UNA corrida**: dice si la puerta abre y si hay precios adentro, sin volcar el texto entero · solo lee |
 | `campos[:<MLA>]` | **qué datos manda ML adentro de las puertas que YA usamos** y el código nunca nombra · sólo nombres, ningún valor · solo lee |
+| `guardadosinver` | **el espejo de `campos`: lo que YA está en la base y la pantalla no dibuja** · sólo nombres, ningún valor · solo lee |
+| `pesopedido` | **cuánto pesa el pedido de Paraguay cargado** · el correo se cobra por peso · solo lee |
 | `reputa` | la reputación de las 4 cuentas y el nombre de los rubros · **escribe** `cyc/reputacion` |
 | `mismoprod[:cuenta]` | **¿ML dice solo cuáles publicaciones son el mismo producto?** y si da la foto · solo lee |
 | `apis` | qué endpoints de ML contestan (para diagnosticar) |
@@ -4187,6 +4189,51 @@ imprime **sólo nombres de campo y ningún valor** — un volcado crudo acá ser
 `recibidas.json` con otra ropa. Si algún día se usan estos campos, **se guardan sólo los números**.
 
 **Nada de esto está implementado: está medido y esperando que él elija.**
+
+## LA HORA DE CADA VENTA YA ESTABA GUARDADA Y NO SE MOSTRABA (21/09/2026)
+
+Pedido suyo: *"se le puede agregar la hora de venta a las ventas?"*, y después el reproche, que es
+lo que importa: *"la hora de venta por ejemplo era uno de los pequeños detalles que ml da. no me lo
+dijiste. fijate si no hay mas como esos, son pequeños detalles, pero ya que estan tomemoslos"*.
+
+**Tenía razón y el dato estaba desde siempre.** El robot escribe
+`ts: new Date(o.date_created || o.date_closed)` — o sea **la hora REAL en que ML cerró la venta**,
+no la hora en que el robot la trajo. La pantalla mostraba sólo `_dateKey`, que es el día.
+Es la variante del error del 19/09 con la comisión de ML: **un dato que el sistema ya sabe, usa
+para otra cosa, y deja a todos adivinando.**
+
+**Cómo quedó:** el renglón dice `2026-09-21 · 14:35`, en 24 h. En un carrito se toma la venta **más
+temprana** del grupo, que es cuando empezó la compra. Y **sin `ts` no se inventa una hora**: sale
+sólo la fecha — una hora inventada al lado de un número de venta es peor que no tenerla.
+Probado con el bloque REAL del archivo y 7 casos.
+
+### EL BARRIDO QUE SALIÓ DE AHÍ, Y LO QUE **NO** ENCUENTRA
+
+**`guardadosinver`** (solo lee) compara **lo que está en la base contra lo que `index.html`
+dibuja**, leyendo el archivo de verdad en vez de decidir de memoria. Es **el espejo de `campos`**, y
+la diferencia decide dónde buscar:
+ · `campos` mira lo que **MANDA ML** contra lo que el código usa → lo que nunca llegó a guardarse
+   (así apareció el `inventory_id` de las etiquetas de Full);
+ · `guardadosinver` mira lo que **YA ESTÁ GUARDADO** contra lo que se muestra → lo que se guarda
+   hace meses y nadie ve. **Ese dato ya está pago: sólo falta mostrarlo.**
+
+**Lo medido el 21/09:** ventas **1 de 20** tapado (`mlfee`) · publicaciones **6 de 26** ·
+productos **0 de 27**.
+
+**El único que vale de los seis es `subStatus`**: el motivo por el que ML tiene frenada o pausada
+una publicación (`under_review`, `pending_documentation`, `out_of_stock`…). Lo tienen 272 de 400 y
+**la pantalla no lo nombra en ningún lado** — es exactamente lo que costó entender con el Bare
+Vanilla y los dos Termómetros. Los otros cinco (`upid`, `altaTs`, `altaPorCatalogo`,
+`noVendemosMas`, `altaSinVender`) son marcas internas del robot.
+
+**Y LA LIMITACIÓN, QUE HAY QUE TENER ESCRITA PORQUE ES DEL TIPO QUE ENGAÑA: ESTE BARRIDO NO HABRÍA
+ENCONTRADO LA HORA.** Busca campos que la pantalla **no nombra en ningún lado**, y `ts` sí lo
+nombra: se usa para ordenar las ventas. Lo que estaba tapado no era el campo entero — era **una
+PARTE** del campo: se usaba la fecha y se tiraba la hora.
+**O sea que encuentra lo que está completamente escondido, no lo que está a medias usado.** Un
+barrido que pasa limpio no prueba que no falte nada: prueba que **esa** forma de faltar no está.
+Es la misma lección del chequeo de títulos del 19/09 —*"un chequeo que pasa no prueba que esté
+bien"*— y por eso no se puede decir "ya está todo mirado" apoyándose en esto.
 
 ## Cosas que ya pasaron (para no repetirlas)
 
