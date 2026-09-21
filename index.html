@@ -2264,7 +2264,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='19.79';
+const APP_VERSION='19.80';
 // El problema real que esto resuelve no es curiosidad: es que el celular guarda la app y sigue
 // mostrando la de ayer sin avisar. Varias veces se revisó un cambio que ya estaba subido y no se
 // veía. Por eso, además del número, el chip avisa cuando hay una versión nueva esperando.
@@ -9903,15 +9903,87 @@ function cajaMLDe(p){
     if(!e.caja||!(e.caja in n))continue;
     n[e.caja]++;pubs++;
     if((e.cajaTs||0)>ts)ts=e.cajaTs;
-    // El precio para ganar que se muestra es el MÁS BAJO de las que perdemos, no el más alto.
+    // El precio para ganar que se muestra es el MÁS BAJO de las que no la tienen, no el más alto.
     // price_to_win es el precio al que se gana ESA caja, así que para ganarlas todas hay que estar
     // abajo de la más exigente = la más barata. Con el más alto se gana solo una y el número miente
     // para el lado peligroso: hace parecer que alcanza con recortar menos de lo que hace falta.
-    if(e.caja==='losing'&&(e.cajaPtw||0)>0&&(ptw===0||e.cajaPtw<ptw))ptw=e.cajaPtw;
+    // Entran también las que COMPARTEN: compartir no es ganar —ML te reparte las ventas con otro—
+    // y ML informa igual a qué precio se gana entera. Dejarlas afuera escondía justo el caso en que
+    // falta poquito.
+    if((e.caja==='losing'||e.caja==='sharing')&&(e.cajaPtw||0)>0&&(ptw===0||e.cajaPtw<ptw))ptw=e.cajaPtw;
   }
   if(!pubs)return null;
   const st=n.winning?'winning':n.sharing?'sharing':n.losing?'losing':'nocat';
   return {st,n,ts,ptw,pubs};
+}
+// ── ¿CUÁNTO HAY QUE BAJAR PARA GANAR LA CAJA, Y EN QUÉ MARGEN QUEDÁS? (21/09/2026) ─────────
+// Pedido suyo mirando el Xiaomi Watch S5: "se puede agregar ahi? que ponga a que % hay que bajarlo
+// para ganar caja. a todos los productos".
+//
+// El precio que pide ML (`cajaPtw`) YA lo guardaba el robot y vivía escondido en el globito, o sea
+// que había que pasar el mouse por encima renglón por renglón — y en el teléfono no hay mouse. Es
+// el mismo error que ya está anotado con la ayuda del simulador: el dato que decide no puede estar
+// tapado.
+//
+// EL % DE BAJA SOLO NO SE MUESTRA NUNCA, y es la lección del Filtro agua del 14/09: ML te dice a
+// qué precio se GANA la caja, no a qué precio te queda ganancia. Ese día el aviso decía "se gana a
+// $1.000" y la mercadería sola costaba $1.059. Un renglón que invita a aplicarlo tiene que estar
+// medido, así que acá van siempre los dos números: cuánto bajar Y en qué margen quedás.
+//
+// NO ES UNA CUENTA NUEVA: usa `comisionEnPrecio` (la comisión de ML al precio nuevo, la misma que
+// usan los dos simuladores) y `simMargen` (la línea del dinero, la misma de `margenMLDe`). Con una
+// copia propia, esta columna diría un margen y la ficha otro sobre el mismo producto — el error
+// anotado nueve veces en CLAUDE.md.
+function cajaBajarDe(p,c,mg){
+  if(!c||!(c.ptw>0))return null;
+  // Si alguna publicación YA gana la caja no hay nada que bajar: el producto se vende.
+  if(c.st!=='losing'&&c.st!=='sharing')return null;
+  const precio=Math.round(Number(mg&&mg.precio)||0);
+  const ptw=Math.round(c.ptw);
+  const out={ptw,bajaPct:null,margen:null,motivo:null,barrera:false};
+  if(!(precio>0)||mg.margen==null){out.motivo='sinprecio';return out;}
+  out.bajaPct=(precio-ptw)/precio*100;
+  if(ptw>=precio){out.motivo='nobaja';return out;}
+  // La comisión de HOY se despeja del neto que ya calculó el robot: neto = precio − comisión − Full.
+  // Sale de ahí y no de una tabla aparte para que sea la MISMA comisión con la que se mide el
+  // margen de la columna de al lado.
+  const comHoy=precio-(Number(mg.neto)||0)-(Number(mg.gest)||0);
+  if(!(comHoy>0)){out.motivo='sincom';return out;}
+  const c2=comisionEnPrecio(comHoy,precio,ptw);
+  if(!c2){out.motivo='sincom';return out;}
+  // Los impuestos se miden como % del precio de HOY y se aplican al precio nuevo: es la misma tasa
+  // medida en sus ventas, no una inventada.
+  const impPct=(Number(mg.mlExtra)>0&&precio>0)?(Number(mg.mlExtra)/precio*100):0;
+  // LO QUE COBRA FULL NO SE TOCA, aunque el precio nuevo cruce para abajo los $33.000 y ahí ML
+  // deje de cobrarlo. Mantenerlo hace ver el margen MENOR que el real, que es el lado seguro
+  // cuando el número decide si se baja un precio. Se avisa en el globito para que no sorprenda.
+  const gest=Number(mg.gest)||0;
+  out.barrera=(gest>0&&precio>=UMBRAL_ENVIO_GRATIS&&ptw<UMBRAL_ENVIO_GRATIS);
+  const r=simMargen({precio:ptw,mercaderia:costFullP(p),gest,comision:c2.com,impPct,cuotasPct:0});
+  out.margen=r.margen;
+  out.dudoso=mg.sinEnvio===true||mg.envioML===true;
+  return out;
+}
+function rotCajaBajaHtml(r){
+  const b=r.cajaBaja; if(!b)return '';
+  const gris='font-size:.55rem;color:var(--muted);margin-top:2px;line-height:1.25';
+  if(b.motivo==='sinprecio')
+    return `<div title="ML dice que la caja se gana a ${fmt(b.ptw)}, pero este producto no tiene un margen calculado hoy (no hay publicación viva de la que sacar el precio, o todavía no pasó por el recálculo de la noche). Sin eso no se puede decir en cuánto quedarías, y un precio sin margen al lado no sirve para decidir." style="${gris}">ML: ${fmt(b.ptw)} · <span style="color:var(--amber)">margen sin medir</span></div>`;
+  if(b.motivo==='nobaja')
+    return `<div title="ML dice que la caja se gana a ${fmt(b.ptw)} y tu precio ya está en ese número o más abajo. O sea que bajar no es lo que falta: el dato puede ser de hace un rato (se actualiza una vez por hora) o la caja la perdés por otro motivo (reputación, stock, envío)." style="${gris}">ML: ${fmt(b.ptw)} · <span style="color:var(--amber)">no es cuestión de bajar</span></div>`;
+  if(b.margen==null)
+    return `<div title="ML dice que la caja se gana a ${fmt(b.ptw)}, pero no se pudo calcular la comisión a ese precio, así que no se sabe en cuánto quedarías." style="${gris}">ML: ${fmt(b.ptw)} · <span style="color:var(--amber)">margen sin medir</span></div>`;
+  const PISO=metaMargenML();
+  const ok=b.margen>=PISO;
+  const baja=`bajar ${b.bajaPct.toFixed(0)}% → ${fmt(b.ptw)}`;
+  let t=`Para GANAR la caja ML pide ${fmt(b.ptw)}: es ${b.bajaPct.toFixed(1)}% abajo de tu precio de hoy. A ese precio te quedarías en ${b.margen.toFixed(1)}% de margen`;
+  t+=ok?`, arriba de tu piso de ${PISO}%. O sea que se puede — pero bajar un precio lo decidís vos, el robot no baja nada solo.`
+      :`, ABAJO de tu piso de ${PISO}%. A ese precio estarías vendiendo casi sin ganancia: el competidor la vende más barata de lo que te cuesta a vos, y ahí el precio no es el problema.`;
+  if(b.barrera)t+=` · Ojo: ese precio queda abajo de los ${fmt(UMBRAL_ENVIO_GRATIS)} y ahí ML deja de cobrarte el envío, así que el margen real sería un poco MEJOR que este. Se deja el número bajo a propósito, que es el lado seguro.`;
+  if(b.dudoso)t+=` · Y el envío de este producto no está medido en ventas reales, así que el margen de verdad puede ser menor.`;
+  t+=` · La cuenta es la misma que la del margen de al lado, con la comisión que ML cobra a ESE precio (no el mismo % — ML cobra un cargo fijo por venta que pesa más cuanto más barato).`;
+  const col=ok?'var(--green)':'var(--red)';
+  return `<div title="${t}" style="${gris}">${baja}<br><span style="color:${col};font-weight:700">${ok?'queda en':'quedás en'} ${b.margen.toFixed(0)}%${ok?'':' ✕'}</span>${b.dudoso?' <span style="color:var(--amber)">⚠</span>':''}</div>`;
 }
 function rotCajaHtml(r){
   const c=r.caja;
@@ -9922,9 +9994,9 @@ function rotCajaHtml(r){
   if(c.st==='winning')
     return `<span style="font-weight:700;color:var(--green)" title="GANÁS LA CAJA DE COMPRA. El botón de comprar del catálogo es tuyo: la venta la hacés vos. Si igual no vende, el problema NO es la competencia — mirá visitas, foto o título.${detalle}">🟢 Ganás</span>`;
   if(c.st==='sharing')
-    return `<span style="font-weight:700;color:var(--amber)" title="COMPARTÍS LA CAJA. ML te reparte las ventas con otro vendedor que está al mismo precio. Vendés, pero la mitad. OJO: SUBIRLE EL PRECIO TE SACA DEL REPARTO.${detalle}">🟠 Compartís</span>`;
+    return `<span style="font-weight:700;color:var(--amber)" title="COMPARTÍS LA CAJA. ML te reparte las ventas con otro vendedor que está al mismo precio. Vendés, pero la mitad. OJO: SUBIRLE EL PRECIO TE SACA DEL REPARTO.${detalle}">🟠 Compartís</span>`+rotCajaBajaHtml(r);
   if(c.st==='losing')
-    return `<span style="font-weight:700;color:var(--red)" title="PERDÉS LA CAJA: la venta se la lleva otro vendedor. La publicación está viva pero el comprador ni la ve, así que puede tener stock, buen margen y cero ventas para siempre.${c.ptw?` ML dice que se gana a ${fmt(c.ptw)} — pero eso NO quiere decir que convenga bajar hasta ahí: primero hay que ver si ese precio llega al piso de margen.`:''}${detalle}">🔴 Perdés</span>`;
+    return `<span style="font-weight:700;color:var(--red)" title="PERDÉS LA CAJA: la venta se la lleva otro vendedor. La publicación está viva pero el comprador ni la ve, así que puede tener stock, buen margen y cero ventas para siempre.${c.ptw?` ML dice que se gana a ${fmt(c.ptw)} — pero eso NO quiere decir que convenga bajar hasta ahí: primero hay que ver si ese precio llega al piso de margen.`:''}${detalle}">🔴 Perdés</span>`+rotCajaBajaHtml(r);
   return `<span style="color:var(--muted)" title="Ninguna de sus publicaciones es de catálogo, así que no hay caja de compra que ganar ni perder: es una publicación propia y compite sola.${detalle}">⚪ Sin catálogo</span>`;
 }
 // ── DESDE CUÁNDO ESTÁ ESA MERCADERÍA ────────────────────────────────────────────────
@@ -10509,10 +10581,11 @@ function renderRotacionStock(){
     // La regla de liquidar mira los MISMOS días sin vender y la MISMA edad de stock que el estado,
     // no una cuenta propia: si un día cambia el criterio, cambian los dos juntos.
     const _liq=liquidarDe(p,diasSinVender,stock,_rt.edad);
+    const _cajaML=cajaMLDe(p);
     return{pid:p.id,name:p.name,capital,ventasPeriodo,rotNorm,estadoKey,estadoHtml,stock,diasSinVender,liq:_liq,
       margen:mg.margen,margenSinEnvio:mg.sinEnvio,margenEnvioML:mg.envioML,margenNeto:mg.neto,margenCosto:mg.costo,
       margenPrecio:mg.precio,margenGest:mg.gest,margenDudoso:margenDudosoDe(mg),liq2:liquidandoDe(p),
-      caja:cajaMLDe(p),diasEnStock:diasEnStockDe(p),diasCaja:ultimaEntradaDe(p)};
+      caja:_cajaML,cajaBaja:cajaBajarDe(p,_cajaML,mg),diasEnStock:diasEnStockDe(p),diasCaja:ultimaEntradaDe(p)};
   });
 
   // ── Puntaje de rotación: % del capital ($) atascado en productos "Muerto" ──
