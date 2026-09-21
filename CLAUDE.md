@@ -362,6 +362,9 @@ Los que más se usan:
 | `saldobill` | **¿se abrió el saldo directo de ML?** de a una y espaciado, para que el 429 no ensucie · solo lee |
 | `clavesmalas` | **nombres de variante que Firebase no puede guardar** (rompen "Cargar lo sugerido") · solo lee |
 | `cupofull` | **¿la API dice cuántas unidades se pueden mandar a Full?** (medido: NO, 14 puertas × 4 cuentas) · solo lee |
+| `cupo[:<cuenta>=<chicos>/<grandes>[;otra][;go]]` | **el cupo de Full que te queda, por cuenta** · lo leés vos en ML y se carga acá · sin argumentos muestra lo cargado y qué productos cuentan como "grandes" |
+| `envio3[:cuenta][:cuántas]` | **¿cuál es el envío real?** lo que dice ML contra lo que Mercado Pago te descontó · solo lee |
+| `entregas[:días][:go]` | **cuándo llegó cada venta y cuáles volvieron** · y cuánto tarda en llegar |
 | `apidoc:<direccion>` | **las direcciones de API que aparecen en una página de documentación** · sólo las rutas, no el texto entero · solo lee |
 | `verweb:<direccion>` | **leer una página de afuera y mostrar su texto** · el chat no tiene internet y el robot sí · solo lee · **lo que imprime queda en el registro PÚBLICO** |
 | `verwebs:<d1>;<d2>;…` | **varias páginas en UNA corrida**: dice si la puerta abre y si hay precios adentro, sin volcar el texto entero · solo lee |
@@ -4175,12 +4178,15 @@ lo que se pasa por al lado. Corregido y corrido:
 **De la orden no sale casi nada:** `fulfilled`, `buying_mode`, `static_tags`, `feedback`,
 `related_orders`, `order_request`. Lo único con algún valor es `feedback.buyer`.
 
-**Del ENVÍO salen DOS cosas que sí valen:**
- · **`cost_components`** (`loyal_discount`, `special_discount`, `gap_discount`) — **el desglose de
-   lo que cobró Full, con los descuentos abiertos.** Hoy el envío se DEDUCE del neto en todos lados;
-   esto es el número de ML. Es lo que más puede mover márgenes de todo lo que apareció hoy.
+**Del ENVÍO salían DOS cosas candidatas, y de las dos sólo UNA sirvió — las dos ya se midieron:**
+ · **`cost_components`** — decía acá que era *"lo que más puede mover márgenes de todo lo que
+   apareció hoy"*. **Medido el mismo día con `envio3`: NO mueve nada.** Los cuatro descuentos vienen
+   en CERO en las 11 ventas, y `base_cost` resultó ser el envío ENTERO (el doble de lo que paga el
+   vendedor), no nuestro costo. El número que usa el robot ya era el bueno. Ver la sección "EL ENVÍO
+   QUE INFORMA ML".
  · **`status_history`** (`date_shipped`, `date_delivered`, `date_not_delivered`, `date_returned`) y
-   **`return_details`** — cuándo se entregó cada venta de verdad y cuáles volvieron.
+   **`return_details`** — cuándo se entregó cada venta y cuáles volvieron. **HECHO** (probe
+   `entregas`, sección propia más abajo).
 
 **OJO, Y ES LO MÁS IMPORTANTE DE ESTA SECCIÓN: el envío trae el NOMBRE, el TELÉFONO y la DIRECCIÓN
 del comprador** (`receiver_address.receiver_name`, `receiver_phone`, `address_line`, la
@@ -4188,7 +4194,8 @@ geolocalización). Son datos de terceros y el registro de GitHub es PÚBLICO. Po
 imprime **sólo nombres de campo y ningún valor** — un volcado crudo acá sería el mismo error de
 `recibidas.json` con otra ropa. Si algún día se usan estos campos, **se guardan sólo los números**.
 
-**Nada de esto está implementado: está medido y esperando que él elija.**
+**Estado al 21/09 a la noche: `status_history` y `return_details` YA ESTÁN implementados; los
+campos de la orden siguen sin usarse y `cost_components` quedó descartado por medición.**
 
 ## LA HORA DE CADA VENTA YA ESTABA GUARDADA Y NO SE MOSTRABA (21/09/2026)
 
@@ -4258,6 +4265,137 @@ PARTE** del campo: se usaba la fecha y se tiraba la hora.
 barrido que pasa limpio no prueba que no falte nada: prueba que **esa** forma de faltar no está.
 Es la misma lección del chequeo de títulos del 19/09 —*"un chequeo que pasa no prueba que esté
 bien"*— y por eso no se puede decir "ya está todo mirado" apoyándose en esto.
+
+## EL ENVÍO QUE INFORMA ML: EL NÚMERO NUESTRO ESTÁ BIEN (21/09/2026)
+
+Pedido suyo: *"¿pido el envío real de ML? si. fijate si está bien el número que tomamos nosotros"*.
+El comando es **`envio3[:cuenta][:cuántas]`** y **SOLO LEE**.
+
+**LA RESPUESTA: SÍ, EL NÚMERO QUE USA EL ROBOT ES EL BUENO.** Lo que ML descuenta de verdad —el
+cargo `shp_fulfillment` del pago, con el que se arma el `gestFull` de cada ficha— es lo que
+efectivamente paga CYC. **No hay ningún margen mal medido por esto.**
+
+**Y LA PRIMERA HIPÓTESIS ERA FALSA, PARA EL LADO PELIGROSO.** Yo esperaba que `base_cost` menos los
+descuentos diera lo que cobró MP. Dio **0 de 13**, con un patrón que se lee solo:
+
+| base que dice ML | lo que descontó Mercado Pago |
+|---|---|
+| $11.240 | **$5.620** |
+| $21.520 | **$10.760** |
+| $12.290 | $8.819 |
+
+**La MITAD clavada en 10 de 11.** O sea que **`base_cost` NO es lo que pagás vos: es el envío
+ENTERO**, y ML lo reparte. Tomarlo como nuestro costo habría **duplicado el envío en todos los
+márgenes** — y encima habría salido como "hallazgo" (*"nos están cobrando el doble"*) cuando no
+pasa nada. **El error más caro que podía tener este pedido era creerle al primer número.**
+
+**LOS DESCUENTOS QUE ÉL QUERÍA VER ESTÁN TODOS EN CERO.** `loyal_discount`, `special_discount`,
+`gap_discount` y `compensation` dieron **0 en las 11 ventas**. O sea que **no hay nada que guardar**:
+la idea era abrir el envío en sus partes y las partes vienen vacías. Se deja el comando para poder
+volver a medirlo, y no se guarda nada — guardar ceros es peor que no guardar.
+
+**`ratio` NO ES UNA FRACCIÓN Y NO SÉ QUÉ ES.** Viene como 38110, 15050, 17878.52, 13020… números
+del tamaño de un precio, distintos entre ventas que dan el MISMO resultado. Multiplicar por eso da
+cientos de millones. **Queda anotado como desconocido en vez de inventarle un significado**, que es
+lo que hizo fallar la primera versión de este comando.
+
+**AYELEN NO SE PUDO MEDIR, Y HAY QUE DECIRLO.** En 30 días tuvo **2 ventas** arriba de los $33.000
+y las dos sin liquidar. Las 11 medidas son de Adriana, Luciana y Matías. Es la lección del 20/09
+otra vez —*"una prueba que cubre 3 de 4 no prueba el caso que falta"*— y acá Ayelen es justo la
+distinta: es la única **gold**, las otras tres son platinum. Si el reparto del envío depende de la
+reputación, es en ella donde cambiaría.
+
+**EL ERROR QUE CORTÓ LA PRIMERA CORRIDA, y no lo agarra `node --check`:** el probe usaba
+`MIN_GROSS`, que **existe en el archivo pero 16.000 líneas más abajo, adentro de otro bloque**.
+Compila perfecto y muere en ejecución con *"MIN_GROSS is not defined"*, llevándose la corrida
+entera. Es el mismo caso que `invUpd` el 12/09 por la otra puerta: aquella vez el nombre ya estaba
+usado, ésta vez el nombre existe pero **no en ese alcance**. **Antes de usar un nombre en
+`sync.mjs`, mirar si está definido ACÁ y no en otro lado.**
+
+## EL CUPO DE FULL: ML NO LO DA, LO CARGA ÉL, Y VENCE (21/09/2026)
+
+Pedido suyo. Mandó las cuatro pantallas de Full y **son DOS cupos, no uno**:
+
+| cuenta | chicos y medianos | grandes |
+|---|---|---|
+| Luciana | 484 | 86 |
+| Matías | 163 | 100 |
+| Adriana | 97 | 100 |
+| **Ayelen** | **42** ⚠️ (la barra le sale NARANJA) | 100 |
+
+**El que aprieta es el de chicos**, que es casi todo lo que vende: entre las cuatro quedan **786
+unidades chicas**, y Ayelen sola se lleva el problema. El de grandes no lo toca nadie.
+
+**QUÉ ES "GRANDE": regla suya, textual —** *"el único producto que es 'grande' son los tenders.
+nada más"*. Por eso **NO se adivina con las medidas de la ficha**: la lista de palabras vive en
+`cyc/mlconfig/cupoGrandes` y cada ficha la puede pisar con `grandeFull`. Corrido el 21/09, la lista
+agarra **exactamente un producto: "Tendedero 3 Pisos"**, y los otros 147 van al cupo de chicos.
+`cupo` sin argumentos imprime esa lista — mirar la lista antes, como siempre.
+
+**EL NÚMERO ENVEJECE Y ESO SE DICE.** *"Podés enviar hasta N"* es lo que le quedaba libre **en ese
+momento**, no el cupo total: baja al despachar y sube al vender. El panel descuenta lo despachado y
+suma lo vendido desde la lectura, **muestra los tres términos** (si la resta que invita la pantalla
+no es la que hace el sistema, la pantalla está mal) y **a los 7 días pide mirarlo de nuevo**.
+
+**AVISA, NO FRENA.** Al cerrar la caja, si se pasa, pregunta y deja seguir. El cupo se carga a mano
+y puede estar viejo: trabar un despacho con un número que quizá ya no es el de hoy sería peor.
+Mismo criterio que el tope del pedido de Paraguay. **El único freno duro de este panel sigue siendo
+el piso del margen.**
+
+**El ⓘ de ML no dice dónde corta el tamaño** — explica la barra (azul oscuro lo guardado más lo que
+está entrando, clarito lo que está en un plan de envío). Así que el corte entre chico y grande
+sigue sin saberse, y hoy no importa porque el cupo de grandes no lo toca nadie.
+
+## CUÁNDO LLEGÓ CADA VENTA Y CUÁLES VOLVIERON (21/09/2026)
+
+`campos` había medido el 21/09 que el envío trae `status_history` (`date_shipped`,
+`date_delivered`, `date_not_delivered`, `date_returned`) y `return_details`, y **nada de eso se
+guardaba**: el panel sabía cuándo se VENDIÓ y nunca cuándo llegó.
+
+El comando es **`entregas[:días][:go]`** y corre solo en `ml-daily`. En pantalla va un chip en cada
+venta de Ventas x Producto: **📬 llegó + cuántos días tardó**, **↩ volvió**, o **⚠ no se entregó**.
+
+**LO QUE SALIÓ DE LA PRIMERA MEDICIÓN, y es un número que no teníamos: de 250 ventas, 235
+entregadas y 0 devueltas. Tarda en llegar 1,6 días en promedio, la mitad en 1,2 o menos, y la más
+lenta 6 días.**
+
+**⚠️ OJO CON DE QUIÉN ES EL DATO.** La MISMA respuesta del envío trae el **nombre, el teléfono y la
+dirección del comprador**, y el registro de GitHub es PÚBLICO. `leerEntrega` lee **sólo fechas y
+estados**, y del `return_details` guarda que hubo devolución y su fecha, **no el motivo**, que lo
+escribe el comprador. Es la regla del 15/09 aplicada antes de que muerda.
+
+**VIVE EN `cyc/entregas`, APARTE DE LA VENTA, y no es un detalle de forma:** el ciclo de 2 minutos
+reescribe la venta ENTERA con `set` sobre una ventana de 2 días, así que una entrega guardada
+adentro **se borraría sola y en silencio**. Es el bug de `cyc/mllinks` del 05/08.
+
+**`wasDelivered` ya no lee el envío por su cuenta**: llama a `leerEntrega`. Dos lugares parseando la
+misma respuesta se separan. Y se respetó **al pie** su condición vieja (`status` O `substatus` ===
+delivered): de eso depende que una cancelada cuente como RECLAMO, y el % de reclamos encarece el
+costo y con eso mueve precios.
+
+**Lo que NO hace: inventar un estado.** Una venta sin registro no muestra nada — *"todavía no se
+midió"* y *"no llegó"* son cosas distintas. Un `null` de ML se cuenta aparte y no se guarda.
+
+## PEDIDOS AVISA CUANDO UN RENGLÓN NO CIERRA (21/09/2026)
+
+Es el pendiente anotado desde el 16/09: *"un producto no puede destrabar más por mes que lo que deja
+lo que vende, y algo con stock que no vende hace 55 días no puede estar en la lista de comprar. Hoy
+eso lo agarra él mirando; el panel lo puede agarrar solo."*
+
+**LOS DOS EJEMPLOS QUE ÉL DIO YA ESTÁN TAPADOS EN EL ORIGEN**, y conviene decirlo en vez de escribir
+un filtro que nunca va a saltar: desde el 16/09 `riesgoComprar` sale de los días que la compra TAPA
+de verdad (así que por construcción no puede pasar de `gan30d`) y el ritmo viejo sólo se usa con el
+producto en CERO. Los dos quedan igual, pero **como GUARDA**: si alguien toca esas cuentas y se
+rompen, el renglón lo dice en vez de esperar a que él lo note.
+
+**Lo que SÍ puede pasar hoy, que es lo que agrega valor:** un pedido cargado **a mano** (a ésos no
+les recalcula la cantidad nadie), una ficha **sin costo** —ahí la plata en riesgo sale inventada,
+porque el producto se ve como si fuera todo ganancia—, un ritmo sacado de **una sola venta**, un
+renglón **sin ficha**, y la resta que no cierra (pide comprar teniendo ya el objetivo).
+
+**AVISA, NO BORRA**, y cada motivo está elegido para ser RARO: un aviso que suena en la mitad de la
+lista entrena a ignorarlo. Si no hay ninguno **no se dibuja nada** — un cartel que dice "hoy está
+todo bien" es ruido.
 
 ## Cosas que ya pasaron (para no repetirlas)
 
