@@ -10860,6 +10860,69 @@ async function main() {
       console.log('\n   (Solo se leyó una página pública. No se tocó ML, ni MercadoPago, ni la base.)');
       return;
     }
+    // BILLING_PROBE=verwebs:<dir1>;<dir2>;… → MIRAR VARIAS PÁGINAS DE AFUERA EN UNA SOLA CORRIDA.
+    //
+    // POR QUÉ (21/09/2026). `verweb` lee UNA página y vuelca su texto. Cuando hay que averiguar
+    // algo que puede vivir en cualquiera de varias direcciones —el cotizador de un correo, por
+    // ejemplo— eso obliga a una corrida de GitHub por intento, **y cada corrida a mano MATA el
+    // ciclo de 2 minutos del robot**. Es el mismo motivo por el que se hizo `probarrep`: probar
+    // de a uno sale carísimo cuando lo que se busca es cuál de las puertas abre.
+    //
+    // NO reemplaza a `verweb`: éste no vuelca el texto entero, dice **si la puerta abre y si
+    // adentro hay precios**, con una muestra corta. Cuando ya se sabe cuál sirve, se lee con
+    // `verweb`.
+    //
+    // **Y NO SE CONFORMA CON UN 200**, que es el error anotado de punta a punta en este archivo:
+    // una página armada con JavaScript contesta 200 y baja un cascarón vacío. Se mira el TAMAÑO y
+    // si hay algún precio adentro del HTML — lo mismo que hace `probarweb`.
+    //
+    // SOLO LEE páginas públicas. No toca ML, ni la base, ni MercadoPago.
+    // **OJO, la regla de siempre: lo que imprime queda en el registro de GitHub, que es PÚBLICO.**
+    if (String(process.env.BILLING_PROBE || '').startsWith('verwebs:')) {
+      const _vsRaw = String(process.env.BILLING_PROBE).slice('verwebs:'.length).trim();
+      const urls = _vsRaw.split(';').map((x) => x.trim()).filter((x) => /^https?:\/\//i.test(x)).slice(0, 12);
+      if (!urls.length) { console.log('Falta la dirección. Se usa así: verwebs:https://...;https://...'); return; }
+      console.log(`=== ${urls.length} página(s) · SOLO LEE ===\n`);
+      for (const u of urls) {
+        try {
+          const c = new AbortController();
+          const t = setTimeout(() => c.abort(), 25000);
+          const r = await fetch(u, {
+            signal: c.signal,
+            headers: {
+              'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/129.0.0.0 Safari/537.36',
+              'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+              'Accept-Language': 'es-AR,es;q=0.9',
+            },
+            redirect: 'follow',
+          });
+          clearTimeout(t);
+          const html = await r.text();
+          const kb = Math.round(html.length / 1024);
+          // ¿hay precios adentro? Es lo que distingue una página útil de un cascarón.
+          const precios = (html.match(/\$\s?\d{1,3}(?:[.,]\d{3})+/g) || []).slice(0, 6);
+          const txt = html
+            .replace(/<script[\s\S]*?<\/script>/gi, ' ')
+            .replace(/<style[\s\S]*?<\/style>/gi, ' ')
+            .replace(/<[^>]+>/g, ' ')
+            .replace(/&#x2F;/g, '/').replace(/&#x27;/g, "'").replace(/&amp;/g, '&')
+            .replace(/&quot;/g, '"').replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&nbsp;/g, ' ')
+            .replace(/\s+/g, ' ').trim();
+          console.log(`${r.ok ? '✅' : '⚠️ '} HTTP ${r.status} · ${kb} KB · texto ${txt.length} · ${u.split('?')[0]}`);
+          if (r.url && r.url !== u) console.log(`     redirigió a ${r.url.split('?')[0]}`);
+          if (html.length < 20000) console.log(`     ⚠️ muy chica: puede ser un cascarón armado con JavaScript`);
+          if (txt.length < 400 && html.length > 50000) console.log(`     ⚠️ pesa pero casi no tiene texto: la arma JavaScript, no se puede leer así`);
+          if (precios.length) console.log(`     💲 precios adentro: ${precios.join(' · ')}`);
+          else console.log(`     sin ningún precio adentro del HTML`);
+          if (txt.length) console.log(`     "${txt.slice(0, 220)}"`);
+        } catch (e) {
+          console.log(`❌ ${u.split('?')[0]} · ${e && e.message ? e.message : e}`);
+        }
+        await new Promise((r2) => setTimeout(r2, 400));
+      }
+      console.log(`\nSi alguna sirve, se lee entera con verweb:<esa dirección>.`);
+      return;
+    }
     if (String(process.env.BILLING_PROBE || '').startsWith('verweb:')) {
       const _vwUrl = String(process.env.BILLING_PROBE).slice('verweb:'.length).trim();
       if (!/^https?:\/\//i.test(_vwUrl)) { console.log('Falta la dirección. Se usa así: verweb:https://...'); return; }
