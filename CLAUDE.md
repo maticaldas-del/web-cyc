@@ -364,6 +364,7 @@ Los que más se usan:
 | `cupofull` | **¿la API dice cuántas unidades se pueden mandar a Full?** (medido: NO, 14 puertas × 4 cuentas) · solo lee |
 | `apidoc:<direccion>` | **las direcciones de API que aparecen en una página de documentación** · sólo las rutas, no el texto entero · solo lee |
 | `verweb:<direccion>` | **leer una página de afuera y mostrar su texto** · el chat no tiene internet y el robot sí · solo lee · **lo que imprime queda en el registro PÚBLICO** |
+| `verwebs:<d1>;<d2>;…` | **varias páginas en UNA corrida**: dice si la puerta abre y si hay precios adentro, sin volcar el texto entero · solo lee |
 | `campos[:<MLA>]` | **qué datos manda ML adentro de las puertas que YA usamos** y el código nunca nombra · sólo nombres, ningún valor · solo lee |
 | `reputa` | la reputación de las 4 cuentas y el nombre de los rubros · **escribe** `cyc/reputacion` |
 | `mismoprod[:cuenta]` | **¿ML dice solo cuáles publicaciones son el mismo producto?** y si da la foto · solo lee |
@@ -1682,6 +1683,15 @@ Medido con **`probarweb[:<texto>]`** (solo lee, no toca ML ni la base):
 | `/products/search?site_id=MLA&q=…` | ✅ busca el CATÁLOGO por texto ("azzaro sport" → 3.547) |
 | `/products/<id>/items` | ✅ vendedores con precio · **NO trae stock ni ventas** (medido el 18/09: contesta `?` en los dos) · tampoco dice quién tiene la caja |
 | `/sites/MLA/search?q=…` | ❌ **403 forbidden** · ML cerró la búsqueda libre de publicaciones |
+
+**VÍA CARGO TAMPOCO SE PUEDE LEER, MEDIDO EL 21/09/2026 con `verwebs`** (6 direcciones en una
+sola corrida): las 4 que existen contestan **403 con *"Just a moment… Enable JavaScript and
+cookies"*** —el muro de Cloudflare— y `cotizador.` y `api.` ni siquiera resuelven. **Es el MISMO
+caso que comprasparaguay y se decide igual: no se insiste.** Pasar ese muro es hacerse pasar por
+un navegador de una persona, que es justo lo que se decidió no hacer con Instagram.
+**Y ojo con una conclusión fácil que es falsa: abrir la red del CHAT no lo arregla.** El bloqueo no
+es de nuestra red —el robot tiene internet abierto y le contestan 403 igual— es del sitio contra
+los automáticos. **El precio del correo lo tiene que mirar él, o el que despacha.**
 
 **EL 403 DE COMPRASPARAGUAY ES EL PROBLEMA GRANDE, Y NO SE ARREGLA.** Aclaración suya del 17/09:
 *"en esta pagina esta en pesos y dolar. vos el dolar tomalo como dice ahi y mas el gasto queda el
