@@ -2757,10 +2757,16 @@ function _comprimirYSubirFoto(prodId,file){
   reader.onerror=()=>toast('No se pudo leer el archivo','err');
   reader.readAsDataURL(file);
 }
-async function verFoto(prodId,nombre){
+async function verFoto(prodId,nombre,variante,cuenta){
   try{
     const pp=prodById(prodId);
-    if(!nombre)nombre=pp?pp.name:'';
+    if(!nombre)nombre=(pp?pp.name:'')+(variante?' · '+variante:'');
+    // 0) si el renglón es de una VARIANTE y se pudo identificar su publicación, esa foto manda:
+    // la de la ficha es genérica para todos los aromas y la de la publicación es de éste.
+    if(variante){
+      const e=pubDeVariante(prodId,cuenta||'',variante,(x)=>!!x.foto);
+      if(e&&e.foto){_mostrarLightbox(e.foto,nombre||'');return;}
+    }
     // 1) si tiene URL vinculada (ej: imagen de Mercado Libre), mostrarla directo
     if(pp&&pp.fotoUrl){_mostrarLightbox(pp.fotoUrl,nombre||'');return;}
     // 2) si no, foto subida (base64 guardada aparte)
@@ -2795,8 +2801,27 @@ async function verFoto(prodId,nombre){
 //
 // NO INVENTA NADA: si no hay foto propia ni publicación con foto, devuelve null y el renglón no
 // muestra ningún recuadro. Un cuadrito roto es peor que no tener foto.
-function fotoDeProducto(p){
+// ── LA FOTO DEL RENGLÓN, Y LA DE LA VARIANTE ──────────────────────────────────────
+// Lo marcó él el 21/09/2026 mirando Armar caja: *"las fotos están mal"* — los nueve aromas del
+// Paulvic mostraban la MISMA foto. Y era cierto: la foto se buscaba por PRODUCTO, y el Paulvic es
+// UNA ficha con muchos aromas, cada uno con su publicación aparte. Se mostraba la del primer
+// aroma que apareciera, para todos.
+// Es el mismo caso que el código de etiqueta de Full, que ya estaba resuelto: cuando el renglón
+// nombra una variante, el dato es de la PUBLICACIÓN de esa variante, no de la ficha. Por eso las
+// dos cosas pasan ahora por `pubDeVariante`.
+//
+// CUÁNDO GANA LA DE LA VARIANTE SOBRE LA QUE ÉL CARGÓ A MANO: sólo cuando el renglón pide una
+// variante Y se pudo identificar su publicación exacta. La foto de la ficha es genérica (vale para
+// los 70 aromas); la de la publicación es de ESE aroma, así que para ese renglón es la correcta.
+// En un renglón sin variante manda lo de siempre: lo que él cargó.
+// Y si no se puede identificar la publicación de la variante, NO se inventa: se cae a la de la
+// ficha, que es lo que se mostraba hasta hoy.
+function fotoDeProducto(p,variante,cuenta){
   if(!p)return null;
+  if(variante){
+    const e=pubDeVariante(p.id,cuenta||'',variante,(x)=>!!x.foto);
+    if(e&&e.foto)return {url:e.foto,fuente:'ml-var'};
+  }
   if(p.fotoUrl)return {url:p.fotoUrl,fuente:'mano'};
   if(p.foto)return {url:null,fuente:'subida'};   // está guardada aparte: la abre verFoto, no se puede mostrar inline
   const L=state.mllinks||{};
@@ -2811,16 +2836,19 @@ function fotoDeProducto(p){
 }
 // El recuadrito que se muestra al lado de un renglón. `px` es el lado en píxeles.
 // Se toca para abrir la foto grande, que es la que ya sabía hacer `verFoto`.
-function fotoChipHTML(p,px){
-  const f=fotoDeProducto(p);
+function fotoChipHTML(p,px,variante,cuenta){
+  const f=fotoDeProducto(p,variante,cuenta);
   if(!f)return '';
+  const _vArg=variante?(','+JSON.stringify(String(variante)).replace(/"/g,'&quot;')+','+JSON.stringify(String(cuenta||'')).replace(/"/g,'&quot;')):'';
   const lado=px||34;
   const comun=`width:${lado}px;height:${lado}px;border-radius:6px;flex:0 0 auto;cursor:zoom-in`;
   // La foto subida a mano vive en otra rama de la base y no se baja al abrir la app (pesa), así
   // que acá va un botón en vez de la imagen: mostrarla inline obligaría a descargarlas todas.
-  if(!f.url)return `<span onclick="verFoto('${p.id}')" title="Ver la foto cargada a mano" style="${comun};display:inline-flex;align-items:center;justify-content:center;background:rgba(56,189,248,.12);border:1px solid rgba(56,189,248,.3);font-size:${Math.round(lado*0.45)}px">📷</span>`;
-  const tit=f.fuente==='mano'?'Foto cargada por vos · tocá para verla grande':'Foto de la publicación de ML · tocá para verla grande';
-  return `<img src="${f.url}" alt="" loading="lazy" onclick="verFoto('${p.id}')" title="${tit}" style="${comun};object-fit:cover;background:#fff;border:1px solid rgba(148,163,184,.25)" onerror="this.style.display='none'">`;
+  if(!f.url)return `<span onclick="verFoto('${p.id}',''${_vArg})" title="Ver la foto cargada a mano" style="${comun};display:inline-flex;align-items:center;justify-content:center;background:rgba(56,189,248,.12);border:1px solid rgba(56,189,248,.3);font-size:${Math.round(lado*0.45)}px">📷</span>`;
+  const tit=f.fuente==='mano'?'Foto cargada por vos · tocá para verla grande'
+    :(f.fuente==='ml-var'?'Foto de la publicación de ESTA variante · tocá para verla grande'
+    :'Foto de la publicación de ML · tocá para verla grande');
+  return `<img src="${f.url}" alt="" loading="lazy" onclick="verFoto('${p.id}',''${_vArg})" title="${tit}" style="${comun};object-fit:cover;background:#fff;border:1px solid rgba(148,163,184,.25)" onerror="this.style.display='none'">`;
 }
 // Vincular una foto por URL (ej: imagen de la publicacion de ML). Pensado para que lo use cowork.
 async function setFotoUrl(prodId,url){
@@ -4692,11 +4720,130 @@ async function cajaSugerida(){
   // un segundo, adivinar qué faltó no.
   const items={};
   cand.forEach(c=>{const k=_ck(c.f.p.id,c.f.variante);items[k]=(items[k]||0)+c.u;});
+  _cajaCupoFuera=null;   // esta carga no recorta nada: la lista de "quedó afuera" ya no aplica
   await _guardarCajaArmando(ofiFiltroCuenta,items);
   renderOfiCaja();
 }
+// ── CARGAR LO SUGERIDO SIN PASARSE DEL CUPO DE FULL ───────────────────────────────
+// Pedido suyo del 21/09/2026, mirando una caja de Ayelen con 287 u. cargadas y 52 de cupo:
+// *"quiero que haya otro botón que diga cargar lo sugerido, pero que tenga en cuenta las unidades
+// que podemos mandar y que no se pase. Y obviamente tiene que ser inteligente, porque si puedo
+// mandar 50 unidades no conviene mandar las 50 en un mismo producto, sino tapar el agujero lo
+// mejor posible para poder sacar más dinero, o sea mandar 10 unidades de 5 productos sin stock."*
+//
+// LA CUENTA, Y POR QUÉ ES ÉSTA. Lo que se maximiza es la PLATA que se destraba, no las unidades.
+// Cada unidad que mandás sólo produce ganancia si esa cuenta la alcanza a vender: las unidades que
+// pasan de lo que vende en la ventana de cobertura no destraban nada. O sea que el valor de una
+// unidad es "lo que deja ese producto por unidad" hasta tapar el hueco, y CERO después. Eso ya
+// reparte solo entre productos —el hueco de cada uno es finito— que es exactamente lo que él pide.
+//
+// PERO ORDENAR POR PLATA Y LLENAR NO ALCANZA, y ése es el punto de su pedido: si el primero de la
+// lista necesita 60 unidades y el cupo son 50, se lleva TODO y no queda nada para los demás. Y eso
+// es justo lo que no quiere, con razón: concentrar el cupo entero en un producto es apostar todo a
+// que ese producto venda como se calculó.
+// Por eso va en DOS RONDAS, y se explica en una línea: **primero que ninguno se quede sin nada,
+// después llenar.**
+//  · RONDA 1 — a cada uno, lo que vende en los días que tarda el viaje (REPO_DIAS_DEMORA), con
+//    piso de 1 unidad. Así ningún producto de la lista queda en cero.
+//  · RONDA 2 — lo que sobra del cupo se reparte de arriba hacia abajo hasta completar lo sugerido.
+// Las dos rondas recorren en el MISMO orden: lo que más plata deja por unidad primero, y ante
+// empate el que está en CERO y al que se le acaba antes.
+//
+// SON DOS CUPOS SEPARADOS (chicos y grandes) y se reparten por separado: son dos límites distintos
+// de ML y gastar uno no libera el otro.
+//
+// La cuenta va APARTE de la pantalla para poder probarla con la función REAL y no con una copia.
+// Lo que la última carga por cupo dejó afuera. Se guarda para MOSTRARLO abajo de las barras y no
+// sólo en un aviso que se va solo: lo recortado es mercadería que sí hacía falta mandar.
+let _cajaCupoFuera=null;
+function cajaLlenarCupoPlan(cands,topePeq,topeGra){
+  const dado={};
+  const lib={peq:(topePeq==null?Infinity:Math.max(0,topePeq)),gra:(topeGra==null?Infinity:Math.max(0,topeGra))};
+  // Lo que más plata deja por unidad primero. El que no se pudo medir va al final —no se le
+  // inventa una ganancia— pero NO queda afuera: si sobra cupo, lo recibe igual.
+  const orden=[...cands].sort((a,b)=>
+    ((b.ganU==null?-1:b.ganU)-(a.ganU==null?-1:a.ganU))
+    ||((b.enCero?1:0)-(a.enCero?1:0))
+    ||((a.dias==null?9999:a.dias)-(b.dias==null?9999:b.dias)));
+  const sumar=(c,n)=>{const b=c.grande?'gra':'peq';const dar=Math.min(n,lib[b],c.u-(dado[c.key]||0));
+    if(dar>0){dado[c.key]=(dado[c.key]||0)+dar;lib[b]-=dar;}return dar>0?dar:0;};
+  // RONDA 1: que ninguno se quede sin nada.
+  // EL TOPE DE LA RONDA 1 NO PUEDE SER SÓLO "lo que vende en el viaje": lo agarró la prueba. Un
+  // producto que vende 10 por día pide 80 unidades en esa cuenta y, con un cupo de 20, se lleva
+  // las 20 en la PRIMERA ronda — o sea exactamente lo que esta función vino a evitar.
+  // Por eso la ronda 1 reparte además una parte pareja del cupo (`share`): nadie puede llevarse
+  // más que su porción hasta que todos hayan recibido su mínimo. El desequilibrio se arregla en la
+  // ronda 2, donde sí manda la plata.
+  const nBolsa={peq:0,gra:0};
+  for(const c of orden)if(c.u>0)nBolsa[c.grande?'gra':'peq']++;
+  const share={peq:lib.peq===Infinity?Infinity:Math.max(1,Math.floor(lib.peq/Math.max(1,nBolsa.peq))),
+    gra:lib.gra===Infinity?Infinity:Math.max(1,Math.floor(lib.gra/Math.max(1,nBolsa.gra)))};
+  for(const c of orden){
+    if(!(c.u>0))continue;
+    sumar(c,Math.min(Math.max(1,Math.ceil((c.vDia||0)*REPO_DIAS_DEMORA)),share[c.grande?'gra':'peq']));
+  }
+  // RONDA 2: llenar con lo que más deja.
+  for(const c of orden){
+    if(!(c.u>0))continue;
+    sumar(c,c.u-(dado[c.key]||0));
+  }
+  // LO QUE QUEDÓ AFUERA SE DICE. Una lista que recorta renglones sin avisar es una lista que
+  // miente, y acá encima lo recortado es mercadería que sí hacía falta mandar.
+  const fuera=[];
+  for(const c of orden){
+    const d=dado[c.key]||0;
+    if(d<c.u)fuera.push({nombre:c.nombre,falta:c.u-d,dado:d,grande:!!c.grande});
+  }
+  const usado={peq:0,gra:0};
+  for(const c of orden){const d=dado[c.key]||0;if(d>0)usado[c.grande?'gra':'peq']+=d;}
+  return {items:dado,usadoPeq:usado.peq,usadoGra:usado.gra,
+    librePeq:lib.peq===Infinity?null:lib.peq,libreGra:lib.gra===Infinity?null:lib.gra,fuera};
+}
+// Lo que deja ese producto POR UNIDAD. Sale de las MISMAS funciones que ordenan Pedidos
+// (`pedGananciaNorm` y `pedVentasNorm`), no de una cuenta propia: si acá midiera distinto, la caja
+// priorizaría un producto y la lista de comprar otro sobre la misma mercadería.
+// Si no vendió en la ventana se cae al ritmo viejo (`ventasHistoricas`), que es el mismo respaldo
+// que usa Pedidos — un producto que no vendió PORQUE NO HABÍA es justo el que hay que mandar.
+// Si no hay nada con qué medir devuelve null, y null NO es cero: va último pero no se descarta.
+function cajaGanUnidad(p,cache){
+  if(!p)return null;
+  if(cache&&cache[p.id]!==undefined)return cache[p.id];
+  let g=null;
+  const v=pedVentasNorm(p).vendidos;
+  if(v>0){const t=pedGananciaNorm(p);if(t>0)g=t/v;}
+  if(g==null){const h=ventasHistoricas(p,'','');if(h&&h.u>0&&h.gan>0)g=h.gan/h.u;}
+  if(cache)cache[p.id]=g;
+  return g;
+}
+async function cajaSugeridaCupo(){
+  if(!ofiFiltroCuenta)return renderOfiCaja();
+  const cu=cupoRestante(ofiFiltroCuenta);
+  if(!cu){toast(`No tengo cargado el cupo de Full de ${ofiFiltroCuenta}. Miralo en ML y pedime que lo cargue.`,'err');return;}
+  const filas=repartoOficina();
+  const cache={};
+  const cands=[];
+  filas.forEach(f=>(f.sug||[]).forEach(x=>{
+    if(x.cuenta!==ofiFiltroCuenta||!(x.mandar>0))return;
+    const u=Math.min(x.mandar,f.hay);
+    if(u<=0)return;
+    cands.push({key:_ck(f.p.id,f.variante),u,ganU:cajaGanUnidad(f.p,cache),enCero:!!x.enCero,
+      vDia:x.vDia||0,dias:x.dias,grande:esGrandeFull(f.p),
+      nombre:f.p.name+(f.variante?' · '+f.variante:'')});
+  }));
+  if(!cands.length){await _guardarCajaArmando(ofiFiltroCuenta,{});return renderOfiCaja();}
+  const plan=cajaLlenarCupoPlan(cands,cu.estPeq,cu.estGra);
+  _cajaCupoFuera={cta:ofiFiltroCuenta,ts:Date.now(),fuera:plan.fuera};
+  await _guardarCajaArmando(ofiFiltroCuenta,plan.items);
+  renderOfiCaja();
+  const prods=Object.values(plan.items).filter(x=>x>0).length;
+  const tot=plan.usadoPeq+plan.usadoGra;
+  let msg=`${tot} u. en ${prods} producto${prods===1?'':'s'}`;
+  if(plan.fuera.length)msg+=` · quedaron afuera ${plan.fuera.reduce((a,x)=>a+x.falta,0)} u. de ${plan.fuera.length} por el cupo`;
+  toast(msg);
+}
 async function cajaVaciar(){
   if(!ofiFiltroCuenta)return;
+  _cajaCupoFuera=null;
   await _guardarCajaArmando(ofiFiltroCuenta,{});
   renderOfiCaja();
 }
@@ -4899,7 +5046,17 @@ function renderOfiCaja(){
         const pie=_cu.viejo
           ? `<div style="font-size:.6rem;color:var(--amber);margin-top:4px">⚠️ Este cupo lo cargaste hace ${_cu.dias} día${_cu.dias===1?'':'s'}: miralo de nuevo en ML. Se carga a mano porque ML no lo da por API.</div>`
           : `<div style="font-size:.58rem;color:var(--muted);margin-top:4px;opacity:.8">Cupo leído en ML hace ${_cu.dias===0?'menos de un día':_cu.dias+' día'+(_cu.dias===1?'':'s')}. Lo que se mandó y se vendió desde entonces es una estimación del panel.</div>`;
-        cupoHTML=`<div style="border-top:1px solid var(--border);margin-top:9px;padding-top:7px">${cuerpo}${pie}</div>`;
+        // LO QUE LA ÚLTIMA CARGA POR CUPO DEJÓ AFUERA. No es un detalle: son unidades que el panel
+        // dice que hay que mandar y que no entraron por el límite de ML. Sin esto, la caja se ve
+        // completa y no lo es.
+        let _fueraHTML='';
+        if(_cajaCupoFuera&&_cajaCupoFuera.cta===ofiFiltroCuenta&&_cajaCupoFuera.fuera.length){
+          const _f=_cajaCupoFuera.fuera, _tot=_f.reduce((a,x)=>a+x.falta,0);
+          _fueraHTML=`<details style="margin-top:6px"><summary style="cursor:pointer;font-size:.62rem;color:var(--amber)">⚠️ No entraron ${fmtN(_tot)} u. de ${_f.length} producto${_f.length===1?'':'s'} por el cupo — quedan para la caja siguiente</summary>
+            <div style="font-size:.6rem;color:var(--muted);line-height:1.7;margin-top:4px">${_f.map(x=>`· ${x.nombre.replace(/</g,'&lt;')} — faltan ${fmtN(x.falta)} u.${x.dado>0?` (van ${fmtN(x.dado)})`:' (no entró ninguna)'}`).join('<br>')}</div>
+          </details>`;
+        }
+        cupoHTML=`<div style="border-top:1px solid var(--border);margin-top:9px;padding-top:7px">${cuerpo}${pie}${_fueraHTML}</div>`;
       }
       med.innerHTML=`<div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:10px 14px">
         <div style="display:flex;gap:16px;flex-wrap:wrap">
@@ -4914,7 +5071,13 @@ function renderOfiCaja(){
   const barra=document.getElementById('ofi-caja-barra');
   if(barra){
     barra.style.display=armando?'flex':'none';
+    // DOS BOTONES DE CARGAR, y la diferencia importa: el primero carga TODO lo que hace falta
+    // aunque se pase de la caja y del cupo (decisión suya del 30/08: "cargame todo, yo después
+    // saco lo que no entra"); el segundo llena hasta donde ML te deja mandar HOY.
+    // El segundo sólo aparece si esa cuenta tiene el cupo cargado: un botón que no puede hacer
+    // nada es peor que no tener botón.
     barra.innerHTML=armando?`<button class="pf-btn" onclick="cajaSugerida()">Cargar lo sugerido</button>`
+      +(cupoRestante(ofiFiltroCuenta)?`<button class="pf-btn" style="border-color:var(--accent2);color:var(--accent2)" onclick="cajaSugeridaCupo()" title="Lo mismo, pero sin pasarse del cupo de Full de esta cuenta. Reparte en dos vueltas: primero que ningún producto quede sin nada, y después llena con los que más plata dejan por unidad.">🎯 Cargar lo que entra en el cupo</button>`:'')
       +`<button class="pf-btn" onclick="cajaVaciar()">Vaciar caja</button>`
       +`<span style="font-size:.66rem;color:var(--muted);align-self:center">Poné cuántas unidades van en ESTA caja. Si no entra todo, cerrás ésta y armás la siguiente. Se guarda sola: podés dejarla a medias.<br>Lo sugerido deja <strong>${REPO_DIAS_COBERTURA} días de stock en total</strong>, contando lo que ya está en Full y lo que va en camino.</span>`:'';
   }
@@ -5068,7 +5231,7 @@ function renderOfiCaja(){
         onchange="setCajaItem('${f.p.id}',${JSON.stringify(f.variante||'').replace(/"/g,'&quot;')},this.value,${tope})">`:'';
     return `<div style="padding:12px 14px;background:var(--surface);border:1px solid ${enCaja>0?'var(--accent2)':'var(--border)'};border-radius:var(--r);margin-bottom:8px">
       <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap">
-        ${fotoChipHTML(f.p,36)}
+        ${fotoChipHTML(f.p,36,f.variante,ofiFiltroCuenta)}
         <div class="pi-prod" style="flex:1;min-width:150px">${f.p.name}${f.variante?` <span style="color:var(--accent2);font-weight:700">· ${f.variante}</span>`:(f.sinContarPorAroma?' <span style="color:var(--muted);font-weight:400">· sin variante</span>':'')}</div>
         <div style="font-size:.68rem;color:var(--muted)">tenés ${f.hay} u.${otras>0?` <span style="color:var(--amber)">(${otras} en otra caja)</span>`:''}</div>
         ${casilla}
@@ -10232,32 +10395,47 @@ function liquidandoDe(p){
 // distintos, tal como él lo describió. Por eso se busca siempre con cuenta.
 // Y NO es el MLA: es el código del producto ADENTRO de Full — confundirlos ya costó una tarde
 // (08/09/2026), así que la pantalla lo dice con todas las letras.
-function etiquetaFullDe(prodId,cuenta,variante){
+// ── QUÉ PUBLICACIÓN ES ESA VARIANTE ───────────────────────────────────────────────
+// UNA sola función para todo lo que tenga que apuntar a la publicación de un color o un aroma: el
+// código de etiqueta de Full y la FOTO. Con dos copias el código podría ser de un aroma y la foto
+// de otro, que es peor que no tener ninguno de los dos — él usa las dos cosas para chequear que
+// está mandando lo correcto.
+//
+// NO SE ADIVINA. Si el título no nombra ninguna variante de la ficha, la publicación NO se acepta
+// para la variante pedida. Mostrar el código (o la foto) de otro color le CONFIRMARÍA un error en
+// vez de evitarlo. Para esos casos está `fijarvar:<MLA>=<variante>:go`, que escribe `variant` y
+// acá manda. (La primera versión sí adivinaba y lo agarró la prueba: con el Centímetro devolvía el
+// código del Blanco cuando se le pedía el Rosa.)
+//
+// `sirve` deja que cada uno siga buscando hasta encontrar una publicación que tenga LO SUYO: el
+// código sigue de largo si esa publicación no tiene `inv`, y la foto si no tiene `foto`. Sin eso,
+// la primera que matchea se comía el resultado y el dato desaparecía teniéndolo otra.
+// `cuenta` vacía = cualquier cuenta (Pedidos no mira por cuenta).
+function pubDeVariante(prodId,cuenta,variante,sirve){
   const L=state.mllinks||{};
+  const vars=((state.products||[]).find(x=>x.id===prodId)||{}).variantes||[];
   for(const e of Object.values(L)){
     if(!e||e.prodId!==prodId||e.ignored)continue;
-    if((e.cuenta||'')!==cuenta)continue;
+    if(cuenta&&(e.cuenta||'')!==cuenta)continue;
     if((e.status||'')==='closed')continue;
-    // Publicación con variantes adentro: el código es de la variante.
-    if(variante&&e.invVar&&e.invVar[sid(variante)])return e.invVar[sid(variante)];
-    // Publicación por variante (los aromas del Paulvic, los colores): una publicación = un color,
-    // así que sólo vale si ESA publicación es de esa variante.
-    // NO SE ADIVINA. Si el título no nombra ningún color, la publicación NO se acepta para la
-    // variante pedida: mostrar el código de otro color es peor que no mostrar nada — él usa este
-    // número justamente para chequear que está mandando lo correcto, así que un código equivocado
-    // le confirmaría un error en vez de evitarlo.
-    // Para esos casos está `fijarvar:<MLA>=<variante>:go`, que escribe `variant` y acá manda.
-    // (La primera versión sí adivinaba y lo agarró la prueba: con el Centímetro devolvía el código
-    // del Blanco cuando se le pedía el Rosa.)
-    if(variante){
-      // Misma función que usa el resto del panel para deducir el color del título (`_varPorMla`),
-      // no una copia: si un día cambia la regla, cambia en todos lados junta.
-      const pv=e.variant||_matchProdVariant(e.title||'',((state.products||[]).find(x=>x.id===prodId)||{}).variantes||[]);
+    if(variante&&!(e.invVar&&e.invVar[sid(variante)])){
+      // Publicación por variante (los aromas del Paulvic, los colores): una publicación = un
+      // color, así que sólo vale si ESA publicación es de esa variante.
+      // Misma función que usa el resto del panel para deducir el color del título
+      // (`_matchProdVariant`), no una copia.
+      const pv=e.variant||_matchProdVariant(e.title||'',vars);
       if(!pv||normTxt(pv)!==normTxt(variante))continue;
     }
-    if(e.inv)return e.inv;
+    if(!sirve||sirve(e))return e;
   }
   return null;
+}
+function etiquetaFullDe(prodId,cuenta,variante){
+  const e=pubDeVariante(prodId,cuenta,variante,(x)=>(variante&&x.invVar&&x.invVar[sid(variante)])||x.inv);
+  if(!e)return null;
+  // Publicación con variantes adentro: el código es de la variante.
+  if(variante&&e.invVar&&e.invVar[sid(variante)])return e.invVar[sid(variante)];
+  return e.inv||null;
 }
 function cajaMLDe(p){
   const L=state.mllinks||{};
@@ -11372,7 +11550,7 @@ function _pedidoItemHtml(p,opts){
   const _abierto=_openPedCards.has(p.id);
   return `<details class="ped-card ${_est}"${_abierto?' open':''} ontoggle="_setPedCardOpen('${p.id}',this.open)">
     <summary class="ped-head">
-      ${_prod?fotoChipHTML(_prod,38):''}
+      ${_prod?fotoChipHTML(_prod,38,p.variante||''):''}
       <span class="ped-name">${p.producto||'—'}${p.variante?` <span style="padding:1px 6px;border-radius:4px;background:rgba(124,58,237,.15);color:#a78bfa;font-size:.65rem;font-family:'DM Mono',monospace;font-weight:400">${p.variante}</span>`:''}</span>
       <span class="ped-buy"><b>${fmtN(p.cantidad||1)}</b><i>u. a comprar${p.auto===false?' · a mano':''}</i></span>
       <span class="ped-caret">▼</span>
