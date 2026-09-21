@@ -349,6 +349,7 @@ Los que más se usan:
 | `saldoml[:go]` | **lo que falta cobrar de ML, por cuenta** · escribe "A liquidar en ML" del Arqueo **en dólares** · no imprime ni un peso |
 | `dispo[:go]` | **el disponible de ML** a partir del número que él carga · sin `:go` sólo muestra |
 | `medirsaldo` | **cómo viene cada tipo de movimiento** del reporte: fechas y signos · solo lee |
+| `realml[:cuenta]` | **¿el panel mide bien lo que ML descuenta?** lo real contra lo calculado, por cuenta y mes · solo lee |
 | `saldocuenta` | **el reporte "saldo en cuenta"**, que trae el disponible de verdad · dice si falta crearlo · solo lee |
 | `mptoken` | **¿la llave propia de Mercado Pago abre algo que la de ML no?** (medido: no) · solo lee |
 | `saldo4` · `saldo5` | **agotar el saldo**: 13 puertas más y las tres formas de pedir el reporte de liberaciones |
@@ -3016,6 +3017,89 @@ endpoint existe y lo niega un permiso, que es lo contrario de un 404. **Hipótes
 permiso **"Métricas del negocio"** dice textual *"la información impositiva, **balances** y
 reportes de operaciones"* y él lo puso en SIN ACCESO ese mismo día. Devolverlo y reintentar es
 gratis; **hasta que se mida, es una sospecha y no un hecho.**
+
+### LOS MÁRGENES CONTRA LA REALIDAD: 8 PUNTOS DE DIFERENCIA, Y VAN PARA EL LADO FEO (21/09/2026)
+
+Pedido suyo: *"fijate todo, si los márgenes dan bien (…) hacé un análisis profundo"*. El comando es
+**`realml[:cuenta]`** y **SOLO LEE**. Compara lo que el panel CALCULA que ML se queda contra lo que
+Mercado Pago se quedó **de verdad**, según el reporte de liquidación.
+
+**LA COMPARACIÓN ES POR CUENTA Y POR MES, NO FILA POR FILA, y no es pereza.** Queda escrito por qué
+para no volver a intentarlo:
+ · **falta la clave.** La venta guarda `saleId` y `numVenta` —los de MercadoLibre— y **nunca el id
+   de PAGO de MercadoPago**. Y que `SOURCE_ID` del reporte sea ese id **es una suposición que nadie
+   midió**: no aparece en ningún renglón de código, sólo en una nota de este archivo.
+ · **`mlfee` y `FEE_AMOUNT` no son lo mismo.** `mlfee` junta todos los cargos con el **envío de Full
+   ADENTRO**; en el reporte el envío es un renglón aparte (`SETTLEMENT_SHIPPING`). Compararlos daría
+   una brecha del tamaño del envío **y sólo arriba de los $33.000** — la forma EXACTA del agujero
+   del 17/09. Saldría como hallazgo y sería un artefacto.
+ · **en un carrito el `mlfee` guardado es una FRACCIÓN**, repartida por lo que vale cada producto y
+   redondeada por renglón (el bug de los Ferrari del 08/09).
+Por eso se compara **todo lo que ML se quedó** (`TRANSACTION_AMOUNT − REAL_AMOUNT` contra
+`total − neto`): los dos lados llevan el envío adentro, así que esa brecha no existe.
+
+**LA PRIMERA CORRIDA DIO UNA BOMBA FALSA Y EL CHEQUEO QUE HIZO FALTA SALIÓ DE AHÍ.** Decía
+*"ML se quedó el **73,5%**"* en Matías en agosto. **Es imposible**: con eso habría vendido a pérdida
+todo el mes y se habría dado cuenta. La pista estaba en la misma salida —313 filas contra 217
+ventas—, así que ahora imprime **la proporción entre lo vendido que ve cada lado**. Si no da cerca
+de 1, los dos no están mirando la misma plata y el porcentaje **no sirve**, y el renglón lo dice con
+esas palabras en vez de dejar el número solo. **Un número que parece una bomba merece la misma
+desconfianza que un cero que parece una buena noticia.**
+
+**LO MEDIDO EN MATÍAS, y el chequeo separa lo que vale de lo que no:**
+
+| mes | proporción | ¿sirve? | real vs panel |
+|---|---|---|---|
+| 2026-06 | ×0,33 | ❌ el reporte arranca el 22/06 | — |
+| **2026-07** | **×0,90** | ✅ | **38,3% contra 29,3% · −8,9 puntos** |
+| 2026-08 | ×0,54 | ❌ | (el 73,5% era esto) |
+| **2026-09** | **×0,87** | ✅ | **39,5% contra 33,2% · −6,3 puntos** |
+
+**EN LOS DOS MESES QUE SÍ SE PUEDEN COMPARAR, ML SE QUEDÓ ENTRE 6 Y 9 PUNTOS MÁS DE LO QUE EL PANEL
+CREE.** Y va para el lado peligroso: **los márgenes se ven más cómodos de lo que son.** Sobre lo
+facturado eso es mucha plata.
+
+**NO ESTÁ CERRADO Y NO HAY QUE TOCAR NINGÚN PRECIO CON ESTO TODAVÍA.** Lo que falta medir, en orden:
+ 1. **Las retenciones.** `mlfee` excluye a propósito los `tax_withholding` (SIRTAC y compañía) y el
+    reporte los trae adentro de `TAXES_AMOUNT`. Es el primer candidato y explica una parte, no las
+    nueve.
+ 2. **Por qué en agosto el panel ve la mitad de lo vendido que el reporte** (×0,54). Eso puede ser
+    un problema más grande que el de los márgenes: si al panel le faltan ventas, falta ganancia.
+ 3. **Las ventas con neto ESTIMADO.** Cuando ML no liquidó todavía, el neto sale de un respaldo —
+    y **eso no queda marcado en la venta**, así que hoy no se pueden separar. Marcarlo es un campo.
+
+**Lo que el comando NO puede ver, y lo dice en vez de callarlo:** el IIBB y el monotributo no están
+ni en el neto ni en el reporte (ML los factura a fin de mes), así que **no** explican esta brecha —
+esos ya se descuentan aparte en el margen.
+
+**Se compara en PORCENTAJE y no en pesos**, por dos motivos que van juntos: el registro de GitHub es
+público, y los dos lados no cubren exactamente las mismas ventas. Un porcentaje aguanta que las
+bases no sean idénticas; una resta de totales, no.
+
+### LA AGENDA YA SE VE EN EL ARQUEO, Y SE ACTUALIZA SOLA (21/09/2026)
+
+En Finanzas, abajo de las cuatro tarjetas y arriba de todo lo que se carga a mano (la regla del
+26/08), está **"Se libera de ML"**: hoy · mañana · 7 días · todo lo pendiente, en dólares y con los
+pesos en chiquito al lado —lo que él pidió el 20/09—, más una barra por día.
+
+**Y EL ARREGLO QUE SALIÓ DE MAPEAR ANTES DE ESCRIBIR, que es el que más valía:** `saldoml` sólo
+existía adentro de `BILLING_PROBE`, o sea que la agenda se actualizaba **únicamente cuando alguien
+lo corría a mano** — y cada corrida a mano MATA el ciclo de 2 minutos. **El estado normal de ese
+número iba a ser estar viejo.** Ahora corre solo en `ml-daily`, todas las noches.
+
+**Cuatro decisiones que no son de forma:**
+ · **los días que YA pasaron no se cuentan como "va a entrar" ni se esconden**: se dicen aparte,
+   porque esa plata ya está en el disponible;
+ · **no se muestra cuando se mira un mes CERRADO**, y **la agenda NO entra en el cierre del mes**:
+   es una lista de días futuros, adentro de un cierre no quiere decir nada y sería la misma plata
+   guardada en dos lugares;
+ · **sin tipo de cambio no se inventa la conversión** a pesos: no se muestran;
+ · **avisa en ámbar** si la agenda tiene 2 días o más.
+
+**LA PRUEBA AGARRÓ UN AGUJERO REAL ANTES DE SUBIR:** una fecha imposible como `2026-13-99` pasaba el
+patrón de "cuatro-dos-dos" y **sumaba plata en un día que no existe**. Ahora se comprueba que la
+fecha vuelva igual al parsearla, y un `null` se descarta en vez de contarse como cero. Probado con
+las funciones REALES sacadas del archivo y 22 casos.
 
 ### LA APLICACIÓN PROPIA DE MERCADO PAGO: CREADA, MEDIDA TRES VECES, NO APORTA NADA (21/09/2026)
 
