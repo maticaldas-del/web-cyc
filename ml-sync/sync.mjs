@@ -25242,6 +25242,46 @@ async function main() {
         // cargar y los escribía encima del detalle bueno: la primera corrida guardó 8 productos
         // donde el panel tenía 12, y los 4 que faltaban se perdían sin que nadie lo dijera.
         // `pedidoEn` es la lista REAL de lo que se pidió, así que manda.
+        // ── EL DETALLE REAL, EL DE LA FACTURA DEL MAYORISTA ──────────────────
+        // `det=<cod>*<unidades>*<precio>;<cod>*...` (21/09/2026). Hasta acá el detalle salía de lo
+        // que el panel tenía cargado, que son los precios de la LISTA de Nissei; la factura del
+        // mayorista trae otros (el Corsair figuraba a US$ 29,90 y salió 28,00). El precio que
+        // importa es el que PAGÓ, no el que decía la lista.
+        // El nombre y los links NO se pasan: se buscan por el código contra los candidatos y
+        // contra el detalle ya guardado. **El código se compara también por el final**, porque los
+        // que carga el chat vienen SIN el primer dígito (7128673 en la factura, 128673 en el
+        // panel) — medido en 5 de 5 el 21/09.
+        // Lo que no se pueda emparejar se guarda igual con el código de nombre y SE DICE: un
+        // renglón que desaparece porque no encontré su nombre es el descarte mudo de siempre.
+        let itemsDet = null;
+        if (campos.det) {
+          const yaIt0 = (ya && Array.isArray(ya.items)) ? ya.items : [];
+          const pool = [...yaIt0.map((x) => ({ cod: String(x.cod || ''), src: x })),
+                        ...Object.entries(cands).map(([cid, c]) => ({ cod: String(c.cod || c.codPy || ''), src: { ...c, id: cid, nom: c.nombre || c.nom } }))];
+          const buscar = (cod) => {
+            const c = String(cod).replace(/\D/g, '');
+            return pool.find((x) => x.cod.replace(/\D/g, '') === c)
+                || pool.find((x) => { const a = x.cod.replace(/\D/g, ''); return a && (c.endsWith(a) || a.endsWith(c)); }) || null;
+          };
+          itemsDet = []; const sinNombre = [];
+          for (const tr of String(campos.det).split(';').map((x) => x.trim()).filter(Boolean)) {
+            const m = tr.split('*').map((x) => x.trim());
+            const cod = m[0] || '', u = parseInt(m[1]) || 0, pu = num(m[2]);
+            if (!cod || !(u > 0) || !(pu > 0)) { console.log(`  ⚠️ No entiendo "${tr}" — se espera codigo*unidades*precio. No guardo NADA.`); return; }
+            const hit = buscar(cod);
+            const o = { id: (hit && hit.src.id) || ('x' + cod), nom: (hit && String(hit.src.nom || hit.src.nombre || '').slice(0, 120)) || cod, cod, u, usd: pu };
+            if (hit) {
+              for (const k of ['mlId', 'link', 'margen', 'ganancia', 'pesoKg', 'pesoTxt']) if (hit.src[k] != null) o[k] = hit.src[k];
+              if (o.margen != null) o.margen = Math.round(parseFloat(o.margen) * 10) / 10;
+            } else sinNombre.push(cod);
+            itemsDet.push(o);
+          }
+          const sumDet = Math.round(itemsDet.reduce((a, x) => a + x.usd * x.u, 0) * 100) / 100;
+          const uDet = itemsDet.reduce((a, x) => a + x.u, 0);
+          console.log(`  Detalle de la factura: ${itemsDet.length} producto(s) · ${uDet} unidades · US$ ${sumDet.toFixed(2)}`);
+          if (Math.abs(sumDet - usd) > 0.5) console.log(`  ⚠️ NO CIERRA: el detalle suma US$ ${sumDet.toFixed(2)} y pusiste usd=${usd.toFixed(2)}. Se guarda igual, pero uno de los dos está mal.`);
+          if (sinNombre.length) console.log(`  ⚠️ ${sinNombre.length} código(s) sin emparejar (quedan con el código de nombre): ${sinNombre.join(', ')}`);
+        }
         // SI EL PEDIDO YA TIENE DETALLE GUARDADO, NO SE TOCA. Punto.
         // El panel lo congela al apretar "Ya lo pedí" —con el código, el precio, el margen, el peso
         // y los links de cada producto— y deja los candidatos en `pedirU` 0. Esta lista se arma
@@ -25267,8 +25307,8 @@ async function main() {
         // Y AUNQUE LA LISTA NUEVA NO VENGA VACÍA, SI ES MÁS CORTA QUE LA GUARDADA GANA LA GUARDADA.
         // Un detalle que se achica no es una corrección, es una pérdida — y el `set` que pisa al
         // padre ya borró datos tres veces en este archivo.
-        const itemsFin = yaItems.length ? yaItems : items;
-        const usaViejos = yaItems.length > 0;
+        const itemsFin = itemsDet ? itemsDet : (yaItems.length ? yaItems : items);
+        const usaViejos = !itemsDet && yaItems.length > 0;
         // Si el panel había anotado otro total (lo que se cargó) y lo que de verdad se mandó es
         // otro, se guardan los DOS: el recargo se mide contra lo que se mandó, pero el detalle
         // sigue sumando lo otro y sin esto no se entiende por qué no cierra.
@@ -25303,7 +25343,8 @@ async function main() {
           console.log(`  ⚠️ No hay tipo de cambio cargado en Finanzas, así que el recargo en % no se puede calcular. Se guarda igual.`);
         }
         if (rec.incompleto) console.log(`  ⚠️ INCOMPLETO: sin el envío. Queda guardado pero NO entra en el promedio — un recargo sin el flete sale más barato de lo real.`);
-        if (usaViejos) console.log(`\n  ${yaItems.length} producto(s) ya estaban guardados con este pedido: NO se tocan, sólo se agregan los pesos.`);
+        if (itemsDet) console.log(`\n  ${itemsDet.length} producto(s) escritos con los precios REALES de la factura (reemplazan a los ${yaItems.length} que había).`);
+        else if (usaViejos) console.log(`\n  ${yaItems.length} producto(s) ya estaban guardados con este pedido: NO se tocan, sólo se agregan los pesos.`);
         else console.log(`\n  ${items.length} producto(s) guardados con su código y sus unidades.`);
         if (!itemsFin.length) console.log(`  ⚠️ No había ningún candidato con unidades cargadas en el panel ni detalle guardado, así que el detalle por producto queda vacío.`);
         if (usdPanel) console.log(`  ⚠️ El panel tenía anotado US$ ${usdPanel.toFixed(2)} y vos mandás US$ ${usd.toFixed(2)}: el recargo se mide contra lo que MANDASTE. Los dos quedan guardados.`);
