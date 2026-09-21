@@ -364,6 +364,7 @@ Los que más se usan:
 | `verweb:<direccion>` | **leer una página de afuera y mostrar su texto** · el chat no tiene internet y el robot sí · solo lee · **lo que imprime queda en el registro PÚBLICO** |
 | `campos[:<MLA>]` | **qué datos manda ML adentro de las puertas que YA usamos** y el código nunca nombra · sólo nombres, ningún valor · solo lee |
 | `reputa` | la reputación de las 4 cuentas y el nombre de los rubros · **escribe** `cyc/reputacion` |
+| `mismoprod[:cuenta]` | **¿ML dice solo cuáles publicaciones son el mismo producto?** y si da la foto · solo lee |
 | `apis` | qué endpoints de ML contestan (para diagnosticar) |
 | `ciclo` | **no es un comando: vuelve a prender el ciclo de 2 minutos** (ver abajo) |
 
@@ -3885,6 +3886,97 @@ estaba el `inventory_id`. Mira la publicación, el stock de Full, la cuenta, una
 
 Lista las claves hasta **dos niveles**: el campo útil suele estar adentro de un objeto
 (`shipping.logistic_type`), no suelto arriba de todo.
+
+## LOS DATOS QUE ML YA MANDABA Y NO GUARDÁBAMOS (21/09/2026)
+
+Pedido suyo: *"fijate si hay más info que da ML y no tenemos. por ejemplo el código para enviar
+mercadería a Full (Codera - XCUU22662) que fue re útil. quizás encontrás pequeños datos así para ir
+llenando la web."*
+
+**Su ejemplo es la clave: el `inventory_id` YA venía** en la respuesta que el robot pedía todas las
+horas para leer el stock de Full, y no se guardaba. No era un endpoint nuevo ni un permiso que
+faltara — **era un campo que pasaba por al lado**. `apisnuevas` prueba PUERTAS; `campos` mira
+ADENTRO de las que ya están abiertas, que es donde estaba.
+
+**Medido con `mismoprod` sobre 384 publicaciones:**
+
+| campo | está en | qué se hizo |
+|---|---|---|
+| **foto** (`thumbnail`) | **384 de 384** | se guarda y se ve en Pedidos, Armar caja y Rotación |
+| `domain_id` | 384 de 384 | se guarda (rubro fino de ML) |
+| `user_product_id` | 382 de 384 | empareja las publicaciones nuevas |
+| `family_id` | 380 de 384 | no se usa todavía |
+
+### LA FOTO: EL SISTEMA YA ESTABA ENTERO, LE FALTABA LLENARSE
+
+*"hay un sector que había puesto fotos yo pero es antiguo y no lo terminé de llenar, si esto lo
+trae directo hacelo así que es mejor"*. Exacto: `verFoto`, el lightbox y el botón 📷 **ya existían**
+desde antes. Lo único que faltaba era que alguien cargara cada foto a mano, y por eso quedó a
+medias. Ahora la guarda el robot en `cyc/mllinks/<MLA>/foto` y todo lo demás funciona solo.
+
+**LO QUE CARGÓ ÉL MANDA SIEMPRE.** Si eligió una foto es porque la de ML no le servía; pisarla sería
+deshacerle una decisión — el mismo motivo por el que el robot no toca las medidas cargadas a mano ni
+el precio de Paraguay pisa el costo. El orden es: link a mano → foto subida → la de ML.
+
+**Y SI NO HAY NINGUNA NO SE DIBUJA NADA.** Un cuadrito roto es peor que no tener foto, y la imagen
+además se esconde sola si el link falla.
+
+**LA PRIMERA VERSIÓN GUARDÓ 0 DE 384, Y EL FRENO HIZO BIEN.** ML manda el `thumbnail` **por http**
+(69 de 69) y **`secure_thumbnail` NO viene** (0 de 69). **El panel se sirve por https y el navegador
+BLOQUEA una imagen http adentro de una página https**: se vería un hueco y **no habría ningún error
+a la vista** — el fallo mudo de siempre.
+**El arreglo NO se eligió de memoria.** Se probaron las dos salidas contra ML de verdad —desde el
+chat no se puede, el proxy bloquea ese dominio; el robot sí—:
+ · el **MISMO servidor por https** → **200 · `image/webp`** ✅ · no cuesta ninguna consulta extra
+ · `pictures[0].secure_url` → existe, pero cuesta una consulta más por publicación
+Se toma la primera.
+**Y EL AGUJERO LO AGARRÓ LA PRUEBA, NO LA LECTURA:** el filtro decía `[^/]*mlstatic\.com` sin cerrar
+el final, así que **`mlstatic.com.malo.net` pasaba** — alcanzaba con poner el nombre adelante para
+que el panel cargara una imagen de cualquier servidor. Ahora el dominio se compara entero.
+
+### `user_product_id`: SIRVE, PERO SÓLO ADENTRO DE UNA CUENTA
+
+Es el identificador con el que **ML mismo** agrupa sus publicaciones del mismo producto. Importa
+porque hoy una publicación nueva se empareja leyendo el **TÍTULO**, que es el filtro por palabras
+que ya falló **seis** veces en este archivo.
+
+**Las dos mitades de la medición, y la mala importa:**
+ · **Cuando ML junta dos publicaciones, NUNCA contradijo nuestras fichas: 24 grupos de 24.** El dato
+   es confiable.
+ · **Pero agrupa sólo adentro de UNA cuenta.** La Tira Led está en las cuatro y tiene **4 ids
+   distintos**. Igual que el código de Full, ya medido así. **O sea que NO reemplaza el emparejado
+   por título cuando el producto está en varias cuentas**, que es donde más duele.
+
+**Cómo quedó:** si una publicación nueva comparte el id con una hermana YA vinculada **en esa misma
+cuenta**, se engancha con certeza. Si no, se sigue adivinando por el título: no hay otra.
+**Si el título y ML dan fichas distintas gana ML y SE DICE en el log**, con el aviso al lado —
+elegir en silencio sería el descarte mudo de siempre, y ése es justo el caso que hay que mirar. El
+log dice de cada nueva **si la enganchó ML o el título**: sin eso las dos se leen igual.
+
+**EL ERROR QUE AGARRÉ ANTES DE SUBIR, y es del tipo que compila perfecto:** la primera versión
+buscaba la ficha con `index.byId`, **que no existe** —el índice es un arreglo de `{p, toks}`—, así
+que caía SIEMPRE en un respaldo `{id, name}` inventado. Con eso se perdía `p.variantes`, o sea que
+`varianteDeTitulo` no podía sacar el color y **el stock de Full no se le imputaba a ninguna
+variante**. Y si la hermana apunta a una ficha borrada **no se usa**: se vuelve al título y se dice.
+
+**Y UNA PRUEBA ESTABA MAL PLANTEADA, NO EL CÓDIGO:** daba por hecho que *"Xiaomi Redmi Watch 4
+Negro"* emparejaba por título. Con el Watch 3 también cargado, el título **EMPATA y no elige
+ninguno** — que es el lado seguro y no se tocó.
+
+### DÓNDE SIRVE ADEMÁS, Y ESTABA PENDIENTE HACE RATO
+
+**Encontrar las publicaciones repetidas de una misma cuenta.** Está anotado como *"LO QUE FALTA, Y
+ES LO GRANDE: ~58 publicaciones repetidas siguen VIVAS en ML"*. **ML mismo dice cuáles son la
+misma**: la medición ya destapó que Luciana tiene **dos Tira Led con el mismo id**.
+
+### LO QUE QUEDA ABIERTO
+
+ · **`family_id`** (380 de 384) no se usa todavía. Es el "producto padre" de ML.
+ · **Los campos de la ORDEN y del ENVÍO.** La primera corrida de `campos` no encontró una orden
+   porque pedía `/orders/search` **sin `order.status=paid`** —el robot sí lo manda— **y se tragaba
+   el error con un `catch {}` vacío**, así que imprimió *"no se pudo encontrar una orden reciente"*,
+   que se lee como *"ML no tiene ventas"*. Es el `catch` mudo anotado cuatro veces, cometido en la
+   herramienta hecha para encontrar lo que se pasa por al lado. Ya está arreglado; falta correrlo.
 
 ## Cosas que ya pasaron (para no repetirlas)
 
