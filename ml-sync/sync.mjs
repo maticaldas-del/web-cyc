@@ -14940,6 +14940,82 @@ async function main() {
       return;
     }
 
+    // BILLING_PROBE=fotos → ¿A QUÉ PRODUCTOS LES FALTA LA FOTO, Y POR QUÉ? · SOLO LEE
+    //
+    // POR QUÉ (21/09/2026). Él mandó Armar caja: *"faltan fotos a los productos. revisar"*.
+    // Antes de tocar nada hay que separar TRES cosas que en pantalla se parecen:
+    //  · **📷 azul** = tiene foto, pero la cargó ÉL a mano. Vive en otra rama de la base y pesa,
+    //    así que no se dibuja inline: se toca y se abre. **No le falta nada.**
+    //  · **el recuadrito con la imagen** = la foto de la publicación de ML.
+    //  · **nada** = no hay foto de ninguna clase. Ése es el único que falta de verdad.
+    //
+    // Este comando cuenta los tres y, para los que no tienen ninguna, dice el MOTIVO, que decide
+    // qué hacer: si la publicación existe y todavía no se leyó, se llena sola en la vuelta de la
+    // hora y no hay nada que hacer; si el producto no tiene ninguna publicación viva, no hay foto
+    // que traer y la tiene que cargar él.
+    //
+    // SOLO LEE. No escribe nada, no toca ML y no toca ningún precio.
+    if (String(process.env.BILLING_PROBE || '') === 'fotos') {
+      const prods = (await db.get('cyc/products')) || {};
+      const links = (await db.get('cyc/mllinks')) || {};
+      // LA FOTO CARGADA A MANO SE MIRA EN LA FICHA, NO EN `cyc/fotos`. La pantalla decide con
+      // `p.fotoUrl` y `p.foto` (`fotoDeProducto`), así que acá se mira lo MISMO: si este comando
+      // leyera otro lado, podría contar distinto de lo que él ve — el verificador con la cuenta
+      // propia adentro, el error anotado una docena de veces en CLAUDE.md. De paso evita bajar
+      // las imágenes, que van en base64 y pesan.
+      const porProd = {};
+      for (const [mla, e] of Object.entries(links)) {
+        if (!e || !e.prodId || e.ignored) continue;
+        (porProd[e.prodId] = porProd[e.prodId] || []).push({ mla, foto: !!e.foto, cerrada: (e.status || '') === 'closed' });
+      }
+      const R = { ml: [], mano: [], sinPubs: [], sinLeer: [], soloCerradas: [] };
+      for (const [id, p] of Object.entries(prods)) {
+        if (!p || p.borrado) continue;
+        const nom = String(p.name || id).slice(0, 44);
+        const pubs = porProd[id] || [];
+        const vivas = pubs.filter((x) => !x.cerrada);
+        const conFoto = pubs.filter((x) => x.foto);
+        if (conFoto.length) { R.ml.push(nom); continue; }
+        if (p.fotoUrl || p.foto) { R.mano.push(nom); continue; }
+        if (!pubs.length) R.sinPubs.push(nom);
+        else if (!vivas.length) R.soloCerradas.push(`${nom} · ${pubs.length} publicación(es), todas dadas de baja`);
+        else R.sinLeer.push(`${nom} · ${vivas.length} publicación(es) viva(s): ${vivas.slice(0, 2).map((x) => x.mla).join(' ')}`);
+      }
+      const tot = R.ml.length + R.mano.length + R.sinPubs.length + R.sinLeer.length + R.soloCerradas.length;
+      console.log('=== FOTOS DE LOS PRODUCTOS ===\n');
+      console.log(`Fichas miradas: ${tot}`);
+      console.log(`  🖼️  con foto de ML (se ve el recuadrito) : ${R.ml.length}`);
+      console.log(`  📷  con foto cargada por vos (el ícono)  : ${R.mano.length}`);
+      console.log(`  ⬜  sin ninguna foto                      : ${R.sinPubs.length + R.sinLeer.length + R.soloCerradas.length}\n`);
+      // El chequeo de que la cuenta cierre, que es el freno anotado de punta a punta en CLAUDE.md:
+      // un producto que se va por un camino no contado desaparece del resumen sin que nadie se entere.
+      const suma = R.ml.length + R.mano.length + R.sinPubs.length + R.sinLeer.length + R.soloCerradas.length;
+      if (suma !== tot) console.log(`⚠️  NO CIERRA · hay ${tot - suma} saliendo en silencio\n`);
+      if (R.sinLeer.length) {
+        console.log(`── ${R.sinLeer.length} que SE LLENAN SOLAS en la vuelta de la hora ──`);
+        console.log('   Tienen publicación viva; el robot todavía no les leyó la foto (la función es de hoy).');
+        for (const x of R.sinLeer.slice(0, 25)) console.log('   · ' + x);
+        if (R.sinLeer.length > 25) console.log(`   … y ${R.sinLeer.length - 25} más`);
+        console.log('');
+      }
+      if (R.sinPubs.length) {
+        console.log(`── ${R.sinPubs.length} SIN NINGUNA PUBLICACIÓN · no hay foto que traer ──`);
+        console.log('   Estas las tenés que cargar vos, o crear la publicación en ML.');
+        for (const x of R.sinPubs.slice(0, 25)) console.log('   · ' + x);
+        if (R.sinPubs.length > 25) console.log(`   … y ${R.sinPubs.length - 25} más`);
+        console.log('');
+      }
+      if (R.soloCerradas.length) {
+        console.log(`── ${R.soloCerradas.length} con las publicaciones DADAS DE BAJA ──`);
+        for (const x of R.soloCerradas.slice(0, 15)) console.log('   · ' + x);
+        console.log('');
+      }
+      if (!R.sinPubs.length && !R.sinLeer.length && !R.soloCerradas.length) {
+        console.log('🟢 No falta ninguna foto. Lo que se ve como 📷 es una foto tuya, no un faltante.');
+      }
+      return;
+    }
+
     // BILLING_PROBE=reglas → ¿LA BASE SE PUEDE LEER SIN CONTRASEÑA? · SOLO LEE
     //
     // POR QUÉ (21/09/2026). Pedido suyo: *"poner contraseña YA"*. Al mirarlo, el panel **ya la
