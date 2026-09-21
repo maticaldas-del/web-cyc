@@ -12227,6 +12227,199 @@ async function main() {
       return;
     }
 
+    // BILLING_PROBE=realml[:cuenta] → ¿EL PANEL MIDE BIEN LO QUE ML DESCUENTA? · SOLO LEE
+    //
+    // POR QUÉ (21/09/2026). Pedido suyo: *"fijate todo, si los márgenes dan bien (…) hacé un
+    // análisis profundo"*. El panel CALCULA lo que ML se queda en cada venta; el reporte de
+    // liquidación de MercadoPago dice lo que se quedó DE VERDAD. Si no coinciden, hay márgenes
+    // mal medidos — y un margen mal medido decide precios.
+    //
+    // LA COMPARACIÓN ES POR CUENTA Y POR MES, NO FILA POR FILA, Y ESO NO ES PEREZA.
+    // Fila por fila hoy es IMPOSIBLE y conviene dejar escrito por qué, para no volver a intentarlo:
+    //   · **falta la clave.** La venta guarda `saleId` y `numVenta` —de MercadoLibre— y nunca el id
+    //     de PAGO de MercadoPago. Y que `SOURCE_ID` del reporte sea ese id es una SUPOSICIÓN que
+    //     nadie midió: no aparece en ningún renglón de código, sólo en una nota.
+    //   · **`mlfee` y `FEE_AMOUNT` no son lo mismo.** `mlfee` junta TODOS los cargos de ML con el
+    //     envío de Full ADENTRO; en el reporte el envío es un renglón aparte. Compararlos daría una
+    //     brecha sistemática del tamaño del envío **y sólo arriba de los $33.000** — que es
+    //     exactamente la forma del agujero del 17/09, el que se escondió un año porque abajo de la
+    //     barrera las dos cuentas coinciden. Saldría como un hallazgo y sería un artefacto.
+    //   · **en un carrito el `mlfee` guardado es una FRACCIÓN**, repartida por lo que vale cada
+    //     producto y redondeada por renglón (el bug de los Ferrari del 08/09).
+    // Por eso se compara **todo lo que ML se quedó**, sin abrir comisión contra impuestos:
+    // `TRANSACTION_AMOUNT − REAL_AMOUNT` del reporte contra `total − neto` de las ventas. Los dos
+    // lados llevan el envío adentro, así que la brecha del envío no existe.
+    //
+    // SE COMPARA EN PORCENTAJE, NO EN PESOS, y por DOS motivos que van juntos: el registro de
+    // GitHub es PÚBLICO, y además los dos lados no cubren exactamente las mismas ventas (el
+    // reporte termina AYER y trae movimientos que no son ventas). Un porcentaje aguanta que las
+    // bases no sean idénticas; una resta de totales, no.
+    //
+    // LO QUE ESTA COMPARACIÓN **NO** PUEDE VER, y se dice en la salida en vez de callarlo:
+    //   · **IIBB y monotributo** (`ML_EXTRA_PCT` y el mono por cuenta) no están ni en el neto ni en
+    //     el reporte: ML los factura a fin de mes. Si da que "el panel descuenta de más", ése es
+    //     el número esperado y NO es un error.
+    //   · **el neto estimado.** Cuando ML todavía no liquidó, el neto sale de un respaldo — y eso
+    //     **no queda marcado en la venta**, así que hoy no se pueden separar. Se dice.
+    //
+    // SOLO LEE: no escribe en la base, no toca ML y no toca ningún precio.
+    if (String(process.env.BILLING_PROBE || '').startsWith('realml')) {
+      const soloCta = (String(process.env.BILLING_PROBE).split(':')[1] || '').trim().toLowerCase();
+      const MP = 'https://api.mercadopago.com';
+      const mesDe = (ms) => new Date(ms - 3 * 36e5).toISOString().slice(0, 7);   // huso de acá
+      console.log('=== ¿EL PANEL MIDE BIEN LO QUE ML DESCUENTA? ===');
+      console.log('(solo lee · por cuenta y por mes · en porcentaje, nunca en pesos)\n');
+
+      // ── EL LADO DEL PANEL: lo que NOSOTROS decimos que ML se quedó ────────────────────────
+      const vp = (await db.get('cyc/ventaprod')) || {};
+      const pan = {};            // 'cuenta|AAAA-MM' → {bruto, quedoML, n}
+      let nVentas = 0, nCanc = 0, nRaras = 0;
+      for (const [dia, ents] of Object.entries(vp)) {
+        for (const v of Object.values(ents || {})) {
+          if (!v || v.cancelada) { if (v && v.cancelada) nCanc++; continue; }
+          const ts = Number(v.ts) || Date.parse(String(dia).replace(/_/g, '-') + 'T12:00:00Z');
+          const tot = Number(v.total), net = Number(v.neto);
+          if (!isFinite(ts) || !Number.isFinite(tot) || !Number.isFinite(net) || tot <= 0) { nRaras++; continue; }
+          const k = String(v.cuenta || '?') + '|' + mesDe(ts);
+          const o = pan[k] || (pan[k] = { bruto: 0, quedoML: 0, n: 0 });
+          o.bruto += tot; o.quedoML += (tot - net); o.n++; nVentas++;
+        }
+      }
+      console.log(`Panel: ${nVentas} ventas leídas · ${nCanc} canceladas (afuera) · ${nRaras} sin números legibles (afuera)\n`);
+
+      // ── EL LADO DE MERCADO PAGO: lo que se quedó DE VERDAD ────────────────────────────────
+      let cuentasOk = 0;
+      for (const label of labels) {
+        if (soloCta && !label.toLowerCase().includes(soloCta)) continue;
+        const acc = accounts[label];
+        if (!acc?.refresh_token) { console.log(`── ${label} ── sin token`); continue; }
+        let t; try { t = await mlRefresh(ML_CLIENT_ID, ML_CLIENT_SECRET, acc.refresh_token); }
+        catch { console.log(`── ${label} ── ❌ no pude renovar el token`); continue; }
+        await db.patch('mlapi/tokens/' + label, { refresh_token: t.refresh_token, updated_ts: Date.now() });
+        const H = { Authorization: `Bearer ${t.access_token}` };
+        console.log(`── ${label} ──`);
+
+        let arch = null;
+        try {
+          const r = await fetch(`${MP}/v1/account/settlement_report/list`, { headers: H, signal: AbortSignal.timeout(20000) });
+          const arr = await r.json();
+          if (!r.ok || !Array.isArray(arr)) { console.log(`   ❌ no pude listar los reportes (HTTP ${r.status})`); continue; }
+          const ok = arr.filter((x) => x && x.file_name && x.status !== 'pending');
+          ok.sort((a, b) => new Date(a.date_created || 0) - new Date(b.date_created || 0));
+          const u = ok[ok.length - 1];
+          if (!u) { console.log('   ❌ no hay ningún reporte listo'); continue; }
+          arch = u.file_name;
+          console.log(`   reporte: ${String(u.begin_date || '').slice(0, 10)} → ${String(u.end_date || '').slice(0, 10)}`);
+        } catch (e) { console.log(`   ❌ ${String(e.message || e).slice(0, 90)}`); continue; }
+
+        let csv;
+        try {
+          const r = await fetch(`${MP}/v1/account/settlement_report/${encodeURIComponent(arch)}`, { headers: H, signal: AbortSignal.timeout(30000) });
+          if (!r.ok) { console.log(`   ❌ no pude abrirlo (HTTP ${r.status})`); continue; }
+          csv = await r.text();
+        } catch (e) { console.log(`   ❌ ${String(e.message || e).slice(0, 90)}`); continue; }
+
+        const li = csv.split('\n').filter((x) => x.trim());
+        const sep = (li[0] || '').includes(';') ? ';' : ',';
+        const cols = csvPartir(li[0] || '', sep).map((x) => x.replace(/^"|"$/g, '').trim().toUpperCase());
+        const iTipo = cols.indexOf('TRANSACTION_TYPE');
+        const iBruto = cols.indexOf('TRANSACTION_AMOUNT');
+        const iReal = cols.indexOf('REAL_AMOUNT');
+        const iFee = cols.indexOf('FEE_AMOUNT');
+        const iTax = cols.indexOf('TAXES_AMOUNT');
+        const iFecha = cols.indexOf('TRANSACTION_DATE');
+        if (iTipo < 0 || iBruto < 0 || iReal < 0 || iFecha < 0) {
+          console.log(`   ❌ le falta una columna clave · tipo ${iTipo} · bruto ${iBruto} · neto ${iReal} · fecha ${iFecha}`);
+          continue;
+        }
+
+        // 1) LA ESTRUCTURA PRIMERO, SIN SUPONER NADA. ¿Vale `bruto − comisión − impuestos = neto`?
+        //    Si vale, el reporte y el panel están midiendo lo mismo y la comparación de abajo
+        //    tiene sentido. Si NO vale, lo dice y hay que mirar antes de creerle a ningún %.
+        const tipos = new Map();
+        const rep = {};          // 'AAAA-MM' → {bruto, quedoML, n}
+        const repConEnv = {};    // idem, sumándole los renglones de envío
+        let nIleg = 0, idOk = 0, idNo = 0;
+        for (let n = 1; n < li.length; n++) {
+          const f = csvPartir(li[n], sep);
+          const tp = String(f[iTipo] || '').trim() || '(vacío)';
+          tipos.set(tp, (tipos.get(tp) || 0) + 1);
+          const bruto = csvNum(f[iBruto]), real = csvNum(f[iReal]);
+          const ts = Date.parse(String(f[iFecha] || '').trim());
+          if (bruto == null || real == null || !isFinite(ts)) { nIleg++; continue; }
+          if (iFee >= 0 && iTax >= 0) {
+            const fee = csvNum(f[iFee]), tax = csvNum(f[iTax]);
+            if (fee != null && tax != null) {
+              // Los signos del reporte no están medidos: se acepta la identidad con la comisión
+              // sumando o restando, y lo que importa es si CIERRA, no de qué lado.
+              const cierra = Math.abs(bruto - Math.abs(fee) - Math.abs(tax) - real) <= 1
+                          || Math.abs(bruto + fee + tax - real) <= 1;
+              if (cierra) idOk++; else idNo++;
+            }
+          }
+          const m = mesDe(ts);
+          if (/^SETTLEMENT$/i.test(tp)) {
+            const o = rep[m] || (rep[m] = { bruto: 0, quedoML: 0, n: 0 });
+            o.bruto += bruto; o.quedoML += (bruto - real); o.n++;
+          }
+          if (/^SETTLEMENT/i.test(tp)) {   // SETTLEMENT y SETTLEMENT_SHIPPING
+            const o = repConEnv[m] || (repConEnv[m] = { bruto: 0, quedoML: 0, n: 0 });
+            o.bruto += bruto; o.quedoML += (bruto - real); o.n++;
+          }
+        }
+        console.log(`   filas: ${li.length - 1} · ilegibles ${nIleg}`);
+        console.log(`   tipos: ${[...tipos.entries()].map(([k, v]) => `${k} (${v})`).join(' · ').slice(0, 300)}`);
+        if (iFee >= 0 && iTax >= 0) {
+          const tot = idOk + idNo;
+          console.log(`   ¿bruto − comisión − impuestos = neto? ${idOk} de ${tot} filas ${tot && idOk / tot >= 0.95 ? '✅ cierra' : '⚠️ NO cierra: hay algo más adentro del neto'}`);
+        } else { console.log('   (el reporte no trae comisión/impuestos abiertos: no se puede chequear la identidad)'); }
+
+        // 2) LA COMPARACIÓN, MES POR MES. Sólo los meses que existen de los DOS lados: un mes que
+        //    el reporte cubre a medias daría una diferencia que es del recorte, no del panel.
+        const meses = Object.keys(rep).sort();
+        let comparados = 0;
+        for (const m of meses) {
+          const p = pan[label + '|' + m];
+          const r = rep[m], rE = repConEnv[m];
+          if (!p || !p.bruto || !r.bruto) {
+            console.log(`   ${m}: el panel no tiene ventas de esta cuenta en ese mes · no se compara`);
+            continue;
+          }
+          // El primer y el último mes del reporte suelen estar cortados por la ventana. Se avisa.
+          const borde = (m === meses[0] || m === meses[meses.length - 1]);
+          const pctPan = p.quedoML / p.bruto * 100;
+          const pctRep = r.quedoML / r.bruto * 100;
+          const pctRepE = rE.bruto ? rE.quedoML / rE.bruto * 100 : null;
+          const dif = pctPan - pctRep;
+          const cerca = Math.abs(dif) <= 2;
+          console.log(`   ${m}: ML se quedó ${pctRep.toFixed(1)}% (real) vs ${pctPan.toFixed(1)}% (panel) · `
+            + `${dif >= 0 ? '+' : ''}${dif.toFixed(1)} puntos ${cerca ? '✅' : '⚠️'}`
+            + (pctRepE != null && Math.abs(pctRepE - pctRep) > 0.1 ? ` · con los envíos aparte: ${pctRepE.toFixed(1)}%` : '')
+            + (borde ? ' · (mes cortado por la ventana del reporte)' : ''));
+          console.log(`      ventas: ${p.n} en el panel · ${r.n} filas SETTLEMENT en el reporte`
+            + (Math.abs(p.n - r.n) > Math.max(5, p.n * 0.15) ? '  ⚠️ no se parecen: son universos distintos y el % puede no decir nada' : ''));
+          comparados++;
+        }
+        if (!comparados) console.log('   no hubo ningún mes con datos de los dos lados.');
+        cuentasOk++;
+      }
+
+      console.log('\n── CÓMO SE LEE ESTO ──');
+      console.log('   "real" es lo que Mercado Pago se quedó de verdad; "panel" es lo que calcula');
+      console.log('   el panel. Si el panel da MÁS, está descontando de más y los márgenes que ves');
+      console.log('   son más bajos que los verdaderos. Si da MENOS, es al revés y es el lado');
+      console.log('   peligroso: márgenes que se ven cómodos sin serlo.');
+      console.log('   OJO, y esto no es un error del panel: el IIBB y el monotributo NO están ni en');
+      console.log('   el neto ni en el reporte (ML los factura a fin de mes), así que una parte de');
+      console.log('   la diferencia es eso y es correcta.');
+      console.log('   Y hay ventas cuyo neto todavía es ESTIMADO porque ML no liquidó: hoy no');
+      console.log('   quedan marcadas en la venta, así que no se pueden separar. Se dice, no se');
+      console.log('   tapa.');
+      console.log(`\n   (${cuentasOk} cuenta(s) medidas. Solo se leyó: no se escribió nada, no se tocó ML`);
+      console.log('   y no se imprimió ningún monto — el registro es público.)');
+      return;
+    }
+
     // BILLING_PROBE=saldo5 → EL REPORTE DE LIBERACIONES, QUE SÍ SE PUEDE PEDIR POR ROBOT
     //
     // POR QUÉ (21/09/2026). En `saldo4`, de trece puertas, UNA contestó distinto:
