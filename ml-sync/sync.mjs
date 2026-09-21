@@ -1865,6 +1865,13 @@ async function calcCajaBarata(db, o) {
     // perfume de $14.000 que a una tablet de medio millón, y no son lo mismo.**
     // Por eso el renglón lleva los PESOS al lado: es el número con el que se decide.
     const comHoy = await feeCb(site, precio, lt, cat, tk);
+    // EL MARGEN DE HOY, que es contra el que se lee el nuevo. Sin él, "queda en 42%" es un
+    // número suelto: no se puede saber si eso es mejor o peor que lo que ya tenés. Lo agarró él
+    // el 21/09 con el Seagate —leyó el 42% y le pareció que bajando ganaba MÁS%— y la cuenta
+    // estaba bien: hoy está en 44,6%. Es la misma lección del Joystick del 18/09, un número
+    // correcto que igual hace desconfiar porque la pantalla no deja ver contra qué se compara.
+    let mgHoy = null;
+    if (comHoy != null) mgHoy = (precio - comHoy - envio - costo - precio * m) / (costo + precio * m + envio) * 100;
     let resigna = null;
     if (comHoy != null) {
       const gHoy = precio - comHoy - envio - costo - precio * m;
@@ -1874,7 +1881,7 @@ async function calcCajaBarata(db, o) {
     const fila = {
       mla: c.mla, cuenta: c.e.cuenta, prodId: c.e.prodId,
       nom: (p.name || b.title || c.mla).slice(0, 34),
-      precio, ptw: Math.round(c.ptw), baja, mgPw, envio, costo: Math.round(costo),
+      precio, ptw: Math.round(c.ptw), baja, mgPw, mgHoy, envio, costo: Math.round(costo),
       st: c.st, envioEstimado: true, exigido,
       quieta: c.quieta, vis: visCb,
       resigna, resignaTot: resigna == null ? null : resigna * c.st,
@@ -5061,6 +5068,21 @@ async function main() {
       // Por eso acá la espera es por PUBLICACIÓN y no por número: aunque el precio recomendado
       // cambie, no se vuelve a pedir hasta que pasen estos días.
       const SUBIR_ESPERA_DIAS = 14;
+      // ── Y LA MISMA ESPERA PARA BAJAR (21/09/2026) ────────────────────────────────────
+      // Faltaba, y es la dirección que REGALA plata. Lo agarró él con el Seagate: se lo bajó el
+      // 15/09 para ganar la caja de compra, un competidor se puso abajo, y seis días después el
+      // robot ya le proponía bajarlo otra vez. Si el otro vuelve a bajar, mañana propone menos.
+      // **Eso es una escalera para abajo**, y el único freno que había era el piso del 25%: de
+      // a pasos "chicos y sanos" te lleva de 44,6% a 25% sin que ningún renglón se vea mal.
+      // Es EXACTAMENTE el motivo por el que existe la espera de arriba, en el otro sentido.
+      //
+      // Y HAY QUE APAGAR ADEMÁS EL "SI CAMBIÓ EL NÚMERO, VUELVE A SER NOTICIA". Para los otros
+      // avisos esa regla está bien —un número distinto quiere decir que cambió la situación—
+      // pero acá el número lo mueve el COMPETIDOR, así que cambia casi todos los días y la
+      // espera no frenaría nunca nada. Por eso la baja se trata como la suba: la espera corre
+      // por PUBLICACIÓN, aunque el precio recomendado sea otro.
+      const BAJAR_ESPERA_DIAS = 10;   // su número, 21/09/2026
+      const esBaja = (tipo) => tipo === 'cajabarata' || tipo === 'rematar';
       let avisados = {}, avisadosOk = true;
       try {
         const v = await db.get('cyc/avisados');
@@ -5069,14 +5091,25 @@ async function main() {
       const hoyTs = Date.now();
       // Si no se pudo leer la memoria NO se filtra nada: repetir un aviso es molesto, callarse
       // uno que hacía falta es peor. Acá el lado seguro es mandar de más.
+      // HACE CUÁNTO SE AVISÓ ESTA PUBLICACIÓN, aunque la espera ya haya vencido. La espera sola
+      // frena la seguidilla pero no la MUESTRA: pasados los 10 días el renglón volvería a
+      // parecer la primera vez. Decirlo es lo que deja ver que hay una escalera en curso.
+      // Es lo que sabemos con certeza —cuándo se AVISÓ—, no si él lo aplicó: `setPriceTo` no
+      // deja rastro de los cambios hechos a mano, así que afirmar "ya lo bajaste" sería inventar.
+      const avisadoHace = (mla) => {
+        if (!avisadosOk) return null;
+        const a = avisados[mla];
+        if (!a || !a.ts) return null;
+        return Math.floor((hoyTs - a.ts) / 864e5);
+      };
       const yaAvisado = (mla, tipo, valor) => {
         if (!avisadosOk) return false;
         const a = avisados[mla];
         if (!a || a.tipo !== tipo) return false;
-        const dias = tipo === 'subir' ? SUBIR_ESPERA_DIAS : AVISO_REPETIR_DIAS;
-        // En 'subir' la espera corre igual aunque cambie el número (ver arriba). En los otros
-        // dos un número distinto SÍ vuelve a ser noticia: cambió la situación.
-        if (tipo !== 'subir' && String(a.valor) !== String(valor)) return false;
+        const dias = tipo === 'subir' ? SUBIR_ESPERA_DIAS : esBaja(tipo) ? BAJAR_ESPERA_DIAS : AVISO_REPETIR_DIAS;
+        // En 'subir' y en las BAJAS la espera corre igual aunque cambie el número (ver arriba).
+        // En los demás un número distinto SÍ vuelve a ser noticia: cambió la situación.
+        if (tipo !== 'subir' && !esBaja(tipo) && String(a.valor) !== String(valor)) return false;
         return (hoyTs - (a.ts || 0)) < dias * 864e5;
       };
       // ── UNA PUBLICACIÓN NO PUEDE ESTAR EN LAS DOS LISTAS ──────────────────────────────
@@ -5307,7 +5340,18 @@ async function main() {
         L.push(`<i>No venden. Bajando a este precio pasás a ser el botón de comprar y quedás del ${CBR_SANO}% para arriba. El margen ya tiene todo descontado.</i>`);
         for (const f of nuevasCbr) {
           const n2 = numerar({ tipo: 'bajar', mla: f.mla, nom: f.nom, cuenta: f.cuenta, de: f.precio, a: f.ptw, extraMes: 0 });
-          L.push(`<b>${n2}.</b> ${f.nom} (${f.cuenta})\n   ${money(f.precio)} → ${money(f.ptw)} (−${f.baja.toFixed(1)}%) · queda en ${f.mgPw.toFixed(0)}% · ${f.st} u.`);
+          // EL MARGEN DE HOY AL LADO DEL NUEVO, y los PESOS. Un "queda en 42%" solo no se puede
+          // leer: para saber si conviene hay que ver de cuánto venís. Y el % engaña con los
+          // productos caros —la lección de la Pad 2— así que va la plata que resignás, que es
+          // el número con el que se decide.
+          const deA = (f.mgHoy == null)
+            ? `queda en ${f.mgPw.toFixed(0)}%`
+            : `${f.mgHoy.toFixed(1)}% → <b>${f.mgPw.toFixed(1)}%</b>`;
+          const plata = (f.resigna == null) ? '' : ` · resignás ${money(f.resigna)}/u`
+            + (f.st > 1 ? ` (${money(f.resignaTot)} por las ${f.st})` : '');
+          const hace = avisadoHace('c_' + f.mla);
+          L.push(`<b>${n2}.</b> ${f.nom} (${f.cuenta})\n   ${money(f.precio)} → ${money(f.ptw)} (−${f.baja.toFixed(1)}%) · ${deA} · ${f.st} u.${plata}`
+            + (hace == null ? '' : `\n   ⚠️ ya te lo avisé hace ${hace} d: si lo bajaste y lo volvés a perder, es una escalera para abajo`));
         }
         // EL ENVÍO DE ESTAS NO ESTÁ MEDIDO y hay que decirlo donde se lee, no sólo acá adentro:
         // ninguna vendió nunca, así que sale de la tarifa de ML, que el 20/08 se midió $246 corta.
