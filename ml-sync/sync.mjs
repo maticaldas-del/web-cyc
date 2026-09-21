@@ -12563,20 +12563,30 @@ async function main() {
           //  · una venta de verdad que NO se cargó. **Ésa sí es plata**, y es la que hay que ver.
           // Se imprime la PARTE que representan sobre lo vendido del reporte, nunca los pesos.
           {
-            let cCanc = 0, cViejas = 0, cFaltan = 0, brFaltan = 0, brTotal = 0;
+            let cCanc = 0, cViejas = 0, cFaltan = 0, cSucia = 0, cSinPlata = 0, brFaltan = 0, brTotal = 0;
             const desde = panDesde[label] || 0;
             for (const [id, r] of ord) {
               if (r.bruto > 0) brTotal += r.bruto;
-              if (mio.has(id) || r.sucia || !(r.bruto > 0)) continue;
+              if (mio.has(id)) continue;
+              // LA CUENTA TIENE QUE CERRAR. La primera versión se salteaba en silencio las órdenes
+              // con devolución y las que no mueven plata, así que el desglose daba 84 de 182 y yo
+              // había leído "77 sin explicar" como si fueran todas. Es el descarte por omisión
+              // anotado de punta a punta en este archivo, cometido adentro del chequeo que estaba
+              // puesto justo para eso. Ahora cada salida se cuenta y el total se verifica.
+              if (r.sucia) { cSucia++; continue; }
+              if (!(r.bruto > 0)) { cSinPlata++; continue; }
               if (panCanc.has(label + '|' + id)) { cCanc++; continue; }
               if (r.ts && desde && r.ts < desde) { cViejas++; continue; }
               cFaltan++; brFaltan += r.bruto;
             }
-            console.log(`      de las ${nSinPanel} que el panel no tiene: ${cCanc} son ventas CANCELADAS que ya conoce · `
-              + `${cViejas} son anteriores a la primera venta que tiene · ${cFaltan} quedan sin explicar`);
+            const suma = cCanc + cViejas + cFaltan + cSucia + cSinPlata;
+            console.log(`      de las ${nSinPanel} que el panel no tiene: ${cCanc} CANCELADAS que ya conoce · `
+              + `${cViejas} anteriores a su primera venta · ${cSucia} con devolución o disputa · `
+              + `${cSinPlata} que no mueven plata · ${cFaltan} SIN EXPLICAR`);
+            if (suma !== nSinPanel) console.log(`      ⚠️ EL DESGLOSE NO CIERRA: ${suma} de ${nSinPanel} · hay ${nSinPanel - suma} saliendo en silencio`);
             if (cFaltan && brTotal > 0) {
               const parte = brFaltan / brTotal * 100;
-              console.log(`      esas ${cFaltan} son el ${parte.toFixed(1)}% de lo vendido del reporte `
+              console.log(`      esas ${cFaltan} sin explicar son el ${parte.toFixed(1)}% de lo vendido del reporte `
                 + (parte >= 3 ? '⚠️ vale la pena mirarlas de a una' : '✅ es chico'));
             } else if (!cFaltan) {
               console.log('      ✅ ninguna sin explicar: al panel no le falta ninguna venta.');
