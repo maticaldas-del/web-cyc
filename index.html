@@ -2168,7 +2168,18 @@ function renderMlLinks(){
     const varOpts=['<option value="">— sin variante —</option>'].concat(vars.map(v=>`<option value="${_esc(v)}"${v===e.variant?' selected':''}>${_esc(v)}</option>`)).join('');
     const dot=e.ignored?'#6b6b7a':(pid?'#22c55e':'#f59e0b');
     const inact=e.status&&e.status!=='active';
-    const info=`<div style="font-size:.72rem;margin-bottom:7px"><span style="color:${dot}">●</span> <span style="color:var(--muted)">${_esc(e.cuenta)}${inact?' · <span style=\"color:var(--amber)\">inactiva</span>':''} ·</span> ${_esc(e.title)}</div>`;
+    // Todo lo que el robot ya guardaba de esta publicación y no se mostraba (21/09/2026):
+    // el MOTIVO que informa ML, desde cuándo el panel la conoce, y las marcas que le puso el robot.
+    const _sub=subEstTxt(e.subStatus);
+    const _alta=Number(e.altaTs)||0;
+    const _marcas=[];
+    if(e.noVendemosMas)_marcas.push('no la vendemos más');
+    if(e.altaSinVender)_marcas.push('dada de alta sola, todavía no vendió');
+    if(e.altaPorCatalogo)_marcas.push('la encontró el robot en el catálogo');
+    const extra=(_sub?` · <span style="color:var(--amber)">${_esc(_sub)}</span>`:'')
+      +(_alta?` · <span style="color:var(--muted)">la conocemos desde ${new Date(_alta).toLocaleDateString('es-AR')}</span>`:'')
+      +(_marcas.length?` · <span style="color:var(--muted)">${_esc(_marcas.join(' · '))}</span>`:'');
+    const info=`<div style="font-size:.72rem;margin-bottom:7px"><span style="color:${dot}">●</span> <span style="color:var(--muted)">${_esc(e.cuenta)}${inact?' · <span style=\"color:var(--amber)\">inactiva</span>':''}${extra} ·</span> ${_esc(e.title)}</div>`;
     if(_mlShowHidden){
       return `<div style="border:1px solid var(--border2);border-radius:8px;padding:11px 12px;margin-bottom:9px;display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap">
         <div style="flex:1;min-width:140px">${info}</div>
@@ -2275,7 +2286,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='19.85';
+const APP_VERSION='19.86';
 // El problema real que esto resuelve no es curiosidad: es que el celular guarda la app y sigue
 // mostrando la de ayer sin avisar. Varias veces se revisó un cambio que ya estaba subido y no se
 // veía. Por eso, además del número, el chip avisa cuando hay una versión nueva esperando.
@@ -3269,6 +3280,49 @@ function liquidarHtml(l){
   const t=`${rem?'REMATAR':'LIMPIAR'} — ${l.motivo}. La mercadería ya está paga: vender al ${l.pct}% te devuelve más plata que retirarlo de Full, que te devuelve cero. No es ganar, es recuperar y liberar el lugar.`;
   return `<div title="${t}" style="font-size:.57rem;color:${col};margin-top:2px;white-space:nowrap">${rem?'🔴 rematar':'🟠 limpiar'} al ${l.pct}%${l.precio?' · '+fmt(l.precio):''}</div>`;
 }
+// ── POR QUÉ ML TIENE FRENADA UNA PUBLICACIÓN (21/09/2026) ────────────────────────
+// Pedido suyo: *"fijate si no hay mas info que tengas y no la hayas agregado"*. El barrido
+// `guardadosinver` encontró que el robot guarda `cyc/mllinks/<MLA>/subStatus` desde hace meses
+// —el `sub_status` que informa ML, o sea el MOTIVO por el que una publicación está frenada— y
+// **la pantalla no lo nombraba en ningún lado**. Lo tienen 272 de 400 publicaciones.
+//
+// Importa porque "pausada" son cosas muy distintas y el remedio de cada una es el contrario:
+// sin stock se arregla mandando mercadería, y "ML pide documentación" no se arregla con nada del
+// panel. Eso es exactamente lo que costó entender con el Bare Vanilla y los dos Termómetros.
+//
+// **Lo que ML no manda no se inventa**, y **lo que manda y no conozco se muestra tal cual**: un
+// código nuevo de ML en crudo es feo pero verdadero; traducirlo a la fuerza sería adivinar.
+const SUBEST={
+  out_of_stock:'sin stock',
+  pending_documentation:'ML pide documentación',
+  under_review:'ML la está revisando',
+  waiting_for_patch:'ML espera una corrección',
+  freeze:'congelada por ML',
+  suspended:'suspendida por ML',
+  deleted:'borrada',
+  expired:'vencida',
+  picture_download_pending:'ML está bajando las fotos',
+  item_disabled:'deshabilitada por ML',
+};
+const subEstTxt=(sub)=>String(sub||'').split(',').map(x=>x.trim()).filter(Boolean)
+  .map(x=>SUBEST[x]||x).join(' · ');
+// El estado de TODAS las publicaciones de un producto, juntado para la ficha.
+// Devuelve null cuando no hay nada que decir: un producto con todo activo no necesita un cartel.
+function subEstadoDe(p){
+  const L=state.mllinks||{};
+  const motivos=new Set();let frenadas=0,vivas=0;
+  for(const [mla,e] of Object.entries(L)){
+    if(!mla.startsWith('MLA')||!e||e.prodId!==p.id||e.ignored)continue;
+    if(String(e.status||'')==='closed')continue;
+    vivas++;
+    if(String(e.status||'')==='active'&&!e.subStatus)continue;
+    frenadas++;
+    const t=subEstTxt(e.subStatus);
+    if(t)motivos.add(t);
+  }
+  if(!frenadas)return null;
+  return {frenadas,vivas,motivos:[...motivos]};
+}
 function flujoPlataHTML(p){
   const r=margenMLDe(p);
   const META=metaMargenML();
@@ -3289,6 +3343,10 @@ function flujoPlataHTML(p){
     const _dud=margenDudosoDe(r);
     const _avEnv=_dud==='falso'?' · SIN ENVÍO · ML SÍ COBRA':_dud==='corto'?(p.netoCalcSinEnvio?' · SIN ENVÍO':' · ENVÍO ESTIMADO POR ML'):'';
     chips.push(`<span title="Calculado con el precio de HOY en ML: precio − comisión oficial − envío del peor caso.${precio?' Precio usado: '+fmt(precio)+'.':''}" style="font-size:.5rem;color:${_dud==='falso'?'var(--red)':(p.netoCalcPausada||_dud)?'var(--amber)':'#60a5fa'};font-weight:700;letter-spacing:.04em">◉ PRECIO DE HOY${p.netoCalcPausada?' · PAUSADA':''}${_avEnv}</span>`);
+    // EL MOTIVO, que es lo que faltaba: "pausada" no dice si es por falta de stock o porque ML
+    // la frenó, y el remedio de cada una es el contrario.
+    const _se=subEstadoDe(p);
+    if(_se&&_se.motivos.length)chips.push(`<span title="Es lo que informa ML de esa publicación. Lo guarda el robot en cada vuelta." style="background:rgba(251,191,36,.14);color:var(--amber);border-radius:5px;padding:2px 7px;font-size:.58rem;font-weight:700;white-space:nowrap">🔒 ${_esc(_se.motivos.join(' · '))}${_se.vivas>1?` (${_se.frenadas} de ${_se.vivas})`:''}</span>`);
   } else {
     chips.push(`<span title="ML no puede calcularlo: el producto no tiene ninguna publicación de la que sacar el precio." style="font-size:.5rem;color:var(--muted);font-weight:700">SIN PUBLICACIÓN</span>`);
   }
@@ -7455,6 +7513,15 @@ function renderVentaProd(){
         :`<span style="padding:1px 7px;border-radius:4px;background:rgba(148,163,184,.18);color:#cbd5e1;font-size:.58rem;font-weight:600;letter-spacing:.04em" title="El comprador canceló · producto devuelto al stock">CANCELADA · devuelto</span>`):'';
       const costLabel=(!isCancelled&&gc>0)?`<span style="font-size:.66rem;color:var(--muted)" title="Costo total ${fmt(gcTot)}: mercadería ${fmt(gc-gmlx)} (costo + envío/embalaje + % reclamos) + impuestos ${fmt(gmlx)} (IIBB ${mlExtraPct(cuenta).toFixed(2)}% + monotributo ${monoPct().toFixed(2)}% del precio)${ggest>0?' + '+fmt(ggest)+' que cobra Full':''}. El % se mide contra este total. La ganancia en pesos NO le resta la gestión de Full: el neto que paga ML ya la trae descontada.">costo ${fmt(gcTot)}</span>`:'';
       const ganLabel=isCancelled?'':(gc>0?`<span style="font-size:.66rem;color:${gg>=0?'var(--green)':'var(--red)'}">gan. ${fmt(gg)}</span>`:`<span style="font-size:.62rem;color:var(--muted)">neto ${fmt(gn)}</span>`);
+      // LO QUE SE QUEDÓ ML EN ESA VENTA (21/09/2026). Estaba a la vista y había que hacer la resta
+      // de cabeza: el renglón muestra el total y el neto, y la diferencia es lo de ML.
+      // **Se calcula como total − neto y NO se usa el `mlfee` guardado, a propósito.** `mlfee` deja
+      // AFUERA las retenciones (SIRTAC y compañía) mientras que el neto las trae descontadas, así
+      // que poner ese número acá daría MENOS que la resta del mismo renglón. Dos números correctos,
+      // uno al lado del otro, dando una conclusión falsa — la lección de las tres cajas del 03/09.
+      let _gt=0;grp.items.forEach(v=>{if(!isCancelled)_gt+=v.total||0;});
+      const _ml=_gt-gn;
+      const mlLabel=(isCancelled||!(_gt>0)||!(_ml>0))?'':`<span style="font-size:.62rem;color:var(--muted)" title="Lo que ML se quedó de esta venta: comisión, cargo fijo, envío de Full y retenciones. Es el total que pagó el comprador menos lo que te depositan. NO incluye el IIBB ni el monotributo, que ML factura aparte y ya están contados en el costo.">ML ${fmt(_ml)} (${(_ml/_gt*100).toFixed(0)}%)</span>`;
       const lines=grp.items.map(v=>`<div style="display:flex;justify-content:space-between;font-size:.72rem;padding:2px 0;${isCancelled?'opacity:.45;text-decoration:line-through':''}"><span>${v.qty}× ${nombreDeVenta(v)}${v.variante?` <span style="padding:1px 5px;border-radius:3px;background:rgba(124,58,237,.12);color:#a78bfa;font-size:.62rem">${v.variante}</span>`:''}</span><span style="color:var(--muted)">${(!isCancelled&&(v.total||0)>0)?`total ${fmt(v.total)} · `:''}${isCancelled?'':'neto '+fmt(v.neto||0)}</span></div>`).join('');
       return`<div class="ingreso-item" style="flex-direction:column;align-items:stretch;gap:4px;${isCancelled?'border-color:rgba(239,68,68,.25);background:rgba(239,68,68,.04)':''}">
         <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
@@ -7463,6 +7530,7 @@ function renderVentaProd(){
           ${cancelBadge}
           ${grp.items.length>1?`<span style="font-size:.64rem;color:var(--muted)">${grp.items.length} prod.</span>`:''}
           <span style="flex:1"></span>
+          ${mlLabel}
           ${costLabel}
           ${ganLabel}
           ${pctBox}
