@@ -2264,7 +2264,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='19.78';
+const APP_VERSION='19.79';
 // El problema real que esto resuelve no es curiosidad: es que el celular guarda la app y sigue
 // mostrando la de ayer sin avisar. Varias veces se revisó un cambio que ya estaba subido y no se
 // veía. Por eso, además del número, el chip avisa cuando hay una versión nueva esperando.
@@ -5723,6 +5723,11 @@ function renderCajasEnCamino(){
   }).join('');
 }
 let _arqViewYM=null; // YYYY_MM del snapshot que se está viendo, null = en vivo
+// ¿El día por día de «Se libera de ML» está abierto? Pedido suyo del 21/09: *"que haya una
+// flechita desplegable, sino ocupa mucho y casi nunca lo necesito"*. Se recuerda acá y NO en el
+// <details>, porque `renderAgenda` redibuja la tarjeta entera cada vez que se actualiza el Arqueo:
+// sin esto el desplegable se cerraría solo mientras lo está mirando.
+let _agendaAbierta=false;
 function getHistCostUSDProd(prodId,ym){return state.precios_hist_prod?.[ym]?.[prodId]??null;}
 function efectivoCostP(p){if(!_arqViewYM)return costP(p);return getHistCostUSDProd(p.id,_arqViewYM)??costP(p);}
 function calcArqueo(){
@@ -5872,6 +5877,9 @@ function renderAgenda(){
   // Los dólares son la moneda del Arqueo; los pesos van al lado en chiquito, que es lo que él
   // pidió el 20/09. SIN dólar cargado no se inventa una conversión: simplemente no se muestran.
   const enPesos=(usd)=>tc>0?` <span style="color:var(--muted);font-size:.72em">≈ ${fmt(Math.round(usd*tc))}</span>`:'';
+  // Un total negativo en blanco dice lo mismo que una barra verde negativa: que entra plata.
+  // Mismo criterio que las barras, misma razón.
+  const rojoSiNeg=(usd)=>usd<0?';color:var(--red)':'';
   if(!a.hay){
     box.innerHTML='<div class="bk-card" style="padding:12px"><div class="bk-lbl">Se libera de ML</div>'
       +'<div style="font-size:.72rem;color:var(--muted);margin-top:6px">Todavía no se calculó. '
@@ -5882,39 +5890,57 @@ function renderAgenda(){
   // corrió. Un número viejo en una pantalla de plata se lee como si estuviera al día.
   const diasVieja=a.ts?Math.floor((Date.now()-a.ts)/864e5):null;
   const vieja=diasVieja!=null&&diasVieja>=2;
-  const maxD=a.dias.reduce((m,x)=>Math.max(m,x.usd),0)||1;
+  // La escala va por valor ABSOLUTO. Con el máximo POSITIVO, un día negativo grande quedaba
+  // en el 2% mínimo — o sea, del mismo largo que uno de un peso, que es no decir nada.
+  const maxD=a.dias.reduce((m,x)=>Math.max(m,Math.abs(x.usd)),0)||1;
   const NOMBRE=['dom','lun','mar','mié','jue','vie','sáb'];
   const filas=a.dias.slice(0,14).map(x=>{
     const t=Date.parse(x.d+'T12:00:00Z');
     const dia=isFinite(t)?NOMBRE[new Date(t).getUTCDay()]:'';
     const dd=x.d.slice(8,10)+'/'+x.d.slice(5,7);
-    const pct=Math.max(2,Math.round(x.usd/maxD*100));
+    const pct=Math.max(2,Math.round(Math.abs(x.usd)/maxD*100));
     const esHoy=x.d===agendaHoy();
+    // ROJO CUANDO ES NEGATIVO, pedido suyo del 21/09. Un día negativo es plata que SALE
+    // (devoluciones, disputas, retiros) y salía en verde como si entrara: el color es una
+    // conclusión, y ahí decía la conclusión contraria. Va en la barra y en el número, que son
+    // la misma línea — la regla del 12/09: un aviso que no cambia el COLOR no es un aviso.
+    const neg=x.usd<0;
+    const colorBarra=neg?'var(--red)':(esHoy?'var(--green)':'var(--accent)');
     return '<div style="display:flex;align-items:center;gap:8px;margin-top:4px">'
       +`<div style="width:64px;font-size:.66rem;color:var(--muted);font-family:'DM Mono',monospace">${dia} ${dd}</div>`
-      +`<div style="flex:1;height:8px;background:var(--line,#2a2a2a);border-radius:4px;overflow:hidden">`
-      +`<div style="width:${pct}%;height:100%;background:${esHoy?'var(--ok,#4caf50)':'var(--accent,#7c9cff)'}"></div></div>`
-      +`<div style="width:86px;text-align:right;font-size:.7rem;font-family:'DM Mono',monospace">${fmt(Math.round(x.usd))}</div>`
+      +`<div style="flex:1;height:8px;background:var(--border);border-radius:4px;overflow:hidden">`
+      +`<div style="width:${pct}%;height:100%;background:${colorBarra}"></div></div>`
+      +`<div style="width:86px;text-align:right;font-size:.7rem;font-family:'DM Mono',monospace${neg?';color:var(--red)':''}">${fmt(Math.round(x.usd))}</div>`
       +'</div>';
   }).join('');
   const resto=a.dias.length>14?`<div style="font-size:.64rem;color:var(--muted);margin-top:6px">y ${a.dias.length-14} día(s) más, hasta el ${a.ultimo.slice(8,10)}/${a.ultimo.slice(5,7)}</div>`:'';
   box.innerHTML='<div class="bk-card" style="padding:12px">'
     +'<div style="display:flex;justify-content:space-between;align-items:baseline;flex-wrap:wrap;gap:8px">'
     +'<div class="bk-lbl">Se libera de ML</div>'
-    +`<div style="font-size:.64rem;color:${vieja?'var(--warn,#e0a63a)':'var(--muted)'};font-family:'DM Mono',monospace">`
+    +`<div style="font-size:.64rem;color:${vieja?'var(--amber)':'var(--muted)'};font-family:'DM Mono',monospace">`
     +(diasVieja==null?'':(diasVieja<=0?'calculado hoy':diasVieja===1?'calculado ayer':`⚠️ calculado hace ${diasVieja} días`))+'</div></div>'
     +'<div style="display:flex;gap:18px;flex-wrap:wrap;margin-top:8px">'
-    +`<div><div style="font-size:.62rem;color:var(--muted)">hoy</div><div style="font-size:1.25rem;font-weight:600">${fmt(Math.round(a.hoy))}${enPesos(a.hoy)}</div></div>`
-    +`<div><div style="font-size:.62rem;color:var(--muted)">mañana</div><div style="font-size:1.25rem;font-weight:600">${fmt(Math.round(a.manana))}${enPesos(a.manana)}</div></div>`
-    +`<div><div style="font-size:.62rem;color:var(--muted)">7 días</div><div style="font-size:1.25rem;font-weight:600">${fmt(Math.round(a.semana))}${enPesos(a.semana)}</div></div>`
-    +`<div><div style="font-size:.62rem;color:var(--muted)">todo lo pendiente</div><div style="font-size:1.25rem;font-weight:600">${fmt(Math.round(a.total))}${enPesos(a.total)}</div></div>`
+    +`<div><div style="font-size:.62rem;color:var(--muted)">hoy</div><div style="font-size:1.25rem;font-weight:600${rojoSiNeg(a.hoy)}">${fmt(Math.round(a.hoy))}${enPesos(a.hoy)}</div></div>`
+    +`<div><div style="font-size:.62rem;color:var(--muted)">mañana</div><div style="font-size:1.25rem;font-weight:600${rojoSiNeg(a.manana)}">${fmt(Math.round(a.manana))}${enPesos(a.manana)}</div></div>`
+    +`<div><div style="font-size:.62rem;color:var(--muted)">7 días</div><div style="font-size:1.25rem;font-weight:600${rojoSiNeg(a.semana)}">${fmt(Math.round(a.semana))}${enPesos(a.semana)}</div></div>`
+    +`<div><div style="font-size:.62rem;color:var(--muted)">todo lo pendiente</div><div style="font-size:1.25rem;font-weight:600${rojoSiNeg(a.total)}">${fmt(Math.round(a.total))}${enPesos(a.total)}</div></div>`
     +'</div>'
     +(a.nPasados?`<div style="font-size:.64rem;color:var(--muted);margin-top:6px">Ya se liberó desde que se calculó: ${fmt(Math.round(a.yaLiberado))} en ${a.nPasados} día(s). Eso ya está en el disponible.</div>`:'')
-    +'<div style="margin-top:10px">'+filas+'</div>'+resto
+    // El día por día va adentro del desplegable y los CUATRO NÚMEROS quedan siempre a la vista.
+    // No es lo mismo esconder el detalle que esconder la conclusión: «cuánto entra hoy» y «cuánto
+    // mañana» son justo lo que él pidió poder preguntar, y las barras son el detalle que casi
+    // nunca mira. Primero la conclusión, después el detalle — la misma regla del 26/08 en Finanzas.
+    +`<details id="agenda-det" style="margin-top:8px"${_agendaAbierta?' open':''}>`
+    +'<summary style="cursor:pointer;font-size:.66rem;color:var(--muted);list-style:revert">'
+    +`día por día (${a.dias.length})</summary>`
+    +'<div style="margin-top:8px">'+filas+'</div>'+resto
     +'<div style="font-size:.62rem;color:var(--muted);margin-top:8px;line-height:1.45">'
     +'Es plata YA VENDIDA que ML todavía no liberó, con el día en que la vas a poder usar. '
     +'Sale del mismo cálculo que «A liquidar en ML», así que los dos números miden lo mismo.</div>'
+    +'</details>'
     +'</div>';
+  const det=document.getElementById('agenda-det');
+  if(det) det.addEventListener('toggle',()=>{ _agendaAbierta=det.open; });
 }
 function updateArqueo(){
   // Si hay un snapshot seleccionado, usar sus finanzas temporalmente
