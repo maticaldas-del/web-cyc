@@ -12292,6 +12292,7 @@ async function main() {
       // adivina cuál es — se prueban los dos y se dice cuál anduvo.
       console.log('── 1) crear la configuración ──');
       let creada = false;
+      let soloLectura = false;   // 405 = esa dirección NO acepta escrituras, sea quien sea
       for (const metodo of ['POST', 'PUT']) {
         try {
           const r = await fetch(`${MP}/v1/account/bank_report/config`, {
@@ -12300,12 +12301,22 @@ async function main() {
           const txt = ((await r.text()) || '').replace(/\s+/g, ' ').slice(0, 220);
           console.log(`   ${metodo} · HTTP ${r.status}${txt ? ' · ' + txt : ''}`);
           if (r.ok) { creada = true; break; }
+          if (r.status === 405) soloLectura = true;
         } catch (e) { console.log(`   ${metodo} · ERROR ${String(e.message || e).slice(0, 110)}`); }
       }
-      if (!creada) {
-        console.log('\n❌ No se pudo crear la configuración. El motivo está arriba, tal como lo');
-        console.log('   contestó MercadoPago. NO se pidió ningún reporte.');
+      // UN 405 NO ES UNA NEGATIVA, Y CONFUNDIRLO SERÍA EL MISMO ERROR QUE EL 404 DE RECIÉN.
+      // "Method Not Allowed" quiere decir que ESA dirección sólo lee; no dice nada del permiso ni
+      // del reporte. Así que se sigue igual y se pide el reporte: si no hace falta configuración
+      // previa, va a salir. Frenar acá sería dar por cerrado algo sin medirlo — el error que este
+      // archivo tiene anotado diez veces y que ya cometí hoy con el `config_not_found_for_user`.
+      if (!creada && !soloLectura) {
+        console.log('\n❌ No se pudo crear la configuración, y no fue por el método. El motivo está');
+        console.log('   arriba, tal como lo contestó MercadoPago. NO se pidió ningún reporte.');
         return;
+      }
+      if (soloLectura) {
+        console.log('   → 405 quiere decir que esa dirección sólo LEE, no que esté prohibido.');
+        console.log('     Sigo igual y pido el reporte: capaz no necesita configuración previa.');
       }
 
       // ── 2) RELEERLA (regla 6: después de escribir, se vuelve a leer de la fuente) ───────────
@@ -12313,21 +12324,40 @@ async function main() {
       try {
         const r = await fetch(`${MP}/v1/account/bank_report/config`, { headers: H, signal: AbortSignal.timeout(25000) });
         const txt = (await r.text()) || '';
-        if (!r.ok) { console.log(`   ❌ HTTP ${r.status} · ${txt.replace(/\s+/g, ' ').slice(0, 160)}`); console.log('   Quedó a medias: se creó pero no se puede leer. No se pide el reporte.'); return; }
-        const j = JSON.parse(txt);
-        console.log('   ✅ quedó · campos: ' + Object.keys(j || {}).join(', ').slice(0, 260));
-      } catch (e) { console.log('   ❌ ' + String(e.message || e).slice(0, 110)); return; }
+        if (!r.ok) {
+          console.log(`   ${creada ? '❌' : '·'} HTTP ${r.status} · ${txt.replace(/\s+/g, ' ').slice(0, 160)}`);
+          // Si no se creó nada (el caso del 405), que siga sin existir es lo esperado y no frena.
+          if (creada) { console.log('   Quedó a medias: se creó pero no se puede leer. No se pide el reporte.'); return; }
+          console.log('   (sigue sin configuración, que es lo esperado: no se creó ninguna)');
+        } else {
+          const j = JSON.parse(txt);
+          console.log('   ✅ hay configuración · campos: ' + Object.keys(j || {}).join(', ').slice(0, 260));
+        }
+      } catch (e) { console.log('   ❌ ' + String(e.message || e).slice(0, 110)); if (creada) return; }
 
       // ── 3) PEDIR EL REPORTE ─────────────────────────────────────────────────────────────────
       console.log(`\n── 3) pedir el reporte (${desde.slice(0, 10)} → ${hasta.slice(0, 10)}) ──`);
-      try {
-        const r = await fetch(`${MP}/v1/account/bank_report`, {
-          method: 'POST', headers: HJ, body: JSON.stringify({ begin_date: desde, end_date: hasta }), signal: AbortSignal.timeout(25000),
-        });
-        const txt = ((await r.text()) || '').replace(/\s+/g, ' ').slice(0, 220);
-        console.log(`   HTTP ${r.status}${txt ? ' · ' + txt : ''}`);
-        if (!r.ok) { console.log('   ❌ No se pudo pedir. La configuración YA quedó creada, así que se puede reintentar.'); return; }
-      } catch (e) { console.log('   ❌ ' + String(e.message || e).slice(0, 110)); return; }
+      // SE PRUEBA CON LAS DOS LLAVES, Y ESO CONTESTA LA PREGUNTA QUE QUEDÓ ABIERTA: si la de
+      // MercadoLibre rechaza la escritura y la de MercadoPago la acepta, entonces la aplicación
+      // nueva SÍ sirve para algo que la otra no puede. Si las dos dan lo mismo, no aporta nada.
+      // Medirlo es la única forma de decidirlo; darlo por sabido fue lo apresurado de hoy.
+      const otraLlave = String(process.env.MP_TOKEN_MATIAS || '').trim();
+      const LLAVES = [['la de MercadoLibre (la de siempre)', HJ]];
+      if (otraLlave) LLAVES.push(['la de MercadoPago (la nueva)', { Authorization: `Bearer ${otraLlave}`, 'Content-Type': 'application/json' }]);
+      else console.log('   (la llave de MercadoPago no está cargada: se prueba sólo con la de ML)');
+      let pedido = false;
+      for (const [nomLlave, cab] of LLAVES) {
+        if (pedido) break;
+        try {
+          const r = await fetch(`${MP}/v1/account/bank_report`, {
+            method: 'POST', headers: cab, body: JSON.stringify({ begin_date: desde, end_date: hasta }), signal: AbortSignal.timeout(25000),
+          });
+          const txt = ((await r.text()) || '').replace(/\s+/g, ' ').slice(0, 220);
+          console.log(`   con ${nomLlave} · HTTP ${r.status}${txt ? ' · ' + txt : ''}`);
+          if (r.ok) pedido = true;
+        } catch (e) { console.log(`   con ${nomLlave} · ERROR ${String(e.message || e).slice(0, 110)}`); }
+      }
+      if (!pedido) { console.log('   ❌ Ninguna de las dos llaves pudo pedir el reporte. El motivo está arriba.'); return; }
 
       // ── 4) ESPERAR A QUE ESTÉ Y MIRAR QUÉ TRAE ──────────────────────────────────────────────
       // El reporte se genera en un rato, no al instante. Se mira unas pocas veces y se corta: si
