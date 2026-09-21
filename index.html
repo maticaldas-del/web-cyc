@@ -1324,6 +1324,13 @@ footer{margin-top:32px;padding-top:14px;border-top:1px solid var(--border);font-
   <div class="stitle">KPIs <span id="met-kpi-period" style="font-weight:400;color:var(--muted);text-transform:none;letter-spacing:0;font-family:'DM Mono',monospace;font-size:.65rem"></span></div>
   <div class="met-kpi-grid" id="met-kpis"></div>
 
+  <!-- Margen por rubro (21/09/2026) y reputación de las cuatro cuentas -->
+  <div class="stitle">Margen por rubro <span id="met-rubro-period" style="font-weight:400;color:var(--muted);text-transform:none;letter-spacing:0;font-family:'DM Mono',monospace;font-size:.65rem"></span></div>
+  <div id="met-rubros"></div>
+
+  <div class="stitle">Reputación de las cuentas <span style="font-weight:400;color:var(--muted);text-transform:none;letter-spacing:0;font-family:'DM Mono',monospace;font-size:.65rem">· no depende del período</span></div>
+  <div id="met-reputacion"></div>
+
   <!-- Gráfico línea -->
   <div class="stitle" id="met-tendencia">Tendencia <span id="met-line-period" style="font-weight:400;color:var(--muted);text-transform:none;letter-spacing:0;font-family:'DM Mono',monospace;font-size:.65rem"></span></div>
   <div class="chart-box">
@@ -1882,6 +1889,10 @@ function startApp(){
     state.retiro_mes=d.retiro_mes||{};
     state.stockDiario=d.stockDiario||{};
     state.mllinks=d.mllinks||{};     // publicaciones ML a mapear (activas + inactivas)
+    // Reputación de cada cuenta, que escribe el robot una vez por hora leyendo /users/<id>.
+    // La web NO se la puede preguntar a ML: no tiene el token. Mismo camino que las visitas y la
+    // caja de compra, a propósito.
+    state.reputacion=d.reputacion||{};
     // "ESTO SE ESTÁ LIQUIDANDO: NO SUBIR EL PRECIO", por publicación. Lo marca él desde el chat
     // (comando `liquidando`) y el robot lo respeta adentro de raisePrice/raisePriceTo. Acá se lee
     // sólo para MOSTRARLO: un margen en rojo que está así a propósito tiene que verse distinto de
@@ -2264,7 +2275,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='19.80';
+const APP_VERSION='19.81';
 // El problema real que esto resuelve no es curiosidad: es que el celular guarda la app y sigue
 // mostrando la de ayer sin avisar. Varias veces se revisó un cambio que ya estaba subido y no se
 // veía. Por eso, además del número, el chip avisa cuando hay una versión nueva esperando.
@@ -11622,6 +11633,123 @@ function metNavNext(){
   renderMetricas();
 }
 
+// ── MARGEN POR RUBRO (21/09/2026) ────────────────────────────────────────────────────────────
+// Pedido suyo mirando Lumelí: "agregá el margen por categoría y la reputación de todas las cuentas".
+//
+// EL RUBRO ES DE LA PUBLICACIÓN, NO DEL PRODUCTO. Lo trae el robot de ML (`catNom` en
+// `cyc/mllinks`, la RAÍZ del árbol de categorías) porque la web no le puede preguntar a ML: no
+// tiene el token. Mismo camino que las visitas y la caja de compra.
+//
+// Un producto puede estar publicado en varias categorías. Se toma la de la publicación VIVA, y si
+// hay más de una gana la primera: para un margen por rubro la diferencia entre dos hojas del mismo
+// árbol no cambia la raíz, que es la granularidad que se muestra.
+function rubroDeProducto(p){
+  if(!p)return null;
+  const L=state.mllinks||{};
+  let alt=null;
+  for(const e of Object.values(L)){
+    if(!e||e.prodId!==p.id||e.ignored||!e.catNom)continue;
+    if((e.status||'')==='closed'){if(!alt)alt=e.catNom;continue;}
+    return e.catNom;
+  }
+  // Si sólo queda la publicación cerrada, su rubro sigue siendo el correcto para las ventas viejas.
+  return alt;
+}
+// LA CUENTA ES LA MISMA QUE LA DE TODO EL PANEL, y eso no es un detalle: la ganancia en PESOS se
+// mide contra el costo SIN la gestión de Full (el neto que deposita ML ya la trae descontada,
+// restarla otra vez la cobraría dos veces), y lo único que cambia es el DIVISOR del %. Es
+// exactamente lo que hacen la ficha, Rotación, Ventas x Producto y los KPIs de acá arriba.
+// Con una cuenta propia, esta tarjeta diría un margen y la de al lado otro sobre las mismas ventas
+// — el error anotado una docena de veces en CLAUDE.md.
+function metMargenRubro(keys){
+  const agg={};
+  let sinRubro={neto:0,costo:0,gest:0,u:0,ventas:0};
+  keys.forEach(k=>{
+    Object.values(state.ventaprod[k]||{}).forEach(v=>{
+      if(!v||v.cancelada)return;                       // canceladas y reclamos no cuentan, igual que en todo el panel
+      const costo=efectivoCostoVP({...v,_dateKey:k});
+      if(!(costo>0))return;                            // sin costo no hay margen que medir: no se inventa un 100%
+      const r=rubroDeProducto(prodDeVenta(v));
+      const dest=r?(agg[r]||(agg[r]={neto:0,costo:0,gest:0,u:0,ventas:0})):sinRubro;
+      dest.neto+=v.neto||0;dest.costo+=costo;dest.gest+=gestDeVenta(v);
+      dest.u+=v.qty||0;dest.ventas++;
+    });
+  });
+  const filas=Object.entries(agg).map(([nom,a])=>{
+    const div=a.costo+a.gest;
+    return {nom,...a,ganancia:a.neto-a.costo,margen:div>0?(a.neto-a.costo)/div*100:null};
+  }).sort((x,y)=>y.ganancia-x.ganancia);
+  return {filas,sinRubro};
+}
+function renderMetRubros(keys){
+  const el=document.getElementById('met-rubros');if(!el)return;
+  const per=document.getElementById('met-rubro-period');
+  if(per)per.textContent='· '+getMetScopeLabel(metScopeMode);
+  const {filas,sinRubro}=metMargenRubro(keys);
+  if(!filas.length&&!sinRubro.ventas){
+    el.innerHTML='<div class="chart-box" style="color:var(--muted);font-size:.72rem">No hay ventas con costo cargado en este período.</div>';
+    return;
+  }
+  const max=Math.max(1,...filas.map(f=>Math.abs(f.ganancia)));
+  const meta=metaMargenML();
+  const barras=filas.map(f=>{
+    const col=f.margen==null?'var(--muted)':(f.margen>=meta?'var(--green)':f.margen>=0?'#fbbf24':'var(--red)');
+    const w=Math.max(2,Math.round(Math.abs(f.ganancia)/max*100));
+    return `<div style="margin-bottom:10px">
+      <div style="display:flex;justify-content:space-between;align-items:baseline;gap:8px;font-size:.72rem">
+        <span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${f.nom}</span>
+        <span style="white-space:nowrap"><span style="font-family:'Syne',sans-serif;font-weight:800;color:${col}">${f.margen==null?'—':f.margen.toFixed(1)+'%'}</span></span>
+      </div>
+      <div style="height:6px;border-radius:3px;background:rgba(148,163,184,.14);margin:4px 0 3px">
+        <div style="height:6px;border-radius:3px;width:${w}%;background:${col};opacity:.75"></div>
+      </div>
+      <div style="font-size:.6rem;color:var(--muted)">gan. ${fmt(f.ganancia)} · ${f.u} u. en ${f.ventas} venta${f.ventas===1?'':'s'}</div>
+    </div>`;
+  }).join('');
+  // LO QUE NO TIENE RUBRO SE DICE, NO SE ESCONDE. Una publicación que el robot todavía no miró no
+  // tiene `catNom`, y si esas ventas desaparecieran de la tarjeta el total no cerraría contra los
+  // KPIs de arriba sin que nada lo avise — el descarte silencioso de siempre.
+  const falta=sinRubro.ventas?`<div style="margin-top:8px;padding-top:8px;border-top:1px solid rgba(148,163,184,.16);font-size:.64rem;color:var(--muted)">
+      ⚠ ${sinRubro.ventas} venta${sinRubro.ventas===1?'':'s'} (${sinRubro.u} u. · ${fmt(sinRubro.neto-sinRubro.costo)}) todavía sin rubro: el robot le pone el rubro a cada publicación una vez por hora.
+    </div>`:'';
+  el.innerHTML=`<div class="chart-box">${barras}${falta}
+    <div style="margin-top:8px;font-size:.6rem;color:var(--muted)">El rubro lo informa ML. La barra es la ganancia en pesos y el % es el mismo margen que usa el resto del panel (ganancia sobre el costo total, con lo que cobra Full adentro del divisor).</div>
+  </div>`;
+}
+// ── REPUTACIÓN DE LAS CUATRO CUENTAS ─────────────────────────────────────────────────────────
+// La escribe el robot una vez por hora en `cyc/reputacion/<cuenta>` leyendo `/users/<id>`.
+// NO depende del período que esté elegido arriba y eso se dice en el título: un número que no se
+// mueve al cambiar el período, puesto adentro de una pantalla que sí lo hace, se lee mal.
+function renderMetReputacion(){
+  const el=document.getElementById('met-reputacion');if(!el)return;
+  const R=state.reputacion||{};
+  const cuentas=Object.keys(R);
+  if(!cuentas.length){
+    el.innerHTML='<div class="chart-box" style="color:var(--muted);font-size:.72rem">Todavía no hay reputación cargada. La trae el robot en la vuelta de la hora.</div>';
+    return;
+  }
+  const hoy=Date.now();
+  const pct=x=>(x==null?'—':(x*100).toFixed(2)+'%');
+  // El color va por el número, no por el nombre del nivel: `5_green` es el techo de ML y no
+  // distingue una cuenta sana de una que viene subiendo reclamos. Lo que decide es el %.
+  const colR=x=>x==null?'var(--muted)':x<=0.01?'var(--green)':x<=0.02?'#fbbf24':'var(--red)';
+  const filas=cuentas.sort().map(c=>{
+    const r=R[c]||{};
+    const dias=r.ts?Math.floor((hoy-r.ts)/86400000):null;
+    // Un dato viejo se avisa en vez de mostrarse como si fuera de hoy.
+    const viejo=(dias!=null&&dias>=2)?`<span style="color:#fbbf24;font-size:.58rem"> · medido hace ${dias} d</span>`:'';
+    const nivel=(r.nivel||'').includes('green')?'🟢 verde':(r.nivel?'🟡 '+r.nivel:'—');
+    return `<div style="display:flex;flex-wrap:wrap;align-items:baseline;gap:6px;padding:7px 0;border-bottom:1px solid rgba(148,163,184,.12)">
+      <span class="who-badge" style="font-size:.58rem">${c}</span>
+      <span style="font-size:.68rem">${nivel}${r.power?` · <b>${r.power}</b>`:''}</span>
+      <span style="flex:1"></span>
+      <span style="font-size:.64rem;color:var(--muted)">reclamos <b style="color:${colR(r.reclamos)}">${pct(r.reclamos)}</b> · demoras <b style="color:${colR(r.demoras)}">${pct(r.demoras)}</b> · cancelaciones <b style="color:${colR(r.cancelaciones)}">${pct(r.cancelaciones)}</b>${viejo}</span>
+    </div>`;
+  }).join('');
+  el.innerHTML=`<div class="chart-box">${filas}
+    <div style="margin-top:8px;font-size:.6rem;color:var(--muted)">Los tres porcentajes son los que mira ML para darte el nivel, sobre los últimos 60 días. Las demoras y las cancelaciones dan 0 porque de los envíos se encarga Full.</div>
+  </div>`;
+}
 function renderMetricas(){
   _syncMetFieldBtns(); // deja los botones prendidos/apagados según las métricas activas
   _initMetDefaults();
@@ -11638,6 +11766,10 @@ function renderMetricas(){
     if(sinG.length)avisoG=' · ⚠ '+(sinG.length===1?'sin gastos cargados en '+sinG[0].replace('_','/'):sinG.length+' meses sin gastos cargados')+': la ganancia se ve más alta de la real';
   }
   setTxt('met-kpi-period','· '+lbl+' · '+fieldLbl+avisoG);setTxt('met-line-period','· '+lbl+' · '+fieldLbl+avisoG);
+  // Las dos tarjetas nuevas. El rubro sigue el período elegido arriba; la reputación no depende de
+  // ninguno, y por eso su título lo aclara en vez de dejar que se lea como si fuera del período.
+  renderMetRubros(curKeys);
+  renderMetReputacion();
   const acctColors=['c1','c4','c2','c3'];
   // Mismo período un año atrás (alineado con las líneas del gráfico).
   const year=sumMetFields(metScopeBuckets(metScopeMode).bucketsYear.flat(),metViewField);

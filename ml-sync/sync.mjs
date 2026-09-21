@@ -804,7 +804,8 @@ async function cajasQueLlegaron(db, accounts, labels, products, DRY) {
 async function cajaDeCompraML(db, accounts, labels, DRY, soloCta) {
   const links = (await db.get('cyc/mllinks')) || {};
   const upd = {};
-  const res = { winning: 0, sharing: 0, losing: 0, nocat: 0, sincaja: 0, mirados: 0, filas: [] };
+  const res = { winning: 0, sharing: 0, losing: 0, nocat: 0, sincaja: 0, mirados: 0, filas: [], cats: new Set(), catsNuevas: 0, catsFaltan: 0 };
+  let tokUno = null;
   for (const label of labels) {
     if (soloCta && label.toLowerCase() !== String(soloCta).toLowerCase()) continue;
     const acc = accounts[label]; if (!acc?.refresh_token) continue;
@@ -814,14 +815,21 @@ async function cajaDeCompraML(db, accounts, labels, DRY, soloCta) {
       await db.patch('mlapi/tokens/' + label, { refresh_token: t.refresh_token, updated_ts: Date.now() });
       tok = t.access_token;
     } catch { continue; }
+    if (!tokUno) tokUno = tok;   // cualquiera sirve para preguntar el nombre de una categoría: es público
     const ids = Object.entries(links).filter(([m, e]) =>
       m.startsWith('MLA') && e && e.cuenta === label && !e.ignored && (e.status || '') !== 'closed').map(([m]) => m);
     for (let k = 0; k < ids.length; k += 20) {
       let arr;
-      try { arr = await mlGet('/items?ids=' + ids.slice(k, k + 20).join(',') + '&attributes=id,title,status,price,catalog_listing', tok); }
+      try { arr = await mlGet('/items?ids=' + ids.slice(k, k + 20).join(',') + '&attributes=id,title,status,price,catalog_listing,category_id', tok); }
       catch { continue; }
       for (const row of (arr || [])) {
         const b = row.body || {}; const mla = b.id; if (!mla || !links[mla]) continue;
+        // LA CATEGORÍA SE ANOTA ANTES DEL FILTRO DE ACTIVAS, a propósito. Abajo se saltean las
+        // pausadas porque no pelean ninguna caja, pero una publicación pausada SIGUE teniendo
+        // rubro y su producto sigue habiendo vendido: si se anotara después, todo lo pausado
+        // quedaría "sin rubro" para siempre y el margen por rubro tendría un agujero mudo.
+        if (b.category_id && links[mla].cat !== b.category_id) upd[mla + '/cat'] = b.category_id;
+        if (b.category_id) res.cats.add(b.category_id);
         if (b.status !== 'active') continue;      // pausada o cerrada: no está peleando ninguna caja
         res.mirados++;
         const stamp = (st, ptw) => {
@@ -843,8 +851,87 @@ async function cajaDeCompraML(db, accounts, labels, DRY, soloCta) {
       }
     }
   }
+  // ── EL NOMBRE DEL RUBRO ────────────────────────────────────────────────────────────────────
+  // `MLA352679` no le dice nada a nadie: lo que hace falta es la RAÍZ del árbol ("Belleza y
+  // Cuidado Personal"), que es la granularidad de un margen por rubro. Sale de `path_from_root[0]`
+  // de `/categories/<id>` (medido el 21/09/2026 con `reputa`).
+  //
+  // El nombre se pide UNA sola vez por categoría, no por publicación: la categoría no depende de
+  // cuál publicación sea, y sin esta caché las ~140 publicaciones preguntarían lo mismo decenas de
+  // veces — el error de velocidad que ya mordió en la primera versión de `avisos`.
+  const yaNom = {};
+  for (const e of Object.values(links)) if (e && e.cat && e.catNom) yaNom[e.cat] = e.catNom;
+  const faltan = tokUno ? [...res.cats].filter((c) => !yaNom[c]) : [];
+  // TOPE POR VUELTA, y NO es mudo: esto corre dentro de la vuelta horaria y un día con muchas
+  // categorías nuevas no puede colgar el resto del paso. Las que quedan salen en la vuelta
+  // siguiente y se dicen acá, que es la lección del tope de `calcCajaBarata`.
+  const MAX_CATS = 30;
+  for (const c of faltan.slice(0, MAX_CATS)) {
+    let nom = null;
+    try {
+      const d = await mlGet('/categories/' + c, tokUno);
+      nom = ((d.path_from_root || [])[0] || {}).name || null;
+    } catch { /* si ML no contesta se deja sin nombre: la vuelta siguiente lo reintenta */ }
+    if (!nom) continue;
+    yaNom[c] = nom;
+    res.catsNuevas++;
+  }
+  res.catsFaltan = Math.max(0, faltan.length - MAX_CATS);
+  // El nombre se guarda en CADA publicación y no en una tabla aparte, para que la pantalla lo lea
+  // de una sin un segundo salto — es el mismo criterio con el que ya se guarda el código de Full.
+  for (const [mla, e] of Object.entries(links)) {
+    const cat = (upd[mla + '/cat'] || e.cat);
+    if (!cat || !yaNom[cat]) continue;
+    if (e.catNom !== yaNom[cat]) upd[mla + '/catNom'] = yaNom[cat];
+  }
   if (!DRY && Object.keys(upd).length) await db.patch('cyc/mllinks', upd);
   return res;
+}
+
+// ── LA REPUTACIÓN DE CADA CUENTA (21/09/2026) ──────────────────────────────────────────────────
+// Pedido suyo mirando Lumelí: "agregá el margen por categoría y la reputación de todas las cuentas".
+//
+// OJO CON LA DIRECCIÓN: `/users/<id>/seller_reputation` **no existe** — devuelve una página web, no
+// un 404, así que leerlo como "no anda ML" sería el error de siempre. La reputación viene ADENTRO
+// de `/users/<id>`. Medido el 21/09 con `apisnuevas` y confirmado con `reputa`.
+//
+// Va en la vuelta HORARIA y no en las de 2 minutos: la reputación se mueve por trimestre, no por
+// minuto, y son 4 llamadas más por vuelta.
+//
+// SI ML NO CONTESTA PARA UNA CUENTA **NO SE BORRA LO QUE HABÍA**: queda el dato de la vuelta
+// anterior con su fecha, y la pantalla avisa si está viejo. Un "no sé" que pisa lo que sabíamos es
+// peor que un dato de hace una hora — el mismo criterio que la caja de compra.
+async function reputacionML(db, accounts, labels, DRY) {
+  const out = { ok: 0, mal: 0, filas: [] };
+  for (const label of labels) {
+    const acc = accounts[label]; if (!acc?.refresh_token) { out.mal++; continue; }
+    try {
+      const t = await mlRefresh(ML_CLIENT_ID, ML_CLIENT_SECRET, acc.refresh_token);
+      await db.patch('mlapi/tokens/' + label, { refresh_token: t.refresh_token, updated_ts: Date.now() });
+      const u = await mlGet('/users/' + acc.seller_id, t.access_token);
+      const r = u.seller_reputation || {};
+      const tx = r.transactions || {};
+      const m = r.metrics || {};
+      // Los porcentajes se guardan tal como los da ML (0 a 1) y se pasan a % en la pantalla, para
+      // que no haya dos lugares multiplicando por 100 con criterios distintos.
+      const tasa = (k) => (m[k] && m[k].rate != null ? Number(m[k].rate) : null);
+      const fila = {
+        nivel: r.level_id || null,
+        power: r.power_seller_status || null,
+        ventas: tx.total != null ? tx.total : null,
+        completadas: tx.completed != null ? tx.completed : null,
+        canceladas: tx.canceled != null ? tx.canceled : null,
+        reclamos: tasa('claims'),
+        demoras: tasa('delayed_handling_time'),
+        cancelaciones: tasa('cancellations'),
+        ts: Date.now(),
+      };
+      if (!DRY) await db.set('cyc/reputacion/' + label, fila);
+      out.ok++;
+      out.filas.push({ label, ...fila });
+    } catch (e) { out.mal++; out.filas.push({ label, error: String(e.message || e).slice(0, 90) }); }
+  }
+  return out;
 }
 
 async function activarPausadasFull(db, links, tokensRun, DRY, products, piso) {
@@ -8964,7 +9051,12 @@ async function main() {
       console.log('\nSi el número de ML y el deducido coinciden, se puede cambiar la fórmula y dejar de adivinar.');
       return;
     }
-    // BILLING_PROBE=reputa → ¿ML DA LA REPUTACIÓN Y EL NOMBRE DE LAS CATEGORÍAS? SOLO LEE.
+    // BILLING_PROBE=reputa → LA REPUTACIÓN DE LAS 4 CUENTAS Y EL NOMBRE DE LAS CATEGORÍAS.
+    //
+    // OJO: **ESCRIBE** `cyc/reputacion/<cuenta>`. Este renglón decía "SOLO LEE" y dejó de ser
+    // cierto cuando el probe pasó a llamar a `reputacionML` en vez de tener la lectura copiada
+    // adentro. Se corrige acá porque un encabezado que promete que algo no toca nada es
+    // exactamente el comentario que después nadie vuelve a chequear. No toca ML ni ningún precio.
     //
     // Mide las DOS cosas que faltan para las tarjetas nuevas, antes de escribir una línea de panel:
     //  · la REPUTACIÓN de cada cuenta (lo que Lumelí muestra: nivel, atención, entrega a tiempo).
@@ -8976,37 +9068,31 @@ async function main() {
     //
     // No imprime ni un peso. Los números que salen son cantidades y porcentajes de las cuentas
     // propias — el registro de GitHub es público (ver CLAUDE.md).
+    // Corriéndolo se llenan las dos tarjetas nuevas de Métricas sin esperar la vuelta de la hora.
     if (String(process.env.BILLING_PROBE || '') === 'reputa') {
       const linksR = (await db.get('cyc/mllinks')) || {};
+      // LLAMA A LA MISMA FUNCIÓN QUE USA EL ROBOT (`reputacionML`), no a una copia. Un verificador
+      // con la cuenta propia adentro dice "todo bien" para siempre en cuanto las dos se separan —
+      // el error anotado una docena de veces en CLAUDE.md, y la primera versión de este probe lo
+      // cometía: tenía la lectura duplicada.
       console.log('=== REPUTACIÓN DE CADA CUENTA (de /users/<id>) ===\n');
-      let tokUno = null;
-      for (const label of labels) {
-        const acc = accounts[label]; if (!acc?.refresh_token) { console.log(`${label}: sin token`); continue; }
-        let tok;
-        try {
-          const t = await mlRefresh(ML_CLIENT_ID, ML_CLIENT_SECRET, acc.refresh_token);
-          await db.patch('mlapi/tokens/' + label, { refresh_token: t.refresh_token, updated_ts: Date.now() });
-          tok = t.access_token;
-        } catch (e) { console.log(`${label}: no se pudo renovar el token · ${String(e.message || e).slice(0, 80)}`); continue; }
-        if (!tokUno) tokUno = tok;
-        try {
-          const u = await mlGet('/users/' + acc.seller_id, tok);
-          const r = u.seller_reputation || {};
-          const tx = r.transactions || {};
-          const m = r.metrics || {};
-          console.log(`${label}`);
-          console.log(`  nivel: ${r.level_id || '?'} · power seller: ${r.power_seller_status || 'ninguno'}`);
-          console.log(`  ventas: ${tx.total != null ? tx.total : '?'} · completadas ${tx.completed != null ? tx.completed : '?'} · canceladas ${tx.canceled != null ? tx.canceled : '?'}`);
-          for (const k of ['claims', 'delayed_handling_time', 'cancellations']) {
-            const x = m[k] || {};
-            console.log(`  ${k.padEnd(22)}: ${x.rate != null ? (x.rate * 100).toFixed(2) + '%' : '?'} sobre ${x.value != null ? x.value : '?'} de ${(x.period || '?')}`);
-          }
-          // Lo que NO conocemos se imprime crudo, para no inventar un campo que no existe.
-          const otras = Object.keys(m).filter((k) => !['claims', 'delayed_handling_time', 'cancellations'].includes(k));
-          if (otras.length) console.log(`  otras métricas que trae ML: ${otras.join(', ')}`);
-          console.log('');
-        } catch (e) { console.log(`${label}: ✗ ${String(e.message || e).slice(0, 120)}\n`); }
+      const rep = await reputacionML(db, accounts, labels, DRY);
+      for (const f of rep.filas) {
+        if (f.error) { console.log(`${f.label}: ✗ ${f.error}\n`); continue; }
+        const pc = (x) => (x == null ? '?' : (x * 100).toFixed(2) + '%');
+        console.log(`${f.label}`);
+        console.log(`  nivel: ${f.nivel || '?'} · power seller: ${f.power || 'ninguno'}`);
+        console.log(`  ventas: ${f.ventas != null ? f.ventas : '?'} · completadas ${f.completadas != null ? f.completadas : '?'} · canceladas ${f.canceladas != null ? f.canceladas : '?'}`);
+        console.log(`  reclamos ${pc(f.reclamos)} · demoras ${pc(f.demoras)} · cancelaciones ${pc(f.cancelaciones)}\n`);
       }
+      console.log(`${rep.ok} cuenta(s) leídas · ${rep.mal} no${DRY ? ' · modo prueba: no se escribió nada' : ' · guardado en cyc/reputacion'}\n`);
+      const tokUno = await (async () => {
+        for (const l of labels) {
+          const a2 = accounts[l]; if (!a2?.refresh_token) continue;
+          try { const t2 = await mlRefresh(ML_CLIENT_ID, ML_CLIENT_SECRET, a2.refresh_token); return t2.access_token; } catch { /* sigue */ }
+        }
+        return null;
+      })();
       console.log('=== NOMBRE DE LAS CATEGORÍAS (de /categories/<id>) ===\n');
       if (!tokUno) { console.log('Sin token: no se pudo probar.'); return; }
       // Se sacan ids REALES del catálogo, no inventados: si la prueba usara un id de ejemplo,
@@ -26505,7 +26591,20 @@ async function main() {
     try {
       const rb = await cajaDeCompraML(db, accounts, labels, DRY, null);
       console.log(`🥊 Caja de compra · ${rb.mirados} publicaciones activas · ganamos ${rb.winning} · compartimos ${rb.sharing} · perdemos ${rb.losing} · sin catálogo ${rb.nocat}`);
+      console.log(`🏷️  Rubros · ${rb.cats.size} categorías distintas · ${rb.catsNuevas} nombre(s) nuevo(s)${rb.catsFaltan ? ` · quedan ${rb.catsFaltan} para la vuelta siguiente` : ''}`);
     } catch (e) { console.log('No pude leer la caja de compra: ' + e.message); }
+
+    // LA REPUTACIÓN DE LAS CUATRO CUENTAS. Va acá al lado y no en un bloque propio porque es lo
+    // mismo: una lectura horaria que no toca ML ni precios, sólo anota en el panel.
+    try {
+      const rp = await reputacionML(db, accounts, labels, DRY);
+      for (const f of rp.filas) {
+        if (f.error) { console.log(`⭐ ${f.label}: no contestó · ${f.error}`); continue; }
+        const pct = (x) => (x == null ? '?' : (x * 100).toFixed(2) + '%');
+        console.log(`⭐ ${f.label}: ${f.nivel || '?'}${f.power ? ' · ' + f.power : ''} · reclamos ${pct(f.reclamos)} · demoras ${pct(f.demoras)} · cancelaciones ${pct(f.cancelaciones)}`);
+      }
+      if (rp.mal) console.log(`⭐ ${rp.mal} cuenta(s) sin reputación esta vuelta: queda el dato anterior, no se borra nada.`);
+    } catch (e) { console.log('No pude leer la reputación: ' + e.message); }
   }
 
   // EL DÓLAR, UNA VEZ POR DÍA. Va en la vuelta horaria (no en las de 2 minutos) y además con un
