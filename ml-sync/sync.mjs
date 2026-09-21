@@ -12227,6 +12227,105 @@ async function main() {
       return;
     }
 
+    // BILLING_PROBE=saldo5 → EL REPORTE DE LIBERACIONES, QUE SÍ SE PUEDE PEDIR POR ROBOT
+    //
+    // POR QUÉ (21/09/2026). En `saldo4`, de trece puertas, UNA contestó distinto:
+    // `POST /v1/account/release_report` dio **400 `Must specify begin_date parameter`**.
+    // **Eso no es una negativa**: la puerta existe y acepta que le pidan un reporte — lo único que
+    // pasa es que quiere las fechas de otra forma. Todas las demás dieron 404 (no existe) o 403.
+    // Es la misma lección de hoy al revés: así como un 404 de "falta configuración" no es "está
+    // cerrado", un 400 de "te falta un parámetro" es una puerta ABIERTA que todavía no supimos
+    // usar. Lo caro sería contarla entre los fracasos y no volver.
+    //
+    // QUÉ SERÍA SI ANDA: el reporte de **Liberaciones** es la plata que se va liberando y pasa a
+    // estar disponible. No es el saldo en sí, pero es lo que lo forma — y a diferencia del
+    // "saldo en cuenta", éste **se pide solo, sin entrar al panel de MercadoPago**, que es
+    // exactamente lo que él pidió.
+    //
+    // SE PRUEBAN TRES FORMAS DE MANDAR LAS FECHAS y se dice cuál anduvo. No se adivina una.
+    //
+    // Sólo Matías. Los POST piden un reporte y nada más: no cobran, no devuelven, no mueven plata.
+    // No se imprime ningún monto: el registro es público.
+    if (String(process.env.BILLING_PROBE || '') === 'saldo5') {
+      const MP = 'https://api.mercadopago.com';
+      const label = labels.find((L) => /mat/i.test(L)) || labels[0];
+      const acc = accounts[label];
+      if (!acc?.refresh_token) { console.log('Sin token para ' + label); return; }
+      let t; try { t = await mlRefresh(ML_CLIENT_ID, ML_CLIENT_SECRET, acc.refresh_token); }
+      catch (e) { console.log('No pude renovar el token: ' + String(e.message || e).slice(0, 110)); return; }
+      await db.patch('mlapi/tokens/' + label, { refresh_token: t.refresh_token, updated_ts: Date.now() });
+      const H = { Authorization: `Bearer ${t.access_token}` };
+      const HJ = { ...H, 'Content-Type': 'application/json' };
+      const HUSO = '-03:00';
+      const diaLocal = (ms) => new Date(ms - 3 * 36e5).toISOString().slice(0, 10);
+      const desde = diaLocal(Date.now() - 30 * 864e5) + 'T00:00:00' + HUSO;
+      const hasta = diaLocal(Date.now() - 864e5) + 'T23:59:59' + HUSO;
+      const URL0 = `${MP}/v1/account/release_report`;
+      console.log(`=== EL REPORTE DE LIBERACIONES · cuenta ${label} ===`);
+      console.log(`(del ${desde.slice(0, 10)} al ${hasta.slice(0, 10)})\n`);
+
+      console.log('── 1) tres formas de mandarle las fechas ──');
+      const FORMAS = [
+        ['en la dirección (begin_date / end_date)', `${URL0}?begin_date=${encodeURIComponent(desde)}&end_date=${encodeURIComponent(hasta)}`, null],
+        ['en la dirección, sólo el día', `${URL0}?begin_date=${desde.slice(0, 10)}&end_date=${hasta.slice(0, 10)}`, null],
+        ['en el cuerpo, con otros nombres', URL0, { beginDate: desde, endDate: hasta }],
+      ];
+      let anduvo = '';
+      for (const [nom, url, cuerpo] of FORMAS) {
+        if (anduvo) break;
+        try {
+          const op = { method: 'POST', headers: cuerpo ? HJ : H, signal: AbortSignal.timeout(25000) };
+          if (cuerpo) op.body = JSON.stringify(cuerpo);
+          const r = await fetch(url, op);
+          const txt = ((await r.text()) || '').replace(/\s+/g, ' ').slice(0, 200);
+          console.log(`   ${r.ok ? '✅' : '❌'} ${nom} · HTTP ${r.status}${txt ? ' · ' + txt : ''}`);
+          if (r.ok) anduvo = nom;
+        } catch (e) { console.log(`   ❌ ${nom} · ERROR ${String(e.message || e).slice(0, 100)}`); }
+      }
+      if (!anduvo) {
+        console.log('\n   Ninguna de las tres anduvo. El motivo de cada una está arriba, tal como');
+        console.log('   lo contestó MercadoPago: eso dice qué le falta y por dónde seguir.');
+        return;
+      }
+      console.log(`\n   → Anduvo: ${anduvo}`);
+
+      console.log('\n── 2) esperar el archivo y mirar qué trae adentro ──');
+      let archivo = '';
+      for (let i = 1; i <= 8 && !archivo; i++) {
+        await new Promise((r) => setTimeout(r, 15000));
+        try {
+          const r = await fetch(`${URL0}/list`, { headers: H, signal: AbortSignal.timeout(25000) });
+          const arr = JSON.parse((await r.text()) || '[]');
+          archivo = (Array.isArray(arr) ? arr : []).map((x) => x && x.file_name).filter(Boolean).pop() || '';
+          console.log(`   intento ${i}: ${Array.isArray(arr) ? arr.length : 0} reporte(s) en la lista`);
+        } catch { console.log(`   intento ${i}: no pude leer la lista`); }
+      }
+      if (!archivo) {
+        console.log('   Todavía no está generado. NO es un fracaso: el pedido entró. Se vuelve a');
+        console.log('   mirar más tarde — la lista de liberaciones sólo lee.');
+        return;
+      }
+      try {
+        const r = await fetch(`${URL0}/${encodeURIComponent(archivo)}`, { headers: H, signal: AbortSignal.timeout(30000) });
+        const txt = (await r.text()) || '';
+        if (!r.ok) { console.log(`   ❌ bajar el archivo · HTTP ${r.status}`); return; }
+        const lineas = txt.split('\n').filter((x) => x.trim());
+        const cab = lineas[0] || '';
+        console.log(`   ✅ bajado · ${lineas.length} renglones`);
+        console.log(`   columnas: ${cab.slice(0, 420)}`);
+        // ¿Hay alguna columna de SALDO? Es lo único que decide si esto reemplaza al punto de
+        // partida cargado a mano, o si sólo sirve para seguir los movimientos.
+        const sep = cab.includes(';') ? ';' : ',';
+        const cols = csvPartir(cab, sep).map((x) => x.replace(/^"|"$/g, '').trim().toUpperCase());
+        const saldo = cols.filter((c) => /BALANCE|SALDO/.test(c));
+        console.log(saldo.length
+          ? `   🎯 HAY COLUMNA DE SALDO: ${saldo.join(' · ')} → el disponible sale de acá.`
+          : '   Ninguna columna de saldo: sirve para los movimientos, no para el disponible.');
+      } catch (e) { console.log('   ❌ ' + String(e.message || e).slice(0, 110)); }
+      console.log('\n   (No se imprimió ningún monto: el registro es público.)');
+      return;
+    }
+
     // BILLING_PROBE=saldo4 → SEGUIR PROBANDO: TODAS LAS FORMAS QUE QUEDABAN DE SACAR EL SALDO
     //
     // POR QUÉ (21/09/2026). Pedido suyo: *"segui probando todo"*. Lo medido hasta acá:
