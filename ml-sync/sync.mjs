@@ -8964,6 +8964,78 @@ async function main() {
       console.log('\nSi el número de ML y el deducido coinciden, se puede cambiar la fórmula y dejar de adivinar.');
       return;
     }
+    // BILLING_PROBE=reputa → ¿ML DA LA REPUTACIÓN Y EL NOMBRE DE LAS CATEGORÍAS? SOLO LEE.
+    //
+    // Mide las DOS cosas que faltan para las tarjetas nuevas, antes de escribir una línea de panel:
+    //  · la REPUTACIÓN de cada cuenta (lo que Lumelí muestra: nivel, atención, entrega a tiempo).
+    //    OJO: `/users/<sid>/seller_reputation` NO es una ruta — devuelve una página web, ya medido
+    //    el 21/09 con `apisnuevas`. La reputación viene ADENTRO de `/users/<sid>`.
+    //  · el NOMBRE de una categoría a partir de su id. `MLA352679` no le dice nada a nadie; lo que
+    //    hace falta es la RAÍZ del árbol ("Celulares y Teléfonos"), que es la granularidad de un
+    //    "margen por rubro". Sale de `path_from_root[0]` de `/categories/<id>`.
+    //
+    // No imprime ni un peso. Los números que salen son cantidades y porcentajes de las cuentas
+    // propias — el registro de GitHub es público (ver CLAUDE.md).
+    if (String(process.env.BILLING_PROBE || '') === 'reputa') {
+      const linksR = (await db.get('cyc/mllinks')) || {};
+      console.log('=== REPUTACIÓN DE CADA CUENTA (de /users/<id>) ===\n');
+      let tokUno = null;
+      for (const label of labels) {
+        const acc = accounts[label]; if (!acc?.refresh_token) { console.log(`${label}: sin token`); continue; }
+        let tok;
+        try {
+          const t = await mlRefresh(ML_CLIENT_ID, ML_CLIENT_SECRET, acc.refresh_token);
+          await db.patch('mlapi/tokens/' + label, { refresh_token: t.refresh_token, updated_ts: Date.now() });
+          tok = t.access_token;
+        } catch (e) { console.log(`${label}: no se pudo renovar el token · ${String(e.message || e).slice(0, 80)}`); continue; }
+        if (!tokUno) tokUno = tok;
+        try {
+          const u = await mlGet('/users/' + acc.seller_id, tok);
+          const r = u.seller_reputation || {};
+          const tx = r.transactions || {};
+          const m = r.metrics || {};
+          console.log(`${label}`);
+          console.log(`  nivel: ${r.level_id || '?'} · power seller: ${r.power_seller_status || 'ninguno'}`);
+          console.log(`  ventas: ${tx.total != null ? tx.total : '?'} · completadas ${tx.completed != null ? tx.completed : '?'} · canceladas ${tx.canceled != null ? tx.canceled : '?'}`);
+          for (const k of ['claims', 'delayed_handling_time', 'cancellations']) {
+            const x = m[k] || {};
+            console.log(`  ${k.padEnd(22)}: ${x.rate != null ? (x.rate * 100).toFixed(2) + '%' : '?'} sobre ${x.value != null ? x.value : '?'} de ${(x.period || '?')}`);
+          }
+          // Lo que NO conocemos se imprime crudo, para no inventar un campo que no existe.
+          const otras = Object.keys(m).filter((k) => !['claims', 'delayed_handling_time', 'cancellations'].includes(k));
+          if (otras.length) console.log(`  otras métricas que trae ML: ${otras.join(', ')}`);
+          console.log('');
+        } catch (e) { console.log(`${label}: ✗ ${String(e.message || e).slice(0, 120)}\n`); }
+      }
+      console.log('=== NOMBRE DE LAS CATEGORÍAS (de /categories/<id>) ===\n');
+      if (!tokUno) { console.log('Sin token: no se pudo probar.'); return; }
+      // Se sacan ids REALES del catálogo, no inventados: si la prueba usara un id de ejemplo,
+      // diría "anda" sobre algo que después no se va a pedir nunca.
+      const mlas = Object.entries(linksR)
+        .filter(([m, e]) => m.startsWith('MLA') && e && !e.ignored && (e.status || '') !== 'closed')
+        .map(([m]) => m).slice(0, 20);
+      if (!mlas.length) { console.log('No hay publicaciones para mirar.'); return; }
+      let cats = [];
+      try {
+        const arr = await mlGet('/items?ids=' + mlas.join(',') + '&attributes=id,category_id', tokUno);
+        cats = [...new Set((arr || []).map((r) => (r.body || {}).category_id).filter(Boolean))];
+      } catch (e) { console.log(`No se pudieron leer las categorías de las publicaciones: ${String(e.message || e).slice(0, 120)}`); return; }
+      console.log(`${mlas.length} publicaciones miradas → ${cats.length} categorías distintas.\n`);
+      let ok = 0, mal = 0;
+      for (const c of cats.slice(0, 8)) {
+        try {
+          const d = await mlGet('/categories/' + c, tokUno);
+          const raiz = (d.path_from_root || [])[0] || {};
+          const camino = (d.path_from_root || []).map((x) => x.name).join(' › ');
+          console.log(`✅ ${c.padEnd(12)} raíz: ${raiz.name || '?'}`);
+          console.log(`   ${camino}\n`);
+          ok++;
+        } catch (e) { console.log(`❌ ${c.padEnd(12)} ${String(e.message || e).slice(0, 110)}\n`); mal++; }
+      }
+      console.log(`Categorías: ${ok} contestaron · ${mal} no.`);
+      console.log('Si la raíz sale bien, el "margen por rubro" se puede armar sin adivinar ningún nombre.');
+      return;
+    }
     // BILLING_PROBE=apisnuevas:<MLA> → ¿QUÉ MÁS NOS DEJA VER ML QUE HOY NO ESTAMOS USANDO?
     //
     // El probe `apis` mira lo que YA usamos (preguntas, reclamos, envíos). Este mira lo que NO:
