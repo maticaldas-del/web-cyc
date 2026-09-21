@@ -1270,6 +1270,85 @@ async function pisoConfig(db, fallback = 30) {
 // La comisión de ML tiene ESCALONES (hay uno cerca de los $15.000) y cruzar uno se lleva
 // más de lo que sube el precio: sin esto, el comando recomendaba subir a un precio que
 // dejaba $312 MENOS por unidad.
+// ── QUIÉN ES LA CUENTA DUEÑA DE CADA PRODUCTO ──────────────────────────────
+// Norma suya del 09/09/2026 y ampliada el 21/09/2026: *"quiero que no haya publicaciones del
+// mismo producto en mas de una cuenta. despues no me molesta que se repitan en la misma cuenta."*
+//
+// CÓMO DECIDE: **gana la que vendió MÁS RECIENTE**. Nada más que eso. Llegó ahí en dos
+// correcciones suyas del mismo día, las dos porque yo había elegido un criterio más elaborado:
+//  1) medir ventas por día CON STOCK le devolvía el producto a la cuenta que él dejó vacía a
+//     propósito — quedarse sin stock acá NO es una desventaja que compensar, es la decisión ya
+//     tomada;
+//  2) medir unidades de 30 días le daba el producto a la que vendió 20 hace un mes por encima de
+//     la que vendió 3 la semana pasada. **El producto no dejó de venderse, se mudó de cuenta.**
+//
+// Vive acá y no adentro de un probe porque la usan DOS comandos —`repartir` (el reparto en el
+// panel) y `repetidas` (las que siguen vivas en ML)— y si el segundo copiara la regla, los dos
+// podrían nombrar dueñas distintas del mismo producto. Es el error anotado una docena de veces.
+async function calcDuenaCuenta(db, products, o) {
+  const DIAS = Math.max(7, parseFloat((o || {}).dias) || 60);
+  const LOCS = ['Adriana', 'Luciana', 'Ayelen', 'Matias'];
+  const sidL = (x) => String(x).replace(/[^a-z0-9]/gi, '_');
+  const inv = (await db.get('cyc/inventory')) || {};
+  const links = (await db.get('cyc/mllinks')) || {};
+  const vp = (await db.get('cyc/ventaprod')) || {};
+  const marcas = (await db.get('cyc/norepo')) || {};
+  const getQ = (pid, loc) => parseInt(inv[pid + '__' + sidL(loc)]) || 0;
+
+  const desde = Date.now() - DIAS * 864e5;
+  const desde30 = Date.now() - 30 * 864e5;
+  const ven = {};   // pid|cuenta -> {u, $, u30, ult}
+  for (const day of Object.values(vp)) {
+    for (const v of Object.values(day || {})) {
+      if (!v || v.cancelada || !v.prodId || !LOCS.includes(v.cuenta)) continue;
+      if (!(v.ts >= desde)) continue;
+      const k = v.prodId + '|' + v.cuenta;
+      if (!ven[k]) ven[k] = { u: 0, $: 0, u30: 0, ult: 0 };
+      ven[k].u += v.qty || 0; ven[k].$ += v.total || 0;
+      if (v.ts >= desde30) ven[k].u30 += v.qty || 0;
+      if (v.ts > ven[k].ult) ven[k].ult = v.ts;        // la ÚLTIMA venta: es la que decide
+    }
+  }
+  // publicaciones VIVAS por producto × cuenta (cerradas y ocultas no cuentan: no venden nada)
+  const pubs = {};  // pid -> { cuenta -> [{mla, caja, status}] }
+  for (const [mla, e] of Object.entries(links)) {
+    if (!mla.startsWith('MLA') || !e || !e.prodId || e.ignored) continue;
+    if (!LOCS.includes(e.cuenta)) continue;
+    if (String(e.status || '') === 'closed') continue;
+    (pubs[e.prodId] = pubs[e.prodId] || {});
+    (pubs[e.prodId][e.cuenta] = pubs[e.prodId][e.cuenta] || []).push({ mla, caja: e.caja || '', status: e.status || '', titulo: e.titulo || e.title || '' });
+  }
+  const claros = [], dudosos = [];
+  for (const p of products) {
+    const porCta = pubs[p.id]; if (!porCta) continue;
+    const ctas = LOCS.filter((l) => (porCta[l] || []).length);
+    if (ctas.length < 2) continue;   // ya tiene una sola dueña: no hay nada que repartir
+    const filas = ctas.map((l) => {
+      const vv = ven[p.id + '|' + l] || { u: 0, $: 0, u30: 0, ult: 0 };
+      const lista = porCta[l] || [];
+      return {
+        cta: l, u: vv.u, u30: vv.u30, plata: vv.$, ult: vv.ult,
+        hace: vv.ult ? Math.floor((Date.now() - vv.ult) / 864e5) : null,
+        full: getQ(p.id, l),
+        caja: lista.map((x) => x.caja).find((c) => c === 'winning')
+           || lista.map((x) => x.caja).find((c) => c === 'sharing')
+           || (lista[0] || {}).caja || '',
+        pubs: lista.length,
+        mlas: lista,
+        yaFuera: !!marcas[p.id + '__' + sidL(l)],
+      };
+    }).sort((a, b) => b.ult - a.ult || b.u - a.u);   // manda la ÚLTIMA venta
+    const g = filas[0], seg = filas[1];
+    // El aviso: perdió, pero vendió MUCHAS más unidades que la ganadora (el doble o más).
+    for (const f of filas) f.ojo = f.cta !== g.cta && f.u > 0 && f.u >= g.u * 2;
+    const nadieVendio = !g.ult;
+    // Las dos últimas ventas en la misma semana = el producto se vende en las dos.
+    const empate = !nadieVendio && seg && seg.ult > 0 && (g.ult - seg.ult) < 7 * 864e5;
+    (nadieVendio || empate ? dudosos : claros).push({ p, filas, g, nadieVendio, empate });
+  }
+  return { DIAS, LOCS, claros, dudosos };
+}
+
 async function calcSubirPuede(db, o) {
   const { dias = 30, maxSuba = 0.10, products = [], labels = [], accounts = {} } = o || {};
   const COLCHON = 0.99;      // 1% abajo del competidor: quedar a $4 es demasiado al filo
@@ -24310,84 +24389,9 @@ async function main() {
     // Solo LEE. Imprime los comandos para aplicarlo, uno por cuenta.
     if (/^repartir(:|$)/.test(String(process.env.BILLING_PROBE || ''))) {
       const _rp = String(process.env.BILLING_PROBE).split(':');
-      const DIAS = Math.max(7, parseFloat(_rp[1]) || 60);
-      const LOCS = ['Adriana', 'Luciana', 'Ayelen', 'Matias'];
-      const DIAS_MIN = 7;
-      const sidL = (x) => String(x).replace(/[^a-z0-9]/gi, '_');
-      const inv = (await db.get('cyc/inventory')) || {};
-      const links = (await db.get('cyc/mllinks')) || {};
-      const vp = (await db.get('cyc/ventaprod')) || {};
-      const hist = (await db.get('cyc/stockhist')) || {};
-      const marcas = (await db.get('cyc/norepo')) || {};
-      const getQ = (pid, loc) => parseInt(inv[pid + '__' + sidL(loc)]) || 0;
-      // MISMA regla que la web: sin haber visto ENTRAR la mercadería no se puede decir "sólo tuvo
-      // stock N días", así que se mide la ventana entera. Sobreestimar los días hunde el promedio,
-      // que es el lado conservador: no le regala el producto a nadie.
-      const diasConStock = (pid, loc) => {
-        const h = hist[pid + '__' + sidL(loc)];
-        if (!h) return DIAS;
-        const now = Date.now(), ini = now - DIAS * 864e5;
-        let ms = null;
-        if (h.desde) { if (h.aprox !== false) return DIAS; ms = now - Math.max(h.desde, ini); }
-        else if (h.cero) ms = Math.max(0, h.cero - ini);
-        if (ms == null) return DIAS;
-        const d = ms / 864e5;
-        if (!isFinite(d) || d <= 0) return DIAS_MIN;
-        return Math.max(DIAS_MIN, Math.min(DIAS, d));
-      };
-      // ventas de la ventana, por producto × cuenta
-      const desde = Date.now() - DIAS * 864e5;
-      const desde30 = Date.now() - 30 * 864e5;
-      const ven = {};   // pid|cuenta -> {u, $, u30}
-      for (const day of Object.values(vp)) {
-        for (const v of Object.values(day || {})) {
-          if (!v || v.cancelada || !v.prodId || !LOCS.includes(v.cuenta)) continue;
-          if (!(v.ts >= desde)) continue;
-          const k = v.prodId + '|' + v.cuenta;
-          if (!ven[k]) ven[k] = { u: 0, $: 0, u30: 0, ult: 0 };
-          ven[k].u += v.qty || 0; ven[k].$ += v.total || 0;
-          if (v.ts >= desde30) ven[k].u30 += v.qty || 0;
-          if (v.ts > ven[k].ult) ven[k].ult = v.ts;        // la ÚLTIMA venta: es la que decide
-        }
-      }
-      // publicaciones VIVAS por producto × cuenta (cerradas y ocultas no cuentan: no venden nada)
-      const pubs = {};  // pid -> { cuenta -> [{mla, caja, status}] }
-      for (const [mla, e] of Object.entries(links)) {
-        if (!mla.startsWith('MLA') || !e || !e.prodId || e.ignored) continue;
-        if (!LOCS.includes(e.cuenta)) continue;
-        if (String(e.status || '') === 'closed') continue;
-        (pubs[e.prodId] = pubs[e.prodId] || {});
-        (pubs[e.prodId][e.cuenta] = pubs[e.prodId][e.cuenta] || []).push({ mla, caja: e.caja || '', status: e.status || '' });
-      }
+      // La regla de quién es la dueña vive en calcDuenaCuenta, compartida con `repetidas`.
+      const { DIAS, LOCS, claros, dudosos } = await calcDuenaCuenta(db, products, { dias: parseFloat(_rp[1]) || 60 });
       const cajaIcono = { winning: '🟢 gana', sharing: '🟠 comparte', losing: '🔴 pierde', sincaja: '⚪', nocat: '⚪' };
-      const claros = [], dudosos = [];
-      for (const p of products) {
-        const porCta = pubs[p.id]; if (!porCta) continue;
-        const ctas = LOCS.filter((l) => (porCta[l] || []).length);
-        if (ctas.length < 2) continue;   // ya tiene una sola dueña: no hay nada que repartir
-        const filas = ctas.map((l) => {
-          const vv = ven[p.id + '|' + l] || { u: 0, $: 0, u30: 0, ult: 0 };
-          const dcs = diasConStock(p.id, l);
-          return {
-            cta: l, u: vv.u, u30: vv.u30, plata: vv.$, dcs, ult: vv.ult,
-            hace: vv.ult ? Math.floor((Date.now() - vv.ult) / 864e5) : null,
-            porDia: dcs > 0 ? vv.u / dcs : 0,
-            full: getQ(p.id, l),
-            caja: (porCta[l] || []).map((x) => x.caja).find((c) => c === 'winning')
-               || (porCta[l] || []).map((x) => x.caja).find((c) => c === 'sharing')
-               || (porCta[l][0] || {}).caja || '',
-            pubs: (porCta[l] || []).length,
-            yaFuera: !!marcas[p.id + '__' + sidL(l)],
-          };
-        }).sort((a, b) => b.ult - a.ult || b.u - a.u);   // manda la ÚLTIMA venta
-        const g = filas[0], seg = filas[1];
-        // El aviso: perdió, pero vendió MUCHAS más unidades que la ganadora (el doble o más).
-        for (const f of filas) f.ojo = f.cta !== g.cta && f.u > 0 && f.u >= g.u * 2;
-        const nadieVendio = !g.ult;
-        // Las dos últimas ventas en la misma semana = el producto se vende en las dos.
-        const empate = !nadieVendio && seg && seg.ult > 0 && (g.ult - seg.ult) < 7 * 864e5;
-        (nadieVendio || empate ? dudosos : claros).push({ p, filas, g, nadieVendio, empate });
-      }
       console.log(`=== UNA SOLA CUENTA POR PRODUCTO · últimos ${DIAS} días ===`);
       console.log(`${claros.length + dudosos.length} producto(s) publicados en más de una cuenta: ${claros.length} con dueña clara · ${dudosos.length} para que decidas vos.\n`);
       const pinta = (r) => {
@@ -24444,6 +24448,86 @@ async function main() {
         conComa.forEach((n) => console.log(`     · ${n}`));
       }
       console.log(`\nMirá la lista ANTES de aplicar. Sin :go el comando sólo muestra.`);
+      return;
+    }
+    // BILLING_PROBE=repetidas[:<días>] → EL MISMO PRODUCTO VIVO EN MÁS DE UNA CUENTA DE ML.
+    //
+    // Norma suya del 21/09/2026: *"quiero que no haya publicaciones del mismo producto en mas de
+    // una cuenta. despues no me molesta que se repitan en la misma cuenta."*
+    //
+    // NO ES LO MISMO QUE `repartir`, y por eso es un comando aparte. `repartir` decide quién es la
+    // dueña **en el PANEL** —a qué cuenta se le manda mercadería— y eso ya está terminado: su
+    // sección "para aplicar" sale vacía. Lo que quedó sin hacer es lo de ML: las publicaciones de
+    // las cuentas que NO son la dueña **siguen vivas**, o sea que en ML el producto sigue siendo
+    // publicación compartida. `nomandar` saca del reparto; no pausa ni borra nada.
+    //
+    // La dueña la decide `calcDuenaCuenta`, la MISMA función que usa `repartir`: si acá se copiara
+    // la regla, los dos comandos podrían nombrar dueñas distintas del mismo producto.
+    //
+    // DOS COSAS QUE NO DECIDE, a propósito:
+    //  · Lo dudoso (nadie vendió, o las dos vendieron la misma semana) NO propone pausar nada.
+    //  · Una publicación repetida CON STOCK EN FULL se marca aparte: pausarla deja esa mercadería
+    //    adentro de Full sin vender, pagando almacenamiento y con el reloj del descarte corriendo.
+    //    Eso no es un detalle de forma — es plata parada — y lo decide él, no el comando.
+    //
+    // SOLO LEE. No pausa, no borra y no toca ML.
+    if (/^repetidas(:|$)/.test(String(process.env.BILLING_PROBE || ''))) {
+      const _rr = String(process.env.BILLING_PROBE).split(':');
+      const { DIAS, LOCS, claros, dudosos } = await calcDuenaCuenta(db, products, { dias: parseFloat(_rr[1]) || 90 });
+      const ic = { winning: '🟢 gana caja', sharing: '🟠 comparte', losing: '🔴 pierde caja', '': '⚪', sincaja: '⚪', nocat: '⚪' };
+
+      console.log(`=== EL MISMO PRODUCTO VIVO EN MÁS DE UNA CUENTA · últimos ${DIAS} días ===`);
+      console.log(`Repetir en la MISMA cuenta no molesta (regla suya del 21/09). Lo que se mira acá es repetido entre CUENTAS.`);
+      console.log(`SOLO LEE: no pausa ni toca nada en ML.\n`);
+      console.log(`${claros.length + dudosos.length} producto(s) en más de una cuenta · ${claros.length} con dueña clara · ${dudosos.length} para decidir.\n`);
+
+      let sobranPubs = 0, sobranConStock = 0, uConStock = 0;
+      const porCuenta = {}; LOCS.forEach((l) => porCuenta[l] = { pubs: 0, conStock: 0, u: 0 });
+      const conStockDet = [];
+
+      console.log(`───── CON DUEÑA CLARA: sobran las publicaciones de las otras cuentas (${claros.length}) ─────`);
+      for (const r of claros.sort((a, b) => b.g.ult - a.g.ult)) {
+        const otras = r.filas.filter((f) => f.cta !== r.g.cta);
+        console.log(`\n── ${r.p.name}`);
+        console.log(`     DUEÑA: ${r.g.cta} · vendió hace ${r.g.hace}d · Full ${r.g.full} · ${r.g.pubs} publicación${r.g.pubs > 1 ? 'es' : ''} (repetir acá NO molesta)`);
+        for (const f of otras) {
+          const cuando = f.hace == null ? `no vendió en ${DIAS}d` : `última venta hace ${f.hace}d`;
+          console.log(`     SOBRA ${f.cta.padEnd(8)} ${cuando.padEnd(22)} · Full ${String(f.full).padStart(3)} · ${f.pubs} publicación${f.pubs > 1 ? 'es' : ''}`);
+          for (const m of f.mlas) console.log(`            ${m.mla} · ${(m.status || '?').padEnd(14)} · ${ic[m.caja] || '⚪'}`);
+          sobranPubs += f.pubs; porCuenta[f.cta].pubs += f.pubs;
+          if (f.full > 0) {
+            sobranConStock += f.pubs; uConStock += f.full;
+            porCuenta[f.cta].conStock += f.pubs; porCuenta[f.cta].u += f.full;
+            console.log(`            ⚠️ TIENE ${f.full} u. adentro de Full. Pausarla deja esa mercadería parada pagando almacenamiento.`);
+            conStockDet.push({ nom: r.p.name, cta: f.cta, u: f.full });
+          }
+          if (f.ojo) console.log(`            ⚠️ ojo: vendió ${f.u} u. contra ${r.g.u} de ${r.g.cta}. Vendía mucho más y se cortó — mirá si fue por falta de stock antes de sacarla.`);
+        }
+      }
+
+      console.log(`\n───── PARA QUE DECIDAS VOS (${dudosos.length}) ─────`);
+      console.log(`Acá el comando NO propone nada: o no vendió ninguna, o vendieron las dos la misma semana.`);
+      for (const r of dudosos) {
+        console.log(`\n── ${r.p.name}  → ${r.nadieVendio ? `ninguna vendió en ${DIAS} días` : `${r.filas[0].cta} y ${r.filas[1].cta} vendieron la misma semana`}`);
+        for (const f of r.filas) {
+          const cuando = f.hace == null ? `no vendió en ${DIAS}d` : `última venta hace ${f.hace}d`;
+          console.log(`     ${f.cta.padEnd(8)} ${cuando.padEnd(22)} · Full ${String(f.full).padStart(3)} · ${f.pubs} publicación${f.pubs > 1 ? 'es' : ''} · ${f.mlas.map((m) => m.mla).join(' ')}`);
+        }
+      }
+
+      console.log(`\n───── LO QUE SOBRA, EN NÚMEROS ─────`);
+      console.log(`${sobranPubs} publicación(es) de más, en los ${claros.length} productos con dueña clara.`);
+      console.log(`De ésas, ${sobranConStock} tienen mercadería adentro de Full: ${uConStock} unidades.`);
+      for (const l of LOCS) {
+        const c = porCuenta[l];
+        if (!c.pubs) continue;
+        console.log(`  ${l.padEnd(8)} ${String(c.pubs).padStart(3)} publicación(es) de más${c.conStock ? ` · ${c.conStock} con stock (${c.u} u.)` : ''}`);
+      }
+      if (conStockDet.length) {
+        console.log(`\nLas que tienen stock adentro, una por una (son las que hay que decidir primero):`);
+        conStockDet.sort((a, b) => b.u - a.u).forEach((x) => console.log(`  ${String(x.u).padStart(3)} u. · ${x.cta.padEnd(8)} · ${x.nom}`));
+      }
+      console.log(`\nPausar TOCA ML de verdad y no lo hace este comando: la lista es para que la mires y decidas.`);
       return;
     }
     if (/^porquecaja(:|$)/.test(String(process.env.BILLING_PROBE || ''))) {
