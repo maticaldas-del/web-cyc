@@ -4123,9 +4123,32 @@ trae directo hacelo así que es mejor"*. Exacto: `verFoto`, el lightbox y el bot
 desde antes. Lo único que faltaba era que alguien cargara cada foto a mano, y por eso quedó a
 medias. Ahora la guarda el robot en `cyc/mllinks/<MLA>/foto` y todo lo demás funciona solo.
 
-**LO QUE CARGÓ ÉL MANDA SIEMPRE.** Si eligió una foto es porque la de ML no le servía; pisarla sería
-deshacerle una decisión — el mismo motivo por el que el robot no toca las medidas cargadas a mano ni
-el precio de Paraguay pisa el costo. El orden es: link a mano → foto subida → la de ML.
+**LO QUE CARGÓ ÉL MANDABA SIEMPRE — Y EL 21/09/2026 PIDIÓ LO CONTRARIO.** Textual, mirando Armar
+caja: *"saca TODAS las que puse yo. y deja las nuevas que da ml"*. Las suyas eran de cuando esto se
+llenaba a mano y quedaron tapando la de ML, que ahora llega sola y actualizada. El orden en el
+código **no se tocó** (link a mano → foto subida → la de ML): lo que se hizo fue **vaciar** las
+cargadas a mano, así que la regla sigue en pie para la próxima que él cargue.
+Se hace con **`sacarfotos[:go]`**, que borra los tres lugares donde vive una foto a mano
+(`products/<id>/fotoUrl`, la marca `products/<id>/foto` y la imagen en `cyc/fotos/<id>`).
+
+**ERAN 77 Y YO HABÍA CONTADO 1.** El comando `fotos` pregunta **primero** si hay foto de ML y, si
+la hay, sigue de largo con un `continue` **sin mirar si además hay una a mano**. Para contar
+faltantes da igual; para esto no, porque la de él GANA sobre la genérica de ML — o sea que un
+producto con las dos **está mostrando la suya** y quedó contado como "de ML". **Casi la mitad del
+catálogo entraba en ese caso.** Contar con el filtro equivocado y después BORRAR sobre ese número
+es el descarte silencioso de siempre, pero destructivo: una imagen subida no está en ningún otro
+lado y no se puede deshacer. Por eso el comando nuevo no reusó ese conteo.
+**La lección: un comando que cuenta bien para una pregunta puede contar mal para la de al lado, y
+el filtro que lo decide está escrito arriba de todo, lejos del número que uno lee.**
+
+**Y NINGÚN PRODUCTO QUEDA SIN FOTO, decisión suya con los números a la vista.** De las 77, **76
+tenían la de ML esperando** y **una —la Calculadora— iba a quedar sin ninguna**, porque no tiene
+publicación viva de dónde traer otra. Eligió *"sacar 76 y dejar la Calculadora"*. Así que el que
+quedaría con un hueco **no se toca por defecto** y el resumen lo dice; para sacarlo igual hay que
+pedirlo expreso (`sacarfotos:go:todas`).
+**Aplicado y releído de la base: quedan 1 de 1 esperadas.** La relectura compara contra las que se
+dejaron A PROPÓSITO, no contra cero — si comparara contra cero, dejar una a propósito se leería
+como que el comando falló.
 
 **Y SI NO HAY NINGUNA NO SE DIBUJA NADA.** Un cuadrito roto es peor que no tener foto, y la imagen
 además se esconde sola si el link falla.
