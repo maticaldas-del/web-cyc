@@ -3066,12 +3066,28 @@ comprador— y las tres tiran para el mismo lado. Recién cruzando **la misma or
 se puede preguntar *"¿el neto es el mismo?"*, que es la única pregunta que decide si un margen está
 bien. **La clave la dio `ORDER_ID`, una columna que estaba ahí y nadie había tildado.**
 
+**¿LE FALTAN VENTAS AL PANEL? SÍ, ENTRE 0,5% Y 1,6%, Y ES LO ÚNICO DE TODO ESTO QUE ES PLATA.**
+De las órdenes que el reporte tiene y el panel no, la mayoría se explica sola —canceladas que el
+panel conoce, órdenes con devolución o disputa, y órdenes que no mueven plata—. Lo que queda:
+
+| cuenta | el panel no tiene | **sin explicar** | sobre lo vendido |
+|---|---|---|---|
+| Ayelen | 182 | **77** | **1,6%** |
+| Luciana | 314 | **117** | **1,0%** |
+| Matías | 275 | **55** | **0,5%** |
+
+**No es una emergencia y tampoco es cero**, y hay que mirarlas de a una con el número de orden, que
+ahora existe. (Adriana quedó afuera del tramo de registro que se leyó.)
+
+**EL DESGLOSE NO CERRABA Y LO AGARRÉ LEYÉNDOLO, NO EL CÓDIGO.** La primera versión imprimió
+*"de las 182: 7 canceladas · 0 anteriores · 77 sin explicar"* — que suma **84**. Las otras 98 se
+iban por un `continue` callado, adentro del chequeo escrito justo para detectar descartes
+silenciosos. **Es el error anotado de punta a punta en este archivo, cometido en el verificador.**
+Ahora cada salida se cuenta y la suma se compara contra el total: si no cierra, lo dice.
+
 **LO QUE QUEDA ABIERTO, y es chico:**
  · **entre el 0,5% y el 5% de las órdenes el neto NO coincide** (Ayelen es la peor, 49 de 981). No
    se miró todavía de a una; con la clave puesta, ahora se puede.
- · **las órdenes que un lado tiene y el otro no** (entre 182 y 314 que al panel le faltan, y entre
-   508 y 1.082 que el reporte no trae). Parte es el recorte de la ventana de 90 días, pero no está
-   medido cuánto. **Eso es lo que hay que mirar antes de creerle a cualquier total por mes.**
  · **el ×0,54 de agosto en Matías** que quedó anotado abajo es de la comparación por mes, o sea de
    lo mismo que acabó siendo un artefacto. Se vuelve a mirar con la clave, no con el total.
 
