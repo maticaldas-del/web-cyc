@@ -4228,6 +4228,14 @@ Probado con el bloque REAL del archivo y 7 casos.
    AFUERA las retenciones y el neto las trae descontadas, así que ese número daría **menos** que la
    resta del mismo renglón: dos números correctos, uno al lado del otro, dando una conclusión falsa
    — la lección de las tres cajas del 03/09.
+   **Y VA SIN PORCENTAJE (21/09/2026, pedido suyo: *"dame un solo %, el real"*).** La primera
+   versión ponía *"ML $1.749 (65%)"* al lado del *"+22%"* de ganancia. **Los dos eran correctos y
+   juntos invitaban a compararlos**: uno es la tajada de ML sobre el PRECIO y el otro la ganancia
+   sobre el COSTO, así que restarlos o mirar uno como explicación del otro no da nada. Es la misma
+   lección de las tres cajas de la ficha, con dos por cientos en vez de tres pesos.
+   **El % del renglón es UNO solo y es el de ganancia**, que es el que decide; la tajada de ML
+   queda en pesos. Probado con las líneas REALES del archivo y 6 casos: los que tienen margen
+   muestran exactamente un %, y el sin costo y la cancelada no muestran ninguno.
  · **En Vinculaciones**: desde cuándo el panel conoce la publicación (`altaTs`) y las marcas que le
    puso el robot (`noVendemosMas`, `altaSinVender`, `altaPorCatalogo`).
  · **`upid` se deja sin mostrar a propósito**: es el id con el que ML agrupa sus publicaciones y ya
