@@ -10070,9 +10070,18 @@ async function main() {
           .replace(/<[^>]+>/g, ' ')
           .replace(/&#x2F;/g, '/').replace(/&#x27;/g, "'").replace(/&amp;/g, '&')
           .replace(/&quot;/g, '"').replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&nbsp;/g, ' ');
-        // Las rutas: /v1/... /v2/... Se limpian los restos de puntuación del final.
+        // Las rutas. Dos formas, porque no todas las APIs prefijan con versión:
+        //   · MercadoPago: /v1/... /v2/...
+        //   · MercadoLibre: /items/... /inventories/... /shipments/... (sin versión adelante)
+        // La primera versión sólo miraba /v1/ y /v2/, así que en la documentación de ML devolvía
+        // CERO rutas — y un cero ahí se lee como "no existe el endpoint", que es el error anotado
+        // de punta a punta en este archivo. Las raíces se listan a propósito en vez de aceptar
+        // cualquier /palabra/: si no, entra cada pedazo de URL de la página y la lista no sirve.
+        const RAICES = 'items|users|inventories|stock|shipments|orders|sites|marketplace|fbm|inbound'
+          + '|products|categories|packs|shipment_labels|fulfillment|billing|sellers';
         const rutas = new Map();
-        for (const m of txt.matchAll(/\/v\d\/[A-Za-z0-9_\-\/{}]+/g)) {
+        const RE_RUTA = new RegExp('\\/(?:v\\d\\/[A-Za-z0-9_\\-\\/{}$:]+|(?:' + RAICES + ')\\/[A-Za-z0-9_\\-\\/{}$:]+)', 'g');
+        for (const m of txt.matchAll(RE_RUTA)) {
           const ruta = m[0].replace(/[.,;:)\]}]+$/, '');
           if (ruta.length < 6) continue;
           // ¿Hay un verbo justo antes? Se mira la ventana anterior.
@@ -10081,14 +10090,17 @@ async function main() {
           const clave = (v ? v + ' ' : '') + ruta;
           rutas.set(clave, (rutas.get(clave) || 0) + 1);
         }
-        if (!rutas.size) console.log('\n   No apareció ninguna ruta /v1/… ni /v2/… en esta página.');
+        if (!rutas.size) console.log('\n   No apareció ninguna ruta de API en esta página.');
         else {
           console.log(`\n── ${rutas.size} dirección(es) distintas ──`);
           for (const [k, n] of [...rutas.entries()].sort()) console.log(`   ${k}${n > 1 ? `  (×${n})` : ''}`);
         }
         // Y las palabras que decidirían si esta página sirve para el saldo.
+        // Las palabras que deciden si esta página contesta lo que se fue a buscar. Se listan las de
+        // los dos temas abiertos: el saldo de MercadoPago y el CUPO de envío a Full.
         const clavesInteres = ['initial_available_balance', 'available_balance', 'bank_report', 'account_money',
-          'settlement_report', 'release_report', 'balance', 'saldo'];
+          'settlement_report', 'release_report', 'balance', 'saldo',
+          'capacity', 'cupo', 'quota', 'inbound', 'limit', 'availability', 'restock', 'replenish'];
         const hay = clavesInteres.filter((k) => new RegExp(k, 'i').test(txt));
         console.log(`\n── palabras clave presentes ──\n   ${hay.length ? hay.join(' · ') : '(ninguna)'}`);
       } catch (e) { console.log(`❌ ERROR ${String(e.message || e).slice(0, 140)}`); }
