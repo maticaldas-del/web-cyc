@@ -820,7 +820,7 @@ async function cajaDeCompraML(db, accounts, labels, DRY, soloCta) {
       m.startsWith('MLA') && e && e.cuenta === label && !e.ignored && (e.status || '') !== 'closed').map(([m]) => m);
     for (let k = 0; k < ids.length; k += 20) {
       let arr;
-      try { arr = await mlGet('/items?ids=' + ids.slice(k, k + 20).join(',') + '&attributes=id,title,status,price,catalog_listing,category_id,secure_thumbnail,thumbnail,domain_id', tok); }
+      try { arr = await mlGet('/items?ids=' + ids.slice(k, k + 20).join(',') + '&attributes=id,title,status,price,catalog_listing,category_id,secure_thumbnail,thumbnail,domain_id,user_product_id', tok); }
       catch { continue; }
       for (const row of (arr || [])) {
         const b = row.body || {}; const mla = b.id; if (!mla || !links[mla]) continue;
@@ -842,6 +842,12 @@ async function cajaDeCompraML(db, accounts, labels, DRY, soloCta) {
         if (fotoML && links[mla].foto !== fotoML) upd[mla + '/foto'] = fotoML;
         if (fotoML) res.fotos++;
         if (b.domain_id && links[mla].dom !== b.domain_id) upd[mla + '/dom'] = b.domain_id;
+        // EL IDENTIFICADOR CON EL QUE ML DICE "ESTAS SON EL MISMO PRODUCTO". Medido el 21/09 con
+        // `mismoprod` sobre 384 publicaciones: cuando ML las junta, **nunca contradijo nuestras
+        // fichas** (24 grupos de 24). Pero agrupa sólo ADENTRO de una cuenta — la Tira Led está en
+        // las cuatro y tiene 4 ids —, igual que el código de Full. Se guarda para el alta de
+        // publicaciones nuevas, que es donde hoy se adivina por el título.
+        if (b.user_product_id && links[mla].upid !== b.user_product_id) upd[mla + '/upid'] = b.user_product_id;
         if (b.status !== 'active') continue;      // pausada o cerrada: no está peleando ninguna caja
         res.mirados++;
         const stamp = (st, ptw) => {
@@ -2259,6 +2265,24 @@ async function catalogoDeCuenta(sellerId, tok) {
 async function altaDeNuevas(db, accounts, labels, map, index, DRY) {
   const nuevas = [], sinFicha = [];
   const upd = {};
+  // ── ML MISMO DICE CUÁL ES EL PRODUCTO, Y ESO GANA SOBRE ADIVINAR POR EL TÍTULO ─────────────
+  // Acá abajo, cuando aparece una publicación nueva, se la empareja con `matchProduct`, que lee el
+  // TÍTULO. Ése es el filtro por palabras que ya falló SEIS veces en CLAUDE.md: el Watch 3 por el
+  // Watch 4, el Dark Door Sport por el Intense, los dos Armaf contra el mismo Aoud.
+  //
+  // `user_product_id` es el identificador con el que ML agrupa sus propias publicaciones del mismo
+  // producto. Medido el 21/09 con `mismoprod` sobre 384: cuando ML las junta, **nunca contradijo
+  // nuestras fichas** — 24 grupos de 24. Así que si una publicación nueva comparte ese id con una
+  // hermana YA vinculada, no hace falta adivinar nada.
+  //
+  // SÓLO SIRVE ADENTRO DE UNA CUENTA y por eso la clave lleva la cuenta adelante: está medido que
+  // el mismo producto en cuentas distintas tiene ids distintos (la Tira Led está en las cuatro y
+  // tiene 4), exactamente igual que el código de Full. Para el producto que todavía no existe en
+  // esa cuenta, se sigue adivinando por el título — no hay otra.
+  const porUpid = {};
+  for (const e of Object.values(map)) {
+    if (e && e.upid && e.prodId && e.cuenta) porUpid[e.cuenta + '|' + e.upid] = e.prodId;
+  }
   for (const label of labels) {
     const acc = accounts[label];
     if (!acc?.refresh_token) continue;
@@ -2277,15 +2301,34 @@ async function altaDeNuevas(db, accounts, labels, map, index, DRY) {
     if (!faltan.length) continue;
     for (let k = 0; k < faltan.length; k += 20) {
       let arr;
-      try { arr = await mlGet('/items?ids=' + faltan.slice(k, k + 20).join(',') + '&attributes=id,title,status,sub_status,price,shipping', tok); }
+      try { arr = await mlGet('/items?ids=' + faltan.slice(k, k + 20).join(',') + '&attributes=id,title,status,sub_status,price,shipping,user_product_id', tok); }
       catch { continue; }
       for (const row of (arr || [])) {
         const b = row.body || {}; const mla = b.id;
         if (!mla || !/^MLA/i.test(mla)) continue;
         const title = b.title || '';
-        const p = matchProduct(title, index);
+        const porTitulo = matchProduct(title, index);
+        const upid = b.user_product_id || null;
+        const porHermana = upid ? (porUpid[label + '|' + upid] || null) : null;
+        // Gana lo que dice ML. Si las dos formas dan productos distintos se DICE en el log en vez
+        // de elegir en silencio: es justo el caso que hay que poder mirar, y callarlo sería el
+        // descarte mudo de siempre.
+        //
+        // LA FICHA SE BUSCA EN EL ÍNDICE DE VERDAD, no se arma una de mentira. La primera versión
+        // hacía `index.byId[...]` — que NO EXISTE: el índice es un arreglo de {p, toks} — y caía
+        // siempre en un respaldo `{id, name}` inventado. Con eso se perdía `p.variantes`, así que
+        // `varianteDeTitulo` no podía sacar el color y el stock de Full no se le imputaba a
+        // ninguna variante. Compilaba perfecto y no se veía.
+        const pHermana = porHermana ? ((index.find((x) => x.p.id === porHermana) || {}).p || null) : null;
+        // Si la hermana apunta a una ficha que ya no existe, NO se usa: se vuelve al título y se
+        // dice. Emparejar contra una ficha borrada es peor que adivinar.
+        const p = pHermana || porTitulo;
+        const comoSeEmparejo = pHermana
+          ? (porTitulo && porTitulo.id !== pHermana.id ? 'ML (⚠ el título decía otra)' : 'ML')
+          : (porHermana ? (porTitulo ? 'título (la hermana apuntaba a una ficha que ya no existe)' : '') : (porTitulo ? 'título' : ''));
         const entry = {
           prodId: p ? p.id : null,
+          upid,
           // La variante sale del TÍTULO con la misma regla que la web (`varianteDeTitulo`): hay
           // productos donde cada color es una publicación aparte (los aromas del Paulvic, las
           // sábanas), y sin esto el stock de Full no se le imputa a ninguna variante.
@@ -2299,7 +2342,9 @@ async function altaDeNuevas(db, accounts, labels, map, index, DRY) {
           candidatos: p ? null : candidatesFor(title, index),
         };
         upd[mla] = entry; map[mla] = entry;
-        (p ? nuevas : sinFicha).push({ mla, label, title, prod: p ? p.name : '', variant: entry.variant });
+        // La hermana recién dada de alta ya sirve para la siguiente del mismo lote.
+        if (upid && p) porUpid[label + '|' + upid] = p.id;
+        (p ? nuevas : sinFicha).push({ mla, label, title, prod: p ? p.name : '', variant: entry.variant, como: comoSeEmparejo });
       }
     }
   }
@@ -22853,7 +22898,11 @@ async function main() {
       }
       if (alt.nuevas.length) {
         console.log(`\n🆕 ${alt.nuevas.length} se engancharían solas a su ficha:`);
-        alt.nuevas.forEach((n) => console.log(`   ${n.mla}  ${n.label.padEnd(8)} → ${n.prod}${n.variant ? '  · variante: ' + n.variant : '  · SIN VARIANTE'}\n            título ML: ${n.title}`));
+        // CÓMO se emparejó cada una va A LA VISTA: no es lo mismo que lo diga ML (con el
+        // user_product_id de una hermana, que está medido que no se equivoca) a que lo hayamos
+        // adivinado por el título, que es el filtro que ya falló seis veces. Sin eso las dos se
+        // leen igual y no hay forma de saber cuál mirar.
+        alt.nuevas.forEach((n) => console.log(`   ${n.mla}  ${n.label.padEnd(8)} → ${n.prod}${n.variant ? '  · variante: ' + n.variant : '  · SIN VARIANTE'}${n.como ? '  · lo dijo ' + n.como : ''}\n            título ML: ${n.title}`));
       }
       if (alt.sinFicha.length) {
         console.log(`\n🆕 ${alt.sinFicha.length} quedarían SIN producto (no hay ficha clara):`);
@@ -26113,7 +26162,7 @@ async function main() {
       const alt = await altaDeNuevas(db, accounts, labels, map, index, DRY);
       if (alt.nuevas.length) {
         console.log(`\n🆕 ${alt.nuevas.length} publicación(es) nueva(s) dadas de alta y enganchadas solas:`);
-        alt.nuevas.forEach((n) => console.log(`   ${n.mla}  ${n.label.padEnd(8)} → ${n.prod}${n.variant ? ' · ' + n.variant : ''}   (${n.title.slice(0, 46)})`));
+        alt.nuevas.forEach((n) => console.log(`   ${n.mla}  ${n.label.padEnd(8)} → ${n.prod}${n.variant ? ' · ' + n.variant : ''}${n.como ? ' · lo dijo ' + n.como : ''}   (${n.title.slice(0, 46)})`));
       }
       if (alt.sinFicha.length) {
         console.log(`\n🆕 ${alt.sinFicha.length} publicación(es) nueva(s) dadas de alta SIN producto (no encontré una ficha clara):`);
