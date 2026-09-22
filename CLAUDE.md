@@ -4672,6 +4672,51 @@ renglón **sin ficha**, y la resta que no cierra (pide comprar teniendo ya el ob
 lista entrena a ignorarlo. Si no hay ninguno **no se dibuja nada** — un cartel que dice "hoy está
 todo bien" es ruido.
 
+## DE DÓNDE VIENE LA MERCADERÍA: BS AS · PARAGUAY · PAULVIC, EN MÉTRICAS (22/09/2026)
+
+Pedido suyo: *"quiero saber tambien metricas de ganancia, % de ganancia, unidades y mas datos de la
+mercaderia de BS AS, PARAGUAY Y PAULVIC"* y, al rato, dónde: *"en metricas quizas se lo mejor,
+abajo de todo. todo un sector nuevo que pueda elegir que mirar"*.
+
+Está en **Métricas, abajo de todo**, con cuatro botones: **Todos juntos · 🇦🇷 Bs As · 🇵🇾 Paraguay ·
+🧴 Paulvic**. Sigue el período elegido arriba, como el margen por rubro.
+
+**LOS TRES GRUPOS NO SE PISAN, Y ES LA DECISIÓN QUE MÁS IMPORTA.** El Paulvic es un **proveedor de
+Bs As**, así que contándolo en los dos lados la misma plata aparecería dos veces y los tres no
+sumarían el total. Se hace igual que en **Pedidos**, que es la pantalla que él ya conoce: Bs As y
+Paraguay **excluyen** al Paulvic, y el Paulvic tiene lo suyo. El pie de la tarjeta lo dice.
+
+**Y el grupo de cada ficha vive en UNA función (`metGrupoDeProd`)**, que usan la cuenta de las
+ventas **y** la del stock: con dos copias, una ficha podía caer en Bs As para la ganancia y en
+Paulvic para el capital. Manda el **proveedor** sobre el origen — el "Perfume X" con proveedor
+Paulvic y origen Paraguay cuenta como Paulvic, igual que en Pedidos.
+
+**La cuenta es la MISMA que la de todo el panel** (`metPorOrigen`): ganancia en pesos contra el
+costo **sin** la gestión de Full, y la gestión **sólo en el divisor** del %. Con una cuenta propia
+esta tarjeta diría un margen y la de rubro otro sobre las MISMAS ventas.
+
+| eligiendo uno | qué muestra |
+|---|---|
+| los ocho números | ganancia · **% de ganancia** · unidades · ventas · facturado · **gana por unidad** · venta promedio · productos distintos |
+| **lo que más deja** | los 6 mejores productos de ese origen, con sus unidades, su ganancia y su % — y **dice cuántos quedaron afuera** |
+| 📦 hoy en ML | unidades y capital parado de ese origen, **avisando en ámbar que NO depende del período** |
+
+**"Todos juntos"** pone los tres al lado, ordenados por la plata que dejan, con la barra en pesos y
+**qué parte de la ganancia total** se lleva cada uno.
+
+**LAS DOS SALIDAS SE CUENTAN Y SE DICEN, nunca se esconden:** la venta **sin ficha** (no se sabe de
+dónde vino la mercadería) y la **sin costo cargado** (contarla daría 100% de margen inventado). Si
+desaparecieran, el total de la tarjeta no cerraría contra los KPIs de arriba sin que nada lo avise.
+**El stock va aparte y avisa que no se mueve con el período** — un número que no cambia al cambiar
+el período, metido en una pantalla que sí lo hace, se lee mal (la lección de la reputación).
+
+Probado con las funciones REALES sacadas del archivo y **37 casos**: el Paulvic por nombre y por
+proveedor · el origen por defecto (sin `origen` = Bs As) · **las unidades CIERRAN** (los tres grupos
+más las dos salidas dan el total) · la cancelada no se cuenta · el margen con el envío en el divisor
+· el stock con una ficha en cero · y la pantalla en los dos modos sin un `undefined`, un `NaN` ni un
+`${` suelto, más el período vacío. Chequeo de las tres listas más las clases de CSS: **0 funciones,
+0 variables, 0 `id` y 0 clases de diferencia**; sólo lo que se agregó.
+
 ## Cosas que ya pasaron (para no repetirlas)
 
 - **"PAGUÉ 55 Y DICE 55: ESTO ESTÁ MAL" — EL NÚMERO ESTABA BIEN Y EL RENGLÓN LO ESCONDÍA

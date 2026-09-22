@@ -1356,6 +1356,10 @@ footer{margin-top:32px;padding-top:14px;border-top:1px solid var(--border);font-
   <div class="stitle">¿A qué hora te compran? <span id="met-horas-period" style="font-weight:400;color:var(--muted);text-transform:none;letter-spacing:0;font-family:'DM Mono',monospace;font-size:.65rem"></span></div>
   <div id="met-horas"></div>
 
+  <!-- De dónde viene la mercadería: Bs As · Paraguay · Paulvic (22/09/2026) · abajo de todo, pedido suyo -->
+  <div class="stitle">De dónde viene la mercadería <span id="met-origen-period" style="font-weight:400;color:var(--muted);text-transform:none;letter-spacing:0;font-family:'DM Mono',monospace;font-size:.65rem"></span></div>
+  <div id="met-origen"></div>
+
   <footer>CYC · Métricas ML · datos independientes</footer>
 </div>
 </div>
@@ -2271,7 +2275,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='19.95';
+const APP_VERSION='19.96';
 // El problema real que esto resuelve no es curiosidad: es que el celular guarda la app y sigue
 // mostrando la de ayer sin avisar. Varias veces se revisó un cambio que ya estaba subido y no se
 // veía. Por eso, además del número, el chip avisa cuando hay una versión nueva esperando.
@@ -12454,6 +12458,153 @@ function metVentasPorHora(keys){
   H.forEach((x,i)=>{if(x.compras>0&&(pico===null||x.compras>H[pico].compras))pico=i;});
   return {H,sinHora,conHora,pico,franja:conHora?{ini:fIni,n:fN}:null};
 }
+// ── DE DÓNDE VIENE LA MERCADERÍA: BS AS · PARAGUAY · PAULVIC (22/09/2026) ────────────
+// Pedido suyo: *"quiero saber tambien metricas de ganancia, % de ganancia, unidades y mas datos
+// de la mercaderia de BS AS, PARAGUAY Y PAULVIC"* y *"todo un sector nuevo que pueda elegir que
+// mirar"*.
+//
+// LOS TRES GRUPOS NO SE PISAN, Y ES LA DECISIÓN QUE MÁS IMPORTA. El Paulvic es un proveedor de
+// Bs As, así que contándolo en los dos lados la misma plata aparecería dos veces y los tres no
+// sumarían el total. Se hace igual que en Pedidos, que es la pantalla que él ya conoce: Bs As y
+// Paraguay EXCLUYEN al Paulvic (`esPedidoPaulvic`), y el Paulvic tiene su propia pestaña.
+//
+// Y VIVE EN UNA SOLA FUNCIÓN (`metGrupoDeProd`), que usan la cuenta de las ventas Y la del stock:
+// con dos copias, una ficha podía caer en Bs As para la ganancia y en Paulvic para el capital.
+function metGrupoDeProd(p){
+  if(!p)return null;                                   // sin ficha no se puede decir de dónde vino
+  if(esProductoPaulvic(p))return 'paulvic';            // el Paulvic sale ANTES: es proveedor de Bs As
+  return (p.origen==='py')?'py':'bsas';                // el origen por defecto es Bs As, igual que la ficha
+}
+const MET_ORIG={bsas:{nom:'🇦🇷 Bs As',col:'#60a5fa'},py:{nom:'🇵🇾 Paraguay',col:'#f87171'},paulvic:{nom:'🧴 Paulvic',col:'#c084fc'}};
+// LA CUENTA ES LA MISMA QUE LA DE TODO EL PANEL, igual que en el margen por rubro: la ganancia en
+// PESOS va contra el costo SIN la gestión de Full (el neto de ML ya la trae descontada) y lo único
+// que cambia es el DIVISOR del %. Con una cuenta propia, esta tarjeta diría un margen y la de
+// arriba otro sobre las MISMAS ventas.
+function metPorOrigen(keys){
+  const vacio=()=>({neto:0,costo:0,gest:0,total:0,u:0,ventas:0,prods:{}});
+  const g={bsas:vacio(),py:vacio(),paulvic:vacio()};
+  // Las dos salidas se cuentan y se dicen, nunca se esconden: si estas ventas desaparecieran, el
+  // total de la tarjeta no cerraría contra los KPIs de arriba sin que nada lo avise.
+  let sinFicha={u:0,ventas:0,total:0}, sinCosto={u:0,ventas:0,total:0};
+  keys.forEach(k=>{
+    Object.values(state.ventaprod[k]||{}).forEach(v=>{
+      if(!v||v.cancelada)return;                       // canceladas y reclamos no cuentan, igual que en todo el panel
+      const p=prodDeVenta(v);
+      const gr=metGrupoDeProd(p);
+      if(!gr){sinFicha.u+=v.qty||0;sinFicha.ventas++;sinFicha.total+=v.total||0;return;}
+      const costo=efectivoCostoVP({...v,_dateKey:k});
+      // Sin costo cargado no hay margen que medir, y contarla daría un 100% inventado.
+      if(!(costo>0)){sinCosto.u+=v.qty||0;sinCosto.ventas++;sinCosto.total+=v.total||0;return;}
+      const d=g[gr];
+      d.neto+=v.neto||0;d.costo+=costo;d.gest+=gestDeVenta(v);d.total+=v.total||0;
+      d.u+=v.qty||0;d.ventas++;
+      const nom=(p&&p.name)||v.prod||'—';
+      const t=d.prods[nom]||(d.prods[nom]={nom,gan:0,u:0,costo:0,gest:0,neto:0});
+      t.gan+=(v.neto||0)-costo;t.u+=v.qty||0;t.costo+=costo;t.gest+=gestDeVenta(v);t.neto+=v.neto||0;
+    });
+  });
+  // EL STOCK NO DEPENDE DEL PERÍODO y por eso se devuelve aparte y el renglón lo aclara: un número
+  // que no se mueve al cambiar el período, metido en una pantalla que sí lo hace, se lee mal.
+  // Usa `stockOf` y `costFullP`, las MISMAS que Rotación de Stock, no una cuenta propia.
+  const stk={bsas:{u:0,cap:0,prods:0},py:{u:0,cap:0,prods:0},paulvic:{u:0,cap:0,prods:0}};
+  (state.products||[]).forEach(p=>{
+    const gr=metGrupoDeProd(p);if(!gr)return;
+    stk[gr].prods++;
+    const u=stockOf(p);if(!(u>0))return;
+    stk[gr].u+=u;stk[gr].cap+=u*(costFullP(p)||0);
+  });
+  Object.keys(g).forEach(k=>{
+    const a=g[k],div=a.costo+a.gest;
+    a.ganancia=a.neto-a.costo;
+    a.margen=div>0?a.ganancia/div*100:null;
+    a.ganU=a.u>0?a.ganancia/a.u:null;
+    a.ticket=a.ventas>0?a.total/a.ventas:null;
+    a.distintos=Object.keys(a.prods).length;
+    a.top=Object.values(a.prods).sort((x,y)=>y.gan-x.gan);
+    a.stock=stk[k];
+  });
+  return {g,sinFicha,sinCosto};
+}
+let metOrigenSel='todo';
+function setMetOrigen(v){metOrigenSel=v;renderMetOrigen(getAllMetKeys(metScopeMode));}
+function renderMetOrigen(keys){
+  const el=document.getElementById('met-origen');if(!el)return;
+  const per=document.getElementById('met-origen-period');
+  if(per)per.textContent='· '+getMetScopeLabel(metScopeMode);
+  const {g,sinFicha,sinCosto}=metPorOrigen(keys);
+  const meta=metaMargenML();
+  const colM=m=>m==null?'var(--muted)':(m>=meta?'var(--green)':m>=0?'#fbbf24':'var(--red)');
+  const orden=['bsas','py','paulvic'];
+  const ganTot=orden.reduce((s,k)=>s+g[k].ganancia,0);
+  const btns=[['todo','Todos juntos']].concat(orden.map(k=>[k,MET_ORIG[k].nom]))
+    .map(([v,n])=>`<button class="pf-btn${metOrigenSel===v?' active-all':''}" onclick="setMetOrigen('${v}')">${n}</button>`).join('');
+  const nota=(sinFicha.ventas||sinCosto.ventas)?`<div style="margin-top:8px;padding-top:8px;border-top:1px solid rgba(148,163,184,.16);font-size:.62rem;color:var(--muted)">
+      ${sinFicha.ventas?`⚠ ${sinFicha.ventas} venta${sinFicha.ventas===1?'':'s'} (${sinFicha.u} u.) sin ficha: no se sabe de dónde vino la mercadería.`:''}
+      ${sinCosto.ventas?` ⚠ ${sinCosto.ventas} venta${sinCosto.ventas===1?'':'s'} (${sinCosto.u} u.) sin costo cargado: no entran, porque contarlas daría 100% de margen.`:''}
+    </div>`:'';
+  const pie=`<div style="margin-top:8px;font-size:.6rem;color:var(--muted)">El Paulvic va aparte y NO está contado adentro de Bs As, igual que en Pedidos: es un proveedor de Bs As, y sumándolo en los dos lados la misma plata aparecería dos veces. El % es el mismo margen que usa el resto del panel (ganancia sobre el costo total, con lo que cobra Full adentro del divisor).</div>`;
+  if(!ganTot&&!orden.some(k=>g[k].ventas)){
+    el.innerHTML=`<div class="chart-box"><div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:10px">${btns}</div>
+      <div style="color:var(--muted);font-size:.72rem">No hay ventas con costo cargado en este período.</div>${nota}</div>`;
+    return;
+  }
+  let cuerpo;
+  if(metOrigenSel==='todo'){
+    // Los tres al lado, ordenados por la plata que dejan. La barra es la ganancia en pesos.
+    const max=Math.max(1,...orden.map(k=>Math.abs(g[k].ganancia)));
+    cuerpo=orden.slice().sort((a,b)=>g[b].ganancia-g[a].ganancia).map(k=>{
+      const a=g[k],c=colM(a.margen);
+      const w=Math.max(2,Math.round(Math.abs(a.ganancia)/max*100));
+      const parte=ganTot>0?` · ${(a.ganancia/ganTot*100).toFixed(0)}% de la ganancia`:'';
+      return `<div style="margin-bottom:12px">
+        <div style="display:flex;justify-content:space-between;align-items:baseline;gap:8px;font-size:.74rem">
+          <span>${MET_ORIG[k].nom}</span>
+          <span><b style="font-family:'Syne',sans-serif;font-weight:800;color:${c}">${a.margen==null?'—':a.margen.toFixed(1)+'%'}</b></span>
+        </div>
+        <div style="height:6px;border-radius:3px;background:rgba(148,163,184,.14);margin:4px 0 3px">
+          <div style="height:6px;border-radius:3px;width:${w}%;background:${MET_ORIG[k].col};opacity:.8"></div>
+        </div>
+        <div style="font-size:.6rem;color:var(--muted)">gan. <b>${fmt(a.ganancia)}</b>${parte} · ${a.u} u. en ${a.ventas} venta${a.ventas===1?'':'s'} · ${a.distintos} producto${a.distintos===1?'':'s'}</div>
+      </div>`;
+    }).join('');
+  }else{
+    const a=g[metOrigenSel],c=colM(a.margen);
+    const dato=(lbl,val,col)=>`<div style="flex:1 1 104px;min-width:104px">
+        <div style="font-size:.56rem;color:var(--muted);text-transform:uppercase;letter-spacing:.04em">${lbl}</div>
+        <div style="font-family:'Syne',sans-serif;font-weight:800;font-size:1.02rem;color:${col||'var(--fg)'}">${val}</div>
+      </div>`;
+    const cajas=[
+      dato('Ganancia',fmt(a.ganancia),a.ganancia>=0?'var(--green)':'var(--red)'),
+      dato('% de ganancia',a.margen==null?'—':a.margen.toFixed(1)+'%',c),
+      dato('Unidades',a.u),
+      dato('Ventas',a.ventas),
+      dato('Facturado',fmt(a.total)),
+      dato('Gana por unidad',a.ganU==null?'—':fmt(Math.round(a.ganU))),
+      dato('Venta promedio',a.ticket==null?'—':fmt(Math.round(a.ticket))),
+      dato('Productos vendidos',a.distintos),
+    ].join('');
+    // El top NO se corta en silencio: dice cuántos quedaron afuera.
+    const TOP=6;
+    const top=a.top.slice(0,TOP).map(t=>{
+      const div=t.costo+t.gest,m=div>0?t.gan/div*100:null;
+      return `<div style="display:flex;justify-content:space-between;align-items:baseline;gap:8px;font-size:.66rem;padding:5px 0;border-bottom:1px solid rgba(148,163,184,.1)">
+        <span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${t.nom}</span>
+        <span style="white-space:nowrap;color:var(--muted)">${t.u} u. · <b style="color:${t.gan>=0?'var(--green)':'var(--red)'}">${fmt(t.gan)}</b> · <b style="color:${colM(m)}">${m==null?'—':m.toFixed(0)+'%'}</b></span>
+      </div>`;
+    }).join('');
+    const resto=a.top.length>TOP?`<div style="font-size:.58rem;color:var(--muted);margin-top:5px">y ${a.top.length-TOP} producto${a.top.length-TOP===1?'':'s'} más</div>`:'';
+    const st=a.stock;
+    cuerpo=`<div style="display:flex;flex-wrap:wrap;gap:12px 10px;margin-bottom:12px">${cajas}</div>
+      ${a.ventas?`<div style="font-size:.58rem;color:var(--muted);text-transform:uppercase;letter-spacing:.04em;margin-bottom:2px">Lo que más deja</div>${top}${resto}`:'<div style="color:var(--muted);font-size:.7rem">Sin ventas con costo cargado en este período.</div>'}
+      <div style="margin-top:10px;padding-top:8px;border-top:1px solid rgba(148,163,184,.16);font-size:.62rem;color:var(--muted)">
+        📦 Hoy en ML: <b>${st.u}</b> u. · <b>${fmt(Math.round(st.cap))}</b> de capital · ${st.prods} ficha${st.prods===1?'':'s'} de este origen
+        <span style="color:#fbbf24">· esto NO depende del período elegido arriba</span>
+      </div>`;
+  }
+  el.innerHTML=`<div class="chart-box">
+    <div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:12px">${btns}</div>
+    ${cuerpo}${nota}${pie}</div>`;
+}
 function renderMetHoras(keys){
   const el=document.getElementById('met-horas');if(!el)return;
   const per=document.getElementById('met-horas-period');
@@ -12578,6 +12729,7 @@ function renderMetricas(){
   renderMetRubros(curKeys);
   renderMetReputacion();
   renderMetHoras(curKeys);   // ¿a qué hora te compran? · al final de todo
+  renderMetOrigen(curKeys);  // de dónde viene la mercadería · abajo de todo
   const acctColors=['c1','c4','c2','c3'];
   // Mismo período un año atrás (alineado con las líneas del gráfico).
   const year=sumMetFields(metScopeBuckets(metScopeMode).bucketsYear.flat(),metViewField);
