@@ -47,6 +47,16 @@ facturó en 90 días entre las que llegan al 25%, o la que ya lo publica. **Corr
 la compra del 21/09: los 12 productos → Ayelen**, que en 90 días facturó menos de la mitad que
 cualquiera de las otras; aun vendiendo todo sigue siendo la más baja. El más justo en Ayelen es el
 Mirada Muse Rose Musc (26,8%).
+**REGLA NUEVA, suya, del 22/09 a la noche: LA MERCADERÍA NO SE MUEVE ENTRE CUENTAS. UNA VEZ QUE
+ESTÁ, QUEDA.** Textual: *"si mandamos todo a ayelen ya queda ahí para siempre ese producto y por
+ejemplo perfumes quedan joya en la cuenta de adriana"*. **Eso cambia el peso del equilibrio:** el
+reparto de un producto nuevo no es de esta caja, es PARA SIEMPRE, así que el equilibrio de hoy no
+puede decidir solo. **Orden para elegir dueña:** 1) si ya se publica en una cuenta, ésa ·
+2) **el RUBRO: perfumes → Adriana** (es la cuenta de perfumería) · 3) recién ahí el equilibrio
+(la que menos facturó, entre las que llegan al 25%). `repartopy` **todavía NO mira el rubro**:
+propone por equilibrio y lo de los perfumes se corrige a mano hasta que se cambie. Con la regla, la
+compra del 21/09 queda: **los 4 perfumes (Mercedes Club Black, Lattafa Sutoor, Adyan Oud, Mirada
+Muse) → Adriana** y **los 8 de electrónica → Ayelen** — falta que él lo confirme.
 
 ### 3 · EL `PROMPT GUAY`: VA CON 19%, NO 23% — LO VA A PEDIR MÁS ADELANTE
 Dicho por él el 22/09: *"te voy a pedir el prompt más adelante, acordate y poné el 19"*.
