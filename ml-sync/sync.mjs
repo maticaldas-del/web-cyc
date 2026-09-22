@@ -196,6 +196,13 @@ function costoPesos(p, qty, tc) {
 // molesta un minuto; no avisar deja al robot haciendo la mímica de trabajar. Por eso alcanza con
 // UN intento bloqueado para que salga el aviso.
 let BLOQUEO_ML = { frenados: [], ok: 0 };
+// LA BASE, PARA LAS FUNCIONES QUE ESCRIBEN PRECIOS (22/09/2026).
+// `db` se crea ADENTRO de `main()`, así que `setPriceTo` y `raisePrice` no la tienen y por eso no
+// podían dejar el margen al día — que es el motivo real de que `anotarNetoWeb`, escrita el
+// 20/08 para eso, nunca se haya enchufado a nada.
+// Se apunta acá una sola vez, al arrancar, y SÓLO si no es una corrida de prueba: así una prueba
+// no puede escribir nada por este camino aunque alguien se olvide de mirar DRY.
+let DB_REF = null;
 function _anotarEscrituraML(res, itemId, que, cuerpo) {
   if (res && res.ok) { BLOQUEO_ML.ok++; return; }
   const t = String(cuerpo || '');
@@ -373,6 +380,8 @@ async function raiseVariations(itemId, nuevos, token) {
     if (!v) return { ok: false, err: 'PELIGRO-variante-desaparecida-' + c.id };
     if (Math.round(v.price) !== c.to) return { ok: false, err: `precio-no-quedo-${c.id}-${Math.round(v.price)}` };
   }
+  // Recién acá, con los precios verificados contra ML. Ver margenAlDia.
+  await margenAlDia(itemId, token, 'subir variantes');
   return { ok: true, cambios };
 }
 
@@ -407,6 +416,7 @@ async function raisePriceTo(itemId, objetivo, token) {
       return { ok: false, err: 'ML-' + r.status + (_d ? ' · ' + _d : '') };
     }
     _anotarEscrituraML(r, itemId, 'subir el precio', '');
+    await margenAlDia(itemId, token, 'subir a un precio exacto');
     return { ok: true, from: Math.round(item.price), to };
   } catch { return { ok: false, err: 'red' }; }
 }
@@ -2530,6 +2540,109 @@ async function dolarAuto(db, DRY) {
 // para decidir el precio (precio − comisión − envío es la fórmula de netoweb, tal cual). Si en vez
 // de eso volviera a pedirle todo a ML, serían dos cuentas distintas conviviendo, que es de donde
 // salieron los errores de margen del 19/08.
+// ── CUÁL DE LAS PUBLICACIONES DE UN PRODUCTO MANDA ─────────────────────────
+// Un producto puede tener muchas publicaciones (el Paulvic tiene 47 en una sola ficha), y el
+// margen del panel es el de UNA. La regla de `netoweb`: las ACTIVAS mandan sobre las pausadas, y
+// entre las del mismo tipo gana el neto MENOR — el criterio conservador de siempre.
+// VIVE ACÁ Y NO ADENTRO DE `netoweb` a propósito: desde hoy hay un segundo lugar que la necesita
+// (el margen al día después de tocar un precio) y con dos copias el mismo producto podía quedar
+// con un margen después de la noche y otro después de un cambio de precio.
+// POR QUÉ IMPORTA MÁS DE LO QUE PARECE: sin esto, actualizar el margen desde UNA publicación le
+// pisaría al producto el neto de la peor de sus hermanas y lo dejaría viéndose MEJOR de lo que
+// está — el lado peligroso.
+function _netoGana(cand, prev) {
+  if (!prev) return true;
+  if (cand.activa && !prev.activa) return true;
+  if (!!cand.activa === !!prev.activa && cand.neto < prev.neto) return true;
+  return false;
+}
+
+// ── EL MARGEN QUEDA AL DÍA EN EL MOMENTO DE TOCAR EL PRECIO (22/09/2026) ────
+// Pedido suyo. El 20/08 se escribió `anotarNetoWeb` para esto y NUNCA se enchufó a nada, así que
+// el margen se recalculaba sólo a las 00:07: entre que se tocaba un precio y la medianoche la
+// pantalla mostraba el del precio VIEJO — y es la pantalla con la que se decide el precio
+// siguiente. Decisiones con el número de ayer.
+//
+// POR QUÉ ACÁ ADENTRO Y NO EN CADA COMANDO: es la lección repetida del piso duro y del freno de
+// `liquidando`. Si la actualización viviera en los comandos, dependería de que el próximo que
+// escriba uno se acuerde — y son diez. Acá la llaman las TRES funciones que escriben un precio en
+// ML, así que no se puede olvidar. Mismo lugar que `_anotarEscrituraML`.
+//
+// NO RECALCULA A SU MANERA: RELEE DE ML, exactamente como `netoweb`. El precio sale del mismo
+// lugar (el de la primera variante si tiene variantes, si no el de la publicación) y la comisión
+// se le pregunta a ML al precio NUEVO, que es el mismo endpoint que usa `netoweb` para fijar
+// precios. Con una cuenta propia serían dos números distintos conviviendo, que es el error
+// anotado una docena de veces en este archivo. Y de paso cumple la regla 6: relee y usa lo leído.
+//
+// EL ENVÍO es lo único que no se vuelve a medir, y la regla es explícita:
+//  · abajo de los $33.000 es CERO de verdad — ML no se lo cobra al vendedor;
+//  · arriba, el que ya tenía medido esa publicación;
+//  · y si arriba no tiene ninguno (venía de abajo de la barrera), el PEOR medido en ventas reales.
+// Errar para el lado caro hace ver el margen MENOR, que es el lado seguro cuando el número decide
+// el precio siguiente.
+//
+// NUNCA puede voltear un cambio de precio: todo va adentro de un try y lo peor que pasa es que el
+// margen siga siendo el de anoche, que es exactamente como estaba hasta hoy.
+async function margenAlDia(mla, token, que) {
+  if (!DB_REF || !mla || !token) return;
+  try {
+    const link = await DB_REF.get('cyc/mllinks/' + mla);
+    const pid = link && link.prodId;
+    if (!pid) return;   // sin ficha no hay margen que actualizar
+    const b = await mlGet('/items/' + mla + '?attributes=id,status,price,variations,listing_type_id,category_id,site_id', token);
+    if (!b || (b.status !== 'active' && b.status !== 'paused')) return;
+    const activa = b.status === 'active';
+    const vars = Array.isArray(b.variations) ? b.variations : [];
+    const precio = vars.length ? (vars[0].price || 0) : (b.price || 0);
+    if (!(precio > 0)) return;
+    let com = null;
+    try {
+      const d = await mlGet(`/sites/${b.site_id || 'MLA'}/listing_prices?price=${Math.round(precio)}&listing_type_id=${b.listing_type_id}&category_id=${b.category_id}`, token);
+      const o = Array.isArray(d) ? d[0] : d;
+      if (typeof o?.sale_fee_amount === 'number') com = o.sale_fee_amount;
+    } catch { com = null; }
+    if (com == null) { console.log(`   (el margen del panel queda como estaba: ML no dio la comisión de ${mla})`); return; }
+
+    const antes = (await DB_REF.get('cyc/netopub/' + mla)) || {};
+    let envio = 0, envioML = !!antes.envioML, sinEnvio = false;
+    if (precio >= UMBRAL_ENVIO_GRATIS) {
+      if (Number(antes.envio) > 0) envio = Math.round(Number(antes.envio));
+      else { envio = CAND_ENVIO_ARRIBA; envioML = true; }   // queda marcado: no es un envío medido en ESTA publicación
+    }
+    const neto = Math.round(precio - com - envio);
+    if (!(neto > 0)) return;                                 // un neto negativo taparía el dato bueno
+
+    const fila = { neto, precio: Math.round(precio), envio, sinEnvio, envioML, activa,
+      cuenta: antes.cuenta || (link.cuenta || ''), pid, ts: Date.now() };
+    await DB_REF.patch('cyc/netopub', { [mla]: fila });
+
+    // ── Y AHORA CUÁL MANDA EN EL PRODUCTO ───────────────────────────────────
+    // Con la MISMA regla que netoweb (`_netoGana`), mirando TODAS las publicaciones de la ficha.
+    // Escribir derecho el número de ésta sería el error grave: en una ficha con 47 publicaciones
+    // le pisaría al producto el neto de la peor y lo dejaría viéndose mejor de lo que está.
+    const todas = (await DB_REF.get('cyc/netopub')) || {};
+    todas[mla] = fila;
+    let win = null;
+    for (const [k, r] of Object.entries(todas)) {
+      if (!r || r.pid !== pid || !(Number(r.neto) > 0)) continue;
+      const c = { ...r, mla: k, neto: Number(r.neto), activa: !!r.activa };
+      if (_netoGana(c, win)) win = c;
+    }
+    if (!win) return;
+    await DB_REF.patch('cyc/products/' + pid, {
+      netoCalc: win.neto, netoCalcPrecio: Math.round(Number(win.precio) || 0),
+      netoCalcEnvio: Math.round(Number(win.envio) || 0), netoCalcSinEnvio: !!win.sinEnvio,
+      netoCalcEnvioML: !!win.envioML, netoCalcPausada: !win.activa,
+      netoCalcCuenta: win.cuenta || '', netoCalcTs: Date.now(),
+    });
+    console.log(`   margen del panel al día: ${mla} quedó en ${money(Math.round(precio))} → neto ${money(neto)}`
+      + (win.mla === mla ? '' : ` · en el producto manda ${win.mla}, que deja menos`));
+  } catch (e) {
+    // Que no se pueda anotar NUNCA puede voltear un cambio de precio: queda el de anoche.
+    console.log(`   (no pude dejar el margen al día de ${mla}: ${String(e && e.message || e).slice(0, 90)})`);
+  }
+}
+
 async function anotarNetoWeb(db, pid, datos, DRY) {
   if (!pid || !datos) return false;
   const precio = Number(datos.precio), com = Number(datos.com) || 0, envio = Number(datos.envio) || 0;
@@ -2713,6 +2826,8 @@ async function setPriceTo(itemId, variationId, nuevo, token, chequeo) {
       return { ok: false, err: 'ML-' + r.status + (_d ? ' · ' + _d : '') };
     }
     _anotarEscrituraML(r, itemId, 'bajar el precio', '');
+    // El margen del panel queda al día EN EL MOMENTO, no a las 00:07 (ver margenAlDia).
+    await margenAlDia(itemId, token, 'bajar');
     return { ok: true, from: Math.round(base), to };
   } catch (e) { return { ok: false, err: 'red · ' + String(e.message || e).slice(0, 120) }; }
 }
@@ -2775,6 +2890,7 @@ async function raisePrice(itemId, variationId, multiplier, token) {
       return { ok: false, err: 'ML-' + r.status + (_d ? ' · ' + _d : '') };
     }
     _anotarEscrituraML(r, itemId, 'subir el precio', '');
+    await margenAlDia(itemId, token, 'subir');
     return { ok: true, from: Math.round(base), to };
   } catch { return { ok: false, err: 'red' }; }
 }
@@ -4222,6 +4338,7 @@ async function main() {
   const idToken = await fbSignIn(FIREBASE_API_KEY, FIREBASE_BOT_EMAIL, FIREBASE_BOT_PASSWORD);
   // reauth: en corridas largas el idToken caduca a la 1h → lo renovamos solo.
   const db = makeDB(FIREBASE_DB_URL, idToken, () => fbSignIn(FIREBASE_API_KEY, FIREBASE_BOT_EMAIL, FIREBASE_BOT_PASSWORD));
+  if (!DRY) DB_REF = db;   // ver DB_REF: es lo que deja a setPriceTo/raisePrice actualizar el margen
 
   // El freno del piso, contra el piso REAL configurado (ver cargarPisoDuro). Se hace acá arriba,
   // antes que cualquier cosa que pueda mover un precio: si esto no corrió, PISO_DURO vale 30 y lo
@@ -17992,7 +18109,9 @@ async function main() {
             const prev = porProd[p.id];
             // Las ACTIVAS mandan: una pausada solo se usa si el producto no tiene ninguna activa.
             // Entre las del mismo tipo gana la peor, que es el criterio conservador de siempre.
-            const mejor = !prev || (activa && !prev.activa) || (activa === prev.activa && neto < prev.neto);
+            // LA MISMA REGLA QUE USA EL MARGEN AL DÍA, no una copia (ver _netoGana): las activas
+            // mandan sobre las pausadas y entre iguales gana el neto MENOR.
+            const mejor = _netoGana({ activa, neto }, prev);
             // La cuenta se guarda porque la pantalla la necesita: el IIBB de ML es un % DISTINTO por
             // cuenta (4,07 Adriana · 4,37 Luciana · 5,95 Ayelen · 4,58 Matías), y sin saber de qué
             // cuenta es la publicación no hay forma de estimarlo en un producto que nunca vendió.
