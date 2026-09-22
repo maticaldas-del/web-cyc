@@ -343,6 +343,7 @@ Los que más se usan:
 | `apisnuevas:<MLA>` | qué endpoints de ML andan y no usamos |
 | `pedir:<palabra>=<u>[;otra=<u>][;go]` | **carga las unidades del pedido de Paraguay** · `=0` lo saca · sin `;go` sólo muestra |
 | `revisarcompra[:<palabras>]` | **la última mirada antes de gastar los dólares**: código, precio, ¿es el mismo producto?, margen de HOY y si la podés publicar · solo lee |
+| `gondola:<qué es>\|<lo que te sale>[\|<link de ML>]` | **¿conviene vender en ML algo que viste en una góndola?** pregunta la comisión a ML al precio exacto, separa Full de no-Full y dice a qué costo SÍ daría · solo lee |
 | `probarcaja:<MLA>[;otro]` | **¿ML dice quién tiene la caja de un catálogo?** vale el código del catálogo o el de una publicación tuya · solo lee |
 | `permisos` | **por qué ML no deja escribir**: qué le deja hacer a la aplicación, traducido · solo lee |
 | `probarsaldo2` | **¿se puede leer el saldo de la cuenta?** 11 endpoints que `probarsaldo` no probaba · solo lee |
@@ -5059,6 +5060,64 @@ más las dos salidas dan el total) · la cancelada no se cuenta · el margen con
 · el stock con una ficha en cero · y la pantalla en los dos modos sin un `undefined`, un `NaN` ni un
 `${` suelto, más el período vacío. Chequeo de las tres listas más las clases de CSS: **0 funciones,
 0 variables, 0 `id` y 0 clases de diferencia**; sólo lo que se agregó.
+
+## ¿CONVIENE VENDER ESTO QUE VI EN UNA GÓNDOLA? `gondola` (22/09/2026)
+
+Él mandó la foto de una **tintura Nougat a $3.699 en un súper** (con 30% off, lista $5.166) y las
+mismas en ML a $7.590: *"¿sirve?"*. Hasta ese día la única forma de contestarlo era estimar la
+comisión a ojo — y la comisión de ML **no es un % parejo**: tiene el cargo fijo de ~$1.230 que pesa
+mucho más cuanto más barato es el producto, así que a ojo el número sale mal **justo en lo barato,
+que es lo que más aparece en una góndola**.
+
+```
+gondola:<qué es>|<lo que te sale a vos>[|<código o link del catálogo de ML>]
+```
+
+**NO ES UNA CUENTA NUEVA: llama a `cuentaCandidato`**, la MISMA que decide las compras de Paraguay,
+con la comisión pedida a ML al precio exacto. **SOLO LEE**: no escribe en la base ni toca ML.
+
+**EL RESULTADO DE LA TINTURA, para que quede el caso:** ML se queda el **35,0%** a $6.999, y con la
+mercadería a $3.700 quedan **$247 por unidad · margen 5,7%**. Para llegar al piso del 23% habría que
+conseguirla a **$3.092**, o sea 16% más barata **aun con el 30% off puesto**. A precio de lista
+($5.166) es pérdida directa. **No sirve.**
+
+**SU PREGUNTA SOBRE FULL CAMBIÓ EL COMANDO, y la respuesta fue la contraria a la intuición.**
+Preguntó *"los de 6.999 ¿tienen full?"* — y es la misma lógica que los vendedores del exterior, que
+ya se sacaban: el comprador elige el que dice "Llega mañana", así que uno que manda a mano **no te
+obliga a igualarle el precio**. Medido: de 10 vendedores, **9 son Full y el más barato ($6.999) es
+uno de ellos**; el único sin Full está a $11.000, o sea que es el más CARO. Así que ahí no había
+nada que descontar — pero el comando ahora lo mira siempre y lo dice.
+ · Se **mide** contra el más barato **CON Full**, que es el precio que de verdad hay que igualar.
+ · **No se filtra solo**: el de afuera de Full igual compite, sólo que con desventaja, y esconderlo
+   sería decidir por él. Sale con su número y el aviso al lado.
+ · Si **ninguno** es Full se mide contra el más barato a secas **y se dice**, en vez de quedarse sin
+   número — falta de dato leída como dato.
+
+**Y CUANDO NO LLEGA AL PISO DICE A QUÉ COSTO SÍ DARÍA**, despejándolo con la misma función. Sin eso
+el comando contesta "no" y lo deja adivinando cuánto le falta.
+
+**LOS DOS BUGS DE LA PRIMERA CORRIDA, los dos del tipo que contesta con seguridad algo falso:**
+ · **`pisoConfig` devuelve EL NÚMERO, no un objeto.** Le pedí `.minPct` y quedó `undefined`: el
+   renglón decía *"tu piso es undefined%"* y, peor, el bucle que busca el costo comparaba contra
+   `undefined` —siempre false— así que contestaba **"ni regalado llega"**, que es FALSO. Es el error
+   de `permisos` del 20/09: un chequeo roto no se calla, contesta cualquier cosa con tono de
+   certeza. Ahora, si el piso no se puede leer, el comando **no opina**.
+ · **`"3.699,99"` daba 369999**, cien veces más. Es el bug de `bajar=60.000` del 15/09, que allá se
+   tapó **dejando sólo los dígitos** — y eso alcanza para un precio redondo y falla feo con uno de
+   súper. Ahora hay **`pesosArg`**: el punto es de miles salvo que lo sigan 1 o 2 dígitos, y la coma
+   decide los decimales. 17 casos probados.
+   **La lección: un arreglo que sirve para el ejemplo que tenías delante no es un arreglo.**
+
+**NO SE IMPRIME NINGÚN VENDEDOR**, sólo precio y si es Full: el registro de GitHub es público.
+
+**Lo que el comando NO puede contestar y deja escrito en pantalla:** cuántas unidades hay en la
+góndola (un súper no es un mayorista), si ese precio es de lista o una promo —si es promo **no
+podés reponer**, así que es una sola vez— y cuántas vendió, porque ML devuelve **403** en las ventas
+de publicaciones ajenas (ya medido dos veces).
+
+**Y el emparejado por nombre queda MARCADO**, con el link del catálogo para abrirlo: es el filtro
+por palabras que ya falló seis veces acá. Pasándole el código de ML como tercer dato no se busca
+nada.
 
 ## LO QUE YA ESTÁ EN EL PEDIDO SALE DE "PARA PROBAR", Y AL LLEGAR PASA A PROBADO (22/09/2026)
 
