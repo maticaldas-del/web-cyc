@@ -20,19 +20,18 @@ aporte = ~$218.500/mes** por una persona. Cuando traiga la respuesta, comparar c
 factura) y dar de baja **"Cobertura de Vida Plus"** ($2.901/mes = $34.812/año, es seguro de vida).
 **El hijo de Ayelen tiene OSECAC**: el plan de UNA persona es el correcto, no falta nadie.
 
-### 2 · LA OBRA SOCIAL CONTRA EL MONOTRIBUTO: él iba a pasar la info
-Dijo *"ahora logramos que descuente obra social con el monotributo. ahora te paso mas info"* y
-**no la pasó todavía**. Cuando llegue, hay que revisar en `GASTOS_DEL_MES` (index.html) el renglón
-**"Autónomos + obra social de Ayelen"**, que hoy espera ~$113.083 — puede haber cambiado.
-**Ya se arregló la otra mitad:** Sancor y "obra social privada" eran el MISMO gasto y estaban como
-dos renglones (la lista pedía ~$83.333/mes que no existen). Quedó uno solo, versión 20.08.
+### 2 · LA OBRA SOCIAL CONTRA EL MONOTRIBUTO: CERRADO (22/09/2026)
+Él confirmó: *"esa era toda la info"*. O sea que el "descuento por monotributo" que ya aparece en
+la factura de Sancor ($42.737,30) ES lo que logró — no viene nada más. El renglón de Gastos
+**"Autónomos + obra social de Ayelen" (~$113.083) sigue igual**: el aporte se sigue pagando en el
+VEP; lo que cambió es que Sancor lo descuenta. Sancor y "obra social privada" ya son un solo
+renglón (versión 20.08).
 
-### 3 · EL `PROMPT GUAY` TIENE UN NÚMERO MÍO QUE HAY QUE CORREGIR
-Se le pasó un bloque nuevo sobre Full que decía **"~23% de premio"**. Con la segunda medición dio
-**18,9%**: la mediana se mueve con la muestra. **Si lo pegó, hay que pasarle la línea corregida**
-(el bloque entero, ya corregido, está en la sección del `PROMPT GUAY` más abajo:
-*"TENER FULL VALE PRECIO"*). Lo firme: en **18 de 18** publicaciones que ganan la caja estamos más
-caros que alguien sin Full, rango **3,0% a 26,6%**, **~19% es lo prudente**.
+### 3 · EL `PROMPT GUAY`: VA CON 19%, NO 23% — LO VA A PEDIR MÁS ADELANTE
+Dicho por él el 22/09: *"te voy a pedir el prompt más adelante, acordate y poné el 19"*.
+**Cuando lo pida, el bloque de Full dice ~19%** (el bloque corregido está en la sección del
+`PROMPT GUAY`: *"TENER FULL VALE PRECIO"*). Lo firme: 18 de 18 publicaciones que ganan la caja
+están más caras que alguien sin Full, rango 3,0% a 26,6%.
 
 ### 4 · LO QUE CORRE SOLO Y CONVIENE MIRAR EN UNOS DÍAS
  · **`candidatos` vuelve a medir TODOS** (`CAND_CALC_VER` pasó a 6, ahora contra el más barato
@@ -43,19 +42,21 @@ caros que alguien sin Full, rango **3,0% a 26,6%**, **~19% es lo prudente**.
    panel todavía**. Idea sin decidir: `visit_share` (`maximum`/`medium`/`minimum`) en la columna
    Caja ML de Rotación. **`reason` viene vacío, no sirve.** No hacer nada sin que él lo pida.
 
-### 5 · PENDIENTES VIEJOS QUE SIGUEN ABIERTOS (de antes de este chat)
- · **el peso** de cada candidato de Paraguay (sin eso `compray` no separa liviano de pesado) ·
-   **el correo** del pedido del 21/09 (el recargo real sigue "corto") · decírselo al **chat de
-   compras**: a los códigos que guarda **les falta el primer dígito** (5 de 5).
+### 5 · PENDIENTES QUE ÉL PIDIÓ RECORDAR (22/09/2026: *"acordate queda pendiente"*)
+ · **el correo** del pedido del 21/09 (el recargo real sigue "corto").
  · cargar los **4 disponibles** en Finanzas → Arqueo (el `dispo` está listo y esperando).
- · decidir el **Cortapelo 4 en 1** (la regla de repetidas se equivoca sola ahí).
  · el color de la **5ª publicación del Centímetro** (`MLA1841730099`).
  · **gastos de septiembre**: faltan Sancor (la factura es $163.045), intereses y los cargos de
    Full de agosto. Servicios es CERO este mes, dicho por él.
  · las **2 u. de Halloween Freesia** que el marcado dio por faltantes — `abrircaja:76397947:go` si
    llegaron.
- · ver si las variantes de los Paulvic siguen diciendo *"(del prod.)"* después de recargar: si sí,
-   hace falta `fijarvar`.
+ · decidir el **Cortapelo 4 en 1** (se le explicó el 22/09; recomendación: dueña Ayelen).
+ · (mío) decírselo al **chat de compras**: a los códigos les falta el primer dígito (5 de 5) ·
+   ver si las variantes de los Paulvic siguen diciendo *"(del prod.)"*.
+ · **EL PESO DE LOS CANDIDATOS NO VA A EXISTIR NUNCA**, dicho por él: *"no los tengo ni voy a
+   tener"*. O sea que la parte de `compray` que reparte el correo por kilo **no se va a poder
+   calcular**, y no hay que volver a pedírselo. El correo queda como gasto del pedido, igual que
+   el que retira y despacha.
 
 ### Lo que se hizo en este chat (ya está todo arriba de esto, en su sección)
 el % de ganancia único en los seis lugares · el costo "puesto en la oficina" en cada venta · el
