@@ -42,7 +42,7 @@ bajaba a ciegas. Subir sigue funcionando igual. Para bajar: `bajarcaja` o `corre
 Pedido suyo con el **Pendrive Sandisk 128g** (`MLA1787520621`, Matías), que vendió a **−5%**
 (−$1.722): *"lo baje aproposito, hay que venderlo, porque nos van a cobrar por stock antiguo. pero
 el bot quizas lo ve bajo y lo sube automaticamente."* Tenía razón — el robot mira el margen de cada
-venta y, si cayó abajo del piso, sube el precio hasta la meta. O sea que **la PRIMERA venta de un
+venta y, si quedó en 20% o menos (`subeDesde`), sube el precio hasta la meta. O sea que **la PRIMERA venta de un
 remate le deshacía la decisión**, justo cuando empezaba a funcionar.
 
 Se marca con **`liquidando:<MLA o palabra>[:go]`** y vive en **`cyc/nosubir/<MLA>`**:
@@ -1014,6 +1014,55 @@ ni yo (regla 5). Si la twin deja de vender, ése es el primer lugar donde mirar.
 
 **Para revisarlo cuando quiera: `tocados[:horas]`**, que lista lo que tocó el robot, en qué margen
 quedó hoy y a qué precio debería estar. Sin `bajar` SOLO LEE.
+
+## EL ROBOT SUBE SOLO DESDE 20% PARA ABAJO, NO DESDE EL PISO (22/09/2026)
+
+Regla suya, con el **Ted Lapidus** en la mano: *"Quiero que deje el lapidus como esta. Ya que dio
+un 25%. Nose como estaba configurado. Pero para que suba automatico en la web de cyc tiene que dar
+20% o menos"*.
+
+Hasta ese día el robot subía con el **MISMO número que el piso del negocio** (`minPct`, hoy 23), o
+sea que una venta al 21% le movía el precio sola. Ahora son **dos números distintos**:
+
+| | qué es | hoy |
+|---|---|---|
+| **`minPct`** | el PISO: abajo de esto se avisa, y **`setPriceTo` no deja bajar** | 23% |
+| **`subeDesde`** | desde qué margen el robot SUBE un precio SOLO | **20%** |
+
+**NO SE TOCÓ `minPct`, Y ÉSA ES LA DECISIÓN QUE MÁS IMPORTA.** Bajarlo a 20 para conseguir esto
+era el camino corto y habría aflojado el freno de **no vender perdiendo** en todo el panel
+(`setPriceTo`, `_chequeoPiso`, `bajopiso`, `submargen`, los candidatos) — lo contrario de lo que
+pidió. Él habló de **cuándo el robot sube solo**, no del piso.
+
+**LO QUE QUEDA ENTRE 20% Y EL PISO SE AVISA Y NO SE TOCA.** El mensaje dice el motivo con esas
+palabras (*"pediste que suba sólo desde 20% para abajo · éste dio 21%"*). Callarse sería dejar al
+robot mirando algo abajo del piso sin decir nada, que es la lección de *"un automatismo que no
+puede hacer su trabajo tiene que gritarlo"*.
+
+**SE COMPARA EL NÚMERO REDONDEADO, el MISMO que sale en el Telegram.** Con el valor exacto, un
+margen de 20,4% se imprime **"20%"** y no subiría: él leería su propia regla cumplida y el robot
+haciendo otra cosa. **Si la cuenta que invita el mensaje no es la que hace el sistema, el mensaje
+está mal.**
+
+Se cambia con **`subeventa:desde:<n>`** (y `subeventa` sin argumentos lo muestra). Si se le pone un
+número MÁS ALTO que el piso, avisa que no va a cambiar nada: el robot sólo mira lo que cae abajo
+del piso, así que ahí manda el piso.
+
+**POR QUÉ LA PANTALLA DECÍA 25% Y EL ROBOT 21%: LOS DOS ESTÁN BIEN, CAMBIA EL DIVISOR.** El renglón
+de Ventas x Producto mostraba *"costo $35.342 · gan. $8.868 · +25%"* y el Telegram *"Margen bajo:
+21%"*. La ganancia en pesos es la MISMA ($8.868); el renglón divide por el costo **sin el cargo de
+Full**, y el robot divide por costo + impuestos + **envío**, que es la regla suya del 01/09. Es el
+mismo caso ya anotado el 21/09 con el Seagate (*"el +60% de una venta contra el 44% del panel"*).
+**El número que decide es el del robot** — y el renglón que él estaba mirando no es ése.
+
+**LO QUE NO SE HIZO, A PROPÓSITO: devolver el Lapidus a $60.000.** El robot ya lo había subido a
+$62.340 y bajarlo es **bajar un precio**, que no lo decide el robot ni yo (regla 5). Queda donde
+está hasta que él lo pida.
+
+Probado con el bloque REAL sacado del archivo (no una copia) y 10 casos: el Lapidus al 21% **no
+sube** y dice por qué · 20% clavado sube · **20,4% sube y 20,6% no** (el redondeo que ve él) · 15%
+sube · 22% avisa y no toca · 24% ni se mira · apagado sigue diciendo que está apagado · el freno de
+los $33.000 sigue ganando cuando corresponde · y con el número viejo (23) el 21% volvería a subir.
 
 ## EL ROBOT MEDÍA EL MARGEN SIN EL ENVÍO Y DEJABA PASAR 17 PUBLICACIONES (17/09/2026)
 

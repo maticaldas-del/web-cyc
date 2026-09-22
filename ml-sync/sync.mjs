@@ -2591,7 +2591,7 @@ async function cargarPisoDuro(db) {
 // Pedido suyo del 12/09/2026 con el Pendrive Sandisk 128g, que vendió a −5% (−$1.722):
 // *"lo baje aproposito, hay que venderlo, porque nos van a cobrar por stock antiguo. pero el bot
 // quizas lo ve bajo y lo sube automaticamente."* Tenía razón: el robot mira el margen de cada venta
-// y, si cayó abajo del piso, sube el precio hasta la meta — o sea que la PRIMERA venta de algo que
+// y, si quedó en 20% o menos (`subeDesde`, 22/09/2026), sube el precio hasta la meta — o sea que la PRIMERA venta de algo que
 // él bajó para rematar le deshacía la decisión, y encima justo cuando empezaba a funcionar.
 //
 // El freno va acá y no en cada comando, por el mismo motivo que el piso: la regla no puede depender
@@ -7631,15 +7631,38 @@ async function main() {
     // Telegram. Lo que NO hace nunca, y en cada caso avisa en vez de tocar:
     //   · cruzar los $33.000 · pasar el techo de $600.000 · subir más de +25% de una
     //   · tocar dos veces la misma publicación en 12 h · tocar un miembro de un grupo de precio
+    //   · tocar algo que no llegue a `subeDesde` (22/09/2026: sube sólo desde 20% para abajo)
     // Sin argumento solo dice cómo está.
+    //
+    // `subeventa:desde:<n>` cambia DESDE QUÉ MARGEN sube solo. NO toca `minPct`, que es el piso del
+    // negocio: son dos números distintos a propósito, y confundirlos afloja el freno de no vender
+    // perdiendo en todo el panel.
     if (String(process.env.BILLING_PROBE || '').startsWith('subeventa')) {
-      const _sv = String(process.env.BILLING_PROBE).split(':')[1];
+      const _pz = String(process.env.BILLING_PROBE).split(':');
+      const _sv = _pz[1];
       const cfgS = (await db.get('cyc/mlconfig')) || {};
       const estaba = cfgS.autoSubeVenta === true;
+      const _sdA = parseFloat(cfgS.subeDesde);
+      const desdeAct = Number.isFinite(_sdA) ? _sdA : 20;
+      if (_sv === 'desde') {
+        const n = parseFloat(_pz[2]);
+        if (!Number.isFinite(n) || n < 0 || n > 100) { console.log('Falta el número. Va así: subeventa:desde:20'); return; }
+        // Un número MÁS ALTO que el piso no hace nada: el robot sólo mira las ventas que caen abajo
+        // del piso, así que ahí manda el piso. Se dice en vez de aceptarlo callado.
+        const _piso = parseFloat(cfgS.minPct) || 30;
+        if (n > _piso) console.log(`⚠️ OJO: ${n}% es MÁS ALTO que el piso (${_piso}%). El robot sólo mira lo que cae abajo del piso, así que este número no va a cambiar nada.`);
+        if (!DRY) await db.set('cyc/mlconfig/subeDesde', n);
+        const cfg3 = (await db.get('cyc/mlconfig')) || {};
+        console.log(`${DRY ? '(DRY) ' : ''}Sube solo desde: ${desdeAct}% o menos → ${n}% o menos`);
+        console.log(`Releído de la base: quedó en ${cfg3.subeDesde}%. ${Number(cfg3.subeDesde) === n ? '✓' : '✗ NO quedó como pedí'}`);
+        console.log(`(el piso del negocio NO se tocó: sigue en ${cfg3.minPct ?? 30}%)`);
+        return;
+      }
       if (_sv !== 'on' && _sv !== 'off') {
         console.log(`Subir el precio solo cuando una venta cae abajo del piso: ${estaba ? 'PRENDIDO' : 'APAGADO'}.`);
         console.log(`  piso ${cfgS.minPct ?? 30}% · meta ${cfgS.targetPct ?? 32}%`);
-        console.log('\n(para cambiarlo: subeventa:on  /  subeventa:off)');
+        console.log(`  sube solo si la venta da ${desdeAct}% o menos (entre ${desdeAct}% y el piso: avisa y no toca)`);
+        console.log('\n(para cambiarlo: subeventa:on  /  subeventa:off  /  subeventa:desde:20)');
         return;
       }
       const quiero = _sv === 'on';
@@ -7649,7 +7672,7 @@ async function main() {
       const quedo = cfg2.autoSubeVenta === true;
       console.log(`${DRY ? '(DRY) ' : ''}Subida automática por venta: ${estaba ? 'PRENDIDA' : 'APAGADA'} → ${quiero ? 'PRENDIDA' : 'APAGADA'}`);
       console.log(`Releído de la base: quedó ${quedo ? 'PRENDIDA' : 'APAGADA'}. ${quedo === quiero ? '✓' : '✗ NO quedó como pedí'}`);
-      if (quedo) console.log(`Va a llevar al ${cfg2.targetPct ?? 32}% lo que caiga abajo del ${cfg2.minPct ?? 30}%, y a avisar por Telegram cada vez.`);
+      if (quedo) console.log(`Va a llevar al ${cfg2.targetPct ?? 32}% lo que dé ${desdeAct}% o menos, y a avisar por Telegram cada vez. Lo que quede entre ${desdeAct}% y el piso (${cfg2.minPct ?? 30}%) lo avisa y NO lo toca.`);
       return;
     }
     // BILLING_PROBE=meta:<piso>[:<meta>] → deja guardado el piso y la meta del robot de precios.
@@ -27321,6 +27344,26 @@ async function main() {
   // entero para conseguir esto habría largado esas dos cosas de golpe. Con este, sube por venta y
   // nada más. Arranca APAGADO: hay que prenderlo a mano con el comando `subeventa:on`.
   const autoSubeVenta = cfg.autoSubeVenta === true;
+  // ── DESDE QUÉ MARGEN SUBE SOLO (22/09/2026) ────────────────────────────────────────────
+  // Regla suya, textual, con el Ted Lapidus en la mano: *"para que suba automatico en la web de
+  // cyc tiene que dar 20% o menos"*. Hasta hoy el robot subía con el MISMO número que el piso del
+  // negocio (`minPct`, hoy 23), así que una venta al 21% le movía el precio sola.
+  //
+  // ES UN NÚMERO APARTE DEL PISO, Y `minPct` NO SE TOCA. El piso es el freno que impide VENDER
+  // PERDIENDO (vive en `setPriceTo`/`_chequeoPiso`, y lo usan `bajopiso`, `submargen` y los
+  // candidatos): bajarlo a 20 para conseguir esto habría aflojado esa protección en TODO el panel,
+  // que es lo contrario de lo que él pidió. Acá sólo se decide cuándo el robot mueve un precio SOLO.
+  //
+  // Lo que queda entre este número y el piso NO se toca y SE AVISA, con el motivo adentro del
+  // mensaje. El robot no se puede quedar callado sobre algo que está abajo del piso: es la lección
+  // de *"un automatismo que no puede hacer su trabajo tiene que gritarlo"*.
+  //
+  // SE COMPARA EL NÚMERO REDONDEADO, que es el MISMO que sale en el aviso de Telegram. Con el valor
+  // exacto, un margen de 20,4% se imprime "20%" y no subiría: él leería su propia regla cumplida y
+  // el robot haciendo otra cosa. Si la cuenta que invita el mensaje no es la que hace el sistema,
+  // el mensaje está mal.
+  const _sd = parseFloat(cfg.subeDesde);
+  const SUBE_DESDE = Number.isFinite(_sd) ? _sd : 20;
   // Palabras de los grupos de precio (Paulvic). Un miembro de un grupo NO se sube solo: el grupo se
   // nivela entero al precio más alto, así que tocar uno mueve a todos.
   const palabrasGrupo = Object.values((await db.get('cyc/mlconfig/gruposPrecio')) || {})
@@ -27920,7 +27963,9 @@ async function main() {
             // subir solo: interruptor prendido, dentro del tope de seguridad, sin haberlo tocado
             // hace poco, sin cruzar la barrera de los $33.000, sin pasar el techo y sin ser de un
             // grupo de precio
-            if (autoSubeVenta && mult <= MAX_UP && !yaTocado && !cruzaUmbral && !pasaTecho && !enGrupo) {
+            // El redondeo es a propósito y es el mismo que imprime el mensaje (ver SUBE_DESDE).
+            const daParaSubir = Math.round(margen * 100) <= SUBE_DESDE;
+            if (autoSubeVenta && daParaSubir && mult <= MAX_UP && !yaTocado && !cruzaUmbral && !pasaTecho && !enGrupo) {
               const rp = await raisePrice(mla, varId, mult, t.access_token);
               if (rp.ok) {
                 pricedUpd[mla] = { ts: Date.now(), to: rp.to };
@@ -27952,7 +27997,11 @@ async function main() {
             const yaAvisadoPrecio = avisoPrecioOk
               && avisoPrecio[mla] && (Date.now() - (avisoPrecio[mla].ts || 0)) < AVISO_PRECIO_HS * 3600e3;
             if (!done && !yaAvisadoPrecio) {
-              const motivo = cruzaUmbral
+              // Va PRIMERO: si no llega a tu umbral, el producto no era candidato a subir y los
+              // otros motivos no vienen al caso.
+              const motivo = !daParaSubir
+                ? `\n\n🛑 <b>NO lo subí solo: pediste que suba sólo desde ${SUBE_DESDE}% para abajo.</b>\nÉste dio ${(margen * 100).toFixed(0)}%. Lo dejo como está; si lo querés subir, hacelo vos.`
+                : cruzaUmbral
                 ? `\n\n🛑 <b>NO lo subí solo: cruza los $33.000.</b>\nDe ${money(unit)} pasaría a ${money(sugUnit)}, y arriba de $33.000 el envío gratis lo paga CYC (~$6.000 por venta). Con ese envío el precio que hace falta es bastante más alto que ${money(sugUnit)}. Decidilo vos.`
                 : pasaTecho
                   ? `\n\n🛑 <b>NO lo subí solo: pasa el techo de ${money(TECHO_PRECIO)}.</b>\nHarían falta ${money(sugUnit)}. Decidilo vos.`
