@@ -11461,8 +11461,13 @@ async function main() {
         } catch { /* probamos con la siguiente */ }
       }
       if (!tokG) { console.log('❌ No pude sacar token de ninguna cuenta.'); return; }
-      const _cfgG = await pisoConfig(db);
-      const _pisoG = _cfgG.minPct;
+      // `pisoConfig` devuelve EL NÚMERO, no un objeto. La primera versión le pedía `.minPct` y daba
+      // `undefined`: el renglón decía "tu piso es undefined%" y, peor, el bucle que busca a qué
+      // costo SÍ daría comparaba contra undefined —siempre false— así que contestaba "ni regalado
+      // llega", que es FALSO. Una conclusión dicha con seguridad sobre un número roto es el error
+      // de `permisos` del 20/09: no se calla, contesta cualquier cosa con tono de certeza.
+      const _pisoG = await pisoConfig(db);
+      if (!(Number(_pisoG) > 0)) { console.log('❌ No pude leer tu piso de margen de la base. Sin eso no opino: volvé a probar.'); return; }
       const _monoG = parseFloat(((await db.get('cyc/monotributo')) || {}).pct) || 0;
       const _feeCacheG = {};
       const _feeAtG = async (price, lt, cat) => {
