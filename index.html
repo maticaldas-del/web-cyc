@@ -1261,7 +1261,7 @@ footer{margin-top:32px;padding-top:14px;border-top:1px solid var(--border);font-
       <button class="vbtn active" id="met-field-total"    onclick="setMetField('total')"    title="Precio total de venta (lo que pagó el comprador)">💵 Total</button>
       <button class="vbtn"        id="met-field-neto"     onclick="setMetField('neto')"     title="Neto que queda después de comisiones ML">💚 Neto</button>
       <button class="vbtn"        id="met-field-ganancia" onclick="setMetField('ganancia')" title="Ganancia = Neto − Costo">💰 Ganancia</button>
-      <button class="vbtn"        id="met-field-gananciaCYC" onclick="setMetField('gananciaCYC')" title="Ganancia de CYC = Ganancia − Gastos − Retiro de los dueños. Es el mismo número que 'Ganancia real CYC' del Resumen. Gastos y retiro se reparten entre los días según lo que vendió cada uno. Gastos sin cargar usan $800.000 estimado.">🏢 Ganancia CYC</button>
+      <button class="vbtn"        id="met-field-gananciaCYC" onclick="setMetField('gananciaCYC')" title="Ganancia de CYC = Ganancia − Gastos − Retiro de los dueños. Es el mismo número que 'Ganancia real CYC' del Resumen. Gastos y retiro se reparten entre los días según lo que vendió cada uno; en el mes en curso se resta sólo la parte de los días que ya pasaron. OJO: sólo resta los gastos CARGADOS — lo que falta cargar (intereses, obra social, lo que cobra Full por almacenamiento) hace que se vea MÁS ALTA de la real.">🏢 Ganancia CYC</button>
     </div>
     <!-- Para comparar: se clickean las métricas de arriba. Cada una prendida dibuja su línea. -->
     <div id="ms-ctrl-dia" style="display:none;align-items:center;gap:8px">
@@ -2281,7 +2281,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='20.08';
+const APP_VERSION='20.09';
 // El problema real que esto resuelve no es curiosidad: es que el celular guarda la app y sigue
 // mostrando la de ayer sin avisar. Varias veces se revisó un cambio que ya estaba subido y no se
 // veía. Por eso, además del número, el chip avisa cuando hay una versión nueva esperando.
