@@ -5076,19 +5076,54 @@ cada tipo.
 
 | | |
 |---|---|
-| medidas | **15 publicaciones de catálogo** |
-| ganamos la caja en | **10** |
-| en cuántas de esas 10 estamos MÁS CAROS que uno sin Full | **las 10** |
-| el premio | de **3,0% a 26,6%** · la mitad en **22,7% o menos** |
+| corrida | medidas | ganamos la caja | ¿más caros que uno sin Full? | el premio |
+|---|---|---|---|---|
+| 1ª | 15 | 10 | **las 10** | 3,0% a 26,6% · mitad en **22,7%** |
+| 2ª | 12 | 8 | **las 8** | 3,0% a 26,6% · mitad en **18,9%** |
 
-**O sea: contra uno sin Full se puede estar ~23% más caro y quedarse igual con la caja.** Su ejemplo
-($10.000 sin Full contra $12.000 con Full) son 20% y **la caja es nuestra**.
+**LO QUE SE PUEDE AFIRMAR: en TODAS las que ganamos la caja estamos más caros que alguien sin
+Full.** 18 de 18 entre las dos corridas. El premio existe siempre y va de **3,0% a 26,6%**.
 
-El caso concreto: **Paulvic Jules Parfum** (Adriana) a **$14.360 con Full** gana la caja teniendo
-**9 competidores sin Full desde $11.662** — o sea **23,1% más caro**.
+**LO QUE NO SE PUEDE: clavar un número.** La mediana pasó de **22,7% a 18,9%** cambiando la muestra
+de 15 a 12 — o sea que "el premio es 23%" era sacar una constante de pocos datos, y le pasé ese
+número al chat antes de tener la segunda corrida. **Para usarlo: ~19% es lo prudente y 26,6% es el
+TECHO de lo medido, que no se estira.**
 
-**ES UNA MEDIANA, NO UNA GARANTÍA**, y eso hay que decirlo cada vez: 26,6% es el techo de lo medido,
-y **contra alguien que TAMBIÉN tiene Full el premio es CERO** — ahí gana el más barato y punto.
+Su ejemplo ($10.000 sin Full contra $12.000 con Full) son 20% y **entra**, aunque justo.
+
+Los casos concretos: **Paulvic 1.4 Sexy For Men** a $14.360 gana la caja con 10 competidores sin
+Full desde $11.340 (**26,6%**) · **Recortadora 4 en 1** de Ayelen a $32.999 gana con 7 sin Full
+desde $29.603 (**11,5%**) · **P47** de Matías a $8.580 gana con 5 desde $7.219 (**18,9%**).
+
+**Y contra alguien que TAMBIÉN tiene Full el premio es CERO** — ahí gana el más barato y punto.
+
+### LO QUE ML DICE Y NO USÁBAMOS: `boosts` ES EL BUENO, `reason` VIENE VACÍO
+
+Los tres campos de `price_to_win` que el código nunca nombró, medidos en 12 publicaciones:
+
+| campo | ¿sirve? |
+|---|---|
+| **`boosts`** | ✅ **12 de 12** · ML dice con todas las letras qué te está dando ventaja y qué te falta |
+| `visit_share` | ✅ 12 de 12 · pero es una PALABRA (`maximum` / `medium` / `minimum`), no un % |
+| `competitors_sharing_first_place` | 11 de 12 · cuántos comparten el 1er puesto con vos |
+| **`reason`** | ❌ **viene `[]` en las 12: VACÍO** |
+
+**`boosts` CONFIRMA TODO LO DE ARRIBA CON PALABRAS DE ML**, en las 12:
+`{"id":"fulfillment","status":"boosted","description":"Envíos Full"}` — o sea que **ML dice que
+Full nos está empujando**. Ya no es una deducción nuestra.
+Y trae una segunda línea: `{"id":"free_installments","status":"opportunity"}` — *cuotas al mismo
+precio*. **ML la llama "oportunidad" y para nosotros puede ser pérdida**: ya está medido que las
+cuotas sin interés de verdad cuestan hasta **19,2% del precio** (más que toda la ganancia de esa
+venta). Es una recomendación de ML para ML, no para CYC. **No se aplica.**
+
+**`visit_share` cruza con el estado de la caja y da una señal que no teníamos:** las que ganan
+dicen `maximum`, las que comparten dicen `medium` y la que pierde dice `minimum`. O sea que ML
+informa **cuánta gente te está viendo de la ficha**, no sólo si ganás.
+
+**EL ERROR QUE COMETÍ EN EL PROPIO CHEQUEO:** el resumen imprimió *"reason: 12 de 12"* y `reason`
+venía **`[]` en las 12**. Contar "no es null" no es contar "trae algo": un array vacío es FALTA DE
+DATO, y leerlo como dato es el error anotado de punta a punta en este archivo — cometido adentro
+del chequeo escrito justamente para no cometerlo. Ya está arreglado (`_lleno`).
 
 ### FULL Y FLEX NO SON LO MISMO, Y LA PRIMERA VERSIÓN LOS MEZCLÓ
 
@@ -6609,10 +6644,52 @@ Lo que quedó abierto. Borrá de acá lo que se vaya cerrando.
   negocio. Él lo dijo expreso el 13/08/2026. Lo mismo el colegio (Asociación Hijas de Nuestra
   Señora de la Misericordia) y los peajes.
 - **SANCOR SALUD sí es de CYC, y no es lo mismo que OSDE.** Es la obra social de Ayelen y la paga
-  CYC porque *no se descuenta del monotributo* (el aporte de obra social del monotributo, $55.485,
-  va igual; Sancor se paga aparte y encima). Se factura todos los meses a nombre de Ayelen y el
-  monto cambia: 2026 fue $85.045 · $57.524 · $91.596 · $82.151 · $87.627 · $90.192 · $152.716 ·
-  $65.227 (ene a ago). **Cargarla con el monto REAL de la factura, no con un promedio.**
+  CYC. Se factura todos los meses a nombre de Ayelen y el monto cambia: 2026 fue $85.045 · $57.524
+  · $91.596 · $82.151 · $87.627 · $90.192 · $152.716 · $65.227 (ene a ago) y **$163.045 en
+  septiembre**. **Cargarla con el monto REAL de la factura, no con un promedio.**
+  **⚠️ "SANCOR" Y "OBRA SOCIAL PRIVADA" SON EL MISMO GASTO, Y ESTE ARCHIVO DECÍA LO CONTRARIO.**
+  Lo corrigió él el 22/09/2026: *"sancor y la obra social privada es lo mismo, se pagan aparte"*.
+  La nota vieja decía *"es APARTE del Sancor, no la misma cosa"* y con eso la lista de Gastos venía
+  pidiendo todos los meses **un gasto de ~$83.333 que no existe**. Ya quedó UN solo renglón.
+  **Y LA OTRA MITAD DE ESA NOTA TAMBIÉN CAMBIÓ: ahora el monotributo SÍ descuenta.** Ver abajo.
+
+### SANCOR: LAS DOS FACTURAS COMPARADAS, Y DE DÓNDE SALE LA SUBA (22/09/2026)
+
+Pedido suyo: *"quiero pagar menos"*. Comparando la factura de **agosto** contra la de
+**septiembre**, renglón por renglón:
+
+| | agosto | septiembre | |
+|---|---|---|---|
+| precio de lista del plan (1500 GEN 18-30) | $146.854 | **$200.235** | **+36,4%** |
+| bonificación por grupo de afinidad (20%) | −$29.371 | −$40.047 | sigue siendo el 20% |
+| **bonificación general** | **−$85.474,60** | **−$42.737** | **se partió EXACTO al medio** |
+| cuota social | $26.831 | $27.397 | |
+| cobertura de vida plus | $2.841 | $2.901 | |
+| intereses por mora | — | **$6.431,40** | pagó después del vencimiento |
+| **TOTAL** | **$65.227** | **$163.045** | **+150%** |
+
+**LO QUE HAY QUE MIRAR, Y NO ES LA INFLACIÓN: la bonificación general se cortó a la mitad
+($85.474,60 → $42.737, la mitad exacta) justo el mes en que apareció el descuento por monotributo
+— y el monto que Sancor llama "descuento por monotributo de $42.737,30" es EXACTAMENTE esa mitad.**
+O sea que en la factura no hay ninguna línea nueva: hay la MISMA línea, por la mitad, con otro
+nombre. Con eso, el descuento del monotributo puede no estar sumando nada. **Hay que preguntárselo
+con el número en la mano, y por escrito.**
+
+**Y el número que le pasaron no cuadra con la factura:** le dijeron *"$151.563,70 finales"* y la
+factura de septiembre dice **$163.045,78**. De la diferencia, **$6.431,40 son intereses por mora**
+—que son por pagar tarde, no del plan— y **quedan ~$5.050 sin explicar**.
+
+**Lo que se puede bajar, en orden de seguridad:**
+ 1. **Pagar antes del 21.** Los intereses por mora de septiembre son **$6.431,40** tirados, y en la
+    factura figuran dos períodos cancelados tarde (junio y julio, los dos el 04/08). Es el único
+    ahorro que no depende de que Sancor conteste nada.
+ 2. **Cobertura de Vida Plus: $2.901/mes = $34.812 al año.** Es un seguro de vida, no salud. Se da
+    de baja con un llamado.
+ 3. **Reclamar la bonificación general** con la comparación de arriba.
+ 4. **Bajar de plan** (el 1500 es de los altos) o **cambiar de grupo de afinidad**: el 20% actual
+    sale de uno, y por una cámara de comercio o similar suele haber mejores.
+**Lo que NO se puede tocar:** la cuota social ($27.397) es de la Asociación Mutual y viene con el
+plan, y las percepciones de IIBB (4% BsAs + 1,75% Tucumán) son impuesto.
 
 - **Vigilar las 8 publicaciones que ganaban la caja de compra y se subieron igual** (11/08). Él lo
   decidió así: *"aunque perdamos en catálogo ganamos igual, y si hay que mantenerlos abajo para que

@@ -2281,7 +2281,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='20.07';
+const APP_VERSION='20.08';
 // El problema real que esto resuelve no es curiosidad: es que el celular guarda la app y sigue
 // mostrando la de ayer sin avisar. Varias veces se revisó un cambio que ya estaba subido y no se
 // veía. Por eso, además del número, el chip avisa cuando hay una versión nueva esperando.
@@ -14214,7 +14214,21 @@ const GASTOS_DEL_MES=[
   {n:'Honorarios contables',   cat:'Honorarios contables', nota:'~$100.000'},
   {n:'Alquiler',               cat:'Alquiler',             nota:'~$100.000'},
   {n:'Servicios',              cat:'Servicios', no:['sancor'], nota:'luz, internet, etc.'},
-  {n:'Sancor Salud (Ayelen)',  pal:['sancor'],  nota:'el monto CAMBIA todos los meses: va el de la factura, no un promedio'},
+  // ── SANCOR Y "OBRA SOCIAL PRIVADA" SON EL MISMO GASTO (22/09/2026) ──────────────────────
+  // Lo marcó él: *"sancor y la obra social privada es lo mismo, se pagan aparte"*. Estaban como
+  // DOS renglones, y el segundo decía —escrito por mí el 15/09— *"es APARTE del Sancor, no la
+  // misma cosa"*. **Era falso**, así que la lista venía pidiendo todos los meses un gasto de
+  // ~$83.333 que no existe: el mes quedaba en rojo por algo que ya estaba pagado.
+  // Un renglón rojo permanente entrena a no mirar la lista — el mismo problema del cementerio de
+  // marcas viejas y del «⚠️ VENDE» que saltaba en todos.
+  // Queda UNO, y reconoce las dos formas en que se cargó hasta hoy (por si hay meses viejos
+  // anotados como "obra social privada"): buscar por las dos palabras no puede traer de más
+  // —son el mismo gasto— y buscar por una sola dejaría la mitad de los meses en falso rojo.
+  // EL MONTO CAMBIA TODOS LOS MESES Y MUCHO: agosto $65.227 y septiembre $163.045. No es
+  // inflación (ver CLAUDE.md): la bonificación se partió al medio y hay intereses por mora
+  // adentro. Va SIEMPRE el de la factura, nunca un promedio.
+  {n:'Sancor Salud (Ayelen) — la obra social privada',  pal:['sancor','obra social priv'],
+   nota:'el monto CAMBIA todos los meses y mucho: va el de la factura, no un promedio · es UN solo gasto, no dos'},
   {n:'Autónomos + obra social de Ayelen', cat:'Monotributo / Impuestos', pal:['autonomo','autónomo','obra social'], nota:'~$113.083 · el VEP del monotributo NO va acá, ya se descuenta en cada venta'},
   // Los intereses son DOS por mes y eso importa: junio, julio y agosto tuvieron uno grande (el
   // interés del capital de los socios, ~$240.000) y otro más chico (~$30.000). Con `min:2`, cargar
@@ -14228,8 +14242,6 @@ const GASTOS_DEL_MES=[
   // marcas viejas y del «⚠️ VENDE» que saltaba en todos.
   {n:'Intereses financieros',  cat:'Intereses financieros',
    nota:'el interés del capital en dólares de los socios ya NO se paga (19/09/2026): queda sólo el otro'},
-  {n:'Obra social privada',    cat:'Otros gastos operativos', no:['sancor'],
-   nota:'~$83.333/mes · es APARTE del Sancor, no la misma cosa'},
   {n:'Cargos de Full de ML (las 4 cuentas)', cat:'Envios', pal:['almacenamiento','full','stock antiguo','retiro'],
    nota:'ML → Facturación → el mes → Ir al detalle → bajar el "Reporte de Facturación" de CADA cuenta y pasármelo. '
       + 'Son almacenamiento + stock antiguo + retiro de stock. Julio fueron $127.835. '

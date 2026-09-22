@@ -3562,11 +3562,14 @@ function esOfertaDeAfuera(o) {
 // comprador de ML elige el que dice "Llega mañana". Medirse contra él hunde el margen contra una
 // venta que no compite, y con el freno de las dos mediciones ese producto termina descartado.
 //
-// CUÁNTO VALE, MEDIDO EN NUESTRAS PROPIAS PUBLICACIONES (`valefull`, 22/09/2026): de 15
-// publicaciones de catálogo ganamos la caja en 10, y **en las 10 estando MÁS CAROS que un
-// competidor sin Full**. El premio va de **3,0% a 26,6%**, con la mitad en **22,7% o menos**.
-// O sea: contra uno sin Full se puede estar ~23% más caro y quedarse igual con la caja.
-// Es una MEDIANA, no una garantía: cerca del 26% ya es el techo de lo medido.
+// CUÁNTO VALE, MEDIDO EN NUESTRAS PROPIAS PUBLICACIONES (`valefull`, 22/09/2026): ganamos la caja
+// **estando más caros que un competidor sin Full en TODAS las que ganamos** — 10 de 10 en una
+// corrida de 15, 8 de 8 en una de 12. El premio va de **3,0% a 26,6%**.
+// **LA MEDIANA SE MUEVE CON LA MUESTRA Y POR ESO NO SE CLAVA UN NÚMERO:** con 15 dio 22,7% y con
+// 12 dio 18,9%. Lo que se puede afirmar es el RANGO y que el premio EXISTE SIEMPRE; decir "23%"
+// como si fuera una constante sería sacar una velocidad de pocos datos, que es justo el freno que
+// él mismo puso en Pedidos (`PED_MIN_VENTAS_RITMO`).
+// Para usarlo: **~19% es lo prudente, 26,6% es el techo de lo medido y no se estira hasta ahí.**
 //
 // FULL Y FLEX NO SON LO MISMO, Y LA PRIMERA VERSIÓN LOS MEZCLÓ. Yo había metido `self_service`
 // adentro de "es Full" y eso es FLEX: el vendedor despacha el mismo día DESDE SU CASA. Full es la
@@ -11661,10 +11664,16 @@ async function main() {
       // aparece en 3 de 15 no sirve para decidir nada y hay que decirlo, no mostrarlo a medias:
       // la pantalla quedaría con la mitad de los renglones llenos y se leería como que ML no
       // informa, no como que falta medirlo. Es la lección de `mlMax` del 18/09.
-      const _conR = _vfFilas.filter((f) => f.reason != null).length;
-      const _conV = _vfFilas.filter((f) => f.visitShare != null).length;
+      // EL CHEQUEO CONTÓ `[]` COMO "VIENE LLENO", Y ES EL ERROR QUE ESTE CHEQUEO VENÍA A EVITAR
+      // (22/09/2026). La primera corrida imprimió *"reason: 12 de 12"* y `reason` venía **`[]` en
+      // las 12**: vacío. Contar "no es null" no es contar "trae algo" — un array vacío, un objeto
+      // vacío y una cadena vacía son FALTA DE DATO, y leerlos como dato es el error anotado de
+      // punta a punta en CLAUDE.md, cometido adentro del verificador.
+      const _lleno = (x) => x != null && x !== '' && x !== 'null' && x !== '[]' && x !== '{}' && x !== '0';
+      const _conR = _vfFilas.filter((f) => _lleno(f.reason)).length;
+      const _conV = _vfFilas.filter((f) => _lleno(f.visitShare)).length;
       const _conC = _vfFilas.filter((f) => f.comparten != null).length;
-      const _conB = _vfFilas.filter((f) => f.boosts && f.boosts !== 'null' && f.boosts !== '[]' && f.boosts !== '{}').length;
+      const _conB = _vfFilas.filter((f) => _lleno(f.boosts)).length;
       if (_vfFilas.length) {
         console.log(`\n── LOS CAMPOS DE ML QUE TODAVÍA NO USAMOS: ¿VIENEN LLENOS? ──`);
         console.log(`   reason (por qué ganás o perdés): ${_conR} de ${_vfFilas.length}`);
