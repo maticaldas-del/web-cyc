@@ -2275,7 +2275,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='19.96';
+const APP_VERSION='19.97';
 // El problema real que esto resuelve no es curiosidad: es que el celular guarda la app y sigue
 // mostrando la de ayer sin avisar. Varias veces se revisó un cambio que ya estaba subido y no se
 // veía. Por eso, además del número, el chip avisa cuando hay una versión nueva esperando.
@@ -9087,6 +9087,21 @@ function embudoHTML(){
 function candList(){
   return Object.entries(state.candidatos||{}).map(([id,c])=>({...c,id})).filter(c=>c&&c.nombre);
 }
+// ── LO QUE YA ESTÁ EN EL PEDIDO NO SE REPITE ABAJO (22/09/2026) ───────────────────────────
+// Pedido suyo, mirando la pantalla después de apretar "Llenar hasta el tope": *"acá puse llenar
+// el pedido. no debería haber ningún producto que acabo de pedir en la lista de hoy. ya que no
+// pertenecen más a este grupo"*. Y antes: *"los productos que están en el pedido quiero que
+// salgan de acá abajo"*.
+// El renglón del pedido de arriba YA tiene la casilla de unidades y la ✕ para sacarlo, así que la
+// tarjeta de abajo no agrega ninguna decisión: sólo hace la lista el doble de larga justo cuando
+// hay que mirarla. Devuelve POR QUÉ está afuera, para poder decirlo (una lista que saca renglones
+// sin decirlo es una lista que miente).
+function candEnPedido(c){
+  if((parseInt(c&&c.pedirU)||0)>0)return 'cargado';
+  const pe=c&&c.pedidoEn&&(state.compraspy||{})[c.pedidoEn];
+  if(pe&&pe.estado!=='llego')return 'viajando';
+  return '';
+}
 // VENCEN SOLOS. Sin esto la lista se vuelve un cementerio de tarjetas viejas que nadie mira —
 // el mismo problema que ya apareció con `repoextra` y con la pausa por precio. Un precio de
 // Paraguay de hace 45 días al lado de una decisión de compra se lee como si estuviera al día.
@@ -9466,19 +9481,76 @@ async function pyPedidoHecho(){
   await log('Pedido a Paraguay marcado como hecho: '+id+' · US$'+P.crudo.toFixed(2));
   renderPedidos();toast('Pedido en camino ✓');
 }
+// ── CUANDO EL PEDIDO LLEGA, DEJAN DE SER "NUEVOS": PASAN A PROBADOS (22/09/2026) ──────────
+// Pedido suyo: *"cuando un producto 'nuevo' llega a mi oficina, ya pasa a ser producto probado y
+// se elimina de nuevo y se agrega a probado"*.
+// Antes marcar el pedido como llegado sólo borraba `pedidoEn`, o sea que el producto volvía a la
+// lista de "Para probar" — justo después de haberlo comprado. La mercadería ya está en la casa:
+// lo que corresponde es que tenga su FICHA, que es lo que lo hace un producto del panel (entra en
+// Pedidos, en el Arqueo y en los márgenes).
+//
+// DOS FRENOS, Y NINGUNO ES OPCIONAL:
+//  · si ya hay una ficha con nombre parecido NO se crea otra y se dice cuál es. Dos fichas del
+//    mismo producto parten el stock y las ventas en dos, y eso no se nota hasta que alguien mira.
+//  · si el candidato ya tenía ficha, se deja como está.
+// Lo que NO frena: el precio en cero. Ahí la ficha se crea igual —decisión suya del 26/08— pero
+// se dice, porque un producto sin costo se ve como si fuera todo ganancia.
 async function pyPedidoLlego(id){
   const c=(state.compraspy||{})[id];if(!c)return;
-  if(!confirm(`Marcar como LLEGADO el pedido del ${c.fecha}\n\nSale de "En camino". Los productos vuelven a poder cargarse en un pedido nuevo.`))return;
+  const items=(c.items||[]).filter(x=>x&&x.id);
+  // Qué va a pasar con cada uno, ANTES de preguntar: el cartel tiene que decir lo que va a hacer.
+  // Los datos salen del candidato si sigue vivo y, si venció a los 45 días, del propio pedido —
+  // que guarda nombre, código y precio justamente para esto.
+  const plan=items.map(it=>{
+    const k=(state.candidatos||{})[it.id];
+    const src={id:it.id,nombre:(k&&k.nombre)||it.nom||'',usd:(k&&k.usd!=null?k.usd:it.usd),cod:(k&&k.cod)||it.cod||'',ts:k&&k.ts};
+    if(k&&k.prodId)return{src,estado:'ya'};
+    if(!String(src.nombre).trim())return{src,estado:'nonombre'};
+    const rep=candFichasParecidas(src.nombre);
+    if(rep.length)return{src,estado:'repe',rep};
+    return{src,estado:'crear',sinPrecio:!((parseFloat(src.usd)||0)>0)};
+  });
+  const crear=plan.filter(x=>x.estado==='crear');
+  const repe=plan.filter(x=>x.estado==='repe');
+  const yaT=plan.filter(x=>x.estado==='ya');
+  const sinNom=plan.filter(x=>x.estado==='nonombre');
+  const sinPre=crear.filter(x=>x.sinPrecio);
+  if(!confirm(`Marcar como LLEGADO el pedido del ${c.fecha}\n\n`
+    +`Sale de "En camino" y esta mercadería deja de ser "para probar": pasa a ser producto del panel.\n\n`
+    +(crear.length?`Se crean ${crear.length} ficha(s):\n${crear.slice(0,10).map(x=>'· '+x.src.nombre).join('\n')}${crear.length>10?`\n…y ${crear.length-10} más`:''}\n`:'No hay ninguna ficha nueva para crear.\n')
+    +(sinPre.length?`\n⚠️ ${sinPre.length} sin precio cargado: la ficha queda en costo 0 y hay que cargárselo.\n`:'')
+    +(repe.length?`\n⚠️ ${repe.length} NO se crean porque ya hay una ficha parecida (miralos vos):\n${repe.slice(0,6).map(x=>'· '+x.src.nombre+' → '+x.rep[0].name).join('\n')}\n`:'')
+    +(yaT.length?`\n${yaT.length} ya tenía(n) ficha.\n`:'')
+    +(sinNom.length?`\n⚠️ ${sinNom.length} sin nombre: no se puede crear.\n`:'')
+    +`\nNo publica nada en ML ni compra nada.`))return;
   const hoy=new Date(Date.now()-3*3600e3).toISOString().slice(0,10);
+  const hechas=[],fallaron=[];
+  for(let i=0;i<crear.length;i++){
+    // El id lleva el número de orden porque varias se crean en el MISMO milisegundo: sin eso la
+    // segunda pisaría a la primera y se perdería una ficha sin que nada lo dijera.
+    try{
+      const r=await candFichaDesde(crear[i].src,{idSuf:i});
+      if(r.ok)hechas.push(r.p.name); else fallaron.push(crear[i].src.nombre+' ('+r.motivo+')');
+    }catch(e){fallaron.push(crear[i].src.nombre+' (no se pudo guardar)');}
+  }
   await fbSet('compraspy/'+id+'/estado','llego');
   await fbSet('compraspy/'+id+'/fechaLlego',hoy);
   c.estado='llego';c.fechaLlego=hoy;
-  for(const it of (c.items||[])){
+  for(const it of items){
     const k=(state.candidatos||{})[it.id];
     if(k&&k.pedidoEn===id){try{await fbDel('candidatos_py/'+it.id+'/pedidoEn');delete k.pedidoEn;}catch(e){}}
   }
-  await log('Pedido de Paraguay llegado: '+id);
-  renderPedidos();toast('Marcado como llegado ✓');
+  await log('Pedido de Paraguay llegado: '+id+' · '+hechas.length+' ficha(s) nuevas');
+  renderPedidos();
+  // LO QUE QUEDÓ SIN HACER SE DICE, no se descarta callado: son productos comprados que no van a
+  // aparecer en ningún lado hasta que alguien los mire.
+  if(repe.length||fallaron.length||sinNom.length||sinPre.length){
+    alert(`Pedido marcado como llegado ✓ · ${hechas.length} ficha(s) creada(s)\n\n`
+      +(repe.length?`Estos NO se crearon porque ya hay una ficha parecida. Si es el mismo producto no hagas nada; si no lo es, creala a mano desde "Para probar":\n${repe.map(x=>'· '+x.src.nombre+' → '+x.rep[0].name).join('\n')}\n\n`:'')
+      +(sinPre.length?`Estos quedaron con costo 0 y hay que cargárselo:\n${sinPre.map(x=>'· '+x.src.nombre).join('\n')}\n\n`:'')
+      +(sinNom.length?`${sinNom.length} sin nombre: no se pudo crear nada.\n\n`:'')
+      +(fallaron.length?`No se pudieron guardar:\n${fallaron.map(x=>'· '+x).join('\n')}\n`:''));
+  } else toast(`Llegó ✓ · ${hechas.length} ficha(s) creada(s)`,5000);
 }
 async function pyPedidoBorrar(id){
   const c=(state.compraspy||{})[id];if(!c)return;
@@ -9906,13 +9978,20 @@ function simPYCalc(){
 }
 function candidatosHTML(){
   const todos=candList();
-  const vivos=todos.filter(c=>!c.no&&!c.prodId&&(candDias(c)==null||candDias(c)<=CAND_VENCE_DIAS));
-  const fuera=todos.length-vivos.length;
+  // `vivos0` es la lista COMPLETA de los que siguen en juego, y es la que va al armado del pedido.
+  // `vivos` es la que se dibuja como tarjetas: sin los que ya están en el pedido.
+  // OJO, y es la trampa: si `pedNuevosHTML` recibiera la lista filtrada, los renglones del pedido
+  // desaparecerían justo después de cargarlos. El armado tiene que ver TODO.
+  const vivos0=todos.filter(c=>!c.no&&!c.prodId&&(candDias(c)==null||candDias(c)<=CAND_VENCE_DIAS));
+  const enPed=vivos0.filter(c=>candEnPedido(c)==='cargado').length;
+  const enVia=vivos0.filter(c=>candEnPedido(c)==='viajando').length;
+  const vivos=vivos0.filter(c=>!candEnPedido(c));
+  const fuera=todos.length-vivos0.length;
   const chip=(txt,col,tit)=>`<span class="pi-var-toggle" style="cursor:default;background:color-mix(in srgb,${col} 12%,transparent);color:${col};border-color:color-mix(in srgb,${col} 35%,transparent)" title="${String(tit||'').replace(/"/g,'&quot;')}">${txt}</span>`;
   const cab=`<div style="margin:22px 0 10px;padding-top:16px;border-top:1px solid var(--border)">
     <div style="font-size:.82rem;font-weight:700">🆕 Para probar <span style="font-weight:400;color:var(--muted);font-size:.9em">· productos que todavía no vendés</span></div>
     <div style="font-size:.62rem;color:var(--muted);margin-top:3px">
-      ${vivos.length} para evaluar${fuera?` · ${fuera} afuera (descartados, con ficha o vencidos)`:''}
+      ${vivos.length} para evaluar${enPed?` · <b style="color:var(--green)">${enPed} ya está${enPed===1?'':'n'} en el pedido de arriba</b>`:''}${enVia?` · <b style="color:#38bdf8">${enVia} viajando</b>`:''}${fuera?` · ${fuera} afuera (descartados, con ficha o vencidos)`:''}
       <details style="display:inline"><summary style="display:inline;cursor:pointer;color:#60a5fa">· cómo funciona esto</summary>
         <div style="margin-top:6px;line-height:1.6;font-size:.98em">
           Van <b>aparte del pedido</b> a propósito: son para evaluar, no para comprar de una. Los trae el chat de Paraguay desde comprasparaguay; el robot les pregunta a ML a cuánto se venden y hace la cuenta.
@@ -9922,13 +10001,18 @@ function candidatosHTML(){
     </div>
   </div>`;
   if(!vivos.length){
-    return cab+simPYHTML()+pyEnCaminoHTML()+`<div class="empty-msg" style="font-size:.68rem;line-height:1.6">Todavía no hay ninguno.<br>
+    // Si no queda ninguna tarjeta PERO hay algo cargado en el pedido, el armado se dibuja igual:
+    // esa salida temprana escondía el pedido entero en el momento en que se terminaba de armar.
+    const vacio=enPed||enVia
+      ? `<div class="empty-msg" style="font-size:.68rem;line-height:1.6">No queda ninguno para evaluar: ${enPed?`<b>${enPed}</b> está${enPed===1?'':'n'} en el pedido de arriba`:''}${enPed&&enVia?' y ':''}${enVia?`<b>${enVia}</b> ya ${enVia===1?'viaja':'viajan'}`:''}.</div>`
+      : `<div class="empty-msg" style="font-size:.68rem;line-height:1.6">Todavía no hay ninguno.<br>
       El chat de Paraguay los carga cuando encuentra algo en comprasparaguay <b>que Nissei ofrezca</b> (ahí salen juntos el código, el precio y que hay stock), cueste menos de US$ 250 puesto y no sea de una marca que ML frena.</div>`;
+    return cab+simPYHTML()+pyEnCaminoHTML()+pedNuevosHTML(vivos0)+vacio;
   }
   // El que más margen deja, primero. Los que todavía no tienen la cuenta hecha van al final:
   // no se pueden comparar contra los medidos y ponerlos arriba sería invitar a decidir sin número.
   vivos.sort((a,b)=>(b.margen??-999)-(a.margen??-999));
-  return cab+simPYHTML()+pyEnCaminoHTML()+pedNuevosHTML(vivos)+vivos.map(c=>{
+  return cab+simPYHTML()+pyEnCaminoHTML()+pedNuevosHTML(vivos0)+vivos.map(c=>{
     const d=candDias(c);
     const usd=parseFloat(c.usd)||0;
     const puesto=usd>0?Math.round(usd*RECARGO_PY*100)/100:0;
@@ -9986,7 +10070,11 @@ function candidatosHTML(){
         <span style="font-size:.6rem;color:var(--amber)" title="El envío sale de la tarifa de ML porque este producto nunca vendió, y esa tarifa se midió $246 corta el 20/08. El margen real puede ser un poco menor.">· estimado</span>
       </div>`:`<div style="font-size:.68rem;color:var(--muted)">⏳ falta la cuenta de ML. <b>No se muestra ningún porcentaje</b> hasta tenerla: un margen inventado acá se aplica y recién se nota cuando ya compraste.</div>`}
       <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center">
-        ${(()=>{const pe=c.pedidoEn&&(state.compraspy||{})[c.pedidoEn];
+        ${(()=>{
+          // Desde el 22/09/2026 esta tarjeta NO se dibuja cuando el producto está en el pedido
+          // (`candEnPedido`), así que este chip ya no aparece. Queda por si algún día se vuelven a
+          // mostrar: el aviso tiene que viajar con la tarjeta, no vivir suelto.
+          const pe=c.pedidoEn&&(state.compraspy||{})[c.pedidoEn];
           if(!pe||pe.estado==='llego')return '';
           return `<span style="font-size:.64rem;color:#38bdf8;font-weight:700" title="Ya está en el pedido del ${pe.fecha}, que está en camino. El botón de llenar no lo vuelve a cargar; si querés más igual lo podés poner a mano.">🚚 en el pedido del ${pe.fecha}</span>`;})()}
         ${(()=>{const Q=candPuedePedir(c),uu=Math.max(0,parseInt(c.pedirU)||0);
@@ -10050,23 +10138,50 @@ async function candMarcaNo(id){
 // y origen Paraguay. Pregunta antes porque a partir de ahí el producto entra en el Arqueo, en
 // Pedidos y en todos los márgenes.
 // NO publica nada en ML ni compra nada: la publicación la hace él, que es la norma del 26/08.
+// Las fichas que ya se parecen a este nombre. Es una PISTA, no un diagnóstico: compara las dos
+// primeras palabras, que es como se detectó siempre. Vive en su propia función porque la miran
+// el botón de crear a mano y el paso automático de cuando el pedido llega, y con dos copias uno
+// podría frenar un repetido y el otro crearlo igual.
+function candFichasParecidas(nombre){
+  const q=normTxt(String(nombre||'').split(' ').slice(0,2).join(' '));
+  if(!q)return [];
+  return (state.products||[]).filter(p=>normTxt(p.name||'').includes(q));
+}
+// CREAR LA FICHA, EN UNA SOLA FUNCIÓN. La usan el botón 👍 Crear ficha y el paso automático de
+// cuando el pedido LLEGA a la oficina. Con dos copias, la ficha creada a mano y la creada sola
+// podían quedar con campos distintos —el costo, el código, el origen— y eso se mete en todos los
+// márgenes y en el patrimonio.
+// NO pregunta ni dibuja: eso lo hace el que llama, que es el que sabe si es de a uno o en tanda.
+// Devuelve el motivo cuando no crea, para poder decirlo en vez de saltearlo callado.
+async function candFichaDesde(src,opts){
+  const o=opts||{};
+  const nombre=String(src.nombre||'').trim();
+  if(!nombre)return{ok:false,motivo:'sin nombre'};
+  const usd=parseFloat(src.usd)||0;
+  const puesto=usd>0?Math.round(usd*RECARGO_PY*100)/100:0;
+  const tc=curTC();
+  const p={id:'p'+Date.now()+String(o.idSuf==null?'':o.idSuf),name:nombre.slice(0,90),costUSD:puesto,cost:puesto*tc,origen:'py'};
+  p.costFullUSD=Math.round(puesto*100)/100;
+  if(src.cod)p.codPy=String(src.cod);
+  if(usd>0){p.nisseiUSD=usd;p.nisseiTs=src.ts||Date.now();}
+  await fbSet('products/'+p.id,p);
+  if(src.id&&(state.candidatos||{})[src.id]){
+    await fbSet('candidatos_py/'+src.id+'/prodId',p.id);
+    state.candidatos[src.id].prodId=p.id;
+  }
+  return{ok:true,p,puesto,usd};
+}
 async function candCrearFicha(id){
   const c=(state.candidatos||{})[id];if(!c)return;
   const usd=parseFloat(c.usd)||0;
   const puesto=usd>0?Math.round(usd*RECARGO_PY*100)/100:0;
-  const rep=(state.products||[]).filter(p=>normTxt(p.name||'').includes(normTxt(String(c.nombre).split(' ').slice(0,2).join(' '))));
+  const rep=candFichasParecidas(c.nombre);
   if(!confirm(`Crear la ficha de:\n\n${c.nombre}\n\nCosto US$ ${puesto.toFixed(2)} (precio de Paraguay ${usd.toFixed(2)} + 15%)\nCódigo de pedido: ${c.cod||'(sin código)'}\nOrigen: Paraguay\n`
     +(rep.length?`\n⚠️ OJO: ya hay ${rep.length} ficha(s) con un nombre parecido:\n${rep.slice(0,4).map(p=>'· '+p.name).join('\n')}\nSi es el mismo producto, no crees otra.\n`:'')
     +`\nNo publica nada en ML ni compra nada.`))return;
-  const tc=curTC();
-  const p={id:'p'+Date.now(),name:String(c.nombre).slice(0,90),costUSD:puesto,cost:puesto*tc,origen:'py'};
-  p.costFullUSD=Math.round(puesto*100)/100;
-  if(c.cod)p.codPy=String(c.cod);
-  if(usd>0){p.nisseiUSD=usd;p.nisseiTs=c.ts||Date.now();}
-  await fbSet('products/'+p.id,p);
-  await fbSet('candidatos_py/'+id+'/prodId',p.id);
-  c.prodId=p.id;
-  await log('Ficha nueva desde Para probar: '+p.name+' · US$'+puesto);
+  const r=await candFichaDesde({id,nombre:c.nombre,usd:c.usd,cod:c.cod,ts:c.ts});
+  if(!r.ok){toast('No se pudo crear: '+r.motivo,'err',5000);return;}
+  await log('Ficha nueva desde Para probar: '+r.p.name+' · US$'+puesto);
   renderPedidos();toast('Ficha creada ✓ · cargale el envío y las medidas cuando las tengas');
 }
 function pyCanasta(){

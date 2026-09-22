@@ -4738,6 +4738,75 @@ más las dos salidas dan el total) · la cancelada no se cuenta · el margen con
 `${` suelto, más el período vacío. Chequeo de las tres listas más las clases de CSS: **0 funciones,
 0 variables, 0 `id` y 0 clases de diferencia**; sólo lo que se agregó.
 
+## LO QUE YA ESTÁ EN EL PEDIDO SALE DE "PARA PROBAR", Y AL LLEGAR PASA A PROBADO (22/09/2026)
+
+Dos pedidos suyos del mismo día, y son las dos mitades del mismo camino:
+*"los productos que están en el pedido quiero que salgan de acá abajo"* y, mirando la pantalla
+después de apretar 🪄 Llenar hasta el tope, *"no debería haber ningún producto que acabo de pedir
+en la lista de hoy. ya que no pertenecen más a este grupo"*. Y el final:
+*"cuando un producto 'nuevo' llega a mi oficina, ya pasa a ser producto probado y se elimina de
+nuevo y se agrega a probado"*.
+
+### 1. LA TARJETA NO SE REPITE ABAJO DEL PEDIDO
+
+El renglón del pedido de arriba **ya tiene la casilla de unidades y la ✕ para sacarlo**, así que la
+tarjeta de abajo no agregaba ninguna decisión: sólo hacía la lista el doble de larga justo cuando
+hay que mirarla. Salen los dos casos, y `candEnPedido` devuelve **cuál** de los dos es:
+
+| | qué pasa |
+|---|---|
+| `pedirU > 0` — cargado en el pedido que estás armando | sale de las tarjetas · el encabezado dice **"N ya están en el pedido de arriba"** |
+| `pedidoEn` a una compra que NO llegó — ya viajando | sale · el encabezado dice **"N viajando"** |
+
+**Se dice siempre cuántos salieron**: una lista que saca renglones sin decirlo es una lista que
+miente, y acá el renglón que falta es uno que él acaba de cargar.
+
+**LA TRAMPA, y era de las que rompen la pantalla entera: `pedNuevosHTML` recibía la MISMA lista que
+las tarjetas.** Si se le pasara la filtrada, los renglones del pedido desaparecerían **justo al
+terminar de cargarlos** — y con el pedido lleno, la salida temprana de *"no hay ninguno para
+evaluar"* se llevaba puesto el armado completo. Ahora el armado recibe la lista ENTERA (`vivos0`) y
+sólo las tarjetas usan la filtrada, y esa salida temprana dibuja el pedido igual.
+
+### 2. AL LLEGAR A LA OFICINA SE CREA LA FICHA
+
+Antes, marcar el pedido como llegado **sólo borraba `pedidoEn`**, o sea que el producto volvía a la
+lista de "Para probar" — justo después de haberlo comprado. La mercadería ya está en la casa: lo que
+corresponde es que tenga su **FICHA**, que es lo que lo convierte en producto del panel (entra en
+Pedidos, en el Arqueo y en los márgenes) y lo saca solo de "Para probar" (el filtro ya excluía
+`prodId`).
+
+**LA CUENTA VIVE EN UNA SOLA FUNCIÓN (`candFichaDesde`)**, que usan el botón 👍 Crear ficha y este
+paso automático. Con dos copias, la ficha creada a mano y la creada sola podían quedar con campos
+distintos —el costo, el código, el origen— y eso se mete en todos los márgenes y en el patrimonio.
+
+**LOS FRENOS, y ninguno es opcional:**
+ · **Si ya hay una ficha con nombre parecido NO se crea otra**, y se dice cuál es para que lo mire
+   él. Dos fichas del mismo producto parten el stock y las ventas en dos, y eso no se nota hasta
+   que alguien mira. (`candFichasParecidas`, la misma que ya usaba el botón.)
+ · **El que ya tenía ficha se deja como está.**
+ · **El precio en cero NO frena**: la ficha se crea igual —decisión suya del 26/08— **pero se
+   dice**, porque un producto sin costo se ve como si fuera todo ganancia y puede aparecer arriba
+   de todo en Rotación como un éxito que no existe.
+ · **El candidato vencido a los 45 días se crea igual**, con el nombre, el código y el precio que
+   guarda el propio pedido. Para eso se guardan.
+ · **Lo que quedó sin hacer sale en un cartel al final**, no en el log: son productos ya comprados
+   que si no se miran no aparecen en ningún lado.
+
+**Y EL `id` DE LA FICHA LLEVA EL NÚMERO DE ORDEN** (`idSuf`). Se crean varias en el MISMO
+milisegundo y `'p'+Date.now()` las habría hecho iguales: **la segunda pisaba a la primera y se
+perdía una ficha sin que nada lo dijera.**
+
+**El cartel de confirmación dice lo que va a hacer ANTES de hacerlo**: cuántas fichas se crean, con
+nombre; cuántas quedan en costo 0; cuáles no se crean por repetidas y contra qué ficha chocan.
+
+Probado con las funciones REALES sacadas del archivo y **19 casos**: `candEnPedido` en sus 8
+variantes (cargado, 0 u., viajando, pedido ya llegado, `pedidoEn` a un pedido borrado, cargado y
+viajando a la vez, basura en `pedirU`) · `candFichasParecidas` con y sin tilde y con nombre vacío
+(que NO trae todo el catálogo) · y el plan de la llegada con los seis casos: el sano, el repetido,
+el que ya tenía ficha, el sin precio, el candidato vencido que sale del pedido y el sin nombre.
+Chequeo de las tres listas más las clases de CSS: **0 funciones, 0 variables, 0 `id` y 0 clases de
+diferencia**; sólo lo que se agregó.
+
 ## EL PATRIMONIO BAJÓ EN 6 HORAS: NO FUERON LAS CAJAS (22/09/2026)
 
 Planteo suyo: *"hace 6 hr estábamos en 8.100 de patrimonio total, ahora estamos mucho menos. para
