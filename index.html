@@ -2275,7 +2275,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='19.97';
+const APP_VERSION='19.98';
 // El problema real que esto resuelve no es curiosidad: es que el celular guarda la app y sigue
 // mostrando la de ayer sin avisar. Varias veces se revisó un cambio que ya estaba subido y no se
 // veía. Por eso, además del número, el chip avisa cuando hay una versión nueva esperando.
@@ -10918,10 +10918,26 @@ function edadStockDe(p){
 function rotEstadoDe(p,stock,rotNorm,ventasPeriodo,now){
   if(stock===0)return{k:ventasPeriodo>0?'sano':'sinstock',edad:null};
   if(rotNorm>=0.75)return{k:'sano',edad:null};
-  if(rotNorm>=0.20)return{k:'lento',edad:edadStockDe(p)};
+  // LA GRACIA VA ANTES DE LOS DOS JUICIOS MALOS, NO SOLO ANTES DE "MUERTO" (22/09/2026).
+  // Estaba ABAJO del renglon de "lento", asi que solo protegia al que no vendia NADA. Lo vio el
+  // en la pantalla, con los dos Lapidus uno arriba del otro, mismo dia de entrada y 2 u. cada uno:
+  // el Rumba, con CERO ventas, salia "recien llegado"; el otro, que YA VENDIO UNA, salia "lento".
+  // El que vendio se veia PEOR que el que no vendio.
+  // La causa es el denominador: la rotacion divide por los 60 dias de la ventana sin preguntar si
+  // el producto tuvo stock en esos 60 dias. 1 venta sobre 2 u. da 0,50 y cae en "lento" aunque esa
+  // venta haya sido AYER. Es el MISMO error ya corregido en la reposicion (20/08) y en el orden de
+  // Pedidos (24/08), que en esta pantalla habia quedado sin hacer.
+  // No se toca el 0,20 ni la formula de la rotacion: el numero esta bien. Lo que estaba mal era
+  // juzgarlo antes de que el producto tuviera tiempo de venderse.
+  // EL VERDE NO SE TAPA, y por eso "sano" queda arriba de la gracia: algo que llega y vuela tiene
+  // que seguir viendose en verde, no degradado a "recien llegado".
+  // Efecto de arrastre, buscado: el aviso de almacenamiento cuelga de "lento" y "muerto", asi que
+  // ahora lo mas temprano que puede decir son 30 dias. Ya no aparece "empieza a pagar en 59 d"
+  // pegado a algo que entro ayer, que era el otro medio de lo que el marco.
   const edad=edadStockDe(p);
   if(p.restockTs&&(now-p.restockTs)<7*86400000)return{k:'reciente',edad};
   if(edad!=null&&edad<ROT_GRACIA_DIAS)return{k:'reciente',edad};
+  if(rotNorm>=0.20)return{k:'lento',edad};
   return{k:'muerto',edad};
 }
 // El avisito de almacenamiento. Va PEGADO al estado y no en una columna aparte a propósito: él

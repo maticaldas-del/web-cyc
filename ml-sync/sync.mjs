@@ -17983,7 +17983,20 @@ async function main() {
             // La cuenta se guarda porque la pantalla la necesita: el IIBB de ML es un % DISTINTO por
             // cuenta (4,07 Adriana · 4,37 Luciana · 5,95 Ayelen · 4,58 Matías), y sin saber de qué
             // cuenta es la publicación no hay forma de estimarlo en un producto que nunca vendió.
-            if (mejor) porProd[p.id] = { neto, precio: Math.round(precio), mla, cuenta: label, sinEnvio, envioDeML, activa };
+            // EL `envio` VA ADENTRO DEL OBJETO, Y FALTABA (22/09/2026). Abajo se guarda con
+            // `d.envio`, así que sin esta palabra llegaba `undefined` → `Number(undefined)` es NaN
+            // → `NaN || 0` → se escribía **CERO en netoCalcEnvio, en TODOS los productos, siempre**.
+            // El neto estaba bien (el envío sí se restó acá arriba); lo que se perdía era el número
+            // con el que se restó, que es justo lo que el panel necesita desde el 01/09 para poner
+            // la gestión de Full en el DIVISOR del margen.
+            // Lo que se veía: `margenMLDe` caía al `gestFull` cargado a mano, y en un producto que
+            // no lo tiene cargado quedaba en 0 — o sea, arriba de los $33.000 la pantalla mostraba
+            // "?" y "sin envío · ML sí cobra" en publicaciones que YA HABÍAN VENDIDO y por lo tanto
+            // tenían el envío medido. Lo marcó él con el Lapidus: *"ya vendió, o sea que tiene el
+            // costo y no se actualizó"*.
+            // Es el error de siempre visto de cerca: el comentario de abajo promete que se guarda
+            // "el envío que se usó para sacar este neto" y nadie comprobó que llegara.
+            if (mejor) porProd[p.id] = { neto, precio: Math.round(precio), mla, cuenta: label, envio, sinEnvio, envioDeML, activa };
           }
         }
       }
