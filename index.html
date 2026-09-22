@@ -2281,7 +2281,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='20.05';
+const APP_VERSION='20.06';
 // El problema real que esto resuelve no es curiosidad: es que el celular guarda la app y sigue
 // mostrando la de ayer sin avisar. Varias veces se revisó un cambio que ya estaba subido y no se
 // veía. Por eso, además del número, el chip avisa cuando hay una versión nueva esperando.
@@ -13453,16 +13453,23 @@ const AFIP_REG={
   matias: {cat:'F',fact:38678093},
 };
 function catLim(c){const x=MONO_CATS.find(m=>m.c===c);return x?x.lim:0;}
-// LA META DEL PUNTAJE BAJÓ DE 40 A 38 (22/09/2026), Y NO ES QUE SE AFLOJÓ LA VARA.
+// LA META DEL PUNTAJE BAJÓ DE 40 A 35 (22/09/2026), Y NO ES QUE SE AFLOJÓ LA VARA.
 // El 22/09 el margen de la pantalla pasó a dividir CON el envío de Full adentro —el mismo
-// criterio que el piso del negocio desde el 01/09— y con eso el MISMO mes mide ~5% menos:
-// septiembre daba 33% y pasó a 31,2% sin que cambiara nada del negocio. La meta seguía en 40,
-// que era la vara de la fórmula vieja, así que el Puntaje le bajó Margen de 1,5 a 0,8 puntos en
-// un mes que viene 3,5 puntos MEJOR que el anterior. 38 es el 40 viejo llevado a la escala nueva.
+// criterio que el piso del negocio desde el 01/09— y con eso el MISMO mes mide menos sin que
+// cambiara nada del negocio. La meta seguía en 40, o sea apuntando a una fórmula que ya no existe:
+// el Puntaje le bajó Margen de 1,10 a 0,80 puntos en un mes que viene 3,5 puntos MEJOR que el
+// anterior. 35 es el 40 viejo llevado a la escala nueva.
+// PRIMERO SE PUSO 38 Y ERA POCO, Y ÉL LO AGARRÓ: *"la vara no bajó lo suficiente"*. El 38 salió de
+// un 33% que él recordaba del "% Markup" de Ventas x Producto, que filtra por cuenta y período —
+// NO es el margen que usa el Puntaje, que es del mes entero y da 30,6%. Con el número correcto la
+// equivalencia da 35, y se verificó de frente: 30,6% contra meta 35 devuelve el total a 7,0, que
+// es donde estaba antes de tocar nada.
+// LA LECCIÓN: dos pantallas que muestran "el margen del mes" pueden estar filtrando distinto.
+// Antes de calibrar una vara con un número, mirar de qué pantalla salió.
 // OJO: esto NO es el piso del negocio (23%) ni la meta a la que sube el robot (25%). Ésos
 // deciden PRECIOS, ya medían con el envío adentro y no se tocaron.
 // Es el valor POR DEFECTO: un mes donde él haya guardado objetivos a mano conserva los suyos.
-const PUNT_DEF={margenMeta:38, devOk:3, devMax:12, gastOk:10, gastMax:50};
+const PUNT_DEF={margenMeta:35, devOk:3, devMax:12, gastOk:10, gastMax:50};
 function puntCfg(ym){
   const o=(state.puntaje&&state.puntaje[ym])||{};
   const n=(v,d)=>(v!=null&&v!==''&&isFinite(v))?Number(v):d;
