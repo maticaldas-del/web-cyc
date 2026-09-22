@@ -4738,6 +4738,52 @@ más las dos salidas dan el total) · la cancelada no se cuenta · el margen con
 `${` suelto, más el período vacío. Chequeo de las tres listas más las clases de CSS: **0 funciones,
 0 variables, 0 `id` y 0 clases de diferencia**; sólo lo que se agregó.
 
+## EL PATRIMONIO BAJÓ EN 6 HORAS: NO FUERON LAS CAJAS (22/09/2026)
+
+Planteo suyo: *"hace 6 hr estábamos en 8.100 de patrimonio total, ahora estamos mucho menos. para
+mí el bot puso que las cajas llegaron (esa mercadería desaparece) y como todavía están revisando la
+mercadería en Full no aparecen como stock, entonces se pierden"*.
+
+**EL MECANISMO QUE ÉL DESCRIBE ES REAL Y ESTÁ EN EL CÓDIGO** (`enTransito()` saltea la caja entera
+en cuanto está `recibida`, y lo que ML todavía procesa no lo cuenta nadie — ver la corrección a la
+nota del 12/09 más arriba). **Pero medido, no fue eso.**
+
+**`faltaron:7` (comando nuevo, solo lee), en los últimos 7 días:**
+
+| marcada | cuenta | caja | quién | qué sacó |
+|---|---|---|---|---|
+| 17/09 | Luciana | 510 u. del 05/09 | ✋ a mano | 🟢 completa · nada |
+| 19/09 | Matías | 165 u. del 15/09 | 🤖 el robot | 🟢 completa · nada |
+| 21/09 | Adriana | 65 u. del 08/09 | 🤖 el robot | 🟠 **2 u. · US$ 55,50** |
+
+**3 cajas · 740 unidades · y lo único que se borró del patrimonio son US$ 55,50** (2 u. de
+Halloween 100ml Freesia que nunca entraron). **La baja fue de ~US$ 859: las cajas explican el 6%.**
+Y la última marca fue **ayer**, no hoy.
+
+**EL CANDIDATO QUE SÍ ENCAJA, y es lo único además del stock que el robot escribe en el Arqueo:**
+`ml-daily` corre **`saldoml:go` todas las noches a las 00:03** y **pisa `cyc/finanzas/mp_liq`**, o
+sea la casilla *"A liquidar en ML"*, que entra derecho en el patrimonio (`efect`). Si anoche
+recalculó más bajo que el número anterior, el patrimonio baja esa misma noche **sin que nadie toque
+nada**. No es un error: es el número al día. Pero **conviene saber que se mueve solo**.
+
+**POR QUÉ "ÚLTIMA ACTIVIDAD" NO SIRVE PARA DESCARTAR NADA DE ESTO, y casi me como el error:**
+ese registro lo escribe la WEB (`cyc/history`, con `log()`) y **el robot no escribe ahí ni una
+línea** — verificado. Su captura mostraba sólo *"Caja despachada a Matías: 189 u."*, *"Caja
+despachada a Adriana: 95 u."* y *"Caja deshecha: 63 u."*, y yo estuve a punto de contestarle
+*"ninguna caja la marcó el robot, mirá tu propio registro"*. **Habría sido falta de dato leída como
+dato**, por enésima vez — y encima con el robot habiendo marcado DOS de las tres.
+
+**Lo que sí se verificó del despacho, y es la buena noticia: despachar una caja es NEUTRO.**
+`cerrarCaja` saca las unidades de la oficina y `enTransito()` las suma a "En camino a Full" con el
+MISMO costo (`efectivoCostP`), así que el patrimonio no se mueve. La captura lo confirma sola:
+"En camino" muestra **Matías 189** y **Adriana 133**, que son justo las cajas que él acababa de
+cerrar. Deshacer una caja es igual de neutro.
+
+**LO QUE QUEDA PARA QUE DECIDA ÉL:** si esas 2 u. de Halloween en realidad llegaron y ML las estaba
+procesando, se devuelven con `abrircaja:76397947:go`. Pero los tres frenos ya se habían cumplido
+—13 días desde el despacho y ML 3 días sin dar de alta nada— así que lo más probable es que de
+verdad no hayan entrado.
+
 ## Cosas que ya pasaron (para no repetirlas)
 
 - **"PAGUÉ 55 Y DICE 55: ESTO ESTÁ MAL" — EL NÚMERO ESTABA BIEN Y EL RENGLÓN LO ESCONDÍA
