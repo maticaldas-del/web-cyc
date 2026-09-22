@@ -2011,8 +2011,16 @@ async function calcCajaBarata(db, o) {
   // Primer filtro, GRATIS: sale de lo que el robot ya escribió en `cyc/mllinks` cada hora
   // (`caja` y `cajaPtw`). Recién después se le pregunta algo a ML, así las llamadas son sólo
   // las que pueden terminar en candidata — la lección de velocidad del 13/09.
-  const fuera = { vendio: 0, sinStock: 0, sinPtw: 0, reciente: 0, sinFecha: 0 };
+  const fuera = { vendio: 0, sinStock: 0, sinPtw: 0, reciente: 0, sinFecha: 0, hermanaGana: 0 };
   const cand = [];
+  // Producto×cuenta que YA tiene una publicación activa ganando la caja. Ahí bajar OTRA
+  // publicación del mismo producto en la misma cuenta no trae ventas: el botón de comprar ya es
+  // nuestro, y bajar la otra sólo compite contra nosotros mismos regalando margen. La primera
+  // corrida real (22/09) proponía bajar el P47 de Matías teniendo otra P47 suya ganando.
+  const ganaCb = new Set();
+  for (const e of Object.values(links)) {
+    if (e && e.prodId && e.cuenta && !e.ignored && (e.status || '') === 'active' && e.caja === 'winning') ganaCb.add(e.prodId + '__' + e.cuenta);
+  }
   for (const [mla, e] of Object.entries(links)) {
     if (!e || !e.prodId || !e.cuenta || e.ignored || (e.status || '') !== 'active') continue;
     if (!pIdx[e.prodId]) continue;
@@ -2023,6 +2031,7 @@ async function calcCajaBarata(db, o) {
     if (sobreDias > 0 && (uCb[mla] || 0) > 0 && (e.caja === 'losing' || e.caja === 'sharing')) {
       const ds = diasStockCb(e.prodId, e.cuenta);
       if (ds && ds.dias > sobreDias) {
+        if (ganaCb.has(e.prodId + '__' + e.cuenta)) { fuera.hermanaGana++; continue; }
         const ptwS = Number(e.cajaPtw) || 0;
         if (!(ptwS > 0)) { fuera.sinPtw++; continue; }
         cand.push({ mla, e, st: ds.st, ptw: ptwS, quieta: quietaDe(mla, e.prodId, e.cuenta),
@@ -5864,7 +5873,8 @@ async function main() {
 
       console.log(`\nSE GANA LA CAJA Y EL MARGEN AGUANTA (no venden · sano ${CBR_SANO}%): ${sanasCbr.length}`);
       console.log(`   candidatas miradas ${cbr.mirados} · descartadas: ${cbr.fuera.vendio} vendieron`
-        + ` · ${cbr.fuera.sinStock} sin stock · ${cbr.fuera.sinPtw} sin precio de caja de ML`);
+        + ` · ${cbr.fuera.sinStock} sin stock · ${cbr.fuera.sinPtw} sin precio de caja de ML`
+        + (cbr.fuera.hermanaGana ? ` · ${cbr.fuera.hermanaGana} les sobra stock pero otra publicación suya ya gana la caja` : ''));
       // Las que NO llegan al margen sano se listan igual, con cuánto habría que bajar y en cuánto
       // quedarían. Un "8 quedaron con margen flaco" sin decir cuáles esconde la que está en 24%
       // por dos pesos — y ésa la quiero ver yo. Van al log, no al mensaje.
