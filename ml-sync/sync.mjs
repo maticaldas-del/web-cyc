@@ -1747,8 +1747,9 @@ async function calcBajarStock(db, o) {
     const st = parseInt(inv[e.prodId + '__' + sidL(e.cuenta)]) || 0;
     if (st <= 0) continue;
     const k = e.prodId + '__' + e.cuenta;
-    if (!porProd[k]) porProd[k] = { prodId: e.prodId, cuenta: e.cuenta, nom: (p.name || '').slice(0, 34), st, mlas: [], pausadas: 0, p };
+    if (!porProd[k]) porProd[k] = { prodId: e.prodId, cuenta: e.cuenta, nom: (p.name || '').slice(0, 34), st, mlas: [], pausadas: 0, p, cajas: [] };
     porProd[k].mlas.push(mla);
+    if ((e.status || '') === 'active') porProd[k].cajas.push(e.caja || '');
     if ((e.status || '') === 'paused') porProd[k].pausadas++;
   }
 
@@ -1757,9 +1758,32 @@ async function calcBajarStock(db, o) {
   // cajas. Si el resultado da cero, estos números dicen cuál de los tres filtros se lo comió.
   const fuera = { vendio: 0, sinFecha: 0, recienLlegado: 0 };
   const filas = [];
+  // ── VENDE, PERO DESPACIO: TE SOBRA STOCK (22/09/2026) ─────────────────────────────
+  // Pedido suyo: *"bajar producto si el stock que tenemos supera los dos meses y hay que pagar
+  // por antigüedad"*. Lo que vende no entraba acá (`vendio` lo descartaba) ni en ningún otro
+  // lado que proponga bajar. Esta lista es la foto COMPLETA de lo que sobra, con el estado de la
+  // caja: el aviso propone precio sólo donde ML dice a cuánto se gana la caja (`calcCajaBarata`
+  // con `sobreDias`), y el resto lo muestra sin número diciendo POR QUÉ el precio no lo mueve.
+  // La caja se resume con la MEJOR de sus publicaciones activas: con que una gane, el producto
+  // ya es el botón de comprar.
+  const sobra = [];
+  const RANK_CAJA = { winning: 4, sharing: 3, losing: 2, nocat: 1 };
   for (const r of Object.values(porProd)) {
     const vend = uProdCta[r.prodId + '__' + r.cuenta] || 0;
-    if (vend > 0) { fuera.vendio++; continue; }            // vendió en ESA cuenta: no es este problema
+    if (vend > 0) {
+      fuera.vendio++;
+      const diasSt = Math.round(r.st / (vend / dias));
+      if (diasSt > almacDias) {
+        const caja = r.cajas.reduce((a, c) => ((RANK_CAJA[c] || 0) > (RANK_CAJA[a] || 0) ? c : a), '');
+        const edad = edadDe(r.prodId, r.cuenta);
+        const costoU = (parseFloat(r.p.costFullUSD) || parseFloat(r.p.costUSD) || 0) * tc;
+        sobra.push({ prodId: r.prodId, cuenta: r.cuenta, nom: r.nom, st: r.st, mlas: r.mlas,
+          porMes: Math.round(vend * 30 / dias), diasStock: diasSt, caja: caja || null, edad,
+          pagando: edad != null && edad >= almacDias, capital: Math.round(costoU * r.st),
+          soloPausadas: r.cajas.length === 0 });
+      }
+      continue;                                           // vendió en ESA cuenta: no es "parado"
+    }
     const edad = edadDe(r.prodId, r.cuenta);
     if (edad == null) { fuera.sinFecha++; continue; }      // sin fecha real no se opina
     if (edad < graciaDias) { fuera.recienLlegado++; continue; }  // recién llegado: hay que darle tiempo
@@ -1772,8 +1796,9 @@ async function calcBajarStock(db, o) {
     });
   }
   filas.sort((a, b) => b.capital - a.capital);
+  sobra.sort((a, b) => b.capital - a.capital);
   return {
-    filas, fuera, mirados: Object.keys(porProd).length,
+    filas, sobra, fuera, mirados: Object.keys(porProd).length,
     total: filas.reduce((a, x) => a + x.capital, 0),
     pagando: filas.filter((x) => x.pagando).length,
     almacDias, graciaDias, dias,
@@ -1916,6 +1941,15 @@ async function calcCajaBarata(db, o) {
   const {
     dias = 30, minSano = 25, maxEnvios = 15, diasQuieta = 0, minVisitas = 20, conVisitas = false,
     products = [], labels = [], accounts = {}, tc = 1500,
+    // ── "VENDE, PERO TE SOBRA STOCK" (22/09/2026) ────────────────────────────────────
+    // Pedido suyo: *"bajar producto si el stock que tenemos supera los dos meses y hay que pagar
+    // por antigüedad"* y *"el objetivo es rotar lo máximo posible y maximizar ganancias"*.
+    // Hasta hoy las cuatro cuentas que proponen bajar exigían NO haber vendido (o un frenazo), así
+    // que lo que vende DESPACIO con stock para meses no salía en ningún lado: `calcSubirPuede` lo
+    // descartaba por sobrestock y nadie lo proponía para bajar. Con `sobreDias` > 0 entra también
+    // lo que vendió en la ventana SI los días de stock (producto×cuenta) pasan ese número y la caja
+    // está perdida o compartida. Queda marcado `sobre` para que el aviso lo muestre aparte.
+    sobreDias = 0,
   } = o || {};
   const links = (await db.get('cyc/mllinks')) || {};
   const invCb = (await db.get('cyc/inventory')) || {};
@@ -1927,7 +1961,7 @@ async function calcCajaBarata(db, o) {
 
   // Unidades vendidas por publicación en la ventana. Acá se busca lo CONTRARIO que en `subirpuede`:
   // las que NO vendieron.
-  const desdeCb = Date.now() - dias * 864e5, uCb = {}, ultVentaCb = {};
+  const desdeCb = Date.now() - dias * 864e5, uCb = {}, ultVentaCb = {}, uProdCtaCb = {};
   for (const [k, ents] of Object.entries(vpCb)) {
     const ts = Date.parse(k.slice(0, 10).replace(/_/g, '-'));
     if (!isFinite(ts)) continue;
@@ -1938,8 +1972,21 @@ async function calcCajaBarata(db, o) {
       if (ts > (ultVentaCb[v.mla] || 0)) ultVentaCb[v.mla] = ts;
       if (ts < desdeCb) continue;
       uCb[v.mla] = (uCb[v.mla] || 0) + (v.qty || 1);
+      // Por producto×cuenta, para los días de stock: MISMA clave que `calcSubirPuede` — el
+      // stock de `cyc/inventory` es por producto×cuenta, no por publicación (lección Paulvic).
+      if (v.prodId && v.cuenta) uProdCtaCb[v.prodId + '__' + v.cuenta] = (uProdCtaCb[v.prodId + '__' + v.cuenta] || 0) + (v.qty || 1);
     }
   }
+  // Días de stock = lo que hay ÷ lo que se vende por día en ESA cuenta. Sin ventas o sin stock
+  // conocido devuelve null: "no se puede medir" no es "sobra".
+  const diasStockCb = (pid, cta) => {
+    const k = pid + '__' + sidCb(cta);
+    if (invCb[k] == null) return null;
+    const st = parseInt(invCb[k]) || 0;
+    const vend = uProdCtaCb[pid + '__' + cta] || 0;
+    if (!(vend > 0) || !(st > 0)) return null;
+    return { st, vend, dias: Math.round(st / (vend / dias)) };
+  };
 
   // ── EL RELOJ DEL MODO REMATE (16/09/2026) ────────────────────────────────────────
   // Él lo pidió como *"llega a Full y no vendió ni un solo día"*, y la Pad 2 —el ejemplo que
@@ -1969,6 +2016,20 @@ async function calcCajaBarata(db, o) {
   for (const [mla, e] of Object.entries(links)) {
     if (!e || !e.prodId || !e.cuenta || e.ignored || (e.status || '') !== 'active') continue;
     if (!pIdx[e.prodId]) continue;
+    // VENDE PERO SOBRA: entra por su propia puerta, sin pasar por los filtros de "no vende".
+    // Acepta también la caja COMPARTIDA: compartir no es ganar, y ganarla entera es justo lo que
+    // puede acelerar la rotación. Los que ya GANAN la caja no entran — ahí bajar no te trae el
+    // botón de comprar, y el aviso los muestra aparte sin precio.
+    if (sobreDias > 0 && (uCb[mla] || 0) > 0 && (e.caja === 'losing' || e.caja === 'sharing')) {
+      const ds = diasStockCb(e.prodId, e.cuenta);
+      if (ds && ds.dias > sobreDias) {
+        const ptwS = Number(e.cajaPtw) || 0;
+        if (!(ptwS > 0)) { fuera.sinPtw++; continue; }
+        cand.push({ mla, e, st: ds.st, ptw: ptwS, quieta: quietaDe(mla, e.prodId, e.cuenta),
+          sobre: { dias: ds.dias, porMes: Math.round(ds.vend * 30 / dias), edad: edadFullCb(e.prodId, e.cuenta) } });
+        continue;
+      }
+    }
     if (e.caja !== 'losing') continue;
     // El reloj se CALCULA SIEMPRE, pero sólo FILTRA cuando se pide (`diasQuieta`). Así UNA sola
     // llamada sirve para las dos secciones del aviso diario: la de margen sano usa la ventana de
@@ -2046,7 +2107,7 @@ async function calcCajaBarata(db, o) {
       noSano.push({
         mla: c.mla, cuenta: c.e.cuenta, nom: (p.name || b.title || c.mla).slice(0, 34),
         precio, ptw: Math.round(c.ptw), baja, mgPw: mgTope, envio: 0, costo: Math.round(costo),
-        st: c.st, envioEstimado: true, exigido: minSano,
+        st: c.st, envioEstimado: true, exigido: minSano, sobre: c.sobre || null,
         // Un decimal, no cero: con 24,6% redondeado a "25%" el renglón se lee como
         // "no llega ni a 25% (25%)", que parece una contradicción y hace dudar del número.
         why: `bajando ${baja.toFixed(0)}% no llega ni a ${minSano}% ANTES de descontar el envío (${mgTope.toFixed(1)}%)`,
@@ -2062,7 +2123,9 @@ async function calcCajaBarata(db, o) {
     // NO SE ESCONDE: sale en su propia lista, con el motivo y SIN precio al lado — un renglón
     // con precio invita a aplicarlo, que es la lección del Filtro agua del 14/09.
     let visCb = null;
-    if (conVisitas) {
+    // Las que SOBRAN STOCK vendieron en la ventana: alguien las ve. El filtro de visitas es para
+    // las que no venden nada, donde separa "no la ve nadie" de "la ven y no compran".
+    if (conVisitas && !c.sobre) {
       try { visCb = Number((await mlGet(`/items/${c.mla}/visits/time_window?last=30&unit=day`, tk))?.total_visits); } catch { visCb = null; }
       if (!isFinite(visCb)) visCb = null;
       if (visCb != null && visCb < minVisitas) {
@@ -2081,12 +2144,21 @@ async function calcCajaBarata(db, o) {
     // que un aviso incompleto, así que se corta acá.
     // NO SE ESCONDE: las que quedan sin medir se cuentan y se imprimen. Un tope mudo sería el
     // mismo error del descarte por omisión que ya mordió tres veces.
-    if (envios >= maxEnvios) { topeados.push({ mla: c.mla, cuenta: c.e.cuenta, nom: (p.name || b.title || c.mla).slice(0, 34), baja, mgTope }); continue; }
-    envios++;
-    // El envío: estas nunca vendieron, así que sale de la TARIFA de ML. Queda MARCADO.
-    const rT = await envioSegunML(c.mla, tk);
-    if (!rT) { sinDato.push({ mla: c.mla, why: 'ni ventas ni tarifa de ML: sin envío el margen sería un invento' }); continue; }
-    const envio = Math.max(0, rT.envio);
+    // ABAJO DE LOS $33.000 EL ENVÍO LO PAGA EL COMPRADOR y a nosotros no nos cobran nada: es
+    // CERO de verdad, no una estimación (lo mismo que usa `activarPausadasFull`). Como el precio
+    // de la caja es menor al de hoy, si hoy está abajo de la barrera el nuevo también. No hace
+    // falta preguntarle a ML — y así no gasta del tope de consultas, que con los de "sobra
+    // stock" adentro pasó a tener más candidatas.
+    let envio, envioEstimado = true;
+    if (precio < UMBRAL_ENVIO_GRATIS) { envio = 0; envioEstimado = false; }
+    else {
+      if (envios >= maxEnvios) { topeados.push({ mla: c.mla, cuenta: c.e.cuenta, nom: (p.name || b.title || c.mla).slice(0, 34), baja, mgTope }); continue; }
+      envios++;
+      // El envío sale de la TARIFA de ML (`list_cost`). Queda MARCADO como estimado.
+      const rT = await envioSegunML(c.mla, tk);
+      if (!rT) { sinDato.push({ mla: c.mla, why: 'ni ventas ni tarifa de ML: sin envío el margen sería un invento' }); continue; }
+      envio = Math.max(0, rT.envio);
+    }
     const m = (mlExtraPct(c.e.cuenta) + monoP) / 100;
     const mlx = c.ptw * m;
     const mgPw = (c.ptw - comPw - envio - costo - mlx) / (costo + mlx + envio) * 100;
@@ -2116,9 +2188,10 @@ async function calcCajaBarata(db, o) {
       mla: c.mla, cuenta: c.e.cuenta, prodId: c.e.prodId,
       nom: (p.name || b.title || c.mla).slice(0, 34),
       precio, ptw: Math.round(c.ptw), baja, mgPw, mgHoy, envio, costo: Math.round(costo),
-      st: c.st, envioEstimado: true, exigido,
+      st: c.st, envioEstimado, exigido,
       quieta: c.quieta, vis: visCb,
       resigna, resignaTot: resigna == null ? null : resigna * c.st,
+      sobre: c.sobre || null,
     };
     if (mgPw >= exigido) filas.push(fila);
     else noSano.push({ ...fila, why: `bajando ${baja.toFixed(0)}% queda en ${mgPw.toFixed(1)}%, y el sano es ${exigido}%` });
@@ -5587,7 +5660,12 @@ async function main() {
       // El "% sano" suyo, textual (15/09): *"el % sano es de 25 hacia arriba"*. Lo que llega acá
       // no hace falta rematarlo: se baja, se gana la caja y no se resigna nada.
       const CBR_SANO = 25;
-      const cbr = await calcCajaBarata(db, { dias: 30, minSano: REM_P2, conVisitas: true, products, labels, accounts, tc });
+      // `sobreDias` (22/09/2026): entran también las que VENDEN pero tienen stock para más de 60
+      // días (cuando ML empieza a cobrar almacenamiento). El tope de envíos sube a 25 porque son
+      // más candidatas — y abajo de los $33.000 ya no se gasta consulta (el envío es cero).
+      const SOBRE_DIAS = 60;
+      const cbr = await calcCajaBarata(db, { dias: 30, minSano: REM_P2, conVisitas: true, products, labels, accounts, tc,
+        sobreDias: SOBRE_DIAS, maxEnvios: 25 });
       // Las ventas crudas, para la comprobación del escalón de más abajo. Va acá y no adentro del
       // bloque: si se usara sin declararla, JavaScript la busca afuera, no la encuentra y CORTA LA
       // CORRIDA ENTERA — y `node --check` compila igual. Es el mismo error que el `invUpd` del
@@ -5686,6 +5764,23 @@ async function main() {
       // precios distintos son una instrucción imposible (la lección de la Piedra Pómez, 13/09).
       const mapZm2 = new Map(zm.filas.map((f) => [f.mla, f]));
       cbr.filas = cbr.filas.filter((f) => !mapZm2.has(f.mla));
+      // ── VENDE PERO SOBRA: SE SEPARA ANTES DE CLASIFICAR (22/09/2026) ──────────────────
+      // Los tres niveles de abajo son para lo que NO vende (su reloj es "hace cuánto que no
+      // vende"). Lo que sobra vende, así que va por su lado y con su propia vara:
+      //   · 25% para arriba → se propone siempre (su "% sano", 15/09).
+      //   · 20% para arriba → sólo si YA paga almacenamiento (60+ días en Full con fecha real):
+      //     es el piso del escalón 1 del remate, el mismo número y por el mismo motivo.
+      //   · abajo de eso → al log, con cuánto quedaría. Nunca al mensaje con precio.
+      const SOBRE_SANO = CBR_SANO;
+      const sobreSanas = [], sobrePaga = [], sobreNo = [];
+      for (const f of cbr.filas.filter((x) => x.sobre)) {
+        if (f.mgPw >= SOBRE_SANO) sobreSanas.push(f);
+        else if (f.sobre.edad != null && f.sobre.edad >= SOBRE_DIAS && f.mgPw >= REM_P1) sobrePaga.push(f);
+        else sobreNo.push(f);
+      }
+      const sobreNoSano = cbr.noSano.filter((x) => x.sobre);
+      cbr.noSano = cbr.noSano.filter((x) => !x.sobre);
+      cbr.filas = cbr.filas.filter((x) => !x.sobre);
 
       // ── LOS TRES NIVELES DE "BAJAR PARA QUE SALGA" (16/09/2026) ───────────────────────
       // Salen de la MISMA lista, clasificada por cuánto hace que no vende y en qué margen queda:
@@ -5714,7 +5809,7 @@ async function main() {
       // flojo del remate quedan adentro filas que no entran en ningún nivel (`remNo`), y si ésas
       // taparan el renglón del frenazo la publicación no saldría en NINGUNA lista — el descarte
       // silencioso que ya mordió tres veces.
-      const mapCbr = new Map([...sanasCbr, ...remE1, ...remE2].map((f) => [f.mla, f]));
+      const mapCbr = new Map([...sanasCbr, ...remE1, ...remE2, ...sobreSanas, ...sobrePaga].map((f) => [f.mla, f]));
       const dobles = frn.filas.filter((f) => mapCbr.has(f.mla));
       if (dobles.length) {
         frn.filas = frn.filas.filter((f) => !mapCbr.has(f.mla));
@@ -5826,6 +5921,22 @@ async function main() {
           + (f.paraGanar && f.costo > 0 && f.paraGanar <= f.costo ? ` · ⚠️ IMPOSIBLE: la mercadería sola cuesta ${money(f.costo)}` : ''));
       }
 
+      // ── VENDE PERO SOBRA (22/09/2026) ─────────────────────────────────────────────────
+      console.log(`\nVENDE PERO SOBRA STOCK (más de ${SOBRE_DIAS} d): ${par.sobra.length} producto(s) por cuenta`);
+      console.log(`   con precio propuesto: ${sobreSanas.length} al ${SOBRE_SANO}%+ · ${sobrePaga.length} al ${REM_P1}%+ porque ya pagan almacenamiento`);
+      for (const f of [...sobreSanas, ...sobrePaga]) {
+        console.log(`   · ${f.nom} (${f.cuenta}) ${money(f.precio)} → ${money(f.ptw)} (−${f.baja.toFixed(1)}%)`
+          + ` · ${f.mgHoy == null ? '' : f.mgHoy.toFixed(1) + '% → '}${f.mgPw.toFixed(1)}% · ${f.st} u. = ${f.sobre.dias} d · vende ${f.sobre.porMes}/mes`);
+      }
+      if (sobreNo.length || sobreNoSano.length) {
+        console.log(`   no llegan ni bajando hasta ganar la caja · ${sobreNo.length + sobreNoSano.length}:`);
+        for (const f of [...sobreNo, ...sobreNoSano].slice(0, 10)) console.log(`      · ${f.nom} (${f.cuenta}) · a ${money(f.ptw)} quedaría en ${f.mgPw.toFixed(1)}%`);
+      }
+      for (const f of par.sobra.slice(0, 15)) {
+        console.log(`   ▸ ${f.nom} (${f.cuenta}) · ${f.st} u. = ${f.diasStock} d · vende ${f.porMes}/mes · caja ${f.caja || '?'}`
+          + ` · ${money(f.capital)}${f.pagando ? ' · 💸 ya paga' : ''}`);
+      }
+
       // ── EL MENSAJE ────────────────────────────────────────────────────────────────────
       // VA LA LISTA COMPLETA, NUMERADA. Antes salían sólo las 3 primeras de cada cosa y abajo
       // un "…y 13 más", y él lo marcó el 14/09/2026: *"Me paso la lista pero incompleta no?"*.
@@ -5927,6 +6038,49 @@ async function main() {
             + (f.resigna == null ? '\n   ⚠️ no pude medir cuánta plata resignás' : `\n   resignás ${money(f.resigna)} por unidad · <b>${money(f.resignaTot)}</b> por las ${f.st}`));
         }
         for (const f of nuevasRem) paraAnotar['r_' + f.mla] = { tipo: 'rematar', valor: f.ptw, ts: hoyTs };
+      }
+      // ── TE SOBRA STOCK: BAJANDO GANÁS LA CAJA (22/09/2026) ─────────────────────────────
+      // Vende, pero tenés para más de 60 días y la caja la tiene otro (o la compartís). Ganarla
+      // entera es la palanca que SÍ mueve la rotación. LLEVAN NÚMERO: la cuenta está hecha entera
+      // (comisión preguntada a ML al precio nuevo, envío, IIBB, monotributo) igual que la sección
+      // del Seagate. Misma espera de 10 días que las otras bajas, para no armar una escalera.
+      const nuevasSobre = [...sobreSanas, ...sobrePaga].filter((f) => !yaAvisado('o_' + f.mla, 'cajabarata', f.ptw));
+      const sobreConPrecio = new Set([...sobreSanas, ...sobrePaga].map((f) => f.mla));
+      if (nuevasSobre.length) {
+        L.push(`\n📦 <b>Te sobra stock: bajando ganás la caja</b> · ${nuevasSobre.length}`);
+        L.push(`<i>Venden, pero tenés para más de ${SOBRE_DIAS} días (ML cobra almacenamiento). Ganando el botón de comprar rotan más rápido. El margen ya tiene todo descontado.</i>`);
+        for (const f of nuevasSobre) {
+          const n4 = numerar({ tipo: 'bajar', mla: f.mla, nom: f.nom, cuenta: f.cuenta, de: f.precio, a: f.ptw, extraMes: 0 });
+          const deA = f.mgHoy == null ? `queda en ${f.mgPw.toFixed(0)}%` : `${f.mgHoy.toFixed(1)}% → <b>${f.mgPw.toFixed(1)}%</b>`;
+          const paga = f.sobre.edad != null && f.sobre.edad >= SOBRE_DIAS;
+          L.push(`<b>${n4}.</b> ${f.nom} (${f.cuenta})\n   ${money(f.precio)} → ${money(f.ptw)} (−${f.baja.toFixed(1)}%) · ${deA}`
+            + `\n   ${f.st} u. = ${f.sobre.dias} d de stock · vende ${f.sobre.porMes}/mes${paga ? ' · 💸 ya paga almacenamiento' : ''}`
+            + (f.resigna == null ? '' : ` · resignás ${money(f.resigna)}/u`)
+            + (f.mgPw < SOBRE_SANO ? `\n   ⚠️ queda abajo de tu piso: va al ${REM_P1}% porque ya paga almacenamiento` : '')
+            + (f.envioEstimado && f.envio > 0 ? '\n   (envío estimado con la tarifa de ML)' : ''));
+        }
+        for (const f of nuevasSobre) paraAnotar['o_' + f.mla] = { tipo: 'cajabarata', valor: f.ptw, ts: hoyTs };
+      }
+      // ── TE SOBRA STOCK Y EL PRECIO NO LO MUEVE ───────────────────────────────────────────
+      // El resto de lo que sobra, SIN número, diciendo por qué no hay precio para proponer. Si no
+      // se dijera, la lista de arriba se leería como "esto es todo lo que sobra" — el descarte
+      // silencioso de siempre. El motivo cambia lo que se hace, así que va en cada renglón.
+      const infoSobra = par.sobra.filter((r) => !r.mlas.some((m) => sobreConPrecio.has(m)))
+        .filter((r) => !yaAvisado('s_' + r.prodId + '__' + r.cuenta, 'sobra', 'x'));
+      if (infoSobra.length) {
+        const mapNoLlega = new Map([...sobreNo, ...sobreNoSano].map((f) => [f.mla, f]));
+        L.push(`\n🐢 <b>Te sobra stock y el precio no lo resuelve</b> · ${infoSobra.length}`);
+        for (const r of infoSobra) {
+          const nl = r.mlas.map((m) => mapNoLlega.get(m)).find(Boolean);
+          let porque;
+          if (r.caja === 'winning') porque = 'ya sos el botón de comprar: bajar no te trae más ventas. No reponer (Pedidos ya no lo pide)';
+          else if (nl) porque = `para ganar la caja habría que ir a ${money(nl.ptw)} y quedás en ${nl.mgPw.toFixed(0)}%`;
+          else if (r.soloPausadas) porque = 'todas sus publicaciones están pausadas';
+          else if (r.caja === 'nocat' || !r.caja) porque = 'no es de catálogo: no hay competidor contra quién medir un precio';
+          else porque = 'ML no dijo a qué precio se gana la caja (se vuelve a mirar mañana)';
+          L.push(`· ${r.nom} (${r.cuenta}) · ${r.st} u. = ${r.diasStock} d · vende ${r.porMes}/mes${r.pagando ? ' · 💸 ya paga' : ''}\n   ${porque}`);
+        }
+        for (const r of infoSobra) paraAnotar['s_' + r.prodId + '__' + r.cuenta] = { tipo: 'sobra', valor: 'x', ts: hoyTs };
       }
       if (nuevasPar.length) {
         const t = nuevasPar.reduce((a, x) => a + x.capital, 0);

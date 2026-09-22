@@ -42,6 +42,10 @@ están más caras que alguien sin Full, rango 3,0% a 26,6%.
    panel todavía**. Idea sin decidir: `visit_share` (`maximum`/`medium`/`minimum`) en la columna
    Caja ML de Rotación. **`reason` viene vacío, no sirve.** No hacer nada sin que él lo pida.
 
+### 4b · "VENDE PERO SOBRA STOCK" ESTÁ HECHO EN LA RAMA `claude/happy-johnson-laasu8`
+Ver la sección con ese nombre. **Mientras no esté en la rama principal, el aviso de la noche no lo
+usa** (el robot corre desde `claude/add-folder-78ysyb`).
+
 ### 5 · PENDIENTES QUE ÉL PIDIÓ RECORDAR (22/09/2026: *"acordate queda pendiente"*)
  · **el correo** del pedido del 21/09 (el recargo real sigue "corto").
  · cargar los **4 disponibles** en Finanzas → Arqueo (el `dispo` está listo y esperando).
@@ -1474,6 +1478,43 @@ partes cuentan la misma plata con números distintos, la diferencia no se pierde
 distintas, una está mal — y la que está sola no es la que está bien por ser el robot.** Y la
 segunda: el agujero se escondió un año porque **abajo de la barrera las dos fórmulas coinciden**;
 un error que sólo aparece en la mitad de los casos parece que no existe.
+
+## "VENDE, PERO TE SOBRA STOCK": EL AGUJERO DE BAJAR, TAPADO (22/09/2026)
+
+Pedido suyo: *"bajar producto si el stock que tenemos supera los dos meses y hay que pagar por
+antigüedad (…) el objetivo es rotar lo máximo posible y maximizar ganancias"*.
+
+**LAS CUATRO CUENTAS QUE PROPONÍAN BAJAR EXIGÍAN NO VENDER** (parado · remate 45/90 d · ganar la caja
+barato · frenazo). Lo que vende DESPACIO con stock para meses no salía en ningún lado:
+`calcSubirPuede` lo descartaba por sobrestock y nadie lo proponía para bajar. Ferrari Negro (110 d)
+y Batidora de Luciana (65 d) eran justo eso.
+
+**Cómo quedó, en el aviso diario, en DOS secciones:**
+ · **📦 "Te sobra stock: bajando ganás la caja"** — CON número. Vende, tiene más de **60 días** de
+   stock (producto×cuenta) y la caja la tiene otro o la comparte. Sale de `calcCajaBarata` con
+   `sobreDias:60`, la MISMA cuenta del Seagate (comisión preguntada a ML al precio nuevo, envío,
+   IIBB, monotributo). Vara: **25%**, o **20% si ya paga almacenamiento** (60+ días en Full con
+   fecha real) — el piso del escalón 1 del remate, por el mismo motivo. Abajo de 23% hace falta su
+   autorización con `unapub:…:bajar=` (el piso duro no se abre solo). Espera de 10 días como las
+   otras bajas.
+ · **🐢 "Te sobra stock y el precio no lo resuelve"** — SIN número, cada renglón con el POR QUÉ:
+   ya gana la caja (bajar no trae ventas → no reponer) · no es de catálogo · ni ganando la caja llega
+   al margen · todas pausadas. Sale de `calcBajarStock` (`sobra`), que ahora es la foto completa.
+   Sin esta sección la de arriba se leería como "esto es todo lo que sobra".
+
+**De paso:** abajo de los $33.000 `calcCajaBarata` ya no le pregunta el envío a ML (es cero de
+verdad: lo paga el comprador). Menos consultas, y el tope de envíos pasó de 15 a 25.
+**Las que venden no pasan por el filtro de visitas**: vender ya prueba que alguien las ve.
+
+**LO QUE NO SE HIZO, Y ES A PROPÓSITO:** proponer bajar lo que **pierde la caja y sigue vendiendo
+igual** sin sobrar stock. Es su regla del 13/09: *"quizás en perdiendo se sigue vendiendo igual"* —
+bajar ahí regala margen sin mover nada. Sólo entra si además sobra stock.
+
+Probado con las funciones REALES del archivo y datos inventados: sobra+pierde caja → propone ·
+sobra+comparte arriba de $33.000 → propone con envío preguntado · sobra+gana caja → sólo info ·
+vende bien (20 d) → no entra · no vende → igual que antes · **sin `sobreDias` el resultado es
+idéntico al de antes** (el comando `rematar` no cambia). Y el bloque del aviso corrido entero con
+esos datos arma las dos secciones, numera sólo las que tienen precio y no mezcla con las demás.
 
 ## ¿CONVIENE BAJAR UN PRECIO PARA GANAR MÁS? SÍ, PERO SON 2 DE 105 (13/09/2026)
 
