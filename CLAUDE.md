@@ -1050,6 +1050,23 @@ sobre un precio que él escribió bien. **Ahora se leen sólo los dígitos.**
 Probado con el bloque REAL sacado del archivo y 9 casos: `60000`, `60.000`, `60,000`, `$60005` (que
 redondea a 60000), más caro, igual, texto, y con variantes.
 
+**APLICADO EL 22/09/2026, y el filtro por palabra hizo su trabajo primero.** `unapub:lapidus` NO
+adivinó: contestó que **hay DOS Lapidus en Adriana** —el **Rumba Clásico Mujer** (`MLA2070620541`)
+y el **Pour Homme** (`MLA3310524980`)— y no tocó nada. Bajarle el precio al perfume equivocado
+habría sido peor que no hacer nada. El que subió el robot salió de **`tocados:96`**, que dice el
+MLA y la hora exacta: *"el robot lo puso en $62.340 el 2026-09-22 14:27 UTC"*.
+
+| | |
+|---|---|
+| publicación | **`MLA3310524980`** · Ted Lapidus Pour Homme · Adriana |
+| precio | **$62.340 → $60.000** (−3,8%) · releído de ML ✓ |
+| margen | 26% → **21,4%** · abajo del piso del 23%, con el piso abierto a mano y anotado en el log |
+| por unidad | de $10.810 a **$9.006** |
+| | 🔒 **marcada `liquidando`** — el robot no se la sube. Se saca con `liquidando:-MLA3310524980:go` |
+
+**El otro Lapidus no se tocó.** Y de paso quedó medido que **ganar la caja de compra tampoco
+conviene**: ML pide $60.253 y ahí el margen es 21,9%, también abajo del piso.
+
 ## EL ROBOT SUBE SOLO DESDE 20% PARA ABAJO, NO DESDE EL PISO (22/09/2026)
 
 Regla suya, con el **Ted Lapidus** en la mano: *"Quiero que deje el lapidus como esta. Ya que dio
