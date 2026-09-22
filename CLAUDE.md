@@ -1116,6 +1116,143 @@ sube** y dice por qué · 20% clavado sube · **20,4% sube y 20,6% no** (el redo
 sube · 22% avisa y no toca · 24% ni se mira · apagado sigue diciendo que está apagado · el freno de
 los $33.000 sigue ganando cuando corresponde · y con el número viejo (23) el 21% volvería a subir.
 
+## EL QUE VENDIÓ SE VEÍA PEOR QUE EL QUE NO VENDIÓ (22/09/2026)
+
+Lo agarró él mirando Rotación de Stock con los **dos Lapidus uno arriba del otro**, mismo día de
+entrada y 2 unidades cada uno: *"llegó hace 1d, ya se vendió uno y tengo 2 en stock, ¿como que
+'lento'? no tiene sentido. tengo 59 días para seguir vendiendo, a este ritmo pasado mañana no tengo
+más."*
+
+| | ventas | rotación | estado que salía |
+|---|---|---|---|
+| Ted Lapidus **Rumba** | **0** | 0,00 | 🆕 **Recién llegado** |
+| **Lapidus** Pour Homme | **1** | 0,50 | 🟠 **Lento** ⏳ empieza a pagar en 59 d |
+
+**La gracia de los 30 días estaba ABAJO del renglón de "lento", así que sólo protegía al que no
+vendía NADA.** Su pantalla lo mostraba solo: el que vendió se veía peor que el que no vendió.
+
+**La causa es el denominador**, y es el error ya corregido DOS veces en este archivo: la rotación
+divide por los **60 días de la ventana** sin preguntar si el producto tuvo stock en esos 60 días.
+1 venta sobre 2 u. da 0,50 aunque esa venta haya sido **ayer**. Es lo mismo que la reposición
+dividiendo por 30 fijo (20/08) y que el orden de Pedidos (24/08) — en esta pantalla había quedado
+sin hacer.
+
+**NO se tocó el 0,20 ni la fórmula de la rotación: el número está bien.** Lo que estaba mal era
+juzgarlo antes de que el producto tuviera tiempo de venderse. La gracia pasó ARRIBA de los dos
+juicios malos (lento y muerto) y **abajo del verde**, a propósito: algo que llega y vuela tiene que
+seguir viéndose verde, no degradado a "recién llegado".
+
+**Y eso arregla solo la otra mitad de lo que él marcó.** El aviso de almacenamiento cuelga de
+"lento" y "muerto", así que ya no puede aparecer *"empieza a pagar en 59 d"* pegado a algo que entró
+ayer: **lo más temprano que puede decir ahora son 30 días**, que es cuando de verdad conviene
+mirarlo.
+
+**LO QUE NO SE HIZO, Y ES UNA DECISIÓN:** poner *"te quedás sin stock en 2 días"*. Sale de **1 sola
+venta**, y la regla suya de Pedidos (`PED_MIN_VENTAS_RITMO` = 3) dice que **con una o dos ventas no
+se extrapola un ritmo**. Escribirlo acá sería sacar una velocidad de un solo dato — justo el freno
+que él mismo aprobó. La pregunta *"¿cuándo me quedo sin stock?"* vive en **Pedidos**, que mide sobre
+los días CON stock y tiene el rojo a los 14 días.
+
+Probado con el bloque REAL del archivo y 17 casos, incluidos los dos Lapidus, el borde de los 30
+días por los dos lados, y que la fecha **aproximada** siga sin dar gracia (dice hace cuánto MIRAMOS,
+no hace cuánto hay stock). Tres listas más clases de CSS: **0 diferencias**.
+
+## `netoweb` ESCRIBÍA CERO EN EL ENVÍO, EN TODOS LOS PRODUCTOS, SIEMPRE (22/09/2026)
+
+Salió del mismo renglón, y lo marcó él: *"el lapidus ya vendió, o sea que tiene el costo y no se
+actualizó"*. Tenía razón — la columna decía **"?" · "sin envío · ML sí cobra"** en una publicación
+que **ya había vendido** y por lo tanto tenía el envío medido.
+
+**El objeto que arma `netoweb` no llevaba `envio` adentro.** Abajo se guarda con `d.envio`, así que
+llegaba `undefined` → `Number(undefined)` es **NaN** → `NaN || 0` → **cero**. Y no en un caso raro:
+**en los 137 productos, en todas las corridas, desde el 01/09**, que es cuando el panel empezó a
+necesitar ese número.
+
+**El neto estaba BIEN** (el envío sí se restaba para calcularlo). Lo que se perdía era **el número
+con el que se restó**, que es justo lo que el panel necesita para poner la gestión de Full en el
+**DIVISOR** del margen (la regla suya del 01/09).
+
+**Lo que se veía:** `margenMLDe` caía al `gestFull` cargado a mano, y en un producto que no lo tiene
+cargado quedaba en 0 → arriba de los $33.000 eso dispara el **"?"**. O sea que el síntoma aparecía
+**sólo en los productos caros y nuevos**, que son los pocos que no tienen `gestFull`.
+
+**Y el comentario de al lado prometía lo contrario:** *"El envío/gestión de Full que se usó para
+sacar este neto. Se guarda porque desde el 01/09/2026 el panel lo necesita"*. **Por novena vez en
+este archivo: un comentario que promete que algo está cubierto no es prueba de que lo esté.**
+
+**DE PASO APARECIÓ CÓDIGO MUERTO QUE PROMETE OTRA COSA: `anotarNetoWeb` NO SE LLAMA DESDE NINGÚN
+LADO.** Se escribió el 20/08/2026 con este encabezado: *"el robot puede seguir recalculando todo de
+noche, pero cada vez que se toca un precio la pantalla tiene que quedar al día EN EL MOMENTO"*.
+**Nunca se enchufó.** El único que escribe el margen es el probe `netoweb`, que corre **una vez por
+día a las 00:07** dentro de `ml-daily`. O sea que **entre que se toca un precio y la medianoche, la
+pantalla muestra el margen del precio viejo** — y es la pantalla con la que se decide el precio
+siguiente. Queda abierto: o se llama desde los comandos que tocan precios, o se borra la función y
+se deja de prometer.
+
+## EL MARGEN DEL QUE NUNCA VENDIÓ: SIMULADO CON LOS QUE SÍ VENDIERON (22/09/2026)
+
+Pedido suyo: *"necesito saber el margen, por más que ML todavía no vendió y no muestra gasto.
+fijarse en productos similares y hacer una simulación, para saber dónde estamos parados"*.
+
+**ESTO DA VUELTA LA DECISIÓN DEL 12/09** —*"no se inventa un envío estimado"*— **y la da vuelta él,
+que es quien la tomó.** El "?" contestaba *"no se puede saber"*; lo que él necesita es *"dónde
+estamos parados"*. Encima el motivo vivía sólo en el globito, o sea escondido, **y en el teléfono no
+hay globito** (la misma lección que la ayuda del simulador del 19/09).
+
+**EL NÚMERO NO ES INVENTADO, y ésa es la diferencia con lo que se decidió no hacer:** sale de los
+productos que **SÍ vendieron y están arriba de los $33.000**, que son los únicos con el cargo de
+Full medido en ventas reales. Es *"mirar productos similares"* con nuestros propios datos, no una
+constante a ojo. Se toma **el PEOR** de esos y no el promedio: errar para el lado caro hace ver el
+margen **MENOR**, que es el lado seguro cuando el número puede terminar moviendo un precio.
+
+**NO ES UNA FÓRMULA NUEVA.** Es la misma de `margenMLDe`, con el envío estimado puesto en los DOS
+lugares donde el envío real ya entra: **restado del neto y sumado al costo**. Ojo con esa primera
+parte, que es fácil pasar por alto: cuando el envío está medido, `netoCalc` **ya** lo trae
+descontado; acá no, porque el envío que se usó fue cero. Si no se resta a mano se contaría una sola
+vez y el margen saldría alto justo del lado peligroso.
+**La prueba lo verifica de frente:** cargando ese mismo envío como MEDIDO, el margen medido da
+**17,056480%** y la simulación da **17,056480%**. Ésa es la forma de saber que no es una copia que
+se va a separar.
+
+**Los frenos:**
+ · **Nunca en verde, ni aunque dé 60%.** El color dice *"esto está medido"* y acá no lo está.
+ · **Abajo de $33.000 no se simula**: ahí ML no cobra envío y el cero es de verdad.
+ · **El que ya tiene el envío medido no se simula**: manda lo medido.
+ · **Sin un solo producto medido arriba de la barrera NO se inventa nada** y vuelve el "?". Una
+   estimación sin un dato atrás no es una estimación, es un número.
+ · El renglón dice **"simulado · nunca vendió"** a la vista, no en el globito.
+
+**Cuánto cambia:** en el ejemplo probado el margen crudo daba **36%** y el simulado **17%**. Arriba
+de la barrera el envío pega en los dos lados de la cuenta, así que la diferencia es grande — y ese
+36% era el número falso que la pantalla se negaba a mostrar, con razón.
+
+## LO QUE NO SE ACTUALIZA SOLO, Y HAY QUE SABERLO (22/09/2026)
+
+Pregunta suya: *"si modifico los precios, por ejemplo bajo el rumba a 60.000, ¿me actualiza en vivo
+el ganando?"*. **No, y conviene tener claro qué se actualiza cuándo:**
+
+| dato | quién lo escribe | cada cuánto |
+|---|---|---|
+| **Caja ML** (Ganás/Perdés) | el robot, de `price_to_win` | **1 vez por hora** |
+| **Margen / Neto ML** | el probe `netoweb` | **1 vez por día, 00:07** |
+| stock de Full | el robot | 1 vez por hora |
+| ventas | el robot | cada 2 minutos |
+
+**La web no le puede preguntar nada a ML por su cuenta: no tiene el token.** Todo lo que ves de ML
+lo escribió el robot antes y la pantalla lo lee de la base. Por eso, después de cambiar un precio a
+mano, el margen y la caja siguen mostrando lo de antes hasta la vuelta siguiente.
+
+**Y la otra mitad de su pregunta:** *"siempre me dice que queda en 21% y termina vendiéndose y
+quedando 25% o más"*. **Los dos números están bien y son la misma plata**, por dos motivos que
+empujan para el mismo lado:
+ · **El DIVISOR** (ya anotado el 21/09 con el Seagate y el 22/09 con el Lapidus): el renglón de
+   Ventas x Producto divide por el costo **sin** el cargo de Full, y el robot divide por costo +
+   impuestos + **envío**. La ganancia en pesos es idéntica.
+ · **El ENVÍO**: lo que se calcula antes de vender usa el **PEOR envío** visto en todas las ventas;
+   a una venta concreta le puede tocar uno más barato.
+**Los dos hacen que el número previo salga MÁS BAJO que el real, nunca más alto.** Es a propósito:
+ése es el lado seguro cuando el número decide un precio.
+
 ## EL ROBOT MEDÍA EL MARGEN SIN EL ENVÍO Y DEJABA PASAR 17 PUBLICACIONES (17/09/2026)
 
 Salió de una venta que él vio en **+21%** y que el robot no subió ni avisó. **El Telegram estaba
