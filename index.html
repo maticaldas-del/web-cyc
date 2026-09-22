@@ -2281,7 +2281,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='20.02';
+const APP_VERSION='20.03';
 // El problema real que esto resuelve no es curiosidad: es que el celular guarda la app y sigue
 // mostrando la de ayer sin avisar. Varias veces se revisó un cambio que ya estaba subido y no se
 // veía. Por eso, además del número, el chip avisa cuando hay una versión nueva esperando.
@@ -7368,6 +7368,27 @@ function pctGananciaVP(ganancia, costoSinGest, gest) {
   const div = (Number(costoSinGest) || 0) + (Number(gest) || 0);
   return div > 0 ? ganancia / div * 100 : null;
 }
+// ── EL COSTO QUE SE MUESTRA EN LA VENTA ES EL DE LLEGAR A TU OFICINA (22/09/2026) ──
+// Pedido suyo, textual: *"no nos interesa cuanto se saca ml o que nos cobre a nosotros, ya que eso
+// ya lo pusimos en el precio (…) el costo que quiero que aparezca en las ventas es lo que costo
+// que un producto llegue a mi oficina"*. O sea: la mercadería puesta y NADA MÁS — sin el envío a
+// Full, sin el % de reclamos, sin IIBB ni monotributo. En Paraguay eso ya incluye el 15% del viaje,
+// porque vive adentro del `costUSD` de la ficha.
+// ESTE NÚMERO ES SÓLO PARA MIRAR: la ganancia y el % siguen saliendo de `efectivoCostoVP`, que
+// lleva todo adentro. Por eso `neto − costo` NO da la ganancia en pantalla, y él lo decidió
+// sabiéndolo: *"no importa que mienta, ya implícitamente sabemos que hay más gastos por eso da 21%
+// y no más"*. El globito dice qué falta en el medio.
+// NO se usa en ningún total, ranking ni métrica — ahí mandaría un costo incompleto y la ganancia
+// del mes saldría inflada.
+function costoOficinaVP(v){
+  if(v&&v.cancelada)return 0;
+  if(!v._dateKey)return v.costo||0;            // venta vieja sin fecha: lo guardado es lo que hay
+  const p=prodDeVenta(v);if(!p)return v.costo||0;
+  const ym=v._dateKey.substring(0,7);
+  const baseUSD=getHistCostUSDProd(p.id,ym)??costUSDof(p);   // el costo del MES de la venta
+  if(!baseUSD)return v.costo||0;
+  return baseUSD*tcForYM(ym)*(v.qty||1);
+}
 function efectivoCostoVP(v){
   if(v&&v.cancelada)return 0; // canceladas y reclamos no tienen costo (no afectan finanzas)
   // Cargo extra de ML (IIBB + almacenamiento) que ML cobra por débito, aparte de la venta: % del precio.
@@ -7739,7 +7760,7 @@ function renderVentaProd(){
     const VP_CAP=200;const shownGroups=filteredGroups.slice(0,VP_CAP);
     list.innerHTML=filteredGroups.length?shownGroups.map(grp=>{
       const isCancelled=grp.cancelada;
-      let gn=0,gc=0,gmlx=0,ggest=0;grp.items.forEach(v=>{if(!isCancelled){gn+=v.neto||0;gc+=efectivoCostoVP(v);gmlx+=impuestosDeVenta(v);ggest+=gestDeVenta(v);}});
+      let gn=0,gc=0,gmlx=0,ggest=0,gOfi=0;grp.items.forEach(v=>{if(!isCancelled){gn+=v.neto||0;gc+=efectivoCostoVP(v);gmlx+=impuestosDeVenta(v);ggest+=gestDeVenta(v);gOfi+=costoOficinaVP(v);}});
       // La ganancia en PESOS se mide contra gc (sin la gestión): el neto ya la trae descontada.
       // El PORCENTAJE se mide contra gc+ggest, que es el costo total como lo pidió él.
       const gg=gn-gc;const gcTot=gc+ggest;const gpct=gcTot>0?gg/gcTot*100:null;
@@ -7827,7 +7848,7 @@ function renderVentaProd(){
       // renglón queda idéntico a como estaba y no aparece ningún número nuevo: el ruido se suma
       // sólo donde hace falta. Es la regla de siempre — la gestión de Full se suma al COSTO o se
       // resta del PRECIO, nunca las dos cosas.
-      const costLabel=(!isCancelled&&gc>0)?`<span style="font-size:.66rem;color:var(--muted)" title="Mercadería ${fmt(gc-gmlx)} (costo + envío/embalaje + % reclamos) + impuestos ${fmt(gmlx)} (IIBB ${mlExtraPct(cuenta).toFixed(2)}% + monotributo ${monoPct().toFixed(2)}% del precio) = ${fmt(gc)}. Éste es el que se resta del neto de ML: neto ${fmt(gn)} − ${fmt(gc)} = ${fmt(gg)}.${ggest>0?' Aparte, Full cobra '+fmt(ggest)+', que el neto YA trae descontado — por eso va separado y no sumado acá. El % se mide contra el costo total '+fmt(gcTot)+', que es tu regla del 01/09.':' El % se mide contra este mismo costo.'}">costo ${fmt(gc)}</span>${ggest>0?`<span style="font-size:.66rem;color:var(--muted)" title="Lo que Full te cobra por esa venta (${fmt(ggest)}). Va separado del costo a propósito: el neto que te deposita ML ya lo trae descontado, así que sumarlo al costo y restarlo del neto sería cobrarlo dos veces. Entra igual en el % (costo total ${fmt(gcTot)}).">&nbsp;+ Full ${fmt(ggest)}</span>`:''}`:'';
+      const costLabel=(!isCancelled&&gOfi>0)?`<span style="font-size:.66rem;color:var(--muted)" title="Lo que salió que este producto llegue a tu oficina: ${fmt(gOfi)}${ggest>0?' · En el medio ML se queda '+fmt(ggest)+' de envío de Full':''} · impuestos (IIBB ${mlExtraPct(cuenta).toFixed(2)}% + monotributo ${monoPct().toFixed(2)}% del precio) ${fmt(gmlx)}${(gc-gmlx-gOfi)>0?' · envío/embalaje y % de reclamos '+fmt(gc-gmlx-gOfi):''}. Por eso la resta neto ${fmt(gn)} − costo ${fmt(gOfi)} NO da la ganancia: la ganancia real son ${fmt(gg)} y el % ${gpct!==null?gpct.toFixed(0)+'%':'—'}, medidos con todo eso adentro (tu regla del 01/09).">costo ${fmt(gOfi)}</span>`:((!isCancelled&&gc>0)?`<span style="font-size:.66rem;color:var(--muted)" title="Este producto no tiene el costo cargado en su ficha, así que se muestra el costo guardado con la venta.">costo ${fmt(gc)}</span>`:'');
       const ganLabel=isCancelled?'':(gc>0?`<span style="font-size:.66rem;color:${gg>=0?'var(--green)':'var(--red)'}">gan. ${fmt(gg)}</span>`:`<span style="font-size:.62rem;color:var(--muted)">neto ${fmt(gn)}</span>`);
       // EL RENGLÓN NO MUESTRA LO QUE SE QUEDÓ ML (21/09/2026). Estuvo un rato y él lo sacó:
       // *"que no se vea ml, total no me sirve para nada a mi"*. El dato era correcto —total −
