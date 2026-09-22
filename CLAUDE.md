@@ -1067,6 +1067,44 @@ MLA y la hora exacta: *"el robot lo puso en $62.340 el 2026-09-22 14:27 UTC"*.
 **El otro Lapidus no se tocó.** Y de paso quedó medido que **ganar la caja de compra tampoco
 conviene**: ML pide $60.253 y ahí el margen es 21,9%, también abajo del piso.
 
+## EL % DE GANANCIA ERA UNO SOLO EN LA CABEZA Y SEIS EN LA PANTALLA (22/09/2026)
+
+Pedido suyo, después de tres días de dudar del mismo número: *"dividilo con el costo de envio
+adentro siempre en todos los lugares que aparezca que sea unico el %, sino es un lio."*
+
+**Tenía razón y era peor de lo que parecía: la MISMA venta salía 21% en un lado y 25% en cinco.**
+El renglón de la venta dividía por costo + envío de Full (la regla suya del 01/09) y el total del
+mes, el desglose por cuenta, el ranking por producto, el "más vendido" y las dos cuentas del
+Puntaje dividían **sin el envío**. Los seis números eran "correctos" cada uno por su lado, que es
+exactamente lo que los hacía imposibles de discutir.
+
+**LA GANANCIA EN PESOS NO SE MOVIÓ NI UN PESO, y eso es lo que hay que tener claro al tocarlo.**
+`efectivoCostoVP` devuelve el costo **SIN** la gestión de Full y tiene que seguir siendo así: el
+neto que deposita ML ya la trae descontada, y sumarla a los dos lados la cobraría dos veces — el
+error del renglón arreglado esa misma mañana. **Lo único que cambia es el DIVISOR.**
+
+La cuenta vive ahora en **`pctGananciaVP(ganancia, costoSinGest, gest)`**, que usan los seis
+lugares. Estaba escrita suelta en cada uno y por eso se separaron.
+
+**DOS BUGS QUE AGARRÓ LA PRUEBA Y HABRÍAN SALIDO EN PANTALLA:** los objetos que suman por cuenta
+(`vpAggByAccount`) y por producto (el ranking) **no llevaban `gest` en el init**, así que
+`a.gest += gestDeVenta(v)` daba **NaN** y el porcentaje habría salido **"NaN%"** en las cuatro
+cuentas y en todo el ranking. Compila perfecto. *Al agregar un campo a una suma, mirar que el init
+lo tenga: `undefined + número` no avisa, contesta NaN.*
+
+**Abajo de los $33.000 no cambia ni un decimal**, que es la enorme mayoría de las ventas: ahí ML no
+cobra envío y las dos cuentas siempre dieron igual. Es el mismo motivo por el que este agujero se
+escondió un año en el robot (17/09).
+
+**Lo que NO se tocó, a propósito: el `roiScore` del ranking.** Es un puntaje (`ganancia²/costo`),
+no un porcentaje que él lea como margen; cambiarle el divisor movería el orden sin arreglar ningún
+número a la vista.
+
+Probado con las funciones REALES sacadas del archivo y 18 casos: los seis lugares dan **21,05%**
+clavado sobre su venta del Lapidus, abajo de la barrera siguen dando 30%, la ganancia en pesos
+queda en $8.868, y ni `NaN`, ni texto, ni un costo en cero rompen nada. Chequeo de las tres listas
+más las clases de CSS: **0 funciones, 0 variables, 0 `id` y 0 clases de diferencia**.
+
 ## EL ROBOT SUBE SOLO DESDE 20% PARA ABAJO, NO DESDE EL PISO (22/09/2026)
 
 Regla suya, con el **Ted Lapidus** en la mano: *"Quiero que deje el lapidus como esta. Ya que dio
