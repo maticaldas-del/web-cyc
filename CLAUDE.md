@@ -1673,36 +1673,56 @@ explicación larga de la sección pasó a un desplegable.
 **Lo que sigue apretado y él todavía no decidió:** cada renglón de producto tira seis datos en una
 sola línea gris del mismo tamaño, y el margen —que es lo que decide— queda en el medio.
 
-### EL HISTORIAL POR PRODUCTO: EL RECARGO **NO ES PAREJO** (21/09/2026)
+### EL RECARGO DE PARAGUAY: EL 47% ERA FALSO Y LO AGARRÓ ÉL (21→22/09/2026)
 
 Pedido suyo: *"que se vaya haciendo un historial y cuando sale mas % en que compra y producto por
 tamaño, peso unidades, costo. todo asi sabemos mejor que comprar"*. Sale con **`compray`** sin
 argumentos, abajo del historial por compra.
 
-**LA PREGUNTA QUE CONTESTA NO ES LA QUE PARECE.** La mayor parte del recargo es un gasto **FIJO del
-pedido** (el que retira y despacha, y el correo). Repartido entre las unidades pesa **lo mismo** en
-un auricular de US$ 5,75 que en una memoria de US$ 62 — o sea que **en porcentaje el barato paga
-muchísimo más**. Medido sobre la compra del 21/09, con el correo todavía pendiente:
+**ESTA SECCIÓN DECÍA QUE EL SONY EX15LP PAGABA 47,2% Y LA microSD 9,4%, Y CERRABA CON *"lo barato
+no conviene, el flete se lo come"*. ES FALSO.** Él lo cortó con el número en la mano:
+*"si nosotros compramos los sony ex15lp, para llegar a los 7,5 kg que pesa este último pedido
+tenemos que comprar como 100 unidades. entonces a cada unidad le paga 250, casi nada. para mí lo
+más caro son los productos pesados. lo mismo los pendrive, son re chiquitos, baratos y podés meter
+mil en una caja que sale 25.000"*.
 
-| recargo real | US$ c/u | puesto | producto |
-|---|---|---|---|
-| **47,2%** | 5,75 | $12.993 | Sony MDR-EX15LP |
-| 34,8% | 8,20 | $16.962 | TP-Link TL-WN822N |
-| 33,7% | 8,50 | $17.448 | Sony MDR-EX15AP |
-| 23,3% | 13,50 | $25.547 | Lattafa Sutoor |
-| 19,6% | 17,00 | $31.216 | Sony MDR-ZX310AP |
-| 12,8% | 32,75 | $56.729 | Mercedes Club Black |
-| **9,4%** | 62,00 | $104.108 | microSD Pokémon |
+**EL ERROR ERA REPARTIR POR UNIDAD UN GASTO QUE NO SE COBRA POR UNIDAD.** Los $84.627 del pedido
+del 21/09 son **tres cosas distintas** y cada una se reparte distinto:
 
-**EL PANEL LE SUMA 15% A TODOS POR IGUAL, y eso está mal para los dos lados: en lo BARATO el margen
-que muestra está INFLADO y en lo CARO está CASTIGADO.** Con el correo cargado los baratos empeoran
-más todavía ($3.679 → $4.766 de fijo por unidad). **Es lo que cambia qué conviene traer de
-Paraguay: lo barato no conviene, y no porque deje poco margen sino porque el flete se lo come.**
+| | cuánto | cómo se reparte |
+|---|---|---|
+| **el que retira y despacha** | **$74.260 · el 88%** | **FIJO POR PEDIDO** — es el mismo traigas 23 unidades o 200 |
+| el correo | falta cargarlo | **por PESO** |
+| comprar los dólares | 5,5% | proporcional al valor |
 
-**EL REPARTO ES POR UNIDAD Y ES UNA APROXIMACIÓN, Y SE DICE EN PANTALLA.** El correo cobra por
-**PESO**, así que lo correcto sería repartir por kilo — y los candidatos casi no tienen el peso
-cargado (**0 de 12** en esta compra). **No se inventa ningún peso**: se imprime cuántos hay. Para
-que esto se pueda hacer bien, el chat de compras tiene que cargar el peso de cada candidato.
+El 88% del gasto **no es el costo de ningún producto: es el peaje de hacer el pedido**. Dividirlo
+por unidades le inventa al más barato un costo que no tiene — y con eso el auricular de US$ 5,75
+"pagaba" 47% mientras la memoria de US$ 62 "pagaba" 9%. **La diferencia no la hacía el producto: la
+hacía la división.**
+
+**LO QUE DE VERDAD DECIDE QUÉ TRAER es lo único que cambia si agregás una unidad más:** su valor ×
+el recargo que escala, **más lo que pesa × el precio del kilo**. El peaje fijo lo pagás igual, así
+que **no puede hacer que un producto convenga o no** — al revés: **cuanto más llenás el pedido,
+menos pesa en cada unidad**. Por eso `compray` ahora imprime los tres gastos **separados** y la
+tabla por producto **deja el peaje afuera a propósito**, diciéndolo.
+
+**NO SE INVENTA NINGÚN PESO, y hoy eso deja la tabla a medias.** Si falta el peso de algún
+producto, el precio del kilo saldría inflado (el mismo correo repartido entre menos kilos), así que
+**no se calcula**: se dice cuántos faltan y el correo queda fuera de la tabla. Hoy son **0 de 12
+cargados**, o sea que la parte que separa al liviano del pesado —la que él nombró— todavía no se
+puede medir. **Para que esto decida algo, el chat de compras tiene que cargar el peso de cada
+candidato.**
+
+**LA LECCIÓN, y es nueva: una aproximación que cambia la conclusión no es una aproximación, es un
+error.** El renglón decía "es una aproximación porque el correo cobra por peso" y aun así imprimía
+el 47% y sacaba una conclusión de compra con él. **Un número mal repartido con una advertencia al
+lado sigue siendo un número mal repartido** — y éste apuntaba justo al revés de la realidad.
+Es la misma familia que el 73,5% de `realml` y que el ×0,54 de agosto: **antes de concluir sobre un
+porcentaje, preguntar qué metió cada lado adentro del número.**
+
+**Y LA SEGUNDA, para mí: él vio el error mirando el negocio, no el código.** Contó cuántos
+auriculares entran en 7,5 kg y el 47% se cayó solo. Cuando un número mío choca con lo que él sabe
+del negocio, **el que está mal es el número**.
 
 **DOS BUGS QUE APARECIERON ARMÁNDOLO, los dos para el lado peligroso:**
  · el historial **no sumaba `retira`**, así que daba el recargo CORTO justo por el gasto fijo más
@@ -4896,8 +4916,21 @@ más las dos salidas dan el total) · la cancelada no se cuenta · el margen con
   diez veces más unidades. La nota estaba escrita; el freno, no.
   **Arreglado así:** el marcado cuenta **sólo lo que ML ya dejó vendible**, el MISMO número con el
   que el panel cuenta el stock de Full — si los dos lados usan el mismo número no puede quedar
-  mercadería en el limbo. Lo recibido y no procesado se informa aparte (`enProceso`) y **sigue
-  contando como "en camino", que es la verdad**: es tuyo y todavía no se puede vender.
+  mercadería en el limbo.
+  **⚠️ ESTE RENGLÓN DECÍA QUE LO RECIBIDO Y NO PROCESADO (`enProceso`) *"sigue contando como en
+  camino"* Y ES FALSO (verificado en el código el 22/09/2026).** `enProceso` existe **sólo adentro
+  de `sync.mjs`**, se calcula, se devuelve y se **imprime en el log** (línea 7571) — **no se guarda
+  en la base y `index.html` no lo nombra en ningún lado**. Y `enTransito()`, que es la función que
+  arma "En camino a Full", saltea la caja ENTERA en cuanto está marcada (`if(c.recibida)continue`).
+  O sea que **lo que ML todavía está procesando no lo cuenta nadie**: es exactamente el agujero que
+  este párrafo dice haber tapado.
+  **Hoy no está sangrando** porque los tres frenos exigen que ML lleve 3 días sin dar de alta nada
+  antes de marcar una caja incompleta, así que la ventana es chica — pero **una caja marcada con
+  `faltan` borra esas unidades del patrimonio y no vuelven solas**. Queda abierto: o `enProceso` se
+  guarda y se suma a "en camino", o la caja no se marca mientras ML siga procesando.
+  **La lección, otra vez la misma: un párrafo que afirma que algo está cubierto no es prueba de que
+  lo esté** — y éste lo afirmó durante diez días con el nombre de la variable al lado, que es
+  justamente lo que lo hacía creíble.
   Lo que NO cambió: los tres frenos siguen igual, así que una unidad que nunca llegue a estar
   disponible (rota, descartada) igual cierra la caja a los 10 días, en ámbar y diciendo cuántas
   faltaron.

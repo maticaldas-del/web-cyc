@@ -25424,25 +25424,43 @@ async function main() {
       // Pedido suyo del 21/09/2026: *"que se vaya haciendo un historial y cuando sale mas % en que
       // compra y producto por tamaño, peso unidades, costo. todo asi sabemos mejor que comprar"*.
       //
-      // LA PREGUNTA QUE CONTESTA, Y NO ES LA QUE PARECE. El recargo no es un % parejo: la mayor
-      // parte es un gasto FIJO del pedido (el que retira y despacha, y el correo). Repartido entre
-      // las unidades, ese fijo pesa lo MISMO en un auricular de US$ 5,75 que en una memoria de
-      // US$ 62 — o sea que en porcentaje el barato paga muchísimo más. El panel le suma 15% a
-      // todos por igual, así que **subestima lo barato y exagera lo caro**.
+      // LA PREGUNTA QUE CONTESTA, Y LA PRIMERA VERSIÓN LA CONTESTÓ MAL (22/09/2026).
       //
-      // EL REPARTO ES POR UNIDAD Y ES UNA APROXIMACIÓN, Y SE DICE. El correo cobra por PESO y los
-      // pesos de los candidatos casi no están cargados. Repartir por unidad es lo mejor que se
-      // puede hacer hoy; cuando estén los pesos, esto se hace bien. **No se inventa un peso.**
+      // Decía que el recargo real del Sony EX15LP era **47,2%** y el de la microSD **9,4%**, y de
+      // ahí salió la conclusión *"lo barato no conviene, el flete se lo come"*. **Es falso, y lo
+      // agarró él**: *"para llegar a los 7,5 kg que pesa el pedido tenemos que comprar como 100
+      // Sony, entonces a cada unidad le paga 250, casi nada. lo más caro son los pesados"*.
+      //
+      // EL ERROR ERA REPARTIR POR UNIDAD UN GASTO QUE NO SE COBRA POR UNIDAD. Los $84.627 del
+      // pedido del 21/09 son TRES cosas distintas y cada una se reparte distinto:
+      //  · **el que retira y despacha ($74.260, el 88%)** → **FIJO POR PEDIDO**. Es el mismo
+      //    traigas 23 unidades o 200, y traigas auriculares o memorias. **No es el costo de ningún
+      //    producto: es el peaje de hacer el pedido.** Dividirlo por unidades le inventa al más
+      //    barato un costo que no tiene.
+      //  · **el correo** → **por PESO**. Acá sí el liviano paga poco y el pesado paga mucho, que es
+      //    exactamente lo que él dijo.
+      //  · **la diferencia de la transferencia** → proporcional al valor (ya está en `varProm`).
+      //
+      // O SEA QUE LO QUE DECIDE QUÉ TRAER ES OTRA COSA: lo único que cambia si agregás una unidad
+      // más de un producto es **su valor × el recargo que escala + lo que pesa × el precio del
+      // kilo**. El peaje fijo lo pagás igual, así que no puede hacer que un producto "no convenga"
+      // — al revés: **cuanto más llenás el pedido, menos pesa en cada unidad.**
+      //
+      // NO SE INVENTA NINGÚN PESO. Si los candidatos no lo tienen cargado, la parte del correo no
+      // se puede repartir y se dice; lo que NO se hace es tapar ese agujero repartiendo por unidad,
+      // que es lo que dio el 47% falso. **Una aproximación que cambia la conclusión no es una
+      // aproximación, es un error.**
       const conDet = todas.filter((c) => Array.isArray(c.items) && c.items.length);
       if (conDet.length) {
         console.log(`\n───── PRODUCTO POR PRODUCTO: QUÉ SALE CARO DE TRAER ─────`);
         const prod = {};
-        let uTot = 0, fijoTot = 0, tcRef = 0, sinPeso = 0, conPeso = 0, kgTot = 0;
+        let uTot = 0, peajeTot = 0, correoTot = 0, tcRef = 0, sinPeso = 0, conPeso = 0, kgTot = 0;
         for (const c of conDet) {
           const p = c.pagos || {};
           const tc = parseFloat(c.tcPanel) || tcPanel || 0;
-          const fijoARS = (p.envio || 0) + (p.retira || 0) + (p.otros || 0);
           if (tc > 0) tcRef = tc;
+          correoTot += (p.envio || 0);                       // por PESO
+          peajeTot += (p.retira || 0) + (p.otros || 0);      // fijo por pedido
           for (const it of c.items) {
             const u = parseInt(it.u) || 0; if (!(u > 0)) continue;
             const k = String(it.cod || it.nom || '?').trim();
@@ -25452,42 +25470,55 @@ async function main() {
             if (it.pesoKg != null) o.kg = parseFloat(it.pesoKg);
             uTot += u;
           }
-          fijoTot += fijoARS;
         }
         for (const o of Object.values(prod)) { if (o.kg != null) { conPeso++; kgTot += o.kg * o.u; } else sinPeso++; }
-        const fijoU = uTot > 0 ? fijoTot / uTot : 0;
         const incompl = conDet.some((c) => c.incompleto);
+        // El precio del kilo sale del correo dividido por el peso MEDIDO. Si falta el peso de
+        // alguno, el kilo saldría inflado (mismo correo repartido entre menos kilos), así que no
+        // se calcula: se dice qué falta. Es el mismo lado seguro de siempre.
+        const pesoCompleto = sinPeso === 0 && kgTot > 0;
+        const porKg = (pesoCompleto && correoTot > 0) ? correoTot / kgTot : null;
         console.log(`${Object.keys(prod).length} producto(s) distintos · ${uTot} unidades en ${conDet.length} compra(s)`);
-        console.log(`La parte FIJA de esas compras son ${money(Math.round(fijoTot))}, o sea ${money(Math.round(fijoU))} por UNIDAD.`);
-        if (incompl) console.log(`⚠️ Falta el correo en alguna, así que ese fijo por unidad está CORTO: el real es más alto.`);
-        console.log(`(repartido por unidad, que es una aproximación: el correo cobra por PESO. Pesos cargados: ${conPeso} de ${conPeso + sinPeso}${kgTot > 0 ? ` · ${kgTot.toFixed(2)} kg medidos` : ''})\n`);
+        console.log(`\n  Los gastos del pedido NO se reparten todos igual, y por eso van separados:`);
+        console.log(`   · peaje FIJO del pedido (el que retira y despacha): ${money(Math.round(peajeTot))} — se paga igual traigas lo que traigas`);
+        console.log(`   · correo: ${money(Math.round(correoTot))} — se cobra por PESO${incompl ? ' ⚠️ falta cargarlo en alguna compra, así que está CORTO' : ''}`);
+        console.log(`   · comprar los dólares: ${(varProm * 100).toFixed(1)}% — escala con el valor`);
+        if (porKg) console.log(`   · ${kgTot.toFixed(2)} kg medidos → ${money(Math.round(porKg))} el kilo`);
+        else console.log(`   · ⚠️ falta el peso de ${sinPeso} de ${conPeso + sinPeso} producto(s): el correo NO se puede repartir y queda afuera de la tabla`);
+        console.log(`   · el peaje repartido entre las ${uTot} u. da ${money(Math.round(uTot > 0 ? peajeTot / uTot : 0))} por unidad, y sirve para UNA sola cosa:`);
+        console.log(`     ver cuánto lo diluís llenando más el pedido. NO es el costo de ningún producto.\n`);
         if (!(tcRef > 0)) {
           console.log(`Sin tipo de cambio guardado no puedo pasar los dólares a pesos, así que el % por producto no se puede calcular.`);
         } else {
-          // El % que paga cada producto: su mercadería (con la parte que ESCALA) más su parte del fijo.
+          // El % que paga cada producto es SÓLO lo que cambia si traés uno más: su valor con el
+          // recargo que escala, más lo que pesa. El peaje fijo queda afuera a propósito.
           const filas = Object.values(prod).map((o) => {
             const uUsd = o.u > 0 ? o.usd / o.u : 0;
-            const mercARS = uUsd * tcRef * (1 + varProm);
-            const puesto = mercARS + fijoU;
-            return { ...o, uUsd, puesto, pct: uUsd > 0 ? (puesto / (uUsd * tcRef) - 1) * 100 : null };
+            const mercARS = uUsd * tcRef;
+            const correoU = (porKg != null && o.kg != null) ? o.kg * porKg : null;
+            const puesto = mercARS * (1 + varProm) + (correoU || 0);
+            return { ...o, uUsd, correoU, puesto, pct: uUsd > 0 ? (puesto / mercARS - 1) * 100 : null };
           }).sort((a, b) => (b.pct ?? -1) - (a.pct ?? -1));
-          console.log(`  ${'recargo'.padStart(8)}  ${'US$ c/u'.padStart(8)}  ${'puesto'.padStart(10)}  producto`);
+          console.log(`  ${'recargo'.padStart(8)}  ${'US$ c/u'.padStart(8)}  ${'puesto'.padStart(10)}  ${'correo'.padStart(9)}  producto`);
           for (const f of filas) {
-            console.log(`  ${(f.pct == null ? '?' : f.pct.toFixed(1) + '%').padStart(8)}  ${f.uUsd.toFixed(2).padStart(8)}  ${money(Math.round(f.puesto)).padStart(10)}  ${f.u} u · ${String(f.nom).slice(0, 44)}`);
+            const co = f.correoU == null ? 'falta pes' : money(Math.round(f.correoU));
+            console.log(`  ${(f.pct == null ? '?' : f.pct.toFixed(1) + '%').padStart(8)}  ${f.uUsd.toFixed(2).padStart(8)}  ${money(Math.round(f.puesto)).padStart(10)}  ${co.padStart(9)}  ${f.u} u · ${String(f.nom).slice(0, 40)}`);
           }
-          const caros = filas.filter((f) => f.pct != null && f.pct > 25);
-          const baratos = filas.filter((f) => f.pct != null && f.pct < 15);
-          console.log(`\n  LA CONCLUSIÓN, y es la que cambia qué conviene comprar:`);
-          // El 1,15 va escrito acá y NO se lee `RECARGO_PY`: esa constante existe adentro de OTRO
-          // bloque (el probe `guay`) y usarla desde acá compila perfecto y MUERE en ejecución con
-          // "RECARGO_PY is not defined", llevándose la corrida entera. Es el caso del `MIN_GROSS`
-          // del 21/09. Antes de usar un nombre en sync.mjs, mirar si está definido EN ESTE bloque.
-          const RECARGO_PANEL = 1.15;
-          console.log(`  El panel le suma ${Math.round((RECARGO_PANEL - 1) * 100)}% a TODOS por igual. Medido, no es parejo:`);
-          if (caros.length) console.log(`   · ${caros.length} producto(s) pagan MÁS del 25% — son los baratos: el gasto fijo los aplasta.`);
-          if (baratos.length) console.log(`   · ${baratos.length} pagan MENOS del 15% — son los caros por unidad: el fijo casi no se nota.`);
-          console.log(`   · O sea que en los BARATOS el margen del panel está inflado, y en los CAROS está castigado.`);
-          console.log(`   Con una sola compra medida esto es una referencia. Con dos o tres ya decide qué traer.`);
+          const RECARGO_PANEL = 1.15;   // ver el comentario del MIN_GROSS: NO leer RECARGO_PY acá
+          console.log(`\n  LA CONCLUSIÓN, y NO es "lo barato no conviene":`);
+          console.log(`  El panel le suma ${Math.round((RECARGO_PANEL - 1) * 100)}% a TODOS por igual, y el recargo medido del pedido entero`);
+          console.log(`  fue ${(varProm * 100).toFixed(1)}% que escala + ${money(Math.round(peajeTot + correoTot))} fijos.`);
+          if (!porKg) {
+            console.log(`   · ⚠️ La tabla de arriba es SÓLO la parte del valor: sin los pesos no se puede saber`);
+            console.log(`     cuánto correo le toca a cada uno, y ahí es donde se separan el liviano y el pesado.`);
+            console.log(`     Para que esto decida algo, el chat de compras tiene que cargar el peso de cada candidato.`);
+          } else {
+            const caro = filas[0], barato = filas[filas.length - 1];
+            if (caro && barato && caro !== barato) console.log(`   · el que más paga es ${String(caro.nom).slice(0, 30)} (${caro.pct.toFixed(1)}%) y el que menos ${String(barato.nom).slice(0, 30)} (${barato.pct.toFixed(1)}%)`);
+            console.log(`   · lo que separa a uno del otro es el PESO, no el precio: el correo cobra por kilo.`);
+          }
+          console.log(`   · El peaje fijo NO entra en esta tabla a propósito: lo pagás igual, así que no puede`);
+          console.log(`     hacer que un producto convenga o no. Lo que sí conviene es LLENAR el pedido.`);
         }
       } else {
         console.log(`\n(Ninguna compra guardada tiene el detalle por producto, así que no hay historial por producto todavía.)`);
