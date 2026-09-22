@@ -1512,6 +1512,13 @@ y Batidora de Luciana (65 d) eran justo eso.
 verdad: lo paga el comprador). Menos consultas, y el tope de envíos pasó de 15 a 25.
 **Las que venden no pasan por el filtro de visitas**: vender ya prueba que alguien las ve.
 
+**LA PRIMERA CORRIDA REAL AGARRÓ UN ERROR Y SE ARREGLÓ ANTES DE SUBIR:** proponía bajar un **P47 de
+Matías** teniendo **otra P47 suya ganando la caja**. O sea que bajarla sólo competía contra
+nosotros mismos, regalando margen. Ahora, si el producto ya tiene en esa cuenta una publicación
+activa ganando, no se propone bajar ninguna otra: va a la sección 🐢 con *"ya sos el botón de
+comprar"*. Con el arreglo, la corrida del 22/09 da **1 con precio** (De la Patagonia, Adriana,
+$48.870 → $48.514, 28,2% → 27,4%) y **17 sin precio**, cada una con su motivo.
+
 **LO QUE NO SE HIZO, Y ES A PROPÓSITO:** proponer bajar lo que **pierde la caja y sigue vendiendo
 igual** sin sobrar stock. Es su regla del 13/09: *"quizás en perdiendo se sigue vendiendo igual"* —
 bajar ahí regala margen sin mover nada. Sólo entra si además sobra stock.
