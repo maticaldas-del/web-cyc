@@ -2289,10 +2289,33 @@ async function envioSegunML(mla, token) {
       const so = await mlGet(`/items/${mla}/shipping_options?zip_code=${cp}`, token);
       const op = (so?.options || [])[0];
       if (!op) continue;
-      const base = Number(op.base_cost);
-      if (!isFinite(base)) continue;
+      // ── SE LEÍA EL CAMPO EQUIVOCADO, Y DABA MÁS DEL DOBLE (22/09/2026) ──────────────
+      // Lo agarró él mirando los dos Ted Lapidus uno al lado del otro: *"donde dice envío ML
+      // cobra el doble, ¿por qué? debería ser lo mismo, si es casi el mismo producto"*.
+      // Tenía razón. Lo que se usaba era `base_cost − cost`, o sea la TARIFA del envío, que
+      // cambia con el destino; y como se tomaba el PEOR, quedaba el de Ushuaia.
+      // MEDIDO con `envioml` sobre el Pour Homme, que SÍ vendió y por lo tanto tiene el envío
+      // real deducido de sus ventas ($6.790):
+      //     CABA tarifa $7.400 · Córdoba $8.750 · Salta $12.620 · Ushuaia $15.040
+      //     list_cost: $6.790 en LOS CUATRO  ← y coincide CLAVADO con el de las ventas reales
+      // O sea que `list_cost` es lo que ML te cobra a VOS y no depende del destino; `base_cost`
+      // es lo que sale el envío entero. Es el mismo malentendido que ya estaba anotado el 21/09
+      // para `/shipments/<id>` ("base_cost NO es lo que pagás vos") y que nadie vino a mirar por
+      // esta otra puerta — el dato correcto estaba ahí y el probe hasta lo imprimía.
+      // QUÉ ROMPÍA: el envío salía ~2,2 veces más caro en TODO lo que nunca vendió, así que esos
+      // márgenes se veían mucho PEORES de lo que son. El Ted Lapidus Rumba mostraba 11%.
+      //
+      // Y QUIÉN PAGA LO DECIDE ML, no la barrera escrita a mano: si `cost` (lo que paga el
+      // comprador) es mayor que cero, el envío lo está pagando él y a nosotros no nos cobran.
+      // Eso es lo mismo que dice la barrera de los $33.000, pero preguntado en vez de supuesto.
       const paga = Number(op.cost);
-      const nuestro = Math.max(0, base - (isFinite(paga) ? paga : 0));
+      const lista = Number(op.list_cost);
+      const base = Number(op.base_cost);
+      let nuestro;
+      if (isFinite(paga) && paga > 0) nuestro = 0;                       // lo paga el comprador
+      else if (isFinite(lista) && lista > 0) nuestro = lista;            // lo que ML te cobra a vos
+      else if (isFinite(base)) nuestro = Math.max(0, base - (isFinite(paga) ? paga : 0));
+      else continue;                                                     // sin dato no se inventa
       det.push({ nom, nuestro });
       if (peor == null || nuestro > peor) peor = nuestro;
     } catch { /* si un destino no contesta se usan los que sí */ }
