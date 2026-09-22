@@ -2281,7 +2281,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='20.04';
+const APP_VERSION='20.05';
 // El problema real que esto resuelve no es curiosidad: es que el celular guarda la app y sigue
 // mostrando la de ayer sin avisar. Varias veces se revisó un cambio que ya estaba subido y no se
 // veía. Por eso, además del número, el chip avisa cuando hay una versión nueva esperando.
@@ -10864,6 +10864,23 @@ function cajaBajarDe(p,c,mg){
   out.dudoso=mg.sinEnvio===true||mg.envioML===true;
   return out;
 }
+// ── EL ESTADO EN TEXTO, PARA EL PRODUCTO Y PARA CADA VARIANTE ────────────────────
+// Estaba escrito suelto adentro del renglón del producto, así que la variante no lo podía usar y
+// mostraba un puntito de color. Él lo marcó: *"en variantes no quiero los puntitos de colores,
+// quiero que digan lo mismo que las publicaciones normales, así veo más detalles"*.
+// Vive en UNA función por el motivo de siempre: si mañana cambia el texto de "Lento" o el aviso de
+// almacenamiento, cambian los dos juntos. Con dos copias, el producto podía decir una cosa y su
+// propia variante otra.
+function rotEstadoHtml(rt,stock){
+  const k=rt&&rt.k;
+  if(k==='sinstock')return '<span style="color:var(--muted)" title="Sin stock cargado: no puede venderse, no se evalúa la rotación">⚪ Sin stock</span>';
+  if(k==='sano')return stock===0
+    ?'<span style="color:var(--green)" title="Vendiste todo el stock">🟢 Sin stock</span>'
+    :'<span style="color:var(--green)">🟢 Sano</span>';
+  if(k==='lento')return '<span style="color:var(--amber)">🟠 Lento</span>'+almacenaHtml(rt.edad);
+  if(k==='reciente')return `<span style="color:var(--blue)" title="Entró a Full hace poco. No se le juzga la rotación hasta los ${ROT_GRACIA_DIAS} días: todavía no tuvo tiempo de venderse.">🆕 Recién llegado</span>`+(rt.edad!=null?`<div style="font-size:.57rem;color:var(--muted);margin-top:2px">entró hace ${rt.edad} d</div>`:'');
+  return '<span style="color:var(--red)">🔴 Muerto</span>'+almacenaHtml(rt.edad);
+}
 function rotCajaBajaHtml(r){
   const b=r.cajaBaja; if(!b)return '';
   const gris='font-size:.55rem;color:var(--muted);margin-top:2px;line-height:1.25';
@@ -11009,17 +11026,24 @@ const stockDeVariante=(p,v)=>LOCS.reduce((s,l)=>s+Math.max(0,getQV(p.id,l,v)),0)
 // La caja de compra de UNA variante: sólo las publicaciones que tienen esa variante marcada.
 function cajaMLDeVariante(p,v){
   const L=state.mllinks||{};
-  const n={winning:0,sharing:0,losing:0,nocat:0,sincaja:0};let pubs=0;
+  const n={winning:0,sharing:0,losing:0,nocat:0,sincaja:0};let pubs=0,ts=0,ptw=0;
   for(const e of Object.values(L)){
     if(!e||e.prodId!==p.id||e.ignored||(e.status||'')==='closed')continue;
     if((e.variant||'')!==v)continue;
     if(!e.caja||!(e.caja in n))continue;
     n[e.caja]++;pubs++;
+    // `ts` y `ptw` se arman IGUAL que en cajaMLDe (22/09/2026). Antes esta función devolvía sólo
+    // {st,pubs} y alcanzaba, porque la variante mostraba un puntito de color. Ahora muestra el
+    // mismo texto que el producto —pedido suyo: *"en variantes no quiero los puntitos de colores,
+    // quiero que digan lo mismo que las publicaciones normales, así veo más detalles"*— y ese
+    // texto necesita de cuándo es el dato y a qué precio se gana la caja.
+    if((e.cajaTs||0)>ts)ts=e.cajaTs;
+    if((e.caja==='losing'||e.caja==='sharing')&&(e.cajaPtw||0)>0&&(ptw===0||e.cajaPtw<ptw))ptw=e.cajaPtw;
   }
   if(!pubs)return null;
   // Con que UNA gane, el producto se vende: manda la mejor. Mismo criterio que cajaMLDe.
   const st=n.winning?'winning':n.sharing?'sharing':n.losing?'losing':'nocat';
-  return {st,pubs};
+  return {st,pubs,n,ts,ptw};
 }
 const ROT_GRACIA_DIAS=30;   // recién llegado: no se le juzga la rotación todavía
 const ALMAC_DIAS=60;        // a los ~2 meses parado ML empieza a cobrar almacenamiento
@@ -11494,14 +11518,7 @@ function renderRotacionStock(){
 
     const _rt=rotEstadoDe(p,stock,rotNorm,ventasPeriodo,now);
     const estadoKey=_rt.k;
-    let estadoHtml;
-    if(estadoKey==='sinstock')estadoHtml='<span style="color:var(--muted)" title="Sin stock cargado: no puede venderse, no se evalúa la rotación">⚪ Sin stock</span>';
-    else if(estadoKey==='sano')estadoHtml=stock===0
-      ?'<span style="color:var(--green)" title="Vendiste todo el stock">🟢 Sin stock</span>'
-      :'<span style="color:var(--green)">🟢 Sano</span>';
-    else if(estadoKey==='lento')estadoHtml='<span style="color:var(--amber)">🟠 Lento</span>'+almacenaHtml(_rt.edad);
-    else if(estadoKey==='reciente')estadoHtml=`<span style="color:var(--blue)" title="Entró a Full hace poco. No se le juzga la rotación hasta los ${ROT_GRACIA_DIAS} días: todavía no tuvo tiempo de venderse.">🆕 Recién llegado</span>`+(_rt.edad!=null?`<div style="font-size:.57rem;color:var(--muted);margin-top:2px">entró hace ${_rt.edad} d</div>`:'');
-    else estadoHtml='<span style="color:var(--red)">🔴 Muerto</span>'+almacenaHtml(_rt.edad);
+    const estadoHtml=rotEstadoHtml(_rt,stock);
 
     // Margen de HOY, con la MISMA cuenta que la ficha del producto (misma función, no una copia).
     // Es lo que contesta "¿puedo bajarle el precio?" sin salir de esta pantalla: un producto
@@ -11661,19 +11678,26 @@ function renderRotacionStock(){
       // igual que con el código de Full y con la foto.
       const _pubV=pubDeVariante(p.id,'',v)||null;
       const _npV=_pubV&&(state.netopub||{})[_pubV.mla||''];
-      let mgV;
+      let mgV,_mV=null;
       if(_npV&&Number(_npV.neto)>0){
-        const _m=margenMLDe(p,_npV);
+        const _m=margenMLDe(p,_npV);_mV=_m;
         mgV=rotMargenHtml({margen:_m.margen,margenDudoso:margenDudosoDe(_m),margenPrecio:_m.precio,
           margenNeto:_m.neto,margenCosto:_m.costo,margenSinEnvio:_m.sinEnvio,margenGest:_m.gest,
           margenEst:_m.margenEst,margenGestEst:_m.gestEst,margenEstN:_m.estN,liq2:r.liq2});
       } else {
         mgV=`<span style="font-size:.66rem;color:var(--muted)" title="No se pudo identificar la publicación de este color (el título de ML no lo nombra, o el robot todavía no le calculó el neto), así que se muestra el del producto entero. No se adivina: mostrar el margen de otro color sería peor que no mostrar ninguno.">${r.margen!=null?r.margen.toFixed(0)+'%':'—'} <span style="opacity:.6">(del prod.)</span></span>`;
       }
+      // ── LA VARIANTE DICE LO MISMO QUE EL PRODUCTO (22/09/2026) ──────────────────
+      // Pedido suyo: *"en variantes no quiero los puntitos de colores, quiero que digan lo mismo
+      // que las publicaciones normales, así veo más detalles"*. Los dos renglones usan ahora las
+      // MISMAS funciones (`rotCajaHtml` y `rotEstadoHtml`), no una copia: el aviso de cuánto bajar
+      // para ganar la caja, el de almacenamiento y los globitos salen solos.
+      // El margen que se le pasa a `cajaBajarDe` es el de ESTA variante (`_mV`), no el del
+      // producto: si no, el renglón diría en cuánto quedaría OTRO color al bajar el precio.
+      // Sin margen medido no se inventa: `cajaBajarDe` avisa "margen sin medir" y no pone precio.
       const est=rotEstadoDe(p,st,rotN,vp,new Date());
-      const estTxt={sano:'<span style="color:var(--green)">🟢</span>',lento:'<span style="color:var(--amber)">🟠</span>',
-        muerto:'<span style="color:var(--red)">🔴</span>',reciente:'<span style="color:var(--blue)">🆕</span>',
-        sinstock:'<span style="color:var(--muted)">⚪</span>'}[est.k]||'';
+      const estTxt=rotEstadoHtml(est,st);
+      const cjHtml=cj?rotCajaHtml({caja:cj,cajaBaja:cajaBajarDe(p,cj,_mV)}):cjTxt;
       void vDia;
       return `<tr style="background:rgba(255,255,255,.015)">
         <td style="padding-left:22px;max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:.72rem;color:#a78bfa" title="${v}">↳ ${v}</td>
@@ -11684,8 +11708,8 @@ function renderRotacionStock(){
         <td style="text-align:right;font-size:.72rem">${rotDiasSinVenderHtml(dsv)}</td>
         <td style="text-align:right">${mgV}</td>
         <td style="text-align:right;font-size:.66rem;color:var(--muted)" title="Hace cuánto hay stock se anota por producto y CUENTA, no por variante (cyc/stockhist). Poner acá el del producto entero sería darle a un color una antigüedad que no es la suya, así que no se muestra.">—</td>
-        <td style="text-align:right;font-size:.8rem">${cjTxt}</td>
-        <td style="font-size:.9rem">${estTxt}</td>
+        <td style="text-align:right;font-size:.72rem">${cjHtml}</td>
+        <td style="font-size:.72rem">${estTxt}</td>
       </tr>`;
     }).join('');
     return filas;
