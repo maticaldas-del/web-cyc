@@ -33,6 +33,15 @@ la factura de Sancor ($42.737,30) ES lo que logró — no viene nada más. El re
 VEP; lo que cambió es que Sancor lo descuenta. Sancor y "obra social privada" ya son un solo
 renglón (versión 20.08).
 
+### 2b · EN QUÉ CUENTA VA UN PRODUCTO NUEVO: TAMBIÉN MANDA EL EQUILIBRIO (22/09/2026)
+Regla suya: *"hay que tener en cuenta que las 4 cuentas estén equilibradas también"*. Medido con
+`catmono` el 22/09: **Ayelen es la que menos factura y viene cayendo** (~$2M/mes en jul-ago-sep,
+contra $4-8M de las otras) y **es la única que YA paga categoría H**, así que sumarle ventas no le
+cuesta más monotributo. Luciana y Matías están en F facturando a nivel H. Por eso el Jade Roller
+se recomendó a **Ayelen**, aunque por rubro y por IIBB ganaba Adriana. Lo que se paga: ~1,9 puntos
+más de IIBB (5,95% contra 4,07%), cupo de Full chico (42) y reputación oro. **Los números por
+cuenta no se anotan acá (repo público): se rehacen con `catmono`.**
+
 ### 3 · EL `PROMPT GUAY`: VA CON 19%, NO 23% — LO VA A PEDIR MÁS ADELANTE
 Dicho por él el 22/09: *"te voy a pedir el prompt más adelante, acordate y poné el 19"*.
 **Cuando lo pida, el bloque de Full dice ~19%** (el bloque corregido está en la sección del
