@@ -1,3 +1,69 @@
+## ⏩ DÓNDE QUEDAMOS — LEER PRIMERO (22/09/2026, cierre del chat)
+
+Él cambió de chat y pidió dejar todo escrito para arrancar del otro. **Esto es lo que quedó abierto,
+en orden de lo que va a preguntar primero.** Lo cerrado está documentado más abajo en su sección;
+acá va sólo lo que está en el aire. Borrá cada renglón cuando se cierre.
+
+### 1 · SANCOR: esperando la respuesta de la vendedora
+Él quiere **"el más barato de Sancor"**. La web de Sancor **no se puede leer** (cascarón de
+JavaScript, 6 puertas medidas — ver la sección de Sancor más abajo), así que la lista de planes la
+tiene que pedir él. **Se le armó el mensaje** y queda esperando que le contesten:
+ · lista de planes con precio final para **1 persona, 18-30, monotributista**, del más barato al
+   más caro · cuánto queda **de bolsillo con el aporte del monotributo derivado** · los mismos
+   **con copagos** · si alguno se cubre **entero** con el aporte · y **si bajar de plan hace
+   perder la bonificación del 20% de grupo de afinidad** (el que más importa).
+ · **Y que le expliquen la bonificación general**, que se partió EXACTO al medio ($85.474,60 →
+   $42.737) justo cuando apareció el "descuento por monotributo" de $42.737,30 — el mismo número.
+**El número que decide NO es el precio de lista:** hoy son **$163.045 de bolsillo + $55.485 de
+aporte = ~$218.500/mes** por una persona. Cuando traiga la respuesta, comparar contra eso.
+**Dos ahorros que no dependen de Sancor:** pagar **antes del 21** ($6.431 de mora en una sola
+factura) y dar de baja **"Cobertura de Vida Plus"** ($2.901/mes = $34.812/año, es seguro de vida).
+**El hijo de Ayelen tiene OSECAC**: el plan de UNA persona es el correcto, no falta nadie.
+
+### 2 · LA OBRA SOCIAL CONTRA EL MONOTRIBUTO: él iba a pasar la info
+Dijo *"ahora logramos que descuente obra social con el monotributo. ahora te paso mas info"* y
+**no la pasó todavía**. Cuando llegue, hay que revisar en `GASTOS_DEL_MES` (index.html) el renglón
+**"Autónomos + obra social de Ayelen"**, que hoy espera ~$113.083 — puede haber cambiado.
+**Ya se arregló la otra mitad:** Sancor y "obra social privada" eran el MISMO gasto y estaban como
+dos renglones (la lista pedía ~$83.333/mes que no existen). Quedó uno solo, versión 20.08.
+
+### 3 · EL `PROMPT GUAY` TIENE UN NÚMERO MÍO QUE HAY QUE CORREGIR
+Se le pasó un bloque nuevo sobre Full que decía **"~23% de premio"**. Con la segunda medición dio
+**18,9%**: la mediana se mueve con la muestra. **Si lo pegó, hay que pasarle la línea corregida**
+(el bloque entero, ya corregido, está en la sección del `PROMPT GUAY` más abajo:
+*"TENER FULL VALE PRECIO"*). Lo firme: en **18 de 18** publicaciones que ganan la caja estamos más
+caros que alguien sin Full, rango **3,0% a 26,6%**, **~19% es lo prudente**.
+
+### 4 · LO QUE CORRE SOLO Y CONVIENE MIRAR EN UNOS DÍAS
+ · **`candidatos` vuelve a medir TODOS** (`CAND_CALC_VER` pasó a 6, ahora contra el más barato
+   **con Full**), de a 40 por noche. En 2 noches están todos. Algunos que estaban descartados
+   pueden volver a dar, y algunos márgenes van a SUBIR (se medían contra un vendedor sin Full que
+   no hay que igualar). **Si él pregunta por qué cambió un margen de "Para probar", es esto.**
+ · **`boosts` y `visit_share` de ML** están medidos (ver sección de Full) y **NO se muestran en el
+   panel todavía**. Idea sin decidir: `visit_share` (`maximum`/`medium`/`minimum`) en la columna
+   Caja ML de Rotación. **`reason` viene vacío, no sirve.** No hacer nada sin que él lo pida.
+
+### 5 · PENDIENTES VIEJOS QUE SIGUEN ABIERTOS (de antes de este chat)
+ · **el peso** de cada candidato de Paraguay (sin eso `compray` no separa liviano de pesado) ·
+   **el correo** del pedido del 21/09 (el recargo real sigue "corto") · decírselo al **chat de
+   compras**: a los códigos que guarda **les falta el primer dígito** (5 de 5).
+ · cargar los **4 disponibles** en Finanzas → Arqueo (el `dispo` está listo y esperando).
+ · decidir el **Cortapelo 4 en 1** (la regla de repetidas se equivoca sola ahí).
+ · el color de la **5ª publicación del Centímetro** (`MLA1841730099`).
+ · **gastos de septiembre**: faltan Sancor (la factura es $163.045), intereses y los cargos de
+   Full de agosto. Servicios es CERO este mes, dicho por él.
+ · las **2 u. de Halloween Freesia** que el marcado dio por faltantes — `abrircaja:76397947:go` si
+   llegaron.
+ · ver si las variantes de los Paulvic siguen diciendo *"(del prod.)"* después de recargar: si sí,
+   hace falta `fijarvar`.
+
+### Lo que se hizo en este chat (ya está todo arriba de esto, en su sección)
+el % de ganancia único en los seis lugares · el costo "puesto en la oficina" en cada venta · el
+Dalí al 30% · el Puntaje recalibrado a meta 35 · las variantes de Rotación con el texto completo ·
+`gondola` (la tintura: no sirve) · `valefull` y **Full decide las compras** · Sancor y obra social
+privada unificados · las dos facturas de Sancor analizadas.
+**Versión del panel: 20.08 · caché `cyc-v286`.** El ciclo del robot quedó **prendido**.
+
 
 ## PISO DURO: NINGÚN PRODUCTO SE BAJA POR DEBAJO DEL PISO CONFIGURADO
 
@@ -2671,6 +2737,39 @@ adivinando un número que el sistema ya sabe.
 >   Cuando vuelvas a pasar por uno, cargáselo; no hace falta ir a buscarlos todos de una.
 > · El robot sigue pidiéndolas como CRUCE por si ML lo abre algún día: si los dos números existen
 >   y no coinciden, la tarjeta dice **"(el robot ve N)"**.
+
+### TENER FULL VALE PRECIO (bloque listo para pegar · 22/09/2026, ya CORREGIDO)
+
+**La primera versión que se le pasó decía "~23%" y era un número sacado de una sola corrida.** Con
+la segunda dio 18,9%. Si pegó la vieja, se le pasa ésta entera.
+
+> **TENER FULL VALE PRECIO. MEDIDO EN NUESTRAS PROPIAS PUBLICACIONES (22/09/2026)**
+>
+> Nosotros vendemos **SIEMPRE por Full**, y eso no es un detalle: el comprador ve *"Llega mañana"*
+> y elige eso. Así que **no hay que igualarle el precio a cualquiera que esté más barato**: hay que
+> mirar CÓMO manda.
+>
+> **Lo medido:** en **18 de 18** publicaciones nuestras que ganan la caja de compra, estamos **MÁS
+> CAROS que algún competidor sin Full**. El premio va de **3% a 26,6%**. **Usá ~19% como número
+> prudente** y no estires hasta el 26%, que es el techo de lo que se vio.
+> Ejemplo real: el Paulvic 1.4 Sexy For Men a **$14.360 con Full** gana la caja con 10 competidores
+> sin Full desde **$11.340**.
+>
+> **Qué hacer con eso al mirar un producto en ML:**
+> 1. **El precio contra el que se mide el margen es el del más barato CON FULL**, no el más barato
+>    de la lista. Si el más barato manda a mano, **ése no es el precio a igualar**.
+> 2. **Full y Flex NO son lo mismo.** Full es depósito de ML. **Flex** es el vendedor mandando él
+>    mismo en el día desde su casa — también dice "Llega hoy" y **compite fuerte**: tratalo como si
+>    tuviera Full. Uno con envío normal, no.
+> 3. **Contra alguien que TAMBIÉN tiene Full el premio es CERO**: ahí gana el más barato.
+>
+> **El robot YA hace esto solo** desde el 22/09: mide contra el más barato con Full y en la tarjeta
+> del candidato dice *"el más barato ($X) no tiene Full — se mide contra $Y"*. **No hace falta que
+> lo anotes a mano.** Si ves un margen que cambió de un día para el otro en "Para probar", es por
+> esto: se están volviendo a medir todos.
+>
+> **Y ojo con lo que ML llama "oportunidad":** ML sugiere ofrecer **cuotas sin interés**. Eso es
+> bueno para ML y **malo para nosotros** — cuestan hasta 19% del precio. No se usa.
 
 ### NADA DE ENVÍOS INTERNACIONALES (19/09/2026)
 
