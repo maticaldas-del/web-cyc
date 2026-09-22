@@ -11423,6 +11423,120 @@ async function main() {
     // cosas se ven igual — que es exactamente el error anotado tantas veces acá: un cero que
     // parece un dato. Esto NO toca nada: pide el catálogo de las tres formas posibles e imprime
     // lo que ML contesta, para poder decidir mirando y no suponiendo.
+    // ── ¿CUÁNTO "VALE" TENER FULL A LA HORA DE GANAR LA CAJA? ─────────────────────────
+    // Pregunta suya, y es la que decide todas las compras nuevas: *"lo que no sé es cuánto vale
+    // tener full, por ejemplo 10.000 sin full y yo con 12.000 y full, ¿ML me da la caja a mí?"*.
+    //
+    // SE PUEDE MEDIR CON LO NUESTRO, y por eso el comando existe: en cada publicación de CATÁLOGO
+    // ML ya nos dice si ganamos la caja y a qué precio se gana (`price_to_win`), y el catálogo dice
+    // a cuánto vende cada uno y CÓMO DESPACHA. Cruzando las dos cosas sale el premio de verdad, en
+    // pesos y en %, en vez de una regla de ML que nadie publica.
+    //
+    // SOLO LEE. No escribe en la base ni toca ML.
+    if (String(process.env.BILLING_PROBE || '').startsWith('valefull')) {
+      const _vfN = Math.max(1, Math.min(40, parseInt(String(process.env.BILLING_PROBE).split(':')[1] || '', 10) || 15));
+      const _vfLinks = (await db.get('cyc/mllinks')) || {};
+      // Sólo las de CATÁLOGO y activas: en una publicación propia no hay caja que ganar.
+      const _vfCand = Object.entries(_vfLinks)
+        .filter(([mla, e]) => e && !e.ignored && (e.status || '') === 'active' && /^MLA\d+$/.test(mla)
+          && e.caja && e.caja !== 'nocat' && e.caja !== 'sincaja')
+        .slice(0, _vfN);
+      console.log('\n══ ¿CUÁNTO VALE TENER FULL PARA GANAR LA CAJA? (solo lee) ══');
+      console.log(`   Se miran ${_vfCand.length} publicaciones NUESTRAS de catálogo (de ${Object.keys(_vfLinks).length} en total).`);
+      if (!_vfCand.length) { console.log('   No hay ninguna activa de catálogo con dato de caja. El robot lo escribe una vez por hora.'); return; }
+      const _vfTok = {};
+      const _vfTokDe = async (label) => {
+        if (_vfTok[label] !== undefined) return _vfTok[label];
+        const acc = accounts[label];
+        if (!acc?.refresh_token) { _vfTok[label] = null; return null; }
+        try {
+          const t = await mlRefresh(ML_CLIENT_ID, ML_CLIENT_SECRET, acc.refresh_token);
+          await db.patch('mlapi/tokens/' + label, { refresh_token: t.refresh_token, updated_ts: Date.now() });
+          _vfTok[label] = t.access_token;
+        } catch { _vfTok[label] = null; }
+        return _vfTok[label];
+      };
+      const _vfLog = (o) => String((o && o.shipping && o.shipping.logistic_type) || '').toLowerCase();
+      const _vfFull = (o) => {
+        const tags = ((o && o.shipping && o.shipping.tags) || []).map((x) => String(x).toLowerCase());
+        return _vfLog(o) === 'fulfillment' || tags.includes('fulfillment');
+      };
+      const _vfFilas = [], _vfSin = [];
+      const _vfClaves = new Set();   // qué manda ML adentro de price_to_win, por si trae algo mejor
+      for (const [mla, e] of _vfCand) {
+        const tok = await _vfTokDe(e.cuenta);
+        if (!tok) { _vfSin.push(`${mla} → sin token de ${e.cuenta}`); continue; }
+        let ptw = null;
+        try { ptw = await mlGet(`/items/${mla}/price_to_win?version=v2`, tok); }
+        catch (er) { _vfSin.push(`${mla} → price_to_win: ${String(er.message || er).slice(0, 50)}`); continue; }
+        if (!ptw) { _vfSin.push(`${mla} → price_to_win vino vacío`); continue; }
+        Object.keys(ptw).forEach((k) => _vfClaves.add(k));
+        // el catálogo al que pertenece: lo dice el propio price_to_win o el link guardado
+        const catId = ptw.catalog_product_id || e.catalogo || null;
+        if (!catId) { _vfSin.push(`${mla} → ML no dice a qué catálogo pertenece`); continue; }
+        let ofs = [];
+        try { const it = await mlGet(`/products/${catId}/items`, tok); ofs = (it && it.results) || []; }
+        catch (er2) {
+          if (/404/.test(String(er2.message || er2))) _vfSin.push(`${mla} → el catálogo hoy no lo vende nadie`);
+          else _vfSin.push(`${mla} → no pude pedir los vendedores`);
+          continue;
+        }
+        const nuestro = ofs.find((o) => String(o.item_id || o.id) === mla) || null;
+        const otros = ofs.filter((o) => String(o.item_id || o.id) !== mla);
+        if (!otros.length) { _vfSin.push(`${mla} → es el único vendedor: no hay con quién comparar`); continue; }
+        const _pr = (o) => Number(o.price) || 0;
+        const otrosFull = otros.filter(_vfFull), otrosNo = otros.filter((o) => !_vfFull(o));
+        const minFull = otrosFull.length ? Math.min.apply(null, otrosFull.map(_pr).filter((x) => x > 0)) : 0;
+        const minNo = otrosNo.length ? Math.min.apply(null, otrosNo.map(_pr).filter((x) => x > 0)) : 0;
+        _vfFilas.push({
+          mla, cuenta: e.cuenta, tit: String(e.title || mla).slice(0, 34),
+          precio: Math.round(Number(ptw.price) || _pr(nuestro || {}) || 0),
+          somosFull: nuestro ? _vfFull(nuestro) : null,
+          estado: String(ptw.status || e.caja || '?'),
+          gana: Math.round(Number(ptw.price_to_win) || 0),
+          minFull: Math.round(minFull), minNo: Math.round(minNo),
+          nOtros: otros.length, nOtrosFull: otrosFull.length,
+        });
+      }
+      console.log(`\n── PUBLICACIÓN POR PUBLICACIÓN ──`);
+      console.log(`   (el precio de cada uno, y cómo despacha el competidor más barato de cada tipo)`);
+      for (const f of _vfFilas) {
+        console.log(`\n  ${f.tit}  · ${f.cuenta}`);
+        console.log(`     nosotros ${money(f.precio)}${f.somosFull === null ? '' : f.somosFull ? ' · FULL' : ' · sin Full ⚠️'}  →  caja: ${f.estado}${f.gana > 0 ? ` · se gana a ${money(f.gana)}` : ''}`);
+        console.log(`     ${f.nOtros} competidor(es): con Full ${f.nOtrosFull}${f.minFull ? ` desde ${money(f.minFull)}` : ' (ninguno)'} · sin Full ${f.nOtros - f.nOtrosFull}${f.minNo ? ` desde ${money(f.minNo)}` : ' (ninguno)'}`);
+        // EL NÚMERO QUE CONTESTA SU PREGUNTA: ganamos estando MÁS CAROS que uno sin Full.
+        if (f.estado === 'winning' && f.minNo && f.precio > f.minNo) {
+          const d = f.precio - f.minNo;
+          console.log(`     ✅ GANÁS LA CAJA estando ${money(d)} (${(d / f.minNo * 100).toFixed(1)}%) MÁS CARO que uno sin Full.`);
+        }
+        if (f.estado === 'winning' && f.minFull && f.precio > f.minFull) {
+          const d = f.precio - f.minFull;
+          console.log(`     ⚠️  Y también estás ${money(d)} arriba de uno que SÍ tiene Full: acá el premio no es el envío, es otra cosa (reputación, stock).`);
+        }
+        if (f.estado === 'losing' && f.minNo && f.precio < f.minNo && f.minFull && f.precio < f.minFull) {
+          console.log(`     ❌ PERDÉS siendo el más barato de todos: el envío no te está alcanzando.`);
+        }
+      }
+      // ── EL RESUMEN, que es lo que se le pasa al chat de compras ──
+      const _gan = _vfFilas.filter((f) => f.estado === 'winning');
+      const _premios = _gan.filter((f) => f.minNo && f.precio > f.minNo).map((f) => (f.precio - f.minNo) / f.minNo * 100);
+      console.log(`\n── LO QUE SE PUEDE AFIRMAR ──`);
+      console.log(`   medidas: ${_vfFilas.length} · ganamos la caja en ${_gan.length}`);
+      if (_premios.length) {
+        _premios.sort((a, b) => a - b);
+        const med = _premios[Math.floor(_premios.length / 2)];
+        console.log(`   En ${_premios.length} de ellas GANAMOS estando MÁS CAROS que un competidor sin Full.`);
+        console.log(`   El premio va de ${_premios[0].toFixed(1)}% a ${_premios[_premios.length - 1].toFixed(1)}% · la mitad está en ${med.toFixed(1)}% o menos.`);
+        console.log(`   O sea: contra uno sin Full podés estar ~${med.toFixed(0)}% más caro y quedarte igual con la caja.`);
+      } else {
+        console.log(`   ⚠️  NO HAY NINGÚN CASO donde ganemos estando más caros que uno sin Full.`);
+        console.log(`   Eso NO quiere decir que Full no valga: puede ser que en estas publicaciones seamos`);
+        console.log(`   los más baratos igual. Con estos datos no se puede poner un número, y no se inventa.`);
+      }
+      if (_vfSin.length) { console.log(`\n── LAS QUE NO SE PUDIERON MEDIR (${_vfSin.length}) ──`); _vfSin.slice(0, 15).forEach((x) => console.log('   · ' + x)); }
+      console.log(`\n   (lo que ML manda adentro de price_to_win: ${[..._vfClaves].join(', ')})`);
+      return;
+    }
     // ── ¿CONVIENE COMPRAR ESTO QUE VI EN UNA GÓNDOLA? ─────────────────────────────────
     // Salió de que él mandó la foto de una tintura Nougat a $3.699 en un súper y las mismas en ML
     // a $7.590: *"¿sirve?"*. Hasta hoy la única forma de contestarlo era estimar la comisión a
@@ -11523,12 +11637,20 @@ async function main() {
       // al que de verdad vas a tener que vender— y el otro queda a la vista con su número.
       // Si NINGUNO es Full, se mide contra el más barato a secas y se dice, en vez de quedarse
       // sin número (falta de dato leída como dato, el error de siempre).
+      // FULL Y FLEX NO SON LO MISMO, Y LA PRIMERA VERSIÓN LOS MEZCLÓ (22/09/2026).
+      // Yo había metido `self_service_in` adentro de "es Full", y eso es FLEX: el vendedor despacha
+      // el mismo día DESDE SU CASA. Full es la mercadería adentro del depósito de ML. Los dos
+      // muestran "Llega mañana" y por eso se confunden, pero son ventajas distintas y ML las premia
+      // distinto — contarlas juntas daría un número falso justo en lo que se quiere medir.
+      // Él lo marcó: *"ojo que ellos pueden tener flex también. que mire eso"*.
+      const _logTipo = (o) => String((o && o.shipping && o.shipping.logistic_type) || '').toLowerCase();
       const _esFull = (o) => {
-        const lt = String((o && o.shipping && o.shipping.logistic_type) || '').toLowerCase();
         const tags = ((o && o.shipping && o.shipping.tags) || []).map((x) => String(x).toLowerCase());
-        return lt === 'fulfillment' || tags.includes('fulfillment') || tags.includes('self_service_in');
+        return _logTipo(o) === 'fulfillment' || tags.includes('fulfillment');
       };
+      const _esFlex = (o) => _logTipo(o) === 'self_service';
       const _conFull = _acaG.filter(_esFull);
+      const _conFlex = _acaG.filter((o) => !_esFull(o) && _esFlex(o));
       const _sinFull = _acaG.filter((o) => !_esFull(o));
       const _precios = _acaG.map((o) => Number(o.price) || 0).filter((x) => x > 0).sort((a, b) => a - b);
       const _caro = _precios[_precios.length - 1];
@@ -11543,6 +11665,11 @@ async function main() {
       console.log(`   del más barato ${money(_baratoTodos)} al más caro ${money(_caro)}`);
       console.log(`   con Full: ${_conFull.length}${_conFull.length ? ` · el más barato ${money(_baratoFull)}` : ''}`);
       console.log(`   sin Full: ${_sinFull.length}${_sinFull.length ? ` · el más barato ${money(Math.min.apply(null, _sinFull.map((o) => Number(o.price) || Infinity)))}` : ''}`);
+      if (_conFlex.length) console.log(`      de ésos, ${_conFlex.length} con FLEX (despachan el mismo día desde su casa: también llegan rápido)`);
+      // los tipos CRUDOS que manda ML, para no adivinar qué hay adentro de "sin Full"
+      const _tipos = {};
+      for (const o of _acaG) { const k = _logTipo(o) || '(sin dato)'; _tipos[k] = (_tipos[k] || 0) + 1; }
+      console.log(`   cómo despachan, según ML: ${Object.entries(_tipos).map(([k, n]) => `${k} ${n}`).join(' · ')}`);
       if (_baratoFull && _baratoFull > _baratoTodos) {
         console.log(`   ⚠️  EL MÁS BARATO (${money(_baratoTodos)}) NO ES FULL. Se mide contra ${money(_baratoFull)}, que es el más barato CON Full:`);
         console.log(`      el comprador elige el que dice "Llega mañana", así que ése es el precio que de verdad tenés que igualar.`);
