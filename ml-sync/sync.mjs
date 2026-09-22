@@ -430,6 +430,25 @@ async function raisePriceTo(itemId, objetivo, token) {
 // en realidad es 31%. Por eso solo se usan las ventas del MISMO lado del umbral.
 // Devuelve { envio, usadas, mismoLado } — mismoLado=false avisa que no hubo ventas del lado
 // que corresponde y hubo que estimar.
+// ── UN PRECIO ESCRITO A LA ARGENTINA ──────────────────────────────────────────────
+// "$3.699,99" son tres mil setecientos, no trescientos setenta mil. El punto separa los miles y
+// la coma los decimales — salvo cuando el punto trae 1 o 2 dígitos atrás ("3699.99"), que ahí es
+// decimal. Sacar todos los símbolos y quedarse con los dígitos, que es lo que hacía el comando de
+// bajar precios, multiplica por 100 sin avisar.
+function pesosArg(txt) {
+  const t = String(txt == null ? '' : txt).replace(/[^\d.,]/g, '');
+  if (!t) return 0;
+  let ent = t, dec = '';
+  const iCom = t.lastIndexOf(',');
+  if (iCom >= 0) { ent = t.slice(0, iCom); dec = t.slice(iCom + 1).replace(/\D/g, ''); }
+  else {
+    const iPun = t.lastIndexOf('.');
+    // un punto con 1 o 2 dígitos atrás es decimal; con 3 es separador de miles
+    if (iPun >= 0 && t.length - iPun - 1 <= 2) { ent = t.slice(0, iPun); dec = t.slice(iPun + 1); }
+  }
+  const n = Number(ent.replace(/\D/g, '') + '.' + (dec || '0'));
+  return isFinite(n) ? Math.round(n) : 0;
+}
 const UMBRAL_ENVIO_GRATIS = 33000;
 async function envioDeducido(ventas, precioHoy, feeAt, opts = {}) {
   const { modo = 'min' } = opts; // 'min' = mejor caso (para subir) · 'max' = peor caso (para bajar)
@@ -11404,6 +11423,146 @@ async function main() {
     // cosas se ven igual — que es exactamente el error anotado tantas veces acá: un cero que
     // parece un dato. Esto NO toca nada: pide el catálogo de las tres formas posibles e imprime
     // lo que ML contesta, para poder decidir mirando y no suponiendo.
+    // ── ¿CONVIENE COMPRAR ESTO QUE VI EN UNA GÓNDOLA? ─────────────────────────────────
+    // Salió de que él mandó la foto de una tintura Nougat a $3.699 en un súper y las mismas en ML
+    // a $7.590: *"¿sirve?"*. Hasta hoy la única forma de contestarlo era estimar la comisión a
+    // ojo, y la comisión de ML NO es un % parejo —tiene un cargo fijo de ~$1.230 que pesa mucho
+    // más cuanto más barato es el producto—, así que a ojo el número sale mal justo en lo barato,
+    // que es lo que más aparece en una góndola.
+    //
+    // NO ES UNA CUENTA NUEVA: llama a `cuentaCandidato`, la MISMA que decide las compras de
+    // Paraguay, con la comisión pedida a ML al precio exacto. Una segunda copia de la cuenta que
+    // decide una compra es el error anotado una docena de veces en CLAUDE.md.
+    //
+    // SOLO LEE: no escribe en la base, no toca ML y no crea ningún candidato.
+    if (String(process.env.BILLING_PROBE || '').startsWith('gondola:')) {
+      const _gArg = String(process.env.BILLING_PROBE).slice('gondola:'.length).split('|').map((x) => x.trim());
+      const _gTxt = _gArg[0] || '';
+      // EL COSTO SE LEE COMO LO ESCRIBE ÉL, A LA ARGENTINA. Es el bug de `bajar=60.000` del 15/09,
+      // que allá se tapó dejando SÓLO los dígitos — y eso alcanza para un precio redondo y falla
+      // feo con uno del súper: "3.699,99" daba 369999, cien veces más, y el comando habría dicho
+      // "no conviene" de algo que sí conviene. Lo agarró la prueba, no la lectura.
+      // La regla: el punto es de miles salvo que lo sigan 1 o 2 dígitos, y la coma siempre decide
+      // los decimales. Con eso entran "3700", "3.699", "3.699,99", "$3.699,99" y "3699.99".
+      const _gCosto = pesosArg(_gArg[1]);
+      const _gMLA = (_gArg[2] || '').toUpperCase().match(/MLA\d+/) ? (_gArg[2] || '').toUpperCase().match(/MLA\d+/)[0] : null;
+      if (!_gTxt || !(_gCosto > 0)) {
+        console.log('Usá: gondola:<qué es>|<lo que te sale a vos, en pesos>[|<código o link de ML>]');
+        console.log('Ej:  gondola:tintura nougat 5.1|3700');
+        return;
+      }
+      let tokG = null;
+      for (const label of labels) {
+        const acc = accounts[label]; if (!acc?.refresh_token) continue;
+        try {
+          const t = await mlRefresh(ML_CLIENT_ID, ML_CLIENT_SECRET, acc.refresh_token);
+          await db.patch('mlapi/tokens/' + label, { refresh_token: t.refresh_token, updated_ts: Date.now() });
+          tokG = t.access_token; break;
+        } catch { /* probamos con la siguiente */ }
+      }
+      if (!tokG) { console.log('❌ No pude sacar token de ninguna cuenta.'); return; }
+      const _cfgG = await pisoConfig(db);
+      const _pisoG = _cfgG.minPct;
+      const _monoG = parseFloat(((await db.get('cyc/monotributo')) || {}).pct) || 0;
+      const _feeCacheG = {};
+      const _feeAtG = async (price, lt, cat) => {
+        const k = lt + '|' + cat + '|' + Math.round(price);
+        if (_feeCacheG[k] !== undefined) return _feeCacheG[k];
+        let out = null;
+        try {
+          const d = await mlGet(`/sites/MLA/listing_prices?price=${Math.round(price)}&listing_type_id=${lt}&category_id=${cat}`, tokG);
+          const o = Array.isArray(d) ? d[0] : d;
+          if (typeof o?.sale_fee_amount === 'number') out = o.sale_fee_amount;
+        } catch { out = null; }
+        _feeCacheG[k] = out; return out;
+      };
+      console.log(`\n══ ¿CONVIENE VENDER ESTO EN ML? (solo lee) ══`);
+      console.log(`   lo que buscás: "${_gTxt}"  ·  te sale ${money(_gCosto)} la unidad`);
+      // 1) el catálogo. Con el código que él pase no se busca nada; sin él se busca por nombre y
+      //    QUEDA MARCADO, que es el filtro por palabras que ya falló seis veces en este panel.
+      let prodG = null, porNombreG = false;
+      if (_gMLA) {
+        try { prodG = await mlGet(`/products/${_gMLA}`, tokG); } catch { prodG = null; }
+        if (!prodG || !prodG.id) { console.log(`\n❌ El código ${_gMLA} no existe o no es un catálogo. No invento otro.`); return; }
+      } else {
+        porNombreG = true;
+        try {
+          const bus = await mlGet(`/products/search?site_id=MLA&q=${encodeURIComponent(_gTxt.slice(0, 80))}&limit=3`, tokG);
+          prodG = ((bus && bus.results) || [])[0];
+        } catch { prodG = null; }
+        if (!prodG || !prodG.id) { console.log('\n❌ ML no tiene este producto en su catálogo. Hay que mirarlo a mano.'); return; }
+      }
+      const _titG = String(prodG.name || prodG.title || '').slice(0, 120);
+      console.log(`\n── QUÉ ENCONTRÓ EN ML ──`);
+      console.log(`   "${_titG}"`);
+      console.log(`   https://www.mercadolibre.com.ar/p/${prodG.id}`);
+      if (porNombreG) console.log(`   ⚠️  LO EMPAREJÓ POR NOMBRE: abrí ese link y mirá que sea EL MISMO producto (el mismo tono, el mismo tamaño).`);
+      // 2) los vendedores. El 404 acá NO es un error: es "este catálogo hoy no lo vende nadie".
+      let ofsG = [];
+      try { const it = await mlGet(`/products/${prodG.id}/items`, tokG); ofsG = (it && it.results) || []; }
+      catch (eG) {
+        if (/404/.test(String(eG.message || eG))) { console.log('\n❌ El catálogo existe pero hoy no lo vende NADIE: no hay precio contra el cual medir.'); return; }
+        console.log(`\n❌ No pude pedirle los vendedores a ML (${String(eG.message || eG).slice(0, 80)})`); return;
+      }
+      // LOS DE AFUERA NO CUENTAN (regla suya del 19/09): no es contra ésos que competís, y como se
+      // mide contra el MÁS BARATO, alcanza con que uno de afuera esté abajo para que el número salga mal.
+      const _afueraG = ofsG.filter(esOfertaDeAfuera);
+      const _acaG = ofsG.filter((o) => !esOfertaDeAfuera(o));
+      if (!_acaG.length) { console.log(`\n❌ ${_afueraG.length ? 'En ML sólo lo venden desde el EXTERIOR' : 'No hay vendedores'}: no hay contra qué medir.`); return; }
+      const _precios = _acaG.map((o) => Number(o.price) || 0).filter((x) => x > 0).sort((a, b) => a - b);
+      const _barato = _precios[0], _caro = _precios[_precios.length - 1];
+      const _ofBarata = _acaG.find((o) => Number(o.price) === _barato) || _acaG[0];
+      console.log(`\n── A CUÁNTO SE VENDE HOY ──`);
+      console.log(`   ${_acaG.length} vendedor(es) argentino(s)${_afueraG.length ? ` (y ${_afueraG.length} del exterior, que no cuentan)` : ''}`);
+      console.log(`   del más barato ${money(_barato)} al más caro ${money(_caro)}`);
+      console.log(`   Se mide contra el MÁS BARATO: es el peor caso y el precio al que de verdad vas a tener que vender.`);
+      // 3) la cuenta, con la comisión que ML cobra a ESE precio
+      const _ltG = _ofBarata.listing_type_id || 'gold_special';
+      const _catG = _ofBarata.category_id || prodG.category_id;
+      if (!_catG) { console.log('\n❌ ML no dice la categoría de esa publicación, así que no puedo pedirle la comisión.'); return; }
+      // `cuentaCandidato` espera el costo en dólares por un tipo de cambio. Acá el costo YA viene
+      // en pesos, así que se pasa con tc=1: no es un atajo, es la misma cuenta con las unidades
+      // que corresponden. Convertirlo a dólares y volver metería un redondeo que no hace falta.
+      const _ctaG = await cuentaCandidato(_barato, _ltG, _catG, _gCosto, 1, _monoG, _feeAtG);
+      if (!_ctaG) { console.log('\n❌ ML no contestó la comisión a ese precio. No invento un número: volvé a probar en un rato.'); return; }
+      const _pctML = _ctaG.fee / _barato * 100;
+      console.log(`\n── LA CUENTA, CON LA COMISIÓN QUE ML COBRA A ${money(_barato)} ──`);
+      console.log(`   precio de venta                       ${money(_barato)}`);
+      console.log(`   − comisión de ML (${_pctML.toFixed(1)}%)              ${money(Math.round(_ctaG.fee))}   ← preguntado a ML, no estimado`);
+      console.log(`   − envío de Full                       ${money(Math.round(_ctaG.envio))}${_ctaG.envio ? '' : '   ← abajo de ' + money(UMBRAL_ENVIO_GRATIS) + ' lo paga el comprador'}`);
+      console.log(`   − IIBB + monotributo                  ${money(Math.round(_ctaG.impuestos))}`);
+      console.log(`   − la mercadería, puesta en tu oficina ${money(Math.round(_ctaG.costo))}`);
+      console.log(`   ${'─'.repeat(52)}`);
+      console.log(`   TE QUEDA                              ${money(Math.round(_ctaG.ganancia))} por unidad`);
+      console.log(`   MARGEN                                ${_ctaG.margen.toFixed(1)}%   (tu piso es ${_pisoG}%)`);
+      // 4) el veredicto, y el precio al que SÍ daría
+      console.log('');
+      if (_ctaG.margen >= _pisoG) {
+        console.log(`   ✅ LLEGA A TU PISO. Pero antes de comprar mirá tres cosas que el robot no puede ver:`);
+      } else {
+        // A QUÉ COSTO SÍ DARÍA: es la pregunta útil cuando no llega, y evita que él tenga que
+        // adivinar. Se despeja de la misma cuenta, probando costos para abajo con la MISMA función.
+        let _costoOk = null;
+        for (let c = _gCosto; c >= 0; c -= Math.max(10, Math.round(_gCosto / 200))) {
+          const r = await cuentaCandidato(_barato, _ltG, _catG, c, 1, _monoG, _feeAtG);
+          if (r && r.margen >= _pisoG) { _costoOk = c; break; }
+        }
+        console.log(`   ❌ NO LLEGA A TU PISO DEL ${_pisoG}%.`);
+        if (_costoOk != null && _costoOk > 0) {
+          console.log(`   Para que diera el ${_pisoG}% tendrías que conseguirlo a ${money(_costoOk)} o menos`);
+          console.log(`   (hoy te sale ${money(_gCosto)}, o sea ${((_gCosto - _costoOk) / _gCosto * 100).toFixed(0)}% más caro que eso).`);
+        } else {
+          console.log(`   Y no hay costo que lo salve: ni regalado llega, porque a ${money(_barato)} la comisión de ML`);
+          console.log(`   ya se lleva ${money(Math.round(_ctaG.fee))} y los impuestos ${money(Math.round(_ctaG.impuestos))}.`);
+        }
+        console.log(`\n   Antes de descartarlo del todo, las mismas tres cosas:`);
+      }
+      console.log(`     1. ¿CUÁNTAS UNIDADES HAY? Un súper no es un mayorista. Con 20 cajas son ${money(Math.round(_ctaG.ganancia) * 20)} en total.`);
+      console.log(`     2. ¿ESE PRECIO ES DE LISTA O UNA PROMO? Si es promo no podés REPONER, así que es una sola vez.`);
+      console.log(`     3. ¿SE VENDE? Tu vara son +100 vendidos. ML no deja leer las ventas de publicaciones ajenas`);
+      console.log(`        (medido: 403), así que ese número lo tenés que mirar vos en la página.`);
+      return;
+    }
     if (String(process.env.BILLING_PROBE || '').startsWith('probarcaja:')) {
       // Acepta VARIOS separados por ";" y acepta las DOS cosas: el código de un catálogo y el de
       // una publicación NUESTRA. El caso de control no es opcional: sin una publicación propia
