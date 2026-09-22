@@ -19240,8 +19240,21 @@ async function main() {
           } catch { continue; }
           if (!arr || !arr.length) continue;
           for (const pr of arr) estados[pr.status || 'sin-estado'] = (estados[pr.status || 'sin-estado'] || 0) + 1;
-          // Solo se imprimen las que NO son simples ofertas sin aplicar, para no llenar el log.
-          const interesantes = arr.filter((pr) => pr.status !== 'candidate');
+          // ── `promos:<palabra>:crudo` MUESTRA TAMBIÉN LAS QUE ML OFRECE Y NADIE ACEPTÓ ──
+          // Normalmente las `candidate` se saltean: son ~1.000 y llenarían el log. Pero son
+          // EXACTAMENTE lo que hay que mirar para contestar "¿ML me deja poner un descuento acá,
+          // y de cuánto?" — pedido suyo del 22/09 con el Salvador Dalí. Con un filtro por palabra
+          // la lista es corta, así que ahí sí se pueden imprimir, y CRUDAS: los nombres de los
+          // campos son justo lo que hace falta para saber qué se puede mandar.
+          // El dato es de NUESTRAS publicaciones, no de ningún comprador, así que puede ir al log.
+          const CRUDO = String(process.env.BILLING_PROBE || '').includes(':crudo');
+          const interesantes = arr.filter((pr) => CRUDO || pr.status !== 'candidate');
+          if (CRUDO && interesantes.length) {
+            console.log(`${label} · ${it.mla} · ${it.title.slice(0, 44)}  — ${interesantes.length} promoción(es) que ML lista`);
+            for (const pr of interesantes) console.log('   ' + JSON.stringify(pr).slice(0, 700));
+            mostradas++;
+            continue;
+          }
           if (!interesantes.length) continue;
           if (mostradas >= 12) continue; // tope por cuenta, para poder leerlo
           mostradas++;
