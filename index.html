@@ -2271,7 +2271,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='19.94';
+const APP_VERSION='19.95';
 // El problema real que esto resuelve no es curiosidad: es que el celular guarda la app y sigue
 // mostrando la de ayer sin avisar. Varias veces se revisó un cambio que ya estaba subido y no se
 // veía. Por eso, además del número, el chip avisa cuando hay una versión nueva esperando.
@@ -5102,12 +5102,19 @@ function renderOfiCaja(){
   // calculan con `vis` y no con esto. Si el buscador los moviera, escribir "balanza" haría que el
   // botón dijera "Cerrar esta caja · 4 u." teniendo 301 adentro — y ese botón despacha de verdad.
   // Es la misma decisión que en Rotación de Stock, por el mismo motivo.
-  // También mira las variantes: escribiendo un aroma tiene que aparecer ese renglón aunque el
-  // nombre del producto no lo nombre.
+  // ── BUSCAR UN AROMA TIENE QUE TRAER ESE AROMA, NO LOS 70 (21/09/2026) ──
+  // Marcado por él armando la caja de Adriana: escribió "transparent" y le salieron todos los
+  // aromas del Paulvic. La lista tiene UN RENGLÓN POR VARIANTE, y el filtro además preguntaba si
+  // ALGUNA variante del producto coincidía — o sea que al acertarle a un aroma pasaban los 70
+  // renglones de esa ficha. Eso no es buscar: es lo contrario de buscar.
+  // Ahora cada renglón se compara contra LO QUE ESE RENGLÓN DICE: el nombre del producto y, si
+  // nombra una variante, ESA variante. Escribir "paulv" los sigue trayendo a todos (coincide el
+  // nombre del producto) y escribir un aroma trae sólo ese.
+  // El renglón "sin aroma" (variante null, las unidades que no se le imputaron a ninguna) sale
+  // sólo por el nombre del producto, que es lo único que se sabe de él.
   const _q=normTxt(document.getElementById('ofi-caja-search')?.value||'');
-  const verLista=_q?vis.filter(f=>normTxt(f.p.name).includes(_q)
-    ||normTxt(f.variante||'').includes(_q)
-    ||(f.p.variantes||[]).some(v=>normTxt(v).includes(_q))):vis;
+  const _coincide=f=>normTxt(f.p.name).includes(_q)||(f.variante?normTxt(f.variante).includes(_q):false);
+  const verLista=_q?vis.filter(_coincide):vis;
   // Cuando no encuentra nada se dice, y con cuántos renglones había: una lista vacía sin
   // explicación se lee como "no tenés nada", que es otra cosa.
   if(_q&&!verLista.length){

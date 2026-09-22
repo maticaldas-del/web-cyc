@@ -718,6 +718,20 @@ TODAS las cajas abiertas, cuántas unidades aparta cada una, hace cuánto, y el 
 —que pregunta antes, porque tira trabajo hecho a mano—. Va en color normal a propósito: tener una
 caja armándose no es un problema, esconderla sí.
 
+**BUSCAR UN AROMA TRAE ESE AROMA, NO LOS 70 (21/09/2026).** Lo marcó él armando la caja de
+Adriana: escribió *"transparent"* y le salieron todos los aromas del Paulvic. La lista tiene **un
+renglón por variante**, y el filtro además preguntaba si **alguna** variante del producto coincidía
+— o sea que al acertarle a un aroma pasaban los 70 renglones de esa ficha. **Eso no es buscar: es
+lo contrario de buscar.** Ahora cada renglón se compara contra **lo que ESE renglón dice**: el
+nombre del producto y, si nombra una variante, ESA variante. Escribir "paulv" los sigue trayendo a
+todos (coincide el nombre del producto) y escribir un aroma trae sólo ese. El renglón "sin aroma"
+—las unidades que no se le imputaron a ninguna variante— sale sólo por el nombre del producto, que
+es lo único que se sabe de él.
+Probado con la línea REAL sacada del archivo y 9 casos: "transparent" y "trans" traen uno solo ·
+"paulv" trae los 6 aromas más el sin aroma · un producto sin variantes · otra ficha con variante ·
+buscar sin tilde encuentra · y sin resultados. Chequeo de las tres listas más las clases de CSS:
+**0 funciones, 0 `id` y 0 clases de diferencia**, 1 variable nueva.
+
 **El buscador de Armar caja filtra SOLO la lista de productos.** Las dos barras, el botón de cerrar
 y el cartel de "conviene mandarla" se siguen calculando con la lista COMPLETA. Si el buscador los
 moviera, escribir "balanza" haría que el botón dijera *"Cerrar esta caja · 4 u."* teniendo 301
