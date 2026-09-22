@@ -2830,6 +2830,30 @@ la segunda dio 18,9%. Si pegó la vieja, se le pasa ésta entera.
 > **Y ojo con lo que ML llama "oportunidad":** ML sugiere ofrecer **cuotas sin interés**. Eso es
 > bueno para ML y **malo para nosotros** — cuestan hasta 19% del precio. No se usa.
 
+### LO QUE CUESTA TRAER UN PEDIDO (bloque listo para pegar · 22/09/2026)
+
+Preguntado por él: *"¿eso se agrega en el prompt guay?"*. **Sí, pero sólo la conclusión de compra,
+no el número:** el chat sigue calculando con el **15%** —con UNA sola compra medida no se mueve el
+número que usan todos los márgenes—. Lo que le sirve al chat es saber que **el pedido tiene un
+peaje fijo**, porque eso cambia cómo se arma.
+
+> **TRAER UN PEDIDO TIENE UN COSTO FIJO: CONVIENE LLENARLO**
+>
+> Medido en la compra real del 21/09 (US$ 469,40 de mercadería): el recargo de verdad fue
+> **19,9%**, no 15%. Pero se abre en dos partes que se comportan distinto:
+> · **5,5% es comprar los dólares** — escala con lo que compres.
+> · **~$103.600 son FIJOS por pedido** (el que retira y despacha ~$74.300, la transferencia
+>   ~$10.400 y el correo $19.000 por 6,5 kg). Se pagan igual traigas 5 productos o 30.
+>
+> **Qué hacer con eso:**
+> 1. **Seguí calculando con el 15%.** No lo cambies por tu cuenta.
+> 2. **Llená el pedido hasta el tope que te dé Matías.** Con el doble de mercadería el fijo pesa la
+>    mitad y el recargo baja a ~12,7%. Un pedido chico es el más caro por unidad.
+> 3. **Un producto barato NO paga más recargo que uno caro.** El peaje fijo no se reparte por
+>    unidad: lo pagás igual. Lo único que agrega cada producto es su precio +5,5% y su peso.
+> 4. **El correo cobra por peso (~$2.900 el kilo en ese envío).** Entre dos productos parecidos, el
+>    más liviano sale más barato traerlo.
+
 ### NADA DE ENVÍOS INTERNACIONALES (19/09/2026)
 
 Regla suya, avisada mientras el chat barría comprasparaguay: **"estaba tomando envíos
