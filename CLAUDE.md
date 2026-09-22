@@ -1116,6 +1116,52 @@ sube** y dice por qué · 20% clavado sube · **20,4% sube y 20,6% no** (el redo
 sube · 22% avisa y no toca · 24% ni se mira · apagado sigue diciendo que está apagado · el freno de
 los $33.000 sigue ganando cuando corresponde · y con el número viejo (23) el 21% volvería a subir.
 
+## EL MARGEN DE CADA VARIANTE, NO EL DEL GRUPO (22/09/2026)
+
+Lo marcó él mirando las **Sábanas 1 Plaza**, que tienen 12 colores: las doce filas decían el MISMO
+número, **"29% (del prod.)"**. Textual: *"en las variantes no es mejor saber por cada variante en
+vez del grupo? ya que cada producto va como individual"*.
+
+**Tiene razón, y el motivo es exacto: en una ficha con colores cada variante ES su propia
+publicación en ML**, con su precio. El número del producto entero no la describe — y menos cuando
+lo que se guardaba era **el PEOR neto de todas**.
+
+**EL DATO YA SE CALCULABA Y SE TIRABA**, que es el mismo error del envío del mismo día: `netoweb`
+recorre publicación por publicación y mide el neto de cada una; `mejor` se quedaba **únicamente con
+la peor** y las otras se perdían. No faltaba ningún dato de ML.
+
+**DÓNDE SE GUARDA, Y NO ES UN DETALLE DE FORMA: `cyc/netopub`, su propio nodo.** NO adentro de
+`cyc/mllinks`, porque el auto-match de ventas arma el hijo **ENTERO** (`mapUpd[mla] = entry`) y lo
+pisa: un campo guardado ahí se borraría solo. Es el bug del 05/08 y el mismo motivo por el que las
+entregas viven en `cyc/entregas`. Se escribe **después** de los productos y se relee comparando el
+neto (regla 6); si falla no toca nada de lo de arriba, porque el margen por producto es el que
+decide precios.
+
+**NO ES UNA SEGUNDA FÓRMULA.** `margenMLDe` acepta una publicación opcional y lo único que cambia
+es **de dónde salen** el neto, el precio, el envío y la cuenta; la cuenta de abajo es la misma línea
+por línea. **La prueba lo verifica de frente: con los mismos datos, producto y variante dan
+26,943827% los dos.**
+**El COSTO no se toca**: una ficha tiene UN costo y lo comparten todos sus colores. Lo que cambia
+entre variantes es el PRECIO, y eso es justo lo que él quiere ver.
+
+El renglón se dibuja con **`rotMargenHtml`, la MISMA función que el del producto**, así que arrastra
+sus reglas sin copiarlas: verde sólo si está medido, "?" o el simulado arriba de los $33.000, y el
+candado de lo que está liquidando a propósito.
+
+**LO QUE NO SE PUEDE, Y SE DICE EN VEZ DE INVENTARSE:**
+ · **"En stock hace" por variante.** `cyc/stockhist` es por producto **y cuenta**, no por variante
+   (ya estaba anotado el 20/08). Poner el del producto le daría a un color una antigüedad que no es
+   la suya. Queda en "—" con el motivo en el globito.
+ · **Si no se identifica la publicación del color** —el título de ML no lo nombra— se cae al del
+   producto, marcado "(del prod.)" como antes. **No se adivina**, igual que con el código de Full y
+   con la foto: mostrar el margen de otro color sería peor que no mostrar ninguno.
+
+**La caja de compra por variante YA estaba** (`cajaMLDeVariante`), de antes.
+
+13 casos con las funciones REALES del archivo, incluidos los dos lados de la barrera, el IIBB por
+cuenta y que dos colores a distinto precio den márgenes distintos. Tres listas más clases de CSS:
+**0 diferencias en las cuatro**.
+
 ## EL QUE VENDIÓ SE VEÍA PEOR QUE EL QUE NO VENDIÓ (22/09/2026)
 
 Lo agarró él mirando Rotación de Stock con los **dos Lapidus uno arriba del otro**, mismo día de
