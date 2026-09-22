@@ -5,6 +5,12 @@ en orden de lo que va a preguntar primero.** Lo cerrado está documentado más a
 acá va sólo lo que está en el aire. Borrá cada renglón cuando se cierre.
 
 ### 1 · SANCOR: esperando la respuesta de la vendedora
+**RESPONDIÓ EL 22/09 a la tarde:** *"el plan más económico es F800/40% $111.988,7. El mismo contempla
+los aportes del monotributo y el descuento especial del 20%"*. Contra los **$153.713** comparables de
+hoy (la factura de $163.045 menos $6.431 de mora y $2.901 de Vida Plus) son **~$41.700/mes ≈
+$500.000/año** menos. **Antes de cambiar hay que preguntarle 3 cosas** (se le pasaron a él): qué es el
+"40%" (¿copago en consultas y prácticas?), si los $111.988,7 son el FINAL de la factura (con cuota
+social e IIBB — la otra vez dijeron $151.563 y facturaron $163.045) y qué cubre menos que el 1500.
 Él quiere **"el más barato de Sancor"**. La web de Sancor **no se puede leer** (cascarón de
 JavaScript, 6 puertas medidas — ver la sección de Sancor más abajo), así que la lista de planes la
 tiene que pedir él. **Se le armó el mensaje** y queda esperando que le contesten:
