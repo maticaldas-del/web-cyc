@@ -308,6 +308,7 @@ Los que más se usan:
 | `proyec[:retiro][:tasa]` | cuánto le queda a CYC por mes |
 | `retiromes[:monto]` | el retiro de los dueños que se carga solo el 1º de cada mes · `:probar:<mes>` para ver qué haría |
 | `cajasllegaron[:go]` | marca las cajas que ya entraron a Full · **sale sola una vez por hora** |
+| `faltaron[:días]` | **¿el marcado de cajas borró mercadería del patrimonio?** cada caja marcada como llegada, quién la marcó y cuántas unidades y dólares sacó el renglón `faltan` · solo lee |
 | `variantes:<palabra>` | qué variantes tiene un producto y el título real de cada publicación, para cargar las que falten |
 | `sinvincular[:cuenta]` | las publicaciones que NO tienen producto: el robot no les ve stock ni margen |
 | `altanuevas[:go]` | las publicaciones nuevas que el panel todavía no conoce, con la ficha a la que se engancharían · **el robot lo hace solo cada hora**, esto es para mirarlo antes |
