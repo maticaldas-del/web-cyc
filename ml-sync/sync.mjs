@@ -11514,13 +11514,44 @@ async function main() {
       const _afueraG = ofsG.filter(esOfertaDeAfuera);
       const _acaG = ofsG.filter((o) => !esOfertaDeAfuera(o));
       if (!_acaG.length) { console.log(`\n❌ ${_afueraG.length ? 'En ML sólo lo venden desde el EXTERIOR' : 'No hay vendedores'}: no hay contra qué medir.`); return; }
+      // ── EL MÁS BARATO NO SIEMPRE ES CONTRA QUIEN COMPETÍS: MIRAR SI ES FULL ──────────
+      // Pregunta suya con la tintura: *"otro detalle, los de 6.999 tienen full?"*. Es la misma
+      // lógica que los vendedores del exterior, que ya se sacan: el comprador de ML elige el que
+      // dice "Llega mañana", así que uno que manda a mano NO te obliga a igualarle el precio.
+      // NO SE FILTRA SOLO Y SE MUESTRAN LOS DOS: uno sin Full igual compite, sólo que menos, y
+      // esconderlo sería decidir por él. Se MIDE contra el más barato CON Full —que es el precio
+      // al que de verdad vas a tener que vender— y el otro queda a la vista con su número.
+      // Si NINGUNO es Full, se mide contra el más barato a secas y se dice, en vez de quedarse
+      // sin número (falta de dato leída como dato, el error de siempre).
+      const _esFull = (o) => {
+        const lt = String((o && o.shipping && o.shipping.logistic_type) || '').toLowerCase();
+        const tags = ((o && o.shipping && o.shipping.tags) || []).map((x) => String(x).toLowerCase());
+        return lt === 'fulfillment' || tags.includes('fulfillment') || tags.includes('self_service_in');
+      };
+      const _conFull = _acaG.filter(_esFull);
+      const _sinFull = _acaG.filter((o) => !_esFull(o));
       const _precios = _acaG.map((o) => Number(o.price) || 0).filter((x) => x > 0).sort((a, b) => a - b);
-      const _barato = _precios[0], _caro = _precios[_precios.length - 1];
+      const _caro = _precios[_precios.length - 1];
+      const _baratoTodos = _precios[0];
+      const _preciosF = _conFull.map((o) => Number(o.price) || 0).filter((x) => x > 0).sort((a, b) => a - b);
+      const _baratoFull = _preciosF[0] || 0;
+      // contra quién se mide: el más barato CON Full si hay alguno, si no el más barato a secas
+      const _barato = _baratoFull || _baratoTodos;
       const _ofBarata = _acaG.find((o) => Number(o.price) === _barato) || _acaG[0];
       console.log(`\n── A CUÁNTO SE VENDE HOY ──`);
       console.log(`   ${_acaG.length} vendedor(es) argentino(s)${_afueraG.length ? ` (y ${_afueraG.length} del exterior, que no cuentan)` : ''}`);
-      console.log(`   del más barato ${money(_barato)} al más caro ${money(_caro)}`);
-      console.log(`   Se mide contra el MÁS BARATO: es el peor caso y el precio al que de verdad vas a tener que vender.`);
+      console.log(`   del más barato ${money(_baratoTodos)} al más caro ${money(_caro)}`);
+      console.log(`   con Full: ${_conFull.length}${_conFull.length ? ` · el más barato ${money(_baratoFull)}` : ''}`);
+      console.log(`   sin Full: ${_sinFull.length}${_sinFull.length ? ` · el más barato ${money(Math.min.apply(null, _sinFull.map((o) => Number(o.price) || Infinity)))}` : ''}`);
+      if (_baratoFull && _baratoFull > _baratoTodos) {
+        console.log(`   ⚠️  EL MÁS BARATO (${money(_baratoTodos)}) NO ES FULL. Se mide contra ${money(_baratoFull)}, que es el más barato CON Full:`);
+        console.log(`      el comprador elige el que dice "Llega mañana", así que ése es el precio que de verdad tenés que igualar.`);
+        console.log(`      Ojo igual: el de ${money(_baratoTodos)} compite, sólo que con desventaja.`);
+      } else if (!_conFull.length) {
+        console.log(`   ⚠️  NINGUNO es Full. Se mide contra el más barato a secas (${money(_baratoTodos)}).`);
+      } else {
+        console.log(`   Se mide contra el MÁS BARATO con Full: es el peor caso y el precio al que de verdad vas a tener que vender.`);
+      }
       // 3) la cuenta, con la comisión que ML cobra a ESE precio
       const _ltG = _ofBarata.listing_type_id || 'gold_special';
       const _catG = _ofBarata.category_id || prodG.category_id;
