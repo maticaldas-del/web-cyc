@@ -2275,7 +2275,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='19.98';
+const APP_VERSION='19.99';
 // El problema real que esto resuelve no es curiosidad: es que el celular guarda la app y sigue
 // mostrando la de ayer sin avisar. Varias veces se revisó un cambio que ya estaba subido y no se
 // veía. Por eso, además del número, el chip avisa cuando hay una versión nueva esperando.
@@ -7959,6 +7959,31 @@ function _netoAgg(){
 // Ahora, sin ventas, se estiman con el mismo % que usa el resto del panel sobre el precio de hoy.
 // Contra la venta real da $670 contra $669: un peso de diferencia.
 // Queda marcado como estimado para que la pantalla pueda decirlo en vez de darlo por medido.
+// EL ENVIO ESTIMADO PARA EL QUE NUNCA VENDIO (22/09/2026)
+// Pedido suyo: *"necesito saber el margen, por mas que ML todavia no vendio y no muestra gasto.
+// fijarse en productos similares y hacer una simulacion, para saber donde estamos parados"*.
+// ESTO DA VUELTA LA DECISION DEL 12/09 —"no se inventa un envio estimado"— y la da vuelta EL, que
+// es quien la tomo. El "?" contestaba "no se puede saber"; lo que el necesita es "donde estamos".
+// EL NUMERO NO ES INVENTADO, Y ESA ES LA DIFERENCIA: sale de los productos que SI vendieron y
+// estan arriba de la barrera, o sea los unicos que tienen el cargo de Full medido en ventas
+// reales. Es "mirar productos similares" con nuestros propios datos, no una constante a ojo.
+// Se toma el PEOR de esos y no el promedio: errar para el lado caro hace ver el margen MENOR, que
+// es el lado seguro cuando el numero puede terminar moviendo un precio.
+// SI NO HAY NINGUNO MEDIDO NO SE INVENTA NADA y vuelve el "?": una estimacion sin ningun dato
+// atras no es una estimacion, es un numero.
+// Sin cache a proposito: son 137 productos y una cache aca se queda vieja al cambiar un costo o al
+// correr netoweb, que es justo cuando el numero se mueve.
+function envioEstimadoArriba(){
+  let peor=0,n=0;
+  for(const p of (state.products||[])){
+    if(!p)continue;
+    const e=Number(p.netoCalcEnvio)||0;
+    if(!(e>0))continue;
+    if(!(Number(p.netoCalcPrecio)>=UMBRAL_ENVIO_GRATIS))continue;
+    n++;if(e>peor)peor=e;
+  }
+  return {envio:peor,n};
+}
 function margenMLDe(p){
   const agg=_netoAgg();
   const a=agg['id:'+p.id]||agg['nm:'+normTxt(p.name)];
@@ -7992,7 +8017,26 @@ function margenMLDe(p){
   const costo=costoBase+gest;             // el costo TOTAL, el que él quiere ver
   const netoCalc=(p.netoCalc!=null&&p.netoCalc!=='')?Number(p.netoCalc):null;
   const margen=(netoCalc!=null&&costo>0)?((netoCalc-costoBase)/costo*100):null;
-  return {costo,costoBase,gest,neto:netoCalc,netoCalc,margen,mlExtra,mlExtraEstimado,
+  // ── LA SIMULACION, CON LA MISMA CUENTA DE ARRIBA Y NADA MAS ──────────────────
+  // No es una formula nueva: es la de la linea de arriba con el envio estimado puesto en los dos
+  // lugares donde el envio de verdad ya entra — restado del neto y sumado al costo. Con una
+  // segunda formula, la simulacion y el margen medido se irian separando, que es el error anotado
+  // una docena de veces en este archivo.
+  // OJO CON UNA DIFERENCIA QUE ES FACIL PASAR POR ALTO: cuando el envio esta medido, `netoCalc` YA
+  // lo trae descontado (netoweb hace precio - comision - envio). Aca NO, porque el envio que se
+  // uso fue cero. Por eso hay que restarlo a mano; si no, se contaria una sola vez y el margen
+  // saldria alto justo del lado peligroso.
+  const _precioP=Math.round(Number(p.netoCalcPrecio)||0);
+  let margenEst=null,gestEst=0,estN=0;
+  if(margen!=null&&!(gest>0)&&_precioP>=UMBRAL_ENVIO_GRATIS){
+    const _e=envioEstimadoArriba();
+    if(_e.envio>0){
+      gestEst=_e.envio;estN=_e.n;
+      const costoEst=costoBase+gestEst;
+      if(costoEst>0)margenEst=(netoCalc-gestEst-costoBase)/costoEst*100;
+    }
+  }
+  return {costo,costoBase,gest,neto:netoCalc,netoCalc,margen,margenEst,gestEst,estN,mlExtra,mlExtraEstimado,
     // El precio sale acá para que quien muestre el margen pueda preguntarse si ese margen es
     // POSIBLE: arriba de los $33.000 ML cobra el envío gratis siempre, así que un margen
     // calculado con envío $0 a ese precio está inflado por varios puntos.
@@ -11003,11 +11047,28 @@ function rotMargenHtml(r){
     return `<span style="color:var(--muted)" title="Este producto no tiene ninguna publicación viva en ML de la que sacar el precio, así que no hay margen que calcular.">—</span>`;
   const dudoso=r.margenDudoso;
   if(dudoso==='falso'){
-    const t=`NO SE PUEDE SABER. Está a ${fmt(r.margenPrecio)}, arriba de los ${fmt(UMBRAL_ENVIO_GRATIS)}, `
+    // LA SIMULACION (22/09/2026, pedido suyo). Antes acá salía un "?" y nada más, con el motivo
+    // escrito en el globito — o sea escondido, y en el teléfono no hay globito. Un "?" contesta
+    // "no se puede saber"; lo que él necesita es "dónde estamos parados".
+    // NUNCA EN VERDE, ni aunque dé 60%: es una cuenta con un envío que este producto todavía no
+    // pagó nunca. El color dice "esto está medido" y acá no lo está.
+    if(r.margenEst!=null){
+      const te=`SIMULADO, no medido. Este producto nunca vendió, así que no hay envío de Full deducido de ventas suyas. `
+        +`Se le puso ${fmt(r.margenGestEst)}, que es el envío MÁS CARO medido en los ${r.margenEstN} producto(s) que SÍ vendieron `
+        +`arriba de los ${fmt(UMBRAL_ENVIO_GRATIS)} — se toma el peor a propósito, para que el margen se vea MENOR y no mayor. `
+        +`Sin ese envío daría ${r.margen.toFixed(0)}%, que es el número falso de antes. `
+        +`En cuanto venda una unidad, este número se reemplaza solo por el real.`;
+      const cE=r.margenEst<PISO?'var(--red)':'var(--amber)';
+      return `<span title="${te}" style="font-weight:700;color:${cE}">~${r.margenEst.toFixed(0)}%</span>`
+        +`<div style="font-size:.55rem;color:var(--amber);margin-top:2px;white-space:nowrap">simulado · nunca vendió</div>`;
+    }
+    // Sin ningún producto medido arriba de la barrera no hay con qué simular, y ahí sí vuelve el
+    // "?": una estimación sin un solo dato atrás no es una estimación.
+    const t=`NO SE PUEDE SABER TODAVÍA. Está a ${fmt(r.margenPrecio)}, arriba de los ${fmt(UMBRAL_ENVIO_GRATIS)}, `
       +`y ahí ML te cobra el envío gratis SIEMPRE (unos $6.000 por venta). Acá no hay ningún envío descontado, `
       +`así que el ${r.margen.toFixed(0)}% que saldría es falso, no optimista: el real es varios puntos menor. `
-      +`No se inventa un envío estimado porque contarlo dos veces es peor. Para saberlo de verdad hace falta una venta `
-      +`de este producto, o cargarle el envío a mano en la ficha.`;
+      +`Tampoco se puede simular: no hay ningún producto vendido arriba de esa barrera del que sacar el envío. `
+      +`Se arregla con una venta de este producto, o cargándole el envío a mano en la ficha.`;
     return `<span title="${t}" style="font-weight:700;color:var(--red)">?</span>`
       +`<div style="font-size:.55rem;color:var(--red);margin-top:2px;white-space:nowrap">sin envío · ML sí cobra</div>`;
   }
@@ -11383,7 +11444,7 @@ function renderRotacionStock(){
     const _cajaML=cajaMLDe(p);
     return{pid:p.id,name:p.name,capital,ventasPeriodo,rotNorm,estadoKey,estadoHtml,stock,diasSinVender,liq:_liq,
       margen:mg.margen,margenSinEnvio:mg.sinEnvio,margenEnvioML:mg.envioML,margenNeto:mg.neto,margenCosto:mg.costo,
-      margenPrecio:mg.precio,margenGest:mg.gest,margenDudoso:margenDudosoDe(mg),liq2:liquidandoDe(p),
+      margenPrecio:mg.precio,margenGest:mg.gest,margenEst:mg.margenEst,margenGestEst:mg.gestEst,margenEstN:mg.estN,margenDudoso:margenDudosoDe(mg),liq2:liquidandoDe(p),
       caja:_cajaML,cajaBaja:cajaBajarDe(p,_cajaML,mg),diasEnStock:diasEnStockDe(p),diasCaja:ultimaEntradaDe(p)};
   });
 
