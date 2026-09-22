@@ -23872,6 +23872,102 @@ async function main() {
       return;
     }
 
+    // BILLING_PROBE=faltaron[:<días>] → ¿CUÁNTA MERCADERÍA BORRÓ DEL PATRIMONIO EL MARCADO DE CAJAS?
+    //
+    // Pregunta suya del 22/09/2026, mirando el Arqueo: *"hace 6 hr estábamos en 8.100 de patrimonio
+    // total, ahora estamos mucho menos. para mí (…) puso que las cajas llegaron (esa mercadería
+    // desaparece) y como todavía están revisando la mercadería en Full no aparecen como stock,
+    // entonces se pierden"*.
+    //
+    // POR QUÉ NO ALCANZABA CON MIRAR "ÚLTIMA ACTIVIDAD" DEL PANEL, y es lo que hacía falta saber:
+    // ese registro lo escribe la WEB (`cyc/history`, con `log()`), y **el robot no escribe ahí ni
+    // una línea** — verificado. O sea que cuando el robot marca una caja como llegada, en esa lista
+    // NO aparece nada. Ver sólo acciones de él ahí no prueba que el robot no haya tocado nada: es
+    // exactamente el "falta de dato leída como dato" de siempre, y yo estuve a punto de contestarle
+    // que su sospecha estaba descartada apoyándome en eso.
+    //
+    // QUÉ MIDE: cada caja marcada como llegada en los últimos N días (7 por defecto), si la marcó el
+    // robot (`recAuto`) o él a mano, y —lo único que decide— **cuántas unidades y cuántos dólares
+    // sacó del patrimonio el renglón `faltan`**. Una caja marcada COMPLETA no saca nada: sus
+    // unidades salen de "en camino" y entran en el stock de Full, que es neutro. Las que tienen
+    // `faltan` sí: esas unidades salen de "en camino" y no entran en ningún lado.
+    //
+    // EL ARQUEO ESTÁ EN DÓLARES (ver el comentario de `vercaja`): el costo manda en USD y los pesos
+    // van al lado sólo como referencia. Solo lee: no escribe nada nunca.
+    if (/^faltaron(:|$)/.test(String(process.env.BILLING_PROBE || ''))) {
+      const arg = String(process.env.BILLING_PROBE).slice('faltaron:'.length).trim();
+      const dias = Math.max(1, parseInt(arg) || 7);
+      const envios = (await db.get('cyc/envios_full')) || {};
+      const fin = (await db.get('cyc/finanzas')) || {};
+      const tc = parseFloat(fin.tipo_cambio) || 0;
+      const pIdx = {}; for (const p of products) pIdx[p.id] = p;
+      const costUSD = (p) => (p && p.costUSD != null && p.costUSD !== '') ? (parseFloat(p.costUSD) || 0) : 0;
+      const usd = (n) => 'US$ ' + n.toLocaleString('es-AR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+      const plata = (n) => `${usd(n)}${tc ? ` ($${Math.round(n * tc).toLocaleString('es-AR')})` : ''}`;
+      const hoyISO = new Date().toISOString().slice(0, 10);
+      const desde = new Date(Date.now() - dias * 86400e3).toISOString().slice(0, 10);
+
+      console.log(`=== CAJAS MARCADAS COMO LLEGADAS · últimos ${dias} día(s) (desde el ${desde}) ===\n`);
+      if (!tc) console.log('⚠️ Sin tipo de cambio cargado: los pesos de abajo no valen, mirá los dólares.\n');
+
+      const filas = [];
+      let sinFecha = 0, viejas = 0, abiertas = 0;
+      for (const [id, e] of Object.entries(envios)) {
+        if (!e) continue;
+        const cajas = Array.isArray(e.cajasDet) ? e.cajasDet : Object.values(e.cajasDet || {});
+        cajas.forEach((c, i) => {
+          if (!c) return;
+          if (!c.recibida) { abiertas++; return; }
+          // Una caja marcada SIN fecha no se puede ubicar en el tiempo. No se descarta en silencio:
+          // se cuenta y se dice, que es lo contrario del `continue` callado de siempre.
+          if (!c.recFecha) { sinFecha++; return; }
+          if (c.recFecha < desde) { viejas++; return; }
+          filas.push({ id, i, e, c });
+        });
+      }
+      filas.sort((a, b) => String(a.c.recFecha).localeCompare(String(b.c.recFecha)));
+
+      let uFaltTot = 0, valFaltTot = 0, uMarcTot = 0;
+      if (!filas.length) {
+        console.log(`Ninguna caja se marcó como llegada en los últimos ${dias} día(s).`);
+        console.log(`(${abiertas} caja(s) siguen en camino · ${viejas} marcadas antes de esa ventana${sinFecha ? ` · ⚠️ ${sinFecha} marcadas SIN fecha` : ''})`);
+        console.log(`\nO sea que el marcado de cajas NO puede explicar una baja del patrimonio en esa ventana.`);
+      } else {
+        for (const { id, i, e, c } of filas) {
+          const items = Array.isArray(c.items) ? c.items : [];
+          const uTot = items.reduce((a, x) => a + (x?.u || 0), 0);
+          uMarcTot += uTot;
+          const falt = Array.isArray(c.faltan) ? c.faltan : (c.faltan ? Object.values(c.faltan) : []);
+          const uF = falt.reduce((a, x) => a + ((x?.pide || 0) - (x?.llego || 0)), 0);
+          let valF = 0;
+          for (const f of falt) valF += costUSD(pIdx[f?.prodId]) * Math.max(0, (f?.pide || 0) - (f?.llego || 0));
+          uFaltTot += uF; valFaltTot += valF;
+          const quien = c.recAuto ? '🤖 el robot' : '✋ a mano';
+          const hoy = c.recFecha === hoyISO ? ' · HOY' : '';
+          console.log(`── ${c.recFecha}${hoy} · ${e.cuenta || '(sin cuenta)'} · caja despachada el ${e.fecha || '?'} · ${uTot} u. · marcada por ${quien}`);
+          console.log(`   seguimiento ${c.track || '(sin cargar)'} · id ${id} caja ${i + 1}`);
+          if (!uF) { console.log(`   🟢 llegó COMPLETA: no sacó nada del patrimonio.`); continue; }
+          console.log(`   🟠 faltaron ${uF} u. → ${plata(valF)} que SALIERON del patrimonio:`);
+          for (const f of falt) {
+            const d = Math.max(0, (f?.pide || 0) - (f?.llego || 0));
+            if (!d) continue;
+            const p = pIdx[f?.prodId];
+            console.log(`      · ${d} u. de ${f?.nombre || f?.prodId}${f?.variante ? ' · ' + f.variante : ''} (mandaste ${f?.pide}, entraron ${f?.llego})${p ? '' : ' ⚠️ la ficha ya no existe: no se puede valuar'}`);
+          }
+        }
+        console.log(`\n───── EL TOTAL, que es la respuesta ─────`);
+        console.log(`${filas.length} caja(s) marcadas · ${uMarcTot} unidades en total`);
+        console.log(`Lo que se borró del patrimonio: ${uFaltTot} u. · ${plata(valFaltTot)}`);
+        console.log(`(${abiertas} caja(s) siguen en camino · ${viejas} marcadas antes de la ventana${sinFecha ? ` · ⚠️ ${sinFecha} marcadas SIN fecha` : ''})`);
+        if (!uFaltTot) console.log(`\nTodas llegaron completas, así que el marcado NO explica ninguna baja del patrimonio.`);
+        else console.log(`\nSi una de ésas en realidad llegó bien y ML la estaba procesando, se devuelve con: abrircaja:<seguimiento>:go`);
+      }
+      console.log(`\nOJO CON LO QUE ESTO **NO** CONTESTA: el marcado es sólo UNA de las formas en que el`);
+      console.log(`patrimonio puede bajar. Las otras son el efectivo, lo que nos deben y lo que debemos,`);
+      console.log(`que se cargan a mano y no dejan rastro acá.`);
+      return;
+    }
+
     // BILLING_PROBE=vercaja[:<idEnvio|cuenta|cuantas>] → REVISA UNA CAJA CERRADA DE PUNTA A PUNTA.
     //
     // Existe para el momento en que se cierra una caja de verdad. Ahí se tocan cinco cosas a la vez
