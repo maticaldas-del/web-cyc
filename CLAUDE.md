@@ -6691,6 +6691,28 @@ factura de septiembre dice **$163.045,78**. De la diferencia, **$6.431,40 son in
 **Lo que NO se puede tocar:** la cuota social ($27.397) es de la Asociación Mutual y viene con el
 plan, y las percepciones de IIBB (4% BsAs + 1,75% Tucumán) son impuesto.
 
+**EL GRUPO FAMILIAR ES DE UNA SOLA PERSONA Y ESTÁ BIEN.** La factura cobra **1** (Cónyuge e Hijo
+vacíos, y la cuota social dice *"por persona"*). **El hijo tiene OSECAC**, confirmado por él el
+22/09/2026 — o sea que no hay nadie sin cobertura y el plan de una persona es el correcto. Queda
+anotado porque la factura sola se lee como que falta alguien.
+
+**LOS PRECIOS DE LOS PLANES DE SANCOR NO SE PUEDEN LEER CON EL ROBOT. Medido el 22/09/2026 con
+`verwebs`**, 6 direcciones (`/planes`, `/planes-de-salud`, `/monotributistas`, la home,
+`/cotizador`, `/planes/monotributo`): las 6 contestan **200 y 91 KB**, y las 6 traen **165
+caracteres de texto** — *"Por favor, habilita JavaScript para ver este sitio"*. **Es el cascarón
+vacío**: la página la arma JavaScript y el HTML no trae ni un precio.
+Es el caso que el probe está hecho para detectar —*"un 200 no prueba nada"*— y lo detectó solo.
+**No se insiste**, igual que con comprasparaguay y Vía Cargo. **La lista de planes y sus precios la
+tiene que pedir él**, por escrito, a la vendedora.
+
+**Y LA PREGUNTA CORRECTA NO ES "¿CUÁL ES EL MÁS BARATO?".** Ayelen aporta **$55.485/mes** de obra
+social por el monotributo, y ese aporte se puede DERIVAR a la prepaga. O sea que el número que
+decide es **cuánto hay que poner ENCIMA de ese aporte**, no el precio de lista del plan:
+ · hoy: **$163.045 de bolsillo + $55.485 de aporte = ~$218.500/mes** por una persona;
+ · el piso teórico es un plan que se cubra entero con los $55.485 y no pida nada encima.
+Preguntar sólo "el más barato" invita a que contesten con el precio de lista, que es el número que
+menos dice.
+
 - **Vigilar las 8 publicaciones que ganaban la caja de compra y se subieron igual** (11/08). Él lo
   decidió así: *"aunque perdamos en catálogo ganamos igual, y si hay que mantenerlos abajo para que
   ganen no sirven como productos"*. Entre ellas el Separador de Dedos x2 (35 ventas en 60 días) y
