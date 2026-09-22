@@ -26172,6 +26172,96 @@ async function main() {
       console.log(`\nPausar TOCA ML de verdad y no lo hace este comando: la lista es para que la mires y decidas.`);
       return;
     }
+    // BILLING_PROBE=repartopy[:<id de compra>] → EN QUÉ CUENTA PUBLICAR LO QUE LLEGA DE PARAGUAY.
+    //
+    // Pedido suyo (22/09/2026): *"todo lo que está llegando del pedido guay también hay que
+    // distribuirlo"*, y la regla del mismo día: *"hay que tener en cuenta que las 4 cuentas estén
+    // equilibradas también"*. SOLO LEE: no crea fichas, no publica y no escribe nada.
+    //
+    // Para cada producto de la compra muestra el margen en las CUATRO cuentas —lo único que cambia
+    // entre ellas es el IIBB (`ML_EXTRA_PCT`)— y propone una dueña con este orden:
+    //   1. si el producto YA está publicado en una cuenta, ésa (una sola cuenta por producto, 09/09);
+    //   2. si no, la cuenta que MENOS facturó en 90 días entre las que llegan al 25%;
+    //   3. si en ninguna llega, lo dice y no propone.
+    // La cuenta parte de lo que el robot ya midió (`mlPrecio`, `mlComision`) y NO le pregunta nada
+    // a ML: la comisión no depende de la cuenta. Es la MISMA línea que `cuentaCandidato`, cambiando
+    // sólo el 4,8% de IIBB por el de cada cuenta — con dos fórmulas una diría un margen y el panel otro.
+    // Lo que se reparte en la corrida se va SUMANDO a la facturación de esa cuenta, así los 12 no
+    // caen todos en la misma sólo porque arrancó más abajo.
+    if (/^repartopy(:|$)/.test(String(process.env.BILLING_PROBE || ''))) {
+      const idPed = String(process.env.BILLING_PROBE).slice('repartopy'.length).replace(/^:/, '').trim();
+      const compras = (await db.get('cyc/compraspy')) || {};
+      const lista = Object.entries(compras).sort((a, b) => String(b[1].fecha || '').localeCompare(String(a[1].fecha || '')));
+      const par = idPed ? lista.find(([k]) => k === idPed) : lista[0];
+      if (!par) { console.log(idPed ? `No hay ninguna compra con id ${idPed}.` : 'No hay ninguna compra guardada.'); return; }
+      const [cid, comp] = par;
+      const items = Array.isArray(comp.items) ? comp.items : [];
+      const cands = (await db.get('cyc/candidatos_py')) || {};
+      const links = (await db.get('cyc/mllinks')) || {};
+      const vp = (await db.get('cyc/ventaprod')) || {};
+      const tc = parseFloat(((await db.get('cyc/finanzas')) || {}).tipo_cambio) || 0;
+      const monoP = parseFloat(((await db.get('cyc/monotributo')) || {}).pct) || 0;
+      const piso = 25;
+      const CTAS = ['adriana', 'luciana', 'ayelen', 'matias'];
+      const NOM = { adriana: 'Adriana', luciana: 'Luciana', ayelen: 'Ayelen', matias: 'Matías' };
+      const ctaDe = (x) => { const c = String(x || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, ''); return CTAS.find((k) => c.startsWith(k)) || null; };
+      // facturación de 90 días por cuenta
+      const desde = Date.now() - 90 * 864e5, fact = { adriana: 0, luciana: 0, ayelen: 0, matias: 0 };
+      for (const [k, ents] of Object.entries(vp)) {
+        const ts = Date.parse(k.slice(0, 10).replace(/_/g, '-'));
+        if (!isFinite(ts) || ts < desde) continue;
+        for (const v of Object.values(ents || {})) { if (!v || v.cancelada) continue; const c = ctaDe(v.cuenta); if (c) fact[c] += Number(v.total) || 0; }
+      }
+      console.log(`=== EN QUÉ CUENTA PUBLICAR LO QUE LLEGA DE PARAGUAY · compra ${comp.fecha || cid} ===`);
+      console.log(`SOLO LEE · no crea fichas ni publica nada · piso ${piso}%`);
+      console.log(`\nFacturado en los últimos 90 días (lo que se usa para equilibrar):`);
+      for (const c of [...CTAS].sort((a, b) => fact[a] - fact[b])) console.log(`  ${NOM[c].padEnd(8)} ${money(Math.round(fact[c])).padStart(14)}  · IIBB ${ML_EXTRA_PCT[c]}%`);
+      if (!(tc > 0)) { console.log('\n⚠️ No hay tipo de cambio cargado en Finanzas: sin eso el margen no se puede calcular. No propongo nada.'); return; }
+      console.log(`\n${items.length} producto(s):\n`);
+      const acum = { ...fact }, porCta = { adriana: [], luciana: [], ayelen: [], matias: [] }, sinCta = [];
+      for (const it of items) {
+        const c = cands[it.id] || {};
+        const nom = String(it.nom || c.nombre || it.cod || '?').slice(0, 60);
+        const u = parseInt(it.u) || 0;
+        const precio = Number(c.mlPrecio) || 0;   // el MISMO precio con el que se midió `mlComision`
+        const fee = Number(c.mlComision) || 0;
+        const usd = Number(it.usd) || Number(c.usd) || 0;
+        // ¿ya está publicado en alguna cuenta? por ficha vinculada
+        const pid = c.prodId || null;
+        const yaEn = pid ? [...new Set(Object.values(links).filter((e) => e && e.prodId === pid && !e.ignored).map((e) => ctaDe(e.cuenta)).filter(Boolean))] : [];
+        console.log(`• ${nom} · ${u} u. · US$ ${usd.toFixed(2)} c/u`);
+        if (!(precio > 0) || !(fee > 0) || !(usd > 0)) {
+          console.log(`    ⚠️ falta el precio de ML o la comisión medida: no puedo calcular el margen. Queda sin proponer.`);
+          sinCta.push(nom); continue;
+        }
+        const envio = precio >= UMBRAL_ENVIO_GRATIS ? CAND_ENVIO_ARRIBA : 0;
+        const costo = usd * 1.15 * tc;
+        const m = {};
+        for (const k of CTAS) {
+          const imp = precio * (ML_EXTRA_PCT[k] + monoP) / 100;
+          const gan = (precio - fee - envio) - (costo + imp);
+          m[k] = (costo + imp + envio) > 0 ? gan / (costo + imp + envio) * 100 : 0;
+        }
+        console.log(`    a ${money(precio)} · ` + CTAS.map((k) => `${NOM[k]} ${m[k].toFixed(1)}%`).join(' · '));
+        let elegida = null, motivo = '';
+        if (yaEn.length) { elegida = yaEn[0]; motivo = `ya está publicado en ${yaEn.map((k) => NOM[k]).join(', ')}`; }
+        else {
+          const ok = CTAS.filter((k) => m[k] >= piso).sort((a, b) => acum[a] - acum[b]);
+          if (ok.length) { elegida = ok[0]; motivo = ok.length < 4 ? `llega al ${piso}% sólo en ${ok.map((k) => NOM[k]).join(', ')} · la que menos factura de ésas` : 'la que menos factura'; }
+        }
+        if (elegida) {
+          console.log(`    → ${NOM[elegida].toUpperCase()} (${motivo}) · ${m[elegida].toFixed(1)}%`);
+          acum[elegida] += precio * u; porCta[elegida].push(`${nom} (${u} u.)`);
+        } else { console.log(`    ✕ en ninguna cuenta llega al ${piso}%`); sinCta.push(nom); }
+      }
+      console.log(`\n───── RESUMEN ─────`);
+      for (const k of CTAS) if (porCta[k].length) console.log(`${NOM[k]}: ${porCta[k].length} producto(s) · ${porCta[k].join(' · ')}`);
+      if (sinCta.length) console.log(`Sin proponer (${sinCta.length}): ${sinCta.join(' · ')}`);
+      console.log(`\nSi se vendiera todo, así quedaría la facturación de 90 días: ` + CTAS.map((k) => `${NOM[k]} ${money(Math.round(acum[k]))}`).join(' · '));
+      console.log(`\nOJO: el margen usa el precio de ML de la última medición y el 15% de recargo. Antes de publicar, ${'`'}revisarcompra${'`'} lo vuelve a medir de HOY.`);
+      return;
+    }
+
     // BILLING_PROBE=compray[:...] → EL REGISTRO DE CADA COMPRA A PARAGUAY, CON SUS COSTOS REALES.
     //
     // Pedido suyo del 21/09/2026: *"cuando me lo envien quiero que vayas guardando todos los
