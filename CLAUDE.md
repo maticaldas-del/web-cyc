@@ -97,7 +97,7 @@ el % de ganancia único en los seis lugares · el costo "puesto en la oficina" e
 Dalí al 30% · el Puntaje recalibrado a meta 35 · las variantes de Rotación con el texto completo ·
 `gondola` (la tintura: no sirve) · `valefull` y **Full decide las compras** · Sancor y obra social
 privada unificados · las dos facturas de Sancor analizadas.
-**Versión del panel: 20.08 · caché `cyc-v286`.** El ciclo del robot quedó **prendido**.
+**Versión del panel: 20.10 · caché `cyc-v288`** (en la rama de trabajo; la principal sigue en 20.08). El ciclo del robot quedó **prendido**.
 
 
 ## PISO DURO: NINGÚN PRODUCTO SE BAJA POR DEBAJO DEL PISO CONFIGURADO
@@ -6828,11 +6828,16 @@ Lo que quedó abierto. Borrá de acá lo que se vaya cerrando.
   adentro — él avisó el 16/09 que ya lo había pagado y **ya estaba**: cargarlo de nuevo dejaba el
   mes en $413.083 y la ganancia $100.000 abajo de lo real. *No confiar en esta lista sin correr el
   comando*, otra vez.
-  **SERVICIOS: ESTE MES ES CERO**, dicho por él el 16/09 (*"servicios este mes sera 0"*). O sea que
-  el ❌ que va a mostrar la lista de Gastos NO es un olvido. **El panel no sabe distinguir "falta
-  cargarlo" de "este mes no va"** y no hay forma de marcárselo: queda pendiente decidir si se
-  agrega, porque un renglón rojo permanente entrena a no mirar la lista — el mismo problema del
-  cementerio de marcas viejas que ya apareció con `repoextra` y con la pausa por precio.
+  **SERVICIOS: ESTE MES ES CERO**, dicho por él el 16/09 y de nuevo el 22/09. **Desde el 22/09 la
+  lista de Gastos tiene el botón "este mes no va"** (`cyc/gastos_nova/<AAAA_MM>/<renglón>`): pone el
+  renglón en ➖ gris y deja de contarlo como faltante. **Vale sólo para ese mes**: el que viene lo
+  vuelve a pedir solo, para que no se convierta en el cementerio de marcas viejas.
+  **Al 22/09 faltan SÓLO dos, dicho por él: Sancor de Ayelen y los cargos de Full.** Los intereses
+  ya están ($127.000, uno solo: el del capital en dólares ya no se paga desde el 19/09).
+  **Y OJO CON EL NÚMERO DE FULL: son ~$130.000/mes, NO $1.200.000.** El 22/09 le dije que faltaba
+  ~$1,2M de Full y era falso: ese número sale de la factura entera de ML menos las percepciones, y
+  adentro quedan comisiones que ya se descuentan en cada venta. Lo que va como gasto es
+  almacenamiento + stock antiguo + retiro (julio: $127.835), que es lo que dice la propia lista.
   **Faltan de verdad**: los **DOS intereses** (septiembre no tiene ninguno; en agosto fueron
   $250.000 y $30.000) · la **obra social Sancor de Ayelen** (el monto cambia todos los meses, va el
   de la factura) · la **obra social privada** (~$83.333), que es **APARTE del Sancor** — la nota

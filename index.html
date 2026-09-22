@@ -1900,6 +1900,7 @@ function startApp(){
     // Las cajas despachadas a Full, anotadas del comprobante del correo.
     state.envios_full=d.envios_full||{};
     state.cajas_armando=d.cajas_armando||{};   // cajas a medio armar, una por cuenta
+    state.gastosNoVa=d.gastos_nova||{};         // "este mes este gasto no va" (por mes × renglón de la lista)
     state.norepo=d.norepo||{};                 // "este producto no va más a esta cuenta" (por producto×cuenta)
     state.repoextra=d.repoextra||{};            // "mandáselo IGUAL, la publicación la hago después" (producto×cuenta)
     // HISTORIAL DE STOCK: desde cuándo cada producto×cuenta tiene mercadería (`desde`) y cuándo se
@@ -2281,7 +2282,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='20.09';
+const APP_VERSION='20.10';
 // El problema real que esto resuelve no es curiosidad: es que el celular guarda la app y sigue
 // mostrando la de ayer sin avisar. Varias veces se revisó un cambio que ya estaba subido y no se
 // veía. Por eso, además del número, el chip avisa cuando hay una versión nueva esperando.
@@ -14247,12 +14248,28 @@ const GASTOS_DEL_MES=[
       + 'Son almacenamiento + stock antiguo + retiro de stock. Julio fueron $127.835. '
       + 'OJO: NO se carga el total de la factura de ML — casi toda son percepciones de IIBB y comisiones, que ya se descuentan en cada venta.'},
 ];
+// "ESTE MES NO VA" (22/09/2026). Suyo: *"servicios, este mes no hay"*. El panel no podía
+// distinguir "falta cargarlo" de "este mes no existe", así que el renglón quedaba en rojo todo el
+// mes — y un rojo permanente entrena a no mirar la lista. La marca es por MES y por renglón
+// (cyc/gastos_nova/<AAAA_MM>/<n>), así que el mes que viene vuelve a pedirlo solo: marcar un gasto
+// como que no va nunca más sería el cementerio de marcas viejas.
+const _gnvKey=n=>String(n).toLowerCase().replace(/[^a-z0-9]/g,'_').slice(0,40);
+async function setGastoNoVa(ym,n,val){
+  state.gastosNoVa=state.gastosNoVa||{};
+  const k=_gnvKey(n);state.gastosNoVa[ym]=state.gastosNoVa[ym]||{};
+  if(val)state.gastosNoVa[ym][k]=true; else delete state.gastosNoVa[ym][k];
+  try{await fbSet('gastos_nova/'+ym+'/'+k,val?true:null);}
+  catch(e){if(val)delete state.gastosNoVa[ym][k];else state.gastosNoVa[ym][k]=true;alert('No se pudo guardar: '+(e&&e.message||e));}
+  await log((val?'Este mes no va: ':'Vuelve a pedirse: ')+n+' · '+ym.replace('_','/'));
+  renderComprasChecklist();
+}
 function renderComprasChecklist(){
   const el=document.getElementById('compras-checklist');if(!el)return;
   // Sólo tiene sentido por MES: "los gastos de este mes" no significa nada mirando un día o un año.
   if(cmpScopeMode!=='mes'){el.innerHTML='';return;}
   const pref=getKey('cmp','mes');
   const gastos=getComprasByPrefix(pref).filter(x=>getCompraTipo(x)==='gasto');
+  const ymL=String(pref).substring(0,7);
   const norm=(t)=>String(t||'').toLowerCase();
   const buscar=(g)=>gastos.filter(x=>{
     if(g.cat&&(x.cat||'')!==g.cat)return false;
@@ -14265,7 +14282,8 @@ function renderComprasChecklist(){
   // ese número, la fila queda PARCIAL: ámbar, no verde, y cuenta como faltante arriba.
   const filas=GASTOS_DEL_MES.map(g=>{
     const m=buscar(g), min=g.min||1;
-    return{g,min,n:m.length,hay:m.length>=min,parcial:m.length>0&&m.length<min,monto:m.reduce((s,x)=>s+(x.monto||0),0)};
+    const noVa=!m.length&&!!((state.gastosNoVa||{})[ymL]||{})[_gnvKey(g.n)];
+    return{g,min,n:m.length,hay:m.length>=min||noVa,noVa,parcial:m.length>0&&m.length<min,monto:m.reduce((s,x)=>s+(x.monto||0),0)};
   });
   const faltan=filas.filter(f=>!f.hay).length;
   const col=faltan?'var(--red)':'var(--green)';
@@ -14275,11 +14293,13 @@ function renderComprasChecklist(){
       <span style="font-weight:400;font-size:.68rem;color:var(--muted)">· lo que no puede cargarse solo</span>
     </div>
     ${filas.map(f=>`<div style="display:flex;align-items:baseline;gap:10px;flex-wrap:wrap;padding:7px 0;border-top:1px solid var(--border)">
-      <span style="font-size:.9rem;flex-shrink:0">${f.hay?'✅':(f.parcial?'⚠️':'❌')}</span>
+      <span style="font-size:.9rem;flex-shrink:0">${f.noVa?'➖':(f.hay?'✅':(f.parcial?'⚠️':'❌'))}</span>
       <span style="font-size:.76rem;font-weight:600;min-width:150px;flex:1">${f.g.n}</span>
       <span style="font-family:'DM Mono',monospace;font-size:.76rem;color:${f.hay?'var(--text)':(f.parcial?'var(--amber)':'var(--red)')}">${
-        f.hay?fmt(f.monto)+(f.n>1?` · ${f.n} renglones`:'')
-             :(f.parcial?`${fmt(f.monto)} · ${f.n} de ${f.min} · falta ${f.min-f.n}`:'falta')}</span>
+        f.noVa?`<span style="color:var(--muted)">este mes no va</span> <button class="vbtn" style="font-size:.6rem;padding:1px 6px" onclick="setGastoNoVa('${ymL}',${JSON.stringify(f.g.n).replace(/"/g,'&quot;')},false)">deshacer</button>`
+        :f.hay?fmt(f.monto)+(f.n>1?` · ${f.n} renglones`:'')
+             :(f.parcial?`${fmt(f.monto)} · ${f.n} de ${f.min} · falta ${f.min-f.n}`
+               :`falta${f.n?'':` <button class="vbtn" style="font-size:.6rem;padding:1px 6px;color:var(--muted)" title="Marcalo si este mes este gasto no existe. Vale SÓLO para este mes: el que viene lo vuelve a pedir." onclick="setGastoNoVa('${ymL}',${JSON.stringify(f.g.n).replace(/"/g,'&quot;')},true)">este mes no va</button>`}`)}</span>
       <span style="font-size:.62rem;color:var(--muted);flex-basis:100%">${f.g.nota}</span>
     </div>`).join('')}
     <div style="font-size:.62rem;color:var(--muted);margin-top:10px;line-height:1.6">
