@@ -26223,13 +26223,27 @@ async function main() {
 
       // ── GUARDAR UNA COMPRA ────────────────────────────────────────────────
       if (fecha) {
-        const usd = num(campos.usd), merc = num(campos.merc);
-        const envio = num(campos.envio), cambio = num(campos.cambio) || 0, otros = num(campos.otros) || 0;
+        // LO QUE NO SE PASA, SE CONSERVA (22/09/2026). Cargar el correo de un pedido que ya tenía
+        // todo lo demás obligaba a volver a tipear la mercadería, el que retira y la diferencia de
+        // la transferencia — y como `pagos` se escribe entero, uno que se olvidara quedaba en CERO
+        // y el recargo salía corto sin que nada lo dijera. Ahora un campo ausente toma el guardado.
+        const yaG = guardadas['py' + String(fecha).replace(/-/g, '')] || null;
+        const yaP = (yaG && yaG.pagos) || {};
+        const dePrevio = (k, kp) => (campos[k] != null ? num(campos[k]) : (yaP[kp] != null ? Number(yaP[kp]) : null));
+        const usd = campos.usd != null ? num(campos.usd) : (yaG ? parseFloat(yaG.usdCrudo) || null : null);
+        const merc = dePrevio('merc', 'mercaderia');
+        const envio = dePrevio('envio', 'envio'), cambio = dePrevio('cambio', 'cambista') || 0, otros = dePrevio('otros', 'otros') || 0;
+        if (yaG && Object.keys(campos).some((k) => !['usd', 'merc', 'envio', 'cambio', 'otros', 'retira', 'det', 'nota', 'kg'].includes(k))) console.log('  (hay un campo que no conozco; se ignora)');
+        if (yaG) console.log(`  (lo que no pasaste se toma de lo guardado: ${['usd', 'merc', 'envio', 'cambio', 'retira', 'otros'].filter((k) => campos[k] == null).join(', ') || 'nada'})`);
         // `retira` es lo que cobra el que retira en Paraguay y despacha. Tiene su propio nombre y no
         // va metido en `otros` porque es el gasto FIJO más grande que tiene el pedido (medido el
         // 21/09: $74.260 sobre una compra de US$ 474,80, o sea 10 puntos del recargo) y un renglón
         // que dice "otros" no se puede mirar. Cuenta como fijo, igual que el envío.
-        const retira = num(campos.retira) || 0;
+        const retira = dePrevio('retira', 'retira') || 0;
+        // El peso TOTAL del pedido, el que figura en la guía del correo. No reparte nada por
+        // producto (esos pesos no existen ni van a existir, dicho por él), pero es el dato con el
+        // que se compara el correo de un pedido contra el siguiente.
+        const kgPedido = campos.kg != null ? num(campos.kg) : (yaG && yaG.kgCorreo != null ? Number(yaG.kgCorreo) : null);
         if (!(usd > 0)) { console.log('Falta `usd=` (los dólares CRUDOS de comprasparaguay, sin el 15%). Sin eso no hay contra qué medir.'); return; }
         if (!(merc > 0)) { console.log('Falta `merc=` (los pesos que salieron por la mercadería).'); return; }
         if (envio == null) { console.log('Falta `envio=` (los pesos del correo). Si todavía no lo sabés poné `envio=0`: queda marcado INCOMPLETO y no entra en el promedio.'); return; }
@@ -26320,7 +26334,7 @@ async function main() {
           fecha, usdCrudo: usd,
           pagos: { mercaderia: Math.round(merc), cambista: Math.round(cambio), envio: Math.round(envio), retira: Math.round(retira), otros: Math.round(otros) },
           items: itemsFin, nota: campos.nota || (ya && ya.nota) || '', tcPanel: tcPanel || null,
-          usdPanel,
+          usdPanel, kgCorreo: kgPedido > 0 ? kgPedido : null,
           incompleto: !(envio > 0), ts: Date.now(),
         };
         const totARS = merc + cambio + envio + retira + otros;
@@ -26332,6 +26346,7 @@ async function main() {
         console.log(`  pagado por la mercadería ${money(Math.round(merc))}${cambio ? ` · cambista aparte ${money(Math.round(cambio))}` : ''}`);
         console.log(`  envío                    ${money(Math.round(envio))}${retira ? ` · el que retira y despacha ${money(Math.round(retira))}` : ''}${otros ? ` · otros ${money(Math.round(otros))}` : ''}`);
         console.log(`  TOTAL                    ${money(Math.round(totARS))}`);
+        if (kgPedido > 0 && envio > 0) console.log(`  el correo: ${kgPedido} kg · ${money(Math.round(envio / kgPedido))} por kilo`);
         console.log('');
         console.log(`  el dólar que pagaste por la mercadería: ${money(Math.round(dolarMerc))}${tcPanel ? ` · el del panel es ${money(Math.round(tcPanel))} (${(((dolarMerc + (cambio / usd)) / tcPanel - 1) * 100).toFixed(1)}% más caro con el cambista adentro)` : ''}`);
         if (tcPanel > 0) {
