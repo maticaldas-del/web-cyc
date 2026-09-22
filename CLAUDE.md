@@ -273,6 +273,7 @@ Los que más se usan:
 |---|---|
 | `chequeo[:días]` | el chequeo de la mañana de las 4 cuentas |
 | `unapub:<MLA o palabra>` | todo sobre una publicación: precio real, caja de compra, margen |
+| `unapub:<MLA>:<piso>:<días>:bajar=<precio>[:go]` | **bajar a un precio exacto** que él pide · calcula el margen que queda, avisa si va abajo del piso y marca `liquidando` para que el robot no se lo suba · sin `:go` sólo muestra |
 | `hermanas:<palabra>` | todas las publicaciones del mismo producto, por si hay que subirlas juntas |
 | `bajopiso[:piso]` | las publicaciones abajo del 30%, con recomendación · **solo las que vendieron** |
 | `submargen[:piso][:go]` | sube al piso con la cuenta de Margen ML · **llega a las que no vendieron** |
@@ -1014,6 +1015,40 @@ ni yo (regla 5). Si la twin deja de vender, ése es el primer lugar donde mirar.
 
 **Para revisarlo cuando quiera: `tocados[:horas]`**, que lista lo que tocó el robot, en qué margen
 quedó hoy y a qué precio debería estar. Sin `bajar` SOLO LEE.
+
+### Y CUANDO ÉL PIDE UN PRECIO EXACTO MÁS BAJO: `unapub:<MLA>:<piso>:<días>:bajar=<precio>[:go]`
+
+Pedido suyo el mismo día: *"bajalo a 60.000"*. **Es la excepción de la regla 5 y la pide él cada
+vez.** No había por dónde: `volver` YA NO BAJA (17/09) y `bajarcaja`/`empatar` bajan al precio que
+ellos calculan, no a uno que él elija.
+
+**POR QUÉ NO SE REABRIÓ `volver`:** ese comando pone un precio a mano **sin calcular ningún
+margen**, y bajar a ciegas es justo lo que se le sacó. Acá el margen al precio nuevo sale de
+**`margenA`**, la MISMA función con la que `unapub` mide todo lo demás — por eso vive ADENTRO de
+`unapub` y no en un comando nuevo, igual que `empatar`: ahí ya están el costo, el envío y la
+comisión medidos, y una segunda copia de la cuenta que decide un precio es el error anotado ocho
+veces en este archivo.
+
+**Los frenos, y ninguno es de adorno:**
+ · **SÓLO BAJA.** Si el precio pedido es igual o más alto, lo dice y manda a `volver`.
+ · **No toca publicaciones con VARIANTES**: el precio de arriba no las mueve y mandar la lista
+   incompleta hace que ML borre las que falten (regla 7).
+ · **Redondea PARA ABAJO** a la decena. `setPriceTo` hace `Math.ceil`, así que un número que no sea
+   múltiplo de 10 terminaría **más caro** de lo que él pidió — el mismo detalle de la Pad 2.
+ · **Avisa si queda abajo del piso** y lo baja igual, porque lo pidió él; queda en el log con el
+   texto de autorización que `_chequeoPiso` exige.
+ · **Marca `liquidando` ANTES de bajar, y si esa marca falla NO baja.** Se marca **siempre y no
+   según el margen**: el margen de acá sale del envío del PEOR caso y el del robot sale del envío
+   de ESA venta, así que son dos números distintos y no se puede prometer que el robot no la toque.
+   Se saca con `liquidando:-<MLA>:go`.
+ · **Relee de ML** y compara (regla 6).
+
+**LA PRUEBA AGARRÓ UN BUG REAL Y ERA DE LOS QUE NO SE VEN: `bajar=60.000` daba $60.** Él escribe
+los precios a la argentina y el punto quedaba adentro del `parseFloat`. No habría roto nada —
+`setPriceTo` lo rechazaba por bajar más del 25%— pero el comando habría contestado un error raro
+sobre un precio que él escribió bien. **Ahora se leen sólo los dígitos.**
+Probado con el bloque REAL sacado del archivo y 9 casos: `60000`, `60.000`, `60,000`, `$60005` (que
+redondea a 60000), más caro, igual, texto, y con variantes.
 
 ## EL ROBOT SUBE SOLO DESDE 20% PARA ABAJO, NO DESDE EL PISO (22/09/2026)
 
