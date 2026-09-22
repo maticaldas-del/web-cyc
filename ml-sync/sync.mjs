@@ -21345,6 +21345,60 @@ async function main() {
           return;
         }
       }
+      // ── `unapub:<MLA>:<piso>:<días>:bajar=<precio>[:go]` → DEJAR UN PRECIO EXACTO MÁS BAJO ──
+      // (22/09/2026) Pedido suyo con el Ted Lapidus —*"bajalo a 60.000"*— después de que el robot
+      // se lo subiera solo a $62.340. Es la EXCEPCIÓN DE LA REGLA 5 y la pide él cada vez.
+      //
+      // POR QUÉ NO ALCANZA CON `volver`: ese pone un precio a mano SIN calcular ningún margen, y
+      // justo por eso se le sacó la baja el 17/09 — bajaba a ciegas. Acá el margen al precio nuevo
+      // sale de `margenA`, la MISMA función con la que este comando mide todo lo demás, así que no
+      // es una segunda copia de la cuenta que decide un precio. Va ADENTRO de `unapub` por lo
+      // mismo que `empatar`: acá ya están el costo, el envío y la comisión medidos.
+      if (_u.some((x) => /^bajar=/i.test(x))) {
+        const _GO = _u.includes('go');
+        const _crudo = String(_u.find((x) => /^bajar=/i.test(x))).split('=')[1] || '';
+        // SÓLO DÍGITOS, y el punto se TIRA. Él escribe los precios a la argentina —"60.000"— y
+        // dejando el punto adentro `parseFloat` lee SESENTA. Lo agarró la prueba, no la lectura.
+        // Acá no hay centavos que perder: los precios de ML son pesos enteros y abajo se redondea
+        // a la decena igual.
+        // Se redondea PARA ABAJO: `setPriceTo` hace `Math.ceil`, así que un número que no sea
+        // múltiplo de 10 terminaría MÁS CARO de lo que él pidió.
+        const _pd = Math.floor((parseInt(_crudo.replace(/\D/g, ''), 10) || 0) / 10) * 10;
+        console.log(`\n── BAJAR A UN PRECIO EXACTO ──`);
+        if (!(_pd > 0)) { console.log(`  No entendí el precio ("${_crudo}"). Va así: bajar=60000`); return; }
+        // ESTE COMANDO SÓLO BAJA. Subir tiene su propio camino (`volver`), que no necesita medir
+        // ningún margen porque subir nunca puede dejarte vendiendo a pérdida.
+        if (_pd >= (b.price || 0)) { console.log(`  ${money(_pd)} NO es más barato que el precio de hoy (${money(Math.round(b.price || 0))}). Esto sólo BAJA: para subir va \`volver:${MLA}=${_pd}:go\`.`); return; }
+        // Con variantes no alcanza el precio de la publicación: hay que mandar la lista COMPLETA o
+        // ML borra las que falten (regla 7). No se adivina.
+        if ((b.variations || []).length) { console.log(`  Esta publicación tiene ${b.variations.length} variantes: el precio de arriba no las mueve. No la toco.`); return; }
+        const _r3 = await margenA(_pd, envioMax);
+        if (!_r3) { console.log('  ML no me dio la comisión a ese precio. No toco nada.'); return; }
+        console.log(`  ${money(Math.round(b.price || 0))} → ${money(_pd)}  (−${((1 - _pd / (b.price || 1)) * 100).toFixed(1)}%) · queda en ${_r3.mg.toFixed(1)}%`);
+        console.log(`  Por unidad pasás de ganar ${money(Math.round((hoy && (hoy.neto - costo - hoy.mlx)) || 0))} a ${money(Math.round(_r3.neto - costo - _r3.mlx))}.`);
+        if (_r3.mg < MIN * 100) console.log(`  ⚠️ Queda ABAJO del piso del ${(MIN * 100).toFixed(0)}%. Se baja igual porque lo pediste vos, y queda anotado.`);
+        if (!_GO) { console.log(`\n  PRUEBA: no toqué nada. Para aplicar: unapub:${MLA}:${(MIN * 100).toFixed(0)}:${DIAS}:bajar=${_pd}:go`); return; }
+        // LA MARCA `liquidando` VA ANTES DE BAJAR, Y SI FALLA NO SE BAJA — igual que en `empatar`.
+        // Si no, la primera venta puede disparar la suba automática y el robot deshace la decisión,
+        // que es exactamente lo del Pendrive del 12/09. Se marca SIEMPRE y no según el margen: el
+        // margen de acá sale del envío del PEOR caso y el del robot sale del envío de ESA venta,
+        // así que son dos números distintos y no se puede prometer que el robot no la toque.
+        // Se saca con `liquidando:-<MLA>:go` el día que él quiera que vuelva a subir sola.
+        try {
+          await db.patch('cyc/nosubir/' + MLA, { fecha: new Date().toISOString().slice(0, 10),
+            motivo: `bajado a mano a ${money(_pd)} (queda en ${_r3.mg.toFixed(1)}%)` });
+          console.log(`  🔒 marcada "liquidando": el robot NO le va a subir el precio. Para sacarla: liquidando:-${MLA}:go`);
+        } catch (eM) { console.log(`  ❌ no pude marcarla como "liquidando" (${String(eM.message || eM).slice(0, 80)}). NO la bajo: la primera venta te la podría subir sola.`); return; }
+        const _res3 = await setPriceTo(MLA, null, _pd, t.access_token, { margen: _r3.mg,
+          autorizado: `lo pidió Matías: bajar a ${money(_pd)} (${MLA})` });
+        console.log(_res3.ok ? `  ✓ ${money(_res3.from)} → ${money(_res3.to)}` : `  ❌ NO se bajó: ${_res3.err}`);
+        // RELEER DE ML: que el PUT conteste OK no alcanza (regla 6).
+        try {
+          const _v3 = await mlGet('/items/' + MLA + '?attributes=id,price', t.access_token);
+          console.log(`  releído de ML: ${money(Math.round(_v3.price))}  ${Math.round(_v3.price) === _pd ? '✓' : '✗ NO quedó como pedí'}`);
+        } catch (eR3) { console.log(`  no pude releerlo de ML: ${String(eR3.message || eR3).slice(0, 80)}`); }
+        return;
+      }
       // Precio para el piso
       const den = 1 - cuo - m * (1 + MIN);
       if (den > 0) {
