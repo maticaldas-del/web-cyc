@@ -3493,7 +3493,11 @@ const CAND_MAX_ML = 40;         // tope de consultas a ML por vuelta (ver abajo)
 // Toffee Coffee 38,4% y el CK One) se iban a quedar con ese margen FALSO para siempre: están todos
 // arriba del piso, así que ninguna vuelta los volvía a medir. **Un cambio en la fórmula cuenta
 // igual que un campo nuevo.**
-const CAND_CALC_VER = 5;
+// CUARTA VEZ, 22/09/2026: medir contra el más barato CON FULL en vez del más barato a secas es
+// otro cambio de CUENTA, no un campo. Sin subir este número, los que hoy están arriba del piso se
+// quedaban con el margen medido contra un vendedor que no hay que igualar — y son justo los que
+// entran al pedido. Un cambio en la fórmula cuenta igual que un campo nuevo, por cuarta vez.
+const CAND_CALC_VER = 6;
 
 // ── UN DESCARTE POR MARGEN NO ES "NUNCA MÁS" (19/09/2026) ─────────────────────────────────
 // Regla suya, textual: *"yo no pondría ningún producto en NUNCA MÁS. salvo producto que después
@@ -3546,6 +3550,74 @@ function esOfertaDeAfuera(o) {
   if (tg.some((t) => /cbt/i.test(String(t)))) return true;
   const m = String((o && o.international_delivery_mode) || 'none');
   return !!m && m !== 'none';
+}
+
+// ── FULL, FLEX Y CONTRA QUÉ PRECIO SE MIDE DE VERDAD (22/09/2026) ──────────────────────────
+// Pregunta suya con la tintura de la góndola —*"los de 6.999 ¿tienen full?"*— y después la regla:
+// *"tener full nos ayuda a ganar caja, nosotros siempre vamos a vender de esa forma. ojo que ellos
+// pueden tener flex tambien. que mire eso"*.
+//
+// ES LA MISMA LÓGICA QUE LOS VENDEDORES DEL EXTERIOR, QUE YA SE SACAN: el margen se mide contra el
+// MÁS BARATO de la ficha, y si ése manda a mano **no es el precio que hay que igualar** — el
+// comprador de ML elige el que dice "Llega mañana". Medirse contra él hunde el margen contra una
+// venta que no compite, y con el freno de las dos mediciones ese producto termina descartado.
+//
+// CUÁNTO VALE, MEDIDO EN NUESTRAS PROPIAS PUBLICACIONES (`valefull`, 22/09/2026): de 15
+// publicaciones de catálogo ganamos la caja en 10, y **en las 10 estando MÁS CAROS que un
+// competidor sin Full**. El premio va de **3,0% a 26,6%**, con la mitad en **22,7% o menos**.
+// O sea: contra uno sin Full se puede estar ~23% más caro y quedarse igual con la caja.
+// Es una MEDIANA, no una garantía: cerca del 26% ya es el techo de lo medido.
+//
+// FULL Y FLEX NO SON LO MISMO, Y LA PRIMERA VERSIÓN LOS MEZCLÓ. Yo había metido `self_service`
+// adentro de "es Full" y eso es FLEX: el vendedor despacha el mismo día DESDE SU CASA. Full es la
+// mercadería adentro del depósito de ML. Los dos muestran "Llega mañana" y por eso se confunden,
+// pero son ventajas distintas y ML las premia distinto. **Él lo marcó antes de que mordiera.**
+// Se cuentan SEPARADOS: juntarlos daría un número falso justo en lo que se quiere medir.
+//
+// VIVEN ACÁ, EN UNA FUNCIÓN, y no adentro de cada comando: las usan `candidatos` (que decide la
+// compra), `revisarcompra` (que la revisa justo antes de gastar los dólares), `gondola` y
+// `valefull`. Con dos copias, el que revisa diría "está todo bien" midiendo contra un precio
+// distinto del que decidió — el error anotado una docena de veces en CLAUDE.md.
+function esOfertaFull(o) {
+  const tags = ((o && o.shipping && o.shipping.tags) || []).map((x) => String(x).toLowerCase());
+  const lt = String((o && o.shipping && o.shipping.logistic_type) || '').toLowerCase();
+  return lt === 'fulfillment' || tags.includes('fulfillment');
+}
+function esOfertaFlex(o) {
+  return String((o && o.shipping && o.shipping.logistic_type) || '').toLowerCase() === 'self_service';
+}
+// CONTRA QUÉ PRECIO SE MIDE. Devuelve TODO lo que hace falta para explicarlo, porque el número
+// solo no alcanza: si se mide contra $14.360 habiendo uno a $11.662, hay que decir por qué —
+// si no, el renglón se lee como un error de cuenta. `ofertas` ya viene SIN los del exterior.
+//  · hay alguno con Full → se mide contra el más barato CON Full, que es el precio que de verdad
+//    hay que igualar;
+//  · ninguno con Full   → contra el más barato a secas, **y se dice**. Quedarse sin número sería
+//    falta de dato leída como dato, el error de siempre.
+// NO SE FILTRA NADA: el que no tiene Full igual compite, sólo que con desventaja, y esconderlo
+// sería decidir por él. Sale con su número al lado.
+function precioAIgualar(ofertas) {
+  const pr = (o) => Number(o && o.price) || 0;
+  const ofs = (ofertas || []).filter((o) => pr(o) > 0);
+  if (!ofs.length) return null;
+  const conFull = ofs.filter(esOfertaFull);
+  const sinFull = ofs.filter((o) => !esOfertaFull(o));
+  const conFlex = sinFull.filter(esOfertaFlex);
+  const baratoTodos = Math.min(...ofs.map(pr));
+  const baratoFull = conFull.length ? Math.min(...conFull.map(pr)) : 0;
+  const baratoSinFull = sinFull.length ? Math.min(...sinFull.map(pr)) : 0;
+  const precio = baratoFull || baratoTodos;
+  return {
+    precio,
+    ref: ofs.find((o) => pr(o) === precio) || ofs[0],
+    max: Math.max(...ofs.map(pr)),
+    baratoTodos, baratoFull, baratoSinFull,
+    conFull: conFull.length, conFlex: conFlex.length, sinFull: sinFull.length,
+    hayFull: conFull.length > 0,
+    // el premio de tener Full en ESTE catálogo: cuánto más caro que el más barato sin Full es el
+    // precio contra el que se mide. Cero cuando no hay contra qué compararlo.
+    premioPct: (baratoFull && baratoSinFull && baratoFull > baratoSinFull)
+      ? (baratoFull - baratoSinFull) / baratoSinFull * 100 : 0,
+  };
 }
 // ── LA CUENTA DE UN CANDIDATO, EN UNA SOLA FUNCIÓN (19/09/2026) ───────────────────────────
 // Vivía adentro de `correrCandidatos`, que es el que decide la compra. Salió afuera porque ahora
@@ -3924,13 +3996,25 @@ async function correrCandidatos(db, products, labels, accounts, soloPrueba, prue
       if (ofsAfuera.length) console.log(`      (saco ${ofsAfuera.length} vendedor(es) del exterior: no es contra ésos que competimos)`);
       ofertas = ofsAca;
       vendedores = ofertas.length;
-      // El precio de referencia es el MÁS BARATO que hoy se vende: es contra el que habría que
-      // competir. Tomar el más caro haría ver un margen que no existe.
-      const precios = ofertas.map((o) => parseFloat(o.price) || 0).filter((x) => x > 0);
-      mlPrecio = precios.length ? Math.min(...precios) : 0;
-      const ref = ofertas.find((o) => (parseFloat(o.price) || 0) === mlPrecio) || ofertas[0];
+      // EL PRECIO DE REFERENCIA ES EL MÁS BARATO **CON FULL**, no el más barato a secas
+      // (22/09/2026 · ver `precioAIgualar`). Uno que manda a mano no obliga a igualarle el precio:
+      // el comprador elige el que dice "Llega mañana". Medido en nuestras publicaciones, contra uno
+      // sin Full se puede estar ~23% más caro y quedarse igual con la caja.
+      // Tomar el más caro de la ficha haría ver un margen que no existe; tomar el más barato sin
+      // mirar cómo despacha lo hunde contra una venta que no compite.
+      const _pi = precioAIgualar(ofertas);
+      mlPrecio = _pi ? _pi.precio : 0;
+      const ref = _pi ? _pi.ref : ofertas[0];
       cat = ref && ref.category_id ? ref.category_id : null;
       if (ref && ref.listing_type_id) lt = ref.listing_type_id;
+      // Se DICE contra quién se mide y por qué: un precio de referencia que no es el más barato de
+      // la lista se lee como un error si no se explica.
+      if (_pi && _pi.premioPct > 0) {
+        console.log(`      el más barato (${money(Math.round(_pi.baratoSinFull))}) NO tiene Full: mido contra ${money(Math.round(mlPrecio))}, que es el más barato CON Full (${_pi.premioPct.toFixed(0)}% más caro)`);
+      } else if (_pi && !_pi.hayFull) {
+        console.log(`      ⚠️  ninguno de los ${_pi.sinFull} vendedores tiene Full: mido contra el más barato a secas (${money(Math.round(mlPrecio))})`);
+      }
+      if (_pi && _pi.conFlex) console.log(`      (${_pi.conFlex} de los que no tienen Full usan FLEX: despachan el mismo día desde su casa, así que compiten parecido)`);
       // El MÁS CARO de la ficha. Con el más barato arma el RANGO, que es lo único honesto que se
       // puede decir de "a cuánto se vende" en un catálogo donde todavía no vendemos: la lista
       // NO dice cuál gana la caja (probado el 18/09).
@@ -3938,7 +4022,7 @@ async function correrCandidatos(db, products, labels, accounts, soloPrueba, prue
       // `verofertas`): en el catálogo del JBL Partylight Beam el renglón 13 venía a $234.999
       // después de uno de $273.999. No cambia ningún resultado porque acá se usa `Math.min` y
       // `Math.max`, pero el que lea esto y confíe en el orden se va a equivocar.
-      mlMax = precios.length ? Math.round(Math.max(...precios)) : 0;
+      mlMax = _pi ? Math.round(_pi.max) : 0;
       // Las VENTAS, en una sola consulta para todos los vendedores de esta ficha (ver arriba).
       // Si ML no contesta, quedan en null y la pantalla dice que no las sabe: un CERO acá se
       // leería como "no vende nada" y es la diferencia entre descartar un producto y no medirlo.
@@ -4023,6 +4107,14 @@ async function correrCandidatos(db, products, labels, accounts, soloPrueba, prue
     if (!soloPrueba) {
       await db.patch(`cyc/candidatos_py/${id}`, {
         mlTit, mlPrecio: Math.round(mlPrecio), mlMax, mlVendedores: vendedores, mlVendidas, mlVendidasMin, mlComision: Math.round(fee), mlLink, mlPorNombre: porNombre,
+        // CONTRA QUIÉN SE MIDIÓ. Se guarda porque el panel tiene que poder EXPLICAR por qué el
+        // margen no sale contra el precio más barato de la ficha: sin esto el renglón se lee como
+        // un error de cuenta. Es el mismo caso de la comisión del 19/09 —un dato que el robot ya
+        // tenía y tiraba, dejando a todos adivinando un número que el sistema ya sabe.
+        mlHayFull: _pi ? !!_pi.hayFull : null,
+        mlSinFull: _pi && _pi.baratoSinFull ? Math.round(_pi.baratoSinFull) : null,
+        mlConFull: _pi ? _pi.conFull : null,
+        mlFlex: _pi ? _pi.conFlex : null,
         margen: Math.round(margen * 10) / 10, ganancia: Math.round(ganancia),
         // Los tres de la caja de compra se BORRAN: se escribieron en la corrida del 18/09 y
         // siempre valían 0 porque `buy_box_winner` viene null (ver arriba). Dejarlos sería dejar
@@ -10644,12 +10736,26 @@ async function main() {
           console.log(`  🏷️ ❌ los ${ofertas.length} vendedores son del EXTERIOR. No es contra ésos que competís, así que no hay con qué medir.`);
           rojos.push({ c, frenos, reparos, u: Number(c.pedirU) || 0, usd, margen: null, ganancia: 0, vend: isFinite(Number(c.vendCarga)) ? Number(c.vendCarga) : null }); console.log(''); continue;
         }
-        const precios = aca.map((o) => parseFloat(o.price) || 0).filter((x) => x > 0);
-        const mlPrecio = precios.length ? Math.min(...precios) : 0;
-        const mlMax = precios.length ? Math.round(Math.max(...precios)) : 0;
-        const ref = aca.find((o) => (parseFloat(o.price) || 0) === mlPrecio) || aca[0];
-        console.log(`  🏷️ hoy en ML: ${mlMax > mlPrecio ? `de ${money(Math.round(mlPrecio))} a ${money(mlMax)}` : money(Math.round(mlPrecio))} · ${aca.length} vendedor(es) argentino(s)${afuera.length ? ` (saqué ${afuera.length} del exterior)` : ''}`);
-        console.log(`     el más barato es la publicación ${ref && ref.item_id ? ref.item_id : '?'} — ése es el precio que tenés que igualar`);
+        // CONTRA QUIÉN SE MIDE: la MISMA función que usa el comando que decide la compra
+        // (`precioAIgualar`). Con dos copias, el que revisa diría "está todo bien" midiendo contra
+        // otro precio que el que decidió — que es todo el motivo por el que este comando existe.
+        const _piR = precioAIgualar(aca);
+        const mlPrecio = _piR ? _piR.precio : 0;
+        const mlMax = _piR ? Math.round(_piR.max) : 0;
+        const ref = _piR ? _piR.ref : aca[0];
+        console.log(`  🏷️ hoy en ML: ${mlMax > mlPrecio ? `de ${money(Math.round(_piR ? _piR.baratoTodos : mlPrecio))} a ${money(mlMax)}` : money(Math.round(mlPrecio))} · ${aca.length} vendedor(es) argentino(s)${afuera.length ? ` (saqué ${afuera.length} del exterior)` : ''}`);
+        console.log(`     cómo despachan: con Full ${_piR ? _piR.conFull : '?'}${_piR && _piR.conFlex ? ` · con Flex ${_piR.conFlex}` : ''} · a mano ${_piR ? _piR.sinFull - (_piR.conFlex || 0) : '?'}`);
+        if (_piR && _piR.premioPct > 0) {
+          reparos.push(`el más barato (${money(Math.round(_piR.baratoSinFull))}) no tiene Full: se mide contra ${money(Math.round(mlPrecio))}`);
+          console.log(`     ⚠️ EL MÁS BARATO (${money(Math.round(_piR.baratoSinFull))}) NO TIENE FULL. Mido contra ${money(Math.round(mlPrecio))}, el más barato CON Full (${_piR.premioPct.toFixed(0)}% más caro):`);
+          console.log(`        el comprador elige el que dice "Llega mañana", así que ése es el precio que de verdad tenés que igualar.`);
+          console.log(`        Ojo igual: el de ${money(Math.round(_piR.baratoSinFull))} compite, sólo que con desventaja.`);
+        } else if (_piR && !_piR.hayFull) {
+          reparos.push('ninguno de los vendedores tiene Full');
+          console.log(`     ⚠️ NINGUNO tiene Full. Mido contra el más barato a secas (${money(Math.round(mlPrecio))}).`);
+        } else {
+          console.log(`     el más barato con Full es la publicación ${ref && ref.item_id ? ref.item_id : '?'} — ése es el precio que tenés que igualar`);
+        }
         if (afuera.length && afuera.length >= aca.length) console.log('     ⚠️ hay tantos o más vendedores de afuera que argentinos: es un catálogo que manejan de afuera.');
 
         // 5 · LAS VENTAS. Las carga el chat: ML contesta 403 de publicaciones ajenas (probado).
@@ -11456,11 +11562,9 @@ async function main() {
         } catch { _vfTok[label] = null; }
         return _vfTok[label];
       };
-      const _vfLog = (o) => String((o && o.shipping && o.shipping.logistic_type) || '').toLowerCase();
-      const _vfFull = (o) => {
-        const tags = ((o && o.shipping && o.shipping.tags) || []).map((x) => String(x).toLowerCase());
-        return _vfLog(o) === 'fulfillment' || tags.includes('fulfillment');
-      };
+      // Mide "Full" con la MISMA función que `candidatos`, `revisarcompra` y `gondola`
+      // (`esOfertaFull`): si este comando lo midiera con su propia definición, el número que sale
+      // de acá —el premio de tener Full— no valdría para los comandos que deciden la compra.
       const _vfFilas = [], _vfSin = [];
       const _vfClaves = new Set();   // qué manda ML adentro de price_to_win, por si trae algo mejor
       for (const [mla, e] of _vfCand) {
@@ -11485,17 +11589,29 @@ async function main() {
         const otros = ofs.filter((o) => String(o.item_id || o.id) !== mla);
         if (!otros.length) { _vfSin.push(`${mla} → es el único vendedor: no hay con quién comparar`); continue; }
         const _pr = (o) => Number(o.price) || 0;
-        const otrosFull = otros.filter(_vfFull), otrosNo = otros.filter((o) => !_vfFull(o));
+        const otrosFull = otros.filter(esOfertaFull), otrosNo = otros.filter((o) => !esOfertaFull(o));
         const minFull = otrosFull.length ? Math.min.apply(null, otrosFull.map(_pr).filter((x) => x > 0)) : 0;
         const minNo = otrosNo.length ? Math.min.apply(null, otrosNo.map(_pr).filter((x) => x > 0)) : 0;
         _vfFilas.push({
           mla, cuenta: e.cuenta, tit: String(e.title || mla).slice(0, 34),
           precio: Math.round(Number(ptw.price) || _pr(nuestro || {}) || 0),
-          somosFull: nuestro ? _vfFull(nuestro) : null,
+          somosFull: nuestro ? esOfertaFull(nuestro) : null,
           estado: String(ptw.status || e.caja || '?'),
           gana: Math.round(Number(ptw.price_to_win) || 0),
           minFull: Math.round(minFull), minNo: Math.round(minNo),
           nOtros: otros.length, nOtrosFull: otrosFull.length,
+          // ── LO QUE ML MANDA Y NO USÁBAMOS (22/09/2026) ────────────────────────────────
+          // La primera corrida imprimió las claves de `price_to_win` y aparecieron tres que el
+          // código nunca nombró: `reason`, `visit_share` y `competitors_sharing_first_place`.
+          // Importa porque hoy el MOTIVO por el que se pierde la caja lo deducimos nosotros
+          // (precio, stock, reputación) y **ML lo dice con todas las letras**. Es el mismo caso
+          // del `inventory_id`: un campo que pasaba por al lado adentro de una puerta ya abierta.
+          // Se imprimen CRUDOS: traducir a la fuerza un código que no conocemos sería adivinar,
+          // y un código feo pero verdadero es mejor que una traducción inventada.
+          reason: ptw.reason == null ? null : (typeof ptw.reason === 'object' ? JSON.stringify(ptw.reason).slice(0, 120) : String(ptw.reason)),
+          visitShare: ptw.visit_share == null ? null : (typeof ptw.visit_share === 'object' ? JSON.stringify(ptw.visit_share).slice(0, 120) : String(ptw.visit_share)),
+          comparten: ptw.competitors_sharing_first_place == null ? null : (Array.isArray(ptw.competitors_sharing_first_place) ? ptw.competitors_sharing_first_place.length : String(ptw.competitors_sharing_first_place).slice(0, 60)),
+          boosts: ptw.boosts == null ? null : JSON.stringify(ptw.boosts).slice(0, 160),
         });
       }
       console.log(`\n── PUBLICACIÓN POR PUBLICACIÓN ──`);
@@ -11504,6 +11620,14 @@ async function main() {
         console.log(`\n  ${f.tit}  · ${f.cuenta}`);
         console.log(`     nosotros ${money(f.precio)}${f.somosFull === null ? '' : f.somosFull ? ' · FULL' : ' · sin Full ⚠️'}  →  caja: ${f.estado}${f.gana > 0 ? ` · se gana a ${money(f.gana)}` : ''}`);
         console.log(`     ${f.nOtros} competidor(es): con Full ${f.nOtrosFull}${f.minFull ? ` desde ${money(f.minFull)}` : ' (ninguno)'} · sin Full ${f.nOtros - f.nOtrosFull}${f.minNo ? ` desde ${money(f.minNo)}` : ' (ninguno)'}`);
+        // EL MOTIVO DICHO POR ML, no deducido por nosotros. Si viene vacío se dice que viene
+        // vacío: una falta de dato leída como dato es el error anotado de punta a punta.
+        if (f.reason != null || f.visitShare != null || f.comparten != null) {
+          console.log(`     ML dice: motivo ${f.reason == null ? '(no lo manda)' : f.reason}`
+            + ` · te llevás ${f.visitShare == null ? '(no lo manda)' : f.visitShare} de las visitas`
+            + ` · comparten el 1er puesto ${f.comparten == null ? '(no lo manda)' : f.comparten}`);
+        }
+        if (f.boosts && f.boosts !== 'null' && f.boosts !== '[]' && f.boosts !== '{}') console.log(`     boosts: ${f.boosts}`);
         // EL NÚMERO QUE CONTESTA SU PREGUNTA: ganamos estando MÁS CAROS que uno sin Full.
         if (f.estado === 'winning' && f.minNo && f.precio > f.minNo) {
           const d = f.precio - f.minNo;
@@ -11532,6 +11656,22 @@ async function main() {
         console.log(`   ⚠️  NO HAY NINGÚN CASO donde ganemos estando más caros que uno sin Full.`);
         console.log(`   Eso NO quiere decir que Full no valga: puede ser que en estas publicaciones seamos`);
         console.log(`   los más baratos igual. Con estos datos no se puede poner un número, y no se inventa.`);
+      }
+      // ¿SE PUEDE CONFIAR EN LOS CAMPOS NUEVOS? Sólo si vienen en CASI TODAS. Un campo que
+      // aparece en 3 de 15 no sirve para decidir nada y hay que decirlo, no mostrarlo a medias:
+      // la pantalla quedaría con la mitad de los renglones llenos y se leería como que ML no
+      // informa, no como que falta medirlo. Es la lección de `mlMax` del 18/09.
+      const _conR = _vfFilas.filter((f) => f.reason != null).length;
+      const _conV = _vfFilas.filter((f) => f.visitShare != null).length;
+      const _conC = _vfFilas.filter((f) => f.comparten != null).length;
+      const _conB = _vfFilas.filter((f) => f.boosts && f.boosts !== 'null' && f.boosts !== '[]' && f.boosts !== '{}').length;
+      if (_vfFilas.length) {
+        console.log(`\n── LOS CAMPOS DE ML QUE TODAVÍA NO USAMOS: ¿VIENEN LLENOS? ──`);
+        console.log(`   reason (por qué ganás o perdés): ${_conR} de ${_vfFilas.length}`);
+        console.log(`   visit_share (qué parte de las visitas te llevás): ${_conV} de ${_vfFilas.length}`);
+        console.log(`   competitors_sharing_first_place: ${_conC} de ${_vfFilas.length}`);
+        console.log(`   boosts: ${_conB} de ${_vfFilas.length}`);
+        console.log(`   (un campo que viene en pocas NO sirve para decidir: se mira y se deja, no se muestra a medias)`);
       }
       if (_vfSin.length) { console.log(`\n── LAS QUE NO SE PUDIERON MEDIR (${_vfSin.length}) ──`); _vfSin.slice(0, 15).forEach((x) => console.log('   · ' + x)); }
       console.log(`\n   (lo que ML manda adentro de price_to_win: ${[..._vfClaves].join(', ')})`);
@@ -11643,23 +11783,20 @@ async function main() {
       // muestran "Llega mañana" y por eso se confunden, pero son ventajas distintas y ML las premia
       // distinto — contarlas juntas daría un número falso justo en lo que se quiere medir.
       // Él lo marcó: *"ojo que ellos pueden tener flex también. que mire eso"*.
+      // ESTA CUENTA VIVÍA ACÁ COPIADA Y SALIÓ A `precioAIgualar` (22/09/2026): la usan también
+      // `candidatos` y `revisarcompra`, y con tres copias los tres podían medir contra precios
+      // distintos del mismo catálogo.
       const _logTipo = (o) => String((o && o.shipping && o.shipping.logistic_type) || '').toLowerCase();
-      const _esFull = (o) => {
-        const tags = ((o && o.shipping && o.shipping.tags) || []).map((x) => String(x).toLowerCase());
-        return _logTipo(o) === 'fulfillment' || tags.includes('fulfillment');
-      };
-      const _esFlex = (o) => _logTipo(o) === 'self_service';
-      const _conFull = _acaG.filter(_esFull);
-      const _conFlex = _acaG.filter((o) => !_esFull(o) && _esFlex(o));
-      const _sinFull = _acaG.filter((o) => !_esFull(o));
-      const _precios = _acaG.map((o) => Number(o.price) || 0).filter((x) => x > 0).sort((a, b) => a - b);
-      const _caro = _precios[_precios.length - 1];
-      const _baratoTodos = _precios[0];
-      const _preciosF = _conFull.map((o) => Number(o.price) || 0).filter((x) => x > 0).sort((a, b) => a - b);
-      const _baratoFull = _preciosF[0] || 0;
-      // contra quién se mide: el más barato CON Full si hay alguno, si no el más barato a secas
-      const _barato = _baratoFull || _baratoTodos;
-      const _ofBarata = _acaG.find((o) => Number(o.price) === _barato) || _acaG[0];
+      const _piG = precioAIgualar(_acaG);
+      if (!_piG) { console.log('\n❌ Ninguno de los vendedores trae precio. Sin precio no hay nada que medir.'); return; }
+      const _conFull = _acaG.filter(esOfertaFull);
+      const _conFlex = _acaG.filter((o) => !esOfertaFull(o) && esOfertaFlex(o));
+      const _sinFull = _acaG.filter((o) => !esOfertaFull(o));
+      const _caro = _piG.max;
+      const _baratoTodos = _piG.baratoTodos;
+      const _baratoFull = _piG.baratoFull;
+      const _barato = _piG.precio;
+      const _ofBarata = _piG.ref;
       console.log(`\n── A CUÁNTO SE VENDE HOY ──`);
       console.log(`   ${_acaG.length} vendedor(es) argentino(s)${_afueraG.length ? ` (y ${_afueraG.length} del exterior, que no cuentan)` : ''}`);
       console.log(`   del más barato ${money(_baratoTodos)} al más caro ${money(_caro)}`);

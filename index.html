@@ -2281,7 +2281,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='20.06';
+const APP_VERSION='20.07';
 // El problema real que esto resuelve no es curiosidad: es que el celular guarda la app y sigue
 // mostrando la de ayer sin avisar. Varias veces se revisó un cambio que ya estaba subido y no se
 // veía. Por eso, además del número, el chip avisa cuando hay una versión nueva esperando.
@@ -9342,8 +9342,22 @@ function candPreciosHTML(c){
   const max=Number(c.mlMax)||0;
   const vend=Number(c.mlVendedores)||0;
   const mMin=(c.margen!=null&&isFinite(c.margen))?Number(c.margen):null;
-  const L=[`se vende ${max>min?`de <b>${fmt(min)}</b> a <b>${fmt(max)}</b>`:`a <b>${fmt(min)}</b>`}`];
+  // ── CONTRA QUIÉN SE MIDE: EL MÁS BARATO **CON FULL** (22/09/2026) ────────────────────────
+  // Regla suya: *"tener full nos ayuda a ganar caja, nosotros siempre vamos a vender de esa
+  // forma. ojo que ellos pueden tener flex tambien"*. El robot ya no mide contra el más barato a
+  // secas: uno que manda a mano no obliga a igualarle el precio, porque el comprador elige el que
+  // dice "Llega mañana". Medido en nuestras publicaciones: contra uno sin Full se puede estar
+  // ~23% más caro y quedarse igual con la caja.
+  // POR ESO EL RANGO ARRANCA EN EL MÁS BARATO DE VERDAD y no en `mlPrecio`: si el renglón dijera
+  // "se vende a $14.360" habiendo uno a $11.662, el número se lee como si estuviera mal. Los dos
+  // se muestran, con el motivo al lado — esconder al de $11.662 sería decidir por él.
+  const sinF=(c.mlSinFull!=null&&isFinite(c.mlSinFull))?Number(c.mlSinFull):null;
+  const desde=(sinF&&min&&sinF<min)?sinF:min;
+  const L=[`se vende ${max>desde?`de <b>${fmt(desde)}</b> a <b>${fmt(max)}</b>`:`a <b>${fmt(desde)}</b>`}`];
   if(vend)L.push(`${vend} vendedor${vend===1?'':'es'} en la ficha`);
+  if(c.mlHayFull===false)L.push(`<span style="color:var(--amber)">⚠️ ninguno tiene Full</span> <span style="color:var(--muted)">— se mide contra el más barato a secas</span>`);
+  else if(sinF&&min&&sinF<min)L.push(`📦 el más barato (<b>${fmt(sinF)}</b>) <b>no tiene Full</b> — se mide contra <b>${fmt(min)}</b>, el más barato CON Full <span style="color:var(--muted)">(${((min-sinF)/sinF*100).toFixed(0)}% más caro · ése es el precio que hay que igualar)</span>`);
+  else if(c.mlConFull)L.push(`📦 <span style="color:var(--muted)">${c.mlConFull} con Full${c.mlFlex?` · ${c.mlFlex} con Flex`:''}</span>`);
   // LAS VENTAS DEL PRODUCTO EN ML (18/09/2026, pedido suyo). Regla suya: *"en ML tiene que haber
   // ventas de verdad (+25 vendidos para arriba): un vendedor solo no molesta, uno sin ventas no
   // sirve"*. Hasta hoy el panel sólo mostraba VENDEDORES, que es otra cosa — y era su propia regla
@@ -9381,7 +9395,7 @@ function candPreciosHTML(c){
   } else {
     L.push(`🛒 <span style="color:var(--amber)">faltan las ventas</span> <span style="color:var(--muted)">— las carga el chat</span>`);
   }
-  if(mMin!=null)L.push(`contra el más barato → <b style="color:${mMin>=25?'var(--green)':'var(--amber)'}">${mMin.toFixed(0)}%</b>`);
+  if(mMin!=null)L.push(`contra ${(sinF&&min&&sinF<min)?'el más barato CON Full':'el más barato'} → <b style="color:${mMin>=25?'var(--green)':'var(--amber)'}">${mMin.toFixed(0)}%</b>`);
   if(!min)L.length=0,L.push('<span style="color:var(--amber)">todavía no está medido en ML</span>');
   // ── LOS DOS ENLACES, PARA MIRARLO CON LOS OJOS (19/09/2026, pedido suyo) ──────────────────
   // Textual: *"quiero que acá aparezcan los url del producto de ml y de compras paraguay, así

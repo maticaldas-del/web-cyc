@@ -344,6 +344,7 @@ Los que más se usan:
 | `pedir:<palabra>=<u>[;otra=<u>][;go]` | **carga las unidades del pedido de Paraguay** · `=0` lo saca · sin `;go` sólo muestra |
 | `revisarcompra[:<palabras>]` | **la última mirada antes de gastar los dólares**: código, precio, ¿es el mismo producto?, margen de HOY y si la podés publicar · solo lee |
 | `gondola:<qué es>\|<lo que te sale>[\|<link de ML>]` | **¿conviene vender en ML algo que viste en una góndola?** pregunta la comisión a ML al precio exacto, separa Full de no-Full y dice a qué costo SÍ daría · solo lee |
+| `valefull[:cuantas]` | **¿cuánto vale tener Full?** mide en NUESTRAS publicaciones de catálogo cuánto más caros podemos estar que uno sin Full y quedarnos igual con la caja · solo lee |
 | `probarcaja:<MLA>[;otro]` | **¿ML dice quién tiene la caja de un catálogo?** vale el código del catálogo o el de una publicación tuya · solo lee |
 | `permisos` | **por qué ML no deja escribir**: qué le deja hacer a la aplicación, traducido · solo lee |
 | `probarsaldo2` | **¿se puede leer el saldo de la cuenta?** 11 endpoints que `probarsaldo` no probaba · solo lee |
@@ -5060,6 +5061,82 @@ más las dos salidas dan el total) · la cancelada no se cuenta · el margen con
 · el stock con una ficha en cero · y la pantalla en los dos modos sin un `undefined`, un `NaN` ni un
 `${` suelto, más el período vacío. Chequeo de las tres listas más las clases de CSS: **0 funciones,
 0 variables, 0 `id` y 0 clases de diferencia**; sólo lo que se agregó.
+
+## CUÁNTO VALE TENER FULL: ~23% DE PRECIO, MEDIDO (22/09/2026)
+
+Pregunta suya, después de lo de la tintura: *"tener full nos ayuda a ganar caja, nosotros siempre
+vamos a vender de esa forma. ojo que ellos pueden tener flex tambien. que mire eso. y lo que no se
+es cuanto 'vale' tener full, por ejemplo 10.000 sin full y yo con 12.000 y full, ml me da la caja a
+mi? esas son cosas que hay que analisar"*.
+
+**LA RESPUESTA A SU EJEMPLO ES SÍ, Y EL NÚMERO ESTÁ MEDIDO EN NUESTRAS PROPIAS PUBLICACIONES.**
+Comando nuevo **`valefull[:cuántas]`** (SOLO LEE, tope 40): agarra nuestras publicaciones de
+catálogo, les pide `price_to_win` y compara nuestro precio contra el del competidor más barato de
+cada tipo.
+
+| | |
+|---|---|
+| medidas | **15 publicaciones de catálogo** |
+| ganamos la caja en | **10** |
+| en cuántas de esas 10 estamos MÁS CAROS que uno sin Full | **las 10** |
+| el premio | de **3,0% a 26,6%** · la mitad en **22,7% o menos** |
+
+**O sea: contra uno sin Full se puede estar ~23% más caro y quedarse igual con la caja.** Su ejemplo
+($10.000 sin Full contra $12.000 con Full) son 20% y **la caja es nuestra**.
+
+El caso concreto: **Paulvic Jules Parfum** (Adriana) a **$14.360 con Full** gana la caja teniendo
+**9 competidores sin Full desde $11.662** — o sea **23,1% más caro**.
+
+**ES UNA MEDIANA, NO UNA GARANTÍA**, y eso hay que decirlo cada vez: 26,6% es el techo de lo medido,
+y **contra alguien que TAMBIÉN tiene Full el premio es CERO** — ahí gana el más barato y punto.
+
+### FULL Y FLEX NO SON LO MISMO, Y LA PRIMERA VERSIÓN LOS MEZCLÓ
+
+Yo había metido `self_service` adentro de "es Full". **Eso es FLEX**: el vendedor despacha el mismo
+día **desde su casa**. Full es la mercadería adentro del depósito de ML. Los dos muestran *"Llega
+mañana"* y por eso se confunden, pero son ventajas distintas y ML las premia distinto — contarlas
+juntas daba un número falso justo en lo que se quería medir.
+**Lo agarró él ANTES de que mordiera**: *"ojo que ellos pueden tener flex tambien"*. Es el mismo
+error anotado el 21/09 con el cupo de Full contra la capacidad de Flex: **dos cosas no se
+distinguen por cómo se llaman.**
+
+### Y ESO CAMBIÓ LA CUENTA QUE DECIDE LAS COMPRAS
+
+`candidatos` medía el margen contra el **MÁS BARATO de la ficha**, sin mirar cómo despacha. Si ése
+manda a mano, el margen salía hundido **contra un precio que no hay que igualar** — y con el freno
+de las dos mediciones ese producto terminaba descartado. Es exactamente el mismo agujero que el de
+los vendedores del exterior, que ya se tapaba.
+
+**Ahora se mide contra el más barato CON FULL**, y vive en **UNA función (`precioAIgualar`)** que
+usan `candidatos` (decide la compra), `revisarcompra` (la revisa antes de gastar), `gondola` y
+`valefull`. Estaba copiada en `gondola` y en `valefull`: con tres copias los tres podían medir
+contra precios distintos del mismo catálogo.
+
+**NO SE FILTRA NADA Y SE DICE SIEMPRE CONTRA QUIÉN SE MIDE.** El que no tiene Full igual compite,
+sólo que con desventaja, y esconderlo sería decidir por él. Por eso el renglón del panel muestra
+**los dos**: *"se vende de $11.662 a $30.000 · 📦 el más barato ($11.662) no tiene Full — se mide
+contra $14.360, el más barato CON Full (23% más caro)"*. **Un precio de referencia que no es el más
+barato de la lista se lee como un error de cuenta si no se explica.**
+Y si **ninguno** tiene Full se mide contra el más barato a secas **y se dice**, en vez de quedarse
+sin número — falta de dato leída como dato, el error de siempre.
+
+**HUBO QUE SUBIR `CAND_CALC_VER` A 6, Y ES LA CUARTA VEZ QUE ESTE `if` SE QUEDA CORTO.** El atajo de
+*"ya tiene la cuenta hecha"* sólo vuelve a medir cuando cambia ese número, y esto **no agrega un
+campo: cambia la CUENTA**. Como el atajo agarra a los que DAN, los que hoy están arriba del piso se
+quedaban con el margen medido contra un vendedor que no hay que igualar — y son justo los que
+entran al pedido. **Un cambio en la fórmula cuenta igual que un campo nuevo.**
+
+**Y EL CANDIDATO GUARDA CONTRA QUIÉN SE MIDIÓ** (`mlSinFull`, `mlHayFull`, `mlConFull`, `mlFlex`),
+porque el panel tiene que poder explicarlo. Es el caso de la comisión del 19/09: un dato que el
+robot ya tenía, usaba para una cuenta interna y tiraba, dejando a todos adivinando.
+
+Probado con las funciones REALES sacadas de los dos archivos: **31 casos** de la cuenta (Full por
+`logistic_type` y por tag, Flex que NO cuenta como Full, `drop_off`, `xd_drop_off`, sin dato, el
+caso real de la tintura, el de los Paulvic con el premio dando 23,1% clavado, ninguno con Full,
+precios en cero, lista vacía y precio como texto) y **22 del renglón del panel**, incluido el
+candidato VIEJO sin los campos nuevos —que no puede inventar un aviso— y texto en los números.
+Chequeo de las tres listas más las clases de CSS: **0 funciones, 0 `id` y 0 clases de diferencia**,
+1 variable nueva.
 
 ## ¿CONVIENE VENDER ESTO QUE VI EN UNA GÓNDOLA? `gondola` (22/09/2026)
 
