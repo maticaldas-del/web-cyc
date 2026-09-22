@@ -53,10 +53,10 @@ ejemplo perfumes quedan joya en la cuenta de adriana"*. **Eso cambia el peso del
 reparto de un producto nuevo no es de esta caja, es PARA SIEMPRE, así que el equilibrio de hoy no
 puede decidir solo. **Orden para elegir dueña:** 1) si ya se publica en una cuenta, ésa ·
 2) **el RUBRO: perfumes → Adriana** (es la cuenta de perfumería) · 3) recién ahí el equilibrio
-(la que menos facturó, entre las que llegan al 25%). `repartopy` **todavía NO mira el rubro**:
-propone por equilibrio y lo de los perfumes se corrige a mano hasta que se cambie. Con la regla, la
-compra del 21/09 queda: **los 4 perfumes (Mercedes Club Black, Lattafa Sutoor, Adyan Oud, Mirada
-Muse) → Adriana** y **los 8 de electrónica → Ayelen** — falta que él lo confirme.
+(la que menos facturó, entre las que llegan al 25%). **`repartopy` ya aplica este orden** (perfume =
+nombre o título de ML con perfume/EDP/EDT/eau de/body splash; si ninguno lo dice, no adivina).
+**CONFIRMADO por él el 22/09:** la compra del 21/09 queda **los 4 perfumes (Mercedes Club Black,
+Lattafa Sutoor, Adyan Oud, Mirada Muse) → Adriana** y **los 8 que no son perfume → Ayelen**.
 
 ### 3 · EL `PROMPT GUAY`: VA CON 19%, NO 23% — LO VA A PEDIR MÁS ADELANTE
 Dicho por él el 22/09: *"te voy a pedir el prompt más adelante, acordate y poné el 19"*.

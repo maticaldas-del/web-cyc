@@ -26181,8 +26181,13 @@ async function main() {
     // Para cada producto de la compra muestra el margen en las CUATRO cuentas —lo único que cambia
     // entre ellas es el IIBB (`ML_EXTRA_PCT`)— y propone una dueña con este orden:
     //   1. si el producto YA está publicado en una cuenta, ésa (una sola cuenta por producto, 09/09);
-    //   2. si no, la cuenta que MENOS facturó en 90 días entre las que llegan al 25%;
-    //   3. si en ninguna llega, lo dice y no propone.
+    //   2. si es PERFUME, Adriana, siempre que ahí llegue al 25% — regla suya del 22/09: *"no se mueve
+    //      mercadería entre cuentas. una vez que están quedan (…) perfumes quedan joya en la cuenta de
+    //      adriana"*. Como el reparto es PARA SIEMPRE, el rubro manda antes que el equilibrio de hoy.
+    //      Se reconoce por el nombre de comprasparaguay Y el título del catálogo de ML (`mlTit`): si
+    //      ninguno de los dos lo dice, NO se adivina y sigue por equilibrio, diciéndolo;
+    //   3. si no, la cuenta que MENOS facturó en 90 días entre las que llegan al 25%;
+    //   4. si en ninguna llega, lo dice y no propone.
     // La cuenta parte de lo que el robot ya midió (`mlPrecio`, `mlComision`) y NO le pregunta nada
     // a ML: la comisión no depende de la cuenta. Es la MISMA línea que `cuentaCandidato`, cambiando
     // sólo el 4,8% de IIBB por el de cada cuenta — con dos fórmulas una diría un margen y el panel otro.
@@ -26205,6 +26210,7 @@ async function main() {
       const CTAS = ['adriana', 'luciana', 'ayelen', 'matias'];
       const NOM = { adriana: 'Adriana', luciana: 'Luciana', ayelen: 'Ayelen', matias: 'Matías' };
       const ctaDe = (x) => { const c = String(x || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, ''); return CTAS.find((k) => c.startsWith(k)) || null; };
+      const RE_PERFUME = /perfum|parfum|\bedp\b|\bedt\b|eau de|fragan|body splash|body mist|\bcolonia\b/i;
       // facturación de 90 días por cuenta
       const desde = Date.now() - 90 * 864e5, fact = { adriana: 0, luciana: 0, ayelen: 0, matias: 0 };
       for (const [k, ents] of Object.entries(vp)) {
@@ -26244,8 +26250,11 @@ async function main() {
         }
         console.log(`    a ${money(precio)} · ` + CTAS.map((k) => `${NOM[k]} ${m[k].toFixed(1)}%`).join(' · '));
         let elegida = null, motivo = '';
+        const esPerfume = RE_PERFUME.test(`${it.nom || ''} ${c.nombre || ''} ${c.mlTit || ''}`);
         if (yaEn.length) { elegida = yaEn[0]; motivo = `ya está publicado en ${yaEn.map((k) => NOM[k]).join(', ')}`; }
+        else if (esPerfume && m.adriana >= piso) { elegida = 'adriana'; motivo = 'es perfume: la perfumería vive en Adriana'; }
         else {
+          if (esPerfume) console.log(`    ⚠️ es perfume pero en Adriana no llega al ${piso}% (${m.adriana.toFixed(1)}%): va por equilibrio`);
           const ok = CTAS.filter((k) => m[k] >= piso).sort((a, b) => acum[a] - acum[b]);
           if (ok.length) { elegida = ok[0]; motivo = ok.length < 4 ? `llega al ${piso}% sólo en ${ok.map((k) => NOM[k]).join(', ')} · la que menos factura de ésas` : 'la que menos factura'; }
         }
