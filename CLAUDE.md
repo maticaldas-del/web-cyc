@@ -41,6 +41,12 @@ cuesta más monotributo. Luciana y Matías están en F facturando a nivel H. Por
 se recomendó a **Ayelen**, aunque por rubro y por IIBB ganaba Adriana. Lo que se paga: ~1,9 puntos
 más de IIBB (5,95% contra 4,07%), cupo de Full chico (42) y reputación oro. **Los números por
 cuenta no se anotan acá (repo público): se rehacen con `catmono`.**
+**Lo que llega de Paraguay se reparte con `repartopy[:<id de compra>]`** (SOLO LEE): margen en
+las 4 cuentas (sólo cambia el IIBB, misma línea que `cuentaCandidato`) y propone la que menos
+facturó en 90 días entre las que llegan al 25%, o la que ya lo publica. **Corrido el 22/09 sobre
+la compra del 21/09: los 12 productos → Ayelen**, que en 90 días facturó menos de la mitad que
+cualquiera de las otras; aun vendiendo todo sigue siendo la más baja. El más justo en Ayelen es el
+Mirada Muse Rose Musc (26,8%).
 
 ### 3 · EL `PROMPT GUAY`: VA CON 19%, NO 23% — LO VA A PEDIR MÁS ADELANTE
 Dicho por él el 22/09: *"te voy a pedir el prompt más adelante, acordate y poné el 19"*.
