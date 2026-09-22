@@ -2281,7 +2281,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='20.01';
+const APP_VERSION='20.02';
 // El problema real que esto resuelve no es curiosidad: es que el celular guarda la app y sigue
 // mostrando la de ayer sin avisar. Varias veces se revisó un cambio que ya estaba subido y no se
 // veía. Por eso, además del número, el chip avisa cuando hay una versión nueva esperando.
@@ -7353,6 +7353,21 @@ function gestDeVenta(v){
   const g=Number(p.netoCalcEnvio)>0?Number(p.netoCalcEnvio):(Number(p.gestFull)||0);
   return g>0?g*(v.qty||1):0;
 }
+// ── EL % DE GANANCIA ES UNO SOLO, Y SIEMPRE LLEVA EL ENVÍO DE FULL EN EL DIVISOR ──
+// Regla suya del 22/09/2026, textual: *"dividilo con el costo de envío adentro siempre en todos
+// los lugares que aparezca, que sea único el %, si no es un lío"*. Y era un lío de verdad: el
+// renglón de UNA venta dividía con el envío adentro (21%) y el total del mes, el desglose por
+// cuenta y el ranking por producto dividían SIN él (25%) — el mismo producto, el mismo día, dos
+// números distintos en la misma pantalla.
+// `efectivoCostoVP` devuelve el costo SIN la gestión de Full, y tiene que seguir siendo así: la
+// ganancia en PESOS se mide contra ése, porque el neto que deposita ML ya trae el envío
+// descontado y sumarlo a los dos lados lo cobraría dos veces (el error del renglón del 22/09).
+// Lo único que cambia es el DIVISOR del porcentaje. La ganancia en pesos no se mueve ni un peso.
+// Vive en UNA función a propósito: estaba escrito suelto en seis lugares y por eso se separaron.
+function pctGananciaVP(ganancia, costoSinGest, gest) {
+  const div = (Number(costoSinGest) || 0) + (Number(gest) || 0);
+  return div > 0 ? ganancia / div * 100 : null;
+}
 function efectivoCostoVP(v){
   if(v&&v.cancelada)return 0; // canceladas y reclamos no tienen costo (no afectan finanzas)
   // Cargo extra de ML (IIBB + almacenamiento) que ML cobra por débito, aparte de la venta: % del precio.
@@ -7380,8 +7395,8 @@ function efectivoCostoVP(v){
 }
 function vpEntries(keys){const out=[];keys.forEach(k=>{const o=state.ventaprod[k];if(o)Object.values(o).forEach(v=>out.push({...v,_dateKey:k}));});return out;}
 function vpAggByAccount(entries){
-  const agg={};VP_ACCTS.forEach(a=>agg[a]={qty:0,neto:0,costo:0});
-  entries.forEach(v=>{if(v.cancelada)return;const a=agg[v.cuenta]||(agg[v.cuenta]={qty:0,neto:0,costo:0});a.qty+=v.qty||0;a.neto+=v.neto||0;a.costo+=efectivoCostoVP(v);});
+  const agg={};VP_ACCTS.forEach(a=>agg[a]={qty:0,neto:0,costo:0,gest:0});
+  entries.forEach(v=>{if(v.cancelada)return;const a=agg[v.cuenta]||(agg[v.cuenta]={qty:0,neto:0,costo:0,gest:0});a.qty+=v.qty||0;a.neto+=v.neto||0;a.costo+=efectivoCostoVP(v);a.gest+=gestDeVenta(v);});
   Object.values(agg).forEach(a=>a.ganancia=a.neto-a.costo);
   return agg;
 }
@@ -7864,8 +7879,8 @@ function renderVentaProd(){
   // KPIs usan el mismo período que la lista
   // los KPIs respetan el filtro de cuenta seleccionado (Todas / Adriana / Matias / etc.)
   const kpiEntries=(vpFilterCuenta?mesEntries.filter(v=>v.cuenta===vpFilterCuenta):mesEntries).filter(v=>!v.cancelada);
-  let mU=0,mNeto=0,mCosto=0,mBruto=0;kpiEntries.forEach(v=>{mU+=v.qty||0;mNeto+=v.neto||0;mCosto+=efectivoCostoVP(v);mBruto+=v.total||0;});
-  const gMes=mNeto-mCosto;const pctMes=mCosto>0?gMes/mCosto*100:null;
+  let mU=0,mNeto=0,mCosto=0,mBruto=0,mGest=0;kpiEntries.forEach(v=>{mU+=v.qty||0;mNeto+=v.neto||0;mCosto+=efectivoCostoVP(v);mBruto+=v.total||0;mGest+=gestDeVenta(v);});
+  const gMes=mNeto-mCosto;const pctMes=pctGananciaVP(gMes,mCosto,mGest);
   const retiroMes=Math.round(mNeto*0.15);const retMitadMes=Math.round(retiroMes/2);
   // cantidad de VENTAS (operaciones únicas por N° de venta); las viejas sin saleId cuentan 1 c/u
   const ventasCount=new Set(kpiEntries.map(vpGrupoKey)).size;
@@ -7905,7 +7920,7 @@ function renderVpScopeBlocks(){
   }
   const profEl=document.getElementById('vp-profit');
   if(profEl){
-    const pctOf=o=>o.costo>0?o.ganancia/o.costo*100:null;
+    const pctOf=o=>pctGananciaVP(o.ganancia,o.costo,o.gest);
     const rows=VP_ACCTS.map(a=>{
       const c=cur[a],p=prev[a]||{costo:0,ganancia:0};
       const cp=pctOf(c),pp=pctOf(p);
@@ -7913,10 +7928,10 @@ function renderVpScopeBlocks(){
       const val=cp!==null?`${cp>=0?'+':''}${cp.toFixed(1)}%`:'—';
       return`<div class="fin-field"><div class="fin-left"><span class="fin-label">${a}</span><span style="font-size:.58rem;color:var(--muted)">${c.costo>0?'gan. '+fmt(c.ganancia):'sin costo'}</span></div><div style="display:flex;align-items:center;gap:6px"><span style="font-family:'Syne',sans-serif;font-weight:800;color:${pctColor(cp)}">${val}</span>${delta}</div></div>`;
     }).join('');
-    const tot={costo:0,ganancia:0},ptot={costo:0,ganancia:0};
-    VP_ACCTS.forEach(a=>{tot.costo+=cur[a].costo;tot.ganancia+=cur[a].ganancia;ptot.costo+=(prev[a]||{costo:0}).costo;ptot.ganancia+=(prev[a]||{ganancia:0}).ganancia;});
-    const gp=tot.costo>0?tot.ganancia/tot.costo*100:null;
-    const gpp=ptot.costo>0?ptot.ganancia/ptot.costo*100:null;
+    const tot={costo:0,ganancia:0,gest:0},ptot={costo:0,ganancia:0,gest:0};
+    VP_ACCTS.forEach(a=>{tot.costo+=cur[a].costo;tot.ganancia+=cur[a].ganancia;tot.gest+=cur[a].gest||0;ptot.costo+=(prev[a]||{costo:0}).costo;ptot.ganancia+=(prev[a]||{ganancia:0}).ganancia;ptot.gest+=(prev[a]||{gest:0}).gest||0;});
+    const gp=pctGananciaVP(tot.ganancia,tot.costo,tot.gest);
+    const gpp=pctGananciaVP(ptot.ganancia,ptot.costo,ptot.gest);
     const gdelta=(gp!==null&&gpp!==null)?`<span class="db ${gp>=gpp?'up':'dn'}">${gp>=gpp?'▲':'▼'} ${Math.abs(gp-gpp).toFixed(1)}pts</span>`:'';
     profEl.innerHTML=`<div class="arqueo-section" style="padding:14px">${rows}
       <div class="fin-field" style="border-top:2px solid var(--accent);margin-top:6px;padding-top:10px"><div class="fin-left"><span class="fin-label" style="color:var(--accent)">GENERAL (ponderado)</span></div><div style="display:flex;align-items:center;gap:6px"><span style="font-family:'Syne',sans-serif;font-weight:800;color:${pctColor(gp)}">${gp!==null?(gp>=0?'+':'')+gp.toFixed(1)+'%':'—'}</span>${gdelta}</div></div>
@@ -8156,8 +8171,8 @@ function renderVPRanking(){
   const agg={};
   vpEntries(sk.keys).filter(ctaFilter).filter(v=>!v.cancelada).forEach(v=>{
     const gk=grpKeyOf(v);
-    if(!agg[gk])agg[gk]={total:0,byAcc:{},byVariante:{},neto:0,costo:0,prod:nombreDeVenta(v),pid:(prodDeVenta(v)||{}).id||null};
-    agg[gk].total+=v.qty||0;agg[gk].neto+=v.neto||0;agg[gk].costo+=efectivoCostoVP(v);
+    if(!agg[gk])agg[gk]={total:0,byAcc:{},byVariante:{},neto:0,costo:0,gest:0,prod:nombreDeVenta(v),pid:(prodDeVenta(v)||{}).id||null};
+    agg[gk].total+=v.qty||0;agg[gk].neto+=v.neto||0;agg[gk].costo+=efectivoCostoVP(v);agg[gk].gest+=gestDeVenta(v);
     agg[gk].byAcc[v.cuenta]=(agg[gk].byAcc[v.cuenta]||0)+(v.qty||0);
     if(v.variante)agg[gk].byVariante[v.variante]=(agg[gk].byVariante[v.variante]||0)+(v.qty||0);
   });
@@ -8173,16 +8188,18 @@ function renderVPRanking(){
   // período. El número que se muestra sigue siendo el real del período; solo cambia el corte.
   const _rankNorm=30/Math.max(1,_vpRankDays());
   const roiScore=d=>{ const g=d.neto-d.costo; return (d.costo>0&&g>0)?g*g/d.costo:0; };
+  // el % del ranking sale de la MISMA función que el renglón de la venta y el total del mes
+  const pctRank=d=>pctGananciaVP(d.neto-d.costo,d.costo,d.gest);
   const sortFn=vpRankMode==='neto'    ?(a,b)=>b[1].neto-a[1].neto:
                vpRankMode==='ganancia'?(a,b)=>(b[1].neto-b[1].costo)-(a[1].neto-a[1].costo):
-               vpRankMode==='markup'  ?(a,b)=>{const pa=a[1].costo>0?(a[1].neto-a[1].costo)/a[1].costo:0;const pb=b[1].costo>0?(b[1].neto-b[1].costo)/b[1].costo:0;return pb-pa;}:
+               vpRankMode==='markup'  ?(a,b)=>{const pa=pctRank(a[1])||0,pb=pctRank(b[1])||0;return pb-pa;}:
                vpRankMode==='roi'     ?(a,b)=>roiScore(b[1])-roiScore(a[1]):
                (a,b)=>b[1].total-a[1].total;
   const rows=Object.entries(agg).sort(sortFn);
   if(!rows.length){el.innerHTML='<div class="empty-msg">Sin ventas registradas en este período.</div>';return;}
   const maxVal=vpRankMode==='neto'    ?Math.max(1,...rows.map(([,d])=>d.neto)):
                vpRankMode==='ganancia'?Math.max(1,...rows.map(([,d])=>d.neto-d.costo)):
-               vpRankMode==='markup'  ?Math.max(1,...rows.map(([,d])=>d.costo>0?(d.neto-d.costo)/d.costo*100:0)):
+               vpRankMode==='markup'  ?Math.max(1,...rows.map(([,d])=>pctRank(d)||0)):
                vpRankMode==='roi'     ?Math.max(1,...rows.map(([,d])=>roiScore(d))):
                rows[0][1].total||1;
   // stock disponible por producto (suma de todos los depósitos)
@@ -8193,9 +8210,9 @@ function renderVPRanking(){
   };
   el.innerHTML=`<div style="display:flex;flex-direction:column;gap:12px">`+rows.map(([gk,d],i)=>{
     const prod=d.prod;
-    const metricVal=vpRankMode==='neto'?d.neto:vpRankMode==='ganancia'?d.neto-d.costo:vpRankMode==='markup'?(d.costo>0?(d.neto-d.costo)/d.costo*100:0):vpRankMode==='roi'?roiScore(d):d.total;
+    const metricVal=vpRankMode==='neto'?d.neto:vpRankMode==='ganancia'?d.neto-d.costo:vpRankMode==='markup'?(pctRank(d)||0):vpRankMode==='roi'?roiScore(d):d.total;
     const w=Math.max(2,Math.abs(metricVal)/maxVal*100);
-    const g=d.neto-d.costo;const pct=d.costo>0?g/d.costo*100:null;
+    const g=d.neto-d.costo;const pct=pctRank(d);
     const acc=VP_ACCTS.filter(a=>d.byAcc[a]).map(a=>`${a}: ${d.byAcc[a]}`).join(' · ');
     const pctTxt=pct!==null?` · gan. <span style="color:${pctColor(pct)}">${fmt(g)}</span> (<span style="color:${pctColor(pct)}">${pct>=0?'+':''}${pct.toFixed(0)}% ${pctLabel(pct)}</span>)`:'';
     // color del modo actual: markup/ganancia usan la categoría de margen; neto/unidades usan posición
@@ -8203,7 +8220,7 @@ function renderVPRanking(){
     const scCat=sc*_rankNorm;          // mismo score llevado a 30 días → decide la categoría (umbral adaptado al período)
     const modeColor=vpRankMode==='roi'?scoreColor(scCat):vpRankMode==='markup'||vpRankMode==='ganancia'?pctColor(pct):(i===0?'#22c55e':'#7c3aed');
     const modeGrad =vpRankMode==='roi'?scoreGradient(scCat):vpRankMode==='markup'||vpRankMode==='ganancia'?pctGradient(pct):(i===0?'#22c55e,#4ade80':'#7c3aed,#a855f7');
-    const metricTxt=vpRankMode==='neto'?fmt(d.neto):vpRankMode==='unidades'?d.total+' u.':vpRankMode==='ganancia'?fmt(d.neto-d.costo):vpRankMode==='roi'?(d.costo>0?'⚡ '+fmtN(Math.round(sc))+' · '+scoreLabel(scCat):'—'):(d.costo>0?'+'+(((d.neto-d.costo)/d.costo)*100).toFixed(0)+'% '+pctLabel(pct):'—');
+    const metricTxt=vpRankMode==='neto'?fmt(d.neto):vpRankMode==='unidades'?d.total+' u.':vpRankMode==='ganancia'?fmt(d.neto-d.costo):vpRankMode==='roi'?(d.costo>0?'⚡ '+fmtN(Math.round(sc))+' · '+scoreLabel(scCat):'—'):(pct!==null?(pct>=0?'+':'')+pct.toFixed(0)+'% '+pctLabel(pct):'—');
     const p=prodById(d.pid)||prodByName(prod);const stock=p?stockByProd(p):null;
     const stockColor=stock===0?'rgba(239,68,68,.18)':stock<=3?'rgba(249,115,22,.15)':'rgba(34,197,94,.12)';
     const stockTxt=stock!==null?`<span style="margin-left:6px;padding:1px 6px;border-radius:4px;background:${stockColor};color:${stock===0?'#ef4444':stock<=3?'#f97316':'#22c55e'}">📦 ${stock} u.</span>`:'';
@@ -8251,7 +8268,7 @@ function renderVPRanking(){
       ${varianteTxt}
     </div>`;
   }).join('')+`</div>
-  <div style="margin-top:14px;font-size:.66rem;color:var(--muted)">🥇 Más vendido: <strong style="color:${(()=>{const d0=rows[0][1];const p0=d0.costo>0?(d0.neto-d0.costo)/d0.costo*100:null;return vpRankMode==='roi'?scoreColor(roiScore(rows[0][1])*_rankNorm):(vpRankMode==='markup'||vpRankMode==='ganancia')?pctColor(p0):'#22c55e';})()}">${rows[0][1].prod}</strong>${rows.length>1?` · 🐢 Menos vendido: <strong style="color:var(--muted)">${rows[rows.length-1][1].prod}</strong>`:''}</div>`;
+  <div style="margin-top:14px;font-size:.66rem;color:var(--muted)">🥇 Más vendido: <strong style="color:${(()=>{const d0=rows[0][1];const p0=pctRank(d0);return vpRankMode==='roi'?scoreColor(roiScore(rows[0][1])*_rankNorm):(vpRankMode==='markup'||vpRankMode==='ganancia')?pctColor(p0):'#22c55e';})()}">${rows[0][1].prod}</strong>${rows.length>1?` · 🐢 Menos vendido: <strong style="color:var(--muted)">${rows[rows.length-1][1].prod}</strong>`:''}</div>`;
 }
 
 /* ═══════════ PEDIDOS ═══════════ */
@@ -13534,13 +13551,13 @@ function _propMes(ym){
 }
 function _puntGananciaMes(ym){
   const keys=Object.keys(state.ventaprod||{}).filter(k=>k.startsWith(ym));
-  let neto=0,costo=0;
-  keys.forEach(k=>Object.values(state.ventaprod[k]||{}).forEach(v=>{neto+=(v.neto||0);costo+=efectivoCostoVP({...v,_dateKey:k});}));
+  let neto=0,costo=0,gest=0;
+  keys.forEach(k=>Object.values(state.ventaprod[k]||{}).forEach(v=>{neto+=(v.neto||0);costo+=efectivoCostoVP({...v,_dateKey:k});gest+=gestDeVenta(v);}));
   const rm=_retiroMesVal(ym);
   const _pm=_propMes(ym); // mes en curso: solo la parte proporcional a los días transcurridos
   const retiro=Math.round((rm!=null?rm:retiroDefMes(ym,neto))*_pm); // real si lo anotaste; si no, el supuesto
   const gastos=Math.round(_gastosMes(ym)*_pm); // gastos del mes, o el estimado si ese mes no tiene
-  return {neto,costo,retiro,gastos,ganancia:(neto-retiro)-costo-gastos};
+  return {neto,costo,gest,retiro,gastos,ganancia:(neto-retiro)-costo-gastos};
 }
 function _puntMesesConDatos(){const s=new Set();Object.keys(state.ventaprod||{}).forEach(k=>s.add(k.substring(0,7)));return [...s].sort();}
 function _puntMesPrev(ym){const p=ym.split('_').map(Number);const d=new Date(p[0],p[1]-2,1);return d.getFullYear()+'_'+String(d.getMonth()+1).padStart(2,'0');}
@@ -13575,10 +13592,10 @@ function _puntProdMarkup(ym){
   const agg={};
   Object.keys(state.ventaprod||{}).filter(k=>k.startsWith(ym)).forEach(k=>Object.values(state.ventaprod[k]||{}).forEach(v=>{
     if(v.cancelada)return;const id=v.prodId||v.prod||'?';
-    if(!agg[id])agg[id]={nom:v.prod||(prodDeVenta(v)||{}).name||id,neto:0,costo:0};
-    agg[id].neto+=v.neto||0;agg[id].costo+=efectivoCostoVP({...v,_dateKey:k});
+    if(!agg[id])agg[id]={nom:v.prod||(prodDeVenta(v)||{}).name||id,neto:0,costo:0,gest:0};
+    agg[id].neto+=v.neto||0;agg[id].costo+=efectivoCostoVP({...v,_dateKey:k});agg[id].gest+=gestDeVenta(v);
   }));
-  return Object.values(agg).map(a=>({nom:a.nom,markup:a.costo>0?((a.neto-a.costo)/a.costo)*100:null,vol:a.neto})).filter(a=>a.markup!=null);
+  return Object.values(agg).map(a=>({nom:a.nom,markup:pctGananciaVP(a.neto-a.costo,a.costo,a.gest),vol:a.neto})).filter(a=>a.markup!=null);
 }
 function calcPuntajeMes(mesKey){
   const now=new Date();
@@ -13611,7 +13628,7 @@ function calcPuntajeMes(mesKey){
   const fac12=_puntFac12();
   const monoCuentas=MET_ACCTS.map(a=>({acct:a,label:MET_LABELS[a],fac:fac12[a],cat:monoCat(fac12[a])}));
   // C. Margen % (1.5): 40% (meta) o más = puntos completos; baja hasta 0 en 20%.
-  const margen=g.costo>0?((g.neto-g.costo)/g.costo)*100:0;
+  const margen=pctGananciaVP(g.neto-g.costo,g.costo,g.gest)||0;
   const ptsC=1.5*_lerpCurve(margen,[[cfg.margenMeta/2,0],[cfg.margenMeta,1]]);
   comp.push({key:'margen',label:'Margen %',pts:ptsC,max:1.5});
   // D. Devoluciones (1) — reclamos reales del mes
