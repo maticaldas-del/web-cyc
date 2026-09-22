@@ -2281,7 +2281,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='20.03';
+const APP_VERSION='20.04';
 // El problema real que esto resuelve no es curiosidad: es que el celular guarda la app y sigue
 // mostrando la de ayer sin avisar. Varias veces se revisó un cambio que ya estaba subido y no se
 // veía. Por eso, además del número, el chip avisa cuando hay una versión nueva esperando.
@@ -13429,7 +13429,16 @@ const AFIP_REG={
   matias: {cat:'F',fact:38678093},
 };
 function catLim(c){const x=MONO_CATS.find(m=>m.c===c);return x?x.lim:0;}
-const PUNT_DEF={margenMeta:40, devOk:3, devMax:12, gastOk:10, gastMax:50};
+// LA META DEL PUNTAJE BAJÓ DE 40 A 38 (22/09/2026), Y NO ES QUE SE AFLOJÓ LA VARA.
+// El 22/09 el margen de la pantalla pasó a dividir CON el envío de Full adentro —el mismo
+// criterio que el piso del negocio desde el 01/09— y con eso el MISMO mes mide ~5% menos:
+// septiembre daba 33% y pasó a 31,2% sin que cambiara nada del negocio. La meta seguía en 40,
+// que era la vara de la fórmula vieja, así que el Puntaje le bajó Margen de 1,5 a 0,8 puntos en
+// un mes que viene 3,5 puntos MEJOR que el anterior. 38 es el 40 viejo llevado a la escala nueva.
+// OJO: esto NO es el piso del negocio (23%) ni la meta a la que sube el robot (25%). Ésos
+// deciden PRECIOS, ya medían con el envío adentro y no se tocaron.
+// Es el valor POR DEFECTO: un mes donde él haya guardado objetivos a mano conserva los suyos.
+const PUNT_DEF={margenMeta:38, devOk:3, devMax:12, gastOk:10, gastMax:50};
 function puntCfg(ym){
   const o=(state.puntaje&&state.puntaje[ym])||{};
   const n=(v,d)=>(v!=null&&v!==''&&isFinite(v))?Number(v):d;
