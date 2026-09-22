@@ -2281,7 +2281,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='20.00';
+const APP_VERSION='20.01';
 // El problema real que esto resuelve no es curiosidad: es que el celular guarda la app y sigue
 // mostrando la de ayer sin avisar. Varias veces se revisó un cambio que ya estaba subido y no se
 // veía. Por eso, además del número, el chip avisa cuando hay una versión nueva esperando.
@@ -7795,7 +7795,24 @@ function renderVentaProd(){
       const cancelBadge=isCancelled?(_esRec
         ?`<span style="padding:1px 7px;border-radius:4px;background:rgba(239,68,68,.15);color:#f87171;font-size:.58rem;font-weight:600;letter-spacing:.04em" title="Producto perdido · no volvió al stock · cuenta como reclamo">RECLAMO · sin stock</span>`
         :`<span style="padding:1px 7px;border-radius:4px;background:rgba(148,163,184,.18);color:#cbd5e1;font-size:.58rem;font-weight:600;letter-spacing:.04em" title="El comprador canceló · producto devuelto al stock">CANCELADA · devuelto</span>`):'';
-      const costLabel=(!isCancelled&&gc>0)?`<span style="font-size:.66rem;color:var(--muted)" title="Costo total ${fmt(gcTot)}: mercadería ${fmt(gc-gmlx)} (costo + envío/embalaje + % reclamos) + impuestos ${fmt(gmlx)} (IIBB ${mlExtraPct(cuenta).toFixed(2)}% + monotributo ${monoPct().toFixed(2)}% del precio)${ggest>0?' + '+fmt(ggest)+' que cobra Full':''}. El % se mide contra este total. La ganancia en pesos NO le resta la gestión de Full: el neto que paga ML ya la trae descontada.">costo ${fmt(gcTot)}</span>`:'';
+      // ── EL RENGLÓN INVITABA A UNA RESTA QUE ESTABA MAL (22/09/2026) ───────────────────
+      // Él lo marcó: *"el costo muestra todo el costo de vender ese producto y el neto es lo que
+      // deja ML en MP después de descontarse lo suyo (…) yo ahí miro y digo el producto costó
+      // $42.000 y nos quedó $44.000, o sea no es un 21%"*.
+      // TENÍA RAZÓN. Se mostraba `costo $42.132` (que lleva el envío de Full SUMADO) al lado de
+      // `neto $44.210` (que ya lo trae RESTADO). Restarlos cobra el envío DOS veces: da $2.078, y
+      // esos $2.078 son exactamente $8.868 − $6.790, o sea la ganancia menos el envío.
+      // ES EL MISMO ERROR DEL 03/09 EN LA FICHA (ahí la resta daba $2.221), arreglado allá y no
+      // acá. Y la explicación existía... en el `title`, o sea escondida — y en el teléfono no hay
+      // globito. Una advertencia que hay que ir a buscar no arregla un renglón que miente.
+      // CÓMO QUEDA: se muestra el costo que SÍ se resta del neto (sin Full) y, cuando Full cobra
+      // algo, se muestra aparte. Así las dos cuentas que invita la pantalla dan bien:
+      //     neto − costo = ganancia        ·    ganancia ÷ (costo + Full) = el %
+      // ABAJO DE LOS $33.000 FULL NO COBRA NADA, así que en la enorme mayoría de las ventas el
+      // renglón queda idéntico a como estaba y no aparece ningún número nuevo: el ruido se suma
+      // sólo donde hace falta. Es la regla de siempre — la gestión de Full se suma al COSTO o se
+      // resta del PRECIO, nunca las dos cosas.
+      const costLabel=(!isCancelled&&gc>0)?`<span style="font-size:.66rem;color:var(--muted)" title="Mercadería ${fmt(gc-gmlx)} (costo + envío/embalaje + % reclamos) + impuestos ${fmt(gmlx)} (IIBB ${mlExtraPct(cuenta).toFixed(2)}% + monotributo ${monoPct().toFixed(2)}% del precio) = ${fmt(gc)}. Éste es el que se resta del neto de ML: neto ${fmt(gn)} − ${fmt(gc)} = ${fmt(gg)}.${ggest>0?' Aparte, Full cobra '+fmt(ggest)+', que el neto YA trae descontado — por eso va separado y no sumado acá. El % se mide contra el costo total '+fmt(gcTot)+', que es tu regla del 01/09.':' El % se mide contra este mismo costo.'}">costo ${fmt(gc)}</span>${ggest>0?`<span style="font-size:.66rem;color:var(--muted)" title="Lo que Full te cobra por esa venta (${fmt(ggest)}). Va separado del costo a propósito: el neto que te deposita ML ya lo trae descontado, así que sumarlo al costo y restarlo del neto sería cobrarlo dos veces. Entra igual en el % (costo total ${fmt(gcTot)}).">&nbsp;+ Full ${fmt(ggest)}</span>`:''}`:'';
       const ganLabel=isCancelled?'':(gc>0?`<span style="font-size:.66rem;color:${gg>=0?'var(--green)':'var(--red)'}">gan. ${fmt(gg)}</span>`:`<span style="font-size:.62rem;color:var(--muted)">neto ${fmt(gn)}</span>`);
       // EL RENGLÓN NO MUESTRA LO QUE SE QUEDÓ ML (21/09/2026). Estuvo un rato y él lo sacó:
       // *"que no se vea ml, total no me sirve para nada a mi"*. El dato era correcto —total −
