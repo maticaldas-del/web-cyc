@@ -53,7 +53,6 @@ Ver la sección con ese nombre. **Mientras no esté en la rama principal, el avi
 usa** (el robot corre desde `claude/add-folder-78ysyb`).
 
 ### 5 · PENDIENTES QUE ÉL PIDIÓ RECORDAR (22/09/2026: *"acordate queda pendiente"*)
- · **el correo** del pedido del 21/09 (el recargo real sigue "corto").
  · cargar los **4 disponibles** en Finanzas → Arqueo (el `dispo` está listo y esperando).
  · el color de la **5ª publicación del Centímetro** (`MLA1841730099`).
  · **gastos de septiembre**: faltan Sancor (la factura es $163.045), intereses y los cargos de
@@ -2082,8 +2081,13 @@ unidades viven ÚNICAMENTE en ese detalle, así que volver a armarlo nunca puede
 | mercadería | US$ 469,40 · **$760.343** (dólar comprado a $1.620) |
 | el que retira y despacha | **$74.260** |
 | diferencia de la transferencia | $10.367 |
-| correo | **falta** |
-| **recargo real hasta acá** | **17,3%** · con los $25.000 del correo daría **20,7%** |
+| correo (Vía Cargo, guía del 22/09) | **$19.000 · 6,5 kg · $2.923 por kilo** |
+| **recargo real, COMPLETO** | **19,9%** · 5,5% los dólares + 14,4% fijo del pedido ($103.627) |
+
+**CARGADO EL 22/09/2026 con `compray:2026-09-21|envio=19000|kg=6.5|go`**, releído. Para eso
+`compray` cambió: **lo que no se le pasa se toma de lo guardado** (antes `pagos` se escribía entero
+y un campo olvidado quedaba en cero, con el recargo corto y sin aviso), y guarda los **kilos del
+pedido** (`kgCorreo`) — el peso TOTAL de la guía, que es el único peso que va a existir.
 
 **EL NÚMERO QUE LE HABÍA DADO A LA MAÑANA (19,4%) ESTABA CORTO, y la causa vale como regla.** Yo
 había sacado la mercadería de lo que se *transfirió* (475,80 USDt menos ~1 del cambista = 474,80) y
