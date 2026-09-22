@@ -1871,6 +1871,12 @@ function startApp(){
     state.retiro_mes=d.retiro_mes||{};
     state.stockDiario=d.stockDiario||{};
     state.mllinks=d.mllinks||{};     // publicaciones ML a mapear (activas + inactivas)
+    // EL NETO DE CADA PUBLICACIÓN, que escribe `netoweb` todas las noches. Existe para poder
+    // medir el margen de CADA VARIANTE: en una ficha con colores cada variante es su propia
+    // publicación en ML, con su precio, así que el número del producto entero no la describe.
+    // Vive APARTE de `cyc/mllinks` porque ese nodo se reescribe entero cuando la publicación
+    // vende (el bug del 05/08): un campo guardado ahí adentro se borraría solo.
+    state.netopub=d.netopub||{};
     // Reputación de cada cuenta, que escribe el robot una vez por hora leyendo /users/<id>.
     // La web NO se la puede preguntar a ML: no tiene el token. Mismo camino que las visitas y la
     // caja de compra, a propósito.
@@ -2275,7 +2281,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='19.99';
+const APP_VERSION='20.00';
 // El problema real que esto resuelve no es curiosidad: es que el celular guarda la app y sigue
 // mostrando la de ayer sin avisar. Varias veces se revisó un cambio que ya estaba subido y no se
 // veía. Por eso, además del número, el chip avisa cuando hay una versión nueva esperando.
@@ -7984,13 +7990,25 @@ function envioEstimadoArriba(){
   }
   return {envio:peor,n};
 }
-function margenMLDe(p){
+// `pub` (OPCIONAL) es el neto de UNA publicación, para medir el margen de una VARIANTE sola.
+// NO es una segunda fórmula: lo único que cambia es DE DÓNDE salen el neto, el precio y el envío;
+// toda la cuenta de abajo es la misma, línea por línea. Con una copia, la variante y el producto
+// se irían separando — el error anotado una docena de veces en este archivo.
+// El COSTO no se toca: una ficha tiene UN costo y lo comparten todos sus colores. Lo que cambia
+// entre variantes es el PRECIO al que está publicada cada una, y eso es justo lo que se quiere ver.
+function margenMLDe(p,pub){
+  const F=pub?{neto:pub.neto,precio:pub.precio,envio:pub.envio,
+               sinEnvio:pub.sinEnvio===true,envioML:pub.envioML===true,
+               cuenta:pub.cuenta,pausada:pub.activa===false}
+            :{neto:p.netoCalc,precio:p.netoCalcPrecio,envio:p.netoCalcEnvio,
+               sinEnvio:p.netoCalcSinEnvio===true,envioML:p.netoCalcEnvioML===true,
+               cuenta:p.netoCalcCuenta,pausada:p.netoCalcPausada===true};
   const agg=_netoAgg();
   const a=agg['id:'+p.id]||agg['nm:'+normTxt(p.name)];
   let mlExtra=0,mlExtraEstimado=false;
   if(a&&a.u>0)mlExtra=Math.round(a.mlx/a.u);
-  else if(Number(p.netoCalcPrecio)>0){
-    mlExtra=Math.round(Number(p.netoCalcPrecio)*(mlExtraPct(p.netoCalcCuenta)+monoPct())/100);
+  else if(Number(F.precio)>0){
+    mlExtra=Math.round(Number(F.precio)*(mlExtraPct(F.cuenta)+monoPct())/100);
     mlExtraEstimado=true;
   }
   // ── LA GESTIÓN DE FULL VA ADENTRO DEL COSTO ────────────────────────────────
@@ -8012,10 +8030,10 @@ function margenMLDe(p){
   // cargado a mano queda de respaldo, para los productos que todavía no pasaron por netoweb.
   // Si la web usara uno y el robot otro, la pantalla diría un margen y el robot movería precios
   // con otro — el error del envío repetido por cuarta vez.
-  const gest=Math.round(Number(p.netoCalcEnvio)>0?Number(p.netoCalcEnvio):(Number(p.gestFull)||0));
+  const gest=Math.round(Number(F.envio)>0?Number(F.envio):(Number(p.gestFull)||0));
   const costoBase=costFullP(p)+mlExtra;   // mercadería + envío/embalaje + % reclamos + impuestos
   const costo=costoBase+gest;             // el costo TOTAL, el que él quiere ver
-  const netoCalc=(p.netoCalc!=null&&p.netoCalc!=='')?Number(p.netoCalc):null;
+  const netoCalc=(F.neto!=null&&F.neto!=='')?Number(F.neto):null;
   const margen=(netoCalc!=null&&costo>0)?((netoCalc-costoBase)/costo*100):null;
   // ── LA SIMULACION, CON LA MISMA CUENTA DE ARRIBA Y NADA MAS ──────────────────
   // No es una formula nueva: es la de la linea de arriba con el envio estimado puesto en los dos
@@ -8026,7 +8044,7 @@ function margenMLDe(p){
   // lo trae descontado (netoweb hace precio - comision - envio). Aca NO, porque el envio que se
   // uso fue cero. Por eso hay que restarlo a mano; si no, se contaria una sola vez y el margen
   // saldria alto justo del lado peligroso.
-  const _precioP=Math.round(Number(p.netoCalcPrecio)||0);
+  const _precioP=Math.round(Number(F.precio)||0);
   let margenEst=null,gestEst=0,estN=0;
   if(margen!=null&&!(gest>0)&&_precioP>=UMBRAL_ENVIO_GRATIS){
     const _e=envioEstimadoArriba();
@@ -8040,12 +8058,12 @@ function margenMLDe(p){
     // El precio sale acá para que quien muestre el margen pueda preguntarse si ese margen es
     // POSIBLE: arriba de los $33.000 ML cobra el envío gratis siempre, así que un margen
     // calculado con envío $0 a ese precio está inflado por varios puntos.
-    precio:Math.round(Number(p.netoCalcPrecio)||0),
+    precio:_precioP,
     fuente:netoCalc!=null?'calc':null,
     netoReal:(a&&a.u>0)?Math.round(a.neto/a.u):null,
-    sinEnvio:p.netoCalcSinEnvio===true,
-    envioML:p.netoCalcEnvioML===true,
-    pausada:p.netoCalcPausada===true};
+    sinEnvio:F.sinEnvio,
+    envioML:F.envioML,
+    pausada:F.pausada};
 }
 // El dato vive en cyc/mllinks/<MLA>/vis30, que es donde lo escribe el probe `visitas`.
 // Estuvo leyéndose de cyc/visitas y por eso la columna salía toda en "—": ese nodo lo escribía un
@@ -11576,6 +11594,27 @@ function renderRotacionStock(){
       // con una copia: si un día cambia la regla, cambian los dos juntos.
       const vDia=st>0?vp/Math.max(1,diasHistorial):0;
       const rotN=st>0?(vp/st)*factor:(vp>0?Infinity:0);
+      // ── EL MARGEN DE ESTA VARIANTE (22/09/2026) ────────────────────────────────
+      // Antes acá salía el del producto entero con un "(del prod.)" al lado, o sea el MISMO número
+      // en los 12 colores. Él lo marcó: *"en las variantes no es mejor saber por cada variante en
+      // vez del grupo? ya que cada producto va como individual"*.
+      // Se dibuja con `rotMargenHtml`, la MISMA función que el renglón del producto, así que
+      // arrastra sus reglas sin copiarlas: verde sólo si está medido, "?" o el simulado arriba de
+      // los $33.000 sin envío, y el candado de lo que está liquidando a propósito.
+      // SI NO SE PUEDE IDENTIFICAR LA PUBLICACIÓN NO SE ADIVINA: se cae al del producto, marcado
+      // "(del prod.)" como antes. Mostrar el margen de otro color sería peor que no mostrar nada,
+      // igual que con el código de Full y con la foto.
+      const _pubV=pubDeVariante(p.id,'',v)||null;
+      const _npV=_pubV&&(state.netopub||{})[_pubV.mla||''];
+      let mgV;
+      if(_npV&&Number(_npV.neto)>0){
+        const _m=margenMLDe(p,_npV);
+        mgV=rotMargenHtml({margen:_m.margen,margenDudoso:margenDudosoDe(_m),margenPrecio:_m.precio,
+          margenNeto:_m.neto,margenCosto:_m.costo,margenSinEnvio:_m.sinEnvio,margenGest:_m.gest,
+          margenEst:_m.margenEst,margenGestEst:_m.gestEst,margenEstN:_m.estN,liq2:r.liq2});
+      } else {
+        mgV=`<span style="font-size:.66rem;color:var(--muted)" title="No se pudo identificar la publicación de este color (el título de ML no lo nombra, o el robot todavía no le calculó el neto), así que se muestra el del producto entero. No se adivina: mostrar el margen de otro color sería peor que no mostrar ninguno.">${r.margen!=null?r.margen.toFixed(0)+'%':'—'} <span style="opacity:.6">(del prod.)</span></span>`;
+      }
       const est=rotEstadoDe(p,st,rotN,vp,new Date());
       const estTxt={sano:'<span style="color:var(--green)">🟢</span>',lento:'<span style="color:var(--amber)">🟠</span>',
         muerto:'<span style="color:var(--red)">🔴</span>',reciente:'<span style="color:var(--blue)">🆕</span>',
@@ -11588,8 +11627,8 @@ function renderRotacionStock(){
         <td style="text-align:right;font-size:.72rem">${vp} u.</td>
         <td style="text-align:right;font-family:'DM Mono',monospace;font-size:.72rem">${st>0?rotN.toFixed(2):'—'}</td>
         <td style="text-align:right;font-size:.72rem">${rotDiasSinVenderHtml(dsv)}</td>
-        <td style="text-align:right;font-size:.66rem;color:var(--muted)" title="El % de ganancia todavía se mide por producto, no por variante: el neto que informa ML se guarda por ficha. Este es el del producto entero.">${r.margen!=null?r.margen.toFixed(0)+'%':'—'} <span style="opacity:.6">(del prod.)</span></td>
-        <td style="text-align:right;font-size:.72rem">—</td>
+        <td style="text-align:right">${mgV}</td>
+        <td style="text-align:right;font-size:.66rem;color:var(--muted)" title="Hace cuánto hay stock se anota por producto y CUENTA, no por variante (cyc/stockhist). Poner acá el del producto entero sería darle a un color una antigüedad que no es la suya, así que no se muestra.">—</td>
         <td style="text-align:right;font-size:.8rem">${cjTxt}</td>
         <td style="font-size:.9rem">${estTxt}</td>
       </tr>`;

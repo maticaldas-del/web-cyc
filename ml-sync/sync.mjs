@@ -17910,6 +17910,19 @@ async function main() {
       // Un producto puede estar publicado varias veces. Se toma el neto MÁS BAJO de sus
       // publicaciones activas: es el peor caso, el que conviene mirar antes de vender.
       const porProd = {};
+      // EL NETO DE CADA PUBLICACION, NO SOLO EL PEOR DEL PRODUCTO (22/09/2026).
+      // Pedido suyo mirando las 12 variantes de las Sabanas 1 Plaza, que mostraban todas el
+      // mismo "29% (del prod.)": *"en las variantes no es mejor saber por cada variante en vez
+      // del grupo? ya que cada producto va como individual"*. Tiene razon: en una ficha con
+      // colores cada variante es su PROPIA publicacion en ML, con su precio y su envio.
+      // EL DATO YA SE CALCULABA Y SE TIRABA: este bucle mide el neto de cada publicacion y
+      // `mejor` se queda unicamente con el PEOR. Es el mismo error que el envio de hoy —
+      // un numero medido que no se guarda y deja a la pantalla adivinando.
+      // VA EN SU PROPIO NODO Y NO EN `cyc/mllinks`, a proposito: el auto-match de ventas arma
+      // el hijo ENTERO (`mapUpd[mla] = entry`) y lo pisa, asi que cualquier campo que no este
+      // en ese objeto se borra solo. Es el bug del 05/08 y la misma razon por la que las
+      // entregas viven en `cyc/entregas`.
+      const porPub = {};
       for (const label of labels) {
         const acc = accounts[label];
         if (!acc?.refresh_token) continue;
@@ -17996,6 +18009,8 @@ async function main() {
             // costo y no se actualizó"*.
             // Es el error de siempre visto de cerca: el comentario de abajo promete que se guarda
             // "el envío que se usó para sacar este neto" y nadie comprobó que llegara.
+            porPub[mla] = { neto, precio: Math.round(precio), envio: Math.round(envio),
+              sinEnvio: !!sinEnvio, envioML: !!envioDeML, activa: !!activa, cuenta: label, pid: p.id, ts: Date.now() };
             if (mejor) porProd[p.id] = { neto, precio: Math.round(precio), mla, cuenta: label, envio, sinEnvio, envioDeML, activa };
           }
         }
@@ -18021,6 +18036,20 @@ async function main() {
           guardados++;
         }
       }
+      // ── EL NETO POR PUBLICACION ────────────────────────────────────────────────
+      // Se escribe DESPUES de los productos y en su propio nodo. Si falla, no se toca nada de lo
+      // de arriba: el margen por producto es el que decide precios y no puede depender de esto.
+      if (!prueba && !DRY && Object.keys(porPub).length) {
+        try {
+          await db.patch('cyc/netopub', porPub);
+          const rele = await db.get('cyc/netopub');
+          const ok = Object.keys(porPub).filter((m) => rele && rele[m] && Number(rele[m].neto) === Number(porPub[m].neto)).length;
+          console.log(`\nNeto por publicación: ${Object.keys(porPub).length} guardadas · releídas ${ok} iguales${ok === Object.keys(porPub).length ? ' ✓' : ' ⚠️ NO COINCIDEN'}`);
+        } catch (eP) { console.log(`\n⚠️ no se pudo guardar el neto por publicación: ${String(eP).slice(0, 120)}`); }
+      } else if (Object.keys(porPub).length) {
+        console.log(`\nNeto por publicación: ${Object.keys(porPub).length} (PRUEBA: no se guarda)`);
+      }
+
       if (compEnvio.length) {
         console.log(`\n── CONTROL DEL ENVÍO · ${compEnvio.length} productos que SÍ vendieron ──`);
         console.log('   Se compara la tarifa de ML contra el envío deducido de nuestras ventas. Si los dos');
