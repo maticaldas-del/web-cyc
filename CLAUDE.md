@@ -165,7 +165,7 @@ Esto cambia la regla 5 para estos casos: la noche baja SOLA, siempre **a ganar l
 | escalón 1 | 45 d sin vender | 20% |
 | escalón 2 | 90 d | 15% |
 | **escalón 3** | **120 d** (`rematarDias3`) | **0%** (`rematarPct3`) |
-| sobra y paga almacenamiento | vende, >60 d de stock, 60+ d en Full | 20% · **0% si tiene stock para 120+ d** |
+| sobra | vende, >60 d de stock: 20% si ya paga (60+ d en Full) · **0% si tiene stock para 120+ d** (no hace falta la fecha: va a pagar sí o sí) | |
 Frenos: margen contra el costo TOTAL con envío del peor caso + medio punto de colchón · `setPriceTo`
 con `autorizado` (nunca abajo de 0%, nunca más de 25% de una) · menos de 20 visitas no se toca · sin
 variantes · 5 por noche · **antes de bajar marca `liquidando`** (si no, el rescate lo subiría a la

@@ -6120,8 +6120,12 @@ async function main() {
       for (const f of cbr.filas.filter((x) => x.sobre)) {
         if (f.mgPw >= SOBRE_SANO) sobreSanas.push(f);
         else if (f.sobre.edad != null && f.sobre.edad >= SOBRE_DIAS && f.mgPw >= REM_P1) sobrePaga.push(f);
-        // Escalón 3 de lo que sobra: ya paga almacenamiento Y tiene stock para más de REM_D3 días.
-        else if (f.sobre.edad != null && f.sobre.edad >= SOBRE_DIAS && f.sobre.dias >= REM_D3 && f.mgPw >= REM_P3) sobreE3.push(f);
+        // Escalón 3 de lo que sobra: stock para más de REM_D3 días. NO se exige la fecha real de
+        // entrada: con stock para 4 meses va a pagar almacenamiento seguro, la tenga anotada o no
+        // (suyo, 23/09: *"si hay productos que van a pagar stock antiguo, bajarlo al 0% y vender
+        // todo es no perder dinero"*). Con la fecha exigida quedaban afuera el Timer (282 d) y el
+        // Pendrive 32gb (163 d), que son justo el caso.
+        else if (f.sobre.dias >= REM_D3 && f.mgPw >= REM_P3) sobreE3.push(f);
         else sobreNo.push(f);
       }
       const sobreNoSano = cbr.noSano.filter((x) => x.sobre);
@@ -6273,7 +6277,7 @@ async function main() {
 
       // ── VENDE PERO SOBRA (22/09/2026) ─────────────────────────────────────────────────
       console.log(`\nVENDE PERO SOBRA STOCK (más de ${SOBRE_DIAS} d): ${par.sobra.length} producto(s) por cuenta`);
-      console.log(`   con precio propuesto: ${sobreSanas.length} al ${SOBRE_SANO}%+ · ${sobrePaga.length} al ${REM_P1}%+ porque ya pagan almacenamiento · ${sobreE3.length} al ${REM_P3}%+ (pagan y tienen para ${REM_D3}+ d)`);
+      console.log(`   con precio propuesto: ${sobreSanas.length} al ${SOBRE_SANO}%+ · ${sobrePaga.length} al ${REM_P1}%+ porque ya pagan almacenamiento · ${sobreE3.length} al ${REM_P3}%+ (stock para ${REM_D3}+ d: van a pagar sí o sí)`);
       for (const f of [...sobreSanas, ...sobrePaga, ...sobreE3]) {
         console.log(`   · ${f.nom} (${f.cuenta}) ${money(f.precio)} → ${money(f.ptw)} (−${f.baja.toFixed(1)}%)`
           + ` · ${f.mgHoy == null ? '' : f.mgHoy.toFixed(1) + '% → '}${f.mgPw.toFixed(1)}% · ${f.st} u. = ${f.sobre.dias} d · vende ${f.sobre.porMes}/mes`);
