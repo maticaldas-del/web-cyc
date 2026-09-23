@@ -6384,7 +6384,63 @@ async function main() {
           if (cand.size) {
             const rr = await calcSubirPorMargen(db, { products, labels, accounts, soloProds: cand, piso: (SUBE_DESDE_AV + 0.5) / 100, meta: META_AV });
             rescFren = rr.frenados.filter((f) => !/comisión|tarifa/.test(f.why));
-            for (const x of rr.subir) (malosSup.has(x.mla) ? rescSup : rescates).push(x);
+            // ── NO SE RESCATA LO QUE ESTÁ FRENADO, SOBRADO O QUE ÉL BAJÓ A PROPÓSITO (23/09/2026) ──
+            // Lo marcó él con el Pendrive Ultra Shift: *"estuvieron como 2 meses sin venderse ni uno.
+            // lo bajé a pérdida para recuperar y evitar que nos cobren, no sé si está bien subirlos, se
+            // va a quedar frenado. todo eso se tiene que tener en cuenta"*. Un margen bajo NO siempre se
+            // arregla subiendo: si el producto no se mueve, subir lo deja más quieto y pagando
+            // almacenamiento. El robot viejo no tenía este problema porque sólo subía DESPUÉS de una
+            // venta; al pasar a la noche hay que preguntarlo a propósito. Tres frenos, los mismos que
+            // ya usa `calcSubirPuede` para subir (15 días sin vender · 60 días de stock) más uno:
+            //   · sin vender hace más de 15 días (o nunca vendió) → subir no lo despierta;
+            //   · más de 60 días de stock en esa cuenta → primero hay que vender;
+            //   · lo bajó ÉL A MANO en los últimos 60 días (la foto del supervisor lo ve) → es una
+            //     decisión suya y el robot no la deshace, aunque se le haya caído la marca `liquidando`.
+            // Ninguno se calla: van al aviso con el motivo, para que decida él.
+            const RESC_DSIN = 15, RESC_DSTOCK = 60;
+            const lnk = (await db.get('cyc/mllinks')) || {};
+            const invR = (await db.get('cyc/inventory')) || {};
+            const sidR = (x) => String(x).replace(/[^a-z0-9]/gi, '_');
+            const ultR = {}, u30R = {};
+            const desdeR = hoyTs - 30 * 864e5;
+            for (const [k, ents] of Object.entries(vpAv)) {
+              const ts = Date.parse(k.slice(0, 10).replace(/_/g, '-'));
+              if (!isFinite(ts)) continue;
+              for (const v of Object.values(ents || {})) {
+                if (!v || v.cancelada) continue;
+                if (v.mla && ts > (ultR[v.mla] || 0)) ultR[v.mla] = ts;
+                if (ts >= desdeR && v.prodId && v.cuenta) u30R[v.prodId + '__' + v.cuenta] = (u30R[v.prodId + '__' + v.cuenta] || 0) + (v.qty || 1);
+              }
+            }
+            const bajoAMano = {};
+            try {
+              const evR = (await db.get('cyc/supervisor/eventos')) || {};
+              for (const ev of Object.values(evR)) {
+                if (!ev || !ev.mla || !/a mano/.test(String(ev.origen || ''))) continue;
+                if (hoyTs - (ev.ts || 0) > 60 * 864e5) continue;
+                if (Number(ev.a) > 0 && Number(ev.de) > 0 && Number(ev.a) < Number(ev.de)) {
+                  if (!bajoAMano[ev.mla] || ev.ts > bajoAMano[ev.mla].ts) bajoAMano[ev.mla] = ev;
+                }
+              }
+            } catch { /* sin la foto no se puede saber: se sigue con los otros dos frenos */ }
+            const fechaR = (ts) => new Date(ts - 3 * 3600e3).toISOString().slice(5, 10).split('-').reverse().join('/');
+            for (const x of rr.subir) {
+              if (malosSup.has(x.mla)) { rescSup.push(x); continue; }
+              const bm = bajoAMano[x.mla];
+              if (bm) { rescFren.push({ ...x, why: `lo bajaste vos a mano el ${fechaR(bm.ts)} (${money(bm.de)} → ${money(bm.a)}) · no lo subo solo; si ya no lo estás rematando, decime` }); continue; }
+              const dSin = ultR[x.mla] ? Math.floor((hoyTs - ultR[x.mla]) / 864e5) : null;
+              if (dSin == null || dSin > RESC_DSIN) { rescFren.push({ ...x, why: dSin == null ? 'no vendió nunca: subirlo no lo va a despertar' : `hace ${dSin} días que no vende: subirlo lo deja más frenado` }); continue; }
+              const pid = (lnk[x.mla] || {}).prodId;
+              if (pid) {
+                const st = invR[pid + '__' + sidR(x.label)];
+                const pd = (u30R[pid + '__' + x.label] || 0) / 30;
+                if (st != null && pd > 0) {
+                  const dSt = Math.round((parseInt(st) || 0) / pd);
+                  if (dSt > RESC_DSTOCK) { rescFren.push({ ...x, why: `tiene ${parseInt(st) || 0} u. = ${dSt} días de stock: primero hay que venderlo, subir lo frena` }); continue; }
+                }
+              }
+              rescates.push(x);
+            }
             rescates.sort((a, b) => a.pct - b.pct);
             console.log(`   para subir: ${rescates.length} · frenadas por el supervisor: ${rescSup.length} · no se pueden: ${rescFren.length} · siguen arriba: ${rr.yaOk.length}`);
           }
