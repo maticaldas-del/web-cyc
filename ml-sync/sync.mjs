@@ -5957,6 +5957,136 @@ async function main() {
           + ` · ${money(f.capital)}${f.pagando ? ' · 💸 ya paga' : ''}`);
       }
 
+      // ── LO QUE SE APLICA SOLO (23/09/2026) ─────────────────────────────────────────────
+      // Pedido suyo: *"analizá a profundidad esa regla de subir y bajar y que sea automático.
+      // que no me pregunte más, que me avise solamente"* y *"que sea automático si estás muy
+      // seguro que no va a cometer errores o perder dinero"*.
+      //
+      // LO QUE SE MIDIÓ ANTES DE ESCRIBIR ESTO (`efectosuba:40`, 52 subas del robot con 5+ días
+      // para mirar): 30 siguieron vendiendo igual, 6 venden menos y 15 quedaron en cero — y de
+      // esas 15, las que vendían de verdad son sábanas y termómetros de heladera, que se cortaron
+      // por stock y por la revisión de ML, no por el precio. Los que venden todos los días (los
+      // infusores, el termómetro de cocina, el pendrive 64gb) siguieron casi igual después de subir.
+      //
+      // Por eso se automatiza SÓLO lo que tiene la cuenta hecha entera y no puede vender perdiendo:
+      //   · SUBIR (`calcSubirPuede`): gana la caja, hay un competidor más caro, sube hasta 10% y
+      //     queda abajo de él. ADEMÁS acá se exige que venda de verdad —4+ u. en 30 días y la
+      //     última hace 7 días o menos—: con 1 venta no hay nada que medir (los Paulvic del 23/09).
+      //   · BAJAR a ganar la caja quedando en 25%+ (`sanasCbr` y `sobreSanas`): el margen ya tiene
+      //     comisión al precio nuevo, envío, IIBB y monotributo adentro, y pasa por `setPriceTo`,
+      //     que no deja bajar del piso ni más de 25% de una.
+      // LO QUE SIGUE PREGUNTANDO, a propósito: el remate (20% y 15%, abajo del piso), lo que sobra
+      // y ya paga almacenamiento (20%), el escalón de comisión (no trae el margen para el freno del
+      // piso), y las publicaciones CON VARIANTES (`setPriceTo` manda una sola variante y ML borra
+      // las que faltan — regla 7).
+      //
+      // LOS FRENOS, y cada uno tapa una forma concreta de equivocarse:
+      //   · tope de AUTO_MAX cambios por noche: si una cuenta sale mal, el daño queda chico;
+      //   · la misma espera por publicación que el aviso (14 d subir · 10 d bajar);
+      //   · NO SE HACE PING-PONG: después de una baja automática no se sube sola por 30 días, y
+      //     después de una suba no se baja sola por 14 — si no, bajar para ganar la caja y subir
+      //     porque la ganás se turnarían para siempre;
+      //   · se relee el precio de ML después de cada cambio (regla 6) y se dice si no quedó;
+      //   · sólo con `:go` (la corrida de la noche). En prueba dice qué haría y no toca nada;
+      //   · se apaga con `cyc/mlconfig/autoPrecios = 'off'`.
+      const AUTO_ON = MANDAR && !DRY && String(cfgAv.autoPrecios || 'on') !== 'off';
+      const AUTO_MAX = 10;
+      const AUTO_MIN_U = 4, AUTO_MAX_DSIN = 7;
+      const hechosAuto = [], fallidosAuto = [];
+      let autoprecio = {};
+      try { autoprecio = (await db.get('cyc/autoprecio')) || {}; } catch { autoprecio = null; }
+      const recienteAuto = (mla, tipo, dias) => {
+        if (autoprecio == null) return true;   // sin memoria no se arriesga el ping-pong: no se toca
+        const a = autoprecio[mla];
+        return !!(a && a.tipo === tipo && (hoyTs - (a.ts || 0)) < dias * 864e5);
+      };
+      const autoSube = nuevasSub.filter((f) => f.u >= AUTO_MIN_U && f.diasSin != null && f.diasSin <= AUTO_MAX_DSIN
+        && f.subePct <= 10.5 && !recienteAuto(f.mla, 'baja', 30));
+      const cbrAutoIds = new Set(sanasCbr.filter((f) => !yaAvisado('c_' + f.mla, 'cajabarata', f.ptw)).map((f) => f.mla));
+      const sobreAutoIds = new Set(sobreSanas.filter((f) => !yaAvisado('o_' + f.mla, 'cajabarata', f.ptw)).map((f) => f.mla));
+      const autoBaja = [...sanasCbr.filter((f) => cbrAutoIds.has(f.mla)), ...sobreSanas.filter((f) => sobreAutoIds.has(f.mla))]
+        .filter((f) => f.mgPw >= CBR_SANO + 0.5 && f.baja <= 24.5 && !recienteAuto(f.mla, 'sube', 14));
+      console.log(`\n── AUTOMÁTICO ${AUTO_ON ? '(SE APLICA)' : '(PRUEBA / APAGADO: no se toca nada)'} ──`);
+      console.log(`   subir: ${autoSube.length} de ${nuevasSub.length} (piden ${AUTO_MIN_U}+ ventas y la última hace ${AUTO_MAX_DSIN} d o menos)`);
+      console.log(`   bajar a ganar la caja en ${CBR_SANO}%+: ${autoBaja.length}`);
+      if (autoSube.length + autoBaja.length) {
+        let tokA = {};
+        if (AUTO_ON) {
+          const tks = (await db.get('mlapi/tokens')) || {};
+          for (const [l, acc] of Object.entries(tks)) {
+            if (!acc?.refresh_token) continue;
+            try {
+              const t = await mlRefresh(ML_CLIENT_ID, ML_CLIENT_SECRET, acc.refresh_token);
+              await db.patch('mlapi/tokens/' + l, { refresh_token: t.refresh_token, updated_ts: Date.now() });
+              tokA[l] = t.access_token;
+            } catch { /* esa cuenta queda sin tocar y se dice abajo */ }
+          }
+        }
+        const tareas = [
+          ...autoSube.map((f) => ({ tipo: 'sube', f, a: f.tope })),
+          ...autoBaja.map((f) => ({ tipo: 'baja', f, a: Math.floor(f.ptw / 10) * 10 })),
+        ].slice(0, AUTO_MAX);
+        for (const t of tareas) {
+          const f = t.f, tk = tokA[f.cuenta];
+          const renglon = `${f.nom} (${f.cuenta}) ${money(f.precio)} → ${money(t.a)}`;
+          if (!AUTO_ON) { console.log(`   · haría: ${t.tipo === 'sube' ? 'SUBIR' : 'BAJAR'} ${renglon}`); continue; }
+          if (!tk) { fallidosAuto.push({ ...t, err: 'sin token de la cuenta' }); continue; }
+          let r;
+          if (t.tipo === 'sube') r = await raisePriceTo(f.mla, t.a, tk);
+          else {
+            let it = null;
+            try { it = await mlGet('/items/' + f.mla + '?attributes=id,variations', tk); } catch { it = null; }
+            if (!it) { fallidosAuto.push({ ...t, err: 'ML no devolvió la publicación' }); continue; }
+            if ((it.variations || []).length) { fallidosAuto.push({ ...t, err: 'tiene variantes: se hace a mano' }); continue; }
+            r = await setPriceTo(f.mla, null, t.a, tk, { margen: f.mgPw });
+          }
+          if (!r || !r.ok) { fallidosAuto.push({ ...t, err: (r && r.err) || '?' }); continue; }
+          // REGLA 6: se relee de ML. Que la escritura no dé error no quiere decir que haya quedado.
+          let quedo = null;
+          try { quedo = Number((await mlGet('/items/' + f.mla + '?attributes=price', tk))?.price) || null; } catch { quedo = null; }
+          hechosAuto.push({ ...t, de: r.from || f.precio, a: r.to || t.a, quedo });
+          const reg = { tipo: t.tipo, de: r.from || f.precio, a: r.to || t.a, ts: hoyTs, nom: f.nom, cuenta: f.cuenta,
+            ...(t.tipo === 'sube' ? { u30: f.u } : { margen: Math.round(f.mgPw * 10) / 10 }) };
+          try { await db.set('cyc/autoprecio/' + f.mla, reg); } catch { /* */ }
+          // Se anota en la memoria del aviso para que no vuelva a salir como "para decidir".
+          const clave = t.tipo === 'sube' ? f.mla : (cbrAutoIds.has(f.mla) ? 'c_' : 'o_') + f.mla;
+          try {
+            await db.patch('cyc/avisados', { [clave]: { tipo: t.tipo === 'sube' ? 'subir' : 'cajabarata', valor: t.tipo === 'sube' ? f.tope : f.ptw, ts: hoyTs } });
+            avisados[clave] = { tipo: t.tipo === 'sube' ? 'subir' : 'cajabarata', valor: t.tipo === 'sube' ? f.tope : f.ptw, ts: hoyTs };
+          } catch { /* */ }
+          console.log(`   ✓ ${t.tipo === 'sube' ? 'SUBIDO' : 'BAJADO'} ${renglon}${quedo != null ? ` · releído de ML: ${money(quedo)}` : ' · ⚠️ no pude releerlo'}`);
+        }
+        if (tareas.length < autoSube.length + autoBaja.length) {
+          console.log(`   (quedan ${autoSube.length + autoBaja.length - tareas.length} para mañana: tope de ${AUTO_MAX} por noche)`);
+        }
+        for (const x of fallidosAuto) console.log(`   ✗ NO se pudo: ${x.f.nom} (${x.f.cuenta}) · ${x.err}`);
+      }
+      // Lo que se hizo solo sale de las listas "para decidir". Lo que falló QUEDA, con su número,
+      // para que lo decida él: un cambio que no se pudo hacer no puede desaparecer en silencio.
+      const hechoIds = new Set(hechosAuto.map((x) => x.f.mla));
+      nuevasSub.splice(0, nuevasSub.length, ...nuevasSub.filter((f) => !hechoIds.has(f.mla)));
+      for (const arr of [sanasCbr, sobreSanas]) arr.splice(0, arr.length, ...arr.filter((f) => !hechoIds.has(f.mla)));
+      // ── LA VIGILANCIA DE LAS SUBAS AUTOMÁTICAS ────────────────────────────────────────────
+      // Subir es lo único que puede apagar las ventas de algo que hoy funciona, y eso se nota
+      // tarde. A los 7 días se mira: si con el ritmo de antes tendría que haber vendido 3 o más y
+      // no vendió NINGUNA, se avisa con el precio de antes al lado. No se baja solo: volver es
+      // bajar, y para eso hace falta el margen, que acá no está medido.
+      const vigilar = [];
+      if (autoprecio) {
+        for (const [mla, a] of Object.entries(autoprecio)) {
+          if (!a || a.tipo !== 'sube' || a.vigilado || !a.ts) continue;
+          const dias = (hoyTs - a.ts) / 864e5;
+          if (dias < 7) continue;
+          let despues = 0;
+          for (const ents of Object.values(vpAv)) for (const v of Object.values(ents || {})) {
+            if (v && !v.cancelada && v.mla === mla && v.ts && new Date(v.ts).getTime() > a.ts + 60e3) despues += v.qty || 1;
+          }
+          const esperado = ((a.u30 || 0) / 30) * Math.min(dias, 14);
+          if (esperado >= 3 && despues === 0) vigilar.push({ mla, ...a, dias: Math.floor(dias), esperado });
+          if (MANDAR && dias >= 14) { try { await db.patch('cyc/autoprecio/' + mla, { vigilado: true, despues }); } catch { /* */ } }
+        }
+      }
+
       // ── EL MENSAJE ────────────────────────────────────────────────────────────────────
       // VA LA LISTA COMPLETA, NUMERADA. Antes salían sólo las 3 primeras de cada cosa y abajo
       // un "…y 13 más", y él lo marcó el 14/09/2026: *"Me paso la lista pero incompleta no?"*.
@@ -5975,6 +6105,26 @@ async function main() {
       let nro = 0;
       const numerar = (o) => { guardaFilas.push({ n: ++nro, ...o }); return nro; };
       L.push('🔔 <b>CYC · para decidir</b>');
+      // LO QUE SE HIZO SOLO VA PRIMERO, y con el precio releído de ML: es lo que ya cambió en
+      // sus publicaciones, y enterarse tarde de un cambio de precio es peor que no enterarse.
+      if (hechosAuto.length) {
+        L.push(`\n✅ <b>Lo hice solo</b> · ${hechosAuto.length}`);
+        for (const x of hechosAuto) {
+          const f = x.f;
+          L.push(`· ${x.tipo === 'sube' ? '📈' : '📉'} ${f.nom} (${f.cuenta})\n   ${money(x.de)} → ${money(x.a)}`
+            + (x.tipo === 'sube' ? ` · vendió ${f.u} en 30 d · sigue abajo del competidor` : ` · gana la caja · queda en ${f.mgPw.toFixed(1)}%`)
+            + (x.quedo == null ? ' · ⚠️ no pude releerlo de ML' : (Math.round(x.quedo) === Math.round(x.a) ? '' : ` · ⚠️ ML dice ${money(x.quedo)}`)));
+        }
+      }
+      if (fallidosAuto.length) {
+        L.push(`\n⚠️ <b>Quise hacerlo solo y no pude</b> · ${fallidosAuto.length} (quedan abajo para que decidas)`);
+        for (const x of fallidosAuto) L.push(`· ${x.f.nom} (${x.f.cuenta}) · ${x.err}`);
+      }
+      if (vigilar.length) {
+        L.push(`\n👀 <b>Subí solo y dejó de vender</b> · ${vigilar.length}`);
+        L.push('<i>Con el ritmo de antes ya tendría que haber vendido y no vendió ninguna. Si querés volver al precio de antes, decímelo.</i>');
+        for (const v of vigilar) L.push(`· ${v.nom} (${v.cuenta}) · ${v.mla}\n   lo subí de ${money(v.de)} a ${money(v.a)} hace ${v.dias} d · esperaba ~${Math.round(v.esperado)} ventas · 0`);
+      }
       if (nuevasSub.length) {
         const t = nuevasSub.reduce((a, x) => a + x.extraMes, 0);
         L.push(`\n📈 <b>Subir</b> · ${nuevasSub.length} publicación(es) · +${money(t)}/mes`);
@@ -6065,7 +6215,7 @@ async function main() {
       // (comisión preguntada a ML al precio nuevo, envío, IIBB, monotributo) igual que la sección
       // del Seagate. Misma espera de 10 días que las otras bajas, para no armar una escalera.
       const nuevasSobre = [...sobreSanas, ...sobrePaga].filter((f) => !yaAvisado('o_' + f.mla, 'cajabarata', f.ptw));
-      const sobreConPrecio = new Set([...sobreSanas, ...sobrePaga].map((f) => f.mla));
+      const sobreConPrecio = new Set([...sobreSanas, ...sobrePaga].map((f) => f.mla).concat([...hechoIds]));
       if (nuevasSobre.length) {
         L.push(`\n📦 <b>Te sobra stock: bajando ganás la caja</b> · ${nuevasSobre.length}`);
         L.push(`<i>Venden, pero tenés para más de ${SOBRE_DIAS} días (ML cobra almacenamiento). Ganando el botón de comprar rotan más rápido. El margen ya tiene todo descontado.</i>`);
@@ -6186,7 +6336,7 @@ async function main() {
       // CÓMO CONTESTAR. Sin esto la lista es información y no una herramienta: él la lee, quiere
       // aplicar tres renglones y no tiene forma de nombrarlos sin copiar títulos largos.
       if (guardaFilas.length) L.push(`\n<i>Para aplicar, decime los números: "subí el 1 y el 4". Los precios los aplico yo y después los releo de ML.</i>`);
-      else L.push('\n<i>Ninguno se aplicó solo: los precios los decidís vos.</i>');
+      else if (!hechosAuto.length) L.push('\n<i>Ninguno se aplicó solo: los precios los decidís vos.</i>');
       const msg = L.join('\n');
       console.log('\n── MENSAJE ──\n' + msg.replace(/<[^>]+>/g, ''));
       if (MANDAR) {
@@ -6196,6 +6346,8 @@ async function main() {
         if (ok && Object.keys(paraAnotar).length) {
           try { await db.patch('cyc/avisados', paraAnotar); } catch { /* */ }
         }
+        // La vigilancia se avisa UNA vez: marcada sólo si el mensaje salió.
+        if (ok) for (const v of vigilar) { try { await db.patch('cyc/autoprecio/' + v.mla, { vigilado: true }); } catch { /* */ } }
         // LA LISTA GUARDADA TIENE QUE SER EXACTAMENTE LA QUE ÉL RECIBIÓ, y por eso se escribe
         // acá adentro y no antes. Los renglones que salen son los que NO estaban avisados, así
         // que una corrida de prueba al otro día devuelve pocos —o ninguno— y guardándola igual
