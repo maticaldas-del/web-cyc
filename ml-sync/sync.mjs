@@ -1276,6 +1276,322 @@ async function activarPausadasFull(db, links, tokensRun, DRY, products, piso) {
 // existe, y peor, el comando `meta:` que cambia el número no cambiaba nada de esto.
 // Es el mismo patrón que ya nos mordió tres veces: un valor copiado que se desincroniza del real.
 // Pasarle el número a mano (`bajopiso:25`) sigue funcionando y gana sobre el de la base.
+// ── LA CUENTA DE `submargen`, COMPARTIDA (23/09/2026) ─────────────────────────────────────
+// Salió de adentro del probe para que la use también el robot de cada hora cuando él cambia un
+// COSTO en la ficha (ver "SI CAMBIA EL COSTO, EL ROBOT ACTÚA"). Con dos copias, el comando que se
+// corre a mano y el robot podían pedir precios distintos para la misma publicación — el error
+// anotado una docena de veces en CLAUDE.md. `piso` decide SI se toca, `meta` HASTA DÓNDE.
+// `soloProds` (Set de prodId) limita a esos productos; `tokens` ({cuenta: access_token}) evita
+// volver a pedir el permiso cuando el que llama ya lo tiene (pedirlo dos veces rota la llave).
+// NO escribe nada en ML: devuelve la lista. Lo marcado `liquidando` queda afuera (NOSUBIR tiene
+// que estar cargado antes, con `cargarNoSubir`).
+async function calcSubirPorMargen(db, o) {
+  const { products, labels, accounts } = o;
+  const PISO = o.piso, META = o.meta;
+  const soloProds = o.soloProds || null;
+  const TOPE_ENVIO = 33000;   // arriba de esto ML te cobra el envío: no se cruza
+  const TECHO = 600000;       // regla suya del 13/08/2026
+  const finS = (await db.get('cyc/finanzas')) || {};
+  const tcS = parseFloat(finS.tipo_cambio) || 1500;
+  const monoS = parseFloat(((await db.get('cyc/monotributo')) || {}).pct) || 0;
+  const links = (await db.get('cyc/mllinks')) || {};
+  const vpS = (await db.get('cyc/ventaprod')) || {}; setDevLive(vpS);
+  const pIdx = {}; for (const p of products) pIdx[p.id] = p;
+  // Ventas por publicación, para deducir el envío igual que netoweb.
+  // Y el cargo extra de ML por producto, EXACTAMENTE como lo hace la pantalla: el promedio de
+  // lo que se pagó de IIBB + monotributo en las ventas REALES del producto, y 0 si nunca vendió.
+  // Antes acá se estimaba como un % del precio nuevo. Parecido pero no igual: esa diferencia de
+  // $50 o $70 es justo la que separa el 29% del 30%, y por eso el 13/08 subí 62 publicaciones y
+  // muchas quedaron en 27-29% mientras el comando decía que habían llegado al piso.
+  const vtaMla = {}, vtaProd = {}, impProd = {};
+  for (const ents of Object.values(vpS)) {
+    for (const v of Object.values(ents || {})) {
+      if (!v || v.cancelada) continue;
+      const q = v.qty || 1, tot = (v.total || 0) / q, net = (v.neto || 0) / q;
+      if (v.prodId) {
+        const b = impProd[v.prodId] = impProd[v.prodId] || { imp: 0, u: 0 };
+        b.imp += (v.total || 0) * (mlExtraPct(v.cuenta) + monoS) / 100;
+        b.u += q;
+      }
+      if (tot <= 0 || net <= 0) continue;
+      if (v.mla) (vtaMla[v.mla] = vtaMla[v.mla] || []).push({ tot, net });
+      if (v.prodId) (vtaProd[v.prodId] = vtaProd[v.prodId] || []).push({ tot, net });
+    }
+  }
+  const mlxDe = (pid) => { const b = impProd[pid]; return (b && b.u > 0) ? Math.round(b.imp / b.u) : 0; };
+  const feeCache = {};
+  const feeAt = async (site, price, ltype, cat, token) => {
+    const key = site + '|' + ltype + '|' + cat + '|' + Math.round(price);
+    if (feeCache[key] !== undefined) return feeCache[key];
+    let out = null;
+    try {
+      const d = await mlGet(`/sites/${site}/listing_prices?price=${Math.round(price)}&listing_type_id=${ltype}&category_id=${cat}`, token);
+      const o = Array.isArray(d) ? d[0] : d;
+      if (typeof o?.sale_fee_amount === 'number') out = o.sale_fee_amount;
+    } catch { out = null; }
+    feeCache[key] = out; return out;
+  };
+  const subir = [], yaOk = [], frenados = [];
+  for (const label of labels) {
+    const acc = accounts[label];
+    let t;
+    if (o.tokens && o.tokens[label]) t = { access_token: o.tokens[label] };
+    else {
+      if (!acc?.refresh_token) continue;
+      try { t = await mlRefresh(ML_CLIENT_ID, ML_CLIENT_SECRET, acc.refresh_token); } catch { continue; }
+      await db.patch('mlapi/tokens/' + label, { refresh_token: t.refresh_token, updated_ts: Date.now() });
+    }
+    const ids = Object.entries(links)
+      .filter(([mla, e]) => e && e.cuenta === label && !e.ignored && e.prodId && /^MLA/i.test(mla)
+        && !NOSUBIR[mla] && (!soloProds || soloProds.has(e.prodId)))   // ← lo marcado `liquidando` NO se sube (ver arriba)
+      .map(([mla]) => mla);
+    for (let k = 0; k < ids.length; k += 20) {
+      let arr;
+      try { arr = await mlGet('/items?ids=' + ids.slice(k, k + 20).join(',') + '&attributes=id,status,price,variations,listing_type_id,category_id,site_id', t.access_token); } catch { continue; }
+      for (const row of (arr || [])) {
+        const b = row.body || {}; const mla = b.id; if (!mla || !links[mla]) continue;
+        if (b.status !== 'active' && b.status !== 'paused') continue;
+        const p = pIdx[links[mla].prodId]; if (!p) continue;
+        const vars = Array.isArray(b.variations) ? b.variations : [];
+        const precio0 = vars.length ? (vars[0].price || 0) : (b.price || 0);
+        if (!precio0) continue;
+        // ── ENVÍO: EL DEL PEOR CASO ──
+        // Hasta el 19/08/2026 acá se tomaba el envío MÁS BARATO visto, y cuando no había
+        // ninguna venta se ponía 0. Las dos cosas inflan el margen: con envío 0 una publicación
+        // que está en 26% figura arriba del piso y el comando la saltea diciendo que está bien.
+        // Es el mismo error que tenía `hermanas`. El envío que vale es el MÁS CARO: es el
+        // criterio conservador con el que se fijaron todos los precios, y el que usan `bajopiso`
+        // y `unapub`. Y si no hay NINGUNA venta con la que deducirlo, no se inventa un número:
+        // la publicación se lista aparte para mirarla a mano.
+        const ventas = (vtaMla[mla] && vtaMla[mla].length) ? vtaMla[mla] : (vtaProd[p.id] || []);
+        let envio = -Infinity;
+        for (const pv of [...new Set(ventas.map((v) => Math.round(v.tot)))].slice(-6)) {
+          const cv = await feeAt(b.site_id || 'MLA', pv, b.listing_type_id, b.category_id, t.access_token);
+          if (cv == null) continue;
+          for (const v of ventas) if (Math.round(v.tot) === pv) { const x = v.tot - v.net - cv; if (x > envio) envio = x; }
+        }
+        const nomE = (links[mla].title || p.name || mla).slice(0, 40);
+        // SIN VENTAS: se le pregunta la TARIFA a ML antes de rendirse.
+        //
+        // Emparejar las fórmulas, decisión suya del 22/08/2026. Hasta hoy la pantalla "Margen ML"
+        // y este comando decían cosas distintas de la MISMA publicación: el Xiaomi Watch 5 Lite
+        // mostraba +16% en pantalla y acá salía "no puedo calcular". La pantalla, desde el
+        // arreglo del 20/08, cuando un producto nunca vendió usa la tarifa de ML
+        // (envioSegunML); este comando seguía esperando ventas propias y se rendía. Dos
+        // fórmulas para lo mismo es de donde salieron los errores de margen del 19/08.
+        //
+        // El orden no cambia: las ventas propias mandan donde existen, porque son el dato de la
+        // realidad. La tarifa es el respaldo, y solo para los que nunca vendieron —que son
+        // justo los que hay que revisar y los únicos que quedaban afuera.
+        let envioDeTarifa = false;
+        if (!isFinite(envio)) {
+          const rT = await envioSegunML(mla, t.access_token);
+          if (rT) { envio = rT.envio; envioDeTarifa = true; }
+        }
+        // Si ML tampoco da la tarifa no se inventa nada: sigue sin tocarse.
+        if (!isFinite(envio)) { frenados.push({ mla, label, nom: nomE, why: 'sin ventas y ML no da la tarifa de envío: no invento el margen' }); continue; }
+        if (envio < 0) envio = 0;
+        const costoBase = costoPesos(p, 1, tcS).costo;
+        if (!(costoBase > 0)) continue;
+        // El costo es fijo (no depende del precio nuevo), igual que en la pantalla: costo full
+        // del producto + el promedio de impuestos de sus ventas. Se itera igual porque la
+        // comisión de ML no es lineal y hay que preguntársela precio por precio.
+        // LOS IMPUESTOS, EN LOS QUE NUNCA VENDIERON. Segunda mitad de "emparejar las fórmulas"
+        // (22/08/2026). mlxDe() es el promedio de IIBB + monotributo de las VENTAS del producto,
+        // y en un producto que nunca vendió devuelve CERO — o sea que el costo salía sin
+        // impuestos y el precio calculado quedaba corto.
+        //
+        // Medido en el Xiaomi Watch 5 Lite (MLA1871169547): así daba $143.950 para el 32%,
+        // cuando unapub —que sí los estima como % del precio— daba $161.850. Los ~$18.000 de
+        // diferencia son justo el 6,41% de IIBB + monotributo sobre el precio. Aplicar $143.950
+        // habría dejado la publicación abajo del piso diciendo que llegó: exactamente el error
+        // del 13/08, cuando se subieron 62 y en la pantalla seguían en 27-29%.
+        //
+        // Donde SÍ hay ventas no se cambia nada: manda el promedio real, que es el que usa la
+        // pantalla. El % estimado es solo para los que no tienen ninguna venta.
+        const impPctS = (mlExtraPct(label) + monoS) / 100;
+        const mlxProd = mlxDe(p.id);
+        const sinImpMedido = !(mlxProd > 0);
+        const costoTotDe = (P) => costoBase + (sinImpMedido ? P * impPctS : mlxProd);
+        const costoTot = costoTotDe(precio0);
+        const netoDe = async (P) => {
+          const c = await feeAt(b.site_id || 'MLA', P, b.listing_type_id, b.category_id, t.access_token);
+          return c == null ? null : P - c - envio;
+        };
+        // La meta se mide contra el costo AL PRECIO QUE SE ESTÁ PROBANDO: si el impuesto es un
+        // % del precio, subir el precio sube también el costo, y con un costo fijo la cuenta
+        // se quedaba corta.
+        // EL ENVÍO VA EN EL DIVISOR (17/09/2026), igual que en la pantalla y que en el robot.
+        // El margen es (neto − costo − impuestos) ÷ (costo + impuestos + ENVÍO), así que pedir
+        // margen ≥ X es pedir neto ≥ costoTot×(1+X) + X×envío. Sin el término del envío este
+        // comando calculaba el precio contra un divisor MÁS CHICO y devolvía un precio CORTO:
+        // subía y dejaba la publicación abajo del piso diciendo que había llegado — que es
+        // exactamente el error del 13/08, cuando se subieron 62 y en la pantalla seguían en
+        // 27-29%. Abajo de los $33.000 el envío es cero y no cambia nada.
+        const metaDe = (P) => costoTotDe(P) * (1 + META) + META * envio;
+        // El piso decide SI se toca; la meta decide HASTA DÓNDE. Con los dos pegados, cualquier
+        // cosa mínima —un envío un peso más caro— volvía a hundir lo recién subido.
+        const pisoDe = (P) => costoTotDe(P) * (1 + PISO) + PISO * envio;
+        let P = Math.round(precio0), ok = false, n0 = null, m0 = null;
+        for (let it = 0; it < 14; it++) {
+          const n = await netoDe(P); if (n == null) break;
+          const m = metaDe(P);
+          // La primera vuelta mide el precio de HOY contra el PISO: es lo que decide si esta
+          // publicación entra o no. Las vueltas siguientes buscan la META.
+          if (it === 0) { n0 = n; m0 = pisoDe(P); }
+          if (n >= m) { ok = true; break; }
+          // El hueco se cierra ~0,7 pesos por peso de aumento; se pide 1,5× para no quedar corto.
+          P = Math.ceil((P + (m - n) * 1.5) / 10) * 10;
+          if (P > TECHO * 1.2) break;
+        }
+        const nom = (links[mla].title || p.name || mla).slice(0, 40);
+        if (n0 == null) { frenados.push({ mla, label, nom, why: 'ML no me dio la comisión' }); continue; }
+        if (n0 >= m0) { yaOk.push(mla); continue; }
+        if (!ok) { frenados.push({ mla, label, nom, why: 'no llego a la meta ni subiendo mucho' }); continue; }
+        if (P <= precio0) { frenados.push({ mla, label, nom, why: 'la cuenta da un precio MENOR — no se baja' }); continue; }
+        if (P > TECHO) { frenados.push({ mla, label, nom, why: `pasa el techo de ${money(TECHO)} (haría falta ${money(P)})` }); continue; }
+        let final = P, nota = '';
+        if (precio0 < TOPE_ENVIO && P >= TOPE_ENVIO) { final = 32999; nota = ` (frenado en la barrera de los ${money(TOPE_ENVIO)}; para el piso hacían falta ${money(P)})`; }
+        if (final <= precio0) { frenados.push({ mla, label, nom, why: `ya está en la barrera de los ${money(TOPE_ENVIO)}` }); continue; }
+        subir.push({ mla, label, nom, prod: p.name, de: Math.round(precio0), a: final, nota, vars, tok: t.access_token, pct: ((n0 - costoTot) / (costoTot + envio) * 100), envioDeTarifa });
+      }
+    }
+  }
+  return { subir, yaOk, frenados };
+}
+
+// ── SI CAMBIA EL COSTO, EL ROBOT ACTÚA (23/09/2026) ──────────────────────────────────────────
+// Regla suya, textual: *"El costo real del producto es el que esta en arqueo/productos. No las que
+// carga el chat de paraguay en pedidos. Si yo modifico un costo en arqueo/productos quiero que se
+// modifique si queda por debajo del 20% o sea que el robot actue"*.
+//
+// Hasta hoy un costo nuevo sólo movía el precio cuando entraba la PRÓXIMA venta (el robot que sube
+// al vender). Un producto lento podía quedar semanas vendiendo abajo del 20% con el costo ya
+// cargado. Ahora, una vez por hora, se comparan los costos de las fichas contra la foto de la vuelta
+// anterior (`cyc/costosnap`) y sólo los productos que CAMBIARON se miden.
+//
+// QUÉ COSTO: el de la ficha (`costUSD` + `shipUSD`, Arqueo → Productos). **NO el precio de Paraguay**
+// (`nisseiUSD`): ése dice si conviene REPONER y no toca nada de lo que ya se vende (regla del 17/09).
+// Tampoco el dólar: si mueve el dólar se mueven todos los costos en pesos y eso NO es "él cambió un
+// costo" — ahí actúa el robot de siempre, venta por venta.
+//
+// LA CUENTA ES LA DE `submargen` (`calcSubirPorMargen`), no una tercera copia: la misma que usa la
+// ficha (costo full + impuestos contra el neto de ML, envío del peor caso). Se toca si el margen
+// REDONDEADO da `subeDesde` (20) o menos —el mismo redondeo del robot de ventas, para que "20,4%"
+// que se lee "20%" también suba— y se lleva a la meta (`targetPct`).
+//
+// LOS FRENOS, todos los de siempre más dos:
+//  · los de `calcSubirPorMargen`: nunca baja · $32.999 si cruzaría los $33.000 · techo $600.000 ·
+//    lo marcado `liquidando` afuera;
+//  · como mucho +25% de una (el tope de `raisePriceTo`). Si hace falta más, sube 25% y lo dice: el
+//    resto lo completa el robot de ventas en la próxima venta;
+//  · **lo que el supervisor juzgó 🔴 en los últimos 60 días no se sube solo**, igual que de noche;
+//  · el interruptor es el mismo del robot de ventas (`subeventa:on/off`): un solo botón para "que
+//    el robot suba solo";
+//  · la PRIMERA vuelta sólo saca la foto y no toca nada — si no, subiría de golpe todo el catálogo
+//    que hoy está abajo del 20% sin que nadie le haya cambiado el costo;
+//  · si no se puede leer la foto, la lista de `liquidando` o el supervisor, no se toca nada y la
+//    foto NO se actualiza (el cambio se mira en la vuelta siguiente).
+// Cada suba se relee de ML (regla 6), queda en `cyc/autoprecio/<MLA>` con `por:'costo'` (así el
+// supervisor la juzga y el robot de la noche no la baja en 14 días) y se avisa por Telegram.
+const costoFirma = (p) => `${parseFloat(p.costUSD) || 0}|${parseFloat(p.shipUSD) || 0}`;
+async function subirPorCosto(db, o) {
+  const { products, labels, accounts, tokens, DRY } = o;
+  const log = o.log || console.log;
+  const cfg = (await db.get('cyc/mlconfig')) || {};
+  const prendido = cfg.autoSubeVenta === true;
+  const _sd = parseFloat(cfg.subeDesde);
+  const SUBE_DESDE = Number.isFinite(_sd) ? _sd : 20;
+  const META = (parseFloat(cfg.targetPct) || 25) / 100;
+  let snap;
+  try { snap = await db.get('cyc/costosnap'); }
+  catch { log('💲 Costos: no pude leer la foto anterior · no toco nada esta vuelta'); return { hechos: [], avisos: [] }; }
+  const firmas = {}; for (const p of products) if (p && p.id) firmas[p.id] = costoFirma(p);
+  // Prueba a mano: `o.forzar` (Set de prodId) hace de cuenta que esos cambiaron, sin tocar la foto.
+  if (!o.forzar && (!snap || typeof snap !== 'object' || !Object.keys(snap).length)) {
+    if (!DRY) await db.set('cyc/costosnap', firmas);
+    log(`💲 Costos: primera vuelta · saqué la foto de ${Object.keys(firmas).length} fichas y no toqué nada`);
+    return { hechos: [], avisos: [] };
+  }
+  const cambiados = o.forzar || new Set(Object.keys(firmas).filter((id) => snap[id] !== firmas[id]));
+  if (!cambiados.size) return { hechos: [], avisos: [] };
+  const pNom = {}; for (const p of products) pNom[p.id] = p.name || p.id;
+  log(`💲 Costos cambiados desde la vuelta anterior: ${cambiados.size} · ${[...cambiados].map((id) => pNom[id]).slice(0, 10).join(' · ')}`);
+  const guardarFoto = async () => {
+    if (DRY || o.forzar) return;
+    const upd = {}; for (const id of cambiados) upd[id] = firmas[id] ?? null;
+    try { await db.patch('cyc/costosnap', upd); } catch { /* se vuelve a mirar la vuelta siguiente */ }
+  };
+  if (!prendido) {
+    log(`   el robot no sube solo (subeventa está apagado): no toco nada`);
+    await guardarFoto();
+    return { hechos: [], avisos: [] };
+  }
+  try { await cargarNoSubir(db); }
+  catch { log('   no pude leer `liquidando`: no toco nada esta vuelta'); return { hechos: [], avisos: [] }; }
+  let malos = new Set();
+  try {
+    const evS = (await db.get('cyc/supervisor/eventos')) || {};
+    for (const ev of Object.values(evS)) {
+      if (!ev || !ev.mla || Date.now() - (ev.ts || 0) > 60 * 864e5) continue;
+      if (Object.values(ev.ev || {}).some((r) => r && r.v === 'malo')) malos.add(ev.mla);
+    }
+  } catch { log('   no pude leer el supervisor: no toco nada esta vuelta'); return { hechos: [], avisos: [] }; }
+  const { subir, yaOk, frenados } = await calcSubirPorMargen(db, {
+    products, labels, accounts, tokens, soloProds: cambiados,
+    piso: (SUBE_DESDE + 0.5) / 100, meta: META,
+  });
+  log(`   ${subir.length} para subir · ${yaOk.length} siguen arriba del ${SUBE_DESDE}% · ${frenados.length} no se pueden`);
+  const hechos = [], fallidos = [], sup = [];
+  for (const s of subir) {
+    if (malos.has(s.mla)) { sup.push(s); continue; }
+    const tope = Math.floor(s.de * 1.25 / 10) * 10;
+    const a = Math.min(s.a, tope);
+    const corto = a < s.a;
+    const renglon = `${s.nom} (${s.label}) ${money(s.de)} → ${money(a)} · estaba en ${Math.round(s.pct)}%`;
+    if (DRY) { log(`   · haría: SUBIR ${renglon}${corto ? ` (hacían falta ${money(s.a)}: tope +25%)` : ''}`); continue; }
+    let r;
+    if (s.vars.length) {
+      const nuevos = {}; for (const v of s.vars) if ((v.price || 0) < a) nuevos[String(v.id)] = a;
+      r = await raiseVariations(s.mla, nuevos, s.tok);
+    } else r = await raisePriceTo(s.mla, a, s.tok);
+    if (!r || !r.ok) { fallidos.push({ s, err: (r && r.err) || '?' }); log(`   ✗ ${renglon}: ${(r && r.err) || '?'}`); continue; }
+    let quedo = null;
+    try { quedo = Number((await mlGet('/items/' + s.mla + '?attributes=price', s.tok))?.price) || null; } catch { quedo = null; }
+    hechos.push({ s, a, quedo, corto });
+    log(`   ✓ ${renglon} · releído de ML: ${quedo ? money(quedo) : '?'}`);
+    try {
+      await db.set('cyc/autoprecio/' + s.mla, { tipo: 'sube', por: 'costo', de: s.de, a: r.to || a, ts: Date.now(), nom: s.nom, cuenta: s.label, margenAntes: Math.round(s.pct * 10) / 10 });
+    } catch { /* */ }
+  }
+  await guardarFoto();
+  const avisos = [];
+  for (const f of frenados) log(`   · no se puede: ${f.nom} (${f.label}) · ${f.why}`);
+  if (hechos.length || fallidos.length || sup.length || frenados.length) {
+    const L = ['💲 <b>Cambiaste un costo y el margen quedó en ' + SUBE_DESDE + '% o menos</b>'];
+    if (hechos.length) {
+      L.push('', '✅ Lo subí solo:');
+      for (const h of hechos) L.push(`· ${h.s.nom} (${h.s.label}) ${money(h.s.de)} → ${money(h.quedo || h.a)} · estaba en ${Math.round(h.s.pct)}%${h.corto ? ` · <i>hacían falta ${money(h.s.a)}; subí el máximo (+25%), el resto lo completa la próxima venta</i>` : ''}${h.quedo && h.quedo !== h.a ? ' ⚠️ ML muestra otro precio' : ''}`);
+    }
+    if (sup.length) {
+      L.push('', '🔴 No lo subí: la última suba le salió mal (supervisor). Decidí vos:');
+      for (const s of sup) L.push(`· ${s.nom} (${s.label}) ${money(s.de)} · está en ${Math.round(s.pct)}% · para el ${Math.round(META * 100)}%: ${money(s.a)}`);
+    }
+    if (fallidos.length) {
+      L.push('', '⚠️ Quise y no pude:');
+      for (const f of fallidos) L.push(`· ${f.s.nom} (${f.s.label}) ${money(f.s.de)} → ${money(f.s.a)} · ${String(f.err).slice(0, 80)}`);
+    }
+    // Lo que quedó abajo y las reglas no dejan tocar (la barrera de los $33.000, el techo, ML sin
+    // contestar) también se dice: un costo que hunde el margen con el robot callado es lo peor.
+    if (frenados.length) {
+      L.push('', '🟠 No lo puedo subir solo (mirálo vos):');
+      for (const f of frenados) L.push(`· ${f.nom} (${f.label}) · ${f.why}`);
+    }
+    avisos.push(L.join('\n'));
+  }
+  return { hechos, avisos, frenados, subir, yaOk };
+}
+
 async function pisoConfig(db, fallback = 30) {
   try {
     const c = (await db.get('cyc/mlconfig')) || {};
@@ -17920,6 +18236,40 @@ async function main() {
     // precio, se le pregunta a ML cuánto cobra de comisión, y se repite hasta llegar al piso.
     // Respeta las reglas: NUNCA baja, frena en $32.999 si cruzaría los $33.000, no pasa de $600.000,
     // no toca el grupo Paulvic, y las publicaciones con variantes van con la lista completa.
+    // BILLING_PROBE=porcosto[:<palabra>][:go] → ¿QUÉ HACE EL ROBOT SI CAMBIA EL COSTO? (23/09/2026)
+    // Corre `subirPorCosto`, la MISMA función de la vuelta de cada hora.
+    //  · `porcosto` sola: muestra la foto de costos y qué fichas cambiaron desde la última vuelta.
+    //  · `porcosto:<palabra>`: hace DE CUENTA que el costo de esas fichas cambió y dice qué haría.
+    //    Sin `:go` no toca ML ni la foto. Con `:go` aplica de verdad (sube y avisa).
+    if (String(process.env.BILLING_PROBE || '').startsWith('porcosto')) {
+      const _pc = String(process.env.BILLING_PROBE).split(':').slice(1);
+      const GO = _pc.includes('go');
+      const pal = norm((_pc.find((x) => x && x !== 'go') || '').trim());
+      const snapC = (await db.get('cyc/costosnap')) || {};
+      console.log(`Foto de costos: ${Object.keys(snapC).length} fichas${Object.keys(snapC).length ? '' : ' (todavía no se sacó: la primera vuelta sólo la saca)'}`);
+      const camb = products.filter((p) => snapC[p.id] != null && snapC[p.id] !== costoFirma(p));
+      const nuevos = products.filter((p) => Object.keys(snapC).length && snapC[p.id] == null);
+      console.log(`Cambiados desde la última vuelta: ${camb.length}${camb.length ? ' · ' + camb.map((p) => `${p.name} (${snapC[p.id]} → ${costoFirma(p)})`).join(' · ') : ''}`);
+      if (nuevos.length) console.log(`Fichas nuevas (cuentan como cambio): ${nuevos.length} · ${nuevos.map((p) => p.name).slice(0, 10).join(' · ')}`);
+      if (!pal) { console.log('\nPara ver qué haría con un producto: porcosto:<palabra>'); return; }
+      const sel = products.filter((p) => norm(p.name || '').includes(pal));
+      console.log(`\n"${pal}" agarra ${sel.length} ficha(s): ${sel.map((p) => p.name).join(' · ')}`);
+      if (!sel.length) return;
+      const tokP = {};
+      for (const l of labels) {
+        const acc = accounts[l]; if (!acc?.refresh_token) continue;
+        try {
+          const t = await mlRefresh(ML_CLIENT_ID, ML_CLIENT_SECRET, acc.refresh_token);
+          await db.patch('mlapi/tokens/' + l, { refresh_token: t.refresh_token, updated_ts: Date.now() });
+          tokP[l] = t.access_token;
+        } catch { /* */ }
+      }
+      const r = await subirPorCosto(db, { products, labels, accounts, tokens: tokP, DRY: DRY || !GO, forzar: new Set(sel.map((p) => p.id)) });
+      if (GO && !DRY) for (const a of r.avisos) await sendAlerta(a);
+      else if (r.avisos.length) console.log('\nEl aviso que mandaría:\n' + r.avisos.join('\n').replace(/<[^>]+>/g, ''));
+      if (!GO) console.log('\nPRUEBA: no se tocó ML ni la foto. Agregá ":go" para aplicar.');
+      return;
+    }
     if (String(process.env.BILLING_PROBE || '').startsWith('submargen')) {
       const _sm = String(process.env.BILLING_PROBE).split(':');
       const PISO = (parseFloat(_sm[1]) || 30) / 100;
@@ -17927,11 +18277,6 @@ async function main() {
       // abajo del piso y se lo lleva a la meta. Sin meta, meta = piso (como era antes).
       const META = (parseFloat(_sm[2]) || (PISO * 100)) / 100;
       const APLICAR = _sm.includes('go');
-      const TOPE_ENVIO = 33000;   // arriba de esto ML te cobra el envío: no se cruza
-      const TECHO = 600000;       // regla suya del 13/08/2026
-      const finS = (await db.get('cyc/finanzas')) || {};
-      const tcS = parseFloat(finS.tipo_cambio) || 1500;
-      const monoS = parseFloat(((await db.get('cyc/monotributo')) || {}).pct) || 0;
       // ── LO MARCADO `liquidando` NO SE SUBE (16/09/2026) ──────────────────────────────
       // Salió al chequear los precios después de que él reactivara publicaciones: `submargen`
       // proponía subir el Pendrive Sandisk 128g de $42.326 a $56.620 — justo el que él bajó A
@@ -17947,167 +18292,9 @@ async function main() {
       catch { console.log('❌ No pude leer la lista de `liquidando` (cyc/nosubir). NO corro: podría subirte algo que bajaste a propósito.'); return; }
       const nSub = Object.keys(NOSUBIR).length;
       if (nSub) console.log(`🔒 ${nSub} publicación(es) marcadas "liquidando": quedan afuera de este comando.\n`);
-      const links = (await db.get('cyc/mllinks')) || {};
-      const vpS = (await db.get('cyc/ventaprod')) || {}; setDevLive(vpS);
-      const pIdx = {}; for (const p of products) pIdx[p.id] = p;
-      // Ventas por publicación, para deducir el envío igual que netoweb.
-      // Y el cargo extra de ML por producto, EXACTAMENTE como lo hace la pantalla: el promedio de
-      // lo que se pagó de IIBB + monotributo en las ventas REALES del producto, y 0 si nunca vendió.
-      // Antes acá se estimaba como un % del precio nuevo. Parecido pero no igual: esa diferencia de
-      // $50 o $70 es justo la que separa el 29% del 30%, y por eso el 13/08 subí 62 publicaciones y
-      // muchas quedaron en 27-29% mientras el comando decía que habían llegado al piso.
-      const vtaMla = {}, vtaProd = {}, impProd = {};
-      for (const ents of Object.values(vpS)) {
-        for (const v of Object.values(ents || {})) {
-          if (!v || v.cancelada) continue;
-          const q = v.qty || 1, tot = (v.total || 0) / q, net = (v.neto || 0) / q;
-          if (v.prodId) {
-            const b = impProd[v.prodId] = impProd[v.prodId] || { imp: 0, u: 0 };
-            b.imp += (v.total || 0) * (mlExtraPct(v.cuenta) + monoS) / 100;
-            b.u += q;
-          }
-          if (tot <= 0 || net <= 0) continue;
-          if (v.mla) (vtaMla[v.mla] = vtaMla[v.mla] || []).push({ tot, net });
-          if (v.prodId) (vtaProd[v.prodId] = vtaProd[v.prodId] || []).push({ tot, net });
-        }
-      }
-      const mlxDe = (pid) => { const b = impProd[pid]; return (b && b.u > 0) ? Math.round(b.imp / b.u) : 0; };
-      const feeCache = {};
-      const feeAt = async (site, price, ltype, cat, token) => {
-        const key = site + '|' + ltype + '|' + cat + '|' + Math.round(price);
-        if (feeCache[key] !== undefined) return feeCache[key];
-        let out = null;
-        try {
-          const d = await mlGet(`/sites/${site}/listing_prices?price=${Math.round(price)}&listing_type_id=${ltype}&category_id=${cat}`, token);
-          const o = Array.isArray(d) ? d[0] : d;
-          if (typeof o?.sale_fee_amount === 'number') out = o.sale_fee_amount;
-        } catch { out = null; }
-        feeCache[key] = out; return out;
-      };
       console.log(`=== SUBIR AL ${(PISO * 100).toFixed(0)}% SEGÚN "MARGEN ML" ${APLICAR ? '(APLICANDO)' : '(PRUEBA)'} ===`);
       console.log(`costo = costo full + el % que ML cobra por débito · neto = lo que informa ML al precio\n`);
-      const subir = [], yaOk = [], frenados = [];
-      for (const label of labels) {
-        const acc = accounts[label];
-        if (!acc?.refresh_token) continue;
-        let t; try { t = await mlRefresh(ML_CLIENT_ID, ML_CLIENT_SECRET, acc.refresh_token); } catch { continue; }
-        await db.patch('mlapi/tokens/' + label, { refresh_token: t.refresh_token, updated_ts: Date.now() });
-        const ids = Object.entries(links)
-          .filter(([mla, e]) => e && e.cuenta === label && !e.ignored && e.prodId && /^MLA/i.test(mla)
-            && !NOSUBIR[mla])   // ← lo marcado `liquidando` NO se sube (ver arriba)
-          .map(([mla]) => mla);
-        for (let k = 0; k < ids.length; k += 20) {
-          let arr;
-          try { arr = await mlGet('/items?ids=' + ids.slice(k, k + 20).join(',') + '&attributes=id,status,price,variations,listing_type_id,category_id,site_id', t.access_token); } catch { continue; }
-          for (const row of (arr || [])) {
-            const b = row.body || {}; const mla = b.id; if (!mla || !links[mla]) continue;
-            if (b.status !== 'active' && b.status !== 'paused') continue;
-            const p = pIdx[links[mla].prodId]; if (!p) continue;
-            const vars = Array.isArray(b.variations) ? b.variations : [];
-            const precio0 = vars.length ? (vars[0].price || 0) : (b.price || 0);
-            if (!precio0) continue;
-            // ── ENVÍO: EL DEL PEOR CASO ──
-            // Hasta el 19/08/2026 acá se tomaba el envío MÁS BARATO visto, y cuando no había
-            // ninguna venta se ponía 0. Las dos cosas inflan el margen: con envío 0 una publicación
-            // que está en 26% figura arriba del piso y el comando la saltea diciendo que está bien.
-            // Es el mismo error que tenía `hermanas`. El envío que vale es el MÁS CARO: es el
-            // criterio conservador con el que se fijaron todos los precios, y el que usan `bajopiso`
-            // y `unapub`. Y si no hay NINGUNA venta con la que deducirlo, no se inventa un número:
-            // la publicación se lista aparte para mirarla a mano.
-            const ventas = (vtaMla[mla] && vtaMla[mla].length) ? vtaMla[mla] : (vtaProd[p.id] || []);
-            let envio = -Infinity;
-            for (const pv of [...new Set(ventas.map((v) => Math.round(v.tot)))].slice(-6)) {
-              const cv = await feeAt(b.site_id || 'MLA', pv, b.listing_type_id, b.category_id, t.access_token);
-              if (cv == null) continue;
-              for (const v of ventas) if (Math.round(v.tot) === pv) { const x = v.tot - v.net - cv; if (x > envio) envio = x; }
-            }
-            const nomE = (links[mla].title || p.name || mla).slice(0, 40);
-            // SIN VENTAS: se le pregunta la TARIFA a ML antes de rendirse.
-            //
-            // Emparejar las fórmulas, decisión suya del 22/08/2026. Hasta hoy la pantalla "Margen ML"
-            // y este comando decían cosas distintas de la MISMA publicación: el Xiaomi Watch 5 Lite
-            // mostraba +16% en pantalla y acá salía "no puedo calcular". La pantalla, desde el
-            // arreglo del 20/08, cuando un producto nunca vendió usa la tarifa de ML
-            // (envioSegunML); este comando seguía esperando ventas propias y se rendía. Dos
-            // fórmulas para lo mismo es de donde salieron los errores de margen del 19/08.
-            //
-            // El orden no cambia: las ventas propias mandan donde existen, porque son el dato de la
-            // realidad. La tarifa es el respaldo, y solo para los que nunca vendieron —que son
-            // justo los que hay que revisar y los únicos que quedaban afuera.
-            let envioDeTarifa = false;
-            if (!isFinite(envio)) {
-              const rT = await envioSegunML(mla, t.access_token);
-              if (rT) { envio = rT.envio; envioDeTarifa = true; }
-            }
-            // Si ML tampoco da la tarifa no se inventa nada: sigue sin tocarse.
-            if (!isFinite(envio)) { frenados.push({ mla, label, nom: nomE, why: 'sin ventas y ML no da la tarifa de envío: no invento el margen' }); continue; }
-            if (envio < 0) envio = 0;
-            const costoBase = costoPesos(p, 1, tcS).costo;
-            if (!(costoBase > 0)) continue;
-            // El costo es fijo (no depende del precio nuevo), igual que en la pantalla: costo full
-            // del producto + el promedio de impuestos de sus ventas. Se itera igual porque la
-            // comisión de ML no es lineal y hay que preguntársela precio por precio.
-            // LOS IMPUESTOS, EN LOS QUE NUNCA VENDIERON. Segunda mitad de "emparejar las fórmulas"
-            // (22/08/2026). mlxDe() es el promedio de IIBB + monotributo de las VENTAS del producto,
-            // y en un producto que nunca vendió devuelve CERO — o sea que el costo salía sin
-            // impuestos y el precio calculado quedaba corto.
-            //
-            // Medido en el Xiaomi Watch 5 Lite (MLA1871169547): así daba $143.950 para el 32%,
-            // cuando unapub —que sí los estima como % del precio— daba $161.850. Los ~$18.000 de
-            // diferencia son justo el 6,41% de IIBB + monotributo sobre el precio. Aplicar $143.950
-            // habría dejado la publicación abajo del piso diciendo que llegó: exactamente el error
-            // del 13/08, cuando se subieron 62 y en la pantalla seguían en 27-29%.
-            //
-            // Donde SÍ hay ventas no se cambia nada: manda el promedio real, que es el que usa la
-            // pantalla. El % estimado es solo para los que no tienen ninguna venta.
-            const impPctS = (mlExtraPct(label) + monoS) / 100;
-            const mlxProd = mlxDe(p.id);
-            const sinImpMedido = !(mlxProd > 0);
-            const costoTotDe = (P) => costoBase + (sinImpMedido ? P * impPctS : mlxProd);
-            const costoTot = costoTotDe(precio0);
-            const netoDe = async (P) => {
-              const c = await feeAt(b.site_id || 'MLA', P, b.listing_type_id, b.category_id, t.access_token);
-              return c == null ? null : P - c - envio;
-            };
-            // La meta se mide contra el costo AL PRECIO QUE SE ESTÁ PROBANDO: si el impuesto es un
-            // % del precio, subir el precio sube también el costo, y con un costo fijo la cuenta
-            // se quedaba corta.
-            // EL ENVÍO VA EN EL DIVISOR (17/09/2026), igual que en la pantalla y que en el robot.
-            // El margen es (neto − costo − impuestos) ÷ (costo + impuestos + ENVÍO), así que pedir
-            // margen ≥ X es pedir neto ≥ costoTot×(1+X) + X×envío. Sin el término del envío este
-            // comando calculaba el precio contra un divisor MÁS CHICO y devolvía un precio CORTO:
-            // subía y dejaba la publicación abajo del piso diciendo que había llegado — que es
-            // exactamente el error del 13/08, cuando se subieron 62 y en la pantalla seguían en
-            // 27-29%. Abajo de los $33.000 el envío es cero y no cambia nada.
-            const metaDe = (P) => costoTotDe(P) * (1 + META) + META * envio;
-            // El piso decide SI se toca; la meta decide HASTA DÓNDE. Con los dos pegados, cualquier
-            // cosa mínima —un envío un peso más caro— volvía a hundir lo recién subido.
-            const pisoDe = (P) => costoTotDe(P) * (1 + PISO) + PISO * envio;
-            let P = Math.round(precio0), ok = false, n0 = null, m0 = null;
-            for (let it = 0; it < 14; it++) {
-              const n = await netoDe(P); if (n == null) break;
-              const m = metaDe(P);
-              // La primera vuelta mide el precio de HOY contra el PISO: es lo que decide si esta
-              // publicación entra o no. Las vueltas siguientes buscan la META.
-              if (it === 0) { n0 = n; m0 = pisoDe(P); }
-              if (n >= m) { ok = true; break; }
-              // El hueco se cierra ~0,7 pesos por peso de aumento; se pide 1,5× para no quedar corto.
-              P = Math.ceil((P + (m - n) * 1.5) / 10) * 10;
-              if (P > TECHO * 1.2) break;
-            }
-            const nom = (links[mla].title || p.name || mla).slice(0, 40);
-            if (n0 == null) { frenados.push({ mla, label, nom, why: 'ML no me dio la comisión' }); continue; }
-            if (n0 >= m0) { yaOk.push(mla); continue; }
-            if (!ok) { frenados.push({ mla, label, nom, why: 'no llego a la meta ni subiendo mucho' }); continue; }
-            if (P <= precio0) { frenados.push({ mla, label, nom, why: 'la cuenta da un precio MENOR — no se baja' }); continue; }
-            if (P > TECHO) { frenados.push({ mla, label, nom, why: `pasa el techo de ${money(TECHO)} (haría falta ${money(P)})` }); continue; }
-            let final = P, nota = '';
-            if (precio0 < TOPE_ENVIO && P >= TOPE_ENVIO) { final = 32999; nota = ` (frenado en la barrera de los ${money(TOPE_ENVIO)}; para el piso hacían falta ${money(P)})`; }
-            if (final <= precio0) { frenados.push({ mla, label, nom, why: `ya está en la barrera de los ${money(TOPE_ENVIO)}` }); continue; }
-            subir.push({ mla, label, nom, prod: p.name, de: Math.round(precio0), a: final, nota, vars, tok: t.access_token, pct: ((n0 - costoTot) / (costoTot + envio) * 100), envioDeTarifa });
-          }
-        }
-      }
+      const { subir, yaOk, frenados } = await calcSubirPorMargen(db, { products, labels, accounts, piso: PISO, meta: META });
       console.log(`Se toca lo que está abajo del ${(PISO * 100).toFixed(0)}% y se lo lleva al ${(META * 100).toFixed(0)}%.`);
       console.log(`Envío del PEOR caso, igual que bajopiso y unapub.\n`);
       console.log(`── PARA SUBIR · ${subir.length} ──`);
@@ -20371,7 +20558,7 @@ async function main() {
       }
       for (const [mla, a] of Object.entries(autop)) {
         if (!a || !a.ts || ahora - a.ts > MAX_DIAS * 864e5) continue;
-        agregar({ mla, ts: a.ts, a: Math.round(a.a || 0) || null, de: Math.round(a.de || 0) || null, origen: 'robot de noche', aprox: false });
+        agregar({ mla, ts: a.ts, a: Math.round(a.a || 0) || null, de: Math.round(a.de || 0) || null, origen: a.por === 'costo' ? 'robot por costo' : 'robot de noche', aprox: false });
       }
       // La foto: lo que cambió entre la noche pasada y hoy y NO lo anotó el robot.
       const todosEv = () => [...Object.values(eventos), ...Object.values(nuevos)];
@@ -20467,7 +20654,7 @@ async function main() {
       // La ventana es la misma de antes y de después: hasta 30 días, cortada donde el MISMO producto
       // tuvo otro cambio (si no, dos cambios se llevarían la misma venta dos veces). Con menos de 7
       // días de después no se mide: queda "en curso".
-      const ROBOT = new Set(['robot al vender', 'robot de noche']);
+      const ROBOT = new Set(['robot al vender', 'robot de noche', 'robot por costo']);
       const atrib = [];
       let enCurso = 0, sinCosto = 0, sinPrecio = 0, manuales = 0;
       const porMlaEv = {};
@@ -30023,6 +30210,13 @@ async function main() {
         try { await db.patch('cyc/avisopausadas', rAct.anotar); } catch { /* */ }
       }
     } catch (e) { console.log('No pude activar las pausadas con Full: ' + e.message); }
+    // SI CAMBIA EL COSTO DE UNA FICHA, EL ROBOT ACTÚA (23/09/2026, regla suya). Ver `subirPorCosto`.
+    // Va en la vuelta de cada hora, adentro de este bloque: escribe precios en ML, así que se apaga
+    // con `robot:off` igual que todo lo demás de acá.
+    try {
+      const rc = await subirPorCosto(db, { products, labels, accounts, tokens: tokensRun, DRY });
+      if (!DRY) for (const a of rc.avisos) await sendAlerta(a);
+    } catch (e) { console.log('No pude revisar los costos cambiados: ' + e.message); }
   }
 
   // CAJAS QUE LLEGARON A FULL. Va en la vuelta horaria (no en las de 2 minutos): preguntarle a ML
