@@ -107,32 +107,46 @@ privada unificados · las dos facturas de Sancor analizadas.
 **Versión del panel: 20.13 · caché `cyc-v291`**. El ciclo del robot quedó **prendido**.
 
 
-## SI CAMBIA EL COSTO DE UNA FICHA, EL ROBOT ACTÚA (23/09/2026)
+## UN SOLO ROBOT DE PRECIOS, UNA VEZ POR NOCHE (23/09/2026)
 
-Regla suya: *"El costo real del producto es el que esta en arqueo/productos. No las que carga el chat
-de paraguay en pedidos. Si yo modifico un costo en arqueo/productos quiero que se modifique si queda
-por debajo del 20% o sea que el robot actue"*.
+Pedido suyo, en dos pasos: *"El costo real del producto es el que esta en arqueo/productos (…) si
+yo modifico un costo (…) quiero que se modifique si queda por debajo del 20%"* y después *"que haya
+un solo robot que maneje todo. pero que lo haga una vez por dia"*.
 
-**Hasta ese día un costo nuevo sólo movía el precio con la PRÓXIMA venta** (el robot que sube al
-vender). Ahora, **una vez por hora**, `subirPorCosto` compara `costUSD|shipUSD` de cada ficha contra
-la foto de la vuelta anterior (`cyc/costosnap`) y mide **sólo lo que cambió**.
- · **El costo que cuenta es el de la ficha.** El precio de Paraguay (`nisseiUSD`) NO dispara nada
-   (regla del 17/09), y tampoco el dólar: eso no es "él cambió un costo".
- · **La cuenta es la de `submargen`**, que salió a una función compartida (`calcSubirPorMargen`):
-   la misma del comando a mano, no una copia. Toca si el margen **redondeado** da `subeDesde` (20)
-   o menos y lo lleva a `targetPct` (25).
- · **Frenos:** tope +25% de una (si hace falta más sube 25% y lo dice) · `liquidando` · lo que el
-   supervisor juzgó 🔴 en 60 días no se sube (se avisa) · barrera $33.000 y techo $600.000 · el
-   interruptor es el mismo del robot de ventas (`subeventa`) · **la primera vuelta sólo saca la
-   foto** (si no, subiría de golpe todo lo que hoy está abajo del 20% sin que nadie tocara nada) ·
-   si no se puede leer la foto, `liquidando` o el supervisor, no toca nada.
- · Relee de ML, queda en `cyc/autoprecio/<MLA>` con `por:'costo'` (el supervisor lo juzga como
-   **"robot por costo"** y el robot de la noche no lo baja en 14 días) y avisa por Telegram, también
-   lo que quedó abajo y no pudo subir.
- · Para mirarlo antes: **`porcosto[:<palabra>][:go]`** hace de cuenta que esas fichas cambiaron.
+**Antes había TRES caminos que movían precios, cada uno con sus frenos:** el que subía en cada venta
+(cada 2 minutos, NO miraba el supervisor), uno por costo cada hora (vivió unas horas) y el de la
+noche. **Ahora es UNO: `avisos:go`, en `ml-daily`**, y hace tres cosas con los mismos frenos:
 
-**Lo que sigue pendiente, propuesto y sin decidir:** que los robots de precio (al vender, de noche y
-por costo) decidan con UNA sola cuenta y los mismos frenos. Hoy el de ventas NO mira el supervisor.
+| | qué | de dónde |
+|---|---|---|
+| 🛟 **RESCATE** | lo que quedó en `subeDesde` (20%) o menos → a `targetPct` (25%) | `calcSubirPorMargen` (la cuenta de `submargen` y de la ficha: costo de la ficha + impuestos contra el neto de ML, envío del peor caso) |
+| 📈 SUBIR | vende bien y hay lugar abajo del competidor, ≤ 10,5% | `calcSubirPuede` |
+| 📉 BAJAR | ganar la caja quedando en 25,5%+ | `calcCajaBarata` |
+
+**El rescate agarra las dos cosas a la vez**: una venta que salió baja y un costo que él cambió. El
+costo que cuenta es **el de la ficha** (Arqueo → Productos); el precio de Paraguay (`nisseiUSD`)
+NO mueve nada (regla del 17/09).
+**Para no preguntar por las ~400 publicaciones**, primero se filtra con el margen que `netoweb`
+acaba de calcular (peor neto de cada producto) con 5 puntos de colchón, y recién esos se miden
+con ML.
+
+**Frenos:** interruptor `subeventa` (on/off) para el rescate y `autoPrecios` para todo · marca del
+día `cyc/robotprecios/dia` (`ml-daily` se intenta 3 veces por noche: sólo la primera toca precios;
+si la marca no se lee, no toca) · `liquidando` · supervisor 🔴 (60 días) frena rescate y subas ·
++25% como mucho de una (si hace falta más, sube eso y sigue mañana) · $33.000 y $600.000 · tope
+**25 rescates** + **10 subas/bajas** por noche · no se baja lo que el robot subió en 14 días (mira
+también `mlapi/priced`, la memoria del robot de ventas viejo) · relee de ML.
+Todo queda en `cyc/autoprecio/<MLA>` (rescate con `por:'margen'`) y el supervisor lo juzga.
+**Lo que quedó en 20% o menos y NO se pudo subir** (supervisor, barrera, techo) sale en el aviso
+con su motivo, una vez por semana cada uno (clave `r_<MLA>` en `cyc/avisados`).
+
+**El robot de ventas ya no toca precios** (`ROBOT_UNICO = true` en el ciclo): la venta que sale en
+20% o menos queda anotada y la sube la noche. El aviso de *"NO lo subí: pediste desde 20%"* para lo
+que cae entre 20% y el piso sigue saliendo por venta. El bloque viejo quedó en el código, apagado.
+`porcosto[:palabra][:go]` sigue para mirar a mano qué haría con un producto.
+
+**"PARA PROBAR" TAMBIÉN AL MEDIODÍA:** `ml-candidatos.yml` corre `candidatos:go` a las 12:07, así
+los 40 de la noche + 40 del mediodía terminan una tanda en un día (pedido suyo).
 
 ## LO QUE TRAJO EL ROBOT DE PRECIOS, CONTRA NO TENERLO (23/09/2026)
 
