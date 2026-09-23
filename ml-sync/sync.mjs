@@ -20432,7 +20432,7 @@ async function main() {
           const stHoy = stockDe(ev.mla);
           let v;
           if (nch.noches >= 3 && nch.nochesSin / nch.noches >= 0.5) v = 'sinstock';
-          else if (!nch.noches && stHoy === 0 && D.u < A.u) v = 'sinstock';
+          else if (nch.noches < 3 && stHoy === 0 && D.u < A.u) v = 'sinstock';
           // Con menos de 3 ventas ANTES no hay un ritmo contra el cual comparar: 2 ventas y después
           // 0 da "−100%" y es casualidad. La regla de Pedidos (PED_MIN_VENTAS_RITMO = 3) es la misma.
           else if (A.u < 3 && D.u < 3) v = 'pocos';
@@ -20503,8 +20503,15 @@ async function main() {
         const gUViejo = uD > 0 ? (gD - precio) / uD : (uA > 0 ? gA / uA : 0);
         const nch = cambiosEv[id] || { noches: ev.noches || 0, nochesSin: ev.nochesSin || 0 };
         const stHoy = stockDe(ev.mla);
-        const quiebre = (nch.noches >= 3 && nch.nochesSin / nch.noches >= 0.5) || (!nch.noches && stHoy === 0 && uD < uA);
-        const volumen = quiebre ? 0 : (uD - uA) * gUViejo;
+        // Con menos de 3 noches anotadas el stock medido no alcanza: se mira el de HOY.
+        const quiebre = (nch.noches >= 3 && nch.nochesSin / nch.noches >= 0.5) || (nch.noches < 3 && stHoy === 0 && uD < uA);
+        // EL VOLUMEN SE CUENTA SÓLO EN LA DIRECCIÓN EN QUE EL PRECIO PUEDE MOVERLO. Subir no hace
+        // vender MÁS: si después de una suba se vendió más, fue el stock que llegó o la temporada, no
+        // el robot (la primera corrida le daba $172.297 a una suba del Adaptador 8 en 1 que pasó de 1
+        // a 46 ventas porque llegó la mercadería). Y bajar no hace vender MENOS. Así la suba paga lo
+        // que pudo haber espantado, y la baja cobra lo que pudo haber movido — nunca al revés.
+        const volCrudo = (uD - uA) * gUViejo;
+        const volumen = quiebre ? 0 : (ev.a > ev.de ? Math.min(0, volCrudo) : Math.max(0, volCrudo));
         const evs = ev.ev || {}; const juicio = (evalNuevas.filter((x) => x.id === id).sort((a, b) => b.W - a.W)[0] || {}).res;
         const v = quiebre ? 'sinstock' : ((juicio || evs.d30 || evs.d15 || evs.d7 || {}).v || '');
         atrib.push({ mla: ev.mla, nom: nomDe(ev.mla), cuenta: (links[ev.mla] || {}).cuenta || '', origen: ev.origen,
