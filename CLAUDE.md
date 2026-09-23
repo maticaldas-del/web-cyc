@@ -140,6 +140,15 @@ Todo queda en `cyc/autoprecio/<MLA>` (rescate con `por:'margen'`) y el superviso
 **Lo que quedó en 20% o menos y NO se pudo subir** (supervisor, barrera, techo) sale en el aviso
 con su motivo, una vez por semana cada uno (clave `r_<MLA>` en `cyc/avisados`).
 
+**EL RESCATE NO SUBE LO QUE ESTÁ FRENADO, SOBRADO O QUE ÉL BAJÓ A PROPÓSITO (23/09/2026).** Lo
+marcó él con el **Pendrive Ultra Shift** (la prueba en seco lo iba a subir de $42.326 a $52.900):
+*"estuvieron como 2 meses sin venderse ni uno. lo bajé a pérdida para recuperar y evitar que nos
+cobren (…) se va a quedar frenado. todo eso se tiene que tener en cuenta"*. El robot viejo no
+tenía este problema porque sólo subía DESPUÉS de una venta; de noche hay que preguntarlo. No se
+rescata (y va al aviso con el motivo) si: **15+ días sin vender o nunca vendió** · **más de 60
+días de stock** en esa cuenta · **lo bajó él a mano en los últimos 60 días** (lo ve la foto de
+precios del supervisor, aunque la marca `liquidando` se haya caído sola).
+
 **El robot de ventas ya no toca precios** (`ROBOT_UNICO = true` en el ciclo): la venta que sale en
 20% o menos queda anotada y la sube la noche. El aviso de *"NO lo subí: pediste desde 20%"* para lo
 que cae entre 20% y el piso sigue saliendo por venta. El bloque viejo quedó en el código, apagado.
