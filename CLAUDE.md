@@ -104,8 +104,30 @@ el % de ganancia único en los seis lugares · el costo "puesto en la oficina" e
 Dalí al 30% · el Puntaje recalibrado a meta 35 · las variantes de Rotación con el texto completo ·
 `gondola` (la tintura: no sirve) · `valefull` y **Full decide las compras** · Sancor y obra social
 privada unificados · las dos facturas de Sancor analizadas.
-**Versión del panel: 20.11 · caché `cyc-v289`**. El ciclo del robot quedó **prendido**.
+**Versión del panel: 20.12 · caché `cyc-v290`**. El ciclo del robot quedó **prendido**.
 
+
+## LO QUE TRAJO EL ROBOT DE PRECIOS, CONTRA NO TENERLO (23/09/2026)
+
+Pedido suyo: *"una tarjeta que muestre la ganancia que generó esta idea (…) aumenté las cartas y se
+ganó 1000 pesos más, pero quizás se vendieron menos"*. Está en **Métricas, abajo de todo**
+(versión 20.12 · caché `cyc-v290`). **La cuenta la hace el `supervisor`** y la guarda en
+`cyc/supervisor/resumen`; la pantalla sólo dibuja.
+
+"Sin robot" = el precio se quedaba donde estaba. Sólo cuentan los cambios del ROBOT (a mano no:
+ésos los habría hecho igual). Ventana: la misma antes y después, hasta 30 días, cortada donde el
+producto volvió a cambiar; con menos de 7 días queda "en curso". Dos partes, separadas:
+ · **Por el precio (firme):** lo que SÍ se vendió después, cobrado a otro precio, neto de ML con la
+   proporción neto/precio de cada venta (trae el cargo fijo adentro → la suba sale un poco más
+   chica que la real: nunca exagera).
+ · **Por vender más o menos (supuesto):** unidades de más o de menos × la ganancia vieja por unidad,
+   **SÓLO en la dirección que el precio puede mover**: una suba paga lo que espantó y no se lleva el
+   mérito si vendió más; una baja al revés. Sin eso la primera corrida le daba **$172.297** a una
+   suba del Adaptador 8 en 1 que pasó de 1 a 46 ventas porque llegó la mercadería. Sin stock no cuenta.
+
+**Primera medición (23/09, en prueba): 48 subas medidas · precio +$319.001 · volumen −$219.000 ·
+TOTAL +$99.999.** El volumen es el pedazo pesimista a propósito: se lleva, por ejemplo, las Sábanas
+2 plazas (14 → 0 ventas, probablemente quiebre que el stock de hoy no llegó a mostrar).
 
 ## EL SUPERVISOR DE PRECIOS: CADA CAMBIO SE JUZGA A 7, 15 Y 30 DÍAS (23/09/2026)
 
