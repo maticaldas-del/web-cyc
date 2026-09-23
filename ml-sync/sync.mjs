@@ -20412,15 +20412,30 @@ async function main() {
           const vs = porMla[ev.mla] || [];
           const costo = costoDe(ev.mla);
           const suma = (arr) => arr.reduce((a, x) => ({ u: a.u + x.q, g: a.g + (x.neto - costo * x.q) }), { u: 0, g: 0 });
-          const A = suma(vs.filter((x) => x.ts < ev.ts && x.ts >= ev.ts - W * 864e5));
+          // LA VENTA QUE DISPARÓ LA SUBA NO CUENTA. El robot sube justo DESPUÉS de una venta, así que
+          // la ventana de antes tiene esa venta SIEMPRE: contarla es comparar contra un antes inflado
+          // a propósito, y cualquier suba saldría peor de lo que fue. Se saca la última venta de
+          // la hora anterior a la suba.
+          let antesV = vs.filter((x) => x.ts < ev.ts && x.ts >= ev.ts - W * 864e5);
+          if (ev.origen === 'robot al vender') {
+            const disp = antesV.filter((x) => ev.ts - x.ts < 3600e3).sort((a, b) => b.ts - a.ts)[0];
+            if (disp) antesV = antesV.filter((x) => x !== disp);
+          }
+          const A = suma(antesV);
           const D = suma(vs.filter((x) => x.ts > ev.ts + 60e3 && x.ts <= ev.ts + W * 864e5));
           // otro cambio del mismo precio en el medio ensucia la comparación
           const otro = Object.values(todos).some((o) => o !== ev && o.mla === ev.mla && o.ts > ev.ts + 864e5 && o.ts < ev.ts + W * 864e5);
           const usaPlata = costo > 0;
           const mA = usaPlata ? A.g : A.u, mD = usaPlata ? D.g : D.u;
+          // Sin stock medido (los cambios de antes de que existiera el supervisor) se mira el de HOY:
+          // si hoy está en cero, un "no vendió" puede ser el quiebre y no el precio.
+          const stHoy = stockDe(ev.mla);
           let v;
           if (nch.noches >= 3 && nch.nochesSin / nch.noches >= 0.5) v = 'sinstock';
-          else if (A.u + D.u < 3) v = 'pocos';
+          else if (!nch.noches && stHoy === 0 && D.u < A.u) v = 'sinstock';
+          // Con menos de 3 ventas ANTES no hay un ritmo contra el cual comparar: 2 ventas y después
+          // 0 da "−100%" y es casualidad. La regla de Pedidos (PED_MIN_VENTAS_RITMO = 3) es la misma.
+          else if (A.u < 3 && D.u < 3) v = 'pocos';
           else if (mA <= 0) v = mD > 0 ? 'bueno' : 'igual';
           else {
             const rel = (mD - mA) / Math.abs(mA);
@@ -20488,18 +20503,33 @@ async function main() {
       console.log(`\nGuardado: ${Object.keys(nuevos).length} cambios nuevos · ${okEv} de ${evalNuevas.length} evaluaciones releídas ✓`);
 
       // ── 6. AVISAR (sin "pocas ventas" una por una: van contadas) ─────────────────
-      const paraAvisar = evalNuevas.filter((x) => x.res.v !== 'pocos' && !((rele[x.id] || {}).av || {})['d' + x.W]);
-      const pocosN = evalNuevas.filter((x) => x.res.v === 'pocos').length;
-      if (!paraAvisar.length) { console.log('No hay evaluaciones nuevas para avisar.'); return; }
+      const pendientes = evalNuevas.filter((x) => !((rele[x.id] || {}).av || {})['d' + x.W]);
+      // UNA LÍNEA POR CAMBIO: si en la misma vuelta un cambio cumplió 7, 15 y 30 días (pasa con los
+      // viejos, la primera noche), se muestra sólo la ventana más larga. Tres renglones del mismo
+      // precio son ruido. Las otras quedan anotadas como avisadas igual.
+      const masLarga = {};
+      for (const x of pendientes) if (!masLarga[x.id] || x.W > masLarga[x.id].W) masLarga[x.id] = x;
+      const unaPorCambio = Object.values(masLarga);
+      const mostrar = unaPorCambio.filter((x) => x.res.v !== 'pocos' && x.res.v !== 'sinstock');
+      const sinJuicio = unaPorCambio.length - mostrar.length;
+      if (!pendientes.length) { console.log('No hay evaluaciones nuevas para avisar.'); return; }
+      mostrar.sort((a, b) => orden.indexOf(a.res.v) - orden.indexOf(b.res.v));
+      // Si son muchas (la primera noche arrastra todo lo viejo) van completas las 🔴 y 🟠, que son
+      // las que piden una decisión, y las buenas contadas. Un mensaje de 60 renglones no se lee.
+      const MUCHAS = mostrar.length > 12;
+      const detalle = MUCHAS ? mostrar.filter((x) => x.res.v === 'malo' || x.res.v === 'dudoso') : mostrar;
+      const cnt = {}; for (const x of mostrar) cnt[x.res.v] = (cnt[x.res.v] || 0) + 1;
       const lineas = ['🧑‍⚖️ SUPERVISOR DE PRECIOS', 'Cómo les fue a los precios que cambiaron, contra el mismo tiempo de antes. La vara es la PLATA que dejan por día.', ''];
-      for (const x of paraAvisar) lineas.push(renglon(x), '');
-      if (pocosN) lineas.push(`(${pocosN} más con menos de 3 ventas: no alcanza para decir nada)`);
-      if (paraAvisar.some((x) => x.res.v === 'malo')) lineas.push('', 'Los 🔴 no los toco solo: si querés volver al precio de antes, decime cuál.');
+      lineas.push(orden.filter((k) => cnt[k]).map((k) => `${ICO[k]}: ${cnt[k]}`).join(' · '), '');
+      for (const x of detalle) lineas.push(renglon(x), '');
+      if (MUCHAS) lineas.push(`(las 🟢 no van una por una: son ${(cnt.bueno || 0) + (cnt.igual || 0)})`);
+      if (sinJuicio) lineas.push(`(${sinJuicio} más sin juicio: pocas ventas o sin stock)`);
+      if (detalle.some((x) => x.res.v === 'malo')) lineas.push('', 'Los 🔴 no los toco solo: si querés volver al precio de antes, decime cuál.');
       const ok = await sendAlerta(lineas.join('\n'));
       if (ok) {
-        const av = {}; for (const x of paraAvisar) av['eventos/' + x.id + '/av/d' + x.W] = true;
+        const av = {}; for (const x of pendientes) av['eventos/' + x.id + '/av/d' + x.W] = true;
         try { await db.patch('cyc/supervisor', av); } catch { /* se repite mañana, que es el lado seguro */ }
-        console.log(`Aviso mandado: ${paraAvisar.length} evaluaciones.`);
+        console.log(`Aviso mandado: ${mostrar.length} cambios (${pendientes.length} evaluaciones anotadas).`);
       } else console.log('⚠️ el aviso no salió: no se anota como avisado, sale mañana.');
       return;
     }
