@@ -332,6 +332,13 @@ async function avisarBloqueoML(db, DRY) {
 // teniendo la MISMA cantidad de variantes y los precios pedidos. Si algo no
 // coincide, devuelve ok:false para que el que llama frene todo lo demás.
 // 'nuevos' = { idVariante: precioNuevo }.  Devuelve {ok, cambios:[{id,from,to}]} o {ok:false, err}.
+// REDONDEAR PARA ARRIBA SIN CRUZAR LA BARRERA (23/09/2026, lo agarró la revisión): las funciones
+// que suben redondean a la decena de arriba, y un $32.999 pedido a propósito quedaba en $33.000 —
+// justo arriba de la barrera, donde ML cobra ~$6.000 de envío en cada venta (regla 2).
+function redondeoSube(x) {
+  const r = Math.ceil(x / 10) * 10;
+  return (x < UMBRAL_ENVIO_GRATIS && r >= UMBRAL_ENVIO_GRATIS) ? UMBRAL_ENVIO_GRATIS - 1 : r;
+}
 async function raiseVariations(itemId, nuevos, token) {
   // Mismo freno que `raisePriceTo`: esta función también SUBE precios en ML y se salteaba la
   // lista de "liquidando". Ver la nota en `volver`.
@@ -349,7 +356,7 @@ async function raiseVariations(itemId, nuevos, token) {
   const payload = vars.map((v) => {
     const n = nuevos[String(v.id)];
     let precio = v.price;
-    if (n && n > v.price && n <= v.price * 1.25) { precio = Math.ceil(n / 10) * 10; cambios.push({ id: v.id, from: v.price, to: precio }); }
+    if (n && n > v.price && n <= v.price * 1.25) { precio = redondeoSube(n); cambios.push({ id: v.id, from: v.price, to: precio }); }
     return { id: v.id, price: precio };
   });
   if (!cambios.length) return { ok: false, err: 'no-sube' };
@@ -398,7 +405,7 @@ async function raisePriceTo(itemId, objetivo, token) {
   catch { return { ok: false, err: 'sin-item' }; }
   if (item.status === 'closed') return { ok: false, err: 'cerrada' };
   if (!item.price) return { ok: false, err: 'sin-precio' };
-  const to = Math.ceil(objetivo / 10) * 10;
+  const to = redondeoSube(objetivo);
   if (to <= item.price) return { ok: false, err: 'no-sube' };
   if (to > item.price * 1.25) return { ok: false, err: 'suba-mayor-a-25%' };
   try {
@@ -2277,7 +2284,7 @@ async function calcCajaBarata(db, o) {
 
   // Unidades vendidas por publicación en la ventana. Acá se busca lo CONTRARIO que en `subirpuede`:
   // las que NO vendieron.
-  const desdeCb = Date.now() - dias * 864e5, uCb = {}, ultVentaCb = {}, uProdCtaCb = {};
+  const desdeCb = Date.now() - dias * 864e5, uCb = {}, ultVentaCb = {}, ultPCCb = {}, uProdCtaCb = {};
   for (const [k, ents] of Object.entries(vpCb)) {
     const ts = Date.parse(k.slice(0, 10).replace(/_/g, '-'));
     if (!isFinite(ts)) continue;
@@ -2286,6 +2293,7 @@ async function calcCajaBarata(db, o) {
       // La ÚLTIMA venta se busca en TODO el historial, no sólo en la ventana: es el reloj
       // del modo remate y tiene que poder decir "hace 71 días", no "0 en 30".
       if (ts > (ultVentaCb[v.mla] || 0)) ultVentaCb[v.mla] = ts;
+      if (v.prodId && v.cuenta && ts > (ultPCCb[v.prodId + '__' + v.cuenta] || 0)) ultPCCb[v.prodId + '__' + v.cuenta] = ts;
       if (ts < desdeCb) continue;
       uCb[v.mla] = (uCb[v.mla] || 0) + (v.qty || 1);
       // Por producto×cuenta, para los días de stock: MISMA clave que `calcSubirPuede` — el
@@ -2319,7 +2327,9 @@ async function calcCajaBarata(db, o) {
     return Math.floor((Date.now() - h.desde) / 864e5);
   };
   const quietaDe = (mla, pid, cta) => {
-    const uv = ultVentaCb[mla] || 0;
+    // Manda la venta más reciente entre esta publicación y el PRODUCTO en esta cuenta: si el
+    // producto se vende todos los días por otra publicación, no está "parado" (caso Ferrari).
+    const uv = Math.max(ultVentaCb[mla] || 0, ultPCCb[pid + '__' + cta] || 0);
     if (uv > 0) return Math.floor((Date.now() - uv) / 864e5);
     return edadFullCb(pid, cta);   // nunca vendió → desde que llegó (null si no es fecha real)
   };
@@ -2344,7 +2354,9 @@ async function calcCajaBarata(db, o) {
     // Acepta también la caja COMPARTIDA: compartir no es ganar, y ganarla entera es justo lo que
     // puede acelerar la rotación. Los que ya GANAN la caja no entran — ahí bajar no te trae el
     // botón de comprar, y el aviso los muestra aparte sin precio.
-    if (sobreDias > 0 && (uCb[mla] || 0) > 0 && (e.caja === 'losing' || e.caja === 'sharing')) {
+    // Una publicación de UN color no entra por acá: los días de stock son del producto entero, y a
+    // ese color puede no sobrarle nada (lo agarró la revisión del 23/09 con 12 colores de sábanas).
+    if (sobreDias > 0 && !e.variant && (uCb[mla] || 0) > 0 && (e.caja === 'losing' || e.caja === 'sharing')) {
       const ds = diasStockCb(e.prodId, e.cuenta);
       if (ds && ds.dias > sobreDias) {
         if (ganaCb.has(e.prodId + '__' + e.cuenta)) { fuera.hermanaGana++; continue; }
@@ -2359,6 +2371,9 @@ async function calcCajaBarata(db, o) {
     // compartir caja con el otro vendedor"*. Algo que comparte la caja y aun así no vende gana
     // bajando a ganarla entera, igual que la que la pierde.
     if (e.caja !== 'losing' && e.caja !== 'sharing') continue;
+    // Si OTRA publicación del mismo producto en esta cuenta ya gana la caja, bajar ésta sólo
+    // compite contra nosotros mismos (el caso P47 del 22/09, que antes sólo se frenaba en "sobra").
+    if (ganaCb.has(e.prodId + '__' + e.cuenta)) { fuera.hermanaGana++; continue; }
     // El reloj se CALCULA SIEMPRE, pero sólo FILTRA cuando se pide (`diasQuieta`). Así UNA sola
     // llamada sirve para las dos secciones del aviso diario: la de margen sano usa la ventana de
     // siempre, y la de remate clasifica después por estos días. Correrla dos veces duplicaría las
@@ -3285,7 +3300,7 @@ async function raisePrice(itemId, variationId, multiplier, token) {
   try { item = await mlGet('/items/' + itemId + '?attributes=id,price,status,variations', token); }
   catch { return { ok: false, err: 'sin-item' }; }
   if (item.status === 'closed') return { ok: false, err: 'cerrada' };
-  const round10 = (x) => Math.ceil(x / 10) * 10;
+  const round10 = (x) => redondeoSube(x);
   const vars = Array.isArray(item.variations) ? item.variations : [];
   // ── PUBLICACIÓN CON VARIANTES: SIEMPRE por raiseVariations ──
   // Acá había DOS bugs y los dos podían pasar sin que nadie los viera:
@@ -6336,7 +6351,14 @@ async function main() {
       let yaCorrioHoy = false;
       try { yaCorrioHoy = (await db.get('cyc/robotprecios/dia')) === hoyARp; } catch { yaCorrioHoy = true; }
       if (yaCorrioHoy && MANDAR && !DRY) console.log(`   el robot de precios ya corrió hoy (${hoyARp}): esta vuelta no toca nada`);
-      const AUTO_ON = MANDAR && !DRY && String(cfgAv.autoPrecios || 'on') !== 'off' && !yaCorrioHoy;
+      let AUTO_ON = MANDAR && !DRY && String(cfgAv.autoPrecios || 'on') !== 'off' && !yaCorrioHoy;
+      // LA MARCA VA ANTES DE TOCAR NADA (23/09/2026, revisión): `ml-daily` se intenta 3 veces por
+      // noche y dos corridas pueden superponerse. Escribiéndola al final, la segunda la leía vacía y
+      // volvía a subir otro +25%. Si no se puede escribir, esta noche no se toca ningún precio.
+      if (AUTO_ON) {
+        try { await db.set('cyc/robotprecios/dia', hoyARp); }
+        catch { AUTO_ON = false; console.log('   ⚠️ no pude anotar la marca del día: esta noche no toco precios'); }
+      }
       const AUTO_MAX = 10;
       const AUTO_MIN_U = 4, AUTO_MAX_DSIN = 7;
       const hechosAuto = [], fallidosAuto = [];
@@ -6497,8 +6519,9 @@ async function main() {
         } catch (e) { console.log('   ⚠️ no pude calcular el rescate: ' + e.message); rescates = []; }
       } else if (cfgAv.autoSubeVenta !== true) console.log('\n── RESCATE apagado (subeventa:off) ──');
       else console.log('\n── RESCATE: no pude leer liquidando o el supervisor · esta noche no sube nada ──');
-      // Lo que se rescata no se sube además por el otro camino.
-      { const ids = new Set(rescates.map((x) => x.mla)); autoSube.splice(0, autoSube.length, ...autoSube.filter((f) => !ids.has(f.mla))); }
+      // Lo que se rescata no se sube además por el otro camino, ni se baja la misma noche.
+      { const ids = new Set(rescates.map((x) => x.mla)); autoSube.splice(0, autoSube.length, ...autoSube.filter((f) => !ids.has(f.mla)));
+        autoBaja.splice(0, autoBaja.length, ...autoBaja.filter((f) => !ids.has(f.mla))); }
       // Y NO SE BAJA lo que el robot de ventas subió hace menos de 14 días (su memoria vive en
       // `mlapi/priced`, no en `cyc/autoprecio`): sin esto, lo que subió una venta podía bajarlo la
       // noche siguiente — el ping-pong que ya estaba frenado entre las subas y bajas de la noche.
@@ -6531,9 +6554,12 @@ async function main() {
       let pricedRem = null;
       try { pricedRem = (await db.get('mlapi/priced')) || {}; } catch { pricedRem = null; }
       const autoRemate = pricedRem == null ? [] : [...remE3, ...remE2, ...remE1, ...sobreE3, ...sobrePaga]
-        .filter((f) => f.baja <= 24.5 && f.mgPw >= pisoEsc(f) + 0.5 && f.mgPw >= PISO_AUTORIZADO + 0.5
+        // Sin el dato de visitas NO se remata lo que no vende: si la consulta falló no se sabe si
+        // alguien la ve, y bajar lo que no ve nadie regala el margen sin vender.
+        .filter((f) => (f.sobre || f.vis != null) && f.baja <= 24.5 && f.mgPw >= pisoEsc(f) + 0.5 && f.mgPw >= PISO_AUTORIZADO + 0.5
           && !recienteAuto(f.mla, 'sube', 14) && !recienteAuto(f.mla, 'baja', BAJAR_ESPERA_DIAS)
           && !(pricedRem[f.mla] && hoyTs - (pricedRem[f.mla].ts || 0) < 14 * 864e5));
+      { const idsR = new Set(rescates.map((x) => x.mla)); autoRemate.splice(0, autoRemate.length, ...autoRemate.filter((f) => !idsR.has(f.mla))); }
       console.log(`\n── AUTOMÁTICO ${AUTO_ON ? '(SE APLICA)' : '(PRUEBA / APAGADO: no se toca nada)'} ──`);
       console.log(`   subir: ${autoSube.length} de ${nuevasSub.length} (piden ${AUTO_MIN_U}+ ventas y la última hace ${AUTO_MAX_DSIN} d o menos)`);
       console.log(`   bajar a ganar la caja en ${CBR_SANO}%+: ${autoBaja.length}`);
@@ -6587,6 +6613,9 @@ async function main() {
               // Se declara medio punto MENOS: el precio se redondea a la decena de abajo.
               r = await setPriceTo(f.mla, null, t.a, tk, { margen: f.mgPw - 0.5,
                 autorizado: `remate automático, permiso de Matías del 23/09/2026 (hasta 0%) · escalón al ${t.piso}%` });
+              // Si no se bajó, la marca se saca: si no, quedaría congelada contra toda suba sin
+              // haberse rematado nunca.
+              if (!r || !r.ok) { try { await db.set('cyc/nosubir/' + f.mla, null); delete NOSUBIR[f.mla]; } catch { /* */ } }
             } else r = await setPriceTo(f.mla, null, t.a, tk, { margen: f.mgPw });
           }
           if (!r || !r.ok) { fallidosAuto.push({ ...t, err: (r && r.err) || '?' }); continue; }
@@ -6624,7 +6653,6 @@ async function main() {
         }
         for (const x of fallidosAuto) console.log(`   ✗ NO se pudo: ${x.f.nom} (${x.f.cuenta}) · ${x.err}`);
       }
-      if (AUTO_ON) { try { await db.set('cyc/robotprecios/dia', hoyARp); } catch { /* */ } }
       // Lo que se hizo solo sale de las listas "para decidir". Lo que falló QUEDA, con su número,
       // para que lo decida él: un cambio que no se pudo hacer no puede desaparecer en silencio.
       const hechoIds = new Set(hechosAuto.map((x) => x.f.mla));
@@ -6693,12 +6721,12 @@ async function main() {
       {
         const rs = [...rescSup.map((x) => ({ x, why: '🔴 la última suba le salió mal (supervisor) · decidí vos' })),
           ...rescFren.map((x) => ({ x, why: x.why }))]
-          .filter(({ x }) => !yaAvisado('r_' + x.mla, 'rescate', x.de || x.why));
+          .filter(({ x }) => !yaAvisado('q_' + x.mla, 'rescate', x.de || x.why));
         if (rs.length) {
           L.push(`\n🟠 <b>En ${SUBE_DESDE_AV}% o menos y no lo subí solo</b> · ${rs.length}`);
           for (const { x, why } of rs) {
             L.push(`· ${x.nom} (${x.label})${x.de ? ` ${money(x.de)} · está en ${Math.round(x.pct)}% · para el ${Math.round(META_AV * 100)}%: ${money(x.a)}` : ''}\n   ${why}`);
-            paraAnotar['r_' + x.mla] = { tipo: 'rescate', valor: x.de || x.why, ts: hoyTs };
+            paraAnotar['q_' + x.mla] = { tipo: 'rescate', valor: x.de || x.why, ts: hoyTs };
           }
         }
       }
