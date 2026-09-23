@@ -6809,7 +6809,9 @@ async function main() {
           L.push(`<b>${n4}.</b> ${f.nom} (${f.cuenta})\n   ${money(f.precio)} → ${money(f.ptw)} (−${f.baja.toFixed(1)}%) · ${deA}`
             + `\n   ${f.st} u. = ${f.sobre.dias} d de stock · vende ${f.sobre.porMes}/mes${paga ? ' · 💸 ya paga almacenamiento' : ''}`
             + (f.resigna == null ? '' : ` · resignás ${money(f.resigna)}/u`)
-            + (f.mgPw < SOBRE_SANO ? `\n   ⚠️ queda abajo de tu piso: va al ${f.mgPw < REM_P1 ? REM_P3 : REM_P1}% porque ya paga almacenamiento` : '')
+            + (f.mgPw < SOBRE_SANO ? (sobreE3.includes(f)
+              ? `\n   ⚠️ queda abajo de tu piso: con stock para ${f.sobre.dias} d va a pagar almacenamiento sí o sí (remate, hasta ${REM_P3}%)`
+              : `\n   ⚠️ queda abajo de tu piso: va al ${REM_P1}% porque ya paga almacenamiento`) : '')
             + (f.envioEstimado && f.envio > 0 ? '\n   (envío estimado con la tarifa de ML)' : ''));
         }
         for (const f of nuevasSobre) paraAnotar['o_' + f.mla] = { tipo: 'cajabarata', valor: f.ptw, ts: hoyTs };
