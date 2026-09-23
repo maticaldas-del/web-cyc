@@ -20446,6 +20446,94 @@ async function main() {
         }
       }
 
+      // ── 3b. ¿CUÁNTA PLATA TRAJO LA AUTOMATIZACIÓN? (23/09/2026) ─────────────────
+      // Pedido suyo: *"una tarjeta que muestre la ganancia que generó esta idea: de tener la
+      // automatización de precios a no tenerla (…) aumenté las cartas y se ganó 1000 pesos más, pero
+      // quizás se vendieron menos (…) y lo mismo con productos estancados"*.
+      //
+      // "SIN AUTOMATIZACIÓN" = el precio se quedaba donde estaba (`de`). Sólo cuentan los cambios
+      // que hizo EL ROBOT: los a mano los habrías hecho igual sin automatización.
+      //
+      // La plata de cada cambio se abre en DOS partes, y se muestran separadas porque no valen igual:
+      //  · EFECTO PRECIO (firme): cada unidad que SÍ se vendió después, vendida a otro precio. La
+      //    diferencia se toma NETA de lo que cobra ML con la proporción neto/precio de ESA venta.
+      //    Esa proporción ya trae el cargo fijo adentro, así que el aumento sale un poco MÁS CHICO
+      //    que el real y la baja un poco MÁS GRANDE: el error va siempre para el lado de mostrar
+      //    menos ganancia, que es el lado seguro.
+      //  · EFECTO VOLUMEN (supuesto): vendió más o menos unidades por día que en el mismo tiempo de
+      //    antes, por la ganancia por unidad al precio VIEJO. Es el que contesta "¿pero se vendió
+      //    menos?", y el que más ruido tiene: la temporada, la competencia o el stock también mueven
+      //    las ventas. Por eso NO se cuenta si estuvo sin stock la mitad de las noches.
+      // La ventana es la misma de antes y de después: hasta 30 días, cortada donde el MISMO producto
+      // tuvo otro cambio (si no, dos cambios se llevarían la misma venta dos veces). Con menos de 7
+      // días de después no se mide: queda "en curso".
+      const ROBOT = new Set(['robot al vender', 'robot de noche']);
+      const atrib = [];
+      let enCurso = 0, sinCosto = 0, sinPrecio = 0, manuales = 0;
+      const porMlaEv = {};
+      for (const ev of Object.values(todos)) (porMlaEv[ev.mla] = porMlaEv[ev.mla] || []).push(ev);
+      for (const [id, ev] of Object.entries(todos)) {
+        if (!ROBOT.has(ev.origen)) { manuales++; continue; }
+        if (!(ev.de > 0) || !(ev.a > 0)) { sinPrecio++; continue; }
+        const costo = costoDe(ev.mla);
+        if (!(costo > 0)) { sinCosto++; continue; }
+        const sig = (porMlaEv[ev.mla] || []).filter((o) => o !== ev && o.ts > ev.ts + 60e3).sort((a, b) => a.ts - b.ts)[0];
+        const finT = Math.min(ahora, ev.ts + 30 * 864e5, sig ? sig.ts : Infinity);
+        const L = (finT - ev.ts) / 864e5;
+        if (L < 7) { enCurso++; continue; }
+        const vs = porMla[ev.mla] || [];
+        let antesV = vs.filter((x) => x.ts < ev.ts && x.ts >= ev.ts - L * 864e5);
+        if (ev.origen === 'robot al vender') {
+          const disp = antesV.filter((x) => ev.ts - x.ts < 3600e3).sort((a, b) => b.ts - a.ts)[0];
+          if (disp) antesV = antesV.filter((x) => x !== disp);
+        }
+        const despV = vs.filter((x) => x.ts > ev.ts + 60e3 && x.ts <= finT);
+        const uA = antesV.reduce((s, x) => s + x.q, 0), uD = despV.reduce((s, x) => s + x.q, 0);
+        const gA = antesV.reduce((s, x) => s + x.neto - costo * x.q, 0);
+        const gD = despV.reduce((s, x) => s + x.neto - costo * x.q, 0);
+        // efecto precio, venta por venta
+        let precio = 0;
+        for (const x of despV) {
+          if (!(x.tot > 0) || !(x.neto > 0)) continue;
+          const pu = x.tot / x.q;
+          precio += (pu - ev.de) * (x.neto / x.tot) * x.q;
+        }
+        // ganancia por unidad al precio VIEJO: la de después menos lo que agregó el precio, o si no
+        // vendió nada después, la medida antes
+        const gUViejo = uD > 0 ? (gD - precio) / uD : (uA > 0 ? gA / uA : 0);
+        const nch = cambiosEv[id] || { noches: ev.noches || 0, nochesSin: ev.nochesSin || 0 };
+        const stHoy = stockDe(ev.mla);
+        const quiebre = (nch.noches >= 3 && nch.nochesSin / nch.noches >= 0.5) || (!nch.noches && stHoy === 0 && uD < uA);
+        const volumen = quiebre ? 0 : (uD - uA) * gUViejo;
+        const evs = ev.ev || {}; const juicio = (evalNuevas.filter((x) => x.id === id).sort((a, b) => b.W - a.W)[0] || {}).res;
+        const v = quiebre ? 'sinstock' : ((juicio || evs.d30 || evs.d15 || evs.d7 || {}).v || '');
+        atrib.push({ mla: ev.mla, nom: nomDe(ev.mla), cuenta: (links[ev.mla] || {}).cuenta || '', origen: ev.origen,
+          de: ev.de, a: ev.a, ts: ev.ts, dias: Math.round(L), uA, uD, precio: Math.round(precio), volumen: Math.round(volumen),
+          total: Math.round(precio + volumen), v, quiebre });
+      }
+      const sumaA = (f) => atrib.reduce((s, x) => s + f(x), 0);
+      const resumen = {
+        ts: ahora,
+        precio: Math.round(sumaA((x) => x.precio)),
+        volumen: Math.round(sumaA((x) => x.volumen)),
+        total: Math.round(sumaA((x) => x.total)),
+        n: atrib.length,
+        subas: atrib.filter((x) => x.a > x.de).length,
+        bajas: atrib.filter((x) => x.a < x.de).length,
+        ganaron: atrib.filter((x) => x.total > 0).length,
+        perdieron: atrib.filter((x) => x.total < 0).length,
+        quiebres: atrib.filter((x) => x.quiebre).length,
+        enCurso, sinCosto, sinPrecio, manuales,
+        desde: atrib.length ? Math.min(...atrib.map((x) => x.ts)) : null,
+        items: atrib.slice().sort((a, b) => Math.abs(b.total) - Math.abs(a.total)).slice(0, 60),
+      };
+      console.log(`=== LA AUTOMATIZACIÓN CONTRA NO TENERLA ===`);
+      console.log(`${resumen.n} cambios del robot medidos (${resumen.subas} subas · ${resumen.bajas} bajas) · ${enCurso} en curso (menos de 7 días) · ${sinCosto} sin costo · ${sinPrecio} sin precio de antes · ${manuales} a mano (no cuentan)`);
+      console.log(`Efecto precio (firme): ${$s(resumen.precio)} · efecto volumen (supuesto): ${$s(resumen.volumen)} · TOTAL ${$s(resumen.total)}`);
+      console.log(`${resumen.ganaron} dejaron más · ${resumen.perdieron} dejaron menos · ${resumen.quiebres} con el volumen sin contar por quiebre de stock`);
+      for (const x of resumen.items.slice(0, 15)) console.log(`  ${x.total >= 0 ? '+' : ''}${$s(x.total)} · ${x.nom} (${x.cuenta}) ${$s(x.de)}→${$s(x.a)} · ${x.dias} d · ${x.uA}→${x.uD} u. · precio ${$s(x.precio)} · volumen ${$s(x.volumen)}${x.quiebre ? ' · sin stock' : ''}`);
+      console.log('');
+
       // ── 4. MOSTRAR ─────────────────────────────────────────────────────────────
       const ICO = { bueno: '🟢 BUENO', igual: '🟢 IGUAL', dudoso: '🟠 DUDOSO', malo: '🔴 MALO', sinstock: '⚪ SIN STOCK', pocos: '· POCAS VENTAS' };
       const EXPL = {
@@ -20494,6 +20582,7 @@ async function main() {
       for (const [id, c] of Object.entries(cambiosEv)) { if (nuevos[id]) continue; upd['eventos/' + id + '/noches'] = c.noches; upd['eventos/' + id + '/nochesSin'] = c.nochesSin; }
       for (const x of evalNuevas) { if (nuevos[x.id]) continue; upd['eventos/' + x.id + '/ev/d' + x.W] = x.res; }
       for (const [mla, f] of Object.entries(fotosNuevas)) upd['precios/' + mla] = f;
+      upd['resumen'] = resumen;
       // lo que ya pasó los 30 días y está evaluado entero se borra a los 60: si no, cementerio
       for (const [id, ev] of Object.entries(eventos)) if (ahora - ev.ts > 60 * 864e5 && !cambiosEv[id] && !evalNuevas.some((x) => x.id === id)) upd['eventos/' + id] = null;
       try { await db.patch('cyc/supervisor', upd); }

@@ -1360,6 +1360,10 @@ footer{margin-top:32px;padding-top:14px;border-top:1px solid var(--border);font-
   <div class="stitle">De dónde viene la mercadería <span id="met-origen-period" style="font-weight:400;color:var(--muted);text-transform:none;letter-spacing:0;font-family:'DM Mono',monospace;font-size:.65rem"></span></div>
   <div id="met-origen"></div>
 
+  <!-- La plata que trajo la automatización de precios (23/09/2026) · abajo de todo -->
+  <div class="stitle">Lo que trajo el robot de precios <span style="font-weight:400;color:var(--muted);text-transform:none;letter-spacing:0;font-family:'DM Mono',monospace;font-size:.65rem">· contra no tenerlo · no depende del período</span></div>
+  <div id="met-auto"></div>
+
   <footer>CYC · Métricas ML · datos independientes</footer>
 </div>
 </div>
@@ -1907,6 +1911,9 @@ function startApp(){
     // quedó en cero (`cero`). Lo viene anotando el robot. Sirve para medir a qué velocidad se vende
     // algo DIVIDIENDO POR LOS DÍAS QUE HUBO STOCK y no por 30 fijo (ver diasConStock).
     state.stockhist=d.stockhist||{};
+    // LO QUE TRAJO EL ROBOT DE PRECIOS: lo calcula el supervisor todas las noches (cyc/supervisor/resumen).
+    // La pantalla no hace ninguna cuenta: una segunda copia de la atribución diría otro número.
+    state.supResumen=(d.supervisor&&d.supervisor.resumen)||null;
     // VISITAS por publicación en los últimos 30 días, que las trae el robot de ML. Separan dos
     // problemas que se ven igual en pantalla y se arreglan al revés: si no la ve nadie el precio no
     // es el problema; si la ven y no compran, ahí sí.
@@ -2282,7 +2289,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='20.11';
+const APP_VERSION='20.12';
 // El problema real que esto resuelve no es curiosidad: es que el celular guarda la app y sigue
 // mostrando la de ayer sin avisar. Varias veces se revisó un cambio que ya estaba subido y no se
 // veía. Por eso, además del número, el chip avisa cuando hay una versión nueva esperando.
@@ -12936,6 +12943,62 @@ function renderMetOrigen(keys){
     <div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:12px">${btns}</div>
     ${cuerpo}${nota}${pie}</div>`;
 }
+// LO QUE TRAJO EL ROBOT DE PRECIOS, CONTRA NO TENERLO (23/09/2026). Pedido suyo: "una tarjeta que
+// muestre la ganancia que generó esta idea (…) aumenté las cartas y se ganó 1000 pesos más, pero
+// quizás se vendieron menos". La cuenta la hace el robot (probe `supervisor`) y la guarda en
+// cyc/supervisor/resumen: acá sólo se dibuja. Van SEPARADOS lo firme (el precio de lo que sí se
+// vendió) y el supuesto (vendió más o menos que antes), porque no valen lo mismo.
+function renderMetAuto(){
+  const el=document.getElementById('met-auto');if(!el)return;
+  const r=state.supResumen;
+  if(!r||!(r.ts>0)){el.innerHTML='<div class="chart-box" style="color:var(--muted);font-size:.72rem">Todavía no hay cuenta: la hace el robot todas las noches, después del aviso de precios.</div>';return;}
+  const n=v=>Number(v)||0;
+  const col=v=>n(v)>0?'var(--green)':n(v)<0?'var(--red)':'var(--muted)';
+  const sg=v=>(n(v)>0?'+':'')+fmt(Math.round(n(v)));
+  const dias=Math.floor((Date.now()-r.ts)/864e5);
+  const viejo=dias>=2?`<div style="font-size:.62rem;color:#fbbf24;margin-bottom:8px">⚠ la cuenta es de hace ${dias} días: el robot no la pudo rehacer.</div>`:'';
+  const desde=r.desde?new Date(r.desde).toLocaleDateString('es-AR'):'—';
+  if(!n(r.n)){
+    el.innerHTML=`<div class="chart-box">${viejo}<div style="color:var(--muted);font-size:.72rem">Todavía no hay ningún cambio del robot con 7 días o más para medir${n(r.enCurso)?` (${n(r.enCurso)} en curso)`:''}.</div></div>`;
+    return;
+  }
+  const caja=(lbl,val,sub)=>`<div style="flex:1 1 140px;min-width:140px">
+      <div style="font-size:.56rem;color:var(--muted);text-transform:uppercase;letter-spacing:.04em">${lbl}</div>
+      <div style="font-family:'Syne',sans-serif;font-weight:800;font-size:1.05rem;color:${col(val)}">${sg(val)}</div>
+      <div style="font-size:.58rem;color:var(--muted)">${sub}</div>
+    </div>`;
+  const items=Array.isArray(r.items)?r.items:[];
+  const it=items.map(x=>{
+    const sube=n(x.a)>n(x.de);
+    const pct=n(x.de)?((n(x.a)/n(x.de)-1)*100).toFixed(0):'?';
+    return `<div style="padding:6px 0;border-bottom:1px solid rgba(148,163,184,.1);font-size:.66rem">
+      <div style="display:flex;justify-content:space-between;gap:8px;align-items:baseline">
+        <span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${sube?'⬆️':'⬇️'} ${x.nom||x.mla}${x.cuenta?' · '+x.cuenta:''}</span>
+        <b style="white-space:nowrap;color:${col(x.total)}">${sg(x.total)}</b>
+      </div>
+      <div style="font-size:.58rem;color:var(--muted)">${fmt(n(x.de))} → ${fmt(n(x.a))} (${sube?'+':''}${pct}%) · ${n(x.dias)} d · vendió ${n(x.uA)} antes y ${n(x.uD)} después · precio ${sg(x.precio)} · volumen ${x.quiebre?'no cuenta (sin stock)':sg(x.volumen)}</div>
+    </div>`;
+  }).join('');
+  const resto=n(r.n)>items.length?`<div style="font-size:.58rem;color:var(--muted);margin-top:5px">y ${n(r.n)-items.length} cambios más, chicos</div>`:'';
+  el.innerHTML=`<div class="chart-box">${viejo}
+    <div style="font-size:.6rem;color:var(--muted);text-transform:uppercase;letter-spacing:.04em">Plata de más que dejaron los cambios del robot</div>
+    <div style="font-family:'Syne',sans-serif;font-weight:800;font-size:2rem;color:${col(r.total)};line-height:1.1">${sg(r.total)}</div>
+    <div style="font-size:.62rem;color:var(--muted);margin-bottom:12px">desde el ${desde} · ${n(r.n)} cambios medidos (${n(r.subas)} subas · ${n(r.bajas)} bajas) · ${n(r.ganaron)} dejaron más, ${n(r.perdieron)} dejaron menos</div>
+    <div style="display:flex;flex-wrap:wrap;gap:12px 10px;margin-bottom:10px">
+      ${caja('Por el precio · firme',r.precio,'lo que sí se vendió, cobrado a otro precio')}
+      ${caja('Por vender más o menos · supuesto',r.volumen,'unidades de más o de menos que antes, a la ganancia vieja')}
+    </div>
+    <details><summary style="cursor:pointer;font-size:.66rem;color:var(--muted)">Cambio por cambio</summary>${it}${resto}</details>
+    <div style="margin-top:10px;padding-top:8px;border-top:1px solid rgba(148,163,184,.16);font-size:.6rem;color:var(--muted);line-height:1.45">
+      <b>Cómo se cuenta.</b> "Sin robot" es que el precio se quedaba donde estaba. Cada cambio se compara con el mismo tiempo de antes (hasta 30 días), y se corta si ese producto volvió a cambiar.
+      <b>Lo firme</b> es la diferencia de precio en las unidades que sí se vendieron, neta de lo que cobra ML: sale un poco más chica que la real en las subas y un poco más grande en las bajas, o sea que nunca exagera.
+      <b>Lo supuesto</b> es si vendió más o menos que antes: puede ser el precio y también la temporada o la competencia. No se cuenta cuando estuvo sin stock la mitad de las noches.
+      ${n(r.enCurso)?`<br>⏳ ${n(r.enCurso)} cambios con menos de 7 días todavía no entran.`:''}
+      ${n(r.manuales)?`<br>✋ ${n(r.manuales)} cambios a mano no entran: ésos los habrías hecho igual sin robot.`:''}
+      ${n(r.sinCosto)||n(r.sinPrecio)?`<br>⚠ ${n(r.sinCosto)+n(r.sinPrecio)} sin costo o sin precio de antes: no se pueden medir.`:''}
+    </div>
+  </div>`;
+}
 function renderMetHoras(keys){
   const el=document.getElementById('met-horas');if(!el)return;
   const per=document.getElementById('met-horas-period');
@@ -13061,6 +13124,7 @@ function renderMetricas(){
   renderMetReputacion();
   renderMetHoras(curKeys);   // ¿a qué hora te compran? · al final de todo
   renderMetOrigen(curKeys);  // de dónde viene la mercadería · abajo de todo
+  renderMetAuto();           // la plata que trajo la automatización de precios
   const acctColors=['c1','c4','c2','c3'];
   // Mismo período un año atrás (alineado con las líneas del gráfico).
   const year=sumMetFields(metScopeBuckets(metScopeMode).bucketsYear.flat(),metViewField);
