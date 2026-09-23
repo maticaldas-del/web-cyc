@@ -6305,7 +6305,20 @@ async function main() {
       //   · se relee el precio de ML después de cada cambio (regla 6) y se dice si no quedó;
       //   · sólo con `:go` (la corrida de la noche). En prueba dice qué haría y no toca nada;
       //   · se apaga con `cyc/mlconfig/autoPrecios = 'off'`.
-      const AUTO_ON = MANDAR && !DRY && String(cfgAv.autoPrecios || 'on') !== 'off';
+      // ── UN SOLO ROBOT, UNA VEZ POR DÍA (23/09/2026) ─────────────────────────────────────────
+      // Pedido suyo: *"que haya un solo robot que maneje todo. pero que lo haga una vez por dia"*.
+      // Hasta hoy había TRES caminos que movían precios —el que subía en cada venta (cada 2
+      // minutos), el que subía cuando cambiaba un costo (cada hora) y éste de la noche—, cada uno
+      // con sus frenos: el de ventas, por ejemplo, NO miraba el supervisor. Ahora es éste solo, con
+      // los mismos frenos para todo, y el de ventas ya no toca precios.
+      // `ml-daily` se intenta TRES veces por noche (GitHub saltea corridas); la marca del día hace
+      // que sólo la primera que llegue toque precios. Si la marca no se puede leer, no se toca
+      // nada: el lado seguro es no mover precios dos veces.
+      const hoyARp = new Date(Date.now() - 3 * 3600e3).toISOString().slice(0, 10);
+      let yaCorrioHoy = false;
+      try { yaCorrioHoy = (await db.get('cyc/robotprecios/dia')) === hoyARp; } catch { yaCorrioHoy = true; }
+      if (yaCorrioHoy && MANDAR && !DRY) console.log(`   el robot de precios ya corrió hoy (${hoyARp}): esta vuelta no toca nada`);
+      const AUTO_ON = MANDAR && !DRY && String(cfgAv.autoPrecios || 'on') !== 'off' && !yaCorrioHoy;
       const AUTO_MAX = 10;
       const AUTO_MIN_U = 4, AUTO_MAX_DSIN = 7;
       const hechosAuto = [], fallidosAuto = [];
@@ -6336,10 +6349,61 @@ async function main() {
       const sobreAutoIds = new Set(sobreSanas.filter((f) => !yaAvisado('o_' + f.mla, 'cajabarata', f.ptw)).map((f) => f.mla));
       const autoBaja = [...sanasCbr.filter((f) => cbrAutoIds.has(f.mla)), ...sobreSanas.filter((f) => sobreAutoIds.has(f.mla))]
         .filter((f) => f.mgPw >= CBR_SANO + 0.5 && f.baja <= 24.5 && !recienteAuto(f.mla, 'sube', 14));
+      // ── EL RESCATE: LO QUE QUEDÓ EN `subeDesde` (20%) O MENOS ──────────────────────────────
+      // Es lo que antes hacían el robot de ventas (en cada venta) y el de costos (cada hora), ahora
+      // una vez por noche y con la MISMA cuenta que la ficha (`calcSubirPorMargen`, la de
+      // `submargen`: costo de la ficha + impuestos contra el neto de ML, envío del peor caso). Así
+      // agarra las dos cosas a la vez: una venta que salió baja y un costo que él cambió.
+      // Se toca si el margen REDONDEADO da `subeDesde` o menos y se lleva a `targetPct`.
+      // Frenos: el interruptor `subeventa` · `liquidando` · supervisor 🔴 · +25% como mucho de
+      // una · $33.000 y $600.000 · tope de RESCATE_MAX por noche (lo que sobra sale mañana).
+      // Para no preguntarle a ML por las ~400 publicaciones, primero se filtra con el margen que
+      // `netoweb` acaba de calcular (el peor neto de cada producto) con 5 puntos de colchón.
+      const RESCATE_MAX = 25;
+      const SUBE_DESDE_AV = Number.isFinite(parseFloat(cfgAv.subeDesde)) ? parseFloat(cfgAv.subeDesde) : 20;
+      const META_AV = (parseFloat(cfgAv.targetPct) || 25) / 100;
+      let rescates = [], rescFren = [], rescSup = [];
+      if (cfgAv.autoSubeVenta === true && NOSUBIR_OK && supLeido) {
+        try {
+          const finR = (await db.get('cyc/finanzas')) || {};
+          const tcR = parseFloat(finR.tipo_cambio) || 1500;
+          const monoR = parseFloat(((await db.get('cyc/monotributo')) || {}).pct) || 0;
+          setDevLive(vpAv);
+          const cand = new Set();
+          for (const p of products) {
+            if (!p || !p.id || !(parseFloat(p.costUSD) > 0)) continue;
+            const neto = Number(p.netoCalc), precio = Number(p.netoCalcPrecio) || 0;
+            if (!(neto > 0) || !(precio > 0)) continue;
+            const costo = costoPesos(p, 1, tcR).costo;
+            const mlx = precio * (mlExtraPct(p.netoCalcCuenta) + monoR) / 100;
+            const env = Number(p.netoCalcEnvio) || 0;
+            const mg = (neto - costo - mlx) / (costo + mlx + env) * 100;
+            if (mg <= SUBE_DESDE_AV + 5) cand.add(p.id);
+          }
+          console.log(`\n── RESCATE (${SUBE_DESDE_AV}% o menos → ${Math.round(META_AV * 100)}%) · ${cand.size} producto(s) cerca para medir con ML ──`);
+          if (cand.size) {
+            const rr = await calcSubirPorMargen(db, { products, labels, accounts, soloProds: cand, piso: (SUBE_DESDE_AV + 0.5) / 100, meta: META_AV });
+            rescFren = rr.frenados.filter((f) => !/comisión|tarifa/.test(f.why));
+            for (const x of rr.subir) (malosSup.has(x.mla) ? rescSup : rescates).push(x);
+            rescates.sort((a, b) => a.pct - b.pct);
+            console.log(`   para subir: ${rescates.length} · frenadas por el supervisor: ${rescSup.length} · no se pueden: ${rescFren.length} · siguen arriba: ${rr.yaOk.length}`);
+          }
+        } catch (e) { console.log('   ⚠️ no pude calcular el rescate: ' + e.message); rescates = []; }
+      } else if (cfgAv.autoSubeVenta !== true) console.log('\n── RESCATE apagado (subeventa:off) ──');
+      else console.log('\n── RESCATE: no pude leer liquidando o el supervisor · esta noche no sube nada ──');
+      // Lo que se rescata no se sube además por el otro camino.
+      { const ids = new Set(rescates.map((x) => x.mla)); autoSube.splice(0, autoSube.length, ...autoSube.filter((f) => !ids.has(f.mla))); }
+      // Y NO SE BAJA lo que el robot de ventas subió hace menos de 14 días (su memoria vive en
+      // `mlapi/priced`, no en `cyc/autoprecio`): sin esto, lo que subió una venta podía bajarlo la
+      // noche siguiente — el ping-pong que ya estaba frenado entre las subas y bajas de la noche.
+      try {
+        const pricedAv = (await db.get('mlapi/priced')) || {};
+        autoBaja.splice(0, autoBaja.length, ...autoBaja.filter((f) => !(pricedAv[f.mla] && hoyTs - (pricedAv[f.mla].ts || 0) < 14 * 864e5)));
+      } catch { autoBaja.splice(0, autoBaja.length); }
       console.log(`\n── AUTOMÁTICO ${AUTO_ON ? '(SE APLICA)' : '(PRUEBA / APAGADO: no se toca nada)'} ──`);
       console.log(`   subir: ${autoSube.length} de ${nuevasSub.length} (piden ${AUTO_MIN_U}+ ventas y la última hace ${AUTO_MAX_DSIN} d o menos)`);
       console.log(`   bajar a ganar la caja en ${CBR_SANO}%+: ${autoBaja.length}`);
-      if (autoSube.length + autoBaja.length) {
+      if (rescates.length + autoSube.length + autoBaja.length) {
         let tokA = {};
         if (AUTO_ON) {
           const tks = (await db.get('mlapi/tokens')) || {};
@@ -6352,17 +6416,28 @@ async function main() {
             } catch { /* esa cuenta queda sin tocar y se dice abajo */ }
           }
         }
-        const tareas = [
+        const tareasR = rescates.slice(0, RESCATE_MAX).map((x) => {
+          const tope = Math.floor(x.de * 1.25 / 10) * 10;
+          return { tipo: 'rescate', f: { mla: x.mla, nom: x.nom, cuenta: x.label, precio: x.de, pct: x.pct, vars: x.vars, meta: x.a }, a: Math.min(x.a, tope), corto: x.a > tope };
+        });
+        if (rescates.length > RESCATE_MAX) console.log(`   (quedan ${rescates.length - RESCATE_MAX} rescates para mañana: tope de ${RESCATE_MAX} por noche)`);
+        const tareas = [...tareasR, ...[
           ...autoSube.map((f) => ({ tipo: 'sube', f, a: f.tope })),
           ...autoBaja.map((f) => ({ tipo: 'baja', f, a: Math.floor(f.ptw / 10) * 10 })),
-        ].slice(0, AUTO_MAX);
+        ].slice(0, AUTO_MAX)];
         for (const t of tareas) {
           const f = t.f, tk = tokA[f.cuenta];
           const renglon = `${f.nom} (${f.cuenta}) ${money(f.precio)} → ${money(t.a)}`;
-          if (!AUTO_ON) { console.log(`   · haría: ${t.tipo === 'sube' ? 'SUBIR' : 'BAJAR'} ${renglon}`); continue; }
+          if (!AUTO_ON) { console.log(`   · haría: ${t.tipo === 'rescate' ? `RESCATAR (está en ${Math.round(t.f.pct)}%)` : t.tipo === 'sube' ? 'SUBIR' : 'BAJAR'} ${renglon}${t.corto ? ` · hacían falta ${money(t.f.meta)}, tope +25%` : ''}`); continue; }
           if (!tk) { fallidosAuto.push({ ...t, err: 'sin token de la cuenta' }); continue; }
           let r;
-          if (t.tipo === 'sube') r = await raisePriceTo(f.mla, t.a, tk);
+          if (t.tipo === 'rescate') {
+            if (f.vars && f.vars.length) {
+              const nuevos = {}; for (const v of f.vars) if ((v.price || 0) < t.a) nuevos[String(v.id)] = t.a;
+              r = await raiseVariations(f.mla, nuevos, tk);
+              if (r && r.ok) r = { ok: true, from: f.precio, to: t.a };
+            } else r = await raisePriceTo(f.mla, t.a, tk);
+          } else if (t.tipo === 'sube') r = await raisePriceTo(f.mla, t.a, tk);
           else {
             let it = null;
             try { it = await mlGet('/items/' + f.mla + '?attributes=id,variations', tk); } catch { it = null; }
@@ -6375,9 +6450,12 @@ async function main() {
           let quedo = null;
           try { quedo = Number((await mlGet('/items/' + f.mla + '?attributes=price', tk))?.price) || null; } catch { quedo = null; }
           hechosAuto.push({ ...t, de: r.from || f.precio, a: r.to || t.a, quedo });
-          const reg = { tipo: t.tipo, de: r.from || f.precio, a: r.to || t.a, ts: hoyTs, nom: f.nom, cuenta: f.cuenta,
-            ...(t.tipo === 'sube' ? { u30: f.u } : { margen: Math.round(f.mgPw * 10) / 10 }) };
+          const reg = t.tipo === 'rescate'
+            ? { tipo: 'sube', por: 'margen', de: r.from || f.precio, a: r.to || t.a, ts: hoyTs, nom: f.nom, cuenta: f.cuenta, margenAntes: Math.round(f.pct * 10) / 10 }
+            : { tipo: t.tipo, de: r.from || f.precio, a: r.to || t.a, ts: hoyTs, nom: f.nom, cuenta: f.cuenta,
+              ...(t.tipo === 'sube' ? { u30: f.u } : { margen: Math.round(f.mgPw * 10) / 10 }) };
           try { await db.set('cyc/autoprecio/' + f.mla, reg); } catch { /* */ }
+          if (t.tipo === 'rescate') { console.log(`   ✓ RESCATADO ${renglon}${quedo != null ? ` · releído de ML: ${money(quedo)}` : ' · ⚠️ no pude releerlo'}`); continue; }
           // Se anota en la memoria del aviso para que no vuelva a salir como "para decidir".
           const clave = t.tipo === 'sube' ? f.mla : (cbrAutoIds.has(f.mla) ? 'c_' : 'o_') + f.mla;
           try {
@@ -6391,6 +6469,7 @@ async function main() {
         }
         for (const x of fallidosAuto) console.log(`   ✗ NO se pudo: ${x.f.nom} (${x.f.cuenta}) · ${x.err}`);
       }
+      if (AUTO_ON) { try { await db.set('cyc/robotprecios/dia', hoyARp); } catch { /* */ } }
       // Lo que se hizo solo sale de las listas "para decidir". Lo que falló QUEDA, con su número,
       // para que lo decida él: un cambio que no se pudo hacer no puede desaparecer en silencio.
       const hechoIds = new Set(hechosAuto.map((x) => x.f.mla));
@@ -6441,14 +6520,29 @@ async function main() {
         L.push(`\n✅ <b>Lo hice solo</b> · ${hechosAuto.length}`);
         for (const x of hechosAuto) {
           const f = x.f;
-          L.push(`· ${x.tipo === 'sube' ? '📈' : '📉'} ${f.nom} (${f.cuenta})\n   ${money(x.de)} → ${money(x.a)}`
-            + (x.tipo === 'sube' ? ` · vendió ${f.u} en 30 d · sigue abajo del competidor` : ` · gana la caja · queda en ${f.mgPw.toFixed(1)}%`)
+          L.push(`· ${x.tipo === 'rescate' ? '🛟' : x.tipo === 'sube' ? '📈' : '📉'} ${f.nom} (${f.cuenta})\n   ${money(x.de)} → ${money(x.a)}`
+            + (x.tipo === 'rescate' ? ` · estaba en ${Math.round(f.pct)}% → al ${Math.round(META_AV * 100)}%${x.corto ? ` · <i>hacían falta ${money(f.meta)}, subí el máximo (+25%); sigue mañana</i>` : ''}`
+              : x.tipo === 'sube' ? ` · vendió ${f.u} en 30 d · sigue abajo del competidor` : ` · gana la caja · queda en ${f.mgPw.toFixed(1)}%`)
             + (x.quedo == null ? ' · ⚠️ no pude releerlo de ML' : (Math.round(x.quedo) === Math.round(x.a) ? '' : ` · ⚠️ ML dice ${money(x.quedo)}`)));
         }
       }
       if (fallidosAuto.length) {
         L.push(`\n⚠️ <b>Quise hacerlo solo y no pude</b> · ${fallidosAuto.length} (quedan abajo para que decidas)`);
         for (const x of fallidosAuto) L.push(`· ${x.f.nom} (${x.f.cuenta}) · ${x.err}`);
+      }
+      // LO QUE QUEDÓ EN `subeDesde` O MENOS Y EL RESCATE NO TOCÓ, con el motivo. Una vez por
+      // semana cada una (o cuando cambia el precio): todas las noches lo mismo entrena a no leerlo.
+      {
+        const rs = [...rescSup.map((x) => ({ x, why: '🔴 la última suba le salió mal (supervisor) · decidí vos' })),
+          ...rescFren.map((x) => ({ x, why: x.why }))]
+          .filter(({ x }) => !yaAvisado('r_' + x.mla, 'rescate', x.de || x.why));
+        if (rs.length) {
+          L.push(`\n🟠 <b>En ${SUBE_DESDE_AV}% o menos y no lo subí solo</b> · ${rs.length}`);
+          for (const { x, why } of rs) {
+            L.push(`· ${x.nom} (${x.label})${x.de ? ` ${money(x.de)} · está en ${Math.round(x.pct)}% · para el ${Math.round(META_AV * 100)}%: ${money(x.a)}` : ''}\n   ${why}`);
+            paraAnotar['r_' + x.mla] = { tipo: 'rescate', valor: x.de || x.why, ts: hoyTs };
+          }
+        }
       }
       if (vigilar.length) {
         L.push(`\n👀 <b>Subí solo y dejó de vender</b> · ${vigilar.length}`);
@@ -29796,7 +29890,18 @@ async function main() {
             // grupo de precio
             // El redondeo es a propósito y es el mismo que imprime el mensaje (ver SUBE_DESDE).
             const daParaSubir = Math.round(margen * 100) <= SUBE_DESDE;
-            if (autoSubeVenta && daParaSubir && mult <= MAX_UP && !yaTocado && !cruzaUmbral && !pasaTecho && !enGrupo) {
+            // ── YA NO SUBE ACÁ: LO HACE EL ROBOT DE LA NOCHE (23/09/2026) ────────────────────
+            // Pedido suyo: *"que haya un solo robot que maneje todo. pero que lo haga una vez por
+            // dia"*. Esta venta queda anotada y el rescate de `avisos:go` (esta noche) la mide con
+            // la cuenta de la ficha y la sube con los mismos frenos que todo lo demás — incluido el
+            // supervisor, que acá nunca se miraba. No se avisa venta por venta: el aviso de la
+            // noche dice qué subió y qué no pudo. El bloque de abajo queda por si se vuelve atrás.
+            const ROBOT_UNICO = true;
+            if (ROBOT_UNICO && autoSubeVenta && daParaSubir) {
+              console.log(`   ${p.name} (${label}) vendió al ${(margen * 100).toFixed(0)}%: lo mira el robot de precios esta noche`);
+              done = true;
+            }
+            if (!ROBOT_UNICO && autoSubeVenta && daParaSubir && mult <= MAX_UP && !yaTocado && !cruzaUmbral && !pasaTecho && !enGrupo) {
               const rp = await raisePrice(mla, varId, mult, t.access_token);
               if (rp.ok) {
                 pricedUpd[mla] = { ts: Date.now(), to: rp.to };
@@ -30210,13 +30315,9 @@ async function main() {
         try { await db.patch('cyc/avisopausadas', rAct.anotar); } catch { /* */ }
       }
     } catch (e) { console.log('No pude activar las pausadas con Full: ' + e.message); }
-    // SI CAMBIA EL COSTO DE UNA FICHA, EL ROBOT ACTÚA (23/09/2026, regla suya). Ver `subirPorCosto`.
-    // Va en la vuelta de cada hora, adentro de este bloque: escribe precios en ML, así que se apaga
-    // con `robot:off` igual que todo lo demás de acá.
-    try {
-      const rc = await subirPorCosto(db, { products, labels, accounts, tokens: tokensRun, DRY });
-      if (!DRY) for (const a of rc.avisos) await sendAlerta(a);
-    } catch (e) { console.log('No pude revisar los costos cambiados: ' + e.message); }
+    // (El paso "si cambia el costo, sube" que corría acá cada hora se mudó al robot único de la
+    // noche el mismo 23/09: el rescate de `avisos:go` mide TODO lo que quedó en 20% o menos, haya
+    // cambiado el costo o haya salido baja una venta. `porcosto` sigue para mirarlo a mano.)
   }
 
   // CAJAS QUE LLEGARON A FULL. Va en la vuelta horaria (no en las de 2 minutos): preguntarle a ML
