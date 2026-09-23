@@ -20514,7 +20514,7 @@ async function main() {
         const volumen = quiebre ? 0 : (ev.a > ev.de ? Math.min(0, volCrudo) : Math.max(0, volCrudo));
         const evs = ev.ev || {}; const juicio = (evalNuevas.filter((x) => x.id === id).sort((a, b) => b.W - a.W)[0] || {}).res;
         const v = quiebre ? 'sinstock' : ((juicio || evs.d30 || evs.d15 || evs.d7 || {}).v || '');
-        atrib.push({ mla: ev.mla, nom: nomDe(ev.mla), cuenta: (links[ev.mla] || {}).cuenta || '', origen: ev.origen,
+        atrib.push({ id, mla: ev.mla, nom: nomDe(ev.mla), cuenta: (links[ev.mla] || {}).cuenta || '', origen: ev.origen,
           de: ev.de, a: ev.a, ts: ev.ts, dias: Math.round(L), uA, uD, precio: Math.round(precio), volumen: Math.round(volumen),
           total: Math.round(precio + volumen), v, quiebre });
       }
@@ -20524,6 +20524,10 @@ async function main() {
         precio: Math.round(sumaA((x) => x.precio)),
         volumen: Math.round(sumaA((x) => x.volumen)),
         total: Math.round(sumaA((x) => x.total)),
+        // LO GANADO Y LO PERDIDO VAN SEPARADOS (pedido suyo: "quiero que sea honesto. si se pierde
+        // plata que lo avise también"). Un neto positivo puede tapar cambios que hicieron perder.
+        gano: Math.round(sumaA((x) => Math.max(0, x.total))),
+        perdio: Math.round(sumaA((x) => Math.min(0, x.total))),
         n: atrib.length,
         subas: atrib.filter((x) => x.a > x.de).length,
         bajas: atrib.filter((x) => x.a < x.de).length,
@@ -20532,7 +20536,10 @@ async function main() {
         quiebres: atrib.filter((x) => x.quiebre).length,
         enCurso, sinCosto, sinPrecio, manuales,
         desde: atrib.length ? Math.min(...atrib.map((x) => x.ts)) : null,
-        items: atrib.slice().sort((a, b) => Math.abs(b.total) - Math.abs(a.total)).slice(0, 60),
+        // TODOS los que hicieron perder van siempre, sin tope: el tope de 60 se aplica sólo a los que
+        // ganaron. Cortar la lista por tamaño podría dejar afuera justo una pérdida.
+        items: [...atrib.filter((x) => x.total < 0).sort((a, b) => a.total - b.total),
+          ...atrib.filter((x) => x.total >= 0).sort((a, b) => b.total - a.total).slice(0, 60)],
       };
 
       // ── 4. MOSTRAR ─────────────────────────────────────────────────────────────
@@ -20571,6 +20578,7 @@ async function main() {
       console.log(`=== LA AUTOMATIZACIÓN CONTRA NO TENERLA ===`);
       console.log(`${resumen.n} cambios del robot medidos (${resumen.subas} subas · ${resumen.bajas} bajas) · ${enCurso} en curso (menos de 7 días) · ${sinCosto} sin costo · ${sinPrecio} sin precio de antes · ${manuales} a mano (no cuentan)`);
       console.log(`Efecto precio (firme): ${$s(resumen.precio)} · efecto volumen (supuesto): ${$s(resumen.volumen)} · TOTAL ${$s(resumen.total)}`);
+      console.log(`Ganó ${$s(resumen.gano)} en ${resumen.ganaron} cambios · PERDIÓ ${$s(-resumen.perdio)} en ${resumen.perdieron} cambios (primero van los que perdieron)`);
       console.log(`${resumen.ganaron} dejaron más · ${resumen.perdieron} dejaron menos · ${resumen.quiebres} con el volumen sin contar por quiebre de stock`);
       for (const x of resumen.items.slice(0, 15)) console.log(`  ${x.total >= 0 ? '+' : ''}${$s(x.total)} · ${x.nom} (${x.cuenta}) ${$s(x.de)}→${$s(x.a)} · ${x.dias} d · ${x.uA}→${x.uD} u. · precio ${$s(x.precio)} · volumen ${$s(x.volumen)}${x.quiebre ? ' · sin stock' : ''}`);
       console.log('');
@@ -20598,6 +20606,41 @@ async function main() {
       const rele = (await db.get('cyc/supervisor/eventos')) || {};
       const okEv = evalNuevas.filter((x) => rele[x.id] && rele[x.id].ev && rele[x.id].ev['d' + x.W]).length;
       console.log(`\nGuardado: ${Object.keys(nuevos).length} cambios nuevos · ${okEv} de ${evalNuevas.length} evaluaciones releídas ✓`);
+
+      // ── 5b. AVISAR CUANDO LA AUTOMATIZACIÓN HACE PERDER PLATA (23/09/2026) ──────
+      // Pedido suyo: "quiero que sea honesto. si se pierde plata que lo avise también". Se avisa:
+      //  · cada cambio del robot que pasa a dejar MENOS plata que no haberlo hecho (una vez por
+      //    cambio; si la pérdida después crece al doble, se vuelve a avisar);
+      //  · y cuando el TOTAL de la automatización queda en negativo (una vez, hasta que se recupere).
+      // Corre ANTES del aviso de veredictos a propósito: ése corta si no hay evaluaciones nuevas, y
+      // una pérdida que crece en un cambio ya evaluado no genera ninguna.
+      // Pérdidas de menos de $1.000 no se avisan una por una (serían ruido), pero la tarjeta las
+      // muestra todas y el total las suma. Se anota sólo si el mensaje salió.
+      try {
+        const memP = sup.avisoPerdida || {};
+        const nuevasP = atrib.filter((x) => x.total <= -1000 && !(memP[x.id] && x.total > 2 * memP[x.id]));
+        const netoNeg = resumen.n > 0 && resumen.total < 0;
+        const avisarNeto = netoNeg && !memP._netoNeg;
+        if (nuevasP.length || avisarNeto) {
+          const L2 = ['🔻 EL ROBOT DE PRECIOS HIZO PERDER PLATA', 'Comparado contra no haber tocado el precio, con el mismo tiempo antes y después.', ''];
+          for (const x of nuevasP.sort((a, b) => a.total - b.total)) {
+            L2.push(`${x.a > x.de ? '⬆️ subió' : '⬇️ bajó'} ${nomDe(x.mla)} (${x.cuenta || '?'}) ${$s(x.de)} → ${$s(x.a)}`,
+              `   dejó ${$s(-x.total)} MENOS en ${x.dias} d · vendió ${x.uA} antes y ${x.uD} después`, '');
+          }
+          L2.push(`Total de la automatización: ${resumen.total >= 0 ? '+' : ''}${$s(resumen.total)} (ganó ${$s(resumen.gano)} · perdió ${$s(-resumen.perdio)} · ${resumen.n} cambios)`);
+          if (netoNeg) L2.push('⚠️ HOY EL NETO ES NEGATIVO: la automatización deja menos plata que no tenerla.');
+          L2.push('', 'No deshago nada solo: bajar un precio lo decidís vos. Decime cuál volver atrás.');
+          const okP = MANDAR ? await sendAlerta(L2.join('\n')) : false;
+          console.log(L2.join('\n'));
+          if (okP) {
+            const mp = {};
+            for (const x of nuevasP) mp['avisoPerdida/' + x.id] = x.total;
+            if (avisarNeto) mp['avisoPerdida/_netoNeg'] = true;
+            await db.patch('cyc/supervisor', mp);
+          }
+        }
+        if (!netoNeg && memP._netoNeg && MANDAR) await db.patch('cyc/supervisor', { 'avisoPerdida/_netoNeg': null });
+      } catch (e) { console.log(`⚠️ aviso de pérdidas: ${String(e).slice(0, 120)}`); }
 
       // ── 6. AVISAR (sin "pocas ventas" una por una: van contadas) ─────────────────
       const pendientes = evalNuevas.filter((x) => !((rele[x.id] || {}).av || {})['d' + x.W]);

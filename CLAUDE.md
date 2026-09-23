@@ -104,7 +104,7 @@ el % de ganancia único en los seis lugares · el costo "puesto en la oficina" e
 Dalí al 30% · el Puntaje recalibrado a meta 35 · las variantes de Rotación con el texto completo ·
 `gondola` (la tintura: no sirve) · `valefull` y **Full decide las compras** · Sancor y obra social
 privada unificados · las dos facturas de Sancor analizadas.
-**Versión del panel: 20.12 · caché `cyc-v290`**. El ciclo del robot quedó **prendido**.
+**Versión del panel: 20.13 · caché `cyc-v291`**. El ciclo del robot quedó **prendido**.
 
 
 ## LO QUE TRAJO EL ROBOT DE PRECIOS, CONTRA NO TENERLO (23/09/2026)
@@ -128,6 +128,15 @@ producto volvió a cambiar; con menos de 7 días queda "en curso". Dos partes, s
 **Primera medición (23/09, en prueba): 48 subas medidas · precio +$319.001 · volumen −$219.000 ·
 TOTAL +$99.999.** El volumen es el pedazo pesimista a propósito: se lleva, por ejemplo, las Sábanas
 2 plazas (14 → 0 ventas, probablemente quiebre que el stock de hoy no llegó a mostrar).
+
+**"QUIERO QUE SEA HONESTO. SI SE PIERDE PLATA QUE LO AVISE TAMBIÉN" (23/09/2026, versión 20.13 ·
+`cyc-v291`).** El neto solo podía tapar pérdidas (+$100.000 con −$64.441 de las Sábanas adentro).
+Ahora: **"Lo que ganó" y "Lo que hizo perder" van separados**, los que perdieron salen **a la vista
+y siempre todos** (el tope de 60 es sólo para los que ganaron), y si el neto da negativo sale un
+cartel rojo. Y **por Telegram** (`sendAlerta`, en el `supervisor:go` de la noche): cada cambio que
+pasa a dejar **$1.000 o más de menos** (una vez; vuelve a avisar si la pérdida se duplica) y el
+**neto negativo** (una vez, hasta que se recupere). Memoria en `cyc/supervisor/avisoPerdida`, se
+anota sólo si el mensaje salió. **No deshace nada solo**: el mensaje pide que él diga cuál volver.
 
 ## EL SUPERVISOR DE PRECIOS: CADA CAMBIO SE JUZGA A 7, 15 Y 30 DÍAS (23/09/2026)
 

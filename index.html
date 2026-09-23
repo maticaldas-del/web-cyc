@@ -2289,7 +2289,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='20.12';
+const APP_VERSION='20.13';
 // El problema real que esto resuelve no es curiosidad: es que el celular guarda la app y sigue
 // mostrando la de ayer sin avisar. Varias veces se revisó un cambio que ya estaba subido y no se
 // veía. Por eso, además del número, el chip avisa cuando hay una versión nueva esperando.
@@ -12954,7 +12954,7 @@ function renderMetAuto(){
   if(!r||!(r.ts>0)){el.innerHTML='<div class="chart-box" style="color:var(--muted);font-size:.72rem">Todavía no hay cuenta: la hace el robot todas las noches, después del aviso de precios.</div>';return;}
   const n=v=>Number(v)||0;
   const col=v=>n(v)>0?'var(--green)':n(v)<0?'var(--red)':'var(--muted)';
-  const sg=v=>(n(v)>0?'+':'')+fmt(Math.round(n(v)));
+  const sg=v=>n(v)<0?'−'+fmt(Math.round(-n(v))):(n(v)>0?'+':'')+fmt(Math.round(n(v)));
   const dias=Math.floor((Date.now()-r.ts)/864e5);
   const viejo=dias>=2?`<div style="font-size:.62rem;color:#fbbf24;margin-bottom:8px">⚠ la cuenta es de hace ${dias} días: el robot no la pudo rehacer.</div>`:'';
   const desde=r.desde?new Date(r.desde).toLocaleDateString('es-AR'):'—';
@@ -12968,7 +12968,14 @@ function renderMetAuto(){
       <div style="font-size:.58rem;color:var(--muted)">${sub}</div>
     </div>`;
   const items=Array.isArray(r.items)?r.items:[];
-  const it=items.map(x=>{
+  // LAS PÉRDIDAS VAN A LA VISTA, no adentro del desplegable (pedido suyo: "quiero que sea honesto.
+  // si se pierde plata que lo avise también"). Un neto positivo no puede tapar lo que hizo perder.
+  const gano=r.gano!=null?n(r.gano):items.reduce((a,x)=>a+Math.max(0,n(x.total)),0);
+  const perdio=r.perdio!=null?n(r.perdio):items.reduce((a,x)=>a+Math.min(0,n(x.total)),0);
+  const neg=n(r.total)<0;
+  const alerta=neg?`<div style="margin-bottom:10px;padding:8px 10px;border-radius:8px;background:rgba(239,68,68,.12);border:1px solid rgba(239,68,68,.4);font-size:.7rem;color:var(--red)"><b>⚠️ Hoy la automatización deja MENOS plata que no tenerla.</b> Mirá abajo cuáles cambios hicieron perder: ninguno se deshace solo, lo decidís vos.</div>`:'';
+  const perdidas=items.filter(x=>n(x.total)<0),ganadas=items.filter(x=>n(x.total)>=0);
+  const fila=x=>{
     const sube=n(x.a)>n(x.de);
     const pct=n(x.de)?((n(x.a)/n(x.de)-1)*100).toFixed(0):'?';
     return `<div style="padding:6px 0;border-bottom:1px solid rgba(148,163,184,.1);font-size:.66rem">
@@ -12978,17 +12985,23 @@ function renderMetAuto(){
       </div>
       <div style="font-size:.58rem;color:var(--muted)">${fmt(n(x.de))} → ${fmt(n(x.a))} (${sube?'+':''}${pct}%) · ${n(x.dias)} d · vendió ${n(x.uA)} antes y ${n(x.uD)} después · precio ${sg(x.precio)} · volumen ${x.quiebre?'no cuenta (sin stock)':sg(x.volumen)}</div>
     </div>`;
-  }).join('');
+  };
+  const itP=perdidas.map(fila).join(''),itG=ganadas.map(fila).join('');
   const resto=n(r.n)>items.length?`<div style="font-size:.58rem;color:var(--muted);margin-top:5px">y ${n(r.n)-items.length} cambios más, chicos</div>`:'';
-  el.innerHTML=`<div class="chart-box">${viejo}
-    <div style="font-size:.6rem;color:var(--muted);text-transform:uppercase;letter-spacing:.04em">Plata de más que dejaron los cambios del robot</div>
+  el.innerHTML=`<div class="chart-box">${viejo}${alerta}
+    <div style="font-size:.6rem;color:var(--muted);text-transform:uppercase;letter-spacing:.04em">${neg?'Plata de MENOS':'Plata de más'} que dejaron los cambios del robot</div>
     <div style="font-family:'Syne',sans-serif;font-weight:800;font-size:2rem;color:${col(r.total)};line-height:1.1">${sg(r.total)}</div>
-    <div style="font-size:.62rem;color:var(--muted);margin-bottom:12px">desde el ${desde} · ${n(r.n)} cambios medidos (${n(r.subas)} subas · ${n(r.bajas)} bajas) · ${n(r.ganaron)} dejaron más, ${n(r.perdieron)} dejaron menos</div>
+    <div style="font-size:.62rem;color:var(--muted);margin-bottom:12px">desde el ${desde} · ${n(r.n)} cambios medidos (${n(r.subas)} subas · ${n(r.bajas)} bajas) </div>
+    <div style="display:flex;flex-wrap:wrap;gap:12px 10px;margin-bottom:10px">
+      ${caja('Lo que ganó',gano,`${n(r.ganaron)} cambios dejaron más`)}
+      ${caja('Lo que hizo perder',perdio,`${n(r.perdieron)} cambios dejaron menos`)}
+    </div>
     <div style="display:flex;flex-wrap:wrap;gap:12px 10px;margin-bottom:10px">
       ${caja('Por el precio · firme',r.precio,'lo que sí se vendió, cobrado a otro precio')}
       ${caja('Por vender más o menos · supuesto',r.volumen,'ventas que espantó una suba o que trajo una baja')}
     </div>
-    <details><summary style="cursor:pointer;font-size:.66rem;color:var(--muted)">Cambio por cambio</summary>${it}${resto}</details>
+    ${perdidas.length?`<div style="font-size:.6rem;color:var(--red);text-transform:uppercase;letter-spacing:.04em;margin:6px 0 2px">🔻 Los que hicieron perder plata (${perdidas.length})</div>${itP}`:`<div style="font-size:.64rem;color:var(--green);margin:6px 0">✓ Ningún cambio del robot hizo perder plata hasta ahora.</div>`}
+    <details><summary style="cursor:pointer;font-size:.66rem;color:var(--muted);margin-top:8px">Los que dejaron más (${ganadas.length})</summary>${itG}${resto}</details>
     <div style="margin-top:10px;padding-top:8px;border-top:1px solid rgba(148,163,184,.16);font-size:.6rem;color:var(--muted);line-height:1.45">
       <b>Cómo se cuenta.</b> "Sin robot" es que el precio se quedaba donde estaba. Cada cambio se compara con el mismo tiempo de antes (hasta 30 días), y se corta si ese producto volvió a cambiar.
       <b>Lo firme</b> es la diferencia de precio en las unidades que sí se vendieron, neta de lo que cobra ML: sale un poco más chica que la real en las subas y un poco más grande en las bajas, o sea que nunca exagera.
