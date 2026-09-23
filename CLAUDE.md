@@ -79,6 +79,13 @@ usa** (el robot corre desde `claude/add-folder-78ysyb`).
 
 ### 5 · PENDIENTES QUE ÉL PIDIÓ RECORDAR (22/09/2026: *"acordate queda pendiente"*)
  · cargar los **4 disponibles** en Finanzas → Arqueo (el `dispo` está listo y esperando).
+ · **MOVIMIENTOS DE MP DE FIN DE MES (pedido suyo del 23/09: *"a fin de mes te paso los movimientos
+   de todo el mes de las cuatro cuentas. haceme acordar, con eso terminamos todo"*).** Hay un
+   recordatorio agendado para el **01/10 a las 10:00** (`trig_017eDNiUsKYJVZVXMFuUjbMA`). Pedirle el
+   extracto de septiembre de las 4 cuentas y con eso: saldo real de cada una, cargos de Full y
+   débitos de ML en Gastos, y chequear el disponible. **El extracto trae nombres de terceros: no va
+   al repo ni a ningún archivo.** Además se le armó un prompt para que Codex cargue los 4
+   disponibles en el Arqueo (en DÓLARES, tocando la casilla de la web).
  · el color de la **5ª publicación del Centímetro** (`MLA1841730099`).
  · **gastos de septiembre**: faltan Sancor (la factura es $163.045), intereses y los cargos de
    Full de agosto. Servicios es CERO este mes, dicho por él.
