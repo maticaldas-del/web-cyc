@@ -6000,8 +6000,22 @@ async function main() {
         const a = autoprecio[mla];
         return !!(a && a.tipo === tipo && (hoyTs - (a.ts || 0)) < dias * 864e5);
       };
-      const autoSube = nuevasSub.filter((f) => f.u >= AUTO_MIN_U && f.diasSin != null && f.diasSin <= AUTO_MAX_DSIN
-        && f.subePct <= 10.5 && !recienteAuto(f.mla, 'baja', 30));
+      // EL SUPERVISOR MANDA SOBRE LA SUBA (23/09/2026): si un cambio de precio de esta publicación
+      // salió 🔴 MALO en los últimos 60 días, no se vuelve a subir sola. Subir otra vez algo que ya
+      // dejó menos plata la vez anterior es repetir el error con el robot de testigo. Sin memoria
+      // del supervisor (no se pudo leer) no se sube nada: el lado seguro es no tocar.
+      let malosSup = new Set(), supLeido = true;
+      try {
+        const evS = (await db.get('cyc/supervisor/eventos')) || {};
+        for (const ev of Object.values(evS)) {
+          if (!ev || !ev.mla || hoyTs - (ev.ts || 0) > 60 * 864e5) continue;
+          if (Object.values(ev.ev || {}).some((r) => r && r.v === 'malo')) malosSup.add(ev.mla);
+        }
+      } catch { supLeido = false; }
+      const autoSube = nuevasSub.filter((f) => supLeido && f.u >= AUTO_MIN_U && f.diasSin != null && f.diasSin <= AUTO_MAX_DSIN
+        && f.subePct <= 10.5 && !recienteAuto(f.mla, 'baja', 30) && !malosSup.has(f.mla));
+      if (!supLeido) console.log('   ⚠️ no pude leer el supervisor: esta noche no se sube nada solo');
+      else if (malosSup.size) console.log(`   frenadas por el supervisor (un cambio les salió 🔴 malo): ${malosSup.size}`);
       const cbrAutoIds = new Set(sanasCbr.filter((f) => !yaAvisado('c_' + f.mla, 'cajabarata', f.ptw)).map((f) => f.mla));
       const sobreAutoIds = new Set(sobreSanas.filter((f) => !yaAvisado('o_' + f.mla, 'cajabarata', f.ptw)).map((f) => f.mla));
       const autoBaja = [...sanasCbr.filter((f) => cbrAutoIds.has(f.mla)), ...sobreSanas.filter((f) => sobreAutoIds.has(f.mla))]
@@ -20257,6 +20271,236 @@ async function main() {
       else console.log('  Ningún grupo está nivelando: cada publicación queda con su propio precio.');
       if (off.length) console.log(`  DESACTIVADOS (cada uno con su precio): ${off.join(' · ')}`);
       console.log('  Para apagar uno: grupos:<nombre>:off  ·  para prenderlo: grupos:<nombre>:<palabra>');
+      return;
+    }
+    // BILLING_PROBE=supervisor[:go] → EL SUPERVISOR DE PRECIOS: ¿EL CAMBIO FUE BUENO O NO? (23/09/2026)
+    //
+    // Pedido suyo: *"quiero que haya un supervisor. si se modifica un producto quiero que se evalúe
+    // cómo le fue en los próximos 7, 15 y 30 días después de la modificación del precio. si el
+    // movimiento fue bueno o no"*.
+    //
+    // DE DÓNDE SALEN LOS CAMBIOS, y son tres porque ninguno solo los ve todos:
+    //   · `mlapi/priced` — las subas del robot al vender (fecha exacta);
+    //   · `cyc/autoprecio` — lo que hace solo el aviso de la noche (fecha exacta);
+    //   · la FOTO de cada noche: se guarda el precio de hoy de cada publicación (sale de
+    //     `cyc/netopub`, que `netoweb` acaba de recalcular) y si mañana es otro, cambió. Así entran
+    //     también los cambios A MANO, que no deja anotados nadie. Ésos tienen la fecha aproximada
+    //     (entre una noche y la siguiente) y se dice.
+    //
+    // LA VARA: la PLATA que deja por día (ganancia en pesos = neto − mercadería, venta por venta),
+    // la ventana de ANTES contra la de DESPUÉS, del mismo largo. No las unidades solas: subir 10% y
+    // vender 5% menos es un buen movimiento; bajar para vender más y dejar menos plata no lo es.
+    // Sin costo cargado se juzga por unidades y se dice.
+    //
+    // LO QUE NO SE JUZGA, y se dice en vez de inventar un veredicto:
+    //   · pocas ventas (menos de 3 entre antes y después): no alcanza para decir nada;
+    //   · la mitad o más de las noches sin stock después del cambio: el precio no tuvo la culpa.
+    //     El stock se anota recién desde que existe el supervisor: lo de antes dice "no medido".
+    //
+    // Con `:go` guarda y manda por Telegram SÓLO lo que cumplió 7, 15 o 30 días y todavía no se
+    // avisó; y se anota como avisado sólo si el mensaje salió. Sin `:go` muestra y no escribe.
+    // NO TOCA NINGÚN PRECIO. Un veredicto 🔴 no se deshace solo: bajar lo decide él (regla 5).
+    if (/^supervisor(:|$)/.test(String(process.env.BILLING_PROBE || ''))) {
+      const MANDAR = /:go$/.test(String(process.env.BILLING_PROBE || '')) && !DRY;
+      const VENT = [7, 15, 30];
+      const MAX_DIAS = 40;
+      const ahora = Date.now();
+      const sidS = (s) => String(s).replace(/[^a-z0-9]/gi, '_');
+      const $s = (n) => '$' + Math.round(n).toLocaleString('es-AR');
+      let sup;
+      try { sup = (await db.get('cyc/supervisor')) || {}; }
+      catch (e) { console.log(`No pude leer la memoria del supervisor (${String(e).slice(0, 80)}): no se hace nada esta vuelta.`); return; }
+      const eventos = sup.eventos || {}, fotos = sup.precios || {};
+      const fin = (await db.get('cyc/finanzas')) || {};
+      const tc = parseFloat(fin.tipo_cambio) || 1500;
+      const links = (await db.get('cyc/mllinks')) || {};
+      const netopub = (await db.get('cyc/netopub')) || {};
+      const priced = (await db.get('mlapi/priced')) || {};
+      const autop = (await db.get('cyc/autoprecio')) || {};
+      const inv = (await db.get('cyc/inventory')) || {};
+      const vpS = (await db.get('cyc/ventaprod')) || {}; setDevLive(vpS);
+      const pIdx = {}; for (const p of products) pIdx[p.id] = p;
+
+      // Ventas por publicación, con la hora REAL de la venta.
+      const porMla = {};
+      for (const ents of Object.values(vpS)) {
+        for (const v of Object.values(ents || {})) {
+          if (!v || v.cancelada || !v.mla) continue;
+          const ts = v.ts ? new Date(v.ts).getTime() : NaN;
+          if (!isFinite(ts)) continue;
+          const q = v.qty || 1;
+          (porMla[v.mla] = porMla[v.mla] || []).push({ ts, q, neto: Number(v.neto) || 0, tot: Number(v.total) || 0 });
+        }
+      }
+      const costoDe = (mla) => {
+        const p = pIdx[(links[mla] || {}).prodId];
+        if (!p) return 0;
+        try { return costoPesos(p, 1, tc).costo || 0; } catch { return 0; }
+      };
+      const stockDe = (mla) => {
+        const l = links[mla] || {};
+        if (!l.prodId || !l.cuenta) return null;
+        const pre = l.prodId + '__' + sidS(l.cuenta);
+        let s = 0, hay = false;
+        for (const [k, v] of Object.entries(inv)) {
+          if (k !== pre && !k.startsWith(pre + '__v__')) continue;
+          hay = true; s += Math.max(0, Number(v) || 0);
+        }
+        return hay ? s : null;
+      };
+      const nomDe = (mla) => {
+        const l = links[mla] || {};
+        return String((pIdx[l.prodId] || {}).name || l.title || mla).slice(0, 34);
+      };
+      const idDe = (mla, ts) => mla + '_' + new Date(ts - 3 * 3600e3).toISOString().slice(0, 10).replace(/-/g, '');
+      const precioAntesDe = (mla, ts) => {
+        const vs = (porMla[mla] || []).filter((x) => x.ts < ts && x.tot > 0).sort((a, b) => b.ts - a.ts);
+        return vs.length ? Math.round(vs[0].tot / vs[0].q) : null;
+      };
+
+      // ── 1. LOS CAMBIOS NUEVOS ──────────────────────────────────────────────────
+      const nuevos = {};
+      const agregar = (ev) => {
+        const id = idDe(ev.mla, ev.ts);
+        if (eventos[id] || nuevos[id]) return false;
+        nuevos[id] = ev; return true;
+      };
+      for (const [mla, e] of Object.entries(priced)) {
+        if (!/^MLA/i.test(mla) || !e || !e.ts || ahora - e.ts > MAX_DIAS * 864e5) continue;
+        agregar({ mla, ts: e.ts, a: Math.round(e.to || 0) || null, de: precioAntesDe(mla, e.ts), origen: 'robot al vender', aprox: false });
+      }
+      for (const [mla, a] of Object.entries(autop)) {
+        if (!a || !a.ts || ahora - a.ts > MAX_DIAS * 864e5) continue;
+        agregar({ mla, ts: a.ts, a: Math.round(a.a || 0) || null, de: Math.round(a.de || 0) || null, origen: 'robot de noche', aprox: false });
+      }
+      // La foto: lo que cambió entre la noche pasada y hoy y NO lo anotó el robot.
+      const todosEv = () => [...Object.values(eventos), ...Object.values(nuevos)];
+      const fotosNuevas = {};
+      let aMano = 0;
+      for (const [mla, r] of Object.entries(netopub)) {
+        const p = Math.round(Number(r && r.precio) || 0);
+        if (!(p > 0)) continue;
+        const f = fotos[mla];
+        fotosNuevas[mla] = { p, ts: ahora, st: stockDe(mla) };
+        if (!f || !(f.p > 0) || Math.abs(p - f.p) / f.p < 0.005) continue;
+        const yaEsta = todosEv().some((ev) => ev.mla === mla && Math.abs(ev.ts - ahora) < 3 * 864e5
+          && ev.a && Math.abs(ev.a - p) / p < 0.01);
+        if (yaEsta) continue;
+        const ts = Math.round((f.ts + ahora) / 2);
+        if (agregar({ mla, ts, a: p, de: f.p, origen: 'fuera del robot (a mano)', aprox: true })) aMano++;
+      }
+
+      // ── 2. EL STOCK DE ESTA NOCHE, para no culpar al precio de un quiebre ──────
+      const todos = { ...eventos, ...nuevos };
+      const cambiosEv = {};
+      for (const [id, ev] of Object.entries(todos)) {
+        const dias = (ahora - ev.ts) / 864e5;
+        if (dias < 0 || dias > 30) continue;
+        const st = stockDe(ev.mla);
+        if (st == null) continue;
+        cambiosEv[id] = { noches: (ev.noches || 0) + 1, nochesSin: (ev.nochesSin || 0) + (st === 0 ? 1 : 0) };
+      }
+
+      // ── 3. EVALUAR LO QUE CUMPLIÓ 7, 15 Y 30 DÍAS ──────────────────────────────
+      const evalNuevas = [];
+      for (const [id, ev] of Object.entries(todos)) {
+        const nch = cambiosEv[id] || { noches: ev.noches || 0, nochesSin: ev.nochesSin || 0 };
+        for (const W of VENT) {
+          const k = 'd' + W;
+          if ((ev.ev || {})[k]) continue;
+          if (ahora < ev.ts + W * 864e5) continue;
+          const vs = porMla[ev.mla] || [];
+          const costo = costoDe(ev.mla);
+          const suma = (arr) => arr.reduce((a, x) => ({ u: a.u + x.q, g: a.g + (x.neto - costo * x.q) }), { u: 0, g: 0 });
+          const A = suma(vs.filter((x) => x.ts < ev.ts && x.ts >= ev.ts - W * 864e5));
+          const D = suma(vs.filter((x) => x.ts > ev.ts + 60e3 && x.ts <= ev.ts + W * 864e5));
+          // otro cambio del mismo precio en el medio ensucia la comparación
+          const otro = Object.values(todos).some((o) => o !== ev && o.mla === ev.mla && o.ts > ev.ts + 864e5 && o.ts < ev.ts + W * 864e5);
+          const usaPlata = costo > 0;
+          const mA = usaPlata ? A.g : A.u, mD = usaPlata ? D.g : D.u;
+          let v;
+          if (nch.noches >= 3 && nch.nochesSin / nch.noches >= 0.5) v = 'sinstock';
+          else if (A.u + D.u < 3) v = 'pocos';
+          else if (mA <= 0) v = mD > 0 ? 'bueno' : 'igual';
+          else {
+            const rel = (mD - mA) / Math.abs(mA);
+            v = rel >= 0.05 ? 'bueno' : rel >= -0.10 ? 'igual' : rel >= -0.30 ? 'dudoso' : 'malo';
+          }
+          const res = { v, uA: A.u, uD: D.u, gA: Math.round(A.g), gD: Math.round(D.g), plata: usaPlata, otro, stockMedido: nch.noches > 0, ts: ahora };
+          evalNuevas.push({ id, ev, W, res });
+        }
+      }
+
+      // ── 4. MOSTRAR ─────────────────────────────────────────────────────────────
+      const ICO = { bueno: '🟢 BUENO', igual: '🟢 IGUAL', dudoso: '🟠 DUDOSO', malo: '🔴 MALO', sinstock: '⚪ SIN STOCK', pocos: '· POCAS VENTAS' };
+      const EXPL = {
+        bueno: 'deja más plata por día que antes',
+        igual: 'deja lo mismo (±10%)',
+        dudoso: 'deja entre 10% y 30% menos por día',
+        malo: 'deja más de 30% menos por día',
+        sinstock: 'estuvo sin stock la mitad o más de las noches: el precio no tuvo la culpa',
+        pocos: 'menos de 3 ventas entre antes y después: no alcanza para decir',
+      };
+      const renglon = (x) => {
+        const { ev, W, res } = x;
+        const cuenta = (links[ev.mla] || {}).cuenta || '?';
+        const dir = ev.de && ev.a ? (ev.a > ev.de ? 'subió' : 'bajó') : 'cambió';
+        const pct = ev.de && ev.a ? ` (${ev.a > ev.de ? '+' : ''}${((ev.a / ev.de - 1) * 100).toFixed(0)}%)` : '';
+        const precio = `${ev.de ? $s(ev.de) + ' → ' : ''}${ev.a ? $s(ev.a) : '?'}${pct}`;
+        const pd = (n) => $s(n / W) + '/día';
+        const cmp = res.plata ? `ganancia ${pd(res.gA)} → ${pd(res.gD)}` : `(sin costo cargado: se mide por unidades)`;
+        const u = `${(res.uA / W).toFixed(2)} → ${(res.uD / W).toFixed(2)} u/día`;
+        const notas = [res.otro ? 'hubo otro cambio de precio en el medio' : '', ev.aprox ? 'fecha aprox.' : '', res.stockMedido ? '' : 'stock no medido'].filter(Boolean).join(' · ');
+        return `${ICO[res.v]} a ${W} días · ${nomDe(ev.mla)} (${cuenta})\n   ${dir} ${precio} · ${ev.origen}\n   ${cmp} · ${u}${notas ? `\n   ${notas}` : ''}`;
+      };
+      console.log(`=== SUPERVISOR DE PRECIOS ${MANDAR ? '(SE GUARDA Y SE AVISA)' : '(PRUEBA: no se guarda nada)'} ===`);
+      console.log(`Cambios que sigue: ${Object.keys(todos).length} (${Object.keys(nuevos).length} nuevos hoy · ${aMano} detectados fuera del robot)`);
+      console.log(`Foto de precios: ${Object.keys(fotosNuevas).length} publicaciones${Object.keys(fotos).length ? '' : ' · PRIMERA FOTO: los cambios a mano se ven desde mañana'}\n`);
+      const orden = ['malo', 'dudoso', 'bueno', 'igual', 'sinstock', 'pocos'];
+      evalNuevas.sort((a, b) => orden.indexOf(a.res.v) - orden.indexOf(b.res.v) || a.W - b.W);
+      for (const x of evalNuevas) console.log(renglon(x) + '\n');
+      const cuenta = {}; for (const x of evalNuevas) cuenta[x.res.v] = (cuenta[x.res.v] || 0) + 1;
+      console.log(`── RESUMEN de las evaluaciones nuevas: ${evalNuevas.length} ──`);
+      for (const k of orden) if (cuenta[k]) console.log(`  ${ICO[k]}: ${cuenta[k]} — ${EXPL[k]}`);
+
+      if (!MANDAR) { console.log('\nPRUEBA: no se guardó nada. Con ":go" guarda y avisa.'); return; }
+
+      // ── 5. GUARDAR ─────────────────────────────────────────────────────────────
+      const upd = {};
+      // OJO: Firebase rechaza un patch donde una ruta es madre de otra ('eventos/X' y
+      // 'eventos/X/ev/d7' juntas). Un cambio NUEVO va entero en un solo objeto, con sus noches y
+      // sus evaluaciones adentro; a los viejos se les escriben sólo las hojas.
+      for (const [id, ev] of Object.entries(nuevos)) {
+        const c = cambiosEv[id] || {};
+        const evs = {}; for (const x of evalNuevas) if (x.id === id) evs['d' + x.W] = x.res;
+        upd['eventos/' + id] = { ...ev, nom: nomDe(ev.mla), cuenta: (links[ev.mla] || {}).cuenta || '',
+          noches: c.noches || 0, nochesSin: c.nochesSin || 0, ...(Object.keys(evs).length ? { ev: evs } : {}) };
+      }
+      for (const [id, c] of Object.entries(cambiosEv)) { if (nuevos[id]) continue; upd['eventos/' + id + '/noches'] = c.noches; upd['eventos/' + id + '/nochesSin'] = c.nochesSin; }
+      for (const x of evalNuevas) { if (nuevos[x.id]) continue; upd['eventos/' + x.id + '/ev/d' + x.W] = x.res; }
+      for (const [mla, f] of Object.entries(fotosNuevas)) upd['precios/' + mla] = f;
+      // lo que ya pasó los 30 días y está evaluado entero se borra a los 60: si no, cementerio
+      for (const [id, ev] of Object.entries(eventos)) if (ahora - ev.ts > 60 * 864e5 && !cambiosEv[id] && !evalNuevas.some((x) => x.id === id)) upd['eventos/' + id] = null;
+      try { await db.patch('cyc/supervisor', upd); }
+      catch (e) { console.log(`⚠️ no se pudo guardar el supervisor: ${String(e).slice(0, 120)} · no se avisa nada`); return; }
+      const rele = (await db.get('cyc/supervisor/eventos')) || {};
+      const okEv = evalNuevas.filter((x) => rele[x.id] && rele[x.id].ev && rele[x.id].ev['d' + x.W]).length;
+      console.log(`\nGuardado: ${Object.keys(nuevos).length} cambios nuevos · ${okEv} de ${evalNuevas.length} evaluaciones releídas ✓`);
+
+      // ── 6. AVISAR (sin "pocas ventas" una por una: van contadas) ─────────────────
+      const paraAvisar = evalNuevas.filter((x) => x.res.v !== 'pocos' && !((rele[x.id] || {}).av || {})['d' + x.W]);
+      const pocosN = evalNuevas.filter((x) => x.res.v === 'pocos').length;
+      if (!paraAvisar.length) { console.log('No hay evaluaciones nuevas para avisar.'); return; }
+      const lineas = ['🧑‍⚖️ SUPERVISOR DE PRECIOS', 'Cómo les fue a los precios que cambiaron, contra el mismo tiempo de antes. La vara es la PLATA que dejan por día.', ''];
+      for (const x of paraAvisar) lineas.push(renglon(x), '');
+      if (pocosN) lineas.push(`(${pocosN} más con menos de 3 ventas: no alcanza para decir nada)`);
+      if (paraAvisar.some((x) => x.res.v === 'malo')) lineas.push('', 'Los 🔴 no los toco solo: si querés volver al precio de antes, decime cuál.');
+      const ok = await sendAlerta(lineas.join('\n'));
+      if (ok) {
+        const av = {}; for (const x of paraAvisar) av['eventos/' + x.id + '/av/d' + x.W] = true;
+        try { await db.patch('cyc/supervisor', av); } catch { /* se repite mañana, que es el lado seguro */ }
+        console.log(`Aviso mandado: ${paraAvisar.length} evaluaciones.`);
+      } else console.log('⚠️ el aviso no salió: no se anota como avisado, sale mañana.');
       return;
     }
     // BILLING_PROBE=efectosuba[:<días>] → ¿SE SIGUIÓ VENDIENDO DESPUÉS DE QUE EL ROBOT SUBIÓ? (23/09/2026)

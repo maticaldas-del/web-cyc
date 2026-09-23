@@ -140,6 +140,25 @@ jobs:
           TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
           BILLING_PROBE: avisos:go
         run: node ml-sync/sync.mjs
+      # EL SUPERVISOR DE PRECIOS (23/09/2026). Pedido suyo: "si se modifica un producto quiero que
+      # se evalúe cómo le fue en los próximos 7, 15 y 30 días". Saca la foto de los precios de hoy
+      # (de lo que netoweb acaba de recalcular) para ver también los cambios a mano, y evalúa los
+      # cambios que cumplieron 7/15/30 días: plata por día antes contra después. Avisa sólo lo nuevo.
+      # NO TOCA NINGÚN PRECIO.
+      - name: Supervisor de precios
+        # si falla no se lleva puesto el resto del paso nocturno
+        continue-on-error: true
+        env:
+          ML_CLIENT_ID: ${{ secrets.ML_CLIENT_ID }}
+          ML_CLIENT_SECRET: ${{ secrets.ML_CLIENT_SECRET }}
+          FIREBASE_API_KEY: ${{ secrets.FIREBASE_API_KEY }}
+          FIREBASE_DB_URL: ${{ secrets.FIREBASE_DB_URL }}
+          FIREBASE_BOT_EMAIL: ${{ secrets.FIREBASE_BOT_EMAIL }}
+          FIREBASE_BOT_PASSWORD: ${{ secrets.FIREBASE_BOT_PASSWORD }}
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+          BILLING_PROBE: supervisor:go
+        run: node ml-sync/sync.mjs
 
       # "PARA PROBAR": LA CUENTA DE ML DE LOS PRODUCTOS QUE TODAVÍA NO VENDEMOS (17/09/2026).
       #
