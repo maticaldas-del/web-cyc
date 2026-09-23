@@ -154,6 +154,28 @@ precios del supervisor, aunque la marca `liquidando` se haya caído sola).
 que cae entre 20% y el piso sigue saliendo por venta. El bloque viejo quedó en el código, apagado.
 `porcosto[:palabra][:go]` sigue para mirar a mano qué haría con un producto.
 
+**EL REMATE YA ES AUTOMÁTICO, HASTA 0% (23/09/2026).** Permiso suyo, textual: *"que haga solo
+hasta 0%. tiene mi permiso, nunca menos de 0%"* y *"yo no voy a modificar precios a mano, todo va a
+ser por el robot o yo te escribo por acá"*. Y el porqué, suyo: *"vender al 0% no siempre es
+negativo: si van a pagar stock antiguo, bajarlo al 0% y vender todo es no perder dinero"*.
+Esto cambia la regla 5 para estos casos: la noche baja SOLA, siempre **a ganar la caja de compra**
+(nunca "bajar por bajar": sin catálogo no hay precio con sentido y no se toca):
+| | cuándo | hasta |
+|---|---|---|
+| escalón 1 | 45 d sin vender | 20% |
+| escalón 2 | 90 d | 15% |
+| **escalón 3** | **120 d** (`rematarDias3`) | **0%** (`rematarPct3`) |
+| sobra y paga almacenamiento | vende, >60 d de stock, 60+ d en Full | 20% · **0% si tiene stock para 120+ d** |
+Frenos: margen contra el costo TOTAL con envío del peor caso + medio punto de colchón · `setPriceTo`
+con `autorizado` (nunca abajo de 0%, nunca más de 25% de una) · menos de 20 visitas no se toca · sin
+variantes · 5 por noche · **antes de bajar marca `liquidando`** (si no, el rescate lo subiría a la
+noche siguiente); la marca se cae sola al quedar en 0 u. Queda en `cyc/autoprecio` con `por:'remate'`.
+**Compartir la caja también cuenta** (suyo: *"no siempre es ganar o perder, pueden empatar"*): lo
+que comparte y no vende entra a bajar para ganarla entera, y **el rescate NO sube lo que comparte**
+(subirlo te saca del reparto) — va al aviso.
+**Y el "no vendió nunca" del rescate mira el producto en esa cuenta** (y su color), no sólo esa
+publicación: lo marcó con el Ferrari (*"ferrari si vendio"*).
+
 **"PARA PROBAR" TAMBIÉN AL MEDIODÍA:** `ml-candidatos.yml` corre `candidatos:go` a las 12:07, así
 los 40 de la noche + 40 del mediodía terminan una tanda en un día (pedido suyo).
 
@@ -247,7 +269,7 @@ Máximo **10 cambios por noche** (`AUTO_MAX`). Cada uno se **relee de ML**, qued
 **"⚠️ Quise y no pude"** con el motivo, y **"👀 Subí solo y dejó de vender"**: a los 7 días de una
 suba automática, si se esperaban 3+ ventas y hubo 0, lo avisa (una vez).
 
-**LO QUE SIGUE PREGUNTANDO, a propósito:** remates abajo del 25% · bajas de más de 24,5% (Lupa 90mm
+**LO QUE SIGUE PREGUNTANDO, a propósito:** ~~remates abajo del 25%~~ (automáticos desde el 23/09, ver arriba) · bajas de más de 24,5% (Lupa 90mm
 y Cinta 7.5M, que bajan 27%) · el escalón de comisión (`calcZonaMuerta`, no trae margen) · todo lo
 que tenga variantes (regla 7) · lo marcado `liquidando`.
 
