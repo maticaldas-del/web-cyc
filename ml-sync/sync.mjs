@@ -6422,11 +6422,18 @@ async function main() {
                   if (!bajoAMano[ev.mla] || ev.ts > bajoAMano[ev.mla].ts) bajoAMano[ev.mla] = ev;
                 }
               }
+              // Y LO QUE BAJÓ HOY: la foto de esta noche la saca el supervisor DESPUÉS de este paso, así
+              // que una baja a mano de hoy todavía no es un evento. Se compara el precio de ML de ahora
+              // contra la foto de anoche: si está más bajo y no lo bajó el robot, lo bajó él.
+              const fotoR = (await db.get('cyc/supervisor/precios')) || {};
+              for (const [mla, f] of Object.entries(fotoR)) if (f && f.p > 0) bajoAMano['_foto_' + mla] = f;
             } catch { /* sin la foto no se puede saber: se sigue con los otros dos frenos */ }
             const fechaR = (ts) => new Date(ts - 3 * 3600e3).toISOString().slice(5, 10).split('-').reverse().join('/');
             for (const x of rr.subir) {
               if (malosSup.has(x.mla)) { rescSup.push(x); continue; }
-              const bm = bajoAMano[x.mla];
+              const fAnoche = bajoAMano['_foto_' + x.mla];
+              const bajoHoy = fAnoche && x.de < fAnoche.p * 0.995 && !(autoprecio && autoprecio[x.mla] && hoyTs - (autoprecio[x.mla].ts || 0) < 36 * 3600e3);
+              const bm = bajoAMano[x.mla] || (bajoHoy ? { ts: hoyTs, de: fAnoche.p, a: x.de } : null);
               if (bm) { rescFren.push({ ...x, why: `lo bajaste vos a mano el ${fechaR(bm.ts)} (${money(bm.de)} → ${money(bm.a)}) · no lo subo solo; si ya no lo estás rematando, decime` }); continue; }
               const dSin = ultR[x.mla] ? Math.floor((hoyTs - ultR[x.mla]) / 864e5) : null;
               if (dSin == null || dSin > RESC_DSIN) { rescFren.push({ ...x, why: dSin == null ? 'no vendió nunca: subirlo no lo va a despertar' : `hace ${dSin} días que no vende: subirlo lo deja más frenado` }); continue; }
