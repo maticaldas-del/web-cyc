@@ -1261,7 +1261,7 @@ footer{margin-top:32px;padding-top:14px;border-top:1px solid var(--border);font-
       <button class="vbtn active" id="met-field-total"    onclick="setMetField('total')"    title="Precio total de venta (lo que pagó el comprador)">💵 Total</button>
       <button class="vbtn"        id="met-field-neto"     onclick="setMetField('neto')"     title="Neto que queda después de comisiones ML">💚 Neto</button>
       <button class="vbtn"        id="met-field-ganancia" onclick="setMetField('ganancia')" title="Ganancia = Neto − Costo">💰 Ganancia</button>
-      <button class="vbtn"        id="met-field-gananciaCYC" onclick="setMetField('gananciaCYC')" title="Ganancia de CYC = Ganancia − Gastos − Retiro de los dueños. Es el mismo número que 'Ganancia real CYC' del Resumen. Gastos y retiro se reparten entre los días según lo que vendió cada uno; en el mes en curso se resta sólo la parte de los días que ya pasaron. OJO: sólo resta los gastos CARGADOS — lo que falta cargar (intereses, obra social, lo que cobra Full por almacenamiento) hace que se vea MÁS ALTA de la real.">🏢 Ganancia CYC</button>
+      <button class="vbtn"        id="met-field-gananciaCYC" onclick="setMetField('gananciaCYC')" title="Ganancia de CYC = Ganancia − Gastos − Retiro de los dueños. Es el mismo número que 'Ganancia real CYC' del Resumen. El retiro se resta entero el primer día del mes y cada gasto el día que se pagó: no se reparte nada. OJO: sólo resta los gastos CARGADOS — lo que falta cargar (intereses, obra social, lo que cobra Full por almacenamiento) hace que se vea MÁS ALTA de la real.">🏢 Ganancia CYC</button>
     </div>
     <!-- Para comparar: se clickean las métricas de arriba. Cada una prendida dibuja su línea. -->
     <div id="ms-ctrl-dia" style="display:none;align-items:center;gap:8px">
@@ -1931,7 +1931,7 @@ function startApp(){
     const _extEntries=[];
     Object.values(_newVP).forEach(day=>Object.values(day||{}).forEach(e=>{if(e&&e.id){_allIds.add(e.id);if(_knownVentaprodIds!==null&&!_knownVentaprodIds.has(e.id))_extEntries.push(e);}}));
     _knownVentaprodIds=_allIds;
-    _gastoMesMemo={};_netoMesMemo={};_netoAggMemo=null;   // datos cambiaron → recalcular gastos/neto por mes y el margen por producto
+    _gastoMesMemo={};_netoMesMemo={};_cargosDiaMemo={};_netoAggMemo=null;   // datos cambiaron → recalcular gastos/neto por mes y el margen por producto
     rebuildReclamoStats();
     if(_extEntries.length)_applyStockEntries(_extEntries);
     document.getElementById('loading').style.display='none';
@@ -2289,7 +2289,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='20.13';
+const APP_VERSION='20.14';
 // El problema real que esto resuelve no es curiosidad: es que el celular guarda la app y sigue
 // mostrando la de ayer sin avisar. Varias veces se revisó un cambio que ya estaba subido y no se
 // veía. Por eso, además del número, el chip avisa cuando hay una versión nueva esperando.
@@ -4256,7 +4256,7 @@ function saveRetiroMes(val){
   const num=parseMoney(val);const ym=_curYM();
   if(!state.retiro_mes)state.retiro_mes={};
   state.retiro_mes[ym]=num;
-  _gastoMesMemo={};_netoMesMemo={};
+  _gastoMesMemo={};_netoMesMemo={};_cargosDiaMemo={};
   try{renderReconciliacion();}catch(e){}
   try{renderRetirosPorMes();}catch(e){}
   try{if(currentPage==='metricas')renderMetricas();}catch(e){}
@@ -4269,7 +4269,7 @@ function saveRetiroMesYM(ym,val){
   const num=parseMoney(val);
   if(!state.retiro_mes)state.retiro_mes={};
   state.retiro_mes[ym]=num;
-  _gastoMesMemo={};_netoMesMemo={};
+  _gastoMesMemo={};_netoMesMemo={};_cargosDiaMemo={};
   if(ym===_curYM()){const rm=document.getElementById('f_retiro_mes');if(rm&&document.activeElement!==rm)setMoneyVal(rm,num);}
   try{renderReconciliacion();}catch(e){}
   try{renderRetirosPorMes();}catch(e){}
@@ -12433,7 +12433,26 @@ document.addEventListener('keydown',(e)=>{if(e.key==='Escape')closeMetScopeMenu(
 // Se cambia acá y no sólo en Métricas a propósito: el Resumen y el Puntaje leen esta MISMA
 // función, y la regla de que "Ganancia CYC" diga lo mismo que el último renglón del Resumen es
 // anterior a esto. Tocar un lado solo los haría discrepar.
-let _gastoMesMemo={},_netoMesMemo={};
+let _gastoMesMemo={},_netoMesMemo={},_cargosDiaMemo={};
+// Retiro + gastos del mes, puestos en el DÍA en que salen (ver gananciaCYC en metGetValDay). El
+// retiro va al primer día del mes que tiene ventas; cada gasto a su día, o al siguiente con ventas
+// (un día sin ventas no aparece en el gráfico y el gasto se perdería). La suma del mes da exacto.
+function _cargosDia(ym){
+  if(_cargosDiaMemo[ym])return _cargosDiaMemo[ym];
+  const dias=Object.keys(state.ventaprod||{}).filter(k=>k.startsWith(ym)).sort();
+  const out={};
+  if(dias.length){
+    const md=_netoMesData(ym);
+    const rm=_retiroMesVal(ym);
+    out[dias[0]]=(out[dias[0]]||0)+(rm!=null?rm:retiroDefMes(ym,md.tot));
+    Object.values(state.compras||{}).forEach(x=>{
+      if(getCompraTipo(x)!=='gasto'||!(x.dayKey||'').startsWith(ym))return;
+      const d=dias.find(k=>k>=x.dayKey)||dias[dias.length-1];
+      out[d]=(out[d]||0)+(x.monto||0);
+    });
+  }
+  _cargosDiaMemo[ym]=out;return out;
+}
 function _gastosMes(ym){
   if(ym in _gastoMesMemo)return _gastoMesMemo[ym];
   let g=0;
@@ -12475,11 +12494,12 @@ function metGetValDay(key,acct,field){
       // Tanto los gastos como el retiro del mes se reparten entre los días proporcional al neto de
       // cada día/cuenta, así la suma del mes da exactamente el monto del mes (y no queda pegado al
       // día en que se cargó el gasto).
-      const share=md.tot>0?(neto/md.tot):0;
-      const rm=_retiroMesVal(ym); // retiro real anotado del mes (o null = usar el supuesto)
-      const rMes=rm!=null?rm:retiroDefMes(ym,md.tot);
-      const prop=_propMes(ym); // mes en curso: solo la parte de los días que ya pasaron
-      return (neto-costo)-(_gastosMes(ym)+rMes)*share*prop;
+      // CADA PESO EL DÍA QUE SALIÓ (23/09/2026): el retiro entero el primer día del mes con
+      // ventas y cada gasto el día que se cargó (si ese día no hubo ventas, el siguiente que sí).
+      // Entre cuentas se sigue repartiendo por el neto del MES de cada una: un gasto no tiene
+      // cuenta, y así la suma de las cuatro da exacto el monto.
+      const shareCta=md.tot>0?((md.per[acct]||0)/md.tot):0;
+      return (neto-costo)-(_cargosDia(ym)[key]||0)*shareCta;
     }
     return 0;
   }
@@ -13695,18 +13715,14 @@ function _retiroMesVal(ym){
   const r=state.retiro_mes&&state.retiro_mes[ym];
   return (r!=null&&r!=='')?Math.round(Number(r)||0):null;
 }
-// Qué parte del mes ya pasó. Los gastos del mes y el retiro de los dueños son del MES ENTERO;
-// cargarlos completos sobre los pocos días que van del mes en curso hace que los primeros días de
-// cada mes muestren una pérdida enorme que no existe (el 04/08 los 4 días cargaban el mes entero y
-// la Ganancia CYC caía a −$700.000). Para el mes en curso se carga solo la parte proporcional a
-// los días transcurridos. Para un mes ya cerrado devuelve 1 y no cambia nada.
+// Antes cargaba sólo la parte del mes que ya pasó (del 04/08 al 23/09/2026). Ya no: ver abajo.
 function _propMes(ym){
-  if(!ym)return 1;
-  const p=String(ym).split('_').map(Number);
-  const hoy=new Date();
-  if(p[0]!==hoy.getFullYear()||p[1]!==(hoy.getMonth()+1))return 1;
-  const dim=new Date(p[0],p[1],0).getDate();
-  return Math.min(1,hoy.getDate()/dim);
+  // YA NO SE REPARTE NADA (23/09/2026, pedido suyo): *"quiero que sea real. descontar los
+  // 1.800.000 de retiro de dueños al inicio del mes, que no se reparta durante el mes NADA. que
+  // los gastos se reflejen cuando se pagan y listo"*. O sea: el retiro entero desde el día 1 y cada
+  // gasto entero desde el día que se cargó. Los primeros días del mes la Ganancia CYC da negativa,
+  // y es la verdad: la plata ya salió. Queda la función (devolviendo 1) porque la usan tres lugares.
+  return 1;
 }
 function _puntGananciaMes(ym){
   const keys=Object.keys(state.ventaprod||{}).filter(k=>k.startsWith(ym));

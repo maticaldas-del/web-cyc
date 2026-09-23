@@ -104,8 +104,20 @@ el % de ganancia único en los seis lugares · el costo "puesto en la oficina" e
 Dalí al 30% · el Puntaje recalibrado a meta 35 · las variantes de Rotación con el texto completo ·
 `gondola` (la tintura: no sirve) · `valefull` y **Full decide las compras** · Sancor y obra social
 privada unificados · las dos facturas de Sancor analizadas.
-**Versión del panel: 20.13 · caché `cyc-v291`**. El ciclo del robot quedó **prendido**.
+**Versión del panel: 20.14 · caché `cyc-v292`**. El ciclo del robot quedó **prendido**.
 
+
+## EL RETIRO Y LOS GASTOS YA NO SE REPARTEN (23/09/2026, versión 20.14 · `cyc-v292`)
+
+Pedido suyo: *"quiero que sea real. descontar los 1.800.000 de retiro de dueños al inicio del mes,
+que no se reparta durante el mes NADA. que los gastos se reflejen cuando se pagan y listo"*.
+Desde el 04/08 el mes en curso cargaba sólo la parte de los días que ya pasaron (`_propMes`), y la
+Ganancia CYC de Métricas repartía gastos y retiro entre los días según lo vendido. Ahora:
+ · **Resumen (Cascada) y Puntaje:** el retiro entero y los gastos cargados del mes, enteros.
+ · **Métricas → Ganancia CYC día por día:** el retiro va al primer día del mes con ventas y cada
+   gasto a su día (o al siguiente con ventas, para que no se pierda). `_cargosDia`.
+**Los primeros días del mes la Ganancia CYC da negativa, y es a propósito: la plata ya salió.**
+Un mes cerrado da exactamente lo mismo que antes; sólo cambia el mes en curso y cómo se ve día a día.
 
 ## UN SOLO ROBOT DE PRECIOS, UNA VEZ POR NOCHE (23/09/2026)
 
