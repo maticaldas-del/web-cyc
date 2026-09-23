@@ -20107,6 +20107,77 @@ async function main() {
       console.log('  Para apagar uno: grupos:<nombre>:off  ·  para prenderlo: grupos:<nombre>:<palabra>');
       return;
     }
+    // BILLING_PROBE=efectosuba[:<días>] → ¿SE SIGUIÓ VENDIENDO DESPUÉS DE QUE EL ROBOT SUBIÓ? (23/09/2026)
+    //
+    // Pedido suyo: *"analizá a profundidad esa regla de subir y bajar (…) que sea automático si
+    // estás muy seguro que no va a cometer errores o perder dinero"*. Para contestar eso no alcanza
+    // con leer la regla: hay que MEDIR qué pasó con las subas que ya se hicieron solas. El robot
+    // anota cada suba en `mlapi/priced/<MLA>` ({ts, to}); acá se comparan las unidades por día de
+    // los 30 días ANTES de la suba contra las de DESPUÉS, publicación por publicación.
+    //
+    // SOLO LEE. Sin datos de compradores: sólo MLA, producto, cantidades y fechas.
+    // Lo que NO puede separar, y lo dice: una publicación que dejó de vender porque se quedó sin
+    // stock se ve igual que una que dejó de vender por el precio. Por eso imprime el stock de hoy.
+    if (/^efectosuba(:|$)/.test(String(process.env.BILLING_PROBE || ''))) {
+      const MAXD = parseFloat(String(process.env.BILLING_PROBE).split(':')[1]) || 40;
+      const MIN_DESPUES = 5;   // con menos días después no se puede decir nada
+      const priced = (await db.get('mlapi/priced')) || {};
+      const links = (await db.get('cyc/mllinks')) || {};
+      const vpE = (await db.get('cyc/ventaprod')) || {};
+      const invE = (await db.get('cyc/inventory')) || {};
+      const pIdxE = {}; for (const p of products) pIdxE[p.id] = p;
+      const ahora = Date.now();
+      // Unidades por publicación y por día (con la fecha real de la venta, no la del robot).
+      const porMla = {};
+      for (const ents of Object.values(vpE)) {
+        for (const v of Object.values(ents || {})) {
+          if (!v || v.cancelada || !v.mla) continue;
+          const ts = v.ts ? new Date(v.ts).getTime() : NaN;
+          if (!isFinite(ts)) continue;
+          (porMla[v.mla] = porMla[v.mla] || []).push({ ts, q: v.qty || 1 });
+        }
+      }
+      const filas = [], muyNuevas = [];
+      for (const [mla, e] of Object.entries(priced)) {
+        if (!/^MLA/i.test(mla) || !e || !e.ts) continue;
+        const dias = (ahora - e.ts) / 864e5;
+        if (dias > MAXD) continue;
+        const l = links[mla] || {};
+        const nom = (l.title || (pIdxE[l.prodId] || {}).name || mla).slice(0, 34);
+        if (dias < MIN_DESPUES) { muyNuevas.push(`${nom} (hace ${dias.toFixed(1)} d)`); continue; }
+        const vs = porMla[mla] || [];
+        const antes = vs.filter((x) => x.ts < e.ts && x.ts >= e.ts - 30 * 864e5).reduce((a, x) => a + x.q, 0);
+        // La venta que DISPARÓ la suba es la última de antes y no dice nada del precio nuevo.
+        const despues = vs.filter((x) => x.ts > e.ts + 60e3).reduce((a, x) => a + x.q, 0);
+        const dDesp = Math.min(dias, 30);
+        const rAntes = antes / 30, rDesp = despues / dDesp;
+        const st = l.prodId && l.cuenta ? Number(invE[`${l.prodId}__${String(l.cuenta).toLowerCase()}`]) : NaN;
+        filas.push({ mla, nom, cuenta: l.cuenta || '?', dias, antes, despues, rAntes, rDesp, to: e.to, caja: l.caja || '—', st });
+      }
+      filas.sort((a, b) => (b.rAntes - a.rAntes));
+      console.log(`=== ¿SE SIGUIÓ VENDIENDO DESPUÉS DE SUBIR? · subas del robot de los últimos ${MAXD} días ===`);
+      console.log(`Compara unidades por día: 30 días ANTES de la suba contra lo que va DESPUÉS.\n`);
+      let igual = 0, bajo = 0, cero = 0, cero_sinStock = 0, sinBase = 0;
+      for (const f of filas) {
+        let veredicto;
+        if (f.rAntes === 0) { veredicto = '· no vendía antes (no se puede comparar)'; sinBase++; }
+        else if (f.despues === 0 && f.st === 0) { veredicto = '⚪ 0 después, pero HOY no tiene stock'; cero_sinStock++; }
+        else if (f.despues === 0) { veredicto = f.rAntes * f.dias >= 2 ? '🔴 dejó de vender' : '🟠 0 después (vendía poco: no alcanza para decir)'; cero++; }
+        else if (f.rDesp >= f.rAntes * 0.6) { veredicto = '🟢 sigue vendiendo'; igual++; }
+        else { veredicto = '🟠 vende menos'; bajo++; }
+        console.log(`  ${veredicto}`);
+        console.log(`     ${f.nom} · ${f.cuenta} · ${f.mla} · subido a $${Math.round(f.to || 0).toLocaleString('es-AR')} hace ${f.dias.toFixed(0)} d`);
+        console.log(`     antes ${f.rAntes.toFixed(2)}/día (${f.antes} u.) · después ${f.rDesp.toFixed(2)}/día (${f.despues} u.) · caja hoy: ${f.caja} · stock hoy: ${isFinite(f.st) ? f.st : '?'}`);
+      }
+      console.log(`\n── RESUMEN · ${filas.length} subas con ${MIN_DESPUES}+ días para mirar ──`);
+      console.log(`  🟢 siguen vendiendo (60%+ del ritmo de antes): ${igual}`);
+      console.log(`  🟠 venden menos: ${bajo}`);
+      console.log(`  🔴/🟠 cero después: ${cero}   ·  ⚪ cero pero sin stock hoy: ${cero_sinStock}`);
+      console.log(`  · no vendían antes: ${sinBase}`);
+      if (muyNuevas.length) console.log(`  Muy recientes para medir (menos de ${MIN_DESPUES} días): ${muyNuevas.length} · ${muyNuevas.join(' · ')}`);
+      console.log(`\nSOLO LECTURA.`);
+      return;
+    }
     // BILLING_PROBE=tocados[:<horas>][:bajar:<MLA|todos>] → QUÉ PRECIOS TOCÓ SOLO EL ROBOT en las
     // últimas N horas (default 72) y en qué margen quedaron HOY, con la comisión oficial de ML. Sirve
     // para revisar el daño de haber corrido con la meta vieja (42%): muestra cuáles quedaron muy por
