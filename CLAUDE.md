@@ -104,8 +104,23 @@ el % de ganancia único en los seis lugares · el costo "puesto en la oficina" e
 Dalí al 30% · el Puntaje recalibrado a meta 35 · las variantes de Rotación con el texto completo ·
 `gondola` (la tintura: no sirve) · `valefull` y **Full decide las compras** · Sancor y obra social
 privada unificados · las dos facturas de Sancor analizadas.
-**Versión del panel: 20.10 · caché `cyc-v288`** (en la rama de trabajo; la principal sigue en 20.08). El ciclo del robot quedó **prendido**.
+**Versión del panel: 20.11 · caché `cyc-v289`**. El ciclo del robot quedó **prendido**.
 
+
+## EL RECARGO DE PARAGUAY PASÓ DE 15% A 17% (23/09/2026)
+
+Pedido suyo: *"cambialo a 17"*. La compra del 21/09 costó **19,9% arriba de la FACTURA**
+(US$ 469,40) pero **~17,3% arriba del precio que muestra la WEB** (US$ 479,70), porque el mayorista
+cobró US$ 10,30 menos que la lista. **Todo el panel calcula contra el precio de la web**, así que el
+número que corresponde es el 17%.
+ · Vive en **`RECARGO_PY`** (`index.html`) y **`RECARGO_PAR`** (`sync.mjs`, arriba de todo). En el
+   robot estaba escrito 1,15 en nueve lugares; ahora es uno. Los textos de las pantallas de Paraguay
+   dicen "17%" a mano: si el número cambia, buscar "17%" ahí.
+ · **`CAND_CALC_VER` pasó a 7**: cambia el costo de todos los candidatos, así que se vuelven a medir.
+ · **El costo de lo YA comprado no se tocó**: es lo que se pagó y vive en cada ficha.
+ · **Al chat de compras NO se le dice que sume 17%**: lo suma el panel. Si lo sumara él, se contaría
+   dos veces.
+ · Vale para pedidos de ~US$ 500. Uno de US$ 1.000 diluye el costo fijo (~$103.600) y baja a ~13%.
 
 ## PISO DURO: NINGÚN PRODUCTO SE BAJA POR DEBAJO DEL PISO CONFIGURADO
 
@@ -2864,9 +2879,8 @@ la segunda dio 18,9%. Si pegó la vieja, se le pasa ésta entera.
 
 ### LO QUE CUESTA TRAER UN PEDIDO (bloque listo para pegar · 22/09/2026)
 
-Preguntado por él: *"¿eso se agrega en el prompt guay?"*. **Sí, pero sólo la conclusión de compra,
-no el número:** el chat sigue calculando con el **15%** —con UNA sola compra medida no se mueve el
-número que usan todos los márgenes—. Lo que le sirve al chat es saber que **el pedido tiene un
+Preguntado por él: *"¿eso se agrega en el prompt guay?"*. **Sí, pero sólo la conclusión de compra:**
+el número lo pone el panel (`RECARGO_PY`, **17% desde el 23/09/2026**) y el chat no le suma nada. Lo que le sirve al chat es saber que **el pedido tiene un
 peaje fijo**, porque eso cambia cómo se arma.
 
 > **TRAER UN PEDIDO TIENE UN COSTO FIJO: CONVIENE LLENARLO**
@@ -2878,7 +2892,7 @@ peaje fijo**, porque eso cambia cómo se arma.
 >   ~$10.400 y el correo $19.000 por 6,5 kg). Se pagan igual traigas 5 productos o 30.
 >
 > **Qué hacer con eso:**
-> 1. **Seguí calculando con el 15%.** No lo cambies por tu cuenta.
+> 1. **El recargo es 17% (desde el 23/09/2026) y lo suma el panel solo.** Vos cargá el precio CRUDO de la web; no le sumes nada.
 > 2. **Llená el pedido hasta el tope que te dé Matías.** Con el doble de mercadería el fijo pesa la
 >    mitad y el recargo baja a ~12,7%. Un pedido chico es el más caro por unidad.
 > 3. **Un producto barato NO paga más recargo que uno caro.** El peaje fijo no se reparte por

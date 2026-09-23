@@ -2282,7 +2282,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='20.10';
+const APP_VERSION='20.11';
 // El problema real que esto resuelve no es curiosidad: es que el celular guarda la app y sigue
 // mostrando la de ayer sin avisar. Varias veces se revisó un cambio que ya estaba subido y no se
 // veía. Por eso, además del número, el chip avisa cuando hay una versión nueva esperando.
@@ -3132,7 +3132,13 @@ const UMBRAL_ENVIO_GRATIS=33000;
 // El precio en dólares sale de comprasparaguay (Nissei muestra guaraníes), y el robot NO puede
 // leer esa página: contesta 403 aunque se le pida igual que un navegador. Por eso lo carga él,
 // o el chat que mira los precios.
-const RECARGO_PY=1.15;
+// ── 23/09/2026: PASÓ DE 15% A 17%, pedido suyo. La compra del 21/09 midió 19,9% contra la FACTURA
+// y ~17,3% contra el precio de la WEB de comprasparaguay, que es contra el que se calcula todo acá.
+// Vale para pedidos de ~US$ 500: el costo fijo del pedido (el que retira, la transferencia y el
+// correo, ~$103.600) pesa menos en uno más grande. Los textos de la pantalla dicen "17%" a mano:
+// si este número cambia, buscar "17%" en las pantallas de Paraguay.
+// El costo de lo YA comprado NO cambia: es lo que se pagó y vive en cada ficha.
+const RECARGO_PY=1.17;
 // ── EL CARGO FIJO DE ML, Y POR QUÉ LA COMISIÓN NO ES UN % PAREJO ──────────────────────────
 // Medido con `comisiones` el 11/09/2026 preguntándole a ML publicación por publicación: la
 // comisión NO es un porcentaje parejo, es **un % del precio MÁS un cargo fijo por venta**. Por eso
@@ -3890,8 +3896,8 @@ function paraguayHtml(p){
     <div style="font-size:.58rem;color:#f87171;text-transform:uppercase;letter-spacing:.08em;margin-bottom:2px">🇵🇾 Paraguay <span style="text-transform:none;letter-spacing:0;font-size:.92em;color:var(--muted)">· mirado ${cuando}</span></div>
     <div style="display:flex;align-items:flex-end;gap:10px;flex-wrap:wrap">
       <div><label title="El código de NISSEI, el que se usa para hacer el pedido. NO es el número interno que muestra la lista de Nissei.">Código Nissei ⓘ</label><br><input type="text" style="width:110px" value="${(p.codPy||'').replace(/"/g,'&quot;')}" oninput="guardarProdLuego('${p.id}',this.value,updNisseiCod)" onchange="updNisseiCod('${p.id}',this.value)" placeholder="p. ej. 91832"></div>
-      <div><label title="El precio en dólares que muestra comprasparaguay, CRUDO, sin el 15%.">Precio Nissei US$ ⓘ</label><br><input type="number" min="0" step="0.01" style="width:100px" value="${nu||''}" oninput="guardarProdLuego('${p.id}',this.value,updNisseiUSD)" onchange="updNisseiUSD('${p.id}',this.value)"></div>
-      ${nu>0?`<div style="font-size:.66rem;padding-bottom:6px;color:var(--muted)" title="El 15% incluye la compra del dólar con sus comisiones y el traslado hasta tu oficina.">
+      <div><label title="El precio en dólares que muestra comprasparaguay, CRUDO, sin el 17%.">Precio Nissei US$ ⓘ</label><br><input type="number" min="0" step="0.01" style="width:100px" value="${nu||''}" oninput="guardarProdLuego('${p.id}',this.value,updNisseiUSD)" onchange="updNisseiUSD('${p.id}',this.value)"></div>
+      ${nu>0?`<div style="font-size:.66rem;padding-bottom:6px;color:var(--muted)" title="El 17% incluye la compra del dólar con sus comisiones y el traslado hasta tu oficina.">
         × 1,15 = <b style="color:var(--text)">US$ ${puesto.toFixed(2)}</b> puesto
       </div>`:''}
     </div>
@@ -9708,8 +9714,8 @@ function pyPedidoDetalleHTML(c){
     <div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:10px">
       <div style="flex:1;min-width:190px;background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:9px 11px">
         <div style="font-size:.58rem;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:4px">La plata</div>
-        ${fila('mercadería cruda','US$ '+(c.usdCrudo||0).toFixed(2),'El precio de comprasparaguay, sin el 15%.')}
-        ${fila('con el '+Math.round(((c.recargo||RECARGO_PY)-1)*100)+'%','US$ '+puesto.toFixed(2),'Ese 15% ya incluye comprar los dólares y el flete hasta la oficina.')}
+        ${fila('mercadería cruda','US$ '+(c.usdCrudo||0).toFixed(2),'El precio de comprasparaguay, sin el 17%.')}
+        ${fila('con el '+Math.round(((c.recargo||RECARGO_PY)-1)*100)+'%','US$ '+puesto.toFixed(2),'Ese 17% ya incluye comprar los dólares y el flete hasta la oficina.')}
         ${tc?fila('en pesos',fmt(Math.round(puesto*tc))+' <span style="color:var(--muted);font-size:.9em">· dólar '+fmt(Math.round(tc))+'</span>','Con el dólar del DÍA del pedido, no el de hoy: lo que compraste a un precio no cambia solo.'):fila('en pesos','<span style="color:var(--amber)">no había dólar cargado ese día</span>')}
         ${c.gananciaEst?fila('si se vende todo deja','<b style="color:var(--green)">'+fmt(c.gananciaEst)+'</b>','Estimado con el margen medido de cada producto al momento del pedido.'):''}
       </div>
@@ -9736,11 +9742,11 @@ function pyPedidoDetalleHTML(c){
         ${fila('correo',(Number(pagos.envio)||0)>0?fmt(Math.round(Number(pagos.envio))):'<span style="color:var(--amber)">falta</span>','El flete. Hasta que no esté, el recargo real sale más barato de lo que es.')}
         ${Number(pagos.otros)>0?fila('otros',fmt(Math.round(Number(pagos.otros)))):''}
         ${fila('<b>TOTAL</b>','<b>'+fmt(Math.round(totARS))+'</b>')}
-        ${tc&&c.usdCrudo>0?fila('recargo REAL de esta compra','<b>'+(((totARS/tc)/c.usdCrudo-1)*100).toFixed(1)+'%</b> <span style="color:var(--muted)">· el panel usa '+Math.round(((c.recargo||RECARGO_PY)-1)*100)+'%</span>','Lo que de verdad te salió poner esta mercadería en la oficina, contra el 15% que el panel le suma a todo.'):''}
+        ${tc&&c.usdCrudo>0?fila('recargo REAL de esta compra','<b>'+(((totARS/tc)/c.usdCrudo-1)*100).toFixed(1)+'%</b> <span style="color:var(--muted)">· el panel usa '+Math.round(((c.recargo||RECARGO_PY)-1)*100)+'%</span>','Lo que de verdad te salió poner esta mercadería en la oficina, contra el 17% que el panel le suma a todo.'):''}
         ${tc&&c.usdCrudo>0&&((Number(pagos.envio)||0)+(Number(pagos.retira)||0)+(Number(pagos.otros)||0))>0?fila('de eso, FIJO por pedido','<b>'+fmt(Math.round((Number(pagos.envio)||0)+(Number(pagos.retira)||0)+(Number(pagos.otros)||0)))+'</b> <span style="color:var(--muted)">· en uno del doble pesaría la mitad</span>','El correo y el que despacha no cambian si pedís más mercadería. Por eso los pedidos chicos salen más caros por unidad.'):''}
         ${c.usdPanel?`<div style="font-size:.6rem;color:var(--muted);margin-top:4px">El panel tenía anotado US$ ${c.usdPanel.toFixed(2)} y mandaste US$ ${(c.usdCrudo||0).toFixed(2)}: el recargo se mide contra lo que mandaste.</div>`:''}
         ${c.incompleto?`<div style="font-size:.6rem;color:var(--amber);margin-top:4px">⚠️ Falta el correo, así que ese recargo está CORTO: el real es más alto.</div>`:''}`
-      :`<div style="font-size:.63rem;color:var(--muted);line-height:1.6">Todavía no están cargados. Van cuando tengas la factura y el flete, con <code style="font-size:.95em">compray:${c.fecha}|usd=${(c.usdCrudo||0).toFixed(2)}|merc=&lt;pesos&gt;|envio=&lt;pesos&gt;|go</code> desde el chat.<br>Sin eso el recargo real de esta compra no se puede medir y el panel sigue usando el 15% de siempre.</div>`}
+      :`<div style="font-size:.63rem;color:var(--muted);line-height:1.6">Todavía no están cargados. Van cuando tengas la factura y el flete, con <code style="font-size:.95em">compray:${c.fecha}|usd=${(c.usdCrudo||0).toFixed(2)}|merc=&lt;pesos&gt;|envio=&lt;pesos&gt;|go</code> desde el chat.<br>Sin eso el recargo real de esta compra no se puede medir y el panel sigue usando el 17%.</div>`}
     </div>
     <div style="font-size:.58rem;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:5px">Los productos</div>
     ${(c.items||[]).slice().sort((a,b)=>((b.usd||0)*b.u)-((a.usd||0)*a.u)).map(it=>{
@@ -9751,7 +9757,7 @@ function pyPedidoDetalleHTML(c){
           <div style="font-size:.7rem;font-weight:600;line-height:1.3">${it.nom||'—'}</div>
           <div style="font-size:.58rem;color:var(--muted);margin-top:2px;line-height:1.7">
             ${it.cod?'🔖 '+it.cod:'<span style="color:var(--amber)">🔖 sin código</span>'}
-            ${it.usd?` · US$ ${it.usd.toFixed(2)} + 15% = US$ ${(Math.round(it.usd*RECARGO_PY*100)/100).toFixed(2)} c/u`:' · <span style="color:var(--amber)">sin precio</span>'}
+            ${it.usd?` · US$ ${it.usd.toFixed(2)} + 17% = US$ ${(Math.round(it.usd*RECARGO_PY*100)/100).toFixed(2)} c/u`:' · <span style="color:var(--amber)">sin precio</span>'}
             ${it.margen!=null?` · margen medido al pedirlo <b style="color:${it.margen>=CAND_PISO_PCT?'var(--green)':'var(--amber)'}">${it.margen.toFixed(1)}%</b>`:' · <span style="color:var(--muted)">sin margen medido</span>'}
             ${it.pesoKg!=null?` · ${it.pesoKg.toFixed(3)} kg c/u`:(it.pesoTxt?` · peso "${it.pesoTxt}" <span style="color:var(--amber)">(sin unidad, no lo cuento)</span>`:'')}
             ${(lML||it.link)?`<br>${lML?`<a href="${lML}" target="_blank" rel="noopener" style="color:#60a5fa">ver en ML</a>`:''}${lML&&it.link?' · ':''}${it.link?`<a href="${it.link}" target="_blank" rel="noopener" style="color:#60a5fa">ver en comprasparaguay</a>`:''}`:'<br><span style="color:var(--amber)">sin links guardados</span>'}
@@ -9811,10 +9817,10 @@ function pedNuevosHTML(vivos){
       <div style="font-size:.6rem;color:var(--muted)">poné las unidades en cada producto de abajo · la web sólo hace las cuentas</div>
     </div>
     <div style="background:var(--surface);border-radius:9px;padding:11px 13px;margin-bottom:9px">
-      <div style="font-size:.6rem;color:var(--muted);letter-spacing:.04em">TOTAL DEL PEDIDO · mercadería, sin el 15%</div>
+      <div style="font-size:.6rem;color:var(--muted);letter-spacing:.04em">TOTAL DEL PEDIDO · mercadería, sin el 17%</div>
       <div style="font-size:2.1rem;font-weight:700;line-height:1.15;margin:2px 0 3px">US$ ${P.crudo.toFixed(2)}</div>
       <div style="font-size:.66rem;color:var(--muted);line-height:1.6">
-        con el 15% son <b style="color:var(--text)">US$ ${puesto.toFixed(2)}</b>${tc?` · ${fmt(Math.round(puesto*tc))}`:''}
+        con el 17% son <b style="color:var(--text)">US$ ${puesto.toFixed(2)}</b>${tc?` · ${fmt(Math.round(puesto*tc))}`:''}
         <br>${P.filas.length} producto${P.filas.length===1?'':'s'} · ${P.unidades} unidad${P.unidades===1?'':'es'}${P.ganancia>0?` · si se vende todo deja <b style="color:var(--green)">${fmt(Math.round(P.ganancia))}</b>`:''}
       </div>
       <div style="margin-top:8px">
@@ -9830,7 +9836,7 @@ function pedNuevosHTML(vivos){
       ${P.noDan.length?`<div style="font-size:.62rem;color:var(--red);margin-top:5px">🚫 <b>${P.noDan.length} ya no llega(n) a tu piso de ${CAND_PISO_PCT}%</b> y están sumando en el total. Se cargaron cuando todavía daban. No los saco solo: abajo tienen el botón.</div>`:''}
     </div>
     <div style="display:flex;gap:7px;flex-wrap:wrap;align-items:flex-end;margin-bottom:9px">
-      ${[['pedTopeUSD',tope,'Tope del pedido (US$)','Hasta cuántos dólares de mercadería CRUDA (sin el 15%) querés gastar. No frena: si te pasás lo dice en rojo y seguís.'],
+      ${[['pedTopeUSD',tope,'Tope del pedido (US$)','Hasta cuántos dólares de mercadería CRUDA (sin el 17%) querés gastar. No frena: si te pasás lo dice en rojo y seguís.'],
          ['pedMaxU',maxU,'Máx. u. por producto','Cuántas unidades como mucho de cada producto pone el botón de llenar. A mano podés cargar más: sólo avisa.'],
          ['pedMinVent',minV,'Mín. vendidas en ML','Tu vara para este pedido. El botón de llenar no agarra nada que venda menos, ni nada sin el dato cargado.']]
         .map(([k,v,t,ay])=>`<label style="flex:1;min-width:105px" title="${ay}">
@@ -9851,7 +9857,7 @@ function pedNuevosHTML(vivos){
         <div style="font-size:.71rem;font-weight:600;line-height:1.3">${f.c.nombre}</div>
         <div style="font-size:.59rem;color:var(--muted);margin-top:2px;line-height:1.7">
           ${String(f.c.cod||'').trim()?'🔖 '+String(f.c.cod).trim():'<span style="color:var(--amber)">🔖 sin código — no entra en el mensaje a Nissei</span>'}
-          ${f.usd>0?` · te sale US$ ${f.usd.toFixed(2)} + 15% = <b style="color:var(--text)">US$ ${(Math.round(f.usd*RECARGO_PY*100)/100).toFixed(2)}</b> c/u${tc?` · ${fmt(Math.round(f.usd*RECARGO_PY*tc))}`:''}`:' · <span style="color:var(--red)">sin precio</span>'}
+          ${f.usd>0?` · te sale US$ ${f.usd.toFixed(2)} + 17% = <b style="color:var(--text)">US$ ${(Math.round(f.usd*RECARGO_PY*100)/100).toFixed(2)}</b> c/u${tc?` · ${fmt(Math.round(f.usd*RECARGO_PY*tc))}`:''}`:' · <span style="color:var(--red)">sin precio</span>'}
           ${candPreciosHTML(f.c)?`<br>${candPreciosHTML(f.c)}`:' · <span style="color:var(--amber)">sin margen medido</span>'}
           ${candPuedePedir(f.c).ok?'':`<br><span style="color:var(--red);font-weight:700">🚫 ${candPuedePedir(f.c).motivo}</span> · <a href="#" onclick="event.preventDefault();candSetPedir('${f.c.id}',0)" style="color:var(--red);font-weight:700">sacarlo del pedido</a>`}
         </div>
@@ -9943,12 +9949,12 @@ function simPYHTML(){
     <div style="margin-top:9px;padding:12px 13px;background:var(--surface2);border-radius:10px;border:1px solid var(--border)">
       <div style="font-size:.61rem;color:var(--muted);line-height:1.6;margin-bottom:11px">
         El simulador de ML te dice cuánto te deposita y nada más. Éste le suma lo que ML no sabe:
-        la mercadería con el 15% de Paraguay, el IIBB, el monotributo, lo que cobra Full y los reclamos.
+        la mercadería con el 17% de Paraguay, el IIBB, el monotributo, lo que cobra Full y los reclamos.
         <b>No guarda nada ni toca ningún precio: sólo calcula.</b>
         ${tc?'':'<br><span style="color:var(--red)">⚠️ No hay dólar cargado: el costo en pesos va a dar cero.</span>'}
       </div>
       <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(232px,1fr));gap:10px">
-        ${campo(1,'Precio en comprasparaguay','obligatorio','El precio en <b>dólares</b> de la fila de <b>NISSEI</b>, <b>crudo</b>: sin sumarle el 15%. El panel se lo suma solo. Si lo cargás con el 15% adentro, el margen sale mal.',
+        ${campo(1,'Precio en comprasparaguay','obligatorio','El precio en <b>dólares</b> de la fila de <b>NISSEI</b>, <b>crudo</b>: sin sumarle el 17%. El panel se lo suma solo. Si lo cargás con el 17% adentro, el margen sale mal.',
           `<div style="display:flex;align-items:center;gap:6px;font-size:.78rem">US$ ${inp('spy-usd','0,00','',96)}</div>`)}
         ${campo(2,'A cuánto lo vendés en ML','obligatorio','El precio que va a pagar el comprador. En un producto nuevo no lo elegís vos: poné el del vendedor <b>MÁS BARATO</b>, que es contra el que vas a competir.',
           `<div style="display:flex;align-items:center;gap:6px;font-size:.78rem">$ ${inp('spy-precio','0','',118)}</div>`)}
@@ -10085,7 +10091,7 @@ function simPYCalc(){
     <div style="border-top:1px solid var(--border);margin:4px 0"></div>
     ${fila('te deposita ML',r.neto,'')}
     ${fila('IIBB + monotributo ('+impPct.toFixed(2)+'%)',r.imp,'−')}
-    ${fila('mercadería puesta (US$ '+puestoUSD.toFixed(2)+')',mercPy,'−','US$ '+usd.toFixed(2)+' de comprasparaguay + 15% = US$ '+puestoUSD.toFixed(2)+', al dólar de hoy.')}
+    ${fila('mercadería puesta (US$ '+puestoUSD.toFixed(2)+')',mercPy,'−','US$ '+usd.toFixed(2)+' de comprasparaguay + 17% = US$ '+puestoUSD.toFixed(2)+', al dólar de hoy.')}
     ${aFull?fila('mandarlo a Full ('+fmt(costoCaja())+' ÷ '+cajaU+')',aFull,'−','Lo que sale mandar una caja a Full, repartido entre las unidades que entran. Es el mismo número que el Envío+embalaje de cualquier ficha.'):''}
     ${recl?fila('reclamos ('+devP.toFixed(1)+'%)',recl,'−'):''}
     <div style="border-top:1px solid var(--border);margin:6px 0"></div>
@@ -10308,7 +10314,7 @@ async function candCrearFicha(id){
   const usd=parseFloat(c.usd)||0;
   const puesto=usd>0?Math.round(usd*RECARGO_PY*100)/100:0;
   const rep=candFichasParecidas(c.nombre);
-  if(!confirm(`Crear la ficha de:\n\n${c.nombre}\n\nCosto US$ ${puesto.toFixed(2)} (precio de Paraguay ${usd.toFixed(2)} + 15%)\nCódigo de pedido: ${c.cod||'(sin código)'}\nOrigen: Paraguay\n`
+  if(!confirm(`Crear la ficha de:\n\n${c.nombre}\n\nCosto US$ ${puesto.toFixed(2)} (precio de Paraguay ${usd.toFixed(2)} + 17%)\nCódigo de pedido: ${c.cod||'(sin código)'}\nOrigen: Paraguay\n`
     +(rep.length?`\n⚠️ OJO: ya hay ${rep.length} ficha(s) con un nombre parecido:\n${rep.slice(0,4).map(p=>'· '+p.name).join('\n')}\nSi es el mismo producto, no crees otra.\n`:'')
     +`\nNo publica nada en ML ni compra nada.`))return;
   const r=await candFichaDesde({id,nombre:c.nombre,usd:c.usd,cod:c.cod,ts:c.ts});
@@ -11934,7 +11940,7 @@ function pedGuayHTML(prod){
   const viejo=dias==null||dias>30;
   out.push(chip(`🇵🇾 US$ ${nu.toFixed(2)}${dias!=null?` · hace ${dias} d`:' · sin fecha'}`,viejo?'var(--amber)':'var(--muted)',
     viejo?`Precio de comprasparaguay, pero ${dias==null?'sin fecha de cuándo se miró':`mirado hace ${dias} días`}. Antes de decidir una compra conviene volver a mirarlo: el proveedor se mueve.`
-         :`Precio de comprasparaguay, mirado hace ${dias} días. Puesto en tu oficina son US$ ${(nu*RECARGO_PY).toFixed(2)} (con el 15%).`));
+         :`Precio de comprasparaguay, mirado hace ${dias} días. Puesto en tu oficina son US$ ${(nu*RECARGO_PY).toFixed(2)} (con el 17%).`));
   // ── QUE EL COSTO Y EL PRECIO DE PARAGUAY SEAN DISTINTOS ES LO NORMAL (18/09/2026) ──────
   // Hasta hoy acá salía **"⚠️ el costo no está al día"** cada vez que el costo no era el precio de
   // Paraguay + 15%, y el globito cerraba con *"tocá Usar este costo si el de Paraguay es el
@@ -11954,7 +11960,7 @@ function pedGuayHTML(prod){
     const dif=((puesto-cu)/cu)*100;
     const txt=dif>1?`🔴 reponerlo sale ${Math.round(dif)}% más caro`:dif<-1?`🟢 reponerlo sale ${Math.round(Math.abs(dif))}% más barato`:'= reponerlo sale igual';
     out.push(chip(txt,dif>1?'var(--red)':dif<-1?'var(--green)':'var(--muted)',
-      `Pagaste US$ ${cu.toFixed(2)} puesto en tu oficina (unos US$ ${(cu/RECARGO_PY).toFixed(2)} en Paraguay + 15%). Reponerlo hoy sale US$ ${puesto.toFixed(2)} puesto (US$ ${nu.toFixed(2)} en Paraguay + 15%). Que los dos números sean distintos es lo normal: uno es lo que pagaste y decide los márgenes de lo que ya tenés, el otro sólo dice si conviene volver a comprarlo. El costo NO se pisa nunca con el precio de Paraguay.`));
+      `Pagaste US$ ${cu.toFixed(2)} puesto en tu oficina (unos US$ ${(cu/RECARGO_PY).toFixed(2)} en Paraguay + 17%). Reponerlo hoy sale US$ ${puesto.toFixed(2)} puesto (US$ ${nu.toFixed(2)} en Paraguay + 17%). Que los dos números sean distintos es lo normal: uno es lo que pagaste y decide los márgenes de lo que ya tenés, el otro sólo dice si conviene volver a comprarlo. El costo NO se pisa nunca con el precio de Paraguay.`));
   }
   return out.join('');
 }

@@ -3552,6 +3552,14 @@ async function resolveTgChat(db) {
 // cobra siempre, y como este producto nunca vendió se usa el PEOR de los medidos en ventas
 // reales ($6.190). Errar para el lado caro hace ver el margen MENOR, que es el lado seguro
 // cuando el número decide una compra.
+// EL RECARGO DE PARAGUAY: lo que se le suma al precio CRUDO de comprasparaguay para tenerlo puesto
+// en la oficina (dólares + el que retira + transferencia + correo). Era 15% a ojo; la compra del
+// 21/09 midió 19,9% contra la FACTURA y ~17,3% contra el precio de la WEB, que es contra el que
+// se calcula todo. Pasado a 17% el 23/09/2026, pedido suyo. UN solo número para todo el robot:
+// antes estaba escrito 1,15 en nueve lugares. Ojo: vale para pedidos de ~US$ 500; uno de US$ 1.000
+// diluye el costo fijo y baja a ~13%.
+const RECARGO_PAR = 1.17;
+const RECARGO_PAR_PCT = Math.round((RECARGO_PAR - 1) * 100);
 const CAND_TOPE_USD = 250;      // suyo: un producto caro se come el pedido de US$1.000 entero
 const CAND_PISO_PCT = 25;       // suyo: "el % sano es de 25 hacia arriba"
 const CAND_ENVIO_ARRIBA = 6190; // el peor envío de Full medido en ventas reales, arriba de la barrera
@@ -3579,7 +3587,9 @@ const CAND_MAX_ML = 40;         // tope de consultas a ML por vuelta (ver abajo)
 // otro cambio de CUENTA, no un campo. Sin subir este número, los que hoy están arriba del piso se
 // quedaban con el margen medido contra un vendedor que no hay que igualar — y son justo los que
 // entran al pedido. Un cambio en la fórmula cuenta igual que un campo nuevo, por cuarta vez.
-const CAND_CALC_VER = 6;
+// QUINTA VEZ, 23/09/2026: el recargo de Paraguay pasó de 15% a 17%. Cambia el costo puesto de
+// TODOS los candidatos, o sea la cuenta: sin subir esto, los que dan se quedaban con el 15%.
+const CAND_CALC_VER = 7;
 
 // ── UN DESCARTE POR MARGEN NO ES "NUNCA MÁS" (19/09/2026) ─────────────────────────────────
 // Regla suya, textual: *"yo no pondría ningún producto en NUNCA MÁS. salvo producto que después
@@ -3906,7 +3916,7 @@ async function correrCandidatos(db, products, labels, accounts, soloPrueba, prue
     if (c.prodId) { yaFicha++; continue; }     // ya se le creó la ficha: dejó de ser candidato
     mirados++;
     const usd = parseFloat(c.usd) || 0;
-    const puesto = usd > 0 ? Math.round(usd * 1.15 * 100) / 100 : 0;
+    const puesto = usd > 0 ? Math.round(usd * RECARGO_PAR * 100) / 100 : 0;
     const fuera = async (motivo, margenHoy) => {
       // `margenHoy` sólo viene cuando el descarte es por NO LLEGAR AL PISO. Es lo que distingue el
       // descarte BLANDO (se vuelve a medir a los 7 días) del DURO (marca frenada, sin Nissei, sin
@@ -4310,7 +4320,7 @@ async function correrCandidatos(db, products, labels, accounts, soloPrueba, prue
   if (nuevosQueDan.length) {
     console.log(`\n── LOS ${nuevosQueDan.length} QUE DAN ${CAND_PISO_PCT}% O MÁS (de mejor a peor) ──`);
     [...nuevosQueDan].sort((a, b) => b.margen - a.margen).forEach((x, i) => {
-      console.log(`${String(i + 1).padStart(3)}. ${x.margen.toFixed(1).padStart(5)}%  ·  US$ ${x.puesto.toFixed(2).padStart(7)} puesto (US$ ${(x.puesto / 1.15).toFixed(2)} + 15%)`
+      console.log(`${String(i + 1).padStart(3)}. ${x.margen.toFixed(1).padStart(5)}%  ·  US$ ${x.puesto.toFixed(2).padStart(7)} puesto (US$ ${(x.puesto / RECARGO_PAR).toFixed(2)} + ${RECARGO_PAR_PCT}%)`
         + `  ·  en ML ${x.mlMax > x.mlPrecio ? `de ${money(Math.round(x.mlPrecio))} a ${money(x.mlMax)}` : money(Math.round(x.mlPrecio))} (${x.mlVendedores} vend. · ${_ventasTxt(x.c)})  ·  ${money(Math.round(x.ganancia))}/u.`);
       console.log(`      ${x.c.nombre}${x.c.mlId ? '' : '   ⚠️ emparejado por NOMBRE, chequealo'}${Number(x.c.pedirU) > 0 ? `   🧾 ya lo pediste: ${Number(x.c.pedirU)} u.` : ''}`);
     });
@@ -10312,7 +10322,7 @@ async function main() {
     // está marcada como Bs As, el dato existe y la pantalla de Paraguay no lo muestra — que es el
     // descarte silencioso de siempre.
     if (String(process.env.BILLING_PROBE || '') === 'guay') {
-      const RECARGO_PY = 1.15;
+      const RECARGO_PY = RECARGO_PAR;
       const fin = (await db.get('cyc/finanzas')) || {};
       const tcG = parseFloat(fin.tipo_cambio) || 1500;
       const hoy = Date.now();
@@ -10361,8 +10371,8 @@ async function main() {
         // dividir por 1,15 y va con ~ porque en las compras viejas el recargo no siempre fue
         // exacto (suyo: *"si no da justo el 15% es porque en ese caso gastamos menos o mas"*).
         const crudoPago = isFinite(cu) && cu > 0 ? cu / RECARGO_PY : null;
-        console.log(`     pagaste: ${isFinite(cu) && cu > 0 ? 'US$ ' + cu.toFixed(2) + ' puesto en tu oficina = ' + money(Math.round(cu * tcG)) + `   (~US$ ${crudoPago.toFixed(2)} en Paraguay + 15%)` : '— SIN COSTO (se ve como todo ganancia)'}`);
-        if (puesto != null) console.log(`     reponerlo hoy: US$ ${puesto.toFixed(2)} puesto   (US$ ${nu.toFixed(2)} en Paraguay + 15%)`
+        console.log(`     pagaste: ${isFinite(cu) && cu > 0 ? 'US$ ' + cu.toFixed(2) + ' puesto en tu oficina = ' + money(Math.round(cu * tcG)) + `   (~US$ ${crudoPago.toFixed(2)} en Paraguay + ${RECARGO_PAR_PCT}%)` : '— SIN COSTO (se ve como todo ganancia)'}`);
+        if (puesto != null) console.log(`     reponerlo hoy: US$ ${puesto.toFixed(2)} puesto   (US$ ${nu.toFixed(2)} en Paraguay + ${RECARGO_PAR_PCT}%)`
           + (difPct != null ? `   ·   ${difPct > 1 ? '🔴 ' + difPct.toFixed(0) + '% MÁS CARO' : difPct < -1 ? '🟢 ' + Math.abs(difPct).toFixed(0) + '% MÁS BARATO' : '= igual'} que lo que pagaste` : ''));
         console.log('');
       }
@@ -10659,7 +10669,7 @@ async function main() {
       }).filter((x) => x.u > 0);
       const colgados = vivos.filter(([id, c]) => c.no && ((cambios.find((x) => x.id === id) || {}).u ?? (Number(c.pedirU) || 0)) > 0);
       const crudo = final.reduce((s, x) => s + (parseFloat(x.c.usd) || 0) * x.u, 0);
-      console.log(`\n🧾 EL PEDIDO QUEDA EN: ${final.length} producto(s) · ${final.reduce((s, x) => s + x.u, 0)} u. · US$ ${crudo.toFixed(2)} crudos · US$ ${(crudo * 1.15).toFixed(2)} puestos · ${money(Math.round(crudo * 1.15 * tcp))}`);
+      console.log(`\n🧾 EL PEDIDO QUEDA EN: ${final.length} producto(s) · ${final.reduce((s, x) => s + x.u, 0)} u. · US$ ${crudo.toFixed(2)} crudos · US$ ${(crudo * RECARGO_PAR).toFixed(2)} puestos · ${money(Math.round(crudo * RECARGO_PAR * tcp))}`);
       if (crudo > 500) console.log(`   ⚠️ pasa tu tope de US$ 500 crudos por US$ ${(crudo - 500).toFixed(2)}`);
       if (colgados.length) console.log(`   (aparte: ${colgados.length} candidato(s) DESCARTADO(s) tienen unidades viejas cargadas. El panel no los muestra y no van en el pedido: ${colgados.map(([, c]) => c.nombre).slice(0, 6).join(' · ')}${colgados.length > 6 ? ' …' : ''})`);
       if (!APLICAR) { console.log('\nPRUEBA: no escribí nada. Para aplicar, agregá  ;go  al final.'); return; }
@@ -10771,7 +10781,7 @@ async function main() {
       for (const [id, c] of lista) {
         n++;
         const usd = parseFloat(c.usd) || 0;
-        const puesto = usd > 0 ? Math.round(usd * 1.15 * 100) / 100 : 0;
+        const puesto = usd > 0 ? Math.round(usd * RECARGO_PAR * 100) / 100 : 0;
         const reparos = [], frenos = [];
         console.log(`━━ ${n}. ${c.nombre} ━━`);
 
@@ -10786,7 +10796,7 @@ async function main() {
         const dCarga = _rvDias(Number(c.ts) || 0);
         if (!(usd > 0)) { frenos.push('no tiene precio de Paraguay'); console.log('  💵 precio de Paraguay: ❌ FALTA'); }
         else {
-          console.log(`  💵 Paraguay: US$ ${usd.toFixed(2)} crudo → US$ ${puesto.toFixed(2)} puesto (+15%) = ${money(Math.round(puesto * tc))}`);
+          console.log(`  💵 Paraguay: US$ ${usd.toFixed(2)} crudo → US$ ${puesto.toFixed(2)} puesto (+${RECARGO_PAR_PCT}%) = ${money(Math.round(puesto * tc))}`);
           console.log(`     cargado hace ${dCarga == null ? '?' : dCarga} día(s). ⚠️ Ojo: eso es cuándo se CARGÓ, no cuándo se miró el precio en comprasparaguay — esa fecha todavía no se guarda.`);
           if (puesto > CAND_TOPE_USD) { frenos.push(`puesto sale US$ ${puesto.toFixed(2)}, pasa tu tope de US$ ${CAND_TOPE_USD}`); console.log(`     ❌ pasa tu tope de US$ ${CAND_TOPE_USD} la unidad`); }
         }
@@ -11032,7 +11042,7 @@ async function main() {
       const conU = [...verdes, ...ambar, ...rojos].filter((x) => x.u > 0);
       if (conU.length) {
         const crudo = conU.reduce((s, x) => s + x.usd * x.u, 0);
-        console.log(`\n🧾 EL PEDIDO CARGADO HOY: ${conU.length} producto(s) · ${conU.reduce((s, x) => s + x.u, 0)} u. · US$ ${crudo.toFixed(2)} crudos · US$ ${(crudo * 1.15).toFixed(2)} puestos`);
+        console.log(`\n🧾 EL PEDIDO CARGADO HOY: ${conU.length} producto(s) · ${conU.reduce((s, x) => s + x.u, 0)} u. · US$ ${crudo.toFixed(2)} crudos · US$ ${(crudo * RECARGO_PAR).toFixed(2)} puestos`);
         // Y SE NOMBRAN, no sólo se cuentan. "4 producto(s) · 8 u." obliga a salir del comando e ir a
         // buscarlos al panel para saber si son los mismos que uno está por recomendar — y si no lo son,
         // el total del pedido es otro. Un número sin los nombres no deja decidir nada.
@@ -11265,7 +11275,7 @@ async function main() {
       const fin = (await db.get('cyc/finanzas')) || {};
       const tc = parseFloat(fin.tipo_cambio) || 1500;
       // El 15% lo puso él y "incluye todo: compra dólar, transporte hasta llegar a la oficina".
-      const RECARGO_PY = 1.15;
+      const RECARGO_PY = RECARGO_PAR;
       // El cambio NO se inventa: sale de la base y lo carga él con `gsdolar`. Sin él no se
       // convierte nada y se informa en guaraníes, que es la verdad de lo que dice la página.
       const GS_USD = parseFloat(((await db.get('cyc/mlconfig')) || {}).gsPorDolar) || 0;
@@ -11378,7 +11388,7 @@ async function main() {
           console.log('   ⚠️ NO elijo cuál es: decime vos cuál de éstos es el que usás para pedir y lo guardo.\n');
         } catch (err) { console.log('   ❌ no pude abrir la ficha: ' + String(err.message || err).slice(0, 100) + '\n'); }
       }
-      console.log('El "puesto en tu oficina" es la mercadería sola: US$ de Nissei + 15% × dólar.');
+      console.log('El "puesto en tu oficina" es la mercadería sola: US$ de Nissei + ' + RECARGO_PAR_PCT + '% × dólar.');
       console.log('Todavía NO tiene la caja a Full, ni la comisión de ML, ni el envío, ni IIBB, ni monotributo.');
       console.log('Y NO elijo ninguno: el título y el código están enteros para que decidas vos.');
       return;
@@ -26241,7 +26251,7 @@ async function main() {
           sinCta.push(nom); continue;
         }
         const envio = precio >= UMBRAL_ENVIO_GRATIS ? CAND_ENVIO_ARRIBA : 0;
-        const costo = usd * 1.15 * tc;
+        const costo = usd * RECARGO_PAR * tc;
         const m = {};
         for (const k of CTAS) {
           const imp = precio * (ML_EXTRA_PCT[k] + monoP) / 100;
@@ -26267,7 +26277,7 @@ async function main() {
       for (const k of CTAS) if (porCta[k].length) console.log(`${NOM[k]}: ${porCta[k].length} producto(s) · ${porCta[k].join(' · ')}`);
       if (sinCta.length) console.log(`Sin proponer (${sinCta.length}): ${sinCta.join(' · ')}`);
       console.log(`\nSi se vendiera todo, así quedaría la facturación de 90 días: ` + CTAS.map((k) => `${NOM[k]} ${money(Math.round(acum[k]))}`).join(' · '));
-      console.log(`\nOJO: el margen usa el precio de ML de la última medición y el 15% de recargo. Antes de publicar, ${'`'}revisarcompra${'`'} lo vuelve a medir de HOY.`);
+      console.log(`\nOJO: el margen usa el precio de ML de la última medición y el ${RECARGO_PAR_PCT}% de recargo. Antes de publicar, ${'`'}revisarcompra${'`'} lo vuelve a medir de HOY.`);
       return;
     }
 
@@ -26343,7 +26353,7 @@ async function main() {
         // producto (esos pesos no existen ni van a existir, dicho por él), pero es el dato con el
         // que se compara el correo de un pedido contra el siguiente.
         const kgPedido = campos.kg != null ? num(campos.kg) : (yaG && yaG.kgCorreo != null ? Number(yaG.kgCorreo) : null);
-        if (!(usd > 0)) { console.log('Falta `usd=` (los dólares CRUDOS de comprasparaguay, sin el 15%). Sin eso no hay contra qué medir.'); return; }
+        if (!(usd > 0)) { console.log('Falta `usd=` (los dólares CRUDOS de comprasparaguay, sin el recargo). Sin eso no hay contra qué medir.'); return; }
         if (!(merc > 0)) { console.log('Falta `merc=` (los pesos que salieron por la mercadería).'); return; }
         if (envio == null) { console.log('Falta `envio=` (los pesos del correo). Si todavía no lo sabés poné `envio=0`: queda marcado INCOMPLETO y no entra en el promedio.'); return; }
         const id = 'py' + fecha.replace(/-/g, '');
@@ -26451,7 +26461,7 @@ async function main() {
         if (tcPanel > 0) {
           const puestoUSD = totARS / tcPanel;
           const rec1 = (puestoUSD / usd - 1) * 100;
-          console.log(`  RECARGO REAL DE ESTA COMPRA: ${rec1.toFixed(1)}%  (el panel usa ${Math.round((1.15 - 1) * 100)}%)`);
+          console.log(`  RECARGO REAL DE ESTA COMPRA: ${rec1.toFixed(1)}%  (el panel usa ${RECARGO_PAR_PCT}%)`);
           console.log(`     · parte que ESCALA (los dólares): ${(((merc + cambio) / tcPanel / usd - 1) * 100).toFixed(1)}%`);
           console.log(`     · parte FIJA por pedido (envío${otros ? ' + otros' : ''}): ${money(Math.round(fijos))} = US$ ${(fijos / tcPanel).toFixed(2)}, o sea ${((fijos / tcPanel) / usd * 100).toFixed(1)}% en ESTE pedido`);
           console.log(`       OJO: la parte fija NO cambia si el pedido es más grande. En un pedido del doble pesaría la mitad.`);
@@ -26477,7 +26487,7 @@ async function main() {
       if (!todas.length) {
         console.log(`Todavía no hay ninguna. Se carga así:`);
         console.log(`  compray:2026-09-19|usd=526.70|merc=580000|cambio=12000|envio=25000|go`);
-        console.log(`\nMientras tanto el panel sigue usando el 15% de siempre.`);
+        console.log(`\nMientras tanto el panel sigue usando el ${RECARGO_PAR_PCT}%.`);
         return;
       }
       let sumU = 0, sumFijoU = 0, sumVar = 0, n = 0;
@@ -26521,7 +26531,7 @@ async function main() {
         }
         if (!n) {
           console.log(`Y tampoco hay ninguna con tipo de cambio guardado, así que no hay nada que medir.`);
-          console.log(`El panel sigue con el 15% de siempre.`);
+          console.log(`El panel sigue con el ${RECARGO_PAR_PCT}%.`);
           return;
         }
       }
@@ -26535,7 +26545,7 @@ async function main() {
         const pct = ((tam * (1 + varProm) + fijoProm) / tam - 1) * 100;
         console.log(`   pedido de US$ ${String(tam).padStart(5)} →  ${pct.toFixed(1)}%`);
       }
-      console.log(`\nEl panel usa 15% fijo para TODOS los tamaños (RECARGO_PY). Con una sola compra medida esto es una referencia, no un número para cambiar el panel: hacen falta dos o tres para separar bien lo fijo de lo variable.`);
+      console.log(`\nEl panel usa ${RECARGO_PAR_PCT}% fijo para TODOS los tamaños (RECARGO_PAR). Sale de la compra del 21/09 medida contra el precio de la web; con dos o tres compras más se separa bien lo fijo de lo variable.`);
       // ── PRODUCTO POR PRODUCTO: QUÉ SALE CARO DE TRAER ─────────────────────
       // Pedido suyo del 21/09/2026: *"que se vaya haciendo un historial y cuando sale mas % en que
       // compra y producto por tamaño, peso unidades, costo. todo asi sabemos mejor que comprar"*.
@@ -26620,7 +26630,7 @@ async function main() {
             const co = f.correoU == null ? 'falta pes' : money(Math.round(f.correoU));
             console.log(`  ${(f.pct == null ? '?' : f.pct.toFixed(1) + '%').padStart(8)}  ${f.uUsd.toFixed(2).padStart(8)}  ${money(Math.round(f.puesto)).padStart(10)}  ${co.padStart(9)}  ${f.u} u · ${String(f.nom).slice(0, 40)}`);
           }
-          const RECARGO_PANEL = 1.15;   // ver el comentario del MIN_GROSS: NO leer RECARGO_PY acá
+          const RECARGO_PANEL = RECARGO_PAR;   // el de arriba de todo: RECARGO_PY vive adentro de otro bloque
           console.log(`\n  LA CONCLUSIÓN, y NO es "lo barato no conviene":`);
           console.log(`  El panel le suma ${Math.round((RECARGO_PANEL - 1) * 100)}% a TODOS por igual, y el recargo medido del pedido entero`);
           console.log(`  fue ${(varProm * 100).toFixed(1)}% que escala + ${money(Math.round(peajeTot + correoTot))} fijos.`);
