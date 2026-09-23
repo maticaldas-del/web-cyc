@@ -107,6 +107,38 @@ privada unificados · las dos facturas de Sancor analizadas.
 **Versión del panel: 20.11 · caché `cyc-v289`**. El ciclo del robot quedó **prendido**.
 
 
+## EL SUPERVISOR DE PRECIOS: CADA CAMBIO SE JUZGA A 7, 15 Y 30 DÍAS (23/09/2026)
+
+Pedido suyo: *"quiero que haya un supervisor. si se modifica un producto quiero que se evalúe cómo
+le fue en los próximos 7, 15 y 30 días después de la modificación del precio. si el movimiento fue
+bueno o no"*. Comando **`supervisor[:go]`**; corre solo en `ml-daily` después del aviso de la
+noche, con `continue-on-error` (si falla no se lleva puesto el resto del paso nocturno).
+
+**De dónde salen los cambios (tres fuentes, porque ninguna sola los ve todos):** `mlapi/priced`
+(subas del robot al vender) · `cyc/autoprecio` (lo que hace solo el aviso de la noche) · y una FOTO
+de precios por noche (`cyc/supervisor/precios`, sale de `cyc/netopub`) que agarra **los cambios a
+mano**, con fecha aproximada. Vive en `cyc/supervisor/eventos`; se borra a los 60 días.
+
+**La vara es la PLATA por día** (neto − mercadería, venta por venta), la ventana de antes contra la
+de después del mismo largo. 🟢 bueno (+5%) · 🟢 igual (±10%) · 🟠 dudoso (−10 a −30%) · 🔴 malo
+(peor que −30%). **No se juzga** con menos de 3 ventas antes (la regla de `PED_MIN_VENTAS_RITMO`)
+ni cuando estuvo sin stock la mitad de las noches (el stock se anota cada noche desde el 23/09; lo
+de antes mira el stock de hoy).
+
+**LA TRAMPA QUE AGARRÓ LA PRIMERA CORRIDA:** el robot sube JUSTO DESPUÉS de una venta, así que la
+ventana de antes tenía esa venta siempre y toda suba salía peor de lo que fue. Se saca la venta de
+la hora anterior a la suba. Sin eso daba **23 🔴 de 95**; con el arreglo, **16 🔴 · 7 🟠 · 28 🟢 bueno ·
+3 🟢 igual · 41 sin juicio** (corrida en prueba del 23/09). Los 🔴 reales que se ven: Termómetro Cable
+(Luciana, dejó de vender tras +10%), Kit Limpia (Ayelen), Sábanas 2 plazas. **Ojo: la ventana de 7
+días es ruidosa** — De la Patagonia salió 🔴 a 7 y 15 días e 🟢 igual a 30.
+
+**Y MANDA SOBRE LA SUBA AUTOMÁTICA:** lo que salió 🔴 en los últimos 60 días no se vuelve a subir
+solo. Si el supervisor no se puede leer, esa noche no se sube nada. **Un 🔴 NO se deshace solo**:
+bajar lo decide él (regla 5), el aviso lo dice.
+
+**El aviso:** una línea por cambio (la ventana más larga de esa vuelta); si son más de 12, van
+enteras las 🔴 y 🟠 y las 🟢 contadas. Se anota como avisado sólo si el mensaje salió.
+
 ## LOS PRECIOS SE MUEVEN SOLOS, DENTRO DE UN CORRAL, Y SE AVISA (23/09/2026)
 
 Pedido suyo: *"quiero que analices a profundidad esa regla de subir y bajar productos y que sea
@@ -140,6 +172,11 @@ que tenga variantes (regla 7) · lo marcado `liquidando`.
 
 **Se apaga con `cyc/mlconfig/autoPrecios = 'off'`.** La prueba en seco del 23/09 dio: subir 0 (nada
 nuevo) · bajar 1 → **De la Patagonia (Adriana) $48.870 → $48.510**, 27,5%.
+**Bajados A MANO el 23/09 con su OK** (bajaban 27%, más de lo que el robot hace solo; en dos pasos porque
+`setPriceTo` no baja más de 25% de una): **Lupa 90mm** (Ayelen, `MLA3165633184`) $7.517 → **$5.470** —
+la otra publicación, `MLA3690637828`, quedó igual sola porque ML les sincroniza el precio — y **Cinta
+7.5M** (Ayelen, `MLA3180252166`) $17.358 → **$12.590**. Las dos releídas de ML y marcadas
+`liquidando` (el robot no se las sube; se saca con `liquidando:-<MLA>:go`).
 
 ## EL RECARGO DE PARAGUAY PASÓ DE 15% A 17% (23/09/2026)
 
