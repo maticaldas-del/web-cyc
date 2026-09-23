@@ -20527,12 +20527,6 @@ async function main() {
         desde: atrib.length ? Math.min(...atrib.map((x) => x.ts)) : null,
         items: atrib.slice().sort((a, b) => Math.abs(b.total) - Math.abs(a.total)).slice(0, 60),
       };
-      console.log(`=== LA AUTOMATIZACIÓN CONTRA NO TENERLA ===`);
-      console.log(`${resumen.n} cambios del robot medidos (${resumen.subas} subas · ${resumen.bajas} bajas) · ${enCurso} en curso (menos de 7 días) · ${sinCosto} sin costo · ${sinPrecio} sin precio de antes · ${manuales} a mano (no cuentan)`);
-      console.log(`Efecto precio (firme): ${$s(resumen.precio)} · efecto volumen (supuesto): ${$s(resumen.volumen)} · TOTAL ${$s(resumen.total)}`);
-      console.log(`${resumen.ganaron} dejaron más · ${resumen.perdieron} dejaron menos · ${resumen.quiebres} con el volumen sin contar por quiebre de stock`);
-      for (const x of resumen.items.slice(0, 15)) console.log(`  ${x.total >= 0 ? '+' : ''}${$s(x.total)} · ${x.nom} (${x.cuenta}) ${$s(x.de)}→${$s(x.a)} · ${x.dias} d · ${x.uA}→${x.uD} u. · precio ${$s(x.precio)} · volumen ${$s(x.volumen)}${x.quiebre ? ' · sin stock' : ''}`);
-      console.log('');
 
       // ── 4. MOSTRAR ─────────────────────────────────────────────────────────────
       const ICO = { bueno: '🟢 BUENO', igual: '🟢 IGUAL', dudoso: '🟠 DUDOSO', malo: '🔴 MALO', sinstock: '⚪ SIN STOCK', pocos: '· POCAS VENTAS' };
@@ -20566,6 +20560,13 @@ async function main() {
       console.log(`── RESUMEN de las evaluaciones nuevas: ${evalNuevas.length} ──`);
       for (const k of orden) if (cuenta[k]) console.log(`  ${ICO[k]}: ${cuenta[k]} — ${EXPL[k]}`);
 
+      console.log('');
+      console.log(`=== LA AUTOMATIZACIÓN CONTRA NO TENERLA ===`);
+      console.log(`${resumen.n} cambios del robot medidos (${resumen.subas} subas · ${resumen.bajas} bajas) · ${enCurso} en curso (menos de 7 días) · ${sinCosto} sin costo · ${sinPrecio} sin precio de antes · ${manuales} a mano (no cuentan)`);
+      console.log(`Efecto precio (firme): ${$s(resumen.precio)} · efecto volumen (supuesto): ${$s(resumen.volumen)} · TOTAL ${$s(resumen.total)}`);
+      console.log(`${resumen.ganaron} dejaron más · ${resumen.perdieron} dejaron menos · ${resumen.quiebres} con el volumen sin contar por quiebre de stock`);
+      for (const x of resumen.items.slice(0, 15)) console.log(`  ${x.total >= 0 ? '+' : ''}${$s(x.total)} · ${x.nom} (${x.cuenta}) ${$s(x.de)}→${$s(x.a)} · ${x.dias} d · ${x.uA}→${x.uD} u. · precio ${$s(x.precio)} · volumen ${$s(x.volumen)}${x.quiebre ? ' · sin stock' : ''}`);
+      console.log('');
       if (!MANDAR) { console.log('\nPRUEBA: no se guardó nada. Con ":go" guarda y avisa.'); return; }
 
       // ── 5. GUARDAR ─────────────────────────────────────────────────────────────
