@@ -107,6 +107,33 @@ privada unificados · las dos facturas de Sancor analizadas.
 **Versión del panel: 20.13 · caché `cyc-v291`**. El ciclo del robot quedó **prendido**.
 
 
+## SI CAMBIA EL COSTO DE UNA FICHA, EL ROBOT ACTÚA (23/09/2026)
+
+Regla suya: *"El costo real del producto es el que esta en arqueo/productos. No las que carga el chat
+de paraguay en pedidos. Si yo modifico un costo en arqueo/productos quiero que se modifique si queda
+por debajo del 20% o sea que el robot actue"*.
+
+**Hasta ese día un costo nuevo sólo movía el precio con la PRÓXIMA venta** (el robot que sube al
+vender). Ahora, **una vez por hora**, `subirPorCosto` compara `costUSD|shipUSD` de cada ficha contra
+la foto de la vuelta anterior (`cyc/costosnap`) y mide **sólo lo que cambió**.
+ · **El costo que cuenta es el de la ficha.** El precio de Paraguay (`nisseiUSD`) NO dispara nada
+   (regla del 17/09), y tampoco el dólar: eso no es "él cambió un costo".
+ · **La cuenta es la de `submargen`**, que salió a una función compartida (`calcSubirPorMargen`):
+   la misma del comando a mano, no una copia. Toca si el margen **redondeado** da `subeDesde` (20)
+   o menos y lo lleva a `targetPct` (25).
+ · **Frenos:** tope +25% de una (si hace falta más sube 25% y lo dice) · `liquidando` · lo que el
+   supervisor juzgó 🔴 en 60 días no se sube (se avisa) · barrera $33.000 y techo $600.000 · el
+   interruptor es el mismo del robot de ventas (`subeventa`) · **la primera vuelta sólo saca la
+   foto** (si no, subiría de golpe todo lo que hoy está abajo del 20% sin que nadie tocara nada) ·
+   si no se puede leer la foto, `liquidando` o el supervisor, no toca nada.
+ · Relee de ML, queda en `cyc/autoprecio/<MLA>` con `por:'costo'` (el supervisor lo juzga como
+   **"robot por costo"** y el robot de la noche no lo baja en 14 días) y avisa por Telegram, también
+   lo que quedó abajo y no pudo subir.
+ · Para mirarlo antes: **`porcosto[:<palabra>][:go]`** hace de cuenta que esas fichas cambiaron.
+
+**Lo que sigue pendiente, propuesto y sin decidir:** que los robots de precio (al vender, de noche y
+por costo) decidan con UNA sola cuenta y los mismos frenos. Hoy el de ventas NO mira el supervisor.
+
 ## LO QUE TRAJO EL ROBOT DE PRECIOS, CONTRA NO TENERLO (23/09/2026)
 
 Pedido suyo: *"una tarjeta que muestre la ganancia que generó esta idea (…) aumenté las cartas y se
