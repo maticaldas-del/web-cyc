@@ -107,6 +107,40 @@ privada unificados · las dos facturas de Sancor analizadas.
 **Versión del panel: 20.11 · caché `cyc-v289`**. El ciclo del robot quedó **prendido**.
 
 
+## LOS PRECIOS SE MUEVEN SOLOS, DENTRO DE UN CORRAL, Y SE AVISA (23/09/2026)
+
+Pedido suyo: *"quiero que analices a profundidad esa regla de subir y bajar productos y que sea
+automático. que no me pregunte más, que me avise solamente"* y el freno: *"que sea automático si
+estás muy seguro que no va a cometer errores o perder dinero"*.
+
+**PRIMERO SE MIDIÓ SI SUBIR MATA VENTAS: `efectosuba[:días]` (solo lee).** Compara unidades por día
+en los 30 días antes y después de cada suba que hizo el robot (`mlapi/priced`). Sobre **52 subas**:
+**30 siguieron vendiendo igual o más · 6 venden menos · 15 en cero**. Los ceros son casi todos
+productos que vendían 1 o 2 por mes (sin dato para concluir); los dos cortes reales fueron el
+Termómetro Nevera (en revisión de ML) y las Sábanas 2 plazas (sin stock). Los que más venden
+(infusores, termómetro cocina, pendrive 64gb) mantuvieron el ritmo. **O sea: una suba chica en algo
+que rota no frena ventas.** Ojo: la columna de stock del comando sale "?" (la clave de inventario no
+engancha) — no cambia la conclusión, pero está sin arreglar.
+
+**QUÉ SE HACE SOLO, en el paso nocturno de `avisos` (sólo con `:go`, que es como corre en `ml-daily`):**
+
+| | condición | tope |
+|---|---|---|
+| **SUBIR** | sale de `calcSubirPuede` · **4+ ventas en 30 d** · última venta **hace 7 d o menos** · la suba ≤ **10,5%** · no se bajó sola en los últimos 30 d | `raisePriceTo` (respeta `liquidando`, +25% máx) |
+| **BAJAR** | sale de `calcCajaBarata` (sana o sobra stock) · al precio que gana la caja queda en **25,5%+** · la baja ≤ **24,5%** · **sin variantes** · no se subió sola en los últimos 14 d | `setPriceTo` con el margen declarado (piso duro 23%) |
+
+Máximo **10 cambios por noche** (`AUTO_MAX`). Cada uno se **relee de ML**, queda en
+`cyc/autoprecio/<MLA>` y en `cyc/avisados` (así no se repite). El Telegram dice **"✅ Lo hice solo"**,
+**"⚠️ Quise y no pude"** con el motivo, y **"👀 Subí solo y dejó de vender"**: a los 7 días de una
+suba automática, si se esperaban 3+ ventas y hubo 0, lo avisa (una vez).
+
+**LO QUE SIGUE PREGUNTANDO, a propósito:** remates abajo del 25% · bajas de más de 24,5% (Lupa 90mm
+y Cinta 7.5M, que bajan 27%) · el escalón de comisión (`calcZonaMuerta`, no trae margen) · todo lo
+que tenga variantes (regla 7) · lo marcado `liquidando`.
+
+**Se apaga con `cyc/mlconfig/autoPrecios = 'off'`.** La prueba en seco del 23/09 dio: subir 0 (nada
+nuevo) · bajar 1 → **De la Patagonia (Adriana) $48.870 → $48.510**, 27,5%.
+
 ## EL RECARGO DE PARAGUAY PASÓ DE 15% A 17% (23/09/2026)
 
 Pedido suyo: *"cambialo a 17"*. La compra del 21/09 costó **19,9% arriba de la FACTURA**
