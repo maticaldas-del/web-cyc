@@ -2293,7 +2293,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='20.15';
+const APP_VERSION='20.16';
 // El problema real que esto resuelve no es curiosidad: es que el celular guarda la app y sigue
 // mostrando la de ayer sin avisar. Varias veces se revisó un cambio que ya estaba subido y no se
 // veía. Por eso, además del número, el chip avisa cuando hay una versión nueva esperando.
@@ -6052,6 +6052,9 @@ async function marcarCajaRecibida(id,i,valor){
   if(!cajas[i])return;
   cajas[i].recibida=!!valor;
   cajas[i].recFecha=valor?new Date().toISOString().slice(0,10):null;
+  // Las entradas de Full que el robot anotó como usadas por esta caja dejan de valer al abrirla
+  // (el robot las vuelve a repartir). Marcada a mano, el robot le descuenta por orden de despacho.
+  if(!valor)cajas[i].recUsadas=null;
   await _guardarCajas(id,cajas);
   await log('Caja '+(i+1)+' del envío '+e.fecha+': '+(valor?'llegó a Full':'vuelve a en camino'));
 }

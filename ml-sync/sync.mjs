@@ -513,10 +513,21 @@ async function cajasQueLlegaron(db, accounts, labels, products, DRY) {
   const pIdx = {}; for (const p of products) pIdx[p.id] = p;
   // Cajas abiertas, de la más vieja a la más nueva.
   const abiertas = [];
+  // LAS CAJAS YA MARCADAS TAMBIÉN SE MIRAN (24/09/2026, arreglo 1 del paso 2 de la revisión).
+  // Antes quedaban afuera y las entradas de Full que ya se habían llevado volvían a estar libres en
+  // la vuelta siguiente: con dos cajas del mismo producto a la misma cuenta, la mercadería de la
+  // primera marcaba "llegó completa" también a la segunda, que seguía en el camión. Ahora cada caja
+  // marcada DESCUENTA primero lo que ya usó, y recién lo que sobra se reparte entre las abiertas.
+  const marcadasAntes = [];
   for (const [id, e] of Object.entries(envios)) {
     if (!e || !e.cuenta || !labels.includes(e.cuenta)) continue;
     const cajas = Array.isArray(e.cajasDet) ? e.cajasDet : [];
     cajas.forEach((c, i) => {
+      if (c && c.recibida) {
+        const itemsM = (c.items || []).filter((x) => x && x.prodId && x.u > 0);
+        if (itemsM.length) marcadasAntes.push({ id, i, e, c, items: itemsM, fecha: e.fecha || '' });
+        return;
+      }
       if (!c || c.recibida) return;
       const items = (c.items || []).filter((x) => x && x.prodId && x.u > 0);
       if (!items.length) return;   // sin contenido no hay nada que cruzar
@@ -680,7 +691,14 @@ async function cajasQueLlegaron(db, accounts, labels, products, DRY) {
               // y saber si ML TERMINÓ de procesarla (mientras siga dando de alta unidades no se
               // puede decir que faltó nada).
               const ts1 = Date.parse(x.date_created || '') || 0;
-              (recEnt[k1] = recEnt[k1] || []).push({ ts: ts1, left: q });
+              // El id de la entrada es lo que permite anotar en cada caja QUÉ entradas usó, y no
+              // prestárselas a otra caja en la vuelta siguiente. De paso, la misma entrada leída
+              // dos veces (dos publicaciones de la misma cuenta que comparten el depósito de Full)
+              // ya no se suma dos veces al mismo renglón.
+              const opId = String(x.id || x.operation_id || '') || (tipo + '|' + (x.date_created || '') + '|' + q);
+              const lst = (recEnt[k1] = recEnt[k1] || []);
+              if (lst.some((e) => e.op === opId)) continue;
+              lst.push({ ts: ts1, left: q, op: opId });
             }
           } catch (eOp) {
             // GUARDAR EL MOTIVO. El catch vacío hacía que 72 consultas fallidas se vieran igual que
@@ -741,7 +759,43 @@ async function cajasQueLlegaron(db, accounts, labels, products, DRY) {
   const ESPERA_MS = 3 * 86400e3;
   const MIN_DIAS = 10;
   const MIN_PARTE = 0.5;
+  // Una caja COMPLETA tampoco se marca antes de este tiempo de viaje. Si las entradas que la
+  // "completan" llegaron antes, son de otra caja: ninguna caja llega a Full en menos de 3 días.
+  const MIN_DIAS_COMPLETA = 3;
   for (const arr of Object.values(recEnt)) arr.sort((a, b) => a.ts - b.ts);
+  // Primero lo que ya se llevaron las cajas marcadas.
+  //  · Si la caja guardó QUÉ entradas usó (`recUsadas`, desde el 24/09/2026), se descuentan ésas.
+  //  · Si no las guardó (marcada antes de este arreglo, o a mano desde la web o con `cajallego`),
+  //    se descuenta lo que le tocaría por orden de despacho, igual que siempre. Sólo las que se
+  //    marcaron dentro de la ventana que se leyó: una marcada antes tiene sus entradas antes, y
+  //    ésas ya no están en la lista.
+  let descontadas = 0;
+  marcadasAntes.sort((a, b) => (a.fecha || '').localeCompare(b.fecha || ''));
+  for (const mb of marcadasAntes) {
+    const o = porCta[mb.e.cuenta]; if (!o) continue;
+    const usadas = Array.isArray(mb.c.recUsadas) ? mb.c.recUsadas : null;
+    if (usadas) {
+      for (const u of usadas) {
+        const e = (recEnt[u.k] || []).find((x) => x.op === u.op);
+        if (e) { const t = Math.min(e.left, Number(u.q) || 0); e.left -= t; descontadas += t; }
+      }
+      continue;
+    }
+    const recF = String(mb.c.recFecha || '');
+    const desdeVent = new Date(new Date((o.desde || '2020-01-01') + 'T00:00:00Z').getTime() - 86400e3).toISOString().slice(0, 10);
+    if (!recF || recF < desdeVent) continue;
+    const desdeMb = Date.parse((mb.fecha || '1970-01-01') + 'T00:00:00-03:00') || 0;
+    for (const it of mb.items) {
+      const k1 = kR(mb.e.cuenta, it.prodId, it.variante || '');
+      const fx = (mb.c.faltan || []).find((f) => f && f.prodId === it.prodId && (f.variante || '') === (it.variante || ''));
+      let queda = fx ? (Number(fx.llego) || 0) : it.u;   // una marcada con faltantes se llevó sólo lo que llegó
+      for (const e of (recEnt[k1] || [])) {
+        if (queda <= 0) break;
+        if (e.ts < desdeMb || e.left <= 0) continue;
+        const t = Math.min(queda, e.left); e.left -= t; queda -= t; descontadas += t;
+      }
+    }
+  }
   const marcadas = [], detalle = [];
   for (const ab of abiertas) {
     // Sólo cuentan las entradas POSTERIORES al despacho de esta caja. Las de antes son de una caja
@@ -778,11 +832,12 @@ async function cajasQueLlegaron(db, accounts, labels, products, DRY) {
     // pudo leer vale 0 igual que uno que no llegó, y marcar sobre eso borra mercadería real. Una
     // caja completa tampoco se salva del freno: si un renglón quedó ciego, "completa" puede ser
     // falso. Esperar una vuelta no rompe nada; borrar unidades del patrimonio sí.
-    const marcar = !hayCiego && (!parcial || (algo && quieta && dias >= MIN_DIAS && parte >= MIN_PARTE));
+    const marcar = !hayCiego && dias >= MIN_DIAS_COMPLETA && (!parcial || (algo && quieta && dias >= MIN_DIAS && parte >= MIN_PARTE));
     detalle.push({ cuenta: ab.e.cuenta, fecha: ab.fecha, track: ab.c.track || '', completa: !parcial, marcar, algo, quieta, dias, parte, entraron, pedidas, reng, hayCiego });
     if (!marcar) continue;                             // ML todavía la está procesando: se deja abierta
     // Consumir SÓLO lo que entró de verdad, de la entrada más vieja a la más nueva. Si se restara
     // lo que pedía el renglón, una caja posterior del mismo producto arrancaría en negativo.
+    const usadas = [];
     for (const it of ab.items) {
       const k1 = kR(ab.e.cuenta, it.prodId, it.variante || '');
       let queda = it.u;
@@ -790,12 +845,14 @@ async function cajasQueLlegaron(db, accounts, labels, products, DRY) {
         if (queda <= 0) break;
         if (e.ts < desdeCaja || e.left <= 0) continue;
         const t = Math.min(queda, e.left); e.left -= t; queda -= t;
+        usadas.push({ k: k1, op: e.op, q: t });
       }
     }
+    ab.usadas = usadas;
     ab.faltan = parcial ? faltan : null;
     marcadas.push(ab);
   }
-  if (!marcadas.length) return { marcadas: [], mirados, msg: null, detalle, tiposVistos, opsTotal, fallos, erroresOp, sinCantidad, recEnt, enProceso, abiertas: abiertas.length };
+  if (!marcadas.length) return { marcadas: [], mirados, msg: null, detalle, tiposVistos, opsTotal, fallos, erroresOp, sinCantidad, recEnt, enProceso, abiertas: abiertas.length, descontadas };
   if (!DRY) {
     // Se escribe la lista COMPLETA de cajas del envío: cajasDet es un array y un patch parcial la
     // rompería, igual que pasa con las variantes de ML.
@@ -804,9 +861,10 @@ async function cajasQueLlegaron(db, accounts, labels, products, DRY) {
     const hoy = dayKeyFromISO(new Date().toISOString()).replace(/_/g, '-');
     for (const [id, idxs] of Object.entries(porEnvio)) {
       const e = envios[id];
-      const faltaDe = {}; for (const m of marcadas) if (m.id === id) faltaDe[m.i] = m.faltan || null;
+      const faltaDe = {}, usadasDe = {};
+      for (const m of marcadas) if (m.id === id) { faltaDe[m.i] = m.faltan || null; usadasDe[m.i] = m.usadas || []; }
       const cajas = (e.cajasDet || []).map((c, i) => idxs.includes(i)
-        ? { ...c, recibida: true, recFecha: hoy, recAuto: true, faltan: faltaDe[i] || null } : c);
+        ? { ...c, recibida: true, recFecha: hoy, recAuto: true, faltan: faltaDe[i] || null, recUsadas: usadasDe[i] || [] } : c);
       await db.set('cyc/envios_full/' + id + '/cajasDet', cajas);
       // Releído: que la escritura no dé error no prueba que haya quedado.
       const rel = (await db.get('cyc/envios_full/' + id + '/cajasDet')) || [];
@@ -820,7 +878,7 @@ async function cajasQueLlegaron(db, accounts, labels, products, DRY) {
       + (uF ? ` — ⚠️ faltaron ${uF} u.` : '');
   }).join('\n');
   return {
-    marcadas, mirados, detalle, tiposVistos, opsTotal, fallos, erroresOp, sinCantidad, recEnt, enProceso, abiertas: abiertas.length,
+    marcadas, mirados, detalle, tiposVistos, opsTotal, fallos, erroresOp, sinCantidad, recEnt, enProceso, abiertas: abiertas.length, descontadas,
     msg: `📦 <b>${marcadas.length} caja(s) llegaron a Full</b>\n${det}\n\nYa cuentan como stock de la cuenta.`,
   };
 }
@@ -8797,7 +8855,7 @@ async function main() {
       for (const h of hits) {
         // La lista de cajas se guarda ENTERA: un patch parcial la rompe (mismo cuidado que la web).
         const cajas = (h.e.cajasDet || []).map((c, i) => (i === h.i
-          ? { ...c, recibida: false, recFecha: null, recAuto: null, faltan: null }
+          ? { ...c, recibida: false, recFecha: null, recAuto: null, faltan: null, recUsadas: null }
           : c));
         await db.set('cyc/envios_full/' + h.id + '/cajasDet', cajas);
       }
@@ -8848,6 +8906,7 @@ async function main() {
       const _t = Object.entries(r.tiposVistos || {});
       console.log(`Tipos de movimiento que devolvió ML: ${_t.length ? _t.map(([k, n]) => k + ' ×' + n).join(' · ') : 'NINGUNO'}`);
       console.log(`   (sólo se aceptan los que dicen "inbound" o "reception")`);
+      console.log(`Entradas que ya se habían llevado las cajas marcadas antes (no se reparten de nuevo): ${r.descontadas || 0} u.`);
       // LAS UNIDADES QUE SÍ SE ANOTARON, CON SU CLAVE. Sin esto no se distingue "ML no informó
       // entradas" de "las informó pero quedaron guardadas bajo otra variante", que es el caso en
       // que todos los renglones dicen 0 teniendo entradas aceptadas.

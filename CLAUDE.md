@@ -104,7 +104,7 @@ el % de ganancia único en los seis lugares · el costo "puesto en la oficina" e
 Dalí al 30% · el Puntaje recalibrado a meta 35 · las variantes de Rotación con el texto completo ·
 `gondola` (la tintura: no sirve) · `valefull` y **Full decide las compras** · Sancor y obra social
 privada unificados · las dos facturas de Sancor analizadas.
-**Versión del panel: 20.15 · caché `cyc-v293`**. El ciclo del robot quedó **prendido**.
+**Versión del panel: 20.16 · caché `cyc-v294`**. El ciclo del robot quedó **prendido**.
 
 
 ## EL RETIRO Y LOS GASTOS YA NO SE REPARTEN (23/09/2026, versión 20.14 · `cyc-v292`)
@@ -118,6 +118,25 @@ Ganancia CYC de Métricas repartía gastos y retiro entre los días según lo ve
    gasto a su día (o al siguiente con ventas, para que no se pierda). `_cargosDia`.
 **Los primeros días del mes la Ganancia CYC da negativa, y es a propósito: la plata ya salió.**
 Un mes cerrado da exactamente lo mismo que antes; sólo cambia el mes en curso y cómo se ve día a día.
+
+## PASO 2 DE LA REVISIÓN (PATRIMONIO): 23 CONFIRMADAS, SE ARREGLAN DE A UNA (24/09/2026)
+
+La revisión encontró 49 sospechas en cajas, stock, oficina, Arqueo y Mercado Pago; 23 pasaron la
+verificación de 3 verificadores que intentaban desmentirlas. Las sospechas y los votos quedaron en el
+scratchpad de la sesión (no en el repo). Él elige el arreglo de cada una.
+
+**Arreglo 1 (elegida la a): una caja ya no se marca "llegó" con la mercadería de otra.** En
+`cajasQueLlegaron` las cajas ya marcadas quedaban afuera y sus entradas de Full volvían a estar libres
+en la vuelta siguiente: con dos cajas del mismo producto a la misma cuenta, la segunda quedaba "llegó
+completa" estando en el camión. Ahora:
+ · cada caja que marca el robot guarda QUÉ entradas usó (`recUsadas`, `{k, op, q}`), y en cada vuelta
+   esas entradas se descuentan antes de repartir;
+ · las marcadas a mano (web o `cajallego`) o antes del arreglo descuentan por orden de despacho, si
+   se marcaron dentro de la ventana leída;
+ · la misma entrada leída dos veces (dos publicaciones con el mismo depósito) ya no se suma dos veces;
+ · ninguna caja se marca con menos de 3 días de viaje (`MIN_DIAS_COMPLETA`), aunque dé completa;
+ · abrirla (web "no llegó" o `abrircaja`) borra `recUsadas`.
+Probado con la función REAL y un ML de mentira: el código viejo marcaba mal 3 de 6 casos, el nuevo 0.
 
 ## EL RESCATE EN EL MOMENTO DE LA VENTA (24/09/2026, versión 20.15 · `cyc-v293`)
 
