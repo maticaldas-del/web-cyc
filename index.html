@@ -2297,7 +2297,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='20.20';
+const APP_VERSION='20.21';
 // El problema real que esto resuelve no es curiosidad: es que el celular guarda la app y sigue
 // mostrando la de ayer sin avisar. Varias veces se revisó un cambio que ya estaba subido y no se
 // veía. Por eso, además del número, el chip avisa cuando hay una versión nueva esperando.
@@ -5635,7 +5635,7 @@ async function cerrarCaja(cuenta){
 // se puede vender pasan unos 8 días (era 14; él lo corrigió el 20/08 con lo que ve en la práctica).
 // Durante esos días la cuenta sigue vendiendo de lo que ya tiene. Si se manda para
 // "30 días", la caja llega justo cuando la publicación se quedó sin nada, que es el peor momento.
-// Por eso el objetivo son 30 días DE VENTA en total (REPO_DIAS_TOTAL).
+// Por eso el objetivo son REPO_DIAS_TOTAL días DE VENTA en total (20 desde el 24/09/2026).
 // ── A QUÉ VELOCIDAD SE VENDE: DIVIDIR POR LOS DÍAS QUE HUBO STOCK, NO POR 30 ──────────
 // Antes la cuenta era `ventas del mes ÷ 30` fijo, sin preguntar si en esos 30 días había
 // mercadería para vender. Eso mide MAL justo lo que más importa: un producto que vendió 10
@@ -5727,7 +5727,12 @@ function diasConStockProd(pid){
 // NO se suman más. Es una decisión suya y tiene su costo: con ~8 días de viaje, 30 días de stock
 // desde hoy son ~22 días de venta desde que la caja se activa. Lo eligió sabiendo eso, para que no
 // quede mercadería parada pagando almacenamiento.
-const REPO_DIAS_COBERTURA=30;
+// BAJADO A 20 EL 24/09/2026. Él: *"ML me dice que tengo stock suficiente en todas. quiero jugar un
+// poco más a la defensiva (…) no mandar más de las que me recomienda ML"*. El número de ML no sale
+// por la API (medido con `cupofull`: 14 rutas × 4 cuentas), así que en vez de copiarlo se achica la
+// perilla. La regla de "una cuenta en CERO siempre recibe" (REPO_PISO_CERO) NO cambia: es justo el
+// caso en que él dice que ML se equivoca.
+const REPO_DIAS_COBERTURA=20;
 // Cuánto tarda desde que se arma la caja hasta que ML la tiene a la venta. Estaba en 14 (7 de
 // despacho + 7 de activación); él corrigió el 20/08 que en la práctica son unos 8. Se sobreestima
 // la demora = se manda de más, así que el número importa. Cuando haya cajas marcadas como llegadas

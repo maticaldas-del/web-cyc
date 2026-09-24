@@ -573,6 +573,11 @@ Matías, revendedor en MercadoLibre desde Argentina. **No es programador: hablal
 sin términos técnicos.** Nada de "endpoint", "commit", "deploy". Si hay que nombrar algo técnico,
 explicalo con una frase en criollo.
 
+**REGLA SUYA DEL 24/09/2026: "elegí vos qué hacer, excepto que sea una decisión muy importante,
+grande y difícil".** O sea: en lo chico y reversible (una perilla, cómo se muestra algo, cuál de dos
+arreglos parecidos) se elige la opción sugerida, se hace y se le cuenta. Preguntar sólo lo grande:
+precios que mueven plata fuerte, borrar datos, reglas del negocio, algo que no se puede deshacer.
+
 Cuando pida un análisis, dale el número y la conclusión, no el camino. Cuando algo esté mal, decilo
 derecho y proponé qué hacer.
 
@@ -1162,6 +1167,15 @@ grandes que muestra la lista **son anteriores y por otro motivo** —los 4 espej
 están cargados de MÁS a propósito, porque llevan protección desde el 20/08—. Sobre un envío por
 unidad de entre $6 y $307, el 9,4% son centavos. **No hizo falta tocar ninguna ficha ni correr
 `netoweb`.**
+
+**BAJADO A 20 DÍAS EL 24/09/2026** (`REPO_DIAS_COBERTURA`, versión 20.21): *"quiero jugar un poco más a la
+defensiva (…) no mandar más de las que me recomienda ML"*. El número de ML no sale por la API, así que
+se achicó la perilla; el piso de "cuenta en CERO siempre recibe" sigue igual. Elegido por mí con su
+permiso general (opción a). Lo de abajo se escribió con 30.
+**Y DESDE EL MISMO DÍA LAS VENTAS EN REMATE NO CUENTAN** para el ritmo de Pedidos ni de Armar caja
+(`ventaEnRemate`: % de la venta, el mismo del renglón de Ventas, abajo de `minPct`). Pedido suyo con el
+Pendrive 32gb: vendido al 13% pedía volver a comprar como si vendiera bien. La tarjeta dice cuántas
+dejó afuera.
 
 **LO QUE SE SUGIERE MANDAR CUBRE 30 DÍAS EN TOTAL, Y SE REDONDEA AL MÁS CERCANO (11/09/2026).**
 Pedido suyo, textual: *"quiero ser un poco más moderado con el tema de envío de productos. me
