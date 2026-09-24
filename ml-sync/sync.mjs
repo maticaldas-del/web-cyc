@@ -4272,6 +4272,9 @@ async function resolveTgChat(db) {
 // diluye el costo fijo y baja a ~13%.
 const RECARGO_PAR = 1.17;
 const RECARGO_PAR_PCT = Math.round((RECARGO_PAR - 1) * 100);
+// Un cero de stock que vuelve dentro de este tiempo se toma como pasajero: se conserva la fecha de
+// entrada anterior en `cyc/stockhist` (decisión suya del 24/09/2026, opción a).
+const STOCKHIST_CERO_PASAJERO_MS = 48 * 3600 * 1000;
 const CAND_TOPE_USD = 250;      // suyo: un producto caro se come el pedido de US$1.000 entero
 const CAND_PISO_PCT = 25;       // suyo: "el % sano es de 25 hacia arriba"
 const CAND_ENVIO_ARRIBA = 6190; // el peor envío de Full medido en ventas reales, arriba de la barrera
@@ -31099,8 +31102,16 @@ async function main() {
         // Sin esta distinción, el día que se prendió el registro se le puso la fecha de hoy a TODO,
         // y la pantalla mostraba "recién llegó, hace 2 días" en productos que llevaban meses
         // parados. Eso es peor que no mostrar nada: invita a no tocar justo lo que hay que revisar.
-        if (ahora > 0 && antes <= 0) histUpd[k] = { ...h, desde: Date.now(), aprox: false };       // entró mercadería: fecha exacta
-        else if (ahora <= 0 && antes > 0) histUpd[k] = { ...h, desde: null, cero: Date.now() };    // se agotó
+        // UN CERO PASAJERO NO ES MERCADERÍA NUEVA (24/09/2026, eligió la opción a): si una lectura
+        // da cero un rato y dentro de 48 h vuelve a haber stock, se recupera la fecha de antes. Si
+        // no, a mercadería de meses le quedaba "fecha exacta de entrada" de hoy y 30 días de
+        // "recién llegado", justo lo que tapa lo que está pagando almacenamiento. El costo, aceptado:
+        // una reposición de verdad dentro de 48 h queda con la fecha vieja (el lado seguro).
+        const volvioRapido = ahora > 0 && antes <= 0 && h.desdePrev && Number(h.cero) > 0
+          && Date.now() - Number(h.cero) <= STOCKHIST_CERO_PASAJERO_MS;
+        if (volvioRapido) histUpd[k] = { ...h, desde: h.desdePrev, aprox: h.aproxPrev === true, desdePrev: null, aproxPrev: null, cero: null };
+        else if (ahora > 0 && antes <= 0) histUpd[k] = { ...h, desde: Date.now(), aprox: false, desdePrev: null, aproxPrev: null };       // entró mercadería: fecha exacta
+        else if (ahora <= 0 && antes > 0) histUpd[k] = { ...h, desde: null, cero: Date.now(), desdePrev: h.desde || null, aproxPrev: h.desde ? (h.aprox === true) : null };    // se agotó (se guarda la fecha por si vuelve enseguida)
         else if (ahora > 0 && !h.desde) histUpd[k] = { ...h, desde: Date.now(), aprox: true };     // ya estaba: no sabemos desde cuándo
       }
       if (Object.keys(histUpd).length) await db.patch('cyc/stockhist', histUpd);

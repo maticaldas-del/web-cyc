@@ -6,7 +6,7 @@ alternativa (b), y él elige.** Los detalles de cada sospecha y los votos de los
 en el scratchpad de la sesión (se pierde con el contenedor): si hace falta el detalle, volver a leer
 el código en las líneas que dice cada renglón.
 
-### PASO 2 (PATRIMONIO): 23 confirmadas · hechas 20 (+ m01) · quedan 3 (versión 20.30 · `cyc-v308`)
+### PASO 2 (PATRIMONIO): 23 confirmadas · hechas 21 (+ m01) · quedan 2 (versión 20.30 · `cyc-v308`)
 **Hechas el 24/09** (1-2 de antes; el resto elegido por mí con su regla de "lo obvio hacelo vos"):
 caja marcada con mercadería de otra (`recUsadas`) · ficha sin publicación vuelve a 0 · m01 (`dispo:go`
 en ml-daily) · la fecha del disponible ya no dice "hoy" siempre (`mp_liq` tiene grupo propio `liq`)
@@ -39,10 +39,10 @@ en el pedido, se cuenta dos veces. Apretar "Llegó" primero.
  · **`enProceso`**: lo recibido-pero-procesando no lo cuenta nadie si la caja se marca. No es obvio:
    el `not_available` de una entrada vieja NO baja nunca (es la foto del movimiento), así que frenar
    el marcado con eso podría trabar cajas para siempre. Hay que medir primero cómo lo informa ML.
- · **`stockhist`**: un cero pasajero de una sola lectura pone "fecha exacta de entrada" nueva y le da
-   30 días de "recién llegado" a mercadería vieja. (a) si vuelve a tener stock dentro de 48 h,
-   conservar la fecha anterior (riesgo: una reposición real en 48 h queda con la fecha vieja) ·
-   (b) exigir que el cero se vea en 2 horas del registro hora por hora (`cyc/stocklog`).
+ · **`stockhist` · HECHO el 24/09, eligió la (a) (sólo robot):** al quedar en cero se guarda la
+   fecha anterior (`desdePrev`/`aproxPrev`); si vuelve a tener stock dentro de 48 h
+   (`STOCKHIST_CERO_PASAJERO_MS`) se recupera esa fecha en vez de poner "entrada exacta" de hoy.
+   Costo aceptado: una reposición real en menos de 48 h queda con la fecha vieja.
  · **`faltaron`** da por neutra toda caja marcada completa (conclusión del 22/09 sin probar) · baja.
  · Dos publicaciones con el mismo depósito y DISTINTA variante: sin revisar si falta algo · baja.
 **Segunda vuelta (de costado): TERMINÓ A MEDIAS el 24/09** — 14 agentes bien, 30 cortados por el
