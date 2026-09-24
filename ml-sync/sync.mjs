@@ -682,7 +682,16 @@ async function cajasQueLlegaron(db, accounts, labels, products, DRY) {
               // coincide se ve igual que "ML no informó nada": los dos terminan en cero.
               tiposVistos[tipo || '(sin tipo)'] = (tiposVistos[tipo || '(sin tipo)'] || 0) + 1;
               opsTotal++;
-              if (!tipo.includes('inbound') && !tipo.includes('reception')) continue;
+              // LOS AJUSTES QUE SUMAN TAMBIÉN SON ENTRADAS (24/09/2026, decisión suya, opción a).
+              // Medido con `enproceso`: ML anotó cajas enteras como `ADJUSTMENT` y no como
+              // `INBOUND_RECEPTION` (Filtro agua 70 u. el 11/09, Lupa 90mm 9 u., Protector talón 11
+              // y 10). Sin contarlas la caja quedaba "en camino" para siempre y esas unidades se
+              // contaban dos veces (en Full y en la caja) hasta que él la marcaba a mano.
+              // Sólo los que SUMAN: los que restan son correcciones y se ignoran. Los frenos de
+              // siempre valen igual (sólo entradas posteriores al despacho, 3 días mínimos de viaje).
+              const esAjuste = tipo.includes('adjust');
+              if (!tipo.includes('inbound') && !tipo.includes('reception') && !esAjuste) continue;
+              if (esAjuste && !((Number((x.detail || {}).available_quantity) || 0) > 0)) continue;
               // CÓMO MANDA ML LAS UNIDADES (visto el 11/09/2026, volcando el objeto crudo):
               //   detail = {available_quantity, not_available_detail:[{status,quantity}]}  ← lo que
               //            entró EN ESTE movimiento. Es el número que corresponde.
@@ -9210,7 +9219,7 @@ async function main() {
       if (_e.length) { console.log('\nPOR QUÉ FALLARON:'); for (const [m, n] of _e) console.log(`   ×${n}  ${m}`); }
       const _t = Object.entries(r.tiposVistos || {});
       console.log(`Tipos de movimiento que devolvió ML: ${_t.length ? _t.map(([k, n]) => k + ' ×' + n).join(' · ') : 'NINGUNO'}`);
-      console.log(`   (sólo se aceptan los que dicen "inbound" o "reception")`);
+      console.log(`   (se aceptan "inbound", "reception" y los "adjustment" que SUMAN)`);
       console.log(`Entradas que ya se habían llevado las cajas marcadas antes (no se reparten de nuevo): ${r.descontadas || 0} u.`);
       // LAS UNIDADES QUE SÍ SE ANOTARON, CON SU CLAVE. Sin esto no se distingue "ML no informó
       // entradas" de "las informó pero quedaron guardadas bajo otra variante", que es el caso en

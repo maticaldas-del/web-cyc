@@ -48,7 +48,10 @@ en el pedido, se cuenta dos veces. Apretar "Llegó" primero.
    caja grande en revisión, el dato está en el stock actual (`internal_process`) y se vuelve a mirar.
    **Y apareció otra cosa: varias cajas entraron como `ADJUSTMENT`, no como `INBOUND_RECEPTION`**
    (Filtro agua 70 u. el 11/09, Lupa 90mm 9 u., Protector talón 11 y 10). El marcado sólo acepta
-   inbound/reception, así que esas cajas no las ve: por eso se marcaron a mano. Pendiente de decidir.
+   inbound/reception, así que esas cajas no las ve: por eso se marcaron a mano. **HECHO el 24/09,
+   eligió la (a):** `cajasQueLlegaron` cuenta también los `adjustment` que SUMAN (los que restan se
+   ignoran), con los mismos frenos (posteriores al despacho, 3 días mínimos). Los probes que sólo
+   informan (`chequeo`, `rotacion`) no se tocaron.
  · **`stockhist` · HECHO el 24/09, eligió la (a) (sólo robot):** al quedar en cero se guarda la
    fecha anterior (`desdePrev`/`aproxPrev`); si vuelve a tener stock dentro de 48 h
    (`STOCKHIST_CERO_PASAJERO_MS`) se recupera esa fecha en vez de poner "entrada exacta" de hoy.
