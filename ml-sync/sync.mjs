@@ -21137,12 +21137,21 @@ async function main() {
         // a 46 ventas porque llegó la mercadería). Y bajar no hace vender MENOS. Así la suba paga lo
         // que pudo haber espantado, y la baja cobra lo que pudo haber movido — nunca al revés.
         const volCrudo = (uD - uA) * gUViejo;
-        const volumen = quiebre ? 0 : (ev.a > ev.de ? Math.min(0, volCrudo) : Math.max(0, volCrudo));
+        // **Y HOY NO SE CUENTA NUNCA (24/09/2026, regla suya: "que muestre sólo resultados 100% reales").**
+        // Para saber si vendió menos POR EL PRECIO hace falta saber que tuvo stock TODO el tiempo, antes
+        // y después. Lo que hay no alcanza: el stock se anota UNA vez por noche y sólo desde el 23/09, y
+        // la ventana de ANTES no se mira nunca. Un hueco de 20 horas sin stock entre dos cajas no lo ve
+        // nadie, y los cambios viejos miraban el stock de HOY (las Sábanas 140x190: −$64.441 que casi
+        // seguro fueron el quiebre, no la suba). Mientras no haya un registro de stock hora por hora que
+        // cubra las dos ventanas enteras, el volumen se muestra como "sin dato" y el total es sólo el
+        // efecto precio, que es el firme. `volCrudo` queda calculado para cuando ese registro exista.
+        const VOLUMEN_CONFIABLE = false;
+        const volumen = (!VOLUMEN_CONFIABLE || quiebre) ? 0 : (ev.a > ev.de ? Math.min(0, volCrudo) : Math.max(0, volCrudo));
         const evs = ev.ev || {}; const juicio = (evalNuevas.filter((x) => x.id === id).sort((a, b) => b.W - a.W)[0] || {}).res;
         const v = quiebre ? 'sinstock' : ((juicio || evs.d30 || evs.d15 || evs.d7 || {}).v || '');
         atrib.push({ id, mla: ev.mla, nom: nomDe(ev.mla), cuenta: (links[ev.mla] || {}).cuenta || '', origen: ev.origen,
           de: ev.de, a: ev.a, ts: ev.ts, dias: Math.round(L), uA, uD, precio: Math.round(precio), volumen: Math.round(volumen),
-          total: Math.round(precio + volumen), v, quiebre });
+          total: Math.round(precio + volumen), v, quiebre, volSinDato: !VOLUMEN_CONFIABLE });
       }
       const sumaA = (f) => atrib.reduce((s, x) => s + f(x), 0);
       const resumen = {

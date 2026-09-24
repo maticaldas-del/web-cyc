@@ -2293,7 +2293,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='20.16';
+const APP_VERSION='20.17';
 // El problema real que esto resuelve no es curiosidad: es que el celular guarda la app y sigue
 // mostrando la de ayer sin avisar. Varias veces se revisó un cambio que ya estaba subido y no se
 // veía. Por eso, además del número, el chip avisa cuando hay una versión nueva esperando.
@@ -13026,7 +13026,7 @@ function renderMetAuto(){
         <span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${sube?'⬆️':'⬇️'} ${x.nom||x.mla}${x.cuenta?' · '+x.cuenta:''}</span>
         <b style="white-space:nowrap;color:${col(x.total)}">${sg(x.total)}</b>
       </div>
-      <div style="font-size:.58rem;color:var(--muted)">${fmt(n(x.de))} → ${fmt(n(x.a))} (${sube?'+':''}${pct}%) · ${n(x.dias)} d · vendió ${n(x.uA)} antes y ${n(x.uD)} después · precio ${sg(x.precio)} · volumen ${x.quiebre?'no cuenta (sin stock)':sg(x.volumen)}</div>
+      <div style="font-size:.58rem;color:var(--muted)">${fmt(n(x.de))} → ${fmt(n(x.a))} (${sube?'+':''}${pct}%) · ${n(x.dias)} d · vendió ${n(x.uA)} antes y ${n(x.uD)} después · precio ${sg(x.precio)} · volumen ${x.volSinDato?'sin dato (no se sabe si tuvo stock todo el tiempo)':x.quiebre?'no cuenta (sin stock)':sg(x.volumen)}</div>
     </div>`;
   };
   const itP=perdidas.map(fila).join(''),itG=ganadas.map(fila).join('');
@@ -13041,7 +13041,9 @@ function renderMetAuto(){
     </div>
     <div style="display:flex;flex-wrap:wrap;gap:12px 10px;margin-bottom:10px">
       ${caja('Por el precio · firme',r.precio,'lo que sí se vendió, cobrado a otro precio')}
-      ${caja('Por vender más o menos · supuesto',r.volumen,'ventas que espantó una suba o que trajo una baja')}
+      ${(r.items||[]).some(x=>x.volSinDato)
+        ?`<div style="flex:1 1 150px;font-size:.62rem;color:var(--muted);line-height:1.4"><b>Por vender más o menos: sin dato.</b> No se cuenta: para saber si vendió menos por el precio hay que saber que tuvo stock todo el tiempo, antes y después, y eso todavía no se mide hora por hora. El total es sólo lo firme.</div>`
+        :caja('Por vender más o menos · supuesto',r.volumen,'ventas que espantó una suba o que trajo una baja')}
     </div>
     ${perdidas.length?`<div style="font-size:.6rem;color:var(--red);text-transform:uppercase;letter-spacing:.04em;margin:6px 0 2px">🔻 Los que hicieron perder plata (${perdidas.length})</div>${itP}`:`<div style="font-size:.64rem;color:var(--green);margin:6px 0">✓ Ningún cambio del robot hizo perder plata hasta ahora.</div>`}
     <details><summary style="cursor:pointer;font-size:.66rem;color:var(--muted);margin-top:8px">Los que dejaron más (${ganadas.length})</summary>${itG}${resto}</details>

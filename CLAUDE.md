@@ -336,6 +336,15 @@ producto volvió a cambiar; con menos de 7 días queda "en curso". Dos partes, s
    mérito si vendió más; una baja al revés. Sin eso la primera corrida le daba **$172.297** a una
    suba del Adaptador 8 en 1 que pasó de 1 a 46 ventas porque llegó la mercadería. Sin stock no cuenta.
 
+**EL VOLUMEN YA NO SE CUENTA (24/09/2026, versión 20.17 · `cyc-v295`). Regla suya: *"que muestre sólo
+resultados 100% reales"*.** Lo disparó el −$64.441 de las Sábanas 140x190 (14 ventas → 0), que casi seguro
+fue un quiebre de stock y no la suba. Para culpar al precio de vender menos hay que saber que tuvo stock
+TODO el tiempo, antes y después, y eso no se sabe: el stock se anota una vez por noche y sólo desde el
+23/09, la ventana de ANTES no se mira nunca, y un hueco de 20 horas entre dos cajas no lo ve nadie. Ahora
+el total es sólo el efecto precio (el firme), cada renglón dice *"volumen sin dato"* y la tarjeta lo
+explica. `VOLUMEN_CONFIABLE` (en `sync.mjs`) se prende el día que haya un registro de stock HORA POR HORA
+que cubra las dos ventanas enteras. **Pendiente de decidir por él: hacer ese registro.** Ojo: los juicios
+🟢/🔴 del supervisor (y el freno de subas por 🔴) todavía miran ventas sin saber del stock hora por hora.
 **Primera medición (23/09, en prueba): 48 subas medidas · precio +$319.001 · volumen −$219.000 ·
 TOTAL +$99.999.** El volumen es el pedazo pesimista a propósito: se lleva, por ejemplo, las Sábanas
 2 plazas (14 → 0 ventas, probablemente quiebre que el stock de hoy no llegó a mostrar).
