@@ -891,6 +891,46 @@ async function cajasQueLlegaron(db, accounts, labels, products, DRY) {
     ab.faltan = parcial ? faltan : null;
     marcadas.push(ab);
   }
+  // ── LO QUE YA ENTRÓ A FULL DE CADA CAJA ABIERTA (24/09/2026, paso 2 de la revisión, opción a) ──
+  // Mientras ML da de alta una caja, lo que ya entró se cuenta en Full (lo lee el stock) Y en
+  // "en camino" (la caja sigue abierta): el patrimonio sube de mentira y cae de golpe al marcarla.
+  // Acá se anota, caja por caja, cuántas unidades de cada renglón ya entraron, con el MISMO
+  // recorrido con el que se marcan (entradas posteriores al despacho, de la más vieja a la más
+  // nueva, después de descontar lo que ya se llevaron las marcadas). La web las resta de "en camino".
+  // Vive APARTE de cajasDet (`cyc/cajasentrado/<envío>__<caja>`) para no reescribir la lista de
+  // cajas cada hora encima de lo que él toque en la web. Un renglón que ML no contestó deja la
+  // caja con lo anotado ANTES: un "no sé" no puede devolver unidades al camión ni sacarlas.
+  try {
+    const prevE = (await db.get('cyc/cajasentrado')) || {};
+    const libre = {};
+    for (const [k, arr] of Object.entries(recEnt)) libre[k] = arr.map((e) => ({ ts: e.ts, left: e.left }));
+    const nuevoE = {};
+    for (const ab of abiertas) {
+      if (marcadas.includes(ab)) continue;
+      const key = ab.id + '__' + ab.i;
+      const desdeCaja = Date.parse((ab.fecha || '1970-01-01') + 'T00:00:00-03:00') || 0;
+      let ciego = false; const its = [];
+      for (const it of ab.items) {
+        const k1 = kR(ab.e.cuenta, it.prodId, it.variante || '');
+        if (sinLeer[k1] || sinLeerProd[ab.e.cuenta + '|' + it.prodId]) { ciego = true; break; }
+        let queda = it.u, q = 0;
+        for (const e of (libre[k1] || [])) {
+          if (queda <= 0) break;
+          if (e.ts < desdeCaja || e.left <= 0) continue;
+          const t = Math.min(queda, e.left); e.left -= t; queda -= t; q += t;
+        }
+        if (q > 0) its.push({ p: it.prodId, v: it.variante || '', q });
+      }
+      if (ciego) { if (prevE[key]) nuevoE[key] = prevE[key]; continue; }
+      if (its.length) nuevoE[key] = { track: String(ab.c.track || ''), items: its };
+    }
+    const firma = (o) => JSON.stringify(Object.keys(o).sort().map((k) => [k, o[k]]));
+    const nE = Object.values(nuevoE).reduce((a, x) => a + x.items.reduce((b, y) => b + y.q, 0), 0);
+    if (firma(nuevoE) !== firma(prevE)) {
+      console.log(`📥 Ya entraron a Full de cajas todavía abiertas: ${nE} u. en ${Object.keys(nuevoE).length} caja(s)${DRY ? ' (prueba: no se escribe)' : ''}`);
+      if (!DRY) await db.set('cyc/cajasentrado', Object.keys(nuevoE).length ? nuevoE : null);
+    }
+  } catch (err) { console.log('⚠️ no se pudo anotar lo que ya entró de las cajas abiertas: ' + (err && err.message)); }
   if (!marcadas.length) return { marcadas: [], mirados, msg: null, detalle, tiposVistos, opsTotal, fallos, erroresOp, sinCantidad, recEnt, enProceso, abiertas: abiertas.length, descontadas };
   if (!DRY) {
     // Se escribe la lista COMPLETA de cajas del envío: cajasDet es un array y un patch parcial la

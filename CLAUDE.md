@@ -6,7 +6,7 @@ alternativa (b), y él elige.** Los detalles de cada sospecha y los votos de los
 en el scratchpad de la sesión (se pierde con el contenedor): si hace falta el detalle, volver a leer
 el código en las líneas que dice cada renglón.
 
-### PASO 2 (PATRIMONIO): 23 confirmadas · hechas 18 (+ m01) · quedan 5 (versión 20.27 · `cyc-v305`)
+### PASO 2 (PATRIMONIO): 23 confirmadas · hechas 19 (+ m01) · quedan 4 (versión 20.29 · `cyc-v307`)
 **Hechas el 24/09** (1-2 de antes; el resto elegido por mí con su regla de "lo obvio hacelo vos"):
 caja marcada con mercadería de otra (`recUsadas`) · ficha sin publicación vuelve a 0 · m01 (`dispo:go`
 en ml-daily) · la fecha del disponible ya no dice "hoy" siempre (`mp_liq` tiene grupo propio `liq`)
@@ -25,10 +25,12 @@ la ventana de entradas de Full es por PRODUCTO (`desdeProd`), no por cuenta.
 en el pedido, se cuenta dos veces. Apretar "Llegó" primero.
 
 **Quedan, y NO son obvias (hay que decidirlas):**
- · **3 · PARA MÁS TARDE, dicho por él:** la caja abierta cuenta ENTERA en camino aunque ML ya haya
-   dado de alta parte → doble conteo y caída de golpe al marcarla. (a) el robot anota en cada caja
-   abierta cuántas entraron y la web las descuenta · (b) no contar en camino las cajas con alguna
-   entrada. `enTransito`, `calcArqueo`, `cajasQueLlegaron`.
+ · **3 · HECHO el 24/09, eligió la (a) (v20.29 · `cyc-v307`):** el robot anota en cada vuelta de
+   `cajasQueLlegaron` cuántas unidades de cada caja ABIERTA ya entraron a Full (mismo recorrido que
+   el marcado) en `cyc/cajasentrado/<envío>__<caja>` (`{track, items:[{p,v,q}]}`), y la web las
+   resta de "en camino" (`cajaEntradoDe`/`cajaPendU`, usados por `enTransito`, el detalle del Arqueo
+   y `transitoInfoDe`); la tarjeta de la caja dice "📥 ya entraron N a Full". Si ML no contestó un
+   renglón se deja lo anotado antes; si el seguimiento no coincide no se resta nada.
  · **`dispo` no resta la plata que sale de MP por fuera del reporte** (proveedores, tarjeta,
    débitos de ML). **No tiene arreglo por robot** (el extracto sólo se baja a mano, 32 puertas
    medidas). Lo que hay: recargar el disponible una vez por mes (decisión suya del 20/09). (a) dejarlo
