@@ -1914,6 +1914,10 @@ function startApp(){
     // LO QUE TRAJO EL ROBOT DE PRECIOS: lo calcula el supervisor todas las noches (cyc/supervisor/resumen).
     // La pantalla no hace ninguna cuenta: una segunda copia de la atribución diría otro número.
     state.supResumen=(d.supervisor&&d.supervisor.resumen)||null;
+    // Para el renglón de cada venta: los cambios de precio de su publicación (cambioVentaHTML).
+    // Sólo se muestran; no se calcula nada con ellos.
+    state.supervisor={eventos:(d.supervisor&&d.supervisor.eventos)||{}};
+    state.autoprecio=d.autoprecio||{};
     // VISITAS por publicación en los últimos 30 días, que las trae el robot de ML. Separan dos
     // problemas que se ven igual en pantalla y se arreglan al revés: si no la ve nadie el precio no
     // es el problema; si la ven y no compran, ahí sí.
@@ -2293,7 +2297,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='20.17';
+const APP_VERSION='20.18';
 // El problema real que esto resuelve no es curiosidad: es que el celular guarda la app y sigue
 // mostrando la de ayer sin avisar. Varias veces se revisó un cambio que ya estaba subido y no se
 // veía. Por eso, además del número, el chip avisa cuando hay una versión nueva esperando.
@@ -7297,6 +7301,45 @@ function prodById(id){return id?(state.products||[]).find(p=>p.id===id):null;}
 function prodDeVenta(v){return (v&&v.prodId)?(prodById(v.prodId)||prodByName(v&&v.prod)):prodByName(v&&v.prod);}
 // Nombre ACTUAL del producto de una venta (sigue al producto aunque se renombre).
 function nombreDeVenta(v){const p=prodDeVenta(v);return p?p.name:((v&&v.prod)||'');}
+// ── LOS CAMBIOS DE PRECIO DE ESA PUBLICACIÓN, AL LADO DE CADA VENTA (24/09/2026) ──
+// Pedido suyo: *"yo quiero ver los aumentos diarios que efecto tienen en las ventas diarias"*.
+// Se juntan DOS fuentes que ya están en la base, sin calcular nada nuevo:
+//  · cyc/supervisor/eventos — TODOS los cambios (robot y a mano), los anota el supervisor cada noche.
+//    Los hechos a mano salen de comparar la foto de precios de dos noches: la hora es APROXIMADA.
+//  · cyc/autoprecio/<MLA> — el ÚLTIMO cambio del robot, con la hora exacta. Hace falta porque un
+//    cambio de hoy todavía no llegó al supervisor, que corre de noche.
+// Sólo los de los 7 días ANTERIORES a la venta: más viejo ya no explica nada (regla suya).
+const CAMBIO_VENTA_DIAS=7;
+const _origenAuto=a=>a.por==='venta'?'el robot, al vender':a.por==='margen'?'el robot (rescate)':a.por==='remate'?'el robot (remate)':a.por==='costo'?'el robot (costo)':'el robot, de noche';
+function cambiosPrecioDe(mla,tsVenta){
+  if(!mla||!(tsVenta>0))return[];
+  const out=[],desde=tsVenta-CAMBIO_VENTA_DIAS*864e5;
+  const ok=c=>c&&c.ts>0&&c.ts<=tsVenta&&c.ts>=desde&&Number(c.a)>0&&Number(c.de)>0&&Number(c.a)!==Number(c.de);
+  const evs=((state.supervisor||{}).eventos)||{};
+  for(const ev of Object.values(evs)){
+    if(!ev||ev.mla!==mla)continue;
+    const c={ts:Number(ev.ts),de:Number(ev.de),a:Number(ev.a),quien:ev.origen||'?',aprox:!!ev.aprox};
+    if(ok(c))out.push(c);
+  }
+  const ap=(state.autoprecio||{})[mla];
+  if(ap){
+    const c={ts:Number(ap.ts),de:Number(ap.de),a:Number(ap.a),quien:_origenAuto(ap),aprox:false};
+    // El mismo cambio puede estar en las dos fuentes: si ya está (mismo precio final, menos de un
+    // día de diferencia) no se repite.
+    if(ok(c)&&!out.some(x=>Math.abs(x.ts-c.ts)<864e5&&Math.abs(x.a-c.a)/c.a<0.01))out.push(c);
+  }
+  return out.sort((x,y)=>y.ts-x.ts);
+}
+function cambioVentaHTML(v,tsVenta){
+  const cs=cambiosPrecioDe(v&&v.mla,tsVenta);
+  if(!cs.length)return'';
+  const c=cs[0],pct=Math.round((c.a-c.de)/c.de*1000)/10,sube=c.a>c.de;
+  const h=(tsVenta-c.ts)/36e5;
+  const hace=h<24?`${Math.max(1,Math.round(h))} h antes`:`${Math.round(h/24)} d antes`;
+  const fecha=t=>{const x=new Date(t);return String(x.getDate()).padStart(2,'0')+'/'+String(x.getMonth()+1).padStart(2,'0')+' '+String(x.getHours()).padStart(2,'0')+':'+String(x.getMinutes()).padStart(2,'0');};
+  const tip=cs.map(x=>`${fecha(x.ts)}${x.aprox?' (aprox.)':''} · ${fmt(x.de)} → ${fmt(x.a)} (${x.a>x.de?'+':''}${String(Math.round((x.a-x.de)/x.de*1000)/10).replace('.',',')}%) · ${x.quien}`).join('\n');
+  return`<span style="font-size:.62rem;color:${sube?'var(--amber)':'#60a5fa'}" title="Cambios de precio de esta publicación en los ${CAMBIO_VENTA_DIAS} días antes de esta venta:\n${tip}${cs.some(x=>x.aprox)?'\n(aprox.: fue a mano; la hora sale de comparar dos noches)':''}">${sube?'⬆️':'⬇️'} ${sube?'+':''}${String(pct).replace('.',',')}% ${hace} · ${fmt(c.de)}→${fmt(c.a)} · ${c.quien}${cs.length>1?` · ${cs.length} cambios`:''}</span>`;
+}
 // ¿La venta v corresponde al producto p? Por ID interno si está, sino por nombre.
 function ventaEsDe(v,p){return !!p&&(v.prodId?v.prodId===p.id:normTxt(v.prod)===normTxt(p.name));}
 // Cuántas ventas SIN vincular por ID todavía existen (para el banner de migración).
@@ -7913,7 +7956,7 @@ function renderVentaProd(){
           else rescLabel=`<span style="font-size:.62rem;color:var(--amber)" title="${_w}">⚠️ no lo subí · ${_w.length>40?_w.slice(0,40)+'…':_w}</span>`;
         }
       }
-      const lines=grp.items.map(v=>`<div style="display:flex;justify-content:space-between;font-size:.72rem;padding:2px 0;${isCancelled?'opacity:.45;text-decoration:line-through':''}"><span>${v.qty}× ${nombreDeVenta(v)}${v.variante?` <span style="padding:1px 5px;border-radius:3px;background:rgba(124,58,237,.12);color:#a78bfa;font-size:.62rem">${v.variante}</span>`:''}</span><span style="color:var(--muted)">${(!isCancelled&&(v.total||0)>0)?`total ${fmt(v.total)} · `:''}${isCancelled?'':'neto '+fmt(v.neto||0)}</span></div>`).join('');
+      const lines=grp.items.map(v=>`<div style="display:flex;justify-content:space-between;font-size:.72rem;padding:2px 0;${isCancelled?'opacity:.45;text-decoration:line-through':''}"><span>${v.qty}× ${nombreDeVenta(v)}${v.variante?` <span style="padding:1px 5px;border-radius:3px;background:rgba(124,58,237,.12);color:#a78bfa;font-size:.62rem">${v.variante}</span>`:''}${isCancelled?'':(()=>{const x=cambioVentaHTML(v,Number(v.ts)||0);return x?' '+x:'';})()}</span><span style="color:var(--muted)">${(!isCancelled&&(v.total||0)>0)?`total ${fmt(v.total)} · `:''}${isCancelled?'':'neto '+fmt(v.neto||0)}</span></div>`).join('');
       return`<div class="ingreso-item" style="flex-direction:column;align-items:stretch;gap:4px;${isCancelled?'border-color:rgba(239,68,68,.25);background:rgba(239,68,68,.04)':''}">
         <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
           <span class="who-badge" style="font-size:.58rem;${isCancelled?'opacity:.6':''}">${cuenta}</span>
