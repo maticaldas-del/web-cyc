@@ -2486,6 +2486,28 @@ async function calcFrenoCaja(db, o) {
 // adentro, no cambiarle la vara por mi cuenta.
 //
 // **NO BAJA NADA.** Devuelve las filas; la decisión sigue siendo suya (regla del 13/08/2026).
+// ── EL PRECIO DE UN ESCALÓN DE LA ESCALERA DEL REMATE (24/09/2026) ──────────────────
+// `mg(P)` = margen a ese precio (comisión de ML a ESE precio, envío, IIBB y monotributo). Devuelve
+// el precio MÁS BAJO que todavía deja `paso`% redondeado para ARRIBA a la decena (así nunca queda
+// abajo del escalón), o el de la caja si ahí ya se llega al escalón (se gana y no hace falta más).
+// Tope de baja 24,5% de una (setPriceTo no baja más de 25%): si hace falta más, `llega:false`.
+async function escPrecioPara(mg, precio, ptw, paso) {
+  let a, mgA, llega = true;
+  const mgPtw = ptw > 0 ? await mg(ptw) : null;
+  if (mgPtw != null && mgPtw >= paso) { a = Math.floor(ptw / 10) * 10; mgA = await mg(a); if (mgA != null && mgA < paso) { a = Math.ceil(ptw / 10) * 10; mgA = await mg(a); } }
+  else {
+    let lo = Math.max(1, ptw), hi = precio;
+    for (let i = 0; i < 18 && hi - lo > 10; i++) {
+      const mid = Math.round((lo + hi) / 2); const x = await mg(mid);
+      if (x == null) { lo = hi; break; }
+      if (x >= paso) hi = mid; else lo = mid;
+    }
+    a = Math.ceil(hi / 10) * 10; mgA = await mg(a);
+  }
+  const minA = Math.ceil(precio * 0.755 / 10) * 10;
+  if (a < minA) { a = minA; mgA = await mg(a); llega = false; }
+  return { a, mgA, llega };
+}
 async function calcCajaBarata(db, o) {
   const {
     dias = 30, minSano = 25, maxEnvios = 15, diasQuieta = 0, minVisitas = 20, conVisitas = false,
@@ -6715,11 +6737,127 @@ async function main() {
           && !recienteAuto(f.mla, 'sube', 14) && !recienteAuto(f.mla, 'baja', BAJAR_ESPERA_DIAS)
           && !(pricedRem[f.mla] && hoyTs - (pricedRem[f.mla].ts || 0) < 14 * 864e5));
       { const idsR = new Set(rescates.map((x) => x.mla)); autoRemate.splice(0, autoRemate.length, ...autoRemate.filter((f) => !idsR.has(f.mla))); }
+      // ── LA ESCALERA DEL REMATE: CUANDO GANAR LA CAJA DA PÉRDIDA (24/09/2026) ───────────────
+      // Pedido suyo con el Xiaomi Watch 5 Lite (para ganar la caja había que bajar 32% y quedaba en
+      // −6%): *"prefiero bajar al 25%, esperar 7 días, si no se vende, bajar al 20%, 7 días si no se
+      // vende, 15 y así sucesivamente hasta 0%"*. Hasta hoy esos casos quedaban en `remNo`/`noSano`:
+      // se anotaban en el log y no se tocaba nada, con la mercadería parada pagando almacenamiento.
+      // CÓMO: cada noche, a lo que NO vende hace 45+ días (o nunca vendió y el panel lo conoce hace
+      // 45+ días) y no llega a ganar la caja arriba del piso de su escalón, se le baja el precio al
+      // próximo escalón de margen (25 → 20 → 15 → 10 → 5 → 0,5%), SÓLO si pasaron 7 días del escalón
+      // anterior sin vender. Si vende, deja de estar en la lista (calcCajaBarata sólo trae lo que no
+      // vendió en 30 días) y el precio queda donde está. Nunca abajo de 0% ni más de 24,5% de una (si
+      // hace falta más, baja 24,5% y el mismo escalón se completa la vuelta siguiente).
+      // El margen es la MISMA cuenta de calcCajaBarata (comisión preguntada a ML a ESE precio, envío
+      // del peor caso arriba de $33.000, IIBB y monotributo) y el precio se redondea PARA ARRIBA, así
+      // que nunca queda abajo del escalón. Si el escalón cae abajo del precio de la caja, se baja a la
+      // caja (ahí se gana y se deja de bajar). Mismos frenos que el remate: marca `liquidando` antes,
+      // sin variantes, relee de ML, tope ESC_MAX por noche. No toca lo que él marcó liquidando a mano.
+      // Memoria: cyc/escalera/<MLA> = { paso, ts, de, a }.
+      // Y MARCA "NO TRAER MÁS" (cyc/notraer/<prodId>) cuando arranca la escalera de un producto que en
+      // 180 días vendió menos de NOTRAER_MIN_U unidades entre las 4 cuentas: tuvo tiempo y no se
+      // vendió. NO se marca lo que sobra por exceso (vende: no entra acá) ni lo que vendía bien y un
+      // competidor le ganó (vendió 6+ en 180 días). Pedidos no lo vuelve a pedir; él lo puede volver
+      // a traer desde Pedidos (queda `permitido` y no se vuelve a marcar solo).
+      const ESC_PASOS = [25, 20, 15, 10, 5, 0.5], ESC_ESPERA = 7, ESC_MAX = 5, ESC_DIAS = 45, NOTRAER_MIN_U = 6;
+      const escTareas = [];
+      try {
+        let escMem = null, notraerMem = null;
+        try { escMem = (await db.get('cyc/escalera')) || {}; notraerMem = (await db.get('cyc/notraer')) || {}; } catch { escMem = null; }
+        if (escMem == null) console.log('\n🪜 ESCALERA: no pude leer su memoria · esta noche no baja nada');
+        else {
+          const escLinks = (await db.get('cyc/mllinks')) || {};
+          const monoE = parseFloat(((await db.get('cyc/monotributo')) || {}).pct) || 0;
+          const pIdxE = {}; for (const p of products) pIdxE[p.id] = p;
+          // Última venta por publicación y por producto×cuenta, y unidades de 180 días por producto.
+          const ultE = {}, ultPC = {}, u180 = {}; const d180 = hoyTs - 180 * 864e5;
+          for (const [k, ents] of Object.entries(vpAv || {})) {
+            const ts = Date.parse(k.slice(0, 10).replace(/_/g, '-')); if (!isFinite(ts)) continue;
+            for (const v of Object.values(ents || {})) {
+              if (!v || v.cancelada) continue;
+              if (v.mla && ts > (ultE[v.mla] || 0)) ultE[v.mla] = ts;
+              if (v.prodId && v.cuenta && ts > (ultPC[v.prodId + '__' + v.cuenta] || 0)) ultPC[v.prodId + '__' + v.cuenta] = ts;
+              if (v.prodId && ts >= d180) u180[v.prodId] = (u180[v.prodId] || 0) + (v.qty || 1);
+            }
+          }
+          const vistas = new Set([...autoRemate.map((f) => f.mla)]);
+          const candE = [];
+          for (const f of [...remNo, ...cbr.noSano]) {
+            if (!f || !f.mla || f.sobre || vistas.has(f.mla)) continue;
+            vistas.add(f.mla);
+            const e = escLinks[f.mla] || {};
+            const mem = escMem[f.mla];
+            if (NOSUBIR[f.mla] && !mem) continue;            // lo marcó él liquidando: no es nuestro
+            const uv = Math.max(ultE[f.mla] || 0, ultPC[(e.prodId || '') + '__' + (e.cuenta || f.cuenta)] || 0);
+            const quieta = uv > 0 ? Math.floor((hoyTs - uv) / 864e5)
+              : (f.quieta != null ? f.quieta : (e.altaTs > 0 ? Math.floor((hoyTs - e.altaTs) / 864e5) : null));
+            if (quieta == null || quieta < ESC_DIAS) continue;
+            if (mem && hoyTs - (mem.ts || 0) < ESC_ESPERA * 864e5) continue;
+            if (mem && mem.paso <= ESC_PASOS[ESC_PASOS.length - 1]) continue;   // ya está en el último escalón
+            if (recienteAuto(f.mla, 'sube', 14) || (!mem && recienteAuto(f.mla, 'baja', ESC_ESPERA))) continue;
+            candE.push({ f, e, mem, quieta });
+          }
+          console.log(`\n🪜 ESCALERA (ganar la caja da pérdida · baja de a un escalón cada ${ESC_ESPERA} d sin vender): ${candE.length} candidata(s)`);
+          const tokE = {};
+          const feeCE = {};
+          for (const c of candE.slice(0, ESC_MAX * 2)) {
+            if (escTareas.length >= ESC_MAX) break;
+            const { f, e, mem } = c;
+            const p = pIdxE[e.prodId]; if (!p) continue;
+            const cta = e.cuenta || f.cuenta;
+            if (!tokE[cta]) {
+              const acc = accounts[cta]; if (!acc?.refresh_token) continue;
+              try { const t = await mlRefresh(ML_CLIENT_ID, ML_CLIENT_SECRET, acc.refresh_token);
+                await db.patch('mlapi/tokens/' + cta, { refresh_token: t.refresh_token, updated_ts: Date.now() }); tokE[cta] = t.access_token; }
+              catch { continue; }
+            }
+            const tk = tokE[cta];
+            let b; try { b = await mlGet(`/items/${f.mla}?attributes=id,price,listing_type_id,category_id,site_id,variations`, tk); } catch { b = null; }
+            if (!b || !(b.price > 0)) { console.log(`   · ${f.nom}: ML no devolvió la publicación`); continue; }
+            if ((b.variations || []).length) { console.log(`   · ${f.nom}: tiene variantes, se hace a mano`); continue; }
+            const precio = Number(b.price), costo = costoPesos(p, 1, tc).costo;
+            if (!(costo > 0)) continue;
+            const m = (mlExtraPct(cta) + monoE) / 100;
+            const fee = async (P) => {
+              const k = (b.site_id || 'MLA') + '|' + b.listing_type_id + '|' + b.category_id + '|' + P;
+              if (feeCE[k] !== undefined) return feeCE[k];
+              let o = null;
+              try { const d = await mlGet(`/sites/${b.site_id || 'MLA'}/listing_prices?price=${P}&listing_type_id=${b.listing_type_id}&category_id=${b.category_id}`, tk);
+                const ob = Array.isArray(d) ? d[0] : d; if (typeof ob?.sale_fee_amount === 'number') o = ob.sale_fee_amount; } catch { o = null; }
+              feeCE[k] = o; return o;
+            };
+            let envArriba;
+            const envio = async (P) => {
+              if (P < UMBRAL_ENVIO_GRATIS) return 0;
+              if (envArriba === undefined) { const r = await envioSegunML(f.mla, tk); envArriba = r ? Math.max(0, r.envio) : null; }
+              return envArriba;
+            };
+            const mg = async (P) => {
+              const com = await fee(P), env = await envio(P);
+              if (com == null || env == null) return null;
+              return (P - com - env - costo - P * m) / (costo + P * m + env) * 100;
+            };
+            const mgHoy = await mg(precio);
+            if (mgHoy == null) { console.log(`   · ${f.nom}: sin comisión o sin envío de ML, no se calcula`); continue; }
+            // El próximo escalón: el siguiente al de la memoria, o el primero que quede ABAJO del margen de hoy.
+            let paso = mem ? ESC_PASOS.find((x) => x < mem.paso) : ESC_PASOS.find((x) => x < mgHoy - 0.5);
+            if (mem && paso != null && paso >= mgHoy - 0.5) paso = ESC_PASOS.find((x) => x < mgHoy - 0.5);
+            if (paso == null) { console.log(`   · ${f.nom}: ya está en ${mgHoy.toFixed(1)}%, no queda escalón abajo`); continue; }
+            const ptw = Math.round(f.ptw || 0);
+            const { a, mgA, llega } = await escPrecioPara(mg, precio, ptw, paso);
+            if (mgA == null || mgA < PISO_AUTORIZADO || a >= precio) { console.log(`   · ${f.nom}: no hay precio más bajo que deje ${paso}% (hoy ${mgHoy.toFixed(1)}%)`); continue; }
+            const marcarNo = !mem && (u180[e.prodId] || 0) < NOTRAER_MIN_U && !(notraerMem[e.prodId] && notraerMem[e.prodId].permitido);
+            escTareas.push({ tipo: 'escalera', piso: paso, pasoOk: llega ? paso : (mem ? mem.paso : 100), a, marcarNo, prodId: e.prodId,
+              f: { mla: f.mla, nom: f.nom, cuenta: cta, precio, mgPw: mgA, ptw, st: f.st } });
+            console.log(`   · ${f.nom} (${cta}) · ${c.quieta} d sin vender · hoy ${mgHoy.toFixed(1)}% → escalón ${paso}%: ${money(precio)} → ${money(a)} (queda en ${mgA.toFixed(1)}%${llega ? '' : ', baja 24,5% y sigue la vuelta que viene'})${marcarNo ? ' · 🚫 se marca NO TRAER MÁS' : ''}`);
+          }
+        }
+      } catch (e) { console.log('🪜 ESCALERA: falló el cálculo, esta noche no baja nada · ' + String(e.message || e).slice(0, 80)); escTareas.length = 0; }
       console.log(`\n── AUTOMÁTICO ${AUTO_ON ? '(SE APLICA)' : '(PRUEBA / APAGADO: no se toca nada)'} ──`);
       console.log(`   subir: ${autoSube.length} de ${nuevasSub.length} (piden ${AUTO_MIN_U}+ ventas y la última hace ${AUTO_MAX_DSIN} d o menos)`);
       console.log(`   bajar a ganar la caja en ${CBR_SANO}%+: ${autoBaja.length}`);
       console.log(`   rematar (bajar a ganar la caja, hasta ${REM_P3}%): ${autoRemate.length}${autoRemate.length > REMATE_AUTO_MAX ? ` · tope ${REMATE_AUTO_MAX} por noche` : ''}`);
-      if (rescates.length + autoSube.length + autoBaja.length + autoRemate.length) {
+      if (rescates.length + autoSube.length + autoBaja.length + autoRemate.length + escTareas.length) {
         let tokA = {};
         if (AUTO_ON) {
           const tks = (await db.get('mlapi/tokens')) || {};
@@ -6740,11 +6878,11 @@ async function main() {
         const tareas = [...tareasR, ...[
           ...autoSube.map((f) => ({ tipo: 'sube', f, a: f.tope })),
           ...autoBaja.map((f) => ({ tipo: 'baja', f, a: Math.floor(f.ptw / 10) * 10 })),
-        ].slice(0, AUTO_MAX), ...autoRemate.slice(0, REMATE_AUTO_MAX).map((f) => ({ tipo: 'remate', f, a: Math.floor(f.ptw / 10) * 10, piso: pisoEsc(f) }))];
+        ].slice(0, AUTO_MAX), ...autoRemate.slice(0, REMATE_AUTO_MAX).map((f) => ({ tipo: 'remate', f, a: Math.floor(f.ptw / 10) * 10, piso: pisoEsc(f) })), ...escTareas];
         for (const t of tareas) {
           const f = t.f, tk = tokA[f.cuenta];
           const renglon = `${f.nom} (${f.cuenta}) ${money(f.precio)} → ${money(t.a)}`;
-          if (!AUTO_ON) { console.log(`   · haría: ${t.tipo === 'rescate' ? `RESCATAR (está en ${Math.round(t.f.pct)}%)` : t.tipo === 'sube' ? 'SUBIR' : t.tipo === 'remate' ? `REMATAR (queda en ${f.mgPw.toFixed(1)}%, piso del escalón ${t.piso}% · resigna ${f.resignaTot == null ? '?' : money(f.resignaTot)} en total)` : 'BAJAR'} ${renglon}${t.corto ? ` · hacían falta ${money(t.f.meta)}, tope +25%` : ''}`); continue; }
+          if (!AUTO_ON) { console.log(`   · haría: ${t.tipo === 'rescate' ? `RESCATAR (está en ${Math.round(t.f.pct)}%)` : t.tipo === 'sube' ? 'SUBIR' : t.tipo === 'remate' ? `REMATAR (queda en ${f.mgPw.toFixed(1)}%, piso del escalón ${t.piso}% · resigna ${f.resignaTot == null ? '?' : money(f.resignaTot)} en total)` : t.tipo === 'escalera' ? `ESCALERA al ${t.piso}% (queda en ${f.mgPw.toFixed(1)}%)${t.marcarNo ? ' · NO TRAER MÁS' : ''}` : 'BAJAR'} ${renglon}${t.corto ? ` · hacían falta ${money(t.f.meta)}, tope +25%` : ''}`); continue; }
           if (!tk) { fallidosAuto.push({ ...t, err: 'sin token de la cuenta' }); continue; }
           let r;
           if (t.tipo === 'rescate') {
@@ -6759,15 +6897,16 @@ async function main() {
             try { it = await mlGet('/items/' + f.mla + '?attributes=id,variations', tk); } catch { it = null; }
             if (!it) { fallidosAuto.push({ ...t, err: 'ML no devolvió la publicación' }); continue; }
             if ((it.variations || []).length) { fallidosAuto.push({ ...t, err: 'tiene variantes: se hace a mano' }); continue; }
-            if (t.tipo === 'remate') {
+            if (t.tipo === 'remate' || t.tipo === 'escalera') {
               try {
                 await db.patch('cyc/nosubir/' + f.mla, { fecha: new Date(hoyTs - 3 * 3600e3).toISOString().slice(0, 10),
-                  motivo: `remate automático (queda en ${f.mgPw.toFixed(1)}%)` });
+                  motivo: t.tipo === 'escalera' ? `escalera de remate (escalón ${t.piso}%)` : `remate automático (queda en ${f.mgPw.toFixed(1)}%)` });
                 NOSUBIR[f.mla] = { motivo: 'remate automático' };
               } catch { fallidosAuto.push({ ...t, err: 'no pude marcarla liquidando: no la bajo (el rescate la volvería a subir)' }); continue; }
               // Se declara medio punto MENOS: el precio se redondea a la decena de abajo.
-              r = await setPriceTo(f.mla, null, t.a, tk, { margen: f.mgPw - 0.5,
-                autorizado: `remate automático, permiso de Matías del 23/09/2026 (hasta 0%) · escalón al ${t.piso}%` });
+              r = await setPriceTo(f.mla, null, t.a, tk, t.tipo === 'escalera'
+                ? { margen: Math.floor(f.mgPw * 10) / 10, autorizado: `escalera de remate, pedido de Matías del 24/09/2026 (de a 5 puntos cada 7 días sin vender, hasta 0%) · escalón al ${t.piso}%` }
+                : { margen: f.mgPw - 0.5, autorizado: `remate automático, permiso de Matías del 23/09/2026 (hasta 0%) · escalón al ${t.piso}%` });
               // Si no se bajó, la marca se saca: si no, quedaría congelada contra toda suba sin
               // haberse rematado nunca.
               if (!r || !r.ok) { try { await db.set('cyc/nosubir/' + f.mla, null); delete NOSUBIR[f.mla]; } catch { /* */ } }
@@ -6780,11 +6919,22 @@ async function main() {
           hechosAuto.push({ ...t, de: r.from || f.precio, a: r.to || t.a, quedo });
           const reg = t.tipo === 'rescate'
             ? { tipo: 'sube', por: 'margen', de: r.from || f.precio, a: r.to || t.a, ts: hoyTs, nom: f.nom, cuenta: f.cuenta, margenAntes: Math.round(f.pct * 10) / 10 }
+            : t.tipo === 'escalera'
+              ? { tipo: 'baja', por: 'escalera', de: r.from || f.precio, a: r.to || t.a, ts: hoyTs, nom: f.nom, cuenta: f.cuenta, margen: Math.round(f.mgPw * 10) / 10, piso: t.piso }
             : t.tipo === 'remate'
               ? { tipo: 'baja', por: 'remate', de: r.from || f.precio, a: r.to || t.a, ts: hoyTs, nom: f.nom, cuenta: f.cuenta, margen: Math.round(f.mgPw * 10) / 10, piso: t.piso }
               : { tipo: t.tipo, de: r.from || f.precio, a: r.to || t.a, ts: hoyTs, nom: f.nom, cuenta: f.cuenta,
                 ...(t.tipo === 'sube' ? { u30: f.u } : { margen: Math.round(f.mgPw * 10) / 10 }) };
           try { await db.set('cyc/autoprecio/' + f.mla, reg); } catch { /* */ }
+          if (t.tipo === 'escalera') {
+            try { await db.set('cyc/escalera/' + f.mla, { paso: t.pasoOk, ts: hoyTs, de: r.from || f.precio, a: r.to || t.a, nom: f.nom, cuenta: f.cuenta, prodId: t.prodId }); } catch { /* */ }
+            if (t.marcarNo) {
+              try { await db.set('cyc/notraer/' + t.prodId, { ts: hoyTs, auto: true, mla: f.mla, nom: f.nom,
+                motivo: 'no vendió en 45+ días, ganar la caja daba pérdida y vendió menos de ' + NOTRAER_MIN_U + ' u. en 180 días entre las 4 cuentas' }); } catch { /* */ }
+            }
+            console.log(`   ✓ ESCALERA ${renglon} · escalón ${t.piso}% · queda en ${f.mgPw.toFixed(1)}% · 🔒 liquidando${t.marcarNo ? ' · 🚫 NO TRAER MÁS' : ''}${quedo != null ? ` · releído de ML: ${money(quedo)}` : ' · ⚠️ no pude releerlo'}`);
+            continue;
+          }
           if (t.tipo === 'remate') {
             const clR = f.sobre ? 'o_' + f.mla : 'r_' + f.mla;
             const vR = { tipo: f.sobre ? 'cajabarata' : 'rematar', valor: f.ptw, ts: hoyTs };
@@ -6858,8 +7008,9 @@ async function main() {
         L.push(`\n✅ <b>Lo hice solo</b> · ${hechosAuto.length}`);
         for (const x of hechosAuto) {
           const f = x.f;
-          L.push(`· ${x.tipo === 'rescate' ? '🛟' : x.tipo === 'sube' ? '📈' : x.tipo === 'remate' ? '🏷️' : '📉'} ${f.nom} (${f.cuenta})\n   ${money(x.de)} → ${money(x.a)}`
-            + (x.tipo === 'remate' ? ` · REMATE: gana la caja · queda en ${f.mgPw.toFixed(1)}%`
+          L.push(`· ${x.tipo === 'rescate' ? '🛟' : x.tipo === 'sube' ? '📈' : x.tipo === 'remate' ? '🏷️' : x.tipo === 'escalera' ? '🪜' : '📉'} ${f.nom} (${f.cuenta})\n   ${money(x.de)} → ${money(x.a)}`
+            + (x.tipo === 'escalera' ? ` · ESCALERA: no vende y ganar la caja daba pérdida · escalón ${x.piso}% (queda en ${f.mgPw.toFixed(1)}%) · el próximo en 7 d si no vende${x.marcarNo ? ' · 🚫 marcado NO TRAER MÁS' : ''} · 🔒 no se la sube nadie`
+            : x.tipo === 'remate' ? ` · REMATE: gana la caja · queda en ${f.mgPw.toFixed(1)}%`
               + (f.sobre ? ` · ${f.st} u. = ${f.sobre.dias} d de stock` : ` · ${f.quieta} d sin vender`)
               + (f.resignaTot == null ? '' : ` · resignás ${money(f.resigna)}/u (${money(f.resignaTot)} las ${f.st})`) + ' · 🔒 no se la sube nadie'
             : x.tipo === 'rescate' ? ` · estaba en ${Math.round(f.pct)}% → al ${Math.round(META_AV * 100)}%${x.corto ? ` · <i>hacían falta ${money(f.meta)}, subí el máximo (+25%); sigue mañana</i>` : ''}`
@@ -25856,6 +26007,8 @@ async function main() {
       const monoP = parseFloat(((await db.get('cyc/monotributo')) || {}).pct) || 0;
       const links = (await db.get('cyc/mllinks')) || {};
       const products = Object.values((await db.get('cyc/products')) || {});
+      const cuotasCfg = (await db.get('cyc/mlcuotas')) || {};
+      const pctCuotas = (mla) => { const v = cuotasCfg[mla] && parseFloat(cuotasCfg[mla].pct); return isFinite(v) && v > 0 ? v / 100 : 0; };
       const pIdx = {}; for (const p of products) pIdx[p.id] = p;
       const vp = (await db.get('cyc/ventaprod')) || {}; setDevLive(vp);
       // Ventas por publicación, para deducir la gestión real (igual que bajopiso).

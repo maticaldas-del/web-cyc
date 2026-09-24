@@ -961,6 +961,7 @@ footer{margin-top:32px;padding-top:14px;border-top:1px solid var(--border);font-
     <div class="pedidos-count" id="pedidos-papelera-count"></div>
     <input class="search-box" id="ped-papelera-search" type="search" placeholder="Buscar en la papelera..." oninput="renderPedidos()" style="margin-bottom:10px">
     <div id="pedidos-papelera-list"><div class="empty-msg">La papelera está vacía.</div></div>
+    <div id="pedidos-notraer-list" style="margin-top:16px"></div>
   </div>
 
   <footer>CYC · Pedidos</footer>
@@ -1856,6 +1857,10 @@ function startApp(){
     // Papelera de Pedidos: clave = id interno del producto. Lo que está acá el robot no lo vuelve
     // a crear, y no cuenta ni en el Puntaje del mes ni en el stock en riesgo.
     state.papelera =d.pedidos_papelera||{};
+    // "NO TRAER MÁS" (24/09/2026): lo marca el robot al arrancar la escalera de remate de algo que no
+    // se vendió. Pedidos no lo vuelve a pedir; se vuelve a traer desde la papelera (queda `permitido`
+    // y el robot no lo vuelve a marcar solo).
+    state.notraer=d.notraer||{};
     state.pausaPrecio=d.pausado_precio||{};   // 'no lo compro por ahora, el precio no da' (se revisa solo)
     state.pySinStock=d.py_sinstock||{};       // 'el mayorista no tenía esto hoy' (ver la canasta de US$1.000)
     state.candidatos=d.candidatos_py||{};     // 'Para probar': productos que todavía no vendemos
@@ -2297,7 +2302,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='20.24';
+const APP_VERSION='20.25';
 // El problema real que esto resuelve no es curiosidad: es que el celular guarda la app y sigue
 // mostrando la de ayer sin avisar. Varias veces se revisó un cambio que ya estaba subido y no se
 // veía. Por eso, además del número, el chip avisa cuando hay una versión nueva esperando.
@@ -8857,7 +8862,7 @@ async function syncPedidosAuto(){
     // Pausado por precio: mismo trato que la papelera — fuera de Pedidos, del Puntaje del mes y
     // del stock en riesgo. La diferencia es que este vuelve solo cuando el precio da (ver la
     // sección ⏸️). Se saltea ACÁ, antes de calcular, para que no sume riesgo sin verse.
-    if((state.pausaPrecio||{})[p.id])continue;
+    if((state.pausaPrecio||{})[p.id]||noTraerDe(p.id))continue;   // pausado por precio · "no traer más"
     const {vendidos,vendidosNorm,diasHistorial,dConS,vDia,hist,remate}=pedVentasNorm(p);
     // Antes acá decía `if(vendidos===0)continue` a secas, y ése era el renglón que dejaba afuera
     // para siempre a lo que no vendió POR FALTA DE STOCK. Ahora sólo se saltea si tampoco hay
@@ -9261,7 +9266,7 @@ function embudoRepo(){
   const out=[];
   for(const p of (state.products||[])){
     if(String(p.origen||'')!=='py')continue;
-    if((state.pausaPrecio||{})[p.id])continue;          // ya lo sacaste vos
+    if((state.pausaPrecio||{})[p.id]||noTraerDe(p.id))continue;   // pausado por precio · "no traer más"          // ya lo sacaste vos
     if((state.pySinStock||{})[p.id])continue;           // Nissei no lo tiene: no hay nada que decidir
     const nu=parseFloat(p.nisseiUSD)||0;
     if(!(nu>0))continue;                                 // sin precio de Paraguay no se opina
@@ -12123,6 +12128,33 @@ function pedGuayHTML(prod){
 // se despeja cuánto puede costar la mercadería puesta para que el margen quede en la meta (25%).
 // Después se le saca el envío/embalaje y el % de reclamos para llegar al precio de COMPRA, y en
 // Paraguay también el recargo del 17% para llegar al precio de la web.
+// ── "NO TRAER MÁS" (24/09/2026) ─────────────────────────────────────────────────
+// Pedido suyo: lo que tuvo 2 meses para venderse, no se vendió y hubo que rematar, se marca "no
+// traer más": *"dejar aparte y que pueda volver a traerlo, si en algún momento quiero. pero no
+// sugerirlo ni pedirlo más"*. Lo marca el robot (escalera de remate) SÓLO si en 180 días vendió
+// menos de 6 u. entre las 4 cuentas: no marca lo que sobra por exceso de stock (se vende bien) ni
+// lo que vendía bien y un competidor le ganó (ahí lo que sirve es el precio máximo de compra).
+const noTraerDe=pid=>{const e=(state.notraer||{})[pid];return !!(e&&!e.permitido);};
+async function volverATraer(pid){
+  const e=(state.notraer||{})[pid];if(!e)return;
+  const nom=((state.products||[]).find(x=>x.id===pid)||{}).name||e.nom||pid;
+  if(!confirm(`¿Volver a traer "${nom}"?\n\nVuelve a aparecer en Pedidos cuando haga falta, y el robot no lo vuelve a marcar solo.`))return;
+  const nuevo={...e,permitido:Date.now()};
+  try{await fbSet('notraer/'+pid,nuevo);state.notraer[pid]=nuevo;}
+  catch(err){alert('No se pudo guardar: '+(err&&err.message||err));return;}
+  syncPedidosAuto();renderPedidos();
+}
+function renderNoTraer(){
+  const el=document.getElementById('pedidos-notraer-list');if(!el)return;
+  const xs=Object.entries(state.notraer||{}).filter(([,e])=>e&&!e.permitido).sort((a,b)=>(b[1].ts||0)-(a[1].ts||0));
+  if(!xs.length){el.innerHTML='';return;}
+  el.innerHTML=`<div style="font-size:.72rem;font-weight:700;margin-bottom:4px">🚫 No traer más (${xs.length})</div>
+    <div style="font-size:.62rem;color:var(--muted);margin-bottom:8px">Los marcó el robot al rematarlos: no se vendieron en 2 meses. No se vuelven a pedir. Si querés volver a comprar alguno, tocá "Volver a traer".</div>`
+    +xs.map(([pid,e])=>{
+      const nom=((state.products||[]).find(x=>x.id===pid)||{}).name||e.nom||pid;
+      return `<div class="pedido-item"><span class="pi-prod">${nom}</span><span class="pi-nota" style="flex:1">${(e.motivo||'').replace(/</g,'&lt;')}</span><span class="pi-ts">${e.ts?ts2s(e.ts):''}</span><button class="pi-status suficiente" onclick="volverATraer('${pid}')">↩︎ Volver a traer</button></div>`;
+    }).join('');
+}
 function maxCompraDe(p){
   if(!p)return null;
   const mg=margenMLDe(p);
@@ -12389,6 +12421,7 @@ function renderPedidos(){
     return;
   }
   if(pedidoSection==='papelera'){
+    renderNoTraer();
     const el=document.getElementById('pedidos-papelera-list');if(!el)return;
     const todos=Object.values(state.papelera||{}).sort((a,b)=>(b.ts||0)-(a.ts||0));
     // Los vencidos (más de 7 días) ya no se pueden devolver de un click: van aparte y en gris.

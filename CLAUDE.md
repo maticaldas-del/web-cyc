@@ -195,6 +195,37 @@ privada unificados · las dos facturas de Sancor analizadas.
 **Versión del panel: 20.16 · caché `cyc-v294`**. El ciclo del robot quedó **prendido**.
 
 
+## LA ESCALERA DEL REMATE Y "NO TRAER MÁS" (24/09/2026, versión 20.25)
+
+Pedido suyo con el Xiaomi Watch 5 Lite (ganar la caja pedía −32% y quedaba en −6%): *"prefiero bajar
+al 25%, esperar 7 días, si no se vende, bajar al 20%, 7 días si no se vende, 15 y así sucesivamente
+hasta 0%, y esos productos marcarlos como 'no traer más'"*.
+ · **Robot, en `avisos:go` de la noche (la misma cola y frenos que el remate):** lo que NO vende hace
+   45+ días (o nunca vendió y el panel lo conoce hace 45+ días, por `altaTs`) y no llega a ganar la
+   caja arriba del piso de su escalón (`remNo` / `cbr.noSano`, que antes sólo iban al log) baja al
+   próximo escalón de margen **25 → 20 → 15 → 10 → 5 → 0,5%**, uno cada **7 días sin vender**. El
+   precio sale de `escPrecioPara` (el más bajo que deja el escalón, comisión preguntada a ML a ese
+   precio, redondeado para arriba); si el escalón cae abajo del precio de la caja, baja a la caja.
+   Máx. 24,5% de una · sin variantes · marca `liquidando` antes · relee de ML · 5 por noche · no toca
+   lo que él marcó liquidando a mano. Memoria `cyc/escalera/<MLA>`, registro `por:'escalera'`.
+   **Ojo: NO usa el freno de "menos de 20 visitas"** que tiene el remate: el Watch tiene 1 visita y él
+   lo pidió igual (anotado como duda para él).
+ · **"No traer más"** (`cyc/notraer/<prodId>`): lo marca la escalera al arrancar si el producto
+   vendió **menos de 6 u. en 180 días entre las 4 cuentas**. Así no entra lo que sobra por exceso (eso
+   vende y ni siquiera llega a la escalera) ni lo que vendía bien hasta que un competidor le ganó.
+   Pedidos (y el embudo de Paraguay) no lo vuelve a pedir; se ve en Pedidos → Papelera con el botón
+   **"Volver a traer"** (deja `permitido` y el robot no lo vuelve a marcar).
+ · **Precio máximo de compra en cada tarjeta de Pedidos** (`maxCompraDe`): lo más que se puede pagar
+   para quedar en la meta (25%) vendiendo al precio que gana la caja (`cajaPtw`), al de hoy si ya la
+   gana o si no es de catálogo (lo dice). En Paraguay, también el precio de la web antes del 17%. Es
+   `simMargen` despejada: probado, vuelve a dar 25,00% clavado.
+
+**Y el mismo día:** Rotación dice **"sin stock X d"** (amarillo 7, naranja 15, rojo 30) cuando no hay
+stock, y los días sin vender quedan en gris · el historial de stock (`cyc/stockhist` y el registro
+hora por hora) ahora también guarda cada VARIANTE · **el % por variante no salía NUNCA desde el 22/09**
+(`pubDeVariante` no devolvía el MLA: el número es la clave del renglón) — arreglado · las ventas en
+remate (abajo del piso) no cuentan para comprar ni mandar · Armar caja cubre **20 días** (antes 30).
+
 ## CADA VENTA DICE SI SU PUBLICACIÓN CAMBIÓ DE PRECIO (24/09/2026, versión 20.18)
 
 Pedido suyo: *"yo quiero ver los aumentos diarios que efecto tienen en las ventas diarias"* (y *"algo
