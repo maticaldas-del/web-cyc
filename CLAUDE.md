@@ -1,3 +1,82 @@
+## ⏩⏩ LO PRIMERO: LA REVISIÓN QUEDÓ A MEDIAS (24/09/2026) — SEGUIR DE ACÁ
+
+Él cortó por falta de tokens: *"acordate todos los cambios o errores que hay que arreglar. y lo
+seguimos después"*. **Método que pidió: uno por mensaje, corto, con la solución sugerida (a) y una
+alternativa (b), y él elige.** Los detalles de cada sospecha y los votos de los verificadores vivían
+en el scratchpad de la sesión (se pierde con el contenedor): si hace falta el detalle, volver a leer
+el código en las líneas que dice cada renglón.
+
+### PASO 2 (PATRIMONIO): 23 confirmadas · hechas 2 · quedan 21
+**Hechas:** 1 · una caja se marcaba "llegó" con la mercadería de otra (`recUsadas`, 3 días mínimos)
+· 2 · la ficha que se queda sin publicación vuelve a 0 (sólo si se leyeron las 4 cuentas).
+**Siguiente, ya propuesta y sin contestar — la 3:** la caja abierta cuenta ENTERA en camino aunque
+ML ya haya dado de alta parte → doble conteo (inflado) y caída de golpe al marcarla (el "bajó sin
+que pase nada" del 22/09). (a) sugerida: el robot anota en cada caja abierta cuántas entraron y la
+web las descuenta de "en camino" · (b) no contar en camino las cajas con alguna entrada.
+`index.html` enTransito ~5923 y calcArqueo ~6164 · `sync.mjs` cajasQueLlegaron.
+
+**Las que siguen (orden sugerido, más grave primero):**
+ · **Paraguay pagado y no llegado no está en ningún lado del patrimonio** (baja de mentira hasta
+   contarlo en la oficina) · alta · calcArqueo, pyPedidoHecho ~9607.
+ · **Borrar un envío con la ✕ hace desaparecer la mercadería de sus cajas no llegadas** · alta ·
+   delEnvioFull ~6072.
+ · **Unidades "sin variante" de la oficina se borran solas** al cerrar/deshacer una caja de otra
+   variante o sumar con + en una variante (sólo si total > suma de variantes) · alta ·
+   cerrarCaja ~5606, deshacerCaja ~6019, setOfiVar ~5521.
+ · **"A liquidar" deja afuera las ventas sin fecha de liberación, y `dispo` las cuenta como
+   disponibles** · alta · saldoml ~17320, fechaMov ~232, dispo ~17088.
+ · **`dispo` no resta la plata que sale de MP por fuera del reporte** (proveedores, tarjeta,
+   débitos de ML) · alta · dispo ~17020-17100. (Relacionado: el extracto real se baja a mano.)
+ · **La fecha "actualizado" del disponible de MP dice "hoy" siempre**: el ciclo pone `_ts.mp`
+   cuando saldoml cambia mp_liq (mismo grupo 'mp') → el ámbar de "número viejo" no sale nunca ·
+   alta · GRUPO en sync.mjs ~29243 y FIN_TS_GRUPO en index.html. Arreglo obvio: grupo propio.
+ · Dos publicaciones con el mismo depósito cuentan doble las entradas de una caja · alta ·
+   **quedó cubierto en parte por el arreglo 1** (ya no se suma dos veces la misma entrada bajo
+   la misma clave); revisar si falta algo (variantes distintas del mismo depósito).
+ · El marcado ignora lo que ML todavía procesa (`enProceso`): marca "faltaron" y `abrircaja` se
+   deshace solo a la hora · media · cajasQueLlegaron.
+ · El "cuarto freno" no ve cuando falla `/items` (catch { continue }): renglón en 0 → faltante
+   falso · media · cajasQueLlegaron ~567.
+ · Una caja que nunca se marca estira la ventana de TODA la cuenta y pasa los 1.000 movimientos:
+   ninguna caja nueva de ese producto se marca más · media.
+ · Stock a medias o en CERO si falla un lote de `/items` o una escritura · media · ~30330.
+ · `stockhist` inventa "fecha exacta de entrada" con una sola lectura (un cero pasajero) · media.
+ · `saldoml`/`dispo` toman "el reporte más nuevo" sin mirar su período (el diario de 1 día) · media.
+ · La web retiene el total de MP pendiente (`_finPending.mp_disp`) y tapa lo que escriba otro · media.
+ · "¿Cierra el mes?" da "Falta plata" falso: compara ventanas distintas y puede usar el mismo mes
+   de base · media · renderReconciliacion ~6197.
+ · "No es de acá" marcado después de cargar: desaparece de la lista pero sale igual en la caja ·
+   media · renderOfiCaja ~4922 contra cerrarCaja.
+ · `poncosto` no congela el costo viejo (la ficha sí) y reescribe la ganancia de meses cerrados;
+   su comentario y la tabla de comandos dicen lo contrario · media.
+ · `faltaron` da por neutra toda caja marcada completa: la conclusión del 22/09 no está probada ·
+   media.
+ · La ficha que crea la llegada del pedido toma el precio de HOY, no el congelado · baja.
+ · Con Inventario/Finanzas abierto la foto diaria se dispara cada ~2 s · baja.
+**Segunda vuelta (de costado) SIN TERMINAR:** quedó corriendo al cortar; si no aparecen sus
+resultados, hay que rehacerla (choques web/robot, fallas leídas como dato). Salieron 6 sospechas
+de "monedas" SIN verificar: el disponible a mano y "A liquidar" se miden en momentos distintos
+(la plata liberada se borra cada noche) · el dólar a mano sin freno (vacío guarda 0) · "¿Cierra
+el mes?" usa el dólar de hoy · un mes cerrado muestra casillas de hoy · el probe `capital` arma
+mal el patrimonio · el workflow manual `ml-pubs` reescribe renglones de mllinks.
+
+### PASO 1 (PRECIOS): quedaron 7 de 8 sin hacer (el 1 se hizo: rescate al vender, 20.15)
+ · 2 · `liquidando` no ve que ML sincroniza precio entre publicaciones del mismo producto (Lupa
+   90mm) — **propuesta sin contestar**: (a) marcar también las hermanas de esa cuenta · (b) sólo
+   frenar la suba si alguna hermana está marcada.
+ · 3 · el rescate puede volver a subir lo que el remate/la baja automática bajó (falta freno de 30 d).
+ · 4 · "👀 Subí solo y dejó de vender" no mira las subas del rescate.
+ · 5 · la espera de 10 días de las bajas se saltea si la fila cambia de lista (c_ / o_) o si falla
+   la lectura de `cyc/avisados`.
+ · 6 · `porcosto` no tiene los frenos nuevos.
+ · 7 · `setPriceTo` con una sola variante mandaría la lista incompleta (hoy nadie lo usa así).
+ · 8 · un aviso del log, sin daño.
+
+### Y AFUERA DE LA REVISIÓN
+ · Se le pasó el bloque de NOVEDADES del `PROMPT GUAY` (17%, sólo Precio y Código Nissei en las
+   fichas, códigos completos, Full ~19%, nada internacional, ventas y link, costo fijo del pedido).
+ · Recordatorio del 01/10 10:00 de los movimientos de MP sigue agendado.
+
 ## ⏩ DÓNDE QUEDAMOS — LEER PRIMERO (22/09/2026, cierre del chat)
 
 Él cambió de chat y pidió dejar todo escrito para arrancar del otro. **Esto es lo que quedó abierto,
