@@ -2297,7 +2297,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='20.19';
+const APP_VERSION='20.20';
 // El problema real que esto resuelve no es curiosidad: es que el celular guarda la app y sigue
 // mostrando la de ayer sin avisar. Varias veces se revisó un cambio que ya estaba subido y no se
 // veía. Por eso, además del número, el chip avisa cuando hay una versión nueva esperando.
@@ -8415,6 +8415,23 @@ const PED_MAX_DAYS=30;
 // Días que un producto queda en la papelera de Pedidos pudiendo volver atrás. Después la
 // eliminación es definitiva (regla suya del 13/08/2026).
 const PAP_DIAS=7;
+// ── LO VENDIDO EN REMATE NO PIDE REPONER (24/09/2026) ──
+// Planteo suyo con el Pendrive Cruzer Blade 32gb: *"al vender todo al 13% eso hace que después me
+// vuelva a pedir ese producto para comprar y mandar, porque ve que vendió 40 unidades en 30 días,
+// pero no ve que vendimos esa cantidad a un 13%"*. Eligió la (a): las ventas por DEBAJO DEL PISO
+// no cuentan para el ritmo con el que se decide cuánto COMPRAR (Pedidos) ni cuánto MANDAR (Armar
+// caja). Se decide venta por venta con el MISMO % que muestra el renglón de Ventas x Producto
+// (ganancia contra costo + gestión de Full), no con una marca que se cae sola.
+// No se descarta: la que no tiene costo, la que no tiene neto y los reclamos (el producto salió
+// igual y el neto en cero no es un precio). Falta de dato no es remate.
+function ventaEnRemate(v,dk){
+  if(!v||_esReclamo(v)||!(Number(v.neto)>0))return false;
+  const vv=dk&&!v._dateKey?{...v,_dateKey:dk}:v;
+  const c=efectivoCostoVP(vv); if(!(c>0))return false;
+  const pct=((v.neto||0)-c)/(c+gestDeVenta(vv))*100;
+  const piso=parseFloat((state.mlconfig||{}).minPct)||30;
+  return pct<piso;
+}
 function pedVentasNorm(prodOrName){
   const target=(prodOrName&&typeof prodOrName==='object')?prodOrName:prodByName(prodOrName);
   const tname=target?target.name:(prodOrName||'');
@@ -8422,11 +8439,11 @@ function pedVentasNorm(prodOrName){
   const diasHistorial=Math.max(1,Math.min(PED_MAX_DAYS,Math.floor((now-PED_HIST_START)/86400000)+1));
   const from=new Date(now);from.setDate(now.getDate()-(diasHistorial-1));
   const fk=dateToKey(from),tk=dateToKey(now);
-  let vendidos=0;
+  let vendidos=0,remate=0;
   Object.keys(state.ventaprod||{}).filter(k=>k>=fk&&k<=tk).forEach(k=>{
     Object.values(state.ventaprod[k]||{}).forEach(v=>{
       const match=target?ventaEsDe(v,target):(normTxt(v.prod)===normTxt(tname));
-      if(match&&!_esCancelada(v))vendidos+=v.qty||0; // cancelada no fue venta; reclamo sí (el producto salió)
+      if(match&&!_esCancelada(v)){if(ventaEnRemate(v,k)){remate+=v.qty||0;return;}vendidos+=v.qty||0;} // cancelada no fue venta; reclamo sí (el producto salió)
     });
   });
   const factor=PED_MAX_DAYS/diasHistorial;
@@ -8489,7 +8506,7 @@ function pedVentasNorm(prodOrName){
       hist={...hist,vDia};
     } else hist=null;
   }
-  return{vendidos,vendidosNorm,diasHistorial,factor,dConS,vDia,hist,pocasVentas};
+  return{vendidos,vendidosNorm,diasHistorial,factor,dConS,vDia,hist,pocasVentas,remate};
 }
 // ── A QUÉ CUENTA MANDAR LO QUE HAY EN LA OFICINA ───────────────────────────
 // El problema que resuelve: cuando está armando la caja tiene mercadería de varios productos y no
@@ -8512,7 +8529,7 @@ function ventasPorCuenta(p){
   const out={};LOCS.forEach(l=>out[l]=0);
   Object.keys(state.ventaprod||{}).filter(k=>k>=fk&&k<=tk).forEach(k=>{
     Object.values(state.ventaprod[k]||{}).forEach(v=>{
-      if(!ventaEsDe(v,p)||_esCancelada(v))return;
+      if(!ventaEsDe(v,p)||_esCancelada(v)||ventaEnRemate(v,k))return;
       if(out[v.cuenta]===undefined)return;
       out[v.cuenta]+=v.qty||0;
     });
@@ -8549,7 +8566,7 @@ function ventasHistoricas(p,cuenta,variante){
   const varDeMla=variante?_varPorMla(p):null;
   Object.keys(state.ventaprod||{}).filter(k=>k>=fk&&k<=tk).forEach(k=>{
     Object.values(state.ventaprod[k]||{}).forEach(v=>{
-      if(!ventaEsDe(v,p)||_esCancelada(v))return;
+      if(!ventaEsDe(v,p)||_esCancelada(v)||ventaEnRemate(v,k))return;
       if(cuenta&&v.cuenta!==cuenta)return;
       if(variante){const va=v.variante||varDeMla[v.mla]||'';if(va!==variante)return;}
       const q=v.qty||0;if(q<=0)return;
@@ -8603,7 +8620,7 @@ function ventasPorCuentaVar(p,varDeMla){
   const out={};
   Object.keys(state.ventaprod||{}).filter(k=>k>=fk&&k<=tk).forEach(k=>{
     Object.values(state.ventaprod[k]||{}).forEach(v=>{
-      if(!ventaEsDe(v,p)||_esCancelada(v))return;
+      if(!ventaEsDe(v,p)||_esCancelada(v)||ventaEnRemate(v,k))return;
       if(!LOCS.includes(v.cuenta))return;
       const va=v.variante||varDeMla[v.mla]||'';
       if(!va)return;
@@ -8805,7 +8822,7 @@ async function syncPedidosAuto(){
   const _fk=dateToKey(_from),_tk=dateToKey(_now);
   Object.keys(state.ventaprod||{}).filter(k=>k>=_fk&&k<=_tk).forEach(key=>{
     Object.values(state.ventaprod[key]||{}).forEach(v=>{
-      if(!v.variante||!v.prodId||_esCancelada(v))return;
+      if(!v.variante||!v.prodId||_esCancelada(v)||ventaEnRemate(v,key))return;
       if(!varSalesMap[v.prodId])varSalesMap[v.prodId]={};
       varSalesMap[v.prodId][v.variante]=(varSalesMap[v.prodId][v.variante]||0)+(v.qty||0);
     });
@@ -8836,7 +8853,7 @@ async function syncPedidosAuto(){
     // del stock en riesgo. La diferencia es que este vuelve solo cuando el precio da (ver la
     // sección ⏸️). Se saltea ACÁ, antes de calcular, para que no sume riesgo sin verse.
     if((state.pausaPrecio||{})[p.id])continue;
-    const {vendidos,vendidosNorm,diasHistorial,dConS,vDia,hist}=pedVentasNorm(p);
+    const {vendidos,vendidosNorm,diasHistorial,dConS,vDia,hist,remate}=pedVentasNorm(p);
     // Antes acá decía `if(vendidos===0)continue` a secas, y ése era el renglón que dejaba afuera
     // para siempre a lo que no vendió POR FALTA DE STOCK. Ahora sólo se saltea si tampoco hay
     // ritmo viejo con qué medirlo: sin ningún dato no se puede opinar, y ahí sí se calla.
@@ -8950,7 +8967,7 @@ async function syncPedidosAuto(){
     // real. Se guarda para poder MOSTRAR la cuenta en la tarjeta (ver cuentaPedidoHTML): sin eso,
     // "6 vendidos" y "4 en camino" invitan a la resta equivocada.
     const objetivoU=Math.max(necesario+stock,0);
-    resumen[p.id]={p,vendidos,vendidosNorm,stock,diasHistorial,diasCubiertos,necesario,enOficina,enCamino,aComprar,variantesNec,coll,gan30d,riesgo,riesgoComprar,riesgoMandar,dConS,vDia,objetivoU,targetDias:TARGET_DIAS_P,hist};
+    resumen[p.id]={p,vendidos,vendidosNorm,stock,diasHistorial,diasCubiertos,necesario,enOficina,enCamino,aComprar,variantesNec,coll,gan30d,riesgo,riesgoComprar,riesgoMandar,dConS,vDia,objetivoU,targetDias:TARGET_DIAS_P,hist,remate};
   }
   // 3. IDs que deberían existir como auto-pedidos
   const expectedIds=new Set();
@@ -11850,7 +11867,7 @@ function cuentaPed(r){
   // `cHist` marca que la velocidad NO salió de este mes sino del ritmo viejo (ver pedVentasNorm).
   return{cObjetivo:r.objetivoU||0,cDias:Math.round(r.dConS||0),cVdia:Math.round((r.vDia||0)*100)/100,
     cVend:r.vendidos||0,cCamino:r.enCamino||0,cCasa:r.enOficina||0,cML:r.stock||0,cPocas:!!r.pocasVentas,
-    cHist:r.hist?{u:r.hist.u,dias:Math.round(r.hist.dias)}:null,cTarget:r.targetDias||PED_MAX_DAYS};
+    cHist:r.hist?{u:r.hist.u,dias:Math.round(r.hist.dias)}:null,cTarget:r.targetDias||PED_MAX_DAYS,cRemate:r.remate||0};
 }
 // ── "ESTE RENGLÓN NO CIERRA": EL CHEQUEO AUTOMÁTICO DE PEDIDOS ─────────────────────
 // Pedido suyo, anotado desde el 16/09/2026: *"un producto no puede destrabar más por mes que lo
@@ -11901,7 +11918,10 @@ function pedSinSentido(p){
   return m.length?{n:m.length,det:m}:null;
 }
 function cuentaPedidoHTML(p){
-  if(!(p.cObjetivo>0)||!(p.cVdia>0))return '';
+  // Lo vendido en remate no pide reponer (ver ventaEnRemate): se dice cuánto quedó afuera, así no
+  // se lee como que el producto vende menos sin motivo.
+  const rem=(p.cRemate||0)>0?`<div style="flex-basis:100%;font-size:.6rem;color:var(--muted);margin-top:2px">🔒 No cuento <strong style="color:var(--text)">${fmtN(p.cRemate)}</strong> u. vendidas abajo del piso (${parseFloat((state.mlconfig||{}).minPct)||30}%): lo que se vende rematado no se vuelve a comprar.</div>`:'';
+  if(!(p.cObjetivo>0)||!(p.cVdia>0))return rem;
   const pasos=[p.cHist
     ? `<span style="color:var(--amber)">este mes no vendió porque estuvo en CERO</span> · vendía <strong style="color:var(--text)">${p.cVdia}</strong> por día cuando tenía (<strong style="color:var(--text)">${fmtN(p.cHist.u)}</strong> en ${p.cHist.dias} días)`
     : p.cPocas
@@ -11922,7 +11942,7 @@ function cuentaPedidoHTML(p){
   return `<div style="flex-basis:100%;font-size:.6rem;color:var(--muted);line-height:1.6;background:rgba(0,0,0,.16);border-radius:6px;padding:6px 9px;margin-top:2px">
     🧮 ${pasos.join(' &nbsp;·&nbsp; ')}
     <div style="font-size:.55rem;margin-top:3px;opacity:.85">${pie}</div>
-  </div>`;
+  </div>${rem}`;
 }
 // ── EL CHIP DE CADA VARIANTE: QUÉ COMPRAR Y DÓNDE ESTÁ LO QUE YA TENÉS ─────────────
 // Pedido suyo del 14/09/2026. Los tres lugares van SIEMPRE, aunque sean cero: un chip sin el
