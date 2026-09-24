@@ -66,15 +66,26 @@ en el pedido, se cuenta dos veces. Apretar "Llegó" primero.
  · **LA SEGUNDA VUELTA DE LA REVISIÓN SE DEJA PARA EL FINAL, decisión suya del 24/09:** *"el dos
    la dejamos para cuando terminemos todo. acordate"*. Cuando se cierre todo lo demás, RECORDÁRSELO
    y rehacerla (el `resumeFromRunId` ya no sirve en otra sesión).
-**Segunda vuelta (de costado): TERMINÓ A MEDIAS el 24/09** — 14 agentes bien, 30 cortados por el
-límite de uso. Salió m01 (arriba). Lo demás (m05, m06, choques web/robot, fallas leídas como dato) quedó
-SIN verificar: se retoma con Workflow `resumeFromRunId: wf_c2fd8e0d-f45` (sólo en la misma sesión) o se
-rehace. Texto viejo: quedó corriendo al cortar; si no aparecen sus
-resultados, hay que rehacerla (choques web/robot, fallas leídas como dato). Salieron 6 sospechas
-de "monedas" SIN verificar: el disponible a mano y "A liquidar" se miden en momentos distintos
-(la plata liberada se borra cada noche) · el dólar a mano sin freno (vacío guarda 0) · "¿Cierra
-el mes?" usa el dólar de hoy · un mes cerrado muestra casillas de hoy · el probe `capital` arma
-mal el patrimonio · el workflow manual `ml-pubs` reescribe renglones de mllinks.
+### SEGUNDA VUELTA DE LA REVISIÓN: ARRANCÓ EL 24/09 A LA NOCHE (pedido suyo: *"tomate tu tiempo y anota todo"*)
+**De la vuelta cortada se recuperó todo** (estaba guardado en el registro del workflow): m05 era el
+probe `capital` y m06 `ml-pubs` — **los dos ya estaban arreglados** (verificado en el código). Y la
+búsqueda "de costado" SÍ había terminado: encontró **8 sospechas que nunca se verificaron**:
+ · c0 · la vinculación que se guarda en la web durante una vuelta del robot se pierde (el robot
+   escribe el renglón de `mllinks` entero con la copia leída al empezar).
+ · c1 · la vinculación por `upid` se deshace en la primera venta (la venta re-empareja por título).
+ · c2 · marcar a mano Reclamo/Cancelada o editar una venta de menos de 2 días no dura: la vuelta
+   siguiente la reescribe entera.
+ · c3 · la oficina se guarda como número absoluto en cada aparato: dos aparatos se pisan.
+ · f0 · una cancelación se clasifica una sola vez: con un 429, un reclamo queda "cancelada" (o una
+   devolución "reclamo") para siempre y el % de reclamos queda mal.
+ · f1 · el neto de cada venta se reescribe 2 días y queda el de la ÚLTIMA pasada: con un 429 queda
+   el ESTIMADO para siempre.
+ · f2 · un renglón de caja cuyo producto no tiene publicación de Full vinculada en esa cuenta se lee
+   "0 recibidas" (no "sin leer"): faltantes falsos.
+ · f3 · sin dólar cargado, escribir el costo en PESOS en la ficha guarda `costUSD` 0.
+**Se están verificando contra el código de hoy**, junto con una búsqueda nueva en seis frentes:
+precios (lo del 23-24/09), cajas y stock, plata y monedas, pedidos y compras, choques web/robot y
+fallas leídas como dato. Lo que se confirme va abajo, de a uno, con su (a)/(b).
 
 ### PASO 1 (PRECIOS): TERMINADO (el 8 era un aviso del log sin daño)
 **Hechos el 24/09 (v20.28 · `cyc-v306`):** 3 · el rescate no sube lo que el robot BAJÓ en 30 días
