@@ -2297,7 +2297,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='20.21';
+const APP_VERSION='20.22';
 // El problema real que esto resuelve no es curiosidad: es que el celular guarda la app y sigue
 // mostrando la de ayer sin avisar. Varias veces se revisó un cambio que ya estaba subido y no se
 // veía. Por eso, además del número, el chip avisa cuando hay una versión nueva esperando.
@@ -11054,6 +11054,42 @@ const ROT_RECIEN_DIAS=10;   // menos que esto = todavía no se puede juzgar
 // versión mostraba "🆕 recién llegó, 2 días" en productos parados hace meses — al revés de para qué
 // está la columna. Por eso: sin marca explícita de exacta, se trata como aproximada y se muestra
 // "≥ N d", que es lo único que se puede afirmar sin mentir.
+// ── HACE CUÁNTO ESTÁ SIN STOCK (24/09/2026) ─────────────────────────────────────
+// Pedido suyo mirando una variante con "103d sin vender" y 0 u.: *"¿está bien que diga que no vende
+// hace tantos días si no hay stock? (…) que diga hace cuántos días está sin stock"*. Los días sin
+// vender dicen poco cuando no hay qué vender; lo que importa ahí es cuánto hace que falta.
+// Sale de `cero` en cyc/stockhist (cuándo el robot lo vio quedar en cero), sólo si en NINGUNA cuenta
+// tiene stock hoy: con stock en una cuenta, el producto no está "sin stock". Sin registro: null, nunca
+// un número inventado. `pares` = [[unidades hoy, clave del historial], …] (producto o variante).
+function diasSinStockDe(pares){
+  const H=state.stockhist||{};let cero=null;
+  for(const [q,k] of pares){
+    if(q>0)return null;
+    const h=H[k];
+    if(h&&h.cero>0&&(cero==null||h.cero>cero))cero=h.cero;
+  }
+  if(cero==null)return null;
+  const d=Math.floor((Date.now()-cero)/86400000);
+  return d>=0?d:null;
+}
+// Lo mismo que diasEnStockDe pero para UNA variante (el robot la anota desde el 24/09/2026).
+function diasEnStockVarDe(p,v){
+  const H=state.stockhist||{};let masViejo=null,aprox=false;
+  for(const l of LOCS){
+    if(getQV(p.id,l,v)<=0)continue;
+    const h=H[invKeyV(p.id,l,v)];
+    if(!h||!h.desde)continue;
+    const d=Math.floor((Date.now()-h.desde)/86400000);
+    if(!isFinite(d)||d<0)continue;
+    if(masViejo==null||d>masViejo){masViejo=d;aprox=(h.aprox!==false);}
+  }
+  return masViejo==null?null:{dias:masViejo,aprox};
+}
+// El color de "sin stock hace": una semana amarillo, dos naranja, un mes rojo.
+function rotSinStockHtml(d){
+  const c=d>=30?'var(--red)':d>=15?'#fb923c':d>=7?'#facc15':'var(--muted)';
+  return `<span style="color:${c};font-weight:${d>=7?700:400}" title="No tiene stock en ninguna cuenta de ML desde hace ${d} día(s) (cuando el robot lo vio quedar en cero). Mientras no hay mercadería, los días sin vender no dicen nada del producto.">sin stock ${d}d</span>`;
+}
 function diasEnStockDe(p){
   const H=state.stockhist||{};
   let masViejo=null,aprox=false;
@@ -11211,6 +11247,7 @@ function rotEnStockHtml(r){
   // de mercadería de verdad y lo que se quiere saber es cuándo entró la última.
   let e=r.diasEnStock;
   if(r.diasCaja!=null&&(e==null||e.aprox||r.diasCaja<e.dias))e={dias:r.diasCaja,aprox:false};
+  if(e==null&&r.diasSinStock!=null)return rotSinStockHtml(r.diasSinStock);
   if(e==null)
     return `<span style="color:var(--muted)" title="No hay registro de esta mercadería. El robot anota la fecha cuando ve un producto con stock; si acá no hay nada es que hoy no tiene stock en ninguna cuenta de ML.">—</span>`;
   const d=e.dias;
@@ -11318,8 +11355,11 @@ function rotMargenHtml(r){
   if(r.liq2)pie+=`<div title="Vos lo bajaste a mano para liquidarlo${r.liq2.fecha?' el '+r.liq2.fecha.split('-').reverse().join('/'):''}. El robot NO le va a subir el precio aunque la venta quede abajo del piso. La marca se saca sola cuando se acabe el stock." style="font-size:.55rem;color:#a78bfa;margin-top:2px;white-space:nowrap">🔒 liquidando a propósito</div>`;
   return `<span title="${tit}" style="font-weight:700;color:${color}">${m>=0?'+':''}${m.toFixed(0)}%</span>${pie}`;
 }
-function rotDiasSinVenderHtml(dias){
+function rotDiasSinVenderHtml(dias,sinStock){
   if(dias===null||dias===undefined)return '<span style="color:var(--muted)">Sin ventas</span>';
+  // Sin stock no hay qué vender: el número queda en gris, sin alarma. Lo que importa ahí es hace
+  // cuánto falta, que va en la columna "En stock hace" (24/09/2026, pedido suyo).
+  if(sinStock)return `<span style="color:var(--muted)" title="No tiene stock: no vende porque no hay. Hace cuánto falta, en la columna En stock hace.">${dias}d</span>`;
   const color=dias>=60?'var(--red)':dias>=30?'var(--amber)':'var(--text)';
   const dot=dias>=60?'🔴':dias>=30?'🟠':'🟢';
   return `<span style="color:${color}">${dot} ${dias}d</span>`;
@@ -11651,7 +11691,7 @@ function renderRotacionStock(){
     return{pid:p.id,name:p.name,capital,ventasPeriodo,rotNorm,estadoKey,estadoHtml,stock,diasSinVender,liq:_liq,
       margen:mg.margen,margenSinEnvio:mg.sinEnvio,margenEnvioML:mg.envioML,margenNeto:mg.neto,margenCosto:mg.costo,
       margenPrecio:mg.precio,margenGest:mg.gest,margenEst:mg.margenEst,margenGestEst:mg.gestEst,margenEstN:mg.estN,margenDudoso:margenDudosoDe(mg),liq2:liquidandoDe(p),
-      caja:_cajaML,cajaBaja:cajaBajarDe(p,_cajaML,mg),diasEnStock:diasEnStockDe(p),diasCaja:ultimaEntradaDe(p)};
+      caja:_cajaML,cajaBaja:cajaBajarDe(p,_cajaML,mg),diasEnStock:diasEnStockDe(p),diasCaja:ultimaEntradaDe(p),diasSinStock:diasSinStockDe(LOCS.map(l=>[getQ(p.id,l),invKey(p.id,l)]))};
   });
 
   // ── Puntaje de rotación: % del capital ($) atascado en productos "Muerto" ──
@@ -11821,9 +11861,9 @@ function renderRotacionStock(){
         <td style="font-size:.72rem;color:var(--muted)">${st>0?fmt(st*(costFullP(p)||0)):'—'}</td>
         <td style="text-align:right;font-size:.72rem">${vp} u.</td>
         <td style="text-align:right;font-family:'DM Mono',monospace;font-size:.72rem">${st>0?rotN.toFixed(2):'—'}</td>
-        <td style="text-align:right;font-size:.72rem">${rotDiasSinVenderHtml(dsv)}</td>
+        <td style="text-align:right;font-size:.72rem">${rotDiasSinVenderHtml(dsv,st<=0)}</td>
         <td style="text-align:right">${mgV}</td>
-        <td style="text-align:right;font-size:.66rem;color:var(--muted)" title="Hace cuánto hay stock se anota por producto y CUENTA, no por variante (cyc/stockhist). Poner acá el del producto entero sería darle a un color una antigüedad que no es la suya, así que no se muestra.">—</td>
+        <td style="text-align:right;font-size:.66rem">${rotEnStockHtml({diasEnStock:diasEnStockVarDe(p,v),diasCaja:null,diasSinStock:diasSinStockDe(LOCS.map(l=>[getQV(p.id,l,v),invKeyV(p.id,l,v)]))})}</td>
         <td style="text-align:right;font-size:.72rem">${cjHtml}</td>
         <td style="font-size:.72rem">${estTxt}</td>
       </tr>`;
@@ -11836,7 +11876,7 @@ function renderRotacionStock(){
     <td>${r.capital>0?fmt(r.capital):'—'}</td>
     <td style="text-align:right">${r.ventasPeriodo} u.</td>
     <td style="text-align:right;font-family:'DM Mono',monospace">${r.stock>0?r.rotNorm.toFixed(2):'—'}</td>
-    <td style="text-align:right">${rotDiasSinVenderHtml(r.diasSinVender)}</td>
+    <td style="text-align:right">${rotDiasSinVenderHtml(r.diasSinVender,!(r.stock>0))}</td>
     <td style="text-align:right">${rotMargenHtml(r)}</td>
     <td style="text-align:right">${rotEnStockHtml(r)}</td>
     <td style="text-align:right">${rotCajaHtml(r)}</td>

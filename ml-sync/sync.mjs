@@ -30703,7 +30703,11 @@ async function main() {
       const invPrev = (await db.get('cyc/inventory')) || {};
       const histPrev = (await db.get('cyc/stockhist')) || {};
       const histUpd = {};
-      for (const [k, v] of Object.entries(stockTot)) {
+      // Desde el 24/09/2026 también cada VARIANTE (`<prod>__<cuenta>__v__<var>`), pedido suyo: *"el
+      // día en que llegaron cada variante (…) como tomándola por unidades independientes"*. Nadie
+      // recorre este nodo entero (todos buscan una clave exacta), así que agregar claves no mueve
+      // ninguna cuenta del producto.
+      for (const [k, v] of Object.entries({ ...stockVar, ...stockTot })) {
         const antes = Number(invPrev[k] || 0), ahora = Number(v || 0);
         const h = histPrev[k] || {};
         // `aprox` separa dos cosas que NO son lo mismo y que hasta el 20/08/2026 se guardaban igual:
@@ -30738,9 +30742,9 @@ async function main() {
         const sidsLeidos = new Set([...stockLeido].map((l) => sid(l)));
         for (const l of stockLeido) slUpd['lect/' + sid(l) + '/' + horaSL] = 1;
         let slCambios = 0;
-        for (const [k, v] of Object.entries(stockTot)) {
-          const m = k.match(/^(.+?)__([^_].*)$/);
-          if (!m || !sidsLeidos.has(m[2])) continue;
+        for (const [k, v] of Object.entries({ ...stockVar, ...stockTot })) {
+          const cta = k.split('__')[1];                    // producto__cuenta[__v__variante]
+          if (!cta || !sidsLeidos.has(cta)) continue;
           const hay = Number(v) > 0 ? 1 : 0;
           if (slEst[k] === hay) continue;
           slUpd['cambios/' + k + '/' + ahoraSL] = hay;
