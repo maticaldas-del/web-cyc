@@ -206,6 +206,18 @@ privada unificados · las dos facturas de Sancor analizadas.
 **Versión del panel: 20.16 · caché `cyc-v294`**. El ciclo del robot quedó **prendido**.
 
 
+## EL PISO SALE DEL NEGOCIO: 22% NARANJA · 25% BASE (24/09/2026)
+
+Pedido suyo: naranja = *"CYC queda en 0 pagando TODO"* (mercadería, ML, impuestos, gastos del mes y
+el retiro de $1.800.000) y verde = *"si queda $1.000 de ganancia a CYC le quedan $333, y eso tiene
+que alcanzar"*. Se mide con **`pisobase[:días][:go]`** (sin `:go` sólo muestra): margen = fijos ÷
+base de costo del mes (mercadería + IIBB/monotributo + envío de Full, el divisor del % único).
+**Medido el 24/09 (30 días):** facturado $22,3M · base $11,7M · ganancia $3,8M = **32,7% promedio**
+· fijos $2,56M ($760 mil de gastos + retiro) → **naranja 21,9%** · verde (triple) **65,7%**.
+**El 66% como base del robot "es una locura, rompe todo" (él):** decidió **piso 22% y base 25%**
+(*"estamos ganando bien"*), aplicado con `meta:22:25`. El piso del robot y el naranja del panel son
+el mismo número (`minPct`). Si el negocio cambia (gastos o ventas), se vuelve a correr `pisobase`.
+
 ## LA ESCALERA DEL REMATE Y "NO TRAER MÁS" (24/09/2026, versión 20.25)
 
 Pedido suyo con el Xiaomi Watch 5 Lite (ganar la caja pedía −32% y quedaba en −6%): *"prefiero bajar
