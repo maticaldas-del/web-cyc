@@ -421,6 +421,9 @@ input.qty:focus{border-color:var(--accent2)}
 .ped-head{list-style:none;cursor:pointer;display:flex;align-items:center;gap:12px;padding:11px 14px}
 .ped-head::-webkit-details-marker{display:none}
 .ped-name{font-family:'Syne',sans-serif;font-weight:800;font-size:.92rem;line-height:1.25;flex:1;min-width:0}
+.ped-max{display:flex;flex-direction:column;align-items:flex-end;white-space:nowrap;flex-shrink:0;margin-right:10px}
+.ped-max b{font-family:'DM Mono',monospace;font-size:.85rem;color:var(--text);line-height:1.1}
+.ped-max i{font-style:normal;font-size:.58rem;color:var(--muted);margin-top:1px}
 .ped-buy{display:flex;flex-direction:column;align-items:flex-end;gap:0;white-space:nowrap;flex-shrink:0}
 .ped-buy b{font-family:'Syne',sans-serif;font-weight:800;font-size:1.7rem;line-height:1}
 .ped-buy i{font-style:normal;font-size:.58rem;color:var(--muted);letter-spacing:.03em;margin-top:1px}
@@ -2307,7 +2310,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='20.30';
+const APP_VERSION='20.31';
 // El problema real que esto resuelve no es curiosidad: es que el celular guarda la app y sigue
 // mostrando la de ayer sin avisar. Varias veces se revisó un cambio que ya estaba subido y no se
 // veía. Por eso, además del número, el chip avisa cuando hay una versión nueva esperando.
@@ -12323,6 +12326,16 @@ function maxCompraHTML(p){
   const py=r.esPy&&r.usdPy>0?` · en la web de Paraguay: <b>US$ ${r.usdPy.toFixed(2).replace('.',',')}</b> (antes del 17%)`:'';
   return `<div style="${st};color:var(--muted)" title="Es lo más que podés pagar la mercadería para que, vendiéndola ${donde}, te quede ${r.meta}% con todo adentro (comisión de ML a ese precio, envío de Full, IIBB, monotributo, envío/embalaje y reclamos). Puesta en tu oficina: ${fmt(r.merc)}.">💰 Máximo para comprar: <b style="color:var(--text)">US$ ${r.usd.toFixed(2).replace('.',',')}</b>${py} · para quedar en ${r.meta}% vendiendo ${donde}${cmp}</div>`;
 }
+// El máximo de compra A LA VISTA en la cabecera de la tarjeta, en dólares y pesos (24/09/2026,
+// pedido suyo: "que aparezca en dólares y pesos, sin tener que abrir el detalle"). Es la MISMA
+// cuenta de `maxCompraDe`: el renglón de adentro sigue explicando de dónde sale.
+function maxCompraChip(p){
+  const r=maxCompraDe(p); if(!r||r.motivo)return'';
+  if(!(r.merc>0)||!(r.usd>0))return `<span class="ped-max" style="color:var(--red)" title="Vendiendo a ${fmt(r.P)} no hay precio de compra que deje ${r.meta}%."><b>no llega</b><i>máx. compra</i></span>`;
+  const tc=curTC();
+  const ars=tc>0?fmt(Math.round(r.usd*tc)):'';
+  return `<span class="ped-max" title="Lo más que podés pagar cada unidad para quedar en ${r.meta}% vendiendo a ${fmt(r.P)}. El detalle está adentro."><b>US$ ${r.usd.toFixed(2).replace('.',',')}</b><i>${ars?ars+' · ':''}máx. compra</i></span>`;
+}
 function _pedidoItemHtml(p,opts){
   opts=opts||{};
   const NEXT={pendiente:'poco_stock',poco_stock:'suficiente',suficiente:'pendiente'};
@@ -12366,6 +12379,7 @@ function _pedidoItemHtml(p,opts){
     <summary class="ped-head">
       ${_prod?fotoChipHTML(_prod,38,p.variante||''):''}
       <span class="ped-name">${p.producto||'—'}${p.variante?` <span style="padding:1px 6px;border-radius:4px;background:rgba(124,58,237,.15);color:#a78bfa;font-size:.65rem;font-family:'DM Mono',monospace;font-weight:400">${p.variante}</span>`:''}</span>
+      ${_prod?maxCompraChip(_prod):''}
       <span class="ped-buy"><b>${fmtN(p.cantidad||1)}</b><i>u. a comprar${p.auto===false?' · a mano':''}</i></span>
       <span class="ped-caret">▼</span>
     </summary>
