@@ -215,5 +215,22 @@ jobs:
           BILLING_PROBE: saldoml:go
         run: node ml-sync/sync.mjs
 
+      # EL DISPONIBLE, JUSTO DESPUÉS (24/09/2026, error m01 de la revisión del patrimonio).
+      # `saldoml` saca de "A liquidar" lo que ML ya liberó, y hasta hoy NADIE lo sumaba al disponible
+      # (que sólo se escribía a mano): esa plata desaparecía del patrimonio todas las noches. `dispo`
+      # usa el MISMO corte de "hoy" y suma al disponible todo lo posterior al número que él cargó.
+      # Si no cargó el disponible de las 4 cuentas, no toca nada (lo dice en el log).
+      - name: Disponible de ML (lo liberado pasa de "a liquidar" al disponible)
+        continue-on-error: true
+        env:
+          ML_CLIENT_ID: ${{ secrets.ML_CLIENT_ID }}
+          ML_CLIENT_SECRET: ${{ secrets.ML_CLIENT_SECRET }}
+          FIREBASE_API_KEY: ${{ secrets.FIREBASE_API_KEY }}
+          FIREBASE_DB_URL: ${{ secrets.FIREBASE_DB_URL }}
+          FIREBASE_BOT_EMAIL: ${{ secrets.FIREBASE_BOT_EMAIL }}
+          FIREBASE_BOT_PASSWORD: ${{ secrets.FIREBASE_BOT_PASSWORD }}
+          BILLING_PROBE: dispo:go
+        run: node ml-sync/sync.mjs
+
       # (El almacenamiento Full y los cargos de ML por débito —IIBB, etc.— ya NO se cargan como gasto
       # mensual: ahora se descuentan como un % por cuenta sobre cada venta, en la web. Ver ML_EXTRA_PCT.)

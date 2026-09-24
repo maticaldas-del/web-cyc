@@ -15,7 +15,7 @@ que pase nada" del 22/09). (a) sugerida: el robot anota en cada caja abierta cu�
 web las descuenta de "en camino" · (b) no contar en camino las cajas con alguna entrada.
 `index.html` enTransito ~5923 y calcArqueo ~6164 · `sync.mjs` cajasQueLlegaron.
 
-**CONFIRMADA POR LA SEGUNDA VUELTA (3 de 3 verificadores), m01 · alta:** cada noche `saldoml:go`
+**m01 · ARREGLADA el 24/09 (`dispo:go` corre en ml-daily después de `saldoml`; sin los 4 disponibles cargados no hace nada, así que el arreglo arranca cuando él los cargue). Era:** cada noche `saldoml:go`
    reescribe "A liquidar" y saca lo que ML liberó ese día (`if (ts <= hoy) continue`, sync.mjs
    ~17391), pero el disponible (`mp_disp`) sólo lo escribe él a mano y `dispo` no corre en ningún
    workflow → la plata liberada ese día desaparece del patrimonio (~US$400 por noche, se acumula); y
