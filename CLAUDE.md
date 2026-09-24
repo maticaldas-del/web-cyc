@@ -44,6 +44,8 @@ en el pedido, se cuenta dos veces. Apretar "Llegó" primero.
    talón: 5 en `internal_process` el 16/09 → 0 al día siguiente). Hoy, en 191 inventarios: sólo 2 u.
    no disponibles y son `lost`; ninguna entrada llegó con parte en revisión. O sea: el agujero existe
    pero hoy vale ~0. (140 consultas de movimientos dieron 429: la foto de movimientos es parcial.)
+   **DECIDIDO el 24/09, eligió la (b): se deja como está** (hoy vale ~0). Si algún día aparece una
+   caja grande en revisión, el dato está en el stock actual (`internal_process`) y se vuelve a mirar.
    **Y apareció otra cosa: varias cajas entraron como `ADJUSTMENT`, no como `INBOUND_RECEPTION`**
    (Filtro agua 70 u. el 11/09, Lupa 90mm 9 u., Protector talón 11 y 10). El marcado sólo acepta
    inbound/reception, así que esas cajas no las ve: por eso se marcaron a mano. Pendiente de decidir.
