@@ -138,6 +138,16 @@ completa" estando en el camión. Ahora:
  · abrirla (web "no llegó" o `abrircaja`) borra `recUsadas`.
 Probado con la función REAL y un ML de mentira: el código viejo marcaba mal 3 de 6 casos, el nuevo 0.
 
+**Arreglo 2 (elegida la a): el stock de una ficha que se quedó sin publicación vuelve a 0.** El robot
+escribe el stock sólo con las claves que midió; si una publicación se pasaba a otra ficha, quedaba sin
+ficha o se ocultaba, la clave vieja quedaba congelada y el patrimonio la sumaba para siempre. Ahora, en
+cada vuelta del ciclo, **si se leyeron ENTERAS las cuatro cuentas** (todas las tandas de `/items`
+contestaron, sin renglones en error), toda clave `<ficha>__<cuenta de ML>` (y sus `__v__`) con stock que
+no se midió pasa a 0. Si una cuenta falló, no se toca nada. **No se toca**: la oficina, ni la ficha que
+tiene una publicación OCULTA en esa cuenta (ese stock puede seguir en Full: sale en el log). El log dice
+`🧹 N clave(s) … puestas en 0` con cuáles. **La primera vuelta puede bajar el patrimonio de golpe**: es
+stock fantasma que se venía sumando.
+
 ## EL RESCATE EN EL MOMENTO DE LA VENTA (24/09/2026, versión 20.15 · `cyc-v293`)
 
 Pedido suyo, arreglo 1 de 8 de la revisión: *"si hay algo vendiendo MAL, que se corrija al momento

@@ -29663,6 +29663,10 @@ async function main() {
   const stockTot = {}; // prodId__Cuenta -> unidades (suma de sus publicaciones EN FULL)
   const depositoIgnorado = []; // publicaciones fuera de Full: su "stock" no existe (ver más abajo)
   const stockVar = {}; // prodId__Cuenta__v__Variante -> unidades
+  // Cuentas cuyo stock se leyó ENTERO en esta vuelta (todas las tandas de publicaciones contestaron).
+  // Sólo con las cuatro así se ponen en 0 las fichas que ya no tienen publicación (ver abajo).
+  const stockLeido = new Set();
+  const ignoradasConProd = new Set();   // prodId__Cuenta de publicaciones ocultas (nomas / 🗑)
   // Inventarios de Full ya contados, por producto×cuenta: dos publicaciones pueden compartir el
   // mismo inventario y sumarlas contaría la misma mercadería dos veces (ver el caso del Joystick).
   const invYaContado = new Set();
@@ -30382,6 +30386,8 @@ async function main() {
       const ids = Object.entries(map)
         .filter(([mla, e]) => e && e.cuenta === label && !e.ignored && /^MLA/i.test(mla))
         .map(([mla]) => mla);
+      for (const [mla, e] of Object.entries(map)) if (e && e.cuenta === label && e.ignored && e.prodId && /^MLA/i.test(mla)) ignoradasConProd.add(e.prodId + '__' + sid(label));
+      let stockFallo = false;
       for (let k = 0; k < ids.length; k += 20) {
         const chunk = ids.slice(k, k + 20);
         let arr;
@@ -30389,7 +30395,10 @@ async function main() {
           // inventory_id hace falta para leer el stock REAL de Full de las publicaciones apagadas
           // (ver el caso del Joystick x3 más abajo). Sin pedirlo, b.inventory_id viene vacío.
           arr = await mlGet('/items?ids=' + chunk.join(',') + '&attributes=id,status,sub_status,permalink,price,original_price,deal_ids,available_quantity,inventory_id,variations,shipping,title', t.access_token);
-        } catch { continue; }
+        } catch { stockFallo = true; continue; }
+        // Una tanda que contesta con menos renglones, o con algún renglón en error, tampoco se leyó
+        // entera: una publicación que no se leyó no puede dejar su ficha en cero.
+        if (!Array.isArray(arr) || arr.length < chunk.length || arr.some((r) => !r || (r.code && r.code !== 200) || !(r.body && r.body.id))) stockFallo = true;
         for (const row of (arr || [])) {
           const b = row.body || {};
           const mla = b.id; if (!mla || !map[mla]) continue;
@@ -30572,6 +30581,7 @@ async function main() {
           }
         }
       }
+      if (!stockFallo) stockLeido.add(label);
     } catch { /* no cortar la corrida por esto */ }
 
     // 4) marcar hasta dónde llegamos (para la próxima corrida) — no en dry-run
@@ -30596,6 +30606,31 @@ async function main() {
   // escribir el stock de ML en el inventario del panel (producto×cuenta + variantes)
   if (!DRY) {
     const invUpd = { ...stockVar, ...stockTot };
+    // ── LA FICHA QUE SE QUEDÓ SIN PUBLICACIÓN VUELVE A CERO (24/09/2026, arreglo 2 del paso 2) ──
+    // El stock se escribe con patch y sólo con las claves que se midieron en esta vuelta. Cuando
+    // una publicación se pasaba a otra ficha, quedaba sin ficha o se ocultaba, la clave de la ficha
+    // vieja en esa cuenta NO se volvía a escribir: quedaba congelada en el último número y el
+    // patrimonio sumaba para siempre mercadería que ya no existía.
+    // Ahora, si esta vuelta leyó ENTERAS las cuatro cuentas, toda clave de una cuenta de ML que
+    // tenga stock y no se haya medido pasa a 0. Si alguna cuenta falló, no se toca nada: falta de
+    // dato no es falta de mercadería. Tampoco se toca la de una ficha con una publicación OCULTA en
+    // esa cuenta (ese stock puede seguir en Full: se avisa en el log, no se borra).
+    const huerfanas = [], ocultas = [];
+    if (autoStock && !onlyAcc && labels.every((l) => stockLeido.has(l))) {
+      const invAhora = (await db.get('cyc/inventory')) || {};
+      const sidsML = new Set(labels.map((l) => sid(l)));
+      for (const [k, v] of Object.entries(invAhora)) {
+        if (!(Number(v) > 0) || k in invUpd) continue;
+        const m = k.match(/^(.+?)__([^_].*?)(?:__v__.*)?$/);
+        if (!m || !sidsML.has(m[2])) continue;             // sólo cuentas de ML, nunca la oficina
+        if (ignoradasConProd.has(m[1] + '__' + m[2])) { ocultas.push(k + '=' + v); continue; }
+        invUpd[k] = 0; huerfanas.push(k + '=' + v);
+      }
+      if (huerfanas.length) console.log(`🧹 ${huerfanas.length} clave(s) de stock sin publicación que las mida, puestas en 0: ${huerfanas.slice(0, 15).join(' · ')}${huerfanas.length > 15 ? ' …' : ''}`);
+      if (ocultas.length) console.log(`ℹ️  ${ocultas.length} clave(s) de stock de fichas con la publicación OCULTA, se dejan como están: ${ocultas.slice(0, 10).join(' · ')}`);
+    } else if (autoStock && !onlyAcc) {
+      console.log(`ℹ️  No se revisaron claves de stock sin publicación: no se leyeron enteras las cuatro cuentas (${labels.filter((l) => !stockLeido.has(l)).join(', ') || '—'}).`);
+    }
     if (Object.keys(invUpd).length) {
       // HISTORIAL DE STOCK: se anota DESDE CUÁNDO un producto tiene stock. Hace falta para saber si
       // algo "no rota" de verdad o simplemente no había mercadería para vender: sin este dato, un
