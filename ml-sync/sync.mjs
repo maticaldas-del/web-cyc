@@ -17305,6 +17305,11 @@ async function main() {
             if (ts > hoy) { nFuturo++; continue; }          // todavía no pasó: eso es "a liquidar"
             const v = csvNum(f[iR]);
             if (v == null) { sinNeto++; continue; }
+            // PLATA QUE ENTRA SIN FECHA DE LIBERACIÓN TODAVÍA NO ESTÁ DISPONIBLE (24/09/2026). Antes
+            // caía a la fecha de la venta y se contaba como disponible; `saldoml` la cuenta como
+            // "a liquidar", así que era la misma plata en los dos lados. Lo que SALE sin esa fecha
+            // (retiros, devoluciones) sí se descuenta: ya salió.
+            if (v > 0 && iL >= 0 && !String(f[iL] || '').trim()) { nFuturo++; continue; }
             mov += v; nMov++;
           }
           const sucias = sinFecha + sinNeto;
@@ -17488,6 +17493,7 @@ async function main() {
       // de la cuenta, que es el error anotado nueve veces en este archivo — y acá se notaría feo:
       // los días sumarían distinto del total que está al lado.
       const agenda = {};   // 'AAAA-MM-DD' → pesos que se liberan ese día (las cuatro cuentas)
+      let sinDiaTot = 0;   // pesos por cobrar que ML todavía no le puso día (van al total, no a un día)
       const res = {}; let totalLiq = 0, cuentasOk = 0, cuentasMal = 0;
       for (const label of labels) {
         const acc = accounts[label];
@@ -17529,14 +17535,21 @@ async function main() {
             console.log(`   ❌ le falta una columna clave (tipo ${iTipo} · neto ${iReal} · liberación ${iLib})`);
             cuentasMal++; continue;
           }
-          let liq = 0, nLiq = 0, nLib = 0, nSinFecha = 0, nRetiro = 0, nSinNeto = 0, nFechaMala = 0;
+          let liq = 0, nLiq = 0, nLib = 0, nSinFecha = 0, nRetiro = 0, nSinNeto = 0, nFechaMala = 0, nSinFechaLiq = 0;
           let ultima = 0;
           for (let n = 1; n < li.length; n++) {
             const f = csvPartir(li[n], sep);
             const tp = String(f[iTipo] || '').trim();
             if (ES_RETIRO.test(tp)) { nRetiro++; continue; }   // un retiro no es plata por cobrar
             const txt = String(f[iLib] || '').trim();
-            if (!txt) { nSinFecha++; continue; }
+            // PLATA QUE ENTRA SIN FECHA DE LIBERACIÓN ES PLATA POR COBRAR (24/09/2026): ML todavía no
+            // dijo cuándo la suelta. Antes se descartaba y no estaba ni acá ni en el disponible.
+            // Va al total, no a la agenda (no tiene día). Lo que sale sin fecha no es "a liquidar".
+            if (!txt) {
+              const v0 = csvNum(f[iReal]);
+              if (v0 != null && v0 > 0) { liq += v0; nLiq++; nSinFechaLiq++; sinDiaTot += v0; } else nSinFecha++;
+              continue;
+            }
             const ts = new Date(txt).getTime();
             if (!Number.isFinite(ts)) { nFechaMala++; continue; }
             if (ts <= hoy) { nLib++; continue; }               // ya está disponible, no es "a liquidar"
@@ -17554,6 +17567,7 @@ async function main() {
           const sucias = nSinNeto + nFechaMala;
           console.log(`   filas: ${li.length - 1} · por cobrar ${nLiq} · ya liberadas ${nLib} · retiros ${nRetiro} · sin fecha ${nSinFecha}`);
           if (ultima) console.log(`   la última se libera el ${new Date(ultima).toISOString().slice(0, 10)}`);
+          if (nSinFechaLiq) console.log(`   ${nSinFechaLiq} por cobrar SIN fecha de liberación todavía: entran al total, no a la agenda por día`);
           if (sucias) console.log(`   ⚠️ ${sucias} filas no se pudieron leer (${nSinNeto} sin neto · ${nFechaMala} con fecha rara): el total queda CORTO`);
           res[label] = { aLiquidar: Math.round(liq), filas: nLiq, sucias, rango, creado, ts: Date.now() };
           totalLiq += liq; cuentasOk++;
@@ -17666,7 +17680,7 @@ async function main() {
           const dias = Object.keys(agenda).sort();
           const porDiaUSD = {};
           for (const d of dias) porDiaUSD[d] = Math.round(agenda[d] / tc);
-          await db.set('cyc/finanzas/agenda', { dias: porDiaUSD, _ts: Date.now(), _moneda: 'usd', _hasta: dias[dias.length - 1] || '' });
+          await db.set('cyc/finanzas/agenda', { dias: porDiaUSD, sinDia: Math.round(sinDiaTot / tc), _ts: Date.now(), _moneda: 'usd', _hasta: dias[dias.length - 1] || '' });
           const rel = (await db.get('cyc/finanzas/agenda')) || {};
           const nrel = Object.keys(rel.dias || {}).length;
           console.log(`   agenda de liberaciones: ${nrel} día(s) guardado(s) y releído(s) ${nrel === dias.length ? '✅' : '❌'}`);
@@ -29517,7 +29531,10 @@ async function main() {
   // Por eso el robot, que pasa cada 2 minutos, compara contra lo último que vio y si el número
   // cambió pone la fecha él. No importa quién lo haya escrito.
   {
-    const GRUPO = { efectivo: 'efectivo', mp_disp: 'mp', mp_liq: 'mp' };
+    // "A liquidar" (mp_liq) tiene su PROPIA fecha (24/09/2026). Estaba en el grupo 'mp' con el
+    // disponible, y como `saldoml` lo reescribe todas las noches, la fecha del DISPONIBLE decía
+    // "hoy" siempre aunque él no lo cargara hace semanas: el ámbar de "número viejo" no salía nunca.
+    const GRUPO = { efectivo: 'efectivo', mp_disp: 'mp', mp_liq: 'liq' };
     const visto = finanzas._seen || {};
     const primeraVez = !finanzas._seen;   // arranque: se anota lo que hay, sin inventar una fecha
     const ahora = Date.now();

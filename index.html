@@ -2302,7 +2302,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='20.25';
+const APP_VERSION='20.26';
 // El problema real que esto resuelve no es curiosidad: es que el celular guarda la app y sigue
 // mostrando la de ayer sin avisar. Varias veces se revisó un cambio que ya estaba subido y no se
 // veía. Por eso, además del número, el chip avisa cuando hay una versión nueva esperando.
@@ -4323,7 +4323,9 @@ const MP_CUENTAS=['mp_adriana','mp_luciana','mp_ayelen','mp_matias'];
 // Vive acá y no repetido en cada lugar: si los dos nombres se separan, el robot escribiría el
 // disponible de una cuenta en la casilla de otra y eso no se ve.
 const MP_LABEL={mp_adriana:'Adriana',mp_luciana:'Luciana',mp_ayelen:'Ayelen',mp_matias:'Matias'};
-const FIN_TS_GRUPO={efectivo:'efectivo',mp_disp:'mp',mp_liq:'mp',
+// mp_liq va aparte: el robot lo reescribe cada noche y, junto con el disponible, hacía decir
+// "hoy" a la fecha del disponible aunque nadie lo cargara hace semanas (24/09/2026).
+const FIN_TS_GRUPO={efectivo:'efectivo',mp_disp:'mp',mp_liq:'liq',
   mp_adriana:'mp',mp_luciana:'mp',mp_ayelen:'mp',mp_matias:'mp'};
 function _finTsTxt(ts){
   const d=new Date(ts),ahora=new Date();
@@ -5527,14 +5529,27 @@ async function ofiSumarVar(prodId,variante,inputId){
   await setOfiVar(prodId,variante,total);
   toast(`${variante}: ${antes} + ${n} = ${total} ✓`);
 }
+// LAS UNIDADES "SIN VARIANTE" NO SE BORRAN SOLAS (24/09/2026). El total de la oficina puede ser
+// MÁS que la suma de las variantes: es lo contado sin decir de qué aroma es (el renglón "sin aroma"
+// de Armar caja). Recalcular el total como la suma pelada lo borraba al cerrar o deshacer una caja
+// de OTRA variante, o al sumar en una variante: plata que desaparecía del patrimonio sin aviso.
+// Se mide ANTES de tocar nada y se vuelve a sumar después.
+function ofiSumaVars(pid){
+  const p=(state.products||[]).find(x=>x.id===pid);
+  return ((p&&p.variantes)||[]).reduce((a,v)=>a+(parseInt(state.inventory[invKeyV(pid,OFI,v)])||0),0);
+}
+function ofiSinVar(pid){
+  return Math.max(0,(parseInt(state.inventory[invKey(pid,OFI)])||0)-ofiSumaVars(pid));
+}
 async function setOfiVar(pid,variante,val){
   const p=(state.products||[]).find(x=>x.id===pid);if(!p)return;
   const n=Math.max(0,parseInt(String(val).replace(/[^\d]/g,''))||0);
   const vk=invKeyV(pid,OFI,variante);
+  const sinVar=ofiSinVar(pid);
   state.inventory[vk]=n;_invPending[vk]=n;
   await fbSet('inventory/'+vk,n||null);
   if(_invPending[vk]===n)delete _invPending[vk];
-  const suma=(p.variantes||[]).reduce((s,v)=>s+(parseInt(state.inventory[invKeyV(pid,OFI,v)])||0),0);
+  const suma=ofiSumaVars(pid)+sinVar;
   const pk=invKey(pid,OFI);
   state.inventory[pk]=suma;_invPending[pk]=suma;
   await fbSet('inventory/'+pk,suma||null);
@@ -5615,11 +5630,11 @@ async function cerrarCaja(cuenta){
   for(const it of items){
     if(it.variante){
       const vk=invKeyV(it.prodId,OFI,it.variante);
+      const sinVar=ofiSinVar(it.prodId);
       const nv=Math.max(0,(parseInt(state.inventory[vk])||0)-it.u);
       state.inventory[vk]=nv;
       await fbSet('inventory/'+vk,nv||null);
-      const prod=(state.products||[]).find(x=>x.id===it.prodId);
-      const suma=((prod&&prod.variantes)||[]).reduce((a,v)=>a+(parseInt(state.inventory[invKeyV(it.prodId,OFI,v)])||0),0);
+      const suma=ofiSumaVars(it.prodId)+sinVar;
       const pk=invKey(it.prodId,OFI);
       state.inventory[pk]=suma;
       await fbSet('inventory/'+pk,suma||null);
@@ -6033,10 +6048,10 @@ async function deshacerCaja(id,i){
   for(const it of items){
     if(it.variante){
       const vk=invKeyV(it.prodId,OFI,it.variante);
+      const sinVar=ofiSinVar(it.prodId);
       state.inventory[vk]=(parseInt(state.inventory[vk])||0)+it.u;
       await fbSet('inventory/'+vk,state.inventory[vk]);
-      const prod=(state.products||[]).find(x=>x.id===it.prodId);
-      const suma=((prod&&prod.variantes)||[]).reduce((a,v)=>a+(parseInt(state.inventory[invKeyV(it.prodId,OFI,v)])||0),0);
+      const suma=ofiSumaVars(it.prodId)+sinVar;
       const pk=invKey(it.prodId,OFI);
       state.inventory[pk]=suma;
       await fbSet('inventory/'+pk,suma||null);
@@ -6088,6 +6103,12 @@ async function addCajaAEnvio(id){
 }
 async function delEnvioFull(id){
   const e=(state.envios_full||{})[id];if(!e)return;
+  // UN ENVÍO CON CAJAS QUE NO LLEGARON NO SE BORRA CON LA ✕ (24/09/2026). Esas unidades ya
+  // salieron de la oficina y viven sólo en la caja: borrarla las sacaba del patrimonio sin
+  // devolverlas a ningún lado. Para eso está "deshacer" en cada caja (vuelven a la oficina) o
+  // marcarla como llegada.
+  const _uPend=cajasDe(e).filter(c=>!c.recibida).reduce((a,c)=>a+(c.items||[]).reduce((b,x)=>b+(parseInt(x&&x.u)||0),0),0);
+  if(_uPend>0){alert(`Este envío tiene ${_uPend} unidad(es) en cajas que todavía no llegaron.\n\nSi lo borro, esa mercadería desaparece del patrimonio.\n\n· Si no salió: tocá "deshacer" en cada caja (las unidades vuelven a tu oficina).\n· Si ya llegó: marcala como llegada.`);return;}
   if(!confirm(`¿Borrar el envío del ${e.fecha} (${e.cajas} caja/s de ${e.cuenta})?`))return;
   await fbSet('envios_full/'+id,null);
   delete state.envios_full[id];
@@ -6170,6 +6191,13 @@ let _arqViewYM=null; // YYYY_MM del snapshot que se está viendo, null = en vivo
 let _agendaAbierta=false;
 function getHistCostUSDProd(prodId,ym){return state.precios_hist_prod?.[ym]?.[prodId]??null;}
 function efectivoCostP(p){if(!_arqViewYM)return costP(p);return getHistCostUSDProd(p.id,_arqViewYM)??costP(p);}
+function pyEnCaminoUSD(){
+  return Object.values(state.compraspy||{}).reduce((t,c)=>{
+    if(!c||c.estado==='llego')return t;
+    const r=parseFloat(c.recargo)>1?parseFloat(c.recargo):RECARGO_PY;
+    return t+(parseFloat(c.usdCrudo)||0)*r;
+  },0);
+}
 function calcArqueo(){
   let stockVal=0,stockML=0,stockLocal=0,stockCamino=0;
   // MERCADERÍA EN CAMINO A FULL. Cuando se cierra una caja, esas unidades salen de la oficina y
@@ -6184,6 +6212,11 @@ function calcArqueo(){
     });
     LOCAL_LOCS.forEach(l=>stockLocal+=getQ(p.id,l)*cp);
   });
+  // LO PAGADO A PARAGUAY QUE TODAVÍA NO LLEGÓ TAMBIÉN ES EN CAMINO (24/09/2026). Los dólares ya
+  // salieron y la mercadería no está en ningún lado del panel hasta que se cuenta en la oficina:
+  // sin esto el patrimonio bajaba de mentira el día del pedido y volvía a subir al contarla.
+  // Se valúa igual que la ficha que se va a crear: precio crudo × el recargo (lo puesto en casa).
+  if(!_arqViewYM)stockCamino+=pyEnCaminoUSD();
   stockVal=stockML+stockLocal+stockCamino;
   let activos=0,deudas=0,corregir=0;
   // Unidades contadas en la oficina de Mati. Si hay aunque sea una, el valor de la mercadería sale
@@ -6298,7 +6331,10 @@ function agendaCalc(ag,hoyTxt){
     hoy:suma(hoyTxt,hoyTxt),
     manana:suma(manana,manana),
     semana:suma(hoyTxt,agendaMasDias(hoyTxt,6)),
-    total:porVenir.reduce((t,x)=>t+x.usd,0),
+    // Lo que ML todavía no le puso día de liberación: es plata por cobrar igual y está adentro
+    // de "A liquidar", así que entra al total para que los dos números coincidan (24/09/2026).
+    sinDia:Number.isFinite(Number(ag&&ag.sinDia))?Number(ag.sinDia):0,
+    total:porVenir.reduce((t,x)=>t+x.usd,0)+(Number.isFinite(Number(ag&&ag.sinDia))?Number(ag.sinDia):0),
     yaLiberado:pasados.reduce((t,x)=>t+x.usd,0),
     nPasados:pasados.length,
     primero:porVenir.length?porVenir[0].d:'',
@@ -6365,6 +6401,7 @@ function renderAgenda(){
     +`<div><div style="font-size:.62rem;color:var(--muted)">7 días</div><div style="font-size:1.25rem;font-weight:600${rojoSiNeg(a.semana)}">${fmt(Math.round(a.semana))}${enPesos(a.semana)}</div></div>`
     +`<div><div style="font-size:.62rem;color:var(--muted)">todo lo pendiente</div><div style="font-size:1.25rem;font-weight:600${rojoSiNeg(a.total)}">${fmt(Math.round(a.total))}${enPesos(a.total)}</div></div>`
     +'</div>'
+    +(a.sinDia>0?`<div style="font-size:.64rem;color:var(--muted);margin-top:6px">Adentro de "todo lo pendiente" hay ${fmt(Math.round(a.sinDia))} que ML todavía no dijo qué día libera.</div>`:'')
     +(a.nPasados?`<div style="font-size:.64rem;color:var(--muted);margin-top:6px">Ya se liberó desde que se calculó: ${fmt(Math.round(a.yaLiberado))} en ${a.nPasados} día(s). Eso ya está en el disponible.</div>`:'')
     // El día por día va adentro del desplegable y los CUATRO NÚMEROS quedan siempre a la vista.
     // No es lo mismo esconder el detalle que esconder la conclusión: «cuánto entra hoy» y «cuánto
@@ -6485,8 +6522,10 @@ function updateArqueo(){
       if(d){
         const det=Object.entries(camCta).sort((a,b)=>b[1]-a[1])
           .map(([k,v])=>`${k} ${fmtN(v)}`).join(' · ');
-        d.innerHTML=`${fmtN(uCam)} u. despachadas que ML todavía no recibió`
-          +(det?`<br><span style="opacity:.85">${det}</span>`:'');
+        const _py=pyEnCaminoUSD();
+        d.innerHTML=(uCam>0?`${fmtN(uCam)} u. despachadas que ML todavía no recibió`:'')
+          +(det?`<br><span style="opacity:.85">${det}</span>`:'')
+          +(_py>0?`${uCam>0?'<br>':''}🇵🇾 Paraguay pagado y no llegado: US$ ${fmtN(Math.round(_py))}`:'');
       }
     }
   }
