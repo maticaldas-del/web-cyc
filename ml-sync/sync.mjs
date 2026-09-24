@@ -602,6 +602,14 @@ async function cajasQueLlegaron(db, accounts, labels, products, DRY) {
     // Publicaciones de esos productos en esta cuenta.
     const mlas = Object.entries(links).filter(([m, e2]) =>
       m.startsWith('MLA') && e2 && e2.cuenta === cta && !e2.ignored && o.prods.has(e2.prodId)).map(([m]) => m);
+    // UN DEPÓSITO DE FULL ES UN SOLO PRODUCTO-COLOR (24/09/2026, revisión paso 2). Dos publicaciones
+    // de la misma cuenta pueden compartir el `inventory_id` (las dos Lupa 90mm), y ahí la entrada
+    // ya se dedupa por renglón. Pero si esas dos publicaciones caen en renglones DISTINTOS (otro
+    // color por el título, u otra ficha), la MISMA entrada se le acreditaba a los dos y podía
+    // marcar dos cajas con una sola mercadería. No se sabe cuál es la buena, así que no se adivina:
+    // los dos renglones quedan "sin leer" (la caja se queda abierta, nunca se da por faltante) y
+    // se avisa en el log para arreglarlo con `fijarvar`.
+    const invRenglon = {};
     for (let k = 0; k < mlas.length; k += 20) {
       let arr;
       const tanda = mlas.slice(k, k + 20);
@@ -636,6 +644,15 @@ async function cajasQueLlegaron(db, accounts, labels, products, DRY) {
         }
         for (const par of pares) {
           mirados++;
+          const kPar = kR(cta, p.id, par.va);
+          const kPrev = invRenglon[par.inv];
+          if (kPrev && kPrev !== kPar) {
+            sinLeer[kPrev] = true; sinLeer[kPar] = true;
+            delete recEnt[kPrev]; delete recEnt[kPar];
+            console.log(`⚠️ ${cta} · el depósito ${par.inv} lo comparten dos renglones distintos (${kPrev.split('|').slice(1).join(' · ') || '?'} y ${kPar.split('|').slice(1).join(' · ') || '?'}, ${mla}): no se le acredita a ninguno. Se arregla con fijarvar.`);
+            continue;
+          }
+          invRenglon[par.inv] = kPar;
           try {
             // ML EXIGE LAS DOS FECHAS. Mandando sólo `date_from` contesta
             // 400 "The field date_from and date_to are required" — y como el catch estaba vacío,

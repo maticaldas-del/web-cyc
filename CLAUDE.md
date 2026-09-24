@@ -56,8 +56,16 @@ en el pedido, se cuenta dos veces. Apretar "Llegó" primero.
    fecha anterior (`desdePrev`/`aproxPrev`); si vuelve a tener stock dentro de 48 h
    (`STOCKHIST_CERO_PASAJERO_MS`) se recupera esa fecha en vez de poner "entrada exacta" de hoy.
    Costo aceptado: una reposición real en menos de 48 h queda con la fecha vieja.
- · **`faltaron`** da por neutra toda caja marcada completa (conclusión del 22/09 sin probar) · baja.
- · Dos publicaciones con el mismo depósito y DISTINTA variante: sin revisar si falta algo · baja.
+ · **`faltaron`** da por neutra toda caja marcada completa · **CERRADO el 24/09 sin tocar:** es
+   neutra por construcción (sus unidades salen de "en camino" y ya están en el stock de Full), y el
+   único agujero posible —marcarla con mercadería de otra caja— ya lo tapó `recUsadas`.
+ · Dos publicaciones con el mismo depósito y DISTINTA variante · **HECHO el 24/09:** en
+   `cajasQueLlegaron`, si un `inventory_id` cae en dos renglones distintos, no se le acredita a
+   ninguno (los dos quedan "sin leer", la caja queda abierta y nunca se da por faltante) y el log
+   avisa con `⚠️ … lo comparten dos renglones distintos` para arreglarlo con `fijarvar`.
+ · **LA SEGUNDA VUELTA DE LA REVISIÓN SE DEJA PARA EL FINAL, decisión suya del 24/09:** *"el dos
+   la dejamos para cuando terminemos todo. acordate"*. Cuando se cierre todo lo demás, RECORDÁRSELO
+   y rehacerla (el `resumeFromRunId` ya no sirve en otra sesión).
 **Segunda vuelta (de costado): TERMINÓ A MEDIAS el 24/09** — 14 agentes bien, 30 cortados por el
 límite de uso. Salió m01 (arriba). Lo demás (m05, m06, choques web/robot, fallas leídas como dato) quedó
 SIN verificar: se retoma con Workflow `resumeFromRunId: wf_c2fd8e0d-f45` (sólo en la misma sesión) o se
