@@ -3497,7 +3497,47 @@ async function limpiarNoSubir(db, DRY) {
     sacadas.push({ mla, cuenta: e.cuenta, title: e.title || mla });
     if (!DRY) { await db.set('cyc/nosubir/' + mla, null); delete NOSUBIR[mla]; }
   }
+  // Y LAS HERMANAS DE LAS QUE SIGUEN MARCADAS, que quedaron sin marca antes del 24/09 (la Lupa
+  // 90mm). Se contagia sola en cada vuelta; sin producto o sin cuenta no se adivina.
+  if (!DRY) {
+    const siguen = new Set(mlas.filter((m) => !sacadas.some((x) => x.mla === m)));
+    for (const m of siguen) {
+      const e = links[m] || {};
+      if (!e.prodId || !e.cuenta) continue;
+      for (const [h, x] of Object.entries(links)) {
+        if (h === m || marcadas[h] || !x || x.ignored || x.prodId !== e.prodId || x.cuenta !== e.cuenta) continue;
+        const d = { ...(marcadas[m] || {}), hermanaDe: m };
+        await db.patch('cyc/nosubir/' + h, d); NOSUBIR[h] = d; marcadas[h] = d;
+        console.log(`🔒 ${h} marcada "liquidando" como su hermana ${m} (ML les iguala el precio).`);
+      }
+    }
+  }
   return sacadas;
+}
+
+// LA MARCA `liquidando` VA A TODAS LAS HERMANAS DE LA MISMA CUENTA (24/09/2026, decisión suya: la
+// "a"). ML le sincroniza el precio a las publicaciones del mismo producto en una cuenta (lo mostró
+// la Lupa 90mm: se bajó una y la otra quedó igual sola), así que subir la hermana sin marca subía
+// también la que él estaba rematando. Hermana = mismo producto y misma cuenta, no oculta.
+// Sacar la marca también se la saca a todas: marcar una sola no sirve si ML las iguala.
+async function marcarLiquidando(db, mla, datos, sacar = false) {
+  let links = {};
+  try { links = (await db.get('cyc/mllinks')) || {}; } catch { links = {}; }
+  const e = links[mla] || {};
+  const todas = [mla];
+  if (e.prodId && e.cuenta) {
+    for (const [m, x] of Object.entries(links)) {
+      if (m !== mla && x && !x.ignored && x.prodId === e.prodId && x.cuenta === e.cuenta) todas.push(m);
+    }
+  }
+  for (const m of todas) {
+    if (sacar) { await db.set('cyc/nosubir/' + m, null); delete NOSUBIR[m]; }
+    else {
+      const d = m === mla ? datos : { ...datos, hermanaDe: mla };
+      await db.patch('cyc/nosubir/' + m, d); NOSUBIR[m] = d;
+    }
+  }
+  return todas;
 }
 
 function _chequeoNoSubir(itemId) {
@@ -6959,9 +6999,8 @@ async function main() {
             if ((it.variations || []).length) { fallidosAuto.push({ ...t, err: 'tiene variantes: se hace a mano' }); continue; }
             if (t.tipo === 'remate' || t.tipo === 'escalera') {
               try {
-                await db.patch('cyc/nosubir/' + f.mla, { fecha: new Date(hoyTs - 3 * 3600e3).toISOString().slice(0, 10),
+                await marcarLiquidando(db, f.mla, { fecha: new Date(hoyTs - 3 * 3600e3).toISOString().slice(0, 10),
                   motivo: t.tipo === 'escalera' ? `escalera de remate (escalón ${t.piso}%)` : `remate automático (queda en ${f.mgPw.toFixed(1)}%)` });
-                NOSUBIR[f.mla] = { motivo: 'remate automático' };
               } catch { fallidosAuto.push({ ...t, err: 'no pude marcarla liquidando: no la bajo (el rescate la volvería a subir)' }); continue; }
               // Se declara medio punto MENOS: el precio se redondea a la decena de abajo.
               r = await setPriceTo(f.mla, null, t.a, tk, t.tipo === 'escalera'
@@ -6969,7 +7008,7 @@ async function main() {
                 : { margen: f.mgPw - 0.5, autorizado: `remate automático, permiso de Matías del 23/09/2026 (hasta 0%) · escalón al ${t.piso}%` });
               // Si no se bajó, la marca se saca: si no, quedaría congelada contra toda suba sin
               // haberse rematado nunca.
-              if (!r || !r.ok) { try { await db.set('cyc/nosubir/' + f.mla, null); delete NOSUBIR[f.mla]; } catch { /* */ } }
+              if (!r || !r.ok) { try { await marcarLiquidando(db, f.mla, null, true); } catch { /* */ } }
             } else r = await setPriceTo(f.mla, null, t.a, tk, { margen: f.mgPw });
           }
           if (!r || !r.ok) { fallidosAuto.push({ ...t, err: (r && r.err) || '?' }); continue; }
@@ -23768,7 +23807,7 @@ async function main() {
           // exactamente lo que pasó con el Pendrive el 12/09. Bajar sin la marca es dejar el
           // precio bajo y que se lo vuelvan a subir solo: lo peor de los dos mundos.
           try {
-            await db.patch('cyc/nosubir/' + MLA, { fecha: new Date().toISOString().slice(0, 10),
+            await marcarLiquidando(db, MLA, { fecha: new Date().toISOString().slice(0, 10),
               motivo: `bajado a mano para empatar la caja (queda en ${_r2.mg.toFixed(1)}%)` });
             console.log(`  🔒 marcada "liquidando": el robot NO le va a subir el precio.`);
           } catch (eM) { console.log(`  ❌ no pude marcarla como "liquidando" (${String(eM.message || eM).slice(0, 80)}). NO la bajo: la primera venta te la subiría sola.`); return; }
@@ -23825,7 +23864,7 @@ async function main() {
         // así que son dos números distintos y no se puede prometer que el robot no la toque.
         // Se saca con `liquidando:-<MLA>:go` el día que él quiera que vuelva a subir sola.
         try {
-          await db.patch('cyc/nosubir/' + MLA, { fecha: new Date().toISOString().slice(0, 10),
+          await marcarLiquidando(db, MLA, { fecha: new Date().toISOString().slice(0, 10),
             motivo: `bajado a mano a ${money(_pd)} (queda en ${_r3.mg.toFixed(1)}%)` });
           console.log(`  🔒 marcada "liquidando": el robot NO le va a subir el precio. Para sacarla: liquidando:-${MLA}:go`);
         } catch (eM) { console.log(`  ❌ no pude marcarla como "liquidando" (${String(eM.message || eM).slice(0, 80)}). NO la bajo: la primera venta te la podría subir sola.`); return; }
@@ -26899,10 +26938,14 @@ async function main() {
         return;
       }
       const hoy = new Date(Date.now() - 3 * 3600e3).toISOString().slice(0, 10);
+      const tocadas = new Set();
       for (const mla of objetivo) {
-        if (SACAR) await db.set('cyc/nosubir/' + mla, null);
-        else await db.patch('cyc/nosubir/' + mla, { fecha: hoy, motivo: 'liquidando (bajado a mano)' });
+        const t = SACAR ? await marcarLiquidando(db, mla, null, true)
+          : await marcarLiquidando(db, mla, { fecha: hoy, motivo: 'liquidando (bajado a mano)' });
+        t.forEach((m) => tocadas.add(m));
       }
+      const extra = [...tocadas].filter((m) => !objetivo.includes(m));
+      if (extra.length) console.log(`\n   + ${extra.length} hermana(s) de la misma cuenta (ML les iguala el precio): ${extra.join(' · ')}`);
       // Releído de la base: que el comando no dé error no prueba que haya quedado.
       const despues = (await db.get('cyc/nosubir')) || {};
       const ok = objetivo.filter((mla) => (SACAR ? !despues[mla] : !!despues[mla]));

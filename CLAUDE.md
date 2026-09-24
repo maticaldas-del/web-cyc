@@ -52,16 +52,17 @@ de "monedas" SIN verificar: el disponible a mano y "A liquidar" se miden en mome
 el mes?" usa el dólar de hoy · un mes cerrado muestra casillas de hoy · el probe `capital` arma
 mal el patrimonio · el workflow manual `ml-pubs` reescribe renglones de mllinks.
 
-### PASO 1 (PRECIOS): hechos 1, 3, 4, 5, 6 y 7 · queda el 2 (decisión suya) · el 8 no hace daño
+### PASO 1 (PRECIOS): TERMINADO (el 8 era un aviso del log sin daño)
 **Hechos el 24/09 (v20.28 · `cyc-v306`):** 3 · el rescate no sube lo que el robot BAJÓ en 30 días
 (`filtrarRescate`, mira `cyc/autoprecio` tipo `baja`) · 4 · "👀 Subí solo y dejó de vender" ya mira
 las subas del rescate (si falta `u30` lo saca de las ventas de los 30 días previos) · 5 · la espera de
 10 días de las bajas mira las DOS claves (c_/o_) y `cyc/autoprecio`, y sin memoria de avisos no baja
 (`esperaBajaOk`) · 6 · `porcosto` sólo muestra (el `:go` se ignora) y `submargen:…:go` pasa por
 `filtrarRescate` · 7 · `setPriceTo` se niega con variantes.
- · **2 · SIN CONTESTAR:** `liquidando` no ve que ML sincroniza precio entre publicaciones del mismo
-   producto (Lupa 90mm) — (a) marcar también las hermanas de esa cuenta · (b) sólo frenar la suba si
-   alguna hermana está marcada.
+ · **2 · HECHO, eligió la (a):** la marca `liquidando` va a TODAS las hermanas (mismo producto,
+   misma cuenta, no ocultas) con `marcarLiquidando`, que usan los cinco lugares que marcan; sacarla
+   las saca a todas; y `limpiarNoSubir` (cada hora) contagia las marcas viejas a sus hermanas —la
+   Lupa 90mm `MLA3690637828` se marca sola en la próxima vuelta—. Guardan `hermanaDe`.
 **Y de la segunda vuelta "de costado", hechos el mismo día:** el dólar vacío o en 0 ya no se guarda (y
 un salto de +30% pregunta) · mirando un mes cerrado las casillas ya no se pisan con las de hoy ·
 `ml-sync/pubs.mjs` (workflow manual `ml-pubs`) conserva el renglón entero y no revincula lo ya
