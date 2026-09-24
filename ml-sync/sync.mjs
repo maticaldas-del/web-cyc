@@ -9360,11 +9360,15 @@ async function main() {
     //  · VERDE = "si queda $1.000 de ganancia del producto, a CYC le quedan $333, y esos $333 tienen
     //    que alcanzar para decir que el negocio funciona": la ganancia tiene que ser el TRIPLE de lo
     //    que hace falta para quedar en 0 → el mismo cálculo × 3.
-    //  · y los dos pasan a ser el PISO y la BASE del robot (lo pidió él: opción b).
+    //  · el naranja pasa a ser el PISO del robot (lo pidió él: opción b).
+    //  · EL VERDE NO VA AL ROBOT, decisión suya del mismo día al ver 66%: "66 es una locura. rompe
+    //    todo (…) dejar en 25% y listo que estamos ganando bien". La base queda donde él la puso
+    //    (hoy 25%) y el verde se muestra sólo como referencia. Por eso `:go` escribe SÓLO el piso;
+    //    para cambiar la base está `meta:<piso>:<base>`, que la pide explícita.
     // La cuenta es lineal: si todo se vendiera al margen m, la ganancia del mes sería m × (la base
     // de costo del mes). Por eso m = fijos ÷ base. Se toma la base de los últimos N días (30) llevada
     // a un mes, y los fijos de los 2 últimos meses CERRADOS (el mes en curso está a medias).
-    // Sin `:go` sólo muestra. Con `:go` escribe minPct/targetPct (el mismo lugar que `meta`) y relee.
+    // Sin `:go` sólo muestra. Con `:go` escribe SÓLO minPct (el mismo lugar que `meta`) y relee.
     if (/^pisobase(:|$)/.test(String(process.env.BILLING_PROBE || ''))) {
       const _pb = String(process.env.BILLING_PROBE).split(':');
       const DIAS = Math.max(7, parseInt(_pb[1]) || 30);
@@ -9430,12 +9434,14 @@ async function main() {
       console.log(`🟢 VERDE (la ganancia es el triple: a CYC le queda un tercio y cubre todo): ${r1(verde)}%`);
       console.log(`\nHoy el robot usa: piso ${cfg.minPct}% · base ${cfg.targetPct}% · sube solo desde ${cfg.subeDesde ?? 20}%`);
       console.log(`Con el margen de hoy (${r1(mHoy)}%) CYC ${mHoy >= naranja ? 'cubre' : 'NO cubre'} los fijos: queda ${money(Math.round(ganMes - fijos))} por mes.`);
-      const piso = Math.round(naranja), meta = Math.round(verde);
-      if (!GO) { console.log(`\n(prueba) Con :go quedaría piso ${piso}% · base ${meta}%. No se tocó nada.`); return; }
-      if (!(piso >= 20) || !(meta >= piso) || meta > 80) { console.log(`\n⚠️ Los números no son razonables (piso ${piso} · base ${meta}). No toco nada.`); return; }
-      await db.set('cyc/mlconfig/minPct', piso); await db.set('cyc/mlconfig/targetPct', meta);
+      // Sólo el PISO: el verde (el triple) es una referencia, no la base del robot (ver arriba).
+      const piso = Math.round(naranja), baseHoy = Number(cfg.targetPct);
+      if (!GO) { console.log(`\n(prueba) Con :go quedaría piso ${piso}% · la base NO se toca (sigue ${cfg.targetPct}%). No se tocó nada.`); return; }
+      if (!(piso >= 20) || piso > 60) { console.log(`\n⚠️ El piso no es razonable (${piso}%). No toco nada.`); return; }
+      if (!(baseHoy >= piso)) { console.log(`\n⚠️ El piso nuevo (${piso}%) queda ARRIBA de la base de hoy (${cfg.targetPct}%). Eso lo decidís vos: meta:${piso}:<base>. No toco nada.`); return; }
+      await db.set('cyc/mlconfig/minPct', piso);
       const cfg2 = (await db.get('cyc/mlconfig')) || {};
-      console.log(`\nGuardado. Releído: piso ${cfg2.minPct}% · base ${cfg2.targetPct}%${Number(cfg2.minPct) !== piso || Number(cfg2.targetPct) !== meta ? ' ⚠️ NO quedó como pedí' : ' ✓'}`);
+      console.log(`\nGuardado. Releído: piso ${cfg2.minPct}% · base ${cfg2.targetPct}% (sin tocar)${Number(cfg2.minPct) !== piso ? ' ⚠️ NO quedó como pedí' : ' ✓'}`);
       return;
     }
     // BILLING_PROBE=meta:<piso>[:<meta>] → deja guardado el piso y la meta del robot de precios.

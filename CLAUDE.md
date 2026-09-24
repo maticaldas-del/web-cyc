@@ -528,8 +528,9 @@ número que corresponde es el 17%.
 ## PISO DURO: NINGÚN PRODUCTO SE BAJA POR DEBAJO DEL PISO CONFIGURADO
 
 Regla suya, textual, del 20/08/2026: **"NUNCA BAJAR NINGUN PRODUCTO A MENOS DE 30%."** Ese 30 era
-con la fórmula vieja y ya no rige. **Hoy el piso es 23% y la base a la que se sube es 25%**
-(07/09/2026: *"acordate que la base es de 25% ahora. no 30 ni 32%"* y después *"dejalo 23/25%"*).
+con la fórmula vieja y ya no rige. **Hoy el piso es 22% y la base a la que se sube es 25%**
+(07/09/2026: *"acordate que la base es de 25% ahora. no 30 ni 32%"* y *"dejalo 23/25%"*; el 24/09 el piso
+bajó a 22%, que es lo que da `pisobase`: CYC en 0 pagando todo).
 Antes de tocar cualquier precio, mirar el número que está en la base — NO el de esta línea:
 cambió tres veces en un mes.
 
@@ -759,7 +760,7 @@ julio, a CYC le quedan **~$2.000.000/mes** después de todo eso.
    Patagonia hubo que subirlo dos días seguidos por eso. **No es retroactiva**: lo que hoy está
    entre el piso y 32% se deja donde está, no se sale a subir nada. Se mide sobre el costo total
    (mercadería + envío del peor caso + % de reclamos + IIBB + monotributo). En la base está como
-   `cyc/mlconfig` → piso 23 / meta 25 (se cambia con el comando `meta:<piso>:<meta>`), y a mano
+   `cyc/mlconfig` → piso 22 / meta 25 (se cambia con el comando `meta:<piso>:<meta>`), y a mano
    los comandos van con el 25: `unapub:<MLA>:25`, `bajopiso:25`, `submargen:25`.
    **Ojo con comparar contra los números viejos.** Al corregir el monotributo —las cuatro cuentas
    pasaron a categoría H y el % subió de 1,94% a 4,06%— todos los márgenes bajaron ~2 puntos sin
@@ -769,8 +770,11 @@ julio, a CYC le quedan **~$2.000.000/mes** después de todo eso.
    **Única excepción, y la pide ÉL cada vez:** recuperar la caja de compra de un producto que tiene
    stock y no vende. El 16/08/2026 autorizó las tres primeras (pendrive 128gb, Ferrari, De La
    Patagonia). Aun así: nunca se baja sin que lo apruebe, nunca abajo del piso CONFIGURADO (hoy
-   23%, `cyc/mlconfig/minPct` — este renglón decía "30%" hasta el 17/09/2026 y era el piso viejo), y el robot
+   22%, `cyc/mlconfig/minPct` — este renglón decía "30%" hasta el 17/09/2026 y era el piso viejo), y el robot
    **no baja nada solo** — `bajarcaja` deja la lista y el comando, la decisión es suya.
+   **DESDE EL 23/09 ESO CAMBIÓ, con permiso suyo:** el robot baja SOLO en tres casos, todos a ganar la
+   caja y nunca abajo de 0% — el remate (45/90/120 días sin vender), la escalera (25→0,5%) y bajar lo
+   que gana la caja quedando en 25,5%+. Ver "EL REMATE YA ES AUTOMÁTICO" y "LA ESCALERA DEL REMATE".
 6. Después de aplicar un precio en ML, **volvé a leerlo de ML para confirmar** que quedó.
 7. **Las publicaciones con variantes también se suben.** No alcanza con el precio de la
    publicación: hay que tocar cada variante, y mandar la lista incompleta hace que ML borre las
@@ -1653,7 +1657,7 @@ Regla suya, con el **Ted Lapidus** en la mano: *"Quiero que deje el lapidus como
 un 25%. Nose como estaba configurado. Pero para que suba automatico en la web de cyc tiene que dar
 20% o menos"*.
 
-Hasta ese día el robot subía con el **MISMO número que el piso del negocio** (`minPct`, hoy 23), o
+Hasta ese día el robot subía con el **MISMO número que el piso del negocio** (`minPct`, entonces 23), o
 sea que una venta al 21% le movía el precio sola. Ahora son **dos números distintos**:
 
 | | qué es | hoy |
