@@ -6,7 +6,7 @@ alternativa (b), y él elige.** Los detalles de cada sospecha y los votos de los
 en el scratchpad de la sesión (se pierde con el contenedor): si hace falta el detalle, volver a leer
 el código en las líneas que dice cada renglón.
 
-### PASO 2 (PATRIMONIO): 23 confirmadas · hechas 19 (+ m01) · quedan 4 (versión 20.29 · `cyc-v307`)
+### PASO 2 (PATRIMONIO): 23 confirmadas · hechas 20 (+ m01) · quedan 3 (versión 20.30 · `cyc-v308`)
 **Hechas el 24/09** (1-2 de antes; el resto elegido por mí con su regla de "lo obvio hacelo vos"):
 caja marcada con mercadería de otra (`recUsadas`) · ficha sin publicación vuelve a 0 · m01 (`dispo:go`
 en ml-daily) · la fecha del disponible ya no dice "hoy" siempre (`mp_liq` tiene grupo propio `liq`)
@@ -31,10 +31,11 @@ en el pedido, se cuenta dos veces. Apretar "Llegó" primero.
    resta de "en camino" (`cajaEntradoDe`/`cajaPendU`, usados por `enTransito`, el detalle del Arqueo
    y `transitoInfoDe`); la tarjeta de la caja dice "📥 ya entraron N a Full". Si ML no contestó un
    renglón se deja lo anotado antes; si el seguimiento no coincide no se resta nada.
- · **`dispo` no resta la plata que sale de MP por fuera del reporte** (proveedores, tarjeta,
-   débitos de ML). **No tiene arreglo por robot** (el extracto sólo se baja a mano, 32 puertas
-   medidas). Lo que hay: recargar el disponible una vez por mes (decisión suya del 20/09). (a) dejarlo
-   así · (b) que el Arqueo avise en ámbar cuando el punto de partida tiene más de 30 días.
+ · **`dispo` y la plata que sale de MP por fuera del reporte · HECHO el 24/09, eligió la (b)
+   (v20.30 · `cyc-v308`):** no tiene arreglo por robot (el extracto sólo se baja a mano), así que el
+   Arqueo avisa en ámbar abajo de "MercadoPago disponible" cuando el punto de partida de alguna
+   cuenta (`cyc/saldoancla/<cuenta>.ts`) tiene más de 30 días o no está cargado (`anclaViejasDe`,
+   `renderAnclaAviso`). No sale mirando un mes cerrado.
  · **`enProceso`**: lo recibido-pero-procesando no lo cuenta nadie si la caja se marca. No es obvio:
    el `not_available` de una entrada vieja NO baja nunca (es la foto del movimiento), así que frenar
    el marcado con eso podría trabar cajas para siempre. Hay que medir primero cómo lo informa ML.

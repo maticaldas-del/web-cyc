@@ -733,6 +733,7 @@ footer{margin-top:32px;padding-top:14px;border-top:1px solid var(--border);font-
         <div class="fin-field"><div class="fin-left"><span class="fin-label">Ayelen</span><span id="db_mp_ayelen"></span></div><input class="fin-input money" type="text" inputmode="numeric" id="f_mp_ayelen" placeholder="$0" onchange="saveFin('mp_ayelen',this.value)"></div>
         <div class="fin-field"><div class="fin-left"><span class="fin-label">Matias</span><span id="db_mp_matias"></span></div><input class="fin-input money" type="text" inputmode="numeric" id="f_mp_matias" placeholder="$0" onchange="saveFin('mp_matias',this.value)"></div>
         <div class="fin-field"><div class="fin-left"><span class="fin-ts" id="ts_mp_disp"></span><span class="fin-label" style="font-weight:700;color:var(--text)">MercadoPago disponible (total)</span><span id="db_mp_disp"></span></div><input class="fin-input money" type="text" id="f_mp_disp" placeholder="$0" readonly title="Se calcula solo: es la suma de las cuatro cuentas" style="opacity:.75;cursor:default"></div>
+        <div id="ancla_aviso" style="display:none;font-size:.68rem;color:var(--amber);margin:-2px 0 8px;line-height:1.35"></div>
         <div id="mp-disp-aviso" style="display:none;font-size:.64rem;color:var(--amber);margin:-4px 0 8px;line-height:1.4"></div>
         <div class="fin-field"><div class="fin-left"><span class="fin-ts" id="ts_mp_liq"></span><span class="fin-label">A liquidar en ML</span><span id="db_mp_liq"></span></div><input class="fin-input money" type="text" inputmode="numeric" id="f_mp_liq" placeholder="$0" onchange="saveFin('mp_liq',this.value)"></div>
       </div>
@@ -1941,6 +1942,7 @@ function startApp(){
     // LO QUE YA ENTRÓ A FULL DE CADA CAJA TODAVÍA ABIERTA (24/09/2026). Lo anota el robot una vez
     // por hora; sin esto esas unidades se contaban en Full Y en camino a la vez (ver enTransito).
     state.cajasentrado=d.cajasentrado||{};
+    state.saldoancla=d.saldoancla||{};
     // detectar entradas nuevas de ventaprod escritas externamente (p.ej. cowork)
     const _newVP=d.ventaprod||{};
     const _allIds=new Set();
@@ -2305,7 +2307,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='20.29';
+const APP_VERSION='20.30';
 // El problema real que esto resuelve no es curiosidad: es que el celular guarda la app y sigue
 // mostrando la de ayer sin avisar. Varias veces se revisó un cambio que ya estaba subido y no se
 // veía. Por eso, además del número, el chip avisa cuando hay una versión nueva esperando.
@@ -4359,6 +4361,38 @@ function renderFinTs(){
     // Si hace una semana que no se toca, el número ya no representa la realidad: se avisa.
     el.style.color=(Date.now()-t)>=7*86400000?'var(--amber)':'var(--muted)';
   });
+  renderAnclaAviso();
+}
+// EL DISPONIBLE SE VA QUEDANDO ALTO: AVISAR CUANDO EL PUNTO DE PARTIDA TIENE MÁS DE 30 DÍAS
+// (24/09/2026, eligió la opción b). El robot arranca del número que cargaste y le suma lo que
+// trae el reporte de liquidación, pero lo que sale de MP por fuera de ML (proveedores, tarjeta,
+// débitos de ML) no está en ese reporte: con las semanas el número queda más alto que el real.
+// Él decidió recargarlo una vez por mes (20/09); esto es para que no se le pase.
+const ANCLA_MAX_DIAS=30;
+function anclaViejasDe(anclas,ahora){
+  const out=[];
+  for(const k of MP_CUENTAS){
+    const cta=MP_LABEL[k],a=(anclas||{})[cta];
+    const ts=a&&parseFloat(a.ts);
+    if(!ts){out.push({cta,dias:null});continue;}
+    const dias=Math.floor((ahora-ts)/86400000);
+    if(dias>ANCLA_MAX_DIAS)out.push({cta,dias});
+  }
+  return out;
+}
+function renderAnclaAviso(){
+  const el=document.getElementById('ancla_aviso');if(!el)return;
+  // Mirando un mes cerrado no se avisa: esto es sobre el número de HOY.
+  let _cerr=false;try{_cerr=!!_arqViewYM;}catch(e){}
+  if(_cerr){el.style.display='none';return;}
+  const v=anclaViejasDe(state.saldoancla,Date.now());
+  if(!v.length){el.style.display='none';el.textContent='';return;}
+  const viejas=v.filter(x=>x.dias!==null),sin=v.filter(x=>x.dias===null);
+  const partes=[];
+  if(viejas.length)partes.push(viejas.map(x=>x.cta+' hace '+x.dias+' días').join(' · '));
+  if(sin.length)partes.push('sin cargar: '+sin.map(x=>x.cta).join(', '));
+  el.textContent='⚠️ Recargá el disponible de '+partes.join(' · ')+'. Lo que sale de Mercado Pago por fuera de ML (proveedores, tarjeta, débitos) no lo ve el robot, así que con el tiempo el número queda más alto que el real.';
+  el.style.display='block';
 }
 async function saveFin(key,val){
   const num=parseMoney(val);
