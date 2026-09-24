@@ -229,6 +229,23 @@ function _anotarEscrituraML(res, itemId, que, cuerpo) {
 // Los 93 SÍ traen fecha de movimiento y fecha de acreditación, así que se cae a ésas en orden.
 // Si no hay ninguna de las tres, devuelve null y el que llama TIENE que contar esa fila aparte:
 // saltearla en silencio es el descarte por omisión anotado cuatro veces en este panel.
+// QUÉ REPORTE DE MERCADO PAGO SE USA (24/09/2026). Antes era "el más nuevo" sin mirar qué período
+// cubre: si MP había generado el diario de UN día, "A liquidar" salía de ese día solo y el
+// disponible no encontraba el punto de partida. Ahora se elige el más nuevo que CUBRE lo que hace
+// falta (un largo mínimo y/o arrancar antes de cierta fecha); si ninguno lo cubre, el más nuevo,
+// y los frenos de cada comando dicen que no alcanza.
+function elegirReporte(lista, { minDias = 0, desdeAntesDe = null } = {}) {
+  const ok = (lista || []).filter((x) => x && x.file_name && x.status !== 'pending');
+  ok.sort((a, b) => new Date(a.date_created || 0) - new Date(b.date_created || 0));
+  const sirve = ok.filter((x) => {
+    const b = new Date(x.begin_date || 0).getTime(), e = new Date(x.end_date || 0).getTime();
+    if (minDias && !(Number.isFinite(b) && Number.isFinite(e) && (e - b) >= minDias * 864e5)) return false;
+    if (desdeAntesDe != null && !(Number.isFinite(b) && b <= desdeAntesDe)) return false;
+    return true;
+  });
+  return sirve[sirve.length - 1] || ok[ok.length - 1] || null;
+}
+
 function fechaMov(f, iLib, iSett, iTrans) {
   for (const i of [iLib, iSett, iTrans]) {
     if (i < 0) continue;
@@ -561,6 +578,7 @@ async function cajasQueLlegaron(db, accounts, labels, products, DRY) {
   const tiposVistos = {};                    // tipo crudo de ML -> cuántas veces vino
   const erroresOp = {};                      // texto del error -> cuántas veces
   const sinLeer = {};                        // renglones cuya consulta a ML falló: NO se pueden dar por faltantes
+  const sinLeerProd = {};                    // "cuenta|prodId" cuya publicación ML no contestó: todo el producto queda ciego
   const sinCantidad = [];                    // entradas aceptadas pero sin unidades legibles
   for (const [cta, o] of Object.entries(porCta)) {
     const acc = accounts[cta]; if (!acc?.refresh_token) continue;
@@ -577,8 +595,16 @@ async function cajasQueLlegaron(db, accounts, labels, products, DRY) {
       m.startsWith('MLA') && e2 && e2.cuenta === cta && !e2.ignored && o.prods.has(e2.prodId)).map(([m]) => m);
     for (let k = 0; k < mlas.length; k += 20) {
       let arr;
-      try { arr = await mlGet('/items?ids=' + mlas.slice(k, k + 20).join(',') + '&attributes=id,title,status,inventory_id,variations,shipping', tok); }
-      catch { continue; }
+      const tanda = mlas.slice(k, k + 20);
+      // SI ML NO CONTESTA LA PUBLICACIÓN, SUS RENGLONES QUEDAN "SIN LEER" (24/09/2026). Antes era
+      // `catch { continue }`: el renglón quedaba en 0 igual que si no hubiera llegado nada, el
+      // cuarto freno no se enteraba y la caja podía marcarse con faltantes que no existen.
+      const ciegoPub = (m) => { const e2 = links[m]; if (e2 && e2.prodId) sinLeerProd[cta + '|' + e2.prodId] = true; };
+      try { arr = await mlGet('/items?ids=' + tanda.join(',') + '&attributes=id,title,status,inventory_id,variations,shipping', tok); }
+      catch { tanda.forEach(ciegoPub); fallos++; continue; }
+      const contestadas = new Set();
+      for (const row of (arr || [])) { const b0 = (row && row.body) || {}; if (row && !(row.code && Number(row.code) !== 200) && b0.id) contestadas.add(b0.id); }
+      tanda.filter((m) => !contestadas.has(m)).forEach(ciegoPub);
       for (const row of (arr || [])) {
         const b = row.body || {}; const mla = b.id; if (!mla || !links[mla]) continue;
         if (((b.shipping && b.shipping.logistic_type) || '') !== 'fulfillment') continue;
@@ -815,7 +841,7 @@ async function cajasQueLlegaron(db, accounts, labels, products, DRY) {
       // cajas saliendo cada pocos días la vieja no se quedaba quieta NUNCA.
       let _q = it.u;
       for (const e of ents) { if (_q <= 0) break; _q -= Math.min(_q, e.left); if (e.ts > ultima) ultima = e.ts; }
-      const noLeido = !!sinLeer[k1];
+      const noLeido = !!sinLeer[k1] || !!sinLeerProd[ab.e.cuenta + '|' + it.prodId];
       if (noLeido) hayCiego = true;
       reng.push({ nombre: it.nombre || (pIdx[it.prodId] || {}).name || it.prodId, variante: it.variante || '', pide: it.u, tiene, noLeido });
       if (tiene > 0) algo = true;
@@ -17271,9 +17297,7 @@ async function main() {
           const r = await fetch(`${MP}/v1/account/settlement_report/list`, { headers: H, signal: AbortSignal.timeout(20000) });
           const arr = await r.json();
           if (!r.ok || !Array.isArray(arr)) { console.log(`   ❌ no pude listar los reportes (HTTP ${r.status})`); problemas++; continue; }
-          const ok = arr.filter((x) => x && x.file_name && x.status !== 'pending');
-          ok.sort((a, b) => new Date(a.date_created || 0) - new Date(b.date_created || 0));
-          const u = ok[ok.length - 1];
+          const u = elegirReporte(arr, { desdeAntesDe: anc.ts });
           if (!u) { console.log('   ❌ no hay ningún reporte listo'); problemas++; continue; }
           arch = u.file_name; desdeRep = new Date(u.begin_date || 0).getTime();
           console.log(`   tu número es del ${new Date(anc.ts).toISOString().slice(0, 10)} (hace ${diasAnc} días) · el reporte arranca el ${String(u.begin_date || '').slice(0, 10)}`);
@@ -17510,9 +17534,7 @@ async function main() {
           const r = await fetch(`${MP}/v1/account/settlement_report/list`, { headers: H, signal: AbortSignal.timeout(20000) });
           const arr = await r.json();
           if (!r.ok || !Array.isArray(arr)) { console.log(`   ❌ no pude listar los reportes (HTTP ${r.status})`); cuentasMal++; continue; }
-          const ok = arr.filter((x) => x && x.file_name && x.status !== 'pending');
-          ok.sort((a, b) => new Date(a.date_created || 0) - new Date(b.date_created || 0));
-          const u = ok[ok.length - 1];
+          const u = elegirReporte(arr, { minDias: 20 });
           if (!u) { console.log('   ❌ no hay ningún reporte listo todavía'); cuentasMal++; continue; }
           arch = u.file_name;
           rango = `${String(u.begin_date || '').slice(0, 10)} → ${String(u.end_date || '').slice(0, 10)}`;
@@ -29900,6 +29922,10 @@ async function main() {
   // Cuentas cuyo stock se leyó ENTERO en esta vuelta (todas las tandas de publicaciones contestaron).
   // Sólo con las cuatro así se ponen en 0 las fichas que ya no tienen publicación (ver abajo).
   const stockLeido = new Set();
+  // producto__cuenta con ALGUNA publicación que ML no contestó esta vuelta (24/09/2026). Su suma
+  // saldría corta —o en cero— sin que falte nada: esas claves no se escriben y queda el número de
+  // antes. Falta de dato no es falta de mercadería.
+  const stockCiego = new Set();
   const ignoradasConProd = new Set();   // prodId__Cuenta de publicaciones ocultas (nomas / 🗑)
   // Inventarios de Full ya contados, por producto×cuenta: dos publicaciones pueden compartir el
   // mismo inventario y sumarlas contaría la misma mercadería dos veces (ver el caso del Joystick).
@@ -30629,10 +30655,14 @@ async function main() {
           // inventory_id hace falta para leer el stock REAL de Full de las publicaciones apagadas
           // (ver el caso del Joystick x3 más abajo). Sin pedirlo, b.inventory_id viene vacío.
           arr = await mlGet('/items?ids=' + chunk.join(',') + '&attributes=id,status,sub_status,permalink,price,original_price,deal_ids,available_quantity,inventory_id,variations,shipping,title', t.access_token);
-        } catch { stockFallo = true; continue; }
+        } catch { stockFallo = true; chunk.forEach((m) => { if (map[m] && map[m].prodId) stockCiego.add(map[m].prodId + '__' + sid(label)); }); continue; }
         // Una tanda que contesta con menos renglones, o con algún renglón en error, tampoco se leyó
         // entera: una publicación que no se leyó no puede dejar su ficha en cero.
-        if (!Array.isArray(arr) || arr.length < chunk.length || arr.some((r) => !r || (r.code && r.code !== 200) || !(r.body && r.body.id))) stockFallo = true;
+        if (!Array.isArray(arr) || arr.length < chunk.length || arr.some((r) => !r || (r.code && r.code !== 200) || !(r.body && r.body.id))) {
+          stockFallo = true;
+          const ok = new Set((arr || []).filter((r) => r && !(r.code && r.code !== 200) && r.body && r.body.id).map((r) => r.body.id));
+          chunk.forEach((m) => { if (!ok.has(m) && map[m] && map[m].prodId) stockCiego.add(map[m].prodId + '__' + sid(label)); });
+        }
         for (const row of (arr || [])) {
           const b = row.body || {};
           const mla = b.id; if (!mla || !map[mla]) continue;
@@ -30838,6 +30868,14 @@ async function main() {
   // guardar los precios que subimos solos (para no pisarlos en loop)
   if (!DRY && Object.keys(pricedUpd).length) await db.patch('mlapi/priced', pricedUpd);
   // escribir el stock de ML en el inventario del panel (producto×cuenta + variantes)
+  if (stockCiego.size) {
+    let nSac = 0;
+    for (const obj of [stockVar, stockTot]) for (const k of Object.keys(obj)) {
+      const base = k.split('__v__')[0];
+      if (stockCiego.has(base)) { delete obj[k]; nSac++; }
+    }
+    console.log(`⚠️ ${stockCiego.size} producto×cuenta con alguna publicación que ML no contestó: no se toca su stock esta vuelta (${nSac} clave(s) quedan con el número anterior).`);
+  }
   if (!DRY) {
     const invUpd = { ...stockVar, ...stockTot };
     // ── LA FICHA QUE SE QUEDÓ SIN PUBLICACIÓN VUELVE A CERO (24/09/2026, arreglo 2 del paso 2) ──
