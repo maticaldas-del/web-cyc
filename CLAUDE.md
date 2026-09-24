@@ -39,6 +39,14 @@ en el pedido, se cuenta dos veces. Apretar "Llegó" primero.
  · **`enProceso`**: lo recibido-pero-procesando no lo cuenta nadie si la caja se marca. No es obvio:
    el `not_available` de una entrada vieja NO baja nunca (es la foto del movimiento), así que frenar
    el marcado con eso podría trabar cajas para siempre. Hay que medir primero cómo lo informa ML.
+   **MEDIDO el 24/09 con `enproceso:20` (solo lee):** lo que ML revisa aparece en el stock ACTUAL como
+   `not_available` con estado `internal_process`, y SÍ BAJA cuando lo da de alta (visto en un Protector
+   talón: 5 en `internal_process` el 16/09 → 0 al día siguiente). Hoy, en 191 inventarios: sólo 2 u.
+   no disponibles y son `lost`; ninguna entrada llegó con parte en revisión. O sea: el agujero existe
+   pero hoy vale ~0. (140 consultas de movimientos dieron 429: la foto de movimientos es parcial.)
+   **Y apareció otra cosa: varias cajas entraron como `ADJUSTMENT`, no como `INBOUND_RECEPTION`**
+   (Filtro agua 70 u. el 11/09, Lupa 90mm 9 u., Protector talón 11 y 10). El marcado sólo acepta
+   inbound/reception, así que esas cajas no las ve: por eso se marcaron a mano. Pendiente de decidir.
  · **`stockhist` · HECHO el 24/09, eligió la (a) (sólo robot):** al quedar en cero se guarda la
    fecha anterior (`desdePrev`/`aproxPrev`); si vuelve a tener stock dentro de 48 h
    (`STOCKHIST_CERO_PASAJERO_MS`) se recupera esa fecha en vez de poner "entrada exacta" de hoy.
