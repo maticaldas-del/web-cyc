@@ -556,8 +556,11 @@ async function cajasQueLlegaron(db, accounts, labels, products, DRY) {
   // Qué productos hay que mirar, por cuenta, y desde cuándo.
   const porCta = {};
   for (const ab of abiertas) {
-    const o = porCta[ab.e.cuenta] = porCta[ab.e.cuenta] || { prods: new Set(), desde: ab.fecha };
-    ab.items.forEach((x) => o.prods.add(x.prodId));
+    const o = porCta[ab.e.cuenta] = porCta[ab.e.cuenta] || { prods: new Set(), desde: ab.fecha, desdeProd: {} };
+    ab.items.forEach((x) => {
+      o.prods.add(x.prodId);
+      if (ab.fecha && (!o.desdeProd[x.prodId] || ab.fecha < o.desdeProd[x.prodId])) o.desdeProd[x.prodId] = ab.fecha;
+    });
     if (ab.fecha && ab.fecha < o.desde) o.desde = ab.fecha;
   }
   // Entradas a Full por cuenta+producto+variante desde la fecha de la caja más vieja.
@@ -588,7 +591,13 @@ async function cajasQueLlegaron(db, accounts, labels, products, DRY) {
       await db.patch('mlapi/tokens/' + cta, { refresh_token: t.refresh_token, updated_ts: Date.now() });
       tok = t.access_token; sid = acc.seller_id;
     } catch { continue; }
-    const desdeISO = new Date(new Date((o.desde || '2020-01-01') + 'T00:00:00Z').getTime() - 86400e3).toISOString();
+    // LA VENTANA ES POR PRODUCTO, NO POR CUENTA (24/09/2026). Arrancaba en la caja abierta más
+    // vieja de TODA la cuenta: una sola caja que nunca se marcaba (perdida, o con un renglón que no
+    // entra) estiraba la ventana de todos los productos hasta pasar los 1.000 movimientos, y desde
+    // ahí ninguna caja nueva de esos productos se podía marcar. Ahora cada producto mira desde su
+    // caja abierta más vieja.
+    const desdeDe = (pid) => (o.desdeProd && o.desdeProd[pid]) || o.desde || '2020-01-01';
+    const isoDesde = (f) => new Date(new Date(f + 'T00:00:00Z').getTime() - 86400e3).toISOString();
     const hastaISO = new Date(Date.now() + 86400e3).toISOString();   // +1 día por si ML anota en otro huso
     // Publicaciones de esos productos en esta cuenta.
     const mlas = Object.entries(links).filter(([m, e2]) =>
@@ -654,7 +663,7 @@ async function cajasQueLlegaron(db, accounts, labels, products, DRY) {
             const opsInv = [], vistosOp = new Set();
             let cortado = false;
             for (let pag = 0; ; pag++) {
-              const op = await mlGet(`/stock/fulfillment/operations/search?seller_id=${sid}&inventory_id=${par.inv}&date_from=${desdeISO}&date_to=${hastaISO}&limit=${PAG}&offset=${pag * PAG}`, tok);
+              const op = await mlGet(`/stock/fulfillment/operations/search?seller_id=${sid}&inventory_id=${par.inv}&date_from=${isoDesde(desdeDe(p.id))}&date_to=${hastaISO}&limit=${PAG}&offset=${pag * PAG}`, tok);
               const res = (op && op.results) || [];
               let nuevos = 0;
               for (const x of res) {
@@ -808,10 +817,14 @@ async function cajasQueLlegaron(db, accounts, labels, products, DRY) {
       continue;
     }
     const recF = String(mb.c.recFecha || '');
-    const desdeVent = new Date(new Date((o.desde || '2020-01-01') + 'T00:00:00Z').getTime() - 86400e3).toISOString().slice(0, 10);
-    if (!recF || recF < desdeVent) continue;
+    if (!recF) continue;
     const desdeMb = Date.parse((mb.fecha || '1970-01-01') + 'T00:00:00-03:00') || 0;
     for (const it of mb.items) {
+      // La misma regla de antes, ahora con la ventana de ESE producto: una marcada antes de que
+      // arranque la ventana tiene sus entradas afuera de la lista.
+      const fP = (o.desdeProd && o.desdeProd[it.prodId]) || o.desde || '2020-01-01';
+      const desdeVent = new Date(new Date(fP + 'T00:00:00Z').getTime() - 86400e3).toISOString().slice(0, 10);
+      if (recF < desdeVent) continue;
       const k1 = kR(mb.e.cuenta, it.prodId, it.variante || '');
       const fx = (mb.c.faltan || []).find((f) => f && f.prodId === it.prodId && (f.variante || '') === (it.variante || ''));
       let queda = fx ? (Number(fx.llego) || 0) : it.u;   // una marcada con faltantes se llevó sólo lo que llegó
