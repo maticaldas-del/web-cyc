@@ -86,6 +86,27 @@ búsqueda "de costado" SÍ había terminado: encontró **8 sospechas que nunca s
 **Se están verificando contra el código de hoy**, junto con una búsqueda nueva en seis frentes:
 precios (lo del 23-24/09), cajas y stock, plata y monedas, pedidos y compras, choques web/robot y
 fallas leídas como dato. Lo que se confirme va abajo, de a uno, con su (a)/(b).
+**VERIFICADAS (código real extraído del robot y probado con un ML de mentira que contesta 429):**
+ · **f0 · REAL.** Reclamo sin la etiqueta `delivered` + 429 en `/shipments` → queda "cancelada"
+   para siempre (% de reclamos 9,5% → 5%, el costo del producto baja). Devolución + 429 en
+   `/claims` → queda "reclamo" (5% → 9,5%). `pend` no la vuelve a mirar nunca. (a) si la consulta
+   falla, NO clasificar y reintentar la vuelta siguiente (ventana de 45 d); a los 7 d sin poder
+   leer, clasificar como hoy y avisar · (b) marcar `tipoDudoso` y revisarlas de noche.
+ · **f1 · REAL.** 429 en la ÚLTIMA lectura del pago → la venta queda con el neto ESTIMADO (una de
+   $48.000: neto $30.000 → $42.000, `mlfee` 0). Con dos pagos y uno falla: queda la MITAD como si
+   fuera el real. Carrito: vuelve el reparto torcido de los Ferrari. **Y `netoreal:go`, el comando
+   que lo repara a mano, también tuerce los carritos** (probado). (a) no pisar un neto real con uno
+   estimado (si la venta guardada tiene `mlfee` > 0 se conserva) y `orderNet` devuelve null si falla
+   CUALQUIER pago · (b) un paso nocturno que relea las de 3-7 días con `mlfee` 0, respetando carritos.
+   **Se pueden contar en la base:** ventas de más de 2 días con `mlfee` 0 o sin el campo.
+ · **f2 · REAL.** Caja con un producto que no tiene publicación de Full vinculada en esa cuenta
+   (P47 recién publicada que el alta dejó sin ficha por empate): "pide 20 · tiene 0 · noLeido=false"
+   → la caja se marca con 20 faltantes y esas unidades salen del patrimonio. (a) si un producto de
+   la caja no tiene NINGÚN depósito de Full en esa cuenta, el renglón queda "sin leer" (caja abierta)
+   y el log dice "vinculá la publicación" · (b) que el alta use la marca de `pasara` para desempatar.
+ · **f3 · YA ARREGLADO en lo que la disparaba** (el dólar vacío o en 0 ya no se guarda y un salto
+   grande pregunta). Queda un resto: `updCostPesos` no tiene el freno de `migrarPesosaUSD`
+   (con el dólar en 0 guarda `costUSD` 0) y `poncosto` usa $1.500 si falta el dólar.
 
 ### PASO 1 (PRECIOS): TERMINADO (el 8 era un aviso del log sin daño)
 **Hechos el 24/09 (v20.28 · `cyc-v306`):** 3 · el rescate no sube lo que el robot BAJÓ en 30 días
