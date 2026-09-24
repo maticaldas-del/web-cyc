@@ -1292,10 +1292,178 @@ async function activarPausadasFull(db, links, tokensRun, DRY, products, piso) {
 // volver a pedir el permiso cuando el que llama ya lo tiene (pedirlo dos veces rota la llave).
 // NO escribe nada en ML: devuelve la lista. Lo marcado `liquidando` queda afuera (NOSUBIR tiene
 // que estar cargado antes, con `cargarNoSubir`).
+// ── LOS FRENOS DEL RESCATE, EN UNA SOLA FUNCIÓN (24/09/2026) ─────────────────────────────────
+// Los usan el robot de la noche y el rescate EN EL MOMENTO DE LA VENTA (pedido suyo: *"si hay
+// algo vendiendo MAL, que se corrija al momento que se hace presente la venta"*). Con dos copias el
+// de la venta podía subir algo que el de la noche frena — el error anotado una docena de veces.
+// Recibe lo que devolvió `calcSubirPorMargen` y separa lo que se puede subir de lo que no, con el
+// motivo: supervisor 🔴 · lo bajó él a mano · comparte la caja · no se vende · stock de sobra.
+async function filtrarRescate(db, rr, o) {
+  const malosSup = o.malosSup || new Set();
+  const autoprecio = o.autoprecio || null;
+  const hoyTs = o.hoyTs || Date.now();
+  const vpF = o.vp || (await db.get('cyc/ventaprod')) || {};
+  const rescates = [], rescFren = [], rescSup = [];
+  const RESC_DSIN = 15, RESC_DSTOCK = 60;
+  const lnk = (await db.get('cyc/mllinks')) || {};
+  const invR = (await db.get('cyc/inventory')) || {};
+  const sidR = (x) => String(x).replace(/[^a-z0-9]/gi, '_');
+  // La última venta por PUBLICACIÓN y, de respaldo, por producto×cuenta(×variante). Lo marcó
+  // él con el Ferrari (23/09/2026, *"ferrari si vendio"*): una publicación hermana que no
+  // vendió nunca salía "no vendió nunca: subirlo no lo va a despertar" mientras el MISMO
+  // producto se vende todos los días en esa cuenta. Lo que dice si el producto rota es el
+  // producto en esa cuenta, no cuál de sus publicaciones se llevó la venta.
+  const ultR = {}, u30R = {}, ultPC = {};
+  const desdeR = hoyTs - 30 * 864e5;
+  for (const [k, ents] of Object.entries(vpF)) {
+    const ts = Date.parse(k.slice(0, 10).replace(/_/g, '-'));
+    if (!isFinite(ts)) continue;
+    for (const v of Object.values(ents || {})) {
+      if (!v || v.cancelada) continue;
+      if (v.mla && ts > (ultR[v.mla] || 0)) ultR[v.mla] = ts;
+      if (v.prodId && v.cuenta) {
+        const kPC = v.prodId + '__' + v.cuenta, kPV = kPC + '__' + String(v.variante || '').toLowerCase().trim();
+        if (ts > (ultPC[kPC] || 0)) ultPC[kPC] = ts;
+        if (v.variante && ts > (ultPC[kPV] || 0)) ultPC[kPV] = ts;
+      }
+      if (ts >= desdeR && v.prodId && v.cuenta) u30R[v.prodId + '__' + v.cuenta] = (u30R[v.prodId + '__' + v.cuenta] || 0) + (v.qty || 1);
+    }
+  }
+  const bajoAMano = {};
+  try {
+    const evR = (await db.get('cyc/supervisor/eventos')) || {};
+    for (const ev of Object.values(evR)) {
+      if (!ev || !ev.mla || !/a mano/.test(String(ev.origen || ''))) continue;
+      if (hoyTs - (ev.ts || 0) > 60 * 864e5) continue;
+      if (Number(ev.a) > 0 && Number(ev.de) > 0 && Number(ev.a) < Number(ev.de)) {
+        if (!bajoAMano[ev.mla] || ev.ts > bajoAMano[ev.mla].ts) bajoAMano[ev.mla] = ev;
+      }
+    }
+    // Y LO QUE BAJÓ HOY: la foto de esta noche la saca el supervisor DESPUÉS de este paso, así
+    // que una baja a mano de hoy todavía no es un evento. Se compara el precio de ML de ahora
+    // contra la foto de anoche: si está más bajo y no lo bajó el robot, lo bajó él.
+    const fotoR = (await db.get('cyc/supervisor/precios')) || {};
+    for (const [mla, f] of Object.entries(fotoR)) if (f && f.p > 0) bajoAMano['_foto_' + mla] = f;
+  } catch { /* sin la foto no se puede saber: se sigue con los otros dos frenos */ }
+  const fechaR = (ts) => new Date(ts - 3 * 3600e3).toISOString().slice(5, 10).split('-').reverse().join('/');
+  for (const x of rr.subir) {
+    if (malosSup.has(x.mla)) { rescSup.push(x); continue; }
+    const fAnoche = bajoAMano['_foto_' + x.mla];
+    const bajoHoy = fAnoche && x.de < fAnoche.p * 0.995 && !(autoprecio && autoprecio[x.mla] && hoyTs - (autoprecio[x.mla].ts || 0) < 36 * 3600e3);
+    const bm = bajoAMano[x.mla] || (bajoHoy ? { ts: hoyTs, de: fAnoche.p, a: x.de } : null);
+    if (bm) { rescFren.push({ ...x, why: `lo bajaste vos a mano el ${fechaR(bm.ts)} (${money(bm.de)} → ${money(bm.a)}) · no lo subo solo; si ya no lo estás rematando, decime` }); continue; }
+    // (a) LO QUE COMPARTE LA CAJA NO SE RESCATA SOLO (23/09/2026, su "si"). Compartir quiere
+    // decir que ML reparte las ventas entre vos y otro al MISMO precio: subirlo te saca del
+    // reparto y la publicación pasa a vender menos justo por el aumento. Va al aviso.
+    if ((lnk[x.mla] || {}).caja === 'sharing') { rescFren.push({ ...x, why: 'comparte la caja de compra con otro vendedor: subirlo te saca del reparto · decidí vos' }); continue; }
+    let ultX = ultR[x.mla] || 0, porProd = false;
+    if (!ultX) {
+      const eL = lnk[x.mla] || {};
+      if (eL.prodId) {
+        const kPC = eL.prodId + '__' + x.label;
+        // Si la publicación es de UN color, vale sólo la venta de ese color: que se venda
+        // el Negro no dice nada del Rojo.
+        ultX = eL.variant ? (ultPC[kPC + '__' + String(eL.variant).toLowerCase().trim()] || 0) : (ultPC[kPC] || 0);
+        porProd = ultX > 0;
+      }
+    }
+    const dSin = ultX ? Math.floor((hoyTs - ultX) / 864e5) : null;
+    if (dSin == null || dSin > RESC_DSIN) { rescFren.push({ ...x, why: dSin == null ? 'no vendió nunca (ni esta publicación ni el producto en esta cuenta): subirlo no lo va a despertar' : `hace ${dSin} días que no vende${porProd ? ' (el producto, en esta cuenta)' : ''}: subirlo lo deja más frenado` }); continue; }
+    const pid = (lnk[x.mla] || {}).prodId;
+    if (pid) {
+      const st = invR[pid + '__' + sidR(x.label)];
+      const pd = (u30R[pid + '__' + x.label] || 0) / 30;
+      if (st != null && pd > 0) {
+        const dSt = Math.round((parseInt(st) || 0) / pd);
+        if (dSt > RESC_DSTOCK) { rescFren.push({ ...x, why: `tiene ${parseInt(st) || 0} u. = ${dSt} días de stock: primero hay que venderlo, subir lo frena` }); continue; }
+      }
+    }
+    rescates.push(x);
+  }
+  rescates.sort((a, b) => a.pct - b.pct);
+  return { rescates, rescFren, rescSup };
+}
+
+// ── EL RESCATE EN EL MOMENTO DE LA VENTA (24/09/2026) ─────────────────────────────────────
+// Pedido suyo: *"si hay algo vendiendo MAL, que se corrija al momento que se hace presente la venta
+// en la web de cyc"* y *"no voy a saber si el % está bien, porque está rematando o el robot se
+// equivocó"*. La venta que entra en `subeDesde` (20%) o menos se mide con la MISMA cuenta que la
+// ficha (`calcSubirPorMargen`, sólo esa publicación) y pasa por los MISMOS frenos que la noche
+// (`filtrarRescate`). Una suba por publicación cada 24 h como mucho (`cyc/autoprecio`).
+// Cada venta queda con su etiqueta en `cyc/rescateventa/<día>__<id>` para que la web la muestre:
+//   remate (a propósito, no se toca) · subido · ok (fue ESTA venta: la ficha da más) · no (motivo).
+// Vive APARTE de la venta a propósito: el ciclo reescribe la venta entera cada 2 minutos.
+async function rescatarAlVender(db, o) {
+  const { ventas, label, token, products, accounts, subeDesde, meta } = o;
+  const marcas = {}, avisos = [];
+  const hoyTs = Date.now();
+  let autoprecio = {};
+  try { autoprecio = (await db.get('cyc/autoprecio')) || {}; } catch { autoprecio = null; }
+  const malosSup = new Set(); let supOk = true;
+  try {
+    const evS = (await db.get('cyc/supervisor/eventos')) || {};
+    for (const ev of Object.values(evS)) {
+      if (!ev || !ev.mla || hoyTs - (ev.ts || 0) > 60 * 864e5) continue;
+      if (Object.values(ev.ev || {}).some((r) => r && r.v === 'malo')) malosSup.add(ev.mla);
+    }
+  } catch { supOk = false; }
+  const porMla = new Map();
+  for (const v of ventas) { if (!porMla.has(v.mla)) porMla.set(v.mla, []); porMla.get(v.mla).push(v); }
+  const marcar = (vs, r) => { for (const v of vs) marcas[v.dayKey + '__' + v.id] = { ...r, mla: v.mla, margenVenta: v.margen, ts: hoyTs }; };
+  const aMedir = new Set();
+  for (const [mla, vs] of porMla) {
+    if (!NOSUBIR_OK) { marcar(vs, { estado: 'no', why: 'no pude leer la lista de liquidando: esta vuelta no subo nada' }); continue; }
+    if (NOSUBIR[mla]) { marcar(vs, { estado: 'remate', why: NOSUBIR[mla].motivo || 'marcado liquidando' }); continue; }
+    if (!supOk || autoprecio == null) { marcar(vs, { estado: 'no', why: 'no pude leer el supervisor o la memoria del robot: lo mira la noche' }); continue; }
+    const ap = autoprecio[mla];
+    if (ap && ap.tipo === 'sube' && hoyTs - (ap.ts || 0) < 24 * 3600e3) { marcar(vs, { estado: 'no', why: `ya lo subí hoy (${money(ap.de)} → ${money(ap.a)}): espero a ver cómo vende` }); continue; }
+    aMedir.add(mla);
+  }
+  if (aMedir.size) {
+    const rr = await calcSubirPorMargen(db, { products, labels: [label], accounts, soloMlas: aMedir,
+      piso: (subeDesde + 0.5) / 100, meta, tokens: { [label]: token } });
+    const fr = await filtrarRescate(db, rr, { malosSup, autoprecio, hoyTs });
+    const subirMap = new Map(fr.rescates.map((x) => [x.mla, x]));
+    const motivo = new Map([...rr.frenados.map((x) => [x.mla, x.why]), ...fr.rescFren.map((x) => [x.mla, x.why]),
+      ...fr.rescSup.map((x) => [x.mla, 'la última suba le salió mal (supervisor 🔴) · decidí vos'])]);
+    const okSet = new Set(rr.yaOk);
+    for (const mla of aMedir) {
+      const vs = porMla.get(mla), x = subirMap.get(mla);
+      if (x) {
+        const tope = Math.floor(x.de * 1.25 / 10) * 10, a = Math.min(x.a, tope);
+        let r;
+        if (x.vars && x.vars.length) {
+          const nuevos = {}; for (const v of x.vars) if ((v.price || 0) < a) nuevos[String(v.id)] = a;
+          r = await raiseVariations(mla, nuevos, token);
+          if (r && r.ok) r = { ok: true, from: x.de, to: a };
+        } else r = await raisePriceTo(mla, a, token);
+        if (r && r.ok) {
+          let quedo = null;
+          try { quedo = Number((await mlGet('/items/' + mla + '?attributes=price', token))?.price) || null; } catch { quedo = null; }
+          const reg = { tipo: 'sube', por: 'venta', de: r.from || x.de, a: r.to || a, ts: hoyTs, nom: x.nom, cuenta: label, margenAntes: Math.round(x.pct * 10) / 10 };
+          try { await db.set('cyc/autoprecio/' + mla, reg); } catch { /* */ }
+          marcar(vs, { estado: 'subido', de: reg.de, a: reg.a, quedo, corto: x.a > tope });
+          avisos.push(`🛟 <b>Vendió en ${Math.round(x.pct)}% y lo subí</b>\n${x.nom} (${label})\n${money(reg.de)} → <b>${money(reg.a)}</b>`
+            + (x.a > tope ? ` · hacían falta ${money(x.a)}, subí el máximo (+25%)` : ` · al ${Math.round(meta * 100)}%`)
+            + (quedo == null ? ' · ⚠️ no pude releerlo de ML' : (Math.round(quedo) === Math.round(reg.a) ? ' · releído ✓' : ` · ⚠️ ML dice ${money(quedo)}`)));
+        } else {
+          const err = String((r && r.err) || '?');
+          marcar(vs, { estado: 'no', why: /PolicyAgent|PA_UNAUTHORIZED/i.test(err) ? 'ML no deja cambiar el precio (permiso de la aplicación)' : 'ML no lo aceptó: ' + err.slice(0, 120) });
+          avisos.push(`⚠️ <b>Vendió en ${Math.round(x.pct)}% y no pude subirlo</b>\n${x.nom} (${label})\n${err.slice(0, 140).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')}`);
+        }
+      } else if (okSet.has(mla)) marcar(vs, { estado: 'ok', why: `con la cuenta de la ficha da más de ${subeDesde}%: lo bajo fue de ESTA venta (un envío caro o un carrito)` });
+      else marcar(vs, { estado: 'no', why: motivo.get(mla) || 'no se pudo medir con ML' });
+    }
+  }
+  if (Object.keys(marcas).length) { try { await db.patch('cyc/rescateventa', marcas); } catch { /* la etiqueta es informativa */ } }
+  return { marcas, avisos };
+}
+
 async function calcSubirPorMargen(db, o) {
   const { products, labels, accounts } = o;
   const PISO = o.piso, META = o.meta;
   const soloProds = o.soloProds || null;
+  const soloMlas = o.soloMlas || null;   // el rescate al vender mira SÓLO la publicación que vendió
   const TOPE_ENVIO = 33000;   // arriba de esto ML te cobra el envío: no se cruza
   const TECHO = 600000;       // regla suya del 13/08/2026
   const finS = (await db.get('cyc/finanzas')) || {};
@@ -1350,7 +1518,7 @@ async function calcSubirPorMargen(db, o) {
     }
     const ids = Object.entries(links)
       .filter(([mla, e]) => e && e.cuenta === label && !e.ignored && e.prodId && /^MLA/i.test(mla)
-        && !NOSUBIR[mla] && (!soloProds || soloProds.has(e.prodId)))   // ← lo marcado `liquidando` NO se sube (ver arriba)
+        && !NOSUBIR[mla] && (!soloProds || soloProds.has(e.prodId)) && (!soloMlas || soloMlas.has(mla)))   // ← lo marcado `liquidando` NO se sube (ver arriba)
       .map(([mla]) => mla);
     for (let k = 0; k < ids.length; k += 20) {
       let arr;
@@ -6437,83 +6605,8 @@ async function main() {
             //   · lo bajó ÉL A MANO en los últimos 60 días (la foto del supervisor lo ve) → es una
             //     decisión suya y el robot no la deshace, aunque se le haya caído la marca `liquidando`.
             // Ninguno se calla: van al aviso con el motivo, para que decida él.
-            const RESC_DSIN = 15, RESC_DSTOCK = 60;
-            const lnk = (await db.get('cyc/mllinks')) || {};
-            const invR = (await db.get('cyc/inventory')) || {};
-            const sidR = (x) => String(x).replace(/[^a-z0-9]/gi, '_');
-            // La última venta por PUBLICACIÓN y, de respaldo, por producto×cuenta(×variante). Lo marcó
-            // él con el Ferrari (23/09/2026, *"ferrari si vendio"*): una publicación hermana que no
-            // vendió nunca salía "no vendió nunca: subirlo no lo va a despertar" mientras el MISMO
-            // producto se vende todos los días en esa cuenta. Lo que dice si el producto rota es el
-            // producto en esa cuenta, no cuál de sus publicaciones se llevó la venta.
-            const ultR = {}, u30R = {}, ultPC = {};
-            const desdeR = hoyTs - 30 * 864e5;
-            for (const [k, ents] of Object.entries(vpAv)) {
-              const ts = Date.parse(k.slice(0, 10).replace(/_/g, '-'));
-              if (!isFinite(ts)) continue;
-              for (const v of Object.values(ents || {})) {
-                if (!v || v.cancelada) continue;
-                if (v.mla && ts > (ultR[v.mla] || 0)) ultR[v.mla] = ts;
-                if (v.prodId && v.cuenta) {
-                  const kPC = v.prodId + '__' + v.cuenta, kPV = kPC + '__' + String(v.variante || '').toLowerCase().trim();
-                  if (ts > (ultPC[kPC] || 0)) ultPC[kPC] = ts;
-                  if (v.variante && ts > (ultPC[kPV] || 0)) ultPC[kPV] = ts;
-                }
-                if (ts >= desdeR && v.prodId && v.cuenta) u30R[v.prodId + '__' + v.cuenta] = (u30R[v.prodId + '__' + v.cuenta] || 0) + (v.qty || 1);
-              }
-            }
-            const bajoAMano = {};
-            try {
-              const evR = (await db.get('cyc/supervisor/eventos')) || {};
-              for (const ev of Object.values(evR)) {
-                if (!ev || !ev.mla || !/a mano/.test(String(ev.origen || ''))) continue;
-                if (hoyTs - (ev.ts || 0) > 60 * 864e5) continue;
-                if (Number(ev.a) > 0 && Number(ev.de) > 0 && Number(ev.a) < Number(ev.de)) {
-                  if (!bajoAMano[ev.mla] || ev.ts > bajoAMano[ev.mla].ts) bajoAMano[ev.mla] = ev;
-                }
-              }
-              // Y LO QUE BAJÓ HOY: la foto de esta noche la saca el supervisor DESPUÉS de este paso, así
-              // que una baja a mano de hoy todavía no es un evento. Se compara el precio de ML de ahora
-              // contra la foto de anoche: si está más bajo y no lo bajó el robot, lo bajó él.
-              const fotoR = (await db.get('cyc/supervisor/precios')) || {};
-              for (const [mla, f] of Object.entries(fotoR)) if (f && f.p > 0) bajoAMano['_foto_' + mla] = f;
-            } catch { /* sin la foto no se puede saber: se sigue con los otros dos frenos */ }
-            const fechaR = (ts) => new Date(ts - 3 * 3600e3).toISOString().slice(5, 10).split('-').reverse().join('/');
-            for (const x of rr.subir) {
-              if (malosSup.has(x.mla)) { rescSup.push(x); continue; }
-              const fAnoche = bajoAMano['_foto_' + x.mla];
-              const bajoHoy = fAnoche && x.de < fAnoche.p * 0.995 && !(autoprecio && autoprecio[x.mla] && hoyTs - (autoprecio[x.mla].ts || 0) < 36 * 3600e3);
-              const bm = bajoAMano[x.mla] || (bajoHoy ? { ts: hoyTs, de: fAnoche.p, a: x.de } : null);
-              if (bm) { rescFren.push({ ...x, why: `lo bajaste vos a mano el ${fechaR(bm.ts)} (${money(bm.de)} → ${money(bm.a)}) · no lo subo solo; si ya no lo estás rematando, decime` }); continue; }
-              // (a) LO QUE COMPARTE LA CAJA NO SE RESCATA SOLO (23/09/2026, su "si"). Compartir quiere
-              // decir que ML reparte las ventas entre vos y otro al MISMO precio: subirlo te saca del
-              // reparto y la publicación pasa a vender menos justo por el aumento. Va al aviso.
-              if ((lnk[x.mla] || {}).caja === 'sharing') { rescFren.push({ ...x, why: 'comparte la caja de compra con otro vendedor: subirlo te saca del reparto · decidí vos' }); continue; }
-              let ultX = ultR[x.mla] || 0, porProd = false;
-              if (!ultX) {
-                const eL = lnk[x.mla] || {};
-                if (eL.prodId) {
-                  const kPC = eL.prodId + '__' + x.label;
-                  // Si la publicación es de UN color, vale sólo la venta de ese color: que se venda
-                  // el Negro no dice nada del Rojo.
-                  ultX = eL.variant ? (ultPC[kPC + '__' + String(eL.variant).toLowerCase().trim()] || 0) : (ultPC[kPC] || 0);
-                  porProd = ultX > 0;
-                }
-              }
-              const dSin = ultX ? Math.floor((hoyTs - ultX) / 864e5) : null;
-              if (dSin == null || dSin > RESC_DSIN) { rescFren.push({ ...x, why: dSin == null ? 'no vendió nunca (ni esta publicación ni el producto en esta cuenta): subirlo no lo va a despertar' : `hace ${dSin} días que no vende${porProd ? ' (el producto, en esta cuenta)' : ''}: subirlo lo deja más frenado` }); continue; }
-              const pid = (lnk[x.mla] || {}).prodId;
-              if (pid) {
-                const st = invR[pid + '__' + sidR(x.label)];
-                const pd = (u30R[pid + '__' + x.label] || 0) / 30;
-                if (st != null && pd > 0) {
-                  const dSt = Math.round((parseInt(st) || 0) / pd);
-                  if (dSt > RESC_DSTOCK) { rescFren.push({ ...x, why: `tiene ${parseInt(st) || 0} u. = ${dSt} días de stock: primero hay que venderlo, subir lo frena` }); continue; }
-                }
-              }
-              rescates.push(x);
-            }
-            rescates.sort((a, b) => a.pct - b.pct);
+            const fr = await filtrarRescate(db, rr, { malosSup, autoprecio, hoyTs, vp: vpAv });
+            rescates = fr.rescates; rescSup = fr.rescSup; rescFren.push(...fr.rescFren);
             console.log(`   para subir: ${rescates.length} · frenadas por el supervisor: ${rescSup.length} · no se pueden: ${rescFren.length} · siguen arriba: ${rr.yaOk.length}`);
           }
         } catch (e) { console.log('   ⚠️ no pude calcular el rescate: ' + e.message); rescates = []; }
@@ -29357,6 +29450,8 @@ async function main() {
   // avisos ya mandados al cel (para no repetir el mismo por cada corrida)
   const alerted = (await db.get('mlapi/alerted')) || {};
   const alertUpd = {};
+  // Las ventas en `subeDesde` o menos, para el rescate EN EL MOMENTO (ver `rescatarAlVender`).
+  const rescVenta = [];
 
   // Avisos de "problema en una publicación" ya mandados: MLA → estado por el que se avisó.
   // Vive acá y NO en cyc/mllinks porque la ficha de una publicación se reescribe entera cada
@@ -30086,8 +30181,11 @@ async function main() {
             // supervisor, que acá nunca se miraba. No se avisa venta por venta: el aviso de la
             // noche dice qué subió y qué no pudo. El bloque de abajo queda por si se vuelve atrás.
             const ROBOT_UNICO = true;
-            if (ROBOT_UNICO && autoSubeVenta && daParaSubir) {
-              console.log(`   ${p.name} (${label}) vendió al ${(margen * 100).toFixed(0)}%: lo mira el robot de precios esta noche`);
+            if (ROBOT_UNICO && daParaSubir) {
+              // Se junta y se rescata al final de la cuenta (ver `rescatarAlVender`), con la cuenta
+              // de la ficha y los frenos de la noche. Con el interruptor apagado sólo se etiqueta.
+              rescVenta.push({ mla, dayKey, id, margen: Math.round(margen * 1000) / 10, apagado: !autoSubeVenta });
+              console.log(`   ${p.name} (${label}) vendió al ${(margen * 100).toFixed(0)}%: se mide ya con la cuenta de la ficha`);
               done = true;
             }
             if (!ROBOT_UNICO && autoSubeVenta && daParaSubir && mult <= MAX_UP && !yaTocado && !cruzaUmbral && !pasaTecho && !enGrupo) {
@@ -30153,6 +30251,28 @@ async function main() {
           }
         }
       }
+    }
+
+    // ── EL RESCATE EN EL MOMENTO DE LA VENTA (24/09/2026) ──
+    if (rescVenta.length && !DRY) {
+      const lote = rescVenta.splice(0);
+      const apagadas = lote.filter((v) => v.apagado);
+      try {
+        if (apagadas.length) {
+          const mk = {};
+          for (const v of apagadas) mk[v.dayKey + '__' + v.id] = NOSUBIR[v.mla]
+            ? { estado: 'remate', why: NOSUBIR[v.mla].motivo || 'marcado liquidando', mla: v.mla, margenVenta: v.margen, ts: Date.now() }
+            : { estado: 'no', why: 'el rescate está apagado (subeventa:off)', mla: v.mla, margenVenta: v.margen, ts: Date.now() };
+          await db.patch('cyc/rescateventa', mk);
+        }
+        const prendidas = lote.filter((v) => !v.apagado);
+        if (prendidas.length) {
+          const rv = await rescatarAlVender(db, { ventas: prendidas, label, token: t.access_token, products, accounts,
+            subeDesde: SUBE_DESDE, meta: targetPct / 100 });
+          for (const [k, m] of Object.entries(rv.marcas)) console.log(`   🛟 ${k}: ${m.estado}${m.a ? ' → ' + money(m.a) : ''}${m.why ? ' · ' + m.why : ''}`);
+          for (const a of rv.avisos) await sendAlerta(a);
+        }
+      } catch (eR) { console.log('   ⚠️ rescate al vender: ' + String(eR.message || eR).slice(0, 160) + ' · lo mira la noche'); }
     }
 
     // 3b) CANCELACIONES y DEVOLUCIONES: si una venta que ya cargamos se canceló

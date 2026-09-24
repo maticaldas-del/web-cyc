@@ -1925,6 +1925,10 @@ function startApp(){
     // Del envío se guardan SÓLO fechas y estados: el nombre, el teléfono y la dirección del
     // comprador vienen en la misma respuesta y no entran acá.
     state.entregas=d.entregas||{};
+    // QUÉ HIZO EL ROBOT CON CADA VENTA QUE SALIÓ EN 20% O MENOS (24/09/2026). La escribe el robot
+    // en el momento de la venta (`rescatarAlVender`), aparte de la venta por el mismo motivo que
+    // las entregas. Clave: <día>__<id de la venta>.
+    state.rescateventa=d.rescateventa||{};
     // detectar entradas nuevas de ventaprod escritas externamente (p.ej. cowork)
     const _newVP=d.ventaprod||{};
     const _allIds=new Set();
@@ -2289,7 +2293,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='20.14';
+const APP_VERSION='20.15';
 // El problema real que esto resuelve no es curiosidad: es que el celular guarda la app y sigue
 // mostrando la de ayer sin avisar. Varias veces se revisó un cambio que ya estaba subido y no se
 // veía. Por eso, además del número, el chip avisa cuando hay una versión nueva esperando.
@@ -7891,6 +7895,21 @@ function renderVentaProd(){
         }
         else if(_e.noEnt!=null)entLabel=`<span style="font-size:.62rem;color:var(--amber)" title="ML marcó el envío como NO entregado.">⚠ no se entregó</span>`;
       }
+      // ── LA ETIQUETA DEL RESCATE (24/09/2026) ──
+      // Pedido suyo: *"no voy a saber si el % está bien, porque está rematando o el robot se
+      // equivocó"*. Cada venta en 20% o menos dice qué pasó: 🔒 remate a propósito · 🛟 subida ·
+      // ✓ fue esta venta (la ficha da más) · ⚠️ no se pudo, con el motivo. Sin registro no dice nada.
+      let rescLabel='';
+      if(!isCancelled){
+        const _r=grp.items.map(v=>(state.rescateventa||{})[v._dateKey+'__'+v.id]).find(x=>x);
+        if(_r){
+          const _w=String(_r.why||'').replace(/"/g,'&quot;');
+          if(_r.estado==='remate')rescLabel=`<span style="font-size:.62rem;color:var(--muted)" title="Esta publicación está marcada para rematar (liquidando): el % bajo es a propósito y el robot no la sube.${_w?' · '+_w:''}">🔒 remate</span>`;
+          else if(_r.estado==='subido')rescLabel=`<span style="font-size:.62rem;color:var(--green)" title="Vendió en ${_r.margenVenta}% y el robot la subió en el momento de ${fmt(_r.de)} a ${fmt(_r.a)}${_r.corto?' (el máximo de una vez: +25%)':''}.">🛟 subido a ${fmt(_r.a)}</span>`;
+          else if(_r.estado==='ok')rescLabel=`<span style="font-size:.62rem;color:var(--muted)" title="${_w}">✓ fue esta venta</span>`;
+          else rescLabel=`<span style="font-size:.62rem;color:var(--amber)" title="${_w}">⚠️ no lo subí · ${_w.length>40?_w.slice(0,40)+'…':_w}</span>`;
+        }
+      }
       const lines=grp.items.map(v=>`<div style="display:flex;justify-content:space-between;font-size:.72rem;padding:2px 0;${isCancelled?'opacity:.45;text-decoration:line-through':''}"><span>${v.qty}× ${nombreDeVenta(v)}${v.variante?` <span style="padding:1px 5px;border-radius:3px;background:rgba(124,58,237,.12);color:#a78bfa;font-size:.62rem">${v.variante}</span>`:''}</span><span style="color:var(--muted)">${(!isCancelled&&(v.total||0)>0)?`total ${fmt(v.total)} · `:''}${isCancelled?'':'neto '+fmt(v.neto||0)}</span></div>`).join('');
       return`<div class="ingreso-item" style="flex-direction:column;align-items:stretch;gap:4px;${isCancelled?'border-color:rgba(239,68,68,.25);background:rgba(239,68,68,.04)':''}">
         <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
@@ -7900,6 +7919,7 @@ function renderVentaProd(){
           ${grp.items.length>1?`<span style="font-size:.64rem;color:var(--muted)">${grp.items.length} prod.</span>`:''}
           <span style="flex:1"></span>
           ${entLabel}
+          ${rescLabel}
           ${costLabel}
           ${ganLabel}
           ${pctBox}

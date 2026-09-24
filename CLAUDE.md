@@ -104,7 +104,7 @@ el % de ganancia único en los seis lugares · el costo "puesto en la oficina" e
 Dalí al 30% · el Puntaje recalibrado a meta 35 · las variantes de Rotación con el texto completo ·
 `gondola` (la tintura: no sirve) · `valefull` y **Full decide las compras** · Sancor y obra social
 privada unificados · las dos facturas de Sancor analizadas.
-**Versión del panel: 20.14 · caché `cyc-v292`**. El ciclo del robot quedó **prendido**.
+**Versión del panel: 20.15 · caché `cyc-v293`**. El ciclo del robot quedó **prendido**.
 
 
 ## EL RETIRO Y LOS GASTOS YA NO SE REPARTEN (23/09/2026, versión 20.14 · `cyc-v292`)
@@ -118,6 +118,25 @@ Ganancia CYC de Métricas repartía gastos y retiro entre los días según lo ve
    gasto a su día (o al siguiente con ventas, para que no se pierda). `_cargosDia`.
 **Los primeros días del mes la Ganancia CYC da negativa, y es a propósito: la plata ya salió.**
 Un mes cerrado da exactamente lo mismo que antes; sólo cambia el mes en curso y cómo se ve día a día.
+
+## EL RESCATE EN EL MOMENTO DE LA VENTA (24/09/2026, versión 20.15 · `cyc-v293`)
+
+Pedido suyo, arreglo 1 de 8 de la revisión: *"si hay algo vendiendo MAL, que se corrija al momento
+que se hace presente la venta"* y *"no voy a saber si el % está bien, porque está rematando o el
+robot se equivocó"*. Eligió la opción (a).
+ · La venta que sale en `subeDesde` (20%) o menos se mide **en ese momento** con la cuenta de la
+   FICHA (`calcSubirPorMargen` con `soloMlas`: sólo esa publicación, envío del peor caso) y pasa por
+   **`filtrarRescate`**, la MISMA función de los frenos de la noche (sacada del `avisos` para eso):
+   supervisor 🔴 · comparte la caja · 15+ días sin vender · 60+ días de stock · bajado a mano.
+ · Además: liquidando/remate no se toca · **una suba por publicación cada 24 h** (`cyc/autoprecio`)
+   · +25% como mucho de una · relee de ML · aviso por `sendAlerta`.
+ · Si con la ficha da más de 20%, **no sube**: lo bajo fue de ESA venta (envío caro, carrito).
+ · Todo vive en **`rescatarAlVender`** y la etiqueta de cada venta en **`cyc/rescateventa/<día>__<id>`**
+   (aparte de la venta: el ciclo la reescribe entera). En Ventas x Producto: **🔒 remate · 🛟 subido
+   a $X · ✓ fue esta venta · ⚠️ no lo subí (motivo)**.
+ · Con `subeventa:off` no sube nada y la venta dice que está apagado. La noche sigue igual.
+Probado con la función REAL y datos inventados: las 5 salidas (remate, ya subido hoy, subido con
+tope +25% y relectura, ok, frenado con motivo).
 
 ## UN SOLO ROBOT DE PRECIOS, UNA VEZ POR NOCHE (23/09/2026)
 
@@ -161,8 +180,8 @@ rescata (y va al aviso con el motivo) si: **15+ días sin vender o nunca vendió
 días de stock** en esa cuenta · **lo bajó él a mano en los últimos 60 días** (lo ve la foto de
 precios del supervisor, aunque la marca `liquidando` se haya caído sola).
 
-**El robot de ventas ya no toca precios** (`ROBOT_UNICO = true` en el ciclo): la venta que sale en
-20% o menos queda anotada y la sube la noche. El aviso de *"NO lo subí: pediste desde 20%"* para lo
+**~~El robot de ventas ya no toca precios~~ — VOLVIÓ A TOCARLOS EL 24/09/2026, con los frenos de la
+noche.** Ver la sección "EL RESCATE EN EL MOMENTO DE LA VENTA". El aviso de *"NO lo subí: pediste desde 20%"* para lo
 que cae entre 20% y el piso sigue saliendo por venta. El bloque viejo quedó en el código, apagado.
 `porcosto[:palabra][:go]` sigue para mirar a mano qué haría con un producto.
 
