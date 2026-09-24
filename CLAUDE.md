@@ -208,8 +208,8 @@ hasta 0%, y esos productos marcarlos como 'no traer más'"*.
    precio, redondeado para arriba); si el escalón cae abajo del precio de la caja, baja a la caja.
    Máx. 24,5% de una · sin variantes · marca `liquidando` antes · relee de ML · 5 por noche · no toca
    lo que él marcó liquidando a mano. Memoria `cyc/escalera/<MLA>`, registro `por:'escalera'`.
-   **Ojo: NO usa el freno de "menos de 20 visitas"** que tiene el remate: el Watch tiene 1 visita y él
-   lo pidió igual (anotado como duda para él).
+   **NO usa el freno de "menos de 20 visitas"** que tiene el remate, y es DECISIÓN SUYA del 24/09:
+   *"que las ignore. lo importante es vender, no que nos vean"*.
  · **"No traer más"** (`cyc/notraer/<prodId>`): lo marca la escalera al arrancar si el producto
    vendió **menos de 6 u. en 180 días entre las 4 cuentas**. Así no entra lo que sobra por exceso (eso
    vende y ni siquiera llega a la escalera) ni lo que vendía bien hasta que un competidor le ganó.
