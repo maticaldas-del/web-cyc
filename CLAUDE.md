@@ -6,59 +6,42 @@ alternativa (b), y él elige.** Los detalles de cada sospecha y los votos de los
 en el scratchpad de la sesión (se pierde con el contenedor): si hace falta el detalle, volver a leer
 el código en las líneas que dice cada renglón.
 
-### PASO 2 (PATRIMONIO): 23 confirmadas · hechas 2 · quedan 21
-**Hechas:** 1 · una caja se marcaba "llegó" con la mercadería de otra (`recUsadas`, 3 días mínimos)
-· 2 · la ficha que se queda sin publicación vuelve a 0 (sólo si se leyeron las 4 cuentas).
-**La 3 quedó PARA MÁS TARDE, dicho por él el 24/09 ("dejemos eso para más tarde"):** la caja abierta cuenta ENTERA en camino aunque
-ML ya haya dado de alta parte → doble conteo (inflado) y caída de golpe al marcarla (el "bajó sin
-que pase nada" del 22/09). (a) sugerida: el robot anota en cada caja abierta cuántas entraron y la
-web las descuenta de "en camino" · (b) no contar en camino las cajas con alguna entrada.
-`index.html` enTransito ~5923 y calcArqueo ~6164 · `sync.mjs` cajasQueLlegaron.
+### PASO 2 (PATRIMONIO): 23 confirmadas · hechas 18 (+ m01) · quedan 5 (versión 20.27 · `cyc-v305`)
+**Hechas el 24/09** (1-2 de antes; el resto elegido por mí con su regla de "lo obvio hacelo vos"):
+caja marcada con mercadería de otra (`recUsadas`) · ficha sin publicación vuelve a 0 · m01 (`dispo:go`
+en ml-daily) · la fecha del disponible ya no dice "hoy" siempre (`mp_liq` tiene grupo propio `liq`)
+· **Paraguay pagado y no llegado cuenta como "en camino"** (`pyEnCaminoUSD`: crudo × recargo; se ve
+en la tarjeta de en camino) · la ✕ no borra un envío con cajas sin llegar · las unidades "sin
+variante" de la oficina ya no se borran (`ofiSinVar`/`ofiSumaVars`) · lo que entra SIN fecha de
+liberación va a "A liquidar" (y a `agenda.sinDia`) y no al disponible; lo que sale sin fecha se
+descuenta · si ML no contesta una publicación, sus renglones de caja quedan "sin leer"
+(`sinLeerProd`) · si falla un lote de `/items`, ese producto×cuenta no se escribe (`stockCiego`) ·
+`elegirReporte`: saldoml pide ≥20 días, dispo uno que arranque antes del ancla · `_finPending.mp_disp`
+se libera · la foto diaria sólo se escribe si cambió · "no es de acá" saca el producto de la caja
+armando · `poncosto` congela el costo viejo en `precios_hist_prod` · la ficha de la llegada usa el
+precio PAGADO · "¿Cierra el mes?" sólo compara contra un cierre ANTERIOR y usa el dólar de ese mes ·
+la ventana de entradas de Full es por PRODUCTO (`desdeProd`), no por cuenta.
+**OJO, consecuencia del de Paraguay:** si él cuenta la mercadería en la oficina SIN apretar "Llegó"
+en el pedido, se cuenta dos veces. Apretar "Llegó" primero.
 
-**m01 · ARREGLADA el 24/09 (`dispo:go` corre en ml-daily después de `saldoml`; sin los 4 disponibles cargados no hace nada, así que el arreglo arranca cuando él los cargue). Era:** cada noche `saldoml:go`
-   reescribe "A liquidar" y saca lo que ML liberó ese día (`if (ts <= hoy) continue`, sync.mjs
-   ~17391), pero el disponible (`mp_disp`) sólo lo escribe él a mano y `dispo` no corre en ningún
-   workflow → la plata liberada ese día desaparece del patrimonio (~US$400 por noche, se acumula); y
-   si él tipea el disponible de día, se cuenta doble hasta las 00:07. Arreglo sugerido: correr
-   `dispo:go` en ml-daily antes de `saldoml`, con el mismo corte de "hoy". Mientras: aviso en el Arqueo.
-**Las que siguen (orden sugerido, más grave primero):**
- · **Paraguay pagado y no llegado no está en ningún lado del patrimonio** (baja de mentira hasta
-   contarlo en la oficina) · alta · calcArqueo, pyPedidoHecho ~9607.
- · **Borrar un envío con la ✕ hace desaparecer la mercadería de sus cajas no llegadas** · alta ·
-   delEnvioFull ~6072.
- · **Unidades "sin variante" de la oficina se borran solas** al cerrar/deshacer una caja de otra
-   variante o sumar con + en una variante (sólo si total > suma de variantes) · alta ·
-   cerrarCaja ~5606, deshacerCaja ~6019, setOfiVar ~5521.
- · **"A liquidar" deja afuera las ventas sin fecha de liberación, y `dispo` las cuenta como
-   disponibles** · alta · saldoml ~17320, fechaMov ~232, dispo ~17088.
+**Quedan, y NO son obvias (hay que decidirlas):**
+ · **3 · PARA MÁS TARDE, dicho por él:** la caja abierta cuenta ENTERA en camino aunque ML ya haya
+   dado de alta parte → doble conteo y caída de golpe al marcarla. (a) el robot anota en cada caja
+   abierta cuántas entraron y la web las descuenta · (b) no contar en camino las cajas con alguna
+   entrada. `enTransito`, `calcArqueo`, `cajasQueLlegaron`.
  · **`dispo` no resta la plata que sale de MP por fuera del reporte** (proveedores, tarjeta,
-   débitos de ML) · alta · dispo ~17020-17100. (Relacionado: el extracto real se baja a mano.)
- · **La fecha "actualizado" del disponible de MP dice "hoy" siempre**: el ciclo pone `_ts.mp`
-   cuando saldoml cambia mp_liq (mismo grupo 'mp') → el ámbar de "número viejo" no sale nunca ·
-   alta · GRUPO en sync.mjs ~29243 y FIN_TS_GRUPO en index.html. Arreglo obvio: grupo propio.
- · Dos publicaciones con el mismo depósito cuentan doble las entradas de una caja · alta ·
-   **quedó cubierto en parte por el arreglo 1** (ya no se suma dos veces la misma entrada bajo
-   la misma clave); revisar si falta algo (variantes distintas del mismo depósito).
- · El marcado ignora lo que ML todavía procesa (`enProceso`): marca "faltaron" y `abrircaja` se
-   deshace solo a la hora · media · cajasQueLlegaron.
- · El "cuarto freno" no ve cuando falla `/items` (catch { continue }): renglón en 0 → faltante
-   falso · media · cajasQueLlegaron ~567.
- · Una caja que nunca se marca estira la ventana de TODA la cuenta y pasa los 1.000 movimientos:
-   ninguna caja nueva de ese producto se marca más · media.
- · Stock a medias o en CERO si falla un lote de `/items` o una escritura · media · ~30330.
- · `stockhist` inventa "fecha exacta de entrada" con una sola lectura (un cero pasajero) · media.
- · `saldoml`/`dispo` toman "el reporte más nuevo" sin mirar su período (el diario de 1 día) · media.
- · La web retiene el total de MP pendiente (`_finPending.mp_disp`) y tapa lo que escriba otro · media.
- · "¿Cierra el mes?" da "Falta plata" falso: compara ventanas distintas y puede usar el mismo mes
-   de base · media · renderReconciliacion ~6197.
- · "No es de acá" marcado después de cargar: desaparece de la lista pero sale igual en la caja ·
-   media · renderOfiCaja ~4922 contra cerrarCaja.
- · `poncosto` no congela el costo viejo (la ficha sí) y reescribe la ganancia de meses cerrados;
-   su comentario y la tabla de comandos dicen lo contrario · media.
- · `faltaron` da por neutra toda caja marcada completa: la conclusión del 22/09 no está probada ·
-   media.
- · La ficha que crea la llegada del pedido toma el precio de HOY, no el congelado · baja.
- · Con Inventario/Finanzas abierto la foto diaria se dispara cada ~2 s · baja.
+   débitos de ML). **No tiene arreglo por robot** (el extracto sólo se baja a mano, 32 puertas
+   medidas). Lo que hay: recargar el disponible una vez por mes (decisión suya del 20/09). (a) dejarlo
+   así · (b) que el Arqueo avise en ámbar cuando el punto de partida tiene más de 30 días.
+ · **`enProceso`**: lo recibido-pero-procesando no lo cuenta nadie si la caja se marca. No es obvio:
+   el `not_available` de una entrada vieja NO baja nunca (es la foto del movimiento), así que frenar
+   el marcado con eso podría trabar cajas para siempre. Hay que medir primero cómo lo informa ML.
+ · **`stockhist`**: un cero pasajero de una sola lectura pone "fecha exacta de entrada" nueva y le da
+   30 días de "recién llegado" a mercadería vieja. (a) si vuelve a tener stock dentro de 48 h,
+   conservar la fecha anterior (riesgo: una reposición real en 48 h queda con la fecha vieja) ·
+   (b) exigir que el cero se vea en 2 horas del registro hora por hora (`cyc/stocklog`).
+ · **`faltaron`** da por neutra toda caja marcada completa (conclusión del 22/09 sin probar) · baja.
+ · Dos publicaciones con el mismo depósito y DISTINTA variante: sin revisar si falta algo · baja.
 **Segunda vuelta (de costado): TERMINÓ A MEDIAS el 24/09** — 14 agentes bien, 30 cortados por el
 límite de uso. Salió m01 (arriba). Lo demás (m05, m06, choques web/robot, fallas leídas como dato) quedó
 SIN verificar: se retoma con Workflow `resumeFromRunId: wf_c2fd8e0d-f45` (sólo en la misma sesión) o se
