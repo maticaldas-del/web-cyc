@@ -2297,7 +2297,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='20.22';
+const APP_VERSION='20.23';
 // El problema real que esto resuelve no es curiosidad: es que el celular guarda la app y sigue
 // mostrando la de ayer sin avisar. Varias veces se revisó un cambio que ya estaba subido y no se
 // veía. Por eso, además del número, el chip avisa cuando hay una versión nueva esperando.
@@ -10886,7 +10886,12 @@ function liquidandoDe(p){
 function pubDeVariante(prodId,cuenta,variante,sirve){
   const L=state.mllinks||{};
   const vars=((state.products||[]).find(x=>x.id===prodId)||{}).variantes||[];
-  for(const e of Object.values(L)){
+  // Devuelve el renglón CON su `mla` adentro. El número es la CLAVE del renglón en cyc/mllinks y no
+  // viene adentro: sin esto `pub.mla` daba undefined y el margen por variante (que busca el neto en
+  // cyc/netopub por MLA) no salió NUNCA desde el 22/09 — las pruebas usaban renglones inventados que
+  // sí traían `mla`. Lo destapó él el 24/09 con el Aromatizante: los 6 aromas decían "(del prod.)".
+  for(const [mla,e0] of Object.entries(L)){
+    const e=e0&&!e0.mla?{...e0,mla}:e0;
     if(!e||e.prodId!==prodId||e.ignored)continue;
     if(cuenta&&(e.cuenta||'')!==cuenta)continue;
     if((e.status||'')==='closed')continue;
