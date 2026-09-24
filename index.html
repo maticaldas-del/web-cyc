@@ -2302,7 +2302,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='20.26';
+const APP_VERSION='20.27';
 // El problema real que esto resuelve no es curiosidad: es que el celular guarda la app y sigue
 // mostrando la de ayer sin avisar. Varias veces se revisó un cambio que ya estaba subido y no se
 // veía. Por eso, además del número, el chip avisa cuando hay una versión nueva esperando.
@@ -2629,6 +2629,13 @@ async function setNoRepo(pid,loc,val){
   await fbSet('norepo/'+invKey(pid,loc),val?true:null);
   const pr=(state.products||[]).find(x=>x.id===pid);
   await log((val?'No mandar más ':'Vuelve a reponerse ')+(pr?pr.name:pid)+' · '+loc);
+  // SI YA ESTABA CARGADO EN LA CAJA DE ESA CUENTA, SE SACA (24/09/2026). Antes desaparecía de la
+  // lista pero seguía adentro de la caja, y al cerrarla se despachaba igual sin que se viera.
+  if(val){
+    const it={...cajaDe(loc)};let sac=0;
+    Object.keys(it).forEach(k=>{if(k.startsWith(pid+'|')){sac+=parseInt(it[k])||0;delete it[k];}});
+    if(sac>0){await _guardarCajaArmando(loc,it);toast(`Saqué de la caja de ${loc} las ${sac} u. que ya tenía cargadas`,4000);}
+  }
   renderOfiCaja();
 }
 // LA MARCA CONTRARIA: "MANDALE IGUAL AUNQUE TODAVÍA NO ESTÉ PUBLICADO" (07/09/2026).
@@ -4401,6 +4408,9 @@ async function saveFin(key,val){
       await fbSet('finanzas/_seen/'+key,num);
     }
     if(_finPending[key]===num)delete _finPending[key]; // ya está en la base, se puede liberar
+    // El total de MP también se libera (24/09/2026): antes quedaba retenido toda la sesión y tapaba
+    // lo que escribiera otro (el robot con `dispo`), mostrando un total viejo.
+    if(totMP!==null&&_finPending.mp_disp===totMP)delete _finPending.mp_disp;
     const f=FIN_FIELDS.find(x=>x.k===key);
     await log('Arqueo '+(f?f.label:key)+': '+fmt(num));
   },900);
@@ -6249,13 +6259,20 @@ function renderReconciliacion(){
   // Base de comparación = el cierre del mes ANTERIOR al que evaluás (si existe); si no, el último cierre.
   const _pd=new Date(parseInt(yy,10),parseInt(mm,10)-1,1);_pd.setMonth(_pd.getMonth()-1);
   const prevYm=_pd.getFullYear()+'_'+String(_pd.getMonth()+1).padStart(2,'0');
-  const snap=(state.snapshots&&state.snapshots[prevYm])?state.snapshots[prevYm]:((typeof getLatestSnapshot==='function')?getLatestSnapshot():null);
+  // LA BASE TIENE QUE SER ANTERIOR AL MES QUE SE EVALÚA (24/09/2026). Sin el cierre del mes
+  // anterior caía en "el último cierre", que podía ser el MISMO mes (o uno posterior): comparaba el
+  // mes contra sí mismo y daba "Falta plata" sin que faltara nada. Ahora usa el último cierre de
+  // ANTES del mes, y si no hay ninguno no opina.
+  const _prevKeys=Object.keys(state.snapshots||{}).filter(k=>k<ym).sort();
+  const snap=(state.snapshots&&state.snapshots[prevYm])?state.snapshots[prevYm]:(_prevKeys.length?state.snapshots[_prevKeys[_prevKeys.length-1]]:null);
   if(!snap||snap.total==null){el.innerHTML=card(`<div style="font-family:'Syne',sans-serif;font-weight:800;font-size:.9rem;margin-bottom:4px">🔍 ¿Cierra el mes?</div><div style="font-size:.66rem;color:var(--muted)">Cerrá un mes con 📸 para tener un punto de comparación del patrimonio.</div>`,'#6b6b7a');return;}
   const P=_puntGananciaMes(ym);                 // neto/costo/retiro/gastos/ganancia (pesos)
-  const tc=curTC()||1500;
   const cArq=calcArqueo();
   // Si el mes que evaluás YA está cerrado, uso su cierre guardado como "fin"; si todavía no, el valor en vivo.
   const endSnap=(state.snapshots&&state.snapshots[ym]&&state.snapshots[ym].total!=null)?state.snapshots[ym]:null;
+  // Un mes cerrado se pasa a pesos con SU dólar, no con el de hoy (24/09/2026): si no, el mismo
+  // mes cerrado cambiaba de veredicto cada vez que se movía el dólar.
+  const tc=(endSnap&&parseFloat(endSnap.tipoCambio)>0?parseFloat(endSnap.tipoCambio):0)||curTC()||1500;
   const arqNow=endSnap?endSnap.total:cArq.total; // patrimonio al cierre del mes (USD)
   const dP=Math.round((arqNow-snap.total)*tc);  // cuánto creció el patrimonio (pesos, aprox)
   const genera=P.neto-P.costo-P.gastos;         // lo que generó el negocio
@@ -6701,7 +6718,7 @@ function updateHeaderTotal(){
   el.textContent=fmt(c.total);el.className='val'+(c.total<0?' negative':'');
 }
 
-let dailySnapTimer;
+let dailySnapTimer,_ultDailySnap='';
 function saveDailySnap(){
   if(_arqViewYM)return; // no sobreescribir datos en vivo mientras se ve un snapshot
   clearTimeout(dailySnapTimer);
@@ -6713,7 +6730,13 @@ function saveDailySnap(){
     // pantalla. stockVal queda igual porque lo usan el patrimonio y los cierres de mes.
     const _lf=(parseFloat(state.finanzas['of_viejo'])||0)+(parseFloat(state.finanzas['of_mia'])||0)+(parseFloat(state.finanzas['vendedores'])||0);
     const stockTot=c.stockML+_lf+(c.stockCamino||0);
-    await fbSet('daily/'+key,{ts:Date.now(),stockVal:c.stockVal,stockTot,efect:c.efect,deben:c.deben,deuda:c.deuda,total:c.total});
+    // SÓLO SI CAMBIÓ ALGO (24/09/2026). La pantalla se redibuja con cada dato que llega y esto
+    // escribía la foto del día cada ~2 segundos con Inventario o Finanzas abiertos.
+    const _snap={stockVal:c.stockVal,stockTot,efect:c.efect,deben:c.deben,deuda:c.deuda,total:c.total};
+    const _firma=key+'|'+JSON.stringify(_snap);
+    if(_firma===_ultDailySnap)return;
+    _ultDailySnap=_firma;
+    await fbSet('daily/'+key,{ts:Date.now(),..._snap});
   },2000);
 }
 
@@ -9780,7 +9803,10 @@ async function pyPedidoLlego(id){
   // que guarda nombre, código y precio justamente para esto.
   const plan=items.map(it=>{
     const k=(state.candidatos||{})[it.id];
-    const src={id:it.id,nombre:(k&&k.nombre)||it.nom||'',usd:(k&&k.usd!=null?k.usd:it.usd),cod:(k&&k.cod)||it.cod||'',ts:k&&k.ts};
+    // EL PRECIO ES EL QUE SE PAGÓ, NO EL DE HOY (24/09/2026): el pedido lo guardó al hacerse (y
+    // `compray det=` lo corrige con la factura). El del candidato se sigue moviendo después.
+    const _uP=parseFloat(it.usd)>0?it.usd:(k&&k.usd!=null?k.usd:it.usd);
+    const src={id:it.id,nombre:(k&&k.nombre)||it.nom||'',usd:_uP,cod:(k&&k.cod)||it.cod||'',ts:k&&k.ts};
     if(k&&k.prodId)return{src,estado:'ya'};
     if(!String(src.nombre).trim())return{src,estado:'nonombre'};
     const rep=candFichasParecidas(src.nombre);

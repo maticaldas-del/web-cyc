@@ -14852,9 +14852,12 @@ async function main() {
     // dólares (costUSD) al tipo de cambio de hoy y se recalcula costFullUSD sumando el envío y el %
     // de reclamos, con la misma cuenta que hace la pantalla.
     //
-    // NO toca las ventas ya hechas: el costo de una venta es lo que costó ese día. Si el costo
-    // estuvo mal desde el principio y hay que rehacer las viejas, eso es `recosto`, que usa el
-    // dólar del día de cada venta.
+    // LAS VENTAS VIEJAS NO CAMBIAN, Y DESDE EL 24/09/2026 ESO ES CIERTO. Este comentario lo decía y
+    // no pasaba: el costo de una venta vieja se calcula al abrir la pantalla con el costo de HOY si
+    // ese mes no tiene precio histórico, así que cambiar el costo acá le reescribía la ganancia a
+    // los meses cerrados. Ahora hace lo mismo que la ficha (`congelarCostoAnterior`): antes de
+    // pisar, deja el costo viejo congelado en cada mes con ventas que no tenga uno propio.
+    // Si el costo estuvo MAL desde el principio y hay que rehacer las viejas, eso es `recosto`.
     if (String(process.env.BILLING_PROBE || '').startsWith('poncosto:')) {
       const _pc = String(process.env.BILLING_PROBE).slice(9).split('|');
       const quien = (_pc[0] || '').trim();
@@ -14900,7 +14903,21 @@ async function main() {
         console.log(`Después de aplicar, corré hermanas:${quien} para ver qué margen queda en cada publicación.`);
         return;
       }
+      const phpP = (await db.get('cyc/precios_hist_prod')) || {};
       for (const x of plan) {
+        const antesUSD = parseFloat(x.p.costUSD) || 0;
+        if (antesUSD > 0 && Math.abs(antesUSD - usd) > 0.005) {
+          const meses = new Set();
+          for (const [dk, o] of Object.entries(vpP)) for (const v of Object.values(o || {})) {
+            if (v && (v.prodId ? v.prodId === x.p.id : norm(v.prod || '') === norm(x.p.name || ''))) meses.add(String(dk).slice(0, 7));
+          }
+          let nCong = 0;
+          for (const ym of meses) {
+            if (phpP[ym] && phpP[ym][x.p.id] != null) continue;
+            await db.set('cyc/precios_hist_prod/' + ym + '/' + x.p.id, antesUSD); nCong++;
+          }
+          if (nCong) console.log(`  🧊 ${x.p.name}: US$ ${antesUSD.toFixed(2)} congelado en ${nCong} mes(es) con ventas (esas ventas no cambian)`);
+        }
         await db.set('cyc/products/' + x.p.id + '/costUSD', usd);
         await db.set('cyc/products/' + x.p.id + '/cost', pesos);
         await db.set('cyc/products/' + x.p.id + '/costFullUSD', x.fullUSD);
