@@ -2297,7 +2297,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='20.23';
+const APP_VERSION='20.24';
 // El problema real que esto resuelve no es curiosidad: es que el celular guarda la app y sigue
 // mostrando la de ayer sin avisar. Varias veces se revisó un cambio que ya estaba subido y no se
 // veía. Por eso, además del número, el chip avisa cuando hay una versión nueva esperando.
@@ -12107,6 +12107,59 @@ function pedGuayHTML(prod){
   }
   return out.join('');
 }
+// ── CUÁNTO PODÉS PAGAR COMO MÁXIMO PARA SEGUIR GANANDO (24/09/2026) ─────────────────
+// Pedido suyo: *"poner en pedidos precio máximo de compra para ganar vs el mejor competidor de ML.
+// no importa nuestro costo, vos tenés que poner el precio máximo que podríamos pagar para quedar
+// ganando o compartiendo con el mejor vendedor y ganarle un 25% (si no hay buybox que mire el mejor
+// vendedor y quedar en iguales condiciones, aprox)"*. Sirve para el caso que él describió: un
+// producto que vendía bien y un competidor lo pasó — no es malo, hay que conseguirlo más barato.
+// EL PRECIO DE VENTA contra el que se mide:
+//  · pierde o comparte la caja → el que pide ML para ganarla (`cajaPtw`, lo trae el robot cada hora);
+//  · la gana → el precio de hoy (ya es el mejor);
+//  · no es de catálogo → el precio de hoy, y se DICE: ahí no hay competidor medido (ML no deja ver
+//    publicaciones ajenas fuera del catálogo).
+// LA CUENTA ES `simMargen` DADA VUELTA, no una nueva: con la comisión de ML a ese precio
+// (`comisionEnPrecio`, la misma de los simuladores), el envío de Full y los impuestos de la cuenta,
+// se despeja cuánto puede costar la mercadería puesta para que el margen quede en la meta (25%).
+// Después se le saca el envío/embalaje y el % de reclamos para llegar al precio de COMPRA, y en
+// Paraguay también el recargo del 17% para llegar al precio de la web.
+function maxCompraDe(p){
+  if(!p)return null;
+  const mg=margenMLDe(p);
+  if(!mg||!(mg.precio>0)||!(mg.neto>0))return {motivo:'sinprecio'};
+  const c=cajaMLDe(p);
+  let P=Math.round(mg.precio),fuente='hoy';
+  if(c&&(c.st==='losing'||c.st==='sharing')&&c.ptw>0){P=Math.round(c.ptw);fuente='caja';}
+  else if(c&&c.st==='winning')fuente='ganas';
+  else if(!c||c.st==='nocat')fuente='nocat';
+  const precio=Math.round(mg.precio),gest=Number(mg.gest)||0;
+  const comHoy=precio-(Number(mg.neto)||0)-gest;
+  if(!(comHoy>0))return {motivo:'sincom'};
+  const c2=P===precio?{com:comHoy}:comisionEnPrecio(comHoy,precio,P);
+  if(!c2)return {motivo:'sincom'};
+  const impPct=(Number(mg.mlExtra)>0&&precio>0)?(Number(mg.mlExtra)/precio*100):0;
+  const m=(parseFloat((state.mlconfig||{}).targetPct)||25)/100;
+  const imp=Math.round(P*impPct/100);
+  const netoP=P-c2.com-gest;
+  // (netoP − merc − imp) / (merc + imp + gest) = m   →   merc = (netoP − imp·(1+m) − m·gest) / (1+m)
+  const merc=(netoP-imp*(1+m)-m*gest)/(1+m);
+  const tc=curTC();
+  const ship=parseFloat(p.shipUSD)||0,dev=devPctCosto(p)||0;
+  const usd=tc>0?(merc/tc-ship)/(1+dev/100):null;
+  const chk=simMargen({precio:P,mercaderia:merc,gest,comision:c2.com,impPct,cuotasPct:0});
+  return {P,fuente,merc:Math.round(merc),usd,usdPy:usd!=null?usd/RECARGO_PY:null,meta:Math.round(m*100),
+    chk:chk.margen,hoyUSD:costUSDof(p)||0,esPy:p.origen==='py'};
+}
+function maxCompraHTML(p){
+  const r=maxCompraDe(p); if(!r)return'';
+  const st='flex-basis:100%;font-size:.62rem;line-height:1.5;margin-top:2px';
+  if(r.motivo)return `<div style="${st};color:var(--muted)">💰 Máximo para comprar: <span style="color:var(--amber)">sin medir</span> (no hay publicación viva con el neto calculado)</div>`;
+  if(!(r.merc>0)||!(r.usd>0))return `<div style="${st};color:var(--red)">💰 Vendiendo a ${fmt(r.P)} ${r.fuente==='caja'?'(lo que pide ML para ganar la caja)':''} <b>no hay precio de compra que deje ${r.meta}%</b>: ni regalado llega.</div>`;
+  const donde={caja:`a ${fmt(r.P)}, lo que pide ML para ganar la caja`,ganas:`a ${fmt(r.P)}, tu precio de hoy (ya ganás la caja)`,nocat:`a ${fmt(r.P)}, tu precio de hoy (no es de catálogo: no hay competidor medido)`,hoy:`a ${fmt(r.P)}, tu precio de hoy`}[r.fuente];
+  const cmp=r.hoyUSD>0?(r.hoyUSD<=r.usd?` · hoy lo pagaste US$ ${r.hoyUSD.toFixed(2).replace('.',',')} <span style="color:var(--green)">✓ entra</span>`:` · hoy lo pagaste US$ ${r.hoyUSD.toFixed(2).replace('.',',')} <span style="color:var(--red)">✕ te pasás</span>`):'';
+  const py=r.esPy&&r.usdPy>0?` · en la web de Paraguay: <b>US$ ${r.usdPy.toFixed(2).replace('.',',')}</b> (antes del 17%)`:'';
+  return `<div style="${st};color:var(--muted)" title="Es lo más que podés pagar la mercadería para que, vendiéndola ${donde}, te quede ${r.meta}% con todo adentro (comisión de ML a ese precio, envío de Full, IIBB, monotributo, envío/embalaje y reclamos). Puesta en tu oficina: ${fmt(r.merc)}.">💰 Máximo para comprar: <b style="color:var(--text)">US$ ${r.usd.toFixed(2).replace('.',',')}</b>${py} · para quedar en ${r.meta}% vendiendo ${donde}${cmp}</div>`;
+}
 function _pedidoItemHtml(p,opts){
   opts=opts||{};
   const NEXT={pendiente:'poco_stock',poco_stock:'suficiente',suficiente:'pendiente'};
@@ -12162,6 +12215,7 @@ function _pedidoItemHtml(p,opts){
       ${_esPy===true?pedPlataHTML(_prod)+pedGuayHTML(_prod):''}
       ${varToggle}
       ${cuentaPedidoHTML(p)}
+      ${_prod?maxCompraHTML(_prod):''}
       <button class="pi-prov ${p.proveedor?'':'sin-prov'}" onclick="setPedidoProveedor('${p.id}')">${p.proveedor?p.proveedor.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'):'+ proveedor'}</button>
       ${accionBtns}
       <span class="pi-ts">${p.ts?ts2s(p.ts):''}</span>
