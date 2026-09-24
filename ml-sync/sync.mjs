@@ -26473,6 +26473,111 @@ async function main() {
       return;
     }
 
+    // BILLING_PROBE=enproceso[:<días>] → ¿CÓMO INFORMA ML LO QUE RECIBIÓ Y TODAVÍA ESTÁ REVISANDO?
+    //
+    // Decisión suya del 24/09/2026 (opción a): antes de arreglar el agujero de `enProceso` —lo que
+    // ML recibió pero no dejó vendible no lo cuenta nadie una vez que la caja se marca— se MIDE.
+    // El problema de frenar el marcado con el `not_available` de la ENTRADA es que ese número es la
+    // foto del movimiento y no baja nunca. Acá se mira si hay OTRO lugar que sí baje: el
+    // `not_available` del stock ACTUAL, y los movimientos que no son entradas ni ventas (los que
+    // pasarían una unidad de "en revisión" a "a la venta").
+    //
+    // Mira las cajas abiertas y las marcadas en los últimos N días (20 por defecto). SOLO LEE: no
+    // escribe nada. Imprime nombres de producto, cantidades, estados y tipos de movimiento: ningún
+    // dato de compradores (los movimientos de venta sólo se CUENTAN).
+    if (/^enproceso(:|$)/.test(String(process.env.BILLING_PROBE || ''))) {
+      const dias = Math.max(1, parseInt(String(process.env.BILLING_PROBE).slice('enproceso:'.length)) || 20);
+      const envios = (await db.get('cyc/envios_full')) || {};
+      const links = (await db.get('cyc/mllinks')) || {};
+      const pIdx = {}; for (const p of products) pIdx[p.id] = p;
+      const desdeMarc = new Date(Date.now() - dias * 86400e3).toISOString().slice(0, 10);
+      const porCta = {};   // cuenta -> { prodId -> {desde, cajas:[texto]} }
+      for (const [, e] of Object.entries(envios)) {
+        if (!e || !e.cuenta || !labels.includes(e.cuenta)) continue;
+        const cajas = Array.isArray(e.cajasDet) ? e.cajasDet : Object.values(e.cajasDet || {});
+        for (const c of cajas) {
+          if (!c) continue;
+          if (c.recibida && !(c.recFecha && c.recFecha >= desdeMarc)) continue;
+          for (const x of (c.items || [])) {
+            if (!x || !x.prodId || !(x.u > 0)) continue;
+            const o = ((porCta[e.cuenta] = porCta[e.cuenta] || {})[x.prodId] = porCta[e.cuenta][x.prodId] || { desde: e.fecha || '2020-01-01', cajas: [] });
+            if (e.fecha && e.fecha < o.desde) o.desde = e.fecha;
+            o.cajas.push(`${x.u} u.${x.variante ? ' ' + x.variante : ''} despachadas ${e.fecha || '?'} · ${c.recibida ? 'marcada ' + c.recFecha + (c.recAuto ? ' (robot)' : ' (a mano)') : 'ABIERTA'}`);
+          }
+        }
+      }
+      const resumen = { inv: 0, conNA: 0, uNA: 0, estados: {}, tipos: {}, entradasConNA: 0, fallos: 0 };
+      console.log(`=== LO QUE ML RECIBIÓ Y TODAVÍA REVISA · cajas abiertas + marcadas desde el ${desdeMarc} ===\n`);
+      for (const [cta, prods] of Object.entries(porCta)) {
+        const acc = accounts[cta]; if (!acc?.refresh_token) { console.log(`${cta}: sin token`); continue; }
+        let tok, sid;
+        try {
+          const t = await mlRefresh(ML_CLIENT_ID, ML_CLIENT_SECRET, acc.refresh_token);
+          await db.patch('mlapi/tokens/' + cta, { refresh_token: t.refresh_token, updated_ts: Date.now() });
+          tok = t.access_token; sid = acc.seller_id;
+        } catch (e) { console.log(`${cta}: no se pudo renovar el permiso (${e.message})`); continue; }
+        const mlas = Object.entries(links).filter(([m, e2]) => m.startsWith('MLA') && e2 && e2.cuenta === cta && !e2.ignored && prods[e2.prodId]).map(([m]) => m);
+        const invs = [];   // {inv, prodId, mla, va}
+        for (let k = 0; k < mlas.length; k += 20) {
+          let arr; try { arr = await mlGet('/items?ids=' + mlas.slice(k, k + 20).join(',') + '&attributes=id,title,inventory_id,variations,shipping', tok); } catch { resumen.fallos++; continue; }
+          for (const row of (arr || [])) {
+            const b = (row && row.body) || {}; if (!b.id || !links[b.id]) continue;
+            if (((b.shipping && b.shipping.logistic_type) || '') !== 'fulfillment') continue;
+            const vars = Array.isArray(b.variations) ? b.variations : [];
+            if (vars.length) { for (const v of vars) if (v.inventory_id) invs.push({ inv: v.inventory_id, prodId: links[b.id].prodId, mla: b.id, va: (v.attribute_combinations || []).map((a) => a.value_name).join(' ') }); }
+            else if (b.inventory_id) invs.push({ inv: b.inventory_id, prodId: links[b.id].prodId, mla: b.id, va: links[b.id].variant || '' });
+          }
+        }
+        const vistosInv = new Set();
+        for (const x of invs) {
+          if (vistosInv.has(x.inv)) continue; vistosInv.add(x.inv);
+          resumen.inv++;
+          const p = pIdx[x.prodId] || {}; const o = prods[x.prodId];
+          console.log(`── ${cta} · ${p.name || x.prodId}${x.va ? ' · ' + x.va : ''} · ${x.mla} · inventario ${x.inv}`);
+          for (const t of o.cajas) console.log(`   caja: ${t}`);
+          try {
+            const s = await mlGet('/inventories/' + x.inv + '/stock/fulfillment', tok);
+            const na = Number(s?.not_available_quantity) || 0;
+            const det = (s?.not_available_detail || []).map((d) => { const st = d.status || d.type || '?'; resumen.estados[st] = (resumen.estados[st] || 0) + (Number(d.quantity) || 0); return `${st} ${d.quantity || 0}`; }).join(', ');
+            if (na > 0) { resumen.conNA++; resumen.uNA += na; }
+            console.log(`   HOY: a la venta ${Number(s?.available_quantity) || 0} · no disponible ${na}${det ? ' (' + det + ')' : ''} · total ${Number(s?.total) || 0}`);
+          } catch (e) { resumen.fallos++; console.log(`   HOY: ML no contestó (${e.message})`); }
+          try {
+            const desde = new Date(new Date(o.desde + 'T00:00:00Z').getTime() - 86400e3).toISOString();
+            const hasta = new Date(Date.now() + 86400e3).toISOString();
+            const ops = []; const vistos = new Set();
+            for (let pag = 0; pag < 20; pag++) {
+              const op = await mlGet(`/stock/fulfillment/operations/search?seller_id=${sid}&inventory_id=${x.inv}&date_from=${desde}&date_to=${hasta}&limit=50&offset=${pag * 50}`, tok);
+              const res = (op && op.results) || []; let nuevos = 0;
+              for (const m of res) { const km = String(m.id || '') || JSON.stringify(m).slice(0, 200); if (vistos.has(km)) continue; vistos.add(km); ops.push(m); nuevos++; }
+              if (res.length < 50 || !nuevos) break;
+            }
+            let ventas = 0; const lineas = [];
+            ops.sort((a, b) => String(a.date_created || '').localeCompare(String(b.date_created || '')));
+            for (const m of ops) {
+              const tipo = String(m.type || m.operation_type || '(sin tipo)');
+              resumen.tipos[tipo] = (resumen.tipos[tipo] || 0) + 1;
+              if (/sale/i.test(tipo)) { ventas++; continue; }
+              const d = m.detail || {}, r2 = m.result || {};
+              const naE = (d.not_available_detail || []).map((z) => `${z.status || '?'} ${z.quantity || 0}`).join(', ');
+              const naR = (r2.not_available_detail || []).map((z) => `${z.status || '?'} ${z.quantity || 0}`).join(', ');
+              if (/inbound|reception/i.test(tipo) && naE) resumen.entradasConNA++;
+              lineas.push(`   ${String(m.date_created || '').slice(0, 16)} ${tipo}: movió a la venta ${d.available_quantity ?? '?'}${naE ? ' · no disp. ' + naE : ''} → quedó a la venta ${r2.available_quantity ?? '?'}${r2.not_available_quantity != null ? ' · no disp. ' + r2.not_available_quantity : ''}${naR ? ' (' + naR + ')' : ''}`);
+            }
+            for (const l of lineas.slice(-15)) console.log(l);
+            if (lineas.length > 15) console.log(`   (… y ${lineas.length - 15} movimientos más antiguos que no son ventas)`);
+            console.log(`   ventas en la ventana: ${ventas} (sólo se cuentan)`);
+          } catch (e) { resumen.fallos++; console.log(`   movimientos: ML no contestó (${e.message})`); }
+        }
+      }
+      console.log(`\n───── RESUMEN ─────`);
+      console.log(`inventarios mirados: ${resumen.inv} · con algo "no disponible" HOY: ${resumen.conNA} (${resumen.uNA} u.)${resumen.fallos ? ' · ⚠️ ' + resumen.fallos + ' consultas fallaron' : ''}`);
+      console.log(`estados de lo no disponible hoy: ${Object.entries(resumen.estados).map(([k, n]) => k + ' ' + n).join(' · ') || 'ninguno'}`);
+      console.log(`tipos de movimiento: ${Object.entries(resumen.tipos).map(([k, n]) => k + ' ×' + n).join(' · ') || 'ninguno'}`);
+      console.log(`entradas que llegaron con parte "no disponible": ${resumen.entradasConNA}`);
+      return;
+    }
+
     // BILLING_PROBE=faltaron[:<días>] → ¿CUÁNTA MERCADERÍA BORRÓ DEL PATRIMONIO EL MARCADO DE CAJAS?
     //
     // Pregunta suya del 22/09/2026, mirando el Arqueo: *"hace 6 hr estábamos en 8.100 de patrimonio
