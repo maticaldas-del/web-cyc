@@ -749,7 +749,7 @@ julio, a CYC le quedan **~$2.000.000/mes** después de todo eso.
    el 13/08/2026; antes había que preguntar cada vez.)
 3. **TECHO DURO: nunca subir un precio por encima de $600.000.** Regla suya del 13/08/2026. Si
    para llegar al 30% haría falta cruzar ese número, se deja donde está y se avisa.
-4. **El piso de margen es 23% y la BASE a la que se sube es 25%** (07/09/2026, suyo: *"dejalo
+4. **El piso de margen es 22% (desde el 24/09, sale de `pisobase`) y la BASE a la que se sube es 25%** (07/09/2026, suyo: *"dejalo
    23/25%"*). Vuelven a ser dos números distintos, que es como tiene que ser — ver abajo por qué.
    Regla suya del 19/08/2026:
    *"ponele 32% como base a todo a partir de ahora a cada cosa que se aumente. no retroactiva"*.
