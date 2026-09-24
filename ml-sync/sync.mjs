@@ -4546,6 +4546,10 @@ async function correrCandidatos(db, products, labels, accounts, soloPrueba, prue
     if (consultas >= CAND_MAX_ML) { sinCuenta++; continue; }
     consultas++;
     let cat = null, mlTit = '', mlPrecio = 0, vendedores = 0, mlLink = '', lt = 'gold_special';
+    // Contra quién se midió (`precioAIgualar`). Vive ACÁ y no adentro del bloque que lo calcula:
+    // se usa también al guardar, más abajo, y declarado adentro tiraba "_pi is not defined" y
+    // cortaba la corrida entera (y con ella el paso del saldo de la noche) desde el 22/09.
+    let _pi = null;
     // ── EL PRECIO DE LA CAJA DE COMPRA NO SE PUEDE SABER ACÁ. MEDIDO EL 18/09/2026 ──────────
     // Se intentó con `buy_box_winner` de la ficha del catálogo y **vino `null` en los TRES**
     // catálogos probados, incluidos los DOS donde sí vendemos (el Ferrari y el Seagate). O sea
@@ -4657,7 +4661,7 @@ async function correrCandidatos(db, products, labels, accounts, soloPrueba, prue
       // sin Full se puede estar ~23% más caro y quedarse igual con la caja.
       // Tomar el más caro de la ficha haría ver un margen que no existe; tomar el más barato sin
       // mirar cómo despacha lo hunde contra una venta que no compite.
-      const _pi = precioAIgualar(ofertas);
+      _pi = precioAIgualar(ofertas);
       mlPrecio = _pi ? _pi.precio : 0;
       const ref = _pi ? _pi.ref : ofertas[0];
       cat = ref && ref.category_id ? ref.category_id : null;
