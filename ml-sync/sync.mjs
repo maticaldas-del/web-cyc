@@ -9351,6 +9351,93 @@ async function main() {
       if (quedo) console.log(`Va a llevar al ${cfg2.targetPct ?? 32}% lo que dé ${desdeAct}% o menos, y a avisar por Telegram cada vez. Lo que quede entre ${desdeAct}% y el piso (${cfg2.minPct ?? 30}%) lo avisa y NO lo toca.`);
       return;
     }
+    // BILLING_PROBE=pisobase[:<días>][:go] → EL PISO (NARANJA) Y LA BASE (VERDE) SALEN DEL NEGOCIO.
+    //
+    // Pedido suyo del 24/09/2026, con sus tres respuestas:
+    //  · NARANJA = "CYC queda en 0 pagando TODO": el % de ganancia (el ÚNICO del panel: ganancia
+    //    sobre mercadería + IIBB/monotributo + envío de Full) con el que lo que dejan las ventas de
+    //    un mes cubre justo los gastos del mes y el retiro de los dueños.
+    //  · VERDE = "si queda $1.000 de ganancia del producto, a CYC le quedan $333, y esos $333 tienen
+    //    que alcanzar para decir que el negocio funciona": la ganancia tiene que ser el TRIPLE de lo
+    //    que hace falta para quedar en 0 → el mismo cálculo × 3.
+    //  · y los dos pasan a ser el PISO y la BASE del robot (lo pidió él: opción b).
+    // La cuenta es lineal: si todo se vendiera al margen m, la ganancia del mes sería m × (la base
+    // de costo del mes). Por eso m = fijos ÷ base. Se toma la base de los últimos N días (30) llevada
+    // a un mes, y los fijos de los 2 últimos meses CERRADOS (el mes en curso está a medias).
+    // Sin `:go` sólo muestra. Con `:go` escribe minPct/targetPct (el mismo lugar que `meta`) y relee.
+    if (/^pisobase(:|$)/.test(String(process.env.BILLING_PROBE || ''))) {
+      const _pb = String(process.env.BILLING_PROBE).split(':');
+      const DIAS = Math.max(7, parseInt(_pb[1]) || 30);
+      const GO = _pb.includes('go');
+      const RETIRO = 1800000;
+      const vp = (await db.get('cyc/ventaprod')) || {};
+      const mono = (await db.get('cyc/monotributo')) || {};
+      const monoP = parseFloat(mono.pct) || 0;
+      const monoFijo = parseFloat(mono.fijoMensual) || 0;
+      const compras = (await db.get('cyc/compras')) || {};
+      const cfg = (await db.get('cyc/mlconfig')) || {};
+      const pIdx = {}; for (const p of products) pIdx[p.id] = p;
+      const desde = Date.now() - DIAS * 86400e3;
+      const kDesde = new Date(desde - 3 * 3600e3).toISOString().slice(0, 10).replace(/-/g, '_');
+      let nV = 0, total = 0, gan = 0, base = 0, sinCosto = 0;
+      for (const [k, ents] of Object.entries(vp)) {
+        if (k.slice(0, 10) < kDesde) continue;
+        for (const v of Object.values(ents || {})) {
+          if (!v || v.cancelada) continue;
+          if (!(v.costo > 0)) { sinCosto++; continue; }
+          const p = pIdx[v.prodId] || {};
+          const q = v.qty || 1;
+          const imp = (v.total || 0) * (mlExtraPct(v.cuenta) + monoP) / 100;
+          const g1 = Number(p.netoCalcEnvio) > 0 ? Number(p.netoCalcEnvio) : (Number(p.gestFull) || 0);
+          const gest = (v.total || 0) / q >= 33000 ? g1 * q : 0;
+          nV++; total += v.total || 0;
+          gan += (v.neto || 0) - v.costo - imp;
+          base += v.costo + imp + gest;
+        }
+      }
+      // Gastos: los 2 últimos meses cerrados (sin mercadería). El monotributo cargado se cambia por el
+      // fijo de hoy (autónomo + obra social): el integrado ya está adentro de cada venta.
+      const hoy = new Date(Date.now() - 3 * 3600e3);
+      const ymDe = (d) => d.getUTCFullYear() + '_' + String(d.getUTCMonth() + 1).padStart(2, '0');
+      const m1 = new Date(Date.UTC(hoy.getUTCFullYear(), hoy.getUTCMonth() - 1, 1));
+      const m2 = new Date(Date.UTC(hoy.getUTCFullYear(), hoy.getUTCMonth() - 2, 1));
+      const meses = [ymDe(m2), ymDe(m1)];
+      const gMes = {};
+      for (const ym of meses) {
+        let g = 0;
+        for (const c of Object.values(compras)) {
+          if (!c || c.tipo === 'mercaderia' || (c.dayKey || '').slice(0, 7) !== ym) continue;
+          if (/monotributo|impuesto/i.test(c.cat || '')) continue;
+          if (/retiro/i.test((c.cat || '') + ' ' + (c.desc || ''))) continue;
+          g += c.monto || 0;
+        }
+        gMes[ym] = g + monoFijo;
+      }
+      const gastos = meses.reduce((s, ym) => s + gMes[ym], 0) / meses.length;
+      const fijos = gastos + RETIRO;
+      const baseMes = base * 30 / DIAS, ganMes = gan * 30 / DIAS;
+      const mHoy = base > 0 ? gan / base * 100 : 0;
+      const naranja = baseMes > 0 ? fijos / baseMes * 100 : 0;
+      const verde = naranja * 3;
+      const r1 = (x) => Math.round(x * 10) / 10;
+      console.log(`=== PISO Y BASE DEL NEGOCIO · ventas de los últimos ${DIAS} días ===\n`);
+      console.log(`Ventas: ${nV} · facturado ${money(Math.round(total))}${sinCosto ? ` · ${sinCosto} sin costo cargado (quedan afuera)` : ''}`);
+      console.log(`Base de costo (mercadería + IIBB/monotributo + envío de Full), llevada a un mes: ${money(Math.round(baseMes))}`);
+      console.log(`Ganancia de los productos, llevada a un mes: ${money(Math.round(ganMes))} → margen de HOY ${r1(mHoy)}%\n`);
+      for (const ym of meses) console.log(`Gastos ${ym.replace('_', '-')} (sin mercadería, con autónomo + obra social): ${money(Math.round(gMes[ym]))}`);
+      console.log(`Gastos promedio: ${money(Math.round(gastos))} + retiro ${money(RETIRO)} = FIJOS ${money(Math.round(fijos))} por mes\n`);
+      console.log(`🟠 NARANJA (CYC en 0 pagando todo): ${r1(naranja)}%`);
+      console.log(`🟢 VERDE (la ganancia es el triple: a CYC le queda un tercio y cubre todo): ${r1(verde)}%`);
+      console.log(`\nHoy el robot usa: piso ${cfg.minPct}% · base ${cfg.targetPct}% · sube solo desde ${cfg.subeDesde ?? 20}%`);
+      console.log(`Con el margen de hoy (${r1(mHoy)}%) CYC ${mHoy >= naranja ? 'cubre' : 'NO cubre'} los fijos: queda ${money(Math.round(ganMes - fijos))} por mes.`);
+      const piso = Math.round(naranja), meta = Math.round(verde);
+      if (!GO) { console.log(`\n(prueba) Con :go quedaría piso ${piso}% · base ${meta}%. No se tocó nada.`); return; }
+      if (!(piso >= 20) || !(meta >= piso) || meta > 80) { console.log(`\n⚠️ Los números no son razonables (piso ${piso} · base ${meta}). No toco nada.`); return; }
+      await db.set('cyc/mlconfig/minPct', piso); await db.set('cyc/mlconfig/targetPct', meta);
+      const cfg2 = (await db.get('cyc/mlconfig')) || {};
+      console.log(`\nGuardado. Releído: piso ${cfg2.minPct}% · base ${cfg2.targetPct}%${Number(cfg2.minPct) !== piso || Number(cfg2.targetPct) !== meta ? ' ⚠️ NO quedó como pedí' : ' ✓'}`);
+      return;
+    }
     // BILLING_PROBE=meta:<piso>[:<meta>] → deja guardado el piso y la meta del robot de precios.
     //
     // Son DOS números distintos y conviene que lo sean:
