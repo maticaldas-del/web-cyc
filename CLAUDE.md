@@ -52,17 +52,20 @@ de "monedas" SIN verificar: el disponible a mano y "A liquidar" se miden en mome
 el mes?" usa el dólar de hoy · un mes cerrado muestra casillas de hoy · el probe `capital` arma
 mal el patrimonio · el workflow manual `ml-pubs` reescribe renglones de mllinks.
 
-### PASO 1 (PRECIOS): quedaron 7 de 8 sin hacer (el 1 se hizo: rescate al vender, 20.15)
- · 2 · `liquidando` no ve que ML sincroniza precio entre publicaciones del mismo producto (Lupa
-   90mm) — **propuesta sin contestar**: (a) marcar también las hermanas de esa cuenta · (b) sólo
-   frenar la suba si alguna hermana está marcada.
- · 3 · el rescate puede volver a subir lo que el remate/la baja automática bajó (falta freno de 30 d).
- · 4 · "👀 Subí solo y dejó de vender" no mira las subas del rescate.
- · 5 · la espera de 10 días de las bajas se saltea si la fila cambia de lista (c_ / o_) o si falla
-   la lectura de `cyc/avisados`.
- · 6 · `porcosto` no tiene los frenos nuevos.
- · 7 · `setPriceTo` con una sola variante mandaría la lista incompleta (hoy nadie lo usa así).
- · 8 · un aviso del log, sin daño.
+### PASO 1 (PRECIOS): hechos 1, 3, 4, 5, 6 y 7 · queda el 2 (decisión suya) · el 8 no hace daño
+**Hechos el 24/09 (v20.28 · `cyc-v306`):** 3 · el rescate no sube lo que el robot BAJÓ en 30 días
+(`filtrarRescate`, mira `cyc/autoprecio` tipo `baja`) · 4 · "👀 Subí solo y dejó de vender" ya mira
+las subas del rescate (si falta `u30` lo saca de las ventas de los 30 días previos) · 5 · la espera de
+10 días de las bajas mira las DOS claves (c_/o_) y `cyc/autoprecio`, y sin memoria de avisos no baja
+(`esperaBajaOk`) · 6 · `porcosto` sólo muestra (el `:go` se ignora) y `submargen:…:go` pasa por
+`filtrarRescate` · 7 · `setPriceTo` se niega con variantes.
+ · **2 · SIN CONTESTAR:** `liquidando` no ve que ML sincroniza precio entre publicaciones del mismo
+   producto (Lupa 90mm) — (a) marcar también las hermanas de esa cuenta · (b) sólo frenar la suba si
+   alguna hermana está marcada.
+**Y de la segunda vuelta "de costado", hechos el mismo día:** el dólar vacío o en 0 ya no se guarda (y
+un salto de +30% pregunta) · mirando un mes cerrado las casillas ya no se pisan con las de hoy ·
+`ml-sync/pubs.mjs` (workflow manual `ml-pubs`) conserva el renglón entero y no revincula lo ya
+vinculado · `capital` usa los campos reales del Arqueo y no cuenta la oficina dos veces.
 
 ### Y AFUERA DE LA REVISIÓN
  · Se le pasó el bloque de NOVEDADES del `PROMPT GUAY` (17%, sólo Precio y Código Nissei en las

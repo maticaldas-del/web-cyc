@@ -1449,6 +1449,15 @@ async function filtrarRescate(db, rr, o) {
     const bajoHoy = fAnoche && x.de < fAnoche.p * 0.995 && !(autoprecio && autoprecio[x.mla] && hoyTs - (autoprecio[x.mla].ts || 0) < 36 * 3600e3);
     const bm = bajoAMano[x.mla] || (bajoHoy ? { ts: hoyTs, de: fAnoche.p, a: x.de } : null);
     if (bm) { rescFren.push({ ...x, why: `lo bajaste vos a mano el ${fechaR(bm.ts)} (${money(bm.de)} → ${money(bm.a)}) · no lo subo solo; si ya no lo estás rematando, decime` }); continue; }
+    // LO QUE BAJÓ EL PROPIO ROBOT EN 30 DÍAS NO SE RESCATA (24/09/2026, punto 3 de la revisión).
+    // El remate y la escalera ya marcan `liquidando`, pero esa marca se cae sola al quedar en 0 u.,
+    // y la baja para ganar la caja no marca nada: si después el margen cae (un costo que sube) el
+    // rescate la subía y devolvía la caja que se acababa de ganar. Se avisa y lo decide él.
+    const apB = autoprecio && autoprecio[x.mla];
+    if (apB && apB.tipo === 'baja' && hoyTs - (apB.ts || 0) < 30 * 864e5) {
+      rescFren.push({ ...x, why: `lo bajé yo el ${fechaR(apB.ts)} (${money(apB.de)} → ${money(apB.a)}${apB.por ? ' · ' + apB.por : ' · para ganar la caja'}) · no lo vuelvo a subir solo antes de 30 días` });
+      continue;
+    }
     // (a) LO QUE COMPARTE LA CAJA NO SE RESCATA SOLO (23/09/2026, su "si"). Compartir quiere
     // decir que ML reparte las ventas entre vos y otro al MISMO precio: subirlo te saca del
     // reparto y la publicación pasa a vender menos justo por el aumento. Va al aviso.
@@ -3544,11 +3553,13 @@ async function setPriceTo(itemId, variationId, nuevo, token, chequeo) {
   if (item.status === 'closed') return { ok: false, err: 'cerrada' };
   let base, body;
   const to = Math.ceil(nuevo / 10) * 10;
-  if (variationId && (item.variations || []).length) {
-    const v = item.variations.find((x) => String(x.id) === String(variationId));
-    if (!v || !v.price) return { ok: false, err: 'sin-variante' };
-    base = v.price; body = { variations: [{ id: v.id, price: to }] };
-  } else {
+  // CON VARIANTES NO SE BAJA NUNCA POR ACÁ (24/09/2026, punto 7 de la revisión de precios).
+  // Mandar { variations: [una] } hace que ML BORRE las que faltan (regla 7), y mandar { price } a
+  // una publicación con variantes no cambia nada. Ninguna baja automática toca variantes (lo dicen
+  // sus frenos), así que el lado seguro es negarse en la puerta y no confiar en que cada llamada
+  // se acuerde.
+  if ((item.variations || []).length) return { ok: false, err: 'tiene-variantes: no se baja sola (ML borraría las que falten)' };
+  {
     if (!item.price) return { ok: false, err: 'sin-precio' };
     base = item.price; body = { price: to };
   }
@@ -6676,8 +6687,18 @@ async function main() {
         && f.subePct <= 10.5 && !recienteAuto(f.mla, 'baja', 30) && !malosSup.has(f.mla));
       if (!supLeido) console.log('   ⚠️ no pude leer el supervisor: esta noche no se sube nada solo');
       else if (malosSup.size) console.log(`   frenadas por el supervisor (un cambio les salió 🔴 malo): ${malosSup.size}`);
-      const cbrAutoIds = new Set(sanasCbr.filter((f) => !yaAvisado('c_' + f.mla, 'cajabarata', f.ptw)).map((f) => f.mla));
-      const sobreAutoIds = new Set(sobreSanas.filter((f) => !yaAvisado('o_' + f.mla, 'cajabarata', f.ptw)).map((f) => f.mla));
+      // LA ESPERA DE 10 DÍAS ENTRE BAJAS, SIN AGUJEROS (24/09/2026, punto 5 de la revisión). Se
+      // salteaba de dos formas: si la fila pasaba de una lista a la otra (c_ → o_) la clave era
+      // otra y la espera arrancaba de cero, y si la memoria de avisos no se leía `yaAvisado` daba
+      // "no avisado" y se bajaba igual. Ahora mira LAS DOS claves y además la memoria del robot
+      // (`cyc/autoprecio`), y sin memoria no baja: para un aviso el lado seguro es repetir, para
+      // bajar un precio es no tocar.
+      const esperaBajaOk = (f) => avisadosOk
+        && !yaAvisado('c_' + f.mla, 'cajabarata', f.ptw) && !yaAvisado('o_' + f.mla, 'cajabarata', f.ptw)
+        && !recienteAuto(f.mla, 'baja', BAJAR_ESPERA_DIAS);
+      if (!avisadosOk) console.log('   ⚠️ no pude leer la memoria de avisos: esta noche no se baja nada solo');
+      const cbrAutoIds = new Set(sanasCbr.filter(esperaBajaOk).map((f) => f.mla));
+      const sobreAutoIds = new Set(sobreSanas.filter(esperaBajaOk).map((f) => f.mla));
       const autoBaja = [...sanasCbr.filter((f) => cbrAutoIds.has(f.mla)), ...sobreSanas.filter((f) => sobreAutoIds.has(f.mla))]
         .filter((f) => f.mgPw >= CBR_SANO + 0.5 && f.baja <= 24.5 && !recienteAuto(f.mla, 'sube', 14));
       // ── EL RESCATE: LO QUE QUEDÓ EN `subeDesde` (20%) O MENOS ──────────────────────────────
@@ -7013,11 +7034,19 @@ async function main() {
           if (!a || a.tipo !== 'sube' || a.vigilado || !a.ts) continue;
           const dias = (hoyTs - a.ts) / 864e5;
           if (dias < 7) continue;
-          let despues = 0;
+          let despues = 0, antes30 = 0;
           for (const ents of Object.values(vpAv)) for (const v of Object.values(ents || {})) {
-            if (v && !v.cancelada && v.mla === mla && v.ts && new Date(v.ts).getTime() > a.ts + 60e3) despues += v.qty || 1;
+            if (!v || v.cancelada || v.mla !== mla || !v.ts) continue;
+            const tv = new Date(v.ts).getTime();
+            if (tv > a.ts + 60e3) despues += v.qty || 1;
+            else if (tv < a.ts - 3600e3 && tv >= a.ts - 30 * 864e5) antes30 += v.qty || 1;
           }
-          const esperado = ((a.u30 || 0) / 30) * Math.min(dias, 14);
+          // Las subas del RESCATE (por:'margen', a la noche o al vender) no guardan `u30`, así que
+          // el esperado daba 0 y nunca se vigilaban (24/09/2026, punto 4 de la revisión). Si falta,
+          // se saca de las ventas de esa publicación en los 30 días antes de la suba (sin la hora
+          // anterior: el rescate al vender sube justo después de una venta).
+          const u30a = Number(a.u30) > 0 ? Number(a.u30) : antes30;
+          const esperado = (u30a / 30) * Math.min(dias, 14);
           if (esperado >= 3 && despues === 0) vigilar.push({ mla, ...a, dias: Math.floor(dias), esperado });
           if (MANDAR && dias >= 14) { try { await db.patch('cyc/autoprecio/' + mla, { vigilado: true, despues }); } catch { /* */ } }
         }
@@ -18899,7 +18928,13 @@ async function main() {
     //    Sin `:go` no toca ML ni la foto. Con `:go` aplica de verdad (sube y avisa).
     if (String(process.env.BILLING_PROBE || '').startsWith('porcosto')) {
       const _pc = String(process.env.BILLING_PROBE).split(':').slice(1);
-      const GO = _pc.includes('go');
+      // SÓLO MIRA DESDE EL 24/09/2026 (punto 6 de la revisión). Con `:go` subía por un camino que
+      // no tiene los frenos nuevos del robot (supervisor, compartir la caja, bajado a mano, 15 días
+      // sin vender, 60 días de stock) — y la regla suya del 23/09 es UN solo robot de precios, de
+      // noche. `:go` se ignora y se dice; para subir de verdad está `submargen:<piso>:<meta>:go`,
+      // que ahora pasa por los mismos frenos que la noche.
+      if (_pc.includes('go')) console.log('ℹ️  porcosto ya no aplica nada: sólo muestra. Los precios los mueve el robot de la noche (o submargen:…:go, con los mismos frenos).');
+      const GO = false;
       const pal = norm((_pc.find((x) => x && x !== 'go') || '').trim());
       const snapC = (await db.get('cyc/costosnap')) || {};
       console.log(`Foto de costos: ${Object.keys(snapC).length} fichas${Object.keys(snapC).length ? '' : ' (todavía no se sacó: la primera vuelta sólo la saca)'}`);
@@ -18963,8 +18998,26 @@ async function main() {
       }
       console.log(`\n${yaOk.length} ya estaban en el piso o arriba.`);
       if (!APLICAR) { console.log(`\nPRUEBA: no se escribió nada en ML. Agregá ":go" para aplicar.`); return; }
+      // CON `:go` PASA POR LOS MISMOS FRENOS QUE EL RESCATE DE LA NOCHE (24/09/2026). Antes subía
+      // todo lo de la lista: algo que comparte la caja, que él bajó a mano, que no vende hace
+      // semanas o que el supervisor marcó 🔴. `filtrarRescate` es la función de la noche, no una
+      // copia. Sin el supervisor no se sube nada, igual que de noche.
+      let malosSupM = new Set(), apM = {};
+      try {
+        const evS = (await db.get('cyc/supervisor/eventos')) || {};
+        for (const ev of Object.values(evS)) {
+          if (!ev || !ev.mla || Date.now() - (ev.ts || 0) > 60 * 864e5) continue;
+          if (Object.values(ev.ev || {}).some((r) => r && r.v === 'malo')) malosSupM.add(ev.mla);
+        }
+        apM = (await db.get('cyc/autoprecio')) || {};
+      } catch { console.log('❌ No pude leer el supervisor o la memoria del robot: no subo nada.'); return; }
+      const frM = await filtrarRescate(db, { subir }, { malosSup: malosSupM, autoprecio: apM, hoyTs: Date.now() });
+      const quedan = new Set(frM.rescates.map((x) => x.mla));
+      for (const x of frM.rescFren) console.log(`  ✋ ${x.mla} · ${x.nom} · ${x.why}`);
+      for (const x of frM.rescSup) console.log(`  🔴 ${x.mla} · ${x.nom} · el supervisor la marcó mala: no la subo`);
       let ok = 0, err = 0;
       for (const s of subir) {
+        if (!quedan.has(s.mla)) continue;
         if (s.vars.length) {
           const nuevos = {}; for (const v of s.vars) if ((v.price || 0) < s.a) nuevos[String(v.id)] = s.a;
           const r = await raiseVariations(s.mla, nuevos, s.tok);
@@ -22053,10 +22106,18 @@ async function main() {
       console.log(`=== CAPITAL DE CYC · todo en DÓLARES · dólar ${money(tc)} ===\n`);
       console.log(`── LO QUE TIENE ──`);
       console.log(`  Mercadería en stock: ${u(stockUSD).padStart(14)}  (${unidades} unidades · ${money(Math.round(stock))})`);
+      // LOS MISMOS CAMPOS QUE EL ARQUEO (24/09/2026). Buscaba `mp`, `banco` y `deben`, que no
+      // existen: Mercado Pago y lo que falta cobrar de ML no se sumaban nunca. Y `of_mia` es el
+      // valor de la oficina escrito a mano, que el Arqueo IGNORA cuando hay unidades contadas
+      // (ya están arriba, en la mercadería): sumarlo contaba la oficina dos veces.
+      const ofiContada = Object.entries(inv).some(([k, v]) => /__Oficina_Mati$/.test(k) && (parseInt(v) || 0) > 0);
       const campos = [['of_viejo', 'Oficina CYC'], ['of_mia', 'Oficina Mati'], ['vendedores', 'Vendedores'],
-        ['efectivo', 'Efectivo'], ['mp', 'Mercado Pago'], ['banco', 'Banco'], ['deben', 'Nos deben']];
+        ['efectivo', 'Efectivo'], ['mp_disp', 'Mercado Pago disp.'], ['mp_liq', 'A liquidar en ML'], ['deben_cyc', 'Nos deben']];
       let otros = 0;
-      for (const [k, lbl] of campos) { const v = n(k); if (v) { console.log(`  ${lbl.padEnd(20)} ${u(v).padStart(14)}`); otros += v; } }
+      for (const [k, lbl] of campos) {
+        if (k === 'of_mia' && ofiContada) { console.log(`  ${lbl.padEnd(20)} ${'(ya está en la mercadería)'.padStart(14)}`); continue; }
+        const v = n(k); if (v) { console.log(`  ${lbl.padEnd(20)} ${u(v).padStart(14)}`); otros += v; }
+      }
       console.log(`  ${'─'.repeat(36)}`);
       console.log(`  TOTAL activos:       ${u(stockUSD + otros).padStart(14)}   (${money(Math.round((stockUSD + otros) * tc))})`);
       console.log(`\n── LO QUE DEBE ──`);

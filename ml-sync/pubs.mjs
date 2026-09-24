@@ -110,11 +110,18 @@ async function main() {
         const e = { ...prev, title: it.title, cuenta: label, status: it.status };
         map[it.id] = e; upd[it.id] = e; continue;
       }
-      const s = suggest(it.title, index);
+      // SE CONSERVA TODO LO QUE YA TENÍA EL RENGLÓN (24/09/2026). Antes se rearmaba de cero y se
+      // perdían el código de Full, la foto, la caja de compra, la marca de oculta y demás; y peor,
+      // una publicación YA vinculada se volvía a enganchar adivinando por el título. Ahora sólo se
+      // adivina la ficha de la que no tiene, y lo demás se actualiza encima de lo que había.
+      const base = (prev && typeof prev === 'object') ? prev : {};
+      const s = base.prodId ? null : suggest(it.title, index);
       const e = {
-        prodId: s ? s.id : null,
-        variant: (prev && prev.variant) || '',
-        title: it.title, cuenta: label, status: it.status, auto: true,
+        ...base,
+        prodId: base.prodId || (s ? s.id : null),
+        variant: base.variant || '',
+        title: it.title, cuenta: label, status: it.status,
+        ...(base.prodId ? {} : { auto: true }),
       };
       map[it.id] = e; upd[it.id] = e;
     }
