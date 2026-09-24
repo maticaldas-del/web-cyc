@@ -20946,6 +20946,31 @@ async function main() {
       const inv = (await db.get('cyc/inventory')) || {};
       const vpS = (await db.get('cyc/ventaprod')) || {}; setDevLive(vpS);
       const pIdx = {}; for (const p of products) pIdx[p.id] = p;
+      // EL REGISTRO DE STOCK HORA POR HORA (lo anota el ciclo desde el 24/09/2026). Si no se puede
+      // leer, el volumen queda "sin dato" en todos: falta de dato no es tener stock.
+      let slog = {};
+      try { slog = (await db.get('cyc/stocklog')) || {}; } catch { slog = {}; }
+      // ¿Tuvo stock TODO el tiempo entre t0 y t1? true = sí, medido · false = en algún momento
+      // estuvo en cero (medido) · null = no se puede saber (no se miró todo ese tiempo).
+      // Un hueco de hasta SL_HUECO_H horas sin lectura se tolera (el reloj de GitHub se atrasa): un
+      // quiebre que entre justo ahí adentro no se ve, y eso es todo lo que se deja pasar.
+      const SL_HUECO_H = 2;
+      const stockVentana = (mla, t0, t1) => {
+        const l = links[mla] || {};
+        if (!l.prodId || !l.cuenta || !(slog.desde > 0) || t0 < slog.desde) return null;
+        const c = sidS(l.cuenta), key = l.prodId + '__' + c;
+        const horas = new Set(Object.keys(((slog.lect || {})[c]) || {}));
+        const hk = (t) => new Date(t).toISOString().slice(0, 13).replace(/[-T]/g, '');
+        let hueco = 0;
+        for (let t = Math.floor(t0 / 36e5) * 36e5; t <= t1; t += 36e5) {
+          if (horas.has(hk(t))) hueco = 0; else if (++hueco > SL_HUECO_H) return null;
+        }
+        const cs = Object.entries(((slog.cambios || {})[key]) || {}).map(([t, v]) => [Number(t), Number(v)]).sort((x, y) => x[0] - y[0]);
+        const antes = cs.filter((x) => x[0] <= t0);
+        if (!antes.length) return null;                          // esa clave todavía no se miraba en t0
+        if (antes[antes.length - 1][1] !== 1) return false;
+        return cs.some((x) => x[0] > t0 && x[0] <= t1 && x[1] === 0) ? false : true;
+      };
 
       // Ventas por publicación, con la hora REAL de la venta.
       const porMla = {};
@@ -21057,7 +21082,11 @@ async function main() {
           // si hoy está en cero, un "no vendió" puede ser el quiebre y no el precio.
           const stHoy = stockDe(ev.mla);
           let v;
-          if (nch.noches >= 3 && nch.nochesSin / nch.noches >= 0.5) v = 'sinstock';
+          // Con el registro hora por hora (desde el 24/09): si en cualquiera de las dos ventanas
+          // estuvo en cero aunque sea un rato, no se juzga el precio. Sin registro, lo de antes.
+          const swA = stockVentana(ev.mla, ev.ts - W * 864e5, ev.ts), swD = stockVentana(ev.mla, ev.ts, ev.ts + W * 864e5);
+          if (swA === false || swD === false) v = 'sinstock';
+          else if (nch.noches >= 3 && nch.nochesSin / nch.noches >= 0.5) v = 'sinstock';
           else if (nch.noches < 3 && stHoy === 0 && D.u < A.u) v = 'sinstock';
           // Con menos de 3 ventas ANTES no hay un ritmo contra el cual comparar: 2 ventas y después
           // 0 da "−100%" y es casualidad. La regla de Pedidos (PED_MIN_VENTAS_RITMO = 3) es la misma.
@@ -21145,13 +21174,20 @@ async function main() {
         // seguro fueron el quiebre, no la suba). Mientras no haya un registro de stock hora por hora que
         // cubra las dos ventanas enteras, el volumen se muestra como "sin dato" y el total es sólo el
         // efecto precio, que es el firme. `volCrudo` queda calculado para cuando ese registro exista.
-        const VOLUMEN_CONFIABLE = false;
-        const volumen = (!VOLUMEN_CONFIABLE || quiebre) ? 0 : (ev.a > ev.de ? Math.min(0, volCrudo) : Math.max(0, volCrudo));
+        // **Y SE CUENTA SÓLO CON EL REGISTRO DE STOCK HORA POR HORA DE LAS DOS VENTANAS ENTERAS.**
+        // Si en cualquiera de las dos estuvo en cero aunque sea un rato, es quiebre: no cuenta. Si
+        // no se miró todo el tiempo (el registro arrancó el 24/09, o el ciclo estuvo apagado), es
+        // "sin dato": tampoco cuenta.
+        const stA = stockVentana(ev.mla, ev.ts - L * 864e5, ev.ts), stD = stockVentana(ev.mla, ev.ts, finT);
+        const faltoStock = stA === false || stD === false;
+        const volConfiable = stA === true && stD === true;
+        const quiebreR = quiebre || faltoStock;
+        const volumen = (!volConfiable || quiebreR) ? 0 : (ev.a > ev.de ? Math.min(0, volCrudo) : Math.max(0, volCrudo));
         const evs = ev.ev || {}; const juicio = (evalNuevas.filter((x) => x.id === id).sort((a, b) => b.W - a.W)[0] || {}).res;
-        const v = quiebre ? 'sinstock' : ((juicio || evs.d30 || evs.d15 || evs.d7 || {}).v || '');
+        const v = quiebreR ? 'sinstock' : ((juicio || evs.d30 || evs.d15 || evs.d7 || {}).v || '');
         atrib.push({ id, mla: ev.mla, nom: nomDe(ev.mla), cuenta: (links[ev.mla] || {}).cuenta || '', origen: ev.origen,
           de: ev.de, a: ev.a, ts: ev.ts, dias: Math.round(L), uA, uD, precio: Math.round(precio), volumen: Math.round(volumen),
-          total: Math.round(precio + volumen), v, quiebre, volSinDato: !VOLUMEN_CONFIABLE });
+          total: Math.round(precio + volumen), v, quiebre: quiebreR, volSinDato: !volConfiable && !quiebreR });
       }
       const sumaA = (f) => atrib.reduce((s, x) => s + f(x), 0);
       const resumen = {
@@ -21236,6 +21272,21 @@ async function main() {
       upd['resumen'] = resumen;
       // lo que ya pasó los 30 días y está evaluado entero se borra a los 60: si no, cementerio
       for (const [id, ev] of Object.entries(eventos)) if (ahora - ev.ts > 60 * 864e5 && !cambiosEv[id] && !evalNuevas.some((x) => x.id === id)) upd['eventos/' + id] = null;
+      // El registro de stock se poda a los 100 días (los cambios más viejos se miran hasta ~90 días
+      // atrás: 60 que vive un cambio + 30 de ventana). De cada producto se deja SIEMPRE el último
+      // cambio, que dice si tiene stock desde antes.
+      try {
+        const corte = ahora - 100 * 864e5, slPoda = {};
+        for (const [c, hs] of Object.entries(slog.lect || {})) for (const h of Object.keys(hs || {})) {
+          const t = Date.UTC(+h.slice(0, 4), +h.slice(4, 6) - 1, +h.slice(6, 8), +h.slice(8, 10));
+          if (t < corte) slPoda['lect/' + c + '/' + h] = null;
+        }
+        for (const [k, cs] of Object.entries(slog.cambios || {})) {
+          const ts = Object.keys(cs || {}).map(Number).sort((a, b) => a - b);
+          for (const t of ts.slice(0, -1)) if (t < corte) slPoda['cambios/' + k + '/' + t] = null;
+        }
+        if (Object.keys(slPoda).length) await db.patch('cyc/stocklog', slPoda);
+      } catch { /* podar es sólo limpieza */ }
       try { await db.patch('cyc/supervisor', upd); }
       catch (e) { console.log(`⚠️ no se pudo guardar el supervisor: ${String(e).slice(0, 120)} · no se avisa nada`); return; }
       const rele = (await db.get('cyc/supervisor/eventos')) || {};
@@ -30668,6 +30719,38 @@ async function main() {
       }
       if (Object.keys(histUpd).length) await db.patch('cyc/stockhist', histUpd);
       await db.patch('cyc/inventory', invUpd);
+      // ── EL REGISTRO DE STOCK HORA POR HORA (24/09/2026) ──
+      // Pedido suyo: *"quizás llega mercadería, tiene 3 días y medio de stock y después está 20 hr
+      // sin stock (…) esos mini espacios sin stock los tiene en cuenta también?"*. No los tenía: el
+      // stock se anotaba una vez por noche. Sin esto el supervisor no puede decir si una suba hizo
+      // vender menos o si simplemente no había mercadería (las Sábanas, −$64.441).
+      // Se anotan DOS cosas, y hacen falta las dos:
+      //  · `lect/<cuenta>/<AAAAMMDDHH>` — que en esa hora se leyó ENTERA esa cuenta. Sin esto, "no
+      //    cambió nada" y "no se miró" se verían igual: una hora sin lectura es una hora sin dato.
+      //  · `cambios/<producto__cuenta>/<ts>` = 1 (entró stock) o 0 (se quedó en cero), sólo cuando
+      //    cambia. El primer renglón de cada clave es cuándo se la empezó a mirar.
+      // Sólo cuentas leídas SIN falla: un lote de ML que no contestó no es stock cero.
+      try {
+        const slEst = (await db.get('cyc/stocklog/estado')) || {};
+        const ahoraSL = Date.now();
+        const horaSL = new Date(ahoraSL).toISOString().slice(0, 13).replace(/[-T]/g, '');
+        const slUpd = {};
+        const sidsLeidos = new Set([...stockLeido].map((l) => sid(l)));
+        for (const l of stockLeido) slUpd['lect/' + sid(l) + '/' + horaSL] = 1;
+        let slCambios = 0;
+        for (const [k, v] of Object.entries(stockTot)) {
+          const m = k.match(/^(.+?)__([^_].*)$/);
+          if (!m || !sidsLeidos.has(m[2])) continue;
+          const hay = Number(v) > 0 ? 1 : 0;
+          if (slEst[k] === hay) continue;
+          slUpd['cambios/' + k + '/' + ahoraSL] = hay;
+          slUpd['estado/' + k] = hay;
+          if (slEst[k] != null) slCambios++;
+        }
+        if (!(await db.get('cyc/stocklog/desde'))) slUpd['desde'] = ahoraSL;
+        await db.patch('cyc/stocklog', slUpd);
+        if (slCambios) console.log(`🕐 Registro de stock: ${slCambios} producto×cuenta cambiaron (entró stock o se quedó en cero).`);
+      } catch (e) { console.log('⚠️ No pude anotar el registro de stock hora por hora: ' + String(e.message || e).slice(0, 80)); }
       // El código de la etiqueta de Full, uno por publicación. Va con patch por MLA y no con un
       // patch al padre, para no pisar el resto del renglón de mllinks.
       if (Object.keys(etiqUpd).length) {

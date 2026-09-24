@@ -9,12 +9,18 @@ el código en las líneas que dice cada renglón.
 ### PASO 2 (PATRIMONIO): 23 confirmadas · hechas 2 · quedan 21
 **Hechas:** 1 · una caja se marcaba "llegó" con la mercadería de otra (`recUsadas`, 3 días mínimos)
 · 2 · la ficha que se queda sin publicación vuelve a 0 (sólo si se leyeron las 4 cuentas).
-**Siguiente, ya propuesta y sin contestar — la 3:** la caja abierta cuenta ENTERA en camino aunque
+**La 3 quedó PARA MÁS TARDE, dicho por él el 24/09 ("dejemos eso para más tarde"):** la caja abierta cuenta ENTERA en camino aunque
 ML ya haya dado de alta parte → doble conteo (inflado) y caída de golpe al marcarla (el "bajó sin
 que pase nada" del 22/09). (a) sugerida: el robot anota en cada caja abierta cuántas entraron y la
 web las descuenta de "en camino" · (b) no contar en camino las cajas con alguna entrada.
 `index.html` enTransito ~5923 y calcArqueo ~6164 · `sync.mjs` cajasQueLlegaron.
 
+**CONFIRMADA POR LA SEGUNDA VUELTA (3 de 3 verificadores), m01 · alta:** cada noche `saldoml:go`
+   reescribe "A liquidar" y saca lo que ML liberó ese día (`if (ts <= hoy) continue`, sync.mjs
+   ~17391), pero el disponible (`mp_disp`) sólo lo escribe él a mano y `dispo` no corre en ningún
+   workflow → la plata liberada ese día desaparece del patrimonio (~US$400 por noche, se acumula); y
+   si él tipea el disponible de día, se cuenta doble hasta las 00:07. Arreglo sugerido: correr
+   `dispo:go` en ml-daily antes de `saldoml`, con el mismo corte de "hoy". Mientras: aviso en el Arqueo.
 **Las que siguen (orden sugerido, más grave primero):**
  · **Paraguay pagado y no llegado no está en ningún lado del patrimonio** (baja de mentira hasta
    contarlo en la oficina) · alta · calcArqueo, pyPedidoHecho ~9607.
@@ -53,7 +59,10 @@ web las descuenta de "en camino" · (b) no contar en camino las cajas con alguna
    media.
  · La ficha que crea la llegada del pedido toma el precio de HOY, no el congelado · baja.
  · Con Inventario/Finanzas abierto la foto diaria se dispara cada ~2 s · baja.
-**Segunda vuelta (de costado) SIN TERMINAR:** quedó corriendo al cortar; si no aparecen sus
+**Segunda vuelta (de costado): TERMINÓ A MEDIAS el 24/09** — 14 agentes bien, 30 cortados por el
+límite de uso. Salió m01 (arriba). Lo demás (m05, m06, choques web/robot, fallas leídas como dato) quedó
+SIN verificar: se retoma con Workflow `resumeFromRunId: wf_c2fd8e0d-f45` (sólo en la misma sesión) o se
+rehace. Texto viejo: quedó corriendo al cortar; si no aparecen sus
 resultados, hay que rehacerla (choques web/robot, fallas leídas como dato). Salieron 6 sospechas
 de "monedas" SIN verificar: el disponible a mano y "A liquidar" se miden en momentos distintos
 (la plata liberada se borra cada noche) · el dólar a mano sin freno (vacío guarda 0) · "¿Cierra
@@ -185,6 +194,17 @@ Dalí al 30% · el Puntaje recalibrado a meta 35 · las variantes de Rotación c
 privada unificados · las dos facturas de Sancor analizadas.
 **Versión del panel: 20.16 · caché `cyc-v294`**. El ciclo del robot quedó **prendido**.
 
+
+## CADA VENTA DICE SI SU PUBLICACIÓN CAMBIÓ DE PRECIO (24/09/2026, versión 20.18)
+
+Pedido suyo: *"yo quiero ver los aumentos diarios que efecto tienen en las ventas diarias"* (y *"algo
+con más de una semana no"*). En Ventas x Producto, al lado del nombre: **⬆️/⬇️ +N% X antes · $de→$a ·
+quién**, el último cambio de los 7 días ANTERIORES a esa venta (`cambioVentaHTML`). Junta
+`cyc/supervisor/eventos` (todos, los a mano con hora aproximada y visibles desde la noche siguiente) y
+`cyc/autoprecio` (el último del robot, al instante), sin repetir el mismo cambio. No calcula nada.
+
+**Y EL MISMO DÍA LAS VENTAS "NO CARGABAN": era el ciclo apagado 2 h 30** — alguien corrió `poncosto`
+a mano a las 13:46 y no volvió a prender `ciclo`. La web estaba bien.
 
 ## EL RETIRO Y LOS GASTOS YA NO SE REPARTEN (23/09/2026, versión 20.14 · `cyc-v292`)
 
@@ -343,7 +363,14 @@ TODO el tiempo, antes y después, y eso no se sabe: el stock se anota una vez po
 23/09, la ventana de ANTES no se mira nunca, y un hueco de 20 horas entre dos cajas no lo ve nadie. Ahora
 el total es sólo el efecto precio (el firme), cada renglón dice *"volumen sin dato"* y la tarjeta lo
 explica. `VOLUMEN_CONFIABLE` (en `sync.mjs`) se prende el día que haya un registro de stock HORA POR HORA
-que cubra las dos ventanas enteras. **Pendiente de decidir por él: hacer ese registro.** Ojo: los juicios
+que cubra las dos ventanas enteras. **HECHO EL 24/09 (él dijo que sí), versión 20.19 · `cyc-v297`:** el ciclo anota en `cyc/stocklog`
+`lect/<cuenta>/<AAAAMMDDHH>` (esa hora se leyó ENTERA esa cuenta) y `cambios/<prod__cuenta>/<ts>` = 1/0
+(entró stock / quedó en cero, sólo cuando cambia; el primero = desde cuándo se mira). El supervisor usa
+`stockVentana`: el volumen cuenta SÓLO si las dos ventanas están cubiertas enteras (huecos de hasta 2 h
+sin lectura se toleran) y hubo stock todo el tiempo; si estuvo en cero un rato → quiebre; si no se miró
+todo → "sin dato". Los juicios 🟢/🔴 (y el freno de subas por 🔴) también dan "sin stock" si el
+registro vio un cero. Se poda a los 100 días. **Arrancó el 24/09: el volumen va a ir apareciendo de a
+poco**, a medida que haya cambios con las dos ventanas adentro del registro. Ojo: los juicios
 🟢/🔴 del supervisor (y el freno de subas por 🔴) todavía miran ventas sin saber del stock hora por hora.
 **Primera medición (23/09, en prueba): 48 subas medidas · precio +$319.001 · volumen −$219.000 ·
 TOTAL +$99.999.** El volumen es el pedazo pesimista a propósito: se lleva, por ejemplo, las Sábanas

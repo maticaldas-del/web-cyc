@@ -2297,7 +2297,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='20.18';
+const APP_VERSION='20.19';
 // El problema real que esto resuelve no es curiosidad: es que el celular guarda la app y sigue
 // mostrando la de ayer sin avisar. Varias veces se revisó un cambio que ya estaba subido y no se
 // veía. Por eso, además del número, el chip avisa cuando hay una versión nueva esperando.
@@ -13084,9 +13084,11 @@ function renderMetAuto(){
     </div>
     <div style="display:flex;flex-wrap:wrap;gap:12px 10px;margin-bottom:10px">
       ${caja('Por el precio · firme',r.precio,'lo que sí se vendió, cobrado a otro precio')}
-      ${(r.items||[]).some(x=>x.volSinDato)
-        ?`<div style="flex:1 1 150px;font-size:.62rem;color:var(--muted);line-height:1.4"><b>Por vender más o menos: sin dato.</b> No se cuenta: para saber si vendió menos por el precio hay que saber que tuvo stock todo el tiempo, antes y después, y eso todavía no se mide hora por hora. El total es sólo lo firme.</div>`
-        :caja('Por vender más o menos · supuesto',r.volumen,'ventas que espantó una suba o que trajo una baja')}
+      ${(()=>{const it=r.items||[],sd=it.filter(x=>x.volSinDato).length;
+        // Desde el 24/09 el robot anota el stock hora por hora. El volumen se cuenta SÓLO en los cambios
+        // donde ese registro cubre las dos ventanas enteras y hubo stock todo el tiempo.
+        if(it.length&&sd===it.length)return`<div style="flex:1 1 150px;font-size:.62rem;color:var(--muted);line-height:1.4"><b>Por vender más o menos: sin dato todavía.</b> Para saber si vendió menos por el precio hay que saber que tuvo stock todo el tiempo, antes y después. El registro hora por hora arrancó el 24/09: se va a ir llenando. El total es sólo lo firme.</div>`;
+        return caja('Por vender más o menos · medido con stock',r.volumen,`sólo cambios con stock todo el tiempo, antes y después${sd?` · ${sd} sin dato, no cuentan`:''}`);})()}
     </div>
     ${perdidas.length?`<div style="font-size:.6rem;color:var(--red);text-transform:uppercase;letter-spacing:.04em;margin:6px 0 2px">🔻 Los que hicieron perder plata (${perdidas.length})</div>${itP}`:`<div style="font-size:.64rem;color:var(--green);margin:6px 0">✓ Ningún cambio del robot hizo perder plata hasta ahora.</div>`}
     <details><summary style="cursor:pointer;font-size:.66rem;color:var(--muted);margin-top:8px">Los que dejaron más (${ganadas.length})</summary>${itG}${resto}</details>
