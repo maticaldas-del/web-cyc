@@ -87,7 +87,7 @@ búsqueda "de costado" SÍ había terminado: encontró **8 sospechas que nunca s
 precios (lo del 23-24/09), cajas y stock, plata y monedas, pedidos y compras, choques web/robot y
 fallas leídas como dato. Lo que se confirme va abajo, de a uno, con su (a)/(b).
 **VERIFICADAS (código real extraído del robot y probado con un ML de mentira que contesta 429):**
- · **f0 · REAL.** Reclamo sin la etiqueta `delivered` + 429 en `/shipments` → queda "cancelada"
+ · **f0 · HECHO el 25/09, eligió la (a).** `tipoCancelacion` devuelve null si falta un dato que decide (no se sabe si se entregó o si hubo devolución) y la venta espera a la vuelta siguiente; la primera falla queda en `cyc/cancelpend/<orden>`, y a los 7 días (o si la orden está por salir de la ventana de 45) se clasifica como antes y se avisa por Telegram. Sin entrega alcanza para "cancelada". Probado con el código real y 10 casos. Lo de abajo es cómo estaba: **REAL.** Reclamo sin la etiqueta `delivered` + 429 en `/shipments` → queda "cancelada"
    para siempre (% de reclamos 9,5% → 5%, el costo del producto baja). Devolución + 429 en
    `/claims` → queda "reclamo" (5% → 9,5%). `pend` no la vuelve a mirar nunca. (a) si la consulta
    falla, NO clasificar y reintentar la vuelta siguiente (ventana de 45 d); a los 7 d sin poder

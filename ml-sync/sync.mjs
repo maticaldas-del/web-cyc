@@ -5278,12 +5278,14 @@ async function leerEntrega(order, token) {
 // El atajo por `tags` se queda porque es GRATIS (no pide nada a ML); cuando hay que preguntar, se
 // pregunta con `leerEntrega` y NO con una segunda lectura propia del envío: dos lugares leyendo y
 // parseando la misma respuesta se separan, que es el error anotado una docena de veces acá.
-async function wasDelivered(order, token) {
+async function wasDelivered(order, token, opts = {}) {
   const tags = order.tags || [];
   if (tags.includes('delivered')) return true;
   if (tags.includes('not_delivered')) return false;
   const e = await leerEntrega(order, token);
-  if (!e) return false;
+  // Sin envío no hubo entrega: eso es un dato. Con envío y sin respuesta es "no sé" — y con
+  // `estricto` se devuelve null para que quien clasifica pueda esperar en vez de adivinar (f0).
+  if (!e) return (opts.estricto && order?.shipping?.id) ? null : false;
   if (e.ent != null) return true;
   // MISMA condición que tenía antes, y hay que respetarla al pie: esto decide si una cancelada
   // cuenta como RECLAMO, o sea el % que encarece el costo del producto y con eso mueve precios.
@@ -5298,14 +5300,31 @@ async function wasDelivered(order, token) {
 // devolución vuelve al depósito y se re-publica ("Pusimos los productos de nuevo
 // a la venta") → NO es pérdida, es devolución. Distinto de una pérdida real,
 // donde el comprador recibió, se le devolvió la plata y NO volvió el producto.
-async function wasReturned(order, token) {
+async function wasReturned(order, token, opts = {}) {
   const oid = order.id;
   if (!oid) return false;
   try {
     const cl = await mlGet('/post-purchase/v1/claims/search?resource=order&resource_id=' + oid, token);
+    if (!cl) return opts.estricto ? null : false;
     const arr = cl.data || cl.results || [];
     return arr.some((c) => String(c.type || '').toLowerCase() === 'returns');
-  } catch { return false; }
+  } catch { return opts.estricto ? null : false; }
+}
+
+const CANCEL_ESPERA_MS = 7 * 864e5;
+// ── QUÉ TIPO DE CANCELACIÓN ES, SIN ADIVINAR (25/09/2026, f0 de la segunda vuelta, opción a) ──
+// La clasificación se hace UNA sola vez: después la venta queda `cancelada` y no se vuelve a
+// mirar. Con un 429 en el medio, `wasReturned`/`wasDelivered` contestaban false y el tipo quedaba
+// mal PARA SIEMPRE (un reclamo como "cancelada" baja el % de reclamos y abarata el costo).
+// Ahora devuelve null cuando falta un dato que decide, y el paso 3b espera a la vuelta siguiente.
+// Sin entrega no puede haber reclamo ni devolución: "no entregada" alcanza para "cancelada".
+async function tipoCancelacion(order, token, { forzar = false } = {}) {
+  const ret = await wasReturned(order, token, { estricto: !forzar });
+  if (ret === true) return 'devolucion';
+  const ent = await wasDelivered(order, token, { estricto: !forzar });
+  if (ent === false) return 'cancelada';
+  if (ent === true && ret === false) return 'reclamo';
+  return null;
 }
 
 async function main() {
@@ -31011,7 +31030,13 @@ async function main() {
     //     clasificaste a mano en la app.
     const cancelFrom = new Date(Date.now() - 45 * 864e5).toISOString().replace(/\.\d+Z$/, '.000-00:00');
     const cancelled = await fetchCancelled(acc.seller_id, t.access_token, cancelFrom);
-    let nCanc = 0, nRecl = 0;
+    let nCanc = 0, nRecl = 0, nEspera = 0;
+    const forzadas = [];
+    // Memoria de las que no se pudieron leer: desde cuándo. Aparte de la venta, porque el ciclo la
+    // reescribe entera. Si esta lectura falla no se sabe desde cuándo esperan: se espera igual (nunca
+    // se fuerza a ciegas) y no se escribe nada.
+    let cancelPend = null;
+    try { cancelPend = (await db.get('cyc/cancelpend')) || {}; } catch { cancelPend = null; }
     for (const o of cancelled) {
       // Se busca por nº de ORDEN (ver loadedByOrder arriba). El índice por nº de venta se deja como
       // respaldo para las ventas viejas que no tengan el id con el formato 'v<orden>_<i>'.
@@ -31021,8 +31046,24 @@ async function main() {
       if (!pend.length) continue;
       // devolución (volvió al stock) → no es pérdida; entregada sin devolver → reclamo;
       // ni entregada → cancelación previa al envío.
-      const tipo = (await wasReturned(o, t.access_token)) ? 'devolucion'
-        : ((await wasDelivered(o, t.access_token)) ? 'reclamo' : 'cancelada');
+      const _ok = String(o.id);
+      let tipo = await tipoCancelacion(o, t.access_token);
+      if (!tipo) {
+        const desde = cancelPend ? Number(cancelPend[_ok]) : NaN;
+        // También si la orden está por salir de la ventana de 45 días: si se va sin clasificar, la
+        // venta quedaría contada como vendida para siempre, que es peor que clasificarla como antes.
+        const _vieja = Date.now() - Date.parse(o.date_created || o.date_closed || '') > 38 * 864e5;
+        if (cancelPend && ((isFinite(desde) && Date.now() - desde >= CANCEL_ESPERA_MS) || _vieja)) {
+          // 7 días sin poder leerla: se clasifica como antes y se avisa, para no dejarla colgada.
+          tipo = (await tipoCancelacion(o, t.access_token, { forzar: true })) || 'cancelada';
+          forzadas.push(tipo);
+        } else {
+          if (cancelPend && !isFinite(desde) && !DRY) { try { await db.patch('cyc/cancelpend', { [_ok]: Date.now() }); } catch {} }
+          nEspera++;
+          continue;
+        }
+      }
+      if (cancelPend && cancelPend[_ok] != null && !DRY) { try { await db.patch('cyc/cancelpend', { [_ok]: null }); } catch {} }
       for (const h of pend) {
         if (!DRY) await db.patch(`cyc/ventaprod/${h.dayKey}/${h.id}`, {
           cancelada: true, tipoCancelacion: tipo,
@@ -31033,6 +31074,13 @@ async function main() {
       }
     }
     if (nCanc || nRecl) console.log(`  ↩ ${label}: ${nCanc} cancelada(s) · ${nRecl} reclamo(s) con pérdida`);
+    if (nEspera) console.log(`  ⏳ ${label}: ${nEspera} cancelación(es) sin clasificar: ML no contestó · se reintenta en la vuelta siguiente`);
+    if (forzadas.length) {
+      console.log(`  ⚠️ ${label}: ${forzadas.length} cancelación(es) clasificadas sin poder leerlas en 7 días`);
+      if (!DRY) await sendAlerta(`⚠️ <b>${label}: ${forzadas.length} cancelación(es) clasificadas a ciegas</b>\n`
+        + `ML no contestó durante 7 días si fueron reclamo o devolución. Quedaron: ${forzadas.join(', ')}.\n`
+        + `Si alguna fue otra cosa, se corrige a mano en Ventas x Producto.`);
+    }
 
     // 3c) SALUD DE PUBLICACIONES: avisar por Telegram si a una publicación
     //     vinculada la bajaron/pausaron por un problema o la moderó ML.
