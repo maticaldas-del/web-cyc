@@ -244,8 +244,17 @@ precios-decisión 3.
    probe `avisonoche` manda Telegram con los pasos que fallaron · 22 promociones no leídas ≠ "sin
    promo": `sacapromos` las cuenta aparte y la vuelta de cada hora avisa si pasan 3 horas seguidas
    (`mlapi/promosinleer`) · 23 el rescate nombra las que no pudo medir (log y aviso de la noche).
-   **20 queda para la próxima tanda** (fecha del reporte de MP en el Arqueo: toca la web).
- · **Obvias que quedan:** 20, 24-28.
+   **20 · HECHO (v20.43 · `cyc-v321`):** `saldoml` guarda el fin MÁS VIEJO de los reportes usados
+   en `cyc/finanzas/_ts/liq_hasta` y `agenda._repHasta`; el Arqueo dice "reporte hasta dd/mm" y se
+   pone ámbar con más de 2 días; Telegram (`sendAlerta`, 1 por día, memoria `cyc/saldoml/_alerta`)
+   si el reporte tiene más de 2 días o el pedido del nuevo falla 2 noches seguidas.
+ · **24-28 · HECHAS el 25/09:** 24 `activarPausadasFull` cuenta y lista lo que no pudo leer
+   (`sinLeer`, lotes fallidos) · 25 lo que el tope de 10 cambios deja afuera ya NO se anota como
+   avisado (`diferidasAuto`): sale mañana, no en 14 días · 26 el freno del supervisor 🔴 no frena el
+   rescate de algo que el robot BAJÓ (sólo juzga subas) · 27 si el resumen del día ya salió pero es
+   fin de mes y falta el del mes, se manda sólo el del mes (`soloMes`) · 28 se borraron
+   `ml-stock.yml` y `ml-sync/stock.mjs` (robot viejo duplicado).
+ · **Obvias que quedan: ninguna.** Quedan las 60 sin verificar (se retoman solas a las 21:15 UTC).
 
 ### LA REVISIÓN POR ETAPAS (propuesta del 25/09, falta que confirme el ritmo)
 Pedido suyo: que cada revisión entre en una ventana de 5 h de tokens (plan de US$100, Opus 5.5). Seis

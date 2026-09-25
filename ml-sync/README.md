@@ -9,7 +9,7 @@ Corre solo como **GitHub Action** (gratis) cada 15–30 min.
 |---|---|---|
 | 🧾 Ventas + neto | Cada venta nueva de las 4 cuentas, con su neto real | ✅ código listo (`sync.mjs`) |
 | 📊 Métricas | Se calculan solas en la app a partir de las ventas | ✅ automático |
-| 📦 Stock ML | Unidades disponibles por producto y por cuenta | ✅ código listo (`stock.mjs`) |
+| 📦 Stock ML | Unidades disponibles por producto y por cuenta | ✅ lo lee el ciclo de `sync.mjs` (`stock.mjs` se borró el 25/09/2026) |
 | 🚚 Stock en Full + por llegar | Unidades en Full e ingresos en camino | ⏳ Fase 3 |
 | ❓ Preguntas | Ver preguntas sin responder (responder: a decidir) | ⏳ Fase 4 |
 
