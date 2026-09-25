@@ -141,6 +141,19 @@ scratchpad `rev2/<frente>/REPORT.md`, se pierden con el contenedor). Van de a un
    `facsync`: un 429 se guarda como "venta sin factura" · **F9** dólar: si ninguna fuente contesta
    igual se anota "ya lo miré hoy" · **F10** resumen del día se manda y se anota aunque el ciclo haya
    estado caído (ventas faltantes).
+ · **Choques (agente 3, 25/09): c0, c1, c2 y c3 son las cuatro REALES** con el código de hoy. Nuevas:
+   **N1 (alta)** `nomas` escribe la marca SIN `manual:true`: si esa publicación vendió en las últimas
+   48 h, la vuelta de 2 min reescribe el renglón y la marca desaparece; después `activarPausadasFull`
+   la puede ACTIVAR en ML · **N2** "Guardar" en Vinculaciones (`saveMlLink`) arma el renglón de cero
+   y borra `noAutoActivar` (freno), `altaTs` (escalera) y otros; `autoLinkFamilies` igual · **N3**
+   `ml-daily` corre 3 veces por noche sin candado + `candidatos` a las 12:07: el freno de "dos
+   mediciones" se cumple en 15 minutos (la segunda lectura no mira cuándo fue la primera) · **N4**
+   `netoweb` pisa el margen al instante de un precio cambiado mientras corre · **N5** dos aparatos
+   con la misma caja a medio armar: se puede cerrar dos veces · **N6** el resumen del día puede
+   salir dos veces (ciclo + ml-daily) · **N7** fecha del disponible vuelve a la vieja 2 min (se
+   corrige sola). NO REAL: tokens quemados por corridas a la vez, marca `robotprecios/dia`,
+   supervisor 3 veces, pedidos automáticos duplicados.
+ · **Total de la segunda vuelta: 4 viejas confirmadas (c0-c3) + f0-f2 + 25 nuevas.**
 
 ### PASO 1 (PRECIOS): TERMINADO (el 8 era un aviso del log sin daño)
 **Hechos el 24/09 (v20.28 · `cyc-v306`):** 3 · el rescate no sube lo que el robot BAJÓ en 30 días
