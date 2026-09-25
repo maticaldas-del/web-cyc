@@ -7141,6 +7141,25 @@ async function main() {
             try { it = await mlGet('/items/' + f.mla + '?attributes=id,variations', tk); } catch { it = null; }
             if (!it) { fallidosAuto.push({ ...t, err: 'ML no devolvió la publicación' }); continue; }
             if ((it.variations || []).length) { fallidosAuto.push({ ...t, err: 'tiene variantes: se hace a mano' }); continue; }
+            // ── ANTES DE BAJAR SE LE VUELVE A PREGUNTAR LA CAJA A ML (25/09/2026, F2 de la segunda vuelta, a) ──
+            // El precio de la caja sale de lo que el robot anotó en la vuelta de la hora, y si ML no
+            // contestó ahí queda el de ANTES sin fecha: una publicación que hoy ya gana la caja salía
+            // propuesta para bajar $30.000 → $26.500 con un dato de hace 3 días.
+            let cajaNow = null;
+            try { cajaNow = await mlGet('/items/' + f.mla + '/price_to_win?version=v2', tk); } catch { cajaNow = null; }
+            if (!cajaNow || !cajaNow.status) { fallidosAuto.push({ ...t, err: 'ML no contestó a cuánto se gana la caja: no bajo sin ese dato' }); continue; }
+            if (cajaNow.status === 'winning') { fallidosAuto.push({ ...t, err: 'ya gana la caja de compra: no hace falta bajar' }); continue; }
+            const pwNow = Math.round(Number(cajaNow.price_to_win) || 0), pwAntes = Math.round(Number(f.ptw) || 0);
+            if (!(pwNow > 0)) { fallidosAuto.push({ ...t, err: 'ML no dice a qué precio se gana la caja' }); continue; }
+            // La caja bajó desde que se midió: el margen calculado ya no vale. Se vuelve a medir mañana.
+            if (pwNow < pwAntes - 10) { fallidosAuto.push({ ...t, err: `la caja bajó de ${money(pwAntes)} a ${money(pwNow)}: el margen cambió, lo vuelvo a medir mañana` }); continue; }
+            // La caja SUBIÓ por encima del destino (sea el de la caja o el de un escalón): se baja sólo
+            // hasta la caja, que alcanza para ganarla y deja más margen.
+            if (pwNow > pwAntes + 10 && Math.floor(pwNow / 10) * 10 > t.a) {
+              const aNueva = Math.floor(pwNow / 10) * 10;
+              if (aNueva >= f.precio) { fallidosAuto.push({ ...t, err: `con la caja de hoy (${money(pwNow)}) no hace falta bajar` }); continue; }
+              t.a = aNueva;
+            }
             if (t.tipo === 'remate' || t.tipo === 'escalera') {
               let marcadas = null;
               try {

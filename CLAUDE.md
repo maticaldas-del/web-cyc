@@ -130,7 +130,7 @@ scratchpad `rev2/<frente>/REPORT.md`, se pierden con el contenedor). Van de a un
    entre 20% y 22% (o una venta suelta con envío caro) no pide reponer. No se habló con él.
  · Cajas y stock, `pisobase`, `dispo`, `maxCompraDe`, `candFichaDesde`: sin nada nuevo.
  · **Fallas leídas como dato (agente 2, 25/09, `rev2/fallas/REPORT.md`):**
-   F1 = P3 (confirmado por los dos) · **F2** caja de compra vieja (429 en `price_to_win` deja la de
+   F1 = P3 (confirmado por los dos) · **F2 · HECHO el 25/09, eligió la (a):** antes de cada baja (bajar a la caja, remate, escalera) se le vuelve a pedir `price_to_win` a ML; si no contesta o ya gana no se baja, si la caja bajó se deja para mañana y si subió se baja sólo hasta la caja (probado: 7 casos). Cómo estaba: caja de compra vieja (429 en `price_to_win` deja la de
    antes; `calcCajaBarata` no mira `cajaTs`) → remate/escalera/bajar bajan a un precio viejo ·
    **F3** el envío del peor caso sale sólo de los precios donde ML contestó la comisión: un 429 lo
    deja en 0 y un 8% se ve 30% "medido" (y el rescate no sube) · **F4** `filtrarRescate`: el freno
