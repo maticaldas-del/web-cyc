@@ -3843,10 +3843,14 @@ async function promosAgendadas(db, accounts, labels, products) {
   const monoP = parseFloat(((await db.get('cyc/monotributo')) || {}).pct) || 0;
   const pIdx = {}; for (const p of products) pIdx[p.id] = p;
   const out = [];
+  // F7 de la segunda vuelta (25/09/2026): lo que ML no contestó se CUENTA (`out.sinLeer`). Antes un
+  // 429 se leía como "no tiene promociones" y el chequeo podía decir "nada urgente" con una promo
+  // del 40% aceptada. Quien muestra la lista tiene que decir que quedó algo sin mirar.
+  out.sinLeer = 0; out.cuentasSinLeer = [];
   for (const label of labels) {
     const acc = accounts[label];
     if (!acc?.refresh_token) continue;
-    let t; try { t = await mlRefresh(ML_CLIENT_ID, ML_CLIENT_SECRET, acc.refresh_token); } catch { continue; }
+    let t; try { t = await mlRefresh(ML_CLIENT_ID, ML_CLIENT_SECRET, acc.refresh_token); } catch { out.cuentasSinLeer.push(label); continue; }
     try { await db.patch('mlapi/tokens/' + label, { refresh_token: t.refresh_token, updated_ts: Date.now() }); } catch { /* no rompe */ }
     const ids = Object.entries(links)
       .filter(([mla, e]) => e && e.cuenta === label && !e.ignored && /^MLA/i.test(mla))
@@ -3856,7 +3860,7 @@ async function promosAgendadas(db, accounts, labels, products) {
       try {
         const r = await mlGet('/seller-promotions/items/' + it.mla + '?app_version=v2', t.access_token);
         arr = Array.isArray(r) ? r : (r.results || []);
-      } catch { continue; }
+      } catch { out.sinLeer++; continue; }
       for (const pr of (arr || [])) {
         // 'candidate' es una oferta que ML propone y NADIE aceptó: no se aplica sola, no molesta.
         if (pr.status !== 'pending' && pr.status !== 'started') continue;
@@ -3885,6 +3889,9 @@ async function promosAgendadas(db, accounts, labels, products) {
     }
   }
   out.sort((a, b) => (b.off || 0) - (a.off || 0));
+  out.faltaMirar = out.sinLeer || out.cuentasSinLeer.length
+    ? `no pude mirar las promociones de ${[out.sinLeer ? out.sinLeer + ' publicación(es)' : '', out.cuentasSinLeer.length ? 'la cuenta ' + out.cuentasSinLeer.join(', ') : ''].filter(Boolean).join(' y ')} (ML no contestó): puede haber alguna aceptada`
+    : '';
   return out;
 }
 
@@ -5523,9 +5530,38 @@ async function main() {
             + (x.mg != null ? ` · quedaría en ${x.mg.toFixed(0)}%` : '')).join('\n')
           + (proms.length > 5 ? `\n… y ${proms.length - 5} más` : '');
       }
+      if (proms.faltaMirar) msgProm += `\n❓ ${proms.faltaMirar}`;
     } catch (e) { console.log('No pude mirar las promociones: ' + e.message); }
 
-    const ok = await sendTelegram(msg + msgProm, 'resumen');
+    // F10 de la segunda vuelta (25/09/2026): ¿el robot de ventas dio la vuelta DESPUÉS de que
+    // terminó el día? Si el ciclo estuvo caído, las ventas del final del día no están y el resumen
+    // salía igual, con números de menos, y se anotaba como enviado. Ahora: hasta las 00:40 se espera
+    // (el ciclo y ml-daily lo reintentan); después sale igual, pero DICIENDO qué cuenta no se leyó.
+    let avisoViejo = '';
+    if (!forzado) {
+      const finDia = Date.parse(today.replace(/_/g, '-') + 'T00:00:00-03:00') + 864e5;
+      const st = (await db.get('mlapi/state')) || {};
+      // OJO: `labels` se define MÁS ABAJO en este archivo (usarlo acá corta la corrida en
+      // ejecución y compila perfecto). Las cuentas salen de los tokens, como hace el bloque de las
+      // promociones de arriba.
+      const cuentasRes = Object.keys((await db.get('mlapi/tokens')) || {});
+      const atras = cuentasRes.filter((l) => !(Number((st[l] || {}).lastRun) >= finDia));
+      if (atras.length) {
+        const minDesde = (Date.now() - finDia) / 60e3;
+        if (minDesde < 40) { console.log(`Resumen de ${today}: ${atras.join(', ')} todavía no se leyó después de medianoche. Espero a la próxima vuelta.`); return; }
+        avisoViejo = `\n\n⚠️ <b>Pueden faltar ventas</b>: el robot no leyó ${atras.join(', ')} después de que terminó el día (estuvo caído).`;
+      }
+    }
+    // N6 de la segunda vuelta: el ciclo y ml-daily lo intentan en la misma media hora. Antes los dos
+    // podían pasar el "ya enviado" a la vez y salían dos resúmenes. Ahora se anota "lo estoy
+    // mandando" justo antes; el otro lo ve y no lo repite. Si el envío falla, se borra la marca.
+    if (!forzado && !DRY) {
+      const env = await db.get('mlapi/telegram/dailyEnvio');
+      if (env && env.dia === today && Date.now() - Number(env.ts || 0) < 10 * 60e3) { console.log(`Resumen de ${today}: lo está mandando otra corrida, no lo repito.`); return; }
+      await db.set('mlapi/telegram/dailyEnvio', { dia: today, ts: Date.now() });
+    }
+    const ok = await sendTelegram(msg + msgProm + avisoViejo, 'resumen');
+    if (!ok && !forzado && !DRY) await db.set('mlapi/telegram/dailyEnvio', null);
     if (ok && !forzado && !DRY) await db.set('mlapi/telegram/lastDaily', today);
     console.log(ok ? `✓ Resumen de ${today} enviado.` : '✗ No se pudo enviar el resumen (revisá Telegram).');
 
@@ -10022,6 +10058,7 @@ async function main() {
           + (agend ? ` · ${agend} agendada(s)` : '')
           + ` — bajan el precio solas · sacapromos`);
       }
+      if (proms.faltaMirar) hacer.push(`❓ ${proms.faltaMirar}`);
       if (hacer.length) { L.push(`\n🔴 <b>PARA HOY</b>`); for (const h of hacer.slice(0, 5)) L.push(`   ${h}`); }
       else L.push(`\n🟢 <b>Nada urgente hoy.</b>`);
       // 2) El termómetro del día.
@@ -10168,6 +10205,7 @@ async function main() {
               + (x.mg != null ? ` · quedaría en ${x.mg.toFixed(0)}%` : '') + ` · ${x.estado}`);
           }
         }
+        if (proms.faltaMirar) L.push(`❓ ${proms.faltaMirar}`);
       } catch (e) { L.push(`⚠️ No pude mirar las promociones: ${String(e.message || e).slice(0, 60)}`); }
       for (const r of R) for (const e2 of r.err) L.push(`⚠️ ${r.label} · no pude leer ${e2}`);
       // Telegram corta en 4096 caracteres: un mensaje que se pasa NO llega, así que se recorta acá.
@@ -10583,9 +10621,18 @@ async function main() {
         // antes de contarla. Sin esto la alarma sonaría todos los días por la última venta.
         const graciaMs = Date.now() - 3 * 3600e3;
         let ventaFacturadaMasVieja = null;
+        let noLeidas = 0;
         for (const o of ords) {
           let doc = null;
-          try { doc = await mlGet(`/users/${sellerId}/invoices/orders/${o.id}`, tok); } catch { /* sin factura o sin permiso */ }
+          // F8 de la segunda vuelta (25/09/2026): un 429, una caída de ML (5xx) o un corte NO dicen
+          // que la venta no tenga factura: antes caían igual en "sin factura" y disparaban la
+          // alarma de ventas sin facturar. Ahora esa venta se saltea y se cuenta. Cualquier otra
+          // respuesta de ML (404 y compañía) sigue siendo "sin factura", como siempre.
+          try { doc = await mlGet(`/users/${sellerId}/invoices/orders/${o.id}`, tok); }
+          catch (e) {
+            const st = (String((e && e.message) || '').match(/^ML GET \S+: (\d{3}) /) || [])[1];
+            if (!st || st === '429' || Number(st) >= 500) { noLeidas++; continue; }
+          }
           const num = doc && (doc.invoice_number != null ? doc.invoice_number : null);
           if (doc && num == null) noSe++;
           if (doc && num != null) {
@@ -10650,6 +10697,7 @@ async function main() {
         if (sinReales) console.log(`  ⚠️ ${sinReales} venta(s) POSTERIORES a esa fecha SIN factura — hay que mirarlo`);
         else console.log(`  ✓ Ninguna venta quedó sin factura`);
         if (noSe) console.log(`  (${noSe} que ML contestó pero sin número)`);
+        if (noLeidas) console.log(`  ❓ ${noLeidas} venta(s) que ML no contestó (429 o error): no se cuentan ni como facturadas ni como sin factura, salen en la próxima corrida`);
         resumen.push({ label, nFac: nums.length, total, sinFac: sinReales, huecos: huecos.length });
       }
       if (!GO) { console.log('\n(prueba: no guardé nada. Agregá ":go" para guardarlo en el panel)'); return; }
@@ -31769,10 +31817,13 @@ async function main() {
       const marca = (await db.get('mlapi/dolar/ultimoDia')) || '';
       if (marca !== hoyAR) {
         const rd = await dolarAuto(db, DRY);
-        if (!DRY) await db.set('mlapi/dolar/ultimoDia', hoyAR);
+        // F9 de la segunda vuelta (25/09/2026): si NINGUNA fuente contestó no se anota "ya lo miré
+        // hoy" — antes se anotaba y el dólar quedaba sin mirar hasta mañana. Así se reintenta en la
+        // vuelta de la hora siguiente (sin mensaje: sólo se avisa cuando hay algo que decir).
+        if (!DRY && rd.que !== 'sin-fuentes') await db.set('mlapi/dolar/ultimoDia', hoyAR);
         if (rd.que === 'quieto') console.log(`💵 Dólar ${money(rd.nuevo)} · el cargado ${money(rd.actual)} · se movió ${rd.mov.toFixed(2)}%: abajo del ${DOLAR_UMBRAL_PCT}%, no lo toqué.`);
         else if (rd.msg) { console.log(rd.msg.replace(/<[^>]+>/g, '')); await sendTelegram(rd.msg, 'dolar'); }
-        else console.log('💵 Dólar: ninguna fuente contestó, dejo el que estaba.');
+        else console.log('💵 Dólar: ninguna fuente contestó, dejo el que estaba y pruebo en la vuelta de la hora siguiente.');
       }
     } catch (e) { console.log('No pude mirar el dólar: ' + e.message); }
   }
