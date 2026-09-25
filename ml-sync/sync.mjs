@@ -1531,7 +1531,13 @@ async function filtrarRescate(db, rr, o) {
     // contra la foto de anoche: si está más bajo y no lo bajó el robot, lo bajó él.
     const fotoR = (await db.get('cyc/supervisor/precios')) || {};
     for (const [mla, f] of Object.entries(fotoR)) if (f && f.p > 0) bajoAMano['_foto_' + mla] = f;
-  } catch { /* sin la foto no se puede saber: se sigue con los otros dos frenos */ }
+  } catch {
+    // SIN ESTO NO SE SABE QUÉ BAJÓ ÉL A MANO, y subirle algo que él bajó a propósito es lo que este
+    // freno existe para evitar. Antes el catch seguía de largo y el freno se apagaba en silencio
+    // (F4 de la segunda vuelta, 25/09/2026). Ahora esa vuelta no se rescata nada y se dice.
+    for (const x of rr.subir) rescFren.push({ ...x, why: 'no pude leer qué bajaste vos a mano (la foto de precios): esta vuelta no subo nada' });
+    return { rescates, rescFren, rescSup };
+  }
   const fechaR = (ts) => new Date(ts - 3 * 3600e3).toISOString().slice(5, 10).split('-').reverse().join('/');
   for (const x of rr.subir) {
     if (malosSup.has(x.mla)) { rescSup.push(x); continue; }
@@ -5287,12 +5293,16 @@ async function fetchCancelled(sellerId, token, fromISO) {
     });
     if (fromISO) q.set('order.date_created.from', fromISO);
     let d;
-    try { d = await mlGet('/orders/search?' + q.toString(), token); } catch { break; }
+    // F5 de la segunda vuelta (25/09/2026): si ML no contesta una página (un 429) la lista queda
+    // CORTADA. Antes se devolvía igual y `CANCEL_AGG` la guardaba ENTERA encima de lo que había:
+    // las canceladas del monotributo bajaban de mentira. Ahora la lista avisa que está incompleta
+    // (`out.incompleto`) y quien la usa para PISAR un total no escribe.
+    try { d = await mlGet('/orders/search?' + q.toString(), token); } catch { out.incompleto = true; break; }
     const res = d.results || [];
     out.push(...res);
     if (res.length < limit || out.length >= (d.paging?.total || 0)) break;
     offset += limit;
-    if (offset > 2000) break;
+    if (offset > 2000) { out.incompleto = true; break; }
   }
   return out;
 }
@@ -29679,6 +29689,7 @@ async function main() {
       }
       for (const k of Object.keys(byMonth)) byMonth[k] = Math.round(byMonth[k]);
       const totCanc = Object.values(byMonth).reduce((s, v) => s + v, 0);
+      if (canc.incompleto) { console.log(`${label}: ⚠️ ML no devolvió la lista entera de canceladas (429 o tope) · NO piso lo guardado, sale en la vuelta siguiente`); continue; }
       await db.set('cyc/fact_cancel/' + label.toLowerCase(), byMonth);
       console.log(`${label}: canceladas ${seen.size} · ${Object.keys(byMonth).length} meses · facturado ${money(totCanc)}`);
     }
