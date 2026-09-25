@@ -113,12 +113,12 @@ scratchpad `rev2/<frente>/REPORT.md`, se pierden con el contenedor). Van de a un
  · **P1 (grave) · HECHO el 25/09, eligió la (a):** `quietaDe` toma el menor entre los días desde la última venta y los días desde que VOLVIÓ el stock (fecha real de `stockhist`); la escalera usa ese mismo reloj (`f.quieta`, que ahora traen también las filas `noSano`) en vez de recalcularlo; y lo que llegó hace menos de 30 días no entra por "sobra". Probado: la caja de hace 2 días da 2 d (antes 61) y no entra a la escalera; el control de 100 días sigue entrando. Cómo estaba: `quietaDe` (sync ~2691) cuenta días desde la última venta SIN descontar los días
    sin stock: algo que vuelve de estar agotado se remata o entra a la escalera apenas llega la caja
    y queda marcado `notraer` para siempre. La web tiene 30 días de gracia; el robot, ninguna.
- · **P2** · la regla "una suba cada 24 h" vive sólo en `rescatarAlVender`: el rescate de la noche y
+ · **P2 · HECHO el 25/09 (obvio):** `filtrarRescate` frena si el robot ya subió esa publicación en 24 h, y la 📈 espera 14 días después de cualquier suba del robot (`recienteAuto(…,'sube',SUBIR_ESPERA_DIAS)`). Cómo estaba: la regla "una suba cada 24 h" vive sólo en `rescatarAlVender`: el rescate de la noche y
    la 📈 no la miran → +25% al vender y +25% a las 00:07 (+56% en 40 min).
  · **P3 (= F1) · HECHO el 25/09 (obvio, sin decisión):** `marcarLiquidando` guarda lo que había (`todas.prev`) y no pisa la marca propia de una hermana; si el remate falla se llama `restaurarLiquidando`, que vuelve todo a como estaba; y el remate automático ya no toca lo que él marcó liquidando a mano (`esMarcaRobot`). Probado: tras un fallo las dos marcas manuales quedan idénticas. Cómo estaba: si un remate falla (`setPriceTo`), `marcarLiquidando(...,null,true)` (~7099) borra también
    las marcas `liquidando` que puso él a mano; y `autoRemate` no excluye lo que está en NOSUBIR.
  · **P4** · `cyc/escalera/<MLA>` no se borra nunca: vuelve a frenarse y salta escalones (25 → 10%).
- · **P5** · apagar `autoPrecios` no apaga el rescate al vender (sólo mira `subeventa`).
+ · **P5 · HECHO el 25/09 (obvio):** `autoSubeVenta` también es falso con `autoPrecios:off`, y la etiqueta de la venta lo dice. Cómo estaba: apagar `autoPrecios` no apaga el rescate al vender (sólo mira `subeventa`).
  · **P6 (baja)** · variantes con precios distintos: se mide con `vars[0]` y una variante puede cruzar
    los $33.000 para arriba.
  · **M1** · `compray` con una fecha distinta a la del "Ya lo pedí" crea un segundo registro en

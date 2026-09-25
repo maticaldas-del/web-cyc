@@ -1524,6 +1524,14 @@ async function filtrarRescate(db, rr, o) {
   const fechaR = (ts) => new Date(ts - 3 * 3600e3).toISOString().slice(5, 10).split('-').reverse().join('/');
   for (const x of rr.subir) {
     if (malosSup.has(x.mla)) { rescSup.push(x); continue; }
+    // UNA SUBA POR PUBLICACIÓN CADA 24 H, TAMBIÉN DE NOCHE (P2 de la segunda vuelta, 25/09/2026).
+    // La regla vivía sólo en el rescate al vender: una venta a las 23:30 subía +25% y a las 00:07 el
+    // rescate de la noche subía otro +25% (+56% en 40 minutos) sin que nadie midiera la primera.
+    const apS = autoprecio && autoprecio[x.mla];
+    if (apS && apS.tipo === 'sube' && hoyTs - (apS.ts || 0) < 24 * 3600e3) {
+      rescFren.push({ ...x, why: `ya lo subí hace ${Math.max(1, Math.round((hoyTs - apS.ts) / 3600e3))} h (${money(apS.de)} → ${money(apS.a)}) · una suba por día como mucho, sigue mañana` });
+      continue;
+    }
     const fAnoche = bajoAMano['_foto_' + x.mla];
     const bajoHoy = fAnoche && x.de < fAnoche.p * 0.995 && !(autoprecio && autoprecio[x.mla] && hoyTs - (autoprecio[x.mla].ts || 0) < 36 * 3600e3);
     const bm = bajoAMano[x.mla] || (bajoHoy ? { ts: hoyTs, de: fAnoche.p, a: x.de } : null);
@@ -6853,7 +6861,10 @@ async function main() {
         }
       } catch { supLeido = false; }
       const autoSube = nuevasSub.filter((f) => supLeido && f.u >= AUTO_MIN_U && f.diasSin != null && f.diasSin <= AUTO_MAX_DSIN
-        && f.subePct <= 10.5 && !recienteAuto(f.mla, 'baja', 30) && !malosSup.has(f.mla));
+        && f.subePct <= 10.5 && !recienteAuto(f.mla, 'baja', 30) && !malosSup.has(f.mla)
+        // Una suba del robot (al vender o de noche) espera 14 días antes de la siguiente, igual que la
+        // espera de los avisos: si no, la 📈 sumaba +10,5% al día siguiente de un rescate (P2, 25/09).
+        && !recienteAuto(f.mla, 'sube', SUBIR_ESPERA_DIAS));
       if (!supLeido) console.log('   ⚠️ no pude leer el supervisor: esta noche no se sube nada solo');
       else if (malosSup.size) console.log(`   frenadas por el supervisor (un cambio les salió 🔴 malo): ${malosSup.size}`);
       // LA ESPERA DE 10 DÍAS ENTRE BAJAS, SIN AGUJEROS (24/09/2026, punto 5 de la revisión). Se
@@ -30352,7 +30363,9 @@ async function main() {
   // nivelación de grupos (Paulvic) y la reactivación de pausadas con stock en Full. Prenderlo
   // entero para conseguir esto habría largado esas dos cosas de golpe. Con este, sube por venta y
   // nada más. Arranca APAGADO: hay que prenderlo a mano con el comando `subeventa:on`.
-  const autoSubeVenta = cfg.autoSubeVenta === true;
+  // `autoPrecios: off` es "apagá TODO lo que mueve precios": también apaga la suba al vender (P5 de
+  // la segunda vuelta, 25/09/2026 — antes sólo la noche lo miraba y las ventas seguían subiendo).
+  const autoSubeVenta = cfg.autoSubeVenta === true && String(cfg.autoPrecios || 'on') !== 'off';
   // ── DESDE QUÉ MARGEN SUBE SOLO (22/09/2026) ────────────────────────────────────────────
   // Regla suya, textual, con el Ted Lapidus en la mano: *"para que suba automatico en la web de
   // cyc tiene que dar 20% o menos"*. Hasta hoy el robot subía con el MISMO número que el piso del
@@ -31085,7 +31098,7 @@ async function main() {
           const mk = {};
           for (const v of apagadas) mk[v.dayKey + '__' + v.id] = NOSUBIR[v.mla]
             ? { estado: 'remate', why: NOSUBIR[v.mla].motivo || 'marcado liquidando', mla: v.mla, margenVenta: v.margen, ts: Date.now() }
-            : { estado: 'no', why: 'el rescate está apagado (subeventa:off)', mla: v.mla, margenVenta: v.margen, ts: Date.now() };
+            : { estado: 'no', why: String(cfg.autoPrecios || 'on') === 'off' ? 'los precios automáticos están apagados (autoPrecios:off)' : 'el rescate está apagado (subeventa:off)', mla: v.mla, margenVenta: v.margen, ts: Date.now() };
           await db.patch('cyc/rescateventa', mk);
         }
         const prendidas = lote.filter((v) => !v.apagado);
