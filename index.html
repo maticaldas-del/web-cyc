@@ -2323,13 +2323,16 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='20.37';
+const APP_VERSION='20.38';
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
 // muestre la versión y la fecha de actualización y que tenga un desplegable predeterminado cerrado,
 // que muestre los últimos 3 cambios y si en la última actualización hubo más de 3 cambios que
 // muestre todos". Se agrega un renglón ARRIBA de todo en cada versión nueva, en castellano llano.
 // La primera entrada tiene que ser siempre la de APP_VERSION.
 const APP_CAMBIOS=[
+  {v:'20.38',f:'25/09/2026',c:[
+    'Lo que trajo el robot: los cambios de menos de 7 días ya muestran lo que se vendió desde el cambio (unidades, plata depositada y ganancia de esas ventas). Todavía no suman al total.',
+  ]},
   {v:'20.37',f:'25/09/2026',c:[
     'Arriba del puntaje: la versión, la fecha en que se actualizó y este desplegable con los últimos cambios.',
   ]},
@@ -13512,7 +13515,9 @@ function renderMetAuto(){
     const plata=medido?`<b style="white-space:nowrap;color:${cuenta?col(x.total):'var(--muted)'}">${sg(x.total)}${cuenta?'':' · no suma'}</b>`:`<span style="font-size:.58rem;color:var(--muted)">—</span>`;
     const det=medido
       ?`midió ${n(x.dias)} d antes y después · vendió ${n(x.uA)} u. antes y ${n(x.uD)} después · por el precio ${sg(x.precio)} · volumen ${x.volSinDato?'sin dato':x.quiebre?'no cuenta (sin stock)':sg(x.volumen)}${x.motivo==='rescate'?' · <span style="color:#fbbf24">recuperar margen: no se atribuye al robot</span>':''}`
-      :(EST[x.estado]||x.estado||'');
+      :x.estado==='encurso'&&x.uD!=null
+        ?`<span style="color:#fbbf24">en curso · ${String(n(x.dias)).replace('.',',')} d de 7</span> · desde el cambio vendió <b style="color:var(--text)">${n(x.uD)} u.</b>${n(x.uD)?` · ML te depositó ${fmt(n(x.cobrado))} · ganancia de esas ventas <b style="color:${col(x.gD)}">${sg(x.gD)}</b> · por el precio ${sg(x.precio)}`:''} · todavía no suma: a los 7 días se compara contra el antes`
+        :(EST[x.estado]||x.estado||'');
     return `<div style="padding:6px 0;border-bottom:1px solid rgba(148,163,184,.1);font-size:.66rem">
       <div style="display:flex;justify-content:space-between;gap:8px;align-items:baseline">
         <span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${sube?'⬆️':'⬇️'} ${x.nom||x.mla}${x.cuenta?' · '+x.cuenta:''}</span>

@@ -21953,7 +21953,19 @@ async function main() {
         const sig = (porMlaEv[ev.mla] || []).filter((o) => o !== ev && o.ts > ev.ts + 60e3).sort((a, b) => a.ts - b.ts)[0];
         const finT = Math.min(ahora, ev.ts + 30 * 864e5, sig ? sig.ts : Infinity);
         const L = (finT - ev.ts) / 864e5;
-        if (L < 7) { enCurso++; registros.push({ ...base(id, ev, motivo), estado: 'encurso', dias: Math.round(L * 10) / 10 }); continue; }
+        if (L < 7) {
+          // EN CURSO NO QUIERE DECIR "NADA" (25/09/2026, él: "¿por qué no aparece nada? se vendieron
+          // varias cosas por cosas que tocó el bot"). Todavía no se compara contra el antes (hacen falta
+          // 7 días), pero lo que YA se vendió desde el cambio es dato firme y se muestra: unidades,
+          // plata cobrada, lo de más/menos por el precio y la ganancia de esas ventas. No suma al total.
+          enCurso++;
+          const dv = (porMla[ev.mla] || []).filter((x) => x.ts > ev.ts + 60e3 && x.ts <= finT);
+          let pr = 0; for (const x of dv) { if (x.tot > 0 && x.neto > 0) pr += (x.tot / x.q - ev.de) * (x.neto / x.tot) * x.q; }
+          registros.push({ ...base(id, ev, motivo), estado: 'encurso', dias: Math.round(L * 10) / 10,
+            uD: dv.reduce((a, x) => a + x.q, 0), cobrado: Math.round(dv.reduce((a, x) => a + x.neto, 0)),
+            precio: Math.round(pr), gD: Math.round(dv.reduce((a, x) => a + x.neto - costo * x.q, 0)) });
+          continue;
+        }
         const vs = porMla[ev.mla] || [];
         let antesV = vs.filter((x) => x.ts < ev.ts && x.ts >= ev.ts - L * 864e5);
         if (ev.origen === 'robot al vender') {
@@ -22003,7 +22015,7 @@ async function main() {
         const volumen = (!volConfiable || quiebreR) ? 0 : (ev.a > ev.de ? Math.min(0, volCrudo) : Math.max(0, volCrudo));
         const evs = ev.ev || {}; const juicio = (evalNuevas.filter((x) => x.id === id).sort((a, b) => b.W - a.W)[0] || {}).res;
         const v = quiebreR ? 'sinstock' : ((juicio || evs.d30 || evs.d15 || evs.d7 || {}).v || '');
-        const reg = { ...base(id, ev, motivo), estado: 'medido', dias: Math.round(L), uA, uD, precio: Math.round(precio), volumen: Math.round(volumen),
+        const reg = { ...base(id, ev, motivo), estado: 'medido', dias: Math.round(L), uA, uD, gD: Math.round(gD), cobrado: Math.round(despV.reduce((a, x) => a + x.neto, 0)), precio: Math.round(precio), volumen: Math.round(volumen),
           total: Math.round(precio + volumen), v, quiebre: quiebreR, volSinDato: !volConfiable && !quiebreR, enTotal: SUP_CUENTA.has(motivo) };
         registros.push(reg);
         if (reg.enTotal) atrib.push(reg);
