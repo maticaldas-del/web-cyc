@@ -226,7 +226,9 @@ precios-decisión 3.
    ficha y misma variante). Marcar un aroma ya no marca los 51. La marca se cae cuando ESA variante
    queda en 0, y `limpiarNoSubir` saca las marcas contagiadas (`hermanaDe`) que ya no son hermanas;
    las que puso él a mano no se tocan.
- · **NO OBVIAS, a preguntarle de a una:** 18 (activar pausadas desde 22% y no 25%).
+ · **18 · DECIDIDO, eligió la (b): activar pausadas con stock en Full sigue con el piso del negocio
+   (22%)**, no 25% (una pausada paga almacenamiento). Lo que sí se arregló: con variantes mide la MÁS
+   BARATA, no la primera.
  · **Obvias que quedan:** 8-16, 19-28.
 
 ### 25/09 A LA TARDE (v20.36 · `cyc-v314`): CUOTAS PREMIUM, "LO QUE TRAJO EL ROBOT" SIN INFLACIÓN, POR MES
