@@ -1,0 +1,720 @@
+{
+ "fecha": "2026-09-25",
+ "confirmadas": [
+  {
+   "n": 1,
+   "titulo": "La escalera puede bajar a un precio de más de $33.000 anotando un margen que no incluye el envío",
+   "gravedad": "alta",
+   "obvio": true,
+   "paraMatias": "De noche, antes de bajar un producto de la escalera, el robot le vuelve a preguntar a ML a cuánto se gana la caja. Si ese precio subió y quedó arriba de los $33.000, baja hasta ahí, pero sigue anotando el margen que había calculado para el precio viejo, que era sin envío. Ejemplo: la escalera quería dejarlo en 20% a $32.500, la caja subió a $34.000 y el margen real quedó en 4%, con el registro diciendo 21%.",
+   "opcionA": "Cuando la caja cambió, volver a calcular el margen al precio nuevo, ya con el envío. Si no llega al escalón, esa noche no se baja y se prueba mañana.",
+   "opcionB": "Si la caja nueva cruza los $33.000 para arriba, no tocar nada esa noche y avisarlo en el Telegram.",
+   "tecnico": "ml-sync/sync.mjs:7248-7262. En el re-chequeo F2, `t.a = aNueva` (7260) pisa el destino y después setPriceTo recibe `margen: Math.floor(f.mgPw*10)/10`, el mgA del destino viejo. `mg(P)` (≈7157-7166) usa envio(P)=0 abajo de UMBRAL_ENVIO_GRATIS, y el comentario da por hecho que un precio más alto siempre deja más margen, cosa que no vale al cruzar la barrera. Arreglo: cuando t.a cambia, recalcular `mgNuevo = mg(t.a)` con la misma función de la escalera (envío del peor caso arriba de 33k). Si mgNuevo < escalón − colchón, saltear y dejar para mañana. Pasarle mgNuevo a setPriceTo y anotarlo en cyc/escalera y cyc/autoprecio. Revisar si remate y baja también pisan t.a sin recalcular: ahí el margen viene de calcCajaBarata con envío, pero conviene recalcular igual.",
+   "frentes": [
+    "precios-escritura"
+   ]
+  },
+  {
+   "n": 2,
+   "titulo": "Si una noche falla la lectura de la lista 'liquidando', el remate y la escalera ignoran lo que marcaste a mano y hasta te borran la marca",
+   "gravedad": "alta",
+   "obvio": true,
+   "paraMatias": "Cuando el robot no puede leer la lista de lo que marcaste 'liquidando' (alcanza con que la base tarde una vez), deja de subir precios, y eso está bien. El problema es que las bajas siguen. El remate o la escalera pueden bajar algo que rematabas a mano a tu precio, cambiarle la marca como si fuera suya y, si la baja falla, borrarla. Después el robot lo puede volver a subir.",
+   "opcionA": "Si la lista no se pudo leer, esa noche no se baja nada: ni remate, ni escalera, ni baja por caja. Se avisa en el log y en el Telegram.",
+   "opcionB": "Volver a leer la lista justo antes de las bajas, y si falla otra vez, no bajar.",
+   "tecnico": "ml-sync/sync.mjs:3607-3611 (cargarNoSubir; NOSUBIR_OK sólo lo miran raisePrice/raisePriceTo 3695, rescate 6981 y 1632) · 5444-5451 (carga única en main; makeDB no reintenta 5xx, lib.mjs:27-34) · 7063 (filtro autoRemate) · 7125 (escalera) · 3658-3689 (marcarLiquidando toma prev de NOSUBIR, que queda {} → prev=null, y restaurarLiquidando hace set null). Arreglo: en avisos, si !NOSUBIR_OK, vaciar autoRemate, escalera y autoBaja con log 'no pude leer nosubir: no bajo nada'. Como defensa extra, en marcarLiquidando leer cyc/nosubir/<mla> de la base antes del patch, y no usar sólo la copia en memoria.",
+   "frentes": [
+    "precios-decision"
+   ]
+  },
+  {
+   "n": 3,
+   "titulo": "La escalera sigue bajando lo que vos marcaste liquidando a mano si antes ya lo había escalonado",
+   "gravedad": "alta",
+   "obvio": true,
+   "paraMatias": "Si la escalera ya bajó un producto y después vos le pusiste un precio a mano (\"bajalo a $60.000\"), a los 7 días sin vender la escalera lo vuelve a bajar a partir de tu precio. Además te pisa la marca: tu 'bajado a mano' pasa a decir 'escalera', y desde ahí el robot lo trata como propio. Es justo lo que se había prometido que no pasaba (\"no toca lo que marcaste a mano\").",
+   "opcionA": "Que la escalera respete siempre una marca tuya, haya pasado antes por ahí o no. Y que tu baja a mano borre la memoria de la escalera de ese producto.",
+   "opcionB": "Que la escalera siga, pero nunca por debajo del precio que pusiste vos, y sin tocarte la marca.",
+   "tecnico": "ml-sync/sync.mjs:7125 `if (NOSUBIR[f.mla] && !mem && !esMarcaRobot(NOSUBIR[f.mla])) continue;`. El `!mem` sobra desde que existe esMarcaRobot. Con memoria y marca manual no corta, la espera se cuenta desde mem.ts (≈7130) y el escalón se calcula con el margen de hoy (P4). Después, 7265 marcarLiquidando(motivo:'escalera de remate…') pisa la marca manual de la publicación principal (3658-3683: sólo protege a las hermanas), y desde ahí esMarcaRobot=true y el remate (7063) también la toma. Arreglo: sacar `&& !mem`. Además, en `unapub …:bajar=/empatar` y en `liquidando:<MLA>:go`, borrar cyc/escalera/<MLA> al marcar a mano. Mismo defecto reportado dos veces (precios-escritura y precios-decision).",
+   "frentes": [
+    "precios-escritura",
+    "precios-decision"
+   ]
+  },
+  {
+   "n": 4,
+   "titulo": "La baja automática para ganar la caja puede bajar un producto la misma noche en que le vuelve el stock",
+   "gravedad": "alta",
+   "obvio": false,
+   "paraMatias": "Un producto que se vendía bien se quedó sin stock un mes. La noche en que llega la caja, el robot ve \"0 ventas en 30 días\" y lo trata como si no vendiera. Si ganar la caja deja 25,5% o más, lo baja. Ejemplo: vendía 1 por día a $30.000, llega la mercadería y esa misma noche pasa a $26.000. Con 30 unidades son unos $120.000 regalados sin que el precio fuera el problema. El arreglo del 25/09 (P1, \"los días sin stock no cuentan como días sin vender\") se puso en el remate y la escalera, pero no en esta baja.",
+   "opcionA": "Usar en esta baja el mismo reloj de P1: si hace menos de 30 días que volvió el stock (o que llegó), no se baja.",
+   "opcionB": "Contar sólo los días con stock. Si en la ventana tuvo menos de 7 días con mercadería, no decidir y esperar.",
+   "tecnico": "ml-sync/sync.mjs:2794-2812. En calcCajaBarata, rama que no es de sobra con diasQuieta=0, el único filtro es `uCb[mla]>0` (ventas en 30 días), y `quieta` (quietaDe, ≈2741-2753) se calcula pero no se usa. 6711-6727 (sanasCbr) y 6953-6966 (autoBaja/esperaBajaOk) tampoco miran quieta ni edadFullCb. Arreglo: en la rama de 'no vende', exigir `quieta >= 30` (o edad de stockhist exacta ≥ ROT_GRACIA_DIAS) antes de armar la fila; si no llega, mandarla a `fuera.reciente` con el motivo en el log. Hoy el único freno de casualidad es el de visitas (<20).",
+   "frentes": [
+    "precios-decision"
+   ]
+  },
+  {
+   "n": 5,
+   "titulo": "`alpiso:…:go` y `bajar:…:go` calculan el envío con ventas del otro lado de los $33.000 y pueden bajar a pérdida",
+   "gravedad": "alta",
+   "obvio": true,
+   "paraMatias": "Estos dos comandos bajan un precio al piso y sacan el costo de envío de ventas viejas. Si esas ventas fueron cuando el producto valía menos de $33.000, el envío les da cero. Con eso bajan, por ejemplo, de $45.000 a $34.780 creyendo que queda en 22%, y en realidad ML cobra $6.190 de envío y quedás en −2,8% en cada venta. El freno del piso no salta porque le llega el 22% mentiroso. Es el mismo agujero que el 25/09 se tapó en el margen de la pantalla y en el rescate, pero estos dos comandos quedaron afuera.",
+   "opcionA": "Usar en los dos la misma regla del 25/09: el envío sale sólo de ventas del mismo lado de los $33.000 que el precio nuevo. Si no hay ninguna, se usa la tarifa de ML marcada como estimada. Y que `bajar` divida con el envío adentro.",
+   "opcionB": "Si el precio nuevo queda arriba de los $33.000 y no hay ventas medidas de ese lado, no bajar y avisar.",
+   "tecnico": "ml-sync/sync.mjs alpiso ≈13935-13975 (envío peor caso de todas las ventas de la publicación, sin filtrar el lado; mgN declarado a setPriceTo) · bajar ≈24639-24749 (cae a vtaProd de otra publicación; mgNuevo 24675 divide sin envío). setPriceTo/_chequeoPiso (≈3692-3748) sólo mira el número declarado. Arreglo: reusar la función de envío por lado de F3 (la de netoweb/envioDeducido) con el precio destino, y recalcular el margen con el envío en el divisor (regla del 17/09). Sin ventas del lado correcto, usar la tarifa de ML (envioSegunML) o no aplicar.",
+   "frentes": [
+    "precios-escritura"
+   ]
+  },
+  {
+   "n": 6,
+   "titulo": "El chequeo de la mañana deja en el registro público de GitHub los números de orden de los reclamos y el texto de las preguntas",
+   "gravedad": "alta",
+   "obvio": true,
+   "paraMatias": "El archivo del chequeo sí se limpia, pero la salida completa queda también en el registro de GitHub, que puede ver cualquiera. Ahí salen el número de orden de cada reclamo abierto y lo que escribieron los compradores en las preguntas, cortado a 70 letras. El comando `preguntas` las imprime completas. Es un dato de otras personas y la regla del 15/09 dice que no va.",
+   "opcionA": "Que el registro muestre lo mismo que el archivo limpio: sin número de orden y sin el texto de las preguntas (sólo fecha y publicación). Y que `preguntas` sólo muestre cuántas hay y de qué publicación, salvo que lo pidas.",
+   "opcionB": "Imprimir las preguntas sólo con las primeras palabras y tapar números (teléfonos, direcciones).",
+   "tecnico": "ml-sync/sync.mjs ≈10162-10165 (D.push con `(orden ${c.orden})`) · ≈10240 (console.log(L+D) sin filtro) · ≈10244-10246 (el `.replace(/ \\(orden \\d+\\)/g,'')` sólo se aplica a `limpio`, que va al archivo) · ≈10258-10263 (preguntas con pregTxt, ≈9874) · probe preguntas ≈20994-21031 (x.text entero). Arreglo: aplicar el mismo limpio al console.log. En preguntas, imprimir fecha·MLA·largo y no el texto. Ya queda público lo impreso hasta hoy: no se des-publica.",
+   "frentes": [
+    "choques"
+   ]
+  },
+  {
+   "n": 7,
+   "titulo": "`facturas:…:crudo` vuelca al registro público el documento, nombre y domicilio del comprador",
+   "gravedad": "media",
+   "obvio": true,
+   "paraMatias": "Este comando de diagnóstico, corrido con la palabra 'crudo', copia al registro público lo que devuelve ML sobre la factura de una venta. Esa respuesta trae el DNI/CUIT, el nombre y la dirección del comprador. Hoy no corre solo, pero el día que alguien lo use para revisar una factura, publica datos de terceros.",
+   "opcionA": "Que el modo 'crudo' muestre sólo los nombres de los campos, nunca los valores (como hace `campos`).",
+   "opcionB": "Sacar el modo 'crudo' directamente.",
+   "tecnico": "ml-sync/sync.mjs ≈10766-10831. CRUDO = ':crudo' en billing_probe (≈10775). Segunda puerta /orders/<oid>/billing_info (≈10804). Se sacan sólo issuer/recipient/shipment/items (≈10816) e imprime JSON.stringify(resto).slice(0,1500) (≈10819): billing_info/buyer.billing_info salen enteros. La rama FACT_CRUDO (≈10831) no la activa ningún workflow. Arreglo: reemplazar el volcado por una lista de claves de hasta 2 niveles sin valores.",
+   "frentes": [
+    "choques"
+   ]
+  },
+  {
+   "n": 8,
+   "titulo": "La suba automática 📈 decide con un dato viejo de 'ganás la caja' y puede subir algo que ya perdió la caja",
+   "gravedad": "media",
+   "obvio": true,
+   "paraMatias": "De noche el robot sube hasta +10% lo que gana la caja y vende bien. Para saber si la gana usa lo que anotó en la vuelta de la hora, y antes de subir no vuelve a preguntar. Si ML no contestó esa hora, o el ciclo estuvo apagado, puede estar usando un 'ganás' de hace horas o días. Ejemplo: un competidor te sacó la caja ayer y el robot igual te sube. Quedás más lejos y además no puede bajarlo por 14 días. A las bajas ya se les agregó esa pregunta el 25/09 (F2); a las subas no.",
+   "opcionA": "Antes de cada suba, volver a preguntarle la caja a ML (como en F2). Si ya no la gana o ML no contesta, no se sube.",
+   "opcionB": "No subir si el dato de la caja tiene más de 2 horas.",
+   "tecnico": "ml-sync/sync.mjs:2186-2188 (calcSubirPuede filtra `e.caja === 'winning'` de mllinks, sin mirar cajaTs) · 2221-2226 (sólo mira competidores `arriba`) · ≈7232-7237 (tareas 'sube' → raisePriceTo sin price_to_win) · cajaDeCompraML ≈1098-1112 (en catch deja el dato viejo). Arreglo: en la ejecución de 'sube', GET /items/<MLA>/price_to_win. Si status≠'winning' o falla, saltear con motivo. Lo mismo para el freno 'comparte la caja' de filtrarRescate (≈1573).",
+   "frentes": [
+    "precios-decision"
+   ]
+  },
+  {
+   "n": 9,
+   "titulo": "Si bajás un precio a mano poco después de una suba del robot, el rescate te lo vuelve a subir",
+   "gravedad": "media",
+   "obvio": true,
+   "paraMatias": "El rescate tiene un freno para \"esto lo bajaste vos a mano\". Pero si el robot tocó ese precio en las últimas 36 horas, el freno se apaga, aunque lo que hizo el robot haya sido una SUBA. Ejemplo: el robot lo sube a $12.500, al día siguiente vos lo bajás a $10.500 desde ML, y unas 25-35 horas después de la suba (con una venta, o a la noche) el robot lo vuelve a subir.",
+   "opcionA": "Que el freno de 36 horas se apague sólo cuando el último cambio del robot fue una BAJA, que es el único caso que explica un precio más bajo.",
+   "opcionB": "Comparar el precio de hoy contra el que dejó el robot: si es más bajo, es tuyo y se respeta.",
+   "tecnico": "ml-sync/sync.mjs:1560 `bajoHoy = fAnoche && x.de < fAnoche.p*0.995 && !(autoprecio[x.mla] && hoyTs - ts < 36h)`. La excepción no mira autoprecio[x.mla].tipo. Arreglo: `!(ap && ap.tipo==='baja' && <36h)`, o mejor comparar x.de < (ap.a||ap.to) − tolerancia → manual. El supervisor anota el cambio a mano recién después de avisos (≈21849), por eso hoy no lo ve.",
+   "frentes": [
+    "precios-decision"
+   ]
+  },
+  {
+   "n": 10,
+   "titulo": "La escalera no toca lo que tiene menos de 20 visitas, contra lo que decidiste el 24/09",
+   "gravedad": "media",
+   "obvio": true,
+   "paraMatias": "El 24/09 dijiste que la escalera ignore las visitas: \"lo importante es vender, no que nos vean\". Pero la lista de donde saca los productos ya viene filtrada: lo que tuvo menos de 20 visitas queda afuera antes de llegar a la escalera. Ejemplo: algo parado hace 60 días con 5 visitas no baja nunca de escalón y sigue pagando almacenamiento. Con 50 visitas, el mismo producto sí entra.",
+   "opcionA": "Que las publicaciones que el filtro de visitas deja afuera también entren a la escalera (el remate sigue con su freno de visitas).",
+   "opcionB": "Que el filtro de visitas se aplique sólo al remate y a la baja por caja, y la escalera reciba la lista completa.",
+   "tecnico": "ml-sync/sync.mjs:2893-2905 (calcCajaBarata con conVisitas:true manda a sinVisitas y hace continue antes de armar la fila; la llamada en ≈6588) · ≈7110 (la escalera arma candidatas con [...remNo, ...cbr.noSano]). Arreglo: que calcCajaBarata arme igual la fila y la marque `pocasVisitas:true`. remE1-3 y autoRemate las excluyen por esa marca y la escalera las incluye. sinVisitas queda sólo para el log.",
+   "frentes": [
+    "precios-decision"
+   ]
+  },
+  {
+   "n": 11,
+   "titulo": "Con dos publicaciones del mismo producto en la misma cuenta, la escalera baja un escalón por noche en vez de uno por semana",
+   "gravedad": "media",
+   "obvio": true,
+   "paraMatias": "La espera de 7 días de la escalera se cuenta por publicación. Si el producto tiene dos publicaciones en la misma cuenta y ML les iguala el precio, se turnan: una noche baja la A, la noche siguiente la B (arrastrando a la A), y así. Llega a 0,5% en unos 16 días en vez de unos 36, sin darle tiempo a vender.",
+   "opcionA": "Que la memoria y la espera de la escalera sean por producto y cuenta, no por publicación.",
+   "opcionB": "Antes de bajar, mirar si alguna hermana bajó en los últimos 7 días, y si es así esperar.",
+   "tecnico": "ml-sync/sync.mjs ≈7101-7134 (escMem[f.mla] y recienteAuto(f.mla,…) por MLA) · 3658-3683 (la marca a la hermana copia el motivo 'escalera de remate' → esMarcaRobot=true) · setPriceTo devuelve 'no-baja' para la hermana ya igualada y no deja memoria (≈7284-7293). Arreglo: clave de memoria `prodId__cuenta` (o chequear escMem y autoprecio de todas las hermanas de marcarLiquidando), y `vistas` por producto×cuenta en la misma noche.",
+   "frentes": [
+    "precios-decision"
+   ]
+  },
+  {
+   "n": 12,
+   "titulo": "En publicaciones con variantes, el robot sube una sola y anota que subió todas",
+   "gravedad": "media",
+   "obvio": true,
+   "paraMatias": "Cuando una publicación tiene colores a precios distintos, el robot mide sólo el primero y sube a todos al mismo precio. Pero no sube ninguna variante más de 25% de una vez, así que la más barata puede quedar igual sin que lo diga. Igual el Telegram dice \"lo subí\" y la venta queda como 'subido'. Como a la noche siguiente vuelve a mirar sólo la primera (que ya está bien), la barata no se rescata nunca.",
+   "opcionA": "Que el aviso y el registro digan qué variantes subieron y cuáles no, y que la medición mire la variante más barata y no la primera.",
+   "opcionB": "Si alguna variante no se pudo subir, marcar el rescate como incompleto y reintentarlo la noche siguiente con esa variante.",
+   "tecnico": "ml-sync/sync.mjs:377-384 (raiseVariations saltea sin aviso si n > v.price*1.25; devuelve ok si cambió alguna) · 1652-1655 rescatarAlVender, ≈7232-7235 rescate nocturno, 1951-1953, 3102-3104 (pisan el resultado con {from:x.de,to:a}) · 1748-1757 (calcSubirPorMargen mide vars[0]). Arreglo: devolver `saltadas:[{id,price}]` desde raiseVariations. Si hay saltadas, reportar 'parcial' y no anotar 'subido' para esas. En calcSubirPorMargen usar min(vars.price). Si ML en la práctica no deja precios distintos por variante, no hay daño: por eso la confianza es media.",
+   "frentes": [
+    "precios-escritura"
+   ]
+  },
+  {
+   "n": 13,
+   "titulo": "`fijar:<grupo>:<precio>` todavía puede bajar sin ningún freno en publicaciones con variantes, y escribe sin `:go`",
+   "gravedad": "media",
+   "obvio": true,
+   "paraMatias": "En CLAUDE.md dice que 'fijar' ya no puede bajar, pero eso vale sólo para publicaciones sin variantes. Con variantes, si alguna está más cara que el precio pedido, las pone todas a ese precio de un golpe: baja las caras sin mirar el piso y sube las baratas sin mirar 'liquidando' ni los $33.000. Además, a diferencia del resto, escribe de verdad si no le ponés nada: sólo con ':prueba' se limita a mostrar.",
+   "opcionA": "Que con variantes haga lo mismo que sin variantes: nunca baja, y sube cada variante con la función que tiene todos los frenos. Y que pida ':go' para escribir.",
+   "opcionB": "Retirar el comando 'fijar' (los grupos de precio ya están apagados).",
+   "tecnico": "ml-sync/sync.mjs ≈21441-21524. `prueba = _f[3]==='prueba'`: escribe por defecto. En la rama con variantes (≈21494-21509), si actual > precioFijo hace un PUT directo con todas las variantes en precioFijo: sin _chequeoPiso, sin ±25%, sin _chequeoNoSubir, sin barrera y sin releer. El candado 'no baja' está sólo en la rama sin variantes (≈21511-21515). Tampoco mira cfgG.activo. Arreglo: con variantes, mandar sólo las que suben por raiseVariations y cortar si alguna bajaría. Invertir a `go = _f[3]==='go'` y respetar activo:false.",
+   "frentes": [
+    "precios-escritura"
+   ]
+  },
+  {
+   "n": 14,
+   "titulo": "Los comandos a mano que suben precios no tienen el techo de $600.000 y algunos tampoco el tope de +25%",
+   "gravedad": "media",
+   "obvio": true,
+   "paraMatias": "La regla de no pasar nunca de $600.000 está en las cuentas del robot de la noche, pero no en las funciones que efectivamente suben el precio. Por eso `bajopiso:go`, `preciosgo` y `volver` pueden pasarla: con `volver`, un cero de más al tipear se escribe tal cual. Además, `submargen:go` y `volver` no tienen el tope de +25% de una vez y no vuelven a leer el precio de ML después de escribir. Hoy afecta sólo a productos de más de ~$480.000, pero es tu regla 3.",
+   "opcionA": "Poner el techo de $600.000, el +25% y la barrera de $33.000 adentro de las tres funciones que suben, así ningún comando los puede saltear, y que submargen y volver relean de ML.",
+   "opcionB": "Agregar esos frenos sólo en volver, submargen, bajopiso y preciosgo.",
+   "tecnico": "ml-sync/sync.mjs:424-436 raisePriceTo (sólo +25% y no-subir) · ≈3785-3830 raisePrice · 359-397 raiseVariations (sin techo) · bajopiso ≈23873-23902 · preciosgo ≈25904-25944 · submargen ≈19434-19463 (PUT directo con s.a, sin +25% y sin releer) · volver ≈14246-14262 (PUT directo sin techo, barrera ni +25%). El techo hoy vive sólo en calcSubirPorMargen (1685/1849), calcSubirPuede (2103) y el ciclo viejo. Arreglo: const TECHO_DURO=600000 chequeado en las tres raise*, más `raisePriceTo` en submargen y volver para sin-variantes, con relectura. Reúne dos sospechas del mismo frente (submargen/volver y bajopiso/preciosgo).",
+   "frentes": [
+    "precios-escritura"
+   ]
+  },
+  {
+   "n": 15,
+   "titulo": "`activarfull:go` decide qué activar con la cuenta vieja del margen",
+   "gravedad": "media",
+   "obvio": true,
+   "paraMatias": "El comando a mano para activar pausadas con stock en Full sigue calculando el margen como antes: con el envío promedio en vez del peor, mezclando ventas de los dos lados de los $33.000 y sin el envío en la división. Tampoco respeta el freno que pusiste vos para no activar algo. La activación automática de cada hora ya está bien; este comando no.",
+   "opcionA": "Que el comando llame a la misma función que usa la vuelta de cada hora (la que ya está corregida), así no hay dos cuentas.",
+   "opcionB": "Retirarlo: la vuelta de cada hora ya activa lo que corresponde y `pausadas` explica por qué no.",
+   "tecnico": "ml-sync/sync.mjs ≈25191-25321: envío mediano (≈25293-25296), vtaProd (≈25285), sin filtro de lado, mg con divisor (costo+precio*m) sin envío (≈25298-25301), no mira noAutoActivar ni nomas. PUT status:active ≈25357. Arreglo: reemplazar el cálculo por activarPausadasFull(db, cuenta, {piso, soloMostrar:!go}), la misma que la vuelta horaria (≈1200-1462).",
+   "frentes": [
+    "precios-escritura"
+   ]
+  },
+  {
+   "n": 16,
+   "titulo": "Si `unapub …:bajar=` o `…:empatar` no logran bajar el precio, igual dejan la marca 'liquidando' puesta en ese producto y en sus hermanas",
+   "gravedad": "media",
+   "obvio": true,
+   "paraMatias": "Estos comandos primero marcan 'liquidando' y después bajan. Si ML no deja bajar (por ejemplo porque es más de 25% de una vez, como pasó con la Lupa y la Cinta), el precio queda igual pero la marca queda. Mientras esté puesta el robot no lo sube ni lo remata, y la marca se extiende a las otras publicaciones de ese producto en esa cuenta, con el motivo 'bajado a mano a $X', que no pasó. Al remate automático esto ya se le arregló el 25/09; a estos dos no.",
+   "opcionA": "Si la baja falla, volver la marca a como estaba (igual que en el remate) y decirlo.",
+   "opcionB": "Revisar antes de marcar si la baja pasa el tope de 25%, y si no pasa, avisar que va en dos pasos sin marcar nada.",
+   "tecnico": "ml-sync/sync.mjs ≈24328-24347 (empatar) y ≈24388-24410 (bajar=): marcarLiquidando y después setPriceTo. Si falla, sólo se imprime 'NO se bajó' y se descarta el valor devuelto (todas.prev). setPriceTo rechaza baja>25% (≈3747-3761), 'cerrada', 403 PolicyAgent, etc. Arreglo: guardar `const m = await marcarLiquidando(...)` y en el camino de fallo llamar `restaurarLiquidando(db, m.todas)`, como en ≈7255-7266.",
+   "frentes": [
+    "precios-escritura"
+   ]
+  },
+  {
+   "n": 17,
+   "titulo": "Marcar 'liquidando' un solo aroma o color marca todos los de esa ficha, y la marca no se cae mientras quede alguno con stock",
+   "gravedad": "media",
+   "obvio": false,
+   "paraMatias": "Cuando marcás un aroma de Paulvic como 'liquidando', se marcan los 51 aromas de esa cuenta, porque son de la misma ficha. La marca se saca sola recién cuando el producto entero llega a cero, y eso no pasa mientras quede algún aroma. Así, los 51 quedan sin rescate: si uno se vende al 12% porque subió el costo, nadie lo corrige ni lo avisa. El motivo de esa regla del 24/09 fue la Lupa, donde ML iguala el precio de dos publicaciones del mismo producto. Pero los aromas son productos distintos para ML.",
+   "opcionA": "Que la marca pase sólo a las publicaciones que ML considera el mismo producto (el caso de la Lupa), no a los otros aromas o colores de la ficha. Y que se caiga cuando ESA publicación queda en cero.",
+   "opcionB": "Dejarlo como está para fichas sin variantes y, en fichas con colores o aromas, que marque sólo la publicación que elegiste.",
+   "tecnico": "ml-sync/sync.mjs:3658-3683 marcarLiquidando: hermana = mismo prodId + misma cuenta, sin mirar variante ni upid · 3618-3651 limpiarNoSubir: saca la marca sólo si cyc/inventory/<prod>__<cuenta>=0 (suma de todos los aromas) y la contagia cada hora · efectos en 1632-1633, 1738-1740 y la escalera/remate (7063, 7125). Arreglo: hermana = mismo upid, o mismo inv/invVar (depósito de Full), en la misma cuenta. Vencimiento por el stock de esa publicación (invVar o variante). Toca la decisión (a) del 24/09: hay que preguntarle.",
+   "frentes": [
+    "precios-escritura"
+   ]
+  },
+  {
+   "n": 18,
+   "titulo": "La activación automática de pausadas con stock en Full activa desde 22% y no desde el 25% que pediste",
+   "gravedad": "media",
+   "obvio": false,
+   "paraMatias": "El 17/09 pediste que una pausada con mercadería en Full se active sola \"si tiene más del 25%\". El robot compara contra el piso del negocio, que hoy es 22%. Entonces algo que da 23% se activa y se vende sin avisarte, cuando según tu regla tenía que quedar pausada y avisarte. No se vende a pérdida, pero no es lo que dijiste. Además, si la publicación tiene variantes, mide sólo la primera.",
+   "opcionA": "Agregar un número propio para activar (25%, o el que digas) separado del piso de 22%.",
+   "opcionB": "Dejarlo en 22%: pausada paga almacenamiento, y con 22% el negocio cubre todo.",
+   "tecnico": "ml-sync/sync.mjs ≈31917-31918 (piso = cfg.minPct → 22) · 1363 `if (mg < PISO)` · 1333 `precio = vars.length ? vars[0].price : b.price`. Arreglo: `cyc/mlconfig/activarPct` (por defecto 25) pasado a activarPausadasFull, y medir min(vars.price). El probe `pausadas` (≈9407) hereda el mismo número.",
+   "frentes": [
+    "precios-escritura"
+   ]
+  },
+  {
+   "n": 19,
+   "titulo": "Cuando ML no contesta el stock de Full de una publicación apagada, se anota el número viejo como si fuera real, y se borra la fecha del quiebre",
+   "gravedad": "media",
+   "obvio": true,
+   "paraMatias": "Para no creerle al número viejo que ML deja en las publicaciones apagadas, el robot pregunta el stock directo al depósito de Full. Si esa pregunta falla (ML dice 'esperá'), usa justamente el número viejo y lo guarda como si lo hubiera medido. Por 2 minutos el patrimonio cuenta mercadería que no existe. Lo peor es que un producto que figuraba \"sin stock hace 40 días\" pasa a \"recién llegó\" y después a \"sin stock hace 0 días\": se pierde el quiebre largo en Rotación y en Pedidos.",
+   "opcionA": "Si el depósito no contesta, marcar esa cuenta como 'no leída' esa vuelta: no escribir su stock ni tocar el historial.",
+   "opcionB": "Si no contesta, dejar el valor que ya estaba guardado en la base (no el de la publicación).",
+   "tecnico": "ml-sync/sync.mjs:31779 (stockDeInv: `catch { return fallback; }`, fallback = b/v.available_quantity de /items, ≈31664-31679) · no marca stockFallo ni stockCiego (≈31538-31545) → stockLeido (≈31736) → escribe cyc/inventory (≈31851) → stockhist (≈31835-31850: con cero >48h pone desde:now, aprox:false) → stocklog (≈31873-31881). Además invYaContado (≈31647) puede fijar el valor viejo para una hermana activa. Arreglo: en el catch, stockCiego.add(clave) y return null. Quien lo llama no escribe la clave (ni hace el 0→N) si es null.",
+   "frentes": [
+    "choques"
+   ]
+  },
+  {
+   "n": 20,
+   "titulo": "'A liquidar en ML' y el disponible se calculan con un reporte de Mercado Pago que puede tener varios días y se muestran como si fueran de hoy",
+   "gravedad": "media",
+   "obvio": true,
+   "paraMatias": "Todas las noches se pide un reporte nuevo a Mercado Pago. Si una noche falla, las siguientes usan el último que estaba listo, aunque tenga 3, 5 o más días, y lo escriben igual en el Arqueo. Lo vendido después de la fecha de ese reporte no aparece en ningún lado: ni en 'a liquidar' ni en el disponible. El patrimonio queda corto (a ritmo de hoy, unos $500.000 por día) y en la pantalla no hay ningún aviso: la advertencia queda sólo en el registro.",
+   "opcionA": "Que el Arqueo muestre hasta qué fecha llega el reporte y se ponga en ámbar si tiene más de 2 días. Que se mande un Telegram si pasan 2 noches sin reporte nuevo.",
+   "opcionB": "No escribir si el reporte tiene más de 3 días, y dejar el número anterior con su fecha.",
+   "tecnico": "ml-sync/sync.mjs:237-247 elegirReporte (elige el último listo sin mirar end_date) · saldoml ≈18034-18040 (diasViejo>2 sólo va al log), ≈18130-18166 (puedePisar = cuentasOk + cierraVentas) · dispo ≈17762-17826 (no mira end_date) · pedido del reporte nuevo ≈18179-18188 (el error va sólo al log). Arreglo: guardar `cyc/finanzas/agenda/_hasta` y `finanzas/_ts/liq_hasta` con el end_date usado, que la pantalla lo muestre y se pinte en ámbar con >2 días, y sendAlerta si pedirReporteMP falla 2 noches seguidas. El ámbar de la agenda (index.html ≈6548) hoy usa el momento de escritura.",
+   "frentes": [
+    "choques"
+   ]
+  },
+  {
+   "n": 21,
+   "titulo": "En la corrida de la noche, si falla un paso que sólo junta datos, se saltean el robot de precios, 'Para probar' y 'A liquidar'",
+   "gravedad": "media",
+   "obvio": true,
+   "paraMatias": "La corrida de la noche tiene pasos en fila. Si falla uno que sólo junta información (visitas, canceladas, entregas), GitHub no corre los que siguen: el robot de precios (rescate, remate, escalera), los candidatos y el cálculo de 'A liquidar' y del disponible. Se reintenta a las 00:21 y 00:43, pero si la falla se repite (por ejemplo, el permiso de una cuenta vencido), se pierden noches enteras sin que nadie avise.",
+   "opcionA": "Que los pasos que sólo informan no puedan cortar la noche (que sigan aunque fallen) y que al final llegue un Telegram con qué paso falló.",
+   "opcionB": "Pasar esos pasos informativos al final de la corrida.",
+   "tecnico": ".github/workflows/ml-daily.yml: sólo tienen continue-on-error las líneas 66 (netoreal), 80 (cuotas), 178 (supervisor) y 252 (dispo). Visitas (~109), CANCEL_AGG (~120) y entregas (~139) van antes que avisos:go (~159), candidatos (~203) y saldoml (~233). sync.mjs: CANCEL_AGG ≈29916-29917 (mlRefresh y db.patch fuera de try), entregas ≈11472-11482 (db.get y patch fuera de try), main().catch → exit(1) (≈32032). Arreglo: continue-on-error en los pasos informativos, try por cuenta en CANCEL_AGG y un paso final `if: failure()` que llame un probe de aviso.",
+   "frentes": [
+    "choques"
+   ]
+  },
+  {
+   "n": 22,
+   "titulo": "`sacapromos` y la limpieza de cada hora cuentan como 'revisada, sin promo' la publicación que no pudieron leer",
+   "gravedad": "media",
+   "obvio": true,
+   "paraMatias": "Cuando el robot no puede leer las promociones de una publicación (ML dice 'esperá'), la cuenta como revisada y sin promo. El resumen dice \"0 sacadas · 0 con error · 431 revisadas\" aunque no haya leído ninguna. Así, una promo agendada que te va a bajar el precio puede quedar puesta sin aviso, y ese \"0\" que usamos el 19 y 20/09 como prueba de que no había promos no probaba nada.",
+   "opcionA": "Contar aparte \"no se pudieron leer: N\" y avisar si pasa de unas pocas. Si falla varias horas seguidas, mandar un Telegram.",
+   "opcionB": "Reintentar esas publicaciones al final de la misma vuelta y recién ahí contarlas.",
+   "tecnico": "ml-sync/sync.mjs:21392 (revisadas++ antes del try; `catch { continue; }` ≈21397 sin contador) · removeStartedPromos ≈4106-4118 (`catch { return {removed:[],failed:[]} }`, el que la llama ≈31695 no avisa). mlGet (lib.mjs:86) no reintenta. Arreglo: contador `sinLeer` en los dos y devolver `{removed,failed,sinLeer}`. Imprimir en el resumen, y sendAlerta si sinLeer>0 en N vueltas seguidas (memoria en mlapi/).",
+   "frentes": [
+    "precios-escritura"
+   ]
+  },
+  {
+   "n": 23,
+   "titulo": "El rescate de la noche no dice qué publicaciones no pudo medir",
+   "gravedad": "media",
+   "obvio": true,
+   "paraMatias": "Si ML no contesta la comisión de una publicación que está en 8%, el robot hace bien en no subirla. Pero después la saca del aviso y del registro, y ni siquiera la cuenta. Lo mismo si falla un grupo de 20 publicaciones o una cuenta entera. Si eso se repite todas las noches, algo que vende abajo del 20% no se rescata nunca y nadie se entera. El arreglo del 25/09 (F3) dice que \"lo dice\": en la venta sí, a la noche no.",
+   "opcionA": "Mostrar en el aviso de la noche una línea \"no pude medir: N\" con sus nombres, y contar los grupos o cuentas que fallaron.",
+   "opcionB": "Sólo contarlas en el log (sin Telegram) salvo que la misma se repita 3 noches.",
+   "tecnico": "ml-sync/sync.mjs:7001 `rescFren = rr.frenados.filter(f => !/comisión|tarifa/.test(f.why))`: es anterior a F3 y se come el motivo de 1770 ('ML no contestó una comisión…'), 1789 y 1845. El conteo 'no se pueden' (≈7017) y el Telegram (≈7398-7408) usan rescFren. calcSubirPorMargen ≈1734-1747: `catch { continue; }` en refresh y en lote /items, mudos. Arreglo: separar `sinMedir = rr.frenados.filter(regex)` e imprimirlo; agregar rr.lotesFallidos y rr.cuentasFallidas.",
+   "frentes": [
+    "precios-decision"
+   ]
+  },
+  {
+   "n": 24,
+   "titulo": "Activar pausadas: si ML no contesta el stock, la publicación figura 'sin stock' y queda fuera del chequeo que avisa",
+   "gravedad": "baja",
+   "obvio": true,
+   "paraMatias": "Cada hora el robot activa las pausadas con mercadería en Full. Si al preguntar el stock ML no contesta, la publicación se anota como \"sin stock\" y no aparece en ningún aviso. El control que se puso el 17/09 para que nada se escape callado no la ve. Se corrige sola la hora siguiente si ML contesta, pero si falla seguido queda pausada pagando almacenamiento sin que lo sepas.",
+   "opcionA": "Contar aparte \"no pude leer el stock: N\" con nombre, y meterlo en el chequeo de que la cuenta cierre.",
+   "opcionB": "Reintentar esa lectura una vez con una pausa antes de darla por perdida.",
+   "tecnico": "ml-sync/sync.mjs:1278-1285 (catch vacío → stockFull=0 → conteo.sinStock++; continue) · 1263-1265 (lote /items `catch { continue; }` sin contar) · 1450-1456 (chequeo activadas+noLlegan===conStock). Arreglo: `conteo.sinLeer++` y agregarlo a noLlegan con motivo 'ML no contestó el stock'. Contar lotes fallidos en el resumen.",
+   "frentes": [
+    "precios-escritura"
+   ]
+  },
+  {
+   "n": 25,
+   "titulo": "Lo que el tope de 10 cambios por noche deja afuera no se hace 'mañana' como dice el registro, sino 10 a 14 días después",
+   "gravedad": "baja",
+   "obvio": true,
+   "paraMatias": "El robot hace como mucho 10 subas o bajas por noche. Lo que sobra sale en el Telegram como 'para decidir' y queda anotado como avisado, y eso lo frena 10 días (bajas) o 14 (subas). El registro dice \"quedan 4 para mañana\", pero no pasa. No se pierde plata: esas 4 te llegan numeradas y las podés pedir a mano.",
+   "opcionA": "No anotar como 'avisado' lo que quedó afuera sólo por el tope, así la noche siguiente se aplica.",
+   "opcionB": "Dejarlo así pero corregir el texto: \"quedan N en la lista para que decidas\".",
+   "tecnico": "ml-sync/sync.mjs ≈7212-7214 (slice AUTO_MAX) · ≈7311-7320 (log 'quedan N para mañana'; hechoIds sólo tiene lo aplicado) · ≈7419 y ≈7462-7466/7522 (paraAnotar 'subir' / 'c_','o_') · 6951-6961 esperaBajaOk · 6740 nuevasSub. Arreglo: excluir de paraAnotar las filas que estaban en autoSube/autoBaja y quedaron fuera por AUTO_MAX (set `diferidas`).",
+   "frentes": [
+    "precios-decision"
+   ]
+  },
+  {
+   "n": 26,
+   "titulo": "Cuando sale mal una BAJA, el supervisor frena las subas y el aviso dice 'la última suba le salió mal'",
+   "gravedad": "baja",
+   "obvio": true,
+   "paraMatias": "El supervisor frena 60 días las subas de algo que le fue mal (🔴), sin mirar si lo que salió mal fue una suba o una baja. Si una baja para ganar la caja sale mal, el aviso dice \"la última suba le salió mal\", que es falso, y tapa el motivo real (\"lo bajaste vos\" o \"lo bajé yo\"). Sólo cambia el texto y alarga un freno: no mueve precios.",
+   "opcionA": "Que el freno 🔴 y su texto miren sólo subas. Para una baja 🔴, que el aviso diga \"la baja del dd/mm salió mal\".",
+   "opcionB": "Dejar el freno para las dos direcciones pero corregir el texto según haya sido suba o baja.",
+   "tecnico": "ml-sync/sync.mjs:1619-1624, ≈6938-6945, ≈19443-19448 (malosSup: cualquier evento v==='malo' en 60 d, sin mirar a<de) · 1550 (filtrarRescate lo chequea primero) · 1645 y ≈7399 (texto 'la última suba'). Arreglo: filtrar eventos con a>de para malosSup; para bajas malas, otro set con su propio texto.",
+   "frentes": [
+    "precios-decision"
+   ]
+  },
+  {
+   "n": 27,
+   "titulo": "Si el resumen del mes no sale por Telegram, no se vuelve a intentar",
+   "gravedad": "baja",
+   "obvio": true,
+   "paraMatias": "El día 1 primero se manda el resumen del día y después el del mes. Si el del día sale y el del mes falla (Telegram caído un momento), las corridas siguientes ven \"ya mandé el del día\" y no llegan al del mes. Ese mes te quedás sin resumen mensual y sólo queda una línea en el registro.",
+   "opcionA": "Mirar el \"ya mandé\" del mes aparte del del día, así el mensual se reintenta en la corrida siguiente.",
+   "opcionB": "Mandar el del mes antes que el del día.",
+   "tecnico": "ml-sync/sync.mjs:5495 (return temprano si lastDaily===today) · 5586 (lastDaily se anota tras el diario) · ≈5592-5636 (bloque mensual con lastMensual). Arreglo: si lastDaily===today pero es día 1 y lastMensual≠mes anterior, saltear sólo el diario y correr el bloque del mes.",
+   "frentes": [
+    "choques"
+   ]
+  },
+  {
+   "n": 28,
+   "titulo": "El workflow manual 'ml-stock' escribe un stock de Full equivocado si alguien lo corre",
+   "gravedad": "baja",
+   "obvio": true,
+   "paraMatias": "Hay un botón viejo en GitHub (ml-stock) de antes de que existiera el ciclo. Si alguien lo aprieta, escribe el stock sumando el '1' de depósito que no existe, las publicaciones ocultas y dos veces las que comparten depósito. El ciclo lo corrige a los 2 minutos, pero de paso borra la fecha de quiebre de algunos productos. Hoy no lo corre nadie.",
+   "opcionA": "Borrar ese workflow (y stock.mjs), que ya no se usa.",
+   "opcionB": "Dejarlo pero que no escriba: sólo mostrar.",
+   "tecnico": ".github/workflows/ml-stock.yml (workflow_dispatch, sin concurrency) → ml-sync/stock.mjs:38-58 (available_quantity de /items, sin logistic_type), 87-92 (suma vinculadas incluso ignored y depósito compartido), 109 (db.patch('cyc/inventory')). Arreglo: borrar el workflow y el script (y la mención en ml-sync/PASOS.md), o poner `--dry` por defecto.",
+   "frentes": [
+    "choques"
+   ]
+  }
+ ],
+ "huecos": "No volví a correr pruebas propias con el código real. Confié en los votos (2 de 3) y sólo confirmé algunos números de línea con grep (1560, 2188, 2897, 3607-3611, 3658/3685, 5495/5586, 7001, 7125, 7260, 21392, 31779, ml-daily continue-on-error 66/80/178/252). El resto de las líneas llevan '≈' porque los verificadores citaron números corridos unas 9-100 líneas. Juntados: escalera + marca manual con memoria (reportado dos veces, ítem 3), y submargen/volver + bajopiso/preciosgo en un solo hallazgo de techo/+25% (ítem 14). Quedan dudosos: el ítem 12 (variantes) depende de que ML permita precios distintos por variante dentro de un mismo MLA, y eso no está medido. El ítem 11 (hermanas de la escalera) depende de que ML iguale el precio al instante. El ítem 7 (facturas crudo) supone la forma de billing_info según la documentación, sin llamada real. Los ítems 17 (contagio de liquidando) y 18 (22% vs 25%) chocan con decisiones suyas ya tomadas, por eso llevan obvio=false. Del ítem 4 también hay que decidir cuántos días de gracia darle.",
+ "porFrente": [
+  {
+   "frente": "precios-escritura",
+   "sospechas": 14,
+   "cortadoEnRonda": null,
+   "confirmadas": 13,
+   "sinVerificar": []
+  },
+  {
+   "frente": "precios-decision",
+   "sospechas": 13,
+   "cortadoEnRonda": null,
+   "confirmadas": 10,
+   "sinVerificar": [
+    {
+     "titulo": "calcCajaBarata le cobra el envío de Full al precio de la caja aunque esté ABAJO de los $33.000: una baja sana se lee como 0%, va a la escalera y termina marcada 'no traer más' y liquidando",
+     "donde": "ml-sync/sync.mjs:2926-2936 (envío sale del precio de HOY: si hoy ≥ $33.000 se usa envioSegunML y se aplica a c.ptw), 2939-2940 (mgPw a la caja con ese envío), 6711-6717 (clasificación sanas/remE/remNo), 7101-7127 (la escalera toma remNo/noSano), 7171-7175 y 7285-7287 (marcarNo → cyc/notraer, marcarLiquidando)",
+     "votos": 0
+    },
+    {
+     "titulo": "La marca 'liquidando' se contagia a TODOS los colores/aromas del producto en esa cuenta (aunque ML no les iguala el precio), y sacarla también borra las marcas propias de los otros colores",
+     "donde": "ml-sync/sync.mjs:3649-3673 (marcarLiquidando: hermana = mismo prodId + misma cuenta, sin mirar e.variant ni el código de Full), 3610-3640 (limpiarNoSubir: la marca se cae sólo con el stock del PRODUCTO×cuenta en 0, y el contagio también ignora la variante), 1717-1719 (calcSubirPorMargen saca en silencio todo lo que está en NOSUBIR), 2186-2188 (calcSubirPuede lo mismo), 27466-27467 / 24228 / 24285 (liquidando:<MLA>:go y unapub bajar=/empatar llaman a marcarLiquidando)",
+     "votos": 0
+    },
+    {
+     "titulo": "El reloj del remate y de la escalera (quietaDe) no distingue colores: un aroma/color que no vende nunca entra al remate si otro color del mismo producto vende en esa cuenta",
+     "donde": "ml-sync/sync.mjs:2708 (ultPCCb por prodId__cuenta, sin variante), 2741-2750 (quietaDe = max(última venta de la publicación, última venta del PRODUCTO en la cuenta)), 2802-2808 (el modo remate filtra por ese reloj), 6714-6716 y 7101-7121 (remE1/2/3 y la escalera usan f.quieta); contraste 1580-1585 (filtrarRescate sí usa sólo la venta de ESE color cuando la publicación tiene variant)",
+     "votos": 0
+    }
+   ]
+  },
+  {
+   "frente": "margen",
+   "sospechas": 16,
+   "cortadoEnRonda": null,
+   "confirmadas": 0,
+   "sinVerificar": [
+    {
+     "titulo": "Una sola venta de 2 u. (o un carrito) que cruza los $33.000 pasa a ser el 'peor envío' de toda la publicación, y el robot le sube +16% a un producto que vende al 33%",
+     "donde": "ml-sync/sync.mjs (y index.html):sync.mjs 1702, 1761-1767 (calcSubirPorMargen) · 20164, 20238-20245 (netoweb) · 1214 (activarPausadasFull, la misma cuenta) · 1671 (etiqueta 'fue esta venta') · 31192-31233 (rescate al vender) · index.html 7575-7580 (gestDeVenta)",
+     "votos": 0
+    },
+    {
+     "titulo": "Carrito con un 429 en uno de sus pagos: vuelve el reparto torcido de los Ferrari y puede quedar para siempre (netoreal:estimadas no lo ve)",
+     "donde": "ml-sync/sync.mjs:30985-31001 (el paquete se arma sólo si TODAS las órdenes contestan: break al primer null) · 31073-31094 (cada orden usa su propio orderNet; el freno f1 sólo cubre el caso estimado) · 19991 (netoreal marca sospechosa sólo si es estimada o tiene mlfee 0)",
+     "votos": 0
+    },
+    {
+     "titulo": "La ficha y el robot miden el impuesto con el PROMEDIO de las ventas viejas (a precios viejos, y la web además con el monotributo viejo), no al precio de hoy: el rescate etiqueta 'fue esta venta' a algo que vende siempre al 19%",
+     "donde": "ml-sync/sync.mjs e index.html:sync.mjs 1693-1713 (impProd/mlxDe) · 1812 (costoTotDe queda fijo cuando hay ventas) · 1671 · index.html 8243-8254 (_netoAgg con impuestosDeVenta por mes) · 8313-8317 (mlExtra = promedio)",
+     "votos": 0
+    },
+    {
+     "titulo": "La web congela el monotributo en el último valor de `hist` para todos los meses siguientes y nunca vuelve a leer el % que recalcula el robot",
+     "donde": "index.html (y ml-sync/sync.mjs):index.html 2555-2571 (monoPct: con cualquier clave de hist anterior al mes no cae nunca al vigente) · 4258-4270 (saveMono no toca hist) · sync.mjs 30484-30499 (el robot reescribe pct en cada vuelta) · 7851-7860 (hist sólo lo escribe monoreal:go) · 30553, 1688, 5493 (el robot usa el pct vigente)",
+     "votos": 0
+    },
+    {
+     "titulo": "netoweb: si ML no contesta la comisión al precio de HOY (o falla una tanda de /items, o el token de una cuenta), la publicación se saltea sin marcar 'sin medir'; el peor neto sale de las otras publicaciones y la ficha queda en verde",
+     "donde": "ml-sync/sync.mjs (e index.html):sync.mjs 20203, 20210, 20223, 20276 (continue sin aviso) · 20247 y 20306-20314 (el freno F3 sólo cubre la comisión de precios VIEJOS) · index.html 8310 (sinMedir sale sólo de netoCalcSinMedir)",
+     "votos": 0
+    },
+    {
+     "titulo": "El monotributo que se carga a cada venta está calculado con las 4 cuentas en H ($819.247/mes) cuando el VEP de 09/2026 dice que se pagan $391.749: ~2 puntos del precio de más en todos los márgenes",
+     "donde": "ml-sync/sync.mjs:7795-7807 (tabla ARCA de monoreal: las cuatro en H) · 30484-30499 (pct = Σ impuesto ÷ facturación mensual)",
+     "votos": 0
+    },
+    {
+     "titulo": "Reactivar una venta cancelada a mano que tiene más de 2 días la deja con total y neto en 0 para siempre (se ve como una pérdida de todo el costo)",
+     "donde": "index.html (y ml-sync/sync.mjs):index.html 7813 (vpCancelarGrupo pone total/neto/costo en 0) · 7846-7851 (vpReactivarGrupo borra manualTs y rehace sólo el costo) · sync.mjs 30955-30958 y 31613 (el robot sólo reescribe órdenes de las últimas 48 h) · 19991 y 20029-20031 (netoreal no la toma)",
+     "votos": 0
+    },
+    {
+     "titulo": "Las ventas sin ficha (o de una ficha sin costo) cuentan el neto entero como ganancia en los KPIs, en el total del mes y en el resumen de Telegram, sin aviso",
+     "donde": "ml-sync/sync.mjs e index.html:sync.mjs 31118 (costo 0 si no hay producto) · 5496-5510 (resumen del día y 'Los que más ganancia dejaron') · index.html 7625 (efectivoCostoVP sin producto = sólo impuestos) · 8150-8152 (KPIs) · 14158-14166 (_puntGananciaMes)",
+     "votos": 0
+    },
+    {
+     "titulo": "El rescate de la noche descarta sin avisar las publicaciones que no pudo medir por falta de comisión (F3 dice que 'lo dicen')",
+     "donde": "ml-sync/sync.mjs:6992 · 1770 (texto del freno F3) · 7008",
+     "votos": 0
+    },
+    {
+     "titulo": "margenAlDia elige el neto del producto entre TODAS las filas de cyc/netopub, incluidas las de publicaciones cerradas o re-vinculadas, que nunca se borran",
+     "donde": "ml-sync/sync.mjs:3503-3514 · 20347 (netoweb hace patch y nunca borra filas)",
+     "votos": 0
+    },
+    {
+     "titulo": "Resumen → 'Ganancia productos' y 'Markup' se calculan sin IIBB ni monotributo y con otro divisor: en la misma pantalla que la Cascada dan casi el doble",
+     "donde": "index.html:14457 (_vpGan = neto − v.costo guardado) · 14503-14504 · 14585-14587 (res-gp-mes / res-gp-margen) · 1552-1553 (las tarjetas)",
+     "votos": 0
+    },
+    {
+     "titulo": "Cambiar un costo en la ficha reescribe el costo GUARDADO de las ventas de los últimos 7 días con el costo nuevo, y eso contradice el congelado: el robot y el Resumen ven otra ganancia",
+     "donde": "index.html (y ml-sync/sync.mjs):index.html 4033-4046 (updCostUSD: primero congelarCostoAnterior, después recalcAndSaveFullUSD) · 3859-3868 (recalcAndSaveFullUSD → recalcTodayCostos) · 7712-7736 (recalcTodayCostos pisa v.costo con costFullP de HOY) · sync.mjs 5502 y 5604 (resumen del día y del mes: neto − v.costo) · 9577-9585 (pisobase usa v.costo para calcular minPct)",
+     "votos": 0
+    },
+    {
+     "titulo": "netoreal (todas las noches en ml-daily) reescribe el neto de ventas que él editó a mano: no mira manualTs, así que el arreglo c2 queda incompleto",
+     "donde": "ml-sync/sync.mjs (e index.html):sync.mjs 19985-19992 (junta las ventas sólo filtrando cancelada/origen, sin manualTs) · 20029-20031 (neto nuevo = netoOrden × v.total/bruto) · 20048-20052 (patch neto) · .github/workflows/ml-daily.yml:74 (netoreal:7:estimadas:go) · index.html 7759-7782 (vpSaveEdit pone manualTs pero NO borra netoEstimado ni carga mlfee)",
+     "votos": 0
+    },
+    {
+     "titulo": "El neto ESTIMADO (sin envío de Full ni retenciones) se muestra y se resume como si fuera real: nadie lee la marca netoEstimado",
+     "donde": "ml-sync/sync.mjs e index.html:sync.mjs 4212-4214 (netoFallback = precio − sale_fee×unidades) · 31078-31080 · 31130 (se marca netoEstimado) · 5494-5510 (resumen del día: gan = neto − costo − impuestos, sin mirar netoEstimado) · index.html: ninguna línea lee netoEstimado ni mlfee (grep vacío)",
+     "votos": 0
+    },
+    {
+     "titulo": "El % de cada venta suma al divisor el envío de Full de HOY aunque ESA venta haya sido abajo de $33.000 (ML no cobró nada)",
+     "donde": "index.html:7575-7580 (gestDeVenta: g*qty sin mirar el precio de la venta) · 7592-7595 (pctGananciaVP) · 7645 (vpAggByAccount) — contraste: ml-sync/sync.mjs 9581-9582 (pisobase sí pone gest=0 si la venta por unidad es < $33.000)",
+     "votos": 0
+    },
+    {
+     "titulo": "Un envío de Full MEDIDO en cero (producto abajo de la barrera) se trata como 'no hay dato' y cae al gestFull viejo: la ficha y cada venta cuentan un envío que ML no cobra",
+     "donde": "index.html:8338 (margenMLDe: `Number(F.envio)>0 ? F.envio : p.gestFull`) · 7578 (gestDeVenta, misma condición) · 11172-11180 (cajaBajarDe resta mg.gest del neto para sacar la comisión) · 11487 (margenDudosoDe: con gest>0 no marca nada) — origen del gestFull viejo: ml-sync/sync.mjs 29866-29911 (FILL_GESTFULL toma órdenes ≥ $25.000, o sea las de 2 u. que cruzan la barrera, y lo reparte por unidad) y 20325 (netoweb escribe netoCalcEnvio = 0 cuando el precio está abajo de $33.000)",
+     "votos": 0
+    }
+   ]
+  },
+  {
+   "frente": "plata",
+   "sospechas": 20,
+   "cortadoEnRonda": null,
+   "confirmadas": 0,
+   "sinVerificar": [
+    {
+     "titulo": "Si `dispo` no escribe, la plata que ML libera desaparece del patrimonio cada noche (y si es al revés, se cuenta dos veces). Hoy pasa, porque faltan las anclas",
+     "donde": "ml-sync/sync.mjs · .github/workflows/ml-daily.yml · index.html:sync.mjs 18042 (saldoml saca de 'a liquidar' todo lo que tiene fecha ≤ ahora), 18146-18160 (escribe mp_liq), 17749-17752 y 17816-17820 (dispo no escribe si falta una cuenta) · ml-daily.yml 219-246 (dos pasos separados, dispo con continue-on-error) · index.html 4399-4411 (el aviso)",
+     "votos": 0
+    },
+    {
+     "titulo": "Una cuenta con $0 disponible frena `dispo` en las 4 cuentas, y el panel no avisa nada",
+     "donde": "ml-sync/sync.mjs · index.html:sync.mjs 17749 (`!(parseFloat(anc.ars)||0)` → 'sin punto de partida') y 17816 · index.html 4439 (saveFin guarda ars 0 con ts) y 4393 (anclaViejasDe sólo mira ts)",
+     "votos": 0
+    },
+    {
+     "titulo": "Puntaje del mes: el retiro y los gastos, ahora enteros, se multiplican por la proyección (día 3: 'proy retiro $18.000.000', 'proy CYC −$16M')",
+     "donde": "index.html:14158-14166 (_puntGananciaMes, con _propMes=1 desde el 23/09) · 14213-14216 (proy = ganancia × diasMes/dias · retiroProy = retiro × diasMes/dias) · 14225-14228 · 14301-14304",
+     "votos": 0
+    },
+    {
+     "titulo": "Una compra cargada con `compray` sin un 'Ya lo pedí' cerca queda 'en camino' en el patrimonio para siempre, y no tiene botón 'Ya llegó'",
+     "donde": "ml-sync/sync.mjs · index.html:sync.mjs 28511-28518 (si no hay pedido del panel a ±10 días crea uno nuevo), 28602-28605 (los items salen de los candidatos con pedirU>0), 28624-28632 (rec SIN `estado`) · index.html 6293-6298 (pyEnCaminoUSD cuenta todo lo que no dice 'llego') · 10059 (el botón 'Ya llegó' sólo aparece con estado==='camino')",
+     "votos": 0
+    },
+    {
+     "titulo": "`dispo` puede tomar el reporte DIARIO de un solo día (arreglo del 24/09 incompleto): lo liberado desde el ancla no entra",
+     "donde": "ml-sync/sync.mjs:237-247 (elegirReporte: con desdeAntesDe sólo pide que arranque antes del ancla, no un largo mínimo) · 17765 (dispo)",
+     "votos": 0
+    },
+    {
+     "titulo": "'A liquidar', la agenda y el disponible salen de un reporte que puede ser de anteayer (o más viejo) y la pantalla dice 'calculado hoy'",
+     "donde": "ml-sync/sync.mjs · index.html:sync.mjs 297-302 (el reporte termina AYER), 18187-18200 (se pide al FINAL de la vuelta y se usa la noche siguiente), 237-247 (elegirReporte no mira end_date), 18008 (la antigüedad sólo va al log), 18170 (agenda con _ts = ahora) · index.html 6503 ('calculado hoy')",
+     "votos": 0
+    },
+    {
+     "titulo": "El almacenamiento de Full se cuenta dos veces: ya está adentro del % ML_EXTRA_PCT y la lista de Gastos pide cargarlo aparte",
+     "donde": "index.html · .github/workflows/ml-daily.yml · ml-sync/sync.mjs:index.html 2526-2531 (ML_EXTRA_PCT: 'casi todo percepciones de IIBB, más algo de almacenamiento y logística Full', medido de las facturas de ML) · 14772-14775 (GASTOS_DEL_MES pide 'Cargos de Full: almacenamiento + stock antiguo + retiro') · ml-daily.yml último comentario ('el almacenamiento Full … ya NO se carga como gasto: se descuenta como % en cada venta') · sync.mjs 9594-9607 (pisobase suma los gastos 'Envios' y además el mlExtraPct)",
+     "votos": 0
+    },
+    {
+     "titulo": "Resumen con período 30/60/365 días, día o año: el retiro sale del 15% del neto (regla vieja) y no coincide con 'Ganancia CYC' de Métricas",
+     "donde": "index.html:14469-14479, 14511, 14518, 14532 (retiro = netoML × 15% salvo en 'mes') · 12867-12880 (Métricas: el retiro fijo entero el primer día con ventas del mes)",
+     "votos": 0
+    },
+    {
+     "titulo": "Resumen → 'Rentabilidad por producto': otra ganancia y otro % (sin IIBB/monotributo y sin el envío de Full en el divisor)",
+     "donde": "index.html:14457 (_vpGan = neto − v.costo guardado) · 14585-14587 (Markup = esa ganancia ÷ efectivoCostoVP)",
+     "votos": 0
+    },
+    {
+     "titulo": "El % único mete un envío de Full que no existe en productos de menos de $33.000: el envío medido en 0 se lee como 'sin medir'",
+     "donde": "index.html · ml-sync/sync.mjs:index.html 7575-7580 (gestDeVenta: `netoCalcEnvio>0 ? … : gestFull`, sin mirar el precio de ESA venta), 8339 (margenMLDe, igual) · sync.mjs 20329 (netoweb escribe netoCalcEnvio = 0 cuando está abajo de la barrera)",
+     "votos": 0
+    },
+    {
+     "titulo": "El disponible por cuenta se guarda con cada tecla, pero el punto de partida (ancla) y el total sólo cuando dispara 'change'",
+     "donde": "index.html:2488-2498 (el 'input' guarda finanzas/mp_<cuenta> para todo campo f_*) · 4413-4441 (sólo saveFin, con onchange, arma el ancla y mp_disp)",
+     "votos": 0
+    },
+    {
+     "titulo": "Reactivar una venta de más de 2 días la deja con facturado $0 y neto $0 pero con costo: aparece una pérdida que no existe",
+     "donde": "index.html · ml-sync/sync.mjs:index.html 7826-7851 (vpReactivarGrupo: saca manualTs y pone costo; total y neto quedan en 0) · sync.mjs 31613 (el ciclo relee sólo 2 días) y 20000 (netoreal proporciona por total=0 → neto 0)",
+     "votos": 0
+    },
+    {
+     "titulo": "Resumen del mes por Telegram: si falla no se reintenta nunca, y el renglón de canceladas siempre da 0",
+     "donde": "ml-sync/sync.mjs:5485-5487 (return si el diario ya salió, antes del bloque del mes), 5589-5626 · 5600 (mCancel suma v.total de canceladas, que el robot y la web ponen en 0: 31372-31375, index.html 7813)",
+     "votos": 0
+    },
+    {
+     "titulo": "CANCEL_AGG reescribe fact_cancel con sólo 400 días y borra meses que la ventana de ARCA todavía mira (latente, desde ~jun-2027)",
+     "donde": "ml-sync/sync.mjs · index.html:sync.mjs 29784, 29802 (`db.set` del nodo entero con 400 días) · index.html 14104-14113 (_ventanaARCA: 12 meses hasta el último 30/06 o 31/12, o sea hasta ~546 días atrás) y 14125-14131",
+     "votos": 0
+    },
+    {
+     "titulo": "El Puntaje dice 'meta 40%' y lista productos debajo de 40%, pero puntúa contra 35%",
+     "donde": "index.html:14283 (texto '(meta 40%)' y filtro markup<40) · 14021 (PUNT_DEF.margenMeta = 35, desde el 22/09) · 14239-14240",
+     "votos": 0
+    },
+    {
+     "titulo": "El freno 'sin costo cargado no entra' de Métricas (por origen y por rubro) nunca actúa: una ficha con costo 0 entra con margen de ~1.000%",
+     "donde": "index.html:13280-13282 (metPorOrigen) · 13190-13191 (metMargenRubro) · 7618-7638 (efectivoCostoVP) · 2579 (impuestosDeVenta)",
+     "votos": 0
+    },
+    {
+     "titulo": "Resumen → 'Gastos fijos por categoría' mete las compras de MERCADERÍA como si fueran un gasto fijo, y los renglones no suman el total de abajo",
+     "donde": "index.html:14464 (_cmpCats sin filtrar getCompraTipo) · 14570-14580 (res-gastos-cats) · 14672 (la mercadería se guarda con cat 'Mercadería')",
+     "votos": 0
+    },
+    {
+     "titulo": "El arreglo 'Paraguay pagado y no llegado cuenta como en camino' sólo cubre los productos NUEVOS: la canasta de reposición (US$1.000) no tiene 'Ya lo pedí' y el patrimonio baja ~US$1.170 hasta que se cuenta en la oficina",
+     "donde": "index.html:6293-6299 (pyEnCaminoUSD sólo lee cyc/compraspy) · 9864-9892 (el único que crea un pedido en camino es pyPedidoHecho, desde 'Armar el pedido' de candidatos) · 10612-10690 (pyCanasta/pyCanastaHTML: sin botón de pedido hecho)",
+     "votos": 0
+    },
+    {
+     "titulo": "La alarma de 'ventas sin factura' se borra sola a los 3 días y la pantalla pasa a verde '✓ Todas las ventas salieron con factura', aunque la venta siga sin factura",
+     "donde": "ml-sync/sync.mjs · .github/workflows/ml-daily.yml · index.html:sync.mjs 10631-10632 (ventana = DIAS), 10703-10707 (sin[] sólo con las ventas de esa ventana), 10726-10728 (db.set('cyc/facturas_sin/<cuenta>') pisa el nodo ENTERO) · ml-daily.yml 60 (BILLING_PROBE: facsync:3:go) · index.html 11773-11798 (la alarma lee sólo facturas_sin y, si está vacío, dice '✓ Todas las ventas salieron con factura')",
+     "votos": 0
+    },
+    {
+     "titulo": "Dos pedidos a Paraguay el mismo día: 'Ya lo pedí' pisa el primero y sus dólares salen de 'en camino' y sus productos nunca reciben ficha",
+     "donde": "index.html:9863-9892 (pyPedidoHecho: id = 'py'+fecha; si ya existe pregunta '¿Lo pisás?' y hace fbSet entero) · 6293-6299 (pyEnCaminoUSD suma usdCrudo de cada compraspy) · 9920-9965 (pyPedidoLlego crea fichas sólo con rec.items)",
+     "votos": 0
+    }
+   ]
+  },
+  {
+   "frente": "mercaderia",
+   "sospechas": 14,
+   "cortadoEnRonda": null,
+   "confirmadas": 0,
+   "sinVerificar": [
+    {
+     "titulo": "Después de cada reposición, Armar caja y Pedidos creen que el producto vende hasta 3,7 veces más rápido (`diasConStock` cuenta sólo los días desde la última entrada)",
+     "donde": "index.html:5792-5810 (diasConStock); se usa en 8644/8660 (pedVentasNorm), 8862 y 8926 (reparto de Armar caja), 9068 (variantes en syncPedidosAuto); robot: ml-sync/sync.mjs 31721 (al reponer guarda `desde`=ahora y conserva `cero`)",
+     "votos": 0
+    },
+    {
+     "titulo": "Una caja marcada A MANO (web \"llegó\" o `cajallego`) se come las entradas de Full de la caja siguiente del mismo producto: la nueva queda \"en camino\" para siempre y se cuenta dos veces",
+     "donde": "ml-sync/sync.mjs:870-887 (descuento por orden de despacho de las marcadas sin recUsadas); index.html 6188-6193 (marcarCajaRecibida pone recFecha de hoy sin recUsadas); sync.mjs 8931-8933 (cajallego igual)",
+     "votos": 0
+    },
+    {
+     "titulo": "El botón \"⏸️ No lo compro por ahora\" de «🔻 Ya no conviene comprarlos» no hace nada, y aunque se pause desde la tarjeta, el producto de Paraguay vuelve solo a Pedidos",
+     "donde": "index.html:9487 (onclick pausarPrecio con el id del PRODUCTO); 10936-10942 (pausarPrecio busca un PEDIDO con ese id); 10906-10917 (_pausaPrecioLista mide con margenMLDe = costo pagado); 12529 (autoDespausarPrecio en cada renderPedidos)",
+     "votos": 0
+    },
+    {
+     "titulo": "`compray` para una compra que no está en el panel crea un registro SIN `estado`: el Arqueo la suma \"en camino\" para siempre y \"Llegó\" crea fichas de lo que está cargado HOY en el armado",
+     "donde": "ml-sync/sync.mjs:28514-28521 (sólo busca un pedido de ±10 días SIN pesos) y 28600-28632 (items de los candidatos con pedirU>0; `rec` sin estado); index.html 6293-6299 (pyEnCaminoUSD: todo lo que no es 'llego' es en camino), 10066, 9920-9966",
+     "votos": 0
+    },
+    {
+     "titulo": "Una caja nueva se marca \"llegó\" con la mercadería de una caja más vieja que sigue abierta (arreglo 1 del paso 2 incompleto); si la vieja quedó ciega, además desaparecen unidades del patrimonio",
+     "donde": "ml-sync/sync.mjs:890-944 (sólo las cajas que se MARCAN consumen entradas) y 954-977 (cajasentrado: la caja ciega corta con `break`, conserva su anotado viejo y no reserva nada)",
+     "votos": 0
+    },
+    {
+     "titulo": "Pedidos nunca vuelve a pedir un color/aroma que se agotó hace más de 30 días si el producto tiene otras variantes que venden",
+     "donde": "index.html:9060-9081 (rama de variantes de syncPedidosAuto: vTarget sale sólo de las ventas de 30 días; `.filter(x=>x.vFalta>0)`)",
+     "votos": 0
+    },
+    {
+     "titulo": "Stock de Full: si ML no contesta el depósito, se escribe el número de la publicación (que en las apagadas miente) como si fuera dato, y un corte a mitad de cuenta escribe sumas cortas",
+     "donde": "ml-sync/sync.mjs:31515-31522 (`stockDeInv`: `catch { return fallback; }`), 31609 (`catch {}` de toda la cuenta), 31664-31726 (se escribe invUpd igual), 31738-31756 (stocklog anota la hora como leída)",
+     "votos": 0
+    },
+    {
+     "titulo": "La canasta de US$ 1.000 de Paraguay se arma con el costo PAGADO, no con el precio de hoy: el total y el orden de compra son falsos",
+     "donde": "index.html:10616 (`cu=costUSDof(pr)` en pyCanasta) y 10630-10651 (tope, 'rinde por dólar', 'Llegaste')",
+     "votos": 0
+    },
+    {
+     "titulo": "Cerrar caja despacha sin avisar cuando un renglón cargado ya no tiene NADA en la oficina",
+     "donde": "index.html:5663-5676 (`if(!f||!(u>0))continue;` antes de armar `recortes`); 8913 y 8850 (el reparto no genera filas con hay<=0)",
+     "votos": 0
+    },
+    {
+     "titulo": "Candidatos: el 'nunca más' se dispara con 4 mediciones lejos del piso aunque no sean seguidas",
+     "donde": "ml-sync/sync.mjs:4750-4763 (`bajas = bajasLejos + (lejos?1:0)`; sólo se resetea al pasar el piso, 5103)",
+     "votos": 0
+    },
+    {
+     "titulo": "Un segundo \"Ya lo pedí\" el mismo día pisa el pedido de la mañana: esos productos desaparecen de \"en camino\", no reciben ficha al llegar y vuelven a \"Para probar\" como si nunca se hubieran comprado",
+     "donde": "index.html:9864-9905 (pyPedidoHecho: id='py'+fecha, confirm '¿Lo pisás?', fbSet entero con sólo P.filas); 9503-9507 (candEnPedido); 9757 (pedLlenarPlan); 6293-6299 (pyEnCaminoUSD); 9925-9966 (pyPedidoLlego recorre sólo c.items)",
+     "votos": 0
+    },
+    {
+     "titulo": "El robot escribe `cajasDet` entero con la copia que leyó al empezar: una caja deshecha, marcada o editada en la web mientras corre vuelve a aparecer o se revierte",
+     "donde": "ml-sync/sync.mjs:540 (lee cyc/envios_full al arrancar); 640-760 (paginación de movimientos por inventario, minutos con 429); 988-998 (arma `cajas` desde `envios[id].cajasDet` viejo y hace db.set del array entero); web: index.html 6151-6173 (deshacerCaja: devuelve a la oficina y splice), 6186-6194, 6196-6200",
+     "votos": 0
+    },
+    {
+     "titulo": "\"Deshacer\" una caja que ML ya empezó a dar de alta devuelve a la oficina también las unidades que ya están en Full",
+     "donde": "index.html:6151-6173 (deshacerCaja: `for(const it of items)await ofiMover(..., {delta:it.u})`); 6264 (la tarjeta muestra '📥 ya entraron N a Full'); 6272 (el botón deshacer aparece siempre que no esté recibida); 6051-6059 (cajaEntradoDe)",
+     "votos": 0
+    },
+    {
+     "titulo": "El arreglo f2 quedó a nivel PRODUCTO: un renglón de caja cuya VARIANTE no tiene ningún depósito de Full que la nombre se lee como '0 recibidas', no como 'sin leer'",
+     "donde": "ml-sync/sync.mjs:640-657 (pares: va sale de links.variant / varianteDeTitulo, o '' si el título no nombra el color; en variaciones pv='' si no coincide), 656 (`conDeposito.add(p.id)` por producto), 849-855 (el chequeo f2 sólo mira `conDeposito.has(pid)`), 921-925 (noLeido = sinLeer[k1] || sinLeerProd[cta|pid], nunca por variante), 944 (marcar)",
+     "votos": 0
+    }
+   ]
+  },
+  {
+   "frente": "choques",
+   "sospechas": 15,
+   "cortadoEnRonda": null,
+   "confirmadas": 7,
+   "sinVerificar": [
+    {
+     "titulo": "netoweb: si ML no contesta la comisión al precio de HOY (o falla /items o el token de una cuenta) la publicación se saltea callada y el producto queda medido con las otras: el arreglo F3 quedó a medias",
+     "donde": "ml-sync/sync.mjs:20202, 20209, 20221-20222 (vs 20241-20247 y 20307)",
+     "votos": 0
+    },
+    {
+     "titulo": "Pedidos/Rotación: la caja de compra de una publicación PAUSADA queda congelada en 'winning' y el panel la cuenta como que ganás → el precio máximo de compra sale con el precio de hoy en vez del que gana la caja",
+     "donde": "index.html:11109-11128 (cajaMLDe), 12355-12358 (maxCompraDe), 11892; robot: ml-sync/sync.mjs 1095-1102",
+     "votos": 0
+    },
+    {
+     "titulo": "El marcado de cajas escribe el envío ENTERO con la foto leída al empezar: lo que él hace en la web durante esa vuelta (deshacer una caja, marcarla llegada) se pisa y la mercadería se cuenta dos veces",
+     "donde": "ml-sync/sync.mjs:540, 986-998",
+     "votos": 0
+    },
+    {
+     "titulo": "El ciclo guarda el estado nuevo de la publicación al toque pero la memoria del aviso recién al final: si la vuelta se corta (429 o token de la cuenta siguiente) el aviso 'Problema en una publicación' se pierde para siempre",
+     "donde": "ml-sync/sync.mjs:31425-31428, 31443-31463, 31653; cortes sin try en 30943 y 30959",
+     "votos": 0
+    },
+    {
+     "titulo": "La venta que él marca a mano (reclamo/cancelada/editada) se pisa si lo hace mientras corre la vuelta: el freno c2 mira una foto de las ventas leída al empezar",
+     "donde": "ml-sync/sync.mjs:30422, 31091-31092, 31133-31139",
+     "votos": 0
+    },
+    {
+     "titulo": "Avisos de fallas que nunca salen: 'Descuento que no pude sacar' y 'cajas que llegaron (con faltantes)' se mandan sin tipo y TG_PERMITIDO los tira",
+     "donde": "ml-sync/sync.mjs:4285-4291, 31598-31603, 31835, 1012",
+     "votos": 0
+    },
+    {
+     "titulo": "margenAlDia mira TODOS los renglones viejos de cyc/netopub (nunca se borran): una publicación cerrada o revinculada sigue 'activa' y puede mandar en el margen del producto",
+     "donde": "ml-sync/sync.mjs:3503-3517 (margenAlDia); 20347 (netoweb sólo hace patch, nunca borra)",
+     "votos": 1
+    }
+   ]
+  }
+ ]
+}
