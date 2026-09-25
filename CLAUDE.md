@@ -221,8 +221,12 @@ precios-decisión 3.
    volvió el stock o vendió hace menos de 30 días, no se baja (`fuera.reciente`).
  · **"alto" da el MISMO resultado que max en la verificación:** confirmar pide 2 votos reales; si
    código y prueba coinciden, el tercero no puede cambiar el resultado. Sólo se ahorra cuando coinciden.
- · **NO OBVIAS, a preguntarle de a una:** 17 (liquidando
-   un aroma marca todos) · 18 (activar pausadas desde 22% y no 25%).
+ · **17 · HECHO, él: *"que pueda hacerlas individualmente"*:** la marca `liquidando` pasa sólo a lo que
+   ML trata como el MISMO producto (`esHermanaPrecio`: mismo `upid`, o mismo código de Full, o misma
+   ficha y misma variante). Marcar un aroma ya no marca los 51. La marca se cae cuando ESA variante
+   queda en 0, y `limpiarNoSubir` saca las marcas contagiadas (`hermanaDe`) que ya no son hermanas;
+   las que puso él a mano no se tocan.
+ · **NO OBVIAS, a preguntarle de a una:** 18 (activar pausadas desde 22% y no 25%).
  · **Obvias que quedan:** 8-16, 19-28.
 
 ### 25/09 A LA TARDE (v20.36 · `cyc-v314`): CUOTAS PREMIUM, "LO QUE TRAJO EL ROBOT" SIN INFLACIÓN, POR MES

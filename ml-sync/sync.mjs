@@ -3632,10 +3632,26 @@ async function limpiarNoSubir(db, DRY) {
   for (const mla of mlas) {
     const e = links[mla] || {};
     if (!e.prodId || !e.cuenta) continue;                       // no se sabe → no se toca
-    const st = parseInt(inv[e.prodId + '__' + sidL(e.cuenta)]) || 0;
+    // Con variante conocida se mira el stock de ESA variante (revisión max #17): un aroma que se
+    // terminó de liquidar suelta su marca aunque los otros 50 tengan stock. Sin variante, el producto.
+    const kv = e.prodId + '__' + sidL(e.cuenta) + (e.variant ? '__v__' + sidL(e.variant) : '');
+    const st = e.variant && inv[kv] == null ? (parseInt(inv[e.prodId + '__' + sidL(e.cuenta)]) || 0) : (parseInt(inv[kv]) || 0);
     if (st > 0) continue;
     sacadas.push({ mla, cuenta: e.cuenta, title: e.title || mla });
     if (!DRY) { await db.set('cyc/nosubir/' + mla, null); delete NOSUBIR[mla]; }
+  }
+  // Y LAS MARCAS CONTAGIADAS QUE YA NO SON HERMANAS con la regla nueva (revisión max #17): antes
+  // marcar un aroma marcaba los 51. Sólo se sacan las que llevan `hermanaDe` (las puso el contagio,
+  // no él) y cuya "madre" ya no es el mismo producto para ML. Las que él marcó a mano no se tocan.
+  if (!DRY) {
+    for (const [h, d] of Object.entries(marcadas)) {
+      if (!d || !d.hermanaDe || sacadas.some((x) => x.mla === h)) continue;
+      const a = links[d.hermanaDe], b = links[h];
+      if (!a || !b || esHermanaPrecio(a, b)) continue;
+      await db.set('cyc/nosubir/' + h, null); delete NOSUBIR[h]; delete marcadas[h];
+      sacadas.push({ mla: h, cuenta: b.cuenta, title: (b.title || h) + ' (ya no es hermana de ' + d.hermanaDe + ')' });
+      console.log(`🔓 ${h} sin la marca "liquidando" que le contagió ${d.hermanaDe}: para ML es otro producto (otro aroma/color).`);
+    }
   }
   // Y LAS HERMANAS DE LAS QUE SIGUEN MARCADAS, que quedaron sin marca antes del 24/09 (la Lupa
   // 90mm). Se contagia sola en cada vuelta; sin producto o sin cuenta no se adivina.
@@ -3645,7 +3661,7 @@ async function limpiarNoSubir(db, DRY) {
       const e = links[m] || {};
       if (!e.prodId || !e.cuenta) continue;
       for (const [h, x] of Object.entries(links)) {
-        if (h === m || marcadas[h] || !x || x.ignored || x.prodId !== e.prodId || x.cuenta !== e.cuenta) continue;
+        if (h === m || marcadas[h] || !x || x.prodId !== e.prodId || !esHermanaPrecio(e, x)) continue;
         const d = { ...(marcadas[m] || {}), hermanaDe: m };
         await db.patch('cyc/nosubir/' + h, d); NOSUBIR[h] = d; marcadas[h] = d;
         console.log(`🔒 ${h} marcada "liquidando" como su hermana ${m} (ML les iguala el precio).`);
@@ -3655,6 +3671,18 @@ async function limpiarNoSubir(db, DRY) {
   return sacadas;
 }
 
+// QUIÉN ES "HERMANA" PARA LA MARCA `liquidando` (revisión max #17, 25/09/2026, decisión suya: *"que
+// pueda hacerlas individualmente"*). Antes era "mismo producto y misma cuenta", y con eso marcar UN
+// aroma de Paulvic marcaba los 51 y ninguno se rescataba más. Ahora es sólo lo que ML trata como el
+// MISMO producto (el caso de la Lupa 90mm, donde ML les iguala el precio): mismo `upid`, o mismo
+// código de Full (`inv`), o —si no se sabe ninguno de los dos— misma ficha y MISMA variante.
+const _normVar = (v) => String(v || '').trim().toLowerCase();
+function esHermanaPrecio(a, b) {
+  if (!a || !b || b.ignored || !a.cuenta || a.cuenta !== b.cuenta) return false;
+  if (a.upid && b.upid) return a.upid === b.upid;
+  if (a.inv && b.inv) return a.inv === b.inv;
+  return !!a.prodId && a.prodId === b.prodId && _normVar(a.variant) === _normVar(b.variant);
+}
 // LA MARCA `liquidando` VA A TODAS LAS HERMANAS DE LA MISMA CUENTA (24/09/2026, decisión suya: la
 // "a"). ML le sincroniza el precio a las publicaciones del mismo producto en una cuenta (lo mostró
 // la Lupa 90mm: se bajó una y la otra quedó igual sola), así que subir la hermana sin marca subía
@@ -3667,7 +3695,7 @@ async function marcarLiquidando(db, mla, datos, sacar = false) {
   const todas = [mla];
   if (e.prodId && e.cuenta) {
     for (const [m, x] of Object.entries(links)) {
-      if (m !== mla && x && !x.ignored && x.prodId === e.prodId && x.cuenta === e.cuenta) todas.push(m);
+      if (m !== mla && x && x.prodId === e.prodId && esHermanaPrecio(e, x)) todas.push(m);
     }
   }
   // Lo que había antes, para poder DESHACER exactamente (un remate que falla no puede borrar las
