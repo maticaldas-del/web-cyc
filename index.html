@@ -2327,7 +2327,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='20.40';
+const APP_VERSION='20.41';
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
 // muestre la versión y la fecha de actualización y que tenga un desplegable predeterminado cerrado".
 // Y el mismo día: "que ponga fecha de cada modificación y haya una barrita para scrollear y que
@@ -2338,6 +2338,9 @@ const APP_VERSION='20.40';
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'20.41',f:'25/09/2026',h:'14:10',c:[
+    {n:2,t:'Lo que trajo el robot: los remates y la escalera ya suman. Cuenta la ganancia de lo vendido al 20% o más (lo de menos no), resta lo que igual se iba a vender y se cobró más barato, y suma el almacenamiento que no se pagó, sólo si era real.'},
+  ]},
   {v:'20.40',f:'25/09/2026',h:'13:55',c:[
     {n:1,t:'Este desplegable: fecha y hora de cada cambio, los últimos 10 con barrita para bajar, y cada uno marcado leve, mediano o importante.'},
   ]},
@@ -13533,7 +13536,16 @@ function renderMetAuto(){
     const medido=x.estado==='medido';
     const cuenta=(medido||x.estado==='encurso')&&x.enTotal;
     const plata=(medido||(x.estado==='encurso'&&x.total!=null))?`<b style="white-space:nowrap;color:${cuenta?col(x.total):'var(--muted)'}">${sg(x.total)}${cuenta?'':' · no suma'}</b>`:`<span style="font-size:.58rem;color:var(--muted)">—</span>`;
-    const det=medido
+    // REMATE Y ESCALERA (25/09/2026, regla suya): "sin robot" es que seguía parado. Suman las ventas
+    // al 20% o más (ganancia entera), no las de menos; lo que igual se vendía resta lo que se cobró
+    // de menos; y el almacenamiento, sólo el real (días ya pasados, desde que iba a pagar).
+    const rm=x.rem;
+    const detRem=rm?`${x.estado==='encurso'?`<span style="color:#fbbf24">${String(n(x.dias)).replace('.',',')} d de 7</span> · `:`${n(x.dias)} d · `}vendió <b style="color:var(--text)">${n(x.uD)} u.</b> desde el cambio`
+      +` · <b style="color:${col(rm.gan)}">${n(rm.uOk)} al 20% o más: ${sg(rm.gan)}</b>`
+      +(n(rm.uBajo)?` · ${n(rm.uBajo)} abajo del 20%: no suman`:'')
+      +(n(rm.uBase)?` · ${n(rm.uBase)} se vendían igual (ritmo de antes ${String(n(rm.r0)).replace('.',',')} u./mes), cobradas más baratas: ${sg(rm.base)}`:'')
+      +` · 📦 almacenamiento: ${rm.alm!=null?`<b style="color:var(--green)">${sg(rm.alm)}</b> (${String(n(rm.almUD)).replace('.',',')} unidades-día que ya no pagó)`:n(rm.almUD)?`${String(n(rm.almUD)).replace('.',',')} unidades-día evitadas · <span style="color:#fbbf24">${rm.almNota||'sin tarifa'}: no suma en pesos</span>`:`$0${rm.almNota?' ('+rm.almNota+')':''}`}`:'';
+    const det=rm?detRem:medido
       ?`midió ${n(x.dias)} d antes y después · vendió ${n(x.uA)} u. antes y ${n(x.uD)} después · por el precio ${sg(x.precio)} · volumen ${x.volSinDato?'sin dato':x.quiebre?'no cuenta (sin stock)':sg(x.volumen)}${x.motivo==='rescate'?' · <span style="color:#fbbf24">recuperar margen: no se atribuye al robot</span>':''}`
       :x.estado==='encurso'&&x.uD!=null
         ?`<span style="color:#fbbf24">en curso · ${String(n(x.dias)).replace('.',',')} d de 7</span> · desde el cambio vendió <b style="color:var(--text)">${n(x.uD)} u.</b>${n(x.uD)?` · ML te depositó ${fmt(n(x.cobrado))} · ganancia de esas ventas <b style="color:${col(x.gD)}">${sg(x.gD)}</b> · por el precio ${sg(x.precio)}`:''}${x.enTotal?' · <b style="color:var(--text)">lo del precio ya suma</b>; si vendió menos o más por el precio se mide a los 7 días':(x.motivo==='remate'||x.motivo==='escalera')?' · todavía no suma: falta decidir cómo se cuenta un remate':' · no suma'}`
@@ -13562,11 +13574,14 @@ function renderMetAuto(){
       ${caja('Por el precio · firme',pre,'lo que sí se vendió, cobrado a otro precio')}
       ${caja('Por vender más o menos',vol,'sólo con stock todo el tiempo, antes y después')}
     </div>
+    ${(()=>{const rs=med.filter(x=>x.rem);if(!rs.length)return'';const g=rs.reduce((a,x)=>a+n(x.rem.gan),0),b=rs.reduce((a,x)=>a+n(x.rem.base),0),al=rs.reduce((a,x)=>a+n(x.rem.alm),0),ud=rs.reduce((a,x)=>a+n(x.rem.almUD),0),st=rs.some(x=>n(x.rem.almUD)>0&&x.rem.alm==null);
+      return `<div style="font-size:.62rem;color:var(--muted);margin-bottom:8px;line-height:1.5">🔨 <b style="color:var(--text)">Remates y escalera (${rs.length})</b>: ventas al 20% o más <b style="color:${col(g)}">${sg(g)}</b>${b?` · lo que igual se vendía, más barato ${sg(b)}`:''} · almacenamiento que no se pagó <b style="color:${col(al)}">${sg(al)}</b>${st?` <span style="color:#fbbf24">(+${String(Math.round(ud*10)/10).replace('.',',')} unidades-día sin pasar a pesos: falta la tarifa de ML)</span>`:''}</div>`;})()}
     ${resc.length?`<div style="font-size:.62rem;color:#fbbf24;margin-bottom:8px">🛟 Aparte, sin sumar: ${resc.length} subas para recuperar margen (costo, envío, inflación) movieron ${sg(rescTot)}. Ésas las ibas a hacer igual: no son mérito del robot.</div>`:''}
     ${perdidas.length?`<div style="font-size:.6rem;color:var(--red);text-transform:uppercase;letter-spacing:.04em;margin:6px 0 2px">🔻 Los que hicieron perder plata (${perdidas.length})</div>${perdidas.map(fila).join('')}`:''}
     <details${metAutoMot!=='cuentan'?' open':''}><summary style="cursor:pointer;font-size:.66rem;color:var(--muted);margin-top:8px">${metAutoMot==='cuentan'?'Los cambios que cuentan':MET_AUTO_MOT[metAutoMot]||'Todas las decisiones de precio'} (${resto.length}) · fecha, hora, %, $</summary>${resto.map(fila).join('')||'<div style="font-size:.62rem;color:var(--muted);padding:6px 0">No hay cambios con este filtro.</div>'}</details>
     <div style="margin-top:10px;padding-top:8px;border-top:1px solid rgba(148,163,184,.16);font-size:.6rem;color:var(--muted);line-height:1.45">
       <b>Qué cuenta.</b> Sólo lo que el robot decidió mirando el mercado: 📈 subir porque había lugar abajo del competidor, 📉 bajar para ganar la caja, 🔨 remate y 🪜 escalera. <b>No cuenta</b> 🛟 recuperar margen (el costo subió, el envío salió caro, la inflación): eso lo ibas a hacer igual. Tampoco ✋ lo que hiciste a mano.
+      <b>Remates y escalera.</b> Ahí "sin robot" es que seguía parado: suma la ganancia entera de lo que se vendió al 20% o más (lo de menos no suma), resta lo que igual se iba a vender al ritmo de antes y se cobró más barato, y suma el almacenamiento que no se pagó: sólo días que ya pasaron, desde que esa mercadería iba a empezar a pagar, y sólo lo que sin el robot seguía ahí.
       <b>Cómo se cuenta.</b> "Sin robot" es que el precio se quedaba donde estaba. Cada cambio se compara con el mismo tiempo de antes (hasta 30 días), y se corta si ese producto volvió a cambiar. <b>Lo firme</b> es la diferencia de precio en las unidades que sí se vendieron, neta de lo que cobra ML. <b>Vender más o menos</b> se cuenta sólo con el stock medido hora por hora las dos ventanas enteras, y sólo para el lado que el precio puede mover.
       El mes es el del cambio de precio. Los cambios se guardan desde el 19/08/2026.
     </div>

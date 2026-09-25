@@ -21672,6 +21672,29 @@ async function main() {
       console.log('  Para apagar uno: grupos:<nombre>:off  ·  para prenderlo: grupos:<nombre>:<palabra>');
       return;
     }
+    // BILLING_PROBE=almactarifa[:<chico>[/<grande>]][:go] → LO QUE COBRA ML POR GUARDAR UNA UNIDAD UN DÍA
+    // (25/09/2026). Lo usa el supervisor para pasar a pesos el almacenamiento que un remate evitó. ML no
+    // lo da por API (medido 02/09, `probaralmacena`): lo lee él en ML → Facturación → Costos por
+    // servicio de almacenamiento y se carga acá, en pesos por unidad por día. Sin número muestra lo
+    // cargado. Sin `:go` no escribe. "Grande" = la misma lista del cupo de Full (`cupoGrandes`).
+    if (/^almactarifa(:|$)/.test(String(process.env.BILLING_PROBE || ''))) {
+      const partes = String(process.env.BILLING_PROBE).split(':').slice(1);
+      const go = partes[partes.length - 1] === 'go' && !DRY;
+      const arg = partes.filter((x) => x !== 'go')[0] || '';
+      const cfgA = (await db.get('cyc/mlconfig')) || {};
+      const hoy = cfgA.almacTarifa || {};
+      console.log(`Tarifa de almacenamiento cargada: chico ${hoy.chico ? money(hoy.chico) : 'NO'} · grande ${hoy.grande ? money(hoy.grande) : 'NO'} (por unidad por día)`);
+      if (!arg) return;
+      const [c, g] = arg.split('/').map((x) => pesosArg(x));
+      if (!(c > 0)) { console.log(`No entiendo "${arg}": va almactarifa:<pesos chico>[/<pesos grande>][:go].`); return; }
+      const nueva = { chico: c, grande: g > 0 ? g : (hoy.grande || c), ts: Date.now() };
+      console.log(`${go ? 'Guardo' : 'PRUEBA · guardaría'}: chico ${money(nueva.chico)} · grande ${money(nueva.grande)}`);
+      if (!go) return;
+      await db.set('cyc/mlconfig/almacTarifa', nueva);
+      const rel = (await db.get('cyc/mlconfig/almacTarifa')) || {};
+      console.log(rel.chico === nueva.chico && rel.grande === nueva.grande ? 'Releído ✓' : '⚠️ releído distinto: ' + JSON.stringify(rel));
+      return;
+    }
     // BILLING_PROBE=supervisor[:go] → EL SUPERVISOR DE PRECIOS: ¿EL CAMBIO FUE BUENO O NO? (23/09/2026)
     //
     // Pedido suyo: *"quiero que haya un supervisor. si se modifica un producto quiero que se evalúe
@@ -21782,6 +21805,94 @@ async function main() {
         return vs.length ? Math.round(vs[0].tot / vs[0].q) : null;
       };
 
+      // ── CÓMO SE CUENTA UN REMATE O UN ESCALÓN DE LA ESCALERA (25/09/2026) ─────────
+      // Regla suya, textual: *"si se vendió al 20% o más agregar esa ganancia, si fue a menos no. y
+      // agregar el almacenamiento (si es real, porque si quedan 30 días para que pague puede que se
+      // hubiera vendido en ese plazo, excepto que haya sobrestock entonces calcula)"*.
+      // "Sin robot" en un remate NO es vender al precio viejo: es que el producto seguía parado.
+      //  · LAS VENTAS: cada unidad vendida después del cambio que no se iba a vender igual (lo que ya
+      //    vendía antes, al ritmo de los 60 días previos, se habría vendido igual y ahí lo único que
+      //    hizo el robot fue cobrarla más barata: eso RESTA). De las demás, la que salió al 20% o más
+      //    suma su ganancia entera (neto − mercadería − IIBB y monotributo); la de menos, nada.
+      //  · EL ALMACENAMIENTO, sólo el REAL: se cuenta día por día, sólo los días que YA pasaron, sólo
+      //    desde que esa mercadería habría empezado a pagar (60 días adentro de Full, `stockhist`), y
+      //    sólo las unidades que sin el robot SEGUÍAN ahí ese día — el stock de antes se descuenta al
+      //    ritmo con que vendía, así que si se iba a vender antes de empezar a pagar, da cero (que es
+      //    su caso de "quedan 30 días"). Si hay sobrestock, sale solo. En pesos hace falta lo que
+      //    cobra ML por unidad y por día (`cyc/mlconfig/almacTarifa`, `{chico, grande}`); sin eso se
+      //    muestran las unidades-día y NO se inventa un precio.
+      const REM_PISO = 20, ALM_DIAS = 60;
+      let cfgSup = {}, monoSup = 0, histSup = {};
+      try { cfgSup = (await db.get('cyc/mlconfig')) || {}; } catch { cfgSup = {}; }
+      try { monoSup = parseFloat(((await db.get('cyc/monotributo')) || {}).pct) || 0; } catch { monoSup = 0; }
+      try { histSup = (await db.get('cyc/stockhist')) || {}; } catch { histSup = null; }
+      const tarifaAlm = cfgSup.almacTarifa || {};
+      const palGS = (Array.isArray(cfgSup.cupoGrandes) ? cfgSup.cupoGrandes
+        : (typeof cfgSup.cupoGrandes === 'string' ? cfgSup.cupoGrandes.split(',') : null)) || ['tendedero', 'tender'];
+      const esGrandeS = (p) => p && (p.grandeFull === true || (p.grandeFull !== false && palGS.some((w) => w && norm(p.name || '').includes(norm(String(w).trim())))));
+      // Ventas por producto×cuenta (todas sus publicaciones): para el stock de antes y su ritmo.
+      const porClave = {};
+      for (const [mla, arr] of Object.entries(porMla)) {
+        const l = links[mla] || {}; if (!l.prodId || !l.cuenta) continue;
+        const k = l.prodId + '__' + sidS(l.cuenta);
+        (porClave[k] = porClave[k] || []).push(...arr);
+      }
+      const cuentaRemate = (ev, costo, finT) => {
+        const l = links[ev.mla] || {}, cuenta = l.cuenta || '', p = pIdx[l.prodId] || {};
+        const env = Number(p.netoCalcEnvio) > 0 ? Number(p.netoCalcEnvio) : (Number(p.gestFull) || 0);
+        const imp = (mlExtraPct(cuenta) + monoSup) / 100;
+        const vs = porMla[ev.mla] || [];
+        const r0 = vs.filter((x) => x.ts < ev.ts && x.ts >= ev.ts - 60 * 864e5).reduce((a, x) => a + x.q, 0) / 60;
+        const dv = vs.filter((x) => x.ts > ev.ts + 60e3 && x.ts <= finT).sort((a, b) => a.ts - b.ts);
+        const L = (finT - ev.ts) / 864e5;
+        let baseRest = r0 * L, gan = 0, base = 0, uOk = 0, uBajo = 0, uBase = 0;
+        const extras = [];
+        for (const x of dv) {
+          if (!(x.tot > 0) || !(x.neto > 0)) continue;
+          const b = Math.min(x.q, Math.max(0, baseRest)); baseRest -= b;
+          const e = x.q - b;
+          if (b > 0) { base += (x.tot / x.q - ev.de) * (x.neto / x.tot) * b; uBase += b; }
+          if (e > 0) {
+            const g = x.neto - costo * x.q - x.tot * imp;
+            const div = costo * x.q + x.tot * imp + env * x.q;
+            const pct = div > 0 ? g / div * 100 : null;
+            if (pct != null && Math.round(pct) >= REM_PISO) { gan += g / x.q * e; uOk += e; } else uBajo += e;
+            extras.push({ ts: x.ts, u: e });
+          }
+        }
+        // El almacenamiento.
+        let almUD = 0, alm = null, almNota = '';
+        const key = l.prodId && cuenta ? l.prodId + '__' + sidS(cuenta) : null;
+        const h = histSup && key ? histSup[key] : null;
+        const desde = h ? (Number(h.desde) > 0 ? Number(h.desde) : (Number(h.desdePrev) > 0 ? Number(h.desdePrev) : null)) : null;
+        const ventC = porClave[key] || [];
+        const S0 = Number(ev.st0) >= 0 && ev.st0 != null ? Number(ev.st0)
+          : (() => { const s = stockDe(ev.mla); return s == null ? null : s + ventC.filter((x) => x.ts > ev.ts).reduce((a, x) => a + x.q, 0); })();
+        const rC = ventC.filter((x) => x.ts < ev.ts && x.ts >= ev.ts - 60 * 864e5).reduce((a, x) => a + x.q, 0) / 60;
+        if (histSup == null) almNota = 'no se pudo leer desde cuándo está en Full';
+        else if (!extras.length) almNota = 'no vendió nada que no se vendiera igual';
+        else if (!desde) almNota = 'sin fecha de entrada a Full';
+        else if (desde > ev.ts) almNota = 'entró mercadería después del cambio: no se puede separar';
+        else if (!(S0 > 0)) almNota = 'sin el stock del día del cambio';
+        else {
+          const pagaDesde = desde + ALM_DIAS * 864e5;
+          for (let d = ev.ts + 864e5; d <= ahora; d += 864e5) {
+            if (d < pagaDesde) continue;
+            const idos = extras.filter((x) => x.ts <= d).reduce((a, x) => a + x.u, 0);
+            const sinRobot = Math.max(0, S0 - rC * (d - ev.ts) / 864e5);
+            almUD += Math.min(idos, sinRobot);
+          }
+          almUD = Math.round(almUD * 10) / 10;
+          const t = Number(esGrandeS(p) ? tarifaAlm.grande : tarifaAlm.chico);
+          if (!almUD) almNota = pagaDesde > ahora ? `todavía no habría empezado a pagar (arranca el ${new Date(pagaDesde - 3 * 3600e3).toISOString().slice(8, 10)}/${new Date(pagaDesde - 3 * 3600e3).toISOString().slice(5, 7)})` : 'sin el robot se habría vendido igual antes de pagar';
+          else if (t > 0) alm = Math.round(almUD * t);
+          else almNota = 'falta la tarifa de almacenamiento de ML';
+        }
+        const r1 = (n) => Math.round(n * 10) / 10;
+        return { gan: Math.round(gan), base: Math.round(base), alm, almUD, almNota, uOk: r1(uOk), uBajo: r1(uBajo), uBase: r1(uBase),
+          r0: Math.round(r0 * 300) / 10, total: Math.round(gan + base + (alm || 0)) };
+      };
+
       // ── EL MOTIVO DE CADA CAMBIO (25/09/2026) ────────────────────────────────────
       // Regla suya: *"obviamente siempre va a haber aumentos y hubo por inflación. Eso no podés
       // adjudicártelo como ganancia tuya. Lo tuyo tiene que ser 100% por un aumento o baja puntual
@@ -21822,7 +21933,10 @@ async function main() {
       const agregar = (ev) => {
         const id = idDe(ev.mla, ev.ts);
         if (eventos[id] || nuevos[id]) return false;
-        nuevos[id] = ev; return true;
+        // El stock del producto en esa cuenta el día del cambio: lo necesita la cuenta del
+        // almacenamiento de los remates (sin esto se reconstruye con el de hoy + lo vendido).
+        const st0 = stockDe(ev.mla);
+        nuevos[id] = st0 != null ? { ...ev, st0 } : ev; return true;
       };
       for (const [mla, e] of Object.entries(priced)) {
         if (!/^MLA/i.test(mla) || !e || !e.ts || ahora - e.ts > MAX_DIAS * 864e5) continue;
@@ -21953,6 +22067,17 @@ async function main() {
         const sig = (porMlaEv[ev.mla] || []).filter((o) => o !== ev && o.ts > ev.ts + 60e3).sort((a, b) => a.ts - b.ts)[0];
         const finT = Math.min(ahora, ev.ts + 30 * 864e5, sig ? sig.ts : Infinity);
         const L = (finT - ev.ts) / 864e5;
+        if (motivo === 'remate' || motivo === 'escalera') {
+          const rm = cuentaRemate(ev, costo, finT);
+          const dv = (porMla[ev.mla] || []).filter((x) => x.ts > ev.ts + 60e3 && x.ts <= finT);
+          if (L < 7) enCurso++;
+          const rg = { ...base(id, ev, motivo), estado: L < 7 ? 'encurso' : 'medido', dias: Math.round(L * 10) / 10,
+            uD: dv.reduce((a, x) => a + x.q, 0), cobrado: Math.round(dv.reduce((a, x) => a + x.neto, 0)),
+            gD: Math.round(dv.reduce((a, x) => a + x.neto - costo * x.q, 0)),
+            precio: rm.base, volumen: 0, total: rm.total, enTotal: true, rem: rm };
+          registros.push(rg); atrib.push(rg);
+          continue;
+        }
         if (L < 7) {
           // EN CURSO NO QUIERE DECIR "NADA" (25/09/2026, él: "¿por qué no aparece nada? se vendieron
           // varias cosas por cosas que tocó el bot"). Todavía no se compara contra el antes (hacen falta
@@ -22053,6 +22178,9 @@ async function main() {
         // v2: sólo decisiones del robot mirando el mercado (regla del 25/09). Los rescates van aparte.
         ver: 2,
         rescates: { n: resc.length, total: Math.round(resc.reduce((s2, x) => s2 + x.total, 0)) },
+        remates: { n: atrib.filter((x) => x.rem).length, gan: Math.round(sumaA((x) => x.rem ? x.rem.gan : 0)), base: Math.round(sumaA((x) => x.rem ? x.rem.base : 0)),
+          alm: Math.round(sumaA((x) => x.rem ? (x.rem.alm || 0) : 0)), almUD: Math.round(sumaA((x) => x.rem ? x.rem.almUD : 0) * 10) / 10,
+          sinTarifa: atrib.some((x) => x.rem && x.rem.almUD > 0 && x.rem.alm == null) },
         todos: registros.sort((a, b) => b.ts - a.ts),
         desde: atrib.length ? Math.min(...atrib.map((x) => x.ts)) : null,
         // TODOS los que hicieron perder van siempre, sin tope: el tope de 60 se aplica sólo a los que
@@ -22100,6 +22228,8 @@ async function main() {
       console.log(`Ganó ${$s(resumen.gano)} en ${resumen.ganaron} cambios · PERDIÓ ${$s(-resumen.perdio)} en ${resumen.perdieron} cambios (primero van los que perdieron)`);
       console.log(`${resumen.ganaron} dejaron más · ${resumen.perdieron} dejaron menos · ${resumen.quiebres} con el volumen sin contar por quiebre de stock`);
       console.log(`No cuentan (🛟 recuperar margen por costo/inflación): ${resumen.rescates.n} cambios · ${$s(resumen.rescates.total)}`);
+      console.log(`Remates y escalera: ${resumen.remates.n} · ventas al ${REM_PISO}%+ ${$s(resumen.remates.gan)} · lo que igual se vendía, más barato ${$s(resumen.remates.base)} · almacenamiento evitado ${resumen.remates.almUD} unidades-día${resumen.remates.alm ? ' = ' + $s(resumen.remates.alm) : ''}${resumen.remates.sinTarifa ? ' (falta la tarifa: no suma en pesos)' : ''}`);
+      for (const x of atrib.filter((y) => y.rem)) console.log(`  🔨 ${x.nom} (${x.cuenta}) ${$s(x.de)}→${$s(x.a)} · ${x.dias} d · al ${REM_PISO}%+ ${x.rem.uOk} u. ${$s(x.rem.gan)} · abajo ${x.rem.uBajo} u. · iba igual ${x.rem.uBase} u. ${$s(x.rem.base)} · almac. ${x.rem.almUD} u-día${x.rem.alm != null ? ' ' + $s(x.rem.alm) : ''}${x.rem.almNota ? ' (' + x.rem.almNota + ')' : ''}`);
       { const cm = {}; for (const x of registros) cm[x.motivo] = (cm[x.motivo] || 0) + 1; console.log(`Motivos: ${Object.entries(cm).map(([k, n]) => k + ' ' + n).join(' · ')}`); }
       for (const x of resumen.items.slice(0, 15)) console.log(`  ${x.total >= 0 ? '+' : ''}${$s(x.total)} · ${x.nom} (${x.cuenta}) ${$s(x.de)}→${$s(x.a)} · ${x.dias} d · ${x.uA}→${x.uD} u. · precio ${$s(x.precio)} · volumen ${$s(x.volumen)}${x.quiebre ? ' · sin stock' : ''}`);
       console.log('');

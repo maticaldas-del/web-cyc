@@ -227,8 +227,16 @@ scratchpad `rev2/<frente>/REPORT.md`, se pierden con el contenedor). Van de a un
  · **v20.39: lo del PRECIO suma desde la primera venta** (él, con las Cartas Casino: *"se vendía a 1000
    ayer y hoy a 1100, se vendían 10 y hoy 10: ganaste $1.000, ¿no?"* — sí, neto de ML). El volumen (vendió
    menos o más por el precio) espera 7 días y entonces puede aparecer como "hizo perder". Sólo subir/bajar:
-   **cómo se cuenta un REMATE está pendiente de él**: (a) la ganancia de lo vendido después (sin robot
-   seguía parado) o (a)+(b) además el almacenamiento evitado, estimado y aparte (ML no lo da por API).
+   **REMATE Y ESCALERA, DECIDIDO POR ÉL (v20.41):** *"si se vendió al 20% o más agregar esa ganancia, si
+   fue a menos no. y agregar el almacenamiento (si es real, porque si quedan 30 días para que pague puede
+   que se hubiera vendido en ese plazo, excepto que haya sobrestock entonces calcula)"*. `cuentaRemate`
+   en el supervisor: lo que ya vendía (ritmo de los 60 días previos) se vendía igual → RESTA lo cobrado
+   de menos; lo demás al 20%+ suma la ganancia ENTERA (neto − mercadería − IIBB/mono), abajo no suma.
+   Almacenamiento: día por día, sólo días ya pasados, sólo desde que iba a pagar (`stockhist` + 60 d) y
+   sólo lo que sin robot seguía ahí (stock del día del cambio `st0` menos el ritmo de antes del producto
+   en esa cuenta). En pesos con `cyc/mlconfig/almacTarifa` `{chico, grande}` (**comando
+   `almactarifa:<chico>/<grande>:go`, FALTA QUE ÉL PASE LA TARIFA**); sin eso muestra unidades-día.
+   Si entró mercadería después del cambio, no se separa y no cuenta.
  · Cuotas medidas: 11 Premium (Adriana: Dalí 21,6%, Ferrari Scuderia 13,1% · Matías: Watch 4 12,9%, Galaxy
    A07 19,2%, Watch S5, Buds Core, A06, SSD 12,3% · 3 sin ventas al 21,6% estimado). Ayelen y Luciana no se
    pudieron leer esa vez (se reintenta cada noche).
