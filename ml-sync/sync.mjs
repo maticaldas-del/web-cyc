@@ -1256,7 +1256,8 @@ async function activarPausadasFull(db, links, tokensRun, DRY, products, piso) {
   // que la regla queda dura y se puede chequear: `activadas + noLlegan === conteo.conStock`.
   // Lo que sigue saliendo callado es lo que no tiene nada adentro (activa, no es Full, sin
   // stock), que es como tiene que ser: ahí no hay nada esperando.
-  const conteo = { enCuenta: 0, miradas: 0, activas: 0, noFull: 0, sinStock: 0, conStock: 0 };
+  const conteo = { enCuenta: 0, miradas: 0, activas: 0, noFull: 0, sinStock: 0, conStock: 0, sinLeer: 0, lotesFallidos: 0 };
+  const sinLeerStock = [];   // pausadas de Full cuyo stock ML no contestó (revisión max #24)
   for (const [label, tok] of Object.entries(tokensRun)) {
     const feeAt = async (site, price, lt, cat) => {
       const k = site + '|' + lt + '|' + cat + '|' + Math.round(price);
@@ -1283,7 +1284,7 @@ async function activarPausadasFull(db, links, tokensRun, DRY, products, piso) {
     for (let k = 0; k < ids.length; k += 20) {
       let arr;
       try { arr = await mlGet('/items?ids=' + ids.slice(k, k + 20).join(',') + '&attributes=id,status,sub_status,price,variations,title,listing_type_id,category_id,site_id,shipping,inventory_id', tok); }
-      catch { continue; }
+      catch { conteo.lotesFallidos++; continue; }
       for (const row of (arr || [])) {
         const b = row.body || {}; const mla = b.id;
         if (!mla || !links[mla] || b.error || typeof b.status === 'number') continue;
@@ -1294,11 +1295,13 @@ async function activarPausadasFull(db, links, tokensRun, DRY, products, piso) {
         if (((b.shipping && b.shipping.logistic_type) || '') !== 'fulfillment') { conteo.noFull++; continue; }
         const vars = Array.isArray(b.variations) ? b.variations : [];
         const invIds = vars.length ? vars.map((v) => v.inventory_id).filter(Boolean) : [b.inventory_id].filter(Boolean);
-        let stockFull = 0;
+        let stockFull = 0, invFallo = 0;
         for (const inv of invIds) {
           try { stockFull += Number((await mlGet('/inventories/' + inv + '/stock/fulfillment', tok))?.available_quantity) || 0; }
-          catch { /* si no contesta, cuenta 0 */ }
+          catch { invFallo++; }
         }
+        // "ML no contestó el stock" NO es "sin stock" (revisión max #24): se cuenta y se nombra aparte.
+        if (stockFull <= 0 && invFallo) { conteo.sinLeer++; sinLeerStock.push(`${(links[mla].title || b.title || mla).slice(0, 40)} · ${label}`); continue; }
         if (stockFull <= 0) { conteo.sinStock++; continue; }
         conteo.conStock++;
         // ── DE ACÁ PARA ABAJO: PAUSADA, EN FULL Y CON MERCADERÍA ADENTRO ──────────────────
@@ -1473,6 +1476,7 @@ async function activarPausadasFull(db, links, tokensRun, DRY, products, piso) {
   console.log(`   De dónde sale ese número: ${conteo.enCuenta} publicación(es) de las 4 cuentas · ${conteo.miradas} contestó ML`
     + ` → ${conteo.activas} ya están activas · ${conteo.noFull} no son de Full · ${conteo.sinStock} están pausadas pero sin stock adentro`
     + ` → quedaron ${conteo.conStock} PAUSADAS CON MERCADERÍA ADENTRO DE FULL.`);
+  if (conteo.sinLeer || conteo.lotesFallidos) console.log(`   ⚠️ Sin leer esta vuelta: ${conteo.sinLeer} pausada(s) de Full cuyo stock ML no contestó${sinLeerStock.length ? ' (' + sinLeerStock.slice(0, 10).join(' · ') + ')' : ''}${conteo.lotesFallidos ? ` · ${conteo.lotesFallidos} tanda(s) de 20 publicaciones que ML no devolvió` : ''}. Se miran en la vuelta siguiente.`);
   // Chequeo duro: toda pausada con stock termina activada o avisada. Si esto no cierra, hay un
   // `continue` nuevo saliendo callado — que es exactamente el bug del 16/09 y el de los P47.
   const cierra = activadas.length + noLlegan.length;
@@ -1644,12 +1648,14 @@ async function rescatarAlVender(db, o) {
   const hoyTs = Date.now();
   let autoprecio = {};
   try { autoprecio = (await db.get('cyc/autoprecio')) || {}; } catch { autoprecio = null; }
+  // Sólo frenan las SUBAS que salieron 🔴 (revisión max #26): una baja que salió mal no es motivo para no
+  // rescatar, y el aviso decía "la última suba le salió mal" de algo que había sido una baja.
   const malosSup = new Set(); let supOk = true;
   try {
     const evS = (await db.get('cyc/supervisor/eventos')) || {};
     for (const ev of Object.values(evS)) {
       if (!ev || !ev.mla || hoyTs - (ev.ts || 0) > 60 * 864e5) continue;
-      if (Object.values(ev.ev || {}).some((r) => r && r.v === 'malo')) malosSup.add(ev.mla);
+      if (!(Number(ev.a) > 0 && Number(ev.de) > 0 && Number(ev.a) < Number(ev.de)) && Object.values(ev.ev || {}).some((r) => r && r.v === 'malo')) malosSup.add(ev.mla);
     }
   } catch { supOk = false; }
   const porMla = new Map();
@@ -1964,7 +1970,7 @@ async function subirPorCosto(db, o) {
     const evS = (await db.get('cyc/supervisor/eventos')) || {};
     for (const ev of Object.values(evS)) {
       if (!ev || !ev.mla || Date.now() - (ev.ts || 0) > 60 * 864e5) continue;
-      if (Object.values(ev.ev || {}).some((r) => r && r.v === 'malo')) malos.add(ev.mla);
+      if (!(Number(ev.a) > 0 && Number(ev.de) > 0 && Number(ev.a) < Number(ev.de)) && Object.values(ev.ev || {}).some((r) => r && r.v === 'malo')) malos.add(ev.mla);
     }
   } catch { log('   no pude leer el supervisor: no toco nada esta vuelta'); return { hechos: [], avisos: [] }; }
   const { subir, yaOk, frenados } = await calcSubirPorMargen(db, {
@@ -5570,9 +5576,18 @@ async function main() {
       ayerAR.setDate(ayerAR.getDate() - 1);
       today = `${ayerAR.getFullYear()}_${String(ayerAR.getMonth() + 1).padStart(2, '0')}_${String(ayerAR.getDate()).padStart(2, '0')}`;
     }
+    // Si el del día ya salió pero el del MES no (día 1 y falló Telegram), se saltea sólo el diario y
+    // se reintenta el mensual (revisión max #27): antes el "ya mandé" del día cortaba los dos.
+    let soloMes = false;
     if (!forzado) {
       const ya = await db.get('mlapi/telegram/lastDaily');
-      if (ya === today) { console.log(`Resumen de ${today} ya enviado, no lo repito.`); return; }
+      if (ya === today) {
+        const [yy, mm, dd] = today.split('_');
+        const esUlt = new Date(Number(yy), Number(mm), 0).getDate() === Number(dd);
+        const yaM = esUlt ? await db.get('mlapi/telegram/lastMensual') : null;
+        if (!esUlt || yaM === `${yy}_${mm}`) { console.log(`Resumen de ${today} ya enviado, no lo repito.`); return; }
+        soloMes = true; console.log(`Resumen de ${today} ya enviado; falta el del mes: lo reintento.`);
+      }
     }
     const day = vp[today] || {};
     // Los impuestos van al COSTO, igual que en la web. Sin esto el resumen inflaba la ganancia:
@@ -5655,15 +5670,17 @@ async function main() {
     // N6 de la segunda vuelta: el ciclo y ml-daily lo intentan en la misma media hora. Antes los dos
     // podían pasar el "ya enviado" a la vez y salían dos resúmenes. Ahora se anota "lo estoy
     // mandando" justo antes; el otro lo ve y no lo repite. Si el envío falla, se borra la marca.
-    if (!forzado && !DRY) {
+    if (!forzado && !DRY && !soloMes) {
       const env = await db.get('mlapi/telegram/dailyEnvio');
       if (env && env.dia === today && Date.now() - Number(env.ts || 0) < 10 * 60e3) { console.log(`Resumen de ${today}: lo está mandando otra corrida, no lo repito.`); return; }
       await db.set('mlapi/telegram/dailyEnvio', { dia: today, ts: Date.now() });
     }
-    const ok = await sendTelegram(msg + msgProm + avisoViejo, 'resumen');
-    if (!ok && !forzado && !DRY) await db.set('mlapi/telegram/dailyEnvio', null);
-    if (ok && !forzado && !DRY) await db.set('mlapi/telegram/lastDaily', today);
-    console.log(ok ? `✓ Resumen de ${today} enviado.` : '✗ No se pudo enviar el resumen (revisá Telegram).');
+    const ok = soloMes ? true : await sendTelegram(msg + msgProm + avisoViejo, 'resumen');
+    if (!soloMes) {
+      if (!ok && !forzado && !DRY) await db.set('mlapi/telegram/dailyEnvio', null);
+      if (ok && !forzado && !DRY) await db.set('mlapi/telegram/lastDaily', today);
+      console.log(ok ? `✓ Resumen de ${today} enviado.` : '✗ No se pudo enviar el resumen (revisá Telegram).');
+    }
 
     // ── RESUMEN DEL MES, los días 1 ──────────────────────────────────────────
     // Si el día que se acaba de resumir es el ÚLTIMO del mes (o sea: hoy es 1), sale además el
@@ -7001,6 +7018,7 @@ async function main() {
         catch { AUTO_ON = false; console.log('   ⚠️ no pude anotar la marca del día: esta noche no toco precios'); }
       }
       const AUTO_MAX = 10;
+      const diferidasAuto = new Set();   // quedaron afuera SÓLO por el tope: no se anotan como avisadas (#25)
       const AUTO_MIN_U = 4, AUTO_MAX_DSIN = 7;
       const hechosAuto = [], fallidosAuto = [];
       let autoprecio = {};
@@ -7019,7 +7037,7 @@ async function main() {
         const evS = (await db.get('cyc/supervisor/eventos')) || {};
         for (const ev of Object.values(evS)) {
           if (!ev || !ev.mla || hoyTs - (ev.ts || 0) > 60 * 864e5) continue;
-          if (Object.values(ev.ev || {}).some((r) => r && r.v === 'malo')) malosSup.add(ev.mla);
+          if (!(Number(ev.a) > 0 && Number(ev.de) > 0 && Number(ev.a) < Number(ev.de)) && Object.values(ev.ev || {}).some((r) => r && r.v === 'malo')) malosSup.add(ev.mla);
         }
       } catch { supLeido = false; }
       const autoSube = nuevasSub.filter((f) => supLeido && f.u >= AUTO_MIN_U && f.diasSin != null && f.diasSin <= AUTO_MAX_DSIN
@@ -7314,10 +7332,14 @@ async function main() {
           return { tipo: 'rescate', f: { mla: x.mla, nom: x.nom, cuenta: x.label, precio: x.de, pct: x.pct, vars: x.vars, meta: x.a }, a: Math.min(x.a, tope), corto: x.a > tope };
         });
         if (rescates.length > RESCATE_MAX) console.log(`   (quedan ${rescates.length - RESCATE_MAX} rescates para mañana: tope de ${RESCATE_MAX} por noche)`);
-        const tareas = [...tareasR, ...[
+        const _sb = [
           ...autoSube.map((f) => ({ tipo: 'sube', f, a: f.tope })),
           ...autoBaja.map((f) => ({ tipo: 'baja', f, a: Math.floor(f.ptw / 10) * 10 })),
-        ].slice(0, AUTO_MAX), ...autoRemate.slice(0, REMATE_AUTO_MAX).map((f) => ({ tipo: 'remate', f, a: Math.floor(f.ptw / 10) * 10, piso: pisoEsc(f) })), ...escTareas];
+        ];
+        // Lo que el tope deja afuera NO se anota como avisado (revisión max #25): si se anotaba, la
+        // espera de 7-14 días de "ya avisado" lo dejaba para dentro de dos semanas y no "para mañana".
+        for (const t of _sb.slice(AUTO_MAX)) diferidasAuto.add(t.f.mla);
+        const tareas = [...tareasR, ..._sb.slice(0, AUTO_MAX), ...autoRemate.slice(0, REMATE_AUTO_MAX).map((f) => ({ tipo: 'remate', f, a: Math.floor(f.ptw / 10) * 10, piso: pisoEsc(f) })), ...escTareas];
         for (const t of tareas) {
           const f = t.f, tk = tokA[f.cuenta];
           const renglon = `${f.nom} (${f.cuenta}) ${money(f.precio)} → ${money(t.a)}`;
@@ -7746,6 +7768,7 @@ async function main() {
         const ok = await sendAlerta(msg);
         // Se anota SÓLO si el mensaje salió. Si falló el envío y se anotara igual, esa
         // publicación quedaría callada una semana por un aviso que nunca llegó.
+        for (const m of diferidasAuto) { delete paraAnotar[m]; delete paraAnotar['c_' + m]; delete paraAnotar['o_' + m]; }
         if (ok && Object.keys(paraAnotar).length) {
           try { await db.patch('cyc/avisados', paraAnotar); } catch { /* */ }
         }
@@ -18160,6 +18183,11 @@ async function main() {
       // de la cuenta, que es el error anotado nueve veces en este archivo — y acá se notaría feo:
       // los días sumarían distinto del total que está al lado.
       const agenda = {};   // 'AAAA-MM-DD' → pesos que se liberan ese día (las cuatro cuentas)
+      // HASTA QUÉ DÍA LLEGA EL REPORTE (revisión max #20). Si una noche MP no generó el nuevo, se
+      // usa el último listo, que puede tener días: lo vendido después no está ni en "a liquidar"
+      // ni en el disponible. Se guarda el fin MÁS VIEJO de las cuatro cuentas y la pantalla lo pinta
+      // en ámbar; antes sólo quedaba en el log.
+      let repHasta = '';
       let sinDiaTot = 0;   // pesos por cobrar que ML todavía no le puso día (van al total, no a un día)
       const res = {}; let totalLiq = 0, cuentasOk = 0, cuentasMal = 0;
       for (const label of labels) {
@@ -18182,6 +18210,7 @@ async function main() {
           arch = u.file_name;
           rango = `${String(u.begin_date || '').slice(0, 10)} → ${String(u.end_date || '').slice(0, 10)}`;
           creado = String(u.date_created || '').slice(0, 10);
+          { const fin = String(u.end_date || '').slice(0, 10); if (/^\d{4}-\d{2}-\d{2}$/.test(fin) && (!repHasta || fin < repHasta)) repHasta = fin; }
           const diasViejo = creado ? Math.round((hoy - new Date(creado).getTime()) / 864e5) : null;
           console.log(`   reporte: ${rango} · pedido el ${creado || '?'}${diasViejo != null && diasViejo > 2 ? ` ⚠️ tiene ${diasViejo} días` : ''}`);
         } catch (e) { console.log(`   ❌ ${String(e.message || e).slice(0, 90)}`); cuentasMal++; continue; }
@@ -18336,6 +18365,7 @@ async function main() {
           // confusión de dos números distintos pegados uno al lado del otro.
           const enUSD = Math.round(totalLiq / tc);
           await db.set('cyc/finanzas/mp_liq', enUSD);
+          if (repHasta) { try { await db.patch('cyc/finanzas/_ts', { liq_hasta: repHasta }); } catch { /* */ } }
           const v = parseFloat(await db.get('cyc/finanzas/mp_liq'));
           console.log(`   "A liquidar en ML" del Arqueo: ${Math.round(v) === enUSD ? '✅ actualizado y releído · en DÓLARES' : '❌ no quedó'}`);
           // LA AGENDA, EN DÓLARES Y CON LOS MISMOS FRENOS. Va bajo el mismo `puedePisar` que el
@@ -18345,7 +18375,7 @@ async function main() {
           const dias = Object.keys(agenda).sort();
           const porDiaUSD = {};
           for (const d of dias) porDiaUSD[d] = Math.round(agenda[d] / tc);
-          await db.set('cyc/finanzas/agenda', { dias: porDiaUSD, sinDia: Math.round(sinDiaTot / tc), _ts: Date.now(), _moneda: 'usd', _hasta: dias[dias.length - 1] || '' });
+          await db.set('cyc/finanzas/agenda', { dias: porDiaUSD, sinDia: Math.round(sinDiaTot / tc), _ts: Date.now(), _moneda: 'usd', _hasta: dias[dias.length - 1] || '', _repHasta: repHasta || '' });
           const rel = (await db.get('cyc/finanzas/agenda')) || {};
           const nrel = Object.keys(rel.dias || {}).length;
           console.log(`   agenda de liberaciones: ${nrel} día(s) guardado(s) y releído(s) ${nrel === dias.length ? '✅' : '❌'}`);
@@ -18375,6 +18405,26 @@ async function main() {
           } catch { console.log(`   reporte de mañana · ${label}: ❌ no pude renovar el token`); }
         }
         console.log(`   reporte para la próxima vuelta: ${ped} de ${labels.length} pedidos`);
+        // AVISO SI SE QUEDA VIEJO (revisión max #20). Dos cosas, una vez por día cada una:
+        //  · el reporte usado termina hace más de 2 días (lo vendido después no se ve);
+        //  · el pedido del reporte nuevo falló 2 noches seguidas (mañana va a pasar lo mismo).
+        // Se anota sólo si el mensaje salió, como todos los avisos.
+        try {
+          const mem = (await db.get('cyc/saldoml/_alerta')) || {};
+          const hoyTxt = new Date(Date.now() - 3 * 3600e3).toISOString().slice(0, 10);
+          const fallos = ped < labels.length ? (Number(mem.pedFallos) || 0) + 1 : 0;
+          const diasRep = repHasta ? Math.floor((Date.parse(hoyTxt) - Date.parse(repHasta)) / 864e5) : null;
+          const msgs = [];
+          if (diasRep != null && diasRep > 2) msgs.push(`⚠️ "A liquidar en ML" sale de un reporte de Mercado Pago que llega sólo hasta el ${repHasta.slice(8, 10)}/${repHasta.slice(5, 7)} (${diasRep} días). Lo vendido después todavía no está en el Arqueo.`);
+          if (fallos >= 2) msgs.push(`⚠️ Mercado Pago no aceptó el pedido del reporte nuevo ${fallos} noches seguidas (${ped} de ${labels.length} cuentas). Si sigue así, "A liquidar en ML" se va a quedar viejo.`);
+          const upd = { pedFallos: fallos };
+          if (msgs.length && mem.dia !== hoyTxt) {
+            const ok = await sendAlerta(msgs.join('\n\n'));
+            if (ok) upd.dia = hoyTxt;
+            console.log(`   aviso de reporte viejo: ${ok ? 'mandado' : '❌ no salió'}`);
+          }
+          await db.patch('cyc/saldoml/_alerta', upd);
+        } catch (e) { console.log('   aviso de reporte viejo: ❌ ' + String(e.message || e).slice(0, 80)); }
       }
       console.log('\n   OJO: esto es lo que FALTA COBRAR, no el disponible. El disponible necesita un');
       console.log('   punto de partida que el reporte no da, así que ése se sigue cargando a mano.');
@@ -19591,7 +19641,7 @@ async function main() {
         const evS = (await db.get('cyc/supervisor/eventos')) || {};
         for (const ev of Object.values(evS)) {
           if (!ev || !ev.mla || Date.now() - (ev.ts || 0) > 60 * 864e5) continue;
-          if (Object.values(ev.ev || {}).some((r) => r && r.v === 'malo')) malosSupM.add(ev.mla);
+          if (!(Number(ev.a) > 0 && Number(ev.de) > 0 && Number(ev.a) < Number(ev.de)) && Object.values(ev.ev || {}).some((r) => r && r.v === 'malo')) malosSupM.add(ev.mla);
         }
         apM = (await db.get('cyc/autoprecio')) || {};
       } catch { console.log('❌ No pude leer el supervisor o la memoria del robot: no subo nada.'); return; }

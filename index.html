@@ -2329,7 +2329,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='20.42';
+const APP_VERSION='20.43';
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
 // muestre la versión y la fecha de actualización y que tenga un desplegable predeterminado cerrado".
 // Y el mismo día: "que ponga fecha de cada modificación y haya una barrita para scrollear y que
@@ -2340,6 +2340,9 @@ const APP_VERSION='20.42';
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'20.43',f:'25/09/2026',h:'14:50',c:[
+    {n:3,t:'Arqueo: "A liquidar en ML" y "Se libera de ML" dicen hasta qué día llega el reporte de Mercado Pago, y se ponen en ámbar si tiene más de 2 días (lo vendido después todavía no está adentro). Si pasa, también llega un aviso por Telegram.'},
+  ]},
   {v:'20.42',f:'25/09/2026',h:'14:35',c:[
     {n:1,t:'Inicio: aviso de la revisión del panel por etapas (una por semana). Dice qué etapa toca, con qué esfuerzo pedirla y tiene el botón "la hice".'},
   ]},
@@ -4507,6 +4510,13 @@ function _finTsTxt(ts){
   const dias=Math.floor((ahora-d)/86400000);
   return p2(d.getDate())+'/'+p2(d.getMonth()+1)+' '+hora+(dias>=7?' · hace '+dias+' días':'');
 }
+// Hasta qué día llega el reporte de MP con el que el robot calculó "A liquidar" (revisión max #20).
+// Más de 2 días = lo vendido después no está en el número, y eso se tiene que ver en la pantalla.
+function repHastaInfo(d){
+  if(!/^\d{4}-\d{2}-\d{2}$/.test(String(d||'')))return null;
+  const dias=Math.floor((Date.parse(agendaHoy())-Date.parse(d))/864e5);
+  return {txt:d.slice(8,10)+'/'+d.slice(5,7),dias,viejo:dias>2};
+}
 function renderFinTs(){
   const ts=(state.finanzas&&state.finanzas._ts)||{};
   Object.entries(FIN_TS_GRUPO).forEach(([k,grupo])=>{
@@ -4516,6 +4526,12 @@ function renderFinTs(){
     el.textContent='actualizado '+_finTsTxt(t);
     // Si hace una semana que no se toca, el número ya no representa la realidad: se avisa.
     el.style.color=(Date.now()-t)>=7*86400000?'var(--amber)':'var(--muted)';
+    // "A liquidar" dice además HASTA QUÉ DÍA llega el reporte de Mercado Pago (revisión max #20):
+    // puede escribirse hoy con un reporte de hace días, y lo vendido después no está adentro.
+    if(k==='mp_liq'){
+      const rh=repHastaInfo(ts.liq_hasta);
+      if(rh){el.textContent+=' · reporte hasta '+rh.txt+(rh.viejo?' ⚠️':'');if(rh.viejo)el.style.color='var(--amber)';}
+    }
   });
   renderAnclaAviso();
 }
@@ -6611,7 +6627,8 @@ function renderAgenda(){
   // El aviso de viejo: la agenda se rehace todas las noches, así que más de 2 días es que algo no
   // corrió. Un número viejo en una pantalla de plata se lee como si estuviera al día.
   const diasVieja=a.ts?Math.floor((Date.now()-a.ts)/864e5):null;
-  const vieja=diasVieja!=null&&diasVieja>=2;
+  const rhA=repHastaInfo(state.finanzas&&state.finanzas.agenda&&state.finanzas.agenda._repHasta);
+  const vieja=(diasVieja!=null&&diasVieja>=2)||!!(rhA&&rhA.viejo);
   // La escala va por valor ABSOLUTO. Con el máximo POSITIVO, un día negativo grande quedaba
   // en el 2% mínimo — o sea, del mismo largo que uno de un peso, que es no decir nada.
   const maxD=a.dias.reduce((m,x)=>Math.max(m,Math.abs(x.usd)),0)||1;
@@ -6640,7 +6657,9 @@ function renderAgenda(){
     +'<div style="display:flex;justify-content:space-between;align-items:baseline;flex-wrap:wrap;gap:8px">'
     +'<div class="bk-lbl">Se libera de ML</div>'
     +`<div style="font-size:.64rem;color:${vieja?'var(--amber)':'var(--muted)'};font-family:'DM Mono',monospace">`
-    +(diasVieja==null?'':(diasVieja<=0?'calculado hoy':diasVieja===1?'calculado ayer':`⚠️ calculado hace ${diasVieja} días`))+'</div></div>'
+    +(diasVieja==null?'':(diasVieja<=0?'calculado hoy':diasVieja===1?'calculado ayer':`⚠️ calculado hace ${diasVieja} días`))
+    +(rhA?` · ${rhA.viejo?'⚠️ ':''}reporte de MP hasta el ${rhA.txt}`:'')+'</div></div>'
+    +(rhA&&rhA.viejo?`<div style="font-size:.64rem;color:var(--amber);margin-top:4px">Mercado Pago no generó un reporte nuevo: lo vendido después del ${rhA.txt} todavía no está acá ni en «A liquidar».</div>`:'')
     +'<div style="display:flex;gap:18px;flex-wrap:wrap;margin-top:8px">'
     +`<div><div style="font-size:.62rem;color:var(--muted)">hoy</div><div style="font-size:1.25rem;font-weight:600${rojoSiNeg(a.hoy)}">${fmt(Math.round(a.hoy))}${enPesos(a.hoy)}</div></div>`
     +`<div><div style="font-size:.62rem;color:var(--muted)">mañana</div><div style="font-size:1.25rem;font-weight:600${rojoSiNeg(a.manana)}">${fmt(Math.round(a.manana))}${enPesos(a.manana)}</div></div>`

@@ -67,8 +67,8 @@ Cuando estén las 4 conectadas, lo hacemos con red de seguridad:
    total y neto de cada venta **sin cargar nada**. Comparamos contra ML y
    ajusto la cuenta del neto hasta que dé igual.
 2. **Cargar de verdad:** ml-sync sin DRY_RUN → entran las ventas.
-3. **Stock:** Actions → ml-stock → Run workflow. Revisamos los matches dudosos
-   (quedan en `mlapi/review`, no tocan el inventario).
+3. **Stock:** lo lee solo el ciclo de `sync.mjs` (el workflow `ml-stock` y `stock.mjs` se borraron
+   el 25/09/2026: escribían un stock de Full equivocado).
 4. Cuando todo cuadra, activo los horarios (cron) y el robot queda solo.
 
 > ⚠️ **Importante antes de la primera carga real:** apagamos la task de Cowork
