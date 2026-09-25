@@ -181,6 +181,12 @@ scratchpad `rev2/<frente>/REPORT.md`, se pierden con el contenedor). Van de a un
    **N7** (la fecha del disponible vuelve 2 min a la vieja) se deja: se corrige sola.
    **Con esto la segunda vuelta queda CERRADA.** Él pidió además una pasada completa "a fondo" (max)
    cuando esto terminara: **se le ofreció; falta que diga cuándo.**
+ · **La tarjeta "Lo que trajo el robot de precios" se recalculó a mano el 25/09 (`supervisor:go`)**
+   porque seguía mostrando el resumen viejo con "volumen −$219.866" (de antes de `VOLUMEN_CONFIABLE`
+   y el registro hora por hora). Nuevo: **52 subas medidas · efecto precio +$333.829 · volumen $0 ·
+   35 dejaron más · 0 dejaron menos · 8 con quiebre de stock (volumen no contado)**.
+ · **La corrida nocturna del 24/09 (ml-daily) se cayó en `candidatos` con "_pi is not defined"**:
+   ya estaba arreglado en el código (`let _pi = null`), la de esta noche corre con el arreglo.
 
 ### PASO 1 (PRECIOS): TERMINADO (el 8 era un aviso del log sin daño)
 **Hechos el 24/09 (v20.28 · `cyc-v306`):** 3 · el rescate no sube lo que el robot BAJÓ en 30 días
