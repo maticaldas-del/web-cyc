@@ -22760,6 +22760,14 @@ async function main() {
           }
           const fila = { label, mla, nom, precio, mg: mg * 100, deb: Math.ceil(P / 10) * 10, puso: e.to || 0, cuando: new Date(e.ts).toISOString().slice(0, 16).replace('T', ' '), nVar: vars.length, tok: t.access_token, prod: p.name || '', com, envio, envioMin, costo, mlx, neto };
           fila.sobra = fila.precio - fila.deb;
+          // El margen REAL al precio de bajada, con el envío del lado de los $33.000 donde queda
+          // (revisión max, 25/09/2026): antes se declaraba META a secas y el envío podía salir de
+          // ventas del otro lado de la barrera. Sin envío medido de ese lado, no se baja.
+          if (mg > META + 0.03 && fila.deb < precio) {
+            const envN = (await envioDeducido(ventas, fila.deb, (pv) => feeAt(site, pv, lt, cat, t.access_token), { modo: 'max' })).envio;
+            const comN = envN == null ? null : await feeAt(site, fila.deb, lt, cat, t.access_token);
+            fila.mgDeb = (envN == null || comN == null) ? null : ((fila.deb - comN - envN - fila.deb * m - costo) / (costo + fila.deb * m + envN)) * 100;
+          }
           if (mg > META + 0.03) pasados.push(fila); else bien.push(fila);
         }
       }
@@ -22786,7 +22794,8 @@ async function main() {
       for (const f of objetivo) {
         // El precio se calculó justo PARA la meta y se redondea hacia arriba, así que el margen que
         // queda es la meta o un poco más. Si la meta guardada fuese menor al piso, el freno corta.
-        const r = DRY ? { ok: false, err: 'DRY' } : await setPriceTo(f.mla, null, f.deb, f.tok, { margen: META * 100 });
+        if (f.mgDeb == null) { errN++; console.log(`  ✗ ${f.mla} · ${f.nom}: a ${money(f.deb)} no hay envío medido de ese lado de los $33.000 — no se baja`); continue; }
+        const r = DRY ? { ok: false, err: 'DRY' } : await setPriceTo(f.mla, null, f.deb, f.tok, { margen: f.mgDeb });
         if (r.ok) { okN++; hechos.push({ nom: f.nom, from: r.from, to: r.to }); console.log(`  ✓ ${f.mla} · ${f.nom}: ${money(r.from)} → ${money(r.to)}`); }
         else { errN++; console.log(`  ✗ ${f.mla} · ${f.nom}: no se pudo (${r.err})`); }
       }
@@ -26055,7 +26064,7 @@ async function main() {
               u.com = comHoy;
               u.neto = u.precio - comHoy - envio - u.precio * cuo;
               u.mlx = u.precio * m;
-              u.mg = (u.neto - costo - u.mlx) / (costo + u.mlx);
+              u.mg = (u.neto - costo - u.mlx) / (costo + u.mlx + envio);   // envío en el divisor (regla del 17/09)
               if (u.mg >= MIN) { u.ok = true; continue; }
               // Precio objetivo por punto fijo: P = [costo(1+meta) + comisión(P) + envío] / (1 − %cargoML(1+meta)).
               // Se itera porque la comisión depende del precio (y su parte fija salta por tramos).
@@ -26070,7 +26079,7 @@ async function main() {
               if (!bien) { falloML = true; break; }
               u.nuevo = Math.ceil(P / 10) * 10;
               u.mult = u.nuevo / u.precio;
-              u.mgNuevo = ((u.nuevo - comP - envio - u.nuevo * cuo) - costo - u.nuevo * m) / (costo + u.nuevo * m) * 100;
+              u.mgNuevo = ((u.nuevo - comP - envio - u.nuevo * cuo) - costo - u.nuevo * m) / (costo + u.nuevo * m + envio) * 100;
               if (u.mult <= 1) u.ok = true;
             }
             if (falloML) { sinDato.push({ label, mla, nom, why: 'ML no devolvió la comisión' }); continue; }
@@ -32048,12 +32057,19 @@ async function main() {
                   + `ML le había aplicado: ${removed.join(', ')}\n`
                   + `Volvió a tu precio normal ✅`);
               }
+              // Iba por sendTelegram SIN tipo y el filtro lo tiraba: no salió nunca (revisión max,
+              // 25/09/2026). Ahora va al canal de precios, una vez por día por publicación, y el
+              // día se anota sólo si el mensaje salió.
               if (failed.length && promoAlerts < 6) {
-                await sendTelegram(`⚠️ <b>Descuento que no pude sacar</b>\n`
-                  + `${map[mla].title || mla}\nCuenta: ${label}\n`
-                  + `Tipo: ${failed.join(', ')}\n`
-                  + `Sacalo vos desde ML → Promociones.`);
-                promoAlerts++;
+                const _hoyPf = new Date(Date.now() - 3 * 3600e3).toISOString().slice(0, 10);
+                let _ya = null; try { _ya = await db.get('cyc/avisopromofallo/' + mla); } catch { /* sin memoria: avisa igual */ }
+                if (_ya !== _hoyPf) {
+                  const _ok = await sendAlerta(`⚠️ <b>Descuento que no pude sacar</b>\n`
+                    + `${map[mla].title || mla}\nCuenta: ${label}\n`
+                    + `Tipo: ${failed.join(', ')}\n`
+                    + `Sacalo vos desde ML → Promociones.`);
+                  if (_ok) { promoAlerts++; try { await db.set('cyc/avisopromofallo/' + mla, _hoyPf); } catch { /* mañana repite */ } }
+                }
               }
             }
           }
