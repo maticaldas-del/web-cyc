@@ -256,6 +256,32 @@ precios-decisión 3.
    `ml-stock.yml` y `ml-sync/stock.mjs` (robot viejo duplicado).
  · **Obvias que quedan: ninguna.** Quedan las 60 sin verificar (se retoman solas a las 21:15 UTC).
 
+### 25/09 A LA NOCHE: CAJAS, PEDIDOS Y LO QUE DEJÓ LA REVISIÓN (v20.46 · `cyc-v324`)
+ · **POR QUÉ EL ROBOT NO MARCABA NINGUNA CAJA:** ML rechazaba por cupo (429 `over_quota`) 63 de 135
+   lecturas de movimientos de Full. El robot hacía bien en no marcar sin leer, pero 5 cajas que ML
+   ya daba "procesamiento finalizado" seguían "en camino" (mercadería contada dos veces). Arreglo:
+   cada consulta espaciada 350 ms y el 429 se reintenta 3 veces (4/10/20 s), con tope de 3 min de
+   espera por vuelta. Si igual falla, queda "sin leer" como siempre.
+ · **`cajallego` ampliado:** varias cajas con `;`, re-marca cajas YA marcadas con faltantes falsos,
+   y acepta un faltante real confirmado en ML: `cajallego:<seg>!<palabras>=<u>:go` (palabras con
+   "+", tiene que agarrar UN renglón). Aplicado con sus pantallas de ML: 76397947 y 75243039
+   (faltantes falsos, quedaron completas), 76576705, 76675902, 77399863 completas, y 77366838
+   con 2 u. faltantes de Sábanas 140x190 Gris. La 77681804 (Adriana, 22/09) sigue abierta: ML
+   todavía la está procesando (95 declaradas / 61 aptas).
+ · **`pedremate` (solo lee):** cruza cada pedido contra liquidando, escalera, bajas por remate,
+   "no traer más" y ventas etiquetadas remate. Medido: **0 de 56** pedidos con señal de remate.
+   Lo que sí apareció: 13 pedidos de productos SIN stock y SIN ventas en 60 días, que piden según
+   el ritmo viejo (hasta 180 días, la regla de la Lupa 75mm del 16/09). Se le pasó con (a)/(b).
+ · **`buscacosto:<palabras>` (solo lee):** busca un producto en fichas, candidatos de Paraguay,
+   compras a Paraguay (precio pagado y recargo real) y publicaciones de ML.
+ · **Contar lo que hay** dice "+N en camino" al lado de cada cuenta (misma cuenta que Armar caja).
+ · **De la revisión max (vuelta del 25/09 a la noche):** el aviso "Descuento que no pude sacar"
+   no salía nunca (sendTelegram sin tipo): ahora va por `sendAlerta`, 1 por día por publicación
+   (`cyc/avisopromofallo`). `tocados:…:bajar` declaraba META sin mirar el envío del lado de los
+   $33.000: ahora declara el margen real y sin envío medido no baja. `alpiso`/`bajar` ya estaban
+   arreglados. La revisión se volvió a cortar por el límite de uso (228 agentes caídos): las 60
+   sospechas siguen **sin verificar**.
+
 ### LA REVISIÓN POR ETAPAS (propuesta del 25/09, falta que confirme el ritmo)
 Pedido suyo: que cada revisión entre en una ventana de 5 h de tokens (plan de US$100, Opus 5.5). Seis
 etapas, una por semana (ciclo de 6 semanas) y la del tema tocado cuando haya un cambio grande. Se
