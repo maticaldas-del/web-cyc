@@ -108,6 +108,28 @@ fallas leídas como dato. Lo que se confirme va abajo, de a uno, con su (a)/(b).
    grande pregunta). Queda un resto: `updCostPesos` no tiene el freno de `migrarPesosaUSD`
    (con el dólar en 0 guarda `costUSD` 0) y `poncosto` usa $1.500 si falta el dólar.
 
+**NUEVAS DE LA SEGUNDA VUELTA (25/09, verificadas por el agente con el código real; notas en el
+scratchpad `rev2/<frente>/REPORT.md`, se pierden con el contenedor). Van de a una, con (a)/(b):**
+ · **P1 (grave)** · `quietaDe` (sync ~2691) cuenta días desde la última venta SIN descontar los días
+   sin stock: algo que vuelve de estar agotado se remata o entra a la escalera apenas llega la caja
+   y queda marcado `notraer` para siempre. La web tiene 30 días de gracia; el robot, ninguna.
+ · **P2** · la regla "una suba cada 24 h" vive sólo en `rescatarAlVender`: el rescate de la noche y
+   la 📈 no la miran → +25% al vender y +25% a las 00:07 (+56% en 40 min).
+ · **P3** · si un remate falla (`setPriceTo`), `marcarLiquidando(...,null,true)` (~7099) borra también
+   las marcas `liquidando` que puso él a mano; y `autoRemate` no excluye lo que está en NOSUBIR.
+ · **P4** · `cyc/escalera/<MLA>` no se borra nunca: vuelve a frenarse y salta escalones (25 → 10%).
+ · **P5** · apagar `autoPrecios` no apaga el rescate al vender (sólo mira `subeventa`).
+ · **P6 (baja)** · variantes con precios distintos: se mide con `vars[0]` y una variante puede cruzar
+   los $33.000 para arriba.
+ · **M1** · `compray` con una fecha distinta a la del "Ya lo pedí" crea un segundo registro en
+   `cyc/compraspy` → la compra cuenta dos veces "en camino" y al tocar "Llegó" crea fichas de lo que
+   está cargado HOY en el armado.
+ · **O1** · se puede volver a cargar (y comprar) un candidato que ya viaja: `pedir`/`candSetPedir`
+   no miran `pedidoEn`.
+ · **O2** · `ventaEnRemate` saca del ritmo toda venta abajo de 22%, no sólo remates: lo que vende
+   entre 20% y 22% (o una venta suelta con envío caro) no pide reponer. No se habló con él.
+ · Cajas y stock, `pisobase`, `dispo`, `maxCompraDe`, `candFichaDesde`: sin nada nuevo.
+
 ### PASO 1 (PRECIOS): TERMINADO (el 8 era un aviso del log sin daño)
 **Hechos el 24/09 (v20.28 · `cyc-v306`):** 3 · el rescate no sube lo que el robot BAJÓ en 30 días
 (`filtrarRescate`, mira `cyc/autoprecio` tipo `baja`) · 4 · "👀 Subí solo y dejó de vender" ya mira
