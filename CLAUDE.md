@@ -99,7 +99,7 @@ fallas leídas como dato. Lo que se confirme va abajo, de a uno, con su (a)/(b).
    estimado (si la venta guardada tiene `mlfee` > 0 se conserva) y `orderNet` devuelve null si falla
    CUALQUIER pago · (b) un paso nocturno que relea las de 3-7 días con `mlfee` 0, respetando carritos.
    **Se pueden contar en la base:** ventas de más de 2 días con `mlfee` 0 o sin el campo.
- · **f2 · REAL.** Caja con un producto que no tiene publicación de Full vinculada en esa cuenta
+ · **f2 · HECHO el 25/09, eligió la (a).** En `cajasQueLlegaron`, si un producto de la caja no dio NINGÚN depósito de Full en esa cuenta (`conDeposito`), queda en `sinLeerProd`: la caja no se marca y el log dice `⚠️ … Vinculá la publicación`. Probado con el código real: control se marca igual; sin ficha y sin publicación ya no dan 20 faltantes. Cómo estaba: **REAL.** Caja con un producto que no tiene publicación de Full vinculada en esa cuenta
    (P47 recién publicada que el alta dejó sin ficha por empate): "pide 20 · tiene 0 · noLeido=false"
    → la caja se marca con 20 faltantes y esas unidades salen del patrimonio. (a) si un producto de
    la caja no tiene NINGÚN depósito de Full en esa cuenta, el renglón queda "sin leer" (caja abierta)

@@ -610,6 +610,7 @@ async function cajasQueLlegaron(db, accounts, labels, products, DRY) {
     // los dos renglones quedan "sin leer" (la caja se queda abierta, nunca se da por faltante) y
     // se avisa en el log para arreglarlo con `fijarvar`.
     const invRenglon = {};
+    const conDeposito = new Set();           // productos con al menos un depósito de Full leído en esta cuenta
     for (let k = 0; k < mlas.length; k += 20) {
       let arr;
       const tanda = mlas.slice(k, k + 20);
@@ -642,6 +643,7 @@ async function cajasQueLlegaron(db, accounts, labels, products, DRY) {
           // la variante se llama más largo que el título de ML ("Azul Marino" vs "Azul").
           pares.push({ inv: b.inventory_id, va: links[mla].variant || varianteDeTitulo(b.title || links[mla].title || '', p.variantes) });
         }
+        if (pares.length) conDeposito.add(p.id);
         for (const par of pares) {
           mirados++;
           const kPar = kR(cta, p.id, par.va);
@@ -787,6 +789,17 @@ async function cajasQueLlegaron(db, accounts, labels, products, DRY) {
           }
         }
       }
+    }
+    // ── UN PRODUCTO SIN DEPÓSITO DE FULL EN ESTA CUENTA NO SE PUEDE LEER (25/09/2026, f2, a) ──
+    // Si ninguna publicación de Full vinculada a esa ficha en esta cuenta dio un depósito (recién
+    // publicada y sin vincular, o el alta la dejó sin ficha por empate), sus renglones leían "0
+    // recibidas" como si no hubiera llegado nada, y la caja se marcaba con faltantes que borraban
+    // esas unidades del patrimonio. No leerlo no es que falte: el producto queda "sin leer" (la
+    // caja se queda abierta) y se avisa para vincularlo.
+    for (const pid of o.prods) {
+      if (conDeposito.has(pid) || sinLeerProd[cta + '|' + pid]) continue;
+      sinLeerProd[cta + '|' + pid] = true;
+      console.log(`⚠️ ${cta} · ${(pIdx[pid] && pIdx[pid].name) || pid}: no tiene ninguna publicación de Full vinculada en esta cuenta → sus renglones quedan sin leer (la caja no se marca). Vinculá la publicación.`);
     }
   }
   // Repartir lo recibido entre las cajas abiertas, la más vieja primero.
