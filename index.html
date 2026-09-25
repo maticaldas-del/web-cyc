@@ -2141,8 +2141,8 @@ async function autoLinkFamilies(){
       if(!e||e.ignored||e.prodId)continue;                       // solo sin vincular
       if(!_mlnorm(e.title).includes(_mlnorm(f.kw)))continue;      // que sea de la familia
       const variant=_matchProdVariant(e.title,prod.variantes);
-      const entry={prodId:prod.id,variant:variant||'',title:e.title||'',cuenta:e.cuenta||'',status:e.status||'',sold:e.sold||0,manual:true};
-      await fbSet('mllinks/'+mla,entry);state.mllinks[mla]=entry;
+      const campos={prodId:prod.id,variant:variant||'',manual:true,auto:null,candidatos:null};
+      await fbUpdate(mlLinkCampos(mla,campos));state.mllinks[mla]=mlLinkMezcla(e,campos);
       linked++;if(!variant)sinVar++;
     }
   }
@@ -2223,22 +2223,24 @@ function renderMlLinks(){
 }
 async function hideMl(mla){
   const cur=(state.mllinks&&state.mllinks[mla])||{};
-  const entry={...cur,ignored:true,manual:true};
-  await fbSet('mllinks/'+mla,entry);
-  if(!state.mllinks)state.mllinks={};state.mllinks[mla]=entry;
+  const campos={ignored:true,manual:true};
+  await fbUpdate(mlLinkCampos(mla,campos));
+  if(!state.mllinks)state.mllinks={};state.mllinks[mla]=mlLinkMezcla(cur,campos);
   renderMlLinks();toast('Publicación oculta');
 }
 async function unhideMl(mla){
-  const cur={...((state.mllinks&&state.mllinks[mla])||{})};delete cur.ignored;
-  await fbSet('mllinks/'+mla,cur);
-  state.mllinks[mla]=cur;renderMlLinks();toast('Recuperada ✓');
+  const cur=(state.mllinks&&state.mllinks[mla])||{};
+  await fbUpdate(mlLinkCampos(mla,{ignored:null}));
+  state.mllinks[mla]=mlLinkMezcla(cur,{ignored:null});renderMlLinks();toast('Recuperada ✓');
 }
 async function bulkHidePending(){
   const map=state.mllinks||{};
   const targets=Object.keys(map).filter(m=>!map[m].prodId&&!map[m].ignored);
   if(!targets.length){toast('No hay sin vincular','info');return;}
   if(!confirm('¿Ocultar '+targets.length+' publicaciones sin vincular? Las podés recuperar después.'))return;
-  for(const m of targets){const e={...map[m],ignored:true,manual:true};await fbSet('mllinks/'+m,e);state.mllinks[m]=e;}
+  const campos={ignored:true,manual:true};const upd={};
+  for(const m of targets)Object.assign(upd,mlLinkCampos(m,campos));
+  await fbUpdate(upd);for(const m of targets)state.mllinks[m]=mlLinkMezcla(map[m],campos);
   renderMlLinks();toast(targets.length+' ocultas ✓');
 }
 function mlVarRefresh(mla){
@@ -2249,13 +2251,20 @@ function mlVarRefresh(mla){
   vs.disabled=!vars.length;
   vs.innerHTML=['<option value="">— sin variante —</option>'].concat(vars.map(v=>`<option value="${_esc(v)}">${_esc(v)}</option>`)).join('');
 }
+// Escribe campos sueltos de un renglón de cyc/mllinks (nunca el renglón entero) y arma la copia
+// local igual a como queda en la base: un campo en null se borra.
+function mlLinkCampos(mla,campos){const u={};for(const [k,v] of Object.entries(campos))u['mllinks/'+mla+'/'+k]=v;return u;}
+function mlLinkMezcla(cur,campos){const o={...(cur&&typeof cur==='object'?cur:{}),...campos};for(const k of Object.keys(o))if(o[k]===null)delete o[k];return o;}
 async function saveMlLink(mla){
   const ps=document.getElementById('mlp_'+mla);const vs=document.getElementById('mlv_'+mla);
   const prodId=ps?ps.value:'';const variant=vs?vs.value:'';
   const cur=(state.mllinks&&state.mllinks[mla])||{};
-  const entry={prodId:prodId||null,variant:variant||'',title:cur.title||'',cuenta:cur.cuenta||'',status:cur.status||'',manual:true};
-  await fbSet('mllinks/'+mla,entry);
-  if(!state.mllinks)state.mllinks={};state.mllinks[mla]=entry;
+  // N2 de la segunda vuelta (25/09/2026): se escriben SÓLO los campos de la vinculación. Antes el
+  // renglón se armaba de cero con `set` y borraba el código de Full, la foto, `altaTs` (la escalera)
+  // y el freno `noAutoActivar`, que no son de esta pantalla.
+  const campos={prodId:prodId||null,variant:variant||'',manual:true,auto:null,candidatos:null};
+  await fbUpdate(mlLinkCampos(mla,campos));
+  if(!state.mllinks)state.mllinks={};state.mllinks[mla]=mlLinkMezcla(cur,campos);
   // Reasignar las ventas YA cargadas de esta publicación al producto nuevo (retroactivo).
   const nRe=await reasignVentasMla(mla,prodId||null,variant);
   renderMlLinks();
@@ -2310,7 +2319,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='20.33';
+const APP_VERSION='20.34';
 // El problema real que esto resuelve no es curiosidad: es que el celular guarda la app y sigue
 // mostrando la de ayer sin avisar. Varias veces se revisó un cambio que ya estaba subido y no se
 // veía. Por eso, además del número, el chip avisa cuando hay una versión nueva esperando.
@@ -5565,15 +5574,42 @@ function renderOfiContar(){
 // en negativo es plata inventada al revés, y ya apareció una vez con las claves sucias del 24/08.
 // Avisa con el antes y el después, que es la única forma de darse cuenta en el momento de que se
 // sumó a la fila equivocada.
+// c3 de la segunda vuelta (25/09/2026): LA OFICINA SE SUMA Y SE RESTA SOBRE LO QUE HAY EN LA BASE,
+// no sobre la copia de este aparato. Antes cada aparato calculaba el número nuevo con lo que tenía
+// en memoria y escribía el total: con el teléfono y la compu abiertos, el segundo pisaba lo que hizo
+// el primero (sumar 50 en uno y cerrar una caja en el otro dejaba sólo una de las dos cosas).
+// Se hace con una transacción de Firebase, que reintenta sola si otro aparato escribió en el medio.
+// `fijo` = poner ese número exacto (lo que él contó); si no, `delta` suma o resta. Nunca baja de 0.
+// Devuelve {antes, ahora} tal como quedó en la base.
+async function ofiTx(key,{delta=0,fijo=null}={}){
+  let antes=0,ahora=0;
+  if(!db){antes=parseInt(state.inventory[key])||0;ahora=fijo!=null?Math.max(0,fijo):Math.max(0,antes+delta);}
+  else{
+    const r=await db.ref('cyc/inventory/'+key).transaction(v=>{antes=parseInt(v)||0;ahora=fijo!=null?Math.max(0,fijo):Math.max(0,antes+delta);return ahora||null;});
+    ahora=parseInt(r&&r.snapshot&&r.snapshot.val())||0;
+  }
+  state.inventory[key]=ahora;
+  return {antes,ahora};
+}
+// Mueve unidades de la oficina: con variante toca la clave de la variante y le aplica al total del
+// producto EXACTAMENTE lo que cambió la variante (así lo "sin aroma" no se toca); sin variante, el
+// total del producto.
+async function ofiMover(pid,variante,{delta=0,fijo=null}={}){
+  if(variante){
+    const r=await ofiTx(invKeyV(pid,OFI,variante),{delta,fijo});
+    const dv=r.ahora-r.antes;
+    if(dv)await ofiTx(invKey(pid,OFI),{delta:dv});
+    return r;
+  }
+  return ofiTx(invKey(pid,OFI),{delta,fijo});
+}
 async function ofiSumar(prodId,inputId){
   const e=document.getElementById(inputId);if(!e)return;
   const n=Math.round(parseFloat(e.value)||0);
   if(!n){e.focus();return;}
   const p=(state.products||[]).find(x=>x.id===prodId);if(!p)return;
-  const antes=parseInt(getQ(prodId,OFI))||0;
-  const total=Math.max(0,antes+n);
   e.value='';
-  setQ(prodId,OFI,total);
+  const {antes,ahora:total}=await ofiMover(prodId,'',{delta:n});
   await syncOfiMati();
   toast(`${p.name}: ${antes} + ${n} = ${total} ✓`);
   renderOfiContar();
@@ -5582,12 +5618,9 @@ async function ofiSumarVar(prodId,variante,inputId){
   const e=document.getElementById(inputId);if(!e)return;
   const n=Math.round(parseFloat(e.value)||0);
   if(!n){e.focus();return;}
-  const antes=parseInt(getQV(prodId,OFI,variante))||0;
-  const total=Math.max(0,antes+n);
   e.value='';
-  // setOfiVar ya recalcula el total del producto como la suma de sus variantes, sincroniza y
-  // redibuja: llamarla es lo mismo que si él hubiera escrito el total a mano.
-  await setOfiVar(prodId,variante,total);
+  const {antes,ahora:total}=await ofiMover(prodId,variante,{delta:n});
+  syncOfiMati();renderOfiContar();
   toast(`${variante}: ${antes} + ${n} = ${total} ✓`);
 }
 // LAS UNIDADES "SIN VARIANTE" NO SE BORRAN SOLAS (24/09/2026). El total de la oficina puede ser
@@ -5605,16 +5638,9 @@ function ofiSinVar(pid){
 async function setOfiVar(pid,variante,val){
   const p=(state.products||[]).find(x=>x.id===pid);if(!p)return;
   const n=Math.max(0,parseInt(String(val).replace(/[^\d]/g,''))||0);
-  const vk=invKeyV(pid,OFI,variante);
-  const sinVar=ofiSinVar(pid);
-  state.inventory[vk]=n;_invPending[vk]=n;
-  await fbSet('inventory/'+vk,n||null);
-  if(_invPending[vk]===n)delete _invPending[vk];
-  const suma=ofiSumaVars(pid)+sinVar;
-  const pk=invKey(pid,OFI);
-  state.inventory[pk]=suma;_invPending[pk]=suma;
-  await fbSet('inventory/'+pk,suma||null);
-  if(_invPending[pk]===suma)delete _invPending[pk];
+  // Lo que él contó en esa variante se pone EXACTO; el total del producto se mueve lo mismo que
+  // cambió la variante, sobre lo que hay en la base (c3).
+  await ofiMover(pid,variante,{fijo:n});
   syncOfiMati();renderOfiContar();
 }
 
@@ -5688,24 +5714,7 @@ async function cerrarCaja(cuenta){
   state.envios_full=state.envios_full||{};state.envios_full[id]=e;
   // Descontar de la oficina lo que se fue. Con variante se toca la clave de la variante y se
   // recalcula el total del producto; sin variante, la clave del producto.
-  for(const it of items){
-    if(it.variante){
-      const vk=invKeyV(it.prodId,OFI,it.variante);
-      const sinVar=ofiSinVar(it.prodId);
-      const nv=Math.max(0,(parseInt(state.inventory[vk])||0)-it.u);
-      state.inventory[vk]=nv;
-      await fbSet('inventory/'+vk,nv||null);
-      const suma=ofiSumaVars(it.prodId)+sinVar;
-      const pk=invKey(it.prodId,OFI);
-      state.inventory[pk]=suma;
-      await fbSet('inventory/'+pk,suma||null);
-    } else {
-      const pk=invKey(it.prodId,OFI);
-      const nv=Math.max(0,(parseInt(state.inventory[pk])||0)-it.u);
-      state.inventory[pk]=nv;
-      await fbSet('inventory/'+pk,nv||null);
-    }
-  }
+  for(const it of items)await ofiMover(it.prodId,it.variante||'',{delta:-it.u});   // c3: sobre la base
   await _guardarCajaArmando(cuenta,{});   // la caja se cerró: deja de estar a medio armar
   await log('Caja despachada a '+cuenta+': '+uTot+' u.'+(track?' · '+track:''));
   toast('Caja cerrada ✓ · está en "En camino"',5000);
@@ -6122,22 +6131,7 @@ async function deshacerCaja(id,i){
   const uTot=items.reduce((a,x)=>a+x.u,0);
   if(!confirm(`¿Deshacer esta caja?\n\n${uTot} unidad(es) vuelven a tu oficina y la caja se borra.`))return;
   // Devolver a la oficina, con la misma cuenta que se usó al descontar.
-  for(const it of items){
-    if(it.variante){
-      const vk=invKeyV(it.prodId,OFI,it.variante);
-      const sinVar=ofiSinVar(it.prodId);
-      state.inventory[vk]=(parseInt(state.inventory[vk])||0)+it.u;
-      await fbSet('inventory/'+vk,state.inventory[vk]);
-      const suma=ofiSumaVars(it.prodId)+sinVar;
-      const pk=invKey(it.prodId,OFI);
-      state.inventory[pk]=suma;
-      await fbSet('inventory/'+pk,suma||null);
-    } else {
-      const pk=invKey(it.prodId,OFI);
-      state.inventory[pk]=(parseInt(state.inventory[pk])||0)+it.u;
-      await fbSet('inventory/'+pk,state.inventory[pk]);
-    }
-  }
+  for(const it of items)await ofiMover(it.prodId,it.variante||'',{delta:it.u});    // c3: sobre la base
   cajas.splice(i,1);
   if(!cajas.length){
     // Era la única caja del envío: se borra el envío entero, si no queda un renglón vacío.
@@ -7757,6 +7751,9 @@ async function vpSaveEdit(grpId,grpKey){
     o.costBaseUSD=p?costUSDof(p):0;o.shipUSD=p?(parseFloat(p.shipUSD)||0):0;
     if(o.tcSale==null)o.tcSale=curTC();
     if(numVenta)o.numVenta=numVenta;else delete o.numVenta;
+    // c2 de la segunda vuelta (25/09/2026): marca de "la toqué a mano". El robot reescribe cada venta
+    // de los últimos 2 días en cada vuelta y se comía la edición; con esta marca no la pisa.
+    o.manualTs=Date.now();
     await fbSet('ventaprod/'+grpKey+'/'+id,o);
   }
   for(const [k,nv] of Object.entries(invUpdates)){state.inventory[k]=nv;await fbSet('inventory/'+k,nv);}
@@ -7788,6 +7785,7 @@ async function vpCancelarGrupo(grpId,grpKey,tipo){
     if(p)afectados.add(p.id);
     o.cancelada=true;o.tipoCancelacion=tipo;
     o.neto=0;o.costo=0;o.costBaseUSD=0;o.total=0;
+    o.manualTs=Date.now(); // c2: que la vuelta siguiente del robot no la vuelva a poner como vendida
     await fbSet('ventaprod/'+grpKey+'/'+o.id,o);
   }
   for(const [k,nv] of Object.entries(invUpdates)){state.inventory[k]=nv;await fbSet('inventory/'+k,nv);}
@@ -7820,6 +7818,9 @@ async function vpReactivarGrupo(grpId,grpKey){
     }
     if(p)afectados.add(p.id);
     delete o.cancelada;delete o.tipoCancelacion;
+    // Reactivar es volver a lo que dice ML: se saca la marca de "tocada a mano" para que el robot
+    // le vuelva a poner el total y el neto reales (la cancelación los había dejado en 0).
+    delete o.manualTs;
     if(p){o.costo=costFullP(p)*(o.qty||1);o.costBaseUSD=costUSDof(p);}
     await fbSet('ventaprod/'+grpKey+'/'+o.id,o);
   }

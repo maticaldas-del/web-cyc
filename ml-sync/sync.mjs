@@ -30145,6 +30145,19 @@ async function main() {
   // mapa publicación(MLA) → { prodId, variant, title, cuenta, status, manual } — nodo propio
   const map = (await db.get('cyc/mllinks')) || {};
   const mapUpd = {}; // solo lo que toca el auto-match (no pisa lo que vos fijaste)
+  // c0 de la segunda vuelta (25/09/2026): cómo estaba cada renglón al EMPEZAR la vuelta. Al guardar
+  // se compara contra lo que hay en la base en ese momento: si él lo vinculó a mano en la web
+  // mientras la vuelta corría, gana lo suyo.
+  const mapAntes = {};
+  // c1: las publicaciones que ML dice que son el MISMO producto (`upid`, misma cuenta). Una venta
+  // re-empareja por el TÍTULO, y eso deshacía el enganche que el alta hizo por ML.
+  const porUpidVenta = {};
+  for (const [m, x] of Object.entries(map)) {
+    if (x && typeof x === 'object' && x.upid && x.prodId && x.cuenta) {
+      const k = x.cuenta + '|' + x.upid;
+      (porUpidVenta[k] || (porUpidVenta[k] = [])).push({ mla: m, prodId: x.prodId, manual: !!x.manual });
+    }
+  }
 
   // AUTOLINK: vincular familias que son 1 producto con variantes (Paulvic,
   // Victoria's Secret). Elige la variante buscando sus palabras en el título.
@@ -30254,14 +30267,18 @@ async function main() {
       let fam = null; for (const f of fams) if (norm(title).includes(norm(f.kw)) && famProd[f.kw]) { fam = f; break; }
       if (fam) { const p = famProd[fam.kw]; prodId = p.id; variant = matchVar(title, p.variantes) || ''; }
       else { const p = matchProduct(title, index); if (p) prodId = p.id; }
+      // N2 de la segunda vuelta (25/09/2026): el renglón se arma SOBRE el guardado ({...e}), no de
+      // cero. Armado de cero borraba el código de Full, la foto, `altaTs` (la escalera) y el freno
+      // `noAutoActivar`. Y "des-ignorar" no vale para lo que él marcó "no lo vendemos más".
+      const base = { ...e }; if (!e.noVendemosMas) delete base.ignored;
       if (prodId) {
-        const entry = { prodId, variant, title: e.title || title, cuenta: e.cuenta || '', status: e.status || '', sold: e.sold || 0, manual: true };
+        const entry = { ...base, prodId, variant, title: e.title || title, cuenta: e.cuenta || '', status: e.status || '', sold: e.sold || 0, manual: true };
         mapUpd[mla] = entry; map[mla] = entry; // des-ignora (queda vinculada normal)
         linked.push({ mla, variant, title });
       } else {
         // no hay producto en el catálogo: des-ignorar igual para que aparezca
         // como PENDIENTE en Vinculaciones y se pueda machear/crear a mano.
-        const entry = { prodId: null, variant: '', title: e.title || title, cuenta: e.cuenta || '', status: e.status || '', sold: e.sold || 0 };
+        const entry = { ...base, prodId: null, variant: '', title: e.title || title, cuenta: e.cuenta || '', status: e.status || '', sold: e.sold || 0 };
         mapUpd[mla] = entry; map[mla] = entry;
         unmatched.push({ mla, title });
       }
@@ -30901,8 +30918,17 @@ async function main() {
           p = e.prodId ? (products.find((pp) => pp.id === e.prodId) || null) : null;
           variant = e.variant || '';
         } else {                           // auto-match por palabras (y lo dejamos visible/editable)
-          p = matchProduct(title, index);
+          // c1: si otra publicación de la misma cuenta que ML dice que es el mismo producto ya está
+          // vinculada, manda ésa (las fijadas a mano primero). Si no, el título como siempre.
+          p = null;
+          if (e && e.upid) {
+            const hs = (porUpidVenta[label + '|' + e.upid] || []).filter((h) => h.mla !== mla);
+            const h = hs.find((x) => x.manual) || hs[0];
+            if (h) p = products.find((pp) => pp.id === h.prodId) || null;
+          }
+          if (!p) p = matchProduct(title, index);
           if (mla) {
+            if (!(mla in mapAntes)) mapAntes[mla] = e ? { prodId: e.prodId || null, variant: e.variant || '', e } : null;
             const entry = {
               prodId: p ? p.id : null, variant: (e && e.variant) || '',
               title, cuenta: label, auto: true,
@@ -30924,6 +30950,8 @@ async function main() {
               ignored: (e && e.ignored) || null,
               noVendemosMas: (e && e.noVendemosMas) || null,
               candidatos: p ? null : candidatesFor(title, index),
+              // se cae sola al vender (antes se caía porque el renglón se reescribía entero)
+              altaSinVender: null,
             };
             map[mla] = entry; mapUpd[mla] = entry;
           }
@@ -30992,7 +31020,12 @@ async function main() {
         if (netoEst) obj.netoEstimado = true;   // lo busca el repaso de la noche (netoreal:…:estimadas)
         if (!p) obj.sinVincular = true;    // marca: venta cargada sin producto
         if (variant) obj.variante = variant;
+        // c2 de la segunda vuelta (25/09/2026): una venta que él tocó a mano en la web (editada, o
+        // marcada reclamo/cancelada) lleva `manualTs` y NO se reescribe. Antes esta línea la pisaba
+        // entera en la vuelta siguiente y la marca duraba 2 minutos. Reactivarla saca la marca.
+        const _aMano = _prevV && Number(_prevV.manualTs) > 0;
         if (DRY) console.log(`  [${label}] #${num} ${obj.prod}${p ? '' : ' (SIN PRODUCTO)'} x${qty} · total ${obj.total} · neto ${obj.neto}`);
+        else if (_aMano) console.log(`  ✋ venta ${id} (${obj.prod}): la tocó él a mano, no la reescribo`);
         else await db.set(`cyc/ventaprod/${dayKey}/${id}`, obj);
         cargadas++;
         // dejar registrada la carga por si esta misma venta se cancela después
@@ -31013,7 +31046,7 @@ async function main() {
         // Solo ventas recientes (12 h), en corridas normales (no backfill) y una
         // sola vez por venta.
         const recient = (Date.now() - obj.ts) < 12 * 3600e3;
-        if (!DRY && bfd === 0 && recient && costo > 0 && neto > 0 && !alerted[id]) {
+        if (!DRY && bfd === 0 && recient && costo > 0 && neto > 0 && !alerted[id] && !_aMano) {
           // Margen REAL = (neto − costo mercadería − cargo ML) ÷ (costo mercadería + cargo ML), igual
           // que la app. El cargo ML es un % del PRECIO, así que al subir el precio ×k también sube ×k:
           // por eso el multiplicador sale de   k = costo × (1+meta) / (neto − cargoML × (1+meta)).
@@ -31296,20 +31329,28 @@ async function main() {
           } else if (pubAlerted[mla] !== clave && map[mla].prodId) {
             // Si el estado ya venía guardado igual, no es novedad: se anota sin avisar (así al
             // estrenar esto no llega una catarata de avisos por problemas viejos ya conocidos).
-            const novedad = st !== prev;
+            // F6 de la segunda vuelta (25/09/2026), tres agujeros tapados:
+            //  · un cambio SÓLO del motivo (sub_status) con el mismo estado también es novedad;
+            //  · lo que quedó sin avisar (tope de 8, o Telegram falló) se anota como PENDIENTE
+            //    ('pend|…'). Antes no se anotaba, pero el estado ya quedaba guardado en el mapa, así
+            //    que en la vuelta siguiente dejaba de ser novedad y se callaba para siempre;
+            //  · se da por avisado SÓLO si el mensaje salió de verdad.
+            const pendiente = pubAlerted[mla] === 'pend|' + clave;
+            const novedad = pendiente || st !== prev || sub !== prevSub;
             let mandado = false;
             if (novedad && !DRY && pubAlerts < 8) {
               const title = map[mla].title || mla;
               const estados = { closed: 'dada de baja', under_review: 'en revisión', paused: 'pausada' };
-              await sendTelegram(`⚠️ <b>Problema en una publicación</b>\n`
+              mandado = (await sendTelegram(`⚠️ <b>Problema en una publicación</b>\n`
                 + `${title}\nCuenta: ${label}\n`
                 + `Estado: ${estados[st] || st}${sub ? ' · ' + sub : ''}\n`
-                + (b.permalink || ''), 'baja');
-              pubAlerts++; mandado = true;
+                + (b.permalink || ''), 'baja')) === true;
+              pubAlerts++;
             }
-            // Se anota si ya se avisó, o si no era novedad. Si no se avisó por el tope de 8
-            // avisos por corrida, NO se anota: queda pendiente para la próxima vuelta.
-            if ((mandado || !novedad) && !DRY) { pubAlerted[mla] = clave; pubAlertUpd[mla] = clave; }
+            if (!DRY) {
+              const marca = (mandado || !novedad) ? clave : 'pend|' + clave;
+              if (pubAlerted[mla] !== marca) { pubAlerted[mla] = marca; pubAlertUpd[mla] = marca; }
+            }
           }
 
           // ── CARGAR STOCK al panel (si la pub está vinculada a un producto) ──
@@ -31467,7 +31508,32 @@ async function main() {
   }
 
   // guardar en el mapa lo que tocó el auto-match (sin pisar lo que fijaste vos)
-  if (!DRY && Object.keys(mapUpd).length) await db.patch('cyc/mllinks', mapUpd);
+  // c0 de la segunda vuelta (25/09/2026): antes esto reescribía cada renglón ENTERO con la copia
+  // leída al empezar la vuelta. Si él vinculaba una publicación en la web mientras tanto, se
+  // perdía; y todo campo que no estuviera en `entry` (código de Full, foto, `altaTs`…) se borraba.
+  // Ahora se relee cada renglón y, si cambió desde el arranque (lo tocó él), no se toca. Si no,
+  // se escriben sólo los campos del auto-match. Si la relectura falla, no se escribe: la vuelta
+  // siguiente lo vuelve a intentar.
+  if (!DRY && Object.keys(mapUpd).length) {
+    const campos = {}; const respetadas = [];
+    for (const [mla, entry] of Object.entries(mapUpd)) {
+      const antes = mapAntes[mla];
+      // Sólo los campos que CAMBIARON contra el renglón guardado. Si no cambió nada no se relee ni
+      // se escribe (antes se reescribían todas las vendidas de los últimos 2 días, cada 2 minutos).
+      const J = (v) => JSON.stringify(v === undefined || v === '' ? null : v);
+      const viejo = (antes && antes.e) || {};
+      const dif = Object.keys(entry).filter((k) => J(entry[k]) !== J(viejo[k]));
+      if (!dif.length) continue;
+      let cur;
+      try { cur = await db.get('cyc/mllinks/' + mla); } catch { continue; }
+      const cambio = cur && typeof cur === 'object' && (cur.manual
+        || (antes && ((cur.prodId || null) !== antes.prodId || (cur.variant || '') !== antes.variant)));
+      if (cambio) { respetadas.push(mla); map[mla] = cur; continue; }
+      for (const k of dif) campos[mla + '/' + k] = entry[k] === undefined ? null : entry[k];
+    }
+    if (respetadas.length) console.log(`  🔗 ${respetadas.length} vinculación(es) cambiadas en la web durante la vuelta: se respetan (${respetadas.join(', ')})`);
+    if (Object.keys(campos).length) await db.patch('cyc/mllinks', campos);
+  }
   // guardar los avisos que ya mandamos (para no repetirlos)
   if (!DRY && Object.keys(alertUpd).length) await db.patch('mlapi/alerted', alertUpd);
   // Con `patch` y sólo los nuevos, nunca con `set`: pisar el nodo entero es el bug que borró a un
