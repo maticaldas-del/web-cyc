@@ -238,7 +238,14 @@ precios-decisión 3.
    · 14 `frenosSuba` (techo $600.000, barrera $33.000, +25%) adentro de `raisePriceTo`, `raisePrice` y
    `raiseVariations`, y `volver`/`submargen` lo usan y releen · 15 `activarfull` llama a
    `activarPausadasFull` (no sube precios) · 16 `unapub …:bajar=`/`:empatar` devuelven la marca si no bajan.
- · **Obvias que quedan:** 19-28.
+ · **HECHAS 19-23 (25/09 a la tarde):** 19 si el depósito de Full no contesta, ese producto×cuenta
+   queda "sin leer" (no se escribe el número viejo ni se toca el historial) · 21 en `ml-daily` todos
+   los pasos siguen aunque uno falle, `avisos` corre sólo si `netoweb` salió bien, y al final el
+   probe `avisonoche` manda Telegram con los pasos que fallaron · 22 promociones no leídas ≠ "sin
+   promo": `sacapromos` las cuenta aparte y la vuelta de cada hora avisa si pasan 3 horas seguidas
+   (`mlapi/promosinleer`) · 23 el rescate nombra las que no pudo medir (log y aviso de la noche).
+   **20 queda para la próxima tanda** (fecha del reporte de MP en el Arqueo: toca la web).
+ · **Obvias que quedan:** 20, 24-28.
 
 ### 25/09 A LA TARDE (v20.36 · `cyc-v314`): CUOTAS PREMIUM, "LO QUE TRAJO EL ROBOT" SIN INFLACIÓN, POR MES
  · **Salvador Dalí (`MLA1869295911`, Adriana): el panel decía 31% y la venta dio 16%.** Es PREMIUM

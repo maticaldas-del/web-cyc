@@ -33,6 +33,8 @@ jobs:
         with:
           node-version: '20'
       - name: Resumen diario
+        id: resumen
+        continue-on-error: true
         env:
           ML_CLIENT_ID: ${{ secrets.ML_CLIENT_ID }}
           ML_CLIENT_SECRET: ${{ secrets.ML_CLIENT_SECRET }}
@@ -48,6 +50,8 @@ jobs:
       # ventas que quedaron SIN factura. Va acá y no en el ciclo de 2 minutos porque pide una
       # consulta por venta: una vez por día alcanza y no castiga la API de ML.
       - name: Facturas emitidas
+        id: facturas
+        continue-on-error: true
         env:
           ML_CLIENT_ID: ${{ secrets.ML_CLIENT_ID }}
           ML_CLIENT_SECRET: ${{ secrets.ML_CLIENT_SECRET }}
@@ -63,6 +67,7 @@ jobs:
       # lectura del ciclo) se vuelven a leer de Mercado Pago y se corrigen, repartiendo los
       # carritos por paquete. Va antes de netoweb porque ése deduce el envío de las ventas.
       - name: Neto real de las ventas que quedaron estimadas
+        id: netoreal
         continue-on-error: true
         env:
           ML_CLIENT_ID: ${{ secrets.ML_CLIENT_ID }}
@@ -77,6 +82,7 @@ jobs:
       # decía 31% y la venta dio 16%, porque ML se quedó 21,6% de cuotas que la comisión no trae).
       # Mide cuánto cobra ML de cuotas en cada Premium y lo deja en cyc/mlcuotas; netoweb lo descuenta.
       - name: Cuotas de las publicaciones Premium
+        id: cuotas
         continue-on-error: true
         env:
           ML_CLIENT_ID: ${{ secrets.ML_CLIENT_ID }}
@@ -92,6 +98,8 @@ jobs:
       # recalcula, después de tocar precios sigue mostrando números viejos que parecen actuales —
       # y así un producto puede figurar arriba del piso estando abajo, o al revés, sin que se note.
       - name: Margen ML al precio de hoy
+        id: netoweb
+        continue-on-error: true
         env:
           ML_CLIENT_ID: ${{ secrets.ML_CLIENT_ID }}
           ML_CLIENT_SECRET: ${{ secrets.ML_CLIENT_SECRET }}
@@ -107,6 +115,8 @@ jobs:
       # que ninguna: se decide sobre un producto que hace semanas que no se mide.
       # Solo LEE de ML: no toca ningun precio.
       - name: Visitas de las publicaciones
+        id: visitas
+        continue-on-error: true
         env:
           ML_CLIENT_ID: ${{ secrets.ML_CLIENT_ID }}
           ML_CLIENT_SECRET: ${{ secrets.ML_CLIENT_SECRET }}
@@ -118,6 +128,8 @@ jobs:
         run: node ml-sync/sync.mjs
       # Refresca la facturación de canceladas/devueltas (para el monotributo = "Ventas brutas" ML).
       - name: Facturación de canceladas
+        id: canceladas
+        continue-on-error: true
         env:
           ML_CLIENT_ID: ${{ secrets.ML_CLIENT_ID }}
           ML_CLIENT_SECRET: ${{ secrets.ML_CLIENT_SECRET }}
@@ -137,6 +149,8 @@ jobs:
       # corrida son pocas por día. Y NO guarda ni un dato del comprador: el envío trae su nombre,
       # teléfono y dirección, y se leen sólo las fechas.
       - name: Cuándo llegó cada venta
+        id: entregas
+        continue-on-error: true
         env:
           ML_CLIENT_ID: ${{ secrets.ML_CLIENT_ID }}
           ML_CLIENT_SECRET: ${{ secrets.ML_CLIENT_SECRET }}
@@ -157,6 +171,11 @@ jobs:
       #
       # NO TOCA NINGÚN PRECIO. El ":go" sólo quiere decir "mandá el mensaje".
       - name: Avisos de precio al canal privado
+        id: avisos
+        # Sólo con el margen de ESTA noche: si netoweb falló, el robot de precios no decide con
+        # los números de ayer (revisión max #21).
+        if: steps.netoweb.outcome == 'success'
+        continue-on-error: true
         env:
           ML_CLIENT_ID: ${{ secrets.ML_CLIENT_ID }}
           ML_CLIENT_SECRET: ${{ secrets.ML_CLIENT_SECRET }}
@@ -174,6 +193,8 @@ jobs:
       # cambios que cumplieron 7/15/30 días: plata por día antes contra después. Avisa sólo lo nuevo.
       # NO TOCA NINGÚN PRECIO.
       - name: Supervisor de precios
+        id: supervisor
+        continue-on-error: true
         # si falla no se lleva puesto el resto del paso nocturno
         continue-on-error: true
         env:
@@ -201,6 +222,8 @@ jobs:
       #
       # NO COMPRA NADA NI TOCA NINGÚN PRECIO: sólo calcula y avisa.
       - name: Para probar · candidatos de Paraguay
+        id: candidatos
+        continue-on-error: true
         env:
           ML_CLIENT_ID: ${{ secrets.ML_CLIENT_ID }}
           ML_CLIENT_SECRET: ${{ secrets.ML_CLIENT_SECRET }}
@@ -231,6 +254,8 @@ jobs:
       # NO MUEVE UN PESO, NO TOCA ML Y NO TOCA NINGÚN PRECIO. Y no imprime montos: el registro es
       # público.
       - name: Saldo a liquidar y agenda de liberaciones
+        id: saldoml
+        continue-on-error: true
         env:
           ML_CLIENT_ID: ${{ secrets.ML_CLIENT_ID }}
           ML_CLIENT_SECRET: ${{ secrets.ML_CLIENT_SECRET }}
@@ -249,6 +274,7 @@ jobs:
       # usa el MISMO corte de "hoy" y suma al disponible todo lo posterior al número que él cargó.
       # Si no cargó el disponible de las 4 cuentas, no toca nada (lo dice en el log).
       - name: Disponible de ML (lo liberado pasa de "a liquidar" al disponible)
+        id: dispo
         continue-on-error: true
         env:
           ML_CLIENT_ID: ${{ secrets.ML_CLIENT_ID }}
@@ -262,3 +288,22 @@ jobs:
 
       # (El almacenamiento Full y los cargos de ML por débito —IIBB, etc.— ya NO se cargan como gasto
       # mensual: ahora se descuentan como un % por cuenta sobre cada venta, en la web. Ver ML_EXTRA_PCT.)
+
+      # SI FALLÓ ALGÚN PASO, SE AVISA (revisión max #21, 25/09/2026). Con `continue-on-error` un paso
+      # que sólo junta datos ya no corta la noche, pero tampoco puede fallar callado: acá se junta
+      # cuáles fallaron y va un Telegram al canal privado.
+      - name: Aviso si falló algún paso
+        if: always()
+        env:
+          ML_CLIENT_ID: ${{ secrets.ML_CLIENT_ID }}
+          ML_CLIENT_SECRET: ${{ secrets.ML_CLIENT_SECRET }}
+          FIREBASE_API_KEY: ${{ secrets.FIREBASE_API_KEY }}
+          FIREBASE_DB_URL: ${{ secrets.FIREBASE_DB_URL }}
+          FIREBASE_BOT_EMAIL: ${{ secrets.FIREBASE_BOT_EMAIL }}
+          FIREBASE_BOT_PASSWORD: ${{ secrets.FIREBASE_BOT_PASSWORD }}
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+          BILLING_PROBE: avisonoche
+          FALLOS_NOCHE: "${{ steps.resumen.outcome == 'failure' && 'Resumen diario · ' || '' }} ${{ steps.facturas.outcome == 'failure' && 'Facturas emitidas · ' || '' }} ${{ steps.netoreal.outcome == 'failure' && 'Neto real de las ventas que quedaron estimadas · ' || '' }} ${{ steps.cuotas.outcome == 'failure' && 'Cuotas de las publicaciones Premium · ' || '' }} ${{ steps.netoweb.outcome == 'failure' && 'Margen ML al precio de hoy · ' || '' }} ${{ steps.visitas.outcome == 'failure' && 'Visitas de las publicaciones · ' || '' }} ${{ steps.canceladas.outcome == 'failure' && 'Facturación de canceladas · ' || '' }} ${{ steps.entregas.outcome == 'failure' && 'Cuándo llegó cada venta · ' || '' }} ${{ steps.avisos.outcome == 'failure' && 'Avisos de precio al canal privado · ' || '' }} ${{ steps.supervisor.outcome == 'failure' && 'Supervisor de precios · ' || '' }} ${{ steps.candidatos.outcome == 'failure' && 'Para probar · candidatos de Paraguay · ' || '' }} ${{ steps.saldoml.outcome == 'failure' && 'Saldo a liquidar y agenda de liberaciones · ' || '' }} ${{ steps.dispo.outcome == 'failure' && 'Disponible de ML (lo liberado pasa de a liquidar al disponible) · ' || '' }}"
+        run: |
+          if [ -n "$(echo "$FALLOS_NOCHE" | tr -d ' ')" ]; then node ml-sync/sync.mjs; else echo "Ningún paso falló."; fi
