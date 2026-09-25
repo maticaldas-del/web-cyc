@@ -3619,15 +3619,31 @@ async function marcarLiquidando(db, mla, datos, sacar = false) {
       if (m !== mla && x && !x.ignored && x.prodId === e.prodId && x.cuenta === e.cuenta) todas.push(m);
     }
   }
+  // Lo que había antes, para poder DESHACER exactamente (un remate que falla no puede borrar las
+  // marcas que puso él a mano: P3 de la segunda vuelta, 25/09/2026).
+  const prev = {};
+  for (const m of todas) prev[m] = NOSUBIR[m] ? { ...NOSUBIR[m] } : null;
   for (const m of todas) {
     if (sacar) { await db.set('cyc/nosubir/' + m, null); delete NOSUBIR[m]; }
     else {
+      // Una hermana que ya tiene su propia marca se deja como está: pisarla le cambiaría el motivo.
+      if (m !== mla && NOSUBIR[m]) continue;
       const d = m === mla ? datos : { ...datos, hermanaDe: mla };
       await db.patch('cyc/nosubir/' + m, d); NOSUBIR[m] = d;
     }
   }
+  todas.prev = prev;
   return todas;
 }
+// Vuelve las marcas `liquidando` a como estaban antes de `marcarLiquidando` (usa `todas.prev`).
+async function restaurarLiquidando(db, todas) {
+  for (const [m, d] of Object.entries((todas && todas.prev) || {})) {
+    if (d) { await db.set('cyc/nosubir/' + m, d); NOSUBIR[m] = d; }
+    else { await db.set('cyc/nosubir/' + m, null); delete NOSUBIR[m]; }
+  }
+}
+// La marca la puso el robot (remate o escalera), no él.
+const esMarcaRobot = (d) => !!d && /^(remate automático|escalera de remate)/.test(String(d.motivo || ''));
 
 function _chequeoNoSubir(itemId) {
   if (!NOSUBIR_OK) return { ok: false, err: 'no-pude-leer-la-lista-de-liquidando: no subo nada esta vuelta' };
@@ -6948,7 +6964,9 @@ async function main() {
         // alguien la ve, y bajar lo que no ve nadie regala el margen sin vender.
         .filter((f) => (f.sobre || f.vis != null) && f.baja <= 24.5 && f.mgPw >= pisoEsc(f) + 0.5 && f.mgPw >= PISO_AUTORIZADO + 0.5
           && !recienteAuto(f.mla, 'sube', 14) && !recienteAuto(f.mla, 'baja', BAJAR_ESPERA_DIAS)
-          && !(pricedRem[f.mla] && hoyTs - (pricedRem[f.mla].ts || 0) < 14 * 864e5));
+          && !(pricedRem[f.mla] && hoyTs - (pricedRem[f.mla].ts || 0) < 14 * 864e5)
+          // Lo que él marcó liquidando a mano no es nuestro (la escalera ya lo respetaba): P3, 25/09.
+          && !(NOSUBIR[f.mla] && !esMarcaRobot(NOSUBIR[f.mla])));
       { const idsR = new Set(rescates.map((x) => x.mla)); autoRemate.splice(0, autoRemate.length, ...autoRemate.filter((f) => !idsR.has(f.mla))); }
       // ── LA ESCALERA DEL REMATE: CUANDO GANAR LA CAJA DA PÉRDIDA (24/09/2026) ───────────────
       // Pedido suyo con el Xiaomi Watch 5 Lite (para ganar la caja había que bajar 32% y quedaba en
@@ -7113,8 +7131,9 @@ async function main() {
             if (!it) { fallidosAuto.push({ ...t, err: 'ML no devolvió la publicación' }); continue; }
             if ((it.variations || []).length) { fallidosAuto.push({ ...t, err: 'tiene variantes: se hace a mano' }); continue; }
             if (t.tipo === 'remate' || t.tipo === 'escalera') {
+              let marcadas = null;
               try {
-                await marcarLiquidando(db, f.mla, { fecha: new Date(hoyTs - 3 * 3600e3).toISOString().slice(0, 10),
+                marcadas = await marcarLiquidando(db, f.mla, { fecha: new Date(hoyTs - 3 * 3600e3).toISOString().slice(0, 10),
                   motivo: t.tipo === 'escalera' ? `escalera de remate (escalón ${t.piso}%)` : `remate automático (queda en ${f.mgPw.toFixed(1)}%)` });
               } catch { fallidosAuto.push({ ...t, err: 'no pude marcarla liquidando: no la bajo (el rescate la volvería a subir)' }); continue; }
               // Se declara medio punto MENOS: el precio se redondea a la decena de abajo.
@@ -7123,7 +7142,8 @@ async function main() {
                 : { margen: f.mgPw - 0.5, autorizado: `remate automático, permiso de Matías del 23/09/2026 (hasta 0%) · escalón al ${t.piso}%` });
               // Si no se bajó, la marca se saca: si no, quedaría congelada contra toda suba sin
               // haberse rematado nunca.
-              if (!r || !r.ok) { try { await marcarLiquidando(db, f.mla, null, true); } catch { /* */ } }
+              // Se VUELVE a como estaba (no se borra todo): las marcas que él puso a mano se quedan.
+              if (!r || !r.ok) { try { await restaurarLiquidando(db, marcadas); } catch { /* */ } }
             } else r = await setPriceTo(f.mla, null, t.a, tk, { margen: f.mgPw });
           }
           if (!r || !r.ok) { fallidosAuto.push({ ...t, err: (r && r.err) || '?' }); continue; }

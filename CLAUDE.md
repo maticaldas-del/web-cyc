@@ -115,7 +115,7 @@ scratchpad `rev2/<frente>/REPORT.md`, se pierden con el contenedor). Van de a un
    y queda marcado `notraer` para siempre. La web tiene 30 días de gracia; el robot, ninguna.
  · **P2** · la regla "una suba cada 24 h" vive sólo en `rescatarAlVender`: el rescate de la noche y
    la 📈 no la miran → +25% al vender y +25% a las 00:07 (+56% en 40 min).
- · **P3** · si un remate falla (`setPriceTo`), `marcarLiquidando(...,null,true)` (~7099) borra también
+ · **P3 (= F1) · HECHO el 25/09 (obvio, sin decisión):** `marcarLiquidando` guarda lo que había (`todas.prev`) y no pisa la marca propia de una hermana; si el remate falla se llama `restaurarLiquidando`, que vuelve todo a como estaba; y el remate automático ya no toca lo que él marcó liquidando a mano (`esMarcaRobot`). Probado: tras un fallo las dos marcas manuales quedan idénticas. Cómo estaba: si un remate falla (`setPriceTo`), `marcarLiquidando(...,null,true)` (~7099) borra también
    las marcas `liquidando` que puso él a mano; y `autoRemate` no excluye lo que está en NOSUBIR.
  · **P4** · `cyc/escalera/<MLA>` no se borra nunca: vuelve a frenarse y salta escalones (25 → 10%).
  · **P5** · apagar `autoPrecios` no apaga el rescate al vender (sólo mira `subeventa`).
