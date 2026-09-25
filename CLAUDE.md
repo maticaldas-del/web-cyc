@@ -256,6 +256,32 @@ precios-decisión 3.
    `ml-stock.yml` y `ml-sync/stock.mjs` (robot viejo duplicado).
  · **Obvias que quedan: ninguna.** Quedan las 60 sin verificar (se retoman solas a las 21:15 UTC).
 
+### LA REVISIÓN POR ETAPAS (propuesta del 25/09, falta que confirme el ritmo)
+Pedido suyo: que cada revisión entre en una ventana de 5 h de tokens (plan de US$100, Opus 5.5). Seis
+etapas, una por semana (ciclo de 6 semanas) y la del tema tocado cuando haya un cambio grande. Se
+piden por número o nombre ("etapa 2" / "etapa plata"). Tope de agentes por etapa, guarda lo que
+encuentra y retoma sólo lo que faltó. Cada hallazgo se verifica antes de pasárselo, de a uno con (a)/(b).
+| # | nombre | qué mira | esfuerzo |
+|---|---|---|---|
+| 1 | Precios | robot que sube/baja, rescate, escalera, remate, frenos | Alto |
+| 2 | Plata | Arqueo, Mercado Pago, a liquidar, monedas, gastos | Alto |
+| 3 | Mercadería | cajas, stock de Full, oficina, pedidos, Paraguay | Alto |
+| 4 | Choques | web y robot escribiendo lo mismo, corridas a la vez | Alto |
+| 5 | Fallas mudas y privacidad | ML no contesta y se guarda como dato; datos de terceros en logs | Medio |
+| 6 | Ideas nuevas | datos de ML sin usar, cosas que hace a mano · sólo propone | Alto |
+
+**LOS NIVELES DE ESFUERZO, averiguados el 25/09 con fuentes (code.claude.com/docs/en/model-config y
+/workflows, support.claude.com):** de menos a más `low` · `medium` (el que usa Opus 5.5 si no se toca)
+· `high` ("Alto" en su pantalla) · `xhigh` · `max` · y **Ultracode**, que NO es un nivel más: es `xhigh`
++ que Claude arme solo un workflow de muchos agentes para cada tarea de peso — el que más gasta.
+Ninguna fuente da números de cuánto más gasta cada uno, ni los nombres en castellano de los otros
+(sólo "Alto" y "Ultracode" salen de su captura; "Medio" es deducción). El plan Max 5x tiene DOS
+límites que se gastan a la vez: la ventana de 5 h y uno SEMANAL, compartidos con el chat de Claude;
+un workflow grande puede comerse el semanal. En el día a día conviene "Alto" (la doc lo dice: volver a
+`high` después de Ultracode) y usar workflows sólo para las etapas. Aviso en Inicio: `renderHomeRevision`,
+`cyc/revision/ultima` (v20.42).
+**DECIDIDO POR ÉL EL 25/09: las seis etapas en "Alto"** (sacó "Medio"). **Ultracode NO se usa para las etapas**: cada etapa ya reparte el trabajo entre varios revisores con su tope; Ultracode sólo agrega que TODO lo demás del chat también arme equipos, y eso es lo que se come el límite semanal (la revisión max del 25/09 se cortó dos veces por eso). Queda para un caso puntual: una revisión entera después de un cambio muy grande, y sólo si él lo pide.
+
 ### 25/09 A LA TARDE (v20.36 · `cyc-v314`): CUOTAS PREMIUM, "LO QUE TRAJO EL ROBOT" SIN INFLACIÓN, POR MES
  · **Salvador Dalí (`MLA1869295911`, Adriana): el panel decía 31% y la venta dio 16%.** Es PREMIUM
    (`gold_pro`): en $119.970 ML se quedó comisión $17.995 + **cuotas $25.914 (21,6%)** + Full $7.290.

@@ -2329,7 +2329,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='20.43';
+const APP_VERSION='20.44';
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
 // muestre la versión y la fecha de actualización y que tenga un desplegable predeterminado cerrado".
 // Y el mismo día: "que ponga fecha de cada modificación y haya una barrita para scrollear y que
@@ -2340,6 +2340,9 @@ const APP_VERSION='20.43';
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'20.44',f:'25/09/2026',h:'15:05',c:[
+    {n:1,t:'Aviso de la revisión por etapas: las seis se piden con esfuerzo "Alto" (ya no hay ninguna en "Medio").'},
+  ]},
   {v:'20.43',f:'25/09/2026',h:'14:50',c:[
     {n:3,t:'Arqueo: "A liquidar en ML" y "Se libera de ML" dicen hasta qué día llega el reporte de Mercado Pago, y se ponen en ámbar si tiene más de 2 días (lo vendido después todavía no está adentro). Si pasa, también llega un aviso por Telegram.'},
   ]},
@@ -3091,8 +3094,8 @@ const REV_ETAPAS=[
   {n:2,nom:'Plata',que:'Arqueo, Mercado Pago, a liquidar, dólares y pesos, gastos',esf:'Alto'},
   {n:3,nom:'Mercadería',que:'cajas, stock de Full, oficina, pedidos y Paraguay',esf:'Alto'},
   {n:4,nom:'Choques',que:'la web y el robot escribiendo lo mismo, corridas a la vez',esf:'Alto'},
-  {n:5,nom:'Fallas mudas y privacidad',que:'cuando ML no contesta y se guarda como dato; datos de terceros en los registros públicos',esf:'Medio'},
-  {n:6,nom:'Ideas nuevas',que:'datos que ML ya da y no usamos, cosas que hacés a mano y se pueden automatizar (sólo propone)',esf:'Medio'},
+  {n:5,nom:'Fallas mudas y privacidad',que:'cuando ML no contesta y se guarda como dato; datos de terceros en los registros públicos',esf:'Alto'},
+  {n:6,nom:'Ideas nuevas',que:'datos que ML ya da y no usamos, cosas que hacés a mano y se pueden automatizar (sólo propone)',esf:'Alto'},
 ];
 const REV_CADA_DIAS=7;
 function _revFecha(iso){const d=new Date(iso+'T12:00:00');return isNaN(d)?null:d;}
