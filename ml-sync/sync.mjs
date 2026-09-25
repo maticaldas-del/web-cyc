@@ -9053,49 +9053,76 @@ async function main() {
     // entró todo. Si faltara algo de verdad, eso se mira en la pantalla de ML y se resuelve ahí
     // ("Iniciar reclamo por diferencias"), no inventando un faltante acá.
     // Sin `:go` sólo muestra. Se relee de la base antes de decir que quedó.
+    // AMPLIADO EL 25/09/2026 (él mandó las pantallas de ML de 7 cajas): acepta VARIAS separadas
+    // por ";", también cajas YA marcadas con faltantes que ML confirma enteras (la 76397947 y la
+    // 75243039 se marcaron con faltantes falsos antes de los arreglos del 24-25/09), y un faltante
+    // REAL confirmado en la pantalla de ML: `<seguimiento>!<palabras>=<unidades>` (palabras con "+",
+    // tiene que agarrar UN solo renglón de la caja o no hace nada).
     if (/^cajallego(:|$)/.test(String(process.env.BILLING_PROBE || ''))) {
-      const _cl = String(process.env.BILLING_PROBE).split(':');
-      const busca = (_cl[1] || '').trim();
-      const APLICAR = _cl[_cl.length - 1] === 'go';
-      if (!busca || busca === 'go') { console.log('Usá: cajallego:<nº de seguimiento o id del envío>[:go]'); return; }
+      const _raw = String(process.env.BILLING_PROBE).slice('cajallego'.length).replace(/^:/, '');
+      const APLICAR = /:go$/.test(_raw);
+      const lista = _raw.replace(/:go$/, '').split(';').map((x) => x.trim()).filter(Boolean);
+      if (!lista.length) { console.log('Usá: cajallego:<seguimiento>[!<palabras>=<u>][;otro][:go]'); return; }
       const envios = (await db.get('cyc/envios_full')) || {};
       const pIdx = {}; for (const p of products) pIdx[p.id] = p;
+      const _nrm = (x) => String(x || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+      const faltaDeC = (c) => (Array.isArray(c && c.faltan) ? c.faltan : []).reduce((a, x) => a + Math.max(0, (x.pide || 0) - (x.llego || 0)), 0);
+      console.log(`=== MARCAR COMO LLEGADA ${APLICAR ? '(APLICANDO)' : '(PRUEBA)'} ===\n`);
       const hits = [];
-      for (const [id, e] of Object.entries(envios)) {
-        const cajas = Array.isArray(e && e.cajasDet) ? e.cajasDet : [];
-        cajas.forEach((c, i) => {
-          if (!c || c.recibida) return;                        // sólo tiene sentido en las ABIERTAS
-          if (id !== busca && String(c.track || '') !== busca) return;
-          hits.push({ id, e, c, i });
-        });
+      for (const pedido of lista) {
+        const [busca, faltaTxt] = pedido.split('!');
+        let falta = null;
+        if (faltaTxt) {
+          const mm = /^(.+)=(\d+)$/.exec(faltaTxt.trim());
+          if (!mm) { console.log(`── ${busca}: el faltante "${faltaTxt}" no se entiende (va <palabras>=<unidades>). No se toca.`); continue; }
+          falta = { pals: mm[1].split('+').map(_nrm).map((x) => x.trim()).filter(Boolean), u: parseInt(mm[2]) };
+        }
+        let found = 0;
+        for (const [id, e] of Object.entries(envios)) {
+          const cajas = Array.isArray(e && e.cajasDet) ? e.cajasDet : [];
+          cajas.forEach((c, i) => {
+            if (!c) return;
+            if (id !== busca.trim() && String(c.track || '') !== busca.trim()) return;
+            found++;
+            if (c.recibida && !faltaDeC(c) && !falta) { console.log(`── ${busca}: ya está marcada llegada completa. Nada que hacer.`); return; }
+            let faltan = null;
+            if (falta) {
+              const cand = (c.items || []).filter((it) => it && it.prodId && falta.pals.every((w) => _nrm(((pIdx[it.prodId] || {}).name || '') + ' ' + (it.variante || '')).includes(w)));
+              if (cand.length !== 1) { console.log(`── ${busca}: "${falta.pals.join(' ')}" agarra ${cand.length} renglones (tiene que ser 1). No se toca.`); return; }
+              const it = cand[0];
+              if (!(falta.u > 0 && falta.u <= (Number(it.u) || 0))) { console.log(`── ${busca}: faltante de ${falta.u} u. no cabe en el renglón (${it.u} u.). No se toca.`); return; }
+              faltan = [{ prodId: it.prodId, variante: it.variante || '', nombre: (pIdx[it.prodId] || {}).name || it.prodId, pide: Number(it.u) || 0, llego: (Number(it.u) || 0) - falta.u }];
+            }
+            hits.push({ id, e, c, i, faltan });
+          });
+        }
+        if (!found) console.log(`── ${busca}: ninguna caja con ese seguimiento o id.`);
       }
-      console.log(`=== MARCAR COMO LLEGADA COMPLETA · buscando "${busca}" ${APLICAR ? '(APLICANDO)' : '(PRUEBA)'} ===\n`);
-      if (!hits.length) { console.log('── Ninguna caja ABIERTA con ese seguimiento o id. (Si ya está marcada, no hay nada que hacer.)'); return; }
       for (const h of hits) {
         const u = (h.c.items || []).reduce((a, x) => a + (Number(x && x.u) || 0), 0);
-        console.log(`── ${h.e.fecha || '?'} · ${h.e.cuenta || '?'} · caja ${h.c.n || h.i + 1} · seguimiento ${h.c.track || '—'}`);
-        console.log(`   id ${h.id} · ${(h.c.items || []).length} renglón(es) · ${u} unidades pasan a contar como stock de Full`);
-        for (const it of (h.c.items || [])) {
-          if (!it || !it.prodId) continue;
-          console.log(`      ${it.u} u. · ${(pIdx[it.prodId] || {}).name || it.prodId}${it.variante ? ' · ' + it.variante : ''}`);
-        }
+        console.log(`── ${h.e.fecha || '?'} · ${h.e.cuenta || '?'} · seguimiento ${h.c.track || '—'} · ${u} u. · hoy: ${h.c.recibida ? 'marcada con ' + faltaDeC(h.c) + ' u. faltantes' : 'abierta'}`);
+        console.log(h.faltan ? `   → queda llegada con ${h.faltan[0].pide - h.faltan[0].llego} u. faltantes de ${h.faltan[0].nombre}${h.faltan[0].variante ? ' · ' + h.faltan[0].variante : ''}` : '   → queda llegada COMPLETA');
       }
-      if (!APLICAR) { console.log(`\nSOLO PRUEBA: no se tocó nada. Confirmá contra la pantalla de ML y repetí con :go al final.`); return; }
+      if (!hits.length) return;
+      if (!APLICAR) { console.log(`\nSOLO PRUEBA: no se tocó nada. Repetí con :go al final.`); return; }
       const hoyCl = dayKeyFromISO(new Date().toISOString()).replace(/_/g, '-');
-      for (const h of hits) {
+      const porEnvio = {};
+      for (const h of hits) (porEnvio[h.id] = porEnvio[h.id] || []).push(h);
+      for (const [id, hs] of Object.entries(porEnvio)) {
         // La lista de cajas se guarda ENTERA: un patch parcial la rompe (mismo cuidado que la web).
-        const cajas = (h.e.cajasDet || []).map((c, i) => (i === h.i
-          ? { ...c, recibida: true, recFecha: hoyCl, recAuto: false, faltan: null }
-          : c));
-        await db.set('cyc/envios_full/' + h.id + '/cajasDet', cajas);
+        const cajas = (envios[id].cajasDet || []).map((c, i) => {
+          const h = hs.find((x) => x.i === i);
+          return h ? { ...c, recibida: true, recFecha: c.recibida && c.recFecha ? c.recFecha : hoyCl, recAuto: false, faltan: h.faltan } : c;
+        });
+        await db.set('cyc/envios_full/' + id + '/cajasDet', cajas);
       }
       const desp = (await db.get('cyc/envios_full')) || {};
       let ok = 0;
       for (const h of hits) {
         const c2 = ((desp[h.id] || {}).cajasDet || [])[h.i];
-        if (c2 && c2.recibida && !c2.faltan) ok++;
+        if (c2 && c2.recibida && faltaDeC(c2) === (h.faltan ? h.faltan[0].pide - h.faltan[0].llego : 0)) ok++;
       }
-      console.log(`\n✓ ${ok} de ${hits.length} quedaron como llegadas COMPLETAS. Releído de la base: ${ok === hits.length ? 'quedó ✓' : '✗ NO quedaron todas'}`);
+      console.log(`\n✓ ${ok} de ${hits.length} quedaron como se pidió. Releído de la base: ${ok === hits.length ? 'quedó ✓' : '✗ NO quedaron todas'}`);
       return;
     }
 
@@ -28063,6 +28090,121 @@ async function main() {
       const quedan = borrar.filter(([k]) => rel[k] !== undefined);
       console.log(`\n✓ Borradas. Releído de la base: quedan ${quedan.length} de las ${borrar.length}.`);
       quedan.forEach(([k]) => console.log(`   ⚠️ sigue ahí: ${k}`));
+      return;
+    }
+
+    // BILLING_PROBE=buscacosto:<palabras> → ¿CUÁNTO ME SALIÓ ESTO? (25/09/2026)
+    // Pedido suyo con el Kit Jade Roller recién publicado: "costo haceme acordar". Busca las
+    // palabras (con "+") en las fichas, en los candidatos de Paraguay, en las compras a Paraguay
+    // (con el precio PAGADO y el recargo real de esa compra si está medido) y en las
+    // publicaciones de ML, y dice a qué ficha está enganchada cada una. SOLO LEE.
+    if (/^buscacosto:/.test(String(process.env.BILLING_PROBE || ''))) {
+      const _n = (x) => String(x || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '');
+      const pals = String(process.env.BILLING_PROBE).slice('buscacosto:'.length).split('+').map(_n).map((x) => x.trim()).filter(Boolean);
+      const hit = (t) => pals.every((w) => _n(t).includes(w));
+      const cfg = (await db.get('cyc/finanzas')) || {};
+      const tc = parseFloat(cfg.tipo_cambio) || null;
+      console.log(`=== ¿CUÁNTO SALIÓ "${pals.join(' ')}"? · dólar del panel ${tc || '?'} ===\n`);
+      console.log('── FICHAS');
+      let k = 0;
+      for (const p of products) if (hit(p.name)) { k++; console.log(`   ${p.id} · ${p.name} · costo US$ ${p.costUSD || 0} ($${Math.round(p.cost || 0)}) · origen ${p.origen || 'bsas'}${p.codPy ? ' · código ' + p.codPy : ''}${p.nisseiUSD ? ' · Paraguay hoy US$ ' + p.nisseiUSD : ''}`); }
+      if (!k) console.log('   ninguna');
+      console.log('── CANDIDATOS DE PARAGUAY');
+      k = 0;
+      for (const [id, c] of Object.entries((await db.get('cyc/candidatos_py')) || {})) {
+        if (!c || !hit(c.nombre)) continue; k++;
+        console.log(`   ${id} · ${c.nombre} · US$ ${c.usd || '?'} crudo · código ${c.cod || '—'}${c.prodId ? ' · ficha ' + c.prodId : ''}${c.pedidoEn ? ' · pedido ' + c.pedidoEn : ''}${c.no ? ' · descartado' : ''}${c.margen != null ? ' · margen ' + c.margen + '%' : ''}`);
+      }
+      if (!k) console.log('   ninguno');
+      console.log('── COMPRAS A PARAGUAY');
+      k = 0;
+      for (const [id, r] of Object.entries((await db.get('cyc/compraspy')) || {})) {
+        for (const it of (r && r.items) || []) {
+          if (!it || !hit(it.nom)) continue; k++;
+          const pg = r.pagos || {};
+          const merc = Number(pg.mercaderia) || 0, envio = Number(pg.envio) || 0, ret = Number(pg.retira) || 0, otros = (Number(pg.cambista) || 0) + (Number(pg.otros) || 0);
+          const usdC = Number(r.usdCrudo) || 0;
+          const rec = merc > 0 && usdC > 0 && (r.tcPedido || tc) ? ((merc + envio + ret + otros) / (usdC * (r.tcPedido || tc))) : null;
+          console.log(`   ${id} (${r.fecha || '?'} · ${r.estado || '?'}) · ${it.nom} · ${it.u} u. · US$ ${it.usd} crudo c/u · código ${it.cod || '—'}`);
+          console.log(`      con el 17% del panel: US$ ${(it.usd * 1.17).toFixed(2)}${rec ? ` · con el recargo real de ESA compra (${((rec - 1) * 100).toFixed(1)}%): US$ ${(it.usd * rec).toFixed(2)}` : ' · recargo real de esa compra: sin medir'}`);
+        }
+      }
+      if (!k) console.log('   ninguna');
+      console.log('── PUBLICACIONES DE ML');
+      k = 0;
+      const pIdx = {}; products.forEach((p) => { pIdx[p.id] = p; });
+      for (const [mla, l] of Object.entries((await db.get('cyc/mllinks')) || {})) {
+        if (!l || !hit(l.title || l.titulo || '')) continue; k++;
+        console.log(`   ${mla} · ${l.cuenta || '?'} · ${l.title || l.titulo} · ${l.prodId ? 'ficha ' + (pIdx[l.prodId] || {}).name : 'SIN FICHA'}${l.hidden ? ' · oculta' : ''}`);
+      }
+      if (!k) console.log('   ninguna (si es nueva, la da de alta el robot en la vuelta de la hora)');
+      return;
+    }
+
+    // BILLING_PROBE=pedremate → ¿HAY PEDIDOS DE PRODUCTOS QUE SE ESTÁN REMATANDO? (25/09/2026)
+    // Pregunta suya: "revisar si los pedidos están bien, porque quizás hay productos que se están
+    // pidiendo y se tuvieron que rematar". Cruza cada pedido que pide comprar algo contra las cinco
+    // señales de remate que el panel guarda: marca liquidando (cyc/nosubir), memoria de la escalera
+    // (cyc/escalera), la última baja del robot por remate/escalera (cyc/autoprecio), "no traer más"
+    // (cyc/notraer) y ventas etiquetadas remate (cyc/rescateventa). SOLO LEE.
+    if (/^pedremate(:|$)/.test(String(process.env.BILLING_PROBE || ''))) {
+      const peds = [
+        ...Object.values((await db.get('cyc/pedidos')) || {}).map((x) => ({ ...x, _col: 'Bs As' })),
+        ...Object.values((await db.get('cyc/pedidos_py')) || {}).map((x) => ({ ...x, _col: 'Paraguay' })),
+      ];
+      const ns = (await db.get('cyc/nosubir')) || {};
+      const esc = (await db.get('cyc/escalera')) || {};
+      const ap = (await db.get('cyc/autoprecio')) || {};
+      const nt = (await db.get('cyc/notraer')) || {};
+      const lk = (await db.get('cyc/mllinks')) || {};
+      const rv = (await db.get('cyc/rescateventa')) || {};
+      const vp = (await db.get('cyc/ventaprod')) || {};
+      const porId = {}; products.forEach((p) => { porId[p.id] = p; });
+      const mlasDe = {};
+      for (const [mla, l] of Object.entries(lk)) if (l && l.prodId) (mlasDe[l.prodId] = mlasDe[l.prodId] || []).push(mla);
+      const f60 = new Date(Date.now() - 60 * 864e5).toISOString().slice(0, 10).replace(/-/g, '_');
+      const vtas = {};
+      for (const [dk, dia] of Object.entries(vp)) {
+        if (dk < f60) continue;
+        for (const [id, v] of Object.entries(dia || {})) {
+          if (!v || !v.prodId || v.cancelada) continue;
+          const o = vtas[v.prodId] = vtas[v.prodId] || { u: 0, rem: 0, ult: '' };
+          o.u += v.qty || 0;
+          const et = rv[dk + '__' + id];
+          if (et && et.estado === 'remate') o.rem += v.qty || 0;
+          if (dk > o.ult) o.ult = dk;
+        }
+      }
+      const hace = (ts) => ts ? Math.round((Date.now() - ts) / 864e5) + ' d' : '?';
+      let n = 0, conSenal = 0;
+      console.log('=== PEDIDOS CONTRA LAS SEÑALES DE REMATE ===\n');
+      for (const ped of peds) {
+        if (!ped || !(Number(ped.cantidad) > 0)) continue;
+        n++;
+        const p = porId[ped.prodId];
+        const mlas = mlasDe[ped.prodId] || [];
+        const s = [];
+        for (const m of mlas) {
+          const x = ns[m];
+          if (x) s.push(`🔒 liquidando ${m} (${esMarcaRobot(x) ? 'robot' : 'a mano'}${x.hermanaDe ? ', contagiada' : ''}, ${x.fecha ? String(x.fecha).slice(0, 10) : 'sin fecha'})`);
+          if (esc[m]) s.push(`🪜 escalera ${m} (escalón ${esc[m].paso != null ? esc[m].paso : '?'}, hace ${hace(esc[m].ts)})`);
+          const a = ap[m];
+          if (a && a.tipo === 'baja' && /remate|escalera/.test(String(a.por || ''))) s.push(`📉 el robot la bajó por ${a.por} ${m} (hace ${hace(a.ts)})`);
+        }
+        const t = nt[ped.prodId];
+        if (t) s.push(t.permitido ? '↩︎ "no traer más" levantado a mano' : '⛔ marcado "no traer más"');
+        const v = vtas[ped.prodId] || { u: 0, rem: 0, ult: '' };
+        if (v.rem) s.push(`🏷️ ${v.rem} de ${v.u} u. vendidas en 60 d fueron remate`);
+        const nom = p ? p.name : (ped.producto || ped.prodId);
+        if (s.length) {
+          conSenal++;
+          console.log(`⚠️ [${ped._col}] ${nom} · pide ${ped.cantidad} u. · vendió ${v.u} en 60 d (última ${v.ult ? v.ult.replace(/_/g, '-') : 'nunca'})`);
+          s.forEach((x) => console.log('     ' + x));
+        } else {
+          console.log(`✓ [${ped._col}] ${nom} · pide ${ped.cantidad} u. · vendió ${v.u} en 60 d · sin señales de remate`);
+        }
+      }
+      console.log(`\nResumen: ${n} pedidos que piden comprar · ${conSenal} con alguna señal de remate.`);
       return;
     }
 
