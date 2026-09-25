@@ -2808,6 +2808,11 @@ async function calcCajaBarata(db, o) {
       if (quieta < diasQuieta) { fuera.reciente++; continue; }
     } else if ((uCb[mla] || 0) > 0) {
       fuera.vendio++; continue;                                     // vende: no es este caso
+    } else if (quieta != null && quieta < 30) {
+      // LA NOCHE QUE VUELVE EL STOCK NO SE BAJA (revisión max, 25/09, eligió la a): algo que vendía
+      // y estuvo un mes agotado da "0 ventas en 30 días" justo cuando llega la caja. El mismo reloj
+      // del remate (P1): si hace menos de 30 días que volvió el stock o que vendió, no se baja.
+      fuera.reciente++; continue;
     }
     const st = parseInt(invCb[e.prodId + '__' + sidCb(e.cuenta)]) || 0;
     if (st <= 0) { fuera.sinStock++; continue; }                    // sin mercadería no hay nada que desbloquear
