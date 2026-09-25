@@ -556,7 +556,9 @@ async function envioDeducido(ventas, precioHoy, feeAt, opts = {}) {
 //
 // Una caja se marca recibida SOLO cuando TODOS sus renglones quedaron cubiertos. Si llegó la mitad,
 // se deja abierta: media caja recibida sigue siendo una caja en camino.
+let _cajas429Espera = 0;   // tope de espera por 429 en una vuelta (ver el reintento adentro)
 async function cajasQueLlegaron(db, accounts, labels, products, DRY) {
+  _cajas429Espera = 0;
   const envios = (await db.get('cyc/envios_full')) || {};
   const links = (await db.get('cyc/mllinks')) || {};
   const pIdx = {}; for (const p of products) pIdx[p.id] = p;
@@ -714,7 +716,20 @@ async function cajasQueLlegaron(db, accounts, labels, products, DRY) {
             const opsInv = [], vistosOp = new Set();
             let cortado = false;
             for (let pag = 0; ; pag++) {
-              const op = await mlGet(`/stock/fulfillment/operations/search?seller_id=${sid}&inventory_id=${par.inv}&date_from=${isoDesde(desdeDe(p.id))}&date_to=${hastaISO}&limit=${PAG}&offset=${pag * PAG}`, tok);
+              // ── EL 429 SE REINTENTA, ESPACIADO (25/09/2026) ── Medido: 63 de 135 consultas
+              // volvían "over_quota" y las 7 cajas abiertas (varias con ML diciendo "procesamiento
+              // finalizado") no se marcaban NUNCA — lo correcto sin dato, pero su mercadería se
+              // contaba dos veces (en Full y en camino). Se espacia cada consulta y un 429 se
+              // reintenta 3 veces con espera creciente; si sigue, queda "sin leer" como siempre.
+              let op;
+              for (let _r = 0; ; _r++) {
+                await new Promise((r) => setTimeout(r, 350));
+                try { op = await mlGet(`/stock/fulfillment/operations/search?seller_id=${sid}&inventory_id=${par.inv}&date_from=${isoDesde(desdeDe(p.id))}&date_to=${hastaISO}&limit=${PAG}&offset=${pag * PAG}`, tok); break; }
+                catch (e429) {
+                  if (_r < 3 && _cajas429Espera < 180000 && /\b429\b|over_quota/.test(String((e429 && e429.message) || e429))) { const _w = [4000, 10000, 20000][_r]; _cajas429Espera += _w; await new Promise((r) => setTimeout(r, _w)); continue; }
+                  throw e429;
+                }
+              }
               const res = (op && op.results) || [];
               let nuevos = 0;
               for (const x of res) {
