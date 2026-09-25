@@ -4070,14 +4070,16 @@ async function removeStartedPromos(itemId, token) {
 // fallback (precio − comisión de la orden), que es mucho más cercano. En la próxima corrida, ya
 // con el pago liquidado, la venta se vuelve a escribir con el neto exacto.
 async function orderNet(order, token, feeOut) {
-  let net = 0, ok = false, mlfee = 0, tieneCargosML = false, envio = 0;
+  let net = 0, ok = false, mlfee = 0, tieneCargosML = false, envio = 0, fallo = false;
   for (const p of (order.payments || [])) {
     if (!p.id) continue;
     try {
       const r = await fetch('https://api.mercadopago.com/v1/payments/' + p.id, {
         headers: { Authorization: 'Bearer ' + token },
       });
-      if (!r.ok) continue;
+      // Un pago que no contesta NO se saltea: con dos pagos y uno leído, la mitad del neto quedaba
+      // guardada como si fuera el real (f1 de la segunda vuelta, 25/09/2026).
+      if (!r.ok) { fallo = true; continue; }
       const b = await r.json();
       const nr = b.transaction_details?.net_received_amount;
       if (typeof nr === 'number') { net += nr; ok = true; }
@@ -4095,11 +4097,11 @@ async function orderNet(order, token, feeOut) {
         if (n.includes('shp_fulfillment')) envio += c.amounts?.original || 0;
         tieneCargosML = true;   // apareció al menos un cargo propio de ML → el pago ya está liquidado
       }
-    } catch { /* ignore */ }
+    } catch { fallo = true; }
   }
-  if (feeOut) { feeOut.mlfee = Math.round(mlfee); feeOut.envio = Math.round(envio); feeOut.liquidado = tieneCargosML; }
+  if (feeOut) { feeOut.mlfee = Math.round(mlfee); feeOut.envio = Math.round(envio); feeOut.liquidado = tieneCargosML && !fallo; feeOut.fallo = fallo; }
   // Sin cargos de ML el neto no sirve todavía: mejor el fallback que un número inflado.
-  return (ok && tieneCargosML) ? net : null;
+  return (ok && tieneCargosML && !fallo) ? net : null;
 }
 // fallback si no se pudo leer el pago: total − comisión (sin impuestos).
 function netoFallback(itemGross, saleFeeUnit, qty) {
@@ -19780,22 +19782,32 @@ async function main() {
       const _n = String(process.env.BILLING_PROBE).split(':');
       const DIAS = parseFloat(_n[1]) || 7;
       const GO = _n.includes('go');
+      // `estimadas` (lo corre ml-daily cada noche, f1 de la segunda vuelta): sólo las ventas de más
+      // de 2 días que quedaron con el neto estimado (marca `netoEstimado`, o sin `mlfee`). Las de
+      // menos de 2 días todavía las reescribe el ciclo, no hace falta tocarlas.
+      const SOLO_EST = _n.includes('estimadas');
       const vp = (await db.get('cyc/ventaprod')) || {};
       const desde = new Date(Date.now() - DIAS * 864e5);
       const dkDesde = dayKeyFromISO(desde.toISOString());
-      // Se agrupa por ORDEN: el neto que informa Mercado Pago es de la orden entera y después se
-      // reparte entre los renglones según cuánto pesa cada uno.
+      const dkHasta = dayKeyFromISO(new Date(Date.now() - 2 * 864e5).toISOString());
+      // Se agrupa por VENTA (el nº de paquete): en un carrito ML arma una orden por producto y le
+      // carga el envío y las cuotas a UNA sola, así que el neto se junta a nivel paquete y se
+      // reparte entre todos los renglones por lo que vale cada uno — la MISMA cuenta que hace el
+      // ciclo (bug de los Ferrari del 08/09). Antes esto repartía orden por orden y torcía carritos.
       const porOrden = {};
       for (const [dk, ents] of Object.entries(vp)) {
         if (dk < dkDesde) continue;
         for (const [id, v] of Object.entries(ents || {})) {
-          if (!v || v.cancelada) continue;
+          if (!v || v.cancelada || v.origen !== 'ml-api') continue;
           const m = /^v(\d+)_/.exec(id);
           if (!m) continue;
-          const oid = m[1];
-          (porOrden[oid] = porOrden[oid] || { cuenta: v.cuenta, filas: [] }).filas.push({ dk, id, v });
+          const gk = v.numVenta ? 'p' + v.numVenta : 'o' + m[1];
+          const g = (porOrden[gk] = porOrden[gk] || { cuenta: v.cuenta, filas: [], oids: new Set(), sosp: false });
+          g.filas.push({ dk, id, v }); g.oids.add(m[1]);
+          if ((v.netoEstimado || !(Number(v.mlfee) > 0)) && dk <= dkHasta) g.sosp = true;
         }
       }
+      if (SOLO_EST) for (const k of Object.keys(porOrden)) if (!porOrden[k].sosp) delete porOrden[k];
       const oids = Object.keys(porOrden);
       console.log(`=== NETO REAL vs NETO GUARDADO · ${oids.length} ventas de los últimos ${DIAS} días ${GO ? '(ARREGLANDO)' : '(solo lista)'} ===\n`);
       const toks = {};
@@ -19814,17 +19826,25 @@ async function main() {
         const g = porOrden[oid];
         const tok = toks[g.cuenta];
         if (!tok) { noPude++; continue; }
-        let ord; try { ord = await mlGet('/orders/' + oid, tok); } catch { noPude++; continue; }
+        let netoOrden = 0, bruto = 0, fee = 0, falla = null;
         const feeOut = {};
-        const netoOrden = await orderNet(ord, tok, feeOut);
-        if (netoOrden == null) { sinLiquidar++; continue; }
-        const bruto = (ord.order_items || []).reduce((a, oi) => a + (oi.unit_price || 0) * (oi.quantity || 0), 0);
+        for (const o1 of g.oids) {
+          let ord; try { ord = await mlGet('/orders/' + o1, tok); } catch { falla = 'leer'; break; }
+          const fo = {};
+          const n1 = await orderNet(ord, tok, fo);
+          if (n1 == null) { falla = fo.fallo ? 'leer' : 'liq'; break; }
+          netoOrden += n1; fee += fo.mlfee || 0;
+          bruto += (ord.order_items || []).reduce((a, oi) => a + (oi.unit_price || 0) * (oi.quantity || 0), 0);
+        }
+        feeOut.mlfee = fee;
+        if (falla === 'leer') { noPude++; continue; }
+        if (falla === 'liq') { sinLiquidar++; continue; }
         if (!(bruto > 0)) { noPude++; continue; }
         for (const f of g.filas) {
           const netoOk = Math.round(netoOrden * ((f.v.total || 0) / bruto));
           const guardado = Math.round(f.v.neto || 0);
           const dif = netoOk - guardado;
-          if (Math.abs(dif) <= 2) { iguales++; continue; }
+          if (Math.abs(dif) <= 2 && !f.v.netoEstimado) { iguales++; continue; }
           distintas++; difTotal += dif;
           malas.push({ ...f, netoOk, guardado, dif, mlfee: (feeOut.mlfee && bruto > 0) ? Math.round(feeOut.mlfee * ((f.v.total || 0) / bruto)) : null });
         }
@@ -19843,7 +19863,7 @@ async function main() {
       if (distintas) console.log(`\n  En total el panel muestra ${difTotal > 0 ? 'MENOS' : 'MÁS'} ganancia de la real por ${money(Math.abs(Math.round(difTotal)))}.`);
       if (!GO) { console.log(`\n(solo lista — para arreglarlas: netoreal:${DIAS}:go)`); return; }
       for (const m of malas) {
-        const patch = { neto: m.netoOk };
+        const patch = { neto: m.netoOk, netoEstimado: null };
         if (m.mlfee != null) patch.mlfee = m.mlfee;
         if (!DRY) await db.patch(`cyc/ventaprod/${m.dk}/${m.id}`, patch);
         arregladas++;
@@ -30791,10 +30811,19 @@ async function main() {
           // corrige sola en cuanto el pago se liquide (la ventana de sincronización son 2 días).
           if (orderNetAmt == null && !DRY) console.log(`  · venta ${o.id}: ML todavía no descontó su parte, uso el neto estimado (se corrige en la próxima vuelta)`);
         }
-        const neto = (orderNetAmt != null && repartoGross > 0)
+        let neto = (orderNetAmt != null && repartoGross > 0)
           ? Math.round(orderNetAmt * (itemGross / repartoGross))
           : netoFallback(itemGross, it.sale_fee, qty);
-        const mlfee = (orderFeeAmt && repartoGross > 0) ? Math.round(orderFeeAmt * (itemGross / repartoGross)) : 0; // cargo ML por venta (para el almacenamiento mensual)
+        let mlfee = (orderNetAmt != null && orderFeeAmt && repartoGross > 0) ? Math.round(orderFeeAmt * (itemGross / repartoGross)) : 0; // cargo ML por venta (para el almacenamiento mensual)
+        // ── UN NETO REAL NO SE PISA CON UNO ESTIMADO (25/09/2026, f1 de la segunda vuelta, a) ──
+        // La venta se reescribe entera cada vuelta durante 2 días. Si en la ÚLTIMA ML no contesta,
+        // quedaba el estimado para siempre (una de $48.000: neto real $30.000 → guardado $42.000).
+        // Si ya estaba guardado el real (tiene `mlfee` y no está marcado estimado), se conserva.
+        let netoEst = orderNetAmt == null;
+        const _prevV = ventaprod[dayKey] && ventaprod[dayKey]['v' + o.id + '_' + idx];
+        if (netoEst && _prevV && Number(_prevV.mlfee) > 0 && !_prevV.netoEstimado && Number(_prevV.neto) > 0) {
+          neto = Math.round(Number(_prevV.neto)); mlfee = Math.round(Number(_prevV.mlfee)); netoEst = false;
+        }
         // El envío de ESTA venta, repartido igual que el neto y los cargos cuando la compra lleva
         // varios productos (misma proporción que ya usa `mlfee`: si no, el que pagó el envío de
         // los dos aparecería perdiendo y el otro ganando — el bug de los Ferrari del 08/09).
@@ -30829,6 +30858,7 @@ async function main() {
           ts: new Date(o.date_created || o.date_closed).getTime(),
           origen: 'ml-api',
         };
+        if (netoEst) obj.netoEstimado = true;   // lo busca el repaso de la noche (netoreal:…:estimadas)
         if (!p) obj.sinVincular = true;    // marca: venta cargada sin producto
         if (variant) obj.variante = variant;
         if (DRY) console.log(`  [${label}] #${num} ${obj.prod}${p ? '' : ' (SIN PRODUCTO)'} x${qty} · total ${obj.total} · neto ${obj.neto}`);

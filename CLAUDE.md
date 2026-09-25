@@ -92,7 +92,7 @@ fallas leídas como dato. Lo que se confirme va abajo, de a uno, con su (a)/(b).
    `/claims` → queda "reclamo" (5% → 9,5%). `pend` no la vuelve a mirar nunca. (a) si la consulta
    falla, NO clasificar y reintentar la vuelta siguiente (ventana de 45 d); a los 7 d sin poder
    leer, clasificar como hoy y avisar · (b) marcar `tipoDudoso` y revisarlas de noche.
- · **f1 · REAL.** 429 en la ÚLTIMA lectura del pago → la venta queda con el neto ESTIMADO (una de
+ · **f1 · HECHO el 25/09, eligió las DOS.** (a) `orderNet` devuelve null si falla CUALQUIER pago, y el ciclo no pisa un neto real guardado (con `mlfee` > 0) con uno estimado; el estimado queda marcado `netoEstimado`. (b) `ml-daily` corre `netoreal:7:estimadas:go` antes de `netoweb`: relee de Mercado Pago las ventas de más de 2 días estimadas o sin `mlfee` y reparte los carritos por PAQUETE (antes `netoreal` torcía los carritos). Probado con el código real: el caso de los Ferrari da $41.206 + $42.990, la sana y la reciente no se tocan. Cómo estaba: **REAL.** 429 en la ÚLTIMA lectura del pago → la venta queda con el neto ESTIMADO (una de
    $48.000: neto $30.000 → $42.000, `mlfee` 0). Con dos pagos y uno falla: queda la MITAD como si
    fuera el real. Carrito: vuelve el reparto torcido de los Ferrari. **Y `netoreal:go`, el comando
    que lo repara a mano, también tuerce los carritos** (probado). (a) no pisar un neto real con uno
