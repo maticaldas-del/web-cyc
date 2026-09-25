@@ -110,7 +110,7 @@ fallas leídas como dato. Lo que se confirme va abajo, de a uno, con su (a)/(b).
 
 **NUEVAS DE LA SEGUNDA VUELTA (25/09, verificadas por el agente con el código real; notas en el
 scratchpad `rev2/<frente>/REPORT.md`, se pierden con el contenedor). Van de a una, con (a)/(b):**
- · **P1 (grave)** · `quietaDe` (sync ~2691) cuenta días desde la última venta SIN descontar los días
+ · **P1 (grave) · HECHO el 25/09, eligió la (a):** `quietaDe` toma el menor entre los días desde la última venta y los días desde que VOLVIÓ el stock (fecha real de `stockhist`); la escalera usa ese mismo reloj (`f.quieta`, que ahora traen también las filas `noSano`) en vez de recalcularlo; y lo que llegó hace menos de 30 días no entra por "sobra". Probado: la caja de hace 2 días da 2 d (antes 61) y no entra a la escalera; el control de 100 días sigue entrando. Cómo estaba: `quietaDe` (sync ~2691) cuenta días desde la última venta SIN descontar los días
    sin stock: algo que vuelve de estar agotado se remata o entra a la escalera apenas llega la caja
    y queda marcado `notraer` para siempre. La web tiene 30 días de gracia; el robot, ninguna.
  · **P2** · la regla "una suba cada 24 h" vive sólo en `rescatarAlVender`: el rescate de la noche y

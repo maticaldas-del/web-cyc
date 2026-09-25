@@ -2705,8 +2705,13 @@ async function calcCajaBarata(db, o) {
     // Manda la venta más reciente entre esta publicación y el PRODUCTO en esta cuenta: si el
     // producto se vende todos los días por otra publicación, no está "parado" (caso Ferrari).
     const uv = Math.max(ultVentaCb[mla] || 0, ultPCCb[pid + '__' + cta] || 0);
-    if (uv > 0) return Math.floor((Date.now() - uv) / 864e5);
-    return edadFullCb(pid, cta);   // nunca vendió → desde que llegó (null si no es fecha real)
+    const edad = edadFullCb(pid, cta);
+    // LOS DÍAS SIN STOCK NO SON DÍAS SIN VENDER (25/09/2026, P1 de la segunda vuelta, a). Algo que
+    // vendía, se agotó 60 días y llegó la caja hace 2 figuraba "61 días parado": esa misma noche se
+    // remataba o entraba a la escalera y quedaba marcado "no traer más". Si el stock volvió
+    // DESPUÉS de la última venta (fecha real de entrada), el reloj arranca ahí.
+    if (uv > 0) { const d = Math.floor((Date.now() - uv) / 864e5); return edad != null ? Math.min(d, edad) : d; }
+    return edad;   // nunca vendió → desde que llegó (null si no es fecha real)
   };
 
   // Primer filtro, GRATIS: sale de lo que el robot ya escribió en `cyc/mllinks` cada hora
@@ -2734,6 +2739,10 @@ async function calcCajaBarata(db, o) {
     if (sobreDias > 0 && !e.variant && (uCb[mla] || 0) > 0 && (e.caja === 'losing' || e.caja === 'sharing')) {
       const ds = diasStockCb(e.prodId, e.cuenta);
       if (ds && ds.dias > sobreDias) {
+        // Lo que llegó hace menos de 30 días no se remata por "sobra": la caja recién entró y todavía
+        // no tuvo tiempo de venderse (la misma gracia que la web, ROT_GRACIA_DIAS).
+        const edS = edadFullCb(e.prodId, e.cuenta);
+        if (edS != null && edS < 30) { fuera.reciente++; continue; }
         if (ganaCb.has(e.prodId + '__' + e.cuenta)) { fuera.hermanaGana++; continue; }
         const ptwS = Number(e.cajaPtw) || 0;
         if (!(ptwS > 0)) { fuera.sinPtw++; continue; }
@@ -2826,6 +2835,7 @@ async function calcCajaBarata(db, o) {
         mla: c.mla, cuenta: c.e.cuenta, nom: (p.name || b.title || c.mla).slice(0, 34),
         precio, ptw: Math.round(c.ptw), baja, mgPw: mgTope, envio: 0, costo: Math.round(costo),
         st: c.st, envioEstimado: true, exigido: minSano, sobre: c.sobre || null,
+        quieta: c.quieta,   // la escalera usa este reloj (descuenta los días sin stock, P1)
         // Un decimal, no cero: con 24,6% redondeado a "25%" el renglón se lee como
         // "no llega ni a 25% (25%)", que parece una contradicción y hace dudar del número.
         why: `bajando ${baja.toFixed(0)}% no llega ni a ${minSano}% ANTES de descontar el envío (${mgTope.toFixed(1)}%)`,
@@ -6992,8 +7002,10 @@ async function main() {
             const mem = escMem[f.mla];
             if (NOSUBIR[f.mla] && !mem) continue;            // lo marcó él liquidando: no es nuestro
             const uv = Math.max(ultE[f.mla] || 0, ultPC[(e.prodId || '') + '__' + (e.cuenta || f.cuenta)] || 0);
-            const quieta = uv > 0 ? Math.floor((hoyTs - uv) / 864e5)
-              : (f.quieta != null ? f.quieta : (e.altaTs > 0 ? Math.floor((hoyTs - e.altaTs) / 864e5) : null));
+            // Manda el reloj de `quietaDe` (f.quieta), que ya descuenta los días sin stock (P1, 25/09):
+            // recalcularlo acá desde la última venta volvía a contar como "parado" lo recién llegado.
+            const quieta = f.quieta != null ? f.quieta
+              : (uv > 0 ? Math.floor((hoyTs - uv) / 864e5) : (e.altaTs > 0 ? Math.floor((hoyTs - e.altaTs) / 864e5) : null));
             if (quieta == null || quieta < ESC_DIAS) continue;
             if (mem && hoyTs - (mem.ts || 0) < ESC_ESPERA * 864e5) continue;
             if (mem && mem.paso <= ESC_PASOS[ESC_PASOS.length - 1]) continue;   // ya está en el último escalón
