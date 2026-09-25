@@ -3475,13 +3475,21 @@ async function margenAlDia(mla, token, que) {
     const vars = Array.isArray(b.variations) ? b.variations : [];
     const precio = vars.length ? (vars[0].price || 0) : (b.price || 0);
     if (!(precio > 0)) return;
-    let com = null;
+    let com = null, finEnCom = false;
     try {
       const d = await mlGet(`/sites/${b.site_id || 'MLA'}/listing_prices?price=${Math.round(precio)}&listing_type_id=${b.listing_type_id}&category_id=${b.category_id}`, token);
       const o = Array.isArray(d) ? d[0] : d;
       if (typeof o?.sale_fee_amount === 'number') com = o.sale_fee_amount;
+      finEnCom = Number(o?.sale_fee_details?.financing_add_on_fee) > 0;
     } catch { com = null; }
     if (com == null) { console.log(`   (el margen del panel queda como estaba: ML no dio la comisión de ${mla})`); return; }
+    // Las cuotas sin interés de las PREMIUM, igual que netoweb (25/09/2026, el Salvador Dalí).
+    let cuo = 0, cuoEst = false;
+    if (b.listing_type_id === 'gold_pro' && !finEnCom) {
+      const cc = (await DB_REF.get('cyc/mlcuotas/' + mla)) || null;
+      const v = cc ? parseFloat(cc.pct) : NaN;
+      if (isFinite(v) && v > 0) { cuo = v / 100; cuoEst = !!cc.estimado; }
+    }
 
     const antes = (await DB_REF.get('cyc/netopub/' + mla)) || {};
     let envio = 0, envioML = !!antes.envioML, sinEnvio = false;
@@ -3489,10 +3497,11 @@ async function margenAlDia(mla, token, que) {
       if (Number(antes.envio) > 0) envio = Math.round(Number(antes.envio));
       else { envio = CAND_ENVIO_ARRIBA; envioML = true; }   // queda marcado: no es un envío medido en ESTA publicación
     }
-    const neto = Math.round(precio - com - envio);
+    const cuotas = Math.round(precio * cuo);
+    const neto = Math.round(precio - com - envio - cuotas);
     if (!(neto > 0)) return;                                 // un neto negativo taparía el dato bueno
 
-    const fila = { neto, precio: Math.round(precio), envio, sinEnvio, envioML, activa,
+    const fila = { neto, precio: Math.round(precio), envio, cuotas, cuotasEst: cuoEst, sinEnvio, envioML, activa,
       cuenta: antes.cuenta || (link.cuenta || ''), pid, ts: Date.now() };
     await DB_REF.patch('cyc/netopub', { [mla]: fila });
 
@@ -3513,7 +3522,7 @@ async function margenAlDia(mla, token, que) {
       netoCalc: win.neto, netoCalcPrecio: Math.round(Number(win.precio) || 0),
       netoCalcEnvio: Math.round(Number(win.envio) || 0), netoCalcSinEnvio: !!win.sinEnvio,
       netoCalcEnvioML: !!win.envioML, netoCalcPausada: !win.activa,
-      netoCalcCuenta: win.cuenta || '', netoCalcTs: Date.now(),
+      netoCalcCuenta: win.cuenta || '', netoCalcCuotas: Math.round(Number(win.cuotas) || 0), netoCalcTs: Date.now(),
     });
     console.log(`   margen del panel al día: ${mla} quedó en ${money(Math.round(precio))} → neto ${money(neto)}`
       + (win.mla === mla ? '' : ` · en el producto manda ${win.mla}, que deja menos`));
@@ -14295,67 +14304,90 @@ async function main() {
     // En la Samsung fueron $67.199 sobre $349.999 = 19,2%, más que toda la ganancia de esa venta.
     // Sin este número, cualquier precio calculado para un producto con cuotas queda ~19% corto.
     // Guarda en cyc/mlcuotas el % por publicación para que el barrido de precios lo use.
+    // REHECHO EL 25/09/2026, con el Salvador Dalí: la publicación es PREMIUM (cuotas sin interés) y
+    // en una venta de $119.970 ML se quedó $25.914 de cuotas (21,6%). El panel mostraba 31% y la venta
+    // dio 16%: la comisión que pregunta el robot (`listing_prices`) no trae ese cargo. Él: *"¿cómo no va
+    // a tener en cuenta que la publicación tiene cuotas? Arreglar"*.
+    // La versión vieja se había borrado (`nocuotas`) porque contaba cargos que NO paga el vendedor
+    // (le puso 9,9% a los Victoria's Secret, que no ofrecen cuotas). Ahora:
+    //  · sólo mira las publicaciones PREMIUM (`gold_pro`), que son las únicas con cuotas sin interés;
+    //  · sólo cuenta el cargo `financing_add_on_fee` que paga EL VENDEDOR (accounts.from = collector);
+    //  · a las Premium que todavía no vendieron les pone el PEOR % medido en las otras Premium
+    //    (o 21,6%, el del Dalí, si no hay ninguno), marcado `estimado`: errar para el lado caro;
+    //  · reemplaza el nodo entero sólo si leyó bien las cuatro cuentas (así no queda un % viejo de una
+    //    publicación que pasó a Clásica); si falló alguna, sólo agrega.
+    // Corre solo en `ml-daily`, antes de `netoweb`, que lo descuenta del neto de cada publicación.
     if (String(process.env.BILLING_PROBE || '').startsWith('cuotas')) {
-      const DIAS = parseFloat(String(process.env.BILLING_PROBE).split(':')[1]) || 60;
+      const DIAS = parseFloat(String(process.env.BILLING_PROBE).split(':')[1]) || 90;
+      const CUOTA_DEFECTO = 21.6;
       const desde = new Date(Date.now() - DIAS * 864e5).toISOString().replace(/\.\d+Z$/, '.000-00:00');
       const links = (await db.get('cyc/mllinks')) || {};
-      const acum = {}; // mla → { fin, envio, precio, n }
+      const acum = {};      // mla → { fin, precio, n }
+      const premium = {};   // mla → cuenta (todas las publicaciones Premium, vendan o no)
+      let cuentasOk = 0;
       for (const label of labels) {
         const acc = accounts[label];
         if (!acc?.refresh_token) continue;
-        let t; try { t = await mlRefresh(ML_CLIENT_ID, ML_CLIENT_SECRET, acc.refresh_token); } catch { continue; }
+        let t; try { t = await mlRefresh(ML_CLIENT_ID, ML_CLIENT_SECRET, acc.refresh_token); } catch { console.log(`⚠️ ${label}: no pude renovar el permiso`); continue; }
         await db.patch('mlapi/tokens/' + label, { refresh_token: t.refresh_token, updated_ts: Date.now() });
-        let orders; try { orders = await fetchOrders(acc.seller_id, t.access_token, desde); } catch { continue; }
+        // 1) qué publicaciones de esta cuenta son Premium
+        const ids = Object.entries(links).filter(([mla, e]) => e && e.cuenta === label && /^MLA/i.test(mla)).map(([mla]) => mla);
+        let okItems = true;
+        for (let k = 0; k < ids.length; k += 20) {
+          let arr; try { arr = await mlGet('/items?ids=' + ids.slice(k, k + 20).join(',') + '&attributes=id,listing_type_id,status', t.access_token); } catch { okItems = false; continue; }
+          for (const row of (arr || [])) { const b = row.body || {}; if (b.id && b.listing_type_id === 'gold_pro') premium[b.id] = label; }
+        }
+        // 2) el costo real de las cuotas en las ventas Premium
+        let orders; try { orders = await fetchOrders(acc.seller_id, t.access_token, desde); } catch { console.log(`⚠️ ${label}: no pude leer las ventas`); continue; }
+        let okPagos = true;
         for (const o of orders) {
-          const its = o.order_items || [];
-          const bruto = its.reduce((s, it) => s + (it.unit_price || 0) * (it.quantity || 1), 0);
+          const its = (o.order_items || []).filter((it) => it.listing_type_id === 'gold_pro' || premium[it.item?.id]);
+          if (!its.length) continue;
+          const bruto = (o.order_items || []).reduce((s2, it) => s2 + (it.unit_price || 0) * (it.quantity || 1), 0);
           if (bruto <= 0) continue;
-          let fin = 0, env = 0, leido = false;
-          for (const p of (o.payments || [])) {
-            if (!p.id) continue;
+          let fin = 0, leido = false;
+          for (const pg of (o.payments || [])) {
+            if (!pg.id) continue;
             try {
-              const r = await fetch('https://api.mercadopago.com/v1/payments/' + p.id, { headers: { Authorization: 'Bearer ' + t.access_token } });
-              if (!r.ok) continue;
+              const r = await fetch('https://api.mercadopago.com/v1/payments/' + pg.id, { headers: { Authorization: 'Bearer ' + t.access_token } });
+              if (!r.ok) { okPagos = false; continue; }
               const b = await r.json();
               leido = true;
               for (const c of (b.charges_details || [])) {
-                const n = (c.name || '').toLowerCase();
-                const a = c.amounts?.original || 0;
-                if (n.includes('financing')) fin += a;
-                else if (n.includes('shp_')) env += a;
+                if (String(c.name || '') !== 'financing_add_on_fee') continue;
+                const de = c.accounts && c.accounts.from;
+                if (de && de !== 'collector') continue;   // lo paga el comprador: no es costo nuestro
+                fin += Number(c.amounts?.original) || 0;
               }
-            } catch { /* sigue */ }
+            } catch { okPagos = false; }
           }
           if (!leido) continue;
-          // el cargo es de la orden: se reparte entre los ítems por su peso en el bruto
+          // el cargo es de la orden: se reparte entre sus ítems Premium por su peso en el bruto Premium
+          const brutoP = its.reduce((s2, it) => s2 + (it.unit_price || 0) * (it.quantity || 1), 0);
           for (const it of its) {
             const mla = it.item?.id; if (!mla) continue;
+            premium[mla] = premium[mla] || label;
             const sub = (it.unit_price || 0) * (it.quantity || 1);
-            const peso = sub / bruto;
-            const a = acum[mla] = acum[mla] || { fin: 0, envio: 0, precio: 0, n: 0 };
-            a.fin += fin * peso; a.envio += env * peso; a.precio += sub; a.n++;
+            const a = acum[mla] = acum[mla] || { fin: 0, precio: 0, n: 0 };
+            a.fin += brutoP > 0 ? fin * sub / brutoP : 0; a.precio += sub; a.n++;
           }
         }
+        if (okItems && okPagos) cuentasOk++;
+        else console.log(`⚠️ ${label}: alguna consulta falló (se agrega lo leído, no se borra nada)`);
       }
-      const filas = Object.entries(acum).map(([mla, a]) => ({
-        mla, n: a.n, precio: a.precio,
-        pctFin: a.precio > 0 ? (a.fin / a.precio * 100) : 0,
-        envioUnit: a.n > 0 ? (a.envio / a.n) : 0,
-        nom: ((links[mla] || {}).title || mla).slice(0, 40),
-        cuenta: (links[mla] || {}).cuenta || '?',
-      })).filter((f) => f.n > 0);
-      const conCuotas = filas.filter((f) => f.pctFin >= 0.5);
-      console.log(`=== COSTO DE OFRECER CUOTAS · últimos ${DIAS} días · ${filas.length} publicaciones con ventas ===\n`);
-      console.log(`── CON COSTO DE CUOTAS · ${conCuotas.length} ──`);
-      console.log(`   Este % se le resta al neto al calcular el precio. Antes no se contaba.\n`);
-      conCuotas.sort((a, b) => b.pctFin - a.pctFin).forEach((f) => console.log(
-        `   ${f.pctFin.toFixed(1).padStart(5)}% cuotas · envío ${money(Math.round(f.envioUnit)).padStart(8)} · ${f.n} ventas · ${f.cuenta.padEnd(8)} · ${f.nom}`));
-      console.log(`\n── SIN COSTO DE CUOTAS · ${filas.length - conCuotas.length} ──`);
+      const medidos = Object.entries(acum).filter(([, a]) => a.precio > 0).map(([mla, a]) => ({ mla, pct: a.fin / a.precio * 100, n: a.n }));
+      const peor = medidos.length ? Math.max(...medidos.map((x) => x.pct)) : CUOTA_DEFECTO;
+      const out = {};
+      for (const x of medidos) out[x.mla] = { pct: Math.round(x.pct * 100) / 100, n: x.n, ts: Date.now() };
+      for (const mla of Object.keys(premium)) if (!out[mla]) out[mla] = { pct: Math.round(peor * 100) / 100, n: 0, estimado: true, ts: Date.now() };
+      console.log(`=== CUOTAS SIN INTERÉS (publicaciones PREMIUM) · últimos ${DIAS} días ===`);
+      console.log(`Premium: ${Object.keys(premium).length} · con ventas medidas: ${medidos.length} · sin ventas (se les pone el peor medido, ${peor.toFixed(1)}%): ${Object.keys(out).length - medidos.length}`);
+      for (const [mla, x] of Object.entries(out)) console.log(`   ${mla} · ${(premium[mla] || '?').padEnd(8)} · cuotas ${String(x.pct).padStart(5)}% del precio${x.estimado ? ' (estimado: nunca vendió)' : ` · ${x.n} venta(s)`} · ${((links[mla] || {}).title || '').slice(0, 36)}`);
       if (!DRY) {
-        const upd = {};
-        for (const f of filas) upd[f.mla] = { pct: Math.round(f.pctFin * 100) / 100, envio: Math.round(f.envioUnit), n: f.n, ts: Date.now() };
-        await db.patch('cyc/mlcuotas', upd);
-        console.log(`\n✓ Guardado en cyc/mlcuotas: el barrido de precios ya lo va a descontar.`);
+        if (cuentasOk === labels.length) await db.set('cyc/mlcuotas', out);
+        else if (Object.keys(out).length) await db.patch('cyc/mlcuotas', out);
+        const rele = (await db.get('cyc/mlcuotas')) || {};
+        console.log(`✓ Guardado en cyc/mlcuotas (${cuentasOk === labels.length ? 'reemplazado entero' : 'sólo agregado'}): ${Object.keys(rele).length} publicación(es). netoweb y los comandos de precio lo descuentan.`);
       }
       return;
     }
@@ -20168,6 +20200,13 @@ async function main() {
         }
       }
       const compEnvio = [];   // comparación: tarifa de ML vs envío deducido de nuestras ventas
+      // CUOTAS SIN INTERÉS DE LAS PREMIUM (25/09/2026, el Salvador Dalí: el panel decía 31% y la venta
+      // dio 16% porque ML se quedó 21,6% de cuotas que la comisión preguntada no trae). El % sale de
+      // `cyc/mlcuotas` (probe `cuotas`, que corre antes en ml-daily). Si ML SÍ lo trae adentro de la
+      // comisión (financing_add_on_fee > 0 en el detalle), no se descuenta dos veces.
+      let cuotasCfg = {};
+      try { cuotasCfg = (await db.get('cyc/mlcuotas')) || {}; } catch { cuotasCfg = {}; }
+      const finEnCom = {};    // misma clave que feeCache → ML trajo las cuotas adentro de la comisión
       const feeCache = {};
       const feeAt = async (site, price, ltype, cat, token) => {
         const key = site + '|' + ltype + '|' + cat + '|' + Math.round(price);
@@ -20177,6 +20216,7 @@ async function main() {
           const d = await mlGet(`/sites/${site}/listing_prices?price=${Math.round(price)}&listing_type_id=${ltype}&category_id=${cat}`, token);
           const o = Array.isArray(d) ? d[0] : d;
           if (typeof o?.sale_fee_amount === 'number') out = o.sale_fee_amount;
+          finEnCom[key] = Number(o?.sale_fee_details?.financing_add_on_fee) > 0;
         } catch { out = null; }
         feeCache[key] = out; return out;
       };
@@ -20221,6 +20261,9 @@ async function main() {
             if (!precio) continue;
             const com = await feeAt(b.site_id || 'MLA', precio, b.listing_type_id, b.category_id, t.access_token);
             if (com == null) continue;
+            const _cc = b.listing_type_id === 'gold_pro' && cuotasCfg[mla] ? parseFloat(cuotasCfg[mla].pct) : 0;
+            const cuo = isFinite(_cc) && _cc > 0 && !finEnCom[(b.site_id || 'MLA') + '|' + b.listing_type_id + '|' + b.category_id + '|' + Math.round(precio)] ? _cc / 100 : 0;
+            const cuoEst = cuo > 0 && !!(cuotasCfg[mla] || {}).estimado;
             // ── ENVÍO: EL DEL PEOR CASO ──
             // Acá se tomaba el envío MÁS BARATO visto. En el Ferrari Negro eso daba casi $0 y la
             // pantalla mostraba 47% de margen cuando las ventas reales dejaban 22%: los $8.197 de
@@ -20242,7 +20285,8 @@ async function main() {
             for (const pv of [...new Set(ventas.map((v) => Math.round(v.tot)))].slice(-6)) {
               const cv = await feeAt(b.site_id || 'MLA', pv, b.listing_type_id, b.category_id, t.access_token);
               if (cv == null) { faltoCom = true; continue; }
-              for (const v of ventas) if (Math.round(v.tot) === pv) { const x = v.tot - v.net - cv; if (x > envio) envio = x; }
+              // Las cuotas se sacan antes: si no, el "envío" de una venta Premium se llevaría las cuotas.
+              for (const v of ventas) if (Math.round(v.tot) === pv) { const x = v.tot - v.net - cv - v.tot * cuo; if (x > envio) envio = x; }
             }
             if (faltoCom) { sinMedir.add(p.id); sinMedirPub.push(mla); continue; }
             // Sin ninguna venta no hay envío que deducir de nuestras ventas... pero ML sí sabe
@@ -20272,7 +20316,8 @@ async function main() {
             }
             if (!isFinite(envio)) envio = 0;
             if (envio < 0) envio = 0;
-            const neto = Math.round(precio - com - envio);
+            const cuotas = Math.round(precio * cuo);
+            const neto = Math.round(precio - com - envio - cuotas);
             if (neto <= 0) continue;
             const prev = porProd[p.id];
             // Las ACTIVAS mandan: una pausada solo se usa si el producto no tiene ninguna activa.
@@ -20296,9 +20341,9 @@ async function main() {
             // costo y no se actualizó"*.
             // Es el error de siempre visto de cerca: el comentario de abajo promete que se guarda
             // "el envío que se usó para sacar este neto" y nadie comprobó que llegara.
-            porPub[mla] = { neto, precio: Math.round(precio), envio: Math.round(envio),
+            porPub[mla] = { neto, precio: Math.round(precio), envio: Math.round(envio), cuotas, cuotasEst: cuoEst,
               sinEnvio: !!sinEnvio, envioML: !!envioDeML, activa: !!activa, cuenta: label, pid: p.id, ts: Date.now(), sinMedir: null };
-            if (mejor) porProd[p.id] = { neto, precio: Math.round(precio), mla, cuenta: label, envio, sinEnvio, envioDeML, activa };
+            if (mejor) porProd[p.id] = { neto, precio: Math.round(precio), mla, cuenta: label, envio, sinEnvio, envioDeML, activa, cuotas, cuotasEst: cuoEst };
           }
         }
       }
@@ -20328,6 +20373,7 @@ async function main() {
           await db.set('cyc/products/' + pid + '/netoCalcPausada', !d.activa);
           await db.set('cyc/products/' + pid + '/netoCalcEnvio', Math.round(Number(d.envio) || 0));
           await db.set('cyc/products/' + pid + '/netoCalcSinEnvio', !!d.sinEnvio);
+          await db.set('cyc/products/' + pid + '/netoCalcCuotas', Math.round(Number(d.cuotas) || 0));
           await db.set('cyc/products/' + pid + '/netoCalcEnvioML', !!d.envioDeML);
           await db.set('cyc/products/' + pid + '/netoCalcCuenta', d.cuenta);
           await db.set('cyc/products/' + pid + '/netoCalcTs', Date.now());
@@ -21736,6 +21782,41 @@ async function main() {
         return vs.length ? Math.round(vs[0].tot / vs[0].q) : null;
       };
 
+      // ── EL MOTIVO DE CADA CAMBIO (25/09/2026) ────────────────────────────────────
+      // Regla suya: *"obviamente siempre va a haber aumentos y hubo por inflación. Eso no podés
+      // adjudicártelo como ganancia tuya. Lo tuyo tiene que ser 100% por un aumento o baja puntual
+      // del producto, que no se iba a hacer si vos no estabas ahí mirando"*.
+      // Por eso cada cambio lleva su MOTIVO y la cuenta de "lo que trajo el robot" suma SÓLO los que
+      // son decisión del robot mirando el mercado:
+      //  · 📈 subir   → había lugar abajo del competidor (calcSubirPuede)
+      //  · 📉 bajar   → bajar para ganar la caja (calcCajaBarata)
+      //  · 🔨 remate · 🪜 escalera → mover lo que no vende
+      // NO cuentan, y se muestran aparte:
+      //  · 🛟 rescate → devolver el margen que se comió el costo, el envío o la inflación (el rescate
+      //    de la noche, el de cada venta, el viejo robot al vender y el de costo). Eso lo iba a hacer
+      //    igual cualquiera que mirara el margen: no es plata que traiga el robot.
+      //  · ✋ a mano.
+      // Un cambio viejo sin motivo guardado: si `cyc/autoprecio` tiene ESE mismo cambio, sale de ahí;
+      // si no, una SUBA sin motivo cuenta como rescate (el lado que no se atribuye plata de más).
+      const SUP_CUENTA = new Set(['subir', 'bajar', 'remate', 'escalera']);
+      function motivoDeAuto(a) {
+        const por = a && a.por;
+        if (por === 'margen' || por === 'venta' || por === 'costo') return 'rescate';
+        if (por === 'remate' || por === 'escalera') return por;
+        if (a && a.tipo === 'sube') return 'subir';
+        if (a && a.tipo === 'baja') return 'bajar';
+        return '';
+      }
+      const motivoDe = (ev) => {
+        if (ev.motivo) return ev.motivo;
+        if (!['robot al vender', 'robot de noche', 'robot por costo'].includes(ev.origen)) return 'mano';
+        if (ev.origen !== 'robot de noche') return 'rescate';
+        const a = autop[ev.mla];
+        const m = (a && Math.abs((Number(a.ts) || 0) - ev.ts) < 5 * 60e3) ? motivoDeAuto(a) : '';
+        if (m) return m;
+        return ev.a > 0 && ev.de > 0 && ev.a < ev.de ? 'bajar' : 'rescate';
+      };
+
       // ── 1. LOS CAMBIOS NUEVOS ──────────────────────────────────────────────────
       const nuevos = {};
       const agregar = (ev) => {
@@ -21749,7 +21830,7 @@ async function main() {
       }
       for (const [mla, a] of Object.entries(autop)) {
         if (!a || !a.ts || ahora - a.ts > MAX_DIAS * 864e5) continue;
-        agregar({ mla, ts: a.ts, a: Math.round(a.a || 0) || null, de: Math.round(a.de || 0) || null, origen: a.por === 'costo' ? 'robot por costo' : 'robot de noche', aprox: false });
+        agregar({ mla, ts: a.ts, a: Math.round(a.a || 0) || null, de: Math.round(a.de || 0) || null, origen: a.por === 'costo' ? 'robot por costo' : 'robot de noche', aprox: false, motivo: motivoDeAuto(a) });
       }
       // La foto: lo que cambió entre la noche pasada y hoy y NO lo anotó el robot.
       const todosEv = () => [...Object.values(eventos), ...Object.values(nuevos)];
@@ -21854,15 +21935,25 @@ async function main() {
       let enCurso = 0, sinCosto = 0, sinPrecio = 0, manuales = 0;
       const porMlaEv = {};
       for (const ev of Object.values(todos)) (porMlaEv[ev.mla] = porMlaEv[ev.mla] || []).push(ev);
+      // TODOS los cambios de precio, con su motivo y su estado, para la lista de la pantalla (pedido
+      // suyo del 25/09: "quiero poder elegir en qué me muestra de todas las decisiones de precio (…)
+      // quiero todos los detalles posibles. fecha, hora, %, $, todo"). `atrib` sigue siendo sólo lo
+      // que cuenta en el total.
+      const registros = [];
+      const base = (id, ev, motivo) => ({ id, mla: ev.mla, nom: nomDe(ev.mla), cuenta: (links[ev.mla] || {}).cuenta || '',
+        origen: ev.origen, motivo, de: ev.de || null, a: ev.a || null, ts: ev.ts, aprox: !!ev.aprox });
+      const motivosNuevos = {};
       for (const [id, ev] of Object.entries(todos)) {
-        if (!ROBOT.has(ev.origen)) { manuales++; continue; }
-        if (!(ev.de > 0) || !(ev.a > 0)) { sinPrecio++; continue; }
+        const motivo = motivoDe(ev);
+        if (!ev.motivo) { if (nuevos[id]) nuevos[id].motivo = motivo; else motivosNuevos[id] = motivo; }
+        if (!ROBOT.has(ev.origen)) { manuales++; registros.push({ ...base(id, ev, motivo), estado: 'mano' }); continue; }
+        if (!(ev.de > 0) || !(ev.a > 0)) { sinPrecio++; registros.push({ ...base(id, ev, motivo), estado: 'sinprecio' }); continue; }
         const costo = costoDe(ev.mla);
-        if (!(costo > 0)) { sinCosto++; continue; }
+        if (!(costo > 0)) { sinCosto++; registros.push({ ...base(id, ev, motivo), estado: 'sincosto' }); continue; }
         const sig = (porMlaEv[ev.mla] || []).filter((o) => o !== ev && o.ts > ev.ts + 60e3).sort((a, b) => a.ts - b.ts)[0];
         const finT = Math.min(ahora, ev.ts + 30 * 864e5, sig ? sig.ts : Infinity);
         const L = (finT - ev.ts) / 864e5;
-        if (L < 7) { enCurso++; continue; }
+        if (L < 7) { enCurso++; registros.push({ ...base(id, ev, motivo), estado: 'encurso', dias: Math.round(L * 10) / 10 }); continue; }
         const vs = porMla[ev.mla] || [];
         let antesV = vs.filter((x) => x.ts < ev.ts && x.ts >= ev.ts - L * 864e5);
         if (ev.origen === 'robot al vender') {
@@ -21912,10 +22003,13 @@ async function main() {
         const volumen = (!volConfiable || quiebreR) ? 0 : (ev.a > ev.de ? Math.min(0, volCrudo) : Math.max(0, volCrudo));
         const evs = ev.ev || {}; const juicio = (evalNuevas.filter((x) => x.id === id).sort((a, b) => b.W - a.W)[0] || {}).res;
         const v = quiebreR ? 'sinstock' : ((juicio || evs.d30 || evs.d15 || evs.d7 || {}).v || '');
-        atrib.push({ id, mla: ev.mla, nom: nomDe(ev.mla), cuenta: (links[ev.mla] || {}).cuenta || '', origen: ev.origen,
-          de: ev.de, a: ev.a, ts: ev.ts, dias: Math.round(L), uA, uD, precio: Math.round(precio), volumen: Math.round(volumen),
-          total: Math.round(precio + volumen), v, quiebre: quiebreR, volSinDato: !volConfiable && !quiebreR });
+        const reg = { ...base(id, ev, motivo), estado: 'medido', dias: Math.round(L), uA, uD, precio: Math.round(precio), volumen: Math.round(volumen),
+          total: Math.round(precio + volumen), v, quiebre: quiebreR, volSinDato: !volConfiable && !quiebreR, enTotal: SUP_CUENTA.has(motivo) };
+        registros.push(reg);
+        if (reg.enTotal) atrib.push(reg);
       }
+      // Lo que NO cuenta (rescates por costo/inflación) igual se suma aparte, para que se vea cuánto es.
+      const resc = registros.filter((x) => x.estado === 'medido' && !x.enTotal);
       const sumaA = (f) => atrib.reduce((s, x) => s + f(x), 0);
       const resumen = {
         ts: ahora,
@@ -21933,6 +22027,10 @@ async function main() {
         perdieron: atrib.filter((x) => x.total < 0).length,
         quiebres: atrib.filter((x) => x.quiebre).length,
         enCurso, sinCosto, sinPrecio, manuales,
+        // v2: sólo decisiones del robot mirando el mercado (regla del 25/09). Los rescates van aparte.
+        ver: 2,
+        rescates: { n: resc.length, total: Math.round(resc.reduce((s2, x) => s2 + x.total, 0)) },
+        todos: registros.sort((a, b) => b.ts - a.ts),
         desde: atrib.length ? Math.min(...atrib.map((x) => x.ts)) : null,
         // TODOS los que hicieron perder van siempre, sin tope: el tope de 60 se aplica sólo a los que
         // ganaron. Cortar la lista por tamaño podría dejar afuera justo una pérdida.
@@ -21978,6 +22076,8 @@ async function main() {
       console.log(`Efecto precio (firme): ${$s(resumen.precio)} · efecto volumen (supuesto): ${$s(resumen.volumen)} · TOTAL ${$s(resumen.total)}`);
       console.log(`Ganó ${$s(resumen.gano)} en ${resumen.ganaron} cambios · PERDIÓ ${$s(-resumen.perdio)} en ${resumen.perdieron} cambios (primero van los que perdieron)`);
       console.log(`${resumen.ganaron} dejaron más · ${resumen.perdieron} dejaron menos · ${resumen.quiebres} con el volumen sin contar por quiebre de stock`);
+      console.log(`No cuentan (🛟 recuperar margen por costo/inflación): ${resumen.rescates.n} cambios · ${$s(resumen.rescates.total)}`);
+      { const cm = {}; for (const x of registros) cm[x.motivo] = (cm[x.motivo] || 0) + 1; console.log(`Motivos: ${Object.entries(cm).map(([k, n]) => k + ' ' + n).join(' · ')}`); }
       for (const x of resumen.items.slice(0, 15)) console.log(`  ${x.total >= 0 ? '+' : ''}${$s(x.total)} · ${x.nom} (${x.cuenta}) ${$s(x.de)}→${$s(x.a)} · ${x.dias} d · ${x.uA}→${x.uD} u. · precio ${$s(x.precio)} · volumen ${$s(x.volumen)}${x.quiebre ? ' · sin stock' : ''}`);
       console.log('');
       if (!MANDAR) { console.log('\nPRUEBA: no se guardó nada. Con ":go" guarda y avisa.'); return; }
@@ -21996,9 +22096,13 @@ async function main() {
       for (const [id, c] of Object.entries(cambiosEv)) { if (nuevos[id]) continue; upd['eventos/' + id + '/noches'] = c.noches; upd['eventos/' + id + '/nochesSin'] = c.nochesSin; }
       for (const x of evalNuevas) { if (nuevos[x.id]) continue; upd['eventos/' + x.id + '/ev/d' + x.W] = x.res; }
       for (const [mla, f] of Object.entries(fotosNuevas)) upd['precios/' + mla] = f;
+      // El motivo de los cambios viejos se deja escrito: `cyc/autoprecio` guarda sólo el ÚLTIMO
+      // cambio de cada publicación, así que mañana ya no se podría deducir.
+      for (const [id, m] of Object.entries(motivosNuevos)) upd['eventos/' + id + '/motivo'] = m;
       upd['resumen'] = resumen;
-      // lo que ya pasó los 30 días y está evaluado entero se borra a los 60: si no, cementerio
-      for (const [id, ev] of Object.entries(eventos)) if (ahora - ev.ts > 60 * 864e5 && !cambiosEv[id] && !evalNuevas.some((x) => x.id === id)) upd['eventos/' + id] = null;
+      // Los cambios se guardan 400 días (antes 60): la tarjeta se puede mirar por MES (pedido suyo
+      // del 25/09) y a los 60 días se perdía la historia. Son unos pocos por día.
+      for (const [id, ev] of Object.entries(eventos)) if (ahora - ev.ts > 400 * 864e5 && !cambiosEv[id] && !evalNuevas.some((x) => x.id === id)) upd['eventos/' + id] = null;
       // El registro de stock se poda a los 100 días (los cambios más viejos se miran hasta ~90 días
       // atrás: 60 que vive un cambio + 30 de ventana). De cada producto se deja SIEMPRE el último
       // cambio, que dice si tiene stock desde antes.
