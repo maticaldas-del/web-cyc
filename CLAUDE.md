@@ -950,7 +950,10 @@ julio, a CYC le quedan **~$2.000.000/mes** después de todo eso.
   todo y el número de caché en `sw.js`, si no el celular sigue viendo la vieja.
   **Y desde el 25/09/2026 (v20.37) también se agrega un renglón en `APP_CAMBIOS`** (arriba de todo,
   con la versión, la fecha y qué cambió en castellano llano): es el desplegable de arriba del
-  puntaje. Muestra los últimos 3 cambios, o todos los de la última versión si fueron más de 3.
+  puntaje. **Desde v20.40**: cada renglón es `{n, t}` con `n` = 1 leve (verde, cómo se ve algo) ·
+  2 mediano (amarillo, cambia un número o lista) · 3 importante (rojo, toca plata, precios, stock o
+  patrimonio), y cada versión lleva `f` (fecha) y `h` (hora DE ACÁ, no la de GitHub que va +3 h).
+  Muestra los últimos 10 con barrita para bajar, o todos los de la última versión si fueron más de 10.
 - `sw.js` — el service worker. Su `CACHE = "cyc-vNN"` va de la mano con la versión del index.
 - `ml-sync/sync.mjs` — el robot. Trae las ventas, ajusta precios y manda avisos por Telegram.
 - Firebase Realtime Database, namespace `cyc/` — todos los datos.
