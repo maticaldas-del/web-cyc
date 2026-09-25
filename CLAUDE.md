@@ -129,6 +129,18 @@ scratchpad `rev2/<frente>/REPORT.md`, se pierden con el contenedor). Van de a un
  · **O2** · `ventaEnRemate` saca del ritmo toda venta abajo de 22%, no sólo remates: lo que vende
    entre 20% y 22% (o una venta suelta con envío caro) no pide reponer. No se habló con él.
  · Cajas y stock, `pisobase`, `dispo`, `maxCompraDe`, `candFichaDesde`: sin nada nuevo.
+ · **Fallas leídas como dato (agente 2, 25/09, `rev2/fallas/REPORT.md`):**
+   F1 = P3 (confirmado por los dos) · **F2** caja de compra vieja (429 en `price_to_win` deja la de
+   antes; `calcCajaBarata` no mira `cajaTs`) → remate/escalera/bajar bajan a un precio viejo ·
+   **F3** el envío del peor caso sale sólo de los precios donde ML contestó la comisión: un 429 lo
+   deja en 0 y un 8% se ve 30% "medido" (y el rescate no sube) · **F4** `filtrarRescate`: el freno
+   "lo bajaste vos" se apaga con un `catch` vacío · **F5** `CANCEL_AGG`: lista cortada por 429 pisa
+   `fact_cancel` (monotributo) · **F6** aviso "Problema en una publicación": se anota aunque Telegram
+   falle, el 9º en adelante se calla, y un cambio sólo de sub_status no avisa · **F7** promociones:
+   un 429 se lee "no tiene" (chequeo puede decir "nada urgente" con una promo del 40%) · **F8**
+   `facsync`: un 429 se guarda como "venta sin factura" · **F9** dólar: si ninguna fuente contesta
+   igual se anota "ya lo miré hoy" · **F10** resumen del día se manda y se anota aunque el ciclo haya
+   estado caído (ventas faltantes).
 
 ### PASO 1 (PRECIOS): TERMINADO (el 8 era un aviso del log sin daño)
 **Hechos el 24/09 (v20.28 · `cyc-v306`):** 3 · el rescate no sube lo que el robot BAJÓ en 30 días
