@@ -204,6 +204,23 @@ scratchpad `rev2/<frente>/REPORT.md`, se pierden con el contenedor). Van de a un
  · **La corrida nocturna del 24/09 (ml-daily) se cayó en `candidatos` con "_pi is not defined"**:
    ya estaba arreglado en el código (`let _pi = null`), la de esta noche corre con el arreglo.
 
+### 25/09 A LA TARDE (v20.36 · `cyc-v314`): CUOTAS PREMIUM, "LO QUE TRAJO EL ROBOT" SIN INFLACIÓN, POR MES
+ · **Salvador Dalí (`MLA1869295911`, Adriana): el panel decía 31% y la venta dio 16%.** Es PREMIUM
+   (`gold_pro`): en $119.970 ML se quedó comisión $17.995 + **cuotas $25.914 (21,6%)** + Full $7.290.
+   `listing_prices` no trae las cuotas. Él: *"¿cómo no va a tener en cuenta que tiene cuotas? Arreglar"*.
+   Arreglo: el probe `cuotas` rehecho (sólo Premium, sólo `financing_add_on_fee` que paga el vendedor,
+   las Premium sin ventas llevan el PEOR % medido marcado `estimado`) corre en `ml-daily` antes de
+   `netoweb`; `netoweb` y `margenAlDia` restan las cuotas del neto (y del envío deducido) y guardan
+   `netoCalcCuotas` / `netopub.cuotas`. **Pendiente de él: si el Dalí sigue en Premium o pasa a Clásica.**
+ · **Regla suya:** *"siempre va a haber aumentos por inflación. Eso no podés adjudicártelo como ganancia
+   tuya. Lo tuyo tiene que ser 100% por un aumento o baja puntual que no se iba a hacer si vos no estabas
+   mirando"*. El supervisor guarda el MOTIVO de cada cambio (`subir`, `bajar`, `remate`, `escalera`,
+   `rescate`, `mano`) y el total SÓLO suma subir/bajar/remate/escalera. Los rescates (margen/venta/costo
+   y el viejo robot al vender) se muestran aparte, sin sumar. Una suba vieja sin motivo cuenta como
+   rescate. `resumen.todos` = cada cambio con fecha, hora, %, $ y estado; la tarjeta filtra por MES y por
+   MOTIVO. Los cambios ahora se guardan 400 días (antes 60).
+ · Cada venta con cambio de precio dice **"+$X de más por la suba"** (misma cuenta que el "firme").
+
 ### PASO 1 (PRECIOS): TERMINADO (el 8 era un aviso del log sin daño)
 **Hechos el 24/09 (v20.28 · `cyc-v306`):** 3 · el rescate no sube lo que el robot BAJÓ en 30 días
 (`filtrarRescate`, mira `cyc/autoprecio` tipo `baja`) · 4 · "👀 Subí solo y dejó de vender" ya mira
