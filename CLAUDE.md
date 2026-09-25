@@ -220,6 +220,13 @@ scratchpad `rev2/<frente>/REPORT.md`, se pierden con el contenedor). Van de a un
    rescate. `resumen.todos` = cada cambio con fecha, hora, %, $ y estado; la tarjeta filtra por MES y por
    MOTIVO. Los cambios ahora se guardan 400 días (antes 60).
  · Cada venta con cambio de precio dice **"+$X de más por la suba"** (misma cuenta que el "firme").
+ · **Primera cuenta con la regla nueva (25/09 16:25): $0 atribuible al robot.** Los 52 cambios medidos
+   eran TODOS rescates (recuperar margen): $339.123 que ya no se le adjudican. Motivos de los 66 cambios:
+   61 rescate · 3 remate · 2 escalera (los 5 de remate/escalera todavía en curso, menos de 7 días).
+   Las subas "📈 hay lugar abajo del competidor" y las bajas "📉 ganar la caja" todavía no hicieron ninguna.
+ · Cuotas medidas: 11 Premium (Adriana: Dalí 21,6%, Ferrari Scuderia 13,1% · Matías: Watch 4 12,9%, Galaxy
+   A07 19,2%, Watch S5, Buds Core, A06, SSD 12,3% · 3 sin ventas al 21,6% estimado). Ayelen y Luciana no se
+   pudieron leer esa vez (se reintenta cada noche).
 
 ### PASO 1 (PRECIOS): TERMINADO (el 8 era un aviso del log sin daño)
 **Hechos el 24/09 (v20.28 · `cyc-v306`):** 3 · el rescate no sube lo que el robot BAJÓ en 30 días
