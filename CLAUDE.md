@@ -271,7 +271,9 @@ precios-decisión 3.
  · **`pedremate` (solo lee):** cruza cada pedido contra liquidando, escalera, bajas por remate,
    "no traer más" y ventas etiquetadas remate. Medido: **0 de 56** pedidos con señal de remate.
    Lo que sí apareció: 13 pedidos de productos SIN stock y SIN ventas en 60 días, que piden según
-   el ritmo viejo (hasta 180 días, la regla de la Lupa 75mm del 16/09). Se le pasó con (a)/(b).
+   el ritmo viejo (hasta 180 días, la regla de la Lupa 75mm del 16/09). **DECIDIDO POR ÉL EL 25/09,
+   eligió la (b): se deja como está** y manda a la papelera los que no quiere (ej. la tarjeta
+   SanDisk 128 con adaptador, de las truchas). No volver a proponer cortar el ritmo viejo.
  · **`buscacosto:<palabras>` (solo lee):** busca un producto en fichas, candidatos de Paraguay,
    compras a Paraguay (precio pagado y recargo real) y publicaciones de ML.
  · **Contar lo que hay** dice "+N en camino" al lado de cada cuenta (misma cuenta que Armar caja).
