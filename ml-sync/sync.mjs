@@ -30805,6 +30805,11 @@ async function main() {
               noAutoActivar: (e && e.noAutoActivar) || null,
               frenoMotivo: (e && e.frenoMotivo) || null,
               frenoTs: (e && e.frenoTs) || null,
+              // "Esto no lo vendemos más" (`nomas`) tampoco se puede caer por vender: sin arrastrarlo,
+              // una venta de las últimas 48 h borraba la marca y `activarPausadasFull` volvía a
+              // prender la publicación en ML (N1 de la segunda vuelta, 25/09/2026).
+              ignored: (e && e.ignored) || null,
+              noVendemosMas: (e && e.noVendemosMas) || null,
               candidatos: p ? null : candidatesFor(title, index),
             };
             map[mla] = entry; mapUpd[mla] = entry;

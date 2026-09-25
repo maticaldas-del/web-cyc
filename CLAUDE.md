@@ -142,7 +142,7 @@ scratchpad `rev2/<frente>/REPORT.md`, se pierden con el contenedor). Van de a un
    igual se anota "ya lo miré hoy" · **F10** resumen del día se manda y se anota aunque el ciclo haya
    estado caído (ventas faltantes).
  · **Choques (agente 3, 25/09): c0, c1, c2 y c3 son las cuatro REALES** con el código de hoy. Nuevas:
-   **N1 (alta)** `nomas` escribe la marca SIN `manual:true`: si esa publicación vendió en las últimas
+   **N1 (alta) · HECHO el 25/09 (obvio, sin decisión): el renglón que arma la venta ahora arrastra `ignored` y `noVendemosMas`.** Cómo estaba: `nomas` escribe la marca SIN `manual:true`: si esa publicación vendió en las últimas
    48 h, la vuelta de 2 min reescribe el renglón y la marca desaparece; después `activarPausadasFull`
    la puede ACTIVAR en ML · **N2** "Guardar" en Vinculaciones (`saveMlLink`) arma el renglón de cero
    y borra `noAutoActivar` (freno), `altaTs` (escalera) y otros; `autoLinkFamilies` igual · **N3**
