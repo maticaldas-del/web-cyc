@@ -943,6 +943,9 @@ julio, a CYC le quedan **~$2.000.000/mes** después de todo eso.
 
 - `index.html` — la app entera en un archivo (PWA). Al tocarla hay que subir la versión abajo de
   todo y el número de caché en `sw.js`, si no el celular sigue viendo la vieja.
+  **Y desde el 25/09/2026 (v20.37) también se agrega un renglón en `APP_CAMBIOS`** (arriba de todo,
+  con la versión, la fecha y qué cambió en castellano llano): es el desplegable de arriba del
+  puntaje. Muestra los últimos 3 cambios, o todos los de la última versión si fueron más de 3.
 - `sw.js` — el service worker. Su `CACHE = "cyc-vNN"` va de la mano con la versión del index.
 - `ml-sync/sync.mjs` — el robot. Trae las ventas, ajusta precios y manda avisos por Telegram.
 - Firebase Realtime Database, namespace `cyc/` — todos los datos.
