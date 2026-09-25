@@ -181,6 +181,16 @@ scratchpad `rev2/<frente>/REPORT.md`, se pierden con el contenedor). Van de a un
    **N7** (la fecha del disponible vuelve 2 min a la vieja) se deja: se corrige sola.
    **Con esto la segunda vuelta queda CERRADA.** Él pidió además una pasada completa "a fondo" (max)
    cuando esto terminara: **se le ofreció; falta que diga cuándo.**
+ · **⏸️ LA REVISIÓN "MAX" (ULTRACODE) ARRANCÓ EL 25/09 Y SE PAUSÓ A PEDIDO SUYO** (*"me quedo sin
+   tokens. podes seguirlo cuando se recuperen?"*). Seis frentes, 3 verificadores por sospecha y un
+   resumen con (a)/(b). Llegó a terminar la **1ª ronda de 5 frentes: 53 SOSPECHAS SIN VERIFICAR**,
+   guardadas en `ml-sync/revision3-sospechas.json` (no se publica en la web: `ml-sync` está en
+   `.assetsignore`). **Falta:** la ronda 1 de "choques" (robot/web, corridas a la vez, fallas mudas,
+   privacidad), las rondas 2-3, la verificación y el resumen. **Cómo seguir:** en la MISMA sesión,
+   `Workflow({scriptPath: <script revision-max-cyc>, resumeFromRunId: "wf_e300c5cb-881"})` y lo hecho
+   vuelve al instante. En una sesión nueva eso no sirve: rehacer el workflow dándole ese archivo
+   como punto de partida (sus sospechas van derecho a verificar). **No mostrarle ninguna de las 53
+   antes de verificarlas**: sin verificar son sospechas, no hallazgos.
  · **La tarjeta "Lo que trajo el robot de precios" se recalculó a mano el 25/09 (`supervisor:go`)**
    porque seguía mostrando el resumen viejo con "volumen −$219.866" (de antes de `VOLUMEN_CONFIABLE`
    y el registro hora por hora). Nuevo: **52 subas medidas · efecto precio +$333.829 · volumen $0 ·
