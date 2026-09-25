@@ -502,6 +502,7 @@ footer{margin-top:32px;padding-top:14px;border-top:1px solid var(--border);font-
     </div>
   </div>
   <div id="home-cierre-aviso" style="display:none"></div>
+  <div id="home-revision"></div>
   <!-- La versión, la fecha y los últimos cambios, arriba del puntaje (25/09/2026, pedido suyo) -->
   <div style="max-width:760px;margin:0 auto 12px;text-align:center">
     <span id="home-version" onclick="actualizarApp()" title="Versión de la app que estás usando ahora. Tocá para buscar actualizaciones." style="display:inline-flex;align-items:center;gap:7px;font-size:.62rem;color:var(--muted);border:1px solid var(--border);border-radius:999px;padding:5px 13px;cursor:pointer;letter-spacing:.06em">…</span>
@@ -1922,6 +1923,7 @@ function startApp(){
     state.envios_full=d.envios_full||{};
     state.cajas_armando=d.cajas_armando||{};   // cajas a medio armar, una por cuenta
     state.gastosNoVa=d.gastos_nova||{};         // "este mes este gasto no va" (por mes × renglón de la lista)
+    state.revision=d.revision||{};              // la revisión del panel por etapas: cuál se hizo y cuándo
     state.norepo=d.norepo||{};                 // "este producto no va más a esta cuenta" (por producto×cuenta)
     state.repoextra=d.repoextra||{};            // "mandáselo IGUAL, la publicación la hago después" (producto×cuenta)
     // HISTORIAL DE STOCK: desde cuándo cada producto×cuenta tiene mercadería (`desde`) y cuándo se
@@ -2327,7 +2329,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='20.41';
+const APP_VERSION='20.42';
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
 // muestre la versión y la fecha de actualización y que tenga un desplegable predeterminado cerrado".
 // Y el mismo día: "que ponga fecha de cada modificación y haya una barrita para scrollear y que
@@ -2338,6 +2340,9 @@ const APP_VERSION='20.41';
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'20.42',f:'25/09/2026',h:'14:35',c:[
+    {n:1,t:'Inicio: aviso de la revisión del panel por etapas (una por semana). Dice qué etapa toca, con qué esfuerzo pedirla y tiene el botón "la hice".'},
+  ]},
   {v:'20.41',f:'25/09/2026',h:'14:10',c:[
     {n:2,t:'Lo que trajo el robot: los remates y la escalera ya suman. Cuenta la ganancia de lo vendido al 20% o más (lo de menos no), resta lo que igual se iba a vender y se cobró más barato, y suma el almacenamiento que no se pagó, sólo si era real.'},
   ]},
@@ -2469,7 +2474,7 @@ function goPage(page){
   if(page==='facturas')renderFacturas();
   if(page==='ajustes')enterAjustes();
   if(page==='inventario'){renderInv();renderProds();renderHist();loadFinInputs();updateArqueo();updateTotals();updateHdr();}
-  if(page==='home'){checkCierrePendiente();updateHomeDolar();renderPuntajeMes();}
+  if(page==='home'){checkCierrePendiente();renderHomeRevision();updateHomeDolar();renderPuntajeMes();}
   if(page!=='home'){
     // Al entrar a una página se baja el header para dejar el contenido arriba. OJO: esto solo puede
     // pasar en los primeros milisegundos. Antes había un MutationObserver que repetía el scroll cada
@@ -3014,7 +3019,7 @@ function renderAll(){
   if(currentPage==='resumen')renderResumen_page();
   if(currentPage==='ventaprod')renderVentaProd();
   if(currentPage==='rotacion')renderRotacionStock();
-  if(currentPage==='home'){checkCierrePendiente();updateHomeDolar();renderPuntajeMes();}
+  if(currentPage==='home'){checkCierrePendiente();renderHomeRevision();updateHomeDolar();renderPuntajeMes();}
   updatePedidosCosto();
 }
 
@@ -3070,6 +3075,63 @@ function updateHomeDolar(){
   if(document.activeElement===el)return; // no pisar el valor mientras se está editando
   const tc=curTC();
   el.value=tc?tc.toLocaleString('es-AR'):'';
+}
+// ── LA REVISIÓN DEL PANEL, POR ETAPAS (25/09/2026) ─────────────────────────────────────────────
+// Pedido suyo: "que me avise en la web de cyc, ese tiempo para acordarme". La revisión completa no
+// entraba en una ventana de 5 horas de tokens, así que se partió en seis etapas, UNA POR SEMANA
+// (ciclo de 6 semanas). Cada etapa se pide en el chat por número o nombre ("etapa 2" / "etapa
+// plata") y se hace con el esfuerzo que dice acá, con el MISMO nombre que muestra la app.
+// Cuando se termina una etapa se toca "✅ la hice" (o la marca Claude con `revetapa:hecha:<n>:go`) y
+// la próxima queda para dentro de 7 días. Vive en `cyc/revision/ultima` ({n, fecha}).
+const REV_ETAPAS=[
+  {n:1,nom:'Precios',que:'el robot que sube y baja, el rescate, la escalera, el remate y sus frenos',esf:'Alto'},
+  {n:2,nom:'Plata',que:'Arqueo, Mercado Pago, a liquidar, dólares y pesos, gastos',esf:'Alto'},
+  {n:3,nom:'Mercadería',que:'cajas, stock de Full, oficina, pedidos y Paraguay',esf:'Alto'},
+  {n:4,nom:'Choques',que:'la web y el robot escribiendo lo mismo, corridas a la vez',esf:'Alto'},
+  {n:5,nom:'Fallas mudas y privacidad',que:'cuando ML no contesta y se guarda como dato; datos de terceros en los registros públicos',esf:'Medio'},
+  {n:6,nom:'Ideas nuevas',que:'datos que ML ya da y no usamos, cosas que hacés a mano y se pueden automatizar (sólo propone)',esf:'Medio'},
+];
+const REV_CADA_DIAS=7;
+function _revFecha(iso){const d=new Date(iso+'T12:00:00');return isNaN(d)?null:d;}
+function _revFmt(d){return ['dom','lun','mar','mié','jue','vie','sáb'][d.getDay()]+' '+String(d.getDate()).padStart(2,'0')+'/'+String(d.getMonth()+1).padStart(2,'0');}
+function revProxima(){
+  const u=(state.revision||{}).ultima;
+  const un=u&&Number(u.n);
+  const et=REV_ETAPAS[(un>=1&&un<=REV_ETAPAS.length)?un%REV_ETAPAS.length:0];
+  const fu=u&&u.fecha?_revFecha(u.fecha):null;
+  const vence=fu?new Date(fu.getTime()+REV_CADA_DIAS*864e5):null;
+  const hoy=new Date();hoy.setHours(12,0,0,0);
+  const dias=vence?Math.round((vence-hoy)/864e5):0;   // <=0: ya toca
+  return {et,vence,dias,ultima:u&&fu?{...u,f:fu}:null};
+}
+function renderHomeRevision(){
+  const el=document.getElementById('home-revision');if(!el)return;
+  const {et,vence,dias,ultima}=revProxima();
+  const esc=t=>String(t).replace(/&/g,'&amp;').replace(/</g,'&lt;');
+  const ult=ultima?`última: etapa ${ultima.n} · ${esc((REV_ETAPAS[ultima.n-1]||{}).nom||'')} el ${_revFmt(ultima.f)}`:'todavía no se hizo ninguna etapa';
+  const btn=`<button onclick="revMarcarHecha(${et.n})" style="margin-left:8px;font-size:.62rem;padding:3px 10px;border-radius:999px;border:1px solid var(--border);background:transparent;color:var(--text);cursor:pointer">✅ la hice</button>`;
+  const cuerpo=`<b>Etapa ${et.n} · ${esc(et.nom)}</b> · esfuerzo <b>${esc(et.esf)}</b><br><span style="color:var(--muted)">${esc(et.que)} · pedímela en el chat: <i>"etapa ${et.n}"</i></span>`;
+  if(dias>0){
+    // Todavía no toca: un renglón chico, sin color. Un cartel que está siempre prendido no se lee.
+    el.innerHTML=`<div style="max-width:760px;margin:0 auto 10px;text-align:center;font-size:.62rem;color:var(--muted)">🔎 Próxima revisión del panel: etapa ${et.n} · ${esc(et.nom)} · esfuerzo ${esc(et.esf)} · el <b style="color:var(--text)">${_revFmt(vence)}</b> (en ${dias} día${dias===1?'':'s'}) · ${ult}</div>`;
+    return;
+  }
+  const atras=-dias;
+  const col=atras>=REV_CADA_DIAS?'#ef4444':'#f59e0b';
+  el.innerHTML=`<div style="max-width:760px;margin:0 auto 12px;padding:10px 14px;border:1px solid ${col};background:${col}14;border-radius:12px;font-size:.72rem;line-height:1.5;text-align:left">
+    <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap"><span style="color:${col};font-weight:700">🔎 Toca la revisión del panel${ultima&&atras>0?` · hace ${atras} día${atras===1?'':'s'}`:''}</span>${btn}</div>
+    <div style="margin-top:4px">${cuerpo}</div>
+    <div style="margin-top:4px;font-size:.6rem;color:var(--muted)">Entra en una ventana de 5 h de uso · ${ult}</div>
+  </div>`;
+}
+async function revMarcarHecha(n){
+  const et=REV_ETAPAS[n-1];if(!et)return;
+  if(!confirm(`¿Marco la etapa ${n} · ${et.nom} como hecha hoy? La próxima te la recuerdo en ${REV_CADA_DIAS} días.`))return;
+  const hoy=new Date();const f=hoy.getFullYear()+'-'+String(hoy.getMonth()+1).padStart(2,'0')+'-'+String(hoy.getDate()).padStart(2,'0');
+  const v={n,fecha:f,ts:Date.now()};
+  try{await fbSet('revision/ultima',v);}catch(e){toast('No pude guardarlo: '+(e.message||e),'err');return;}
+  if(!state.revision)state.revision={};state.revision.ultima=v;
+  renderHomeRevision();toast(`Etapa ${n} marcada ✓`);
 }
 // Aviso en el Home: a partir del día 20, si todavía no se cerró el mes en curso.
 function checkCierrePendiente(){
