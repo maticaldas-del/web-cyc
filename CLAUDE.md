@@ -254,12 +254,23 @@ piden por número o nombre ("etapa 2" / "etapa plata"). Tope de agentes por etap
 encuentra y retoma sólo lo que faltó. Cada hallazgo se verifica antes de pasárselo, de a uno con (a)/(b).
 | # | nombre | qué mira | esfuerzo |
 |---|---|---|---|
-| 1 | Precios | robot que sube/baja, rescate, escalera, remate, frenos | alto |
-| 2 | Plata | Arqueo, Mercado Pago, a liquidar, monedas, gastos | alto |
-| 3 | Mercadería | cajas, stock de Full, oficina, pedidos, Paraguay | alto |
-| 4 | Choques | web y robot escribiendo lo mismo, corridas a la vez | alto |
-| 5 | Fallas mudas y privacidad | ML no contesta y se guarda como dato; datos de terceros en logs | medio |
-| 6 | Ideas nuevas | datos de ML sin usar, cosas que hace a mano · sólo propone | medio |
+| 1 | Precios | robot que sube/baja, rescate, escalera, remate, frenos | Alto |
+| 2 | Plata | Arqueo, Mercado Pago, a liquidar, monedas, gastos | Alto |
+| 3 | Mercadería | cajas, stock de Full, oficina, pedidos, Paraguay | Alto |
+| 4 | Choques | web y robot escribiendo lo mismo, corridas a la vez | Alto |
+| 5 | Fallas mudas y privacidad | ML no contesta y se guarda como dato; datos de terceros en logs | Medio |
+| 6 | Ideas nuevas | datos de ML sin usar, cosas que hace a mano · sólo propone | Medio |
+
+**LOS NIVELES DE ESFUERZO, averiguados el 25/09 con fuentes (code.claude.com/docs/en/model-config y
+/workflows, support.claude.com):** de menos a más `low` · `medium` (el que usa Opus 5.5 si no se toca)
+· `high` ("Alto" en su pantalla) · `xhigh` · `max` · y **Ultracode**, que NO es un nivel más: es `xhigh`
++ que Claude arme solo un workflow de muchos agentes para cada tarea de peso — el que más gasta.
+Ninguna fuente da números de cuánto más gasta cada uno, ni los nombres en castellano de los otros
+(sólo "Alto" y "Ultracode" salen de su captura; "Medio" es deducción). El plan Max 5x tiene DOS
+límites que se gastan a la vez: la ventana de 5 h y uno SEMANAL, compartidos con el chat de Claude;
+un workflow grande puede comerse el semanal. En el día a día conviene "Alto" (la doc lo dice: volver a
+`high` después de Ultracode) y usar workflows sólo para las etapas. Aviso en Inicio: `renderHomeRevision`,
+`cyc/revision/ultima` (v20.42).
 
 ### 25/09 A LA TARDE (v20.36 · `cyc-v314`): CUOTAS PREMIUM, "LO QUE TRAJO EL ROBOT" SIN INFLACIÓN, POR MES
  · **Salvador Dalí (`MLA1869295911`, Adriana): el panel decía 31% y la venta dio 16%.** Es PREMIUM
