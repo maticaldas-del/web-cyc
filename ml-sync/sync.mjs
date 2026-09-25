@@ -30814,6 +30814,7 @@ async function main() {
         console.log('  items:', JSON.stringify((full.order_items || []).map((it) => ({
           mla: it.item?.id, varId: it.item?.variation_id || null,
           t: (it.item?.title || '').slice(0, 40), unit: it.unit_price, qty: it.quantity, fee: it.sale_fee,
+          tipo: it.listing_type_id || null,
         }))));
         let net = 0;
         for (const p of (full.payments || [])) {
@@ -30837,10 +30838,10 @@ async function main() {
         if (shipId) {
           try {
             const s = await mlGet('/shipments/' + shipId, t.access_token);
-            const addr = s.receiver_address || {};
+            // El destino (provincia/ciudad del comprador) NO se imprime: el registro de GitHub es
+            // público y es un dato del comprador (regla del 15/09/2026).
             const so = s.shipping_option || {};
             console.log('  ENVÍO', shipId, JSON.stringify({
-              destino: (addr.state?.name || '') + ' / ' + (addr.city?.name || ''),
               logistica: s.logistic_type,
               list_cost: so.list_cost,   // costo "de lista" del envío
               cost: so.cost,             // lo que efectivamente entra al cálculo
