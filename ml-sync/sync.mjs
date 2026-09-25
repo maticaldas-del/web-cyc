@@ -4194,7 +4194,7 @@ async function removeStartedPromos(itemId, token) {
   try {
     const r = await mlGet('/seller-promotions/items/' + itemId + '?app_version=v2', token);
     arr = Array.isArray(r) ? r : (r.results || []);
-  } catch { return { removed: [], failed: [] }; }
+  } catch { return { removed: [], failed: [], sinLeer: true }; }   // no leída ≠ "sin promo" (revisión max #22)
   const removed = [], failed = [];
   for (const pr of arr) {
     // 'started'  = descuento aplicado AHORA.
@@ -7059,7 +7059,7 @@ async function main() {
       const RESCATE_MAX = 25;
       const SUBE_DESDE_AV = Number.isFinite(parseFloat(cfgAv.subeDesde)) ? parseFloat(cfgAv.subeDesde) : 20;
       const META_AV = (parseFloat(cfgAv.targetPct) || 25) / 100;
-      let rescates = [], rescFren = [], rescSup = [];
+      let rescates = [], rescFren = [], rescSup = [], rescSinMedir = [];
       if (cfgAv.autoSubeVenta === true && NOSUBIR_OK && supLeido) {
         try {
           const finR = (await db.get('cyc/finanzas')) || {};
@@ -7081,6 +7081,9 @@ async function main() {
           if (cand.size) {
             const rr = await calcSubirPorMargen(db, { products, labels, accounts, soloProds: cand, piso: (SUBE_DESDE_AV + 0.5) / 100, meta: META_AV });
             rescFren = rr.frenados.filter((f) => !/comisión|tarifa/.test(f.why));
+            // Las que ML no dejó medir NO se tiran (revisión max #23): se cuentan y se nombran.
+            rescSinMedir = rr.frenados.filter((f) => /comisión|tarifa/.test(f.why));
+            if (rescSinMedir.length) console.log(`   ⚠️ no pude medir ${rescSinMedir.length}: ${rescSinMedir.slice(0, 10).map((f) => (f.nom || f.mla) + ' (' + String(f.why).slice(0, 50) + ')').join(' · ')}`);
             // ── NO SE RESCATA LO QUE ESTÁ FRENADO, SOBRADO O QUE ÉL BAJÓ A PROPÓSITO (23/09/2026) ──
             // Lo marcó él con el Pendrive Ultra Shift: *"estuvieron como 2 meses sin venderse ni uno.
             // lo bajé a pérdida para recuperar y evitar que nos cobren, no sé si está bien subirlos, se
@@ -7513,6 +7516,10 @@ async function main() {
           }
         }
       }
+      if (rescSinMedir.length) {
+        L.push(`\n❔ <b>No pude medir ${rescSinMedir.length} para el rescate</b> (ML no contestó la comisión o la tarifa) · se vuelven a mirar mañana`);
+        L.push(rescSinMedir.slice(0, 12).map((f) => `${f.nom || f.mla}${f.label ? ' (' + f.label + ')' : ''}`).join(' · '));
+      }
       if (vigilar.length) {
         L.push(`\n👀 <b>Subí solo y dejó de vender</b> · ${vigilar.length}`);
         L.push('<i>Con el ritmo de antes ya tendría que haber vendido y no vendió ninguna. Si querés volver al precio de antes, decímelo.</i>');
@@ -7814,6 +7821,20 @@ async function main() {
       await db.patch('cyc/mlconfig', { tgAlertas: arg });
       console.log(`\n✓ Listo: los avisos van a ${arg}. Te mandé un mensaje de prueba ahí.`);
       console.log('   Ese chat queda FUERA del resumen del día, así no se mezclan.');
+      return;
+    }
+    // BILLING_PROBE=avisonoche → LO CORRE `ml-daily` AL FINAL cuando algún paso falló (revisión max
+    // #21, 25/09/2026). Los pasos ya no cortan la noche, así que esto es lo único que dice que uno
+    // falló: la lista llega en FALLOS_NOCHE. Manda un aviso al canal privado y nada más.
+    if (/^avisonoche(:|$)/.test(String(process.env.BILLING_PROBE || ''))) {
+      const fl = String(process.env.FALLOS_NOCHE || '').split('·').map((x) => x.trim()).filter(Boolean);
+      if (!fl.length) { console.log('Ningún paso falló: no mando nada.'); return; }
+      const txt = `⚠️ <b>La corrida de anoche tuvo ${fl.length} paso(s) con error</b>\n`
+        + fl.map((x) => '· ' + x.replace(/&/g, '&amp;').replace(/</g, '&lt;')).join('\n')
+        + `\n<i>Los demás pasos corrieron igual. Si el que falló fue "Margen ML al precio de hoy", el robot de precios no tocó nada esta noche.</i>`;
+      console.log(txt.replace(/<[^>]+>/g, ''));
+      const ok = await sendAlerta(txt);
+      console.log(ok ? '✓ aviso mandado' : '✗ no pude mandar el aviso');
       return;
     }
     // BILLING_PROBE=tgchats → QUIÉN RECIBE LOS AVISOS DE TELEGRAM. Sólo lee, no manda nada.
@@ -21512,7 +21533,7 @@ async function main() {
       const links = (await db.get('cyc/mllinks')) || {};
       console.log(`=== SACAR PROMOCIONES ACEPTADAS ${prueba ? '(PRUEBA: no se toca nada)' : ''} ===`);
       console.log(`Se sacan las 'started' (activas) y las 'pending' (agendadas). Las 'candidate' no se tocan.\n`);
-      let sacadas = 0, fallidas = 0, revisadas = 0; const detalle = [];
+      let sacadas = 0, fallidas = 0, revisadas = 0, sinLeer = 0; const detalle = []; const noLeidas = [];
       for (const label of labels) {
         const acc = accounts[label];
         if (!acc?.refresh_token) continue;
@@ -21522,12 +21543,12 @@ async function main() {
           .filter(([mla, e]) => e && e.cuenta === label && !e.ignored && /^MLA/i.test(mla))
           .map(([mla, e]) => ({ mla, title: e.title || mla }));
         for (const it of ids) {
-          revisadas++;
           let arr;
           try {
             const r = await mlGet('/seller-promotions/items/' + it.mla + '?app_version=v2', t.access_token);
             arr = Array.isArray(r) ? r : (r.results || []);
-          } catch { continue; }
+          } catch { sinLeer++; noLeidas.push(`${label} · ${it.title.slice(0, 38)}`); continue; }   // no leída ≠ "sin promo" (revisión max #22)
+          revisadas++;
           const malas = (arr || []).filter((pr) => pr.status === 'started' || pr.status === 'pending');
           if (!malas.length) continue;
           for (const pr of malas) {
@@ -21546,7 +21567,8 @@ async function main() {
           }
         }
       }
-      console.log(`\n${prueba ? '(PRUEBA) ' : ''}${sacadas} promociones ${prueba ? 'se sacarían' : 'sacadas'} · ${fallidas} con error · ${revisadas} publicaciones revisadas`);
+      console.log(`\n${prueba ? '(PRUEBA) ' : ''}${sacadas} promociones ${prueba ? 'se sacarían' : 'sacadas'} · ${fallidas} con error · ${revisadas} publicaciones revisadas${sinLeer ? ` · ⚠️ ${sinLeer} NO se pudieron leer (no se sabe si tienen promo)` : ''}`);
+      if (sinLeer) for (const x of noLeidas.slice(0, 20)) console.log(`   sin leer: ${x}`);
       if (!prueba && sacadas) {
         await sendTelegram(`🛑 <b>Promociones sacadas</b>\n${sacadas} descuentos de ML dados de baja `
           + `(activos y agendados).${fallidas ? `\n⚠️ ${fallidas} no se pudieron sacar.` : ''}`);
@@ -30849,6 +30871,7 @@ async function main() {
   // saldría corta —o en cero— sin que falte nada: esas claves no se escriben y queda el número de
   // antes. Falta de dato no es falta de mercadería.
   const stockCiego = new Set();
+  const promoNoLeidas = [];   // publicaciones cuyas promociones ML no contestó en la vuelta completa (#22)
   const ignoradasConProd = new Set();   // prodId__Cuenta de publicaciones ocultas (nomas / 🗑)
   // Inventarios de Full ya contados, por producto×cuenta: dos publicaciones pueden compartir el
   // mismo inventario y sumarlas contaría la misma mercadería dos veces (ver el caso del Joystick).
@@ -31750,7 +31773,10 @@ async function main() {
                 if (invYaContado.has(kIv)) return 0;      // ya lo contó otra publicación
                 invYaContado.add(kIv);
                 try { return Number((await mlGet('/inventories/' + invId + '/stock/fulfillment', t.access_token))?.available_quantity) || 0; }
-                catch { return fallback; }                // si no contesta, lo de antes
+                // Si el depósito no contesta, NO se usa el número de /items (revisión max #19): en una
+                // publicación apagada es el último que tuvo, y escribirlo como real pisaba el quiebre
+                // en el historial. Ese producto×cuenta queda "sin leer" esta vuelta y no se toca.
+                catch { stockCiego.add(kTot); stockFallo = true; return fallback; }
               };
               // ── EL CÓDIGO DE LA ETIQUETA DE FULL ─────────────────────────────────────
               // Pedido suyo del 12/09/2026: *"al armar una caja quiero tener el numero de la
@@ -31819,7 +31845,8 @@ async function main() {
             const discounted = (b.original_price != null && b.original_price > b.price)
               || (Array.isArray(b.deal_ids) && b.deal_ids.length > 0);
             if (discounted || !SKIP_PRICES) {
-              const { removed, failed } = await removeStartedPromos(mla, t.access_token);
+              const { removed, failed, sinLeer: promoSinLeer } = await removeStartedPromos(mla, t.access_token);
+              if (promoSinLeer && !SKIP_PRICES) promoNoLeidas.push(mla);
               if (removed.length) {
                 await sendTelegram(`🏷️ <b>Descuento sacado</b>\n`
                   + `${map[mla].title || mla}\nCuenta: ${label}\n`
@@ -31882,6 +31909,25 @@ async function main() {
   if (!DRY && Object.keys(avisoPrecioUpd).length) await db.patch('mlapi/avisoprecio', avisoPrecioUpd);
   // guardar por qué publicación ya avisamos (para no repetir el aviso cada 2 minutos)
   if (!DRY && Object.keys(pubAlertUpd).length) await db.patch('mlapi/pubalert', pubAlertUpd);
+  // LAS PROMOCIONES QUE NO SE PUDIERON LEER NO SON "SIN PROMO" (revisión max #22, 25/09/2026). Se
+  // cuentan, y si pasan 3 vueltas completas seguidas (≈3 horas) con alguna sin leer, se avisa una vez
+  // por día: una promo aplicada BAJA el precio (regla 8) y si no se puede mirar, no se puede sacar.
+  if (!DRY && autoPromo && !SKIP_PRICES) {
+    try {
+      const mem = (await db.get('mlapi/promosinleer')) || {};
+      if (promoNoLeidas.length) {
+        console.log(`⚠️ Promociones: ${promoNoLeidas.length} publicación(es) que ML no contestó — no se sabe si tienen descuento (${promoNoLeidas.slice(0, 8).join(', ')}).`);
+        const n = (Number(mem.n) || 0) + 1;
+        const hoyD = new Date(Date.now() - 3 * 3600e3).toISOString().slice(0, 10);
+        let avisado = mem.avisado || '';
+        if (n >= 3 && avisado !== hoyD) {
+          const ok = await sendAlerta(`⚠️ <b>No puedo mirar las promociones de ${promoNoLeidas.length} publicación(es)</b>\nHace ${n} horas seguidas que ML no me contesta si tienen descuento, así que no las puedo sacar.\n${promoNoLeidas.slice(0, 10).join(' · ')}`);
+          if (ok) avisado = hoyD;
+        }
+        await db.set('mlapi/promosinleer', { n, ts: Date.now(), avisado });
+      } else if (mem.n) await db.set('mlapi/promosinleer', { n: 0, ts: Date.now(), avisado: mem.avisado || '' });
+    } catch { /* se mira en la vuelta siguiente */ }
+  }
   // guardar los precios que subimos solos (para no pisarlos en loop)
   if (!DRY && Object.keys(pricedUpd).length) await db.patch('mlapi/priced', pricedUpd);
   // escribir el stock de ML en el inventario del panel (producto×cuenta + variantes)
