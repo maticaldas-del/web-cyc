@@ -2329,7 +2329,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='20.45';
+const APP_VERSION='20.46';
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
 // muestre la versión y la fecha de actualización y que tenga un desplegable predeterminado cerrado".
 // Y el mismo día: "que ponga fecha de cada modificación y haya una barrita para scrollear y que
@@ -2340,6 +2340,9 @@ const APP_VERSION='20.45';
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'20.46',f:'25/09/2026',h:'18:46',c:[
+    {n:1,t:'Contar lo que hay: al lado de cada cuenta dice cuántas van en camino a Full (la misma cuenta que Armar caja).'},
+  ]},
   {v:'20.45',f:'25/09/2026',h:'15:10',c:[
     {n:1,t:'El aviso grande de "Todavía no cerraste el mes" en Inicio sale desde el día 25 (antes desde el 20).'},
   ]},
@@ -5643,6 +5646,11 @@ function renderOfiContar(){
   // Los dos datos son ciertos y hacen falta los dos, así que no se esconde ninguno: las dueñas
   // van primero y las marcadas afuera van atrás, apagadas y con el cartel. Esconderlas sería
   // peor — la Batidora tiene 1 unidad adentro del Full de Adriana y esa mercadería existe.
+  // ── Y LO QUE VA EN CAMINO, AL LADO DE CADA CUENTA (25/09/2026) ── Pregunta suya con las Cartas
+  // Casino: Armar caja decía "+466 en camino" y acá no aparecía. Para contar la oficina no cambia
+  // nada, pero sin ese número "Luciana 154" se lee como que le queda poco cuando van cientos arriba
+  // del camión. Es la MISMA cuenta que Armar caja (enTransito), no una copia.
+  const _trC=enTransito();
   const porCuenta=(p,variante)=>{
     const ctas=variante?[...(cuentasPorVariante(p,_varPorMla(p))[variante]||[])]
                        :cuentasConPublicacion(p);
@@ -5650,7 +5658,8 @@ function renderOfiContar(){
     const pinta=(l,fuera)=>{
       const q=variante?getQV(p.id,l,variante):getQ(p.id,l);
       const col=fuera?'var(--muted)':(q>0?'var(--text)':'var(--red)');
-      return `<span style="margin-right:9px${fuera?';opacity:.6':''}">${l} <strong style="color:${col}">${fmtN(q)}</strong></span>`;
+      const cam=transitoDe(_trC,p.id,l,variante||'');
+      return `<span style="margin-right:9px${fuera?';opacity:.6':''}">${l} <strong style="color:${col}">${fmtN(q)}</strong>${cam>0?` <span style="color:var(--amber)">+${fmtN(cam)} en camino</span>`:''}</span>`;
     };
     const hay=LOCS.filter(l=>ctas.includes(l));
     const propias=hay.filter(l=>!noRepoDe(p.id,l));

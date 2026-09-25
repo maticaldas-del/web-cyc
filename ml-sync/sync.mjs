@@ -28167,8 +28167,10 @@ async function main() {
       for (const [dk, dia] of Object.entries(vp)) {
         if (dk < f60) continue;
         for (const [id, v] of Object.entries(dia || {})) {
-          if (!v || !v.prodId || v.cancelada) continue;
-          const o = vtas[v.prodId] = vtas[v.prodId] || { u: 0, rem: 0, ult: '' };
+          if (!v || v.cancelada) continue;
+          const pidV = v.prodId || (products.find((q) => norm(q.name || '') === norm(v.prod || '')) || {}).id;
+          if (!pidV) continue;
+          const o = vtas[pidV] = vtas[pidV] || { u: 0, rem: 0, ult: '' };
           o.u += v.qty || 0;
           const et = rv[dk + '__' + id];
           if (et && et.estado === 'remate') o.rem += v.qty || 0;
@@ -28201,10 +28203,11 @@ async function main() {
           console.log(`⚠️ [${ped._col}] ${nom} · pide ${ped.cantidad} u. · vendió ${v.u} en 60 d (última ${v.ult ? v.ult.replace(/_/g, '-') : 'nunca'})`);
           s.forEach((x) => console.log('     ' + x));
         } else {
-          console.log(`✓ [${ped._col}] ${nom} · pide ${ped.cantidad} u. · vendió ${v.u} en 60 d · sin señales de remate`);
+          console.log(`✓ [${ped._col}] ${nom} · pide ${ped.cantidad} u. · vendió ${v.u} en 60 d · sin señales de remate${v.u === 0 ? ` · ${ped.auto === false ? 'A MANO' : 'auto'} · ts ${ped.ts ? new Date(ped.ts).toISOString().slice(0, 10) : '?'} · nota: ${String(ped.nota || '').replace(/<[^>]+>/g, '').slice(0, 160)}` : ''}`);
         }
       }
       console.log(`\nResumen: ${n} pedidos que piden comprar · ${conSenal} con alguna señal de remate.`);
+      console.log(`Para chequear que el cruce ve datos: ${Object.keys(ns).length} marcas liquidando · ${Object.keys(esc).length} en escalera · ${Object.values(ap).filter((a) => a && a.tipo === 'baja' && /remate|escalera/.test(String(a.por || ''))).length} bajas por remate/escalera · ${Object.values(nt).filter((t) => t && !t.permitido).length} "no traer más".`);
       return;
     }
 
