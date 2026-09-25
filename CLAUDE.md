@@ -247,6 +247,20 @@ precios-decisión 3.
    **20 queda para la próxima tanda** (fecha del reporte de MP en el Arqueo: toca la web).
  · **Obvias que quedan:** 20, 24-28.
 
+### LA REVISIÓN POR ETAPAS (propuesta del 25/09, falta que confirme el ritmo)
+Pedido suyo: que cada revisión entre en una ventana de 5 h de tokens (plan de US$100, Opus 5.5). Seis
+etapas, una por semana (ciclo de 6 semanas) y la del tema tocado cuando haya un cambio grande. Se
+piden por número o nombre ("etapa 2" / "etapa plata"). Tope de agentes por etapa, guarda lo que
+encuentra y retoma sólo lo que faltó. Cada hallazgo se verifica antes de pasárselo, de a uno con (a)/(b).
+| # | nombre | qué mira | esfuerzo |
+|---|---|---|---|
+| 1 | Precios | robot que sube/baja, rescate, escalera, remate, frenos | alto |
+| 2 | Plata | Arqueo, Mercado Pago, a liquidar, monedas, gastos | alto |
+| 3 | Mercadería | cajas, stock de Full, oficina, pedidos, Paraguay | alto |
+| 4 | Choques | web y robot escribiendo lo mismo, corridas a la vez | alto |
+| 5 | Fallas mudas y privacidad | ML no contesta y se guarda como dato; datos de terceros en logs | medio |
+| 6 | Ideas nuevas | datos de ML sin usar, cosas que hace a mano · sólo propone | medio |
+
 ### 25/09 A LA TARDE (v20.36 · `cyc-v314`): CUOTAS PREMIUM, "LO QUE TRAJO EL ROBOT" SIN INFLACIÓN, POR MES
  · **Salvador Dalí (`MLA1869295911`, Adriana): el panel decía 31% y la venta dio 16%.** Es PREMIUM
    (`gold_pro`): en $119.970 ML se quedó comisión $17.995 + **cuotas $25.914 (21,6%)** + Full $7.290.
