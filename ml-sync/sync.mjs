@@ -3667,8 +3667,15 @@ async function marcarLiquidando(db, mla, datos, sacar = false) {
   }
   // Lo que había antes, para poder DESHACER exactamente (un remate que falla no puede borrar las
   // marcas que puso él a mano: P3 de la segunda vuelta, 25/09/2026).
+  // Se lee de la BASE y no sólo de la copia en memoria: si la lista no se pudo leer al arrancar, la
+  // copia está vacía y deshacer borraría las marcas que puso él (revisión max, 25/09).
   const prev = {};
-  for (const m of todas) prev[m] = NOSUBIR[m] ? { ...NOSUBIR[m] } : null;
+  for (const m of todas) {
+    let d;
+    try { d = await db.get('cyc/nosubir/' + m); } catch { d = NOSUBIR[m]; }
+    prev[m] = d && typeof d === 'object' ? { ...d } : null;
+    if (prev[m]) NOSUBIR[m] = prev[m];
+  }
   for (const m of todas) {
     if (sacar) { await db.set('cyc/nosubir/' + m, null); delete NOSUBIR[m]; }
     else {
@@ -3678,6 +3685,9 @@ async function marcarLiquidando(db, mla, datos, sacar = false) {
       await db.patch('cyc/nosubir/' + m, d); NOSUBIR[m] = d;
     }
   }
+  // Una marca PUESTA A MANO borra la memoria de la escalera de ese producto: lo que él decide a mano
+  // no sigue escalonándose desde su precio (revisión max, 25/09).
+  if (!sacar && datos && !esMarcaRobot(datos)) { try { await db.set('cyc/escalera/' + mla, null); } catch { /* la escalera igual respeta la marca */ } }
   todas.prev = prev;
   return todas;
 }
@@ -6963,7 +6973,10 @@ async function main() {
       const cbrAutoIds = new Set(sanasCbr.filter(esperaBajaOk).map((f) => f.mla));
       const sobreAutoIds = new Set(sobreSanas.filter(esperaBajaOk).map((f) => f.mla));
       const autoBaja = [...sanasCbr.filter((f) => cbrAutoIds.has(f.mla)), ...sobreSanas.filter((f) => sobreAutoIds.has(f.mla))]
-        .filter((f) => f.mgPw >= CBR_SANO + 0.5 && f.baja <= 24.5 && !recienteAuto(f.mla, 'sube', 14));
+        .filter((f) => f.mgPw >= CBR_SANO + 0.5 && f.baja <= 24.5 && !recienteAuto(f.mla, 'sube', 14)
+          // Sin la lista de liquidando no se sabe qué marcó él: esa noche no se baja nada (revisión max).
+          && NOSUBIR_OK && !(NOSUBIR[f.mla] && !esMarcaRobot(NOSUBIR[f.mla])));
+      if (!NOSUBIR_OK) console.log('   ⚠️ no pude leer la lista de liquidando: esta noche no se baja nada solo (ni remate, ni escalera, ni baja por caja)');
       // ── EL RESCATE: LO QUE QUEDÓ EN `subeDesde` (20%) O MENOS ──────────────────────────────
       // Es lo que antes hacían el robot de ventas (en cada venta) y el de costos (cada hora), ahora
       // una vez por noche y con la MISMA cuenta que la ficha (`calcSubirPorMargen`, la de
@@ -7053,7 +7066,7 @@ async function main() {
         : remE2.includes(f) ? REM_P2 : remE1.includes(f) ? REM_P1 : REM_P3);
       let pricedRem = null;
       try { pricedRem = (await db.get('mlapi/priced')) || {}; } catch { pricedRem = null; }
-      const autoRemate = pricedRem == null ? [] : [...remE3, ...remE2, ...remE1, ...sobreE3, ...sobrePaga]
+      const autoRemate = (pricedRem == null || !NOSUBIR_OK) ? [] : [...remE3, ...remE2, ...remE1, ...sobreE3, ...sobrePaga]
         // Sin el dato de visitas NO se remata lo que no vende: si la consulta falló no se sabe si
         // alguien la ve, y bajar lo que no ve nadie regala el margen sin vender.
         .filter((f) => (f.sobre || f.vis != null) && f.baja <= 24.5 && f.mgPw >= pisoEsc(f) + 0.5 && f.mgPw >= PISO_AUTORIZADO + 0.5
@@ -7120,9 +7133,11 @@ async function main() {
               if (AUTO_ON) { try { await db.set('cyc/escalera/' + f.mla, null); } catch { /* se vuelve a intentar mañana */ } }
               mem = null;
             }
-            // Lo que él marcó liquidando a mano no es nuestro. La marca que puso la propia escalera o
-            // el remate sí (si no, al borrar la memoria quedaría trabado para siempre).
-            if (NOSUBIR[f.mla] && !mem && !esMarcaRobot(NOSUBIR[f.mla])) continue;
+            // Lo que él marcó liquidando a mano no es nuestro, AUNQUE la escalera ya lo hubiera
+            // escalonado antes (revisión max, 25/09: con memoria se lo seguía bajando desde su precio).
+            // La marca que puso la propia escalera o el remate sí (si no, quedaría trabado para siempre).
+            if (!NOSUBIR_OK) continue;
+            if (NOSUBIR[f.mla] && !esMarcaRobot(NOSUBIR[f.mla])) continue;
             // Manda el reloj de `quietaDe` (f.quieta), que ya descuenta los días sin stock (P1, 25/09):
             // recalcularlo acá desde la última venta volvía a contar como "parado" lo recién llegado.
             const quieta = f.quieta != null ? f.quieta
@@ -7257,6 +7272,10 @@ async function main() {
             if (pwNow > pwAntes + 10 && Math.floor(pwNow / 10) * 10 > t.a) {
               const aNueva = Math.floor(pwNow / 10) * 10;
               if (aNueva >= f.precio) { fallidosAuto.push({ ...t, err: `con la caja de hoy (${money(pwNow)}) no hace falta bajar` }); continue; }
+              // Si la caja nueva cruza los $33.000 para ARRIBA, el margen medido (sin envío, porque abajo
+              // ML no lo cobra) ya no vale: arriba ML cobra el envío y el margen puede caer a nada, con
+              // el registro diciendo otra cosa. Esa noche no se toca (revisión max, 25/09).
+              if (t.a < UMBRAL_ENVIO_GRATIS && aNueva >= UMBRAL_ENVIO_GRATIS) { fallidosAuto.push({ ...t, err: `la caja subió a ${money(pwNow)}, arriba de los $33.000: ahí ML cobra el envío y el margen medido ya no vale. Lo vuelvo a medir mañana` }); continue; }
               t.a = aNueva;
             }
             if (t.tipo === 'remate' || t.tipo === 'escalera') {
@@ -10248,7 +10267,8 @@ async function main() {
       // Telegram corta en 4096 caracteres: un mensaje que se pasa NO llega, así que se recorta acá.
       let msg = L.join('\n');
       if (msg.length > 3900) msg = msg.slice(0, 3900) + '\n\n<i>(recortado: el resto está en el log)</i>';
-      console.log((L.join('\n') + D.join('\n')).replace(/<[^>]+>/g, ''));
+      // El registro de GitHub es PÚBLICO: sin números de orden (revisión max, 25/09). Completo va a Telegram.
+      console.log((L.join('\n') + D.join('\n')).replace(/<[^>]+>/g, '').replace(/ \(orden \d+\)/g, ''));
       // CHEQUEO_ARCHIVO=<ruta> → deja el chequeo en un archivo del repo, para que después se pueda
       // leer sin tener las claves de ML ni de Firebase. Va SIN los números de orden ni el texto de
       // las preguntas: el repo es público y eso es data de compradores. Lo completo va a Telegram.
@@ -10268,7 +10288,8 @@ async function main() {
       for (const r of R) {
         if (!r.pregTxt.length) continue;
         console.log(`\n── ${r.label}: las 3 preguntas más viejas sin responder ──`);
-        for (const q of r.pregTxt) console.log(`   ${q.d} · ${q.mla} · "${q.t}"`);
+        // El TEXTO lo escribió el comprador y el registro es público: sólo fecha, publicación y largo.
+        for (const q of r.pregTxt) console.log(`   ${q.d} · ${q.mla} · pregunta de ${String(q.t || '').length} letras (el texto está en ML)`);
       }
       console.log(`\n⏱️ Chequeo completo en ${_seg()}.`);
       if (String(process.env.BILLING_PROBE).includes('nomandar')) { console.log('\n(no lo mandé a Telegram)'); return; }
@@ -10813,11 +10834,12 @@ async function main() {
             crudosVistos++;
             // Se sacan las partes largas (quién emite, quién compra, el envío) porque no hacen
             // falta y tapaban lo que sí importa: número, fecha, monto, tipo y CAE.
-            const { issuer, recipient, shipment, items, ...resto } = doc;
-            console.log(`      CRUDO (${puertaOk})`);
-            console.log(`      campos: ${Object.keys(doc).join(', ')}`);
-            console.log(`      sin issuer/recipient/shipment/items: ${JSON.stringify(resto).slice(0, 1500)}`);
-            if (Array.isArray(items) && items[0]) console.log(`      1er item: ${JSON.stringify(items[0]).slice(0, 600)}`);
+            // SÓLO NOMBRES DE CAMPO, ningún valor: el documento trae el nombre, el documento y el
+            // domicilio del comprador y el registro es PÚBLICO (revisión max, 25/09).
+            const claves = (o, pre = '', n = 0) => (o && typeof o === 'object' && n < 2)
+              ? Object.entries(o).flatMap(([k, v]) => [pre + k, ...claves(v, pre + k + '.', n + 1)]) : [];
+            console.log(`      CRUDO (${puertaOk}) · sólo nombres, sin valores`);
+            console.log(`      campos: ${claves(doc).slice(0, 120).join(', ')}`);
           }
           const num = doc.invoice_number || doc.number || doc.document_number
             || (doc.invoice && (doc.invoice.number || doc.invoice.invoice_number)) || null;
@@ -10828,7 +10850,7 @@ async function main() {
           } else {
             sinFac++;
             console.log(`  ${fecha} · ${tot.padStart(10)} · ${prod.padEnd(34)} · SIN FACTURA todavía`);
-            if (process.env.FACT_CRUDO) console.log(`      (${puertaOk} → ${JSON.stringify(doc).slice(0, 300)})`);
+            if (process.env.FACT_CRUDO) console.log(`      (${puertaOk} → campos: ${Object.keys(doc).join(', ')})`);
           }
         }
         console.log(`  ── ${ords.length} ventas · ${conFac} con factura · ${sinFac} sin factura · ${noSe} que ML no me quiso decir`);
@@ -13967,7 +13989,13 @@ async function main() {
         // El margen REAL al precio nuevo, que es lo que se le declara al freno. No se asume que
         // el solver acertó: se recalcula y se compara, porque es el número que autoriza la bajada.
         const comN = await feeAt(nuevo);
-        const mgN = comN == null ? null : ((nuevo - comN - envioMax - nuevo * m - costo) / (costo + nuevo * m + envioMax)) * 100;
+        // EL ENVÍO DEL LADO DE LOS $33.000 DONDE QUEDA EL PRECIO NUEVO (revisión max, 25/09). Las
+        // ventas de abajo de la barrera dan envío ~0; usarlas para un precio de arriba declaraba un
+        // margen falso y el freno del piso lo dejaba pasar. Misma regla que netoweb (F3).
+        const envN = (await envioDeducido(ventasA, nuevo, feeAt, { modo: 'max' })).envio;
+        if (envN == null) { fuera.push(`${mla} · ${nom} · a ${money(nuevo)} no hay ventas de ese lado de los $33.000 para medir el envío: no se baja por acá`); continue; }
+        const mgN = comN == null ? null : ((nuevo - comN - envN - nuevo * m - costo) / (costo + nuevo * m + envN)) * 100;
+        if (mgN == null || mgN < MIN * 100 - 0.05) { fuera.push(`${mla} · ${nom} · a ${money(nuevo)} con el envío de ese lado queda en ${mgN == null ? '?' : mgN.toFixed(1) + '%'}: abajo del piso, no se baja`); continue; }
         plan.push({ mla, nom, cuenta: e2.cuenta, precio: it.price, nuevo, stock, v30: vv, mgN });
       }
       if (!plan.length) { console.log('Ninguna publicación para bajar.'); }
@@ -21037,7 +21065,8 @@ async function main() {
           const f = String(x.date_created || '').slice(0, 10);
           const d = x.date_created ? Math.floor((Date.now() - Date.parse(x.date_created)) / 864e5) : null;
           console.log(`\n  [${f} · ${d == null ? '?' : d} días] ${x.item_id} · ${titulo[x.item_id] || '(sin título)'}`);
-          console.log(`     ${String(x.text || '').replace(/\s+/g, ' ').trim()}`);
+          // El registro es PÚBLICO: se tapan teléfonos, documentos y mails que escriba el comprador (revisión max, 25/09).
+          console.log(`     ${String(x.text || '').replace(/\s+/g, ' ').trim().replace(/[\w.+-]+@[\w-]+\.[\w.]+/g, '[mail]').replace(/\d[\d .-]{5,}\d/g, '[número]')}`);
         }
         total += todas.length;
       }
@@ -24929,7 +24958,12 @@ async function main() {
             const nuevo = Math.ceil(P / 10) * 10;   // redondeo HACIA ARRIBA: nunca queda abajo del piso
             if (nuevo >= precio) { yaEnPiso.push({ label, mla, nom, precio, mg: mg * 100 }); continue; }
             const cae = 1 - nuevo / precio;
-            const mgNuevo = ((nuevo - comP - envio - nuevo * cuo) - costo - nuevo * m) / (costo + nuevo * m) * 100;
+            // El margen al precio nuevo con el envío DE ESE LADO de los $33.000 y el envío en el divisor
+            // (regla del 17/09): antes dividía sin envío y lo sacaba de ventas del otro lado (revisión max).
+            const envN = (await envioDeducido(ventas, nuevo, (pv) => feeAt(site, pv, lt, cat, t.access_token), { modo: 'max' })).envio;
+            if (envN == null) { sinDato.push({ label, mla, nom, why: `a ${money(nuevo)} no hay ventas de ese lado de los $33.000 para medir el envío` }); continue; }
+            const mgNuevo = ((nuevo - comP - envN - nuevo * cuo) - costo - nuevo * m) / (costo + nuevo * m + envN) * 100;
+            if (mgNuevo < MIN * 100 - 0.05) { yaEnPiso.push({ label, mla, nom, precio, mg: mg * 100 }); continue; }
             const fila = {
               label, mla, nom, precio, nuevo, mg: mg * 100, mgNuevo, cae, com, comP, envio, envioMin,
               costo, mlx, neto, cuo, nHist, tok: t.access_token, prod: p.name || '',
