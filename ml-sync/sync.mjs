@@ -1318,7 +1318,10 @@ async function activarPausadasFull(db, links, tokensRun, DRY, products, piso) {
         if (!p) { noVa(linkRow.prodId ? 'su ficha ya no existe en la web' : 'no está pegada a ninguna ficha: sin costo no puedo medir el margen'); continue; }
         const costo = costoPesos(p, 1, tc).costo;
         if (!costo) { noVa('sin costo cargado'); continue; }
-        const precio = vars.length ? (vars[0].price || 0) : (b.price || 0);
+        // Con variantes se mide la MÁS BARATA (revisión max #18, 25/09): activar prende todas, así que
+        // si la más barata llega al piso llegan todas. Antes miraba sólo la primera, que podía ser la cara.
+        const _pvs = vars.map((v) => Number(v && v.price) || 0).filter((x) => x > 0);
+        const precio = vars.length ? (_pvs.length ? Math.min(..._pvs) : 0) : (b.price || 0);
         if (!precio) { noVa('sin precio'); continue; }
         const site = b.site_id || 'MLA', lt = b.listing_type_id, cat = b.category_id;
         const com = await feeAt(site, precio, lt, cat);
