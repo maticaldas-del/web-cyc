@@ -373,7 +373,14 @@ async function raiseVariations(itemId, nuevos, token) {
   const payload = vars.map((v) => {
     const n = nuevos[String(v.id)];
     let precio = v.price;
-    if (n && n > v.price && n <= v.price * 1.25) { precio = redondeoSube(n); cambios.push({ id: v.id, from: v.price, to: precio }); }
+    // P6 de la segunda vuelta (25/09/2026): el precio nuevo sale de medir UNA variante, y otra más
+    // barata podía cruzar los $33.000 (regla 2: se frena en $32.999). Acá, que es por donde pasan
+    // todas las subas de variantes, cada una que está abajo de la barrera queda como mucho en $32.999.
+    if (n && n > v.price && n <= v.price * 1.25) {
+      let a = redondeoSube(n);
+      if (v.price < UMBRAL_ENVIO_GRATIS && a >= UMBRAL_ENVIO_GRATIS) a = UMBRAL_ENVIO_GRATIS - 1;
+      if (a > v.price) { precio = a; cambios.push({ id: v.id, from: v.price, to: precio }); }
+    }
     return { id: v.id, price: precio };
   });
   if (!cambios.length) return { ok: false, err: 'no-sube' };
@@ -5074,8 +5081,13 @@ async function correrCandidatos(db, products, labels, accounts, soloPrueba, prue
     if (margen < CAND_PISO_PCT) {
       const antesM = (c.margen != null && isFinite(c.margen)) ? Number(c.margen) : null;
       const primera = antesM == null;
-      if (primera || antesM >= CAND_PISO_PCT) {
-        console.log(`      ⚠️ da ${margen.toFixed(1)}%, abajo del piso, ${primera ? 'y es la PRIMERA medición' : `pero la medición anterior daba ${antesM.toFixed(1)}%`}. NO lo descarto por un solo número: si la próxima vuelta sigue abajo, ahí sí.`);
+      // N3 de la segunda vuelta (25/09/2026): la segunda medición tiene que ser de OTRO momento.
+      // ml-daily corre 3 veces por noche y `candidatos` otra vez al mediodía: sin esto las "dos
+      // mediciones" podían ser dos lecturas del mismo rato (15 minutos), justo lo que el freno quiere
+      // evitar. Hacen falta 12 horas entre una y otra; si no, cuenta como observación.
+      const muyJuntas = !primera && Number(c.calcTs) > 0 && Date.now() - Number(c.calcTs) < 12 * 3600e3;
+      if (primera || antesM >= CAND_PISO_PCT || muyJuntas) {
+        console.log(`      ⚠️ da ${margen.toFixed(1)}%, abajo del piso, ${primera ? 'y es la PRIMERA medición' : muyJuntas ? `y la medición anterior (${antesM.toFixed(1)}%) es de hace menos de 12 h` : `pero la medición anterior daba ${antesM.toFixed(1)}%`}. NO lo descarto por un solo número: si la próxima vuelta sigue abajo, ahí sí.`);
         enObserva.push(`${c.nombre} → ${primera ? `primera medición: ${margen.toFixed(1)}%` : `cayó a ${margen.toFixed(1)}% (antes ${antesM.toFixed(1)}%)`}`);
         continue;
       }
@@ -7090,9 +7102,18 @@ async function main() {
             if (!f || !f.mla || f.sobre || vistas.has(f.mla)) continue;
             vistas.add(f.mla);
             const e = escLinks[f.mla] || {};
-            const mem = escMem[f.mla];
-            if (NOSUBIR[f.mla] && !mem) continue;            // lo marcó él liquidando: no es nuestro
+            let mem = escMem[f.mla];
             const uv = Math.max(ultE[f.mla] || 0, ultPC[(e.prodId || '') + '__' + (e.cuenta || f.cuenta)] || 0);
+            // P4 de la segunda vuelta (25/09/2026): la memoria de la escalera se BORRA cuando vendió
+            // después del último escalón (la escalera sirvió). Antes quedaba para siempre y, si el
+            // producto se volvía a frenar meses después, arrancaba desde el escalón viejo.
+            if (mem && uv > (Number(mem.ts) || 0)) {
+              if (AUTO_ON) { try { await db.set('cyc/escalera/' + f.mla, null); } catch { /* se vuelve a intentar mañana */ } }
+              mem = null;
+            }
+            // Lo que él marcó liquidando a mano no es nuestro. La marca que puso la propia escalera o
+            // el remate sí (si no, al borrar la memoria quedaría trabado para siempre).
+            if (NOSUBIR[f.mla] && !mem && !esMarcaRobot(NOSUBIR[f.mla])) continue;
             // Manda el reloj de `quietaDe` (f.quieta), que ya descuenta los días sin stock (P1, 25/09):
             // recalcularlo acá desde la última venta volvía a contar como "parado" lo recién llegado.
             const quieta = f.quieta != null ? f.quieta
@@ -7146,8 +7167,14 @@ async function main() {
             const mgHoy = await mg(precio);
             if (mgHoy == null) { console.log(`   · ${f.nom}: sin comisión o sin envío de ML, no se calcula`); continue; }
             // El próximo escalón: el siguiente al de la memoria, o el primero que quede ABAJO del margen de hoy.
-            let paso = mem ? ESC_PASOS.find((x) => x < mem.paso) : ESC_PASOS.find((x) => x < mgHoy - 0.5);
-            if (mem && paso != null && paso >= mgHoy - 0.5) paso = ESC_PASOS.find((x) => x < mgHoy - 0.5);
+            // P4: manda el margen de HOY (el primer escalón abajo de él). Antes mandaba la memoria, y
+            // si en el medio alguien subió el precio (el rescate, él), saltaba escalones: de 25% a 10%
+            // de golpe. La memoria sólo sirve para no repetir el MISMO escalón cuando el margen de hoy
+            // quedó un poco arriba del escalón por el redondeo o por el envío.
+            // Si el margen de hoy está 3 puntos o más arriba del escalón guardado, alguien subió el
+            // precio y la memoria ya no describe dónde está: se ignora.
+            let paso = ESC_PASOS.find((x) => x < mgHoy - 0.5);
+            if (mem && mgHoy - 0.5 < mem.paso + 3 && paso != null && paso >= mem.paso) paso = ESC_PASOS.find((x) => x < mem.paso);
             if (paso == null) { console.log(`   · ${f.nom}: ya está en ${mgHoy.toFixed(1)}%, no queda escalón abajo`); continue; }
             const ptw = Math.round(f.ptw || 0);
             const { a, mgA, llega } = await escPrecioPara(mg, precio, ptw, paso);
@@ -7193,6 +7220,7 @@ async function main() {
           let r;
           if (t.tipo === 'rescate') {
             if (f.vars && f.vars.length) {
+              // (la barrera de los $33.000 por variante la frena `raiseVariations`, P6)
               const nuevos = {}; for (const v of f.vars) if ((v.price || 0) < t.a) nuevos[String(v.id)] = t.a;
               r = await raiseVariations(f.mla, nuevos, tk);
               if (r && r.ok) r = { ok: true, from: f.precio, to: t.a };
@@ -12125,6 +12153,9 @@ async function main() {
       const fin = (await db.get('cyc/finanzas')) || {};
       const tcp = parseFloat(fin.tipo_cambio) || 1500;
       const nrmP = (t) => String(t || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[^a-z0-9]+/g, ' ').trim();
+      // O1 de la segunda vuelta: lo que ya viaja en un pedido que no llegó no se vuelve a cargar.
+      const _comprasPy = (await db.get('cyc/compraspy')) || {};
+      const _viaja = (c) => { const pe = c && c.pedidoEn && _comprasPy[c.pedidoEn]; return pe && pe.estado !== 'llego' ? (pe.fecha || '?') : ''; };
       const vivos = Object.entries(cands).filter(([, c]) => c && c.nombre && !c.prodId);
       console.log(`=== CARGAR UNIDADES DEL PEDIDO ${APLICAR ? '' : '(PRUEBA — no escribo nada)'} ===`);
       const cambios = [], problemas = [];
@@ -12145,6 +12176,7 @@ async function main() {
         // pedido lo que se cargó cuando todavía daba.
         const mg = Number(c.margen);
         const puede = c.no ? 'está descartado de la lista'
+          : _viaja(c) ? `ya está viajando en el pedido del ${_viaja(c)}`
           : (c.margen == null || !isFinite(mg)) ? 'todavía no está medido en ML'
           : (mg < CAND_PISO_PCT) ? `da ${mg.toFixed(1)}% y tu piso es ${CAND_PISO_PCT}%` : '';
         if (puede && p.u > antes) { problemas.push(`"${p.busca}" → ${c.nombre}: NO se puede pedir, ${puede}`); continue; }
@@ -15281,7 +15313,10 @@ async function main() {
       else if (/^\d{1,3}(\.\d{3})+$/.test(_s)) _s = _s.replace(/\./g, '');
       const pesos = Math.round(parseFloat(_s) || 0);
       if (!quien || !(pesos > 0)) { console.log('Usá: poncosto:<palabra o id>|<pesos>[|go] — ej poncosto:masajeador|9000'); return; }
-      const tcP = parseFloat(((await db.get('cyc/finanzas')) || {}).tipo_cambio) || 1500;
+      // f3 de la segunda vuelta (25/09/2026): sin el dólar cargado no se inventa uno ($1.500): el
+      // costo quedaría en dólares mal convertidos y se metería en todos los márgenes sin que se note.
+      const tcP = parseFloat(((await db.get('cyc/finanzas')) || {}).tipo_cambio) || 0;
+      if (!(tcP > 0)) { console.log('Falta el dólar en Finanzas (cyc/finanzas/tipo_cambio): sin eso no paso el costo a dólares. No toqué nada.'); return; }
       const vpP = (await db.get('cyc/ventaprod')) || {}; setDevLive(vpP);
       const linksP = (await db.get('cyc/mllinks')) || {};
       const objetivo = products.filter((p) => p.id === quien || norm(p.name || '').includes(norm(quien)));
@@ -20111,6 +20146,11 @@ async function main() {
     // aparte de la base que la web no lee nunca. Decía "68 guardados" y no se veía ni uno. Al final
     // vuelve a leer de la base lo que guardó y lo dice, para que no pueda volver a pasar callado.
     if (String(process.env.BILLING_PROBE || '').startsWith('netoweb')) {
+      // N4 de la segunda vuelta (25/09/2026): si mientras corre esto se cambia un precio, el
+      // robot anota el margen nuevo AL INSTANTE (`margenAlDia`). Antes esta cuenta, que leyó el
+      // precio viejo al empezar, lo pisaba minutos después. Ahora lo anotado DESPUÉS de este
+      // arranque no se toca.
+      const _nwInicio = Date.now();
       const prueba = String(process.env.BILLING_PROBE).split(':')[1] === 'prueba';
       const vp = (await db.get('cyc/ventaprod')) || {}; setDevLive(vp);
       const links = (await db.get('cyc/mllinks')) || {};
@@ -20281,6 +20321,8 @@ async function main() {
         const mg = costo > 0 ? ((d.neto - costo) / costo * 100).toFixed(0) + '%' : '—';
         console.log(`  ${money(d.precio).padStart(10)} → neto ${money(d.neto).padStart(10)} · margen s/costo ${String(mg).padStart(5)} · ${d.cuenta.padEnd(8)} · ${(p.name || pid).slice(0, 40)}${d.activa ? '' : ' [PAUSADA]'}${d.sinEnvio ? ' (sin ventas: envío no deducido)' : ''}`);
         if (!prueba && !DRY) {
+          let _tsAhora = 0; try { _tsAhora = Number(await db.get('cyc/products/' + pid + '/netoCalcTs')) || 0; } catch { _tsAhora = 0; }
+          if (_tsAhora > _nwInicio) { console.log(`     (no lo piso: el precio se cambió mientras corría esto y ya quedó anotado el margen nuevo)`); continue; }
           await db.set('cyc/products/' + pid + '/netoCalc', d.neto);
           await db.set('cyc/products/' + pid + '/netoCalcPrecio', d.precio);
           await db.set('cyc/products/' + pid + '/netoCalcPausada', !d.activa);
@@ -20298,6 +20340,10 @@ async function main() {
       // de arriba: el margen por producto es el que decide precios y no puede depender de esto.
       if (!prueba && !DRY && Object.keys(porPub).length) {
         try {
+          try {
+            const _np = (await db.get('cyc/netopub')) || {};
+            for (const m of Object.keys(porPub)) if (Number((_np[m] || {}).ts) > _nwInicio) delete porPub[m];   // N4
+          } catch { /* si no se puede leer, se escribe como antes */ }
           await db.patch('cyc/netopub', porPub);
           const rele = await db.get('cyc/netopub');
           const ok = Object.keys(porPub).filter((m) => rele && rele[m] && Number(rele[m].neto) === Number(porPub[m].neto)).length;
@@ -28459,7 +28505,21 @@ async function main() {
         // todo lo demás obligaba a volver a tipear la mercadería, el que retira y la diferencia de
         // la transferencia — y como `pagos` se escribe entero, uno que se olvidara quedaba en CERO
         // y el recargo salía corto sin que nada lo dijera. Ahora un campo ausente toma el guardado.
-        const yaG = guardadas['py' + String(fecha).replace(/-/g, '')] || null;
+        // M1 de la segunda vuelta (25/09/2026): el pedido se guarda con la fecha del "Ya lo pedí" y
+        // el pago puede llevar otra fecha. Antes una fecha distinta creaba un SEGUNDO registro: la
+        // compra contaba dos veces "en camino" y al tocar "Llegó" en el nuevo se creaban fichas con
+        // lo que estuviera cargado HOY en el armado. Ahora, si no hay uno con esa fecha, se busca
+        // el pedido de ±10 días que todavía no tiene los pesos cargados: si es uno solo se usa ése
+        // (y se dice); si hay más de uno no se adivina y se pide la fecha exacta.
+        let idCompra = 'py' + String(fecha).replace(/-/g, '');
+        if (!guardadas[idCompra]) {
+          const cerca = Object.entries(guardadas).filter(([, g]) => g && g.fecha
+            && Math.abs(Date.parse(g.fecha) - Date.parse(fecha)) <= 10 * 864e5
+            && !(g.pagos && Number(g.pagos.mercaderia) > 0));
+          if (cerca.length === 1) { idCompra = cerca[0][0]; console.log(`  (no hay pedido del ${fecha}: uso el pedido del ${cerca[0][1].fecha}, que todavía no tenía los pesos)`); }
+          else if (cerca.length > 1) { console.log(`Hay ${cerca.length} pedidos sin pesos cerca de esa fecha (${cerca.map(([, g]) => g.fecha).join(', ')}). Pasá la fecha exacta del pedido.`); return; }
+        }
+        const yaG = guardadas[idCompra] || null;
         const yaP = (yaG && yaG.pagos) || {};
         const dePrevio = (k, kp) => (campos[k] != null ? num(campos[k]) : (yaP[kp] != null ? Number(yaP[kp]) : null));
         const usd = campos.usd != null ? num(campos.usd) : (yaG ? parseFloat(yaG.usdCrudo) || null : null);
@@ -28479,7 +28539,7 @@ async function main() {
         if (!(usd > 0)) { console.log('Falta `usd=` (los dólares CRUDOS de comprasparaguay, sin el recargo). Sin eso no hay contra qué medir.'); return; }
         if (!(merc > 0)) { console.log('Falta `merc=` (los pesos que salieron por la mercadería).'); return; }
         if (envio == null) { console.log('Falta `envio=` (los pesos del correo). Si todavía no lo sabés poné `envio=0`: queda marcado INCOMPLETO y no entra en el promedio.'); return; }
-        const id = 'py' + fecha.replace(/-/g, '');
+        const id = idCompra;
         const ya = guardadas[id];
         // Snapshot de lo que está cargado HOY en el pedido, para tener el costo de CADA cosa.
         const cands = (await db.get('cyc/candidatos_py')) || {};
@@ -28563,7 +28623,8 @@ async function main() {
         const usdPanel = (ya && parseFloat(ya.usdCrudo) > 0 && Math.abs(parseFloat(ya.usdCrudo) - usd) > 0.5) ? parseFloat(ya.usdCrudo) : null;
         const rec = {
           ...(ya || {}),
-          fecha, usdCrudo: usd,
+          // la fecha del PEDIDO se conserva; si el pago vino con otra, queda aparte
+          fecha: (ya && ya.fecha) || fecha, fechaPago: (ya && ya.fecha && ya.fecha !== fecha) ? fecha : ((ya && ya.fechaPago) || null), usdCrudo: usd,
           pagos: { mercaderia: Math.round(merc), cambista: Math.round(cambio), envio: Math.round(envio), retira: Math.round(retira), otros: Math.round(otros) },
           items: itemsFin, nota: campos.nota || (ya && ya.nota) || '', tcPanel: tcPanel || null,
           usdPanel, kgCorreo: kgPedido > 0 ? kgPedido : null,

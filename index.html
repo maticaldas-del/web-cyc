@@ -2319,7 +2319,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='20.34';
+const APP_VERSION='20.35';
 // El problema real que esto resuelve no es curiosidad: es que el celular guarda la app y sigue
 // mostrando la de ayer sin avisar. Varias veces se revisó un cambio que ya estaba subido y no se
 // veía. Por eso, además del número, el chip avisa cuando hay una versión nueva esperando.
@@ -4045,7 +4045,11 @@ async function updCostUSD(id,val){
 }
 async function updCostPesos(id,val){
   const p=state.products.find(x=>x.id===id);if(!p)return;
-  const pesos=parseMoney(val);const tc=curTC();const u=tc>0?pesos/tc:0;
+  const pesos=parseMoney(val);const tc=curTC();
+  // f3 de la segunda vuelta (25/09/2026): sin el dólar cargado NO se guarda. Antes quedaba el costo
+  // en US$ 0 y el producto pasaba a verse como todo ganancia (y el robot subía o bajaba con eso).
+  if(!(tc>0)){toast('Falta el dólar en Finanzas: sin eso no puedo pasar el costo a dólares. No guardé nada.','err');renderProds&&renderProds();return;}
+  const u=pesos/tc;
   const antes=costUSDof(p);
   const cong=Math.abs(u-antes)>0.005?await congelarCostoAnterior(p,antes):0;
   p.costUSD=u;p.cost=pesos;
@@ -4561,10 +4565,11 @@ async function _guardarCajaArmando(cta,items){
   state.cajas_armando=state.cajas_armando||{};
   const hay=Object.keys(items||{}).length;
   const antes=state.cajas_armando[cta];
-  if(hay)state.cajas_armando[cta]={items,ts:Date.now()};
+  const ts=Date.now();   // la MISMA hora en pantalla y en la base: el cierre compara las dos (N5)
+  if(hay)state.cajas_armando[cta]={items,ts};
   else delete state.cajas_armando[cta];
   try{
-    await fbSet('cajas_armando/'+cta,hay?{items,ts:Date.now()}:null);
+    await fbSet('cajas_armando/'+cta,hay?{items,ts}:null);
   }catch(e){
     // Se deshace lo que se había cambiado en memoria: si no, la pantalla mostraría una caja
     // armada que en la base no existe, y al recargar desaparecería sin aviso.
@@ -5706,11 +5711,32 @@ async function cerrarCaja(cuenta){
     if(track)break;
     alert('La caja no se cierra sin número de seguimiento.\n\nPonelo, o tocá Cancelar para seguir armándola.');
   }
+  // N5 de la segunda vuelta (25/09/2026): LA CAJA SE "AGARRA" EN LA BASE ANTES DE DESPACHARLA. Con
+  // la misma caja abierta en el teléfono y en la compu se podía cerrar dos veces: dos envíos "en
+  // camino" y la oficina descontada doble. Ahora se borra la caja a medio armar con una transacción
+  // que sólo pasa si sigue siendo la MISMA que este aparato tiene en pantalla; si otro ya la cerró
+  // o la cambió, no se despacha nada y se dice.
+  const tsLocal=((state.cajas_armando||{})[cuenta]||{}).ts||null;
+  if(db){
+    let motivo='';
+    const r=await db.ref('cyc/cajas_armando/'+cuenta).transaction(cur=>{
+      if(!cur||!cur.items||!Object.keys(cur.items).length){motivo='ya la cerraste (o la vaciaste) desde otro aparato';return;}
+      if(tsLocal&&cur.ts&&cur.ts!==tsLocal){motivo='la cambiaste desde otro aparato mientras tanto';return;}
+      motivo='';return null;
+    });
+    if(!r||!r.committed){toast('No la despaché: esta caja '+(motivo||'no se pudo tomar')+'. Recargá y mirala antes de cerrarla.','err');return;}
+    delete (state.cajas_armando||{})[cuenta];
+  }
   const hoy=new Date().toISOString().slice(0,10);
   const id='env'+Date.now();
   const e={fecha:hoy,cuenta,correo:'Andreani',sucursal:'',cajas:1,seguimientos:track?[track]:[],obs:'',ts:Date.now(),
     cajasDet:[{n:1,track,items,recibida:false}]};
-  await fbSet('envios_full/'+id,e);
+  try{await fbSet('envios_full/'+id,e);}
+  catch(err){
+    // Si el envío no se pudo guardar, la caja vuelve a estar a medio armar como estaba.
+    try{await _guardarCajaArmando(cuenta,guardada);}catch{/* ya avisa _guardarCajaArmando */}
+    toast('No se pudo guardar el envío: la caja quedó como estaba. '+String(err&&err.message||err).slice(0,60),'err');return;
+  }
   state.envios_full=state.envios_full||{};state.envios_full[id]=e;
   // Descontar de la oficina lo que se fue. Con variante se toca la clave de la variante y se
   // recalcula el total del producto; sin variante, la clave del producto.
@@ -9543,6 +9569,10 @@ function candVentasDe(c){
 function candPuedePedir(c){
   if(!c)return{ok:false,motivo:'no existe'};
   if(c.no)return{ok:false,motivo:'está descartado de la lista'};
+  // O1 de la segunda vuelta (25/09/2026): lo que ya viaja en un pedido no se vuelve a cargar. El
+  // botón de llenar ya lo salteaba, pero a mano (la casilla o el comando `pedir`) se podía comprar
+  // dos veces. Cuando llega pasa a ser producto probado y sale de esta lista.
+  if(candEnPedido(c)==='viajando'){const pe=(state.compraspy||{})[c.pedidoEn]||{};return{ok:false,motivo:`ya está viajando en el pedido del ${pe.fecha||'?'}`};}
   const m=Number(c.margen);
   if(c.margen==null||!isFinite(m))return{ok:false,motivo:'todavía no está medido en ML'};
   if(m<CAND_PISO_PCT)return{ok:false,motivo:`da ${m.toFixed(1)}% y tu piso es ${CAND_PISO_PCT}%`};

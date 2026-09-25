@@ -154,6 +154,33 @@ scratchpad `rev2/<frente>/REPORT.md`, se pierden con el contenedor). Van de a un
    corrige sola). NO REAL: tokens quemados por corridas a la vez, marca `robotprecios/dia`,
    supervisor 3 veces, pedidos automáticos duplicados.
  · **Total de la segunda vuelta: 4 viejas confirmadas (c0-c3) + f0-f2 + 25 nuevas.**
+ · **EL RESTO, HECHO EL 25/09 A LA TARDE, sin preguntar (él: *"dale"* a "sigo yo con las obvias y te
+   paso el resumen"). v20.35 · `cyc-v313`.** Cada uno probado con el código real y una base/ML de mentira:
+   **F4** `filtrarRescate` sin la foto de precios no rescata nada y lo dice · **F5** `fetchCancelled`
+   marca `incompleto` y `CANCEL_AGG` no pisa `fact_cancel` · **F6** el aviso de publicación con
+   problema se anota sólo si salió; lo que quedó por el tope queda `pend|…` y se reintenta; un cambio
+   sólo de `sub_status` avisa · **F7** promociones no leídas → `faltaMirar` en el chequeo y el resumen
+   (ya no "nada urgente") · **F8** `facsync`: 429/5xx/corte ≠ "sin factura" · **F9** sin fuentes del
+   dólar no se anota el día · **F10** el resumen espera hasta las 00:40 a que las 4 cuentas se hayan
+   leído después de medianoche; después sale avisando · **N6** marca `mlapi/telegram/dailyEnvio`
+   contra el doble envío · **c0** la venta escribe en `cyc/mllinks` sólo los campos que CAMBIARON y,
+   si él vinculó en la web durante la vuelta, respeta lo suyo (`mapAntes`) · **c1** la venta usa el
+   enganche por `upid` de otra publicación de la misma cuenta antes que el título · **c2** la web
+   pone `manualTs` al editar o marcar reclamo/cancelada y el robot no reescribe esa venta (reactivar
+   la saca) · **c3** la oficina se suma/resta con transacción sobre la base (`ofiTx`/`ofiMover`) en
+   el "+", la casilla de variante, cerrar y deshacer caja · **N2** `saveMlLink`, ocultar/recuperar,
+   `autoLinkFamilies` (web) y `AUTOLINK` (robot) ya no arman el renglón de cero · **N3** la segunda
+   medición de un candidato tiene que ser 12 h después de la primera · **N4** `netoweb` no pisa el
+   margen que `margenAlDia` anotó durante la corrida · **N5** cerrar caja la "agarra" con una
+   transacción (si otro aparato la cerró o la cambió, no despacha) · **M1** `compray` con otra fecha
+   usa el pedido de ±10 días sin pesos (si hay uno solo) en vez de crear otro · **O1** no se puede
+   cargar un candidato que ya viaja (`candPuedePedir` y `pedir`) · **P4** la memoria de la escalera
+   se borra si vendió después del último escalón, y el escalón sale del margen de HOY (subieron el
+   precio → vuelve a 20%, no salta a 10%) · **P6** `raiseVariations` frena en $32.999 cada variante
+   que está abajo de la barrera · **f3 resto** `updCostPesos` y `poncosto` no guardan sin dólar.
+   **N7** (la fecha del disponible vuelve 2 min a la vieja) se deja: se corrige sola.
+   **Con esto la segunda vuelta queda CERRADA.** Él pidió además una pasada completa "a fondo" (max)
+   cuando esto terminara: **se le ofreció; falta que diga cuándo.**
 
 ### PASO 1 (PRECIOS): TERMINADO (el 8 era un aviso del log sin daño)
 **Hechos el 24/09 (v20.28 · `cyc-v306`):** 3 · el rescate no sube lo que el robot BAJÓ en 30 días
