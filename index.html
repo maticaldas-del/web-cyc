@@ -43,6 +43,10 @@ body.light{
 html{font-size:118%}
 @media(max-width:900px){html{font-size:100%}}
 body{font-family:'DM Mono',monospace;background:var(--bg);color:var(--text);min-height:100vh}
+.home-cambios-lista{scrollbar-width:thin;scrollbar-color:#64748b transparent}
+.home-cambios-lista::-webkit-scrollbar{width:6px;-webkit-appearance:none}
+.home-cambios-lista::-webkit-scrollbar-thumb{background:#64748b;border-radius:3px}
+.home-cambios-lista::-webkit-scrollbar-track{background:rgba(148,163,184,.08);border-radius:3px}
 
 /* LOADING */
 #loading{position:fixed;inset:0;background:var(--bg);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px;z-index:200}
@@ -2323,58 +2327,71 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='20.39';
+const APP_VERSION='20.40';
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
-// muestre la versión y la fecha de actualización y que tenga un desplegable predeterminado cerrado,
-// que muestre los últimos 3 cambios y si en la última actualización hubo más de 3 cambios que
-// muestre todos". Se agrega un renglón ARRIBA de todo en cada versión nueva, en castellano llano.
-// La primera entrada tiene que ser siempre la de APP_VERSION.
+// muestre la versión y la fecha de actualización y que tenga un desplegable predeterminado cerrado".
+// Y el mismo día: "que ponga fecha de cada modificación y haya una barrita para scrollear y que
+// muestre los últimos 10 cambios. y los marque como leve, mediano e importante en verde, amarillo y
+// rojo". Se agrega una entrada ARRIBA de todo en cada versión nueva, en castellano llano, con la
+// fecha y la HORA DE ACÁ (no la de GitHub, que va 3 horas adelantada). La primera entrada tiene que
+// ser siempre la de APP_VERSION.
+// n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
+//    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
-  {v:'20.39',f:'25/09/2026',c:[
-    'Lo que trajo el robot: lo que se cobró de más (o de menos) por una suba o baja del robot suma desde la primera venta, sin esperar 7 días. A los 7 días se agrega si por el precio se vendió menos o más.',
+  {v:'20.40',f:'25/09/2026',h:'13:55',c:[
+    {n:1,t:'Este desplegable: fecha y hora de cada cambio, los últimos 10 con barrita para bajar, y cada uno marcado leve, mediano o importante.'},
   ]},
-  {v:'20.38',f:'25/09/2026',c:[
-    'Lo que trajo el robot: los cambios de menos de 7 días ya muestran lo que se vendió desde el cambio (unidades, plata depositada y ganancia de esas ventas). Todavía no suman al total.',
+  {v:'20.39',f:'25/09/2026',h:'13:42',c:[
+    {n:2,t:'Lo que trajo el robot: lo que se cobró de más (o de menos) por una suba o baja del robot suma desde la primera venta, sin esperar 7 días. A los 7 días se agrega si por el precio se vendió menos o más.'},
   ]},
-  {v:'20.37',f:'25/09/2026',c:[
-    'Arriba del puntaje: la versión, la fecha en que se actualizó y este desplegable con los últimos cambios.',
+  {v:'20.38',f:'25/09/2026',h:'13:35',c:[
+    {n:1,t:'Lo que trajo el robot: los cambios de menos de 7 días ya muestran lo que se vendió desde el cambio (unidades, plata depositada y ganancia de esas ventas). Todavía no suman al total.'},
   ]},
-  {v:'20.36',f:'25/09/2026',c:[
-    'El margen de las publicaciones Premium ahora descuenta lo que ML cobra por las cuotas sin interés. El Salvador Dalí decía 31% y en la venta real dio 16%.',
-    '"Lo que trajo el robot de precios" ya no se adjudica las subas por inflación o costo: sólo cuenta lo que el robot decidió mirando el mercado (subir porque había lugar, bajar para ganar la caja, remate y escalera).',
-    'Esa tarjeta se puede mirar por mes y por motivo, con la fecha, la hora, el %, y la plata de cada cambio de precio.',
-    'Cada venta que tuvo un cambio de precio antes dice cuánta plata de más (o de menos) dejó ese cambio.',
+  {v:'20.37',f:'25/09/2026',h:'13:30',c:[
+    {n:1,t:'Arriba del puntaje: la versión, la fecha en que se actualizó y este desplegable con los últimos cambios.'},
   ]},
-  {v:'20.35',f:'25/09/2026',c:[
-    'Editar una venta o marcarla como reclamo o cancelada ya no se pierde en la vuelta siguiente del robot.',
-    'Lo que cargás en Mi oficina desde dos aparatos a la vez ya no se pisa.',
-    'Cerrar la misma caja desde dos aparatos ya no la despacha dos veces.',
-    'No se puede volver a cargar en el pedido un candidato que ya está viajando.',
-    'El resumen del día espera a que estén leídas las 4 cuentas antes de mandarse.',
+  {v:'20.36',f:'25/09/2026',h:'13:18',c:[
+    {n:3,t:'El margen de las publicaciones Premium ahora descuenta lo que ML cobra por las cuotas sin interés. El Salvador Dalí decía 31% y en la venta real dio 16%.'},
+    {n:2,t:'"Lo que trajo el robot de precios" ya no se adjudica las subas por inflación o costo: sólo cuenta lo que el robot decidió mirando el mercado (subir porque había lugar, bajar para ganar la caja, remate y escalera).'},
+    {n:1,t:'Esa tarjeta se puede mirar por mes y por motivo, con la fecha, la hora, el %, y la plata de cada cambio de precio.'},
+    {n:1,t:'Cada venta que tuvo un cambio de precio antes dice cuánta plata de más (o de menos) dejó ese cambio.'},
   ]},
-  {v:'20.33',f:'25/09/2026',c:[
-    'Una venta sólo deja de contar para reponer si además del % bajo hay prueba de que estaba en remate.',
+  {v:'20.35',f:'24/09/2026',h:'23:44',c:[
+    {n:2,t:'Editar una venta o marcarla como reclamo o cancelada ya no se pierde en la vuelta siguiente del robot.'},
+    {n:3,t:'Lo que cargás en Mi oficina desde dos aparatos a la vez ya no se pisa.'},
+    {n:3,t:'Cerrar la misma caja desde dos aparatos ya no la despacha dos veces.'},
+    {n:2,t:'No se puede volver a cargar en el pedido un candidato que ya está viajando.'},
+    {n:1,t:'El resumen del día espera a que estén leídas las 4 cuentas antes de mandarse.'},
   ]},
-  {v:'20.32',f:'25/09/2026',c:[
-    'Si ML no contesta una comisión, el margen no se mide a medias: queda el de antes y la pantalla dice "no se pudo medir anoche".',
-    'El envío sale sólo de ventas del mismo lado de los $33.000.',
+  {v:'20.33',f:'24/09/2026',h:'23:29',c:[
+    {n:2,t:'Una venta sólo deja de contar para reponer si además del % bajo hay prueba de que estaba en remate.'},
   ]},
-  {v:'20.31',f:'24/09/2026',c:[
-    'Pedidos: el precio máximo de compra a la vista en cada tarjeta, en dólares y en pesos.',
+  {v:'20.32',f:'24/09/2026',h:'23:26',c:[
+    {n:3,t:'Si ML no contesta una comisión, el margen no se mide a medias: queda el de antes y la pantalla dice "no se pudo medir anoche".'},
+    {n:2,t:'El envío sale sólo de ventas del mismo lado de los $33.000.'},
+  ]},
+  {v:'20.31',f:'24/09/2026',h:'19:40',c:[
+    {n:1,t:'Pedidos: el precio máximo de compra a la vista en cada tarjeta, en dólares y en pesos.'},
   ]},
 ];
+const CAMBIO_NIVEL={1:{txt:'leve',col:'#22c55e'},2:{txt:'mediano',col:'#eab308'},3:{txt:'importante',col:'#ef4444'}};
 function renderHomeCambios(){
   const el=document.getElementById('home-cambios');if(!el)return;
   const ult=APP_CAMBIOS[0];if(!ult){el.style.display='none';return;}
-  // Si la última actualización trajo más de 3 cambios, van todos; si no, los últimos 3 (de las
-  // versiones que hagan falta).
+  // Los últimos 10 cambios (de las versiones que hagan falta). Si la última actualización sola trajo
+  // más de 10, van todos los de esa versión: cortarla a la mitad escondería justo lo nuevo.
+  const MAX=10;
   let items=[];
-  if(ult.c.length>3)items=ult.c.map(t=>({v:ult.v,f:ult.f,t}));
-  else for(const x of APP_CAMBIOS){for(const t of x.c){if(items.length<3)items.push({v:x.v,f:x.f,t});}if(items.length>=3)break;}
+  const norm=(x,c)=>typeof c==='string'?{v:x.v,f:x.f,h:x.h,n:1,t:c}:{v:x.v,f:x.f,h:x.h,n:c.n,t:c.t};
+  if(ult.c.length>MAX)items=ult.c.map(c=>norm(ult,c));
+  else for(const x of APP_CAMBIOS){for(const c of x.c){if(items.length<MAX)items.push(norm(x,c));}if(items.length>=MAX)break;}
   const esc=t=>String(t).replace(/&/g,'&amp;').replace(/</g,'&lt;');
-  el.innerHTML=`<summary style="cursor:pointer;font-size:.64rem;color:var(--muted);text-align:center;list-style:none">🗓️ Actualizada el <b style="color:var(--text)">${ult.f}</b> · ver ${items.length} ${ult.c.length>3?'cambios de esta versión':'últimos cambios'} ▾</summary>
-    <div style="margin-top:8px;padding:10px 14px;border:1px solid var(--border);border-radius:12px;font-size:.68rem;line-height:1.45">
-      ${items.map(x=>`<div style="padding:4px 0;border-bottom:1px solid rgba(148,163,184,.1)"><span style="font-size:.58rem;color:var(--muted);font-family:'DM Mono',monospace">v${x.v} · ${x.f}</span><br>${esc(x.t)}</div>`).join('')}
+  const chip=n=>{const k=CAMBIO_NIVEL[n]||CAMBIO_NIVEL[1];return `<span style="display:inline-block;font-size:.56rem;font-weight:700;color:${k.col};border:1px solid ${k.col};border-radius:999px;padding:0 7px;margin-left:6px;text-transform:uppercase;letter-spacing:.05em">${k.txt}</span>`;};
+  const cuenta={1:0,2:0,3:0};for(const x of items)cuenta[x.n]=(cuenta[x.n]||0)+1;
+  el.innerHTML=`<summary style="cursor:pointer;font-size:.64rem;color:var(--muted);text-align:center;list-style:none">🗓️ Actualizada el <b style="color:var(--text)">${ult.f}</b>${ult.h?` a las <b style="color:var(--text)">${ult.h}</b>`:''} · ver ${items.length} ${ult.c.length>MAX?'cambios de esta versión':'últimos cambios'} ▾</summary>
+    <div class="home-cambios-lista" style="margin-top:8px;padding:6px 14px 10px;border:1px solid var(--border);border-radius:12px;font-size:.68rem;line-height:1.45;max-height:280px;overflow-y:auto">
+      <div style="position:sticky;top:0;background:var(--bg,#0f0f0f);padding:4px 0 6px;font-size:.58rem;color:var(--muted);border-bottom:1px solid rgba(148,163,184,.15)">🔴 ${cuenta[3]} importante${cuenta[3]===1?'':'s'} · 🟡 ${cuenta[2]} mediano${cuenta[2]===1?'':'s'} · 🟢 ${cuenta[1]} leve${cuenta[1]===1?'':'s'} · <span style="opacity:.8">deslizá para ver todos ↓</span></div>
+      ${items.map(x=>{const k=CAMBIO_NIVEL[x.n]||CAMBIO_NIVEL[1];return `<div style="padding:6px 0 6px 9px;border-bottom:1px solid rgba(148,163,184,.1);border-left:3px solid ${k.col};margin:4px 0"><span style="font-size:.6rem;color:var(--text);font-family:'DM Mono',monospace">📅 ${x.f}${x.h?' · '+x.h:''}</span> <span style="font-size:.56rem;color:var(--muted);font-family:'DM Mono',monospace">v${x.v}</span>${chip(x.n)}<br>${esc(x.t)}</div>`;}).join('')}
     </div>`;
 }
 // El problema real que esto resuelve no es curiosidad: es que el celular guarda la app y sigue
