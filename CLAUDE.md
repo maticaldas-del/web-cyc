@@ -229,7 +229,16 @@ precios-decisión 3.
  · **18 · DECIDIDO, eligió la (b): activar pausadas con stock en Full sigue con el piso del negocio
    (22%)**, no 25% (una pausada paga almacenamiento). Lo que sí se arregló: con variantes mide la MÁS
    BARATA, no la primera.
- · **Obvias que quedan:** 8-16, 19-28.
+ · **HECHAS (obvias, 25/09 a la tarde):** 8 la 📈 le vuelve a preguntar la caja a ML antes de subir ·
+   9 lo que bajó él a mano después de una suba del robot ya no lo rescata (compara contra el precio que
+   dejó el robot) · 10 la escalera también toma las de pocas visitas · 11 la espera de 7 días de la
+   escalera es de todas las hermanas juntas (`esHermanaPrecio`) · 12 `raiseVariations` devuelve
+   `saltadas`/`parcial` y el aviso dice qué variantes no subieron; `calcSubirPorMargen` mide la
+   variante más barata · 13 `fijar` pide `:go`, respeta el grupo apagado y con variantes tampoco baja
+   · 14 `frenosSuba` (techo $600.000, barrera $33.000, +25%) adentro de `raisePriceTo`, `raisePrice` y
+   `raiseVariations`, y `volver`/`submargen` lo usan y releen · 15 `activarfull` llama a
+   `activarPausadasFull` (no sube precios) · 16 `unapub …:bajar=`/`:empatar` devuelven la marca si no bajan.
+ · **Obvias que quedan:** 19-28.
 
 ### 25/09 A LA TARDE (v20.36 · `cyc-v314`): CUOTAS PREMIUM, "LO QUE TRAJO EL ROBOT" SIN INFLACIÓN, POR MES
  · **Salvador Dalí (`MLA1869295911`, Adriana): el panel decía 31% y la venta dio 16%.** Es PREMIUM
