@@ -204,6 +204,23 @@ scratchpad `rev2/<frente>/REPORT.md`, se pierden con el contenedor). Van de a un
  · **La corrida nocturna del 24/09 (ml-daily) se cayó en `candidatos` con "_pi is not defined"**:
    ya estaba arreglado en el código (`let _pi = null`), la de esta noche corre con el arreglo.
 
+### REVISIÓN MAX (25/09 a la tarde): 28 CONFIRMADAS, 60 SIN VERIFICAR — ESTADO
+Resultado en `ml-sync/revision3-resultado.json` (numeradas 1-28, con su técnico). Él pidió bajarla a
+**"alto"** para gastar menos: la verificación que falta usa 2 revisores (código + prueba) y el tercero
+sólo si no coinciden (el script ya está cambiado). Retomar después de las 21:10 UTC con
+`Workflow({scriptPath: …/revision-max-cyc-wf_e300c5cb-881.js, resumeFromRunId: 'wf_e300c5cb-881'})`
+(recordatorio `trig_01Ngs5uWp9QdVWcabkcyjQof`). Faltan: margen 16 · plata 20 · mercadería 14 · choques 7 ·
+precios-decisión 3.
+ · **HECHAS (obvias, 25/09):** 1 la escalera no baja si la caja nueva cruza los $33.000 para arriba ·
+   2 sin la lista `liquidando` no se baja nada esa noche, y `marcarLiquidando` lee lo previo de la base ·
+   3 la escalera respeta la marca a mano aunque tenga memoria, y marcar a mano borra `cyc/escalera` ·
+   5 `alpiso` y `bajar` miden el envío del lado de los $33.000 del precio nuevo (y `bajar` divide con
+   envío) · 6 el chequeo no imprime números de orden ni el texto de las preguntas (el probe `preguntas`
+   tapa mails y números) · 7 `facturas:crudo` imprime sólo nombres de campo.
+ · **NO OBVIAS, a preguntarle de a una:** 4 (baja por caja la noche que vuelve el stock) · 17 (liquidando
+   un aroma marca todos) · 18 (activar pausadas desde 22% y no 25%).
+ · **Obvias que quedan:** 8-16, 19-28.
+
 ### 25/09 A LA TARDE (v20.36 · `cyc-v314`): CUOTAS PREMIUM, "LO QUE TRAJO EL ROBOT" SIN INFLACIÓN, POR MES
  · **Salvador Dalí (`MLA1869295911`, Adriana): el panel decía 31% y la venta dio 16%.** Es PREMIUM
    (`gold_pro`): en $119.970 ML se quedó comisión $17.995 + **cuotas $25.914 (21,6%)** + Full $7.290.
