@@ -2310,7 +2310,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='20.31';
+const APP_VERSION='20.32';
 // El problema real que esto resuelve no es curiosidad: es que el celular guarda la app y sigue
 // mostrando la de ayer sin avisar. Varias veces se revisó un cambio que ya estaba subido y no se
 // veía. Por eso, además del número, el chip avisa cuando hay una versión nueva esperando.
@@ -8273,10 +8273,14 @@ function envioEstimadoArriba(){
 function margenMLDe(p,pub){
   const F=pub?{neto:pub.neto,precio:pub.precio,envio:pub.envio,
                sinEnvio:pub.sinEnvio===true,envioML:pub.envioML===true,
-               cuenta:pub.cuenta,pausada:pub.activa===false}
+               cuenta:pub.cuenta,pausada:pub.activa===false,
+               sinMedir:Number(pub.sinMedir)>(Number(pub.ts)||0)?Number(pub.ts)||0:null}
             :{neto:p.netoCalc,precio:p.netoCalcPrecio,envio:p.netoCalcEnvio,
                sinEnvio:p.netoCalcSinEnvio===true,envioML:p.netoCalcEnvioML===true,
-               cuenta:p.netoCalcCuenta,pausada:p.netoCalcPausada===true};
+               cuenta:p.netoCalcCuenta,pausada:p.netoCalcPausada===true,
+               // El robot no lo pudo medir anoche (ML no contestó una comisión): el número es de la
+               // última vez que se midió entero, y se dice (F3, 25/09/2026). Guarda la fecha de ESE número.
+               sinMedir:Number(p.netoCalcSinMedir)>(Number(p.netoCalcTs)||0)?Number(p.netoCalcTs)||0:null};
   const agg=_netoAgg();
   const a=agg['id:'+p.id]||agg['nm:'+normTxt(p.name)];
   let mlExtra=0,mlExtraEstimado=false;
@@ -8328,7 +8332,7 @@ function margenMLDe(p,pub){
       if(costoEst>0)margenEst=(netoCalc-gestEst-costoBase)/costoEst*100;
     }
   }
-  return {costo,costoBase,gest,neto:netoCalc,netoCalc,margen,margenEst,gestEst,estN,mlExtra,mlExtraEstimado,
+  return {costo,costoBase,gest,neto:netoCalc,netoCalc,margen,margenEst,gestEst,estN,mlExtra,mlExtraEstimado,sinMedir:F.sinMedir,
     // El precio sale acá para que quien muestre el margen pueda preguntarse si ese margen es
     // POSIBLE: arriba de los $33.000 ML cobra el envío gratis siempre, así que un margen
     // calculado con envío $0 a ese precio está inflado por varios puntos.
@@ -11472,6 +11476,7 @@ function rotMargenHtml(r){
   // EL VERDE ES SOLO PARA LO MEDIDO. Si el envío salió de la tarifa de ML, el margen real es
   // MENOR que este, así que pintarlo verde sería decir "cómodo" sobre algo que no se sabe.
   else if(dudoso==='corto'){color='var(--amber)';tit=`Daría ${aire.toFixed(0)} punto(s) de aire sobre el ${PISO}%, PERO el envío no está medido en tus ventas (ver abajo): el margen real es menor que este, así que no cuentes con ese aire.`;}
+  else if(r.margenSinMedir!=null){color='var(--amber)';tit=`Anoche NO se pudo medir (ML no contestó una comisión): este número es de la última vez que se midió entero. Puede haber cambiado.`;}
   else if(aire<5){color='var(--amber)';tit=`Pegado al piso: solo ${aire.toFixed(0)} punto(s) de aire sobre el ${PISO}%. Casi no se puede bajar.`;}
   else {color='var(--green)';tit=`${aire.toFixed(0)} puntos de aire sobre el piso de ${PISO}%. Acá sí hay margen para recortar si hace falta que rote.`;}
   tit+=` · Neto ML ${fmt(r.margenNeto)} contra un costo de ${fmt(r.margenCosto)}. Ojo: bajar el precio $100 NO baja el margen $100 (ML se queda con su comisión de lo que recortes).`;
@@ -11491,6 +11496,10 @@ function rotMargenHtml(r){
     // pegado al número: estaba, pero en una tabla de 137 renglones no lo ve nadie — y justo al
     // lado había un porcentaje en verde diciendo lo contrario.
     pie=`<div style="font-size:.55rem;color:var(--amber);margin-top:2px;white-space:nowrap">⚠ ${r.margenSinEnvio?'sin envío medido':'envío estimado por ML'}</div>`;
+  }
+  if(r.margenSinMedir!=null){
+    const _fS=r.margenSinMedir>0?new Date(r.margenSinMedir).toLocaleDateString('es-AR',{day:'2-digit',month:'2-digit'}):'antes';
+    pie+=`<div style="font-size:.55rem;color:var(--amber);margin-top:2px;white-space:nowrap">⚠ no se pudo medir anoche · es del ${_fS}</div>`;
   }
   // EL CANDADO: este margen está bajo A PROPÓSITO. Sin esto, un producto que él bajó para rematar
   // se ve igual que uno que se hundió solo — y el remedio es el contrario: a éste se lo deja en paz,
@@ -11834,7 +11843,7 @@ function renderRotacionStock(){
     const _cajaML=cajaMLDe(p);
     return{pid:p.id,name:p.name,capital,ventasPeriodo,rotNorm,estadoKey,estadoHtml,stock,diasSinVender,liq:_liq,
       margen:mg.margen,margenSinEnvio:mg.sinEnvio,margenEnvioML:mg.envioML,margenNeto:mg.neto,margenCosto:mg.costo,
-      margenPrecio:mg.precio,margenGest:mg.gest,margenEst:mg.margenEst,margenGestEst:mg.gestEst,margenEstN:mg.estN,margenDudoso:margenDudosoDe(mg),liq2:liquidandoDe(p),
+      margenPrecio:mg.precio,margenGest:mg.gest,margenEst:mg.margenEst,margenGestEst:mg.gestEst,margenEstN:mg.estN,margenDudoso:margenDudosoDe(mg),margenSinMedir:mg.sinMedir,liq2:liquidandoDe(p),
       caja:_cajaML,cajaBaja:cajaBajarDe(p,_cajaML,mg),diasEnStock:diasEnStockDe(p),diasCaja:ultimaEntradaDe(p),diasSinStock:diasSinStockDe(LOCS.map(l=>[getQ(p.id,l),invKey(p.id,l)]))};
   });
 
@@ -11983,7 +11992,7 @@ function renderRotacionStock(){
         const _m=margenMLDe(p,_npV);_mV=_m;
         mgV=rotMargenHtml({margen:_m.margen,margenDudoso:margenDudosoDe(_m),margenPrecio:_m.precio,
           margenNeto:_m.neto,margenCosto:_m.costo,margenSinEnvio:_m.sinEnvio,margenGest:_m.gest,
-          margenEst:_m.margenEst,margenGestEst:_m.gestEst,margenEstN:_m.estN,liq2:r.liq2});
+          margenEst:_m.margenEst,margenGestEst:_m.gestEst,margenEstN:_m.estN,margenSinMedir:_m.sinMedir,liq2:r.liq2});
       } else {
         mgV=`<span style="font-size:.66rem;color:var(--muted)" title="No se pudo identificar la publicación de este color (el título de ML no lo nombra, o el robot todavía no le calculó el neto), así que se muestra el del producto entero. No se adivina: mostrar el margen de otro color sería peor que no mostrar ninguno.">${r.margen!=null?r.margen.toFixed(0)+'%':'—'} <span style="opacity:.6">(del prod.)</span></span>`;
       }
@@ -12194,10 +12203,11 @@ function pedPlataHTML(prod){
     let col,tit;
     if(mg.margen<PISO){col='var(--red)';tit=`ABAJO DEL PISO de ${PISO}%. Si es de Paraguay, mirá el precio del proveedor antes de volver a comprarlo: puede que ya no dé.`;}
     else if(d==='corto'){col='var(--amber)';tit=`Daría ${aire.toFixed(0)} punto(s) de aire sobre el ${PISO}%, PERO el envío NO está medido en tus ventas: salió de la tarifa de ML, que se midió $246 corta. El margen real es MENOR que este — no cuentes con ese aire.`;}
+    else if(mg.sinMedir!=null){col='var(--amber)';tit=`Anoche NO se pudo medir (ML no contestó una comisión): este número es de la última vez que se midió entero.`;}
     else if(aire<5){col='var(--amber)';tit=`Pegado al piso: sólo ${aire.toFixed(0)} punto(s) de aire sobre el ${PISO}%.`;}
     else {col='var(--green)';tit=`${aire.toFixed(0)} puntos de aire sobre el piso de ${PISO}%. Medido contra ventas reales.`;}
     tit+=` · ML te deposita ${fmt(mg.neto)} contra un costo total de ${fmt(mg.costo)}.`;
-    out.push(chip(`📈 ${mg.margen.toFixed(0)}% de margen`,col,tit));
+    out.push(chip(`📈 ${mg.margen.toFixed(0)}% de margen${mg.sinMedir!=null?' · sin medir anoche':''}`,col,tit));
   }
   if(mg.precio>0)out.push(chip(`🏷️ en ML ${fmt(mg.precio)}`,'var(--muted)',
     `Precio al que está publicado hoy en ML. Es con el que se calculó el margen de al lado.`));

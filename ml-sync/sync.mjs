@@ -479,11 +479,16 @@ async function envioDeducido(ventas, precioHoy, feeAt, opts = {}) {
   if (!ventas || !ventas.length) return { envio: null, usadas: 0, mismoLado: false };
   const arribaHoy = precioHoy >= UMBRAL_ENVIO_GRATIS;
   const mismas = ventas.filter((v) => (v.tot >= UMBRAL_ENVIO_GRATIS) === arribaHoy);
+  // Arriba de la barrera sin ninguna venta de arriba NO hay envío medido: las de abajo dan ~$0 y
+  // ese cero a un precio de arriba es falso (F3 de la segunda vuelta, 25/09/2026).
+  if (!mismas.length && arribaHoy) return { envio: null, usadas: 0, mismoLado: false };
   const usar = mismas.length ? mismas : ventas;
   const vals = [];
   for (const pv of [...new Set(usar.map((v) => Math.round(v.tot)))].slice(-8)) {
     const cv = await feeAt(pv);
-    if (cv == null) continue;
+    // Si ML no contesta la comisión de algún precio no se mide a medias: el peor caso podría ser
+    // justo el que falta. Se devuelve "no medido" y quien llama lo dice.
+    if (cv == null) return { envio: null, usadas: 0, mismoLado: false, falloML: true };
     for (const v of usar) if (Math.round(v.tot) === pv) vals.push(Math.max(0, v.tot - v.net - cv));
   }
   if (!vals.length) return { envio: null, usadas: 0, mismoLado: false };
@@ -1311,14 +1316,20 @@ async function activarPausadasFull(db, links, tokensRun, DRY, products, piso) {
         const site = b.site_id || 'MLA', lt = b.listing_type_id, cat = b.category_id;
         const com = await feeAt(site, precio, lt, cat);
         if (com == null) { noVa('ML no devolvió la comisión', precio); continue; }
-        const ventas = (vtaMla[mla] && vtaMla[mla].length) ? vtaMla[mla] : (vtaProd[p.id] || []);
+        const ventas0 = (vtaMla[mla] && vtaMla[mla].length) ? vtaMla[mla] : (vtaProd[p.id] || []);
+        // Sólo ventas del mismo lado de los $33.000 (arriba sin ninguna de arriba → envío estimado,
+        // el peor medido). Y si ML no contesta alguna comisión no se activa: medir a medias da el
+        // envío de menos y el margen de más (F3, 25/09/2026).
+        const ladoA = ventas0.filter((v) => (v.tot >= UMBRAL_ENVIO_GRATIS) === (precio >= UMBRAL_ENVIO_GRATIS));
+        const ventas = ladoA.length ? ladoA : (precio >= UMBRAL_ENVIO_GRATIS ? [] : ventas0);
         // El descuento PEOR visto, igual que cuando se bajan precios: si aun así llega al piso,
         // activarla es seguro. Con el descuento típico, la mitad de las ventas quedaría abajo.
-        let extra = -Infinity;
+        let extra = -Infinity, faltoComA = false;
         for (const pv of [...new Set(ventas.map((v) => Math.round(v.tot)))].slice(-8)) {
-          const cv = await feeAt(site, pv, lt, cat); if (cv == null) continue;
+          const cv = await feeAt(site, pv, lt, cat); if (cv == null) { faltoComA = true; continue; }
           for (const v of ventas) if (Math.round(v.tot) === pv) extra = Math.max(extra, v.tot - v.net - cv);
         }
+        if (faltoComA) { noVa('ML no contestó una comisión: no la activo midiendo a medias, se mira en la próxima vuelta', precio); continue; }
         // ── SIN VENTAS TAMBIÉN SE PUEDE MEDIR, Y NO HACE FALTA ADIVINAR NADA (17/09/2026) ──
         // Antes esto era `noVa('nunca vendió: no hay con qué medir el margen')` y dejaba la
         // publicación pausada para siempre — el círculo de la Lupa 75mm: no se activa porque no
@@ -1731,14 +1742,19 @@ async function calcSubirPorMargen(db, o) {
         // criterio conservador con el que se fijaron todos los precios, y el que usan `bajopiso`
         // y `unapub`. Y si no hay NINGUNA venta con la que deducirlo, no se inventa un número:
         // la publicación se lista aparte para mirarla a mano.
-        const ventas = (vtaMla[mla] && vtaMla[mla].length) ? vtaMla[mla] : (vtaProd[p.id] || []);
-        let envio = -Infinity;
+        // Sólo ventas del MISMO lado de los $33.000, y si ML no contesta alguna comisión no se mide a
+        // medias (F3 de la segunda vuelta, 25/09/2026: un 8% salía 30% y el rescate no lo subía).
+        const ventas0 = (vtaMla[mla] && vtaMla[mla].length) ? vtaMla[mla] : (vtaProd[p.id] || []);
+        const ladoS = ventas0.filter((v) => (v.tot >= UMBRAL_ENVIO_GRATIS) === (precio0 >= UMBRAL_ENVIO_GRATIS));
+        const ventas = ladoS.length ? ladoS : (precio0 >= UMBRAL_ENVIO_GRATIS ? [] : ventas0);
+        let envio = -Infinity, faltoComS = false;
         for (const pv of [...new Set(ventas.map((v) => Math.round(v.tot)))].slice(-6)) {
           const cv = await feeAt(b.site_id || 'MLA', pv, b.listing_type_id, b.category_id, t.access_token);
-          if (cv == null) continue;
+          if (cv == null) { faltoComS = true; continue; }
           for (const v of ventas) if (Math.round(v.tot) === pv) { const x = v.tot - v.net - cv; if (x > envio) envio = x; }
         }
         const nomE = (links[mla].title || p.name || mla).slice(0, 40);
+        if (faltoComS) { frenados.push({ mla, label, nom: nomE, why: 'ML no contestó una comisión: no mido el margen a medias, se vuelve a medir mañana' }); continue; }
         // SIN VENTAS: se le pregunta la TARIFA a ML antes de rendirse.
         //
         // Emparejar las fórmulas, decisión suya del 22/08/2026. Hasta hoy la pantalla "Margen ML"
@@ -20082,6 +20098,7 @@ async function main() {
       // en ese objeto se borra solo. Es el bug del 05/08 y la misma razon por la que las
       // entregas viven en `cyc/entregas`.
       const porPub = {};
+      const sinMedir = new Set(), sinMedirPub = [];   // F3: ML no contestó alguna comisión → no se actualiza esa noche
       for (const label of labels) {
         const acc = accounts[label];
         if (!acc?.refresh_token) continue;
@@ -20112,13 +20129,24 @@ async function main() {
             // diferencia eran justo el envío. Un número así hace pensar que un producto está
             // holgado cuando está abajo del piso. El envío que vale es el MÁS CARO, el criterio
             // conservador con el que se fijaron todos los precios (el mismo de bajopiso y unapub).
-            const ventas = (vtaMla[mla] && vtaMla[mla].length) ? vtaMla[mla] : (vtaProd[p.id] || []);
-            let envio = -Infinity;
+            const ventas0 = (vtaMla[mla] && vtaMla[mla].length) ? vtaMla[mla] : (vtaProd[p.id] || []);
+            // ── SÓLO VENTAS DEL MISMO LADO DE LOS $33.000, Y SIN HUECOS (25/09/2026, F3, a) ──
+            // Arriba de la barrera el envío lo paga CYC; abajo, el comprador. Mezclar lados daba un
+            // envío de $0 a un precio de arriba. Y si ML no contestaba la comisión de algún precio,
+            // esas ventas quedaban afuera en silencio: un producto que deja 8% salía 30% "medido".
+            // Ahora, si falta una comisión, este producto NO se actualiza esta noche: queda el
+            // margen anterior y la pantalla avisa que no se pudo medir.
+            const arribaHoy = precio >= UMBRAL_ENVIO_GRATIS;
+            const lado = ventas0.filter((v) => (v.tot >= UMBRAL_ENVIO_GRATIS) === arribaHoy);
+            // Arriba sin ninguna venta de arriba: no hay envío medido (va a la tarifa de ML, marcada).
+            const ventas = lado.length ? lado : (arribaHoy ? [] : ventas0);
+            let envio = -Infinity, faltoCom = false;
             for (const pv of [...new Set(ventas.map((v) => Math.round(v.tot)))].slice(-6)) {
               const cv = await feeAt(b.site_id || 'MLA', pv, b.listing_type_id, b.category_id, t.access_token);
-              if (cv == null) continue;
+              if (cv == null) { faltoCom = true; continue; }
               for (const v of ventas) if (Math.round(v.tot) === pv) { const x = v.tot - v.net - cv; if (x > envio) envio = x; }
             }
+            if (faltoCom) { sinMedir.add(p.id); sinMedirPub.push(mla); continue; }
             // Sin ninguna venta no hay envío que deducir de nuestras ventas... pero ML sí sabe
             // cuánto nos cobra. Se le pregunta antes de rendirse.
             //
@@ -20171,12 +20199,21 @@ async function main() {
             // Es el error de siempre visto de cerca: el comentario de abajo promete que se guarda
             // "el envío que se usó para sacar este neto" y nadie comprobó que llegara.
             porPub[mla] = { neto, precio: Math.round(precio), envio: Math.round(envio),
-              sinEnvio: !!sinEnvio, envioML: !!envioDeML, activa: !!activa, cuenta: label, pid: p.id, ts: Date.now() };
+              sinEnvio: !!sinEnvio, envioML: !!envioDeML, activa: !!activa, cuenta: label, pid: p.id, ts: Date.now(), sinMedir: null };
             if (mejor) porProd[p.id] = { neto, precio: Math.round(precio), mla, cuenta: label, envio, sinEnvio, envioDeML, activa };
           }
         }
       }
+      // Un producto con UNA publicación sin medir no se actualiza: el peor neto saldría sólo de las
+      // que sí se midieron, que es justo el lado optimista.
+      for (const pid of sinMedir) delete porProd[pid];
+      for (const m of sinMedirPub) delete porPub[m];
       const lista = Object.entries(porProd);
+      if (sinMedir.size) console.log(`⚠️ ${sinMedir.size} producto(s) NO se actualizaron esta noche: ML no contestó alguna comisión y el envío saldría medido a medias. Queda el margen anterior y la pantalla avisa: ${[...sinMedir].map((pid) => (pIdx[pid]?.name || pid).slice(0, 24)).join(' · ')}`);
+      if (!prueba && !DRY) {
+        for (const pid of sinMedir) { try { await db.set('cyc/products/' + pid + '/netoCalcSinMedir', Date.now()); } catch { /* */ } }
+        for (const m of sinMedirPub) { try { await db.set('cyc/netopub/' + m + '/sinMedir', Date.now()); } catch { /* */ } }
+      }
       console.log(`=== NETO AL PRECIO DE HOY · ${lista.length} productos ${prueba ? '(PRUEBA: no se guarda)' : ''} ===`);
       console.log(`neto = precio − comisión oficial de ML − envío · si un producto tiene varias publicaciones se toma el PEOR neto\n`);
       let guardados = 0;
@@ -20194,6 +20231,7 @@ async function main() {
           await db.set('cyc/products/' + pid + '/netoCalcEnvioML', !!d.envioDeML);
           await db.set('cyc/products/' + pid + '/netoCalcCuenta', d.cuenta);
           await db.set('cyc/products/' + pid + '/netoCalcTs', Date.now());
+          await db.set('cyc/products/' + pid + '/netoCalcSinMedir', null);
           guardados++;
         }
       }

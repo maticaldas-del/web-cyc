@@ -132,7 +132,7 @@ scratchpad `rev2/<frente>/REPORT.md`, se pierden con el contenedor). Van de a un
  · **Fallas leídas como dato (agente 2, 25/09, `rev2/fallas/REPORT.md`):**
    F1 = P3 (confirmado por los dos) · **F2 · HECHO el 25/09, eligió la (a):** antes de cada baja (bajar a la caja, remate, escalera) se le vuelve a pedir `price_to_win` a ML; si no contesta o ya gana no se baja, si la caja bajó se deja para mañana y si subió se baja sólo hasta la caja (probado: 7 casos). Cómo estaba: caja de compra vieja (429 en `price_to_win` deja la de
    antes; `calcCajaBarata` no mira `cajaTs`) → remate/escalera/bajar bajan a un precio viejo ·
-   **F3** el envío del peor caso sale sólo de los precios donde ML contestó la comisión: un 429 lo
+   **F3 · HECHO el 25/09, eligió la (a) (v20.32 · `cyc-v310`):** en `netoweb`, `calcSubirPorMargen`, `activarPausadasFull` y `envioDeducido` el envío sale SÓLO de ventas del mismo lado de los $33.000 (arriba sin ventas de arriba → tarifa de ML, marcada), y si ML no contesta alguna comisión no se mide a medias: `netoweb` no actualiza ese producto (queda el margen anterior) y escribe `netoCalcSinMedir` / `netopub/<MLA>/sinMedir`; la pantalla lo pinta ámbar con *"⚠ no se pudo medir anoche · es del dd/mm"* (nunca verde). El rescate y la reactivación no actúan esa vuelta y lo dicen. Cómo estaba: el envío del peor caso sale sólo de los precios donde ML contestó la comisión: un 429 lo
    deja en 0 y un 8% se ve 30% "medido" (y el rescate no sube) · **F4** `filtrarRescate`: el freno
    "lo bajaste vos" se apaga con un `catch` vacío · **F5** `CANCEL_AGG`: lista cortada por 429 pisa
    `fact_cancel` (monotributo) · **F6** aviso "Problema en una publicación": se anota aunque Telegram
