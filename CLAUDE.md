@@ -217,7 +217,11 @@ precios-decisión 3.
    5 `alpiso` y `bajar` miden el envío del lado de los $33.000 del precio nuevo (y `bajar` divide con
    envío) · 6 el chequeo no imprime números de orden ni el texto de las preguntas (el probe `preguntas`
    tapa mails y números) · 7 `facturas:crudo` imprime sólo nombres de campo.
- · **NO OBVIAS, a preguntarle de a una:** 4 (baja por caja la noche que vuelve el stock) · 17 (liquidando
+ · **4 · HECHO, eligió la (a):** `calcCajaBarata` (rama "no vende") usa el reloj de `quietaDe`: si
+   volvió el stock o vendió hace menos de 30 días, no se baja (`fuera.reciente`).
+ · **"alto" da el MISMO resultado que max en la verificación:** confirmar pide 2 votos reales; si
+   código y prueba coinciden, el tercero no puede cambiar el resultado. Sólo se ahorra cuando coinciden.
+ · **NO OBVIAS, a preguntarle de a una:** 17 (liquidando
    un aroma marca todos) · 18 (activar pausadas desde 22% y no 25%).
  · **Obvias que quedan:** 8-16, 19-28.
 
