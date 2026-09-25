@@ -2329,7 +2329,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='20.44';
+const APP_VERSION='20.45';
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
 // muestre la versión y la fecha de actualización y que tenga un desplegable predeterminado cerrado".
 // Y el mismo día: "que ponga fecha de cada modificación y haya una barrita para scrollear y que
@@ -2340,6 +2340,9 @@ const APP_VERSION='20.44';
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'20.45',f:'25/09/2026',h:'15:10',c:[
+    {n:1,t:'El aviso grande de "Todavía no cerraste el mes" en Inicio sale desde el día 25 (antes desde el 20).'},
+  ]},
   {v:'20.44',f:'25/09/2026',h:'15:05',c:[
     {n:1,t:'Aviso de la revisión por etapas: las seis se piden con esfuerzo "Alto" (ya no hay ninguna en "Medio").'},
   ]},
@@ -3139,14 +3142,14 @@ async function revMarcarHecha(n){
   if(!state.revision)state.revision={};state.revision.ultima=v;
   renderHomeRevision();toast(`Etapa ${n} marcada ✓`);
 }
-// Aviso en el Home: a partir del día 20, si todavía no se cerró el mes en curso.
+// Aviso en el Home: a partir del día 25 (pedido suyo del 25/09/2026; antes era el 20), si todavía no se cerró el mes en curso.
 function checkCierrePendiente(){
   const el=document.getElementById('home-cierre-aviso');if(!el)return;
   const now=new Date();
   const ym=now.getFullYear()+'_'+String(now.getMonth()+1).padStart(2,'0');
   const mesLabel=(MONTHS[now.getMonth()]||'')+' '+now.getFullYear();
   const cerrado=!!(state.snapshots&&state.snapshots[ym]);
-  if(now.getDate()>=20&&!cerrado){
+  if(now.getDate()>=25&&!cerrado){
     el.innerHTML='<div style="font-size:2.4rem;line-height:1;margin-bottom:10px">⚠️</div>'+
       '<div style="font-size:1.5rem;font-weight:800;margin-bottom:6px">Todavía no cerraste '+mesLabel+'</div>'+
       '<div style="font-size:.95rem;opacity:.85">Acordate de cerrarlo antes de fin de mes desde <strong>Arqueo → Finanzas</strong></div>';
