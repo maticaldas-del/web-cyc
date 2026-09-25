@@ -126,7 +126,7 @@ scratchpad `rev2/<frente>/REPORT.md`, se pierden con el contenedor). Van de a un
    está cargado HOY en el armado.
  · **O1** · se puede volver a cargar (y comprar) un candidato que ya viaja: `pedir`/`candSetPedir`
    no miran `pedidoEn`.
- · **O2** · `ventaEnRemate` saca del ritmo toda venta abajo de 22%, no sólo remates: lo que vende
+ · **O2 · HECHO el 25/09 (v20.33 · `cyc-v311`), decisión suya: *"para NO reponer más un producto, tiene que ser segura la decisión. tiene que pasar por varias cosas"*.** `ventaEnRemate` pide el % bajo Y una prueba de remate: etiqueta `remate` en `cyc/rescateventa`, o marca `liquidando` con fecha anterior a la venta, o una baja del robot por remate/escalera anterior a la venta. Probado: 6 casos. Cómo estaba: `ventaEnRemate` saca del ritmo toda venta abajo de 22%, no sólo remates: lo que vende
    entre 20% y 22% (o una venta suelta con envío caro) no pide reponer. No se habló con él.
  · Cajas y stock, `pisobase`, `dispo`, `maxCompraDe`, `candFichaDesde`: sin nada nuevo.
  · **Fallas leídas como dato (agente 2, 25/09, `rev2/fallas/REPORT.md`):**

@@ -2310,7 +2310,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='20.32';
+const APP_VERSION='20.33';
 // El problema real que esto resuelve no es curiosidad: es que el celular guarda la app y sigue
 // mostrando la de ayer sin avisar. Varias veces se revisó un cambio que ya estaba subido y no se
 // veía. Por eso, además del número, el chip avisa cuando hay una versión nueva esperando.
@@ -8575,7 +8575,25 @@ function ventaEnRemate(v,dk){
   const c=efectivoCostoVP(vv); if(!(c>0))return false;
   const pct=((v.neto||0)-c)/(c+gestDeVenta(vv))*100;
   const piso=parseFloat((state.mlconfig||{}).minPct)||30;
-  return pct<piso;
+  if(!(pct<piso))return false;
+  // ── Y ADEMÁS TIENE QUE HABER UN REMATE DE VERDAD (25/09/2026, O2 de la segunda vuelta) ──
+  // Regla suya: *"para NO reponer más un producto, tiene que ser segura la decisión. tiene que pasar
+  // por varias cosas"*. Un % bajo solo NO alcanza: lo que vende entre 20% y el piso (el robot no lo
+  // sube) o una venta suelta con envío caro o de carrito quedaban afuera y ese producto dejaba de
+  // pedirse. Hace falta, además del % bajo, UNA prueba de que esa publicación estaba en remate
+  // cuando se vendió:
+  //   · la etiqueta del robot en esa venta dice "remate" (cyc/rescateventa), o
+  //   · estaba marcada liquidando desde ANTES de la venta (cyc/nosubir, con su fecha), o
+  //   · el robot la bajó en remate o escalera ANTES de la venta (cyc/autoprecio).
+  const mla=v.mla||'', tsV=Number(v.ts)||Date.parse(String(dk||v._dateKey||'').replace(/_/g,'-'));
+  const et=(state.rescateventa||{})[(dk||v._dateKey)+'__'+v.id];
+  if(et&&et.estado==='remate')return true;
+  if(!mla)return false;
+  const ns=(state.nosubir||{})[mla];
+  if(ns&&ns.fecha&&isFinite(tsV)&&Date.parse(ns.fecha)<=tsV)return true;
+  const ap=(state.autoprecio||{})[mla];
+  if(ap&&ap.tipo==='baja'&&/remate|escalera/.test(String(ap.por||''))&&isFinite(tsV)&&(Number(ap.ts)||0)<=tsV)return true;
+  return false;
 }
 function pedVentasNorm(prodOrName){
   const target=(prodOrName&&typeof prodOrName==='object')?prodOrName:prodByName(prodOrName);
