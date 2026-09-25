@@ -2323,13 +2323,16 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='20.38';
+const APP_VERSION='20.39';
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
 // muestre la versión y la fecha de actualización y que tenga un desplegable predeterminado cerrado,
 // que muestre los últimos 3 cambios y si en la última actualización hubo más de 3 cambios que
 // muestre todos". Se agrega un renglón ARRIBA de todo en cada versión nueva, en castellano llano.
 // La primera entrada tiene que ser siempre la de APP_VERSION.
 const APP_CAMBIOS=[
+  {v:'20.39',f:'25/09/2026',c:[
+    'Lo que trajo el robot: lo que se cobró de más (o de menos) por una suba o baja del robot suma desde la primera venta, sin esperar 7 días. A los 7 días se agrega si por el precio se vendió menos o más.',
+  ]},
   {v:'20.38',f:'25/09/2026',c:[
     'Lo que trajo el robot: los cambios de menos de 7 días ya muestran lo que se vendió desde el cambio (unidades, plata depositada y ganancia de esas ventas). Todavía no suman al total.',
   ]},
@@ -13489,10 +13492,10 @@ function renderMetAuto(){
   const delMes=todos.filter(x=>metAutoMes==='todos'||ymDe(x.ts)===metAutoMes);
   const lista=delMes.filter(x=>metAutoMot==='todas'?true:metAutoMot==='cuentan'?!!x.enTotal||(x.estado!=='medido'&&['subir','bajar','remate','escalera'].includes(x.motivo)):x.motivo===metAutoMot);
   // El total grande: SÓLO lo medido que cuenta (decisiones del robot mirando el mercado), del mes elegido.
-  const med=delMes.filter(x=>x.estado==='medido'&&x.enTotal);
+  const med=delMes.filter(x=>(x.estado==='medido'||x.estado==='encurso')&&x.enTotal);
   const tot=med.reduce((a,x)=>a+n(x.total),0),pre=med.reduce((a,x)=>a+n(x.precio),0),vol=med.reduce((a,x)=>a+n(x.volumen),0);
   const gano=med.reduce((a,x)=>a+Math.max(0,n(x.total)),0),perdio=med.reduce((a,x)=>a+Math.min(0,n(x.total)),0);
-  const resc=delMes.filter(x=>x.estado==='medido'&&!x.enTotal&&x.motivo==='rescate');
+  const resc=delMes.filter(x=>(x.estado==='medido'||x.estado==='encurso')&&x.motivo==='rescate');
   const rescTot=resc.reduce((a,x)=>a+n(x.total),0);
   const neg=tot<0;
   const chip=(k,v,lbl,on)=>`<button onclick="metAutoSet('${k}','${v}')" style="font-size:.6rem;padding:3px 8px;border-radius:12px;border:1px solid ${on?'var(--green)':'rgba(148,163,184,.3)'};background:${on?'rgba(52,211,153,.12)':'transparent'};color:${on?'var(--green)':'var(--muted)'};cursor:pointer">${lbl}</button>`;
@@ -13511,12 +13514,12 @@ function renderMetAuto(){
     const sube=n(x.a)>n(x.de);
     const pct=n(x.de)&&n(x.a)?((n(x.a)/n(x.de)-1)*100).toFixed(1).replace('.',','):'?';
     const medido=x.estado==='medido';
-    const cuenta=medido&&x.enTotal;
-    const plata=medido?`<b style="white-space:nowrap;color:${cuenta?col(x.total):'var(--muted)'}">${sg(x.total)}${cuenta?'':' · no suma'}</b>`:`<span style="font-size:.58rem;color:var(--muted)">—</span>`;
+    const cuenta=(medido||x.estado==='encurso')&&x.enTotal;
+    const plata=(medido||(x.estado==='encurso'&&x.total!=null))?`<b style="white-space:nowrap;color:${cuenta?col(x.total):'var(--muted)'}">${sg(x.total)}${cuenta?'':' · no suma'}</b>`:`<span style="font-size:.58rem;color:var(--muted)">—</span>`;
     const det=medido
       ?`midió ${n(x.dias)} d antes y después · vendió ${n(x.uA)} u. antes y ${n(x.uD)} después · por el precio ${sg(x.precio)} · volumen ${x.volSinDato?'sin dato':x.quiebre?'no cuenta (sin stock)':sg(x.volumen)}${x.motivo==='rescate'?' · <span style="color:#fbbf24">recuperar margen: no se atribuye al robot</span>':''}`
       :x.estado==='encurso'&&x.uD!=null
-        ?`<span style="color:#fbbf24">en curso · ${String(n(x.dias)).replace('.',',')} d de 7</span> · desde el cambio vendió <b style="color:var(--text)">${n(x.uD)} u.</b>${n(x.uD)?` · ML te depositó ${fmt(n(x.cobrado))} · ganancia de esas ventas <b style="color:${col(x.gD)}">${sg(x.gD)}</b> · por el precio ${sg(x.precio)}`:''} · todavía no suma: a los 7 días se compara contra el antes`
+        ?`<span style="color:#fbbf24">en curso · ${String(n(x.dias)).replace('.',',')} d de 7</span> · desde el cambio vendió <b style="color:var(--text)">${n(x.uD)} u.</b>${n(x.uD)?` · ML te depositó ${fmt(n(x.cobrado))} · ganancia de esas ventas <b style="color:${col(x.gD)}">${sg(x.gD)}</b> · por el precio ${sg(x.precio)}`:''}${x.enTotal?' · <b style="color:var(--text)">lo del precio ya suma</b>; si vendió menos o más por el precio se mide a los 7 días':(x.motivo==='remate'||x.motivo==='escalera')?' · todavía no suma: falta decidir cómo se cuenta un remate':' · no suma'}`
         :(EST[x.estado]||x.estado||'');
     return `<div style="padding:6px 0;border-bottom:1px solid rgba(148,163,184,.1);font-size:.66rem">
       <div style="display:flex;justify-content:space-between;gap:8px;align-items:baseline">
@@ -13528,14 +13531,14 @@ function renderMetAuto(){
     </div>`;
   };
   const alerta=neg?`<div style="margin-bottom:10px;padding:8px 10px;border-radius:8px;background:rgba(239,68,68,.12);border:1px solid rgba(239,68,68,.4);font-size:.7rem;color:var(--red)"><b>⚠️ En ${metAutoMes==='todos'?'total':mesTxt(metAutoMes)} las decisiones del robot dejaron MENOS plata que no tenerlas.</b> Ninguna se deshace sola, lo decidís vos.</div>`:'';
-  const perdidas=lista.filter(x=>x.estado==='medido'&&x.enTotal&&n(x.total)<0);
+  const perdidas=lista.filter(x=>(x.estado==='medido'||x.estado==='encurso')&&x.enTotal&&n(x.total)<0);
   const resto=lista.filter(x=>!perdidas.includes(x));
   el.innerHTML=`<div class="chart-box">${viejo}${alerta}
     <div style="display:flex;flex-wrap:wrap;gap:5px;margin-bottom:6px">${chipsMes}</div>
     <div style="display:flex;flex-wrap:wrap;gap:5px;margin-bottom:12px">${chipsMot}</div>
     <div style="font-size:.6rem;color:var(--muted);text-transform:uppercase;letter-spacing:.04em">${neg?'Plata de MENOS':'Plata de más'} que dejaron las decisiones del robot · ${metAutoMes==='todos'?'todos los meses':mesTxt(metAutoMes)}</div>
     <div style="font-family:'Syne',sans-serif;font-weight:800;font-size:2rem;color:${col(tot)};line-height:1.1">${sg(tot)}</div>
-    <div style="font-size:.62rem;color:var(--muted);margin-bottom:12px">${med.length} cambios medidos que cuentan (${med.filter(x=>n(x.a)>n(x.de)).length} subas · ${med.filter(x=>n(x.a)<n(x.de)).length} bajas)</div>
+    <div style="font-size:.62rem;color:var(--muted);margin-bottom:12px">${med.length} cambios que cuentan${med.some(x=>x.estado==='encurso')?` (${med.filter(x=>x.estado==='encurso').length} en curso: por ahora sólo lo del precio)`:''} (${med.filter(x=>n(x.a)>n(x.de)).length} subas · ${med.filter(x=>n(x.a)<n(x.de)).length} bajas)</div>
     <div style="display:flex;flex-wrap:wrap;gap:12px 10px;margin-bottom:10px">
       ${caja('Lo que ganó',gano,`${med.filter(x=>n(x.total)>0).length} cambios dejaron más`)}
       ${caja('Lo que hizo perder',perdio,`${med.filter(x=>n(x.total)<0).length} cambios dejaron menos`)}

@@ -224,6 +224,11 @@ scratchpad `rev2/<frente>/REPORT.md`, se pierden con el contenedor). Van de a un
    eran TODOS rescates (recuperar margen): $339.123 que ya no se le adjudican. Motivos de los 66 cambios:
    61 rescate · 3 remate · 2 escalera (los 5 de remate/escalera todavía en curso, menos de 7 días).
    Las subas "📈 hay lugar abajo del competidor" y las bajas "📉 ganar la caja" todavía no hicieron ninguna.
+ · **v20.39: lo del PRECIO suma desde la primera venta** (él, con las Cartas Casino: *"se vendía a 1000
+   ayer y hoy a 1100, se vendían 10 y hoy 10: ganaste $1.000, ¿no?"* — sí, neto de ML). El volumen (vendió
+   menos o más por el precio) espera 7 días y entonces puede aparecer como "hizo perder". Sólo subir/bajar:
+   **cómo se cuenta un REMATE está pendiente de él**: (a) la ganancia de lo vendido después (sin robot
+   seguía parado) o (a)+(b) además el almacenamiento evitado, estimado y aparte (ML no lo da por API).
  · Cuotas medidas: 11 Premium (Adriana: Dalí 21,6%, Ferrari Scuderia 13,1% · Matías: Watch 4 12,9%, Galaxy
    A07 19,2%, Watch S5, Buds Core, A06, SSD 12,3% · 3 sin ventas al 21,6% estimado). Ayelen y Luciana no se
    pudieron leer esa vez (se reintenta cada noche).

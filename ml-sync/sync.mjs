@@ -21961,9 +21961,20 @@ async function main() {
           enCurso++;
           const dv = (porMla[ev.mla] || []).filter((x) => x.ts > ev.ts + 60e3 && x.ts <= finT);
           let pr = 0; for (const x of dv) { if (x.tot > 0 && x.neto > 0) pr += (x.tot / x.q - ev.de) * (x.neto / x.tot) * x.q; }
-          registros.push({ ...base(id, ev, motivo), estado: 'encurso', dias: Math.round(L * 10) / 10,
+          // LO DEL PRECIO CUENTA DESDE EL PRIMER DÍA (25/09/2026, él: "cartas casino se vendía a 1000
+          // ayer y hoy a 1100, se vendían 10 por día y hoy se vendieron 10: ganaste extra $1.000, ¿no?").
+          // Sí: cada unidad que ya se vendió al precio nuevo es plata cobrada de más (o de menos), neta
+          // de lo que cobra ML. Eso no necesita esperar. Lo que SÍ espera 7 días es la otra mitad: si
+          // por el precio se vendió menos (o más). Si la suba espantó ventas, a los 7 días aparece como
+          // "hizo perder". Suma sólo en subir/bajar: en un remate el "sin robot" no era vender al precio
+          // viejo sino NO vender, así que comparar contra el precio viejo no dice nada (lo decide él).
+          const enT = motivo === 'subir' || motivo === 'bajar';
+          const rg = { ...base(id, ev, motivo), estado: 'encurso', dias: Math.round(L * 10) / 10,
             uD: dv.reduce((a, x) => a + x.q, 0), cobrado: Math.round(dv.reduce((a, x) => a + x.neto, 0)),
-            precio: Math.round(pr), gD: Math.round(dv.reduce((a, x) => a + x.neto - costo * x.q, 0)) });
+            precio: Math.round(pr), volumen: 0, total: Math.round(pr), enTotal: enT,
+            gD: Math.round(dv.reduce((a, x) => a + x.neto - costo * x.q, 0)) };
+          registros.push(rg);
+          if (enT) atrib.push(rg);
           continue;
         }
         const vs = porMla[ev.mla] || [];
@@ -22021,7 +22032,7 @@ async function main() {
         if (reg.enTotal) atrib.push(reg);
       }
       // Lo que NO cuenta (rescates por costo/inflación) igual se suma aparte, para que se vea cuánto es.
-      const resc = registros.filter((x) => x.estado === 'medido' && !x.enTotal);
+      const resc = registros.filter((x) => (x.estado === 'medido' || x.estado === 'encurso') && x.motivo === 'rescate');
       const sumaA = (f) => atrib.reduce((s, x) => s + f(x), 0);
       const resumen = {
         ts: ahora,
