@@ -193,8 +193,9 @@ scratchpad `rev2/<frente>/REPORT.md`, se pierden con el contenedor). Van de a un
    antes de verificarlas**: sin verificar son sospechas, no hallazgos.
    **REANUDADA el mismo 25/09 a las 00:55**, él: *"quiero que gaste los tokens mientras no estoy (…)
    manejalo"*. Si se corta por tokens, un agente caído ya NO cuenta como "no es real": la sospecha
-   queda "sin verificar". Hay dos avisos programados para retomarla sola (05:56 y 12:56 hora de
-   acá: `trig_01HtFQPCU5einWkaVK2vzWMV` y `trig_012L7k31gpggsWd7FuRHvEpH`). Al terminar: el
+   queda "sin verificar". Hay dos avisos programados para retomarla sola (04:02 y 08:02 hora de
+   acá, cuando se le desbloquean los tokens: `trig_01HtFQPCU5einWkaVK2vzWMV` y
+   `trig_012L7k31gpggsWd7FuRHvEpH`). Al terminar: el
    resultado va a `ml-sync/revision3-resultado.json` y se le pasa de a uno, con (a)/(b).
  · **La tarjeta "Lo que trajo el robot de precios" se recalculó a mano el 25/09 (`supervisor:go`)**
    porque seguía mostrando el resumen viejo con "volumen −$219.866" (de antes de `VOLUMEN_CONFIABLE`
