@@ -268,7 +268,7 @@ encuentra y retoma sólo lo que faltó. Cada hallazgo se verifica antes de pasá
 | 3 | Mercadería | cajas, stock de Full, oficina, pedidos, Paraguay | Alto |
 | 4 | Choques | web y robot escribiendo lo mismo, corridas a la vez | Alto |
 | 5 | Fallas mudas y privacidad | ML no contesta y se guarda como dato; datos de terceros en logs | Medio |
-| 6 | Ideas nuevas | datos de ML sin usar, cosas que hace a mano · sólo propone | Medio |
+| 6 | Ideas nuevas | datos de ML sin usar, cosas que hace a mano · sólo propone | Alto |
 
 **LOS NIVELES DE ESFUERZO, averiguados el 25/09 con fuentes (code.claude.com/docs/en/model-config y
 /workflows, support.claude.com):** de menos a más `low` · `medium` (el que usa Opus 5.5 si no se toca)
@@ -280,6 +280,7 @@ límites que se gastan a la vez: la ventana de 5 h y uno SEMANAL, compartidos co
 un workflow grande puede comerse el semanal. En el día a día conviene "Alto" (la doc lo dice: volver a
 `high` después de Ultracode) y usar workflows sólo para las etapas. Aviso en Inicio: `renderHomeRevision`,
 `cyc/revision/ultima` (v20.42).
+**DECIDIDO POR ÉL EL 25/09: las seis etapas en "Alto"** (sacó "Medio"). **Ultracode NO se usa para las etapas**: cada etapa ya reparte el trabajo entre varios revisores con su tope; Ultracode sólo agrega que TODO lo demás del chat también arme equipos, y eso es lo que se come el límite semanal (la revisión max del 25/09 se cortó dos veces por eso). Queda para un caso puntual: una revisión entera después de un cambio muy grande, y sólo si él lo pide.
 
 ### 25/09 A LA TARDE (v20.36 · `cyc-v314`): CUOTAS PREMIUM, "LO QUE TRAJO EL ROBOT" SIN INFLACIÓN, POR MES
  · **Salvador Dalí (`MLA1869295911`, Adriana): el panel decía 31% y la venta dio 16%.** Es PREMIUM
