@@ -2329,7 +2329,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='20.47';
+const APP_VERSION='20.48';
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
 // muestre la versión y la fecha de actualización y que tenga un desplegable predeterminado cerrado".
 // Y el mismo día: "que ponga fecha de cada modificación y haya una barrita para scrollear y que
@@ -2340,6 +2340,9 @@ const APP_VERSION='20.47';
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'20.48',f:'26/09/2026',h:'00:27',c:[
+    {n:3,t:'Arqueo: la plata que ML ya liberó y el disponible todavía no sumó se queda contada en "A liquidar" (antes desaparecía del patrimonio cada noche), y se avisa en ámbar cuánto es hasta que cargues el disponible de las 4 cuentas.'}
+  ]},
   {v:'20.47',f:'26/09/2026',h:'00:18',c:[
     {n:3,t:'Puntaje del mes: el retiro y los gastos ya no se multiplican por la proyección (el día 3 daba un retiro de $18 millones).'},
     {n:3,t:'Resumen: "Rentabilidad por producto" usa la misma ganancia que la Cascada (con IIBB y monotributo) y el % único; con períodos de días o de año el retiro es el de cada mes, no el 15%.'},
@@ -4551,6 +4554,11 @@ function renderFinTs(){
     if(k==='mp_liq'){
       const rh=repHastaInfo(ts.liq_hasta);
       if(rh){el.textContent+=' · reporte hasta '+rh.txt+(rh.viejo?' ⚠️':'');if(rh.viejo)el.style.color='var(--amber)';}
+      // PLATA YA LIBERADA QUE EL DISPONIBLE TODAVÍA NO SUMÓ (revisión max #18): el robot la deja
+      // contada en "A liquidar" para que no desaparezca del patrimonio, y se dice acá.
+      let _cerrL=false;try{_cerrL=!!_arqViewYM;}catch(e){}
+      const lib=parseFloat((state.finanzas||{}).liq_liberado)||0;
+      if(lib>0&&!_cerrL){el.textContent+=' · incluye US$ '+Math.round(lib).toLocaleString('es-AR')+' ya liberados que el disponible no sumó (cargá el disponible de las 4 cuentas)';el.style.color='var(--amber)';}
     }
   });
   renderAnclaAviso();
