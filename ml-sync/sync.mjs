@@ -12415,7 +12415,7 @@ async function main() {
       const nrmP = (t) => String(t || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[^a-z0-9]+/g, ' ').trim();
       // O1 de la segunda vuelta: lo que ya viaja en un pedido que no llegó no se vuelve a cargar.
       const _comprasPy = (await db.get('cyc/compraspy')) || {};
-      const _viaja = (c) => { const pe = c && c.pedidoEn && _comprasPy[c.pedidoEn]; return pe && pe.estado !== 'llego' ? (pe.fecha || '?') : ''; };
+      const _viaja = (c) => { const pe = c && c.pedidoEn && _comprasPy[c.pedidoEn]; return pe && pe.estado === 'camino' ? (pe.fecha || '?') : ''; };
       const vivos = Object.entries(cands).filter(([, c]) => c && c.nombre && !c.prodId);
       console.log(`=== CARGAR UNIDADES DEL PEDIDO ${APLICAR ? '' : '(PRUEBA — no escribo nada)'} ===`);
       const cambios = [], problemas = [];
@@ -29194,7 +29194,9 @@ async function main() {
         // —el candidato queda en cero— así que un rebuild NUNCA puede mejorar lo guardado.
         const yaItems = (ya && Array.isArray(ya.items)) ? ya.items : [];
         const items = [];
-        for (const [cid, c] of (yaItems.length ? [] : Object.entries(cands))) {
+        // Revisión max #21 (26/09/2026, eligió la a): una compra NUEVA (sin pedido del panel) no toma
+        // los candidatos del armado de hoy, que no tienen nada que ver con ella: sólo lo que se pasa con det=.
+        for (const [cid, c] of ((yaItems.length || !ya) ? [] : Object.entries(cands))) {
           const u = parseInt(c && c.pedirU) || 0; if (!(u > 0)) continue;
           // El candidato guarda `cod` y `usd`; `codPy`/`nisseiUSD` son los nombres de la FICHA de
           // un producto, no de un candidato. Con los de la ficha el detalle salía con el código
@@ -29224,6 +29226,9 @@ async function main() {
           items: itemsFin, nota: campos.nota || (ya && ya.nota) || '', tcPanel: tcPanel || null,
           usdPanel, kgCorreo: kgPedido > 0 ? kgPedido : null,
           incompleto: !(envio > 0), ts: Date.now(),
+          // Revisión max #21: lo que crea compray por su cuenta es HISTORIAL (guarda los pesos y el
+          // recargo, no cuenta "en camino" en el Arqueo). Con |camino queda viajando y lleva "Ya llegó".
+          estado: (ya && ya.estado) || (partes.some((x) => /^camino$/i.test(x)) ? 'camino' : 'historial'),
         };
         const totARS = merc + cambio + envio + retira + otros;
         const dolarMerc = merc / usd;                       // el dólar efectivo de la mercadería

@@ -2329,7 +2329,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='20.51';
+const APP_VERSION='20.52';
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
 // muestre la versión y la fecha de actualización y que tenga un desplegable predeterminado cerrado".
 // Y el mismo día: "que ponga fecha de cada modificación y haya una barrita para scrollear y que
@@ -2340,6 +2340,9 @@ const APP_VERSION='20.51';
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'20.52',f:'26/09/2026',h:'00:59',c:[
+    {n:3,t:'Paraguay: en el patrimonio sólo cuenta como "en camino" el pedido que está viajando de verdad (el de "Ya lo pedí", que tiene el botón Ya llegó). Una compra cargada por chat para el historial ya no suma en camino y sale como "historial".'}
+  ]},
   {v:'20.51',f:'26/09/2026',h:'00:57',c:[
     {n:3,t:'Una venta que Mercado Pago todavía no liquidó dice "≈ estimado" en gris (nunca verde), y arriba de los $33.000 se le descuenta el envío de Full de la ficha para no inflar la ganancia. El resumen de Telegram dice cuántas ventas son aproximadas. Se corrige sola cuando llega el pago real.'}
   ]},
@@ -6491,7 +6494,8 @@ function getHistCostUSDProd(prodId,ym){return state.precios_hist_prod?.[ym]?.[pr
 function efectivoCostP(p){if(!_arqViewYM)return costP(p);return getHistCostUSDProd(p.id,_arqViewYM)??costP(p);}
 function pyEnCaminoUSD(){
   return Object.values(state.compraspy||{}).reduce((t,c)=>{
-    if(!c||c.estado==='llego')return t;
+    // Sólo lo que de verdad viaja (revisión max #21): lo que cargó compray como historial no cuenta.
+    if(!c||c.estado!=='camino')return t;
     const r=parseFloat(c.recargo)>1?parseFloat(c.recargo):RECARGO_PY;
     return t+(parseFloat(c.usdCrudo)||0)*r;
   },0);
@@ -9758,7 +9762,7 @@ function candList(){
 function candEnPedido(c){
   if((parseInt(c&&c.pedirU)||0)>0)return 'cargado';
   const pe=c&&c.pedidoEn&&(state.compraspy||{})[c.pedidoEn];
-  if(pe&&pe.estado!=='llego')return 'viajando';
+  if(pe&&pe.estado==='camino')return 'viajando';
   return '';
 }
 // VENCEN SOLOS. Sin esto la lista se vuelve un cementerio de tarjetas viejas que nadie mira —
@@ -10009,7 +10013,7 @@ function pedLlenarPlan(vivos,tope,maxU,minV){
     // NO VUELVE A CARGAR LO QUE YA ESTÁ VIAJANDO (21/09/2026). Al marcar un pedido como hecho el
     // candidato queda con `pedidoEn`; sin este filtro el botón lo volvía a meter en el pedido
     // siguiente y se compraba dos veces. A mano sigue permitido: el que decide es él.
-    if(c.pedidoEn&&((state.compraspy||{})[c.pedidoEn]||{}).estado!=='llego'){viajando++;return false;}
+    if(c.pedidoEn&&((state.compraspy||{})[c.pedidoEn]||{}).estado==='camino'){viajando++;return false;}
     if(!candPuedePedir(c).ok)return false;
     if(!((parseFloat(c.usd)||0)>0)||!(Number(c.ganancia)>0))return false;
     const v=candVentasDe(c);
@@ -10318,8 +10322,8 @@ function pyPedidoDetalleHTML(c){
 }
 function pyEnCaminoHTML(){
   const todas=pyCompras();
-  const camino=todas.filter(c=>c.estado!=='llego');
-  const llegados=todas.filter(c=>c.estado==='llego').slice(0,6);
+  const camino=todas.filter(c=>c.estado==='camino');
+  const llegados=todas.filter(c=>c.estado!=='camino').slice(0,6);
   if(!camino.length&&!llegados.length)return '';
   const tarjeta=(c,enCamino)=>{
     const puesto=Math.round((c.usdCrudo||0)*(c.recargo||RECARGO_PY)*100)/100;
@@ -10332,7 +10336,7 @@ function pyEnCaminoHTML(){
         <span style="font-size:.72rem;font-weight:700">Pedido del ${c.fecha}</span>
         <span style="font-size:.64rem;color:var(--muted)">${c.productos||0} producto${c.productos===1?'':'s'} · ${c.unidades||0} u. · US$ ${puesto.toFixed(2)} puesto</span>
         <span style="margin-left:auto;font-size:.62rem;color:${enCamino?(tarde?'var(--amber)':'#38bdf8'):'var(--green)'};font-weight:700">
-          ${enCamino?`en camino · hace ${dias} d${tarde?' · ya se pasó':''}`:`llegó${c.fechaLlego?' el '+c.fechaLlego:''}`}
+          ${enCamino?`en camino · hace ${dias} d${tarde?' · ya se pasó':''}`:c.estado==='llego'?`llegó${c.fechaLlego?' el '+c.fechaLlego:''}`:'historial · cargado por chat'}
         </span>
         <span style="font-size:.6rem;color:var(--muted)">▼</span>
       </summary>
@@ -10342,7 +10346,7 @@ function pyEnCaminoHTML(){
   return `<div style="margin:14px 0 4px">
     ${camino.length?`<div style="font-size:.7rem;font-weight:700;margin-bottom:6px">🚚 Pedidos en camino <span style="font-weight:400;color:var(--muted);font-size:.9em">· tocá uno para ver cómo fue</span></div>
       ${camino.map(c=>tarjeta(c,true)).join('')}`:''}
-    ${llegados.length?`<details style="margin-top:6px"><summary style="cursor:pointer;font-size:.64rem;color:var(--muted)">📦 Pedidos que ya llegaron (${llegados.length})</summary>
+    ${llegados.length?`<details style="margin-top:6px"><summary style="cursor:pointer;font-size:.64rem;color:var(--muted)">📦 Pedidos que ya llegaron o de historial (${llegados.length})</summary>
       <div style="margin-top:6px">${llegados.map(c=>tarjeta(c,false)).join('')}</div></details>`:''}
   </div>`;
 }
@@ -10755,7 +10759,7 @@ function candidatosHTML(){
           // (`candEnPedido`), así que este chip ya no aparece. Queda por si algún día se vuelven a
           // mostrar: el aviso tiene que viajar con la tarjeta, no vivir suelto.
           const pe=c.pedidoEn&&(state.compraspy||{})[c.pedidoEn];
-          if(!pe||pe.estado==='llego')return '';
+          if(!pe||pe.estado!=='camino')return '';
           return `<span style="font-size:.64rem;color:#38bdf8;font-weight:700" title="Ya está en el pedido del ${pe.fecha}, que está en camino. El botón de llenar no lo vuelve a cargar; si querés más igual lo podés poner a mano.">🚚 en el pedido del ${pe.fecha}</span>`;})()}
         ${(()=>{const Q=candPuedePedir(c),uu=Math.max(0,parseInt(c.pedirU)||0);
           if(Q.ok)return `<label style="display:flex;align-items:center;gap:5px;font-size:.64rem;color:var(--muted)" title="Las unidades de este producto para el pedido. Se suman arriba. No compra nada: sólo arma la lista.">pedir
