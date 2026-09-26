@@ -2760,6 +2760,11 @@ async function calcCajaBarata(db, o) {
       // del modo remate y tiene que poder decir "hace 71 días", no "0 en 30".
       if (ts > (ultVentaCb[v.mla] || 0)) ultVentaCb[v.mla] = ts;
       if (v.prodId && v.cuenta && ts > (ultPCCb[v.prodId + '__' + v.cuenta] || 0)) ultPCCb[v.prodId + '__' + v.cuenta] = ts;
+      // Y por COLOR/AROMA (revisión max #3, 26/09/2026, eligió la a): misma clave que `filtrarRescate`.
+      if (v.prodId && v.cuenta && v.variante) {
+        const kV = v.prodId + '__' + v.cuenta + '__' + String(v.variante).toLowerCase().trim();
+        if (ts > (ultPCCb[kV] || 0)) ultPCCb[kV] = ts;
+      }
       if (ts < desdeCb) continue;
       uCb[v.mla] = (uCb[v.mla] || 0) + (v.qty || 1);
       // Por producto×cuenta, para los días de stock: MISMA clave que `calcSubirPuede` — el
@@ -2787,16 +2792,22 @@ async function calcCajaBarata(db, o) {
   // **Sólo con fecha REAL de entrada** (`aprox:false`), igual que `calcBajarStock`: una fecha
   // aproximada dice hace cuánto MIRAMOS, no hace cuánto hay stock, y usarla haría que algo que
   // llegó ayer figure como parado hace meses.
-  const edadFullCb = (pid, cta) => {
-    const h = histCb[pid + '__' + sidCb(cta)];
+  const edadFullCb = (pid, cta, vari) => {
+    // Con color: la fecha de ESE color si el registro la tiene (`__v__`, desde el 24/09); si no, la del producto.
+    const hv = vari ? histCb[pid + '__' + sidCb(cta) + '__v__' + sidCb(vari)] : null;
+    const h = (hv && hv.desde) ? hv : histCb[pid + '__' + sidCb(cta)];
     if (!h || !h.desde || h.aprox !== false) return null;
     return Math.floor((Date.now() - h.desde) / 864e5);
   };
-  const quietaDe = (mla, pid, cta) => {
+  const quietaDe = (mla, pid, cta, vari) => {
     // Manda la venta más reciente entre esta publicación y el PRODUCTO en esta cuenta: si el
     // producto se vende todos los días por otra publicación, no está "parado" (caso Ferrari).
-    const uv = Math.max(ultVentaCb[mla] || 0, ultPCCb[pid + '__' + cta] || 0);
-    const edad = edadFullCb(pid, cta);
+    // EL RELOJ VA POR COLOR (revisión max #3, 26/09/2026, eligió la a): si la publicación es de UN
+    // color o aroma, vale sólo la venta de ese color — que se venda el Negro no dice nada del Rojo.
+    // Es la misma regla que ya usaba `filtrarRescate`. Sin eso un aroma parado nunca llegaba al remate.
+    const kP = pid + '__' + cta + (vari ? '__' + String(vari).toLowerCase().trim() : '');
+    const uv = Math.max(ultVentaCb[mla] || 0, ultPCCb[kP] || 0);
+    const edad = edadFullCb(pid, cta, vari);
     // LOS DÍAS SIN STOCK NO SON DÍAS SIN VENDER (25/09/2026, P1 de la segunda vuelta, a). Algo que
     // vendía, se agotó 60 días y llegó la caja hace 2 figuraba "61 días parado": esa misma noche se
     // remataba o entraba a la escalera y quedaba marcado "no traer más". Si el stock volvió
@@ -2837,7 +2848,7 @@ async function calcCajaBarata(db, o) {
         if (ganaCb.has(e.prodId + '__' + e.cuenta)) { fuera.hermanaGana++; continue; }
         const ptwS = Number(e.cajaPtw) || 0;
         if (!(ptwS > 0)) { fuera.sinPtw++; continue; }
-        cand.push({ mla, e, st: ds.st, ptw: ptwS, quieta: quietaDe(mla, e.prodId, e.cuenta),
+        cand.push({ mla, e, st: ds.st, ptw: ptwS, quieta: quietaDe(mla, e.prodId, e.cuenta, e.variant),
           sobre: { dias: ds.dias, porMes: Math.round(ds.vend * 30 / dias), edad: edadFullCb(e.prodId, e.cuenta) } });
         continue;
       }
@@ -2853,7 +2864,7 @@ async function calcCajaBarata(db, o) {
     // llamada sirve para las dos secciones del aviso diario: la de margen sano usa la ventana de
     // siempre, y la de remate clasifica después por estos días. Correrla dos veces duplicaría las
     // consultas a ML sin cambiar un resultado.
-    const quieta = quietaDe(mla, e.prodId, e.cuenta);
+    const quieta = quietaDe(mla, e.prodId, e.cuenta, e.variant);
     if (diasQuieta > 0) {
       // MODO REMATE: manda el reloj, no la ventana. Ver el comentario de `quietaDe`.
       // Sin fecha real de entrada NO se opina: decir "parada hace X" sobre una fecha aproximada
@@ -7231,6 +7242,7 @@ async function main() {
               if (!v || v.cancelada) continue;
               if (v.mla && ts > (ultE[v.mla] || 0)) ultE[v.mla] = ts;
               if (v.prodId && v.cuenta && ts > (ultPC[v.prodId + '__' + v.cuenta] || 0)) ultPC[v.prodId + '__' + v.cuenta] = ts;
+              if (v.prodId && v.cuenta && v.variante) { const kV = v.prodId + '__' + v.cuenta + '__' + String(v.variante).toLowerCase().trim(); if (ts > (ultPC[kV] || 0)) ultPC[kV] = ts; }
               if (v.prodId && ts >= d180) u180[v.prodId] = (u180[v.prodId] || 0) + (v.qty || 1);
             }
           }
@@ -7251,7 +7263,8 @@ async function main() {
             if (herm.some((h) => vistasH.includes(h))) continue;
             if (herm.some((h) => (escMem[h] && hoyTs - (Number(escMem[h].ts) || 0) < ESC_ESPERA * 864e5) || recienteAuto(h, 'baja', ESC_ESPERA))) continue;
             let mem = escMem[f.mla];
-            const uv = Math.max(ultE[f.mla] || 0, ultPC[(e.prodId || '') + '__' + (e.cuenta || f.cuenta)] || 0);
+            // Por color si la publicación es de un color (revisión max #3): mismo reloj que `quietaDe`.
+            const uv = Math.max(ultE[f.mla] || 0, ultPC[(e.prodId || '') + '__' + (e.cuenta || f.cuenta) + (e.variant ? '__' + String(e.variant).toLowerCase().trim() : '')] || 0);
             // P4 de la segunda vuelta (25/09/2026): la memoria de la escalera se BORRA cuando vendió
             // después del último escalón (la escalera sirvió). Antes quedaba para siempre y, si el
             // producto se volvía a frenar meses después, arrancaba desde el escalón viejo.
