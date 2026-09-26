@@ -331,6 +331,28 @@ precios-decisión 3.
  · **21 · HECHO el 26/09, eligió la (a) (v20.52 · `cyc-v330`):** `compray` crea las compras nuevas con
    `estado:'historial'` (con `|camino` quedan viajando) y sin los candidatos del armado (sólo `det=`); en camino
    (Arqueo, "viajando", el robot) cuenta sólo `estado==='camino'`.
+### 26/09 A LA MADRUGADA: SE VERIFICARON LAS 42 SOSPECHAS QUE QUEDABAN (plata, mercadería, choques)
+ · **29 reales · 13 ya arregladas · 1 no real**, en `scratchpad/rev4/resultado.json` (se pierde con el contenedor).
+ · **URGENTE, HECHO:** `ml-daily.yml` tenía `continue-on-error` repetido en el paso del supervisor: GitHub
+   rechazaba el archivo entero desde el 25/09 17:30 UTC y **la noche del 25 al 26 no corrió nada**. Arreglado
+   en las dos ramas y se largó a mano el 26/09 ~04:15 UTC. **Antes de subir un workflow: `yaml.safe_load`
+   no alcanza, mirar opciones repetidas en un mismo paso.**
+ · **21 obvias HECHAS (v20.54 · `cyc-v332`)**, probadas con el código real: cajas (el robot relee la lista
+   antes de marcar y busca la caja por seguimiento+contenido · color sin depósito queda sin leer · no se
+   deshace una caja con unidades ya en Full · cerrar caja avisa si un producto ya no está en la oficina) ·
+   aviso de cajas con faltantes por `sendAlerta` · Paraguay (dos "Ya lo pedí" el mismo día se suman ·
+   canasta a precio de hoy · "No lo compro por ahora" pausa) · `dispo` pide reporte de 20+ días al día ·
+   el disponible escrito en la web pasa por `saveFin` · `facsync` no borra la alarma a los 3 días ·
+   `CANCEL_AGG` hace patch de meses completos · resumen del mes cuenta canceladas · el ciclo relee
+   `manualTs` (el día entero, cacheado 60 s) · aviso de publicación con marca guardada antes del estado ·
+   `margenAlDia` saltea cerradas · caja de publicaciones pausadas no cuenta como ganar · ritmo después de
+   reponer suma los dos tramos · Puntaje con su meta real · Gastos fijos sin mercadería · "nunca más" de
+   candidatos pide 4 seguidas.
+ · **QUEDAN 5 PARA DECIDIR CON ÉL, de a una:** (1) almacenamiento de Full contado dos veces (ML_EXTRA_PCT y
+   el gasto "Cargos de Full") — **se le presentó** · (2) la canasta de reposición de Paraguay no tiene "Ya lo
+   pedí" y no cuenta en camino · (3) una caja marcada A MANO se come las entradas de la caja siguiente del
+   mismo producto · (4) una caja nueva se marca con la mercadería de una vieja abierta · (5) Pedidos no
+   vuelve a pedir un color agotado hace 30+ días si otros colores venden.
  · **LAS 22 DE LA REVISIÓN MAX QUEDARON CERRADAS.** Falta: choques (15 sin verificar, cuando él diga) y la
    segunda revisión completa al final (recordársela).
 
