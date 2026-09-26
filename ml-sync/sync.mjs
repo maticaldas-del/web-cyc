@@ -3578,6 +3578,12 @@ async function margenAlDia(mla, token, que) {
     let win = null;
     for (const [k, r] of Object.entries(todas)) {
       if (!r || r.pid !== pid || !(Number(r.neto) > 0)) continue;
+      // Sólo publicaciones que HOY siguen enganchadas a esta ficha y no están ocultas: `netopub`
+      // no se poda y guarda filas de publicaciones cerradas o re-vinculadas (revisión max, 26/09).
+      if (k !== mla) {
+        let lk = null; try { lk = await DB_REF.get('cyc/mllinks/' + k); } catch { lk = null; }
+        if (!lk || lk.prodId !== pid || lk.ignored) continue;
+      }
       const c = { ...r, mla: k, neto: Number(r.neto), activa: !!r.activa };
       if (_netoGana(c, win)) win = c;
     }
@@ -20261,10 +20267,14 @@ async function main() {
       // reparte entre todos los renglones por lo que vale cada uno — la MISMA cuenta que hace el
       // ciclo (bug de los Ferrari del 08/09). Antes esto repartía orden por orden y torcía carritos.
       const porOrden = {};
+      let _nrManual = 0;
       for (const [dk, ents] of Object.entries(vp)) {
         if (dk < dkDesde) continue;
         for (const [id, v] of Object.entries(ents || {})) {
           if (!v || v.cancelada || v.origen !== 'ml-api') continue;
+          // Lo que él editó o marcó a mano (`manualTs`, arreglo c2) NO se reescribe: sin esto esta
+          // corrida nocturna deshacía en silencio su corrección (revisión max, 26/09/2026).
+          if (Number(v.manualTs) > 0) { _nrManual++; continue; }
           const m = /^v(\d+)_/.exec(id);
           if (!m) continue;
           const gk = v.numVenta ? 'p' + v.numVenta : 'o' + m[1];
@@ -20326,6 +20336,7 @@ async function main() {
       console.log(`  🔴 tienen el neto mal        : ${distintas}`);
       console.log(`  ⏳ ML todavía no liquidó     : ${sinLiquidar}  (esas se arreglan solas)`);
       console.log(`  ❓ no las pude leer          : ${noPude}`);
+      console.log(`  ✋ editadas a mano (no se tocan): ${_nrManual}`);
       if (distintas) console.log(`\n  En total el panel muestra ${difTotal > 0 ? 'MENOS' : 'MÁS'} ganancia de la real por ${money(Math.abs(Math.round(difTotal)))}.`);
       if (!GO) { console.log(`\n(solo lista — para arreglarlas: netoreal:${DIAS}:go)`); return; }
       for (const m of malas) {
@@ -20490,14 +20501,18 @@ async function main() {
       for (const label of labels) {
         const acc = accounts[label];
         if (!acc?.refresh_token) continue;
-        let t; try { t = await mlRefresh(ML_CLIENT_ID, ML_CLIENT_SECRET, acc.refresh_token); } catch { continue; }
-        await db.patch('mlapi/tokens/' + label, { refresh_token: t.refresh_token, updated_ts: Date.now() });
         const ids = Object.entries(links)
           .filter(([mla, e]) => e && e.cuenta === label && !e.ignored && e.prodId && /^MLA/i.test(mla))
           .map(([mla]) => mla);
+        // Lo que no se pudo leer NO se saltea callado (revisión max, 26/09/2026): si faltara una
+        // publicación, el peor neto saldría de las otras y la ficha quedaría en verde con un margen
+        // más alto que el real. Se marca "sin medir", igual que cuando falta una comisión (F3).
+        const _nwSinLeer = (mlas) => { for (const m of mlas) { const pid = links[m] && links[m].prodId; if (pid) sinMedir.add(pid); sinMedirPub.push(m); } };
+        let t; try { t = await mlRefresh(ML_CLIENT_ID, ML_CLIENT_SECRET, acc.refresh_token); } catch { _nwSinLeer(ids); continue; }
+        await db.patch('mlapi/tokens/' + label, { refresh_token: t.refresh_token, updated_ts: Date.now() });
         for (let k = 0; k < ids.length; k += 20) {
           let arr;
-          try { arr = await mlGet('/items?ids=' + ids.slice(k, k + 20).join(',') + '&attributes=id,status,price,variations,listing_type_id,category_id,site_id', t.access_token); } catch { continue; }
+          try { arr = await mlGet('/items?ids=' + ids.slice(k, k + 20).join(',') + '&attributes=id,status,price,variations,listing_type_id,category_id,site_id', t.access_token); } catch { _nwSinLeer(ids.slice(k, k + 20)); continue; }
           for (const row of (arr || [])) {
             const b = row.body || {}; const mla = b.id; if (!mla || !links[mla]) continue;
             // También las PAUSADAS. Una publicación pausada por falta de stock igual tiene precio,
@@ -20510,7 +20525,7 @@ async function main() {
             const precio = vars.length ? (vars[0].price || 0) : (b.price || 0);
             if (!precio) continue;
             const com = await feeAt(b.site_id || 'MLA', precio, b.listing_type_id, b.category_id, t.access_token);
-            if (com == null) continue;
+            if (com == null) { sinMedir.add(p.id); sinMedirPub.push(mla); continue; }
             const _cc = b.listing_type_id === 'gold_pro' && cuotasCfg[mla] ? parseFloat(cuotasCfg[mla].pct) : 0;
             const cuo = isFinite(_cc) && _cc > 0 && !finEnCom[(b.site_id || 'MLA') + '|' + b.listing_type_id + '|' + b.category_id + '|' + Math.round(precio)] ? _cc / 100 : 0;
             const cuoEst = cuo > 0 && !!(cuotasCfg[mla] || {}).estimado;
@@ -20605,7 +20620,9 @@ async function main() {
       if (sinMedir.size) console.log(`⚠️ ${sinMedir.size} producto(s) NO se actualizaron esta noche: ML no contestó alguna comisión y el envío saldría medido a medias. Queda el margen anterior y la pantalla avisa: ${[...sinMedir].map((pid) => (pIdx[pid]?.name || pid).slice(0, 24)).join(' · ')}`);
       if (!prueba && !DRY) {
         for (const pid of sinMedir) { try { await db.set('cyc/products/' + pid + '/netoCalcSinMedir', Date.now()); } catch { /* */ } }
-        for (const m of sinMedirPub) { try { await db.set('cyc/netopub/' + m + '/sinMedir', Date.now()); } catch { /* */ } }
+        // Sólo en renglones que YA existen: uno nuevo con sólo `sinMedir` sería un neto vacío para la pantalla.
+        let _npExist = {}; try { _npExist = (await db.get('cyc/netopub')) || {}; } catch { _npExist = {}; }
+        for (const m of sinMedirPub) { if (!_npExist[m]) continue; try { await db.set('cyc/netopub/' + m + '/sinMedir', Date.now()); } catch { /* */ } }
       }
       console.log(`=== NETO AL PRECIO DE HOY · ${lista.length} productos ${prueba ? '(PRUEBA: no se guarda)' : ''} ===`);
       console.log(`neto = precio − comisión oficial de ML − envío · si un producto tiene varias publicaciones se toma el PEOR neto\n`);
