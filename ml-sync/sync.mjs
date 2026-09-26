@@ -622,6 +622,30 @@ async function cajasQueLlegaron(db, accounts, labels, products, DRY) {
     });
     if (ab.fecha && ab.fecha < o.desde) o.desde = ab.fecha;
   }
+  // ── LAS MARCADAS A MANO SE LEEN DESDE SU PROPIO DESPACHO (26/09/2026, revisión rev4, decisión 3,
+  // opción a) ── Una caja marcada a mano (web o `cajallego`) no guarda QUÉ entradas usó. Se le
+  // descontaba "por orden de despacho", pero la ventana arrancaba en la caja ABIERTA más vieja: si
+  // sus entradas eran anteriores a eso no estaban en la lista, y el descuento se comía las de la
+  // caja siguiente del mismo producto (que quedaba abierta para siempre, o con faltantes falsos).
+  // Ahora, para esos productos, la ventana arranca en el despacho de la marcada a mano (sólo las
+  // marcadas hace 60 días o menos, para no estirarla sin fin), y en cuanto se ubican sus entradas
+  // se le guardan (`recUsadas`) y la vuelta siguiente ya no hace falta leer tan atrás.
+  const MANO_DIAS = 60;
+  const hoyISO = new Date(Date.now() - 3 * 3600e3).toISOString().slice(0, 10);
+  const limMano = new Date(Date.now() - 3 * 3600e3 - MANO_DIAS * 86400e3).toISOString().slice(0, 10);
+  for (const mb of marcadasAntes) {
+    if (Array.isArray(mb.c.recUsadas)) continue;
+    const recF = String(mb.c.recFecha || '');
+    if (!recF || recF < limMano || recF > hoyISO || !mb.fecha) continue;
+    const o = porCta[mb.e.cuenta]; if (!o) continue;
+    let usa = false;
+    for (const it of mb.items) {
+      if (!o.prods.has(it.prodId)) continue;   // sin caja abierta de ese producto no hay nada que proteger
+      usa = true;
+      if (!o.desdeProd[it.prodId] || mb.fecha < o.desdeProd[it.prodId]) o.desdeProd[it.prodId] = mb.fecha;
+    }
+    if (usa) { mb.aCalcular = true; if (mb.fecha < o.desde) o.desde = mb.fecha; }
+  }
   // Entradas a Full por cuenta+producto+variante desde la fecha de la caja más vieja.
   // LAS ENTRADAS SE GUARDAN CON SU FECHA, UNA POR UNA. Sumarlas en un total suelto mezclaba las
   // entradas de una caja VIEJA con las de la caja abierta: la ventana arranca en la caja abierta
@@ -949,6 +973,8 @@ async function cajasQueLlegaron(db, accounts, labels, products, DRY) {
     const recF = String(mb.c.recFecha || '');
     if (!recF) continue;
     const desdeMb = Date.parse((mb.fecha || '1970-01-01') + 'T00:00:00-03:00') || 0;
+    // Lo que se va consumiendo se anota, para guardárselo a la caja (decisión 3, arriba).
+    const calc = []; let esperado = 0, usado = 0, ciegoMb = false;
     for (const it of mb.items) {
       // La misma regla de antes, ahora con la ventana de ESE producto: una marcada antes de que
       // arranque la ventana tiene sus entradas afuera de la lista.
@@ -958,12 +984,32 @@ async function cajasQueLlegaron(db, accounts, labels, products, DRY) {
       const k1 = kR(mb.e.cuenta, it.prodId, it.variante || '');
       const fx = (mb.c.faltan || []).find((f) => f && f.prodId === it.prodId && (f.variante || '') === (it.variante || ''));
       let queda = fx ? (Number(fx.llego) || 0) : it.u;   // una marcada con faltantes se llevó sólo lo que llegó
+      esperado += queda;
+      if (sinLeer[k1] || sinLeerProd[mb.e.cuenta + '|' + it.prodId]) ciegoMb = true;
       for (const e of (recEnt[k1] || [])) {
         if (queda <= 0) break;
         if (e.ts < desdeMb || e.left <= 0) continue;
         const t = Math.min(queda, e.left); e.left -= t; queda -= t; descontadas += t;
+        usado += t; calc.push({ k: k1, op: e.op, q: t });
       }
     }
+    // Se guarda SÓLO si se encontraron TODAS sus unidades y nada quedó sin leer. Si la marcó antes
+    // de que ML diera de alta todo, guardar lo encontrado a medias dejaría sus entradas de mañana
+    // libres para la caja siguiente: ahí se sigue descontando por orden de despacho, como hoy.
+    // Y sólo si TODAS las entradas que usó son anteriores al despacho de la caja SIGUIENTE del mismo
+    // producto en la cuenta: una posterior puede ser de esa otra caja, y guardarla la dejaría
+    // "prestada" para siempre. Ante la duda no se guarda y queda como antes.
+    const sigDe = (pid) => {
+      let f = '';
+      for (const x of [...abiertas, ...marcadasAntes]) {
+        if (x === mb || x.e.cuenta !== mb.e.cuenta || !x.fecha || x.fecha <= (mb.fecha || '')) continue;
+        if (x.items.some((y) => y.prodId === pid) && (!f || x.fecha < f)) f = x.fecha;
+      }
+      return f ? (Date.parse(f + 'T00:00:00-03:00') || 0) : Infinity;
+    };
+    const tsDe = (u) => { const e = (recEnt[u.k] || []).find((x) => x.op === u.op); return e ? e.ts : Infinity; };
+    const antesDeLaSig = calc.every((u) => tsDe(u) < sigDe(u.k.split('|')[1]));
+    if (mb.aCalcular && !ciegoMb && esperado > 0 && usado === esperado && antesDeLaSig) mb.calc = calc;
   }
   const marcadas = [], detalle = [];
   for (const ab of abiertas) {
@@ -1061,7 +1107,38 @@ async function cajasQueLlegaron(db, accounts, labels, products, DRY) {
       if (!DRY) await db.set('cyc/cajasentrado', Object.keys(nuevoE).length ? nuevoE : null);
     }
   } catch (err) { console.log('⚠️ no se pudo anotar lo que ya entró de las cajas abiertas: ' + (err && err.message)); }
-  if (!marcadas.length) return { marcadas: [], mirados, msg: null, detalle, tiposVistos, opsTotal, fallos, erroresOp, sinCantidad, recEnt, enProceso, abiertas: abiertas.length, descontadas };
+  // Guardar las entradas ubicadas de las marcadas a mano (decisión 3). Lista FRESCA, caja buscada por
+  // seguimiento + contenido, y sólo si sigue marcada y sin `recUsadas` (si la abrieron o la tocó
+  // otro mientras corría la vuelta, no se toca).
+  const firmaCajaMano = (c) => JSON.stringify(((c && c.items) || []).filter((x) => x && x.prodId && x.u > 0)
+    .map((x) => [String(x.prodId), String(x.variante || ''), Number(x.u) || 0]).sort());
+  const aGuardar = marcadasAntes.filter((mb) => mb.calc);
+  let manoGuardadas = 0;
+  if (aGuardar.length) {
+    console.log(`🧾 ${aGuardar.length} caja(s) marcada(s) a mano: ubicadas sus entradas de Full${DRY ? ' (prueba: no se guarda)' : ''} → ` + aGuardar.map((mb) => `${mb.e.cuenta} ${mb.fecha}${mb.c.track ? ' (' + mb.c.track + ')' : ''}`).join(' · '));
+    if (!DRY) {
+      const porEnv = {};
+      for (const mb of aGuardar) (porEnv[mb.id] = porEnv[mb.id] || []).push(mb);
+      for (const [id, ms] of Object.entries(porEnv)) {
+        try {
+          const fresca = await db.get('cyc/envios_full/' + id + '/cajasDet');
+          if (!Array.isArray(fresca)) continue;
+          const arr = fresca.slice(); let cambio = false;
+          for (const mb of ms) {
+            const tr = String(mb.c.track || ''), fi = firmaCajaMano(mb.c);
+            const cand = [];
+            arr.forEach((c, j) => { if (c && String(c.track || '') === tr && firmaCajaMano(c) === fi) cand.push(j); });
+            const j = cand.includes(mb.i) ? mb.i : (cand.length === 1 ? cand[0] : -1);
+            if (j < 0 || !arr[j].recibida || Array.isArray(arr[j].recUsadas) || String(arr[j].recFecha || '') !== String(mb.c.recFecha || '')) continue;
+            arr[j] = { ...arr[j], recUsadas: mb.calc, recUsadasCalc: true };
+            cambio = true; manoGuardadas++;
+          }
+          if (cambio) await db.set('cyc/envios_full/' + id + '/cajasDet', arr);
+        } catch (eG) { console.log(`⚠️ no pude guardar las entradas de las cajas a mano del envío ${id}: ${(eG && eG.message) || eG}`); }
+      }
+    }
+  }
+  if (!marcadas.length) return { marcadas: [], mirados, msg: null, detalle, manoGuardadas, tiposVistos, opsTotal, fallos, erroresOp, sinCantidad, recEnt, enProceso, abiertas: abiertas.length, descontadas };
   // Las que de verdad quedaron escritas (en prueba, todas): de ésas sale el mensaje.
   const hechas = DRY ? marcadas.slice() : [];
   if (!DRY) {
