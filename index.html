@@ -2329,7 +2329,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='20.57';
+const APP_VERSION='20.58';
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
 // muestre la versión y la fecha de actualización y que tenga un desplegable predeterminado cerrado".
 // Y el mismo día: "que ponga fecha de cada modificación y haya una barrita para scrollear y que
@@ -2340,6 +2340,8 @@ const APP_VERSION='20.57';
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'20.58',f:'26/09/2026',h:'12:45',c:[
+    {n:1,t:'Inicio: el cartel de la revisión del panel lo maneja Claude. Muestra lo que de verdad falta revisar y se marca como hecho sólo cuando está todo resuelto. Ya no tiene el botón "la hice".'}]},
   {v:'20.57',f:'26/09/2026',h:'12:40',c:[
     {n:2,t:'Pedidos: un color agotado hace más de un mes vuelve a pedirse con lo que vendía antes de agotarse (antes desaparecía si los otros colores vendían). El chip dice "ritmo viejo".'}]},
   {v:'20.56',f:'26/09/2026',h:'12:22',c:[
@@ -3147,8 +3149,8 @@ function updateHomeDolar(){
 // entraba en una ventana de 5 horas de tokens, así que se partió en seis etapas, UNA POR SEMANA
 // (ciclo de 6 semanas). Cada etapa se pide en el chat por número o nombre ("etapa 2" / "etapa
 // plata") y se hace con el esfuerzo que dice acá, con el MISMO nombre que muestra la app.
-// Cuando se termina una etapa se toca "✅ la hice" (o la marca Claude con `revetapa:hecha:<n>:go`) y
-// la próxima queda para dentro de 7 días. Vive en `cyc/revision/ultima` ({n, fecha}).
+// Desde el 26/09/2026 lo que se hizo y lo que falta lo lleva Claude en REV_PENDIENTE / REV_HECHAS
+// (más abajo), no un botón: `cyc/revision/ultima` ya no se usa.
 const REV_ETAPAS=[
   {n:1,nom:'Precios',que:'el robot que sube y baja, el rescate, la escalera, el remate y sus frenos',esf:'Alto'},
   {n:2,nom:'Plata',que:'Arqueo, Mercado Pago, a liquidar, dólares y pesos, gastos',esf:'Alto'},
@@ -3158,46 +3160,61 @@ const REV_ETAPAS=[
   {n:6,nom:'Ideas nuevas',que:'datos que ML ya da y no usamos, cosas que hacés a mano y se pueden automatizar (sólo propone)',esf:'Alto'},
 ];
 const REV_CADA_DIAS=7;
+// ── LA REVISIÓN LA MANEJA CLAUDE, NO ÉL (26/09/2026, pedido suyo) ─────────────────────────────
+// Textual: *"quiero que manejes vos eso de revision del panel, que me marque lo que realmente falte,
+// entonces cuando lo veo te mando a vos que lo hagas y vos lo marcas como hecho cuando se termine de
+// resolver TODO"*. Por eso ya no hay botón "la hice": el cartel sale de estas dos listas, que las
+// actualiza Claude en el código cuando algo queda resuelto ENTERO (verificado y arreglado).
+//   · REV_PENDIENTE → lo que falta de verdad. Mientras haya algo, el cartel lo muestra.
+//   · REV_HECHAS    → última vez que cada etapa quedó resuelta. Sin pendientes, el cartel pide la
+//                     etapa más vieja cuando pasaron REV_CADA_DIAS desde la última.
+const REV_PENDIENTE=[
+  {t:'Choques: verificar las 15 sospechas que quedaron',que:'la web y el robot escribiendo lo mismo, corridas a la vez · la revisión se cortó dos veces por el límite de uso',pedi:'choques'},
+  {t:'Fallas mudas y privacidad: terminarla',que:'cuando ML no contesta y se guarda como dato; datos de terceros en los registros públicos · se revisó a medias',pedi:'etapa 5'},
+  {t:'Ideas nuevas: no se hizo nunca',que:'datos que ML ya da y no usamos, cosas que hacés a mano y se pueden automatizar (sólo propone)',pedi:'etapa 6'},
+  {t:'La segunda revisión completa, al final',que:'la que pediste dejar para cuando esté todo lo demás · va última',pedi:'revisión completa',ultima:true},
+];
+const REV_HECHAS={1:'2026-09-26',2:'2026-09-26',3:'2026-09-26'};
 function _revFecha(iso){const d=new Date(iso+'T12:00:00');return isNaN(d)?null:d;}
 function _revFmt(d){return ['dom','lun','mar','mié','jue','vie','sáb'][d.getDay()]+' '+String(d.getDate()).padStart(2,'0')+'/'+String(d.getMonth()+1).padStart(2,'0');}
 function revProxima(){
-  const u=(state.revision||{}).ultima;
-  const un=u&&Number(u.n);
-  const et=REV_ETAPAS[(un>=1&&un<=REV_ETAPAS.length)?un%REV_ETAPAS.length:0];
-  const fu=u&&u.fecha?_revFecha(u.fecha):null;
-  const vence=fu?new Date(fu.getTime()+REV_CADA_DIAS*864e5):null;
+  // La etapa que hace más tiempo no se revisa (las que nunca se hicieron, primero).
+  let et=REV_ETAPAS[0],fe=null;
+  for(const x of REV_ETAPAS){const f=REV_HECHAS[x.n]?_revFecha(REV_HECHAS[x.n]):null;if(!f){et=x;fe=null;break;}if(!fe||f<fe){et=x;fe=f;}}
+  let ult=null;
+  for(const [n,iso] of Object.entries(REV_HECHAS)){const f=_revFecha(iso);if(f&&(!ult||f>ult.f))ult={n:Number(n),f};}
+  const vence=ult?new Date(ult.f.getTime()+REV_CADA_DIAS*864e5):null;
   const hoy=new Date();hoy.setHours(12,0,0,0);
   const dias=vence?Math.round((vence-hoy)/864e5):0;   // <=0: ya toca
-  return {et,vence,dias,ultima:u&&fu?{...u,f:fu}:null};
+  return {et,vence,dias,ultima:ult};
 }
 function renderHomeRevision(){
   const el=document.getElementById('home-revision');if(!el)return;
-  const {et,vence,dias,ultima}=revProxima();
   const esc=t=>String(t).replace(/&/g,'&amp;').replace(/</g,'&lt;');
-  const ult=ultima?`última: etapa ${ultima.n} · ${esc((REV_ETAPAS[ultima.n-1]||{}).nom||'')} el ${_revFmt(ultima.f)}`:'todavía no se hizo ninguna etapa';
-  const btn=`<button onclick="revMarcarHecha(${et.n})" style="margin-left:8px;font-size:.62rem;padding:3px 10px;border-radius:999px;border:1px solid var(--border);background:transparent;color:var(--text);cursor:pointer">✅ la hice</button>`;
+  const {et,vence,dias,ultima}=revProxima();
+  const ult=ultima?`última resuelta: ${esc((REV_ETAPAS[ultima.n-1]||{}).nom||'')} el ${_revFmt(ultima.f)}`:'todavía no se resolvió ninguna etapa';
+  if(REV_PENDIENTE.length){
+    const col='#f59e0b';
+    el.innerHTML=`<div style="max-width:760px;margin:0 auto 12px;padding:10px 14px;border:1px solid ${col};background:${col}14;border-radius:12px;font-size:.72rem;line-height:1.5;text-align:left">
+      <div style="color:${col};font-weight:700">🔎 Revisión del panel · falta resolver ${REV_PENDIENTE.length===1?'1 cosa':REV_PENDIENTE.length+' cosas'}</div>
+      ${REV_PENDIENTE.map((x,i)=>`<div style="margin-top:6px"><b>${i+1} · ${esc(x.t)}</b><br><span style="color:var(--muted)">${esc(x.que)} · pedímelo en el chat: <i>"${esc(x.pedi)}"</i></span></div>`).join('')}
+      <div style="margin-top:6px;font-size:.6rem;color:var(--muted)">Lo marco yo como hecho cuando esté resuelto TODO (verificado y arreglado) · ${ult}</div>
+    </div>`;
+    return;
+  }
   const cuerpo=`<b>Etapa ${et.n} · ${esc(et.nom)}</b> · esfuerzo <b>${esc(et.esf)}</b><br><span style="color:var(--muted)">${esc(et.que)} · pedímela en el chat: <i>"etapa ${et.n}"</i></span>`;
   if(dias>0){
     // Todavía no toca: un renglón chico, sin color. Un cartel que está siempre prendido no se lee.
-    el.innerHTML=`<div style="max-width:760px;margin:0 auto 10px;text-align:center;font-size:.62rem;color:var(--muted)">🔎 Próxima revisión del panel: etapa ${et.n} · ${esc(et.nom)} · esfuerzo ${esc(et.esf)} · el <b style="color:var(--text)">${_revFmt(vence)}</b> (en ${dias} día${dias===1?'':'s'}) · ${ult}</div>`;
+    el.innerHTML=`<div style="max-width:760px;margin:0 auto 10px;text-align:center;font-size:.62rem;color:var(--muted)">🔎 Próxima revisión del panel: etapa ${et.n} · ${esc(et.nom)} · el <b style="color:var(--text)">${_revFmt(vence)}</b> (en ${dias} día${dias===1?'':'s'}) · ${ult}</div>`;
     return;
   }
   const atras=-dias;
   const col=atras>=REV_CADA_DIAS?'#ef4444':'#f59e0b';
   el.innerHTML=`<div style="max-width:760px;margin:0 auto 12px;padding:10px 14px;border:1px solid ${col};background:${col}14;border-radius:12px;font-size:.72rem;line-height:1.5;text-align:left">
-    <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap"><span style="color:${col};font-weight:700">🔎 Toca la revisión del panel${ultima&&atras>0?` · hace ${atras} día${atras===1?'':'s'}`:''}</span>${btn}</div>
+    <div style="color:${col};font-weight:700">🔎 Toca la revisión del panel${ultima&&atras>0?` · hace ${atras} día${atras===1?'':'s'}`:''}</div>
     <div style="margin-top:4px">${cuerpo}</div>
-    <div style="margin-top:4px;font-size:.6rem;color:var(--muted)">Entra en una ventana de 5 h de uso · ${ult}</div>
+    <div style="margin-top:4px;font-size:.6rem;color:var(--muted)">Entra en una ventana de 5 h de uso · la marco yo cuando esté resuelta · ${ult}</div>
   </div>`;
-}
-async function revMarcarHecha(n){
-  const et=REV_ETAPAS[n-1];if(!et)return;
-  if(!confirm(`¿Marco la etapa ${n} · ${et.nom} como hecha hoy? La próxima te la recuerdo en ${REV_CADA_DIAS} días.`))return;
-  const hoy=new Date();const f=hoy.getFullYear()+'-'+String(hoy.getMonth()+1).padStart(2,'0')+'-'+String(hoy.getDate()).padStart(2,'0');
-  const v={n,fecha:f,ts:Date.now()};
-  try{await fbSet('revision/ultima',v);}catch(e){toast('No pude guardarlo: '+(e.message||e),'err');return;}
-  if(!state.revision)state.revision={};state.revision.ultima=v;
-  renderHomeRevision();toast(`Etapa ${n} marcada ✓`);
 }
 // Aviso en el Home: a partir del día 25 (pedido suyo del 25/09/2026; antes era el 20), si todavía no se cerró el mes en curso.
 function checkCierrePendiente(){

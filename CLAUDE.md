@@ -371,6 +371,12 @@ en afip"*. O sea: "Ya lo pedí", "Llegó", caja recibida, etc. los hago yo por c
 pedido creo la ficha y elijo la cuenta (rubro primero —perfumes → Adriana—, después el equilibrio de `repartopy`, y la
 actividad de ARCA). **Confirmado por él:** *"solo armar la publicacion en cyc. ml la hago yo"* — yo creo la ficha y la vinculo; en ML publica él.
 
+### EL CARTEL DE LA REVISIÓN LO MANEJO YO (26/09/2026, v20.58 · `cyc-v336`)
+Él: *"quiero que manejes vos eso de revision del panel, que me marque lo que realmente falte (…) y vos lo marcas
+como hecho cuando se termine de resolver TODO"*. El cartel de Inicio sale de `REV_PENDIENTE` y `REV_HECHAS` en
+`index.html` (sin botón). **Cuando algo queda resuelto ENTERO (verificado y arreglado): sacarlo de `REV_PENDIENTE`
+y poner la fecha en `REV_HECHAS`, subir versión.** Hoy pendientes: choques (15), etapa 5, etapa 6, revisión completa final.
+
 ### EL PUNTAJE DEL MES: REHACERLO, PERO DESPUÉS (26/09/2026)
 Él, con la captura del Puntaje (7,2 · "Buen mes"): *"no veo cuál es el objetivo de ganancia de CYC y para mí es medio
 flojo el conteo. podría fijarse otras cosas. si querés remodelalo desde 0 con lo que pondrías vos (…) pero ahora
