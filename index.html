@@ -2329,7 +2329,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='20.60';
+const APP_VERSION='20.61';
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
 // muestre la versión y la fecha de actualización y que tenga un desplegable predeterminado cerrado".
 // Y el mismo día: "que ponga fecha de cada modificación y haya una barrita para scrollear y que
@@ -2340,6 +2340,8 @@ const APP_VERSION='20.60';
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'20.61',f:'26/09/2026',h:'12:59',c:[
+    {n:1,t:'Revisión del panel: la etapa de ideas nuevas ya tiene su lista; queda que elijas cuáles hacer.'}]},
   {v:'20.60',f:'26/09/2026',h:'12:52',c:[
     {n:2,t:'Puntaje del mes rehecho: arriba de todo dice el objetivo de ganancia de CYC (lo mismo que sale en retiro + gastos; la meta grande es el doble) y cuánto vas. Cuenta: ganancia CYC 4 · margen 2 (cero en el piso del negocio) · faltantes 2 · capital parado 1 (nuevo) · reclamos 1. Ya no puntúan el retiro (es fijo) ni los gastos aparte (ya están adentro de la ganancia).'}]},
   {v:'20.59',f:'26/09/2026',h:'12:49',c:[
@@ -3173,7 +3175,7 @@ const REV_CADA_DIAS=7;
 //   · REV_HECHAS    → última vez que cada etapa quedó resuelta. Sin pendientes, el cartel pide la
 //                     etapa más vieja cuando pasaron REV_CADA_DIAS desde la última.
 const REV_PENDIENTE=[
-  {t:'Ideas nuevas: no se hizo nunca',que:'datos que ML ya da y no usamos, cosas que hacés a mano y se pueden automatizar (sólo propone)',pedi:'etapa 6'},
+  {t:'Ideas nuevas: la lista está hecha, falta que elijas',que:'10 ideas (packs para lo barato, Premium contra Clásica, visitas en Rotación, emparejar las cuentas, etc.) · te las paso en el chat y elegís cuáles hacer',pedi:'ideas'},
   {t:'La segunda revisión completa, al final',que:'la que pediste dejar para cuando esté todo lo demás · va última',pedi:'revisión completa',ultima:true},
 ];
 // Choques (4) y fallas mudas/privacidad (5): verificadas las 15 del 26/09 de madrugada (rev4, lotes 6-8) y
