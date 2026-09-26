@@ -315,7 +315,11 @@ precios-decisión 3.
    $33.000 aunque la unidad esté abajo. Aplicado en los 16 lugares que arman las ventas para
    `envioDeducido` (netoweb, `calcSubirPorMargen`/rescate, `activarPausadasFull`, bajopiso, unapub…).
    La web no se tocó (`gestDeVenta` ya daba 0 abajo de la barrera y deja de recibir el envío inflado).
- · **QUEDAN PARA DECIDIR CON ÉL, de a una:** 5 (carrito con 429 queda torcido) · 6 (impuesto con el
+ · **5 · HECHO el 26/09, eligió la (a):** si un paquete de 2+ órdenes no se puede armar esa vuelta
+   (`packFallo`), ninguna orden usa su pago suelto: queda el neto real guardado (freno f1) o, si es la
+   primera vez, estimada y marcada `netoEstimado`; el rescate al vender no mira ventas estimadas, y la
+   noche (`netoreal:…:estimadas`) la relee por paquete. Cada pago de un carrito se pide una sola vez.
+ · **QUEDAN PARA DECIDIR CON ÉL, de a una:** 6 (impuesto con el
    promedio de ventas viejas) · 10 (ventas sin ficha cuentan el neto entero como ganancia) · 15 (el
    neto estimado se muestra como real) · 21 (`compray` sin "Ya lo pedí" queda en camino para siempre).
 
