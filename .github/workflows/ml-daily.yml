@@ -194,7 +194,6 @@ jobs:
       # NO TOCA NINGÚN PRECIO.
       - name: Supervisor de precios
         id: supervisor
-        continue-on-error: true
         # si falla no se lleva puesto el resto del paso nocturno
         continue-on-error: true
         env:
