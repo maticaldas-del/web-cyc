@@ -501,6 +501,25 @@ function pesosArg(txt) {
   return isFinite(n) ? Math.round(n) : 0;
 }
 const UMBRAL_ENVIO_GRATIS = 33000;
+// UNA COMPRA QUE CRUZA LA BARRERA POR CANTIDAD NO MIDE EL ENVÍO DE UNA VENTA SUELTA (revisión max #4,
+// 26/09/2026, eligió la a). ML mira el total del PEDIDO (unidades × precio, o el carrito entero con
+// el mismo número de venta), no el precio de una unidad: 2 u. a $25.000 son $50.000 y ML le cobra el
+// envío a ese pedido. Dividido por unidad parece una venta de abajo de la barrera con un envío caro,
+// y pasaba a ser el "peor envío" de toda la publicación: el robot subía +16% un producto sano. Esas
+// ventas quedan AFUERA de la cuenta del envío (se usan igual para todo lo demás).
+function compraCruzaBarrera(v, ents) {
+  const q = Number(v && v.qty) || 1, unit = (Number(v && v.total) || 0) / q;
+  if (!(unit > 0) || unit >= UMBRAL_ENVIO_GRATIS) return false;
+  let ped = Number(v.total) || 0;
+  if (v.numVenta != null && v.numVenta !== '' && ents) {
+    ped = 0;
+    for (const w of Object.values(ents)) {
+      if (w && !w.cancelada && String(w.numVenta) === String(v.numVenta) && (w.cuenta || '') === (v.cuenta || '')) ped += Number(w.total) || 0;
+    }
+    ped = Math.max(ped, Number(v.total) || 0);
+  }
+  return ped >= UMBRAL_ENVIO_GRATIS;
+}
 async function envioDeducido(ventas, precioHoy, feeAt, opts = {}) {
   const { modo = 'min' } = opts; // 'min' = mejor caso (para subir) · 'max' = peor caso (para bajar)
   if (!ventas || !ventas.length) return { envio: null, usadas: 0, mismoLado: false };
@@ -1247,7 +1266,7 @@ async function activarPausadasFull(db, links, tokensRun, DRY, products, piso) {
     for (const v of Object.values(ents || {})) {
       if (!v || v.cancelada || (v.ts || 0) < desde) continue;
       const q = v.qty || 1, tot = (v.total || 0) / q, net = (v.neto || 0) / q;
-      if (tot <= 0 || net <= 0) continue;
+      if (tot <= 0 || net <= 0 || compraCruzaBarrera(v, ents)) continue;
       if (v.mla) (vtaMla[v.mla] = vtaMla[v.mla] || []).push({ tot, net });
       if (v.prodId) (vtaProd[v.prodId] = vtaProd[v.prodId] || []).push({ tot, net });
     }
@@ -1756,7 +1775,7 @@ async function calcSubirPorMargen(db, o) {
         b.imp += (v.total || 0) * (mlExtraPct(v.cuenta) + monoS) / 100;
         b.u += q;
       }
-      if (tot <= 0 || net <= 0) continue;
+      if (tot <= 0 || net <= 0 || compraCruzaBarrera(v, ents)) continue;
       if (v.mla) (vtaMla[v.mla] = vtaMla[v.mla] || []).push({ tot, net });
       if (v.prodId) (vtaProd[v.prodId] = vtaProd[v.prodId] || []).push({ tot, net });
     }
@@ -4080,7 +4099,7 @@ async function bajarParaMover(db, accounts, labels, products, opts = {}) {
         if (v.prodId && (!ultProd[v.prodId] || ts > ultProd[v.prodId])) ultProd[v.prodId] = ts;
       }
       const tot = (v.total || 0) / q, net = (v.neto || 0) / q;
-      if (tot <= 0 || net <= 0) continue;
+      if (tot <= 0 || net <= 0 || compraCruzaBarrera(v, ents)) continue;
       if (v.mla) (vtaMla[v.mla] = vtaMla[v.mla] || []).push({ tot, net });
       if (v.prodId) (vtaProd[v.prodId] = vtaProd[v.prodId] || []).push({ tot, net });
     }
@@ -11190,7 +11209,7 @@ async function main() {
           const m = (mlExtraPct(label) + monoP) / 100;
           const ventas = [];
           for (const ents of Object.values(vp)) for (const v of Object.values(ents || {})) {
-            if (!v || v.cancelada || v.mla !== MLA) continue;
+            if (!v || v.cancelada || v.mla !== MLA || compraCruzaBarrera(v, ents)) continue;
             const q = v.qty || 1; ventas.push({ tot: (v.total || 0) / q, net: (v.neto || 0) / q });
           }
           const feeCache = {};
@@ -11440,7 +11459,7 @@ async function main() {
         // 1) Lo que decimos nosotros, con la MISMA función que usan bajopiso y unapub.
         const ventas = [];
         for (const ents of Object.values(vp)) for (const v of Object.values(ents || {})) {
-          if (!v || v.cancelada || v.mla !== MLA) continue;
+          if (!v || v.cancelada || v.mla !== MLA || compraCruzaBarrera(v, ents)) continue;
           const q = v.qty || 1;
           ventas.push({ tot: (v.total || 0) / q, net: (v.neto || 0) / q });
         }
@@ -14161,7 +14180,7 @@ async function main() {
         const ventasA = [];
         for (const ents of Object.values(vpA)) {
           for (const v of Object.values(ents || {})) {
-            if (!v || v.cancelada || v.mla !== mla) continue;
+            if (!v || v.cancelada || v.mla !== mla || compraCruzaBarrera(v, ents)) continue;
             const q = v.qty || 1;
             if ((v.total || 0) > 0 && (v.neto || 0) > 0) ventasA.push({ tot: v.total / q, net: v.neto / q });
           }
@@ -14251,7 +14270,7 @@ async function main() {
       const vtaMla = {};
       for (const ents of Object.values(vp)) {
         for (const v of Object.values(ents || {})) {
-          if (!v || v.cancelada || !v.mla) continue;
+          if (!v || v.cancelada || !v.mla || compraCruzaBarrera(v, ents)) continue;
           const q = v.qty || 1;
           (vtaMla[v.mla] = vtaMla[v.mla] || []).push({ tot: (v.total || 0) / q, net: (v.neto || 0) / q });
         }
@@ -19277,7 +19296,7 @@ async function main() {
             if (v.mla && (!ultMla[v.mla] || ts > ultMla[v.mla])) ultMla[v.mla] = ts;
           }
           const tot = (v.total || 0) / q, net = (v.neto || 0) / q;
-          if (tot <= 0 || net <= 0) continue;
+          if (tot <= 0 || net <= 0 || compraCruzaBarrera(v, ents)) continue;
           if (v.mla) (vtaMla[v.mla] = vtaMla[v.mla] || []).push({ tot, net });
           if (v.prodId) (vtaProd[v.prodId] = vtaProd[v.prodId] || []).push({ tot, net });
         }
@@ -19454,7 +19473,7 @@ async function main() {
             if (v.prodId && (!ultProd[v.prodId] || ts > ultProd[v.prodId])) ultProd[v.prodId] = ts;
           }
           const tot = (v.total || 0) / q, net = (v.neto || 0) / q;
-          if (tot <= 0 || net <= 0) continue;
+          if (tot <= 0 || net <= 0 || compraCruzaBarrera(v, ents)) continue;
           if (v.mla) (vtaMla[v.mla] = vtaMla[v.mla] || []).push({ tot, net });
           if (v.prodId) (vtaProd[v.prodId] = vtaProd[v.prodId] || []).push({ tot, net });
         }
@@ -20524,7 +20543,7 @@ async function main() {
         for (const v of Object.values(ents || {})) {
           if (!v || v.cancelada) continue;
           const q = v.qty || 1, tot = (v.total || 0) / q, net = (v.neto || 0) / q;
-          if (tot <= 0 || net <= 0) continue;
+          if (tot <= 0 || net <= 0 || compraCruzaBarrera(v, ents)) continue;
           if (v.mla) (vtaMla[v.mla] = vtaMla[v.mla] || []).push({ tot, net });
           if (v.prodId) (vtaProd[v.prodId] = vtaProd[v.prodId] || []).push({ tot, net });
         }
@@ -21604,7 +21623,7 @@ async function main() {
             if (v.prodId && (!ultProd[v.prodId] || ts > ultProd[v.prodId])) ultProd[v.prodId] = ts;
           }
           const tot = (v.total || 0) / q, net = (v.neto || 0) / q;
-          if (tot <= 0 || net <= 0) continue;
+          if (tot <= 0 || net <= 0 || compraCruzaBarrera(v, ents)) continue;
           if (v.mla) (vtaMla[v.mla] = vtaMla[v.mla] || []).push({ tot, net });
           if (v.prodId) (vtaProd[v.prodId] = vtaProd[v.prodId] || []).push({ tot, net });
         }
@@ -22785,7 +22804,7 @@ async function main() {
         for (const v of Object.values(ents || {})) {
           if (!v || v.cancelada) continue;
           const q = v.qty || 1, tot = (v.total || 0) / q, net = (v.neto || 0) / q;
-          if (tot <= 0 || net <= 0) continue;
+          if (tot <= 0 || net <= 0 || compraCruzaBarrera(v, ents)) continue;
           const reg = { tot, net };
           if (v.mla) (vtaMla[v.mla] = vtaMla[v.mla] || []).push(reg);
           if (v.prodId) (vtaProd[v.prodId] = vtaProd[v.prodId] || []).push(reg);
@@ -23370,7 +23389,7 @@ async function main() {
         for (const v of Object.values(ents || {})) {
           if (!v || v.cancelada || !v.mla) continue;
           const tot = v.total || 0, net = v.neto || 0, q = v.qty || 1;
-          if (tot <= 0 || net <= 0) continue;
+          if (tot <= 0 || net <= 0 || compraCruzaBarrera(v, ents)) continue;
           const cur = ult[v.mla];
           if (!cur || k > cur.dk) ult[v.mla] = { dk: k, unit: tot / q, neto: net / q, cuenta: v.cuenta || '?' };
         }
@@ -23435,7 +23454,7 @@ async function main() {
         for (const v of Object.values(ents || {})) {
           if (!v || v.cancelada || !v.prodId) continue;
           const tot = v.total || 0, net = v.neto || 0;
-          if (tot <= 0 || net <= 0) continue;
+          if (tot <= 0 || net <= 0 || compraCruzaBarrera(v, ents)) continue;
           const b = byProd[v.prodId] || (byProd[v.prodId] = { nom: v.prod || v.prodId, ventas: [] });
           b.ventas.push({ dk: k, tot, net, qty: v.qty || 1, cuenta: v.cuenta || '?', r: net / tot });
         }
@@ -25167,7 +25186,7 @@ async function main() {
         for (const v of Object.values(ents || {})) {
           if (!v || v.cancelada) continue;
           const q = v.qty || 1, tot = (v.total || 0) / q, net = (v.neto || 0) / q;
-          if (tot <= 0 || net <= 0) continue;
+          if (tot <= 0 || net <= 0 || compraCruzaBarrera(v, ents)) continue;
           if (v.mla) (vtaMla[v.mla] = vtaMla[v.mla] || []).push({ tot, net });
           if (v.prodId) (vtaProd[v.prodId] = vtaProd[v.prodId] || []).push({ tot, net });
           if (v.mla) {
@@ -26060,7 +26079,7 @@ async function main() {
         for (const v of Object.values(ents || {})) {
           if (!v || v.cancelada) continue;
           const q = v.qty || 1, tot = (v.total || 0) / q, net = (v.neto || 0) / q;
-          if (tot <= 0 || net <= 0) continue;
+          if (tot <= 0 || net <= 0 || compraCruzaBarrera(v, ents)) continue;
           const reg = { tot, net };
           if (v.mla) (vtaMla[v.mla] = vtaMla[v.mla] || []).push(reg);
           if (v.prodId) (vtaProd[v.prodId] = vtaProd[v.prodId] || []).push(reg);
