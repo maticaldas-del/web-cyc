@@ -1327,6 +1327,7 @@ Los que más se usan:
 | `ofi:<palabra>[@<variante>]=<+N\|-N\|N>[;…][;go]` | **contar lo que hay en la oficina desde el chat** (26/09): suma, resta o fija, variante por variante |
 | `ancla:<cuenta>=<pesos>[;…][;go]` | **el disponible de MP que él lee**, cargado desde el chat (26/09): punto de partida en pesos + casilla en dólares |
 | `pausaprecio[:<palabra>\|:-<palabra>][:go]` | **"No lo compro por ahora" desde el chat** (26/09) · con `-` lo devuelve a Pedidos |
+| `marcano:<marca>[:go]` | **"esta marca no se compra"** (26/09): la guarda en `marcasFrenadas`, tacha los candidatos de esa marca (la busca también en el NOMBRE, no sólo en el campo marca) y les saca las unidades del pedido · `-` adelante la vuelve a permitir · prohibida hoy: **Dolce & Gabbana** |
 
 Casi todos son de solo lectura. Los que escriben piden `:go` explícito.
 
