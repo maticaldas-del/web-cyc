@@ -310,8 +310,12 @@ precios-decisión 3.
    (`mllinks.variant`): vale sólo la venta de ese color (misma clave que `filtrarRescate`) y la fecha
    de entrada de ese color (`stockhist` `__v__`, si no la del producto). Un aroma parado ya puede
    entrar solo al remate, con los frenos de siempre (5 por noche, nunca abajo de 0%, `liquidando`).
- · **QUEDAN PARA DECIDIR CON ÉL, de a una:** 4 (una venta de 2 u. que
-   cruza $33.000 pasa a ser el peor envío) · 5 (carrito con 429 queda torcido) · 6 (impuesto con el
+ · **4 · HECHO el 26/09, eligió la (a):** `compraCruzaBarrera(v, ents)` saca de la cuenta del envío
+   las ventas cuyo PEDIDO (unidades × precio, o el carrito con el mismo `numVenta` y cuenta) pasa los
+   $33.000 aunque la unidad esté abajo. Aplicado en los 16 lugares que arman las ventas para
+   `envioDeducido` (netoweb, `calcSubirPorMargen`/rescate, `activarPausadasFull`, bajopiso, unapub…).
+   La web no se tocó (`gestDeVenta` ya daba 0 abajo de la barrera y deja de recibir el envío inflado).
+ · **QUEDAN PARA DECIDIR CON ÉL, de a una:** 5 (carrito con 429 queda torcido) · 6 (impuesto con el
    promedio de ventas viejas) · 10 (ventas sin ficha cuentan el neto entero como ganancia) · 15 (el
    neto estimado se muestra como real) · 21 (`compray` sin "Ya lo pedí" queda en camino para siempre).
 
