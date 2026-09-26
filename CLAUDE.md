@@ -351,12 +351,21 @@ precios-decisión 3.
  · **QUEDAN 5 PARA DECIDIR CON ÉL, de a una:** (1) almacenamiento de Full contado dos veces — **HECHO el 26/09,
    eligió la (a) (v20.55 · `cyc-v333`):** `ML_EXTRA_PCT` = sólo percepciones medidas en agosto (Adriana 3,80 · Luciana
    4,01 · Ayelen 5,99 · Matías 3,40), en index.html y sync.mjs (las dos copias `MLX` sueltas del robot ahora usan la
-   tabla); los cargos de Full (almacenamiento, stock antiguo, retiro, multas) van SÓLO como gasto del mes · (2) la canasta de reposición de Paraguay no tiene "Ya lo
-   pedí" y no cuenta en camino · (3) una caja marcada A MANO se come las entradas de la caja siguiente del
+   tabla); los cargos de Full (almacenamiento, stock antiguo, retiro, multas) van SÓLO como gasto del mes · (2) **HECHO el 26/09, eligió la (a) (v20.56 · `cyc-v334`):** la canasta tiene "✅ Ya lo pedí"
+   (`pyCanastaYaLoPedi`): guarda `compraspy/pyr<fecha>` con `tipo:'repo'` e items con `prodId`, en camino; la canasta
+   resta lo que ya viaja (`pyRepoEnCamino`); "Ya llegó" de una repo no crea fichas y recuerda contar en la oficina;
+   se ve arriba de la canasta en Productos probados (`pyEnCaminoHTML('repo')`). OJO: las tarjetas de Pedidos siguen
+   mostrando la cantidad entera (sólo la canasta descuenta) · (3) una caja marcada A MANO se come las entradas de la caja siguiente del
    mismo producto · (4) una caja nueva se marca con la mercadería de una vieja abierta · (5) Pedidos no
    vuelve a pedir un color agotado hace 30+ días si otros colores venden.
  · **LAS 22 DE LA REVISIÓN MAX QUEDARON CERRADAS.** Falta: choques (15 sin verificar, cuando él diga) y la
    segunda revisión completa al final (recordársela).
+
+### EL PUNTAJE DEL MES: REHACERLO, PERO DESPUÉS (26/09/2026)
+Él, con la captura del Puntaje (7,2 · "Buen mes"): *"no veo cuál es el objetivo de ganancia de CYC y para mí es medio
+flojo el conteo. podría fijarse otras cosas. si querés remodelalo desde 0 con lo que pondrías vos (…) pero ahora
+sigamos con esto"*. **Pendiente, cuando se cierren las 5 decisiones:** proponerle un Puntaje nuevo con el objetivo
+de ganancia de CYC a la vista (hoy sólo dice "piso") y criterios mejores. Le da libertad de rehacerlo desde cero.
 
 ### LA REVISIÓN POR ETAPAS (propuesta del 25/09, falta que confirme el ritmo)
 Pedido suyo: que cada revisión entre en una ventana de 5 h de tokens (plan de US$100, Opus 5.5). Seis
