@@ -2329,7 +2329,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='20.46';
+const APP_VERSION='20.47';
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
 // muestre la versión y la fecha de actualización y que tenga un desplegable predeterminado cerrado".
 // Y el mismo día: "que ponga fecha de cada modificación y haya una barrita para scrollear y que
@@ -2340,6 +2340,14 @@ const APP_VERSION='20.46';
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'20.47',f:'26/09/2026',h:'00:18',c:[
+    {n:3,t:'Puntaje del mes: el retiro y los gastos ya no se multiplican por la proyección (el día 3 daba un retiro de $18 millones).'},
+    {n:3,t:'Resumen: "Rentabilidad por producto" usa la misma ganancia que la Cascada (con IIBB y monotributo) y el % único; con períodos de días o de año el retiro es el de cada mes, no el 15%.'},
+    {n:3,t:'El % de cada venta abajo de $33.000 ya no suma el envío de Full al divisor (ML no lo cobró), y un envío medido en cero no cae al número viejo cargado a mano.'},
+    {n:3,t:'Cambiar un costo ya no reescribe el costo guardado de las ventas de la última semana: sólo completa las que no tenían.'},
+    {n:2,t:'Reactivar una venta cancelada hace más de 2 días le devuelve el total y el neto que tenía (antes quedaba en $0).'},
+    {n:2,t:'El monotributo de los meses nuevos usa el % vigente que recalcula el robot, no el último guardado.'},
+  ]},
   {v:'20.46',f:'25/09/2026',h:'18:46',c:[
     {n:1,t:'Contar lo que hay: al lado de cada cuenta dice cuántas van en camino a Full (la misma cuenta que Armar caja).'},
   ]},
@@ -2654,6 +2662,9 @@ function monoPct(ym){
   if(!h)return monoPctVigente();
   const k=String(ym).substring(0,7);
   if(h[k]!=null){const v=parseFloat(h[k]);if(isFinite(v)&&v>=0)return v;}
+  // Un mes POSTERIOR a todo lo guardado usa el % vigente, el que recalcula el robot en cada vuelta
+  // (revisión max, 26/09/2026): antes quedaba congelado en el último del historial para siempre.
+  {const _ks=Object.keys(h).sort();if(_ks.length&&k>_ks[_ks.length-1])return monoPctVigente();}
   // Sin dato de ese mes se usa el del mes ANTERIOR más cercano: un % rige desde que se cargó
   // hasta que aparece otro, igual que una categoría de ARCA.
   const antes=Object.keys(h).filter(x=>x<=k).sort();
@@ -7759,6 +7770,10 @@ function devPctActual(p){
 function gestDeVenta(v){
   if(!v||v.cancelada)return 0;
   const p=prodDeVenta(v);if(!p)return 0;
+  // Una venta ABAJO de los $33.000 (por unidad) no pagó envío de Full: ML no le cobra al vendedor.
+  // Sumarle el de hoy al divisor bajaba su % de mentira (revisión max, 26/09/2026).
+  const _pu=(Number(v.total)||0)/(v.qty||1);
+  if(_pu>0&&_pu<UMBRAL_ENVIO_GRATIS)return 0;
   const g=Number(p.netoCalcEnvio)>0?Number(p.netoCalcEnvio):(Number(p.gestFull)||0);
   return g>0?g*(v.qty||1):0;
 }
@@ -7907,6 +7922,9 @@ async function recalcTodayCostos(prodId){
       const p=prodDeVenta({...v,_dateKey:dayKey});
       if(!p)continue;
       if(prodId&&p.id!==prodId)continue;
+      // Sólo se llena el costo que FALTA. Una venta que ya tiene su costo no se reescribe con el de
+      // hoy: es la regla del congelado (17/09 y 24/09) — el costo nuevo no cambia lo ya ganado.
+      if(Number(v.costo)>0)continue;
       const newBaseUSD=costUSDof(p);
       const newCosto=costFullP(p)*(v.qty||1);
       if(Math.abs(newCosto-(v.costo||0))<0.01)continue;
@@ -7994,6 +8012,9 @@ async function vpCancelarGrupo(grpId,grpKey,tipo){
     }
     if(p)afectados.add(p.id);
     o.cancelada=true;o.tipoCancelacion=tipo;
+    // Se guarda lo que había, para poder devolverlo al reactivar: el robot sólo reescribe las
+    // ventas de las últimas 48 h, así que una vieja quedaba en $0 para siempre (revisión max).
+    if(!o.antesCancel&&(Number(o.total)>0||Number(o.neto)>0))o.antesCancel={total:Number(o.total)||0,neto:Number(o.neto)||0};
     o.neto=0;o.costo=0;o.costBaseUSD=0;o.total=0;
     o.manualTs=Date.now(); // c2: que la vuelta siguiente del robot no la vuelva a poner como vendida
     await fbSet('ventaprod/'+grpKey+'/'+o.id,o);
@@ -8031,6 +8052,7 @@ async function vpReactivarGrupo(grpId,grpKey){
     // Reactivar es volver a lo que dice ML: se saca la marca de "tocada a mano" para que el robot
     // le vuelva a poner el total y el neto reales (la cancelación los había dejado en 0).
     delete o.manualTs;
+    if(o.antesCancel){if(!(Number(o.total)>0))o.total=Number(o.antesCancel.total)||0;if(!(Number(o.neto)>0))o.neto=Number(o.antesCancel.neto)||0;delete o.antesCancel;}
     if(p){o.costo=costFullP(p)*(o.qty||1);o.costBaseUSD=costUSDof(p);}
     await fbSet('ventaprod/'+grpKey+'/'+o.id,o);
   }
@@ -8519,7 +8541,10 @@ function margenMLDe(p,pub){
   // cargado a mano queda de respaldo, para los productos que todavía no pasaron por netoweb.
   // Si la web usara uno y el robot otro, la pantalla diría un margen y el robot movería precios
   // con otro — el error del envío repetido por cuarta vez.
-  const gest=Math.round(Number(F.envio)>0?Number(F.envio):(Number(p.gestFull)||0));
+  // Abajo de los $33.000 el envío MEDIDO en cero es cero de verdad, no "falta el dato": no se cae
+  // al gestFull viejo, que era un envío que ML no cobra (revisión max, 26/09/2026).
+  const _precioF=Number(F.precio)||0;
+  const gest=Math.round(Number(F.envio)>0?Number(F.envio):((_precioF>0&&_precioF<UMBRAL_ENVIO_GRATIS)?0:(Number(p.gestFull)||0)));
   const costoBase=costFullP(p)+mlExtra;   // mercadería + envío/embalaje + % reclamos + impuestos
   const costo=costoBase+gest;             // el costo TOTAL, el que él quiere ver
   const netoCalc=(F.neto!=null&&F.neto!=='')?Number(F.neto):null;
@@ -14432,8 +14457,11 @@ function calcPuntajeMes(mesKey){
   const dias=esActual?Math.max(1,now.getDate()):diasMes;
   const factorProy=diasMes/dias;
   const g=_puntGananciaMes(ym);
-  const proy=Math.round(g.ganancia*factorProy);
-  const retiroProy=Math.round(g.retiro*factorProy); // "nuestra ganancia" proyectada (retiro 15%)
+  // Sólo se proyecta lo que VIENE con las ventas (neto − costo). El retiro y los gastos ya van
+  // enteros desde el 23/09 (_propMes=1): multiplicarlos por la proyección los inflaba ×10 el día 3
+  // (revisión max, 26/09/2026).
+  const proy=Math.round((g.neto-g.costo)*factorProy-g.retiro-g.gastos);
+  const retiroProy=Math.round(g.retiro);
   // ── Meta = PISO en dólares (US$/socio × socios), con el dólar del mes. Piso fijo manual la pisa. ──
   const cfg=puntCfg(ym);
   const tc=histTCforYM(ym)||curTC()||1500;
@@ -14679,6 +14707,13 @@ function renderResumen_page(){
   // Cuánto de ese costo son impuestos (IIBB + monotributo) y no mercadería. Mismo criterio que
   // efectivoCostoVP: las canceladas no suman.
   const _vpImpuestos=keys=>{let t=0;keys.forEach(k=>{Object.values(state.ventaprod[k]||{}).forEach(v=>{if(!v||v.cancelada)return;t+=impuestosDeVenta(v);});});return t;};
+  // El retiro de un período que no es "un mes": el de cada mes cuyo PRIMER día con ventas cae
+  // adentro, que es exactamente cómo lo pone Métricas (_cargosDia). Antes salía del 15% del neto,
+  // una regla vieja, y la misma "Ganancia CYC" daba dos números (revisión max, 26/09/2026).
+  const _retiroDeKeys=keys=>{const ks=new Set(keys);let t=0;[...new Set(keys.map(k=>k.substring(0,7)))].forEach(ym=>{
+    const dias=allVpKeys.filter(k=>k.startsWith(ym)).sort();if(!dias.length||!ks.has(dias[0]))return;
+    const rm=_retiroMesVal(ym);t+=(rm!=null?rm:retiroDefMes(ym,_netoMesData(ym).tot));});return t;};
+  const _vpGest=keys=>{let t=0;keys.forEach(k=>{Object.values(state.ventaprod[k]||{}).forEach(v=>{t+=gestDeVenta(v);});});return t;};
   const _cmpTot=(keys,tipo)=>Object.values(state.compras||{}).filter(x=>keys.includes(x.dayKey)&&getCompraTipo(x)===tipo).reduce((s,x)=>s+(x.monto||0),0);
   const _cmpCats=(keys)=>{const cats={};Object.values(state.compras||{}).filter(x=>keys.includes(x.dayKey)).forEach(x=>{const c=x.cat||'Otros';cats[c]=(cats[c]||0)+(x.monto||0);});return cats;};
   // helper: todas las claves de ventaprod que coinciden con lista de day-keys o prefijo
@@ -14735,7 +14770,7 @@ function renderResumen_page(){
   // Mismo criterio que Métricas: en el mes en curso el retiro y los gastos van proporcionales a
   // los días transcurridos, así los dos lados siguen dando el mismo número.
   const _propM=_isMonth?_propMes(mesKey):1;
-  const retiro=Math.round((_rmMonth!=null?_rmMonth:(_isMonth?retiroDefMes(mesKey,netoML):Math.round(netoML*RETIRO_PCT)))*_propM);
+  const retiro=Math.round((_rmMonth!=null?_rmMonth:(_isMonth?retiroDefMes(mesKey,netoML):_retiroDeKeys(periodKeys)))*_propM);
   const retMitad=Math.round(retiro/2);
   // Mismo orden que la cascada: neto − costo = Ganancia (idéntica a Métricas), después gastos,
   // y recién al final el retiro de los dueños. El total no cambia.
@@ -14749,7 +14784,7 @@ function renderResumen_page(){
   const costoMerchP=_vpEfectCosto(prevPeriodKeys);
   const _isMonthP=(resScopeMode==='mes'&&!!prevMesKey);
   const _rmMonthP=_isMonthP?_retiroMesVal(prevMesKey):null;
-  const retiroP=_rmMonthP!=null?_rmMonthP:(_isMonthP?retiroDefMes(prevMesKey,netoMLp):Math.round(netoMLp*RETIRO_PCT));
+  const retiroP=_rmMonthP!=null?_rmMonthP:(_isMonthP?retiroDefMes(prevMesKey,netoMLp):_retiroDeKeys(prevPeriodKeys));
   const gastosP=_isMonthP?_gastosMes(prevMesKey):_cmpTot(prevPeriodKeys._cmpKeys||[],'gasto');
   const gananciaRealP=(netoMLp-retiroP)-costoMerchP-gastosP;
 
@@ -14758,11 +14793,11 @@ function renderResumen_page(){
   setComp('res-hero-ganancia-comp',gananciaReal,gananciaRealP,prevLbl);
   const gReal=document.getElementById('res-hero-ganancia');if(gReal)gReal.style.color=gananciaReal>=0?'var(--green)':'var(--red)';
   const _retReal=(_rmMonth!=null); // ¿usó el retiro real anotado o el 15%?
-  setTxt('res-hero-retiro-sub','Mati + Viejo · '+(_retReal?'real anotado':'15%'));
+  setTxt('res-hero-retiro-sub','Mati + Viejo · '+(_retReal?'real anotado':(_isMonth?'fijo del mes':'el de cada mes del período')));
 
   // Cascada
   set('casc-neto',netoML);
-  setTxt('casc-retiro-lbl','Retiro dueños '+(_retReal?'(real)':'15%'));
+  setTxt('casc-retiro-lbl','Retiro dueños '+(_retReal?'(real)':''));
   set('casc-retiro',retiro);setTxt('casc-retiro-sub','Mati '+fmt(retMitad)+' · Viejo '+fmt(retiro-retMitad));
   set('casc-cyc-ml',quedaML);
   set('casc-costo-merch',costoMerch);
@@ -14802,9 +14837,12 @@ function renderResumen_page(){
   }
 
   // Rentabilidad por producto (margen)
-  const gpP=vpGanSum(), costoVpP=vpCostoSum();
+  // La MISMA ganancia que la Cascada (neto − costo con IIBB y monotributo) y el % ÚNICO, con el
+  // envío de Full en el divisor (revisión max, 26/09/2026). Antes era otra cuenta: casi el doble.
+  const gpP=gananciaBruta, costoVpP=costoMerch;
   set('res-gp-mes',gpP);setTxt('res-gp-mes-sub',periodLbl);
-  setTxt('res-gp-margen',costoVpP>0?((gpP/costoVpP)*100).toFixed(0)+'%':'—');
+  const _pgp=pctGananciaVP(gpP,costoVpP,_vpGest(periodKeys));
+  setTxt('res-gp-margen',_pgp!=null?_pgp.toFixed(0)+'%':'—');
 
   const peds=state.pedidos||[];
   const cnt={pendiente:0,pedido:0,recibido:0};
