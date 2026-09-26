@@ -18078,6 +18078,18 @@ async function main() {
       const patch = {};
       for (const [, r2] of Object.entries(res)) patch[r2.clave] = r2.usd;
       patch.mp_disp = Object.values(res).reduce((a, x) => a + x.usd, 0);
+      // LO LIBERADO QUE `saldoml` DEJÓ EN "A LIQUIDAR" (revisión max #18): el disponible que se
+      // escribe acá ya lo incluye, así que sale de "a liquidar" en el mismo paso — si no, esa plata
+      // se contaría dos veces.
+      try {
+        const lib = parseFloat((await db.get('cyc/finanzas/liq_liberado')) || 0) || 0;
+        if (lib > 0) {
+          const liqAct = parseFloat((await db.get('cyc/finanzas/mp_liq')) || 0) || 0;
+          patch.mp_liq = Math.max(0, Math.round(liqAct - lib));
+          patch.liq_liberado = 0;
+          console.log('   lo liberado que esperaba en "a liquidar" pasa al disponible (sale de "a liquidar")');
+        }
+      } catch { console.log('   ⚠️ no pude leer lo liberado que esperaba en "a liquidar": no se toca'); }
       await db.patch('cyc/finanzas', patch);
       await db.patch('cyc/saldoml', { _dispTs: Date.now() });
       // RELEER Y COMPARAR, que es la regla 6 de este panel.
@@ -18244,6 +18256,18 @@ async function main() {
       // en ámbar; antes sólo quedaba en el log.
       let repHasta = '';
       let sinDiaTot = 0;   // pesos por cobrar que ML todavía no le puso día (van al total, no a un día)
+      // LO LIBERADO QUE EL DISPONIBLE TODAVÍA NO SUMÓ (revisión max #18, 26/09/2026, eligió la a).
+      // Este comando saca de "a liquidar" todo lo que ML ya liberó, y el que lo pasa al disponible
+      // es `dispo`, que sólo escribe con el punto de partida de las CUATRO cuentas cargado. Sin eso,
+      // esa plata no estaba en ningún lado y el patrimonio bajaba cada noche sin que pasara nada.
+      // Ahora lo liberado DESPUÉS de lo último que refleja el disponible de cada cuenta (el punto de
+      // partida que él cargó, o la última escritura de `dispo`, lo más nuevo) se queda contado acá, y
+      // `dispo` lo saca en cuanto lo suma él. Si no se sabe desde cuándo, no se agrega nada y se dice.
+      let dispTs = 0, anclasLib = {}, tsMpMano = 0;
+      try { dispTs = parseFloat((await db.get('cyc/saldoml/_dispTs')) || 0) || 0; } catch { /* */ }
+      try { anclasLib = (await db.get('cyc/saldoancla')) || {}; } catch { /* */ }
+      try { tsMpMano = parseFloat((await db.get('cyc/finanzas/_ts/mp')) || 0) || 0; } catch { /* */ }
+      let libSinDisp = 0, libSinDesde = 0;
       const res = {}; let totalLiq = 0, cuentasOk = 0, cuentasMal = 0;
       for (const label of labels) {
         const acc = accounts[label];
@@ -18280,28 +18304,46 @@ async function main() {
           const iTipo = cols.indexOf('TRANSACTION_TYPE');
           const iReal = cols.indexOf('REAL_AMOUNT');
           const iLib = cols.indexOf('MONEY_RELEASE_DATE');
+          const iSetl = cols.indexOf('SETTLEMENT_DATE'), iTx = cols.indexOf('TRANSACTION_DATE');
           if (iTipo < 0 || iReal < 0 || iLib < 0) {
             console.log(`   ❌ le falta una columna clave (tipo ${iTipo} · neto ${iReal} · liberación ${iLib})`);
             cuentasMal++; continue;
           }
           let liq = 0, nLiq = 0, nLib = 0, nSinFecha = 0, nRetiro = 0, nSinNeto = 0, nFechaMala = 0, nSinFechaLiq = 0;
           let ultima = 0;
+          // Desde cuándo el disponible de ESTA cuenta ya incluye lo liberado (ver arriba).
+          const ancL = anclasLib[label];
+          const desdeLib = Math.max(dispTs, parseFloat(ancL && ancL.ts) || 0) || tsMpMano;
+          let libCta = 0, nLibCta = 0;
           for (let n = 1; n < li.length; n++) {
             const f = csvPartir(li[n], sep);
             const tp = String(f[iTipo] || '').trim();
-            if (ES_RETIRO.test(tp)) { nRetiro++; continue; }   // un retiro no es plata por cobrar
+            // Lo que SALE (retiros, devoluciones sin fecha de liberación) después de lo último que
+            // refleja el disponible también va a la cuenta de lo liberado sin sumar: es la misma
+            // regla de `dispo`, así los dos lados miden igual la plata que se movió.
+            const salidaEnVentana = () => {
+              if (!desdeLib) return;
+              const tsS = fechaMov(f, iLib, iSetl, iTx);
+              const vS = csvNum(f[iReal]);
+              if (tsS != null && tsS > desdeLib && tsS <= hoy && vS != null && vS < 0) { libCta += vS; nLibCta++; }
+            };
+            if (ES_RETIRO.test(tp)) { nRetiro++; salidaEnVentana(); continue; }   // un retiro no es plata por cobrar
             const txt = String(f[iLib] || '').trim();
             // PLATA QUE ENTRA SIN FECHA DE LIBERACIÓN ES PLATA POR COBRAR (24/09/2026): ML todavía no
             // dijo cuándo la suelta. Antes se descartaba y no estaba ni acá ni en el disponible.
             // Va al total, no a la agenda (no tiene día). Lo que sale sin fecha no es "a liquidar".
             if (!txt) {
               const v0 = csvNum(f[iReal]);
-              if (v0 != null && v0 > 0) { liq += v0; nLiq++; nSinFechaLiq++; sinDiaTot += v0; } else nSinFecha++;
+              if (v0 != null && v0 > 0) { liq += v0; nLiq++; nSinFechaLiq++; sinDiaTot += v0; } else { nSinFecha++; salidaEnVentana(); }
               continue;
             }
             const ts = new Date(txt).getTime();
             if (!Number.isFinite(ts)) { nFechaMala++; continue; }
-            if (ts <= hoy) { nLib++; continue; }               // ya está disponible, no es "a liquidar"
+            if (ts <= hoy) {                                   // ya está disponible, no es "a liquidar"
+              nLib++;
+              if (desdeLib && ts > desdeLib) { const vL = csvNum(f[iReal]); if (vL != null) { libCta += vL; nLibCta++; } }
+              continue;
+            }
             const v = csvNum(f[iReal]);
             if (v == null) { nSinNeto++; continue; }
             liq += v; nLiq++; if (ts > ultima) ultima = ts;
@@ -18318,7 +18360,10 @@ async function main() {
           if (ultima) console.log(`   la última se libera el ${new Date(ultima).toISOString().slice(0, 10)}`);
           if (nSinFechaLiq) console.log(`   ${nSinFechaLiq} por cobrar SIN fecha de liberación todavía: entran al total, no a la agenda por día`);
           if (sucias) console.log(`   ⚠️ ${sucias} filas no se pudieron leer (${nSinNeto} sin neto · ${nFechaMala} con fecha rara): el total queda CORTO`);
-          res[label] = { aLiquidar: Math.round(liq), filas: nLiq, sucias, rango, creado, ts: Date.now() };
+          if (!desdeLib) { libSinDesde++; console.log('   ⚠️ no sé desde cuándo el disponible incluye lo liberado: no se agrega nada a "a liquidar"'); }
+          else if (nLibCta) console.log(`   liberado después del disponible: ${nLibCta} fila(s) · se quedan en "a liquidar" hasta que el disponible las sume`);
+          libSinDisp += libCta;
+          res[label] = { aLiquidar: Math.round(liq), liberadoSinDisp: Math.round(libCta), filas: nLiq, sucias, rango, creado, ts: Date.now() };
           totalLiq += liq; cuentasOk++;
           console.log(`   ✅ calculado (el monto va a la base, no al registro público)`);
         } catch (e) { console.log(`   ❌ ${String(e.message || e).slice(0, 110)}`); cuentasMal++; }
@@ -18369,6 +18414,10 @@ async function main() {
       let aMano = null, tcCmp = 0;
       try {
         aMano = parseFloat((await db.get('cyc/finanzas/mp_liq')) || 0) || 0;
+        // Lo que ya estaba es "por cobrar" + lo liberado que esperaba al disponible (#18): para
+        // comparar contra lo por cobrar de hoy se saca esa parte.
+        aMano -= parseFloat((await db.get('cyc/finanzas/liq_liberado')) || 0) || 0;
+        if (aMano < 0) aMano = 0;
         tcCmp = parseFloat((await db.get('cyc/finanzas/tipo_cambio')) || 0) || 0;
       } catch { aMano = null; }
       if (aMano == null) console.log('   no pude leer lo que hay cargado a mano.');
@@ -18418,8 +18467,13 @@ async function main() {
           // NO se toca `finanzas/_ts/mp`: esa fecha es la del DISPONIBLE, que él sigue cargando a
           // mano. Pisarla haría ver al disponible más fresco de lo que está, que es justo la
           // confusión de dos números distintos pegados uno al lado del otro.
-          const enUSD = Math.round(totalLiq / tc);
+          const libUSD = Math.max(0, Math.round(libSinDisp / tc));
+          const enUSD = Math.round(totalLiq / tc) + libUSD;
           await db.set('cyc/finanzas/mp_liq', enUSD);
+          // Cuánto de "a liquidar" es plata YA liberada que el disponible no sumó. `dispo` lo resta
+          // cuando escribe, y la pantalla lo avisa en ámbar mientras esté.
+          await db.set('cyc/finanzas/liq_liberado', libUSD);
+          if (libUSD) console.log(`   "A liquidar" incluye plata ya liberada que el disponible todavía no sumó (${libSinDesde ? 'y hay cuentas sin fecha de referencia' : 'se saca sola cuando corra el disponible'})`);
           if (repHasta) { try { await db.patch('cyc/finanzas/_ts', { liq_hasta: repHasta }); } catch { /* */ } }
           const v = parseFloat(await db.get('cyc/finanzas/mp_liq'));
           console.log(`   "A liquidar en ML" del Arqueo: ${Math.round(v) === enUSD ? '✅ actualizado y releído · en DÓLARES' : '❌ no quedó'}`);
