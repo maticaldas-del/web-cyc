@@ -5647,13 +5647,16 @@ async function main() {
     // (juntos pesan ~5,6% de lo facturado).
     const monoPctDia = parseFloat(((await db.get('cyc/monotributo')) || {}).pct) || 0;
     const impDe = (v) => ((v.total || 0) * (mlExtraPct(v.cuenta) + monoPctDia) / 100);
-    let n = 0, fact = 0, gan = 0;
+    let n = 0, fact = 0, gan = 0, sinCostoN = 0, sinCostoFact = 0;
     const byProd = {};   // producto -> unidades
     const ganProd = {};  // producto -> ganancia en $
     for (const v of Object.values(day)) {
       if (!v || v.cancelada) continue; // canceladas/reclamos no cuentan
       n += v.qty || 0;
       fact += v.total || 0;
+      // Revisión max #10 (26/09/2026, eligió la a): una venta SIN costo (sin ficha o ficha en 0)
+      // cuenta en lo facturado pero NO en la ganancia: sumarla metía el neto entero como ganado.
+      if (!(Number(v.costo) > 0)) { sinCostoN += v.qty || 0; sinCostoFact += v.total || 0; continue; }
       const g = (v.neto || 0) - (v.costo || 0) - impDe(v);
       gan += g;
       const k = v.prod || '?';
@@ -5670,6 +5673,7 @@ async function main() {
       + `Ventas: <b>${n}</b>\n`
       + `Facturado: ${money(fact)}\n`
       + `Ganancia: <b>${money(gan)}</b>\n`
+      + (sinCostoN ? `⚠️ ${sinCostoN} u. sin costo cargado (${money(Math.round(sinCostoFact))}) no cuentan en la ganancia\n` : '')
       + (top ? `🥇 Más vendido: ${top[0]} (${top[1]})\n` : 'Sin ventas ese día')
       + (top3.length ? `\n<b>Los que más ganancia dejaron</b>\n`
         + top3.map((t, i) => `${['🥇', '🥈', '🥉'][i]} ${t[0]}: <b>${money(Math.round(t[1]))}</b>`).join('\n') : '');
@@ -5747,7 +5751,7 @@ async function main() {
       if (yaMes === ym && !forzado) {
         console.log(`Resumen mensual de ${ym} ya enviado, no lo repito.`);
       } else {
-        let mN = 0, mFact = 0, mGan = 0, mDias = 0, mCancel = 0;
+        let mN = 0, mFact = 0, mGan = 0, mDias = 0, mCancel = 0, mSinN = 0, mSinFact = 0, mFactCon = 0;
         const mProd = {}, mCuenta = {};
         for (const [dk, dd] of Object.entries(vp)) {
           if (!dk.startsWith(ym + '_')) continue;
@@ -5758,6 +5762,8 @@ async function main() {
             huboVenta = true;
             mN += v.qty || 0;
             mFact += v.total || 0;
+            if (!(Number(v.costo) > 0)) { mSinN += v.qty || 0; mSinFact += v.total || 0; mCuenta[v.cuenta || '?'] = (mCuenta[v.cuenta || '?'] || 0) + (v.total || 0); continue; }
+            mFactCon += v.total || 0;
             const g = (v.neto || 0) - (v.costo || 0) - impDe(v);
             mGan += g;
             mProd[v.prod || '?'] = (mProd[v.prod || '?'] || 0) + g;
@@ -5767,12 +5773,13 @@ async function main() {
         }
         const mTop = Object.entries(mProd).sort((a, b) => b[1] - a[1]).slice(0, 5);
         const cuentas = Object.entries(mCuenta).sort((a, b) => b[1] - a[1]);
-        const margen = mFact > 0 ? (mGan / mFact * 100) : 0;
+        const margen = mFactCon > 0 ? (mGan / mFactCon * 100) : 0;
         const MES = ['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio', 'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre'];
         const msgMes = `🗓️ <b>RESUMEN DE ${MES[Number(_am) - 1].toUpperCase()} ${_ay}</b>\n\n`
           + `Ventas: <b>${mN}</b> en ${mDias} días\n`
           + `Facturado: <b>${money(Math.round(mFact))}</b>\n`
           + `Ganancia: <b>${money(Math.round(mGan))}</b> (${margen.toFixed(1)}% del facturado)\n`
+          + (mSinN ? `⚠️ ${mSinN} u. sin costo cargado (${money(Math.round(mSinFact))}) no cuentan en la ganancia\n` : '')
           + `Promedio por día: ${money(Math.round(mDias ? mFact / mDias : 0))}\n`
           + (mCancel ? `Canceladas/devueltas: ${money(Math.round(mCancel))}\n` : '')
           + (cuentas.length ? `\n<b>Por cuenta</b>\n` + cuentas.map(([c, t]) => `· ${c}: ${money(Math.round(t))}`).join('\n') + '\n' : '')
