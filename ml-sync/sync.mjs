@@ -2983,9 +2983,14 @@ async function calcCajaBarata(db, o) {
       if (!rT) { sinDato.push({ mla: c.mla, why: 'ni ventas ni tarifa de ML: sin envío el margen sería un invento' }); continue; }
       envio = Math.max(0, rT.envio);
     }
+    // EL ENVÍO VA DEL LADO DE LA BARRERA DE CADA PRECIO (revisión max, 26/09/2026). `envio` es
+    // el de HOY; si la caja cae ABAJO de los $33.000, ahí ML no le cobra envío al vendedor y el
+    // margen de la caja se mide con CERO. Antes se le cobraba el envío de arriba a un precio de
+    // abajo: una baja sana a 31% salía en 0%, iba a la escalera y quedaba 'no traer más'.
+    const envioPw = c.ptw < UMBRAL_ENVIO_GRATIS ? 0 : envio;
     const m = (mlExtraPct(c.e.cuenta) + monoP) / 100;
     const mlx = c.ptw * m;
-    const mgPw = (c.ptw - comPw - envio - costo - mlx) / (costo + mlx + envio) * 100;
+    const mgPw = (c.ptw - comPw - envioPw - costo - mlx) / (costo + mlx + envioPw) * 100;
     const exigido = minSano;   // el número que puso él. No se le suma colchón por mi cuenta.
     // ── CUÁNTA PLATA RESIGNÁS, EN PESOS (16/09/2026) ─────────────────────────────────
     // Lo destapó la Pad 2, que eligió él para probar la regla: bajarla para ganar la caja la
@@ -3005,14 +3010,14 @@ async function calcCajaBarata(db, o) {
     let resigna = null;
     if (comHoy != null) {
       const gHoy = precio - comHoy - envio - costo - precio * m;
-      const gPw = c.ptw - comPw - envio - costo - mlx;
+      const gPw = c.ptw - comPw - envioPw - costo - mlx;
       resigna = Math.round(gHoy - gPw);
     }
     const fila = {
       mla: c.mla, cuenta: c.e.cuenta, prodId: c.e.prodId,
       nom: (p.name || b.title || c.mla).slice(0, 34),
-      precio, ptw: Math.round(c.ptw), baja, mgPw, mgHoy, envio, costo: Math.round(costo),
-      st: c.st, envioEstimado, exigido,
+      precio, ptw: Math.round(c.ptw), baja, mgPw, mgHoy, envio: envioPw, envioHoy: envio, costo: Math.round(costo),
+      st: c.st, envioEstimado: envioEstimado && envioPw > 0, exigido,
       quieta: c.quieta, vis: visCb,
       resigna, resignaTot: resigna == null ? null : resigna * c.st,
       sobre: c.sobre || null,
