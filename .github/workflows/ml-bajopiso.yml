@@ -69,3 +69,31 @@ jobs:
             sleep 5
           done
           echo "No pude guardar la lista en el repo."
+
+  # ── EL CICLO SE VUELVE A PRENDER SOLO DESPUÉS DE CADA COMANDO A MANO (26/09/2026) ──────────────
+  # Cada comando a mano corta el ciclo (mismo candado) y había que acordarse de disparar "ciclo"
+  # después: si no, el robot quedaba apagado hasta que el reloj de GitHub arrancara otro. Ahora esta
+  # misma corrida, apenas termina el comando (salga bien o mal), sigue con el ciclo en un job APARTE:
+  # el registro del comando queda limpio y se lee igual que antes (el job "sync").
+  ciclo:
+    needs: bajopiso
+    if: ${{ always() }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 355
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Ciclo automático
+        env:
+          ML_CLIENT_ID: ${{ secrets.ML_CLIENT_ID }}
+          ML_CLIENT_SECRET: ${{ secrets.ML_CLIENT_SECRET }}
+          FIREBASE_API_KEY: ${{ secrets.FIREBASE_API_KEY }}
+          FIREBASE_DB_URL: ${{ secrets.FIREBASE_DB_URL }}
+          FIREBASE_BOT_EMAIL: ${{ secrets.FIREBASE_BOT_EMAIL }}
+          FIREBASE_BOT_PASSWORD: ${{ secrets.FIREBASE_BOT_PASSWORD }}
+          MP_TOKEN_MATIAS: ${{ secrets.MP_TOKEN_MATIAS }}
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+        run: bash ml-sync/ciclo.sh
