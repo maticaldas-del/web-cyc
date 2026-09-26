@@ -2329,7 +2329,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='20.52';
+const APP_VERSION='20.53';
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
 // muestre la versión y la fecha de actualización y que tenga un desplegable predeterminado cerrado".
 // Y el mismo día: "que ponga fecha de cada modificación y haya una barrita para scrollear y que
@@ -2340,6 +2340,9 @@ const APP_VERSION='20.52';
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'20.53',f:'26/09/2026',h:'01:08',c:[
+    {n:1,t:'Pedidos: el precio máximo de compra se ve grande en PESOS, con los dólares chiquitos abajo.'}
+  ]},
   {v:'20.52',f:'26/09/2026',h:'00:59',c:[
     {n:3,t:'Paraguay: en el patrimonio sólo cuenta como "en camino" el pedido que está viajando de verdad (el de "Ya lo pedí", que tiene el botón Ya llegó). Una compra cargada por chat para el historial ya no suma en camino y sale como "historial".'}
   ]},
@@ -12652,7 +12655,10 @@ function maxCompraChip(p){
   if(!(r.merc>0)||!(r.usd>0))return `<span class="ped-max" style="color:var(--red)" title="Vendiendo a ${fmt(r.P)} no hay precio de compra que deje ${r.meta}%."><b>no llega</b><i>máx. compra</i></span>`;
   const tc=curTC();
   const ars=tc>0?fmt(Math.round(r.usd*tc)):'';
-  return `<span class="ped-max" title="Lo más que podés pagar cada unidad para quedar en ${r.meta}% vendiendo a ${fmt(r.P)}. El detalle está adentro."><b>US$ ${r.usd.toFixed(2).replace('.',',')}</b><i>${ars?ars+' · ':''}máx. compra</i></span>`;
+  // Pedido suyo del 26/09/2026: "que lo muestre grande en pesos el costo máximo". Pesos grande,
+  // dólares chico abajo. Sin dólar cargado queda como antes (sólo dólares), no se inventa el cambio.
+  const usdTxt='US$ '+r.usd.toFixed(2).replace('.',',');
+  return `<span class="ped-max" title="Lo más que podés pagar cada unidad para quedar en ${r.meta}% vendiendo a ${fmt(r.P)}. El detalle está adentro."><b style="font-size:1.05rem">${ars||usdTxt}</b><i>${ars?usdTxt+' · ':''}máx. compra</i></span>`;
 }
 function _pedidoItemHtml(p,opts){
   opts=opts||{};
