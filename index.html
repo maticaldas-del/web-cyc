@@ -2329,7 +2329,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='20.48';
+const APP_VERSION='20.49';
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
 // muestre la versión y la fecha de actualización y que tenga un desplegable predeterminado cerrado".
 // Y el mismo día: "que ponga fecha de cada modificación y haya una barrita para scrollear y que
@@ -2340,6 +2340,9 @@ const APP_VERSION='20.48';
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'20.49',f:'26/09/2026',h:'00:52',c:[
+    {n:3,t:'El margen de cada producto calcula IIBB + monotributo sobre el precio de HOY con el monotributo de HOY (antes: el promedio de las ventas viejas). Algunos márgenes bajan unos puntos: son los reales. El robot del rescate usa la misma cuenta, así que puede subir esta noche lo que quedó abajo del 20%.'}
+  ]},
   {v:'20.48',f:'26/09/2026',h:'00:27',c:[
     {n:3,t:'Arqueo: la plata que ML ya liberó y el disponible todavía no sumó se queda contada en "A liquidar" (antes desaparecía del patrimonio cada noche), y se avisa en ámbar cuánto es hasta que cargues el disponible de las 4 cuentas.'}
   ]},
@@ -8525,11 +8528,13 @@ function margenMLDe(p,pub){
   const agg=_netoAgg();
   const a=agg['id:'+p.id]||agg['nm:'+normTxt(p.name)];
   let mlExtra=0,mlExtraEstimado=false;
-  if(a&&a.u>0)mlExtra=Math.round(a.mlx/a.u);
-  else if(Number(F.precio)>0){
+  // Revisión max #6 (26/09/2026, eligió la a): el impuesto es SIEMPRE % del precio de HOY con el
+  // monotributo de HOY, igual que el rescate del robot y la caja barata. El promedio de las ventas
+  // viejas (a precios y monotributo de antes) inflaba la ficha varios puntos.
+  if(Number(F.precio)>0){
     mlExtra=Math.round(Number(F.precio)*(mlExtraPct(F.cuenta)+monoPct())/100);
-    mlExtraEstimado=true;
-  }
+    mlExtraEstimado=!(a&&a.u>0);
+  }else if(a&&a.u>0)mlExtra=Math.round(a.mlx/a.u);
   // ── LA GESTIÓN DE FULL VA ADENTRO DEL COSTO ────────────────────────────────
   // Regla suya del 01/09/2026, textual: "al vender un producto y pagar TODO lo que descuentan en el
   // momento y lo que termina descontándome MP luego en facturas de ML por vender ese producto me
