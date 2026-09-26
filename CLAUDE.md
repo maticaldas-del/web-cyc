@@ -284,6 +284,16 @@ precios-decisión 3.
    arreglados. La revisión se volvió a cortar por el límite de uso (228 agentes caídos): las 60
    sospechas siguen **sin verificar**.
 
+### 26/09 DE MADRUGADA: LA REVISIÓN MAX TERMINÓ LA VERIFICACIÓN (MENOS CHOQUES)
+ · **24 confirmadas de 92**, guardadas en `ml-sync/revision3-resultado2.json` (margen 14 · plata 6 ·
+   precios-decisión 2 · precios-escritura 2). Las 2 de precios-escritura (`alpiso`/`bajar` y el aviso
+   de promo) **ya estaban arregladas**: quedan **22 nuevas para pasarle de a una con (a)/(b)**, las
+   obvias las hago yo. **Choques: 15 sin verificar** (se cortó otra vez por el límite; el resumen no
+   se armó). Retomar sólo choques cuando él diga.
+ · **Kit Jade Rodillo y Piedra Guasha** (`MLA2126175931`, Ayelen, pausada): ficha `p1790392438056`,
+   costo $2.080, vinculada. **Piedra Gua Sha de Jade sola**: ficha con costo $1.130, sin publicación
+   todavía (la va a crear él; el alta de la hora la engancha por título o con `vincular`).
+
 ### LA REVISIÓN POR ETAPAS (propuesta del 25/09, falta que confirme el ritmo)
 Pedido suyo: que cada revisión entre en una ventana de 5 h de tokens (plan de US$100, Opus 5.5). Seis
 etapas, una por semana (ciclo de 6 semanas) y la del tema tocado cuando haya un cambio grande. Se
