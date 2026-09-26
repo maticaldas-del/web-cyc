@@ -2329,7 +2329,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='20.56';
+const APP_VERSION='20.57';
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
 // muestre la versión y la fecha de actualización y que tenga un desplegable predeterminado cerrado".
 // Y el mismo día: "que ponga fecha de cada modificación y haya una barrita para scrollear y que
@@ -2340,6 +2340,8 @@ const APP_VERSION='20.56';
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'20.57',f:'26/09/2026',h:'12:40',c:[
+    {n:2,t:'Pedidos: un color agotado hace más de un mes vuelve a pedirse con lo que vendía antes de agotarse (antes desaparecía si los otros colores vendían). El chip dice "ritmo viejo".'}]},
   {v:'20.56',f:'26/09/2026',h:'12:22',c:[
     {n:3,t:'Paraguay: la canasta de reposición tiene su botón "✅ Ya lo pedí". Lo pagado queda "en camino" (el patrimonio no baja durante el viaje) y la canasta deja de pedir lo que ya viaja. Al tocar "Ya llegó" no crea fichas: te recuerda contarlo en la oficina.'}]},
   {v:'20.55',f:'26/09/2026',h:'12:19',c:[
@@ -9370,7 +9372,7 @@ async function syncPedidosAuto(){
         const vStock=LOCS.reduce((s,l)=>s+(parseInt(state.inventory[invKeyV(p.id,l,v)])||0),0);
         // El stockhist es por producto×cuenta, no por variante: acá se usa la velocidad del
         // producto como aproximación, que es lo mejor que hay hasta que se anote por variante.
-        const vTarget=Math.ceil((varSalesMap[p.id][v]||0)/Math.min(dConS,diasHistorial)*TARGET_DIAS_P);
+        let vTarget=Math.ceil((varSalesMap[p.id][v]||0)/Math.min(dConS,diasHistorial)*TARGET_DIAS_P);
         // ── LO QUE YA TENÉS DE ESA VARIANTE NO SE COMPRA DE NUEVO ──────────────────
         // Antes, si había CUALQUIER cosa en la oficina, el pedido se dejaba sin desglose: no se
         // sabía de qué variante eran esas unidades. Eso dejó de ser cierto cuando "Contar lo que
@@ -9381,8 +9383,22 @@ async function syncPedidosAuto(){
         const vFalta=Math.max(0,vTarget-vStock);                       // lo que falta llegar a tener en ML
         const vCasa=parseInt(state.inventory[invKeyV(p.id,OFI,v)])||0; // de esta variante, en casa
         const vCam=LOCS.reduce((a,l)=>a+transitoDe(_trPed,p.id,l,v),0);// de esta variante, viajando
-        const vComprar=Math.max(0,vFalta-vCasa-vCam);
-        return{v,vFalta,vComprar,vStock,vCasa,vCam};
+        // ── EL COLOR AGOTADO HACE MÁS DE UN MES SE PIDE CON SU RITMO VIEJO (26/09/2026, rev4,
+        // decisión 5, opción a) ── Un color en cero hace 40 días vendió 0 en la ventana: objetivo 0 y
+        // no se pedía NUNCA mientras los otros colores vendieran (el círculo de la Lupa 75mm, por
+        // color). Misma función y misma condición que Armar caja: sólo si vendió 0 en 30 días Y no
+        // hay nada en ML, en casa ni viajando. Con pocas ventas viejas, la misma regla de pedVentasNorm.
+        let vHist=false,vFalta2=vFalta;
+        if(!(varSalesMap[p.id][v]>0)&&vStock<=0&&vCasa<=0&&vCam<=0){
+          const h=ventasHistoricas(p,'',v);
+          if(h&&h.vDia>0){
+            const vd=(h.u<PED_MIN_VENTAS_RITMO&&h.desdeDias>h.dias)?h.u/h.desdeDias:h.vDia;
+            vTarget=Math.ceil(vd*TARGET_DIAS_P);
+            if(vTarget>0){vHist=true;vFalta2=vTarget;}
+          }
+        }
+        const vComprar=Math.max(0,vFalta2-vCasa-vCam);
+        return{v,vFalta:vFalta2,vComprar,vStock,vCasa,vCam,vHist};
       }).filter(x=>x.vFalta>0);
       necesario=varDefs.reduce((s,x)=>s+x.vFalta,0);
       // El desglose muestra lo que hay que COMPRAR de cada una: si de una variante ya tenés en casa
@@ -9396,7 +9412,7 @@ async function syncPedidosAuto(){
       // ya está cubierta desde casa es la que cambia la decisión (no comprar, MANDAR). Antes
       // desaparecía del desglose y se leía igual que una que nadie midió, que es el mismo error
       // que tenía el renglón del producto.
-      variantesNec=varDefs.length?varDefs.map(({v,vComprar:q,vStock,vCam,vCasa})=>({v,q,ml:vStock,cam:vCam,casa:vCasa})):null;
+      variantesNec=varDefs.length?varDefs.map(({v,vComprar:q,vStock,vCam,vCasa,vHist})=>({v,q,ml:vStock,cam:vCam,casa:vCasa,...(vHist?{hist:true}:{})})):null;
     } else {
       const targetStock=Math.ceil(vDia*TARGET_DIAS_P);
       necesario=Math.max(0,targetStock-stock);
@@ -12642,12 +12658,12 @@ function pedVarChip(x){
   const q=x.q||0;
   const tieneLugares=(x.ml!=null||x.cam!=null||x.casa!=null);
   const cab=q>0
-    ? `${x.v}<strong>×${q}</strong>`
+    ? `${x.v}<strong>×${q}</strong>${x.hist?' <span style="color:var(--amber,#f59e0b);font-size:.85em">· ritmo viejo</span>':''}`
     : `${x.v}<strong style="color:var(--green)">✓ mandar</strong>`;
   if(!tieneLugares)return `<span class="pi-var-chip">${cab}</span>`;
   const n=v=>fmtN(v||0);
   const lug=`<span class="pi-var-lug">📦 ${n(x.ml)} en ML · 🚚 ${n(x.cam)} en camino · 🏠 ${n(x.casa)} en casa</span>`;
-  return `<span class="pi-var-chip pi-var-chip-col" title="${q>0?`Hay que COMPRAR ${n(q)} de ${x.v}.`:`De ${x.v} no hay que comprar: con lo que tenés en casa o en camino alcanza. Hay que MANDARLA.`}">${cab}${lug}</span>`;
+  return `<span class="pi-var-chip pi-var-chip-col" title="${q>0?`Hay que COMPRAR ${n(q)} de ${x.v}.${x.hist?' Está agotado hace más de un mes: la cantidad sale de lo que vendía antes de agotarse (hasta 180 días atrás), igual que en Armar caja.':''}`:`De ${x.v} no hay que comprar: con lo que tenés en casa o en camino alcanza. Hay que MANDARLA.`}">${cab}${lug}</span>`;
 }
 // ── LA PLATA DEL PRODUCTO, EN LA TARJETA DE PEDIDOS (17/09/2026) ─────────────────────
 // Pedido suyo: *"quiero que en la web aparezca todo, o sea el costo y eso, no solo si da o no.
