@@ -355,11 +355,20 @@ precios-decisión 3.
    (`pyCanastaYaLoPedi`): guarda `compraspy/pyr<fecha>` con `tipo:'repo'` e items con `prodId`, en camino; la canasta
    resta lo que ya viaja (`pyRepoEnCamino`); "Ya llegó" de una repo no crea fichas y recuerda contar en la oficina;
    se ve arriba de la canasta en Productos probados (`pyEnCaminoHTML('repo')`). OJO: las tarjetas de Pedidos siguen
-   mostrando la cantidad entera (sólo la canasta descuenta) · (3) una caja marcada A MANO se come las entradas de la caja siguiente del
+   mostrando la cantidad entera (sólo la canasta descuenta) · (3) **HECHO el 26/09, eligió la (a):** una caja marcada A MANO ya no se come las entradas de la caja siguiente: la
+   ventana arranca en su despacho (hasta 60 días) y, si se ubican TODAS sus entradas y son anteriores al despacho de la
+   caja siguiente, se le guardan (`recUsadas`, `recUsadasCalc`); ante la duda queda como antes · (3b) caja marcada a mano: el
    mismo producto · (4) una caja nueva se marca con la mercadería de una vieja abierta · (5) Pedidos no
    vuelve a pedir un color agotado hace 30+ días si otros colores venden.
  · **LAS 22 DE LA REVISIÓN MAX QUEDARON CERRADAS.** Falta: choques (15 sin verificar, cuando él diga) y la
    segunda revisión completa al final (recordársela).
+
+### REGLA SUYA DEL 26/09: ÉL NO MARCA NADA A MANO, ME LO DICE Y LO HAGO YO
+Textual: *"no quiero marcar a mano, todo te lo voy a decir para que lo hagas vos. y cuando lleguen quiero que crees
+la publicacion en la web de cyc y en la cuenta que te parezca adecuado, segun rubro de cada cuenta y segun como viene
+en afip"*. O sea: "Ya lo pedí", "Llegó", caja recibida, etc. los hago yo por comando cuando él avisa. Al llegar un
+pedido creo la ficha y elijo la cuenta (rubro primero —perfumes → Adriana—, después el equilibrio de `repartopy`, y la
+actividad de ARCA). **Pendiente de confirmar:** si "crear la publicación" incluye publicar en ML (hasta hoy lo hacía él).
 
 ### EL PUNTAJE DEL MES: REHACERLO, PERO DESPUÉS (26/09/2026)
 Él, con la captura del Puntaje (7,2 · "Buen mes"): *"no veo cuál es el objetivo de ganancia de CYC y para mí es medio
