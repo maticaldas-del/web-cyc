@@ -348,8 +348,10 @@ precios-decisión 3.
    `margenAlDia` saltea cerradas · caja de publicaciones pausadas no cuenta como ganar · ritmo después de
    reponer suma los dos tramos · Puntaje con su meta real · Gastos fijos sin mercadería · "nunca más" de
    candidatos pide 4 seguidas.
- · **QUEDAN 5 PARA DECIDIR CON ÉL, de a una:** (1) almacenamiento de Full contado dos veces (ML_EXTRA_PCT y
-   el gasto "Cargos de Full") — **se le presentó** · (2) la canasta de reposición de Paraguay no tiene "Ya lo
+ · **QUEDAN 5 PARA DECIDIR CON ÉL, de a una:** (1) almacenamiento de Full contado dos veces — **HECHO el 26/09,
+   eligió la (a) (v20.55 · `cyc-v333`):** `ML_EXTRA_PCT` = sólo percepciones medidas en agosto (Adriana 3,80 · Luciana
+   4,01 · Ayelen 5,99 · Matías 3,40), en index.html y sync.mjs (las dos copias `MLX` sueltas del robot ahora usan la
+   tabla); los cargos de Full (almacenamiento, stock antiguo, retiro, multas) van SÓLO como gasto del mes · (2) la canasta de reposición de Paraguay no tiene "Ya lo
    pedí" y no cuenta en camino · (3) una caja marcada A MANO se come las entradas de la caja siguiente del
    mismo producto · (4) una caja nueva se marca con la mercadería de una vieja abierta · (5) Pedidos no
    vuelve a pedir un color agotado hace 30+ días si otros colores venden.
