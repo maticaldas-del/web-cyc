@@ -375,6 +375,20 @@ disparar `ciclo` a mano. Al llegar un
 pedido creo la ficha y elijo la cuenta (rubro primero —perfumes → Adriana—, después el equilibrio de `repartopy`, y la
 actividad de ARCA). **Confirmado por él:** *"solo armar la publicacion en cyc. ml la hago yo"* — yo creo la ficha y la vinculo; en ML publica él.
 
+### 26/09 A LA TARDE: EL PEDIDO DEL 21/09 LLEGÓ, FICHAS Y VÍNCULOS HECHOS
+ · `pyped:llego:py20260921:go`: 12 fichas creadas (costo = precio pagado × 1,17) y pedido marcado llegado.
+   Oficina cargada con las unidades del pedido (2 c/u, Sennheiser 1).
+ · Ayelen (publicaciones que creó él, todas PAUSADAS, sin stock en Full todavía): microSD Pokémon
+   `MLA3998158816`, EX15AP negro `MLA3998210018`, EX15AP blanco `MLA3998210020`, Corsair `MLA3998036656`,
+   ZX310 `MLA3998159220`, TP-Link `MLA3998036670`, Piedra Gua Sha `MLA2128197015` (ficha "sola", no el Kit:
+   el alta por título la mandaba al Kit). Sin publicación: EX15LP blanco y Sennheiser → `pasara:ayelen`.
+   Los 4 perfumes → `pasara:adriana`. Dos Linternas COB + encendedor de Ayelen (`MLA3998033920`,
+   `MLA2128209177`) NO son de este pedido y no tienen ficha: falta que él diga el costo.
+ · **`always()` EN UN JOB LO HACE INCANCELABLE**: el job `ciclo` trabó los comandos de ml-sync hasta 6 h.
+   Pasó a `!cancelled()`. La corrida trabada (36253553999) termina sola ~21:35 UTC.
+ · **`ml-consulta.yml`** (nuevo): corre un comando (`comando` = lo mismo que billing_probe) SIN el candado
+   del ciclo. Para consultas y escrituras chicas (vincular, ofi, pasara); lo grande va por ml-sync.
+
 ### EL CARTEL DE LA REVISIÓN LO MANEJO YO (26/09/2026, v20.58 · `cyc-v336`)
 Él: *"quiero que manejes vos eso de revision del panel, que me marque lo que realmente falte (…) y vos lo marcas
 como hecho cuando se termine de resolver TODO"*. El cartel de Inicio sale de `REV_PENDIENTE` y `REV_HECHAS` en
