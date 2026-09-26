@@ -2329,7 +2329,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='20.55';
+const APP_VERSION='20.56';
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
 // muestre la versión y la fecha de actualización y que tenga un desplegable predeterminado cerrado".
 // Y el mismo día: "que ponga fecha de cada modificación y haya una barrita para scrollear y que
@@ -2340,6 +2340,8 @@ const APP_VERSION='20.55';
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'20.56',f:'26/09/2026',h:'12:22',c:[
+    {n:3,t:'Paraguay: la canasta de reposición tiene su botón "✅ Ya lo pedí". Lo pagado queda "en camino" (el patrimonio no baja durante el viaje) y la canasta deja de pedir lo que ya viaja. Al tocar "Ya llegó" no crea fichas: te recuerda contarlo en la oficina.'}]},
   {v:'20.55',f:'26/09/2026',h:'12:19',c:[
     {n:3,t:'Impuestos de ML: el % que se descuenta en cada venta ahora es sólo las percepciones de IIBB medidas (Adriana 3,80 · Luciana 4,01 · Ayelen 5,99 · Matías 3,40). Los cargos de Full (almacenamiento, stock antiguo, cajas mal mandadas) van sólo como gasto del mes: antes se contaban dos veces.'}]},
   {v:'20.54',f:'26/09/2026',h:'01:39',c:[
@@ -10248,6 +10250,19 @@ async function pyPedidoHecho(){
 // se dice, porque un producto sin costo se ve como si fuera todo ganancia.
 async function pyPedidoLlego(id){
   const c=(state.compraspy||{})[id];if(!c)return;
+  if(c.tipo==='repo'){
+    // Reposición: los productos YA tienen ficha. No se crea nada; sólo se cierra y se recuerda
+    // contar en la oficina (si no, esas unidades desaparecen del patrimonio hasta contarlas).
+    if(!confirm(`Marcar como LLEGADA la reposición del ${c.fecha}\n\n${c.productos||0} producto(s) · ${c.unidades||0} u.\n\nSale de "En camino". Después contalas en Mi oficina → Contar lo que hay: hasta que las cuentes no suman en el patrimonio.\n\nNo crea fichas: ya las tienen.`))return;
+    const hoyR=new Date(Date.now()-3*3600e3).toISOString().slice(0,10);
+    await fbSet('compraspy/'+id+'/estado','llego');
+    await fbSet('compraspy/'+id+'/fechaLlego',hoyR);
+    c.estado='llego';c.fechaLlego=hoyR;
+    await log('Reposición de Paraguay llegada: '+id);
+    renderPedidos();
+    alert('Llegó ✓\n\nAhora contá estas unidades en Mi oficina:\n'+(c.items||[]).map(it=>'· '+it.u+' u. '+(it.nom||'')).join('\n'));
+    return;
+  }
   const items=(c.items||[]).filter(x=>x&&x.id);
   // Qué va a pasar con cada uno, ANTES de preguntar: el cartel tiene que decir lo que va a hacer.
   // Los datos salen del candidato si sigue vivo y, si venció a los 45 días, del propio pedido —
@@ -10390,8 +10405,9 @@ function pyPedidoDetalleHTML(c){
     </div>
   </div>`;
 }
-function pyEnCaminoHTML(){
-  const todas=pyCompras();
+function pyEnCaminoHTML(tipo){
+  // 'repo' = reposición (pestaña Productos probados) · si no, los pedidos de nuevos.
+  const todas=pyCompras().filter(c=>tipo==='repo'?c.tipo==='repo':c.tipo!=='repo');
   const camino=todas.filter(c=>c.estado==='camino');
   const llegados=todas.filter(c=>c.estado!=='camino').slice(0,6);
   if(!camino.length&&!llegados.length)return '';
@@ -10403,7 +10419,7 @@ function pyEnCaminoHTML(){
     return `<details style="margin-bottom:7px;background:var(--surface);border:1px solid ${enCamino?(tarde?'var(--amber)':'rgba(56,189,248,.35)'):'var(--border)'};border-radius:9px">
       <summary style="cursor:pointer;padding:9px 11px;display:flex;align-items:center;gap:9px;flex-wrap:wrap;list-style:none">
         <span style="font-size:.95rem">${enCamino?'🚚':'📦'}</span>
-        <span style="font-size:.72rem;font-weight:700">Pedido del ${c.fecha}</span>
+        <span style="font-size:.72rem;font-weight:700">${c.tipo==='repo'?'Reposición':'Pedido'} del ${c.fecha}</span>
         <span style="font-size:.64rem;color:var(--muted)">${c.productos||0} producto${c.productos===1?'':'s'} · ${c.unidades||0} u. · US$ ${puesto.toFixed(2)} puesto</span>
         <span style="margin-left:auto;font-size:.62rem;color:${enCamino?(tarde?'var(--amber)':'#38bdf8'):'var(--green)'};font-weight:700">
           ${enCamino?`en camino · hace ${dias} d${tarde?' · ya se pasó':''}`:c.estado==='llego'?`llegó${c.fechaLlego?' el '+c.fechaLlego:''}`:'historial · cargado por chat'}
@@ -10414,7 +10430,7 @@ function pyEnCaminoHTML(){
     </details>`;
   };
   return `<div style="margin:14px 0 4px">
-    ${camino.length?`<div style="font-size:.7rem;font-weight:700;margin-bottom:6px">🚚 Pedidos en camino <span style="font-weight:400;color:var(--muted);font-size:.9em">· tocá uno para ver cómo fue</span></div>
+    ${camino.length?`<div style="font-size:.7rem;font-weight:700;margin-bottom:6px">🚚 ${tipo==='repo'?'Reposición en camino':'Pedidos en camino'} <span style="font-weight:400;color:var(--muted);font-size:.9em">· tocá uno para ver cómo fue</span></div>
       ${camino.map(c=>tarjeta(c,true)).join('')}`:''}
     ${llegados.length?`<details style="margin-top:6px"><summary style="cursor:pointer;font-size:.64rem;color:var(--muted)">📦 Pedidos que ya llegaron o de historial (${llegados.length})</summary>
       <div style="margin-top:6px">${llegados.map(c=>tarjeta(c,false)).join('')}</div></details>`:''}
@@ -10938,8 +10954,20 @@ async function candCrearFicha(id){
   await log('Ficha nueva desde Para probar: '+r.p.name+' · US$'+puesto);
   renderPedidos();toast('Ficha creada ✓ · cargale el envío y las medidas cuando las tengas');
 }
+// Unidades de reposición que YA viajan (decisión 2 de 5, 26/09/2026, opción a): lo pedido con el
+// "Ya lo pedí" de la canasta queda en `compraspy` en camino. Sin restarlo, la canasta de mañana
+// pediría otra vez lo mismo, porque el stock recién sube cuando llega y se cuenta en la oficina.
+function pyRepoEnCamino(){
+  const m={};
+  for(const c of Object.values(state.compraspy||{})){
+    if(!c||c.estado!=='camino')continue;
+    for(const it of (c.items||[]))if(it&&it.prodId)m[it.prodId]=(m[it.prodId]||0)+(parseInt(it.u)||0);
+  }
+  return m;
+}
 function pyCanasta(){
   const sin=state.pySinStock||{};
+  const _viaja=pyRepoEnCamino();
   const filas=((state.pedidos_py)||[]).filter(x=>!esPedidoPaulvic(x)).map(ped=>{
     const pr=(state.products||[]).find(x=>x.id===ped.prodId)||prodByName(ped.producto);
     // EL COSTO ES EL DE COMPRARLO HOY (revisión max (rev4)): precio de Paraguay de hoy + recargo,
@@ -10947,7 +10975,8 @@ function pyCanasta(){
     // "llegaste a los US$ 1.000" y a precio de hoy el pedido se pasaba. Sin precio de Paraguay
     // cargado se usa lo que pagaste y el renglón lo dice en ámbar. No toca el costo de la ficha.
     const _nuHoy=pr?(parseFloat(pr.nisseiUSD)||0):0;
-    const u=ped.cantidad||0, cu=_nuHoy>0?Math.round(_nuHoy*RECARGO_PY*100)/100:(pr?(costUSDof(pr)||0):0);
+    const _vj=_viaja[ped.prodId]||0;
+    const u=Math.max(0,(ped.cantidad||0)-_vj), cu=_nuHoy>0?Math.round(_nuHoy*RECARGO_PY*100)/100:(pr?(costUSDof(pr)||0):0);
     const sinHoy=!(_nuHoy>0);
     const destraba=(ped.riesgoComprar!=null?ped.riesgoComprar:ped.riesgo)||0;
     const total=cu*u;
@@ -10957,7 +10986,7 @@ function pyCanasta(){
     // código equivocado no se nota acá, se nota cuando llega otra cosa a los 7 días, adentro de
     // un pedido de US$1.000 que no se puede rehacer hasta que llegue. Sin código, el renglón lo
     // dice en ámbar y queda afuera del mensaje.
-    return{ped,u,cu,sinHoy,destraba,total,porDolar:total>0?destraba/total:0,sinStock:!!sin[ped.prodId],
+    return{ped,u,cu,sinHoy,viaja:_vj,nu:_nuHoy,destraba,total,porDolar:total>0?destraba/total:0,sinStock:!!sin[ped.prodId],
       gratis:!!(pr&&pr.gratisViaje),cod:(pr&&pr.codPy)?String(pr.codPy).trim():''};
   }).filter(x=>x.u>0&&x.cu>0);
   // Lo que el mayorista no tenía sale del reparto pero NO se esconde: se muestra abajo, en gris.
@@ -11014,6 +11043,49 @@ async function pyVolvioATener(pid){
 // EL BOTÓN DICE LO QUE HACE. Antes se llamaba "Empezar una canasta nueva" y lo que hacía era
 // borrar todas las marcas de "no había" — dos cosas distintas con un nombre solo. Ahora dice que
 // borra las marcas, que es lo único que toca.
+// ── "YA LO PEDÍ" DE LA CANASTA DE REPOSICIÓN (decisión 2 de 5, 26/09/2026, opción a) ─────────
+// Antes sólo existía en "Productos nuevos": el día que se pagaba una reposición, la plata salía
+// del Arqueo y la mercadería no aparecía en ningún lado hasta contarla en la oficina (el
+// patrimonio bajaba ~US$1.170 de mentira durante el viaje). Ahora queda en `compraspy` como
+// `tipo:'repo'`, en camino, con el prodId de cada renglón. Al llegar NO se crean fichas (ya las
+// tienen): sólo se cierra y se recuerda contarlo en la oficina.
+// Id propio (`pyr`+fecha) para no mezclarse con el pedido de nuevos del mismo día.
+async function pyCanastaYaLoPedi(){
+  const c=pyCanasta();
+  const filas=[...(c.gratis||[]),...c.filas].filter(f=>f.lleva>0);
+  if(!filas.length){toast('La canasta está vacía','err');return;}
+  const hoy=new Date(Date.now()-3*3600e3).toISOString().slice(0,10);
+  const id='pyr'+hoy.replace(/-/g,'');
+  let prev=(state.compraspy||{})[id]||null;
+  try{if(db){const s=await db.ref('cyc/compraspy/'+id).once('value');prev=s.val()||null;}}catch(e){}
+  if(prev&&(prev.estado!=='camino'||(prev.pagos&&Number(prev.pagos.mercaderia)>0))){
+    alert(`Ya hay una reposición con la fecha de hoy (${hoy}) ${prev.estado!=='camino'?'marcada como llegada':'con los pesos ya cargados'}.\n\nNo la piso: registrá ésta mañana o pasámela por el chat.`);return;}
+  const items=filas.map(f=>{
+    // Precio CRUDO (sin el 17%): el de Paraguay de hoy si está, si no lo pagado ÷ recargo.
+    const usd=f.nu>0?f.nu:Math.round(f.cu/RECARGO_PY*100)/100;
+    return{prodId:f.ped.prodId,nom:String(f.ped.producto||'').slice(0,120),cod:f.cod||'',u:f.lleva,usd};
+  });
+  const crudo=items.reduce((a,x)=>a+x.usd*x.u,0), uds=items.reduce((a,x)=>a+x.u,0);
+  if(!confirm(`Marcar la REPOSICIÓN como pedida\n\n${items.length} producto(s) · ${uds} unidad(es) · US$ ${crudo.toFixed(2)} crudos\n\n`
+    +(prev?`⚠️ Ya hay una reposición de hoy en camino: ésta se SUMA a ésa.\n\n`:'')
+    +`Pasa a "En camino": el patrimonio la cuenta mientras viaja y la canasta deja de pedirla. Cuando llegue tocás "Ya llegó" y la contás en la oficina.`))return;
+  if(prev){
+    const its=(Array.isArray(prev.items)?prev.items:[]).map(x=>({...x}));
+    for(const it of items){const o=its.find(x=>x&&x.prodId===it.prodId);if(o)o.u=(parseInt(o.u)||0)+it.u;else its.push(it);}
+    const upd={items:its,usdCrudo:Math.round(((parseFloat(prev.usdCrudo)||0)+crudo)*100)/100,productos:its.length,unidades:(parseInt(prev.unidades)||0)+uds};
+    const up={};for(const k in upd)up['compraspy/'+id+'/'+k]=upd[k];
+    await fbUpdate(up);
+    state.compraspy=state.compraspy||{};state.compraspy[id]={...prev,...upd};
+  } else {
+    const rec={fecha:hoy,ts:Date.now(),estado:'camino',origen:'panel',tipo:'repo',
+      usdCrudo:Math.round(crudo*100)/100,recargo:RECARGO_PY,tcPedido:curTC()||null,
+      productos:items.length,unidades:uds,items};
+    await fbSet('compraspy/'+id,rec);
+    state.compraspy=state.compraspy||{};state.compraspy[id]=rec;
+  }
+  await log('Reposición a Paraguay marcada como pedida: '+id+' · US$'+crudo.toFixed(2));
+  renderPedidos();toast(prev?'Sumado a la reposición de hoy ✓':'Reposición en camino ✓');
+}
 async function pyCanastaReset(){
   const n=Object.keys(state.pySinStock||{}).length;
   if(!n){toast('No hay ninguno marcado');return;}
@@ -11058,6 +11130,7 @@ function pyCanastaHTML(){
       :`Faltan <strong style="color:var(--amber)">US$ ${Math.round(c.falta)}</strong>${tc?' ('+fmt(Math.round(c.falta*tc))+')':''} para llegar a los US$ ${c.tope}. Si no llegás con esta lista, agregá de lo de más arriba.`}</div>
     ${pyModo==='viaje'&&c.gratis.length?`<div style="font-size:.62rem;color:var(--green);margin-bottom:4px">✈️ ${c.gratis.length} producto(s) viajan GRATIS y no gastan del cupo (US$ ${Math.round(c.gratisUSD)} que no se descuentan).</div>`:''}
     ${pyModo==='viaje'&&!c.gratis.length?`<div style="font-size:.6rem;color:var(--muted);margin-bottom:4px">Ningún producto está marcado como "viaja gratis". Se marcan con el comando <strong>celuviaje</strong>.</div>`:''}
+    ${(()=>{const v=Object.values(pyRepoEnCamino()).reduce((a,x)=>a+x,0);return v?`<div style="font-size:.6rem;color:#38bdf8;margin-bottom:4px">🚚 ${v} u. de reposición ya viajan y se descontaron de esta canasta.</div>`:'';})()}
     <div style="font-size:.58rem;color:var(--muted);margin-bottom:6px">Con esta canasta destrabás <strong style="color:var(--green)">${fmt(Math.round(c.destrabado))}</strong> por mes. Se probaron tres formas de armarla y ganó <em>${c.criterio}</em>.</div>
     ${c.gratis&&c.gratis.length?`<div style="font-size:.6rem;color:var(--green);margin-top:8px">Viajan gratis — no gastan del cupo:</div>`+c.gratis.map(f=>fila(f,false)).join(''):''}
     ${c.filas.filter(f=>f.lleva>0).length?`<div style="font-size:.6rem;color:var(--muted);margin-top:8px">${pyModo==='viaje'?'Con los US$ '+c.tope+' del viaje:':'En este envío:'}</div>`:''}
@@ -11080,6 +11153,7 @@ function pyCanastaHTML(){
       </div>`;
     })()}
     <div style="margin-top:10px;display:flex;gap:8px;flex-wrap:wrap;align-items:center">
+      ${[...(c.gratis||[]),...c.filas].some(f=>f.lleva>0)?`<button class="btn btn-add" style="font-size:.64rem;padding:5px 12px" onclick="pyCanastaYaLoPedi()" title="Cuando ya pagaste esta canasta: pasa a En camino, el patrimonio la cuenta mientras viaja y la canasta deja de pedirla.">✅ Ya lo pedí</button>`:''}
       <button class="btn" style="font-size:.6rem;padding:4px 10px" onclick="pyCanastaReset()" title="Saca la marca de todos los que están como que Nissei no tiene, y vuelven al reparto.">Nissei volvió a tener todo</button>
       <span style="font-size:.58rem;color:var(--muted)">Marcá lo que no había y la plata se reparte sola entre lo que sigue.</span>
     </div>
@@ -13125,7 +13199,7 @@ function renderPedidos(){
       ${_tab('probados','✅ Productos probados','Lo que YA vendés: cuánto hay que reponer para no quedarte sin stock, y lo que dejó de convenir al precio de Paraguay de hoy.')}
       ${_tab('nuevos','🆕 Productos nuevos','Lo que todavía NO vendés: los candidatos que trae el chat de Paraguay y el armado de ese pedido.')}
     </div>`;
-    el.innerHTML=_tabs+(pyVista==='nuevos'?candidatosHTML():(pyCanastaHTML()+el.innerHTML+embudoHTML()));
+    el.innerHTML=_tabs+(pyVista==='nuevos'?candidatosHTML():(pyEnCaminoHTML('repo')+pyCanastaHTML()+el.innerHTML+embudoHTML()));
   }
 }
 
