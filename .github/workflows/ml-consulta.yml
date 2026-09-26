@@ -15,8 +15,9 @@ on:
         required: true
         default: ''
 
+# Sin candado entre consultas: con uno solo, GitHub deja UNA en espera y descarta la anterior.
 concurrency:
-  group: ml-consulta
+  group: ml-consulta-${{ github.run_id }}
 
 jobs:
   consulta:
