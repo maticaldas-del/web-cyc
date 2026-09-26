@@ -31566,6 +31566,12 @@ async function main() {
       packOrders.get(pk).push(o);
     }
     const packPlata = new Map(); // pack_id -> { net, fee, env, gross }
+    // Paquetes de 2+ órdenes que esta vuelta NO se pudieron armar (algún pago no contestó o no
+    // está liquidado). Revisión max #5 (26/09/2026, eligió la a): ninguna orden de esos paquetes usa
+    // su pago suelto — con el pago suelto una carga el envío y las cuotas de todo el carrito y queda
+    // "perdiendo" (el bug de los Ferrari). Se conserva lo guardado o, si es la primera vez, queda
+    // ESTIMADA y marcada, sin disparar subas, hasta que el paquete cierre o la relea la noche.
+    const packFallo = new Set();
     for (const [pk, list] of packOrders) {
       if (list.length < 2) continue;   // paquete de un solo producto: no hay nada que repartir
       let net = 0, fee = 0, env = 0, gross = 0, ok = true;
@@ -31578,6 +31584,7 @@ async function main() {
         net += n; fee += fo.mlfee || 0; env += fo.envio || 0;
         gross += (o.order_items || []).reduce((s, it) => s + (it.unit_price || 0) * (it.quantity || 0), 0);
       }
+      if (!ok || !(gross > 0)) packFallo.add(pk);
       if (ok && gross > 0) {
         packPlata.set(pk, { net, fee, env, gross });
         if (!DRY) console.log(`  · venta #${pk}: ${list.length} órdenes en un mismo paquete → el neto ($${Math.round(net)}) se reparte entre los ${list.length} productos`);
@@ -31657,7 +31664,10 @@ async function main() {
         if (!netFetched) {
           const fo = {};
           if (pack) { orderNetAmt = pack.net; orderFeeAmt = pack.fee; orderEnvAmt = pack.env; } // ya sumado arriba para todo el paquete
-          else { orderNetAmt = await orderNet(o, t.access_token, fo); orderFeeAmt = fo.mlfee || 0; orderEnvAmt = fo.envio || 0; }
+          else if (o.pack_id && packFallo.has(String(o.pack_id))) {
+            orderNetAmt = null;   // carrito sin cerrar: no se usa el pago suelto (queda lo guardado o estimada)
+            if (!DRY) console.log(`  · venta ${o.id}: su carrito #${o.pack_id} no se pudo leer entero esta vuelta — no la reparto con su pago suelto`);
+          } else { orderNetAmt = await orderNet(o, t.access_token, fo); orderFeeAmt = fo.mlfee || 0; orderEnvAmt = fo.envio || 0; }
           netFetched = true;
           // Si ML todavía no descontó lo suyo, se avisa: la venta queda con el neto estimado y se
           // corrige sola en cuanto el pago se liquide (la ventana de sincronización son 2 días).
@@ -31739,7 +31749,7 @@ async function main() {
         // Solo ventas recientes (12 h), en corridas normales (no backfill) y una
         // sola vez por venta.
         const recient = (Date.now() - obj.ts) < 12 * 3600e3;
-        if (!DRY && bfd === 0 && recient && costo > 0 && neto > 0 && !alerted[id] && !_aMano) {
+        if (!DRY && bfd === 0 && recient && costo > 0 && neto > 0 && !alerted[id] && !_aMano && !obj.netoEstimado) {
           // Margen REAL = (neto − costo mercadería − cargo ML) ÷ (costo mercadería + cargo ML), igual
           // que la app. El cargo ML es un % del PRECIO, así que al subir el precio ×k también sube ×k:
           // por eso el multiplicador sale de   k = costo × (1+meta) / (neto − cargoML × (1+meta)).
