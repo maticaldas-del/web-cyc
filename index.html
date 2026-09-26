@@ -2329,7 +2329,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='20.58';
+const APP_VERSION='20.59';
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
 // muestre la versión y la fecha de actualización y que tenga un desplegable predeterminado cerrado".
 // Y el mismo día: "que ponga fecha de cada modificación y haya una barrita para scrollear y que
@@ -2340,6 +2340,8 @@ const APP_VERSION='20.58';
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'20.59',f:'26/09/2026',h:'12:49',c:[
+    {n:1,t:'Revisión del panel: choques y fallas mudas ya estaban verificadas y arregladas (el cartel las mostraba por una nota vieja). Quedan ideas nuevas y la revisión completa final.'}]},
   {v:'20.58',f:'26/09/2026',h:'12:45',c:[
     {n:1,t:'Inicio: el cartel de la revisión del panel lo maneja Claude. Muestra lo que de verdad falta revisar y se marca como hecho sólo cuando está todo resuelto. Ya no tiene el botón "la hice".'}]},
   {v:'20.57',f:'26/09/2026',h:'12:40',c:[
@@ -3169,12 +3171,13 @@ const REV_CADA_DIAS=7;
 //   · REV_HECHAS    → última vez que cada etapa quedó resuelta. Sin pendientes, el cartel pide la
 //                     etapa más vieja cuando pasaron REV_CADA_DIAS desde la última.
 const REV_PENDIENTE=[
-  {t:'Choques: verificar las 15 sospechas que quedaron',que:'la web y el robot escribiendo lo mismo, corridas a la vez · la revisión se cortó dos veces por el límite de uso',pedi:'choques'},
-  {t:'Fallas mudas y privacidad: terminarla',que:'cuando ML no contesta y se guarda como dato; datos de terceros en los registros públicos · se revisó a medias',pedi:'etapa 5'},
   {t:'Ideas nuevas: no se hizo nunca',que:'datos que ML ya da y no usamos, cosas que hacés a mano y se pueden automatizar (sólo propone)',pedi:'etapa 6'},
   {t:'La segunda revisión completa, al final',que:'la que pediste dejar para cuando esté todo lo demás · va última',pedi:'revisión completa',ultima:true},
 ];
-const REV_HECHAS={1:'2026-09-26',2:'2026-09-26',3:'2026-09-26'};
+// Choques (4) y fallas mudas/privacidad (5): verificadas las 15 del 26/09 de madrugada (rev4, lotes 6-8) y
+// todas arregladas o ya estaban; antes pasaron por la 2ª vuelta del 25/09. El cartel decía "15 sin verificar"
+// por una nota vieja.
+const REV_HECHAS={1:'2026-09-26',2:'2026-09-26',3:'2026-09-26',4:'2026-09-26',5:'2026-09-26'};
 function _revFecha(iso){const d=new Date(iso+'T12:00:00');return isNaN(d)?null:d;}
 function _revFmt(d){return ['dom','lun','mar','mié','jue','vie','sáb'][d.getDay()]+' '+String(d.getDate()).padStart(2,'0')+'/'+String(d.getMonth()+1).padStart(2,'0');}
 function revProxima(){
