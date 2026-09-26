@@ -4692,6 +4692,14 @@ const CAND_TOPE_USD = 250;      // suyo: un producto caro se come el pedido de U
 const CAND_PISO_PCT = 25;       // suyo: "el % sano es de 25 hacia arriba"
 const CAND_ENVIO_ARRIBA = 6190; // el peor envío de Full medido en ventas reales, arriba de la barrera
 const CAND_MAX_ML = 40;         // tope de consultas a ML por vuelta (ver abajo)
+// ── LOS QUE DAN SE VUELVEN A MEDIR TODOS LOS DÍAS (26/09/2026) ─────────────────────────
+// Pedido suyo: *"el chat carga productos y precios y el bot en la nube todos los días busca si
+// los precios dan con ML"*. Hasta hoy el que ya daba NO se volvía a medir nunca (sólo al subir
+// CAND_CALC_VER): el precio de ML de su tarjeta envejecía, y si el chat le cambiaba el precio de
+// Paraguay el margen seguía siendo el del precio viejo. Ahora la cuenta guardada sirve sólo si es
+// de las últimas 20 h Y con el mismo precio puesto; si no, se vuelve a preguntar a ML. Corre dos
+// veces por día (00:07 y 12:07) de a 40, empezando por la medición más vieja.
+const CAND_FRESCO_MS = 20 * 3600 * 1000;
 // ── EL NÚMERO QUE OBLIGA A VOLVER A MEDIR CUANDO SE AGREGA UN DATO (19/09/2026) ───────────
 // **SUBILO DE 1 EN 1 CADA VEZ QUE AGREGUES UN CAMPO NUEVO AL `db.patch` de más abajo.**
 // Los candidatos ya medidos se saltean para no gastar consultas a ML, y eso está bien — pero
@@ -4931,6 +4939,8 @@ function c_link(c) {
 async function correrCandidatos(db, products, labels, accounts, soloPrueba, prueba) {
   const cands = (await db.get('cyc/candidatos_py')) || {};
   const entradas = Object.entries(cands).filter(([, c]) => c && c.nombre);
+  // La medición más vieja primero: con el tope de consultas, así ninguno se queda sin medir días.
+  entradas.sort((x, y) => (Number(x[1].calcTs) || 0) - (Number(y[1].calcTs) || 0));
   if (prueba) [].concat(prueba).forEach((x, i) => entradas.unshift(['__prueba' + i + '__', x]));
   const fin = (await db.get('cyc/finanzas')) || {};
   const tc = parseFloat(fin.tipo_cambio) || 1500;
@@ -5101,8 +5111,11 @@ async function correrCandidatos(db, products, labels, accounts, soloPrueba, prue
     // verdad, y ahí sí el bloque de abajo compara contra `antesM` y descarta si vuelve a dar
     // abajo. Cuesta una consulta más por candidato flojo, una sola vez, y es el lado seguro:
     // lo que BORRA algo tiene que ser más exigente que lo que lo muestra.
-    if (c.margen != null && isFinite(c.margen) && Number(c.calcVer) === CAND_CALC_VER
-        && Number(c.margen) >= CAND_PISO_PCT) {
+    const _cacheOk = c.margen != null && isFinite(c.margen) && Number(c.calcVer) === CAND_CALC_VER
+      && Number(c.margen) >= CAND_PISO_PCT && Math.abs((Number(c.puestoUSD) || 0) - puesto) < 0.01;
+    // Fresca (menos de 20 h) o sin consultas disponibles esta vuelta: se usa la guardada. Vieja o
+    // con el precio de Paraguay cambiado: sigue de largo y se vuelve a medir.
+    if (_cacheOk && (Date.now() - (Number(c.calcTs) || 0) < CAND_FRESCO_MS || consultas >= CAND_MAX_ML)) {
       yaCalc++;
       nuevosQueDan.push({ id, c, margen: Number(c.margen), ganancia: Number(c.ganancia) || 0,
         mlPrecio: Number(c.mlPrecio) || 0, mlTit: c.mlTit || '', puesto,
