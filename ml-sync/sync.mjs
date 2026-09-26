@@ -501,6 +501,8 @@ function pesosArg(txt) {
   return isFinite(n) ? Math.round(n) : 0;
 }
 const UMBRAL_ENVIO_GRATIS = 33000;
+// Revisión max (rev4): copia fresca de cada día de ventas para releer `manualTs` antes de pisar una venta.
+const _manualDiaCache = new Map();
 // UNA COMPRA QUE CRUZA LA BARRERA POR CANTIDAD NO MIDE EL ENVÍO DE UNA VENTA SUELTA (revisión max #4,
 // 26/09/2026, eligió la a). ML mira el total del PEDIDO (unidades × precio, o el carrito entero con
 // el mismo número de venta), no el precio de una unidad: 2 u. a $25.000 son $50.000 y ML le cobra el
@@ -664,6 +666,7 @@ async function cajasQueLlegaron(db, accounts, labels, products, DRY) {
     // se avisa en el log para arreglarlo con `fijarvar`.
     const invRenglon = {};
     const conDeposito = new Set();           // productos con al menos un depósito de Full leído en esta cuenta
+    const conDepVar = new Set();             // revisión max (rev4): lo mismo por renglón "cuenta|producto|color"
     for (let k = 0; k < mlas.length; k += 20) {
       let arr;
       const tanda = mlas.slice(k, k + 20);
@@ -697,6 +700,7 @@ async function cajasQueLlegaron(db, accounts, labels, products, DRY) {
           pares.push({ inv: b.inventory_id, va: links[mla].variant || varianteDeTitulo(b.title || links[mla].title || '', p.variantes) });
         }
         if (pares.length) conDeposito.add(p.id);
+        for (const par of pares) conDepVar.add(kR(cta, p.id, par.va));
         for (const par of pares) {
           mirados++;
           const kPar = kR(cta, p.id, par.va);
@@ -866,6 +870,23 @@ async function cajasQueLlegaron(db, accounts, labels, products, DRY) {
       if (conDeposito.has(pid) || sinLeerProd[cta + '|' + pid]) continue;
       sinLeerProd[cta + '|' + pid] = true;
       console.log(`⚠️ ${cta} · ${(pIdx[pid] && pIdx[pid].name) || pid}: no tiene ninguna publicación de Full vinculada en esta cuenta → sus renglones quedan sin leer (la caja no se marca). Vinculá la publicación.`);
+    }
+    // ── LO MISMO POR COLOR (revisión max (rev4)) ── El freno de arriba es por PRODUCTO: si el
+    // producto tiene depósito pero ninguna publicación nombra ESTE color (la 5ª del Centímetro, cuyo
+    // título no dice el color), sus entradas caen en el renglón sin color y el del color leía "0
+    // recibidas" como dato → la caja se marcaba con faltantes que sí están en Full. Ese renglón queda
+    // "sin leer" (la caja se queda abierta) y se avisa para fijar el color.
+    const avisadoVar = new Set();
+    for (const ab of abiertas) {
+      if (ab.e.cuenta !== cta) continue;
+      for (const it of ab.items) {
+        const va = it.variante || '';
+        if (!va || !conDeposito.has(it.prodId)) continue;
+        const kV = kR(cta, it.prodId, va);
+        if (conDepVar.has(kV) || sinLeer[kV]) continue;
+        sinLeer[kV] = true;
+        if (!avisadoVar.has(kV)) { avisadoVar.add(kV); console.log(`⚠️ ${cta} · ${(pIdx[it.prodId] && pIdx[it.prodId].name) || it.prodId} · ${va}: ninguna publicación de Full de esta cuenta nombra ese color → el renglón queda sin leer (la caja no se marca). Fijá el color con fijarvar.`); }
+      }
     }
   }
   // Repartir lo recibido entre las cajas abiertas, la más vieja primero.
@@ -1037,33 +1058,60 @@ async function cajasQueLlegaron(db, accounts, labels, products, DRY) {
     }
   } catch (err) { console.log('⚠️ no se pudo anotar lo que ya entró de las cajas abiertas: ' + (err && err.message)); }
   if (!marcadas.length) return { marcadas: [], mirados, msg: null, detalle, tiposVistos, opsTotal, fallos, erroresOp, sinCantidad, recEnt, enProceso, abiertas: abiertas.length, descontadas };
+  // Las que de verdad quedaron escritas (en prueba, todas): de ésas sale el mensaje.
+  const hechas = DRY ? marcadas.slice() : [];
   if (!DRY) {
     // Se escribe la lista COMPLETA de cajas del envío: cajasDet es un array y un patch parcial la
     // rompería, igual que pasa con las variantes de ML.
+    // ── SE RELEE JUSTO ANTES DE ESCRIBIR (revisión max (rev4)) ── La lista salía de la foto leída
+    // al empezar, minutos antes (350 ms por consulta + esperas de 429). Si en ese rato él deshacía,
+    // marcaba, cambiaba el seguimiento o agregaba una caja del mismo envío en la web, el robot se lo
+    // pisaba: una caja deshecha volvía a "en camino" con sus unidades ya de vuelta en la oficina
+    // (contadas dos veces). Ahora cada caja se busca en la lista FRESCA por seguimiento + contenido
+    // (no por posición) y se marca sólo ésa, sobre la lista fresca. Si ya no está, cambió, o ya la
+    // marcaron, no se toca y se dice en el log.
+    const firmaCajaRel = (c) => JSON.stringify(((c && c.items) || []).filter((x) => x && x.prodId && x.u > 0)
+      .map((x) => [String(x.prodId), String(x.variante || ''), Number(x.u) || 0]).sort());
     const porEnvio = {};
-    for (const m of marcadas) (porEnvio[m.id] = porEnvio[m.id] || []).push(m.i);
+    for (const m of marcadas) (porEnvio[m.id] = porEnvio[m.id] || []).push(m);
     const hoy = dayKeyFromISO(new Date().toISOString()).replace(/_/g, '-');
-    for (const [id, idxs] of Object.entries(porEnvio)) {
-      const e = envios[id];
-      const faltaDe = {}, usadasDe = {};
-      for (const m of marcadas) if (m.id === id) { faltaDe[m.i] = m.faltan || null; usadasDe[m.i] = m.usadas || []; }
-      const cajas = (e.cajasDet || []).map((c, i) => idxs.includes(i)
-        ? { ...c, recibida: true, recFecha: hoy, recAuto: true, faltan: faltaDe[i] || null, recUsadas: usadasDe[i] || [] } : c);
-      await db.set('cyc/envios_full/' + id + '/cajasDet', cajas);
+    for (const [id, ms] of Object.entries(porEnvio)) {
+      let fresca;
+      try { fresca = await db.get('cyc/envios_full/' + id + '/cajasDet'); }
+      catch (eR) { console.log(`⚠️ no pude releer las cajas del envío ${id}: no se marca ninguna esta vuelta (${(eR && eR.message) || eR})`); continue; }
+      if (!Array.isArray(fresca)) { console.log(`⚠️ las cajas del envío ${id} ya no están (o cambió su forma): no se toca nada`); continue; }
+      const arr = fresca.slice();
+      const tomadas = new Set(), idxs = [];
+      for (const m of ms) {
+        const tr = String(m.c.track || ''), fi = firmaCajaRel(m.c);
+        const cand = [];
+        arr.forEach((c, j) => { if (c && !tomadas.has(j) && String(c.track || '') === tr && firmaCajaRel(c) === fi) cand.push(j); });
+        const j = cand.includes(m.i) ? m.i : (cand.length === 1 ? cand[0] : -1);
+        const nom = `la caja ${m.i + 1} del envío ${id}${tr ? ' (' + tr + ')' : ''}`;
+        if (j < 0) { console.log(`⚠️ ${nom}: ${cand.length ? 'hay varias iguales' : 'ya no está o la cambiaron en la web'} mientras corría la vuelta → no se marca`); continue; }
+        if (arr[j].recibida) { console.log(`ℹ️ ${nom}: ya estaba marcada (a mano, mientras corría la vuelta) → no se toca`); continue; }
+        tomadas.add(j);
+        arr[j] = { ...arr[j], recibida: true, recFecha: hoy, recAuto: true, faltan: m.faltan || null, recUsadas: m.usadas || [] };
+        idxs.push(j); hechas.push(m);
+      }
+      if (!idxs.length) continue;
+      await db.set('cyc/envios_full/' + id + '/cajasDet', arr);
       // Releído: que la escritura no dé error no prueba que haya quedado.
       const rel = (await db.get('cyc/envios_full/' + id + '/cajasDet')) || [];
       const arrRel = Array.isArray(rel) ? rel : Object.values(rel);
       for (const i of idxs) if (!arrRel[i] || !arrRel[i].recibida) console.log(`⚠️ la caja ${i + 1} del envío ${id} NO quedó marcada`);
     }
   }
-  const det = marcadas.map((m) => {
+  const det = hechas.map((m) => {
     const uF = (m.faltan || []).reduce((a, x) => a + (x.pide - x.llego), 0);
     return `· ${m.e.cuenta} · caja del ${m.fecha}${m.c.track ? ' (' + m.c.track + ')' : ''} · ${m.items.reduce((a, x) => a + x.u, 0)} u.`
       + (uF ? ` — ⚠️ faltaron ${uF} u.` : '');
   }).join('\n');
+  // Cuántas de las escritas se marcaron CON faltantes: sólo ésas se avisan por Telegram (rev4).
+  const conFaltantes = hechas.filter((m) => (m.faltan || []).length).length;
   return {
-    marcadas, mirados, detalle, tiposVistos, opsTotal, fallos, erroresOp, sinCantidad, recEnt, enProceso, abiertas: abiertas.length, descontadas,
-    msg: `📦 <b>${marcadas.length} caja(s) llegaron a Full</b>\n${det}\n\nYa cuentan como stock de la cuenta.`,
+    marcadas, hechas, conFaltantes, mirados, detalle, tiposVistos, opsTotal, fallos, erroresOp, sinCantidad, recEnt, enProceso, abiertas: abiertas.length, descontadas,
+    msg: hechas.length ? `📦 <b>${hechas.length} caja(s) llegaron a Full</b>\n${det}\n\nYa cuentan como stock de la cuenta.` : null,
   };
 }
 
@@ -3609,6 +3657,10 @@ async function margenAlDia(mla, token, que) {
       if (k !== mla) {
         let lk = null; try { lk = await DB_REF.get('cyc/mllinks/' + k); } catch { lk = null; }
         if (!lk || lk.prodId !== pid || lk.ignored) continue;
+        // Revisión max (rev4): tampoco las CERRADAS (o en revisión) que siguen enganchadas: su fila
+        // vieja queda con activa:true para siempre y le ganaba a las vivas. Igual que netoweb, que
+        // sólo mide activas y pausadas. Sin estado guardado se deja como antes.
+        if (lk.status && lk.status !== 'active' && lk.status !== 'paused') continue;
       }
       const c = { ...r, mla: k, neto: Number(r.neto), activa: !!r.activa };
       if (_netoGana(c, win)) win = c;
@@ -4895,7 +4947,9 @@ async function correrCandidatos(db, products, labels, accounts, soloPrueba, prue
       // precio, pasa el tope): esos no cambian solos y quedan.
       const blando = margenHoy != null && isFinite(margenHoy);
       const lejos = blando && margenHoy < (CAND_PISO_PCT - CAND_LEJOS_PTS);
-      const bajas = (Number(c.bajasLejos) || 0) + (lejos ? 1 : 0);
+      // Sólo cuentan las SEGUIDAS (revisión max (rev4)): un descarte cerca del piso vuelve la cuenta
+      // a cero. Antes sólo se borraba al pasar el piso y uno que alternaba 12% y 24% terminaba tachado.
+      const bajas = lejos ? (Number(c.bajasLejos) || 0) + 1 : 0;
       const nunca = blando ? bajas >= CAND_BAJAS_NUNCA : true;
       descartes.push(`${c.nombre} → ${motivo}`
         + (blando && !nunca ? `  (lo vuelvo a medir en ${CAND_REMEDIR_DIAS} días${lejos ? ` · ${bajas} de ${CAND_BAJAS_NUNCA} mediciones muy abajo` : ''})` : '')
@@ -5763,12 +5817,15 @@ async function main() {
       } else {
         let mN = 0, mFact = 0, mGan = 0, mDias = 0, mCancel = 0, mSinN = 0, mSinFact = 0, mFactCon = 0;
         const mProd = {}, mCuenta = {};
+        // revisión max (rev4): las canceladas se cuentan por CANTIDAD. El robot y la web ponen total 0
+        // al cancelar, así que sumar pesos daba siempre 0 y el renglón no salía nunca.
+        const mCancelVentas = new Set();
         for (const [dk, dd] of Object.entries(vp)) {
           if (!dk.startsWith(ym + '_')) continue;
           let huboVenta = false;
           for (const v of Object.values(dd || {})) {
             if (!v) continue;
-            if (v.cancelada) { mCancel += (v.total || 0); continue; }
+            if (v.cancelada) { mCancel += (Number(v.qty) || 0); mCancelVentas.add(`${v.cuenta || '?'}|${v.numVenta || v.saleId || v.id || dk}`); continue; }
             huboVenta = true;
             mN += v.qty || 0;
             mFact += v.total || 0;
@@ -5791,7 +5848,7 @@ async function main() {
           + `Ganancia: <b>${money(Math.round(mGan))}</b> (${margen.toFixed(1)}% del facturado)\n`
           + (mSinN ? `⚠️ ${mSinN} u. sin costo cargado (${money(Math.round(mSinFact))}) no cuentan en la ganancia\n` : '')
           + `Promedio por día: ${money(Math.round(mDias ? mFact / mDias : 0))}\n`
-          + (mCancel ? `Canceladas/devueltas: ${money(Math.round(mCancel))}\n` : '')
+          + (mCancelVentas.size ? `Canceladas/devueltas: ${mCancelVentas.size} venta${mCancelVentas.size === 1 ? '' : 's'} (${mCancel} u.)\n` : '')
           + (cuentas.length ? `\n<b>Por cuenta</b>\n` + cuentas.map(([c, t]) => `· ${c}: ${money(Math.round(t))}`).join('\n') + '\n' : '')
           + (mTop.length ? `\n<b>Los 5 que más ganancia dejaron</b>\n`
             + mTop.map((t, i) => `${i + 1}. ${t[0]}: <b>${money(Math.round(t[1]))}</b>`).join('\n') : '');
@@ -9726,7 +9783,7 @@ async function main() {
         }
       }
       if (!r.marcadas.length) { console.log('\nNinguna caja abierta quedó cubierta por las entradas que informa ML.'); return; }
-      console.log(`\n${APLICAR ? 'MARCADAS' : '(PRUEBA) SE MARCARÍAN'} · ${r.marcadas.length}`);
+      console.log(`\n${APLICAR ? 'MARCADAS' : '(PRUEBA) SE MARCARÍAN'} · ${APLICAR && Array.isArray(r.hechas) ? r.hechas.length + ' de ' + r.marcadas.length + ' (las otras cambiaron en la web mientras corría: ver arriba)' : r.marcadas.length}`);
       for (const m of r.marcadas) {
         const _uF = (m.faltan || []).reduce((a, x) => a + (x.pide - x.llego), 0);
         console.log(`  ${m.e.cuenta.padEnd(8)} · caja del ${m.fecha}${m.c.track ? ' · ' + m.c.track : ''} · ${m.items.reduce((a, x) => a + x.u, 0)} u.${_uF ? '  ⚠️ FALTARON ' + _uF + ' u.' : ''}`);
@@ -10909,6 +10966,7 @@ async function main() {
         const graciaMs = Date.now() - 3 * 3600e3;
         let ventaFacturadaMasVieja = null;
         let noLeidas = 0;
+        const leidasFac = new Set();   // revisión max (rev4): ventas de la ventana que ML SÍ contestó
         for (const o of ords) {
           let doc = null;
           // F8 de la segunda vuelta (25/09/2026): un 429, una caída de ML (5xx) o un corte NO dicen
@@ -10920,6 +10978,7 @@ async function main() {
             const st = (String((e && e.message) || '').match(/^ML GET \S+: (\d{3}) /) || [])[1];
             if (!st || st === '429' || Number(st) >= 500) { noLeidas++; continue; }
           }
+          leidasFac.add(String(o.id));
           const num = doc && (doc.invoice_number != null ? doc.invoice_number : null);
           if (doc && num == null) noSe++;
           if (doc && num != null) {
@@ -10971,6 +11030,25 @@ async function main() {
           if (arranque && v.fecha && v.fecha >= arranque && !reciente) sinReales++;
           else delete sin[oid];   // venta vieja, o de recién: no es un problema, no la guardamos
         }
+        // revisión max (rev4): la lista de "sin factura" NO se rehace sólo con la ventana de estos
+        // días. Antes se pisaba entera y una venta sin factura de hace 4 días desaparecía sola con
+        // `facsync:3`, y la pantalla quedaba en verde. Ahora se arrastra la guardada y una vieja sale
+        // SÓLO si esta vuelta la leyó (y ya no está sin factura), si aparece en alguna factura, si
+        // tiene más de 45 días o si es anterior al arranque. Las que ML no contestó quedan como estaban.
+        let arrastradas = 0;
+        {
+          const sinGuardado = (await db.get('cyc/facturas_sin/' + sid(label))) || {};
+          const facturadasIds = new Set();
+          for (const f of [...Object.values(facs), ...Object.values(yaGuardadas)]) for (const vid of ((f && f.ventas) || [])) facturadasIds.add(String(vid));
+          const limiteSin = Date.now() - 45 * 864e5;
+          for (const [oid, v] of Object.entries(sinGuardado)) {
+            if (sin[oid] || leidasFac.has(oid) || facturadasIds.has(oid)) continue;
+            const fv = (v && v.fecha) || '';
+            if (fv && Date.parse(fv) < limiteSin) continue;
+            if (arranque && fv && fv < arranque) continue;
+            sin[oid] = v; arrastradas++; sinReales++;
+          }
+        }
         arranqueUpd[sid(label)] = arranque;
         facUpd[label] = facs; sinUpd[label] = sin;
         const total = Object.values(facs).reduce((a, f) => a + f.monto, 0);
@@ -10981,7 +11059,7 @@ async function main() {
         console.log(`  Facturas: ${nums.length}${nums.length ? ` (de la ${nums[0]} a la ${nums[nums.length - 1]})` : ''} · facturado ${money(total)}`);
         console.log(`  Empezó a facturar: ${arranque ? arranque.slice(0, 10) : '(todavía no facturó nada)'}`);
         if (huecos.length) console.log(`  ⚠️ FALTAN los números: ${huecos.join(', ')}`);
-        if (sinReales) console.log(`  ⚠️ ${sinReales} venta(s) POSTERIORES a esa fecha SIN factura — hay que mirarlo`);
+        if (sinReales) console.log(`  ⚠️ ${sinReales} venta(s) POSTERIORES a esa fecha SIN factura — hay que mirarlo${arrastradas ? ` (${arrastradas} de corridas anteriores, fuera de esta ventana)` : ''}`);
         else console.log(`  ✓ Ninguna venta quedó sin factura`);
         if (noSe) console.log(`  (${noSe} que ML contestó pero sin número)`);
         if (noLeidas) console.log(`  ❓ ${noLeidas} venta(s) que ML no contestó (429 o error): no se cuentan ni como facturadas ni como sin factura, salen en la próxima corrida`);
@@ -18063,9 +18141,22 @@ async function main() {
           const r = await fetch(`${MP}/v1/account/settlement_report/list`, { headers: H, signal: AbortSignal.timeout(20000) });
           const arr = await r.json();
           if (!r.ok || !Array.isArray(arr)) { console.log(`   ❌ no pude listar los reportes (HTTP ${r.status})`); problemas++; continue; }
-          const u = elegirReporte(arr, { desdeAntesDe: anc.ts });
+          // revisión max (rev4): también un largo mínimo (el MISMO de `saldoml`). Sin eso, con el de 90
+          // días todavía pendiente ganaba el reporte DIARIO del día del ancla, que no trae lo liberado
+          // después de ventas de días anteriores. `elegirReporte` cae al más nuevo si ninguno sirve,
+          // así que acá se vuelve a chequear y, si no cubre o está viejo, no se escribe.
+          const u = elegirReporte(arr, { minDias: 20, desdeAntesDe: anc.ts });
           if (!u) { console.log('   ❌ no hay ningún reporte listo'); problemas++; continue; }
-          arch = u.file_name; desdeRep = new Date(u.begin_date || 0).getTime();
+          const _bRep = new Date(u.begin_date || 0).getTime(), _eRep = new Date(u.end_date || 0).getTime();
+          if (!(Number.isFinite(_bRep) && Number.isFinite(_eRep) && _eRep - _bRep >= 20 * 864e5)) {
+            console.log(`   ❌ el único reporte listo es corto (${String(u.begin_date || '').slice(0, 10)} → ${String(u.end_date || '').slice(0, 10)}): le faltaría lo liberado de días anteriores · no se escribe`);
+            problemas++; continue;
+          }
+          if (Math.round((hoy - _eRep) / 864e5) > 2) {
+            console.log(`   ❌ el reporte llega sólo hasta el ${String(u.end_date || '').slice(0, 10)} (más de 2 días): no se escribe, sale cuando haya uno nuevo`);
+            problemas++; continue;
+          }
+          arch = u.file_name; desdeRep = _bRep;
           console.log(`   tu número es del ${new Date(anc.ts).toISOString().slice(0, 10)} (hace ${diasAnc} días) · el reporte arranca el ${String(u.begin_date || '').slice(0, 10)}`);
         } catch (e) { console.log(`   ❌ ${String(e.message || e).slice(0, 80)}`); problemas++; continue; }
 
@@ -30399,8 +30490,21 @@ async function main() {
       for (const k of Object.keys(byMonth)) byMonth[k] = Math.round(byMonth[k]);
       const totCanc = Object.values(byMonth).reduce((s, v) => s + v, 0);
       if (canc.incompleto) { console.log(`${label}: ⚠️ ML no devolvió la lista entera de canceladas (429 o tope) · NO piso lo guardado, sale en la vuelta siguiente`); continue; }
-      await db.set('cyc/fact_cancel/' + label.toLowerCase(), byMonth);
-      console.log(`${label}: canceladas ${seen.size} · ${Object.keys(byMonth).length} meses · facturado ${money(totCanc)}`);
+      // revisión max (rev4): antes era `db.set` del nodo entero, y todo mes más viejo que la ventana
+      // leída (400 días) DESAPARECÍA — pero la ventana de ARCA mira hasta ~546 días atrás. Ahora se
+      // escriben sólo los meses COMPLETOS del rango (el más viejo viene cortado y se saltea); los
+      // anteriores quedan como estaban. Un mes completo sin canceladas se borra (null), igual que antes.
+      const ymIni = dayKeyFromISO(fromISO).substring(0, 7);
+      const ymHoy = dayKeyFromISO(new Date().toISOString()).substring(0, 7);
+      const updCanc = {};
+      for (let [yy, mm] = ymIni.split('_').map(Number); ; ) {
+        mm++; if (mm > 12) { mm = 1; yy++; }
+        const k = `${yy}_${String(mm).padStart(2, '0')}`;
+        if (k > ymHoy) break;
+        updCanc[k] = byMonth[k] || null;
+      }
+      await db.patch('cyc/fact_cancel/' + label.toLowerCase(), updCanc);
+      console.log(`${label}: canceladas ${seen.size} · ${Object.keys(updCanc).length} meses escritos (desde ${ymIni} en adelante, sin ese) · facturado ${money(totCanc)}`);
     }
     return;
   }
@@ -31065,6 +31169,16 @@ async function main() {
   // el perfume Cabotine de Adriana).
   const pubAlerted = (await db.get('mlapi/pubalert')) || {};
   const pubAlertUpd = {};
+  // Revisión max (rev4): la marca del aviso se guarda EN EL MOMENTO, junto con el estado nuevo de la
+  // publicación, y no al final de la vuelta. Si la vuelta se cortaba en el medio (falla el token de la
+  // cuenta siguiente), el estado ya quedaba guardado y la marca 'pend|…' no: en la vuelta siguiente
+  // ya no era novedad y un aviso que no salió se perdía para siempre. Si esta escritura falla, queda
+  // para el guardado del final, como antes.
+  const anotarPubAlertYa = async (mla, marca) => {
+    pubAlerted[mla] = marca;
+    try { await db.patch('mlapi/pubalert', { [mla]: marca }); delete pubAlertUpd[mla]; }
+    catch { pubAlertUpd[mla] = marca; }
+  };
 
   // config de precios (la editás desde Ajustes en la app): meta, umbral y on/off.
   // ── MONOTRIBUTO ───────────────────────────────────────────────────────────
@@ -31744,7 +31858,21 @@ async function main() {
         // c2 de la segunda vuelta (25/09/2026): una venta que él tocó a mano en la web (editada, o
         // marcada reclamo/cancelada) lleva `manualTs` y NO se reescribe. Antes esta línea la pisaba
         // entera en la vuelta siguiente y la marca duraba 2 minutos. Reactivarla saca la marca.
-        const _aMano = _prevV && Number(_prevV.manualTs) > 0;
+        let _aMano = _prevV && Number(_prevV.manualTs) > 0;
+        // Revisión max (rev4): `_prevV` es la copia leída al EMPEZAR la vuelta. Si él la marcó en la
+        // web mientras la vuelta corría, esa copia no tiene la marca: antes de pisar una venta ya
+        // guardada se relee su `manualTs` (una lectura chica). Si la lectura falla, no se escribe
+        // esta vuelta (se reintenta en 2 minutos): pisar una marca suya es peor que esperar.
+        if (!DRY && !_aMano && _prevV) {
+          // Se lee el DÍA entero una vez (válido 60 s) en vez de una lectura por venta: la ventana de
+          // 2 días reescribe ~200 ventas cada 2 minutos.
+          try {
+            let _md = _manualDiaCache.get(dayKey);
+            if (!_md || Date.now() - _md.t > 60e3) { _md = { t: Date.now(), d: (await db.get(`cyc/ventaprod/${dayKey}`)) || {} }; _manualDiaCache.set(dayKey, _md); }
+            if (Number((_md.d[id] || {}).manualTs) > 0) _aMano = true;
+          }
+          catch { _aMano = true; console.log(`  ⚠️ venta ${id}: no pude releer si la tocó a mano, no la reescribo esta vuelta`); }
+        }
         if (DRY) console.log(`  [${label}] #${num} ${obj.prod}${p ? '' : ' (SIN PRODUCTO)'} x${qty} · total ${obj.total} · neto ${obj.neto}`);
         else if (_aMano) console.log(`  ✋ venta ${id} (${obj.prod}): la tocó él a mano, no la reescribo`);
         else await db.set(`cyc/ventaprod/${dayKey}/${id}`, obj);
@@ -32034,10 +32162,9 @@ async function main() {
           const sub = (b.sub_status || []).join(',');
           const prev = map[mla].status || '';
           const prevSub = map[mla].subStatus || '';
-          if (st && (st !== prev || sub !== prevSub)) {
-            if (!DRY) await db.patch('cyc/mllinks/' + mla, { status: st, subStatus: sub });
-            map[mla].status = st; map[mla].subStatus = sub;
-          }
+          // Revisión max (rev4): el estado nuevo se guarda DESPUÉS de anotar la marca del aviso (abajo).
+          const estadoNuevo = !!(st && (st !== prev || sub !== prevSub));
+          if (estadoNuevo) { map[mla].status = st; map[mla].subStatus = sub; }
           // El aviso se decide SOLO por lo anotado en mlapi/pubalert, no por el estado guardado
           // en el mapa: el mapa se reescribe cuando la publicación vende y perdía la memoria.
           // Regla: se manda una vez por publicación y por estado; cuando la publicación se
@@ -32046,7 +32173,7 @@ async function main() {
             || /deactiv|moderation|warning|suspend|ban|freeze|infract|hold/i.test(sub);
           const clave = bad ? st + (sub ? '|' + sub : '') : '';
           if (!bad) {
-            if (pubAlerted[mla]) { pubAlerted[mla] = null; pubAlertUpd[mla] = null; }
+            if (pubAlerted[mla] && !DRY) await anotarPubAlertYa(mla, null);
           } else if (pubAlerted[mla] !== clave && map[mla].prodId) {
             // Si el estado ya venía guardado igual, no es novedad: se anota sin avisar (así al
             // estrenar esto no llega una catarata de avisos por problemas viejos ya conocidos).
@@ -32070,9 +32197,10 @@ async function main() {
             }
             if (!DRY) {
               const marca = (mandado || !novedad) ? clave : 'pend|' + clave;
-              if (pubAlerted[mla] !== marca) { pubAlerted[mla] = marca; pubAlertUpd[mla] = marca; }
+              if (pubAlerted[mla] !== marca) await anotarPubAlertYa(mla, marca);
             }
           }
+          if (estadoNuevo && !DRY) await db.patch('cyc/mllinks/' + mla, { status: st, subStatus: sub });
 
           // ── CARGAR STOCK al panel (si la pub está vinculada a un producto) ──
           if (autoStock && map[mla].prodId) {
@@ -32473,7 +32601,9 @@ async function main() {
   if (parseInt(process.env.BACKFILL_DAYS || '0', 10) === 0 && !onlyAcc && process.env.SKIP_PRICES !== '1') {
     try {
       const rc = await cajasQueLlegaron(db, accounts, labels, products, DRY);
-      if (rc.msg) { console.log(rc.msg.replace(/<[^>]+>/g, '')); await sendTelegram(rc.msg); }
+      // revisión max (rev4): iba por sendTelegram SIN tipo y TG_PERMITIDO lo tiraba siempre. Va por
+      // el canal privado y sólo si alguna caja se marcó CON faltantes (una completa no es noticia).
+      if (rc.msg) { console.log(rc.msg.replace(/<[^>]+>/g, '')); if (!DRY && rc.conFaltantes) await sendAlerta(rc.msg + '\n\n⚠️ Revisá las que dicen "faltaron": esas unidades salieron del patrimonio.'); }
     } catch (e) { console.log('No pude revisar las cajas en camino: ' + e.message); }
   }
 
