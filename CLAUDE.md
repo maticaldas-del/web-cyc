@@ -325,8 +325,10 @@ precios-decisión 3.
  · **10 · HECHO el 26/09, eligió la (a) (v20.50 · `cyc-v328`):** venta sin ficha o con la ficha en costo 0
    (`ventaSinCostoVP`) → `efectivoCostoVP` devuelve el neto: cuenta en facturado, $0 de ganancia. Los KPIs de
    Ventas y el resumen de Telegram (día y mes) dicen cuántas quedaron afuera.
- · **QUEDAN PARA DECIDIR CON ÉL, de a una:** 15 (el
-   neto estimado se muestra como real) · 21 (`compray` sin "Ya lo pedí" queda en camino para siempre).
+ · **15 · HECHO el 26/09, eligió la (a) (v20.51 · `cyc-v329`):** venta con `netoEstimado` → la web le suma al costo
+   `gestDeVenta` (envío de Full de la ficha, 0 abajo de $33.000) y el renglón dice "≈ estimado" en gris; el
+   resumen de Telegram resta `CAND_ENVIO_ARRIBA` arriba de la barrera y dice cuántas son aproximadas.
+ · **QUEDAN PARA DECIDIR CON ÉL:** 21 (`compray` sin "Ya lo pedí" queda en camino para siempre).
 
 ### LA REVISIÓN POR ETAPAS (propuesta del 25/09, falta que confirme el ritmo)
 Pedido suyo: que cada revisión entre en una ventana de 5 h de tokens (plan de US$100, Opus 5.5). Seis
