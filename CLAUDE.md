@@ -367,7 +367,11 @@ precios-decisión 3.
 ### REGLA SUYA DEL 26/09: ÉL NO MARCA NADA A MANO, ME LO DICE Y LO HAGO YO
 Textual: *"no quiero marcar a mano, todo te lo voy a decir para que lo hagas vos. y cuando lleguen quiero que crees
 la publicacion en la web de cyc y en la cuenta que te parezca adecuado, segun rubro de cada cuenta y segun como viene
-en afip"*. O sea: "Ya lo pedí", "Llegó", caja recibida, etc. los hago yo por comando cuando él avisa. Al llegar un
+en afip"*. O sea: "Ya lo pedí", "Llegó", caja recibida, etc. los hago yo por comando cuando él avisa. **Comandos (26/09):**
+`pyped` (Paraguay: repo/nuevos/llegó), `ofi` (contar oficina), `ancla` (disponible MP), `pausaprecio`, `cajallego`/`abrircaja`
+(cajas de Full), `pedir` (unidades del armado), `repartopy` + `pasara` (cuenta de un producto nuevo), `compray` (los pesos).
+**Y EL CICLO SE PRENDE SOLO después de cada comando** (job `ciclo` en ml-sync/ml-chequeo/ml-bajopiso): ya no hace falta
+disparar `ciclo` a mano. Al llegar un
 pedido creo la ficha y elijo la cuenta (rubro primero —perfumes → Adriana—, después el equilibrio de `repartopy`, y la
 actividad de ARCA). **Confirmado por él:** *"solo armar la publicacion en cyc. ml la hago yo"* — yo creo la ficha y la vinculo; en ML publica él.
 
@@ -1293,6 +1297,10 @@ Los que más se usan:
 | `mismoprod[:cuenta]` | **¿ML dice solo cuáles publicaciones son el mismo producto?** y si da la foto · solo lee |
 | `apis` | qué endpoints de ML contestan (para diagnosticar) |
 | `ciclo` | **no es un comando: vuelve a prender el ciclo de 2 minutos** (ver abajo) |
+| `pyped[:repo:<palabra>=<u>;…\|nuevos\|llego:<id>][;go]` | **los pasos de Paraguay desde el chat** (26/09): "Ya lo pedí" de reposición o de nuevos, y "Llegó" (en nuevos crea las fichas). Mismos registros que los botones |
+| `ofi:<palabra>[@<variante>]=<+N\|-N\|N>[;…][;go]` | **contar lo que hay en la oficina desde el chat** (26/09): suma, resta o fija, variante por variante |
+| `ancla:<cuenta>=<pesos>[;…][;go]` | **el disponible de MP que él lee**, cargado desde el chat (26/09): punto de partida en pesos + casilla en dólares |
+| `pausaprecio[:<palabra>\|:-<palabra>][:go]` | **"No lo compro por ahora" desde el chat** (26/09) · con `-` lo devuelve a Pedidos |
 
 Casi todos son de solo lectura. Los que escriben piden `:go` explícito.
 
@@ -1393,6 +1401,8 @@ entra a este repo lo lee cualquiera, para siempre, sin contraseña.* Antes de co
 con números adentro, la pregunta no es "¿esto es secreto?" sino **"¿de quién es este dato?"**. Si
 aparece alguien que no es Mati, no va.
 
+**DESDE EL 26/09/2026 EL CICLO SE VUELVE A PRENDER SOLO** (job `ciclo` al final de ml-sync, ml-chequeo y
+ml-bajopiso; el registro del comando sigue en el job `sync`/`chequeo`). Lo de abajo es cómo era antes.
 **SIEMPRE, después de correr un comando: volver a prender el ciclo** disparando `ml-sync` con
 `billing_probe` = `ciclo`. Cada corrida a mano **mata** el ciclo automático (es el mismo candado),
 y el ciclo NO se recupera solo: solo lo arranca el reloj de GitHub, que saltea corridas. La noche

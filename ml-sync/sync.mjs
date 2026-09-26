@@ -29240,6 +29240,321 @@ async function main() {
       return;
     }
 
+    // BILLING_PROBE=ancla:<cuenta>=<pesos>[;<cuenta>=<pesos>][;go] → EL DISPONIBLE DE MERCADO PAGO QUE ÉL
+    // LEE EN SU CUENTA, CARGADO DESDE EL CHAT (26/09/2026, regla suya de no tocar botones).
+    // Hace lo mismo que escribirlo en el Arqueo: guarda el punto de partida en PESOS
+    // (`cyc/saldoancla/<Cuenta>` {ars, usd, tc, ts}), la casilla en DÓLARES (`finanzas/mp_<cuenta>`),
+    // el total `mp_disp` y la fecha. De ahí `dispo` sigue solo cada noche. Sin dólar cargado no escribe.
+    if (/^ancla(:|$)/.test(String(process.env.BILLING_PROBE || ''))) {
+      const _raw = String(process.env.BILLING_PROBE).replace(/^ancla:?/, '');
+      const GO = /(^|;)go$/.test(_raw);
+      const pares = _raw.replace(/(^|;)go$/, '').split(';').map((x) => x.trim()).filter(Boolean);
+      const CT = { adriana: 'Adriana', luciana: 'Luciana', ayelen: 'Ayelen', matias: 'Matias' };
+      const nrmC = (t) => String(t || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').trim();
+      const fin = (await db.get('cyc/finanzas')) || {};
+      const tc = parseFloat(fin.tipo_cambio) || 0;
+      if (!pares.length) { console.log('Usá: ancla:<cuenta>=<pesos>[;<cuenta>=<pesos>][;go]   ej. ancla:adriana=1250000;matias=830500;go'); return; }
+      if (!(tc > 0)) { console.log('❌ No hay dólar cargado en Finanzas: no escribo nada (convertir con un número adivinado se mete en todo el patrimonio).'); return; }
+      const cargas = [], mal = [];
+      for (const x of pares) {
+        const m = x.match(/^([a-zA-ZáéíóúÁÉÍÓÚ]+)\s*=\s*\$?\s*([\d.,]+)$/);
+        const c = m && CT[nrmC(m[1])];
+        const ars = m ? pesosArg(m[2]) : null;
+        if (!c || !(ars >= 0) || ars == null) { mal.push(x); continue; }
+        cargas.push({ key: 'mp_' + nrmC(m[1]), cta: c, ars: Math.round(ars), usd: Math.round(ars / tc * 100) / 100 });
+      }
+      if (mal.length) { console.log('❌ NO ESCRIBO NADA. No entendí: ' + mal.join(' · ') + '  (cuenta=pesos)'); return; }
+      const ahora = Date.now();
+      const nuevo = { ...fin };
+      console.log(`=== DISPONIBLE DE MERCADO PAGO ${GO ? '' : '(PRUEBA — no escribo nada)'} · dólar ${tc} ===`);
+      for (const c of cargas) { console.log(`  ${c.cta}: ${money(c.ars)} = US$ ${c.usd.toFixed(2)}  (antes US$ ${(parseFloat(fin[c.key]) || 0).toFixed(2)})`); nuevo[c.key] = c.usd; }
+      const tot = Math.round(['mp_adriana', 'mp_luciana', 'mp_ayelen', 'mp_matias'].reduce((a, k) => a + (parseFloat(nuevo[k]) || 0), 0) * 100) / 100;
+      const faltan = ['mp_adriana', 'mp_luciana', 'mp_ayelen', 'mp_matias'].filter((k) => !cargas.some((c) => c.key === k));
+      console.log(`  total MercadoPago disponible: US$ ${tot.toFixed(2)}${faltan.length ? `  (las que no pasaste quedan como estaban: ${faltan.map((k) => k.slice(3)).join(', ')})` : ''}`);
+      if (!GO) { console.log('\nNo se guardó nada (falta ;go).'); return; }
+      for (const c of cargas) {
+        await db.set('cyc/saldoancla/' + c.cta, { ars: c.ars, usd: c.usd, tc, ts: ahora });
+        await db.set('cyc/finanzas/' + c.key, c.usd);
+        await db.set('cyc/finanzas/_seen/' + c.key, c.usd);
+      }
+      await db.set('cyc/finanzas/mp_disp', tot);
+      await db.set('cyc/finanzas/_seen/mp_disp', tot);
+      await db.set('cyc/finanzas/_ts/mp', ahora);
+      const rel = await db.get('cyc/finanzas/mp_disp');
+      console.log(Math.abs((parseFloat(rel) || 0) - tot) < 0.01 ? '\n✓ Guardado y releído. Desde acá `dispo` lo sigue cada noche.' : '\n⚠️ Se escribió pero al releer no coincide. Mirar a mano.');
+      return;
+    }
+
+    // BILLING_PROBE=pausaprecio:<palabra>[:go] / pausaprecio:-<palabra>[:go] → "⏸️ No lo compro por ahora"
+    // DESDE EL CHAT (26/09/2026). Mismo registro que el botón de la web (`cyc/pausado_precio/<prodId>`):
+    // sale de Pedidos y del Puntaje, y a los 30 días vuelve a preguntar. Con `-` adelante lo devuelve.
+    if (/^pausaprecio(:|$)/.test(String(process.env.BILLING_PROBE || ''))) {
+      const _raw = String(process.env.BILLING_PROBE).replace(/^pausaprecio:?/, '');
+      const GO = /:go$/.test(_raw);
+      let q0 = _raw.replace(/:go$/, '').trim();
+      const sacar = q0.startsWith('-'); q0 = q0.replace(/^-/, '');
+      const nrm = (t) => String(t || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[^a-z0-9]+/g, ' ').trim();
+      if (!q0) { const pp = (await db.get('cyc/pausado_precio')) || {}; console.log(`=== PAUSADOS POR PRECIO (${Object.keys(pp).length}) ===`); for (const e of Object.values(pp)) console.log(`  · ${e.producto || e.prodId} · vuelve a preguntar el ${new Date(e.revisarTs || 0).toISOString().slice(0, 10)}`); return; }
+      const exacto = q0.startsWith('='); const q = nrm(q0.replace(/^=/, ''));
+      const prods = Object.values((await db.get('cyc/products')) || {}).filter((p) => p && p.name);
+      const hits = prods.filter((p) => exacto ? nrm(p.name) === q : nrm(p.name).includes(q));
+      if (hits.length !== 1) { console.log(`❌ "${q0}" → ${hits.length ? `agarra ${hits.length}: ${hits.slice(0, 10).map((p) => p.name).join(' | ')}` : 'ninguna ficha'}. No escribo nada.`); return; }
+      const p = hits[0];
+      if (sacar) {
+        const e = await db.get('cyc/pausado_precio/' + p.id);
+        if (!e) { console.log(`${p.name} no está pausado por precio.`); return; }
+        console.log(`Vuelve a Pedidos: ${p.name}${GO ? '' : '  (PRUEBA — falta :go)'}`);
+        if (!GO) return;
+        await db.set('cyc/pausado_precio/' + p.id, null);
+        if (e.ped && e.ped.id) await db.set(`cyc/${e.coll || 'pedidos'}/${e.ped.id}`, e.ped);
+        console.log('✓ Listo. El panel lo vuelve a calcular.');
+        return;
+      }
+      const coll = String(p.origen || '') === 'py' ? 'pedidos_py' : 'pedidos';
+      const peds = (await db.get('cyc/' + coll)) || {};
+      const pedE = Object.entries(peds).find(([, x]) => x && x.prodId === p.id);
+      const cfg = (await db.get('cyc/mlconfig')) || {};
+      const entry = { prodId: p.id, producto: p.name, ts: Date.now(), coll, auto: pedE ? pedE[1].auto === true : true, margenAlPausar: null,
+        piso: parseFloat(cfg.minPct) || 22, revisarTs: Date.now() + 30 * 86400000, origenCmd: 'chat' };
+      if (pedE && pedE[1].auto === false) entry.ped = { ...pedE[1], id: pedE[0] };
+      console.log(`⏸️ No lo compro por ahora: ${p.name}${pedE ? ` (sale de ${coll === 'pedidos_py' ? 'Pedidos Paraguay' : 'Pedidos Bs As'})` : ' (no tenía pedido abierto)'} · vuelve a preguntar en 30 días${GO ? '' : '  (PRUEBA — falta :go)'}`);
+      if (!GO) return;
+      await db.set('cyc/pausado_precio/' + p.id, entry);
+      if (pedE) await db.set(`cyc/${coll}/${pedE[0]}`, null);
+      console.log('✓ Guardado.');
+      return;
+    }
+
+    // BILLING_PROBE=ofi:<palabra>[@<variante>]=<+N|-N|N>[;…][;go] → CONTAR LO QUE HAY EN LA OFICINA,
+    // DESDE EL CHAT (26/09/2026, regla suya: él no toca botones, me lo dice y lo hago yo).
+    // `+N` suma lo que llegó, `-N` resta, `N` a secas fija el total. Es lo mismo que "Contar lo que hay"
+    // (ofiMover de la web): con variante se toca la clave de la variante y al total del producto se le
+    // aplica EXACTAMENTE lo que cambió la variante; nunca baja de 0. `=` adelante de la palabra = nombre
+    // exacto. Si una palabra agarra más de una ficha, o la variante no existe, NO se escribe NADA.
+    // El valor de la oficina en el Arqueo (of_mia) lo recalcula la web sola al abrirse.
+    if (/^ofi(:|$)/.test(String(process.env.BILLING_PROBE || ''))) {
+      const _raw = String(process.env.BILLING_PROBE).replace(/^ofi:?/, '');
+      const GO = /(^|;)go$/.test(_raw);
+      const pares = _raw.replace(/(^|;)go$/, '').split(';').map((x) => x.trim()).filter(Boolean);
+      const nrm = (t) => String(t || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9]+/g, ' ').trim();
+      const OFI_LOC = 'Oficina Mati';
+      if (!pares.length) { console.log('Usá: ofi:<palabra>[@<variante>]=<+N|-N|N>[;…][;go]   ej. ofi:cartas casino=+50;paulvic@free love=12;go'); return; }
+      const prods = Object.values((await db.get('cyc/products')) || {}).filter((p) => p && p.name);
+      const inv = (await db.get('cyc/inventory')) || {};
+      const ops = [], problemas = [];
+      for (const x of pares) {
+        const m = x.match(/^(.+?)(?:@(.+?))?=([+-]?)(\d+)$/);
+        if (!m) { problemas.push(`"${x}" → se espera <palabra>[@<variante>]=<+N|-N|N>`); continue; }
+        const exacto = m[1].trim().startsWith('=');
+        const q = nrm(m[1].trim().replace(/^=/, ''));
+        const hits = prods.filter((p) => exacto ? nrm(p.name) === q : nrm(p.name).includes(q));
+        if (hits.length !== 1) { problemas.push(`"${m[1]}" → ${hits.length ? `agarra ${hits.length}: ${hits.slice(0, 8).map((p) => p.name).join(' | ')}` : 'ninguna ficha'}`); continue; }
+        const p = hits[0];
+        let va = '';
+        if (m[2]) {
+          const vq = nrm(m[2]);
+          const vs = (p.variantes || []).filter((v) => nrm(v) === vq);
+          const vs2 = vs.length ? vs : (p.variantes || []).filter((v) => nrm(v).includes(vq));
+          if (vs2.length !== 1) { problemas.push(`"${m[2]}" en ${p.name} → ${vs2.length ? `agarra ${vs2.length}: ${vs2.join(' | ')}` : `no es una variante (tiene: ${(p.variantes || []).slice(0, 12).join(', ') || 'ninguna'})`}`); continue; }
+          va = vs2[0];
+        }
+        const n = parseInt(m[4], 10);
+        ops.push({ p, va, delta: m[3] === '+' ? n : m[3] === '-' ? -n : null, fijo: m[3] ? null : n });
+      }
+      if (problemas.length) { console.log('❌ NO ESCRIBO NADA:'); problemas.forEach((x) => console.log('   ' + x)); return; }
+      console.log(`=== CONTAR LO QUE HAY EN LA OFICINA ${GO ? '' : '(PRUEBA — no escribo nada)'} ===`);
+      const kTot = (pid) => pid + '__' + sid(OFI_LOC);
+      const kVar = (pid, v) => pid + '__' + sid(OFI_LOC) + '__v__' + sid(v);
+      for (const o of ops) {
+        const key = o.va ? kVar(o.p.id, o.va) : kTot(o.p.id);
+        // Se relee justo antes de escribir (la web pudo tocarla recién).
+        const antes = GO ? (parseInt(await db.get('cyc/inventory/' + key)) || 0) : (parseInt(inv[key]) || 0);
+        const ahora = o.fijo != null ? Math.max(0, o.fijo) : Math.max(0, antes + o.delta);
+        const dv = ahora - antes;
+        let totTxt = '';
+        if (o.va) {
+          const tA = GO ? (parseInt(await db.get('cyc/inventory/' + kTot(o.p.id))) || 0) : (parseInt(inv[kTot(o.p.id)]) || 0);
+          const tN = Math.max(0, tA + dv);
+          totTxt = ` · total del producto ${tA} → ${tN}`;
+          if (GO && dv) await db.set('cyc/inventory/' + kTot(o.p.id), tN || null);
+        }
+        if (GO) await db.set('cyc/inventory/' + key, ahora || null);
+        console.log(`  ${o.p.name}${o.va ? ' · ' + o.va : ''}: ${antes} → ${ahora}${totTxt}`);
+      }
+      if (GO) console.log('\n✓ Guardado. La web recalcula sola el valor de la oficina en el Arqueo.');
+      else console.log('\nNo se guardó nada (falta ;go).');
+      return;
+    }
+
+    // BILLING_PROBE=pyped[:...] → LOS PASOS DE UN PEDIDO A PARAGUAY, DESDE EL CHAT (26/09/2026).
+    // Regla suya del 26/09: *"no quiero marcar a mano, todo te lo voy a decir para que lo hagas vos"*.
+    // Hace lo MISMO que los botones de la web (pyCanastaYaLoPedi, pyPedidoHecho, pyPedidoLlego), con
+    // los mismos registros en `cyc/compraspy`, para que la pantalla lo muestre igual. Sin `go` SOLO MUESTRA.
+    //   pyped                                   → los pedidos en camino
+    //   pyped:repo:<palabra>=<u>[;<palabra>=<u>][;go]   → "✅ Ya lo pedí" de REPOSICIÓN (productos con ficha;
+    //                                              `=` adelante de la palabra = nombre exacto)
+    //   pyped:nuevos[:go]                       → "✅ Ya lo pedí" de PRODUCTOS NUEVOS (lo cargado en el armado)
+    //   pyped:llego:<id|AAAA-MM-DD>[:go]        → "Ya llegó". Reposición: sólo la cierra (hay que contar en la
+    //                                              oficina). Nuevos: además crea las fichas (costo = precio × recargo,
+    //                                              origen Paraguay, código); si hay una ficha parecida NO la crea y lo dice.
+    if (/^pyped(:|$)/.test(String(process.env.BILLING_PROBE || ''))) {
+      const _raw = String(process.env.BILLING_PROBE).replace(/^pyped:?/, '');
+      const GO = /(^|[;:])go$/.test(_raw);
+      const cuerpo = _raw.replace(/([;:])?go$/, '');
+      const [sub, ...resto] = cuerpo.split(':');
+      const arg = resto.join(':');
+      const nrm = (t) => String(t || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[^a-z0-9]+/g, ' ').trim();
+      const hoyAR = new Date(Date.now() - 3 * 3600e3).toISOString().slice(0, 10);
+      const compras = (await db.get('cyc/compraspy')) || {};
+      const fin = (await db.get('cyc/finanzas')) || {};
+      const tc = parseFloat(fin.tipo_cambio) || 0;
+      const r2 = (x) => Math.round(x * 100) / 100;
+      if (!sub) {
+        const cam = Object.entries(compras).filter(([, c]) => c && c.estado === 'camino').sort((a, b) => String(a[1].fecha).localeCompare(String(b[1].fecha)));
+        console.log(`=== PEDIDOS A PARAGUAY EN CAMINO (${cam.length}) ===`);
+        for (const [id, c] of cam) {
+          console.log(`\n· ${id} · ${c.tipo === 'repo' ? 'REPOSICIÓN' : 'NUEVOS'} del ${c.fecha} · ${c.productos || (c.items || []).length} producto(s) · ${c.unidades || 0} u. · US$ ${(parseFloat(c.usdCrudo) || 0).toFixed(2)}`);
+          for (const it of (c.items || [])) console.log(`    ${it.u} u. · ${it.nom || it.cod || '?'}`);
+        }
+        return;
+      }
+      // Dos pedidos el mismo día: se SUMA al de hoy si sigue en camino y sin pesos (misma regla que la web).
+      const previoHoy = async (id) => {
+        const prev = await db.get('cyc/compraspy/' + id);
+        if (prev && (prev.estado !== 'camino' || (prev.pagos && Number(prev.pagos.mercaderia) > 0))) {
+          console.log(`❌ Ya hay un pedido ${id} del ${hoyAR} ${prev.estado !== 'camino' ? 'marcado como llegado' : 'con los pesos cargados'}: no lo piso ni le sumo. Registralo mañana.`);
+          return { bloqueado: true };
+        }
+        return { prev: prev || null };
+      };
+      const guardar = async (id, prev, rec, items, sumarPor) => {
+        if (prev) {
+          const its = (Array.isArray(prev.items) ? prev.items : []).map((x) => ({ ...x }));
+          for (const it of items) { const o = its.find((x) => x && x[sumarPor] === it[sumarPor]); if (o) o.u = (parseInt(o.u) || 0) + it.u; else its.push(it); }
+          const upd = { items: its, usdCrudo: r2((parseFloat(prev.usdCrudo) || 0) + rec.usdCrudo), productos: its.length, unidades: (parseInt(prev.unidades) || 0) + rec.unidades };
+          await db.patch('cyc/compraspy/' + id, upd);
+        } else await db.set('cyc/compraspy/' + id, rec);
+        const rel = await db.get('cyc/compraspy/' + id);
+        console.log(rel && rel.estado === 'camino' ? `\n✓ Guardado y releído: cyc/compraspy/${id} (en camino)` : `\n⚠️ Se escribió pero al releer no coincide. Mirar a mano.`);
+      };
+
+      if (sub === 'repo') {
+        const prods = Object.values((await db.get('cyc/products')) || {}).filter((p) => p && p.name);
+        const pares = arg.split(';').map((x) => x.trim()).filter(Boolean).map((x) => { const m = x.match(/^(.+?)=(\d+)$/); return m ? { busca: m[1].trim(), u: parseInt(m[2], 10) } : { busca: x, u: null }; });
+        if (!pares.length || pares.some((p) => !(p.u > 0))) { console.log('Usá: pyped:repo:<palabra>=<unidades>[;<otra>=<u>][;go]  (=<nombre exacto> con un = adelante)'); return; }
+        const items = [], problemas = [];
+        for (const pr of pares) {
+          const exacto = pr.busca.startsWith('=');
+          const q = nrm(pr.busca.replace(/^=/, ''));
+          const hits = prods.filter((p) => exacto ? nrm(p.name) === q : nrm(p.name).includes(q));
+          if (hits.length !== 1) { problemas.push(`"${pr.busca}" → ${hits.length ? `agarra ${hits.length}: ${hits.slice(0, 8).map((p) => p.name).join(' | ')}` : 'ninguna ficha'}`); continue; }
+          const p = hits[0];
+          const usd = parseFloat(p.nisseiUSD) > 0 ? r2(parseFloat(p.nisseiUSD)) : r2((parseFloat(p.costUSD) || 0) / RECARGO_PAR);
+          items.push({ prodId: p.id, nom: String(p.name).slice(0, 120), cod: String(p.codPy || ''), u: pr.u, usd });
+          if (p.origen !== 'py') problemas.push(`"${pr.busca}" → ${p.name} no es de Paraguay (origen ${p.origen || 'bsas'}). Si es correcto, cambiale el origen primero.`);
+        }
+        if (problemas.length) { console.log('❌ NO ESCRIBO NADA:'); problemas.forEach((x) => console.log('   ' + x)); return; }
+        const id = 'pyr' + hoyAR.replace(/-/g, '');
+        const st = await previoHoy(id); if (st.bloqueado) return;
+        const crudo = r2(items.reduce((a, x) => a + x.usd * x.u, 0)), uds = items.reduce((a, x) => a + x.u, 0);
+        console.log(`=== REPOSICIÓN A PARAGUAY · YA LO PEDÍ ${GO ? '' : '(PRUEBA — no escribo nada)'} ===`);
+        items.forEach((x) => console.log(`  ${x.u} u. · US$ ${x.usd.toFixed(2)} · ${x.nom}${x.cod ? ' · cód ' + x.cod : ' · ⚠️ sin código'}`));
+        console.log(`  TOTAL ${items.length} producto(s) · ${uds} u. · US$ ${crudo.toFixed(2)} crudos${st.prev ? ' · se SUMA a la reposición de hoy que ya estaba en camino' : ''}`);
+        if (!GO) { console.log('\nNo se guardó nada (falta ;go).'); return; }
+        await guardar(id, st.prev, { fecha: hoyAR, ts: Date.now(), estado: 'camino', origen: 'chat', tipo: 'repo', usdCrudo: crudo, recargo: RECARGO_PAR, tcPedido: tc || null, productos: items.length, unidades: uds, items }, items, 'prodId');
+        return;
+      }
+
+      if (sub === 'nuevos') {
+        const cands = (await db.get('cyc/candidatos_py')) || {};
+        const filas = Object.entries(cands).filter(([, c]) => c && !c.no && !c.prodId && (parseInt(c.pedirU) || 0) > 0);
+        if (!filas.length) { console.log('No hay nada cargado en el armado de productos nuevos (pedirU). Cargalo antes con `pedir`.'); return; }
+        const items = filas.map(([cid, c]) => {
+          const it = { id: cid, nom: String(c.nombre || '').slice(0, 120), cod: String(c.cod || '').trim(), u: parseInt(c.pedirU) || 0, usd: parseFloat(c.usd) || null };
+          if (c.mlId) it.mlId = String(c.mlId).slice(0, 200);
+          if (c.link) it.link = String(c.link).slice(0, 300);
+          if (c.margen != null && isFinite(c.margen)) it.margen = Math.round(c.margen * 10) / 10;
+          if (Number(c.ganancia) > 0) it.ganancia = Math.round(Number(c.ganancia));
+          return it;
+        });
+        const id = 'py' + hoyAR.replace(/-/g, '');
+        const st = await previoHoy(id); if (st.bloqueado) return;
+        const crudo = r2(items.reduce((a, x) => a + (x.usd || 0) * x.u, 0)), uds = items.reduce((a, x) => a + x.u, 0);
+        console.log(`=== PRODUCTOS NUEVOS · YA LO PEDÍ ${GO ? '' : '(PRUEBA — no escribo nada)'} ===`);
+        items.forEach((x) => console.log(`  ${x.u} u. · US$ ${(x.usd || 0).toFixed(2)} · ${x.nom}${x.cod ? '' : ' · ⚠️ sin código'}`));
+        console.log(`  TOTAL ${items.length} producto(s) · ${uds} u. · US$ ${crudo.toFixed(2)} crudos${st.prev ? ' · se SUMA al pedido de hoy' : ''}`);
+        if (!GO) { console.log('\nNo se guardó nada (falta :go).'); return; }
+        await guardar(id, st.prev, { fecha: hoyAR, ts: Date.now(), estado: 'camino', origen: 'chat', usdCrudo: crudo, recargo: RECARGO_PAR, tcPedido: tc || null, productos: items.length, unidades: uds, items }, items, 'id');
+        // Marcar y vaciar: un candidato sin marcar lo vuelve a cargar "Llenar" y se compra dos veces.
+        for (const [cid] of filas) {
+          try { await db.set(`cyc/candidatos_py/${cid}/pedidoEn`, id); await db.set(`cyc/candidatos_py/${cid}/pedirU`, 0); }
+          catch { console.log(`⚠️ no pude marcar el candidato ${cid}: revisalo`); }
+        }
+        return;
+      }
+
+      if (sub === 'llego') {
+        let id = arg.trim();
+        if (/^\d{4}-\d{2}-\d{2}$/.test(id)) {
+          const m = Object.entries(compras).filter(([, c]) => c && c.fecha === id && c.estado === 'camino');
+          if (m.length !== 1) { console.log(`Con la fecha ${id} hay ${m.length} pedido(s) en camino${m.length ? ': ' + m.map(([k]) => k).join(', ') : ''}. Pasá el id.`); return; }
+          id = m[0][0];
+        }
+        const c = compras[id];
+        if (!c) { console.log(`No existe el pedido ${id}. Corré \`pyped\` para ver los que están en camino.`); return; }
+        if (c.estado !== 'camino') { console.log(`El pedido ${id} está "${c.estado}", no en camino: no se toca.`); return; }
+        console.log(`=== LLEGÓ EL PEDIDO ${id} (${c.tipo === 'repo' ? 'reposición' : 'productos nuevos'} del ${c.fecha}) ${GO ? '' : '(PRUEBA — no escribo nada)'} ===`);
+        const plan = [];
+        const prods = Object.values((await db.get('cyc/products')) || {}).filter((p) => p && p.name);
+        const cands = (await db.get('cyc/candidatos_py')) || {};
+        if (c.tipo !== 'repo') {
+          for (const it of (c.items || [])) {
+            if (!it || !it.id) continue;
+            const k = cands[it.id];
+            const src = { id: it.id, nombre: (k && k.nombre) || it.nom || '', usd: parseFloat(it.usd) > 0 ? it.usd : (k && k.usd), cod: (k && k.cod) || it.cod || '', ts: k && k.ts };
+            if (k && k.prodId) { plan.push({ src, estado: 'ya' }); continue; }
+            if (!String(src.nombre).trim()) { plan.push({ src, estado: 'nonombre' }); continue; }
+            const q = nrm(String(src.nombre).split(' ').slice(0, 2).join(' '));
+            const rep = q ? prods.filter((p) => nrm(p.name).includes(q)) : [];
+            plan.push(rep.length ? { src, estado: 'repe', rep } : { src, estado: 'crear' });
+          }
+          const cr = plan.filter((x) => x.estado === 'crear');
+          console.log(`Fichas a crear: ${cr.length}`);
+          cr.forEach((x) => console.log(`  + ${x.src.nombre} · US$ ${(parseFloat(x.src.usd) || 0).toFixed(2)} × ${RECARGO_PAR} = US$ ${r2((parseFloat(x.src.usd) || 0) * RECARGO_PAR).toFixed(2)}${x.src.cod ? ' · cód ' + x.src.cod : ''}${(parseFloat(x.src.usd) || 0) > 0 ? '' : ' · ⚠️ SIN PRECIO: queda en costo 0'}`));
+          plan.filter((x) => x.estado === 'repe').forEach((x) => console.log(`  ⚠️ NO se crea (hay ficha parecida): ${x.src.nombre} → ${x.rep.slice(0, 3).map((p) => p.name).join(' | ')}`));
+          plan.filter((x) => x.estado === 'ya').forEach((x) => console.log(`  = ya tenía ficha: ${x.src.nombre}`));
+          plan.filter((x) => x.estado === 'nonombre').forEach(() => console.log(`  ⚠️ un renglón sin nombre: no se puede crear`));
+        } else {
+          console.log('Reposición: no crea fichas (ya las tienen). Hay que contar estas unidades en la oficina:');
+          (c.items || []).forEach((it) => console.log(`  ${it.u} u. · ${it.nom || it.cod || '?'}`));
+        }
+        if (!GO) { console.log('\nNo se guardó nada (falta :go).'); return; }
+        const hechas = [];
+        let i = 0;
+        for (const x of plan.filter((y) => y.estado === 'crear')) {
+          const usd = parseFloat(x.src.usd) || 0;
+          const puesto = usd > 0 ? r2(usd * RECARGO_PAR) : 0;
+          const p = { id: 'p' + Date.now() + String(i++), name: String(x.src.nombre).trim().slice(0, 90), costUSD: puesto, cost: puesto * (tc || 0), origen: 'py', costFullUSD: puesto, altaChat: Date.now() };
+          if (x.src.cod) p.codPy = String(x.src.cod);
+          if (usd > 0) { p.nisseiUSD = usd; p.nisseiTs = x.src.ts || Date.now(); }
+          try {
+            await db.set('cyc/products/' + p.id, p);
+            if (x.src.id && cands[x.src.id]) await db.set(`cyc/candidatos_py/${x.src.id}/prodId`, p.id);
+            hechas.push(p);
+          } catch (e) { console.log(`⚠️ no pude crear ${p.name}: ${(e && e.message) || e}`); }
+        }
+        await db.set('cyc/compraspy/' + id + '/estado', 'llego');
+        await db.set('cyc/compraspy/' + id + '/fechaLlego', hoyAR);
+        for (const it of (c.items || [])) { const k = it && it.id && cands[it.id]; if (k && k.pedidoEn === id) { try { await db.set(`cyc/candidatos_py/${it.id}/pedidoEn`, null); } catch {} } }
+        const rel = await db.get('cyc/compraspy/' + id);
+        console.log(`\n${rel && rel.estado === 'llego' ? '✓' : '⚠️ NO QUEDÓ'} Pedido ${id} marcado como llegado · ${hechas.length} ficha(s) creada(s)${hechas.length ? ': ' + hechas.map((p) => p.id + ' ' + p.name).join(' | ') : ''}`);
+        if (hechas.length) console.log(`Siguiente paso: \`repartopy:${id}\` para ver en qué cuenta va cada una y \`pasara:<cuenta>:=<nombre>:go\` para marcarla. Después contar en la oficina.`);
+        return;
+      }
+      console.log('No conozco ese paso. Usá: pyped · pyped:repo:… · pyped:nuevos · pyped:llego:<id>');
+      return;
+    }
+
     // BILLING_PROBE=compray[:...] → EL REGISTRO DE CADA COMPRA A PARAGUAY, CON SUS COSTOS REALES.
     //
     // Pedido suyo del 21/09/2026: *"cuando me lo envien quiero que vayas guardando todos los
