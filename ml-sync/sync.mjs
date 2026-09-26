@@ -32717,7 +32717,12 @@ async function main() {
             //    que en la vuelta siguiente dejaba de ser novedad y se callaba para siempre;
             //  · se da por avisado SÓLO si el mensaje salió de verdad.
             const pendiente = pubAlerted[mla] === 'pend|' + clave;
-            const novedad = pendiente || st !== prev || sub !== prevSub;
+            // Una publicación que YA estaba cerrada y ML la borra de su archivo (sub_status `deleted`,
+            // pasa sola a los ~6 meses de cerrada) no es un problema nuevo: no se avisa. Medido el
+            // 26/09/2026 con `porquebaja`: tres de Matías cerradas en abril, 0 u. en Full, avisaron
+            // como "dada de baja" y asustaron sin motivo.
+            const soloBorrada = st === 'closed' && prev === 'closed' && /deleted/.test(sub);
+            const novedad = !soloBorrada && (pendiente || st !== prev || sub !== prevSub);
             let mandado = false;
             if (novedad && !DRY && pubAlerts < 8) {
               const title = map[mla].title || mla;
