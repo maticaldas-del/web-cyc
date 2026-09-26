@@ -1,0 +1,44 @@
+name: ml-consulta
+
+# UN COMANDO DEL ROBOT SIN CORTAR EL CICLO (26/09/2026).
+# ml-sync comparte candado con el ciclo de 2 minutos: cada comando a mano lo corta (o espera a que
+# termine). Esto corre en un candado propio, así que sirve para los comandos que SÓLO LEEN, o que
+# escriben un renglón chico (vincular, fijarvar), cuando no conviene esperar ni cortar el ciclo.
+# Los comandos grandes que escriben mucho (netoweb, avisos, cajasllegaron…) van por ml-sync: si
+# corren a la vez que el ciclo pueden pisarse.
+
+on:
+  workflow_dispatch:
+    inputs:
+      comando:
+        description: 'El mismo texto que billing_probe de ml-sync'
+        required: true
+        default: ''
+
+concurrency:
+  group: ml-consulta
+
+jobs:
+  consulta:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Comando
+        env:
+          ML_CLIENT_ID: ${{ secrets.ML_CLIENT_ID }}
+          ML_CLIENT_SECRET: ${{ secrets.ML_CLIENT_SECRET }}
+          FIREBASE_API_KEY: ${{ secrets.FIREBASE_API_KEY }}
+          FIREBASE_DB_URL: ${{ secrets.FIREBASE_DB_URL }}
+          FIREBASE_BOT_EMAIL: ${{ secrets.FIREBASE_BOT_EMAIL }}
+          FIREBASE_BOT_PASSWORD: ${{ secrets.FIREBASE_BOT_PASSWORD }}
+          MP_TOKEN_MATIAS: ${{ secrets.MP_TOKEN_MATIAS }}
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+          BILLING_PROBE: ${{ github.event.inputs.comando }}
+        run: |
+          if [ -z "$BILLING_PROBE" ] || [ "$BILLING_PROBE" = "ciclo" ]; then echo "Falta el comando (el ciclo va por ml-sync)."; exit 1; fi
+          node ml-sync/sync.mjs
