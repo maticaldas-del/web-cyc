@@ -2329,7 +2329,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='20.54';
+const APP_VERSION='20.55';
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
 // muestre la versión y la fecha de actualización y que tenga un desplegable predeterminado cerrado".
 // Y el mismo día: "que ponga fecha de cada modificación y haya una barrita para scrollear y que
@@ -2340,6 +2340,8 @@ const APP_VERSION='20.54';
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'20.55',f:'26/09/2026',h:'12:19',c:[
+    {n:3,t:'Impuestos de ML: el % que se descuenta en cada venta ahora es sólo las percepciones de IIBB medidas (Adriana 3,80 · Luciana 4,01 · Ayelen 5,99 · Matías 3,40). Los cargos de Full (almacenamiento, stock antiguo, cajas mal mandadas) van sólo como gasto del mes: antes se contaban dos veces.'}]},
   {v:'20.54',f:'26/09/2026',h:'01:39',c:[
     {n:3,t:'Cajas: una caja con mercadería ya dada de alta en Full no se puede \"deshacer\" (se contaba dos veces), cerrar caja avisa si un producto ya no está en la oficina, y un color sin publicación de Full deja la caja abierta en vez de marcarla con faltantes.'},
     {n:3,t:'Arqueo: el disponible de Mercado Pago que escribís se guarda completo (punto de partida y total) aunque el celular no avise que saliste del campo.'},
@@ -2661,12 +2663,14 @@ const costFullUSDof=p=>{
   return cu;
 };
 const costFullP=p=>{const tc=curTC();return costFullUSDof(p)*tc;};
-// Cargo EXTRA de ML que se cobra por afuera de la venta (por "débito automático" / facturas vencidas):
-// casi todo Percepciones de IIBB (impuesto), más algo de almacenamiento y logística Full. NO está en el
-// neto de la venta, así que es un costo real que faltaba. Es un % del PRECIO de venta, medido de las
-// facturas reales de ML de 2026 (ene-jul, sin multas puntuales). Por cuenta, porque cada una le vende a
-// provincias con distinta alícuota de IIBB. Editá estos números si cambia la carga impositiva.
-const ML_EXTRA_PCT={adriana:4.07,luciana:4.37,ayelen:5.95,matias:4.58};
+// Cargo EXTRA de ML que se cobra por afuera de la venta: las PERCEPCIONES de IIBB. NO están en el neto
+// de la venta, así que es un costo real. Es un % del PRECIO de venta, por cuenta (cada una le vende a
+// provincias con distinta alícuota). 26/09/2026 (decisión suya, opción a): medido contra las ventas
+// reales de agosto 2026 (`percepcalc`). Los números viejos (4,07/4,37/5,95/4,58) salían de la factura
+// entera de ML y traían adentro almacenamiento y cargos de Full, que ADEMÁS se cargan como gasto del mes
+// ("Cargos de Full de ML"): se contaban dos veces. Ahora los cargos de Full van SÓLO como gasto.
+// El mismo número vive en ml-sync/sync.mjs (ML_EXTRA_PCT): si cambia, cambian los dos.
+const ML_EXTRA_PCT={adriana:3.80,luciana:4.01,ayelen:5.99,matias:3.40};
 const mlExtraPct=cuenta=>{const v=ML_EXTRA_PCT[(cuenta||'').toLowerCase()];return v!=null?v:4.8;};
 // Monotributo (impuesto integrado) como % del PRECIO de venta, sumado al costo. Es un costo de
 // VENDER: cuanto más facturás, más alta la categoría y más pagás. El monto es fijo y la facturación
@@ -15196,7 +15200,7 @@ const GASTOS_DEL_MES=[
    nota:'el interés del capital en dólares de los socios ya NO se paga (19/09/2026): queda sólo el otro'},
   {n:'Cargos de Full de ML (las 4 cuentas)', cat:'Envios', pal:['almacenamiento','full','stock antiguo','retiro'],
    nota:'ML → Facturación → el mes → Ir al detalle → bajar el "Reporte de Facturación" de CADA cuenta y pasármelo. '
-      + 'Son almacenamiento + stock antiguo + retiro de stock. Julio fueron $127.835. '
+      + 'Son almacenamiento + stock antiguo + retiro de stock + multas (ej. caja mal mandada). Julio fueron $127.835. Van SÓLO acá: desde el 26/09 el % de cada venta ya no los incluye. '
       + 'OJO: NO se carga el total de la factura de ML — casi toda son percepciones de IIBB y comisiones, que ya se descuentan en cada venta.'},
 ];
 // "ESTE MES NO VA" (22/09/2026). Suyo: *"servicios, este mes no hay"*. El panel no podía
