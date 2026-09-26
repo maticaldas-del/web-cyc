@@ -302,8 +302,10 @@ precios-decisión 3.
    mano · 16 `gestDeVenta` = 0 en ventas abajo de $33.000 · 17 envío medido 0 abajo de la barrera no
    cae al `gestFull` · 19 `dispo` acepta $0 como punto de partida · 20 Puntaje: retiro y gastos sin
    proyectar · 22 Resumen de días/año: el retiro de cada mes, no el 15%.
- · **QUEDAN PARA DECIDIR CON ÉL, de a una:** 18 (dispo sin anclas: lo liberado desaparece del
-   patrimonio cada noche) · 3 (el reloj del remate no distingue colores) · 4 (una venta de 2 u. que
+ · **18 · HECHO el 26/09, eligió la (a) (v20.48 · `cyc-v326`):** `saldoml` deja en `mp_liq` lo liberado
+   (y lo que salió) después de lo último que refleja el disponible de cada cuenta (ancla o `_dispTs`),
+   anotado en `cyc/finanzas/liq_liberado`; `dispo` lo resta al escribir; el Arqueo lo avisa en ámbar.
+ · **QUEDAN PARA DECIDIR CON ÉL, de a una:** 3 (el reloj del remate no distingue colores) · 4 (una venta de 2 u. que
    cruza $33.000 pasa a ser el peor envío) · 5 (carrito con 429 queda torcido) · 6 (impuesto con el
    promedio de ventas viejas) · 10 (ventas sin ficha cuentan el neto entero como ganancia) · 15 (el
    neto estimado se muestra como real) · 21 (`compray` sin "Ya lo pedí" queda en camino para siempre).
