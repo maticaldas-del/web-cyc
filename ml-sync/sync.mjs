@@ -9740,6 +9740,43 @@ async function main() {
     // NO toca los que descartó ÉL a mano desde el panel (ésos no tienen motivo anotado y son una
     // decisión suya) ni los que ya se midieron DOS veces, que están bien tachados.
     // Sin `:go` sólo muestra la lista.
+    // BILLING_PROBE=porquebaja:<MLA>[,<MLA>…] → ¿POR QUÉ ML DIO DE BAJA ESTA PUBLICACIÓN? (26/09/2026)
+    // Él recibió "Problema en una publicación · dada de baja · deleted" de tres de Matías y no las
+    // borró. El robot no borra ni cierra publicaciones (no hay ningún PUT de status closed en el
+    // código), así que la pregunta es qué dice ML: fechas, estado de antes y si quedó stock en Full.
+    // SOLO LEE. No imprime datos de compradores.
+    if (/^porquebaja:/.test(String(process.env.BILLING_PROBE || ''))) {
+      const mlas = String(process.env.BILLING_PROBE).slice(11).split(/[,;\s]+/).map((x) => x.trim().toUpperCase().replace(/^MLA-?/, 'MLA')).filter((x) => /^MLA\d+$/.test(x));
+      const links = (await db.get('cyc/mllinks')) || {};
+      const alerta = (await db.get('mlapi/pubalert')) || {};
+      const tok = {};
+      console.log('=== ¿POR QUÉ QUEDÓ DADA DE BAJA? (solo lee) ===\n');
+      for (const mla of mlas) {
+        const e = links[mla] || {};
+        const label = e.cuenta || labels[0];
+        if (!tok[label]) {
+          const acc = accounts[label];
+          try { const t = await mlRefresh(ML_CLIENT_ID, ML_CLIENT_SECRET, acc.refresh_token);
+            await db.patch('mlapi/tokens/' + label, { refresh_token: t.refresh_token, updated_ts: Date.now() });
+            tok[label] = t.access_token; } catch (err) { console.log(`${mla}: ❌ sin token de ${label}`); continue; }
+        }
+        console.log(`── ${mla} · ${label} · ${(e.title || '').slice(0, 70)}`);
+        console.log(`   en el panel: estado guardado ${e.status || '—'}${e.subStatus ? ' · ' + e.subStatus : ''} · ficha ${e.prodId || '—'}${e.ignored ? ' · OCULTA' : ''}${e.noVendemosMas ? ' · no la vendemos más' : ''} · aviso anotado: ${alerta[mla] || '—'}`);
+        try {
+          const d = await mlGet(`/items/${mla}?attributes=id,status,sub_status,date_created,last_updated,stop_time,available_quantity,sold_quantity,inventory_id,shipping,health,tags`, tok[label]);
+          const sh = d.shipping || {};
+          console.log(`   ML: ${d.status}${(d.sub_status || []).length ? ' · ' + d.sub_status.join(',') : ''} · creada ${String(d.date_created || '').slice(0, 10)} · último cambio ${String(d.last_updated || '').slice(0, 16)} · stop_time ${String(d.stop_time || '').slice(0, 10)}`);
+          console.log(`       stock publicado ${d.available_quantity} · vendidas ${d.sold_quantity} · logística ${sh.logistic_type || '—'} · tags ${(d.tags || []).join(',') || '—'}`);
+          if (d.inventory_id) {
+            try { const f = await mlGet(`/inventories/${d.inventory_id}/stock/fulfillment`, tok[label]);
+              console.log(`       Full (${d.inventory_id}): disponible ${f.available_quantity} · no disponible ${f.not_available_quantity}${(f.not_available_detail || []).length ? ' (' + f.not_available_detail.map((x) => x.status + ' ' + x.quantity).join(', ') + ')' : ''}`);
+            } catch (err) { console.log(`       Full (${d.inventory_id}): ❌ ${String(err.message || err).slice(0, 80)}`); }
+          } else console.log('       sin inventory_id: no tiene depósito de Full');
+        } catch (err) { console.log(`   ML: ❌ ${String(err.message || err).slice(0, 120)}`); }
+        console.log('');
+      }
+      return;
+    }
     // BILLING_PROBE=marcano:<marca>[:go] → "ESTA MARCA NO SE COMPRA" (26/09/2026)
     // Pedido suyo: "dolce y gabbana es marca prohibida". Hace lo mismo que el botón 🚫 del panel
     // (cyc/mlconfig/marcasFrenadas) y además tacha los candidatos vivos de esa marca —buscándola
