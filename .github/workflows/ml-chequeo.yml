@@ -92,7 +92,7 @@ jobs:
   # el registro del comando queda limpio y se lee igual que antes (el job "sync").
   ciclo:
     needs: chequeo
-    if: ${{ always() }}
+    if: ${{ !cancelled() }}
     runs-on: ubuntu-latest
     timeout-minutes: 355
     steps:
