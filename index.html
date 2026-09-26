@@ -2329,7 +2329,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='20.49';
+const APP_VERSION='20.50';
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
 // muestre la versión y la fecha de actualización y que tenga un desplegable predeterminado cerrado".
 // Y el mismo día: "que ponga fecha de cada modificación y haya una barrita para scrollear y que
@@ -2340,6 +2340,9 @@ const APP_VERSION='20.49';
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'20.50',f:'26/09/2026',h:'00:55',c:[
+    {n:3,t:'Las ventas sin costo cargado (sin ficha o con la ficha en 0) ya no suman su neto entero como ganancia: cuentan en lo facturado y dejan $0 de ganancia. Arriba de Ventas y en el resumen de Telegram se dice cuántas son. Al cargar el costo en la ficha entran solas.'}
+  ]},
   {v:'20.49',f:'26/09/2026',h:'00:52',c:[
     {n:3,t:'El margen de cada producto calcula IIBB + monotributo sobre el precio de HOY con el monotributo de HOY (antes: el promedio de las ventas viejas). Algunos márgenes bajan unos puntos: son los reales. El robot del rescate usa la misma cuenta, así que puede subir esta noche lo que quedó abajo del 20%.'}
   ]},
@@ -7824,7 +7827,25 @@ function costoOficinaVP(v){
   if(!baseUSD)return v.costo||0;
   return baseUSD*tcForYM(ym)*(v.qty||1);
 }
+// ── LA VENTA SIN COSTO NO SUMA GANANCIA (revisión max #10, 26/09/2026, eligió la a) ──
+// Sin ficha, o con la ficha en costo 0, el costo daba sólo los impuestos y el neto ENTERO se
+// contaba como ganado en los KPIs, el total del mes y los rankings. Ahora esa venta cuesta lo mismo
+// que su neto: sigue en lo facturado y en unidades, pero deja $0 de ganancia. Se cuenta y se dice
+// arriba (`ventaSinCostoVP`). Cuando se carga el costo en la ficha, la venta entra sola.
+function ventaSinCostoVP(v){
+  if(!v||v.cancelada)return false;
+  if(Number(v.costo)>0)return false;
+  const p=prodDeVenta(v);if(!p)return true;
+  const ym=v._dateKey?v._dateKey.substring(0,7):null;
+  const baseUSD=(ym?getHistCostUSDProd(p.id,ym):null)??costUSDof(p);
+  return !(baseUSD>0)&&!(parseFloat(p.shipUSD)>0);
+}
 function efectivoCostoVP(v){
+  if(v&&v.cancelada)return 0;
+  const c=_efectivoCostoVP(v);
+  return ventaSinCostoVP(v)?Math.max(Number(v.neto)||0,c):c;
+}
+function _efectivoCostoVP(v){
   if(v&&v.cancelada)return 0; // canceladas y reclamos no tienen costo (no afectan finanzas)
   // Cargo extra de ML (IIBB + almacenamiento) que ML cobra por débito, aparte de la venta: % del precio.
   // Se calcula ACÁ ARRIBA para que TODAS las salidas lo incluyan — incluido el arqueo/ganancia del mes,
@@ -8367,6 +8388,7 @@ function renderVentaProd(){
   const kpiEntries=(vpFilterCuenta?mesEntries.filter(v=>v.cuenta===vpFilterCuenta):mesEntries).filter(v=>!v.cancelada);
   let mU=0,mNeto=0,mCosto=0,mBruto=0,mGest=0;kpiEntries.forEach(v=>{mU+=v.qty||0;mNeto+=v.neto||0;mCosto+=efectivoCostoVP(v);mBruto+=v.total||0;mGest+=gestDeVenta(v);});
   const gMes=mNeto-mCosto;const pctMes=pctGananciaVP(gMes,mCosto,mGest);
+  let sinCostoU=0,sinCostoTot=0;kpiEntries.forEach(v=>{if(ventaSinCostoVP(v)){sinCostoU+=v.qty||0;sinCostoTot+=v.total||0;}});
   const retiroMes=Math.round(mNeto*0.15);const retMitadMes=Math.round(retiroMes/2);
   // cantidad de VENTAS (operaciones únicas por N° de venta); las viejas sin saleId cuentan 1 c/u
   const ventasCount=new Set(kpiEntries.map(vpGrupoKey)).size;
@@ -8376,7 +8398,7 @@ function renderVentaProd(){
     <div class="met-kpi ct"><div class="mk-lbl">Unidades</div><div class="mk-val">${mU}</div><div class="mk-sub">${kpiEntries.length} ítem${kpiEntries.length!==1?'s':''} vendido${kpiEntries.length!==1?'s':''}</div></div>
     ${mBruto>0?`<div class="met-kpi c5"><div class="mk-lbl">Total bruto</div><div class="mk-val">${fmt(mBruto)}</div><div class="mk-sub">precio de venta</div></div>`:''}
     <div class="met-kpi c4"><div class="mk-lbl">Neto</div><div class="mk-val">${fmt(mNeto)}</div><div class="mk-sub">lo que queda</div></div>
-    <div class="met-kpi c2"><div class="mk-lbl">Ganancia</div><div class="mk-val" style="color:${gMes>=0?'var(--green)':'var(--red)'}">${fmt(gMes)}</div><div class="mk-sub">neto − costo</div></div>
+    <div class="met-kpi c2"><div class="mk-lbl">Ganancia</div><div class="mk-val" style="color:${gMes>=0?'var(--green)':'var(--red)'}">${fmt(gMes)}</div><div class="mk-sub">neto − costo${sinCostoU?`<br><span style="color:var(--amber,#f59e0b)" title="Ventas sin ficha o con la ficha en costo 0: cuentan en lo facturado pero no en la ganancia. Cargá el costo en la ficha y entran solas.">⚠ ${sinCostoU} u. sin costo (${fmt(sinCostoTot)}) no suman</span>`:''}</div></div>
     <div class="met-kpi c1"><div class="mk-lbl">% Markup</div><div class="mk-val" style="color:${pctColor(pctMes)}">${pctMes!==null?(pctMes>=0?'+':'')+pctMes.toFixed(1)+'%':'—'}</div><div class="mk-sub">piso ${parseFloat((state.mlconfig||{}).minPct)||30}% · meta ${parseFloat((state.mlconfig||{}).targetPct)||32}%</div></div>`;
   renderVpScopeBlocks();
   renderVPRanking();
@@ -8821,6 +8843,7 @@ const PAP_DIAS=7;
 function ventaEnRemate(v,dk){
   if(!v||_esReclamo(v)||!(Number(v.neto)>0))return false;
   const vv=dk&&!v._dateKey?{...v,_dateKey:dk}:v;
+  if(ventaSinCostoVP(vv))return false;   // sin costo no hay % que medir (#10)
   const c=efectivoCostoVP(vv); if(!(c>0))return false;
   const pct=((v.neto||0)-c)/(c+gestDeVenta(vv))*100;
   const piso=parseFloat((state.mlconfig||{}).minPct)||30;
@@ -13410,7 +13433,7 @@ function metMargenRubro(keys){
     Object.values(state.ventaprod[k]||{}).forEach(v=>{
       if(!v||v.cancelada)return;                       // canceladas y reclamos no cuentan, igual que en todo el panel
       const costo=efectivoCostoVP({...v,_dateKey:k});
-      if(!(costo>0))return;                            // sin costo no hay margen que medir: no se inventa un 100%
+      if(!(costo>0)||ventaSinCostoVP({...v,_dateKey:k}))return;   // sin costo no hay margen que medir: no se inventa un 100%
       const r=rubroDeProducto(prodDeVenta(v));
       const dest=r?(agg[r]||(agg[r]={neto:0,costo:0,gest:0,u:0,ventas:0})):sinRubro;
       dest.neto+=v.neto||0;dest.costo+=costo;dest.gest+=gestDeVenta(v);
@@ -13501,7 +13524,7 @@ function metPorOrigen(keys){
       if(!gr){sinFicha.u+=v.qty||0;sinFicha.ventas++;sinFicha.total+=v.total||0;return;}
       const costo=efectivoCostoVP({...v,_dateKey:k});
       // Sin costo cargado no hay margen que medir, y contarla daría un 100% inventado.
-      if(!(costo>0)){sinCosto.u+=v.qty||0;sinCosto.ventas++;sinCosto.total+=v.total||0;return;}
+      if(!(costo>0)||ventaSinCostoVP({...v,_dateKey:k})){sinCosto.u+=v.qty||0;sinCosto.ventas++;sinCosto.total+=v.total||0;return;}
       const d=g[gr];
       d.neto+=v.neto||0;d.costo+=costo;d.gest+=gestDeVenta(v);d.total+=v.total||0;
       d.u+=v.qty||0;d.ventas++;
