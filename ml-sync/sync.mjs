@@ -18000,7 +18000,9 @@ async function main() {
         const clave = 'mp_' + label.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '');
         const anc = anclas[label];
         console.log(`── ${label} ──`);
-        if (!anc || !(parseFloat(anc.ars) || 0) || !anc.ts) {
+        // $0 es un disponible válido si está cargado con su fecha (revisión max, 26/09/2026): antes una
+        // cuenta vacía frenaba el disponible de las cuatro para siempre, sin ningún aviso.
+        if (!anc || !anc.ts || anc.ars == null || anc.ars === '' || !isFinite(parseFloat(anc.ars))) {
           console.log('   sin punto de partida cargado · escribí el disponible en el Arqueo y queda anotado solo');
           problemas++; continue;
         }
