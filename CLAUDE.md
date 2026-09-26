@@ -359,8 +359,8 @@ precios-decisión 3.
    ventana arranca en su despacho (hasta 60 días) y, si se ubican TODAS sus entradas y son anteriores al despacho de la
    caja siguiente, se le guardan (`recUsadas`, `recUsadasCalc`); ante la duda queda como antes · (3b) caja marcada a mano: el
    mismo producto · (4) **HECHO el 26/09, eligió la (a):** toda caja abierta, de la más vieja a la
-   más nueva, aparta lo suyo aunque no se marque (antes la nueva se marcaba con la mercadería de la vieja) · (5) Pedidos no
-   vuelve a pedir un color agotado hace 30+ días si otros colores venden.
+   más nueva, aparta lo suyo aunque no se marque (antes la nueva se marcaba con la mercadería de la vieja) · (5) **HECHO el 26/09, eligió la (a) (v20.57 · `cyc-v335`):** Pedidos pide un color agotado hace 30+ días con su ritmo
+   viejo (`ventasHistoricas`, misma condición que Armar caja) y el chip dice "ritmo viejo". **LAS 5 DECISIONES CERRADAS.**
  · **LAS 22 DE LA REVISIÓN MAX QUEDARON CERRADAS.** Falta: choques (15 sin verificar, cuando él diga) y la
    segunda revisión completa al final (recordársela).
 
