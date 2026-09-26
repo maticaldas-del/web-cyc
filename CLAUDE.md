@@ -293,6 +293,20 @@ precios-decisión 3.
  · **Kit Jade Rodillo y Piedra Guasha** (`MLA2126175931`, Ayelen, pausada): ficha `p1790392438056`,
    costo $2.080, vinculada. **Piedra Gua Sha de Jade sola**: ficha con costo $1.130, sin publicación
    todavía (la va a crear él; el alta de la hora la engancha por título o con `vincular`).
+ · **HECHAS el 26/09 (obvias, v20.47 · `cyc-v325`), numeradas como en el archivo:** 2 `calcCajaBarata`
+   mide el envío de la caja del lado de la barrera de ESE precio · 7 monotributo de meses nuevos =
+   vigente · 8 `netoweb` marca "sin medir" lo que no pudo leer (token, lote, comisión de hoy) · 9
+   reactivar una cancelada devuelve total y neto (`antesCancel`) · 11 `margenAlDia` ignora filas de
+   publicaciones desenganchadas · 12/23 Rentabilidad del Resumen = la ganancia de la Cascada y el %
+   único · 13 cambiar un costo sólo completa ventas sin costo · 14 `netoreal` no toca lo editado a
+   mano · 16 `gestDeVenta` = 0 en ventas abajo de $33.000 · 17 envío medido 0 abajo de la barrera no
+   cae al `gestFull` · 19 `dispo` acepta $0 como punto de partida · 20 Puntaje: retiro y gastos sin
+   proyectar · 22 Resumen de días/año: el retiro de cada mes, no el 15%.
+ · **QUEDAN PARA DECIDIR CON ÉL, de a una:** 18 (dispo sin anclas: lo liberado desaparece del
+   patrimonio cada noche) · 3 (el reloj del remate no distingue colores) · 4 (una venta de 2 u. que
+   cruza $33.000 pasa a ser el peor envío) · 5 (carrito con 429 queda torcido) · 6 (impuesto con el
+   promedio de ventas viejas) · 10 (ventas sin ficha cuentan el neto entero como ganancia) · 15 (el
+   neto estimado se muestra como real) · 21 (`compray` sin "Ya lo pedí" queda en camino para siempre).
 
 ### LA REVISIÓN POR ETAPAS (propuesta del 25/09, falta que confirme el ritmo)
 Pedido suyo: que cada revisión entre en una ventana de 5 h de tokens (plan de US$100, Opus 5.5). Seis
