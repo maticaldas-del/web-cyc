@@ -199,9 +199,11 @@ jobs:
   # misma corrida, apenas termina el comando (salga bien o mal), sigue con el ciclo en un job APARTE:
   # el registro del comando queda limpio y se lee igual que antes (el job "sync").
   # No corre cuando el pedido ya era "ciclo" (eso lo hace el job de arriba).
+  # OJO (26/09/2026): con always() este job NO SE DEJA CANCELAR y el próximo comando a mano quedaba
+  # trabado en la cola hasta 6 h. !cancelled() corre igual si el comando falla, pero sí se corta.
   ciclo:
     needs: sync
-    if: ${{ always() && github.event_name == 'workflow_dispatch' && github.event.inputs.billing_probe != 'ciclo' }}
+    if: ${{ !cancelled() && github.event_name == 'workflow_dispatch' && github.event.inputs.billing_probe != 'ciclo' }}
     runs-on: ubuntu-latest
     timeout-minutes: 355
     steps:
