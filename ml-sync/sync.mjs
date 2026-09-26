@@ -1765,22 +1765,16 @@ async function calcSubirPorMargen(db, o) {
   // Antes acá se estimaba como un % del precio nuevo. Parecido pero no igual: esa diferencia de
   // $50 o $70 es justo la que separa el 29% del 30%, y por eso el 13/08 subí 62 publicaciones y
   // muchas quedaron en 27-29% mientras el comando decía que habían llegado al piso.
-  const vtaMla = {}, vtaProd = {}, impProd = {};
+  const vtaMla = {}, vtaProd = {};
   for (const ents of Object.values(vpS)) {
     for (const v of Object.values(ents || {})) {
       if (!v || v.cancelada) continue;
       const q = v.qty || 1, tot = (v.total || 0) / q, net = (v.neto || 0) / q;
-      if (v.prodId) {
-        const b = impProd[v.prodId] = impProd[v.prodId] || { imp: 0, u: 0 };
-        b.imp += (v.total || 0) * (mlExtraPct(v.cuenta) + monoS) / 100;
-        b.u += q;
-      }
       if (tot <= 0 || net <= 0 || compraCruzaBarrera(v, ents)) continue;
       if (v.mla) (vtaMla[v.mla] = vtaMla[v.mla] || []).push({ tot, net });
       if (v.prodId) (vtaProd[v.prodId] = vtaProd[v.prodId] || []).push({ tot, net });
     }
   }
-  const mlxDe = (pid) => { const b = impProd[pid]; return (b && b.u > 0) ? Math.round(b.imp / b.u) : 0; };
   const feeCache = {};
   const feeAt = async (site, price, ltype, cat, token) => {
     const key = site + '|' + ltype + '|' + cat + '|' + Math.round(price);
@@ -1880,9 +1874,11 @@ async function calcSubirPorMargen(db, o) {
         // Donde SÍ hay ventas no se cambia nada: manda el promedio real, que es el que usa la
         // pantalla. El % estimado es solo para los que no tienen ninguna venta.
         const impPctS = (mlExtraPct(label) + monoS) / 100;
-        const mlxProd = mlxDe(p.id);
-        const sinImpMedido = !(mlxProd > 0);
-        const costoTotDe = (P) => costoBase + (sinImpMedido ? P * impPctS : mlxProd);
+        // DESDE EL 26/09/2026 (revisión max, hallazgo 6, eligió la a): el impuesto va SIEMPRE como
+        // % del precio que se está midiendo, con el monotributo de HOY. El promedio de las ventas
+        // viejas quedaba corto (ventas a precios de antes, monotributo de antes) y el rescate veía
+        // 21% donde la venta real daba 19%. Es la misma cuenta que calcCajaBarata y que la web.
+        const costoTotDe = (P) => costoBase + P * impPctS;
         const costoTot = costoTotDe(precio0);
         const netoDe = async (P) => {
           const c = await feeAt(b.site_id || 'MLA', P, b.listing_type_id, b.category_id, t.access_token);
@@ -20104,9 +20100,9 @@ async function main() {
         const neto = (p.netoCalc != null && p.netoCalc !== '') ? Number(p.netoCalc) : null;
         if (neto == null) continue;
         const fuente = 'precio de hoy';
-        // Impuestos: de las ventas si las hay; si no, estimados sobre el precio de hoy (igual que la web).
-        let mlx = (a2 && a2.u > 0) ? a2.mlx / a2.u : 0;
-        if (!mlx && p.netoCalcPrecio > 0) mlx = Number(p.netoCalcPrecio) * (mlExtraPct(ctaDe[p.id]) + monoM) / 100;
+        // Impuestos: SIEMPRE % del precio de hoy con el monotributo de hoy (26/09/2026, igual que
+        // la web). Antes salían del promedio de las ventas viejas.
+        let mlx = p.netoCalcPrecio > 0 ? Number(p.netoCalcPrecio) * (mlExtraPct(p.netoCalcCuenta || ctaDe[p.id]) + monoM) / 100 : ((a2 && a2.u > 0) ? a2.mlx / a2.u : 0);
         const costo = costoPesos(p, 1, tcM).costo + mlx;
         if (!(costo > 0)) continue;
         const mg = (neto - costo) / costo * 100;
