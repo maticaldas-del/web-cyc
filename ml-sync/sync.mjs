@@ -1011,6 +1011,10 @@ async function cajasQueLlegaron(db, accounts, labels, products, DRY) {
     const antesDeLaSig = calc.every((u) => tsDe(u) < sigDe(u.k.split('|')[1]));
     if (mb.aCalcular && !ciegoMb && esperado > 0 && usado === esperado && antesDeLaSig) mb.calc = calc;
   }
+  // Foto de lo libre ANTES de repartir entre las abiertas: la usa `cajasentrado`, más abajo, que hace
+  // el mismo recorrido por su cuenta.
+  const libreBase = {};
+  for (const [k, arr] of Object.entries(recEnt)) libreBase[k] = arr.map((e) => ({ ts: e.ts, left: e.left }));
   const marcadas = [], detalle = [];
   for (const ab of abiertas) {
     // Sólo cuentan las entradas POSTERIORES al despacho de esta caja. Las de antes son de una caja
@@ -1049,7 +1053,24 @@ async function cajasQueLlegaron(db, accounts, labels, products, DRY) {
     // falso. Esperar una vuelta no rompe nada; borrar unidades del patrimonio sí.
     const marcar = !hayCiego && dias >= MIN_DIAS_COMPLETA && (!parcial || (algo && quieta && dias >= MIN_DIAS && parte >= MIN_PARTE));
     detalle.push({ cuenta: ab.e.cuenta, fecha: ab.fecha, track: ab.c.track || '', completa: !parcial, marcar, algo, quieta, dias, parte, entraron, pedidas, reng, hayCiego });
-    if (!marcar) continue;                             // ML todavía la está procesando: se deja abierta
+    if (!marcar) {
+      // ── LA CAJA QUE NO SE MARCA TAMBIÉN APARTA LO SUYO (26/09/2026, revisión rev4, decisión 4, a) ──
+      // Antes sólo las cajas que se MARCABAN se llevaban entradas. Una vieja que todavía no se marca
+      // (ML sigue procesando otro renglón, un renglón no se pudo leer, no pasó los frenos) dejaba sus
+      // entradas libres, y una caja más NUEVA del mismo producto las tomaba como propias y se marcaba
+      // "llegó completa" estando en el camión. Ahora cada abierta, de la más vieja a la más nueva,
+      // aparta lo que le toca aunque se quede abierta; la nueva sólo ve lo que sobra.
+      for (const it of ab.items) {
+        const k1 = kR(ab.e.cuenta, it.prodId, it.variante || '');
+        let queda = it.u;
+        for (const e of (recEnt[k1] || [])) {
+          if (queda <= 0) break;
+          if (e.ts < desdeCaja || e.left <= 0) continue;
+          const t = Math.min(queda, e.left); e.left -= t; queda -= t;
+        }
+      }
+      continue;                                        // ML todavía la está procesando: se deja abierta
+    }
     // Consumir SÓLO lo que entró de verdad, de la entrada más vieja a la más nueva. Si se restara
     // lo que pedía el renglón, una caja posterior del mismo producto arrancaría en negativo.
     const usadas = [];
@@ -1078,17 +1099,18 @@ async function cajasQueLlegaron(db, accounts, labels, products, DRY) {
   // caja con lo anotado ANTES: un "no sé" no puede devolver unidades al camión ni sacarlas.
   try {
     const prevE = (await db.get('cyc/cajasentrado')) || {};
-    const libre = {};
-    for (const [k, arr] of Object.entries(recEnt)) libre[k] = arr.map((e) => ({ ts: e.ts, left: e.left }));
+    // Mismo recorrido que el marcado: TODAS las abiertas (marcadas en esta vuelta incluidas) apartan
+    // lo suyo en orden, así una caja ciega no le deja sus entradas a la siguiente.
+    const libre = libreBase;
     const nuevoE = {};
     for (const ab of abiertas) {
-      if (marcadas.includes(ab)) continue;
       const key = ab.id + '__' + ab.i;
       const desdeCaja = Date.parse((ab.fecha || '1970-01-01') + 'T00:00:00-03:00') || 0;
+      const yaMarcada = marcadas.includes(ab);
       let ciego = false; const its = [];
       for (const it of ab.items) {
         const k1 = kR(ab.e.cuenta, it.prodId, it.variante || '');
-        if (sinLeer[k1] || sinLeerProd[ab.e.cuenta + '|' + it.prodId]) { ciego = true; break; }
+        if (sinLeer[k1] || sinLeerProd[ab.e.cuenta + '|' + it.prodId]) ciego = true;
         let queda = it.u, q = 0;
         for (const e of (libre[k1] || [])) {
           if (queda <= 0) break;
@@ -1097,6 +1119,7 @@ async function cajasQueLlegaron(db, accounts, labels, products, DRY) {
         }
         if (q > 0) its.push({ p: it.prodId, v: it.variante || '', q });
       }
+      if (yaMarcada) continue;
       if (ciego) { if (prevE[key]) nuevoE[key] = prevE[key]; continue; }
       if (its.length) nuevoE[key] = { track: String(ab.c.track || ''), items: its };
     }
