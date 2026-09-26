@@ -2329,7 +2329,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='20.50';
+const APP_VERSION='20.51';
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
 // muestre la versión y la fecha de actualización y que tenga un desplegable predeterminado cerrado".
 // Y el mismo día: "que ponga fecha de cada modificación y haya una barrita para scrollear y que
@@ -2340,6 +2340,9 @@ const APP_VERSION='20.50';
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'20.51',f:'26/09/2026',h:'00:57',c:[
+    {n:3,t:'Una venta que Mercado Pago todavía no liquidó dice "≈ estimado" en gris (nunca verde), y arriba de los $33.000 se le descuenta el envío de Full de la ficha para no inflar la ganancia. El resumen de Telegram dice cuántas ventas son aproximadas. Se corrige sola cuando llega el pago real.'}
+  ]},
   {v:'20.50',f:'26/09/2026',h:'00:55',c:[
     {n:3,t:'Las ventas sin costo cargado (sin ficha o con la ficha en 0) ya no suman su neto entero como ganancia: cuentan en lo facturado y dejan $0 de ganancia. Arriba de Ventas y en el resumen de Telegram se dice cuántas son. Al cargar el costo en la ficha entran solas.'}
   ]},
@@ -7840,9 +7843,15 @@ function ventaSinCostoVP(v){
   const baseUSD=(ym?getHistCostUSDProd(p.id,ym):null)??costUSDof(p);
   return !(baseUSD>0)&&!(parseFloat(p.shipUSD)>0);
 }
+// ── EL NETO ESTIMADO NO INFLA LA GANANCIA (revisión max #15, 26/09/2026, eligió la a) ──
+// Cuando Mercado Pago todavía no liquidó, el robot guarda un neto estimado (precio − comisión) que
+// NO resta el envío de Full. Mientras siga estimada, arriba de los $33.000 se le suma al costo el
+// envío de Full de la ficha (el mismo `gestDeVenta`, que abajo de la barrera da 0), y el renglón
+// dice "≈ estimado" y nunca va en verde. Cuando la noche la relee de MP, la marca se cae sola.
+function ventaEstimadaVP(v){return !!(v&&!v.cancelada&&v.netoEstimado);}
 function efectivoCostoVP(v){
   if(v&&v.cancelada)return 0;
-  const c=_efectivoCostoVP(v);
+  const c=_efectivoCostoVP(v)+(ventaEstimadaVP(v)?gestDeVenta(v):0);
   return ventaSinCostoVP(v)?Math.max(Number(v.neto)||0,c):c;
 }
 function _efectivoCostoVP(v){
@@ -8236,7 +8245,8 @@ function renderVentaProd(){
       const gg=gn-gc;const gcTot=gc+ggest;const gpct=gcTot>0?gg/gcTot*100:null;
       const cuenta=grp.items[0].cuenta;
       const numVenta=grp.items[0].numVenta||'';
-      const pctBox=isCancelled?'':gpct!==null?`<span class="db ${pctCls(gpct)}" style="font-size:.62rem;color:${pctColor(gpct)}">${gpct>=0?'+':''}${gpct.toFixed(0)}%</span><span style="font-size:.58rem;color:${pctColor(gpct)};margin-left:3px">${pctLabel(gpct)}</span>`:'<span class="db nc" style="font-size:.58rem">s/costo</span>';
+      const _est=!isCancelled&&grp.items.some(ventaEstimadaVP);
+      const pctBox=isCancelled?'':(_est&&gpct!==null)?`<span class="db nc" style="font-size:.62rem;color:var(--muted)" title="Mercado Pago todavía no liquidó esta venta: el neto es una estimación del robot (le resta el envío de Full si pasa los $33.000). Se corrige sola cuando se lee el pago real.">≈ ${gpct>=0?'+':''}${gpct.toFixed(0)}% · estimado</span>`:gpct!==null?`<span class="db ${pctCls(gpct)}" style="font-size:.62rem;color:${pctColor(gpct)}">${gpct>=0?'+':''}${gpct.toFixed(0)}%</span><span style="font-size:.58rem;color:${pctColor(gpct)};margin-left:3px">${pctLabel(gpct)}</span>`:'<span class="db nc" style="font-size:.58rem">s/costo</span>';
       const grpKey=grp._dateKey||key;
       const delBtn=grp.saleId?`<button class="ii-del" onclick="delVentaSale('${grp.gid}','${grpKey}')">✕</button>`:`<button class="ii-del" onclick="delVentaProd('${grp.items[0].id}')">✕</button>`;
       // LA HORA DE LA VENTA (21/09/2026). Pedido suyo: *"se le puede agregar la hora de venta a
