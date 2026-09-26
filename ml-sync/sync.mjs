@@ -5647,7 +5647,15 @@ async function main() {
     // (juntos pesan ~5,6% de lo facturado).
     const monoPctDia = parseFloat(((await db.get('cyc/monotributo')) || {}).pct) || 0;
     const impDe = (v) => ((v.total || 0) * (mlExtraPct(v.cuenta) + monoPctDia) / 100);
-    let n = 0, fact = 0, gan = 0, sinCostoN = 0, sinCostoFact = 0;
+    let n = 0, fact = 0, gan = 0, sinCostoN = 0, sinCostoFact = 0, estN = 0;
+    // Revisión max #15 (26/09/2026, eligió la a): una venta con neto ESTIMADO (MP todavía no la
+    // liquidó) no trae restado el envío de Full: arriba de los $33.000 se le resta el peor envío
+    // medido, y el mensaje dice cuántas son aproximadas.
+    const ajEst = (v) => {
+      if (!v.netoEstimado) return 0;
+      const q = v.qty || 1, pu = (v.total || 0) / q;
+      return pu >= UMBRAL_ENVIO_GRATIS ? CAND_ENVIO_ARRIBA * q : 0;
+    };
     const byProd = {};   // producto -> unidades
     const ganProd = {};  // producto -> ganancia en $
     for (const v of Object.values(day)) {
@@ -5657,7 +5665,8 @@ async function main() {
       // Revisión max #10 (26/09/2026, eligió la a): una venta SIN costo (sin ficha o ficha en 0)
       // cuenta en lo facturado pero NO en la ganancia: sumarla metía el neto entero como ganado.
       if (!(Number(v.costo) > 0)) { sinCostoN += v.qty || 0; sinCostoFact += v.total || 0; continue; }
-      const g = (v.neto || 0) - (v.costo || 0) - impDe(v);
+      if (v.netoEstimado) estN++;
+      const g = (v.neto || 0) - (v.costo || 0) - impDe(v) - ajEst(v);
       gan += g;
       const k = v.prod || '?';
       byProd[k] = (byProd[k] || 0) + (v.qty || 0);
@@ -5673,6 +5682,7 @@ async function main() {
       + `Ventas: <b>${n}</b>\n`
       + `Facturado: ${money(fact)}\n`
       + `Ganancia: <b>${money(gan)}</b>\n`
+      + (estN ? `≈ ${estN} venta${estN === 1 ? '' : 's'} todavía sin liquidar: su ganancia es aproximada\n` : '')
       + (sinCostoN ? `⚠️ ${sinCostoN} u. sin costo cargado (${money(Math.round(sinCostoFact))}) no cuentan en la ganancia\n` : '')
       + (top ? `🥇 Más vendido: ${top[0]} (${top[1]})\n` : 'Sin ventas ese día')
       + (top3.length ? `\n<b>Los que más ganancia dejaron</b>\n`
@@ -5764,7 +5774,7 @@ async function main() {
             mFact += v.total || 0;
             if (!(Number(v.costo) > 0)) { mSinN += v.qty || 0; mSinFact += v.total || 0; mCuenta[v.cuenta || '?'] = (mCuenta[v.cuenta || '?'] || 0) + (v.total || 0); continue; }
             mFactCon += v.total || 0;
-            const g = (v.neto || 0) - (v.costo || 0) - impDe(v);
+            const g = (v.neto || 0) - (v.costo || 0) - impDe(v) - ajEst(v);
             mGan += g;
             mProd[v.prod || '?'] = (mProd[v.prod || '?'] || 0) + g;
             mCuenta[v.cuenta || '?'] = (mCuenta[v.cuenta || '?'] || 0) + (v.total || 0);
