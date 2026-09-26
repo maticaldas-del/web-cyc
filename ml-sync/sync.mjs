@@ -4757,6 +4757,25 @@ function candDescarteBlando(c) {
   return /abajo de tu piso/i.test(String(c.motivo || ''));
 }
 
+// ── ¿ES DE UNA MARCA FRENADA? (26/09/2026) ─────────────────────────────────────────────────
+// Antes sólo se miraba el campo `marca` del candidato, y el chat casi nunca lo carga: el Dolce
+// & Gabbana llegó a la revisión del pedido marcado "✅ LISTO PARA PEDIR" siendo una marca que él
+// tiene prohibida. Ahora se busca la marca también en el NOMBRE, como palabras enteras y en orden
+// ("dolce gabbana" agarra "Dolce & Gabbana Dolce Blue"). Devuelve la marca o null.
+function marcaFrenadaDe(c, marcasNo) {
+  if (!c || !marcasNo) return null;
+  const claves = Object.keys(marcasNo).filter((k) => marcasNo[k]);
+  const marca = String(c.marca || '').trim().toLowerCase();
+  if (marca && marcasNo[encodeURIComponent(marca)]) return c.marca;
+  const nom = ' ' + norm(c.nombre || '') + ' ';
+  for (const k of claves) {
+    let dec = k; try { dec = decodeURIComponent(k); } catch { /* clave rara: se usa tal cual */ }
+    const n = norm(dec);
+    if (n && nom.includes(' ' + n + ' ')) return dec;
+  }
+  return null;
+}
+
 // ── ¿ESTA OFERTA ES DE UN VENDEDOR DE AFUERA? (19/09/2026) ─────────────────────────────────
 // Regla suya del 19/09: **"estaba tomando envíos internacionales. esos no quiero que se fije."**
 // Lo dijo por el chat de compras, pero el robot tenía el mismo problema y ahí no lo veía nadie:
@@ -5081,7 +5100,7 @@ async function correrCandidatos(db, products, labels, accounts, soloPrueba, prue
     if (c.enNissei === false) { baratos++; await fuera('en comprasparaguay no lo ofrece Nissei: no se compra'); continue; }
     if (!(usd > 0)) { baratos++; await fuera('sin precio cargado: no se puede medir nada'); continue; }
     if (puesto > CAND_TOPE_USD) { baratos++; await fuera(`puesto sale US$ ${puesto.toFixed(2)}, pasa tu tope de US$ ${CAND_TOPE_USD}`); continue; }
-    if (c.marca && marcasNo[encodeURIComponent(String(c.marca).toLowerCase())]) { baratos++; await fuera(`marca frenada: ${c.marca}`); continue; }
+    { const _mf = marcaFrenadaDe(c, marcasNo); if (_mf) { baratos++; await fuera(`marca frenada: ${_mf}`); continue; } }
     // ── EL QUE YA TIENE LA CUENTA HECHA SE EVALÚA IGUAL (18/09/2026) ────────────────────
     // Acá había un `continue` pelado con el comentario *"ya tiene la cuenta hecha"*. Lo que hacía
     // era **sacarlo de la lista de los que dan**: no se contaba en ningún contador, no entraba en
@@ -9721,6 +9740,50 @@ async function main() {
     // NO toca los que descartó ÉL a mano desde el panel (ésos no tienen motivo anotado y son una
     // decisión suya) ni los que ya se midieron DOS veces, que están bien tachados.
     // Sin `:go` sólo muestra la lista.
+    // BILLING_PROBE=marcano:<marca>[:go] → "ESTA MARCA NO SE COMPRA" (26/09/2026)
+    // Pedido suyo: "dolce y gabbana es marca prohibida". Hace lo mismo que el botón 🚫 del panel
+    // (cyc/mlconfig/marcasFrenadas) y además tacha los candidatos vivos de esa marca —buscándola
+    // también en el nombre— y les saca las unidades del pedido. Sin `:go` sólo muestra.
+    // `marcano:-<marca>:go` la vuelve a permitir (los tachados no vuelven solos: devolvercand).
+    if (/^marcano:/.test(String(process.env.BILLING_PROBE || ''))) {
+      const partes = String(process.env.BILLING_PROBE).split(':');
+      const APLICAR = partes[partes.length - 1] === 'go';
+      let marca = partes.slice(1, APLICAR ? -1 : undefined).join(':').trim();
+      const sacar = marca.startsWith('-'); if (sacar) marca = marca.slice(1).trim();
+      marca = marca.replace(/\+/g, ' ').toLowerCase();
+      if (!marca) { console.log('Falta la marca: marcano:<marca>[:go]'); return; }
+      const clave = encodeURIComponent(marca);
+      console.log(`=== MARCA ${sacar ? 'PERMITIDA DE NUEVO' : 'PROHIBIDA'}: "${marca}" ${APLICAR ? '(APLICANDO)' : '(PRUEBA)'} ===`);
+      const antes = (await db.get('cyc/mlconfig/marcasFrenadas')) || {};
+      console.log(`Marcas prohibidas hoy: ${Object.keys(antes).filter((k) => antes[k]).map((k) => { try { return decodeURIComponent(k); } catch { return k; } }).join(' · ') || 'ninguna'}`);
+      if (sacar) {
+        if (!APLICAR) { console.log('SOLO PRUEBA. Si está bien: agregá :go'); return; }
+        await db.set(`cyc/mlconfig/marcasFrenadas/${clave}`, null);
+        const r = (await db.get(`cyc/mlconfig/marcasFrenadas/${clave}`));
+        console.log(r ? '❌ no se borró' : '✓ quitada (releído)');
+        return;
+      }
+      const cands = (await db.get('cyc/candidatos_py')) || {};
+      const toca = Object.entries(cands).filter(([, c]) => c && !c.prodId && marcaFrenadaDe(c, { [clave]: true }));
+      console.log(`${toca.length} candidato(s) de esa marca:`);
+      for (const [, c] of toca) console.log(`   🚫 ${c.nombre}${c.no ? ' (ya estaba tachado)' : ''}${Number(c.pedirU) > 0 ? ` · tenía ${c.pedirU} u. en el pedido` : ''}`);
+      if (!APLICAR) { console.log(`\nSOLO PRUEBA: no se tocó nada. Si está bien: marcano:${marca.replace(/ /g, '+')}:go`); return; }
+      await db.set(`cyc/mlconfig/marcasFrenadas/${clave}`, true);
+      for (const [id, c] of toca) {
+        await db.set(`cyc/candidatos_py/${id}/pedirU`, null);
+        if (!c.no) {
+          await db.set(`cyc/candidatos_py/${id}/no`, true);
+          await db.set(`cyc/candidatos_py/${id}/motivo`, `marca prohibida: ${marca}`);
+          await db.set(`cyc/candidatos_py/${id}/noTs`, Date.now());
+          await db.set(`cyc/candidatos_py/${id}/noTipo`, 'duro');
+        }
+      }
+      const re = (await db.get('cyc/mlconfig/marcasFrenadas')) || {};
+      const rc = (await db.get('cyc/candidatos_py')) || {};
+      const mal = toca.filter(([id]) => !(rc[id] || {}).no || Number((rc[id] || {}).pedirU) > 0).length;
+      console.log(`\n${re[clave] ? '✓ marca guardada' : '❌ la marca NO quedó guardada'} · ${toca.length - mal} de ${toca.length} candidato(s) tachados y fuera del pedido (releído)`);
+      return;
+    }
     if (/^devolvercand(:|$)/.test(String(process.env.BILLING_PROBE || ''))) {
       const APLICAR = String(process.env.BILLING_PROBE).split(':')[1] === 'go';
       const cands = (await db.get('cyc/candidatos_py')) || {};
@@ -12978,7 +13041,8 @@ async function main() {
 
         // 7 · ¿LA PODÉS PUBLICAR? La marca, y si ya tenés una ficha parecida.
         const marcaTxt = String(c.marca || '').trim();
-        if (marcasNo && marcaTxt && marcasNo[encodeURIComponent(marcaTxt.toLowerCase())]) { frenos.push(`marca frenada por ML: ${marcaTxt}`); console.log(`  🚫 MARCA FRENADA: ${marcaTxt} — ML te va a pedir documentación`); }
+        const _mfr = marcaFrenadaDe(c, marcasNo);
+        if (_mfr) { frenos.push(`marca frenada: ${_mfr}`); console.log(`  🚫 MARCA FRENADA: ${_mfr} — no se compra`); }
         else if (marcasNo) console.log(`  🚫 marcas que ML te frena: ${marcaTxt ? `"${marcaTxt}" no figura ✓` : 'no cargaste la marca, así que no pude chequearla'}`);
         const parecidas = (products || []).filter((p) => { const pp = _rvPal(p.name); const com = [...pCP].filter((w) => pp.has(w)); return com.length >= 2 && pCP.size > 0; }).slice(0, 3);
         if (parecidas.length) { reparos.push('ya tenés una ficha parecida'); console.log(`  📄 ⚠️ ya tenés ficha(s) con nombre parecido: ${parecidas.map((p) => p.name).join(' · ')} — chequeá que no sea el mismo producto`); }
