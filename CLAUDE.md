@@ -381,6 +381,18 @@ como hecho cuando se termine de resolver TODO"*. El cartel de Inicio sale de `RE
 `index.html` (sin botón). **Cuando algo queda resuelto ENTERO (verificado y arreglado): sacarlo de `REV_PENDIENTE`
 y poner la fecha en `REV_HECHAS`, subir versión.** **Los "15 choques sin verificar" NO existían: se verificaron en rev4 (lotes 6-8, ítems 27-42) y están todos arreglados.** Pendientes al 26/09: etapa 6 (ideas nuevas) y la revisión completa final.
 
+### ETAPA 6 · IDEAS NUEVAS: LA LISTA, ESPERANDO QUE ÉL ELIJA (26/09/2026)
+Tres revisores (datos de ML sin usar · trabajo a mano · palancas de plata). Lo que dependía de mí ya se hizo: los comandos
+para no tocar botones (`pyped`, `ofi`, `ancla`, `pausaprecio`) y el ciclo que se prende solo. **Para elegir él:**
+1 packs x2/x3 para lo de menos de $5.000 (el cargo fijo ~$1.230 se paga una vez) · 2 Premium contra Clásica publicación por
+publicación con las cuotas medidas (Watch 4 ~$28.000/venta; Dalí pendiente) · 3 visitas y conversión en Rotación ("no la ve
+nadie" vs "la ven y no compran"; el dato ya está en `mllinks.vis30`) · 4 mostrar `visit_share` y "comparten N" de la caja ·
+5 aviso de emparejar las 4 cuentas contra el techo de H (~$2,1M/mes de facturación liberada) · 6 probar subas chicas en las 36
+que venden sin catálogo (el supervisor mide) · 7 "hoy perdés $X/día en cuentas en cero con mercadería en tu oficina" arriba de
+Armar caja · 8 guardar el motivo de cada reclamo (sólo el código) para proponer `sincargo` · 9 unidades perdidas/dañadas por
+ML adentro de Full · 10 avisos por Telegram de gastos del mes que faltan, disponible MP de +30 días y cupo de +7 días.
+Descartadas por reglas suyas: publicidad, IA contestando, bajar precios en general.
+
 ### EL PUNTAJE DEL MES: REHACERLO, PERO DESPUÉS (26/09/2026)
 Él, con la captura del Puntaje (7,2 · "Buen mes"): *"no veo cuál es el objetivo de ganancia de CYC y para mí es medio
 flojo el conteo. podría fijarse otras cosas. si querés remodelalo desde 0 con lo que pondrías vos (…) pero ahora
