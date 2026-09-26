@@ -285,8 +285,9 @@ jobs:
           BILLING_PROBE: dispo:go
         run: node ml-sync/sync.mjs
 
-      # (El almacenamiento Full y los cargos de ML por débito —IIBB, etc.— ya NO se cargan como gasto
-      # mensual: ahora se descuentan como un % por cuenta sobre cada venta, en la web. Ver ML_EXTRA_PCT.)
+      # (Las percepciones de IIBB se descuentan como un % por cuenta sobre cada venta (ML_EXTRA_PCT).
+      # Los cargos de Full —almacenamiento, stock antiguo, retiro, multas— van como GASTO del mes, a mano.
+      # 26/09/2026: antes el % traía los dos adentro y se contaban dos veces.)
 
       # SI FALLÓ ALGÚN PASO, SE AVISA (revisión max #21, 25/09/2026). Con `continue-on-error` un paso
       # que sólo junta datos ya no corta la noche, pero tampoco puede fallar callado: acá se junta

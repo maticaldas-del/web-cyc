@@ -110,7 +110,11 @@ function mlVariant(it, p) {
 // Cargo extra de ML (IIBB por débito automático) que NO viene descontado del neto de la venta:
 // es un % del PRECIO y va sumado al costo, igual que en la app (ver ML_EXTRA_PCT en index.html).
 // Sin esto el robot mide el margen "a la vieja" (~13 puntos más alto) y apunta a un piso que no es.
-const ML_EXTRA_PCT = { adriana: 4.07, luciana: 4.37, ayelen: 5.95, matias: 4.58 };
+// 26/09/2026 (decisión suya, opción a): el % es SÓLO las percepciones de IIBB, medidas contra las
+// ventas reales de agosto 2026 (`percepcalc`). Antes (4,07/4,37/5,95/4,58) salía de la factura entera
+// de ML y traía adentro almacenamiento y cargos de Full, que ADEMÁS se cargan como gasto del mes
+// ("Cargos de Full de ML" en Gastos): se contaban dos veces. Ahora los cargos de Full van SÓLO como gasto.
+const ML_EXTRA_PCT = { adriana: 3.80, luciana: 4.01, ayelen: 5.99, matias: 3.40 };
 const mlExtraPct = (cuenta) => { const v = ML_EXTRA_PCT[(cuenta || '').toLowerCase()]; return v != null ? v : 4.8; };
 // ── % de reclamos EN VIVO por producto, igual que la web ───────────────────
 // La web nunca usa el costFullUSD guardado: lo recalcula en cada pantalla como
@@ -6419,7 +6423,7 @@ async function main() {
       // rentab:60:2026_06,2026_07 → analiza SOLO esos meses (sirve para sacar de la cuenta un mes
       // atípico). El margen por producto también sale de las ventas de esos meses, no de los N días.
       const pickYM = (_rp[2] || '').split(',').map((s) => s.trim()).filter(Boolean);
-      const MLX = { adriana: 4.07, luciana: 4.37, ayelen: 5.95, matias: 4.58 };
+      const MLX = ML_EXTRA_PCT; // una sola tabla (26/09/2026): antes había dos copias sueltas
       const mlx = (c) => { const v = MLX[(c || '').toLowerCase()]; return v != null ? v : 4.8; };
       const vp = (await db.get('cyc/ventaprod')) || {}; setDevLive(vp);
       const compras = (await db.get('cyc/compras')) || {};
@@ -26431,7 +26435,7 @@ async function main() {
       const _pp = String(process.env.BILLING_PROBE).split(':');
       const FLOOR = (parseFloat(_pp[1]) || 30) / 100;
       const pickYM = (_pp[2] || '2026_06,2026_07').split(',').map((s) => s.trim()).filter(Boolean);
-      const MLX = { adriana: 4.07, luciana: 4.37, ayelen: 5.95, matias: 4.58 };
+      const MLX = ML_EXTRA_PCT; // una sola tabla (26/09/2026): antes había dos copias sueltas
       const mlxOf = (c) => { const v = MLX[(c || '').toLowerCase()]; return v != null ? v : 4.8; };
       const vp = (await db.get('cyc/ventaprod')) || {}; setDevLive(vp);
       const compras = (await db.get('cyc/compras')) || {};
