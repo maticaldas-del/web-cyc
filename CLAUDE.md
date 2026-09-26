@@ -375,7 +375,7 @@ actividad de ARCA). **Confirmado por él:** *"solo armar la publicacion en cyc. 
 Él: *"quiero que manejes vos eso de revision del panel, que me marque lo que realmente falte (…) y vos lo marcas
 como hecho cuando se termine de resolver TODO"*. El cartel de Inicio sale de `REV_PENDIENTE` y `REV_HECHAS` en
 `index.html` (sin botón). **Cuando algo queda resuelto ENTERO (verificado y arreglado): sacarlo de `REV_PENDIENTE`
-y poner la fecha en `REV_HECHAS`, subir versión.** Hoy pendientes: choques (15), etapa 5, etapa 6, revisión completa final.
+y poner la fecha en `REV_HECHAS`, subir versión.** **Los "15 choques sin verificar" NO existían: se verificaron en rev4 (lotes 6-8, ítems 27-42) y están todos arreglados.** Pendientes al 26/09: etapa 6 (ideas nuevas) y la revisión completa final.
 
 ### EL PUNTAJE DEL MES: REHACERLO, PERO DESPUÉS (26/09/2026)
 Él, con la captura del Puntaje (7,2 · "Buen mes"): *"no veo cuál es el objetivo de ganancia de CYC y para mí es medio
