@@ -380,8 +380,11 @@ y poner la fecha en `REV_HECHAS`, subir versión.** **Los "15 choques sin verifi
 ### EL PUNTAJE DEL MES: REHACERLO, PERO DESPUÉS (26/09/2026)
 Él, con la captura del Puntaje (7,2 · "Buen mes"): *"no veo cuál es el objetivo de ganancia de CYC y para mí es medio
 flojo el conteo. podría fijarse otras cosas. si querés remodelalo desde 0 con lo que pondrías vos (…) pero ahora
-sigamos con esto"*. **Pendiente, cuando se cierren las 5 decisiones:** proponerle un Puntaje nuevo con el objetivo
-de ganancia de CYC a la vista (hoy sólo dice "piso") y criterios mejores. Le da libertad de rehacerlo desde cero.
+sigamos con esto"*. **HECHO el 26/09 (v20.60 · `cyc-v338`), con la libertad que dio:** objetivo de ganancia CYC =
+retiro + gastos del mes ("por cada peso que sale, otro se queda"; editable en ✎ objetivos), la meta grande = el doble
+(su verde de `pisobase`, sin puntuar). Puntos: ganancia CYC vs objetivo 4 · margen 2 (0 en `minPct`, llenos en la meta
+35) · faltantes 2 · capital parado 1 (`calcRotScore`, nuevo) · reclamos 1. Se sacaron retiro vs piso (es fijo) y gastos
+aparte (ya están en la ganancia). Falta que él lo mire y diga si el objetivo le cierra.
 
 ### LA REVISIÓN POR ETAPAS (propuesta del 25/09, falta que confirme el ritmo)
 Pedido suyo: que cada revisión entre en una ventana de 5 h de tokens (plan de US$100, Opus 5.5). Seis

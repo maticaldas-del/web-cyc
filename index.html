@@ -2329,7 +2329,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='20.59';
+const APP_VERSION='20.60';
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
 // muestre la versión y la fecha de actualización y que tenga un desplegable predeterminado cerrado".
 // Y el mismo día: "que ponga fecha de cada modificación y haya una barrita para scrollear y que
@@ -2340,6 +2340,8 @@ const APP_VERSION='20.59';
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'20.60',f:'26/09/2026',h:'12:52',c:[
+    {n:2,t:'Puntaje del mes rehecho: arriba de todo dice el objetivo de ganancia de CYC (lo mismo que sale en retiro + gastos; la meta grande es el doble) y cuánto vas. Cuenta: ganancia CYC 4 · margen 2 (cero en el piso del negocio) · faltantes 2 · capital parado 1 (nuevo) · reclamos 1. Ya no puntúan el retiro (es fijo) ni los gastos aparte (ya están adentro de la ganancia).'}]},
   {v:'20.59',f:'26/09/2026',h:'12:49',c:[
     {n:1,t:'Revisión del panel: choques y fallas mudas ya estaban verificadas y arregladas (el cartel las mostraba por una nota vieja). Quedan ideas nuevas y la revisión completa final.'}]},
   {v:'20.58',f:'26/09/2026',h:'12:45',c:[
@@ -14737,39 +14739,44 @@ function calcPuntajeMes(mesKey){
   // (revisión max, 26/09/2026).
   const proy=Math.round((g.neto-g.costo)*factorProy-g.retiro-g.gastos);
   const retiroProy=Math.round(g.retiro);
-  // ── Meta = PISO en dólares (US$/socio × socios), con el dólar del mes. Piso fijo manual la pisa. ──
+  // ── EL OBJETIVO DE GANANCIA DE CYC, A LA VISTA (26/09/2026, Puntaje rehecho) ─────────────────
+  // Él, con la captura del Puntaje: *"no veo cuál es el objetivo de ganancia de CYC y para mí es medio
+  // flojo el conteo (…) remodelalo desde 0"*. Antes la meta era un "piso" en US$ por socio y la mitad
+  // de los puntos premiaba el RETIRO, que es fijo ($1.800.000): puntuaba algo que no se mueve.
+  // Ahora el objetivo es de CYC: que quede en el negocio TANTO como lo que sale en retiro + gastos
+  // del mes ("por cada peso que sale, otro se queda"). Su verde de `pisobase` (ganancia = el triple
+  // de lo que cuesta quedar en 0) es el doble de esto y se muestra como la meta grande, sin puntuar.
   const cfg=puntCfg(ym);
   const tc=histTCforYM(ym)||curTC()||1500;
-  const piso=Math.round(cfg.pisoUsdPP*cfg.socios*tc);
-  const meta=(cfg.metaManual!=null)?cfg.metaManual:piso;
-  const metaFuente=(cfg.metaManual!=null)?'manual':'piso';
+  const fijos=Math.max(0,Math.round(g.retiro+g.gastos));
+  const piso=fijos;
+  const meta=(cfg.metaManual!=null)?cfg.metaManual:fijos;
+  const metaFuente=(cfg.metaManual!=null)?'manual':'fijos';
+  const metaGrande=fijos*2;
   const comp=[];
-  // A1. Ganancia de CYC vs piso (2)  |  A2. Nuestro retiro vs piso (2). Llegar al piso ≈ 70%.
-  const curvaPiso=[[0,0],[1,1]];
-  const ptsCyc=2*_lerpCurve(meta>0?proy/meta:0,curvaPiso);
-  comp.push({key:'gananciaCyc',label:'Ganancia CYC vs piso',pts:ptsCyc,max:2});
-  const ptsRet=2*_lerpCurve(meta>0?retiroProy/meta:0,curvaPiso);
-  comp.push({key:'retiro',label:'Nuestro retiro vs piso',pts:ptsRet,max:2});
+  // A. Ganancia CYC vs objetivo (4): 0 si CYC no gana nada, llenos al llegar al objetivo.
+  const ptsCyc=meta>0?4*_lerpCurve(proy/meta,[[0,0],[1,1]]):(proy>0?4:0);
+  comp.push({key:'gananciaCyc',label:'Ganancia CYC vs objetivo',pts:ptsCyc,max:4});
   // Facturación → Monotributo H: ya NO cuenta en el puntaje, se muestra solo como progreso informativo.
   const facMes=_puntFacMes(ym),facProy=Math.round(facMes*factorProy);
   const paceTotal=Math.round(MET_ACCTS.length*PUNT_MONO_H/12);
   const prevYM=_puntMesPrev(ym),prevG=_puntGananciaMes(prevYM).ganancia;
   const fac12=_puntFac12();
   const monoCuentas=MET_ACCTS.map(a=>({acct:a,label:MET_LABELS[a],fac:fac12[a],cat:monoCat(fac12[a])}));
-  // C. Margen % (1.5): 40% (meta) o más = puntos completos; baja hasta 0 en 20%.
+  // B. Margen % (2): en el PISO del negocio (minPct, "CYC en 0") no suma nada; llenos en la meta.
   const margen=pctGananciaVP(g.neto-g.costo,g.costo,g.gest)||0;
-  const ptsC=1.5*_lerpCurve(margen,[[cfg.margenMeta/2,0],[cfg.margenMeta,1]]);
-  comp.push({key:'margen',label:'Margen %',pts:ptsC,max:1.5});
+  const pisoM=Math.min(parseFloat((state.mlconfig||{}).minPct)||22,cfg.margenMeta-1);
+  const ptsC=2*_lerpCurve(margen,[[pisoM,0],[cfg.margenMeta,1]]);
+  comp.push({key:'margen',label:'Margen %',pts:ptsC,max:2});
   // D. Devoluciones (1) — reclamos reales del mes
   let recU=0,ventU=0;
   Object.keys(state.ventaprod||{}).filter(k=>k.startsWith(ym)).forEach(k=>Object.values(state.ventaprod[k]||{}).forEach(v=>{if(_esReclamo(v))recU+=v.qty||0;else if(!v.cancelada)ventU+=v.qty||0;}));
   const devPct=(ventU+recU)>0?(recU/(ventU+recU))*100:0;
   const ptsD=1*_lerpCurve(devPct,[[cfg.devOk,1],[cfg.devMax,0]]);
   comp.push({key:'devoluciones',label:'Devoluciones',pts:ptsD,max:1});
-  // E. Gastos (1): gastos/neto
+  // Los gastos ya NO puntúan aparte: están adentro de la ganancia de CYC (contarlos dos veces era
+  // parte de lo "flojo"). Se sigue calculando el % para mostrarlo.
   const gastRatio=g.neto>0?g.gastos/g.neto:0;
-  const ptsE1=1*_lerpCurve(gastRatio,[[cfg.gastOk/100,1],[cfg.gastMax/100,0]]);
-  comp.push({key:'gastos',label:'Gastos',pts:ptsE1,max:1});
   // F. Stock / reposición (2.5): pérdida estimada por faltantes ÷ ganancia bruta promedio mensual.
   //    Curva: ≤8% en riesgo = 2.5 llenos · 25% = 1.25 · 40%+ = 0.
   let ptsStock,riesgoTot=0,stockPct=0,ganPromStock=0,stockFuente='live';
@@ -14779,22 +14786,29 @@ function calcPuntajeMes(mesKey){
     riesgoTot=[...(state.pedidos||[]),...(state.pedidos_py||[])].filter(x=>(x.estado||'pendiente')!=='suficiente').reduce((s,x)=>s+(x.riesgo||0),0);
     ganPromStock=_puntGan30dTotal();
     stockPct=ganPromStock>0?riesgoTot/ganPromStock:(riesgoTot>0?1:0);
-    ptsStock=2.5*_lerpCurve(stockPct,PUNT_CURVA_STOCK);
+    ptsStock=2*_lerpCurve(stockPct,PUNT_CURVA_STOCK);
   } else {
     const hist=_puntStockMesCerrado(ym); // foto real del mes cerrado (promedio de las fotos diarias)
-    if(hist){riesgoTot=hist.riesgoTot;ganPromStock=hist.gan30d;stockPct=hist.stockPct;ptsStock=hist.pts;stockFuente='historico';}
-    else {ptsStock=2.5*0.7;stockFuente='neutro';} // mes viejo sin registro: valor neutro
+    if(hist){riesgoTot=hist.riesgoTot;ganPromStock=hist.gan30d;stockPct=hist.stockPct;ptsStock=hist.pts*2/2.5;stockFuente='historico';}
+    else {ptsStock=2*0.7;stockFuente='neutro';} // mes viejo sin registro: valor neutro
   }
-  comp.push({key:'stock',label:'Stock / reposición',pts:ptsStock,max:2.5});
+  comp.push({key:'stock',label:'Faltantes (stock / reposición)',pts:ptsStock,max:2});
+  // E. Capital parado (1) — NUEVO: la plata metida en mercadería que no rota (la misma cuenta que la
+  // tarjeta de Rotación de Stock). ≤7% muerto = llenos · 30%+ = 0. Sólo hay foto de HOY: un mes
+  // cerrado queda neutro.
+  let rot=null,ptsRot;
+  if(esActual){try{rot=calcRotScore();}catch(e){rot=null;}}
+  ptsRot=rot?1*_lerpCurve(rot.pct/100,[[0.07,1],[0.30,0]]):0.7;
+  comp.push({key:'capital',label:'Capital parado',pts:ptsRot,max:1});
   const score=Math.max(0,Math.min(10,comp.reduce((s,c)=>s+c.pts,0)));
-  return {ym,esActual,dias,diasMes,score,meta,piso,tc,metaFuente,g,proy,retiroProy,comp,margen,devPct,gastRatio,riesgoTot,stockPct,ganPromStock,stockFuente,prevG,prevYM,facMes,facProy,paceTotal,monoCuentas};
+  return {ym,esActual,dias,diasMes,score,meta,piso,tc,metaFuente,metaGrande,fijos,rot,g,proy,retiroProy,comp,margen,devPct,gastRatio,riesgoTot,stockPct,ganPromStock,stockFuente,prevG,prevYM,facMes,facProy,paceTotal,monoCuentas};
 }
 function _puntSugerencias(P){
   const out=[],byKey=Object.fromEntries(P.comp.map(c=>[c.key,c])),perd=c=>c.max-c.pts,mal=c=>c&&perd(c)>0.15;
   const ccyc=byKey.gananciaCyc;
-  if(ccyc){const f=Math.max(0,P.meta-P.proy);out.push({key:'gananciaCyc',lbl:'Ganancia CYC',pts:perd(ccyc),txt:`Ganancia CYC: proyección <strong>${fmt(P.proy)}</strong> vs piso <strong>${fmt(P.meta)}</strong>${f>0?` — te faltan ${fmt(f)} (bajá costos/gastos o vendé más).`:` — piso cubierto.`}`});}
-  const cret=byKey.retiro;
-  if(cret){const f=Math.max(0,P.meta-P.retiroProy);out.push({key:'retiro',lbl:'Nuestro retiro',pts:perd(cret),txt:`Nuestro retiro: proyección <strong>${fmt(P.retiroProy)}</strong> vs piso <strong>${fmt(P.meta)}</strong>${P.metaFuente==='piso'?` (US$${Math.round(P.meta/P.tc)})`:''}${f>0?` — te faltan ${fmt(f)}.`:` — piso cubierto.`}`});}
+  if(ccyc){const f=Math.max(0,P.meta-P.proy);out.push({key:'gananciaCyc',lbl:'Ganancia CYC',pts:perd(ccyc),txt:`Ganancia CYC: proyección <strong>${fmt(P.proy)}</strong> contra el objetivo <strong>${fmt(P.meta)}</strong>${f>0?` — faltan ${fmt(f)}. Lo que más la mueve: margen y no quedarse sin stock en lo que vende.`:` — objetivo cumplido 🎉 (la meta grande es ${fmt(P.metaGrande)}).`}`});}
+  const ccap=byKey.capital;
+  if(ccap){let t;if(!P.rot)t=`Capital parado: ${P.esActual?'sin datos de stock':'mes cerrado, no hay foto del stock de ese mes (valor neutro)'}.`;else t=`Capital parado: <strong>${P.rot.pct.toFixed(0)}%</strong> de la mercadería no rota (${fmt(P.rot.capMuerto)} en ${P.rot.nMuerto} producto${P.rot.nMuerto===1?'':'s'})${mal(ccap)?' — el remate y la escalera del robot lo van bajando; mirá Rotación de Stock.':'.'}`;out.push({key:'capital',lbl:'Capital',pts:perd(ccap),txt:t});}
   const cst=byKey.stock;
   if(cst){let msg;
     if(P.stockFuente==='neutro'){msg=`Stock: mes cerrado sin registro histórico de faltantes (valor neutro — se empezó a guardar la foto desde ahora).`;}
@@ -14807,8 +14821,6 @@ function _puntSugerencias(P){
   if(cm){const mMeta=puntCfg(P.ym).margenMeta;const bajos=mal(cm)?_puntProdMarkup(P.ym).filter(a=>a.markup<mMeta).sort((a,b)=>b.vol-a.vol).slice(0,3).map(a=>a.nom):[];out.push({key:'margen',lbl:'Margen',pts:perd(cm),txt:`Margen en <strong>${P.margen.toFixed(0)}%</strong> (meta ${mMeta}%).${bajos.length?` Revisá precio/costo de: ${bajos.join(', ')}.`:``}`});}
   const cd=byKey.devoluciones;
   if(cd){let peorTxt='';if(mal(cd)){const rec={};Object.keys(state.ventaprod||{}).filter(k=>k.startsWith(P.ym)).forEach(k=>Object.values(state.ventaprod[k]||{}).forEach(v=>{if(_esReclamo(v)){const n=v.prod||(prodDeVenta(v)||{}).name||'?';rec[n]=(rec[n]||0)+(v.qty||0);}}));const peor=Object.entries(rec).sort((a,b)=>b[1]-a[1])[0];if(peor)peorTxt=` El más problemático: ${peor[0]}.`;}out.push({key:'devoluciones',lbl:'Devoluciones',pts:perd(cd),txt:`Devoluciones en <strong>${P.devPct.toFixed(1)}%</strong>.${peorTxt}`});}
-  const cg=byKey.gastos;
-  if(cg){out.push({key:'gastos',lbl:'Gastos',pts:perd(cg),txt:`Gastos: se llevaron <strong>${(P.gastRatio*100).toFixed(0)}%</strong> del neto.${mal(cg)?` Apretá acá para sumar puntos.`:``}`});}
   return out.sort((a,b)=>b.pts-a.pts);
 }
 function puntColor(s){return s>=9?'#fbbf24':s>=7?'#22c55e':s>=6?'#84cc16':s>=5?'#f59e0b':'#ef4444';}
@@ -14823,9 +14835,9 @@ function renderPuntajeMes(){
   const mesLbl=MONTHS[parseInt(P.ym.split('_')[1])-1]+' '+P.ym.split('_')[0];
   const sug=_puntSugerencias(P);
   const nota=(P.esActual&&P.dias<7)?` <span style="color:var(--muted)">· proyección estimada (mes recién arranca)</span>`:'';
-  const cycTxt=`<span style="color:var(--muted)">CYC (queda en el negocio):</span> vas <strong style="color:var(--green)">${fmt(P.g.ganancia)}</strong> · proy <strong>${fmt(P.proy)}</strong>${nota}`;
-  const _mati=Math.round(P.retiroProy/2),_viejo=P.retiroProy-_mati;
-  const nuestroTxt=`<span style="color:var(--muted)">Nuestro (retiro):</span> vas <strong style="color:var(--green)">${fmt(P.g.retiro)}</strong> · proy <strong>${fmt(P.retiroProy)}</strong> · piso <strong>${fmt(P.meta)}</strong> <span style="color:var(--muted)">(${P.metaFuente==='manual'?'manual':'US$'+Math.round(P.meta/P.tc)})</span> <span style="color:var(--muted)">· Mati ${fmt(_mati)} / Viejo ${fmt(_viejo)}</span>`;
+  const _pctObj=P.meta>0?Math.round(P.proy/P.meta*100):0;
+  const cycTxt=`<span style="color:var(--muted)">🎯 Objetivo de ganancia CYC:</span> <strong>${fmt(P.meta)}</strong> <span style="color:var(--muted)">${P.metaFuente==='manual'?'(lo pusiste a mano)':'(lo mismo que sale en retiro + gastos)'} · meta grande ${fmt(P.metaGrande)}</span>`;
+  const nuestroTxt=`<span style="color:var(--muted)">CYC (queda en el negocio):</span> vas <strong style="color:${P.g.ganancia>=0?'var(--green)':'var(--red)'}">${fmt(P.g.ganancia)}</strong> · proyección <strong>${fmt(P.proy)}</strong> <span style="color:var(--muted)">(${_pctObj}% del objetivo)</span>${nota}<br><span style="color:var(--muted)">Ya descontado: retiro ${fmt(P.g.retiro)} · gastos ${fmt(P.g.gastos)}</span>`;
   const facARCA=_facARCA();   // una sola vez: recorrer todas las ventas por cuenta sería 4 veces lo mismo
   const monoHtml=`<div style="margin-top:14px;border-top:1px solid var(--border);padding-top:12px"><div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px"><span style="font-size:.6rem;text-transform:uppercase;letter-spacing:.1em;color:var(--muted)">Monotributo · cómo vendés vs AFIP</span><button onclick="goMonotributo()" style="background:transparent;border:1px solid var(--border2);color:var(--muted);border-radius:6px;padding:2px 8px;font-size:.56rem;cursor:pointer">✎ AFIP / meses</button></div>${P.monoCuentas.map(m=>{
     const mlF=m.fac;
@@ -14860,7 +14872,7 @@ function renderPuntajeMes(){
   el.innerHTML=`<div style="background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:16px 18px;margin:0 auto 16px;max-width:min(720px,calc(100vw - 48px))">
     <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
       <div style="display:flex;align-items:center;gap:7px">
-        <span style="font-size:.62rem;text-transform:uppercase;letter-spacing:.12em;color:var(--muted)" title="Ganancia CYC vs piso (2) + Nuestro retiro vs piso (2) + Margen (1.5) + Stock/reposición (2.5) + Devoluciones (1) + Gastos (1). Aprobar = 6.">Puntaje del mes</span>
+        <span style="font-size:.62rem;text-transform:uppercase;letter-spacing:.12em;color:var(--muted)" title="Ganancia CYC vs objetivo (4) + Margen (2) + Faltantes (2) + Capital parado (1) + Devoluciones (1). Aprobar = 6.">Puntaje del mes</span>
         <button onclick="puntNav(-1)" style="background:transparent;border:1px solid var(--border2);color:var(--muted);border-radius:6px;padding:0 8px;font-size:1rem;line-height:1.6;cursor:pointer">‹</button>
         <span style="font-family:'Syne',sans-serif;font-weight:700;font-size:.82rem">${mesLbl}</span>
         <button onclick="puntNav(1)" style="background:transparent;border:1px solid var(--border2);color:var(--muted);border-radius:6px;padding:0 8px;font-size:1rem;line-height:1.6;cursor:pointer">›</button>
@@ -14893,7 +14905,7 @@ function setPuntajeMeta(ym){
   const cfg=puntCfg(ym);
   const p=ym.split('_'), mesLbl=MONTHS[parseInt(p[1])-1]+' '+p[0];
   const tc=histTCforYM(ym)||curTC()||1500;
-  const pisoAuto=Math.round(cfg.pisoUsdPP*cfg.socios*tc);
+  const pisoAuto=(()=>{try{const g=_puntGananciaMes(ym);return Math.round(g.retiro+g.gastos);}catch(e){return 0;}})();
   const ex=document.getElementById('pm-modal');if(ex)ex.remove();
   const ov=document.createElement('div');ov.id='pm-modal';
   ov.style.cssText='position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,.72);display:flex;align-items:flex-start;justify-content:center;padding:24px 16px;overflow:auto';
@@ -14907,14 +14919,11 @@ function setPuntajeMeta(ym){
   ov.innerHTML=`<div style="background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:20px;max-width:460px;width:100%">
     <div style="font-family:'Syne',sans-serif;font-weight:700;font-size:1rem;margin-bottom:4px">Objetivos · ${mesLbl}</div>
     <div style="font-size:.64rem;color:var(--muted);margin-bottom:6px;line-height:1.45">Dejá un campo vacío para usar el valor automático (el número gris de ejemplo).</div>
-    <div style="${sec}">Piso de ganancia</div>
-    ${two('US$ por socio · cantidad de socios', f('pm-pisoUsd',o.pisoUsdPP,PUNT_PISO_USD_PP), f('pm-socios',o.socios,PUNT_SOCIOS))}
-    ${row('O piso fijo en pesos (pisa el cálculo en US$)', f('pm-metaManual',o.metaManual,'auto: '+fmt(pisoAuto).replace('$','')))}
+    <div style="${sec}">Objetivo de ganancia de CYC</div>
+    ${row('Objetivo en pesos (vacío = lo que sale en retiro + gastos del mes)', f('pm-metaManual',o.metaManual,'auto: '+fmt(pisoAuto).replace('$','')))}
     <div style="${sec}">Otros objetivos</div>
-    ${row('% de retiro de socios', f('pm-retiro',o.retiroPct,Math.round(PUNT_RETIRO_PCT*100)))}
     ${row('Meta de margen (%) — puntos llenos a este %', f('pm-margen',o.margenMeta,PUNT_DEF.margenMeta))}
     ${two('Devoluciones — perfecto hasta % · cero en %', f('pm-devOk',o.devOk,PUNT_DEF.devOk), f('pm-devMax',o.devMax,PUNT_DEF.devMax))}
-    ${two('Gastos (% del neto) — perfecto hasta % · cero en %', f('pm-gastOk',o.gastOk,PUNT_DEF.gastOk), f('pm-gastMax',o.gastMax,PUNT_DEF.gastMax))}
     <div style="display:flex;gap:8px;margin-top:16px;flex-wrap:wrap">
       <button id="pm-save" class="btn" style="background:var(--accent2);color:#fff;flex:1;min-width:110px">Guardar</button>
       <button id="pm-reset" class="btn" style="background:var(--surface2);color:var(--muted)">Volver a automáticos</button>
@@ -14932,10 +14941,10 @@ function setPuntajeMeta(ym){
   document.getElementById('pm-save').onclick=async()=>{
     const rd=id=>{const v=(document.getElementById(id).value||'').trim();return v===''?null:Number(v.replace(/[^\d.-]/g,''));};
     const c={},set=(k,v)=>{if(v!=null&&isFinite(v))c[k]=v;};
-    set('pisoUsdPP',rd('pm-pisoUsd'));set('socios',rd('pm-socios'));set('metaManual',rd('pm-metaManual'));
-    set('retiroPct',rd('pm-retiro'));set('margenMeta',rd('pm-margen'));
+    // Se conservan los campos viejos que ya no están en pantalla (piso en US$, gastos): no se borran.
+    ['pisoUsdPP','socios','retiroPct','gastOk','gastMax'].forEach(k=>{if(o[k]!=null&&o[k]!=='')c[k]=o[k];});
+    set('metaManual',rd('pm-metaManual'));set('margenMeta',rd('pm-margen'));
     set('devOk',rd('pm-devOk'));set('devMax',rd('pm-devMax'));
-    set('gastOk',rd('pm-gastOk'));set('gastMax',rd('pm-gastMax'));
     // validaciones sobre los valores EFECTIVOS (lo que se guarda + el default del resto)
     const eDevOk=c.devOk??PUNT_DEF.devOk, eDevMax=c.devMax??PUNT_DEF.devMax;
     const eGastOk=c.gastOk??PUNT_DEF.gastOk, eGastMax=c.gastMax??PUNT_DEF.gastMax;
