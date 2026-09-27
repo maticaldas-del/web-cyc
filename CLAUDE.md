@@ -406,6 +406,7 @@ que venden sin catálogo (el supervisor mide) · 7 "hoy perdés $X/día en cuent
 Armar caja · 8 guardar el motivo de cada reclamo (sólo el código) para proponer `sincargo` · 9 unidades perdidas/dañadas por
 ML adentro de Full · 10 avisos por Telegram de gastos del mes que faltan, disponible MP de +30 días y cupo de +7 días.
 Descartadas por reglas suyas: publicidad, IA contestando, bajar precios en general.
+**27/09: eligió de las primeras 5.** 1 packs → **NO** (*"al estar en pack las saco de competencia y se vende menos"*). 2 `premiumvs` · 3 visitas en Rotación (`rotVisitasHtml`) · 4 `cajaVis`/`cajaComp` en Caja ML (el robot los guarda cada hora) · 5 tarjeta ⚖️ en Inicio (`renderHomeParejo`, tope H, ritmo = 30 d × 12) → **HECHAS (v20.66)**. Faltan elegir 6-10.
 
 ### EL PUNTAJE DEL MES: REHACERLO, PERO DESPUÉS (26/09/2026)
 Él, con la captura del Puntaje (7,2 · "Buen mes"): *"no veo cuál es el objetivo de ganancia de CYC y para mí es medio
@@ -1328,6 +1329,7 @@ Los que más se usan:
 | `ancla:<cuenta>=<pesos>[;…][;go]` | **el disponible de MP que él lee**, cargado desde el chat (26/09): punto de partida en pesos + casilla en dólares |
 | `pausaprecio[:<palabra>\|:-<palabra>][:go]` | **"No lo compro por ahora" desde el chat** (26/09) · con `-` lo devuelve a Pedidos |
 | `marcano:<marca>[:go]` | **"esta marca no se compra"** (26/09): la guarda en `marcasFrenadas`, tacha los candidatos de esa marca (la busca también en el NOMBRE, no sólo en el campo marca) y les saca las unidades del pedido · `-` adelante la vuelve a permitir · prohibida hoy: **Dolce & Gabbana** |
+| `premiumvs` | **Premium contra Clásica** (idea 2 de la etapa 6, 27/09): cuánto cuesta ser Premium por venta (comisión + cuotas) y cuánto menos se puede vender en Clásica ganando lo mismo · solo lee |
 
 Casi todos son de solo lectura. Los que escriben piden `:go` explícito.
 
