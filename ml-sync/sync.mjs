@@ -1397,7 +1397,7 @@ async function cajaDeCompraML(db, accounts, labels, DRY, soloCta) {
 // Tope de 25 respuestas por vuelta. No manda Telegram (lo pidió así). El log sólo cuenta:
 // el texto de las preguntas no se imprime (el registro de GitHub es público), salvo en la prueba
 // a mano (`responder` sin :go), tapando teléfonos y mails.
-const RESP_MAX = 25;
+const RESP_MAX = 40;
 const RESP_TXT = {
   stock: '¡Hola! Sí, tenemos stock disponible y sale por Mercado Envíos Full. Podés comprarlo directamente desde la publicación. ¡Saludos!',
   envio: '¡Hola! Sale por Mercado Envíos Full, desde el depósito de Mercado Libre. La fecha exacta de entrega la ves en la publicación poniendo tu código postal. ¡Saludos!',
@@ -1427,10 +1427,103 @@ function clasificarPregunta(texto) {
   if (m && cat !== 'stock') return { cat: null, why: 'trae un número' };
   return { cat, pide: m ? Number(m[1]) : null };
 }
+// ── Y LO QUE NO SE PUEDE CON REGLAS, CON INTELIGENCIA ARTIFICIAL (27/09/2026) ─────────────────
+// Él: *"dale, armalo con la IA"*. Las reglas de arriba contestaban 0 de 83: casi todas las preguntas
+// son sobre el producto ("¿de cuántos hilos?", "¿sirve para PS2?"). Esas las mira Claude (API de
+// Anthropic) con los datos de la publicación leídos de ML en ese momento (título, atributos,
+// descripción, variantes, stock, envío) y contesta SÓLO si la respuesta está escrita ahí.
+// LA DUDA SIGUE GANANDO: el modelo devuelve `responder` true/false; con false no se contesta y se
+// anota en `cyc/preguntasia/<id>` para no volver a pagar la misma pregunta cada hora. Después del
+// modelo hay un freno en el código: sin teléfonos, mails, links ni números largos, y con largo máximo.
+// Sin la clave (secreto ANTHROPIC_API_KEY en GitHub) o sin la librería, la IA no corre y quedan sólo
+// las reglas: no rompe nada. Tope RESP_IA_MAX preguntas a la IA por vuelta (costo acotado).
+const RESP_IA_MODELO = 'claude-opus-5';
+const RESP_IA_MAX = 20;
+const RESP_IA_SISTEMA = `Contestás las preguntas que los compradores hacen en publicaciones de MercadoLibre Argentina de una tienda llamada CYC. Escribís en castellano rioplatense, cordial y breve: 1 a 3 oraciones, máximo 350 caracteres, empezando con "¡Hola!" y terminando con "¡Saludos!".
+
+REGLAS DURAS:
+- Contestá SÓLO con información que esté escrita de forma explícita en los DATOS DE LA PUBLICACIÓN o en los DATOS FIJOS DEL VENDEDOR. No supongas, no deduzcas, no completes con conocimiento general del producto, no infieras compatibilidades que no estén escritas.
+- Si la respuesta no está 100% respaldada por esos datos, o tenés la mínima duda, devolvé responder=false. Es mucho peor contestar algo equivocado que no contestar.
+- También responder=false si: el comprador ya compró y habla de su pedido (cambios, faltantes, color elegido, reclamos, llegó roto, no llegó); pide precio especial, descuento, venta por mayor, cuotas o medios de pago; pide contacto por fuera de MercadoLibre; pregunta por originalidad, garantía, devoluciones o vencimiento y no está escrito en los datos; la pregunta es ofensiva, confusa o sobre otro producto.
+- Stock y colores: usá sólo el stock y las variantes que te paso. Si una variante no figura o tiene 0, no está disponible.
+- Nunca des teléfonos, mails, links, direcciones ni invites a comunicarse por fuera de MercadoLibre. Nunca prometas una fecha de entrega (la fecha exacta se ve en la publicación poniendo el código postal). No nombres otras publicaciones ni otros vendedores. No uses números de más de 5 cifras.
+
+DATOS FIJOS DEL VENDEDOR:
+- Todo sale por Mercado Envíos Full, desde el depósito de MercadoLibre. No hay retiro en persona.
+- Son monotributistas: emiten factura electrónica C (no factura A), que llega automáticamente con la compra.
+- Los productos publicados son nuevos salvo que la condición diga otra cosa.
+
+Devolvé siempre el JSON pedido: responder (true/false), respuesta (vacía si responder=false) y motivo (una frase corta en castellano: por qué contestaste o por qué no).`;
+const RESP_IA_FORMATO = {
+  type: 'json_schema',
+  schema: {
+    type: 'object',
+    properties: { responder: { type: 'boolean' }, respuesta: { type: 'string' }, motivo: { type: 'string' } },
+    required: ['responder', 'respuesta', 'motivo'],
+    additionalProperties: false,
+  },
+};
+let _clienteIA;   // undefined = sin probar · null = no hay (sin clave o sin librería)
+async function clienteIA() {
+  if (_clienteIA !== undefined) return _clienteIA;
+  if (!process.env.ANTHROPIC_API_KEY) { _clienteIA = null; return null; }
+  try { const { default: Anthropic } = await import('@anthropic-ai/sdk'); _clienteIA = new Anthropic(); }
+  catch (e) { console.log('⚠️ No está instalada la librería de Anthropic: la IA no contesta (' + String(e.message || e).slice(0, 60) + ')'); _clienteIA = null; }
+  return _clienteIA;
+}
+function datosPublicacionIA(it, desc) {
+  const full = it.shipping && it.shipping.logistic_type === 'fulfillment';
+  const st = full ? (Number(it.available_quantity) || 0) : 0;   // el stock que no está en Full no existe (20/08)
+  const attrs = (it.attributes || []).filter((a) => a && a.name && a.value_name).map((a) => `- ${a.name}: ${a.value_name}`).slice(0, 80).join('\n');
+  const vars = (it.variations || []).map((v) => {
+    const nom = (v.attribute_combinations || []).map((c) => `${c.name}: ${c.value_name}`).join(', ');
+    return `- ${nom || 'variante'} · stock ${full ? (Number(v.available_quantity) || 0) : 0}`;
+  }).join('\n');
+  return `DATOS DE LA PUBLICACIÓN:
+Título: ${it.title || ''}
+Precio: $${it.price || '?'}
+Condición: ${it.condition === 'used' ? 'usado' : it.condition === 'new' ? 'nuevo' : (it.condition || '?')}
+Envío: ${full ? 'Mercado Envíos Full' : 'no es Full'}
+Stock disponible: ${st}
+${vars ? 'Variantes:\n' + vars + '\n' : ''}${attrs ? 'Atributos:\n' + attrs + '\n' : ''}${it.warranty ? 'Garantía: ' + it.warranty + '\n' : ''}Descripción:
+${String(desc || '(sin descripción)').slice(0, 6000)}`;
+}
+async function preguntarIA(it, desc, pregunta) {
+  const c = await clienteIA();
+  if (!c) return { error: 'sin IA' };
+  try {
+    const r = await c.beta.messages.create({
+      model: RESP_IA_MODELO,
+      max_tokens: 8000,
+      betas: ['server-side-fallback-2026-07-01'],
+      fallbacks: 'default',
+      system: RESP_IA_SISTEMA,
+      output_config: { format: RESP_IA_FORMATO },
+      messages: [{ role: 'user', content: `${datosPublicacionIA(it, desc)}\n\nPREGUNTA DEL COMPRADOR:\n${String(pregunta || '').slice(0, 1500)}` }],
+    });
+    if (r.stop_reason === 'refusal') return { responder: false, motivo: 'la IA no quiso contestarla' };
+    if (r.stop_reason === 'max_tokens') return { error: 'respuesta cortada' };
+    const txt = (r.content || []).filter((b) => b.type === 'text').map((b) => b.text).join('');
+    const j = JSON.parse(txt);
+    return { responder: j.responder === true, respuesta: String(j.respuesta || '').trim(), motivo: String(j.motivo || '').slice(0, 140) };
+  } catch (e) { return { error: String(e.status || '') + ' ' + String(e.message || e).slice(0, 80) }; }
+}
+// El freno del código DESPUÉS del modelo: si la respuesta trae algo que nunca tiene que salir, no va.
+function respuestaIAValida(t) {
+  if (!t || t.length < 10 || t.length > 500) return false;
+  if (/@|https?:|www\.|\.com\b|\d[\d .-]{5,}\d|whats|telef|instagram|facebook/i.test(t)) return false;
+  return true;
+}
+
 async function responderPreguntas(db, accounts, labels, GO, verTexto) {
-  const out = { contestadas: 0, dudas: {}, porCat: {}, error: 0, cuentas: 0, filas: [] };
+  const out = { contestadas: 0, ia: 0, iaNo: 0, iaLlamadas: 0, dudas: {}, porCat: {}, error: 0, cuentas: 0, filas: [], sinIA: false };
   const tapar = (x) => String(x || '').replace(/\S+@\S+/g, '[mail]').replace(/\d[\d\s.-]{5,}\d/g, '[número]');
   let enviadas = 0;
+  let memIA = {};
+  try { memIA = (await db.get('cyc/preguntasia')) || {}; } catch { memIA = null; }
+  const hayIA = !!(await clienteIA()) && memIA !== null;
+  out.sinIA = !hayIA;
+  const descCache = {};
   for (const label of labels) {
     const acc = accounts[label]; if (!acc?.refresh_token) continue;
     let tok;
@@ -1449,27 +1542,12 @@ async function responderPreguntas(db, accounts, labels, GO, verTexto) {
     const items = {};
     for (let k = 0; k < ids.length; k += 20) {
       try {
-        const arr = await mlGet('/items?ids=' + ids.slice(k, k + 20).join(',') + '&attributes=id,status,available_quantity,shipping,title', tok);
+        const arr = await mlGet('/items?ids=' + ids.slice(k, k + 20).join(',') + '&attributes=id,status,available_quantity,shipping,title,price,condition,warranty,attributes,variations', tok);
         for (const row of (arr || [])) { const b = row && row.body; if (b && b.id && Number(row.code) === 200) items[b.id] = b; }
       } catch { /* esas quedan sin leer: no se contestan */ }
     }
-    for (const q of qs) {
-      const dud = (why) => { out.dudas[why] = (out.dudas[why] || 0) + 1; if (verTexto) out.filas.push(`   🤔 ${label} · ${why} · «${tapar(q.text).slice(0, 120)}»`); };
-      const c = clasificarPregunta(q.text);
-      if (!c.cat) { dud(c.why); continue; }
-      const it = items[q.item_id];
-      if (!it) { dud('no pude leer la publicación'); continue; }
-      const full = it.shipping && it.shipping.logistic_type === 'fulfillment';
-      if (it.status !== 'active') { dud('publicación no activa'); continue; }
-      if ((c.cat === 'stock' || c.cat === 'envio') && !full) { dud('no es de Full'); continue; }
-      const st = Number(it.available_quantity) || 0;
-      if (c.cat === 'stock' && !(st > 0)) { dud('sin stock'); continue; }
-      if (c.cat === 'stock' && c.pide != null && !(c.pide >= 1 && st >= c.pide)) { dud('pide más unidades de las que hay'); continue; }
-      let txt = RESP_TXT[c.cat];
-      if (c.facturaA) txt = '¡Hola! Somos monotributistas, así que emitimos factura C (no podemos hacer factura A). Te llega automáticamente con la compra. ¡Saludos!';
-      if (enviadas >= RESP_MAX) { dud('tope de respuestas por vuelta: sigue la próxima'); continue; }
-      if (verTexto) out.filas.push(`   ✅ ${label} · ${c.cat} · «${tapar(q.text).slice(0, 120)}» → ${txt}`);
-      if (!GO) { out.porCat[c.cat] = (out.porCat[c.cat] || 0) + 1; enviadas++; continue; }
+    const mandar = async (q, txt, cat) => {
+      if (!GO) { out.porCat[cat] = (out.porCat[cat] || 0) + 1; enviadas++; return true; }
       try {
         const r = await fetch(ML_API + '/answers', {
           method: 'POST',
@@ -1477,10 +1555,62 @@ async function responderPreguntas(db, accounts, labels, GO, verTexto) {
           body: JSON.stringify({ question_id: q.id, text: txt }),
           signal: AbortSignal.timeout(25000),
         });
-        if (!r.ok) { out.error++; dud('ML no aceptó la respuesta (' + r.status + ')'); continue; }
-        enviadas++; out.contestadas++; out.porCat[c.cat] = (out.porCat[c.cat] || 0) + 1;
-        try { await db.set('cyc/respuestasauto/' + q.id, { cat: c.cat, cuenta: label, mla: q.item_id, ts: Date.now() }); } catch { /* */ }
-      } catch { out.error++; dud('no pude mandar la respuesta'); }
+        if (!r.ok) { out.error++; return 'ML no aceptó la respuesta (' + r.status + ')'; }
+        enviadas++; out.contestadas++; out.porCat[cat] = (out.porCat[cat] || 0) + 1;
+        try { await db.set('cyc/respuestasauto/' + q.id, { cat, cuenta: label, mla: q.item_id, ts: Date.now() }); } catch { /* */ }
+        return true;
+      } catch { out.error++; return 'no pude mandar la respuesta'; }
+    };
+    for (const q of qs) {
+      const dud = (why) => { out.dudas[why] = (out.dudas[why] || 0) + 1; if (verTexto) out.filas.push(`   🤔 ${label} · ${why} · «${tapar(q.text).slice(0, 140)}»`); };
+      if (enviadas >= RESP_MAX) { dud('tope de respuestas por vuelta: sigue la próxima'); continue; }
+      const it = items[q.item_id];
+      if (!it) { dud('no pude leer la publicación'); continue; }
+      if (it.status !== 'active') { dud('publicación no activa'); continue; }
+      const full = it.shipping && it.shipping.logistic_type === 'fulfillment';
+      const st = Number(it.available_quantity) || 0;
+      const c = clasificarPregunta(q.text);
+      // 1) LAS REGLAS: gratis y sin margen de error.
+      if (c.cat) {
+        if ((c.cat === 'stock' || c.cat === 'envio') && !full) { dud('no es de Full'); continue; }
+        if (c.cat === 'stock' && !(st > 0)) { dud('sin stock'); continue; }
+        if (c.cat === 'stock' && c.pide != null && !(c.pide >= 1 && st >= c.pide)) { dud('pide más unidades de las que hay'); continue; }
+        let txt = RESP_TXT[c.cat];
+        if (c.facturaA) txt = '¡Hola! Somos monotributistas, así que emitimos factura C (no podemos hacer factura A). Te llega automáticamente con la compra. ¡Saludos!';
+        if (verTexto) out.filas.push(`   ✅ ${label} · ${c.cat} · «${tapar(q.text).slice(0, 140)}» → ${txt}`);
+        const ok = await mandar(q, txt, c.cat);
+        if (ok !== true) dud(ok);
+        continue;
+      }
+      // 2) LA IA, para lo que las reglas no entienden. Con datos de contacto no se toca.
+      if (c.why === 'datos de contacto') { dud(c.why); continue; }
+      // Lo que NUNCA se contesta no se le pregunta a la IA (no se paga): mayoristas, pagos, contacto,
+      // retiro, reclamos y compras ya hechas.
+      const tn = String(q.text || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+      if (/mayor|descuento|rebaja|cuota|transfer|efectivo|whats|telefono|celu(lar)? de contacto|mail|instagram|retir|devol|reclamo|\bcompre\b|mi compra|mi pedido|ya pague|llego|llegaron|me vino|rot[oa]\b|falt[oa]|faltan|cambiar(me|las|los)?\b/.test(tn)) { dud('no se contesta nunca (pago, contacto, reclamo o compra hecha)'); continue; }
+      if (!hayIA) { dud(c.why + ' (sin IA)'); continue; }
+      const mem = memIA[q.id];
+      if (mem && mem.r === 'no') { dud('la IA ya dudó: ' + (mem.motivo || '')); continue; }
+      if (out.iaLlamadas >= RESP_IA_MAX) { dud('tope de preguntas a la IA por vuelta: sigue la próxima'); continue; }
+      if (!(q.item_id in descCache)) {
+        try { const d = await mlGet('/items/' + q.item_id + '/description', tok); descCache[q.item_id] = (d && d.plain_text) || ''; }
+        catch { descCache[q.item_id] = null; }
+      }
+      if (descCache[q.item_id] === null) { dud('no pude leer la descripción'); continue; }
+      out.iaLlamadas++;
+      const r = await preguntarIA(it, descCache[q.item_id], q.text);
+      if (r.error) { out.error++; dud('la IA no contestó: ' + r.error); continue; }
+      if (!r.responder || !respuestaIAValida(r.respuesta)) {
+        out.iaNo++;
+        const motivo = !r.responder ? r.motivo : 'la respuesta traía algo que no puede salir';
+        if (GO) { try { await db.set('cyc/preguntasia/' + q.id, { r: 'no', motivo, cuenta: label, mla: q.item_id, ts: Date.now() }); } catch { /* */ } }
+        dud('la IA dudó: ' + motivo);
+        continue;
+      }
+      if (verTexto) out.filas.push(`   🤖 ${label} · IA · «${tapar(q.text).slice(0, 140)}» → ${r.respuesta}  (${r.motivo})`);
+      const ok = await mandar(q, r.respuesta, 'ia');
+      if (ok === true) { out.ia++; if (GO) { try { await db.set('cyc/preguntasia/' + q.id, { r: 'si', motivo: r.motivo, cuenta: label, mla: q.item_id, ts: Date.now() }); } catch { /* */ } } }
+      else dud(ok);
     }
   }
   return out;
@@ -22183,6 +22313,7 @@ async function main() {
       for (const l of rq.filas) console.log(l);
       console.log(`\n${GO ? 'Contestadas' : 'Contestaría'}: ${GO ? rq.contestadas : Object.values(rq.porCat).reduce((a, b) => a + b, 0)} · por tema: ${JSON.stringify(rq.porCat)}`);
       console.log(`No contesto por duda: ${JSON.stringify(rq.dudas)}${rq.error ? ' · errores ' + rq.error : ''}`);
+      console.log(rq.sinIA ? 'IA: apagada (falta el secreto ANTHROPIC_API_KEY o la librería).' : `IA: ${rq.iaLlamadas} preguntas miradas · ${GO ? rq.ia + ' contestadas' : 'en prueba'} · ${rq.iaNo} con duda`);
       return;
     }
 
@@ -33708,7 +33839,7 @@ async function main() {
         const rq = await responderPreguntas(db, accounts, labels, !DRY, false);
         const cats = Object.entries(rq.porCat).map(([k, v]) => k + ' ' + v).join(' · ');
         const dud = Object.entries(rq.dudas).map(([k, v]) => k + ' ' + v).join(' · ');
-        console.log(`💬 Preguntas: contesté ${rq.contestadas}${cats ? ' (' + cats + ')' : ''}${dud ? ' · no contesté por duda: ' + dud : ''}${rq.error ? ' · ' + rq.error + ' error(es)' : ''}`);
+        console.log(`💬 Preguntas: contesté ${rq.contestadas}${cats ? ' (' + cats + ')' : ''}${rq.sinIA ? ' · IA apagada (falta la clave ANTHROPIC_API_KEY)' : ` · IA: ${rq.iaLlamadas} miradas, ${rq.ia} contestadas, ${rq.iaNo} con duda`}${dud ? ' · no contesté por duda: ' + dud : ''}${rq.error ? ' · ' + rq.error + ' error(es)' : ''}`);
       } else console.log('💬 Contestar preguntas: apagado (cyc/mlconfig/responder).');
     } catch (e) { console.log('No pude contestar preguntas: ' + e.message); }
   }
