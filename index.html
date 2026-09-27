@@ -2341,7 +2341,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='20.75';
+const APP_VERSION='20.76';
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
 // muestre la versión y la fecha de actualización y que tenga un desplegable predeterminado cerrado".
 // Y el mismo día: "que ponga fecha de cada modificación y haya una barrita para scrollear y que
@@ -2352,6 +2352,7 @@ const APP_VERSION='20.75';
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'20.76',f:'27/09/2026',h:'20:10',c:[{n:3,t:'Etapa 1 (precios), arreglos del robot: al BAJAR una Premium (remate, escalera, ganar la caja) y al rescatar ahora descuenta las cuotas sin interés; sin las cuotas medidas no la baja. Antes una Premium podía quedar en negativo creyendo 25%.'},{n:3,t:'Si no puede leer su memoria de precios, esa noche no rescata nada (antes se apagaban solos los frenos de "una suba cada 24 h" y "lo bajé yo").'},{n:3,t:'La 📈 y la 🧪 no suben lo que bajaste vos a mano. El remate que necesita bajar más de 24,5% baja en tramos en vez de quedar trabado. Las publicaciones con variantes ya no ocupan los lugares del remate y la escalera.'},{n:2,t:'El margen de productos con variantes se mide con la variante más barata en todos lados. Lo recién llegado de un color vuelve a tener sus 30 días de gracia. "Lo que trajo el robot" descuenta IIBB y monotributo y cuenta la prueba 🧪.'},{n:2,t:'Comandos: pausar frena la reactivación automática, submargen usa tu piso de hoy (no 30%), grupos pide confirmación, bajar= lee bien "60.000,50", preciosgo ya no sube (fórmula vieja). Los avisos de esos comandos llegan al canal de precios.'}]},
   {v:'20.75',f:'27/09/2026',h:'19:52',c:[{n:1,t:'Puntos de la ganancia por día, afinados: 7 = $115.000/día, que es lo que deja ~$900.000 a CYC en el mes después de pagar retiro y gastos. 5 = $85.000 (CYC en cero) y 10 = $160.000.'}]},
   {v:'20.74',f:'27/09/2026',h:'19:40',c:[{n:1,t:'Ventas x Producto: abajo de la Ganancia dice a cuántos puntos (de 0 a 10) equivale la ganancia por día, con la tabla del chat (5 = $85.000, 7 = $130.000, 10 = $190.000). Con varios días muestra el promedio. Tocando el número se ve la tabla.'}]},
   {v:'20.73',f:'27/09/2026',h:'18:02',c:[{n:1,t:'Métricas, gráfico de tendencia (General): en cada día, una barra verde tenue con lo que se ganó ese día y una roja tenue con lo que salió (retiro y gastos). Tocando el punto, el detalle de cada gasto. Sólo del período actual.'}]},
@@ -3204,6 +3205,7 @@ const REV_CADA_DIAS=7;
 //   · REV_HECHAS    → última vez que cada etapa quedó resuelta. Sin pendientes, el cartel pide la
 //                     etapa más vieja cuando pasaron REV_CADA_DIAS desde la última.
 const REV_PENDIENTE=[
+    {t:'Etapa 1: decidir cómo sigue la prueba 🧪 +5%',que:'(a) sólo resube con la medición completa · (b) resube si vendió igual o más por día, si cayó se cierra y avisa',pedi:'la prueba'},
     {t:'La segunda revisión completa, al final',que:'la que pediste dejar para cuando esté todo lo demás · va última',pedi:'revisión completa',ultima:true},
 ];
 // Choques (4) y fallas mudas/privacidad (5): verificadas las 15 del 26/09 de madrugada (rev4, lotes 6-8) y
