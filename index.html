@@ -2341,7 +2341,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='20.71';
+const APP_VERSION='20.72';
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
 // muestre la versión y la fecha de actualización y que tenga un desplegable predeterminado cerrado".
 // Y el mismo día: "que ponga fecha de cada modificación y haya una barrita para scrollear y que
@@ -2352,6 +2352,7 @@ const APP_VERSION='20.71';
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'20.72',f:'27/09/2026',h:'17:46',c:[{n:3,t:'Tope de H: desde que cada cuenta factura por ML, lo facturado sale de las FACTURAS con CAE (las que ve ARCA), no de las ventas. Se suman las ventas que quedaron sin factura y lo facturado fuera de ML cuando se cargue. Abajo de cada barra dice de dónde sale el número.'}]},
   {v:'20.71',f:'27/09/2026',h:'17:15',c:[{n:2,t:'Tope de H: ya no es "30 días × 12". Mide lo facturado OFICIAL desde que arranca la ventana de ARCA (01/01) hasta hoy, más lo que falta hasta el 31/12 al ritmo de los últimos 30 días. La barra muestra las dos partes.'}]},
   {v:'20.70',f:'27/09/2026',h:'16:48',c:[{n:2,t:'Lo que trajo el robot y Vigilancia: verde sólo lo CONFIRMADO que ganó plata (7 días o más) y rojo sólo lo confirmado que perdió. Lo en curso, los rescates y lo que no suma van en gris. El total muestra aparte lo confirmado y lo en curso.'}]},
   {v:'20.69',f:'27/09/2026',h:'16:38',c:[{n:2,t:'Lo que trajo el robot: si todo lo que cuenta tiene menos de 7 días, ya no sale el cartel rojo sino uno ámbar que dice que el número todavía se mueve.'}]},
