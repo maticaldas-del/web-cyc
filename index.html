@@ -2329,7 +2329,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='20.62';
+const APP_VERSION='20.63';
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
 // muestre la versión y la fecha de actualización y que tenga un desplegable predeterminado cerrado".
 // Y el mismo día: "que ponga fecha de cada modificación y haya una barrita para scrollear y que
@@ -2340,6 +2340,8 @@ const APP_VERSION='20.62';
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'20.63',f:'27/09/2026',h:'21:40',c:[
+    {n:2,t:'Paraguay · Productos probados: una sola lista. Cada producto dice ✅ comprar, 🔴 no comprar a este precio (con botón para sacarlo) o ⚪ Nissei no tenía. Se sacaron las tarjetas repetidas de abajo.'}]},
   {v:'20.62',f:'26/09/2026',h:'16:52',c:[
     {n:3,t:'Paraguay · Productos probados: sin tope de US$ 1.000. Está todo lo que hay que reponer, con las unidades (20 días, conservador), el máximo a pagar en la web para quedar en 25% contra la competencia y el código de Nissei. Lo que Nissei cobra más caro que ese máximo queda aparte y no entra en el mensaje.'}]},
   {v:'20.61',f:'26/09/2026',h:'12:59',c:[
@@ -11030,11 +11032,11 @@ function pyCanasta(){
     const maxWeb=(mx&&!mx.motivo&&mx.usdPy>0)?Math.floor(mx.usdPy*100)/100:null;
     const noLlega=!!(mx&&!mx.motivo&&!(mx.usdPy>0));
     const precioWeb=_nuHoy>0?_nuHoy:(cu>0?Math.round(cu/RECARGO_PY*100)/100:0);
-    const caro=noLlega||(maxWeb!=null&&precioWeb>maxWeb+0.005);
+    const caro=noLlega||(maxWeb!=null&&precioWeb>0&&precioWeb>maxWeb+0.005);
     return{ped,pr,u,cu,sinHoy,viaja:_vj,nu:_nuHoy,destraba,total:cu*u,lleva:u,sinStock:!!sin[ped.prodId],
       gratis:!!(pr&&pr.gratisViaje),cod:(pr&&pr.codPy)?String(pr.codPy).trim():'',
       maxWeb,noLlega,sinMax:!mx||!!mx.motivo,precioWeb,caro};
-  }).filter(x=>x.u>0&&x.cu>0).sort((a,b)=>b.destraba-a.destraba);
+  }).filter(x=>x.u>0).sort((a,b)=>b.destraba-a.destraba);
   const vivos=filas.filter(x=>!x.sinStock);
   const van=vivos.filter(x=>!x.caro), caros=vivos.filter(x=>x.caro).map(x=>({...x,lleva:0}));
   const usado=van.reduce((a,x)=>a+x.total,0);
@@ -11130,16 +11132,20 @@ function pyCanastaHTML(){
       ? `<span style="font-size:.68rem;color:${f.caro?'var(--red)':'var(--green)'};font-weight:700" title="Lo más que podés pagar en la web de Paraguay (antes del 17%) para quedar en el 25% vendiendo al precio de la competencia en ML. Es la misma cuenta del 💰 de cada tarjeta.">máx ${u2(f.maxWeb)}</span>`
       : f.noLlega?`<span style="font-size:.64rem;color:var(--red)" title="Vendiendo al precio que pide la competencia no hay precio de compra que deje el 25%.">✕ ni regalado llega al 25%</span>`
       : `<span style="font-size:.62rem;color:var(--amber)" title="No hay publicación viva con el neto medido: no se puede calcular el máximo. Comprá al precio de siempre.">máx sin medir</span>`;
-    const hoy=f.sinHoy
+    const hoy=!(f.precioWeb>0)?`<span style="font-size:.6rem;color:var(--amber)">sin precio cargado</span>`
+      : f.sinHoy
       ? `<span style="font-size:.6rem;color:var(--amber)" title="No hay precio de Paraguay de hoy cargado: esto es lo que pagaste la última vez.">pagaste ~${u2(f.precioWeb)}</span>`
       : `<span style="font-size:.62rem;color:var(--muted)">hoy ${u2(f.precioWeb)}</span>`;
-    return `<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;padding:6px 0;border-top:1px solid var(--border);${gris?'opacity:.5':''}">
+    const estado=f.sinStock?`<span style="font-size:.62rem;font-weight:700;color:var(--muted)">⚪ Nissei no tenía</span>`
+      : f.caro?`<span style="font-size:.62rem;font-weight:700;color:var(--red)" title="Nissei pide más que el máximo: comprándolo a ese precio vendés abajo del 25%.">🔴 NO COMPRAR a este precio</span> <button class="btn" style="font-size:.58rem;padding:3px 8px" onclick="pausarPrecio('${f.ped.id}')" title="Lo saca de la lista hasta que el precio vuelva a dar. No toca ningún precio de venta.">⏸️ no lo compro</button>`
+      : `<span style="font-size:.62rem;font-weight:700;color:var(--green)">✅ comprar</span>`;
+    return `<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;padding:6px 0;border-top:1px solid var(--border);${f.sinStock?'opacity:.5':''}">
       <strong style="font-family:'Syne',sans-serif;font-size:.95rem;min-width:52px">${f.u} u.</strong>
       <span style="flex:1;min-width:150px;font-size:.75rem">${f.ped.producto||''}${f.gratis?' <span title="Celular: viaja gratis con tu viejo">✈️</span>':''}</span>
       ${f.cod
         ? `<span style="font-family:'DM Mono',monospace;font-size:.72rem;background:rgba(255,255,255,.06);border:1px solid var(--border2);border-radius:5px;padding:2px 6px;letter-spacing:.04em">${f.cod}</span>`
         : `<span style="font-size:.6rem;color:var(--amber)" title="Sin el código de Nissei no entra en el mensaje. No se inventa: un código equivocado trae otro producto.">⚠ falta el código</span>`}
-      ${mx} ${hoy}
+      ${estado} ${mx} ${hoy}
       <button class="btn" style="font-size:.58rem;padding:3px 8px" onclick="pyNoHabia('${f.ped.prodId}',${f.sinStock?'false':'true'})">${f.sinStock?'↩︎ sí había':'✗ no había'}</button>
     </div>`;
   };
@@ -11148,14 +11154,12 @@ function pyCanastaHTML(){
   const v=Object.values(pyRepoEnCamino()).reduce((a,x)=>a+x,0);
   return `<div style="background:var(--surface);border:1px solid var(--green);border-radius:var(--r);padding:12px 14px;margin-bottom:14px">
     <div style="display:flex;justify-content:space-between;align-items:baseline;gap:10px;flex-wrap:wrap;margin-bottom:4px">
-      <span style="font-size:.8rem;font-weight:700">🇵🇾 Qué reponer · ${c.filas.length} producto(s) · ${c.uds} u.</span>
+      <span style="font-size:.8rem;font-weight:700">🇵🇾 Qué reponer · ${c.filas.length} para comprar · ${c.uds} u.${c.caros.length?` · <span style="color:var(--red)">${c.caros.length} no conviene</span>`:''}</span>
       <span style="font-family:'Syne',sans-serif;font-size:1.4rem;color:var(--green)">US$ ${Math.round(c.crudo)} <span style="font-size:.7rem;color:var(--muted)">en la web${tc?' · '+fmt(Math.round(c.usado*tc))+' puesto':''}</span></span>
     </div>
     <div style="font-size:.6rem;color:var(--muted);margin-bottom:6px">Sin tope: está todo lo que hace falta. Las unidades cubren ${PED_TARGET_DIAS} días de venta (lo conservador) y ya descuentan lo que tenés en Full, en camino y en la oficina. <b style="color:var(--text)">"máx"</b> es lo más que se puede pagar en la web para quedar en el 25% contra la competencia de ML; si Nissei pide más, no lo compres.</div>
     ${v?`<div style="font-size:.6rem;color:#38bdf8;margin-bottom:4px">🚚 ${v} u. de reposición ya viajan y se descontaron.</div>`:''}
-    ${c.filas.map(f=>fila(f,false)).join('')}
-    ${c.caros.length?`<div style="font-size:.62rem;color:var(--red);margin-top:10px">🔴 A este precio NO conviene (${c.caros.length}) — Nissei pide más que el máximo. No van en el mensaje:</div>`+c.caros.map(f=>fila(f,true)).join(''):''}
-    ${c.sinStock.length?`<div style="font-size:.6rem;color:var(--muted);margin-top:9px">Nissei no lo tiene (${c.sinStock.length}) — la marca se saca sola cuando alguien le cargue un precio de Paraguay:</div>`+c.sinStock.map(f=>fila(f,true)).join(''):''}
+    ${[...c.filas.map(f=>fila(f,false)),...c.caros.map(f=>fila(f,true)),...c.sinStock.map(f=>fila(f,true))].join('')}
     ${c.filas.length?`<div style="margin-top:10px;border-top:1px solid var(--border);padding-top:9px">
       <div style="font-size:.63rem;color:var(--muted);margin-bottom:5px">Para mandarle a <strong>Nissei</strong> — código y unidades${sinCod.length?` · <span style="color:var(--amber)">${sinCod.length} no entra(n): falta cargarle el código (${sinCod.map(f=>f.ped.producto).join(', ')})</span>`:''}</div>
       ${conCod.length?`<textarea readonly onclick="this.select()" style="width:100%;min-height:${Math.min(260,22+conCod.length*17)}px;background:rgba(0,0,0,.28);border:1px solid var(--border2);border-radius:6px;color:var(--text);font-family:'DM Mono',monospace;font-size:.7rem;padding:7px 9px;resize:vertical">${txt}</textarea>`
@@ -13207,7 +13211,7 @@ function renderPedidos(){
       ${_tab('probados','✅ Productos probados','Lo que YA vendés: cuánto hay que reponer para no quedarte sin stock, y lo que dejó de convenir al precio de Paraguay de hoy.')}
       ${_tab('nuevos','🆕 Productos nuevos','Lo que todavía NO vendés: los candidatos que trae el chat de Paraguay y el armado de ese pedido.')}
     </div>`;
-    el.innerHTML=_tabs+(pyVista==='nuevos'?candidatosHTML():(pyEnCaminoHTML('repo')+pyCanastaHTML()+el.innerHTML+embudoHTML()));
+    el.innerHTML=_tabs+(pyVista==='nuevos'?candidatosHTML():(pyEnCaminoHTML('repo')+(pyCanastaHTML()||el.innerHTML)));
   }
 }
 
