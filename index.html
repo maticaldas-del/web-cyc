@@ -14796,8 +14796,12 @@ function _proxCierreARCA(){
 function _facOficial(ini,hoy){
   const iniK=dateToKey(ini),hoyK=dateToKey(hoy);
   const real={},ofi={};
+  // El robot guarda estas tres ramas con el nombre de la cuenta como viene de ML ("Adriana"), y el
+  // panel usa minúsculas ("adriana"): se busca sin mirar mayúsculas ni tildes.
+  const nrm=x=>String(x||'').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'');
+  const deCta=(o,a)=>{o=o||{};const k=Object.keys(o).find(k=>nrm(k)===nrm(a));return k!=null?o[k]:undefined;};
   MET_ACCTS.forEach(a=>{
-    const dIso=(state.facturas_desde||{})[a];
+    const dIso=deCta(state.facturas_desde,a);
     const dd=dIso?new Date(String(dIso).slice(0,10)+'T00:00:00'):null;
     const kOf=f=>{const x=String(f||'').slice(0,10);return /^\d{4}-\d{2}-\d{2}$/.test(x)?x.replace(/-/g,'_'):null;};
     let fac=0,antes=0,nFac=0,nNC=0,sinF=0,fuera=0;
@@ -14808,17 +14812,17 @@ function _facOficial(ini,hoy){
     }
     const cK=dateToKey(corte);
     if(dd&&dd<=hoy){
-      for(const f of Object.values((state.facturas||{})[a]||{})){
+      for(const f of Object.values(deCta(state.facturas,a)||{})){
         if(!f)continue;const k=kOf(f.fecha);if(!k||k<cK||k>hoyK)continue;
         if(/reject|rechaz|cancel|error/i.test(String(f.estado||'')))continue;
         const m=Number(f.monto)||0;
         if(/credit|credito|crédito|nota/i.test(String(f.tipo||''))){fac-=m;nNC++;}else{fac+=m;nFac++;}
       }
-      for(const v of Object.values((state.facturas_sin||{})[a]||{})){
+      for(const v of Object.values(deCta(state.facturas_sin,a)||{})){
         const k=kOf(v&&v.fecha);if(!k||k<cK||k>hoyK)continue;sinF+=Number(v.monto)||0;
       }
     }
-    for(const f of Object.values((state.fact_fuera||{})[a]||{})){
+    for(const f of Object.values(deCta(state.fact_fuera,a)||{})){
       const k=kOf(f&&f.fecha);if(!k||k<iniK||k>hoyK)continue;
       const m=Number(f.monto)||0;fuera+=/credit|credito|crédito|nota/i.test(String(f.tipo||''))?-m:m;
     }
