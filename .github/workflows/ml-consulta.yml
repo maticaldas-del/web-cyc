@@ -28,6 +28,8 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '20'
+      - name: Librería de Anthropic (contestar preguntas con IA)
+        run: npm install --prefix ml-sync --no-audit --no-fund || echo "No se pudo instalar la IA, el resto sigue"
       - name: Comando
         env:
           ML_CLIENT_ID: ${{ secrets.ML_CLIENT_ID }}
@@ -39,6 +41,7 @@ jobs:
           MP_TOKEN_MATIAS: ${{ secrets.MP_TOKEN_MATIAS }}
           TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
           BILLING_PROBE: ${{ github.event.inputs.comando }}
         run: |
           if [ -z "$BILLING_PROBE" ] || [ "$BILLING_PROBE" = "ciclo" ]; then echo "Falta el comando (el ciclo va por ml-sync)."; exit 1; fi

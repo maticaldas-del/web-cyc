@@ -37,6 +37,8 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '20'
+      - name: Librería de Anthropic (contestar preguntas con IA)
+        run: npm install --prefix ml-sync --no-audit --no-fund || echo "No se pudo instalar la IA, el resto sigue"
       - name: Publicaciones abajo del piso
         env:
           BAJOPISO_ARCHIVO: precios/bajopiso.txt
@@ -85,6 +87,8 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '20'
+      - name: Librería de Anthropic (contestar preguntas con IA)
+        run: npm install --prefix ml-sync --no-audit --no-fund || echo "No se pudo instalar la IA, el resto sigue"
       - name: Ciclo automático
         env:
           ML_CLIENT_ID: ${{ secrets.ML_CLIENT_ID }}
@@ -96,4 +100,5 @@ jobs:
           MP_TOKEN_MATIAS: ${{ secrets.MP_TOKEN_MATIAS }}
           TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
         run: bash ml-sync/ciclo.sh

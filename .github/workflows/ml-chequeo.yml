@@ -44,6 +44,8 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '20'
+      - name: Librería de Anthropic (contestar preguntas con IA)
+        run: npm install --prefix ml-sync --no-audit --no-fund || echo "No se pudo instalar la IA, el resto sigue"
       - name: Chequeo de la mañana
         env:
           CHEQUEO_ARCHIVO: chequeo/ultimo.txt
@@ -55,6 +57,7 @@ jobs:
           FIREBASE_BOT_PASSWORD: ${{ secrets.FIREBASE_BOT_PASSWORD }}
           TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
           # nomandar = no va a Telegram. El chequeo se lee desde el chat, no desde el celular.
           BILLING_PROBE: chequeo:${{ github.event.inputs.dias || '7' }}:nomandar
         run: node ml-sync/sync.mjs
@@ -100,6 +103,8 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '20'
+      - name: Librería de Anthropic (contestar preguntas con IA)
+        run: npm install --prefix ml-sync --no-audit --no-fund || echo "No se pudo instalar la IA, el resto sigue"
       - name: Ciclo automático
         env:
           ML_CLIENT_ID: ${{ secrets.ML_CLIENT_ID }}
@@ -111,4 +116,5 @@ jobs:
           MP_TOKEN_MATIAS: ${{ secrets.MP_TOKEN_MATIAS }}
           TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
         run: bash ml-sync/ciclo.sh

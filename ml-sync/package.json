@@ -1,0 +1,9 @@
+{
+  "name": "cyc-ml-sync",
+  "private": true,
+  "type": "module",
+  "description": "El robot de CYC. La única librería es la de Anthropic, para contestar preguntas con IA (27/09/2026).",
+  "dependencies": {
+    "@anthropic-ai/sdk": "0.128.0"
+  }
+}
