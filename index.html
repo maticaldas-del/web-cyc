@@ -2339,7 +2339,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='20.70';
+const APP_VERSION='20.71';
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
 // muestre la versión y la fecha de actualización y que tenga un desplegable predeterminado cerrado".
 // Y el mismo día: "que ponga fecha de cada modificación y haya una barrita para scrollear y que
@@ -2350,6 +2350,7 @@ const APP_VERSION='20.70';
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'20.71',f:'27/09/2026',h:'17:15',c:[{n:2,t:'Tope de H: ya no es "30 días × 12". Mide lo facturado OFICIAL desde que arranca la ventana de ARCA (01/01) hasta hoy, más lo que falta hasta el 31/12 al ritmo de los últimos 30 días. La barra muestra las dos partes.'}]},
   {v:'20.70',f:'27/09/2026',h:'16:48',c:[{n:2,t:'Lo que trajo el robot y Vigilancia: verde sólo lo CONFIRMADO que ganó plata (7 días o más) y rojo sólo lo confirmado que perdió. Lo en curso, los rescates y lo que no suma van en gris. El total muestra aparte lo confirmado y lo en curso.'}]},
   {v:'20.69',f:'27/09/2026',h:'16:38',c:[{n:2,t:'Lo que trajo el robot: si todo lo que cuenta tiene menos de 7 días, ya no sale el cartel rojo sino uno ámbar que dice que el número todavía se mueve.'}]},
   {v:'20.68',f:'27/09/2026',h:'16:36',c:[{n:1,t:'Vigilancia de precios: las subas para recuperar margen dicen que no suman al total del robot, para que no se confundan con lo que cuenta arriba.'}]},
@@ -14769,38 +14770,59 @@ function _puntFac12(){return _facVentana(_ventana365());}
 // decidir dónde va lo NUEVO: la tarjeta dice qué cuenta tiene más lugar.
 // Tope = categoría H ($81,9M/año): es la más alta que se planea usar (Ayelen ya paga H).
 // "A este ritmo" = lo facturado en los últimos 30 días × 12, sin canceladas.
+// 27/09/2026, corrección suya: *"que tenga en cuenta lo oficial facturado y que se vayan descontando los
+// días que quedan afuera"*. ARCA no mira "los últimos 365 días": recategoriza en enero y en julio con los
+// 12 meses que terminan el 31/12 o el 30/06. Entonces se mide contra el PRÓXIMO cierre: lo facturado
+// OFICIAL desde que arranca esa ventana hasta hoy (la misma cuenta que usa Monotributo: canceladas
+// incluidas, que para ARCA son facturado) + lo que falta hasta el cierre al ritmo de los últimos 30 días.
+function _proxCierreARCA(){
+  const h=new Date(); const y=h.getFullYear();
+  const fin=h.getMonth()<6?new Date(y,5,30):new Date(y,11,31);
+  const ini=new Date(fin); ini.setDate(ini.getDate()-364);
+  return {ini,fin};
+}
 function parejoDatos(){
   const topeH=catLim('H'); if(!(topeH>0))return null;
-  const fac12=_puntFac12();
-  const hoy=new Date(); const desde=new Date(hoy.getFullYear(),hoy.getMonth(),hoy.getDate()-29);
+  const hoy=new Date(); hoy.setHours(0,0,0,0);
+  const {ini,fin}=_proxCierreARCA();
+  const real=_facVentana({winStart:ini,winEnd:hoy,winStartK:dateToKey(ini),winEndK:dateToKey(hoy)});
+  const faltan=Math.max(0,Math.round((fin-hoy)/864e5));
+  const desde=new Date(hoy); desde.setDate(desde.getDate()-29);
   const dK=dateToKey(desde), hK=dateToKey(hoy);
   const m30={}; MET_ACCTS.forEach(a=>m30[a]=0);
+  // Canceladas adentro: para ARCA son facturado (misma regla que _facVentana).
   Object.keys(state.ventaprod||{}).filter(k=>k>=dK&&k<=hK).forEach(k=>Object.values(state.ventaprod[k]||{}).forEach(v=>{
-    const a=(v&&v.cuenta||'').toLowerCase(); if(!v||v.cancelada||!(a in m30))return; m30[a]+=Number(v.total)||0;}));
-  const filas=MET_ACCTS.map(a=>{const ritmo=m30[a]*12;return{a,fac:fac12[a]||0,ritmo,pct:ritmo/topeH*100,resta:topeH-ritmo};});
-  return {topeH,filas};
+    const a=(v&&v.cuenta||'').toLowerCase(); if(!v||!(a in m30))return; m30[a]+=Number(v.total)||0;}));
+  const filas=MET_ACCTS.map(a=>{
+    const diario=m30[a]/30, fac=real[a]||0, futuro=diario*faltan, proy=fac+futuro;
+    return {a,fac,futuro,proy,diario,pct:proy/topeH*100,resta:topeH-proy,pctReal:fac/topeH*100};
+  });
+  return {topeH,filas,ini,fin,faltan};
 }
 function renderHomeParejo(){
   const el=document.getElementById('home-parejo'); if(!el)return;
-  const d=parejoDatos(); if(!d||!d.filas.some(f=>f.ritmo>0)){el.innerHTML='';return;}
+  const d=parejoDatos(); if(!d||!d.filas.some(f=>f.proy>0)){el.innerHTML='';return;}
   const fM=n=>'$'+(n/1e6).toFixed(1).replace('.',',')+'M';
-  const orden=[...d.filas].sort((x,y)=>x.ritmo-y.ritmo);
+  const fD=x=>String(x.getDate()).padStart(2,'0')+'/'+String(x.getMonth()+1).padStart(2,'0')+'/'+x.getFullYear();
+  const orden=[...d.filas].sort((x,y)=>x.proy-y.proy);
   const menos=orden[0], mas=orden[orden.length-1];
-  const pasan=d.filas.filter(f=>f.ritmo>d.topeH);
-  const desp=menos.ritmo>0?mas.ritmo/menos.ritmo:Infinity;
+  const pasan=d.filas.filter(f=>f.proy>d.topeH);
+  const desp=menos.proy>0?mas.proy/menos.proy:Infinity;
   const aviso=pasan.length
-    ?`<div style="font-size:.66rem;color:var(--red);margin-top:8px">🔴 ${pasan.map(f=>MET_LABELS[f.a]).join(' y ')} ${pasan.length>1?'pasarían':'pasaría'} el tope de H a este ritmo. Lo nuevo no va ahí.</div>`
-    :desp>=2?`<div style="font-size:.66rem;color:var(--amber);margin-top:8px">🟠 Están desparejas: ${MET_LABELS[mas.a]} factura ${desp===Infinity?'mucho':desp.toFixed(1).replace('.',',')+' veces'} más que ${MET_LABELS[menos.a]}.</div>`:'';
+    ?`<div style="font-size:.66rem;color:var(--red);margin-top:8px">🔴 ${pasan.map(f=>MET_LABELS[f.a]).join(' y ')} ${pasan.length>1?'pasarían':'pasaría'} el tope de H al ${fD(d.fin)} a este ritmo. Lo nuevo no va ahí.</div>`
+    :desp>=2?`<div style="font-size:.66rem;color:var(--amber);margin-top:8px">🟠 Están desparejas: ${MET_LABELS[mas.a]} va a cerrar con ${desp===Infinity?'mucho':desp.toFixed(1).replace('.',',')+' veces'} más que ${MET_LABELS[menos.a]}.</div>`:'';
   const barras=d.filas.map(f=>{
-    const col=f.ritmo>d.topeH?'var(--red)':f.pct>=85?'var(--amber)':'var(--green)';
-    return `<div style="margin:7px 0">
+    const col=f.proy>d.topeH?'var(--red)':f.pct>=85?'var(--amber)':'var(--green)';
+    const wReal=Math.min(100,f.pctReal), wFut=Math.max(0,Math.min(100,f.pct)-wReal);
+    return `<div style="margin:8px 0">
       <div style="display:flex;justify-content:space-between;gap:8px;font-size:.66rem"><strong>${MET_LABELS[f.a]}</strong>
-        <span style="color:${col};font-family:'DM Mono',monospace" title="Últimos 30 días × 12. En los últimos 365 días facturó ${fmt(Math.round(f.fac))}.">${fM(f.ritmo)}/año · ${f.ritmo>d.topeH?'se pasa '+fM(-f.resta):'le quedan '+fM(f.resta)}</span></div>
-      <div style="height:7px;background:var(--surface2);border-radius:5px;overflow:hidden;margin-top:3px"><div style="height:100%;width:${Math.min(100,f.pct).toFixed(1)}%;background:${col}"></div></div>
+        <span style="color:${col};font-family:'DM Mono',monospace">${fM(f.proy)} al ${fD(d.fin).slice(0,5)} · ${f.proy>d.topeH?'se pasa '+fM(-f.resta):'le quedan '+fM(f.resta)}</span></div>
+      <div style="height:7px;background:var(--surface2);border-radius:5px;overflow:hidden;margin-top:3px;display:flex"><div style="height:100%;width:${wReal.toFixed(1)}%;background:${col}"></div><div style="height:100%;width:${wFut.toFixed(1)}%;background:${col};opacity:.4"></div></div>
+      <div style="font-size:.56rem;color:var(--muted);margin-top:2px">facturado ${fM(f.fac)} · faltan ${d.faltan} d × ${fM(f.diario*30)}/mes = +${fM(f.futuro)}</div>
     </div>`;}).join('');
   el.innerHTML=`<div style="max-width:760px;margin:0 auto 14px;background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:14px 16px">
     <div style="font-family:'Syne',sans-serif;font-weight:800;font-size:.85rem">⚖️ Las 4 cuentas contra el tope de H (${fM(d.topeH)}/año)</div>
-    <div style="font-size:.58rem;color:var(--muted);margin-top:2px">A este ritmo = lo facturado en los últimos 30 días × 12. El tope es por cuenta: la que se llena primero frena al resto.</div>
+    <div style="font-size:.58rem;color:var(--muted);margin-top:2px">La próxima recategorización de ARCA mira del ${fD(d.ini)} al ${fD(d.fin)}. Barra llena = lo facturado oficial hasta hoy (canceladas incluidas, como las cuenta ARCA) · barra clarita = lo que falta hasta el cierre, al ritmo de los últimos 30 días. El tope es por cuenta.</div>
     ${barras}${aviso}
     <div style="font-size:.66rem;margin-top:8px">💡 Lo próximo nuevo que no sea perfume → <strong style="color:var(--green)">${MET_LABELS[menos.a]}</strong>, que es la que más lugar tiene. <span style="color:var(--muted)">(Perfumes siguen yendo a Adriana; lo que ya está en una cuenta, queda.)</span></div>
   </div>`;
