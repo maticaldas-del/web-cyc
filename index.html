@@ -2339,7 +2339,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='20.68';
+const APP_VERSION='20.69';
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
 // muestre la versión y la fecha de actualización y que tenga un desplegable predeterminado cerrado".
 // Y el mismo día: "que ponga fecha de cada modificación y haya una barrita para scrollear y que
@@ -2350,6 +2350,7 @@ const APP_VERSION='20.68';
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'20.69',f:'27/09/2026',h:'16:38',c:[{n:2,t:'Lo que trajo el robot: si todo lo que cuenta tiene menos de 7 días, ya no sale el cartel rojo sino uno ámbar que dice que el número todavía se mueve.'}]},
   {v:'20.68',f:'27/09/2026',h:'16:36',c:[{n:1,t:'Vigilancia de precios: las subas para recuperar margen dicen que no suman al total del robot, para que no se confundan con lo que cuenta arriba.'}]},
   {v:'20.67',f:'27/09/2026',h:'11:48',c:[{n:3,t:'Prueba de suba: cada noche el robot sube +5% todas juntas las publicaciones que venden bien y no son de catálogo. Si la suba deja igual o más plata, a los 14 días prueba otro +5%; si deja menos, la cierra y te avisa.'},{n:2,t:'Métricas, abajo de todo: 🧪 Vigilancia de precios. Todas las publicaciones que venden, qué pasa con cada una, su último cambio de precio y si ganó o perdió plata.'},{n:1,t:'Ventas: cada reclamo dice el motivo que da ML (del producto, del envío o del comprador). Una vez por semana te aviso los que no fueron culpa del producto.'}]},
   {v:'20.66',f:'27/09/2026',h:'11:27',c:[{n:2,t:'Rotación: en lo lento o muerto dice si no la ve nadie (menos de 20 visitas) o si la ven y no compran (50+ visitas sin ventas).'},{n:1,t:'Rotación, columna Caja ML: cuánta gente te ve de la ficha según ML, y con cuántos compartís la caja.'},{n:2,t:'Inicio: tarjeta con las 4 cuentas contra el tope de H a este ritmo, y a qué cuenta mandar lo próximo nuevo.'}]},
@@ -14017,10 +14018,14 @@ function renderMetAuto(){
       <div style="font-size:.58rem;color:var(--muted)">${det}</div>
     </div>`;
   };
-  const alerta=neg?`<div style="margin-bottom:10px;padding:8px 10px;border-radius:8px;background:rgba(239,68,68,.12);border:1px solid rgba(239,68,68,.4);font-size:.7rem;color:var(--red)"><b>⚠️ En ${metAutoMes==='todos'?'total':mesTxt(metAutoMes)} las decisiones del robot dejaron MENOS plata que no tenerlas.</b> Ninguna se deshace sola, lo decidís vos.</div>`:'';
+  // Si TODO lo que cuenta está en curso (menos de 7 días), el número todavía se mueve: no se grita en
+  // rojo sobre una medición que no terminó (27/09/2026, él: "son muchas verdes, una sola roja y dice que está en rojo").
+  const todoEnCurso=med.length>0&&med.every(x=>x.estado==='encurso');
+  const alertaCurso=neg&&todoEnCurso?`<div style="margin-bottom:10px;padding:8px 10px;border-radius:8px;background:rgba(251,191,36,.10);border:1px solid rgba(251,191,36,.4);font-size:.7rem;color:#fbbf24"><b>⏳ Todavía en curso:</b> las ${med.length} decisiones que cuentan tienen menos de 7 días, así que este número todavía se mueve. Las verdes de recuperar margen no suman (se ven abajo, aparte).</div>`:'';
+  const alerta=neg&&!todoEnCurso?`<div style="margin-bottom:10px;padding:8px 10px;border-radius:8px;background:rgba(239,68,68,.12);border:1px solid rgba(239,68,68,.4);font-size:.7rem;color:var(--red)"><b>⚠️ En ${metAutoMes==='todos'?'total':mesTxt(metAutoMes)} las decisiones del robot dejaron MENOS plata que no tenerlas.</b> Ninguna se deshace sola, lo decidís vos.</div>`:'';
   const perdidas=lista.filter(x=>(x.estado==='medido'||x.estado==='encurso')&&x.enTotal&&n(x.total)<0);
   const resto=lista.filter(x=>!perdidas.includes(x));
-  el.innerHTML=`<div class="chart-box">${viejo}${alerta}
+  el.innerHTML=`<div class="chart-box">${viejo}${alerta}${alertaCurso}
     <div style="display:flex;flex-wrap:wrap;gap:5px;margin-bottom:6px">${chipsMes}</div>
     <div style="display:flex;flex-wrap:wrap;gap:5px;margin-bottom:12px">${chipsMot}</div>
     <div style="font-size:.6rem;color:var(--muted);text-transform:uppercase;letter-spacing:.04em">${neg?'Plata de MENOS':'Plata de más'} que dejaron las decisiones del robot · ${metAutoMes==='todos'?'todos los meses':mesTxt(metAutoMes)}</div>
