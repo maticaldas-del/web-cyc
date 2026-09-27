@@ -2339,7 +2339,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='20.67';
+const APP_VERSION='20.68';
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
 // muestre la versión y la fecha de actualización y que tenga un desplegable predeterminado cerrado".
 // Y el mismo día: "que ponga fecha de cada modificación y haya una barrita para scrollear y que
@@ -2350,6 +2350,7 @@ const APP_VERSION='20.67';
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'20.68',f:'27/09/2026',h:'16:36',c:[{n:1,t:'Vigilancia de precios: las subas para recuperar margen dicen que no suman al total del robot, para que no se confundan con lo que cuenta arriba.'}]},
   {v:'20.67',f:'27/09/2026',h:'11:48',c:[{n:3,t:'Prueba de suba: cada noche el robot sube +5% todas juntas las publicaciones que venden bien y no son de catálogo. Si la suba deja igual o más plata, a los 14 días prueba otro +5%; si deja menos, la cierra y te avisa.'},{n:2,t:'Métricas, abajo de todo: 🧪 Vigilancia de precios. Todas las publicaciones que venden, qué pasa con cada una, su último cambio de precio y si ganó o perdió plata.'},{n:1,t:'Ventas: cada reclamo dice el motivo que da ML (del producto, del envío o del comprador). Una vez por semana te aviso los que no fueron culpa del producto.'}]},
   {v:'20.66',f:'27/09/2026',h:'11:27',c:[{n:2,t:'Rotación: en lo lento o muerto dice si no la ve nadie (menos de 20 visitas) o si la ven y no compran (50+ visitas sin ventas).'},{n:1,t:'Rotación, columna Caja ML: cuánta gente te ve de la ficha según ML, y con cuántos compartís la caja.'},{n:2,t:'Inicio: tarjeta con las 4 cuentas contra el tope de H a este ritmo, y a qué cuenta mandar lo próximo nuevo.'}]},
   {v:'20.65',f:'27/09/2026',h:'23:34',c:[{n:1,t:'Paraguay probados: cada producto va en su propio recuadro, con el nombre en grande y una raya de color a la izquierda (verde da, amarillo sin datos, rojo probable que no dé).'}]},
@@ -14081,7 +14082,7 @@ function renderMetVig(){
     const u=f.ult;
     const pct=u&&n(u.de)&&n(u.a)?((n(u.a)/n(u.de)-1)*100).toFixed(1).replace('.',','):null;
     const cambio=u?`último cambio ${fd(u.ts)} · ${MET_AUTO_MOT[u.motivo]||u.motivo||'?'} · ${fmt(n(u.de))} → ${fmt(n(u.a))}${pct?' ('+(n(u.a)>n(u.de)?'+':'')+pct+'%)':''} · `+
-      (u.estado==='mano'?'<span>a mano: no se mide</span>':(u.estado==='medido'||u.estado==='encurso')&&u.total!=null?`<b style="color:${col(u.total)}">${n(u.total)>0?'ganó':n(u.total)<0?'perdió':'igual'} ${sg(u.total)}</b>${u.estado==='encurso'?' <span style="color:#fbbf24">(en curso)</span>':''}`:'<span>todavía sin medir</span>'):'sin cambios de precio registrados';
+      (u.estado==='mano'?'<span>a mano: no se mide</span>':(u.estado==='medido'||u.estado==='encurso')&&u.total!=null?`<b style="color:${col(u.total)}">${n(u.total)>0?'ganó':n(u.total)<0?'perdió':'igual'} ${sg(u.total)}</b>${u.estado==='encurso'?' <span style="color:#fbbf24">(en curso)</span>':''}${u.enTotal?'':' <span style="color:#fbbf24">· no suma al total del robot (recuperar margen)</span>'}`:'<span>todavía sin medir</span>'):'sin cambios de precio registrados';
     const ini=f.precioInicial&&f.pasos?` · ${f.pasos} suba(s) de prueba desde ${fmt(n(f.precioInicial))}`:'';
     return `<div style="padding:6px 0;border-bottom:1px solid rgba(148,163,184,.1);font-size:.66rem">
       <div style="display:flex;justify-content:space-between;gap:8px;align-items:baseline">
