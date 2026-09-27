@@ -413,6 +413,21 @@ Descartadas por reglas suyas: publicidad, IA contestando, bajar precios en gener
 **Tope de H con FACTURAS (v20.72, 27/09), él: *"las facturas automáticas son reales y tomalas así"*:** desde que cada cuenta factura por ML (04-05/08, `cyc/facturas_desde`) el facturado sale de las facturas con CAE (`cyc/facturas`, por fecha de emisión) + ventas sin factura (`facturas_sin`) + lo facturado fuera de ML (`cyc/fact_fuera`, vacío hasta que él baje Mis Comprobantes). Antes de esa fecha sigue `_facVentana` (ene-abr congelado, may-ago ventas): **eso NO son facturas reales**, falta bajar de ARCA los Emitidos 01/01→04/08 de cada cuenta. Las ramas del robot guardan la cuenta con mayúscula ("Adriana"): `_facOficial` busca sin mirar mayúsculas. Medido con `topeh`: oficial 0,8% a 2,1% arriba de las ventas (la factura incluye el envío que paga el comprador). `facsync:60:go` corrido el 27/09 para rellenar; las 4 tienen ~5% de números de factura que no vemos (huecos: facturas de órdenes que la búsqueda de ventas pagas no trae, probablemente canceladas).
 **Verde/rojo en Lo que trajo el robot y Vigilancia (v20.70): verde sólo lo CONFIRMADO (7+ días) que ganó, rojo sólo lo confirmado que perdió; en curso, rescates y a mano en gris.** El remate sigue sin poder mostrar lo que ahorra en almacenamiento hasta que él pase `almactarifa`.
 
+### ETAPA 1 (PRECIOS) · 27/09/2026 · v20.76 `cyc-v354`
+4 revisores, 23 hallazgos reales. **22 obvios HECHOS**: cuotas de las Premium en las BAJAS (calcCajaBarata,
+escalera) y el rescate (`cuotaPremiumDe`; Premium sin cuotas medidas no se baja) · sin `cyc/autoprecio` no se
+rescata · variante más barata en netoweb/margenAlDia (`precioMinVar`) · fecha de color `__v__` sólo si es real ·
+vueltas 2-3 de ml-daily no anotan avisados lo que la 1ª haría · variantes no ocupan tope de remate/escalera ·
+remate >24,5% baja en tramos · 📈 y 🧪 respetan bajas a mano · 🧪 cuenta IIBB en el escalón · raiseVariations
+sin relectura = hecho sin verificar · supervisor: efecto precio neto de IIBB/mono, `prueba` en el total del día,
+stock por color · netoweb neto≤0 = sin medir · 8 precios para el peor envío · Premium sin ventas propias → tarifa ·
+`pausar` pone `noAutoActivar` · `submargen` con minPct/targetPct · `grupos` pide `:go` y anota autoprecio ·
+`unapub bajar=` con pesosArg y envío por lado de la barrera · `preciosgo` ya no escribe · sacapromos manual =
+automático · avisos de comandos por `sendAlerta`. Probado con `avisos` en prueba (corre limpio).
+**FALTA SU DECISIÓN (en REV_PENDIENTE):** la 🧪 `calcPrueba` sólo cierra con `md.total<0` (casi nunca se mide
+completo) y resube +5% cada 14 d. (a) resubir sólo con medición completa · (b, recomendada) resubir si vendió
+igual o más por día (días con stock), si cayó se cierra y avisa.
+
 ### EL PUNTAJE DEL MES: REHACERLO, PERO DESPUÉS (26/09/2026)
 Él, con la captura del Puntaje (7,2 · "Buen mes"): *"no veo cuál es el objetivo de ganancia de CYC y para mí es medio
 flojo el conteo. podría fijarse otras cosas. si querés remodelalo desde 0 con lo que pondrías vos (…) pero ahora
