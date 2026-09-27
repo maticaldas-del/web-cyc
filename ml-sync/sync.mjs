@@ -1378,6 +1378,110 @@ async function cajaDeCompraML(db, accounts, labels, DRY, soloCta) {
 // SI ML NO CONTESTA PARA UNA CUENTA **NO SE BORRA LO QUE HABÍA**: queda el dato de la vuelta
 // anterior con su fecha, y la pantalla avisa si está viejo. Un "no sé" que pisa lo que sabíamos es
 // peor que un dato de hace una hora — el mismo criterio que la caja de compra.
+// ── CONTESTAR LAS PREGUNTAS SOLO (27/09/2026) ─────────────────────────────────────────────
+// Pedido suyo, textual: *"que conteste solo, que no me avise. yo no las contesto nunca. si tiene
+// una pequeña duda que no conteste por las dudas"*.
+// NO HAY INTELIGENCIA ARTIFICIAL ACÁ, a propósito: el robot no tiene con qué "entender" una
+// pregunta, así que contesta SÓLO tres tipos de pregunta que se reconocen sin adivinar y cuya
+// respuesta sale de un dato que el robot LEE de ML en ese momento:
+//   · STOCK   → "¿hay stock?" · se contesta sólo si la publicación está ACTIVA, es de Full y tiene
+//               unidades (el "1" de depósito no existe, regla del 20/08). Si pide un número de
+//               unidades, sólo si hay esa cantidad.
+//   · ENVÍO   → "¿cuándo llega?" · sólo si es de Full: la fecha exacta la da ML con el código postal.
+//   · FACTURA → "¿hacen factura?" · son monotributistas: factura C (el facturador de ML está
+//               configurado en las cuatro desde el 05/08).
+// LA DUDA GANA SIEMPRE: si la pregunta trae cualquier palabra que cambie la respuesta (precio,
+// descuento, color, medida, compatible, original, garantía, retiro, un teléfono…), si toca dos
+// temas, si es larga o si no se puede leer la publicación, NO se contesta. Una pregunta sin
+// contestar pierde una venta; una respuesta equivocada pierde la venta Y trae un reclamo.
+// Tope de 25 respuestas por vuelta. No manda Telegram (lo pidió así). El log sólo cuenta:
+// el texto de las preguntas no se imprime (el registro de GitHub es público), salvo en la prueba
+// a mano (`responder` sin :go), tapando teléfonos y mails.
+const RESP_MAX = 25;
+const RESP_TXT = {
+  stock: '¡Hola! Sí, tenemos stock disponible y sale por Mercado Envíos Full. Podés comprarlo directamente desde la publicación. ¡Saludos!',
+  envio: '¡Hola! Sale por Mercado Envíos Full, desde el depósito de Mercado Libre. La fecha exacta de entrega la ves en la publicación poniendo tu código postal. ¡Saludos!',
+  factura: '¡Hola! Sí, emitimos factura electrónica. Somos monotributistas, así que es factura C, y te llega automáticamente con la compra. ¡Saludos!',
+};
+function clasificarPregunta(texto) {
+  const t = String(texto || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/\s+/g, ' ').trim();
+  if (!t) return { cat: null, why: 'vacía' };
+  if (t.length > 160) return { cat: null, why: 'larga' };
+  if ((t.match(/\?/g) || []).length > 1) return { cat: null, why: 'varias preguntas' };
+  if (/@|https?:|www\.|\d{6,}/.test(t)) return { cat: null, why: 'datos de contacto' };
+  const DUDA = /precio|cuanto (sale|cuesta|vale|esta)|\bvale\b|descuento|oferta|barato|rebaja|mayor(ista|eo)?|cantidad|por mayor|cuota|interes|transfer|efectivo|compatib|sirve|funciona|anda\b|original|trucho|replica|imitacion|garantia|medid|tamano|talle|\bcm\b|\bmm\b|\bml\b|litro|peso|color|colores|modelo|version|aroma|fragancia|\bgb\b|\btb\b|voltaje|220|110|cargador|bateria|pila|incluye|viene con|trae|caja|usado|cambio|devol|reclamo|retir|local|domicilio|direccion|en mano|personal|whatsapp|telefono|celular|numero|mail|flex|moto|mismo dia|hoy mismo|gratis|costo de envio|cuanto sale el envio|pais|chile|uruguay|paraguay|exterior/;
+  if (DUDA.test(t)) return { cat: null, why: 'tema que no contesto solo' };
+  const cats = [];
+  if (/factura/.test(t)) cats.push('factura');
+  if (/\b(hay|tenes|tienen|tiene|tendras|tendran|queda|quedan|quedo|disponible|disponibles|stock)\b/.test(t) && !/factura/.test(t)) cats.push('stock');
+  if (/cuando llega|cuanto tarda|cuanto demora|demora|tarda|llega (a|el|para|antes|en)|en cuanto llega|cuando lo recib|cuando me llega|envian|envio|envios|mandan|despach/.test(t)) cats.push('envio');
+  if (cats.length !== 1) return { cat: null, why: cats.length ? 'dos temas a la vez' : 'no la entiendo' };
+  const cat = cats[0];
+  // "¿tenés 5?" → pide una cantidad: se devuelve para mirar el stock.
+  const m = t.match(/\b(\d{1,3})\b/);
+  if (cat === 'factura' && /factura a\b/.test(t)) return { cat, facturaA: true };
+  if (m && cat !== 'stock') return { cat: null, why: 'trae un número' };
+  return { cat, pide: m ? Number(m[1]) : null };
+}
+async function responderPreguntas(db, accounts, labels, GO, verTexto) {
+  const out = { contestadas: 0, dudas: {}, porCat: {}, error: 0, cuentas: 0, filas: [] };
+  const tapar = (x) => String(x || '').replace(/\S+@\S+/g, '[mail]').replace(/\d[\d\s.-]{5,}\d/g, '[número]');
+  let enviadas = 0;
+  for (const label of labels) {
+    const acc = accounts[label]; if (!acc?.refresh_token) continue;
+    let tok;
+    try {
+      const t = await mlRefresh(ML_CLIENT_ID, ML_CLIENT_SECRET, acc.refresh_token);
+      await db.patch('mlapi/tokens/' + label, { refresh_token: t.refresh_token, updated_ts: Date.now() });
+      tok = t.access_token;
+    } catch { out.error++; continue; }
+    out.cuentas++;
+    let qs = [];
+    try {
+      const q = await mlGet(`/questions/search?seller_id=${acc.seller_id}&status=UNANSWERED&api_version=4&limit=50&sort=date_created_asc`, tok);
+      qs = q?.questions || [];
+    } catch { out.error++; continue; }
+    const ids = [...new Set(qs.map((x) => x.item_id).filter(Boolean))];
+    const items = {};
+    for (let k = 0; k < ids.length; k += 20) {
+      try {
+        const arr = await mlGet('/items?ids=' + ids.slice(k, k + 20).join(',') + '&attributes=id,status,available_quantity,shipping,title', tok);
+        for (const row of (arr || [])) { const b = row && row.body; if (b && b.id && Number(row.code) === 200) items[b.id] = b; }
+      } catch { /* esas quedan sin leer: no se contestan */ }
+    }
+    for (const q of qs) {
+      const dud = (why) => { out.dudas[why] = (out.dudas[why] || 0) + 1; if (verTexto) out.filas.push(`   🤔 ${label} · ${why} · «${tapar(q.text).slice(0, 120)}»`); };
+      const c = clasificarPregunta(q.text);
+      if (!c.cat) { dud(c.why); continue; }
+      const it = items[q.item_id];
+      if (!it) { dud('no pude leer la publicación'); continue; }
+      const full = it.shipping && it.shipping.logistic_type === 'fulfillment';
+      if (it.status !== 'active') { dud('publicación no activa'); continue; }
+      if ((c.cat === 'stock' || c.cat === 'envio') && !full) { dud('no es de Full'); continue; }
+      const st = Number(it.available_quantity) || 0;
+      if (c.cat === 'stock' && !(st > 0)) { dud('sin stock'); continue; }
+      if (c.cat === 'stock' && c.pide != null && !(c.pide >= 1 && st >= c.pide)) { dud('pide más unidades de las que hay'); continue; }
+      let txt = RESP_TXT[c.cat];
+      if (c.facturaA) txt = '¡Hola! Somos monotributistas, así que emitimos factura C (no podemos hacer factura A). Te llega automáticamente con la compra. ¡Saludos!';
+      if (enviadas >= RESP_MAX) { dud('tope de respuestas por vuelta: sigue la próxima'); continue; }
+      if (verTexto) out.filas.push(`   ✅ ${label} · ${c.cat} · «${tapar(q.text).slice(0, 120)}» → ${txt}`);
+      if (!GO) { out.porCat[c.cat] = (out.porCat[c.cat] || 0) + 1; enviadas++; continue; }
+      try {
+        const r = await fetch(ML_API + '/answers', {
+          method: 'POST',
+          headers: { Authorization: 'Bearer ' + tok, 'Content-Type': 'application/json' },
+          body: JSON.stringify({ question_id: q.id, text: txt }),
+          signal: AbortSignal.timeout(25000),
+        });
+        if (!r.ok) { out.error++; dud('ML no aceptó la respuesta (' + r.status + ')'); continue; }
+        enviadas++; out.contestadas++; out.porCat[c.cat] = (out.porCat[c.cat] || 0) + 1;
+        try { await db.set('cyc/respuestasauto/' + q.id, { cat: c.cat, cuenta: label, mla: q.item_id, ts: Date.now() }); } catch { /* */ }
+      } catch { out.error++; dud('no pude mandar la respuesta'); }
+    }
+  }
+  return out;
+}
+
 async function reputacionML(db, accounts, labels, DRY) {
   const out = { ok: 0, mal: 0, filas: [] };
   for (const label of labels) {
@@ -7881,6 +7985,42 @@ async function main() {
       const hechoIds = new Set(hechosAuto.map((x) => x.f.mla));
       nuevasSub.splice(0, nuevasSub.length, ...nuevasSub.filter((f) => !hechoIds.has(f.mla)));
       for (const arr of [sanasCbr, sobreSanas, remE1, remE2, remE3, sobrePaga, sobreE3]) arr.splice(0, arr.length, ...arr.filter((f) => !hechoIds.has(f.mla)));
+      // ── "SI DUDA, NO HAGA NADA Y AVISE" (27/09/2026) ────────────────────────────────────
+      // Regla suya: *"quiero que analice TODO una vez al día, ver si subir o bajar. si duda, no haga
+      // nada y avise"*. Lo que queda en las listas de abajo es lo que el robot NO hizo solo: cada
+      // renglón dice POR QUÉ dudó, con los mismos frenos con los que decidió arriba (no una copia:
+      // las mismas variables). Ya no es una lista "para que decidas vos": es el aviso de la duda.
+      const _mismaEspera = (f) => recienteAuto(f.mla, 'baja', BAJAR_ESPERA_DIAS);
+      const porQueNoSube = (f) => {
+        const r = [];
+        if (!AUTO_ON) r.push('esta noche no toco precios (apagado o ya corrió hoy)');
+        if (!supLeido) r.push('no pude leer el supervisor');
+        if (!(f.u >= AUTO_MIN_U)) r.push(`vendió ${f.u} en 30 d (pido ${AUTO_MIN_U} o más para estar seguro)`);
+        if (f.diasSin == null || f.diasSin > AUTO_MAX_DSIN) r.push(`la última venta fue hace ${f.diasSin == null ? '?' : f.diasSin} d`);
+        if (f.subePct > 10.5) r.push(`la suba sería de ${Number(f.subePct).toFixed(1)}% (solo hago hasta 10,5%)`);
+        if (recienteAuto(f.mla, 'baja', 30)) r.push('la bajé hace menos de 30 d');
+        if (malosSup.has(f.mla)) r.push('un cambio anterior le salió 🔴 malo');
+        if (recienteAuto(f.mla, 'sube', SUBIR_ESPERA_DIAS)) r.push(`la subí hace menos de ${SUBIR_ESPERA_DIAS} d`);
+        if (diferidasAuto.has(f.mla)) r.push(`tope de ${AUTO_MAX} cambios por noche: sale mañana`);
+        return r.length ? r.join(' · ') : 'quedó afuera sin motivo claro: la miro de nuevo mañana';
+      };
+      const porQueNoBaja = (f) => {
+        const r = [];
+        const sana = sanasCbr.includes(f) || sobreSanas.includes(f);
+        if (!AUTO_ON) r.push('esta noche no toco precios (apagado o ya corrió hoy)');
+        if (!NOSUBIR_OK) r.push('no pude leer la lista de liquidando');
+        if (sana && !avisadosOk) r.push('no pude leer la memoria de avisos');
+        if (_mismaEspera(f)) r.push(`la bajé hace menos de ${BAJAR_ESPERA_DIAS} d`);
+        if (recienteAuto(f.mla, 'sube', 14)) r.push('la subí hace menos de 14 d');
+        if (f.baja > 24.5) r.push(`habría que bajar ${Number(f.baja).toFixed(1)}% (solo hago hasta 24,5% por vez)`);
+        const piso = sana ? CBR_SANO + 0.5 : Math.max(pisoEsc(f), PISO_AUTORIZADO) + 0.5;
+        if (f.mgPw < piso) r.push(`quedaría en ${Number(f.mgPw).toFixed(1)}%, abajo de ${piso}%`);
+        if (!sana && !f.sobre && f.vis == null) r.push('no pude leer las visitas');
+        if (!sana && pricedRem && pricedRem[f.mla] && hoyTs - (pricedRem[f.mla].ts || 0) < 14 * 864e5) r.push('el robot de ventas la tocó hace menos de 14 d');
+        if (NOSUBIR[f.mla] && !esMarcaRobot(NOSUBIR[f.mla])) r.push('la marcaste liquidando vos');
+        if (diferidasAuto.has(f.mla) || (!sana && autoRemate.slice(REMATE_AUTO_MAX).includes(f))) r.push('tope de cambios por noche: sale mañana');
+        return r.length ? r.join(' · ') : 'quedó afuera sin motivo claro: la miro de nuevo mañana';
+      };
       // ── LA VIGILANCIA DE LAS SUBAS AUTOMÁTICAS ────────────────────────────────────────────
       // Subir es lo único que puede apagar las ventas de algo que hoy funciona, y eso se nota
       // tarde. A los 7 días se mira: si con el ritmo de antes tendría que haber vendido 3 o más y
@@ -7927,7 +8067,7 @@ async function main() {
       const guardaFilas = [];
       let nro = 0;
       const numerar = (o) => { guardaFilas.push({ n: ++nro, ...o }); return nro; };
-      L.push('🔔 <b>CYC · para decidir</b>');
+      L.push('🔔 <b>CYC · precios de hoy</b>');
       // LO QUE SE HIZO SOLO VA PRIMERO, y con el precio releído de ML: es lo que ya cambió en
       // sus publicaciones, y enterarse tarde de un cambio de precio es peor que no enterarse.
       if (hechosAuto.length) {
@@ -7978,14 +8118,15 @@ async function main() {
       }
       if (nuevasSub.length) {
         const t = nuevasSub.reduce((a, x) => a + x.extraMes, 0);
-        L.push(`\n📈 <b>Subir</b> · ${nuevasSub.length} publicación(es) · +${money(t)}/mes`);
+        L.push(`\n🤔📈 <b>Pensé en subir y dudé: no lo toqué</b> · ${nuevasSub.length} · +${money(t)}/mes si se hiciera`);
         for (const f of nuevasSub) {
           const n = numerar({ tipo: 'subir', mla: f.mla, nom: f.nom, cuenta: f.cuenta, de: f.precio, a: f.tope, extraMes: f.extraMes });
           // "vendió 3" sin decir CUÁNDO fue la última ni cuánto stock queda es justo el dato
           // que lo hizo dudar del Ferrari, y tenía razón. Los tres juntos se leen de un vistazo.
           L.push(`<b>${n}.</b> ${f.nom} (${f.cuenta})\n   ${money(f.precio)} → ${money(f.tope)} · +${money(f.extraMes)}/mes`
             + `\n   vendió ${f.u}${f.diasSin != null ? ` · última hace ${f.diasSin} d` : ''}`
-            + `${f.diasStock != null ? ` · ${f.st} u. en Full (${f.diasStock} d)` : ''}`);
+            + `${f.diasStock != null ? ` · ${f.st} u. en Full (${f.diasStock} d)` : ''}`
+            + `\n   🤔 ${porQueNoSube(f)}`);
         }
         // SE ANOTAN TODAS LAS QUE ENTRARON AL AVISO. Ahora salen todas, así que anotar todas
         // ya no esconde nada: lo que se anota es exactamente lo que él leyó.
@@ -7993,8 +8134,8 @@ async function main() {
       }
       if (nuevasZm.length) {
         const t = nuevasZm.reduce((a, x) => a + x.extraMes, 0);
-        L.push(`\n📉 <b>Bajar y ganar MÁS</b> · ${nuevasZm.length} · +${money(t)}/mes`);
-        L.push('<i>Están justo arriba de un escalón de comisión de ML: cobrás menos y te queda más.</i>');
+        L.push(`\n🤔📉 <b>Bajar y ganar MÁS: no lo hago solo</b> · ${nuevasZm.length} · +${money(t)}/mes si se hiciera`);
+        L.push('<i>Están justo arriba de un escalón de comisión de ML: cobrás menos y te queda más. Dudé porque esta cuenta no mide el margen completo (costo, envío, impuestos) al precio nuevo.</i>');
         for (const f of nuevasZm) {
           const n = numerar({ tipo: 'bajar', mla: f.mla, nom: f.nom, cuenta: f.cuenta, de: f.precio, a: f.mejor, extraMes: f.extraMes });
           L.push(`<b>${n}.</b> ${f.nom} (${f.cuenta})\n   ${money(f.precio)} → ${money(f.mejor)} · +${money(f.extraMes)}/mes`);
@@ -8011,7 +8152,7 @@ async function main() {
       // ya se midió se puede aplicar; uno que no, no.
       const nuevasCbr = sanasCbr.filter((f) => !yaAvisado('c_' + f.mla, 'cajabarata', f.ptw));
       if (nuevasCbr.length) {
-        L.push(`\n🥊 <b>Se gana la caja y el margen aguanta</b> · ${nuevasCbr.length}`);
+        L.push(`\n🤔🥊 <b>Se gana la caja y el margen aguanta, pero dudé</b> · ${nuevasCbr.length}`);
         L.push(`<i>No venden. Bajando a este precio pasás a ser el botón de comprar y quedás del ${CBR_SANO}% para arriba. El margen ya tiene todo descontado.</i>`);
         for (const f of nuevasCbr) {
           const n2 = numerar({ tipo: 'bajar', mla: f.mla, nom: f.nom, cuenta: f.cuenta, de: f.precio, a: f.ptw, extraMes: 0 });
@@ -8026,7 +8167,8 @@ async function main() {
             + (f.st > 1 ? ` (${money(f.resignaTot)} por las ${f.st})` : '');
           const hace = avisadoHace('c_' + f.mla);
           L.push(`<b>${n2}.</b> ${f.nom} (${f.cuenta})\n   ${money(f.precio)} → ${money(f.ptw)} (−${f.baja.toFixed(1)}%) · ${deA} · ${f.st} u.${plata}`
-            + (hace == null ? '' : `\n   ⚠️ ya te lo avisé hace ${hace} d: si lo bajaste y lo volvés a perder, es una escalera para abajo`));
+            + (hace == null ? '' : `\n   ⚠️ ya te lo avisé hace ${hace} d: si lo bajaste y lo volvés a perder, es una escalera para abajo`)
+            + `\n   🤔 ${porQueNoBaja(f)}`);
         }
         // EL ENVÍO DE ESTAS NO ESTÁ MEDIDO y hay que decirlo donde se lee, no sólo acá adentro:
         // ninguna vendió nunca, así que sale de la tarifa de ML, que el 20/08 se midió $246 corta.
@@ -8051,13 +8193,14 @@ async function main() {
       for (const g of remTodo) {
         const nuevasRem = g.filas.filter((f) => !yaAvisado('r_' + f.mla, 'rematar', f.ptw));
         if (!nuevasRem.length) continue;
-        L.push(`\n${g.ico} <b>Rematar · escalón ${g.esc}</b> · ${nuevasRem.length}`);
+        L.push(`\n🤔${g.ico} <b>Rematar · escalón ${g.esc}: dudé y no lo toqué</b> · ${nuevasRem.length}`);
         L.push(`<i>Hace ${g.dias}+ días que no venden. Acá SÍ se resigna margen a propósito: se puede bajar hasta el ${g.pct}%. Mirá los pesos que resignás antes de decidir.</i>`);
         for (const f of nuevasRem) {
           const n3 = numerar({ tipo: 'bajar', mla: f.mla, nom: f.nom, cuenta: f.cuenta, de: f.precio, a: f.ptw, extraMes: 0 });
           L.push(`<b>${n3}.</b> ${f.nom} (${f.cuenta})\n   ${money(f.precio)} → ${money(f.ptw)} (−${f.baja.toFixed(0)}%) · queda en ${f.mgPw.toFixed(0)}% · ${f.st} u.`
             + `\n   sin vender hace ${f.quieta} d${f.vis == null ? '' : ` · ${f.vis} visitas`}`
-            + (f.resigna == null ? '\n   ⚠️ no pude medir cuánta plata resignás' : `\n   resignás ${money(f.resigna)} por unidad · <b>${money(f.resignaTot)}</b> por las ${f.st}`));
+            + (f.resigna == null ? '\n   ⚠️ no pude medir cuánta plata resignás' : `\n   resignás ${money(f.resigna)} por unidad · <b>${money(f.resignaTot)}</b> por las ${f.st}`)
+            + `\n   🤔 ${porQueNoBaja(f)}`);
         }
         for (const f of nuevasRem) paraAnotar['r_' + f.mla] = { tipo: 'rematar', valor: f.ptw, ts: hoyTs };
       }
@@ -8069,7 +8212,7 @@ async function main() {
       const nuevasSobre = [...sobreSanas, ...sobrePaga, ...sobreE3].filter((f) => !yaAvisado('o_' + f.mla, 'cajabarata', f.ptw));
       const sobreConPrecio = new Set([...sobreSanas, ...sobrePaga, ...sobreE3].map((f) => f.mla).concat([...hechoIds]));
       if (nuevasSobre.length) {
-        L.push(`\n📦 <b>Te sobra stock: bajando ganás la caja</b> · ${nuevasSobre.length}`);
+        L.push(`\n🤔📦 <b>Te sobra stock y bajando ganás la caja, pero dudé</b> · ${nuevasSobre.length}`);
         L.push(`<i>Venden, pero tenés para más de ${SOBRE_DIAS} días (ML cobra almacenamiento). Ganando el botón de comprar rotan más rápido. El margen ya tiene todo descontado.</i>`);
         for (const f of nuevasSobre) {
           const n4 = numerar({ tipo: 'bajar', mla: f.mla, nom: f.nom, cuenta: f.cuenta, de: f.precio, a: f.ptw, extraMes: 0 });
@@ -8081,7 +8224,8 @@ async function main() {
             + (f.mgPw < SOBRE_SANO ? (sobreE3.includes(f)
               ? `\n   ⚠️ queda abajo de tu piso: con stock para ${f.sobre.dias} d va a pagar almacenamiento sí o sí (remate, hasta ${REM_P3}%)`
               : `\n   ⚠️ queda abajo de tu piso: va al ${REM_P1}% porque ya paga almacenamiento`) : '')
-            + (f.envioEstimado && f.envio > 0 ? '\n   (envío estimado con la tarifa de ML)' : ''));
+            + (f.envioEstimado && f.envio > 0 ? '\n   (envío estimado con la tarifa de ML)' : '')
+            + `\n   🤔 ${porQueNoBaja(f)}`);
         }
         for (const f of nuevasSobre) paraAnotar['o_' + f.mla] = { tipo: 'cajabarata', valor: f.ptw, ts: hoyTs };
       }
@@ -8189,7 +8333,7 @@ async function main() {
       }
       // CÓMO CONTESTAR. Sin esto la lista es información y no una herramienta: él la lee, quiere
       // aplicar tres renglones y no tiene forma de nombrarlos sin copiar títulos largos.
-      if (guardaFilas.length) L.push(`\n<i>Para aplicar, decime los números: "subí el 1 y el 4". Los precios los aplico yo y después los releo de ML.</i>`);
+      if (guardaFilas.length) L.push(`\n<i>Lo de 🤔 no lo toqué porque dudé (el motivo está en cada uno). Si querés que haga alguno igual, decime el número.</i>`);
       else if (!hechosAuto.length) L.push('\n<i>Ninguno se aplicó solo: los precios los decidís vos.</i>');
       const msg = L.join('\n');
       console.log('\n── MENSAJE ──\n' + msg.replace(/<[^>]+>/g, ''));
@@ -22026,6 +22170,18 @@ async function main() {
       return;
     }
 
+    // BILLING_PROBE=responder[:go] → CONTESTAR LAS PREGUNTAS SIN DUDA (27/09/2026).
+    // Sin :go SOLO MUESTRA qué contestaría y cuáles no, con el texto tapando teléfonos y mails.
+    // Con :go contesta de verdad (lo mismo que hace la vuelta de cada hora).
+    if (String(process.env.BILLING_PROBE || '').startsWith('responder')) {
+      const GO = /:go\b/.test(String(process.env.BILLING_PROBE));
+      const rq = await responderPreguntas(db, accounts, labels, GO, true);
+      for (const l of rq.filas) console.log(l);
+      console.log(`\n${GO ? 'Contestadas' : 'Contestaría'}: ${GO ? rq.contestadas : Object.values(rq.porCat).reduce((a, b) => a + b, 0)} · por tema: ${JSON.stringify(rq.porCat)}`);
+      console.log(`No contesto por duda: ${JSON.stringify(rq.dudas)}${rq.error ? ' · errores ' + rq.error : ''}`);
+      return;
+    }
+
     // BILLING_PROBE=preguntas[:<cuenta>][:<cuántas>] → LAS PREGUNTAS SIN RESPONDER, ENTERAS.
     //
     // El chequeo de la mañana dice cuántas hay y muestra 3 por cuenta recortadas a 70 caracteres.
@@ -33537,6 +33693,20 @@ async function main() {
       }
       if (rp.mal) console.log(`⭐ ${rp.mal} cuenta(s) sin reputación esta vuelta: queda el dato anterior, no se borra nada.`);
     } catch (e) { console.log('No pude leer la reputación: ' + e.message); }
+  }
+
+  // CONTESTAR SOLO LAS PREGUNTAS QUE NO TIENEN DUDA (27/09/2026, pedido suyo). Una vez por hora,
+  // sin Telegram. Se apaga con cyc/mlconfig/responder = 'off'. Ver `responderPreguntas`.
+  if (parseInt(process.env.BACKFILL_DAYS || '0', 10) === 0 && !onlyAcc && process.env.SKIP_PRICES !== '1') {
+    try {
+      let onR = true; try { onR = ((await db.get('cyc/mlconfig/responder')) || 'on') !== 'off'; } catch { onR = false; }
+      if (onR) {
+        const rq = await responderPreguntas(db, accounts, labels, !DRY, false);
+        const cats = Object.entries(rq.porCat).map(([k, v]) => k + ' ' + v).join(' · ');
+        const dud = Object.entries(rq.dudas).map(([k, v]) => k + ' ' + v).join(' · ');
+        console.log(`💬 Preguntas: contesté ${rq.contestadas}${cats ? ' (' + cats + ')' : ''}${dud ? ' · no contesté por duda: ' + dud : ''}${rq.error ? ' · ' + rq.error + ' error(es)' : ''}`);
+      } else console.log('💬 Contestar preguntas: apagado (cyc/mlconfig/responder).');
+    } catch (e) { console.log('No pude contestar preguntas: ' + e.message); }
   }
 
   // EL DÓLAR, UNA VEZ POR DÍA. Va en la vuelta horaria (no en las de 2 minutos) y además con un
