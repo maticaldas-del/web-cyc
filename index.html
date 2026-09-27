@@ -1379,6 +1379,10 @@ footer{margin-top:32px;padding-top:14px;border-top:1px solid var(--border);font-
   <div class="stitle">Lo que trajo el robot de precios <span style="font-weight:400;color:var(--muted);text-transform:none;letter-spacing:0;font-family:'DM Mono',monospace;font-size:.65rem">· contra no tenerlo · elegí el mes y el motivo adentro</span></div>
   <div id="met-auto"></div>
 
+  <!-- Panel de vigilancia: todas las publicaciones que venden y qué pasa con cada una (27/09/2026, idea 6) -->
+  <div class="stitle">🧪 Vigilancia de precios <span style="font-weight:400;color:var(--muted);text-transform:none;letter-spacing:0;font-family:'DM Mono',monospace;font-size:.65rem">· todas las publicaciones que venden · qué se prueba y si dejó más o menos plata</span></div>
+  <div id="met-vig"></div>
+
   <footer>CYC · Métricas ML · datos independientes</footer>
 </div>
 </div>
@@ -1938,6 +1942,11 @@ function startApp(){
     // Sólo se muestran; no se calcula nada con ellos.
     state.supervisor={eventos:(d.supervisor&&d.supervisor.eventos)||{}};
     state.autoprecio=d.autoprecio||{};
+    // 🧪 VIGILANCIA (idea 6, 27/09/2026): la foto que deja el robot cada noche de TODAS las publicaciones que venden,
+    // con su estado frente a la prueba de suba. Sólo se dibuja.
+    state.vigilancia=d.vigilancia||null;
+    // Motivo de cada reclamo/devolución (idea 8, 27/09/2026): sólo el motivo de ML, nunca lo que escribió el comprador.
+    state.reclamomotivo=d.reclamomotivo||{};
     // VISITAS por publicación en los últimos 30 días, que las trae el robot de ML. Separan dos
     // problemas que se ven igual en pantalla y se arreglan al revés: si no la ve nadie el precio no
     // es el problema; si la ven y no compran, ahí sí.
@@ -2330,7 +2339,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='20.66';
+const APP_VERSION='20.67';
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
 // muestre la versión y la fecha de actualización y que tenga un desplegable predeterminado cerrado".
 // Y el mismo día: "que ponga fecha de cada modificación y haya una barrita para scrollear y que
@@ -2341,6 +2350,7 @@ const APP_VERSION='20.66';
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'20.67',f:'27/09/2026',h:'11:48',c:[{n:3,t:'Prueba de suba: cada noche el robot sube +5% todas juntas las publicaciones que venden bien y no son de catálogo. Si la suba deja igual o más plata, a los 14 días prueba otro +5%; si deja menos, la cierra y te avisa.'},{n:2,t:'Métricas, abajo de todo: 🧪 Vigilancia de precios. Todas las publicaciones que venden, qué pasa con cada una, su último cambio de precio y si ganó o perdió plata.'},{n:1,t:'Ventas: cada reclamo dice el motivo que da ML (del producto, del envío o del comprador). Una vez por semana te aviso los que no fueron culpa del producto.'}]},
   {v:'20.66',f:'27/09/2026',h:'11:27',c:[{n:2,t:'Rotación: en lo lento o muerto dice si no la ve nadie (menos de 20 visitas) o si la ven y no compran (50+ visitas sin ventas).'},{n:1,t:'Rotación, columna Caja ML: cuánta gente te ve de la ficha según ML, y con cuántos compartís la caja.'},{n:2,t:'Inicio: tarjeta con las 4 cuentas contra el tope de H a este ritmo, y a qué cuenta mandar lo próximo nuevo.'}]},
   {v:'20.65',f:'27/09/2026',h:'23:34',c:[{n:1,t:'Paraguay probados: cada producto va en su propio recuadro, con el nombre en grande y una raya de color a la izquierda (verde da, amarillo sin datos, rojo probable que no dé).'}]},
   {v:'20.64',f:'27/09/2026',h:'21:42',c:[
@@ -3184,13 +3194,12 @@ const REV_CADA_DIAS=7;
 //   · REV_HECHAS    → última vez que cada etapa quedó resuelta. Sin pendientes, el cartel pide la
 //                     etapa más vieja cuando pasaron REV_CADA_DIAS desde la última.
 const REV_PENDIENTE=[
-  {t:'Ideas nuevas: faltan elegir 5 de 10',que:'de las primeras 5: sí a Premium/Clásica, visitas, caja y emparejar (hechas); no a los packs · quedan las otras 5 para elegir',pedi:'ideas'},
-  {t:'La segunda revisión completa, al final',que:'la que pediste dejar para cuando esté todo lo demás · va última',pedi:'revisión completa',ultima:true},
+    {t:'La segunda revisión completa, al final',que:'la que pediste dejar para cuando esté todo lo demás · va última',pedi:'revisión completa',ultima:true},
 ];
 // Choques (4) y fallas mudas/privacidad (5): verificadas las 15 del 26/09 de madrugada (rev4, lotes 6-8) y
 // todas arregladas o ya estaban; antes pasaron por la 2ª vuelta del 25/09. El cartel decía "15 sin verificar"
 // por una nota vieja.
-const REV_HECHAS={1:'2026-09-26',2:'2026-09-26',3:'2026-09-26',4:'2026-09-26',5:'2026-09-26'};
+const REV_HECHAS={1:'2026-09-26',2:'2026-09-26',3:'2026-09-26',4:'2026-09-26',5:'2026-09-26',6:'2026-09-27'};
 function _revFecha(iso){const d=new Date(iso+'T12:00:00');return isNaN(d)?null:d;}
 function _revFmt(d){return ['dom','lun','mar','mié','jue','vie','sáb'][d.getDay()]+' '+String(d.getDate()).padStart(2,'0')+'/'+String(d.getMonth()+1).padStart(2,'0');}
 function revProxima(){
@@ -4302,6 +4311,22 @@ async function updCostPesos(id,val){
 //  · reclamo  = venta que llegó al comprador, reclamó y se le devolvió el dinero; el producto se pierde.
 //  · cancelada= el comprador canceló antes de recibir; el producto quedó en stock; NO es reclamo y NO cuenta como venta.
 let _reclamoStats={};
+// EL MOTIVO DEL RECLAMO (idea 8 de la etapa 6, 27/09/2026). Lo guarda el robot cada noche en
+// cyc/reclamomotivo/<orden>: el código y el nombre del motivo que da ML, y si parece culpa del producto,
+// del envío o del comprador. Nunca lo que escribió el comprador. Sirve para proponer `sincargo`
+// cuando el reclamo no fue por el producto (hoy todo reclamo encarece el costo igual).
+const RECL_CLASE={producto:['📦','del producto','#f87171'],envio:['🚚','del envío: no es culpa del producto','#fbbf24'],comprador:['🙋','del comprador: no es culpa del producto','#fbbf24'],otro:['❔','sin clasificar','var(--muted)']};
+function reclamoMotivoHTML(grp){
+  const M=state.reclamomotivo||{};
+  for(const v of (grp&&grp.items)||[]){
+    const m=/^v(\d+)_/.exec(String(v.id||''));const r=m&&M[m[1]];
+    if(!r)continue;
+    const C=RECL_CLASE[r.clase]||RECL_CLASE.otro;
+    const sc=(grp.items||[]).some(x=>x.sinCargo);
+    return `<div style="font-size:.6rem;color:${C[2]};padding:1px 0">${C[0]} Motivo según ML: <b>${String(r.nombre||r.reason||'?').replace(/</g,'&lt;')}</b> · ${C[1]}${sc?' · <span style="color:var(--green)">ya no encarece el producto</span>':(r.clase==='envio'||r.clase==='comprador')?' · <span style="color:var(--muted)">te propongo sacarlo del costo del producto</span>':''}</div>`;
+  }
+  return '';
+}
 function _esReclamo(v){return v&&v.cancelada&&(v.tipoCancelacion==='reclamo'||v.tipoCancelacion==='perdida');}
 function _esCancelada(v){return v&&v.cancelada&&(v.tipoCancelacion==='cancelada'||v.tipoCancelacion==='devolucion');}
 // ── RECLAMOS QUE NO SON DEL PRODUCTO ──────────────────────────────────────────────────
@@ -8389,7 +8414,7 @@ function renderVentaProd(){
             <button class="btn" style="font-size:.68rem;padding:4px 10px;background:var(--surface2)" onclick="vpToggleEdit('${grp.gid}')">Cerrar</button>
           </div>
           ${rowsHtml}
-          ${isCancelled?`<div style="font-size:.64rem;color:#f87171;padding:2px 0">${(tipoCan==='reclamo'||tipoCan==='perdida')?'⚠️ Reclamo · producto perdido (no volvió al stock)':'⚠️ Cancelada · producto devuelto al stock'}</div>`:cancelPanel}
+          ${isCancelled?`<div style="font-size:.64rem;color:#f87171;padding:2px 0">${(tipoCan==='reclamo'||tipoCan==='perdida')?'⚠️ Reclamo · producto perdido (no volvió al stock)':'⚠️ Cancelada · producto devuelto al stock'}</div>${reclamoMotivoHTML(grp)}`:cancelPanel}
         </div>`;
       }
       const _esRec=grp.tipoCancelacion==='reclamo'||grp.tipoCancelacion==='perdida';
@@ -13923,7 +13948,7 @@ function renderMetOrigen(keys){
 // que el robot midió (no hay una segunda cuenta de atribución). El total grande suma sólo lo que el
 // robot decidió mirando el mercado (`enTotal`): los rescates por costo/inflación se ven, pero no suman.
 let metAutoMes='todos',metAutoMot='cuentan';
-const MET_AUTO_MOT={subir:'📈 Subir (había lugar)',bajar:'📉 Bajar para ganar la caja',remate:'🔨 Remate',escalera:'🪜 Escalera',rescate:'🛟 Recuperar margen (costo / inflación)',mano:'✋ A mano'};
+const MET_AUTO_MOT={prueba:'🧪 Prueba de suba (sin catálogo)',subir:'📈 Subir (había lugar)',bajar:'📉 Bajar para ganar la caja',remate:'🔨 Remate',escalera:'🪜 Escalera',rescate:'🛟 Recuperar margen (costo / inflación)',mano:'✋ A mano'};
 function metAutoSet(k,v){if(k==='mes')metAutoMes=v;else metAutoMot=v;renderMetAuto();}
 function renderMetAuto(){
   const el=document.getElementById('met-auto');if(!el)return;
@@ -13942,7 +13967,7 @@ function renderMetAuto(){
   const MES=['ene','feb','mar','abr','may','jun','jul','ago','sep','oct','nov','dic'];
   const mesTxt=ym=>{const [y,m]=ym.split('-');return MES[+m-1]+' '+y;};
   const delMes=todos.filter(x=>metAutoMes==='todos'||ymDe(x.ts)===metAutoMes);
-  const lista=delMes.filter(x=>metAutoMot==='todas'?true:metAutoMot==='cuentan'?!!x.enTotal||(x.estado!=='medido'&&['subir','bajar','remate','escalera'].includes(x.motivo)):x.motivo===metAutoMot);
+  const lista=delMes.filter(x=>metAutoMot==='todas'?true:metAutoMot==='cuentan'?!!x.enTotal||(x.estado!=='medido'&&['subir','bajar','remate','escalera','prueba'].includes(x.motivo)):x.motivo===metAutoMot);
   // El total grande: SÓLO lo medido que cuenta (decisiones del robot mirando el mercado), del mes elegido.
   const med=delMes.filter(x=>(x.estado==='medido'||x.estado==='encurso')&&x.enTotal);
   const tot=med.reduce((a,x)=>a+n(x.total),0),pre=med.reduce((a,x)=>a+n(x.precio),0),vol=med.reduce((a,x)=>a+n(x.volumen),0);
@@ -14016,6 +14041,70 @@ function renderMetAuto(){
       <b>Remates y escalera.</b> Ahí "sin robot" es que seguía parado: suma la ganancia entera de lo que se vendió al 20% o más (lo de menos no suma), resta lo que igual se iba a vender al ritmo de antes y se cobró más barato, y suma el almacenamiento que no se pagó: sólo días que ya pasaron, desde que esa mercadería iba a empezar a pagar, y sólo lo que sin el robot seguía ahí.
       <b>Cómo se cuenta.</b> "Sin robot" es que el precio se quedaba donde estaba. Cada cambio se compara con el mismo tiempo de antes (hasta 30 días), y se corta si ese producto volvió a cambiar. <b>Lo firme</b> es la diferencia de precio en las unidades que sí se vendieron, neta de lo que cobra ML. <b>Vender más o menos</b> se cuenta sólo con el stock medido hora por hora las dos ventanas enteras, y sólo para el lado que el precio puede mover.
       El mes es el del cambio de precio. Los cambios se guardan desde el 19/08/2026.
+    </div>
+  </div>`;
+}
+// ── 🧪 VIGILANCIA DE PRECIOS (idea 6 de la etapa 6, 27/09/2026) ──────────────────────────────────
+// Pedido suyo: "tener como un panel de control para ver (…) todos los cambios de las publicaciones, y
+// si esa decisión ganó o perdió plata. O sea que todos los productos estén en vigilancia".
+// La foto la deja el robot cada noche (cyc/vigilancia): cada publicación que vendió en 30 días, con su
+// estado frente a la prueba de suba de +5%. Al lado va el ÚLTIMO cambio de precio de esa publicación
+// y lo que midió el supervisor (la misma plata de la tarjeta de arriba, no otra cuenta).
+let metVigFiltro='todas';
+const MET_VIG_EST={candidata:['🧪','Se sube esta noche','var(--green)'],prueba:['🧪','En prueba','var(--blue,#60a5fa)'],espera:['⏳','Esperando (el robot la tocó hace poco)','var(--muted)'],
+  cerrada:['🔴','Prueba cerrada: la suba dejó menos','var(--red)'],tope:['🚧','Llegó al tope (barrera, techo o escalón de ML)','#fbbf24'],
+  catalogo:['🏷️','De catálogo: la vigilan 📈 subir y 📉 bajar','var(--muted)'],no:['➖','No se prueba (con el motivo)','var(--muted)'],sinleer:['❔','No se pudo leer','#fbbf24']};
+function metVigSet(v){metVigFiltro=v;renderMetVig();}
+function renderMetVig(){
+  const el=document.getElementById('met-vig');if(!el)return;
+  const V=state.vigilancia;
+  if(!V||!V.filas){el.innerHTML='<div class="chart-box" style="color:var(--muted);font-size:.72rem">Todavía no hay foto: la deja el robot de precios esta noche.</div>';return;}
+  const n=v=>Number(v)||0;
+  const sg=v=>n(v)<0?'−'+fmt(Math.round(-n(v))):(n(v)>0?'+':'')+fmt(Math.round(n(v)));
+  const col=v=>n(v)>0?'var(--green)':n(v)<0?'var(--red)':'var(--muted)';
+  const todos=(state.supResumen&&Array.isArray(state.supResumen.todos))?state.supResumen.todos:[];
+  const ultimo={};for(const x of todos){if(!x||!x.mla)continue;const u=ultimo[x.mla];if(!u||n(x.ts)>n(u.ts))ultimo[x.mla]=x;}
+  const filas=Object.entries(V.filas).map(([mla,v])=>({mla,...v,ult:ultimo[mla]||null}));
+  const cnt={};filas.forEach(f=>cnt[f.estado]=(cnt[f.estado]||0)+1);
+  const orden=['candidata','prueba','cerrada','tope','espera','no','catalogo','sinleer'];
+  filas.sort((a,b)=>orden.indexOf(a.estado)-orden.indexOf(b.estado)||n(b.u30)-n(a.u30));
+  const vis=filas.filter(f=>metVigFiltro==='todas'||f.estado===metVigFiltro);
+  // Lo que midió el supervisor de las pruebas (las que ya tienen plata).
+  const pr=todos.filter(x=>x&&x.motivo==='prueba'&&(x.estado==='medido'||x.estado==='encurso')&&x.total!=null);
+  const prTot=pr.reduce((a,x)=>a+n(x.total),0);
+  const dias=Math.floor((Date.now()-n(V.ts))/864e5);
+  const chip=(v,lbl,on)=>`<button onclick="metVigSet('${v}')" style="font-size:.6rem;padding:3px 8px;border-radius:12px;border:1px solid ${on?'var(--green)':'rgba(148,163,184,.3)'};background:${on?'rgba(52,211,153,.12)':'transparent'};color:${on?'var(--green)':'var(--muted)'};cursor:pointer">${lbl}</button>`;
+  const chips=[chip('todas','Todas ('+filas.length+')',metVigFiltro==='todas'),...orden.filter(k=>cnt[k]).map(k=>chip(k,MET_VIG_EST[k][0]+' '+MET_VIG_EST[k][1].split(' (')[0].split(':')[0]+' ('+cnt[k]+')',metVigFiltro===k))].join('');
+  const fd=t=>{const d=new Date(n(t));return String(d.getDate()).padStart(2,'0')+'/'+String(d.getMonth()+1).padStart(2,'0');};
+  const fila=f=>{
+    const E=MET_VIG_EST[f.estado]||['·',f.estado,'var(--muted)'];
+    const u=f.ult;
+    const pct=u&&n(u.de)&&n(u.a)?((n(u.a)/n(u.de)-1)*100).toFixed(1).replace('.',','):null;
+    const cambio=u?`último cambio ${fd(u.ts)} · ${MET_AUTO_MOT[u.motivo]||u.motivo||'?'} · ${fmt(n(u.de))} → ${fmt(n(u.a))}${pct?' ('+(n(u.a)>n(u.de)?'+':'')+pct+'%)':''} · `+
+      (u.estado==='mano'?'<span>a mano: no se mide</span>':(u.estado==='medido'||u.estado==='encurso')&&u.total!=null?`<b style="color:${col(u.total)}">${n(u.total)>0?'ganó':n(u.total)<0?'perdió':'igual'} ${sg(u.total)}</b>${u.estado==='encurso'?' <span style="color:#fbbf24">(en curso)</span>':''}`:'<span>todavía sin medir</span>'):'sin cambios de precio registrados';
+    const ini=f.precioInicial&&f.pasos?` · ${f.pasos} suba(s) de prueba desde ${fmt(n(f.precioInicial))}`:'';
+    return `<div style="padding:6px 0;border-bottom:1px solid rgba(148,163,184,.1);font-size:.66rem">
+      <div style="display:flex;justify-content:space-between;gap:8px;align-items:baseline">
+        <span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${E[0]} ${f.nom||f.mla} · ${f.cuenta||''}</span>
+        <span style="white-space:nowrap;font-family:'DM Mono',monospace">${f.precio?fmt(n(f.precio)):''}</span>
+      </div>
+      <div style="font-size:.58rem;color:${E[2]}">${f.motivo||E[1]}${ini}</div>
+      <div style="font-size:.58rem;color:var(--muted)">vendió ${n(f.u30)} en 30 d${f.dsin!=null?' · última hace '+f.dsin+' d':''}${f.dstock!=null?' · '+f.dstock+' d de stock':''} · ${cambio} · ${f.mla}</div>
+    </div>`;
+  };
+  el.innerHTML=`<div class="chart-box">
+    ${dias>=2?`<div style="font-size:.62rem;color:#fbbf24;margin-bottom:8px">⚠ la foto es de hace ${dias} días: el robot no la pudo rehacer.</div>`:''}
+    <div style="display:flex;flex-wrap:wrap;gap:12px 18px;margin-bottom:10px">
+      <div><div style="font-size:.56rem;color:var(--muted);text-transform:uppercase;letter-spacing:.04em">En vigilancia</div><div style="font-family:'Syne',sans-serif;font-weight:800;font-size:1.1rem">${filas.length}</div><div style="font-size:.58rem;color:var(--muted)">publicaciones que vendieron en 30 d</div></div>
+      <div><div style="font-size:.56rem;color:var(--muted);text-transform:uppercase;letter-spacing:.04em">En prueba</div><div style="font-family:'Syne',sans-serif;font-weight:800;font-size:1.1rem;color:var(--blue,#60a5fa)">${n(cnt.prueba)+n(cnt.candidata)}</div><div style="font-size:.58rem;color:var(--muted)">subiendo +5% de a una vez</div></div>
+      <div><div style="font-size:.56rem;color:var(--muted);text-transform:uppercase;letter-spacing:.04em">Lo que dejaron las pruebas</div><div style="font-family:'Syne',sans-serif;font-weight:800;font-size:1.1rem;color:${col(prTot)}">${pr.length?sg(prTot):'—'}</div><div style="font-size:.58rem;color:var(--muted)">${pr.length?pr.length+' medidas':'todavía ninguna medida'}</div></div>
+      <div><div style="font-size:.56rem;color:var(--muted);text-transform:uppercase;letter-spacing:.04em">Cerradas</div><div style="font-family:'Syne',sans-serif;font-weight:800;font-size:1.1rem;color:${cnt.cerrada?'var(--red)':'var(--muted)'}">${n(cnt.cerrada)}</div><div style="font-size:.58rem;color:var(--muted)">la suba dejó menos plata</div></div>
+    </div>
+    <div style="display:flex;flex-wrap:wrap;gap:5px;margin-bottom:10px">${chips}</div>
+    ${vis.map(fila).join('')||'<div style="font-size:.62rem;color:var(--muted);padding:6px 0">No hay publicaciones con este filtro.</div>'}
+    <div style="margin-top:10px;padding-top:8px;border-top:1px solid rgba(148,163,184,.16);font-size:.6rem;color:var(--muted);line-height:1.45">
+      <b>Cómo funciona.</b> Cada noche, a lo que vende y <b>no es de catálogo</b> (no hay competidor contra quién medir) se le sube <b>+5%</b>, todas juntas. El supervisor compara lo que dejó antes y después. Si dejó igual o más, a los 14 días prueba otro +5%; si dejó <b>menos</b>, la prueba de esa publicación se cierra y te aviso: volverla atrás es bajar un precio y eso lo decidís vos.
+      No se prueba lo que vende poco (menos de 4 en 30 d), lo que no vende hace más de 7 días, lo que tiene más de 60 días de stock, lo que está liquidando, lo que bajaste a mano, ni cuando subir cruza los $33.000 o ML cobra más comisión de lo que sube el precio. Lo de catálogo lo siguen vigilando el 📈 subir y el 📉 bajar, como siempre.
     </div>
   </div>`;
 }
@@ -14145,6 +14234,7 @@ function renderMetricas(){
   renderMetHoras(curKeys);   // ¿a qué hora te compran? · al final de todo
   renderMetOrigen(curKeys);  // de dónde viene la mercadería · abajo de todo
   renderMetAuto();           // la plata que trajo la automatización de precios
+  renderMetVig();            // 🧪 vigilancia: todas las que venden y la prueba de suba
   const acctColors=['c1','c4','c2','c3'];
   // Mismo período un año atrás (alineado con las líneas del gráfico).
   const year=sumMetFields(metScopeBuckets(metScopeMode).bucketsYear.flat(),metViewField);
