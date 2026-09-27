@@ -15096,8 +15096,10 @@ async function main() {
       for (const [orden, o] of Object.entries(porOrden)) {
         if (ya[orden] && ya[orden].reason) continue;
         if (!tokens[o.cuenta]) {
-          const acc = accounts[o.cuenta]; if (!acc?.refresh_token) { fallas++; continue; }
-          try { const t = await mlRefresh(ML_CLIENT_ID, ML_CLIENT_SECRET, acc.refresh_token); await db.patch('mlapi/tokens/' + o.cuenta, { refresh_token: t.refresh_token, updated_ts: Date.now() }); tokens[o.cuenta] = t.access_token; }
+          // Las ventas guardan la cuenta en minúscula y los permisos con la inicial en mayúscula.
+          const lbl = labels.find((l) => l.toLowerCase() === o.cuenta);
+          const acc = lbl && accounts[lbl]; if (!acc?.refresh_token) { fallas++; continue; }
+          try { const t = await mlRefresh(ML_CLIENT_ID, ML_CLIENT_SECRET, acc.refresh_token); await db.patch('mlapi/tokens/' + lbl, { refresh_token: t.refresh_token, updated_ts: Date.now() }); tokens[o.cuenta] = t.access_token; }
           catch { fallas++; continue; }
         }
         const tk = tokens[o.cuenta];
