@@ -2341,7 +2341,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='20.72';
+const APP_VERSION='20.73';
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
 // muestre la versión y la fecha de actualización y que tenga un desplegable predeterminado cerrado".
 // Y el mismo día: "que ponga fecha de cada modificación y haya una barrita para scrollear y que
@@ -2352,6 +2352,7 @@ const APP_VERSION='20.72';
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'20.73',f:'27/09/2026',h:'18:02',c:[{n:1,t:'Métricas, gráfico de tendencia (General): en cada día, una barra verde tenue con lo que se ganó ese día y una roja tenue con lo que salió (retiro y gastos). Tocando el punto, el detalle de cada gasto. Sólo del período actual.'}]},
   {v:'20.72',f:'27/09/2026',h:'17:46',c:[{n:3,t:'Tope de H: desde que cada cuenta factura por ML, lo facturado sale de las FACTURAS con CAE (las que ve ARCA), no de las ventas. Se suman las ventas que quedaron sin factura y lo facturado fuera de ML cuando se cargue. Abajo de cada barra dice de dónde sale el número.'}]},
   {v:'20.71',f:'27/09/2026',h:'17:15',c:[{n:2,t:'Tope de H: ya no es "30 días × 12". Mide lo facturado OFICIAL desde que arranca la ventana de ARCA (01/01) hasta hoy, más lo que falta hasta el 31/12 al ritmo de los últimos 30 días. La barra muestra las dos partes.'}]},
   {v:'20.70',f:'27/09/2026',h:'16:48',c:[{n:2,t:'Lo que trajo el robot y Vigilancia: verde sólo lo CONFIRMADO que ganó plata (7 días o más) y rojo sólo lo confirmado que perdió. Lo en curso, los rescates y lo que no suma van en gris. El total muestra aparte lo confirmado y lo en curso.'}]},
@@ -13418,19 +13419,28 @@ let _gastoMesMemo={},_netoMesMemo={},_cargosDiaMemo={};
 // (un día sin ventas no aparece en el gráfico y el gasto se perdería). La suma del mes da exacto.
 function _cargosDia(ym){
   if(_cargosDiaMemo[ym])return _cargosDiaMemo[ym];
+  const out={};
+  Object.entries(_cargosDiaDet(ym)).forEach(([k,arr])=>{out[k]=arr.reduce((s,x)=>s+x.m,0);});
+  _cargosDiaMemo[ym]=out;return out;
+}
+// Lo mismo que _cargosDia pero renglón por renglón (retiro y cada gasto con su categoría), para el
+// detalle de las barras de Métricas. _cargosDia SUMA esto: una sola regla de a qué día va cada peso.
+let _cargosDiaDetMemo={};
+function _cargosDiaDet(ym){
+  if(_cargosDiaDetMemo[ym]&&_cargosDiaDetMemo[ym]._v===_cargosDiaMemo)return _cargosDiaDetMemo[ym].d;
   const dias=Object.keys(state.ventaprod||{}).filter(k=>k.startsWith(ym)).sort();
   const out={};
   if(dias.length){
     const md=_netoMesData(ym);
     const rm=_retiroMesVal(ym);
-    out[dias[0]]=(out[dias[0]]||0)+(rm!=null?rm:retiroDefMes(ym,md.tot));
+    (out[dias[0]]=out[dias[0]]||[]).push({t:'Retiro de los dueños',m:rm!=null?rm:retiroDefMes(ym,md.tot)});
     Object.values(state.compras||{}).forEach(x=>{
       if(getCompraTipo(x)!=='gasto'||!(x.dayKey||'').startsWith(ym))return;
       const d=dias.find(k=>k>=x.dayKey)||dias[dias.length-1];
-      out[d]=(out[d]||0)+(x.monto||0);
+      (out[d]=out[d]||[]).push({t:(x.cat||'Gasto')+(x.desc?' · '+String(x.desc).slice(0,40):''),m:x.monto||0});
     });
   }
-  _cargosDiaMemo[ym]=out;return out;
+  _cargosDiaDetMemo[ym]={_v:_cargosDiaMemo,d:out};return out;
 }
 function _gastosMes(ym){
   if(ym in _gastoMesMemo)return _gastoMesMemo[ym];
@@ -14421,6 +14431,21 @@ function renderLineChartFromScope(scope){
   }
   // Acumulativo: cada serie pasa a ser la suma corriendo (día 1, día1+2, día1+2+3, …).
   if(metChartAccum){const cum=arr=>{let s=0;return arr.map(v=>s+=(v||0));};datasets.forEach(ds=>{ds.data=cum(ds.data);});}
+  // BARRAS TENUES DEL PERÍODO ACTUAL (27/09/2026, pedido suyo): en cada punto, lo que se GANÓ ese
+  // día (ventas − mercadería) para arriba y lo que SALIÓ (retiro + gastos, el día que salieron, la
+  // misma regla que Ganancia CYC) para abajo. Siempre del día, aunque la línea sea acumulativa, y
+  // sólo del período actual: la comparación queda en las líneas.
+  let barDet=null;
+  if(!multi&&metChartLineView==='general'){
+    const ganB=totOf(buckets,'ganancia');
+    barDet=buckets.map(keys=>{const it={};(keys||[]).forEach(k=>{(_cargosDiaDet(k.substring(0,7))[k]||[]).forEach(x=>{it[x.t]=(it[x.t]||0)+x.m;});});
+      return Object.entries(it).map(([t,m])=>({t,m})).sort((a,b)=>b.m-a.m);});
+    const gasB=barDet.map(a=>-a.reduce((s,x)=>s+x.m,0));
+    datasets.forEach(ds=>{ds.order=0;});
+    datasets.push(
+      {type:'bar',label:'Ganancia del día',data:ganB,backgroundColor:'rgba(34,197,94,.22)',borderColor:'rgba(34,197,94,.45)',borderWidth:1,borderRadius:3,order:5,_barra:true},
+      {type:'bar',label:'Gastos del día',data:gasB.map(v=>v||0),backgroundColor:'rgba(239,68,68,.22)',borderColor:'rgba(239,68,68,.45)',borderWidth:1,borderRadius:3,order:5,_barra:true});
+  }
   metCortarEnHoy(datasets,buckets);
   // "Desde el primer registro" no tiene período anterior: antes del primer dato no hay nada.
   // Dibujar esa línea en 0 haría parecer que un año entero no vendió nada.
@@ -14430,8 +14455,9 @@ function renderLineChartFromScope(scope){
   const scales={y:{grid:{color:'#2a2a30'},ticks:{callback:v=>'$'+Math.round(v/1000)+'k'}},x:{grid:{display:false}}};
   // Un solo eje para todas: es la única forma de que la comparación entre métricas sea real.
   if(multi)scales.y.beginAtZero=true; // arrancar en 0, si no las diferencias se ven infladas
+  if(barDet)scales.x.offset=true; // si no, la primera y la última barra salen cortadas a la mitad
   metChartLine=new Chart(canvas,{type:'line',data:{labels,datasets},
-    options:{responsive:true,interaction:{mode:'index',intersect:false},plugins:{legend:{labels:{boxWidth:12,font:{size:11}}},tooltip:{callbacks:{title:items=>{const total=items.reduce((s,i)=>s+(i.raw||0),0);return metChartLineView==='cuentas'?[items[0].label,'Total: $'+Math.round(total).toLocaleString('es-AR')]:[items[0].label];},label:item=>' '+item.dataset.label+': $'+Math.round(item.raw||0).toLocaleString('es-AR'),afterBody:items=>{if(metChartLineView!=='general'||metViewFields.length>1)return '';const find=l=>{const it=items.find(i=>i.dataset.label===l);return it?(it.raw||0):null;};const cur=find(CMP_LBL_CUR),prev=find(CMP_LBL_PREV);if(cur==null||prev==null)return '';const diff=cur-prev,pct=prev!==0?(diff/Math.abs(prev)*100):(cur!==0?100:0),s=diff>=0?'+':'−';return ['','Diferencia vs anterior: '+s+'$'+Math.abs(Math.round(diff)).toLocaleString('es-AR')+'  ('+s+Math.abs(pct).toFixed(1)+'%)'];}},titleFont:{size:13,weight:'bold'},bodyFont:{size:11},titleColor:'#f1f1f3',bodyColor:'#9b9ba8'}},scales}
+    options:{responsive:true,interaction:{mode:'index',intersect:false},plugins:{legend:{labels:{boxWidth:12,font:{size:11}}},tooltip:{callbacks:{title:items=>{const total=items.reduce((s,i)=>s+(i.raw||0),0);return metChartLineView==='cuentas'?[items[0].label,'Total: $'+Math.round(total).toLocaleString('es-AR')]:[items[0].label];},label:item=>' '+item.dataset.label+': $'+Math.round(item.raw||0).toLocaleString('es-AR'),afterBody:items=>{if(metChartLineView!=='general'||metViewFields.length>1)return '';const det=(barDet&&barDet[items[0].dataIndex])||[];const detL=det.length?['','Gastos de ese día:',...det.map(x=>'  · '+x.t+': −$'+Math.round(x.m).toLocaleString('es-AR'))]:[];const find=l=>{const it=items.find(i=>i.dataset.label===l);return it?(it.raw||0):null;};const cur=find(CMP_LBL_CUR),prev=find(CMP_LBL_PREV);if(cur==null||prev==null)return detL;const diff=cur-prev,pct=prev!==0?(diff/Math.abs(prev)*100):(cur!==0?100:0),s=diff>=0?'+':'−';return ['','Diferencia vs anterior: '+s+'$'+Math.abs(Math.round(diff)).toLocaleString('es-AR')+'  ('+s+Math.abs(pct).toFixed(1)+'%)',...detL];}},titleFont:{size:13,weight:'bold'},bodyFont:{size:11},titleColor:'#f1f1f3',bodyColor:'#9b9ba8'}},scales}
   });
 }
 
