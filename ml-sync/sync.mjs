@@ -1409,11 +1409,15 @@ function clasificarPregunta(texto) {
   if (t.length > 160) return { cat: null, why: 'larga' };
   if ((t.match(/\?/g) || []).length > 1) return { cat: null, why: 'varias preguntas' };
   if (/@|https?:|www\.|\d{6,}/.test(t)) return { cat: null, why: 'datos de contacto' };
-  const DUDA = /precio|cuanto (sale|cuesta|vale|esta)|\bvale\b|descuento|oferta|barato|rebaja|mayor(ista|eo)?|cantidad|por mayor|cuota|interes|transfer|efectivo|compatib|sirve|funciona|anda\b|original|trucho|replica|imitacion|garantia|medid|tamano|talle|\bcm\b|\bmm\b|\bml\b|litro|peso|color|colores|modelo|version|aroma|fragancia|\bgb\b|\btb\b|voltaje|220|110|cargador|bateria|pila|incluye|viene con|trae|caja|usado|cambio|devol|reclamo|retir|local|domicilio|direccion|en mano|personal|whatsapp|telefono|celular|numero|mail|flex|moto|mismo dia|hoy mismo|gratis|costo de envio|cuanto sale el envio|pais|chile|uruguay|paraguay|exterior/;
+  const DUDA = /precio|cuanto (sale|cuesta|vale|esta)|\bvale\b|descuento|oferta|barato|rebaja|mayor(ista|eo)?|cantidad|por mayor|cuota|interes|transfer|efectivo|compatib|sirve|funciona|anda\b|original|trucho|replica|imitacion|garantia|medid|tamano|talle|\bcm\b|\bmm\b|\bml\b|litro|peso|color|colores|modelo|version|aroma|fragancia|\bgb\b|\btb\b|voltaje|220|110|cargador|bateria|pila|incluye|viene con|trae|caja|usado|cambio|devol|reclamo|retir|local|domicilio|direccion|en mano|personal|whatsapp|telefono|celular|numero|mail|flex|moto|mismo dia|hoy mismo|gratis|costo de envio|cuanto sale el envio|pais|chile|uruguay|paraguay|exterior|llego|llegaron|rot[oa]|romp|mal\b|compre|compra|pedido|falt|problema|cambi|nombre|empresa|razon social|cuit|iva|exent|universidad|municipal|licitaci/;
   if (DUDA.test(t)) return { cat: null, why: 'tema que no contesto solo' };
   const cats = [];
-  if (/factura/.test(t)) cats.push('factura');
-  if (/\b(hay|tenes|tienen|tiene|tendras|tendran|queda|quedan|quedo|disponible|disponibles|stock)\b/.test(t) && !/factura/.test(t)) cats.push('stock');
+  // 27/09: la primera prueba en seco agarraba "¿tiene doble faz?" o "¿tiene para micro sd?" como
+  // pregunta de stock por la palabra "tiene". Ahora es stock SÓLO si dice "stock"/"disponible" en
+  // una pregunta corta, o si la pregunta ENTERA es "¿hay?" / "¿tenés?" / "¿quedan?" (con saludo).
+  if (/\bfactura(s|n|mos)?\b|facturan|haces factura|hacen factura/.test(t) && t.length <= 60) cats.push('factura');
+  const _sinSaludo = t.replace(/^(hola|buen[oa]s?( (dia|tarde|noche)s?)?|que tal)[\s,!.]*/g, '').replace(/^(hola|buen[oa]s?( (dia|tarde|noche)s?)?)[\s,!.]*/g, '').trim();
+  if (((/\bstock\b|disponib/.test(t)) && t.length <= 70) || /^(hay|tenes|tienen|tendras|tendran|queda|quedan)( (stock|unidades|todavia|aun))?\s*\?*$/.test(_sinSaludo)) cats.push('stock');
   if (/cuando llega|cuanto tarda|cuanto demora|demora|tarda|llega (a|el|para|antes|en)|en cuanto llega|cuando lo recib|cuando me llega|envian|envio|envios|mandan|despach/.test(t)) cats.push('envio');
   if (cats.length !== 1) return { cat: null, why: cats.length ? 'dos temas a la vez' : 'no la entiendo' };
   const cat = cats[0];
