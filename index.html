@@ -2329,7 +2329,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='20.63';
+const APP_VERSION='20.64';
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
 // muestre la versión y la fecha de actualización y que tenga un desplegable predeterminado cerrado".
 // Y el mismo día: "que ponga fecha de cada modificación y haya una barrita para scrollear y que
@@ -2340,6 +2340,8 @@ const APP_VERSION='20.63';
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'20.64',f:'27/09/2026',h:'21:42',c:[
+    {n:2,t:'Paraguay · Productos probados: la lista va en tres partes, en este orden: ✅ los que dan seguro, ❔ los que no tienen datos para saber, y 🔴 abajo de todo los que probablemente no dan (comprar sólo si se consiguen a menos del máximo).'}]},
   {v:'20.63',f:'27/09/2026',h:'21:40',c:[
     {n:2,t:'Paraguay · Productos probados: una sola lista. Cada producto dice ✅ comprar, 🔴 no comprar a este precio (con botón para sacarlo) o ⚪ Nissei no tenía. Se sacaron las tarjetas repetidas de abajo.'}]},
   {v:'20.62',f:'26/09/2026',h:'16:52',c:[
@@ -11009,6 +11011,7 @@ function pyRepoEnCamino(){
   }
   return m;
 }
+const _sinHoyFlag=nu=>!(nu>0);
 function pyCanasta(){
   // SIN TOPE (26/09/2026, pedido suyo: *"saca el tope maximo. pone todos los productos como esta en
   // pedidos bs as"*). Antes se llenaban US$ 1.000 y lo demás quedaba "para el pedido siguiente";
@@ -11033,7 +11036,8 @@ function pyCanasta(){
     const noLlega=!!(mx&&!mx.motivo&&!(mx.usdPy>0));
     const precioWeb=_nuHoy>0?_nuHoy:(cu>0?Math.round(cu/RECARGO_PY*100)/100:0);
     const caro=noLlega||(maxWeb!=null&&precioWeb>0&&precioWeb>maxWeb+0.005);
-    return{ped,pr,u,cu,sinHoy,viaja:_vj,nu:_nuHoy,destraba,total:cu*u,lleva:u,sinStock:!!sin[ped.prodId],
+    const seguro=!caro&&!_sinHoyFlag(_nuHoy)&&maxWeb!=null&&precioWeb>0;
+    return{ped,pr,u,cu,sinHoy,seguro,viaja:_vj,nu:_nuHoy,destraba,total:cu*u,lleva:u,sinStock:!!sin[ped.prodId],
       gratis:!!(pr&&pr.gratisViaje),cod:(pr&&pr.codPy)?String(pr.codPy).trim():'',
       maxWeb,noLlega,sinMax:!mx||!!mx.motivo,precioWeb,caro};
   }).filter(x=>x.u>0).sort((a,b)=>b.destraba-a.destraba);
@@ -11137,8 +11141,9 @@ function pyCanastaHTML(){
       ? `<span style="font-size:.6rem;color:var(--amber)" title="No hay precio de Paraguay de hoy cargado: esto es lo que pagaste la última vez.">pagaste ~${u2(f.precioWeb)}</span>`
       : `<span style="font-size:.62rem;color:var(--muted)">hoy ${u2(f.precioWeb)}</span>`;
     const estado=f.sinStock?`<span style="font-size:.62rem;font-weight:700;color:var(--muted)">⚪ Nissei no tenía</span>`
-      : f.caro?`<span style="font-size:.62rem;font-weight:700;color:var(--red)" title="Nissei pide más que el máximo: comprándolo a ese precio vendés abajo del 25%.">🔴 NO COMPRAR a este precio</span> <button class="btn" style="font-size:.58rem;padding:3px 8px" onclick="pausarPrecio('${f.ped.id}')" title="Lo saca de la lista hasta que el precio vuelva a dar. No toca ningún precio de venta.">⏸️ no lo compro</button>`
-      : `<span style="font-size:.62rem;font-weight:700;color:var(--green)">✅ comprar</span>`;
+      : f.caro?`<span style="font-size:.62rem;font-weight:700;color:var(--red)" title="Nissei pide más que el máximo: a ese precio vendés abajo del 25%. Si tu viejo lo consigue a menos del máx, sí conviene.">🔴 probable que no dé</span> <button class="btn" style="font-size:.58rem;padding:3px 8px" onclick="pausarPrecio('${f.ped.id}')" title="Lo saca de la lista hasta que el precio vuelva a dar. No toca ningún precio de venta.">⏸️ no lo compro</button>`
+      : f.seguro?`<span style="font-size:.62rem;font-weight:700;color:var(--green)">✅ da</span>`
+      : `<span style="font-size:.62rem;font-weight:700;color:var(--amber)" title="Falta el precio de hoy o el máximo: no se puede saber si da. Si lo pagás menos que el máx (cuando está), da.">❔ sin datos</span>`;
     return `<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;padding:6px 0;border-top:1px solid var(--border);${f.sinStock?'opacity:.5':''}">
       <strong style="font-family:'Syne',sans-serif;font-size:.95rem;min-width:52px">${f.u} u.</strong>
       <span style="flex:1;min-width:150px;font-size:.75rem">${f.ped.producto||''}${f.gratis?' <span title="Celular: viaja gratis con tu viejo">✈️</span>':''}</span>
@@ -11152,14 +11157,19 @@ function pyCanastaHTML(){
   const conCod=c.filas.filter(f=>f.cod), sinCod=c.filas.filter(f=>!f.cod);
   const txt=conCod.map(f=>`${f.cod} x ${f.u}`).join('\n');
   const v=Object.values(pyRepoEnCamino()).reduce((a,x)=>a+x,0);
-  return `<div style="background:var(--surface);border:1px solid var(--green);border-radius:var(--r);padding:12px 14px;margin-bottom:14px">
+  const seg=c.filas.filter(f=>f.seguro), sinInf=c.filas.filter(f=>!f.seguro);
+  const tit=(t,col)=>`<div style="font-size:.66rem;font-weight:700;color:${col};margin:12px 0 2px">${t}</div>`;
+  return `<div style="margin-bottom:14px">
     <div style="display:flex;justify-content:space-between;align-items:baseline;gap:10px;flex-wrap:wrap;margin-bottom:4px">
-      <span style="font-size:.8rem;font-weight:700">🇵🇾 Qué reponer · ${c.filas.length} para comprar · ${c.uds} u.${c.caros.length?` · <span style="color:var(--red)">${c.caros.length} no conviene</span>`:''}</span>
+      <span style="font-size:.8rem;font-weight:700">🇵🇾 Qué reponer · ${c.filas.length} para comprar · ${c.uds} u.${c.caros.length?` · <span style="color:var(--red)">${c.caros.length} probable que no dé</span>`:''}</span>
       <span style="font-family:'Syne',sans-serif;font-size:1.4rem;color:var(--green)">US$ ${Math.round(c.crudo)} <span style="font-size:.7rem;color:var(--muted)">en la web${tc?' · '+fmt(Math.round(c.usado*tc))+' puesto':''}</span></span>
     </div>
-    <div style="font-size:.6rem;color:var(--muted);margin-bottom:6px">Sin tope: está todo lo que hace falta. Las unidades cubren ${PED_TARGET_DIAS} días de venta (lo conservador) y ya descuentan lo que tenés en Full, en camino y en la oficina. <b style="color:var(--text)">"máx"</b> es lo más que se puede pagar en la web para quedar en el 25% contra la competencia de ML; si Nissei pide más, no lo compres.</div>
+    <div style="font-size:.6rem;color:var(--muted);margin-bottom:6px">Sin tope: está todo lo que hace falta. Las unidades cubren ${PED_TARGET_DIAS} días de venta (lo conservador) y ya descuentan lo que tenés en Full, en camino y en la oficina. <b style="color:var(--text)">"máx"</b> es lo más que se puede pagar en la web para quedar en el 25% contra la competencia de ML: si lo conseguís a menos, da.</div>
     ${v?`<div style="font-size:.6rem;color:#38bdf8;margin-bottom:4px">🚚 ${v} u. de reposición ya viajan y se descontaron.</div>`:''}
-    ${[...c.filas.map(f=>fila(f,false)),...c.caros.map(f=>fila(f,true)),...c.sinStock.map(f=>fila(f,true))].join('')}
+    ${seg.length?tit('✅ Dan seguro ('+seg.length+') — el precio de hoy está debajo del máximo','var(--green)')+seg.map(f=>fila(f,false)).join(''):''}
+    ${sinInf.length?tit('❔ Sin datos para saber ('+sinInf.length+') — falta el precio de hoy o el máximo','var(--amber)')+sinInf.map(f=>fila(f,false)).join(''):''}
+    ${c.caros.length?tit('🔴 Es probable que el precio NO dé ('+c.caros.length+') — Nissei pide más que el máximo. Comprá sólo si lo conseguís a menos del máx. No van en el mensaje.','var(--red)')+c.caros.map(f=>fila(f,true)).join(''):''}
+    ${c.sinStock.length?tit('⚪ Nissei no tenía ('+c.sinStock.length+')','var(--muted)')+c.sinStock.map(f=>fila(f,true)).join(''):''}
     ${c.filas.length?`<div style="margin-top:10px;border-top:1px solid var(--border);padding-top:9px">
       <div style="font-size:.63rem;color:var(--muted);margin-bottom:5px">Para mandarle a <strong>Nissei</strong> — código y unidades${sinCod.length?` · <span style="color:var(--amber)">${sinCod.length} no entra(n): falta cargarle el código (${sinCod.map(f=>f.ped.producto).join(', ')})</span>`:''}</div>
       ${conCod.length?`<textarea readonly onclick="this.select()" style="width:100%;min-height:${Math.min(260,22+conCod.length*17)}px;background:rgba(0,0,0,.28);border:1px solid var(--border2);border-radius:6px;color:var(--text);font-family:'DM Mono',monospace;font-size:.7rem;padding:7px 9px;resize:vertical">${txt}</textarea>`
