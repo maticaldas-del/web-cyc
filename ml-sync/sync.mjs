@@ -1316,6 +1316,14 @@ async function cajaDeCompraML(db, accounts, labels, DRY, soloCta) {
             : (ptw.status === 'competing' || ptw.status === 'losing') ? 'losing' : 'sincaja';
         const pw = (st !== 'winning' && Number(ptw.price_to_win) > 0) ? Math.round(Number(ptw.price_to_win)) : null;
         stamp(st, pw);
+        // Idea 4 de la etapa 6 (27/09/2026, "hacela"): cuánta gente te ve de la ficha (ML lo dice
+        // en palabras: maximum / medium / minimum) y con cuántos compartís el 1er puesto. Medido
+        // con `valefull` el 22/09: 12 de 12 traen visit_share, 11 de 12 los competidores. Lo que
+        // no viene como se espera se guarda vacío, nunca adivinado.
+        const _vs = String(ptw.visit_share || '').toLowerCase();
+        upd[mla + '/cajaVis'] = ['maximum', 'medium', 'minimum'].includes(_vs) ? _vs : null;
+        const _cs = ptw.competitors_sharing_first_place;
+        upd[mla + '/cajaComp'] = Array.isArray(_cs) ? _cs.length : (Number.isFinite(Number(_cs)) && _cs !== null && _cs !== '' ? Number(_cs) : null);
         res.filas.push({ mla, label, nom: String(b.title || '').slice(0, 46), st, precio: Math.round(b.price || 0), ptw: pw });
       }
     }
@@ -14880,6 +14888,66 @@ async function main() {
     //  · reemplaza el nodo entero sólo si leyó bien las cuatro cuentas (así no queda un % viejo de una
     //    publicación que pasó a Clásica); si falló alguna, sólo agrega.
     // Corre solo en `ml-daily`, antes de `netoweb`, que lo descuenta del neto de cada publicación.
+    // ── PREMIUM CONTRA CLÁSICA, PUBLICACIÓN POR PUBLICACIÓN (idea 2 de la etapa 6, 27/09/2026) ──
+    // Pedido suyo: "hacela". SOLO LEE: no cambia ningún tipo de publicación.
+    // Para cada Premium activa: lo que cuesta ser Premium POR VENTA (comisión Premium − comisión
+    // Clásica, las dos preguntadas a ML al precio de HOY, + las cuotas medidas en cyc/mlcuotas), lo
+    // que deja una venta en Clásica, y de ahí cuántas ventas puede perder en Clásica y ganar lo mismo.
+    // Las ventas de 60 días son las de ESA publicación. El costo es el de la ficha (costoPesos) más
+    // IIBB y monotributo del precio de hoy, igual que el margen de la ficha. El envío de Full no
+    // cambia entre los dos tipos, así que se deja afuera de la RESTA pero dentro de la ganancia.
+    if (String(process.env.BILLING_PROBE || '').startsWith('premiumvs')) {
+      const DIAS = 60;
+      const links = (await db.get('cyc/mllinks')) || {};
+      const cuotasM = (await db.get('cyc/mlcuotas')) || {};
+      const netopub = (await db.get('cyc/netopub')) || {};
+      const vp = (await db.get('cyc/ventaprod')) || {}; setDevLive(vp);
+      const tc = parseFloat((await db.get('cyc/finanzas/tipo_cambio')) || 0) || 0;
+      const monoPct = parseFloat(((await db.get('cyc/monotributo')) || {}).pct) || 0;
+      const pIdx = {}; for (const p of products) pIdx[p.id] = p;
+      const desdeK = new Date(Date.now() - DIAS * 864e5).toISOString().slice(0, 10).replace(/-/g, '_');
+      const uds = {};
+      for (const [dk, ents] of Object.entries(vp)) { if (dk < desdeK) continue; for (const v of Object.values(ents || {})) { if (!v || v.cancelada || !v.mla) continue; uds[v.mla] = (uds[v.mla] || 0) + (Number(v.qty) || 1); } }
+      const filas = [];
+      for (const label of labels) {
+        const acc = accounts[label]; if (!acc?.refresh_token) continue;
+        let t; try { t = await mlRefresh(ML_CLIENT_ID, ML_CLIENT_SECRET, acc.refresh_token); } catch { console.log(`⚠️ ${label}: no pude renovar el permiso`); continue; }
+        await db.patch('mlapi/tokens/' + label, { refresh_token: t.refresh_token, updated_ts: Date.now() });
+        const ids = Object.entries(links).filter(([mla, e]) => e && e.cuenta === label && /^MLA/i.test(mla) && e.status !== 'closed').map(([mla]) => mla);
+        for (let k = 0; k < ids.length; k += 20) {
+          let arr; try { arr = await mlGet('/items?ids=' + ids.slice(k, k + 20).join(',') + '&attributes=id,listing_type_id,status,price,category_id,site_id,title', t.access_token); } catch { console.log(`⚠️ ${label}: un lote de publicaciones no contestó`); continue; }
+          for (const row of (arr || [])) {
+            const b = row.body || {}; if (b.listing_type_id !== 'gold_pro' || b.status !== 'active') continue;
+            const precio = Math.round(b.price || 0); if (!(precio > 0)) continue;
+            const fee = async (lt) => { try { const d = await mlGet(`/sites/${b.site_id || 'MLA'}/listing_prices?price=${precio}&listing_type_id=${lt}&category_id=${b.category_id}`, t.access_token); const o = Array.isArray(d) ? d[0] : d; return typeof o?.sale_fee_amount === 'number' ? o.sale_fee_amount : null; } catch { return null; } };
+            const fPro = await fee('gold_pro'), fCla = await fee('gold_special');
+            const cq = cuotasM[b.id]; const cuoPct = cq && isFinite(parseFloat(cq.pct)) ? parseFloat(cq.pct) : null;
+            const link = links[b.id] || {}; const p = pIdx[link.prodId];
+            const costo = p && tc ? costoPesos(p, 1, tc).costo : null;
+            const envio = Number((netopub[b.id] || {}).envio) || 0;
+            const imp = precio * (mlExtraPct(label) + monoPct) / 100;
+            const extra = (fPro != null && fCla != null) ? (fPro - fCla) + (cuoPct != null ? precio * cuoPct / 100 : 0) : null;
+            const ganCla = (fCla != null && costo != null) ? precio - fCla - envio - imp - costo : null;
+            filas.push({ mla: b.id, label, nom: String(link.title || b.title || '').slice(0, 44), precio, u: uds[b.id] || 0, fPro, fCla, cuoPct, cuoEst: !!(cq && cq.estimado), extra, ganCla });
+          }
+        }
+      }
+      console.log(`\n══ PREMIUM CONTRA CLÁSICA · ${filas.length} publicación(es) Premium activa(s) · ventas de ${DIAS} días ══`);
+      console.log('   (solo lee: no cambia ningún tipo de publicación)\n');
+      filas.sort((a, b) => (b.extra || 0) * (b.u || 0) - (a.extra || 0) * (a.u || 0));
+      let totMes = 0;
+      for (const f of filas) {
+        const mes = f.extra != null ? f.extra * f.u * 30 / DIAS : null; if (mes) totMes += mes;
+        const puede = (f.extra != null && f.ganCla > 0) ? Math.min(100, f.extra / f.ganCla * 100) : null;
+        console.log(`• ${f.label.padEnd(8)} ${f.mla} · ${f.nom} · $${f.precio.toLocaleString('es-AR')}`);
+        console.log(`    comisión Premium ${f.fPro != null ? '$' + Math.round(f.fPro).toLocaleString('es-AR') : '?'} · Clásica ${f.fCla != null ? '$' + Math.round(f.fCla).toLocaleString('es-AR') : '?'} · cuotas ${f.cuoPct != null ? f.cuoPct + '%' + (f.cuoEst ? ' (estimado: nunca vendió)' : '') : 'sin medir'}`);
+        console.log(`    ser Premium cuesta ${f.extra != null ? '$' + Math.round(f.extra).toLocaleString('es-AR') + ' por venta' : '? (ML no dio alguna comisión)'} · vendió ${f.u} en ${DIAS} d${mes != null ? ' → ~$' + Math.round(mes).toLocaleString('es-AR') + '/mes' : ''}`);
+        console.log(`    en Clásica deja ${f.ganCla != null ? '$' + Math.round(f.ganCla).toLocaleString('es-AR') + ' por venta' : '? (sin costo o sin dólar)'}${puede != null ? ` → en Clásica puede vender hasta ${puede.toFixed(0)}% MENOS y ganar lo mismo` : ''}`);
+      }
+      console.log(`\nTotal que cuesta ser Premium, al ritmo de ventas de hoy: ~$${Math.round(totMes).toLocaleString('es-AR')} por mes.`);
+      console.log('Cómo leerlo: si creés que en Clásica venderías MENOS que ese % de menos, conviene pasarla a Clásica.');
+      return;
+    }
     if (String(process.env.BILLING_PROBE || '').startsWith('cuotas')) {
       const DIAS = parseFloat(String(process.env.BILLING_PROBE).split(':')[1]) || 90;
       const CUOTA_DEFECTO = 21.6;

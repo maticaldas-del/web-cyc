@@ -509,6 +509,7 @@ footer{margin-top:32px;padding-top:14px;border-top:1px solid var(--border);font-
     <details id="home-cambios" style="margin-top:6px;text-align:left"></details>
   </div>
   <div id="home-puntaje"></div>
+  <div id="home-parejo"></div>
   <div class="home-grid">
     <div class="nav-card nc6" onclick="goPage('resumen')">
       <span class="nc-icon">📋</span>
@@ -2329,7 +2330,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='20.65';
+const APP_VERSION='20.66';
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
 // muestre la versión y la fecha de actualización y que tenga un desplegable predeterminado cerrado".
 // Y el mismo día: "que ponga fecha de cada modificación y haya una barrita para scrollear y que
@@ -2340,6 +2341,7 @@ const APP_VERSION='20.65';
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'20.66',f:'27/09/2026',h:'11:27',c:[{n:2,t:'Rotación: en lo lento o muerto dice si no la ve nadie (menos de 20 visitas) o si la ven y no compran (50+ visitas sin ventas).'},{n:1,t:'Rotación, columna Caja ML: cuánta gente te ve de la ficha según ML, y con cuántos compartís la caja.'},{n:2,t:'Inicio: tarjeta con las 4 cuentas contra el tope de H a este ritmo, y a qué cuenta mandar lo próximo nuevo.'}]},
   {v:'20.65',f:'27/09/2026',h:'23:34',c:[{n:1,t:'Paraguay probados: cada producto va en su propio recuadro, con el nombre en grande y una raya de color a la izquierda (verde da, amarillo sin datos, rojo probable que no dé).'}]},
   {v:'20.64',f:'27/09/2026',h:'21:42',c:[
     {n:2,t:'Paraguay · Productos probados: la lista va en tres partes, en este orden: ✅ los que dan seguro, ❔ los que no tienen datos para saber, y 🔴 abajo de todo los que probablemente no dan (comprar sólo si se consiguen a menos del máximo).'}]},
@@ -2542,7 +2544,7 @@ function goPage(page){
   if(page==='facturas')renderFacturas();
   if(page==='ajustes')enterAjustes();
   if(page==='inventario'){renderInv();renderProds();renderHist();loadFinInputs();updateArqueo();updateTotals();updateHdr();}
-  if(page==='home'){checkCierrePendiente();renderHomeRevision();updateHomeDolar();renderPuntajeMes();}
+  if(page==='home'){checkCierrePendiente();renderHomeRevision();updateHomeDolar();renderPuntajeMes();renderHomeParejo();}
   if(page!=='home'){
     // Al entrar a una página se baja el header para dejar el contenido arriba. OJO: esto solo puede
     // pasar en los primeros milisegundos. Antes había un MutationObserver que repetía el scroll cada
@@ -3100,7 +3102,7 @@ function renderAll(){
   if(currentPage==='resumen')renderResumen_page();
   if(currentPage==='ventaprod')renderVentaProd();
   if(currentPage==='rotacion')renderRotacionStock();
-  if(currentPage==='home'){checkCierrePendiente();renderHomeRevision();updateHomeDolar();renderPuntajeMes();}
+  if(currentPage==='home'){checkCierrePendiente();renderHomeRevision();updateHomeDolar();renderPuntajeMes();renderHomeParejo();}
   updatePedidosCosto();
 }
 
@@ -3182,7 +3184,7 @@ const REV_CADA_DIAS=7;
 //   · REV_HECHAS    → última vez que cada etapa quedó resuelta. Sin pendientes, el cartel pide la
 //                     etapa más vieja cuando pasaron REV_CADA_DIAS desde la última.
 const REV_PENDIENTE=[
-  {t:'Ideas nuevas: la lista está hecha, falta que elijas',que:'10 ideas (packs para lo barato, Premium contra Clásica, visitas en Rotación, emparejar las cuentas, etc.) · te las paso en el chat y elegís cuáles hacer',pedi:'ideas'},
+  {t:'Ideas nuevas: faltan elegir 5 de 10',que:'de las primeras 5: sí a Premium/Clásica, visitas, caja y emparejar (hechas); no a los packs · quedan las otras 5 para elegir',pedi:'ideas'},
   {t:'La segunda revisión completa, al final',que:'la que pediste dejar para cuando esté todo lo demás · va última',pedi:'revisión completa',ultima:true},
 ];
 // Choques (4) y fallas mudas/privacidad (5): verificadas las 15 del 26/09 de madrugada (rev4, lotes 6-8) y
@@ -11592,7 +11594,17 @@ function cajaMLDe(p){
   }
   if(!pubs)return null;
   const st=n.winning?'winning':n.sharing?'sharing':n.losing?'losing':'nocat';
-  return {st,n,ts,ptw,pubs,vieja};
+  // Idea 4 (27/09/2026): cuánta gente te ve de la ficha y con cuántos compartís. Se toma de la
+  // publicación que DA el estado del producto (la que gana, si hay), no de cualquiera: con una que
+  // pierde y otra que gana, la que importa es la que se lleva las ventas.
+  const _VR={maximum:3,medium:2,minimum:1};
+  let vis=null,comp=null;
+  for(const e of (vivas.length?vivas:conCaja)){
+    if(e.caja!==st)continue;
+    if(e.cajaVis&&_VR[e.cajaVis]&&(!vis||_VR[e.cajaVis]>_VR[vis]))vis=e.cajaVis;
+    if(typeof e.cajaComp==='number'&&e.cajaComp>=0&&(comp==null||e.cajaComp<comp))comp=e.cajaComp;
+  }
+  return {st,n,ts,ptw,pubs,vieja,vis,comp};
 }
 // ── ¿CUÁNTO HAY QUE BAJAR PARA GANAR LA CAJA, Y EN QUÉ MARGEN QUEDÁS? (21/09/2026) ─────────
 // Pedido suyo mirando el Xiaomi Watch S5: "se puede agregar ahi? que ponga a que % hay que bajarlo
@@ -11660,6 +11672,22 @@ function rotEstadoHtml(rt,stock){
   if(k==='reciente')return `<span style="color:var(--blue)" title="Entró a Full hace poco. No se le juzga la rotación hasta los ${ROT_GRACIA_DIAS} días: todavía no tuvo tiempo de venderse.">🆕 Recién llegado</span>`+(rt.edad!=null?`<div style="font-size:.57rem;color:var(--muted);margin-top:2px">entró hace ${rt.edad} d</div>`:'');
   return '<span style="color:var(--red)">🔴 Muerto</span>'+almacenaHtml(rt.edad);
 }
+// Idea 3 de la etapa 6 (27/09/2026): "no la ve nadie" y "la ven y no compran" se veían iguales
+// (🔴 Muerto) y se arreglan al revés. Con menos de 20 visitas en 30 días bajar el precio no sirve
+// de nada (nadie lo ve); con 50 o más y cero ventas, sí es el precio. Mismos cortes que el chequeo
+// de la mañana. Sólo en lo que está frenado (lento/muerto): en lo que vende no aporta.
+// Las visitas las trae el robot cada noche, sólo de publicaciones con stock (cyc/mllinks/<MLA>/vis30).
+const ROT_VIS_POCAS=20, ROT_VIS_MUCHAS=50;
+function rotVisitasHtml(rt,v,ventas){
+  const k=rt&&rt.k;
+  if(k!=='lento'&&k!=='muerto')return '';
+  const st='font-size:.57rem;margin-top:2px;line-height:1.3';
+  if(!v)return `<div style="${st};color:var(--muted)" title="El robot todavía no midió las visitas de sus publicaciones (las trae cada noche, sólo de las que tienen stock).">👁 visitas sin medir</div>`;
+  const cuando=v.ts?` Dato de ${new Date(v.ts).toLocaleDateString('es-AR')}.`:'';
+  if(v.tot<ROT_VIS_POCAS)return `<div style="${st};color:#a78bfa" title="${v.tot} visitas en 30 días entre ${v.pubs} publicación(es). NO LA VE NADIE: el problema es que no aparece (caja de compra, título, foto o categoría). Bajar el precio acá regala margen sin vender.${cuando}">👻 no la ve nadie · ${v.tot} visitas</div>`;
+  if(v.tot>=ROT_VIS_MUCHAS&&!(ventas>0))return `<div style="${st};color:var(--red)" title="${v.tot} visitas en 30 días y ninguna venta. LA VEN Y NO COMPRAN: acá sí el precio (o la caja de compra) es el problema.${cuando}">👀 la ven y no compran · ${v.tot} visitas</div>`;
+  return `<div style="${st};color:var(--muted)" title="${v.tot} visitas en 30 días entre ${v.pubs} publicación(es). Ni tan poco como para decir que no la ve nadie, ni tanto como para culpar sólo al precio.${cuando}">👁 ${v.tot} visitas en 30 d</div>`;
+}
 function rotCajaBajaHtml(r){
   const b=r.cajaBaja; if(!b)return '';
   const gris='font-size:.55rem;color:var(--muted);margin-top:2px;line-height:1.25';
@@ -11681,6 +11709,23 @@ function rotCajaBajaHtml(r){
   const col=ok?'var(--green)':'var(--red)';
   return `<div title="${t}" style="${gris}">${baja}<br><span style="color:${col};font-weight:700">${ok?'queda en':'quedás en'} ${b.margen.toFixed(0)}%${ok?'':' ✕'}</span>${b.dudoso?' <span style="color:var(--amber)">⚠</span>':''}</div>`;
 }
+// Idea 4 de la etapa 6 (27/09/2026): lo que ML dice de la ficha y el panel no mostraba.
+//  · "te ven": ML informa en palabras qué parte de las visitas de la ficha te llevás
+//    (maximum/medium/minimum). Explica por qué algo que "gana" vende poco.
+//  · "comparten N": con cuántos otros vendedores compartís el 1er puesto. Con 4, te toca ~1 de 5.
+// Si ML no lo mandó, no se muestra nada (nunca se adivina).
+function rotCajaExtraHtml(c){
+  const out={pre:'',html:''};
+  if(!c||c.vieja)return out;
+  const V={maximum:['mucho','var(--green)','Te llevás la mayor parte de las visitas de la ficha del catálogo.'],
+           medium:['a medias','var(--amber)','Te llevás una parte de las visitas de la ficha: otros vendedores también aparecen.'],
+           minimum:['poco','var(--red)','Casi nadie de los que entran a la ficha ve tu publicación: el botón de comprar lo tiene otro.']};
+  const bits=[];
+  if(c.vis&&V[c.vis])bits.push(`<span style="color:${V[c.vis][1]}" title="Lo dice ML (visit_share). ${V[c.vis][2]}">👁 te ven ${V[c.vis][0]}</span>`);
+  if(c.st==='sharing'&&typeof c.comp==='number'&&c.comp>0)bits.push(`<span title="ML dice que compartís el primer puesto con ${c.comp} vendedor(es) más al mismo precio. Las ventas se reparten: te toca más o menos 1 de cada ${c.comp+1}.">🤝 con ${c.comp} · ~1 de ${c.comp+1}</span>`);
+  if(bits.length)out.html=`<div style="font-size:.55rem;color:var(--muted);margin-top:2px;line-height:1.3">${bits.join(' · ')}</div>`;
+  return out;
+}
 function rotCajaHtml(r){
   const c=r.caja;
   if(!c)return `<span style="color:var(--muted)" title="Todavía no hay dato de caja de compra para este producto. Lo deja el robot una vez por hora, y solo de las publicaciones ACTIVAS: si el producto está pausado o sin publicación viva, acá va a decir siempre &quot;—&quot;.">—</span>`;
@@ -11690,12 +11735,13 @@ function rotCajaHtml(r){
     +(c.vieja?' · OJO: todas sus publicaciones están PAUSADAS y el robot no les vuelve a preguntar la caja, así que este dato es de cuando estaban activas':'');
   // Revisión max (rev4): la caja de una pausada es vieja y se dice a la vista, no sólo en el globito.
   if(c.vieja)return `<span style="color:var(--muted)" title="${detalle.slice(3)}">⏸ ${ {winning:'ganaba',sharing:'compartía',losing:'perdía'}[c.st]||'sin catálogo'} <span style="font-size:.55rem">(pausada · dato viejo)</span></span>`;
+  const _ext=rotCajaExtraHtml(c);
   if(c.st==='winning')
-    return `<span style="font-weight:700;color:var(--green)" title="GANÁS LA CAJA DE COMPRA. El botón de comprar del catálogo es tuyo: la venta la hacés vos. Si igual no vende, el problema NO es la competencia — mirá visitas, foto o título.${detalle}">🟢 Ganás</span>`;
+    return `<span style="font-weight:700;color:var(--green)" title="GANÁS LA CAJA DE COMPRA. El botón de comprar del catálogo es tuyo: la venta la hacés vos. Si igual no vende, el problema NO es la competencia — mirá visitas, foto o título.${detalle}">🟢 Ganás</span>`+_ext.html;
   if(c.st==='sharing')
-    return `<span style="font-weight:700;color:var(--amber)" title="COMPARTÍS LA CAJA. ML te reparte las ventas con otro vendedor que está al mismo precio. Vendés, pero la mitad. OJO: SUBIRLE EL PRECIO TE SACA DEL REPARTO.${detalle}">🟠 Compartís</span>`+rotCajaBajaHtml(r);
+    return `<span style="font-weight:700;color:var(--amber)" title="COMPARTÍS LA CAJA. ML te reparte las ventas con otro vendedor que está al mismo precio. Vendés, pero la mitad. OJO: SUBIRLE EL PRECIO TE SACA DEL REPARTO.${detalle}">🟠 Compartís</span>`+_ext.html+rotCajaBajaHtml(r);
   if(c.st==='losing')
-    return `<span style="font-weight:700;color:var(--red)" title="PERDÉS LA CAJA: la venta se la lleva otro vendedor. La publicación está viva pero el comprador ni la ve, así que puede tener stock, buen margen y cero ventas para siempre.${c.ptw?` ML dice que se gana a ${fmt(c.ptw)} — pero eso NO quiere decir que convenga bajar hasta ahí: primero hay que ver si ese precio llega al piso de margen.`:''}${detalle}">🔴 Perdés</span>`+rotCajaBajaHtml(r);
+    return `<span style="font-weight:700;color:var(--red)" title="PERDÉS LA CAJA: la venta se la lleva otro vendedor. La publicación está viva pero el comprador ni la ve, así que puede tener stock, buen margen y cero ventas para siempre.${c.ptw?` ML dice que se gana a ${fmt(c.ptw)} — pero eso NO quiere decir que convenga bajar hasta ahí: primero hay que ver si ese precio llega al piso de margen.`:''}${detalle}">🔴 Perdés</span>`+_ext.html+rotCajaBajaHtml(r);
   return `<span style="color:var(--muted)" title="Ninguna de sus publicaciones es de catálogo, así que no hay caja de compra que ganar ni perder: es una publicación propia y compite sola.${detalle}">⚪ Sin catálogo</span>`;
 }
 // ── DESDE CUÁNDO ESTÁ ESA MERCADERÍA ────────────────────────────────────────────────
@@ -12345,7 +12391,7 @@ function renderRotacionStock(){
 
     const _rt=rotEstadoDe(p,stock,rotNorm,ventasPeriodo,now);
     const estadoKey=_rt.k;
-    const estadoHtml=rotEstadoHtml(_rt,stock);
+    const estadoHtml=rotEstadoHtml(_rt,stock)+rotVisitasHtml(_rt,visitasDe(p),ventasPeriodo);
 
     // Margen de HOY, con la MISMA cuenta que la ficha del producto (misma función, no una copia).
     // Es lo que contesta "¿puedo bajarle el precio?" sin salir de esta pantalla: un producto
@@ -14611,6 +14657,49 @@ function _facMesCuentaEnRango(acct,ym,fromK,toK){
 // el número de "Ventas brutas" de ML. Se prorratea igual que el resto en el mes partido.
 function _facCancelMes(acct,ym){return parseFloat(state.fact_cancel?.[acct]?.[ym])||0;}
 function _puntFac12(){return _facVentana(_ventana365());}
+// ── IDEA 5 DE LA ETAPA 6 (27/09/2026, "hacela"): EMPAREJAR LAS 4 CUENTAS CONTRA EL TOPE DE H ──────
+// El tope de facturación del monotributo es POR CUENTA. Si una se come su tope antes que las otras,
+// el negocio entero se frena aunque las otras tengan lugar: medido el 03/09, emparejar sube el techo
+// ~$2,1M/mes. Como la mercadería NO se mueve entre cuentas (regla suya del 22/09), esto sirve para
+// decidir dónde va lo NUEVO: la tarjeta dice qué cuenta tiene más lugar.
+// Tope = categoría H ($81,9M/año): es la más alta que se planea usar (Ayelen ya paga H).
+// "A este ritmo" = lo facturado en los últimos 30 días × 12, sin canceladas.
+function parejoDatos(){
+  const topeH=catLim('H'); if(!(topeH>0))return null;
+  const fac12=_puntFac12();
+  const hoy=new Date(); const desde=new Date(hoy.getFullYear(),hoy.getMonth(),hoy.getDate()-29);
+  const dK=dateToKey(desde), hK=dateToKey(hoy);
+  const m30={}; MET_ACCTS.forEach(a=>m30[a]=0);
+  Object.keys(state.ventaprod||{}).filter(k=>k>=dK&&k<=hK).forEach(k=>Object.values(state.ventaprod[k]||{}).forEach(v=>{
+    const a=(v&&v.cuenta||'').toLowerCase(); if(!v||v.cancelada||!(a in m30))return; m30[a]+=Number(v.total)||0;}));
+  const filas=MET_ACCTS.map(a=>{const ritmo=m30[a]*12;return{a,fac:fac12[a]||0,ritmo,pct:ritmo/topeH*100,resta:topeH-ritmo};});
+  return {topeH,filas};
+}
+function renderHomeParejo(){
+  const el=document.getElementById('home-parejo'); if(!el)return;
+  const d=parejoDatos(); if(!d||!d.filas.some(f=>f.ritmo>0)){el.innerHTML='';return;}
+  const fM=n=>'$'+(n/1e6).toFixed(1).replace('.',',')+'M';
+  const orden=[...d.filas].sort((x,y)=>x.ritmo-y.ritmo);
+  const menos=orden[0], mas=orden[orden.length-1];
+  const pasan=d.filas.filter(f=>f.ritmo>d.topeH);
+  const desp=menos.ritmo>0?mas.ritmo/menos.ritmo:Infinity;
+  const aviso=pasan.length
+    ?`<div style="font-size:.66rem;color:var(--red);margin-top:8px">🔴 ${pasan.map(f=>MET_LABELS[f.a]).join(' y ')} ${pasan.length>1?'pasarían':'pasaría'} el tope de H a este ritmo. Lo nuevo no va ahí.</div>`
+    :desp>=2?`<div style="font-size:.66rem;color:var(--amber);margin-top:8px">🟠 Están desparejas: ${MET_LABELS[mas.a]} factura ${desp===Infinity?'mucho':desp.toFixed(1).replace('.',',')+' veces'} más que ${MET_LABELS[menos.a]}.</div>`:'';
+  const barras=d.filas.map(f=>{
+    const col=f.ritmo>d.topeH?'var(--red)':f.pct>=85?'var(--amber)':'var(--green)';
+    return `<div style="margin:7px 0">
+      <div style="display:flex;justify-content:space-between;gap:8px;font-size:.66rem"><strong>${MET_LABELS[f.a]}</strong>
+        <span style="color:${col};font-family:'DM Mono',monospace" title="Últimos 30 días × 12. En los últimos 365 días facturó ${fmt(Math.round(f.fac))}.">${fM(f.ritmo)}/año · ${f.ritmo>d.topeH?'se pasa '+fM(-f.resta):'le quedan '+fM(f.resta)}</span></div>
+      <div style="height:7px;background:var(--surface2);border-radius:5px;overflow:hidden;margin-top:3px"><div style="height:100%;width:${Math.min(100,f.pct).toFixed(1)}%;background:${col}"></div></div>
+    </div>`;}).join('');
+  el.innerHTML=`<div style="max-width:760px;margin:0 auto 14px;background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:14px 16px">
+    <div style="font-family:'Syne',sans-serif;font-weight:800;font-size:.85rem">⚖️ Las 4 cuentas contra el tope de H (${fM(d.topeH)}/año)</div>
+    <div style="font-size:.58rem;color:var(--muted);margin-top:2px">A este ritmo = lo facturado en los últimos 30 días × 12. El tope es por cuenta: la que se llena primero frena al resto.</div>
+    ${barras}${aviso}
+    <div style="font-size:.66rem;margin-top:8px">💡 Lo próximo nuevo que no sea perfume → <strong style="color:var(--green)">${MET_LABELS[menos.a]}</strong>, que es la que más lugar tiene. <span style="color:var(--muted)">(Perfumes siguen yendo a Adriana; lo que ya está en una cuenta, queda.)</span></div>
+  </div>`;
+}
 // LA VENTANA QUE MIRA ARCA. No son los últimos 365 días: ARCA cierra por semestre y mira los 12
 // meses terminados en el último 30/06 o 31/12. En agosto de 2026 la recategorización se hace con
 // julio-2025 → junio-2026, no con lo que vendiste ayer. Por eso hay DOS números y dan distinto:
