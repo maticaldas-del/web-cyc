@@ -1542,7 +1542,8 @@ async function responderPreguntas(db, accounts, labels, GO, verTexto) {
     const items = {};
     for (let k = 0; k < ids.length; k += 20) {
       try {
-        const arr = await mlGet('/items?ids=' + ids.slice(k, k + 20).join(',') + '&attributes=id,status,available_quantity,shipping,title,price,condition,warranty,attributes,variations', tok);
+        // Sin filtro de campos: con `attributes=…attributes…` ML dejaba de mandar el estado (29 "no activas" falsas).
+        const arr = await mlGet('/items?ids=' + ids.slice(k, k + 20).join(','), tok);
         for (const row of (arr || [])) { const b = row && row.body; if (b && b.id && Number(row.code) === 200) items[b.id] = b; }
       } catch { /* esas quedan sin leer: no se contestan */ }
     }
