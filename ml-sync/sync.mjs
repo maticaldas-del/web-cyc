@@ -15082,8 +15082,23 @@ async function main() {
           if (v.sinCargo) o.sinCargo = true;
         }
       }
+      // ML da el motivo como un código en inglés (medido el 27/09 sobre 45 reclamos). Se traduce y se
+      // clasifica por el código; lo que no está en la lista cae en las palabras de abajo.
+      const MOTIVO_ML = {
+        not_working_item: ['no funciona', 'producto'], broken_item: ['llegó roto', 'producto'],
+        missing_accessories: ['le faltan accesorios o partes', 'producto'], missing_item: ['faltó el producto en el paquete', 'producto'],
+        different_than_published: ['distinto a lo publicado', 'producto'], fake_different: ['dice que es falso o distinto', 'producto'],
+        different_item_other: ['llegó otro producto', 'producto'], different_color_or_size: ['otro color o tamaño', 'producto'],
+        repentant_buyer: ['se arrepintió', 'comprador'], different_color_or_size_fashion_change: ['quiere cambiar talle o color', 'comprador'],
+        damaged_package_broken_item: ['el paquete llegó dañado y el producto roto', 'envio'], damaged_package_missing_accessories: ['el paquete llegó dañado y faltan partes', 'envio'],
+        not_received: ['no le llegó', 'envio'], undelivered: ['no le llegó', 'envio'], delayed: ['llegó tarde', 'envio'],
+      };
       const clasif = (id, nom) => {
-        const t = String(nom || '').toLowerCase();
+        const k = String(nom || '').toLowerCase();
+        if (MOTIVO_ML[k]) return MOTIVO_ML[k][1];
+        if (/repent|regret/.test(k)) return 'comprador';
+        if (/damaged_package|not_received|undeliver|delay|shipping/.test(k)) return 'envio';
+        const t = k;
         if (/arrepent|no lo quiero|ya no (lo )?necesit|compr[eé] (por )?error|me equivoqu|cambi[eé] de opini|no (me )?gust/.test(t)) return 'comprador';
         if (/no (me )?(lleg|recib)|lleg[oó] tarde|demor|entrega|env[ií]o|paquete|no lo recib/.test(t) || /^PNR/i.test(id)) return 'envio';
         if (/defect|roto|da[ñn]ad|falla|no funciona|diferente|distinto|incomplet|falt|usado|falso|original|trucho|vencid/.test(t) || /^PDD/i.test(id)) return 'producto';
@@ -15115,7 +15130,8 @@ async function main() {
           reasonCache[rid] = rr ? String(rr.name || rr.detail || rr.description || rid).slice(0, 90) : null;
         }
         const nombre = reasonCache[rid] || rid;
-        escribir[orden] = { ...o, reason: rid, nombre, clase: clasif(rid, nombre), tipoClaim: String(c.type || ''), ts: Date.now() };
+        const _mk = String(nombre).toLowerCase();
+        escribir[orden] = { ...o, reason: rid, codigo: nombre, nombre: MOTIVO_ML[_mk] ? MOTIVO_ML[_mk][0] : String(nombre).replace(/_/g, ' '), clase: clasif(rid, nombre), tipoClaim: String(c.type || ''), ts: Date.now() };
         nuevos++;
       }
       const todas = { ...ya, ...escribir };
