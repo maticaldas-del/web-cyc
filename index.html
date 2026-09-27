@@ -2339,7 +2339,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='20.69';
+const APP_VERSION='20.70';
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
 // muestre la versión y la fecha de actualización y que tenga un desplegable predeterminado cerrado".
 // Y el mismo día: "que ponga fecha de cada modificación y haya una barrita para scrollear y que
@@ -2350,6 +2350,7 @@ const APP_VERSION='20.69';
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'20.70',f:'27/09/2026',h:'16:48',c:[{n:2,t:'Lo que trajo el robot y Vigilancia: verde sólo lo CONFIRMADO que ganó plata (7 días o más) y rojo sólo lo confirmado que perdió. Lo en curso, los rescates y lo que no suma van en gris. El total muestra aparte lo confirmado y lo en curso.'}]},
   {v:'20.69',f:'27/09/2026',h:'16:38',c:[{n:2,t:'Lo que trajo el robot: si todo lo que cuenta tiene menos de 7 días, ya no sale el cartel rojo sino uno ámbar que dice que el número todavía se mueve.'}]},
   {v:'20.68',f:'27/09/2026',h:'16:36',c:[{n:1,t:'Vigilancia de precios: las subas para recuperar margen dicen que no suman al total del robot, para que no se confundan con lo que cuenta arriba.'}]},
   {v:'20.67',f:'27/09/2026',h:'11:48',c:[{n:3,t:'Prueba de suba: cada noche el robot sube +5% todas juntas las publicaciones que venden bien y no son de catálogo. Si la suba deja igual o más plata, a los 14 días prueba otro +5%; si deja menos, la cierra y te avisa.'},{n:2,t:'Métricas, abajo de todo: 🧪 Vigilancia de precios. Todas las publicaciones que venden, qué pasa con cada una, su último cambio de precio y si ganó o perdió plata.'},{n:1,t:'Ventas: cada reclamo dice el motivo que da ML (del producto, del envío o del comprador). Una vez por semana te aviso los que no fueron culpa del producto.'}]},
@@ -13958,6 +13959,9 @@ function renderMetAuto(){
   if(!r||!(r.ts>0)){el.innerHTML='<div class="chart-box" style="color:var(--muted);font-size:.72rem">Todavía no hay cuenta: la hace el robot todas las noches, después del aviso de precios.</div>';return;}
   const n=v=>Number(v)||0;
   const col=v=>n(v)>0?'var(--green)':n(v)<0?'var(--red)':'var(--muted)';
+  // 27/09/2026, regla suya: VERDE sólo lo confirmado que ganó plata y ROJO sólo lo confirmado que
+  // perdió. En curso (menos de 7 días), rescates y lo que no suma van en gris aunque den un número.
+  const colC=(v,ok)=>ok?col(v):'var(--muted)';
   const sg=v=>n(v)<0?'−'+fmt(Math.round(-n(v))):(n(v)>0?'+':'')+fmt(Math.round(n(v)));
   const dias=Math.floor((Date.now()-r.ts)/864e5);
   const viejo=dias>=2?`<div style="font-size:.62rem;color:#fbbf24;margin-bottom:8px">⚠ la cuenta es de hace ${dias} días: el robot no la pudo rehacer.</div>`:'';
@@ -13976,15 +13980,17 @@ function renderMetAuto(){
   const gano=med.reduce((a,x)=>a+Math.max(0,n(x.total)),0),perdio=med.reduce((a,x)=>a+Math.min(0,n(x.total)),0);
   const resc=delMes.filter(x=>(x.estado==='medido'||x.estado==='encurso')&&x.motivo==='rescate');
   const rescTot=resc.reduce((a,x)=>a+n(x.total),0);
-  const neg=tot<0;
+  const conf=med.filter(x=>x.estado==='medido');
+  const confTot=conf.reduce((a,x)=>a+n(x.total),0),cursoTot=tot-confTot;
+  const neg=confTot<0;
   const chip=(k,v,lbl,on)=>`<button onclick="metAutoSet('${k}','${v}')" style="font-size:.6rem;padding:3px 8px;border-radius:12px;border:1px solid ${on?'var(--green)':'rgba(148,163,184,.3)'};background:${on?'rgba(52,211,153,.12)':'transparent'};color:${on?'var(--green)':'var(--muted)'};cursor:pointer">${lbl}</button>`;
   const cnt=m=>delMes.filter(x=>x.motivo===m).length;
   const chipsMes=[chip('mes','todos','Todos los meses',metAutoMes==='todos'),...meses.map(m=>chip('mes',m,mesTxt(m),metAutoMes===m))].join('');
   const chipsMot=[chip('mot','cuentan','Los que cuentan',metAutoMot==='cuentan'),chip('mot','todas','Todas las decisiones ('+delMes.length+')',metAutoMot==='todas'),
     ...Object.keys(MET_AUTO_MOT).filter(m=>cnt(m)).map(m=>chip('mot',m,MET_AUTO_MOT[m]+' ('+cnt(m)+')',metAutoMot===m))].join('');
-  const caja=(lbl,val,sub)=>`<div style="flex:1 1 140px;min-width:140px">
+  const caja=(lbl,val,sub,ok)=>`<div style="flex:1 1 140px;min-width:140px">
       <div style="font-size:.56rem;color:var(--muted);text-transform:uppercase;letter-spacing:.04em">${lbl}</div>
-      <div style="font-family:'Syne',sans-serif;font-weight:800;font-size:1.05rem;color:${col(val)}">${sg(val)}</div>
+      <div style="font-family:'Syne',sans-serif;font-weight:800;font-size:1.05rem;color:${colC(val,ok!==false)}">${sg(val)}</div>
       <div style="font-size:.58rem;color:var(--muted)">${sub}</div>
     </div>`;
   const fh=t=>{const d=new Date(t);return String(d.getDate()).padStart(2,'0')+'/'+String(d.getMonth()+1).padStart(2,'0')+'/'+d.getFullYear()+' '+String(d.getHours()).padStart(2,'0')+':'+String(d.getMinutes()).padStart(2,'0');};
@@ -13994,20 +14000,20 @@ function renderMetAuto(){
     const pct=n(x.de)&&n(x.a)?((n(x.a)/n(x.de)-1)*100).toFixed(1).replace('.',','):'?';
     const medido=x.estado==='medido';
     const cuenta=(medido||x.estado==='encurso')&&x.enTotal;
-    const plata=(medido||(x.estado==='encurso'&&x.total!=null))?`<b style="white-space:nowrap;color:${cuenta?col(x.total):'var(--muted)'}">${sg(x.total)}${cuenta?'':' · no suma'}</b>`:`<span style="font-size:.58rem;color:var(--muted)">—</span>`;
+    const plata=(medido||(x.estado==='encurso'&&x.total!=null))?`<b style="white-space:nowrap;color:${colC(x.total,cuenta&&medido)}">${sg(x.total)}${cuenta?(medido?'':' · en curso'):' · no suma'}</b>`:`<span style="font-size:.58rem;color:var(--muted)">—</span>`;
     // REMATE Y ESCALERA (25/09/2026, regla suya): "sin robot" es que seguía parado. Suman las ventas
     // al 20% o más (ganancia entera), no las de menos; lo que igual se vendía resta lo que se cobró
     // de menos; y el almacenamiento, sólo el real (días ya pasados, desde que iba a pagar).
     const rm=x.rem;
     const detRem=rm?`${x.estado==='encurso'?`<span style="color:#fbbf24">${String(n(x.dias)).replace('.',',')} d de 7</span> · `:`${n(x.dias)} d · `}vendió <b style="color:var(--text)">${n(x.uD)} u.</b> desde el cambio`
-      +` · <b style="color:${col(rm.gan)}">${n(rm.uOk)} al 20% o más: ${sg(rm.gan)}</b>`
+      +` · <b style="color:${colC(rm.gan,medido)}">${n(rm.uOk)} al 20% o más: ${sg(rm.gan)}</b>`
       +(n(rm.uBajo)?` · ${n(rm.uBajo)} abajo del 20%: no suman`:'')
       +(n(rm.uBase)?` · ${n(rm.uBase)} se vendían igual (ritmo de antes ${String(n(rm.r0)).replace('.',',')} u./mes), cobradas más baratas: ${sg(rm.base)}`:'')
-      +` · 📦 almacenamiento: ${rm.alm!=null?`<b style="color:var(--green)">${sg(rm.alm)}</b> (${String(n(rm.almUD)).replace('.',',')} unidades-día que ya no pagó)`:n(rm.almUD)?`${String(n(rm.almUD)).replace('.',',')} unidades-día evitadas · <span style="color:#fbbf24">${rm.almNota||'sin tarifa'}: no suma en pesos</span>`:`$0${rm.almNota?' ('+rm.almNota+')':''}`}`:'';
+      +` · 📦 almacenamiento: ${rm.alm!=null?`<b style="color:${colC(rm.alm,medido)}">${sg(rm.alm)}</b> (${String(n(rm.almUD)).replace('.',',')} unidades-día que ya no pagó)`:n(rm.almUD)?`${String(n(rm.almUD)).replace('.',',')} unidades-día evitadas · <span style="color:#fbbf24">${rm.almNota||'sin tarifa'}: no suma en pesos</span>`:`$0${rm.almNota?' ('+rm.almNota+')':''}`}`:'';
     const det=rm?detRem:medido
       ?`midió ${n(x.dias)} d antes y después · vendió ${n(x.uA)} u. antes y ${n(x.uD)} después · por el precio ${sg(x.precio)} · volumen ${x.volSinDato?'sin dato':x.quiebre?'no cuenta (sin stock)':sg(x.volumen)}${x.motivo==='rescate'?' · <span style="color:#fbbf24">recuperar margen: no se atribuye al robot</span>':''}`
       :x.estado==='encurso'&&x.uD!=null
-        ?`<span style="color:#fbbf24">en curso · ${String(n(x.dias)).replace('.',',')} d de 7</span> · desde el cambio vendió <b style="color:var(--text)">${n(x.uD)} u.</b>${n(x.uD)?` · ML te depositó ${fmt(n(x.cobrado))} · ganancia de esas ventas <b style="color:${col(x.gD)}">${sg(x.gD)}</b> · por el precio ${sg(x.precio)}`:''}${x.enTotal?' · <b style="color:var(--text)">lo del precio ya suma</b>; si vendió menos o más por el precio se mide a los 7 días':(x.motivo==='remate'||x.motivo==='escalera')?' · todavía no suma: falta decidir cómo se cuenta un remate':' · no suma'}`
+        ?`<span style="color:#fbbf24">en curso · ${String(n(x.dias)).replace('.',',')} d de 7</span> · desde el cambio vendió <b style="color:var(--text)">${n(x.uD)} u.</b>${n(x.uD)?` · ML te depositó ${fmt(n(x.cobrado))} · ganancia de esas ventas <b style="color:var(--muted)">${sg(x.gD)}</b> · por el precio ${sg(x.precio)}`:''}${x.enTotal?' · <b style="color:var(--text)">lo del precio ya suma</b>; si vendió menos o más por el precio se mide a los 7 días':(x.motivo==='remate'||x.motivo==='escalera')?' · todavía no suma: falta decidir cómo se cuenta un remate':' · no suma'}`
         :(EST[x.estado]||x.estado||'');
     return `<div style="padding:6px 0;border-bottom:1px solid rgba(148,163,184,.1);font-size:.66rem">
       <div style="display:flex;justify-content:space-between;gap:8px;align-items:baseline">
@@ -14020,25 +14026,25 @@ function renderMetAuto(){
   };
   // Si TODO lo que cuenta está en curso (menos de 7 días), el número todavía se mueve: no se grita en
   // rojo sobre una medición que no terminó (27/09/2026, él: "son muchas verdes, una sola roja y dice que está en rojo").
-  const todoEnCurso=med.length>0&&med.every(x=>x.estado==='encurso');
-  const alertaCurso=neg&&todoEnCurso?`<div style="margin-bottom:10px;padding:8px 10px;border-radius:8px;background:rgba(251,191,36,.10);border:1px solid rgba(251,191,36,.4);font-size:.7rem;color:#fbbf24"><b>⏳ Todavía en curso:</b> las ${med.length} decisiones que cuentan tienen menos de 7 días, así que este número todavía se mueve. Las verdes de recuperar margen no suman (se ven abajo, aparte).</div>`:'';
-  const alerta=neg&&!todoEnCurso?`<div style="margin-bottom:10px;padding:8px 10px;border-radius:8px;background:rgba(239,68,68,.12);border:1px solid rgba(239,68,68,.4);font-size:.7rem;color:var(--red)"><b>⚠️ En ${metAutoMes==='todos'?'total':mesTxt(metAutoMes)} las decisiones del robot dejaron MENOS plata que no tenerlas.</b> Ninguna se deshace sola, lo decidís vos.</div>`:'';
-  const perdidas=lista.filter(x=>(x.estado==='medido'||x.estado==='encurso')&&x.enTotal&&n(x.total)<0);
+  const alertaCurso=!neg&&tot<0&&cursoTot<0?`<div style="margin-bottom:10px;padding:8px 10px;border-radius:8px;background:rgba(251,191,36,.10);border:1px solid rgba(251,191,36,.4);font-size:.7rem;color:#fbbf24"><b>⏳ Todavía en curso:</b> lo que va en negativo (${sg(cursoTot)}) es de cambios con menos de 7 días, así que todavía se mueve y no se pinta de rojo. Las verdes de recuperar margen no suman (se ven abajo, aparte).</div>`:'';
+  const alerta=neg?`<div style="margin-bottom:10px;padding:8px 10px;border-radius:8px;background:rgba(239,68,68,.12);border:1px solid rgba(239,68,68,.4);font-size:.7rem;color:var(--red)"><b>⚠️ En ${metAutoMes==='todos'?'total':mesTxt(metAutoMes)} las decisiones del robot dejaron MENOS plata que no tenerlas.</b> Ninguna se deshace sola, lo decidís vos.</div>`:'';
+  const perdidas=lista.filter(x=>x.estado==='medido'&&x.enTotal&&n(x.total)<0);
   const resto=lista.filter(x=>!perdidas.includes(x));
   el.innerHTML=`<div class="chart-box">${viejo}${alerta}${alertaCurso}
     <div style="display:flex;flex-wrap:wrap;gap:5px;margin-bottom:6px">${chipsMes}</div>
     <div style="display:flex;flex-wrap:wrap;gap:5px;margin-bottom:12px">${chipsMot}</div>
-    <div style="font-size:.6rem;color:var(--muted);text-transform:uppercase;letter-spacing:.04em">${neg?'Plata de MENOS':'Plata de más'} que dejaron las decisiones del robot · ${metAutoMes==='todos'?'todos los meses':mesTxt(metAutoMes)}</div>
-    <div style="font-family:'Syne',sans-serif;font-weight:800;font-size:2rem;color:${col(tot)};line-height:1.1">${sg(tot)}</div>
+    <div style="font-size:.6rem;color:var(--muted);text-transform:uppercase;letter-spacing:.04em">${tot<0?'Plata de MENOS':'Plata de más'} que dejaron las decisiones del robot · ${metAutoMes==='todos'?'todos los meses':mesTxt(metAutoMes)}</div>
+    <div style="font-family:'Syne',sans-serif;font-weight:800;font-size:2rem;color:${colC(tot,conf.length===med.length&&med.length>0)};line-height:1.1">${sg(tot)}</div>
+    <div style="font-size:.62rem;margin-bottom:2px"><span style="color:${colC(confTot,conf.length>0)}">confirmado (7 días o más): <b>${sg(confTot)}</b></span> · <span style="color:var(--muted)">en curso: ${sg(cursoTot)}</span></div>
     <div style="font-size:.62rem;color:var(--muted);margin-bottom:12px">${med.length} cambios que cuentan${med.some(x=>x.estado==='encurso')?` (${med.filter(x=>x.estado==='encurso').length} en curso: por ahora sólo lo del precio)`:''} (${med.filter(x=>n(x.a)>n(x.de)).length} subas · ${med.filter(x=>n(x.a)<n(x.de)).length} bajas)</div>
     <div style="display:flex;flex-wrap:wrap;gap:12px 10px;margin-bottom:10px">
-      ${caja('Lo que ganó',gano,`${med.filter(x=>n(x.total)>0).length} cambios dejaron más`)}
-      ${caja('Lo que hizo perder',perdio,`${med.filter(x=>n(x.total)<0).length} cambios dejaron menos`)}
-      ${caja('Por el precio · firme',pre,'lo que sí se vendió, cobrado a otro precio')}
-      ${caja('Por vender más o menos',vol,'sólo con stock todo el tiempo, antes y después')}
+      ${caja('Lo que ganó · confirmado',conf.reduce((a,x)=>a+Math.max(0,n(x.total)),0),`${conf.filter(x=>n(x.total)>0).length} cambios dejaron más`)}
+      ${caja('Lo que hizo perder · confirmado',conf.reduce((a,x)=>a+Math.min(0,n(x.total)),0),`${conf.filter(x=>n(x.total)<0).length} cambios dejaron menos`)}
+      ${caja('Por el precio · firme',pre,'lo que sí se vendió, cobrado a otro precio',conf.length===med.length)}
+      ${caja('Por vender más o menos',vol,'sólo con stock todo el tiempo, antes y después',conf.length===med.length)}
     </div>
     ${(()=>{const rs=med.filter(x=>x.rem);if(!rs.length)return'';const g=rs.reduce((a,x)=>a+n(x.rem.gan),0),b=rs.reduce((a,x)=>a+n(x.rem.base),0),al=rs.reduce((a,x)=>a+n(x.rem.alm),0),ud=rs.reduce((a,x)=>a+n(x.rem.almUD),0),st=rs.some(x=>n(x.rem.almUD)>0&&x.rem.alm==null);
-      return `<div style="font-size:.62rem;color:var(--muted);margin-bottom:8px;line-height:1.5">🔨 <b style="color:var(--text)">Remates y escalera (${rs.length})</b>: ventas al 20% o más <b style="color:${col(g)}">${sg(g)}</b>${b?` · lo que igual se vendía, más barato ${sg(b)}`:''} · almacenamiento que no se pagó <b style="color:${col(al)}">${sg(al)}</b>${st?` <span style="color:#fbbf24">(+${String(Math.round(ud*10)/10).replace('.',',')} unidades-día sin pasar a pesos: falta la tarifa de ML)</span>`:''}</div>`;})()}
+      return `<div style="font-size:.62rem;color:var(--muted);margin-bottom:8px;line-height:1.5">🔨 <b style="color:var(--text)">Remates y escalera (${rs.length})</b>: ventas al 20% o más <b style="color:${colC(g,rs.every(x=>x.estado==='medido'))}">${sg(g)}</b>${b?` · lo que igual se vendía, más barato ${sg(b)}`:''} · almacenamiento que no se pagó <b style="color:${colC(al,rs.every(x=>x.estado==='medido'))}">${sg(al)}</b>${st?` <span style="color:#fbbf24">(+${String(Math.round(ud*10)/10).replace('.',',')} unidades-día sin pasar a pesos: falta la tarifa de ML)</span>`:''}</div>`;})()}
     ${resc.length?`<div style="font-size:.62rem;color:#fbbf24;margin-bottom:8px">🛟 Aparte, sin sumar: ${resc.length} subas para recuperar margen (costo, envío, inflación) movieron ${sg(rescTot)}. Ésas las ibas a hacer igual: no son mérito del robot.</div>`:''}
     ${perdidas.length?`<div style="font-size:.6rem;color:var(--red);text-transform:uppercase;letter-spacing:.04em;margin:6px 0 2px">🔻 Los que hicieron perder plata (${perdidas.length})</div>${perdidas.map(fila).join('')}`:''}
     <details${metAutoMot!=='cuentan'?' open':''}><summary style="cursor:pointer;font-size:.66rem;color:var(--muted);margin-top:8px">${metAutoMot==='cuentan'?'Los cambios que cuentan':MET_AUTO_MOT[metAutoMot]||'Todas las decisiones de precio'} (${resto.length}) · fecha, hora, %, $</summary>${resto.map(fila).join('')||'<div style="font-size:.62rem;color:var(--muted);padding:6px 0">No hay cambios con este filtro.</div>'}</details>
@@ -14057,7 +14063,7 @@ function renderMetAuto(){
 // estado frente a la prueba de suba de +5%. Al lado va el ÚLTIMO cambio de precio de esa publicación
 // y lo que midió el supervisor (la misma plata de la tarjeta de arriba, no otra cuenta).
 let metVigFiltro='todas';
-const MET_VIG_EST={candidata:['🧪','Se sube esta noche','var(--green)'],prueba:['🧪','En prueba','var(--blue,#60a5fa)'],espera:['⏳','Esperando (el robot la tocó hace poco)','var(--muted)'],
+const MET_VIG_EST={candidata:['🧪','Se sube esta noche','var(--blue,#60a5fa)'],prueba:['🧪','En prueba','var(--blue,#60a5fa)'],espera:['⏳','Esperando (el robot la tocó hace poco)','var(--muted)'],
   cerrada:['🔴','Prueba cerrada: la suba dejó menos','var(--red)'],tope:['🚧','Llegó al tope (barrera, techo o escalón de ML)','#fbbf24'],
   catalogo:['🏷️','De catálogo: la vigilan 📈 subir y 📉 bajar','var(--muted)'],no:['➖','No se prueba (con el motivo)','var(--muted)'],sinleer:['❔','No se pudo leer','#fbbf24']};
 function metVigSet(v){metVigFiltro=v;renderMetVig();}
@@ -14068,6 +14074,9 @@ function renderMetVig(){
   const n=v=>Number(v)||0;
   const sg=v=>n(v)<0?'−'+fmt(Math.round(-n(v))):(n(v)>0?'+':'')+fmt(Math.round(n(v)));
   const col=v=>n(v)>0?'var(--green)':n(v)<0?'var(--red)':'var(--muted)';
+  // 27/09/2026, regla suya: VERDE sólo lo confirmado que ganó plata y ROJO sólo lo confirmado que
+  // perdió. En curso (menos de 7 días), rescates y lo que no suma van en gris aunque den un número.
+  const colC=(v,ok)=>ok?col(v):'var(--muted)';
   const todos=(state.supResumen&&Array.isArray(state.supResumen.todos))?state.supResumen.todos:[];
   const ultimo={};for(const x of todos){if(!x||!x.mla)continue;const u=ultimo[x.mla];if(!u||n(x.ts)>n(u.ts))ultimo[x.mla]=x;}
   const filas=Object.entries(V.filas).map(([mla,v])=>({mla,...v,ult:ultimo[mla]||null}));
@@ -14077,7 +14086,7 @@ function renderMetVig(){
   const vis=filas.filter(f=>metVigFiltro==='todas'||f.estado===metVigFiltro);
   // Lo que midió el supervisor de las pruebas (las que ya tienen plata).
   const pr=todos.filter(x=>x&&x.motivo==='prueba'&&(x.estado==='medido'||x.estado==='encurso')&&x.total!=null);
-  const prTot=pr.reduce((a,x)=>a+n(x.total),0);
+  const prTot=pr.reduce((a,x)=>a+n(x.total),0),prConf=pr.length>0&&pr.every(x=>x.estado==='medido');
   const dias=Math.floor((Date.now()-n(V.ts))/864e5);
   const chip=(v,lbl,on)=>`<button onclick="metVigSet('${v}')" style="font-size:.6rem;padding:3px 8px;border-radius:12px;border:1px solid ${on?'var(--green)':'rgba(148,163,184,.3)'};background:${on?'rgba(52,211,153,.12)':'transparent'};color:${on?'var(--green)':'var(--muted)'};cursor:pointer">${lbl}</button>`;
   const chips=[chip('todas','Todas ('+filas.length+')',metVigFiltro==='todas'),...orden.filter(k=>cnt[k]).map(k=>chip(k,MET_VIG_EST[k][0]+' '+MET_VIG_EST[k][1].split(' (')[0].split(':')[0]+' ('+cnt[k]+')',metVigFiltro===k))].join('');
@@ -14087,7 +14096,7 @@ function renderMetVig(){
     const u=f.ult;
     const pct=u&&n(u.de)&&n(u.a)?((n(u.a)/n(u.de)-1)*100).toFixed(1).replace('.',','):null;
     const cambio=u?`último cambio ${fd(u.ts)} · ${MET_AUTO_MOT[u.motivo]||u.motivo||'?'} · ${fmt(n(u.de))} → ${fmt(n(u.a))}${pct?' ('+(n(u.a)>n(u.de)?'+':'')+pct+'%)':''} · `+
-      (u.estado==='mano'?'<span>a mano: no se mide</span>':(u.estado==='medido'||u.estado==='encurso')&&u.total!=null?`<b style="color:${col(u.total)}">${n(u.total)>0?'ganó':n(u.total)<0?'perdió':'igual'} ${sg(u.total)}</b>${u.estado==='encurso'?' <span style="color:#fbbf24">(en curso)</span>':''}${u.enTotal?'':' <span style="color:#fbbf24">· no suma al total del robot (recuperar margen)</span>'}`:'<span>todavía sin medir</span>'):'sin cambios de precio registrados';
+      (u.estado==='mano'?'<span>a mano: no se mide</span>':(u.estado==='medido'||u.estado==='encurso')&&u.total!=null?`<b style="color:${colC(u.total,u.estado==='medido'&&u.enTotal)}">${n(u.total)>0?'ganó':n(u.total)<0?'perdió':'igual'} ${sg(u.total)}</b>${u.estado==='encurso'?' <span style="color:#fbbf24">(en curso)</span>':''}${u.enTotal?'':' <span style="color:#fbbf24">· no suma al total del robot (recuperar margen)</span>'}`:'<span>todavía sin medir</span>'):'sin cambios de precio registrados';
     const ini=f.precioInicial&&f.pasos?` · ${f.pasos} suba(s) de prueba desde ${fmt(n(f.precioInicial))}`:'';
     return `<div style="padding:6px 0;border-bottom:1px solid rgba(148,163,184,.1);font-size:.66rem">
       <div style="display:flex;justify-content:space-between;gap:8px;align-items:baseline">
@@ -14103,7 +14112,7 @@ function renderMetVig(){
     <div style="display:flex;flex-wrap:wrap;gap:12px 18px;margin-bottom:10px">
       <div><div style="font-size:.56rem;color:var(--muted);text-transform:uppercase;letter-spacing:.04em">En vigilancia</div><div style="font-family:'Syne',sans-serif;font-weight:800;font-size:1.1rem">${filas.length}</div><div style="font-size:.58rem;color:var(--muted)">publicaciones que vendieron en 30 d</div></div>
       <div><div style="font-size:.56rem;color:var(--muted);text-transform:uppercase;letter-spacing:.04em">En prueba</div><div style="font-family:'Syne',sans-serif;font-weight:800;font-size:1.1rem;color:var(--blue,#60a5fa)">${n(cnt.prueba)+n(cnt.candidata)}</div><div style="font-size:.58rem;color:var(--muted)">subiendo +5% de a una vez</div></div>
-      <div><div style="font-size:.56rem;color:var(--muted);text-transform:uppercase;letter-spacing:.04em">Lo que dejaron las pruebas</div><div style="font-family:'Syne',sans-serif;font-weight:800;font-size:1.1rem;color:${col(prTot)}">${pr.length?sg(prTot):'—'}</div><div style="font-size:.58rem;color:var(--muted)">${pr.length?pr.length+' medidas':'todavía ninguna medida'}</div></div>
+      <div><div style="font-size:.56rem;color:var(--muted);text-transform:uppercase;letter-spacing:.04em">Lo que dejaron las pruebas</div><div style="font-family:'Syne',sans-serif;font-weight:800;font-size:1.1rem;color:${colC(prTot,prConf)}">${pr.length?sg(prTot):'—'}</div><div style="font-size:.58rem;color:var(--muted)">${pr.length?pr.length+' medidas':'todavía ninguna medida'}</div></div>
       <div><div style="font-size:.56rem;color:var(--muted);text-transform:uppercase;letter-spacing:.04em">Cerradas</div><div style="font-family:'Syne',sans-serif;font-weight:800;font-size:1.1rem;color:${cnt.cerrada?'var(--red)':'var(--muted)'}">${n(cnt.cerrada)}</div><div style="font-size:.58rem;color:var(--muted)">la suba dejó menos plata</div></div>
     </div>
     <div style="display:flex;flex-wrap:wrap;gap:5px;margin-bottom:10px">${chips}</div>
