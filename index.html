@@ -2329,7 +2329,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='20.64';
+const APP_VERSION='20.65';
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
 // muestre la versión y la fecha de actualización y que tenga un desplegable predeterminado cerrado".
 // Y el mismo día: "que ponga fecha de cada modificación y haya una barrita para scrollear y que
@@ -2340,6 +2340,7 @@ const APP_VERSION='20.64';
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'20.65',f:'27/09/2026',h:'23:34',c:[{n:1,t:'Paraguay probados: cada producto va en su propio recuadro, con el nombre en grande y una raya de color a la izquierda (verde da, amarillo sin datos, rojo probable que no dé).'}]},
   {v:'20.64',f:'27/09/2026',h:'21:42',c:[
     {n:2,t:'Paraguay · Productos probados: la lista va en tres partes, en este orden: ✅ los que dan seguro, ❔ los que no tienen datos para saber, y 🔴 abajo de todo los que probablemente no dan (comprar sólo si se consiguen a menos del máximo).'}]},
   {v:'20.63',f:'27/09/2026',h:'21:40',c:[
@@ -11144,21 +11145,26 @@ function pyCanastaHTML(){
       : f.caro?`<span style="font-size:.62rem;font-weight:700;color:var(--red)" title="Nissei pide más que el máximo: a ese precio vendés abajo del 25%. Si tu viejo lo consigue a menos del máx, sí conviene.">🔴 probable que no dé</span> <button class="btn" style="font-size:.58rem;padding:3px 8px" onclick="pausarPrecio('${f.ped.id}')" title="Lo saca de la lista hasta que el precio vuelva a dar. No toca ningún precio de venta.">⏸️ no lo compro</button>`
       : f.seguro?`<span style="font-size:.62rem;font-weight:700;color:var(--green)">✅ da</span>`
       : `<span style="font-size:.62rem;font-weight:700;color:var(--amber)" title="Falta el precio de hoy o el máximo: no se puede saber si da. Si lo pagás menos que el máx (cuando está), da.">❔ sin datos</span>`;
-    return `<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;padding:6px 0;border-top:1px solid var(--border);${f.sinStock?'opacity:.5':''}">
-      <strong style="font-family:'Syne',sans-serif;font-size:.95rem;min-width:52px">${f.u} u.</strong>
-      <span style="flex:1;min-width:150px;font-size:.75rem">${f.ped.producto||''}${f.gratis?' <span title="Celular: viaja gratis con tu viejo">✈️</span>':''}</span>
-      ${f.cod
-        ? `<span style="font-family:'DM Mono',monospace;font-size:.72rem;background:rgba(255,255,255,.06);border:1px solid var(--border2);border-radius:5px;padding:2px 6px;letter-spacing:.04em">${f.cod}</span>`
-        : `<span style="font-size:.6rem;color:var(--amber)" title="Sin el código de Nissei no entra en el mensaje. No se inventa: un código equivocado trae otro producto.">⚠ falta el código</span>`}
-      ${estado} ${mx} ${hoy}
-      <button class="btn" style="font-size:.58rem;padding:3px 8px" onclick="pyNoHabia('${f.ped.prodId}',${f.sinStock?'false':'true'})">${f.sinStock?'↩︎ sí había':'✗ no había'}</button>
+    const col=f.sinStock?'var(--muted)':f.caro?'var(--red)':f.seguro?'var(--green)':'var(--amber)';
+    return `<div style="background:rgba(255,255,255,.045);border:1px solid var(--border2);border-left:4px solid ${col};border-radius:8px;padding:9px 11px;margin:8px 0;${f.sinStock?'opacity:.55':''}">
+      <div style="display:flex;align-items:baseline;gap:10px;flex-wrap:wrap">
+        <strong style="font-family:'Syne',sans-serif;font-size:1.05rem;color:${col};min-width:52px">${f.u} u.</strong>
+        <strong style="flex:1;min-width:150px;font-size:.86rem;line-height:1.3">${f.ped.producto||''}${f.gratis?' <span title="Celular: viaja gratis con tu viejo">✈️</span>':''}</strong>
+        ${f.cod
+          ? `<span style="font-family:'DM Mono',monospace;font-size:.74rem;background:rgba(255,255,255,.06);border:1px solid var(--border2);border-radius:5px;padding:2px 6px;letter-spacing:.04em">${f.cod}</span>`
+          : `<span style="font-size:.6rem;color:var(--amber)" title="Sin el código de Nissei no entra en el mensaje. No se inventa: un código equivocado trae otro producto.">⚠ falta el código</span>`}
+      </div>
+      <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-top:6px;padding-top:6px;border-top:1px dashed var(--border)">
+        ${estado} ${mx} ${hoy}
+        <button class="btn" style="font-size:.58rem;padding:3px 8px;margin-left:auto" onclick="pyNoHabia('${f.ped.prodId}',${f.sinStock?'false':'true'})">${f.sinStock?'↩︎ sí había':'✗ no había'}</button>
+      </div>
     </div>`;
   };
   const conCod=c.filas.filter(f=>f.cod), sinCod=c.filas.filter(f=>!f.cod);
   const txt=conCod.map(f=>`${f.cod} x ${f.u}`).join('\n');
   const v=Object.values(pyRepoEnCamino()).reduce((a,x)=>a+x,0);
   const seg=c.filas.filter(f=>f.seguro), sinInf=c.filas.filter(f=>!f.seguro);
-  const tit=(t,col)=>`<div style="font-size:.66rem;font-weight:700;color:${col};margin:12px 0 2px">${t}</div>`;
+  const tit=(t,col)=>`<div style="font-size:.72rem;font-weight:700;color:${col};margin:18px 0 2px;padding-bottom:4px;border-bottom:2px solid ${col}">${t}</div>`;
   return `<div style="margin-bottom:14px">
     <div style="display:flex;justify-content:space-between;align-items:baseline;gap:10px;flex-wrap:wrap;margin-bottom:4px">
       <span style="font-size:.8rem;font-weight:700">🇵🇾 Qué reponer · ${c.filas.length} para comprar · ${c.uds} u.${c.caros.length?` · <span style="color:var(--red)">${c.caros.length} probable que no dé</span>`:''}</span>
