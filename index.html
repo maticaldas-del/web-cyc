@@ -2341,7 +2341,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='20.74';
+const APP_VERSION='20.75';
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
 // muestre la versión y la fecha de actualización y que tenga un desplegable predeterminado cerrado".
 // Y el mismo día: "que ponga fecha de cada modificación y haya una barrita para scrollear y que
@@ -2352,6 +2352,7 @@ const APP_VERSION='20.74';
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'20.75',f:'27/09/2026',h:'19:52',c:[{n:1,t:'Puntos de la ganancia por día, afinados: 7 = $115.000/día, que es lo que deja ~$900.000 a CYC en el mes después de pagar retiro y gastos. 5 = $85.000 (CYC en cero) y 10 = $160.000.'}]},
   {v:'20.74',f:'27/09/2026',h:'19:40',c:[{n:1,t:'Ventas x Producto: abajo de la Ganancia dice a cuántos puntos (de 0 a 10) equivale la ganancia por día, con la tabla del chat (5 = $85.000, 7 = $130.000, 10 = $190.000). Con varios días muestra el promedio. Tocando el número se ve la tabla.'}]},
   {v:'20.73',f:'27/09/2026',h:'18:02',c:[{n:1,t:'Métricas, gráfico de tendencia (General): en cada día, una barra verde tenue con lo que se ganó ese día y una roja tenue con lo que salió (retiro y gastos). Tocando el punto, el detalle de cada gasto. Sólo del período actual.'}]},
   {v:'20.72',f:'27/09/2026',h:'17:46',c:[{n:3,t:'Tope de H: desde que cada cuenta factura por ML, lo facturado sale de las FACTURAS con CAE (las que ve ARCA), no de las ventas. Se suman las ventas que quedaron sin factura y lo facturado fuera de ML cuando se cargue. Abajo de cada barra dice de dónde sale el número.'}]},
@@ -8007,8 +8008,11 @@ function vpAggByAccount(entries){
 }
 // La tabla "ganancia verde por día → puntos" (27/09/2026). 5 puntos = ~$85.000/día, que es lo que
 // cubre justo retiro + gastos del mes; 7 = ~$130.000; 10 = ~$190.000. Abajo de 5, proporcional a 0.
-const GAN_DIA_TABLA=[[0,0],[17000,1],[34000,2],[51000,3],[68000,4],[85000,5],[107000,6],[130000,7],[150000,8],[170000,9],[190000,10]];
-const GAN_DIA_TABLA_TXT='Guía: ganancia promedio por día → puntos. '+GAN_DIA_TABLA.slice(1).map(([g,p])=>p+' = $'+g.toLocaleString('es-AR')).join(' · ')+'. 5 = cubre justo retiro + gastos. No es el Puntaje del mes (ése mira además margen, faltantes, stock y reclamos).';
+// Afinado el 27/09 con su definición: 7 = que a CYC, descontando TODO (retiro $1.800.000 + gastos
+// ~$760.000), le queden ~$900.000 en el mes → (2.560.000 + 900.000) / 30 ≈ $115.000 por día.
+// De 5 para arriba, cada punto son $15.000/día más (≈ $450.000 más por mes para CYC).
+const GAN_DIA_TABLA=[[0,0],[17000,1],[34000,2],[51000,3],[68000,4],[85000,5],[100000,6],[115000,7],[130000,8],[145000,9],[160000,10]];
+const GAN_DIA_TABLA_TXT='Guía: ganancia promedio por día → puntos. '+GAN_DIA_TABLA.slice(1).map(([g,p])=>p+' = $'+g.toLocaleString('es-AR')).join(' · ')+'. 5 = cubre justo retiro + gastos (CYC en cero) · 7 = a CYC le quedan ~$900.000 en el mes. No es el Puntaje del mes (ése mira además margen, faltantes, stock y reclamos).';
 function ganDiaPts(g){
   if(!(g>0))return 0;
   const T=GAN_DIA_TABLA;if(g>=T[T.length-1][0])return 10;
