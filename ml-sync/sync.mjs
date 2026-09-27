@@ -14919,16 +14919,18 @@ async function main() {
           for (const row of (arr || [])) {
             const b = row.body || {}; if (b.listing_type_id !== 'gold_pro' || b.status !== 'active') continue;
             const precio = Math.round(b.price || 0); if (!(precio > 0)) continue;
-            const fee = async (lt) => { try { const d = await mlGet(`/sites/${b.site_id || 'MLA'}/listing_prices?price=${precio}&listing_type_id=${lt}&category_id=${b.category_id}`, t.access_token); const o = Array.isArray(d) ? d[0] : d; return typeof o?.sale_fee_amount === 'number' ? o.sale_fee_amount : null; } catch { return null; } };
+            const fee = async (lt) => { try { const d = await mlGet(`/sites/${b.site_id || 'MLA'}/listing_prices?price=${precio}&listing_type_id=${lt}&category_id=${b.category_id}`, t.access_token); const o = Array.isArray(d) ? d[0] : d; if (lt === 'gold_pro') finEnCom = Number(o?.sale_fee_details?.financing_add_on_fee) > 0; return typeof o?.sale_fee_amount === 'number' ? o.sale_fee_amount : null; } catch { return null; } };
+            // Si ML ya mete las cuotas adentro de la comisión Premium, NO se suman otra vez (misma regla que netoweb).
+            let finEnCom = false;
             const fPro = await fee('gold_pro'), fCla = await fee('gold_special');
-            const cq = cuotasM[b.id]; const cuoPct = cq && isFinite(parseFloat(cq.pct)) ? parseFloat(cq.pct) : null;
+            const cq = finEnCom ? null : cuotasM[b.id]; const cuoPct = finEnCom ? 0 : (cq && isFinite(parseFloat(cq.pct)) ? parseFloat(cq.pct) : null);
             const link = links[b.id] || {}; const p = pIdx[link.prodId];
             const costo = p && tc ? costoPesos(p, 1, tc).costo : null;
             const envio = Number((netopub[b.id] || {}).envio) || 0;
             const imp = precio * (mlExtraPct(label) + monoPct) / 100;
             const extra = (fPro != null && fCla != null) ? (fPro - fCla) + (cuoPct != null ? precio * cuoPct / 100 : 0) : null;
             const ganCla = (fCla != null && costo != null) ? precio - fCla - envio - imp - costo : null;
-            filas.push({ mla: b.id, label, nom: String(link.title || b.title || '').slice(0, 44), precio, u: uds[b.id] || 0, fPro, fCla, cuoPct, cuoEst: !!(cq && cq.estimado), extra, ganCla });
+            filas.push({ mla: b.id, label, nom: String(link.title || b.title || '').slice(0, 44), precio, u: uds[b.id] || 0, fPro, fCla, cuoPct, cuoEst: !!(cq && cq.estimado), finEnCom, extra, ganCla });
           }
         }
       }
@@ -14940,7 +14942,7 @@ async function main() {
         const mes = f.extra != null ? f.extra * f.u * 30 / DIAS : null; if (mes) totMes += mes;
         const puede = (f.extra != null && f.ganCla > 0) ? Math.min(100, f.extra / f.ganCla * 100) : null;
         console.log(`• ${f.label.padEnd(8)} ${f.mla} · ${f.nom} · $${f.precio.toLocaleString('es-AR')}`);
-        console.log(`    comisión Premium ${f.fPro != null ? '$' + Math.round(f.fPro).toLocaleString('es-AR') : '?'} · Clásica ${f.fCla != null ? '$' + Math.round(f.fCla).toLocaleString('es-AR') : '?'} · cuotas ${f.cuoPct != null ? f.cuoPct + '%' + (f.cuoEst ? ' (estimado: nunca vendió)' : '') : 'sin medir'}`);
+        console.log(`    comisión Premium ${f.fPro != null ? '$' + Math.round(f.fPro).toLocaleString('es-AR') : '?'} · Clásica ${f.fCla != null ? '$' + Math.round(f.fCla).toLocaleString('es-AR') : '?'} · cuotas ${f.finEnCom ? 'ya adentro de la comisión Premium' : (f.cuoPct != null ? f.cuoPct + '%' + (f.cuoEst ? ' (estimado: nunca vendió)' : '') : 'sin medir')}`);
         console.log(`    ser Premium cuesta ${f.extra != null ? '$' + Math.round(f.extra).toLocaleString('es-AR') + ' por venta' : '? (ML no dio alguna comisión)'} · vendió ${f.u} en ${DIAS} d${mes != null ? ' → ~$' + Math.round(mes).toLocaleString('es-AR') + '/mes' : ''}`);
         console.log(`    en Clásica deja ${f.ganCla != null ? '$' + Math.round(f.ganCla).toLocaleString('es-AR') + ' por venta' : '? (sin costo o sin dólar)'}${puede != null ? ` → en Clásica puede vender hasta ${puede.toFixed(0)}% MENOS y ganar lo mismo` : ''}`);
       }
