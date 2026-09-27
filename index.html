@@ -1921,6 +1921,8 @@ function startApp(){
     state.facturas=d.facturas||{};
     state.facturas_sin=d.facturas_sin||{};
     state.facturas_desde=d.facturas_desde||{};
+    // Facturas emitidas FUERA de ML (entre las cuatro cuentas, a mano), cargadas desde ARCA.
+    state.fact_fuera=d.fact_fuera||{};
     // Facturas RECIBIDAS = las compras, según ARCA. Van aparte de cyc/compras (los gastos) a
     // propósito: son un registro para mirar, no entran en la ganancia del mes.
     state.facturas_rec=d.facturas_recibidas||{};
@@ -2339,7 +2341,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='20.71';
+const APP_VERSION='20.72';
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
 // muestre la versión y la fecha de actualización y que tenga un desplegable predeterminado cerrado".
 // Y el mismo día: "que ponga fecha de cada modificación y haya una barrita para scrollear y que
@@ -2350,6 +2352,7 @@ const APP_VERSION='20.71';
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'20.72',f:'27/09/2026',h:'17:46',c:[{n:3,t:'Tope de H: desde que cada cuenta factura por ML, lo facturado sale de las FACTURAS con CAE (las que ve ARCA), no de las ventas. Se suman las ventas que quedaron sin factura y lo facturado fuera de ML cuando se cargue. Abajo de cada barra dice de dónde sale el número.'}]},
   {v:'20.71',f:'27/09/2026',h:'17:15',c:[{n:2,t:'Tope de H: ya no es "30 días × 12". Mide lo facturado OFICIAL desde que arranca la ventana de ARCA (01/01) hasta hoy, más lo que falta hasta el 31/12 al ritmo de los últimos 30 días. La barra muestra las dos partes.'}]},
   {v:'20.70',f:'27/09/2026',h:'16:48',c:[{n:2,t:'Lo que trajo el robot y Vigilancia: verde sólo lo CONFIRMADO que ganó plata (7 días o más) y rojo sólo lo confirmado que perdió. Lo en curso, los rescates y lo que no suma van en gris. El total muestra aparte lo confirmado y lo en curso.'}]},
   {v:'20.69',f:'27/09/2026',h:'16:38',c:[{n:2,t:'Lo que trajo el robot: si todo lo que cuenta tiene menos de 7 días, ya no sale el cartel rojo sino uno ámbar que dice que el número todavía se mueve.'}]},
@@ -14781,11 +14784,54 @@ function _proxCierreARCA(){
   const ini=new Date(fin); ini.setDate(ini.getDate()-364);
   return {ini,fin};
 }
+// LO FACTURADO QUE VE ARCA (27/09/2026, pedido suyo: "toma los emitidos automaticamente como 100%").
+// Desde que cada cuenta factura con el facturador de ML (cyc/facturas_desde), el número sale de las
+// FACTURAS emitidas —las que tienen CAE, que son exactamente las que ARCA registra— por su fecha de
+// emisión, y NO de las ventas. Se les suman:
+//  · las ventas que quedaron SIN factura (facturas_sin): legalmente hay que facturarlas igual, y
+//    dejarlas afuera haría ver más lugar del que hay (el lado peligroso para el tope);
+//  · lo facturado FUERA de ML (cyc/fact_fuera, cargado de ARCA → Mis Comprobantes).
+// Las notas de crédito restan. Antes de que la cuenta empezara a facturar por ML, sigue la cuenta
+// de siempre (_facVentana: ventas + canceladas + meses congelados).
+function _facOficial(ini,hoy){
+  const iniK=dateToKey(ini),hoyK=dateToKey(hoy);
+  const real={},ofi={};
+  MET_ACCTS.forEach(a=>{
+    const dIso=(state.facturas_desde||{})[a];
+    const dd=dIso?new Date(String(dIso).slice(0,10)+'T00:00:00'):null;
+    const kOf=f=>{const x=String(f||'').slice(0,10);return /^\d{4}-\d{2}-\d{2}$/.test(x)?x.replace(/-/g,'_'):null;};
+    let fac=0,antes=0,nFac=0,nNC=0,sinF=0,fuera=0;
+    const corte=dd&&dd>ini?dd:ini;
+    if(!dd||dd>ini){
+      const fin=dd&&dd<=hoy?new Date(dd.getTime()-864e5):hoy;
+      if(fin>=ini)antes=_facVentana({winStart:ini,winEnd:fin,winStartK:iniK,winEndK:dateToKey(fin)})[a]||0;
+    }
+    const cK=dateToKey(corte);
+    if(dd&&dd<=hoy){
+      for(const f of Object.values((state.facturas||{})[a]||{})){
+        if(!f)continue;const k=kOf(f.fecha);if(!k||k<cK||k>hoyK)continue;
+        if(/reject|rechaz|cancel|error/i.test(String(f.estado||'')))continue;
+        const m=Number(f.monto)||0;
+        if(/credit|credito|crédito|nota/i.test(String(f.tipo||''))){fac-=m;nNC++;}else{fac+=m;nFac++;}
+      }
+      for(const v of Object.values((state.facturas_sin||{})[a]||{})){
+        const k=kOf(v&&v.fecha);if(!k||k<cK||k>hoyK)continue;sinF+=Number(v.monto)||0;
+      }
+    }
+    for(const f of Object.values((state.fact_fuera||{})[a]||{})){
+      const k=kOf(f&&f.fecha);if(!k||k<iniK||k>hoyK)continue;
+      const m=Number(f.monto)||0;fuera+=/credit|credito|crédito|nota/i.test(String(f.tipo||''))?-m:m;
+    }
+    real[a]=antes+fac+sinF+fuera;
+    ofi[a]={desde:dd&&dd<=hoy?cK:null,antes,fac,nFac,nNC,sinF,fuera};
+  });
+  return {real,ofi};
+}
 function parejoDatos(){
   const topeH=catLim('H'); if(!(topeH>0))return null;
   const hoy=new Date(); hoy.setHours(0,0,0,0);
   const {ini,fin}=_proxCierreARCA();
-  const real=_facVentana({winStart:ini,winEnd:hoy,winStartK:dateToKey(ini),winEndK:dateToKey(hoy)});
+  const {real,ofi}=_facOficial(ini,hoy);
   const faltan=Math.max(0,Math.round((fin-hoy)/864e5));
   const desde=new Date(hoy); desde.setDate(desde.getDate()-29);
   const dK=dateToKey(desde), hK=dateToKey(hoy);
@@ -14795,9 +14841,20 @@ function parejoDatos(){
     const a=(v&&v.cuenta||'').toLowerCase(); if(!v||!(a in m30))return; m30[a]+=Number(v.total)||0;}));
   const filas=MET_ACCTS.map(a=>{
     const diario=m30[a]/30, fac=real[a]||0, futuro=diario*faltan, proy=fac+futuro;
-    return {a,fac,futuro,proy,diario,pct:proy/topeH*100,resta:topeH-proy,pctReal:fac/topeH*100};
+    return {a,fac,futuro,proy,diario,pct:proy/topeH*100,resta:topeH-proy,pctReal:fac/topeH*100,ofi:ofi[a]};
   });
   return {topeH,filas,ini,fin,faltan};
+}
+function _ofiTxt(o,fM){
+  if(!o)return '';
+  const kD=k=>k.slice(8,10)+'/'+k.slice(5,7);
+  if(!o.desde)return 'todo sale de las ventas: esta cuenta todavía no factura por ML'+(o.fuera?' · + '+fM(o.fuera)+' facturado fuera de ML':'');
+  const p=[];
+  if(o.antes)p.push(fM(o.antes)+' de ventas antes del '+kD(o.desde));
+  p.push('✅ '+fM(o.fac)+' en '+o.nFac+' facturas con CAE desde el '+kD(o.desde)+(o.nNC?' ('+o.nNC+' notas de crédito restadas)':''));
+  if(o.sinF)p.push('<span style="color:var(--amber)">+ '+fM(o.sinF)+' de ventas sin factura</span>');
+  if(o.fuera)p.push('+ '+fM(o.fuera)+' facturado fuera de ML');
+  return p.join(' · ');
 }
 function renderHomeParejo(){
   const el=document.getElementById('home-parejo'); if(!el)return;
@@ -14819,6 +14876,7 @@ function renderHomeParejo(){
         <span style="color:${col};font-family:'DM Mono',monospace">${fM(f.proy)} al ${fD(d.fin).slice(0,5)} · ${f.proy>d.topeH?'se pasa '+fM(-f.resta):'le quedan '+fM(f.resta)}</span></div>
       <div style="height:7px;background:var(--surface2);border-radius:5px;overflow:hidden;margin-top:3px;display:flex"><div style="height:100%;width:${wReal.toFixed(1)}%;background:${col}"></div><div style="height:100%;width:${wFut.toFixed(1)}%;background:${col};opacity:.4"></div></div>
       <div style="font-size:.56rem;color:var(--muted);margin-top:2px">facturado ${fM(f.fac)} · faltan ${d.faltan} d × ${fM(f.diario*30)}/mes = +${fM(f.futuro)}</div>
+      <div style="font-size:.54rem;color:var(--muted);margin-top:1px">${_ofiTxt(f.ofi,fM)}</div>
     </div>`;}).join('');
   el.innerHTML=`<div style="max-width:760px;margin:0 auto 14px;background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:14px 16px">
     <div style="font-family:'Syne',sans-serif;font-weight:800;font-size:.85rem">⚖️ Las 4 cuentas contra el tope de H (${fM(d.topeH)}/año)</div>

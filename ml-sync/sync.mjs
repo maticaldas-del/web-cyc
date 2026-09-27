@@ -25548,6 +25548,61 @@ async function main() {
       console.log(`\nRECORDÁ: esto fue solo una LISTA. No se tocó ningún precio en ML.`);
       return;
     }
+    // BILLING_PROBE=topeh → LO FACTURADO EN LA VENTANA DE ARCA, CON LAS DOS CUENTAS (27/09/2026)
+    // La de siempre (ventas + canceladas, meses viejos congelados) contra la oficial: desde que cada
+    // cuenta factura por ML, las FACTURAS con CAE + las ventas sin factura. Misma regla que la tarjeta
+    // ⚖️ de Inicio (_facOficial). Solo LEE.
+    if (String(process.env.BILLING_PROBE || '') === 'topeh') {
+      const hoy = new Date(Date.now() - 3 * 3600e3);
+      const y = hoy.getUTCFullYear(), m = hoy.getUTCMonth() + 1;
+      const ini = m <= 6 ? `${y - 1}-07-01` : `${y}-01-01`;
+      const iniK = ini.replace(/-/g, '_'), hoyK = hoy.toISOString().slice(0, 10).replace(/-/g, '_');
+      const vp = (await db.get('cyc/ventaprod')) || {};
+      const factMes = (await db.get('cyc/fact_mes')) || {};
+      const desdeAll = (await db.get('cyc/facturas_desde')) || {};
+      const kOf = (f) => { const x = String(f || '').slice(0, 10); return /^\d{4}-\d{2}-\d{2}$/.test(x) ? x.replace(/-/g, '_') : null; };
+      console.log(`=== TOPE DE H · ventana de ARCA desde ${ini} hasta hoy ===`);
+      let tV = 0, tO = 0;
+      for (const a of ['adriana', 'luciana', 'ayelen', 'matias']) {
+        const facs = (await db.get('cyc/facturas/' + a)) || {};
+        const sin = (await db.get('cyc/facturas_sin/' + a)) || {};
+        const dK = desdeAll[a] ? kOf(desdeAll[a]) : null;
+        let viejo = 0; const ymVistos = new Set();
+        for (const [k, d] of Object.entries(vp)) {
+          if (k < iniK || k > hoyK) continue;
+          const ym = k.slice(0, 7);
+          if (ym < '2026_05') continue;
+          for (const v of Object.values(d || {})) if (v && String(v.cuenta || '').toLowerCase() === a) viejo += Number(v.total) || 0;
+        }
+        for (const [ym, val] of Object.entries(factMes[a] || {})) if (ym >= iniK.slice(0, 7) && ym < '2026_05') viejo += Number(val) || 0;
+        let antes = 0;
+        for (const [k, d] of Object.entries(vp)) {
+          if (k < iniK || k > hoyK || (dK && k >= dK) || k.slice(0, 7) < '2026_05') continue;
+          for (const v of Object.values(d || {})) if (v && String(v.cuenta || '').toLowerCase() === a) antes += Number(v.total) || 0;
+        }
+        for (const [ym, val] of Object.entries(factMes[a] || {})) if (ym >= iniK.slice(0, 7) && ym < '2026_05') antes += Number(val) || 0;
+        let fac = 0, nF = 0, nNC = 0, sinM = 0, nSin = 0, primera = null;
+        if (dK) {
+          for (const f of Object.values(facs)) {
+            const k = kOf(f && f.fecha); if (!k || k < dK || k > hoyK) continue;
+            if (/reject|rechaz|cancel|error/i.test(String(f.estado || ''))) continue;
+            const mm = Number(f.monto) || 0;
+            if (/credit|credito|nota/i.test(String(f.tipo || ''))) { fac -= mm; nNC++; } else { fac += mm; nF++; }
+            if (!primera || k < primera) primera = k;
+          }
+          for (const v of Object.values(sin)) { const k = kOf(v && v.fecha); if (!k || k < dK || k > hoyK) continue; sinM += Number(v.monto) || 0; nSin++; }
+        }
+        const ofi = dK ? antes + fac + sinM : viejo;
+        tV += viejo; tO += ofi;
+        const tipos = [...new Set(Object.values(facs).map((f) => f && f.tipo).filter(Boolean))].join(',');
+        console.log(`── ${a.toUpperCase()} ── factura por ML desde ${dK || '(nunca)'} · primera factura leída ${primera || '-'} · tipos ${tipos || '-'}`);
+        console.log(`   con ventas (como antes): ${money(Math.round(viejo))}`);
+        console.log(`   OFICIAL: ${money(Math.round(ofi))} = ventas antes ${money(Math.round(antes))} + ${nF} facturas ${money(Math.round(fac))}${nNC ? ` (−${nNC} NC)` : ''} + ${nSin} sin factura ${money(Math.round(sinM))}`);
+        console.log(`   diferencia: ${money(Math.round(ofi - viejo))} (${viejo ? ((ofi / viejo - 1) * 100).toFixed(1) : '-'}%)`);
+      }
+      console.log(`\nTOTAL 4 cuentas · con ventas ${money(Math.round(tV))} · oficial ${money(Math.round(tO))}`);
+      return;
+    }
     // BILLING_PROBE=catmono[:<YYYY-MM-DD>] → ¿QUÉ CATEGORÍA DE MONOTRIBUTO LE CORRESPONDE A CADA CUENTA?
     //
     // (Se llama 'catmono' y no 'monocat' porque más arriba hay un probe que agarra todo lo que
