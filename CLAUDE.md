@@ -256,6 +256,169 @@ precios-decisión 3.
    `ml-stock.yml` y `ml-sync/stock.mjs` (robot viejo duplicado).
  · **Obvias que quedan: ninguna.** Quedan las 60 sin verificar (se retoman solas a las 21:15 UTC).
 
+### 25/09 A LA NOCHE: CAJAS, PEDIDOS Y LO QUE DEJÓ LA REVISIÓN (v20.46 · `cyc-v324`)
+ · **POR QUÉ EL ROBOT NO MARCABA NINGUNA CAJA:** ML rechazaba por cupo (429 `over_quota`) 63 de 135
+   lecturas de movimientos de Full. El robot hacía bien en no marcar sin leer, pero 5 cajas que ML
+   ya daba "procesamiento finalizado" seguían "en camino" (mercadería contada dos veces). Arreglo:
+   cada consulta espaciada 350 ms y el 429 se reintenta 3 veces (4/10/20 s), con tope de 3 min de
+   espera por vuelta. Si igual falla, queda "sin leer" como siempre.
+ · **`cajallego` ampliado:** varias cajas con `;`, re-marca cajas YA marcadas con faltantes falsos,
+   y acepta un faltante real confirmado en ML: `cajallego:<seg>!<palabras>=<u>:go` (palabras con
+   "+", tiene que agarrar UN renglón). Aplicado con sus pantallas de ML: 76397947 y 75243039
+   (faltantes falsos, quedaron completas), 76576705, 76675902, 77399863 completas, y 77366838
+   con 2 u. faltantes de Sábanas 140x190 Gris. La 77681804 (Adriana, 22/09) sigue abierta: ML
+   todavía la está procesando (95 declaradas / 61 aptas).
+ · **`pedremate` (solo lee):** cruza cada pedido contra liquidando, escalera, bajas por remate,
+   "no traer más" y ventas etiquetadas remate. Medido: **0 de 56** pedidos con señal de remate.
+   Lo que sí apareció: 13 pedidos de productos SIN stock y SIN ventas en 60 días, que piden según
+   el ritmo viejo (hasta 180 días, la regla de la Lupa 75mm del 16/09). **DECIDIDO POR ÉL EL 25/09,
+   eligió la (b): se deja como está** y manda a la papelera los que no quiere (ej. la tarjeta
+   SanDisk 128 con adaptador, de las truchas). No volver a proponer cortar el ritmo viejo.
+ · **`buscacosto:<palabras>` (solo lee):** busca un producto en fichas, candidatos de Paraguay,
+   compras a Paraguay (precio pagado y recargo real) y publicaciones de ML.
+ · **Contar lo que hay** dice "+N en camino" al lado de cada cuenta (misma cuenta que Armar caja).
+ · **De la revisión max (vuelta del 25/09 a la noche):** el aviso "Descuento que no pude sacar"
+   no salía nunca (sendTelegram sin tipo): ahora va por `sendAlerta`, 1 por día por publicación
+   (`cyc/avisopromofallo`). `tocados:…:bajar` declaraba META sin mirar el envío del lado de los
+   $33.000: ahora declara el margen real y sin envío medido no baja. `alpiso`/`bajar` ya estaban
+   arreglados. La revisión se volvió a cortar por el límite de uso (228 agentes caídos): las 60
+   sospechas siguen **sin verificar**.
+
+### 26/09 DE MADRUGADA: LA REVISIÓN MAX TERMINÓ LA VERIFICACIÓN (MENOS CHOQUES)
+ · **24 confirmadas de 92**, guardadas en `ml-sync/revision3-resultado2.json` (margen 14 · plata 6 ·
+   precios-decisión 2 · precios-escritura 2). Las 2 de precios-escritura (`alpiso`/`bajar` y el aviso
+   de promo) **ya estaban arregladas**: quedan **22 nuevas para pasarle de a una con (a)/(b)**, las
+   obvias las hago yo. **Choques: 15 sin verificar** (se cortó otra vez por el límite; el resumen no
+   se armó). Retomar sólo choques cuando él diga.
+ · **Kit Jade Rodillo y Piedra Guasha** (`MLA2126175931`, Ayelen, pausada): ficha `p1790392438056`,
+   costo $2.080, vinculada. **Piedra Gua Sha de Jade sola**: ficha con costo $1.130, sin publicación
+   todavía (la va a crear él; el alta de la hora la engancha por título o con `vincular`).
+ · **HECHAS el 26/09 (obvias, v20.47 · `cyc-v325`), numeradas como en el archivo:** 2 `calcCajaBarata`
+   mide el envío de la caja del lado de la barrera de ESE precio · 7 monotributo de meses nuevos =
+   vigente · 8 `netoweb` marca "sin medir" lo que no pudo leer (token, lote, comisión de hoy) · 9
+   reactivar una cancelada devuelve total y neto (`antesCancel`) · 11 `margenAlDia` ignora filas de
+   publicaciones desenganchadas · 12/23 Rentabilidad del Resumen = la ganancia de la Cascada y el %
+   único · 13 cambiar un costo sólo completa ventas sin costo · 14 `netoreal` no toca lo editado a
+   mano · 16 `gestDeVenta` = 0 en ventas abajo de $33.000 · 17 envío medido 0 abajo de la barrera no
+   cae al `gestFull` · 19 `dispo` acepta $0 como punto de partida · 20 Puntaje: retiro y gastos sin
+   proyectar · 22 Resumen de días/año: el retiro de cada mes, no el 15%.
+ · **18 · HECHO el 26/09, eligió la (a) (v20.48 · `cyc-v326`):** `saldoml` deja en `mp_liq` lo liberado
+   (y lo que salió) después de lo último que refleja el disponible de cada cuenta (ancla o `_dispTs`),
+   anotado en `cyc/finanzas/liq_liberado`; `dispo` lo resta al escribir; el Arqueo lo avisa en ámbar.
+ · **3 · HECHO el 26/09, eligió la (a):** el reloj del remate y de la escalera (`quietaDe` en
+   `calcCajaBarata` y el `uv` de la escalera) va por COLOR cuando la publicación es de un color
+   (`mllinks.variant`): vale sólo la venta de ese color (misma clave que `filtrarRescate`) y la fecha
+   de entrada de ese color (`stockhist` `__v__`, si no la del producto). Un aroma parado ya puede
+   entrar solo al remate, con los frenos de siempre (5 por noche, nunca abajo de 0%, `liquidando`).
+ · **4 · HECHO el 26/09, eligió la (a):** `compraCruzaBarrera(v, ents)` saca de la cuenta del envío
+   las ventas cuyo PEDIDO (unidades × precio, o el carrito con el mismo `numVenta` y cuenta) pasa los
+   $33.000 aunque la unidad esté abajo. Aplicado en los 16 lugares que arman las ventas para
+   `envioDeducido` (netoweb, `calcSubirPorMargen`/rescate, `activarPausadasFull`, bajopiso, unapub…).
+   La web no se tocó (`gestDeVenta` ya daba 0 abajo de la barrera y deja de recibir el envío inflado).
+ · **5 · HECHO el 26/09, eligió la (a):** si un paquete de 2+ órdenes no se puede armar esa vuelta
+   (`packFallo`), ninguna orden usa su pago suelto: queda el neto real guardado (freno f1) o, si es la
+   primera vez, estimada y marcada `netoEstimado`; el rescate al vender no mira ventas estimadas, y la
+   noche (`netoreal:…:estimadas`) la relee por paquete. Cada pago de un carrito se pide una sola vez.
+ · **6 · HECHO el 26/09, eligió la (a) (v20.49 · `cyc-v327`):** IIBB + monotributo van SIEMPRE como %
+   del precio de HOY con el monotributo de HOY en la ficha (`margenMLDe`), el rescate (`calcSubirPorMargen`)
+   y el chequeo `margenweb`. Se borró el promedio de ventas viejas (`impProd`/`mlxDe`).
+ · **10 · HECHO el 26/09, eligió la (a) (v20.50 · `cyc-v328`):** venta sin ficha o con la ficha en costo 0
+   (`ventaSinCostoVP`) → `efectivoCostoVP` devuelve el neto: cuenta en facturado, $0 de ganancia. Los KPIs de
+   Ventas y el resumen de Telegram (día y mes) dicen cuántas quedaron afuera.
+ · **15 · HECHO el 26/09, eligió la (a) (v20.51 · `cyc-v329`):** venta con `netoEstimado` → la web le suma al costo
+   `gestDeVenta` (envío de Full de la ficha, 0 abajo de $33.000) y el renglón dice "≈ estimado" en gris; el
+   resumen de Telegram resta `CAND_ENVIO_ARRIBA` arriba de la barrera y dice cuántas son aproximadas.
+ · **21 · HECHO el 26/09, eligió la (a) (v20.52 · `cyc-v330`):** `compray` crea las compras nuevas con
+   `estado:'historial'` (con `|camino` quedan viajando) y sin los candidatos del armado (sólo `det=`); en camino
+   (Arqueo, "viajando", el robot) cuenta sólo `estado==='camino'`.
+### 26/09 A LA MADRUGADA: SE VERIFICARON LAS 42 SOSPECHAS QUE QUEDABAN (plata, mercadería, choques)
+ · **29 reales · 13 ya arregladas · 1 no real**, en `scratchpad/rev4/resultado.json` (se pierde con el contenedor).
+ · **URGENTE, HECHO:** `ml-daily.yml` tenía `continue-on-error` repetido en el paso del supervisor: GitHub
+   rechazaba el archivo entero desde el 25/09 17:30 UTC y **la noche del 25 al 26 no corrió nada**. Arreglado
+   en las dos ramas y se largó a mano el 26/09 ~04:15 UTC. **Antes de subir un workflow: `yaml.safe_load`
+   no alcanza, mirar opciones repetidas en un mismo paso.**
+ · **21 obvias HECHAS (v20.54 · `cyc-v332`)**, probadas con el código real: cajas (el robot relee la lista
+   antes de marcar y busca la caja por seguimiento+contenido · color sin depósito queda sin leer · no se
+   deshace una caja con unidades ya en Full · cerrar caja avisa si un producto ya no está en la oficina) ·
+   aviso de cajas con faltantes por `sendAlerta` · Paraguay (dos "Ya lo pedí" el mismo día se suman ·
+   canasta a precio de hoy · "No lo compro por ahora" pausa) · `dispo` pide reporte de 20+ días al día ·
+   el disponible escrito en la web pasa por `saveFin` · `facsync` no borra la alarma a los 3 días ·
+   `CANCEL_AGG` hace patch de meses completos · resumen del mes cuenta canceladas · el ciclo relee
+   `manualTs` (el día entero, cacheado 60 s) · aviso de publicación con marca guardada antes del estado ·
+   `margenAlDia` saltea cerradas · caja de publicaciones pausadas no cuenta como ganar · ritmo después de
+   reponer suma los dos tramos · Puntaje con su meta real · Gastos fijos sin mercadería · "nunca más" de
+   candidatos pide 4 seguidas.
+ · **QUEDAN 5 PARA DECIDIR CON ÉL, de a una:** (1) almacenamiento de Full contado dos veces — **HECHO el 26/09,
+   eligió la (a) (v20.55 · `cyc-v333`):** `ML_EXTRA_PCT` = sólo percepciones medidas en agosto (Adriana 3,80 · Luciana
+   4,01 · Ayelen 5,99 · Matías 3,40), en index.html y sync.mjs (las dos copias `MLX` sueltas del robot ahora usan la
+   tabla); los cargos de Full (almacenamiento, stock antiguo, retiro, multas) van SÓLO como gasto del mes · (2) **HECHO el 26/09, eligió la (a) (v20.56 · `cyc-v334`):** la canasta tiene "✅ Ya lo pedí"
+   (`pyCanastaYaLoPedi`): guarda `compraspy/pyr<fecha>` con `tipo:'repo'` e items con `prodId`, en camino; la canasta
+   resta lo que ya viaja (`pyRepoEnCamino`); "Ya llegó" de una repo no crea fichas y recuerda contar en la oficina;
+   se ve arriba de la canasta en Productos probados (`pyEnCaminoHTML('repo')`). OJO: las tarjetas de Pedidos siguen
+   mostrando la cantidad entera (sólo la canasta descuenta) · (3) **HECHO el 26/09, eligió la (a):** una caja marcada A MANO ya no se come las entradas de la caja siguiente: la
+   ventana arranca en su despacho (hasta 60 días) y, si se ubican TODAS sus entradas y son anteriores al despacho de la
+   caja siguiente, se le guardan (`recUsadas`, `recUsadasCalc`); ante la duda queda como antes · (3b) caja marcada a mano: el
+   mismo producto · (4) **HECHO el 26/09, eligió la (a):** toda caja abierta, de la más vieja a la
+   más nueva, aparta lo suyo aunque no se marque (antes la nueva se marcaba con la mercadería de la vieja) · (5) **HECHO el 26/09, eligió la (a) (v20.57 · `cyc-v335`):** Pedidos pide un color agotado hace 30+ días con su ritmo
+   viejo (`ventasHistoricas`, misma condición que Armar caja) y el chip dice "ritmo viejo". **LAS 5 DECISIONES CERRADAS.**
+ · **LAS 22 DE LA REVISIÓN MAX QUEDARON CERRADAS.** Falta: choques (15 sin verificar, cuando él diga) y la
+   segunda revisión completa al final (recordársela).
+
+### REGLA SUYA DEL 26/09: ÉL NO MARCA NADA A MANO, ME LO DICE Y LO HAGO YO
+Textual: *"no quiero marcar a mano, todo te lo voy a decir para que lo hagas vos. y cuando lleguen quiero que crees
+la publicacion en la web de cyc y en la cuenta que te parezca adecuado, segun rubro de cada cuenta y segun como viene
+en afip"*. O sea: "Ya lo pedí", "Llegó", caja recibida, etc. los hago yo por comando cuando él avisa. **Comandos (26/09):**
+`pyped` (Paraguay: repo/nuevos/llegó), `ofi` (contar oficina), `ancla` (disponible MP), `pausaprecio`, `cajallego`/`abrircaja`
+(cajas de Full), `pedir` (unidades del armado), `repartopy` + `pasara` (cuenta de un producto nuevo), `compray` (los pesos).
+**Y EL CICLO SE PRENDE SOLO después de cada comando** (job `ciclo` en ml-sync/ml-chequeo/ml-bajopiso): ya no hace falta
+disparar `ciclo` a mano. Al llegar un
+pedido creo la ficha y elijo la cuenta (rubro primero —perfumes → Adriana—, después el equilibrio de `repartopy`, y la
+actividad de ARCA). **Confirmado por él:** *"solo armar la publicacion en cyc. ml la hago yo"* — yo creo la ficha y la vinculo; en ML publica él.
+
+### 26/09 A LA TARDE: EL PEDIDO DEL 21/09 LLEGÓ, FICHAS Y VÍNCULOS HECHOS
+ · `pyped:llego:py20260921:go`: 12 fichas creadas (costo = precio pagado × 1,17) y pedido marcado llegado.
+   Oficina cargada con las unidades del pedido (2 c/u, Sennheiser 1).
+ · Ayelen (publicaciones que creó él, todas PAUSADAS, sin stock en Full todavía): microSD Pokémon
+   `MLA3998158816`, EX15AP negro `MLA3998210018`, EX15AP blanco `MLA3998210020`, Corsair `MLA3998036656`,
+   ZX310 `MLA3998159220`, TP-Link `MLA3998036670`, Piedra Gua Sha `MLA2128197015` (ficha "sola", no el Kit:
+   el alta por título la mandaba al Kit). Sin publicación: EX15LP blanco y Sennheiser → `pasara:ayelen`.
+   Los 4 perfumes → `pasara:adriana`. Dos Linternas COB + encendedor de Ayelen (`MLA3998033920`,
+   `MLA2128209177`) NO son de este pedido y no tienen ficha: falta que él diga el costo.
+ · **`always()` EN UN JOB LO HACE INCANCELABLE**: el job `ciclo` trabó los comandos de ml-sync hasta 6 h.
+   Pasó a `!cancelled()`. La corrida trabada (36253553999) termina sola ~21:35 UTC.
+ · **`ml-consulta.yml`** (nuevo): corre un comando (`comando` = lo mismo que billing_probe) SIN el candado
+   del ciclo. Para consultas y escrituras chicas (vincular, ofi, pasara); lo grande va por ml-sync.
+
+### EL CARTEL DE LA REVISIÓN LO MANEJO YO (26/09/2026, v20.58 · `cyc-v336`)
+Él: *"quiero que manejes vos eso de revision del panel, que me marque lo que realmente falte (…) y vos lo marcas
+como hecho cuando se termine de resolver TODO"*. El cartel de Inicio sale de `REV_PENDIENTE` y `REV_HECHAS` en
+`index.html` (sin botón). **Cuando algo queda resuelto ENTERO (verificado y arreglado): sacarlo de `REV_PENDIENTE`
+y poner la fecha en `REV_HECHAS`, subir versión.** **Los "15 choques sin verificar" NO existían: se verificaron en rev4 (lotes 6-8, ítems 27-42) y están todos arreglados.** Pendientes al 26/09: etapa 6 (ideas nuevas) y la revisión completa final.
+
+### ETAPA 6 · IDEAS NUEVAS: LA LISTA, ESPERANDO QUE ÉL ELIJA (26/09/2026)
+Tres revisores (datos de ML sin usar · trabajo a mano · palancas de plata). Lo que dependía de mí ya se hizo: los comandos
+para no tocar botones (`pyped`, `ofi`, `ancla`, `pausaprecio`) y el ciclo que se prende solo. **Para elegir él:**
+1 packs x2/x3 para lo de menos de $5.000 (el cargo fijo ~$1.230 se paga una vez) · 2 Premium contra Clásica publicación por
+publicación con las cuotas medidas (Watch 4 ~$28.000/venta; Dalí pendiente) · 3 visitas y conversión en Rotación ("no la ve
+nadie" vs "la ven y no compran"; el dato ya está en `mllinks.vis30`) · 4 mostrar `visit_share` y "comparten N" de la caja ·
+5 aviso de emparejar las 4 cuentas contra el techo de H (~$2,1M/mes de facturación liberada) · 6 probar subas chicas en las 36
+que venden sin catálogo (el supervisor mide) · 7 "hoy perdés $X/día en cuentas en cero con mercadería en tu oficina" arriba de
+Armar caja · 8 guardar el motivo de cada reclamo (sólo el código) para proponer `sincargo` · 9 unidades perdidas/dañadas por
+ML adentro de Full · 10 avisos por Telegram de gastos del mes que faltan, disponible MP de +30 días y cupo de +7 días.
+Descartadas por reglas suyas: publicidad, IA contestando, bajar precios en general.
+**27/09: eligió de las primeras 5.** 1 packs → **NO** (*"al estar en pack las saco de competencia y se vende menos"*). 2 `premiumvs` · 3 visitas en Rotación (`rotVisitasHtml`) · 4 `cajaVis`/`cajaComp` en Caja ML (el robot los guarda cada hora) · 5 tarjeta ⚖️ en Inicio (`renderHomeParejo`, tope H, ritmo = 30 d × 12) → **HECHAS (v20.66)**. **De 6-10 eligió 6 y 8 (7, 9 y 10 NO).** 6 → 🧪 prueba de suba +5% de TODAS las que venden y no son de catálogo, cada noche en `avisos:go` (`calcPrueba`, `cyc/prueba/<MLA>`, motivo `prueba` que SÍ suma en el supervisor); a los 14 d otra suba si no perdió plata, si perdió se cierra y avisa (volver atrás lo decide él). Foto de todas las que venden en `cyc/vigilancia`, panel 🧪 Vigilancia al final de Métricas. Probe `vigilancia[:guardar]` (solo lee). 8 → `motivoreclamo[:días][:go]` en ml-daily: motivo de ML de cada reclamo en `cyc/reclamomotivo/<orden>` (clase producto/envio/comprador), se ve en Ventas y aviso semanal de los que no son del producto. **ETAPA 6 CERRADA (v20.67).** Queda la revisión completa final.
+**27/09, ideas 11-15:** 11 NO como aviso inmediato; en su lugar, regla suya: *"que analice TODO una vez al día, ver si subir o bajar. si duda, no haga nada y avise"* → el aviso de la noche ya no es "para decidir": cada renglón que el robot NO hizo dice **🤔 por qué dudó** (`porQueNoSube`/`porQueNoBaja`, mismos frenos que decidieron). 12 SÍ: *"que conteste solo, que no me avise… si tiene una pequeña duda que no conteste"* → `responderPreguntas` cada hora (sin Telegram, apagado con `cyc/mlconfig/responder=off`, prueba `responder[:go]`, registro `cyc/respuestasauto`). **Sin IA**: sólo 3 temas con respuesta leída de ML en el momento (stock de Full preguntado de frente, cuándo llega en Full, factura C); cualquier otra palabra = no contesta. Medido el 27/09: **0 de 83** pendientes pasan (casi todas son de características del producto: compatibilidad, material, hilos, colores). Para contestar ésas haría falta IA con clave de la API de Anthropic (costo aparte): **decisión suya, se le ofreció**. 13, 14, 15 NO.
+**Verde/rojo en Lo que trajo el robot y Vigilancia (v20.70): verde sólo lo CONFIRMADO (7+ días) que ganó, rojo sólo lo confirmado que perdió; en curso, rescates y a mano en gris.** El remate sigue sin poder mostrar lo que ahorra en almacenamiento hasta que él pase `almactarifa`.
+
+### EL PUNTAJE DEL MES: REHACERLO, PERO DESPUÉS (26/09/2026)
+Él, con la captura del Puntaje (7,2 · "Buen mes"): *"no veo cuál es el objetivo de ganancia de CYC y para mí es medio
+flojo el conteo. podría fijarse otras cosas. si querés remodelalo desde 0 con lo que pondrías vos (…) pero ahora
+sigamos con esto"*. **HECHO el 26/09 (v20.60 · `cyc-v338`), con la libertad que dio:** objetivo de ganancia CYC =
+retiro + gastos del mes ("por cada peso que sale, otro se queda"; editable en ✎ objetivos), la meta grande = el doble
+(su verde de `pisobase`, sin puntuar). Puntos: ganancia CYC vs objetivo 4 · margen 2 (0 en `minPct`, llenos en la meta
+35) · faltantes 2 · capital parado 1 (`calcRotScore`, nuevo) · reclamos 1. Se sacaron retiro vs piso (es fijo) y gastos
+aparte (ya están en la ganancia). Falta que él lo mire y diga si el objetivo le cierra.
+
 ### LA REVISIÓN POR ETAPAS (propuesta del 25/09, falta que confirme el ritmo)
 Pedido suyo: que cada revisión entre en una ventana de 5 h de tokens (plan de US$100, Opus 5.5). Seis
 etapas, una por semana (ciclo de 6 semanas) y la del tema tocado cuando haya un cambio grande. Se
@@ -1163,6 +1326,12 @@ Los que más se usan:
 | `mismoprod[:cuenta]` | **¿ML dice solo cuáles publicaciones son el mismo producto?** y si da la foto · solo lee |
 | `apis` | qué endpoints de ML contestan (para diagnosticar) |
 | `ciclo` | **no es un comando: vuelve a prender el ciclo de 2 minutos** (ver abajo) |
+| `pyped[:repo:<palabra>=<u>;…\|nuevos\|llego:<id>][;go]` | **los pasos de Paraguay desde el chat** (26/09): "Ya lo pedí" de reposición o de nuevos, y "Llegó" (en nuevos crea las fichas). Mismos registros que los botones |
+| `ofi:<palabra>[@<variante>]=<+N\|-N\|N>[;…][;go]` | **contar lo que hay en la oficina desde el chat** (26/09): suma, resta o fija, variante por variante |
+| `ancla:<cuenta>=<pesos>[;…][;go]` | **el disponible de MP que él lee**, cargado desde el chat (26/09): punto de partida en pesos + casilla en dólares |
+| `pausaprecio[:<palabra>\|:-<palabra>][:go]` | **"No lo compro por ahora" desde el chat** (26/09) · con `-` lo devuelve a Pedidos |
+| `marcano:<marca>[:go]` | **"esta marca no se compra"** (26/09): la guarda en `marcasFrenadas`, tacha los candidatos de esa marca (la busca también en el NOMBRE, no sólo en el campo marca) y les saca las unidades del pedido · `-` adelante la vuelve a permitir · prohibida hoy: **Dolce & Gabbana** |
+| `premiumvs` | **Premium contra Clásica** (idea 2 de la etapa 6, 27/09): cuánto cuesta ser Premium por venta (comisión + cuotas) y cuánto menos se puede vender en Clásica ganando lo mismo · solo lee |
 
 Casi todos son de solo lectura. Los que escriben piden `:go` explícito.
 
@@ -1263,6 +1432,8 @@ entra a este repo lo lee cualquiera, para siempre, sin contraseña.* Antes de co
 con números adentro, la pregunta no es "¿esto es secreto?" sino **"¿de quién es este dato?"**. Si
 aparece alguien que no es Mati, no va.
 
+**DESDE EL 26/09/2026 EL CICLO SE VUELVE A PRENDER SOLO** (job `ciclo` al final de ml-sync, ml-chequeo y
+ml-bajopiso; el registro del comando sigue en el job `sync`/`chequeo`). Lo de abajo es cómo era antes.
 **SIEMPRE, después de correr un comando: volver a prender el ciclo** disparando `ml-sync` con
 `billing_probe` = `ciclo`. Cada corrida a mano **mata** el ciclo automático (es el mismo candado),
 y el ciclo NO se recupera solo: solo lo arranca el reloj de GitHub, que saltea corridas. La noche
