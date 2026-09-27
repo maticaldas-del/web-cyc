@@ -25564,9 +25564,12 @@ async function main() {
       console.log(`=== TOPE DE H · ventana de ARCA desde ${ini} hasta hoy ===`);
       let tV = 0, tO = 0;
       for (const a of ['adriana', 'luciana', 'ayelen', 'matias']) {
-        const facs = (await db.get('cyc/facturas/' + a)) || {};
-        const sin = (await db.get('cyc/facturas_sin/' + a)) || {};
-        const dK = desdeAll[a] ? kOf(desdeAll[a]) : null;
+        const nm = (x) => String(x || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+        const lab = labels.find((l) => nm(l) === a) || a;
+        const facs = (await db.get('cyc/facturas/' + sid(lab))) || {};
+        const sin = (await db.get('cyc/facturas_sin/' + sid(lab))) || {};
+        const dKey = Object.keys(desdeAll).find((k) => nm(k) === a);
+        const dK = dKey ? kOf(desdeAll[dKey]) : null;
         let viejo = 0; const ymVistos = new Set();
         for (const [k, d] of Object.entries(vp)) {
           if (k < iniK || k > hoyK) continue;
