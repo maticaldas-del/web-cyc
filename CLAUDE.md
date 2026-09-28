@@ -424,9 +424,11 @@ stock por color · netoweb neto≤0 = sin medir · 8 precios para el peor envío
 `pausar` pone `noAutoActivar` · `submargen` con minPct/targetPct · `grupos` pide `:go` y anota autoprecio ·
 `unapub bajar=` con pesosArg y envío por lado de la barrera · `preciosgo` ya no escribe · sacapromos manual =
 automático · avisos de comandos por `sendAlerta`. Probado con `avisos` en prueba (corre limpio).
-**FALTA SU DECISIÓN (en REV_PENDIENTE):** la 🧪 `calcPrueba` sólo cierra con `md.total<0` (casi nunca se mide
-completo) y resube +5% cada 14 d. (a) resubir sólo con medición completa · (b, recomendada) resubir si vendió
-igual o más por día (días con stock), si cayó se cierra y avisa.
+**28/09 · ELIGIÓ LA (b) (v20.77 · `cyc-v355`):** la 🧪 `calcPrueba`, pasados los 14 días, compara unidades por día
+antes y después de la suba (misma ventana, hasta 30 d, sólo días CON stock según `cyc/stocklog/cambios`, sin la venta
+de la hora anterior a la suba): igual o más → otro +5% · cayó 20%+ (`PRUEBA_CAIDA`) → se cierra y avisa · en el medio
+→ no sube y sigue mirando · menos de 7 días con stock de un lado → espera. Sigue cerrando también si `md.total<0`.
+**ETAPA 1 CERRADA.**
 
 ### EL PUNTAJE DEL MES: REHACERLO, PERO DESPUÉS (26/09/2026)
 Él, con la captura del Puntaje (7,2 · "Buen mes"): *"no veo cuál es el objetivo de ganancia de CYC y para mí es medio

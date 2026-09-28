@@ -2598,10 +2598,14 @@ async function calcDuenaCuenta(db, products, o) {
 // el techo y el +25% los pone `frenosSuba` / `raisePriceTo` / `raiseVariations`.
 // Además deja la foto de TODAS las que venden (`cyc/vigilancia`) con su estado, para el panel.
 const PRUEBA_PASO = 0.05, PRUEBA_ESPERA_DIAS = 14, PRUEBA_MIN_U = 4, PRUEBA_MAX_DSIN = 7, PRUEBA_MAX_DSTOCK = 60, PRUEBA_MAX = 60;
+// Decisión suya del 28/09 (opción b): la 🧪 vuelve a subir SÓLO si después de la suba vendió igual o
+// más unidades por día que antes, contando sólo los días CON stock. Si cayó PRUEBA_CAIDA o más, se
+// cierra y avisa. En el medio se espera. Con menos de PRUEBA_MIN_DIAS con stock de un lado, se espera.
+const PRUEBA_CAIDA = 0.2, PRUEBA_MIN_DIAS = 7, PRUEBA_VENTANA = 30;
 async function calcPrueba(db, o) {
   const { tokens = {}, hoyTs = Date.now() } = o || {};
   const res = { cand: [], vig: {}, cerrar: [], err: null };
-  let links, vp, inv, prueba, autop, evs, resumen, fotoP, monoPz;
+  let links, vp, inv, prueba, autop, evs, resumen, fotoP, monoPz, slogP;
   try {
     links = (await db.get('cyc/mllinks')) || {};
     vp = (await db.get('cyc/ventaprod')) || {};
@@ -2613,12 +2617,15 @@ async function calcPrueba(db, o) {
     fotoP = (await db.get('cyc/supervisor/precios')) || {};
     monoPz = parseFloat(((await db.get('cyc/monotributo')) || {}).pct) || 0;
   } catch (e) { res.err = 'no pude leer la base (' + e.message + '): esta noche no hay prueba'; return res; }
+  try { slogP = (await db.get('cyc/stocklog/cambios')) || {}; } catch { slogP = null; }
   const sidL = (x) => String(x).replace(/[^a-z0-9]/gi, '_');
   const DIAS = 30, desde = hoyTs - DIAS * 864e5;
-  const porMla = {}, porProdCta = {};
+  const porMla = {}, porProdCta = {}, ventasTs = {};
   for (const ents of Object.values(vp)) for (const v of Object.values(ents || {})) {
     if (!v || v.cancelada || !v.mla) continue;
-    const ts = Number(v.ts) || Date.parse(v.ts || '') || 0; if (ts < desde) continue;
+    const ts = Number(v.ts) || Date.parse(v.ts || '') || 0;
+    if (ts >= hoyTs - 3 * PRUEBA_VENTANA * 864e5) (ventasTs[v.mla] = ventasTs[v.mla] || []).push([ts, Number(v.qty) || 1]);
+    if (ts < desde) continue;
     const q = Number(v.qty) || 1;
     const m = porMla[v.mla] = porMla[v.mla] || { u: 0, ult: 0 }; m.u += q; if (ts > m.ult) m.ult = ts;
     const l = links[v.mla]; if (l && l.prodId) { const k = l.prodId + '__' + (l.cuenta || v.cuenta || ''); porProdCta[k] = (porProdCta[k] || 0) + q; }
@@ -2632,6 +2639,29 @@ async function calcPrueba(db, o) {
   }
   const todos = Array.isArray(resumen.todos) ? resumen.todos : [];
   const medidaDe = (mla, ts) => todos.find((x) => x && x.mla === mla && Math.abs((Number(x.ts) || 0) - ts) < 6 * 3600e3) || null;
+  // Días CON stock entre t0 y t1, del registro hora por hora (cyc/stocklog/cambios). Antes del primer
+  // renglón de la clave no se sabe: se toma con stock (el producto vendía, por eso está en prueba).
+  const diasConStock = (e, cta, t0, t1) => {
+    const c = sidL(cta);
+    const kV = e.variant ? e.prodId + '__' + c + '__v__' + sidL(e.variant) : null;
+    const cam = slogP || {};
+    const cs = Object.entries(cam[kV && cam[kV] ? kV : e.prodId + '__' + c] || {}).map(([t, v]) => [Number(t), Number(v)]).sort((x, y) => x[0] - y[0]);
+    let est = 1; for (const [t, v] of cs) if (t <= t0) est = v;
+    let ms = 0, desdeT = t0;
+    for (const [t, v] of cs) { if (t <= t0 || t > t1) continue; if (est === 1) ms += t - desdeT; est = v; desdeT = t; }
+    if (est === 1) ms += t1 - desdeT;
+    return ms / 864e5;
+  };
+  // Ritmo antes y después de la suba de la prueba, misma ventana de los dos lados. La venta de la hora
+  // anterior a la suba no cuenta (el robot sube justo después de una venta: inflaría el "antes").
+  const ritmoPrueba = (mla, e, cta, ts) => {
+    const W = Math.min(PRUEBA_VENTANA, (hoyTs - ts) / 864e5) * 864e5;
+    const vs = ventasTs[mla] || [];
+    const uA = vs.filter(([t]) => t >= ts - W && t < ts - 3600e3).reduce((s, x) => s + x[1], 0);
+    const uD = vs.filter(([t]) => t >= ts && t <= ts + W).reduce((s, x) => s + x[1], 0);
+    const dA = diasConStock(e, cta, ts - W, ts), dD = diasConStock(e, cta, ts, ts + W);
+    return { uA, uD, dA, dD, antes: dA > 0 ? uA / dA : null, despues: dD > 0 ? uD / dD : null };
+  };
   const porCta = {};
   for (const [mla, e] of Object.entries(links)) {
     if (!e || e.ignored || e.noVendemosMas || !e.prodId || !/^MLA/i.test(mla) || (e.status || '') === 'closed') continue;
@@ -2666,14 +2696,23 @@ async function calcPrueba(db, o) {
         // La prueba anterior: si ya está medida y dejó MENOS, se cierra; si todavía no pasó la espera, se espera.
         if (pr && pr.ts && hoyTs - pr.ts < PRUEBA_ESPERA_DIAS * 864e5) {
           const md = medidaDe(mla, pr.ts);
-          if (md && md.estado === 'medido' && Number(md.total) < 0) { res.cerrar.push({ mla, nom: V.nom, cuenta: cta, de: pr.de, a: pr.a, total: Number(md.total) }); no(`la suba de ${money(pr.de)} → ${money(pr.a)} dejó ${money(md.total)}: prueba cerrada`, 'cerrada'); continue; }
+          if (md && md.estado === 'medido' && Number(md.total) < 0) { res.cerrar.push({ mla, nom: V.nom, cuenta: cta, de: pr.de, a: pr.a, total: Number(md.total), motivo: `dejó ${money(md.total)}` }); no(`la suba de ${money(pr.de)} → ${money(pr.a)} dejó ${money(md.total)}: prueba cerrada`, 'cerrada'); continue; }
           V.medida = md ? { estado: md.estado, total: md.total != null ? Math.round(Number(md.total)) : null } : null;
           no(`en prueba: subió ${money(pr.de)} → ${money(pr.a)} el ${new Date(pr.ts - 3 * 3600e3).toISOString().slice(0, 10)} · la próxima se decide a los ${PRUEBA_ESPERA_DIAS} días`, 'prueba'); continue;
         }
         if (pr && pr.ts) {
           const md = medidaDe(mla, pr.ts);
           V.medida = md ? { estado: md.estado, total: md.total != null ? Math.round(Number(md.total)) : null } : null;
-          if (md && md.estado === 'medido' && Number(md.total) < 0) { res.cerrar.push({ mla, nom: V.nom, cuenta: cta, de: pr.de, a: pr.a, total: Number(md.total) }); no(`la suba de ${money(pr.de)} → ${money(pr.a)} dejó ${money(md.total)}: prueba cerrada`, 'cerrada'); continue; }
+          if (md && md.estado === 'medido' && Number(md.total) < 0) { res.cerrar.push({ mla, nom: V.nom, cuenta: cta, de: pr.de, a: pr.a, total: Number(md.total), motivo: `dejó ${money(md.total)}` }); no(`la suba de ${money(pr.de)} → ${money(pr.a)} dejó ${money(md.total)}: prueba cerrada`, 'cerrada'); continue; }
+          if (!slogP) { no('no pude leer el registro de stock: no se puede comparar el ritmo, se espera', 'sinleer'); continue; }
+          const r = ritmoPrueba(mla, e, cta, pr.ts);
+          const f1 = (x) => (Math.round(x * 10) / 10).toLocaleString('es-AR');
+          V.ritmo = { antes: r.antes, despues: r.despues, uA: r.uA, uD: r.uD, dA: Math.round(r.dA), dD: Math.round(r.dD) };
+          if (r.dA < PRUEBA_MIN_DIAS || r.dD < PRUEBA_MIN_DIAS) { no(`estuvo sin stock gran parte del tiempo (${Math.round(r.dA)} d antes · ${Math.round(r.dD)} d después con stock): no se puede comparar, se espera`, 'prueba'); continue; }
+          if (!(r.antes > 0)) { no('no vendió nada antes de la suba en la ventana: no hay con qué comparar', 'prueba'); continue; }
+          const txtR = `vendía ${f1(r.antes)}/día y después ${f1(r.despues)}/día (días con stock)`;
+          if (r.despues <= r.antes * (1 - PRUEBA_CAIDA)) { res.cerrar.push({ mla, nom: V.nom, cuenta: cta, de: pr.de, a: pr.a, total: null, motivo: txtR }); no(`la suba de ${money(pr.de)} → ${money(pr.a)}: ${txtR}: prueba cerrada`, 'cerrada'); continue; }
+          if (r.despues < r.antes) { no(`${txtR}: vende un poco menos, no se sube más y se sigue mirando`, 'prueba'); continue; }
         }
         if (m.u < PRUEBA_MIN_U) { no(`vende poco (${m.u} en 30 d): no hay con qué medir`); continue; }
         if (dsin > PRUEBA_MAX_DSIN) { no(`no vende hace ${dsin} d: subir no la despierta`); continue; }
@@ -8162,7 +8201,7 @@ async function main() {
           else {
             try { await db.set('cyc/vigilancia', { ts: hoyTs, filas: pz.vig }); } catch { /* */ }
             for (const c of pz.cerrar) {
-              try { await db.patch('cyc/prueba/' + c.mla, { estado: 'cerrada', cerradaTs: hoyTs, motivo: `la suba de ${money(c.de)} → ${money(c.a)} dejó ${money(c.total)}` }); } catch { /* */ }
+              try { await db.patch('cyc/prueba/' + c.mla, { estado: 'cerrada', cerradaTs: hoyTs, motivo: `la suba de ${money(c.de)} → ${money(c.a)}: ${c.motivo}` }); } catch { /* */ }
               pruebasCerradas.push(c);
             }
             const cands = pz.cand.filter((c) => !tocadas.has(c.mla)).slice(0, PRUEBA_MAX);
@@ -8302,8 +8341,8 @@ async function main() {
         }
       }
       if (pruebasCerradas.length) {
-        L.push(`\n🧪 <b>Pruebas cerradas: la suba dejó MENOS plata</b> · ${pruebasCerradas.length} (no se prueban más · volverlas atrás es bajar un precio: decime y lo hago)`);
-        for (const c of pruebasCerradas) L.push(`· ${c.nom} (${c.cuenta}) · ${money(c.de)} → ${money(c.a)} · dejó ${money(c.total)}`);
+        L.push(`\n🧪 <b>Pruebas cerradas: la suba dejó menos plata o vendió menos</b> · ${pruebasCerradas.length} (no se prueban más · volverlas atrás es bajar un precio: decime y lo hago)`);
+        for (const c of pruebasCerradas) L.push(`· ${c.nom} (${c.cuenta}) · ${money(c.de)} → ${money(c.a)} · ${c.motivo}`);
       }
       if (fallidosAuto.length) {
         L.push(`\n⚠️ <b>Quise hacerlo solo y no pude</b> · ${fallidosAuto.length} (quedan abajo para que decidas)`);
@@ -15539,7 +15578,7 @@ async function main() {
       console.log('   ' + Object.entries(cnt).map(([k, n]) => `${k}: ${n}`).join(' · '));
       console.log(`\n🧪 Esta noche subiría +${Math.round(PRUEBA_PASO * 100)}% (tope ${PRUEBA_MAX}): ${pz.cand.length}`);
       for (const c of pz.cand) console.log(`   · ${c.cuenta.padEnd(8)} ${c.mla} · ${c.nom.slice(0, 40)} · ${money(c.precio)} → ${money(c.a)} · vendió ${c.u} en 30 d · última hace ${c.dsin} d · ${c.dstock == null ? 'stock ?' : c.dstock + ' d de stock'}${c.vars.length ? ' · con variantes' : ''}`);
-      if (pz.cerrar.length) { console.log('\nSe cerrarían (la suba dejó menos plata):'); for (const c of pz.cerrar) console.log(`   · ${c.nom} (${c.cuenta}) · dejó ${money(c.total)}`); }
+      if (pz.cerrar.length) { console.log('\nSe cerrarían (dejó menos plata o vendió menos):'); for (const c of pz.cerrar) console.log(`   · ${c.nom} (${c.cuenta}) · ${c.motivo}`); }
       const noCat = filas.filter(([, v]) => !v.catalogo && v.estado !== 'candidata');
       console.log(`\nSin catálogo que NO se prueban, con el motivo (${noCat.length}):`);
       for (const [mla, v] of noCat.slice(0, 80)) console.log(`   · ${v.cuenta} ${mla} · ${v.nom.slice(0, 36)} · ${v.motivo}`);
