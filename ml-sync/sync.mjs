@@ -4059,10 +4059,12 @@ async function altaDeNuevas(db, accounts, labels, map, index, DRY) {
 // Se piden las dos y si no coinciden NO se escribe. Probado el 22/08/2026 con `probardolar`: las
 // cuatro fuentes andaban y se diferenciaban en 0,13%, así que si un día no coinciden, pasa algo.
 //
-// NO ROMPE EL HISTORIAL: cada venta guarda el dólar de SU día (v.tcSale) y los meses cerrados usan
-// ese. Esto solo mueve los márgenes de hoy y la valuación del stock.
+// NO ROMPE EL HISTORIAL: cada venta guarda el dólar de SU día (v.tcSale). En la web, un mes ya
+// terminado usa su dólar cargado a mano, el del cierre o el promedio de esos v.tcSale (etapa 2, 28/09). Esto solo mueve los márgenes de hoy y la valuación del stock.
 const DOLAR_UMBRAL_PCT = 1.5;   // cuánto se tiene que mover para tocarlo
 const DOLAR_DESACUERDO_PCT = 1; // si las dos fuentes difieren más que esto, no se escribe nada
+const DOLAR_SALTO_PCT = 15;     // más que esto de una vez no se carga solo (etapa 2, 28/09)
+const DOLAR_UNA_FUENTE_PCT = 5; // con una sola fuente, más que esto tampoco
 async function dolarOficialVenta() {
   const leer = async (nom, url, sacar) => {
     try {
@@ -4097,6 +4099,13 @@ async function dolarAuto(db, DRY) {
   }
   const mov = (nuevo / actual - 1) * 100;
   if (Math.abs(mov) < DOLAR_UMBRAL_PCT) return { que: 'quieto', actual, nuevo, mov, msg: null };
+  // Etapa 2 (28/09): frenos de salto, como la web (que pregunta arriba de 30%). Un dólar mal leído
+  // divide o multiplica TODOS los costos en pesos del robot, y de ahí mueve precios solo.
+  //  · más de DOLAR_SALTO_PCT: no se escribe nunca solo, se avisa y lo confirma él a mano.
+  //  · con UNA sola fuente, más de DOLAR_UNA_FUENTE_PCT: tampoco (no hay contra qué chequearlo).
+  if (Math.abs(mov) > DOLAR_SALTO_PCT || (!(a && b) && Math.abs(mov) > DOLAR_UNA_FUENTE_PCT)) {
+    return { que: 'salto', actual, nuevo, mov, msg: `⚠️ Dólar: ${fuente} dice ${money(nuevo)} (${mov >= 0 ? '+' : ''}${mov.toFixed(1)}% contra los ${money(actual)} cargados). Es un salto demasiado grande para cargarlo solo${a && b ? '' : ' con una sola fuente'}: NO lo toqué. Si es real, cargalo a mano en Finanzas.` };
+  }
   if (!DRY) await db.set('cyc/finanzas/tipo_cambio', nuevo);
   const rele = DRY ? nuevo : parseFloat(await db.get('cyc/finanzas/tipo_cambio'));
   const ok = Math.round(rele) === nuevo;
@@ -6411,7 +6420,19 @@ async function main() {
       if (yaMes === ym && !forzado) {
         console.log(`Resumen mensual de ${ym} ya enviado, no lo repito.`);
       } else {
-        let mN = 0, mFact = 0, mGan = 0, mDias = 0, mCancel = 0, mSinN = 0, mSinFact = 0, mFactCon = 0;
+        let mN = 0, mFact = 0, mGan = 0, mDias = 0, mCancel = 0, mSinN = 0, mSinFact = 0, mFactCon = 0, mBase = 0;
+        // Etapa 2 (28/09): el % del mes es el MISMO que el del panel (regla suya del 22/09, "un solo
+        // %"): ganancia ÷ (mercadería + IIBB/mono + envío de Full). Antes era "% del facturado", que
+        // para el mismo mes daba ~17% contra ~33% de la pantalla. El envío es el de `gestDeVenta`.
+        let pIdxM = {};
+        try { for (const p of Object.values((await db.get('cyc/products')) || {})) if (p && p.id) pIdxM[p.id] = p; } catch { pIdxM = {}; }
+        const gestM = (v) => {
+          const q = v.qty || 1, pu = (Number(v.total) || 0) / q;
+          if (pu > 0 && pu < UMBRAL_ENVIO_GRATIS) return 0;
+          const p = pIdxM[v.prodId]; if (!p) return 0;
+          const g = Number(p.netoCalcEnvio) > 0 ? Number(p.netoCalcEnvio) : (Number(p.gestFull) || 0);
+          return g > 0 ? g * q : 0;
+        };
         const mProd = {}, mCuenta = {};
         // revisión max (rev4): las canceladas se cuentan por CANTIDAD. El robot y la web ponen total 0
         // al cancelar, así que sumar pesos daba siempre 0 y el renglón no salía nunca.
@@ -6429,6 +6450,7 @@ async function main() {
             mFactCon += v.total || 0;
             const g = (v.neto || 0) - (v.costo || 0) - impDe(v) - ajEst(v);
             mGan += g;
+            mBase += (v.costo || 0) + impDe(v) + gestM(v);
             mProd[v.prod || '?'] = (mProd[v.prod || '?'] || 0) + g;
             mCuenta[v.cuenta || '?'] = (mCuenta[v.cuenta || '?'] || 0) + (v.total || 0);
           }
@@ -6436,12 +6458,12 @@ async function main() {
         }
         const mTop = Object.entries(mProd).sort((a, b) => b[1] - a[1]).slice(0, 5);
         const cuentas = Object.entries(mCuenta).sort((a, b) => b[1] - a[1]);
-        const margen = mFactCon > 0 ? (mGan / mFactCon * 100) : 0;
+        const margen = mBase > 0 ? (mGan / mBase * 100) : 0;
         const MES = ['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio', 'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre'];
         const msgMes = `🗓️ <b>RESUMEN DE ${MES[Number(_am) - 1].toUpperCase()} ${_ay}</b>\n\n`
           + `Ventas: <b>${mN}</b> en ${mDias} días\n`
           + `Facturado: <b>${money(Math.round(mFact))}</b>\n`
-          + `Ganancia: <b>${money(Math.round(mGan))}</b> (${margen.toFixed(1)}% del facturado)\n`
+          + `Ganancia: <b>${money(Math.round(mGan))}</b> (${margen.toFixed(1)}% de ganancia, el mismo % del panel)\n`
           + (mSinN ? `⚠️ ${mSinN} u. sin costo cargado (${money(Math.round(mSinFact))}) no cuentan en la ganancia\n` : '')
           + `Promedio por día: ${money(Math.round(mDias ? mFact / mDias : 0))}\n`
           + (mCancelVentas.size ? `Canceladas/devueltas: ${mCancelVentas.size} venta${mCancelVentas.size === 1 ? '' : 's'} (${mCancel} u.)\n` : '')
@@ -19206,7 +19228,12 @@ async function main() {
           patch.liq_liberado = 0;
           console.log('   lo liberado que esperaba en "a liquidar" pasa al disponible (sale de "a liquidar")');
         }
-      } catch { console.log('   ⚠️ no pude leer lo liberado que esperaba en "a liquidar": no se toca'); }
+      } catch {
+        // Etapa 2 (28/09): sin saber cuánto de lo liberado sigue en "a liquidar", escribir el disponible
+        // (que ya lo incluye) lo contaría dos veces. No se escribe nada: sale en la vuelta siguiente.
+        console.log('   ⚠️ no pude leer lo liberado que esperaba en "a liquidar": NO se escribe nada esta vuelta (se contaría dos veces)');
+        return;
+      }
       await db.patch('cyc/finanzas', patch);
       await db.patch('cyc/saldoml', { _dispTs: Date.now() });
       // RELEER Y COMPARAR, que es la regla 6 de este panel.
@@ -19403,10 +19430,20 @@ async function main() {
           if (!r.ok || !Array.isArray(arr)) { console.log(`   ❌ no pude listar los reportes (HTTP ${r.status})`); cuentasMal++; continue; }
           const u = elegirReporte(arr, { minDias: 20 });
           if (!u) { console.log('   ❌ no hay ningún reporte listo todavía'); cuentasMal++; continue; }
+          // Etapa 2 (28/09): el mismo freno de largo que `dispo`. `elegirReporte` cae al más nuevo si
+          // ninguno cubre 20 días, y con el diario de UN día "a liquidar" saldría corto sin que el
+          // freno del total (4 cuentas juntas) lo note.
+          { const _b = new Date(u.begin_date || 0).getTime(), _e = new Date(u.end_date || 0).getTime();
+            if (!(Number.isFinite(_b) && Number.isFinite(_e) && _e - _b >= 20 * 864e5)) {
+              console.log(`   ❌ el único reporte listo es corto (${String(u.begin_date || '').slice(0, 10)} → ${String(u.end_date || '').slice(0, 10)}): le faltarían las ventas pendientes de días anteriores`);
+              cuentasMal++; continue;
+            } }
           arch = u.file_name;
-          rango = `${String(u.begin_date || '').slice(0, 10)} → ${String(u.end_date || '').slice(0, 10)}`;
+          // Las fechas de MP vienen en UTC (…T02:59:59Z = 23:59 del día ANTERIOR acá): se pasan al día local.
+          const diaLoc = (x) => { if (/^\d{4}-\d{2}-\d{2}$/.test(String(x || ''))) return String(x); const t = Date.parse(x || ''); return Number.isFinite(t) ? new Date(t - 3 * 36e5).toISOString().slice(0, 10) : String(x || '').slice(0, 10); };
+          rango = `${diaLoc(u.begin_date)} → ${diaLoc(u.end_date)}`;
           creado = String(u.date_created || '').slice(0, 10);
-          { const fin = String(u.end_date || '').slice(0, 10); if (/^\d{4}-\d{2}-\d{2}$/.test(fin) && (!repHasta || fin < repHasta)) repHasta = fin; }
+          { const fin = diaLoc(u.end_date); if (/^\d{4}-\d{2}-\d{2}$/.test(fin) && (!repHasta || fin < repHasta)) repHasta = fin; }
           const diasViejo = creado ? Math.round((hoy - new Date(creado).getTime()) / 864e5) : null;
           console.log(`   reporte: ${rango} · pedido el ${creado || '?'}${diasViejo != null && diasViejo > 2 ? ` ⚠️ tiene ${diasViejo} días` : ''}`);
         } catch (e) { console.log(`   ❌ ${String(e.message || e).slice(0, 90)}`); cuentasMal++; continue; }
@@ -30257,6 +30294,21 @@ async function main() {
       await db.set('cyc/finanzas/mp_disp', tot);
       await db.set('cyc/finanzas/_seen/mp_disp', tot);
       await db.set('cyc/finanzas/_ts/mp', ahora);
+      // Etapa 2 (28/09): el número que él lee en MP YA incluye lo liberado que `saldoml` había dejado
+      // en "a liquidar" para esa cuenta. Se saca de ahí en el mismo paso; si no, la plata se cuenta
+      // dos veces hasta la noche siguiente (o para siempre si esa noche saldoml no escribe).
+      try {
+        let libArs = 0; const ctasLib = [];
+        for (const c of cargas) { const x = parseFloat(((await db.get('cyc/saldoml/' + c.cta)) || {}).liberadoSinDisp) || 0; if (x > 0) { libArs += x; ctasLib.push(c.cta); } }
+        if (libArs > 0) {
+          const libUsd = libArs / tc;
+          const liqAct = parseFloat((await db.get('cyc/finanzas/mp_liq')) || 0) || 0;
+          const libAct = parseFloat((await db.get('cyc/finanzas/liq_liberado')) || 0) || 0;
+          await db.patch('cyc/finanzas', { mp_liq: Math.max(0, Math.round(liqAct - libUsd)), liq_liberado: Math.max(0, Math.round(libAct - libUsd)) });
+          for (const ct of ctasLib) await db.patch('cyc/saldoml/' + ct, { liberadoSinDisp: 0 });
+          console.log(`  lo liberado que esperaba en "a liquidar" (${ctasLib.join(', ')}) sale de ahí: ya está en el disponible que cargaste`);
+        }
+      } catch (e) { console.log('  ⚠️ no pude sacar lo liberado de "a liquidar" (' + String(e.message || e).slice(0, 60) + '): se corrige cuando corra saldoml'); }
       const rel = await db.get('cyc/finanzas/mp_disp');
       console.log(Math.abs((parseFloat(rel) || 0) - tot) < 0.01 ? '\n✓ Guardado y releído. Desde acá `dispo` lo sigue cada noche.' : '\n⚠️ Se escribió pero al releer no coincide. Mirar a mano.');
       return;
@@ -30704,13 +30756,17 @@ async function main() {
         // Si el panel había anotado otro total (lo que se cargó) y lo que de verdad se mandó es
         // otro, se guardan los DOS: el recargo se mide contra lo que se mandó, pero el detalle
         // sigue sumando lo otro y sin esto no se entiende por qué no cierra.
+        // Etapa 2 (28/09): el recargo se mide con el dólar del día del PEDIDO (el que guardó "Ya lo
+        // pedí"), no con el del día en que se corre esto: si el dólar subió entre medio, el recargo
+        // salía CORTO, que es el lado peligroso para decidir el 17%. Una vez guardado no se pisa.
+        const tcRef = (ya && (parseFloat(ya.tcPedido) || parseFloat(ya.tcPanel))) || tcPanel;
         const usdPanel = (ya && parseFloat(ya.usdCrudo) > 0 && Math.abs(parseFloat(ya.usdCrudo) - usd) > 0.5) ? parseFloat(ya.usdCrudo) : null;
         const rec = {
           ...(ya || {}),
           // la fecha del PEDIDO se conserva; si el pago vino con otra, queda aparte
           fecha: (ya && ya.fecha) || fecha, fechaPago: (ya && ya.fecha && ya.fecha !== fecha) ? fecha : ((ya && ya.fechaPago) || null), usdCrudo: usd,
           pagos: { mercaderia: Math.round(merc), cambista: Math.round(cambio), envio: Math.round(envio), retira: Math.round(retira), otros: Math.round(otros) },
-          items: itemsFin, nota: campos.nota || (ya && ya.nota) || '', tcPanel: tcPanel || null,
+          items: itemsFin, nota: campos.nota || (ya && ya.nota) || '', tcPanel: tcRef || null,
           usdPanel, kgCorreo: kgPedido > 0 ? kgPedido : null,
           incompleto: !(envio > 0), ts: Date.now(),
           // Revisión max #21: lo que crea compray por su cuenta es HISTORIAL (guarda los pesos y el
@@ -30728,13 +30784,13 @@ async function main() {
         console.log(`  TOTAL                    ${money(Math.round(totARS))}`);
         if (kgPedido > 0 && envio > 0) console.log(`  el correo: ${kgPedido} kg · ${money(Math.round(envio / kgPedido))} por kilo`);
         console.log('');
-        console.log(`  el dólar que pagaste por la mercadería: ${money(Math.round(dolarMerc))}${tcPanel ? ` · el del panel es ${money(Math.round(tcPanel))} (${(((dolarMerc + (cambio / usd)) / tcPanel - 1) * 100).toFixed(1)}% más caro con el cambista adentro)` : ''}`);
-        if (tcPanel > 0) {
-          const puestoUSD = totARS / tcPanel;
+        console.log(`  el dólar que pagaste por la mercadería: ${money(Math.round(dolarMerc))}${tcRef ? ` · el del día del pedido es ${money(Math.round(tcRef))} (${(((dolarMerc + (cambio / usd)) / tcRef - 1) * 100).toFixed(1)}% más caro con el cambista adentro)` : ''}`);
+        if (tcRef > 0) {
+          const puestoUSD = totARS / tcRef;
           const rec1 = (puestoUSD / usd - 1) * 100;
           console.log(`  RECARGO REAL DE ESTA COMPRA: ${rec1.toFixed(1)}%  (el panel usa ${RECARGO_PAR_PCT}%)`);
-          console.log(`     · parte que ESCALA (los dólares): ${(((merc + cambio) / tcPanel / usd - 1) * 100).toFixed(1)}%`);
-          console.log(`     · parte FIJA por pedido (envío${otros ? ' + otros' : ''}): ${money(Math.round(fijos))} = US$ ${(fijos / tcPanel).toFixed(2)}, o sea ${((fijos / tcPanel) / usd * 100).toFixed(1)}% en ESTE pedido`);
+          console.log(`     · parte que ESCALA (los dólares): ${(((merc + cambio) / tcRef / usd - 1) * 100).toFixed(1)}%`);
+          console.log(`     · parte FIJA por pedido (envío${otros ? ' + otros' : ''}): ${money(Math.round(fijos))} = US$ ${(fijos / tcRef).toFixed(2)}, o sea ${((fijos / tcRef) / usd * 100).toFixed(1)}% en ESTE pedido`);
           console.log(`       OJO: la parte fija NO cambia si el pedido es más grande. En un pedido del doble pesaría la mitad.`);
         } else {
           console.log(`  ⚠️ No hay tipo de cambio cargado en Finanzas, así que el recargo en % no se puede calcular. Se guarda igual.`);
@@ -30768,7 +30824,7 @@ async function main() {
         // justo por el gasto fijo más grande del pedido ($74.260 de $84.627). Un número que sale
         // menor de lo real es el lado peligroso — dice que comprar sale más barato de lo que sale.
         const totARS = (p.mercaderia || 0) + (p.cambista || 0) + (p.envio || 0) + (p.retira || 0) + (p.otros || 0);
-        const tc = parseFloat(c.tcPanel) || tcPanel || 0;
+        const tc = parseFloat(c.tcPedido) || parseFloat(c.tcPanel) || tcPanel || 0;
         const usd = parseFloat(c.usdCrudo) || 0;
         const recPct = (tc > 0 && usd > 0) ? (totARS / tc / usd - 1) * 100 : null;
         console.log(`\n── ${c.fecha}${c.incompleto ? '  ⚠️ INCOMPLETO (falta el envío)' : ''}`);
@@ -30792,7 +30848,7 @@ async function main() {
         // Se rehace con TODO lo que tenga tipo de cambio, aunque le falte el correo.
         for (const c of todas) {
           const p = c.pagos || {};
-          const tc = parseFloat(c.tcPanel) || tcPanel || 0;
+          const tc = parseFloat(c.tcPedido) || parseFloat(c.tcPanel) || tcPanel || 0;
           const usd = parseFloat(c.usdCrudo) || 0;
           if (!(tc > 0 && usd > 0)) continue;
           sumU += usd;
@@ -30854,7 +30910,7 @@ async function main() {
         let uTot = 0, peajeTot = 0, correoTot = 0, tcRef = 0, sinPeso = 0, conPeso = 0, kgTot = 0;
         for (const c of conDet) {
           const p = c.pagos || {};
-          const tc = parseFloat(c.tcPanel) || tcPanel || 0;
+          const tc = parseFloat(c.tcPedido) || parseFloat(c.tcPanel) || tcPanel || 0;
           if (tc > 0) tcRef = tc;
           correoTot += (p.envio || 0);                       // por PESO
           peajeTot += (p.retira || 0) + (p.otros || 0);      // fijo por pedido
@@ -32344,7 +32400,12 @@ async function main() {
       if (!primeraVez) { tsNuevo[grupo] = ahora; if (!tocados.includes(grupo)) tocados.push(grupo); }
     }
     if (cambio && !DRY) {
-      await db.patch('cyc/finanzas', { _seen: seenNuevo, _ts: tsNuevo });
+      // Etapa 2 (28/09): sólo los campos que cambiaron, con ruta. Mandar los nodos ENTEROS pisaba lo
+      // que `saldoml` escribió en el medio de la vuelta (`_ts/liq_hasta`) con la copia vieja.
+      const finUpd = {};
+      for (const [k, v] of Object.entries(seenNuevo)) if (visto[k] !== v) finUpd['_seen/' + k] = v;
+      for (const g of tocados) finUpd['_ts/' + g] = tsNuevo[g];
+      await db.patch('cyc/finanzas', finUpd);
       console.log(tocados.length
         ? `Arqueo: cambió ${tocados.join(' y ')} → le puse la fecha de ahora.`
         : 'Arqueo: anoto los valores de referencia (primera vez, sin fecha).');
@@ -32607,6 +32668,21 @@ async function main() {
       if (factMes > 0) {
         const pct = Math.round((totImp / factMes) * 10000) / 100; // % con 2 decimales
         if (mono.pct !== pct && !DRY) await db.patch('cyc/monotributo', { pct, pctCalc: Date.now(), pctFact: Math.round(factMes) });
+        // Etapa 2 (28/09): cada mes queda CONGELADO con el último % que tuvo. Antes el historial sólo
+        // lo escribía `monoreal:go`, así que un mes ya cerrado (agosto) seguía al % de hoy y su ganancia
+        // se movía sola cada vez que el robot recalculaba. El mes en curso sigue al vigente; el mes
+        // anterior, si nunca quedó anotado, se congela con el de hoy (es el que venía usando).
+        try {
+          const hist = mono.hist || {};
+          const ymHoy = dayKeyFromISO(new Date().toISOString()).slice(0, 7);
+          const dAnt = new Date(); dAnt.setUTCDate(1); dAnt.setUTCDate(0);
+          const ymAnt = dayKeyFromISO(dAnt.toISOString()).slice(0, 7);
+          const ult = Object.keys(hist).sort().pop() || '';
+          const hUpd = {};
+          if (parseFloat(hist[ymHoy]) !== pct) hUpd[ymHoy] = pct;
+          if (hist[ymAnt] == null && ymAnt > ult) hUpd[ymAnt] = pct;
+          if (Object.keys(hUpd).length && !DRY) await db.patch('cyc/monotributo/hist', hUpd);
+        } catch (e) { console.log('⚠️ no pude congelar el % de monotributo del mes: ' + String(e.message || e).slice(0, 60)); }
         console.log(`Monotributo: ${money(Math.round(totImp))}/mes sobre ${money(Math.round(factMes))} facturados → ${pct}% al costo`);
       }
     }

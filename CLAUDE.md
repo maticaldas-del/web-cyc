@@ -430,6 +430,23 @@ de la hora anterior a la suba): igual o más → otro +5% · cayó 20%+ (`PRUEBA
 → no sube y sigue mirando · menos de 7 días con stock de un lado → espera. Sigue cerrando también si `md.total<0`.
 **ETAPA 1 CERRADA.**
 
+### ETAPA 2 (PLATA) · 28/09/2026 · v20.78 `cyc-v356`
+4 revisores (Arqueo · robot de MP · gastos/mes · monedas), 17 reales. **HECHAS las obvias:** cargar el disponible
+(web y `ancla`) resta de `mp_liq`/`liq_liberado` el `cyc/saldoml/<Cuenta>.liberadoSinDisp` de esa cuenta ·
+`saldoml` no usa un reporte de menos de 20 días · `liq_hasta`/rango en día LOCAL (MP da `…T02:59:59Z`) · `dispo`
+no escribe si no puede leer `liq_liberado` · `dolarAuto` no carga saltos de +15% (ni +5% con una fuente): avisa ·
+`tcForYM` de un mes terminado sin `tc_mes` ni cierre = promedio de `v.tcSale` de sus ventas (`tcVentasMes`) ·
+`compray` mide con `tcPedido` y no pisa el guardado · el robot congela `cyc/monotributo/hist[<mes>]` en cada
+recálculo (y el mes anterior si faltaba) · retiro vacío = `null`, no $0 · Telegram mensual con el % del panel
+(÷ costo+impuestos+envío Full) · Cascada: monotributo por mes · `FIN_CON_SIGNO` (lo que escribe el robot en MP va
+con signo) · mes cerrado sin fechas/avisos de hoy (`_finMirandoCierre`), tarjeta "En camino" del cierre,
+`buildCompHTML` sin `of_mia` doble · el ciclo patchea `finanzas/_seen`/`_ts` por ruta (no pisa `liq_hasta`).
+**FALTA SU DECISIÓN (en REV_PENDIENTE):** A1 lo vendido después del último reporte de MP no está en el
+patrimonio (US$330-660 abajo durante el día): (a) sumarlo (hace falta el fin de reporte por cuenta) · (b) sólo
+mostrar "≈ US$ X vendidos después del dd/mm". D4 el resumen de Telegram usa el costo y dólar del día de cada venta
+y la web el costo congelado del mes y el dólar del mes: (a) que el robot use la regla de la web · (b) aclararlo.
+B3b (pedir el reporte al principio de saldoml y esperar) quedó sin proponer: alarga la corrida.
+
 ### EL PUNTAJE DEL MES: REHACERLO, PERO DESPUÉS (26/09/2026)
 Él, con la captura del Puntaje (7,2 · "Buen mes"): *"no veo cuál es el objetivo de ganancia de CYC y para mí es medio
 flojo el conteo. podría fijarse otras cosas. si querés remodelalo desde 0 con lo que pondrías vos (…) pero ahora

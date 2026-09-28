@@ -2341,7 +2341,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='20.77';
+const APP_VERSION='20.78';
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
 // muestre la versión y la fecha de actualización y que tenga un desplegable predeterminado cerrado".
 // Y el mismo día: "que ponga fecha de cada modificación y haya una barrita para scrollear y que
@@ -2352,6 +2352,7 @@ const APP_VERSION='20.77';
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'20.78',f:'28/09/2026',h:'21:30',c:[{n:3,t:'Etapa 2 (plata): cargar el disponible de una cuenta saca de "A liquidar" lo que MP ya liberó de esa cuenta (antes se contaba dos veces hasta la noche).'},{n:3,t:'Un mes ya terminado sin dólar cargado ni cierre usa el promedio del dólar de sus ventas, no el de hoy: la ganancia de agosto ya no cambia cuando se mueve el dólar.'},{n:3,t:'El monotributo de cada mes queda congelado al cerrarse: la ganancia de un mes viejo ya no se mueve sola cuando el robot recalcula el %.'},{n:3,t:'Borrar el retiro para reescribirlo ya no lo deja en $0 (la ganancia del mes subía $1.800.000 de mentira): la casilla vacía queda como sin cargar.'},{n:3,t:'Un disponible negativo de Mercado Pago ya no se suma como positivo en el patrimonio.'},{n:2,t:'Mirando un mes cerrado ya no salen las fechas y avisos de hoy; la tarjeta "En camino" muestra lo que iba en camino ese mes; comparar meses ya no cuenta dos veces la oficina.'},{n:2,t:'La Cascada dice el monotributo con el % de cada mes, no el de hoy.'},{n:3,t:'Robot: el dólar ya no se carga solo si salta más de 15% (o más de 5% con una sola fuente), avisa. "A liquidar" no se calcula con un reporte corto; "reporte hasta" ya no sale un día corrido; el recargo de Paraguay se mide con el dólar del día del pedido; el resumen del mes por Telegram usa el mismo % de ganancia que el panel.'}]},
   {v:'20.77',f:'28/09/2026',h:'21:12',c:[{n:3,t:'Prueba de suba 🧪 +5% (lo que elegiste, la b): pasados los 14 días sólo vuelve a subir si después de la suba vendió igual o más unidades por día que antes, contando sólo los días con stock. Si cayó 20% o más, la prueba se cierra y te avisa por la noche. Si cayó menos, no sube y se sigue mirando. Con menos de 7 días con stock de algún lado, espera.'},{n:1,t:'Etapa 1 (precios) cerrada en el cartel de revisión.'}]},
   {v:'20.76',f:'27/09/2026',h:'20:10',c:[{n:3,t:'Etapa 1 (precios), arreglos del robot: al BAJAR una Premium (remate, escalera, ganar la caja) y al rescatar ahora descuenta las cuotas sin interés; sin las cuotas medidas no la baja. Antes una Premium podía quedar en negativo creyendo 25%.'},{n:3,t:'Si no puede leer su memoria de precios, esa noche no rescata nada (antes se apagaban solos los frenos de "una suba cada 24 h" y "lo bajé yo").'},{n:3,t:'La 📈 y la 🧪 no suben lo que bajaste vos a mano. El remate que necesita bajar más de 24,5% baja en tramos en vez de quedar trabado. Las publicaciones con variantes ya no ocupan los lugares del remate y la escalera.'},{n:2,t:'El margen de productos con variantes se mide con la variante más barata en todos lados. Lo recién llegado de un color vuelve a tener sus 30 días de gracia. "Lo que trajo el robot" descuenta IIBB y monotributo y cuenta la prueba 🧪.'},{n:2,t:'Comandos: pausar frena la reactivación automática, submargen usa tu piso de hoy (no 30%), grupos pide confirmación, bajar= lee bien "60.000,50", preciosgo ya no sube (fórmula vieja). Los avisos de esos comandos llegan al canal de precios.'}]},
   {v:'20.75',f:'27/09/2026',h:'19:52',c:[{n:1,t:'Puntos de la ganancia por día, afinados: 7 = $115.000/día, que es lo que deja ~$900.000 a CYC en el mes después de pagar retiro y gastos. 5 = $85.000 (CYC en cero) y 10 = $160.000.'}]},
@@ -3206,6 +3207,7 @@ const REV_CADA_DIAS=7;
 //   · REV_HECHAS    → última vez que cada etapa quedó resuelta. Sin pendientes, el cartel pide la
 //                     etapa más vieja cuando pasaron REV_CADA_DIAS desde la última.
 const REV_PENDIENTE=[
+    {t:'Etapa 2: decidir 2 cosas de plata',que:'lo vendido después del último reporte de MP (sumarlo o sólo avisar) · con qué costo mide la ganancia el resumen de Telegram',pedi:'etapa 2'},
     {t:'La segunda revisión completa, al final',que:'la que pediste dejar para cuando esté todo lo demás · va última',pedi:'revisión completa',ultima:true},
 ];
 // Choques (4) y fallas mudas/privacidad (5): verificadas las 15 del 26/09 de madrugada (rev4, lotes 6-8) y
@@ -4570,7 +4572,9 @@ let finTimers={};
 function _curYM(){const n=new Date();return n.getFullYear()+'_'+String(n.getMonth()+1).padStart(2,'0');}
 let _retiroTimer=null;
 function saveRetiroMes(val){
-  const num=parseMoney(val);const ym=_curYM();
+  // Etapa 2 (28/09): casilla VACÍA = sin cargar (null), no $0. Borrar el número para reescribirlo
+  // dejaba el retiro en $0 y la ganancia del mes subía $1.800.000 de mentira. Un $0 real se escribe "0".
+  const num=String(val==null?'':val).trim()===''?null:parseMoney(val);const ym=_curYM();
   if(!state.retiro_mes)state.retiro_mes={};
   state.retiro_mes[ym]=num;
   _gastoMesMemo={};_netoMesMemo={};_cargosDiaMemo={};
@@ -4583,7 +4587,9 @@ function saveRetiroMes(val){
 // Guardar el retiro real de UN mes puntual (tabla "retiro por mes").
 let _retiroTimersYM={};
 function saveRetiroMesYM(ym,val){
-  const num=parseMoney(val);
+  // Etapa 2 (28/09): casilla VACÍA = sin cargar (null), no $0. Borrar el número para reescribirlo
+  // dejaba el retiro en $0 y la ganancia del mes subía $1.800.000 de mentira. Un $0 real se escribe "0".
+  const num=String(val==null?'':val).trim()===''?null:parseMoney(val);
   if(!state.retiro_mes)state.retiro_mes={};
   state.retiro_mes[ym]=num;
   _gastoMesMemo={};_netoMesMemo={};_cargosDiaMemo={};
@@ -4650,10 +4656,15 @@ function repHastaInfo(d){
   const dias=Math.floor((Date.parse(agendaHoy())-Date.parse(d))/864e5);
   return {txt:d.slice(8,10)+'/'+d.slice(5,7),dias,viejo:dias>2};
 }
+// Mirando un mes CERRADO (etapa 2, 28/09): `_arqViewYM` ya volvió a null cuando esto se dibuja, así
+// que se mira la lista de meses de la pantalla. Las fechas y avisos son del número de HOY: no van.
+function _finMirandoCierre(){try{return !!document.getElementById('fin-view-sel')?.value||!!_arqViewYM;}catch(e){return false;}}
 function renderFinTs(){
   const ts=(state.finanzas&&state.finanzas._ts)||{};
+  const _cierre=_finMirandoCierre();
   Object.entries(FIN_TS_GRUPO).forEach(([k,grupo])=>{
     const el=document.getElementById('ts_'+k);if(!el)return;
+    if(_cierre){el.textContent='';return;}
     const t=parseFloat(ts[grupo]);
     if(!t){el.textContent='';return;}
     el.textContent='actualizado '+_finTsTxt(t);
@@ -4666,7 +4677,7 @@ function renderFinTs(){
       if(rh){el.textContent+=' · reporte hasta '+rh.txt+(rh.viejo?' ⚠️':'');if(rh.viejo)el.style.color='var(--amber)';}
       // PLATA YA LIBERADA QUE EL DISPONIBLE TODAVÍA NO SUMÓ (revisión max #18): el robot la deja
       // contada en "A liquidar" para que no desaparezca del patrimonio, y se dice acá.
-      let _cerrL=false;try{_cerrL=!!_arqViewYM;}catch(e){}
+      const _cerrL=_cierre;
       const lib=parseFloat((state.finanzas||{}).liq_liberado)||0;
       if(lib>0&&!_cerrL){el.textContent+=' · incluye US$ '+Math.round(lib).toLocaleString('es-AR')+' ya liberados que el disponible no sumó (cargá el disponible de las 4 cuentas)';el.style.color='var(--amber)';}
     }
@@ -4693,7 +4704,7 @@ function anclaViejasDe(anclas,ahora){
 function renderAnclaAviso(){
   const el=document.getElementById('ancla_aviso');if(!el)return;
   // Mirando un mes cerrado no se avisa: esto es sobre el número de HOY.
-  let _cerr=false;try{_cerr=!!_arqViewYM;}catch(e){}
+  const _cerr=_finMirandoCierre();
   if(_cerr){el.style.display='none';return;}
   const v=anclaViejasDe(state.saldoancla,Date.now());
   if(!v.length){el.style.display='none';el.textContent='';return;}
@@ -4732,6 +4743,16 @@ async function saveFin(key,val){
       if(_cta){
         state.saldoancla[_cta]={ars:Math.round(num*_tcA),usd:num,tc:_tcA,ts:Date.now()};
         fbSet('saldoancla/'+_cta,state.saldoancla[_cta]).catch(()=>{});
+        // Etapa 2 (28/09): lo que MP ya liberó y el robot dejó esperando en "a liquidar" para esta
+        // cuenta ya está adentro del número que escribiste: sale de "a liquidar" en el mismo paso.
+        // Si no, la misma plata se cuenta dos veces hasta la noche siguiente.
+        if(db){db.ref('cyc/saldoml/'+_cta+'/liberadoSinDisp').once('value').then(sn=>{
+          const libArs=parseFloat(sn.val())||0; if(!(libArs>0))return;
+          const libUsd=libArs/_tcA, f=state.finanzas||{};
+          const liq=Math.max(0,Math.round((parseFloat(f.mp_liq)||0)-libUsd)), lib=Math.max(0,Math.round((parseFloat(f.liq_liberado)||0)-libUsd));
+          f.mp_liq=liq;f.liq_liberado=lib;
+          return fbUpdate({'finanzas/mp_liq':liq,'finanzas/liq_liberado':lib,['saldoml/'+_cta+'/liberadoSinDisp']:0}).then(()=>{updateArqueo();updateHeaderTotal();});
+        }).catch(e=>console.warn('no pude sacar lo liberado de a liquidar',e));}
       }
     }
   }
@@ -4763,13 +4784,14 @@ async function saveFin(key,val){
   },900);
 }
 
+const FIN_CON_SIGNO=new Set(['mp_disp','mp_liq','mp_adriana','mp_luciana','mp_ayelen','mp_matias']);
 function loadFinInputs(){
   if(_finFocused)return; // mientras se edita un campo de finanzas, no recargar (evita que se revierta el valor)
   // MIRANDO UN MES CERRADO NO SE PISA NADA (24/09/2026): cada dato nuevo que llegaba volvía a
   // llenar las casillas con los números de HOY, y el cierre de agosto mostraba el efectivo de hoy.
   if(document.getElementById('fin-view-sel')?.value){renderFinTs();return;}
   // No pisar el campo que el usuario está editando en este momento (si no, se revierte lo que escribe).
-  FIN_FIELDS.forEach(f=>{const inp=document.getElementById('f_'+f.k);if(inp&&document.activeElement!==inp){const raw=parseFloat(state.finanzas[f.k])||0;setMoneyVal(inp,f.neutral?raw:Math.abs(raw));}});
+  FIN_FIELDS.forEach(f=>{const inp=document.getElementById('f_'+f.k);if(inp&&document.activeElement!==inp){const raw=parseFloat(state.finanzas[f.k])||0;setMoneyVal(inp,(f.neutral||FIN_CON_SIGNO.has(f.k))?raw:Math.abs(raw));}});
   const tc=document.getElementById('f_tipo_cambio');if(tc&&document.activeElement!==tc)setMoneyVal(tc,state.finanzas['tipo_cambio']);
   const rm=document.getElementById('f_retiro_mes');if(rm&&document.activeElement!==rm)setMoneyVal(rm,(state.retiro_mes&&state.retiro_mes[_curYM()])||0);
   renderFinTs();
@@ -6649,7 +6671,9 @@ function calcArqueo(){
     if(f.k==='of_mia'&&_uOfiMati>0)return;      /* ya contado como stock local, por unidades */
     const raw=parseFloat(state.finanzas[f.k])||0;
     if(f.neutral){corregir+=raw;return;}        /* neutro y con signo */
-    const v=Math.abs(raw);
+    // Etapa 2 (28/09): lo que escribe el ROBOT (disponible y a liquidar de MP) va con su signo: un
+    // disponible negativo (punto de partida viejo) con Math.abs sumaba plata en vez de restarla.
+    const v=(f.pos&&FIN_CON_SIGNO.has(f.k))?raw:Math.abs(raw);
     if(f.pos)activos+=v;else deudas+=v;
   });
   const efect=['efectivo','mp_disp','mp_liq'].reduce((s,k)=>s+(parseFloat(state.finanzas[k])||0),0);
@@ -6934,9 +6958,12 @@ function updateArqueo(){
   // En camino a Full: solo se muestra si hay algo, para no agregar un renglón en cero.
   const camWrap=document.getElementById('bk_camino_wrap');
   if(camWrap){
-    const cam=_arqViewYM?0:(c.stockCamino||0);
+    // Etapa 2 (28/09): en un mes cerrado la tarjeta muestra lo que iba en camino ese día (ya está
+    // adentro del "Stock total"); sin el detalle por cuenta, que el cierre no guarda.
+    const cam=_arqViewYM?(dispCamino||0):(c.stockCamino||0);
     camWrap.style.display=cam>0?'':'none';
-    if(cam>0){
+    if(cam>0&&_arqViewYM){setCard('bk_stock_camino',cam,'neutral');const d=document.getElementById('dbk_stock_camino');if(d)d.innerHTML='lo que iba en camino al cerrar el mes';}
+    else if(cam>0){
       setCard('bk_stock_camino',cam,'neutral');
       // Y acá también, a qué cuenta le va. Es la otra mitad de "cuánto tiene cada cuenta": una
       // cuenta puede tener poco en Full y mucho arriba de un camión, y mirando solo el bloque de
@@ -7281,6 +7308,7 @@ function renderDolarMes(){
     let fuente,fColor;
     if(hasManual){fuente='cargado a mano';fColor='#a78bfa';}
     else if(snap&&snap.tipoCambio){fuente='del cierre del mes';fColor='var(--muted)';}
+    else if(ym<_curYM()&&tcVentasMes(ym)>0){fuente='promedio de sus ventas';fColor='var(--muted)';}
     else{fuente='dólar actual';fColor='var(--muted)';}
     let nv=0;const days=state.ventaprod||{};
     Object.keys(days).forEach(k=>{if(k.substring(0,7)===ym)Object.values(days[k]||{}).forEach(v=>{if(!v.cancelada)nv++;});});
@@ -7656,7 +7684,9 @@ function buildCompHTML(dataA,dataB,labelB,isYearly=false){
   // ── Comparación visual con barras ──
   // Los campos "detalle" (el disponible abierto por cuenta) NO entran: son el desglose de mp_disp
   // y sumarlos contaría la misma plata dos veces.
-  const sumPos=d=>FIN_FIELDS.filter(f=>f.pos&&!f.detalle).reduce((s,f)=>s+(parseFloat(d?.finanzas?.[f.k])||0),0);
+  // Etapa 2 (28/09): la oficina de Mati ya está dentro de "Stock" cuando el cierre la tiene contada
+  // por unidades (stockLocal): sumarla también acá la contaba dos veces.
+  const sumPos=d=>FIN_FIELDS.filter(f=>f.pos&&!f.detalle&&!(f.k==='of_mia'&&Number(d?.stockLocal)>0)).reduce((s,f)=>s+(parseFloat(d?.finanzas?.[f.k])||0),0);
   const sumNeg=d=>FIN_FIELDS.filter(f=>!f.pos&&!f.detalle).reduce((s,f)=>s+Math.abs(parseFloat(d?.finanzas?.[f.k])||0),0);
   const stockA=dataA.stock||Object.values(dataA.locValues||{}).reduce((a,b)=>a+(b||0),0);
   const stockB=hasB?(dataB.stock||Object.values(dataB.locValues||{}).reduce((a,b)=>a+(b||0),0)):0;
@@ -7873,11 +7903,23 @@ async function migrarVinculoPorId(){
   if(currentPage==='ventaprod')renderVentaProd();
 }
 // Devuelve el TC histórico del mes YYYY_MM: usa el snapshot si existe, sino el actual
-function histTCforYM(ym){const s=state.snapshots?.[ym];return s&&s.tipoCambio?parseFloat(s.tipoCambio):curTC();}
+function histTCforYM(ym){const s=state.snapshots?.[ym];if(s&&s.tipoCambio)return parseFloat(s.tipoCambio);const t=ym<_curYM()?tcVentasMes(ym):0;return t>0?t:curTC();}
+// Etapa 2 (28/09): un mes YA TERMINADO sin dólar cargado ni cierre usaba el dólar de HOY, así que la
+// ganancia de agosto cambiaba cada vez que se movía el dólar. Ahora usa el promedio del dólar que
+// guardó cada venta de ese mes (v.tcSale, el del día de la venta). Sólo el mes en curso sigue al de hoy.
+const _tcVentasCache={};
+function tcVentasMes(ym){
+  const vp=state.ventaprod||{};const c=_tcVentasCache[ym];
+  if(c&&c.vp===vp)return c.t;
+  let s=0,n=0;
+  for(const [dk,o] of Object.entries(vp)){if(!String(dk).startsWith(ym+'_'))continue;for(const v of Object.values(o||{})){const t=parseFloat(v&&v.tcSale);if(t>0){s+=t;n++;}}}
+  const t=n?Math.round(s/n*100)/100:0;_tcVentasCache[ym]={vp,t};return t;
+}
 // Dólar EFECTIVO de un mes (formato ym "YYYY_MM"):
 //  1) el dólar manual cargado para ese mes en el sector "Dólar x mes"
 //  2) si no, el dólar del cierre de ese mes (snapshot)
-//  3) si no, el dólar actual
+//  3) si no, un mes TERMINADO: el promedio del dólar guardado en sus ventas (etapa 2, 28/09)
+//  4) si no, el dólar actual
 // Así cada mes usa su propio dólar y las ventas viejas no cambian cuando se mueve el dólar de hoy.
 function tcForYM(ym){
   const v=state.tc_mes&&state.tc_mes[ym];
@@ -15416,13 +15458,15 @@ function renderResumen_page(){
   // robot de precios) y la otra está en Gastos. Si la suma no coincide con lo que pagás de verdad
   // por las 4 cuentas, la "Ganancia real CYC" está inflada y no hay forma de darse cuenta mirando.
   const brutoPer=_vpField(periodKeys,'total');
-  const monoEnCosto=Math.round(brutoPer*monoPct()/100);
+  // Etapa 2 (28/09): con el % de CADA mes (el mismo que usa el costo), no el de hoy.
+  let _monoC=0;(periodKeys||[]).forEach(k=>{Object.values(state.ventaprod[k]||{}).forEach(v=>{if(!v||v.cancelada)return;_monoC+=(Number(v.total)||0)*monoPct(_ymDeVenta(v))/100;});});
+  const monoEnCosto=Math.round(_monoC);
   // El "costo de lo vendido" NO es solo mercadería: adentro viajan el IIBB de cada cuenta y el
   // monotributo (impuesto integrado). Se abre acá para que se vea, porque el nombre viejo decía
   // "lo que costaron los productos" y hacía pensar que los impuestos estaban sin contar.
   const impPer=_vpImpuestos(periodKeys);
   setTxt('casc-costo-sub',`mercadería ${fmt(Math.round(costoMerch-impPer))} + impuestos ${fmt(Math.round(impPer))} `
-    +`(IIBB de cada cuenta + monotributo ${monoPct().toFixed(2)}%)`);
+    +`(IIBB de cada cuenta + monotributo ${brutoPer>0?(monoEnCosto/brutoPer*100).toFixed(2):monoPct().toFixed(2)}%)`);
   const catsPer=_cmpCats(periodKeys._cmpKeys||[]);
   const monoEnGastos=Object.entries(catsPer).filter(([c])=>/monotributo|impuesto/i.test(c)).reduce((s,[,v])=>s+v,0);
   setTxt('casc-gastos-sub',`monotributo contado: ${fmt(monoEnCosto+Math.round(monoEnGastos))} `
@@ -15967,7 +16011,7 @@ document.addEventListener('click',e=>{if(fnavOpen&&!e.target.closest('#fnav-btn'
   <!-- DÓLAR POR MES -->
   <div id="tab-dolar-mes">
     <div class="stitle" style="margin-top:0">Dólar por mes</div>
-    <p style="font-size:.68rem;color:var(--muted);margin-bottom:14px">Cargá el valor del dólar de cada mes. El costo y la ganancia de cada venta se calculan con el dólar de <strong>su</strong> mes, así las ventas viejas no cambian cuando se mueve el dólar de hoy. Si un mes no tiene dólar cargado acá, usa el del cierre de ese mes, y si no, el dólar actual.</p>
+    <p style="font-size:.68rem;color:var(--muted);margin-bottom:14px">Cargá el valor del dólar de cada mes. El costo y la ganancia de cada venta se calculan con el dólar de <strong>su</strong> mes, así las ventas viejas no cambian cuando se mueve el dólar de hoy. Si un mes no tiene dólar cargado acá, usa el del cierre de ese mes; si tampoco, un mes ya terminado usa el promedio del dólar de sus ventas, y sólo el mes en curso sigue al dólar de hoy.</p>
     <div id="dolar-mes-list"><div class="empty-msg">Sin meses con ventas todavía.</div></div>
   </div>
       </div>
