@@ -538,6 +538,22 @@ varios aparatos · robot contra sí mismo); notas en el scratchpad `etapa4/*.md`
  · **Para decidir con él:** (1) Telegram: hoy cualquiera que le escriba al bot recibe el resumen — propuesta (a) chats
    nuevos "pendientes" hasta que él apruebe · (2) `calcPrueba` 🧪: días sin registro de stock cuentan como con stock.
 
+### LA REVISIÓN COMPLETA FINAL · 30/09/2026 · v20.88 `cyc-v366` · CERRADA
+Pedido suyo: *"hace la revision completa final"*. Seis revisores (precios · plata · mercadería · ventas · corridas y
+workflows · web). **Todo lo obvio HECHO**, nada para decidir: remate en tramos que cae arriba de $33.000 se vuelve a
+medir con el envío de arriba (si no llega, esa noche no baja) · autoBaja/autoSube sin publicaciones con variantes ·
+`raisePriceTo` se niega con variantes · activar pausadas Premium no cuenta cuotas dos veces · `netoreal` junta el
+carrito entero aunque una fila sea manual (sólo parchea las permitidas) · ventas `netoEstimado` fuera de la deducción
+del envío (14 lugares) · la cancelación del robot guarda `antesCancel` · `dispo` pone en 0 `saldoml/<Cta>/liberadoSinDisp`
+y `saldoml` suma cada cuenta ya clampeada (antes el disponible cargado restaba dos veces) · `stockoculto` se escribe
+sólo cuando se leyeron las 4 cuentas enteras (misma condición que pone en 0 la clave congelada) · token de una cuenta
+que no renueva: sigue con las otras y avisa 1 vez por día (`mlapi/avisotoken/<cta>`), `mlRefresh` con tope de 25 s ·
+**un comando desconocido ya no corre el volcado de facturación: dice "comando desconocido" y sale con error**
+(el volcado es `billingdump`) · `pyped:llego` imprime el `ofi` con el nombre real de la ficha · web: `gestDivVP` (el
+envío de Full va una sola vez al % de las ventas estimadas, igual que el Telegram) · `ml-bajopiso` usa el piso de la
+base (antes 30 fijo). El cartel de Inicio queda sin pendientes. **Quedan con él sólo 2 decisiones de la etapa 5**
+(Telegram abierto a cualquiera · `calcPrueba` con días sin registro de stock).
+
 ### EL PUNTAJE DEL MES: REHACERLO, PERO DESPUÉS (26/09/2026)
 Él, con la captura del Puntaje (7,2 · "Buen mes"): *"no veo cuál es el objetivo de ganancia de CYC y para mí es medio
 flojo el conteo. podría fijarse otras cosas. si querés remodelalo desde 0 con lo que pondrías vos (…) pero ahora
