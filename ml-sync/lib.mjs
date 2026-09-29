@@ -68,6 +68,8 @@ export async function mlRefresh(clientId, clientSecret, refreshToken) {
       client_id: clientId, client_secret: clientSecret,
       refresh_token: refreshToken,
     }),
+    // Sin tope, una renovación colgada frenaba la vuelta entera ~5 min (revisión final, 30/09).
+    signal: AbortSignal.timeout(25000),
   });
   const d = await r.json();
   if (!r.ok) throw new Error('ML refresh falló: ' + JSON.stringify(d));

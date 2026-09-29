@@ -2,18 +2,18 @@ name: ml-bajopiso
 
 # La lista de publicaciones abajo del piso de margen, guardada en el repo.
 #
-# Existe porque desde el 04/08/2026 los precios se manejan A MANO: el robot está apagado y esta
-# lista es la que se mira para decidir qué subir. Son 80+ publicaciones, y leerlas del log de
-# GitHub es incómodo — así queda un archivo que se abre de una y se puede comparar con el de ayer.
+# Queda un archivo que se abre de una y se puede comparar con el de ayer (leerlo del log de GitHub
+# es incómodo). Sin piso escrito usa el piso guardado en la base (cyc/mlconfig/minPct); antes venía
+# fijo en 30 y marcaba abajo del piso todo lo que estaba entre el piso real y 30 (revisión final, 30/09).
 #
 # NO toca ningún precio: bajopiso sin ":go" es solo lectura.
 on:
   workflow_dispatch:
     inputs:
       piso:
-        description: 'Piso de margen en % (por defecto 30)'
+        description: 'Piso de margen en % (vacío = el piso guardado en la base)'
         required: false
-        default: '30'
+        default: ''
       dias:
         description: 'Días de ventas que mira para medir el descuento (por defecto 60)'
         required: false
@@ -48,7 +48,7 @@ jobs:
           FIREBASE_DB_URL: ${{ secrets.FIREBASE_DB_URL }}
           FIREBASE_BOT_EMAIL: ${{ secrets.FIREBASE_BOT_EMAIL }}
           FIREBASE_BOT_PASSWORD: ${{ secrets.FIREBASE_BOT_PASSWORD }}
-          BILLING_PROBE: bajopiso:${{ github.event.inputs.piso || '30' }}:${{ github.event.inputs.dias || '60' }}
+          BILLING_PROBE: bajopiso:${{ github.event.inputs.piso }}:${{ github.event.inputs.dias || '60' }}
         run: node ml-sync/sync.mjs
       - name: Guardar la lista en el repo
         run: |
