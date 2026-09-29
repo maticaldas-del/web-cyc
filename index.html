@@ -10083,6 +10083,15 @@ function candPuedePedir(c){
   return{ok:true,motivo:''};
 }
 function candDias(c){return c&&c.ts?Math.max(0,Math.round((Date.now()-c.ts)/86400000)):null;}
+// ¿SIGUE EN EL ARMADO? (etapa 3, 29/09/2026). La pantalla escondía los de más de CAND_VENCE_DIAS, pero
+// "Llenar" y "Ya lo pedí" no miraban la fecha: le cargaban unidades a uno invisible y lo guardaban en
+// el pedido sin que estuviera en el mensaje a Nissei. Una sola regla para los tres: vencido NO entra,
+// salvo que ya tenga unidades cargadas (ahí se ve, porque lo cargaste vos).
+function candEnArmado(c){
+  if(!c||c.no||c.prodId)return false;
+  const d=candDias(c);
+  return d==null||d<=CAND_VENCE_DIAS||(parseInt(c.pedirU)||0)>0;
+}
 // ── EL PEDIDO DE PRODUCTOS NUEVOS: LA WEB LO GUARDA, EL CHAT LO ARMA (18/09/2026) ─────
 // Pedido suyo: *"voy a hacer un pedido de todos productos nuevos con una combinacion (…) que sean
 // altos %"*, y la aclaración que define todo, que hubo que pedir DOS veces:
@@ -10281,7 +10290,7 @@ function pedLlenarPlan(vivos,tope,maxU,minV){
 }
 async function pedNuevosLlenar(){
   const tope=pedTopeUSD(), maxU=pedMaxU(), minV=pedMinVent();
-  const vivos=candList().filter(c=>!c.no&&!c.prodId);
+  const vivos=candList().filter(candEnArmado);
   const {suma,total,sinVentas,flojos,viajando}=pedLlenarPlan(vivos,tope,maxU,minV);
   if(!suma.length){
     alert(`No hay nada para agregar.\n\nTope: US$ ${tope.toFixed(2)} · ya cargado: US$ ${total.toFixed(2)}\n\n`
@@ -10366,7 +10375,7 @@ function pyCompras(){
 }
 // "Ya lo pedí": congela lo que está cargado y lo saca de la lista de armado.
 async function pyPedidoHecho(){
-  const P=pedNuevos(candList().filter(c=>!c.no&&!c.prodId));
+  const P=pedNuevos(candList().filter(candEnArmado));
   if(!P.filas.length){toast('No hay nada cargado en el pedido','err');return;}
   const hoy=new Date(Date.now()-3*3600e3).toISOString().slice(0,10);
   const id='py'+hoy.replace(/-/g,'');
@@ -10512,13 +10521,17 @@ async function pyPedidoLlego(id){
   renderPedidos();
   // LO QUE QUEDÓ SIN HACER SE DICE, no se descarta callado: son productos comprados que no van a
   // aparecer en ningún lado hasta que alguien los mire.
-  if(repe.length||fallaron.length||sinNom.length||sinPre.length){
+  // Y SE RECUERDA CONTAR (etapa 3, 29/09/2026): las fichas nacen con 0 en la oficina y el pedido deja
+  // de contar "en camino", así que hasta contarlas el patrimonio baja lo que costó el pedido.
+  const _contar=`\n\nAhora contá estas unidades en Mi oficina (hasta que las cuentes no suman en el patrimonio):\n`
+    +items.map(it=>'· '+(it.u||'?')+' u. '+(it.nom||'')).join('\n');
+  {
     alert(`Pedido marcado como llegado ✓ · ${hechas.length} ficha(s) creada(s)\n\n`
       +(repe.length?`Estos NO se crearon porque ya hay una ficha parecida. Si es el mismo producto no hagas nada; si no lo es, creala a mano desde "Para probar":\n${repe.map(x=>'· '+x.src.nombre+' → '+x.rep[0].name).join('\n')}\n\n`:'')
       +(sinPre.length?`Estos quedaron con costo 0 y hay que cargárselo:\n${sinPre.map(x=>'· '+x.src.nombre).join('\n')}\n\n`:'')
       +(sinNom.length?`${sinNom.length} sin nombre: no se pudo crear nada.\n\n`:'')
-      +(fallaron.length?`No se pudieron guardar:\n${fallaron.map(x=>'· '+x).join('\n')}\n`:''));
-  } else toast(`Llegó ✓ · ${hechas.length} ficha(s) creada(s)`,5000);
+      +(fallaron.length?`No se pudieron guardar:\n${fallaron.map(x=>'· '+x).join('\n')}\n`:'')+_contar);
+  }
 }
 async function pyPedidoBorrar(id){
   const c=(state.compraspy||{})[id];if(!c)return;
@@ -10951,7 +10964,7 @@ function candidatosHTML(){
   // `vivos` es la que se dibuja como tarjetas: sin los que ya están en el pedido.
   // OJO, y es la trampa: si `pedNuevosHTML` recibiera la lista filtrada, los renglones del pedido
   // desaparecerían justo después de cargarlos. El armado tiene que ver TODO.
-  const vivos0=todos.filter(c=>!c.no&&!c.prodId&&(candDias(c)==null||candDias(c)<=CAND_VENCE_DIAS));
+  const vivos0=todos.filter(candEnArmado);
   const enPed=vivos0.filter(c=>candEnPedido(c)==='cargado').length;
   const enVia=vivos0.filter(c=>candEnPedido(c)==='viajando').length;
   const vivos=vivos0.filter(c=>!candEnPedido(c));

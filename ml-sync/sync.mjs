@@ -5621,6 +5621,14 @@ async function correrCandidatos(db, products, labels, accounts, soloPrueba, prue
     const usd = parseFloat(c.usd) || 0;
     const puesto = usd > 0 ? Math.round(usd * RECARGO_PAR * 100) / 100 : 0;
     const fuera = async (motivo, margenHoy) => {
+      // LO QUE YA ESTÁ CARGADO EN EL PEDIDO (o ya viajando) NO SE TACHA (etapa 3, 29/09/2026): el
+      // "Ya lo pedí" y la llegada saltean los descartados, así que tacharlo de noche hacía que lo
+      // pagado no entrara "en camino" ni recibiera ficha. Queda en rojo en el pedido (freno del 25%)
+      // y el log lo dice; sacarlo lo decide él.
+      if ((parseInt(c.pedirU) || 0) > 0 || c.pedidoEn) {
+        descartes.push(`${c.nombre} → ${motivo}  (⚠️ ${c.pedidoEn ? 'ya viaja en un pedido' : 'está cargado en el pedido'}: NO lo tacho)`);
+        return;
+      }
       // `margenHoy` sólo viene cuando el descarte es por NO LLEGAR AL PISO. Es lo que distingue el
       // descarte BLANDO (se vuelve a medir a los 7 días) del DURO (marca frenada, sin Nissei, sin
       // precio, pasa el tope): esos no cambian solos y quedan.
@@ -30649,6 +30657,10 @@ async function main() {
         const rel = await db.get('cyc/compraspy/' + id);
         console.log(`\n${rel && rel.estado === 'llego' ? '✓' : '⚠️ NO QUEDÓ'} Pedido ${id} marcado como llegado · ${hechas.length} ficha(s) creada(s)${hechas.length ? ': ' + hechas.map((p) => p.id + ' ' + p.name).join(' | ') : ''}`);
         if (hechas.length) console.log(`Siguiente paso: \`repartopy:${id}\` para ver en qué cuenta va cada una y \`pasara:<cuenta>:=<nombre>:go\` para marcarla. Después contar en la oficina.`);
+        // Etapa 3 (29/09): hasta contarlas, el patrimonio baja lo que costó el pedido (dejó de estar
+        // "en camino" y las fichas nacen en 0). El comando para cargarlas, listo (revisar las unidades).
+        { const _ofi = (c.items || []).filter((it) => it && it.nom && (parseInt(it.u) || 0) > 0 && !/[;=]/.test(it.nom)).map((it) => `=${it.nom}=+${parseInt(it.u)}`);
+          if (_ofi.length) console.log(`⚠️ Contalas en la oficina (hasta entonces no suman en el patrimonio). Si llegó todo: ofi:${_ofi.join(';')};go`); }
         return;
       }
       console.log('No conozco ese paso. Usá: pyped · pyped:repo:… · pyped:nuevos · pyped:llego:<id>');
