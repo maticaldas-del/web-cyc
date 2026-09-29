@@ -30765,13 +30765,29 @@ async function main() {
         // lo que estuviera cargado HOY en el armado. Ahora, si no hay uno con esa fecha, se busca
         // el pedido de ±10 días que todavía no tiene los pesos cargados: si es uno solo se usa ése
         // (y se dice); si hay más de uno no se adivina y se pide la fecha exacta.
-        let idCompra = 'py' + String(fecha).replace(/-/g, '');
-        if (!guardadas[idCompra]) {
+        // D3 de la etapa 3 (29/09/2026, eligió la a): las REPOSICIONES se guardan como `pyr<fecha>`
+        // (tipo:'repo') y los nuevos como `py<fecha>`. Antes sólo se buscaba `py<fecha>`, así que los
+        // pesos de una reposición iban a un registro nuevo o al pedido de nuevos de al lado. Ahora se
+        // buscan los dos; si hay de los dos tipos y no se dijo cuál (`|repo` o `|nuevos`), NO se adivina.
+        const tipoPed = partes.some((x) => /^repo(sici[oó]n)?$/i.test(x)) || /^repo/i.test(campos.tipo || '') ? 'repo'
+          : (partes.some((x) => /^nuevos?$/i.test(x)) || /^nuevo/i.test(campos.tipo || '') ? 'nuevos' : null);
+        const esRepo = (id, g) => /^pyr/.test(id) || (g && g.tipo === 'repo');
+        const delTipo = ([id, g]) => !tipoPed || (tipoPed === 'repo' ? esRepo(id, g) : !esRepo(id, g));
+        const fk = String(fecha).replace(/-/g, '');
+        const exactos = [['py' + fk, guardadas['py' + fk]], ['pyr' + fk, guardadas['pyr' + fk]]].filter(([, g]) => g).filter(delTipo);
+        let idCompra = null;
+        if (exactos.length === 1) idCompra = exactos[0][0];
+        else if (exactos.length > 1) { console.log(`El ${fecha} hay DOS pedidos: uno de nuevos y una reposición. Decí cuál con \`|nuevos\` o \`|repo\`. No escribí nada.`); return; }
+        else {
           const cerca = Object.entries(guardadas).filter(([, g]) => g && g.fecha
             && Math.abs(Date.parse(g.fecha) - Date.parse(fecha)) <= 10 * 864e5
-            && !(g.pagos && Number(g.pagos.mercaderia) > 0));
-          if (cerca.length === 1) { idCompra = cerca[0][0]; console.log(`  (no hay pedido del ${fecha}: uso el pedido del ${cerca[0][1].fecha}, que todavía no tenía los pesos)`); }
+            && !(g.pagos && Number(g.pagos.mercaderia) > 0)).filter(delTipo);
+          const hayDosTipos = !tipoPed && cerca.some(([id, g]) => esRepo(id, g)) && cerca.some(([id, g]) => !esRepo(id, g));
+          if (hayDosTipos) { console.log(`Cerca de esa fecha hay pedidos de nuevos Y reposiciones sin pesos (${cerca.map(([id, g]) => `${g.fecha} ${esRepo(id, g) ? 'repo' : 'nuevos'}`).join(', ')}). Decí cuál con \`|nuevos\` o \`|repo\`. No escribí nada.`); return; }
+          if (cerca.length === 1) { idCompra = cerca[0][0]; console.log(`  (no hay pedido del ${fecha}: uso ${esRepo(idCompra, cerca[0][1]) ? 'la reposición' : 'el pedido de nuevos'} del ${cerca[0][1].fecha}, que todavía no tenía los pesos)`); }
           else if (cerca.length > 1) { console.log(`Hay ${cerca.length} pedidos sin pesos cerca de esa fecha (${cerca.map(([, g]) => g.fecha).join(', ')}). Pasá la fecha exacta del pedido.`); return; }
+          else if (tipoPed === 'repo') { console.log(`No hay ninguna reposición guardada cerca del ${fecha}. Primero va el "Ya lo pedí" de la reposición (\`pyped:repo:…\`); después los pesos. No escribí nada.`); return; }
+          else idCompra = 'py' + fk;
         }
         const yaG = guardadas[idCompra] || null;
         const yaP = (yaG && yaG.pagos) || {};
@@ -30779,7 +30795,7 @@ async function main() {
         const usd = campos.usd != null ? num(campos.usd) : (yaG ? parseFloat(yaG.usdCrudo) || null : null);
         const merc = dePrevio('merc', 'mercaderia');
         const envio = dePrevio('envio', 'envio'), cambio = dePrevio('cambio', 'cambista') || 0, otros = dePrevio('otros', 'otros') || 0;
-        if (yaG && Object.keys(campos).some((k) => !['usd', 'merc', 'envio', 'cambio', 'otros', 'retira', 'det', 'nota', 'kg'].includes(k))) console.log('  (hay un campo que no conozco; se ignora)');
+        if (yaG && Object.keys(campos).some((k) => !['usd', 'merc', 'envio', 'cambio', 'otros', 'retira', 'det', 'nota', 'kg', 'tipo'].includes(k))) console.log('  (hay un campo que no conozco; se ignora)');
         if (yaG) console.log(`  (lo que no pasaste se toma de lo guardado: ${['usd', 'merc', 'envio', 'cambio', 'retira', 'otros'].filter((k) => campos[k] == null).join(', ') || 'nada'})`);
         // `retira` es lo que cobra el que retira en Paraguay y despacha. Tiene su propio nombre y no
         // va metido en `otros` porque es el gasto FIJO más grande que tiene el pedido (medido el
@@ -30833,7 +30849,7 @@ async function main() {
             const hit = buscar(cod);
             const o = { id: (hit && hit.src.id) || ('x' + cod), nom: (hit && String(hit.src.nom || hit.src.nombre || '').slice(0, 120)) || cod, cod, u, usd: pu };
             if (hit) {
-              for (const k of ['mlId', 'link', 'margen', 'ganancia', 'pesoKg', 'pesoTxt']) if (hit.src[k] != null) o[k] = hit.src[k];
+              for (const k of ['mlId', 'link', 'margen', 'ganancia', 'pesoKg', 'pesoTxt', 'prodId']) if (hit.src[k] != null) o[k] = hit.src[k];
               if (o.margen != null) o.margen = Math.round(parseFloat(o.margen) * 10) / 10;
             } else sinNombre.push(cod);
             itemsDet.push(o);

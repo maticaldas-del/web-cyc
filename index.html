@@ -2342,7 +2342,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='20.82';
+const APP_VERSION='20.83';
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
 // muestre la versión y la fecha de actualización y que tenga un desplegable predeterminado cerrado".
 // Y el mismo día: "que ponga fecha de cada modificación y haya una barrita para scrollear y que
@@ -2353,6 +2353,7 @@ const APP_VERSION='20.82';
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'20.83',f:'30/09/2026',h:'00:05',c:[{n:2,t:'Paraguay: al cargar los pesos de una compra (compray) ahora también encuentra las REPOSICIONES. Si ese día hay un pedido de nuevos y una reposición, no adivina: pide que digas cuál. Antes los pesos de una reposición iban a un registro nuevo o al pedido de nuevos de al lado.'}]},
   {v:'20.82',f:'29/09/2026',h:'23:40',c:[{n:3,t:'Paraguay: al llegar un pedido de nuevos, sólo se frena la ficha si ya existe una con el MISMO código de Nissei o el MISMO nombre (y el candidato queda enganchado a ella). Antes bastaba con que compartieran las dos primeras palabras ("Perfume Lattafa…"): el producto quedaba sin ficha, volvía a "Para probar" y se podía comprar dos veces.'}]},
   {v:'20.81',f:'29/09/2026',h:'13:30',c:[{n:3,t:'Pedidos: un color en cero con otros colores llenos ya no queda último con $0 en riesgo; sube en la lista según lo que vende ese color.'},{n:3,t:'Pedidos: las ventas que no dicen el color se reconocen por su publicación (antes ese color no se pedía nunca).'},{n:3,t:'Pedidos: el total por colores se reparte sin inflarse (30 aromas de 1 venta pedían 30 donde el ritmo da 20).'},{n:2,t:'Pedidos: la cuenta de la tarjeta de un producto con colores usa sólo los colores que faltan (se iba el aviso falso de \"renglón que no cierra\").'},{n:3,t:'Paraguay: \"Llenar\" y \"Ya lo pedí\" ya no meten candidatos vencidos que no se ven en pantalla; el robot no tacha de noche lo que ya está cargado o viajando; al llegar un pedido de nuevos te recuerda contar en la oficina.'},{n:3,t:'Oficina: contar un producto con colores desde el chat pide el color (antes podía dejar el total distinto de la suma y al despachar aparecían unidades de la nada); el total ya no queda abajo de la suma de sus colores.'},{n:3,t:'Stock de Full: dos publicaciones con el mismo depósito ya no le dan el stock a un color u otro según cuál se lee primero; las claves negativas no restan en el patrimonio y el robot las pone en 0.'},{n:3,t:'Borrar un producto con mercadería avisa cuántas unidades y dólares salen del patrimonio y pide confirmar dos veces.'},{n:3,t:'Cajas: marcar/desmarcar una caja a mano borra lo que el robot le había anotado (lo que llegaba tarde se lo llevaba la caja siguiente); una caja de más de 45 días ya no deja sin leer a las nuevas del mismo producto; el renglón \"sin color\" no se puede cargar en una caja.'},{n:3,t:'Cajas: cambiar la cuenta de un envío con cajas en camino pide confirmación (sin cuenta no se deja); cerrar caja achica el envío si en la oficina había menos de lo cargado.'},{n:1,t:'Agregar un color cuyo nombre choca con otro (ej. \"Rosé\" y \"Rosè\") ya no se deja.'}]},
   {v:'20.80',f:'29/09/2026',h:'11:15',c:[{n:3,t:'El resumen de ventas por Telegram (el del día y el del mes) calcula la ganancia igual que el panel: costo guardado del mes, dólar del mes y monotributo de ese mes. Antes usaba el costo y el dólar del día de cada venta y daba un número distinto al de la web.'},{n:1,t:'Etapa 2 (plata) de la revisión: cerrada.'}]},
@@ -3212,7 +3213,7 @@ const REV_CADA_DIAS=7;
 //   · REV_HECHAS    → última vez que cada etapa quedó resuelta. Sin pendientes, el cartel pide la
 //                     etapa más vieja cuando pasaron REV_CADA_DIAS desde la última.
 const REV_PENDIENTE=[
-    {t:'Etapa 3: decidir 7 cosas de mercadería (+ arreglar el aviso "renglón que no cierra" por color)',que:'compray con reposición · cajas con faltantes que llegan tarde · recepción partida entre dos cajas · publicaciones ocultas con stock · estado a mano de un pedido · reposición llegada sin contar · freno de pocas ventas en Armar caja',pedi:'etapa 3'},
+    {t:'Etapa 3: decidir 6 cosas de mercadería (+ arreglar el aviso "renglón que no cierra" por color)',que:'cajas con faltantes que llegan tarde · recepción partida entre dos cajas · publicaciones ocultas con stock · estado a mano de un pedido · reposición llegada sin contar · freno de pocas ventas en Armar caja',pedi:'etapa 3'},
     {t:'La segunda revisión completa, al final',que:'la que pediste dejar para cuando esté todo lo demás · va última',pedi:'revisión completa',ultima:true},
 ];
 // Choques (4) y fallas mudas/privacidad (5): verificadas las 15 del 26/09 de madrugada (rev4, lotes 6-8) y
