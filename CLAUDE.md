@@ -441,9 +441,10 @@ recálculo (y el mes anterior si faltaba) · retiro vacío = `null`, no $0 · Te
 (÷ costo+impuestos+envío Full) · Cascada: monotributo por mes · `FIN_CON_SIGNO` (lo que escribe el robot en MP va
 con signo) · mes cerrado sin fechas/avisos de hoy (`_finMirandoCierre`), tarjeta "En camino" del cierre,
 `buildCompHTML` sin `of_mia` doble · el ciclo patchea `finanzas/_seen`/`_ts` por ruta (no pisa `liq_hasta`).
-**FALTA SU DECISIÓN (en REV_PENDIENTE):** A1 lo vendido después del último reporte de MP no está en el
-patrimonio (US$330-660 abajo durante el día): (a) sumarlo (hace falta el fin de reporte por cuenta) · (b) sólo
-mostrar "≈ US$ X vendidos después del dd/mm". D4 el resumen de Telegram usa el costo y dólar del día de cada venta
+**A1 · HECHO el 29/09, eligió la (a) (v20.79 · `cyc-v357`):** `saldoml` guarda el fin del reporte de CADA cuenta en
+`agenda._repHastaCta`; la web (`vendidoSinReporte`) suma al patrimonio y al efectivo el NETO de las ventas no canceladas
+posteriores a ese día en esa cuenta, y lo muestra abajo de "A liquidar" (`vsr_linea`). Sin el fin por cuenta no suma nada
+(con el más viejo se contaría dos veces). **FALTA SU DECISIÓN (en REV_PENDIENTE):** D4 el resumen de Telegram usa el costo y dólar del día de cada venta
 y la web el costo congelado del mes y el dólar del mes: (a) que el robot use la regla de la web · (b) aclararlo.
 B3b (pedir el reporte al principio de saldoml y esperar) quedó sin proponer: alarga la corrida.
 
