@@ -2900,14 +2900,17 @@ async function calcPrueba(db, o) {
   }
   const todos = Array.isArray(resumen.todos) ? resumen.todos : [];
   const medidaDe = (mla, ts) => todos.find((x) => x && x.mla === mla && Math.abs((Number(x.ts) || 0) - ts) < 6 * 3600e3) || null;
-  // Días CON stock entre t0 y t1, del registro hora por hora (cyc/stocklog/cambios). Antes del primer
-  // renglón de la clave no se sabe: se toma con stock (el producto vendía, por eso está en prueba).
+  // Días CON stock entre t0 y t1, del registro hora por hora (cyc/stocklog/cambios). Decisión suya del
+  // 30/09/2026 (eligió la a): sólo cuentan los días en que SE VIO stock. Antes del primer renglón de la
+  // clave (desde ahí se mira) no se sabe, y ya no se toma "con stock": si estuvo agotado en ese hueco,
+  // la suba parecía haber espantado ventas que en realidad faltaron por mercadería. Sin días vistos de
+  // un lado, `ritmoPrueba` da menos de PRUEBA_MIN_DIAS y la prueba espera en vez de decidir.
   const diasConStock = (e, cta, t0, t1) => {
     const c = sidL(cta);
     const kV = e.variant ? e.prodId + '__' + c + '__v__' + sidL(e.variant) : null;
     const cam = slogP || {};
-    const cs = Object.entries(cam[kV && cam[kV] ? kV : e.prodId + '__' + c] || {}).map(([t, v]) => [Number(t), Number(v)]).sort((x, y) => x[0] - y[0]);
-    let est = 1; for (const [t, v] of cs) if (t <= t0) est = v;
+    const cs = Object.entries(cam[kV && cam[kV] ? kV : e.prodId + '__' + c] || {}).map(([t, v]) => [Number(t), Number(v)]).filter(([t]) => t > 0).sort((x, y) => x[0] - y[0]);
+    let est = null; for (const [t, v] of cs) if (t <= t0) est = v;   // null = todavía no se miraba
     let ms = 0, desdeT = t0;
     for (const [t, v] of cs) { if (t <= t0 || t > t1) continue; if (est === 1) ms += t - desdeT; est = v; desdeT = t; }
     if (est === 1) ms += t1 - desdeT;
