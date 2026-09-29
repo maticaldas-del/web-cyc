@@ -1849,14 +1849,22 @@ document.addEventListener('click',e=>{
 
 /* ═══════════ AUTH + INIT ═══════════ */
 let appStarted=false;
+let _cycSinDatos=false; // Etapa 5: Firebase canceló la lectura de cyc/ (ver el error del .on de abajo)
+// Etapa 5: ~48 funciones escriben en la base con await y sin try/catch: si Firebase rechaza, el
+// error se perdía en la consola y en pantalla parecía guardado. Ahora cualquier promesa rechazada
+// que nadie atrapó sale como aviso rojo.
+window.addEventListener('unhandledrejection',ev=>{
+  const r=ev&&ev.reason;const m=(r&&(r.message||r.code))||String(r||'error');
+  try{toast('⚠️ No se guardó: '+m,'err',6000);}catch(_){}
+});
 function startApp(){
   db.ref('.info/connected').on('value',s=>{
-    const ok=s.val()===true;
+    const ok=s.val()===true&&!_cycSinDatos; // Etapa 5: con la lectura cancelada el punto NO puede quedar verde
     ['home','inv','ped','met','res','cmp','vp'].forEach(id=>{
       const dot=document.getElementById('dot-'+id);
       const txt=document.getElementById('conn-'+id);
       if(dot){dot.className='dot '+(ok?'online':'offline');}
-      if(txt)txt.textContent=ok?'en línea':'reconectando...';
+      if(txt)txt.textContent=_cycSinDatos?'sin datos: volvé a entrar':(ok?'en línea':'reconectando...');
     });
   });
   db.ref('cyc').on('value',snap=>{
@@ -1986,6 +1994,22 @@ function startApp(){
     if(firstDataLoad){firstDataLoad=false;goPage('home');}
     // La primera carga se dibuja ya; las demás se juntan y respetan tu scroll (ver renderPronto).
     renderPronto(primeraVez);
+  },err=>{
+    // Etapa 5: si Firebase CANCELA la lectura (permiso vencido, sesión caída) el panel se quedaba
+    // congelado con datos viejos y el punto seguía verde (.info/connected sólo mira la red). Ahora
+    // se ve: punto rojo, "sin datos" y un cartel fijo que no se va solo.
+    _cycSinDatos=true;
+    ['home','inv','ped','met','res','cmp','vp'].forEach(id=>{
+      const dot=document.getElementById('dot-'+id),txt=document.getElementById('conn-'+id);
+      if(dot)dot.className='dot offline';
+      if(txt)txt.textContent='sin datos: volvé a entrar';
+    });
+    let b=document.getElementById('cyc-sin-datos');
+    if(!b){b=document.createElement('div');b.id='cyc-sin-datos';
+      b.style.cssText='position:fixed;top:0;left:0;right:0;z-index:1000;background:var(--red);color:#fff;padding:10px 16px;font-size:.8rem;text-align:center;cursor:pointer';
+      b.onclick=()=>location.reload();document.body.appendChild(b);}
+    b.textContent='⚠️ Se cortó la lectura de la base ('+((err&&(err.code||err.message))||'error')+'). Lo que ves puede estar VIEJO y lo que cargues puede no guardarse. Tocá acá para volver a entrar.';
+    const l=document.getElementById('loading');if(l)l.style.display='none';
   });
 }
 function doLogin(){
@@ -2630,6 +2654,16 @@ function fmtMoneyInput(el){
 /* ── Evitar que el re-render de Firebase borre lo que se está editando ── */
 let pendingRender=false;
 let _finPending={}; // valores de finanzas escritos localmente pero aún no confirmados en la base (no dejar que un snapshot los pise)
+// Etapa 5: si la escritura FALLA, el valor quedaba en _finPending para siempre y cada snapshot lo
+// volvía a aplicar: la pantalla mostraba un número que la base nunca tuvo. Se suelta, se vuelve a
+// leer lo que hay en la base y se avisa.
+async function _finFalla(keys,err){
+  keys=[].concat(keys).filter(Boolean);
+  for(const k of keys)delete _finPending[k];
+  try{if(db)for(const k of keys){const v=(await db.ref('cyc/finanzas/'+k).once('value')).val();if(v==null)delete state.finanzas[k];else state.finanzas[k]=v;}}catch(_){}
+  try{loadFinInputs();updateArqueo();updateHeaderTotal();}catch(_){}
+  toast('⚠️ No se guardó '+keys.join(', ')+': '+((err&&(err.message||err.code))||'error')+'. Volvió el valor de la base.','err',7000);
+}
 // ── LO MISMO PARA EL INVENTARIO ──────────────────────────────────────────────────────
 // El bug que arregla, contado por él: en "Contar lo que hay" escribís las unidades, tocás OK y el
 // número VUELVE A CERO; al segundo intento queda. No era el teclado ni el guardado.
@@ -2641,6 +2675,15 @@ let _finPending={}; // valores de finanzas escritos localmente pero aún no conf
 // La solución es la misma que ya estaba hecha para Finanzas: lo escrito localmente y todavía sin
 // confirmar se vuelve a aplicar arriba de cada actualización, hasta que la base lo devuelve.
 let _invPending={};
+// Etapa 5: lo mismo que _finFalla para el stock: si la escritura falla se suelta lo pendiente, se
+// relee la base y se avisa (si no, el número "guardado" vivía sólo en este aparato hasta recargar).
+async function _invFalla(keys,err){
+  keys=[].concat(keys).filter(Boolean);
+  for(const k of keys)delete _invPending[k];
+  try{if(db)for(const k of keys){const v=(await db.ref('cyc/inventory/'+k).once('value')).val();if(v==null)delete state.inventory[k];else state.inventory[k]=v;}}catch(_){}
+  try{updateTotals();renderPronto();}catch(_){}
+  toast('⚠️ No se guardó el stock: '+((err&&(err.message||err.code))||'error')+'. Volvió el valor de la base.','err',7000);
+}
 let _finFocused=false; // hay un campo de finanzas siendo editado → congelar la recarga de esos campos
 function isEditing(){const a=document.activeElement;return !!a&&/^(INPUT|SELECT|TEXTAREA)$/.test(a.tagName);}
 /* ── POR QUÉ LA PÁGINA SE TRABA EN EL CELULAR MIENTRAS SCROLEÁS ──
@@ -2697,7 +2740,7 @@ document.addEventListener('input',e=>{
         return;
       }
       clearTimeout(finTimers[key]);
-      finTimers[key]=setTimeout(()=>{fbSet('finanzas/'+key,num).then(()=>{if(_finPending[key]===num)delete _finPending[key];});},700);
+      finTimers[key]=setTimeout(()=>{fbSet('finanzas/'+key,num).then(()=>{if(_finPending[key]===num)delete _finPending[key];}).catch(e=>_finFalla(key,e));},700); // Etapa 5: antes sin catch
     }
   }
 });
@@ -2927,10 +2970,11 @@ function productsFiltered(inputId){
 }
 
 let toastT;
-function toast(msg,type='ok'){
+function toast(msg,type='ok',ms){
   const el=document.getElementById('toast');
   el.textContent=msg;el.className='show '+type;
-  clearTimeout(toastT);toastT=setTimeout(()=>el.classList.remove('show'),3000);
+  // Etapa 5: varios llamados ya pasaban la duración (y se ignoraba); un error se lee en más de 3 s.
+  clearTimeout(toastT);toastT=setTimeout(()=>el.classList.remove('show'),ms||(type==='err'?6000:3000));
 }
 
 async function fbSet(p,v){if(db)await db.ref('cyc/'+p).set(v);}
@@ -3367,7 +3411,7 @@ function _prodMargenBanner(){
       <span>Meta <strong style="color:var(--green)">${META}%</strong> · <strong style="color:${bajo?'var(--red)':'var(--green)'}">${bajo}</strong> bajo la meta · <strong style="color:#38bdf8">${conCalc}</strong> con el precio de hoy · <strong>${sinPub}</strong> sin publicación en ML</span>
       <button class="btn" style="background:${prodSoloBajoMeta?'var(--red)':'rgba(239,68,68,.12)'};color:${prodSoloBajoMeta?'#fff':'var(--red)'};border:1px solid rgba(239,68,68,.3)" onclick="toggleProdBajoMeta()">${prodSoloBajoMeta?'Ver todos':'Ver solo los que están bajo la meta'}</button>
     </div>
-    <span style="font-size:.92em">El <strong>Neto ML</strong> es lo que dice ML que te queda al precio de hoy (precio − comisión − <strong>envío del peor caso</strong>). Los <span style="color:var(--amber)">SIN ENVÍO</span> son los que nunca vendieron: ahí no hay envío descontado y el margen que se ve es más alto que el real. Se recalcula solo todas las noches · última vez: <strong style="color:var(--text)">${ultTxt}</strong>.<br><strong style="color:var(--text)">Lo miran</strong> = visitas de los últimos 30 días. <span style="color:var(--amber)">Menos de ${VIS_POCAS}</span> = no la ve nadie y el precio no es el problema; ${VIS_MUCHAS} o más sin vender = la ven y no compran, ahí sí mirá el precio.</span>
+    <span style="font-size:.92em">El <strong>Neto ML</strong> es lo que dice ML que te queda al precio de hoy (precio − comisión − <strong>envío del peor caso</strong>). Los <span style="color:var(--amber)">SIN ENVÍO</span> son los que nunca vendieron: ahí no hay envío descontado y el margen que se ve es más alto que el real. Se recalcula solo todas las noches · última vez: <strong style="color:${ultTs&&Date.now()-ultTs>DATO_VIEJO_MS?'var(--amber)':'var(--text)'}">${ultTxt}${ultTs&&Date.now()-ultTs>DATO_VIEJO_MS?' ⚠ hace más de 2 días':''}</strong>.<br><strong style="color:var(--text)">Lo miran</strong> = visitas de los últimos 30 días. <span style="color:var(--amber)">Menos de ${VIS_POCAS}</span> = no la ve nadie y el precio no es el problema; ${VIS_MUCHAS} o más sin vender = la ven y no compran, ahí sí mirá el precio.</span>
   </div>`;
 }
 function _prodIncompletosBanner(){
@@ -3691,6 +3735,8 @@ function flujoPlataHTML(p){
     const _dud=margenDudosoDe(r);
     const _avEnv=_dud==='falso'?' · SIN ENVÍO · ML SÍ COBRA':_dud==='corto'?(p.netoCalcSinEnvio?' · SIN ENVÍO':' · ENVÍO ESTIMADO POR ML'):'';
     chips.push(`<span title="Calculado con el precio de HOY en ML: precio − comisión oficial − envío del peor caso.${precio?' Precio usado: '+fmt(precio)+'.':''}" style="font-size:.5rem;color:${_dud==='falso'?'var(--red)':(p.netoCalcPausada||_dud)?'var(--amber)':'#60a5fa'};font-weight:700;letter-spacing:.04em">◉ PRECIO DE HOY${p.netoCalcPausada?' · PAUSADA':''}${_avEnv}</span>`);
+    // Etapa 5: si el recálculo de la noche no pasó hace 48 h, el "precio de hoy" no es de hoy: se dice a la vista.
+    if(margenViejoDe(r.ts))chips.push(`<span title="El Neto ML y el margen de esta ficha se calcularon el ${margenViejoDe(r.ts)} y no se volvieron a calcular desde entonces (el robot lo hace cada noche). Puede haber cambiado el precio o la comisión." style="background:rgba(251,191,36,.14);color:var(--amber);border-radius:5px;padding:2px 7px;font-size:.58rem;font-weight:700;white-space:nowrap">⚠ margen del ${margenViejoDe(r.ts)}</span>`);
     // EL MOTIVO, que es lo que faltaba: "pausada" no dice si es por falta de stock o porque ML
     // la frenó, y el remedio de cada una es el contrario.
     const _se=subEstadoDe(p);
@@ -3940,6 +3986,7 @@ function setQ(pid,loc,val,variant=''){
   updateTotals();
   clearTimeout(qTimers[k]);
   qTimers[k]=setTimeout(async()=>{
+   try{ // Etapa 5: si falla, se suelta lo pendiente, se relee la base y se avisa (ver _invFalla)
     await fbSet('inventory/'+k,nv);
     if(_invPending[k]===nv)delete _invPending[k];   // ya está en la base: puede volver a mandar el servidor
     if(variant){
@@ -3952,6 +3999,7 @@ function setQ(pid,loc,val,variant=''){
     const p=state.products.find(x=>x.id===pid);
     await log((p?p.name:pid)+(variant?' ['+variant+']':'')+' / '+loc+': '+old+' → '+nv);
     syncPedidosDebounced();
+   }catch(e){_invFalla(variant?[k,invKey(pid,loc)]:[k],e);}
   },900);
 }
 function setQVar(el){setQ(el.dataset.pid,el.dataset.loc,el.value,el.dataset.variant);}
@@ -4766,7 +4814,7 @@ async function saveFin(key,val){
   // Si se tocó una de las cuatro cuentas, el total de "MercadoPago disponible" se rehace solo.
   // Es un campo calculado: el input está bloqueado justamente para que nadie lo pise a mano y
   // deje el total peleado con el detalle.
-  let totMP=null;
+  let totMP=null,_anclaP=null;
   if(MP_CUENTAS.includes(key)){
     totMP=MP_CUENTAS.reduce((s,k)=>s+(parseFloat(state.finanzas[k])||0),0);
     state.finanzas.mp_disp=totMP;_finPending.mp_disp=totMP;
@@ -4787,7 +4835,11 @@ async function saveFin(key,val){
       const _cta=MP_LABEL[key];
       if(_cta){
         state.saldoancla[_cta]={ars:Math.round(num*_tcA),usd:num,tc:_tcA,ts:Date.now()};
-        fbSet('saldoancla/'+_cta,state.saldoancla[_cta]).catch(()=>{});
+        // Etapa 5: antes `.catch(()=>{})` mudo: si fallaba, la fecha de carga (_ts.mp) igual se
+        // marcaba nueva y el Arqueo decía "al día" con el punto de partida viejo en la base.
+        _anclaP=fbSet('saldoancla/'+_cta,state.saldoancla[_cta]).then(()=>true).catch(e=>{
+          toast('⚠️ No se guardó el punto de partida de '+_cta+': '+((e&&(e.message||e.code))||'error')+'. La fecha de carga NO se actualizó.','err',7000);
+          return false;});
         // Etapa 2 (28/09): lo que MP ya liberó y el robot dejó esperando en "a liquidar" para esta
         // cuenta ya está adentro del número que escribiste: sale de "a liquidar" en el mismo paso.
         // Si no, la misma plata se cuenta dos veces hasta la noche siguiente.
@@ -4812,6 +4864,7 @@ async function saveFin(key,val){
   }
   updateArqueo();updateHeaderTotal();
   const grupo=FIN_TS_GRUPO[key],ahora=Date.now();
+  const _tsAntes=state.finanzas._ts?state.finanzas._ts[grupo]:undefined;
   if(grupo){
     if(!state.finanzas._ts)state.finanzas._ts={};
     state.finanzas._ts[grupo]=ahora;
@@ -4819,11 +4872,17 @@ async function saveFin(key,val){
   }
   clearTimeout(finTimers[key]);
   finTimers[key]=setTimeout(async()=>{
+   // Etapa 5: todo el guardado va con try: antes, si fallaba, el valor quedaba en _finPending para
+   // siempre (cada snapshot lo volvía a aplicar) y no se enteraba nadie.
+   try{
     await fbSet('finanzas/'+key,num);
     // El total recalculado se guarda en la misma tanda: si se guardara solo el detalle, la base
     // quedaría con el total viejo y el patrimonio saldría mal hasta la próxima carga.
     if(totMP!==null){await fbSet('finanzas/mp_disp',totMP);await fbSet('finanzas/_seen/mp_disp',totMP);}
-    if(grupo){
+    // Etapa 5: si el punto de partida de MP no se guardó, la fecha de carga NO se marca nueva.
+    const _anclaOk=_anclaP?await _anclaP:true;
+    if(grupo&&!_anclaOk){if(state.finanzas._ts){if(_tsAntes==null)delete state.finanzas._ts[grupo];else state.finanzas._ts[grupo]=_tsAntes;}renderFinTs();}
+    if(grupo&&_anclaOk){
       await fbSet('finanzas/_ts/'+grupo,ahora);
       // _seen es la copia contra la que el robot compara para detectar cambios hechos por afuera.
       // Se actualiza también acá para que no vuelva a marcar como "cambio" lo que acabás de cargar.
@@ -4835,6 +4894,10 @@ async function saveFin(key,val){
     if(totMP!==null&&_finPending.mp_disp===totMP)delete _finPending.mp_disp;
     const f=FIN_FIELDS.find(x=>x.k===key);
     await log('Arqueo '+(f?f.label:key)+': '+fmt(num));
+   }catch(e){
+    if(grupo&&state.finanzas._ts){if(_tsAntes==null)delete state.finanzas._ts[grupo];else state.finanzas._ts[grupo]=_tsAntes;try{renderFinTs();}catch(_){}}
+    _finFalla(totMP!==null?[key,'mp_disp']:[key],e);
+   }
   },900);
 }
 
@@ -5998,9 +6061,14 @@ async function ofiSumar(prodId,inputId){
   const n=Math.round(parseFloat(e.value)||0);
   if(!n){e.focus();return;}
   const p=(state.products||[]).find(x=>x.id===prodId);if(!p)return;
+  // Etapa 5: la casilla se vacía recién cuando la base aceptó: si falla, el número sigue ahí para
+  // reintentar y sale el aviso (antes se borraba primero y el error quedaba mudo).
+  let r;
+  try{r=await ofiMover(prodId,'',{delta:n});}
+  catch(err){toast('⚠️ No se sumó a la oficina ('+p.name+'): '+((err&&(err.message||err.code))||'error'),'err',7000);renderOfiContar();return;}
   e.value='';
-  const {antes,ahora:total}=await ofiMover(prodId,'',{delta:n});
-  await syncOfiMati();
+  const {antes,ahora:total}=r;
+  try{await syncOfiMati();}catch(_){}
   toast(`${p.name}: ${antes} + ${n} = ${total} ✓`);
   renderOfiContar();
 }
@@ -6008,8 +6076,11 @@ async function ofiSumarVar(prodId,variante,inputId){
   const e=document.getElementById(inputId);if(!e)return;
   const n=Math.round(parseFloat(e.value)||0);
   if(!n){e.focus();return;}
+  let r; // Etapa 5: igual que ofiSumar
+  try{r=await ofiMover(prodId,variante,{delta:n});}
+  catch(err){toast('⚠️ No se sumó a la oficina ('+variante+'): '+((err&&(err.message||err.code))||'error'),'err',7000);renderOfiContar();return;}
   e.value='';
-  const {antes,ahora:total}=await ofiMover(prodId,variante,{delta:n});
+  const {antes,ahora:total}=r;
   syncOfiMati();renderOfiContar();
   toast(`${variante}: ${antes} + ${n} = ${total} ✓`);
 }
@@ -6030,7 +6101,8 @@ async function setOfiVar(pid,variante,val){
   const n=Math.max(0,parseInt(String(val).replace(/[^\d]/g,''))||0);
   // Lo que él contó en esa variante se pone EXACTO; el total del producto se mueve lo mismo que
   // cambió la variante, sobre lo que hay en la base (c3).
-  await ofiMover(pid,variante,{fijo:n});
+  try{await ofiMover(pid,variante,{fijo:n});}
+  catch(err){toast('⚠️ No se guardó '+variante+' en la oficina: '+((err&&(err.message||err.code))||'error')+'. Volvió el valor de la base.','err',7000);} // Etapa 5
   syncOfiMati();renderOfiContar();
 }
 
@@ -6148,8 +6220,12 @@ async function cerrarCaja(cuenta){
   }
   if(_cortos.length){
     const _its=items.filter(x=>x.u>0);
-    try{await _guardarCajas(id,[{...e.cajasDet[0],items:_its}]);}catch(err){}
-    alert('⚠️ En la oficina había menos de lo cargado en la caja (lo cambió otro aparato). El envío quedó con lo que de verdad salió:\n\n'+_cortos.join('\n'));
+    // Etapa 5: antes el catch era mudo y el cartel decía "el envío quedó con lo que salió" aunque
+    // no se hubiera guardado: "en camino" seguía con las unidades de más.
+    let _okAchico=true,_errAchico='';
+    try{await _guardarCajas(id,[{...e.cajasDet[0],items:_its}]);}catch(err){_okAchico=false;_errAchico=String(err&&err.message||err).slice(0,80);}
+    if(_okAchico)alert('⚠️ En la oficina había menos de lo cargado en la caja (lo cambió otro aparato). El envío quedó con lo que de verdad salió:\n\n'+_cortos.join('\n'));
+    else alert('⚠️ En la oficina había menos de lo cargado en la caja, y NO SE PUDO ACHICAR EL ENVÍO ('+_errAchico+'). "En camino" sigue con lo cargado: hay que corregirlo a mano. La diferencia:\n\n'+_cortos.join('\n'));
   }
   if(_fallo.length)alert('⚠️ Se cortó la conexión: estos renglones NO se descontaron de la oficina (contalos de nuevo):\n\n'+_fallo.join('\n'));
   await _guardarCajaArmando(cuenta,{});   // la caja se cerró: deja de estar a medio armar
@@ -6879,7 +6955,10 @@ function renderReconciliacion(){
   const endSnap=(state.snapshots&&state.snapshots[ym]&&state.snapshots[ym].total!=null)?state.snapshots[ym]:null;
   // Un mes cerrado se pasa a pesos con SU dólar, no con el de hoy (24/09/2026): si no, el mismo
   // mes cerrado cambiaba de veredicto cada vez que se movía el dólar.
-  const tc=(endSnap&&parseFloat(endSnap.tipoCambio)>0?parseFloat(endSnap.tipoCambio):0)||curTC()||1500;
+  const tc=(endSnap&&parseFloat(endSnap.tipoCambio)>0?parseFloat(endSnap.tipoCambio):0)||curTC();
+  // Etapa 5: sin dólar se usaba $1.500 inventado y salía un veredicto ("Falta plata"/"Sobra") con un
+  // patrimonio pasado a pesos con un número que nadie cargó. Sin dólar no se opina.
+  if(!(tc>0)){el.innerHTML=card(`<div style="font-family:'Syne',sans-serif;font-weight:800;font-size:.9rem;margin-bottom:4px">🔍 ¿Cierra el mes?</div><div style="font-size:.66rem;color:var(--amber)">⚠ Sin dólar cargado: no se puede pasar el patrimonio a pesos, así que no hay veredicto. Cargá el tipo de cambio arriba.</div>`,'#f59e0b');return;}
   const arqNow=endSnap?endSnap.total:cArq.total; // patrimonio al cierre del mes (USD)
   const dP=Math.round((arqNow-snap.total)*tc);  // cuánto creció el patrimonio (pesos, aprox)
   const genera=P.neto-P.costo-P.gastos;         // lo que generó el negocio
@@ -8334,7 +8413,7 @@ async function recalcTodayCostos(prodId){
 // mismo número de venta (el del paquete). El panel agrupaba por orden, así que la misma compra
 // aparecía como dos ventas separadas — y con los costos del paquete (envío y cuotas) cargados
 // enteros a una sola, una se veía ganando mucho y la otra perdiendo. Pasó el 08/09/2026 con los
-// dos Ferraris de Adriana (#2000014927347373): +39% y −1%, cuando la verdad es +20% en las dos.
+// dos Ferraris de Adriana (#…7373): +39% y −1%, cuando la verdad es +20% en las dos.
 // Ahora se agrupa por el NÚMERO DE VENTA cuando lo hay: una compra, un renglón.
 const vpGrupoKey=(v)=>v.numVenta?('n'+v.numVenta):(v.saleId||v.id);
 // El segundo y el tercer caso son para los botones viejos, que mandaban el saleId o el id.
@@ -8601,7 +8680,7 @@ function renderVentaProd(){
     source.forEach(v=>{const gid=vpGrupoKey(v);if(!gmap[gid]){gmap[gid]={gid,saleId:v.saleId,_dateKey:v._dateKey,items:[],cancelada:!!v.cancelada,tipoCancelacion:v.tipoCancelacion||''};gmap[gid].order=groups.length;groups.push(gmap[gid]);}gmap[gid].items.push(v);if(v.cancelada){gmap[gid].cancelada=true;gmap[gid].tipoCancelacion=v.tipoCancelacion||gmap[gid].tipoCancelacion;}});
     const filteredGroups=groups.filter(grp=>{
       // ── UNA VENTA TIENE DOS NÚMEROS Y ML TE MUESTRA UNO U OTRO SEGÚN LA PANTALLA ──
-      // El 03/09/2026 él dio por perdida la venta #2000014842321883: "esta venta no está en ningún
+      // El 03/09/2026 él dio por perdida la venta #…1883: "esta venta no está en ningún
       // lado. no se cargó". Estaba cargada, con el neto exacto ($9.435, igual que Mercado Pago) —
       // lo que no estaba era el número por el que la buscó.
       // ML le pone a cada venta un número de ORDEN y, cuando va en un paquete, además un número de
@@ -8938,17 +9017,23 @@ function envioEstimadoArriba(){
 // se irían separando — el error anotado una docena de veces en este archivo.
 // El COSTO no se toca: una ficha tiene UN costo y lo comparten todos sus colores. Lo que cambia
 // entre variantes es el PRECIO al que está publicada cada una, y eso es justo lo que se quiere ver.
+// Etapa 5: la antigüedad del dato se veía sólo en el globito (y en el teléfono no hay globito). Un
+// margen de hace 3 días en verde se lee "medido hoy". Pasadas 48 h (netoweb corre cada noche, así
+// que 2 noches sin correr) va en ámbar con su fecha al lado. Sin fecha guardada no se opina.
+const DATO_VIEJO_MS=48*3600*1000, CAJA_VIEJA_MS=24*3600*1000;
+function margenViejoDe(ts){ts=Number(ts)||0;return (ts>0&&Date.now()-ts>DATO_VIEJO_MS)?new Date(ts).toLocaleDateString('es-AR',{day:'2-digit',month:'2-digit'}):null;}
 function margenMLDe(p,pub){
   const F=pub?{neto:pub.neto,precio:pub.precio,envio:pub.envio,
                sinEnvio:pub.sinEnvio===true,envioML:pub.envioML===true,
                cuenta:pub.cuenta,pausada:pub.activa===false,
-               sinMedir:Number(pub.sinMedir)>(Number(pub.ts)||0)?Number(pub.ts)||0:null}
+               sinMedir:Number(pub.sinMedir)>(Number(pub.ts)||0)?Number(pub.ts)||0:null,ts:Number(pub.ts)||0}
             :{neto:p.netoCalc,precio:p.netoCalcPrecio,envio:p.netoCalcEnvio,
                sinEnvio:p.netoCalcSinEnvio===true,envioML:p.netoCalcEnvioML===true,
                cuenta:p.netoCalcCuenta,pausada:p.netoCalcPausada===true,
                // El robot no lo pudo medir anoche (ML no contestó una comisión): el número es de la
                // última vez que se midió entero, y se dice (F3, 25/09/2026). Guarda la fecha de ESE número.
-               sinMedir:Number(p.netoCalcSinMedir)>(Number(p.netoCalcTs)||0)?Number(p.netoCalcTs)||0:null};
+               sinMedir:Number(p.netoCalcSinMedir)>(Number(p.netoCalcTs)||0)?Number(p.netoCalcTs)||0:null,
+               ts:Number(p.netoCalcTs)||0};  // Etapa 5: de cuándo es el número (ver margenViejoDe)
   const agg=_netoAgg();
   const a=agg['id:'+p.id]||agg['nm:'+normTxt(p.name)];
   let mlExtra=0,mlExtraEstimado=false;
@@ -9005,7 +9090,7 @@ function margenMLDe(p,pub){
       if(costoEst>0)margenEst=(netoCalc-gestEst-costoBase)/costoEst*100;
     }
   }
-  return {costo,costoBase,gest,neto:netoCalc,netoCalc,margen,margenEst,gestEst,estN,mlExtra,mlExtraEstimado,sinMedir:F.sinMedir,
+  return {costo,costoBase,gest,neto:netoCalc,netoCalc,margen,margenEst,gestEst,estN,mlExtra,mlExtraEstimado,sinMedir:F.sinMedir,ts:F.ts,
     // El precio sale acá para que quien muestre el margen pueda preguntarse si ese margen es
     // POSIBLE: arriba de los $33.000 ML cobra el envío gratis siempre, así que un margen
     // calculado con envío $0 a ese precio está inflado por varios puntos.
@@ -12145,9 +12230,11 @@ function rotVisitasHtml(rt,v,ventas){
   const st='font-size:.57rem;margin-top:2px;line-height:1.3';
   if(!v)return `<div style="${st};color:var(--muted)" title="El robot todavía no midió las visitas de sus publicaciones (las trae cada noche, sólo de las que tienen stock).">👁 visitas sin medir</div>`;
   const cuando=v.ts?` Dato de ${new Date(v.ts).toLocaleDateString('es-AR')}.`:'';
-  if(v.tot<ROT_VIS_POCAS)return `<div style="${st};color:#a78bfa" title="${v.tot} visitas en 30 días entre ${v.pubs} publicación(es). NO LA VE NADIE: el problema es que no aparece (caja de compra, título, foto o categoría). Bajar el precio acá regala margen sin vender.${cuando}">👻 no la ve nadie · ${v.tot} visitas</div>`;
-  if(v.tot>=ROT_VIS_MUCHAS&&!(ventas>0))return `<div style="${st};color:var(--red)" title="${v.tot} visitas en 30 días y ninguna venta. LA VEN Y NO COMPRAN: acá sí el precio (o la caja de compra) es el problema.${cuando}">👀 la ven y no compran · ${v.tot} visitas</div>`;
-  return `<div style="${st};color:var(--muted)" title="${v.tot} visitas en 30 días entre ${v.pubs} publicación(es). Ni tan poco como para decir que no la ve nadie, ni tanto como para culpar sólo al precio.${cuando}">👁 ${v.tot} visitas en 30 d</div>`;
+  // Etapa 5: con más de 48 h la fecha va a la vista (en el teléfono no hay globito).
+  const _vv=margenViejoDe(v.ts),_vvH=_vv?`<br><span style="color:var(--amber)">⚠ del ${_vv}</span>`:'';
+  if(v.tot<ROT_VIS_POCAS)return `<div style="${st};color:#a78bfa" title="${v.tot} visitas en 30 días entre ${v.pubs} publicación(es). NO LA VE NADIE: el problema es que no aparece (caja de compra, título, foto o categoría). Bajar el precio acá regala margen sin vender.${cuando}">👻 no la ve nadie · ${v.tot} visitas${_vvH}</div>`;
+  if(v.tot>=ROT_VIS_MUCHAS&&!(ventas>0))return `<div style="${st};color:var(--red)" title="${v.tot} visitas en 30 días y ninguna venta. LA VEN Y NO COMPRAN: acá sí el precio (o la caja de compra) es el problema.${cuando}">👀 la ven y no compran · ${v.tot} visitas${_vvH}</div>`;
+  return `<div style="${st};color:var(--muted)" title="${v.tot} visitas en 30 días entre ${v.pubs} publicación(es). Ni tan poco como para decir que no la ve nadie, ni tanto como para culpar sólo al precio.${cuando}">👁 ${v.tot} visitas en 30 d${_vvH}</div>`;
 }
 function rotCajaBajaHtml(r){
   const b=r.cajaBaja; if(!b)return '';
@@ -12197,6 +12284,10 @@ function rotCajaHtml(r){
   // Revisión max (rev4): la caja de una pausada es vieja y se dice a la vista, no sólo en el globito.
   if(c.vieja)return `<span style="color:var(--muted)" title="${detalle.slice(3)}">⏸ ${ {winning:'ganaba',sharing:'compartía',losing:'perdía'}[c.st]||'sin catálogo'} <span style="font-size:.55rem">(pausada · dato viejo)</span></span>`;
   const _ext=rotCajaExtraHtml(c);
+  // Etapa 5: la edad del dato iba sólo en el globito. El robot la pregunta cada hora; con más de 24 h
+  // "Ganás" puede ser de ayer y ya no ser cierto: va a la vista, en ámbar.
+  if(c.ts&&Date.now()-c.ts>CAJA_VIEJA_MS){const _h=Math.floor((Date.now()-c.ts)/3600000);
+    _ext.html+=`<div style="font-size:.55rem;color:var(--amber);margin-top:2px;white-space:nowrap" title="El robot pregunta la caja una vez por hora; este dato no se actualizó desde entonces.">⚠ dato de hace ${_h>=48?Math.floor(_h/24)+' d':_h+' h'}</div>`;}
   if(c.st==='winning')
     return `<span style="font-weight:700;color:var(--green)" title="GANÁS LA CAJA DE COMPRA. El botón de comprar del catálogo es tuyo: la venta la hacés vos. Si igual no vende, el problema NO es la competencia — mirá visitas, foto o título.${detalle}">🟢 Ganás</span>`+_ext.html;
   if(c.st==='sharing')
@@ -12502,6 +12593,7 @@ function rotMargenHtml(r){
   // MENOR que este, así que pintarlo verde sería decir "cómodo" sobre algo que no se sabe.
   else if(dudoso==='corto'){color='var(--amber)';tit=`Daría ${aire.toFixed(0)} punto(s) de aire sobre el ${PISO}%, PERO el envío no está medido en tus ventas (ver abajo): el margen real es menor que este, así que no cuentes con ese aire.`;}
   else if(r.margenSinMedir!=null){color='var(--amber)';tit=`Anoche NO se pudo medir (ML no contestó una comisión): este número es de la última vez que se midió entero. Puede haber cambiado.`;}
+  else if(margenViejoDe(r.margenTs)){color='var(--amber)';tit=`Este margen es del ${margenViejoDe(r.margenTs)}: el recálculo de la noche no lo actualizó desde entonces. Puede haber cambiado el precio o la comisión.`;} // Etapa 5
   else if(aire<5){color='var(--amber)';tit=`Pegado al piso: solo ${aire.toFixed(0)} punto(s) de aire sobre el ${PISO}%. Casi no se puede bajar.`;}
   else {color='var(--green)';tit=`${aire.toFixed(0)} puntos de aire sobre el piso de ${PISO}%. Acá sí hay margen para recortar si hace falta que rote.`;}
   tit+=` · Neto ML ${fmt(r.margenNeto)} contra un costo de ${fmt(r.margenCosto)}. Ojo: bajar el precio $100 NO baja el margen $100 (ML se queda con su comisión de lo que recortes).`;
@@ -12525,6 +12617,9 @@ function rotMargenHtml(r){
   if(r.margenSinMedir!=null){
     const _fS=r.margenSinMedir>0?new Date(r.margenSinMedir).toLocaleDateString('es-AR',{day:'2-digit',month:'2-digit'}):'antes';
     pie+=`<div style="font-size:.55rem;color:var(--amber);margin-top:2px;white-space:nowrap">⚠ no se pudo medir anoche · es del ${_fS}</div>`;
+  }else if(margenViejoDe(r.margenTs)){
+    // Etapa 5: la fecha a la vista, no en el globito.
+    pie+=`<div style="font-size:.55rem;color:var(--amber);margin-top:2px;white-space:nowrap">⚠ dato del ${margenViejoDe(r.margenTs)}</div>`;
   }
   // EL CANDADO: este margen está bajo A PROPÓSITO. Sin esto, un producto que él bajó para rematar
   // se ve igual que uno que se hundió solo — y el remedio es el contrario: a éste se lo deja en paz,
@@ -12868,7 +12963,7 @@ function renderRotacionStock(){
     const _cajaML=cajaMLDe(p);
     return{pid:p.id,name:p.name,capital,ventasPeriodo,rotNorm,estadoKey,estadoHtml,stock,diasSinVender,liq:_liq,
       margen:mg.margen,margenSinEnvio:mg.sinEnvio,margenEnvioML:mg.envioML,margenNeto:mg.neto,margenCosto:mg.costo,
-      margenPrecio:mg.precio,margenGest:mg.gest,margenEst:mg.margenEst,margenGestEst:mg.gestEst,margenEstN:mg.estN,margenDudoso:margenDudosoDe(mg),margenSinMedir:mg.sinMedir,liq2:liquidandoDe(p),
+      margenPrecio:mg.precio,margenGest:mg.gest,margenEst:mg.margenEst,margenGestEst:mg.gestEst,margenEstN:mg.estN,margenDudoso:margenDudosoDe(mg),margenSinMedir:mg.sinMedir,margenTs:mg.ts,liq2:liquidandoDe(p),
       caja:_cajaML,cajaBaja:cajaBajarDe(p,_cajaML,mg),diasEnStock:diasEnStockDe(p),diasCaja:ultimaEntradaDe(p),diasSinStock:diasSinStockDe(LOCS.map(l=>[getQ(p.id,l),invKey(p.id,l)]))};
   });
 
@@ -13017,7 +13112,7 @@ function renderRotacionStock(){
         const _m=margenMLDe(p,_npV);_mV=_m;
         mgV=rotMargenHtml({margen:_m.margen,margenDudoso:margenDudosoDe(_m),margenPrecio:_m.precio,
           margenNeto:_m.neto,margenCosto:_m.costo,margenSinEnvio:_m.sinEnvio,margenGest:_m.gest,
-          margenEst:_m.margenEst,margenGestEst:_m.gestEst,margenEstN:_m.estN,margenSinMedir:_m.sinMedir,liq2:r.liq2});
+          margenEst:_m.margenEst,margenGestEst:_m.gestEst,margenEstN:_m.estN,margenSinMedir:_m.sinMedir,margenTs:_m.ts,liq2:r.liq2});
       } else {
         mgV=`<span style="font-size:.66rem;color:var(--muted)" title="No se pudo identificar la publicación de este color (el título de ML no lo nombra, o el robot todavía no le calculó el neto), así que se muestra el del producto entero. No se adivina: mostrar el margen de otro color sería peor que no mostrar ninguno.">${r.margen!=null?r.margen.toFixed(0)+'%':'—'} <span style="opacity:.6">(del prod.)</span></span>`;
       }
@@ -13237,10 +13332,11 @@ function pedPlataHTML(prod){
     if(mg.margen<PISO){col='var(--red)';tit=`ABAJO DEL PISO de ${PISO}%. Si es de Paraguay, mirá el precio del proveedor antes de volver a comprarlo: puede que ya no dé.`;}
     else if(d==='corto'){col='var(--amber)';tit=`Daría ${aire.toFixed(0)} punto(s) de aire sobre el ${PISO}%, PERO el envío NO está medido en tus ventas: salió de la tarifa de ML, que se midió $246 corta. El margen real es MENOR que este — no cuentes con ese aire.`;}
     else if(mg.sinMedir!=null){col='var(--amber)';tit=`Anoche NO se pudo medir (ML no contestó una comisión): este número es de la última vez que se midió entero.`;}
+    else if(margenViejoDe(mg.ts)){col='var(--amber)';tit=`Este margen es del ${margenViejoDe(mg.ts)}: el recálculo de la noche no lo actualizó desde entonces.`;} // Etapa 5
     else if(aire<5){col='var(--amber)';tit=`Pegado al piso: sólo ${aire.toFixed(0)} punto(s) de aire sobre el ${PISO}%.`;}
     else {col='var(--green)';tit=`${aire.toFixed(0)} puntos de aire sobre el piso de ${PISO}%. Medido contra ventas reales.`;}
     tit+=` · ML te deposita ${fmt(mg.neto)} contra un costo total de ${fmt(mg.costo)}.`;
-    out.push(chip(`📈 ${mg.margen.toFixed(0)}% de margen${mg.sinMedir!=null?' · sin medir anoche':''}`,col,tit));
+    out.push(chip(`📈 ${mg.margen.toFixed(0)}% de margen${mg.sinMedir!=null?' · sin medir anoche':margenViejoDe(mg.ts)?' · del '+margenViejoDe(mg.ts):''}`,col,tit));
   }
   if(mg.precio>0)out.push(chip(`🏷️ en ML ${fmt(mg.precio)}`,'var(--muted)',
     `Precio al que está publicado hoy en ML. Es con el que se calculó el margen de al lado.`));
@@ -15482,7 +15578,7 @@ function calcPuntajeMes(mesKey){
   // del mes ("por cada peso que sale, otro se queda"). Su verde de `pisobase` (ganancia = el triple
   // de lo que cuesta quedar en 0) es el doble de esto y se muestra como la meta grande, sin puntuar.
   const cfg=puntCfg(ym);
-  const tc=histTCforYM(ym)||curTC()||1500;
+  const tc=histTCforYM(ym)||curTC()||0; // Etapa 5: sin dólar, 0 (antes $1.500 inventado); hoy nadie lo lee
   const fijos=Math.max(0,Math.round(g.retiro+g.gastos));
   const piso=fijos;
   const meta=(cfg.metaManual!=null)?cfg.metaManual:fijos;
@@ -15639,7 +15735,7 @@ function setPuntajeMeta(ym){
   const o=(state.puntaje&&state.puntaje[ym])||{};
   const cfg=puntCfg(ym);
   const p=ym.split('_'), mesLbl=MONTHS[parseInt(p[1])-1]+' '+p[0];
-  const tc=histTCforYM(ym)||curTC()||1500;
+  const tc=histTCforYM(ym)||curTC()||0; // Etapa 5: ídem, sin $1.500 inventado
   const pisoAuto=(()=>{try{const g=_puntGananciaMes(ym);return Math.round(g.retiro+g.gastos);}catch(e){return 0;}})();
   const ex=document.getElementById('pm-modal');if(ex)ex.remove();
   const ov=document.createElement('div');ov.id='pm-modal';
