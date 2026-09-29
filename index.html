@@ -1855,7 +1855,9 @@ let _cycSinDatos=false; // Etapa 5: Firebase canceló la lectura de cyc/ (ver el
 // que nadie atrapó sale como aviso rojo.
 window.addEventListener('unhandledrejection',ev=>{
   const r=ev&&ev.reason;const m=(r&&(r.message||r.code))||String(r||'error');
-  try{toast('⚠️ No se guardó: '+m,'err',6000);}catch(_){}
+  // Sólo los errores de la base son 'no se guardó'; cualquier otro se dice como falla a secas.
+  const _db=/PERMISSION|permission|firebase|database|network|disconnect/i.test(String((r&&(r.code||r.message))||''));
+  try{toast((_db?'⚠️ No se guardó: ':'⚠️ Algo falló: ')+m,'err',6000);}catch(_){}
 });
 function startApp(){
   db.ref('.info/connected').on('value',s=>{
@@ -2057,6 +2059,7 @@ window.addEventListener('load',async()=>{
         document.getElementById('login-screen').style.display='none';
         if(tt)tt.style.display='';if(fb)fb.style.display='';
         if(!appStarted){appStarted=true;startApp();}
+        else if(typeof _cycSinDatos!=='undefined'&&_cycSinDatos)location.reload();   // se cortó la lectura por la sesión: al volver a entrar, se recarga sola
       } else {
         document.getElementById('loading').style.display='none';
         document.getElementById('login-screen').style.display='flex';
@@ -2198,7 +2201,7 @@ async function autoLinkFamilies(){
   }
   renderMlLinks();
   if(noProd.length)toast('No encontré el producto: '+noProd.join(', '),'err');
-  toast(linked+' vinculadas'+(sinVar?' · '+sinVar+' sin variante (revisá)':'')+' ✓',5000);
+  toast(linked+' vinculadas'+(sinVar?' · '+sinVar+' sin variante (revisá)':'')+' ✓','ok',5000);
 }
 let _mlFilterPend=false,_mlShowHidden=false;
 function toggleMlFilter(){_mlFilterPend=!_mlFilterPend;renderMlLinks();}
@@ -2565,7 +2568,9 @@ function _vigilarVersion(){
     // (oficina con número absoluto, cajas sin transacción, pedidos recalculados con la fórmula vieja).
     // Ahora, cuando hay versión nueva, la app se recarga SOLA en cuanto vuelve a estar a la vista y no
     // estás escribiendo en ninguna casilla. Y al volver a la app se pregunta si hay versión nueva.
-    const recargar=()=>{if(_hayVersionNueva&&document.visibilityState==='visible'&&!(typeof isEditing==='function'&&isEditing()))location.reload();};
+    // Etapa final: tampoco con algo por guardar (una casilla que se guarda 0,9 s después, o pendiente de la base).
+    const _porGuardar=()=>Object.keys(_finPending||{}).length||Object.keys(_invPending||{}).length;
+    const recargar=()=>{if(!_hayVersionNueva||document.visibilityState!=='visible'||(typeof isEditing==='function'&&isEditing()))return;if(_porGuardar()){setTimeout(recargar,2000);return;}location.reload();};
     const marcar=()=>{_hayVersionNueva=true;_pintarVersion();setTimeout(recargar,1500);};
     document.addEventListener('visibilitychange',()=>{if(document.visibilityState!=='visible')return;reg.update().catch(()=>{});recargar();});
     setInterval(()=>{reg.update().catch(()=>{});recargar();},30*60*1000);
@@ -2903,7 +2908,7 @@ async function setNoRepo(pid,loc,val){
   if(val){
     const it={...cajaDe(loc)};let sac=0;
     Object.keys(it).forEach(k=>{if(k.startsWith(pid+'|')){sac+=parseInt(it[k])||0;delete it[k];}});
-    if(sac>0){await _guardarCajaArmando(loc,it);toast(`Saqué de la caja de ${loc} las ${sac} u. que ya tenía cargadas`,4000);}
+    if(sac>0){await _guardarCajaArmando(loc,it);toast(`Saqué de la caja de ${loc} las ${sac} u. que ya tenía cargadas`,'ok',4000);}
   }
   renderOfiCaja();
 }
@@ -3998,7 +4003,7 @@ function setQ(pid,loc,val,variant=''){
       if(_invPending[invKey(pid,loc)]===sum)delete _invPending[invKey(pid,loc)];
     }
     const p=state.products.find(x=>x.id===pid);
-    await log((p?p.name:pid)+(variant?' ['+variant+']':'')+' / '+loc+': '+old+' → '+nv);
+    log((p?p.name:pid)+(variant?' ['+variant+']':'')+' / '+loc+': '+old+' → '+nv).catch(()=>{});   // historial aparte (no es 'no se guardó')
     syncPedidosDebounced();
    }catch(e){_invFalla(variant?[k,invKey(pid,loc)]:[k],e);}
   },900);
@@ -4894,7 +4899,7 @@ async function saveFin(key,val){
     // lo que escribiera otro (el robot con `dispo`), mostrando un total viejo.
     if(totMP!==null&&_finPending.mp_disp===totMP)delete _finPending.mp_disp;
     const f=FIN_FIELDS.find(x=>x.k===key);
-    await log('Arqueo '+(f?f.label:key)+': '+fmt(num));
+    log('Arqueo '+(f?f.label:key)+': '+fmt(num)).catch(()=>{});   // el historial aparte: si falla, el valor ya está guardado
    }catch(e){
     if(grupo&&state.finanzas._ts){if(_tsAntes==null)delete state.finanzas._ts[grupo];else state.finanzas._ts[grupo]=_tsAntes;try{renderFinTs();}catch(_){}}
     _finFalla(totMP!==null?[key,'mp_disp']:[key],e);
@@ -6231,7 +6236,7 @@ async function cerrarCaja(cuenta){
   if(_fallo.length)alert('⚠️ Se cortó la conexión: estos renglones NO se descontaron de la oficina (contalos de nuevo):\n\n'+_fallo.join('\n'));
   await _guardarCajaArmando(cuenta,{});   // la caja se cerró: deja de estar a medio armar
   await log('Caja despachada a '+cuenta+': '+uTot+' u.'+(track?' · '+track:''));
-  toast('Caja cerrada ✓ · está en "En camino"',5000);
+  toast('Caja cerrada ✓ · está en "En camino"','ok',5000);
   syncOfiMati();renderOfiCaja();renderOfiContar();renderCajasEnCamino();
 }
 
@@ -6695,7 +6700,7 @@ async function deshacerCaja(id,i){
   renderCajasEnCamino();renderOfiCaja();renderOfiContar();
   syncOfiMati();
   await log('Caja deshecha: '+uTot+' u. volvieron a la oficina');
-  toast(`Deshecha ✓ · ${uTot} u. volvieron a tu oficina`,4000);
+  toast(`Deshecha ✓ · ${uTot} u. volvieron a tu oficina`,'ok',4000);
 }
 // Etapa 4 (30/09/2026): las cajas de un envío se tocan con una TRANSACCIÓN sobre la base, buscando la
 // caja por seguimiento y contenido (no por su posición). Antes se escribía la lista ENTERA desde la
@@ -13878,7 +13883,7 @@ async function setPedidoProveedor(id){
 // Los automáticos sí los mueve `syncPedidosAuto` solo (su limpieza compara `r.coll!==coll`).
 async function togglePedidoOrigen(pedId,prodId){
   if(!prodId||!(state.products||[]).some(x=>x.id===prodId)){
-    toast('Este pedido no está pegado a ninguna ficha: no tiene origen que cambiar','error');return;
+    toast('Este pedido no está pegado a ninguna ficha: no tiene origen que cambiar','err');return;
   }
   const desdeBsas=(state.pedidos||[]).some(x=>x.id===pedId);
   const arrDesde=(desdeBsas?state.pedidos:state.pedidos_py)||[];
