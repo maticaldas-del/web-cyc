@@ -517,6 +517,27 @@ varios aparatos · robot contra sí mismo); notas en el scratchpad `etapa4/*.md`
  · **Dato medido:** ml-daily NO corre a las 00:07: las 3 programadas arrancan ~06:10-07:10 de acá (GitHub las atrasa ~6 h).
  · Quedó para mirar: una foto de precios tomada dos veces por mañana marcó "1 cambio a mano" (frena subas 60 días); sin nombre.
 
+### ETAPA 5 (FALLAS MUDAS Y PRIVACIDAD) · 30/09/2026 · v20.87 `cyc-v365` · CERRADA salvo 2 decisiones
+4 revisores (ciclo · noche · web · privacidad), ~35 reales, las obvias HECHAS:
+ · **Privacidad:** el log público ya no imprime nombres/chat de Telegram (`_tgMask`), ni ids enteros de venta/carrito
+   del ciclo, ni texto de compradores sin tapar en `posventa`/`unreclamo` (`_taparPub`, `_idPub`, CRUDO = sólo nombres de
+   campo). index.html (público) sin números de pack reales en comentarios. `.assetsignore` completo.
+ · **Ciclo:** depósito compartido entre dos colores → los dos quedan con el número anterior (`varCiego`, antes 0 falso que
+   podía sacar `liquidando`) · vuelta de una cuenta cortada a mitad → no escribe su stock (`cuentaStockRota`) · cajas sin
+   token = sin leer · lo entrado de cajas +45 d se conserva en `cajasentrado` · activar pausada Premium sin cuotas medidas no
+   (`cuotaPremiumDe`) · reputación sin bloque no pisa la buena.
+ · **Noche:** `cuotas` no pisa un % medido con estimado y saltea órdenes con un pago fallado · `netoweb`/`margenAlDia`:
+   Premium sin cuotas medidas = sin medir · `motivoreclamo` reintenta si ML no contesta · `avisos` reintenta anotar y avisa
+   "cambié pero no pude anotar" · `CANCEL_AGG` mes por mes (`fetchCancelled` con hasta), aviso a las 2 noches
+   (`mlapi/cancelagg`) · `fetchOrdersRange` marca `incompleto` y `calc`/`calc1`/`chkfact` no escriben cortado · `saldoml`
+   sin `_dispTs`/ancla no escribe · `saldoml`/`dispo` avisan a las 2 noches sin escribir (`cyc/saldoml/_alerta`) · los pasos
+   que no midieron nada salen con error y entran en `avisonoche` (ojo: `dispo` falla si falta un ancla).
+ · **Web:** listener caído = punto rojo + cartel · `unhandledrejection` avisa · Arqueo/`setQ`/oficina/ancla que no se
+   guardan avisan y vuelven al valor de la base (`_finFalla`, `_invFalla`) · cerrar caja dice si el envío NO se achicó ·
+   margen >48 h, caja >24 h y visitas viejas en ámbar a la vista (`margenViejoDe`) · "¿Cierra el mes?" sin dólar no opina.
+ · **Para decidir con él:** (1) Telegram: hoy cualquiera que le escriba al bot recibe el resumen — propuesta (a) chats
+   nuevos "pendientes" hasta que él apruebe · (2) `calcPrueba` 🧪: días sin registro de stock cuentan como con stock.
+
 ### EL PUNTAJE DEL MES: REHACERLO, PERO DESPUÉS (26/09/2026)
 Él, con la captura del Puntaje (7,2 · "Buen mes"): *"no veo cuál es el objetivo de ganancia de CYC y para mí es medio
 flojo el conteo. podría fijarse otras cosas. si querés remodelalo desde 0 con lo que pondrías vos (…) pero ahora
