@@ -463,9 +463,16 @@ nombres con el mismo `sid()` · `delProd` con mercadería avisa unidades y US$ y
 marcar a mano borran `recUsadas`/`recUsadasCalc`/`faltan`, cajas abiertas de +45 días no se miran solas (log), renglón
 "sin color" sin casilla en Armar caja y "sin leer" en el robot, `setEnvioCuenta` con cajas en camino pide confirmar (sin
 cuenta no), `cerrarCaja` achica el envío a lo que salió de verdad y avisa cortes.
-**FALTA SU DECISIÓN (en REV_PENDIENTE), de a una:** C1 Pedidos suma el stock de las 4 cuentas (lo que sobra en una tapa
-el cero de otra; las `nomandar` suman ritmo) · D2 al llegar, una ficha "parecida" (compara 2 palabras) deja el producto
-sin ficha y vuelve a "Para probar" (se compra dos veces) · D3 `compray` no encuentra `pyr<fecha>` (reposición) ·
+**C1 · DECIDIDO el 29/09, eligió la (b): queda SUMADO.** Él: *"no importa qué cuenta la tenga sino que si en total se venden 10
+por mes y hay 10 en una cuenta no dueña, tenemos stock para un mes y no habría que comprar"*. Pedidos mira el stock de las 4
+cuentas juntas (lo de una cuenta no dueña se manda o se vende ahí). **No volver a proponer calcularlo por cuenta.**
+**D2 · HECHO el 29/09, eligió la (a) (v20.82 · `cyc-v360`):** al llegar un pedido de nuevos sólo se frena la ficha si ya hay
+una con el MISMO código Nissei (`candCodIgual`, también por el final) o el MISMO nombre completo (`candFichaMisma`, web; misma
+regla en `pyped:llego`), y el candidato queda enganchado a esa ficha (`prodId`). Lo que sólo se parece se crea y se avisa.
+**PENDIENTE PEDIDO POR ÉL ("arreglemos esto después"):** el aviso "renglones de Pedidos con un número que no cierra" compara el
+TOTAL del producto (ML+casa+camino) contra el objetivo, y en productos con colores sobra uno y falta otro (Centímetro, Paulvic,
+Sábanas, P47…): hay que medirlo por variante.
+**FALTA SU DECISIÓN (en REV_PENDIENTE), de a una:** D3 `compray` no encuentra `pyr<fecha>` (reposición) ·
 A1 lo que llega tarde de una caja marcada con faltantes se lo lleva la siguiente (camino automático) · A5 una recepción
 se parte entre la caja perdida y la buena · B3 stock de publicaciones OCULTAS con depósito propio se pierde · C5 el estado
 que él marca a mano en un pedido automático se pisa · D6 reposición llegada y sin contar: la canasta la vuelve a pedir ·

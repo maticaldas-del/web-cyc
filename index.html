@@ -2342,7 +2342,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='20.81';
+const APP_VERSION='20.82';
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
 // muestre la versión y la fecha de actualización y que tenga un desplegable predeterminado cerrado".
 // Y el mismo día: "que ponga fecha de cada modificación y haya una barrita para scrollear y que
@@ -2353,6 +2353,7 @@ const APP_VERSION='20.81';
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'20.82',f:'29/09/2026',h:'23:40',c:[{n:3,t:'Paraguay: al llegar un pedido de nuevos, sólo se frena la ficha si ya existe una con el MISMO código de Nissei o el MISMO nombre (y el candidato queda enganchado a ella). Antes bastaba con que compartieran las dos primeras palabras ("Perfume Lattafa…"): el producto quedaba sin ficha, volvía a "Para probar" y se podía comprar dos veces.'}]},
   {v:'20.81',f:'29/09/2026',h:'13:30',c:[{n:3,t:'Pedidos: un color en cero con otros colores llenos ya no queda último con $0 en riesgo; sube en la lista según lo que vende ese color.'},{n:3,t:'Pedidos: las ventas que no dicen el color se reconocen por su publicación (antes ese color no se pedía nunca).'},{n:3,t:'Pedidos: el total por colores se reparte sin inflarse (30 aromas de 1 venta pedían 30 donde el ritmo da 20).'},{n:2,t:'Pedidos: la cuenta de la tarjeta de un producto con colores usa sólo los colores que faltan (se iba el aviso falso de \"renglón que no cierra\").'},{n:3,t:'Paraguay: \"Llenar\" y \"Ya lo pedí\" ya no meten candidatos vencidos que no se ven en pantalla; el robot no tacha de noche lo que ya está cargado o viajando; al llegar un pedido de nuevos te recuerda contar en la oficina.'},{n:3,t:'Oficina: contar un producto con colores desde el chat pide el color (antes podía dejar el total distinto de la suma y al despachar aparecían unidades de la nada); el total ya no queda abajo de la suma de sus colores.'},{n:3,t:'Stock de Full: dos publicaciones con el mismo depósito ya no le dan el stock a un color u otro según cuál se lee primero; las claves negativas no restan en el patrimonio y el robot las pone en 0.'},{n:3,t:'Borrar un producto con mercadería avisa cuántas unidades y dólares salen del patrimonio y pide confirmar dos veces.'},{n:3,t:'Cajas: marcar/desmarcar una caja a mano borra lo que el robot le había anotado (lo que llegaba tarde se lo llevaba la caja siguiente); una caja de más de 45 días ya no deja sin leer a las nuevas del mismo producto; el renglón \"sin color\" no se puede cargar en una caja.'},{n:3,t:'Cajas: cambiar la cuenta de un envío con cajas en camino pide confirmación (sin cuenta no se deja); cerrar caja achica el envío si en la oficina había menos de lo cargado.'},{n:1,t:'Agregar un color cuyo nombre choca con otro (ej. \"Rosé\" y \"Rosè\") ya no se deja.'}]},
   {v:'20.80',f:'29/09/2026',h:'11:15',c:[{n:3,t:'El resumen de ventas por Telegram (el del día y el del mes) calcula la ganancia igual que el panel: costo guardado del mes, dólar del mes y monotributo de ese mes. Antes usaba el costo y el dólar del día de cada venta y daba un número distinto al de la web.'},{n:1,t:'Etapa 2 (plata) de la revisión: cerrada.'}]},
   {v:'20.79',f:'29/09/2026',h:'10:30',c:[{n:3,t:'Arqueo: lo vendido después del último reporte de Mercado Pago ya suma al patrimonio y al efectivo (antes quedaba US$ 330-660 abajo durante el día). Se ve abajo de "A liquidar en ML" como "Vendido, todavía no en el reporte", cuenta por cuenta contra la fecha de su reporte; empieza a salir después de la corrida de esta noche.'}]},
@@ -3211,7 +3212,7 @@ const REV_CADA_DIAS=7;
 //   · REV_HECHAS    → última vez que cada etapa quedó resuelta. Sin pendientes, el cartel pide la
 //                     etapa más vieja cuando pasaron REV_CADA_DIAS desde la última.
 const REV_PENDIENTE=[
-    {t:'Etapa 3: decidir 9 cosas de mercadería',que:'pedidos por cuenta · compras a Paraguay que se compran dos veces · compray con reposición · cajas con faltantes que llegan tarde · recepción partida entre dos cajas · publicaciones ocultas con stock · estado a mano de un pedido · reposición llegada sin contar · freno de pocas ventas en Armar caja',pedi:'etapa 3'},
+    {t:'Etapa 3: decidir 7 cosas de mercadería (+ arreglar el aviso "renglón que no cierra" por color)',que:'compray con reposición · cajas con faltantes que llegan tarde · recepción partida entre dos cajas · publicaciones ocultas con stock · estado a mano de un pedido · reposición llegada sin contar · freno de pocas ventas en Armar caja',pedi:'etapa 3'},
     {t:'La segunda revisión completa, al final',que:'la que pediste dejar para cuando esté todo lo demás · va última',pedi:'revisión completa',ultima:true},
 ];
 // Choques (4) y fallas mudas/privacidad (5): verificadas las 15 del 26/09 de madrugada (rev4, lotes 6-8) y
@@ -10586,9 +10587,10 @@ async function pyPedidoLlego(id){
     const src={id:it.id,nombre:(k&&k.nombre)||it.nom||'',usd:_uP,cod:(k&&k.cod)||it.cod||'',ts:k&&k.ts};
     if(k&&k.prodId)return{src,estado:'ya'};
     if(!String(src.nombre).trim())return{src,estado:'nonombre'};
-    const rep=candFichasParecidas(src.nombre);
-    if(rep.length)return{src,estado:'repe',rep};
-    return{src,estado:'crear',sinPrecio:!((parseFloat(src.usd)||0)>0)};
+    const misma=candFichaMisma(src);
+    if(misma)return{src,estado:'repe',rep:[misma]};
+    const par=candFichasParecidas(src.nombre);
+    return{src,estado:'crear',sinPrecio:!((parseFloat(src.usd)||0)>0),par};
   });
   const crear=plan.filter(x=>x.estado==='crear');
   const repe=plan.filter(x=>x.estado==='repe');
@@ -10599,7 +10601,8 @@ async function pyPedidoLlego(id){
     +`Sale de "En camino" y esta mercadería deja de ser "para probar": pasa a ser producto del panel.\n\n`
     +(crear.length?`Se crean ${crear.length} ficha(s):\n${crear.slice(0,10).map(x=>'· '+x.src.nombre).join('\n')}${crear.length>10?`\n…y ${crear.length-10} más`:''}\n`:'No hay ninguna ficha nueva para crear.\n')
     +(sinPre.length?`\n⚠️ ${sinPre.length} sin precio cargado: la ficha queda en costo 0 y hay que cargárselo.\n`:'')
-    +(repe.length?`\n⚠️ ${repe.length} NO se crean porque ya hay una ficha parecida (miralos vos):\n${repe.slice(0,6).map(x=>'· '+x.src.nombre+' → '+x.rep[0].name).join('\n')}\n`:'')
+    +(repe.length?`\n${repe.length} ya tienen ficha (mismo código o mismo nombre): se enganchan a esa y no vuelven a "Para probar":\n${repe.slice(0,6).map(x=>'· '+x.src.nombre+' → '+x.rep[0].name).join('\n')}\n`:'')
+    +(crear.some(x=>x.par&&x.par.length)?`\nℹ️ Se crean aunque haya una ficha con nombre parecido (no es el mismo código ni el mismo nombre):\n${crear.filter(x=>x.par&&x.par.length).slice(0,6).map(x=>'· '+x.src.nombre+' ~ '+x.par[0].name).join('\n')}\n`:'')
     +(yaT.length?`\n${yaT.length} ya tenía(n) ficha.\n`:'')
     +(sinNom.length?`\n⚠️ ${sinNom.length} sin nombre: no se puede crear.\n`:'')
     +`\nNo publica nada en ML ni compra nada.`))return;
@@ -10612,6 +10615,11 @@ async function pyPedidoLlego(id){
       const r=await candFichaDesde(crear[i].src,{idSuf:i});
       if(r.ok)hechas.push(r.p.name); else fallaron.push(crear[i].src.nombre+' ('+r.motivo+')');
     }catch(e){fallaron.push(crear[i].src.nombre+' (no se pudo guardar)');}
+  }
+  // El que ya tenía la MISMA ficha queda enganchado a ella: sin prodId volvería a "Para probar".
+  for(const x of repe){
+    const k=(state.candidatos||{})[x.src.id];
+    if(k&&!k.prodId){try{await fbSet('candidatos_py/'+x.src.id+'/prodId',x.rep[0].id);k.prodId=x.rep[0].id;}catch(e){fallaron.push(x.src.nombre+' (no se pudo enganchar a su ficha)');}}
   }
   await fbSet('compraspy/'+id+'/estado','llego');
   await fbSet('compraspy/'+id+'/fechaLlego',hoy);
@@ -10630,7 +10638,7 @@ async function pyPedidoLlego(id){
     +items.map(it=>'· '+(it.u||'?')+' u. '+(it.nom||'')).join('\n');
   {
     alert(`Pedido marcado como llegado ✓ · ${hechas.length} ficha(s) creada(s)\n\n`
-      +(repe.length?`Estos NO se crearon porque ya hay una ficha parecida. Si es el mismo producto no hagas nada; si no lo es, creala a mano desde "Para probar":\n${repe.map(x=>'· '+x.src.nombre+' → '+x.rep[0].name).join('\n')}\n\n`:'')
+      +(repe.length?`Estos ya tenían ficha (mismo código o mismo nombre) y quedaron enganchados a ella:\n${repe.map(x=>'· '+x.src.nombre+' → '+x.rep[0].name).join('\n')}\n\n`:'')
       +(sinPre.length?`Estos quedaron con costo 0 y hay que cargárselo:\n${sinPre.map(x=>'· '+x.src.nombre).join('\n')}\n\n`:'')
       +(sinNom.length?`${sinNom.length} sin nombre: no se pudo crear nada.\n\n`:'')
       +(fallaron.length?`No se pudieron guardar:\n${fallaron.map(x=>'· '+x).join('\n')}\n`:'')+_contar);
@@ -11227,6 +11235,23 @@ async function candMarcaNo(id){
 // primeras palabras, que es como se detectó siempre. Vive en su propia función porque la miran
 // el botón de crear a mano y el paso automático de cuando el pedido llega, y con dos copias uno
 // podría frenar un repetido y el otro crearlo igual.
+// LA MISMA FICHA, NO UNA PARECIDA (etapa 3 · D2, 29/09/2026, eligió la a). Al LLEGAR un pedido se
+// frenaba la ficha nueva si otra compartía las dos primeras palabras ("Perfume Lattafa Asad" contra
+// "Perfume Lattafa Khamrah"): el producto quedaba sin ficha, volvía a "Para probar" y se podía
+// comprar dos veces. Ahora sólo es "la misma" si coincide el CÓDIGO de Nissei (también por el final:
+// al chat le falta a veces el primer dígito) o el NOMBRE COMPLETO. Y en ese caso el candidato queda
+// enganchado a esa ficha, así no vuelve.
+function candCodIgual(a,b){
+  const x=String(a||'').replace(/\D/g,''),y=String(b||'').replace(/\D/g,'');
+  if(!x||!y)return false;
+  if(x===y)return true;
+  const [c1,c2]=x.length<y.length?[x,y]:[y,x];
+  return c1.length>=5&&c2.endsWith(c1);
+}
+function candFichaMisma(src){
+  const n=normTxt(String(src&&src.nombre||'').trim());
+  return (state.products||[]).find(p=>(src.cod&&candCodIgual(p.codPy,src.cod))||(n&&normTxt(p.name||'').trim()===n))||null;
+}
 function candFichasParecidas(nombre){
   const q=normTxt(String(nombre||'').split(' ').slice(0,2).join(' '));
   if(!q)return [];
