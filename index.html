@@ -2345,7 +2345,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='20.85';
+const APP_VERSION='20.86';
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
 // muestre la versión y la fecha de actualización y que tenga un desplegable predeterminado cerrado".
 // Y el mismo día: "que ponga fecha de cada modificación y haya una barrita para scrollear y que
@@ -2356,6 +2356,7 @@ const APP_VERSION='20.85';
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'20.86',f:'30/09/2026',h:'14:10',c:[{n:3,t:'Choques (etapa 4): un producto nuevo que ya viaja en un pedido no se puede volver a pedir (antes, con Llenar desde una pantalla vieja u otro aparato, quedaba en dos pedidos). "Ya llegó" sólo vale una vez.'},{n:3,t:'Robot: ya no activa una publicación que pausaste u ocultaste mientras corría, no sube algo que marcaste liquidando mientras corría, y no convierte tu marca de liquidando en una suya. Una sola suba o baja por publicación por noche.'},{n:3,t:'Ventas: marcar reclamo/cancelada o editar una venta ya no se pierde por el robot; una venta borrada no vuelve sola; editar guarda sólo lo que cambiaste, y si escribís el neto deja de ser estimado.'},{n:3,t:'Cajas: marcar, deshacer y cambiar el seguimiento se hace sobre la base (buscando la caja por su contenido): si otro aparato o el robot la cambió, no se pisa. Anclar el disponible resta lo liberado sin perder restas.'},{n:2,t:'La noche: el aviso de precios sale una sola vez aunque ml-daily corra 3 veces, el supervisor cuenta una noche por día y los fallos del reporte de MP también; las 3 corridas ya no se pisan.'},{n:2,t:'Comandos: si se corta una corrida a mano, termina lo que estaba escribiendo (en la oficina, total y color van juntos). Por ml-consulta sólo corren consultas y escrituras chicas (vincular, pasara, nomandar, fijarvar, cupo, poncosto); lo demás va por ml-sync.'},{n:1,t:'Una pestaña abierta con una versión vieja se actualiza sola al volver a la app.'}]},
   {v:'20.85',f:'30/09/2026',h:'13:05',c:[{n:2,t:'Pedidos: el aviso "este renglón no cierra" ahora se mira color por color. Antes, en los productos con colores (Centímetro, Paulvic, Sábanas, P47) un color sobrado en casa hacía saltar el aviso aunque el que había que comprar era otro. Si de verdad un color pide comprar teniendo lo suficiente, lo nombra.'}]},
   {v:'20.84',f:'30/09/2026',h:'00:50',c:[{n:3,t:'Cajas: si una caja se marcó "llegó con faltantes" y después Full da de alta lo que faltaba, esas unidades vuelven a esa caja (le bajan los faltantes) en vez de llevárselas la caja siguiente, que se daba por llegada antes de tiempo.'},{n:3,t:'Patrimonio: la mercadería que está en Full en publicaciones ocultas ("no la vendemos más") ahora cuenta en el Arqueo. No entra en Armar caja ni en Pedidos.'},{n:2,t:'Pedidos: el estado (Urgente / Poco stock / Suficiente) de los pedidos automáticos lo pone siempre el panel; ya no se puede tocar porque la vuelta siguiente lo pisaba.'},{n:2,t:'Paraguay: una reposición que llegó y todavía no se contó en la oficina se sigue restando en la canasta (hasta que la cuentes o 7 días), así no se vuelve a pedir.'},{n:2,t:'Armar caja: con 1 o 2 ventas no calcula un ritmo (igual que Pedidos). Sólo manda el mínimo de 4 a una cuenta que está en cero.'}]},
   {v:'20.83',f:'30/09/2026',h:'00:05',c:[{n:2,t:'Paraguay: al cargar los pesos de una compra (compray) ahora también encuentra las REPOSICIONES. Si ese día hay un pedido de nuevos y una reposición, no adivina: pide que digas cuál. Antes los pesos de una reposición iban a un registro nuevo o al pedido de nuevos de al lado.'}]},
@@ -3225,13 +3226,12 @@ const REV_CADA_DIAS=7;
 //   · REV_HECHAS    → última vez que cada etapa quedó resuelta. Sin pendientes, el cartel pide la
 //                     etapa más vieja cuando pasaron REV_CADA_DIAS desde la última.
 const REV_PENDIENTE=[
-    {t:'Etapa 4 (choques): la revisión está corriendo',que:'4 revisores mirando la web y el robot escribiendo lo mismo, corridas a la vez y varios aparatos · te paso lo que encuentren de a uno',pedi:'etapa 4'},
     {t:'La segunda revisión completa, al final',que:'la que pediste dejar para cuando esté todo lo demás · va última',pedi:'revisión completa',ultima:true},
 ];
 // Choques (4) y fallas mudas/privacidad (5): verificadas las 15 del 26/09 de madrugada (rev4, lotes 6-8) y
 // todas arregladas o ya estaban; antes pasaron por la 2ª vuelta del 25/09. El cartel decía "15 sin verificar"
 // por una nota vieja.
-const REV_HECHAS={1:'2026-09-28',2:'2026-09-29',3:'2026-09-30',4:'2026-09-26',5:'2026-09-26',6:'2026-09-27'};
+const REV_HECHAS={1:'2026-09-28',2:'2026-09-29',3:'2026-09-30',4:'2026-09-30',5:'2026-09-26',6:'2026-09-27'};
 function _revFecha(iso){const d=new Date(iso+'T12:00:00');return isNaN(d)?null:d;}
 function _revFmt(d){return ['dom','lun','mar','mié','jue','vie','sáb'][d.getDay()]+' '+String(d.getDate()).padStart(2,'0')+'/'+String(d.getMonth()+1).padStart(2,'0');}
 function revProxima(){

@@ -24,6 +24,13 @@ on:
         required: false
         default: ''
 
+# Etapa 4 (30/09/2026): las 3 corridas de la mañana (y una a mano) quedan una detrás de otra, nunca a la
+# vez: dos juntas podían tocar precios las dos (la marca del día se lee y se escribe en dos pasos).
+# Ojo: GitHub deja UNA sola en espera; si llega una tercera mientras otra espera, la que esperaba se descarta.
+concurrency:
+  group: ml-daily
+  cancel-in-progress: false
+
 jobs:
   daily:
     runs-on: ubuntu-latest
