@@ -473,6 +473,23 @@ footer{margin-top:32px;padding-top:14px;border-top:1px solid var(--border);font-
 .casc-row.final .cv{font-family:'Syne',sans-serif;font-weight:800;font-size:1.1rem}
 .casc-neg{color:var(--red)}.casc-pos{color:var(--green)}
 @media(max-width:760px){#page-resumen .page-wrap [style*="grid-template-columns:1fr 1fr"]{grid-template-columns:1fr!important}}
+
+/* Rotación en el teléfono: cada producto es una tarjeta (29/09/2026, etapa 7 · decisión 2, eligió la a) */
+@media(max-width:640px){
+  .tbl-outer:has(#rot-tbl){border:none;background:transparent;overflow:visible}
+  #rot-tbl thead{display:none}
+  #rot-tbl,#rot-tbl tbody{display:block;width:100%}
+  #rot-tbl tr{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px 10px;border:1px solid var(--border);border-radius:12px;padding:11px 12px;margin-bottom:10px;background:var(--surface)!important}
+  #rot-tbl td{display:block;border:none!important;padding:0!important;text-align:left!important;max-width:none!important;white-space:normal!important;min-width:0}
+  #rot-tbl td[colspan]{grid-column:1/-1;text-align:center!important}
+  #rot-tbl td[data-l]::before{content:attr(data-l);display:block;font-size:.6rem;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:2px}
+  #rot-tbl td.rc-n{grid-column:1/-1;order:0;font-size:.85rem;font-weight:600}
+  #rot-tbl td.rc-n::before{display:none}
+  #rot-tbl td.rc-n span{white-space:normal!important}
+  #rot-tbl td.rc-g{order:1;font-size:.82rem}
+  #rot-tbl td.rc-s{order:2;font-size:.72rem!important;color:var(--muted)}
+  #rot-tbl tr.rc-var{margin-left:14px;border-style:dashed}
+}
 </style>
 </head>
 <body>
@@ -2381,7 +2398,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='20.95';
+const APP_VERSION='20.96';
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
 // muestre la versión y la fecha de actualización y que tenga un desplegable predeterminado cerrado".
 // Y el mismo día: "que ponga fecha de cada modificación y haya una barrita para scrollear y que
@@ -2392,6 +2409,7 @@ const APP_VERSION='20.95';
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'20.96',f:'29/09/2026',h:'19:55',c:[{n:1,t:'Rotación de stock en el teléfono: cada producto es una tarjeta (nombre completo arriba; margen, caja y estado grandes; el resto chico abajo). Ya no hay que correr la tabla para el costado. En la computadora sigue igual.'}]},
   {v:'20.95',f:'29/09/2026',h:'19:53',c:[{n:1,t:'Inicio: 🏷️ Ventas de hoy pasa a ser lo primero de todo, más grande y en verde (facturado y ganancia en letra grande).'}]},
   {v:'20.94',f:'29/09/2026',h:'20:30',c:[{n:1,t:'Inicio: arriba del Puntaje, la tarjeta 🏷️ Ventas de hoy (facturado, ventas, unidades, ganancia y % ganancia, con ayer abajo). Tocándola vas a Ventas x Producto. El Puntaje queda con el número y el resumen; las barras y "lo que falta" van en "Ver el detalle del puntaje" (recuerda si lo dejaste abierto).'}]},
   {v:'20.93',f:'29/09/2026',h:'20:00',c:[{n:1,t:'Diseño (etapa 7), lo chico: en modo claro los colores de aviso ahora se leen (el ámbar casi no se veía) y el gris de oscuro es un poco más claro. Ninguna letra queda más chica que .6 (había 114 más chicas).'},{n:1,t:'Teléfono: tocar algo que tenía el globito del mouse ahora lo muestra en un cartelito. Casillas y botones ✎ ✕ más grandes, y el iPhone ya no agranda la pantalla al tocar una casilla. La lista de ventas ya no tiene su propia barra para bajar.'},{n:1,t:'El menú ☰ tiene Mi oficina. Botón 📋 Copiar mensaje para Nissei. Luciana dejó de ser ámbar en los gráficos (ámbar es aviso). El % se llama "% ganancia" en todos lados (ya no "Markup"). Se sacaron textos viejos (base 40%, piso 30/meta 32, "sin cambios", el cartel del historial de Rotación).'}]},
@@ -13192,32 +13210,32 @@ function renderRotacionStock(){
       const estTxt=rotEstadoHtml(est,st);
       const cjHtml=cj?rotCajaHtml({caja:cj,cajaBaja:cajaBajarDe(p,cj,_mV)}):cjTxt;
       void vDia;
-      return `<tr style="background:rgba(255,255,255,.015)">
-        <td style="padding-left:22px;max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:.72rem;color:#a78bfa" title="${v}">↳ ${v}</td>
-        <td style="text-align:right;font-size:.72rem">${st} u.</td>
-        <td style="font-size:.72rem;color:var(--muted)">${st>0?fmt(st*(costFullP(p)||0)):'—'}</td>
-        <td style="text-align:right;font-size:.72rem">${vp} u.</td>
-        <td style="text-align:right;font-family:'DM Mono',monospace;font-size:.72rem">${st>0?rotN.toFixed(2):'—'}</td>
-        <td style="text-align:right;font-size:.72rem">${rotDiasSinVenderHtml(dsv,st<=0)}</td>
-        <td style="text-align:right">${mgV}</td>
-        <td style="text-align:right;font-size:.66rem">${rotEnStockHtml({diasEnStock:diasEnStockVarDe(p,v),diasCaja:null,diasSinStock:diasSinStockDe(LOCS.map(l=>[getQV(p.id,l,v),invKeyV(p.id,l,v)]))})}</td>
-        <td style="text-align:right;font-size:.72rem">${cjHtml}</td>
-        <td style="font-size:.72rem">${estTxt}</td>
+      return `<tr class="rc-var" style="background:rgba(255,255,255,.015)">
+        <td class="rc-n" data-l="Producto" style="padding-left:22px;max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:.72rem;color:#a78bfa" title="${v}">↳ ${v}</td>
+        <td class="rc-s" data-l="Stock" style="text-align:right;font-size:.72rem">${st} u.</td>
+        <td class="rc-s" data-l="Capital" style="font-size:.72rem;color:var(--muted)">${st>0?fmt(st*(costFullP(p)||0)):'—'}</td>
+        <td class="rc-s" data-l="Ventas período" style="text-align:right;font-size:.72rem">${vp} u.</td>
+        <td class="rc-s" data-l="Rotación" style="text-align:right;font-family:'DM Mono',monospace;font-size:.72rem">${st>0?rotN.toFixed(2):'—'}</td>
+        <td class="rc-s" data-l="Días sin vender" style="text-align:right;font-size:.72rem">${rotDiasSinVenderHtml(dsv,st<=0)}</td>
+        <td class="rc-g" data-l="Margen hoy" style="text-align:right">${mgV}</td>
+        <td class="rc-s" data-l="En stock hace" style="text-align:right;font-size:.66rem">${rotEnStockHtml({diasEnStock:diasEnStockVarDe(p,v),diasCaja:null,diasSinStock:diasSinStockDe(LOCS.map(l=>[getQV(p.id,l,v),invKeyV(p.id,l,v)]))})}</td>
+        <td class="rc-g" data-l="Caja ML" style="text-align:right;font-size:.72rem">${cjHtml}</td>
+        <td class="rc-g" data-l="Estado" style="font-size:.72rem">${estTxt}</td>
       </tr>`;
     }).join('');
     return filas;
   };
   tbody.innerHTML=rows.map(r=>`<tr>
-    <td style="max-width:200px" title="${r.name}"><div style="display:flex;align-items:center;gap:7px;min-width:0">${fotoChipHTML(prodById(r.pid),26)}<span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0">${r.name}</span></div></td>
-    <td style="text-align:right">${r.stock} u.</td>
-    <td>${r.capital>0?fmt(r.capital):'—'}</td>
-    <td style="text-align:right">${r.ventasPeriodo} u.</td>
-    <td style="text-align:right;font-family:'DM Mono',monospace">${r.stock>0?r.rotNorm.toFixed(2):'—'}</td>
-    <td style="text-align:right">${rotDiasSinVenderHtml(r.diasSinVender,!(r.stock>0))}</td>
-    <td style="text-align:right">${rotMargenHtml(r)}</td>
-    <td style="text-align:right">${rotEnStockHtml(r)}</td>
-    <td style="text-align:right">${rotCajaHtml(r)}</td>
-    <td>${r.estadoHtml}${liquidarHtml(r.liq)}</td>
+    <td class="rc-n" data-l="Producto" style="max-width:200px" title="${r.name}"><div style="display:flex;align-items:center;gap:7px;min-width:0">${fotoChipHTML(prodById(r.pid),26)}<span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0">${r.name}</span></div></td>
+    <td class="rc-s" data-l="Stock" style="text-align:right">${r.stock} u.</td>
+    <td class="rc-s" data-l="Capital">${r.capital>0?fmt(r.capital):'—'}</td>
+    <td class="rc-s" data-l="Ventas período" style="text-align:right">${r.ventasPeriodo} u.</td>
+    <td class="rc-s" data-l="Rotación" style="text-align:right;font-family:'DM Mono',monospace">${r.stock>0?r.rotNorm.toFixed(2):'—'}</td>
+    <td class="rc-s" data-l="Días sin vender" style="text-align:right">${rotDiasSinVenderHtml(r.diasSinVender,!(r.stock>0))}</td>
+    <td class="rc-g" data-l="Margen hoy" style="text-align:right">${rotMargenHtml(r)}</td>
+    <td class="rc-s" data-l="En stock hace" style="text-align:right">${rotEnStockHtml(r)}</td>
+    <td class="rc-g" data-l="Caja ML" style="text-align:right">${rotCajaHtml(r)}</td>
+    <td class="rc-g" data-l="Estado">${r.estadoHtml}${liquidarHtml(r.liq)}</td>
   </tr>`+_subVars(r)).join('');
 }
 
