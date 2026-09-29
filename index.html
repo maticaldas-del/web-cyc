@@ -1855,7 +1855,9 @@ let _cycSinDatos=false; // Etapa 5: Firebase canceló la lectura de cyc/ (ver el
 // que nadie atrapó sale como aviso rojo.
 window.addEventListener('unhandledrejection',ev=>{
   const r=ev&&ev.reason;const m=(r&&(r.message||r.code))||String(r||'error');
-  try{toast('⚠️ No se guardó: '+m,'err',6000);}catch(_){}
+  // Sólo los errores de la base son 'no se guardó'; cualquier otro se dice como falla a secas.
+  const _db=/PERMISSION|permission|firebase|database|network|disconnect/i.test(String((r&&(r.code||r.message))||''));
+  try{toast((_db?'⚠️ No se guardó: ':'⚠️ Algo falló: ')+m,'err',6000);}catch(_){}
 });
 function startApp(){
   db.ref('.info/connected').on('value',s=>{
@@ -2057,6 +2059,7 @@ window.addEventListener('load',async()=>{
         document.getElementById('login-screen').style.display='none';
         if(tt)tt.style.display='';if(fb)fb.style.display='';
         if(!appStarted){appStarted=true;startApp();}
+        else if(typeof _cycSinDatos!=='undefined'&&_cycSinDatos)location.reload();   // se cortó la lectura por la sesión: al volver a entrar, se recarga sola
       } else {
         document.getElementById('loading').style.display='none';
         document.getElementById('login-screen').style.display='flex';
@@ -2198,7 +2201,7 @@ async function autoLinkFamilies(){
   }
   renderMlLinks();
   if(noProd.length)toast('No encontré el producto: '+noProd.join(', '),'err');
-  toast(linked+' vinculadas'+(sinVar?' · '+sinVar+' sin variante (revisá)':'')+' ✓',5000);
+  toast(linked+' vinculadas'+(sinVar?' · '+sinVar+' sin variante (revisá)':'')+' ✓','ok',5000);
 }
 let _mlFilterPend=false,_mlShowHidden=false;
 function toggleMlFilter(){_mlFilterPend=!_mlFilterPend;renderMlLinks();}
@@ -2369,7 +2372,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='20.87';
+const APP_VERSION='20.88';
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
 // muestre la versión y la fecha de actualización y que tenga un desplegable predeterminado cerrado".
 // Y el mismo día: "que ponga fecha de cada modificación y haya una barrita para scrollear y que
@@ -2380,6 +2383,7 @@ const APP_VERSION='20.87';
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'20.88',f:'30/09/2026',h:'17:30',c:[{n:3,t:'Revisión completa final. Remate en tramos: si el precio nuevo queda arriba de los $33.000, el robot vuelve a medir el margen con el envío que ML cobra ahí; si no llega, esa noche no baja.'},{n:3,t:'Plata: lo que ya pasó al disponible no se vuelve a restar de "A liquidar" cuando cargás el disponible de una cuenta. El stock de una publicación recién ocultada ya no se cuenta dos veces en el patrimonio.'},{n:3,t:'Robot: las ventas con neto estimado ya no ensucian el envío que se usa para medir márgenes; los carritos con una venta editada a mano se releen enteros; reactivar una venta que canceló el robot devuelve su total y neto; lo que se sube de a una publicación no toca las que tienen colores (esas van color por color).'},{n:2,t:'El % de ganancia de las ventas estimadas cuenta el envío de Full una sola vez (igual que el Telegram). Una Premium que se activa sola ya no cuenta las cuotas dos veces.'},{n:2,t:'Si ML no deja renovar la llave de una cuenta, el robot sigue con las otras tres y te avisa una vez por día. Un comando mal escrito ya no hace nada raro: dice que no existe. La lista "abajo del piso" usa tu piso guardado, no 30%.'}]},
   {v:'20.87',f:'30/09/2026',h:'14:30',c:[{n:3,t:'Fallas mudas (etapa 5): si algo no se guarda en la base (una casilla del Arqueo, la oficina, el stock contado, el disponible) ahora avisa y vuelve a mostrar lo que hay de verdad, en vez de quedar sólo en tu pantalla. Si el panel pierde la conexión con los datos, se pone en rojo.'},{n:3,t:'Robot: un color que comparte depósito con otro ya no queda en 0 falso (antes podía sacarle la marca de liquidando); una cuenta que ML no deja leer no borra lo que ya entró de sus cajas; una Premium sin cuotas medidas no se activa sola ni se mide su margen como si no tuviera cuotas.'},{n:3,t:'La noche: las cuotas medidas no se pisan con un estimado en una noche mala; un motivo de reclamo que ML no contestó se reintenta; las canceladas (monotributo) se leen mes por mes; si el robot cambia un precio y no lo pudo anotar, lo avisa; los pasos que no midieron nada aparecen en el aviso de fallas.'},{n:2,t:'Datos viejos a la vista: margen de más de 2 días, caja de compra de más de 1 día y visitas viejas salen en ámbar con su fecha (antes sólo en el globito). "¿Cierra el mes?" sin dólar no opina.'},{n:1,t:'Privacidad: los registros públicos del robot ya no muestran nombres de Telegram, números de venta enteros ni lo que escriben los compradores sin tapar.'}]},
   {v:'20.86',f:'30/09/2026',h:'14:10',c:[{n:3,t:'Choques (etapa 4): un producto nuevo que ya viaja en un pedido no se puede volver a pedir (antes, con Llenar desde una pantalla vieja u otro aparato, quedaba en dos pedidos). "Ya llegó" sólo vale una vez.'},{n:3,t:'Robot: ya no activa una publicación que pausaste u ocultaste mientras corría, no sube algo que marcaste liquidando mientras corría, y no convierte tu marca de liquidando en una suya. Una sola suba o baja por publicación por noche.'},{n:3,t:'Ventas: marcar reclamo/cancelada o editar una venta ya no se pierde por el robot; una venta borrada no vuelve sola; editar guarda sólo lo que cambiaste, y si escribís el neto deja de ser estimado.'},{n:3,t:'Cajas: marcar, deshacer y cambiar el seguimiento se hace sobre la base (buscando la caja por su contenido): si otro aparato o el robot la cambió, no se pisa. Anclar el disponible resta lo liberado sin perder restas.'},{n:2,t:'La noche: el aviso de precios sale una sola vez aunque ml-daily corra 3 veces, el supervisor cuenta una noche por día y los fallos del reporte de MP también; las 3 corridas ya no se pisan.'},{n:2,t:'Comandos: si se corta una corrida a mano, termina lo que estaba escribiendo (en la oficina, total y color van juntos). Por ml-consulta sólo corren consultas y escrituras chicas (vincular, pasara, nomandar, fijarvar, cupo, poncosto); lo demás va por ml-sync.'},{n:1,t:'Una pestaña abierta con una versión vieja se actualiza sola al volver a la app.'}]},
   {v:'20.85',f:'30/09/2026',h:'13:05',c:[{n:2,t:'Pedidos: el aviso "este renglón no cierra" ahora se mira color por color. Antes, en los productos con colores (Centímetro, Paulvic, Sábanas, P47) un color sobrado en casa hacía saltar el aviso aunque el que había que comprar era otro. Si de verdad un color pide comprar teniendo lo suficiente, lo nombra.'}]},
@@ -2565,7 +2569,9 @@ function _vigilarVersion(){
     // (oficina con número absoluto, cajas sin transacción, pedidos recalculados con la fórmula vieja).
     // Ahora, cuando hay versión nueva, la app se recarga SOLA en cuanto vuelve a estar a la vista y no
     // estás escribiendo en ninguna casilla. Y al volver a la app se pregunta si hay versión nueva.
-    const recargar=()=>{if(_hayVersionNueva&&document.visibilityState==='visible'&&!(typeof isEditing==='function'&&isEditing()))location.reload();};
+    // Etapa final: tampoco con algo por guardar (una casilla que se guarda 0,9 s después, o pendiente de la base).
+    const _porGuardar=()=>Object.keys(_finPending||{}).length||Object.keys(_invPending||{}).length;
+    const recargar=()=>{if(!_hayVersionNueva||document.visibilityState!=='visible'||(typeof isEditing==='function'&&isEditing()))return;if(_porGuardar()){setTimeout(recargar,2000);return;}location.reload();};
     const marcar=()=>{_hayVersionNueva=true;_pintarVersion();setTimeout(recargar,1500);};
     document.addEventListener('visibilitychange',()=>{if(document.visibilityState!=='visible')return;reg.update().catch(()=>{});recargar();});
     setInterval(()=>{reg.update().catch(()=>{});recargar();},30*60*1000);
@@ -2903,7 +2909,7 @@ async function setNoRepo(pid,loc,val){
   if(val){
     const it={...cajaDe(loc)};let sac=0;
     Object.keys(it).forEach(k=>{if(k.startsWith(pid+'|')){sac+=parseInt(it[k])||0;delete it[k];}});
-    if(sac>0){await _guardarCajaArmando(loc,it);toast(`Saqué de la caja de ${loc} las ${sac} u. que ya tenía cargadas`,4000);}
+    if(sac>0){await _guardarCajaArmando(loc,it);toast(`Saqué de la caja de ${loc} las ${sac} u. que ya tenía cargadas`,'ok',4000);}
   }
   renderOfiCaja();
 }
@@ -3271,12 +3277,13 @@ const REV_CADA_DIAS=7;
 //   · REV_HECHAS    → última vez que cada etapa quedó resuelta. Sin pendientes, el cartel pide la
 //                     etapa más vieja cuando pasaron REV_CADA_DIAS desde la última.
 const REV_PENDIENTE=[
-    {t:'La segunda revisión completa, al final',que:'la que pediste dejar para cuando esté todo lo demás · va última',pedi:'revisión completa',ultima:true},
 ];
 // Choques (4) y fallas mudas/privacidad (5): verificadas las 15 del 26/09 de madrugada (rev4, lotes 6-8) y
 // todas arregladas o ya estaban; antes pasaron por la 2ª vuelta del 25/09. El cartel decía "15 sin verificar"
 // por una nota vieja.
-const REV_HECHAS={1:'2026-09-28',2:'2026-09-29',3:'2026-09-30',4:'2026-09-30',5:'2026-09-30',6:'2026-09-27'};
+// 30/09 a la tarde: la revisión completa final (6 revisores) cubrió precios, plata, mercadería, ventas,
+// corridas del robot y la web; lo obvio quedó arreglado en la v20.88.
+const REV_HECHAS={1:'2026-09-30',2:'2026-09-30',3:'2026-09-30',4:'2026-09-30',5:'2026-09-30',6:'2026-09-27'};
 function _revFecha(iso){const d=new Date(iso+'T12:00:00');return isNaN(d)?null:d;}
 function _revFmt(d){return ['dom','lun','mar','mié','jue','vie','sáb'][d.getDay()]+' '+String(d.getDate()).padStart(2,'0')+'/'+String(d.getMonth()+1).padStart(2,'0');}
 function revProxima(){
@@ -3998,7 +4005,7 @@ function setQ(pid,loc,val,variant=''){
       if(_invPending[invKey(pid,loc)]===sum)delete _invPending[invKey(pid,loc)];
     }
     const p=state.products.find(x=>x.id===pid);
-    await log((p?p.name:pid)+(variant?' ['+variant+']':'')+' / '+loc+': '+old+' → '+nv);
+    log((p?p.name:pid)+(variant?' ['+variant+']':'')+' / '+loc+': '+old+' → '+nv).catch(()=>{});   // historial aparte (no es 'no se guardó')
     syncPedidosDebounced();
    }catch(e){_invFalla(variant?[k,invKey(pid,loc)]:[k],e);}
   },900);
@@ -4894,7 +4901,7 @@ async function saveFin(key,val){
     // lo que escribiera otro (el robot con `dispo`), mostrando un total viejo.
     if(totMP!==null&&_finPending.mp_disp===totMP)delete _finPending.mp_disp;
     const f=FIN_FIELDS.find(x=>x.k===key);
-    await log('Arqueo '+(f?f.label:key)+': '+fmt(num));
+    log('Arqueo '+(f?f.label:key)+': '+fmt(num)).catch(()=>{});   // el historial aparte: si falla, el valor ya está guardado
    }catch(e){
     if(grupo&&state.finanzas._ts){if(_tsAntes==null)delete state.finanzas._ts[grupo];else state.finanzas._ts[grupo]=_tsAntes;try{renderFinTs();}catch(_){}}
     _finFalla(totMP!==null?[key,'mp_disp']:[key],e);
@@ -6231,7 +6238,7 @@ async function cerrarCaja(cuenta){
   if(_fallo.length)alert('⚠️ Se cortó la conexión: estos renglones NO se descontaron de la oficina (contalos de nuevo):\n\n'+_fallo.join('\n'));
   await _guardarCajaArmando(cuenta,{});   // la caja se cerró: deja de estar a medio armar
   await log('Caja despachada a '+cuenta+': '+uTot+' u.'+(track?' · '+track:''));
-  toast('Caja cerrada ✓ · está en "En camino"',5000);
+  toast('Caja cerrada ✓ · está en "En camino"','ok',5000);
   syncOfiMati();renderOfiCaja();renderOfiContar();renderCajasEnCamino();
 }
 
@@ -6695,7 +6702,7 @@ async function deshacerCaja(id,i){
   renderCajasEnCamino();renderOfiCaja();renderOfiContar();
   syncOfiMati();
   await log('Caja deshecha: '+uTot+' u. volvieron a la oficina');
-  toast(`Deshecha ✓ · ${uTot} u. volvieron a tu oficina`,4000);
+  toast(`Deshecha ✓ · ${uTot} u. volvieron a tu oficina`,'ok',4000);
 }
 // Etapa 4 (30/09/2026): las cajas de un envío se tocan con una TRANSACCIÓN sobre la base, buscando la
 // caja por seguimiento y contenido (no por su posición). Antes se escribía la lista ENTERA desde la
@@ -8266,6 +8273,10 @@ function ventaSinCostoVP(v){
 // envío de Full de la ficha (el mismo `gestDeVenta`, que abajo de la barrera da 0), y el renglón
 // dice "≈ estimado" y nunca va en verde. Cuando la noche la relee de MP, la marca se cae sola.
 function ventaEstimadaVP(v){return !!(v&&!v.cancelada&&v.netoEstimado);}
+// El envío de Full que va al DIVISOR del %. En una venta estimada ya está sumado adentro de
+// efectivoCostoVP, así que acá va 0: si no, se contaba dos veces y el % del panel no coincidía con el
+// del Telegram (revisión final, 30/09/2026). En las demás es gestDeVenta, igual que siempre.
+function gestDivVP(v){return ventaEstimadaVP(v)?0:gestDeVenta(v);}
 function efectivoCostoVP(v){
   if(v&&v.cancelada)return 0;
   const c=_efectivoCostoVP(v)+(ventaEstimadaVP(v)?gestDeVenta(v):0);
@@ -8299,7 +8310,7 @@ function _efectivoCostoVP(v){
 function vpEntries(keys){const out=[];keys.forEach(k=>{const o=state.ventaprod[k];if(o)Object.values(o).forEach(v=>out.push({...v,_dateKey:k}));});return out;}
 function vpAggByAccount(entries){
   const agg={};VP_ACCTS.forEach(a=>agg[a]={qty:0,neto:0,costo:0,gest:0});
-  entries.forEach(v=>{if(v.cancelada)return;const a=agg[v.cuenta]||(agg[v.cuenta]={qty:0,neto:0,costo:0,gest:0});a.qty+=v.qty||0;a.neto+=v.neto||0;a.costo+=efectivoCostoVP(v);a.gest+=gestDeVenta(v);});
+  entries.forEach(v=>{if(v.cancelada)return;const a=agg[v.cuenta]||(agg[v.cuenta]={qty:0,neto:0,costo:0,gest:0});a.qty+=v.qty||0;a.neto+=v.neto||0;a.costo+=efectivoCostoVP(v);a.gest+=gestDivVP(v);});
   Object.values(agg).forEach(a=>a.ganancia=a.neto-a.costo);
   return agg;
 }
@@ -8702,7 +8713,7 @@ function renderVentaProd(){
     const VP_CAP=200;const shownGroups=filteredGroups.slice(0,VP_CAP);
     list.innerHTML=filteredGroups.length?shownGroups.map(grp=>{
       const isCancelled=grp.cancelada;
-      let gn=0,gc=0,gmlx=0,ggest=0,gOfi=0;grp.items.forEach(v=>{if(!isCancelled){gn+=v.neto||0;gc+=efectivoCostoVP(v);gmlx+=impuestosDeVenta(v);ggest+=gestDeVenta(v);gOfi+=costoOficinaVP(v);}});
+      let gn=0,gc=0,gmlx=0,ggest=0,gOfi=0;grp.items.forEach(v=>{if(!isCancelled){gn+=v.neto||0;gc+=efectivoCostoVP(v);gmlx+=impuestosDeVenta(v);ggest+=gestDivVP(v);gOfi+=costoOficinaVP(v);}});
       // La ganancia en PESOS se mide contra gc (sin la gestión): el neto ya la trae descontada.
       // El PORCENTAJE se mide contra gc+ggest, que es el costo total como lo pidió él.
       const gg=gn-gc;const gcTot=gc+ggest;const gpct=gcTot>0?gg/gcTot*100:null;
@@ -8859,7 +8870,7 @@ function renderVentaProd(){
   // KPIs usan el mismo período que la lista
   // los KPIs respetan el filtro de cuenta seleccionado (Todas / Adriana / Matias / etc.)
   const kpiEntries=(vpFilterCuenta?mesEntries.filter(v=>v.cuenta===vpFilterCuenta):mesEntries).filter(v=>!v.cancelada);
-  let mU=0,mNeto=0,mCosto=0,mBruto=0,mGest=0;kpiEntries.forEach(v=>{mU+=v.qty||0;mNeto+=v.neto||0;mCosto+=efectivoCostoVP(v);mBruto+=v.total||0;mGest+=gestDeVenta(v);});
+  let mU=0,mNeto=0,mCosto=0,mBruto=0,mGest=0;kpiEntries.forEach(v=>{mU+=v.qty||0;mNeto+=v.neto||0;mCosto+=efectivoCostoVP(v);mBruto+=v.total||0;mGest+=gestDivVP(v);});
   const gMes=mNeto-mCosto;const pctMes=pctGananciaVP(gMes,mCosto,mGest);
   // PUNTOS DEL DÍA (27/09/2026, pedido suyo: "ponelo en la web al lado de la ganancia"): la ganancia
   // promedio por día del período, pasada a la tabla de 0 a 10 que armamos en el chat. Es una GUÍA
@@ -9177,7 +9188,7 @@ function renderVPRanking(){
   vpEntries(sk.keys).filter(ctaFilter).filter(v=>!v.cancelada).forEach(v=>{
     const gk=grpKeyOf(v);
     if(!agg[gk])agg[gk]={total:0,byAcc:{},byVariante:{},neto:0,costo:0,gest:0,prod:nombreDeVenta(v),pid:(prodDeVenta(v)||{}).id||null};
-    agg[gk].total+=v.qty||0;agg[gk].neto+=v.neto||0;agg[gk].costo+=efectivoCostoVP(v);agg[gk].gest+=gestDeVenta(v);
+    agg[gk].total+=v.qty||0;agg[gk].neto+=v.neto||0;agg[gk].costo+=efectivoCostoVP(v);agg[gk].gest+=gestDivVP(v);
     agg[gk].byAcc[v.cuenta]=(agg[gk].byAcc[v.cuenta]||0)+(v.qty||0);
     if(v.variante)agg[gk].byVariante[v.variante]=(agg[gk].byVariante[v.variante]||0)+(v.qty||0);
   });
@@ -9333,7 +9344,7 @@ function ventaEnRemate(v,dk){
   const vv=dk&&!v._dateKey?{...v,_dateKey:dk}:v;
   if(ventaSinCostoVP(vv))return false;   // sin costo no hay % que medir (#10)
   const c=efectivoCostoVP(vv); if(!(c>0))return false;
-  const pct=((v.neto||0)-c)/(c+gestDeVenta(vv))*100;
+  const pct=((v.neto||0)-c)/(c+gestDivVP(vv))*100;
   const piso=parseFloat((state.mlconfig||{}).minPct)||30;
   if(!(pct<piso))return false;
   // ── Y ADEMÁS TIENE QUE HABER UN REMATE DE VERDAD (25/09/2026, O2 de la segunda vuelta) ──
@@ -13878,7 +13889,7 @@ async function setPedidoProveedor(id){
 // Los automáticos sí los mueve `syncPedidosAuto` solo (su limpieza compara `r.coll!==coll`).
 async function togglePedidoOrigen(pedId,prodId){
   if(!prodId||!(state.products||[]).some(x=>x.id===prodId)){
-    toast('Este pedido no está pegado a ninguna ficha: no tiene origen que cambiar','error');return;
+    toast('Este pedido no está pegado a ninguna ficha: no tiene origen que cambiar','err');return;
   }
   const desdeBsas=(state.pedidos||[]).some(x=>x.id===pedId);
   const arrDesde=(desdeBsas?state.pedidos:state.pedidos_py)||[];
@@ -14047,7 +14058,7 @@ function metGetCostoDay(key,acct){
 function metGetGestDay(key,acct){
   return Object.values(state.ventaprod[key]||{})
     .filter(v=>!v.cancelada&&(v.cuenta||'').toLowerCase()===acct)
-    .reduce((s,v)=>s+gestDeVenta(v),0);
+    .reduce((s,v)=>s+gestDivVP(v),0);
 }
 // EL DIVISOR DEL % — uno solo para toda la pantalla de Métricas: las tarjetas de arriba, el
 // promedio y las dos vistas del gráfico. Estaba escrito cinco veces; con cinco copias, cambiar la
@@ -14291,7 +14302,7 @@ function metMargenRubro(keys){
       if(!(costo>0)||ventaSinCostoVP({...v,_dateKey:k}))return;   // sin costo no hay margen que medir: no se inventa un 100%
       const r=rubroDeProducto(prodDeVenta(v));
       const dest=r?(agg[r]||(agg[r]={neto:0,costo:0,gest:0,u:0,ventas:0})):sinRubro;
-      dest.neto+=v.neto||0;dest.costo+=costo;dest.gest+=gestDeVenta(v);
+      dest.neto+=v.neto||0;dest.costo+=costo;dest.gest+=gestDivVP(v);
       dest.u+=v.qty||0;dest.ventas++;
     });
   });
@@ -14381,11 +14392,11 @@ function metPorOrigen(keys){
       // Sin costo cargado no hay margen que medir, y contarla daría un 100% inventado.
       if(!(costo>0)||ventaSinCostoVP({...v,_dateKey:k})){sinCosto.u+=v.qty||0;sinCosto.ventas++;sinCosto.total+=v.total||0;return;}
       const d=g[gr];
-      d.neto+=v.neto||0;d.costo+=costo;d.gest+=gestDeVenta(v);d.total+=v.total||0;
+      d.neto+=v.neto||0;d.costo+=costo;d.gest+=gestDivVP(v);d.total+=v.total||0;
       d.u+=v.qty||0;d.ventas++;
       const nom=(p&&p.name)||v.prod||'—';
       const t=d.prods[nom]||(d.prods[nom]={nom,gan:0,u:0,costo:0,gest:0,neto:0});
-      t.gan+=(v.neto||0)-costo;t.u+=v.qty||0;t.costo+=costo;t.gest+=gestDeVenta(v);t.neto+=v.neto||0;
+      t.gan+=(v.neto||0)-costo;t.u+=v.qty||0;t.costo+=costo;t.gest+=gestDivVP(v);t.neto+=v.neto||0;
     });
   });
   // EL STOCK NO DEPENDE DEL PERÍODO y por eso se devuelve aparte y el renglón lo aclara: un número
@@ -15512,7 +15523,7 @@ function _propMes(ym){
 function _puntGananciaMes(ym){
   const keys=Object.keys(state.ventaprod||{}).filter(k=>k.startsWith(ym));
   let neto=0,costo=0,gest=0;
-  keys.forEach(k=>Object.values(state.ventaprod[k]||{}).forEach(v=>{neto+=(v.neto||0);costo+=efectivoCostoVP({...v,_dateKey:k});gest+=gestDeVenta(v);}));
+  keys.forEach(k=>Object.values(state.ventaprod[k]||{}).forEach(v=>{neto+=(v.neto||0);costo+=efectivoCostoVP({...v,_dateKey:k});gest+=gestDivVP(v);}));
   const rm=_retiroMesVal(ym);
   const _pm=_propMes(ym); // mes en curso: solo la parte proporcional a los días transcurridos
   const retiro=Math.round((rm!=null?rm:retiroDefMes(ym,neto))*_pm); // real si lo anotaste; si no, el supuesto
@@ -15553,7 +15564,7 @@ function _puntProdMarkup(ym){
   Object.keys(state.ventaprod||{}).filter(k=>k.startsWith(ym)).forEach(k=>Object.values(state.ventaprod[k]||{}).forEach(v=>{
     if(v.cancelada)return;const id=v.prodId||v.prod||'?';
     if(!agg[id])agg[id]={nom:v.prod||(prodDeVenta(v)||{}).name||id,neto:0,costo:0,gest:0};
-    agg[id].neto+=v.neto||0;agg[id].costo+=efectivoCostoVP({...v,_dateKey:k});agg[id].gest+=gestDeVenta(v);
+    agg[id].neto+=v.neto||0;agg[id].costo+=efectivoCostoVP({...v,_dateKey:k});agg[id].gest+=gestDivVP(v);
   }));
   return Object.values(agg).map(a=>({nom:a.nom,markup:pctGananciaVP(a.neto-a.costo,a.costo,a.gest),vol:a.neto})).filter(a=>a.markup!=null);
 }
@@ -15830,7 +15841,7 @@ function renderResumen_page(){
   const _retiroDeKeys=keys=>{const ks=new Set(keys);let t=0;[...new Set(keys.map(k=>k.substring(0,7)))].forEach(ym=>{
     const dias=allVpKeys.filter(k=>k.startsWith(ym)).sort();if(!dias.length||!ks.has(dias[0]))return;
     const rm=_retiroMesVal(ym);t+=(rm!=null?rm:retiroDefMes(ym,_netoMesData(ym).tot));});return t;};
-  const _vpGest=keys=>{let t=0;keys.forEach(k=>{Object.values(state.ventaprod[k]||{}).forEach(v=>{t+=gestDeVenta(v);});});return t;};
+  const _vpGest=keys=>{let t=0;keys.forEach(k=>{Object.values(state.ventaprod[k]||{}).forEach(v=>{t+=gestDivVP(v);});});return t;};
   const _cmpTot=(keys,tipo)=>Object.values(state.compras||{}).filter(x=>keys.includes(x.dayKey)&&getCompraTipo(x)===tipo).reduce((s,x)=>s+(x.monto||0),0);
   // revisión max (rev4): sólo las compras de tipo GASTO, igual que _gastosMes; la mercadería no es gasto fijo.
   const _cmpCats=(keys)=>{const cats={};Object.values(state.compras||{}).filter(x=>keys.includes(x.dayKey)&&getCompraTipo(x)==='gasto').forEach(x=>{const c=x.cat||'Otros';cats[c]=(cats[c]||0)+(x.monto||0);});return cats;};
