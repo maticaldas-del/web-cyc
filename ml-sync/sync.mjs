@@ -1312,7 +1312,10 @@ async function cajasQueLlegaron(db, accounts, labels, products, DRY) {
         }
         if (q > 0) its.push({ p: it.prodId, v: it.variante || '', q });
       }
-      if (yaMarcada) continue;
+      // Revisión final: una caja que esta vuelta QUIERE marcar conserva lo anotado hasta que la marca quede
+      // escrita (si la marca no sale, seguía abierta sin su "ya entraron N": contada dos veces). La web no
+      // mira este dato de una caja ya marcada, y la vuelta siguiente lo limpia.
+      if (yaMarcada) { if (prevE[key]) nuevoE[key] = prevE[key]; continue; }
       if (ciego) { if (prevE[key]) nuevoE[key] = prevE[key]; continue; }
       if (its.length) nuevoE[key] = { track: String(ab.c.track || ''), items: its };
     }
@@ -1428,7 +1431,8 @@ async function cajasQueLlegaron(db, accounts, labels, products, DRY) {
         idxs.push(j); hechas.push(m);
       }
       if (!idxs.length) continue;
-      await db.set('cyc/envios_full/' + id + '/cajasDet', arr);
+      try { await db.set('cyc/envios_full/' + id + '/cajasDet', arr); }
+      catch (eW) { console.log(`⚠️ no pude marcar las cajas del envío ${id}: ${(eW && eW.message) || eW} — quedan abiertas`); for (const m of ms) { const k = hechas.indexOf(m); if (k >= 0) hechas.splice(k, 1); } continue; }
       // Releído: que la escritura no dé error no prueba que haya quedado.
       const rel = (await db.get('cyc/envios_full/' + id + '/cajasDet')) || [];
       const arrRel = Array.isArray(rel) ? rel : Object.values(rel);
@@ -31024,9 +31028,11 @@ async function main() {
         const _ofiUpd = { [key]: ahora || null };
         if (o.va) {
           const tA = GO ? (parseInt(await db.get('cyc/inventory/' + kTot(o.p.id))) || 0) : (parseInt(inv[kTot(o.p.id)]) || 0);
-          const tN = Math.max(0, tA + dv);
+          // Revisión final: el total nunca queda abajo de la suma de sus colores (como `ofiMover` en la web).
+          const sumV = (o.p.variantes || []).reduce((a, v) => a + (kVar(o.p.id, v) === key ? ahora : (parseInt(inv[kVar(o.p.id, v)]) || 0)), 0);
+          const tN = Math.max(0, tA + dv, sumV);
           totTxt = ` · total del producto ${tA} → ${tN}`;
-          if (dv) _ofiUpd[kTot(o.p.id)] = tN || null;
+          if (tN !== tA) _ofiUpd[kTot(o.p.id)] = tN || null;
         }
         if (GO) await db.patch('cyc/inventory', _ofiUpd);
         console.log(`  ${o.p.name}${o.va ? ' · ' + o.va : ''}: ${antes} → ${ahora}${totTxt}`);
