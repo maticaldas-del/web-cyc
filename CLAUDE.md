@@ -469,9 +469,11 @@ cuentas juntas (lo de una cuenta no dueña se manda o se vende ahí). **No volve
 **D2 · HECHO el 29/09, eligió la (a) (v20.82 · `cyc-v360`):** al llegar un pedido de nuevos sólo se frena la ficha si ya hay
 una con el MISMO código Nissei (`candCodIgual`, también por el final) o el MISMO nombre completo (`candFichaMisma`, web; misma
 regla en `pyped:llego`), y el candidato queda enganchado a esa ficha (`prodId`). Lo que sólo se parece se crea y se avisa.
-**PENDIENTE PEDIDO POR ÉL ("arreglemos esto después"):** el aviso "renglones de Pedidos con un número que no cierra" compara el
-TOTAL del producto (ML+casa+camino) contra el objetivo, y en productos con colores sobra uno y falta otro (Centímetro, Paulvic,
-Sábanas, P47…): hay que medirlo por variante.
+**HECHO el 30/09 (v20.85 · `cyc-v363`):** el aviso "renglón que no cierra" de Pedidos se mide COLOR POR COLOR (`pedSinSentido`):
+cada color de `variantesNec` guarda ahora su objetivo (`obj`) y el aviso salta sólo si un color pide comprar teniendo entre ML,
+casa y camino lo que le alcanza; lo nombra. Productos sin colores: igual que antes. Pedidos viejos sin `obj`: no opina.
+**ETAPA 3 CERRADA (REV_HECHAS 30/09).** Etapa 4 (choques) arrancó el 30/09 con 4 revisores (robot/web · corridas a la vez ·
+varios aparatos · robot contra sí mismo); notas en el scratchpad `etapa4/*.md` (se pierden con el contenedor).
 **D3 · HECHO el 29/09, eligió la (a) (v20.83 · `cyc-v361`):** `compray` busca `py<fecha>` y `pyr<fecha>`; si ese día (o en ±10 días sin pesos) hay de los dos tipos, no escribe y pide `|repo` o `|nuevos` (también `tipo=`). Con `|repo` y ninguna reposición cerca, no crea nada: primero va `pyped:repo`. `det=` conserva el `prodId` de cada renglón.
 **LAS 6 QUE QUEDABAN, DECIDIDAS EL 29/09 (v20.84 · `cyc-v362`):**
  · **A1 (a):** en `cajasQueLlegaron`, antes de repartir entre las abiertas, cada caja marcada POR EL ROBOT con faltantes

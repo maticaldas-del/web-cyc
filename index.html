@@ -2345,7 +2345,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='20.84';
+const APP_VERSION='20.85';
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
 // muestre la versión y la fecha de actualización y que tenga un desplegable predeterminado cerrado".
 // Y el mismo día: "que ponga fecha de cada modificación y haya una barrita para scrollear y que
@@ -2356,6 +2356,7 @@ const APP_VERSION='20.84';
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'20.85',f:'30/09/2026',h:'13:05',c:[{n:2,t:'Pedidos: el aviso "este renglón no cierra" ahora se mira color por color. Antes, en los productos con colores (Centímetro, Paulvic, Sábanas, P47) un color sobrado en casa hacía saltar el aviso aunque el que había que comprar era otro. Si de verdad un color pide comprar teniendo lo suficiente, lo nombra.'}]},
   {v:'20.84',f:'30/09/2026',h:'00:50',c:[{n:3,t:'Cajas: si una caja se marcó "llegó con faltantes" y después Full da de alta lo que faltaba, esas unidades vuelven a esa caja (le bajan los faltantes) en vez de llevárselas la caja siguiente, que se daba por llegada antes de tiempo.'},{n:3,t:'Patrimonio: la mercadería que está en Full en publicaciones ocultas ("no la vendemos más") ahora cuenta en el Arqueo. No entra en Armar caja ni en Pedidos.'},{n:2,t:'Pedidos: el estado (Urgente / Poco stock / Suficiente) de los pedidos automáticos lo pone siempre el panel; ya no se puede tocar porque la vuelta siguiente lo pisaba.'},{n:2,t:'Paraguay: una reposición que llegó y todavía no se contó en la oficina se sigue restando en la canasta (hasta que la cuentes o 7 días), así no se vuelve a pedir.'},{n:2,t:'Armar caja: con 1 o 2 ventas no calcula un ritmo (igual que Pedidos). Sólo manda el mínimo de 4 a una cuenta que está en cero.'}]},
   {v:'20.83',f:'30/09/2026',h:'00:05',c:[{n:2,t:'Paraguay: al cargar los pesos de una compra (compray) ahora también encuentra las REPOSICIONES. Si ese día hay un pedido de nuevos y una reposición, no adivina: pide que digas cuál. Antes los pesos de una reposición iban a un registro nuevo o al pedido de nuevos de al lado.'}]},
   {v:'20.82',f:'29/09/2026',h:'23:40',c:[{n:3,t:'Paraguay: al llegar un pedido de nuevos, sólo se frena la ficha si ya existe una con el MISMO código de Nissei o el MISMO nombre (y el candidato queda enganchado a ella). Antes bastaba con que compartieran las dos primeras palabras ("Perfume Lattafa…"): el producto quedaba sin ficha, volvía a "Para probar" y se podía comprar dos veces.'}]},
@@ -3217,13 +3218,13 @@ const REV_CADA_DIAS=7;
 //   · REV_HECHAS    → última vez que cada etapa quedó resuelta. Sin pendientes, el cartel pide la
 //                     etapa más vieja cuando pasaron REV_CADA_DIAS desde la última.
 const REV_PENDIENTE=[
-    {t:'Etapa 3: arreglar el aviso "renglón que no cierra" de Pedidos, color por color',que:'hoy compara el total del producto y en los que tienen colores sobra uno y falta otro · lo pediste para después',pedi:'etapa 3'},
+    {t:'Etapa 4 (choques): la revisión está corriendo',que:'4 revisores mirando la web y el robot escribiendo lo mismo, corridas a la vez y varios aparatos · te paso lo que encuentren de a uno',pedi:'etapa 4'},
     {t:'La segunda revisión completa, al final',que:'la que pediste dejar para cuando esté todo lo demás · va última',pedi:'revisión completa',ultima:true},
 ];
 // Choques (4) y fallas mudas/privacidad (5): verificadas las 15 del 26/09 de madrugada (rev4, lotes 6-8) y
 // todas arregladas o ya estaban; antes pasaron por la 2ª vuelta del 25/09. El cartel decía "15 sin verificar"
 // por una nota vieja.
-const REV_HECHAS={1:'2026-09-28',2:'2026-09-29',3:'2026-09-26',4:'2026-09-26',5:'2026-09-26',6:'2026-09-27'};
+const REV_HECHAS={1:'2026-09-28',2:'2026-09-29',3:'2026-09-30',4:'2026-09-26',5:'2026-09-26',6:'2026-09-27'};
 function _revFecha(iso){const d=new Date(iso+'T12:00:00');return isNaN(d)?null:d;}
 function _revFmt(d){return ['dom','lun','mar','mié','jue','vie','sáb'][d.getDay()]+' '+String(d.getDate()).padStart(2,'0')+'/'+String(d.getMonth()+1).padStart(2,'0');}
 function revProxima(){
@@ -9709,7 +9710,7 @@ async function syncPedidosAuto(){
         varCuenta={obj:varDefs.reduce((a,x)=>a+x.vTarget,0),ml:varDefs.reduce((a,x)=>a+x.vStock,0),
           casa:varDefs.reduce((a,x)=>a+x.vCasa,0),cam:varDefs.reduce((a,x)=>a+x.vCam,0)};
       }
-      variantesNec=varDefs.length?varDefs.map(({v,vComprar:q,vStock,vCam,vCasa,vHist})=>({v,q,ml:vStock,cam:vCam,casa:vCasa,...(vHist?{hist:true}:{})})):null;
+      variantesNec=varDefs.length?varDefs.map(({v,vComprar:q,vStock,vCam,vCasa,vHist,vTarget})=>({v,q,ml:vStock,cam:vCam,casa:vCasa,obj:vTarget,...(vHist?{hist:true}:{})})):null;
     } else {
       const targetStock=Math.ceil(vDia*TARGET_DIAS_P);
       necesario=Math.max(0,targetStock-stock);
@@ -12991,7 +12992,15 @@ function pedSinSentido(p){
   // La resta que muestra la tarjeta tiene que cerrar: si con lo que ya tenés alcanza para el
   // objetivo, no hay nada que comprar. Hoy los pedidos automáticos no pueden llegar acá (no se
   // crean con `aComprar` en 0), pero uno cargado a mano sí.
-  if(pedir>0&&p.cObjetivo>0){
+  // Etapa 3 (30/09/2026, pedido suyo): en un producto con COLORES la resta se mira color por color.
+  // Con el total, un color sobrado en casa tapaba (o inventaba) el que falta: "ya tenés 50 para un
+  // objetivo de 20" siendo 50 de un color y 0 del otro (Centímetro, Paulvic, Sábanas, P47). Un
+  // pedido guardado antes de este cambio no trae el objetivo de cada color: ahí no se opina.
+  const _vars=Array.isArray(p.variantesNec)&&p.variantesNec.length?p.variantesNec:null;
+  if(_vars){
+    const malas=_vars.filter(x=>(x.q||0)>0&&x.obj>0&&((x.ml||0)+(x.casa||0)+(x.cam||0))>=x.obj);
+    if(malas.length)m.push(malas.slice(0,4).map(x=>`${x.v}: pide comprar ${fmtN(x.q)} y ya tenés ${fmtN((x.ml||0)+(x.casa||0)+(x.cam||0))} entre ML, tu casa y en camino para un objetivo de ${fmtN(x.obj)}`).join(' · ')+(malas.length>4?` · y ${malas.length-4} color(es) más`:''));
+  } else if(pedir>0&&p.cObjetivo>0){
     const tenes=(p.cML||0)+(p.cCasa||0)+(p.cCamino||0);
     if(tenes>=p.cObjetivo)m.push(`pide comprar ${fmtN(pedir)} y entre ML, tu casa y lo que va en camino ya tenés ${fmtN(tenes)} para un objetivo de ${fmtN(p.cObjetivo)}`);
   }
