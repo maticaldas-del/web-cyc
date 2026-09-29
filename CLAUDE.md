@@ -531,7 +531,7 @@ varios aparatos · robot contra sí mismo); notas en el scratchpad `etapa4/*.md`
    "cambié pero no pude anotar" · `CANCEL_AGG` mes por mes (`fetchCancelled` con hasta), aviso a las 2 noches
    (`mlapi/cancelagg`) · `fetchOrdersRange` marca `incompleto` y `calc`/`calc1`/`chkfact` no escriben cortado · `saldoml`
    sin `_dispTs`/ancla no escribe · `saldoml`/`dispo` avisan a las 2 noches sin escribir (`cyc/saldoml/_alerta`) · los pasos
-   que no midieron nada salen con error y entran en `avisonoche` (ojo: `dispo` falla si falta un ancla).
+   que no midieron nada salen con error y entran en `avisonoche`. **`dispo` NO: ni falla ni Telegram, decisión suya del 30/09 ("no es muy importante, el arqueo lo cargo a mano una vez por mes"); queda sólo en el log.**
  · **Web:** listener caído = punto rojo + cartel · `unhandledrejection` avisa · Arqueo/`setQ`/oficina/ancla que no se
    guardan avisan y vuelven al valor de la base (`_finFalla`, `_invFalla`) · cerrar caja dice si el envío NO se achicó ·
    margen >48 h, caja >24 h y visitas viejas en ámbar a la vista (`margenViejoDe`) · "¿Cierra el mes?" sin dólar no opina.
