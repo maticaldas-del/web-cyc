@@ -2372,7 +2372,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='20.89';
+const APP_VERSION='20.90';
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
 // muestre la versión y la fecha de actualización y que tenga un desplegable predeterminado cerrado".
 // Y el mismo día: "que ponga fecha de cada modificación y haya una barrita para scrollear y que
@@ -2383,6 +2383,7 @@ const APP_VERSION='20.89';
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'20.90',f:'29/09/2026',h:'18:45',c:[{n:1,t:'Revisión del panel: nueva etapa 7 · Diseño. Mira la web pantalla por pantalla (sobre todo en el teléfono) y propone cómo hacerla más cómoda, sencilla y linda. Sólo propone: vos elegís.'}]},
   {v:'20.89',f:'30/09/2026',h:'18:30',c:[{n:1,t:'Inicio: "Monotributo · cómo vendés vs AFIP" se mudó a la tarjeta ⚖️ de las 4 cuentas. Arriba de la tarjeta hay dos botones para cambiar entre el tope de H (lo que viene) y el monotributo de hoy; recuerda cuál elegiste.'}]},
   {v:'20.88',f:'30/09/2026',h:'17:30',c:[{n:3,t:'Revisión completa final. Remate en tramos: si el precio nuevo queda arriba de los $33.000, el robot vuelve a medir el margen con el envío que ML cobra ahí; si no llega, esa noche no baja.'},{n:3,t:'Plata: lo que ya pasó al disponible no se vuelve a restar de "A liquidar" cuando cargás el disponible de una cuenta. El stock de una publicación recién ocultada ya no se cuenta dos veces en el patrimonio.'},{n:3,t:'Robot: las ventas con neto estimado ya no ensucian el envío que se usa para medir márgenes; los carritos con una venta editada a mano se releen enteros; reactivar una venta que canceló el robot devuelve su total y neto; lo que se sube de a una publicación no toca las que tienen colores (esas van color por color).'},{n:2,t:'El % de ganancia de las ventas estimadas cuenta el envío de Full una sola vez (igual que el Telegram). Una Premium que se activa sola ya no cuenta las cuotas dos veces.'},{n:2,t:'Si ML no deja renovar la llave de una cuenta, el robot sigue con las otras tres y te avisa una vez por día. Un comando mal escrito ya no hace nada raro: dice que no existe. La lista "abajo del piso" usa tu piso guardado, no 30%.'}]},
   {v:'20.87',f:'30/09/2026',h:'14:30',c:[{n:3,t:'Fallas mudas (etapa 5): si algo no se guarda en la base (una casilla del Arqueo, la oficina, el stock contado, el disponible) ahora avisa y vuelve a mostrar lo que hay de verdad, en vez de quedar sólo en tu pantalla. Si el panel pierde la conexión con los datos, se pone en rojo.'},{n:3,t:'Robot: un color que comparte depósito con otro ya no queda en 0 falso (antes podía sacarle la marca de liquidando); una cuenta que ML no deja leer no borra lo que ya entró de sus cajas; una Premium sin cuotas medidas no se activa sola ni se mide su margen como si no tuviera cuotas.'},{n:3,t:'La noche: las cuotas medidas no se pisan con un estimado en una noche mala; un motivo de reclamo que ML no contestó se reintenta; las canceladas (monotributo) se leen mes por mes; si el robot cambia un precio y no lo pudo anotar, lo avisa; los pasos que no midieron nada aparecen en el aviso de fallas.'},{n:2,t:'Datos viejos a la vista: margen de más de 2 días, caja de compra de más de 1 día y visitas viejas salen en ámbar con su fecha (antes sólo en el globito). "¿Cierra el mes?" sin dólar no opina.'},{n:1,t:'Privacidad: los registros públicos del robot ya no muestran nombres de Telegram, números de venta enteros ni lo que escriben los compradores sin tapar.'}]},
@@ -3256,7 +3257,7 @@ function updateHomeDolar(){
 // ── LA REVISIÓN DEL PANEL, POR ETAPAS (25/09/2026) ─────────────────────────────────────────────
 // Pedido suyo: "que me avise en la web de cyc, ese tiempo para acordarme". La revisión completa no
 // entraba en una ventana de 5 horas de tokens, así que se partió en seis etapas, UNA POR SEMANA
-// (ciclo de 6 semanas). Cada etapa se pide en el chat por número o nombre ("etapa 2" / "etapa
+// (ciclo de 6 semanas; 7 desde el 29/09 con la etapa Diseño). Cada etapa se pide en el chat por número o nombre ("etapa 2" / "etapa
 // plata") y se hace con el esfuerzo que dice acá, con el MISMO nombre que muestra la app.
 // Desde el 26/09/2026 lo que se hizo y lo que falta lo lleva Claude en REV_PENDIENTE / REV_HECHAS
 // (más abajo), no un botón: `cyc/revision/ultima` ya no se usa.
@@ -3267,6 +3268,7 @@ const REV_ETAPAS=[
   {n:4,nom:'Choques',que:'la web y el robot escribiendo lo mismo, corridas a la vez',esf:'Alto'},
   {n:5,nom:'Fallas mudas y privacidad',que:'cuando ML no contesta y se guarda como dato; datos de terceros en los registros públicos',esf:'Alto'},
   {n:6,nom:'Ideas nuevas',que:'datos que ML ya da y no usamos, cosas que hacés a mano y se pueden automatizar (sólo propone)',esf:'Alto'},
+  {n:7,nom:'Diseño',que:'la web más cómoda, sencilla y linda: qué sobra, qué cuesta encontrar, qué se ve mal en el teléfono (sólo propone)',esf:'Alto'},
 ];
 const REV_CADA_DIAS=7;
 // ── LA REVISIÓN LA MANEJA CLAUDE, NO ÉL (26/09/2026, pedido suyo) ─────────────────────────────

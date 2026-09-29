@@ -590,6 +590,9 @@ encuentra y retoma sólo lo que faltó. Cada hallazgo se verifica antes de pasá
 | 4 | Choques | web y robot escribiendo lo mismo, corridas a la vez | Alto |
 | 5 | Fallas mudas y privacidad | ML no contesta y se guarda como dato; datos de terceros en logs | Medio |
 | 6 | Ideas nuevas | datos de ML sin usar, cosas que hace a mano · sólo propone | Alto |
+| 7 | Diseño | la web más cómoda, sencilla y linda: qué sobra, qué cuesta encontrar, cómo se ve en el teléfono · sólo propone | Alto |
+
+**ETAPA 7 · DISEÑO, agregada el 29/09/2026 (v20.90 · `cyc-v368`).** Pedido suyo: *"tirar ideas de diseño, para mejorar, más cómodo, sencillo, lindo"*. Va APARTE de la 6 porque es otra mirada: la 6 busca datos y trabajo manual, ésta mira las pantallas. Revisores sugeridos: teléfono (lo que se corta, botones chicos, scroll de más) · lo que sobra (números repetidos, carteles que nadie lee) · lo que cuesta encontrar (cuántos toques hasta lo que mira todos los días) · consistencia (colores, tamaños, mismo dato dicho distinto). Sólo propone, de a una con (a)/(b); lo que cambie un número o saque algo que él usa lo decide él. El ciclo pasa a 7 semanas. Como nunca se hizo, es la próxima que muestra Inicio.
 
 **LOS NIVELES DE ESFUERZO, averiguados el 25/09 con fuentes (code.claude.com/docs/en/model-config y
 /workflows, support.claude.com):** de menos a más `low` · `medium` (el que usa Opus 5.5 si no se toca)
