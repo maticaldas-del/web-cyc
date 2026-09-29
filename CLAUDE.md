@@ -540,7 +540,9 @@ varios aparatos · robot contra sí mismo); notas en el scratchpad `etapa4/*.md`
    **`tgaprobar:<últimos números>:go`** (tiene que agarrar uno solo; `tgaprobar:-<números>:go` lo borra; sin args lista
    los pendientes). Va por ml-sync (ml-consulta no escribe ahí). Los que ya estaban no se tocaron. `tgchats` ya no
    imprime nombres ni números enteros.
- · **Para decidir con él:** (2) `calcPrueba` 🧪: días sin registro de stock cuentan como con stock.
+ · **(2) `calcPrueba` 🧪 · HECHO el 30/09, eligió la (a):** `diasConStock` cuenta sólo los días en que el registro
+   hora por hora VIO stock; antes del primer renglón de la clave ya no se toma "con stock". Con menos de 7 días vistos
+   de un lado, la prueba espera. **ETAPA 5 CERRADA, sin decisiones pendientes.**
 
 ### LA REVISIÓN COMPLETA FINAL · 30/09/2026 · v20.88 `cyc-v366` · CERRADA
 Pedido suyo: *"hace la revision completa final"*. Seis revisores (precios · plata · mercadería · ventas · corridas y
