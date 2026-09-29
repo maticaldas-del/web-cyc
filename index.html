@@ -2535,7 +2535,14 @@ function _vigilarVersion(){
   if(!('serviceWorker' in navigator))return;
   navigator.serviceWorker.getRegistration().then(reg=>{
     if(!reg)return;
-    const marcar=()=>{_hayVersionNueva=true;_pintarVersion();};
+    // Etapa 4 (30/09/2026): una pestaña abierta hace días seguía escribiendo con las reglas viejas
+    // (oficina con número absoluto, cajas sin transacción, pedidos recalculados con la fórmula vieja).
+    // Ahora, cuando hay versión nueva, la app se recarga SOLA en cuanto vuelve a estar a la vista y no
+    // estás escribiendo en ninguna casilla. Y al volver a la app se pregunta si hay versión nueva.
+    const recargar=()=>{if(_hayVersionNueva&&document.visibilityState==='visible'&&!(typeof isEditing==='function'&&isEditing()))location.reload();};
+    const marcar=()=>{_hayVersionNueva=true;_pintarVersion();setTimeout(recargar,1500);};
+    document.addEventListener('visibilitychange',()=>{if(document.visibilityState!=='visible')return;reg.update().catch(()=>{});recargar();});
+    setInterval(()=>{reg.update().catch(()=>{});recargar();},30*60*1000);
     if(reg.waiting&&navigator.serviceWorker.controller)marcar();
     reg.addEventListener('updatefound',()=>{
       const nuevo=reg.installing;if(!nuevo)return;
@@ -4784,13 +4791,22 @@ async function saveFin(key,val){
         // Etapa 2 (28/09): lo que MP ya liberó y el robot dejó esperando en "a liquidar" para esta
         // cuenta ya está adentro del número que escribiste: sale de "a liquidar" en el mismo paso.
         // Si no, la misma plata se cuenta dos veces hasta la noche siguiente.
-        if(db){db.ref('cyc/saldoml/'+_cta+'/liberadoSinDisp').once('value').then(sn=>{
-          const libArs=parseFloat(sn.val())||0; if(!(libArs>0))return;
-          const libUsd=libArs/_tcA, f=state.finanzas||{};
-          const liq=Math.max(0,Math.round((parseFloat(f.mp_liq)||0)-libUsd)), lib=Math.max(0,Math.round((parseFloat(f.liq_liberado)||0)-libUsd));
-          f.mp_liq=liq;f.liq_liberado=lib;
-          return fbUpdate({'finanzas/mp_liq':liq,'finanzas/liq_liberado':lib,['saldoml/'+_cta+'/liberadoSinDisp']:0}).then(()=>{updateArqueo();updateHeaderTotal();});
-        }).catch(e=>console.warn('no pude sacar lo liberado de a liquidar',e));}
+        // Etapa 4 (30/09/2026): con transacciones. Antes se restaba sobre la copia en memoria y se
+        // escribía el número entero: dos cuentas ancladas a la vez desde dos aparatos perdían una resta.
+        // Primero se "agarra" lo liberado de la cuenta (queda en 0 en una sola operación, así no se
+        // resta dos veces) y después se resta sobre lo que haya en la base.
+        if(db){(async()=>{
+          let libArs=0;
+          const r=await db.ref('cyc/saldoml/'+_cta+'/liberadoSinDisp').transaction(cur=>{libArs=parseFloat(cur)||0;return libArs>0?0:undefined;});
+          if(!r||!r.committed||!(libArs>0))return;
+          const libUsd=libArs/_tcA;
+          const _resta=k=>db.ref('cyc/finanzas/'+k).transaction(cur=>Math.max(0,Math.round((parseFloat(cur)||0)-libUsd)));
+          const r1=await _resta('mp_liq'), r2=await _resta('liq_liberado');
+          const f=state.finanzas||{};
+          if(r1&&r1.snapshot)f.mp_liq=r1.snapshot.val();
+          if(r2&&r2.snapshot)f.liq_liberado=r2.snapshot.val();
+          updateArqueo();updateHeaderTotal();
+        })().catch(e=>console.warn('no pude sacar lo liberado de a liquidar',e));}
       }
     }
   }
@@ -6570,49 +6586,96 @@ async function deshacerCaja(id,i){
   const items=(c.items||[]).filter(x=>x&&x.prodId&&x.u>0);
   const uTot=items.reduce((a,x)=>a+x.u,0);
   if(!confirm(`¿Deshacer esta caja?\n\n${uTot} unidad(es) vuelven a tu oficina y la caja se borra.`))return;
+  // Etapa 4 (30/09/2026): lo de arriba se decidió ANTES del cartel. Si mientras estaba abierto el
+  // robot la marcó llegada, u otro aparato la deshizo, antes se devolvía igual (mercadería contada en
+  // Full y en la oficina, o devuelta dos veces). Ahora la caja se saca de la BASE con una transacción
+  // que la busca por seguimiento y contenido y exige que no haya llegado; recién después vuelve la
+  // mercadería a la oficina.
+  const _firma=b=>JSON.stringify([b&&b.track||'',((b&&b.items)||[]).map(x=>x&&[x.prodId,x.variante||'',x.u])]);
+  const _f=_firma(c);let quedan=null,motivo='';
+  try{
+    const r=await db.ref('cyc/envios_full/'+id+'/cajasDet').transaction(cur=>{
+      if(cur==null)return cur;
+      const arr=Array.isArray(cur)?cur:Object.values(cur);
+      const k=arr.findIndex(b=>_firma(b)===_f);
+      if(k<0){motivo='ya no está (la deshizo otro aparato)';return;}
+      if(arr[k].recibida){motivo='ya figura como llegada a Full';return;}
+      const n=arr.slice();n.splice(k,1);quedan=n;return n;
+    });
+    if(!r||!r.committed||!quedan){toast('No la deshice: la caja '+(motivo||'cambió mientras tanto'),'err');renderCajasEnCamino();return;}
+  }catch(err){toast('No la deshice: '+(err.message||err),'err');return;}
   // Devolver a la oficina, con la misma cuenta que se usó al descontar.
   for(const it of items)await ofiMover(it.prodId,it.variante||'',{delta:it.u});    // c3: sobre la base
-  cajas.splice(i,1);
-  if(!cajas.length){
+  if(!quedan.length){
     // Era la única caja del envío: se borra el envío entero, si no queda un renglón vacío.
     await fbSet('envios_full/'+id,null);
     delete state.envios_full[id];
-    renderCajasEnCamino();renderOfiCaja();renderOfiContar();
   } else {
-    await _guardarCajas(id,cajas);
-    renderCajasEnCamino();renderOfiCaja();renderOfiContar();
+    e.cajasDet=quedan;e.cajas=quedan.length;e.seguimientos=quedan.map(b=>b.track).filter(Boolean);
+    await fbSet('envios_full/'+id+'/cajas',quedan.length);
+    await fbSet('envios_full/'+id+'/seguimientos',e.seguimientos.length?e.seguimientos:null);
   }
+  renderCajasEnCamino();renderOfiCaja();renderOfiContar();
   syncOfiMati();
   await log('Caja deshecha: '+uTot+' u. volvieron a la oficina');
   toast(`Deshecha ✓ · ${uTot} u. volvieron a tu oficina`,4000);
 }
+// Etapa 4 (30/09/2026): las cajas de un envío se tocan con una TRANSACCIÓN sobre la base, buscando la
+// caja por seguimiento y contenido (no por su posición). Antes se escribía la lista ENTERA desde la
+// copia de la pantalla: con el celular sin señal, o con otro aparato o el robot marcándola en el medio,
+// al guardar se pisaba lo que había cambiado (una caja llegada volvía a "en camino" y se contaba dos
+// veces). `fn` recibe una copia de la caja y la cambia; si la caja ya no está, no se hace nada.
+function _firmaCaja(b){return JSON.stringify([b&&b.track||'',((b&&b.items)||[]).map(x=>x&&[x.prodId,x.variante||'',x.u])]);}
+async function _editarCajaTx(id,i,fn){
+  const e=(state.envios_full||{})[id];if(!e||!db)return false;
+  const vieja=cajasDe(e)[i];if(!vieja)return false;
+  const f=_firmaCaja(vieja);let nueva=null;
+  try{
+    const r=await db.ref('cyc/envios_full/'+id+'/cajasDet').transaction(cur=>{
+      if(cur==null)return cur;
+      const arr=(Array.isArray(cur)?cur:Object.values(cur)).slice();
+      const k=arr.findIndex(b=>_firmaCaja(b)===f);
+      if(k<0)return;
+      const c={...arr[k]};fn(c);arr[k]=c;nueva=arr;return arr;
+    });
+    if(!r||!r.committed||!nueva){toast('No lo guardé: esa caja cambió en otro aparato. Mirala de nuevo.','err');renderCajasEnCamino();return false;}
+  }catch(err){toast('No lo guardé: '+(err.message||err),'err');return false;}
+  e.cajasDet=nueva;e.cajas=nueva.length;e.seguimientos=nueva.map(c=>c.track).filter(Boolean);
+  await fbSet('envios_full/'+id+'/seguimientos',e.seguimientos.length?e.seguimientos:null);
+  renderCajasEnCamino();
+  if(document.getElementById('ofi-caja-list'))renderOfiCaja();
+  return true;
+}
 async function marcarCajaRecibida(id,i,valor){
   const e=(state.envios_full||{})[id];if(!e)return;
-  const cajas=cajasDe(e).map(c=>({...c}));
-  if(!cajas[i])return;
-  cajas[i].recibida=!!valor;
-  cajas[i].recFecha=valor?new Date().toISOString().slice(0,10):null;
   // Las entradas de Full que el robot anotó como usadas por esta caja dejan de valer al abrirla
   // (el robot las vuelve a repartir). Marcada a mano, el robot le descuenta por orden de despacho.
   // Etapa 3 (29/09): al cambiarla de estado a mano se borra TODO lo que había anotado el robot (entradas
   // usadas y faltantes): si no, lo que llegaba tarde se lo llevaba la caja siguiente y quedaban faltantes falsos.
-  cajas[i].recUsadas=null;cajas[i].recUsadasCalc=null;cajas[i].faltan=null;
-  await _guardarCajas(id,cajas);
-  await log('Caja '+(i+1)+' del envío '+e.fecha+': '+(valor?'llegó a Full':'vuelve a en camino'));
+  const ok=await _editarCajaTx(id,i,c=>{
+    c.recibida=!!valor;
+    c.recFecha=valor?new Date().toISOString().slice(0,10):null;
+    c.recUsadas=null;c.recUsadasCalc=null;c.faltan=null;
+  });
+  if(ok)await log('Caja '+(i+1)+' del envío '+e.fecha+': '+(valor?'llegó a Full':'vuelve a en camino'));
 }
 async function setCajaTrack(id,i,val){
-  const e=(state.envios_full||{})[id];if(!e)return;
-  const cajas=cajasDe(e).map(c=>({...c}));
-  if(!cajas[i])return;
-  cajas[i].track=String(val||'').replace(/[^0-9]/g,'');
-  await _guardarCajas(id,cajas);
+  await _editarCajaTx(id,i,c=>{c.track=String(val||'').replace(/[^0-9]/g,'');});
 }
 // Agrega una caja vacía a un envío (cuando el comprobante trae más seguimientos que cajas cargadas).
 async function addCajaAEnvio(id){
-  const e=(state.envios_full||{})[id];if(!e)return;
-  const cajas=cajasDe(e).map(c=>({...c}));
-  cajas.push({n:cajas.length+1,track:'',items:[],recibida:false});
-  await _guardarCajas(id,cajas);
+  const e=(state.envios_full||{})[id];if(!e||!db)return;
+  let nueva=null;
+  try{
+    await db.ref('cyc/envios_full/'+id+'/cajasDet').transaction(cur=>{
+      const arr=cur==null?[]:(Array.isArray(cur)?cur:Object.values(cur)).slice();
+      arr.push({n:arr.length+1,track:'',items:[],recibida:false});nueva=arr;return arr;
+    });
+  }catch(err){toast('No la agregué: '+(err.message||err),'err');return;}
+  if(!nueva)return;
+  e.cajasDet=nueva;e.cajas=nueva.length;
+  await fbSet('envios_full/'+id+'/cajas',nueva.length);
+  renderCajasEnCamino();
 }
 async function delEnvioFull(id){
   const e=(state.envios_full||{})[id];if(!e)return;
@@ -8280,41 +8343,62 @@ const vpEditingGroups=new Set();
 function vpToggleEdit(grpId){vpEditingGroups.has(grpId)?vpEditingGroups.delete(grpId):vpEditingGroups.add(grpId);renderVentaProd();}
 async function vpSaveEdit(grpId,grpKey){
   const grp=document.getElementById('vpgrp-'+grpId);if(!grp)return;
-  const cuenta=grp.querySelector('.vped-cuenta')?.value||'';
-  const numVenta=(grp.querySelector('.vped-num')?.value||'').trim();
+  // ── SÓLO LO QUE ÉL CAMBIÓ (etapa 4, 30/09/2026) ─────────────────────────────────────
+  // Antes se reescribía la venta ENTERA con lo que mostraba el formulario. Si mientras estaba abierto
+  // el robot cambiaba el neto ESTIMADO por el real, guardar volvía a escribir el estimado con la marca
+  // de "tocada a mano" y quedaba así para siempre. Ahora se compara cada casilla contra lo que tenía
+  // al dibujarse (`defaultValue` / `defaultSelected`) y se escribe sólo lo que cambió. Si él escribe
+  // el neto, deja de ser estimado. Si no cambió nada, no se marca nada.
+  const _cambio=el=>!!el&&(el.tagName==='SELECT'?[...el.options].some(o=>o.selected!==o.defaultSelected):el.value!==el.defaultValue);
+  const selC=grp.querySelector('.vped-cuenta'), inN=grp.querySelector('.vped-num');
+  const cuenta=selC?.value||'';
+  const numVenta=(inN?.value||'').trim();
+  const camCuenta=_cambio(selC), camNum=_cambio(inN);
   const rows=grp.querySelectorAll('.vped-row');
   const invUpdates={};
+  let tocadas=0;
   for(const row of rows){
     const id=row.dataset.id;const o=state.ventaprod[grpKey]?.[id];if(!o)continue;
+    const eQ=row.querySelector('.vped-qty'),eT=row.querySelector('.vped-total'),eN=row.querySelector('.vped-neto'),eP=row.querySelector('.vped-prod');
+    const upd={};
     const oldQty=o.qty;const oldCuenta=o.cuenta;
-    const newQty=parseInt(row.querySelector('.vped-qty')?.value)||o.qty;
-    const newTotal=parseMoney(row.querySelector('.vped-total')?.value)||o.total||0;
-    const newNeto=parseMoney(row.querySelector('.vped-neto')?.value)||o.neto;
-    const newProd=(row.querySelector('.vped-prod')?.value||'').trim()||o.prod;
-    const p=prodByName(newProd);const newCosto=p?costFullP(p)*newQty:o.costo;
-    if(VENTAS_TOCAN_STOCK&&p){
-      const oldK=invKey(p.id,oldCuenta);const newK=invKey(p.id,cuenta);
-      if(oldK===newK){
-        if(oldQty!==newQty){const cur=invUpdates[oldK]!==undefined?invUpdates[oldK]:(parseInt(state.inventory[oldK])||0);invUpdates[oldK]=clamp0(cur+(oldQty-newQty));}
-      } else {
-        const curOld=invUpdates[oldK]!==undefined?invUpdates[oldK]:(parseInt(state.inventory[oldK])||0);
-        invUpdates[oldK]=curOld+oldQty;
-        const curNew=invUpdates[newK]!==undefined?invUpdates[newK]:(parseInt(state.inventory[newK])||0);
-        invUpdates[newK]=clamp0(curNew-newQty);
+    const newQty=_cambio(eQ)?(parseInt(eQ.value)||o.qty):o.qty;
+    const newProd=_cambio(eP)?((eP.value||'').trim()||o.prod):o.prod;
+    if(newQty!==o.qty)upd.qty=newQty;
+    if(_cambio(eT)){const t=parseMoney(eT.value);if(t>0&&t!==o.total)upd.total=t;}
+    if(_cambio(eN)){const n=parseMoney(eN.value);if(n>0&&n!==o.neto){upd.neto=n;upd.netoEstimado=null;}}
+    const newCuenta=camCuenta?cuenta:o.cuenta;
+    if(newCuenta!==o.cuenta)upd.cuenta=newCuenta;
+    if(camNum){if(numVenta&&numVenta!==o.numVenta)upd.numVenta=numVenta;else if(!numVenta&&o.numVenta)upd.numVenta=null;}
+    if(upd.qty!=null||newProd!==o.prod){
+      const p=prodByName(newProd);
+      if(newProd!==o.prod){upd.prod=newProd;upd.prodId=p?p.id:(o.prodId||null);upd.costBaseUSD=p?costUSDof(p):0;upd.shipUSD=p?(parseFloat(p.shipUSD)||0):0;}
+      if(p)upd.costo=costFullP(p)*newQty;
+      if(VENTAS_TOCAN_STOCK&&p){
+        const oldK=invKey(p.id,oldCuenta);const newK=invKey(p.id,newCuenta);
+        if(oldK===newK){
+          if(oldQty!==newQty){const cur=invUpdates[oldK]!==undefined?invUpdates[oldK]:(parseInt(state.inventory[oldK])||0);invUpdates[oldK]=clamp0(cur+(oldQty-newQty));}
+        } else {
+          const curOld=invUpdates[oldK]!==undefined?invUpdates[oldK]:(parseInt(state.inventory[oldK])||0);
+          invUpdates[oldK]=curOld+oldQty;
+          const curNew=invUpdates[newK]!==undefined?invUpdates[newK]:(parseInt(state.inventory[newK])||0);
+          invUpdates[newK]=clamp0(curNew-newQty);
+        }
       }
     }
-    o.qty=newQty;o.total=newTotal;o.neto=newNeto;o.prod=newProd;o.costo=newCosto;o.cuenta=cuenta;
-    o.prodId=p?p.id:(o.prodId||null);
-    o.costBaseUSD=p?costUSDof(p):0;o.shipUSD=p?(parseFloat(p.shipUSD)||0):0;
-    if(o.tcSale==null)o.tcSale=curTC();
-    if(numVenta)o.numVenta=numVenta;else delete o.numVenta;
+    if(!Object.keys(upd).length)continue;
+    if(o.tcSale==null)upd.tcSale=curTC();
     // c2 de la segunda vuelta (25/09/2026): marca de "la toqué a mano". El robot reescribe cada venta
     // de los últimos 2 días en cada vuelta y se comía la edición; con esta marca no la pisa.
-    o.manualTs=Date.now();
-    await fbSet('ventaprod/'+grpKey+'/'+id,o);
+    upd.manualTs=Date.now();
+    const fb={};for(const [k,v] of Object.entries(upd))fb['ventaprod/'+grpKey+'/'+id+'/'+k]=v;
+    await fbUpdate(fb);
+    for(const [k,v] of Object.entries(upd)){if(v===null)delete o[k];else o[k]=v;}
+    tocadas++;
   }
   for(const [k,nv] of Object.entries(invUpdates)){state.inventory[k]=nv;await fbSet('inventory/'+k,nv);}
   if(Object.keys(invUpdates).length)updateTotals();
+  if(!tocadas){vpEditingGroups.delete(grpId);renderVentaProd();toast('No cambiaste nada: la venta queda como estaba');return;}
   await log('Edición venta '+grpId+(numVenta?' #'+numVenta:''));
   vpEditingGroups.delete(grpId);renderVentaProd();toast('Venta actualizada ✓');
 }
@@ -8458,6 +8542,16 @@ async function _restoreStockEntries(entries){
   }
   if(Object.keys(invUpdates).length)updateTotals();
 }
+// Etapa 4 (30/09/2026): una venta de ML borrada en la web volvía sola en la vuelta siguiente del robot
+// (la recreaba desde ML si era de menos de 48 h). Queda una marca en `cyc/ventaborrada/<id>` con el
+// id del renglón y el de la venta; el robot la saltea y borra la marca a los 60 días.
+async function _marcarVentaBorrada(it){
+  if(!it)return;const ts=Date.now(),up={};
+  const k=x=>String(x||'').replace(/[.#$\[\]\/]/g,'_');
+  if(it.id)up['ventaborrada/'+k(it.id)]=ts;
+  if(it.saleId)up['ventaborrada/'+k(it.saleId)]=ts;
+  try{await fbUpdate(up);}catch(e){console.warn('no pude anotar la venta borrada',e);}
+}
 async function delVentaSale(saleId,key){
   if(!confirm('¿Eliminar toda esta venta?'))return;
   const o=state.ventaprod[key]||{};
@@ -8465,7 +8559,7 @@ async function delVentaSale(saleId,key){
   // y las dos son la misma venta. Filtrar sólo por saleId dejaba la mitad adentro.
   const toDelete=Object.values(o).filter(x=>vpEsDelGrupo(x,saleId));
   await _restoreStockEntries(toDelete);
-  for(const it of toDelete){if(_knownVentaprodIds)_knownVentaprodIds.delete(it.id);await fbDel('ventaprod/'+key+'/'+it.id);delete o[it.id];}
+  for(const it of toDelete){if(_knownVentaprodIds)_knownVentaprodIds.delete(it.id);await _marcarVentaBorrada(it);await fbDel('ventaprod/'+key+'/'+it.id);delete o[it.id];}
   renderVentaProd();syncPedidosDebounced();toast('Venta eliminada','info');
 }
 async function delVentaProd(id){
@@ -8473,6 +8567,7 @@ async function delVentaProd(id){
   const key=vpKey();
   const it=(state.ventaprod[key]||{})[id];
   if(it)await _restoreStockEntries([it]);
+  await _marcarVentaBorrada(it||{id});
   if(_knownVentaprodIds)_knownVentaprodIds.delete(id);
   await fbDel('ventaprod/'+key+'/'+id);
   if(state.ventaprod[key])delete state.ventaprod[key][id];
@@ -10122,9 +10217,12 @@ function candList(){
 // hay que mirarla. Devuelve POR QUÉ está afuera, para poder decirlo (una lista que saca renglones
 // sin decirlo es una lista que miente).
 function candEnPedido(c){
-  if((parseInt(c&&c.pedirU)||0)>0)return 'cargado';
+  // Etapa 4 (30/09/2026): 'viajando' se mira PRIMERO. Si uno que ya viaja quedaba además con
+  // unidades cargadas (un Llenar con la pantalla vieja, otro aparato), devolvía 'cargado' y el freno
+  // de candPuedePedir no actuaba: se compraba dos veces.
   const pe=c&&c.pedidoEn&&(state.compraspy||{})[c.pedidoEn];
   if(pe&&pe.estado==='camino')return 'viajando';
+  if((parseInt(c&&c.pedirU)||0)>0)return 'cargado';
   return '';
 }
 // VENCEN SOLOS. Sin esto la lista se vuelve un cementerio de tarjetas viejas que nadie mira —
@@ -10423,9 +10521,20 @@ async function pedNuevosLlenar(){
     +`El pedido queda en US$ ${total.toFixed(2)} de US$ ${tope.toFixed(2)}.\n`
     +`No saco nada de lo que ya cargaste.`
     +(viajando?`\n\n${viajando} no entraron porque ya están en un pedido en camino.`:'')))return;
-  for(const x of suma){x.c.pedirU=x.u;await fbSet('candidatos_py/'+x.c.id+'/pedirU',x.u);}
+  // Etapa 4 (30/09/2026): el plan se armó ANTES del confirm. Se relee cada candidato de la base:
+  // si mientras tanto otro aparato (o `pyped:nuevos`) hizo "Ya lo pedí", no se le vuelven a poner
+  // unidades; y si alguien le cambió las unidades, se SUMA lo agregado a lo que hay, no se pisa.
+  let salteados=0;
+  for(const x of suma){
+    let cur=x.c;
+    try{if(db){const sn=await db.ref('cyc/candidatos_py/'+x.c.id).once('value');if(sn.val())cur=sn.val();}}catch(e){}
+    const peC=cur.pedidoEn&&(state.compraspy||{})[cur.pedidoEn];
+    if(cur.no||(peC&&peC.estado==='camino')||(cur.pedidoEn&&!peC&&!(parseInt(cur.pedirU)>0))){salteados++;continue;}
+    const u=Math.max(0,parseInt(cur.pedirU)||0)+(x.u-x.antes);
+    x.c.pedirU=u;await fbSet('candidatos_py/'+x.c.id+'/pedirU',u);
+  }
   renderPedidos();
-  toast(`Agregadas ${uNuevas} u. · el pedido queda en US$ ${total.toFixed(2)}`);
+  toast(`Agregadas ${uNuevas} u. · el pedido queda en US$ ${total.toFixed(2)}`+(salteados?` · ${salteados} no se cargaron: ya viajan o se descartaron mientras tanto`:''));
 }
 async function pedNuevosVaciar(){
   const con=candList().filter(c=>(parseInt(c.pedirU)||0)>0);
@@ -10492,7 +10601,12 @@ function pyCompras(){
 }
 // "Ya lo pedí": congela lo que está cargado y lo saca de la lista de armado.
 async function pyPedidoHecho(){
-  const P=pedNuevos(candList().filter(candEnArmado));
+  // Etapa 4 (30/09/2026): lo que ya viaja en otro pedido no entra en éste aunque tenga unidades
+  // cargadas (quedaría en dos pedidos en camino y se pagaría dos veces). Se avisa cuántos quedaron.
+  const _arm=candList().filter(candEnArmado);
+  const _viaj=_arm.filter(c=>candEnPedido(c)==='viajando'&&(parseInt(c.pedirU)||0)>0);
+  if(_viaj.length)alert(`${_viaj.length} producto(s) tienen unidades cargadas pero YA están viajando en otro pedido, así que no entran en éste:\n\n${_viaj.slice(0,10).map(c=>'  · '+(c.nombre||c.id)).join('\n')}\n\nSi de verdad querés pedir más, esperá a que llegue el otro.`);
+  const P=pedNuevos(_arm.filter(c=>candEnPedido(c)!=='viajando'));
   if(!P.filas.length){toast('No hay nada cargado en el pedido','err');return;}
   const hoy=new Date(Date.now()-3*3600e3).toISOString().slice(0,10);
   const id='py'+hoy.replace(/-/g,'');
@@ -10573,12 +10687,27 @@ async function pyPedidoHecho(){
 //  · si el candidato ya tenía ficha, se deja como está.
 // Lo que NO frena: el precio en cero. Ahí la ficha se crea igual —decisión suya del 26/08— pero
 // se dice, porque un producto sin costo se ve como si fuera todo ganancia.
+// Etapa 4 (30/09/2026): "Ya llegó" se ADUEÑA del pedido en la base antes de tocar nada (de 'camino' a
+// 'llego' en una sola operación). Si ya había llegado —un botón viejo en pantalla, otro aparato, o
+// `pyped:llego` por el chat— no se hace nada: antes reescribía la fecha y la foto de la oficina ya
+// contada, y la canasta volvía a restar esas unidades 7 días más.
+async function pyReclamarLlegada(id){
+  if(!db)return false;
+  try{
+    const r=await db.ref('cyc/compraspy/'+id+'/estado').transaction(cur=>cur==='camino'?'llego':undefined);
+    if(r&&r.committed)return true;
+  }catch(e){toast('No pude marcarlo: '+(e.message||e),'err');return false;}
+  alert('Ese pedido ya figura como LLEGADO (lo marcó otro aparato o el chat). No toco nada.');
+  renderPedidos();return false;
+}
 async function pyPedidoLlego(id){
   const c=(state.compraspy||{})[id];if(!c)return;
+  if(c.estado!=='camino'){toast('Ese pedido ya figura como llegado','err');return;}
   if(c.tipo==='repo'){
     // Reposición: los productos YA tienen ficha. No se crea nada; sólo se cierra y se recuerda
     // contar en la oficina (si no, esas unidades desaparecen del patrimonio hasta contarlas).
     if(!confirm(`Marcar como LLEGADA la reposición del ${c.fecha}\n\n${c.productos||0} producto(s) · ${c.unidades||0} u.\n\nSale de "En camino". Después contalas en Mi oficina → Contar lo que hay: hasta que las cuentes no suman en el patrimonio.\n\nNo crea fichas: ya las tienen.`))return;
+    if(!await pyReclamarLlegada(id))return;
     const hoyR=new Date(Date.now()-3*3600e3).toISOString().slice(0,10);
     await fbSet('compraspy/'+id+'/estado','llego');
     await fbSet('compraspy/'+id+'/fechaLlego',hoyR);
@@ -10623,6 +10752,7 @@ async function pyPedidoLlego(id){
     +(yaT.length?`\n${yaT.length} ya tenía(n) ficha.\n`:'')
     +(sinNom.length?`\n⚠️ ${sinNom.length} sin nombre: no se puede crear.\n`:'')
     +`\nNo publica nada en ML ni compra nada.`))return;
+  if(!await pyReclamarLlegada(id))return;
   const hoy=new Date(Date.now()-3*3600e3).toISOString().slice(0,10);
   const hechas=[],fallaron=[];
   for(let i=0;i<crear.length;i++){
@@ -11215,15 +11345,18 @@ function candDescartadosHTML(){
 }
 async function candDescartar(id){
   const c=(state.candidatos||{})[id];if(!c)return;
-  c.no=true;c.noTs=Date.now();
-  await fbSet('candidatos_py/'+id+'/no',true);
-  await fbSet('candidatos_py/'+id+'/noTs',c.noTs);
+  // Etapa 4 (30/09/2026): descartado A MANO es un descarte DURO. Si quedaba el noTipo:'margen' de
+  // un descarte viejo, el robot lo volvía a medir a los 7 días y le sacaba la cruz.
+  c.no=true;c.noTs=Date.now();c.noTipo='mano';
+  await fbUpdate({['candidatos_py/'+id+'/no']:true,['candidatos_py/'+id+'/noTs']:c.noTs,['candidatos_py/'+id+'/noTipo']:'mano'});
   renderPedidos();toast('Descartado ✓');
 }
 async function candVolver(id){
   const c=(state.candidatos||{})[id];if(!c)return;
-  delete c.no;delete c.noTs;
-  await fbDel('candidatos_py/'+id+'/no');await fbDel('candidatos_py/'+id+'/noTs');
+  // Etapa 4 (30/09/2026): se limpia TODA la historia del descarte, no sólo la cruz. Si quedaba el
+  // noTipo o el contador de mediciones lejos, el próximo descarte se leía con la historia vieja.
+  for(const k of ['no','noTs','noTipo','motivo','bajasLejos','nunca'])delete c[k];
+  await fbUpdate({['candidatos_py/'+id+'/no']:null,['candidatos_py/'+id+'/noTs']:null,['candidatos_py/'+id+'/noTipo']:null,['candidatos_py/'+id+'/motivo']:null,['candidatos_py/'+id+'/bajasLejos']:null,['candidatos_py/'+id+'/nunca']:null});
   renderPedidos();toast('Vuelve a la lista ✓');
 }
 // FRENAR UNA MARCA ENTERA. Pregunta antes: saca de la lista todo lo de esa marca, incluido lo que
