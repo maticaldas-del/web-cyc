@@ -463,8 +463,10 @@ nombres con el mismo `sid()` · `delProd` con mercadería avisa unidades y US$ y
 marcar a mano borran `recUsadas`/`recUsadasCalc`/`faltan`, cajas abiertas de +45 días no se miran solas (log), renglón
 "sin color" sin casilla en Armar caja y "sin leer" en el robot, `setEnvioCuenta` con cajas en camino pide confirmar (sin
 cuenta no), `cerrarCaja` achica el envío a lo que salió de verdad y avisa cortes.
-**FALTA SU DECISIÓN (en REV_PENDIENTE), de a una:** C1 Pedidos suma el stock de las 4 cuentas (lo que sobra en una tapa
-el cero de otra; las `nomandar` suman ritmo) · D2 al llegar, una ficha "parecida" (compara 2 palabras) deja el producto
+**C1 · DECIDIDO el 29/09, eligió la (b): queda SUMADO.** Él: *"no importa qué cuenta la tenga sino que si en total se venden 10
+por mes y hay 10 en una cuenta no dueña, tenemos stock para un mes y no habría que comprar"*. Pedidos mira el stock de las 4
+cuentas juntas (lo de una cuenta no dueña se manda o se vende ahí). **No volver a proponer calcularlo por cuenta.**
+**FALTA SU DECISIÓN (en REV_PENDIENTE), de a una:** D2 al llegar, una ficha "parecida" (compara 2 palabras) deja el producto
 sin ficha y vuelve a "Para probar" (se compra dos veces) · D3 `compray` no encuentra `pyr<fecha>` (reposición) ·
 A1 lo que llega tarde de una caja marcada con faltantes se lo lleva la siguiente (camino automático) · A5 una recepción
 se parte entre la caja perdida y la buena · B3 stock de publicaciones OCULTAS con depósito propio se pierde · C5 el estado
