@@ -473,11 +473,20 @@ regla en `pyped:llego`), y el candidato queda enganchado a esa ficha (`prodId`).
 TOTAL del producto (ML+casa+camino) contra el objetivo, y en productos con colores sobra uno y falta otro (Centímetro, Paulvic,
 Sábanas, P47…): hay que medirlo por variante.
 **D3 · HECHO el 29/09, eligió la (a) (v20.83 · `cyc-v361`):** `compray` busca `py<fecha>` y `pyr<fecha>`; si ese día (o en ±10 días sin pesos) hay de los dos tipos, no escribe y pide `|repo` o `|nuevos` (también `tipo=`). Con `|repo` y ninguna reposición cerca, no crea nada: primero va `pyped:repo`. `det=` conserva el `prodId` de cada renglón.
-**FALTA SU DECISIÓN (en REV_PENDIENTE), de a una:**
-A1 lo que llega tarde de una caja marcada con faltantes se lo lleva la siguiente (camino automático) · A5 una recepción
-se parte entre la caja perdida y la buena · B3 stock de publicaciones OCULTAS con depósito propio se pierde · C5 el estado
-que él marca a mano en un pedido automático se pisa · D6 reposición llegada y sin contar: la canasta la vuelve a pedir ·
-C8 Armar caja sin el freno de pocas ventas.
+**LAS 6 QUE QUEDABAN, DECIDIDAS EL 29/09 (v20.84 · `cyc-v362`):**
+ · **A1 (a):** en `cajasQueLlegaron`, antes de repartir entre las abiertas, cada caja marcada POR EL ROBOT con faltantes
+   (`recAuto`, `recUsadas`, hace 60 días o menos) toma lo libre posterior a su despacho hasta tapar lo que faltaba
+   (`rellenos`): se le bajan los `faltan` y se suman a `recUsadas` (escrito sobre la lista fresca, sólo si la caja no
+   cambió). Las marcadas a mano no: ahí el faltante lo confirmó él. Sólo mira productos con alguna caja abierta.
+ · **A5 (b): se deja como está** (la más vieja primero); si pasa, se corrige a mano con `cajallego`/`abrircaja`.
+ · **B3 (a):** el robot lee en la vuelta completa (una por hora) el stock de Full de las publicaciones OCULTAS con ficha,
+   por depósito y sin repetir uno ya contado, en `cyc/stockoculto/<prod>__<cuenta>`. La web lo suma al patrimonio
+   (`calcArqueo`, sólo en vivo) y no a Armar caja ni Pedidos. La clave congelada de `cyc/inventory` de esas fichas pasa
+   a 0 (para no contar dos veces) sólo si esa cuenta se leyó entera.
+ · **C5 (b):** el estado de un pedido automático no se puede tocar (chip sin botón); sólo los cargados a mano lo tienen.
+ · **D6 (b):** "Llegó" de una reposición guarda `ofiAlLlegar` (oficina por producto, web y `pyped:llego`); la canasta
+   (`pyRepoSinContar`) sigue restando lo llegado menos lo que subió la oficina, hasta 7 días.
+ · **C8 (a):** Armar caja con 1-2 ventas (`pocas`) no pide por ritmo: sólo el piso de 4 si la cuenta está en cero.
 
 ### EL PUNTAJE DEL MES: REHACERLO, PERO DESPUÉS (26/09/2026)
 Él, con la captura del Puntaje (7,2 · "Buen mes"): *"no veo cuál es el objetivo de ganancia de CYC y para mí es medio
