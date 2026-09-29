@@ -127,7 +127,27 @@ async function main() {
     }
   }
 
-  if (Object.keys(upd).length) await db.patch('cyc/mllinks', upd);
+  // Etapa 4 (30/09/2026): `map` se leyó al empezar y listar las 4 cuentas tarda minutos. Mientras
+  // tanto el ciclo escribe la caja/foto/código y él vincula u oculta en la web: escribir el renglón
+  // ENTERO con la copia vieja lo pisaba (se perdía la vinculación o la marca "no la vendemos más").
+  // Ahora se relee cada renglón justo antes y se escriben SÓLO los campos que cambian (como el ciclo).
+  const campos = {};
+  let respetados = 0;
+  for (const [mla, e] of Object.entries(upd)) {
+    let hoy;
+    try { hoy = await db.get('cyc/mllinks/' + mla); } catch { console.log(`  ⚠️ ${mla}: no pude releerla, no la toco`); continue; }
+    const f = (hoy && typeof hoy === 'object') ? hoy : {};
+    const quiere = { title: e.title, cuenta: e.cuenta, status: e.status };
+    if (!f.prodId && !f.manual) {
+      // Sólo se adivina la ficha de la que TODAVÍA no tiene (en la base de ahora, no en la copia vieja).
+      if (e.prodId) quiere.prodId = e.prodId;
+      if (f.variant == null) quiere.variant = '';
+      if (e.auto && !f.auto) quiere.auto = true;
+    } else if (!(map[mla] && map[mla].prodId) && f.prodId) respetados++;
+    for (const [k, v] of Object.entries(quiere)) if (v !== undefined && f[k] !== v) campos[mla + '/' + k] = v;
+  }
+  if (respetados) console.log(`  🔗 ${respetados} vinculación(es) hechas mientras corría: se respetan.`);
+  if (Object.keys(campos).length) await db.patch('cyc/mllinks', campos);
   const pend = Object.values(map).filter((x) => x && !x.prodId).length;
   console.log(`\n✓ Listo. ${total} publicaciones en total. Sin vincular: ${pend}. Mapealas en la app (Ajustes).`);
 }

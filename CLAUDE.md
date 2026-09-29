@@ -490,6 +490,33 @@ varios aparatos · robot contra sí mismo); notas en el scratchpad `etapa4/*.md`
    (`pyRepoSinContar`) sigue restando lo llegado menos lo que subió la oficina, hasta 7 días.
  · **C8 (a):** Armar caja con 1-2 ventas (`pocas`) no pide por ritmo: sólo el piso de 4 si la cuenta está en cero.
 
+### ETAPA 4 (CHOQUES) · 30/09/2026 · v20.86 `cyc-v364` · CERRADA
+4 revisores (robot/web · corridas a la vez · varios aparatos · robot contra sí mismo), ~30 reales, TODAS obvias y HECHAS
+(probadas con el código real y bases de mentira; pruebas en scratchpad `etapa4/fix/t_*.mjs`, se pierden con el contenedor):
+ · **Web:** `candEnPedido` mira 'viajando' ANTES que 'cargado'; "Ya lo pedí" no mete lo que ya viaja; "Llenar" relee cada
+   candidato después del confirm y suma · "Ya llegó" se adueña del pedido con transacción (`pyReclamarLlegada`) · `vpSaveEdit`
+   escribe sólo lo que cambió (`defaultValue`), neto tipeado ⇒ `netoEstimado:null`, sin cambios no pone `manualTs` · cajas:
+   marcar/deshacer/seguimiento/agregar con transacción buscando la caja por firma (`_editarCajaTx`, `_firmaCaja`) · anclar el
+   disponible: transacción sobre `saldoml/<Cta>/liberadoSinDisp` y restas sobre `finanzas/mp_liq`/`liq_liberado` · venta borrada →
+   `cyc/ventaborrada/<id>` (renglón y saleId) · `candDescartar` = `noTipo:'mano'`, `candVolver` limpia toda la historia · con versión
+   nueva la app se recarga sola al volver a estar a la vista y sin casilla con foco (+ chequeo cada 30 min).
+ · **Robot:** activar pausadas relee mllinks antes del PUT · `marcarLiquidando` no pisa una marca a mano (la tarea queda "no se pudo")
+   y la noche relee `cyc/nosubir` · `_chequeoNoSubir` relee `cyc/nosubir/<mla>` antes de cada suba (sin lectura no sube) · alta de
+   nuevas relee y saltea las ya vinculadas · stockhist: clave nunca vista con stock = `aprox:true` · noche: `tocadasNoche` (una por
+   publicación), relee `cyc/autoprecio/<mla>` antes de cada tarea · marca `estado:'subiendo'` en autoprecio ANTES de subir (el
+   supervisor la ignora) · `mlapi/alerted`/`avisoprecio` por cuenta · ventas: relectura sin caché antes del set (se sacó
+   `_manualDiaCache`), respeta `ventaborrada`, con manualTs + estimado sólo pone neto/mlfee · candidatos relee pedirU/pedidoEn antes
+   de tachar · dispo/saldoml no escriben si cambió un ancla (`_anclasCambiaron`) · abrircaja/cajallego agrupan por envío
+   (`_ubicarCajaFresca`) · retiro: una vez por mes (`cyc/retiroauto/<mes>`) · SIGINT/SIGTERM → `CORTAR`, sale a los 6 s; `ofi` total y
+   color en un patch · avisos: `cyc/avisos/diaMandado` (las corridas 2-3 no reenvían ni pisan avisolista) · supervisor `nocheDia` ·
+   saldoml pide/cuenta fallos una vez por día (`pedDia`/`pedOk`) · `ml-daily.yml` con `concurrency: ml-daily` (GitHub deja UNA en
+   espera) · `pubs.mjs` escribe sólo title/cuenta/status.
+ · **ml-consulta ES DE SÓLO LECTURA** salvo vincular, pasara, nomandar, fijarvar, cupo, poncosto (`CONSULTA_NIEGA`, se detecta por
+   `GITHUB_WORKFLOW==='ml-consulta'`). **`ofi`, `ancla`, `pyped`, `cajallego`, `compray`, `pedir`, `responder` y los grandes van por
+   ml-sync.** Cualquier otro corre y toda escritura se corta avisando.
+ · **Dato medido:** ml-daily NO corre a las 00:07: las 3 programadas arrancan ~06:10-07:10 de acá (GitHub las atrasa ~6 h).
+ · Quedó para mirar: una foto de precios tomada dos veces por mañana marcó "1 cambio a mano" (frena subas 60 días); sin nombre.
+
 ### EL PUNTAJE DEL MES: REHACERLO, PERO DESPUÉS (26/09/2026)
 Él, con la captura del Puntaje (7,2 · "Buen mes"): *"no veo cuál es el objetivo de ganancia de CYC y para mí es medio
 flojo el conteo. podría fijarse otras cosas. si querés remodelalo desde 0 con lo que pondrías vos (…) pero ahora

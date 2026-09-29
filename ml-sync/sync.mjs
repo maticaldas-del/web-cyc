@@ -19,6 +19,57 @@ const {
 // porque ML rota el refresh_token en cada renovación.)
 const DRY = !!process.env.DRY_RUN;
 
+// ── CORTE A MITAD DE UNA CORRIDA (etapa 4, 30/09/2026) ────────────────────────────────────────
+// Un comando a mano por ml-sync cancela al anterior: GitHub manda SIGINT y node moría en el acto,
+// a mitad de una escritura (`ofi` dejaba el total sin la variante). Ahora se anota `CORTAR`, los
+// comandos que escriben en tanda (ofi, pyped, cajallego, abrircaja) terminan la escritura en curso
+// y salen, y a los 6 s se sale igual (GitHub mata a los 10 s).
+let CORTAR = false;
+const _alCortar = (sig) => {
+  if (CORTAR) return;
+  CORTAR = true;
+  console.log(`⚠️ Llegó ${sig} (cancelaron la corrida): termino la escritura en curso y salgo.`);
+  setTimeout(() => process.exit(130), 6000).unref();
+};
+process.on('SIGINT', () => _alCortar('SIGINT'));
+process.on('SIGTERM', () => _alCortar('SIGTERM'));
+
+// ── ml-consulta: SÓLO LECTURA, SALVO LOS COMANDOS CHICOS (etapa 4, 30/09/2026) ──────────────────
+// ml-consulta corre sin candado, a la par del ciclo. GitHub pone el nombre del workflow en
+// GITHUB_WORKFLOW (o ML_CONSULTA=1 a mano). Ahí sólo escriben los comandos chicos de un renglón;
+// los que escriben en cantidad o en plata se niegan de entrada, y cualquier otro corre con la base,
+// ML, Mercado Pago y Telegram en sólo lectura (se deja renovar y guardar el token de ML, que ML rota).
+const EN_CONSULTA = process.env.GITHUB_WORKFLOW === 'ml-consulta' || process.env.ML_CONSULTA === '1';
+const CONSULTA_ESCRIBE = new Set(['vincular', 'pasara', 'nomandar', 'fijarvar', 'cupo', 'poncosto']);
+const CONSULTA_NIEGA = new Set(['ofi', 'ancla', 'responder', 'pyped', 'cajallego', 'abrircaja', 'compray', 'pedir', 'dispo', 'saldoml',
+  'armarsaldo', 'avisos', 'cajasllegaron', 'netoweb', 'netoreal', 'candidatos', 'supervisor', 'sacapromos', 'pausar', 'liquidando',
+  'unapub', 'volver', 'submargen', 'fijar', 'activarfull', 'meta', 'ciclo', 'marcano', 'pausaprecio', 'cargargasto', 'retiromes']);
+let CONSULTA_SOLO_LEE = false;
+if (EN_CONSULTA) {
+  const _cmd = String(process.env.BILLING_PROBE || '').trim();
+  const _nom = _cmd.split(/[:;|=]/)[0].trim().toLowerCase();
+  const _conGo = /(^|[:;|])go($|[:;|])/i.test(_cmd);
+  if (!_cmd || (CONSULTA_NIEGA.has(_nom) && (_conGo || _nom === 'responder' || _nom === 'ciclo'))) {
+    console.log(`❌ "${_nom || '(vacío)'}" no corre por ml-consulta: escribe en cantidad o en plata y ml-consulta no tiene candado. Va por ml-sync.`);
+    process.exit(1);
+  }
+  if (!CONSULTA_ESCRIBE.has(_nom)) {
+    CONSULTA_SOLO_LEE = true;
+    const _fetchReal = globalThis.fetch;
+    const _dbUrl = String(process.env.FIREBASE_DB_URL || '').replace(/\/$/, '');
+    globalThis.fetch = (u, o) => {
+      const met = String((o && o.method) || 'GET').toUpperCase(), url = String(u);
+      const permitido = met === 'GET' || met === 'HEAD'
+        || /identitytoolkit\.googleapis\.com/.test(url)                    // login del bot
+        || /api\.mercadolibre\.com\/oauth\/token/.test(url)                // renovar el token
+        || (_dbUrl && url.startsWith(_dbUrl + '/mlapi/tokens/'));          // guardar el token rotado
+      if (permitido) return _fetchReal(u, o);
+      console.log(`⛔ ml-consulta es de sólo lectura: "${_nom}" quiso escribir (${met} a ${(url.match(/^https?:\/\/([^/?]+)/) || [])[1] || '?'}). No se hizo: va por ml-sync.`);
+      return Promise.reject(new Error('ml-consulta es de sólo lectura: va por ml-sync'));
+    };
+  }
+}
+
 // ── helpers de texto y fecha ──────────────────────────────────────────────
 const norm = (s) => (s || '')
   .toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '')
@@ -457,7 +508,7 @@ function frenosSuba(from, to) {
 async function raiseVariations(itemId, nuevos, token) {
   // Mismo freno que `raisePriceTo`: esta función también SUBE precios en ML y se salteaba la
   // lista de "liquidando". Ver la nota en `volver`.
-  const _nsRV = _chequeoNoSubir(itemId);
+  const _nsRV = await _chequeoNoSubir(itemId);
   if (!_nsRV.ok) return { ok: false, err: _nsRV.err };
   let item;
   try { item = await mlGet('/items/' + itemId + '?attributes=id,price,status,variations', token); }
@@ -529,7 +580,7 @@ async function raiseVariations(itemId, nuevos, token) {
 // cambió desde que se leyó, el resultado se pasa del objetivo.
 // Sube o deja igual, nunca baja. Tope de seguridad: no sube más de 25%.
 async function raisePriceTo(itemId, objetivo, token) {
-  const _ns = _chequeoNoSubir(itemId);
+  const _ns = await _chequeoNoSubir(itemId);
   if (!_ns.ok) return { ok: false, err: _ns.err };
   let item;
   try { item = await mlGet('/items/' + itemId + '?attributes=id,price,status', token); }
@@ -588,8 +639,6 @@ function pesosArg(txt) {
   return isFinite(n) ? Math.round(n) : 0;
 }
 const UMBRAL_ENVIO_GRATIS = 33000;
-// Revisión max (rev4): copia fresca de cada día de ventas para releer `manualTs` antes de pisar una venta.
-const _manualDiaCache = new Map();
 // UNA COMPRA QUE CRUZA LA BARRERA POR CANTIDAD NO MIDE EL ENVÍO DE UNA VENTA SUELTA (revisión max #4,
 // 26/09/2026, eligió la a). ML mira el total del PEDIDO (unidades × precio, o el carrito entero con
 // el mismo número de venta), no el precio de una unidad: 2 u. a $25.000 son $50.000 y ML le cobra el
@@ -1993,6 +2042,17 @@ async function activarPausadasFull(db, links, tokensRun, DRY, products, piso) {
         const mg = ((precio - com - extra - precio * cuo) - costo - mlx) / (costo + mlx + extra);
         if (mg < PISO) { noVa(`queda en ${(mg * 100).toFixed(0)}%, abajo del ${(PISO * 100).toFixed(0)}%`, precio); continue; }
         if (DRY) { activadas.push({ label, mla, nom, precio, stock: stockFull, mg: mg * 100, dry: true, envioEstimado, costoSinProbar }); continue; }
+        // Etapa 4 (30/09/2026): la foto de `links` es del arranque de la vuelta (minutos antes). Si en
+        // el medio él la ocultó, la marcó "no la vendemos más", la frenó (`pausar`) o la pasó a otra
+        // ficha, activarla le deshace la decisión. Se relee el renglón justo antes; si no se puede leer, no se activa.
+        let _filaHoy = null;
+        try { _filaHoy = await db.get('cyc/mllinks/' + mla); }
+        catch { noVa('no pude releer su renglón antes de activarla: no la activo a ciegas', precio); continue; }
+        if (!_filaHoy || _filaHoy.ignored || _filaHoy.noVendemosMas || _filaHoy.noAutoActivar
+          || String(_filaHoy.prodId || '') !== String(linkRow.prodId || '')) {
+          noVa('cambió en el panel mientras corría la vuelta (oculta, "no la vendemos más", frenada o de otra ficha): no la activo', precio);
+          continue;
+        }
         try {
           const r = await fetch(ML_API + '/items/' + mla, {
             method: 'PUT',
@@ -2293,12 +2353,23 @@ async function rescatarAlVender(db, o) {
       const vs = porMla.get(mla), x = subirMap.get(mla);
       if (x) {
         const tope = Math.floor(x.de * 1.25 / 10) * 10, a = Math.min(x.a, tope);
+        // Etapa 4 (30/09/2026): la memoria se leyó al empezar; la noche (`avisos:go`) corre a la par.
+        // Se relee justo antes: si alguien la tocó en 24 h (o hay una suba en curso), no se sube.
+        let apAhora;
+        try { apAhora = await db.get('cyc/autoprecio/' + mla); }
+        catch { marcar(vs, { estado: 'no', why: 'no pude releer la memoria del robot: lo mira la noche' }); continue; }
+        if (apAhora && (apAhora.estado === 'subiendo' || (apAhora.tipo === 'sube' && hoyTs - (apAhora.ts || 0) < 24 * 3600e3))) {
+          marcar(vs, { estado: 'no', why: 'otra corrida del robot la acaba de subir: espero a ver cómo vende' }); continue;
+        }
+        const _msub = await _marcarSubiendo(db, mla, { por: 'venta', de: x.de, a, nom: x.nom, cuenta: label });
+        if (!_msub.ok) { marcar(vs, { estado: 'no', why: 'no pude anotar la suba antes de hacerla: no subo a ciegas' }); continue; }
         let r;
         if (x.vars && x.vars.length) {
           const nuevos = {}; for (const v of x.vars) if ((v.price || 0) < a) nuevos[String(v.id)] = a;
           r = await raiseVariations(mla, nuevos, token);
           if (r && r.ok) { if (r.parcial) console.log(`   ⚠️ ${mla}: subí sólo algunas variantes; ${(r.saltadas || []).length} no (${(r.saltadas || []).map((z) => z.why).join(', ')})`); r = { ok: true, from: x.de, to: a, parcial: !!r.parcial, saltadas: r.saltadas || [] }; }
         } else r = await raisePriceTo(mla, a, token);
+        if (!r || !r.ok) await _soltarSubiendo(db, mla, _msub);
         if (r && r.ok) {
           let quedo = null;
           try { quedo = Number((await mlGet('/items/' + mla + '?attributes=price', token))?.price) || null; } catch { quedo = null; }
@@ -4206,7 +4277,25 @@ async function altaDeNuevas(db, accounts, labels, map, index, DRY) {
       }
     }
   }
-  if (Object.keys(upd).length && !DRY) await db.patch('cyc/mllinks', upd);
+  // Etapa 4 (30/09/2026): `map` es la foto del arranque de la vuelta y enumerar los 4 catálogos tarda.
+  // Si en el medio se vinculó a mano (`vincular`, `nuevoprod|mla=`, la web), el alta lo pisaba con el
+  // emparejado por título. Se relee cada MLA nuevo antes de escribir y, si ya existe, se deja como está.
+  // Y se escribe campo por campo (nunca el renglón entero).
+  if (Object.keys(upd).length && !DRY) {
+    const campos = {}, yaEstaban = [];
+    for (const [mla, entry] of Object.entries(upd)) {
+      let hoy;
+      try { hoy = await db.get('cyc/mllinks/' + mla); } catch { yaEstaban.push(mla + ' (no pude releerla)'); continue; }
+      if (hoy) { yaEstaban.push(mla); continue; }
+      for (const [k, v] of Object.entries(entry)) if (v !== undefined) campos[mla + '/' + k] = v;
+    }
+    if (yaEstaban.length) {
+      const fuera = new Set(yaEstaban.map((x) => x.split(' ')[0]));
+      for (const L of [nuevas, sinFicha]) for (let i = L.length - 1; i >= 0; i--) if (fuera.has(L[i].mla)) L.splice(i, 1);
+      console.log(`  🔗 ${yaEstaban.length} publicación(es) nueva(s) ya estaban en el panel al escribir (la vinculaste mientras corría): no las toco (${yaEstaban.join(', ')})`);
+    }
+    if (Object.keys(campos).length) await db.patch('cyc/mllinks', campos);
+  }
   return { nuevas, sinFicha };
 }
 
@@ -4591,6 +4680,14 @@ async function marcarLiquidando(db, mla, datos, sacar = false) {
     prev[m] = d && typeof d === 'object' ? { ...d } : null;
     if (prev[m]) NOSUBIR[m] = prev[m];
   }
+  // Etapa 4 (30/09/2026): si la publicación ya tiene una marca PUESTA POR ÉL (a mano, o contagiada de
+  // una suya) y la que llega es del robot (remate/escalera), no se pisa: pisarla la convertía en "del
+  // robot" y la escalera la seguía bajando las noches siguientes. Se corta con error: el que llama no baja.
+  if (!sacar && datos && esMarcaRobot(datos) && prev[mla] && !esMarcaRobot(prev[mla])) {
+    const err = new Error('la marcaste vos liquidando a mano: la manejás vos, el robot no la baja');
+    err.marcaAMano = true;
+    throw err;
+  }
   for (const m of todas) {
     if (sacar) { await db.set('cyc/nosubir/' + m, null); delete NOSUBIR[m]; }
     else {
@@ -4616,11 +4713,54 @@ async function restaurarLiquidando(db, todas) {
 // La marca la puso el robot (remate o escalera), no él.
 const esMarcaRobot = (d) => !!d && /^(remate automático|escalera de remate)/.test(String(d.motivo || ''));
 
-function _chequeoNoSubir(itemId) {
+// EL PUNTO DE PARTIDA DEL DISPONIBLE CAMBIÓ MIENTRAS CORRÍA (etapa 4, 30/09/2026). `dispo` y `saldoml`
+// leen `cyc/saldoancla` al empezar y escriben minutos después; si él cargó el disponible en el medio,
+// se pisaba su número con uno hecho con el ancla vieja. Devuelve las cuentas cuyo `ts` cambió, o null
+// si no se pudo releer (el que llama no escribe en ninguno de los dos casos).
+// DÓNDE QUEDÓ ESTA CAJA EN LA LISTA RELEÍDA (etapa 4, 30/09/2026). `abrircaja`/`cajallego` escribían la
+// lista de cajas ENTERA con la copia leída al empezar el comando: una marca del robot o de la web en el
+// medio se perdía, y con dos cajas del mismo envío la segunda pisaba a la primera. Se relee la lista y
+// cada caja se busca por seguimiento + contenido (primero en su lugar); -1 si no está o es ambigua.
+const _firmaCajaE4 = (c) => String((c && c.track) || '') + '|' + JSON.stringify(((c && c.items) || []).filter((x) => x && x.prodId && x.u > 0)
+  .map((x) => [String(x.prodId), String(x.variante || ''), Number(x.u) || 0]).sort());
+function _ubicarCajaFresca(arr, c, iPref) {
+  const fi = _firmaCajaE4(c);
+  if (arr[iPref] && _firmaCajaE4(arr[iPref]) === fi) return iPref;
+  const cand = []; arr.forEach((x, j) => { if (x && _firmaCajaE4(x) === fi) cand.push(j); });
+  return cand.length === 1 ? cand[0] : -1;
+}
+async function _anclasCambiaron(db, antes, labels) {
+  let ahora;
+  try { ahora = (await db.get('cyc/saldoancla')) || {}; } catch { return null; }
+  return labels.filter((l) => (Number((antes && antes[l] && antes[l].ts) || 0)) !== (Number((ahora[l] && ahora[l].ts) || 0)));
+}
+async function _chequeoNoSubir(itemId) {
   if (!NOSUBIR_OK) return { ok: false, err: 'no-pude-leer-la-lista-de-liquidando: no subo nada esta vuelta' };
-  const m = NOSUBIR[String(itemId)];
+  let m = NOSUBIR[String(itemId)];
+  // Etapa 4 (30/09/2026): la lista en memoria es la del arranque (en `avisos:go` son minutos). Si él
+  // marcó liquidando en el medio, se subía igual. Se relee la marca de la base antes de escribir; si
+  // la lectura falla, no se sube. Sin DB_REF (corrida de prueba) queda la de memoria.
+  if (!m && DB_REF) {
+    try {
+      const d = await DB_REF.get('cyc/nosubir/' + String(itemId));
+      if (d && typeof d === 'object') { NOSUBIR[String(itemId)] = d; m = d; }
+    } catch { return { ok: false, err: 'no-pude-releer-la-marca-de-liquidando: no subo a ciegas' }; }
+  }
   if (m) return { ok: false, err: `liquidando-a-proposito${m.motivo ? ' (' + m.motivo + ')' : ''}: no se sube` };
   return { ok: true };
+}
+// LA MARCA "SUBIENDO" (etapa 4, 30/09/2026): si la corrida se corta entre el PUT del precio y el registro
+// en `cyc/autoprecio`, el freno de 24 h no existía y la vuelta siguiente subía OTRO +25%. Se escribe antes
+// de tocar el precio (el registro final la pisa) y, si la suba no se hizo, se vuelve a lo que había.
+async function _marcarSubiendo(db, mla, datos) {
+  let antes = null;
+  try { antes = await db.get('cyc/autoprecio/' + mla); } catch { return { ok: false }; }
+  try { await db.set('cyc/autoprecio/' + mla, { ...datos, tipo: 'sube', estado: 'subiendo', ts: Date.now() }); } catch { return { ok: false }; }
+  return { ok: true, antes: antes || null };
+}
+async function _soltarSubiendo(db, mla, m) {
+  if (!m || !m.ok) return;
+  try { await db.set('cyc/autoprecio/' + mla, m.antes || null); } catch { /* queda "subiendo": frena 24 h, que es el lado seguro */ }
 }
 
 function _chequeoPiso(chequeo) {
@@ -4708,7 +4848,7 @@ async function setPriceTo(itemId, variationId, nuevo, token, chequeo) {
 // Sube (nunca baja) el precio de la publicación/variante. Multiplicador =
 // costo_full × (1+meta) / neto_real. Devuelve {ok, from, to} o {ok:false, err}.
 async function raisePrice(itemId, variationId, multiplier, token) {
-  const _ns = _chequeoNoSubir(itemId);
+  const _ns = await _chequeoNoSubir(itemId);
   if (!_ns.ok) return { ok: false, err: _ns.err };
   let item;
   try { item = await mlGet('/items/' + itemId + '?attributes=id,price,status,variations', token); }
@@ -5023,11 +5163,18 @@ async function ponerRetiroMes(db, cfg, ym, dry) {
   const monto = cfg.retiroMes != null ? (parseFloat(cfg.retiroMes) || 0) : 1800000;
   if (!(monto > 0)) return { escrito: false, monto, msg: null, why: 'el monto configurado es 0' };
   const ya = await db.get('cyc/retiro_mes/' + ym);
+  // Etapa 4 (30/09/2026): UNA sola vez por mes (`cyc/retiroauto/<mes>`). Si él vacía la casilla del mes
+  // en curso ("sin cargar"), el robot no lo vuelve a poner a los 2 minutos. Sin poder leer la marca, no escribe.
+  let yaAuto;
+  try { yaAuto = await db.get('cyc/retiroauto/' + ym); } catch { return { escrito: false, monto, msg: null, why: 'no pude leer si ya lo cargué este mes' }; }
   if (ya != null && ya !== '') {
+    if (!dry && !yaAuto) { try { await db.set('cyc/retiroauto/' + ym, Date.now()); } catch { /* se anota la vuelta que viene */ } }
     return { escrito: false, monto, ya: Number(ya), msg: null, why: `${ym} ya tiene ${money(Number(ya))} cargado` };
   }
+  if (yaAuto) return { escrito: false, monto, msg: null, why: `${ym} está vacío pero ya lo cargué una vez este mes: lo dejaste vacío vos, no lo vuelvo a poner` };
   if (dry) return { escrito: false, monto, msg: null, why: `${ym} está vacío → escribiría ${money(monto)}`, escribiria: true };
   await db.set('cyc/retiro_mes/' + ym, monto);
+  try { await db.set('cyc/retiroauto/' + ym, Date.now()); } catch { /* la vuelta que viene lo ve cargado y anota la marca */ }
   // Se relee de la base antes de decir que quedó: si el guardado falla, que se note.
   const rel = await db.get('cyc/retiro_mes/' + ym);
   const ok = Number(rel) === monto;
@@ -5195,7 +5342,7 @@ async function tgEncolar(text) {
 }
 // Manda lo que quedó de la madrugada, con la hora original para que se entienda cuándo pasó.
 async function tgFlushCola(db) {
-  if (!TG_TOKEN || TG_SILENCIO) return;
+  if (!TG_TOKEN || TG_SILENCIO || CONSULTA_SOLO_LEE) return;   // etapa 4: una consulta de sólo lectura no vacía la cola
   let cola = null;
   try { cola = await db.get('mlapi/telegram/cola'); } catch { return; }
   if (!cola || !Object.keys(cola).length) return;
@@ -5388,6 +5535,7 @@ const CAND_LEJOS_PTS = 10;
 // escribe `noTipo` de acá en adelante para no tener que adivinar más.
 function candDescarteBlando(c) {
   if (!c || !c.no || c.nunca) return false;
+  if (c.noTipo === 'mano') return false;   // etapa 4 (30/09/2026): lo tachó él en la web → duro, no se revive
   if (c.noTipo) return c.noTipo === 'margen';
   return /abajo de tu piso/i.test(String(c.motivo || ''));
 }
@@ -5717,6 +5865,23 @@ async function correrCandidatos(db, products, labels, accounts, soloPrueba, prue
       if ((parseInt(c.pedirU) || 0) > 0 || c.pedidoEn) {
         descartes.push(`${c.nombre} → ${motivo}  (⚠️ ${c.pedidoEn ? 'ya viaja en un pedido' : 'está cargado en el pedido'}: NO lo tacho)`);
         return;
+      }
+      // Etapa 4 (30/09/2026): `c` es la copia del arranque (la corrida tarda minutos). Si él lo cargó en
+      // el pedido o apretó "Ya lo pedí" en el medio, se tachaba igual. Se relee justo antes de tachar;
+      // si no se puede leer, no se tacha (se mide en la corrida siguiente).
+      if (!soloPrueba) {
+        let _pU = null, _pE = null;
+        try {
+          _pU = await db.get(`cyc/candidatos_py/${id}/pedirU`);
+          _pE = await db.get(`cyc/candidatos_py/${id}/pedidoEn`);
+        } catch {
+          descartes.push(`${c.nombre} → ${motivo}  (no pude releer si está en el pedido: NO lo tacho esta vez)`);
+          return;
+        }
+        if ((parseInt(_pU) || 0) > 0 || _pE) {
+          descartes.push(`${c.nombre} → ${motivo}  (⚠️ lo ${_pE ? 'pediste' : 'cargaste en el pedido'} mientras corría: NO lo tacho)`);
+          return;
+        }
       }
       // `margenHoy` sólo viene cuando el descarte es por NO LLEGAR AL PISO. Es lo que distingue el
       // descarte BLANDO (se vuelve a medir a los 7 días) del DURO (marca frenada, sin Nissei, sin
@@ -8265,13 +8430,44 @@ async function main() {
         // solo tampoco se anota como avisado, si no quedaba trabado 7-10 días (etapa 1, 27/09).
         if (yaCorrioHoy) for (const t of [...tareasR, ..._sb, ...autoRemate.map((f) => ({ f })), ...escTareas]) diferidasAuto.add(t.f.mla);
         const tareas = [...tareasR, ..._sb.slice(0, AUTO_MAX), ...autoRemate.slice(0, REMATE_AUTO_MAX).map((f) => ({ tipo: 'remate', f, a: Math.max(Math.floor(f.ptw / 10) * 10, Math.ceil(f.precio * 0.755 / 10) * 10), piso: pisoEsc(f) })), ...escTareas];
+        // Etapa 4 (30/09/2026): la lista `liquidando` se cargó al arrancar `avisos` (minutos antes). Si
+        // él marcó algo en el medio, la noche no lo veía y lo bajaba. Se relee justo antes de las tareas;
+        // si no se puede leer, esta noche no se baja nada (las subas igual releen la marca una por una).
+        let _nsNoche = null;
+        if (AUTO_ON) {
+          try { const v = await db.get('cyc/nosubir'); _nsNoche = v && typeof v === 'object' ? v : {}; NOSUBIR = _nsNoche; }
+          catch { _nsNoche = null; console.log('   ⚠️ no pude releer la lista de liquidando antes de las tareas: esta noche no bajo nada'); }
+        }
+        // Una sola publicación por noche (etapa 4): el rescate y la 📈 podían subir la MISMA en minutos.
+        const tocadasNoche = new Set();
         for (const t of tareas) {
           const f = t.f, tk = tokA[f.cuenta];
           const renglon = `${f.nom} (${f.cuenta}) ${money(f.precio)} → ${money(t.a)}`;
+          if (AUTO_ON) {
+            if (tocadasNoche.has(f.mla)) { fallidosAuto.push({ ...t, err: 'ya la toqué esta noche (una sola vez por noche)' }); continue; }
+            if (t.tipo !== 'rescate' && t.tipo !== 'sube') {
+              if (_nsNoche == null) { fallidosAuto.push({ ...t, err: 'no pude releer la lista de liquidando: no bajo a ciegas' }); continue; }
+              if (_nsNoche[f.mla] && !esMarcaRobot(_nsNoche[f.mla])) { fallidosAuto.push({ ...t, err: 'la marcaste vos liquidando a mano mientras corría la noche: no la bajo' }); continue; }
+            }
+            // Etapa 4: el ciclo de 2 minutos corre a la par. Si tocó esta publicación desde que se leyó la
+            // memoria (rescate al vender), la decisión de la noche es sobre un precio viejo: se saltea.
+            let _apHoy;
+            try { _apHoy = await db.get('cyc/autoprecio/' + f.mla); }
+            catch { fallidosAuto.push({ ...t, err: 'no pude releer si el robot ya la tocó: no la toco a ciegas' }); continue; }
+            const _apAntes = autoprecio && autoprecio[f.mla];
+            if (_apHoy && (Number(_apHoy.ts) || 0) !== (Number(_apAntes && _apAntes.ts) || 0) && hoyTs - (Number(_apHoy.ts) || 0) < 24 * 3600e3) {
+              fallidosAuto.push({ ...t, err: 'el robot de ventas la tocó hace un rato: no la vuelvo a tocar hoy' }); continue;
+            }
+            if (_apHoy && _apHoy.estado === 'subiendo') { fallidosAuto.push({ ...t, err: 'hay una suba en curso de otra corrida: no la toco' }); continue; }
+            tocadasNoche.add(f.mla);
+          }
           if (!AUTO_ON) { console.log(`   · haría: ${t.tipo === 'rescate' ? `RESCATAR (está en ${Math.round(t.f.pct)}%)` : t.tipo === 'sube' ? 'SUBIR' : t.tipo === 'remate' ? `REMATAR (queda en ${f.mgPw.toFixed(1)}%, piso del escalón ${t.piso}% · resigna ${f.resignaTot == null ? '?' : money(f.resignaTot)} en total)` : t.tipo === 'escalera' ? `ESCALERA al ${t.piso}% (queda en ${f.mgPw.toFixed(1)}%)${t.marcarNo ? ' · NO TRAER MÁS' : ''}` : 'BAJAR'} ${renglon}${t.corto ? ` · hacían falta ${money(t.f.meta)}, tope +25%` : ''}`); continue; }
           if (!tk) { fallidosAuto.push({ ...t, err: 'sin token de la cuenta' }); continue; }
-          let r;
+          let r, _msubN = null;
           if (t.tipo === 'rescate') {
+            // Etapa 4: la marca "subiendo" antes del PUT (ver `_marcarSubiendo`).
+            _msubN = await _marcarSubiendo(db, f.mla, { por: 'margen', de: f.precio, a: t.a, nom: f.nom, cuenta: f.cuenta });
+            if (!_msubN.ok) { fallidosAuto.push({ ...t, err: 'no pude anotar la suba antes de hacerla: no subo a ciegas' }); continue; }
             if (f.vars && f.vars.length) {
               // (la barrera de los $33.000 por variante la frena `raiseVariations`, P6)
               const nuevos = {}; for (const v of f.vars) if ((v.price || 0) < t.a) nuevos[String(v.id)] = t.a;
@@ -8286,6 +8482,8 @@ async function main() {
             try { cjS = await mlGet('/items/' + f.mla + '/price_to_win?version=v2', tk); } catch { cjS = null; }
             if (!cjS || !cjS.status) { fallidosAuto.push({ ...t, err: 'ML no contestó la caja de compra: no subo a ciegas, se mira mañana' }); continue; }
             if (cjS.status !== 'winning') { fallidosAuto.push({ ...t, err: `ya no gana la caja (ML dice "${cjS.status}"): no se sube` }); continue; }
+            _msubN = await _marcarSubiendo(db, f.mla, { de: f.precio, a: t.a, nom: f.nom, cuenta: f.cuenta });
+            if (!_msubN.ok) { fallidosAuto.push({ ...t, err: 'no pude anotar la suba antes de hacerla: no subo a ciegas' }); continue; }
             r = await raisePriceTo(f.mla, t.a, tk);
           } else {
             let it = null;
@@ -8320,7 +8518,7 @@ async function main() {
               try {
                 marcadas = await marcarLiquidando(db, f.mla, { fecha: new Date(hoyTs - 3 * 3600e3).toISOString().slice(0, 10),
                   motivo: t.tipo === 'escalera' ? `escalera de remate (escalón ${t.piso}%)` : `remate automático (queda en ${f.mgPw.toFixed(1)}%)` });
-              } catch { fallidosAuto.push({ ...t, err: 'no pude marcarla liquidando: no la bajo (el rescate la volvería a subir)' }); continue; }
+              } catch (eM) { fallidosAuto.push({ ...t, err: eM && eM.marcaAMano ? eM.message : 'no pude marcarla liquidando: no la bajo (el rescate la volvería a subir)' }); continue; }
               // Se declara medio punto MENOS: el precio se redondea a la decena de abajo.
               r = await setPriceTo(f.mla, null, t.a, tk, t.tipo === 'escalera'
                 ? { margen: Math.floor(f.mgPw * 10) / 10, autorizado: `escalera de remate, pedido de Matías del 24/09/2026 (de a 5 puntos cada 7 días sin vender, hasta 0%) · escalón al ${t.piso}%` }
@@ -8331,7 +8529,7 @@ async function main() {
               if (!r || !r.ok) { try { await restaurarLiquidando(db, marcadas); } catch { /* */ } }
             } else r = await setPriceTo(f.mla, null, t.a, tk, { margen: f.mgPw });
           }
-          if (!r || !r.ok) { fallidosAuto.push({ ...t, err: (r && r.err) || '?' }); continue; }
+          if (!r || !r.ok) { await _soltarSubiendo(db, f.mla, _msubN); fallidosAuto.push({ ...t, err: (r && r.err) || '?' }); continue; }
           // REGLA 6: se relee de ML. Que la escritura no dé error no quiere decir que haya quedado.
           let quedo = null;
           try { quedo = Number((await mlGet('/items/' + f.mla + '?attributes=price', tk))?.price) || null; } catch { quedo = null; }
@@ -8345,6 +8543,7 @@ async function main() {
               : { tipo: t.tipo, de: r.from || f.precio, a: r.to || t.a, ts: hoyTs, nom: f.nom, cuenta: f.cuenta,
                 ...(t.tipo === 'sube' ? { u30: f.u } : { margen: Math.round(f.mgPw * 10) / 10 }) };
           try { await db.set('cyc/autoprecio/' + f.mla, reg); } catch { /* */ }
+          if (autoprecio) autoprecio[f.mla] = reg;   // etapa 4: la memoria de esta corrida también se entera
           if (t.tipo === 'escalera') {
             try { await db.set('cyc/escalera/' + f.mla, { paso: t.pasoOk, ts: hoyTs, de: r.from || f.precio, a: r.to || t.a, nom: f.nom, cuenta: f.cuenta, prodId: t.prodId }); } catch { /* */ }
             if (t.marcarNo) {
@@ -8389,6 +8588,7 @@ async function main() {
               try { await db.patch('cyc/prueba/' + c.mla, { estado: 'cerrada', cerradaTs: hoyTs, motivo: `la suba de ${money(c.de)} → ${money(c.a)}: ${c.motivo}` }); } catch { /* */ }
               pruebasCerradas.push(c);
             }
+            for (const m of tocadasNoche) tocadas.add(m);   // etapa 4
             const cands = pz.cand.filter((c) => !tocadas.has(c.mla)).slice(0, PRUEBA_MAX);
             if (pz.cand.length > PRUEBA_MAX) console.log(`   (quedan ${pz.cand.length - PRUEBA_MAX} pruebas para mañana: tope de ${PRUEBA_MAX} por noche)`);
             console.log(`   🧪 prueba de suba (sin catálogo): ${cands.length} para subir +${Math.round(PRUEBA_PASO * 100)}% · ${Object.keys(pz.vig).length} en vigilancia · ${pz.cerrar.length} cerradas esta noche`);
@@ -8396,6 +8596,13 @@ async function main() {
               const tk = tokA[c.cuenta];
               const t = { tipo: 'prueba', f: { mla: c.mla, nom: c.nom, cuenta: c.cuenta, precio: c.precio, u: c.u, pasos: c.pasos }, a: c.a };
               if (!tk) { fallidosAuto.push({ ...t, err: 'sin token de la cuenta' }); continue; }
+              // Etapa 4 (30/09/2026): si el ciclo la tocó mientras corría la noche, no se prueba encima.
+              let _apP;
+              try { _apP = await db.get('cyc/autoprecio/' + c.mla); } catch { fallidosAuto.push({ ...t, err: 'no pude releer si el robot ya la tocó: no la subo a ciegas' }); continue; }
+              const _apPa = autoprecio && autoprecio[c.mla];
+              if (_apP && (_apP.estado === 'subiendo' || ((Number(_apP.ts) || 0) !== (Number(_apPa && _apPa.ts) || 0) && hoyTs - (Number(_apP.ts) || 0) < 24 * 3600e3))) {
+                fallidosAuto.push({ ...t, err: 'el robot de ventas la tocó hace un rato: no la pruebo hoy' }); continue;
+              }
               let r;
               if (c.vars.length) {
                 const nuevos = {}; for (const v of c.vars) nuevos[String(v.id)] = Math.ceil(v.price * (1 + PRUEBA_PASO) / 10) * 10;
@@ -8777,8 +8984,22 @@ async function main() {
       else if (!hechosAuto.length) L.push('\n<i>Ninguno se aplicó solo: los precios los decidís vos.</i>');
       const msg = L.join('\n');
       console.log('\n── MENSAJE ──\n' + msg.replace(/<[^>]+>/g, ''));
+      // Etapa 4 (30/09/2026): ml-daily corre 3 veces por mañana. Si el aviso de hoy (día de acá) ya
+      // salió, las corridas 2 y 3 no lo mandan otra vez ni pisan `cyc/avisolista` (los números del
+      // primer mensaje tienen que seguir apuntando a lo mismo). `avisos:reset:go` lo fuerza.
+      const _diaAv = new Date(Date.now() - 3 * 3600e3).toISOString().slice(0, 10);
+      let _yaMandadoHoy = false;
+      if (MANDAR && !DRY && !RESET) {
+        try { _yaMandadoHoy = (await db.get('cyc/avisos/diaMandado')) === _diaAv; }
+        catch { _yaMandadoHoy = true; console.log('⚠️ No pude leer si el aviso de hoy ya salió: no lo mando (repetido es peor que una hora tarde).'); }
+      }
+      if (_yaMandadoHoy) {
+        console.log(`\n── El aviso de hoy (${_diaAv}) ya salió en otra corrida: no lo mando de nuevo ni toco la lista numerada.`);
+        return;
+      }
       if (MANDAR) {
         const ok = await sendAlerta(msg);
+        if (ok && !DRY) { try { await db.set('cyc/avisos/diaMandado', _diaAv); } catch { /* */ } }
         // Se anota SÓLO si el mensaje salió. Si falló el envío y se anotara igual, esa
         // publicación quedaría callada una semana por un aviso que nunca llegó.
         for (const m of diferidasAuto) { delete paraAnotar[m]; delete paraAnotar['c_' + m]; delete paraAnotar['o_' + m]; }
@@ -10122,14 +10343,23 @@ async function main() {
       const porEnvio = {};
       for (const h of hits) (porEnvio[h.id] = porEnvio[h.id] || []).push(h);
       for (const [id, hs] of Object.entries(porEnvio)) {
-        // La lista de cajas se guarda ENTERA: un patch parcial la rompe (mismo cuidado que la web).
-        const cajas = (envios[id].cajasDet || []).map((c, i) => {
-          const h = hs.find((x) => x.i === i);
+        if (CORTAR) { console.log(`   ✋ envío ${id}: no se escribió (cancelaron la corrida)`); continue; }
+        // Etapa 4 (30/09/2026): sobre la lista RELEÍDA (no la del arranque), buscando cada caja por
+        // seguimiento + contenido: una marca del robot o de la web en el medio no se pisa.
+        const fresca = await db.get('cyc/envios_full/' + id + '/cajasDet');
+        const cajas = Array.isArray(fresca) ? fresca.slice() : [];
+        let cambio = 0;
+        for (const h of hs) {
+          const j = _ubicarCajaFresca(cajas, h.c, h.i);
+          if (j < 0) { console.log(`   ✗ ${h.c.track || id}: la caja cambió mientras corría (o no la encuentro igual): no la toco`); continue; }
+          const c = cajas[j];
+          // La lista de cajas se guarda ENTERA: un patch parcial la rompe (mismo cuidado que la web).
           // Etapa 3 (29/09): las entradas que el robot le había anotado (recUsadas) se borran: si no, lo que
           // llega tarde de esta caja se lo llevaba la caja siguiente, que sigue en el camión.
-          return h ? { ...c, recibida: true, recFecha: c.recibida && c.recFecha ? c.recFecha : hoyCl, recAuto: false, faltan: h.faltan, recUsadas: null, recUsadasCalc: null } : c;
-        });
-        await db.set('cyc/envios_full/' + id + '/cajasDet', cajas);
+          cajas[j] = { ...c, recibida: true, recFecha: c.recibida && c.recFecha ? c.recFecha : hoyCl, recAuto: false, faltan: h.faltan, recUsadas: null, recUsadasCalc: null };
+          h.i = j; cambio++;
+        }
+        if (cambio) await db.set('cyc/envios_full/' + id + '/cajasDet', cajas);
       }
       const desp = (await db.get('cyc/envios_full')) || {};
       let ok = 0;
@@ -10651,19 +10881,32 @@ async function main() {
         }
       }
       if (!APLICAR) { console.log(`\nSOLO PRUEBA: no se tocó nada. Mirá la lista y, si está bien, repetí con :go al final.`); return; }
-      for (const h of hits) {
-        // La lista de cajas se guarda ENTERA: un patch parcial la rompe (mismo cuidado que la web).
-        const cajas = (h.e.cajasDet || []).map((c, i) => (i === h.i
-          ? { ...c, recibida: false, recFecha: null, recAuto: null, faltan: null, recUsadas: null }
-          : c));
-        await db.set('cyc/envios_full/' + h.id + '/cajasDet', cajas);
+      // Etapa 4 (30/09/2026): agrupado por envío y UNA escritura por envío sobre la lista RELEÍDA. Antes
+      // cada caja escribía la lista original entera y, con dos cajas del mismo envío, la segunda
+      // deshacía la primera (y se pisaba lo que el robot o la web marcaran en el medio).
+      const porEnvioA = {};
+      for (const h of hits) (porEnvioA[h.id] = porEnvioA[h.id] || []).push(h);
+      for (const [id, hs] of Object.entries(porEnvioA)) {
+        if (CORTAR) { console.log(`   ✋ envío ${id}: no se escribió (cancelaron la corrida)`); continue; }
+        const fresca = await db.get('cyc/envios_full/' + id + '/cajasDet');
+        const cajas = Array.isArray(fresca) ? fresca.slice() : [];
+        let cambio = 0;
+        for (const h of hs) {
+          const j = _ubicarCajaFresca(cajas, h.c, h.i);
+          if (j < 0) { console.log(`   ✗ ${h.c.track || id}: la caja cambió mientras corría (o no la encuentro igual): no la toco`); continue; }
+          if (!cajas[j].recibida) { console.log(`   · ${h.c.track || id}: ya estaba en camino`); h.i = j; continue; }
+          // La lista de cajas se guarda ENTERA: un patch parcial la rompe (mismo cuidado que la web).
+          cajas[j] = { ...cajas[j], recibida: false, recFecha: null, recAuto: null, faltan: null, recUsadas: null, recUsadasCalc: null };
+          h.i = j; cambio++;
+        }
+        if (cambio) await db.set('cyc/envios_full/' + id + '/cajasDet', cajas);
       }
       // Releído de la base: que el comando no dé error no prueba que haya quedado.
       const desp = (await db.get('cyc/envios_full')) || {};
       let ok = 0;
       for (const h of hits) {
         const c2 = ((desp[h.id] || {}).cajasDet || [])[h.i];
-        if (c2 && !c2.recibida) ok++;
+        if (c2 && !c2.recibida && _firmaCajaE4(c2) === _firmaCajaE4(h.c)) ok++;
       }
       console.log(`\n✓ ${ok} de ${hits.length} volvieron a "en camino". Releído de la base: ${ok === hits.length ? 'quedó ✓' : '✗ NO quedaron todas'}`);
       return;
@@ -15516,7 +15759,7 @@ async function main() {
         // freno"*. Subir algo que él bajó a propósito para rematar le deshace una decisión suya y
         // se entera cuando ya vendió.
         // El lado seguro es el mismo que en `raisePriceTo`: si la lista no se pudo leer, NO se sube.
-        const _nsV = _chequeoNoSubir(x.mla);
+        const _nsV = await _chequeoNoSubir(x.mla);
         if (!_nsV.ok) { err++; console.log(`  ✗ ${x.mla} · ${nom}: ${_nsV.err}`); continue; }
         // ── PUBLICACIÓN CON VARIANTES ──
         // Mandar solo { price } acá NO sirve: el precio que vale es el de cada variante, así que la
@@ -19399,6 +19642,13 @@ async function main() {
         console.log('   ⚠️ no pude leer lo liberado que esperaba en "a liquidar": NO se escribe nada esta vuelta (se contaría dos veces)');
         return;
       }
+      {
+        const _cambio = await _anclasCambiaron(db, anclas, labels);
+        if (_cambio == null || _cambio.length) {
+          console.log(`   ⚠️ NO se escribe: ${_cambio == null ? 'no pude releer el punto de partida' : 'cargaste el disponible de ' + _cambio.join(', ') + ' mientras esto corría'} (etapa 4). Lo tuyo manda; se recalcula en la próxima vuelta.`);
+          return;
+        }
+      }
       await db.patch('cyc/finanzas', patch);
       await db.patch('cyc/saldoml', { _dispTs: Date.now() });
       // RELEER Y COMPARAR, que es la regla 6 de este panel.
@@ -19784,7 +20034,13 @@ async function main() {
         if (puedePisar && !tc) {
           console.log('   NO se tocó "A liquidar en ML": no hay tipo de cambio cargado y el Arqueo');
           console.log('   está en DÓLARES. Convertir con un cambio adivinado mueve todo el patrimonio.');
-        } else if (puedePisar) {
+        } else if (puedePisar && await (async () => {
+          // Etapa 4 (30/09/2026): si cargó el disponible mientras esto corría, lo liberado ya lo tiene él:
+          // escribir "a liquidar" con el ancla vieja lo contaba dos veces. Esta vuelta no se escribe.
+          const _cambio = await _anclasCambiaron(db, anclasLib, labels);
+          if (_cambio == null || _cambio.length) { console.log(`   ⚠️ NO se tocó "A liquidar en ML": ${_cambio == null ? 'no pude releer el punto de partida' : 'cargaste el disponible de ' + _cambio.join(', ') + ' mientras esto corría'}. Se recalcula en la próxima vuelta.`); return false; }
+          return true;
+        })()) {
           // Se escribe en `cyc/finanzas/mp_liq`, que es EL MISMO campo que ya usa el Arqueo. No se
           // crea un número paralelo a propósito: dos lugares con la misma plata es el error
           // anotado de punta a punta en este archivo.
@@ -19827,8 +20083,15 @@ async function main() {
       // pedirlo ahora es lo que hace que el número esté al día sin que nadie se acuerde. Va con la
       // MISMA función que usa `armarsaldo`.
       if (APLICAR) {
+        // Etapa 4 (30/09/2026): ml-daily corre 3 veces por mañana. El reporte se pide y los fallos se
+        // cuentan UNA vez por día de acá: antes una sola mañana mala ya decía "2 noches seguidas".
+        const _hoySm = new Date(Date.now() - 3 * 3600e3).toISOString().slice(0, 10);
+        let _memSm = null;
+        try { _memSm = (await db.get('cyc/saldoml/_alerta')) || {}; } catch { _memSm = null; }
+        const _contadoHoy = !!(_memSm && _memSm.pedDia === _hoySm);
+        const _yaPedidoHoy = _contadoHoy && _memSm.pedOk === true;   // si falló, las otras corridas reintentan (sin volver a contar)
         let ped = 0;
-        for (const label of labels) {
+        for (const label of (_yaPedidoHoy ? [] : labels)) {
           const acc = accounts[label]; if (!acc?.refresh_token) continue;
           try {
             const t = await mlRefresh(ML_CLIENT_ID, ML_CLIENT_SECRET, acc.refresh_token);
@@ -19837,20 +20100,22 @@ async function main() {
             if (q.ok) ped++; else console.log(`   reporte de mañana · ${label}: ❌ ${q.txt}`);
           } catch { console.log(`   reporte de mañana · ${label}: ❌ no pude renovar el token`); }
         }
-        console.log(`   reporte para la próxima vuelta: ${ped} de ${labels.length} pedidos`);
+        console.log(_yaPedidoHoy ? '   reporte para la próxima vuelta: ya se pidió hoy en otra corrida' : `   reporte para la próxima vuelta: ${ped} de ${labels.length} pedidos`);
         // AVISO SI SE QUEDA VIEJO (revisión max #20). Dos cosas, una vez por día cada una:
         //  · el reporte usado termina hace más de 2 días (lo vendido después no se ve);
         //  · el pedido del reporte nuevo falló 2 noches seguidas (mañana va a pasar lo mismo).
         // Se anota sólo si el mensaje salió, como todos los avisos.
         try {
-          const mem = (await db.get('cyc/saldoml/_alerta')) || {};
-          const hoyTxt = new Date(Date.now() - 3 * 3600e3).toISOString().slice(0, 10);
-          const fallos = ped < labels.length ? (Number(mem.pedFallos) || 0) + 1 : 0;
+          const mem = _memSm || (await db.get('cyc/saldoml/_alerta')) || {};
+          const hoyTxt = _hoySm;
+          const _pedOk = _yaPedidoHoy || ped >= labels.length;
+          const fallos = _pedOk ? (_yaPedidoHoy ? (Number(mem.pedFallos) || 0) : 0)
+            : (_contadoHoy ? (Number(mem.pedFallos) || 0) : (Number(mem.pedFallos) || 0) + 1);
           const diasRep = repHasta ? Math.floor((Date.parse(hoyTxt) - Date.parse(repHasta)) / 864e5) : null;
           const msgs = [];
           if (diasRep != null && diasRep > 2) msgs.push(`⚠️ "A liquidar en ML" sale de un reporte de Mercado Pago que llega sólo hasta el ${repHasta.slice(8, 10)}/${repHasta.slice(5, 7)} (${diasRep} días). Lo vendido después todavía no está en el Arqueo.`);
           if (fallos >= 2) msgs.push(`⚠️ Mercado Pago no aceptó el pedido del reporte nuevo ${fallos} noches seguidas (${ped} de ${labels.length} cuentas). Si sigue así, "A liquidar en ML" se va a quedar viejo.`);
-          const upd = { pedFallos: fallos };
+          const upd = { pedFallos: fallos, pedDia: hoyTxt, pedOk: _pedOk };
           if (msgs.length && mem.dia !== hoyTxt) {
             const ok = await sendAlerta(msgs.join('\n\n'));
             if (ok) upd.dia = hoyTxt;
@@ -21656,7 +21921,9 @@ async function main() {
           if (!v || v.cancelada || v.origen !== 'ml-api') continue;
           // Lo que él editó o marcó a mano (`manualTs`, arreglo c2) NO se reescribe: sin esto esta
           // corrida nocturna deshacía en silencio su corrección (revisión max, 26/09/2026).
-          if (Number(v.manualTs) > 0) { _nrManual++; continue; }
+          // Etapa 4 (30/09/2026): salvo que siga con el neto ESTIMADO: ahí se le pone sólo el neto real
+          // (el patch de abajo toca neto/mlfee/netoEstimado y nada más). Si no, quedaba estimado para siempre.
+          if (Number(v.manualTs) > 0 && !v.netoEstimado) { _nrManual++; continue; }
           const m = /^v(\d+)_/.exec(id);
           if (!m) continue;
           const gk = v.numVenta ? 'p' + v.numVenta : 'o' + m[1];
@@ -23624,6 +23891,7 @@ async function main() {
       }
       for (const [mla, a] of Object.entries(autop)) {
         if (!a || !a.ts || ahora - a.ts > MAX_DIAS * 864e5) continue;
+        if (a.estado === 'subiendo') continue;   // etapa 4: una suba que quedó a medias no es un cambio medido
         agregar({ mla, ts: a.ts, a: Math.round(a.a || 0) || null, de: Math.round(a.de || 0) || null, origen: a.por === 'costo' ? 'robot por costo' : 'robot de noche', aprox: false, motivo: motivoDeAuto(a) });
       }
       // La foto: lo que cambió entre la noche pasada y hoy y NO lo anotó el robot.
@@ -23646,12 +23914,17 @@ async function main() {
       // ── 2. EL STOCK DE ESTA NOCHE, para no culpar al precio de un quiebre ──────
       const todos = { ...eventos, ...nuevos };
       const cambiosEv = {};
+      // Etapa 4 (30/09/2026): ml-daily corre 3 veces por mañana y cada corrida sumaba una "noche": con
+      // una sola foto quedaban 3 noches (y 3 sin stock). Se guarda el día de acá de la última noche
+      // contada y se suma sólo si cambió.
+      const _diaSup = new Date(ahora - 3 * 3600e3).toISOString().slice(0, 10);
       for (const [id, ev] of Object.entries(todos)) {
         const dias = (ahora - ev.ts) / 864e5;
         if (dias < 0 || dias > 30) continue;
+        if (ev.nocheDia === _diaSup) continue;
         const st = stockDe(ev.mla);
         if (st == null) continue;
-        cambiosEv[id] = { noches: (ev.noches || 0) + 1, nochesSin: (ev.nochesSin || 0) + (st === 0 ? 1 : 0) };
+        cambiosEv[id] = { noches: (ev.noches || 0) + 1, nochesSin: (ev.nochesSin || 0) + (st === 0 ? 1 : 0), nocheDia: _diaSup };
       }
 
       // ── 3. EVALUAR LO QUE CUMPLIÓ 7, 15 Y 30 DÍAS ──────────────────────────────
@@ -23927,9 +24200,9 @@ async function main() {
         const c = cambiosEv[id] || {};
         const evs = {}; for (const x of evalNuevas) if (x.id === id) evs['d' + x.W] = x.res;
         upd['eventos/' + id] = { ...ev, nom: nomDe(ev.mla), cuenta: (links[ev.mla] || {}).cuenta || '',
-          noches: c.noches || 0, nochesSin: c.nochesSin || 0, ...(Object.keys(evs).length ? { ev: evs } : {}) };
+          noches: c.noches || 0, nochesSin: c.nochesSin || 0, ...(c.nocheDia ? { nocheDia: c.nocheDia } : {}), ...(Object.keys(evs).length ? { ev: evs } : {}) };
       }
-      for (const [id, c] of Object.entries(cambiosEv)) { if (nuevos[id]) continue; upd['eventos/' + id + '/noches'] = c.noches; upd['eventos/' + id + '/nochesSin'] = c.nochesSin; }
+      for (const [id, c] of Object.entries(cambiosEv)) { if (nuevos[id]) continue; upd['eventos/' + id + '/noches'] = c.noches; upd['eventos/' + id + '/nochesSin'] = c.nochesSin; upd['eventos/' + id + '/nocheDia'] = c.nocheDia; }
       for (const x of evalNuevas) { if (nuevos[x.id]) continue; upd['eventos/' + x.id + '/ev/d' + x.W] = x.res; }
       for (const [mla, f] of Object.entries(fotosNuevas)) upd['precios/' + mla] = f;
       // El motivo de los cambios viejos se deja escrito: `cyc/autoprecio` guarda sólo el ÚLTIMO
@@ -30567,23 +30840,31 @@ async function main() {
       console.log(`=== CONTAR LO QUE HAY EN LA OFICINA ${GO ? '' : '(PRUEBA — no escribo nada)'} ===`);
       const kTot = (pid) => pid + '__' + sid(OFI_LOC);
       const kVar = (pid, v) => pid + '__' + sid(OFI_LOC) + '__v__' + sid(v);
+      let _ofiCortado = 0;
       for (const o of ops) {
+        // Etapa 4 (30/09/2026): si cancelaron la corrida, no se empieza otro renglón (el que estaba en
+        // curso ya se escribió entero). Se dice cuáles quedaron, para repetir sólo ésos.
+        if (CORTAR) { _ofiCortado++; console.log(`  ✋ ${o.p.name}${o.va ? ' · ' + o.va : ''}: NO se escribió (cancelaron la corrida)`); continue; }
         const key = o.va ? kVar(o.p.id, o.va) : kTot(o.p.id);
         // Se relee justo antes de escribir (la web pudo tocarla recién).
         const antes = GO ? (parseInt(await db.get('cyc/inventory/' + key)) || 0) : (parseInt(inv[key]) || 0);
         const ahora = o.fijo != null ? Math.max(0, o.fijo) : Math.max(0, antes + o.delta);
         const dv = ahora - antes;
         let totTxt = '';
+        // Etapa 4: la variante y el total del producto van en UN solo patch. Eran dos escrituras y,
+        // cortada la corrida entre las dos, quedaba el total sumado sin la variante (y al repetir, doble).
+        const _ofiUpd = { [key]: ahora || null };
         if (o.va) {
           const tA = GO ? (parseInt(await db.get('cyc/inventory/' + kTot(o.p.id))) || 0) : (parseInt(inv[kTot(o.p.id)]) || 0);
           const tN = Math.max(0, tA + dv);
           totTxt = ` · total del producto ${tA} → ${tN}`;
-          if (GO && dv) await db.set('cyc/inventory/' + kTot(o.p.id), tN || null);
+          if (dv) _ofiUpd[kTot(o.p.id)] = tN || null;
         }
-        if (GO) await db.set('cyc/inventory/' + key, ahora || null);
+        if (GO) await db.patch('cyc/inventory', _ofiUpd);
         console.log(`  ${o.p.name}${o.va ? ' · ' + o.va : ''}: ${antes} → ${ahora}${totTxt}`);
       }
-      if (GO) console.log('\n✓ Guardado. La web recalcula sola el valor de la oficina en el Arqueo.');
+      if (GO && _ofiCortado) console.log(`\n⚠️ Cancelaron la corrida: ${_ofiCortado} renglón(es) sin escribir (los de arriba sí quedaron). Repetí sólo ésos.`);
+      else if (GO) console.log('\n✓ Guardado. La web recalcula sola el valor de la oficina en el Arqueo.');
       else console.log('\nNo se guardó nada (falta ;go).');
       return;
     }
@@ -30741,7 +31022,9 @@ async function main() {
         if (!GO) { console.log('\nNo se guardó nada (falta :go).'); return; }
         const hechas = [];
         let i = 0;
+        let _pyCortado = false;
         for (const x of plan.filter((y) => y.estado === 'crear')) {
+          if (CORTAR) { _pyCortado = true; break; }   // etapa 4: no se empieza otra ficha si cancelaron la corrida
           const usd = parseFloat(x.src.usd) || 0;
           const puesto = usd > 0 ? r2(usd * RECARGO_PAR) : 0;
           const p = { id: 'p' + Date.now() + String(i++), name: String(x.src.nombre).trim().slice(0, 90), costUSD: puesto, cost: puesto * (tc || 0), origen: 'py', costFullUSD: puesto, altaChat: Date.now() };
@@ -30753,6 +31036,9 @@ async function main() {
             hechas.push(p);
           } catch (e) { console.log(`⚠️ no pude crear ${p.name}: ${(e && e.message) || e}`); }
         }
+        // Etapa 4: cortada a mitad, el pedido NO se marca llegado. Al repetir el comando, las fichas ya
+        // creadas salen como "parecidas" y se enganchan; las que faltaban se crean.
+        if (_pyCortado) { console.log(`\n⚠️ Cancelaron la corrida: ${hechas.length} ficha(s) creada(s) y el pedido ${id} NO quedó marcado llegado. Repetí el mismo comando.`); return; }
         for (const x of plan.filter((y) => y.estado === 'repe')) {
           if (x.src.id && cands[x.src.id] && !cands[x.src.id].prodId) { try { await db.set(`cyc/candidatos_py/${x.src.id}/prodId`, x.rep[0].id); } catch { console.log(`⚠️ no pude enganchar ${x.src.nombre} a su ficha`); } }
         }
@@ -32795,6 +33081,17 @@ async function main() {
   // ventas ya cargadas a mano / por cowork (para no duplicarlas). Las nuestras
   // (origen ml-api) usan id determinístico, así que reescribirlas es inofensivo.
   const ventaprod = (await db.get('cyc/ventaprod')) || {}; setDevLive(ventaprod);
+  // Etapa 4 (30/09/2026): las ventas que él BORRÓ en la web dejan `cyc/ventaborrada/<id>` (id del
+  // renglón y de la venta). Sin esto el ciclo las recreaba desde ML en 2 minutos. Si la lista no se
+  // puede leer, esta vuelta no se crea ninguna venta nueva (las ya guardadas se siguen actualizando).
+  let ventaBorrada = null;
+  try { const vb = await db.get('cyc/ventaborrada'); ventaBorrada = vb && typeof vb === 'object' ? vb : {}; }
+  catch { ventaBorrada = null; console.log('⚠️ No pude leer las ventas borradas en la web: esta vuelta no creo ventas nuevas.'); }
+  if (ventaBorrada && !DRY) {
+    const _vieja = {};
+    for (const [k, ts] of Object.entries(ventaBorrada)) if (Date.now() - (Number(ts) || 0) > 60 * 864e5) _vieja[k] = null;
+    if (Object.keys(_vieja).length) { try { await db.patch('cyc/ventaborrada', _vieja); } catch { /* se borra la vuelta que viene */ } }
+  }
   const seenManual = new Set();
   // índice: nº de venta → dónde quedó cargada (para poder quitarla si se cancela)
   const loadedByNum = new Map();
@@ -33536,6 +33833,13 @@ async function main() {
         }
         const { costo, costBaseUSD, shipUSD } = p ? costoPesos(p, qty, tc) : { costo: 0, costBaseUSD: 0, shipUSD: 0 };
         const id = 'v' + o.id + '_' + idx;
+        // Etapa 4: la borró él en la web → no se recrea. La marca de la VENTA sólo frena las que no
+        // existen: otra línea de la misma orden que él dejó se sigue actualizando.
+        const _kvb = (x) => String(x || '').replace(/[.#$\[\]\/]/g, '_');
+        if (ventaBorrada == null ? !_prevV : (ventaBorrada[_kvb(id)] || (!_prevV && ventaBorrada[_kvb(saleId)]))) {
+          if (!DRY) console.log(`  🗑️ venta ${id}: ${ventaBorrada == null ? 'no sé si la borraste (no pude leer la lista)' : 'la borraste en la web'}, no la vuelvo a crear`);
+          continue;
+        }
         const obj = {
           id, saleId, prod: p ? p.name : title, prodId: p ? p.id : null, cuenta: label, qty,
           total: Math.round(itemGross),
@@ -33552,22 +33856,27 @@ async function main() {
         // marcada reclamo/cancelada) lleva `manualTs` y NO se reescribe. Antes esta línea la pisaba
         // entera en la vuelta siguiente y la marca duraba 2 minutos. Reactivarla saca la marca.
         let _aMano = _prevV && Number(_prevV.manualTs) > 0;
-        // Revisión max (rev4): `_prevV` es la copia leída al EMPEZAR la vuelta. Si él la marcó en la
-        // web mientras la vuelta corría, esa copia no tiene la marca: antes de pisar una venta ya
-        // guardada se relee su `manualTs` (una lectura chica). Si la lectura falla, no se escribe
-        // esta vuelta (se reintenta en 2 minutos): pisar una marca suya es peor que esperar.
-        if (!DRY && !_aMano && _prevV) {
-          // Se lee el DÍA entero una vez (válido 60 s) en vez de una lectura por venta: la ventana de
-          // 2 días reescribe ~200 ventas cada 2 minutos.
-          try {
-            let _md = _manualDiaCache.get(dayKey);
-            if (!_md || Date.now() - _md.t > 60e3) { _md = { t: Date.now(), d: (await db.get(`cyc/ventaprod/${dayKey}`)) || {} }; _manualDiaCache.set(dayKey, _md); }
-            if (Number((_md.d[id] || {}).manualTs) > 0) _aMano = true;
-          }
-          catch { _aMano = true; console.log(`  ⚠️ venta ${id}: no pude releer si la tocó a mano, no la reescribo esta vuelta`); }
+        // Revisión max (rev4) y etapa 4 (30/09/2026): `_prevV` es la copia leída al EMPEZAR la vuelta.
+        // Si él la marcó en la web mientras la vuelta corría, esa copia no tiene la marca. Antes se
+        // releía el día con una copia de 60 s, y una marca puesta en esos 60 s se perdía igual: ahora
+        // se relee ESTA venta, sin copia, justo antes de escribirla. Con `manualTs` o `cancelada` no se
+        // pisa. Si la lectura falla no se escribe (se reintenta en 2 minutos).
+        let _vHoy = _prevV || null, _vHoyOk = true;
+        if (!DRY) {
+          try { _vHoy = await db.get(`cyc/ventaprod/${dayKey}/${id}`); }
+          catch { _vHoyOk = false; _aMano = true; console.log(`  ⚠️ venta ${id}: no pude releer si la tocó a mano, no la reescribo esta vuelta`); }
+          if (_vHoy && Number(_vHoy.manualTs) > 0) _aMano = true;
         }
+        const _yaCancel = !!(_vHoyOk && _vHoy && _vHoy.cancelada && !(Number(_vHoy.manualTs) > 0));
         if (DRY) console.log(`  [${label}] #${num} ${obj.prod}${p ? '' : ' (SIN PRODUCTO)'} x${qty} · total ${obj.total} · neto ${obj.neto}`);
+        else if (_aMano && _vHoyOk && _vHoy && _vHoy.netoEstimado && !_vHoy.cancelada && !netoEst) {
+          // Etapa 4: tocada a mano pero con el neto todavía ESTIMADO. Se congelaba para siempre: se
+          // actualiza SÓLO el neto real que dio ML (campo por campo), lo demás queda como lo dejó él.
+          await db.patch(`cyc/ventaprod/${dayKey}/${id}`, { neto: obj.neto, mlfee: obj.mlfee, netoEstimado: null });
+          console.log(`  ✋ venta ${id} (${obj.prod}): la tocó él a mano; sólo le pongo el neto real de ML`);
+        }
         else if (_aMano) console.log(`  ✋ venta ${id} (${obj.prod}): la tocó él a mano, no la reescribo`);
+        else if (_yaCancel) { /* ya marcada cancelada/reclamo: la clasificación de abajo la mantiene, no se reescribe */ }
         else await db.set(`cyc/ventaprod/${dayKey}/${id}`, obj);
         cargadas++;
         // dejar registrada la carga por si esta misma venta se cancela después
@@ -33752,6 +34061,14 @@ async function main() {
           for (const a of rv.avisos) await sendAlerta(a);
         }
       } catch (eR) { console.log('   ⚠️ rescate al vender: ' + String(eR.message || eR).slice(0, 160) + ' · lo mira la noche'); }
+    }
+    // Etapa 4 (30/09/2026): "esta venta ya la vi" se guarda al terminar CADA cuenta, no al final de la
+    // vuelta: si la corrida se corta en la cuenta siguiente, la vuelta que viene repetía avisos y etiquetas.
+    if (!DRY) {
+      try {
+        if (Object.keys(alertUpd).length) { await db.patch('mlapi/alerted', { ...alertUpd }); for (const k of Object.keys(alertUpd)) delete alertUpd[k]; }
+        if (Object.keys(avisoPrecioUpd).length) { await db.patch('mlapi/avisoprecio', { ...avisoPrecioUpd }); for (const k of Object.keys(avisoPrecioUpd)) delete avisoPrecioUpd[k]; }
+      } catch { /* se guarda al final de la vuelta, como antes */ }
     }
 
     // 3b) CANCELACIONES y DEVOLUCIONES: si una venta que ya cargamos se canceló
@@ -34258,7 +34575,12 @@ async function main() {
         // una reposición de verdad dentro de 48 h queda con la fecha vieja (el lado seguro).
         const volvioRapido = ahora > 0 && antes <= 0 && h.desdePrev && Number(h.cero) > 0
           && Date.now() - Number(h.cero) <= STOCKHIST_CERO_PASAJERO_MS;
+        // Etapa 4 (30/09/2026): una clave NUNCA VISTA (ni en el inventario ni en el historial) que aparece
+        // con stock no es "entró mercadería hoy": es una publicación re-vinculada, un color recién fijado
+        // o una oculta que volvió. Queda `aprox` (no sabemos desde cuándo), no "entrada exacta de hoy".
+        const nuncaVista = invPrev[k] == null && !h.desde && !h.cero && !h.desdePrev;
         if (volvioRapido) histUpd[k] = { ...h, desde: h.desdePrev, aprox: h.aproxPrev === true, desdePrev: null, aproxPrev: null, cero: null };
+        else if (ahora > 0 && nuncaVista) histUpd[k] = { ...h, desde: Date.now(), aprox: true };
         else if (ahora > 0 && antes <= 0) histUpd[k] = { ...h, desde: Date.now(), aprox: false, desdePrev: null, aproxPrev: null };       // entró mercadería: fecha exacta
         else if (ahora <= 0 && antes > 0) histUpd[k] = { ...h, desde: null, cero: Date.now(), desdePrev: h.desde || null, aproxPrev: h.desde ? (h.aprox === true) : null };    // se agotó (se guarda la fecha por si vuelve enseguida)
         else if (ahora > 0 && !h.desde) histUpd[k] = { ...h, desde: Date.now(), aprox: true };     // ya estaba: no sabemos desde cuándo
