@@ -30648,14 +30648,22 @@ async function main() {
             const src = { id: it.id, nombre: (k && k.nombre) || it.nom || '', usd: parseFloat(it.usd) > 0 ? it.usd : (k && k.usd), cod: (k && k.cod) || it.cod || '', ts: k && k.ts };
             if (k && k.prodId) { plan.push({ src, estado: 'ya' }); continue; }
             if (!String(src.nombre).trim()) { plan.push({ src, estado: 'nonombre' }); continue; }
+            // D2 (etapa 3, 29/09): sólo frena la MISMA ficha —mismo código de Nissei (también por el
+            // final, al chat le falta a veces el primer dígito) o mismo nombre completo— y la engancha.
+            // Lo que sólo se parece se crea igual y se dice. Misma regla que `candFichaMisma` de la web.
+            const _dg = (x) => String(x || '').replace(/\D/g, '');
+            const codIg = (a, b) => { const x = _dg(a), y = _dg(b); if (!x || !y) return false; if (x === y) return true; const [c1, c2] = x.length < y.length ? [x, y] : [y, x]; return c1.length >= 5 && c2.endsWith(c1); };
+            const nN = nrm(src.nombre);
+            const misma = prods.find((p) => (src.cod && codIg(p.codPy, src.cod)) || (nN && nrm(p.name) === nN));
             const q = nrm(String(src.nombre).split(' ').slice(0, 2).join(' '));
-            const rep = q ? prods.filter((p) => nrm(p.name).includes(q)) : [];
-            plan.push(rep.length ? { src, estado: 'repe', rep } : { src, estado: 'crear' });
+            const par = q ? prods.filter((p) => nrm(p.name).includes(q)) : [];
+            plan.push(misma ? { src, estado: 'repe', rep: [misma] } : { src, estado: 'crear', par });
           }
           const cr = plan.filter((x) => x.estado === 'crear');
           console.log(`Fichas a crear: ${cr.length}`);
           cr.forEach((x) => console.log(`  + ${x.src.nombre} · US$ ${(parseFloat(x.src.usd) || 0).toFixed(2)} × ${RECARGO_PAR} = US$ ${r2((parseFloat(x.src.usd) || 0) * RECARGO_PAR).toFixed(2)}${x.src.cod ? ' · cód ' + x.src.cod : ''}${(parseFloat(x.src.usd) || 0) > 0 ? '' : ' · ⚠️ SIN PRECIO: queda en costo 0'}`));
-          plan.filter((x) => x.estado === 'repe').forEach((x) => console.log(`  ⚠️ NO se crea (hay ficha parecida): ${x.src.nombre} → ${x.rep.slice(0, 3).map((p) => p.name).join(' | ')}`));
+          plan.filter((x) => x.estado === 'repe').forEach((x) => console.log(`  = ya tiene ficha (mismo código o nombre), se engancha: ${x.src.nombre} → ${x.rep[0].name}`));
+          cr.filter((x) => x.par && x.par.length).forEach((x) => console.log(`  ℹ️ se crea aunque se parece a: ${x.src.nombre} ~ ${x.par.slice(0, 3).map((p) => p.name).join(' | ')}`));
           plan.filter((x) => x.estado === 'ya').forEach((x) => console.log(`  = ya tenía ficha: ${x.src.nombre}`));
           plan.filter((x) => x.estado === 'nonombre').forEach(() => console.log(`  ⚠️ un renglón sin nombre: no se puede crear`));
         } else {
@@ -30676,6 +30684,9 @@ async function main() {
             if (x.src.id && cands[x.src.id]) await db.set(`cyc/candidatos_py/${x.src.id}/prodId`, p.id);
             hechas.push(p);
           } catch (e) { console.log(`⚠️ no pude crear ${p.name}: ${(e && e.message) || e}`); }
+        }
+        for (const x of plan.filter((y) => y.estado === 'repe')) {
+          if (x.src.id && cands[x.src.id] && !cands[x.src.id].prodId) { try { await db.set(`cyc/candidatos_py/${x.src.id}/prodId`, x.rep[0].id); } catch { console.log(`⚠️ no pude enganchar ${x.src.nombre} a su ficha`); } }
         }
         await db.set('cyc/compraspy/' + id + '/estado', 'llego');
         await db.set('cyc/compraspy/' + id + '/fechaLlego', hoyAR);
