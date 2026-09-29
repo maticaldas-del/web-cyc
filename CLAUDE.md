@@ -472,7 +472,8 @@ regla en `pyped:llego`), y el candidato queda enganchado a esa ficha (`prodId`).
 **PENDIENTE PEDIDO POR ÉL ("arreglemos esto después"):** el aviso "renglones de Pedidos con un número que no cierra" compara el
 TOTAL del producto (ML+casa+camino) contra el objetivo, y en productos con colores sobra uno y falta otro (Centímetro, Paulvic,
 Sábanas, P47…): hay que medirlo por variante.
-**FALTA SU DECISIÓN (en REV_PENDIENTE), de a una:** D3 `compray` no encuentra `pyr<fecha>` (reposición) ·
+**D3 · HECHO el 29/09, eligió la (a) (v20.83 · `cyc-v361`):** `compray` busca `py<fecha>` y `pyr<fecha>`; si ese día (o en ±10 días sin pesos) hay de los dos tipos, no escribe y pide `|repo` o `|nuevos` (también `tipo=`). Con `|repo` y ninguna reposición cerca, no crea nada: primero va `pyped:repo`. `det=` conserva el `prodId` de cada renglón.
+**FALTA SU DECISIÓN (en REV_PENDIENTE), de a una:**
 A1 lo que llega tarde de una caja marcada con faltantes se lo lleva la siguiente (camino automático) · A5 una recepción
 se parte entre la caja perdida y la buena · B3 stock de publicaciones OCULTAS con depósito propio se pierde · C5 el estado
 que él marca a mano en un pedido automático se pisa · D6 reposición llegada y sin contar: la canasta la vuelve a pedir ·
