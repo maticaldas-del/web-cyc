@@ -1366,6 +1366,7 @@ julio, a CYC le quedan **~$2.000.000/mes** después de todo eso.
   2 mediano (amarillo, cambia un número o lista) · 3 importante (rojo, toca plata, precios, stock o
   patrimonio), y cada versión lleva `f` (fecha) y `h` (hora DE ACÁ, no la de GitHub que va +3 h).
   Muestra los últimos 10 con barrita para bajar, o todos los de la última versión si fueron más de 10.
+- **LA APP SE ACTUALIZA SOLA Y NO DEJA USAR UNA VIEJA (29/09/2026, v20.92 · `cyc-v370`).** Pedido suyo: *"que no se pueda usar una act antigua"*. `_vigilarVersion` pregunta por versión nueva cada 2 min (sólo con la app a la vista), al volver a la app, al volver internet y al enfocar. Si hay: recarga al instante; si está escribiendo o hay algo por guardar, espera; a los 3 min tapa la pantalla (`#cyc-version-vieja`) con un único botón "Actualizar ahora" — nunca con algo pendiente de guardar. Depende de que `sw.js` cambie: **cada versión nueva TIENE que subir `CACHE`**, si no nadie se entera.
 - `sw.js` — el service worker. Su `CACHE = "cyc-vNN"` va de la mano con la versión del index.
 - `ml-sync/sync.mjs` — el robot. Trae las ventas, ajusta precios y manda avisos por Telegram.
 - Firebase Realtime Database, namespace `cyc/` — todos los datos.
