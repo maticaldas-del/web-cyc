@@ -499,6 +499,8 @@ footer{margin-top:32px;padding-top:14px;border-top:1px solid var(--border);font-
 
 <!-- ════════════════════ HOME ════════════════════ -->
 <div id="page-home" class="page">
+  <!-- Ventas de hoy, lo primero de todo (29/09/2026, pedido suyo: "ponelo al principio de todo, más grande y llamativa") -->
+  <div id="home-hoy"></div>
   <div id="home-logo-wrap" class="home-logo" style="display:none"></div>
   <div style="display:flex;align-items:center;justify-content:center;flex-wrap:wrap;gap:24px;margin:6px auto 16px;max-width:100%">
     <span id="home-dolar-logo" style="display:flex;align-items:center;justify-content:center;height:210px;width:min(640px,calc(100vw - 48px));overflow:hidden"></span>
@@ -515,7 +517,6 @@ footer{margin-top:32px;padding-top:14px;border-top:1px solid var(--border);font-
     <span id="home-version" onclick="actualizarApp()" title="Versión de la app que estás usando ahora. Tocá para buscar actualizaciones." style="display:inline-flex;align-items:center;gap:7px;font-size:.62rem;color:var(--muted);border:1px solid var(--border);border-radius:999px;padding:5px 13px;cursor:pointer;letter-spacing:.06em">…</span>
     <details id="home-cambios" style="margin-top:6px;text-align:left"></details>
   </div>
-  <div id="home-hoy"></div>
   <div id="home-puntaje"></div>
   <div id="home-parejo"></div>
   <div class="home-grid">
@@ -2380,7 +2381,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='20.94';
+const APP_VERSION='20.95';
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
 // muestre la versión y la fecha de actualización y que tenga un desplegable predeterminado cerrado".
 // Y el mismo día: "que ponga fecha de cada modificación y haya una barrita para scrollear y que
@@ -2391,6 +2392,7 @@ const APP_VERSION='20.94';
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'20.95',f:'29/09/2026',h:'19:53',c:[{n:1,t:'Inicio: 🏷️ Ventas de hoy pasa a ser lo primero de todo, más grande y en verde (facturado y ganancia en letra grande).'}]},
   {v:'20.94',f:'29/09/2026',h:'20:30',c:[{n:1,t:'Inicio: arriba del Puntaje, la tarjeta 🏷️ Ventas de hoy (facturado, ventas, unidades, ganancia y % ganancia, con ayer abajo). Tocándola vas a Ventas x Producto. El Puntaje queda con el número y el resumen; las barras y "lo que falta" van en "Ver el detalle del puntaje" (recuerda si lo dejaste abierto).'}]},
   {v:'20.93',f:'29/09/2026',h:'20:00',c:[{n:1,t:'Diseño (etapa 7), lo chico: en modo claro los colores de aviso ahora se leen (el ámbar casi no se veía) y el gris de oscuro es un poco más claro. Ninguna letra queda más chica que .6 (había 114 más chicas).'},{n:1,t:'Teléfono: tocar algo que tenía el globito del mouse ahora lo muestra en un cartelito. Casillas y botones ✎ ✕ más grandes, y el iPhone ya no agranda la pantalla al tocar una casilla. La lista de ventas ya no tiene su propia barra para bajar.'},{n:1,t:'El menú ☰ tiene Mi oficina. Botón 📋 Copiar mensaje para Nissei. Luciana dejó de ser ámbar en los gráficos (ámbar es aviso). El % se llama "% ganancia" en todos lados (ya no "Markup"). Se sacaron textos viejos (base 40%, piso 30/meta 32, "sin cambios", el cartel del historial de Rotación).'}]},
   {v:'20.92',f:'29/09/2026',h:'19:20',c:[{n:2,t:'La app se actualiza sola: busca versión nueva cada 2 minutos y se recarga al instante. Si estás escribiendo, espera a que termines; si pasan 3 minutos, tapa la pantalla y sólo deja actualizar. Ya no se puede seguir usando una versión vieja.'}]},
@@ -15751,16 +15753,18 @@ function renderHomeHoy(){
   const hoy=new Date();const h=_homeDiaTot(dateToKey(hoy));
   const ay=new Date(hoy);ay.setDate(ay.getDate()-1);const a=_homeDiaTot(dateToKey(ay));
   const pctTxt=h.pct===null||!isFinite(h.pct)?'—':(h.pct>=0?'+':'')+h.pct.toFixed(0)+'%';
-  el.innerHTML=`<div onclick="goPage('ventaprod')" style="cursor:pointer;background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:14px 18px;margin:0 auto 14px;max-width:min(720px,calc(100vw - 32px))">
-    <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:8px">
-      <span style="font-size:.62rem;text-transform:uppercase;letter-spacing:.12em;color:var(--muted)">🏷️ Ventas de hoy</span>
-      <span style="font-size:.64rem;color:var(--muted)">ver ventas ›</span>
+  el.innerHTML=`<div onclick="goPage('ventaprod')" style="cursor:pointer;position:relative;overflow:hidden;background:linear-gradient(135deg,rgba(34,197,94,.16),rgba(34,197,94,.03) 55%,var(--surface));border:1px solid rgba(34,197,94,.45);border-radius:20px;padding:20px 22px 16px;margin:4px auto 18px;max-width:min(760px,calc(100vw - 32px));box-shadow:0 6px 28px rgba(34,197,94,.12)">
+    <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap;margin-bottom:10px">
+      <span style="font-size:.72rem;text-transform:uppercase;letter-spacing:.16em;color:var(--green);font-weight:700">🏷️ Ventas de hoy</span>
+      <span style="font-size:.7rem;color:var(--muted);border:1px solid var(--border2);border-radius:999px;padding:3px 10px">ver ventas ›</span>
     </div>
-    <div style="display:flex;flex-wrap:wrap;gap:6px 22px;align-items:baseline">
-      <div><div style="font-family:'Syne',sans-serif;font-weight:800;font-size:1.6rem;line-height:1.1">${fmt(h.bruto)}</div><div style="font-size:.64rem;color:var(--muted)">facturado · ${h.ventas} venta${h.ventas===1?'':'s'} · ${h.u} u.</div></div>
-      <div><div style="font-family:'Syne',sans-serif;font-weight:800;font-size:1.25rem;line-height:1.1;color:${h.gan>=0?'var(--text)':'var(--red)'}">${fmt(h.gan)}</div><div style="font-size:.64rem;color:var(--muted)">ganancia · ${pctTxt}</div></div>
+    <div style="display:flex;flex-wrap:wrap;gap:10px 34px;align-items:flex-end">
+      <div><div style="font-family:'Syne',sans-serif;font-weight:800;font-size:clamp(2.3rem,9vw,3.4rem);line-height:1;letter-spacing:-.01em">${fmt(h.bruto)}</div><div style="font-size:.78rem;color:var(--muted);margin-top:6px">facturado · <b style="color:var(--text)">${h.ventas}</b> venta${h.ventas===1?'':'s'} · <b style="color:var(--text)">${h.u}</b> u.</div></div>
+      <div><div style="font-family:'Syne',sans-serif;font-weight:800;font-size:clamp(1.6rem,6vw,2.2rem);line-height:1;color:${h.gan>=0?'var(--green)':'var(--red)'}">${fmt(h.gan)}</div><div style="font-size:.78rem;color:var(--muted);margin-top:6px">ganancia · <b style="color:${h.gan>=0?'var(--green)':'var(--red)'}">${pctTxt}</b></div></div>
     </div>
-    <div style="font-size:.62rem;color:var(--muted);margin-top:8px">ayer: ${fmt(a.bruto)} · ganancia ${fmt(a.gan)} · ${a.ventas} venta${a.ventas===1?'':'s'}</div>
+    <div style="display:flex;align-items:center;gap:8px 14px;flex-wrap:wrap;margin-top:14px;padding-top:10px;border-top:1px solid rgba(34,197,94,.2);font-size:.72rem;color:var(--muted)">
+      <span>ayer: <b style="color:var(--text)">${fmt(a.bruto)}</b> · ganancia ${fmt(a.gan)} · ${a.ventas} venta${a.ventas===1?'':'s'}</span>
+    </div>
   </div>`;
 }
 function renderPuntajeMes(){
