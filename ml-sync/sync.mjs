@@ -19631,11 +19631,8 @@ async function main() {
           if (!motivo) { fallos = 0; ok = true; } else if (!esHoy) fallos++;
           const upd = { dispDia: hoyD, dispOk: ok, dispFallos: fallos, dispMotivo: motivo || null };
           if (motivo) console.log(`   ⚠️ disponible sin escribir: ${motivo} · ${fallos} noche(s) seguidas`);
-          if (fallos >= 2 && !ok && mem.dispAvisoDia !== hoyD) {
-            const okA = await sendAlerta(`⚠️ <b>El disponible de ML lleva ${fallos} noches sin actualizarse</b>\nMotivo de esta vuelta: ${String(motivo).replace(/&/g, '&amp;').replace(/</g, '&lt;')}.\n<i>El Arqueo muestra el número de la última vez que salió bien.</i>`);
-            if (okA) upd.dispAvisoDia = hoyD;
-            console.log(`   aviso de disponible sin escribir: ${okA ? 'mandado' : '❌ no salió'}`);
-          }
+          // Sin aviso por Telegram ni falla en la noche, decisión suya del 30/09: "no es muy importante, que no
+          // aparezca cartel ni nada. lo importante es el arqueo una vez por mes, y eso lo cargo a mano". Queda en el log.
           await db.patch('cyc/saldoml/_alerta', upd);
         } catch (e) { console.log('   ⚠️ no pude anotar la memoria del disponible: ' + String(e.message || e).slice(0, 80)); }
       };
@@ -19645,7 +19642,7 @@ async function main() {
       if (!tc) {
         console.log('❌ No hay tipo de cambio cargado en el panel, y el Arqueo está en DÓLARES.');
         console.log('   Convertir con un cambio adivinado se mete en todo el patrimonio: no se toca nada.');
-        await _notaDispo('no hay tipo de cambio cargado'); if (APLICAR) process.exitCode = 1;
+        await _notaDispo('no hay tipo de cambio cargado');
         return;
       }
       const res = {}; let listas = 0, problemas = 0;
@@ -19739,9 +19736,7 @@ async function main() {
         console.log('   NO se toca el Arqueo: con una cuenta afuera, el total que entra al');
         console.log('   patrimonio quedaría corto y nadie lo notaría.');
         await _notaDispo(`${problemas} cuenta(s) con problema (${labels.filter((l) => !res[l]).join(', ')})`);
-        // Etapa 5: el paso no escribió nada: sale con error para que avisonoche lo nombre.
-        if (APLICAR) process.exitCode = 1;
-        return;
+        return;   // sin falla ni aviso: decisión suya del 30/09 (ver _notaDispo)
       }
       if (!APLICAR) { console.log('   Con ":go" se escribe en el Arqueo.'); return; }
       const patch = {};
