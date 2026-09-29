@@ -1300,6 +1300,8 @@ El punto de venta tiene que ser del tipo **"Factura Electronica - Monotributo - 
 El facturador arranca **desde la próxima venta**: las facturas ya pedidas de ventas viejas hay que
 hacerlas a mano igual.
 
+**LOS SOCIOS DE CYC SON DOS: MATÍAS Y SU PADRE.** El retiro se reparte entre ellos dos (dicho por él el 29/09/2026, molesto con razón porque no estaba anotado).
+
 Casi todo se vende por **Full**. El retiro de la familia es **$1.800.000/mes** más un **2% de
 interés** sobre el capital que los socios tienen puesto adentro (~US$ 10.000). Con el ritmo de
 julio, a CYC le quedan **~$2.000.000/mes** después de todo eso.
