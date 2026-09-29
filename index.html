@@ -2372,7 +2372,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='20.91';
+const APP_VERSION='20.92';
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
 // muestre la versión y la fecha de actualización y que tenga un desplegable predeterminado cerrado".
 // Y el mismo día: "que ponga fecha de cada modificación y haya una barrita para scrollear y que
@@ -2383,6 +2383,7 @@ const APP_VERSION='20.91';
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'20.92',f:'29/09/2026',h:'19:20',c:[{n:2,t:'La app se actualiza sola: busca versión nueva cada 2 minutos y se recarga al instante. Si estás escribiendo, espera a que termines; si pasan 3 minutos, tapa la pantalla y sólo deja actualizar. Ya no se puede seguir usando una versión vieja.'}]},
   {v:'20.91',f:'29/09/2026',h:'19:00',c:[{n:1,t:'Revisión del panel: una etapa que nunca se hizo (hoy, Diseño) aparece como "Toca" ya, sin esperar la semana.'}]},
   {v:'20.90',f:'29/09/2026',h:'18:45',c:[{n:1,t:'Revisión del panel: nueva etapa 7 · Diseño. Mira la web pantalla por pantalla (sobre todo en el teléfono) y propone cómo hacerla más cómoda, sencilla y linda. Sólo propone: vos elegís.'}]},
   {v:'20.89',f:'30/09/2026',h:'18:30',c:[{n:1,t:'Inicio: "Monotributo · cómo vendés vs AFIP" se mudó a la tarjeta ⚖️ de las 4 cuentas. Arriba de la tarjeta hay dos botones para cambiar entre el tope de H (lo que viene) y el monotributo de hoy; recuerda cuál elegiste.'}]},
@@ -2574,10 +2575,26 @@ function _vigilarVersion(){
     // estás escribiendo en ninguna casilla. Y al volver a la app se pregunta si hay versión nueva.
     // Etapa final: tampoco con algo por guardar (una casilla que se guarda 0,9 s después, o pendiente de la base).
     const _porGuardar=()=>Object.keys(_finPending||{}).length||Object.keys(_invPending||{}).length;
-    const recargar=()=>{if(!_hayVersionNueva||document.visibilityState!=='visible'||(typeof isEditing==='function'&&isEditing()))return;if(_porGuardar()){setTimeout(recargar,2000);return;}location.reload();};
-    const marcar=()=>{_hayVersionNueva=true;_pintarVersion();setTimeout(recargar,1500);};
-    document.addEventListener('visibilitychange',()=>{if(document.visibilityState!=='visible')return;reg.update().catch(()=>{});recargar();});
-    setInterval(()=>{reg.update().catch(()=>{});recargar();},30*60*1000);
+    // 29/09/2026, él: "que no se pueda usar una versión antigua". Se busca versión nueva cada 2 minutos
+    // (sólo con la app a la vista: sw.js pesa 1 KB) y al volver a la app o a internet. Si hay una nueva:
+    // se recarga sola al instante; si justo estás escribiendo o hay algo por guardar, espera a que termines
+    // y, a los 3 minutos, tapa la pantalla con un cartel que sólo deja actualizar.
+    let _nuevaDesde=0,_tapada=false;
+    const tapar=()=>{if(_tapada)return;_tapada=true;const d=document.createElement('div');d.id='cyc-version-vieja';
+      d.style.cssText='position:fixed;inset:0;z-index:99999;background:rgba(0,0,0,.72);display:flex;align-items:center;justify-content:center;padding:16px';
+      d.innerHTML='<div style="max-width:360px;background:var(--card,#fff);color:var(--text,#111);border:1px solid var(--amber,#f59e0b);border-radius:14px;padding:18px;text-align:center;font-size:.9rem;line-height:1.5"><div style="font-size:1.6rem">🔄</div><b>Hay una versión nueva de CYC</b><br><span style="color:var(--muted,#666);font-size:.8rem">Esta pantalla quedó vieja y ya no se puede usar.</span><br><button style="margin-top:12px;padding:12px 20px;font-size:.95rem;border-radius:10px;border:0;background:var(--amber,#f59e0b);color:#111;font-weight:700">Actualizar ahora</button></div>';
+      d.querySelector('button').onclick=()=>location.reload();document.body.appendChild(d);};
+    const recargar=()=>{if(!_hayVersionNueva||document.visibilityState!=='visible')return;
+      const ocupado=(typeof isEditing==='function'&&isEditing())||_porGuardar();
+      if(!ocupado){location.reload();return;}
+      if(Date.now()-_nuevaDesde>3*60*1000&&!_porGuardar()){tapar();return;}
+      setTimeout(recargar,2000);};
+    const marcar=()=>{if(!_hayVersionNueva)_nuevaDesde=Date.now();_hayVersionNueva=true;_pintarVersion();setTimeout(recargar,800);};
+    const buscar=()=>{reg.update().catch(()=>{});recargar();};
+    document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible')buscar();});
+    window.addEventListener('online',buscar);window.addEventListener('focus',buscar);
+    document.addEventListener('focusout',()=>setTimeout(recargar,300));
+    setInterval(()=>{if(document.visibilityState==='visible')buscar();},2*60*1000);
     if(reg.waiting&&navigator.serviceWorker.controller)marcar();
     reg.addEventListener('updatefound',()=>{
       const nuevo=reg.installing;if(!nuevo)return;
