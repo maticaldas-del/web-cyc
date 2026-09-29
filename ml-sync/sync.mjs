@@ -5460,19 +5460,35 @@ async function resolveTgChat(db) {
       const c = m.chat; const id = c && c.id;
       if (id && !chats[String(id)]) {
         const nm = ((c.first_name || c.title || '') + (c.last_name ? ' ' + c.last_name : '')).trim();
-        const entrada = { name: nm, ts: Date.now() };
+        // Decisión suya del 30/09/2026, eligió la (a): un chat NUEVO queda PENDIENTE y no recibe nada
+        // hasta que él diga "aprobalo" (`tgaprobar`). Antes cualquiera que le escribiera al bot pasaba
+        // a recibir el resumen del día con la plata del negocio. Los que ya estaban no se tocan.
+        const entrada = { name: nm, ts: Date.now(), pendiente: true };
         chats[String(id)] = entrada; nuevos[String(id)] = entrada;
-        console.log('✓ Telegram: nuevo suscriptor', _tgMask(id, nm)); // registro público: sin nombre ni número entero
+        console.log('⏸ Telegram: chat nuevo PENDIENTE (no recibe nada hasta aprobarlo)', _tgMask(id, nm)); // registro público: sin nombre ni número entero
       }
     }
   }
   // Sólo los nuevos, y sólo si la lectura anduvo. Con patch los que ya estaban quedan intactos.
+  let nuevosGuardados = false;
   if (leyoBien && Object.keys(nuevos).length) {
-    try { await db.patch('mlapi/telegram/chats', nuevos); } catch { /* */ }
+    try { await db.patch('mlapi/telegram/chats', nuevos); nuevosGuardados = true; } catch { /* */ }
   }
   // El canal privado de avisos se saca de la lista general (ver arriba por qué).
   try { TG_ALERTAS = String(((await db.get('cyc/mlconfig')) || {}).tgAlertas || ''); } catch { TG_ALERTAS = ''; }
-  TG_CHATS = Object.keys(chats).filter((id) => !TG_ALERTAS || id !== TG_ALERTAS);
+  TG_CHATS = Object.keys(chats).filter((id) => (!TG_ALERTAS || id !== TG_ALERTAS) && !(chats[id] && chats[id].pendiente));
+  const pendientes = Object.keys(chats).filter((id) => chats[id] && chats[id].pendiente && id !== TG_ALERTAS);
+  if (pendientes.length) console.log(`Telegram: ${pendientes.length} chat(s) PENDIENTE(S) de aprobar · ${pendientes.map((id) => _tgMask(id, (chats[id] || {}).name)).join(' · ')} · se aprueba con tgaprobar:<últimos números>:go`);
+  // Aviso al canal privado, una sola vez por chat nuevo (sólo cuando se acaba de guardar).
+  if (nuevosGuardados) {
+    const ids = Object.keys(nuevos).filter((id) => id !== TG_ALERTAS);
+    if (ids.length) {
+      const esc = (t) => String(t || '').replace(/&/g, '&amp;').replace(/</g, '&lt;');
+      const txt = `🔐 <b>Alguien nuevo le escribió al bot</b>\n` + ids.map((id) => `· ${esc((nuevos[id] || {}).name) || '(sin nombre)'} · chat …${id.slice(-3)}`).join('\n')
+        + `\n<i>No recibe NADA hasta que me digas "aprobalo". Si no lo conocés, no hagas nada.</i>`;
+      try { await sendAlerta(txt); } catch (e) { console.log('Telegram: no pude avisar del chat nuevo: ' + e.message); }
+    }
+  }
   TG_NAMES = {}; for (const [id, v] of Object.entries(chats)) TG_NAMES[id] = (v && v.name) || '';
   if (!TG_CHAT && TG_CHATS.length) TG_CHAT = TG_CHATS[0];
   // Que el número quede SIEMPRE en el log: así, si un día alguien desaparece, se ve en la corrida
@@ -9210,6 +9226,39 @@ async function main() {
       else { console.log('❌❌ NO PUDE MANDAR EL AVISO DE LOS PASOS FALLADOS — nadie se entera por Telegram. Pasos: ' + fl.join(' · ')); process.exitCode = 1; }
       return;
     }
+    // BILLING_PROBE=tgaprobar:<últimos números del chat>[:go] → deja que un chat PENDIENTE reciba el
+    // resumen del día. `tgaprobar:-<números>:go` lo borra de la lista. Sin `:go` sólo muestra.
+    // Decisión suya del 30/09/2026: los chats nuevos no reciben nada hasta que él diga "aprobalo".
+    // Se busca por el FINAL del número (el registro público muestra sólo los últimos 3) y tiene que
+    // agarrar UNO solo: aprobar al equivocado le mandaría la plata del negocio a un desconocido.
+    if (/^tgaprobar(:|$)/.test(String(process.env.BILLING_PROBE || ''))) {
+      const partes = String(process.env.BILLING_PROBE).split(':').slice(1);
+      const go = partes.includes('go');
+      let arg = (partes.filter((x) => x !== 'go')[0] || '').trim();
+      const borrar = arg.startsWith('-') && arg.length > 1 && !/^-\d{8,}$/.test(arg) ? (arg = arg.slice(1), true) : false;
+      const guardados = (await db.get('mlapi/telegram/chats')) || {};
+      const pend = Object.keys(guardados).filter((id) => guardados[id] && guardados[id].pendiente);
+      console.log('=== CHATS DE TELEGRAM PENDIENTES DE APROBAR ===\n');
+      if (!arg) {
+        if (!pend.length) console.log('No hay ninguno pendiente.');
+        for (const id of pend) console.log(`  · ${_tgMask(id, guardados[id].name)} · desde ${guardados[id].ts ? new Date(guardados[id].ts).toISOString().slice(0, 10) : '?'}`);
+        console.log('\nPara aprobar: tgaprobar:<últimos números>:go · para borrar: tgaprobar:-<últimos números>:go');
+        return;
+      }
+      if (!/^-?\d+$/.test(arg)) { console.log(`✗ "${arg}" no son números.`); process.exitCode = 1; return; }
+      const cands = (borrar ? Object.keys(guardados) : pend).filter((id) => id.endsWith(arg));
+      if (cands.length !== 1) { console.log(`✗ "${arg}" agarra ${cands.length} chat(s)${cands.length ? ': ' + cands.map((id) => _tgMask(id, guardados[id].name)).join(' · ') : ''}. Tiene que ser uno solo: poné más números.`); process.exitCode = 1; return; }
+      const id = cands[0];
+      console.log(`${borrar ? 'BORRAR' : 'APROBAR'}: ${_tgMask(id, guardados[id].name)}`);
+      if (!go) { console.log('(prueba: agregá :go para hacerlo)'); return; }
+      if (borrar) await db.set('mlapi/telegram/chats/' + id, null);
+      else await db.patch('mlapi/telegram/chats/' + id, { pendiente: null, aprobadoTs: Date.now() });
+      const rel = await db.get('mlapi/telegram/chats/' + id);
+      const okx = borrar ? !rel : (rel && !rel.pendiente);
+      console.log(okx ? `✓ ${borrar ? 'borrado' : 'aprobado: desde la próxima vuelta recibe el resumen del día'} (releído)` : '✗ no quedó: revisar');
+      if (!okx) process.exitCode = 1;
+      return;
+    }
     // BILLING_PROBE=tgchats → QUIÉN RECIBE LOS AVISOS DE TELEGRAM. Sólo lee, no manda nada.
     //
     // Existe porque el 27/08/2026 el padre de Mati llevaba cinco días sin recibir los resúmenes y no
@@ -9230,7 +9279,7 @@ async function main() {
       for (const id of ids) {
         const v = guardados[id] || {};
         const alta = v.ts ? new Date(v.ts).toISOString().slice(0, 10) : '(sin fecha)';
-        console.log(`  · ${id}${v.name ? ' — ' + v.name : ''} · desde ${alta}`);
+        console.log(`  · ${_tgMask(id, v.name)} · desde ${alta}${v.pendiente ? ' · ⏸ PENDIENTE (no recibe nada hasta tgaprobar)' : ''}`);
       }
       console.log('\nSi falta alguien: que le mande un "hola" al bot y vuelve solo en la próxima vuelta.');
       console.log('Para mandar un mensaje de prueba a TODOS: telegram_test=1 (ojo, les llega a los cuatro).');

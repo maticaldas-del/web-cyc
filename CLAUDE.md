@@ -535,8 +535,12 @@ varios aparatos · robot contra sí mismo); notas en el scratchpad `etapa4/*.md`
  · **Web:** listener caído = punto rojo + cartel · `unhandledrejection` avisa · Arqueo/`setQ`/oficina/ancla que no se
    guardan avisan y vuelven al valor de la base (`_finFalla`, `_invFalla`) · cerrar caja dice si el envío NO se achicó ·
    margen >48 h, caja >24 h y visitas viejas en ámbar a la vista (`margenViejoDe`) · "¿Cierra el mes?" sin dólar no opina.
- · **Para decidir con él:** (1) Telegram: hoy cualquiera que le escriba al bot recibe el resumen — propuesta (a) chats
-   nuevos "pendientes" hasta que él apruebe · (2) `calcPrueba` 🧪: días sin registro de stock cuentan como con stock.
+ · **(1) Telegram · HECHO el 30/09, eligió la (a):** un chat nuevo que le escribe al bot queda `pendiente:true` en
+   `mlapi/telegram/chats` y NO recibe nada; al canal privado llega "🔐 Alguien nuevo le escribió al bot". Se aprueba con
+   **`tgaprobar:<últimos números>:go`** (tiene que agarrar uno solo; `tgaprobar:-<números>:go` lo borra; sin args lista
+   los pendientes). Va por ml-sync (ml-consulta no escribe ahí). Los que ya estaban no se tocaron. `tgchats` ya no
+   imprime nombres ni números enteros.
+ · **Para decidir con él:** (2) `calcPrueba` 🧪: días sin registro de stock cuentan como con stock.
 
 ### LA REVISIÓN COMPLETA FINAL · 30/09/2026 · v20.88 `cyc-v366` · CERRADA
 Pedido suyo: *"hace la revision completa final"*. Seis revisores (precios · plata · mercadería · ventas · corridas y
