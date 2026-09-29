@@ -2342,7 +2342,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='20.79';
+const APP_VERSION='20.80';
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
 // muestre la versión y la fecha de actualización y que tenga un desplegable predeterminado cerrado".
 // Y el mismo día: "que ponga fecha de cada modificación y haya una barrita para scrollear y que
@@ -2353,6 +2353,7 @@ const APP_VERSION='20.79';
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'20.80',f:'29/09/2026',h:'11:15',c:[{n:3,t:'El resumen de ventas por Telegram (el del día y el del mes) calcula la ganancia igual que el panel: costo guardado del mes, dólar del mes y monotributo de ese mes. Antes usaba el costo y el dólar del día de cada venta y daba un número distinto al de la web.'},{n:1,t:'Etapa 2 (plata) de la revisión: cerrada.'}]},
   {v:'20.79',f:'29/09/2026',h:'10:30',c:[{n:3,t:'Arqueo: lo vendido después del último reporte de Mercado Pago ya suma al patrimonio y al efectivo (antes quedaba US$ 330-660 abajo durante el día). Se ve abajo de "A liquidar en ML" como "Vendido, todavía no en el reporte", cuenta por cuenta contra la fecha de su reporte; empieza a salir después de la corrida de esta noche.'}]},
   {v:'20.78',f:'28/09/2026',h:'21:30',c:[{n:3,t:'Etapa 2 (plata): cargar el disponible de una cuenta saca de "A liquidar" lo que MP ya liberó de esa cuenta (antes se contaba dos veces hasta la noche).'},{n:3,t:'Un mes ya terminado sin dólar cargado ni cierre usa el promedio del dólar de sus ventas, no el de hoy: la ganancia de agosto ya no cambia cuando se mueve el dólar.'},{n:3,t:'El monotributo de cada mes queda congelado al cerrarse: la ganancia de un mes viejo ya no se mueve sola cuando el robot recalcula el %.'},{n:3,t:'Borrar el retiro para reescribirlo ya no lo deja en $0 (la ganancia del mes subía $1.800.000 de mentira): la casilla vacía queda como sin cargar.'},{n:3,t:'Un disponible negativo de Mercado Pago ya no se suma como positivo en el patrimonio.'},{n:2,t:'Mirando un mes cerrado ya no salen las fechas y avisos de hoy; la tarjeta "En camino" muestra lo que iba en camino ese mes; comparar meses ya no cuenta dos veces la oficina.'},{n:2,t:'La Cascada dice el monotributo con el % de cada mes, no el de hoy.'},{n:3,t:'Robot: el dólar ya no se carga solo si salta más de 15% (o más de 5% con una sola fuente), avisa. "A liquidar" no se calcula con un reporte corto; "reporte hasta" ya no sale un día corrido; el recargo de Paraguay se mide con el dólar del día del pedido; el resumen del mes por Telegram usa el mismo % de ganancia que el panel.'}]},
   {v:'20.77',f:'28/09/2026',h:'21:12',c:[{n:3,t:'Prueba de suba 🧪 +5% (lo que elegiste, la b): pasados los 14 días sólo vuelve a subir si después de la suba vendió igual o más unidades por día que antes, contando sólo los días con stock. Si cayó 20% o más, la prueba se cierra y te avisa por la noche. Si cayó menos, no sube y se sigue mirando. Con menos de 7 días con stock de algún lado, espera.'},{n:1,t:'Etapa 1 (precios) cerrada en el cartel de revisión.'}]},
@@ -3209,13 +3210,12 @@ const REV_CADA_DIAS=7;
 //   · REV_HECHAS    → última vez que cada etapa quedó resuelta. Sin pendientes, el cartel pide la
 //                     etapa más vieja cuando pasaron REV_CADA_DIAS desde la última.
 const REV_PENDIENTE=[
-    {t:'Etapa 2: decidir 1 cosa de plata',que:'con qué costo y dólar mide la ganancia el resumen de Telegram (el de la web o el del día de cada venta)',pedi:'etapa 2'},
     {t:'La segunda revisión completa, al final',que:'la que pediste dejar para cuando esté todo lo demás · va última',pedi:'revisión completa',ultima:true},
 ];
 // Choques (4) y fallas mudas/privacidad (5): verificadas las 15 del 26/09 de madrugada (rev4, lotes 6-8) y
 // todas arregladas o ya estaban; antes pasaron por la 2ª vuelta del 25/09. El cartel decía "15 sin verificar"
 // por una nota vieja.
-const REV_HECHAS={1:'2026-09-28',2:'2026-09-26',3:'2026-09-26',4:'2026-09-26',5:'2026-09-26',6:'2026-09-27'};
+const REV_HECHAS={1:'2026-09-28',2:'2026-09-29',3:'2026-09-26',4:'2026-09-26',5:'2026-09-26',6:'2026-09-27'};
 function _revFecha(iso){const d=new Date(iso+'T12:00:00');return isNaN(d)?null:d;}
 function _revFmt(d){return ['dom','lun','mar','mié','jue','vie','sáb'][d.getDay()]+' '+String(d.getDate()).padStart(2,'0')+'/'+String(d.getMonth()+1).padStart(2,'0');}
 function revProxima(){

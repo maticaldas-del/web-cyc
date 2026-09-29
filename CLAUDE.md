@@ -444,9 +444,10 @@ con signo) · mes cerrado sin fechas/avisos de hoy (`_finMirandoCierre`), tarjet
 **A1 · HECHO el 29/09, eligió la (a) (v20.79 · `cyc-v357`):** `saldoml` guarda el fin del reporte de CADA cuenta en
 `agenda._repHastaCta`; la web (`vendidoSinReporte`) suma al patrimonio y al efectivo el NETO de las ventas no canceladas
 posteriores a ese día en esa cuenta, y lo muestra abajo de "A liquidar" (`vsr_linea`). Sin el fin por cuenta no suma nada
-(con el más viejo se contaría dos veces). **FALTA SU DECISIÓN (en REV_PENDIENTE):** D4 el resumen de Telegram usa el costo y dólar del día de cada venta
-y la web el costo congelado del mes y el dólar del mes: (a) que el robot use la regla de la web · (b) aclararlo.
-B3b (pedir el reporte al principio de saldoml y esperar) quedó sin proponer: alarga la corrida.
+(con el más viejo se contaría dos veces). **D4 · HECHO el 29/09, eligió la (a) (v20.80 · `cyc-v358`):** el resumen de Telegram (día y mes) usa `armarCostoWeb`
+(sync.mjs), copia paso por paso de `_efectivoCostoVP`/`ventaSinCostoVP`/`gestDeVenta`/`monoPct`/`tcForYM` de la web: costo del mes
+(`precios_hist_prod`), dólar del mes, monotributo del mes, envío de Full si el neto es estimado. Probado contra las funciones REALES de
+la web: mismos pesos en 5 casos. **Si se toca una, se toca la otra.** **ETAPA 2 CERRADA (REV_HECHAS 29/09).** B3b (pedir el reporte al principio de saldoml y esperar) quedó sin proponer: alarga la corrida.
 
 ### EL PUNTAJE DEL MES: REHACERLO, PERO DESPUÉS (26/09/2026)
 Él, con la captura del Puntaje (7,2 · "Buen mes"): *"no veo cuál es el objetivo de ganancia de CYC y para mí es medio

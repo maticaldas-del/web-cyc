@@ -180,6 +180,83 @@ function costoPesos(p, qty, tc) {
   return { costo: Math.round(fullUSD * tc * qty), costBaseUSD: costUSD, shipUSD };
 }
 
+// ── EL COSTO DE UNA VENTA CON LA REGLA DE LA WEB (etapa 2 · D4, 29/09/2026, eligió la a) ──
+// El resumen de Telegram usaba `v.costo` (el costo de la ficha y el dólar DEL DÍA de esa venta) y
+// la web usa el costo congelado del MES (`precios_hist_prod`, si no el de hoy) × el dólar del MES
+// (`tc_mes` → cierre → promedio de las ventas del mes terminado → el de hoy). Dos números para la
+// misma ganancia. Esto es la copia de `_efectivoCostoVP` / `ventaSinCostoVP` / `gestDeVenta` /
+// `monoPct` / `tcForYM` de index.html, paso por paso: si se toca una, se toca la otra.
+// Devuelve { costo, sinCosto, gest }: `costo` con los impuestos y, si el neto es estimado, el envío
+// de Full adentro (igual que `efectivoCostoVP`); `gest` es el envío de Full para el divisor del %.
+async function armarCostoWeb(db, vp) {
+  const prods = {}, porNombre = {};
+  const nrm = (t) => String(t || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim();
+  for (const p of Object.values((await db.get('cyc/products')) || {})) {
+    if (!p || !p.id) continue; prods[p.id] = p; if (p.name) porNombre[nrm(p.name)] = p;
+  }
+  const hist = (await db.get('cyc/precios_hist_prod')) || {};
+  const tcMes = (await db.get('cyc/tc_mes')) || {};
+  const snaps = (await db.get('cyc/snapshots')) || {};
+  const tcHoy = parseFloat((await db.get('cyc/finanzas/tipo_cambio')) || 0) || 0;
+  const mono = (await db.get('cyc/monotributo')) || {};
+  const nAR = new Date(Date.now() - 3 * 36e5);
+  const curYM = `${nAR.getUTCFullYear()}_${String(nAR.getUTCMonth() + 1).padStart(2, '0')}`;
+  const tcVentasCache = {};
+  const tcVentasMes = (ym) => {
+    if (tcVentasCache[ym] != null) return tcVentasCache[ym];
+    let s = 0, n = 0;
+    for (const [dk, o] of Object.entries(vp || {})) {
+      if (!String(dk).startsWith(ym + '_')) continue;
+      for (const v of Object.values(o || {})) { const t = parseFloat(v && v.tcSale); if (t > 0) { s += t; n++; } }
+    }
+    return (tcVentasCache[ym] = n ? Math.round(s / n * 100) / 100 : 0);
+  };
+  const tcForYM = (ym) => {
+    const m = tcMes[ym];
+    if (m != null && m !== '' && !isNaN(parseFloat(m))) return parseFloat(m);
+    const sn = snaps[ym]; if (sn && sn.tipoCambio) return parseFloat(sn.tipoCambio);
+    const t = ym < curYM ? tcVentasMes(ym) : 0;
+    return t > 0 ? t : tcHoy;
+  };
+  const monoVig = () => { const v = parseFloat(mono.pct); return isFinite(v) && v > 0 ? v : 0; };
+  const monoPct = (ym) => {
+    const h = mono.hist; if (!ym || !h) return monoVig();
+    if (h[ym] != null) { const v = parseFloat(h[ym]); if (isFinite(v) && v >= 0) return v; }
+    const ks = Object.keys(h).sort();
+    if (ks.length && ym > ks[ks.length - 1]) return monoVig();
+    const antes = ks.filter((x) => x <= ym);
+    if (antes.length) { const v = parseFloat(h[antes[antes.length - 1]]); if (isFinite(v) && v >= 0) return v; }
+    if (ks.length) { const v = parseFloat(h[ks[0]]); if (isFinite(v) && v >= 0) return v; }
+    return monoVig();
+  };
+  const prodDe = (v) => (v && v.prodId && prods[v.prodId]) || porNombre[nrm(v && v.prod)] || null;
+  const gestDe = (v, p) => {
+    if (!p) return 0;
+    const q = v.qty || 1, pu = (Number(v.total) || 0) / q;
+    if (pu > 0 && pu < UMBRAL_ENVIO_GRATIS) return 0;
+    const g = Number(p.netoCalcEnvio) > 0 ? Number(p.netoCalcEnvio) : (Number(p.gestFull) || 0);
+    return g > 0 ? g * q : 0;
+  };
+  return (v, dk) => {
+    if (!v || v.cancelada) return { costo: 0, sinCosto: false, gest: 0 };
+    const ym = String(dk || '').slice(0, 7);
+    const p = prodDe(v);
+    const imp = (Number(v.total) || 0) * (mlExtraPct(v.cuenta) + monoPct(ym)) / 100;
+    const gest = gestDe(v, p);
+    let c;
+    const baseUSD = p ? (hist[ym] && hist[ym][p.id] != null ? parseFloat(hist[ym][p.id]) || 0 : (parseFloat(p.costUSD) || 0)) : 0;
+    const ship = p ? (parseFloat(p.shipUSD) || 0) : 0;
+    if (!p || (!baseUSD && !ship)) c = (Number(v.costo) || 0) + imp;
+    else {
+      const dev = DEV_LIVE[p.id] || 0;
+      c = (baseUSD * (1 + dev / 100) + ship) * tcForYM(ym) * (v.qty || 1) + imp;
+    }
+    if (v.netoEstimado) c += gest;
+    const sinCosto = !(Number(v.costo) > 0) && (!p || (!(baseUSD > 0) && !(ship > 0)));
+    return { costo: c, sinCosto, gest };
+  };
+}
+
 // ── CUANDO ML NO DEJA ESCRIBIR, EL ROBOT TIENE QUE GRITARLO (19/09/2026) ───────────────────
 // Salió del peor modo posible: él pidió bajar la Pad 2 a mano, ML contestó 403 con
 // `PA_UNAUTHORIZED_RESULT_FROM_POLICIES` / `blocked_by: PolicyAgent`, y al medirlo apareció que
@@ -6304,17 +6381,12 @@ async function main() {
     // Los impuestos van al COSTO, igual que en la web. Sin esto el resumen inflaba la ganancia:
     // mostraba $224.643 donde la web decía $162.813, porque no descontaba IIBB ni monotributo
     // (juntos pesan ~5,6% de lo facturado).
-    const monoPctDia = parseFloat(((await db.get('cyc/monotributo')) || {}).pct) || 0;
-    const impDe = (v) => ((v.total || 0) * (mlExtraPct(v.cuenta) + monoPctDia) / 100);
+    // Etapa 2 · D4 (29/09): el costo sale de `armarCostoWeb`, la MISMA regla que la web (costo del mes
+    // y dólar del mes, impuestos con el monotributo de ese mes, envío de Full si el neto es estimado).
+    const costoWeb = await armarCostoWeb(db, vp);
     let n = 0, fact = 0, gan = 0, sinCostoN = 0, sinCostoFact = 0, estN = 0;
-    // Revisión max #15 (26/09/2026, eligió la a): una venta con neto ESTIMADO (MP todavía no la
-    // liquidó) no trae restado el envío de Full: arriba de los $33.000 se le resta el peor envío
-    // medido, y el mensaje dice cuántas son aproximadas.
-    const ajEst = (v) => {
-      if (!v.netoEstimado) return 0;
-      const q = v.qty || 1, pu = (v.total || 0) / q;
-      return pu >= UMBRAL_ENVIO_GRATIS ? CAND_ENVIO_ARRIBA * q : 0;
-    };
+    // Revisión max #15: una venta con neto ESTIMADO no trae restado el envío de Full; `armarCostoWeb`
+    // se lo suma al costo (el de la ficha, igual que la web) y el mensaje dice cuántas son aproximadas.
     const byProd = {};   // producto -> unidades
     const ganProd = {};  // producto -> ganancia en $
     for (const v of Object.values(day)) {
@@ -6323,9 +6395,10 @@ async function main() {
       fact += v.total || 0;
       // Revisión max #10 (26/09/2026, eligió la a): una venta SIN costo (sin ficha o ficha en 0)
       // cuenta en lo facturado pero NO en la ganancia: sumarla metía el neto entero como ganado.
-      if (!(Number(v.costo) > 0)) { sinCostoN += v.qty || 0; sinCostoFact += v.total || 0; continue; }
+      const cw = costoWeb(v, today);
+      if (cw.sinCosto) { sinCostoN += v.qty || 0; sinCostoFact += v.total || 0; continue; }
       if (v.netoEstimado) estN++;
-      const g = (v.neto || 0) - (v.costo || 0) - impDe(v) - ajEst(v);
+      const g = (v.neto || 0) - cw.costo;
       gan += g;
       const k = v.prod || '?';
       byProd[k] = (byProd[k] || 0) + (v.qty || 0);
@@ -6424,15 +6497,6 @@ async function main() {
         // Etapa 2 (28/09): el % del mes es el MISMO que el del panel (regla suya del 22/09, "un solo
         // %"): ganancia ÷ (mercadería + IIBB/mono + envío de Full). Antes era "% del facturado", que
         // para el mismo mes daba ~17% contra ~33% de la pantalla. El envío es el de `gestDeVenta`.
-        let pIdxM = {};
-        try { for (const p of Object.values((await db.get('cyc/products')) || {})) if (p && p.id) pIdxM[p.id] = p; } catch { pIdxM = {}; }
-        const gestM = (v) => {
-          const q = v.qty || 1, pu = (Number(v.total) || 0) / q;
-          if (pu > 0 && pu < UMBRAL_ENVIO_GRATIS) return 0;
-          const p = pIdxM[v.prodId]; if (!p) return 0;
-          const g = Number(p.netoCalcEnvio) > 0 ? Number(p.netoCalcEnvio) : (Number(p.gestFull) || 0);
-          return g > 0 ? g * q : 0;
-        };
         const mProd = {}, mCuenta = {};
         // revisión max (rev4): las canceladas se cuentan por CANTIDAD. El robot y la web ponen total 0
         // al cancelar, así que sumar pesos daba siempre 0 y el renglón no salía nunca.
@@ -6446,11 +6510,13 @@ async function main() {
             huboVenta = true;
             mN += v.qty || 0;
             mFact += v.total || 0;
-            if (!(Number(v.costo) > 0)) { mSinN += v.qty || 0; mSinFact += v.total || 0; mCuenta[v.cuenta || '?'] = (mCuenta[v.cuenta || '?'] || 0) + (v.total || 0); continue; }
+            const cw = costoWeb(v, dk);
+            if (cw.sinCosto) { mSinN += v.qty || 0; mSinFact += v.total || 0; mCuenta[v.cuenta || '?'] = (mCuenta[v.cuenta || '?'] || 0) + (v.total || 0); continue; }
             mFactCon += v.total || 0;
-            const g = (v.neto || 0) - (v.costo || 0) - impDe(v) - ajEst(v);
+            const g = (v.neto || 0) - cw.costo;
             mGan += g;
-            mBase += (v.costo || 0) + impDe(v) + gestM(v);
+            // Divisor del %: costo SIN el envío de las estimadas + envío de Full (pctGananciaVP de la web).
+            mBase += cw.costo - (v.netoEstimado ? cw.gest : 0) + cw.gest;
             mProd[v.prod || '?'] = (mProd[v.prod || '?'] || 0) + g;
             mCuenta[v.cuenta || '?'] = (mCuenta[v.cuenta || '?'] || 0) + (v.total || 0);
           }
