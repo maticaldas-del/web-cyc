@@ -1115,6 +1115,41 @@ async function cajasQueLlegaron(db, accounts, labels, products, DRY) {
     const antesDeLaSig = calc.every((u) => tsDe(u) < sigDe(u.k.split('|')[1]));
     if (mb.aCalcular && !ciegoMb && esperado > 0 && usado === esperado && antesDeLaSig) mb.calc = calc;
   }
+  // ── LO QUE LLEGA TARDE DE UNA CAJA MARCADA CON FALTANTES VUELVE A ESA CAJA (etapa 3, A1, 29/09/2026,
+  // eligió la a) ── Una caja que el robot marcó "llegó, faltaron N" no volvía a mirar lo que ML daba de
+  // alta después: esas unidades quedaban libres y se las llevaba la caja SIGUIENTE del mismo producto,
+  // que podía darse por llegada con su mercadería todavía en el camión. Ahora, antes de repartir entre
+  // las abiertas, cada caja marcada por el robot con faltantes (hace 60 días o menos) toma lo libre
+  // posterior a su despacho hasta tapar lo que le faltaba, de la más vieja a la más nueva — el mismo
+  // orden de siempre. Las marcadas a mano no: ahí el faltante lo confirmó él con ML.
+  const rellenos = [];
+  for (const mb of marcadasAntes) {
+    if (!mb.c.recAuto || !Array.isArray(mb.c.recUsadas) || !Array.isArray(mb.c.faltan) || !mb.c.faltan.length) continue;
+    const recF = String(mb.c.recFecha || '');
+    if (!recF || recF < limMano) continue;
+    if (!porCta[mb.e.cuenta]) continue;
+    const desdeMb = Date.parse((mb.fecha || '1970-01-01') + 'T00:00:00-03:00') || 0;
+    const extra = [], faltanN = [];
+    for (const f of mb.c.faltan) {
+      if (!f || !f.prodId) continue;
+      const pide = Number(f.pide) || 0;
+      const falta = Math.max(0, pide - (Number(f.llego) || 0));
+      const k1 = kR(mb.e.cuenta, f.prodId, f.variante || '');
+      let q = 0;
+      if (falta > 0 && !sinLeer[k1] && !sinLeerProd[mb.e.cuenta + '|' + f.prodId]) {
+        let queda = falta;
+        for (const e of (recEnt[k1] || [])) {
+          if (queda <= 0) break;
+          if (e.ts < desdeMb || e.left <= 0) continue;
+          const t = Math.min(queda, e.left); e.left -= t; queda -= t; q += t;
+          extra.push({ k: k1, op: e.op, q: t });
+        }
+      }
+      const llego = (Number(f.llego) || 0) + q;
+      if (llego < pide) faltanN.push({ ...f, llego });
+    }
+    if (extra.length) rellenos.push({ mb, extra, faltanN: faltanN.length ? faltanN : null });
+  }
   // Foto de lo libre ANTES de repartir entre las abiertas: la usa `cajasentrado`, más abajo, que hace
   // el mismo recorrido por su cuenta.
   const libreBase = {};
@@ -1265,7 +1300,40 @@ async function cajasQueLlegaron(db, accounts, labels, products, DRY) {
       }
     }
   }
-  if (!marcadas.length) return { marcadas: [], mirados, msg: null, detalle, manoGuardadas, tiposVistos, opsTotal, fallos, erroresOp, sinCantidad, recEnt, enProceso, abiertas: abiertas.length, descontadas };
+  // Escribir lo que se les devolvió a las cajas con faltantes (A1, arriba). Lista FRESCA, la caja
+  // buscada por seguimiento + contenido, y sólo si sigue marcada por el robot con los MISMOS faltantes.
+  let rellenadas = 0;
+  if (rellenos.length) {
+    console.log(`↩️ ${rellenos.length} caja(s) marcada(s) con faltantes recibieron lo que llegó tarde${DRY ? ' (prueba: no se escribe)' : ''} → `
+      + rellenos.map((r) => `${r.mb.e.cuenta} ${r.mb.fecha}${r.mb.c.track ? ' (' + r.mb.c.track + ')' : ''}: +${r.extra.reduce((a, x) => a + x.q, 0)} u.${r.faltanN ? '' : ' · ya quedó completa'}`).join(' · '));
+    if (!DRY) {
+      const porEnvR = {};
+      for (const r of rellenos) (porEnvR[r.mb.id] = porEnvR[r.mb.id] || []).push(r);
+      for (const [id, rs] of Object.entries(porEnvR)) {
+        try {
+          const fresca = await db.get('cyc/envios_full/' + id + '/cajasDet');
+          if (!Array.isArray(fresca)) continue;
+          const arr = fresca.slice(); let cambio = false;
+          for (const r of rs) {
+            const mb = r.mb, tr = String(mb.c.track || ''), fi = firmaCajaMano(mb.c);
+            const cand = [];
+            arr.forEach((c, j) => { if (c && String(c.track || '') === tr && firmaCajaMano(c) === fi) cand.push(j); });
+            const j = cand.includes(mb.i) ? mb.i : (cand.length === 1 ? cand[0] : -1);
+            if (j < 0 || !arr[j].recibida || !arr[j].recAuto || !Array.isArray(arr[j].recUsadas)
+              || String(arr[j].recFecha || '') !== String(mb.c.recFecha || '')
+              || JSON.stringify(arr[j].faltan || null) !== JSON.stringify(mb.c.faltan || null)) {
+              console.log(`ℹ️ la caja ${tr || '(sin seguimiento)'} del envío ${id} cambió mientras corría la vuelta: no se le devuelve nada`);
+              continue;
+            }
+            arr[j] = { ...arr[j], faltan: r.faltanN, recUsadas: [...arr[j].recUsadas, ...r.extra] };
+            cambio = true; rellenadas++;
+          }
+          if (cambio) await db.set('cyc/envios_full/' + id + '/cajasDet', arr);
+        } catch (eR) { console.log(`⚠️ no pude devolverle lo que llegó tarde a las cajas del envío ${id}: ${(eR && eR.message) || eR}`); }
+      }
+    }
+  }
+  if (!marcadas.length) return { marcadas: [], mirados, msg: null, detalle, manoGuardadas, rellenadas, tiposVistos, opsTotal, fallos, erroresOp, sinCantidad, recEnt, enProceso, abiertas: abiertas.length, descontadas };
   // Las que de verdad quedaron escritas (en prueba, todas): de ésas sale el mensaje.
   const hechas = DRY ? marcadas.slice() : [];
   if (!DRY) {
@@ -1318,7 +1386,7 @@ async function cajasQueLlegaron(db, accounts, labels, products, DRY) {
   // Cuántas de las escritas se marcaron CON faltantes: sólo ésas se avisan por Telegram (rev4).
   const conFaltantes = hechas.filter((m) => (m.faltan || []).length).length;
   return {
-    marcadas, hechas, conFaltantes, mirados, detalle, tiposVistos, opsTotal, fallos, erroresOp, sinCantidad, recEnt, enProceso, abiertas: abiertas.length, descontadas,
+    marcadas, hechas, conFaltantes, rellenadas, mirados, detalle, tiposVistos, opsTotal, fallos, erroresOp, sinCantidad, recEnt, enProceso, abiertas: abiertas.length, descontadas,
     msg: hechas.length ? `📦 <b>${hechas.length} caja(s) llegaron a Full</b>\n${det}\n\nYa cuentan como stock de la cuenta.` : null,
   };
 }
@@ -30690,6 +30758,16 @@ async function main() {
         }
         await db.set('cyc/compraspy/' + id + '/estado', 'llego');
         await db.set('cyc/compraspy/' + id + '/fechaLlego', hoyAR);
+        // D6 (29/09, eligió la b): foto de la oficina al llegar una reposición. La canasta sigue restando
+        // lo llegado hasta que la oficina suba (o 7 días): si no, lo volvería a pedir sin contar.
+        if (c.tipo === 'repo') {
+          try {
+            const _inv = (await db.get('cyc/inventory')) || {};
+            const _ofiLl = {};
+            for (const it of (c.items || [])) if (it && it.prodId && !(it.prodId in _ofiLl)) _ofiLl[it.prodId] = parseInt(_inv[it.prodId + '__' + sid('Oficina Mati')]) || 0;
+            await db.set('cyc/compraspy/' + id + '/ofiAlLlegar', _ofiLl);
+          } catch (eO) { console.log('⚠️ no pude guardar la foto de la oficina: la canasta puede volver a pedirla hasta que la cuentes'); }
+        }
         for (const it of (c.items || [])) { const k = it && it.id && cands[it.id]; if (k && k.pedidoEn === id) { try { await db.set(`cyc/candidatos_py/${it.id}/pedidoEn`, null); } catch {} } }
         const rel = await db.get('cyc/compraspy/' + id);
         console.log(`\n${rel && rel.estado === 'llego' ? '✓' : '⚠️ NO QUEDÓ'} Pedido ${id} marcado como llegado · ${hechas.length} ficha(s) creada(s)${hechas.length ? ': ' + hechas.map((p) => p.id + ' ' + p.name).join(' | ') : ''}`);
@@ -32942,6 +33020,10 @@ async function main() {
   const stockCiego = new Set();
   const promoNoLeidas = [];   // publicaciones cuyas promociones ML no contestó en la vuelta completa (#22)
   const ignoradasConProd = new Set();   // prodId__Cuenta de publicaciones ocultas (nomas / 🗑)
+  // Etapa 3, B3 (29/09/2026, eligió la a): lo que hay adentro de Full en publicaciones OCULTAS. Cuenta en
+  // el patrimonio (web: calcArqueo) pero no en Armar caja ni en Pedidos, por eso va aparte de cyc/inventory.
+  const stockOculto = {};              // prodId__Cuenta -> unidades en Full de sus publicaciones ocultas
+  const ocultoLeido = new Set();       // cuentas cuyas ocultas se leyeron enteras esta vuelta
   // Inventarios de Full ya contados, por producto×cuenta: dos publicaciones pueden compartir el
   // mismo inventario y sumarlas contaría la misma mercadería dos veces (ver el caso del Joystick).
   const invYaContado = new Set();
@@ -33985,6 +34067,43 @@ async function main() {
           }
         }
       }
+      // ── EL STOCK DE LAS PUBLICACIONES OCULTAS (etapa 3, B3, 29/09/2026, eligió la a) ──
+      // Una publicación marcada "no la vendemos más" puede tener mercadería propia adentro de Full, y
+      // esa mercadería no la contaba nadie (o quedaba congelada con el último número). Se lee sólo en la
+      // vuelta completa (una por hora), al depósito y una vez por depósito (si una visible ya lo contó,
+      // no se suma de nuevo). Va a cyc/stockoculto: el Arqueo la suma al patrimonio y Armar caja y
+      // Pedidos no la ven. Si algo no contesta, esa cuenta no se escribe esta vuelta.
+      if (autoStock && !SKIP_PRICES) {
+        const ocIds = Object.entries(map).filter(([mla, e]) => e && e.cuenta === label && e.ignored && e.prodId && /^MLA/i.test(mla)).map(([mla]) => mla);
+        let okOc = true;
+        for (let k = 0; k < ocIds.length; k += 20) {
+          const chunk = ocIds.slice(k, k + 20);
+          let arrO;
+          try { arrO = await mlGet('/items?ids=' + chunk.join(',') + '&attributes=id,inventory_id,variations,shipping', t.access_token); }
+          catch { okOc = false; continue; }
+          if (!Array.isArray(arrO) || arrO.length < chunk.length) okOc = false;
+          for (const row of (arrO || [])) {
+            const b = (row && row.body) || {};
+            const mla = b.id;
+            if (!mla || !map[mla] || (row.code && row.code !== 200)) { okOc = false; continue; }
+            if (((b.shipping && b.shipping.logistic_type) || '') !== 'fulfillment') continue;
+            const kTot = map[mla].prodId + '__' + sid(label);
+            const invs = (Array.isArray(b.variations) && b.variations.length) ? b.variations.map((v) => v && v.inventory_id) : [b.inventory_id];
+            for (const iv of invs) {
+              if (!iv) continue;
+              const kIv = kTot + '|' + iv;
+              if (invYaContado.has(kIv)) continue;
+              try {
+                const q = Number((await mlGet('/inventories/' + iv + '/stock/fulfillment', t.access_token))?.available_quantity) || 0;
+                invYaContado.add(kIv);
+                if (q > 0) stockOculto[kTot] = (stockOculto[kTot] || 0) + q;
+              } catch { okOc = false; }
+            }
+          }
+        }
+        if (okOc) ocultoLeido.add(label);
+        else console.log(`⚠️ ${label}: no se pudo leer entero el stock de las publicaciones ocultas: esta vuelta no se toca`);
+      }
       if (!stockFallo) stockLeido.add(label);
     } catch { /* no cortar la corrida por esto */ }
 
@@ -34079,13 +34198,34 @@ async function main() {
         if (!(Number(v) > 0 || Number(v) < 0) || k in invUpd) continue;   // también los negativos (etapa 3): restaban en el Arqueo
         const m = k.match(/^(.+?)__([^_].*?)(?:__v__.*)?$/);
         if (!m || !sidsML.has(m[2])) continue;             // sólo cuentas de ML, nunca la oficina
-        if (ignoradasConProd.has(m[1] + '__' + m[2])) { ocultas.push(k + '=' + v); continue; }
+        // B3 (29/09): si esta vuelta se leyó el stock de las ocultas de esa cuenta, esas unidades ya viven
+        // en cyc/stockoculto (patrimonio): la clave congelada va a 0 para no contarlas dos veces.
+        if (ignoradasConProd.has(m[1] + '__' + m[2])) {
+          if ([...ocultoLeido].some((l) => sid(l) === m[2])) { invUpd[k] = 0; huerfanas.push(k + '=' + v + ' (oculta → stockoculto)'); continue; }
+          ocultas.push(k + '=' + v); continue;
+        }
         invUpd[k] = 0; huerfanas.push(k + '=' + v);
       }
       if (huerfanas.length) console.log(`🧹 ${huerfanas.length} clave(s) de stock sin publicación que las mida, puestas en 0: ${huerfanas.slice(0, 15).join(' · ')}${huerfanas.length > 15 ? ' …' : ''}`);
       if (ocultas.length) console.log(`ℹ️  ${ocultas.length} clave(s) de stock de fichas con la publicación OCULTA, se dejan como están: ${ocultas.slice(0, 10).join(' · ')}`);
     } else if (autoStock && !onlyAcc) {
       console.log(`ℹ️  No se revisaron claves de stock sin publicación: no se leyeron enteras las cuatro cuentas (${labels.filter((l) => !stockLeido.has(l)).join(', ') || '—'}).`);
+    }
+    // B3 (29/09): el stock de las publicaciones ocultas, sólo de las cuentas que se leyeron enteras.
+    if (autoStock && ocultoLeido.size) {
+      try {
+        const prevO = (await db.get('cyc/stockoculto')) || {};
+        const sLe = new Set([...ocultoLeido].map((l) => sid(l)));
+        const nextO = {};
+        for (const [k, v] of Object.entries(prevO)) { const mm = k.match(/__(.+)$/); if (k !== '_ts' && mm && !sLe.has(mm[1])) nextO[k] = v; }
+        for (const [k, v] of Object.entries(stockOculto)) if (v > 0) nextO[k] = v;
+        const J = (o) => JSON.stringify(Object.keys(o).filter((k) => k !== '_ts').sort().map((k) => [k, o[k]]));
+        if (J(nextO) !== J(prevO)) {
+          const uO = Object.values(nextO).reduce((a, x) => a + (Number(x) || 0), 0);
+          console.log(`👻 Stock en Full de publicaciones ocultas: ${uO} u. en ${Object.keys(nextO).length} producto×cuenta (cuenta en el patrimonio, no en Armar caja ni Pedidos)`);
+          await db.set('cyc/stockoculto', Object.keys(nextO).length ? { ...nextO, _ts: Date.now() } : null);
+        }
+      } catch (eO) { console.log('⚠️ no pude guardar el stock de las publicaciones ocultas: ' + ((eO && eO.message) || eO)); }
     }
     if (Object.keys(invUpd).length) {
       // HISTORIAL DE STOCK: se anota DESDE CUÁNDO un producto tiene stock. Hace falta para saber si
