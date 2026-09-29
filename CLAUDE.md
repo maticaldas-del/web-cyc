@@ -449,6 +449,28 @@ posteriores a ese día en esa cuenta, y lo muestra abajo de "A liquidar" (`vsr_l
 (`precios_hist_prod`), dólar del mes, monotributo del mes, envío de Full si el neto es estimado. Probado contra las funciones REALES de
 la web: mismos pesos en 5 casos. **Si se toca una, se toca la otra.** **ETAPA 2 CERRADA (REV_HECHAS 29/09).** B3b (pedir el reporte al principio de saldoml y esperar) quedó sin proponer: alarga la corrida.
 
+### ETAPA 3 (MERCADERÍA) · 29/09/2026 · v20.81 `cyc-v359`
+4 revisores (cajas · stock/oficina · pedidos · Paraguay), 29 hallazgos. **HECHAS las obvias:** Pedidos: días cubiertos y
+riesgo por los colores que FALTAN (riesgo repartido por lo que vende cada color), ventas sin `variante` se imputan por
+`_varPorMla`, objetivo por color repartido del total con resto mayor (no `ceil`), `pocasVentas` llega al pedido, la cuenta
+de la tarjeta sólo con los colores que faltan (`varCuenta`) · Paraguay: `candEnArmado` (vencidos fuera de "Llenar" y "Ya lo
+pedí" salvo que tengan unidades), el robot no tacha candidatos cargados o viajando, "Llegó" recuerda contar (web y
+`pyped:llego` con el `ofi` listo) · Oficina: `ofi` sin `@` en productos con variantes no escribe, `ofiMover` sube el total
+si queda abajo de la suma de variantes · Stock: depósito compartido entre dos colores (`invColor`: gana la que tiene
+color; dos colores distintos → ninguno, avisa), negativos → `Math.max(0,…)` en Arqueo/snapshots y el barrido del robot
+los pone en 0, `setQ` no acepta negativos, stockhist/stocklog recorren `invUpd` (incluye el barrido), `addVariante` rechaza
+nombres con el mismo `sid()` · `delProd` con mercadería avisa unidades y US$ y pide 2 confirmaciones · Cajas: `cajallego` y
+marcar a mano borran `recUsadas`/`recUsadasCalc`/`faltan`, cajas abiertas de +45 días no se miran solas (log), renglón
+"sin color" sin casilla en Armar caja y "sin leer" en el robot, `setEnvioCuenta` con cajas en camino pide confirmar (sin
+cuenta no), `cerrarCaja` achica el envío a lo que salió de verdad y avisa cortes.
+**FALTA SU DECISIÓN (en REV_PENDIENTE), de a una:** C1 Pedidos suma el stock de las 4 cuentas (lo que sobra en una tapa
+el cero de otra; las `nomandar` suman ritmo) · D2 al llegar, una ficha "parecida" (compara 2 palabras) deja el producto
+sin ficha y vuelve a "Para probar" (se compra dos veces) · D3 `compray` no encuentra `pyr<fecha>` (reposición) ·
+A1 lo que llega tarde de una caja marcada con faltantes se lo lleva la siguiente (camino automático) · A5 una recepción
+se parte entre la caja perdida y la buena · B3 stock de publicaciones OCULTAS con depósito propio se pierde · C5 el estado
+que él marca a mano en un pedido automático se pisa · D6 reposición llegada y sin contar: la canasta la vuelve a pedir ·
+C8 Armar caja sin el freno de pocas ventas.
+
 ### EL PUNTAJE DEL MES: REHACERLO, PERO DESPUÉS (26/09/2026)
 Él, con la captura del Puntaje (7,2 · "Buen mes"): *"no veo cuál es el objetivo de ganancia de CYC y para mí es medio
 flojo el conteo. podría fijarse otras cosas. si querés remodelalo desde 0 con lo que pondrías vos (…) pero ahora

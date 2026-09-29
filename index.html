@@ -2342,7 +2342,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='20.80';
+const APP_VERSION='20.81';
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
 // muestre la versión y la fecha de actualización y que tenga un desplegable predeterminado cerrado".
 // Y el mismo día: "que ponga fecha de cada modificación y haya una barrita para scrollear y que
@@ -2353,6 +2353,7 @@ const APP_VERSION='20.80';
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'20.81',f:'29/09/2026',h:'13:30',c:[{n:3,t:'Pedidos: un color en cero con otros colores llenos ya no queda último con $0 en riesgo; sube en la lista según lo que vende ese color.'},{n:3,t:'Pedidos: las ventas que no dicen el color se reconocen por su publicación (antes ese color no se pedía nunca).'},{n:3,t:'Pedidos: el total por colores se reparte sin inflarse (30 aromas de 1 venta pedían 30 donde el ritmo da 20).'},{n:2,t:'Pedidos: la cuenta de la tarjeta de un producto con colores usa sólo los colores que faltan (se iba el aviso falso de \"renglón que no cierra\").'},{n:3,t:'Paraguay: \"Llenar\" y \"Ya lo pedí\" ya no meten candidatos vencidos que no se ven en pantalla; el robot no tacha de noche lo que ya está cargado o viajando; al llegar un pedido de nuevos te recuerda contar en la oficina.'},{n:3,t:'Oficina: contar un producto con colores desde el chat pide el color (antes podía dejar el total distinto de la suma y al despachar aparecían unidades de la nada); el total ya no queda abajo de la suma de sus colores.'},{n:3,t:'Stock de Full: dos publicaciones con el mismo depósito ya no le dan el stock a un color u otro según cuál se lee primero; las claves negativas no restan en el patrimonio y el robot las pone en 0.'},{n:3,t:'Borrar un producto con mercadería avisa cuántas unidades y dólares salen del patrimonio y pide confirmar dos veces.'},{n:3,t:'Cajas: marcar/desmarcar una caja a mano borra lo que el robot le había anotado (lo que llegaba tarde se lo llevaba la caja siguiente); una caja de más de 45 días ya no deja sin leer a las nuevas del mismo producto; el renglón \"sin color\" no se puede cargar en una caja.'},{n:3,t:'Cajas: cambiar la cuenta de un envío con cajas en camino pide confirmación (sin cuenta no se deja); cerrar caja achica el envío si en la oficina había menos de lo cargado.'},{n:1,t:'Agregar un color cuyo nombre choca con otro (ej. \"Rosé\" y \"Rosè\") ya no se deja.'}]},
   {v:'20.80',f:'29/09/2026',h:'11:15',c:[{n:3,t:'El resumen de ventas por Telegram (el del día y el del mes) calcula la ganancia igual que el panel: costo guardado del mes, dólar del mes y monotributo de ese mes. Antes usaba el costo y el dólar del día de cada venta y daba un número distinto al de la web.'},{n:1,t:'Etapa 2 (plata) de la revisión: cerrada.'}]},
   {v:'20.79',f:'29/09/2026',h:'10:30',c:[{n:3,t:'Arqueo: lo vendido después del último reporte de Mercado Pago ya suma al patrimonio y al efectivo (antes quedaba US$ 330-660 abajo durante el día). Se ve abajo de "A liquidar en ML" como "Vendido, todavía no en el reporte", cuenta por cuenta contra la fecha de su reporte; empieza a salir después de la corrida de esta noche.'}]},
   {v:'20.78',f:'28/09/2026',h:'21:30',c:[{n:3,t:'Etapa 2 (plata): cargar el disponible de una cuenta saca de "A liquidar" lo que MP ya liberó de esa cuenta (antes se contaba dos veces hasta la noche).'},{n:3,t:'Un mes ya terminado sin dólar cargado ni cierre usa el promedio del dólar de sus ventas, no el de hoy: la ganancia de agosto ya no cambia cuando se mueve el dólar.'},{n:3,t:'El monotributo de cada mes queda congelado al cerrarse: la ganancia de un mes viejo ya no se mueve sola cuando el robot recalcula el %.'},{n:3,t:'Borrar el retiro para reescribirlo ya no lo deja en $0 (la ganancia del mes subía $1.800.000 de mentira): la casilla vacía queda como sin cargar.'},{n:3,t:'Un disponible negativo de Mercado Pago ya no se suma como positivo en el patrimonio.'},{n:2,t:'Mirando un mes cerrado ya no salen las fechas y avisos de hoy; la tarjeta "En camino" muestra lo que iba en camino ese mes; comparar meses ya no cuenta dos veces la oficina.'},{n:2,t:'La Cascada dice el monotributo con el % de cada mes, no el de hoy.'},{n:3,t:'Robot: el dólar ya no se carga solo si salta más de 15% (o más de 5% con una sola fuente), avisa. "A liquidar" no se calcula con un reporte corto; "reporte hasta" ya no sale un día corrido; el recargo de Paraguay se mide con el dólar del día del pedido; el resumen del mes por Telegram usa el mismo % de ganancia que el panel.'}]},
@@ -3210,6 +3211,7 @@ const REV_CADA_DIAS=7;
 //   · REV_HECHAS    → última vez que cada etapa quedó resuelta. Sin pendientes, el cartel pide la
 //                     etapa más vieja cuando pasaron REV_CADA_DIAS desde la última.
 const REV_PENDIENTE=[
+    {t:'Etapa 3: decidir 9 cosas de mercadería',que:'pedidos por cuenta · compras a Paraguay que se compran dos veces · compray con reposición · cajas con faltantes que llegan tarde · recepción partida entre dos cajas · publicaciones ocultas con stock · estado a mano de un pedido · reposición llegada sin contar · freno de pocas ventas en Armar caja',pedi:'etapa 3'},
     {t:'La segunda revisión completa, al final',que:'la que pediste dejar para cuando esté todo lo demás · va última',pedi:'revisión completa',ultima:true},
 ];
 // Choques (4) y fallas mudas/privacidad (5): verificadas las 15 del 26/09 de madrugada (rev4, lotes 6-8) y
@@ -3902,7 +3904,8 @@ function renderHist(){
 let qTimers={};
 function setQ(pid,loc,val,variant=''){
   const k=variant?invKeyV(pid,loc,variant):invKey(pid,loc);
-  const old=state.inventory[k]||0;const nv=parseInt(val)||0;
+  // Etapa 3 (29/09): una cantidad negativa no existe y en el Arqueo restaba plata para siempre.
+  const old=state.inventory[k]||0;const nv=Math.max(0,parseInt(val)||0);
   if(old===nv)return;
   const _pStk=state.products.find(x=>x.id===pid);
   const _totalBefore=_pStk?stockOf(_pStk):0;
@@ -3945,6 +3948,9 @@ async function addVariante(prodId,varName){
   varName=(varName||'').trim();if(!varName)return;
   const vars=[...(p.variantes||[])];
   if(vars.some(v=>v.toLowerCase()===varName.toLowerCase())){toast('Ya existe esa variante','err');return;}
+  // Etapa 3 (29/09): dos nombres distintos que dan la MISMA clave ("Azul Marino" y "Azul-Marino", "Rosé" y
+  // "Rosè") comparten el stock de Full, oficina y camino y se cuentan dos veces.
+  {const _choca=vars.find(v=>sid(v)===sid(varName));if(_choca){toast('Choca con la variante "'+_choca+'" (se guardarían en el mismo lugar): usá otro nombre','err');return;}}
   vars.push(varName);vars.sort((a,b)=>a.localeCompare(b,'es',{sensitivity:'base'}));p.variantes=vars;
   await fbSet('products/'+prodId+'/variantes',vars);
   await log('Variante "'+varName+'" → '+p.name);
@@ -4088,8 +4094,20 @@ function renderProveedores(){
 }
 
 async function delProd(id){
-  if(!confirm('¿Eliminar este producto?'))return;
   const p=state.products.find(x=>x.id===id);
+  // Etapa 3 (29/09): borrar la ficha borra su stock de Full, de la oficina y hace que lo que va en
+  // camino deje de valer en el patrimonio. Antes el cartel sólo decía "¿Eliminar?": ahora dice cuánto.
+  if(p){
+    const uML=ML_LOCS.reduce((a,l)=>a+Math.max(0,getQ(id,l)),0);
+    const uOfi=LOCAL_LOCS.reduce((a,l)=>a+Math.max(0,getQ(id,l)),0);
+    let uCam=0;try{uCam=transitoTotal(enTransito(),id)||0;}catch(e){}
+    const uTot=uML+uOfi+uCam;
+    if(uTot>0){
+      const usd=Math.round(uTot*(costP(p)||0));
+      if(!confirm(`⚠️ "${p.name}" TIENE MERCADERÍA:\n\n· ${uML} u. en Full\n· ${uOfi} u. en la oficina\n· ${uCam} u. en camino a Full\n\n≈ US$ ${usd} que se van del patrimonio si la borrás.\n\nSi no la vendés más, conviene mandarla a la papelera de Pedidos o marcarla "no traer más" en vez de borrarla.\n\n¿Borrarla igual?`))return;
+      if(!confirm('Segunda confirmación: ¿seguro que querés borrar la ficha y su stock? No se puede deshacer.'))return;
+    } else if(!confirm('¿Eliminar este producto?'))return;
+  } else if(!confirm('¿Eliminar este producto?'))return;
   await fbDel('products/'+id);
   const keys=Object.keys(state.inventory).filter(k=>k.startsWith(id+'__'));
   for(const k of keys)await fbDel('inventory/'+k);
@@ -5634,7 +5652,11 @@ function renderOfiCaja(){
     // se saca es el freno. Y al cerrar, si algo ya no está en casa, se avisa antes (ver cerrarCaja).
     const tope=f.hay;
     const otras=f.hay-tope;
-    const casilla=armando?`<input type="number" inputmode="numeric" value="${enCaja||''}" placeholder="0" max="${tope}"
+    // Etapa 3 (29/09): el renglón "sin variante" de un producto con colores no lleva casilla: el robot
+    // no tiene cómo saber de qué color llegaron y esa caja no se marcaba nunca (o quedaba con faltantes
+    // falsos). Primero hay que decir de qué color son esas unidades.
+    const _sinVarCaja=armando&&!f.variante&&f.sinContarPorAroma&&!(enCaja>0);
+    const casilla=_sinVarCaja?`<span style="font-size:.6rem;color:var(--amber);max-width:120px;text-align:right">decime de qué color son para poder mandarlas</span>`:armando?`<input type="number" inputmode="numeric" value="${enCaja||''}" placeholder="0" max="${tope}"
         style="flex:none;width:66px;text-align:center;background:var(--bg);border:1px solid ${enCaja>0?'var(--accent2)':'var(--border2)'};border-radius:8px;color:var(--text);font-family:'DM Mono',monospace;font-size:.95rem;padding:8px 4px;outline:none"
         onchange="setCajaItem('${f.p.id}',${JSON.stringify(f.variante||'').replace(/"/g,'&quot;')},this.value,${tope})">`:'';
     return `<div style="padding:12px 14px;background:var(--surface);border:1px solid ${enCaja>0?'var(--accent2)':'var(--border)'};border-radius:var(--r);margin-bottom:8px">
@@ -5939,6 +5961,11 @@ async function ofiMover(pid,variante,{delta=0,fijo=null}={}){
     const r=await ofiTx(invKeyV(pid,OFI,variante),{delta,fijo});
     const dv=r.ahora-r.antes;
     if(dv)await ofiTx(invKey(pid,OFI),{delta:dv});
+    // Etapa 3 (29/09): el total nunca queda abajo de la suma de sus variantes. Si venía desfasado (un
+    // conteo viejo que tocó sólo el total), clavarlo en 0 al despachar inventaba unidades en "en camino"
+    // y dejaba invisibles las de los otros aromas.
+    const _sv=ofiSumaVars(pid),_tot=parseInt(state.inventory[invKey(pid,OFI)])||0;
+    if(_tot<_sv){await ofiTx(invKey(pid,OFI),{fijo:_sv});console.warn('oficina: el total de '+pid+' estaba abajo de la suma de sus variantes ('+_tot+' < '+_sv+'), lo subí');}
     return r;
   }
   return ofiTx(invKey(pid,OFI),{delta,fijo});
@@ -6085,7 +6112,23 @@ async function cerrarCaja(cuenta){
   state.envios_full=state.envios_full||{};state.envios_full[id]=e;
   // Descontar de la oficina lo que se fue. Con variante se toca la clave de la variante y se
   // recalcula el total del producto; sin variante, la clave del producto.
-  for(const it of items)await ofiMover(it.prodId,it.variante||'',{delta:-it.u});   // c3: sobre la base
+  // Etapa 3 (29/09): si la base tenía MENOS de lo que este aparato creía (otro aparato despachó o contó
+  // antes), la oficina baja sólo hasta 0: el envío se achica a lo que de verdad salió, así no quedan
+  // unidades inventadas "en camino". Y si se corta la red a mitad, se dice qué renglones no bajaron.
+  const _cortos=[],_fallo=[];
+  for(const it of items){
+    try{
+      const r=await ofiMover(it.prodId,it.variante||'',{delta:-it.u});   // c3: sobre la base
+      const salio=Math.max(0,(r.antes||0)-(r.ahora||0));
+      if(salio<it.u){_cortos.push(`${it.nombre}${it.variante?' · '+it.variante:''}: cargaste ${it.u}, en la oficina había ${salio}`);it.u=salio;}
+    }catch(err){_fallo.push(`${it.nombre}${it.variante?' · '+it.variante:''} (${it.u} u.)`);}
+  }
+  if(_cortos.length){
+    const _its=items.filter(x=>x.u>0);
+    try{await _guardarCajas(id,[{...e.cajasDet[0],items:_its}]);}catch(err){}
+    alert('⚠️ En la oficina había menos de lo cargado en la caja (lo cambió otro aparato). El envío quedó con lo que de verdad salió:\n\n'+_cortos.join('\n'));
+  }
+  if(_fallo.length)alert('⚠️ Se cortó la conexión: estos renglones NO se descontaron de la oficina (contalos de nuevo):\n\n'+_fallo.join('\n'));
   await _guardarCajaArmando(cuenta,{});   // la caja se cerró: deja de estar a medio armar
   await log('Caja despachada a '+cuenta+': '+uTot+' u.'+(track?' · '+track:''));
   toast('Caja cerrada ✓ · está en "En camino"',5000);
@@ -6478,6 +6521,15 @@ async function addEnvioFull(){
 // sabe cuando ML recibe la mercadería (cada cuenta tiene su propio depósito).
 async function setEnvioCuenta(id,cuenta){
   const e=(state.envios_full||{})[id];if(!e)return;
+  // Etapa 3 (29/09): con cajas abiertas cargadas, cambiar la cuenta mueve mercadería: sin cuenta sale
+  // del patrimonio y con otra el robot la busca en la cuenta equivocada y no la marca nunca.
+  const _uAb=cajasDe(e).filter(c=>!c.recibida).reduce((a,c)=>a+(c.items||[]).reduce((b,x)=>b+(Number(x&&x.u)||0),0),0);
+  if(_uAb>0&&e.cuenta&&cuenta!==e.cuenta){
+    const _ok=LOCS.includes(cuenta)
+      ?confirm(`Este envío tiene ${_uAb} u. en camino a ${e.cuenta}.\n\nSi lo pasás a ${cuenta}, el robot va a buscar la llegada en ${cuenta}. Hacelo SÓLO si de verdad lo mandaste a esa cuenta.\n\n¿Cambiarlo?`)
+      :false;
+    if(!_ok){if(!LOCS.includes(cuenta))alert(`Este envío tiene ${_uAb} u. en camino: no puede quedar sin cuenta (esas unidades saldrían del patrimonio).`);renderCajasEnCamino();return;}
+  }
   e.cuenta=cuenta;
   await fbSet('envios_full/'+id+'/cuenta',cuenta);
   await log('Envío del '+e.fecha+': cuenta → '+cuenta);
@@ -6535,7 +6587,9 @@ async function marcarCajaRecibida(id,i,valor){
   cajas[i].recFecha=valor?new Date().toISOString().slice(0,10):null;
   // Las entradas de Full que el robot anotó como usadas por esta caja dejan de valer al abrirla
   // (el robot las vuelve a repartir). Marcada a mano, el robot le descuenta por orden de despacho.
-  if(!valor)cajas[i].recUsadas=null;
+  // Etapa 3 (29/09): al cambiarla de estado a mano se borra TODO lo que había anotado el robot (entradas
+  // usadas y faltantes): si no, lo que llegaba tarde se lo llevaba la caja siguiente y quedaban faltantes falsos.
+  cajas[i].recUsadas=null;cajas[i].recUsadasCalc=null;cajas[i].faltan=null;
   await _guardarCajas(id,cajas);
   await log('Caja '+(i+1)+' del envío '+e.fecha+': '+(valor?'llegó a Full':'vuelve a en camino'));
 }
@@ -6695,10 +6749,10 @@ function calcArqueo(){
   (state.products||[]).forEach(p=>{
     const cp=efectivoCostP(p);
     ML_LOCS.forEach(l=>{
-      stockML+=getQ(p.id,l)*cp;
+      stockML+=Math.max(0,getQ(p.id,l))*cp;
       stockCamino+=transitoDe(_tr,p.id,l,'')*cp;   // la clave sin variante ya es el total
     });
-    LOCAL_LOCS.forEach(l=>stockLocal+=getQ(p.id,l)*cp);
+    LOCAL_LOCS.forEach(l=>stockLocal+=Math.max(0,getQ(p.id,l))*cp);
   });
   // LO PAGADO A PARAGUAY QUE TODAVÍA NO LLEGÓ TAMBIÉN ES EN CAMINO (24/09/2026). Los dólares ya
   // salieron y la mercadería no está en ningún lado del panel hasta que se cuenta en la oficina:
@@ -7240,7 +7294,7 @@ async function saveSnapshot(){
   if(!confirm('¿Cerrar '+label+' y guardar los valores actuales del arqueo?'))return;
   const c=calcArqueo();
   const prodValues={};
-  (state.products||[]).forEach(p=>{let v=0;LOCS.forEach(l=>v+=getQ(p.id,l)*costP(p));prodValues[p.id]={name:p.name,value:v};});
+  (state.products||[]).forEach(p=>{let v=0;LOCS.forEach(l=>v+=Math.max(0,getQ(p.id,l))*costP(p));prodValues[p.id]={name:p.name,value:v};});
   const tipoCambio=parseFloat(state.finanzas['tipo_cambio'])||0;
   // LA AGENDA NO ENTRA EN EL CIERRE DEL MES, a propósito. Es una lista de días FUTUROS: dentro de
   // un cierre guardado no quiere decir nada, y si se copiara quedaría una copia congelada de la
@@ -7250,7 +7304,7 @@ async function saveSnapshot(){
   const {agenda:_sinAgenda, ...finSnap}=state.finanzas||{};
   const snap={label,ts:Date.now(),stock:c.stockVal,stockML:c.stockML,stockLocal:c.stockLocal,total:c.total,tipoCambio,
     finanzas:finSnap,
-    locValues:Object.fromEntries(LOCS.map(l=>{let v=0;(state.products||[]).forEach(p=>v+=getQ(p.id,l)*costP(p));return[sid(l),v];})),
+    locValues:Object.fromEntries(LOCS.map(l=>{let v=0;(state.products||[]).forEach(p=>v+=Math.max(0,getQ(p.id,l))*costP(p));return[sid(l),v];})),
     prodValues};
   await fbSet('snapshots/'+key,snap);await log('Cerró mes: '+label);toast('Mes '+label+' guardado ✓');
 }
@@ -7680,9 +7734,9 @@ function renderCompMes(el){
   if(keyB&&snaps[keyB]){dataB=snaps[keyB];labelB=dataB.label;}
   else{
     const cur=calcArqueo();
-    const prodValues={};(state.products||[]).forEach(p=>{let v=0;LOCS.forEach(l=>v+=getQ(p.id,l)*costP(p));prodValues[p.id]={name:p.name,value:v};});
+    const prodValues={};(state.products||[]).forEach(p=>{let v=0;LOCS.forEach(l=>v+=Math.max(0,getQ(p.id,l))*costP(p));prodValues[p.id]={name:p.name,value:v};});
     dataB={label:'Actual',stock:cur.stockVal,total:cur.total,finanzas:{...state.finanzas},
-      locValues:Object.fromEntries(LOCS.map(l=>{let v=0;(state.products||[]).forEach(p=>v+=getQ(p.id,l)*costP(p));return[sid(l),v];})),prodValues};
+      locValues:Object.fromEntries(LOCS.map(l=>{let v=0;(state.products||[]).forEach(p=>v+=Math.max(0,getQ(p.id,l))*costP(p));return[sid(l),v];})),prodValues};
     labelB='Mes actual';
   }
   el.innerHTML=buildCompHTML(snapA,dataB,labelB);
@@ -9500,11 +9554,21 @@ async function syncPedidosAuto(){
   const varSalesMap={};
   const _now=new Date();const _from=new Date(_now);_from.setDate(_now.getDate()-(PED_MAX_DAYS-1));
   const _fk=dateToKey(_from),_tk=dateToKey(_now);
+  // Etapa 3 (29/09): la venta que no trae `variante` escrita se imputa por su publicación, igual que
+  // Armar caja (`v.variante || varDeMla[v.mla]`). Antes se descartaba y ese color no se pedía nunca.
+  const _vpmCache={};
+  const _varDeVenta=v=>{
+    if(v.variante)return v.variante;
+    if(!v.mla)return '';
+    if(!_vpmCache[v.prodId]){const pp=prodById(v.prodId);_vpmCache[v.prodId]=pp?_varPorMla(pp):{};}
+    return _vpmCache[v.prodId][v.mla]||'';
+  };
   Object.keys(state.ventaprod||{}).filter(k=>k>=_fk&&k<=_tk).forEach(key=>{
     Object.values(state.ventaprod[key]||{}).forEach(v=>{
-      if(!v.variante||!v.prodId||_esCancelada(v)||ventaEnRemate(v,key))return;
+      if(!v||!v.prodId||_esCancelada(v)||ventaEnRemate(v,key))return;
+      const _va=_varDeVenta(v);if(!_va)return;
       if(!varSalesMap[v.prodId])varSalesMap[v.prodId]={};
-      varSalesMap[v.prodId][v.variante]=(varSalesMap[v.prodId][v.variante]||0)+(v.qty||0);
+      varSalesMap[v.prodId][_va]=(varSalesMap[v.prodId][_va]||0)+(v.qty||0);
     });
   });
   // 2. ventas normalizadas a 30d por producto; para variantes calcula necesario por variante
@@ -9533,7 +9597,7 @@ async function syncPedidosAuto(){
     // del stock en riesgo. La diferencia es que este vuelve solo cuando el precio da (ver la
     // sección ⏸️). Se saltea ACÁ, antes de calcular, para que no sume riesgo sin verse.
     if((state.pausaPrecio||{})[p.id]||noTraerDe(p.id))continue;   // pausado por precio · "no traer más"
-    const {vendidos,vendidosNorm,diasHistorial,dConS,vDia,hist,remate}=pedVentasNorm(p);
+    const {vendidos,vendidosNorm,diasHistorial,dConS,vDia,hist,remate,pocasVentas}=pedVentasNorm(p);
     // Antes acá decía `if(vendidos===0)continue` a secas, y ése era el renglón que dejaba afuera
     // para siempre a lo que no vendió POR FALTA DE STOCK. Ahora sólo se saltea si tampoco hay
     // ritmo viejo con qué medirlo: sin ningún dato no se puede opinar, y ahí sí se calla.
@@ -9542,20 +9606,42 @@ async function syncPedidosAuto(){
     // Los días que dura el stock salen de la velocidad REAL (ventas ÷ días con mercadería), no de
     // ventas÷30. Con la cuenta vieja un producto agotado la mitad del mes parecía tener el doble de
     // días de cobertura de los que tiene.
-    const diasCubiertos=vDia>0?Math.round(stock/vDia):999;
+    let diasCubiertos=vDia>0?Math.round(stock/vDia):999;
     const coll=p.origen==='py'?'pedidos_py':'pedidos';
     const TARGET_DIAS_P=pedTargetDiasDe(p);   // 30 días, o 95 si el proveedor tarda 2 meses
     const hasVars=(p.variantes||[]).length>0;
-    let necesario,variantesNec,aComprarVar=null;
+    let necesario,variantesNec,aComprarVar=null,varDiasCub=null,varCuenta=null,varDiasRiesgo=null;
     if(hasVars&&varSalesMap[p.id]){
       // calcular necesario por variante: stock real de esa variante vs target
       const normFactor=PED_MAX_DAYS/diasHistorial;
+      // Etapa 3 (29/09): el objetivo de cada color se REPARTE del total, no se redondea color por
+      // color: 30 aromas de 1 venta daban 30 (0,67 → 1 cada uno) donde el ritmo del producto da 20.
+      // Resto mayor: primero la parte entera de cada uno, y las unidades que quedan van a los de
+      // parte decimal más grande (a igualdad, al que tiene menos stock en ML).
+      const _vt={};
+      {
+        const _raw=(p.variantes||[]).map(v=>{
+          const vs=varSalesMap[p.id][v]||0;
+          const r=vs/((vs>0&&vs<PED_MIN_VENTAS_RITMO)?diasHistorial:Math.min(dConS,diasHistorial));
+          const st=LOCS.reduce((s2,l)=>s2+(parseInt(state.inventory[invKeyV(p.id,l,v)])||0),0);
+          return {v,r,t:r*TARGET_DIAS_P,st};
+        });
+        const tot=Math.round(_raw.reduce((a,x)=>a+x.t,0));
+        _raw.forEach(x=>{_vt[x.v]=Math.floor(x.t);});
+        let rest=tot-_raw.reduce((a,x)=>a+_vt[x.v],0);
+        [..._raw].filter(x=>x.t>0).sort((a,b)=>((b.t-Math.floor(b.t))-(a.t-Math.floor(a.t)))||(a.st-b.st)).forEach(x=>{if(rest>0){_vt[x.v]++;rest--;}});
+      }
       const varDefs=(p.variantes||[]).map(v=>{
         const vSalesNorm=Math.round((varSalesMap[p.id][v]||0)*normFactor);
         const vStock=LOCS.reduce((s,l)=>s+(parseInt(state.inventory[invKeyV(p.id,l,v)])||0),0);
         // El stockhist es por producto×cuenta, no por variante: acá se usa la velocidad del
         // producto como aproximación, que es lo mejor que hay hasta que se anote por variante.
-        let vTarget=Math.ceil((varSalesMap[p.id][v]||0)/Math.min(dConS,diasHistorial)*TARGET_DIAS_P);
+        // Etapa 3 (29/09): al MÁS CERCANO (como objetivoRepo), no para arriba: con 30 aromas de 1
+        // venta cada uno el `ceil` pedía 30 donde el ritmo del producto daba 20. Y con menos de
+        // PED_MIN_VENTAS_RITMO ventas se divide por la ventana entera, la misma regla que el producto.
+        const _vs=varSalesMap[p.id][v]||0;
+        const _vRate=_vs/((_vs>0&&_vs<PED_MIN_VENTAS_RITMO)?diasHistorial:Math.min(dConS,diasHistorial));
+        let vTarget=_vt[v]||0;
         // ── LO QUE YA TENÉS DE ESA VARIANTE NO SE COMPRA DE NUEVO ──────────────────
         // Antes, si había CUALQUIER cosa en la oficina, el pedido se dejaba sin desglose: no se
         // sabía de qué variante eran esas unidades. Eso dejó de ser cierto cuando "Contar lo que
@@ -9581,7 +9667,7 @@ async function syncPedidosAuto(){
           }
         }
         const vComprar=Math.max(0,vFalta2-vCasa-vCam);
-        return{v,vFalta:vFalta2,vComprar,vStock,vCasa,vCam,vHist};
+        return{v,vFalta:vFalta2,vComprar,vStock,vCasa,vCam,vHist,vTarget,vRate:vHist?(vTarget/TARGET_DIAS_P):_vRate};
       }).filter(x=>x.vFalta>0);
       necesario=varDefs.reduce((s,x)=>s+x.vFalta,0);
       // El desglose muestra lo que hay que COMPRAR de cada una: si de una variante ya tenés en casa
@@ -9595,6 +9681,21 @@ async function syncPedidosAuto(){
       // ya está cubierta desde casa es la que cambia la decisión (no comprar, MANDAR). Antes
       // desaparecía del desglose y se leía igual que una que nadie midió, que es el mismo error
       // que tenía el renglón del producto.
+      // Etapa 3 (29/09): los días cubiertos salen de los colores que FALTAN, no del total del
+      // producto: un color en cero con hermanos llenos daba riesgo $0 y quedaba último en la lista.
+      // Y la cuenta de la tarjeta se arma sólo con esos colores (antes decía "ya tenés 30 para un
+      // objetivo de 14" sumando el stock de otro color).
+      if(varDefs.length){
+        const _conRate=varDefs.filter(x=>x.vRate>0);
+        if(_conRate.length){
+          varDiasCub=Math.min(..._conRate.map(x=>Math.round(x.vStock/x.vRate)));
+          // El riesgo en plata se reparte por lo que vende cada color: un color chico en cero no
+          // pone en riesgo la ganancia ENTERA del producto.
+          if(vDia>0)varDiasRiesgo=Math.min(30,_conRate.reduce((a,x)=>a+Math.min(1,x.vRate/vDia)*Math.max(0,30-x.vStock/x.vRate),0));
+        }
+        varCuenta={obj:varDefs.reduce((a,x)=>a+x.vTarget,0),ml:varDefs.reduce((a,x)=>a+x.vStock,0),
+          casa:varDefs.reduce((a,x)=>a+x.vCasa,0),cam:varDefs.reduce((a,x)=>a+x.vCam,0)};
+      }
       variantesNec=varDefs.length?varDefs.map(({v,vComprar:q,vStock,vCam,vCasa,vHist})=>({v,q,ml:vStock,cam:vCam,casa:vCasa,...(vHist?{hist:true}:{})})):null;
     } else {
       const targetStock=Math.ceil(vDia*TARGET_DIAS_P);
@@ -9618,12 +9719,14 @@ async function syncPedidosAuto(){
     // En los productos con variantes ya se descontó casa y camino VARIANTE POR VARIANTE, que es más
     // fino: restar los totales otra vez lo contaría dos veces.
     const aComprar=aComprarVar!=null?aComprarVar:Math.max(0,necesario-enOficina-enCamino);
+    const diasCubProd=diasCubiertos;
+    if(varDiasCub!=null&&varDiasCub<diasCubiertos)diasCubiertos=varDiasCub;
     // "Dinero en riesgo": ganancia diaria del producto × cuántos de los próximos 30 días vas a pasar REALMENTE sin stock.
     // Ventana de 30 días (no 45): un producto con 30+ días de stock no está en riesgo este mes → aporta 0.
     // Así un producto que vende poco pero deja buen margen no le gana en prioridad a uno de alta rotación que se está por quedar sin stock.
     const RIESGO_DIAS=30;
     const gan30d=pedGananciaNorm(p);
-    const diasEnRiesgo=Math.max(0,RIESGO_DIAS-diasCubiertos);
+    const diasEnRiesgo=varDiasRiesgo!=null?Math.max(0,RIESGO_DIAS-diasCubProd,varDiasRiesgo):Math.max(0,RIESGO_DIAS-diasCubiertos);
     void dConS;
     const riesgo=Math.round((gan30d/30)*diasEnRiesgo);
     // ── CUÁNTO DE ESE RIESGO SE TAPA MANDANDO LO QUE YA TENÉS ───────────────────────
@@ -9660,8 +9763,8 @@ async function syncPedidosAuto(){
     // `objetivo` es el stock que habría que tener para cubrir TARGET_DIAS_P días a la velocidad
     // real. Se guarda para poder MOSTRAR la cuenta en la tarjeta (ver cuentaPedidoHTML): sin eso,
     // "6 vendidos" y "4 en camino" invitan a la resta equivocada.
-    const objetivoU=Math.max(necesario+stock,0);
-    resumen[p.id]={p,vendidos,vendidosNorm,stock,diasHistorial,diasCubiertos,necesario,enOficina,enCamino,aComprar,variantesNec,coll,gan30d,riesgo,riesgoComprar,riesgoMandar,dConS,vDia,objetivoU,targetDias:TARGET_DIAS_P,hist,remate};
+    const objetivoU=varCuenta?varCuenta.obj:Math.max(necesario+stock,0);
+    resumen[p.id]={p,vendidos,vendidosNorm,stock,diasHistorial,diasCubiertos,necesario,enOficina,enCamino,aComprar,variantesNec,coll,gan30d,riesgo,riesgoComprar,riesgoMandar,dConS,vDia,objetivoU,targetDias:TARGET_DIAS_P,hist,remate,pocasVentas,varCuenta};
   }
   // 3. IDs que deberían existir como auto-pedidos
   const expectedIds=new Set();
@@ -10083,6 +10186,15 @@ function candPuedePedir(c){
   return{ok:true,motivo:''};
 }
 function candDias(c){return c&&c.ts?Math.max(0,Math.round((Date.now()-c.ts)/86400000)):null;}
+// ¿SIGUE EN EL ARMADO? (etapa 3, 29/09/2026). La pantalla escondía los de más de CAND_VENCE_DIAS, pero
+// "Llenar" y "Ya lo pedí" no miraban la fecha: le cargaban unidades a uno invisible y lo guardaban en
+// el pedido sin que estuviera en el mensaje a Nissei. Una sola regla para los tres: vencido NO entra,
+// salvo que ya tenga unidades cargadas (ahí se ve, porque lo cargaste vos).
+function candEnArmado(c){
+  if(!c||c.no||c.prodId)return false;
+  const d=candDias(c);
+  return d==null||d<=CAND_VENCE_DIAS||(parseInt(c.pedirU)||0)>0;
+}
 // ── EL PEDIDO DE PRODUCTOS NUEVOS: LA WEB LO GUARDA, EL CHAT LO ARMA (18/09/2026) ─────
 // Pedido suyo: *"voy a hacer un pedido de todos productos nuevos con una combinacion (…) que sean
 // altos %"*, y la aclaración que define todo, que hubo que pedir DOS veces:
@@ -10281,7 +10393,7 @@ function pedLlenarPlan(vivos,tope,maxU,minV){
 }
 async function pedNuevosLlenar(){
   const tope=pedTopeUSD(), maxU=pedMaxU(), minV=pedMinVent();
-  const vivos=candList().filter(c=>!c.no&&!c.prodId);
+  const vivos=candList().filter(candEnArmado);
   const {suma,total,sinVentas,flojos,viajando}=pedLlenarPlan(vivos,tope,maxU,minV);
   if(!suma.length){
     alert(`No hay nada para agregar.\n\nTope: US$ ${tope.toFixed(2)} · ya cargado: US$ ${total.toFixed(2)}\n\n`
@@ -10366,7 +10478,7 @@ function pyCompras(){
 }
 // "Ya lo pedí": congela lo que está cargado y lo saca de la lista de armado.
 async function pyPedidoHecho(){
-  const P=pedNuevos(candList().filter(c=>!c.no&&!c.prodId));
+  const P=pedNuevos(candList().filter(candEnArmado));
   if(!P.filas.length){toast('No hay nada cargado en el pedido','err');return;}
   const hoy=new Date(Date.now()-3*3600e3).toISOString().slice(0,10);
   const id='py'+hoy.replace(/-/g,'');
@@ -10512,13 +10624,17 @@ async function pyPedidoLlego(id){
   renderPedidos();
   // LO QUE QUEDÓ SIN HACER SE DICE, no se descarta callado: son productos comprados que no van a
   // aparecer en ningún lado hasta que alguien los mire.
-  if(repe.length||fallaron.length||sinNom.length||sinPre.length){
+  // Y SE RECUERDA CONTAR (etapa 3, 29/09/2026): las fichas nacen con 0 en la oficina y el pedido deja
+  // de contar "en camino", así que hasta contarlas el patrimonio baja lo que costó el pedido.
+  const _contar=`\n\nAhora contá estas unidades en Mi oficina (hasta que las cuentes no suman en el patrimonio):\n`
+    +items.map(it=>'· '+(it.u||'?')+' u. '+(it.nom||'')).join('\n');
+  {
     alert(`Pedido marcado como llegado ✓ · ${hechas.length} ficha(s) creada(s)\n\n`
       +(repe.length?`Estos NO se crearon porque ya hay una ficha parecida. Si es el mismo producto no hagas nada; si no lo es, creala a mano desde "Para probar":\n${repe.map(x=>'· '+x.src.nombre+' → '+x.rep[0].name).join('\n')}\n\n`:'')
       +(sinPre.length?`Estos quedaron con costo 0 y hay que cargárselo:\n${sinPre.map(x=>'· '+x.src.nombre).join('\n')}\n\n`:'')
       +(sinNom.length?`${sinNom.length} sin nombre: no se pudo crear nada.\n\n`:'')
-      +(fallaron.length?`No se pudieron guardar:\n${fallaron.map(x=>'· '+x).join('\n')}\n`:''));
-  } else toast(`Llegó ✓ · ${hechas.length} ficha(s) creada(s)`,5000);
+      +(fallaron.length?`No se pudieron guardar:\n${fallaron.map(x=>'· '+x).join('\n')}\n`:'')+_contar);
+  }
 }
 async function pyPedidoBorrar(id){
   const c=(state.compraspy||{})[id];if(!c)return;
@@ -10951,7 +11067,7 @@ function candidatosHTML(){
   // `vivos` es la que se dibuja como tarjetas: sin los que ya están en el pedido.
   // OJO, y es la trampa: si `pedNuevosHTML` recibiera la lista filtrada, los renglones del pedido
   // desaparecerían justo después de cargarlos. El armado tiene que ver TODO.
-  const vivos0=todos.filter(c=>!c.no&&!c.prodId&&(candDias(c)==null||candDias(c)<=CAND_VENCE_DIAS));
+  const vivos0=todos.filter(candEnArmado);
   const enPed=vivos0.filter(c=>candEnPedido(c)==='cargado').length;
   const enVia=vivos0.filter(c=>candEnPedido(c)==='viajando').length;
   const vivos=vivos0.filter(c=>!candEnPedido(c));
@@ -12778,7 +12894,7 @@ function cuentaPed(r){
   // es la resta que hace el sistema, la pantalla está mal aunque el número final esté bien.
   // `cHist` marca que la velocidad NO salió de este mes sino del ritmo viejo (ver pedVentasNorm).
   return{cObjetivo:r.objetivoU||0,cDias:Math.round(r.dConS||0),cVdia:Math.round((r.vDia||0)*100)/100,
-    cVend:r.vendidos||0,cCamino:r.enCamino||0,cCasa:r.enOficina||0,cML:r.stock||0,cPocas:!!r.pocasVentas,
+    cVend:r.vendidos||0,cCamino:r.varCuenta?r.varCuenta.cam:(r.enCamino||0),cCasa:r.varCuenta?r.varCuenta.casa:(r.enOficina||0),cML:r.varCuenta?r.varCuenta.ml:(r.stock||0),cPocas:!!r.pocasVentas,
     cHist:r.hist?{u:r.hist.u,dias:Math.round(r.hist.dias)}:null,cTarget:r.targetDias||PED_MAX_DAYS,cRemate:r.remate||0};
 }
 // ── "ESTE RENGLÓN NO CIERRA": EL CHEQUEO AUTOMÁTICO DE PEDIDOS ─────────────────────

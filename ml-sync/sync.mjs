@@ -695,6 +695,19 @@ async function cajasQueLlegaron(db, accounts, labels, products, DRY) {
   }
   if (!abiertas.length) return { marcadas: [], mirados: 0, msg: null };
   abiertas.sort((a, b) => (a.fecha || '').localeCompare(b.fecha || ''));
+  // UNA CAJA DE MÁS DE 45 DÍAS YA NO SE MIRA SOLA (etapa 3, 29/09/2026). Seguía abierta (perdida o con
+  // un renglón que no se puede leer) y estiraba la ventana de su producto: en uno que vende mucho se
+  // pasaban los 1.000 movimientos y NINGUNA caja nueva de ese producto se podía marcar (se contaba dos
+  // veces). Queda abierta y en rojo en la pantalla; se marca o se abre a mano (cajallego / abrircaja).
+  {
+    const _corte = new Date(Date.now() - 45 * 864e5 - 3 * 36e5).toISOString().slice(0, 10);
+    const _viejas = abiertas.filter((ab) => ab.fecha && ab.fecha < _corte);
+    if (_viejas.length) {
+      console.log(`⚠️ ${_viejas.length} caja(s) abiertas con más de 45 días no se miran solas (se marcan a mano): ${_viejas.slice(0, 8).map((ab) => `${ab.e.cuenta || '?'} ${ab.fecha}${ab.c.track ? ' · ' + ab.c.track : ''}`).join(' · ')}`);
+      for (const ab of _viejas) abiertas.splice(abiertas.indexOf(ab), 1);
+      if (!abiertas.length) return { marcadas: [], mirados: 0, msg: null };
+    }
+  }
   // Qué productos hay que mirar, por cuenta, y desde cuándo.
   const porCta = {};
   for (const ab of abiertas) {
@@ -992,6 +1005,14 @@ async function cajasQueLlegaron(db, accounts, labels, products, DRY) {
       if (ab.e.cuenta !== cta) continue;
       for (const it of ab.items) {
         const va = it.variante || '';
+        // Etapa 3 (29/09): un renglón SIN color de un producto con colores no se puede leer (ML anota
+        // las entradas en la clave de cada color): queda "sin leer" y se avisa, en vez de marcarse con
+        // faltantes falsos o dejar libres las entradas para la caja siguiente.
+        if (!va && ((pIdx[it.prodId] && pIdx[it.prodId].variantes) || []).length) {
+          const k0 = kR(cta, it.prodId, '');
+          if (!sinLeer[k0]) { sinLeer[k0] = true; console.log(`⚠️ ${cta} · ${(pIdx[it.prodId] && pIdx[it.prodId].name) || it.prodId}: la caja lleva unidades SIN color de un producto con colores → ese renglón queda sin leer (la caja no se marca sola).`); }
+          continue;
+        }
         if (!va || !conDeposito.has(it.prodId)) continue;
         const kV = kR(cta, it.prodId, va);
         if (conDepVar.has(kV) || sinLeer[kV]) continue;
@@ -5621,6 +5642,14 @@ async function correrCandidatos(db, products, labels, accounts, soloPrueba, prue
     const usd = parseFloat(c.usd) || 0;
     const puesto = usd > 0 ? Math.round(usd * RECARGO_PAR * 100) / 100 : 0;
     const fuera = async (motivo, margenHoy) => {
+      // LO QUE YA ESTÁ CARGADO EN EL PEDIDO (o ya viajando) NO SE TACHA (etapa 3, 29/09/2026): el
+      // "Ya lo pedí" y la llegada saltean los descartados, así que tacharlo de noche hacía que lo
+      // pagado no entrara "en camino" ni recibiera ficha. Queda en rojo en el pedido (freno del 25%)
+      // y el log lo dice; sacarlo lo decide él.
+      if ((parseInt(c.pedirU) || 0) > 0 || c.pedidoEn) {
+        descartes.push(`${c.nombre} → ${motivo}  (⚠️ ${c.pedidoEn ? 'ya viaja en un pedido' : 'está cargado en el pedido'}: NO lo tacho)`);
+        return;
+      }
       // `margenHoy` sólo viene cuando el descarte es por NO LLEGAR AL PISO. Es lo que distingue el
       // descarte BLANDO (se vuelve a medir a los 7 días) del DURO (marca frenada, sin Nissei, sin
       // precio, pasa el tope): esos no cambian solos y quedan.
@@ -10028,7 +10057,9 @@ async function main() {
         // La lista de cajas se guarda ENTERA: un patch parcial la rompe (mismo cuidado que la web).
         const cajas = (envios[id].cajasDet || []).map((c, i) => {
           const h = hs.find((x) => x.i === i);
-          return h ? { ...c, recibida: true, recFecha: c.recibida && c.recFecha ? c.recFecha : hoyCl, recAuto: false, faltan: h.faltan } : c;
+          // Etapa 3 (29/09): las entradas que el robot le había anotado (recUsadas) se borran: si no, lo que
+          // llega tarde de esta caja se lo llevaba la caja siguiente, que sigue en el camión.
+          return h ? { ...c, recibida: true, recFecha: c.recibida && c.recFecha ? c.recFecha : hoyCl, recAuto: false, faltan: h.faltan, recUsadas: null, recUsadasCalc: null } : c;
         });
         await db.set('cyc/envios_full/' + id + '/cajasDet', cajas);
       }
@@ -30458,6 +30489,9 @@ async function main() {
           if (vs2.length !== 1) { problemas.push(`"${m[2]}" en ${p.name} → ${vs2.length ? `agarra ${vs2.length}: ${vs2.join(' | ')}` : `no es una variante (tiene: ${(p.variantes || []).slice(0, 12).join(', ') || 'ninguna'})`}`); continue; }
           va = vs2[0];
         }
+        // Etapa 3 (29/09): con variantes y SIN `@aroma` no se escribe: tocar sólo el total lo dejaba
+        // distinto de la suma de sus variantes, y al despachar aparecían unidades de la nada.
+        if (!va && (p.variantes || []).length) { problemas.push(`"${m[1]}" tiene variantes (${(p.variantes || []).slice(0, 8).join(', ')}${(p.variantes || []).length > 8 ? '…' : ''}): decime de cuál con @, ej. ${m[1]}@${(p.variantes || [])[0]}=${m[3]}${m[4]}`); continue; }
         const n = parseInt(m[4], 10);
         ops.push({ p, va, delta: m[3] === '+' ? n : m[3] === '-' ? -n : null, fijo: m[3] ? null : n });
       }
@@ -30649,6 +30683,10 @@ async function main() {
         const rel = await db.get('cyc/compraspy/' + id);
         console.log(`\n${rel && rel.estado === 'llego' ? '✓' : '⚠️ NO QUEDÓ'} Pedido ${id} marcado como llegado · ${hechas.length} ficha(s) creada(s)${hechas.length ? ': ' + hechas.map((p) => p.id + ' ' + p.name).join(' | ') : ''}`);
         if (hechas.length) console.log(`Siguiente paso: \`repartopy:${id}\` para ver en qué cuenta va cada una y \`pasara:<cuenta>:=<nombre>:go\` para marcarla. Después contar en la oficina.`);
+        // Etapa 3 (29/09): hasta contarlas, el patrimonio baja lo que costó el pedido (dejó de estar
+        // "en camino" y las fichas nacen en 0). El comando para cargarlas, listo (revisar las unidades).
+        { const _ofi = (c.items || []).filter((it) => it && it.nom && (parseInt(it.u) || 0) > 0 && !/[;=]/.test(it.nom)).map((it) => `=${it.nom}=+${parseInt(it.u)}`);
+          if (_ofi.length) console.log(`⚠️ Contalas en la oficina (hasta entonces no suman en el patrimonio). Si llegó todo: ofi:${_ofi.join(';')};go`); }
         return;
       }
       console.log('No conozco ese paso. Usá: pyped · pyped:repo:… · pyped:nuevos · pyped:llego:<id>');
@@ -32880,6 +32918,9 @@ async function main() {
   // Inventarios de Full ya contados, por producto×cuenta: dos publicaciones pueden compartir el
   // mismo inventario y sumarlas contaría la misma mercadería dos veces (ver el caso del Joystick).
   const invYaContado = new Set();
+  // Etapa 3 (29/09): a qué color se le imputó cada depósito ya contado (kTot|invId → {q, pv, mla}),
+  // para que el color no dependa del orden de lectura cuando dos publicaciones comparten depósito.
+  const invColor = new Map();
   // El código de la etiqueta de Full (`inventory_id`) por publicación, para escribirlo al final en
   // una sola pasada. Ver el comentario largo donde se llena.
   // OJO CON EL NOMBRE: `invUpd` YA EXISTE más abajo (es el stock que se escribe en cyc/inventory) y
@@ -33805,7 +33846,7 @@ async function main() {
                 const kIv = kTot + '|' + invId;
                 if (invYaContado.has(kIv)) return 0;      // ya lo contó otra publicación
                 invYaContado.add(kIv);
-                try { return Number((await mlGet('/inventories/' + invId + '/stock/fulfillment', t.access_token))?.available_quantity) || 0; }
+                try { const _q = Number((await mlGet('/inventories/' + invId + '/stock/fulfillment', t.access_token))?.available_quantity) || 0; invColor.set(kIv, { q: _q, pv: null, mla }); return _q; }
                 // Si el depósito no contesta, NO se usa el número de /items (revisión max #19): en una
                 // publicación apagada es el último que tuvo, y escribirlo como real pisaba el quiebre
                 // en el historial. Ese producto×cuenta queda "sin leer" esta vuelta y no se toca.
@@ -33851,8 +33892,21 @@ async function main() {
                 // decir "Azul" donde la ficha dice "Azul Marino", y adivinar por una sola palabra
                 // ensuciaría el stock de dos variantes a la vez.
                 const pv = map[mla].variant || varianteDeTitulo(b.title || map[mla].title || '', p.variantes);
-                if (pv) {
-                  const vk = map[mla].prodId + '__' + sid(label) + '__v__' + sid(pv);
+                const _kIv = b.inventory_id ? kTot + '|' + b.inventory_id : null;
+                const _reg = _kIv ? invColor.get(_kIv) : null;
+                const _vkDe = (x) => map[mla].prodId + '__' + sid(label) + '__v__' + sid(x);
+                if (_reg && _reg.mla !== mla) {
+                  // DEPÓSITO COMPARTIDO (etapa 3, 29/09): el color no puede depender de cuál se lee
+                  // primero. Si la primera no tenía color y ésta sí, el stock va a este color. Si
+                  // las dos dicen colores DISTINTOS, no se le imputa a ninguno y se avisa (fijarvar).
+                  if (pv && !_reg.pv && !_reg.amb) { stockVar[_vkDe(pv)] = (stockVar[_vkDe(pv)] || 0) + _reg.q; _reg.pv = pv; }
+                  else if (pv && _reg.pv && _reg.pv !== pv && !_reg.amb) {
+                    stockVar[_vkDe(_reg.pv)] = Math.max(0, (stockVar[_vkDe(_reg.pv)] || 0) - _reg.q); _reg.amb = true;
+                    console.log(`⚠️ ${label}: ${_reg.mla} (${_reg.pv}) y ${mla} (${pv}) comparten el depósito ${b.inventory_id}: no le imputo el stock a ningún color. Arreglalo con fijarvar.`);
+                  }
+                } else if (pv) {
+                  if (_reg) _reg.pv = pv;
+                  const vk = _vkDe(pv);
                   stockVar[vk] = (stockVar[vk] || 0) + q;
                 }
               }
@@ -33995,7 +34049,7 @@ async function main() {
       const invAhora = (await db.get('cyc/inventory')) || {};
       const sidsML = new Set(labels.map((l) => sid(l)));
       for (const [k, v] of Object.entries(invAhora)) {
-        if (!(Number(v) > 0) || k in invUpd) continue;
+        if (!(Number(v) > 0 || Number(v) < 0) || k in invUpd) continue;   // también los negativos (etapa 3): restaban en el Arqueo
         const m = k.match(/^(.+?)__([^_].*?)(?:__v__.*)?$/);
         if (!m || !sidsML.has(m[2])) continue;             // sólo cuentas de ML, nunca la oficina
         if (ignoradasConProd.has(m[1] + '__' + m[2])) { ocultas.push(k + '=' + v); continue; }
@@ -34018,7 +34072,9 @@ async function main() {
       // día en que llegaron cada variante (…) como tomándola por unidades independientes"*. Nadie
       // recorre este nodo entero (todos buscan una clave exacta), así que agregar claves no mueve
       // ninguna cuenta del producto.
-      for (const [k, v] of Object.entries({ ...stockVar, ...stockTot })) {
+      // Etapa 3 (29/09): `invUpd` y no sólo lo medido: las claves que el barrido pone en 0 también
+      // tienen que quedar en el historial (si no, la fecha de entrada vieja seguía valiendo).
+      for (const [k, v] of Object.entries(invUpd)) {
         const antes = Number(invPrev[k] || 0), ahora = Number(v || 0);
         const h = histPrev[k] || {};
         // `aprox` separa dos cosas que NO son lo mismo y que hasta el 20/08/2026 se guardaban igual:
@@ -34061,7 +34117,7 @@ async function main() {
         const sidsLeidos = new Set([...stockLeido].map((l) => sid(l)));
         for (const l of stockLeido) slUpd['lect/' + sid(l) + '/' + horaSL] = 1;
         let slCambios = 0;
-        for (const [k, v] of Object.entries({ ...stockVar, ...stockTot })) {
+        for (const [k, v] of Object.entries(invUpd)) {
           const cta = k.split('__')[1];                    // producto__cuenta[__v__variante]
           if (!cta || !sidsLeidos.has(cta)) continue;
           const hay = Number(v) > 0 ? 1 : 0;
