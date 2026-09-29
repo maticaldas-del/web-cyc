@@ -515,6 +515,7 @@ footer{margin-top:32px;padding-top:14px;border-top:1px solid var(--border);font-
     <span id="home-version" onclick="actualizarApp()" title="Versión de la app que estás usando ahora. Tocá para buscar actualizaciones." style="display:inline-flex;align-items:center;gap:7px;font-size:.62rem;color:var(--muted);border:1px solid var(--border);border-radius:999px;padding:5px 13px;cursor:pointer;letter-spacing:.06em">…</span>
     <details id="home-cambios" style="margin-top:6px;text-align:left"></details>
   </div>
+  <div id="home-hoy"></div>
   <div id="home-puntaje"></div>
   <div id="home-parejo"></div>
   <div class="home-grid">
@@ -2379,7 +2380,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='20.93';
+const APP_VERSION='20.94';
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
 // muestre la versión y la fecha de actualización y que tenga un desplegable predeterminado cerrado".
 // Y el mismo día: "que ponga fecha de cada modificación y haya una barrita para scrollear y que
@@ -2390,6 +2391,7 @@ const APP_VERSION='20.93';
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'20.94',f:'29/09/2026',h:'20:30',c:[{n:1,t:'Inicio: arriba del Puntaje, la tarjeta 🏷️ Ventas de hoy (facturado, ventas, unidades, ganancia y % ganancia, con ayer abajo). Tocándola vas a Ventas x Producto. El Puntaje queda con el número y el resumen; las barras y "lo que falta" van en "Ver el detalle del puntaje" (recuerda si lo dejaste abierto).'}]},
   {v:'20.93',f:'29/09/2026',h:'20:00',c:[{n:1,t:'Diseño (etapa 7), lo chico: en modo claro los colores de aviso ahora se leen (el ámbar casi no se veía) y el gris de oscuro es un poco más claro. Ninguna letra queda más chica que .6 (había 114 más chicas).'},{n:1,t:'Teléfono: tocar algo que tenía el globito del mouse ahora lo muestra en un cartelito. Casillas y botones ✎ ✕ más grandes, y el iPhone ya no agranda la pantalla al tocar una casilla. La lista de ventas ya no tiene su propia barra para bajar.'},{n:1,t:'El menú ☰ tiene Mi oficina. Botón 📋 Copiar mensaje para Nissei. Luciana dejó de ser ámbar en los gráficos (ámbar es aviso). El % se llama "% ganancia" en todos lados (ya no "Markup"). Se sacaron textos viejos (base 40%, piso 30/meta 32, "sin cambios", el cartel del historial de Rotación).'}]},
   {v:'20.92',f:'29/09/2026',h:'19:20',c:[{n:2,t:'La app se actualiza sola: busca versión nueva cada 2 minutos y se recarga al instante. Si estás escribiendo, espera a que termines; si pasan 3 minutos, tapa la pantalla y sólo deja actualizar. Ya no se puede seguir usando una versión vieja.'}]},
   {v:'20.91',f:'29/09/2026',h:'19:00',c:[{n:1,t:'Revisión del panel: una etapa que nunca se hizo (hoy, Diseño) aparece como "Toca" ya, sin esperar la semana.'}]},
@@ -2659,7 +2661,7 @@ function goPage(page){
   if(page==='facturas')renderFacturas();
   if(page==='ajustes')enterAjustes();
   if(page==='inventario'){renderInv();renderProds();renderHist();loadFinInputs();updateArqueo();updateTotals();updateHdr();}
-  if(page==='home'){checkCierrePendiente();renderHomeRevision();updateHomeDolar();renderPuntajeMes();renderHomeParejo();}
+  if(page==='home'){try{renderHomeHoy();}catch(e){}checkCierrePendiente();renderHomeRevision();updateHomeDolar();renderPuntajeMes();renderHomeParejo();}
   if(page!=='home'){
     // Al entrar a una página se baja el header para dejar el contenido arriba. OJO: esto solo puede
     // pasar en los primeros milisegundos. Antes había un MutationObserver que repetía el scroll cada
@@ -15734,7 +15736,35 @@ function puntNivel(s){return s>=9?'🏆 Mes excelente':s>=8?'🌟 Muy buen mes':
 let puntMesSel=null; // mes visible en el card (null = mes actual)
 function _puntCurYM(){const n=new Date();return n.getFullYear()+'_'+String(n.getMonth()+1).padStart(2,'0');}
 function puntNav(dir){const cur=puntMesSel||_puntCurYM();const p=cur.split('_').map(Number);const d=new Date(p[0],p[1]-1+dir,1);const ny=d.getFullYear()+'_'+String(d.getMonth()+1).padStart(2,'0');if(ny>_puntCurYM())return;puntMesSel=ny;renderPuntajeMes();}
+// Etapa 7 (29/09/2026), él: "lo que más miramos es el puntaje (con un desplegable con los detalles) y las
+// ventas (lo que vamos en el día, y si lo toco que me mande a Ventas x Producto)". Misma cuenta que los KPIs
+// de Ventas x Producto en "Día = hoy": sin canceladas, efectivoCostoVP y el % único (pctGananciaVP).
+function _puntDetAbierto(){try{return localStorage.getItem('cycPuntDet')==='1';}catch(e){return false;}}
+function _puntDetGuardar(o){try{localStorage.setItem('cycPuntDet',o?'1':'0');}catch(e){}}
+function _homeDiaTot(k){
+  const ents=Object.values((state.ventaprod||{})[k]||{}).map(v=>({...v,_dateKey:k})).filter(v=>!v.cancelada);
+  let u=0,neto=0,costo=0,bruto=0,gest=0;ents.forEach(v=>{u+=v.qty||0;neto+=v.neto||0;costo+=efectivoCostoVP(v);bruto+=v.total||0;gest+=gestDivVP(v);});
+  const gan=neto-costo;return {u,bruto,gan,pct:pctGananciaVP(gan,costo,gest),ventas:new Set(ents.map(vpGrupoKey)).size};
+}
+function renderHomeHoy(){
+  const el=document.getElementById('home-hoy');if(!el||!state.ventaprod)return;
+  const hoy=new Date();const h=_homeDiaTot(dateToKey(hoy));
+  const ay=new Date(hoy);ay.setDate(ay.getDate()-1);const a=_homeDiaTot(dateToKey(ay));
+  const pctTxt=h.pct===null||!isFinite(h.pct)?'—':(h.pct>=0?'+':'')+h.pct.toFixed(0)+'%';
+  el.innerHTML=`<div onclick="goPage('ventaprod')" style="cursor:pointer;background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:14px 18px;margin:0 auto 14px;max-width:min(720px,calc(100vw - 32px))">
+    <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:8px">
+      <span style="font-size:.62rem;text-transform:uppercase;letter-spacing:.12em;color:var(--muted)">🏷️ Ventas de hoy</span>
+      <span style="font-size:.64rem;color:var(--muted)">ver ventas ›</span>
+    </div>
+    <div style="display:flex;flex-wrap:wrap;gap:6px 22px;align-items:baseline">
+      <div><div style="font-family:'Syne',sans-serif;font-weight:800;font-size:1.6rem;line-height:1.1">${fmt(h.bruto)}</div><div style="font-size:.64rem;color:var(--muted)">facturado · ${h.ventas} venta${h.ventas===1?'':'s'} · ${h.u} u.</div></div>
+      <div><div style="font-family:'Syne',sans-serif;font-weight:800;font-size:1.25rem;line-height:1.1;color:${h.gan>=0?'var(--text)':'var(--red)'}">${fmt(h.gan)}</div><div style="font-size:.64rem;color:var(--muted)">ganancia · ${pctTxt}</div></div>
+    </div>
+    <div style="font-size:.62rem;color:var(--muted);margin-top:8px">ayer: ${fmt(a.bruto)} · ganancia ${fmt(a.gan)} · ${a.ventas} venta${a.ventas===1?'':'s'}</div>
+  </div>`;
+}
 function renderPuntajeMes(){
+  try{renderHomeHoy();}catch(e){}
   const el=document.getElementById('home-puntaje');if(!el)return;
   const P=calcPuntajeMes(puntMesSel||undefined);puntMesSel=P.ym;
   const col=puntColor(P.score),C=2*Math.PI*50,off=C*(1-P.score/10);
@@ -15798,10 +15828,13 @@ function renderPuntajeMes(){
         <div style="font-family:'Syne',sans-serif;font-weight:800;font-size:1rem;margin-bottom:4px;color:${col}">${puntNivel(P.score)}</div>
         <div style="font-size:.68rem;color:var(--text);margin-bottom:3px">${cycTxt}</div>
         <div style="font-size:.68rem;color:var(--text);margin-bottom:10px">${nuestroTxt}</div>
-        ${bars}
       </div>
     </div>
-    ${sugHtml}
+    <details id="punt-det" ${_puntDetAbierto()?'open':''} ontoggle="_puntDetGuardar(this.open)" style="margin-top:10px">
+      <summary style="cursor:pointer;font-size:.68rem;color:var(--muted);padding:6px 0">Ver el detalle del puntaje</summary>
+      <div style="margin-top:8px">${bars}</div>
+      ${sugHtml}
+    </details>
   </div>`;
   // Pedido suyo del 30/09/2026: "Monotributo · cómo vendés vs AFIP" se mudó a la tarjeta ⚖️ de las 4
   // cuentas, con un botón para cambiar entre las dos vistas. Acá sólo se arma y se deja lista.
