@@ -748,9 +748,11 @@ async function cajasQueLlegaron(db, accounts, labels, products, DRY) {
   // un renglón que no se puede leer) y estiraba la ventana de su producto: en uno que vende mucho se
   // pasaban los 1.000 movimientos y NINGUNA caja nueva de ese producto se podía marcar (se contaba dos
   // veces). Queda abierta y en rojo en la pantalla; se marca o se abre a mano (cajallego / abrircaja).
+  const viejas45 = [];   // etapa 5: lo que ya había entrado de éstas se conserva en cyc/cajasentrado (ver abajo)
   {
     const _corte = new Date(Date.now() - 45 * 864e5 - 3 * 36e5).toISOString().slice(0, 10);
     const _viejas = abiertas.filter((ab) => ab.fecha && ab.fecha < _corte);
+    viejas45.push(..._viejas);
     if (_viejas.length) {
       console.log(`⚠️ ${_viejas.length} caja(s) abiertas con más de 45 días no se miran solas (se marcan a mano): ${_viejas.slice(0, 8).map((ab) => `${ab.e.cuenta || '?'} ${ab.fecha}${ab.c.track ? ' · ' + ab.c.track : ''}`).join(' · ')}`);
       for (const ab of _viejas) abiertas.splice(abiertas.indexOf(ab), 1);
@@ -812,13 +814,16 @@ async function cajasQueLlegaron(db, accounts, labels, products, DRY) {
   const sinLeerProd = {};                    // "cuenta|prodId" cuya publicación ML no contestó: todo el producto queda ciego
   const sinCantidad = [];                    // entradas aceptadas pero sin unidades legibles
   for (const [cta, o] of Object.entries(porCta)) {
-    const acc = accounts[cta]; if (!acc?.refresh_token) continue;
+    // Etapa 5: sin token esa cuenta NO se leyó. Sus productos quedan "sin leer": si no, abajo se veían
+    // como leídos con 0 entradas y se borraba lo ya anotado en cyc/cajasentrado (unidades contadas dos veces).
+    const _ciega = () => { for (const pid of o.prods) sinLeerProd[cta + '|' + pid] = true; };
+    const acc = accounts[cta]; if (!acc?.refresh_token) { _ciega(); continue; }
     let tok, sid;
     try {
       const t = await mlRefresh(ML_CLIENT_ID, ML_CLIENT_SECRET, acc.refresh_token);
       await db.patch('mlapi/tokens/' + cta, { refresh_token: t.refresh_token, updated_ts: Date.now() });
       tok = t.access_token; sid = acc.seller_id;
-    } catch { continue; }
+    } catch (e) { console.log(`⚠️ cajas de ${cta}: no pude renovar el permiso de ML (${String(e.message || e).slice(0, 80)}) — sus cajas quedan sin leer esta vuelta`); _ciega(); continue; }
     // LA VENTANA ES POR PRODUCTO, NO POR CUENTA (24/09/2026). Arrancaba en la caja abierta más
     // vieja de TODA la cuenta: una sola caja que nunca se marcaba (perdida, o con un renglón que no
     // entra) estiraba la ventana de todos los productos hasta pasar los 1.000 movimientos, y desde
@@ -1311,6 +1316,9 @@ async function cajasQueLlegaron(db, accounts, labels, products, DRY) {
       if (ciego) { if (prevE[key]) nuevoE[key] = prevE[key]; continue; }
       if (its.length) nuevoE[key] = { track: String(ab.c.track || ''), items: its };
     }
+    // Etapa 5: las abiertas de +45 días no se miran, pero lo que ya había entrado de ellas NO se borra
+    // (si no, esas unidades volvían a "en camino" estando en Full: contadas dos veces).
+    for (const ab of viejas45) { const key = ab.id + '__' + ab.i; if (prevE[key]) nuevoE[key] = prevE[key]; }
     const firma = (o) => JSON.stringify(Object.keys(o).sort().map((k) => [k, o[k]]));
     const nE = Object.values(nuevoE).reduce((a, x) => a + x.items.reduce((b, y) => b + y.q, 0), 0);
     if (firma(nuevoE) !== firma(prevE)) {
@@ -1852,6 +1860,9 @@ async function reputacionML(db, accounts, labels, DRY) {
       // Los porcentajes se guardan tal como los da ML (0 a 1) y se pasan a % en la pantalla, para
       // que no haya dos lugares multiplicando por 100 con criterios distintos.
       const tasa = (k) => (m[k] && m[k].rate != null ? Number(m[k].rate) : null);
+      // Etapa 5: si ML contesta sin el bloque de reputación, no se pisa la lectura buena anterior con
+      // una fila de nulls "de hoy" (la pantalla la mostraría como fresca): queda la vieja con su fecha.
+      if (!r.level_id && !r.metrics) { out.mal++; out.filas.push({ label, error: 'ML no mandó la reputación' }); continue; }
       const fila = {
         nivel: r.level_id || null,
         power: r.power_seller_status || null,
@@ -2036,8 +2047,10 @@ async function activarPausadasFull(db, links, tokensRun, DRY, products, piso) {
           envioEstimado = true;
         }
         extra = Math.max(0, extra);
-        const cuoV = cuotasCfg[mla] && parseFloat(cuotasCfg[mla].pct);
-        const cuo = isFinite(cuoV) && cuoV > 0 ? cuoV / 100 : 0;
+        // Etapa 5: una Premium sin cuotas medidas NO se toma como 0% de cuotas (con cuotas del 20% se
+        // activaría abajo del piso). Mismo freno que el rescate y las bajas (`cuotaPremiumDe`).
+        const cuo = cuotaPremiumDe(cuotasCfg, mla, lt);
+        if (cuo == null) { noVa('Premium sin cuotas medidas: no la activo hasta medirlas', precio); continue; }
         const mlx = precio * m;
         const mg = ((precio - com - extra - precio * cuo) - costo - mlx) / (costo + mlx + extra);
         if (mg < PISO) { noVa(`queda en ${(mg * 100).toFixed(0)}%, abajo del ${(PISO * 100).toFixed(0)}%`, precio); continue; }
@@ -4452,9 +4465,21 @@ async function margenAlDia(mla, token, que) {
     // Las cuotas sin interés de las PREMIUM, igual que netoweb (25/09/2026, el Salvador Dalí).
     let cuo = 0, cuoEst = false;
     if (b.listing_type_id === 'gold_pro' && !finEnCom) {
-      const cc = (await DB_REF.get('cyc/mlcuotas/' + mla)) || null;
+      // Etapa 5: sin % de cuotas válido (o sin poder leer cyc/mlcuotas) la Premium NO se mide con
+      // cuotas en 0: queda "sin medir", la misma marca que usa netoweb cuando falta una comisión.
+      let cc = null, leyo = true;
+      try { cc = (await DB_REF.get('cyc/mlcuotas/' + mla)) || null; } catch { leyo = false; }
       const v = cc ? parseFloat(cc.pct) : NaN;
-      if (isFinite(v) && v > 0) { cuo = v / 100; cuoEst = !!cc.estimado; }
+      if (!leyo || !isFinite(v) || v < 0) {
+        try {
+          await DB_REF.set('cyc/products/' + pid + '/netoCalcSinMedir', Date.now());
+          const np = await DB_REF.get('cyc/netopub/' + mla);
+          if (np) await DB_REF.set('cyc/netopub/' + mla + '/sinMedir', Date.now());
+        } catch { /* queda como estaba */ }
+        console.log(`   ⚠️ margen de ${mla} sin medir: Premium sin % de cuotas medido (no lo calculo con cuotas en 0)`);
+        return;
+      }
+      if (v > 0) { cuo = v / 100; cuoEst = !!cc.estimado; }
     }
 
     const antes = (await DB_REF.get('cyc/netopub/' + mla)) || {};
@@ -5394,6 +5419,13 @@ async function sendTelegram(text, tipo) {
 // Dos cambios: (1) si la lectura falla NO se escribe nada —perder un aviso es mucho menos grave que
 // perder un destinatario—, y (2) se escribe con `patch` y sólo los que se agregan, así el guardado
 // no puede sacar a nadie ni aunque la lectura venga incompleta.
+// El registro de GitHub es PÚBLICO (Etapa 5, 30/09): de cada suscriptor sale la inicial y los
+// últimos 3 números del chat, nunca el nombre completo ni el número entero.
+function _tgMask(id, nm) { const s = String(id || ''); const ini = String(nm || '').trim().charAt(0); return (ini ? ini + '. ' : '') + '…' + s.slice(-3); }
+// Para lo que escriben los compradores (Etapa 5): el registro es público, así que se tapan mails y
+// números largos, y los ids de orden/paquete/pago/reclamo salen con sus últimos 4 dígitos.
+function _taparPub(x) { return String(x || '').replace(/\S+@\S+/g, '[mail]').replace(/\d[\d\s.-]{5,}\d/g, '[número]'); }
+function _idPub(x) { const s = String(x || ''); return s ? '…' + s.slice(-4) : '?'; }
 async function resolveTgChat(db) {
   if (!TG_TOKEN) return;
   const chats = {}; // id -> {name, ts}
@@ -5417,7 +5449,7 @@ async function resolveTgChat(db) {
         const nm = ((c.first_name || c.title || '') + (c.last_name ? ' ' + c.last_name : '')).trim();
         const entrada = { name: nm, ts: Date.now() };
         chats[String(id)] = entrada; nuevos[String(id)] = entrada;
-        console.log('✓ Telegram: nuevo suscriptor', id, nm);
+        console.log('✓ Telegram: nuevo suscriptor', _tgMask(id, nm)); // registro público: sin nombre ni número entero
       }
     }
   }
@@ -5432,9 +5464,9 @@ async function resolveTgChat(db) {
   if (!TG_CHAT && TG_CHATS.length) TG_CHAT = TG_CHATS[0];
   // Que el número quede SIEMPRE en el log: así, si un día alguien desaparece, se ve en la corrida
   // del día en vez de descubrirse cuando el que falta avisa que no le llega nada.
-  console.log(`Telegram: ${TG_CHATS.length} suscripto(s)${TG_CHATS.length ? ' · ' + TG_CHATS.map((id) => id + (TG_NAMES[id] ? ' (' + TG_NAMES[id] + ')' : '')).join(' · ') : ''}`);
+  console.log(`Telegram: ${TG_CHATS.length} suscripto(s)${TG_CHATS.length ? ' · ' + TG_CHATS.map((id) => _tgMask(id, TG_NAMES[id])).join(' · ') : ''}`);
   console.log(TG_ALERTAS
-    ? `Telegram avisos (sólo Mati): ${TG_ALERTAS}${TG_NAMES[TG_ALERTAS] ? ' (' + TG_NAMES[TG_ALERTAS] + ')' : ''}`
+    ? `Telegram avisos (sólo Mati): ${_tgMask(TG_ALERTAS, TG_NAMES[TG_ALERTAS])}`
     : `Telegram avisos: SIN CONFIGURAR — los avisos de subir/bajar precio no se mandan a nadie. Se arregla con el comando tgalertas.`);
 }
 
@@ -6429,21 +6461,26 @@ async function fetchOrdersRange(sellerId, token, fromMs, toMs, winDays = 12) {
         offset: String(offset), limit: '50',
       });
       let d;
-      try { d = await mlGet('/orders/search?' + q.toString(), token); } catch { break; }
+      // Etapa 5: una página que ML no contesta (429) o el tope de 1000 por ventana dejan la lista
+      // CORTADA. Antes se devolvía igual, sin aviso, y quien sumaba totales guardaba un número bajo
+      // como si fuera el real. Ahora queda `out.incompleto` (igual que fetchCancelled).
+      try { d = await mlGet('/orders/search?' + q.toString(), token); } catch { out.incompleto = true; break; }
       const res = d.results || [];
       out.push(...res);
       if (res.length < 50) break;
       offset += 50;
-      if (offset > 950) break; // si una ventana trae >1000, la achicaríamos (raro con 12 días)
+      if (offset > 950) { out.incompleto = true; break; } // si una ventana trae >1000, la achicaríamos (raro con 12 días)
     }
   }
+  // Etapa 5: se dice SIEMPRE en el log, así ningún total impreso con esta lista pasa por completo.
+  if (out.incompleto) console.log(`⚠️ LISTA DE VENTAS CORTADA (seller ${String(sellerId).slice(-3)}: ML no contestó una página o se llegó al tope): cualquier total de abajo está CORTO`);
   return out;
 }
 
 // ── traer las ventas CANCELADAS (para sacarlas del panel si ya estaban) ─────
 // ML no permite filtrar por fecha de cancelación, así que miramos una ventana
 // amplia (por fecha de creación) para atrapar cancelaciones de ventas viejas.
-async function fetchCancelled(sellerId, token, fromISO) {
+async function fetchCancelled(sellerId, token, fromISO, toISO) {
   const out = [];
   let offset = 0;
   const limit = 50;
@@ -6455,6 +6492,7 @@ async function fetchCancelled(sellerId, token, fromISO) {
       offset: String(offset), limit: String(limit),
     });
     if (fromISO) q.set('order.date_created.from', fromISO);
+    if (toISO) q.set('order.date_created.to', toISO);   // Etapa 5: CANCEL_AGG pide de a un mes
     let d;
     // F5 de la segunda vuelta (25/09/2026): si ML no contesta una página (un 429) la lista queda
     // CORTADA. Antes se devolvía igual y `CANCEL_AGG` la guardaba ENTERA encima de lo que había:
@@ -7198,6 +7236,8 @@ async function main() {
       }
       // cargos ML reales por venta de esa cuenta en el período (pago por pago, pero UNA sola cuenta)
       const paid = await fetchOrdersRange(acc.seller_id, t.access_token, win[0], win[1]);
+      // Etapa 5: con la lista de ventas cortada los cargos salen bajos y el "almacenamiento" alto: no se guarda.
+      if (paid.incompleto) { console.log(`❌ ${label} ${key}: ML no devolvió todas las ventas del período (429 o tope): no guardo el almacenamiento, correlo de nuevo`); process.exitCode = 1; return; }
       const byId = new Map(paid.map((o) => [o.id, o]));
       let fees = 0, done = 0;
       for (const o of byId.values()) {
@@ -8093,6 +8133,18 @@ async function main() {
       const diferidasAuto = new Set();   // quedaron afuera SÓLO por el tope: no se anotan como avisadas (#25)
       const AUTO_MIN_U = 4, AUTO_MAX_DSIN = 7;
       const hechosAuto = [], fallidosAuto = [], pruebasCerradas = [];
+      // Etapa 5: lo que se anota DESPUÉS de cambiar un precio de verdad (autoprecio, escalera,
+      // notraer, avisados) iba con `catch {}`: si fallaba, el cambio quedaba hecho en ML sin memoria
+      // (el supervisor no lo juzga, la escalera salta escalones, se vuelve a proponer). Se reintenta
+      // una vez; si igual falla, va al mensaje de la noche y al log.
+      const sinAnotar = [];
+      const _anotar = async (fn, que, f) => {
+        let err = null;
+        for (let i = 0; i < 2; i++) { try { await fn(); return true; } catch (e) { err = e; } }
+        sinAnotar.push({ que, nom: (f && f.nom) || '?', cuenta: (f && f.cuenta) || '', mla: (f && f.mla) || '' });
+        console.log(`   ❌ cambié ${(f && f.nom) || '?'} (${(f && f.mla) || '?'}) pero NO pude anotar ${que}: ${String(err && err.message || err).slice(0, 80)}`);
+        return false;
+      };
       let autoprecio = {};
       try { autoprecio = (await db.get('cyc/autoprecio')) || {}; } catch { autoprecio = null; }
       const recienteAuto = (mla, tipo, dias) => {
@@ -8542,13 +8594,13 @@ async function main() {
               ? { tipo: 'baja', por: 'remate', de: r.from || f.precio, a: r.to || t.a, ts: hoyTs, nom: f.nom, cuenta: f.cuenta, margen: Math.round(f.mgPw * 10) / 10, piso: t.piso }
               : { tipo: t.tipo, de: r.from || f.precio, a: r.to || t.a, ts: hoyTs, nom: f.nom, cuenta: f.cuenta,
                 ...(t.tipo === 'sube' ? { u30: f.u } : { margen: Math.round(f.mgPw * 10) / 10 }) };
-          try { await db.set('cyc/autoprecio/' + f.mla, reg); } catch { /* */ }
+          await _anotar(() => db.set('cyc/autoprecio/' + f.mla, reg), 'el registro del robot (autoprecio)', f);
           if (autoprecio) autoprecio[f.mla] = reg;   // etapa 4: la memoria de esta corrida también se entera
           if (t.tipo === 'escalera') {
-            try { await db.set('cyc/escalera/' + f.mla, { paso: t.pasoOk, ts: hoyTs, de: r.from || f.precio, a: r.to || t.a, nom: f.nom, cuenta: f.cuenta, prodId: t.prodId }); } catch { /* */ }
+            await _anotar(() => db.set('cyc/escalera/' + f.mla, { paso: t.pasoOk, ts: hoyTs, de: r.from || f.precio, a: r.to || t.a, nom: f.nom, cuenta: f.cuenta, prodId: t.prodId }), 'el escalón (escalera)', f);
             if (t.marcarNo) {
-              try { await db.set('cyc/notraer/' + t.prodId, { ts: hoyTs, auto: true, mla: f.mla, nom: f.nom,
-                motivo: 'no vendió en 45+ días, ganar la caja daba pérdida y vendió menos de ' + NOTRAER_MIN_U + ' u. en 180 días entre las 4 cuentas' }); } catch { /* */ }
+              await _anotar(() => db.set('cyc/notraer/' + t.prodId, { ts: hoyTs, auto: true, mla: f.mla, nom: f.nom,
+                motivo: 'no vendió en 45+ días, ganar la caja daba pérdida y vendió menos de ' + NOTRAER_MIN_U + ' u. en 180 días entre las 4 cuentas' }), 'el "no traer más"', f);
             }
             console.log(`   ✓ ESCALERA ${renglon} · escalón ${t.piso}% · queda en ${f.mgPw.toFixed(1)}% · 🔒 liquidando${t.marcarNo ? ' · 🚫 NO TRAER MÁS' : ''}${quedo != null ? ` · releído de ML: ${money(quedo)}` : ' · ⚠️ no pude releerlo'}`);
             continue;
@@ -8556,17 +8608,16 @@ async function main() {
           if (t.tipo === 'remate') {
             const clR = f.sobre ? 'o_' + f.mla : 'r_' + f.mla;
             const vR = { tipo: f.sobre ? 'cajabarata' : 'rematar', valor: f.ptw, ts: hoyTs };
-            try { await db.patch('cyc/avisados', { [clR]: vR }); avisados[clR] = vR; } catch { /* */ }
+            if (await _anotar(() => db.patch('cyc/avisados', { [clR]: vR }), 'la memoria de avisados', f)) avisados[clR] = vR;
             console.log(`   ✓ REMATADO ${renglon} · queda en ${f.mgPw.toFixed(1)}% · 🔒 liquidando${quedo != null ? ` · releído de ML: ${money(quedo)}` : ' · ⚠️ no pude releerlo'}`);
             continue;
           }
           if (t.tipo === 'rescate') { console.log(`   ✓ RESCATADO ${renglon}${quedo != null ? ` · releído de ML: ${money(quedo)}` : ' · ⚠️ no pude releerlo'}`); continue; }
           // Se anota en la memoria del aviso para que no vuelva a salir como "para decidir".
           const clave = t.tipo === 'sube' ? f.mla : (cbrAutoIds.has(f.mla) ? 'c_' : 'o_') + f.mla;
-          try {
-            await db.patch('cyc/avisados', { [clave]: { tipo: t.tipo === 'sube' ? 'subir' : 'cajabarata', valor: t.tipo === 'sube' ? f.tope : f.ptw, ts: hoyTs } });
+          if (await _anotar(() => db.patch('cyc/avisados', { [clave]: { tipo: t.tipo === 'sube' ? 'subir' : 'cajabarata', valor: t.tipo === 'sube' ? f.tope : f.ptw, ts: hoyTs } }), 'la memoria de avisados', f)) {
             avisados[clave] = { tipo: t.tipo === 'sube' ? 'subir' : 'cajabarata', valor: t.tipo === 'sube' ? f.tope : f.ptw, ts: hoyTs };
-          } catch { /* */ }
+          }
           console.log(`   ✓ ${t.tipo === 'sube' ? 'SUBIDO' : 'BAJADO'} ${renglon}${quedo != null ? ` · releído de ML: ${money(quedo)}` : ' · ⚠️ no pude releerlo'}`);
         }
         if (autoRemate.length > REMATE_AUTO_MAX) console.log(`   (quedan ${autoRemate.length - REMATE_AUTO_MAX} remates para mañana: tope de ${REMATE_AUTO_MAX} por noche)`);
@@ -8613,8 +8664,8 @@ async function main() {
               let quedo = null;
               try { quedo = Number((await mlGet('/items/' + c.mla + '?attributes=price', tk))?.price) || null; } catch { quedo = null; }
               hechosAuto.push({ ...t, de: r.from || c.precio, a: r.to || c.a, quedo });
-              try { await db.set('cyc/autoprecio/' + c.mla, { tipo: 'sube', por: 'prueba', de: r.from || c.precio, a: r.to || c.a, ts: hoyTs, nom: c.nom, cuenta: c.cuenta, u30: c.u }); } catch { /* */ }
-              try { await db.patch('cyc/prueba/' + c.mla, { estado: 'prueba', ts: hoyTs, de: r.from || c.precio, a: r.to || c.a, pasos: (c.pasos || 0) + 1, precioInicial: c.prIni, desde: (c.pasos ? undefined : hoyTs), nom: c.nom, cuenta: c.cuenta }); } catch { /* */ }
+              await _anotar(() => db.set('cyc/autoprecio/' + c.mla, { tipo: 'sube', por: 'prueba', de: r.from || c.precio, a: r.to || c.a, ts: hoyTs, nom: c.nom, cuenta: c.cuenta, u30: c.u }), 'el registro del robot (autoprecio)', c);
+              await _anotar(() => db.patch('cyc/prueba/' + c.mla, { estado: 'prueba', ts: hoyTs, de: r.from || c.precio, a: r.to || c.a, pasos: (c.pasos || 0) + 1, precioInicial: c.prIni, desde: (c.pasos ? undefined : hoyTs), nom: c.nom, cuenta: c.cuenta }), 'la prueba (cyc/prueba)', c);
               console.log(`   ✓ 🧪 PRUEBA ${c.nom} (${c.cuenta}) ${money(c.precio)} → ${money(r.to || c.a)}${quedo != null ? ` · releído de ML: ${money(quedo)}` : ' · ⚠️ no pude releerlo'}`);
             }
           }
@@ -8731,6 +8782,10 @@ async function main() {
               : x.tipo === 'sube' ? ` · vendió ${f.u} en 30 d · sigue abajo del competidor` : ` · gana la caja · queda en ${f.mgPw.toFixed(1)}%`)
             + (x.quedo == null ? ' · ⚠️ no pude releerlo de ML' : (Math.round(x.quedo) === Math.round(x.a) ? '' : ` · ⚠️ ML dice ${money(x.quedo)}`)));
         }
+      }
+      if (sinAnotar.length) {
+        L.push(`\n❌ <b>Cambié el precio pero no lo pude anotar</b> · ${sinAnotar.length} (el supervisor/la escalera no se enteran: avisame y lo anoto a mano)`);
+        for (const x of sinAnotar) L.push(`· ${x.nom} (${x.cuenta}) · ${x.mla} · falta ${x.que}`);
       }
       if (pruebasCerradas.length) {
         L.push(`\n🧪 <b>Pruebas cerradas: la suba dejó menos plata o vendió menos</b> · ${pruebasCerradas.length} (no se prueban más · volverlas atrás es bajar un precio: decime y lo hago)`);
@@ -8995,6 +9050,11 @@ async function main() {
       }
       if (_yaMandadoHoy) {
         console.log(`\n── El aviso de hoy (${_diaAv}) ya salió en otra corrida: no lo mando de nuevo ni toco la lista numerada.`);
+        // Etapa 5: un precio cambiado SIN anotar no puede quedar callado aunque el aviso ya haya salido.
+        if (sinAnotar.length && !DRY) {
+          const okSA = await sendAlerta(`❌ <b>Cambié el precio pero no lo pude anotar</b> · ${sinAnotar.length}\n` + sinAnotar.map((x) => `· ${x.nom} (${x.cuenta}) · ${x.mla} · falta ${x.que}`).join('\n'));
+          if (!okSA) console.log('❌ tampoco pude avisar por Telegram lo que quedó sin anotar (ver arriba)');
+        }
         return;
       }
       if (MANDAR) {
@@ -9045,7 +9105,7 @@ async function main() {
       console.log(actual ? `Hoy los avisos van a: ${actual}${TG_NAMES[actual] ? ' (' + TG_NAMES[actual] + ')' : ''}`
         : 'Hoy NO hay canal de avisos: los avisos de subir/bajar precio no se mandan a nadie.');
       console.log(`El resumen del día sigue yendo a: ${TG_CHATS.length} chat(s)`
-        + (TG_CHATS.length ? ' · ' + TG_CHATS.map((id) => id + (TG_NAMES[id] ? ' (' + TG_NAMES[id] + ')' : '')).join(' · ') : ''));
+        + (TG_CHATS.length ? ' · ' + TG_CHATS.map((id) => _tgMask(id, TG_NAMES[id])).join(' · ') : ''));
 
       if (!arg) {
         const guardados = (await db.get('mlapi/telegram/chats')) || {};
@@ -9090,8 +9150,12 @@ async function main() {
         + fl.map((x) => '· ' + x.replace(/&/g, '&amp;').replace(/</g, '&lt;')).join('\n')
         + `\n<i>Los demás pasos corrieron igual. Si el que falló fue "Margen ML al precio de hoy", el robot de precios no tocó nada esta noche.</i>`;
       console.log(txt.replace(/<[^>]+>/g, ''));
-      const ok = await sendAlerta(txt);
-      console.log(ok ? '✓ aviso mandado' : '✗ no pude mandar el aviso');
+      let ok = false;
+      try { ok = await sendAlerta(txt); } catch (e) { console.log('✗ sendAlerta tiró: ' + e.message); }
+      // Etapa 5: si el aviso de los pasos fallados no sale, la noche queda callada justo cuando
+      // algo falló. Se grita en el log y el paso sale con error (se ve rojo en GitHub).
+      if (ok) console.log('✓ aviso mandado');
+      else { console.log('❌❌ NO PUDE MANDAR EL AVISO DE LOS PASOS FALLADOS — nadie se entera por Telegram. Pasos: ' + fl.join(' · ')); process.exitCode = 1; }
       return;
     }
     // BILLING_PROBE=tgchats → QUIÉN RECIBE LOS AVISOS DE TELEGRAM. Sólo lee, no manda nada.
@@ -11820,9 +11884,9 @@ async function main() {
         if (!claims.length && !unread.length) { console.log(`\n═══ ${label.toUpperCase()} ═══\n  Sin reclamos ni mensajes sin leer.`); continue; }
         console.log(`\n═══ ${label.toUpperCase()} ═══`);
         for (const c of claims) {
-          console.log(`\n── RECLAMO ${c.id} ──`);
+          console.log(`\n── RECLAMO ${_idPub(c.id)} ──`);
           console.log(`  motivo ${c.reason_id || '?'} · tipo ${c.type || '?'} · etapa ${c.stage || '?'} · estado ${c.status || '?'}`);
-          console.log(`  abierto ${String(c.date_created || '').slice(0, 16).replace('T', ' ')} · orden ${c.resource_id || '?'}`);
+          console.log(`  abierto ${String(c.date_created || '').slice(0, 16).replace('T', ' ')} · orden ${_idPub(c.resource_id)}`);
           if (c.players) for (const p of c.players) console.log(`  ${p.role}: ${p.type || ''} ${p.available_actions ? '· puede: ' + (p.available_actions || []).map((a) => a.action || a).join(', ') : ''}`);
           // Qué producto es (para saber de qué está hablando el comprador).
           try {
@@ -11840,24 +11904,24 @@ async function main() {
                 for (const m of arr) {
                   const quien = m.sender_role || m.from?.role || m.sender?.role || '?';
                   const cuando = String(m.date_created || m.date || '').slice(0, 16).replace('T', ' ');
-                  console.log(`    [${cuando}] ${quien}: ${String(m.message || m.text || '').replace(/\s+/g, ' ').slice(0, 300)}`);
+                  console.log(`    [${cuando}] ${quien}: ${_taparPub(String(m.message || m.text || '').replace(/\s+/g, ' ').slice(0, 300))}`);
                 }
               } else if (arr.length) {
                 console.log(`  acciones que ML me deja hacer: ${arr.map((a) => a.action || a.id || a).join(', ')}`);
               }
             } catch (e) { if (CRUDO) console.log(`  (${ruta}: ${String(e.message || e).slice(0, 90)})`); }
           }
-          if (CRUDO) console.log('  CRUDO: ' + JSON.stringify(c).slice(0, 1200));
+          if (CRUDO) console.log('  CRUDO (sólo nombres de campo, el registro es público): ' + Object.keys(c || {}).join(', '));
         }
         for (const u of unread) {
           console.log(`\n── MENSAJE SIN LEER ──`);
-          if (CRUDO) console.log('  CRUDO: ' + JSON.stringify(u).slice(0, 600));
+          if (CRUDO) console.log('  CRUDO (sólo nombres de campo): ' + Object.keys(u || {}).join(', '));
           // ML no manda el nº de paquete suelto: viene adentro de una ruta, tipo
           // "/packs/2000014220310455/sellers/354425757". Hay que sacarlo de ahí.
           const pack = u.resource_id || u.pack_id
             || (String(u.resource || '').match(/packs\/(\d+)/) || [])[1];
-          if (!pack) { console.log('  (no encontré el nº de paquete: ' + JSON.stringify(u).slice(0, 200) + ')'); continue; }
-          console.log(`  paquete ${pack}`);
+          if (!pack) { console.log('  (no encontré el nº de paquete · campos: ' + Object.keys(u || {}).join(', ') + ')'); continue; }
+          console.log(`  paquete ${_idPub(pack)}`);
           // De qué venta habla, para no contestar a ciegas.
           try {
             const o = await mlGet('/orders/search?seller=' + sid + '&q=' + pack, tok);
@@ -11870,7 +11934,7 @@ async function main() {
             for (const m of arr.slice(-6)) {
               const mio = String(m.from?.user_id || '') === String(sid);
               const cuando = String(m.message_date?.created || m.date_created || '').slice(0, 16).replace('T', ' ');
-              console.log(`    [${cuando}] ${mio ? 'NOSOTROS' : 'COMPRADOR'}: ${String(m.text || '').replace(/\s+/g, ' ').slice(0, 300)}`);
+              console.log(`    [${cuando}] ${mio ? 'NOSOTROS' : 'COMPRADOR'}: ${_taparPub(String(m.text || '').replace(/\s+/g, ' ').slice(0, 300))}`);
             }
             if (!arr.length) console.log('  (no pude leer el hilo)');
           } catch (e) { console.log(`  (no pude leer el hilo: ${String(e.message || e).slice(0, 90)})`); }
@@ -11931,7 +11995,7 @@ async function main() {
         catch { /* no es de esta cuenta */ }
       }
       if (!tok) { console.log(`No pude abrir el reclamo ${CID} con ninguna cuenta.`); return; }
-      console.log(`=== RECLAMO ${CID} · cuenta ${label} ===\n`);
+      console.log(`=== RECLAMO ${_idPub(CID)} · cuenta ${label} ===\n`);
       console.log(`  tipo ${det.type || '?'} · etapa ${det.stage || '?'} · estado ${det.status || '?'} · motivo ${det.reason_id || '?'}`);
       console.log(`  abierto ${String(det.date_created || '').slice(0, 16).replace('T', ' ')} · último movimiento ${String(det.last_updated || '').slice(0, 16).replace('T', ' ')}`);
       console.log(`  CÓMO TERMINÓ: ${det.resolution ? JSON.stringify(det.resolution) : '(todavía sin resolución cargada)'}`);
@@ -11947,14 +12011,16 @@ async function main() {
         console.log(`\n── LA CONVERSACIÓN ENTERA (${arr.length}) ──`);
         for (const m of arr.slice().reverse()) {
           console.log(`\n[${String(m.date_created || '').slice(0, 16).replace('T', ' ')}] ${m.sender_role || '?'}:`);
-          console.log(limpiar(m.message || m.text).split('\n').map((x) => '   ' + x).join('\n'));
+          console.log(_taparPub(limpiar(m.message || m.text)).split('\n').map((x) => '   ' + x).join('\n'));
         }
       } catch (e) { console.log(`(no pude leer los mensajes: ${String(e.message || e).slice(0, 90)})`); }
       // ¿El comprador devuelve el producto? ML lo guarda aparte del reclamo.
       for (const ruta of [`/post-purchase/v1/claims/${CID}/returns`, `/post-purchase/v2/claims/${CID}/returns`]) {
         try {
           const r = await mlGet(ruta, tok);
-          console.log(`\n── ¿VUELVE EL PRODUCTO? ──\n  ${JSON.stringify(r).slice(0, 1200)}`);
+          // Sólo estado y nombres de campo: la devolución trae el envío de vuelta, con datos del comprador.
+          const rr = Array.isArray(r) ? (r[0] || {}) : (r?.data?.[0] || r || {});
+          console.log(`\n── ¿VUELVE EL PRODUCTO? ──\n  estado ${rr.status || '?'}${rr.subtype ? ' · ' + rr.subtype : ''}${rr.status_money ? ' · plata ' + rr.status_money : ''} · campos: ${Object.keys(rr).join(', ')}`);
           break;
         } catch (e) { console.log(`\n(${ruta}: ${String(e.message || e).slice(0, 100)})`); }
       }
@@ -11962,12 +12028,12 @@ async function main() {
       try {
         const o = await mlGet('/orders/' + det.resource_id, tok);
         console.log(`\n── LA VENTA ──`);
-        console.log(`  orden ${o.id} · estado ${o.status}${o.status_detail ? ' (' + JSON.stringify(o.status_detail) + ')' : ''}`);
+        console.log(`  orden ${_idPub(o.id)} · estado ${o.status}${o.status_detail ? ' (' + JSON.stringify(o.status_detail) + ')' : ''}`);
         for (const it of (o.order_items || [])) console.log(`  ${it.quantity} × ${String(it.item?.title || '').slice(0, 55)} · ${money(Math.round(it.unit_price || 0))}`);
         console.log(`  total ${money(Math.round(o.total_amount || 0))} · pagado ${money(Math.round(o.paid_amount || 0))}`);
         console.log(`\n── LA PLATA ──`);
         for (const p of (o.payments || [])) {
-          console.log(`  pago ${p.id} · ${p.status}${p.status_detail ? '/' + p.status_detail : ''} · cobrado ${money(Math.round(p.transaction_amount || 0))}`
+          console.log(`  pago ${_idPub(p.id)} · ${p.status}${p.status_detail ? '/' + p.status_detail : ''} · cobrado ${money(Math.round(p.transaction_amount || 0))}`
             + ` · te quedó ${money(Math.round(p.transaction_amount_refunded != null ? (p.transaction_amount - p.transaction_amount_refunded) : (p.transaction_amount || 0)))}`
             + (p.transaction_amount_refunded ? ` · DEVUELTO AL COMPRADOR ${money(Math.round(p.transaction_amount_refunded))}` : ''));
         }
@@ -12659,6 +12725,7 @@ async function main() {
         ventaMla[v.mla] = (ventaMla[v.mla] || 0) + (v.qty || 1);
       }
       const filas = []; const upd = {};
+      let visIntentos = 0, visFallas = 0;   // Etapa 5: ML no contestó ≠ "0 visitas"; se cuenta
       for (const label of labels) {
         if (soloCta && label.toLowerCase() !== soloCta) continue;
         const acc = accounts[label]; if (!acc?.refresh_token) continue;
@@ -12689,11 +12756,12 @@ async function main() {
             }
             if (stock <= 0) continue;                       // sin stock no vende por motivos obvios
             let vis = null;
+            visIntentos++;
             try {
               const d = await mlGet(`/items/${mla}/visits/time_window?last=${DIAS}&unit=day`, tok);
               vis = Number(d?.total_visits);
             } catch { /* sigue */ }
-            if (vis == null || !isFinite(vis)) continue;
+            if (vis == null || !isFinite(vis)) { visFallas++; continue; }
             const ven = ventaMla[mla] || 0;
             filas.push({ mla, label, nom: String(b.title || '').slice(0, 46), vis, ven, stock, precio: b.price || 0 });
             upd[mla + '/vis30'] = vis;
@@ -12701,7 +12769,9 @@ async function main() {
           }
         }
       }
-      if (!filas.length) { console.log('No pude leer visitas de ninguna publicación activa con stock.'); return; }
+      if (visFallas) console.log(`⚠️ ML no contestó las visitas de ${visFallas} de ${visIntentos} publicaciones (quedan con el dato anterior)`);
+      // Etapa 5: sin NINGUNA visita leída el paso no midió nada: sale con error (avisonoche lo nombra).
+      if (!filas.length) { console.log('❌ No pude leer visitas de ninguna publicación activa con stock.'); process.exitCode = 1; return; }
       if (!DRY) { await db.patch('cyc/mllinks', Object.fromEntries(Object.entries(upd).map(([k, v]) => [k, v]))); }
       const tot = filas.reduce((a, f) => a + f.vis, 0);
       console.log(`=== VISITAS EN ${DIAS} DÍAS · ${filas.length} publicaciones activas con stock · ${tot} visitas ===\n`);
@@ -13024,6 +13094,8 @@ async function main() {
         let orders = [];
         try { orders = await fetchOrdersRange(acc.seller_id, t.access_token, Date.now() - DIAS_E * 864e5, Date.now()); }
         catch (e) { console.log(`  ${label}: no pude leer las ventas · ${String(e.message || e).slice(0, 80)}`); continue; }
+        // Etapa 5: escribe venta por venta (patch), así que una lista cortada sólo deja algunas para mañana. Se dice.
+        if (orders.incompleto) console.log(`  ⚠️ ${label}: ML no devolvió todas las ventas (429 o tope): las que faltan se miran la noche siguiente`);
         for (const o of orders) {
           const key = 's' + o.id;
           if (cerrada(ya[key]) || cerrada(nuevas[key])) { yaCerradas++; continue; }
@@ -15958,7 +16030,11 @@ async function main() {
           let rr = null; try { rr = await mlGet('/post-purchase/v1/claims/reasons/' + rid, tk); } catch { rr = null; }
           reasonCache[rid] = rr ? String(rr.name || rr.detail || rr.description || rid).slice(0, 90) : null;
         }
-        const nombre = reasonCache[rid] || rid;
+        // Etapa 5: si ML no dio el NOMBRE del motivo, no se guarda (antes quedaba reason=rid para
+        // siempre, clasificado por el prefijo del código y sin reintentar). Cuenta como falla y se
+        // reintenta la noche siguiente.
+        if (reasonCache[rid] == null) { fallas++; continue; }
+        const nombre = reasonCache[rid];
         const _mk = String(nombre).toLowerCase();
         escribir[orden] = { ...o, reason: rid, codigo: nombre, nombre: MOTIVO_ML[_mk] ? MOTIVO_ML[_mk][0] : String(nombre).replace(/_/g, ' '), clase: clasif(rid, nombre), tipoClaim: String(c.type || ''), ts: Date.now() };
         nuevos++;
@@ -15969,6 +16045,8 @@ async function main() {
       console.log(`\n══ MOTIVO DE LOS RECLAMOS · últimos ${DIAS} días ══`);
       console.log(`   ${Object.keys(porOrden).length} reclamo(s)/devolución(es) · ${nuevos} leídos ahora · ${sinClaim} sin reclamo en ML · ${fallas} ML no contestó (se reintenta)`);
       console.log('   por clase: ' + Object.entries(cnt).map(([k, n]) => `${k} ${n}`).join(' · '));
+      // Etapa 5: había pendientes y ML no contestó NINGUNO → el paso sale con error (avisonoche lo nombra).
+      if (fallas > 0 && nuevos === 0 && sinClaim === 0) { console.log('❌ motivoreclamo: ML no contestó ningún reclamo pendiente'); process.exitCode = 1; }
       const porMot = {}; for (const [, x] of filas) { const k = `${x.clase} · ${x.nombre}`; porMot[k] = (porMot[k] || 0) + 1; }
       for (const [k, n] of Object.entries(porMot).sort((a, b) => b[1] - a[1])) console.log(`   ${String(n).padStart(3)} × ${k}`);
       const proponer = filas.filter(([, x]) => (x.clase === 'envio' || x.clase === 'comprador') && !x.sinCargo);
@@ -16097,12 +16175,15 @@ async function main() {
           if (!its.length) continue;
           const bruto = (o.order_items || []).reduce((s2, it) => s2 + (it.unit_price || 0) * (it.quantity || 1), 0);
           if (bruto <= 0) continue;
-          let fin = 0, leido = false;
+          // Etapa 5: si UN pago de la orden no se pudo leer, la orden entera se saltea. Antes se
+          // contaba lo leído: con 2 pagos y uno en 429 quedaba medio cargo, y ese % "medido" bajo
+          // pisaba al real y hacía ver la Premium más barata de lo que es.
+          let fin = 0, leido = false, pagoFallo = false;
           for (const pg of (o.payments || [])) {
             if (!pg.id) continue;
             try {
               const r = await fetch('https://api.mercadopago.com/v1/payments/' + pg.id, { headers: { Authorization: 'Bearer ' + t.access_token } });
-              if (!r.ok) { okPagos = false; continue; }
+              if (!r.ok) { okPagos = false; pagoFallo = true; continue; }
               const b = await r.json();
               leido = true;
               for (const c of (b.charges_details || [])) {
@@ -16111,9 +16192,9 @@ async function main() {
                 if (de && de !== 'collector') continue;   // lo paga el comprador: no es costo nuestro
                 fin += Number(c.amounts?.original) || 0;
               }
-            } catch { okPagos = false; }
+            } catch { okPagos = false; pagoFallo = true; }
           }
-          if (!leido) continue;
+          if (!leido || pagoFallo) continue;
           // el cargo es de la orden: se reparte entre sus ítems Premium por su peso en el bruto Premium
           const brutoP = its.reduce((s2, it) => s2 + (it.unit_price || 0) * (it.quantity || 1), 0);
           for (const it of its) {
@@ -16131,7 +16212,20 @@ async function main() {
       const peor = medidos.length ? Math.max(...medidos.map((x) => x.pct)) : CUOTA_DEFECTO;
       const out = {};
       for (const x of medidos) out[x.mla] = { pct: Math.round(x.pct * 100) / 100, n: x.n, ts: Date.now() };
-      for (const mla of Object.keys(premium)) if (!out[mla]) out[mla] = { pct: Math.round(peor * 100) / 100, n: 0, estimado: true, ts: Date.now() };
+      // Etapa 5: un ESTIMADO nunca pisa lo que ya estaba MEDIDO. Antes, si esta vuelta no alcanzaba
+      // a ver ventas de una Premium (429, o salió de la ventana), le escribía el "peor medido"
+      // marcado estimado encima del % real guardado. Si no se puede leer lo guardado, no se escribe
+      // ningún estimado (no se sabe qué pisaría).
+      let cuoPrev = null;
+      try { cuoPrev = (await db.get('cyc/mlcuotas')) || {}; } catch { console.log('⚠️ no pude leer cyc/mlcuotas: no escribo estimados esta vuelta (no sé qué pisaría)'); }
+      let conservados = 0;
+      for (const mla of Object.keys(premium)) {
+        if (out[mla]) continue;
+        const pv = cuoPrev && cuoPrev[mla];
+        if (pv && !pv.estimado && isFinite(parseFloat(pv.pct))) { out[mla] = pv; conservados++; continue; }
+        if (cuoPrev) out[mla] = { pct: Math.round(peor * 100) / 100, n: 0, estimado: true, ts: Date.now() };
+      }
+      if (conservados) console.log(`   ${conservados} Premium sin ventas en esta ventana conservan su % MEDIDO de antes (no se pisa con un estimado)`);
       console.log(`=== CUOTAS SIN INTERÉS (publicaciones PREMIUM) · últimos ${DIAS} días ===`);
       console.log(`Premium: ${Object.keys(premium).length} · con ventas medidas: ${medidos.length} · sin ventas (se les pone el peor medido, ${peor.toFixed(1)}%): ${Object.keys(out).length - medidos.length}`);
       for (const [mla, x] of Object.entries(out)) console.log(`   ${mla} · ${(premium[mla] || '?').padEnd(8)} · cuotas ${String(x.pct).padStart(5)}% del precio${x.estimado ? ' (estimado: nunca vendió)' : ` · ${x.n} venta(s)`} · ${((links[mla] || {}).title || '').slice(0, 36)}`);
@@ -16141,6 +16235,9 @@ async function main() {
         const rele = (await db.get('cyc/mlcuotas')) || {};
         console.log(`✓ Guardado en cyc/mlcuotas (${cuentasOk === labels.length ? 'reemplazado entero' : 'sólo agregado'}): ${Object.keys(rele).length} publicación(es). netoweb y los comandos de precio lo descuentan.`);
       }
+      // Etapa 5: sin NINGUNA cuenta leída entera el paso no midió nada. Sale con error para que
+      // el aviso de la noche (avisonoche) lo nombre, en vez de figurar "ok".
+      if (cuentasOk === 0) { console.log('❌ cuotas: ninguna cuenta se pudo leer entera — no se midió nada'); process.exitCode = 1; }
       return;
     }
     // BILLING_PROBE=sindatos → ARREGLA LAS PUBLICACIONES "SIN DATOS SUFICIENTES".
@@ -19521,12 +19618,34 @@ async function main() {
       const hoy = Date.now();
       console.log('=== EL DISPONIBLE DE ML, A PARTIR DE TU NÚMERO ===');
       console.log(APLICAR ? '(APLICANDO)\n' : '(PRUEBA · no se escribe nada · agregá ":go")\n');
+      // Etapa 5: cada vuelta que NO escribe (reporte que no se lista, corto o viejo, token, sin punto
+      // de partida…) quedaba sólo en el log. Ahora se cuenta en cyc/saldoml/_alerta (una por día de
+      // acá) y con 2 noches seguidas va un aviso, una vez por día. `null` = escribió bien.
+      const _notaDispo = async (motivo) => {
+        if (!APLICAR || DRY) return;
+        const hoyD = new Date(Date.now() - 3 * 3600e3).toISOString().slice(0, 10);
+        try {
+          const mem = (await db.get('cyc/saldoml/_alerta')) || {};
+          const esHoy = mem.dispDia === hoyD;
+          let fallos = Number(mem.dispFallos) || 0, ok = esHoy ? !!mem.dispOk : false;
+          if (!motivo) { fallos = 0; ok = true; } else if (!esHoy) fallos++;
+          const upd = { dispDia: hoyD, dispOk: ok, dispFallos: fallos, dispMotivo: motivo || null };
+          if (motivo) console.log(`   ⚠️ disponible sin escribir: ${motivo} · ${fallos} noche(s) seguidas`);
+          if (fallos >= 2 && !ok && mem.dispAvisoDia !== hoyD) {
+            const okA = await sendAlerta(`⚠️ <b>El disponible de ML lleva ${fallos} noches sin actualizarse</b>\nMotivo de esta vuelta: ${String(motivo).replace(/&/g, '&amp;').replace(/</g, '&lt;')}.\n<i>El Arqueo muestra el número de la última vez que salió bien.</i>`);
+            if (okA) upd.dispAvisoDia = hoyD;
+            console.log(`   aviso de disponible sin escribir: ${okA ? 'mandado' : '❌ no salió'}`);
+          }
+          await db.patch('cyc/saldoml/_alerta', upd);
+        } catch (e) { console.log('   ⚠️ no pude anotar la memoria del disponible: ' + String(e.message || e).slice(0, 80)); }
+      };
 
       const anclas = (await db.get('cyc/saldoancla')) || {};
       const tc = parseFloat((await db.get('cyc/finanzas/tipo_cambio')) || 0) || 0;
       if (!tc) {
         console.log('❌ No hay tipo de cambio cargado en el panel, y el Arqueo está en DÓLARES.');
         console.log('   Convertir con un cambio adivinado se mete en todo el patrimonio: no se toca nada.');
+        await _notaDispo('no hay tipo de cambio cargado'); if (APLICAR) process.exitCode = 1;
         return;
       }
       const res = {}; let listas = 0, problemas = 0;
@@ -19619,6 +19738,9 @@ async function main() {
       if (listas !== labels.length) {
         console.log('   NO se toca el Arqueo: con una cuenta afuera, el total que entra al');
         console.log('   patrimonio quedaría corto y nadie lo notaría.');
+        await _notaDispo(`${problemas} cuenta(s) con problema (${labels.filter((l) => !res[l]).join(', ')})`);
+        // Etapa 5: el paso no escribió nada: sale con error para que avisonoche lo nombre.
+        if (APLICAR) process.exitCode = 1;
         return;
       }
       if (!APLICAR) { console.log('   Con ":go" se escribe en el Arqueo.'); return; }
@@ -19640,12 +19762,14 @@ async function main() {
         // Etapa 2 (28/09): sin saber cuánto de lo liberado sigue en "a liquidar", escribir el disponible
         // (que ya lo incluye) lo contaría dos veces. No se escribe nada: sale en la vuelta siguiente.
         console.log('   ⚠️ no pude leer lo liberado que esperaba en "a liquidar": NO se escribe nada esta vuelta (se contaría dos veces)');
+        await _notaDispo('no pude leer lo liberado que esperaba en "a liquidar"');
         return;
       }
       {
         const _cambio = await _anclasCambiaron(db, anclas, labels);
         if (_cambio == null || _cambio.length) {
           console.log(`   ⚠️ NO se escribe: ${_cambio == null ? 'no pude releer el punto de partida' : 'cargaste el disponible de ' + _cambio.join(', ') + ' mientras esto corría'} (etapa 4). Lo tuyo manda; se recalcula en la próxima vuelta.`);
+          if (_cambio == null) await _notaDispo('no pude releer el punto de partida');
           return;
         }
       }
@@ -19656,6 +19780,7 @@ async function main() {
       const bien = Object.values(res).every((r2) => Math.round(parseFloat(fin[r2.clave]) || 0) === r2.usd)
         && Math.round(parseFloat(fin.mp_disp) || 0) === patch.mp_disp;
       console.log(`   Arqueo actualizado y releído: ${bien ? '✅ las 4 cuentas y el total coinciden' : '❌ algo no quedó'}`);
+      await _notaDispo(bien ? null : 'se escribió pero al releer no coincide');
       console.log('   (en DÓLARES, que es la moneda del Arqueo · el reporte viene en pesos y se convierte)');
       console.log('\n   OJO: los cargos mensuales de ML (almacenamiento, stock antiguo, percepciones)');
       console.log('   NO están en este reporte, así que el número se va yendo para arriba. Por eso');
@@ -19828,8 +19953,13 @@ async function main() {
       // partida que él cargó, o la última escritura de `dispo`, lo más nuevo) se queda contado acá, y
       // `dispo` lo saca en cuanto lo suma él. Si no se sabe desde cuándo, no se agrega nada y se dice.
       let dispTs = 0, anclasLib = {}, tsMpMano = 0;
-      try { dispTs = parseFloat((await db.get('cyc/saldoml/_dispTs')) || 0) || 0; } catch { /* */ }
-      try { anclasLib = (await db.get('cyc/saldoancla')) || {}; } catch { /* */ }
+      // Etapa 5: si _dispTs o los puntos de partida no se pueden leer, no se sabe qué parte de lo
+      // liberado ya está en el disponible: escribir "a liquidar" así la contaría dos veces. Se anota
+      // y más abajo NO se escribe mp_liq / liq_liberado esta vuelta.
+      let leyoDisp = true;
+      try { dispTs = parseFloat((await db.get('cyc/saldoml/_dispTs')) || 0) || 0; } catch { leyoDisp = false; }
+      try { anclasLib = (await db.get('cyc/saldoancla')) || {}; } catch { leyoDisp = false; }
+      if (!leyoDisp) console.log('⚠️ no pude leer _dispTs o los puntos de partida (saldoancla): esta vuelta NO se escribe "A liquidar en ML"');
       try { tsMpMano = parseFloat((await db.get('cyc/finanzas/_ts/mp')) || 0) || 0; } catch { /* */ }
       let libSinDisp = 0, libSinDesde = 0;
       const res = {}; let totalLiq = 0, cuentasOk = 0, cuentasMal = 0;
@@ -20010,7 +20140,14 @@ async function main() {
       // de todo el panel. Si cualquiera de los dos no da, se guarda el detalle para poder mirarlo
       // y NO se toca lo que él tiene cargado: quedarse con un número viejo se nota, quedarse con
       // uno equivocado no.
-      const puedePisar = cuentasOk === labels.length && cierraVentas;
+      const puedePisar = cuentasOk === labels.length && cierraVentas && leyoDisp;
+      // Etapa 5: por qué NO se escribió esta vuelta (null = se escribió). Va a la memoria
+      // cyc/saldoml/_alerta y, con 2 noches seguidas, a un aviso (antes quedaba sólo en el log).
+      let noEscribio = null;
+      if (!cuentasOk) noEscribio = 'no se pudo calcular ninguna cuenta';
+      else if (cuentasOk !== labels.length) noEscribio = 'falta alguna cuenta (' + labels.filter((l) => !res[l]).join(', ') + ')';
+      else if (!leyoDisp) noEscribio = 'no pude leer el punto de partida del disponible';
+      else if (!cierraVentas) noEscribio = 'la cuenta no cierra contra las ventas';
       if (APLICAR && cuentasOk) {
         await db.patch('cyc/saldoml', {
           ...res, _total: Math.round(totalLiq), _ts: Date.now(), _cuentas: cuentasOk, _sano: puedePisar,
@@ -20032,13 +20169,14 @@ async function main() {
         // guaraníes sin `gsPorDolar`.
         const tc = parseFloat((await db.get('cyc/finanzas/tipo_cambio')) || 0) || 0;
         if (puedePisar && !tc) {
+          noEscribio = 'no hay tipo de cambio cargado';
           console.log('   NO se tocó "A liquidar en ML": no hay tipo de cambio cargado y el Arqueo');
           console.log('   está en DÓLARES. Convertir con un cambio adivinado mueve todo el patrimonio.');
         } else if (puedePisar && await (async () => {
           // Etapa 4 (30/09/2026): si cargó el disponible mientras esto corría, lo liberado ya lo tiene él:
           // escribir "a liquidar" con el ancla vieja lo contaba dos veces. Esta vuelta no se escribe.
           const _cambio = await _anclasCambiaron(db, anclasLib, labels);
-          if (_cambio == null || _cambio.length) { console.log(`   ⚠️ NO se tocó "A liquidar en ML": ${_cambio == null ? 'no pude releer el punto de partida' : 'cargaste el disponible de ' + _cambio.join(', ') + ' mientras esto corría'}. Se recalcula en la próxima vuelta.`); return false; }
+          if (_cambio == null || _cambio.length) { noEscribio = _cambio == null ? 'no pude releer el punto de partida' : 'cargaste el disponible mientras corría'; console.log(`   ⚠️ NO se tocó "A liquidar en ML": ${_cambio == null ? 'no pude releer el punto de partida' : 'cargaste el disponible de ' + _cambio.join(', ') + ' mientras esto corría'}. Se recalcula en la próxima vuelta.`); return false; }
           return true;
         })()) {
           // Se escribe en `cyc/finanzas/mp_liq`, que es EL MISMO campo que ya usa el Arqueo. No se
@@ -20073,7 +20211,8 @@ async function main() {
         } else {
           console.log(`   NO se tocó "A liquidar en ML" del Arqueo: ${cuentasOk !== labels.length
             ? 'falta alguna cuenta y el total estaría corto'
-            : 'la cuenta no cierra contra las ventas'}.`);
+            : !leyoDisp ? 'no pude leer el punto de partida del disponible (contaría dos veces lo liberado)'
+              : 'la cuenta no cierra contra las ventas'}.`);
         }
       } else if (APLICAR) {
         console.log('   NO se guardó nada: no se pudo calcular ninguna cuenta.');
@@ -20116,6 +20255,19 @@ async function main() {
           if (diasRep != null && diasRep > 2) msgs.push(`⚠️ "A liquidar en ML" sale de un reporte de Mercado Pago que llega sólo hasta el ${repHasta.slice(8, 10)}/${repHasta.slice(5, 7)} (${diasRep} días). Lo vendido después todavía no está en el Arqueo.`);
           if (fallos >= 2) msgs.push(`⚠️ Mercado Pago no aceptó el pedido del reporte nuevo ${fallos} noches seguidas (${ped} de ${labels.length} cuentas). Si sigue así, "A liquidar en ML" se va a quedar viejo.`);
           const upd = { pedFallos: fallos, pedDia: hoyTxt, pedOk: _pedOk };
+          // Etapa 5: noches seguidas SIN escribir "A liquidar" (una por día de acá: las 3 corridas
+          // de la mañana cuentan una). Si una corrida de hoy ya escribió, hoy no cuenta como falla.
+          const _escHoy = mem.escDia === hoyTxt;
+          let escFallos = Number(mem.escFallos) || 0, escOk = _escHoy ? !!mem.escOk : false;
+          if (!noEscribio) { escFallos = 0; escOk = true; }
+          else if (!_escHoy) escFallos++;
+          Object.assign(upd, { escDia: hoyTxt, escOk, escFallos, escMotivo: noEscribio || null });
+          if (noEscribio) console.log(`   ⚠️ "A liquidar en ML" sin escribir: ${noEscribio} · ${escFallos} noche(s) seguidas`);
+          if (escFallos >= 2 && !escOk && mem.escAvisoDia !== hoyTxt) {
+            const okE = await sendAlerta(`⚠️ <b>"A liquidar en ML" lleva ${escFallos} noches sin actualizarse</b>\nMotivo de esta vuelta: ${String(noEscribio).replace(/&/g, '&amp;').replace(/</g, '&lt;')}.\n<i>El Arqueo muestra el número de la última vez que salió bien.</i>`);
+            if (okE) upd.escAvisoDia = hoyTxt;
+            console.log(`   aviso de "a liquidar" sin escribir: ${okE ? 'mandado' : '❌ no salió'}`);
+          }
           if (msgs.length && mem.dia !== hoyTxt) {
             const ok = await sendAlerta(msgs.join('\n\n'));
             if (ok) upd.dia = hoyTxt;
@@ -20124,6 +20276,8 @@ async function main() {
           await db.patch('cyc/saldoml/_alerta', upd);
         } catch (e) { console.log('   aviso de reporte viejo: ❌ ' + String(e.message || e).slice(0, 80)); }
       }
+      // Etapa 5: sin ninguna cuenta calculada el paso no midió nada: sale con error (avisonoche lo nombra).
+      if (!cuentasOk) process.exitCode = 1;
       console.log('\n   OJO: esto es lo que FALTA COBRAR, no el disponible. El disponible necesita un');
       console.log('   punto de partida que el reporte no da, así que ése se sigue cargando a mano.');
       console.log('   (No se movió un peso, no se tocó ML y no se tocó ningún precio.)');
@@ -22114,8 +22268,10 @@ async function main() {
       // dio 16% porque ML se quedó 21,6% de cuotas que la comisión preguntada no trae). El % sale de
       // `cyc/mlcuotas` (probe `cuotas`, que corre antes en ml-daily). Si ML SÍ lo trae adentro de la
       // comisión (financing_add_on_fee > 0 en el detalle), no se descuenta dos veces.
-      let cuotasCfg = {};
-      try { cuotasCfg = (await db.get('cyc/mlcuotas')) || {}; } catch { cuotasCfg = {}; }
+      // Etapa 5: si cyc/mlcuotas no se pudo leer, las Premium quedan "sin medir" (abajo). Antes el
+      // catch dejaba {} y las cuotas daban 0: el Dalí volvía a verse 31% cuando deja 16%.
+      let cuotasCfg = {}, cuotasLeidas = true;
+      try { cuotasCfg = (await db.get('cyc/mlcuotas')) || {}; } catch { cuotasCfg = {}; cuotasLeidas = false; console.log('⚠️ no pude leer cyc/mlcuotas: las Premium quedan SIN MEDIR esta noche'); }
       const finEnCom = {};    // misma clave que feeCache → ML trajo las cuotas adentro de la comisión
       const feeCache = {};
       const feeAt = async (site, price, ltype, cat, token) => {
@@ -22176,7 +22332,15 @@ async function main() {
             const com = await feeAt(b.site_id || 'MLA', precio, b.listing_type_id, b.category_id, t.access_token);
             if (com == null) { sinMedir.add(p.id); sinMedirPub.push(mla); continue; }
             const _cc = b.listing_type_id === 'gold_pro' && cuotasCfg[mla] ? parseFloat(cuotasCfg[mla].pct) : 0;
-            const cuo = isFinite(_cc) && _cc > 0 && !finEnCom[(b.site_id || 'MLA') + '|' + b.listing_type_id + '|' + b.category_id + '|' + Math.round(precio)] ? _cc / 100 : 0;
+            const _finAdentro = !!finEnCom[(b.site_id || 'MLA') + '|' + b.listing_type_id + '|' + b.category_id + '|' + Math.round(precio)];
+            // Etapa 5: una Premium con las cuotas FUERA de la comisión y sin % de cuotas válido (o sin
+            // poder leer cyc/mlcuotas) no se mide con cuotas en 0: queda "sin medir", igual que una
+            // comisión que ML no contestó. Un 0 ahí hace ver el margen hasta 20 puntos más alto.
+            if (b.listing_type_id === 'gold_pro' && !_finAdentro) {
+              const _pc = cuotasCfg[mla] ? parseFloat(cuotasCfg[mla].pct) : NaN;
+              if (!cuotasLeidas || !isFinite(_pc) || _pc < 0) { sinMedir.add(p.id); sinMedirPub.push(mla); console.log(`   ⚠️ ${String(b.title || mla).slice(0, 40)} (${mla}): Premium sin % de cuotas medido → sin medir`); continue; }
+            }
+            const cuo = isFinite(_cc) && _cc > 0 && !_finAdentro ? _cc / 100 : 0;
             const cuoEst = cuo > 0 && !!(cuotasCfg[mla] || {}).estimado;
             // ── ENVÍO: EL DEL PEOR CASO ──
             // Acá se tomaba el envío MÁS BARATO visto. En el Ferrari Negro eso daba casi $0 y la
@@ -22275,6 +22439,9 @@ async function main() {
         let _npExist = {}; try { _npExist = (await db.get('cyc/netopub')) || {}; } catch { _npExist = {}; }
         for (const m of sinMedirPub) { if (!_npExist[m]) continue; try { await db.set('cyc/netopub/' + m + '/sinMedir', Date.now()); } catch { /* */ } }
       }
+      // Etapa 5: ningún producto medido (tokens caídos, ML sin contestar) = el paso no midió nada. Sale
+      // con error: avisonoche lo nombra y `avisos` no decide precios sobre márgenes de ayer.
+      if (!lista.length) { console.log('❌ netoweb: no se pudo medir NINGÚN producto'); process.exitCode = 1; }
       console.log(`=== NETO AL PRECIO DE HOY · ${lista.length} productos ${prueba ? '(PRUEBA: no se guarda)' : ''} ===`);
       console.log(`neto = precio − comisión oficial de ML − envío · si un producto tiene varias publicaciones se toma el PEOR neto\n`);
       let guardados = 0;
@@ -25591,7 +25758,8 @@ async function main() {
         try { ords = await fetchOrdersRange(acc.seller_id, t.access_token, desde, Date.now()); }
         catch (e) { console.log(`(${label}: ML falló — ${String(e.message || e).slice(0, 50)})`); continue; }
         for (const o of (ords || [])) if (o.id && o.date_created) creado[String(o.id)] = o.date_created;
-        console.log(`${label}: ${(ords || []).length} órdenes leídas de ML`);
+        // Etapa 5: mueve venta por venta; las que ML no devolvió quedan "sin fecha" y no se tocan. Se dice.
+        console.log(`${label}: ${(ords || []).length} órdenes leídas de ML${ords && ords.incompleto ? ' · ⚠️ LISTA CORTADA (429 o tope): las que faltan no se mueven' : ''}`);
       }
       console.log(`Fechas de creación conocidas: ${Object.keys(creado).length}\n`);
       // 2) recalcular el día de cada venta guardada
@@ -27085,6 +27253,8 @@ async function main() {
         let ords;
         try { ords = await fetchOrdersRange(acc.seller_id, t.access_token, desdeMs, Date.now()); }
         catch (e) { console.log(`(${label}: ML falló — ${String(e.message || e).slice(0, 40)})`); continue; }
+        // Etapa 5: con la lista cortada los meses saldrían bajos y chkfact:go los pisaría. Esa cuenta no se compara.
+        if (ords && ords.incompleto) { console.log(`(${label}: ML devolvió la lista CORTADA — no la comparo ni la corrijo)`); continue; }
         mlMes[label] = {};
         for (const o of (ords || [])) {
           const ym = String(o.date_created || o.date_closed || '').slice(0, 7).replace('-', '_');
@@ -28218,7 +28388,7 @@ async function main() {
       const win = PERIOD_WIN[key];
       if (!win) { console.log('Período desconocido:', key); return; }
       const sleepC = (ms) => new Promise((r) => setTimeout(r, ms));
-      const perAcct = {}; let total = 0;
+      const perAcct = {}; let total = 0; const calcCortada = [];
       for (const label of labels) {
         const acc = accounts[label];
         if (!acc?.refresh_token) continue;
@@ -28232,6 +28402,7 @@ async function main() {
         } catch (e) { console.log(`   (facturación ${label}: ${String(e.message || '').slice(0, 40)})`); }
         await sleepC(13000);
         const paid = await fetchOrdersRange(acc.seller_id, t.access_token, win[0], win[1]);
+        if (paid.incompleto) calcCortada.push(label);   // Etapa 5: ver abajo
         const byId = new Map(paid.map((o) => [o.id, o]));
         let fees = 0, done = 0;
         for (const o of byId.values()) {
@@ -28252,6 +28423,8 @@ async function main() {
         console.log(`▶ ${label} ${key}: facturado ${money(Math.round(bill || 0))} − cargos venta ${money(Math.round(fees))} = almacenamiento ${money(storage || 0)}`);
       }
       const rec = { key, from: new Date(win[0]).toISOString(), to: new Date(win[1]).toISOString(), days: Math.round((win[1] - win[0]) / 86400000) + 1, total: Math.round(total), perAcct, ts: Date.now() };
+      // Etapa 5: con alguna lista de ventas cortada, los cargos salen bajos y el "almacenamiento" alto. No se guarda.
+      if (calcCortada.length) { console.log(`❌ ML devolvió CORTADA la lista de ventas de ${calcCortada.join(', ')}: NO guardo el período ${key}. Correlo de nuevo.`); process.exitCode = 1; return; }
       await db.set('cyc/mlapi/storage/periods/' + key, rec);
       console.log(`\n✓ Guardado almacenamiento período ${key}: TOTAL ${money(Math.round(total))} · ${rec.days} días · ${money(Math.round(total / rec.days))}/día`);
       return;
@@ -32426,38 +32599,76 @@ async function main() {
   if (process.env.CANCEL_AGG) {
     const days = parseInt(process.env.CANCEL_AGG, 10) || 400;
     const fromISO = new Date(Date.now() - days * 864e5).toISOString().replace(/\.\d+Z$/, '.000-00:00');
+    // Etapa 5 (29/09/2026): antes se pedía la lista ENTERA de 400 días de una; con UN 429 en
+    // cualquier página no se escribía nada de esa cuenta y nadie se enteraba (noches enteras sin
+    // actualizar el monotributo). Ahora se pide DE A UN MES: cada mes que ML devuelve entero se
+    // escribe, el que no, queda como estaba (y se reintenta la vuelta siguiente). Y si pasan 2
+    // noches con algún mes sin poder leer, va un aviso por el canal privado (una vez por día).
+    const ymIni = dayKeyFromISO(fromISO).substring(0, 7);
+    const ymHoy = dayKeyFromISO(new Date().toISOString()).substring(0, 7);
+    const meses = [];
+    for (let [yy, mm] = ymIni.split('_').map(Number); ; ) {
+      mm++; if (mm > 12) { mm = 1; yy++; }
+      const k = `${yy}_${String(mm).padStart(2, '0')}`;
+      if (k > ymHoy) break;
+      meses.push({ k, yy, mm });
+    }
+    const isoT = (ms) => new Date(ms).toISOString().replace(/\.\d+Z$/, '.000-00:00');
+    const inicioMes = (yy, mm) => Date.parse(`${yy}-${String(mm).padStart(2, '0')}-01T00:00:00.000-03:00`);
+    const pausaC = (ms) => new Promise((r) => setTimeout(r, ms));
+    let cuentasEnteras = 0, cuentasLeidas = 0, mesesEscritos = 0;
+    const faltan = [];   // "Cuenta 2026_05"
     for (const label of labels) {
       const acc = accounts[label];
       if (!acc?.refresh_token) continue;
-      const t = await mlRefresh(ML_CLIENT_ID, ML_CLIENT_SECRET, acc.refresh_token);
+      let t;
+      try { t = await mlRefresh(ML_CLIENT_ID, ML_CLIENT_SECRET, acc.refresh_token); }
+      catch { console.log(`${label}: ⚠️ no pude renovar el permiso · no leo sus canceladas`); faltan.push(label + ' (todas)'); continue; }
       await db.patch('mlapi/tokens/' + label, { refresh_token: t.refresh_token, updated_ts: Date.now() });
-      const canc = await fetchCancelled(acc.seller_id, t.access_token, fromISO);
-      const seen = new Set(), byMonth = {};
-      for (const o of canc) {
-        if (seen.has(o.id)) continue; seen.add(o.id); // por si una orden viene repetida
-        const gross = (o.order_items || []).reduce((s, it) => s + (it.unit_price || 0) * (it.quantity || 0), 0);
-        const ym = dayKeyFromISO(o.date_created || o.date_closed).substring(0, 7); // YYYY_MM
-        byMonth[ym] = (byMonth[ym] || 0) + gross;
+      const updCanc = {}; let nCanc = 0, totCanc = 0; const malos = [];
+      for (const { k, yy, mm } of meses) {
+        const a = inicioMes(yy, mm), b = (mm === 12 ? inicioMes(yy + 1, 1) : inicioMes(yy, mm + 1)) - 1000;
+        let canc = await fetchCancelled(acc.seller_id, t.access_token, isoT(a), isoT(b));
+        if (canc.incompleto) { await pausaC(5000); canc = await fetchCancelled(acc.seller_id, t.access_token, isoT(a), isoT(b)); }
+        if (canc.incompleto) { malos.push(k); continue; }
+        const seen = new Set(); let g = 0;
+        for (const o of canc) {
+          if (seen.has(o.id)) continue; seen.add(o.id); // por si una orden viene repetida
+          if (dayKeyFromISO(o.date_created || o.date_closed).substring(0, 7) !== k) continue;   // borde de huso: sólo las de ESE mes
+          g += (o.order_items || []).reduce((s, it) => s + (it.unit_price || 0) * (it.quantity || 0), 0);
+        }
+        nCanc += seen.size; totCanc += Math.round(g);
+        updCanc[k] = Math.round(g) || null;   // un mes completo sin canceladas se borra (null), igual que antes
+        await pausaC(300);
       }
-      for (const k of Object.keys(byMonth)) byMonth[k] = Math.round(byMonth[k]);
-      const totCanc = Object.values(byMonth).reduce((s, v) => s + v, 0);
-      if (canc.incompleto) { console.log(`${label}: ⚠️ ML no devolvió la lista entera de canceladas (429 o tope) · NO piso lo guardado, sale en la vuelta siguiente`); continue; }
-      // revisión max (rev4): antes era `db.set` del nodo entero, y todo mes más viejo que la ventana
-      // leída (400 días) DESAPARECÍA — pero la ventana de ARCA mira hasta ~546 días atrás. Ahora se
-      // escriben sólo los meses COMPLETOS del rango (el más viejo viene cortado y se saltea); los
-      // anteriores quedan como estaban. Un mes completo sin canceladas se borra (null), igual que antes.
-      const ymIni = dayKeyFromISO(fromISO).substring(0, 7);
-      const ymHoy = dayKeyFromISO(new Date().toISOString()).substring(0, 7);
-      const updCanc = {};
-      for (let [yy, mm] = ymIni.split('_').map(Number); ; ) {
-        mm++; if (mm > 12) { mm = 1; yy++; }
-        const k = `${yy}_${String(mm).padStart(2, '0')}`;
-        if (k > ymHoy) break;
-        updCanc[k] = byMonth[k] || null;
-      }
-      await db.patch('cyc/fact_cancel/' + label.toLowerCase(), updCanc);
-      console.log(`${label}: canceladas ${seen.size} · ${Object.keys(updCanc).length} meses escritos (desde ${ymIni} en adelante, sin ese) · facturado ${money(totCanc)}`);
+      cuentasLeidas++;
+      if (Object.keys(updCanc).length) { await db.patch('cyc/fact_cancel/' + label.toLowerCase(), updCanc); mesesEscritos += Object.keys(updCanc).length; }
+      if (!malos.length) cuentasEnteras++;
+      else { for (const k of malos) faltan.push(`${label} ${k}`); }
+      console.log(`${label}: canceladas ${nCanc} · ${Object.keys(updCanc).length} meses escritos (desde ${ymIni} en adelante, sin ese) · facturado ${money(totCanc)}${malos.length ? ` · ⚠️ ML no devolvió enteros ${malos.length} mes(es): ${malos.join(', ')} (quedan como estaban)` : ''}`);
     }
+    // Memoria de noches con huecos: mlapi/cancelagg { desdeDia, alertaDia }.
+    const hoyC = new Date(Date.now() - 3 * 3600e3).toISOString().slice(0, 10);
+    try {
+      const mem = (await db.get('mlapi/cancelagg')) || {};
+      if (!faltan.length) { if (mem.desdeDia) await db.set('mlapi/cancelagg', null); }
+      else {
+        const desde = mem.desdeDia || hoyC;
+        const noches = Math.round((Date.parse(hoyC) - Date.parse(desde)) / 864e5) + 1;
+        if (!mem.desdeDia) await db.patch('mlapi/cancelagg', { desdeDia: desde });
+        console.log(`⚠️ canceladas sin poder leer (${noches} noche(s) seguidas): ${faltan.join(' · ')}`);
+        if (noches >= 2 && mem.alertaDia !== hoyC && !DRY) {
+          const ok = await sendAlerta(`⚠️ <b>Facturación de canceladas (monotributo): ${noches} noches con meses sin poder leer</b>\n`
+            + `ML no devolvió entera la lista de canceladas de: ${faltan.join(' · ')}.\n<i>Esos meses quedan con el número anterior (no se pisan con uno corto). Si sigue, el facturado del monotributo puede estar viejo.</i>`);
+          if (ok) await db.patch('mlapi/cancelagg', { alertaDia: hoyC });
+          else console.log('❌ no pude mandar el aviso de canceladas por Telegram');
+        }
+      }
+    } catch (e) { console.log('⚠️ no pude leer/escribir la memoria mlapi/cancelagg: ' + String(e.message || e).slice(0, 80)); }
+    // Sin NINGÚN mes escrito el paso no midió nada: sale con error para que avisonoche lo nombre.
+    // (Los huecos parciales van por el aviso de 2 noches de arriba.)
+    if (!mesesEscritos) { console.log('❌ CANCEL_AGG: no se pudo escribir ningún mes'); process.exitCode = 1; }
+    else if (!cuentasEnteras) console.log('⚠️ CANCEL_AGG: ninguna cuenta se leyó entera (se escribió lo que sí)');
     return;
   }
   // BACKFILL_RECLAMOS: carga los RECLAMOS históricos (ventas que el comprador recibió y se le
@@ -33315,6 +33526,11 @@ async function main() {
   // saldría corta —o en cero— sin que falte nada: esas claves no se escriben y queda el número de
   // antes. Falta de dato no es falta de mercadería.
   const stockCiego = new Set();
+  // Etapa 5: claves de COLOR que no se pueden saber esta vuelta (dos colores comparten depósito). No se
+  // escriben ni las barre el paso de "sin medir → 0": queda el número anterior (un 0 falso era un quiebre).
+  const varCiego = new Set();
+  // Etapa 5: cuentas cuya vuelta de stock se cortó por un error a mitad: sus sumas quedaron parciales.
+  const cuentaStockRota = new Set();
   const promoNoLeidas = [];   // publicaciones cuyas promociones ML no contestó en la vuelta completa (#22)
   const ignoradasConProd = new Set();   // prodId__Cuenta de publicaciones ocultas (nomas / 🗑)
   // Etapa 3, B3 (29/09/2026, eligió la a): lo que hay adentro de Full en publicaciones OCULTAS. Cuenta en
@@ -33788,12 +34004,12 @@ async function main() {
           if (pack) { orderNetAmt = pack.net; orderFeeAmt = pack.fee; orderEnvAmt = pack.env; } // ya sumado arriba para todo el paquete
           else if (o.pack_id && packFallo.has(String(o.pack_id))) {
             orderNetAmt = null;   // carrito sin cerrar: no se usa el pago suelto (queda lo guardado o estimada)
-            if (!DRY) console.log(`  · venta ${o.id}: su carrito #${o.pack_id} no se pudo leer entero esta vuelta — no la reparto con su pago suelto`);
+            if (!DRY) console.log(`  · venta …${String(o.id).slice(-4)}: su carrito …${String(o.pack_id).slice(-4)} no se pudo leer entero esta vuelta — no la reparto con su pago suelto`);
           } else { orderNetAmt = await orderNet(o, t.access_token, fo); orderFeeAmt = fo.mlfee || 0; orderEnvAmt = fo.envio || 0; }
           netFetched = true;
           // Si ML todavía no descontó lo suyo, se avisa: la venta queda con el neto estimado y se
           // corrige sola en cuanto el pago se liquide (la ventana de sincronización son 2 días).
-          if (orderNetAmt == null && !DRY) console.log(`  · venta ${o.id}: ML todavía no descontó su parte, uso el neto estimado (se corrige en la próxima vuelta)`);
+          if (orderNetAmt == null && !DRY) console.log(`  · venta …${String(o.id).slice(-4)}: ML todavía no descontó su parte, uso el neto estimado (se corrige en la próxima vuelta)`);
         }
         let neto = (orderNetAmt != null && repartoGross > 0)
           ? Math.round(orderNetAmt * (itemGross / repartoGross))
@@ -33828,7 +34044,7 @@ async function main() {
         let envioVenta = (orderNetAmt != null && orderEnvAmt && repartoGross > 0)
           ? Math.round(orderEnvAmt * (itemGross / repartoGross)) : 0;
         if (envioVenta > Math.max(0, itemGross - neto)) {
-          console.log(`  ⚠️ venta ${o.id} (${(p && p.name) || title}): el envío que informa ML ($${envioVenta}) es más grande que lo que ML se quedó ($${Math.round(itemGross - neto)}). No lo cuento: el margen se mide sin envío.`);
+          console.log(`  ⚠️ venta …${String(o.id).slice(-4)} (${(p && p.name) || title}): el envío que informa ML ($${envioVenta}) es más grande que lo que ML se quedó ($${Math.round(itemGross - neto)}). No lo cuento: el margen se mide sin envío.`);
           envioVenta = 0;
         }
         const { costo, costBaseUSD, shipUSD } = p ? costoPesos(p, qty, tc) : { costo: 0, costBaseUSD: 0, shipUSD: 0 };
@@ -34327,7 +34543,7 @@ async function main() {
                   // las dos dicen colores DISTINTOS, no se le imputa a ninguno y se avisa (fijarvar).
                   if (pv && !_reg.pv && !_reg.amb) { stockVar[_vkDe(pv)] = (stockVar[_vkDe(pv)] || 0) + _reg.q; _reg.pv = pv; }
                   else if (pv && _reg.pv && _reg.pv !== pv && !_reg.amb) {
-                    stockVar[_vkDe(_reg.pv)] = Math.max(0, (stockVar[_vkDe(_reg.pv)] || 0) - _reg.q); _reg.amb = true;
+                    varCiego.add(_vkDe(_reg.pv)); varCiego.add(_vkDe(pv)); _reg.amb = true;   // etapa 5: ninguno de los dos se escribe (antes quedaba un 0 falso)
                     console.log(`⚠️ ${label}: ${_reg.mla} (${_reg.pv}) y ${mla} (${pv}) comparten el depósito ${b.inventory_id}: no le imputo el stock a ningún color. Arreglalo con fijarvar.`);
                   }
                 } else if (pv) {
@@ -34422,7 +34638,12 @@ async function main() {
         else console.log(`⚠️ ${label}: no se pudo leer entero el stock de las publicaciones ocultas: esta vuelta no se toca`);
       }
       if (!stockFallo) stockLeido.add(label);
-    } catch { /* no cortar la corrida por esto */ }
+    } catch (e) {
+      // Etapa 5: no cortar la corrida, pero tampoco callarse: si esto se corta a mitad, el stock de esa
+      // cuenta quedó sumado a medias y se escribiría como real (un 0 falso = "se agotó"). No se escribe.
+      cuentaStockRota.add(sid(label));
+      console.log(`⚠️ ${label}: la vuelta de estado/stock/promos se cortó (${String(e && e.message || e).slice(0, 100)}) — no toco su stock esta vuelta`);
+    }
 
     // 4) marcar hasta dónde llegamos (para la próxima corrida) — no en dry-run
     if (!DRY) await db.patch('mlapi/state/' + label, {
@@ -34488,6 +34709,13 @@ async function main() {
   // guardar los precios que subimos solos (para no pisarlos en loop)
   if (!DRY && Object.keys(pricedUpd).length) await db.patch('mlapi/priced', pricedUpd);
   // escribir el stock de ML en el inventario del panel (producto×cuenta + variantes)
+  if (varCiego.size) { for (const k of varCiego) delete stockVar[k]; console.log(`⚠️ ${varCiego.size} color(es) con depósito compartido: quedan con el número anterior (fijarvar)`); }
+  if (cuentaStockRota.size) {
+    for (const obj of [stockVar, stockTot]) for (const k of Object.keys(obj)) {
+      const m = k.match(/^.+?__([^_].*?)(?:__v__.*)?$/);
+      if (m && cuentaStockRota.has(m[1])) delete obj[k];
+    }
+  }
   if (stockCiego.size) {
     let nSac = 0;
     for (const obj of [stockVar, stockTot]) for (const k of Object.keys(obj)) {
@@ -34512,7 +34740,7 @@ async function main() {
       const invAhora = (await db.get('cyc/inventory')) || {};
       const sidsML = new Set(labels.map((l) => sid(l)));
       for (const [k, v] of Object.entries(invAhora)) {
-        if (!(Number(v) > 0 || Number(v) < 0) || k in invUpd) continue;   // también los negativos (etapa 3): restaban en el Arqueo
+        if (!(Number(v) > 0 || Number(v) < 0) || k in invUpd || varCiego.has(k)) continue;   // también los negativos (etapa 3): restaban en el Arqueo
         const m = k.match(/^(.+?)__([^_].*?)(?:__v__.*)?$/);
         if (!m || !sidsML.has(m[2])) continue;             // sólo cuentas de ML, nunca la oficina
         // B3 (29/09): si esta vuelta se leyó el stock de las ocultas de esa cuenta, esas unidades ya viven
