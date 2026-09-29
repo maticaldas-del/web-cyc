@@ -19399,6 +19399,11 @@ async function main() {
       // ni en el disponible. Se guarda el fin MÁS VIEJO de las cuatro cuentas y la pantalla lo pinta
       // en ámbar; antes sólo quedaba en el log.
       let repHasta = '';
+      // Y EL FIN DE CADA CUENTA POR SEPARADO (etapa 2 · A1, 29/09/2026, eligió la a): la web suma al
+      // patrimonio lo vendido DESPUÉS de este día en cada cuenta ("vendido, todavía no en el
+      // reporte"). Tiene que ser por cuenta: con el más viejo de las cuatro, lo de una cuenta con
+      // reporte más nuevo quedaría contado dos veces (en "a liquidar" y en lo vendido).
+      const repHastaCta = {};
       let sinDiaTot = 0;   // pesos por cobrar que ML todavía no le puso día (van al total, no a un día)
       // LO LIBERADO QUE EL DISPONIBLE TODAVÍA NO SUMÓ (revisión max #18, 26/09/2026, eligió la a).
       // Este comando saca de "a liquidar" todo lo que ML ya liberó, y el que lo pasa al disponible
@@ -19443,7 +19448,7 @@ async function main() {
           const diaLoc = (x) => { if (/^\d{4}-\d{2}-\d{2}$/.test(String(x || ''))) return String(x); const t = Date.parse(x || ''); return Number.isFinite(t) ? new Date(t - 3 * 36e5).toISOString().slice(0, 10) : String(x || '').slice(0, 10); };
           rango = `${diaLoc(u.begin_date)} → ${diaLoc(u.end_date)}`;
           creado = String(u.date_created || '').slice(0, 10);
-          { const fin = diaLoc(u.end_date); if (/^\d{4}-\d{2}-\d{2}$/.test(fin) && (!repHasta || fin < repHasta)) repHasta = fin; }
+          { const fin = diaLoc(u.end_date); if (/^\d{4}-\d{2}-\d{2}$/.test(fin)) { repHastaCta[label] = fin; if (!repHasta || fin < repHasta) repHasta = fin; } }
           const diasViejo = creado ? Math.round((hoy - new Date(creado).getTime()) / 864e5) : null;
           console.log(`   reporte: ${rango} · pedido el ${creado || '?'}${diasViejo != null && diasViejo > 2 ? ` ⚠️ tiene ${diasViejo} días` : ''}`);
         } catch (e) { console.log(`   ❌ ${String(e.message || e).slice(0, 90)}`); cuentasMal++; continue; }
@@ -19638,7 +19643,7 @@ async function main() {
           const dias = Object.keys(agenda).sort();
           const porDiaUSD = {};
           for (const d of dias) porDiaUSD[d] = Math.round(agenda[d] / tc);
-          await db.set('cyc/finanzas/agenda', { dias: porDiaUSD, sinDia: Math.round(sinDiaTot / tc), _ts: Date.now(), _moneda: 'usd', _hasta: dias[dias.length - 1] || '', _repHasta: repHasta || '' });
+          await db.set('cyc/finanzas/agenda', { dias: porDiaUSD, sinDia: Math.round(sinDiaTot / tc), _ts: Date.now(), _moneda: 'usd', _hasta: dias[dias.length - 1] || '', _repHasta: repHasta || '', _repHastaCta: repHastaCta });
           const rel = (await db.get('cyc/finanzas/agenda')) || {};
           const nrel = Object.keys(rel.dias || {}).length;
           console.log(`   agenda de liberaciones: ${nrel} día(s) guardado(s) y releído(s) ${nrel === dias.length ? '✅' : '❌'}`);

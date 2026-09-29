@@ -749,6 +749,7 @@ footer{margin-top:32px;padding-top:14px;border-top:1px solid var(--border);font-
         <div id="ancla_aviso" style="display:none;font-size:.68rem;color:var(--amber);margin:-2px 0 8px;line-height:1.35"></div>
         <div id="mp-disp-aviso" style="display:none;font-size:.64rem;color:var(--amber);margin:-4px 0 8px;line-height:1.4"></div>
         <div class="fin-field"><div class="fin-left"><span class="fin-ts" id="ts_mp_liq"></span><span class="fin-label">A liquidar en ML</span><span id="db_mp_liq"></span></div><input class="fin-input money" type="text" inputmode="numeric" id="f_mp_liq" placeholder="$0" onchange="saveFin('mp_liq',this.value)"></div>
+        <div id="vsr_linea" style="display:none;font-size:.68rem;margin:-2px 0 8px;line-height:1.4"></div>
       </div>
       <div class="arqueo-section positivo">
         <h3>🏢 Stock Local</h3>
@@ -2341,7 +2342,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='20.78';
+const APP_VERSION='20.79';
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
 // muestre la versión y la fecha de actualización y que tenga un desplegable predeterminado cerrado".
 // Y el mismo día: "que ponga fecha de cada modificación y haya una barrita para scrollear y que
@@ -2352,6 +2353,7 @@ const APP_VERSION='20.78';
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'20.79',f:'29/09/2026',h:'10:30',c:[{n:3,t:'Arqueo: lo vendido después del último reporte de Mercado Pago ya suma al patrimonio y al efectivo (antes quedaba US$ 330-660 abajo durante el día). Se ve abajo de "A liquidar en ML" como "Vendido, todavía no en el reporte", cuenta por cuenta contra la fecha de su reporte; empieza a salir después de la corrida de esta noche.'}]},
   {v:'20.78',f:'28/09/2026',h:'21:30',c:[{n:3,t:'Etapa 2 (plata): cargar el disponible de una cuenta saca de "A liquidar" lo que MP ya liberó de esa cuenta (antes se contaba dos veces hasta la noche).'},{n:3,t:'Un mes ya terminado sin dólar cargado ni cierre usa el promedio del dólar de sus ventas, no el de hoy: la ganancia de agosto ya no cambia cuando se mueve el dólar.'},{n:3,t:'El monotributo de cada mes queda congelado al cerrarse: la ganancia de un mes viejo ya no se mueve sola cuando el robot recalcula el %.'},{n:3,t:'Borrar el retiro para reescribirlo ya no lo deja en $0 (la ganancia del mes subía $1.800.000 de mentira): la casilla vacía queda como sin cargar.'},{n:3,t:'Un disponible negativo de Mercado Pago ya no se suma como positivo en el patrimonio.'},{n:2,t:'Mirando un mes cerrado ya no salen las fechas y avisos de hoy; la tarjeta "En camino" muestra lo que iba en camino ese mes; comparar meses ya no cuenta dos veces la oficina.'},{n:2,t:'La Cascada dice el monotributo con el % de cada mes, no el de hoy.'},{n:3,t:'Robot: el dólar ya no se carga solo si salta más de 15% (o más de 5% con una sola fuente), avisa. "A liquidar" no se calcula con un reporte corto; "reporte hasta" ya no sale un día corrido; el recargo de Paraguay se mide con el dólar del día del pedido; el resumen del mes por Telegram usa el mismo % de ganancia que el panel.'}]},
   {v:'20.77',f:'28/09/2026',h:'21:12',c:[{n:3,t:'Prueba de suba 🧪 +5% (lo que elegiste, la b): pasados los 14 días sólo vuelve a subir si después de la suba vendió igual o más unidades por día que antes, contando sólo los días con stock. Si cayó 20% o más, la prueba se cierra y te avisa por la noche. Si cayó menos, no sube y se sigue mirando. Con menos de 7 días con stock de algún lado, espera.'},{n:1,t:'Etapa 1 (precios) cerrada en el cartel de revisión.'}]},
   {v:'20.76',f:'27/09/2026',h:'20:10',c:[{n:3,t:'Etapa 1 (precios), arreglos del robot: al BAJAR una Premium (remate, escalera, ganar la caja) y al rescatar ahora descuenta las cuotas sin interés; sin las cuotas medidas no la baja. Antes una Premium podía quedar en negativo creyendo 25%.'},{n:3,t:'Si no puede leer su memoria de precios, esa noche no rescata nada (antes se apagaban solos los frenos de "una suba cada 24 h" y "lo bajé yo").'},{n:3,t:'La 📈 y la 🧪 no suben lo que bajaste vos a mano. El remate que necesita bajar más de 24,5% baja en tramos en vez de quedar trabado. Las publicaciones con variantes ya no ocupan los lugares del remate y la escalera.'},{n:2,t:'El margen de productos con variantes se mide con la variante más barata en todos lados. Lo recién llegado de un color vuelve a tener sus 30 días de gracia. "Lo que trajo el robot" descuenta IIBB y monotributo y cuenta la prueba 🧪.'},{n:2,t:'Comandos: pausar frena la reactivación automática, submargen usa tu piso de hoy (no 30%), grupos pide confirmación, bajar= lee bien "60.000,50", preciosgo ya no sube (fórmula vieja). Los avisos de esos comandos llegan al canal de precios.'}]},
@@ -3207,7 +3209,7 @@ const REV_CADA_DIAS=7;
 //   · REV_HECHAS    → última vez que cada etapa quedó resuelta. Sin pendientes, el cartel pide la
 //                     etapa más vieja cuando pasaron REV_CADA_DIAS desde la última.
 const REV_PENDIENTE=[
-    {t:'Etapa 2: decidir 2 cosas de plata',que:'lo vendido después del último reporte de MP (sumarlo o sólo avisar) · con qué costo mide la ganancia el resumen de Telegram',pedi:'etapa 2'},
+    {t:'Etapa 2: decidir 1 cosa de plata',que:'con qué costo y dólar mide la ganancia el resumen de Telegram (el de la web o el del día de cada venta)',pedi:'etapa 2'},
     {t:'La segunda revisión completa, al final',que:'la que pediste dejar para cuando esté todo lo demás · va última',pedi:'revisión completa',ultima:true},
 ];
 // Choques (4) y fallas mudas/privacidad (5): verificadas las 15 del 26/09 de madrugada (rev4, lotes 6-8) y
@@ -4683,6 +4685,17 @@ function renderFinTs(){
     }
   });
   renderAnclaAviso();
+  renderVendidoSinReporte();
+}
+function renderVendidoSinReporte(){
+  const el=document.getElementById('vsr_linea');if(!el)return;
+  if(_finMirandoCierre()){el.style.display='none';return;}
+  const r=vendidoSinReporte();
+  if(!(r.usd>=1)){el.style.display='none';el.innerHTML='';return;}
+  el.innerHTML='＋ <strong>Vendido, todavía no en el reporte: US$ '+Math.round(r.usd).toLocaleString('es-AR')+'</strong>'
+    +' <span style="color:var(--muted)">('+fmt(Math.round(r.ars))+' · '+r.n+' venta'+(r.n===1?'':'s')+' desde el '+r.desde.slice(8,10)+'/'+r.desde.slice(5,7)
+    +' · lo que va a depositar ML) · ya entra al patrimonio y al efectivo; cuando llegue el reporte nuevo pasa a «A liquidar»</span>';
+  el.style.display='block';
 }
 // EL DISPONIBLE SE VA QUEDANDO ALTO: AVISAR CUANDO EL PUNTO DE PARTIDA TIENE MÁS DE 30 DÍAS
 // (24/09/2026, eligió la opción b). El robot arranca del número que cargaste y le suma lo que
@@ -6640,6 +6653,39 @@ function pyEnCaminoUSD(){
     return t+(parseFloat(c.usdCrudo)||0)*r;
   },0);
 }
+// LO VENDIDO DESPUÉS DEL ÚLTIMO REPORTE DE MERCADO PAGO (etapa 2 · A1, 29/09/2026, eligió la a).
+// "A liquidar" y el disponible salen del reporte de MP, que llega hasta el último día CERRADO (y a
+// veces tiene días): lo vendido después no estaba en ningún lado y el patrimonio quedaba US$ 330-660
+// abajo durante el día. Se suma el NETO de esas ventas (lo que va a depositar ML: el mismo número
+// que el reporte trae después, venta por venta), POR CUENTA contra el fin del reporte de ESA cuenta
+// (`agenda._repHastaCta`, lo escribe `saldoml`). Sin el fin por cuenta no se suma nada: con el más
+// viejo de las cuatro, lo de una cuenta con reporte más nuevo se contaría dos veces. Sólo el número
+// de HOY (un mes cerrado ya lo tiene adentro de su cierre).
+function vendidoSinReporte(){
+  const out={usd:0,ars:0,n:0,desde:''};
+  const mapa=state.finanzas&&state.finanzas.agenda&&state.finanzas.agenda._repHastaCta;
+  const tc=curTC();
+  if(!mapa||typeof mapa!=='object'||!(tc>0))return out;
+  const fin={};
+  Object.entries(mapa).forEach(([c,d])=>{if(/^\d{4}-\d{2}-\d{2}$/.test(String(d||'')))fin[String(c).toLowerCase()]=d;});
+  if(!Object.keys(fin).length)return out;
+  const hoy=agendaHoy();
+  Object.entries(state.ventaprod||{}).forEach(([k,ents])=>{
+    const dia=String(k).slice(0,10).replace(/_/g,'-');
+    if(!/^\d{4}-\d{2}-\d{2}$/.test(dia)||dia>hoy)return;
+    Object.values(ents||{}).forEach(v=>{
+      if(!v||v.cancelada)return;
+      const f=fin[String(v.cuenta||'').toLowerCase()];
+      if(!f||dia<=f)return;
+      const n=parseFloat(v.neto);
+      if(!Number.isFinite(n)||n<=0)return;
+      out.ars+=n;out.n++;
+      if(!out.desde||dia<out.desde)out.desde=dia;
+    });
+  });
+  out.usd=out.ars/tc;
+  return out;
+}
 function calcArqueo(){
   let stockVal=0,stockML=0,stockLocal=0,stockCamino=0;
   // MERCADERÍA EN CAMINO A FULL. Cuando se cierra una caja, esas unidades salen de la oficina y
@@ -6676,10 +6722,12 @@ function calcArqueo(){
     const v=(f.pos&&FIN_CON_SIGNO.has(f.k))?raw:Math.abs(raw);
     if(f.pos)activos+=v;else deudas+=v;
   });
-  const efect=['efectivo','mp_disp','mp_liq'].reduce((s,k)=>s+(parseFloat(state.finanzas[k])||0),0);
+  const vsr=_arqViewYM?0:vendidoSinReporte().usd;
+  activos+=vsr;
+  const efect=['efectivo','mp_disp','mp_liq'].reduce((s,k)=>s+(parseFloat(state.finanzas[k])||0),0)+vsr;
   const deben=['deben_cyc'].reduce((s,k)=>s+(parseFloat(state.finanzas[k])||0),0);
   const deuda=['tarjeta','deuda_cyc','dolares_mati','dolares_tito'].reduce((s,k)=>s+(Math.abs(parseFloat(state.finanzas[k])||0)),0);
-  return{stockVal,stockML,stockLocal,stockCamino,activos,deudas,corregir,efect,deben,deuda,total:stockVal+activos-deudas+corregir};
+  return{stockVal,stockML,stockLocal,stockCamino,activos,deudas,corregir,efect,deben,deuda,vsr,total:stockVal+activos-deudas+corregir};
 }
 
 // Panel de reconciliación: ¿la ganancia del mes se ve reflejada en el crecimiento del patrimonio?
