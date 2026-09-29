@@ -2372,7 +2372,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='20.88';
+const APP_VERSION='20.89';
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
 // muestre la versión y la fecha de actualización y que tenga un desplegable predeterminado cerrado".
 // Y el mismo día: "que ponga fecha de cada modificación y haya una barrita para scrollear y que
@@ -2383,6 +2383,7 @@ const APP_VERSION='20.88';
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'20.89',f:'30/09/2026',h:'18:30',c:[{n:1,t:'Inicio: "Monotributo · cómo vendés vs AFIP" se mudó a la tarjeta ⚖️ de las 4 cuentas. Arriba de la tarjeta hay dos botones para cambiar entre el tope de H (lo que viene) y el monotributo de hoy; recuerda cuál elegiste.'}]},
   {v:'20.88',f:'30/09/2026',h:'17:30',c:[{n:3,t:'Revisión completa final. Remate en tramos: si el precio nuevo queda arriba de los $33.000, el robot vuelve a medir el margen con el envío que ML cobra ahí; si no llega, esa noche no baja.'},{n:3,t:'Plata: lo que ya pasó al disponible no se vuelve a restar de "A liquidar" cuando cargás el disponible de una cuenta. El stock de una publicación recién ocultada ya no se cuenta dos veces en el patrimonio.'},{n:3,t:'Robot: las ventas con neto estimado ya no ensucian el envío que se usa para medir márgenes; los carritos con una venta editada a mano se releen enteros; reactivar una venta que canceló el robot devuelve su total y neto; lo que se sube de a una publicación no toca las que tienen colores (esas van color por color).'},{n:2,t:'El % de ganancia de las ventas estimadas cuenta el envío de Full una sola vez (igual que el Telegram). Una Premium que se activa sola ya no cuenta las cuotas dos veces.'},{n:2,t:'Si ML no deja renovar la llave de una cuenta, el robot sigue con las otras tres y te avisa una vez por día. Un comando mal escrito ya no hace nada raro: dice que no existe. La lista "abajo del piso" usa tu piso guardado, no 30%.'}]},
   {v:'20.87',f:'30/09/2026',h:'14:30',c:[{n:3,t:'Fallas mudas (etapa 5): si algo no se guarda en la base (una casilla del Arqueo, la oficina, el stock contado, el disponible) ahora avisa y vuelve a mostrar lo que hay de verdad, en vez de quedar sólo en tu pantalla. Si el panel pierde la conexión con los datos, se pone en rojo.'},{n:3,t:'Robot: un color que comparte depósito con otro ya no queda en 0 falso (antes podía sacarle la marca de liquidando); una cuenta que ML no deja leer no borra lo que ya entró de sus cajas; una Premium sin cuotas medidas no se activa sola ni se mide su margen como si no tuviera cuotas.'},{n:3,t:'La noche: las cuotas medidas no se pisan con un estimado en una noche mala; un motivo de reclamo que ML no contestó se reintenta; las canceladas (monotributo) se leen mes por mes; si el robot cambia un precio y no lo pudo anotar, lo avisa; los pasos que no midieron nada aparecen en el aviso de fallas.'},{n:2,t:'Datos viejos a la vista: margen de más de 2 días, caja de compra de más de 1 día y visitas viejas salen en ámbar con su fecha (antes sólo en el globito). "¿Cierra el mes?" sin dólar no opina.'},{n:1,t:'Privacidad: los registros públicos del robot ya no muestran nombres de Telegram, números de venta enteros ni lo que escriben los compradores sin tapar.'}]},
   {v:'20.86',f:'30/09/2026',h:'14:10',c:[{n:3,t:'Choques (etapa 4): un producto nuevo que ya viaja en un pedido no se puede volver a pedir (antes, con Llenar desde una pantalla vieja u otro aparato, quedaba en dos pedidos). "Ya llegó" sólo vale una vez.'},{n:3,t:'Robot: ya no activa una publicación que pausaste u ocultaste mientras corría, no sube algo que marcaste liquidando mientras corría, y no convierte tu marca de liquidando en una suya. Una sola suba o baja por publicación por noche.'},{n:3,t:'Ventas: marcar reclamo/cancelada o editar una venta ya no se pierde por el robot; una venta borrada no vuelve sola; editar guarda sólo lo que cambiaste, y si escribís el neto deja de ser estimado.'},{n:3,t:'Cajas: marcar, deshacer y cambiar el seguimiento se hace sobre la base (buscando la caja por su contenido): si otro aparato o el robot la cambió, no se pisa. Anclar el disponible resta lo liberado sin perder restas.'},{n:2,t:'La noche: el aviso de precios sale una sola vez aunque ml-daily corra 3 veces, el supervisor cuenta una noche por día y los fallos del reporte de MP también; las 3 corridas ya no se pisan.'},{n:2,t:'Comandos: si se corta una corrida a mano, termina lo que estaba escribiendo (en la oficina, total y color van juntos). Por ml-consulta sólo corren consultas y escrituras chicas (vincular, pasara, nomandar, fijarvar, cupo, poncosto); lo demás va por ml-sync.'},{n:1,t:'Una pestaña abierta con una versión vieja se actualiza sola al volver a la app.'}]},
@@ -15435,9 +15436,24 @@ function _ofiTxt(o,fM){
   if(o.fuera)p.push('+ '+fM(o.fuera)+' facturado fuera de ML');
   return p.join(' · ');
 }
+// LA TARJETA ⚖️ TIENE DOS VISTAS (30/09/2026, pedido suyo: "unificá estas dos… o en la misma carta con un
+// botoncito para cambiar"): el tope de H hacia adelante (lo que viene) y el monotributo de hoy (cómo
+// vendés contra la categoría inscripta en AFIP). La vista elegida se recuerda en este aparato.
+let _monoHomeHtml='';
+let _parejoVista=(()=>{try{return localStorage.getItem('cycParejoVista')||'tope';}catch(e){return 'tope';}})();
+function parejoVer(v){_parejoVista=v;try{localStorage.setItem('cycParejoVista',v);}catch(e){}renderHomeParejo();}
 function renderHomeParejo(){
   const el=document.getElementById('home-parejo'); if(!el)return;
-  const d=parejoDatos(); if(!d||!d.filas.some(f=>f.proy>0)){el.innerHTML='';return;}
+  const d=parejoDatos(); const hayTope=!!(d&&d.filas.some(f=>f.proy>0));
+  const hayMono=!!_monoHomeHtml;
+  if(!hayTope&&!hayMono){el.innerHTML='';return;}
+  const vista=!hayTope?'mono':!hayMono?'tope':_parejoVista;
+  const btn=(v,t)=>`<button onclick="parejoVer('${v}')" style="background:${vista===v?'var(--green)':'transparent'};color:${vista===v?'#000':'var(--muted)'};border:1px solid ${vista===v?'var(--green)':'var(--border2)'};border-radius:999px;padding:3px 10px;font-size:.6rem;cursor:pointer;font-weight:${vista===v?'700':'400'}">${t}</button>`;
+  const tabs=(hayTope&&hayMono)?`<div style="display:flex;gap:6px;margin-bottom:10px">${btn('tope','⚖️ Tope de H · lo que viene')}${btn('mono','🪪 Monotributo · hoy vs AFIP')}</div>`:'';
+  if(vista==='mono'){
+    el.innerHTML=`<div style="max-width:760px;margin:0 auto 14px;background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:14px 16px">${tabs}${_monoHomeHtml.replace('margin-top:14px;border-top:1px solid var(--border);padding-top:12px','')}</div>`;
+    return;
+  }
   const fM=n=>'$'+(n/1e6).toFixed(1).replace('.',',')+'M';
   const fD=x=>String(x.getDate()).padStart(2,'0')+'/'+String(x.getMonth()+1).padStart(2,'0')+'/'+x.getFullYear();
   const orden=[...d.filas].sort((x,y)=>x.proy-y.proy);
@@ -15458,7 +15474,7 @@ function renderHomeParejo(){
       <div style="font-size:.54rem;color:var(--muted);margin-top:1px">${_ofiTxt(f.ofi,fM)}</div>
     </div>`;}).join('');
   el.innerHTML=`<div style="max-width:760px;margin:0 auto 14px;background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:14px 16px">
-    <div style="font-family:'Syne',sans-serif;font-weight:800;font-size:.85rem">⚖️ Las 4 cuentas contra el tope de H (${fM(d.topeH)}/año)</div>
+    ${tabs}<div style="font-family:'Syne',sans-serif;font-weight:800;font-size:.85rem">⚖️ Las 4 cuentas contra el tope de H (${fM(d.topeH)}/año)</div>
     <div style="font-size:.58rem;color:var(--muted);margin-top:2px">La próxima recategorización de ARCA mira del ${fD(d.ini)} al ${fD(d.fin)}. Barra llena = lo facturado oficial hasta hoy (canceladas incluidas, como las cuenta ARCA) · barra clarita = lo que falta hasta el cierre, al ritmo de los últimos 30 días. El tope es por cuenta.</div>
     ${barras}${aviso}
     <div style="font-size:.66rem;margin-top:8px">💡 Lo próximo nuevo que no sea perfume → <strong style="color:var(--green)">${MET_LABELS[menos.a]}</strong>, que es la que más lugar tiene. <span style="color:var(--muted)">(Perfumes siguen yendo a Adriana; lo que ya está en una cuenta, queda.)</span></div>
@@ -15739,8 +15755,11 @@ function renderPuntajeMes(){
       </div>
     </div>
     ${sugHtml}
-    ${monoHtml}
   </div>`;
+  // Pedido suyo del 30/09/2026: "Monotributo · cómo vendés vs AFIP" se mudó a la tarjeta ⚖️ de las 4
+  // cuentas, con un botón para cambiar entre las dos vistas. Acá sólo se arma y se deja lista.
+  _monoHomeHtml=monoHtml;
+  try{renderHomeParejo();}catch(e){}
   try{renderRotCardScore();}catch(e){}
 }
 function setPuntajeMeta(ym){

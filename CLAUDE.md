@@ -560,6 +560,14 @@ envío de Full va una sola vez al % de las ventas estimadas, igual que el Telegr
 base (antes 30 fijo). El cartel de Inicio queda sin pendientes. **Quedan con él sólo 2 decisiones de la etapa 5**
 (Telegram abierto a cualquiera · `calcPrueba` con días sin registro de stock).
 
+### INICIO: LA TARJETA ⚖️ TIENE DOS VISTAS (30/09/2026, v20.89 · `cyc-v367`)
+Pedido suyo: *"podes unificar estas dos? o ponerla en la misma carta pero que tenga un botoncito para cambiar"*.
+"Monotributo · cómo vendés vs AFIP" salió del Puntaje y vive en la tarjeta de `renderHomeParejo`, con dos botones
+(`parejoVer`: ⚖️ tope de H · lo que viene / 🪪 monotributo · hoy vs AFIP). El Puntaje arma `_monoHomeHtml` y llama a
+`renderHomeParejo`. La vista elegida queda en `localStorage` (`cycParejoVista`).
+**La revisión por etapas vuelve sola:** con el cartel sin pendientes, Inicio muestra la próxima etapa (la más vieja,
+`REV_CADA_DIAS`=7) y a la fecha se pone ámbar. Al 30/09 la próxima es la 6 (ideas nuevas) el 04/10.
+
 ### EL PUNTAJE DEL MES: REHACERLO, PERO DESPUÉS (26/09/2026)
 Él, con la captura del Puntaje (7,2 · "Buen mes"): *"no veo cuál es el objetivo de ganancia de CYC y para mí es medio
 flojo el conteo. podría fijarse otras cosas. si querés remodelalo desde 0 con lo que pondrías vos (…) pero ahora
