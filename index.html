@@ -2398,7 +2398,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='20.97';
+const APP_VERSION='20.98';
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
 // muestre la versión y la fecha de actualización y que tenga un desplegable predeterminado cerrado".
 // Y el mismo día: "que ponga fecha de cada modificación y haya una barrita para scrollear y que
@@ -2409,6 +2409,7 @@ const APP_VERSION='20.97';
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'20.98',f:'30/09/2026',h:'21:40',c:[{n:2,t:'Inicio: en el Puntaje, 💸 Cobro del mes que viene · cada uno. Lo que deja el mes después de gastos y antes del retiro, partido en 3 iguales (CYC, tu papá y vos). Si se gana más sube, si se gasta más baja. Mientras el mes corre es un estimado.'}]},
   {v:'20.97',f:'29/09/2026',h:'19:59',c:[{n:1,t:'Inicio: arriba de todo CYC con el dólar; ahí abajo 🏷️ Ventas de hoy y el Puntaje. El Puntaje muestra sólo el número y cómo va (ej. "Aprobado, con lo justo"); objetivo, proyección, barras y lo que falta van en "Ver todo el detalle".'}]},
   {v:'20.96',f:'29/09/2026',h:'19:55',c:[{n:1,t:'Rotación de stock en el teléfono: cada producto es una tarjeta (nombre completo arriba; margen, caja y estado grandes; el resto chico abajo). Ya no hay que correr la tabla para el costado. En la computadora sigue igual.'}]},
   {v:'20.95',f:'29/09/2026',h:'19:53',c:[{n:1,t:'Inicio: 🏷️ Ventas de hoy pasa a ser lo primero de todo, más grande y en verde (facturado y ganancia en letra grande).'}]},
@@ -15786,6 +15787,19 @@ function renderHomeHoy(){
     </div>
   </div>`;
 }
+// EL COBRO DEL MES QUE VIENE (30/09/2026). Regla suya: "los 3 cobremos lo mismo: CYC, papá y yo. Si ganamos
+// mucho aumenta y si gastamos mucho baja". Lo que deja el mes DESPUÉS de los gastos y ANTES del retiro se parte
+// en tres iguales: un tercio queda en CYC y los otros dos son el retiro del mes siguiente. Mes en curso = la
+// proyección a fin de mes; y como los gastos se cargan tarde, se toma el mayor entre lo cargado y el mes
+// anterior (quedarse corto de gastos haría cobrar de más). Negativo = 0: no se cobra de lo que no hay.
+function cobroProxMes(P){
+  const bruto=P.proy+P.g.retiro+P.g.gastos; // (neto − costo) proyectado a fin de mes
+  let gastos=P.g.gastos,gastosPrev=false;
+  if(P.esActual){const gp=Math.round(_gastosMes(_puntMesPrev(P.ym))||0);if(gp>gastos){gastos=gp;gastosPrev=true;}}
+  const pozo=Math.round(bruto-gastos);
+  const tercio=pozo>0?Math.round(pozo/3/1000)*1000:0;
+  return{pozo,tercio,gastos,gastosPrev,hoyPorSocio:Math.round(P.g.retiro/2)};
+}
 function renderPuntajeMes(){
   try{renderHomeHoy();}catch(e){}
   const el=document.getElementById('home-puntaje');if(!el)return;
@@ -15828,6 +15842,15 @@ function renderPuntajeMes(){
   const bars=P.comp.map(c=>{const pc=Math.max(0,Math.min(1,c.pts/c.max));return`<div style="display:flex;align-items:center;gap:8px;margin-bottom:5px"><span style="width:150px;font-size:.62rem;color:var(--muted);flex-shrink:0">${c.label}</span><div style="flex:1;height:7px;border-radius:4px;background:var(--surface2);overflow:hidden"><div style="height:100%;width:${pc*100}%;background:${col};border-radius:4px"></div></div><span style="width:52px;text-align:right;font-size:.62rem;font-family:'DM Mono',monospace">${c.pts.toFixed(1)}/${c.max}</span></div>`;}).join('');
   const pend=sug.filter(s=>s.pts>=0.05);
   const sugHtml=`<div style="margin-top:12px"><div style="font-size:.6rem;text-transform:uppercase;letter-spacing:.1em;color:var(--muted);margin-bottom:6px">Detalle por categoría${pend.length?` <span style="text-transform:none;letter-spacing:0">· lo que falta</span>`:''}</div>${pend.length?pend.map(s=>{const badge=`<span style="background:rgba(245,158,11,.15);color:var(--amber);border-radius:4px;padding:1px 6px;font-size:.6rem;font-weight:700;white-space:nowrap;flex-shrink:0">+${s.pts.toFixed(1)}</span>`;return`<div style="display:flex;gap:8px;align-items:flex-start;font-size:.68rem;margin-bottom:5px;line-height:1.45">${badge}<span>${s.txt}</span></div>`;}).join(''):`<div style="font-size:.68rem;color:var(--green)">✓ Todo cumplido este mes 🎉</div>`}</div>`;
+  const _cb=cobroProxMes(P);
+  const _ymSig=(()=>{const q=P.ym.split('_').map(Number);return q[1]===12?(q[0]+1)+'_01':q[0]+'_'+String(q[1]+1).padStart(2,'0');})();
+  const _mesSig=MONTHS[parseInt(_ymSig.split('_')[1])-1];
+  const _dif=_cb.tercio-_cb.hoyPorSocio;
+  const _cobroHtml=`<div style="margin-top:10px;padding-top:9px;border-top:1px dashed var(--border2)" title="Lo que deja ${mesLbl} después de mercadería, ML, impuestos y gastos, y antes del retiro, partido en 3 iguales: CYC, tu papá y vos. Un tercio queda en CYC y los otros dos son el retiro de ${_mesSig}.">
+          <div style="font-size:.62rem;text-transform:uppercase;letter-spacing:.1em;color:var(--muted)">💸 Cobro de ${_mesSig} · cada uno</div>
+          <div style="font-family:'Syne',sans-serif;font-weight:800;font-size:1.5rem;color:${_cb.tercio>0?'var(--text)':'var(--red)'}">${fmt(_cb.tercio)}</div>
+          <div style="font-size:.64rem;color:var(--muted);line-height:1.45">CYC, tu papá y vos, partes iguales${_cb.hoyPorSocio>0?` · este mes ${fmt(_cb.hoyPorSocio)} c/u${_dif?` (<span style="color:${_dif>0?'var(--green)':'var(--red)'}">${_dif>0?'+':''}${fmt(_dif)}</span>)`:''}`:''}${P.esActual?` · estimado: se cierra a fin de mes${_cb.gastosPrev?' (gastos: los del mes pasado, todavía faltan cargar)':''}`:''}</div>
+        </div>`;
   el.innerHTML=`<div style="background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:16px 18px;margin:0 auto 16px;max-width:min(720px,calc(100vw - 48px))">
     <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
       <div style="display:flex;align-items:center;gap:7px">
@@ -15849,6 +15872,7 @@ function renderPuntajeMes(){
       </div>
       <div style="flex:1;min-width:150px">
         <div style="font-family:'Syne',sans-serif;font-weight:800;font-size:1.15rem;color:${col}">${puntNivel(P.score)}</div>
+        ${_cobroHtml}
       </div>
     </div>
     <details id="punt-det" ${_puntDetAbierto()?'open':''} ontoggle="_puntDetGuardar(this.open)" style="margin-top:10px">
