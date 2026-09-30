@@ -458,6 +458,18 @@ input.qty:focus{border-color:var(--accent2)}
 footer{margin-top:32px;padding-top:14px;border-top:1px solid var(--border);font-size:.62rem;color:var(--muted);text-align:center;letter-spacing:.08em}
 
 /* ── CASCADA FINANCIERA (Resumen) ── */
+.fl-tog,.fl-soloCel{display:none}
+@media (max-width:640px){
+  .fl-row{flex-direction:column;align-items:stretch!important;gap:0!important}
+  .fl-row .fl-flecha{display:none}
+  .fl-row .fl-paso{display:flex;justify-content:space-between;align-items:center;gap:10px;text-align:left!important;min-width:0!important;padding:5px 0!important;border-bottom:1px dashed var(--border)}
+  .fl-row .fl-paso>div{margin:0!important}
+  .fl-row .fl-fin{border-bottom:none;border-top:2px solid var(--border2);margin-top:2px;padding-top:8px!important}
+  .fl-row .fl-fin>div:nth-child(2){font-size:1.15rem!important;font-family:'Syne',sans-serif!important;font-weight:800!important}
+  .fl-soloCel{display:inline;font-size:.9rem}
+  .fl-wrap:not(.abierto) .fl-mid{display:none!important}
+  .fl-tog{display:block;width:100%;margin-top:6px;background:none;border:1px solid var(--border2);border-radius:8px;color:var(--muted);font-size:.7rem;padding:6px}
+}
 .casc{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:4px 18px;margin-bottom:18px}
 .casc-row{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:10px 0;border-bottom:1px solid var(--border);flex-wrap:wrap}
 .casc-row:last-child{border-bottom:none}
@@ -2386,7 +2398,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='21.06';
+const APP_VERSION='21.07';
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
 // muestre la versión y la fecha de actualización y que tenga un desplegable predeterminado cerrado".
 // Y el mismo día: "que ponga fecha de cada modificación y haya una barrita para scrollear y que
@@ -2397,6 +2409,7 @@ const APP_VERSION='21.06';
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'21.07',f:'30/09/2026',h:'16:02',c:[{n:1,t:'Ficha del producto en el celu: la plata va de arriba hacia abajo. Se ve lo que paga el comprador y «te queda $X · N%»; la comisión, el envío, los impuestos, la mercadería y las notas se abren con «ver el detalle». En la PC queda igual.'},{n:1,t:'Inicio: cada tarjeta se actualiza por su cuenta, así «Ventas de hoy» no queda vieja si otra falla.'}]},
   {v:'21.06',f:'30/09/2026',h:'15:57',c:[{n:1,t:'Inicio: la tarjeta de Ventas de hoy dice la hora de la última venta que contó, para darse cuenta si la pantalla quedó vieja.'},{n:1,t:'Inicio: la tarjeta Mi oficina dice en verde cuántas cajas conviene mandar YA (las mismas que en Armar caja dicen «MANDALA YA») y a qué cuentas. Si no hay ninguna, no dice nada.'}]},
   {v:'21.05',f:'30/09/2026',h:'15:55',c:[{n:1,t:'Resumen: se sacaron las dos tarjetas de arriba (Ganancia real y Retiros) y la de «Rentabilidad por producto», que repetían la Cascada. Ahora la Cascada va primero, el resultado final sale grande con la comparación contra el período anterior, y el % de ganancia va pegado a la línea «Ganancia». Ningún número cambió.'}]},
   {v:'21.04',f:'30/09/2026',h:'13:37',c:[{n:1,t:'Métricas: el robot de precios es UNA sola tarjeta. Arriba lo que ganó o perdió (sólo con 7 días o más) y adentro, en «👀 Qué está mirando ahora», todas las publicaciones que venden y qué hace con cada una. La tarjeta 🧪 Vigilancia aparte ya no existe.'}]},
@@ -3257,7 +3270,9 @@ function renderAll(){
   if(currentPage==='resumen')renderResumen_page();
   if(currentPage==='ventaprod')renderVentaProd();
   if(currentPage==='rotacion')renderRotacionStock();
-  if(currentPage==='home'){checkCierrePendiente();renderHomeRevision();updateHomeDolar();renderPuntajeMes();renderHomeParejo();renderNcOfi();}
+  // Inicio: cada tarjeta por separado y "Ventas de hoy" primero (30/09/2026, él: "la tarjeta de arriba no se
+  // actualiza"). Antes iban en fila: si una de las de antes fallaba, las de después quedaban con lo viejo.
+  if(currentPage==='home'){[renderHomeHoy,checkCierrePendiente,renderHomeRevision,updateHomeDolar,renderPuntajeMes,renderHomeParejo,renderNcOfi].forEach(f=>{try{f();}catch(e){console.warn('Inicio:',f.name,e);}});}
   updatePedidosCosto();
 }
 
@@ -3905,7 +3920,7 @@ function flujoPlataHTML(p){
   // tienen gest > 0 y esta condición no los toca. Sólo marca a los que no tienen el dato.
   const cruzaBarrera=precioUsado>=UMBRAL_ENVIO_GRATIS&&gest<=0;
   const pisoCruza=precioPiso!=null&&precioPiso>=UMBRAL_ENVIO_GRATIS;
-  const paso=(lbl,val,col,signo,peso,pie)=>`<div style="text-align:center;padding:0 2px;min-width:76px">
+  const paso=(lbl,val,col,signo,peso,pie,cls)=>`<div class="fl-paso ${cls||'fl-mid'}" style="text-align:center;padding:0 2px;min-width:76px">
       <div style="font-size:.5rem;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;line-height:1.3;margin-bottom:2px">${lbl}</div>
       <div style="font-family:'DM Mono',monospace;font-size:${peso?'.8rem':'.68rem'};font-weight:${peso?'700':'500'};color:${col};white-space:nowrap">${signo||''}${fmt(val)}</div>
       ${pie?`<div style="font-size:.6rem;color:var(--muted);margin-top:1px;white-space:nowrap">${pie}</div>`:''}
@@ -3913,7 +3928,7 @@ function flujoPlataHTML(p){
   // El primer escalón es un campo de verdad, no un número pintado: es el que él mueve para probar.
   // Se dispara con onchange (al salir del campo o dar Enter) y no con oninput, porque redibujar en
   // cada tecla haría perder el foco a mitad de escribir un precio.
-  const pasoEdit=()=>`<div style="text-align:center;padding:0 2px;min-width:96px">
+  const pasoEdit=()=>`<div class="fl-paso fl-top" style="text-align:center;padding:0 2px;min-width:96px">
       <div style="font-size:.5rem;color:${simulando?'var(--amber)':'var(--muted)'};text-transform:uppercase;letter-spacing:.05em;line-height:1.3;margin-bottom:2px">paga el comprador${simulando?' · PRUEBA':''}</div>
       <input id="simp-${p.id}" class="money" type="text" inputmode="numeric" value="${fmt(precioUsado).replace('$ ','')}"
         onchange="simPrecio('${p.id}',this.value)" onkeydown="if(event.key==='Enter')this.blur()"
@@ -3921,19 +3936,21 @@ function flujoPlataHTML(p){
         style="width:92px;text-align:center;font-family:'DM Mono',monospace;font-size:.8rem;font-weight:700;padding:2px 4px;border-radius:5px;border:1px solid ${simulando?'var(--amber)':'var(--border2)'};background:var(--surface2);color:${simulando?'var(--amber)':'var(--text)'};outline:none">
       ${simulando?`<div style="font-size:.6rem;margin-top:2px"><a onclick="simPrecioReset('${p.id}')" style="color:#38bdf8;cursor:pointer">↩︎ volver a ${fmt(precio)}</a></div>`:''}
     </div>`;
-  const flecha=`<div style="color:var(--border2);font-size:.7rem;align-self:center;padding-bottom:8px">→</div>`;
-  return marco(`<div style="display:flex;align-items:flex-start;gap:4px;flex-wrap:wrap">
+  const flecha=`<div class="fl-flecha" style="color:var(--border2);font-size:.7rem;align-self:center;padding-bottom:8px">→</div>`;
+  const _ab=_flujoAbierto.has(p.id);
+  return marco(`<div class="fl-wrap${_ab?' abierto':''}"><div class="fl-row" style="display:flex;align-items:flex-start;gap:4px;flex-wrap:wrap">
       ${pasoEdit()}
       ${flecha}${paso('comisión ML',com,'var(--muted)','−',false,simulando?(comPctReal*100).toFixed(1)+'%':'')}
       ${flecha}${cruzaBarrera
-        ?`<div style="text-align:center;padding:0 2px;min-width:76px"><div style="font-size:.5rem;color:var(--amber);text-transform:uppercase;letter-spacing:.05em;line-height:1.3;margin-bottom:2px">envío de Full</div><div style="font-family:'DM Mono',monospace;font-size:.68rem;font-weight:700;color:var(--amber)">−?</div><div style="font-size:.6rem;color:var(--amber);margin-top:1px;white-space:nowrap">ML SÍ cobra acá</div></div>`
+        ?`<div class="fl-paso fl-mid" style="text-align:center;padding:0 2px;min-width:76px"><div style="font-size:.5rem;color:var(--amber);text-transform:uppercase;letter-spacing:.05em;line-height:1.3;margin-bottom:2px">envío de Full</div><div style="font-family:'DM Mono',monospace;font-size:.68rem;font-weight:700;color:var(--amber)">−?</div><div style="font-size:.6rem;color:var(--amber);margin-top:1px;white-space:nowrap">ML SÍ cobra acá</div></div>`
         :paso(gest>0?'envío de Full':'envío de Full (no cobra)',gest,'var(--muted)','−')}
       ${flecha}${paso('te deposita ML',neto,'#38bdf8','',true,simulando?'':(r.netoReal!=null?'real: '+fmt(r.netoReal):''))}
       ${flecha}${paso('IIBB + mono',imp,'var(--muted)','−',false,simulando?(impPctReal*100).toFixed(2)+'%':(impDet.estimado?'estimado':''))}
       ${flecha}${paso('mercadería + envío',merc,'var(--muted)','−',false,fmtUSD(cfu))}
-      ${flecha}${paso('te queda',gan,ganCol,'',true)}
+      ${flecha}${paso('te queda',gan,ganCol,'',true,`<span class="fl-soloCel" style="font-weight:800;color:${cruzaBarrera?'var(--amber)':pctColor(margenSim)}">${cruzaBarrera||margenSim==null?'?':(margenSim>=0?'+':'')+margenSim.toFixed(0)+'%'}</span>`,'fl-fin')}
     </div>
-    <div style="font-size:.6rem;color:var(--muted);margin-top:8px;line-height:1.6;border-top:1px solid var(--border);padding-top:7px">
+    <button class="fl-tog" onclick="flujoToggle('${p.id}',this)">${_ab?'ocultar detalle ▴':'ver el detalle ▾'}</button>
+    <div class="fl-mid fl-notas" style="font-size:.6rem;color:var(--muted);margin-top:8px;line-height:1.6;border-top:1px solid var(--border);padding-top:7px">
       <strong style="color:${ganCol}">${fmt(gan)}</strong> sobre el costo total de <strong style="color:var(--text)">${fmt(costoTotSim)}</strong> = <strong style="color:${cruzaBarrera?'var(--amber)':pctColor(margenSim)};font-size:.78rem">${cruzaBarrera?'?':(margenSim!=null?margenSim.toFixed(0)+'%':'—')}</strong>
       ${precioPiso?(pisoCruza
         ?` &nbsp;·&nbsp; <span style="color:var(--amber)">para el ${META}% habría que cruzar los ${fmt(UMBRAL_ENVIO_GRATIS)}: no se cruza</span>`
@@ -3947,11 +3964,21 @@ function flujoPlataHTML(p){
       </div>`:''}
       <div style="font-size:.6rem;margin-top:3px;opacity:.85">El IIBB y el monotributo no se descuentan en el momento: llegan después, en la factura de ML de fin de mes. El envío de Full sí, ya está adentro de lo que te deposita.
       ${simulando?`<br><span style="color:var(--amber)">SIMULANDO: la comisión y los impuestos se recalculan con el % que cobra ML en esta publicación. Ojo que ML además cobra un cargo fijo por venta en los productos baratos, y ese cargo no se puede separar del % — cuanto más lejos del precio real, más aproximado es el número.</span>`:''}</div>
-    </div>`);
+    </div></div>`);
 }
 // Redibuja la línea sin re-renderizar toda la lista de productos. La llaman los campos de costo y
 // de gestión al guardarse: antes cada uno parchaba a mano el pedacito de su caja, con la fórmula
 // copiada adentro — tres lugares más donde podía quedar desincronizada.
+// Ficha en el celular (idea 3 de diseño, 30/09/2026, eligió la a: "en el celu mostrá lo importante, si
+// quiero detalle clickeo y que se abra"): arriba el precio, abajo "te queda $X · N%"; comisión, envío,
+// impuestos, mercadería y las notas quedan adentro de "ver el detalle". En la PC se ve todo como siempre.
+const _flujoAbierto=new Set();
+function flujoToggle(id,btn){
+  const w=btn&&btn.closest('.fl-wrap');if(!w)return;
+  const ab=!w.classList.contains('abierto');w.classList.toggle('abierto',ab);
+  if(ab)_flujoAbierto.add(id);else _flujoAbierto.delete(id);
+  btn.textContent=ab?'ocultar detalle ▴':'ver el detalle ▾';
+}
 function repintarFlujo(id){
   const p=(state.products||[]).find(x=>x.id===id);if(!p)return;
   const el=document.getElementById('flujo-'+id);if(!el)return;
