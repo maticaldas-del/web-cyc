@@ -30231,6 +30231,60 @@ async function main() {
       return;
     }
 
+    // BILLING_PROBE=porquebajo:<palabras> → ¿POR QUÉ EL ROBOT BAJÓ ESTO Y QUÉ MARCAS LE PUSO? (30/09/2026)
+    // Pedido suyo con las Cartas Españolas vendidas al 6%: "¿está bien bajada? ¿quiere decir que no
+    // las traigo nunca más? se vendieron muchísimas en la historia". Junta por ficha (palabras con "+"):
+    // stock por cuenta, ventas en 30/60/180 días y en toda la historia, y por publicación el último
+    // cambio del robot (autoprecio), la escalera, la marca liquidando y el "no traer más". SOLO LEE.
+    if (/^porquebajo:/.test(String(process.env.BILLING_PROBE || ''))) {
+      const _n = (x) => String(x || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+      const pals = String(process.env.BILLING_PROBE).slice('porquebajo:'.length).split('+').map(_n).map((x) => x.trim()).filter(Boolean);
+      const hit = (t) => pals.every((w) => _n(t).includes(w));
+      const fichas = products.filter((p) => hit(p.name));
+      console.log(`=== ¿POR QUÉ BAJÓ "${pals.join(' ')}"? · ${fichas.length} ficha(s) ===\n`);
+      if (!fichas.length) { console.log('ninguna ficha con esas palabras'); return; }
+      const [lk, ap, esc, ns, nt, inv, vp, sh] = await Promise.all(['cyc/mllinks', 'cyc/autoprecio', 'cyc/escalera', 'cyc/nosubir', 'cyc/notraer', 'cyc/inventory', 'cyc/ventaprod', 'cyc/stockhist']
+        .map((r) => db.get(r).then((x) => x || {}).catch(() => null)));
+      if ([lk, ap, esc, ns, nt, inv, vp].some((x) => x === null)) { console.log('⚠️ no pude leer alguna parte de la base: no opino'); return; }
+      const hoy = Date.now();
+      const dk = (d) => new Date(hoy - d * 864e5).toISOString().slice(0, 10).replace(/-/g, '_');
+      const c30 = dk(30), c60 = dk(60), c180 = dk(180);
+      const f = (ts) => ts ? new Date(ts).toISOString().slice(0, 10) + ` (hace ${Math.round((hoy - ts) / 864e5)} d)` : '?';
+      for (const p of fichas) {
+        console.log(`■ ${p.name} (${p.id}) · costo US$ ${p.costUSD || 0}`);
+        const st = Object.entries(inv).filter(([k]) => k.startsWith(p.id + '__') && !k.includes('__v__')).map(([k, q]) => `${k.slice(p.id.length + 2)} ${Number(q) || 0}`).join(' · ') || 'sin claves';
+        console.log(`   stock en Full: ${st}`);
+        const v = {}; let primera = '';
+        for (const [d, dia] of Object.entries(vp)) for (const x of Object.values(dia || {})) {
+          if (!x || x.cancelada) continue;
+          if (x.prodId !== p.id && _n(x.prod) !== _n(p.name)) continue;
+          const c = String(x.cuenta || '?').toLowerCase();
+          const o = v[c] = v[c] || { t: 0, d30: 0, d60: 0, d180: 0, ult: '' };
+          const q = Number(x.qty) || 0;
+          o.t += q; if (d >= c30) o.d30 += q; if (d >= c60) o.d60 += q; if (d >= c180) o.d180 += q;
+          if (d > o.ult) o.ult = d; if (!primera || d < primera) primera = d;
+        }
+        const cs = Object.keys(v);
+        if (!cs.length) console.log('   ventas: ninguna registrada');
+        for (const c of cs) { const o = v[c]; console.log(`   ventas ${c}: 30d ${o.d30} · 60d ${o.d60} · 180d ${o.d180} · historia ${o.t} · última ${o.ult.replace(/_/g, '-')}`); }
+        if (primera) console.log(`   (el panel tiene ventas desde ${primera.replace(/_/g, '-')})`);
+        const t = nt[p.id];
+        console.log(`   no traer más: ${t ? (t.permitido ? 'levantado a mano ↩︎' : `⛔ MARCADO ${f(t.ts)}${t.auto ? ' por el robot' : ''}${t.motivo ? ' · ' + t.motivo : ''}`) : 'no ✓'}`);
+        for (const [mla, l] of Object.entries(lk)) {
+          if (!l || l.prodId !== p.id) continue;
+          const bits = [];
+          const a = ap[mla]; if (a) bits.push(`robot: ${a.tipo}${a.por ? ' por ' + a.por : ''} $${a.de}→$${a.a} ${f(a.ts)}${a.margen != null ? ' · quedó en ' + a.margen + '%' : ''}${a.piso != null ? ' · escalón ' + a.piso + '%' : ''}`);
+          const e = esc[mla]; if (e) bits.push(`escalera: paso ${e.paso} ${f(e.ts)}`);
+          const n = ns[mla]; if (n) bits.push(`🔒 liquidando (${esMarcaRobot(n) ? 'robot' : 'a mano'})`);
+          const h = (sh || {})[p.id + '__' + String(l.cuenta || '')] || (sh || {})[p.id + '__' + String(l.cuenta || '').toLowerCase()];
+          console.log(`   · ${mla} · ${l.cuenta || '?'} · ${l.status || '?'}${h && h.desde ? ' · stock desde ' + f(h.desde) + (h.aprox ? ' aprox' : '') : ''}`);
+          bits.forEach((b) => console.log('       ' + b));
+        }
+        console.log('');
+      }
+      return;
+    }
+
     // BILLING_PROBE=pedremate → ¿HAY PEDIDOS DE PRODUCTOS QUE SE ESTÁN REMATANDO? (25/09/2026)
     // Pregunta suya: "revisar si los pedidos están bien, porque quizás hay productos que se están
     // pidiendo y se tuvieron que rematar". Cruza cada pedido que pide comprar algo contra las cinco
