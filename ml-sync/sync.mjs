@@ -30231,10 +30231,10 @@ async function main() {
       return;
     }
 
-    // BILLING_PROBE=monohist → EL MONOTRIBUTO QUE EL PANEL LE COBRA A CADA MES (30/09/2026). SOLO LEE.
+    // BILLING_PROBE=histmono → EL MONOTRIBUTO QUE EL PANEL LE COBRA A CADA MES (30/09/2026). SOLO LEE.
     // Para la deuda de la recategorización a H desde junio: qué % usó cada mes, sobre cuánta
     // facturación, y cuánto integrado dan esas cuentas (para comparar contra lo que se pagó).
-    if (/^monohist$/.test(String(process.env.BILLING_PROBE || ''))) {
+    if (/^histmono$/.test(String(process.env.BILLING_PROBE || ''))) {
       const mono = (await db.get('cyc/monotributo')) || {};
       console.log('vigente:', mono.pct, '· desde', mono.desde, '· cats', JSON.stringify(mono.cats || {}), '· impuesto', JSON.stringify(mono.impuesto || {}));
       const vp = (await db.get('cyc/ventaprod')) || {};
