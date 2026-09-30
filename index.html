@@ -2402,7 +2402,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='21.11';
+const APP_VERSION='21.12';
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
 // muestre la versión y la fecha de actualización y que tenga un desplegable predeterminado cerrado".
 // Y el mismo día: "que ponga fecha de cada modificación y haya una barrita para scrollear y que
@@ -2413,6 +2413,7 @@ const APP_VERSION='21.11';
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'21.12',f:'30/09/2026',h:'22:00',c:[{n:1,t:'El % de ganancia vuelve a tener los niveles de arriba: 🔴 Bajo · 🟠 Justo · 🟢 Bien · 🩵 Bueno (45%) · 🔵 Excelente (70%) · 🟣 Estrella (130%) · 💎 JOYA (200%). El número no cambia.'}]},
   {v:'21.11',f:'30/09/2026',h:'19:47',c:[{n:1,t:'Pedidos → Paraguay: lo que pagaste, lo que sale reponerlo hoy y el máximo que conviene pagar van en una sola línea, en la misma unidad (US$ puesto). El de hoy va en verde si entra en el máximo y en rojo si se pasa. El detalle de cada número, al tocarlo.'}]},
   {v:'21.10',f:'30/09/2026',h:'19:45',c:[{n:1,t:'Ventas: el chip «📬 llegó» ya no sale en cada venta. Sólo aparece cuando hay algo que mirar: ↩ volvió o ⚠️ no se entregó.'}]},
   {v:'21.09',f:'30/09/2026',h:'18:18',c:[{n:1,t:'Arqueo abre en Finanzas (el patrimonio primero). Inventario queda al lado y es sólo para mirar: el stock de Full lo trae el robot y lo de casa se cuenta en Mi oficina.'}]},
@@ -8182,13 +8183,24 @@ const pctCls=pct=>(pct==null)?'nc':(pct>=vpMinPct()?'up':'dn');
 // "ojo" del resto del panel. Ahora salen de sus dos números: ROJO abajo del piso (minPct), ÁMBAR entre el
 // piso y la meta (targetPct) y VERDE de la meta para arriba. El número ya dice si es 40% o 200%.
 const _pctPisoMeta=()=>{const c=state.mlconfig||{};const piso=parseFloat(c.minPct)||vpMinPct();const meta=Math.max(piso,parseFloat(c.targetPct)||25);return{piso,meta};};
-const pctColor=pct=>{if(pct==null||!isFinite(pct))return'var(--muted)';const p=Math.round(pct*10)/10,{piso,meta}=_pctPisoMeta();return p>=meta?'var(--green)':p>=piso?'var(--amber)':'var(--red)';};
-const pctLabel=pct=>{if(pct==null||!isFinite(pct))return'';const p=Math.round(pct*10)/10,{piso,meta}=_pctPisoMeta();return p>=meta?'🟢 Bien':p>=piso?'🟡 Justo':'🔴 Bajo';};
-const pctGradient=pct=>{
-  if(pct==null||!isFinite(pct))return'#7c3aed,#a855f7';
-  const {piso,meta}=_pctPisoMeta();
-  return pct>=meta?'#22c55e,#4ade80':pct>=piso?'#f59e0b,#fbbf24':'#ef4444,#f87171';
+// Y VOLVIERON LOS NIVELES DE ARRIBA (30/09/2026, pedido suyo: "agrega los colores de mejores %, te acordas que
+// habia niveles hasta JOYA"). Abajo quedan los tres de la idea 4 (Bajo · Justo · Bien, atados al piso y la meta
+// de la base) y arriba vuelven Bueno 45 · Excelente 70 · Estrella 130 · JOYA 200. "Justo" pasó a NARANJA para
+// que no se confunda con el dorado de JOYA ni con el ámbar de aviso. Una sola tabla para color, etiqueta y barra.
+const _pctNivel=pct=>{
+  if(pct==null||!isFinite(pct))return null;
+  const p=Math.round(pct*10)/10,{piso,meta}=_pctPisoMeta();
+  if(p>=200)return{c:'#eab308',l:'💎 JOYA',g:'#ca8a04,#facc15'};
+  if(p>=130)return{c:'#a78bfa',l:'🟣 Estrella',g:'#7c3aed,#a855f7'};
+  if(p>=70)return{c:'#60a5fa',l:'🔵 Excelente',g:'#3b82f6,#60a5fa'};
+  if(p>=Math.max(45,meta+1))return{c:'#14b8a6',l:'🩵 Bueno',g:'#14b8a6,#2dd4bf'};
+  if(p>=meta)return{c:'var(--green)',l:'🟢 Bien',g:'#22c55e,#4ade80'};
+  if(p>=piso)return{c:'#f97316',l:'🟠 Justo',g:'#f97316,#fb923c'};
+  return{c:'var(--red)',l:'🔴 Bajo',g:'#ef4444,#f87171'};
 };
+const pctColor=pct=>{const n=_pctNivel(pct);return n?n.c:'var(--muted)';};
+const pctLabel=pct=>{const n=_pctNivel(pct);return n?n.l:'';};
+const pctGradient=pct=>{const n=_pctNivel(pct);return n?n.g:'#7c3aed,#a855f7';};
 const scoreColor=s=>s>=250000?'#f59e0b':s>=130000?'#a78bfa':s>=80000?'#60a5fa':s>=40000?'#14b8a6':s>=15000?'#22c55e':s>=5000?'#f97316':'#ef4444';
 const scoreLabel=s=>s>=250000?'🟡 JOYA':s>=130000?'🟣 Estrella':s>=80000?'🔵 Excelente':s>=40000?'🩵 Bueno':s>=15000?'🟢 Objetivo':s>=5000?'🟠 Aceptable':'🔴 Bajo';
 const scoreGradient=s=>s>=250000?'#f59e0b,#fbbf24':s>=130000?'#7c3aed,#a855f7':s>=80000?'#3b82f6,#60a5fa':s>=40000?'#14b8a6,#2dd4bf':s>=15000?'#22c55e,#4ade80':s>=5000?'#f97316,#fb923c':'#ef4444,#f87171';
