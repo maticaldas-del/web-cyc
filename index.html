@@ -2400,7 +2400,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='21.01';
+const APP_VERSION='21.02';
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
 // muestre la versión y la fecha de actualización y que tenga un desplegable predeterminado cerrado".
 // Y el mismo día: "que ponga fecha de cada modificación y haya una barrita para scrollear y que
@@ -2411,6 +2411,7 @@ const APP_VERSION='21.01';
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'21.02',f:'30/09/2026',h:'13:10',c:[{n:2,t:'Ventas x Producto: una venta que no está enganchada a ninguna ficha dice «sin ficha» en gris (antes «+0% Bajo» en rojo, como si se hubiera vendido sin ganar nada). Si la ficha existe pero no tiene costo, dice «sin costo».'}]},
   {v:'21.01',f:'30/09/2026',h:'23:05',c:[{n:1,t:'Ventas x Producto: en la PC vuelve el renglón de antes; la tarjeta con «detalle» queda sólo en el teléfono. En los dos, el % va con su color (el mismo de la etiqueta: verde, naranja, rojo…).'}]},
   {v:'21.00',f:'30/09/2026',h:'22:35',c:[{n:1,t:'Ventas x Producto: cada venta es una tarjeta prolija. A la vista: cuenta, fecha y hora, qué se vendió, la ganancia, lo cobrado y el %. El resto (N° de venta, costo, neto, cambio de precio, llegada, editar y borrar) está en el botón «detalle».'}]},
   {v:'20.99',f:'30/09/2026',h:'22:14',c:[{n:2,t:'Inicio: la tarjeta 💸 ahora dice cuánto puede retirar cada uno HASTA HOY: la ganancia real de CYC del mes (sin proyección, antes del retiro) dividida en 3 (CYC, vos y tu papá), y cuánto ya retiraron y cuánto queda.'}]},
@@ -8793,14 +8794,18 @@ function renderVentaProd(){
       let gn=0,gc=0,gmlx=0,ggest=0,gOfi=0;grp.items.forEach(v=>{if(!isCancelled){gn+=v.neto||0;gc+=efectivoCostoVP(v);gmlx+=impuestosDeVenta(v);ggest+=gestDivVP(v);gOfi+=costoOficinaVP(v);}});
       // La ganancia en PESOS se mide contra gc (sin la gestión): el neto ya la trae descontada.
       // El PORCENTAJE se mide contra gc+ggest, que es el costo total como lo pidió él.
-      const gg=gn-gc;const gcTot=gc+ggest;const gpct=gcTot>0?gg/gcTot*100:null;
+      // Venta sin ficha o con la ficha en costo 0 (regla del 26/09): costo = neto y $0 de ganancia.
+      // Eso NO es un 0% de margen: no se sabe el margen. Se muestra "sin costo"/"sin ficha" en gris (30/09/2026).
+      const _sinCosto=!isCancelled&&grp.items.some(ventaSinCostoVP);
+      const _sinFicha=_sinCosto&&grp.items.some(v=>!prodDeVenta(v));
+      const gg=gn-gc;const gcTot=gc+ggest;const gpct=(!_sinCosto&&gcTot>0)?gg/gcTot*100:null;
       const cuenta=grp.items[0].cuenta;
       const numVenta=grp.items[0].numVenta||'';
       const _est=!isCancelled&&grp.items.some(ventaEstimadaVP);
       // El % lleva SU color (el de pctLabel) también de fondo, en la PC y en el teléfono (30/09/2026, pedido suyo).
       const _pc=gpct!==null?pctColor(gpct):'';
       const _pillSt=gpct!==null&&!_est?`color:${_pc};background:${_pc}1f;border:1px solid ${_pc}55;`:'';
-      const pctBox=isCancelled?'':(_est&&gpct!==null)?`<span class="db nc" style="font-size:.62rem;color:var(--muted)" title="Mercado Pago todavía no liquidó esta venta: el neto es una estimación del robot (le resta el envío de Full si pasa los $33.000). Se corrige sola cuando se lee el pago real.">≈ ${gpct>=0?'+':''}${gpct.toFixed(0)}% · estimado</span>`:gpct!==null?`<span class="db" style="font-size:.62rem;${_pillSt}">${gpct>=0?'+':''}${gpct.toFixed(0)}%</span><span style="font-size:.6rem;color:${pctColor(gpct)};margin-left:3px">${pctLabel(gpct)}</span>`:'<span class="db nc" style="font-size:.6rem">s/costo</span>';
+      const pctBox=isCancelled?'':(_est&&gpct!==null)?`<span class="db nc" style="font-size:.62rem;color:var(--muted)" title="Mercado Pago todavía no liquidó esta venta: el neto es una estimación del robot (le resta el envío de Full si pasa los $33.000). Se corrige sola cuando se lee el pago real.">≈ ${gpct>=0?'+':''}${gpct.toFixed(0)}% · estimado</span>`:gpct!==null?`<span class="db" style="font-size:.62rem;${_pillSt}">${gpct>=0?'+':''}${gpct.toFixed(0)}%</span><span style="font-size:.6rem;color:${pctColor(gpct)};margin-left:3px">${pctLabel(gpct)}</span>`:`<span class="db nc" style="font-size:.6rem">${_sinFicha?'sin ficha':'s/costo'}</span>`;
       const grpKey=grp._dateKey||key;
       const delBtn=grp.saleId?`<button class="ii-del" onclick="delVentaSale('${grp.gid}','${grpKey}')">✕</button>`:`<button class="ii-del" onclick="delVentaProd('${grp.items[0].id}')">✕</button>`;
       // LA HORA DE LA VENTA (21/09/2026). Pedido suyo: *"se le puede agregar la hora de venta a
@@ -8936,7 +8941,7 @@ function renderVentaProd(){
       const _tot=grp.items.reduce((s,v)=>s+(Number(v.total)||0),0);
       const _cambios=grp.items.map(v=>isCancelled?'':cambioVentaHTML(v,Number(v.ts)||0));
       const _hayCambio=_cambios.some(x=>x);
-      const _pill=isCancelled?'':(gpct===null?'<span class="db nc" style="font-size:.66rem">sin costo</span>':`<span class="db ${_est?'nc':''}" style="font-size:.72rem;padding:3px 9px;${_est?'color:var(--muted)':_pillSt}">${_est?'≈ ':''}${gpct>=0?'+':''}${gpct.toFixed(0)}%</span>`);
+      const _pill=isCancelled?'':(gpct===null?`<span class="db nc" style="font-size:.66rem" title="${_sinFicha?'Esta venta no está enganchada a ninguna ficha: el panel no sabe qué producto es ni cuánto costó. Se arregla vinculando la publicación.':'La ficha no tiene costo cargado.'}">${_sinFicha?'sin ficha':'sin costo'}</span>`:`<span class="db ${_est?'nc':''}" style="font-size:.72rem;padding:3px 9px;${_est?'color:var(--muted)':_pillSt}">${_est?'≈ ':''}${gpct>=0?'+':''}${gpct.toFixed(0)}%</span>`);
       const _items=grp.items.map((v,i)=>`<div style="font-size:.8rem;line-height:1.35;${isCancelled?'opacity:.45;text-decoration:line-through':''}"><span style="color:var(--muted)">${v.qty}×</span> ${nombreDeVenta(v)}${v.variante?` <span style="padding:1px 6px;border-radius:4px;background:rgba(124,58,237,.12);color:#a78bfa;font-size:.66rem;white-space:nowrap">${v.variante}</span>`:''}${_cambios[i]?` <span style="font-size:.66rem" title="Cambió de precio antes de esta venta · mirá el detalle">${_cambios[i].includes('⬆️')?'⬆️':'⬇️'}</span>`:''}</div>`).join('');
       const _avisoIco=(rescLabel&&rescLabel.includes('⚠️'))?' <span title="El robot no pudo subirla · mirá el detalle">⚠️</span>':'';
       const _abierto=vpDetOpen.has(grp.gid);
