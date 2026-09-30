@@ -2402,7 +2402,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='21.09';
+const APP_VERSION='21.10';
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
 // muestre la versión y la fecha de actualización y que tenga un desplegable predeterminado cerrado".
 // Y el mismo día: "que ponga fecha de cada modificación y haya una barrita para scrollear y que
@@ -2413,6 +2413,7 @@ const APP_VERSION='21.09';
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'21.10',f:'30/09/2026',h:'19:45',c:[{n:1,t:'Ventas: el chip «📬 llegó» ya no sale en cada venta. Sólo aparece cuando hay algo que mirar: ↩ volvió o ⚠️ no se entregó.'}]},
   {v:'21.09',f:'30/09/2026',h:'18:18',c:[{n:1,t:'Arqueo abre en Finanzas (el patrimonio primero). Inventario queda al lado y es sólo para mirar: el stock de Full lo trae el robot y lo de casa se cuenta en Mi oficina.'}]},
   {v:'21.08',f:'30/09/2026',h:'18:14',c:[{n:1,t:'El % de ganancia ahora tiene 3 colores en todo el panel: rojo abajo del piso (22%), ámbar entre el piso y la meta (25%) y verde de la meta para arriba. Se sacaron los siete colores de antes (el ámbar «JOYA» se confundía con el ámbar de aviso). El número no cambia.'}]},
   {v:'21.07',f:'30/09/2026',h:'16:02',c:[{n:1,t:'Ficha del producto en el celu: la plata va de arriba hacia abajo. Se ve lo que paga el comprador y «te queda $X · N%»; la comisión, el envío, los impuestos, la mercadería y las notas se abren con «ver el detalle». En la PC queda igual.'},{n:1,t:'Inicio: cada tarjeta se actualiza por su cuenta, así «Ventas de hoy» no queda vieja si otra falla.'}]},
@@ -3361,7 +3362,7 @@ const REV_CADA_DIAS=7;
 //   · REV_HECHAS    → última vez que cada etapa quedó resuelta. Sin pendientes, el cartel pide la
 //                     etapa más vieja cuando pasaron REV_CADA_DIAS desde la última.
 const REV_PENDIENTE=[
-  {t:'Etapa 7 · Diseño: quedan 4 ideas para que elijas',que:'hechas 1-6; quedan el chip 📬 de entregas, la tarjeta de Paraguay, el período de Ventas y Pedidos',pedi:'seguí con diseño'},
+  {t:'Etapa 7 · Diseño: quedan 3 ideas para que elijas',que:'hechas 1-7; quedan la tarjeta de Paraguay, el período de Ventas y Pedidos',pedi:'seguí con diseño'},
 ];
 // Choques (4) y fallas mudas/privacidad (5): verificadas las 15 del 26/09 de madrugada (rev4, lotes 6-8) y
 // todas arregladas o ya estaban; antes pasaron por la 2ª vuelta del 25/09. El cartel decía "15 sin verificar"
@@ -8952,14 +8953,10 @@ function renderVentaProd(){
       let entLabel='';
       if(_e&&!isCancelled){
         if(_e.dev!=null)entLabel=`<span style="font-size:.62rem;color:var(--red)" title="ML informó una devolución de esta venta.">↩ volvió ${_fDia(_e.dev)}</span>`;
-        else if(_e.ent!=null){
-          // Cuántos días tardó: es el número que contesta "¿cuánto tarda en llegar?", y sólo se
-          // muestra si la venta tiene hora guardada. Sin eso no se estima: se dice la fecha sola.
-          const _t0=_hs.length?Math.min(..._hs):0;
-          const _d=_t0>0?Math.round((_e.ent-_t0)/86400000):null;
-          entLabel=`<span style="font-size:.62rem;color:var(--green)" title="Fecha en que ML marcó el envío como entregado.">📬 llegó ${_fDia(_e.ent)}${_d!=null&&_d>=0?` · ${_d} d`:''}</span>`;
-        }
-        else if(_e.noEnt!=null)entLabel=`<span style="font-size:.62rem;color:var(--amber)" title="ML marcó el envío como NO entregado.">⚠️ no se entregó</span>`;
+        // "LLEGÓ" YA NO SE MUESTRA (idea 7 de la etapa 7, 30/09/2026, eligió la a): casi todas llegan en
+        // 1-2 días, así que el chip decía lo mismo en cada renglón. Sólo avisa lo que hay que mirar:
+        // ↩ volvió · ⚠️ no se entregó. El dato sigue guardado en `cyc/entregas`.
+        if(_e.dev==null&&_e.ent==null&&_e.noEnt!=null)entLabel=`<span style="font-size:.62rem;color:var(--amber)" title="ML marcó el envío como NO entregado.">⚠️ no se entregó</span>`;
       }
       // ── LA ETIQUETA DEL RESCATE (24/09/2026) ──
       // Pedido suyo: *"no voy a saber si el % está bien, porque está rematando o el robot se
