@@ -2402,7 +2402,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='21.10';
+const APP_VERSION='21.11';
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
 // muestre la versión y la fecha de actualización y que tenga un desplegable predeterminado cerrado".
 // Y el mismo día: "que ponga fecha de cada modificación y haya una barrita para scrollear y que
@@ -2413,6 +2413,7 @@ const APP_VERSION='21.10';
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'21.11',f:'30/09/2026',h:'19:47',c:[{n:1,t:'Pedidos → Paraguay: lo que pagaste, lo que sale reponerlo hoy y el máximo que conviene pagar van en una sola línea, en la misma unidad (US$ puesto). El de hoy va en verde si entra en el máximo y en rojo si se pasa. El detalle de cada número, al tocarlo.'}]},
   {v:'21.10',f:'30/09/2026',h:'19:45',c:[{n:1,t:'Ventas: el chip «📬 llegó» ya no sale en cada venta. Sólo aparece cuando hay algo que mirar: ↩ volvió o ⚠️ no se entregó.'}]},
   {v:'21.09',f:'30/09/2026',h:'18:18',c:[{n:1,t:'Arqueo abre en Finanzas (el patrimonio primero). Inventario queda al lado y es sólo para mirar: el stock de Full lo trae el robot y lo de casa se cuenta en Mi oficina.'}]},
   {v:'21.08',f:'30/09/2026',h:'18:14',c:[{n:1,t:'El % de ganancia ahora tiene 3 colores en todo el panel: rojo abajo del piso (22%), ámbar entre el piso y la meta (25%) y verde de la meta para arriba. Se sacaron los siete colores de antes (el ámbar «JOYA» se confundía con el ámbar de aviso). El número no cambia.'}]},
@@ -3362,7 +3363,7 @@ const REV_CADA_DIAS=7;
 //   · REV_HECHAS    → última vez que cada etapa quedó resuelta. Sin pendientes, el cartel pide la
 //                     etapa más vieja cuando pasaron REV_CADA_DIAS desde la última.
 const REV_PENDIENTE=[
-  {t:'Etapa 7 · Diseño: quedan 3 ideas para que elijas',que:'hechas 1-7; quedan la tarjeta de Paraguay, el período de Ventas y Pedidos',pedi:'seguí con diseño'},
+  {t:'Etapa 7 · Diseño: quedan 2 ideas para que elijas',que:'hechas 1-8; quedan el período de Ventas y Pedidos',pedi:'seguí con diseño'},
 ];
 // Choques (4) y fallas mudas/privacidad (5): verificadas las 15 del 26/09 de madrugada (rev4, lotes 6-8) y
 // todas arregladas o ya estaban; antes pasaron por la 2ª vuelta del 25/09. El cartel decía "15 sin verificar"
@@ -13497,16 +13498,14 @@ function pedPlataHTML(prod){
   if(!prod)return '';
   const chip=(txt,col,tit)=>`<span class="pi-var-toggle" style="cursor:default;background:color-mix(in srgb,${col} 12%,transparent);color:${col};border-color:color-mix(in srgb,${col} 35%,transparent)" title="${String(tit).replace(/"/g,'&quot;')}">${txt}</span>`;
   const out=[];
-  const usd=costUSDof(prod), full=costFullUSDof(prod), tc=curTC();
+  const usd=costUSDof(prod);
   // SIN COSTO NO SE DISIMULA. Un producto sin costo cargado se ve como si fuera TODO ganancia y
   // puede aparecer arriba de todo como un éxito que no existe. Decirlo en rojo es el punto.
   if(!(usd>0)){
     out.push(chip('⚠️ sin costo cargado','var(--red)',
       'Este producto no tiene el Costo US$ cargado en su ficha. Sin eso el margen que ves es mentira: sale como si fuera todo ganancia. Cargalo en la ficha antes de decidir nada.'));
-  }else{
-    out.push(chip(`💵 US$ ${usd.toFixed(2)} · ${fmt(Math.round(full*tc))} puesto`,'var(--fg)',
-      `Mercadería US$ ${usd.toFixed(2)}. Puesto en tu oficina son US$ ${full.toFixed(2)} (con el % de reclamos y el envío/embalaje adentro) = ${fmt(Math.round(full*tc))} al dólar de hoy (${fmt(tc)}). Todavía NO tiene la comisión de ML, ni el envío de arriba de los $33.000, ni IIBB, ni monotributo: eso está en el margen de al lado.`));
   }
+  // Lo pagado ya no va acá: está en la línea de plata de Paraguay (pedPyLineaHTML, etapa 7 idea 8).
   const mg=margenMLDe(prod);
   if(!mg||mg.margen==null){
     out.push(chip('📈 margen —','var(--muted)',
@@ -13549,32 +13548,8 @@ function pedGuayHTML(prod){
     out.push(chip('🇵🇾 sin precio de Paraguay','var(--muted)','Nadie cargó todavía el precio de comprasparaguay de este producto. Se carga en la ficha, y hasta entonces no se puede saber si todavía conviene comprarlo.'));
     return out.join('');
   }
-  const dias=prod.nisseiTs?Math.max(0,Math.round((Date.now()-prod.nisseiTs)/86400000)):null;
-  const viejo=dias==null||dias>30;
-  out.push(chip(`🇵🇾 US$ ${nu.toFixed(2)}${dias!=null?` · hace ${dias} d`:' · sin fecha'}`,viejo?'var(--amber)':'var(--muted)',
-    viejo?`Precio de comprasparaguay, pero ${dias==null?'sin fecha de cuándo se miró':`mirado hace ${dias} días`}. Antes de decidir una compra conviene volver a mirarlo: el proveedor se mueve.`
-         :`Precio de comprasparaguay, mirado hace ${dias} días. Puesto en tu oficina son US$ ${(nu*RECARGO_PY).toFixed(2)} (con el 17%).`));
-  // ── QUE EL COSTO Y EL PRECIO DE PARAGUAY SEAN DISTINTOS ES LO NORMAL (18/09/2026) ──────
-  // Hasta hoy acá salía **"⚠️ el costo no está al día"** cada vez que el costo no era el precio de
-  // Paraguay + 15%, y el globito cerraba con *"tocá Usar este costo si el de Paraguay es el
-  // bueno"*. Las dos cosas están mal, y es el MISMO error que tenía el comando `guay`:
-  //  · `costUSD` es lo que PAGASTE y `nisseiUSD` lo que saldría REPONERLO hoy. Que sean distintos
-  //    no es un desajuste: **es la información**. Regla suya del 17/09: *"lo que compre a un precio
-  //    se vende a ese precio. si aumenta no compro"*.
-  //  · El botón **"Usar este costo" NO EXISTE desde el 17/09**, justo porque pisar el costo con el
-  //    precio de Paraguay le mueve los márgenes de lo ya comprado y —con la suba automática
-  //    prendida— le sube precios. Es el daño que hubo que reparar con `pycosto`. O sea que el chip
-  //    mandaba a hacer exactamente lo que está prohibido, y a apretar un botón que ya no está.
-  // Ahora dice lo que sirve para decidir, y muestra **los dos lados en las mismas unidades**: el
-  // Joystick Xbox mostraba "reponerlo hoy US$ 55,20" al lado de un precio pagado de US$ 55 en
-  // Paraguay y parecía un error, cuando uno es crudo y el otro ya lleva el 15%.
-  const puesto=Math.round(nu*RECARGO_PY*100)/100, cu=costUSDof(prod);
-  if(cu>0){
-    const dif=((puesto-cu)/cu)*100;
-    const txt=dif>1?`🔴 reponerlo sale ${Math.round(dif)}% más caro`:dif<-1?`🟢 reponerlo sale ${Math.round(Math.abs(dif))}% más barato`:'= reponerlo sale igual';
-    out.push(chip(txt,dif>1?'var(--red)':dif<-1?'var(--green)':'var(--muted)',
-      `Pagaste US$ ${cu.toFixed(2)} puesto en tu oficina (unos US$ ${(cu/RECARGO_PY).toFixed(2)} en Paraguay + 17%). Reponerlo hoy sale US$ ${puesto.toFixed(2)} puesto (US$ ${nu.toFixed(2)} en Paraguay + 17%). Que los dos números sean distintos es lo normal: uno es lo que pagaste y decide los márgenes de lo que ya tenés, el otro sólo dice si conviene volver a comprarlo. El costo NO se pisa nunca con el precio de Paraguay.`));
-  }
+  // Etapa 7, idea 8 (30/09/2026, eligió la a): el precio de hoy y "reponerlo sale X% más caro/barato"
+  // van en UNA línea con lo pagado y el máximo (`pedPyLineaHTML`). Acá queda sólo el código.
   return out.join('');
 }
 // ── CUÁNTO PODÉS PAGAR COMO MÁXIMO PARA SEGUIR GANANDO (24/09/2026) ─────────────────
@@ -13619,6 +13594,40 @@ function renderNoTraer(){
       const nom=((state.products||[]).find(x=>x.id===pid)||{}).name||e.nom||pid;
       return `<div class="pedido-item"><span class="pi-prod">${nom}</span><span class="pi-nota" style="flex:1">${(e.motivo||'').replace(/</g,'&lt;')}</span><span class="pi-ts">${e.ts?ts2s(e.ts):''}</span><button class="pi-status suficiente" onclick="volverATraer('${pid}')">↩︎ Volver a traer</button></div>`;
     }).join('');
+}
+// ── LA PLATA DE PARAGUAY EN UNA LÍNEA (etapa 7, idea 8 · 30/09/2026, eligió la a) ──────────────
+// Lo pagado, lo que sale reponerlo hoy y lo máximo que conviene pagar estaban en tres chips y un
+// renglón aparte. Juntos se comparan de un vistazo. LOS TRES EN LA MISMA UNIDAD: US$ puesto en la
+// oficina (con el 17%), que es la unidad de `costUSD` y la que compara `maxCompraDe` (hoyUSD vs usd).
+// El HOY va en verde si entra en el máximo y en rojo si se pasa: ésa es la decisión de compra.
+// El detalle de cada número queda en su globito (al tocar en el celu). No calcula nada nuevo.
+function pedPyLineaHTML(prod){
+  if(!prod)return '';
+  const f2=n=>'US$ '+n.toFixed(2).replace('.',',');
+  const q=t=>String(t).replace(/"/g,'&quot;');
+  const cu=costUSDof(prod)||0, nu=parseFloat(prod.nisseiUSD)||0, tc=curTC();
+  const puesto=nu>0?Math.round(nu*RECARGO_PY*100)/100:0;
+  const r=maxCompraDe(prod);
+  const mx=(r&&!r.motivo&&r.usd>0)?r.usd:null;
+  const partes=[];
+  if(cu>0)partes.push(`<span title="${q(`Lo que pagaste, puesto en tu oficina (unos ${f2(cu/RECARGO_PY)} en Paraguay + 17%)${tc>0?' = '+fmt(Math.round(cu*tc)):''}. Es el costo que decide los márgenes de lo que ya tenés.`)}">💵 pagaste <b>${f2(cu)}</b></span>`);
+  if(puesto>0){
+    const dias=prod.nisseiTs?Math.max(0,Math.round((Date.now()-prod.nisseiTs)/86400000)):null;
+    const viejo=dias==null||dias>30;
+    const noLlega=!!(r&&!r.motivo&&!(r.usd>0));
+    const col=mx!=null?(puesto<=mx?'var(--green)':'var(--red)'):noLlega?'var(--red)':'var(--text)';
+    const dif=cu>0?((puesto-cu)/cu)*100:null;
+    const difTxt=dif==null?'':Math.abs(dif)<=1?' · igual':` · ${dif>0?'+':'−'}${Math.round(Math.abs(dif))}%`;
+    const tit=`Reponerlo hoy: ${f2(nu)} en comprasparaguay + 17% = ${f2(puesto)} puesto${tc>0?' ('+fmt(Math.round(puesto*tc))+')':''}. ${dias==null?'Sin fecha de cuándo se miró.':`Mirado hace ${dias} días.`}${viejo?' Conviene volver a mirarlo antes de comprar.':''}${dif!=null?` Contra lo que pagaste: ${Math.abs(dif)<=1?'igual':(dif>0?Math.round(dif)+'% más caro':Math.round(-dif)+'% más barato')}.`:''}${mx!=null?(puesto<=mx?' Entra en el máximo.':' Se pasa del máximo: así no conviene comprarlo.'):''}`;
+    partes.push(`<span title="${q(tit)}">🇵🇾 hoy <b style="color:${col}">${f2(puesto)}</b>${mx!=null?(puesto<=mx?' 🟢':' 🔴'):''}<span style="color:var(--muted)">${difTxt}</span>${viejo?`<span style="color:var(--amber)"> · ${dias==null?'sin fecha':'hace '+dias+' d'}</span>`:''}</span>`);
+  }else partes.push(`<span style="color:var(--muted)" title="Nadie cargó todavía el precio de comprasparaguay de este producto: sin eso no se sabe si conviene reponerlo.">🇵🇾 hoy —</span>`);
+  if(r&&!r.motivo){
+    if(mx!=null){
+      const donde={caja:`a ${fmt(r.P)}, lo que pide ML para ganar la caja`,ganas:`a ${fmt(r.P)}, tu precio de hoy (ya ganás la caja)`,nocat:`a ${fmt(r.P)}, tu precio de hoy (no es de catálogo)`,hoy:`a ${fmt(r.P)}, tu precio de hoy`,vieja:`a ${fmt(r.P)}, tu precio de hoy (publicaciones pausadas)`}[r.fuente]||'';
+      partes.push(`<span title="${q(`Lo más que podés pagar (puesto) para quedar en ${r.meta}% vendiendo ${donde}, con todo adentro (comisión, envío de Full, IIBB, monotributo, envío/embalaje y reclamos).${r.usdPy>0?` En la web de Paraguay: ${f2(r.usdPy)} antes del 17%.`:''}${tc>0?' = '+fmt(Math.round(mx*tc))+'.':''}`)}">💰 máx <b>${f2(mx)}</b></span>`);
+    }else partes.push(`<span style="color:var(--red)" title="${q(`Vendiendo a ${fmt(r.P)} no hay precio de compra que deje ${r.meta}%.`)}">💰 máx: no llega</span>`);
+  }else partes.push(`<span style="color:var(--muted)" title="No hay publicación viva con el neto calculado: no se puede medir.">💰 máx sin medir</span>`);
+  return `<div style="flex-basis:100%;font-size:.72rem;line-height:1.6;display:flex;flex-wrap:wrap;gap:4px 12px;padding:4px 0">${partes.join('<span style="color:var(--muted)">·</span>')}</div>`;
 }
 function maxCompraDe(p){
   if(!p)return null;
@@ -13730,10 +13739,10 @@ function _pedidoItemHtml(p,opts){
       ${_enCam?'':riesgoBadge}
       ${(()=>{const _r=pedSinSentido(p);return _r?`<span class="pi-var-toggle" style="background:rgba(245,158,11,.14);color:var(--amber);border-color:rgba(245,158,11,.35);cursor:default" title="${_r.det.join(' · ').replace(/"/g,'&quot;')}">⚠️ este renglón no cierra${_r.n>1?' ('+_r.n+')':''}</span>`:'';})()}
       ${origenBtn}
-      ${_esPy===true?pedPlataHTML(_prod)+pedGuayHTML(_prod):''}
+      ${_esPy===true?pedPyLineaHTML(_prod)+pedPlataHTML(_prod)+pedGuayHTML(_prod):''}
       ${varToggle}
       ${cuentaPedidoHTML(p)}
-      ${_prod?maxCompraHTML(_prod):''}
+      ${_prod&&_esPy!==true?maxCompraHTML(_prod):''}
       <button class="pi-prov ${p.proveedor?'':'sin-prov'}" onclick="setPedidoProveedor('${p.id}')">${p.proveedor?p.proveedor.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'):'+ proveedor'}</button>
       ${accionBtns}
       <span class="pi-ts">${p.ts?ts2s(p.ts):''}</span>
