@@ -651,15 +651,19 @@ footer{margin-top:32px;padding-top:14px;border-top:1px solid var(--border);font-
   </div>
 
   <div class="tabs">
-    <button class="tab active" onclick="goTab('inventario',this)">Inventario</button>
-    <button class="tab" onclick="goTab('arqueo',this)">Finanzas</button>
+    <!-- ABRE EN FINANZAS (idea 6 de la etapa 7, 30/09/2026, eligió la a): es lo que se entra a mirar.
+         Inventario queda al lado y es SÓLO LECTURA: el stock de Full lo trae el robot y lo de casa se
+         cuenta en Mi oficina. Una casilla acá pisaba el número del robot hasta la vuelta siguiente. -->
+    <button class="tab active" onclick="goTab('arqueo',this)">Finanzas</button>
+    <button class="tab" onclick="goTab('inventario',this)">Inventario</button>
     <button class="tab" onclick="goTab('comparar',this)">📅 Comparar</button>
     <button class="tab" onclick="goTab('productos',this)">Productos</button>
     <button class="tab" onclick="goTab('proveedores',this)">🏭 Proveedores</button>
   </div>
 
   <!-- INV -->
-  <div id="tab-inventario">
+  <div id="tab-inventario" style="display:none">
+    <div style="font-size:.68rem;color:var(--muted);margin-bottom:8px">👀 Sólo para mirar: el stock de Full lo trae el robot cada hora y lo de casa se cuenta en <a href="#" onclick="goPage('oficina');return false" style="color:var(--accent,#38bdf8)">Mi oficina</a>.</div>
     <input class="search-box" id="inv-search" type="search" placeholder="Buscar producto..." oninput="renderInv()">
     <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px">
       <div class="stitle" style="margin:0">Unidades por cuenta / ubicación</div>
@@ -685,7 +689,7 @@ footer{margin-top:32px;padding-top:14px;border-top:1px solid var(--border);font-
   </div>
 
   <!-- ARQUEO -->
-  <div id="tab-arqueo" style="display:none">
+  <div id="tab-arqueo">
     <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding:12px 14px;background:var(--surface);border:1px solid var(--border);border-radius:var(--r);margin-bottom:14px">
       <span style="font-size:.67rem;color:var(--muted);text-transform:uppercase;letter-spacing:.1em">Ver período</span>
       <select id="fin-view-sel" class="cal-select" style="font-size:.72rem" onchange="loadFinView()">
@@ -2398,7 +2402,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='21.08';
+const APP_VERSION='21.09';
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
 // muestre la versión y la fecha de actualización y que tenga un desplegable predeterminado cerrado".
 // Y el mismo día: "que ponga fecha de cada modificación y haya una barrita para scrollear y que
@@ -2409,6 +2413,7 @@ const APP_VERSION='21.08';
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'21.09',f:'30/09/2026',h:'18:18',c:[{n:1,t:'Arqueo abre en Finanzas (el patrimonio primero). Inventario queda al lado y es sólo para mirar: el stock de Full lo trae el robot y lo de casa se cuenta en Mi oficina.'}]},
   {v:'21.08',f:'30/09/2026',h:'18:14',c:[{n:1,t:'El % de ganancia ahora tiene 3 colores en todo el panel: rojo abajo del piso (22%), ámbar entre el piso y la meta (25%) y verde de la meta para arriba. Se sacaron los siete colores de antes (el ámbar «JOYA» se confundía con el ámbar de aviso). El número no cambia.'}]},
   {v:'21.07',f:'30/09/2026',h:'16:02',c:[{n:1,t:'Ficha del producto en el celu: la plata va de arriba hacia abajo. Se ve lo que paga el comprador y «te queda $X · N%»; la comisión, el envío, los impuestos, la mercadería y las notas se abren con «ver el detalle». En la PC queda igual.'},{n:1,t:'Inicio: cada tarjeta se actualiza por su cuenta, así «Ventas de hoy» no queda vieja si otra falla.'}]},
   {v:'21.06',f:'30/09/2026',h:'15:57',c:[{n:1,t:'Inicio: la tarjeta de Ventas de hoy dice la hora de la última venta que contó, para darse cuenta si la pantalla quedó vieja.'},{n:1,t:'Inicio: la tarjeta Mi oficina dice en verde cuántas cajas conviene mandar YA (las mismas que en Armar caja dicen «MANDALA YA») y a qué cuentas. Si no hay ninguna, no dice nada.'}]},
@@ -2692,7 +2697,7 @@ function goPage(page){
   if(page==='oficina')enterOficina();
   if(page==='facturas')renderFacturas();
   if(page==='ajustes')enterAjustes();
-  if(page==='inventario'){renderInv();renderProds();renderHist();loadFinInputs();updateArqueo();updateTotals();updateHdr();}
+  if(page==='inventario'){initFinViewSel();renderInv();renderProds();renderHist();loadFinInputs();updateArqueo();updateTotals();updateHdr();}
   if(page==='home'){try{renderHomeHoy();}catch(e){}checkCierrePendiente();renderHomeRevision();updateHomeDolar();renderPuntajeMes();renderHomeParejo();renderNcOfi();}
   if(page!=='home'){
     // Al entrar a una página se baja el header para dejar el contenido arriba. OJO: esto solo puede
@@ -3356,7 +3361,7 @@ const REV_CADA_DIAS=7;
 //   · REV_HECHAS    → última vez que cada etapa quedó resuelta. Sin pendientes, el cartel pide la
 //                     etapa más vieja cuando pasaron REV_CADA_DIAS desde la última.
 const REV_PENDIENTE=[
-  {t:'Etapa 7 · Diseño: 10 ideas para que elijas',que:'lo chico ya está hecho (v20.93); quedan las que cambian cómo se ven Inicio, Rotación, la ficha, los colores del %, el Resumen y Pedidos',pedi:'seguí con diseño'},
+  {t:'Etapa 7 · Diseño: quedan 4 ideas para que elijas',que:'hechas 1-6; quedan el chip 📬 de entregas, la tarjeta de Paraguay, el período de Ventas y Pedidos',pedi:'seguí con diseño'},
 ];
 // Choques (4) y fallas mudas/privacidad (5): verificadas las 15 del 26/09 de madrugada (rev4, lotes 6-8) y
 // todas arregladas o ya estaban; antes pasaron por la 2ª vuelta del 25/09. El cartel decía "15 sin verificar"
@@ -3445,7 +3450,7 @@ function renderInv(){
     if(!hasVars){
       return`<tr>
         <td title="${p.name.replace(/"/g,'&quot;')}">${p.name}</td><td>${costCell}</td>
-        ${LOCS.map(l=>{const q=getQ(p.id,l);return`<td><input class="qty" type="number" value="${q}" style="${q<0?'color:var(--red);font-weight:700':''}" onchange="setQ('${p.id}','${l}',this.value)"></td>`;}).join('')}
+        ${LOCS.map(l=>{const q=getQ(p.id,l);return`<td class="ac" style="${_negStyle(q)}">${fmtN(q)}</td>`;}).join('')}
         <td class="ac" id="st_${p.id}" style="${_negStyle(sub)}">${fmtN(sub)}</td>
         <td class="ac" id="vt_${p.id}">${fmt(val)}</td>
         <td style="text-align:right">${badge}</td>
@@ -3455,7 +3460,7 @@ function renderInv(){
     const varsFiltered=nameMatches?(p.variantes||[]):(p.variantes||[]).filter(v=>normTxt(v).includes(q));
     const varRows=[...varsFiltered].sort((a,b)=>a.localeCompare(b,'es',{sensitivity:'base'})).map(v=>{
       let vSub=0;
-      const locCells=LOCS.map(l=>{const q=getQV(p.id,l,v);vSub+=q;return`<td><input class="qty" type="number" value="${q}" style="${q<0?'color:var(--red);font-weight:700':''}" data-pid="${p.id}" data-loc="${l}" data-variant="${v.replace(/"/g,'&quot;')}" onchange="setQVar(this)"></td>`;}).join('');
+      const locCells=LOCS.map(l=>{const q=getQV(p.id,l,v);vSub+=q;return`<td class="ac" style="${_negStyle(q)}">${fmtN(q)}</td>`;}).join('');
       return`<tr class="inv-var-row"><td>↳ ${v}</td><td></td>${locCells}<td class="ac" style="${_negStyle(vSub)}">${fmtN(vSub)}</td><td class="ac">${fmt(vSub*cp)}</td><td></td></tr>`;
     }).join('');
     return`<tr style="background:rgba(124,58,237,.06)">

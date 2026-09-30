@@ -2229,7 +2229,7 @@ async function filtrarRescate(db, rr, o) {
   // vendió nunca salía "no vendió nunca: subirlo no lo va a despertar" mientras el MISMO
   // producto se vende todos los días en esa cuenta. Lo que dice si el producto rota es el
   // producto en esa cuenta, no cuál de sus publicaciones se llevó la venta.
-  const ultR = {}, u30R = {}, ultPC = {};
+  const ultR = {}, u30R = {}, ultPC = {}, v30R = {};
   const desdeR = hoyTs - 30 * 864e5;
   for (const [k, ents] of Object.entries(vpF)) {
     const ts = Date.parse(k.slice(0, 10).replace(/_/g, '-'));
@@ -2242,9 +2242,21 @@ async function filtrarRescate(db, rr, o) {
         if (ts > (ultPC[kPC] || 0)) ultPC[kPC] = ts;
         if (v.variante && ts > (ultPC[kPV] || 0)) ultPC[kPV] = ts;
       }
-      if (ts >= desdeR && v.prodId && v.cuenta) u30R[v.prodId + '__' + v.cuenta] = (u30R[v.prodId + '__' + v.cuenta] || 0) + (v.qty || 1);
+      if (ts >= desdeR && v.prodId && v.cuenta) {
+        const kU = v.prodId + '__' + v.cuenta;
+        u30R[kU] = (u30R[kU] || 0) + (v.qty || 1);
+        (v30R[kU] = v30R[kU] || []).push([ts, v.qty || 1]);
+      }
     }
   }
+  // LOS DÍAS SIN STOCK NO CUENTAN PARA EL RITMO (30/09/2026). Lo marcó él con la Pizarra Mágica:
+  // *"acaban de llegar, hace muchísimo que no teníamos"* — y el freno decía "59 u. = 443 días de
+  // stock" dividiendo las ventas de 30 días por 30, cuando casi todos esos días no hubo nada que
+  // vender. Es el mismo error que la reposición el 20/08 y `quietaDe` el 25/09. Si el stock volvió
+  // hace menos de 30 días (fecha REAL de `stockhist`), el ritmo se mide sólo desde ahí; con menos
+  // de 7 días no hay ritmo que medir y el freno no opina (la venta que disparó esto ya dice que vende).
+  let histR = {};
+  try { histR = (await db.get('cyc/stockhist')) || {}; } catch { histR = {}; }
   const bajoAMano = {};
   try {
     const evR = (await db.get('cyc/supervisor/eventos')) || {};
@@ -2316,10 +2328,18 @@ async function filtrarRescate(db, rr, o) {
     const pid = (lnk[x.mla] || {}).prodId;
     if (pid) {
       const st = invR[pid + '__' + sidR(x.label)];
-      const pd = (u30R[pid + '__' + x.label] || 0) / 30;
+      const kU = pid + '__' + x.label;
+      let pd = (u30R[kU] || 0) / 30, volvio = null;
+      const hR = histR[pid + '__' + sidR(x.label)];
+      if (hR && hR.desde && hR.aprox === false && hoyTs - hR.desde < 30 * 864e5) {
+        volvio = Math.max(0, Math.floor((hoyTs - hR.desde) / 864e5));
+        const dia0 = Date.parse(new Date(hR.desde - 3 * 3600e3).toISOString().slice(0, 10));
+        const uV = (v30R[kU] || []).reduce((s, [t, q]) => s + (t >= dia0 ? q : 0), 0);
+        pd = volvio < 7 ? 0 : uV / volvio;
+      }
       if (st != null && pd > 0) {
         const dSt = Math.round((parseInt(st) || 0) / pd);
-        if (dSt > RESC_DSTOCK) { rescFren.push({ ...x, why: `tiene ${parseInt(st) || 0} u. = ${dSt} días de stock: primero hay que venderlo, subir lo frena` }); continue; }
+        if (dSt > RESC_DSTOCK) { rescFren.push({ ...x, why: `tiene ${parseInt(st) || 0} u. = ${dSt} días de stock${volvio != null ? ` (al ritmo desde que volvió el stock, hace ${volvio} d)` : ''}: primero hay que venderlo, subir lo frena` }); continue; }
       }
     }
     rescates.push(x);
