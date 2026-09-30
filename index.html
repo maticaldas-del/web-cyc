@@ -2386,7 +2386,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='21.05';
+const APP_VERSION='21.06';
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
 // muestre la versión y la fecha de actualización y que tenga un desplegable predeterminado cerrado".
 // Y el mismo día: "que ponga fecha de cada modificación y haya una barrita para scrollear y que
@@ -2397,6 +2397,7 @@ const APP_VERSION='21.05';
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'21.06',f:'30/09/2026',h:'15:57',c:[{n:1,t:'Inicio: la tarjeta de Ventas de hoy dice la hora de la última venta que contó, para darse cuenta si la pantalla quedó vieja.'},{n:1,t:'Inicio: la tarjeta Mi oficina dice en verde cuántas cajas conviene mandar YA (las mismas que en Armar caja dicen «MANDALA YA») y a qué cuentas. Si no hay ninguna, no dice nada.'}]},
   {v:'21.05',f:'30/09/2026',h:'15:55',c:[{n:1,t:'Resumen: se sacaron las dos tarjetas de arriba (Ganancia real y Retiros) y la de «Rentabilidad por producto», que repetían la Cascada. Ahora la Cascada va primero, el resultado final sale grande con la comparación contra el período anterior, y el % de ganancia va pegado a la línea «Ganancia». Ningún número cambió.'}]},
   {v:'21.04',f:'30/09/2026',h:'13:37',c:[{n:1,t:'Métricas: el robot de precios es UNA sola tarjeta. Arriba lo que ganó o perdió (sólo con 7 días o más) y adentro, en «👀 Qué está mirando ahora», todas las publicaciones que venden y qué hace con cada una. La tarjeta 🧪 Vigilancia aparte ya no existe.'}]},
   {v:'21.03',f:'30/09/2026',h:'13:40',c:[{n:2,t:'Lo que trajo el robot de precios: ahora muestra sólo los cambios que ya tienen 7 días, en verde si ganaron y en rojo si perdieron. Lo que todavía no tiene datos no aparece; se suma solo cuando pasa el tiempo. Lo mismo en Vigilancia: el «ganó/perdió» sale recién con 7 días.'}]},
@@ -2678,7 +2679,7 @@ function goPage(page){
   if(page==='facturas')renderFacturas();
   if(page==='ajustes')enterAjustes();
   if(page==='inventario'){renderInv();renderProds();renderHist();loadFinInputs();updateArqueo();updateTotals();updateHdr();}
-  if(page==='home'){try{renderHomeHoy();}catch(e){}checkCierrePendiente();renderHomeRevision();updateHomeDolar();renderPuntajeMes();renderHomeParejo();}
+  if(page==='home'){try{renderHomeHoy();}catch(e){}checkCierrePendiente();renderHomeRevision();updateHomeDolar();renderPuntajeMes();renderHomeParejo();renderNcOfi();}
   if(page!=='home'){
     // Al entrar a una página se baja el header para dejar el contenido arriba. OJO: esto solo puede
     // pasar en los primeros milisegundos. Antes había un MutationObserver que repetía el scroll cada
@@ -3256,7 +3257,7 @@ function renderAll(){
   if(currentPage==='resumen')renderResumen_page();
   if(currentPage==='ventaprod')renderVentaProd();
   if(currentPage==='rotacion')renderRotacionStock();
-  if(currentPage==='home'){checkCierrePendiente();renderHomeRevision();updateHomeDolar();renderPuntajeMes();renderHomeParejo();}
+  if(currentPage==='home'){checkCierrePendiente();renderHomeRevision();updateHomeDolar();renderPuntajeMes();renderHomeParejo();renderNcOfi();}
   updatePedidosCosto();
 }
 
@@ -5462,8 +5463,7 @@ function renderOfiCaja(){
     +`<div class="pcount"><strong>${uHay}</strong>u. en casa</div>`
     +`<div class="pcount"><strong>${aMandar}</strong>${ofiFiltroCuenta?'a mandar en total':'hay que mandar'}</div>`
     +`<div class="pcount"><strong>${fmt(plata)}</strong>en mercadería</div>`;
-  const sub=document.getElementById('nc-ofi-sub');
-  if(sub)sub.textContent=uHay?`${uHay} u. en casa · ${aMandar} para mandar`:'Sin nada contado todavía';
+  renderNcOfi(filas);
   // Botones para armar la caja de UNA cuenta: es como se despacha de verdad, una caja por cuenta.
   const fc=document.getElementById('ofi-filtro-cuentas');
   // Cada botón muestra cuántas unidades le tocan: así se ve de un vistazo a quién hay que
@@ -6545,6 +6545,30 @@ const CAJA_VALE_LA_PENA=10;   // si lleva 10 veces el costo del envío, va igual
 // Ojo con lo que NO cambia: el buscador sigue sin mover el cartel. Filtrar la lista no saca
 // mercadería de la caja; sacarla del casillero sí. Son dos cosas distintas y por eso una mueve el
 // veredicto y la otra no.
+// LA TARJETA "MI OFICINA" DE INICIO (30/09/2026, pedido suyo: "que me diga cuántas cajas hay para mandar
+// en verde, si no hay que no diga nada"). Verde = el MISMO veredicto "MANDALA YA" del cartel de Armar
+// caja (se paga en 2 días o menos, o lleva tanta plata que el envío es calderilla), una caja por cuenta.
+function cajasVerdes(filas){
+  const out=[];
+  for(const c of LOCS){
+    const cv=convieneCaja(filas,c);
+    if(!(cv.gCero>0||cv.gTotal>0))continue;
+    const d=cv.diasPago;
+    if((d!=null&&d<=2)||cv.porTamano)out.push(c);
+  }
+  return out;
+}
+function renderNcOfi(filas){
+  const sub=document.getElementById('nc-ofi-sub');if(!sub)return;
+  try{
+    filas=filas||repartoOficina();
+    const uHay=filas.reduce((s,f)=>s+f.hay,0);
+    const aMandar=filas.reduce((s,f)=>s+f.sug.reduce((a,x)=>a+x.mandar,0),0);
+    const v=cajasVerdes(filas);
+    sub.innerHTML=(uHay?`${uHay} u. en casa · ${aMandar} para mandar`:'Sin nada contado todavía')
+      +(v.length?`<div style="color:var(--green);font-weight:700;margin-top:4px">📦 ${v.length} caja${v.length===1?'':'s'} para mandar ya · ${v.join(', ')}</div>`:'');
+  }catch(e){}
+}
 function convieneCaja(filas,cuenta){
   let gCero=0,gRelleno=0,gTotal=0,nCero=0,uCero=0,uTot=0,sinDato=0;
   const detalle=[];
@@ -15790,7 +15814,10 @@ function _puntDetGuardar(o){try{localStorage.setItem('cycPuntDet',o?'1':'0');}ca
 function _homeDiaTot(k){
   const ents=Object.values((state.ventaprod||{})[k]||{}).map(v=>({...v,_dateKey:k})).filter(v=>!v.cancelada);
   let u=0,neto=0,costo=0,bruto=0,gest=0;ents.forEach(v=>{u+=v.qty||0;neto+=v.neto||0;costo+=efectivoCostoVP(v);bruto+=v.total||0;gest+=gestDivVP(v);});
-  const gan=neto-costo;return {u,bruto,gan,pct:pctGananciaVP(gan,costo,gest),ventas:new Set(ents.map(vpGrupoKey)).size};
+  // La hora de la última venta contada (30/09/2026): él vio 24 ventas en Inicio y 30 en Ventas —la
+  // misma cuenta— porque una de las dos pantallas estaba vieja. Con la hora a la vista se nota al toque.
+  let ult=0;ents.forEach(v=>{const t=Number(v.ts)||0;if(t>ult)ult=t;});
+  const gan=neto-costo;return {u,bruto,gan,ult,pct:pctGananciaVP(gan,costo,gest),ventas:new Set(ents.map(vpGrupoKey)).size};
 }
 function renderHomeHoy(){
   const el=document.getElementById('home-hoy');if(!el||!state.ventaprod)return;
@@ -15807,6 +15834,7 @@ function renderHomeHoy(){
       <div><div style="font-family:'Syne',sans-serif;font-weight:800;font-size:clamp(1.6rem,6vw,2.2rem);line-height:1;color:${h.gan>=0?'var(--green)':'var(--red)'}">${fmt(h.gan)}</div><div style="font-size:.78rem;color:var(--muted);margin-top:6px">ganancia · <b style="color:${h.gan>=0?'var(--green)':'var(--red)'}">${pctTxt}</b></div></div>
     </div>
     <div style="display:flex;align-items:center;gap:8px 14px;flex-wrap:wrap;margin-top:14px;padding-top:10px;border-top:1px solid rgba(34,197,94,.2);font-size:.72rem;color:var(--muted)">
+      ${h.ult?`<span>última venta <b style="color:var(--text)">${new Date(h.ult).toLocaleTimeString('es-AR',{hour:'2-digit',minute:'2-digit',hour12:false})}</b> ·</span>`:''}
       <span>ayer: <b style="color:var(--text)">${fmt(a.bruto)}</b> · ganancia ${fmt(a.gan)} · ${a.ventas} venta${a.ventas===1?'':'s'}</span>
     </div>
   </div>`;
