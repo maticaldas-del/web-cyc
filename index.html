@@ -490,6 +490,8 @@ footer{margin-top:32px;padding-top:14px;border-top:1px solid var(--border);font-
   #rot-tbl td.rc-s{order:2;font-size:.72rem!important;color:var(--muted)}
   #rot-tbl tr.rc-var{margin-left:14px;border-style:dashed}
 }
+.vp-cel{display:none!important}
+@media(max-width:640px){.vp-pc{display:none!important}.vp-cel{display:flex!important}}
 </style>
 </head>
 <body>
@@ -2398,7 +2400,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='21.00';
+const APP_VERSION='21.01';
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
 // muestre la versión y la fecha de actualización y que tenga un desplegable predeterminado cerrado".
 // Y el mismo día: "que ponga fecha de cada modificación y haya una barrita para scrollear y que
@@ -2409,6 +2411,7 @@ const APP_VERSION='21.00';
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'21.01',f:'30/09/2026',h:'23:05',c:[{n:1,t:'Ventas x Producto: en la PC vuelve el renglón de antes; la tarjeta con «detalle» queda sólo en el teléfono. En los dos, el % va con su color (el mismo de la etiqueta: verde, naranja, rojo…).'}]},
   {v:'21.00',f:'30/09/2026',h:'22:35',c:[{n:1,t:'Ventas x Producto: cada venta es una tarjeta prolija. A la vista: cuenta, fecha y hora, qué se vendió, la ganancia, lo cobrado y el %. El resto (N° de venta, costo, neto, cambio de precio, llegada, editar y borrar) está en el botón «detalle».'}]},
   {v:'20.99',f:'30/09/2026',h:'22:14',c:[{n:2,t:'Inicio: la tarjeta 💸 ahora dice cuánto puede retirar cada uno HASTA HOY: la ganancia real de CYC del mes (sin proyección, antes del retiro) dividida en 3 (CYC, vos y tu papá), y cuánto ya retiraron y cuánto queda.'}]},
   {v:'20.98',f:'30/09/2026',h:'21:40',c:[{n:2,t:'Inicio: en el Puntaje, 💸 Cobro del mes que viene · cada uno. Lo que deja el mes después de gastos y antes del retiro, partido en 3 iguales (CYC, tu papá y vos). Si se gana más sube, si se gasta más baja. Mientras el mes corre es un estimado.'}]},
@@ -8794,6 +8797,10 @@ function renderVentaProd(){
       const cuenta=grp.items[0].cuenta;
       const numVenta=grp.items[0].numVenta||'';
       const _est=!isCancelled&&grp.items.some(ventaEstimadaVP);
+      // El % lleva SU color (el de pctLabel) también de fondo, en la PC y en el teléfono (30/09/2026, pedido suyo).
+      const _pc=gpct!==null?pctColor(gpct):'';
+      const _pillSt=gpct!==null&&!_est?`color:${_pc};background:${_pc}1f;border:1px solid ${_pc}55;`:'';
+      const pctBox=isCancelled?'':(_est&&gpct!==null)?`<span class="db nc" style="font-size:.62rem;color:var(--muted)" title="Mercado Pago todavía no liquidó esta venta: el neto es una estimación del robot (le resta el envío de Full si pasa los $33.000). Se corrige sola cuando se lee el pago real.">≈ ${gpct>=0?'+':''}${gpct.toFixed(0)}% · estimado</span>`:gpct!==null?`<span class="db" style="font-size:.62rem;${_pillSt}">${gpct>=0?'+':''}${gpct.toFixed(0)}%</span><span style="font-size:.6rem;color:${pctColor(gpct)};margin-left:3px">${pctLabel(gpct)}</span>`:'<span class="db nc" style="font-size:.6rem">s/costo</span>';
       const grpKey=grp._dateKey||key;
       const delBtn=grp.saleId?`<button class="ii-del" onclick="delVentaSale('${grp.gid}','${grpKey}')">✕</button>`:`<button class="ii-del" onclick="delVentaProd('${grp.items[0].id}')">✕</button>`;
       // LA HORA DE LA VENTA (21/09/2026). Pedido suyo: *"se le puede agregar la hora de venta a
@@ -8808,9 +8815,11 @@ function renderVentaProd(){
       // lado de un número de venta es peor que no tenerla.
       const _hs=grp.items.map(v=>Number(v.ts)||0).filter(t=>t>0);
       const _hora=_hs.length?new Date(Math.min(..._hs)).toLocaleTimeString('es-AR',{hour:'2-digit',minute:'2-digit',hour12:false}):'';
+      const fechaTag=grp._dateKey?`<span style="font-size:.6rem;color:var(--muted)">${grp._dateKey.replace(/_/g,'-')}${_hora?' · '+_hora:''}</span>`:'';
       // El número de venta va en BLANCO, no en verde. Pedido suyo del 09/09/2026: en verde se
       // confundía con el % de ganancia, que está en el mismo renglón y también en verde. El verde
       // acá no significaba nada — el número es un dato, no una señal de que algo esté bien.
+      const numTag=`<span style="font-size:.68rem;color:${numVenta?'var(--text)':'var(--muted)'};font-family:'DM Mono',monospace">${numVenta?'#'+numVenta:'sin N°'}</span>`;
       const editing=vpEditingGroups.has(grp.gid);
       if(editing){
         const tipoCan=grp.items[0].tipoCancelacion||'';
@@ -8873,6 +8882,8 @@ function renderVentaProd(){
       // renglón queda idéntico a como estaba y no aparece ningún número nuevo: el ruido se suma
       // sólo donde hace falta. Es la regla de siempre — la gestión de Full se suma al COSTO o se
       // resta del PRECIO, nunca las dos cosas.
+      const costLabel=(!isCancelled&&gOfi>0)?`<span style="font-size:.66rem;color:var(--muted)" title="Lo que salió que este producto llegue a tu oficina: ${fmt(gOfi)}${ggest>0?' · En el medio ML se queda '+fmt(ggest)+' de envío de Full':''} · impuestos (IIBB ${mlExtraPct(cuenta).toFixed(2)}% + monotributo ${monoPct().toFixed(2)}% del precio) ${fmt(gmlx)}${(gc-gmlx-gOfi)>0?' · envío/embalaje y % de reclamos '+fmt(gc-gmlx-gOfi):''}. Por eso la resta neto ${fmt(gn)} − costo ${fmt(gOfi)} NO da la ganancia: la ganancia real son ${fmt(gg)} y el % ${gpct!==null?gpct.toFixed(0)+'%':'—'}, medidos con todo eso adentro (tu regla del 01/09).">costo ${fmt(gOfi)}</span>`:((!isCancelled&&gc>0)?`<span style="font-size:.66rem;color:var(--muted)" title="Este producto no tiene el costo cargado en su ficha, así que se muestra el costo guardado con la venta.">costo ${fmt(gc)}</span>`:'');
+      const ganLabel=isCancelled?'':(gc>0?`<span style="font-size:.66rem;color:${gg>=0?'var(--green)':'var(--red)'}">gan. ${fmt(gg)}</span>`:`<span style="font-size:.62rem;color:var(--muted)">neto ${fmt(gn)}</span>`);
       // EL RENGLÓN NO MUESTRA LO QUE SE QUEDÓ ML (21/09/2026). Estuvo un rato y él lo sacó:
       // *"que no se vea ml, total no me sirve para nada a mi"*. El dato era correcto —total −
       // neto, los dos del MISMO renglón— pero no decide nada: lo que mira es la ganancia.
@@ -8925,7 +8936,7 @@ function renderVentaProd(){
       const _tot=grp.items.reduce((s,v)=>s+(Number(v.total)||0),0);
       const _cambios=grp.items.map(v=>isCancelled?'':cambioVentaHTML(v,Number(v.ts)||0));
       const _hayCambio=_cambios.some(x=>x);
-      const _pill=isCancelled?'':(gpct===null?'<span class="db nc" style="font-size:.66rem">sin costo</span>':`<span class="db ${_est?'nc':pctCls(gpct)}" style="font-size:.72rem;padding:3px 9px;${_est?'color:var(--muted)':''}">${_est?'≈ ':''}${gpct>=0?'+':''}${gpct.toFixed(0)}%</span>`);
+      const _pill=isCancelled?'':(gpct===null?'<span class="db nc" style="font-size:.66rem">sin costo</span>':`<span class="db ${_est?'nc':''}" style="font-size:.72rem;padding:3px 9px;${_est?'color:var(--muted)':_pillSt}">${_est?'≈ ':''}${gpct>=0?'+':''}${gpct.toFixed(0)}%</span>`);
       const _items=grp.items.map((v,i)=>`<div style="font-size:.8rem;line-height:1.35;${isCancelled?'opacity:.45;text-decoration:line-through':''}"><span style="color:var(--muted)">${v.qty}×</span> ${nombreDeVenta(v)}${v.variante?` <span style="padding:1px 6px;border-radius:4px;background:rgba(124,58,237,.12);color:#a78bfa;font-size:.66rem;white-space:nowrap">${v.variante}</span>`:''}${_cambios[i]?` <span style="font-size:.66rem" title="Cambió de precio antes de esta venta · mirá el detalle">${_cambios[i].includes('⬆️')?'⬆️':'⬇️'}</span>`:''}</div>`).join('');
       const _avisoIco=(rescLabel&&rescLabel.includes('⚠️'))?' <span title="El robot no pudo subirla · mirá el detalle">⚠️</span>':'';
       const _abierto=vpDetOpen.has(grp.gid);
@@ -8946,7 +8957,28 @@ function renderVentaProd(){
             ${delBtn}
           </div>
         </div>`;
-      return`<div class="ingreso-item" style="flex-direction:column;align-items:stretch;gap:6px;padding:12px 14px;${isCancelled?'border-color:rgba(239,68,68,.25);background:rgba(239,68,68,.04)':''}">
+      // EN LA PC VA EL RENGLÓN DE ANTES; LA TARJETA ES SÓLO PARA EL TELÉFONO (30/09/2026, él:
+      // "en la pc quiero como estaba antes. que quede así en el celu"). Se arman las dos y el CSS
+      // (.vp-pc / .vp-cel, corte 640px) muestra una sola.
+      const lines=grp.items.map(v=>`<div style="display:flex;justify-content:space-between;font-size:.72rem;padding:2px 0;${isCancelled?'opacity:.45;text-decoration:line-through':''}"><span>${v.qty}× ${nombreDeVenta(v)}${v.variante?` <span style="padding:1px 5px;border-radius:3px;background:rgba(124,58,237,.12);color:#a78bfa;font-size:.62rem">${v.variante}</span>`:''}${isCancelled?'':(()=>{const x=cambioVentaHTML(v,Number(v.ts)||0);return x?' '+x:'';})()}</span><span style="color:var(--muted)">${(!isCancelled&&(v.total||0)>0)?`total ${fmt(v.total)} · `:''}${isCancelled?'':'neto '+fmt(v.neto||0)}</span></div>`).join('');
+      const _pcHtml=`<div class="ingreso-item vp-pc" style="flex-direction:column;align-items:stretch;gap:4px;${isCancelled?'border-color:rgba(239,68,68,.25);background:rgba(239,68,68,.04)':''}">
+        <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+          <span class="who-badge" style="font-size:.6rem;${isCancelled?'opacity:.6':''}">${cuenta}</span>
+          ${fechaTag}${numTag}
+          ${cancelBadge}
+          ${grp.items.length>1?`<span style="font-size:.64rem;color:var(--muted)">${grp.items.length} prod.</span>`:''}
+          <span style="flex:1"></span>
+          ${entLabel}
+          ${rescLabel}
+          ${costLabel}
+          ${ganLabel}
+          ${pctBox}
+          <button class="ii-del" style="background:rgba(124,58,237,.15);color:#a78bfa;border-color:rgba(124,58,237,.3)" onclick="vpToggleEdit('${grp.gid}')">✎</button>
+          ${delBtn}
+        </div>
+        ${lines}
+      </div>`;
+      return _pcHtml+`<div class="ingreso-item vp-cel" style="flex-direction:column;align-items:stretch;gap:6px;padding:12px 14px;${isCancelled?'border-color:rgba(239,68,68,.25);background:rgba(239,68,68,.04)':''}">
         <div style="display:flex;align-items:center;gap:8px">
           <span class="who-badge" style="font-size:.62rem;${isCancelled?'opacity:.6':''}">${cuenta}</span>
           <span style="font-size:.68rem;color:var(--muted);white-space:nowrap">${_fh}</span>
