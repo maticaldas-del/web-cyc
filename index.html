@@ -2398,7 +2398,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='20.99';
+const APP_VERSION='21.00';
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
 // muestre la versión y la fecha de actualización y que tenga un desplegable predeterminado cerrado".
 // Y el mismo día: "que ponga fecha de cada modificación y haya una barrita para scrollear y que
@@ -2409,6 +2409,7 @@ const APP_VERSION='20.99';
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'21.00',f:'30/09/2026',h:'22:35',c:[{n:1,t:'Ventas x Producto: cada venta es una tarjeta prolija. A la vista: cuenta, fecha y hora, qué se vendió, la ganancia, lo cobrado y el %. El resto (N° de venta, costo, neto, cambio de precio, llegada, editar y borrar) está en el botón «detalle».'}]},
   {v:'20.99',f:'30/09/2026',h:'22:14',c:[{n:2,t:'Inicio: la tarjeta 💸 ahora dice cuánto puede retirar cada uno HASTA HOY: la ganancia real de CYC del mes (sin proyección, antes del retiro) dividida en 3 (CYC, vos y tu papá), y cuánto ya retiraron y cuánto queda.'}]},
   {v:'20.98',f:'30/09/2026',h:'21:40',c:[{n:2,t:'Inicio: en el Puntaje, 💸 Cobro del mes que viene · cada uno. Lo que deja el mes después de gastos y antes del retiro, partido en 3 iguales (CYC, tu papá y vos). Si se gana más sube, si se gasta más baja. Mientras el mes corre es un estimado.'}]},
   {v:'20.97',f:'29/09/2026',h:'19:59',c:[{n:1,t:'Inicio: arriba de todo CYC con el dólar; ahí abajo 🏷️ Ventas de hoy y el Puntaje. El Puntaje muestra sólo el número y cómo va (ej. "Aprobado, con lo justo"); objetivo, proyección, barras y lo que falta van en "Ver todo el detalle".'}]},
@@ -8502,6 +8503,8 @@ const vpGrupoKey=(v)=>v.numVenta?('n'+v.numVenta):(v.saleId||v.id);
 // El segundo y el tercer caso son para los botones viejos, que mandaban el saleId o el id.
 const vpEsDelGrupo=(v,gid)=>vpGrupoKey(v)===gid||v.saleId===gid||v.id===gid;
 const vpEditingGroups=new Set();
+const vpDetOpen=new Set();
+function vpToggleDet(gid){vpDetOpen.has(gid)?vpDetOpen.delete(gid):vpDetOpen.add(gid);renderVentaProd();}
 function vpToggleEdit(grpId){vpEditingGroups.has(grpId)?vpEditingGroups.delete(grpId):vpEditingGroups.add(grpId);renderVentaProd();}
 async function vpSaveEdit(grpId,grpKey){
   const grp=document.getElementById('vpgrp-'+grpId);if(!grp)return;
@@ -8791,7 +8794,6 @@ function renderVentaProd(){
       const cuenta=grp.items[0].cuenta;
       const numVenta=grp.items[0].numVenta||'';
       const _est=!isCancelled&&grp.items.some(ventaEstimadaVP);
-      const pctBox=isCancelled?'':(_est&&gpct!==null)?`<span class="db nc" style="font-size:.62rem;color:var(--muted)" title="Mercado Pago todavía no liquidó esta venta: el neto es una estimación del robot (le resta el envío de Full si pasa los $33.000). Se corrige sola cuando se lee el pago real.">≈ ${gpct>=0?'+':''}${gpct.toFixed(0)}% · estimado</span>`:gpct!==null?`<span class="db ${pctCls(gpct)}" style="font-size:.62rem;color:${pctColor(gpct)}">${gpct>=0?'+':''}${gpct.toFixed(0)}%</span><span style="font-size:.6rem;color:${pctColor(gpct)};margin-left:3px">${pctLabel(gpct)}</span>`:'<span class="db nc" style="font-size:.6rem">s/costo</span>';
       const grpKey=grp._dateKey||key;
       const delBtn=grp.saleId?`<button class="ii-del" onclick="delVentaSale('${grp.gid}','${grpKey}')">✕</button>`:`<button class="ii-del" onclick="delVentaProd('${grp.items[0].id}')">✕</button>`;
       // LA HORA DE LA VENTA (21/09/2026). Pedido suyo: *"se le puede agregar la hora de venta a
@@ -8806,11 +8808,9 @@ function renderVentaProd(){
       // lado de un número de venta es peor que no tenerla.
       const _hs=grp.items.map(v=>Number(v.ts)||0).filter(t=>t>0);
       const _hora=_hs.length?new Date(Math.min(..._hs)).toLocaleTimeString('es-AR',{hour:'2-digit',minute:'2-digit',hour12:false}):'';
-      const fechaTag=grp._dateKey?`<span style="font-size:.6rem;color:var(--muted)">${grp._dateKey.replace(/_/g,'-')}${_hora?' · '+_hora:''}</span>`:'';
       // El número de venta va en BLANCO, no en verde. Pedido suyo del 09/09/2026: en verde se
       // confundía con el % de ganancia, que está en el mismo renglón y también en verde. El verde
       // acá no significaba nada — el número es un dato, no una señal de que algo esté bien.
-      const numTag=`<span style="font-size:.68rem;color:${numVenta?'var(--text)':'var(--muted)'};font-family:'DM Mono',monospace">${numVenta?'#'+numVenta:'sin N°'}</span>`;
       const editing=vpEditingGroups.has(grp.gid);
       if(editing){
         const tipoCan=grp.items[0].tipoCancelacion||'';
@@ -8873,8 +8873,6 @@ function renderVentaProd(){
       // renglón queda idéntico a como estaba y no aparece ningún número nuevo: el ruido se suma
       // sólo donde hace falta. Es la regla de siempre — la gestión de Full se suma al COSTO o se
       // resta del PRECIO, nunca las dos cosas.
-      const costLabel=(!isCancelled&&gOfi>0)?`<span style="font-size:.66rem;color:var(--muted)" title="Lo que salió que este producto llegue a tu oficina: ${fmt(gOfi)}${ggest>0?' · En el medio ML se queda '+fmt(ggest)+' de envío de Full':''} · impuestos (IIBB ${mlExtraPct(cuenta).toFixed(2)}% + monotributo ${monoPct().toFixed(2)}% del precio) ${fmt(gmlx)}${(gc-gmlx-gOfi)>0?' · envío/embalaje y % de reclamos '+fmt(gc-gmlx-gOfi):''}. Por eso la resta neto ${fmt(gn)} − costo ${fmt(gOfi)} NO da la ganancia: la ganancia real son ${fmt(gg)} y el % ${gpct!==null?gpct.toFixed(0)+'%':'—'}, medidos con todo eso adentro (tu regla del 01/09).">costo ${fmt(gOfi)}</span>`:((!isCancelled&&gc>0)?`<span style="font-size:.66rem;color:var(--muted)" title="Este producto no tiene el costo cargado en su ficha, así que se muestra el costo guardado con la venta.">costo ${fmt(gc)}</span>`:'');
-      const ganLabel=isCancelled?'':(gc>0?`<span style="font-size:.66rem;color:${gg>=0?'var(--green)':'var(--red)'}">gan. ${fmt(gg)}</span>`:`<span style="font-size:.62rem;color:var(--muted)">neto ${fmt(gn)}</span>`);
       // EL RENGLÓN NO MUESTRA LO QUE SE QUEDÓ ML (21/09/2026). Estuvo un rato y él lo sacó:
       // *"que no se vea ml, total no me sirve para nada a mi"*. El dato era correcto —total −
       // neto, los dos del MISMO renglón— pero no decide nada: lo que mira es la ganancia.
@@ -8917,23 +8915,53 @@ function renderVentaProd(){
           else rescLabel=`<span style="font-size:.62rem;color:var(--amber)" title="${_w}">⚠️ no lo subí · ${_w.length>40?_w.slice(0,40)+'…':_w}</span>`;
         }
       }
-      const lines=grp.items.map(v=>`<div style="display:flex;justify-content:space-between;font-size:.72rem;padding:2px 0;${isCancelled?'opacity:.45;text-decoration:line-through':''}"><span>${v.qty}× ${nombreDeVenta(v)}${v.variante?` <span style="padding:1px 5px;border-radius:3px;background:rgba(124,58,237,.12);color:#a78bfa;font-size:.62rem">${v.variante}</span>`:''}${isCancelled?'':(()=>{const x=cambioVentaHTML(v,Number(v.ts)||0);return x?' '+x:'';})()}</span><span style="color:var(--muted)">${(!isCancelled&&(v.total||0)>0)?`total ${fmt(v.total)} · `:''}${isCancelled?'':'neto '+fmt(v.neto||0)}</span></div>`).join('');
-      return`<div class="ingreso-item" style="flex-direction:column;align-items:stretch;gap:4px;${isCancelled?'border-color:rgba(239,68,68,.25);background:rgba(239,68,68,.04)':''}">
-        <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
-          <span class="who-badge" style="font-size:.6rem;${isCancelled?'opacity:.6':''}">${cuenta}</span>
-          ${fechaTag}${numTag}
+      // ── LA TARJETA DE CADA VENTA, PROLIJA (30/09/2026) ──
+      // Él, con la captura del teléfono: *"se ve mucho peor que antes, no se entiende nada. dejalo
+      // prolijo. pone todo lo que puedas pero prioriza la prolijidad, si faltan cosas pone un
+      // botoncito de detalle"*. A la vista queda lo que se mira: cuenta, fecha, qué se vendió, la
+      // ganancia, lo cobrado y el %. Todo lo demás (número de venta, costo, neto, cambio de precio,
+      // llegada, rescate, editar y borrar) va adentro de "detalle", que recuerda si quedó abierto.
+      const _fh=grp._dateKey?(()=>{const q=grp._dateKey.split('_');return q[2]+'/'+q[1];})()+(_hora?' · '+_hora:''):'';
+      const _tot=grp.items.reduce((s,v)=>s+(Number(v.total)||0),0);
+      const _cambios=grp.items.map(v=>isCancelled?'':cambioVentaHTML(v,Number(v.ts)||0));
+      const _hayCambio=_cambios.some(x=>x);
+      const _pill=isCancelled?'':(gpct===null?'<span class="db nc" style="font-size:.66rem">sin costo</span>':`<span class="db ${_est?'nc':pctCls(gpct)}" style="font-size:.72rem;padding:3px 9px;${_est?'color:var(--muted)':''}">${_est?'≈ ':''}${gpct>=0?'+':''}${gpct.toFixed(0)}%</span>`);
+      const _items=grp.items.map((v,i)=>`<div style="font-size:.8rem;line-height:1.35;${isCancelled?'opacity:.45;text-decoration:line-through':''}"><span style="color:var(--muted)">${v.qty}×</span> ${nombreDeVenta(v)}${v.variante?` <span style="padding:1px 6px;border-radius:4px;background:rgba(124,58,237,.12);color:#a78bfa;font-size:.66rem;white-space:nowrap">${v.variante}</span>`:''}${_cambios[i]?` <span style="font-size:.66rem" title="Cambió de precio antes de esta venta · mirá el detalle">${_cambios[i].includes('⬆️')?'⬆️':'⬇️'}</span>`:''}</div>`).join('');
+      const _avisoIco=(rescLabel&&rescLabel.includes('⚠️'))?' <span title="El robot no pudo subirla · mirá el detalle">⚠️</span>':'';
+      const _abierto=vpDetOpen.has(grp.gid);
+      const _dl=(k,val)=>`<div style="display:flex;justify-content:space-between;gap:10px;padding:3px 0;border-bottom:1px dashed var(--border)"><span style="color:var(--muted)">${k}</span><span style="text-align:right">${val}</span></div>`;
+      const _det=`<div id="vpdet-${grp.gid}" style="display:${_abierto?'block':'none'};font-size:.7rem;background:var(--surface2);border-radius:8px;padding:8px 10px;margin-top:2px">
+          ${_dl('N° de venta',`<span style="font-family:'DM Mono',monospace">${numVenta?'#'+numVenta:'sin N°'}</span>`)}
+          ${_dl('Fecha',grp._dateKey?grp._dateKey.replace(/_/g,'-')+(_hora?' · '+_hora:''):'—')}
+          ${isCancelled?'':_dl('Cobrado · neto de ML',`${fmt(_tot)} · ${fmt(gn)}`)}
+          ${(!isCancelled&&gc>0)?_dl('Costo',gOfi>0?fmt(gOfi)+(ggest>0?` <span style="color:var(--muted)">+ envío Full ${fmt(ggest)}</span>`:''):fmt(gc)):''}
+          ${(!isCancelled&&gc>0)?_dl('Ganancia',`<span style="color:${gg>=0?'var(--green)':'var(--red)'}">${fmt(gg)}</span>${gpct!==null?` · <span style="color:${pctColor(gpct)}">${gpct>=0?'+':''}${gpct.toFixed(0)}% ${pctLabel(gpct)}</span>`:''}`):''}
+          ${_est?`<div style="padding:4px 0;color:var(--muted)">≈ Mercado Pago todavía no liquidó esta venta: el neto es estimado y se corrige solo.</div>`:''}
+          ${grp.items.length>1?grp.items.map(v=>_dl(`${v.qty}× ${nombreDeVenta(v)}${v.variante?' '+v.variante:''}`,`${(v.total||0)>0?fmt(v.total)+' · ':''}neto ${fmt(v.neto||0)}`)).join(''):''}
+          ${_hayCambio?`<div style="padding:5px 0;border-bottom:1px dashed var(--border);line-height:1.5">${_cambios.filter(x=>x).join('<br>')}</div>`:''}
+          ${(entLabel||rescLabel)?`<div style="padding:5px 0;display:flex;gap:10px;flex-wrap:wrap">${entLabel}${rescLabel}</div>`:''}
+          ${isCancelled?reclamoMotivoHTML(grp):''}
+          <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:6px">
+            <button class="btn" style="font-size:.68rem;padding:4px 12px;background:rgba(124,58,237,.15);color:#a78bfa;border:1px solid rgba(124,58,237,.3)" onclick="vpToggleEdit('${grp.gid}')">✎ Editar</button>
+            ${delBtn}
+          </div>
+        </div>`;
+      return`<div class="ingreso-item" style="flex-direction:column;align-items:stretch;gap:6px;padding:12px 14px;${isCancelled?'border-color:rgba(239,68,68,.25);background:rgba(239,68,68,.04)':''}">
+        <div style="display:flex;align-items:center;gap:8px">
+          <span class="who-badge" style="font-size:.62rem;${isCancelled?'opacity:.6':''}">${cuenta}</span>
+          <span style="font-size:.68rem;color:var(--muted);white-space:nowrap">${_fh}</span>
           ${cancelBadge}
-          ${grp.items.length>1?`<span style="font-size:.64rem;color:var(--muted)">${grp.items.length} prod.</span>`:''}
           <span style="flex:1"></span>
-          ${entLabel}
-          ${rescLabel}
-          ${costLabel}
-          ${ganLabel}
-          ${pctBox}
-          <button class="ii-del" style="background:rgba(124,58,237,.15);color:#a78bfa;border-color:rgba(124,58,237,.3)" onclick="vpToggleEdit('${grp.gid}')">✎</button>
-          ${delBtn}
+          ${_pill}
         </div>
-        ${lines}
+        ${_items}
+        <div style="display:flex;align-items:center;gap:10px;margin-top:2px">
+          ${isCancelled?'':(gc>0?`<span style="font-size:.8rem;font-weight:600;color:${gg>=0?'var(--green)':'var(--red)'}">${gg>=0?'+'+fmt(gg):'−'+fmt(-gg)}</span>`:'')}
+          ${(!isCancelled&&_tot>0)?`<span style="font-size:.7rem;color:var(--muted)">de ${fmt(_tot)}</span>`:''}${_avisoIco}
+          <span style="flex:1"></span>
+          <button class="btn" style="font-size:.66rem;padding:3px 10px;background:var(--surface2);color:var(--muted);border:1px solid var(--border)" onclick="vpToggleDet('${grp.gid}')">${_abierto?'ocultar ▴':'detalle ▾'}</button>
+        </div>
+        ${_det}
       </div>`;
     }).join('')+(filteredGroups.length>VP_CAP?`<div class="empty-msg" style="margin-top:10px">Mostrando las ${VP_CAP} ventas más recientes de ${filteredGroups.length}. Usá el buscador o filtrá por cuenta/período para encontrar otras. (Los totales de arriba sí cuentan todas.)</div>`:''):`<div class="empty-msg">${vpQ||vpFilterCuenta?'Sin resultados para los filtros aplicados en '+mesLabel+'.':'Sin ventas cargadas en '+mesLabel+'.'}</div>`;
   }
