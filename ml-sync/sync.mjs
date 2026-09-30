@@ -30231,6 +30231,23 @@ async function main() {
       return;
     }
 
+    // BILLING_PROBE=monohist → EL MONOTRIBUTO QUE EL PANEL LE COBRA A CADA MES (30/09/2026). SOLO LEE.
+    // Para la deuda de la recategorización a H desde junio: qué % usó cada mes, sobre cuánta
+    // facturación, y cuánto integrado dan esas cuentas (para comparar contra lo que se pagó).
+    if (/^monohist$/.test(String(process.env.BILLING_PROBE || ''))) {
+      const mono = (await db.get('cyc/monotributo')) || {};
+      console.log('vigente:', mono.pct, '· desde', mono.desde, '· cats', JSON.stringify(mono.cats || {}), '· impuesto', JSON.stringify(mono.impuesto || {}));
+      const vp = (await db.get('cyc/ventaprod')) || {};
+      const fac = {};
+      for (const [dk, o] of Object.entries(vp)) { const ym = dk.slice(0, 7); for (const v of Object.values(o || {})) if (v && !v.cancelada) fac[ym] = (fac[ym] || 0) + (Number(v.total) || 0); }
+      for (const ym of Object.keys(fac).sort()) {
+        const h = (mono.hist || {})[ym];
+        console.log(`${ym} · hist ${h != null ? h + '%' : '—'} · facturado $${Math.round(fac[ym])}${h != null ? ' · integrado que cobra el panel $' + Math.round(fac[ym] * h / 100) : ''}`);
+      }
+      console.log('hist crudo:', JSON.stringify(mono.hist || {}));
+      return;
+    }
+
     // BILLING_PROBE=porquebajo:<palabras> → ¿POR QUÉ EL ROBOT BAJÓ ESTO Y QUÉ MARCAS LE PUSO? (30/09/2026)
     // Pedido suyo con las Cartas Españolas vendidas al 6%: "¿está bien bajada? ¿quiere decir que no
     // las traigo nunca más? se vendieron muchísimas en la historia". Junta por ficha (palabras con "+"):
