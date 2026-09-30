@@ -470,7 +470,7 @@ footer{margin-top:32px;padding-top:14px;border-top:1px solid var(--border);font-
 .casc-row.sub .cv{font-family:'Syne',sans-serif;font-weight:800;font-size:.95rem}
 .casc-row.final{background:rgba(34,197,94,.08);margin:0 -18px;padding:13px 18px;border-bottom:none;border-top:2px solid var(--accent)}
 .casc-row.final .cl{font-family:'Syne',sans-serif;font-weight:800;font-size:.85rem;color:var(--accent)}
-.casc-row.final .cv{font-family:'Syne',sans-serif;font-weight:800;font-size:1.1rem}
+.casc-row.final .cv{font-family:'Syne',sans-serif;font-weight:800;font-size:1.7rem}
 .casc-neg{color:var(--red)}.casc-pos{color:var(--green)}
 @media(max-width:760px){#page-resumen .page-wrap [style*="grid-template-columns:1fr 1fr"]{grid-template-columns:1fr!important}}
 
@@ -1562,12 +1562,6 @@ footer{margin-top:32px;padding-top:14px;border-top:1px solid var(--border);font-
     </div>
   </div>
 
-  <div class="stitle">Las preguntas clave <span id="res-period-lbl" style="font-weight:400;color:var(--muted);text-transform:none;letter-spacing:0;font-family:'DM Mono',monospace"></span></div>
-  <div class="met-kpi-grid">
-    <div class="met-kpi ct"><div class="mk-lbl">Ganancia real CYC</div><div class="mk-val" id="res-hero-ganancia" style="color:var(--green)">$0</div><div class="mk-sub" id="res-hero-ganancia-comp">después de retiros y gastos</div></div>
-    <div class="met-kpi c1"><div class="mk-lbl">Retiros socios</div><div class="mk-val" id="res-hero-retiro" style="color:var(--amber)">$0</div><div class="mk-sub" id="res-hero-retiro-sub">Mati + Viejo</div></div>
-  </div>
-
   <div class="stitle">💧 Cascada de caja <span id="res-casc-period" style="font-weight:400;font-size:.65rem;text-transform:none;letter-spacing:0;font-family:'DM Mono',monospace;color:var(--muted)"></span></div>
   <div class="casc">
     <!-- ORDEN: primero el costo de la mercadería, después los gastos, y el retiro AL FINAL.
@@ -1578,21 +1572,15 @@ footer{margin-top:32px;padding-top:14px;border-top:1px solid var(--border);font-
          El resultado final es el mismo: restar en otro orden no cambia la suma. -->
     <div class="casc-row sub"><div class="cl">Neto ML<span class="cs">suma de ventas en Ventas x Producto</span></div><div class="cv" id="casc-neto">$0</div></div>
     <div class="casc-row"><div class="cl"><span class="op casc-neg">−</span>Costo de lo vendido<span class="cs" id="casc-costo-sub">mercadería + IIBB + monotributo</span></div><div class="cv casc-neg" id="casc-costo-merch">$0</div></div>
-    <div class="casc-row sub"><div class="cl">Ganancia<span class="cs">el mismo número que Métricas</span></div><div class="cv" id="casc-ganancia-bruta">$0</div></div>
+    <div class="casc-row sub"><div class="cl">Ganancia <span id="casc-ganancia-pct" style="font-family:'Syne',sans-serif;font-weight:800"></span><span class="cs">el mismo número que Métricas · % sobre el costo con el envío de Full</span></div><div class="cv" id="casc-ganancia-bruta">$0</div></div>
     <div class="casc-row"><div class="cl"><span class="op casc-neg">−</span>Gastos<span class="cs" id="casc-gastos-sub">monotributo, contador, alquiler…</span></div><div class="cv casc-neg" id="casc-gastos">$0</div></div>
     <div class="casc-row sub"><div class="cl">Queda en CYC<span class="cs">antes de los retiros</span></div><div class="cv" id="casc-cyc-ml">$0</div></div>
     <div class="casc-row"><div class="cl"><span class="op casc-neg">−</span><span id="casc-retiro-lbl">Retiro dueños</span><span class="cs" id="casc-retiro-sub">Mati 7,5% · Viejo 7,5%</span></div><div class="cv casc-neg" id="casc-retiro">$0</div></div>
-    <div class="casc-row final"><div class="cl">= Ganancia real CYC</div><div class="cv" id="casc-ganancia">$0</div></div>
+    <div class="casc-row final"><div class="cl">= Ganancia real CYC<span class="cs" id="res-hero-ganancia-comp">después de gastos y retiros</span></div><div class="cv" id="casc-ganancia">$0</div></div>
   </div>
 
   <div class="stitle">🧾 Gastos por categoría <span id="res-gastos-period" style="font-weight:400;font-size:.65rem;text-transform:none;letter-spacing:0;font-family:'DM Mono',monospace;color:var(--muted)"></span></div>
   <div id="res-gastos-cats"><div class="empty-msg">Sin gastos en este período.</div></div>
-
-  <div class="stitle">🏷️ Rentabilidad por producto <span id="res-gp-period" style="font-weight:400;font-size:.65rem;text-transform:none;letter-spacing:0;font-family:'DM Mono',monospace;color:var(--muted)"></span></div>
-  <div class="met-kpi-grid">
-    <div class="met-kpi c1"><div class="mk-lbl">Ganancia productos</div><div class="mk-val" id="res-gp-mes">$0</div><div class="mk-sub" id="res-gp-mes-sub">—</div></div>
-    <div class="met-kpi c3"><div class="mk-lbl">% ganancia</div><div class="mk-val" id="res-gp-margen">—</div><div class="mk-sub">ganancia / costo</div></div>
-  </div>
 
   <div class="stitle">💼 Capital y patrimonio</div>
   <div class="met-kpi-grid">
@@ -2398,7 +2386,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='21.04';
+const APP_VERSION='21.05';
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
 // muestre la versión y la fecha de actualización y que tenga un desplegable predeterminado cerrado".
 // Y el mismo día: "que ponga fecha de cada modificación y haya una barrita para scrollear y que
@@ -2409,6 +2397,7 @@ const APP_VERSION='21.04';
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'21.05',f:'30/09/2026',h:'15:55',c:[{n:1,t:'Resumen: se sacaron las dos tarjetas de arriba (Ganancia real y Retiros) y la de «Rentabilidad por producto», que repetían la Cascada. Ahora la Cascada va primero, el resultado final sale grande con la comparación contra el período anterior, y el % de ganancia va pegado a la línea «Ganancia». Ningún número cambió.'}]},
   {v:'21.04',f:'30/09/2026',h:'13:37',c:[{n:1,t:'Métricas: el robot de precios es UNA sola tarjeta. Arriba lo que ganó o perdió (sólo con 7 días o más) y adentro, en «👀 Qué está mirando ahora», todas las publicaciones que venden y qué hace con cada una. La tarjeta 🧪 Vigilancia aparte ya no existe.'}]},
   {v:'21.03',f:'30/09/2026',h:'13:40',c:[{n:2,t:'Lo que trajo el robot de precios: ahora muestra sólo los cambios que ya tienen 7 días, en verde si ganaron y en rojo si perdieron. Lo que todavía no tiene datos no aparece; se suma solo cuando pasa el tiempo. Lo mismo en Vigilancia: el «ganó/perdió» sale recién con 7 días.'}]},
   {v:'21.02',f:'30/09/2026',h:'13:10',c:[{n:2,t:'Ventas x Producto: una venta que no está enganchada a ninguna ficha dice «sin ficha» en gris (antes «+0% Bajo» en rojo, como si se hubiera vendido sin ganar nada). Si la ficha existe pero no tiene costo, dice «sin costo».'}]},
@@ -16052,10 +16041,8 @@ function renderResumen_page(){
     prevPeriodKeys._cmpKeys=[...allCmpDays].filter(k=>k.startsWith(prevMesKey));
   }
 
-  setTxt('res-period-lbl','· '+periodLbl);
   setTxt('res-casc-period','· '+periodLbl);
   setTxt('res-gastos-period','· '+periodLbl);
-  setTxt('res-gp-period','· '+periodLbl);
 
   // ── Sumadores con período activo ──
   const vpNetoSum=(mk)=>_vpField(periodKeys,'neto');
@@ -16093,11 +16080,11 @@ function renderResumen_page(){
   const gananciaRealP=(netoMLp-retiroP)-costoMerchP-gastosP;
 
   // Hero
-  set('res-hero-ganancia',gananciaReal);set('res-hero-retiro',retiro);
+  // Diseño idea 5 (30/09/2026, eligió la a): las tarjetas de arriba repetían la Cascada; el
+  // resultado final ahora vive sólo en su último renglón, grande y con la comparación.
   setComp('res-hero-ganancia-comp',gananciaReal,gananciaRealP,prevLbl);
-  const gReal=document.getElementById('res-hero-ganancia');if(gReal)gReal.style.color=gananciaReal>=0?'var(--green)':'var(--red)';
+  const gReal=document.getElementById('casc-ganancia');if(gReal)gReal.style.color=gananciaReal>=0?'var(--green)':'var(--red)';
   const _retReal=(_rmMonth!=null); // ¿usó el retiro real anotado o el 15%?
-  setTxt('res-hero-retiro-sub','Mati + Viejo · '+(_retReal?'real anotado':(_isMonth?'fijo del mes':'el de cada mes del período')));
 
   // Cascada
   set('casc-neto',netoML);
@@ -16145,10 +16132,10 @@ function renderResumen_page(){
   // Rentabilidad por producto (margen)
   // La MISMA ganancia que la Cascada (neto − costo con IIBB y monotributo) y el % ÚNICO, con el
   // envío de Full en el divisor (revisión max, 26/09/2026). Antes era otra cuenta: casi el doble.
-  const gpP=gananciaBruta, costoVpP=costoMerch;
-  set('res-gp-mes',gpP);setTxt('res-gp-mes-sub',periodLbl);
-  const _pgp=pctGananciaVP(gpP,costoVpP,_vpGest(periodKeys));
-  setTxt('res-gp-margen',_pgp!=null?_pgp.toFixed(0)+'%':'—');
+  // Desde el 30/09 (idea 5) ese % va pegado a la línea "Ganancia" de la Cascada, no en otra tarjeta.
+  const _pgp=pctGananciaVP(gananciaBruta,costoMerch,_vpGest(periodKeys));
+  const _pgEl=document.getElementById('casc-ganancia-pct');
+  if(_pgEl){_pgEl.textContent=_pgp!=null?(_pgp>=0?'+':'')+_pgp.toFixed(0)+'%':'';_pgEl.style.color=_pgp!=null&&typeof pctColor==='function'?pctColor(_pgp):'';}
 
   const peds=state.pedidos||[];
   const cnt={pendiente:0,pedido:0,recibido:0};
