@@ -5811,6 +5811,30 @@ const RV_VARIANTE = new Set(['edicion','edition','limitada','limited','coleccion
   'refurbished','reacondicionado','usado','replica','generico','compatible','alternativo','copia','tester','decant','muestra','sample','inspirado','miniatura','recarga','refill','travel',
   'pro','plus','max','mini','lite','slim','ultra','neo','xl','gen','generacion','duo','doble','triple']);
 
+// ── ¿ES EL MISMO PRODUCTO? UNA SOLA REGLA PARA LOS QUE LA USAN (01/10/2026) ────────────
+// Pedido suyo: *"hay forma de que corrobore mejor los productos? porque ya van dos o tres que
+// se equivocó matcheando"*. El chequeo existía, pero sólo en `revisarcompra` y `descartados`,
+// o sea en comandos que hay que correr a mano: el panel no se enteraba nunca. Ahora la noche lo
+// corre sobre CADA candidato medido, guarda los reparos en `mlReparos` y el panel los pinta en
+// rojo. Mismas reglas que `descartados` (que ahora llama a ésta): lo que sobra en ML que delata
+// otra versión, el modelo que no aparece, la palabra que falta y el tamaño que no coincide.
+function chequeoMismoProducto(nombre, mlTit) {
+  const t = String(mlTit || '').trim();
+  if (!t) return [];
+  const pCP = _rvPal(nombre), pML = _rvPal(t);
+  const faltan = [...pCP].filter((w) => !pML.has(w));
+  const extraVar = [...pML].filter((w) => !pCP.has(w) && RV_VARIANTE.has(w));
+  const mlPlano = _rvBase(t).replace(/ /g, '');
+  const modCP = _rvMod(nombre), modOK = modCP.filter((x) => mlPlano.includes(x));
+  const numFaltan = [..._rvNum(nombre)].filter((x) => !_rvNum(t).has(x));
+  const motivos = [];
+  if (extraVar.length) motivos.push(`ML dice "${extraVar.join(', ')}" y el candidato no`);
+  if (modCP.length && !modOK.length) motivos.push(`el modelo (${modCP.join(', ')}) no está en el título de ML`);
+  if (!modCP.length && faltan.length) motivos.push(`en ML no está(n): ${faltan.join(', ')}`);
+  if (!modCP.length && numFaltan.length) motivos.push(`el tamaño ${numFaltan.join(', ')} no está en ML`);
+  return motivos;
+}
+
 // El link del catalogo que el robot MIDIO, no una busqueda nueva: es el mismo criterio que el
 // renglon del pedido, para que los dos manden al mismo lado.
 function c_link(c) {
@@ -6028,6 +6052,12 @@ async function correrCandidatos(db, products, labels, accounts, soloPrueba, prue
     // con el precio de Paraguay cambiado: sigue de largo y se vuelve a medir.
     if (_cacheOk && (Date.now() - (Number(c.calcTs) || 0) < CAND_FRESCO_MS || consultas >= CAND_MAX_ML)) {
       yaCalc++;
+      // Los que no se vuelven a medir igual pasan por el chequeo de "¿es el mismo producto?" con el
+      // título guardado: no cuesta ninguna consulta a ML y así los ya medidos no esperan días.
+      if (!soloPrueba && c.mlTit) {
+        const rep = chequeoMismoProducto(c.nombre, c.mlTit);
+        if (JSON.stringify(rep) !== JSON.stringify(c.mlReparos || [])) await db.patch(`cyc/candidatos_py/${id}`, { mlReparos: rep.length ? rep : null });
+      }
       nuevosQueDan.push({ id, c, margen: Number(c.margen), ganancia: Number(c.ganancia) || 0,
         mlPrecio: Number(c.mlPrecio) || 0, mlTit: c.mlTit || '', puesto,
         mlMax: Number(c.mlMax) || 0, mlVendedores: Number(c.mlVendedores) || 0 });
@@ -6260,6 +6290,7 @@ async function correrCandidatos(db, products, labels, accounts, soloPrueba, prue
     if (!soloPrueba) {
       await db.patch(`cyc/candidatos_py/${id}`, {
         mlTit, mlPrecio: Math.round(mlPrecio), mlMax, mlVendedores: vendedores, mlVendidas, mlVendidasMin, mlComision: Math.round(fee), mlLink, mlPorNombre: porNombre,
+        mlReparos: (() => { const r = chequeoMismoProducto(c.nombre, mlTit); return r.length ? r : null; })(),
         // CONTRA QUIÉN SE MIDIÓ. Se guarda porque el panel tiene que poder EXPLICAR por qué el
         // margen no sale contra el precio más barato de la ficha: sin esto el renglón se lee como
         // un error de cuenta. Es el mismo caso de la comisión del 19/09 —un dato que el robot ya
@@ -6412,6 +6443,7 @@ async function correrCandidatos(db, products, labels, accounts, soloPrueba, prue
         L.push(`${i + 1}. *${x.c.nombre}*`);
         L.push(`   US$ ${x.puesto.toFixed(2)} puesto · en ML ${x.mlMax > x.mlPrecio ? `de ${money(x.mlPrecio)} a ${money(x.mlMax)}` : money(x.mlPrecio)} (${x.mlVendedores} vend. · ${_ventasTxt(x.c)}) · *${x.margen.toFixed(0)}%* contra el más barato (${money(x.ganancia)}/u.)`);
         L.push(`   ML: ${x.mlTit}${x.c.mlId ? '' : ' ⚠️ emparejado por nombre, chequealo'}`);
+        { const rp = chequeoMismoProducto(x.c.nombre, x.mlTit); if (rp.length) L.push(`   🚨 ¿es el mismo producto? ${rp.join(' · ')}`); }
       });
       L.push('');
       L.push('Están en Pedidos → Paraguay, abajo de todo. Mirá que los dos títulos sean el mismo producto antes de pedirlo.');
@@ -13862,17 +13894,7 @@ async function main() {
         const mlTit = String(c.mlTit || '').trim();
         const m = (c.margen != null && isFinite(c.margen)) ? Number(c.margen) : null;
         if (!mlTit) { sinTitulo.push({ id, c, m }); continue; }
-        const pCP = _rvPal(c.nombre), pML = _rvPal(mlTit);
-        const faltan = [...pCP].filter((w) => !pML.has(w));
-        const extraVar = [...pML].filter((w) => !pCP.has(w) && RV_VARIANTE.has(w));
-        const mlPlano = _rvBase(mlTit).replace(/ /g, '');
-        const modCP = _rvMod(c.nombre), modOK = modCP.filter((x) => mlPlano.includes(x));
-        const numFaltan = [...(_rvNum(c.nombre))].filter((x) => !_rvNum(mlTit).has(x));
-        const motivos = [];
-        if (extraVar.length) motivos.push(`ML dice "${extraVar.join(', ')}" y el candidato no`);
-        if (modCP.length && !modOK.length) motivos.push(`el modelo (${modCP.join(', ')}) no está en el título de ML`);
-        if (!modCP.length && faltan.length) motivos.push(`en ML no está(n): ${faltan.join(', ')}`);
-        if (!modCP.length && numFaltan.length) motivos.push(`el tamaño ${numFaltan.join(', ')} no está en ML`);
+        const motivos = chequeoMismoProducto(c.nombre, mlTit);
         if (motivos.length) sospechosos.push({ id, c, m, mlTit, motivos });
         else limpios.push({ id, c, m });
       }
