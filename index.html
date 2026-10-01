@@ -438,8 +438,19 @@ input.qty:focus{border-color:var(--accent2)}
 .ped-head::-webkit-details-marker{display:none}
 .ped-name{font-family:'Syne',sans-serif;font-weight:800;font-size:.92rem;line-height:1.25;flex:1;min-width:0}
 .ped-max{display:flex;flex-direction:column;align-items:flex-end;white-space:nowrap;flex-shrink:0;margin-right:10px}
-.ped-max b{font-family:'DM Mono',monospace;font-size:.85rem;color:var(--text);line-height:1.1}
-.ped-max i{font-style:normal;font-size:.6rem;color:var(--muted);margin-top:1px}
+.ped-max b{font-family:'DM Mono',monospace;font-size:1.45rem;font-weight:500;color:var(--text);line-height:1.05}
+.ped-max i{font-style:normal;font-size:.8rem;color:var(--muted);margin-top:2px}
+/* En el celu (01/10/2026, pedido suyo: "el precio máximo más grande y el texto también, lo más grande que se pueda"):
+   el nombre y la flechita van arriba solos, y abajo el máximo (izquierda) y las unidades (derecha), así no aprietan el nombre. */
+@media(max-width:640px){
+  .ped-head{flex-wrap:wrap;row-gap:8px}
+  .ped-name{flex:1 1 calc(100% - 90px);order:1}
+  .ped-caret{order:2}
+  .ped-max{order:3;flex:1 1 auto;align-items:flex-start;margin-right:0}
+  .ped-max b{font-size:1.7rem}
+  .ped-max i{font-size:.85rem}
+  .ped-buy{order:4}
+}
 .ped-buy{display:flex;flex-direction:column;align-items:flex-end;gap:0;white-space:nowrap;flex-shrink:0}
 .ped-buy b{font-family:'Syne',sans-serif;font-weight:800;font-size:1.7rem;line-height:1}
 .ped-buy i{font-style:normal;font-size:.6rem;color:var(--muted);letter-spacing:.03em;margin-top:1px}
@@ -2415,7 +2426,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='21.26';
+const APP_VERSION='21.27';
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
 // muestre la versión y la fecha de actualización y que tenga un desplegable predeterminado cerrado".
 // Y el mismo día: "que ponga fecha de cada modificación y haya una barrita para scrollear y que
@@ -2426,6 +2437,7 @@ const APP_VERSION='21.26';
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'21.27',f:'01/10/2026',h:'18:30',c:[{n:1,t:'Pedidos: el precio máximo de compra y su texto se ven mucho más grandes. En el celu el nombre va arriba y abajo el máximo (izquierda) y las unidades (derecha).'}]},
   {v:'21.26',f:'01/10/2026',h:'18:10',c:[{n:2,t:'Pedidos → Paraguay → Productos probados se ve igual que Pedidos Bs As: sólo la lista de pedidos (sin la canasta ni los renglones de precio de Paraguay). Productos nuevos no cambió.'},{n:2,t:'Se sacó "Pausados por precio" entero: la solapa, el aviso y el botón ⏸️. Lo que estaba pausado vuelve a aparecer en Pedidos; si el precio no da, no lo comprás y listo.'}]},
   {v:'21.25',f:'01/10/2026',h:'17:40',c:[{n:1,t:'Pedido de nuevos (Paraguay): cada producto muestra las dos fotos juntas — la de comprasparaguay y la del catálogo de ML contra el que se midió — para ver de un vistazo si es el mismo producto.'}]},
   {v:'21.24',f:'01/10/2026',h:'17:10',c:[{n:2,t:'Pedido de nuevos (Paraguay): si hay dudas de que el producto de ML sea el mismo que el de comprasparaguay (los títulos no coinciden, margen de 80% o más, o un solo vendedor sin Full), sale un cartel rojo "¿Es el mismo producto?" con el motivo. Se puede seguir pidiendo igual.'}]},
@@ -13812,7 +13824,7 @@ function maxCompraChip(p){
   // Pedido suyo del 26/09/2026: "que lo muestre grande en pesos el costo máximo". Pesos grande,
   // dólares chico abajo. Sin dólar cargado queda como antes (sólo dólares), no se inventa el cambio.
   const usdTxt='US$ '+r.usd.toFixed(2).replace('.',',');
-  return `<span class="ped-max" title="Lo más que podés pagar cada unidad para quedar en ${r.meta}% vendiendo a ${fmt(r.P)}. El detalle está adentro."><b style="font-size:1.05rem">${ars||usdTxt}</b><i>${ars?usdTxt+' · ':''}máx. compra</i></span>`;
+  return `<span class="ped-max" title="Lo más que podés pagar cada unidad para quedar en ${r.meta}% vendiendo a ${fmt(r.P)}. El detalle está adentro."><b>${ars||usdTxt}</b><i>${ars?usdTxt+' · ':''}máx. compra</i></span>`;
 }
 // COPIAR EL PEDIDO PARA WHATSAPP (01/10/2026, pedido suyo con el Paulvic: "yo lo paso por wsp, me
 // podés poner un botón para copiar? (…) que sólo aparezca nombre y unidades a pedir"). Se copian SÓLO
