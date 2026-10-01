@@ -2423,7 +2423,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='21.21';
+const APP_VERSION='21.22';
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
 // muestre la versión y la fecha de actualización y que tenga un desplegable predeterminado cerrado".
 // Y el mismo día: "que ponga fecha de cada modificación y haya una barrita para scrollear y que
@@ -2434,6 +2434,7 @@ const APP_VERSION='21.21';
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'21.22',f:'01/10/2026',h:'16:10',c:[{n:3,t:'Robot de precios: si un cambio suyo (subir, bajar o prueba) lleva 14 días o más, dejó $1.000 o más de menos y tuvo stock todo el tiempo, vuelve SOLO al precio de antes (nunca abajo del piso, nunca más de +25% de una, sin variantes ni liquidando). Lo que no está seguro te lo pregunta con el motivo.'},{n:1,t:'Puntaje del mes: las flechitas para cambiar de mes van juntas a la izquierda y ya no se corren con el largo del mes.'}]},
   {v:'21.21',f:'01/10/2026',h:'15:40',c:[{n:1,t:'Ventas de hoy (Inicio): las dos flechitas para cambiar de día van juntas a la izquierda y ya no se corren cuando cambia el largo del título.'}]},
   {v:'21.20',f:'01/10/2026',h:'15:30',c:[{n:2,t:'Puntaje: el retiro ahora va mes a mes. Grande: cuánto cobra cada uno el mes que viene (la ganancia real de este mes ÷ 3). Abajo: lo que se cobra este mes (lo que dejó el mes pasado) contra lo que ya retiraron.'}]},
   {v:'21.19',f:'01/10/2026',h:'14:05',c:[{n:2,t:'Tarjeta ⚖️ de Inicio: un solo número por cuenta (lo que va a facturar este año, que es lo que mira la próxima recategorización). Se sacó "Vendiendo así" y el número de la recategorización de julio, que eran de otros períodos y confundían; queda una línea con la categoría inscripta y si hay que recategorizar.'}]},
@@ -14778,7 +14779,7 @@ function renderMetOrigen(keys){
 // que el robot midió (no hay una segunda cuenta de atribución). El total grande suma sólo lo que el
 // robot decidió mirando el mercado (`enTotal`): los rescates por costo/inflación se ven, pero no suman.
 let metAutoMes='todos',metAutoMot='cuentan';
-const MET_AUTO_MOT={prueba:'🧪 Prueba de suba (sin catálogo)',subir:'📈 Subir (había lugar)',bajar:'📉 Bajar para ganar la caja',remate:'🔨 Remate',escalera:'🪜 Escalera',rescate:'🛟 Recuperar margen (costo / inflación)',mano:'✋ A mano'};
+const MET_AUTO_MOT={prueba:'🧪 Prueba de suba (sin catálogo)',subir:'📈 Subir (había lugar)',bajar:'📉 Bajar para ganar la caja',remate:'🔨 Remate',escalera:'🪜 Escalera',rescate:'🛟 Recuperar margen (costo / inflación)',volver:'↩️ Volvió atrás (el cambio perdía plata)',mano:'✋ A mano'};
 function metAutoSet(k,v){if(k==='mes')metAutoMes=v;else metAutoMot=v;renderMetAuto();}
 let metVigAbierto=false;
 // El desplegable con todo lo que vigila el robot (antes era la tarjeta 🧪 Vigilancia aparte).
@@ -16099,9 +16100,8 @@ function renderPuntajeMes(){
     <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
       <div style="display:flex;align-items:center;gap:7px">
         <span style="font-size:.62rem;text-transform:uppercase;letter-spacing:.12em;color:var(--muted)" title="Ganancia CYC vs objetivo (4) + Margen (2) + Faltantes (2) + Capital parado (1) + Devoluciones (1). Aprobar = 6.">Puntaje del mes</span>
-        <button onclick="puntNav(-1)" style="background:transparent;border:1px solid var(--border2);color:var(--muted);border-radius:6px;padding:0 8px;font-size:1rem;line-height:1.6;cursor:pointer">‹</button>
+        <span style="display:flex;gap:4px;flex-shrink:0"><button onclick="puntNav(-1)" style="background:transparent;border:1px solid var(--border2);color:var(--muted);border-radius:6px;padding:0 8px;font-size:1rem;line-height:1.6;cursor:pointer">‹</button><button onclick="puntNav(1)" style="background:transparent;border:1px solid var(--border2);color:var(--muted);border-radius:6px;padding:0 8px;font-size:1rem;line-height:1.6;cursor:pointer">›</button></span>
         <span style="font-family:'Syne',sans-serif;font-weight:700;font-size:.82rem">${mesLbl}</span>
-        <button onclick="puntNav(1)" style="background:transparent;border:1px solid var(--border2);color:var(--muted);border-radius:6px;padding:0 8px;font-size:1rem;line-height:1.6;cursor:pointer">›</button>
       </div>
       <button onclick="setPuntajeMeta('${P.ym}')" style="background:transparent;border:1px solid var(--border2);color:var(--muted);border-radius:7px;padding:3px 9px;font-size:.62rem;cursor:pointer;font-family:'DM Mono',monospace">✎ objetivos</button>
     </div>

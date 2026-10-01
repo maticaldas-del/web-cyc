@@ -24005,7 +24005,7 @@ async function main() {
     //
     // Con `:go` guarda y manda por Telegram SÓLO lo que cumplió 7, 15 o 30 días y todavía no se
     // avisó; y se anota como avisado sólo si el mensaje salió. Sin `:go` muestra y no escribe.
-    // NO TOCA NINGÚN PRECIO. Un veredicto 🔴 no se deshace solo: bajar lo decide él (regla 5).
+    // DESDE EL 01/10/2026 VUELVE ATRÁS SOLO lo que perdió plata SEGURO (sección 5a); lo dudoso lo pregunta.
     if (/^supervisor(:|$)/.test(String(process.env.BILLING_PROBE || ''))) {
       const MANDAR = /:go$/.test(String(process.env.BILLING_PROBE || '')) && !DRY;
       const VENT = [7, 15, 30];
@@ -24201,7 +24201,7 @@ async function main() {
       function motivoDeAuto(a) {
         const por = a && a.por;
         if (por === 'margen' || por === 'venta' || por === 'costo') return 'rescate';
-        if (por === 'remate' || por === 'escalera' || por === 'prueba') return por;
+        if (por === 'remate' || por === 'escalera' || por === 'prueba' || por === 'volver') return por;
         if (a && a.tipo === 'sube') return 'subir';
         if (a && a.tipo === 'baja') return 'bajar';
         return '';
@@ -24574,6 +24574,103 @@ async function main() {
       const okEv = evalNuevas.filter((x) => rele[x.id] && rele[x.id].ev && rele[x.id].ev['d' + x.W]).length;
       console.log(`\nGuardado: ${Object.keys(nuevos).length} cambios nuevos · ${okEv} de ${evalNuevas.length} evaluaciones releídas ✓`);
 
+      // ── 5a. VOLVER ATRÁS SOLO LO QUE PERDIÓ PLATA SEGURO (01/10/2026, eligió la (a)) ──────────
+      // Regla suya: *"si el robot vio que perdió plata con la decisión y está seguro que volviendo
+      // atrás se gana más, que lo haga. confío en él (…) que me pregunte lo que tiene muchas dudas"*.
+      // "SEGURO" quiere decir TODO esto junto, y si falta uno no se toca y se le pregunta:
+      //  · el cambio lo hizo el robot mirando el mercado (subir, bajar o la 🧪 prueba). Remate y
+      //    escalera NO: ahí "sin robot" era no vender, no el precio viejo. Rescate tampoco: volverlo
+      //    deja el producto abajo del piso;
+      //  · lleva 14 días o más medido y dejó $1.000 o más MENOS que el precio anterior;
+      //  · tuvo stock TODO el tiempo antes y después (registro hora por hora): sin eso la pérdida
+      //    puede ser un quiebre y no el precio;
+      //  · nadie lo volvió a tocar después, y ML dice que hoy sigue en ese precio;
+      //  · sin variantes, sin marca `liquidando`, con `autoPrecios` prendido;
+      //  · volver a BAJAR no deja abajo del piso del negocio (margen medido a ese precio, con la
+      //    comisión de ML, el envío del lado de los $33.000, cuotas, IIBB y monotributo); volver a
+      //    SUBIR pasa por los frenos de siempre (+25% de una, $33.000, $600.000) — si no entra entero,
+      //    no se hace a medias: se pregunta.
+      // Tope 5 por noche. Memoria `cyc/supervisor/revertido/<id>` (se anota ANTES de tocar ML, así dos
+      // corridas no lo hacen dos veces). Queda en `cyc/autoprecio` con `por:'volver'`, que NO suma en
+      // "lo que trajo el robot" (es deshacer, no una decisión nueva).
+      const VOLVER_DIAS = 14, VOLVER_MIN_PERDIDA = 1000, VOLVER_MAX = 5;
+      const revertidos = new Map(), noVolvio = new Map();
+      try {
+        const memR = sup.revertido || {};
+        const pisoV = Number(cfgSup.minPct) > 0 ? Number(cfgSup.minPct) : 30;
+        const autoOn = String(cfgSup.autoPrecios || '').toLowerCase() !== 'off';
+        const candV = atrib.filter((x) => x.estado === 'medido' && ['subir', 'bajar', 'prueba'].includes(x.motivo)
+          && x.total <= -VOLVER_MIN_PERDIDA && !(memR[x.id] && (memR[x.id].ok || (ahora - (Number(memR[x.id].ts) || 0)) < 864e5)))
+          .sort((a, b) => a.total - b.total);
+        const tokV = {};
+        let hechosV = 0;
+        for (const x of candV) {
+          const no = (m) => { noVolvio.set(x.id, m); console.log(`   ↩️ no vuelvo ${x.nom} (${x.cuenta}): ${m}`); };
+          if (x.dias < VOLVER_DIAS) { no(`lleva ${x.dias} d medido, espero a los ${VOLVER_DIAS}`); continue; }
+          if (x.quiebre || x.volSinDato) { no(x.quiebre ? 'estuvo sin stock en el medio: la pérdida puede ser el quiebre, no el precio' : 'no se miró el stock todo el tiempo: no sé si la pérdida es por el precio'); continue; }
+          if ((porMlaEv[x.mla] || []).some((o) => o.ts > x.ts + 60e3)) { no('después tuvo otro cambio de precio'); continue; }
+          if (!autoOn) { no('los precios automáticos están apagados'); continue; }
+          if (!MANDAR) { no(`(prueba) volvería de ${$s(x.a)} a ${$s(x.de)}`); continue; }
+          if (hechosV >= VOLVER_MAX) { no(`tope de ${VOLVER_MAX} por noche, sigue mañana`); continue; }
+          const sube = x.de > x.a;
+          if (sube && x.de > Math.floor(x.a * 1.25)) { no('volver pide subir más de 25% de una: eso lo decidís vos'); continue; }
+          let ns; try { ns = await db.get('cyc/nosubir/' + x.mla); } catch { no('no pude leer si está liquidando'); continue; }
+          if (ns) { no('está marcada liquidando'); continue; }
+          const cta = x.cuenta;
+          if (!tokV[cta]) {
+            try {
+              const acc = await db.get('mlapi/tokens/' + cta);
+              const t = await mlRefresh(ML_CLIENT_ID, ML_CLIENT_SECRET, acc.refresh_token);
+              await db.patch('mlapi/tokens/' + cta, { refresh_token: t.refresh_token, updated_ts: Date.now() });
+              tokV[cta] = t.access_token;
+            } catch { tokV[cta] = null; }
+          }
+          const tk = tokV[cta];
+          if (!tk) { no('sin token de la cuenta'); continue; }
+          let b; try { b = await mlGet(`/items/${x.mla}?attributes=id,price,listing_type_id,category_id,site_id,variations,status`, tk); } catch { b = null; }
+          if (!b || !(b.price > 0)) { no('ML no devolvió la publicación'); continue; }
+          if ((b.variations || []).length) { no('tiene variantes: se hace a mano'); continue; }
+          if (Math.abs(Number(b.price) - x.a) > 10) { no(`hoy está en ${$s(b.price)}, no en el precio del cambio (${$s(x.a)})`); continue; }
+          let mgV = null;
+          if (!sube) {
+            const costo = costoDe(x.mla);
+            let cuo = null; try { const cq = (await db.get('cyc/mlcuotas/' + x.mla)) || {}; cuo = cuotaPremiumDe({ [x.mla]: cq.pct != null ? cq : undefined }, x.mla, b.listing_type_id); } catch { cuo = null; }
+            let com = null;
+            try { const d = await mlGet(`/sites/${b.site_id || 'MLA'}/listing_prices?price=${x.de}&listing_type_id=${b.listing_type_id}&category_id=${b.category_id}`, tk);
+              const ob = Array.isArray(d) ? d[0] : d; if (typeof ob?.sale_fee_amount === 'number') com = ob.sale_fee_amount; } catch { com = null; }
+            let env = 0;
+            if (x.de >= UMBRAL_ENVIO_GRATIS) { let r = null; try { r = await envioSegunML(x.mla, tk); } catch { r = null; } env = r && Number(r.envio) > 0 ? Number(r.envio) : null; }
+            if (!(costo > 0) || cuo == null || com == null || env == null) { no('no pude medir el margen al precio de antes (costo, comisión, cuotas o envío)'); continue; }
+            const m = (mlExtraPct(cta) + monoSup) / 100;
+            mgV = (x.de - com - x.de * cuo - env - costo - x.de * m) / (costo + x.de * m + env) * 100;
+            if (mgV - 0.5 < pisoV) { no(`al precio de antes queda en ${mgV.toFixed(1)}%, abajo del piso (${pisoV}%)`); continue; }
+          }
+          try { await db.set('cyc/supervisor/revertido/' + x.id, { ts: ahora, de: x.a, a: x.de, estado: 'intentando' }); }
+          catch { no('no pude anotar que lo voy a volver: no lo toco a ciegas'); continue; }
+          hechosV++;
+          let r, msub = null;
+          if (sube) {
+            msub = await _marcarSubiendo(db, x.mla, { por: 'volver', de: x.a, a: x.de, nom: x.nom, cuenta: cta });
+            if (!msub.ok) { no('no pude anotar la suba antes de hacerla'); continue; }
+            r = await raisePriceTo(x.mla, x.de, tk);
+          } else {
+            r = await setPriceTo(x.mla, null, x.de, tk, { margen: Math.floor(mgV * 10) / 10 - 0.5 });
+          }
+          if (!r || !r.ok) {
+            if (msub) await _soltarSubiendo(db, x.mla, msub);
+            try { await db.set('cyc/supervisor/revertido/' + x.id, { ts: ahora, estado: 'fallo', err: String((r && r.err) || '?').slice(0, 120) }); } catch { /* */ }
+            no(`ML no lo dejó: ${String((r && r.err) || '?').slice(0, 80)}`); continue;
+          }
+          let quedo = null; try { quedo = Number((await mlGet('/items/' + x.mla + '?attributes=price', tk))?.price) || null; } catch { quedo = null; }
+          const to = r.to || x.de;
+          try { await db.set('cyc/autoprecio/' + x.mla, { tipo: sube ? 'sube' : 'baja', por: 'volver', de: r.from || x.a, a: to, ts: Date.now(), nom: x.nom, cuenta: cta, volvioDe: x.id, ...(mgV != null ? { margen: Math.round(mgV * 10) / 10 } : {}) }); } catch { /* */ }
+          try { await db.set('cyc/supervisor/revertido/' + x.id, { ts: ahora, ok: true, de: x.a, a: to, quedo, perdia: x.total }); } catch { /* */ }
+          revertidos.set(x.id, { ...x, to, quedo });
+          console.log(`   ↩️ VOLVÍ ${x.nom} (${cta}) ${$s(x.a)} → ${$s(to)} · dejaba ${$s(-x.total)} menos en ${x.dias} d · releído: ${quedo ? $s(quedo) : '?'}`);
+        }
+        console.log(`\n↩️ VOLVER ATRÁS: ${revertidos.size} hecho(s) · ${noVolvio.size} no (con su motivo arriba)`);
+      } catch (e) { console.log(`⚠️ volver atrás: ${String(e).slice(0, 120)} · esta noche no se deshace nada`); }
+
       // ── 5b. AVISAR CUANDO LA AUTOMATIZACIÓN HACE PERDER PLATA (23/09/2026) ──────
       // Pedido suyo: "quiero que sea honesto. si se pierde plata que lo avise también". Se avisa:
       //  · cada cambio del robot que pasa a dejar MENOS plata que no haberlo hecho (una vez por
@@ -24585,19 +24682,24 @@ async function main() {
       // muestra todas y el total las suma. Se anota sólo si el mensaje salió.
       try {
         const memP = sup.avisoPerdida || {};
-        const nuevasP = atrib.filter((x) => x.total <= -1000 && !(memP[x.id] && x.total > 2 * memP[x.id]));
+        // Lo que el robot ya volvió atrás solo no se pregunta: va en una línea (01/10/2026).
+        const nuevasP = atrib.filter((x) => x.total <= -1000 && !revertidos.has(x.id) && !(memP[x.id] && x.total > 2 * memP[x.id]));
         const netoNeg = resumen.n > 0 && resumen.total < 0;
         const avisarNeto = netoNeg && !memP._netoNeg;
-        if (nuevasP.length || avisarNeto) {
+        if (nuevasP.length || avisarNeto || revertidos.size) {
           const L2 = ['🔻 EL ROBOT DE PRECIOS HIZO PERDER PLATA', 'Comparado contra no haber tocado el precio, con el mismo tiempo antes y después.', ''];
+          if (revertidos.size) {
+            L2.push(`↩️ Volví solo al precio de antes (perdían seguro): ${[...revertidos.values()].map((x) => `${nomDe(x.mla)} ${$s(x.a)}→${$s(x.to)}`).join(' · ')}`, '');
+          }
           for (const x of nuevasP.sort((a, b) => a.total - b.total)) {
             L2.push(`${x.a > x.de ? '⬆️ subió' : '⬇️ bajó'} ${nomDe(x.mla)} (${x.cuenta || '?'}) ${$s(x.de)} → ${$s(x.a)}`,
-              `   dejó ${$s(-x.total)} MENOS en ${x.dias} d · vendió ${x.uA} antes y ${x.uD} después`, '');
+              `   dejó ${$s(-x.total)} MENOS en ${x.dias} d · vendió ${x.uA} antes y ${x.uD} después`,
+              ...(noVolvio.has(x.id) ? [`   🤔 no lo volví solo: ${noVolvio.get(x.id)}`] : []), '');
           }
           L2.push(`Total de la automatización: ${resumen.total >= 0 ? '+' : ''}${$s(resumen.total)} (ganó ${$s(resumen.gano)} · perdió ${$s(-resumen.perdio)} · ${resumen.n} cambios)`);
           if (netoNeg) L2.push('⚠️ HOY EL NETO ES NEGATIVO: la automatización deja menos plata que no tenerla.');
-          L2.push('', 'No deshago nada solo: bajar un precio lo decidís vos. Decime cuál volver atrás.');
-          const okP = MANDAR ? await sendAlerta(L2.join('\n')) : false;
+          if (nuevasP.length) L2.push('', 'Éstos no los volví solo porque tengo dudas (el motivo va en cada uno). Decime cuál volver atrás.');
+          const okP = MANDAR ? await sendAlerta(L2.join('\n'), (nuevasP.length || avisarNeto) ? undefined : { info: true }) : false;
           console.log(L2.join('\n'));
           if (okP) {
             const mp = {};
