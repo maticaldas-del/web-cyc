@@ -607,7 +607,7 @@ Comprobantes → Emitidos el archivo de Adriana (01/01→30/09). Comparado con e
 el chat y no se sube). La web: `_facVentana` usa `_arcaMes` antes que todo (tope, monotributo, Puntaje) y `_facOficial` cuenta
 facturas de ML y ventas sin factura recién desde el día después de `_arcaFin`. Un mes sin comprobantes va explícito con 0.
 **Él no tiene que pasarlo más**: desde agosto el facturador de ML alcanza; el archivo es una vez por cuenta (por ene-jul).
-Faltan Luciana, Ayelen y Matías. El robot (`topeh`, `catmono`) todavía no lee `fact_arca`.
+Luciana y Matías cargados el 01/10 (ene-sep, releídos 9 de 9). Falta Ayelen. El robot (`topeh`, `catmono`) todavía no lee `fact_arca`.
 **v21.16 (`cyc-v394`) · SE TOMA EL MAYOR ENTRE ARCA Y LAS VENTAS (01/10/2026).** Él: *"NO quiero pasarme de H y menos RI"*.
 v21.15 usaba ARCA en lugar de las ventas y eso MOSTRABA MÁS LUGAR (Adriana facturó $24,1M ene-jul y vendió $30,6M; ML informa
 las ventas a ARCA). Ahora `_facVentana(win,det)` = máximo por cuenta de la ventana ENTERA entre `_facVentanaBase(win,true)` (con
