@@ -2423,7 +2423,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='21.18';
+const APP_VERSION='21.19';
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
 // muestre la versión y la fecha de actualización y que tenga un desplegable predeterminado cerrado".
 // Y el mismo día: "que ponga fecha de cada modificación y haya una barrita para scrollear y que
@@ -2434,6 +2434,7 @@ const APP_VERSION='21.18';
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'21.19',f:'01/10/2026',h:'14:05',c:[{n:2,t:'Tarjeta ⚖️ de Inicio: un solo número por cuenta (lo que va a facturar este año, que es lo que mira la próxima recategorización). Se sacó "Vendiendo así" y el número de la recategorización de julio, que eran de otros períodos y confundían; queda una línea con la categoría inscripta y si hay que recategorizar.'}]},
   {v:'21.18',f:'01/10/2026',h:'16:05',c:[{n:1,t:'Inicio: el tope de H y el monotributo de hoy van en UNA sola tarjeta, uno abajo del otro (sin botones para cambiar).'}]},
   {v:'21.17',f:'01/10/2026',h:'13:30',c:[{n:1,t:'Pedidos: en los productos con variantes (como el Paulvic) hay un botón 📋 Copiar pedido que copia sólo el nombre y las unidades a comprar de cada una, listo para pegar en WhatsApp.'}]},
   {v:'21.16',f:'01/10/2026',h:'13:24',c:[{n:3,t:'Tope de H y monotributo: se toma el MAYOR entre lo facturado en ARCA y lo vendido. Adriana facturó menos de lo que vendió entre enero y julio, así que se cuenta lo vendido (lo más seguro para no pasarse). La tarjeta lo dice en ámbar.'}]},
@@ -15708,6 +15709,21 @@ function _ofiTxt(o,fM){
 // botoncito para cambiar"): el tope de H hacia adelante (lo que viene) y el monotributo de hoy (cómo
 // vendés contra la categoría inscripta en AFIP). La vista elegida se recuerda en este aparato.
 let _monoHomeHtml='';
+// LA CATEGORÍA INSCRIPTA, EN LA MISMA TARJETA DEL TOPE (01/10/2026, él: "esto no coordina los números,
+// me mareo"). Antes la tarjeta tenía TRES números por cuenta de tres períodos distintos (los últimos 365
+// días, la recategorización de julio y el año 2026) y se leían como el mismo dato. Ahora va UNO solo por
+// cuenta (el año que mira la próxima recategorización) y esta línea dice sólo la categoría en la que está
+// inscripta hoy y si la recategorización de julio ya le pedía subir. "Vendiendo así" se sacó.
+function _parejoCatLinea(a,fM,facARCA){
+  const ovr=state.afip_fact&&state.afip_fact[a],reg=AFIP_REG[a];
+  const cat=(state.monotributo&&state.monotributo.cats||{})[a]||(reg&&reg.cat)||null;
+  if(!cat)return '';
+  const w=_ventanaARCA(),fD=x=>String(x.getMonth()+1).padStart(2,'0')+'/'+String(x.getFullYear()).slice(2);
+  const fac=(ovr!=null&&ovr!=='')?Number(ovr):(facARCA[a]||(reg&&reg.fact)||0);
+  const debe=fac>0?monoCat(fac).cat:null;
+  if(!debe||debe<=cat)return `🪪 Inscripta en Cat ${cat} · está bien`;
+  return `<span style="color:var(--amber)">🪪 Inscripta en Cat ${cat}, pero la recategorización pasada (${fD(w.winStart)} a ${fD(w.winEnd)}: ${fM(fac)}) ya pedía Cat ${debe} → hay que recategorizar (contador)</span>`;
+}
 function renderHomeParejo(){
   const el=document.getElementById('home-parejo'); if(!el)return;
   const d=parejoDatos(); const hayTope=!!(d&&d.filas.some(f=>f.proy>0));
@@ -15726,6 +15742,7 @@ function renderHomeParejo(){
   const aviso=pasan.length
     ?`<div style="font-size:.66rem;color:var(--red);margin-top:8px">🔴 ${pasan.map(f=>MET_LABELS[f.a]).join(' y ')} ${pasan.length>1?'pasarían':'pasaría'} el tope de H al ${fD(d.fin)} a este ritmo. Lo nuevo no va ahí.</div>`
     :desp>=2?`<div style="font-size:.66rem;color:var(--amber);margin-top:8px">🟠 Están desparejas: ${MET_LABELS[mas.a]} va a cerrar con ${desp===Infinity?'mucho':desp.toFixed(1).replace('.',',')+' veces'} más que ${MET_LABELS[menos.a]}.</div>`:'';
+  const facARCA=_facARCA();
   const barras=d.filas.map(f=>{
     const col=f.proy>d.topeH?'var(--red)':f.pct>=85?'var(--amber)':'var(--green)';
     const wReal=Math.min(100,f.pctReal), wFut=Math.max(0,Math.min(100,f.pct)-wReal);
@@ -15735,12 +15752,13 @@ function renderHomeParejo(){
       <div style="height:7px;background:var(--surface2);border-radius:5px;overflow:hidden;margin-top:3px;display:flex"><div style="height:100%;width:${wReal.toFixed(1)}%;background:${col}"></div><div style="height:100%;width:${wFut.toFixed(1)}%;background:${col};opacity:.4"></div></div>
       <div style="font-size:.6rem;color:var(--muted);margin-top:2px">facturado ${fM(f.fac)} · faltan ${d.faltan} d × ${fM(f.diario*30)}/mes = +${fM(f.futuro)}</div>
       <div style="font-size:.6rem;color:var(--muted);margin-top:1px">${_ofiTxt(f.ofi,fM)}</div>
+      ${(()=>{const t=_parejoCatLinea(f.a,fM,facARCA);return t?`<div style="font-size:.6rem;color:var(--muted);margin-top:1px">${t}</div>`:'';})()}
     </div>`;}).join('');
   el.innerHTML=caja(`<div style="font-family:'Syne',sans-serif;font-weight:800;font-size:.85rem">⚖️ Las 4 cuentas contra el tope de H (${fM(d.topeH)}/año)</div>
     <div style="font-size:.6rem;color:var(--muted);margin-top:2px">La próxima recategorización de ARCA mira del ${fD(d.ini)} al ${fD(d.fin)}. Barra llena = lo facturado oficial hasta hoy (canceladas incluidas, como las cuenta ARCA) · barra clarita = lo que falta hasta el cierre, al ritmo de los últimos 30 días. El tope es por cuenta.</div>
     ${barras}${aviso}
     <div style="font-size:.66rem;margin-top:8px">💡 Lo próximo nuevo que no sea perfume → <strong style="color:var(--green)">${MET_LABELS[menos.a]}</strong>, que es la que más lugar tiene. <span style="color:var(--muted)">(Perfumes siguen yendo a Adriana; lo que ya está en una cuenta, queda.)</span></div>
-    ${hayMono?_monoHomeHtml:''}`);
+    <div style="text-align:right;margin-top:8px"><button onclick="goMonotributo()" style="background:transparent;border:1px solid var(--border2);color:var(--muted);border-radius:6px;padding:2px 8px;font-size:.6rem;cursor:pointer">✎ AFIP / meses</button></div>`);
 }
 // LA VENTANA QUE MIRA ARCA. No son los últimos 365 días: ARCA cierra por semestre y mira los 12
 // meses terminados en el último 30/06 o 31/12. En agosto de 2026 la recategorización se hace con
