@@ -26737,9 +26737,13 @@ async function main() {
       for (const t of partes.slice(1)) {
         if (t === 'go') continue;
         const mh = t.match(/^hasta=(\d{4}-\d{2}-\d{2})$/); if (mh) { hasta = mh[1]; continue; }
-        const mm = t.match(/^(\d{4})_(\d{2})=([\d.]+)\/([\d.]+)\/(\d+)\/(\d+)$/);
+        const mm = t.match(/^(\d{4})_(\d{2})=([\d.,]+)\/([\d.,]+)\/(\d+)\/(\d+)$/);
         if (!mm || +mm[2] < 1 || +mm[2] > 12) { malos.push(t); continue; }
-        const fac = Number(mm[3]), nc = Number(mm[4]);
+        // "24.123.456" o "123.456,50" escritos a la argentina: Number() daba NaN o 123. Con 1-2
+        // decimales después del punto es decimal; si no, va por pesosArg (puntos de miles).
+        const _num = (x) => /^\d+(\.\d{1,2})?$/.test(x) ? Number(x) : pesosArg(x);
+        const fac = _num(mm[3]), nc = _num(mm[4]);
+        if (!isFinite(fac) || !isFinite(nc)) { malos.push(t); continue; }
         meses[`${mm[1]}_${mm[2]}`] = { neto: Math.round((fac - nc) * 100) / 100, fac, nc, nFac: +mm[5], nNC: +mm[6] };
       }
       if (malos.length || !hasta || !Object.keys(meses).length) {

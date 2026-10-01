@@ -2426,7 +2426,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='21.28';
+const APP_VERSION='21.29';
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
 // muestre la versión y la fecha de actualización y que tenga un desplegable predeterminado cerrado".
 // Y el mismo día: "que ponga fecha de cada modificación y haya una barrita para scrollear y que
@@ -2437,6 +2437,7 @@ const APP_VERSION='21.28';
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'21.29',f:'01/10/2026',h:'23:30',c:[{n:3,t:'Tope de H: con ARCA cargado ya no se pierden las ventas que ML nunca facturó ni lo facturado fuera de ML; un archivo de ARCA bajado a mitad de mes o con un mes faltante se cuenta bien.'},{n:2,t:'Monotributo: si la recategorización pasada supera la Cat K, la tarjeta lo dice en rojo (sale del Monotributo).'},{n:1,t:'Puntaje: "ya retiraron" sólo sale si el retiro del mes está cargado.'}]},
   {v:'21.28',f:'01/10/2026',h:'23:00',c:[{n:1,t:'Pedido de nuevos: la foto del catálogo de ML sólo se muestra si viene de verdad de ML.'}]},
   {v:'21.27',f:'01/10/2026',h:'18:30',c:[{n:1,t:'Pedidos: el precio máximo de compra y su texto se ven mucho más grandes. En el celu el nombre va arriba y abajo el máximo (izquierda) y las unidades (derecha).'}]},
   {v:'21.26',f:'01/10/2026',h:'18:10',c:[{n:2,t:'Pedidos → Paraguay → Productos probados se ve igual que Pedidos Bs As: sólo la lista de pedidos (sin la canasta ni los renglones de precio de Paraguay). Productos nuevos no cambió.'},{n:2,t:'Se sacó "Pausados por precio" entero: la solapa, el aviso y el botón ⏸️. Lo que estaba pausado vuelve a aparecer en Pedidos; si el precio no da, no lo comprás y listo.'}]},
@@ -15552,7 +15553,7 @@ function _baseMesFallback(acct,ym){return (ym>='2025_06'&&ym<='2026_05')?(PUNT_F
 function _ventana365(){
   const now=new Date();
   const winEnd=new Date(now.getFullYear(),now.getMonth(),now.getDate());
-  const winStart=new Date(winEnd);winStart.setDate(winStart.getDate()-364);
+  const winStart=new Date(winEnd.getFullYear(),winEnd.getMonth()-11,1); // 12 meses calendario (bisiestos)
   return {winStart,winEnd,winStartK:dateToKey(winStart),winEndK:dateToKey(winEnd)};
 }
 // Meses YYYY_MM que TOCA la ventana, del más viejo al más nuevo (normalmente 13: el más viejo entra partido).
@@ -15601,7 +15602,8 @@ function _puntFac12(){return _facVentana(_ventana365());}
 function _proxCierreARCA(){
   const h=new Date(); const y=h.getFullYear();
   const fin=h.getMonth()<6?new Date(y,5,30):new Date(y,11,31);
-  const ini=new Date(fin); ini.setDate(ini.getDate()-364);
+  // 12 meses calendario (fin−364 arrancaba un día tarde en años bisiestos).
+  const ini=new Date(fin.getFullYear(),fin.getMonth()-11,1);
   return {ini,fin};
 }
 // LO FACTURADO QUE VE ARCA (27/09/2026, pedido suyo: "toma los emitidos automaticamente como 100%").
@@ -15621,11 +15623,31 @@ function _arcaMes(a,ym){
   const x=(state.fact_arca||{})[a]; const m=x&&x[ym];
   return m&&m.neto!=null&&isFinite(Number(m.neto))?Number(m.neto):null;
 }
+// Qué parte del total de ARCA de ese mes cae en la ventana. Si el archivo se bajó a mitad de mes
+// (`hasta`), el total cubre sólo hasta ese día y se reparte entre ESOS días, no entre los 30.
+function _arcaFrac(a,ym,win){
+  const ov=_mesOverlap(ym,win); if(ov.overlap<=0)return 0;
+  const x=((state.fact_arca||{})[a]||{})[ym]; const h=x&&x.hasta?new Date(String(x.hasta).slice(0,10)+'T00:00:00'):null;
+  const [y,m]=ym.split('_').map(Number);
+  if(h&&!isNaN(h)&&h.getFullYear()===y&&h.getMonth()===m-1&&h.getDate()<ov.total)return Math.min(1,ov.overlap/h.getDate());
+  return ov.frac;
+}
 // Último día cubierto por el archivo de ARCA de esa cuenta (fin del último mes cargado), o null.
+// Revisión del 01/10: se corta en el primer mes que FALTA (un hueco no puede quedar sin facturas ni
+// ventas) y en el `hasta` del archivo si cae a mitad de mes (lo que sigue lo cuentan las facturas de ML).
 function _arcaFin(a){
-  const ks=Object.keys((state.fact_arca||{})[a]||{}).filter(k=>/^\d{4}_\d{2}$/.test(k)&&_arcaMes(a,k)!=null).sort();
+  const x=(state.fact_arca||{})[a]||{};
+  const ks=Object.keys(x).filter(k=>/^\d{4}_\d{2}$/.test(k)&&_arcaMes(a,k)!=null).sort();
   if(!ks.length)return null;
-  const [y,m]=ks[ks.length-1].split('_').map(Number); return new Date(y,m,0);
+  let last=ks[0];
+  for(let i=1;i<ks.length;i++){
+    const [y,m]=last.split('_').map(Number); const sig=m===12?`${y+1}_01`:`${y}_${String(m+1).padStart(2,'0')}`;
+    if(ks[i]!==sig)break; last=ks[i];
+  }
+  const [y,m]=last.split('_').map(Number); let f=new Date(y,m,0);
+  const h=x[last]&&x[last].hasta; const hd=h?new Date(String(h).slice(0,10)+'T00:00:00'):null;
+  if(hd&&!isNaN(hd)&&hd<f)f=hd;
+  return f;
 }
 function _facOficial(ini,hoy){
   const iniK=dateToKey(ini),hoyK=dateToKey(hoy);
@@ -15644,14 +15666,28 @@ function _facOficial(ini,hoy){
     let arca=0;
     if(fA&&fA>=ini){
       const wA={winStart:ini,winEnd:fA<hoy?fA:hoy};
-      Object.keys((state.fact_arca||{})[a]||{}).forEach(ym=>{const n=_arcaMes(a,ym);if(n!=null)arca+=n*_mesOverlap(ym,wA).frac;});
+      Object.keys((state.fact_arca||{})[a]||{}).forEach(ym=>{const n=_arcaMes(a,ym);if(n!=null)arca+=n*_arcaFrac(a,ym,wA);});
+      // (los meses cargados después de un hueco quedan afuera solos: wA termina en fA)
     }
     const kOf=f=>{const x=String(f||'').slice(0,10);return /^\d{4}-\d{2}-\d{2}$/.test(x)?x.replace(/-/g,'_'):null;};
     let fac=0,antes=0,antesV=0,nFac=0,nNC=0,sinF=0,fuera=0;
     const corte=dd&&dd>ini?dd:ini;
     if(!dd||dd>ini){
       const fin=dd&&dd<=hoy?new Date(dd.getTime()-864e5):hoy;
-      if(fin>=ini){const fv=_facVentana({winStart:ini,winEnd:fin,winStartK:iniK,winEndK:dateToKey(fin)},true);antes=fv.acc[a]||0;antesV=fv.ventas[a]||0;}
+      if(fin>=ini){
+        const fv=_facVentana({winStart:ini,winEnd:fin,winStartK:iniK,winEndK:dateToKey(fin)},true);
+        const finK=dateToKey(fin);
+        // Revisión del 01/10: ARCA no trae las ventas que ML nunca facturó (facturas_sin) y las ventas no
+        // traen lo facturado fuera de ML (fact_fuera). Cada lado se completa con lo que le falta ANTES de
+        // tomar el mayor; si no, ganaba un lado incompleto y se contaba de menos.
+        let sinA=0,fueA=0;
+        if(fA&&dd0){const sK=dateToKey(dd0>ini?dd0:ini);
+          for(const v of Object.values(deCta(state.facturas_sin,a)||{})){const k=kOf(v&&v.fecha);if(k&&k>=sK&&k<=finK)sinA+=Number(v.monto)||0;}}
+        if(fA){for(const f of Object.values(deCta(state.fact_fuera,a)||{})){const k=kOf(f&&f.fecha);if(!k||k<iniK||k>finK)continue;
+          const m=Number(f.monto)||0;fueA+=/credit|credito|crédito|nota/i.test(String(f.tipo||''))?-m:m;}}
+        const ladoA=(fv.arca[a]||0)+sinA, ladoV=(fv.ventas[a]||0)+fueA;
+        antes=Math.max(ladoA,ladoV);antesV=ladoV;
+      }
     }
     const cK=dateToKey(corte);
     if(dd&&dd<=hoy){
@@ -15726,7 +15762,8 @@ function _parejoCatLinea(a,fM,facARCA){
   if(!cat)return '';
   const w=_ventanaARCA(),fD=x=>String(x.getMonth()+1).padStart(2,'0')+'/'+String(x.getFullYear()).slice(2);
   const fac=(ovr!=null&&ovr!=='')?Number(ovr):(facARCA[a]||(reg&&reg.fact)||0);
-  const debe=fac>0?monoCat(fac).cat:null;
+  const mc=fac>0?monoCat(fac):null; const debe=mc?mc.cat:null;
+  if(mc&&mc.excede)return `<span style="color:var(--red)">🪪 Inscripta en Cat ${cat}, pero la recategorización pasada (${fD(w.winStart)} a ${fD(w.winEnd)}: ${fM(fac)}) supera la Cat K → sale del Monotributo (Responsable Inscripto). Hablar con el contador ya.</span>`;
   if(!debe||debe<=cat)return `🪪 Inscripta en Cat ${cat} · está bien`;
   return `<span style="color:var(--amber)">🪪 Inscripta en Cat ${cat}, pero la recategorización pasada (${fD(w.winStart)} a ${fD(w.winEnd)}: ${fM(fac)}) ya pedía Cat ${debe} → hay que recategorizar (contador)</span>`;
 }
@@ -15775,7 +15812,7 @@ function _ventanaARCA(){
   const y=now.getFullYear(),m=now.getMonth(); // 0-11
   // Último cierre de semestre ya pasado: si estamos en julio o después, es el 30/06 de este año.
   const winEnd=m>=6?new Date(y,5,30):new Date(y-1,11,31);
-  const winStart=new Date(winEnd);winStart.setDate(winStart.getDate()-364);
+  const winStart=new Date(winEnd.getFullYear(),winEnd.getMonth()-11,1); // 12 meses calendario (bisiestos)
   return {winStart,winEnd,winStartK:dateToKey(winStart),winEndK:dateToKey(winEnd)};
 }
 function _facARCA(){return _facVentana(_ventanaARCA());}
@@ -15796,7 +15833,7 @@ function _facVentanaBase(win,conArca){
     const congelado=ym<FAC_CONGELADO_HASTA; // mes viejo, anterior a "arrancar de 0" en 2026
     MET_ACCTS.forEach(a=>{
       // Mes con total de ARCA cargado: manda ARCA (ya trae las notas de crédito restadas).
-      const arM=conArca?_arcaMes(a,ym):null; if(arM!=null){acc[a]+=arM*ov.frac;return;}
+      const arM=conArca?_arcaMes(a,ym):null; if(arM!=null){acc[a]+=arM*_arcaFrac(a,ym,win);return;}
       const man=state.fact_mes?.[a]?.[ym];
       // MES VIEJO CONGELADO: el número guardado (fact_mes) manda. Ya incluye canceladas.
       // Ignoramos ventas sueltas re-importadas de 2025 para que no tapen la cifra real.
@@ -16036,7 +16073,8 @@ function renderHomeHoy(){
 function cobroProxMes(P){
   const gan=Math.round(P.g.neto-P.g.costo-P.g.gastos);   // = P.g.ganancia + P.g.retiro
   const tercio=gan>0?Math.round(gan/3/1000)*1000:0;
-  const yaPorSocio=Math.round((P.g.retiro||0)/2);
+  // Sólo el retiro CARGADO (no el de por defecto): si no se cargó, no se dice "ya retiraron".
+  const _rv=_retiroMesVal(P.ym); const yaPorSocio=_rv!=null?Math.round(_rv/2):0;
   return{gan,tercio,yaPorSocio,falta:tercio-yaPorSocio};
 }
 function renderPuntajeMes(){
