@@ -222,7 +222,7 @@ input.qty:focus{border-color:var(--accent2)}
 .arqueo-section::after{content:'';position:absolute;top:0;left:0;right:0;height:2px}
 .arqueo-section.positivo::after{background:linear-gradient(90deg,var(--green),#4ade80)}
 .arqueo-section.negativo::after{background:linear-gradient(90deg,var(--red),#f87171)}
-.arqueo-section h3{font-family:'Syne',sans-serif;font-size:.75rem;font-weight:800;text-transform:uppercase;letter-spacing:.1em;margin-bottom:14px;color:var(--muted)}
+.arqueo-section h3{font-family:'Syne',sans-serif;font-size:var(--fs-lbl);font-weight:800;text-transform:uppercase;letter-spacing:.1em;margin-bottom:14px;color:var(--muted)}
 .fin-field{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:9px 0;border-bottom:1px solid var(--border);flex-wrap:wrap}
 .fin-field:last-child{border-bottom:none;padding-bottom:0}
 .fin-left{display:flex;align-items:center;gap:6px;flex:1;min-width:120px;flex-wrap:wrap}
@@ -236,9 +236,14 @@ input.qty:focus{border-color:var(--accent2)}
 .fin-input:focus{border-color:var(--accent2)}
 .fin-input.negative{border-color:rgba(239,68,68,.4);color:var(--red)}
 .breakdown-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:8px;margin-top:14px}
-.bk-card{background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:10px 12px}
-.bk-card .bk-lbl{font-size:.6rem;color:var(--muted);text-transform:uppercase;letter-spacing:.1em;margin-bottom:5px}
-.bk-card .bk-val{font-family:'Syne',sans-serif;font-weight:800;font-size:.9rem}
+/* ESCALA PAREJA (01/10/2026, idea 15 de diseño): las tarjetas de números de todas las pantallas
+   (Arqueo .bk-card, KPIs .met-kpi, gráficos .chart-box, secciones .arqueo-section) usan el MISMO
+   borde redondeado, el mismo relleno y los mismos tres tamaños de letra: etiqueta --fs-lbl,
+   número --fs-val y aclaración --fs-sub. Cambiar uno de estos tres cambia todas juntas. */
+:root{--fs-lbl:.62rem;--fs-val:1rem;--fs-sub:.62rem;--card-pad:13px 15px}
+.bk-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:var(--card-pad)}
+.bk-card .bk-lbl{font-size:var(--fs-lbl);color:var(--muted);text-transform:uppercase;letter-spacing:.1em;margin-bottom:5px}
+.bk-card .bk-val{font-family:'Syne',sans-serif;font-weight:800;font-size:var(--fs-val)}
 .bk-card .bk-val.pos{color:var(--green)}
 .bk-card .bk-val.neg{color:var(--red)}
 .bk-card .bk-val.neutral{color:var(--text)}
@@ -323,16 +328,16 @@ input.qty:focus{border-color:var(--accent2)}
 .met-date-bar{display:flex;align-items:center;gap:12px;flex-wrap:wrap;padding:14px;background:var(--surface);border:1px solid var(--border);border-radius:var(--r);margin-bottom:18px}
 .met-date-bar label{font-size:.67rem;color:var(--muted);text-transform:uppercase;letter-spacing:.1em}
 .met-kpi-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:10px;margin-bottom:18px}
-.met-kpi{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:13px 15px;position:relative;overflow:hidden}
+.met-kpi{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:var(--card-pad);position:relative;overflow:hidden}
 .met-kpi::after{content:'';position:absolute;top:0;left:0;right:0;height:2px}
 .met-kpi.c1::after{background:linear-gradient(90deg,#ff3c78,#ff6b9d)}
 .met-kpi.c2::after{background:linear-gradient(90deg,#7c3aed,#a855f7)}
 .met-kpi.c3::after{background:linear-gradient(90deg,#0ea5e9,#38bdf8)}
 .met-kpi.c4::after{background:linear-gradient(90deg,#f59e0b,#fbbf24)}
 .met-kpi.ct::after{background:linear-gradient(90deg,#22c55e,#4ade80)}
-.met-kpi .mk-lbl{font-size:.61rem;color:var(--muted);text-transform:uppercase;letter-spacing:.1em;margin-bottom:5px}
-.met-kpi .mk-val{font-family:'Syne',sans-serif;font-weight:800;font-size:1rem}
-.met-kpi .mk-sub{font-size:.61rem;color:var(--muted);margin-top:3px}
+.met-kpi .mk-lbl{font-size:var(--fs-lbl);color:var(--muted);text-transform:uppercase;letter-spacing:.1em;margin-bottom:5px}
+.met-kpi .mk-val{font-family:'Syne',sans-serif;font-weight:800;font-size:var(--fs-val)}
+.met-kpi .mk-sub{font-size:var(--fs-sub);color:var(--muted);margin-top:3px}
 .met-acct-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:12px;margin-bottom:18px}
 .met-acct{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:14px;position:relative;overflow:hidden}
 .met-acct::after{content:'';position:absolute;top:0;left:0;right:0;height:2px}
@@ -345,7 +350,7 @@ input.qty:focus{border-color:var(--accent2)}
 .met-acct .ma-inp:focus{border-color:var(--accent2)}
 .met-acct .ma-prev{font-size:.62rem;color:var(--muted);margin-top:6px;text-align:right}
 .chart-box{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:16px;margin-bottom:18px}
-.chart-box .ch-title{font-family:'Syne',sans-serif;font-size:.7rem;font-weight:800;text-transform:uppercase;letter-spacing:.1em;color:var(--muted);margin-bottom:14px}
+.chart-box .ch-title{font-family:'Syne',sans-serif;font-size:var(--fs-lbl);font-weight:800;text-transform:uppercase;letter-spacing:.1em;color:var(--muted);margin-bottom:14px}
 @media(max-width:640px){
   #chart-line-mes,#chart-pct-mes{min-width:0!important}
   .chart-box{padding:12px}
@@ -1350,6 +1355,20 @@ footer{margin-top:32px;padding-top:14px;border-top:1px solid var(--border);font-
     </div>
   </div>
 
+  <!-- ÍNDICE (01/10/2026, idea 11 de diseño): Métricas es una pantalla muy larga; cada botón baja
+       derecho a su sección. Si se agrega una sección nueva, sumarle su botón acá. -->
+  <div id="met-indice" style="display:flex;flex-wrap:wrap;gap:6px;margin:-6px 0 18px">
+    <button class="vbtn" onclick="metIr('met-kpis')">📊 KPIs</button>
+    <button class="vbtn" onclick="metIr('met-tendencia')">📈 Tendencia</button>
+    <button class="vbtn" onclick="metIr('met-pct-avg')">% Ganancia</button>
+    <button class="vbtn" onclick="metIr('met-rubros')">🏷️ Rubros</button>
+    <button class="vbtn" onclick="metIr('met-reputacion')">⭐ Reputación</button>
+    <button class="vbtn" onclick="metIr('chart-bar-dia')">👥 Por cuenta</button>
+    <button class="vbtn" onclick="metIr('met-horas')">🕐 Horas</button>
+    <button class="vbtn" onclick="metIr('met-origen')">🌎 Origen</button>
+    <button class="vbtn" onclick="metIr('met-auto')">🤖 Robot de precios</button>
+  </div>
+
   <!-- Carga manual — solo visible en modo Día -->
   <div id="met-entry-section" style="display:none"></div>
 
@@ -1455,35 +1474,10 @@ footer{margin-top:32px;padding-top:14px;border-top:1px solid var(--border);font-
        Pedidos Paraguay y el renglón de editar una venta. Borrarla de paso era el corte de más -->
   <datalist id="vp-prod-list"></datalist>
 
-  <div class="met-kpi-grid" id="vp-kpis"></div>
-
-  <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-top:22px;margin-bottom:6px">
-    <div class="stitle" style="margin:0">Ventas <span id="vp-date-label2" style="font-weight:400;color:var(--muted);text-transform:none;letter-spacing:0;font-family:'DM Mono',monospace"></span></div>
-    <input id="vp-search" type="text" placeholder="🔍 Buscar producto…" class="cal-select" style="flex:1;min-width:160px;max-width:280px;font-size:.72rem" oninput="renderVentaProd()">
-  </div>
-  <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px">
-    <button id="vpf-all" class="vbtn active" onclick="setVpCuenta(null,this)">Todas</button>
-    <button id="vpf-Adriana" class="vbtn" onclick="setVpCuenta('Adriana',this)">Adriana</button>
-    <button id="vpf-Luciana" class="vbtn" onclick="setVpCuenta('Luciana',this)">Luciana</button>
-    <button id="vpf-Ayelen" class="vbtn" onclick="setVpCuenta('Ayelen',this)">Ayelen</button>
-    <button id="vpf-Matias" class="vbtn" onclick="setVpCuenta('Matias',this)">Matias</button>
-  </div>
-  <div id="vp-day-list" class="ingreso-list" style="margin-bottom:6px;max-height:570px;overflow-y:auto"><div class="empty-msg">Sin ventas cargadas.</div></div>
-
-  <div class="stitle" style="margin-top:22px">Análisis <span id="vp-scope-lbl-main" style="font-weight:400;color:var(--muted);text-transform:none;letter-spacing:0;font-family:'DM Mono',monospace"></span></div>
-
-  <div style="display:grid;grid-template-columns:1fr 1fr;gap:18px">
-    <div>
-      <div class="stitle">Ganancia $ por cuenta <span id="vp-scope-lbl" style="font-weight:400;color:var(--muted);text-transform:none;letter-spacing:0;font-family:'DM Mono',monospace"></span></div>
-      <div id="vp-by-account"></div>
-    </div>
-    <div>
-      <div class="stitle">% Ganancia por cuenta <span id="vp-scope-lbl2" style="font-weight:400;color:var(--muted);text-transform:none;letter-spacing:0;font-family:'DM Mono',monospace"></span></div>
-      <div id="vp-profit"></div>
-    </div>
-  </div>
-
-  <div class="met-date-bar" style="flex-wrap:wrap;gap:8px;align-items:center;margin-top:22px">
+  <div class="met-date-bar" style="flex-wrap:wrap;gap:8px;align-items:center;margin-bottom:12px">
+    <!-- ARRIBA DE TODO desde el 01/10/2026 (idea 9 de diseño): el período manda sobre todo lo de
+         abajo, así que se elige antes de mirar. Las flechas ‹ › pasan al día, semana, mes o año
+         anterior/siguiente. -->
     <!-- Mismo criterio que en Métricas ML: un solo botón con el período elegido y las opciones
          adentro, agrupadas. Los ids "vpperiod-*" no cambian: setVpPeriod los busca por ahí. -->
     <div class="dd-wrap" id="vp-dd-wrap">
@@ -1499,6 +1493,7 @@ footer{margin-top:32px;padding-top:14px;border-top:1px solid var(--border);font-
         <button id="vpperiod-todo" class="dd-opt" onclick="setVpPeriod('todo',this)">Desde el primer registro</button>
         <div class="dd-grp">Fecha puntual</div>
         <button id="vpperiod-dia"  class="dd-opt active" onclick="setVpPeriod('dia',this)">Día</button>
+        <button id="vpperiod-semana" class="dd-opt" onclick="setVpPeriod('semana',this)">Semana (lun → dom)</button>
         <button id="vpperiod-mes"  class="dd-opt" onclick="setVpPeriod('mes',this)">Mes</button>
         <button id="vpperiod-anio" class="dd-opt" onclick="setVpPeriod('anio',this)">Año</button>
         <div class="dd-grp">A medida</div>
@@ -1517,6 +1512,29 @@ footer{margin-top:32px;padding-top:14px;border-top:1px solid var(--border);font-
     </span>
     <span id="vp-date-label" style="font-size:.66rem;color:var(--muted)"></span>
   </div>
+
+  <div class="met-kpi-grid" id="vp-kpis"></div>
+
+  <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-top:22px;margin-bottom:6px">
+    <div class="stitle" style="margin:0">Ventas <span id="vp-date-label2" style="font-weight:400;color:var(--muted);text-transform:none;letter-spacing:0;font-family:'DM Mono',monospace"></span></div>
+    <input id="vp-search" type="text" placeholder="🔍 Buscar producto…" class="cal-select" style="flex:1;min-width:160px;max-width:280px;font-size:.72rem" oninput="renderVentaProd()">
+  </div>
+  <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px">
+    <button id="vpf-all" class="vbtn active" onclick="setVpCuenta(null,this)">Todas</button>
+    <button id="vpf-Adriana" class="vbtn" onclick="setVpCuenta('Adriana',this)">Adriana</button>
+    <button id="vpf-Luciana" class="vbtn" onclick="setVpCuenta('Luciana',this)">Luciana</button>
+    <button id="vpf-Ayelen" class="vbtn" onclick="setVpCuenta('Ayelen',this)">Ayelen</button>
+    <button id="vpf-Matias" class="vbtn" onclick="setVpCuenta('Matias',this)">Matias</button>
+  </div>
+  <div id="vp-day-list" class="ingreso-list" style="margin-bottom:6px;max-height:570px;overflow-y:auto"><div class="empty-msg">Sin ventas cargadas.</div></div>
+
+  <div class="stitle" style="margin-top:22px">Análisis <span id="vp-scope-lbl-main" style="font-weight:400;color:var(--muted);text-transform:none;letter-spacing:0;font-family:'DM Mono',monospace"></span></div>
+
+  <!-- UN SOLO BLOQUE POR CUENTA (01/10/2026, idea 13 de diseño): antes eran dos ("Ganancia $" y
+       "% ganancia") con las mismas cuatro cuentas en distinto orden. Ahora cada cuenta dice todo junto:
+       ventas, unidades, facturado, ganancia y %. -->
+  <div id="vp-by-account"></div>
+
 
   <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-top:14px;margin-bottom:10px">
     <div class="stitle" style="margin:0">Ranking <span id="vp-rank-period" style="font-weight:400;color:var(--muted);text-transform:none;letter-spacing:0;font-family:'DM Mono',monospace"></span></div>
@@ -2402,7 +2420,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='21.12';
+const APP_VERSION='21.13';
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
 // muestre la versión y la fecha de actualización y que tenga un desplegable predeterminado cerrado".
 // Y el mismo día: "que ponga fecha de cada modificación y haya una barrita para scrollear y que
@@ -2413,6 +2431,7 @@ const APP_VERSION='21.12';
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'21.13',f:'01/10/2026',h:'21:10',c:[{n:1,t:'Ventas: el período va ARRIBA de todo, con flechas ‹ › para pasar al día, semana, mes o año anterior o siguiente. Hay un período nuevo: Semana (lunes a domingo).'},{n:1,t:'Ventas: las cuatro cuentas van en un solo bloque, cada una con ventas, unidades, facturado, ganancia y % juntos (antes eran dos bloques), y un TOTAL abajo.'},{n:1,t:'Métricas: arriba hay un índice; cada botón baja derecho a su sección (Robot de precios, Origen, Rubros, etc.).'},{n:1,t:'Arqueo: las tarjetas y el patrimonio total dicen US$ para que se lea que son dólares. El número es el mismo.'},{n:1,t:'Las tarjetas de números de todas las pantallas tienen el mismo tamaño de letra, relleno y borde.'}]},
   {v:'21.12',f:'30/09/2026',h:'22:00',c:[{n:1,t:'El % de ganancia vuelve a tener los niveles de arriba: 🔴 Bajo · 🟠 Justo · 🟢 Bien · 🩵 Bueno (45%) · 🔵 Excelente (70%) · 🟣 Estrella (130%) · 💎 JOYA (200%). El número no cambia.'}]},
   {v:'21.11',f:'30/09/2026',h:'19:47',c:[{n:1,t:'Pedidos → Paraguay: lo que pagaste, lo que sale reponerlo hoy y el máximo que conviene pagar van en una sola línea, en la misma unidad (US$ puesto). El de hoy va en verde si entra en el máximo y en rojo si se pasa. El detalle de cada número, al tocarlo.'}]},
   {v:'21.10',f:'30/09/2026',h:'19:45',c:[{n:1,t:'Ventas: el chip «📬 llegó» ya no sale en cada venta. Sólo aparece cuando hay algo que mirar: ↩ volvió o ⚠️ no se entregó.'}]},
@@ -2724,6 +2743,9 @@ function goPage(page){
 
 /* ═══════════ UTILS ═══════════ */
 const fmt=n=>{const a=Math.abs(Math.round(n));return(n<0?'-$':'$')+a.toLocaleString('es-AR');};
+// Lo mismo pero diciendo que son DÓLARES (01/10/2026, idea 14 de diseño): las tarjetas del Arqueo están
+// en dólares y con "$" solo se leían como pesos.
+const fmtUS=n=>{const a=Math.abs(Math.round(n));return(n<0?'-':'')+'US$ '+a.toLocaleString('es-AR');};
 const fmtCost=n=>{const a=Math.abs(n);return(n<0?'-$':'$')+a.toLocaleString('es-AR',{minimumFractionDigits:2,maximumFractionDigits:2});};
 const fmtN=n=>n.toLocaleString('es-AR');
 /* ── Dinero: parseo robusto + formato en vivo (enteros con puntos de miles) ── */
@@ -3364,14 +3386,15 @@ const REV_CADA_DIAS=7;
 //   · REV_HECHAS    → última vez que cada etapa quedó resuelta. Sin pendientes, el cartel pide la
 //                     etapa más vieja cuando pasaron REV_CADA_DIAS desde la última.
 const REV_PENDIENTE=[
-  {t:'Etapa 7 · Diseño: quedan 2 ideas para que elijas',que:'hechas 1-8; quedan el período de Ventas y Pedidos',pedi:'seguí con diseño'},
 ];
+// Etapa 7 (diseño) cerrada el 01/10/2026: hechas 1-9, 11, 13, 14 y 15; la 10 (Pedidos) y la 12 (sacar
+// "Participación por cuenta") él eligió dejarlas como están.
 // Choques (4) y fallas mudas/privacidad (5): verificadas las 15 del 26/09 de madrugada (rev4, lotes 6-8) y
 // todas arregladas o ya estaban; antes pasaron por la 2ª vuelta del 25/09. El cartel decía "15 sin verificar"
 // por una nota vieja.
 // 30/09 a la tarde: la revisión completa final (6 revisores) cubrió precios, plata, mercadería, ventas,
 // corridas del robot y la web; lo obvio quedó arreglado en la v20.88.
-const REV_HECHAS={1:'2026-09-30',2:'2026-09-30',3:'2026-09-30',4:'2026-09-30',5:'2026-09-30',6:'2026-09-27'};
+const REV_HECHAS={1:'2026-09-30',2:'2026-09-30',3:'2026-09-30',4:'2026-09-30',5:'2026-09-30',6:'2026-09-27',7:'2026-10-01'};
 function _revFecha(iso){const d=new Date(iso+'T12:00:00');return isNaN(d)?null:d;}
 function _revFmt(d){return ['dom','lun','mar','mié','jue','vie','sáb'][d.getDay()]+' '+String(d.getDate()).padStart(2,'0')+'/'+String(d.getMonth()+1).padStart(2,'0');}
 function revProxima(){
@@ -7287,7 +7310,7 @@ function updateArqueo(){
   } else {
     prev=getLatestSnapshot();
   }
-  const setCard=(id,val,cls)=>{const el=document.getElementById(id);if(!el)return;el.textContent=fmt(val);el.className='bk-val '+cls;};
+  const setCard=(id,val,cls)=>{const el=document.getElementById(id);if(!el)return;el.textContent=fmtUS(val);el.className='bk-val '+cls;};
   const stockLocalFin=(parseFloat(state.finanzas['of_viejo'])||0)+(parseFloat(state.finanzas['of_mia'])||0)+(parseFloat(state.finanzas['vendedores'])||0);
   setCard('bk_stock_ml',dispStockML,'neutral');setCard('bk_stock_local',stockLocalFin,'neutral');setCard('bk_efectivo',c.efect,'pos');
   setCard('bk_deben',c.deben,'pos');setCard('bk_deudas',c.deuda,'neg');
@@ -7424,7 +7447,7 @@ function updateArqueo(){
   if(dbkT)dbkT.innerHTML='';
   if(!_arqViewYM)saveDailySnap();
   const tv=document.getElementById('arqueo-total-val');
-  if(tv){tv.textContent=fmt(dispTotal);tv.className='at-val '+(dispTotal>=0?'pos':'neg');}
+  if(tv){tv.textContent=fmtUS(dispTotal);tv.className='at-val '+(dispTotal>=0?'pos':'neg');}
   try{renderReconciliacion();}catch(e){}
   try{renderRetirosPorMes();}catch(e){}
   FIN_FIELDS.forEach(f=>{
@@ -8106,7 +8129,7 @@ function buildCompHTML(dataA,dataB,labelB,isYearly=false){
 let vpDate='';
 let vpPeriod='dia'; // '7d' | '15d' | '30d' | '60d' | '90d' | 'dia' | 'mes' | 'anio' | '365d' | 'rango'
 // Lo que dice el botón del período en Ventas por producto.
-const VP_PERIOD_TXT={'7d':'7 días','15d':'15 días','30d':'30 días','60d':'60 días','90d':'90 días','365d':'365 días',todo:'Todo',dia:'Día',mes:'Mes',anio:'Año',rango:'📅 Período'};
+const VP_PERIOD_TXT={'7d':'7 días','15d':'15 días','30d':'30 días','60d':'60 días','90d':'90 días','365d':'365 días',todo:'Todo',dia:'Día',semana:'Semana',mes:'Mes',anio:'Año',rango:'📅 Período'};
 // Si abriendo para abajo el menú se sale de la pantalla (pasa en las barras que están cerca del
 // pie de la página), se abre para arriba. Lo usan los dos menús de período.
 function _ddPlace(menu){
@@ -8133,23 +8156,25 @@ function setVpPeriod(period,btn){
   if(btn)btn.classList.add('active');
   const vtrg=document.getElementById('vp-dd-btn');if(vtrg)vtrg.textContent=(VP_PERIOD_TXT[period]||period)+' ▾';
   closeVpPeriodMenu();
-  const hasNav=period==='dia'||period==='mes'||period==='anio';
+  const hasNav=period==='dia'||period==='semana'||period==='mes'||period==='anio';
   document.getElementById('vp-nav-prev').style.display=hasNav?'':'none';
   document.getElementById('vp-nav-next').style.display=hasNav?'':'none';
-  document.getElementById('vp-date').style.display  =period==='dia' ?'':'none';
+  document.getElementById('vp-date').style.display  =(period==='dia'||period==='semana')?'':'none';
   document.getElementById('vp-month').style.display =period==='mes' ?'':'none';
   document.getElementById('vp-year').style.display  =period==='anio'?'':'none';
   const rw=document.getElementById('vp-range-wrap');if(rw)rw.style.display=period==='rango'?'inline-flex':'none';
   renderVentaProd();
 }
 function vpNavPrev(){
-  if(vpPeriod==='dia'){const el=document.getElementById('vp-date');const d=new Date(el.value+'T12:00:00');d.setDate(d.getDate()-1);el.value=d.toISOString().split('T')[0];}
+  if(vpPeriod==='semana'){const el=document.getElementById('vp-date');const d=new Date(el.value+'T12:00:00');d.setDate(d.getDate()-7);el.value=d.toISOString().split('T')[0];}
+  else if(vpPeriod==='dia'){const el=document.getElementById('vp-date');const d=new Date(el.value+'T12:00:00');d.setDate(d.getDate()-1);el.value=d.toISOString().split('T')[0];}
   else if(vpPeriod==='mes'){const el=document.getElementById('vp-month');const[y,m]=el.value.split('-');const d=new Date(parseInt(y),parseInt(m)-2,1);el.value=d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0');}
   else{const el=document.getElementById('vp-year');el.value=parseInt(el.value)-1;}
   renderVentaProd();
 }
 function vpNavNext(){
-  if(vpPeriod==='dia'){const el=document.getElementById('vp-date');const d=new Date(el.value+'T12:00:00');d.setDate(d.getDate()+1);el.value=d.toISOString().split('T')[0];}
+  if(vpPeriod==='semana'){const el=document.getElementById('vp-date');const d=new Date(el.value+'T12:00:00');d.setDate(d.getDate()+7);el.value=d.toISOString().split('T')[0];}
+  else if(vpPeriod==='dia'){const el=document.getElementById('vp-date');const d=new Date(el.value+'T12:00:00');d.setDate(d.getDate()+1);el.value=d.toISOString().split('T')[0];}
   else if(vpPeriod==='mes'){const el=document.getElementById('vp-month');const[y,m]=el.value.split('-');const d=new Date(parseInt(y),parseInt(m),1);el.value=d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0');}
   else{const el=document.getElementById('vp-year');el.value=parseInt(el.value)+1;}
   renderVentaProd();
@@ -8444,8 +8469,8 @@ function _efectivoCostoVP(v){
 }
 function vpEntries(keys){const out=[];keys.forEach(k=>{const o=state.ventaprod[k];if(o)Object.values(o).forEach(v=>out.push({...v,_dateKey:k}));});return out;}
 function vpAggByAccount(entries){
-  const agg={};VP_ACCTS.forEach(a=>agg[a]={qty:0,neto:0,costo:0,gest:0});
-  entries.forEach(v=>{if(v.cancelada)return;const a=agg[v.cuenta]||(agg[v.cuenta]={qty:0,neto:0,costo:0,gest:0});a.qty+=v.qty||0;a.neto+=v.neto||0;a.costo+=efectivoCostoVP(v);a.gest+=gestDivVP(v);});
+  const agg={};VP_ACCTS.forEach(a=>agg[a]={qty:0,neto:0,total:0,costo:0,gest:0});
+  entries.forEach(v=>{if(v.cancelada)return;const a=agg[v.cuenta]||(agg[v.cuenta]={qty:0,neto:0,total:0,costo:0,gest:0});a.qty+=v.qty||0;a.neto+=v.neto||0;a.total+=parseFloat(v.total)||0;a.costo+=efectivoCostoVP(v);a.gest+=gestDivVP(v);});
   Object.values(agg).forEach(a=>a.ganancia=a.neto-a.costo);
   return agg;
 }
@@ -8490,6 +8515,17 @@ function vpScopeKeys(){
     const orden=allKeys.slice().sort();
     return{keys:allKeys,label:orden.length?('desde el '+orden[0].replace(/_/g,'-')):'sin registros todavía',
            prevKeys:[],prevLabel:''};
+  }
+  if(vpPeriod==='semana'){
+    // La semana (lunes a domingo) que contiene el día elegido. Anterior = los 7 días de antes.
+    const[by,bm,bd]=vpKey().split('_');
+    const lun=new Date(parseInt(by),parseInt(bm)-1,parseInt(bd));lun.setDate(lun.getDate()-((lun.getDay()+6)%7));
+    const dom=new Date(lun);dom.setDate(dom.getDate()+6);
+    const plun=new Date(lun);plun.setDate(plun.getDate()-7);const pdom=new Date(lun);pdom.setDate(pdom.getDate()-1);
+    const fk=dateToKey(lun),tk=dateToKey(dom),pfk=dateToKey(plun),ptk=dateToKey(pdom);
+    const dm=k=>{const[,mm,dd]=k.split('_');return dd+'/'+mm;};
+    return{keys:allKeys.filter(k=>k>=fk&&k<=tk),label:'semana '+dm(fk)+' → '+dm(tk),
+           prevKeys:allKeys.filter(k=>k>=pfk&&k<=ptk),prevLabel:'semana anterior'};
   }
   if(vpPeriod==='dia'){
     const base=vpKey();const[by,bm,bd]=base.split('_');
@@ -8815,7 +8851,7 @@ function renderVentaProd(){
   let listScopeKeys;
   if(vpPeriod==='dia') listScopeKeys=[vpKey()];
   else if(vpPeriod==='anio') listScopeKeys=allKeys.filter(k=>k.startsWith(vy+'_'));
-  else if(vpPeriod==='7d'||vpPeriod==='15d'||vpPeriod==='30d'||vpPeriod==='60d'||vpPeriod==='90d'||vpPeriod==='365d'||vpPeriod==='rango'){listScopeKeys=vpScopeKeys().keys;}
+  else if(vpPeriod==='7d'||vpPeriod==='15d'||vpPeriod==='30d'||vpPeriod==='60d'||vpPeriod==='90d'||vpPeriod==='365d'||vpPeriod==='rango'||vpPeriod==='semana'){listScopeKeys=vpScopeKeys().keys;}
   else listScopeKeys=allKeys.filter(k=>k.startsWith(vy+'_'+(vm||''))); // mes
   const mesEntries=[];listScopeKeys.forEach(k=>{const o=state.ventaprod[k];if(o)Object.values(o).forEach(v=>mesEntries.push({...v,_dateKey:k}));});
   const list=document.getElementById('vp-day-list');
@@ -9089,7 +9125,7 @@ function renderVentaProd(){
 }
 function renderVpScopeBlocks(){
   const sk=vpScopeKeys();
-  ['vp-scope-lbl','vp-scope-lbl2','vp-scope-lbl-main'].forEach(id=>{const e=document.getElementById(id);if(e)e.textContent='· '+sk.label;});
+  ['vp-scope-lbl-main'].forEach(id=>{const e=document.getElementById(id);if(e)e.textContent='· '+sk.label;});
   const cur=vpAggByAccount(vpEntries(sk.keys));
   const prev=vpAggByAccount(vpEntries(sk.prevKeys));
   // cantidad de VENTAS (operaciones únicas) por cuenta
@@ -9097,37 +9133,34 @@ function renderVpScopeBlocks(){
   vpEntries(sk.keys).forEach(v=>{if(ventasCta[v.cuenta])ventasCta[v.cuenta].add(vpGrupoKey(v));});
   const baEl=document.getElementById('vp-by-account');
   if(baEl){
+    const pctOf=o=>pctGananciaVP(o.ganancia,o.costo,o.gest);
     const accs=[...VP_ACCTS].sort((a,b)=>cur[b].ganancia-cur[a].ganancia);
     const maxG=Math.max(1,...VP_ACCTS.map(a=>Math.abs(cur[a].ganancia)));
-    baEl.innerHTML=accs.map(a=>{
-      const c=cur[a],p=prev[a]||{neto:0,qty:0,ganancia:0};
-      const w=Math.max(2,Math.abs(c.ganancia)/maxG*100);
-      const dg=c.ganancia-(p.ganancia||0);
-      const deltaTxt=(p.ganancia||0)!==0?`<span class="db ${dg>=0?'up':'dn'}">${dg>=0?'▲':'▼'} ${fmt(Math.abs(dg))}</span>`:(c.ganancia>0?'<span class="db up">nuevo</span>':'');
-      return`<div style="margin-bottom:12px">
-        <div style="display:flex;justify-content:space-between;font-size:.66rem;margin-bottom:4px"><span><strong>${a}</strong> · ${ventasCta[a].size} venta${ventasCta[a].size!==1?'s':''} · ${c.qty} u. · neto ${fmt(c.neto)}</span><span style="font-family:'Syne',sans-serif;font-weight:800;color:${c.ganancia>=0?'var(--green)':'var(--red)'}">${fmt(c.ganancia)} ${deltaTxt}</span></div>
-        <div style="height:11px;border-radius:6px;background:var(--surface2);overflow:hidden"><div style="height:100%;width:${c.ganancia>0?w:0}%;background:linear-gradient(90deg,#22c55e,#4ade80);border-radius:6px"></div></div>
-      </div>`;
-    }).join('')+`<div style="font-size:.6rem;color:var(--muted);margin-top:8px">Ganancia neta en $ (neto − costo) · mayor a menor · Δ vs ${sk.prevLabel}</div>`;
-  }
-  const profEl=document.getElementById('vp-profit');
-  if(profEl){
-    const pctOf=o=>pctGananciaVP(o.ganancia,o.costo,o.gest);
-    const rows=VP_ACCTS.map(a=>{
-      const c=cur[a],p=prev[a]||{costo:0,ganancia:0};
+    const fila=(nombre,c,p,nV,general)=>{
       const cp=pctOf(c),pp=pctOf(p);
-      const delta=(cp!==null&&pp!==null)?`<span class="db ${cp>=pp?'up':'dn'}">${cp>=pp?'▲':'▼'} ${Math.abs(cp-pp).toFixed(1)}pts</span>`:'';
-      const val=cp!==null?`${cp>=0?'+':''}${cp.toFixed(1)}%`:'—';
-      return`<div class="fin-field"><div class="fin-left"><span class="fin-label">${a}</span><span style="font-size:.6rem;color:var(--muted)">${c.costo>0?'gan. '+fmt(c.ganancia):'sin costo'}</span></div><div style="display:flex;align-items:center;gap:6px"><span style="font-family:'Syne',sans-serif;font-weight:800;color:${pctColor(cp)}">${val}</span>${delta}</div></div>`;
-    }).join('');
-    const tot={costo:0,ganancia:0,gest:0},ptot={costo:0,ganancia:0,gest:0};
-    VP_ACCTS.forEach(a=>{tot.costo+=cur[a].costo;tot.ganancia+=cur[a].ganancia;tot.gest+=cur[a].gest||0;ptot.costo+=(prev[a]||{costo:0}).costo;ptot.ganancia+=(prev[a]||{ganancia:0}).ganancia;ptot.gest+=(prev[a]||{gest:0}).gest||0;});
-    const gp=pctGananciaVP(tot.ganancia,tot.costo,tot.gest);
-    const gpp=pctGananciaVP(ptot.ganancia,ptot.costo,ptot.gest);
-    const gdelta=(gp!==null&&gpp!==null)?`<span class="db ${gp>=gpp?'up':'dn'}">${gp>=gpp?'▲':'▼'} ${Math.abs(gp-gpp).toFixed(1)}pts</span>`:'';
-    profEl.innerHTML=`<div class="arqueo-section" style="padding:14px">${rows}
-      <div class="fin-field" style="border-top:2px solid var(--accent);margin-top:6px;padding-top:10px"><div class="fin-left"><span class="fin-label" style="color:var(--accent)">GENERAL (ponderado)</span></div><div style="display:flex;align-items:center;gap:6px"><span style="font-family:'Syne',sans-serif;font-weight:800;color:${pctColor(gp)}">${gp!==null?(gp>=0?'+':'')+gp.toFixed(1)+'%':'—'}</span>${gdelta}</div></div>
-      <div style="font-size:.6rem;color:var(--muted);margin-top:8px">Ponderado por lo vendido · vs ${sk.prevLabel}</div></div>`;
+      const dg=c.ganancia-(p.ganancia||0);
+      const dGan=(p.ganancia||0)!==0?`<span class="db ${dg>=0?'up':'dn'}">${dg>=0?'▲':'▼'} ${fmt(Math.abs(dg))}</span>`:(c.ganancia>0?'<span class="db up">nuevo</span>':'');
+      const dPct=(cp!==null&&pp!==null)?`<span class="db ${cp>=pp?'up':'dn'}">${cp>=pp?'▲':'▼'} ${Math.abs(cp-pp).toFixed(1)}pts</span>`:'';
+      const val=cp!==null?`${cp>=0?'+':''}${cp.toFixed(1)}%`:(c.costo>0?'—':'sin costo');
+      const w=Math.max(2,Math.abs(c.ganancia)/maxG*100);
+      return`<div style="padding:12px 0;${general?'border-top:2px solid var(--accent);margin-top:4px':'border-bottom:1px solid var(--border)'}">
+        <div style="display:flex;justify-content:space-between;align-items:baseline;gap:8px;flex-wrap:wrap">
+          <strong style="font-size:.82rem;${general?'color:var(--accent)':''}">${nombre}</strong>
+          <span style="display:flex;align-items:baseline;gap:8px;flex-wrap:wrap">
+            <span style="font-family:'Syne',sans-serif;font-weight:800;font-size:1rem;color:${c.ganancia>=0?'var(--green)':'var(--red)'}">${fmt(c.ganancia)}</span>${dGan}
+            <span style="font-family:'Syne',sans-serif;font-weight:800;font-size:.9rem;color:${pctColor(cp)}">${val}</span>${dPct}
+          </span>
+        </div>
+        <div style="font-size:.66rem;color:var(--muted);margin:3px 0 6px">${nV} venta${nV!==1?'s':''} · ${c.qty} u. · facturado ${fmt(c.total)} · neto ${fmt(c.neto)}</div>
+        ${general?'':`<div style="height:8px;border-radius:6px;background:var(--surface2);overflow:hidden"><div style="height:100%;width:${c.ganancia>0?w:0}%;background:linear-gradient(90deg,#22c55e,#4ade80);border-radius:6px"></div></div>`}
+      </div>`;
+    };
+    const sum=o=>{const t={qty:0,neto:0,total:0,costo:0,gest:0,ganancia:0};VP_ACCTS.forEach(a=>{const x=o[a]||{};for(const k in t)t[k]+=x[k]||0;});return t;};
+    const nTot=VP_ACCTS.reduce((s,a)=>s+ventasCta[a].size,0);
+    baEl.innerHTML=`<div class="arqueo-section" style="padding:6px 14px 12px">`
+      +accs.map(a=>fila(a,cur[a],prev[a]||{},ventasCta[a].size,false)).join('')
+      +fila('TOTAL (ponderado)',sum(cur),sum(prev),nTot,true)
+      +`<div style="font-size:.6rem;color:var(--muted);margin-top:4px">Ganancia neta en $ (neto − costo) y % de ganancia · mayor a menor · Δ vs ${sk.prevLabel}</div></div>`;
   }
 }
 let vpRankMode='roi';
@@ -9342,6 +9375,10 @@ function _vpRankDays(){
   const now=new Date();const t0=new Date(now.getFullYear(),now.getMonth(),now.getDate());
   const elapsed=Math.max(1,Math.floor((t0-PED_HIST_START)/86400000)+1);
   if(vpPeriod==='dia')return 1;
+  if(vpPeriod==='semana'){
+    const[by,bm,bd]=vpKey().split('_');const lun=new Date(+by,+bm-1,+bd);lun.setDate(lun.getDate()-((lun.getDay()+6)%7));
+    return Math.max(1,Math.min(7,Math.floor((t0-lun)/86400000)+1));
+  }
   if(vpPeriod==='7d')return Math.min(7,elapsed);
   if(vpPeriod==='15d')return Math.min(15,elapsed);
   if(vpPeriod==='30d')return Math.min(30,elapsed);
@@ -14958,6 +14995,13 @@ function renderMetReputacion(){
   el.innerHTML=`<div class="chart-box">${filas}
     <div style="margin-top:8px;font-size:.6rem;color:var(--muted)">Los tres porcentajes son los que mira ML para darte el nivel, sobre los últimos 60 días. Las demoras y las cancelaciones dan 0 porque de los envíos se encarga Full.</div>
   </div>`;
+}
+// Baja a una sección de Métricas desde el índice de arriba: busca el título (.stitle) de esa sección.
+function metIr(id){
+  const el=document.getElementById(id);if(!el)return;
+  let t=el.classList.contains('stitle')?el:(el.closest('.chart-box')||el);
+  if(!t.classList.contains('stitle')){let x=t.previousElementSibling;while(x&&!x.classList.contains('stitle'))x=x.previousElementSibling;if(x)t=x;}
+  t.scrollIntoView({behavior:'smooth',block:'start'});
 }
 function renderMetricas(){
   _syncMetFieldBtns(); // deja los botones prendidos/apagados según las métricas activas
