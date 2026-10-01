@@ -2420,7 +2420,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='21.13';
+const APP_VERSION='21.14';
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
 // muestre la versión y la fecha de actualización y que tenga un desplegable predeterminado cerrado".
 // Y el mismo día: "que ponga fecha de cada modificación y haya una barrita para scrollear y que
@@ -2431,6 +2431,7 @@ const APP_VERSION='21.13';
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'21.14',f:'01/10/2026',h:'00:04',c:[{n:1,t:'Inicio: la tarjeta de ventas tiene flechas ‹ › para ver otro día (ayer, anteayer…). Abajo compara contra el día anterior al elegido, y al tocarla abre Ventas en ese día.'}]},
   {v:'21.13',f:'01/10/2026',h:'21:10',c:[{n:1,t:'Ventas: el período va ARRIBA de todo, con flechas ‹ › para pasar al día, semana, mes o año anterior o siguiente. Hay un período nuevo: Semana (lunes a domingo).'},{n:1,t:'Ventas: las cuatro cuentas van en un solo bloque, cada una con ventas, unidades, facturado, ganancia y % juntos (antes eran dos bloques), y un TOTAL abajo.'},{n:1,t:'Métricas: arriba hay un índice; cada botón baja derecho a su sección (Robot de precios, Origen, Rubros, etc.).'},{n:1,t:'Arqueo: las tarjetas y el patrimonio total dicen US$ para que se lea que son dólares. El número es el mismo.'},{n:1,t:'Las tarjetas de números de todas las pantallas tienen el mismo tamaño de letra, relleno y borde.'}]},
   {v:'21.12',f:'30/09/2026',h:'22:00',c:[{n:1,t:'El % de ganancia vuelve a tener los niveles de arriba: 🔴 Bajo · 🟠 Justo · 🟢 Bien · 🩵 Bueno (45%) · 🔵 Excelente (70%) · 🟣 Estrella (130%) · 💎 JOYA (200%). El número no cambia.'}]},
   {v:'21.11',f:'30/09/2026',h:'19:47',c:[{n:1,t:'Pedidos → Paraguay: lo que pagaste, lo que sale reponerlo hoy y el máximo que conviene pagar van en una sola línea, en la misma unidad (US$ puesto). El de hoy va en verde si entra en el máximo y en rojo si se pasa. El detalle de cada número, al tocarlo.'}]},
@@ -8545,6 +8546,8 @@ function initVentaProd(){
   // Al entrar a la página SIEMPRE arrancar en "Día = hoy" (aunque antes se haya dejado en otro período).
   vpPeriod='dia';
   vpDate=todayStr();
+  // Si se llegó desde la tarjeta de Inicio con otro día elegido, abre en ese día (una sola vez).
+  if(_vpIrDia){vpDate=_vpIrDia;_vpIrDia=null;}
   // día
   const dEl=document.getElementById('vp-date');if(dEl)dEl.value=vpDate;
   // mes
@@ -15913,14 +15916,25 @@ function _homeDiaTot(k){
   let ult=0;ents.forEach(v=>{const t=Number(v.ts)||0;if(t>ult)ult=t;});
   const gan=neto-costo;return {u,bruto,gan,ult,pct:pctGananciaVP(gan,costo,gest),ventas:new Set(ents.map(vpGrupoKey)).size};
 }
+// FLECHAS PARA ELEGIR EL DÍA (01/10/2026, pedido suyo: "se puede poner unas flechitas para elegir el día?").
+// _homeHoyOff = cuántos días para atrás (0 = hoy, nunca para adelante). Al tocar la tarjeta, Ventas abre en
+// ESE día (_vpIrDia, lo consume initVentaProd una vez).
+let _homeHoyOff=0,_vpIrDia=null;
+function homeHoyMover(d,ev){if(ev)ev.stopPropagation();_homeHoyOff=Math.max(0,_homeHoyOff+d);renderHomeHoy();}
+function homeHoyIr(){if(_homeHoyOff>0){const x=new Date();x.setDate(x.getDate()-_homeHoyOff);_vpIrDia=dateToKey(x).replace(/_/g,'-');}goPage('ventaprod');}
 function renderHomeHoy(){
   const el=document.getElementById('home-hoy');if(!el||!state.ventaprod)return;
-  const hoy=new Date();const h=_homeDiaTot(dateToKey(hoy));
+  const hoy=new Date();hoy.setDate(hoy.getDate()-_homeHoyOff);const h=_homeDiaTot(dateToKey(hoy));
   const ay=new Date(hoy);ay.setDate(ay.getDate()-1);const a=_homeDiaTot(dateToKey(ay));
+  const p2=n=>String(n).padStart(2,'0');
+  const dias=['domingo','lunes','martes','miércoles','jueves','viernes','sábado'];
+  const titulo=_homeHoyOff===0?'Ventas de hoy':_homeHoyOff===1?'Ventas de ayer':`Ventas del ${dias[hoy.getDay()]} ${p2(hoy.getDate())}/${p2(hoy.getMonth()+1)}`;
+  const antLbl=_homeHoyOff===0?'ayer':'el día anterior';
+  const flecha=(d,txt,off)=>`<button onclick="homeHoyMover(${d},event)" ${off?'disabled':''} style="background:transparent;border:1px solid var(--border2);color:${off?'var(--border2)':'var(--text)'};border-radius:8px;min-width:34px;height:30px;font-size:1.05rem;line-height:1;cursor:${off?'default':'pointer'}">${txt}</button>`;
   const pctTxt=h.pct===null||!isFinite(h.pct)?'—':(h.pct>=0?'+':'')+h.pct.toFixed(0)+'%';
-  el.innerHTML=`<div onclick="goPage('ventaprod')" style="cursor:pointer;position:relative;overflow:hidden;background:linear-gradient(135deg,rgba(34,197,94,.16),rgba(34,197,94,.03) 55%,var(--surface));border:1px solid rgba(34,197,94,.45);border-radius:20px;padding:20px 22px 16px;margin:4px auto 18px;max-width:min(760px,calc(100vw - 32px));box-shadow:0 6px 28px rgba(34,197,94,.12)">
+  el.innerHTML=`<div onclick="homeHoyIr()" style="cursor:pointer;position:relative;overflow:hidden;background:linear-gradient(135deg,rgba(34,197,94,.16),rgba(34,197,94,.03) 55%,var(--surface));border:1px solid rgba(34,197,94,.45);border-radius:20px;padding:20px 22px 16px;margin:4px auto 18px;max-width:min(760px,calc(100vw - 32px));box-shadow:0 6px 28px rgba(34,197,94,.12)">
     <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap;margin-bottom:10px">
-      <span style="font-size:.72rem;text-transform:uppercase;letter-spacing:.16em;color:var(--green);font-weight:700">🏷️ Ventas de hoy</span>
+      <span style="display:flex;align-items:center;gap:8px">${flecha(1,'‹',false)}<span style="font-size:.72rem;text-transform:uppercase;letter-spacing:.16em;color:var(--green);font-weight:700">🏷️ ${titulo}</span>${flecha(-1,'›',_homeHoyOff===0)}</span>
       <span style="font-size:.7rem;color:var(--muted);border:1px solid var(--border2);border-radius:999px;padding:3px 10px">ver ventas ›</span>
     </div>
     <div style="display:flex;flex-wrap:wrap;gap:10px 34px;align-items:flex-end">
@@ -15929,7 +15943,7 @@ function renderHomeHoy(){
     </div>
     <div style="display:flex;align-items:center;gap:8px 14px;flex-wrap:wrap;margin-top:14px;padding-top:10px;border-top:1px solid rgba(34,197,94,.2);font-size:.72rem;color:var(--muted)">
       ${h.ult?`<span>última venta <b style="color:var(--text)">${new Date(h.ult).toLocaleTimeString('es-AR',{hour:'2-digit',minute:'2-digit',hour12:false})}</b> ·</span>`:''}
-      <span>ayer: <b style="color:var(--text)">${fmt(a.bruto)}</b> · ganancia ${fmt(a.gan)} · ${a.ventas} venta${a.ventas===1?'':'s'}</span>
+      <span>${antLbl}: <b style="color:var(--text)">${fmt(a.bruto)}</b> · ganancia ${fmt(a.gan)} · ${a.ventas} venta${a.ventas===1?'':'s'}</span>
     </div>
   </div>`;
 }
