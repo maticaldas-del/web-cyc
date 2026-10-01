@@ -6143,7 +6143,9 @@ async function correrCandidatos(db, products, labels, accounts, soloPrueba, prue
       // un vistazo. Sólo https: una imagen http adentro del panel la bloquea el navegador.
       { const pic = Array.isArray(prod.pictures) && prod.pictures[0];
         const u = String((pic && (pic.secure_url || pic.url)) || '').replace(/^http:\/\//, 'https://');
-        mlFoto = /^https:\/\/[^/]+\.mlstatic\.com\//.test(u) ? u : ''; }
+        // El dominio se mira con URL(): el patrón suelto aceptaba `https://otro.com?.mlstatic.com/x`.
+        let _h = ''; try { _h = new URL(u).hostname.toLowerCase(); } catch { _h = ''; }
+        mlFoto = /^https:\/\//.test(u) && (_h === 'mlstatic.com' || _h.endsWith('.mlstatic.com')) ? u : ''; }
       // EL TÍTULO SE IMPRIME SIEMPRE, ANTES DE PEDIR LOS VENDEDORES. Es la prueba de con qué lo
       // emparejó: si el paso siguiente falla, sin esto no quedaría registro de qué encontró y no
       // se podría saber si el emparejado era bueno.
@@ -13978,9 +13980,17 @@ async function main() {
         // Poner en CERO no puede cargar nada equivocado: si la palabra agarra varios (el caso real
         // del 01/10, dos fichas "Blue Iconic", una duplicada y descartada), se ponen en cero todos
         // los que tengan unidades cargadas. Subir sigue exigiendo un solo candidato.
+        // Pero SÓLO cuando son el mismo producto repetido (mismo nombre): si la palabra agarra
+        // productos distintos (`sony=0` con dos Sony cargados), se frena igual que al subir —
+        // sacar del pedido el que no era también es escribir en el producto equivocado.
         if (hits.length > 1 && p.u === 0 && !p.baja) {
-          for (const [hid, hc] of hits) { const a = Number(hc.pedirU) || 0; if (a > 0) cambios.push({ id: hid, c: hc, antes: a, u: 0, baja: false }); }
-          continue;
+          const conU = hits.filter(([, hc]) => (Number(hc.pedirU) || 0) > 0);
+          const nombres = new Set(hits.map(([, hc]) => nrmP(hc.nombre)));
+          if (nombres.size === 1) {
+            if (!conU.length) console.log(`  "${p.busca}" → ninguno de los ${hits.length} tenía unidades cargadas: no hay nada que sacar`);
+            for (const [hid, hc] of conU) cambios.push({ id: hid, c: hc, antes: Number(hc.pedirU) || 0, u: 0, baja: false });
+            continue;
+          }
         }
         if (hits.length > 1) { problemas.push(`"${p.busca}" → agarra ${hits.length}: ${hits.map(([, c]) => c.nombre).join(' | ')}. Poné una palabra más precisa.`); continue; }
         const [id, c] = hits[0];
@@ -14001,6 +14011,12 @@ async function main() {
         if (puede && p.u > antes) { problemas.push(`"${p.busca}" → ${c.nombre}: NO se puede pedir, ${puede}`); continue; }
         cambios.push({ id, c, antes, u: p.u, baja: !!p.baja });
       }
+      // El mismo candidato nombrado dos veces (`blue=0;blue iconic armaf=2`): con valores distintos
+      // no se adivina cuál vale; con el mismo valor queda uno solo.
+      { const vistos = new Map();
+        for (const x of cambios) { const y = vistos.get(x.id); if (!y) { vistos.set(x.id, x); continue; }
+          if (y.u !== x.u || y.baja !== x.baja) problemas.push(`${x.c.nombre} → lo nombraste dos veces con valores distintos (${y.u} y ${x.u}). Dejá uno solo.`); }
+        cambios.splice(0, cambios.length, ...vistos.values()); }
       // SI ALGO NO SE ENTENDIÓ, NO SE ESCRIBE NADA. Un pedido cargado a medias es peor que uno sin
       // cargar: el total de la pantalla queda bien y le falta un renglón, que es el error que no
       // se ve. O entra todo o no entra nada.
@@ -31426,6 +31442,11 @@ async function main() {
         console.log('✓ Listo. El panel lo vuelve a calcular.');
         return;
       }
+      // DESDE v21.26 (01/10/2026) LA WEB YA NO MIRA `cyc/pausado_precio`: él sacó "Pausados por
+      // precio" entero (*"si no da no lo compro"*). Pausar acá borraba el renglón y la web lo volvía
+      // a crear, diciendo "sale de Pedidos" sin que fuera cierto. Ya no escribe.
+      console.log(`⛔ ${p.name}: pausar por precio no tiene efecto desde v21.26 (lo sacaste del panel). No escribo nada. Si no lo querés comprar, mandalo a la papelera de Pedidos.`);
+      return;
       const coll = String(p.origen || '') === 'py' ? 'pedidos_py' : 'pedidos';
       const peds = (await db.get('cyc/' + coll)) || {};
       const pedE = Object.entries(peds).find(([, x]) => x && x.prodId === p.id);
