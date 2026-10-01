@@ -26527,6 +26527,49 @@ async function main() {
       }
       return;
     }
+    // BILLING_PROBE=factarca:<cuenta>;<AAAA_MM>=<facturado>/<notas de crédito>/<n fact>/<n NC>;…;hasta=<AAAA-MM-DD>[;go]
+    // → LOS TOTALES DE ARCA POR MES (01/10/2026, pedido suyo: "cargá adriana ahora"). Sale del archivo de
+    // ARCA → Mis Comprobantes → Emitidos que él baja: ese archivo trae nombres de compradores y NO se sube;
+    // acá llegan sólo los totales del mes, que se sacan en el chat. Va a cyc/fact_arca/<cuenta>/<mes> y el
+    // panel (_facVentana / _facOficial) lo usa como facturado oficial de esos meses en vez de las ventas.
+    // Un mes sin comprobantes se pasa explícito con 0 (si no se pasa, ese mes sigue saliendo de las
+    // ventas). Sin ;go sólo muestra. Después de escribir relee y compara.
+    if (String(process.env.BILLING_PROBE || '').startsWith('factarca')) {
+      const raw = String(process.env.BILLING_PROBE);
+      const partes = raw.slice('factarca'.length).replace(/^[:;]/, '').split(';').map((x) => x.trim()).filter(Boolean);
+      const go = partes.includes('go');
+      const nm = (x) => String(x || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+      const cta = nm(partes[0]);
+      if (!['adriana', 'luciana', 'ayelen', 'matias'].includes(cta)) { console.log(`❌ cuenta "${partes[0] || ''}" no existe (adriana, luciana, ayelen, matias)`); process.exitCode = 1; return; }
+      let hasta = null; const meses = {}; const malos = [];
+      for (const t of partes.slice(1)) {
+        if (t === 'go') continue;
+        const mh = t.match(/^hasta=(\d{4}-\d{2}-\d{2})$/); if (mh) { hasta = mh[1]; continue; }
+        const mm = t.match(/^(\d{4})_(\d{2})=([\d.]+)\/([\d.]+)\/(\d+)\/(\d+)$/);
+        if (!mm || +mm[2] < 1 || +mm[2] > 12) { malos.push(t); continue; }
+        const fac = Number(mm[3]), nc = Number(mm[4]);
+        meses[`${mm[1]}_${mm[2]}`] = { neto: Math.round((fac - nc) * 100) / 100, fac, nc, nFac: +mm[5], nNC: +mm[6] };
+      }
+      if (malos.length || !hasta || !Object.keys(meses).length) {
+        console.log(`❌ no escribo nada: ${malos.length ? 'no entiendo ' + malos.join(' · ') : !hasta ? 'falta hasta=<AAAA-MM-DD>' : 'no hay meses'}`);
+        process.exitCode = 1; return;
+      }
+      const antes = (await db.get('cyc/fact_arca/' + cta)) || {};
+      console.log(`\n📄 ARCA · ${cta} · comprobantes emitidos hasta ${hasta}`);
+      let tot = 0;
+      for (const ym of Object.keys(meses).sort()) {
+        const x = meses[ym]; x.hasta = hasta; tot += x.neto;
+        const a = antes[ym] && antes[ym].neto != null ? ` (había ${money(Math.round(antes[ym].neto))})` : '';
+        console.log(`   ${ym} · ${money(Math.round(x.neto))} = ${x.nFac} facturas ${money(Math.round(x.fac))} − ${x.nNC} notas de crédito ${money(Math.round(x.nc))}${a}`);
+      }
+      console.log(`   TOTAL ${money(Math.round(tot))}`);
+      if (!go) { console.log('\n(prueba: no se escribió nada · agregá ;go)'); return; }
+      await db.patch('cyc/fact_arca/' + cta, meses);
+      const rel = (await db.get('cyc/fact_arca/' + cta)) || {};
+      const mal = Object.keys(meses).filter((ym) => !rel[ym] || Math.abs(Number(rel[ym].neto) - meses[ym].neto) > 0.01);
+      console.log(mal.length ? `⚠️ releído: ${mal.length} mes(es) no quedaron: ${mal.join(', ')}` : `✓ releído: ${Object.keys(meses).length} de ${Object.keys(meses).length} meses guardados`);
+      return;
+    }
     if (String(process.env.BILLING_PROBE || '') === 'topeh') {
       const hoy = new Date(Date.now() - 3 * 3600e3);
       const y = hoy.getUTCFullYear(), m = hoy.getUTCMonth() + 1;

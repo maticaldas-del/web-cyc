@@ -1982,6 +1982,9 @@ function startApp(){
     state.facturas_desde=d.facturas_desde||{};
     // Facturas emitidas FUERA de ML (entre las cuatro cuentas, a mano), cargadas desde ARCA.
     state.fact_fuera=d.fact_fuera||{};
+    // Totales de ARCA por mes (cyc/fact_arca/<cuenta>/<AAAA_MM> = {neto,fac,nc,nFac,nNC,hasta}), del
+    // archivo de Emitidos que él baja. Manda sobre ventas y facturas de ML en esos meses (01/10/2026).
+    state.fact_arca=d.fact_arca||{};
     // Facturas RECIBIDAS = las compras, según ARCA. Van aparte de cyc/compras (los gastos) a
     // propósito: son un registro para mirar, no entran en la ganancia del mes.
     state.facturas_rec=d.facturas_recibidas||{};
@@ -2420,7 +2423,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='21.14';
+const APP_VERSION='21.15';
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
 // muestre la versión y la fecha de actualización y que tenga un desplegable predeterminado cerrado".
 // Y el mismo día: "que ponga fecha de cada modificación y haya una barrita para scrollear y que
@@ -2431,6 +2434,7 @@ const APP_VERSION='21.14';
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'21.15',f:'01/10/2026',h:'13:12',c:[{n:3,t:'Tope de H y monotributo: lo facturado de los meses que tienen el archivo de ARCA cargado sale de ARCA (facturas menos notas de crédito), no de las ventas. Arranca con Adriana: de enero a julio el panel contaba unos $6,5M de más.'}]},
   {v:'21.14',f:'01/10/2026',h:'00:04',c:[{n:1,t:'Inicio: la tarjeta de ventas tiene flechas ‹ › para ver otro día (ayer, anteayer…). Abajo compara contra el día anterior al elegido, y al tocarla abre Ventas en ese día.'}]},
   {v:'21.13',f:'01/10/2026',h:'21:10',c:[{n:1,t:'Ventas: el período va ARRIBA de todo, con flechas ‹ › para pasar al día, semana, mes o año anterior o siguiente. Hay un período nuevo: Semana (lunes a domingo).'},{n:1,t:'Ventas: las cuatro cuentas van en un solo bloque, cada una con ventas, unidades, facturado, ganancia y % juntos (antes eran dos bloques), y un TOTAL abajo.'},{n:1,t:'Métricas: arriba hay un índice; cada botón baja derecho a su sección (Robot de precios, Origen, Rubros, etc.).'},{n:1,t:'Arqueo: las tarjetas y el patrimonio total dicen US$ para que se lea que son dólares. El número es el mismo.'},{n:1,t:'Las tarjetas de números de todas las pantallas tienen el mismo tamaño de letra, relleno y borde.'}]},
   {v:'21.12',f:'30/09/2026',h:'22:00',c:[{n:1,t:'El % de ganancia vuelve a tener los niveles de arriba: 🔴 Bajo · 🟠 Justo · 🟢 Bien · 🩵 Bueno (45%) · 🔵 Excelente (70%) · 🟣 Estrella (130%) · 💎 JOYA (200%). El número no cambia.'}]},
@@ -15585,6 +15589,20 @@ function _proxCierreARCA(){
 //  · lo facturado FUERA de ML (cyc/fact_fuera, cargado de ARCA → Mis Comprobantes).
 // Las notas de crédito restan. Antes de que la cuenta empezara a facturar por ML, sigue la cuenta
 // de siempre (_facVentana: ventas + canceladas + meses congelados).
+// LO QUE DICE ARCA, MES POR MES (01/10/2026, pedido suyo: "cargá adriana ahora"). Comparado contra el
+// archivo de ARCA de Adriana, de enero a julio el panel contaba ~$6,5M de más (las ventas no son lo
+// facturado: junio no tiene ninguna factura y julio casi el doble) y desde agosto ~$150-200 mil por
+// mes de más (no restaba las notas de crédito). Donde hay total de ARCA, ése es el facturado oficial.
+function _arcaMes(a,ym){
+  const x=(state.fact_arca||{})[a]; const m=x&&x[ym];
+  return m&&m.neto!=null&&isFinite(Number(m.neto))?Number(m.neto):null;
+}
+// Último día cubierto por el archivo de ARCA de esa cuenta (fin del último mes cargado), o null.
+function _arcaFin(a){
+  const ks=Object.keys((state.fact_arca||{})[a]||{}).filter(k=>/^\d{4}_\d{2}$/.test(k)&&_arcaMes(a,k)!=null).sort();
+  if(!ks.length)return null;
+  const [y,m]=ks[ks.length-1].split('_').map(Number); return new Date(y,m,0);
+}
 function _facOficial(ini,hoy){
   const iniK=dateToKey(ini),hoyK=dateToKey(hoy);
   const real={},ofi={};
@@ -15594,7 +15612,16 @@ function _facOficial(ini,hoy){
   const deCta=(o,a)=>{o=o||{};const k=Object.keys(o).find(k=>nrm(k)===nrm(a));return k!=null?o[k]:undefined;};
   MET_ACCTS.forEach(a=>{
     const dIso=deCta(state.facturas_desde,a);
-    const dd=dIso?new Date(String(dIso).slice(0,10)+'T00:00:00'):null;
+    const dd0=dIso?new Date(String(dIso).slice(0,10)+'T00:00:00'):null;
+    // Lo que cubre el archivo de ARCA sale de ARCA (adentro de _facVentana): las facturas de ML y las
+    // ventas sin factura se cuentan recién desde el día siguiente.
+    const fA=_arcaFin(a);
+    const dd=fA&&(!dd0||fA>=dd0)?new Date(fA.getFullYear(),fA.getMonth(),fA.getDate()+1):dd0;
+    let arca=0;
+    if(fA&&fA>=ini){
+      const wA={winStart:ini,winEnd:fA<hoy?fA:hoy};
+      Object.keys((state.fact_arca||{})[a]||{}).forEach(ym=>{const n=_arcaMes(a,ym);if(n!=null)arca+=n*_mesOverlap(ym,wA).frac;});
+    }
     const kOf=f=>{const x=String(f||'').slice(0,10);return /^\d{4}-\d{2}-\d{2}$/.test(x)?x.replace(/-/g,'_'):null;};
     let fac=0,antes=0,nFac=0,nNC=0,sinF=0,fuera=0;
     const corte=dd&&dd>ini?dd:ini;
@@ -15614,12 +15641,13 @@ function _facOficial(ini,hoy){
         const k=kOf(v&&v.fecha);if(!k||k<cK||k>hoyK)continue;sinF+=Number(v.monto)||0;
       }
     }
+    const fAK=fA?dateToKey(fA):null;
     for(const f of Object.values(deCta(state.fact_fuera,a)||{})){
-      const k=kOf(f&&f.fecha);if(!k||k<iniK||k>hoyK)continue;
+      const k=kOf(f&&f.fecha);if(!k||k<iniK||k>hoyK||(fAK&&k<=fAK))continue;
       const m=Number(f.monto)||0;fuera+=/credit|credito|crédito|nota/i.test(String(f.tipo||''))?-m:m;
     }
     real[a]=antes+fac+sinF+fuera;
-    ofi[a]={desde:dd&&dd<=hoy?cK:null,antes,fac,nFac,nNC,sinF,fuera};
+    ofi[a]={desde:dd&&dd<=hoy?cK:null,antes:Math.max(0,antes-arca),arca,arcaHasta:fA&&fA>=ini?dateToKey(fA):null,fac,nFac,nNC,sinF,fuera};
   });
   return {real,ofi};
 }
@@ -15644,10 +15672,13 @@ function parejoDatos(){
 function _ofiTxt(o,fM){
   if(!o)return '';
   const kD=k=>k.slice(8,10)+'/'+k.slice(5,7);
+  const arcaTxt=o.arcaHasta?'📄 '+fM(o.arca)+' según ARCA hasta el '+kD(o.arcaHasta):'';
+  if(o.arcaHasta&&!o.desde){const p=[arcaTxt];if(o.antes)p.push(fM(o.antes)+' de ventas');if(o.fuera)p.push('+ '+fM(o.fuera)+' facturado fuera de ML');return p.join(' · ');}
   if(!o.desde)return 'todo sale de las ventas: esta cuenta todavía no factura por ML'+(o.fuera?' · + '+fM(o.fuera)+' facturado fuera de ML':'');
   const p=[];
+  if(arcaTxt)p.push(arcaTxt);
   if(o.antes)p.push(fM(o.antes)+' de ventas antes del '+kD(o.desde));
-  p.push('✅ '+fM(o.fac)+' en '+o.nFac+' facturas con CAE desde el '+kD(o.desde)+(o.nNC?' ('+o.nNC+' notas de crédito restadas)':''));
+  if(!(arcaTxt&&!o.nFac&&!o.nNC))p.push('✅ '+fM(o.fac)+' en '+o.nFac+' facturas con CAE desde el '+kD(o.desde)+(o.nNC?' ('+o.nNC+' notas de crédito restadas)':''));
   if(o.sinF)p.push('<span style="color:var(--amber)">+ '+fM(o.sinF)+' de ventas sin factura</span>');
   if(o.fuera)p.push('+ '+fM(o.fuera)+' facturado fuera de ML');
   return p.join(' · ');
@@ -15715,6 +15746,8 @@ function _facVentana(win){
     const ov=_mesOverlap(ym,win);if(ov.overlap<=0)return;
     const congelado=ym<FAC_CONGELADO_HASTA; // mes viejo, anterior a "arrancar de 0" en 2026
     MET_ACCTS.forEach(a=>{
+      // Mes con total de ARCA cargado: manda ARCA (ya trae las notas de crédito restadas).
+      const arM=_arcaMes(a,ym); if(arM!=null){acc[a]+=arM*ov.frac;return;}
       const man=state.fact_mes?.[a]?.[ym];
       // MES VIEJO CONGELADO: el número guardado (fact_mes) manda. Ya incluye canceladas.
       // Ignoramos ventas sueltas re-importadas de 2025 para que no tapen la cifra real.
