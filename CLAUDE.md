@@ -608,6 +608,12 @@ el chat y no se sube). La web: `_facVentana` usa `_arcaMes` antes que todo (tope
 facturas de ML y ventas sin factura recién desde el día después de `_arcaFin`. Un mes sin comprobantes va explícito con 0.
 **Él no tiene que pasarlo más**: desde agosto el facturador de ML alcanza; el archivo es una vez por cuenta (por ene-jul).
 Faltan Luciana, Ayelen y Matías. El robot (`topeh`, `catmono`) todavía no lee `fact_arca`.
+**v21.16 (`cyc-v394`) · SE TOMA EL MAYOR ENTRE ARCA Y LAS VENTAS (01/10/2026).** Él: *"NO quiero pasarme de H y menos RI"*.
+v21.15 usaba ARCA en lugar de las ventas y eso MOSTRABA MÁS LUGAR (Adriana facturó $24,1M ene-jul y vendió $30,6M; ML informa
+las ventas a ARCA). Ahora `_facVentana(win,det)` = máximo por cuenta de la ventana ENTERA entre `_facVentanaBase(win,true)` (con
+ARCA) y `(win,false)` (ventas); no mes por mes (junio 0 / julio doble es la misma plata corrida). `_ofiTxt` lo dice en ámbar
+(`usaVentas`). Adriana ene-sep: ARCA $36,7M · ventas+canceladas ~$45M → cuenta ~$45M; al ritmo de 30 d cierra dic ~$67M contra
+H $81,9M. RI recién arriba de K ($126,6M). `MONO_CATS` son los topes viejos (ago-2025): si ARCA los subió, el panel queda del lado seguro.
 **(VIEJO) PARA ELEGIR ÉL, de a una con (a)/(b)** (están en `REV_PENDIENTE`): 1 Inicio con Hoy/Ayer arriba, logo chico, tarjetas en 2 columnas · 2 Rotación en el teléfono como tarjetas (vs 1ª columna fija) · 3 línea del dinero de la ficha como ticket vertical · 4 colores del % (hoy ámbar = JOYA, 7 colores, número y barra no coinciden) → 3 estados · 5 Resumen sin la plata repetida (ganancia y retiro dos veces) · 6 Arqueo abre en Finanzas e Inventario sólo lectura · 7 chip 📬 llegó sólo cuando avisa (volvió / no se entregó) · 8 tarjeta de Paraguay: pagado/hoy/máximo en una línea (el chip de reponer lo pidió él el 18/09) · 9 Ventas: período con ‹ › arriba · 10 Pedidos: urgentes y plata en cada pestaña + recordar pestaña/filtros. Más chicas si sobra tiempo: índice de Métricas o página 🤖 Avisos, sacar "Participación por cuenta", juntar los dos bloques por cuenta de Ventas, "US$" en las tarjetas del Arqueo y fechas dd/mm, escala de letra y tarjetas parejas.
 
 **LOS NIVELES DE ESFUERZO, averiguados el 25/09 con fuentes (code.claude.com/docs/en/model-config y
