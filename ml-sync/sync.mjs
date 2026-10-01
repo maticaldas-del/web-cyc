@@ -6070,6 +6070,7 @@ async function correrCandidatos(db, products, labels, accounts, soloPrueba, prue
     if (consultas >= CAND_MAX_ML) { sinCuenta++; continue; }
     consultas++;
     let cat = null, mlTit = '', mlPrecio = 0, vendedores = 0, mlLink = '', lt = 'gold_special';
+    let mlFoto = '';
     // Contra quién se midió (`precioAIgualar`). Vive ACÁ y no adentro del bloque que lo calcula:
     // se usa también al guardar, más abajo, y declarado adentro tiraba "_pi is not defined" y
     // cortaba la corrida entera (y con ella el paso del saldo de la noche) desde el 22/09.
@@ -6136,6 +6137,13 @@ async function correrCandidatos(db, products, labels, accounts, soloPrueba, prue
       }
       mlTit = String(prod.name || prod.title || '').slice(0, 120);
       mlLink = `https://www.mercadolibre.com.ar/p/${prod.id}`;
+      // LA FOTO DEL CATÁLOGO DE ML (01/10/2026). Lo marcó él con el Blue Iconic: *"tienen el mismo
+      // nombre pero no son nada que ver a simple vista"*. Viene GRATIS en la misma respuesta (no es
+      // una consulta más) y el panel la pone al lado de la de comprasparaguay, para que se vea de
+      // un vistazo. Sólo https: una imagen http adentro del panel la bloquea el navegador.
+      { const pic = Array.isArray(prod.pictures) && prod.pictures[0];
+        const u = String((pic && (pic.secure_url || pic.url)) || '').replace(/^http:\/\//, 'https://');
+        mlFoto = /^https:\/\/[^/]+\.mlstatic\.com\//.test(u) ? u : ''; }
       // EL TÍTULO SE IMPRIME SIEMPRE, ANTES DE PEDIR LOS VENDEDORES. Es la prueba de con qué lo
       // emparejó: si el paso siguiente falla, sin esto no quedaría registro de qué encontró y no
       // se podría saber si el emparejado era bueno.
@@ -6290,6 +6298,7 @@ async function correrCandidatos(db, products, labels, accounts, soloPrueba, prue
     if (!soloPrueba) {
       await db.patch(`cyc/candidatos_py/${id}`, {
         mlTit, mlPrecio: Math.round(mlPrecio), mlMax, mlVendedores: vendedores, mlVendidas, mlVendidasMin, mlComision: Math.round(fee), mlLink, mlPorNombre: porNombre,
+        mlFoto: mlFoto || null,
         mlReparos: (() => { const r = chequeoMismoProducto(c.nombre, mlTit); return r.length ? r : null; })(),
         // CONTRA QUIÉN SE MIDIÓ. Se guarda porque el panel tiene que poder EXPLICAR por qué el
         // margen no sale contra el precio más barato de la ficha: sin esto el renglón se lee como
