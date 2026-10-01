@@ -24502,7 +24502,7 @@ async function main() {
         const volumen = (!volConfiable || quiebreR) ? 0 : (ev.a > ev.de ? Math.min(0, volCrudo) : Math.max(0, volCrudo));
         const evs = ev.ev || {}; const juicio = (evalNuevas.filter((x) => x.id === id).sort((a, b) => b.W - a.W)[0] || {}).res;
         const v = quiebreR ? 'sinstock' : ((juicio || evs.d30 || evs.d15 || evs.d7 || {}).v || '');
-        const reg = { ...base(id, ev, motivo), estado: 'medido', dias: Math.round(L), uA, uD, gD: Math.round(gD), cobrado: Math.round(despV.reduce((a, x) => a + x.neto, 0)), precio: Math.round(precio), volumen: Math.round(volumen),
+        const reg = { ...base(id, ev, motivo), estado: 'medido', dias: Math.round(L), diasX: Math.round(L * 100) / 100, uA, uD, gD: Math.round(gD), cobrado: Math.round(despV.reduce((a, x) => a + x.neto, 0)), precio: Math.round(precio), volumen: Math.round(volumen),
           total: Math.round(precio + volumen), v, quiebre: quiebreR, volSinDato: !volConfiable && !quiebreR, enTotal: SUP_CUENTA.has(motivo) };
         registros.push(reg);
         if (reg.enTotal) atrib.push(reg);
@@ -24584,7 +24584,107 @@ async function main() {
       { const cm = {}; for (const x of registros) cm[x.motivo] = (cm[x.motivo] || 0) + 1; console.log(`Motivos: ${Object.entries(cm).map(([k, n]) => k + ' ' + n).join(' · ')}`); }
       for (const x of resumen.items.slice(0, 15)) console.log(`  ${x.total >= 0 ? '+' : ''}${$s(x.total)} · ${x.nom} (${x.cuenta}) ${$s(x.de)}→${$s(x.a)} · ${x.dias} d · ${x.uA}→${x.uD} u. · precio ${$s(x.precio)} · volumen ${$s(x.volumen)}${x.quiebre ? ' · sin stock' : ''}`);
       console.log('');
-      if (!MANDAR) { console.log('\nPRUEBA: no se guardó nada. Con ":go" guarda y avisa.'); return; }
+      const VOLVER_DIAS = 14, VOLVER_MIN_PERDIDA = 1000, VOLVER_MAX = 5;
+      const revertidos = new Map(), noVolvio = new Map(), fallosV = [];
+      const VOLVER_MAX_EDAD = 60; // días: volver a un precio de hace meses no es "seguro" (revisión del 01/10)
+      const correrVolver = async () => {
+      try {
+        const memR = sup.revertido || {};
+        const pisoV = Number(cfgSup.minPct) > 0 ? Number(cfgSup.minPct) : 30;
+        const autoOn = String(cfgSup.autoPrecios || '').toLowerCase() !== 'off';
+        const candV = atrib.filter((x) => x.estado === 'medido' && ['subir', 'bajar', 'prueba'].includes(x.motivo)
+          && x.total <= -VOLVER_MIN_PERDIDA && !(memR[x.id] && (memR[x.id].ok || (ahora - (Number(memR[x.id].ts) || 0)) < 864e5)))
+          .sort((a, b) => a.total - b.total);
+        const tokV = {};
+        let hechosV = 0;
+        for (const x of candV) {
+          const no = (m) => { noVolvio.set(x.id, m); console.log(`   ↩️ no vuelvo ${x.nom} (${x.cuenta}): ${m}`); };
+          if ((x.diasX ?? x.dias) < VOLVER_DIAS) { no(`lleva ${x.dias} d medido, espero a los ${VOLVER_DIAS}`); continue; }
+          if (x.quiebre || x.volSinDato) { no(x.quiebre ? 'estuvo sin stock en el medio: la pérdida puede ser el quiebre, no el precio' : 'no se miró el stock todo el tiempo: no sé si la pérdida es por el precio'); continue; }
+          if ((porMlaEv[x.mla] || []).some((o) => o.ts > x.ts + 60e3)) { no('después tuvo otro cambio de precio'); continue; }
+          if (!autoOn) { no('los precios automáticos están apagados'); continue; }
+          if (ahora - (Number(x.ts) || 0) > VOLVER_MAX_EDAD * 864e5) { no(`el cambio tiene más de ${VOLVER_MAX_EDAD} días: volver a un precio tan viejo lo decidís vos`); continue; }
+          // Volver a subir cruzando los $33.000 lo frena frenosSuba en $32.999 (un precio que nunca
+          // se midió): no se hace a medias, se pregunta.
+          if (x.de > x.a && x.a < UMBRAL_ENVIO_GRATIS && x.de >= UMBRAL_ENVIO_GRATIS) { no('volver cruza los $33.000 para arriba: eso lo decidís vos'); continue; }
+          if (x.de < x.a && !(parseFloat(fin.tipo_cambio) > 0)) { no('no está cargado el dólar: no mido el margen de bajar con un dólar inventado'); continue; }
+          if (!MANDAR) { no(`(prueba) volvería de ${$s(x.a)} a ${$s(x.de)}`); continue; }
+          if (hechosV >= VOLVER_MAX) { no(`tope de ${VOLVER_MAX} por noche, sigue mañana`); continue; }
+          const sube = x.de > x.a;
+          if (sube && x.de > Math.floor(x.a * 1.25)) { no('volver pide subir más de 25% de una: eso lo decidís vos'); continue; }
+          let ns; try { ns = await db.get('cyc/nosubir/' + x.mla); } catch { no('no pude leer si está liquidando'); continue; }
+          if (ns) { no('está marcada liquidando'); continue; }
+          const cta = x.cuenta;
+          if (!tokV[cta]) {
+            try {
+              const acc = await db.get('mlapi/tokens/' + cta);
+              const t = await mlRefresh(ML_CLIENT_ID, ML_CLIENT_SECRET, acc.refresh_token);
+              await db.patch('mlapi/tokens/' + cta, { refresh_token: t.refresh_token, updated_ts: Date.now() });
+              tokV[cta] = t.access_token;
+            } catch { tokV[cta] = null; }
+          }
+          const tk = tokV[cta];
+          if (!tk) { no('sin token de la cuenta'); continue; }
+          let b; try { b = await mlGet(`/items/${x.mla}?attributes=id,price,listing_type_id,category_id,site_id,variations,status`, tk); } catch { b = null; }
+          if (!b || !(b.price > 0)) { no('ML no devolvió la publicación'); continue; }
+          if ((b.variations || []).length) { no('tiene variantes: se hace a mano'); continue; }
+          if (Math.abs(Number(b.price) - x.a) > 10) { no(`hoy está en ${$s(b.price)}, no en el precio del cambio (${$s(x.a)})`); continue; }
+          let mgV = null;
+          if (!sube) {
+            const costo = costoDe(x.mla);
+            let cuo = null; try { const cq = (await db.get('cyc/mlcuotas/' + x.mla)) || {}; cuo = cuotaPremiumDe({ [x.mla]: cq.pct != null ? cq : undefined }, x.mla, b.listing_type_id); } catch { cuo = null; }
+            let com = null;
+            try { const d = await mlGet(`/sites/${b.site_id || 'MLA'}/listing_prices?price=${x.de}&listing_type_id=${b.listing_type_id}&category_id=${b.category_id}`, tk);
+              const ob = Array.isArray(d) ? d[0] : d; if (typeof ob?.sale_fee_amount === 'number') com = ob.sale_fee_amount; } catch { com = null; }
+            let env = 0;
+            if (x.de >= UMBRAL_ENVIO_GRATIS) { let r = null; try { r = await envioSegunML(x.mla, tk); } catch { r = null; } env = r && Number(r.envio) > 0 ? Number(r.envio) : null; }
+            if (!(costo > 0) || cuo == null || com == null || env == null) { no('no pude medir el margen al precio de antes (costo, comisión, cuotas o envío)'); continue; }
+            const m = (mlExtraPct(cta) + monoSup) / 100;
+            mgV = (x.de - com - x.de * cuo - env - costo - x.de * m) / (costo + x.de * m + env) * 100;
+            if (mgV - 0.5 < pisoV) { no(`al precio de antes queda en ${mgV.toFixed(1)}%, abajo del piso (${pisoV}%)`); continue; }
+          }
+          try { await db.set('cyc/supervisor/revertido/' + x.id, { ts: ahora, de: x.a, a: x.de, estado: 'intentando' }); }
+          catch { no('no pude anotar que lo voy a volver: no lo toco a ciegas'); continue; }
+          hechosV++;
+          let r, msub = null;
+          if (sube) {
+            msub = await _marcarSubiendo(db, x.mla, { por: 'volver', de: x.a, a: x.de, nom: x.nom, cuenta: cta });
+            if (!msub.ok) { no('no pude anotar la suba antes de hacerla'); continue; }
+            r = await raisePriceTo(x.mla, x.de, tk);
+          } else {
+            // Marca ANTES de bajar (como _marcarSubiendo): si la corrida se corta en el medio, la foto
+            // de mañana no lo toma como una baja a mano.
+            try { await db.set('cyc/autoprecio/' + x.mla, { tipo: 'baja', por: 'volver', estado: 'bajando', de: x.a, a: x.de, ts: Date.now(), nom: x.nom, cuenta: cta, volvioDe: x.id }); }
+            catch { no('no pude anotar la baja antes de hacerla'); try { await db.set('cyc/supervisor/revertido/' + x.id, null); } catch { /* */ } hechosV--; continue; }
+            r = await setPriceTo(x.mla, null, x.de, tk, { margen: Math.floor(mgV * 10) / 10 - 0.5 });
+          }
+          if (!r || !r.ok) {
+            if (msub) await _soltarSubiendo(db, x.mla, msub);
+            try { await db.set('cyc/supervisor/revertido/' + x.id, { ts: ahora, estado: 'fallo', err: String((r && r.err) || '?').slice(0, 120) }); } catch { /* */ }
+            fallosV.push(`${x.nom} (${cta}) ${$s(x.a)}→${$s(x.de)}: ${String((r && r.err) || '?').slice(0, 80)}`);
+            no(`ML no lo dejó: ${String((r && r.err) || '?').slice(0, 80)}`); continue;
+          }
+          if (sube && r.to && r.to < Math.ceil(x.de / 10) * 10 - 10) {
+            fallosV.push(`${x.nom} (${cta}): quedó en ${$s(r.to)} y no en ${$s(x.de)} (un freno lo cortó)`);
+            console.log(`   ⚠️ ${x.nom}: volver quedó a medias en ${$s(r.to)}`);
+          }
+          let quedo = null; try { quedo = Number((await mlGet('/items/' + x.mla + '?attributes=price', tk))?.price) || null; } catch { quedo = null; }
+          const to = r.to || x.de;
+          try { await db.set('cyc/autoprecio/' + x.mla, { tipo: sube ? 'sube' : 'baja', por: 'volver', de: r.from || x.a, a: to, ts: Date.now(), nom: x.nom, cuenta: cta, volvioDe: x.id, ...(mgV != null ? { margen: Math.round(mgV * 10) / 10 } : {}) }); }
+          catch (e) { console.log(`   ⚠️ ${x.nom}: cambié el precio y NO pude anotarlo en autoprecio (${String(e).slice(0, 60)})`); }
+          try { await db.set('cyc/supervisor/revertido/' + x.id, { ts: ahora, ok: true, de: x.a, a: to, quedo, perdia: x.total }); } catch { /* */ }
+          revertidos.set(x.id, { ...x, to, quedo });
+          console.log(`   ↩️ VOLVÍ ${x.nom} (${cta}) ${$s(x.a)} → ${$s(to)} · dejaba ${$s(-x.total)} menos en ${x.dias} d · releído: ${quedo ? $s(quedo) : '?'}`);
+        }
+        console.log(`\n↩️ VOLVER ATRÁS: ${revertidos.size} hecho(s) · ${noVolvio.size} no (con su motivo arriba)`);
+      } catch (e) { console.log(`⚠️ volver atrás: ${String(e).slice(0, 120)} · esta noche no se deshace nada`); }
+      // Lo que quiso volver y no pudo SE AVISA (la pérdida ya se había avisado antes, así que el
+      // aviso de pérdidas no lo vuelve a decir): sin esto fallaba en silencio todas las noches.
+      if (MANDAR && fallosV.length) {
+        try { await sendAlerta(['⚠️ QUISE VOLVER UN PRECIO ATRÁS Y NO SE PUDO', ...fallosV.map((t) => '· ' + t), '', 'Reintento mañana. Si ML no deja escribir, revisá los permisos de la aplicación.'].join('\n')); } catch { /* */ }
+      }
+      };
+      if (!MANDAR) { await correrVolver(); console.log('\nPRUEBA: no se guardó nada. Con ":go" guarda y avisa.'); return; }
 
       // ── 5. GUARDAR ─────────────────────────────────────────────────────────────
       const upd = {};
@@ -24647,83 +24747,7 @@ async function main() {
       // Tope 5 por noche. Memoria `cyc/supervisor/revertido/<id>` (se anota ANTES de tocar ML, así dos
       // corridas no lo hacen dos veces). Queda en `cyc/autoprecio` con `por:'volver'`, que NO suma en
       // "lo que trajo el robot" (es deshacer, no una decisión nueva).
-      const VOLVER_DIAS = 14, VOLVER_MIN_PERDIDA = 1000, VOLVER_MAX = 5;
-      const revertidos = new Map(), noVolvio = new Map();
-      try {
-        const memR = sup.revertido || {};
-        const pisoV = Number(cfgSup.minPct) > 0 ? Number(cfgSup.minPct) : 30;
-        const autoOn = String(cfgSup.autoPrecios || '').toLowerCase() !== 'off';
-        const candV = atrib.filter((x) => x.estado === 'medido' && ['subir', 'bajar', 'prueba'].includes(x.motivo)
-          && x.total <= -VOLVER_MIN_PERDIDA && !(memR[x.id] && (memR[x.id].ok || (ahora - (Number(memR[x.id].ts) || 0)) < 864e5)))
-          .sort((a, b) => a.total - b.total);
-        const tokV = {};
-        let hechosV = 0;
-        for (const x of candV) {
-          const no = (m) => { noVolvio.set(x.id, m); console.log(`   ↩️ no vuelvo ${x.nom} (${x.cuenta}): ${m}`); };
-          if (x.dias < VOLVER_DIAS) { no(`lleva ${x.dias} d medido, espero a los ${VOLVER_DIAS}`); continue; }
-          if (x.quiebre || x.volSinDato) { no(x.quiebre ? 'estuvo sin stock en el medio: la pérdida puede ser el quiebre, no el precio' : 'no se miró el stock todo el tiempo: no sé si la pérdida es por el precio'); continue; }
-          if ((porMlaEv[x.mla] || []).some((o) => o.ts > x.ts + 60e3)) { no('después tuvo otro cambio de precio'); continue; }
-          if (!autoOn) { no('los precios automáticos están apagados'); continue; }
-          if (!MANDAR) { no(`(prueba) volvería de ${$s(x.a)} a ${$s(x.de)}`); continue; }
-          if (hechosV >= VOLVER_MAX) { no(`tope de ${VOLVER_MAX} por noche, sigue mañana`); continue; }
-          const sube = x.de > x.a;
-          if (sube && x.de > Math.floor(x.a * 1.25)) { no('volver pide subir más de 25% de una: eso lo decidís vos'); continue; }
-          let ns; try { ns = await db.get('cyc/nosubir/' + x.mla); } catch { no('no pude leer si está liquidando'); continue; }
-          if (ns) { no('está marcada liquidando'); continue; }
-          const cta = x.cuenta;
-          if (!tokV[cta]) {
-            try {
-              const acc = await db.get('mlapi/tokens/' + cta);
-              const t = await mlRefresh(ML_CLIENT_ID, ML_CLIENT_SECRET, acc.refresh_token);
-              await db.patch('mlapi/tokens/' + cta, { refresh_token: t.refresh_token, updated_ts: Date.now() });
-              tokV[cta] = t.access_token;
-            } catch { tokV[cta] = null; }
-          }
-          const tk = tokV[cta];
-          if (!tk) { no('sin token de la cuenta'); continue; }
-          let b; try { b = await mlGet(`/items/${x.mla}?attributes=id,price,listing_type_id,category_id,site_id,variations,status`, tk); } catch { b = null; }
-          if (!b || !(b.price > 0)) { no('ML no devolvió la publicación'); continue; }
-          if ((b.variations || []).length) { no('tiene variantes: se hace a mano'); continue; }
-          if (Math.abs(Number(b.price) - x.a) > 10) { no(`hoy está en ${$s(b.price)}, no en el precio del cambio (${$s(x.a)})`); continue; }
-          let mgV = null;
-          if (!sube) {
-            const costo = costoDe(x.mla);
-            let cuo = null; try { const cq = (await db.get('cyc/mlcuotas/' + x.mla)) || {}; cuo = cuotaPremiumDe({ [x.mla]: cq.pct != null ? cq : undefined }, x.mla, b.listing_type_id); } catch { cuo = null; }
-            let com = null;
-            try { const d = await mlGet(`/sites/${b.site_id || 'MLA'}/listing_prices?price=${x.de}&listing_type_id=${b.listing_type_id}&category_id=${b.category_id}`, tk);
-              const ob = Array.isArray(d) ? d[0] : d; if (typeof ob?.sale_fee_amount === 'number') com = ob.sale_fee_amount; } catch { com = null; }
-            let env = 0;
-            if (x.de >= UMBRAL_ENVIO_GRATIS) { let r = null; try { r = await envioSegunML(x.mla, tk); } catch { r = null; } env = r && Number(r.envio) > 0 ? Number(r.envio) : null; }
-            if (!(costo > 0) || cuo == null || com == null || env == null) { no('no pude medir el margen al precio de antes (costo, comisión, cuotas o envío)'); continue; }
-            const m = (mlExtraPct(cta) + monoSup) / 100;
-            mgV = (x.de - com - x.de * cuo - env - costo - x.de * m) / (costo + x.de * m + env) * 100;
-            if (mgV - 0.5 < pisoV) { no(`al precio de antes queda en ${mgV.toFixed(1)}%, abajo del piso (${pisoV}%)`); continue; }
-          }
-          try { await db.set('cyc/supervisor/revertido/' + x.id, { ts: ahora, de: x.a, a: x.de, estado: 'intentando' }); }
-          catch { no('no pude anotar que lo voy a volver: no lo toco a ciegas'); continue; }
-          hechosV++;
-          let r, msub = null;
-          if (sube) {
-            msub = await _marcarSubiendo(db, x.mla, { por: 'volver', de: x.a, a: x.de, nom: x.nom, cuenta: cta });
-            if (!msub.ok) { no('no pude anotar la suba antes de hacerla'); continue; }
-            r = await raisePriceTo(x.mla, x.de, tk);
-          } else {
-            r = await setPriceTo(x.mla, null, x.de, tk, { margen: Math.floor(mgV * 10) / 10 - 0.5 });
-          }
-          if (!r || !r.ok) {
-            if (msub) await _soltarSubiendo(db, x.mla, msub);
-            try { await db.set('cyc/supervisor/revertido/' + x.id, { ts: ahora, estado: 'fallo', err: String((r && r.err) || '?').slice(0, 120) }); } catch { /* */ }
-            no(`ML no lo dejó: ${String((r && r.err) || '?').slice(0, 80)}`); continue;
-          }
-          let quedo = null; try { quedo = Number((await mlGet('/items/' + x.mla + '?attributes=price', tk))?.price) || null; } catch { quedo = null; }
-          const to = r.to || x.de;
-          try { await db.set('cyc/autoprecio/' + x.mla, { tipo: sube ? 'sube' : 'baja', por: 'volver', de: r.from || x.a, a: to, ts: Date.now(), nom: x.nom, cuenta: cta, volvioDe: x.id, ...(mgV != null ? { margen: Math.round(mgV * 10) / 10 } : {}) }); } catch { /* */ }
-          try { await db.set('cyc/supervisor/revertido/' + x.id, { ts: ahora, ok: true, de: x.a, a: to, quedo, perdia: x.total }); } catch { /* */ }
-          revertidos.set(x.id, { ...x, to, quedo });
-          console.log(`   ↩️ VOLVÍ ${x.nom} (${cta}) ${$s(x.a)} → ${$s(to)} · dejaba ${$s(-x.total)} menos en ${x.dias} d · releído: ${quedo ? $s(quedo) : '?'}`);
-        }
-        console.log(`\n↩️ VOLVER ATRÁS: ${revertidos.size} hecho(s) · ${noVolvio.size} no (con su motivo arriba)`);
-      } catch (e) { console.log(`⚠️ volver atrás: ${String(e).slice(0, 120)} · esta noche no se deshace nada`); }
+      await correrVolver();
 
       // ── 5b. AVISAR CUANDO LA AUTOMATIZACIÓN HACE PERDER PLATA (23/09/2026) ──────
       // Pedido suyo: "quiero que sea honesto. si se pierde plata que lo avise también". Se avisa:
@@ -24787,7 +24811,7 @@ async function main() {
       for (const x of detalle) lineas.push(renglon(x), '');
       if (MUCHAS) lineas.push(`(las 🟢 no van una por una: son ${(cnt.bueno || 0) + (cnt.igual || 0)})`);
       if (sinJuicio) lineas.push(`(${sinJuicio} más sin juicio: pocas ventas o sin stock)`);
-      if (detalle.some((x) => x.res.v === 'malo')) lineas.push('', 'Los 🔴 no los toco solo: si querés volver al precio de antes, decime cuál.');
+      if (detalle.some((x) => x.res.v === 'malo')) lineas.push('', 'Los 🔴 que pierden seguro los vuelvo solo a los 14 días; los dudosos te los pregunto en el aviso de pérdidas.');
       const ok = await sendAlerta(lineas.join('\n'), { info: true });
       if (ok) {
         const av = {}; for (const x of pendientes) av['eventos/' + x.id + '/av/d' + x.W] = true;
