@@ -26484,6 +26484,49 @@ async function main() {
     // La de siempre (ventas + canceladas, meses viejos congelados) contra la oficial: desde que cada
     // cuenta factura por ML, las FACTURAS con CAE + las ventas sin factura. Misma regla que la tarjeta
     // ⚖️ de Inicio (_facOficial). Solo LEE.
+    // BILLING_PROBE=arcames[:<cuenta>] → LO QUE EL PANEL CUENTA COMO FACTURADO, MES POR MES (01/10/2026).
+    // Para compararlo contra el archivo de ARCA → Mis Comprobantes → Emitidos que él baja a mano (ese
+    // archivo trae nombres de compradores: se compara en el chat, nunca se sube). SOLO LEE e imprime
+    // sólo totales por mes: ventas sin canceladas, canceladas (fact_cancel), meses congelados
+    // (fact_mes), facturas leídas de ML por fecha de emisión (con sus notas de crédito) y sin factura.
+    if (String(process.env.BILLING_PROBE || '').startsWith('arcames')) {
+      const want = String(process.env.BILLING_PROBE).split(':')[1] || '';
+      const nm = (x) => String(x || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '');
+      const vp = (await db.get('cyc/ventaprod')) || {};
+      const factMes = (await db.get('cyc/fact_mes')) || {};
+      const factCancel = (await db.get('cyc/fact_cancel')) || {};
+      const desdeAll = (await db.get('cyc/facturas_desde')) || {};
+      const deCta = (o, a) => { o = o || {}; const k = Object.keys(o).find((k) => nm(k) === a); return k != null ? o[k] : undefined; };
+      const ctas = ['adriana', 'luciana', 'ayelen', 'matias'].filter((a) => !want || nm(want) === a);
+      for (const a of ctas) {
+        const lab = labels.find((l) => nm(l) === a) || a;
+        const facs = (await db.get('cyc/facturas/' + sid(lab))) || {};
+        const sin = (await db.get('cyc/facturas_sin/' + sid(lab))) || {};
+        const M = {};
+        const g = (ym) => (M[ym] = M[ym] || { v: 0, nv: 0, c: 0, fm: 0, f: 0, nf: 0, nc: 0, nnc: 0, s: 0 });
+        for (const [k, d] of Object.entries(vp)) {
+          const ym = k.slice(0, 7).replace('_', '-');
+          if (ym < '2026-01') continue;
+          for (const v of Object.values(d || {})) if (v && nm(v.cuenta) === a && !v.cancelada) { g(ym).v += Number(v.total) || 0; g(ym).nv++; }
+        }
+        for (const [ym, val] of Object.entries(deCta(factCancel, a) || {})) { const y = ym.replace('_', '-'); if (y >= '2026-01') g(y).c += Number(val) || 0; }
+        for (const [ym, val] of Object.entries(deCta(factMes, a) || {})) { const y = ym.replace('_', '-'); if (y >= '2026-01') g(y).fm += Number(val) || 0; }
+        for (const f of Object.values(facs)) {
+          const d = String((f && f.fecha) || '').slice(0, 7); if (!/^\d{4}-\d{2}$/.test(d)) continue;
+          if (/reject|rechaz|cancel|error/i.test(String(f.estado || ''))) continue;
+          const m = Number(f.monto) || 0;
+          if (/credit|credito|crédito|nota/i.test(String(f.tipo || ''))) { g(d).nc += m; g(d).nnc++; } else { g(d).f += m; g(d).nf++; }
+        }
+        for (const v of Object.values(sin)) { const d = String((v && v.fecha) || '').slice(0, 7); if (/^\d{4}-\d{2}$/.test(d)) g(d).s += Number(v.monto) || 0; }
+        console.log(`\n── ${a.toUpperCase()} ── factura por ML desde ${deCta(desdeAll, a) || '(nunca)'}`);
+        console.log('   mes     | ventas sin cancel. | canceladas | congelado | facturas ML (n) | NC (n) | sin factura');
+        for (const ym of Object.keys(M).sort()) {
+          const x = M[ym];
+          console.log(`   ${ym} | ${money(Math.round(x.v))} (${x.nv}) | ${money(Math.round(x.c))} | ${money(Math.round(x.fm))} | ${money(Math.round(x.f))} (${x.nf}) | ${money(Math.round(x.nc))} (${x.nnc}) | ${money(Math.round(x.s))}`);
+        }
+      }
+      return;
+    }
     if (String(process.env.BILLING_PROBE || '') === 'topeh') {
       const hoy = new Date(Date.now() - 3 * 3600e3);
       const y = hoy.getUTCFullYear(), m = hoy.getUTCMonth() + 1;
