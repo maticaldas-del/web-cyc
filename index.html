@@ -2423,7 +2423,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='21.23';
+const APP_VERSION='21.24';
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
 // muestre la versión y la fecha de actualización y que tenga un desplegable predeterminado cerrado".
 // Y el mismo día: "que ponga fecha de cada modificación y haya una barrita para scrollear y que
@@ -2434,6 +2434,7 @@ const APP_VERSION='21.23';
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'21.24',f:'01/10/2026',h:'17:10',c:[{n:2,t:'Pedido de nuevos (Paraguay): si hay dudas de que el producto de ML sea el mismo que el de comprasparaguay (los títulos no coinciden, margen de 80% o más, o un solo vendedor sin Full), sale un cartel rojo "¿Es el mismo producto?" con el motivo. Se puede seguir pidiendo igual.'}]},
   {v:'21.23',f:'01/10/2026',h:'16:40',c:[{n:1,t:'Pedido de productos nuevos (Paraguay): cada producto ahora va en casillas grandes que ocupan todo el ancho — te sale c/u, se vende en ML, ML se queda, vendidas y lo que te queda en %. Letra más grande; los mismos datos de antes.'}]},
   {v:'21.22',f:'01/10/2026',h:'16:10',c:[{n:3,t:'Robot de precios: si un cambio suyo (subir, bajar o prueba) lleva 14 días o más, dejó $1.000 o más de menos y tuvo stock todo el tiempo, vuelve SOLO al precio de antes (nunca abajo del piso, nunca más de +25% de una, sin variantes ni liquidando). Lo que no está seguro te lo pregunta con el motivo.'},{n:1,t:'Puntaje del mes: las flechitas para cambiar de mes van juntas a la izquierda y ya no se corren con el largo del mes.'}]},
   {v:'21.21',f:'01/10/2026',h:'15:40',c:[{n:1,t:'Ventas de hoy (Inicio): las dos flechitas para cambiar de día van juntas a la izquierda y ya no se corren cuando cambia el largo del título.'}]},
@@ -10777,6 +10778,18 @@ function candPreciosPartes(c){
   const A=(h,t)=>`<a href="${h.replace(/"/g,'&quot;')}" target="_blank" rel="noopener" style="color:var(--accent);text-decoration:none;font-weight:600">${t}</a>`;
   const E=[hrefML?A(hrefML,'🔗 verlo en ML'):'<span style="color:var(--amber)">🔗 sin link de ML — el robot lo buscó por nombre</span>',
     hrefPY?A(hrefPY,'🇵🇾 verlo en comprasparaguay'):'<span style="color:var(--muted)">🇵🇾 el chat no dejó el link</span>'];
+  // ── DUDAS DE "¿ES EL MISMO PRODUCTO?", EN ROJO (01/10/2026, eligió la (b)) ─────────────
+  // Lo marcó él con el Armaf Club de Nuit Blue Iconic: entró al pedido medido contra un catálogo
+  // que era OTRO perfume, con 183% de margen. Eligió que SIGA ENTRANDO pero con el aviso en rojo.
+  // Tres señales: lo que el robot vio comparando los dos títulos (`mlReparos`, sale de
+  // `chequeoMismoProducto` en sync.mjs), un margen de 80% o más (cuando el catálogo es otro el
+  // precio de comparación sale altísimo y se ve como un negoción) y un único vendedor sin Full
+  // (no hay con qué comparar ese precio).
+  const D=[];
+  if(Array.isArray(c.mlReparos))c.mlReparos.forEach(x=>D.push(x));
+  if(mMin!=null&&mMin>=80)D.push(`${mMin.toFixed(0)}% es demasiado: cuando el catálogo de ML es OTRO producto el margen sale así`);
+  if(c.mlHayFull===false&&vend<=1&&min)D.push('un solo vendedor y sin Full: ese precio no tiene contra qué compararse');
+  R.dudas=D;
   R.links=E;
   return R;
 }
@@ -10794,7 +10807,8 @@ function candPreciosHTML(c){
     L.push(R.ventas);
     if(R.margenPct!=null)L.push(`contra ${R.margenContra} → <b style="color:${R.margenPct>=25?'var(--green)':'var(--amber)'}">${R.margenPct.toFixed(0)}%</b>`);
   }
-  return L.join(' &nbsp;·&nbsp; ')+'<br>'+R.links.join(' &nbsp;·&nbsp; ');
+  const dud=R.dudas.length?`<br><span style="color:var(--red);font-weight:700">🚨 ¿Es el mismo producto? Abrí los dos links: ${R.dudas.join(' · ')}</span>`:'';
+  return L.join(' &nbsp;·&nbsp; ')+dud+'<br>'+R.links.join(' &nbsp;·&nbsp; ');
 }
 // EL RENGLÓN QUE EXPLICA LO QUE FALTA VA UNA SOLA VEZ, NO EN LOS 17. Repetirlo en cada producto
 // es ruido y a los tres renglones no lo lee nadie; pero no decirlo nunca sería peor, porque él
@@ -11291,7 +11305,7 @@ function pedNuevoFilaHTML(f,maxU,tc){
     caja('📈 te queda',mg!=null?`<b style="font-size:1.25em;color:${mgCol}">${mg.toFixed(0)}%</b>`:'<span style="color:var(--amber)">sin medir</span>',mg!=null?'contra '+R.margenContra:''),
   ].join('');
   const P=candPuedePedir(c);
-  return `<div class="ingreso-item" style="display:block;padding:11px 12px">
+  return `<div class="ingreso-item" style="display:block;padding:11px 12px${R.dudas.length?';border-color:rgba(239,68,68,.55)':''}">
     <div style="display:flex;gap:10px;align-items:flex-start;justify-content:space-between;flex-wrap:wrap;margin-bottom:8px">
       <div style="flex:1;min-width:180px">
         <div style="font-size:.88rem;font-weight:700;line-height:1.3">${c.nombre}</div>
@@ -11311,6 +11325,7 @@ function pedNuevoFilaHTML(f,maxU,tc){
     </div>
     <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:7px">${cajas}</div>
     ${R.full?`<div style="font-size:.74rem;margin-top:7px;line-height:1.5">${R.full}</div>`:''}
+    ${R.dudas.length?`<div style="font-size:.78rem;margin-top:7px;line-height:1.5;padding:7px 10px;border-radius:8px;background:rgba(239,68,68,.1);border:1px solid rgba(239,68,68,.4);color:var(--red)"><b>🚨 ¿Es el mismo producto? Abrí los dos links antes de comprarlo.</b><br>${R.dudas.join(' · ')}</div>`:''}
     ${P.ok?'':`<div style="font-size:.76rem;margin-top:6px"><span style="color:var(--red);font-weight:700">🚫 ${P.motivo}</span> · <a href="#" onclick="event.preventDefault();candSetPedir('${c.id}',0)" style="color:var(--red);font-weight:700">sacarlo del pedido</a></div>`}
     <div style="font-size:.76rem;margin-top:7px">${R.links.join(' &nbsp;·&nbsp; ')}</div>
   </div>`;
