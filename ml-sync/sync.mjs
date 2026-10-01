@@ -2304,7 +2304,9 @@ async function filtrarRescate(db, rr, o) {
     // y la baja para ganar la caja no marca nada: si después el margen cae (un costo que sube) el
     // rescate la subía y devolvía la caja que se acababa de ganar. Se avisa y lo decide él.
     const apB = autoprecio && autoprecio[x.mla];
-    if (apB && apB.tipo === 'baja' && hoyTs - (apB.ts || 0) < 30 * 864e5) {
+    // Excepción: un remate que el robot TERMINÓ porque el stock ya quedó sano (`ritmo:go`, 01/10/2026)
+    // sí se rescata: terminar el remate es justamente para volver a la base.
+    if (apB && apB.tipo === 'baja' && hoyTs - (apB.ts || 0) < 30 * 864e5 && !(Number(apB.remateTerminado) > (Number(apB.ts) || 0))) {
       rescFren.push({ ...x, why: `lo bajé yo el ${fechaR(apB.ts)} (${money(apB.de)} → ${money(apB.a)}${apB.por ? ' · ' + apB.por : ' · para ganar la caja'}) · no lo vuelvo a subir solo antes de 30 días` });
       continue;
     }
@@ -3641,6 +3643,9 @@ async function calcCajaBarata(db, o) {
   } = o || {};
   const links = (await db.get('cyc/mllinks')) || {};
   const invCb = (await db.get('cyc/inventory')) || {};
+  // El ritmo NORMAL (sin remate, sobre días con stock, hasta 365 días: `ritmo:go`). Para decidir si
+  // "sobra" se mide contra éste: con las ventas de 30 días un remate en curso inflaba el ritmo.
+  let rnCb = {}; try { rnCb = (await db.get('cyc/ritmonormal')) || {}; } catch { rnCb = {}; }
   const histCb = (await db.get('cyc/stockhist')) || {};
   const vpCb = (await db.get('cyc/ventaprod')) || {}; setDevLive(vpCb);
   const monoP = parseFloat(((await db.get('cyc/monotributo')) || {}).pct) || 0;
@@ -3681,6 +3686,7 @@ async function calcCajaBarata(db, o) {
     const st = parseInt(invCb[k]) || 0;
     const vend = uProdCtaCb[pid + '__' + cta] || 0;
     if (!(vend > 0) || !(st > 0)) return null;
+    const rn = rnCb[k]; if (rn && Number(rn.pd) > 0) return { st, vend, dias: Math.round(st / Number(rn.pd)), normal: true };
     return { st, vend, dias: Math.round(st / (vend / dias)) };
   };
 
@@ -4772,6 +4778,115 @@ async function restaurarLiquidando(db, todas) {
   }
 }
 // La marca la puso el robot (remate o escalera), no él.
+// ── EL RITMO NORMAL Y EL DIARIO DE CADA PRODUCTO (01/10/2026, eligió la a) ─────────────────────
+// Pedido suyo con las Cartas Españolas: *"el robot debería tomar 365 días, y debería saber qué día hubo
+// stock, precio, si estuvo ganando o perdiendo, qué días estuvo rematando y más cosas"*. Dos piezas:
+//  · EL DIARIO (`mlapi/diario/<AAAA_MM_DD>`): una línea por noche por producto×cuenta (y por color)
+//    con [stock, precio más bajo, caja (g/c/p), rematando (1/0), unidades vendidas ese día, de ésas
+//    en remate]. Vive FUERA de `cyc/` a propósito: la web lee `cyc` entero y 400 días de diario la
+//    harían lenta. Se guarda 400 días.
+//  · EL RITMO NORMAL (`cyc/ritmonormal/<clave>`): ventas que NO fueron de remate ÷ días que hubo
+//    stock y no se estaba rematando, mirando hasta 365 días para atrás. Días con stock: el registro
+//    hora por hora (`cyc/stocklog/cambios`) y el diario; antes de eso no se sabe. Con 30 días
+//    "sabidos" o más es FIRME; si no, completa con los días sin dato (desde la primera venta) y queda
+//    marcado flojo (`f`). Lo usan la salida del remate, la entrada por "sobra", Pedidos y Armar caja.
+function _rnDia(ts) { return new Date(ts - 3 * 3600e3).toISOString().slice(0, 10).replace(/-/g, '_'); }
+function calcRitmoNormal(o) {
+  const { links = {}, inv = {}, vp = {}, nosubir = {}, rescateventa = {}, autoprecio = {}, cambios = {}, diario = {}, precios = {}, hoyTs = Date.now(), DIAS = 365 } = o || {};
+  const sid = (x) => String(x).replace(/[^a-z0-9]/gi, '_');
+  const DMS = 864e5;
+  // Día local de acá: el día D arranca a las 03:00 UTC.
+  const iniDia = (dk) => Date.parse(dk.replace(/_/g, '-') + 'T03:00:00Z');
+  const hoyK = _rnDia(hoyTs), diaK = _rnDia(hoyTs - DMS);
+  const dias = []; for (let i = DIAS; i >= 1; i--) dias.push(_rnDia(hoyTs - i * DMS)); // hasta AYER (días enteros)
+  const dSet = new Set(dias);
+  // Claves y sus publicaciones.
+  const pubsDe = {}, claveDe = {};
+  for (const [mla, e] of Object.entries(links)) {
+    if (!e || !e.prodId || !e.cuenta || e.ignored) continue;
+    const kP = e.prodId + '__' + sid(e.cuenta);
+    (pubsDe[kP] = pubsDe[kP] || []).push(mla);
+    if (e.variant) { const kV = kP + '__v__' + sid(e.variant); (pubsDe[kV] = pubsDe[kV] || []).push(mla); claveDe[mla] = [kP, kV]; }
+    else claveDe[mla] = [kP];
+  }
+  // Rematando HOY: alguna publicación de la clave con marca liquidando.
+  const marcaDesde = {};   // clave → fecha (AAAA_MM_DD) desde que está marcada, la más vieja
+  for (const [mla, d] of Object.entries(nosubir)) {
+    if (!d) continue; const f = String(d.fecha || '').slice(0, 10).replace(/-/g, '_');
+    for (const k of (claveDe[mla] || [])) if (!marcaDesde[k] || (f && f < marcaDesde[k])) marcaDesde[k] = f || '0000_00_00';
+  }
+  const esRemDia = (k, dk) => {
+    const di = diario[dk] && diario[dk][k]; if (di && di[3] === 1) return true;
+    return !!(marcaDesde[k] && marcaDesde[k] <= dk);
+  };
+  // Ventas por clave y día (y cuáles fueron de remate).
+  const ven = {}, primera = {};
+  const add = (k, dk, q, rem) => { const x = ((ven[k] = ven[k] || {})[dk] = ven[k][dk] || { u: 0, r: 0 }); if (rem) x.r += q; else x.u += q; if (!primera[k] || dk < primera[k]) primera[k] = dk; };
+  for (const [dk0, ents] of Object.entries(vp)) {
+    const dk = dk0.slice(0, 10); if (!dSet.has(dk) && dk !== hoyK) continue;
+    for (const [id, v] of Object.entries(ents || {})) {
+      if (!v || v.cancelada || !v.prodId || !v.cuenta) continue;
+      const q = Number(v.qty) || 1, ts = Number(v.ts) || iniDia(dk);
+      const kP = v.prodId + '__' + sid(v.cuenta);
+      const varV = v.variante || ((links[v.mla] || {}).variant) || '';
+      const ks = varV ? [kP, kP + '__v__' + sid(varV)] : [kP];
+      const et = rescateventa[dk + '__' + (v.id || id)];
+      const ns = v.mla && nosubir[v.mla]; const nsF = ns && ns.fecha ? Date.parse(ns.fecha) : NaN;
+      const ap = v.mla && autoprecio[v.mla];
+      const rem = (et && et.estado === 'remate') || (isFinite(nsF) && nsF <= ts)
+        || (ap && ap.tipo === 'baja' && /remate|escalera/.test(String(ap.por || '')) && (Number(ap.ts) || 0) <= ts)
+        || ks.some((k) => esRemDia(k, dk));
+      for (const k of ks) add(k, dk, q, rem);
+    }
+  }
+  // Fracción del día con stock, del registro hora por hora; null = no se miraba.
+  const fracStock = (k, dk) => {
+    const cs = cambios[k]; if (!cs) return null;
+    const arr = Object.entries(cs).map(([t, v]) => [Number(t), Number(v)]).filter(([t]) => t > 0).sort((a, b) => a[0] - b[0]);
+    const t0 = iniDia(dk), t1 = t0 + DMS;
+    if (!arr.length || arr[0][0] > t1) return null;
+    let est = null; for (const [t, v] of arr) if (t <= t0) est = v;
+    let ms = 0, desde = t0, visto = est != null;
+    for (const [t, v] of arr) { if (t <= t0 || t > t1) continue; if (est === 1) ms += t - desde; est = v; desde = t; visto = true; }
+    if (est === 1) ms += t1 - desde;
+    if (!visto) return null;
+    if (arr[0][0] > t0) return null;    // el registro arrancó a mitad de ese día: no se sabe entero
+    return ms / DMS;
+  };
+  const ritmo = {}, hoyDiario = {};
+  for (const [k, mlas] of Object.entries(pubsDe)) {
+    let dG = 0, dU = 0, uG = 0, uU = 0, uR = 0, nR = 0;
+    for (const dk of dias) {
+      const x = (ven[k] || {})[dk] || { u: 0, r: 0 };
+      uR += x.r;
+      if (esRemDia(k, dk)) { nR++; continue; }
+      let fr = fracStock(k, dk);
+      if (fr == null) { const di = diario[dk] && diario[dk][k]; if (di) fr = Number(di[0]) > 0 ? 1 : 0; }
+      if (fr != null && fr === 0 && x.u > 0) fr = 1;   // vendió: había stock (el registro se equivocó)
+      if (fr == null) { if (primera[k] && dk >= primera[k]) { dU += 1; uU += x.u; } continue; }
+      dG += fr; uG += x.u;
+    }
+    let pd = null, f = false;
+    if (dG >= 30) pd = uG / dG;
+    else if (dG + dU >= 7) { pd = (uG + uU) / (dG + dU); f = true; }
+    if (pd != null || uR > 0) ritmo[k] = { pd: pd != null ? Math.round(pd * 1000) / 1000 : null, d: Math.round(dG * 10) / 10, dU, u: uG, uU, uR, rem: nR, f, ts: hoyTs };
+    // La línea del diario.
+    const st = parseInt(inv[k]) || 0;
+    let pMin = null, caja = '';
+    const rangoCaja = { winning: 3, sharing: 2, losing: 1 };
+    for (const m of mlas) {
+      const e = links[m] || {}; if ((e.status || '') !== 'active') continue;
+      const pr = Number((precios[m] || {}).p) || 0; if (pr > 0 && (pMin == null || pr < pMin)) pMin = pr;
+      if ((rangoCaja[e.caja] || 0) > (rangoCaja[{ g: 'winning', c: 'sharing', p: 'losing' }[caja]] || 0)) caja = { winning: 'g', sharing: 'c', losing: 'p' }[e.caja];
+    }
+    // La línea es del día de AYER (entero): la noche corre de madrugada, y el stock/precio/caja de
+    // ahora es el del cierre de ayer.
+    const xh = (ven[k] || {})[diaK] || { u: 0, r: 0 };
+    hoyDiario[k] = [st, pMin || 0, caja, marcaDesde[k] ? 1 : 0, xh.u + xh.r, xh.r];
+  }
+  return { ritmo, hoyDiario, diaK };
+}
+
 const esMarcaRobot = (d) => !!d && /^(remate automático|escalera de remate)/.test(String(d.motivo || ''));
 
 // EL PUNTO DE PARTIDA DEL DISPONIBLE CAMBIÓ MIENTRAS CORRÍA (etapa 4, 30/09/2026). `dispo` y `saldoml`
@@ -13929,6 +14044,66 @@ async function main() {
       const suma = sospechosos.length + sinTitulo.length + limpios.length;
       if (suma !== muertos.length) console.log(`⚠️ NO CIERRA: ${muertos.length} descartados y clasifiqué ${suma}.`);
       console.log('\nPara devolver alguno a la lista: devolvercand (los devuelve TODOS) o el botón del panel.');
+      return;
+    }
+    // BILLING_PROBE=ritmo[:go] → EL DIARIO DE CADA PRODUCTO, EL RITMO NORMAL Y LA SALIDA DEL REMATE
+    // (01/10/2026). Ver `calcRitmoNormal`. Sin `go` sólo muestra. Corre solo cada noche en ml-daily.
+    // LA SALIDA DEL REMATE, eligió la (a): un remate AUTOMÁTICO de algo que vende (no la escalera, no lo
+    // que él marcó a mano) se termina cuando lo que queda alcanza para 30 días de venta NORMAL
+    // (`RN_SANO_DIAS`). Se saca la marca liquidando y el rescate de la noche lo vuelve a la base (25%).
+    // Antes la marca se caía recién en 0 unidades: se remataban también las del mes normal, y si
+    // llegaba una caja antes de quedar en cero no salía nunca.
+    if (/^ritmo(:|$)/.test(String(process.env.BILLING_PROBE || ''))) {
+      const GO = /:go$/.test(String(process.env.BILLING_PROBE));
+      const RN_SANO_DIAS = 30;
+      const ahoraR = Date.now();
+      const [links, inv, vp, nosubir, rescateventa, autoprecio, cambios, precios] = await Promise.all([
+        db.get('cyc/mllinks'), db.get('cyc/inventory'), db.get('cyc/ventaprod'), db.get('cyc/nosubir'),
+        db.get('cyc/rescateventa'), db.get('cyc/autoprecio'), db.get('cyc/stocklog/cambios'), db.get('cyc/supervisor/precios')]);
+      let diario = {};
+      try { diario = (await db.get('mlapi/diario')) || {}; } catch (e) { console.log(`⚠️ no pude leer el diario (${String(e).slice(0, 80)}): sigo sin él`); }
+      const R = calcRitmoNormal({ links: links || {}, inv: inv || {}, vp: vp || {}, nosubir: nosubir || {}, rescateventa: rescateventa || {},
+        autoprecio: autoprecio || {}, cambios: cambios || {}, diario, precios: precios || {}, hoyTs: ahoraR });
+      const rs = Object.values(R.ritmo);
+      console.log(`=== RITMO NORMAL ${GO ? '' : '(PRUEBA — no escribo nada)'} ===`);
+      console.log(`${rs.length} claves · ${rs.filter((x) => x.pd != null && !x.f).length} firmes (30+ días con stock sabidos) · ${rs.filter((x) => x.f).length} flojas · ${rs.filter((x) => x.pd == null).length} sin ritmo · días del diario guardados: ${Object.keys(diario).length}`);
+      // Lo que está rematando, con su ritmo normal (el control que él pidió).
+      const nomP = (k) => { const m = Object.entries(links || {}).find(([, e]) => e && k.startsWith(e.prodId + '__')); return m ? String(m[1].title || m[0]).slice(0, 45) : k; };
+      const sidR = (x) => String(x).replace(/[^a-z0-9]/gi, '_');
+      const salen = [];
+      for (const [mla, d] of Object.entries(nosubir || {})) {
+        if (!d || d.hermanaDe) continue;
+        const e = (links || {})[mla]; if (!e || !e.prodId || !e.cuenta) continue;
+        const kP = e.prodId + '__' + sidR(e.cuenta); const k = e.variant ? kP + '__v__' + sidR(e.variant) : kP;
+        const r = R.ritmo[k] || R.ritmo[kP]; const st = parseInt((inv || {})[k] ?? (inv || {})[kP]) || 0;
+        const auto = /^remate automático/.test(String(d.motivo || ''));
+        let v30 = 0; for (const [dk, ents] of Object.entries(vp || {})) { const ts = Date.parse(dk.slice(0, 10).replace(/_/g, '-')); if (!(ahoraR - ts < 30 * 864e5)) continue; for (const v of Object.values(ents || {})) if (v && !v.cancelada && v.mla && (claveMla(v.mla) === k || claveMla(v.mla) === kP)) v30 += Number(v.qty) || 1; }
+        function claveMla(m) { const x = (links || {})[m]; if (!x || !x.prodId || !x.cuenta) return ''; const b = x.prodId + '__' + sidR(x.cuenta); return x.variant && k !== kP ? b + '__v__' + sidR(x.variant) : b; }
+        const pd = r && r.pd > 0 ? r.pd : null; const diasSt = pd ? Math.round(st / pd) : null;
+        console.log(`  🔒 ${String(e.title || mla).slice(0, 45)} (${e.cuenta}) · ${st} u. · ritmo normal ${pd ? (pd * 30).toFixed(1) + '/mes' : 'sin dato'}${r && r.f ? ' (flojo)' : ''} · ${diasSt != null ? diasSt + ' d de stock normal' : '?'} · vendió ${v30} en 30 d · ${auto ? 'remate del robot' : String(d.motivo || 'a mano').slice(0, 30)}`);
+        if (auto && pd && st > 0 && v30 > 0 && st <= RN_SANO_DIAS * pd) salen.push({ mla, e, st, pd, diasSt });
+      }
+      if (salen.length) console.log(`\n✅ YA TIENEN STOCK SANO (≤ ${RN_SANO_DIAS} d de venta normal): ${salen.map((x) => String(x.e.title || x.mla).slice(0, 40) + ' ' + x.st + ' u.').join(' · ')}`);
+      if (!GO) { console.log('\nPRUEBA: no escribí nada. Con :go guarda el diario y el ritmo, y saca el remate de los que ya están sanos.'); return; }
+      try {
+        await db.set('mlapi/diario/' + R.diaK, R.hoyDiario);
+        const poda = {}; const corte = _rnDia(ahoraR - 400 * 864e5);
+        for (const dk of Object.keys(diario)) if (dk < corte) poda[dk] = null;
+        if (Object.keys(poda).length) await db.patch('mlapi/diario', poda);
+      } catch (e) { console.log(`⚠️ no pude guardar el diario: ${String(e).slice(0, 100)}`); }
+      try { await db.set('cyc/ritmonormal', R.ritmo); console.log(`✓ ritmo normal guardado (${rs.length} claves) · diario del ${R.diaK}`); }
+      catch (e) { console.log(`⚠️ no pude guardar el ritmo normal: ${String(e).slice(0, 100)}`); process.exitCode = 1; }
+      const hechas = [];
+      for (const x of salen) {
+        try {
+          await marcarLiquidando(db, x.mla, null, true);
+          try { await db.set('cyc/escalera/' + x.mla, null); } catch { /* */ }
+          try { if ((autoprecio || {})[x.mla]) await db.set('cyc/autoprecio/' + x.mla + '/remateTerminado', Date.now()); } catch { /* el rescate esperará los 30 días */ }
+          hechas.push(`${String(x.e.title || x.mla).slice(0, 40)} (${x.e.cuenta}) · quedan ${x.st} u. = ${x.diasSt} d de venta normal`);
+          console.log(`   🔓 saqué el remate: ${hechas[hechas.length - 1]}`);
+        } catch (e) { console.log(`   ⚠️ no pude sacar el remate de ${x.mla}: ${String(e && e.message || e).slice(0, 100)}`); }
+      }
+      if (hechas.length) await sendAlerta(['🔓 TERMINÉ EL REMATE (ya tienen stock sano)', ...hechas.map((t) => '· ' + t), '', 'El rescate de la noche los vuelve a la base.'].join('\n'), { info: true });
       return;
     }
     // BILLING_PROBE=pedir:<palabra>=<unidades>[;<otra>=<u>][;go] → CARGA LAS UNIDADES DEL PEDIDO
