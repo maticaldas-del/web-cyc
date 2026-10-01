@@ -13975,6 +13975,13 @@ async function main() {
         const q = nrmP(p.busca);
         const hits = vivos.filter(([, c]) => nrmP(c.nombre).includes(q));
         if (!hits.length) { problemas.push(`"${p.busca}" → no encontré ningún candidato con eso`); continue; }
+        // Poner en CERO no puede cargar nada equivocado: si la palabra agarra varios (el caso real
+        // del 01/10, dos fichas "Blue Iconic", una duplicada y descartada), se ponen en cero todos
+        // los que tengan unidades cargadas. Subir sigue exigiendo un solo candidato.
+        if (hits.length > 1 && p.u === 0 && !p.baja) {
+          for (const [hid, hc] of hits) { const a = Number(hc.pedirU) || 0; if (a > 0) cambios.push({ id: hid, c: hc, antes: a, u: 0, baja: false }); }
+          continue;
+        }
         if (hits.length > 1) { problemas.push(`"${p.busca}" → agarra ${hits.length}: ${hits.map(([, c]) => c.nombre).join(' | ')}. Poné una palabra más precisa.`); continue; }
         const [id, c] = hits[0];
         const antes = Number(c.pedirU) || 0;
