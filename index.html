@@ -2423,7 +2423,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='21.22';
+const APP_VERSION='21.23';
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
 // muestre la versión y la fecha de actualización y que tenga un desplegable predeterminado cerrado".
 // Y el mismo día: "que ponga fecha de cada modificación y haya una barrita para scrollear y que
@@ -2434,6 +2434,7 @@ const APP_VERSION='21.22';
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'21.23',f:'01/10/2026',h:'16:40',c:[{n:1,t:'Pedido de productos nuevos (Paraguay): cada producto ahora va en casillas grandes que ocupan todo el ancho — te sale c/u, se vende en ML, ML se queda, vendidas y lo que te queda en %. Letra más grande; los mismos datos de antes.'}]},
   {v:'21.22',f:'01/10/2026',h:'16:10',c:[{n:3,t:'Robot de precios: si un cambio suyo (subir, bajar o prueba) lleva 14 días o más, dejó $1.000 o más de menos y tuvo stock todo el tiempo, vuelve SOLO al precio de antes (nunca abajo del piso, nunca más de +25% de una, sin variantes ni liquidando). Lo que no está seguro te lo pregunta con el motivo.'},{n:1,t:'Puntaje del mes: las flechitas para cambiar de mes van juntas a la izquierda y ya no se corren con el largo del mes.'}]},
   {v:'21.21',f:'01/10/2026',h:'15:40',c:[{n:1,t:'Ventas de hoy (Inicio): las dos flechitas para cambiar de día van juntas a la izquierda y ya no se corren cuando cambia el largo del título.'}]},
   {v:'21.20',f:'01/10/2026',h:'15:30',c:[{n:2,t:'Puntaje: el retiro ahora va mes a mes. Grande: cuánto cobra cada uno el mes que viene (la ganancia real de este mes ÷ 3). Abajo: lo que se cobra este mes (lo que dejó el mes pasado) contra lo que ya retiraron.'}]},
@@ -10691,7 +10692,7 @@ function candEnArmado(c){
 // cuántos vendedores hay, y el margen medido contra **el más barato**, que es el peor caso.
 // ACÁ NO SE CALCULA NINGÚN MARGEN: lo mide el robot con `cuentaCand` y esta pantalla sólo lo
 // muestra — con una cuenta propia la tarjeta podría decir un número y el robot otro.
-function candPreciosHTML(c){
+function candPreciosPartes(c){
   const min=Number(c.mlPrecio)||0;
   // SIN PRECIO MEDIDO YA NO DEVUELVE VACÍO (19/09/2026). Devolvía '' y el renglón entero
   // desaparecía — **incluidos los dos enlaces**, que son justo lo que hay que mirar cuando el
@@ -10711,11 +10712,12 @@ function candPreciosHTML(c){
   // se muestran, con el motivo al lado — esconder al de $11.662 sería decidir por él.
   const sinF=(c.mlSinFull!=null&&isFinite(c.mlSinFull))?Number(c.mlSinFull):null;
   const desde=(sinF&&min&&sinF<min)?sinF:min;
-  const L=[`se vende ${max>desde?`de <b>${fmt(desde)}</b> a <b>${fmt(max)}</b>`:`a <b>${fmt(desde)}</b>`}`];
-  if(vend)L.push(`${vend} vendedor${vend===1?'':'es'} en la ficha`);
-  if(c.mlHayFull===false)L.push(`<span style="color:var(--amber)">⚠️ ninguno tiene Full</span> <span style="color:var(--muted)">— se mide contra el más barato a secas</span>`);
-  else if(sinF&&min&&sinF<min)L.push(`📦 el más barato (<b>${fmt(sinF)}</b>) <b>no tiene Full</b> — se mide contra <b>${fmt(min)}</b>, el más barato CON Full <span style="color:var(--muted)">(${((min-sinF)/sinF*100).toFixed(0)}% más caro · ése es el precio que hay que igualar)</span>`);
-  else if(c.mlConFull)L.push(`📦 <span style="color:var(--muted)">${c.mlConFull} con Full${c.mlFlex?` · ${c.mlFlex} con Flex`:''}</span>`);
+  const R={};
+  R.rango=max>desde?`de <b>${fmt(desde)}</b> a <b>${fmt(max)}</b>`:`a <b>${fmt(desde)}</b>`;
+  if(vend)R.vend=`${vend} vendedor${vend===1?'':'es'} en la ficha`;
+  if(c.mlHayFull===false)R.full=(`<span style="color:var(--amber)">⚠️ ninguno tiene Full</span> <span style="color:var(--muted)">— se mide contra el más barato a secas</span>`);
+  else if(sinF&&min&&sinF<min)R.full=(`📦 el más barato (<b>${fmt(sinF)}</b>) <b>no tiene Full</b> — se mide contra <b>${fmt(min)}</b>, el más barato CON Full <span style="color:var(--muted)">(${((min-sinF)/sinF*100).toFixed(0)}% más caro · ése es el precio que hay que igualar)</span>`);
+  else if(c.mlConFull)R.full=(`📦 <span style="color:var(--muted)">${c.mlConFull} con Full${c.mlFlex?` · ${c.mlFlex} con Flex`:''}</span>`);
   // LAS VENTAS DEL PRODUCTO EN ML (18/09/2026, pedido suyo). Regla suya: *"en ML tiene que haber
   // ventas de verdad (+25 vendidos para arriba): un vendedor solo no molesta, uno sin ventas no
   // sirve"*. Hasta hoy el panel sólo mostraba VENDEDORES, que es otra cosa — y era su propia regla
@@ -10735,7 +10737,7 @@ function candPreciosHTML(c){
   // entre el % del robot y el del simulador. Con este número se copia el REAL y deja de adivinar.
   const com=(c.mlComision!=null&&isFinite(c.mlComision))?Number(c.mlComision):null;
   const pr=Number(c.mlPrecio)||0;
-  if(com!=null&&pr>0)L.push(`ML se queda <b>${(com/pr*100).toFixed(1)}%</b> <span style="color:var(--muted)">(${fmt(com)} · preguntado a ML)</span>`);
+  if(com!=null&&pr>0){R.comPct=`<b>${(com/pr*100).toFixed(1)}%</b>`;R.comDet=`${fmt(com)} · preguntado a ML`;}
   // DE DÓNDE SALEN LAS VENTAS, Y POR QUÉ SON DOS NÚMEROS (19/09/2026)
   //  · `vendCarga` → lo que VIO EL CHAT en la publicación de ML. Es la fuente buena: ML no da
   //    `sold_quantity` de publicaciones ajenas por la API, medido el 19/09 (la corrida imprimió
@@ -10748,13 +10750,15 @@ function candPreciosHTML(c){
   const vBot=(c.mlVendidas!=null&&isFinite(c.mlVendidas))?Number(c.mlVendidas):null;
   const vUsa=candVentasDe(c);
   if(vUsa!=null){
-    L.push(`🛒 <b style="color:${vUsa>=25?'var(--green)':'var(--amber)'}">${vUsa}</b> vendida${vUsa===1?'':'s'} en ML`
-      +(vChat!=null&&vBot!=null&&vBot!==vChat?` <span style="color:var(--amber)">(el robot ve ${vBot})</span>`:''));
+    R.ventasN=`<b style="color:${vUsa>=25?'var(--green)':'var(--amber)'}">${vUsa}</b>`;
+    R.ventas=`🛒 ${R.ventasN} vendida${vUsa===1?'':'s'} en ML`
+      +(vChat!=null&&vBot!=null&&vBot!==vChat?` <span style="color:var(--amber)">(el robot ve ${vBot})</span>`:'');
+    R.ventasExtra=(vChat!=null&&vBot!=null&&vBot!==vChat)?`el robot ve ${vBot}`:'';
   } else {
-    L.push(`🛒 <span style="color:var(--amber)">faltan las ventas</span> <span style="color:var(--muted)">— las carga el chat</span>`);
+    R.ventas=`🛒 <span style="color:var(--amber)">faltan las ventas</span> <span style="color:var(--muted)">— las carga el chat</span>`;
   }
-  if(mMin!=null)L.push(`contra ${(sinF&&min&&sinF<min)?'el más barato CON Full':'el más barato'} → <b style="color:${mMin>=25?'var(--green)':'var(--amber)'}">${mMin.toFixed(0)}%</b>`);
-  if(!min)L.length=0,L.push('<span style="color:var(--amber)">todavía no está medido en ML</span>');
+  if(mMin!=null){R.margenPct=mMin;R.margenContra=(sinF&&min&&sinF<min)?'el más barato CON Full':'el más barato';}
+  R.medido=!!min;
   // ── LOS DOS ENLACES, PARA MIRARLO CON LOS OJOS (19/09/2026, pedido suyo) ──────────────────
   // Textual: *"quiero que acá aparezcan los url del producto de ml y de compras paraguay, así
   // puedo mirarlo de ahí"*. Es el chequeo que ningún número reemplaza: si el robot se emparejó
@@ -10773,7 +10777,24 @@ function candPreciosHTML(c){
   const A=(h,t)=>`<a href="${h.replace(/"/g,'&quot;')}" target="_blank" rel="noopener" style="color:var(--accent);text-decoration:none;font-weight:600">${t}</a>`;
   const E=[hrefML?A(hrefML,'🔗 verlo en ML'):'<span style="color:var(--amber)">🔗 sin link de ML — el robot lo buscó por nombre</span>',
     hrefPY?A(hrefPY,'🇵🇾 verlo en comprasparaguay'):'<span style="color:var(--muted)">🇵🇾 el chat no dejó el link</span>'];
-  return L.join(' &nbsp;·&nbsp; ')+'<br>'+E.join(' &nbsp;·&nbsp; ');
+  R.links=E;
+  return R;
+}
+// El renglón de UNA línea larga (tarjeta del candidato). Sale de las MISMAS partes que el renglón
+// del pedido (`candPreciosPartes`), así los dos no pueden decir cosas distintas.
+function candPreciosHTML(c){
+  const R=candPreciosPartes(c);
+  const L=[];
+  if(!R.medido)L.push('<span style="color:var(--amber)">todavía no está medido en ML</span>');
+  else{
+    L.push('se vende '+R.rango);
+    if(R.vend)L.push(R.vend);
+    if(R.full)L.push(R.full);
+    if(R.comPct)L.push(`ML se queda ${R.comPct} <span style="color:var(--muted)">(${R.comDet})</span>`);
+    L.push(R.ventas);
+    if(R.margenPct!=null)L.push(`contra ${R.margenContra} → <b style="color:${R.margenPct>=25?'var(--green)':'var(--amber)'}">${R.margenPct.toFixed(0)}%</b>`);
+  }
+  return L.join(' &nbsp;·&nbsp; ')+'<br>'+R.links.join(' &nbsp;·&nbsp; ');
 }
 // EL RENGLÓN QUE EXPLICA LO QUE FALTA VA UNA SOLA VEZ, NO EN LOS 17. Repetirlo en cada producto
 // es ruido y a los tres renglones no lo lee nadie; pero no decirlo nunca sería peor, porque él
@@ -11245,6 +11266,55 @@ function pyEnCaminoHTML(tipo){
       <div style="margin-top:6px">${llegados.map(c=>tarjeta(c,false)).join('')}</div></details>`:''}
   </div>`;
 }
+// ── UN RENGLÓN DEL PEDIDO DE NUEVOS, EN CASILLAS (01/10/2026) ────────────────────────────────
+// Pedido suyo: *"poner letras más grande y ubicar mejor las líneas, llenar el espacio. porque hay
+// poco, y chiquito porque no hay espacio, cuando en realidad sí hay"*. Antes era una tira gris de
+// letra .6rem con seis datos pegados; ahora cada dato tiene su casilla y la grilla ocupa todo el
+// ancho. Los datos salen de `candPreciosPartes`, la MISMA función de la tarjeta del candidato.
+function pedNuevoFilaHTML(f,maxU,tc){
+  const c=f.c, R=candPreciosPartes(c);
+  const cod=String(c.cod||'').trim();
+  const puesto=f.usd>0?Math.round(f.usd*RECARGO_PY*100)/100:0;
+  const mg=R.margenPct;
+  const mgCol=mg==null?'var(--muted)':(typeof pctColor==='function'?pctColor(mg):(mg>=25?'var(--green)':'var(--amber)'));
+  const caja=(t,v,sub)=>`<div style="background:var(--surface2);border-radius:8px;padding:7px 10px;min-width:0">
+      <div style="font-size:.66rem;color:var(--muted);margin-bottom:2px">${t}</div>
+      <div style="font-size:.92rem;line-height:1.3">${v}</div>
+      ${sub?`<div style="font-size:.68rem;color:var(--muted);margin-top:2px;line-height:1.4">${sub}</div>`:''}
+    </div>`;
+  const cajas=[
+    caja('🇵🇾 te sale c/u',f.usd>0?`<b>US$ ${puesto.toFixed(2)}</b>`:'<span style="color:var(--red)">sin precio</span>',
+      f.usd>0?`US$ ${f.usd.toFixed(2)} + 17%${tc?` · ${fmt(Math.round(f.usd*RECARGO_PY*tc))}`:''}`:''),
+    caja('🏷️ se vende en ML',R.medido?R.rango:'<span style="color:var(--amber)">sin medir</span>',R.vend||''),
+    caja('💸 ML se queda',R.comPct||'—',R.comDet||''),
+    caja('🛒 vendidas en ML',R.ventasN||'<span style="color:var(--amber)">faltan</span>',R.ventasN?(R.ventasExtra?`<span style="color:var(--amber)">${R.ventasExtra}</span>`:''):'las carga el chat'),
+    caja('📈 te queda',mg!=null?`<b style="font-size:1.25em;color:${mgCol}">${mg.toFixed(0)}%</b>`:'<span style="color:var(--amber)">sin medir</span>',mg!=null?'contra '+R.margenContra:''),
+  ].join('');
+  const P=candPuedePedir(c);
+  return `<div class="ingreso-item" style="display:block;padding:11px 12px">
+    <div style="display:flex;gap:10px;align-items:flex-start;justify-content:space-between;flex-wrap:wrap;margin-bottom:8px">
+      <div style="flex:1;min-width:180px">
+        <div style="font-size:.88rem;font-weight:700;line-height:1.3">${c.nombre}</div>
+        <div style="font-size:.7rem;color:var(--muted);margin-top:3px">${cod?'🔖 '+cod:'<span style="color:var(--amber)">🔖 sin código — no entra en el mensaje a Nissei</span>'}</div>
+      </div>
+      <div style="display:flex;align-items:center;gap:8px;white-space:nowrap">
+        <div style="text-align:right">
+          <input type="number" min="0" step="1" value="${f.u}" onchange="candSetPedir('${c.id}',this.value)"
+            title="Las unidades de este producto. Se puede cambiar de acá o desde su tarjeta: es la misma casilla."
+            style="width:60px;font-size:.9rem;padding:5px 7px;text-align:center;background:var(--surface2);border:1px solid ${f.u>maxU?'var(--amber)':'var(--border)'};border-radius:6px;color:var(--text)"> <span style="font-size:.78rem">u.</span>
+          <div style="color:var(--muted);font-size:.74rem;margin-top:3px">${f.usd>0?'US$ '+(f.usd*f.u).toFixed(2):'—'}</div>
+          ${f.u>maxU?`<div style="color:var(--amber);font-size:.7rem;margin-top:2px">pasa tu máximo de ${maxU}</div>`:''}
+        </div>
+        <button class="btn" title="Sacarlo del pedido. No lo descarta de la lista: queda para volver a cargarlo." onclick="candSetPedir('${c.id}',0)"
+          style="font-size:.8rem;padding:5px 10px;color:var(--red);border-color:rgba(239,68,68,.35)">✕</button>
+      </div>
+    </div>
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:7px">${cajas}</div>
+    ${R.full?`<div style="font-size:.74rem;margin-top:7px;line-height:1.5">${R.full}</div>`:''}
+    ${P.ok?'':`<div style="font-size:.76rem;margin-top:6px"><span style="color:var(--red);font-weight:700">🚫 ${P.motivo}</span> · <a href="#" onclick="event.preventDefault();candSetPedir('${c.id}',0)" style="color:var(--red);font-weight:700">sacarlo del pedido</a></div>`}
+    <div style="font-size:.76rem;margin-top:7px">${R.links.join(' &nbsp;·&nbsp; ')}</div>
+  </div>`;
+}
 function pedNuevosHTML(vivos){
   const P=pedNuevos(vivos), tc=curTC();
   const puesto=Math.round(P.crudo*RECARGO_PY*100)/100;
@@ -11293,28 +11363,7 @@ function pedNuevosHTML(vivos){
         title="Congela este pedido y lo pasa a 'En camino', con el código, el precio y el margen de cada producto. Sale de acá y deja de recomendarse.">✅ Ya lo pedí</button>`:''}
       ${P.filas.length?`<button class="btn" style="font-size:.66rem;padding:6px 12px;color:var(--red);border-color:rgba(239,68,68,.35)" onclick="pedNuevosVaciar()">🗑️ Vaciar el pedido</button>`:''}
     </div>
-    ${P.filas.length?P.filas.map(f=>`<div class="ingreso-item" style="gap:10px;align-items:center">
-      <div style="flex:1;min-width:150px">
-        <div style="font-size:.71rem;font-weight:600;line-height:1.3">${f.c.nombre}</div>
-        <div style="font-size:.6rem;color:var(--muted);margin-top:2px;line-height:1.7">
-          ${String(f.c.cod||'').trim()?'🔖 '+String(f.c.cod).trim():'<span style="color:var(--amber)">🔖 sin código — no entra en el mensaje a Nissei</span>'}
-          ${f.usd>0?` · te sale US$ ${f.usd.toFixed(2)} + 17% = <b style="color:var(--text)">US$ ${(Math.round(f.usd*RECARGO_PY*100)/100).toFixed(2)}</b> c/u${tc?` · ${fmt(Math.round(f.usd*RECARGO_PY*tc))}`:''}`:' · <span style="color:var(--red)">sin precio</span>'}
-          ${candPreciosHTML(f.c)?`<br>${candPreciosHTML(f.c)}`:' · <span style="color:var(--amber)">sin margen medido</span>'}
-          ${candPuedePedir(f.c).ok?'':`<br><span style="color:var(--red);font-weight:700">🚫 ${candPuedePedir(f.c).motivo}</span> · <a href="#" onclick="event.preventDefault();candSetPedir('${f.c.id}',0)" style="color:var(--red);font-weight:700">sacarlo del pedido</a>`}
-        </div>
-      </div>
-      <div style="text-align:right;font-size:.68rem;white-space:nowrap;display:flex;align-items:center;gap:6px">
-        <div>
-          <input type="number" min="0" step="1" value="${f.u}" onchange="candSetPedir('${f.c.id}',this.value)"
-            title="Las unidades de este producto. Se puede cambiar de acá o desde su tarjeta: es la misma casilla."
-            style="width:52px;font-size:.7rem;padding:4px 6px;text-align:center;background:var(--surface2);border:1px solid ${f.u>maxU?'var(--amber)':'var(--border)'};border-radius:6px;color:var(--text)"> u.
-          <div style="color:var(--muted);font-size:.9em;margin-top:2px">${f.usd>0?'US$ '+(f.usd*f.u).toFixed(2):'—'}</div>
-          ${f.u>maxU?`<div style="color:var(--amber);font-size:.85em;margin-top:2px">pasa tu máximo de ${maxU}</div>`:''}
-        </div>
-        <button class="btn" title="Sacarlo del pedido. No lo descarta de la lista: queda para volver a cargarlo." onclick="candSetPedir('${f.c.id}',0)"
-          style="font-size:.7rem;padding:3px 8px;color:var(--red);border-color:rgba(239,68,68,.35)">✕</button>
-      </div>
-    </div>`).join('')
+    ${P.filas.length?P.filas.map(f=>pedNuevoFilaHTML(f,maxU,tc)).join('')
     :`<div style="font-size:.64rem;color:var(--muted);padding:2px 0 4px">Todavía no cargaste ninguno. Poné las unidades en los productos de abajo y el pedido se arma solo acá.</div>`}
     ${conCod.length?`<div style="margin-top:10px;border-top:1px solid var(--border);padding-top:9px">
       <div style="font-size:.63rem;color:var(--muted);margin-bottom:5px">Para mandarle a <strong>Nissei</strong> — código y unidades${P.sinCod.length?` · <span style="color:var(--amber)">${P.sinCod.length} no entra(n): falta cargarle el código</span>`:''}</div>
