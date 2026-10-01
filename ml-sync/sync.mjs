@@ -9231,6 +9231,18 @@ async function main() {
       console.log('   Ese chat queda FUERA del resumen del día, así no se mezclan.');
       return;
     }
+    // BILLING_PROBE=recordar:<texto> → manda ese texto SÓLO al canal privado (el de Mati solo, no al del
+    // resumen donde está el padre). Para recordatorios que él pide a una hora (01/10/2026). Escribir
+    // sólo recordatorios: el texto queda en el registro público.
+    if (/^recordar:/.test(String(process.env.BILLING_PROBE || ''))) {
+      const t = String(process.env.BILLING_PROBE).slice(9).trim();
+      if (!t) { console.log('Falta el texto: recordar:<texto>'); process.exitCode = 1; return; }
+      const txt = '⏰ <b>Recordatorio</b>\n' + t.replace(/&/g, '&amp;').replace(/</g, '&lt;');
+      let ok = false;
+      try { ok = await sendAlerta(txt); } catch (e) { console.log('✗ sendAlerta tiró: ' + e.message); }
+      if (ok) console.log('✓ recordatorio mandado al canal privado'); else { console.log('❌ NO salió el recordatorio'); process.exitCode = 1; }
+      return;
+    }
     // BILLING_PROBE=avisonoche → LO CORRE `ml-daily` AL FINAL cuando algún paso falló (revisión max
     // #21, 25/09/2026). Los pasos ya no cortan la noche, así que esto es lo único que dice que uno
     // falló: la lista llega en FALLOS_NOCHE. Manda un aviso al canal privado y nada más.

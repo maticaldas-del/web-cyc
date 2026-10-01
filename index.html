@@ -2423,7 +2423,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='21.17';
+const APP_VERSION='21.18';
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
 // muestre la versión y la fecha de actualización y que tenga un desplegable predeterminado cerrado".
 // Y el mismo día: "que ponga fecha de cada modificación y haya una barrita para scrollear y que
@@ -2434,6 +2434,7 @@ const APP_VERSION='21.17';
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'21.18',f:'01/10/2026',h:'16:05',c:[{n:1,t:'Inicio: el tope de H y el monotributo de hoy van en UNA sola tarjeta, uno abajo del otro (sin botones para cambiar).'}]},
   {v:'21.17',f:'01/10/2026',h:'13:30',c:[{n:1,t:'Pedidos: en los productos con variantes (como el Paulvic) hay un botón 📋 Copiar pedido que copia sólo el nombre y las unidades a comprar de cada una, listo para pegar en WhatsApp.'}]},
   {v:'21.16',f:'01/10/2026',h:'13:24',c:[{n:3,t:'Tope de H y monotributo: se toma el MAYOR entre lo facturado en ARCA y lo vendido. Adriana facturó menos de lo que vendió entre enero y julio, así que se cuenta lo vendido (lo más seguro para no pasarse). La tarjeta lo dice en ámbar.'}]},
   {v:'21.15',f:'01/10/2026',h:'13:12',c:[{n:3,t:'Tope de H y monotributo: lo facturado de los meses que tienen el archivo de ARCA cargado sale de ARCA (facturas menos notas de crédito), no de las ventas. Arranca con Adriana: de enero a julio el panel contaba unos $6,5M de más.'}]},
@@ -15707,20 +15708,15 @@ function _ofiTxt(o,fM){
 // botoncito para cambiar"): el tope de H hacia adelante (lo que viene) y el monotributo de hoy (cómo
 // vendés contra la categoría inscripta en AFIP). La vista elegida se recuerda en este aparato.
 let _monoHomeHtml='';
-let _parejoVista=(()=>{try{return localStorage.getItem('cycParejoVista')||'tope';}catch(e){return 'tope';}})();
-function parejoVer(v){_parejoVista=v;try{localStorage.setItem('cycParejoVista',v);}catch(e){}renderHomeParejo();}
 function renderHomeParejo(){
   const el=document.getElementById('home-parejo'); if(!el)return;
   const d=parejoDatos(); const hayTope=!!(d&&d.filas.some(f=>f.proy>0));
   const hayMono=!!_monoHomeHtml;
   if(!hayTope&&!hayMono){el.innerHTML='';return;}
-  const vista=!hayTope?'mono':!hayMono?'tope':_parejoVista;
-  const btn=(v,t)=>`<button onclick="parejoVer('${v}')" style="background:${vista===v?'var(--green)':'transparent'};color:${vista===v?'#000':'var(--muted)'};border:1px solid ${vista===v?'var(--green)':'var(--border2)'};border-radius:999px;padding:3px 10px;font-size:.6rem;cursor:pointer;font-weight:${vista===v?'700':'400'}">${t}</button>`;
-  const tabs=(hayTope&&hayMono)?`<div style="display:flex;gap:6px;margin-bottom:10px">${btn('tope','⚖️ Tope de H · lo que viene')}${btn('mono','🪪 Monotributo · hoy vs AFIP')}</div>`:'';
-  if(vista==='mono'){
-    el.innerHTML=`<div style="max-width:760px;margin:0 auto 14px;background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:14px 16px">${tabs}${_monoHomeHtml.replace('margin-top:14px;border-top:1px solid var(--border);padding-top:12px','')}</div>`;
-    return;
-  }
+  // UNA SOLA TARJETA (01/10/2026, él: "podés unificar?"): arriba el tope de H, abajo el monotributo
+  // de hoy, sin botones. Antes eran dos vistas con un botón para cambiar.
+  const caja=x=>`<div style="max-width:760px;margin:0 auto 14px;background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:14px 16px">${x}</div>`;
+  if(!hayTope){el.innerHTML=caja(_monoHomeHtml.replace('margin-top:14px;border-top:1px solid var(--border);padding-top:12px',''));return;}
   const fM=n=>'$'+(n/1e6).toFixed(1).replace('.',',')+'M';
   const fD=x=>String(x.getDate()).padStart(2,'0')+'/'+String(x.getMonth()+1).padStart(2,'0')+'/'+x.getFullYear();
   const orden=[...d.filas].sort((x,y)=>x.proy-y.proy);
@@ -15740,12 +15736,11 @@ function renderHomeParejo(){
       <div style="font-size:.6rem;color:var(--muted);margin-top:2px">facturado ${fM(f.fac)} · faltan ${d.faltan} d × ${fM(f.diario*30)}/mes = +${fM(f.futuro)}</div>
       <div style="font-size:.6rem;color:var(--muted);margin-top:1px">${_ofiTxt(f.ofi,fM)}</div>
     </div>`;}).join('');
-  el.innerHTML=`<div style="max-width:760px;margin:0 auto 14px;background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:14px 16px">
-    ${tabs}<div style="font-family:'Syne',sans-serif;font-weight:800;font-size:.85rem">⚖️ Las 4 cuentas contra el tope de H (${fM(d.topeH)}/año)</div>
+  el.innerHTML=caja(`<div style="font-family:'Syne',sans-serif;font-weight:800;font-size:.85rem">⚖️ Las 4 cuentas contra el tope de H (${fM(d.topeH)}/año)</div>
     <div style="font-size:.6rem;color:var(--muted);margin-top:2px">La próxima recategorización de ARCA mira del ${fD(d.ini)} al ${fD(d.fin)}. Barra llena = lo facturado oficial hasta hoy (canceladas incluidas, como las cuenta ARCA) · barra clarita = lo que falta hasta el cierre, al ritmo de los últimos 30 días. El tope es por cuenta.</div>
     ${barras}${aviso}
     <div style="font-size:.66rem;margin-top:8px">💡 Lo próximo nuevo que no sea perfume → <strong style="color:var(--green)">${MET_LABELS[menos.a]}</strong>, que es la que más lugar tiene. <span style="color:var(--muted)">(Perfumes siguen yendo a Adriana; lo que ya está en una cuenta, queda.)</span></div>
-  </div>`;
+    ${hayMono?_monoHomeHtml:''}`);
 }
 // LA VENTANA QUE MIRA ARCA. No son los últimos 365 días: ARCA cierra por semestre y mira los 12
 // meses terminados en el último 30/06 o 31/12. En agosto de 2026 la recategorización se hace con
