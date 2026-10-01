@@ -452,7 +452,7 @@ async function avisarBloqueoML(db, DRY) {
   if (!fren.length) {
     if (marca && BLOQUEO_ML.ok > 0) {
       console.log(`🔓 ML volvió a dejar escribir: ${BLOQUEO_ML.ok} cambio(s) aceptado(s) esta vuelta.`);
-      const ok = await sendAlerta('🔓 <b>ML volvió a dejarme tocar precios.</b>\n\nEsta vuelta aceptó ' + BLOQUEO_ML.ok + ' cambio(s). El robot vuelve a trabajar solo.');
+      const ok = await sendAlerta('🔓 <b>ML volvió a dejarme tocar precios.</b>\n\nEsta vuelta aceptó ' + BLOQUEO_ML.ok + ' cambio(s). El robot vuelve a trabajar solo.', { info: true });
       if (ok && !DRY) { try { await db.set('cyc/avisobloqueo', null); } catch { /* se reintenta mañana */ } }
     }
     return;
@@ -6439,7 +6439,16 @@ async function correrCandidatos(db, products, labels, accounts, soloPrueba, prue
   return { mirados, calculados, avisados };
 }
 
-async function sendAlerta(text) {
+// SÓLO DECISIONES (01/10/2026, él: "telegram avisos me manda mucho texto. puede mandar solo decisiones
+// que tengo que tomar importantes?"). Cada aviso que es sólo informativo (lo que el robot ya hizo, lo que
+// no pudo leer, resultados de un comando) se llama con { info: true }: va al LOG y NO a Telegram, y
+// devuelve true para que la memoria de "ya avisado" se anote igual (si devolviera false se repetiría
+// todas las horas en el log). Lo que pide una decisión o una acción suya sigue saliendo.
+async function sendAlerta(text, opt = {}) {
+  if (opt && opt.info) {
+    console.log('ℹ️ (no va a Telegram, es sólo informativo) ' + String(text).replace(/<[^>]+>/g, '').split('\n')[0].slice(0, 160));
+    return true;
+  }
   if (!TG_TOKEN || TG_SILENCIO) return false;
   if (!TG_ALERTAS) {
     console.log('⚠️ Telegram: hay avisos para mandar pero el canal privado no está configurado (cyc/mlconfig/tgAlertas). Comando: tgalertas');
@@ -9130,6 +9139,21 @@ async function main() {
       else if (!hechosAuto.length) L.push('\n<i>Ninguno se aplicó solo: los precios los decidís vos.</i>');
       const msg = L.join('\n');
       console.log('\n── MENSAJE ──\n' + msg.replace(/<[^>]+>/g, ''));
+      // A TELEGRAM VA SÓLO LO QUE ES PARA DECIDIR (01/10/2026, él: "me manda mucho texto"). Lo que el
+      // robot ya hizo va en UNA línea (el detalle está en Métricas y en el log), y las secciones que sólo
+      // informan (no pude medir, parado, sobra stock sin solución, frenados, escalón comprobado, sin
+      // anotar) quedan en el log. Las de 🤔 (dudó), ⚠️ (quiso y no pudo), 🧪 cerradas, 👀 y 🟠 siguen.
+      const _SOLO_INFO = ['\n❔', '\n🐢', '\n🧊', '\n🥊', '\n🔬', '\n❌'];
+      const _tel = []; let _saltar = false, _decide = 0;
+      for (const ln of L) {
+        const s0 = String(ln);
+        if (s0.startsWith('\n✅')) { _saltar = true; _tel.push(`\n✅ Hice ${hechosAuto.length} cambio(s) de precio solo · el detalle está en Métricas → 🤖 Robot de precios`); continue; }
+        if (s0.startsWith('\n<i>')) { _saltar = false; _tel.push(s0); continue; }
+        if (s0.startsWith('\n')) { _saltar = _SOLO_INFO.some((p) => s0.startsWith(p)); if (!_saltar) _decide++; }
+        if (!_saltar) _tel.push(s0);
+      }
+      const msgTel = _decide ? _tel.join('\n') : null;
+      if (!msgTel) console.log('\n── Hoy no hay nada para que decidas: no va a Telegram (queda en el log).');
       // Etapa 4 (30/09/2026): ml-daily corre 3 veces por mañana. Si el aviso de hoy (día de acá) ya
       // salió, las corridas 2 y 3 no lo mandan otra vez ni pisan `cyc/avisolista` (los números del
       // primer mensaje tienen que seguir apuntando a lo mismo). `avisos:reset:go` lo fuerza.
@@ -9143,13 +9167,13 @@ async function main() {
         console.log(`\n── El aviso de hoy (${_diaAv}) ya salió en otra corrida: no lo mando de nuevo ni toco la lista numerada.`);
         // Etapa 5: un precio cambiado SIN anotar no puede quedar callado aunque el aviso ya haya salido.
         if (sinAnotar.length && !DRY) {
-          const okSA = await sendAlerta(`❌ <b>Cambié el precio pero no lo pude anotar</b> · ${sinAnotar.length}\n` + sinAnotar.map((x) => `· ${x.nom} (${x.cuenta}) · ${x.mla} · falta ${x.que}`).join('\n'));
+          const okSA = await sendAlerta(`❌ <b>Cambié el precio pero no lo pude anotar</b> · ${sinAnotar.length}\n` + sinAnotar.map((x) => `· ${x.nom} (${x.cuenta}) · ${x.mla} · falta ${x.que}`).join('\n'), { info: true });
           if (!okSA) console.log('❌ tampoco pude avisar por Telegram lo que quedó sin anotar (ver arriba)');
         }
         return;
       }
       if (MANDAR) {
-        const ok = await sendAlerta(msg);
+        const ok = msgTel ? await sendAlerta(msgTel) : true;
         if (ok && !DRY) { try { await db.set('cyc/avisos/diaMandado', _diaAv); } catch { /* */ } }
         // Se anota SÓLO si el mensaje salió. Si falló el envío y se anotara igual, esa
         // publicación quedaría callada una semana por un aviso que nunca llegó.
@@ -9254,7 +9278,7 @@ async function main() {
         + `\n<i>Los demás pasos corrieron igual. Si el que falló fue "Margen ML al precio de hoy", el robot de precios no tocó nada esta noche.</i>`;
       console.log(txt.replace(/<[^>]+>/g, ''));
       let ok = false;
-      try { ok = await sendAlerta(txt); } catch (e) { console.log('✗ sendAlerta tiró: ' + e.message); }
+      try { ok = await sendAlerta(txt, { info: true }); } catch (e) { console.log('✗ sendAlerta tiró: ' + e.message); }
       // Etapa 5: si el aviso de los pasos fallados no sale, la noche queda callada justo cuando
       // algo falló. Se grita en el log y el paso sale con error (se ve rojo en GitHub).
       if (ok) console.log('✓ aviso mandado');
@@ -20407,12 +20431,12 @@ async function main() {
           Object.assign(upd, { escDia: hoyTxt, escOk, escFallos, escMotivo: noEscribio || null });
           if (noEscribio) console.log(`   ⚠️ "A liquidar en ML" sin escribir: ${noEscribio} · ${escFallos} noche(s) seguidas`);
           if (escFallos >= 2 && !escOk && mem.escAvisoDia !== hoyTxt) {
-            const okE = await sendAlerta(`⚠️ <b>"A liquidar en ML" lleva ${escFallos} noches sin actualizarse</b>\nMotivo de esta vuelta: ${String(noEscribio).replace(/&/g, '&amp;').replace(/</g, '&lt;')}.\n<i>El Arqueo muestra el número de la última vez que salió bien.</i>`);
+            const okE = await sendAlerta(`⚠️ <b>"A liquidar en ML" lleva ${escFallos} noches sin actualizarse</b>\nMotivo de esta vuelta: ${String(noEscribio).replace(/&/g, '&amp;').replace(/</g, '&lt;')}.\n<i>El Arqueo muestra el número de la última vez que salió bien.</i>`, { info: true });
             if (okE) upd.escAvisoDia = hoyTxt;
             console.log(`   aviso de "a liquidar" sin escribir: ${okE ? 'mandado' : '❌ no salió'}`);
           }
           if (msgs.length && mem.dia !== hoyTxt) {
-            const ok = await sendAlerta(msgs.join('\n\n'));
+            const ok = await sendAlerta(msgs.join('\n\n'), { info: true });
             if (ok) upd.dia = hoyTxt;
             console.log(`   aviso de reporte viejo: ${ok ? 'mandado' : '❌ no salió'}`);
           }
@@ -21585,7 +21609,7 @@ async function main() {
         } catch { /* */ }
       }
       const r = await subirPorCosto(db, { products, labels, accounts, tokens: tokP, DRY: DRY || !GO, forzar: new Set(sel.map((p) => p.id)) });
-      if (GO && !DRY) for (const a of r.avisos) await sendAlerta(a);
+      if (GO && !DRY) for (const a of r.avisos) await sendAlerta(a, { info: true });
       else if (r.avisos.length) console.log('\nEl aviso que mandaría:\n' + r.avisos.join('\n').replace(/<[^>]+>/g, ''));
       if (!GO) console.log('\nPRUEBA: no se tocó ML ni la foto. Agregá ":go" para aplicar.');
       return;
@@ -23673,7 +23697,7 @@ async function main() {
       if (!prueba && sacadas) {
         // Sin tipo, sendTelegram lo tiraba antes de mandarlo (etapa 1, 27/09): va al canal de precios.
         await sendAlerta(`🛑 <b>Promociones sacadas</b>\n${sacadas} descuentos de ML dados de baja `
-          + `(activos y agendados).${fallidas ? `\n⚠️ ${fallidas} no se pudieron sacar.` : ''}`);
+          + `(activos y agendados).${fallidas ? `\n⚠️ ${fallidas} no se pudieron sacar.` : ''}`, { info: true });
       }
       return;
     }
@@ -23826,7 +23850,7 @@ async function main() {
       console.log(`\n${prueba ? '(PRUEBA) ' : ''}${sube} subidas · ${baja} bajadas · ${igual} ya estaban en ${money(precioFijo)} · ${err} con error`);
       if (!prueba && hechos.length) {
         await sendAlerta(`🟰 <b>Grupo ${gNom} fijado en ${money(precioFijo)}</b>\n`
-          + `${hechos.length} publicaciones ajustadas (${sube} subieron, ${baja} bajaron).`);
+          + `${hechos.length} publicaciones ajustadas (${sube} subieron, ${baja} bajaron).`, { info: true });
       }
       return;
     }
@@ -23849,7 +23873,7 @@ async function main() {
       }
       console.log(soloPrueba ? '=== PRUEBA: no se escribe nada en ML ===' : '=== NIVELANDO GRUPOS EN ML ===');
       const avisos = await nivelarGrupos(db, links, tokensRun, DRY || soloPrueba, pName, sellerIds);
-      if (!soloPrueba) for (const a of avisos) await sendAlerta(a);
+      if (!soloPrueba) for (const a of avisos) await sendAlerta(a, { info: true });
       if (!avisos.length) console.log('No hubo nada para nivelar.');
       return;
     }
@@ -24608,7 +24632,7 @@ async function main() {
       if (MUCHAS) lineas.push(`(las 🟢 no van una por una: son ${(cnt.bueno || 0) + (cnt.igual || 0)})`);
       if (sinJuicio) lineas.push(`(${sinJuicio} más sin juicio: pocas ventas o sin stock)`);
       if (detalle.some((x) => x.res.v === 'malo')) lineas.push('', 'Los 🔴 no los toco solo: si querés volver al precio de antes, decime cuál.');
-      const ok = await sendAlerta(lineas.join('\n'));
+      const ok = await sendAlerta(lineas.join('\n'), { info: true });
       if (ok) {
         const av = {}; for (const x of pendientes) av['eventos/' + x.id + '/av/d' + x.W] = true;
         try { await db.patch('cyc/supervisor', av); } catch { /* se repite mañana, que es el lado seguro */ }
@@ -24846,7 +24870,7 @@ async function main() {
         const lista = hechos.map((h) => `· ${h.nom}: ${money(h.from)} → <b>${money(h.to)}</b>`).join('\n');
         await sendAlerta(`🔽 <b>Precios corregidos para abajo</b>\n`
           + `Habían quedado altos porque el robot venía con la meta vieja (42%). Los llevé a la meta nueva de ${(META * 100).toFixed(0)}%.\n\n${lista}`
-          + (errN ? `\n\n⚠️ ${errN} no se pudieron corregir.` : ''));
+          + (errN ? `\n\n⚠️ ${errN} no se pudieron corregir.` : ''), { info: true });
       }
       return;
     }
@@ -26359,7 +26383,7 @@ async function main() {
         const lista = hechos.map((h) => `· ${h.nom}: ${money(h.from)} → <b>${money(h.to)}</b>`).join('\n');
         await sendAlerta(`🔼 <b>Precios subidos al piso del ${(MIN * 100).toFixed(0)}%</b>\n`
           + `Ahora el piso se mide con la PEOR venta, no con la típica.\n\n${lista}`
-          + (errN ? `\n\n⚠️ ${errN} no se pudieron subir.` : ''));
+          + (errN ? `\n\n⚠️ ${errN} no se pudieron subir.` : ''), { info: true });
       }
       return;
     }
@@ -27463,7 +27487,7 @@ async function main() {
         const lista = hechos.map((h) => `· ${h.nom}: ${money(h.from)} → <b>${money(h.to)}</b> (${Math.round(h.mg)}%)`).join('\n');
         await sendAlerta(`🔽 <b>Precios bajados al piso del ${(MIN * 100).toFixed(0)}%</b>\n`
           + `Estaban por encima del piso y no vendían a ese precio.\n\n${lista}`
-          + (errN ? `\n\n⚠️ ${errN} no se pudieron bajar.` : ''));
+          + (errN ? `\n\n⚠️ ${errN} no se pudieron bajar.` : ''), { info: true });
       }
       return;
     }
@@ -28385,7 +28409,7 @@ async function main() {
           + `${hechos.length} publicacion${hechos.length > 1 ? 'es' : ''} llevada${hechos.length > 1 ? 's' : ''} al piso de ${(MIN * 100).toFixed(0)}% `
           + `(destino ${(T * 100).toFixed(0)}%)\n\n${lista}`
           + (hechos.length > 25 ? `\n… y ${hechos.length - 25} más` : '')
-          + (err ? `\n\n⚠️ ${err} no se pudieron aplicar.` : ''));
+          + (err ? `\n\n⚠️ ${err} no se pudieron aplicar.` : ''), { info: true });
       }
       return;
     }
@@ -32992,7 +33016,7 @@ async function main() {
         console.log(`⚠️ canceladas sin poder leer (${noches} noche(s) seguidas): ${faltan.join(' · ')}`);
         if (noches >= 2 && mem.alertaDia !== hoyC && !DRY) {
           const ok = await sendAlerta(`⚠️ <b>Facturación de canceladas (monotributo): ${noches} noches con meses sin poder leer</b>\n`
-            + `ML no devolvió entera la lista de canceladas de: ${faltan.join(' · ')}.\n<i>Esos meses quedan con el número anterior (no se pisan con uno corto). Si sigue, el facturado del monotributo puede estar viejo.</i>`);
+            + `ML no devolvió entera la lista de canceladas de: ${faltan.join(' · ')}.\n<i>Esos meses quedan con el número anterior (no se pisan con uno corto). Si sigue, el facturado del monotributo puede estar viejo.</i>`, { info: true });
           if (ok) await db.patch('mlapi/cancelagg', { alertaDia: hoyC });
           else console.log('❌ no pude mandar el aviso de canceladas por Telegram');
         }
@@ -34560,7 +34584,7 @@ async function main() {
                 await sendAlerta(`🔼 <b>Precio subido automático</b>\n${head}`
                   + `Estaba en margen ${(margen * 100).toFixed(0)}% → lo subí de `
                   + `${money(rp.from)} a <b>${money(rp.to)}</b> para llegar al ${targetPct}%`
-                  + (rp.variantes ? `\n(${rp.variantes} variantes, la lista completa · releído de ML)` : ''));
+                  + (rp.variantes ? `\n(${rp.variantes} variantes, la lista completa · releído de ML)` : ''), { info: true });
                 done = true;
               } else if (/PolicyAgent|PA_UNAUTHORIZED_RESULT_FROM_POLICIES/i.test(String(rp.err || ''))) {
                 porQueNo = '\n\n🚫 <b>ML no me deja cambiar el precio de esta publicación.</b>\nNo es un error del robot: ML le cerró la escritura a la aplicación. <b>Subilo vos a mano</b> y miralo en el panel de desarrolladores de ML.';
@@ -34600,7 +34624,7 @@ async function main() {
               await sendAlerta(`⚠️ <b>${head}</b>Precio actual: <b>${money(unit)}</b>\n`
                 + `Neto: ${money(neto)} · Costo: ${money(costo)}`
                 + ` · Impuestos: ${money(Math.round(mlx))} · Envío: ${money(envioVenta)}\n`
-                + `👉 Subilo a <b>${money(sugUnit)}</b> para llegar al ${targetPct}%${motivo}`);
+                + `👉 Subilo a <b>${money(sugUnit)}</b> para llegar al ${targetPct}%${motivo}`, { info: true });
               avisoPrecio[mla] = { ts: Date.now(), a: sugUnit };
               avisoPrecioUpd[mla] = avisoPrecio[mla];
             }
@@ -34627,7 +34651,7 @@ async function main() {
           const rv = await rescatarAlVender(db, { ventas: prendidas, label, token: t.access_token, products, accounts,
             subeDesde: SUBE_DESDE, meta: targetPct / 100 });
           for (const [k, m] of Object.entries(rv.marcas)) console.log(`   🛟 ${k}: ${m.estado}${m.a ? ' → ' + money(m.a) : ''}${m.why ? ' · ' + m.why : ''}`);
-          for (const a of rv.avisos) await sendAlerta(a);
+          for (const a of rv.avisos) await sendAlerta(a, { info: true });
         }
       } catch (eR) { console.log('   ⚠️ rescate al vender: ' + String(eR.message || eR).slice(0, 160) + ' · lo mira la noche'); }
     }
@@ -34708,7 +34732,7 @@ async function main() {
       console.log(`  ⚠️ ${label}: ${forzadas.length} cancelación(es) clasificadas sin poder leerlas en 7 días`);
       if (!DRY) await sendAlerta(`⚠️ <b>${label}: ${forzadas.length} cancelación(es) clasificadas a ciegas</b>\n`
         + `ML no contestó durante 7 días si fueron reclamo o devolución. Quedaron: ${forzadas.join(', ')}.\n`
-        + `Si alguna fue otra cosa, se corrige a mano en Ventas x Producto.`);
+        + `Si alguna fue otra cosa, se corrige a mano en Ventas x Producto.`, { info: true });
     }
 
     // 3c) SALUD DE PUBLICACIONES: avisar por Telegram si a una publicación
@@ -34940,7 +34964,7 @@ async function main() {
                 await sendAlerta(`🏷️ <b>Descuento sacado</b>\n`
                   + `${map[mla].title || mla}\nCuenta: ${label}\n`
                   + `ML le había aplicado: ${removed.join(', ')}\n`
-                  + `Volvió a tu precio normal ✅`);
+                  + `Volvió a tu precio normal ✅`, { info: true });
               }
               // Iba por sendTelegram SIN tipo y el filtro lo tiraba: no salió nunca (revisión max,
               // 25/09/2026). Ahora va al canal de precios, una vez por día por publicación, y el
@@ -35059,7 +35083,7 @@ async function main() {
         const hoyD = new Date(Date.now() - 3 * 3600e3).toISOString().slice(0, 10);
         let avisado = mem.avisado || '';
         if (n >= 3 && avisado !== hoyD) {
-          const ok = await sendAlerta(`⚠️ <b>No puedo mirar las promociones de ${promoNoLeidas.length} publicación(es)</b>\nHace ${n} horas seguidas que ML no me contesta si tienen descuento, así que no las puedo sacar.\n${promoNoLeidas.slice(0, 10).join(' · ')}`);
+          const ok = await sendAlerta(`⚠️ <b>No puedo mirar las promociones de ${promoNoLeidas.length} publicación(es)</b>\nHace ${n} horas seguidas que ML no me contesta si tienen descuento, así que no las puedo sacar.\n${promoNoLeidas.slice(0, 10).join(' · ')}`, { info: true });
           if (ok) avisado = hoyD;
         }
         await db.set('mlapi/promosinleer', { n, ts: Date.now(), avisado });
@@ -35257,7 +35281,7 @@ async function main() {
       const pName = {}; for (const p of products) pName[p.id] = p.name || '';
       const sellerIds = {}; for (const l of labels) if (accounts[l]?.seller_id) sellerIds[l] = accounts[l].seller_id;
       const avisos = await nivelarGrupos(db, map, tokensRun, DRY, pName, sellerIds);
-      for (const a of avisos) await sendAlerta(a);
+      for (const a of avisos) await sendAlerta(a, { info: true });
     } catch (e) { console.log('No pude nivelar los grupos de precio: ' + e.message); }
     // ACTIVAR LAS PAUSADAS QUE TIENEN STOCK EN FULL Y LLEGAN AL PISO. Va acá, en la misma vuelta
     // que los precios (una por hora), no en las vueltas rápidas: activar escribe en ML.
