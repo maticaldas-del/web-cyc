@@ -2423,7 +2423,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='21.16';
+const APP_VERSION='21.17';
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
 // muestre la versión y la fecha de actualización y que tenga un desplegable predeterminado cerrado".
 // Y el mismo día: "que ponga fecha de cada modificación y haya una barrita para scrollear y que
@@ -2434,6 +2434,7 @@ const APP_VERSION='21.16';
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'21.17',f:'01/10/2026',h:'13:30',c:[{n:1,t:'Pedidos: en los productos con variantes (como el Paulvic) hay un botón 📋 Copiar pedido que copia sólo el nombre y las unidades a comprar de cada una, listo para pegar en WhatsApp.'}]},
   {v:'21.16',f:'01/10/2026',h:'13:24',c:[{n:3,t:'Tope de H y monotributo: se toma el MAYOR entre lo facturado en ARCA y lo vendido. Adriana facturó menos de lo que vendió entre enero y julio, así que se cuenta lo vendido (lo más seguro para no pasarse). La tarjeta lo dice en ámbar.'}]},
   {v:'21.15',f:'01/10/2026',h:'13:12',c:[{n:3,t:'Tope de H y monotributo: lo facturado de los meses que tienen el archivo de ARCA cargado sale de ARCA (facturas menos notas de crédito), no de las ventas. Arranca con Adriana: de enero a julio el panel contaba unos $6,5M de más.'}]},
   {v:'21.14',f:'01/10/2026',h:'00:04',c:[{n:1,t:'Inicio: la tarjeta de ventas tiene flechas ‹ › para ver otro día (ayer, anteayer…). Abajo compara contra el día anterior al elegido, y al tocarla abre Ventas en ese día.'}]},
@@ -13738,6 +13739,16 @@ function maxCompraChip(p){
   const usdTxt='US$ '+r.usd.toFixed(2).replace('.',',');
   return `<span class="ped-max" title="Lo más que podés pagar cada unidad para quedar en ${r.meta}% vendiendo a ${fmt(r.P)}. El detalle está adentro."><b style="font-size:1.05rem">${ars||usdTxt}</b><i>${ars?usdTxt+' · ':''}máx. compra</i></span>`;
 }
+// COPIAR EL PEDIDO PARA WHATSAPP (01/10/2026, pedido suyo con el Paulvic: "yo lo paso por wsp, me
+// podés poner un botón para copiar? (…) que sólo aparezca nombre y unidades a pedir"). Se copian SÓLO
+// las variantes que hay que comprar (las de "✓ mandar" no), en el mismo orden que se ven en pantalla.
+const _pedCopiaTxt={};
+function pedCopiarVars(id){
+  const t=_pedCopiaTxt[id]; if(!t){toast('No hay nada para copiar');return;}
+  const ok=()=>toast('📋 Copiado · '+t.split('\n').length+' renglones');
+  const viejo=()=>{const ta=document.createElement('textarea');ta.value=t;document.body.appendChild(ta);ta.select();try{document.execCommand('copy');ok();}catch(e){toast('No se pudo copiar');}ta.remove();};
+  if(navigator.clipboard&&navigator.clipboard.writeText)navigator.clipboard.writeText(t).then(ok).catch(viejo);else viejo();
+}
 function _pedidoItemHtml(p,opts){
   opts=opts||{};
   const NEXT={pendiente:'poco_stock',poco_stock:'suficiente',suficiente:'pendiente'};
@@ -13752,6 +13763,9 @@ function _pedidoItemHtml(p,opts){
   const _prod=(state.products||[]).find(x=>x.id===p.prodId||(x.name&&normTxt(x.name)===normTxt(p.producto||'')));
   // El botón sale con CUALQUIER foto, no sólo con la cargada a mano: antes miraba `_prod.foto`,
   // que sólo se prende al subir una, así que con la foto automática de ML el botón no aparecía.
+  const _aCopiar=varsSorted?varsSorted.filter(x=>(x.q||0)>0).map(x=>`${x.v} x${x.q}`):[];
+  if(_aCopiar.length)_pedCopiaTxt[p.id]=_aCopiar.join('\n');else delete _pedCopiaTxt[p.id];
+  const copiarBtn=_aCopiar.length?`<button class="pi-var-toggle" style="background:rgba(34,197,94,.12);color:var(--green);border-color:rgba(34,197,94,.3)" onclick="pedCopiarVars('${p.id}')" title="Copia sólo el nombre y las unidades a pedir de cada variante, para pegarlo en WhatsApp">📋 Copiar pedido</button>`:'';
   const fotoBtn=(_prod&&fotoDeProducto(_prod))?`<button class="pi-var-toggle" style="background:rgba(56,189,248,.12);color:#38bdf8;border-color:rgba(56,189,248,.3)" onclick="verFoto('${_prod.id}')" title="Ver foto del producto">📷 Foto</button>`:'';
   // UN SOLO NÚMERO: lo que queda en riesgo DESPUÉS de mandar lo que ya tenés en casa o viajando.
   // Se probó mostrar los tres (el riesgo entero, lo que se tapa mandando y lo que hay que comprar)
@@ -13791,7 +13805,7 @@ function _pedidoItemHtml(p,opts){
       <span class="ped-caret">▼</span>
     </summary>
     <div class="ped-body">
-      ${fotoBtn}
+      ${fotoBtn}${copiarBtn}
       ${p.nota?`<span class="pi-nota">${p.nota}</span>`:'<span class="pi-nota" style="flex:0"></span>'}
       ${_enCam?'':riesgoBadge}
       ${(()=>{const _r=pedSinSentido(p);return _r?`<span class="pi-var-toggle" style="background:rgba(245,158,11,.14);color:var(--amber);border-color:rgba(245,158,11,.35);cursor:default" title="${_r.det.join(' · ').replace(/"/g,'&quot;')}">⚠️ este renglón no cierra${_r.n>1?' ('+_r.n+')':''}</span>`:'';})()}
