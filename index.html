@@ -2423,7 +2423,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='21.24';
+const APP_VERSION='21.25';
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
 // muestre la versión y la fecha de actualización y que tenga un desplegable predeterminado cerrado".
 // Y el mismo día: "que ponga fecha de cada modificación y haya una barrita para scrollear y que
@@ -2434,6 +2434,7 @@ const APP_VERSION='21.24';
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'21.25',f:'01/10/2026',h:'17:40',c:[{n:1,t:'Pedido de nuevos (Paraguay): cada producto muestra las dos fotos juntas — la de comprasparaguay y la del catálogo de ML contra el que se midió — para ver de un vistazo si es el mismo producto.'}]},
   {v:'21.24',f:'01/10/2026',h:'17:10',c:[{n:2,t:'Pedido de nuevos (Paraguay): si hay dudas de que el producto de ML sea el mismo que el de comprasparaguay (los títulos no coinciden, margen de 80% o más, o un solo vendedor sin Full), sale un cartel rojo "¿Es el mismo producto?" con el motivo. Se puede seguir pidiendo igual.'}]},
   {v:'21.23',f:'01/10/2026',h:'16:40',c:[{n:1,t:'Pedido de productos nuevos (Paraguay): cada producto ahora va en casillas grandes que ocupan todo el ancho — te sale c/u, se vende en ML, ML se queda, vendidas y lo que te queda en %. Letra más grande; los mismos datos de antes.'}]},
   {v:'21.22',f:'01/10/2026',h:'16:10',c:[{n:3,t:'Robot de precios: si un cambio suyo (subir, bajar o prueba) lleva 14 días o más, dejó $1.000 o más de menos y tuvo stock todo el tiempo, vuelve SOLO al precio de antes (nunca abajo del piso, nunca más de +25% de una, sin variantes ni liquidando). Lo que no está seguro te lo pregunta con el motivo.'},{n:1,t:'Puntaje del mes: las flechitas para cambiar de mes van juntas a la izquierda y ya no se corren con el largo del mes.'}]},
@@ -10790,6 +10791,13 @@ function candPreciosPartes(c){
   if(mMin!=null&&mMin>=80)D.push(`${mMin.toFixed(0)}% es demasiado: cuando el catálogo de ML es OTRO producto el margen sale así`);
   if(c.mlHayFull===false&&vend<=1&&min)D.push('un solo vendedor y sin Full: ese precio no tiene contra qué compararse');
   R.dudas=D;
+  // LAS DOS FOTOS, LADO A LADO (01/10/2026). Pedido suyo: *"el bot no vio las fotos de los
+  // productos, tienen el mismo nombre pero no son nada que ver a simple vista"*. No se le paga a
+  // nadie para "mirarlas": se muestran juntas y el ojo decide en un segundo. La de ML la guarda el
+  // robot (`mlFoto`, gratis); la de comprasparaguay la deja el chat al cargar (`foto`), porque esa
+  // página no deja entrar al robot. Sólo https.
+  const okFoto=u=>/^https:\/\//.test(String(u||''))?String(u).replace(/"/g,'&quot;'):'';
+  R.fotoML=okFoto(c.mlFoto); R.fotoPY=okFoto(c.foto);
   R.links=E;
   return R;
 }
@@ -11323,7 +11331,10 @@ function pedNuevoFilaHTML(f,maxU,tc){
           style="font-size:.8rem;padding:5px 10px;color:var(--red);border-color:rgba(239,68,68,.35)">✕</button>
       </div>
     </div>
-    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:7px">${cajas}</div>
+    <div style="display:flex;gap:10px;align-items:flex-start">
+      ${(R.fotoML||R.fotoPY)?`<div style="display:flex;gap:6px;flex-shrink:0">${R.fotoPY?`<a href="${R.fotoPY}" target="_blank" rel="noopener" style="text-align:center;text-decoration:none;color:var(--muted);font-size:.66rem"><img src="${R.fotoPY}" loading="lazy" onerror="this.style.display='none'" style="width:84px;height:84px;object-fit:contain;background:#fff;border-radius:8px;display:block">🇵🇾 Paraguay</a>`:`<div style="width:84px;height:84px;border:1px dashed var(--border);border-radius:8px;font-size:.62rem;color:var(--muted);display:flex;align-items:center;justify-content:center;text-align:center">🇵🇾 Paraguay<br>sin foto</div>`}${R.fotoML?`<a href="${R.fotoML}" target="_blank" rel="noopener" style="text-align:center;text-decoration:none;color:var(--muted);font-size:.66rem"><img src="${R.fotoML}" loading="lazy" onerror="this.style.display='none'" style="width:84px;height:84px;object-fit:contain;background:#fff;border-radius:8px;display:block">🏷️ ML</a>`:`<div style="width:84px;height:84px;border:1px dashed var(--border);border-radius:8px;font-size:.62rem;color:var(--muted);display:flex;align-items:center;justify-content:center;text-align:center">🏷️ ML<br>sin foto</div>`}</div>`:''}
+      <div style="flex:1;min-width:0;display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:7px">${cajas}</div>
+    </div>
     ${R.full?`<div style="font-size:.74rem;margin-top:7px;line-height:1.5">${R.full}</div>`:''}
     ${R.dudas.length?`<div style="font-size:.78rem;margin-top:7px;line-height:1.5;padding:7px 10px;border-radius:8px;background:rgba(239,68,68,.1);border:1px solid rgba(239,68,68,.4);color:var(--red)"><b>🚨 ¿Es el mismo producto? Abrí los dos links antes de comprarlo.</b><br>${R.dudas.join(' · ')}</div>`:''}
     ${P.ok?'':`<div style="font-size:.76rem;margin-top:6px"><span style="color:var(--red);font-weight:700">🚫 ${P.motivo}</span> · <a href="#" onclick="event.preventDefault();candSetPedir('${c.id}',0)" style="color:var(--red);font-weight:700">sacarlo del pedido</a></div>`}
