@@ -2429,7 +2429,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='21.39';
+const APP_VERSION='21.40';
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
 // muestre la versión y la fecha de actualización y que tenga un desplegable predeterminado cerrado".
 // Y el mismo día: "que ponga fecha de cada modificación y haya una barrita para scrollear y que
@@ -2440,6 +2440,7 @@ const APP_VERSION='21.39';
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'21.40',f:'02/10/2026',h:'18:40',c:[{n:2,t:'Pedidos: arreglado el cartel "Algo falló: update failed". Un pedido marcado a mano que tenía el mismo número que uno automático hacía que el panel no pudiera guardar ningún cambio de Pedidos.'}]},
   {v:'21.39',f:'02/10/2026',h:'17:30',c:[{n:1,t:'Pedidos → Paraguay tiene una pestaña nueva, 📦 Pedidos hechos: todos los pedidos a Paraguay, primero los que están en camino y después los que ya llegaron (de reposición y de nuevos). Antes estaban escondidos en un desplegable gris.'}]},
   {v:'21.38',f:'02/10/2026',h:'16:40',c:[{n:1,t:'Para probar: arriba de la lista dice cuántos candidatos dan 25% o más (en verde), cuántos faltan medir y cuántos no llegan.'}]},
   {v:'21.37',f:'02/10/2026',h:'15:50',c:[{n:1,t:'Para probar: los candidatos que no llegan al 25% van juntos abajo, en un desplegable cerrado.'}]},
@@ -10355,6 +10356,10 @@ async function syncPedidosAuto(){
     const provNom=pvMatch?.nombre||null;
     const id='pedauto_'+pid;
     const existing=arr.find(x=>x.id===id);
+    // 02/10/2026: un pedido con id automático pero marcado a mano (por ej. devuelto de la papelera)
+    // ya lo actualizó el bloque de arriba campo por campo. Escribirlo acá ENTERO en el mismo update
+    // hacía fallar TODA la escritura ("path … is an ancestor of another path"). Manda lo de a mano.
+    if(existing&&existing.auto===false)continue;
     if(existing){
       const same=existing.cantidad===r.aComprar&&existing.estado===estado&&existing.nota===nota&&existing.producto===r.p.name&&JSON.stringify(existing.variantesNec||null)===JSON.stringify(variantesNec)&&(existing.proveedor||null)===(provNom)&&existing.riesgo===r.riesgo&&existing.gan30d===r.gan30d;
       if(same)continue;
