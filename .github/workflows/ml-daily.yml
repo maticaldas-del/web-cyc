@@ -182,6 +182,21 @@ jobs:
           TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           BILLING_PROBE: motivoreclamo:60:go
         run: node ml-sync/sync.mjs
+      # LA LÍNEA DE TIEMPO DE CADA PUBLICACIÓN (01/10/2026): stock, precio, estado, caja, visitas,
+      # ventas, remate y margen de AYER, leído de ML en el momento (mlapi/linea).
+      - name: Línea de tiempo de ayer
+        id: linea
+        continue-on-error: true
+        env:
+          ML_CLIENT_ID: ${{ secrets.ML_CLIENT_ID }}
+          ML_CLIENT_SECRET: ${{ secrets.ML_CLIENT_SECRET }}
+          FIREBASE_API_KEY: ${{ secrets.FIREBASE_API_KEY }}
+          FIREBASE_DB_URL: ${{ secrets.FIREBASE_DB_URL }}
+          FIREBASE_BOT_EMAIL: ${{ secrets.FIREBASE_BOT_EMAIL }}
+          FIREBASE_BOT_PASSWORD: ${{ secrets.FIREBASE_BOT_PASSWORD }}
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          BILLING_PROBE: linea:go
+        run: node ml-sync/sync.mjs
       # EL DIARIO DE CADA PRODUCTO Y EL RITMO NORMAL (01/10/2026). Anota stock, precio, caja y
       # remate de ayer, calcula cuánto vende cada producto SIN remate y sobre días con stock (hasta
       # 365 días), y saca el remate de lo que ya quedó con 30 días de venta normal. Va ANTES de los
@@ -344,6 +359,6 @@ jobs:
           TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
           BILLING_PROBE: avisonoche
-          FALLOS_NOCHE: "${{ steps.resumen.outcome == 'failure' && 'Resumen diario · ' || '' }} ${{ steps.facturas.outcome == 'failure' && 'Facturas emitidas · ' || '' }} ${{ steps.netoreal.outcome == 'failure' && 'Neto real de las ventas que quedaron estimadas · ' || '' }} ${{ steps.cuotas.outcome == 'failure' && 'Cuotas de las publicaciones Premium · ' || '' }} ${{ steps.netoweb.outcome == 'failure' && 'Margen ML al precio de hoy · ' || '' }} ${{ steps.visitas.outcome == 'failure' && 'Visitas de las publicaciones · ' || '' }} ${{ steps.canceladas.outcome == 'failure' && 'Facturación de canceladas · ' || '' }} ${{ steps.entregas.outcome == 'failure' && 'Cuándo llegó cada venta · ' || '' }} ${{ steps.motivoreclamo.outcome == 'failure' && 'Motivo de los reclamos · ' || '' }} ${{ steps.ritmo.outcome == 'failure' && 'Diario y ritmo normal · ' || '' }} ${{ steps.avisos.outcome == 'failure' && 'Avisos de precio al canal privado · ' || '' }} ${{ steps.supervisor.outcome == 'failure' && 'Supervisor de precios · ' || '' }} ${{ steps.candidatos.outcome == 'failure' && 'Para probar · candidatos de Paraguay · ' || '' }} ${{ steps.saldoml.outcome == 'failure' && 'Saldo a liquidar y agenda de liberaciones · ' || '' }} ${{ steps.dispo.outcome == 'failure' && 'Disponible de ML (lo liberado pasa de a liquidar al disponible) · ' || '' }}"
+          FALLOS_NOCHE: "${{ steps.resumen.outcome == 'failure' && 'Resumen diario · ' || '' }} ${{ steps.facturas.outcome == 'failure' && 'Facturas emitidas · ' || '' }} ${{ steps.netoreal.outcome == 'failure' && 'Neto real de las ventas que quedaron estimadas · ' || '' }} ${{ steps.cuotas.outcome == 'failure' && 'Cuotas de las publicaciones Premium · ' || '' }} ${{ steps.netoweb.outcome == 'failure' && 'Margen ML al precio de hoy · ' || '' }} ${{ steps.visitas.outcome == 'failure' && 'Visitas de las publicaciones · ' || '' }} ${{ steps.canceladas.outcome == 'failure' && 'Facturación de canceladas · ' || '' }} ${{ steps.entregas.outcome == 'failure' && 'Cuándo llegó cada venta · ' || '' }} ${{ steps.motivoreclamo.outcome == 'failure' && 'Motivo de los reclamos · ' || '' }} ${{ steps.linea.outcome == 'failure' && 'Línea de tiempo de ayer · ' || '' }} ${{ steps.ritmo.outcome == 'failure' && 'Diario y ritmo normal · ' || '' }} ${{ steps.avisos.outcome == 'failure' && 'Avisos de precio al canal privado · ' || '' }} ${{ steps.supervisor.outcome == 'failure' && 'Supervisor de precios · ' || '' }} ${{ steps.candidatos.outcome == 'failure' && 'Para probar · candidatos de Paraguay · ' || '' }} ${{ steps.saldoml.outcome == 'failure' && 'Saldo a liquidar y agenda de liberaciones · ' || '' }} ${{ steps.dispo.outcome == 'failure' && 'Disponible de ML (lo liberado pasa de a liquidar al disponible) · ' || '' }}"
         run: |
           if [ -n "$(echo "$FALLOS_NOCHE" | tr -d ' ')" ]; then node ml-sync/sync.mjs; else echo "Ningún paso falló."; fi
