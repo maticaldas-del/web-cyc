@@ -46,7 +46,7 @@ html{font-size:118%}
 /* Etapa 7 (29/09/2026): en pantallas táctiles, casillas con letra de 16px (el iPhone deja de agrandar la
    pantalla al tocarlas), botones chicos más grandes, y en el teléfono las listas no tienen scroll propio. */
 @media(pointer:coarse){input,select,textarea{font-size:16px!important}input.qty{width:64px;min-height:36px}.ii-del{min-width:36px;min-height:36px;padding:6px 8px;font-size:.9rem}}
-@media(max-width:640px){#vp-day-list,.ingreso-list{max-height:none!important;overflow-y:visible!important}}
+@media(max-width:640px){#vp-day-list,.ingreso-list{max-height:68vh!important;overflow-y:auto!important;-webkit-overflow-scrolling:touch;overscroll-behavior:contain;border:1px solid var(--border);border-radius:10px;padding:4px}}
 #tt-toque{position:fixed;z-index:99990;max-width:min(320px,calc(100vw - 32px));background:var(--surface2);color:var(--text);border:1px solid var(--border2);border-radius:10px;padding:10px 12px;font-size:.78rem;line-height:1.45;box-shadow:0 6px 24px rgba(0,0,0,.35);white-space:pre-line}
 @media(max-width:900px){html{font-size:100%}}
 body{font-family:'DM Mono',monospace;background:var(--bg);color:var(--text);min-height:100vh}
@@ -2429,7 +2429,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='21.40';
+const APP_VERSION='21.41';
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
 // muestre la versión y la fecha de actualización y que tenga un desplegable predeterminado cerrado".
 // Y el mismo día: "que ponga fecha de cada modificación y haya una barrita para scrollear y que
@@ -2440,6 +2440,7 @@ const APP_VERSION='21.40';
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'21.41',f:'02/10/2026',h:'19:05',c:[{n:1,t:'Ventas en el celular: la lista vuelve a estar en un cuadro con su propio scroll, en vez de una lista interminable.'}]},
   {v:'21.40',f:'02/10/2026',h:'18:40',c:[{n:2,t:'Pedidos: arreglado el cartel "Algo falló: update failed". Un pedido marcado a mano que tenía el mismo número que uno automático hacía que el panel no pudiera guardar ningún cambio de Pedidos.'}]},
   {v:'21.39',f:'02/10/2026',h:'17:30',c:[{n:1,t:'Pedidos → Paraguay tiene una pestaña nueva, 📦 Pedidos hechos: todos los pedidos a Paraguay, primero los que están en camino y después los que ya llegaron (de reposición y de nuevos). Antes estaban escondidos en un desplegable gris.'}]},
   {v:'21.38',f:'02/10/2026',h:'16:40',c:[{n:1,t:'Para probar: arriba de la lista dice cuántos candidatos dan 25% o más (en verde), cuántos faltan medir y cuántos no llegan.'}]},
