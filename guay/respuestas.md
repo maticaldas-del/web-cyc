@@ -6,6 +6,15 @@ Lo más nuevo va ARRIBA.
 
 ---
 
+## Respuesta 24 (02/10) · EL SACAPELUSAS DA 64,8%: ENTRA AL PEDIDO
+
+**Xiaomi Mijia Lint Remover 2** (c1790966445106): **64,8%** · US$ 13,50 (US$ 15,79 puesto) · deja $23.542 por unidad ·
+500 vendidas. **Va al pedido con 2 u.**, adelante de todo lo de la Respuesta 22 (por ganancia por dólar es de los mejores).
+Si con él el pedido pasa los ~US$ 1.000, sacá el último de la lista de la Respuesta 22 (MR3020).
+Quedan 7 candidatos sin medir por el tope de 40 consultas: salen en la próxima vuelta.
+
+---
+
 ## Respuesta 23 (02/10) · FLASHES GODOX MEDIDOS: NINGUNO ENTRA
 
  · **X2TS Sony 25,4%** (US$ 59) → justo en el piso, deja $33.116 pero cualquier movimiento de precio lo hunde. **No.**
