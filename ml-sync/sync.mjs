@@ -14264,34 +14264,41 @@ async function main() {
           }
           const hecho = (prog.stock && prog.stock.inv) || {};
           const inv = (await db.get('cyc/inventory')) || {};
-          let ok = 0, mal = 0, pend = 0, n = 0;
+          let ok = 0, mal = 0, pend = 0, n = 0, parcial = 0; const errLog = [];
           const porMla = {};   // mla → dk → suma de sus depósitos
           for (const [iv, x] of Object.entries(invDe)) {
             if (hecho[iv]) continue;
             if (!tiempo()) { pend++; continue; }
             const t = await tokDe(x.cta); if (!t) { mal++; continue; }
-            const ops = []; let cortado = false;
-            for (let m0 = desde365; m0 < T0 && !cortado; m0 += 30 * DMS) {
-              const m1 = Math.min(m0 + 30 * DMS, T0);
-              const vistos = new Set();
+            // De lo más NUEVO a lo más viejo, mes por mes. Si ML no contesta un mes (o no guarda tan
+            // atrás), se para ahí y se usa lo que se pudo leer: desde ese punto para adelante la cuenta
+            // es exacta; para atrás queda sin dato (no se inventa).
+            const ops = []; let desdeLeido = T0, errTxt = '';
+            for (let m1 = T0; m1 > desde365; m1 -= 30 * DMS) {
+              const m0 = Math.max(desde365, m1 - 30 * DMS);
+              const vistos = new Set(); let okMes = true;
               for (let pag = 0; pag < 40; pag++) {
                 let r;
                 try { r = await g429(`/stock/fulfillment/operations/search?seller_id=${t.seller}&inventory_id=${iv}&date_from=${new Date(m0).toISOString().slice(0, 10)}&date_to=${new Date(m1).toISOString().slice(0, 10)}&limit=50&offset=${pag * 50}`, t.tk); }
-                catch { cortado = true; break; }
+                catch (e) { okMes = false; errTxt = String((e && e.message) || e).slice(0, 160); break; }
                 const res = (r && r.results) || []; let nuevos = 0;
                 for (const o of res) { const k = String(o.id || '') || JSON.stringify(o).slice(0, 200); if (vistos.has(k)) continue; vistos.add(k); ops.push(o); nuevos++; }
                 if (res.length < 50) break;
-                if (!nuevos || pag === 39) { cortado = true; break; }
+                if (!nuevos || pag === 39) { okMes = false; errTxt = 'más de 2.000 movimientos en un mes o ML ignora offset'; break; }
               }
+              if (!okMes) break;
+              desdeLeido = m0;
+              if (!tiempo()) break;
             }
-            if (cortado) { mal++; continue; }   // sin el año entero no se reconstruye (falta de dato ≠ cero)
+            if (errTxt && errLog.length < 4) errLog.push(iv + ': ' + errTxt);
+            if (desdeLeido >= T0 - DMS) { mal++; continue; }
             const pts = ops.map((o) => [Date.parse(o.date_created || o.date), Number((o.result || {}).available_quantity)]).filter(([ts, q]) => isFinite(ts) && isFinite(q)).sort((a, b) => a[0] - b[0]);
             const serie = {};
+            const e0 = links[x.mlas[0]] || {}; const k0 = e0.prodId ? e0.prodId + '__' + sidL(e0.cuenta) + (e0.variant ? '__v__' + sidL(e0.variant) : '') : null;
+            const hoyS = k0 && inv[k0] != null ? Math.max(0, parseInt(inv[k0]) || 0) : null;
             if (!pts.length) {
-              // Sin un solo movimiento en el año: el stock de hoy es el de todo el año.
-              const e0 = links[x.mlas[0]] || {}; const k0 = e0.prodId ? e0.prodId + '__' + sidL(e0.cuenta) + (e0.variant ? '__v__' + sidL(e0.variant) : '') : null;
-              const hoyS = k0 && inv[k0] != null ? Math.max(0, parseInt(inv[k0]) || 0) : null;
-              if (hoyS != null) for (let d = desde365; d < T0; d += DMS) serie[diaDe(d)] = [hoyS, 'sinmov'];
+              // Sin un solo movimiento en lo leído: el stock de hoy es el de todo ese tramo.
+              if (hoyS != null) for (let d = desdeLeido; d < T0; d += DMS) serie[diaDe(d)] = [hoyS, 'sinmov'];
             } else {
               let j = 0, cur = null;
               for (let d = Date.parse(diaDe(pts[0][0]).replace(/_/g, '-') + 'T03:00:00Z'); d < T0; d += DMS) {
@@ -14300,6 +14307,7 @@ async function main() {
                 if (cur != null) serie[diaDe(d)] = [Math.max(0, cur), 'ops'];
               }
             }
+            if (desdeLeido > desde365 + DMS) parcial++;
             for (const mla of x.mlas) for (const [dk, [q, f]] of Object.entries(serie)) {
               const z = ((porMla[mla] = porMla[mla] || {})[dk] = porMla[mla][dk] || { st: 0, stF: f });
               z.st += q;
@@ -14307,8 +14315,9 @@ async function main() {
             hecho[iv] = 1; ok++;
           }
           n = await escribir(porMla, true);
-          console.log(`stock: ${ok} depósitos reconstruidos · ${mal} sin poder leer el año entero (quedan sin stock viejo) · ${pend} pendientes · ${n} días`);
-          if (GO) await db.set('mlapi/lineaprog/stock', { inv: hecho, ts: Date.now(), ok: !pend && !mal });
+          console.log(`stock: ${ok} depósitos reconstruidos (${parcial} sin llegar al año entero: para atrás queda sin dato) · ${mal} que ML no dejó leer · ${pend} pendientes · ${n} días`);
+          for (const t of errLog) console.log('   ML contestó: ' + t);
+          if (GO) await db.set('mlapi/lineaprog/stock', { inv: hecho, ts: Date.now(), ok: !pend });
         }
         if (fase === 'precio') {
           // El precio de cada día: el cobrado en una venta ese día, o un cambio registrado, o el último
