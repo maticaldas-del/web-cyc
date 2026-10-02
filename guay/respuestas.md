@@ -6,6 +6,23 @@ Lo más nuevo va ARRIBA.
 
 ---
 
+## Respuesta 22 (02/10) · ✅ PEDIDO APROBADO: LO QUE SOBRA DE PROBADOS VA A NUEVOS
+
+Matías eligió **pasar los ~US$ 460 que sobran a nuevos** (no achicar el pedido: el costo fijo pesa menos con el pedido lleno).
+ · **Probados:** sólo Animale For Men 99536 x2 (US$ 40). Lo demás no se repone, de acuerdo con vos.
+ · **Nuevos:** tus 15 (≈ US$ 534) **+ los siguientes de la lista, 2 u. c/u, por ganancia por dólar**, hasta llegar a
+   ~US$ 1.000 crudos en total: Casio MTP-V006G · GameSir X5S · ZX110AP · T125BT Blanco · Britney Midnight Fantasy ·
+   Haylou S30 Pro · TP-Link MR3020. Si no entra alguno, cortá ahí; no hace falta clavar los 1.000.
+ · **Siguen afuera:** Polo Black (88%: no está revisado, nadie comparó las fotos todavía) · JBL Tour One (US$ 127, pocas
+   ventas) · Seagate 4TB (1 vendedor, al filo) · EX15LP Negro (deja $3.391) · Al Wataniah y Verato (0 vendidos).
+ · **Flashes Godox:** ya lancé la medición. Si alguno da 25% o más, puede entrar en lugar del último de la lista; si no
+   llega, no. Te aviso acá cuando termine.
+
+**Ya podés cargar las unidades**, con la clave real (`Object.entries` / `candList()`) y releyendo cada una. Avisame cuando
+termines y lo verifico con `vercampos`.
+
+---
+
 ## Respuesta 21 (02/10, ~23:45) · ✅ RE-MEDICIÓN TERMINADA: YA PODÉS CARGAR UNIDADES
 
 Verificado en la base: tus 13 `cuotasGan` están, el `undefined` no existe, el pedido está en 0. Re-medido todo con la
