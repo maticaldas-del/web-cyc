@@ -2429,7 +2429,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='21.32';
+const APP_VERSION='21.33';
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
 // muestre la versión y la fecha de actualización y que tenga un desplegable predeterminado cerrado".
 // Y el mismo día: "que ponga fecha de cada modificación y haya una barrita para scrollear y que
@@ -2440,6 +2440,7 @@ const APP_VERSION='21.32';
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'21.33',f:'02/10/2026',h:'14:30',c:[{n:1,t:'Para probar: cada producto muestra sólo foto, nombre, código, precio y % de ganancia. Tocándolo se abre el detalle con las dos fotos grandes (Paraguay y ML), los avisos y los botones.'},{n:1,t:'Las fotos se ven grandes al tocarlas (antes quedaban chiquitas): ocupan la pantalla y, si son de ML, se pide la foto original en vez de la miniatura.'}]},
   {v:'21.32',f:'02/10/2026',h:'00:43',c:[{n:2,t:'Las ventas nuevas (Inicio y Ventas) se dibujan solas otra vez: antes, si quedaba el cursor en una casilla (el buscador, la fecha), la pantalla no se actualizaba hasta apretar F5. Ahora sólo espera mientras estás escribiendo.'}]},
   {v:'21.31',f:'01/10/2026',h:'21:30',c:[{n:2,t:'Arqueo: en los primeros 5 días del mes, el botón de cierre cierra el mes ANTERIOR si todavía no está cerrado (con los valores de hoy). El botón dice qué mes va a cerrar.'}]},
   {v:'21.30',f:'01/10/2026',h:'23:59',c:[{n:3,t:'El robot anota cada noche un diario de cada producto (stock, precio, caja, si estaba rematando y lo vendido) y calcula cuánto vende de verdad SIN remate, sobre los días que hubo stock (hasta 365 días).'},{n:3,t:'Remate: cuando lo que queda alcanza para 30 días de venta normal, el robot saca el remate solo y el precio vuelve a la base. Antes seguía rematando hasta quedar en 0.'},{n:2,t:'Pedidos y Armar caja: si hubo ventas de remate, usan lo que el producto vende sin remate (no las ventas infladas por el remate, ni 0).'}]},
@@ -3316,6 +3317,15 @@ function pegarFotoUrl(prodId){
   const url=prompt('Pegá el link de la imagen (URL de la foto):','');
   if(url)setFotoUrl(prodId,url);
 }
+// LA FOTO GRANDE SE VE GRANDE (02/10/2026). Él: *"al clickearlas para hacerlas mas grandes se ven
+// chiquititas igual"*. Dos causas: la imagen se mostraba a su tamaño natural (una miniatura de ML
+// mide ~90 px y "max-width" no la agranda) y ML guarda la miniatura, no la foto. Ahora la caja
+// ocupa la pantalla (object-fit:contain la estira sin deformarla) y, si es de ML, se pide la
+// versión ORIGINAL (sufijo -O en vez de -I/-V); si esa no existe, vuelve a la de antes.
+function _fotoGrandeSrc(src){
+  try{const u=new URL(src);if(!(u.hostname==='mlstatic.com'||u.hostname.endsWith('.mlstatic.com')))return src;
+    return src.replace(/-[A-Z](\.(?:jpg|jpeg|png|webp))(\?.*)?$/i,'-O$1');}catch(e){return src;}
+}
 function _mostrarLightbox(src,titulo){
   let lb=document.getElementById('foto-lightbox');
   if(!lb){
@@ -3326,7 +3336,7 @@ function _mostrarLightbox(src,titulo){
   }
   lb.innerHTML=`<div style="max-width:92vw;max-height:92vh;display:flex;flex-direction:column;align-items:center;gap:10px" onclick="event.stopPropagation()">
     ${titulo?`<div style="color:#fff;font-family:'Syne',sans-serif;font-weight:700;font-size:1rem;text-align:center">${titulo.replace(/</g,'&lt;')}</div>`:''}
-    <img src="${src}" style="max-width:92vw;max-height:80vh;border-radius:10px;box-shadow:0 10px 40px rgba(0,0,0,.6);background:#fff">
+    <img src="${_fotoGrandeSrc(src)}" data-orig="${src}" onerror="if(this.src!==this.dataset.orig)this.src=this.dataset.orig" style="width:min(92vw,80vh,900px);height:min(92vw,80vh,900px);object-fit:contain;border-radius:10px;box-shadow:0 10px 40px rgba(0,0,0,.6);background:#fff">
     <button onclick="document.getElementById('foto-lightbox').style.display='none'" style="padding:8px 20px;border-radius:8px;border:1px solid rgba(255,255,255,.3);background:rgba(255,255,255,.1);color:#fff;cursor:pointer;font-size:.85rem">Cerrar ✕</button>
   </div>`;
   lb.style.display='flex';
@@ -11394,7 +11404,7 @@ function pedNuevoFilaHTML(f,maxU,tc){
       </div>
     </div>
     <div style="display:flex;gap:10px;align-items:flex-start">
-      ${(R.fotoML||R.fotoPY)?`<div style="display:flex;gap:6px;flex-shrink:0">${R.fotoPY?`<a href="${R.fotoPY}" target="_blank" rel="noopener" style="text-align:center;text-decoration:none;color:var(--muted);font-size:.66rem"><img src="${R.fotoPY}" loading="lazy" onerror="this.style.display='none'" style="width:84px;height:84px;object-fit:contain;background:#fff;border-radius:8px;display:block">🇵🇾 Paraguay</a>`:`<div style="width:84px;height:84px;border:1px dashed var(--border);border-radius:8px;font-size:.62rem;color:var(--muted);display:flex;align-items:center;justify-content:center;text-align:center">🇵🇾 Paraguay<br>sin foto</div>`}${R.fotoML?`<a href="${R.fotoML}" target="_blank" rel="noopener" style="text-align:center;text-decoration:none;color:var(--muted);font-size:.66rem"><img src="${R.fotoML}" loading="lazy" onerror="this.style.display='none'" style="width:84px;height:84px;object-fit:contain;background:#fff;border-radius:8px;display:block">🏷️ ML</a>`:`<div style="width:84px;height:84px;border:1px dashed var(--border);border-radius:8px;font-size:.62rem;color:var(--muted);display:flex;align-items:center;justify-content:center;text-align:center">🏷️ ML<br>sin foto</div>`}</div>`:''}
+      ${(R.fotoML||R.fotoPY)?`<div style="display:flex;gap:6px;flex-shrink:0">${R.fotoPY?`<a href="${R.fotoPY}" onclick="event.preventDefault();_mostrarLightbox(this.getAttribute('href'),'')" style="cursor:zoom-in;text-align:center;text-decoration:none;color:var(--muted);font-size:.66rem"><img src="${R.fotoPY}" loading="lazy" onerror="this.style.display='none'" style="width:84px;height:84px;object-fit:contain;background:#fff;border-radius:8px;display:block">🇵🇾 Paraguay</a>`:`<div style="width:84px;height:84px;border:1px dashed var(--border);border-radius:8px;font-size:.62rem;color:var(--muted);display:flex;align-items:center;justify-content:center;text-align:center">🇵🇾 Paraguay<br>sin foto</div>`}${R.fotoML?`<a href="${R.fotoML}" onclick="event.preventDefault();_mostrarLightbox(this.getAttribute('href'),'')" style="cursor:zoom-in;text-align:center;text-decoration:none;color:var(--muted);font-size:.66rem"><img src="${R.fotoML}" loading="lazy" onerror="this.style.display='none'" style="width:84px;height:84px;object-fit:contain;background:#fff;border-radius:8px;display:block">🏷️ ML</a>`:`<div style="width:84px;height:84px;border:1px dashed var(--border);border-radius:8px;font-size:.62rem;color:var(--muted);display:flex;align-items:center;justify-content:center;text-align:center">🏷️ ML<br>sin foto</div>`}</div>`:''}
       <div style="flex:1;min-width:0;display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:7px">${cajas}</div>
     </div>
     ${R.full?`<div style="font-size:.74rem;margin-top:7px;line-height:1.5">${R.full}</div>`:''}
@@ -11759,7 +11769,32 @@ function candidatosHTML(){
     info.push(c.enNissei===false
       ? chip('⛔ sin oferta de Nissei','var(--red)','En comprasparaguay ninguna de las tiendas que lo ofrecen es Nissei. No se compra: descartalo.')
       : chip('✓ oferta de Nissei','var(--green)','Nissei lo ofrece en comprasparaguay, así que el código y el precio de acá son los suyos y hay stock.'));
-    return `<div class="ingreso-item" style="flex-direction:column;align-items:stretch;gap:8px;border-left:3px solid ${col}">
+    // TARJETA COMPACTA (02/10/2026). Pedido suyo: *"no se entiende nada. quiero que muestre foto,
+    // nombre, codigo, precio, % de ganancia. todo el resto que este como detalle en un desplegable
+    // que se abre al clickear la publicacion. y tambien las dos fotos en el detalle"*. Arriba va
+    // sólo eso; lo demás (títulos, avisos, botones) queda igual pero adentro del desplegable.
+    // Si hay dudas de que sea el mismo producto, un ⚠️ rojo al lado del % avisa que hay que abrirlo.
+    const RP=candPreciosPartes(c);
+    const fotoMini=RP.fotoPY||RP.fotoML;
+    const dudas=(RP.dudas||[]).length;
+    const _tq=JSON.stringify(String(c.nombre||'')).replace(/"/g,'&quot;');
+    const fotoBox=(u,lbl)=>u?`<div style="text-align:center;font-size:.66rem;color:var(--muted)"><img src="${u}" loading="lazy" onclick="event.stopPropagation();_mostrarLightbox('${u}',${_tq})" onerror="this.style.display='none'" style="width:150px;height:150px;object-fit:contain;background:#fff;border-radius:8px;display:block;cursor:zoom-in">${lbl}</div>`
+      :`<div style="width:150px;height:150px;border:1px dashed var(--border);border-radius:8px;font-size:.66rem;color:var(--muted);display:flex;align-items:center;justify-content:center;text-align:center">${lbl}<br>sin foto</div>`;
+    return `<details class="ingreso-item" style="display:block;border-left:3px solid ${col}">
+      <summary style="list-style:none;cursor:pointer;display:flex;align-items:center;gap:10px">
+        ${fotoMini?`<img src="${fotoMini}" loading="lazy" onclick="event.preventDefault();event.stopPropagation();_mostrarLightbox('${fotoMini}',${_tq})" onerror="this.style.visibility='hidden'" style="width:56px;height:56px;object-fit:contain;background:#fff;border-radius:8px;flex:0 0 auto;cursor:zoom-in">`
+          :`<div style="width:56px;height:56px;border:1px dashed var(--border);border-radius:8px;flex:0 0 auto;font-size:.55rem;color:var(--muted);display:flex;align-items:center;justify-content:center">sin foto</div>`}
+        <div style="flex:1;min-width:0">
+          <div style="font-size:.8rem;font-weight:600;line-height:1.3">${c.nombre}</div>
+          <div style="font-size:.68rem;color:var(--muted);margin-top:3px">${c.cod?`🔖 ${c.cod} · `:''}${usd>0?`US$ ${usd.toFixed(2)} → <b style="color:var(--text)">US$ ${puesto.toFixed(2)}</b> puesto${pesos?` · ${fmt(pesos)}`:''}`:'<span style="color:var(--red)">sin precio</span>'}</div>
+        </div>
+        <div style="text-align:right;flex:0 0 auto">
+          ${tieneCuenta?`<div style="font-size:1.35rem;font-weight:700;color:${col};line-height:1">${c.margen.toFixed(0)}%${dudas?' <span title="Hay dudas de que sea el mismo producto: abrilo y mirá las dos fotos" style="font-size:.8em">⚠️</span>':''}</div>`:'<div style="font-size:.68rem;color:var(--muted)">⏳ sin medir</div>'}
+          <div style="font-size:.6rem;color:var(--muted);margin-top:3px">detalle ▾</div>
+        </div>
+      </summary>
+      <div style="display:flex;flex-direction:column;gap:8px;margin-top:10px">
+      <div style="display:flex;gap:10px;flex-wrap:wrap">${fotoBox(RP.fotoPY,'🇵🇾 Paraguay')}${fotoBox(RP.fotoML,'🏷️ ML')}</div>
       <div style="display:flex;align-items:flex-start;gap:10px;flex-wrap:wrap">
         <div style="flex:1;min-width:200px">
           <div style="font-size:.76rem;font-weight:600;line-height:1.35">${c.link?`<a href="${c.link}" target="_blank" rel="noopener" style="color:inherit">${c.nombre}</a>`:c.nombre}</div>
@@ -11803,7 +11838,8 @@ function candidatosHTML(){
         <button class="btn" style="font-size:.66rem;padding:5px 12px;color:var(--muted)" onclick="candDescartar('${c.id}')" title="No vuelve a aparecer. Se puede deshacer desde acá abajo.">👎 No me interesa</button>
         ${c.marca?`<button class="btn" style="font-size:.66rem;padding:5px 12px;color:var(--red);border-color:rgba(239,68,68,.35)" onclick="candMarcaNo('${c.id}')" title="Saca de la lista TODO lo de esta marca, para siempre. Para las marcas que ML te pide documentar.">🚫 ${c.marca} no</button>`:''}
       </div>
-    </div>`;
+      </div>
+    </details>`;
   }).join('')+candDescartadosHTML();
 }
 // LO DESCARTADO NO SE ESCONDE. Una lista que saca renglones sin decirlo es una lista que miente —
