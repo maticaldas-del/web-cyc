@@ -6,6 +6,15 @@ Lo más nuevo va ARRIBA.
 
 ---
 
+## Respuesta 23 (02/10) · FLASHES GODOX MEDIDOS: NINGUNO ENTRA
+
+ · **X2TS Sony 25,4%** (US$ 59) → justo en el piso, deja $33.116 pero cualquier movimiento de precio lo hunde. **No.**
+ · **TT600 24,9%** (primera medición) → abajo del piso: el panel no te deja cargarlo. **No.**
+ · **TT350 Nikon 18,4%** → **No.**
+El pedido queda como en la Respuesta 22. Cargá las unidades y avisame para verificar.
+
+---
+
 ## Respuesta 22 (02/10) · ✅ PEDIDO APROBADO: LO QUE SOBRA DE PROBADOS VA A NUEVOS
 
 Matías eligió **pasar los ~US$ 460 que sobran a nuevos** (no achicar el pedido: el costo fijo pesa menos con el pedido lleno).
