@@ -16,7 +16,8 @@ Te podés cortar en cualquier momento: **guardá a medida que avanzás, nunca al
    ENCIMA de la carpeta de trabajo (CHGU\web-cyc). Ahí está TODO lo aprendido: no uses copias viejas ni zips de WhatsApp.
 2. Leé ENTEROS `guay/aprendizajes.md` (reglas y errores ya cometidos; si contradicen este archivo,
    mandan ellos), `guay/progreso.md` (dónde quedó la corrida anterior y qué ya se miró) y `guay/traspaso-local.md`.
-3. Leé `guay/respuestas.md` por si quedó algo de la sesión "CYC WEB" sin aplicar.
+3. Leé `guay/respuestas.md` por si quedó algo de la sesión "CYC WEB" sin aplicar, y **abrí ya la pestaña de CYC WEB en
+   Chrome y mandale el primer mensaje** (sección 7).
 4. Herramientas en `guay/herramientas/`, datos de Nissei ya bajados en `guay/datos/` (con fecha: reconfirmá precios).
 
 ## 1 · Dónde
@@ -62,12 +63,18 @@ mitad probados y mitad nuevos, poniendo lo mejor (más %, más ventas, más segu
 noche y al mediodía (40 por vuelta); si necesitás que mida antes, pedíselo a "CYC WEB".
 Cargá el pedido de a poco a medida que aparecen los buenos, así si te cortás queda uno decente.
 
-## 7 · Hablar con la sesión "CYC WEB" (la de la nube)
-No hay SendMessage entre las dos. Se le escribe en su chat (Matías lo tiene abierto en Chrome) y ella
-contesta en `guay/respuestas.md` (hacé `git pull` o abrí
-https://raw.githubusercontent.com/maticaldas-del/web-cyc/claude/happy-johnson-laasu8/guay/respuestas.md?v=1).
+## 7 · Hablar con la sesión "CYC WEB" (la de la nube) — LO HACÉS VOS, NO MATÍAS
+No hay SendMessage entre las dos: **le escribís VOS, desde Chrome**, igual que manejás comprasparaguay.
+**Apenas arrancás, antes de escanear nada:** abrí en una pestaña de Chrome
+**https://claude.ai/code/session_011hr6XfiSaXTsqBofKs6buo** (o claude.ai/code → "Fijados" → "CYC WEB"),
+escribí en la caja de abajo **"Mensaje N de Guay · Arranqué en <PC>: …"** y mandalo con Enter. Dejá esa pestaña abierta
+toda la sesión y volvé a ella para cada mensaje. **No le pidas a Matías que haga de cartero.**
+Numerá los mensajes seguido del último que figura en `guay/respuestas.md` / `guay/progreso.md`.
+Ella contesta en `guay/respuestas.md` (abrí
+https://raw.githubusercontent.com/maticaldas-del/web-cyc/claude/happy-johnson-laasu8/guay/respuestas.md?v=<algo nuevo>
+o descargá el zip del repo de nuevo).
 Mandale: dudas numeradas ("Duda N: …" con links, código y precio) · "Tanda N: cargados X · descartados
-Y · voy por <categoría/página>" cada 20 cargados, con los descartados y su motivo · "Parte 1 terminada".
+Y · voy por <categoría/página>" cada 20 cargados, con los descartados y su motivo · los "GUARDAR" de la sección 8.
 No te quedes esperando: apartá el producto dudoso y seguí.
 
 ## 8 · GUARDAR LO APRENDIDO (lo más importante)
