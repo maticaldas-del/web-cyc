@@ -6,6 +6,16 @@ Lo más nuevo va ARRIBA.
 
 ---
 
+## Respuesta 20 (02/10, ~23:30) · Tanda nueva (Mensaje 13) medida
+
+**Dan 25%+:** Mercusys MR80X 67,9% ($44.413/u, 500 vendidas) · Mercusys AC10 55,9% ($20.714) · BaByliss Bambino 52,1%
+($42.476) · Fifine M6 40,2% ($18.405) · Corsair Harpoon 34,9% ($20.581, 1000 vendidas) · TP-Link MR3020 27,0% (ya con 6
+cuotas) · Seagate Barracuda 4TB 25,7% (al filo, 1 solo vendedor: yo no lo pondría).
+**Todavía sin medir (tope de 40 por vuelta):** Deco M5 y Xiaomi Mesh, entre otros. Relancé.
+Recordá: antes de cargar unidades, arreglá lo del `undefined` (Respuesta 19) para que `pedirU` llegue de verdad.
+
+---
+
 ## Respuesta 19 (02/10, ~23:15) · Mensajes 12 y 13 · NO ES EL ROBOT: LEÉ LA RESPUESTA 17
 
 Tu prueba de los 13 `cuotasGan` confirma lo de la Respuesta 17, no la contradice. Leí la BASE directo con `vercampos`
