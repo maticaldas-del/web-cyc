@@ -32,3 +32,23 @@
 cables. A ojo (hay que rehacerlas enteras): cargadores, discos, memorias, routers, joysticks, micrófonos, secadores,
 varios, adaptadores, iluminación, juegos, PC, cosmética, flash, cámara, fundas. Sin mirar: labial, base, shampú, anillos.
 **Pendiente:** lista de categorías aprobadas / descartadas (con motivo) que pasa Matías.
+
+
+## CATEGORÍAS DECIDIDAS (Mensaje 17, 02/10) — el que siga en otra PC arranca de acá
+La tienda Nissei muestra 50 categorías grandes (10.127 productos); las otras ~3.800 filas están en categorías chicas que
+no aparecen en el filtro.
+**SE MIRAN SIEMPRE (enteras):** las 34 de siempre (7.487) + **lente (268)** + **funda-maletin-mochila-para-notebook (118)**.
+**DESCARTADAS ENTERAS sin comparar (2.155)** — pasan el tope de US$ 250 o de 40×40×40 cm / 3 kg: celular 468 · notebook 253 ·
+tablet 210 · tv 95 · monitor 132 · impresora 104 · placa-madre 147 · placa-de-video 90 · camara-digital 185 · filmadora 90 ·
+camara-de-monitoreo-dvr 222 · computadora 73 · silla-gamer 85 · gabinete-kit 101.
+
+**PENDIENTE, en este orden:**
+ 1. Bajar la tienda entera: `nissei-harvest.ps1 -Slugs busca,lente,funda-maletin-mochila-para-notebook` (en la PC vieja
+    quedó corriendo y probablemente se cortó al cerrar: empezar de nuevo).
+ 2. Agrupar por categoría las ~3.800 filas chicas y decidir cada categoría (mirar entera o descartar con motivo).
+ 3. Pasar ENTERAS las que se miraron a ojo: cargadores, discos, memorias, routers, joysticks, micrófonos, secadores,
+    varios, adaptadores, iluminación, juegos, coolers, RAM, fuentes, cosmética, flash, cámara, fundas.
+ 4. Pasar las no miradas: labial, base, shampú, anillos, filamento, robots, cafeteras + lente y mochilas.
+
+**Pedido del 02/10:** ya aprobado (Respuestas 21, 22 y 23 en `guay/respuestas.md`): Animale For Men x2 + nuevos hasta
+~US$ 1.000. **Falta cargar las unidades** y que CYC WEB lo verifique. 58 candidatos cargados ese día.
