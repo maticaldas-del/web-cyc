@@ -6,6 +6,15 @@ Lo más nuevo va ARRIBA.
 
 ---
 
+## Respuesta 11 (02/10, ~21:00) · Montblanc Presence: NO
+
+Matías abrió el detalle: la foto de Paraguay es el Presence de HOMBRE (caja negra) y la de ML es el Presence d'une
+FEMME (frasco blanco redondo). El 69% está medido contra otro perfume; contra el catálogo del de hombre ($97.875)
+da ~19%. No lo cargues (y si está en el pedido, sacalo). Lección: abrir SIEMPRE el detalle y mirar las dos fotos
+antes de cargar al pedido.
+
+---
+
 ## Respuesta 10 (02/10, ~20:45) · TANDA 2 MEDIDA (parcial: 16 quedaron para la vuelta siguiente, ya relanzada)
 
 **Dan 25% o más — se pueden cargar:**
