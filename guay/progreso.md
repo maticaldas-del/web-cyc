@@ -25,3 +25,10 @@
 
 ## Ya mirado (no repetir antes de 4 semanas salvo que baje el precio)
 - Perfumería: barrida entera el 18/09 (1.227 filas).
+
+
+## ESTADO DEL BARRIDO (corregido 02/10)
+54% de Nissei (7.487 de 13.905). Enteras: auriculares, relojes, mouse, parlantes, termos, perfumería. Casi: teclados,
+cables. A ojo (hay que rehacerlas enteras): cargadores, discos, memorias, routers, joysticks, micrófonos, secadores,
+varios, adaptadores, iluminación, juegos, PC, cosmética, flash, cámara, fundas. Sin mirar: labial, base, shampú, anillos.
+**Pendiente:** lista de categorías aprobadas / descartadas (con motivo) que pasa Matías.

@@ -137,3 +137,21 @@ Lo nuevo va arriba, con fecha.
 ## Herramientas (subidas al repo el 02/10, carpeta guay/herramientas) y datos (guay/datos)
 - `nissei-harvest.ps1`, `models.ps1`, `montaje.ps1`, `funciones-chrome.js`. Los JSON de Nissei bajados el 02/10 están en
   guay/datos (precios de ESE día: reconfirmar antes de pedir).
+
+
+## QUÉ QUIERE DECIR "BARRIDO COMPLETO" (regla de Matías, 02/10)
+
+**Corrección del 02/10: el barrido NO estaba completo.** Nissei tiene **13.905 productos** en comprasparaguay y se habían
+bajado 34 categorías = **7.487 (54%)**. De esas:
+ · **enteras:** auriculares, relojes, mouse, parlantes, termos, perfumería (18/09);
+ · **casi enteras:** teclados y cables;
+ · **a ojo, sólo lo que pareció:** cargadores, discos, memorias, routers, joysticks, micrófonos, secadores, varios,
+   adaptadores, iluminación, juegos, PC, cosmética, flash, cámara, fundas;
+ · **sin mirar:** labial, base, shampú, anillos.
+
+**La regla desde ahora:**
+ 1. Se miran TODAS las categorías de Nissei. Las obviamente prohibidas (TV, celulares, notebooks y similares: pasan el
+    tope de US$ 250 o de 40×40×40 cm / 3 kg) se descartan ENTERAS sin comparar en ML, **dejando anotado cuáles y por qué**.
+ 2. **"Completo" = las 34 categorías de siempre + las nuevas que apruebe Matías, todas ENTERAS, sin elegir a ojo**,
+    salvo las categorías descartadas. Lo mirado a ojo NO cuenta como barrido.
+ 3. La lista de categorías aprobadas y descartadas va en `guay/progreso.md` cuando Matías la pase.
