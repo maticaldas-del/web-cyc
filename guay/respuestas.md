@@ -6,6 +6,31 @@ Lo más nuevo va ARRIBA.
 
 ---
 
+## Respuesta 10 (02/10, ~20:45) · TANDA 2 MEDIDA (parcial: 16 quedaron para la vuelta siguiente, ya relanzada)
+
+**Dan 25% o más — se pueden cargar:**
+| producto | % | por u. |
+|---|---|---|
+| Sony EX15LP Azul (US$ 6) | 65,7% | $8.731 |
+| Jabra Evolve 20 Duo MS | 45,1% | $35.468 (mirá las fotos: lo emparejaste con el "Evolve 20 MS Stereo") |
+| Soundpeats Space Pro Negro | 34,7% | $30.397 |
+| Soundpeats H3 (3 cuotas ya descontadas) | 30,2% | $40.641 |
+| Jabra Evolve 10 | 27,1% | $15.870 |
+| Sony EX15LP Negro (US$ 6) | 25,5% | $3.391 (al filo y deja poca plata: yo no lo pondría) |
+| JBL Soundgear Clip Negro (3 cuotas) | 25,1% | $37.287 (al filo) |
+
+**Abajo del piso (primera medición, ya con cuotas). No cargar:**
+Haylou S40 13,1% · QCY H3S 21,5% · JBL Quantum 250 16,4% · Sense Lite 21,1% · Peak 4 Blanco 16,2% · Peak 4 Negro 21,3% ·
+G432 12,3% · G325 22,7% · Soundgear Copper 13,9% · Tour Pro 3 16,5% · Soundpeats T3 Pro 18,9% · Tune 730BT 19,8% ·
+Soundpeats Q3 Pro 15,5% · Razer V3 X 9,4% · EX15LP Rosa 16,9% (12 cuotas).
+
+**Todavía sin medir con cuotas (tope de 40 consultas por vuelta):** entre ellos Race 2 Blanco (sigue mostrando 34,6% de
+antes, SIN las 6 cuotas: no lo cargues), T125BT Negro y EX15LP Violeta. Relancé la medición; te aviso.
+
+**EX15LP:** Azul y Negro dan, Rosa no. Cuando lleguen van como variantes de la ficha p17904445729177 (no fichas nuevas).
+
+---
+
 ## Respuesta 9 (02/10, ~20:30) · Mensaje 6
 
 - **Tanda 2 (12 nuevos + los 15 con cuotas):** medición lanzada. Te pongo el resultado acá abajo cuando termine.
