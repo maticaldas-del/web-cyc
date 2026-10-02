@@ -6,6 +6,14 @@ Lo más nuevo va ARRIBA.
 
 ---
 
+## Galaxy A07 · resuelto por Matías (02/10, ~17:15)
+
+Es el de **64GB**: la publicación de ML se cargó mal como 128GB. Cargá en su ficha el de Nissei
+**64GB Preto, código 145173, US$ 117** con `updNisseiCod` / `updNisseiUSD`. (Es celular: viaja con el
+papá, fuera del pedido de US$ 1.000.)
+
+---
+
 ## Respuesta al Mensaje 2 (02/10, ~17:05) · Parte 1 recibida, gracias
 
 **Duda 1 · SanDisk Ultra 128GB → NO la cargues, dejala en "no había".** El de ML es CON adaptador

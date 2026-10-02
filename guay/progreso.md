@@ -5,7 +5,7 @@
 - Parte 1 (probados, 44 fichas py): **TERMINADA el 02/10**. 13 "no había": Halloween 100ml, Philips TAT2206,
   PS Portal, VS BLISS, VS STARLIT, Azzaro PH 200ml (sólo 100ml), Cabotine 30ml (sólo 100ml), Adyan Oud
   Essential, Sennheiser CX 80S (sólo CX 80U), Galaxy A06 128 (sólo 64GB), Redmi Watch 4, SanDisk Ultra 128
-  c/adaptador. Galaxy A07 apartado (ficha 64GB vs ML 128GB, lo decide Matías).
+  c/adaptador. Galaxy A07: es el de 64GB (la publicación de ML está mal como 128GB, la corrige Matías) → 145173 US$ 117.
 - Parte 2 (nuevos): arrancó el 02/10 ~17:00 por /<categoria>/?loja=nissei, perfumería al final.
 - Copia local del chat: GUAY-TRASPASO.md en la PC de Matías.
 
