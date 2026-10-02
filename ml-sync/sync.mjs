@@ -14084,6 +14084,61 @@ async function main() {
     // Emparejar por nombre es el filtro que ya falló cinco veces, y en un producto nuevo es peor
     // porque no hay ficha contra la cual contrastar.
     // Sin `:go` calcula y muestra pero NO escribe ni manda nada.
+    // BILLING_PROBE=vercand[:<horas>] → QUÉ HAY EN "PARA PROBAR" Y QUÉ CARGÓ EL CHAT DE COMPRAS (02/10/2026).
+    // **SOLO LEE.** Pedido suyo: "analizá todo lo que hace Guay y corroborá cada hora". Lista los vivos,
+    // marca los cargados en las últimas N horas (24 por defecto) y los problemas que se ven sin
+    // preguntarle nada a ML: sin link del catálogo, sin código, sin precio, sin ventas, sin medir,
+    // título que no parece el mismo producto (con el color en los tres idiomas), catálogo gemelo más
+    // barato, abajo del piso, unidades cargadas sin margen medido y nombres repetidos.
+    if (/^vercand(:|$)/.test(String(process.env.BILLING_PROBE || ''))) {
+      const hs = Number(String(process.env.BILLING_PROBE).split(':')[1]) || 24;
+      const desde = Date.now() - hs * 3600e3;
+      const cands = (await db.get('cyc/candidatos_py')) || {};
+      const todos = Object.entries(cands).filter(([, c]) => c && c.nombre);
+      const vivos = todos.filter(([, c]) => !c.no && !c.prodId);
+      const nuevos = todos.filter(([, c]) => Number(c.ts) >= desde);
+      const ultTs = Math.max(0, ...todos.map(([, c]) => Number(c.ts) || 0));
+      const _f = (t) => t ? new Date(t - 3 * 3600e3).toISOString().slice(5, 16).replace('T', ' ') : '?';
+      console.log(`=== PARA PROBAR · SOLO LEE ===`);
+      console.log(`${todos.length} en la lista · ${vivos.length} vivos · ${todos.length - vivos.length} descartados o con ficha`);
+      console.log(`cargados en las últimas ${hs} h: ${nuevos.length} · el último se cargó ${_f(ultTs)} (hora de acá)`);
+      // Los campos que usa quien carga (sólo nombres), para saber si escribe donde el robot y el panel leen.
+      const cuenta = {};
+      for (const [, c] of todos) for (const k of Object.keys(c)) cuenta[k] = (cuenta[k] || 0) + 1;
+      console.log('campos: ' + Object.entries(cuenta).sort((a, b) => b[1] - a[1]).map(([k, n]) => `${k} ${n}`).join(' · '));
+      const sinTs = todos.filter(([, c]) => !(Number(c.ts) > 0)).length;
+      if (sinTs) console.log(`⚠️ ${sinTs} sin fecha de carga (ts): no se puede saber cuándo entraron`);
+      const porNom = {};
+      for (const [id, c] of todos) { const k = _rvBase(c.nombre).trim(); (porNom[k] = porNom[k] || []).push(id); }
+      const fila = ([id, c]) => {
+        const p = [];
+        const idL = String(c.mlId || '').toUpperCase().replace(/^.*\/P\//, '').split(/[?#]/)[0];
+        if (!/^MLA\d+$/.test(idL)) p.push('SIN LINK DE ML');
+        if (!String(c.cod || c.codPy || '').trim()) p.push('sin código');
+        if (!(Number(c.usd || c.precioUSD || c.nisseiUSD) > 0)) p.push('sin precio');
+        if (!isFinite(Number(c.vendCarga)) || c.vendCarga === '' || c.vendCarga == null) p.push('sin ventas cargadas');
+        else if (Number(c.vendCarga) < 25) p.push(`pocas ventas (${c.vendCarga})`);
+        const m = (c.margen != null && isFinite(c.margen)) ? Number(c.margen) : null;
+        if (m == null) p.push('sin medir todavía');
+        else if (m < CAND_PISO_PCT) p.push(`abajo del piso (${m}%)`);
+        if (c.mlTit) for (const r of chequeoMismoProducto(c.nombre, c.mlTit)) p.push('⚠️ ' + r);
+        if (c.mlGemelo && c.mlGemelo.id) p.push(`⚠️ catálogo gemelo ${c.mlGemelo.id} a $${c.mlGemelo.precio} → ${c.mlGemelo.margen}%`);
+        if (Number(c.pedirU) > 0 && m == null) p.push(`${c.pedirU} u. cargadas SIN margen medido`);
+        if ((porNom[_rvBase(c.nombre).trim()] || []).length > 1) p.push('NOMBRE REPETIDO en la lista');
+        return `  ${m == null ? '  —  ' : (m.toFixed(1) + '%').padStart(6)} · ${String(c.nombre).slice(0, 70)}${Number(c.pedirU) > 0 ? ` · 🧾 ${c.pedirU} u.` : ''} · cargado ${_f(Number(c.ts))}`
+          + (p.length ? `\n         ${p.join(' · ')}` : '  ✓');
+      };
+      const orden = (a, b) => (Number(b[1].ts) || 0) - (Number(a[1].ts) || 0);
+      console.log(`\n── CARGADOS EN LAS ÚLTIMAS ${hs} H (${nuevos.length}) ──`);
+      for (const e of nuevos.sort(orden)) console.log(fila(e) + (e[1].no ? `\n         (ya descartado: ${String(e[1].motivo || e[1].noTipo || '').slice(0, 80)})` : ''));
+      const viejos = vivos.filter(([, c]) => !(Number(c.ts) >= desde));
+      console.log(`\n── LOS DEMÁS VIVOS (${viejos.length}) ──`);
+      for (const e of viejos.sort(orden)) console.log(fila(e));
+      const conU = vivos.filter(([, c]) => Number(c.pedirU) > 0);
+      const usdP = conU.reduce((s, [, c]) => s + (Number(c.pedirU) || 0) * (Number(c.usd || c.precioUSD || c.nisseiUSD) || 0), 0);
+      console.log(`\n── EN EL PEDIDO: ${conU.length} producto(s) · ${conU.reduce((s, [, c]) => s + Number(c.pedirU), 0)} u. · US$ ${usdP.toFixed(2)} crudos ──`);
+      return;
+    }
     // BILLING_PROBE=descartados → ¿A CUÁNTOS DESCARTAMOS POR EMPAREJARLOS MAL? **SOLO LEE.**
     //
     // Pregunta suya del 19/09/2026, y es la mejor del día: *"acá se equivocó dando por correcto un
