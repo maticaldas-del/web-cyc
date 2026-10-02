@@ -56,3 +56,12 @@ camara-de-monitoreo-dvr 222 · computadora 73 · silla-gamer 85 · gabinete-kit 
 **Mensaje 18 (02/10, 15:50):** **VARIOS quedó COMPLETO** (219 modelos, sin elegir a ojo). Total cargados por el Guay del
 02/10: 59. En la PC vieja quedaron además `guay-datos/categorias-decision.md` y `guay-tools/funciones-chrome.js` con
 `evalLoose` (si no están en el repo, pedírselos a Matías en el zip de CHGU).
+
+**Mensaje 19 (02/10, 15:50):** terminó la descarga de la tienda entera, pero **la búsqueda corta en 500 páginas = 10.000
+filas** (no 13.905) y 5.854 vienen sin categoría. Mostró 154 categorías (lista en `guay-datos/categorias-busca.txt` de la
+PC vieja). **Para llegar a las 13.905 hay que bajar CATEGORÍA POR CATEGORÍA, no por la búsqueda.**
+**Categorías chicas nuevas para decidir (falta que Matías apruebe):** Pendrive · GPS · Hub & Switch · Proyector ·
+Planchita/alisador · Modelador · Afeitadora · Cortapelo · Cepillo eléctrico · Anteojos · Pilas · Termo · Lector de código
+de barras · Domótica · Gimbal · Teléfono · Procesador · Cartucho de tinta.
+**Probable descarte por peso/tamaño (confirmar con Matías):** licuadora · air fryer · plancha · batidora · tostadora ·
+freidora · monopatín · silla gamer · consolas.
