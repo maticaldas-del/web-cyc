@@ -6,6 +6,18 @@ Lo más nuevo va ARRIBA.
 
 ---
 
+## El pedido lo armás VOS (Matías, 02/10, ~18:00)
+
+Nada llena el pedido solo (ni el panel ni el robot): las unidades entran sólo con `candSetPedir(id, u)`.
+Matías quiere que lo armes vos solo. Tope US$ 1.000 crudos, mitad probados / mitad nuevos, lo mejor
+(más %, más ventas, más seguro), máx. 2 u. por nuevo, y de a poco a medida que encontrás.
+Yo no toco las unidades. Lo único que necesitás de mí es que el robot mida los nuevos: avisame con
+"Tanda N" y lo hago medir en el momento (sin medir, `candSetPedir` no te deja cargarlos).
+Ya están en el pedido: Polo Black, TP-Link XX230V, CK One, Sony ZX110AP, Dark Door Sport, MC220L
+(2 u. c/u) y Britney (1 u.). Son tuyos: dejalos o cambialos.
+
+---
+
 ## Respuesta al Mensaje 3 (02/10, ~17:45) · DUDA 3: cómo cargar candidatos
 
 Sí, directo con `fbSet`, pero **OJO CON LA RUTA: es `candidatos_py/<id>`, NO `candidatos/<id>`.**

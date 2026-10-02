@@ -51,9 +51,13 @@ fuente:'chat', enNissei:true, ts:Date.now()})`. Ruta `candidatos_py` (NO `candid
 del CATÁLOGO de ML (lo de /p/); nada calculado (el margen lo escribe el robot). Antes, mirá en
 `state.candidatos` que no esté ya (por `cod` o `mlId`).
 
-## 6 · El pedido
-Tope US$ 1.000 crudos, mitad probados y mitad nuevos. **No cargues unidades**: el pedido lo arma la
-sesión "CYC WEB" con lo mejor medido.
+## 6 · El pedido (lo armás VOS, decisión de Matías del 02/10)
+Nada en el panel ni en el robot llena el pedido solo: las unidades entran únicamente con
+`candSetPedir(id, u)` (o el botón 🪄 si Matías lo aprieta). Lo armás vos, con tope US$ 1.000 crudos,
+mitad probados y mitad nuevos, poniendo lo mejor (más %, más ventas, más seguro), máx. 2 u. por nuevo.
+`candSetPedir` no deja cargar lo que el robot todavía no midió o da menos de 25%: el robot mide de
+noche y al mediodía (40 por vuelta); si necesitás que mida antes, pedíselo a "CYC WEB".
+Cargá el pedido de a poco a medida que aparecen los buenos, así si te cortás queda uno decente.
 
 ## 7 · Hablar con la sesión "CYC WEB" (la de la nube)
 No hay SendMessage entre las dos. Se le escribe en su chat (Matías lo tiene abierto en Chrome) y ella
