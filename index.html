@@ -2429,7 +2429,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='21.33';
+const APP_VERSION='21.34';
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
 // muestre la versión y la fecha de actualización y que tenga un desplegable predeterminado cerrado".
 // Y el mismo día: "que ponga fecha de cada modificación y haya una barrita para scrollear y que
@@ -2440,7 +2440,8 @@ const APP_VERSION='21.33';
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
-  {v:'21.33',f:'02/10/2026',h:'14:30',c:[{n:2,t:'Para probar: si la publicación que gana en ML da 6 o más cuotas sin interés, el robot resta ese costo del % y el detalle lo dice.'},{n:1,t:'Para probar: cada producto muestra sólo foto, nombre, código, precio y % de ganancia. Tocándolo se abre el detalle con las dos fotos grandes (Paraguay y ML), los avisos y los botones.'},{n:1,t:'Las fotos se ven grandes al tocarlas (antes quedaban chiquitas): ocupan la pantalla y, si son de ML, se pide la foto original en vez de la miniatura.'}]},
+  {v:'21.34',f:'02/10/2026',h:'14:50',c:[{n:2,t:'Para probar: si la publicación que gana en ML da 6 o más cuotas sin interés, el robot resta ese costo del % y el detalle lo dice.'}]},
+  {v:'21.33',f:'02/10/2026',h:'14:30',c:[{n:1,t:'Para probar: cada producto muestra sólo foto, nombre, código, precio y % de ganancia. Tocándolo se abre el detalle con las dos fotos grandes (Paraguay y ML), los avisos y los botones.'},{n:1,t:'Las fotos se ven grandes al tocarlas (antes quedaban chiquitas): ocupan la pantalla y, si son de ML, se pide la foto original en vez de la miniatura.'}]},
   {v:'21.32',f:'02/10/2026',h:'00:43',c:[{n:2,t:'Las ventas nuevas (Inicio y Ventas) se dibujan solas otra vez: antes, si quedaba el cursor en una casilla (el buscador, la fecha), la pantalla no se actualizaba hasta apretar F5. Ahora sólo espera mientras estás escribiendo.'}]},
   {v:'21.31',f:'01/10/2026',h:'21:30',c:[{n:2,t:'Arqueo: en los primeros 5 días del mes, el botón de cierre cierra el mes ANTERIOR si todavía no está cerrado (con los valores de hoy). El botón dice qué mes va a cerrar.'}]},
   {v:'21.30',f:'01/10/2026',h:'23:59',c:[{n:3,t:'El robot anota cada noche un diario de cada producto (stock, precio, caja, si estaba rematando y lo vendido) y calcula cuánto vende de verdad SIN remate, sobre los días que hubo stock (hasta 365 días).'},{n:3,t:'Remate: cuando lo que queda alcanza para 30 días de venta normal, el robot saca el remate solo y el precio vuelve a la base. Antes seguía rematando hasta quedar en 0.'},{n:2,t:'Pedidos y Armar caja: si hubo ventas de remate, usan lo que el producto vende sin remate (no las ventas infladas por el remate, ni 0).'}]},
