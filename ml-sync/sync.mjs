@@ -4792,7 +4792,7 @@ async function restaurarLiquidando(db, todas) {
 //    marcado flojo (`f`). Lo usan la salida del remate, la entrada por "sobra", Pedidos y Armar caja.
 function _rnDia(ts) { return new Date(ts - 3 * 3600e3).toISOString().slice(0, 10).replace(/-/g, '_'); }
 function calcRitmoNormal(o) {
-  const { links = {}, inv = {}, vp = {}, nosubir = {}, rescateventa = {}, autoprecio = {}, cambios = {}, diario = {}, precios = {}, hoyTs = Date.now(), DIAS = 365 } = o || {};
+  const { links = {}, inv = {}, vp = {}, nosubir = {}, rescateventa = {}, autoprecio = {}, cambios = {}, diario = {}, precios = {}, hoyTs = Date.now(), DIAS = 365, primerVp = null } = o || {};
   const sid = (x) => String(x).replace(/[^a-z0-9]/gi, '_');
   const DMS = 864e5;
   // Día local de acá: el día D arranca a las 03:00 UTC.
@@ -4839,6 +4839,12 @@ function calcRitmoNormal(o) {
       for (const k of ks) add(k, dk, q, rem);
     }
   }
+  // Las ventas de ANTES de que el panel guardara venta por venta (mayo) salen de la línea de tiempo
+  // (órdenes de ML). Antes del 12/09 no existía el remate: son todas normales.
+  if (primerVp) for (const [dk, ks] of Object.entries(diario)) {
+    if (dk >= primerVp || !dSet.has(dk)) continue;
+    for (const [k, d] of Object.entries(ks || {})) if (Number(d[4]) > 0) add(k, dk, Number(d[4]), false);
+  }
   // Fracción del día con stock, del registro hora por hora; null = no se miraba.
   const fracStock = (k, dk) => {
     const cs = cambios[k]; if (!cs) return null;
@@ -4861,7 +4867,7 @@ function calcRitmoNormal(o) {
       uR += x.r;
       if (esRemDia(k, dk)) { nR++; continue; }
       let fr = fracStock(k, dk);
-      if (fr == null) { const di = diario[dk] && diario[dk][k]; if (di) fr = Number(di[0]) > 0 ? 1 : 0; }
+      if (fr == null) { const di = diario[dk] && diario[dk][k]; if (di && di[0] != null) fr = Number(di[0]) > 0 ? 1 : 0; }
       if (fr != null && fr === 0 && x.u > 0) fr = 1;   // vendió: había stock (el registro se equivocó)
       if (fr == null) { if (primera[k] && dk >= primera[k]) { dU += 1; uU += x.u; } continue; }
       dG += fr; uG += x.u;
@@ -14046,6 +14052,306 @@ async function main() {
       console.log('\nPara devolver alguno a la lista: devolvercand (los devuelve TODOS) o el botón del panel.');
       return;
     }
+    // BILLING_PROBE=linea[:go] / linea:atras[:go][:<fase>] → LA LÍNEA DE TIEMPO DE CADA PUBLICACIÓN (01/10/2026)
+    // Pedido suyo: *"guardar toda una línea temporal con todos los datos diarios de cada publicación. Bien
+    // completo (…) ¿por qué arrancar de hoy? ¿no se puede de antes? Quiero todos los datos; si no están,
+    // dejarlos pero son info incompleta"*. Vive en `mlapi/linea/<MLA>/<AAAA_MM_DD>` (FUERA de `cyc/`: la
+    // web lee `cyc` entero). Cada día es un objeto; un campo que NO está es un dato que no se sabe (nunca
+    // un cero inventado) y `inc:1` marca el día como incompleto. Campos:
+    //   st   stock disponible en Full al cierre del día        stF  de dónde: ops (movimientos de ML) · inv (foto de la noche) · sinmov (sin movimientos en todo el año)
+    //   p    precio                                            pF   ml (leído ese día) · cambio (registro de cambios) · venta (precio cobrado) · arrastre (último conocido)
+    //   est  estado de la publicación   sub  motivo de ML      caja g/c/p/n (gana/comparte/pierde/no catálogo)   ptw precio para ganar la caja
+    //   vis  visitas del día            u    unidades vendidas tot facturado bruto  neto  lo que depositó ML (desde mayo)
+    //   uR   unidades vendidas en remate (antes del 12/09 no existía el remate: 0)   rem 1 rematando (liquidando) · esc escalón de la escalera
+    //   mg   margen % al precio de ese día (netoweb)          vend vendidas en toda la vida (ML)
+    // `linea` (noche, en ml-daily) escribe AYER completo con datos leídos en el momento.
+    // `linea:atras` rellena para atrás, hasta 365 días, lo que ML guarda: ventas (órdenes), visitas día
+    // por día, stock de Full (todos los movimientos de cada depósito) y el precio (de las ventas y los
+    // cambios). Lo que ML no guarda (estado, caja, margen de días viejos) queda vacío. Es retomable: cada
+    // fase anota su avance en `mlapi/lineaprog` y sigue donde quedó (tope de tiempo por corrida).
+    if (/^linea(:|$)/.test(String(process.env.BILLING_PROBE || ''))) {
+      const _lp = String(process.env.BILLING_PROBE);
+      const GO = /(^|:)go(:|$)/.test(_lp), ATRAS = /:atras/.test(_lp);
+      const FASE = (_lp.match(/:(ventas|visitas|stock|precio)/) || [])[1] || null;
+      const T0 = Date.now(), TOPE = Number(process.env.LINEA_TOPE_MIN || 45) * 60e3;
+      const DMS = 864e5, sidL = (x) => String(x).replace(/[^a-z0-9]/gi, '_');
+      const diaDe = (ts) => _rnDia(ts);
+      const ayerK = diaDe(T0 - DMS);
+      const links = (await db.get('cyc/mllinks')) || {};
+      const mlasCta = {};
+      for (const [mla, e] of Object.entries(links)) { if (!e || !/^MLA\d+$/.test(mla) || !e.cuenta) continue; (mlasCta[e.cuenta] = mlasCta[e.cuenta] || []).push(mla); }
+      const tokL = {};
+      const tokDe = async (cta) => {
+        if (tokL[cta] !== undefined) return tokL[cta];
+        const lab = labels.find((l) => l.toLowerCase() === String(cta).toLowerCase());
+        const acc = lab && accounts[lab];
+        if (!acc || !acc.refresh_token) return (tokL[cta] = null);
+        try { const t = await mlRefresh(ML_CLIENT_ID, ML_CLIENT_SECRET, acc.refresh_token); await db.patch('mlapi/tokens/' + lab, { refresh_token: t.refresh_token, updated_ts: Date.now() }); tokL[cta] = { tk: t.access_token, seller: acc.seller_id }; }
+        catch { tokL[cta] = null; }
+        return tokL[cta];
+      };
+      // Un GET con espera y reintento del 429 (ML corta por cupo).
+      const g429 = async (url, tk) => {
+        for (let r = 0; ; r++) {
+          await new Promise((ok) => setTimeout(ok, 300));
+          try { return await mlGet(url, tk); }
+          catch (e) { if (r < 3 && /\b429\b|over_quota/.test(String((e && e.message) || e))) { await new Promise((ok) => setTimeout(ok, [4000, 10000, 20000][r])); continue; } throw e; }
+        }
+      };
+      // Escritura: campo por campo (no pisa lo que ya había de otra fuente). `soloSiFalta` no pisa un dato existente.
+      const escribir = async (filas, soloSiFalta) => {
+        let n = 0;
+        for (const [mla, dias] of Object.entries(filas)) {
+          let prev = {};
+          if (soloSiFalta) { try { prev = (await db.get('mlapi/linea/' + mla)) || {}; } catch { prev = {}; } }
+          const upd = {};
+          for (const [dk, campos] of Object.entries(dias)) for (const [c, v] of Object.entries(campos)) {
+            if (v === undefined) continue;
+            if (soloSiFalta && prev[dk] && prev[dk][c] != null) continue;
+            upd[dk + '/' + c] = v; n++;
+          }
+          if (!Object.keys(upd).length) continue;
+          if (GO) { const ks = Object.keys(upd); for (let i = 0; i < ks.length; i += 2000) { const parte = {}; for (const k of ks.slice(i, i + 2000)) parte[k] = upd[k]; await db.patch('mlapi/linea/' + mla, parte); } }
+        }
+        return n;
+      };
+      const vp = (await db.get('cyc/ventaprod')) || {};
+      const nosubir = (await db.get('cyc/nosubir')) || {};
+      const rescv = (await db.get('cyc/rescateventa')) || {};
+      // Ventas del panel por MLA y día (desde mayo, con neto y remate).
+      const ventasPanel = {}; let primerDiaPanel = null;
+      for (const [dk0, ents] of Object.entries(vp)) {
+        const dk = dk0.slice(0, 10); if (!primerDiaPanel || dk < primerDiaPanel) primerDiaPanel = dk;
+        for (const [id, v] of Object.entries(ents || {})) {
+          if (!v || v.cancelada || !v.mla) continue;
+          const x = ((ventasPanel[v.mla] = ventasPanel[v.mla] || {})[dk] = ventasPanel[v.mla][dk] || { u: 0, tot: 0, neto: 0, uR: 0 });
+          const q = Number(v.qty) || 1; x.u += q; x.tot += Number(v.total) || 0; x.neto += Number(v.neto) || 0;
+          const et = rescv[dk + '__' + (v.id || id)]; const ns = nosubir[v.mla]; const nsF = ns && ns.fecha ? Date.parse(ns.fecha) : NaN;
+          if ((et && et.estado === 'remate') || (isFinite(nsF) && nsF <= (Number(v.ts) || 0))) x.uR += q;
+        }
+      }
+      console.log(`=== LÍNEA DE TIEMPO ${ATRAS ? '· PARA ATRÁS' : '· AYER (' + ayerK + ')'} ${GO ? '' : '(PRUEBA — no escribo nada)'} ===`);
+
+      if (!ATRAS) {
+        // ── AYER, con todo leído en el momento ──
+        const inv = (await db.get('cyc/inventory')) || {};
+        const netopub = (await db.get('cyc/netopub')) || {};
+        const escalera = (await db.get('cyc/escalera')) || {};
+        const filas = {}; let leidas = 0, sinLeer = 0;
+        const desdeY = new Date(Date.parse(ayerK.replace(/_/g, '-') + 'T03:00:00Z')).toISOString(), hastaY = new Date(Date.parse(ayerK.replace(/_/g, '-') + 'T03:00:00Z') + DMS - 1000).toISOString();
+        for (const [cta, mlas] of Object.entries(mlasCta)) {
+          const t = await tokDe(cta);
+          const info = {}, vis = {};
+          if (t) {
+            for (let i = 0; i < mlas.length; i += 20) {
+              const lote = mlas.slice(i, i + 20);
+              try {
+                const r = await g429(`/items?ids=${lote.join(',')}&attributes=id,price,status,sub_status,available_quantity,sold_quantity,variations`, t.tk);
+                for (const x of (r || [])) { const b = x && x.body; if (x && x.code === 200 && b) info[b.id] = b; }
+              } catch { /* ese lote queda sin leer */ }
+            }
+            for (let i = 0; i < mlas.length; i += 40) {
+              const lote = mlas.slice(i, i + 40);
+              try { const r = await g429(`/visits/items?ids=${lote.join(',')}&date_from=${encodeURIComponent(desdeY)}&date_to=${encodeURIComponent(hastaY)}`, t.tk);
+                for (const m of lote) { const raw = r && r[m]; const v = typeof raw === 'number' ? raw : (raw && typeof raw.total_visits === 'number' ? raw.total_visits : null); if (v != null) vis[m] = v; } } catch { /* sin visitas */ }
+            }
+          }
+          for (const mla of mlas) {
+            const e = links[mla] || {}, b = info[mla];
+            if (b) leidas++; else sinLeer++;
+            const kP = e.prodId ? e.prodId + '__' + sidL(e.cuenta) : null;
+            const kV = kP && e.variant ? kP + '__v__' + sidL(e.variant) : null;
+            const stI = kV && inv[kV] != null ? inv[kV] : (kP && inv[kP] != null ? inv[kP] : null);
+            const vars = b && Array.isArray(b.variations) ? b.variations : [];
+            const precio = b ? (vars.length ? Math.min(...vars.map((v) => Number(v.price) || Infinity)) : Number(b.price)) : null;
+            const vpD = (ventasPanel[mla] || {})[ayerK] || { u: 0, tot: 0, neto: 0, uR: 0 };
+            const caja = { winning: 'g', sharing: 'c', losing: 'p', listed: 'n', not_listed: 'n' }[e.caja] || (e.caja ? String(e.caja).slice(0, 8) : undefined);
+            const np = netopub[mla] || {};
+            const row = {
+              st: stI != null ? Math.max(0, parseInt(stI) || 0) : undefined, stF: stI != null ? 'inv' : undefined,
+              p: precio > 0 && isFinite(precio) ? Math.round(precio) : undefined, pF: precio > 0 && isFinite(precio) ? 'ml' : undefined,
+              est: b ? b.status : undefined, sub: b && Array.isArray(b.sub_status) && b.sub_status.length ? b.sub_status.join(',') : undefined,
+              caja, ptw: Number(e.cajaPtw) > 0 ? Math.round(Number(e.cajaPtw)) : undefined,
+              vis: vis[mla] != null ? vis[mla] : undefined,
+              u: vpD.u, tot: Math.round(vpD.tot), neto: Math.round(vpD.neto), uR: vpD.uR,
+              rem: nosubir[mla] ? 1 : 0, esc: escalera[mla] && escalera[mla].paso != null ? escalera[mla].paso : undefined,
+              mg: np && np.margen != null && isFinite(Number(np.margen)) ? Math.round(Number(np.margen) * 10) / 10 : undefined,
+              vend: b && b.sold_quantity != null ? b.sold_quantity : undefined,
+            };
+            row.inc = ['st', 'p', 'est', 'vis'].some((c) => row[c] === undefined) ? 1 : undefined;
+            filas[mla] = { [ayerK]: row };
+          }
+        }
+        const n = await escribir(filas, false);
+        console.log(`${Object.keys(filas).length} publicaciones · ${leidas} leídas de ML · ${sinLeer} sin leer (quedan incompletas) · ${n} datos ${GO ? 'guardados' : 'a guardar'} · día ${ayerK}`);
+        // Poda a los 400 días (una vez por mes alcanza: el día 1).
+        if (GO && new Date(T0).getUTCDate() === 2) {
+          const corte = diaDe(T0 - 400 * DMS); let podados = 0;
+          for (const mla of Object.keys(links)) { let d; try { d = await db.get('mlapi/linea/' + mla); } catch { continue; } const pz = {}; for (const k of Object.keys(d || {})) if (k < corte) pz[k] = null; if (Object.keys(pz).length) { await db.patch('mlapi/linea/' + mla, pz); podados += Object.keys(pz).length; } }
+          console.log(`🧹 podados ${podados} días de más de 400 días`);
+        }
+        return;
+      }
+
+      // ── PARA ATRÁS ──
+      const prog = (await db.get('mlapi/lineaprog')) || {};
+      const desde365 = T0 - 365 * DMS;
+      const tiempo = () => Date.now() - T0 < TOPE;
+      const fases = FASE ? [FASE] : ['ventas', 'visitas', 'stock', 'precio'];
+      for (const fase of fases) {
+        if (!tiempo()) { console.log(`⏱️ tope de tiempo: falta ${fase} (sigue en la próxima corrida)`); break; }
+        if (prog[fase] && prog[fase].ok && !FASE) { console.log(`✓ ${fase}: ya estaba hecha (${new Date(prog[fase].ts).toISOString().slice(0, 10)})`); continue; }
+        if (fase === 'ventas') {
+          // Órdenes pagas de ML, 365 días: unidades, facturado y precio cobrado por MLA y día. Para los días
+          // desde mayo se usan las del panel (traen neto y remate); antes, las de ML.
+          const filas = {}; let ord = 0, cortadas = [];
+          for (const cta of Object.keys(mlasCta)) {
+            const t = await tokDe(cta); if (!t) { cortadas.push(cta + ' (sin token)'); continue; }
+            const lista = await fetchOrdersRange(t.seller, t.tk, desde365, T0);
+            if (lista.incompleto) cortadas.push(cta);
+            for (const o of lista) {
+              const dk = diaDe(Date.parse(o.date_created || o.date_closed));
+              for (const it of (o.order_items || [])) {
+                const mla = it.item && it.item.id; if (!mla) continue;
+                const q = Number(it.quantity) || 0, pu = Number(it.unit_price) || 0;
+                const f = ((filas[mla] = filas[mla] || {})[dk] = filas[mla][dk] || { u: 0, tot: 0, _p: 0 });
+                f.u += q; f.tot += q * pu; if (pu > 0) f._p = pu; ord++;
+              }
+            }
+          }
+          const salida = {};
+          for (const [mla, dias] of Object.entries(filas)) for (const [dk, f] of Object.entries(dias)) {
+            const enPanel = primerDiaPanel && dk >= primerDiaPanel;
+            const vpD = (ventasPanel[mla] || {})[dk];
+            (salida[mla] = salida[mla] || {})[dk] = enPanel && vpD
+              ? { u: vpD.u, tot: Math.round(vpD.tot), neto: Math.round(vpD.neto), uR: vpD.uR, pVenta: f._p || undefined }
+              : { u: f.u, tot: Math.round(f.tot), uR: dk < '2026_09_12' ? 0 : undefined, pVenta: f._p || undefined };
+          }
+          const n = await escribir(salida, true);
+          console.log(`ventas: ${ord} renglones de órdenes · ${Object.keys(salida).length} publicaciones · ${n} datos${cortadas.length ? ' · ⚠️ LISTA CORTADA en ' + cortadas.join(', ') + ' (esas quedan incompletas)' : ''}`);
+          if (GO) await db.set('mlapi/lineaprog/ventas', { ok: !cortadas.length, ts: Date.now(), cortadas });
+        }
+        if (fase === 'visitas') {
+          const hecho = (prog.visitas && prog.visitas.mlas) || {};
+          let n = 0, ok = 0, mal = 0, pend = 0;
+          for (const [cta, mlas] of Object.entries(mlasCta)) {
+            const t = await tokDe(cta); if (!t) continue;
+            for (const mla of mlas) {
+              if (hecho[mla]) continue;
+              if (!tiempo()) { pend++; continue; }
+              let r = null;
+              for (const last of [365, 180, 150, 90]) { try { r = await g429(`/items/${mla}/visits/time_window?last=${last}&unit=day`, t.tk); if (r && Array.isArray(r.results)) break; } catch { r = null; } }
+              if (!r || !Array.isArray(r.results)) { mal++; continue; }
+              const d = {};
+              for (const x of r.results) { const ts = Date.parse(x.date); if (!isFinite(ts)) continue; const dk = diaDe(ts + 3 * 3600e3); d[dk] = { vis: Number(x.total) || 0 }; }
+              n += await escribir({ [mla]: d }, true); ok++;
+              hecho[mla] = 1;
+              if (GO && ok % 25 === 0) await db.set('mlapi/lineaprog/visitas', { mlas: hecho, ts: Date.now() });
+            }
+          }
+          const fin = !pend;
+          console.log(`visitas: ${ok} publicaciones · ${n} días · ${mal} sin datos de ML · ${pend} pendientes`);
+          if (GO) await db.set('mlapi/lineaprog/visitas', { mlas: hecho, ts: Date.now(), ok: fin && !mal });
+        }
+        if (fase === 'stock') {
+          // Cada depósito de Full: TODOS sus movimientos del año, mes por mes. El stock de cada día es el
+          // que quedó después del último movimiento de ese día, y sigue igual hasta el siguiente.
+          const invDe = {};   // inventario → [mla, …]
+          for (const [mla, e] of Object.entries(links)) {
+            if (!e) continue;
+            if (e.inv) (invDe[e.inv] = invDe[e.inv] || { cta: e.cuenta, mlas: [] }).mlas.push(mla);
+            for (const iv of Object.values(e.invVar || {})) (invDe[iv] = invDe[iv] || { cta: e.cuenta, mlas: [] }).mlas.push(mla);
+          }
+          const hecho = (prog.stock && prog.stock.inv) || {};
+          const inv = (await db.get('cyc/inventory')) || {};
+          let ok = 0, mal = 0, pend = 0, n = 0;
+          const porMla = {};   // mla → dk → suma de sus depósitos
+          for (const [iv, x] of Object.entries(invDe)) {
+            if (hecho[iv]) continue;
+            if (!tiempo()) { pend++; continue; }
+            const t = await tokDe(x.cta); if (!t) { mal++; continue; }
+            const ops = []; let cortado = false;
+            for (let m0 = desde365; m0 < T0 && !cortado; m0 += 30 * DMS) {
+              const m1 = Math.min(m0 + 30 * DMS, T0);
+              const vistos = new Set();
+              for (let pag = 0; pag < 40; pag++) {
+                let r;
+                try { r = await g429(`/stock/fulfillment/operations/search?seller_id=${t.seller}&inventory_id=${iv}&date_from=${new Date(m0).toISOString().slice(0, 10)}&date_to=${new Date(m1).toISOString().slice(0, 10)}&limit=50&offset=${pag * 50}`, t.tk); }
+                catch { cortado = true; break; }
+                const res = (r && r.results) || []; let nuevos = 0;
+                for (const o of res) { const k = String(o.id || '') || JSON.stringify(o).slice(0, 200); if (vistos.has(k)) continue; vistos.add(k); ops.push(o); nuevos++; }
+                if (res.length < 50) break;
+                if (!nuevos || pag === 39) { cortado = true; break; }
+              }
+            }
+            if (cortado) { mal++; continue; }   // sin el año entero no se reconstruye (falta de dato ≠ cero)
+            const pts = ops.map((o) => [Date.parse(o.date_created || o.date), Number((o.result || {}).available_quantity)]).filter(([ts, q]) => isFinite(ts) && isFinite(q)).sort((a, b) => a[0] - b[0]);
+            const serie = {};
+            if (!pts.length) {
+              // Sin un solo movimiento en el año: el stock de hoy es el de todo el año.
+              const e0 = links[x.mlas[0]] || {}; const k0 = e0.prodId ? e0.prodId + '__' + sidL(e0.cuenta) + (e0.variant ? '__v__' + sidL(e0.variant) : '') : null;
+              const hoyS = k0 && inv[k0] != null ? Math.max(0, parseInt(inv[k0]) || 0) : null;
+              if (hoyS != null) for (let d = desde365; d < T0; d += DMS) serie[diaDe(d)] = [hoyS, 'sinmov'];
+            } else {
+              let j = 0, cur = null;
+              for (let d = Date.parse(diaDe(pts[0][0]).replace(/_/g, '-') + 'T03:00:00Z'); d < T0; d += DMS) {
+                const finD = d + DMS;
+                while (j < pts.length && pts[j][0] < finD) { cur = pts[j][1]; j++; }
+                if (cur != null) serie[diaDe(d)] = [Math.max(0, cur), 'ops'];
+              }
+            }
+            for (const mla of x.mlas) for (const [dk, [q, f]] of Object.entries(serie)) {
+              const z = ((porMla[mla] = porMla[mla] || {})[dk] = porMla[mla][dk] || { st: 0, stF: f });
+              z.st += q;
+            }
+            hecho[iv] = 1; ok++;
+          }
+          n = await escribir(porMla, true);
+          console.log(`stock: ${ok} depósitos reconstruidos · ${mal} sin poder leer el año entero (quedan sin stock viejo) · ${pend} pendientes · ${n} días`);
+          if (GO) await db.set('mlapi/lineaprog/stock', { inv: hecho, ts: Date.now(), ok: !pend && !mal });
+        }
+        if (fase === 'precio') {
+          // El precio de cada día: el cobrado en una venta ese día, o un cambio registrado, o el último
+          // conocido para adelante. Antes del primer dato, vacío.
+          const evs = ((await db.get('cyc/supervisor/eventos')) || {});
+          const cambiosM = {};
+          for (const ev of Object.values(evs)) if (ev && ev.mla && ev.ts) (cambiosM[ev.mla] = cambiosM[ev.mla] || []).push([Number(ev.ts), Number(ev.de) || null, Number(ev.a) || null, ev.motivo || '']);
+          let n = 0, mlasN = 0;
+          for (const mla of Object.keys(links)) {
+            if (!tiempo()) break;
+            let lin; try { lin = (await db.get('mlapi/linea/' + mla)) || {}; } catch { continue; }
+            const cs = (cambiosM[mla] || []).sort((a, b) => a[0] - b[0]);
+            const dks = []; for (let d = desde365; d < T0; d += DMS) dks.push(diaDe(d));
+            const out = {}; let cur = null, curF = null;
+            // Antes del primer cambio registrado, el precio "de" de ese cambio vale para atrás SÓLO si no hay ventas.
+            const primerC = cs[0];
+            for (const dk of dks) {
+              const row = lin[dk] || {};
+              const cHoy = cs.filter((c) => diaDe(c[0]) === dk);
+              if (row.p != null && row.pF === 'ml') { cur = row.p; curF = 'ml'; continue; }
+              if (cHoy.length && cHoy[cHoy.length - 1][2] > 0) { cur = cHoy[cHoy.length - 1][2]; curF = 'cambio'; }
+              else if (row.pVenta > 0) { cur = row.pVenta; curF = 'venta'; }
+              else if (cur != null) curF = 'arrastre';
+              else if (primerC && primerC[1] > 0 && dk < diaDe(primerC[0])) { /* se completa abajo */ }
+              if (cur != null && row.p == null) out[dk] = { p: Math.round(cur), pF: curF };
+            }
+            // Marcas de remate por los cambios del robot (desde el 23/09): de un remate/escalera hasta el próximo cambio que no lo es.
+            let enRem = false; const remDias = {};
+            for (const dk of dks) {
+              for (const c of cs.filter((c) => diaDe(c[0]) === dk)) enRem = /remate|escalera/.test(c[3]);
+              if (enRem) remDias[dk] = 1;
+            }
+            const ns = nosubir[mla]; const nsF = ns && ns.fecha ? String(ns.fecha).slice(0, 10).replace(/-/g, '_') : null;
+            for (const dk of dks) if ((remDias[dk] || (nsF && dk >= nsF)) && (lin[dk] || {}).rem == null) (out[dk] = out[dk] || {}).rem = 1;
+            if (Object.keys(out).length) { n += await escribir({ [mla]: out }, true); mlasN++; }
+          }
+          console.log(`precio: ${mlasN} publicaciones · ${n} datos`);
+          if (GO) await db.set('mlapi/lineaprog/precio', { ok: tiempo(), ts: Date.now() });
+        }
+      }
+      console.log(`\n${GO ? '✓ listo' : 'PRUEBA: no escribí nada. Con :go guarda.'} · ${Math.round((Date.now() - T0) / 60e3)} min`);
+      return;
+    }
     // BILLING_PROBE=ritmo[:go] → EL DIARIO DE CADA PRODUCTO, EL RITMO NORMAL Y LA SALIDA DEL REMATE
     // (01/10/2026). Ver `calcRitmoNormal`. Sin `go` sólo muestra. Corre solo cada noche en ml-daily.
     // LA SALIDA DEL REMATE, eligió la (a): un remate AUTOMÁTICO de algo que vende (no la escalera, no lo
@@ -14060,13 +14366,31 @@ async function main() {
       const [links, inv, vp, nosubir, rescateventa, autoprecio, cambios, precios] = await Promise.all([
         db.get('cyc/mllinks'), db.get('cyc/inventory'), db.get('cyc/ventaprod'), db.get('cyc/nosubir'),
         db.get('cyc/rescateventa'), db.get('cyc/autoprecio'), db.get('cyc/stocklog/cambios'), db.get('cyc/supervisor/precios')]);
-      let diario = {};
-      try { diario = (await db.get('mlapi/diario')) || {}; } catch (e) { console.log(`⚠️ no pude leer el diario (${String(e).slice(0, 80)}): sigo sin él`); }
+      // El "diario" por clave sale de la LÍNEA DE TIEMPO de cada publicación (`linea`): stock, precio,
+      // caja, remate y ventas de cada día, hasta 365 días para atrás.
+      let diario = {}, nLin = 0;
+      try {
+        const lin = (await db.get('mlapi/linea')) || {};
+        const sidD = (x) => String(x).replace(/[^a-z0-9]/gi, '_'); const rk = { g: 3, c: 2, p: 1 };
+        for (const [mla, dias] of Object.entries(lin)) {
+          const e = (links || {})[mla]; if (!e || !e.prodId || !e.cuenta) continue; nLin++;
+          const kP = e.prodId + '__' + sidD(e.cuenta); const ks = e.variant ? [kP, kP + '__v__' + sidD(e.variant)] : [kP];
+          for (const [dk, r] of Object.entries(dias || {})) for (const k of ks) {
+            const d = ((diario[dk] = diario[dk] || {})[k] = diario[dk][k] || [null, 0, '', 0, 0, 0]);
+            if (r.st != null) d[0] = Math.max(d[0] || 0, Number(r.st) || 0);
+            if (r.p > 0 && (!d[1] || r.p < d[1])) d[1] = r.p;
+            if ((rk[r.caja] || 0) > (rk[d[2]] || 0)) d[2] = r.caja;
+            if (r.rem === 1) d[3] = 1;
+            d[4] += Number(r.u) || 0; d[5] += Number(r.uR) || 0;
+          }
+        }
+      } catch (e) { console.log(`⚠️ no pude leer la línea de tiempo (${String(e).slice(0, 80)}): sigo sin ella`); }
       const R = calcRitmoNormal({ links: links || {}, inv: inv || {}, vp: vp || {}, nosubir: nosubir || {}, rescateventa: rescateventa || {},
-        autoprecio: autoprecio || {}, cambios: cambios || {}, diario, precios: precios || {}, hoyTs: ahoraR });
+        autoprecio: autoprecio || {}, cambios: cambios || {}, diario, precios: precios || {}, hoyTs: ahoraR,
+        primerVp: Object.keys(vp || {}).map((k) => k.slice(0, 10)).sort()[0] || null });
       const rs = Object.values(R.ritmo);
       console.log(`=== RITMO NORMAL ${GO ? '' : '(PRUEBA — no escribo nada)'} ===`);
-      console.log(`${rs.length} claves · ${rs.filter((x) => x.pd != null && !x.f).length} firmes (30+ días con stock sabidos) · ${rs.filter((x) => x.f).length} flojas · ${rs.filter((x) => x.pd == null).length} sin ritmo · días del diario guardados: ${Object.keys(diario).length}`);
+      console.log(`${rs.length} claves · ${rs.filter((x) => x.pd != null && !x.f).length} firmes (30+ días con stock sabidos) · ${rs.filter((x) => x.f).length} flojas · ${rs.filter((x) => x.pd == null).length} sin ritmo · línea de tiempo: ${nLin} publicaciones, ${Object.keys(diario).length} días`);
       // Lo que está rematando, con su ritmo normal (el control que él pidió).
       const nomP = (k) => { const m = Object.entries(links || {}).find(([, e]) => e && k.startsWith(e.prodId + '__')); return m ? String(m[1].title || m[0]).slice(0, 45) : k; };
       const sidR = (x) => String(x).replace(/[^a-z0-9]/gi, '_');
@@ -14084,13 +14408,7 @@ async function main() {
         if (auto && pd && st > 0 && v30 > 0 && st <= RN_SANO_DIAS * pd) salen.push({ mla, e, st, pd, diasSt });
       }
       if (salen.length) console.log(`\n✅ YA TIENEN STOCK SANO (≤ ${RN_SANO_DIAS} d de venta normal): ${salen.map((x) => String(x.e.title || x.mla).slice(0, 40) + ' ' + x.st + ' u.').join(' · ')}`);
-      if (!GO) { console.log('\nPRUEBA: no escribí nada. Con :go guarda el diario y el ritmo, y saca el remate de los que ya están sanos.'); return; }
-      try {
-        await db.set('mlapi/diario/' + R.diaK, R.hoyDiario);
-        const poda = {}; const corte = _rnDia(ahoraR - 400 * 864e5);
-        for (const dk of Object.keys(diario)) if (dk < corte) poda[dk] = null;
-        if (Object.keys(poda).length) await db.patch('mlapi/diario', poda);
-      } catch (e) { console.log(`⚠️ no pude guardar el diario: ${String(e).slice(0, 100)}`); }
+      if (!GO) { console.log('\nPRUEBA: no escribí nada. Con :go guarda el ritmo y saca el remate de los que ya están sanos.'); return; }
       try { await db.set('cyc/ritmonormal', R.ritmo); console.log(`✓ ritmo normal guardado (${rs.length} claves) · diario del ${R.diaK}`); }
       catch (e) { console.log(`⚠️ no pude guardar el ritmo normal: ${String(e).slice(0, 100)}`); process.exitCode = 1; }
       const hechas = [];
