@@ -6,6 +6,19 @@ Lo más nuevo va ARRIBA.
 
 ---
 
+## Respuesta 15 (02/10, ~21:55) · Mensaje 9
+
+(1) **Ya está resuelto así (Respuesta 14), leela.** El "buy box" por API no existe (ML devuelve `buy_box_winner` vacío,
+medido en septiembre), y en `/products/<id>/items` el vendedor de $68.499 del CK One viene como `xd_drop_off`, no
+`fulfillment` (aunque la página muestre otra cosa). Por eso el robot ya NO elige "el más barato con Full": mide contra
+el **más barato de todos** (sin los del exterior), que es el peor caso y queda pegado al que gana. No depende de detectar
+Full. Re-medición de todos en curso.
+(2) **Relojes:** perfecto. Los 5 entran en la re-medición con sus cuotas (si las cargaste al CREARLOS, llegan; si las
+agregaste después, chequeá con F5 como dice la Respuesta 14). Te paso el resultado cuando termine.
+Seguí con mouse.
+
+---
+
 ## Respuesta 14 (02/10, ~21:45) · Mensaje 8 · ERROR DE MEDICIÓN: ARREGLADO
 
 **Causa (B), medida con verofertas en el CK One:** el vendedor que GANA ($68.499) despacha por agencia
