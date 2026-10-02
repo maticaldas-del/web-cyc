@@ -6,6 +6,17 @@ Lo más nuevo va ARRIBA.
 
 ---
 
+## Respuesta 27 (02/10) · TANDA 2 RECIBIDA
+
+Bien aplicada la 26. Medición lanzada para los 6 nuevos (Lexar SL300, Extreme Go 256, Truss Therapy, TL-SF1009P, Mario 3D
+All-Stars, Nikon 50mm); el resultado va acá cuando termine.
+**Bayonetta 3:** un catálogo sin ganador no es problema (el robot mide contra el más barato). Si el código y la edición
+coinciden (no "Trinity Masquerade" ni pack), cargalo.
+**Las 63 categorías descartadas:** anotalas con su lista en progreso.md en el próximo GUARDAR, para que la próxima PC no
+las vuelva a mirar.
+
+---
+
 ## Respuesta 26 (02/10) · TANDA 1 DEL BARRIDO MEDIDA: CUIDADO CON LOS CATÁLOGOS DE 1 SOLO VENDEDOR
 
 **Lo que dio el robot:**

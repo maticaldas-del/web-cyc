@@ -91,3 +91,11 @@ lápiz, batería, dron, corrector, polvo, resina 3D, taza térmica, gloss, webca
 mochilas, desodorante, estación de energía, aparador de vello, pulsera de reloj, softbox, soporte celular, ventilador…).
 Herramientas nuevas en la PC nueva (`C:/cyc/CHGU/guay-tools`): q-build.ps1, nrow.ps1, hits.ps1, serve.ps1, cat-probe.ps1
 — **falta subir el código** (viene en el próximo GUARDAR).
+
+## TANDA 2 (02/10 ~19:30, Mensaje 23)
+Chrome estuvo desconectado de 17 a 19:30 y volvió con el perfil limpio. **Terminadas:** juegos, flash, cámara, fundas,
+cosmética y las 27 bajadas ese día (18 chicas + labial, base, shampú, anillos, filamento, robots, cafeteras, lente,
+mochilas). **De las 208 sin decidir** (decisión de Matías: lo obvio afuera): 63 descartadas enteras (grandes, pesadas,
+comida, bebida, ropa, calzado, vapeador…) y **145 pasándose enteras** (~2.300 filas, 1.545 modelos) con 8 pestañas.
+Cargados: Lexar SSD SL300 1TB · Sandisk Extreme Go 256 · Shampoo Truss Therapy · Switch TP-Link TL-SF1009P · Mario 3D
+All-Stars · Nikon AF 50mm f/1.8D. Descartados de la R26: Sandisk 128, Thermalright, Godox LR150, laca.

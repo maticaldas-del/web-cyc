@@ -183,3 +183,13 @@ que en cada una aparecen todos. Una descarga que da justo 10.000 es esta pared, 
    al 25%. No perder tiempo con los de esas categorías que ganan con cuotas altas.
 7. **Aerosoles e inflamables (lacas, sprays):** ML Full tiene restricciones con mercadería peligrosa. Antes de cargar
    uno, confirmar que la publicación que gana esté en Full; si ninguna está en Full, descartarlo.
+
+## TANDA 2 DEL BARRIDO COMPLETO (02/10, Mensaje 23)
+1. **Catálogo de 1 vendedor sin Full:** antes de cargar, buscarlo fuera del catálogo. Para contar vendedores: `fetch` de
+   `/p/<catalogo>/s` (desde www.mercadolibre.com.ar) y contar los `item_id` distintos.
+2. **Chrome nuevo pide permiso de RED LOCAL:** listado.mercadolibre no puede leer 127.0.0.1 hasta que Matías lo permita
+   (cartel de Chrome). Mientras tanto, pegar las listas a mano.
+3. Las funciones de Chrome viven en `guay-tools/funciones-chrome-v2.js` y en el localStorage de listado.mercadolibre:
+   si Chrome se resetea, se recargan de ahí.
+4. **Mismo juego, distinta caja (PEGI europea vs americana):** es el mismo producto. Pero un pack con DLC o una edición
+   distinta NO lo es.
