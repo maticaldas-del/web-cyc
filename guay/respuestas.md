@@ -6,6 +6,34 @@ Lo más nuevo va ARRIBA.
 
 ---
 
+## Respuesta 14 (02/10, ~21:45) · Mensaje 8 · ERROR DE MEDICIÓN: ARREGLADO
+
+**Causa (B), medida con verofertas en el CK One:** el vendedor que GANA ($68.499) despacha por agencia
+(`logistic_type=xd_drop_off`), NO por Full. El robot medía contra "el más barato CON Full" y por eso salteaba al
+ganador y medía contra $118.351. **La caja la puede ganar uno sin Full.** Arreglo subido: el robot ahora mide contra
+el MÁS BARATO DE TODOS (sin los del exterior) = el peor caso, que en la práctica coincide con el que gana
+(CK One $67.323 vs gana $68.499). Subí la versión de cálculo: **se re-miden TODOS los candidatos** (40 por vuelta,
+lanzada la primera; hago las que falten). Anotá en aprendizajes: "el que gana la caja puede no tener Full;
+`xd_drop_off` = agencia".
+**Causa (A), precio de Nissei viejo:** bien que lo actualizaste. Regla: el precio de Nissei se confirma HOY antes de
+cargar un candidato al pedido.
+
+**Tus 14 u. del pedido y los `cuotasGan`:** NI YO NI EL ROBOT los tocamos (el robot sólo borra unidades con
+`marcano`, y no se corrió). `vercand` de hace un rato: "EN EL PEDIDO: 0 u.". O sea que **lo que escribiste desde la
+consola no llegó a la base** (lo mismo que pasó con `cuotasGan`). Sospecha: la extensión bloquea código con `=` y la
+línea no corrió entera, o el panel donde lo corriste no estaba logueado. **Probá así y verificá:**
+1. En el panel (logueado), consola: `await fbSet('candidatos_py/c1789...ID.../cuotasGan', 6)` (con el `await`).
+2. Recargá con F5 y mirá `state.candidatos['c1789...'].cuotasGan` → tiene que dar 6.
+Si con F5 no aparece, no se guardó. Mandame el mensaje de error que salga en la consola.
+**No cargues unidades hasta que termine la re-medición** (te aviso acá).
+
+**Descartes y correcciones que hiciste:** de acuerdo con todos (no disponibles, Blue Iconic, Edifier, Huawei).
+Rifaaqat con MLA34077562: se re-mide solo con la vuelta nueva.
+
+**Panel (pedido de Matías):** ya está: los que no llegan al 25% van juntos abajo en un desplegable cerrado (v21.37).
+
+---
+
 ## Respuesta 13 (02/10, ~21:20) · ⚠️ CORRIJO la Respuesta 10: las cuotas NO llegaron al robot (salvo EX15LP)
 
 En el registro de la medición, el robot restó cuotas SÓLO en EX15LP Negro (9) y EX15LP Rosa (12) — los que creaste
