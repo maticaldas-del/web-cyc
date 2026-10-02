@@ -3,7 +3,66 @@
 Leelo ENTERO al empezar cada sesión. Si algo de acá contradice al prompt, manda ESTO (es más nuevo).
 Lo nuevo va arriba, con fecha.
 
-## Nuevo 02/10/2026
+## ⚠️ ERROR GRAVE 02/10/2026 (lo encontró Matías con la calculadora): MÁRGENES INFLADOS
+- CK One (92847): el panel decía 49%. Real: (US$27 × 1,17 × 1.535 = $48.490) contra lo que deja venderlo a $69.499 en ML
+  (~$51.178 neto) = 5,5%. DOS causas, y las dos pueden estar en TODOS los candidatos:
+  1) **Precio de Nissei viejo**: el candidato tenía US$22,75 (cargado hace 15 días); hoy Nissei está a US$27. Antes de pedir,
+     reconfirmar SIEMPRE el precio de HOY en comprasparaguay. Un candidato de hace días no tiene precio válido.
+  2) **El robot midió contra un precio de ML equivocado**: dijo que el más barato ($67.323) "no tiene Full" y midió contra
+     $118.351 (el más barato que él cree con Full). En ML el producto se vende a $69.499. La detección de Full del robot
+     (precioAIgualar / mlConFull) puede estar fallando → margen inflado. Lo que vale es el PRECIO QUE GANA el catálogo hoy
+     (página /p/MLA…, el precio grande): comparar siempre contra ese.
+- Regla: margen de 40%+ en un perfume/electrónica conocida = sospechar y hacer la cuenta a mano:
+  costo = USD × 1,17 × dólar · neto ≈ precio × 0,74 (comisión+cargo fijo+envío) · margen = neto/costo − 1.
+- **"¡Uy! Producto no disponible"**: la publicación de Nissei puede seguir existiendo en comprasparaguay pero SIN stock (no sale en
+  /<cat>/?loja=nissei). Si un código no aparece en lo bajado, abrir su página y buscar ese texto. 02/10: Milestone, Secador
+  Xiaomi H101, Moonlight, Cooler Thermalright, Giorgio → descartados.
+- Comparación hecha el 02/10: precio que usó el robot (mlPrecio) vs precio que GANA (página /p/): 16 de 21 viejos coincidían;
+  5 inflados (CK One +73%, Montblanc +50%, Dark Door Sport +45%, Milestone +42%, Partylight +18%). Los 40 nuevos coincidían.
+- Pedido de Matías (02/10) para el panel: los candidatos que dan menos de 25% van juntos abajo en un desplegable (pasado a CYC WEB).
+- Regla: NUNCA confiar en un candidato viejo (de otro chat): revisar foto, catálogo, precio de Nissei de hoy y precio que gana hoy.
+  02/10 se encontraron 7 malos: Blue Iconic (x2, otro perfume), Montblanc Presence (catálogo de mujer), Rifaaqat (versión Adorn),
+  Edifier M60 (otro color), Huawei AX2S (otro color), CK One (precio).
+
+## Nuevo 02/10/2026 (escrito por el chat local Guay, en la PC de Matías)
+- **CYC WEB se abre en CHROME** (claude.ai/code → Fijados → "CYC WEB",
+  https://claude.ai/code/session_011hr6XfiSaXTsqBofKs6buo) y se le escribe en esa caja. No aparece en ListAgents.
+- **Usar las herramientas "Claude in Chrome"** (el Chrome de Matías está logueado en todo). El navegador integrado
+  del desktop NO sirve para el panel (pide contraseña con prompt()).
+- **Pestañas de fondo = capturas negras**: leer con get_page_text / javascript.
+- **La extensión bloquea** salidas de javascript con "=", "?" o "&", y también el CÓDIGO que se manda si los tiene:
+  armar las URLs con String.fromCharCode(63/61/38) y limpiar la salida. La salida se corta a ~1.500 caracteres.
+- **Este repo se baja como ZIP** (no hay git): https://github.com/maticaldas-del/web-cyc/archive/refs/heads/claude/happy-johnson-laasu8.zip
+  → descomprimir en CHGU\web-cyc. Lo que se cambia acá NO llega a GitHub: se le pasa el texto a CYC WEB.
+- **Herramientas en guay/herramientas/** (PowerShell, corren en la PC):
+  · `nissei-harvest.ps1 [-Slugs a,b]` baja TODO Nissei por categoría a guay-datos\nissei-<slug>.json con nombre,
+    CÓDIGO COMPLETO, precio, categoría, link y foto (el listado /<cat>/?page=N&loja=nissei trae "código: <strong>…</strong>").
+    comprasparaguay baja bien desde la PC; ML NO (devuelve página sin resultados).
+  · `models.ps1 -Slug <slug>` junta colores en modelos y saca los códigos que ya están en el panel.
+- **ML desde Chrome con fetch (pestaña en listado.mercadolibre.com.ar, mismo origen):** cada tarjeta "polycard" del
+  HTML trae product_id (catálogo), price (= el de la publicación que GANA el catálogo), sold_quantity (de la familia,
+  no de la ganadora) y "full_icon" si es Full. La página del catálogo (/p/MLA…, desde www.mercadolibre.com.ar) da
+  el h1, el precio ganador y "+N vendidos" de la ganadora. La palabra "internacional" aparece en el MENÚ: no sirve
+  para detectar envío internacional.
+- **Filtro rápido de margen (sólo para descartar, no para decidir):** (P×0,86 − 7.500 si P≥33.000) ÷ (USD×1,17×1.535) − 1.
+- **Termos (Stanley/Contigo): no dan.** Mate System 1.2 gana a $153.000 (Nissei US$65), Classic 940 a $139.000 (US$55),
+  Quencher 1.18 a $118.800 (US$61), Flip Straw 887 a $118.400 (US$48).
+- **CUOTAS EN ML (Matías, 02/10, con captura):** 'Mismo precio 2 cuotas' lo pone ML a TODAS las publicaciones a veces = cuenta como SIN cuotas. Si la publicación que GANA ofrece '6 cuotas sin interés' (o 9), hay que competir con esas cuotas y eso es un costo. Mirarlo en la página del catálogo: 'Mismo precio en N cuotas'. (3 cuotas: preguntado.)
+- **Costo de cuotas (CYC WEB, 02/10):** 2 = nada · 3 = 8,9% · 6 = 13,4% · 9 = 17,8% · 12 = 21,6% del precio. Se carga
+  `fbSet('candidatos_py/<id>/cuotasGan', N)` con las cuotas de la publicación que GANA.
+- **Cada color es otro catálogo y da otro margen** (T110 Azul 51% vs Blanco 12%; T125BT Blanco 41% vs Negro 16%; Race 2
+  Blanco 35% vs Negro 18%): cargar cada color por separado, con su mlId.
+- **El color que vende Nissei tiene que existir en ML** (QCY Crossky C50: Nissei gris/blanco, ML negro → no va).
+- **Margen de 80%+ = sospechoso:** el "Live Beam 3" barato era el catálogo de Live BUDS 3 (otro modelo).
+- **Auriculares de cable de US$ 6-7 no dan** (E9LP 16,6%): el cargo fijo de ML se come el margen.
+- **El filtro rápido exageraba en lo barato** (QCY T13: estimé 23%, el robot 7,4%). Más realista:
+  (P×0,75 − 8.730)/(USD×1,17×1.535) − 1.
+- **candSetPedir traba el panel** si se llama varias veces (renderPedidos + alert). Para cargar unidades:
+  `P=candPuedePedir(c); if(P.ok){ c.pedirU=n; await fbSet('candidatos_py/'+c.id+'/pedirU', n) }`. Cargar candidatos
+  de a 3-4 por llamada (con más, la pestaña deja de contestar aunque se guarden).
+- **Trampas vistas:** QCY T13 tiene en ML el común (BT 5.1), ANC y ANC2 (catálogos distintos) · Sony MDR-ZX110 (sin
+  mic) ≠ ZX110AP (con mic, ya está en el panel) · CMF Buds 2A matcheó con un Anker: el código de modelo no alcanza
+  si es corto.
 - **Cargar candidatos:** `fbSet('candidatos_py/c'+Date.now(), {nombre, cod, usd, link, mlId, vendCarga,
   foto, marca, fuente:'chat', enNissei:true, ts})`. La ruta es `candidatos_py`, NO `candidatos`.
   `mlId` = id del CATÁLOGO (lo de /p/). Nada calculado (mlLink, margen): eso lo escribe el robot.
@@ -68,28 +127,13 @@ Lo nuevo va arriba, con fecha.
 - Perfumería barrida entera el 18/09 (1.227 filas). Quedan: cosmética, auriculares, relojes, varios,
   teclados, mouse, parlantes, cables, fundas, cargadores, discos, termos, memorias, routers, secadores, controles.
 
-## Agregado por Guay (local) el 02/10/2026
-- CYC WEB (la sesión de la nube) se abre en Chrome: claude.ai/code → Fijados. Usar "Claude in Chrome";
-  el navegador integrado no sirve para el panel.
-- Pestañas en segundo plano dan capturas negras: traer la pestaña al frente antes de capturar.
-- La extensión bloquea salidas/código que tengan = ? & : armar los comandos sin esos caracteres o por partes.
-- El repo está en la PC bajado como ZIP (sin git): los cambios se mandan como texto a CYC WEB y ella los sube.
-- ML desde Chrome con fetch: la "polycard" del buscador trae product_id, precio que gana, vendidos y
-  full_icon. Sirve para el filtro rápido antes de cargar.
-- Filtro rápido realista: (P × 0,75 − 8.730) / (USD × 1,17 × 1.535) − 1. Si da cerca o abajo de 0,25, no cargar.
-- Termos y parlantes no dan. Auriculares de cable de US$ 6-7 tampoco (el cargo fijo de ML se come el margen).
-- Cada color es OTRO catálogo con otros competidores: medir cada color por separado (T110 Azul 51% vs Blanco 12%).
-- El color que ofrece Nissei tiene que existir en ML (QCY Crossky C50, Havit H2002D: Nissei otro color → no).
-- 80%+ es sospechoso: Live Beam 3 se medía contra el catálogo de Live BUDS 3 (otro modelo).
-- Cuotas: si la publicación que GANA da cuotas sin interés hay que igualarlas y es costo. Tabla de ML
-  (parejo a cualquier precio): 3 cuotas 8,9% · 6 cuotas 13,4% · 9 cuotas 17,8% · 12 cuotas 21,6%.
-  Las 2 cuotas que ML pone a todos no cuestan. Cargar `cuotasGan` en el candidato y el robot resta solo.
-- `candSetPedir` traba el panel cuando se cargan muchos (redibuja cada vez): chequear `candPuedePedir(c).ok`
-  y escribir `fbSet('candidatos_py/<id>/pedirU', u)` directo. Mismo freno, sin redibujar.
-- Auriculares barridos enteros el 02/10 (683 filas).
+## Corrección de CYC WEB (02/10/2026, noche)
+- **El robot YA NO mide contra "el más barato con Full"**: el que gana la caja puede no tener Full (CK One: el ganador de
+  $68.499 viene como `xd_drop_off` = agencia en la API). Desde el 02/10 mide contra el MÁS BARATO DE TODOS (sin los del
+  exterior), que queda pegado al que gana. Se re-midieron todos (calcVer 9).
+- **Nunca reescribir un candidato entero**: para cambiar uno que ya existe, SIEMPRE el subcampo
+  (`fbSet('candidatos_py/<id>/foto', url)`). Un set del nodo entero se lleva pedirU, cuotasGan y usd agregados después.
 
-## Herramientas de Guay (en la PC, carpeta guay/herramientas — pendiente subir el código)
-- `nissei-harvest.ps1`: baja todo Nissei por categoría (código, precio, foto, link) a JSON.
-- `models.ps1`: junta los colores en modelos y saca lo que ya está en el panel.
-- `montaje.ps1`: arma una imagen con pares de fotos Nissei | ML para comparar rápido.
-- `funciones-chrome.js`: código para pegar en ML y en el panel (mlSearch, mlScan, mlFind, mlCat, mlCuotas, cargarCand).
+## Herramientas (subidas al repo el 02/10, carpeta guay/herramientas) y datos (guay/datos)
+- `nissei-harvest.ps1`, `models.ps1`, `montaje.ps1`, `funciones-chrome.js`. Los JSON de Nissei bajados el 02/10 están en
+  guay/datos (precios de ESE día: reconfirmar antes de pedir).
