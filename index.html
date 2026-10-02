@@ -2429,7 +2429,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='21.38';
+const APP_VERSION='21.39';
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
 // muestre la versión y la fecha de actualización y que tenga un desplegable predeterminado cerrado".
 // Y el mismo día: "que ponga fecha de cada modificación y haya una barrita para scrollear y que
@@ -2440,6 +2440,7 @@ const APP_VERSION='21.38';
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'21.39',f:'02/10/2026',h:'17:30',c:[{n:1,t:'Pedidos → Paraguay tiene una pestaña nueva, 📦 Pedidos hechos: todos los pedidos a Paraguay, primero los que están en camino y después los que ya llegaron (de reposición y de nuevos). Antes estaban escondidos en un desplegable gris.'}]},
   {v:'21.38',f:'02/10/2026',h:'16:40',c:[{n:1,t:'Para probar: arriba de la lista dice cuántos candidatos dan 25% o más (en verde), cuántos faltan medir y cuántos no llegan.'}]},
   {v:'21.37',f:'02/10/2026',h:'15:50',c:[{n:1,t:'Para probar: los candidatos que no llegan al 25% van juntos abajo, en un desplegable cerrado.'}]},
   {v:'21.36',f:'02/10/2026',h:'15:30',c:[{n:2,t:'Para probar: botón "✅ Es el mismo producto" (saca los avisos rojos de ese candidato, para ese catálogo de ML) y "🔁 Medir contra el más barato" cuando el robot encontró otro catálogo más barato del mismo producto.'}]},
@@ -11398,6 +11399,37 @@ function pyEnCaminoHTML(tipo){
       <div style="margin-top:6px">${llegados.map(c=>tarjeta(c,false)).join('')}</div></details>`:''}
   </div>`;
 }
+// ── PEDIDOS HECHOS, SU PROPIA PESTAÑA (02/10/2026) ──────────────────────────────────────────
+// Pedido suyo: *"en pedidos paraguay no están los pedidos ya hechos, o no los encuentro"*. Vivían en un
+// desplegable gris arriba de Productos nuevos (y los de reposición no se veían desde la v21.26). Acá
+// van TODOS: primero los en camino, después los llegados, de reposición y de nuevos. Usa la misma
+// tarjeta (`pyPedidoDetalleHTML`) que el resto.
+function pyHechosHTML(){
+  const todas=pyCompras();
+  if(!todas.length)return '<div style="font-size:.72rem;color:var(--muted);padding:12px">Todavía no hay pedidos a Paraguay hechos. Se registran al tocar "✅ Ya lo pedí" o cuando CYC WEB los carga.</div>';
+  const camino=todas.filter(c=>c.estado==='camino'), resto=todas.filter(c=>c.estado!=='camino');
+  const tarjeta=(c,enCamino)=>{
+    const puesto=Math.round((c.usdCrudo||0)*(c.recargo||RECARGO_PY)*100)/100;
+    const dias=Math.max(0,Math.floor((Date.now()-Date.parse(c.fecha+'T12:00:00-03:00'))/86400e3));
+    const lleg=enCamino?pyMasHabiles(c.fecha,PY_DIAS_LLEGADA):null;
+    const tarde=lleg?Date.now()>lleg.getTime()+86400e3:false;
+    return `<details style="margin-bottom:8px;background:var(--surface);border:1px solid ${enCamino?(tarde?'var(--amber)':'rgba(56,189,248,.35)'):'var(--border)'};border-radius:9px">
+      <summary style="cursor:pointer;padding:10px 12px;display:flex;align-items:center;gap:9px;flex-wrap:wrap;list-style:none">
+        <span style="font-size:1rem">${enCamino?'🚚':'📦'}</span>
+        <span style="font-size:.8rem;font-weight:700">${c.tipo==='repo'?'Reposición':'Nuevos'} · ${c.fecha}</span>
+        <span style="font-size:.7rem;color:var(--muted)">${c.productos||0} producto${c.productos===1?'':'s'} · ${c.unidades||0} u. · US$ ${puesto.toFixed(2)} puesto</span>
+        <span style="margin-left:auto;font-size:.68rem;color:${enCamino?(tarde?'var(--amber)':'#38bdf8'):'var(--green)'};font-weight:700">
+          ${enCamino?`en camino · hace ${dias} d${tarde?' · ya se pasó':''}`:c.estado==='llego'?`llegó${c.fechaLlego?' el '+c.fechaLlego:''}`:'historial'}
+        </span>
+        <span style="font-size:.62rem;color:var(--muted)">▼</span>
+      </summary>
+      ${pyPedidoDetalleHTML(c)}
+    </details>`;
+  };
+  return `${camino.length?`<div style="font-size:.78rem;font-weight:700;margin:4px 0 8px">🚚 En camino (${camino.length})</div>${camino.map(c=>tarjeta(c,true)).join('')}`:''}
+    ${resto.length?`<div style="font-size:.78rem;font-weight:700;margin:14px 0 8px">📦 Ya llegaron (${resto.length})</div>${resto.map(c=>tarjeta(c,false)).join('')}`:''}
+    <div style="font-size:.64rem;color:var(--muted);margin-top:8px">El pedido que se está armando ahora (Productos nuevos) aparece acá recién cuando se hace.</div>`;
+}
 // ── UN RENGLÓN DEL PEDIDO DE NUEVOS, EN CASILLAS (01/10/2026) ────────────────────────────────
 // Pedido suyo: *"poner letras más grande y ubicar mejor las líneas, llenar el espacio. porque hay
 // poco, y chiquito porque no hay espacio, cuando en realidad sí hay"*. Antes era una tira gris de
@@ -14271,9 +14303,10 @@ function renderPedidos(){
     const _tabs=`<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px">
       ${_tab('probados','✅ Productos probados','Lo que YA vendés: cuánto hay que reponer para no quedarte sin stock, y lo que dejó de convenir al precio de Paraguay de hoy.')}
       ${_tab('nuevos','🆕 Productos nuevos','Lo que todavía NO vendés: los candidatos que trae el chat de Paraguay y el armado de ese pedido.')}
+      ${_tab('hechos',`📦 Pedidos hechos (${pyCompras().length})`,'Los pedidos a Paraguay ya hechos: los que están en camino y los que ya llegaron, de reposición y de nuevos.')}
     </div>`;
     // PROBADOS = IDÉNTICO A BS AS (01/10/2026, pedido suyo): sólo la lista de pedidos, sin canasta ni precios.
-    el.innerHTML=_tabs+(pyVista==='nuevos'?candidatosHTML():el.innerHTML);
+    el.innerHTML=_tabs+(pyVista==='nuevos'?candidatosHTML():pyVista==='hechos'?pyHechosHTML():el.innerHTML);
   }
 }
 
