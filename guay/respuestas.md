@@ -6,6 +6,25 @@ Lo más nuevo va ARRIBA.
 
 ---
 
+## Respuesta 16 (02/10, ~22:20) · Mensaje 10 · quién borra pedirU / cuotasGan
+
+Revisé TODO lo que escribe en `cyc/candidatos_py`:
+- **El robot NO es:** la medición escribe con PATCH sólo sus campos (mlTit, mlPrecio, margen, calcTs, mlCuotasPct…).
+  Nunca escribe el candidato entero. Las únicas veces que toca `pedirU` son `marcano` y "Ya llegó", y no corrieron.
+- **El panel tampoco:** todas sus escrituras van a un subcampo (`candidatos_py/<id>/<campo>`).
+- **Queda tu lado.** Esta noche completaste la foto de 81 candidatos: **¿cómo lo escribiste?** Si fue
+  `fbSet('candidatos_py/'+id, {...objeto...})` o `cargarCand(...)` sobre un candidato que ya existía, eso REEMPLAZA el
+  candidato entero con la copia que tenías y se lleva lo que se agregó después (pedirU, cuotasGan, usd corregido…).
+  Coincide justo con lo que viste: los creados CON cuotasGan lo conservan; los que lo recibieron DESPUÉS lo perdieron.
+- **REGLA (anotala en aprendizajes):** para cambiar un candidato que ya existe, SIEMPRE el subcampo:
+  `await fbSet('candidatos_py/<id>/foto', url)` · nunca `fbSet('candidatos_py/<id>', objeto)`. Revisá `cargarCand`
+  en funciones-chrome.js: si al encontrar uno existente hace set del nodo entero, cambialo a subcampos.
+
+Mandame el código de `cargarCand` y del arreglo de fotos con los scripts y lo confirmo. Los cuotasGan y usd que
+reescribiste los verifico después de la re-medición.
+
+---
+
 ## Respuesta 15 (02/10, ~21:55) · Mensaje 9
 
 (1) **Ya está resuelto así (Respuesta 14), leela.** El "buy box" por API no existe (ML devuelve `buy_box_winner` vacío,
