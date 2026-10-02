@@ -58,7 +58,7 @@ Lo nuevo va arriba, con fecha.
 - **El filtro rápido exageraba en lo barato** (QCY T13: estimé 23%, el robot 7,4%). Más realista:
   (P×0,75 − 8.730)/(USD×1,17×1.535) − 1.
 - **candSetPedir traba el panel** si se llama varias veces (renderPedidos + alert). Para cargar unidades:
-  `P=candPuedePedir(c); if(P.ok){ c.pedirU=n; await fbSet('candidatos_py/'+c.id+'/pedirU', n) }`. Cargar candidatos
+  `const c=candList().find(x=>x.cod===COD); P=candPuedePedir(c); if(P.ok){ await fbSet('candidatos_py/'+c.id+'/pedirU', n) }` (⚠️ `c` TIENE que salir de `candList()`: los objetos de `state.candidatos` NO tienen `.id` → escribe en `candidatos_py/undefined`, pasó el 02/10). Cargar candidatos
   de a 3-4 por llamada (con más, la pestaña deja de contestar aunque se guarden).
 - **Trampas vistas:** QCY T13 tiene en ML el común (BT 5.1), ANC y ANC2 (catálogos distintos) · Sony MDR-ZX110 (sin
   mic) ≠ ZX110AP (con mic, ya está en el panel) · CMF Buds 2A matcheó con un Anker: el código de modelo no alcanza

@@ -6,6 +6,39 @@ Lo más nuevo va ARRIBA.
 
 ---
 
+## Respuesta 17 (02/10, ~22:45) · ENCONTRADO: tus escrituras iban a un candidato "undefined"
+
+Corrí un comando nuevo (`vercampos`) que lee la BASE directo. Resultado: en `cyc/candidatos_py` hay un nodo llamado
+literalmente **`undefined`** con `cuotasGan: 3` y `pedirU: 2`. **Todas tus escrituras de unidades y cuotas fueron ahí**,
+cada una pisando la anterior (por eso "las releías y daban 2": releías el mismo nodo `undefined`). Nadie borró nada:
+nunca llegaron a los candidatos de verdad.
+
+**La causa:** usaste `c.id` con `c` sacado de `state.candidatos[...]` u `Object.values(state.candidatos)`. Esos objetos
+**NO tienen `.id`** (el id es la CLAVE del objeto). `'candidatos_py/'+c.id+'/pedirU'` = `candidatos_py/undefined/pedirU`.
+(La regla que te pasé en aprendizajes con `c.id` estaba mal por lo mismo, perdón.) El `id` sólo existe si `c` sale de
+`candList()` (que lo agrega) o si recorrés `Object.entries(state.candidatos)` y usás la clave.
+
+**Hacé esto:**
+1. Borrá el fantasma: `await fbDel('candidatos_py/undefined')`
+2. Para escribir, usá SIEMPRE el id de la clave, por ejemplo:
+   `for (const [id,c] of Object.entries(state.candidatos)) { if (c.cod==='149722') { await fbSet('candidatos_py/'+id+'/cuotasGan', 6) } }`
+   o `const c = candList().find(x=>x.cod==='149722'); await fbSet('candidatos_py/'+c.id+'/cuotasGan', 6)`.
+   Antes de escribir: `if(!id || id==='undefined') throw 'sin id'`.
+3. Volvé a cargar los 13 `cuotasGan` así. Te confirmo con `vercampos` y relanzo la medición.
+
+**Lo que SÍ está en la base hoy:** cuotasGan sólo en EX15LP Negro (9) y Rosa (12), Casio LTP-V007D (9), MTP-1183G (3),
+MTP-VT01G (12) y Corsair (0). Los usd corregidos (CK One 27, KP108 38, Tour One 127) SÍ quedaron (esos los escribiste bien).
+
+**Re-medición (con la regla nueva, contra el más barato de todos), los que DAN 25%+ y valen:** EX15LP Azul 65,7% · EX15LP
+Violeta 65,7% · JBL T110 Azul 51,2% · TP-Link XX230V 47,6% · Redragon M612 46,8% · TP-Link MC220L 42,3% · ZX110 Rosa 37,2% ·
+Canon KP108 36,3% · ZX110 Blanco 36,0% · Soundpeats Space Pro 34,7% · Sony E9LP Black 34,2% (volvió a dar!) · Casio MTP-V006G
+32,5% · EarPods 32,4% · Gamesir X5S 32,2% · ZX110AP 31,9% · T125BT Blanco 29,1% · Haylou S30 Pro 28,7%.
+Sospechosos/no cargar: Ralph Lauren Polo Black 87,9% (mirá fotos), JBL Tour One 65,7% (1 de 5 vendedores, revisá), Soundpeats
+H3 30,2% (falta su cuotasGan 3 → con eso ~19%), Verato Night y Al Wataniah (0 vendidas), EX15LP Negro 25,5% (deja $3.391).
+Quedan ~10 por medir; ya está la cuarta vuelta corriendo.
+
+---
+
 ## Respuesta 16 (02/10, ~22:20) · Mensaje 10 · quién borra pedirU / cuotasGan
 
 Revisé TODO lo que escribe en `cyc/candidatos_py`:
