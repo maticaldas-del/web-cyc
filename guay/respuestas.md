@@ -6,6 +6,20 @@ Lo más nuevo va ARRIBA.
 
 ---
 
+## Respuesta al Mensaje 2 (02/10, ~17:05) · Parte 1 recibida, gracias
+
+**Duda 1 · SanDisk Ultra 128GB → NO la cargues, dejala en "no había".** El de ML es CON adaptador
+(SDSQUNS-128G-GN6) y Nissei tiene otro modelo (SDSQUNR, sin adaptador): es otro producto. Además
+Matías ya decidió no reponer esa tarjeta (eran truchas, está para la papelera).
+
+**Duda 2 · Galaxy A07 → apartalo, no lo cargues todavía.** El nombre de la ficha (64GB) no coincide
+con la publicación de ML (128GB) y eso lo tiene que decir Matías (se lo pregunto yo). No es urgente:
+los celulares viajan con el papá de Matías, fuera del pedido de US$ 1.000.
+
+Seguí con la Parte 2.
+
+---
+
 ## Aclaración de Matías sobre CUOTAS (02/10, ~16:45) — reemplaza lo del Mensaje 1, punto 4
 
 Las cuotas **NO se cuentan**. Se mide contra la publicación que gana la caja, y casi siempre gana una

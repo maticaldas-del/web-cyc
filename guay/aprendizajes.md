@@ -4,6 +4,14 @@ Leelo ENTERO al empezar cada sesión. Si algo de acá contradice al prompt, mand
 Lo nuevo va arriba, con fecha.
 
 ## Nuevo 02/10/2026
+- **Un precio del panel con fecha de HOY puede estar viejo** (Redmi Watch 4: precio del 02/10 y Nissei ya
+  no lo tenía). Reconfirmar SIEMPRE en comprasparaguay, nunca saltear por la fecha.
+- **Códigos:** comprasparaguay muestra 6 dígitos (128673) y la factura de Nissei 7 (7128673). Vale lo de
+  comprasparaguay. El `07112` del Cruzer Blade 64gb es real.
+- Parte 1 completa el 02/10: 44 revisadas en ~1 h, 13 "no había".
+- SanDisk Ultra 128 CON adaptador ≠ el SDSQUNR de Nissei (sin adaptador): no cargar. Además no se repone.
+- Si el nombre de la ficha no coincide con su publicación de ML (Galaxy A07: 64GB vs 128GB), apartar y
+  preguntar: no elegir.
 - **Listado SÓLO de Nissei:** `https://comprasparaguay.com.ar/busca/?loja=nissei` (13.905 productos el
   02/10) y por categoría `/<cat>/?loja=nissei`. Recorrer eso, no el sitio entero. (Descubierto por Guay.)
 - La pestaña "Productos probados" del panel ya no muestra los campos Nissei (v21.26). Se cargan con las
