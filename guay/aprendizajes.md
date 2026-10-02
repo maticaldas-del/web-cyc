@@ -159,3 +159,10 @@ bajado 34 categorías = **7.487 (54%)**. De esas:
 **La prueba de por qué van ENTERAS (02/10):** al pasar VARIOS completo salió el **Xiaomi Mijia Lint Remover 2**
 (sacapelusas, cód 155085, US$ 13,5, MLA68634662 a $69.999, +500 vendidos, Full, sin cuotas). En la mirada a ojo de la
 misma categoría se había pasado de largo. Mirar a ojo deja afuera justo lo que no se sabe buscar.
+
+## NUNCA USAR /busca/ PARA EL BARRIDO COMPLETO: SIEMPRE POR CATEGORÍA (02/10)
+comprasparaguay muestra como máximo **500 páginas de 20 productos = 10.000** en la búsqueda general, aunque arriba diga
+13.905. Comprobado: `/busca/?page=500&loja=nissei` trae productos; `page=501` y `page=600` vienen vacías. Los ~3.900
+restantes existen pero la búsqueda general **nunca** los muestra: es un límite del sitio, no un corte de la descarga.
+**Se baja categoría por categoría** (`/<categoria>/?page=N&loja=nissei`): ninguna categoría pasa las 500 páginas, así
+que en cada una aparecen todos. Una descarga que da justo 10.000 es esta pared, no "terminé".

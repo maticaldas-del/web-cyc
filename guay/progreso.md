@@ -65,3 +65,5 @@ Planchita/alisador · Modelador · Afeitadora · Cortapelo · Cepillo eléctrico
 de barras · Domótica · Gimbal · Teléfono · Procesador · Cartucho de tinta.
 **Probable descarte por peso/tamaño (confirmar con Matías):** licuadora · air fryer · plancha · batidora · tostadora ·
 freidora · monopatín · silla gamer · consolas.
+**Mensaje 20:** el corte en 10.000 es un límite del sitio (500 páginas × 20), no de la descarga. Regla en
+`aprendizajes.md`: el barrido completo se baja SIEMPRE por categoría, nunca por `/busca/`.
