@@ -2429,7 +2429,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='21.35';
+const APP_VERSION='21.36';
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
 // muestre la versión y la fecha de actualización y que tenga un desplegable predeterminado cerrado".
 // Y el mismo día: "que ponga fecha de cada modificación y haya una barrita para scrollear y que
@@ -2440,6 +2440,7 @@ const APP_VERSION='21.35';
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'21.36',f:'02/10/2026',h:'15:30',c:[{n:2,t:'Para probar: botón "✅ Es el mismo producto" (saca los avisos rojos de ese candidato, para ese catálogo de ML) y "🔁 Medir contra el más barato" cuando el robot encontró otro catálogo más barato del mismo producto.'}]},
   {v:'21.35',f:'02/10/2026',h:'15:10',c:[{n:1,t:'Para probar: el detalle de un candidato ya no se cierra solo cuando el panel se actualiza.'}]},
   {v:'21.34',f:'02/10/2026',h:'14:50',c:[{n:2,t:'Para probar: si la publicación que gana en ML da cuotas sin interés (3, 6, 9 o 12), el robot resta lo que cobra ML por ofrecerlas (8,9% · 13,4% · 17,8% · 21,6% del precio) y el detalle lo dice.'}]},
   {v:'21.33',f:'02/10/2026',h:'14:30',c:[{n:1,t:'Para probar: cada producto muestra sólo foto, nombre, código, precio y % de ganancia. Tocándolo se abre el detalle con las dos fotos grandes (Paraguay y ML), los avisos y los botones.'},{n:1,t:'Las fotos se ven grandes al tocarlas (antes quedaban chiquitas): ocupan la pantalla y, si son de ML, se pide la foto original en vez de la miniatura.'}]},
@@ -10767,6 +10768,30 @@ function candEnArmado(c){
 // cuántos vendedores hay, y el margen medido contra **el más barato**, que es el peor caso.
 // ACÁ NO SE CALCULA NINGÚN MARGEN: lo mide el robot con `cuentaCand` y esta pantalla sólo lo
 // muestra — con una cuenta propia la tarjeta podría decir un número y el robot otro.
+function candCatId(c){
+  const m=String(c&&c.mlLink||'').match(/\/p\/(MLA\d+)/i);
+  if(m)return m[1].toUpperCase();
+  return String(c&&c.mlId||'').trim().toUpperCase().replace(/^.*\/P\//,'').split(/[?#]/)[0]||'';
+}
+async function candMismoOk(id){
+  const c=(state.candidatos||{})[id];if(!c)return;
+  const cat=candCatId(c);if(!cat){toast('No sé contra qué catálogo se midió','err');return;}
+  c.mismoOk=cat;
+  await fbUpdate({['candidatos_py/'+id+'/mismoOk']:cat,['candidatos_py/'+id+'/mismoOkTs']:Date.now()});
+  renderPedidos();toast('Marcado como el mismo producto ✓');
+}
+// Medir contra el catálogo MÁS BARATO del mismo producto que encontró el robot. Borra el margen
+// para que no se pueda pedir hasta que el robot lo vuelva a medir contra ése.
+async function candUsarGemelo(id){
+  const c=(state.candidatos||{})[id];if(!c||!c.mlGemelo||!c.mlGemelo.id)return;
+  const g=c.mlGemelo;
+  if(!confirm(`Medir "${c.nombre}" contra el catálogo ${g.id} (${fmt(g.precio)}, ${g.vend} vendedores)?\n\nContra ése daría ~${g.margen}%. Queda sin margen hasta que el robot lo vuelva a medir (próxima vuelta).`))return;
+  const up={mlId:g.id,mlLink:null,calcVer:null,margen:null,ganancia:null,mlGemelo:null,mlReparos:null,mismoOk:null};
+  const u={};for(const k in up)u['candidatos_py/'+id+'/'+k]=up[k];
+  await fbUpdate(u);
+  Object.assign(c,up);
+  renderPedidos();toast('Listo: se mide contra '+g.id+' en la próxima vuelta del robot');
+}
 function candPreciosPartes(c){
   const min=Number(c.mlPrecio)||0;
   // SIN PRECIO MEDIDO YA NO DEVUELVE VACÍO (19/09/2026). Devolvía '' y el renglón entero
@@ -10866,7 +10891,13 @@ function candPreciosPartes(c){
   if(Array.isArray(c.mlReparos))c.mlReparos.forEach(x=>D.push(x));
   if(mMin!=null&&mMin>=80)D.push(`${mMin.toFixed(0)}% es demasiado: cuando el catálogo de ML es OTRO producto el margen sale así`);
   if(c.mlHayFull===false&&vend<=1&&min)D.push('un solo vendedor y sin Full: ese precio no tiene contra qué compararse');
-  R.dudas=D;
+  // "✅ ES EL MISMO PRODUCTO" (02/10/2026, pedido suyo: *"como hago para decir que es correcto y que
+  // los productos matchean bien? podes poner un botoncito"*). La confirmación vale para ESE catálogo
+  // de ML (`mismoOk` guarda su código): si el robot pasa a medir contra otro, los avisos vuelven.
+  // Lo único que sigue a la vista es el catálogo más barato del mismo producto, que es otra cosa:
+  // cambia el margen aunque el producto esté bien emparejado.
+  R.mismoOk=!!(c.mismoOk&&c.mismoOk===candCatId(c));
+  R.dudas=R.mismoOk?D.filter(x=>/^hay OTRO cat/.test(String(x))):D;
   // LAS DOS FOTOS, LADO A LADO (01/10/2026). Pedido suyo: *"el bot no vio las fotos de los
   // productos, tienen el mismo nombre pero no son nada que ver a simple vista"*. No se le paga a
   // nadie para "mirarlas": se muestran juntas y el ojo decide en un segundo. La de ML la guarda el
@@ -11839,6 +11870,8 @@ function candidatosHTML(){
           return `<span style="font-size:.64rem;color:var(--red);font-weight:600" title="Tu piso es ${CAND_PISO_PCT}%. El robot lo vuelve a medir todas las noches: si el precio de ML cambia y pasa el piso, la casilla se abre sola.">🚫 no se puede pedir: ${Q.motivo}</span>`
             +(uu>0?` <span style="font-size:.64rem;color:var(--red);font-weight:700">· tiene ${uu} u. cargadas</span> <button class="btn" style="font-size:.62rem;padding:4px 10px;color:var(--red);border-color:rgba(239,68,68,.35)" onclick="candSetPedir('${c.id}',0)">✕ sacarlo del pedido</button>`:'');
         })()}
+        ${(dudas&&!RP.mismoOk)?`<button class="btn" style="font-size:.66rem;padding:5px 12px;color:var(--green);border-color:rgba(34,197,94,.45)" onclick="candMismoOk('${c.id}')" title="Miraste las dos fotos y es el mismo producto: saca los avisos rojos de este candidato (vale para este catálogo de ML).">✅ Es el mismo producto</button>`:''}
+        ${c.mlGemelo&&c.mlGemelo.id?`<button class="btn" style="font-size:.66rem;padding:5px 12px;color:var(--amber);border-color:rgba(245,158,11,.45)" onclick="candUsarGemelo('${c.id}')" title="Hay otro catálogo del mismo producto más barato. Medirlo contra ése (el peor caso).">🔁 Medir contra el más barato (${c.mlGemelo.margen}%)</button>`:''}
         <button class="btn btn-add" style="font-size:.66rem;padding:5px 12px" onclick="candCrearFicha('${c.id}')" title="Crea la ficha del producto con su costo y su código ya cargados, marcada como Paraguay. No compra nada ni publica nada en ML.">👍 Crear ficha</button>
         <button class="btn" style="font-size:.66rem;padding:5px 12px;color:var(--muted)" onclick="candDescartar('${c.id}')" title="No vuelve a aparecer. Se puede deshacer desde acá abajo.">👎 No me interesa</button>
         ${c.marca?`<button class="btn" style="font-size:.66rem;padding:5px 12px;color:var(--red);border-color:rgba(239,68,68,.35)" onclick="candMarcaNo('${c.id}')" title="Saca de la lista TODO lo de esta marca, para siempre. Para las marcas que ML te pide documentar.">🚫 ${c.marca} no</button>`:''}
