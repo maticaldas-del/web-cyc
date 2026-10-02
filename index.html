@@ -2429,7 +2429,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='21.31';
+const APP_VERSION='21.32';
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
 // muestre la versión y la fecha de actualización y que tenga un desplegable predeterminado cerrado".
 // Y el mismo día: "que ponga fecha de cada modificación y haya una barrita para scrollear y que
@@ -2440,6 +2440,7 @@ const APP_VERSION='21.31';
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'21.32',f:'02/10/2026',h:'00:43',c:[{n:2,t:'Las ventas nuevas (Inicio y Ventas) se dibujan solas otra vez: antes, si quedaba el cursor en una casilla (el buscador, la fecha), la pantalla no se actualizaba hasta apretar F5. Ahora sólo espera mientras estás escribiendo.'}]},
   {v:'21.31',f:'01/10/2026',h:'21:30',c:[{n:2,t:'Arqueo: en los primeros 5 días del mes, el botón de cierre cierra el mes ANTERIOR si todavía no está cerrado (con los valores de hoy). El botón dice qué mes va a cerrar.'}]},
   {v:'21.30',f:'01/10/2026',h:'23:59',c:[{n:3,t:'El robot anota cada noche un diario de cada producto (stock, precio, caja, si estaba rematando y lo vendido) y calcula cuánto vende de verdad SIN remate, sobre los días que hubo stock (hasta 365 días).'},{n:3,t:'Remate: cuando lo que queda alcanza para 30 días de venta normal, el robot saca el remate solo y el precio vuelve a la base. Antes seguía rematando hasta quedar en 0.'},{n:2,t:'Pedidos y Armar caja: si hubo ventas de remate, usan lo que el producto vende sin remate (no las ventas infladas por el remate, ni 0).'}]},
   {v:'21.29',f:'01/10/2026',h:'23:30',c:[{n:3,t:'Tope de H: con ARCA cargado ya no se pierden las ventas que ML nunca facturó ni lo facturado fuera de ML; un archivo de ARCA bajado a mitad de mes o con un mes faltante se cuenta bien.'},{n:2,t:'Monotributo: si la recategorización pasada supera la Cat K, la tarjeta lo dice en rojo (sale del Monotributo).'},{n:1,t:'Puntaje: "ya retiraron" sólo sale si el retiro del mes está cargado.'}]},
@@ -2825,7 +2826,28 @@ async function _invFalla(keys,err){
   toast('⚠️ No se guardó el stock: '+((err&&(err.message||err.code))||'error')+'. Volvió el valor de la base.','err',7000);
 }
 let _finFocused=false; // hay un campo de finanzas siendo editado → congelar la recarga de esos campos
-function isEditing(){const a=document.activeElement;return !!a&&/^(INPUT|SELECT|TEXTAREA)$/.test(a.tagName);}
+// ¿HAY ALGO A MEDIO ESCRIBIR? (02/10/2026, él: "Ventas de hoy no se actualiza, sólo con F5"). Antes alcanzaba
+// con que una casilla tuviera el foco: en la PC el foco se queda en el buscador o en la fecha aunque no
+// toques nada, así que ninguna venta nueva se dibujaba hasta recargar. Ahora frena sólo si tipeaste hace
+// menos de 20 s, o si la casilla tiene texto cambiado sin guardar (no los buscadores, fechas, casillas de
+// tilde ni desplegables: ésos se vuelven a dibujar con lo mismo que tienen).
+let _ultTecla=0;
+document.addEventListener('input',()=>{_ultTecla=Date.now();},true);
+document.addEventListener('keydown',()=>{_ultTecla=Date.now();},true);
+function isEditing(){
+  const a=document.activeElement;if(!a||!/^(INPUT|SELECT|TEXTAREA)$/.test(a.tagName))return false;
+  if(Date.now()-_ultTecla<20000)return true;
+  if(a.tagName==='SELECT')return false;
+  if(a.classList&&a.classList.contains('fin-input'))return false; // se guardan mientras se tipea
+  const ty=(a.type||'').toLowerCase();
+  if(/^(search|date|checkbox|radio|range|button|submit|color|file)$/.test(ty))return false;
+  if(/buscar|search/i.test((a.id||'')+' '+(a.placeholder||'')))return false;
+  return a.value!==a.defaultValue;
+}
+// Lo que quedó frenado se dibuja solo apenas deja de haber algo a medio escribir (antes esperaba a que
+// sacaras el foco, y en la PC eso podía no pasar nunca), y al volver a la pestaña.
+setInterval(()=>{if(pendingRender&&!isEditing()){pendingRender=false;renderAll();}},4000);
+document.addEventListener('visibilitychange',()=>{if(!document.hidden&&pendingRender&&!isEditing()){pendingRender=false;renderAll();}});
 /* ── POR QUÉ LA PÁGINA SE TRABA EN EL CELULAR MIENTRAS SCROLEÁS ──
    Cada vez que cambia algo en la base se vuelve a dibujar la página entera y, para que no salte,
    se la devolvía a la posición de scroll anterior con window.scrollTo(). Eso está bien si estás
@@ -2847,7 +2869,7 @@ function renderPronto(ya){
   clearTimeout(_renderT);
   const correr=()=>{
     _renderT=null;
-    if(isEditing()||_finFocused){pendingRender=true;return;}
+    if(isEditing()){pendingRender=true;return;} // los campos de Finanzas los cuida loadFinInputs (_finFocused)
     const y=window.scrollY;
     renderAll();
     if(!_scrollando)requestAnimationFrame(()=>window.scrollTo(0,y));
