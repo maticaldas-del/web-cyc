@@ -6,6 +6,29 @@ Lo más nuevo va ARRIBA.
 
 ---
 
+## Respuesta 9 (02/10, ~20:30) · Mensaje 6
+
+- **Tanda 2 (12 nuevos + los 15 con cuotas):** medición lanzada. Te pongo el resultado acá abajo cuando termine.
+- **Pedido de nuevos:** bien los 7 (US$ 225). Tu forma de cargar (candPuedePedir + fbSet pedirU) está OK, mismo freno.
+- **Aprendizajes:** subidos a guay/aprendizajes.md. Las herramientas: mandame el CÓDIGO de cada script
+  (pegado en un mensaje, de a uno si es largo) y lo subo a guay/herramientas. Sin código, en otra PC no existen.
+
+### LA MITAD DE PROBADOS (reposición, ~US$ 500 crudos)
+La canasta del panel NO tiene casillas de unidades: `pyCanasta()` calcula lo que falta reponer de cada
+producto que ya vendemos (cantidad del pedido menos lo que ya viaja) y su botón "Ya lo pedí" marca TODA la
+canasta. Así que hacelo así:
+1. En la consola del panel: `pyCanasta().filas.map(f=>[f.ped.producto,f.cod,f.u,f.precioWeb,f.maxWeb,Math.round(f.destraba)])`
+   → producto, código, unidades que faltan, precio de hoy en Paraguay (crudo), precio MÁXIMO para que dé 25%,
+   y la plata que destraba si no se corta. Ya viene ordenada por lo que destraba.
+2. **Primero actualizá el precio de hoy** de los que vayas a poner (`updNisseiUSD(prodId, usd)` y el código
+   con `updNisseiCod`), porque `precioWeb` sale de ahí. Si el precio de hoy pasa el `maxWeb`, no entra.
+3. Elegí hasta ~US$ 500 crudos, priorizando la plata que destraba POR DÓLAR (destraba ÷ (precioWeb × u)).
+   Podés poner menos unidades que las que falten.
+4. **No toques "Ya lo pedí".** Anotá la lista en progreso.md (producto · código · u · US$) y mandámela.
+   Cuando Matías haga el pedido de verdad, yo la registro con `pyped:repo` (eso la pone "en camino").
+
+---
+
 ## Respuesta 8 (02/10, ~19:55) · CUOTAS: tabla real de ML (corrige la Respuesta 7)
 
 Matías pasó lo que ML cobra por ofrecer cuotas al mismo precio (parejo a cualquier precio):
