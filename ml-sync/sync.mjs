@@ -11085,6 +11085,23 @@ async function main() {
     // NO IMPRIME NI EL NOMBRE NI EL ID DE NINGÚN VENDEDOR. El repo y los registros son PÚBLICOS y
     // los vendedores de ML son terceros: acá alcanza con el precio y los campos de logística.
     // Solo lee.
+    // BILLING_PROBE=vercampos[:<palabra>] → LO QUE DE VERDAD ESTÁ GUARDADO en los candidatos (02/10/2026).
+    // El chat de compras escribía cuotasGan/pedirU desde la consola, los releía bien y horas después no
+    // estaban. Esto lee la BASE (no la caché del navegador) y muestra los campos que carga el chat.
+    // Solo lee.
+    if (/^vercampos(:|$)/.test(String(process.env.BILLING_PROBE || ''))) {
+      const q = String(process.env.BILLING_PROBE).slice('vercampos'.length).replace(/^:/, '').trim().toLowerCase();
+      const cands = (await db.get('cyc/candidatos_py')) || {};
+      const vivos = Object.entries(cands).filter(([, c]) => c && !c.no && !c.prodId && (!q || String(c.nombre || '').toLowerCase().includes(q)));
+      console.log(`=== CAMPOS GUARDADOS EN LA BASE · ${vivos.length} candidato(s) vivos${q ? ` con "${q}"` : ''} ===`);
+      let conCuo = 0, conU = 0;
+      for (const [id, c] of vivos) {
+        if (c.cuotasGan != null) conCuo++; if (Number(c.pedirU) > 0) conU++;
+        console.log(`  ${id} · ${String(c.nombre).slice(0, 60)} · usd ${c.usd ?? '—'} · cuotasGan ${c.cuotasGan ?? '—'} · pedirU ${c.pedirU ?? '—'} · mismoOk ${c.mismoOk ?? '—'} · margen ${c.margen ?? '—'}`);
+      }
+      console.log(`\n${conCuo} con cuotasGan · ${conU} con unidades en el pedido`);
+      return;
+    }
     if (/^verofertas:/.test(String(process.env.BILLING_PROBE || ''))) {
       // ACEPTA EL CÓDIGO DEL CATÁLOGO O UNA PALABRA DEL CANDIDATO (19/09/2026). Pedir el MLA a
       // mano obligaba a ir a buscarlo al log de `candidatos` renglón por renglón, y los que hay
