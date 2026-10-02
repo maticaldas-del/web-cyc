@@ -5712,7 +5712,7 @@ const CAND_FRESCO_MS = 20 * 3600 * 1000;
 // entran al pedido. Un cambio en la fórmula cuenta igual que un campo nuevo, por cuarta vez.
 // QUINTA VEZ, 23/09/2026: el recargo de Paraguay pasó de 15% a 17%. Cambia el costo puesto de
 // TODOS los candidatos, o sea la cuenta: sin subir esto, los que dan se quedaban con el 15%.
-const CAND_CALC_VER = 7;
+const CAND_CALC_VER = 8;
 
 // ── UN DESCARTE POR MARGEN NO ES "NUNCA MÁS" (19/09/2026) ─────────────────────────────────
 // Regla suya, textual: *"yo no pondría ningún producto en NUNCA MÁS. salvo producto que después
@@ -5939,6 +5939,12 @@ const RV_VARIANTE = new Set(['edicion','edition','limitada','limited','coleccion
 // corre sobre CADA candidato medido, guarda los reparos en `mlReparos` y el panel los pinta en
 // rojo. Mismas reglas que `descartados` (que ahora llama a ésta): lo que sobra en ML que delata
 // otra versión, el modelo que no aparece, la palabra que falta y el tamaño que no coincide.
+// El aviso del catálogo gemelo más barato (02/10/2026, ver `candidatos`). Una sola redacción para la
+// medición y para el atajo de los ya medidos: con dos copias se separan.
+function _gemeloTxt(g, precioLink, margen) {
+  const m = (n) => '$' + Math.round(Number(n) || 0).toLocaleString('es-AR');
+  return `hay OTRO catálogo del mismo producto más barato: ${g.id} a ${m(g.precio)} con ${g.vend} vendedores (el del link está a ${m(precioLink)}). El margen se mide contra el barato: ${g.margenAntes}% → ${margen}%. Si es el mismo, cargá ese link`;
+}
 function chequeoMismoProducto(nombre, mlTit) {
   const t = String(mlTit || '').trim();
   if (!t) return [];
@@ -6177,6 +6183,7 @@ async function correrCandidatos(db, products, labels, accounts, soloPrueba, prue
       // título guardado: no cuesta ninguna consulta a ML y así los ya medidos no esperan días.
       if (!soloPrueba && c.mlTit) {
         const rep = chequeoMismoProducto(c.nombre, c.mlTit);
+        if (c.mlGemelo && c.mlGemelo.id) rep.push(_gemeloTxt(c.mlGemelo, Number(c.mlPrecio) || 0, c.margen));
         if (JSON.stringify(rep) !== JSON.stringify(c.mlReparos || [])) await db.patch(`cyc/candidatos_py/${id}`, { mlReparos: rep.length ? rep : null });
       }
       nuevosQueDan.push({ id, c, margen: Number(c.margen), ganancia: Number(c.ganancia) || 0,
@@ -6410,8 +6417,45 @@ async function correrCandidatos(db, products, labels, accounts, soloPrueba, prue
       sinDato.push(`${c.nombre} → ML no contestó la comisión a ese precio (se reintenta solo)`);
       continue;
     }
-    const { costo, impuestos, envio, ganancia, margen, fee } = rMin;
+    let { costo, impuestos, envio, ganancia, margen, fee } = rMin;
     calculados++;
+    // ── ¿HAY OTRO CATÁLOGO DEL MISMO PRODUCTO MÁS BARATO? (02/10/2026) ─────────────────────────
+    // Lo encontró el chat de compras con el Montblanc Presence: estaba medido contra MLA19479922
+    // ($146.801, 6 vendedores) y el mismo perfume tiene OTRO catálogo, MLA34731231, a $97.875 con 30
+    // vendedores. El margen pasaba de 71% a 19%. ML puede tener el mismo producto en dos catálogos, y
+    // el link que trae el chat (o el primer resultado de la búsqueda) puede ser el caro.
+    // Se mira sólo en los que DAN (son los únicos donde un margen inflado mete una compra), buscando
+    // por el título de ML. Cuenta como el mismo producto sólo si el título pasa el chequeo de mismo
+    // producto en LAS DOS direcciones (ni le falta ni le sobra tamaño, modelo o variante). Si ese
+    // gemelo es más barato, el margen se mide contra él (el peor caso) y se dice por qué.
+    let gemelo = null;
+    if (margen >= CAND_PISO_PCT && mlTit) {
+      try {
+        consultas++;
+        const busG = await mlGet(`/products/search?site_id=MLA&q=${encodeURIComponent(mlTit.slice(0, 80))}&limit=5`, tok);
+        const prodIdMed = (String(mlLink).match(/MLA\d+/) || [])[0];
+        const resG = ((busG && busG.results) || []).filter((r) => r && r.id && r.id !== prodIdMed
+          && !chequeoMismoProducto(mlTit, r.name || r.title).length && !chequeoMismoProducto(r.name || r.title, mlTit).length
+          && !chequeoMismoProducto(c.nombre, r.name || r.title).length);
+        for (const r of resG.slice(0, 3)) {
+          let ofG = [];
+          try { consultas++; const itG = await mlGet(`/products/${r.id}/items`, tok); ofG = ((itG && itG.results) || []).filter((o) => !esOfertaDeAfuera(o)); } catch { ofG = []; }
+          if (!ofG.length) continue;
+          const piG = precioAIgualar(ofG);
+          if (!piG || !(piG.precio > 0) || piG.precio >= mlPrecio) continue;
+          if (!gemelo || piG.precio < gemelo.precio) gemelo = { id: r.id, tit: String(r.name || r.title || '').slice(0, 120), precio: Math.round(piG.precio), vend: ofG.length };
+        }
+      } catch (eG) { console.log(`      (no pude buscar otros catálogos del mismo producto: ${String(eG.message || eG).slice(0, 80)})`); }
+      if (gemelo) {
+        const rG = await cuentaCand(gemelo.precio, lt, cat);
+        if (rG && rG.margen < margen) {
+          console.log(`      ⚠️ OTRO CATÁLOGO DEL MISMO PRODUCTO más barato: ${gemelo.id} "${gemelo.tit}" a ${money(gemelo.precio)} (${gemelo.vend} vendedores). Mido contra ése: ${margen.toFixed(1)}% → ${rG.margen.toFixed(1)}%`);
+          gemelo.margenAntes = Math.round(margen * 10) / 10;
+          ({ costo, impuestos, envio, ganancia, margen, fee } = rG);
+          gemelo.margen = Math.round(margen * 10) / 10;
+        } else gemelo = null;
+      }
+    }
     console.log(`      se vende ${mlMax > mlPrecio ? `de ${money(Math.round(mlPrecio))} a ${money(mlMax)}` : money(Math.round(mlPrecio))} · ${vendedores} vendedor(es) en la ficha`);
     // Las VENTAS van en su propio renglón y con el nombre completo: "vendedores" y "vendidas"
     // se confunden leyendo rápido, y son la diferencia entre "hay competencia" y "esto se vende".
@@ -6422,7 +6466,10 @@ async function correrCandidatos(db, products, labels, accounts, soloPrueba, prue
       await db.patch(`cyc/candidatos_py/${id}`, {
         mlTit, mlPrecio: Math.round(mlPrecio), mlMax, mlVendedores: vendedores, mlVendidas, mlVendidasMin, mlComision: Math.round(fee), mlLink, mlPorNombre: porNombre,
         mlFoto: mlFoto || null,
-        mlReparos: (() => { const r = chequeoMismoProducto(c.nombre, mlTit); return r.length ? r : null; })(),
+        mlReparos: (() => { const r = chequeoMismoProducto(c.nombre, mlTit);
+          if (gemelo) r.push(_gemeloTxt(gemelo, Math.round(mlPrecio), gemelo.margen));
+          return r.length ? r : null; })(),
+        mlGemelo: gemelo ? { id: gemelo.id, precio: gemelo.precio, vend: gemelo.vend, margenAntes: gemelo.margenAntes } : null,
         // CONTRA QUIÉN SE MIDIÓ. Se guarda porque el panel tiene que poder EXPLICAR por qué el
         // margen no sale contra el precio más barato de la ficha: sin esto el renglón se lee como
         // un error de cuenta. Es el mismo caso de la comisión del 19/09 —un dato que el robot ya
