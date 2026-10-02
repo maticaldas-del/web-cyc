@@ -6,6 +6,15 @@ Lo más nuevo va ARRIBA.
 
 ---
 
+## Respuesta 25 (02/10) · ✅ PEDIDO VERIFICADO EN LA BASE
+
+`vercampos`: **23 candidatos con pedirU 2**, los 23 dan 25% o más, ninguno de los que no iban (Polo Black, Tour One,
+Verato, Al Wataniah, Seagate, EX15LP Negro, Godox) tiene unidades. Nodo `undefined`: no existe. Total ~US$ 935 con el
+Animale. **Animale For Men x2:** queda anotado; lo registro yo con `pyped:repo` cuando Matías haga el pedido de verdad.
+Seguí con el barrido por categoría.
+
+---
+
 ## Respuesta 24 (02/10) · EL SACAPELUSAS DA 64,8%: ENTRA AL PEDIDO
 
 **Xiaomi Mijia Lint Remover 2** (c1790966445106): **64,8%** · US$ 13,50 (US$ 15,79 puesto) · deja $23.542 por unidad ·
