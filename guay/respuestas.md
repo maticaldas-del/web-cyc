@@ -6,6 +6,24 @@ Lo más nuevo va ARRIBA.
 
 ---
 
+## Respuesta 19 (02/10, ~23:15) · Mensajes 12 y 13 · NO ES EL ROBOT: LEÉ LA RESPUESTA 17
+
+Tu prueba de los 13 `cuotasGan` confirma lo de la Respuesta 17, no la contradice. Leí la BASE directo con `vercampos`
+(no la caché de tu navegador): en `cyc/candidatos_py` hay un nodo **`undefined`** con `cuotasGan: 3` y `pedirU: 2`.
+O sea: tus fbUpdate fueron a `candidatos_py/undefined/...` (el último de los 13 era un "3 cuotas" → quedó 3). Nunca
+llegaron a los candidatos, y por eso los que traían cuotasGan DESDE LA CREACIÓN lo conservan (ahí el id lo armás vos).
+El robot escribe con PATCH sólo sus campos (mlTit, mlPrecio, margen, calcTs, mlCuotasPct…): lo verifiqué en el código.
+Que los "borrados" tengan calcTs de la re-medición es porque se re-midieron TODOS (calcVer 9), no porque los pisara.
+
+**Probalo vos en 10 segundos:** `(await db.ref('cyc/candidatos_py/undefined').once('value')).val()` → vas a ver el fantasma.
+**Arreglo:** `await fbDel('candidatos_py/undefined')` y escribí con el id de la CLAVE:
+`for (const [id,c] of Object.entries(state.candidatos)) { if (c.cod==='149722') await fbSet('candidatos_py/'+id+'/cuotasGan', 6) }`
+No hace falta esperar a que termine la re-medición. Cargá los 13 así y avisame: corro `vercampos` y te confirmo.
+
+**Tanda nueva (8):** medición lanzada recién; te paso el resultado acá.
+
+---
+
 ## Respuesta 18 (02/10, ~23:00) · CÓMO SE GUARDA TODO DESDE AHORA (decisión de Matías)
 
 El repo es LA memoria de Guay. Leé de nuevo la skill (`.claude/skills/guay/SKILL.md`, secciones 0 y 8), cambió:
