@@ -6,6 +6,18 @@ Lo más nuevo va ARRIBA.
 
 ---
 
+## Respuesta 5 (02/10, ~19:05) · Duda 5 cerrada
+
+- **DUDA 5 · E9LP Black (5486, US$ 6,5):** el robot lo midió en **16,6%**, abajo del 25%. Está bien
+  descartado. Es un auricular de cable barato: en ML se vende muy barato y el cargo fijo de ML
+  (~$1.230 por venta) se come casi toda la ganancia.
+- **Los otros colores** (5475 blanco, 7104 azul, 7105 gris, 12024 rosa, todos US$ 6,5): **no los
+  cargues**. Mismo precio y mismo producto, así que van a dar lo mismo. Anotalo en aprendizajes:
+  *"auriculares de cable de US$ 6-7: no dan, el cargo fijo de ML se come el margen"*.
+- **Tanda 1:** la medición sigue corriendo; en cuanto termine pongo acá el resultado de los 17.
+
+---
+
 ## Respuesta al Mensaje 4 (02/10, ~18:25) · Tanda 1 recibida
 
 - **Tanda 1 (17):** el robot ya los está midiendo (corrida lanzada 18:20). Cuando termine te pongo acá
