@@ -14197,7 +14197,7 @@ async function main() {
       const prog = (await db.get('mlapi/lineaprog')) || {};
       const desde365 = T0 - 365 * DMS;
       const tiempo = () => Date.now() - T0 < TOPE;
-      const fases = FASE ? [FASE] : ['ventas', 'visitas', 'stock', 'precio'];
+      const fases = FASE ? [FASE] : ['ventas', 'visitas', 'precio', 'stock'];
       for (const fase of fases) {
         if (!tiempo()) { console.log(`⏱️ tope de tiempo: falta ${fase} (sigue en la próxima corrida)`); break; }
         if (prog[fase] && prog[fase].ok && !FASE) { console.log(`✓ ${fase}: ya estaba hecha (${new Date(prog[fase].ts).toISOString().slice(0, 10)})`); continue; }
@@ -14290,7 +14290,10 @@ async function main() {
               desdeLeido = m0;
               if (!tiempo()) break;
             }
-            if (errTxt && errLog.length < 4) errLog.push(iv + ': ' + errTxt);
+            if (errTxt && errLog.length < 4) errLog.push(iv + ': ' + errTxt.replace(/seller_id=\d+&/, ''));
+            // Un 429 (ML corta por cupo) no es "no hay más historia": se guarda lo leído y ese depósito
+            // se vuelve a pedir entero en la próxima vuelta, sin darlo por terminado.
+            const por429 = /\b429\b|over_quota/.test(errTxt);
             if (desdeLeido >= T0 - DMS) { mal++; continue; }
             const pts = ops.map((o) => [Date.parse(o.date_created || o.date), Number((o.result || {}).available_quantity)]).filter(([ts, q]) => isFinite(ts) && isFinite(q)).sort((a, b) => a[0] - b[0]);
             const serie = {};
@@ -14312,7 +14315,7 @@ async function main() {
               const z = ((porMla[mla] = porMla[mla] || {})[dk] = porMla[mla][dk] || { st: 0, stF: f });
               z.st += q;
             }
-            hecho[iv] = 1; ok++;
+            if (!por429) hecho[iv] = 1; ok++;
           }
           n = await escribir(porMla, true);
           console.log(`stock: ${ok} depósitos reconstruidos (${parcial} sin llegar al año entero: para atrás queda sin dato) · ${mal} que ML no dejó leer · ${pend} pendientes · ${n} días`);
