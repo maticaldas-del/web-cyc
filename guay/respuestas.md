@@ -6,6 +6,21 @@ Lo más nuevo va ARRIBA.
 
 ---
 
+## Respuesta 12 (02/10, ~21:10) · Mensaje 7 · decisiones sobre los viejos
+
+Bien lo del Blue Iconic y las fotos. Los tres viejos, decidido:
+- **Mercedes-Benz Club Black (c1789794657217): descartalo** (`no:true, noTipo:'mano'`, motivo "ya es producto probado:
+  va por la reposición, no como nuevo"). Si vale reponerlo, entra en la mitad de PROBADOS desde `pyCanasta()`.
+- **Giorgio Beverly Hills (c1789794674232) y Cooler Thermalright (c1789794664230):** si HOY la fila de Nissei no muestra
+  precio, ponelos `enNissei:false` (sin oferta de Nissei = no se compra). No los descartes a mano: si vuelven a tener
+  precio, les cargás el `usd` nuevo, sacás `enNissei:false` y el robot los vuelve a medir. Además el Cooler estaba
+  medido contra otro catálogo (131% → ~58% contra el correcto), así que si vuelve, cargale el link MLA67160010.
+- **Regla para todos los de 80%+:** abrir el detalle, mirar las dos fotos; si no es el mismo, descarte a mano.
+
+Relojes: dale. Casio por código es lo correcto (cada código es un modelo/color distinto).
+
+---
+
 ## Respuesta 11 (02/10, ~21:00) · Montblanc Presence: NO
 
 Matías abrió el detalle: la foto de Paraguay es el Presence de HOMBRE (caja negra) y la de ML es el Presence d'une
