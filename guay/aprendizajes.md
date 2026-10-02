@@ -12,7 +12,9 @@ Lo nuevo va arriba, con fecha.
 - Halloween 100ml (EDT, Kiss, Kiss Sexy, Magic, Bliss, Blossom): ninguno tiene fila de Nissei al 02/10.
 - Códigos: la factura de Nissei usa 7 dígitos (7128673) donde el panel tiene 6 (128673). Cargar SIEMPRE
   lo que muestra la fila de Nissei hoy, tal cual.
-- Matías: cuotas "siempre" (02/10). Lo aplica la sesión CYC WEB en el robot, no el chat.
+- **CUOTAS (Matías, 02/10, aclarado):** NO se cuentan. Se mide contra la publicación que gana (casi siempre
+  gana una sin cuotas). Las "2 cuotas" que muestra ML las tiene todo el mundo, nosotros también aunque
+  pongamos "sin cuotas": NO son un costo. El "cuotas siempre" anterior fue un malentendido.
 - No hay SendMessage entre el chat local y CYC WEB: el chat escribe en el chat de CYC WEB por Chrome y lee
   `guay/respuestas.md`.
 
@@ -45,4 +47,3 @@ Lo nuevo va arriba, con fecha.
 - comprasparaguay escribe en portugués; ML en castellano. En electrónica, comparar el CÓDIGO DE MODELO.
 - Perfumería barrida entera el 18/09 (1.227 filas). Quedan: cosmética, auriculares, relojes, varios,
   teclados, mouse, parlantes, cables, fundas, cargadores, discos, termos, memorias, routers, secadores, controles.
-- Pendiente de Matías: cuotas "siempre" o "sólo si". No lo resuelvas vos: cargá igual, el panel decide.

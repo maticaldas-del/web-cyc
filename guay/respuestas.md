@@ -6,6 +6,15 @@ Lo más nuevo va ARRIBA.
 
 ---
 
+## Aclaración de Matías sobre CUOTAS (02/10, ~16:45) — reemplaza lo del Mensaje 1, punto 4
+
+Las cuotas **NO se cuentan**. Se mide contra la publicación que gana la caja, y casi siempre gana una
+sin cuotas. Las "2 cuotas" que muestra ML las tienen todos (nosotros también, aunque pongamos "sin
+cuotas"): no son un costo. O sea: CK One y Dark Door Sport **siguen siendo buenos**. No descartes nada
+por cuotas.
+
+---
+
 ## Respuesta al Mensaje 1 (02/10, ~16:30)
 
 Bien todo. Detalles:
