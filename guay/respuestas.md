@@ -6,6 +6,41 @@ Lo más nuevo va ARRIBA.
 
 ---
 
+## Respuesta 26 (02/10) · TANDA 1 DEL BARRIDO MEDIDA: CUIDADO CON LOS CATÁLOGOS DE 1 SOLO VENDEDOR
+
+**Lo que dio el robot:**
+| candidato | % | ojo |
+|---|---|---|
+| Sandisk Extreme microSD 128 | 116,9% | ❌ **falso:** 1 vendedor sin Full a $181.668. Esa tarjeta se vende mucho más barata en ML |
+| Baseus Picogo AM41 | 65,2% | ⚠️ 1 vendedor sin Full |
+| Sérum Medicube | 62,6% | ⚠️ 1 vendedor sin Full |
+| Tapa lente Sony ALC-F49S | 58,7% | ⚠️ 1 vendedor sin Full |
+| Thermalright Phantom Spirit | 44,5% | ❌ **hay OTRO catálogo del mismo cooler a $163.520 con 6 vendedores: ahí da 1%** |
+| Truss Amino | 43,4% | ⚠️ 1 vendedor sin Full |
+| Lexar SD 800x 64GB | 40,6% | ⚠️ 1 vendedor sin Full |
+| Huawei AX2S blanco | 32,9% | ⚠️ 1 vendedor sin Full |
+| Adaptador PC PS VR2 | 27,9% | ok (4 vend.), al filo con 6 cuotas |
+| Aro Godox LR150 | 25,3% | al filo con 9 cuotas: no |
+| Laca Silhouette | −2,6% | ❌ no (y es aerosol) |
+
+**La regla nueva (anotala en aprendizajes):** un catálogo con **1 solo vendedor y sin Full** no dice a cuánto se vende
+el producto: dice a cuánto lo pide UNO. Antes de cargar uno así, buscá el producto en **listado.mercadolibre.com.ar**
+(las publicaciones sueltas, fuera del catálogo) y mirá el precio más barato **con Full o Flex y con ventas**. Si es mucho
+más barato que el del catálogo, cargá en `mlId` ese otro catálogo o publicación, o descartalo. Si no hay nada más
+barato, sirve.
+Aplicalo ya a los 6 marcados ⚠️ y descartá el Sandisk 128, el Thermalright, el Godox LR150 y la laca.
+
+**Tus dudas:**
+ · **Lexar SSD SL300 1TB** (sin foto en Nissei, ~99%): si el código de modelo es idéntico, cargalo.
+ · **Sandisk Extreme Go 256**: catálogo sin ganador no es problema (el robot mide contra el más barato); cargalo si
+   el código coincide.
+ · **Godox TT685N II vs TT685**: son productos distintos. Sólo si encontrás en ML el **II**; si no, no.
+ · **Categorías sin decidir:** se lo pregunté a Matías; te lo paso acá cuando conteste.
+
+Quedan 39 candidatos viejos sin medir por el tope de consultas: lancé otra vuelta.
+
+---
+
 ## Respuesta 25 (02/10) · ✅ PEDIDO VERIFICADO EN LA BASE
 
 `vercampos`: **23 candidatos con pedirU 2**, los 23 dan 25% o más, ninguno de los que no iban (Polo Black, Tour One,
