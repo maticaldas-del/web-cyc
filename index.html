@@ -787,7 +787,7 @@ footer{margin-top:32px;padding-top:14px;border-top:1px solid var(--border);font-
     <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;margin-bottom:14px">
       <div class="stitle" style="margin:0">Valores actuales <span id="arqueo-prev-label" style="font-size:.62rem;color:var(--muted);font-family:'DM Mono',monospace;font-weight:400;text-transform:none;letter-spacing:0"></span></div>
       <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
-        <button id="btn-cerrar-mes" class="btn btn-snap" onclick="saveSnapshot()">📸 Cerrar el mes actual y guardar</button>
+        <button id="btn-cerrar-mes" class="btn btn-snap" onclick="saveSnapshot()">📸 Cerrar el mes y guardar</button>
       </div>
     </div>
     <div class="arqueo-grid">
@@ -2429,7 +2429,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='21.30';
+const APP_VERSION='21.31';
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
 // muestre la versión y la fecha de actualización y que tenga un desplegable predeterminado cerrado".
 // Y el mismo día: "que ponga fecha de cada modificación y haya una barrita para scrollear y que
@@ -2440,6 +2440,7 @@ const APP_VERSION='21.30';
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'21.31',f:'01/10/2026',h:'21:30',c:[{n:2,t:'Arqueo: en los primeros 5 días del mes, el botón de cierre cierra el mes ANTERIOR si todavía no está cerrado (con los valores de hoy). El botón dice qué mes va a cerrar.'}]},
   {v:'21.30',f:'01/10/2026',h:'23:59',c:[{n:3,t:'El robot anota cada noche un diario de cada producto (stock, precio, caja, si estaba rematando y lo vendido) y calcula cuánto vende de verdad SIN remate, sobre los días que hubo stock (hasta 365 días).'},{n:3,t:'Remate: cuando lo que queda alcanza para 30 días de venta normal, el robot saca el remate solo y el precio vuelve a la base. Antes seguía rematando hasta quedar en 0.'},{n:2,t:'Pedidos y Armar caja: si hubo ventas de remate, usan lo que el producto vende sin remate (no las ventas infladas por el remate, ni 0).'}]},
   {v:'21.29',f:'01/10/2026',h:'23:30',c:[{n:3,t:'Tope de H: con ARCA cargado ya no se pierden las ventas que ML nunca facturó ni lo facturado fuera de ML; un archivo de ARCA bajado a mitad de mes o con un mes faltante se cuenta bien.'},{n:2,t:'Monotributo: si la recategorización pasada supera la Cat K, la tarjeta lo dice en rojo (sale del Monotributo).'},{n:1,t:'Puntaje: "ya retiraron" sólo sale si el retiro del mes está cargado.'}]},
   {v:'21.28',f:'01/10/2026',h:'23:00',c:[{n:1,t:'Pedido de nuevos: la foto del catálogo de ML sólo se muestra si viene de verdad de ML.'}]},
@@ -7307,7 +7308,7 @@ function renderAgenda(){
   const det=document.getElementById('agenda-det');
   if(det) det.addEventListener('toggle',()=>{ _agendaAbierta=det.open; });
 }
-function updateArqueo(){
+function updateArqueo(){try{if(!_arqViewYM)_btnCerrarTxt();}catch(_){}
   // Si hay un snapshot seleccionado, usar sus finanzas temporalmente
   const selKey=document.getElementById('fin-view-sel')?.value;
   const viewSnap=selKey?state.snapshots[selKey]:null;
@@ -7614,16 +7615,28 @@ function saveDailySnap(){
   },2000);
 }
 
+// QUÉ MES CIERRA EL BOTÓN (01/10/2026, él: "queremos cerrar el mes pasado… recién arrancamos este mes,
+// no tendría mucho sentido"). En los primeros 5 días del mes, si el mes ANTERIOR no está cerrado, el
+// botón cierra ése con los valores de hoy (lo que cambió en un par de días es poco y se dice). Después,
+// o con el anterior ya cerrado, cierra el mes en curso como siempre.
+function _mesACerrar(){
+  const now=new Date();let y=now.getFullYear(),m=now.getMonth()+1;
+  const kHoy=y+'_'+String(m).padStart(2,'0');
+  let py=y,pm=m-1;if(pm<1){pm=12;py--;}
+  const kAnt=py+'_'+String(pm).padStart(2,'0');
+  const anterior=now.getDate()<=5&&!(state.snapshots&&state.snapshots[kAnt]);
+  const [yy,mm]=(anterior?kAnt:kHoy).split('_');
+  return{key:anterior?kAnt:kHoy,label:(MONTHS[parseInt(mm,10)-1]||'')+' '+yy,anterior,dia:now.getDate()};
+}
+function _btnCerrarTxt(){const b=document.getElementById('btn-cerrar-mes');if(!b)return;const x=_mesACerrar();b.textContent='📸 Cerrar '+x.label+' y guardar';}
 async function saveSnapshot(){
-  // Siempre cierra el MES ACTUAL (no se pueden cerrar meses anteriores desde acá).
-  if(_arqViewYM){alert('Estás viendo un cierre pasado (solo lectura). Volvé a "Actual (en vivo)" arriba para cerrar el mes en curso.');return;}
-  const now=new Date();
-  const mm=String(now.getMonth()+1).padStart(2,'0');
-  const yy=now.getFullYear();
-  const key=yy+'_'+mm;
-  const label=(MONTHS[parseInt(mm)-1]||'')+' '+yy;
+  if(_arqViewYM){alert('Estás viendo un cierre pasado (solo lectura). Volvé a "Actual (en vivo)" arriba para cerrar el mes.');return;}
+  const _mc=_mesACerrar();
+  const key=_mc.key, label=_mc.label;
   if(state.snapshots&&state.snapshots[key]){alert('Ya existe un cierre de '+label+'. Si necesitás corregirlo, primero borrá ese cierre desde "Meses cerrados" y volvé a cerrarlo.');return;}
-  if(!confirm('¿Cerrar '+label+' y guardar los valores actuales del arqueo?'))return;
+  if(!confirm(_mc.anterior
+    ?'¿Cerrar '+label+' con los valores de HOY del arqueo?\n\nEstamos en el día '+_mc.dia+' del mes nuevo: lo que se movió en estos días queda adentro del cierre de '+label+'. Conviene cargar antes el disponible de MP y lo demás que leés a mano.'
+    :'¿Cerrar '+label+' y guardar los valores actuales del arqueo?'))return;
   const c=calcArqueo();
   const prodValues={};
   (state.products||[]).forEach(p=>{let v=0;LOCS.forEach(l=>v+=Math.max(0,getQ(p.id,l))*costP(p));prodValues[p.id]={name:p.name,value:v};});
@@ -16460,7 +16473,7 @@ function loadFinView(){
     _arqViewYM=null;
     disableAll(false);
     if(banner)banner.style.display='none';
-    if(btnCerrar)btnCerrar.style.display=''; // solo se cierra el mes actual, en vivo
+    if(btnCerrar){btnCerrar.style.display='';_btnCerrarTxt();} // se cierra en vivo (el mes anterior en los primeros días)
     loadFinInputs();updateArqueo();
   } else {
     const snap=state.snapshots[key];if(!snap)return;
