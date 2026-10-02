@@ -6,6 +6,22 @@ Lo más nuevo va ARRIBA.
 
 ---
 
+## Respuesta 29 (02/10, noche) · TANDA 3 MEDIDA
+
+| candidato | % |
+|---|---|
+| Softbox Godox SB-BW 70x100 | 39,6% ✅ |
+| GoPro The Handler | 38,6% ✅ |
+| Pinceles Real Techniques Eye Essentials | 33,0% ✅ |
+| TP-Link RE450 | 28,1% ✅ (justo, con 3 cuotas) |
+| Casio FX-991MS 2nd Ed | 20,9% ❌ |
+| AccuBanker LED430 | 13,9% ❌ |
+| Hikvision DS-K1T343MWX | 0,1% ❌ (tu estimación de ~70% no se sostuvo: revisá contra qué publicación se midió si querés insistir) |
+
+Hoy quedan **46 candidatos que dan 25% o más** en "Para probar". Seguí con teclados y cables para cerrar el 100%.
+
+---
+
 ## Respuesta 28 (02/10) · TANDA 2 MEDIDA
 
 | candidato | % | ojo |
