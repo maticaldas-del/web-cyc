@@ -5869,7 +5869,10 @@ function precioAIgualar(ofertas) {
 // CERO de verdad; arriba se usa el PEOR de Full medido en ventas reales ($6.190), que hace ver el
 // margen MENOR — el lado seguro cuando el número decide una compra que no se puede rehacer hasta
 // que llegue.
-async function cuentaCandidato(precio, ltx, catx, puestoUSD, tc, monoP, feeAt) {
+// CUOTAS DE LA QUE GANA (02/10/2026). Regla suya: "Mismo precio en 2 cuotas" lo pone ML a TODAS
+// y no cuesta; pero si la publicación que GANA ofrece 6 o 9 cuotas sin interés, para competir hay
+// que ofrecerlas y eso es costo. `cuoPct` es ese costo en % del precio (0 = sin cuotas).
+async function cuentaCandidato(precio, ltx, catx, puestoUSD, tc, monoP, feeAt, cuoPct = 0) {
   if (!(precio > 0) || !catx) return null;
   const fee2 = await feeAt(precio, ltx, catx);
   if (fee2 == null) return null;
@@ -5877,8 +5880,9 @@ async function cuentaCandidato(precio, ltx, catx, puestoUSD, tc, monoP, feeAt) {
   const costo2 = puestoUSD * tc;
   const impuestos2 = precio * (4.8 + monoP) / 100;   // IIBB promedio + monotributo
   const costoTot2 = costo2 + impuestos2;
-  const ganancia2 = (precio - fee2 - envio2) - costoTot2;
-  return { fee: fee2, envio: envio2, costo: costo2, impuestos: impuestos2, ganancia: ganancia2,
+  const cuotas2 = precio * (Number(cuoPct) || 0) / 100;
+  const ganancia2 = (precio - fee2 - envio2 - cuotas2) - costoTot2;
+  return { fee: fee2, envio: envio2, cuotas: cuotas2, costo: costo2, impuestos: impuestos2, ganancia: ganancia2,
     margen: (costoTot2 + envio2) > 0 ? (ganancia2 / (costoTot2 + envio2)) * 100 : 0 };
 }
 // ── ¿ES EL MISMO PRODUCTO? EL CHEQUEO DE TÍTULOS, COMPARTIDO (19/09/2026) ───────────
@@ -6017,6 +6021,17 @@ async function correrCandidatos(db, products, labels, accounts, soloPrueba, prue
   const fin = (await db.get('cyc/finanzas')) || {};
   const tc = parseFloat(fin.tipo_cambio) || 1500;
   const monoP = parseFloat(((await db.get('cyc/monotributo')) || {}).pct) || 0;
+  // CUOTAS DE LA QUE GANA: el chat carga `cuotasGan` (cuántas cuotas sin interés ofrece la
+  // publicación ganadora). Desde `cuotasDesde` (6 si no está configurado) se cobra el PEOR % de
+  // cuotas medido en nuestras Premium (cyc/mlcuotas, el lado seguro); sin medición, 21,6%.
+  let cuoPeor = 21.6, cuoDesde = 6;
+  try {
+    const mc = (await db.get('cyc/mlcuotas')) || {};
+    const pcts = Object.values(mc).filter((x) => x && !x.estimado && isFinite(parseFloat(x.pct))).map((x) => parseFloat(x.pct));
+    if (pcts.length) cuoPeor = Math.max(...pcts);
+    const cd = parseInt(await db.get('cyc/mlconfig/cuotasDesde'));
+    if (cd > 0) cuoDesde = cd;
+  } catch { /* quedan los valores conservadores */ }
   // LAS MARCAS FRENADAS SE LEEN, Y SI NO SE PUEDEN LEER NO SE RECOMIENDA NADA NUEVO. Es el mismo
   // lado seguro que `liquidando`: proponerle comprar una marca que ML le frena le hace gastar
   // US$ de un pedido que no se puede rehacer, y se entera cuando la publicación queda en revisión.
@@ -6208,7 +6223,10 @@ async function correrCandidatos(db, products, labels, accounts, soloPrueba, prue
     // verdad, y ahí sí el bloque de abajo compara contra `antesM` y descarta si vuelve a dar
     // abajo. Cuesta una consulta más por candidato flojo, una sola vez, y es el lado seguro:
     // lo que BORRA algo tiene que ser más exigente que lo que lo muestra.
+    const cuoN = parseInt(c.cuotasGan) || 0;
+    const cuoPct = cuoN >= cuoDesde ? cuoPeor : 0;
     const _cacheOk = c.margen != null && isFinite(c.margen) && Number(c.calcVer) === CAND_CALC_VER
+      && (Number(c.mlCuotasPct) || 0) === cuoPct
       && Number(c.margen) >= CAND_PISO_PCT && Math.abs((Number(c.puestoUSD) || 0) - puesto) < 0.01;
     // Fresca (menos de 20 h) o sin consultas disponibles esta vuelta: se usa la guardada. Vieja o
     // con el precio de Paraguay cambiado: sigue de largo y se vuelve a medir.
@@ -6444,7 +6462,7 @@ async function correrCandidatos(db, products, labels, accounts, soloPrueba, prue
     // abajo de los $33.000 ML no le cobra envío al vendedor y es CERO de verdad; arriba se usa el
     // peor de Full medido en ventas reales, que hace ver el margen MENOR — el lado seguro cuando
     // el número decide una compra que no se puede rehacer hasta que llegue.
-    const cuentaCand = (precio, ltx, catx) => cuentaCandidato(precio, ltx, catx, puesto, tc, monoP, feeAt);
+    const cuentaCand = (precio, ltx, catx) => cuentaCandidato(precio, ltx, catx, puesto, tc, monoP, feeAt, cuoPct);
     const rMin = await cuentaCand(mlPrecio, lt, cat);
     if (!rMin) {
       if (!soloPrueba) await db.set(`cyc/candidatos_py/${id}/motivo`, 'ML no me contestó cuánto cobra de comisión a ese precio. Lo reintento la próxima vuelta.');
@@ -6452,7 +6470,7 @@ async function correrCandidatos(db, products, labels, accounts, soloPrueba, prue
       sinDato.push(`${c.nombre} → ML no contestó la comisión a ese precio (se reintenta solo)`);
       continue;
     }
-    const { costo, impuestos, envio, ganancia, margen, fee } = rMin;
+    const { costo, impuestos, envio, ganancia, margen, fee, cuotas } = rMin;
     calculados++;
     // ── ¿HAY OTRO CATÁLOGO DEL MISMO PRODUCTO MÁS BARATO? (02/10/2026) ─────────────────────────
     // Lo encontró el chat de compras con el Montblanc Presence: estaba medido contra MLA19479922
@@ -6502,7 +6520,7 @@ async function correrCandidatos(db, products, labels, accounts, soloPrueba, prue
     // se confunden leyendo rápido, y son la diferencia entre "hay competencia" y "esto se vende".
     console.log(`      ventas en ML: ${mlVendidas == null ? 'ML no las contestó (no es cero: es que no las sé)'
       : `${mlVendidas} en toda la ficha${mlVendidasMin != null ? ` · ${mlVendidasMin} el más barato` : ''}`}`);
-    console.log(`      medido contra el MÁS BARATO (el peor caso): costo ${money(Math.round(costo))} + impuestos ${money(Math.round(impuestos))} + envío ${money(envio)} → ${margen.toFixed(1)}% · ${money(Math.round(ganancia))} por unidad`);
+    console.log(`      medido contra el MÁS BARATO (el peor caso): costo ${money(Math.round(costo))} + impuestos ${money(Math.round(impuestos))} + envío ${money(envio)}${cuotas > 0 ? ` + cuotas ${money(Math.round(cuotas))} (la que gana da ${cuoN} cuotas: ${cuoPct}%)` : ''} → ${margen.toFixed(1)}% · ${money(Math.round(ganancia))} por unidad`);
     if (!soloPrueba) {
       await db.patch(`cyc/candidatos_py/${id}`, {
         mlTit, mlPrecio: Math.round(mlPrecio), mlMax, mlVendedores: vendedores, mlVendidas, mlVendidasMin, mlComision: Math.round(fee), mlLink, mlPorNombre: porNombre,
@@ -6520,6 +6538,7 @@ async function correrCandidatos(db, products, labels, accounts, soloPrueba, prue
         mlConFull: _pi ? _pi.conFull : null,
         mlFlex: _pi ? _pi.conFlex : null,
         margen: Math.round(margen * 10) / 10, ganancia: Math.round(ganancia),
+        mlCuotasPct: cuoPct, mlCuotas: cuotas > 0 ? Math.round(cuotas) : null,
         // Los tres de la caja de compra se BORRAN: se escribieron en la corrida del 18/09 y
         // siempre valían 0 porque `buy_box_winner` viene null (ver arriba). Dejarlos sería dejar
         // un cero que se lee como un dato.
