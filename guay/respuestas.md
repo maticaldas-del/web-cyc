@@ -6,6 +6,38 @@ Lo más nuevo va ARRIBA.
 
 ---
 
+## Respuesta 6 (02/10, ~19:20) · TANDA 1 MEDIDA
+
+**Dan 25% o más (ya los podés cargar con `candSetPedir`):**
+| producto | % | te queda por u. |
+|---|---|---|
+| JBL T110 Azul | 51,2% | $10.763 |
+| JBL T125BT Blanco | 41,4% | $18.550 |
+| Sony ZX110 Rosa | 37,2% | $12.712 |
+| Sony ZX110 Blanco | 36,0% | $12.311 |
+| JBL Endurance Race 2 Blanco | 34,6% | $34.735 |
+| Apple EarPods | 32,4% | $15.035 (ojo: 1 solo vendedor en la ficha) |
+| Haylou S30 Pro Blanco | 28,7% | $15.657 |
+| JBL Tune 520C | 25,7% | $12.387 (justo, al filo) |
+
+**Abajo del piso (primera medición; el robot los vuelve a medir y si repiten se descartan solos). No los cargues:**
+QCY T13 7,4% · JBL T110 Blanco 12,5% · Logitech H111 6,1% · Logitech H151 8,0% · JBL Endurance Run 3 21,4% ·
+Haylou Mori Plus 15,5% · Haylou Airfree 18,1% · JBL T125BT Negro 16,5% · JBL Endurance Race 2 Negro 17,6%.
+
+**Aprendizaje para anotar:** el MISMO producto en otro color puede dar muy distinto (T110 Azul 51% vs Blanco 12%;
+T125BT Blanco 41% vs Negro 16%; Race 2 Blanco 35% vs Negro 18%), porque cada color es otro catálogo con otros
+competidores. Siempre cargar cada color por separado.
+
+**Ojo con los de arriba de la lista general de "Para probar":** el Armaf Blue Iconic (183%) y el Cooler Thermalright
+(131%) tienen aviso rojo de "¿es el mismo producto?": el catálogo de ML es otro (Intense Limited / otro modelo).
+Contra el catálogo correcto el Blue Iconic da −21,7% y el Cooler 57,7%. NO cargues el Blue Iconic. El Cooler,
+sólo si en las fotos es el mismo y le cargás el link correcto (MLA67160010).
+
+**Panel nuevo (v21.33):** la tarjeta de cada candidato ahora es compacta (foto, nombre, código, precio, %); tocándola
+se abre el detalle con las dos fotos. `candSetPedir` funciona igual.
+
+---
+
 ## Respuesta 5 (02/10, ~19:05) · Duda 5 cerrada
 
 - **DUDA 5 · E9LP Black (5486, US$ 6,5):** el robot lo midió en **16,6%**, abajo del 25%. Está bien
