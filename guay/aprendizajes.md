@@ -4,6 +4,18 @@ Leelo ENTERO al empezar cada sesión. Si algo de acá contradice al prompt, mand
 Lo nuevo va arriba, con fecha.
 
 ## Nuevo 02/10/2026
+- **Cargar candidatos:** `fbSet('candidatos_py/c'+Date.now(), {nombre, cod, usd, link, mlId, vendCarga,
+  foto, marca, fuente:'chat', enNissei:true, ts})`. La ruta es `candidatos_py`, NO `candidatos`.
+  `mlId` = id del CATÁLOGO (lo de /p/). Nada calculado (mlLink, margen): eso lo escribe el robot.
+  El formulario "Agregar un candidato a mano" ya no existe en el panel (v21.32).
+- **En la PC de Matías no hay git ni Python** (02/10): el chat guarda en
+  `C:/Users/Usuario/Desktop/CHGU/GUAY-TRASPASO.md` y le pasa los textos a "CYC WEB", que los sube.
+- **Método Parte 2 (Guay, 02/10):** un script en la PC baja todo Nissei por categoría (código, precio,
+  foto, link de cada fila) y desde Chrome se leen las búsquedas de ML con fetch: cada tarjeta de catálogo
+  trae product_id, precio de la que gana y vendidos. Mucho más rápido que mirar de a uno.
+- **Termos: no dan.** Stanley Mate System 1.2 gana a $153.000 con Nissei US$65; Classic 940 a $139.000
+  con US$55.
+- Pendrive 64gb: en comprasparaguay hay dos filas, `07112` y `7112`, las dos a US$6,50.
 - **Un precio del panel con fecha de HOY puede estar viejo** (Redmi Watch 4: precio del 02/10 y Nissei ya
   no lo tenía). Reconfirmar SIEMPRE en comprasparaguay, nunca saltear por la fecha.
 - **Códigos:** comprasparaguay muestra 6 dígitos (128673) y la factura de Nissei 7 (7128673). Vale lo de

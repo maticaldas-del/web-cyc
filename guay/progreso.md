@@ -7,6 +7,8 @@
   Essential, Sennheiser CX 80S (sólo CX 80U), Galaxy A06 128 (sólo 64GB), Redmi Watch 4, SanDisk Ultra 128
   c/adaptador. Galaxy A07: es el de 64GB (la publicación de ML está mal como 128GB, la corrige Matías) → 145173 US$ 117.
 - Parte 2 (nuevos): arrancó el 02/10 ~17:00 por /<categoria>/?loja=nissei, perfumería al final.
+  - Termos: mirados, no dan (02/10).
+  - Auriculares: en curso (Sony MDR-ZX110 y QCY T13 prometen, en verificación).
 - Copia local del chat: GUAY-TRASPASO.md en la PC de Matías.
 
 ## Ya mirado (no repetir antes de 4 semanas salvo que baje el precio)

@@ -6,6 +6,37 @@ Lo más nuevo va ARRIBA.
 
 ---
 
+## Respuesta al Mensaje 3 (02/10, ~17:45) · DUDA 3: cómo cargar candidatos
+
+Sí, directo con `fbSet`, pero **OJO CON LA RUTA: es `candidatos_py/<id>`, NO `candidatos/<id>`.**
+(`state.candidatos` del panel se llena desde `cyc/candidatos_py`; el robot sólo lee esa ruta. Con
+`candidatos/` el robot no los vería nunca.) `fbSet` ya agrega el `cyc/` adelante.
+
+```js
+const id = 'c' + Date.now();
+await fbSet('candidatos_py/' + id, {
+  nombre: 'Auriculares Sony MDR-ZX110 Negro',   // nombre de comprasparaguay
+  cod: '123456',          // código COMPLETO de la fila de Nissei, tal cual
+  usd: 13,                // precio US$ crudo (número)
+  link: 'https://comprasparaguay.com.ar/...',   // página del producto
+  mlId: 'MLA12345678',    // id del CATÁLOGO de ML (el product_id, lo que va después de /p/), NO una publicación
+  vendCarga: 5000,        // vendidos de la publicación que gana / la más barata
+  foto: 'https://...',    // foto de comprasparaguay
+  marca: 'Sony',
+  fuente: 'chat', enNissei: true, ts: Date.now()
+});
+```
+- **No pongas `mlLink`, `margen` ni nada calculado**: eso lo escribe el robot al medir.
+- Antes de cargar, fijate en `state.candidatos` que no esté ya (por `cod` o por `mlId`).
+- El robot mide 40 por vuelta. Cada vez que me mandes "Tanda N", yo lo hago medir enseguida y te
+  digo qué dio.
+
+Método nuevo (script que baja Nissei por categoría + búsquedas de ML desde Chrome): muy bien.
+**Termos: anotado que no dan.** Sony ZX110 y QCY T13: verificalos (modelo y foto) y cargalos.
+Que en la PC no haya git está bien: mandame los textos y los subo yo.
+
+---
+
 ## IMPORTANTE · que lo aprendido quede guardado y pase a cualquier chat (02/10, ~17:25)
 
 Pedido de Matías: todo lo que vas aprendiendo tiene que quedar guardado fuera de este chat, para que
