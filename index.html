@@ -2429,7 +2429,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='21.37';
+const APP_VERSION='21.38';
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
 // muestre la versión y la fecha de actualización y que tenga un desplegable predeterminado cerrado".
 // Y el mismo día: "que ponga fecha de cada modificación y haya una barrita para scrollear y que
@@ -2440,6 +2440,7 @@ const APP_VERSION='21.37';
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'21.38',f:'02/10/2026',h:'16:40',c:[{n:1,t:'Para probar: arriba de la lista dice cuántos candidatos dan 25% o más (en verde), cuántos faltan medir y cuántos no llegan.'}]},
   {v:'21.37',f:'02/10/2026',h:'15:50',c:[{n:1,t:'Para probar: los candidatos que no llegan al 25% van juntos abajo, en un desplegable cerrado.'}]},
   {v:'21.36',f:'02/10/2026',h:'15:30',c:[{n:2,t:'Para probar: botón "✅ Es el mismo producto" (saca los avisos rojos de ese candidato, para ese catálogo de ML) y "🔁 Medir contra el más barato" cuando el robot encontró otro catálogo más barato del mismo producto.'}]},
   {v:'21.35',f:'02/10/2026',h:'15:10',c:[{n:1,t:'Para probar: el detalle de un candidato ya no se cierra solo cuando el panel se actualiza.'}]},
@@ -11885,7 +11886,16 @@ function candidatosHTML(){
     </details>`;
   };
   const _arriba=vivos.filter(c=>!_esRojo(c)), _rojos=vivos.filter(_esRojo);
-  return cab+simPYHTML()+pyEnCaminoHTML()+pedNuevosHTML(vivos0)+_arriba.map(_card).join('')
+  // CUÁNTOS DAN (02/10/2026, pedido suyo: *"antes de arrancar la lista poné cuántos candidatos con % positivo en
+  // verde hay, así voy viendo cuando sube productos nuevos"*). Verde = medido y en el piso o arriba.
+  const _verdes=_arriba.filter(c=>c.margen!=null&&isFinite(c.margen)).length, _sinMed=_arriba.length-_verdes;
+  const _cuenta=`<div style="display:flex;gap:14px;flex-wrap:wrap;align-items:baseline;margin:6px 0 10px;padding:10px 12px;border-radius:10px;background:color-mix(in srgb,var(--green) 10%,transparent);border:1px solid color-mix(in srgb,var(--green) 35%,transparent)">
+    <span style="font-size:1.5rem;font-weight:800;color:var(--green)">${_verdes}</span>
+    <span style="font-size:.78rem;color:var(--green);font-weight:600">dan ${CAND_PISO_PCT}% o más</span>
+    ${_sinMed?`<span style="font-size:.7rem;color:var(--muted)">· ⏳ ${_sinMed} sin medir</span>`:''}
+    ${_rojos.length?`<span style="font-size:.7rem;color:var(--red)">· 🔻 ${_rojos.length} no llega${_rojos.length===1?'':'n'}</span>`:''}
+  </div>`;
+  return cab+simPYHTML()+pyEnCaminoHTML()+pedNuevosHTML(vivos0)+_cuenta+_arriba.map(_card).join('')
     +(_rojos.length?`<details style="margin-top:10px"><summary style="cursor:pointer;font-size:.7rem;color:var(--red)">🔻 ${_rojos.length} no llega${_rojos.length===1?'':'n'} al ${CAND_PISO_PCT}% · tocá para verlos</summary><div style="display:flex;flex-direction:column;gap:8px;margin-top:8px">${_rojos.map(_card).join('')}</div></details>`:'')
     +candDescartadosHTML();
 }
