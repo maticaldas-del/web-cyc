@@ -6022,16 +6022,12 @@ async function correrCandidatos(db, products, labels, accounts, soloPrueba, prue
   const tc = parseFloat(fin.tipo_cambio) || 1500;
   const monoP = parseFloat(((await db.get('cyc/monotributo')) || {}).pct) || 0;
   // CUOTAS DE LA QUE GANA: el chat carga `cuotasGan` (cuántas cuotas sin interés ofrece la
-  // publicación ganadora). Desde `cuotasDesde` (6 si no está configurado) se cobra el PEOR % de
-  // cuotas medido en nuestras Premium (cyc/mlcuotas, el lado seguro); sin medición, 21,6%.
-  let cuoPeor = 21.6, cuoDesde = 6;
-  try {
-    const mc = (await db.get('cyc/mlcuotas')) || {};
-    const pcts = Object.values(mc).filter((x) => x && !x.estimado && isFinite(parseFloat(x.pct))).map((x) => parseFloat(x.pct));
-    if (pcts.length) cuoPeor = Math.max(...pcts);
-    const cd = parseInt(await db.get('cyc/mlconfig/cuotasDesde'));
-    if (cd > 0) cuoDesde = cd;
-  } catch { /* quedan los valores conservadores */ }
+  // publicación ganadora). Tabla de ML, la que muestra al publicar (02/10/2026, capturas suyas a
+  // $20.000, $50.000, $150.000 y $450.000: el % es parejo a cualquier precio). Las 2 cuotas que ML
+  // pone a todas no cuestan nada: no están en la tabla.
+  const CUOTAS_ML = { 3: 8.9, 6: 13.4, 9: 17.8, 12: 21.6 };
+  const cuoPctDe = (n) => { n = parseInt(n) || 0; if (n < 3) return 0;
+    for (const k of [3, 6, 9, 12]) if (n <= k) return CUOTAS_ML[k]; return CUOTAS_ML[12]; };
   // LAS MARCAS FRENADAS SE LEEN, Y SI NO SE PUEDEN LEER NO SE RECOMIENDA NADA NUEVO. Es el mismo
   // lado seguro que `liquidando`: proponerle comprar una marca que ML le frena le hace gastar
   // US$ de un pedido que no se puede rehacer, y se entera cuando la publicación queda en revisión.
@@ -6224,7 +6220,7 @@ async function correrCandidatos(db, products, labels, accounts, soloPrueba, prue
     // abajo. Cuesta una consulta más por candidato flojo, una sola vez, y es el lado seguro:
     // lo que BORRA algo tiene que ser más exigente que lo que lo muestra.
     const cuoN = parseInt(c.cuotasGan) || 0;
-    const cuoPct = cuoN >= cuoDesde ? cuoPeor : 0;
+    const cuoPct = cuoPctDe(cuoN);
     const _cacheOk = c.margen != null && isFinite(c.margen) && Number(c.calcVer) === CAND_CALC_VER
       && (Number(c.mlCuotasPct) || 0) === cuoPct
       && Number(c.margen) >= CAND_PISO_PCT && Math.abs((Number(c.puestoUSD) || 0) - puesto) < 0.01;
