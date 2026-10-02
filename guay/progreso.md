@@ -99,3 +99,15 @@ mochilas). **De las 208 sin decidir** (decisión de Matías: lo obvio afuera): 6
 comida, bebida, ropa, calzado, vapeador…) y **145 pasándose enteras** (~2.300 filas, 1.545 modelos) con 8 pestañas.
 Cargados: Lexar SSD SL300 1TB · Sandisk Extreme Go 256 · Shampoo Truss Therapy · Switch TP-Link TL-SF1009P · Mario 3D
 All-Stars · Nikon AF 50mm f/1.8D. Descartados de la R26: Sandisk 128, Thermalright, Godox LR150, laca.
+
+## TANDA 3 (02/10 noche, Mensaje 26): LAS 145 CATEGORÍAS CHICAS PASADAS ENTERAS (1.450 modelos)
+**Estado del barrido completo:** pasadas ENTERAS cargadores, discos, memorias, routers, joysticks, micrófonos, secadores,
+adaptadores, iluminación, juegos, coolers, RAM, fuentes, flash, cámara, fundas, cosmética, labial, base, shampú, anillos,
+filamento, robots, cafeteras, lente, mochilas, las 18 chicas aprobadas y las 145 chicas (63 obvias afuera). De antes:
+auriculares, relojes, mouse, parlantes, termos, varios, perfumería. **Falta para el 100%: teclados y cables.**
+**Cargados (7):** softbox Godox SB-BW 70x100 · GoPro The Handler · detector AccuBanker LED430 · Hikvision DS-K1T343MWX ·
+pinceles Real Techniques Eye Essentials · TP-Link RE450 · Casio FX-991MS 2nd Ed.
+**Descartados:** Hikvision DS-KAS321 (ML es kit con cerradura) · 3nStar TA040 (~12%) · subwoofer Sony (tamaño) · amplificador
+Sony XM-N502 · Stanley Beer Pint · DJI Neo (ML es Neo 2) · Epson ES-50 (23%) · accesorios GoPro/Insta360/fundas Switch.
+**Maquillaje:** el emparejador los encuentra, pero en ML casi no venden o se venden baratos: ninguno da.
+Total cargados por el Guay del 02/10 (PC nueva): 32 nuevos.

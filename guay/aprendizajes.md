@@ -193,3 +193,6 @@ que en cada una aparecen todos. Una descarga que da justo 10.000 es esta pared, 
    si Chrome se resetea, se recargan de ahí.
 4. **Mismo juego, distinta caja (PEGI europea vs americana):** es el mismo producto. Pero un pack con DLC o una edición
    distinta NO lo es.
+
+- **Maquillaje (rubor, sombras, lápices, correctores, polvos, gloss, máscaras, iluminadores) no da** (02/10): en ML casi no
+  tienen ventas o se venden baratos contra el costo de Nissei. En el próximo barrido se pasan rápido.
