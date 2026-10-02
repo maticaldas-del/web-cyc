@@ -67,3 +67,12 @@ de barras · Domótica · Gimbal · Teléfono · Procesador · Cartucho de tinta
 freidora · monopatín · silla gamer · consolas.
 **Mensaje 20:** el corte en 10.000 es un límite del sitio (500 páginas × 20), no de la descarga. Regla en
 `aprendizajes.md`: el barrido completo se baja SIEMPRE por categoría, nunca por `/busca/`.
+
+## DECIDIDO POR MATÍAS (02/10): CATEGORÍAS CHICAS
+**APROBADAS (se miran enteras):** Pendrive · GPS · Hub & Switch · Proyector · Planchita/alisador · Modelador ·
+Afeitadora · Cortapelo · Cepillo eléctrico · Anteojos · Pilas · Termo · Lector de código de barras · Domótica · Gimbal ·
+Teléfono · Procesador · Cartucho de tinta.
+**DESCARTADAS ENTERAS (peso/tamaño):** licuadora · air fryer · plancha · tostadora · freidora · monopatín · silla gamer ·
+consolas.
+**Batidora NO se descarta entera:** CYC ya vende una (Luciana). Se mira producto por producto y sólo se deja afuera lo que
+pasa los 40×40×40 cm / 3 kg.
