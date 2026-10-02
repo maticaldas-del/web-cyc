@@ -3430,6 +3430,8 @@ no se distinguen por cómo se llaman, se distinguen por de dónde vinieron.**
 HTML. Una página armada con JavaScript contesta 200 y baja un cascarón vacío — leer eso como que
 anduvo es el mismo error que leer un cero como buena noticia.
 
+**REGLA SUYA DEL 02/10/2026: NUNCA USAR nissei.com.** Textual: *"nunca uses nissei usa el promt guay que tiene todo ahi explicado"*. Precios y códigos salen SÓLO de comprasparaguay (la fila de Nissei), como dice el `PROMPT GUAY`. Probado ese día desde la nube con la red abierta: comprasparaguay muestra la verificación de Cloudflare ("no eres un bot") y no se saltea; ese trabajo lo hace el chat local en su Chrome.
+
 ## EL "PROMPT GUAY": EL CHAT QUE MIRA LOS PRECIOS DE PARAGUAY (17/09/2026)
 
 Pedido suyo: *"pasame el prompt que le tengo que mandar al chat nuevo (…) seguramente te vuelva a
