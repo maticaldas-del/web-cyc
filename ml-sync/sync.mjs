@@ -5712,7 +5712,7 @@ const CAND_FRESCO_MS = 20 * 3600 * 1000;
 // entran al pedido. Un cambio en la fórmula cuenta igual que un campo nuevo, por cuarta vez.
 // QUINTA VEZ, 23/09/2026: el recargo de Paraguay pasó de 15% a 17%. Cambia el costo puesto de
 // TODOS los candidatos, o sea la cuenta: sin subir esto, los que dan se quedaban con el 15%.
-const CAND_CALC_VER = 8;
+const CAND_CALC_VER = 9;
 
 // ── UN DESCARTE POR MARGEN NO ES "NUNCA MÁS" (19/09/2026) ─────────────────────────────────
 // Regla suya, textual: *"yo no pondría ningún producto en NUNCA MÁS. salvo producto que después
@@ -5843,7 +5843,13 @@ function precioAIgualar(ofertas) {
   const baratoTodos = Math.min(...ofs.map(pr));
   const baratoFull = conFull.length ? Math.min(...conFull.map(pr)) : 0;
   const baratoSinFull = sinFull.length ? Math.min(...sinFull.map(pr)) : 0;
-  const precio = baratoFull || baratoTodos;
+  // DESDE EL 02/10/2026 SE MIDE CONTRA EL MÁS BARATO DE TODOS (sin los del exterior, que ya vienen
+  // sacados). Lo encontró Matías con la calculadora: el CK One decía 49% y daba ~5%. El que GANA la
+  // caja ($68.499) despacha por agencia (`xd_drop_off`, no Full), así que "el más barato CON Full"
+  // salteaba al ganador y medía contra $118.351. La caja la puede ganar uno sin Full: medir contra
+  // el más barato de todos es el peor caso, el lado seguro para decidir una compra. El dato de Full
+  // se sigue guardando y mostrando, sólo que ya no mueve el precio de referencia.
+  const precio = baratoTodos;
   return {
     precio,
     ref: ofs.find((o) => pr(o) === precio) || ofs[0],
