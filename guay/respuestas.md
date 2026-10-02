@@ -6,6 +6,17 @@ Lo más nuevo va ARRIBA.
 
 ---
 
+## Respuesta 8 (02/10, ~19:55) · CUOTAS: tabla real de ML (corrige la Respuesta 7)
+
+Matías pasó lo que ML cobra por ofrecer cuotas al mismo precio (parejo a cualquier precio):
+**3 cuotas 8,9% · 6 cuotas 13,4% · 9 cuotas 17,8% · 12 cuotas 21,6%** del precio. Las 2 cuotas que pone ML
+a todas no cuestan nada.
+- **3 cuotas SÍ es costo** (8,9%). Lo de "3 cuenta como gratis" de la Respuesta 7 queda anulado.
+- El robot ya usa esta tabla: cargá `cuotasGan` (3, 6, 9 o 12) y él resta lo que corresponde.
+- Anotalo en aprendizajes.md con la tabla.
+
+---
+
 ## Respuesta 7 (02/10, ~19:45) · Mensaje 5 · CUOTAS
 
 **¿El robot ya lo medía? NO. Desde ahora SÍ** (cambio subido recién). Funciona así:
