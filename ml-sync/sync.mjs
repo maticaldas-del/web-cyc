@@ -5941,9 +5941,30 @@ const RV_VARIANTE = new Set(['edicion','edition','limitada','limited','coleccion
 // otra versión, el modelo que no aparece, la palabra que falta y el tamaño que no coincide.
 // El aviso del catálogo gemelo más barato (02/10/2026, ver `candidatos`). Una sola redacción para la
 // medición y para el atajo de los ya medidos: con dos copias se separan.
-function _gemeloTxt(g, precioLink, margen) {
+function _gemeloTxt(g, precioLink) {
   const m = (n) => '$' + Math.round(Number(n) || 0).toLocaleString('es-AR');
-  return `hay OTRO catálogo del mismo producto más barato: ${g.id} a ${m(g.precio)} con ${g.vend} vendedores (el del link está a ${m(precioLink)}). El margen se mide contra el barato: ${g.margenAntes}% → ${margen}%. Si es el mismo, cargá ese link`;
+  return `hay OTRO catálogo del mismo producto más barato: ${g.id} a ${m(g.precio)} con ${g.vend} vendedores (el del link está a ${m(precioLink)}). Contra ése daría ${g.margen}% (con el del link, ${g.margenAntes}%). Mirá las fotos: si es el mismo, cargá ese link`;
+}
+// ¿Este otro catálogo es el MISMO producto que el medido? (02/10/2026). Más exigente que
+// chequeoMismoProducto, porque acá no hay una persona que haya elegido el link: los códigos de modelo
+// tienen que coincidir en las DOS direcciones (la primera versión tomó un TP-Link EX222 como gemelo
+// del XX230V porque compartían "ax1800"), los tamaños del candidato que ML también nombra tienen que
+// estar, no puede sobrar una palabra de variante (edición, pack, lite…) y tienen que compartir al
+// menos dos palabras que distinguen.
+function _esGemelo(nombre, mlTit, t2) {
+  const plano = (t) => _rvBase(t).replace(/ /g, '');
+  const mA = _rvMod(mlTit), mB = _rvMod(t2), pA = plano(mlTit) + plano(nombre), pB = plano(t2);
+  if (mA.some((x) => !pB.includes(x)) || mB.some((x) => !pA.includes(x))) return false;
+  const nML = _rvNum(mlTit), n2 = _rvNum(t2);
+  if ([..._rvNum(nombre)].filter((x) => nML.has(x)).some((x) => !n2.has(x))) return false;
+  const pML = _rvPal(mlTit), p2 = _rvPal(t2);
+  if ([...p2].some((w) => !pML.has(w) && RV_VARIANTE.has(w))) return false;
+  const pN = _rvPal(nombre);
+  // Las palabras en las que coinciden el candidato y el catálogo medido (marca, línea: "blue iconic")
+  // tienen que estar en el gemelo. Sin esto "Club de Nuit Woman" pasaba por gemelo del "Blue Iconic".
+  const GEN = new Set(['edt', 'edp', 'eau', 'toilette', 'parfum', 'perfume', 'perfum', 'masculino', 'feminino', 'hombre', 'mujer', 'unisex', 'unissex', 'para', 'color', 'negro', 'preto', 'blanco', 'branco']);
+  if ([...pN].filter((w) => pML.has(w) && !GEN.has(w)).some((w) => !p2.has(w))) return false;
+  return [...p2].filter((w) => pN.has(w) || pML.has(w)).length >= 2;
 }
 function chequeoMismoProducto(nombre, mlTit) {
   const t = String(mlTit || '').trim();
@@ -6183,7 +6204,7 @@ async function correrCandidatos(db, products, labels, accounts, soloPrueba, prue
       // título guardado: no cuesta ninguna consulta a ML y así los ya medidos no esperan días.
       if (!soloPrueba && c.mlTit) {
         const rep = chequeoMismoProducto(c.nombre, c.mlTit);
-        if (c.mlGemelo && c.mlGemelo.id) rep.push(_gemeloTxt(c.mlGemelo, Number(c.mlPrecio) || 0, c.margen));
+        if (c.mlGemelo && c.mlGemelo.id) rep.push(_gemeloTxt(c.mlGemelo, Number(c.mlPrecio) || 0));
         if (JSON.stringify(rep) !== JSON.stringify(c.mlReparos || [])) await db.patch(`cyc/candidatos_py/${id}`, { mlReparos: rep.length ? rep : null });
       }
       nuevosQueDan.push({ id, c, margen: Number(c.margen), ganancia: Number(c.ganancia) || 0,
@@ -6417,7 +6438,7 @@ async function correrCandidatos(db, products, labels, accounts, soloPrueba, prue
       sinDato.push(`${c.nombre} → ML no contestó la comisión a ese precio (se reintenta solo)`);
       continue;
     }
-    let { costo, impuestos, envio, ganancia, margen, fee } = rMin;
+    const { costo, impuestos, envio, ganancia, margen, fee } = rMin;
     calculados++;
     // ── ¿HAY OTRO CATÁLOGO DEL MISMO PRODUCTO MÁS BARATO? (02/10/2026) ─────────────────────────
     // Lo encontró el chat de compras con el Montblanc Presence: estaba medido contra MLA19479922
@@ -6430,29 +6451,35 @@ async function correrCandidatos(db, products, labels, accounts, soloPrueba, prue
     // gemelo es más barato, el margen se mide contra él (el peor caso) y se dice por qué.
     let gemelo = null;
     if (margen >= CAND_PISO_PCT && mlTit) {
-      try {
-        consultas++;
-        const busG = await mlGet(`/products/search?site_id=MLA&q=${encodeURIComponent(mlTit.slice(0, 80))}&limit=5`, tok);
-        const prodIdMed = (String(mlLink).match(/MLA\d+/) || [])[0];
-        const resG = ((busG && busG.results) || []).filter((r) => r && r.id && r.id !== prodIdMed
-          && !chequeoMismoProducto(mlTit, r.name || r.title).length && !chequeoMismoProducto(r.name || r.title, mlTit).length
-          && !chequeoMismoProducto(c.nombre, r.name || r.title).length);
-        for (const r of resG.slice(0, 3)) {
-          let ofG = [];
-          try { consultas++; const itG = await mlGet(`/products/${r.id}/items`, tok); ofG = ((itG && itG.results) || []).filter((o) => !esOfertaDeAfuera(o)); } catch { ofG = []; }
-          if (!ofG.length) continue;
-          const piG = precioAIgualar(ofG);
-          if (!piG || !(piG.precio > 0) || piG.precio >= mlPrecio) continue;
-          if (!gemelo || piG.precio < gemelo.precio) gemelo = { id: r.id, tit: String(r.name || r.title || '').slice(0, 120), precio: Math.round(piG.precio), vend: ofG.length };
-        }
-      } catch (eG) { console.log(`      (no pude buscar otros catálogos del mismo producto: ${String(eG.message || eG).slice(0, 80)})`); }
+      const prodIdMed = (String(mlLink).match(/MLA\d+/) || [])[0];
+      const vistos = new Map();
+      for (const q of [mlTit, String(c.nombre || '')]) {
+        if (!q) continue;
+        try {
+          consultas++;
+          const busG = await mlGet(`/products/search?site_id=MLA&q=${encodeURIComponent(q.slice(0, 80))}&limit=5`, tok);
+          for (const r of ((busG && busG.results) || [])) if (r && r.id && r.id !== prodIdMed && !vistos.has(r.id)) vistos.set(r.id, String(r.name || r.title || ''));
+        } catch (eG) { console.log(`      (no pude buscar otros catálogos del mismo producto: ${String(eG.message || eG).slice(0, 80)})`); }
+      }
+      const iguales = [...vistos].filter(([, t]) => _esGemelo(c.nombre, mlTit, t));
+      for (const [gid, gtit] of iguales.slice(0, 3)) {
+        let ofG = [];
+        try { consultas++; const itG = await mlGet(`/products/${gid}/items`, tok); ofG = ((itG && itG.results) || []).filter((o) => !esOfertaDeAfuera(o)); } catch { ofG = []; }
+        if (!ofG.length) continue;
+        const piG = precioAIgualar(ofG);
+        if (!piG || !(piG.precio > 0) || piG.precio >= mlPrecio * 0.97) continue;
+        if (!gemelo || piG.precio < gemelo.precio) gemelo = { id: gid, tit: gtit.slice(0, 120), precio: Math.round(piG.precio), vend: ofG.length };
+      }
+      if (vistos.size) console.log(`      (otros catálogos parecidos: ${vistos.size} · del mismo producto: ${iguales.length})`);
+      // SÓLO AVISA, NO CAMBIA EL MARGEN: decidir que dos catálogos son el mismo por el título es el
+      // filtro por palabras que ya falló seis veces. El margen contra el gemelo queda al lado, en rojo
+      // en el panel, para que se mire con las fotos y, si es el mismo, se cargue ese link.
       if (gemelo) {
         const rG = await cuentaCand(gemelo.precio, lt, cat);
-        if (rG && rG.margen < margen) {
-          console.log(`      ⚠️ OTRO CATÁLOGO DEL MISMO PRODUCTO más barato: ${gemelo.id} "${gemelo.tit}" a ${money(gemelo.precio)} (${gemelo.vend} vendedores). Mido contra ése: ${margen.toFixed(1)}% → ${rG.margen.toFixed(1)}%`);
+        if (rG) {
+          gemelo.margen = Math.round(rG.margen * 10) / 10;
           gemelo.margenAntes = Math.round(margen * 10) / 10;
-          ({ costo, impuestos, envio, ganancia, margen, fee } = rG);
-          gemelo.margen = Math.round(margen * 10) / 10;
+          console.log(`      ⚠️ ¿OTRO CATÁLOGO DEL MISMO PRODUCTO? ${gemelo.id} "${gemelo.tit}" a ${money(gemelo.precio)} (${gemelo.vend} vendedores). Contra ése daría ${gemelo.margen}% (contra el del link ${gemelo.margenAntes}%)`);
         } else gemelo = null;
       }
     }
@@ -6467,9 +6494,9 @@ async function correrCandidatos(db, products, labels, accounts, soloPrueba, prue
         mlTit, mlPrecio: Math.round(mlPrecio), mlMax, mlVendedores: vendedores, mlVendidas, mlVendidasMin, mlComision: Math.round(fee), mlLink, mlPorNombre: porNombre,
         mlFoto: mlFoto || null,
         mlReparos: (() => { const r = chequeoMismoProducto(c.nombre, mlTit);
-          if (gemelo) r.push(_gemeloTxt(gemelo, Math.round(mlPrecio), gemelo.margen));
+          if (gemelo) r.push(_gemeloTxt(gemelo, Math.round(mlPrecio)));
           return r.length ? r : null; })(),
-        mlGemelo: gemelo ? { id: gemelo.id, precio: gemelo.precio, vend: gemelo.vend, margenAntes: gemelo.margenAntes } : null,
+        mlGemelo: gemelo ? { id: gemelo.id, precio: gemelo.precio, vend: gemelo.vend, margen: gemelo.margen, margenAntes: gemelo.margenAntes } : null,
         // CONTRA QUIÉN SE MIDIÓ. Se guarda porque el panel tiene que poder EXPLICAR por qué el
         // margen no sale contra el precio más barato de la ficha: sin esto el renglón se lee como
         // un error de cuenta. Es el mismo caso de la comisión del 19/09 —un dato que el robot ya
