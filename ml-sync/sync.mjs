@@ -5945,6 +5945,18 @@ function _gemeloTxt(g, precioLink) {
   const m = (n) => '$' + Math.round(Number(n) || 0).toLocaleString('es-AR');
   return `hay OTRO catálogo del mismo producto más barato: ${g.id} a ${m(g.precio)} con ${g.vend} vendedores (el del link está a ${m(precioLink)}). Contra ése daría ${g.margen}% (con el del link, ${g.margenAntes}%). Mirá las fotos: si es el mismo, cargá ese link`;
 }
+// EL COLOR, IGUAL EN LOS TRES IDIOMAS (02/10/2026, lo trajo el chat de compras): comprasparaguay
+// escribe en portugués y ML en castellano o inglés. "preto/negro/black" es el mismo color, pero
+// "Ferrari Black" y "Ferrari Racing Red" son dos perfumes distintos y el color es lo único que los
+// separa. Devuelve los colores nombrados, ya normalizados.
+const _RV_COLOR = { negro: 'negro', preto: 'negro', black: 'negro', noir: 'negro', blanco: 'blanco', branco: 'blanco', white: 'blanco',
+  rojo: 'rojo', vermelho: 'rojo', red: 'rojo', azul: 'azul', blue: 'azul', verde: 'verde', green: 'verde', rosa: 'rosa', pink: 'rosa',
+  gris: 'gris', cinza: 'gris', gray: 'gris', grey: 'gris', amarillo: 'amarillo', amarelo: 'amarillo', yellow: 'amarillo',
+  violeta: 'violeta', roxo: 'violeta', purple: 'violeta', lila: 'violeta', naranja: 'naranja', laranja: 'naranja', orange: 'naranja',
+  marron: 'marron', marrom: 'marron', brown: 'marron', celeste: 'celeste', plateado: 'plata', prata: 'plata', silver: 'plata',
+  dorado: 'dorado', dourado: 'dorado', gold: 'dorado' };
+const _rvColores = (t) => new Set(_rvBase(t).split(' ').map((w) => _RV_COLOR[w]).filter(Boolean));
+const _rvColorChoca = (a, b) => { const ca = _rvColores(a), cb = _rvColores(b); return ca.size && cb.size && ![...ca].some((x) => cb.has(x)); };
 // ¿Este otro catálogo es el MISMO producto que el medido? (02/10/2026). Más exigente que
 // chequeoMismoProducto, porque acá no hay una persona que haya elegido el link: los códigos de modelo
 // tienen que coincidir en las DOS direcciones (la primera versión tomó un TP-Link EX222 como gemelo
@@ -5962,7 +5974,8 @@ function _esGemelo(nombre, mlTit, t2) {
   const pN = _rvPal(nombre);
   // Las palabras en las que coinciden el candidato y el catálogo medido (marca, línea: "blue iconic")
   // tienen que estar en el gemelo. Sin esto "Club de Nuit Woman" pasaba por gemelo del "Blue Iconic".
-  const GEN = new Set(['edt', 'edp', 'eau', 'toilette', 'parfum', 'perfume', 'perfum', 'masculino', 'feminino', 'hombre', 'mujer', 'unisex', 'unissex', 'para', 'color', 'negro', 'preto', 'blanco', 'branco']);
+  if (_rvColorChoca(nombre, t2) || _rvColorChoca(mlTit, t2)) return false;
+  const GEN = new Set(['edt', 'edp', 'eau', 'toilette', 'parfum', 'perfume', 'perfum', 'masculino', 'feminino', 'hombre', 'mujer', 'unisex', 'unissex', 'para', 'color']);
   if ([...pN].filter((w) => pML.has(w) && !GEN.has(w)).some((w) => !p2.has(w))) return false;
   return [...p2].filter((w) => pN.has(w) || pML.has(w)).length >= 2;
 }
@@ -5980,6 +5993,7 @@ function chequeoMismoProducto(nombre, mlTit) {
   if (modCP.length && !modOK.length) motivos.push(`el modelo (${modCP.join(', ')}) no está en el título de ML`);
   if (!modCP.length && faltan.length) motivos.push(`en ML no está(n): ${faltan.join(', ')}`);
   if (!modCP.length && numFaltan.length) motivos.push(`el tamaño ${numFaltan.join(', ')} no está en ML`);
+  if (_rvColorChoca(nombre, t)) motivos.push(`el color no coincide (candidato: ${[..._rvColores(nombre)].join('/')} · ML: ${[..._rvColores(t)].join('/')})`);
   return motivos;
 }
 
