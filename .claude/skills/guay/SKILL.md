@@ -45,8 +45,11 @@ Por categoría, en el orden de `progreso.md` (perfumería al final). Buscá en M
   anotar los vendidos de la más barata.
 - sirve con 100+ vendidos y precio que hace pensar que da margen. **El margen NO lo calculás vos**
   (lo calcula el robot contra la publicación que gana; las cuotas NO se cuentan).
-Cargá cada uno YA en "Para probar" ("Agregar un candidato a mano"): nombre, código, precio US$ crudo,
-link del catálogo de ML, vendidos, foto, link de comprasparaguay. **De a uno.**
+Cargá cada uno YA, de a uno, desde la consola del panel (el formulario ya no existe):
+`fbSet('candidatos_py/c'+Date.now(), {nombre, cod, usd, link, mlId, vendCarga, foto, marca,
+fuente:'chat', enNissei:true, ts:Date.now()})`. Ruta `candidatos_py` (NO `candidatos`); `mlId` = id
+del CATÁLOGO de ML (lo de /p/); nada calculado (el margen lo escribe el robot). Antes, mirá en
+`state.candidatos` que no esté ya (por `cod` o `mlId`).
 
 ## 6 · El pedido
 Tope US$ 1.000 crudos, mitad probados y mitad nuevos. **No cargues unidades**: el pedido lo arma la
