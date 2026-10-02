@@ -47,8 +47,12 @@ camara-de-monitoreo-dvr 222 · computadora 73 · silla-gamer 85 · gabinete-kit 
     quedó corriendo y probablemente se cortó al cerrar: empezar de nuevo).
  2. Agrupar por categoría las ~3.800 filas chicas y decidir cada categoría (mirar entera o descartar con motivo).
  3. Pasar ENTERAS las que se miraron a ojo: cargadores, discos, memorias, routers, joysticks, micrófonos, secadores,
-    varios, adaptadores, iluminación, juegos, coolers, RAM, fuentes, cosmética, flash, cámara, fundas.
+    adaptadores, iluminación, juegos, coolers, RAM, fuentes, cosmética, flash, cámara, fundas.
  4. Pasar las no miradas: labial, base, shampú, anillos, filamento, robots, cafeteras + lente y mochilas.
 
 **Pedido del 02/10:** ya aprobado (Respuestas 21, 22 y 23 en `guay/respuestas.md`): Animale For Men x2 + nuevos hasta
 ~US$ 1.000. **Falta cargar las unidades** y que CYC WEB lo verifique. 58 candidatos cargados ese día.
+
+**Mensaje 18 (02/10, 15:50):** **VARIOS quedó COMPLETO** (219 modelos, sin elegir a ojo). Total cargados por el Guay del
+02/10: 59. En la PC vieja quedaron además `guay-datos/categorias-decision.md` y `guay-tools/funciones-chrome.js` con
+`evalLoose` (si no están en el repo, pedírselos a Matías en el zip de CHGU).

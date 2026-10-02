@@ -155,3 +155,7 @@ bajado 34 categorías = **7.487 (54%)**. De esas:
  2. **"Completo" = las 34 categorías de siempre + las nuevas que apruebe Matías, todas ENTERAS, sin elegir a ojo**,
     salvo las categorías descartadas. Lo mirado a ojo NO cuenta como barrido.
  3. La lista de categorías aprobadas y descartadas va en `guay/progreso.md` cuando Matías la pase.
+
+**La prueba de por qué van ENTERAS (02/10):** al pasar VARIOS completo salió el **Xiaomi Mijia Lint Remover 2**
+(sacapelusas, cód 155085, US$ 13,5, MLA68634662 a $69.999, +500 vendidos, Full, sin cuotas). En la mirada a ojo de la
+misma categoría se había pasado de largo. Mirar a ojo deja afuera justo lo que no se sabe buscar.
