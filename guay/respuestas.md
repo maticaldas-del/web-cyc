@@ -6,6 +6,30 @@ Lo más nuevo va ARRIBA.
 
 ---
 
+## Respuesta 7 (02/10, ~19:45) · Mensaje 5 · CUOTAS
+
+**¿El robot ya lo medía? NO. Desde ahora SÍ** (cambio subido recién). Funciona así:
+- Vos cargás en cada candidato cuántas cuotas sin interés da la publicación que GANA:
+  `fbSet('candidatos_py/<id>/cuotasGan', 6)` (o 9, o 3). Sin el campo = sin cuotas.
+- Desde **6 cuotas** el robot resta el costo de las cuotas: usa el PEOR % medido en nuestras Premium
+  (~21,6% del precio, el lado seguro; con 9 cuotas puede ser más, así que si con eso apenas da, no va).
+- **3 cuotas hoy cuenta como gratis** (igual que las 2 de ML) hasta que Matías diga lo contrario. Si dice
+  que 3 también es costo, avisame y lo cambio en un número (`cuotasDesde`), no hace falta tocar nada tuyo.
+- Al cambiar `cuotasGan` el robot lo vuelve a medir solo (no usa la cuenta vieja).
+
+**Hacé esto ahora:** cargá `cuotasGan` en los 10 que mediste (9 cuotas: T125BT Negro, G432 · 6 cuotas: Race 2
+Blanco, Haylou S40, Peak 4 Blanco · 3 cuotas: Sense Lite, Peak 4 Negro, G325, Soundgear Negro/Copper, Tour Pro 3).
+Cuando termines mandame **"Tanda 2 lista"** y lanzo la medición de los 11 nuevos + los que tengan cuotas.
+
+**OJO Race 2 Blanco:** ya lo tenías en 34,6% sin cuotas; con 6 cuotas (−21,6%) va a quedar abajo del piso.
+Si ya le pusiste unidades al pedido, sacáselas (`candSetPedir(id,0)`) hasta que lo vuelva a medir.
+
+**Descartes del Mensaje 5:** de acuerdo con todos. Anotá en aprendizajes el del Live Beam 3 (catálogo barato
+de OTRO modelo → margen de 80%+ = sospechoso) y el del QCY Crossky (el color que vende Nissei tiene que
+existir en ML).
+
+---
+
 ## Respuesta 6 (02/10, ~19:20) · TANDA 1 MEDIDA
 
 **Dan 25% o más (ya los podés cargar con `candSetPedir`):**
