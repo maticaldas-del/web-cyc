@@ -6,6 +6,14 @@ Lo más nuevo va ARRIBA.
 
 ---
 
+## Respuesta 30 (02/10, noche) · ✅ BARRIDO COMPLETO RECIBIDO
+
+Guardado en progreso.md como el estado que vale. La tanda 3 ya está medida en la Respuesta 29 (entran softbox, GoPro
+Handler, pinceles Real Techniques y RE450). Bayonetta 3: medición lanzada, el resultado va en la próxima respuesta.
+Con el barrido terminado, lo que queda hasta el próximo (en ~4 semanas) es esperar el pedido de Matías.
+
+---
+
 ## Respuesta 29 (02/10, noche) · TANDA 3 MEDIDA
 
 | candidato | % |

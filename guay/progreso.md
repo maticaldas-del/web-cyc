@@ -111,3 +111,30 @@ pinceles Real Techniques Eye Essentials · TP-Link RE450 · Casio FX-991MS 2nd E
 Sony XM-N502 · Stanley Beer Pint · DJI Neo (ML es Neo 2) · Epson ES-50 (23%) · accesorios GoPro/Insta360/fundas Switch.
 **Maquillaje:** el emparejador los encuentra, pero en ML casi no venden o se venden baratos: ninguno da.
 Total cargados por el Guay del 02/10 (PC nueva): 32 nuevos.
+
+
+## ✅ BARRIDO COMPLETO 02/10/2026 (Guay, PC nueva) — ESTE ES EL ESTADO QUE VALE (reemplaza los anteriores)
+Nissei en comprasparaguay: 277 categorías con filas, ~14.045 filas (contadas con sitemap-categorias.xml + /<slug>/?loja=nissei).
+· **ENTERAS** (pasadas por ML sin elegir a ojo): auriculares, relojes, mouse, parlantes, termos, varios · cargadores pared y
+  portátil, discos, memorias, routers, joysticks, micrófonos, secadores, adaptadores, iluminación, juegos, coolers, RAM,
+  fuentes, flash, accesorios cámara, fundas celular, cosmética, labial, base, shampú, anillos, filamento, robots, cafeteras,
+  lente, mochilas notebook, teclados, cables · las 18 chicas aprobadas: pendrive, gps, concentrador-y-switch, proyector,
+  planchaalisador, moldeador-de-cabello, afeitadora, cortadora-de-cabello, cepillo-electrico, anteojos, pila,
+  lector-de-codigo-de-barras, automatizacion-del-hogar, estabilizador-de-imagen-gimbal, telefono, procesador,
+  cartucho-de-tinta, batidora-minipimer · las 145 chicas restantes (lista en guay-datos/cats-chicas-mirar.txt de la PC).
+  Perfumería: entera el 18/09 (repetir desde el 16/10).
+· **DESCARTADAS ENTERAS sin comparar (Mensaje 17):** celular, notebook, tablet, tv, monitor, impresora, placa-madre,
+  placa-de-video, camara-digital, filmadora, camara-de-monitoreo-dvr, computadora, silla-gamer, gabinete-kit, licuadora,
+  freidora-electrica, plancha, tostadora-sandwichera, monopatin, videoconsola.
+· **DESCARTADAS ENTERAS (02/10, Matías: lo obvio afuera — grandes, pesadas, comida, bebida, ropa) (63):** ups, aspiradora,
+  otros-electrodomesticos, olla-electrica, estacion-de-energia-portatil, aire-acondicionado, air-fryer, soporte-para-tv,
+  cocina-electrica, grill-electrico, microondas, energia-eolica-y-solar, horno-electrico, home-theater-receptor,
+  silla-y-mesa, procesador-de-alimentos, equipo-de-sonido-radio, bebedero-filtro-de-agua, scooter, calefactor,
+  compresor-de-aire, sonar, servidor, subwoofer, escritorio-gamer, hidrolavadora, radio-reproductor-de-cd-automotriz,
+  cinturon, reproductor-de-dvd-automotriz, valija, taladro-atornillador, heladera, tocadiscos, musculacion-gimnasia,
+  central-multimedia, trituradora-de-papel, bicicleta-eletrica, extractor-de-jugo, media, lavarropas-secarropas, amoladora,
+  remeras-y-camisetas, moto-electrica, caja-fuerte, olla, robo-cortador-de-grama, purificador-de-aire, caja-registradora,
+  chocolate, pantalones-y-bermudas, gorra, vapeador-pod, ropa-de-abrigo, licor, equipos-para-motociclismo, boxeo, cerveza,
+  zapatillas-y-calzado, whisky, golf, cama-mesa-bano, otras-bebidas, pochoclera.
+· **Próximo barrido:** el mismo método por categoría, en ~4 semanas (o antes si baja un precio).
+· Cargados por el Guay del 02/10 (PC nueva): 25; descartados después por CYC WEB 5 → 20 vivos.

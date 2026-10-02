@@ -196,3 +196,7 @@ que en cada una aparecen todos. Una descarga que da justo 10.000 es esta pared, 
 
 - **Maquillaje (rubor, sombras, lápices, correctores, polvos, gloss, máscaras, iluminadores) no da** (02/10): en ML casi no
   tienen ventas o se venden baratos contra el costo de Nissei. En el próximo barrido se pasan rápido.
+
+- **Cada color/variante es otro catálogo** también en teclados (Pop Keys) y cables (largo): medir contra el del mismo color/largo.
+- **Para escribirle a CYC WEB textos con saltos de línea:** pegar con `ClipboardEvent('paste')` en el div `[aria-label=Prompt]`
+  y después Enter (escribiendo con type, cada salto de línea manda el mensaje).
