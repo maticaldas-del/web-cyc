@@ -2429,7 +2429,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='21.36';
+const APP_VERSION='21.37';
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
 // muestre la versión y la fecha de actualización y que tenga un desplegable predeterminado cerrado".
 // Y el mismo día: "que ponga fecha de cada modificación y haya una barrita para scrollear y que
@@ -2440,6 +2440,7 @@ const APP_VERSION='21.36';
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'21.37',f:'02/10/2026',h:'15:50',c:[{n:1,t:'Para probar: los candidatos que no llegan al 25% van juntos abajo, en un desplegable cerrado.'}]},
   {v:'21.36',f:'02/10/2026',h:'15:30',c:[{n:2,t:'Para probar: botón "✅ Es el mismo producto" (saca los avisos rojos de ese candidato, para ese catálogo de ML) y "🔁 Medir contra el más barato" cuando el robot encontró otro catálogo más barato del mismo producto.'}]},
   {v:'21.35',f:'02/10/2026',h:'15:10',c:[{n:1,t:'Para probar: el detalle de un candidato ya no se cierra solo cuando el panel se actualiza.'}]},
   {v:'21.34',f:'02/10/2026',h:'14:50',c:[{n:2,t:'Para probar: si la publicación que gana en ML da cuotas sin interés (3, 6, 9 o 12), el robot resta lo que cobra ML por ofrecerlas (8,9% · 13,4% · 17,8% · 21,6% del precio) y el detalle lo dice.'}]},
@@ -11774,7 +11775,11 @@ function candidatosHTML(){
   // El que más margen deja, primero. Los que todavía no tienen la cuenta hecha van al final:
   // no se pueden comparar contra los medidos y ponerlos arriba sería invitar a decidir sin número.
   vivos.sort((a,b)=>(b.margen??-999)-(a.margen??-999));
-  return cab+simPYHTML()+pyEnCaminoHTML()+pedNuevosHTML(vivos0)+vivos.map(c=>{
+  // LOS QUE NO LLEGAN AL PISO, JUNTOS ABAJO Y CERRADOS (02/10/2026, pedido suyo: *"todos los candidatos
+  // que dan abajo de 25% (los rojos) ponerlos juntos ABAJO en un desplegable cerrado, así no molestan"*).
+  // No se esconden: el robot los vuelve a medir y si cruzan el piso vuelven arriba solos.
+  const _esRojo=c=>c.margen!=null&&isFinite(c.margen)&&Number(c.margen)<CAND_PISO_PCT;
+  const _card=c=>{
     const d=candDias(c);
     const usd=parseFloat(c.usd)||0;
     const puesto=usd>0?Math.round(usd*RECARGO_PY*100)/100:0;
@@ -11878,7 +11883,11 @@ function candidatosHTML(){
       </div>
       </div>
     </details>`;
-  }).join('')+candDescartadosHTML();
+  };
+  const _arriba=vivos.filter(c=>!_esRojo(c)), _rojos=vivos.filter(_esRojo);
+  return cab+simPYHTML()+pyEnCaminoHTML()+pedNuevosHTML(vivos0)+_arriba.map(_card).join('')
+    +(_rojos.length?`<details style="margin-top:10px"><summary style="cursor:pointer;font-size:.7rem;color:var(--red)">🔻 ${_rojos.length} no llega${_rojos.length===1?'':'n'} al ${CAND_PISO_PCT}% · tocá para verlos</summary><div style="display:flex;flex-direction:column;gap:8px;margin-top:8px">${_rojos.map(_card).join('')}</div></details>`:'')
+    +candDescartadosHTML();
 }
 // LO DESCARTADO NO SE ESCONDE. Una lista que saca renglones sin decirlo es una lista que miente —
 // la misma regla que el desplegable de `nomandar` en Armar caja.
