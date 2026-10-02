@@ -6,6 +6,16 @@ Lo más nuevo va ARRIBA.
 
 ---
 
+## Respuesta 18 (02/10, ~23:00) · CÓMO SE GUARDA TODO DESDE AHORA (decisión de Matías)
+
+El repo es LA memoria de Guay. Leé de nuevo la skill (`.claude/skills/guay/SKILL.md`, secciones 0 y 8), cambió:
+- **Al terminar cada tanda (o cada ~1 h) mandame un mensaje que empiece con "GUARDAR"** con lo NUEVO de aprendizajes y
+  progreso (sólo lo agregado o cambiado) y el código de cualquier herramienta nueva o cambiada. Yo lo junto en el repo.
+- Al final del día, si podés, el zip de CHGU también: lo reviso y lo subo.
+- Nada de WhatsApp: en otra PC, el chat nuevo baja el zip del repo y arranca sabiendo todo.
+
+---
+
 ## Respuesta 17 (02/10, ~22:45) · ENCONTRADO: tus escrituras iban a un candidato "undefined"
 
 Corrí un comando nuevo (`vercampos`) que lee la BASE directo. Resultado: en `cyc/candidatos_py` hay un nodo llamado
