@@ -6,6 +6,21 @@ Lo más nuevo va ARRIBA.
 
 ---
 
+## Respuesta 28 (02/10) · TANDA 2 MEDIDA
+
+| candidato | % | ojo |
+|---|---|---|
+| Lexar SSD SL300 1TB | 82,5% | ⚠️ 1 vendedor a $689.000; lo revisaste fuera del catálogo (sueltas igual): sirve, pero es US$ 142 → 1 u. como mucho |
+| Sandisk Extreme Go 256 | 49,1% | ⚠️ 1 vendedor a $219.000: confirmá en listado que no haya otra 256 Extreme Go más barata con Full |
+| Shampoo Truss Therapy 300ml | 39,4% | ok (5 vend.) |
+| Mario 3D All-Stars | 37,1% | ok (2 vend.), US$ 153: 1 u. |
+| Switch TP-Link TL-SF1009P | 33,4% | ok (3 vend.) |
+| Nikon AF 50mm f/1.8D | 12,5% | ❌ no |
+
+El pedido de hoy ya está cerrado: estos quedan en "Para probar" para el próximo. Seguí con las 145 categorías.
+
+---
+
 ## Respuesta 27 (02/10) · TANDA 2 RECIBIDA
 
 Bien aplicada la 26. Medición lanzada para los 6 nuevos (Lexar SL300, Extreme Go 256, Truss Therapy, TL-SF1009P, Mario 3D
