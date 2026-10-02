@@ -11,10 +11,13 @@ lo que sirve y dejar anotado todo para que la próxima corrida sea mejor.
 Te podés cortar en cualquier momento: **guardá a medida que avanzás, nunca al final.**
 
 ## 0 · Antes de empezar
-1. `git pull` en esta carpeta (trae lo que aprendió la sesión anterior).
+1. **Bajá la versión actual del repo** (en la PC no hay git): descargá
+   https://github.com/maticaldas-del/web-cyc/archive/refs/heads/claude/happy-johnson-laasu8.zip y descomprimilo
+   ENCIMA de la carpeta de trabajo (CHGU\web-cyc). Ahí está TODO lo aprendido: no uses copias viejas ni zips de WhatsApp.
 2. Leé ENTEROS `guay/aprendizajes.md` (reglas y errores ya cometidos; si contradicen este archivo,
-   mandan ellos) y `guay/progreso.md` (dónde quedó la corrida anterior y qué ya se miró).
+   mandan ellos), `guay/progreso.md` (dónde quedó la corrida anterior y qué ya se miró) y `guay/traspaso-local.md`.
 3. Leé `guay/respuestas.md` por si quedó algo de la sesión "CYC WEB" sin aplicar.
+4. Herramientas en `guay/herramientas/`, datos de Nissei ya bajados en `guay/datos/` (con fecha: reconfirmá precios).
 
 ## 1 · Dónde
 - Panel CYC: https://maticaldas-del.github.io/web-cyc/ (Matías ya está logueado en su Chrome).
@@ -68,9 +71,13 @@ Y · voy por <categoría/página>" cada 20 cargados, con los descartados y su mo
 No te quedes esperando: apartá el producto dudoso y seguí.
 
 ## 8 · GUARDAR LO APRENDIDO (lo más importante)
-Esta carpeta es un repo de git. Cada vez que aprendas algo (un error, un atajo, un dato del sitio):
-1. agregalo arriba en `guay/aprendizajes.md` con fecha;
-2. actualizá `guay/progreso.md` (categoría/página donde vas, cantidades, ya mirado);
-3. `git add guay && git commit -m "guay: <qué>" && git pull --rebase && git push`.
-Si el push falla, no pares: guardalo en los archivos igual y avisale a "CYC WEB" con el texto.
-Al cerrar la sesión: resumen (recorrido, cantidades, errores, qué cambiarías) en los dos archivos y push.
+El repo de GitHub es LA memoria de Guay (decisión de Matías, 02/10): lo que no esté ahí, el próximo chat no lo sabe.
+La PC no tiene git, así que **lo sube CYC WEB**:
+1. Cada vez que aprendas algo (un error, un atajo, un dato del sitio), anotalo en tu copia local de
+   `guay/aprendizajes.md` (con fecha) y `guay/progreso.md`.
+2. **Al terminar cada tanda (o cada ~1 hora), mandale a CYC WEB un mensaje "GUARDAR"** con el texto NUEVO de
+   aprendizajes y progreso (no el archivo entero si es largo: sólo lo agregado o cambiado), y el código de cualquier
+   herramienta nueva o cambiada. CYC WEB lo junta en el repo y te contesta en respuestas.md. Si podés, mandale también
+   el zip de la carpeta CHGU al final del día y lo revisa y sube.
+3. Al cerrar la sesión: un "GUARDAR" final con el resumen (recorrido, cantidades, errores, qué cambiarías).
+4. Nunca pongas en esos archivos contraseñas, mails ni datos de personas: el repo es público.
