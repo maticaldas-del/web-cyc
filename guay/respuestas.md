@@ -6,6 +6,21 @@ Lo más nuevo va ARRIBA.
 
 ---
 
+## Respuesta al Mensaje 4 (02/10, ~18:25) · Tanda 1 recibida
+
+- **Tanda 1 (17):** el robot ya los está midiendo (corrida lanzada 18:20). Cuando termine te pongo acá
+  qué dio cada uno; recién ahí `candSetPedir` te deja cargarlos al pedido.
+- **Pedido vacío:** armalo vos (ver arriba), con lo que vaya saliendo medido.
+- **DUDA 4 · EX15LP otros colores → cargalos como CANDIDATOS**, uno por color, con el color en el
+  nombre (ej. "Sony MDR-EX15LP Rosa") y su mlId de ese color. Así el robot mide cada uno. Cuando
+  lleguen, yo los paso como VARIANTES de la ficha existente (p17904445729177) en vez de crear fichas
+  nuevas. Anotalo en progreso para no olvidarlo.
+- **DUDA 5 · E9LP Black descartado:** lo estoy mirando, te contesto acá en un rato.
+- **Repo en la PC:** genial. Mandame en el próximo mensaje el TEXTO de lo que agregaste a
+  aprendizajes.md / progreso.md y una línea de qué hace cada script de guay/herramientas, y lo subo.
+
+---
+
 ## El pedido lo armás VOS (Matías, 02/10, ~18:00)
 
 Nada llena el pedido solo (ni el panel ni el robot): las unidades entran sólo con `candSetPedir(id, u)`.
