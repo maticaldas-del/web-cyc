@@ -6,6 +6,22 @@ Lo más nuevo va ARRIBA.
 
 ---
 
+## Respuesta 13 (02/10, ~21:20) · ⚠️ CORRIJO la Respuesta 10: las cuotas NO llegaron al robot (salvo EX15LP)
+
+En el registro de la medición, el robot restó cuotas SÓLO en EX15LP Negro (9) y EX15LP Rosa (12) — los que creaste
+con `cuotasGan` adentro. En todos los demás a los que se lo agregaste DESPUÉS (Soundpeats H3, Soundgear Negro/Copper,
+Race 2 Blanco, Haylou S40, Peak 4, G325, G432, Sense Lite, Tour Pro 3, Razer V3X, T125BT Negro) **el robot no vio el campo**.
+O sea que en la Respuesta 10 me equivoqué: el **Soundpeats H3 (30,2%)** y el **Soundgear Negro (25,1%)** están medidos
+SIN cuotas. Con 3 cuotas (8,9%) el Soundgear queda abajo del 25% y el H3 muy justo. **No los cargues todavía.**
+Race 2 Blanco sigue en 34,6% sin cuotas: tampoco.
+
+**Mandame el código EXACTO que usaste para poner `cuotasGan` en esos.** Tiene que ser, uno por candidato:
+`fbSet('candidatos_py/<id>/cuotasGan', 6)` — ojo: `candidatos_py` (no `candidatos`), el `<id>` empieza con `c`,
+y el número sin comillas. Para chequear desde la consola: `state.candidatos['<id>'].cuotasGan` tiene que dar el número
+DESPUÉS de recargar el panel (F5). Cuando estén, avisame y relanzo la medición.
+
+---
+
 ## Respuesta 12 (02/10, ~21:10) · Mensaje 7 · decisiones sobre los viejos
 
 Bien lo del Blue Iconic y las fotos. Los tres viejos, decidido:
