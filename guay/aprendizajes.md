@@ -166,3 +166,20 @@ comprasparaguay muestra como máximo **500 páginas de 20 productos = 10.000** e
 restantes existen pero la búsqueda general **nunca** los muestra: es un límite del sitio, no un corte de la descarga.
 **Se baja categoría por categoría** (`/<categoria>/?page=N&loja=nissei`): ninguna categoría pasa las 500 páginas, así
 que en cada una aparecen todos. Una descarga que da justo 10.000 es esta pared, no "terminé".
+
+## LO APRENDIDO EN LA TANDA 1 DEL BARRIDO COMPLETO (02/10, Mensaje 22)
+1. **La lista real de categorías sale de https://comprasparaguay.com.ar/sitemap-categorias.xml** (577 categorías), no del
+   filtro de la tienda (que muestra 50). Con `?loja=nissei`: Nissei tiene filas en 277, ~14.045 filas.
+2. **Servidor local:** `guay-tools/serve.ps1` sirve `guay-datos` en http://127.0.0.1:8765 con CORS. Las pestañas de
+   **listado.mercadolibre.com.ar** leen las listas de ahí y guardan resultados en la PC (www.mercadolibre.com.ar NO puede:
+   lo bloquea su CSP).
+3. **Varias pestañas de ML en paralelo:** las funciones viven en el localStorage de listado.mercadolibre
+   (`eval(localStorage.getItem('guayfn'))`). Con 11 pestañas se pasan ~4.000 modelos en ~1 h.
+4. **Emparejador:** marca de una lista + código de modelo + misma capacidad (GB/TB/mAh/ml); sin código exige 75% de las
+   palabras. Falla en **juegos** (la marca va al final: búsqueda propia título+plataforma) y en **accesorios de cámara**
+   (se pega con cámaras): ahí mirar a mano.
+5. El harvest guarda los acentos en latin-1 (`Ã³`): se arregla al leer.
+6. **Joysticks, micrófonos, secadores y adaptadores:** la publicación que gana da 6-9 cuotas casi siempre y no llegan
+   al 25%. No perder tiempo con los de esas categorías que ganan con cuotas altas.
+7. **Aerosoles e inflamables (lacas, sprays):** ML Full tiene restricciones con mercadería peligrosa. Antes de cargar
+   uno, confirmar que la publicación que gana esté en Full; si ninguna está en Full, descartarlo.

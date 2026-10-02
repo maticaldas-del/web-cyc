@@ -76,3 +76,18 @@ Teléfono · Procesador · Cartucho de tinta.
 consolas.
 **Batidora NO se descarta entera:** CYC ya vende una (Luciana). Se mira producto por producto y sólo se deja afuera lo que
 pasa los 40×40×40 cm / 3 kg.
+
+## TANDA 1 DEL BARRIDO COMPLETO (02/10 16:50, Mensaje 22)
+**Pasadas enteras por ML:** cargadores (pared y portátil), discos, memorias, routers, joysticks, micrófonos, secadores,
+adaptadores, iluminación, coolers, RAM, fuentes.
+**Corriendo (11 pestañas):** juegos (búsqueda propia), flash, cámara, fundas, cosmética, las 18 chicas aprobadas, labial,
+base, shampú, anillos, filamento, robots, cafeteras, lente, mochilas.
+**Cargados 11:** Lexar SD 800x Pro 64GB · Huawei AX2S blanco · Sandisk Extreme microSD 128 · adaptador PC PS VR2 · Thermalright
+Phantom Spirit 120 SE · aro Godox LR150 · Baseus Picogo AM41 · sérum Medicube azelaico · tapa lente Sony ALC-F49S · Truss
+Amino protector térmico · laca Schwarzkopf Silhouette.
+**Conteo de categorías (sitemap):** siempre 7.760 filas · descartadas 2.300 · chicas aprobadas 960 · **SIN DECIDIR 208
+categorías, ~3.025 filas** (las grandes: ups, rubor, sombra de ojos, aspiradora, accesorios GoPro, otros electrodomésticos,
+lápiz, batería, dron, corrector, polvo, resina 3D, taza térmica, gloss, webcam, micrófono, concentrador USB, depiladora,
+mochilas, desodorante, estación de energía, aparador de vello, pulsera de reloj, softbox, soporte celular, ventilador…).
+Herramientas nuevas en la PC nueva (`C:/cyc/CHGU/guay-tools`): q-build.ps1, nrow.ps1, hits.ps1, serve.ps1, cat-probe.ps1
+— **falta subir el código** (viene en el próximo GUARDAR).
