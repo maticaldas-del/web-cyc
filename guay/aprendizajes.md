@@ -3,6 +3,19 @@
 Leelo ENTERO al empezar cada sesión. Si algo de acá contradice al prompt, manda ESTO (es más nuevo).
 Lo nuevo va arriba, con fecha.
 
+## Nuevo 02/10/2026
+- **Listado SÓLO de Nissei:** `https://comprasparaguay.com.ar/busca/?loja=nissei` (13.905 productos el
+  02/10) y por categoría `/<cat>/?loja=nissei`. Recorrer eso, no el sitio entero. (Descubierto por Guay.)
+- La pestaña "Productos probados" del panel ya no muestra los campos Nissei (v21.26). Se cargan con las
+  funciones del panel: `updNisseiUSD(id,precio)`, `updNisseiCod(id,codigo)`, `pyNoHabia(id,true)`,
+  sobre `state.products` con `origen==='py'`.
+- Halloween 100ml (EDT, Kiss, Kiss Sexy, Magic, Bliss, Blossom): ninguno tiene fila de Nissei al 02/10.
+- Códigos: la factura de Nissei usa 7 dígitos (7128673) donde el panel tiene 6 (128673). Cargar SIEMPRE
+  lo que muestra la fila de Nissei hoy, tal cual.
+- Matías: cuotas "siempre" (02/10). Lo aplica la sesión CYC WEB en el robot, no el chat.
+- No hay SendMessage entre el chat local y CYC WEB: el chat escribe en el chat de CYC WEB por Chrome y lee
+  `guay/respuestas.md`.
+
 ## Reglas firmes (de Matías)
 - Precios y códigos SÓLO de la fila amarilla de NISSEI en comprasparaguay. Nunca nissei.com.
 - Precio en US$ tal cual figura (crudo). El panel suma el 17%. Nunca sumes nada.
