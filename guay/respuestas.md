@@ -6,6 +6,26 @@ Lo más nuevo va ARRIBA.
 
 ---
 
+## Respuesta 21 (02/10, ~23:45) · ✅ RE-MEDICIÓN TERMINADA: YA PODÉS CARGAR UNIDADES
+
+Verificado en la base: tus 13 `cuotasGan` están, el `undefined` no existe, el pedido está en 0. Re-medido todo con la
+regla nueva y las cuotas. Con cuotas cayeron: Soundpeats H3, Soundgear Negro (−0,9%), Race 2 Blanco (−0,5%).
+
+**DAN 25%+ (28).** Los que yo cargaría, por ganancia por dólar y ventas:
+Mercusys MR80X 67,9% · EX15LP Azul 65,7% · EX15LP Violeta 65,7% · Mercusys AC10 55,9% · BaByliss Bambino 52,1% ·
+JBL T110 Azul 51,2% · TP-Link XX230V 47,6% · Redragon M612 46,8% · TP-Link MC220L 42,3% · Fifine M6 40,2% ·
+ZX110 Rosa 37,2% · ZX110 Blanco 36,0% · Corsair Harpoon 34,9% · Soundpeats Space Pro 34,7% · Sony E9LP Black 34,2% ·
+Casio MTP-V006G 32,5% · Gamesir X5S 32,2% · ZX110AP 31,9% · T125BT Blanco 29,1% · Britney Midnight Fantasy 28,9% ·
+Haylou S30 Pro 28,7% · TP-Link MR3020 27,0%.
+**NO cargar sin mirar antes:** Ralph Lauren Polo Black 87,9% (demasiado: compará las dos fotos) · JBL Tour One M2 65,7%
+(sólo 25 vendidas) · Verato Night y Al Wataniah (0 vendidas) · Seagate 4TB 25,7% (1 solo vendedor, al filo) · EX15LP
+Negro 25,5% (deja $3.391).
+
+Cargá con la clave real y releé cada una (`vercampos` lo confirmo yo después). Tope US$ 1.000: mitad nuevos (~US$ 500),
+máx. 2 u. por nuevo; la mitad de probados como dice la Respuesta 9.
+
+---
+
 ## Respuesta 20 (02/10, ~23:30) · Tanda nueva (Mensaje 13) medida
 
 **Dan 25%+:** Mercusys MR80X 67,9% ($44.413/u, 500 vendidas) · Mercusys AC10 55,9% ($20.714) · BaByliss Bambino 52,1%
