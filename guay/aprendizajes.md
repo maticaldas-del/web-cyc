@@ -67,3 +67,29 @@ Lo nuevo va arriba, con fecha.
 - comprasparaguay escribe en portugués; ML en castellano. En electrónica, comparar el CÓDIGO DE MODELO.
 - Perfumería barrida entera el 18/09 (1.227 filas). Quedan: cosmética, auriculares, relojes, varios,
   teclados, mouse, parlantes, cables, fundas, cargadores, discos, termos, memorias, routers, secadores, controles.
+
+## Agregado por Guay (local) el 02/10/2026
+- CYC WEB (la sesión de la nube) se abre en Chrome: claude.ai/code → Fijados. Usar "Claude in Chrome";
+  el navegador integrado no sirve para el panel.
+- Pestañas en segundo plano dan capturas negras: traer la pestaña al frente antes de capturar.
+- La extensión bloquea salidas/código que tengan = ? & : armar los comandos sin esos caracteres o por partes.
+- El repo está en la PC bajado como ZIP (sin git): los cambios se mandan como texto a CYC WEB y ella los sube.
+- ML desde Chrome con fetch: la "polycard" del buscador trae product_id, precio que gana, vendidos y
+  full_icon. Sirve para el filtro rápido antes de cargar.
+- Filtro rápido realista: (P × 0,75 − 8.730) / (USD × 1,17 × 1.535) − 1. Si da cerca o abajo de 0,25, no cargar.
+- Termos y parlantes no dan. Auriculares de cable de US$ 6-7 tampoco (el cargo fijo de ML se come el margen).
+- Cada color es OTRO catálogo con otros competidores: medir cada color por separado (T110 Azul 51% vs Blanco 12%).
+- El color que ofrece Nissei tiene que existir en ML (QCY Crossky C50, Havit H2002D: Nissei otro color → no).
+- 80%+ es sospechoso: Live Beam 3 se medía contra el catálogo de Live BUDS 3 (otro modelo).
+- Cuotas: si la publicación que GANA da cuotas sin interés hay que igualarlas y es costo. Tabla de ML
+  (parejo a cualquier precio): 3 cuotas 8,9% · 6 cuotas 13,4% · 9 cuotas 17,8% · 12 cuotas 21,6%.
+  Las 2 cuotas que ML pone a todos no cuestan. Cargar `cuotasGan` en el candidato y el robot resta solo.
+- `candSetPedir` traba el panel cuando se cargan muchos (redibuja cada vez): chequear `candPuedePedir(c).ok`
+  y escribir `fbSet('candidatos_py/<id>/pedirU', u)` directo. Mismo freno, sin redibujar.
+- Auriculares barridos enteros el 02/10 (683 filas).
+
+## Herramientas de Guay (en la PC, carpeta guay/herramientas — pendiente subir el código)
+- `nissei-harvest.ps1`: baja todo Nissei por categoría (código, precio, foto, link) a JSON.
+- `models.ps1`: junta los colores en modelos y saca lo que ya está en el panel.
+- `montaje.ps1`: arma una imagen con pares de fotos Nissei | ML para comparar rápido.
+- `funciones-chrome.js`: código para pegar en ML y en el panel (mlSearch, mlScan, mlFind, mlCat, mlCuotas, cargarCand).
