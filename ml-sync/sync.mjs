@@ -11095,11 +11095,18 @@ async function main() {
       const vivos = Object.entries(cands).filter(([, c]) => c && !c.no && !c.prodId && (!q || String(c.nombre || '').toLowerCase().includes(q)));
       console.log(`=== CAMPOS GUARDADOS EN LA BASE · ${vivos.length} candidato(s) vivos${q ? ` con "${q}"` : ''} ===`);
       let conCuo = 0, conU = 0;
+      // CUÁNDO SE PREGUNTÓ A ML (03/10/2026): el Polo Black decía 88% contra un precio de ML que ya
+      // no era el de hoy. La edad de la medición es lo que dice si el margen todavía vale.
+      const _edad = (ts) => { const h = (Date.now() - (Number(ts) || 0)) / 3600e3; return !(Number(ts) > 0) ? 'nunca' : h < 48 ? Math.round(h) + ' h' : Math.round(h / 24) + ' d'; };
+      const edades = { fresca: 0, '1-3d': 0, '+3d': 0, nunca: 0 };
       for (const [id, c] of vivos) {
         if (c.cuotasGan != null) conCuo++; if (Number(c.pedirU) > 0) conU++;
-        console.log(`  ${id} · ${String(c.nombre).slice(0, 60)} · usd ${c.usd ?? '—'} · cuotasGan ${c.cuotasGan ?? '—'} · pedirU ${c.pedirU ?? '—'} · mismoOk ${c.mismoOk ?? '—'} · margen ${c.margen ?? '—'}`);
+        const h = (Date.now() - (Number(c.calcTs) || 0)) / 3600e3;
+        if (!(Number(c.calcTs) > 0)) edades.nunca++; else if (h < 24) edades.fresca++; else if (h < 72) edades['1-3d']++; else edades['+3d']++;
+        console.log(`  ${id} · ${String(c.nombre).slice(0, 60)} · usd ${c.usd ?? '—'} · cuotasGan ${c.cuotasGan ?? '—'} · pedirU ${c.pedirU ?? '—'} · mismoOk ${c.mismoOk ?? '—'} · margen ${c.margen ?? '—'} · ML $${c.mlPrecio ?? '—'} medido hace ${_edad(c.calcTs)}`);
       }
       console.log(`\n${conCuo} con cuotasGan · ${conU} con unidades en el pedido`);
+      console.log(`Edad de la medición de ML: ${edades.fresca} de menos de 24 h · ${edades['1-3d']} de 1-3 días · ${edades['+3d']} de más de 3 días · ${edades.nunca} nunca medidos`);
       return;
     }
     if (/^verofertas:/.test(String(process.env.BILLING_PROBE || ''))) {
