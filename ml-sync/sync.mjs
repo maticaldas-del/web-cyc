@@ -25608,8 +25608,13 @@ async function main() {
       try {
         const memP = sup.avisoPerdida || {};
         // Lo que el robot ya volvió atrás solo no se pregunta: va en una línea (01/10/2026).
-        const nuevasP = atrib.filter((x) => x.total <= -1000 && !revertidos.has(x.id) && !(memP[x.id] && x.total > 2 * memP[x.id]));
-        const netoNeg = resumen.n > 0 && resumen.total < 0;
+        // REMATE Y ESCALERA NO SON "PÉRDIDA PARA PREGUNTAR" (03/10/2026): desde que cuentan sólo lo cobrado de
+        // menos (la (a) del Watch S5) dan negativo POR DISEÑO —rematar cuesta precio, se hace para liberar
+        // plata y lugar—. Siguen en la tarjeta y en el total; no disparan el "decime cuál volver" ni el
+        // aviso de neto negativo, que miran sólo las decisiones que buscan ganar más (subir/bajar/prueba).
+        const nuevasP = atrib.filter((x) => !x.rem && x.total <= -1000 && !revertidos.has(x.id) && !(memP[x.id] && x.total > 2 * memP[x.id]));
+        const totSinRem = atrib.filter((x) => !x.rem).reduce((a, x) => a + (Number(x.total) || 0), 0);
+        const netoNeg = resumen.n > 0 && totSinRem < 0;
         const avisarNeto = netoNeg && !memP._netoNeg;
         if (nuevasP.length || avisarNeto || revertidos.size) {
           const L2 = ['🔻 EL ROBOT DE PRECIOS HIZO PERDER PLATA', 'Comparado contra no haber tocado el precio, con el mismo tiempo antes y después.', ''];
