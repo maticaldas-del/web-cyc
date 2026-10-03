@@ -5683,7 +5683,9 @@ const CAND_TOPE_USD = 250;      // YA NO DESCARTA (03/10/2026): ver la regla del
 const CAND_PISO_PCT = 25;       // suyo: "el % sano es de 25 hacia arriba"
 const CAND_MIN_VENT = 100;      // suyo, 03/10/2026: "100 unidades mínimo vendidas, sino no sirve" para entrar al pedido
 const CAND_ENVIO_ARRIBA = 6190; // el peor envío de Full medido en ventas reales, arriba de la barrera
-const CAND_MAX_ML = 40;         // tope de consultas a ML por vuelta (ver abajo)
+// A mano se puede pedir más: `candidatos:go:max=400` (03/10/2026, Guay cargó 350 de una). El 40 es para
+// que la corrida de la noche no se cuelgue; una corrida a mano no lleva nada atrás.
+const CAND_MAX_ML = (() => { const m = String(process.env.BILLING_PROBE || '').match(/^candidatos\b.*\bmax=(\d+)/); return m ? Math.min(500, Math.max(1, parseInt(m[1], 10))) : 40; })();
 // ── LOS QUE DAN SE VUELVEN A MEDIR TODOS LOS DÍAS (26/09/2026) ─────────────────────────
 // Pedido suyo: *"el chat carga productos y precios y el bot en la nube todos los días busca si
 // los precios dan con ML"*. Hasta hoy el que ya daba NO se volvía a medir nunca (sólo al subir
