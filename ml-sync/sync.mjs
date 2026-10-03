@@ -11214,6 +11214,28 @@ async function main() {
       return;
     }
     // BILLING_PROBE=lineaver:<MLA> → LA LÍNEA DE TIEMPO GUARDADA DE UNA PUBLICACIÓN + SU HISTORIAL DE PRECIOS DEL ROBOT · SOLO LEE.
+    // BILLING_PROBE=ventasdia:<palabras>[:<días>] → POR QUÉ SE MOVIÓ EL % DE UN PRODUCTO (03/10/2026). Día por día y
+    // cuenta: unidades, precio cobrado por unidad, neto por unidad, lo que se quedó ML (%) y la publicación. SOLO LEE.
+    if (/^ventasdia:/.test(String(process.env.BILLING_PROBE || ''))) {
+      const [q0, dd] = String(process.env.BILLING_PROBE).slice('ventasdia:'.length).split(':');
+      const pal = q0.toLowerCase().split(/\s+/).filter(Boolean); const DIAS = parseInt(dd) || 60;
+      const prods = (await db.get('cyc/products')) || {};
+      const ps = Object.values(prods).filter((p) => p && pal.every((w) => String(p.name || '').toLowerCase().includes(w)));
+      console.log(`fichas: ${ps.map((p) => p.id + ' ' + p.name).join(' | ')}`);
+      const ids = new Set(ps.map((p) => p.id)); const vp = (await db.get('cyc/ventaprod')) || {};
+      const desde = new Date(Date.now() - DIAS * 864e5 - 3 * 3600e3).toISOString().slice(0, 10).replace(/-/g, '_');
+      for (const dk of Object.keys(vp).sort()) {
+        if (dk < desde) continue; const g = {};
+        for (const v of Object.values(vp[dk] || {})) {
+          if (!v || v.cancelada || !ids.has(v.prodId)) continue;
+          const k = (v.cuenta || '?') + ' ' + (v.mla || '?'); const x = (g[k] = g[k] || { u: 0, tot: 0, neto: 0, est: 0 });
+          x.u += Number(v.qty) || 0; x.tot += Number(v.total) || 0; x.neto += Number(v.neto) || 0; if (v.netoEstimado) x.est++;
+        }
+        const lin = Object.entries(g).map(([k, x]) => `${k} ${x.u}u · cobró ${Math.round(x.tot / x.u)} · neto ${Math.round(x.neto / x.u)} · ML ${x.tot > 0 ? Math.round((1 - x.neto / x.tot) * 100) : '?'}%${x.est ? ' · ' + x.est + ' estimadas' : ''}`);
+        if (lin.length) console.log(`${dk} · ${lin.join('  ||  ')}`);
+      }
+      return;
+    }
     if (/^lineaver:/.test(String(process.env.BILLING_PROBE || ''))) {
       const mla = String(process.env.BILLING_PROBE).slice('lineaver:'.length).trim().toUpperCase();
       const d = (await db.get('mlapi/linea/' + mla)) || {};
