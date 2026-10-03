@@ -217,3 +217,11 @@ match de las categorías que sí dan: **routers, memorias, accesorios de cámara
   antes de cargar unidades. Y antes de cerrar un pedido, mirar los precios de ML de todo lo cargado.
 - **Regla de Matías (03/10):** sin **100 vendidas o más** (corregido por él el mismo día: "sino no sirve") en ML no se cargan unidades (el panel y `pedir` lo frenan;
   sin el dato tampoco entra). Cargá siempre `vendCarga`.
+
+## PROBADOS PRIMERO, Y EL PANEL LOS SEPARA SOLO (03/10/2026, pedido de Matías)
+- Cada corrida arranca por los PROBADOS (fichas con origen Paraguay): en comprasparaguay (fila Nissei) cargar
+  `updNisseiUSD(id, precio)` (y `updNisseiCod` si falta), o `pyNoHabia(id, true)` si Nissei no lo tiene.
+- El panel (Pedidos → Paraguay → Probados) pone ARRIBA sólo lo que DA: precio de Nissei de los últimos 7 días y que deja
+  20% o más (ya se sabe que se venden). Lo que no da / no hay / falta revisar va abajo en un desplegable.
+- Matías compra de lo de arriba con seguridad: por eso cada precio tiene que ser el de HOY.
+- Recién después, el recorrido de productos nuevos.
