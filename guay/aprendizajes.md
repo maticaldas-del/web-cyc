@@ -246,3 +246,9 @@ match de las categorías que sí dan: **routers, memorias, accesorios de cámara
 - **Color exacto:** el selector de la ficha ("Botón N de M, Color") lleva al `/p/` de cada color; cargar el del color pedido.
 - **Parecidos que NO son el mismo:** FreeClip vs FreeClip 2 · KF432 vs KF436 · EF vs RF · Xpro vs Xpro II · SDSQUNR vs A1 ·
   HS80 inalámbrico vs USB · 110V (Paraguay) vs 220V (ML).
+- **Perfumería (03/10):** mismo nombre + mismos ml + misma concentración (EDT/EDP/Parfum). Nada de Elixir/Intense/Le Parfum/
+  Refill/Flame/Energy/Blush/Platinum si Nissei no lo dice. Toy Boy 2 ≠ Toy Boy. Testers de US$ 0,10 no.
+- **Redes:** el sufijo cambia el producto (TL-SG1024D vs DE, SF1016 vs SF1016D, AX55 vs AX55 Pro, WR1200 vs WR1200E, T2U Plus
+  vs Nano); los Deco/Halo vienen en packs distintos (M4/M5/S7/X20/X60/E4) — el pack tiene que ser el mismo.
+- **Color:** si el color de Nissei no existe en ML o tiene menos de 100 vendidas, se descarta (no se toma otro color).
+- **Medir muchos de una:** si cargás cientos, pedile a Claude `candidatos:max=400:go` (la corrida normal mide 40).

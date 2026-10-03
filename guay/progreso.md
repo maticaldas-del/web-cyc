@@ -204,3 +204,11 @@ Nikon (25) · 116518 SSD SanDisk Plus 2TB (ML matcheó otro) · 80077 dock Satel
   6 otra versión, resto otro código/edición/montura). Pedido de Matías evaluado: Sérum Medicube 158281 NO da (vendedor nuevo a
   $36.000, Matías lo sacó); Lexar 138585 y 141677 dan 80%+ con el precio de ML de hoy confirmado.
   **Sigue:** fichas de color de los 64 · redes y perfumería (445 fichas) · revisar fotos y cargar.
+- 03/10 · Tanda 3: **350 candidatos activos** (fuente chat, enNissei; 3 descartados a mano). +26 de la primera lista · +29 de
+  color exacto (Sony WH-CH520/CH720N/ULT900N/WF-C510/WF-C710N/WI-C100/ZX310AP/ZX110AP, Logitech G522, Razer Blackshark V2 X
+  verde, Redragon H260 blanco, VGR V-001 azul/V-401 rojo, Anker Q20i blanco, Corsair Void V2 negro…) · +197 de redes y
+  perfumería (4 eran el mismo catálogo que otro código, no se duplicaron). Descartados de color: el color no existe en ML o
+  tiene <100 vendidas. 66 descartados de redes/perfumes (packs Deco/Halo distintos, modelos parecidos, otra versión,
+  concentración, tamaño o género, testers). **Sigue:** el resto de las categorías de Nissei (5.338 modelos en 258 categorías,
+  sin celulares/notebooks/TV/cámaras/monitores/impresoras/placas/maquillaje/termos/sillas/UPS/robots, tope US$ 215).
+  El robot había medido 18 de los 350: se largó `candidatos:max=400:go` para medirlos todos de una.
