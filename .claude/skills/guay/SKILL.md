@@ -31,7 +31,7 @@ Te podés cortar en cualquier momento: **guardá a medida que avanzás, nunca al
   el 17%) · link de la página. Sin fila de Nissei → descartado.
 
 ## 3 · Descartar sin ir a ML
-- más de US$ 250 · más de 40×40×40 cm o 3 kg · celulares, notebooks, tablets, TV, cámaras, monitores,
+- (YA NO hay tope de US$ 250, regla del 03/10/2026: se carga aunque sea caro; el robot lo mide al precio de ML y nunca arriba de $650.000, el techo de venta) · más de 40×40×40 cm o 3 kg · celulares, notebooks, tablets, TV, cámaras, monitores,
   impresoras, placas · Dolce & Gabbana · lo que ya está en el panel (Para probar, descartados o ficha)
   · lo que `progreso.md` dice que se miró hace menos de 4 semanas (salvo que haya bajado el precio).
 

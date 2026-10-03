@@ -232,3 +232,6 @@ match de las categorías que sí dan: **routers, memorias, accesorios de cámara
   siempre el mismo modelo más barato antes de cargar. · Sacar color, voltaje y sufijos tipo /15 de la búsqueda: el código
   de modelo sin sufijo encuentra más. · Nissei a veces escribe mal la spec (C20 "AC1200" es AC750): mandan foto y código.
 - **Regla de Matías (03/10):** toda venta que dejó menos de 20% no cuenta para el ritmo de pedidos (eran remates).
+- **SE ACABÓ EL TOPE DE US$ 250 (03/10/2026, regla de Matías):** *"comprar productos hasta un monto que, quedándonos el 25%
+  después de pagar todo, no se venda a más de $650.000"*. Cargá también los caros: el robot los mide al precio de ML y, si
+  el competidor está arriba de $650.000 (el techo de venta), los mide a $650.000. Si ahí no da 25%, los descarta él.
