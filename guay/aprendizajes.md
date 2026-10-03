@@ -200,3 +200,9 @@ que en cada una aparecen todos. Una descarga que da justo 10.000 es esta pared, 
 - **Cada color/variante es otro catálogo** también en teclados (Pop Keys) y cables (largo): medir contra el del mismo color/largo.
 - **Para escribirle a CYC WEB textos con saltos de línea:** pegar con `ClipboardEvent('paste')` en el div `[aria-label=Prompt]`
   y después Enter (escribiendo con type, cada salto de línea manda el mensaje).
+
+## LÍMITE DEL MÉTODO: "PASADA ENTERA" NO ES "MIRADA ENTERA" (02/10)
+"Pasada entera" = cada modelo de Nissei se buscó en ML. Pero el emparejador automático encuentra el catálogo correcto en
+**~50% de los modelos**: si el título de ML no trae el código de modelo o la marca, o si el producto no se vende en ML, ese
+modelo no aparece, y **lo que no emparejó no se miró a mano**. En el próximo barrido, revisar a mano los modelos sin
+match de las categorías que sí dan: **routers, memorias, accesorios de cámara, cuidado personal**.

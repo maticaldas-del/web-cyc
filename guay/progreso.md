@@ -138,3 +138,29 @@ Nissei en comprasparaguay: 277 categorías con filas, ~14.045 filas (contadas co
   zapatillas-y-calzado, whisky, golf, cama-mesa-bano, otras-bebidas, pochoclera.
 · **Próximo barrido:** el mismo método por categoría, en ~4 semanas (o antes si baja un precio).
 · Cargados por el Guay del 02/10 (PC nueva): 25; descartados después por CYC WEB 5 → 20 vivos.
+
+**Las 145 categorías chicas pasadas enteras el 02/10:** rubor, sombra-de-ojos, accesorios-para-gopro, lapiz, bateria, dron,
+corrector, polvo, resina-para-impresora-3d, taza-vaso-termico, gloss, accesorios-para-celular, webcam, microfono,
+concentrador-usb, depiladora, mochilas-y-carteras, desodorante, aparador-de-vello, estetoscopio, lampara,
+pulsera-para-reloj, softbox, accesorios-de-audio-y-video, camara-para-auto, bolso-para-camarafilmadora, masajeador,
+soporte-para-celular, interruptor, accesorios-para-videojuegos, ventilador, tripode, protector-de-pantalla-para-celular,
+contador-detector-de-billetes-falsos, accesorios-para-tablet, lector-de-tarjeta-de-memoria, palo-selfie,
+cepillo-de-dientes, jarra-pava, rimel, filtro-de-lente, herramientas-y-equipos, protector-solar, soporte-para-monitor,
+adaptador-inalambrico, sistemas-de-intercomunicacion, toner, microfono-de-solapa, balanza, iluminador, otras-maquillajes,
+teclado-para-tablet, portero-electronico-timbre, cargador-inalambrico, repetidor-de-senal, pet-shop,
+lapiz-para-pantalla-tactil, pincel-para-maquillaje, binoculares-telescopio, otros-utensilios-domesticos, delineador,
+otros-equipos-de-red, equipos-para-dj, microfono-para-gamingstreaming, reproductor-de-medios-digitales,
+anteojos-de-realidad-virtual, altavoz, controle-de-acesso-facial, funda-para-tablet, mata-insectos,
+presentador-multimedia-laser-pointer, control-remoto, adaptador-pci-express, humidificador-de-aire, abridor,
+otros-accesorios-para-auto, llavero, lector-biometrico, ninera-electronica, caja-bolsa-termica, cargador-para-auto,
+pantalla-para-proyector, limpiador-facial, filtro-de-linea, pasta-termica, captura-de-videotv, calculadora,
+simulador-de-vuelo, joystick, grabador-traductor-de-voz, botella-de-agua, accesorios-para-bicicleta,
+walkie-talkie-talkabout, camera-infantil, soporte-para-notebook, radioaficionado-px, lector-de-e-books, linterna,
+billetera, cajon-para-disco-duro, esponja-para-maquillaje, modulo-de-potencia, irrigador-bucal, alarma,
+accesorios-para-drones, tensiometro, camara-de-marcha-atras, llave-de-fenda, fiambrera-termica,
+instrumentos-de-medicion, termometro, sensor-de-movimiento, manicuria, escaner, papel-para-impresora, cintas-led,
+mascara-para-pestanas, soporte-para-proyector, piezas-y-componentes-electricos, munecos-y-munecas, pulsera,
+medios-virgene, cinta-para-impresora, pelicula-para-tablet, balsamo-labial, peluches, transmisor-fm, quita-callos,
+molinete, radio-reloj-despertador, mesa-de-mezcla, sensor-de-estacionamiento, espejo-de-maquillaje, bluetooth,
+vasos-copas-tazas, rinonera, bebe, equipos-para-conferencias, nebulizador, cargador-para-notebook,
+cepillo-para-el-pelo, convertidor-de-medios, accesorios-para-reloj, utensilios-para-asado, carteira-para-criptomoedas.
