@@ -2430,7 +2430,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='21.56';
+const APP_VERSION='21.57';
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
 // muestre la versión y la fecha de actualización y que tenga un desplegable predeterminado cerrado".
 // Y el mismo día: "que ponga fecha de cada modificación y haya una barrita para scrollear y que
@@ -2441,6 +2441,7 @@ const APP_VERSION='21.56';
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'21.57',f:'03/10/2026',h:'16:30',c:[{n:3,t:'Pedidos y Armar caja: TODA venta que dejó menos de 20% deja de contar para calcular cuánto comprar o mandar (antes hacía falta además una prueba de remate y se colaban). Las ventas siguen en Ventas y en la plata.'}]},
   {v:'21.56',f:'03/10/2026',h:'16:10',c:[{n:3,t:'Pedidos Paraguay: se acabaron los pedidos "a mano" con cantidades fijas. El panel decide: si con lo que hay alcanza, o el producto todavía no llegó y no tiene ventas (como el TP-Link TL-WN822N), sale de la lista; si hace falta, pone la cantidad según lo que vende. Bs As no cambia.'}]},
   {v:'21.55',f:'03/10/2026',h:'15:45',c:[{n:1,t:'Paraguay · Probados: cada tarjeta muestra las dos fotos (Paraguay y ML) y los dos links, como en Nuevos.'},{n:1,t:'Paraguay · Nuevos: el simulador va al final y el historial de pedidos se fue (está en 🧾 Pedido).'},{n:1,t:'Pedidos: se escondieron los botones Todos / Urgente / Poco stock / Suficiente.'}]},
   {v:'21.54',f:'03/10/2026',h:'15:20',c:[{n:2,t:'Paraguay · Nuevos: los que tienen menos de 100 vendidas en ML (o sin el dato) bajan a su propio desplegable "no se pueden pedir"; arriba sólo lo que se puede comprar. Las vendidas se pintan verdes desde 100.'}]},
@@ -9672,32 +9673,20 @@ const PAP_DIAS=7;
 // (ganancia contra costo + gestión de Full), no con una marca que se cae sola.
 // No se descarta: la que no tiene costo, la que no tiene neto y los reclamos (el producto salió
 // igual y el neto en cero no es un precio). Falta de dato no es remate.
+// ── 03/10/2026, REGLA SUYA, DEFINITIVA: TODA venta que dejó menos de 20% NO cuenta para pedir ni mandar ──
+// *"no quiero que se tomen en cuenta las ventas que se le ganó menos del 20%. Si en 30 días se vendieron
+// 10 a un 30% y 10 a un 19%, para el pedido tiene que decir que se vendieron 10"*. Lo disparó el Pendrive
+// Ultra Shift: meses sin vender, se remató, y Pedidos pedía comprar por esas ventas. Reemplaza la regla
+// O2 del 25/09 (que además pedía una "prueba" de remate y dejaba pasar justo éstas).
+// Sigue sin descartarse lo que no tiene dato: reclamos, sin neto y sin costo (falta de dato no es remate).
+const VENTA_MIN_PCT_RITMO=20;
 function ventaEnRemate(v,dk){
   if(!v||_esReclamo(v)||!(Number(v.neto)>0))return false;
   const vv=dk&&!v._dateKey?{...v,_dateKey:dk}:v;
   if(ventaSinCostoVP(vv))return false;   // sin costo no hay % que medir (#10)
   const c=efectivoCostoVP(vv); if(!(c>0))return false;
   const pct=((v.neto||0)-c)/(c+gestDivVP(vv))*100;
-  const piso=parseFloat((state.mlconfig||{}).minPct)||30;
-  if(!(pct<piso))return false;
-  // ── Y ADEMÁS TIENE QUE HABER UN REMATE DE VERDAD (25/09/2026, O2 de la segunda vuelta) ──
-  // Regla suya: *"para NO reponer más un producto, tiene que ser segura la decisión. tiene que pasar
-  // por varias cosas"*. Un % bajo solo NO alcanza: lo que vende entre 20% y el piso (el robot no lo
-  // sube) o una venta suelta con envío caro o de carrito quedaban afuera y ese producto dejaba de
-  // pedirse. Hace falta, además del % bajo, UNA prueba de que esa publicación estaba en remate
-  // cuando se vendió:
-  //   · la etiqueta del robot en esa venta dice "remate" (cyc/rescateventa), o
-  //   · estaba marcada liquidando desde ANTES de la venta (cyc/nosubir, con su fecha), o
-  //   · el robot la bajó en remate o escalera ANTES de la venta (cyc/autoprecio).
-  const mla=v.mla||'', tsV=Number(v.ts)||Date.parse(String(dk||v._dateKey||'').replace(/_/g,'-'));
-  const et=(state.rescateventa||{})[(dk||v._dateKey)+'__'+v.id];
-  if(et&&et.estado==='remate')return true;
-  if(!mla)return false;
-  const ns=(state.nosubir||{})[mla];
-  if(ns&&ns.fecha&&isFinite(tsV)&&Date.parse(ns.fecha)<=tsV)return true;
-  const ap=(state.autoprecio||{})[mla];
-  if(ap&&ap.tipo==='baja'&&/remate|escalera/.test(String(ap.por||''))&&isFinite(tsV)&&(Number(ap.ts)||0)<=tsV)return true;
-  return false;
+  return pct<VENTA_MIN_PCT_RITMO;
 }
 // Ritmo normal por día de un producto, sumando las cuentas (o una sola). null si el robot no lo tiene.
 function ritmoNormalDe(pid,loc){
