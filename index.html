@@ -2429,7 +2429,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='21.47';
+const APP_VERSION='21.48';
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
 // muestre la versión y la fecha de actualización y que tenga un desplegable predeterminado cerrado".
 // Y el mismo día: "que ponga fecha de cada modificación y haya una barrita para scrollear y que
@@ -2440,6 +2440,7 @@ const APP_VERSION='21.47';
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'21.48',f:'03/10/2026',h:'12:30',c:[{n:3,t:'Paraguay · Productos nuevos: no se pueden cargar unidades de un candidato con menos de 25 vendidas en ML (o sin el dato). Y un margen de 80% o más sigue en rojo aunque hayas confirmado que es el mismo producto: el Polo Black decía 88% y en ML ya estaba en oferta a la mitad.'}]},
   {v:'21.47',f:'03/10/2026',h:'11:40',c:[{n:1,t:'Paraguay · Productos nuevos: cada candidato dice en su renglón cuántas ventas tiene en ML (🛒 N vendidas), en verde de 25 para arriba.'}]},
   {v:'21.46',f:'03/10/2026',h:'11:20',c:[{n:1,t:'Paraguay · Productos nuevos: botones para ordenar la lista de mayor a menor por % de ganancia, más vendidos en ML, $ por unidad, $ por dólar invertido o más barato. Se acuerda del último que elegiste.'}]},
   {v:'21.45',f:'03/10/2026',h:'11:05',c:[{n:1,t:'Puntaje del día: 7 puntos = $115.000 de ganancia en el día (lo que hace falta para que a cada uno de los 3 le queden $900.000 por mes pagando todo). 10 puntos en $230.000.'}]},
@@ -10682,6 +10683,7 @@ const CAND_VENCE_DIAS=45;
 // botón para sacarlo de un toque. Y BAJAR siempre se puede, aunque el producto ya no dé: si no,
 // lo que se cargó cuando todavía daba quedaría trabado adentro del pedido para siempre.
 const CAND_PISO_PCT=25;
+const CAND_MIN_VENT=25; // suyo, 03/10/2026: mínimo de vendidas en ML para cargar unidades
 // ── LOS TRES NÚMEROS DEL PEDIDO LOS ELIGE ÉL, Y VIVEN EN LA BASE (19/09/2026) ────────
 // Pedido suyo: *"tope del pedido (…) poder elegir tope de unidades por producto"*.
 // ESTO DA VUELTA SU DECISIÓN DEL 18/09 —*"sin tope solo una barra que marque el total del pedido,
@@ -10726,6 +10728,11 @@ function candPuedePedir(c){
   const m=Number(c.margen);
   if(c.margen==null||!isFinite(m))return{ok:false,motivo:'todavía no está medido en ML'};
   if(m<CAND_PISO_PCT)return{ok:false,motivo:`da ${m.toFixed(1)}% y tu piso es ${CAND_PISO_PCT}%`};
+  // Regla suya del 03/10/2026: "mínimo que tenga 25 unidades vendidas". Sin el dato tampoco entra:
+  // de lo que no se sabe si se vende no se compra. (El mismo freno está en el comando `pedir`.)
+  const v=candVentasDe(c);
+  if(v==null)return{ok:false,motivo:`no tiene cargadas las vendidas en ML (mínimo ${CAND_MIN_VENT})`};
+  if(v<CAND_MIN_VENT)return{ok:false,motivo:`vendió ${v} en ML y el mínimo es ${CAND_MIN_VENT}`};
   return{ok:true,motivo:''};
 }
 function candDias(c){return c&&c.ts?Math.max(0,Math.round((Date.now()-c.ts)/86400000)):null;}
@@ -10904,7 +10911,7 @@ function candPreciosPartes(c){
   // (no hay con qué comparar ese precio).
   const D=[];
   if(Array.isArray(c.mlReparos))c.mlReparos.forEach(x=>D.push(x));
-  if(mMin!=null&&mMin>=80)D.push(`${mMin.toFixed(0)}% es demasiado: cuando el catálogo de ML es OTRO producto el margen sale así`);
+  if(mMin!=null&&mMin>=80)D.push(`${mMin.toFixed(0)}% es demasiado: o el catálogo de ML es OTRO producto, o en ML apareció alguien más barato (una oferta) después de medirlo. Abrí la página de ML y mirá el precio de HOY`);
   if(c.mlHayFull===false&&vend<=1&&min)D.push('un solo vendedor y sin Full: ese precio no tiene contra qué compararse');
   // "✅ ES EL MISMO PRODUCTO" (02/10/2026, pedido suyo: *"como hago para decir que es correcto y que
   // los productos matchean bien? podes poner un botoncito"*). La confirmación vale para ESE catálogo
@@ -10912,7 +10919,10 @@ function candPreciosPartes(c){
   // Lo único que sigue a la vista es el catálogo más barato del mismo producto, que es otra cosa:
   // cambia el margen aunque el producto esté bien emparejado.
   R.mismoOk=!!(c.mismoOk&&c.mismoOk===candCatId(c));
-  R.dudas=R.mismoOk?D.filter(x=>/^hay OTRO cat/.test(String(x))):D;
+  // EL POLO BLACK (03/10/2026): "es el mismo producto" tapaba TAMBIÉN el aviso de 80%+, y decía 88%
+  // contra $379.000 cuando en ML ya lo vendían a $194.500 en oferta. Confirmar el producto no confirma
+  // el precio: el aviso de margen altísimo queda siempre.
+  R.dudas=R.mismoOk?D.filter(x=>/^hay OTRO cat|es demasiado/.test(String(x))):D;
   // LAS DOS FOTOS, LADO A LADO (01/10/2026). Pedido suyo: *"el bot no vio las fotos de los
   // productos, tienen el mismo nombre pero no son nada que ver a simple vista"*. No se le paga a
   // nadie para "mirarlas": se muestran juntas y el ojo decide en un segundo. La de ML la guarda el
