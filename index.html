@@ -2430,7 +2430,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='21.50';
+const APP_VERSION='21.51';
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
 // muestre la versión y la fecha de actualización y que tenga un desplegable predeterminado cerrado".
 // Y el mismo día: "que ponga fecha de cada modificación y haya una barrita para scrollear y que
@@ -2441,6 +2441,7 @@ const APP_VERSION='21.50';
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'21.51',f:'03/10/2026',h:'14:20',c:[{n:3,t:'Paraguay · Probados: arriba sólo lo que DA (Nissei lo tiene, precio mirado en los últimos 7 días y deja 20% o más, porque ya se sabe que se vende). Lo que no da, no hay o falta revisar va abajo en un desplegable con el motivo. El precio lo actualiza Guay recorriendo los probados primero.'}]},
   {v:'21.50',f:'03/10/2026',h:'13:40',c:[{n:2,t:'Pedidos: una ficha reusada para otro producto (Buds 6 → Buds 6 Play) ya no pide comprar con las ventas del producto viejo. Las ventas siguen en Ventas, sólo dejan de contar para el ritmo.'}]},
   {v:'21.49',f:'03/10/2026',h:'13:10',c:[{n:3,t:'Paraguay: la pestaña "🧾 Pedido" junta el pedido del momento — probados y nuevos juntos, con el total, el tope y un solo mensaje para Nissei — y abajo los pedidos ya hechos. En Probados cada tarjeta tiene "🧾 pedir __ u." (o "+ las sugeridas"). "✅ Ya lo pedí (todo)" registra los probados como reposición y los nuevos como pedido de nuevos.'},{n:2,t:'El mínimo para cargar un producto nuevo al pedido pasa a 100 vendidas en ML.'}]},
   {v:'21.48',f:'03/10/2026',h:'12:30',c:[{n:3,t:'Paraguay · Productos nuevos: no se pueden cargar unidades de un candidato con menos de 25 vendidas en ML (o sin el dato). Y un margen de 80% o más sigue en rojo aunque hayas confirmado que es el mismo producto: el Polo Black decía 88% y en ML ya estaba en oferta a la mitad.'}]},
@@ -11485,7 +11486,7 @@ function pyArmadoFilas(){
     const pr=(state.products||[]).find(x=>x.id===pid);
     const nu=pr?(parseFloat(pr.nisseiUSD)||0):0;
     const usd=nu>0?nu:(pr?Math.round((costUSDof(pr)||0)/RECARGO_PY*100)/100:0);
-    const mx=pr?maxCompraDe(pr):null;
+    const mx=pr?maxCompraDe(pr,PY_PROB_PISO):null;   // probados: 20% (se sabe que se venden)
     const maxWeb=(mx&&!mx.motivo&&mx.usdPy>0)?Math.floor(mx.usdPy*100)/100:null;
     out.push({pid,pr,u,usd,sinHoy:!(nu>0),cod:(pr&&pr.codPy)?String(pr.codPy).trim():'',
       nom:pr?pr.name:'(ficha borrada)',maxWeb,caro:maxWeb!=null&&usd>maxWeb+0.005});
@@ -14100,7 +14101,7 @@ function pedPyLineaHTML(prod){
   }else partes.push(`<span style="color:var(--muted)" title="No hay publicación viva con el neto calculado: no se puede medir.">💰 máx sin medir</span>`);
   return `<div style="flex-basis:100%;font-size:.72rem;line-height:1.6;display:flex;flex-wrap:wrap;gap:4px 12px;padding:4px 0">${partes.join('<span style="color:var(--muted)">·</span>')}</div>`;
 }
-function maxCompraDe(p){
+function maxCompraDe(p,metaPct){
   if(!p)return null;
   const mg=margenMLDe(p);
   if(!mg||!(mg.precio>0)||!(mg.neto>0))return {motivo:'sinprecio'};
@@ -14117,7 +14118,7 @@ function maxCompraDe(p){
   const c2=P===precio?{com:comHoy}:comisionEnPrecio(comHoy,precio,P);
   if(!c2)return {motivo:'sincom'};
   const impPct=(Number(mg.mlExtra)>0&&precio>0)?(Number(mg.mlExtra)/precio*100):0;
-  const m=(parseFloat((state.mlconfig||{}).targetPct)||25)/100;
+  const m=(metaPct>0?metaPct:(parseFloat((state.mlconfig||{}).targetPct)||25))/100;
   const imp=Math.round(P*impPct/100);
   const netoP=P-c2.com-gest;
   // (netoP − merc − imp) / (merc + imp + gest) = m   →   merc = (netoP − imp·(1+m) − m·gest) / (1+m)
@@ -14128,6 +14129,30 @@ function maxCompraDe(p){
   const chk=simMargen({precio:P,mercaderia:merc,gest,comision:c2.com,impPct,cuotasPct:0});
   return {P,fuente,merc:Math.round(merc),usd,usdPy:usd!=null?usd/RECARGO_PY:null,meta:Math.round(m*100),
     chk:chk.margen,hoyUSD:costUSDof(p)||0,esPy:p.origen==='py'};
+}
+// ── PROBADOS: ¿LO PUEDO PEDIR TRANQUILO? (03/10/2026) ───────────────────────────────────────
+// Pedido suyo: *"que el chat local revise y deje ahí lo que da el precio (…) al 20% ya que sabemos que
+// se vende bien (…) los que no dan que estén abajo de todo en un desplegable (…) y yo sé que si están
+// ahí es porque el precio da y porque hay stock en Nissei"*. Guay recorre los probados primero
+// (`updNisseiUSD` / `pyNoHabia`); con eso cada pedido de Paraguay queda en uno de cuatro estados:
+//   da      → precio de Nissei mirado hace ≤ PY_PROB_FRESCO_DIAS y ≤ al máximo para quedar en 20%
+//   noda    → Nissei lo tiene pero más caro que ese máximo (o ni regalado llega)
+//   notiene → Nissei no lo tenía (`py_sinstock`)
+//   sinrev  → sin precio de Nissei, o mirado hace más de PY_PROB_FRESCO_DIAS: falta que Guay lo revise
+const PY_PROB_PISO=20, PY_PROB_FRESCO_DIAS=7;
+function pyProbVeredicto(ped){
+  const pr=(state.products||[]).find(x=>x.id===ped.prodId)||prodByName(ped.producto);
+  if(!pr)return{k:'sinrev',txt:'sin ficha'};
+  if((state.pySinStock||{})[pr.id])return{k:'notiene',txt:'Nissei no lo tenía'};
+  const nu=parseFloat(pr.nisseiUSD)||0, ts=Number(pr.nisseiTs)||0;
+  const dias=ts?Math.floor((Date.now()-ts)/864e5):null;
+  if(!(nu>0)||dias==null||dias>PY_PROB_FRESCO_DIAS)return{k:'sinrev',txt:nu>0?`precio de Nissei de hace ${dias==null?'?':dias} días: falta revisarlo`:'sin precio de Nissei: falta revisarlo'};
+  const mx=maxCompraDe(pr,PY_PROB_PISO);
+  if(!mx||mx.motivo)return{k:'sinrev',txt:'sin margen medido en ML: no se puede saber si da'};
+  if(!(mx.usdPy>0))return{k:'noda',txt:`ni regalado llega al ${PY_PROB_PISO}%`};
+  const mxW=Math.floor(mx.usdPy*100)/100;
+  if(nu>mxW+0.005)return{k:'noda',txt:`Nissei US$ ${nu.toFixed(2)} · máx para ${PY_PROB_PISO}%: US$ ${mxW.toFixed(2)}`};
+  return{k:'da',txt:`Nissei US$ ${nu.toFixed(2)} · máx US$ ${mxW.toFixed(2)} · mirado hace ${dias} d`};
 }
 function maxCompraHTML(p){
   const r=maxCompraDe(p); if(!r)return'';
@@ -14433,7 +14458,20 @@ function renderPedidos(){
   // uso. borrar lo relacionado"*. Agrupaba los pedidos por proveedor y le sumaba el descuento por
   // volumen de cada uno; nunca se apretó el botón. La lista va siempre ordenada por la plata que
   // se pierde si no se repone a tiempo, que es la única forma en que se usa.
-  el.innerHTML=peds.slice().sort(_pedSortFnRiesgo).map(p=>_pedidoItemHtml(p,{showRiesgo:true})).join('');
+  if(isBsas)el.innerHTML=peds.slice().sort(_pedSortFnRiesgo).map(p=>_pedidoItemHtml(p,{showRiesgo:true})).join('');
+  else{
+    // PARAGUAY · PROBADOS: arriba sólo lo que DA (precio de Nissei de esta semana y al 20%); lo demás abajo,
+    // en un desplegable, con el motivo (ver pyProbVeredicto).
+    const G={da:[],noda:[],notiene:[],sinrev:[]};
+    peds.slice().sort(_pedSortFnRiesgo).forEach(p=>{const v=pyProbVeredicto(p);G[v.k].push({p,v});});
+    const card=({p,v})=>`<div style="font-size:.72rem;margin:0 0 3px 4px;color:${v.k==='da'?'var(--green)':v.k==='noda'?'var(--red)':'var(--muted)'}">${v.k==='da'?'✅ da':v.k==='noda'?'🔴 no da':v.k==='notiene'?'⚪':'❔'} · ${v.txt}</div>`+_pedidoItemHtml(p,{showRiesgo:true});
+    const grupo=(t,arr,col)=>arr.length?`<div style="font-size:.76rem;font-weight:700;color:${col};margin:12px 0 6px">${t} (${arr.length})</div>`+arr.map(card).join(''):'';
+    const resto=G.noda.length+G.notiene.length+G.sinrev.length;
+    el.innerHTML=`<div style="font-size:.72rem;color:var(--muted);margin:2px 0 8px">✅ Arriba sólo lo que <b style="color:var(--text)">da</b>: Nissei lo tiene, el precio se miró en los últimos ${PY_PROB_FRESCO_DIAS} días y deja ${PY_PROB_PISO}% o más. Lo deja al día Guay, que recorre los probados primero.</div>`
+      +(G.da.length?G.da.map(card).join(''):`<div class="empty-msg">Todavía ninguno confirmado: falta que Guay revise los precios de Nissei.</div>`)
+      +(resto?`<details style="margin-top:14px;background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:10px 12px"><summary style="cursor:pointer;font-size:.82rem;font-weight:700">⬇️ No da, no hay o falta revisar (${resto})</summary>
+        ${grupo('❔ Falta revisar el precio en Nissei',G.sinrev,'var(--amber)')}${grupo('🔴 No da el precio',G.noda,'var(--red)')}${grupo('⚪ Nissei no lo tiene',G.notiene,'var(--muted)')}</details>`:'');
+  }
   // LA CANASTA VA ARRIBA DE TODO Y EN UN SOLO LUGAR. Se pega acá, después de que la lista ya se
   // dibujó, y no adentro de cada rama: la lista de Paraguay se arma en dos caminos distintos
   // (agrupada por proveedor y suelta) y con la inyección repetida una de las dos iba a quedarse
