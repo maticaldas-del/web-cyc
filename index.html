@@ -2430,7 +2430,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='21.58';
+const APP_VERSION='21.59';
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
 // muestre la versión y la fecha de actualización y que tenga un desplegable predeterminado cerrado".
 // Y el mismo día: "que ponga fecha de cada modificación y haya una barrita para scrollear y que
@@ -2441,6 +2441,7 @@ const APP_VERSION='21.58';
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'21.59',f:'03/10/2026',h:'17:00',c:[{n:1,t:'🧾 Pedido minimalista: cada producto en un renglón con foto, nombre, %, unidades y subtotal. Tocando el producto se abre todo el detalle.'}]},
   {v:'21.58',f:'03/10/2026',h:'16:45',c:[{n:3,t:'Techo de precio en ML: de $600.000 a $650.000 (el robot puede subir hasta ahí).'}]},
   {v:'21.57',f:'03/10/2026',h:'16:30',c:[{n:3,t:'Pedidos y Armar caja: TODA venta que dejó menos de 20% deja de contar para calcular cuánto comprar o mandar (antes hacía falta además una prueba de remate y se colaban). Las ventas siguen en Ventas y en la plata.'}]},
   {v:'21.56',f:'03/10/2026',h:'16:10',c:[{n:3,t:'Pedidos Paraguay: se acabaron los pedidos "a mano" con cantidades fijas. El panel decide: si con lo que hay alcanza, o el producto todavía no llegó y no tiene ventas (como el TP-Link TL-WN822N), sale de la lista; si hace falta, pone la cantidad según lo que vende. Bs As no cambia.'}]},
@@ -11512,24 +11513,38 @@ function pedidoMomentoHTML(){
   const puesto=crudo*RECARGO_PY, tope=pedTopeUSD();
   if(!A.length&&!N.filas.length)return `<div style="margin-bottom:16px;padding:12px 13px;background:var(--surface2);border:1px dashed var(--border2);border-radius:10px;font-size:.74rem;color:var(--muted)">🧾 <b style="color:var(--text)">Pedido del momento: vacío.</b> Cargá unidades en <b>✅ Productos probados</b> (la casilla "🧾 pedir" de cada tarjeta) o en <b>🆕 Productos nuevos</b>, y aparece todo acá junto. <button class="btn btn-add" style="font-size:.64rem;padding:4px 10px;margin-left:6px" onclick="pedNuevosLlenar()">🪄 Llenar con nuevos</button></div>`;
   const inp=(val,on)=>`<input type="number" min="0" step="1" value="${val}" onchange="${on}" style="width:56px;font-size:.85rem;padding:4px 6px;text-align:center;background:var(--surface);border:1px solid var(--border);border-radius:6px;color:var(--text)">`;
-  const fila=(nom,cod,u,usd,on,quitar,extra)=>`<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;padding:7px 0;border-bottom:1px dashed var(--border)">
-      <div style="flex:1;min-width:170px"><div style="font-size:.82rem;font-weight:600;line-height:1.3">${nom}</div>
-        <div style="font-size:.66rem;color:var(--muted)">${cod?'🔖 '+cod:'<span style="color:var(--amber)">🔖 sin código: no entra en el mensaje</span>'}${extra?' · '+extra:''}</div></div>
-      <div style="font-size:.74rem;color:var(--muted);white-space:nowrap">${usd>0?u2(usd)+' c/u':'<span style="color:var(--red)">sin precio</span>'}</div>
-      ${inp(u,on)}<span style="font-size:.7rem">u.</span>
-      <div style="font-size:.76rem;min-width:74px;text-align:right">${usd>0?u2(usd*u):'—'}</div>
-      <button class="btn" onclick="${quitar}" title="Sacarlo del pedido" style="font-size:.75rem;padding:3px 9px;color:var(--red);border-color:rgba(239,68,68,.35)">✕</button>
+  // MINIMALISTA (03/10/2026, él: "como en los otros lados, con las cosas básicas y si quiero data clickear en el
+  // producto"): a la vista foto, nombre, %, unidades y subtotal; el detalle se abre tocando el producto.
+  // Las unidades y la ✕ van AFUERA del <details> para que tocarlas no lo abra.
+  const fila=(nom,cod,u,usd,on,quitar,extra,foto,pct,pctCol,det)=>`<div style="display:flex;align-items:flex-start;gap:8px;padding:7px 0;border-bottom:1px dashed var(--border)">
+      <details style="flex:1;min-width:0"><summary style="cursor:pointer;list-style:none;display:flex;align-items:center;gap:9px">
+        ${foto?`<img src="${foto}" loading="lazy" onerror="this.style.visibility='hidden'" style="width:40px;height:40px;object-fit:contain;background:#fff;border-radius:7px;flex-shrink:0">`:`<div style="width:40px;height:40px;border:1px dashed var(--border);border-radius:7px;flex-shrink:0"></div>`}
+        <div style="min-width:0;flex:1"><div style="font-size:.84rem;font-weight:600;line-height:1.3">${nom}</div>
+          <div style="font-size:.66rem;color:var(--muted)">${cod?'🔖 '+cod:'<span style="color:var(--amber)">🔖 sin código</span>'} · ${usd>0?u2(usd)+' c/u':'<span style="color:var(--red)">sin precio</span>'} · detalle ▾</div></div>
+        ${pct!=null?`<b style="font-size:1.05rem;color:${pctCol}">${pct}</b>`:''}
+      </summary><div style="padding:6px 0 4px 49px;font-size:.72rem;color:var(--muted);line-height:1.6">${extra||''}${det||''}</div></details>
+      <div style="display:flex;align-items:center;gap:6px;white-space:nowrap">${inp(u,on)}<span style="font-size:.7rem">u.</span>
+        <div style="font-size:.76rem;min-width:64px;text-align:right">${usd>0?u2(usd*u):'—'}</div>
+        <button class="btn" onclick="${quitar}" title="Sacarlo del pedido" style="font-size:.75rem;padding:3px 9px;color:var(--red);border-color:rgba(239,68,68,.35)">✕</button></div>
     </div>`;
-  const filasA=A.map(f=>fila(f.nom,f.cod,f.u,f.usd,`pyArmSet('${f.pid}',this.value)`,`pyArmSet('${f.pid}',0)`,
-    (f.sinHoy?'<span style="color:var(--amber)">sin precio de hoy: es lo que pagaste</span>':'precio de hoy')
-    +(f.maxWeb!=null?` · <span style="color:${f.caro?'var(--red)':'var(--green)'}">máx ${u2(f.maxWeb)}${f.caro?' · 🔴 a este precio no da':''}</span>`:''))).join('');
+  const filasA=A.map(f=>{const ft=f.pr?fotoDeProducto(f.pr):null;
+    return fila(f.nom,f.cod,f.u,f.usd,`pyArmSet('${f.pid}',this.value)`,`pyArmSet('${f.pid}',0)`,
+    (f.sinHoy?'<span style="color:var(--amber)">sin precio de hoy: es lo que pagaste</span>':'precio de Nissei de hoy')
+    +(f.maxWeb!=null?` · <span style="color:${f.caro?'var(--red)':'var(--green)'}">máx ${u2(f.maxWeb)}${f.caro?' · 🔴 a este precio no da':' · ✅ da'}</span>`:''),
+    ft&&ft.url?ft.url:'', f.maxWeb==null?null:(f.caro?'🔴':'✅'), f.caro?'var(--red)':'var(--green)',
+    f.pr?`<div style="margin-top:4px">${maxCompraHTML(f.pr)}</div>`:'');}).join('');
   const maxU=pedMaxU(), minV=pedMinVent();
-  const filasN=N.filas.map(f=>pedNuevoFilaHTML(f,maxU,tc)).join('');
-  const cfg=`<div style="display:flex;gap:7px;flex-wrap:wrap;align-items:flex-end;margin:10px 0 4px">
+  const filasN=N.filas.map(f=>{const R=candPreciosPartes(f.c);const m=R.margenPct;const P=candPuedePedir(f.c);
+    return fila(f.c.nombre,String(f.c.cod||'').trim(),f.u,f.usd,`candSetPedir('${f.c.id}',this.value)`,`candSetPedir('${f.c.id}',0)`,
+      (P.ok?'':`<div style="color:var(--red);font-weight:700">🚫 ${P.motivo}</div>`)+(R.dudas.length?'<div style="color:var(--red);font-weight:700">🚨 revisá si es el mismo producto (adentro el detalle)</div>':''),
+      R.fotoPY||R.fotoML||'', m!=null?m.toFixed(0)+'%':null,
+      m==null?'var(--muted)':(typeof pctColor==='function'?pctColor(m):'var(--green)'),
+      pedNuevoFilaHTML(f,maxU,tc,true));}).join('');
+  const cfg=`<details style="margin:8px 0 2px"><summary style="cursor:pointer;font-size:.68rem;color:var(--muted)">⚙️ tope, máximo por producto y mínimo de vendidas</summary><div style="display:flex;gap:7px;flex-wrap:wrap;align-items:flex-end;margin:8px 0 4px">
       ${[['pedTopeUSD',tope,'Tope del pedido (US$, probados + nuevos)'],['pedMaxU',maxU,'Máx. u. por nuevo'],['pedMinVent',minV,'Mín. vendidas en ML']]
         .map(([k,v,t])=>`<label style="flex:1;min-width:105px"><div style="font-size:.6rem;color:var(--muted);margin-bottom:3px">${t}</div>
           <input type="number" min="0" step="${k==='pedTopeUSD'?'10':'1'}" value="${v}" onchange="pedNuevosCfg('${k}',this.value)" style="width:100%;font-size:.74rem;padding:5px 7px;background:var(--surface);border:1px solid var(--border);border-radius:6px;color:var(--text)"></label>`).join('')}
-    </div>`;
+    </div></details>`;
   const conCod=[...A.filter(f=>f.cod).map(f=>`${f.cod} x ${f.u}`),...N.filas.filter(f=>String(f.c.cod||'').trim()).map(f=>`${String(f.c.cod).trim()} x ${f.u}`)];
   const sinCod=A.filter(f=>!f.cod).length+N.sinCod.length;
   const pasa=crudo-tope;
@@ -11574,7 +11589,7 @@ async function pyMomentoYaLoPedi(){
 // poco, y chiquito porque no hay espacio, cuando en realidad sí hay"*. Antes era una tira gris de
 // letra .6rem con seis datos pegados; ahora cada dato tiene su casilla y la grilla ocupa todo el
 // ancho. Los datos salen de `candPreciosPartes`, la MISMA función de la tarjeta del candidato.
-function pedNuevoFilaHTML(f,maxU,tc){
+function pedNuevoFilaHTML(f,maxU,tc,sinCab){
   const c=f.c, R=candPreciosPartes(c);
   const cod=String(c.cod||'').trim();
   const puesto=f.usd>0?Math.round(f.usd*RECARGO_PY*100)/100:0;
@@ -11594,8 +11609,8 @@ function pedNuevoFilaHTML(f,maxU,tc){
     caja('📈 te queda',mg!=null?`<b style="font-size:1.25em;color:${mgCol}">${mg.toFixed(0)}%</b>`:'<span style="color:var(--amber)">sin medir</span>',mg!=null?'contra '+R.margenContra:''),
   ].join('');
   const P=candPuedePedir(c);
-  return `<div class="ingreso-item" style="display:block;padding:11px 12px${R.dudas.length?';border-color:rgba(239,68,68,.55)':''}">
-    <div style="display:flex;gap:10px;align-items:flex-start;justify-content:space-between;flex-wrap:wrap;margin-bottom:8px">
+  return `<div class="ingreso-item" style="display:block;padding:11px 12px${R.dudas.length?';border-color:rgba(239,68,68,.55)':''}${sinCab?';border:none;background:none;padding:6px 0 0':''}">
+    <div style="display:${sinCab?'none':'flex'};gap:10px;align-items:flex-start;justify-content:space-between;flex-wrap:wrap;margin-bottom:8px">
       <div style="flex:1;min-width:180px">
         <div style="font-size:.88rem;font-weight:700;line-height:1.3">${c.nombre}</div>
         <div style="font-size:.7rem;color:var(--muted);margin-top:3px">${cod?'🔖 '+cod:'<span style="color:var(--amber)">🔖 sin código — no entra en el mensaje a Nissei</span>'}</div>
