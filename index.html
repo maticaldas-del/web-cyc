@@ -2430,7 +2430,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='21.59';
+const APP_VERSION='21.60';
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
 // muestre la versión y la fecha de actualización y que tenga un desplegable predeterminado cerrado".
 // Y el mismo día: "que ponga fecha de cada modificación y haya una barrita para scrollear y que
@@ -2441,6 +2441,7 @@ const APP_VERSION='21.59';
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'21.60',f:'03/10/2026',h:'17:40',c:[{n:2,t:'Paraguay · Probados: si comprasparaguay dice que el producto se listó por última vez hace más de 14 días, no va arriba en "da": baja a "falta revisar" con la fecha, porque el precio puede no ser el de hoy.'}]},
   {v:'21.59',f:'03/10/2026',h:'17:00',c:[{n:1,t:'🧾 Pedido minimalista: cada producto en un renglón con foto, nombre, %, unidades y subtotal. Tocando el producto se abre todo el detalle.'}]},
   {v:'21.58',f:'03/10/2026',h:'16:45',c:[{n:3,t:'Techo de precio en ML: de $600.000 a $650.000 (el robot puede subir hasta ahí).'}]},
   {v:'21.57',f:'03/10/2026',h:'16:30',c:[{n:3,t:'Pedidos y Armar caja: TODA venta que dejó menos de 20% deja de contar para calcular cuánto comprar o mandar (antes hacía falta además una prueba de remate y se colaban). Las ventas siguen en Ventas y en la plata.'}]},
@@ -4543,6 +4544,13 @@ async function updNisseiCod(id,val){
   await fbSet('products/'+id+'/codPy',c);
   await log('Código Nissei de '+p.name+': '+(c||'(vacío)'));
   renderProds();
+}
+// Guay: la fecha de "Último listado" que muestra comprasparaguay (03/10/2026). Si es vieja, el precio puede no
+// ser de hoy aunque se haya mirado hoy: el probado no va arriba en "da".
+async function updNisseiListado(id,fecha){
+  const p=state.products.find(x=>x.id===id);if(!p)return 'no existe '+id;
+  const f=String(fecha||'').trim(); if(!/^\d{4}-\d{2}-\d{2}$/.test(f))return 'fecha AAAA-MM-DD';
+  p.nisseiListado=f; await fbSet('products/'+id+'/nisseiListado',f); return 'ok';
 }
 // Guay: link y foto de la página de comprasparaguay de un PROBADO (03/10/2026). Sólo https.
 async function updPyLink(id,link,foto){
@@ -14202,6 +14210,8 @@ function pyProbVeredicto(ped){
   const nu=parseFloat(pr.nisseiUSD)||0, ts=Number(pr.nisseiTs)||0;
   const dias=ts?Math.floor((Date.now()-ts)/864e5):null;
   if(!(nu>0)||dias==null||dias>PY_PROB_FRESCO_DIAS)return{k:'sinrev',txt:nu>0?`precio de Nissei de hace ${dias==null?'?':dias} días: falta revisarlo`:'sin precio de Nissei: falta revisarlo'};
+  if(pr.nisseiListado){const dl=Math.floor((Date.now()-Date.parse(pr.nisseiListado+'T12:00:00-03:00'))/864e5);
+    if(dl>14)return{k:'sinrev',txt:`comprasparaguay dice "último listado ${pr.nisseiListado.split('-').reverse().slice(0,2).join('/')}": el precio puede no ser el de hoy, preguntá antes`};}
   const mx=maxCompraDe(pr,PY_PROB_PISO);
   if(!mx||mx.motivo)return{k:'sinrev',txt:'sin margen medido en ML: no se puede saber si da'};
   if(!(mx.usdPy>0))return{k:'noda',txt:`ni regalado llega al ${PY_PROB_PISO}%`};
