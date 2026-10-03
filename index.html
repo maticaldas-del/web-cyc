@@ -2430,7 +2430,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='21.65';
+const APP_VERSION='21.66';
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
 // muestre la versión y la fecha de actualización y que tenga un desplegable predeterminado cerrado".
 // Y el mismo día: "que ponga fecha de cada modificación y haya una barrita para scrollear y que
@@ -2441,6 +2441,7 @@ const APP_VERSION='21.65';
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'21.66',f:'03/10/2026',h:'12:31',c:[{n:1,t:'🧾 Pedido: botones para ordenar la lista por % de ganancia, $ por unidad, más barato, subtotal, ventas o nombre (dentro de perfumería y resto). Queda recordado.'}]},
   {v:'21.65',f:'03/10/2026',h:'12:30',c:[{n:1,t:'🧾 Pedido: la lista de productos va dividida en 🌸 PERFUMERÍA y 📦 RESTO, igual que el mensaje a Nissei. Se sacó la lista aparte de fotos.'}]},
   {v:'21.64',f:'03/10/2026',h:'12:27',c:[{n:1,t:'🧾 Pedido: las fotos de abajo del mensaje son las de comprasparaguay (la de ese código); si no hay, la de ML y lo dice.'}]},
   {v:'21.63',f:'03/10/2026',h:'12:26',c:[{n:1,t:'🧾 Pedido: abajo del mensaje para Nissei, la foto de cada producto con su código y unidades, en los mismos dos bloques (perfumería y resto), para chequear que no se cuele nada.'}]},
@@ -11527,6 +11528,8 @@ function nisseiMsgLineas(items){
   const p=items.filter(x=>esPerfumeNom(x.nom)).map(t), r=items.filter(x=>!esPerfumeNom(x.nom)).map(t);
   return p.length&&r.length?['PERFUMERÍA',...p,'','RESTO',...r]:items.map(t);
 }
+function _pedOrden(){try{return localStorage.getItem('cycPedOrden')||'orig';}catch(e){return'orig';}}
+function _pedOrdenSet(k){try{localStorage.setItem('cycPedOrden',k);}catch(e){} if(typeof renderPedidos==='function')renderPedidos();}
 function pedidoMomentoHTML(){
   const A=pyArmadoFilas();
   const N=pedNuevos(candList().filter(candEnArmado).filter(c=>candEnPedido(c)!=='viajando'));
@@ -11549,14 +11552,26 @@ function pedidoMomentoHTML(){
         <div style="font-size:.76rem;min-width:64px;text-align:right">${usd>0?u2(usd*u):'—'}</div>
         <button class="btn" onclick="${quitar}" title="Sacarlo del pedido" style="font-size:.75rem;padding:3px 9px;color:var(--red);border-color:rgba(239,68,68,.35)">✕</button></div>
     </div>`;
-  const filasA=A.map(f=>{const ft=f.pr?fotoDeProducto(f.pr):null;
+  // ORDENAR (03/10/2026, él: "ordenar por $, costo, ventas etc"): dentro de cada bloque. Probados: % y ganancia de tu
+  // publicación de hoy, ventas propias recientes. Nuevos: % y ganancia medidos en ML, vendidas en ML. Recordado en el aparato.
+  const _ord=_pedOrden();
+  const _k={pct:(x,n)=>n?Number(x.c.margen):(x.pr&&margenMLDe(x.pr)?margenMLDe(x.pr).margen:null),
+    gan:(x,n)=>n?Number(x.c.ganancia):(x.pr?gananciaUnidad(x.pr):null),
+    costo:(x)=>x.usd, sub:(x)=>x.usd*x.u,
+    vend:(x,n)=>n?candVentasDe(x.c):(x.pr?pedVentasNorm(x.pr).vendidos:null)};
+  const _sort=(arr,n)=>{if(_ord==='nom')return arr.slice().sort((a,b)=>String(n?a.c.nombre:a.nom).localeCompare(String(n?b.c.nombre:b.nom),'es'));
+    const f=_k[_ord]; if(!f)return arr; const asc=_ord==='costo';
+    return arr.slice().sort((a,b)=>{const va=f(a,n),vb=f(b,n),na=va==null||!isFinite(va),nb=vb==null||!isFinite(vb);
+      if(na||nb)return na-nb; return asc?va-vb:vb-va;});};
+  const As=_sort(A,false), Ns=_sort(N.filas,true);
+  const filasA=As.map(f=>{const ft=f.pr?fotoDeProducto(f.pr):null;
     return fila(f.nom,f.cod,f.u,f.usd,`pyArmSet('${f.pid}',this.value)`,`pyArmSet('${f.pid}',0)`,
     (f.sinHoy?'<span style="color:var(--amber)">sin precio de hoy: es lo que pagaste</span>':'precio de Nissei de hoy')
     +(f.maxWeb!=null?` · <span style="color:${f.caro?'var(--red)':'var(--green)'}">máx ${u2(f.maxWeb)}${f.caro?' · 🔴 a este precio no da':' · ✅ da'}</span>`:''),
     ft&&ft.url?ft.url:'', f.maxWeb==null?null:(f.caro?'🔴':'✅'), f.caro?'var(--red)':'var(--green)',
     f.pr?`<div style="margin-top:6px">${pyProbVisHTML(f.pr)}</div><div style="margin-top:4px">${maxCompraHTML(f.pr)}</div>`:'');});
   const maxU=pedMaxU(), minV=pedMinVent();
-  const filasN=N.filas.map(f=>{const R=candPreciosPartes(f.c);const m=R.margenPct;const P=candPuedePedir(f.c);
+  const filasN=Ns.map(f=>{const R=candPreciosPartes(f.c);const m=R.margenPct;const P=candPuedePedir(f.c);
     return fila(f.c.nombre,String(f.c.cod||'').trim(),f.u,f.usd,`candSetPedir('${f.c.id}',this.value)`,`candSetPedir('${f.c.id}',0)`,
       (P.ok?'':`<div style="color:var(--red);font-weight:700">🚫 ${P.motivo}</div>`)+(R.dudas.length?'<div style="color:var(--red);font-weight:700">🚨 revisá si es el mismo producto (adentro el detalle)</div>':''),
       R.fotoPY||R.fotoML||'', m!=null?m.toFixed(0)+'%':null,
@@ -11583,8 +11598,10 @@ function pedidoMomentoHTML(){
     </div>
     <div style="font-size:.66rem;color:${pasa>0?'var(--amber)':'var(--muted)'};margin-top:2px">${pasa>0?`⚠️ te pasás ${u2(pasa)} de tu tope de ${u2(tope)}`:`tope ${u2(tope)} · te quedan ${u2(-pasa)}`}</div>
     ${cfg}
-    ${A.length?tit('✅ Probados (reposición)',A.length,crA)+_perfGrupos(filasA,A.map(f=>f.nom)):''}
-    ${N.filas.length?tit('🆕 Nuevos',N.filas.length,N.crudo)+_perfGrupos(filasN,N.filas.map(f=>f.c.nombre)):''}
+    <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin:8px 0 0;font-size:.68rem;color:var(--muted)">↕️ Ordenar:
+      ${[['orig','como se cargó'],['pct','% ganancia'],['gan','$ por unidad'],['costo','más barato'],['sub','subtotal'],['vend','ventas'],['nom','nombre']].map(([k,t])=>`<button class="btn" onclick="_pedOrdenSet('${k}')" style="font-size:.64rem;padding:3px 9px;${_ord===k?'background:var(--green);color:#000;border-color:var(--green)':''}">${t}</button>`).join('')}</div>
+    ${A.length?tit('✅ Probados (reposición)',A.length,crA)+_perfGrupos(filasA,As.map(f=>f.nom)):''}
+    ${N.filas.length?tit('🆕 Nuevos',N.filas.length,N.crudo)+_perfGrupos(filasN,Ns.map(f=>f.c.nombre)):''}
     ${conCod.length?`<div style="margin-top:10px"><div style="font-size:.64rem;color:var(--muted);margin-bottom:4px">Para mandarle a <b>Nissei</b> — código y unidades, la perfumería aparte${sinCod?` · <span style="color:var(--amber)">${sinCod} sin código no entran</span>`:''}</div>
       <button onclick="copiarTexto(this.nextElementSibling)" style="margin:4px 0;padding:8px 13px;border-radius:8px;border:1px solid var(--border2);background:var(--surface);color:var(--text);font-family:'DM Mono',monospace;font-size:.76rem;cursor:pointer">📋 Copiar mensaje</button><textarea readonly onclick="this.select()" style="width:100%;min-height:${Math.min(260,22+conCod.length*17)}px;background:rgba(0,0,0,.28);border:1px solid var(--border2);border-radius:6px;color:var(--text);font-family:'DM Mono',monospace;font-size:.7rem;padding:7px 9px;resize:vertical">${conCod.join('\n')}</textarea></div>`:''}
     <div style="margin-top:10px;display:flex;gap:8px;flex-wrap:wrap">
