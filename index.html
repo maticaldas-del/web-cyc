@@ -2430,7 +2430,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='21.64';
+const APP_VERSION='21.65';
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
 // muestre la versión y la fecha de actualización y que tenga un desplegable predeterminado cerrado".
 // Y el mismo día: "que ponga fecha de cada modificación y haya una barrita para scrollear y que
@@ -2441,6 +2441,7 @@ const APP_VERSION='21.64';
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'21.65',f:'03/10/2026',h:'12:30',c:[{n:1,t:'🧾 Pedido: la lista de productos va dividida en 🌸 PERFUMERÍA y 📦 RESTO, igual que el mensaje a Nissei. Se sacó la lista aparte de fotos.'}]},
   {v:'21.64',f:'03/10/2026',h:'12:27',c:[{n:1,t:'🧾 Pedido: las fotos de abajo del mensaje son las de comprasparaguay (la de ese código); si no hay, la de ML y lo dice.'}]},
   {v:'21.63',f:'03/10/2026',h:'12:26',c:[{n:1,t:'🧾 Pedido: abajo del mensaje para Nissei, la foto de cada producto con su código y unidades, en los mismos dos bloques (perfumería y resto), para chequear que no se cuele nada.'}]},
   {v:'21.62',f:'03/10/2026',h:'12:20',c:[{n:1,t:'🧾 Pedido: el mensaje para Nissei sale en dos bloques, PERFUMERÍA y RESTO (lo pidió Nissei). Si todo es de un solo lado, sale la lista sola.'}]},
@@ -11526,16 +11527,6 @@ function nisseiMsgLineas(items){
   const p=items.filter(x=>esPerfumeNom(x.nom)).map(t), r=items.filter(x=>!esPerfumeNom(x.nom)).map(t);
   return p.length&&r.length?['PERFUMERÍA',...p,'','RESTO',...r]:items.map(t);
 }
-// LAS FOTOS DE LO QUE VA EN EL MENSAJE (03/10/2026, él: "por si se me pasa un perfume o lo que sea, con la foto ya
-// descarto bien"): mismo orden y mismos dos bloques que el texto, código y unidades al lado de cada foto.
-function nisseiFotosHTML(items){
-  const fi=x=>`<div style="display:flex;align-items:center;gap:8px;padding:4px 0;border-bottom:1px dashed var(--border)">
-      ${x.foto?`<img src="${x.foto}" loading="lazy" onclick="window.open(this.src,'_blank')" onerror="this.style.visibility='hidden'" style="width:46px;height:46px;object-fit:contain;background:#fff;border-radius:7px;flex-shrink:0;cursor:zoom-in">`:`<div style="width:46px;height:46px;border:1px dashed var(--border);border-radius:7px;flex-shrink:0;font-size:.55rem;color:var(--muted);display:flex;align-items:center;justify-content:center">sin foto</div>`}
-      <div style="min-width:0;flex:1;font-size:.72rem;line-height:1.3"><b style="font-family:'DM Mono',monospace">${x.cod} x ${x.u}</b>${x.foto&&x.ml?' <span style="color:var(--amber);font-size:.6rem">(foto de ML, no de Paraguay)</span>':''}<div style="color:var(--muted);font-size:.66rem">${x.nom}</div></div></div>`;
-  const p=items.filter(x=>esPerfumeNom(x.nom)), r=items.filter(x=>!esPerfumeNom(x.nom));
-  const tt=t=>`<div style="font-size:.66rem;font-weight:700;margin:8px 0 2px;color:var(--muted)">${t}</div>`;
-  return p.length&&r.length?tt('PERFUMERÍA')+p.map(fi).join('')+tt('RESTO')+r.map(fi).join(''):items.map(fi).join('');
-}
 function pedidoMomentoHTML(){
   const A=pyArmadoFilas();
   const N=pedNuevos(candList().filter(candEnArmado).filter(c=>candEnPedido(c)!=='viajando'));
@@ -11563,25 +11554,27 @@ function pedidoMomentoHTML(){
     (f.sinHoy?'<span style="color:var(--amber)">sin precio de hoy: es lo que pagaste</span>':'precio de Nissei de hoy')
     +(f.maxWeb!=null?` · <span style="color:${f.caro?'var(--red)':'var(--green)'}">máx ${u2(f.maxWeb)}${f.caro?' · 🔴 a este precio no da':' · ✅ da'}</span>`:''),
     ft&&ft.url?ft.url:'', f.maxWeb==null?null:(f.caro?'🔴':'✅'), f.caro?'var(--red)':'var(--green)',
-    f.pr?`<div style="margin-top:6px">${pyProbVisHTML(f.pr)}</div><div style="margin-top:4px">${maxCompraHTML(f.pr)}</div>`:'');}).join('');
+    f.pr?`<div style="margin-top:6px">${pyProbVisHTML(f.pr)}</div><div style="margin-top:4px">${maxCompraHTML(f.pr)}</div>`:'');});
   const maxU=pedMaxU(), minV=pedMinVent();
   const filasN=N.filas.map(f=>{const R=candPreciosPartes(f.c);const m=R.margenPct;const P=candPuedePedir(f.c);
     return fila(f.c.nombre,String(f.c.cod||'').trim(),f.u,f.usd,`candSetPedir('${f.c.id}',this.value)`,`candSetPedir('${f.c.id}',0)`,
       (P.ok?'':`<div style="color:var(--red);font-weight:700">🚫 ${P.motivo}</div>`)+(R.dudas.length?'<div style="color:var(--red);font-weight:700">🚨 revisá si es el mismo producto (adentro el detalle)</div>':''),
       R.fotoPY||R.fotoML||'', m!=null?m.toFixed(0)+'%':null,
       m==null?'var(--muted)':(typeof pctColor==='function'?pctColor(m):'var(--green)'),
-      pedNuevoFilaHTML(f,maxU,tc,true));}).join('');
+      pedNuevoFilaHTML(f,maxU,tc,true));});
   const cfg=`<details style="margin:8px 0 2px"><summary style="cursor:pointer;font-size:.68rem;color:var(--muted)">⚙️ tope, máximo por producto y mínimo de vendidas</summary><div style="display:flex;gap:7px;flex-wrap:wrap;align-items:flex-end;margin:8px 0 4px">
       ${[['pedTopeUSD',tope,'Tope del pedido (US$, probados + nuevos)'],['pedMaxU',maxU,'Máx. u. por nuevo'],['pedMinVent',minV,'Mín. vendidas en ML']]
         .map(([k,v,t])=>`<label style="flex:1;min-width:105px"><div style="font-size:.6rem;color:var(--muted);margin-bottom:3px">${t}</div>
           <input type="number" min="0" step="${k==='pedTopeUSD'?'10':'1'}" value="${v}" onchange="pedNuevosCfg('${k}',this.value)" style="width:100%;font-size:.74rem;padding:5px 7px;background:var(--surface);border:1px solid var(--border);border-radius:6px;color:var(--text)"></label>`).join('')}
     </div></details>`;
-  // La foto que vale para chequear el CÓDIGO es la de comprasparaguay (la de esa fila de Nissei); la de ML sólo si no hay.
-  const _itNis=[...A.filter(f=>f.cod).map(f=>{const ft=f.pr?fotoDeProducto(f.pr):null;const py=f.pr&&f.pr.pyFoto;return{cod:f.cod,u:f.u,nom:f.nom,foto:py||(ft&&ft.url?ft.url:''),ml:!py};}),
-    ...N.filas.filter(f=>String(f.c.cod||'').trim()).map(f=>{const R=candPreciosPartes(f.c);return{cod:String(f.c.cod).trim(),u:f.u,nom:f.c.nombre,foto:R.fotoPY||R.fotoML||'',ml:!R.fotoPY};})];
+  const _itNis=[...A.filter(f=>f.cod).map(f=>({cod:f.cod,u:f.u,nom:f.nom})),...N.filas.filter(f=>String(f.c.cod||'').trim()).map(f=>({cod:String(f.c.cod).trim(),u:f.u,nom:f.c.nombre}))];
   const conCod=nisseiMsgLineas(_itNis);
   const sinCod=A.filter(f=>!f.cod).length+N.sinCod.length;
   const pasa=crudo-tope;
+  // PERFUMERÍA Y RESTO TAMBIÉN EN LA LISTA (03/10/2026, él: "así unificamos"): misma división que el mensaje a Nissei.
+  const _perfGrupos=(rows,noms)=>{const p=rows.filter((_,i)=>esPerfumeNom(noms[i])), r=rows.filter((_,i)=>!esPerfumeNom(noms[i]));
+    const st=t=>`<div style="font-size:.66rem;font-weight:700;color:var(--muted);margin:8px 0 0">${t}</div>`;
+    return p.length&&r.length?st('🌸 PERFUMERÍA ('+p.length+')')+p.join('')+st('📦 RESTO ('+r.length+')')+r.join(''):rows.join('');};
   const tit=(t,n,us)=>`<div style="display:flex;justify-content:space-between;font-size:.74rem;font-weight:700;margin:12px 0 2px;padding-bottom:3px;border-bottom:2px solid var(--border2)"><span>${t} (${n})</span><span style="color:var(--muted);font-weight:400">${u2(us)} crudos</span></div>`;
   return `<div style="margin-bottom:18px;padding:12px 13px;background:var(--surface2);border:1px solid rgba(34,197,94,.45);border-radius:10px">
     <div style="display:flex;justify-content:space-between;align-items:baseline;gap:10px;flex-wrap:wrap">
@@ -11590,11 +11583,10 @@ function pedidoMomentoHTML(){
     </div>
     <div style="font-size:.66rem;color:${pasa>0?'var(--amber)':'var(--muted)'};margin-top:2px">${pasa>0?`⚠️ te pasás ${u2(pasa)} de tu tope de ${u2(tope)}`:`tope ${u2(tope)} · te quedan ${u2(-pasa)}`}</div>
     ${cfg}
-    ${A.length?tit('✅ Probados (reposición)',A.length,crA)+filasA:''}
-    ${N.filas.length?tit('🆕 Nuevos',N.filas.length,N.crudo)+filasN:''}
+    ${A.length?tit('✅ Probados (reposición)',A.length,crA)+_perfGrupos(filasA,A.map(f=>f.nom)):''}
+    ${N.filas.length?tit('🆕 Nuevos',N.filas.length,N.crudo)+_perfGrupos(filasN,N.filas.map(f=>f.c.nombre)):''}
     ${conCod.length?`<div style="margin-top:10px"><div style="font-size:.64rem;color:var(--muted);margin-bottom:4px">Para mandarle a <b>Nissei</b> — código y unidades, la perfumería aparte${sinCod?` · <span style="color:var(--amber)">${sinCod} sin código no entran</span>`:''}</div>
-      <button onclick="copiarTexto(this.nextElementSibling)" style="margin:4px 0;padding:8px 13px;border-radius:8px;border:1px solid var(--border2);background:var(--surface);color:var(--text);font-family:'DM Mono',monospace;font-size:.76rem;cursor:pointer">📋 Copiar mensaje</button><textarea readonly onclick="this.select()" style="width:100%;min-height:${Math.min(260,22+conCod.length*17)}px;background:rgba(0,0,0,.28);border:1px solid var(--border2);border-radius:6px;color:var(--text);font-family:'DM Mono',monospace;font-size:.7rem;padding:7px 9px;resize:vertical">${conCod.join('\n')}</textarea>
-      <details open style="margin-top:6px"><summary style="cursor:pointer;font-size:.72rem;font-weight:600">🖼️ Las fotos de lo que va en el mensaje (${_itNis.length})</summary>${nisseiFotosHTML(_itNis)}</details></div>`:''}
+      <button onclick="copiarTexto(this.nextElementSibling)" style="margin:4px 0;padding:8px 13px;border-radius:8px;border:1px solid var(--border2);background:var(--surface);color:var(--text);font-family:'DM Mono',monospace;font-size:.76rem;cursor:pointer">📋 Copiar mensaje</button><textarea readonly onclick="this.select()" style="width:100%;min-height:${Math.min(260,22+conCod.length*17)}px;background:rgba(0,0,0,.28);border:1px solid var(--border2);border-radius:6px;color:var(--text);font-family:'DM Mono',monospace;font-size:.7rem;padding:7px 9px;resize:vertical">${conCod.join('\n')}</textarea></div>`:''}
     <div style="margin-top:10px;display:flex;gap:8px;flex-wrap:wrap">
       <button class="btn btn-add" style="font-size:.7rem;padding:6px 14px" onclick="pyMomentoYaLoPedi()" title="Cuando ya lo pagaste: los probados pasan a En camino como reposición y los nuevos como pedido de nuevos.">✅ Ya lo pedí (todo)</button>
       <button class="btn btn-add" style="font-size:.66rem;padding:6px 12px" onclick="pedNuevosLlenar()" title="Agrega nuevos que pasan el ${CAND_PISO_PCT}% y tu vara de ventas, los que más dejan por dólar, hasta el tope (descontando lo de probados). No saca nada.">🪄 Llenar con nuevos hasta el tope</button>
