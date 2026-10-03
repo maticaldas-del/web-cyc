@@ -206,3 +206,14 @@ que en cada una aparecen todos. Una descarga que da justo 10.000 es esta pared, 
 **~50% de los modelos**: si el título de ML no trae el código de modelo o la marca, o si el producto no se vende en ML, ese
 modelo no aparece, y **lo que no emparejó no se miró a mano**. En el próximo barrido, revisar a mano los modelos sin
 match de las categorías que sí dan: **routers, memorias, accesorios de cámara, cuidado personal**.
+
+## EL POLO BLACK DECÍA 88% Y NO DABA NI CERCA (03/10/2026, lo encontró Matías)
+- El robot lo midió a las ~17 h del 02/10 contra $379.000 (el más barato que ML devolvía en ese momento). Al día
+  siguiente en ML había uno a **$194.500 (50% OFF)** y la tienda oficial a $285.971 (26% OFF): **las ofertas aparecen y
+  desaparecen y cambian el margen de un día para el otro**.
+- El aviso rojo de "80%+ es demasiado" estaba, pero **confirmar "es el mismo producto" lo tapaba**. Ya no: el 80%+
+  queda siempre en rojo (confirmar el producto no confirma el precio).
+- **Regla:** todo candidato de 80% o más → abrir la página de ML y mirar el precio de HOY (incluidas las ofertas "X% OFF")
+  antes de cargar unidades. Y antes de cerrar un pedido, mirar los precios de ML de todo lo cargado.
+- **Regla de Matías (03/10):** sin **25 vendidas o más** en ML no se cargan unidades (el panel y `pedir` lo frenan;
+  sin el dato tampoco entra). Cargá siempre `vendCarga`.
