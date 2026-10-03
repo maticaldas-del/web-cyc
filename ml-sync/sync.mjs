@@ -5677,7 +5677,7 @@ const RECARGO_PAR_PCT = Math.round((RECARGO_PAR - 1) * 100);
 const STOCKHIST_CERO_PASAJERO_MS = 48 * 3600 * 1000;
 const CAND_TOPE_USD = 250;      // suyo: un producto caro se come el pedido de US$1.000 entero
 const CAND_PISO_PCT = 25;       // suyo: "el % sano es de 25 hacia arriba"
-const CAND_MIN_VENT = 25;       // suyo, 03/10/2026: "mínimo que tenga 25 unidades vendidas" en ML para entrar al pedido
+const CAND_MIN_VENT = 100;      // suyo, 03/10/2026: "100 unidades mínimo vendidas, sino no sirve" para entrar al pedido
 const CAND_ENVIO_ARRIBA = 6190; // el peor envío de Full medido en ventas reales, arriba de la barrera
 const CAND_MAX_ML = 40;         // tope de consultas a ML por vuelta (ver abajo)
 // ── LOS QUE DAN SE VUELVEN A MEDIR TODOS LOS DÍAS (26/09/2026) ─────────────────────────
@@ -14664,7 +14664,7 @@ async function main() {
       // O1 de la segunda vuelta: lo que ya viaja en un pedido que no llegó no se vuelve a cargar.
       const _comprasPy = (await db.get('cyc/compraspy')) || {};
       const _viaja = (c) => { const pe = c && c.pedidoEn && _comprasPy[c.pedidoEn]; return pe && pe.estado === 'camino' ? (pe.fecha || '?') : ''; };
-      // Regla suya del 03/10/2026: *"mínimo que tenga 25 unidades vendidas"*. La misma cuenta que el
+      // Regla suya del 03/10/2026: *"100 unidades mínimo vendidas, sino no sirve"*. La misma cuenta que el
       // panel (`candVentasDe`): manda lo que cargó el chat, si no lo que vio el robot.
       const _vendP = (c) => { const a = Number(c.vendCarga), b = Number(c.mlVendidas);
         return (c.vendCarga != null && isFinite(a)) ? a : (c.mlVendidas != null && isFinite(b)) ? b : null; };
