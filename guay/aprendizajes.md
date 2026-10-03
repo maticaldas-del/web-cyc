@@ -225,3 +225,6 @@ match de las categorías que sí dan: **routers, memorias, accesorios de cámara
   20% o más (ya se sabe que se venden). Lo que no da / no hay / falta revisar va abajo en un desplegable.
 - Matías compra de lo de arriba con seguridad: por eso cada precio tiene que ser el de HOY.
 - Recién después, el recorrido de productos nuevos.
+- **Link y foto de comprasparaguay de cada PROBADO (03/10):** al recorrer los probados, además del precio, cargar
+  `updPyLink('<id>', '<link de la página del producto en comprasparaguay>', '<link https de la foto>')`. El panel muestra
+  las dos fotos (Paraguay y ML) y los dos links en cada tarjeta de probados, como en Nuevos.
