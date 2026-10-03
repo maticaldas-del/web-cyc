@@ -11178,6 +11178,18 @@ async function main() {
       for (const l of labels) console.log(`aviso de permiso ${l}: ${(await db.get('mlapi/avisotoken/' + l)) || 'nunca'} · token renovado ${new Date(Number(((await db.get('mlapi/tokens/' + l)) || {}).updated_ts) || 0).toISOString()}`);
       return;
     }
+    // BILLING_PROBE=lineaver:<MLA> → LA LÍNEA DE TIEMPO GUARDADA DE UNA PUBLICACIÓN + SU HISTORIAL DE PRECIOS DEL ROBOT · SOLO LEE.
+    if (/^lineaver:/.test(String(process.env.BILLING_PROBE || ''))) {
+      const mla = String(process.env.BILLING_PROBE).slice('lineaver:'.length).trim().toUpperCase();
+      const d = (await db.get('mlapi/linea/' + mla)) || {};
+      const ks = Object.keys(d).sort();
+      const cnt = {}; for (const k of ks) for (const f of Object.keys(d[k] || {})) cnt[f] = (cnt[f] || 0) + 1;
+      console.log(`${mla}: ${ks.length} días (${ks[0] || '—'} → ${ks[ks.length - 1] || '—'}) · campos: ${JSON.stringify(cnt)}`);
+      for (const k of ks.slice(-75)) { const x = d[k]; console.log(`  ${k} ${['st', 'p', 'u', 'uR', 'vis', 'caja', 'ptw', 'rem', 'esc', 'mg', 'est'].map((f) => x[f] != null ? f + '=' + x[f] : '').filter(Boolean).join(' ')}${x.inc ? ' (inc)' : ''}`); }
+      console.log('autoprecio:', JSON.stringify((await db.get('cyc/autoprecio/' + mla)) || null).slice(0, 1500));
+      for (const pre of ['', 'c_', 'o_', 'b_', 'r_', 's_']) { const v = await db.get('cyc/avisados/' + pre + mla); if (v != null) console.log('avisados', pre || '(sin)', JSON.stringify(v).slice(0, 200)); }
+      return;
+    }
     if (/^vercampos(:|$)/.test(String(process.env.BILLING_PROBE || ''))) {
       const q = String(process.env.BILLING_PROBE).slice('vercampos'.length).replace(/^:/, '').trim().toLowerCase();
       const cands = (await db.get('cyc/candidatos_py')) || {};
