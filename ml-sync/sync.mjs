@@ -2419,7 +2419,7 @@ async function rescatarAlVender(db, o) {
         if (r && r.ok) {
           let quedo = null;
           try { quedo = Number((await mlGet('/items/' + mla + '?attributes=price', token))?.price) || null; } catch { quedo = null; }
-          const reg = { tipo: 'sube', por: 'venta', de: r.from || x.de, a: r.to || a, ts: hoyTs, nom: x.nom, cuenta: label, margenAntes: Math.round(x.pct * 10) / 10 };
+          const reg = { tipo: 'sube', por: 'venta', de: r.from || x.de, a: r.to || a, ts: hoyTs, nom: x.nom, cuenta: label, margenAntes: Math.round(x.pct * 10) / 10, ...(x.a > tope ? { corto: true, meta: x.a } : {}) };
           try { await db.set('cyc/autoprecio/' + mla, reg); } catch { /* */ }
           if (r.parcial) reg.parcial = (r.saltadas || []).length;
           marcar(vs, { estado: 'subido', de: reg.de, a: reg.a, quedo, corto: x.a > tope });
@@ -2453,6 +2453,11 @@ async function calcSubirPorMargen(db, o) {
   const links = (await db.get('cyc/mllinks')) || {};
   let cuotasS = null; try { cuotasS = (await db.get('cyc/mlcuotas')) || {}; } catch { cuotasS = null; }
   const vpS = (await db.get('cyc/ventaprod')) || {}; setDevLive(vpS);
+  // UN RESCATE QUE QUEDÓ CORTO SIGUE HASTA LA META (03/10/2026, él con la Pizarra Mágica: "¿por qué la subió y
+  // la dejó en 21%? cuando sube lo hace al 25%"). El tope de +25% por suba la dejó en 21%, y como 21% ya está
+  // arriba del umbral del rescate (20%) no se volvía a mirar nunca. Si la última suba del robot quedó corta
+  // (`corto`, o una suba de rescate de +25% justo de antes de que existiera la marca; hace 30 días o menos), esa publicación se mide contra la META y no contra el umbral.
+  let apCorto = {}; try { const apA = (await db.get('cyc/autoprecio')) || {}; for (const [m, a] of Object.entries(apA)) if (a && a.tipo === 'sube' && (a.corto || (/^(margen|venta)$/.test(String(a.por || '')) && Number(a.de) > 0 && Number(a.a) >= Number(a.de) * 1.245)) && Date.now() - (Number(a.ts) || 0) < 30 * 864e5) apCorto[m] = a; } catch { apCorto = {}; }
   const pIdx = {}; for (const p of products) pIdx[p.id] = p;
   // Ventas por publicación, para deducir el envío igual que netoweb.
   // Y el cargo extra de ML por producto, EXACTAMENTE como lo hace la pantalla: el promedio de
@@ -2603,7 +2608,7 @@ async function calcSubirPorMargen(db, o) {
           const m = metaDe(P);
           // La primera vuelta mide el precio de HOY contra el PISO: es lo que decide si esta
           // publicación entra o no. Las vueltas siguientes buscan la META.
-          if (it === 0) { n0 = n; m0 = pisoDe(P); }
+          if (it === 0) { n0 = n; m0 = apCorto[mla] ? metaDe(P) : pisoDe(P); }
           if (n >= m) { ok = true; break; }
           // El hueco se cierra ~0,7 pesos por peso de aumento; se pide 1,5× para no quedar corto.
           P = Math.ceil((P + (m - n) * 1.5) / 10) * 10;
@@ -9010,7 +9015,7 @@ async function main() {
           try { quedo = Number((await mlGet('/items/' + f.mla + '?attributes=price', tk))?.price) || null; } catch { quedo = null; }
           hechosAuto.push({ ...t, de: r.from || f.precio, a: r.to || t.a, quedo });
           const reg = t.tipo === 'rescate'
-            ? { tipo: 'sube', por: 'margen', de: r.from || f.precio, a: r.to || t.a, ts: hoyTs, nom: f.nom, cuenta: f.cuenta, margenAntes: Math.round(f.pct * 10) / 10 }
+            ? { tipo: 'sube', por: 'margen', de: r.from || f.precio, a: r.to || t.a, ts: hoyTs, nom: f.nom, cuenta: f.cuenta, margenAntes: Math.round(f.pct * 10) / 10, ...(t.corto ? { corto: true, meta: f.meta } : {}) }
             : t.tipo === 'escalera'
               ? { tipo: 'baja', por: 'escalera', de: r.from || f.precio, a: r.to || t.a, ts: hoyTs, nom: f.nom, cuenta: f.cuenta, margen: Math.round(f.mgPw * 10) / 10, piso: t.piso }
             : t.tipo === 'remate'
