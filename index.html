@@ -2429,7 +2429,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='21.46';
+const APP_VERSION='21.47';
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
 // muestre la versión y la fecha de actualización y que tenga un desplegable predeterminado cerrado".
 // Y el mismo día: "que ponga fecha de cada modificación y haya una barrita para scrollear y que
@@ -2440,6 +2440,7 @@ const APP_VERSION='21.46';
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'21.47',f:'03/10/2026',h:'11:40',c:[{n:1,t:'Paraguay · Productos nuevos: cada candidato dice en su renglón cuántas ventas tiene en ML (🛒 N vendidas), en verde de 25 para arriba.'}]},
   {v:'21.46',f:'03/10/2026',h:'11:20',c:[{n:1,t:'Paraguay · Productos nuevos: botones para ordenar la lista de mayor a menor por % de ganancia, más vendidos en ML, $ por unidad, $ por dólar invertido o más barato. Se acuerda del último que elegiste.'}]},
   {v:'21.45',f:'03/10/2026',h:'11:05',c:[{n:1,t:'Puntaje del día: 7 puntos = $115.000 de ganancia en el día (lo que hace falta para que a cada uno de los 3 le queden $900.000 por mes pagando todo). 10 puntos en $230.000.'}]},
   {v:'21.44',f:'03/10/2026',h:'10:50',c:[{n:1,t:'Puntaje del día: ahora sale sólo de la ganancia en pesos (más ganancia = más puntaje). 7 al llegar a lo que hace falta por día para cumplir el mes, 10 en la meta grande.'}]},
@@ -11871,7 +11872,7 @@ function candidatosHTML(){
           :`<div style="width:56px;height:56px;border:1px dashed var(--border);border-radius:8px;flex:0 0 auto;font-size:.55rem;color:var(--muted);display:flex;align-items:center;justify-content:center">sin foto</div>`}
         <div style="flex:1;min-width:0">
           <div style="font-size:.8rem;font-weight:600;line-height:1.3">${c.nombre}</div>
-          <div style="font-size:.68rem;color:var(--muted);margin-top:3px">${c.cod?`🔖 ${c.cod} · `:''}${usd>0?`US$ ${usd.toFixed(2)} → <b style="color:var(--text)">US$ ${puesto.toFixed(2)}</b> puesto${pesos?` · ${fmt(pesos)}`:''}`:'<span style="color:var(--red)">sin precio</span>'}</div>
+          <div style="font-size:.68rem;color:var(--muted);margin-top:3px">${c.cod?`🔖 ${c.cod} · `:''}${usd>0?`US$ ${usd.toFixed(2)} → <b style="color:var(--text)">US$ ${puesto.toFixed(2)}</b> puesto${pesos?` · ${fmt(pesos)}`:''}`:'<span style="color:var(--red)">sin precio</span>'}${(()=>{const _v=candVentasDe(c);return _v!=null?` · <b style="color:${_v>=25?'var(--green)':'var(--amber)'}">🛒 ${_v>=1000?'+1000':_v} vendidas</b>`:' · <span style="color:var(--amber)">🛒 sin dato de ventas</span>';})()}</div>
         </div>
         <div style="text-align:right;flex:0 0 auto">
           ${tieneCuenta?`<div style="font-size:1.35rem;font-weight:700;color:${col};line-height:1">${c.margen.toFixed(0)}%${dudas?' <span title="Hay dudas de que sea el mismo producto: abrilo y mirá las dos fotos" style="font-size:.8em">⚠️</span>':''}</div>`:'<div style="font-size:.68rem;color:var(--muted)">⏳ sin medir</div>'}
