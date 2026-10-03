@@ -11159,6 +11159,25 @@ async function main() {
       console.log(`\nComprar 2 de cada uno de los que dan: US$ ${tot.toFixed(0)} crudo.`);
       return;
     }
+    // BILLING_PROBE=reclamosde:<palabras> → RECLAMOS Y % DE UN PRODUCTO, Y LOS AVISOS DE PERMISO (03/10/2026) · SOLO LEE.
+    if (/^reclamosde:/.test(String(process.env.BILLING_PROBE || ''))) {
+      const pal = String(process.env.BILLING_PROBE).slice('reclamosde:'.length).toLowerCase().split('+').map((x) => x.trim()).filter(Boolean);
+      const prods = (await db.get('cyc/products')) || {};
+      const vp = (await db.get('cyc/ventaprod')) || {};
+      const fichas = Object.entries(prods).filter(([, p]) => p && pal.every((w) => String(p.name || '').toLowerCase().includes(w)));
+      for (const [id, p] of fichas) {
+        let v = 0, r = 0, rs = 0; const recl = [];
+        for (const [dk, day] of Object.entries(vp)) for (const x of Object.values(day || {})) {
+          if (!x || x.prodId !== id) continue;
+          if (!_esCancelada(x)) v += x.qty || 0;
+          if (_esReclamo(x)) { if (_sinCargo(x)) rs += x.qty || 0; else r += x.qty || 0; recl.push(dk); }
+        }
+        console.log(`${p.name} · ${v} vendidas (historia) · ${r} reclamos que cuentan${rs ? ` + ${rs} sin cargo` : ''} · % ${v ? (r / v * 100).toFixed(1) : 0} · %Dev en ficha ${p.devPct ?? '—'} · costo full US$ ${p.costFullUSD ?? '—'} · fechas: ${recl.slice(-8).join(', ') || '—'}`);
+      }
+      if (!fichas.length) console.log('Ninguna ficha con esas palabras.');
+      for (const l of labels) console.log(`aviso de permiso ${l}: ${(await db.get('mlapi/avisotoken/' + l)) || 'nunca'} · token renovado ${new Date(Number(((await db.get('mlapi/tokens/' + l)) || {}).updated_ts) || 0).toISOString()}`);
+      return;
+    }
     if (/^vercampos(:|$)/.test(String(process.env.BILLING_PROBE || ''))) {
       const q = String(process.env.BILLING_PROBE).slice('vercampos'.length).replace(/^:/, '').trim().toLowerCase();
       const cands = (await db.get('cyc/candidatos_py')) || {};
