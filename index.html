@@ -2430,7 +2430,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='21.53';
+const APP_VERSION='21.54';
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
 // muestre la versión y la fecha de actualización y que tenga un desplegable predeterminado cerrado".
 // Y el mismo día: "que ponga fecha de cada modificación y haya una barrita para scrollear y que
@@ -2441,6 +2441,7 @@ const APP_VERSION='21.53';
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'21.54',f:'03/10/2026',h:'15:20',c:[{n:2,t:'Paraguay · Nuevos: los que tienen menos de 100 vendidas en ML (o sin el dato) bajan a su propio desplegable "no se pueden pedir"; arriba sólo lo que se puede comprar. Las vendidas se pintan verdes desde 100.'}]},
   {v:'21.53',f:'03/10/2026',h:'15:00',c:[{n:3,t:'Paraguay: el máximo de compra de los PROBADOS (tarjeta, canasta y pedido) se calcula al 20%; los NUEVOS siguen al 25%. Bs As sigue igual.'}]},
   {v:'21.52',f:'03/10/2026',h:'14:45',c:[{n:2,t:'Paraguay: el pedido se arma en UN solo lugar, la pestaña 🧾 Pedido (probados + nuevos, tope, llenar, mensaje y Ya lo pedí). En Nuevos queda sólo la casilla de cada tarjeta y un renglón con lo cargado. El tope cuenta probados y nuevos juntos.'}]},
   {v:'21.51',f:'03/10/2026',h:'14:20',c:[{n:3,t:'Paraguay · Probados: arriba sólo lo que DA (Nissei lo tiene, precio mirado en los últimos 7 días y deja 20% o más, porque ya se sabe que se vende). Lo que no da, no hay o falta revisar va abajo en un desplegable con el motivo. El precio lo actualiza Guay recorriendo los probados primero.'}]},
@@ -10884,7 +10885,7 @@ function candPreciosPartes(c){
   const vBot=(c.mlVendidas!=null&&isFinite(c.mlVendidas))?Number(c.mlVendidas):null;
   const vUsa=candVentasDe(c);
   if(vUsa!=null){
-    R.ventasN=`<b style="color:${vUsa>=25?'var(--green)':'var(--amber)'}">${vUsa}</b>`;
+    R.ventasN=`<b style="color:${vUsa>=CAND_MIN_VENT?'var(--green)':'var(--amber)'}">${vUsa}</b>`;
     R.ventas=`🛒 ${R.ventasN} vendida${vUsa===1?'':'s'} en ML`
       +(vChat!=null&&vBot!=null&&vBot!==vChat?` <span style="color:var(--amber)">(el robot ve ${vBot})</span>`:'');
     R.ventasExtra=(vChat!=null&&vBot!=null&&vBot!==vChat)?`el robot ve ${vBot}`:'';
@@ -12003,7 +12004,7 @@ function candidatosHTML(){
           :`<div style="width:56px;height:56px;border:1px dashed var(--border);border-radius:8px;flex:0 0 auto;font-size:.55rem;color:var(--muted);display:flex;align-items:center;justify-content:center">sin foto</div>`}
         <div style="flex:1;min-width:0">
           <div style="font-size:.8rem;font-weight:600;line-height:1.3">${c.nombre}</div>
-          <div style="font-size:.68rem;color:var(--muted);margin-top:3px">${c.cod?`🔖 ${c.cod} · `:''}${usd>0?`US$ ${usd.toFixed(2)} → <b style="color:var(--text)">US$ ${puesto.toFixed(2)}</b> puesto${pesos?` · ${fmt(pesos)}`:''}`:'<span style="color:var(--red)">sin precio</span>'}${(()=>{const _v=candVentasDe(c);return _v!=null?` · <b style="color:${_v>=25?'var(--green)':'var(--amber)'}">🛒 ${_v>=1000?'+1000':_v} vendidas</b>`:' · <span style="color:var(--amber)">🛒 sin dato de ventas</span>';})()}</div>
+          <div style="font-size:.68rem;color:var(--muted);margin-top:3px">${c.cod?`🔖 ${c.cod} · `:''}${usd>0?`US$ ${usd.toFixed(2)} → <b style="color:var(--text)">US$ ${puesto.toFixed(2)}</b> puesto${pesos?` · ${fmt(pesos)}`:''}`:'<span style="color:var(--red)">sin precio</span>'}${(()=>{const _v=candVentasDe(c);return _v!=null?` · <b style="color:${_v>=CAND_MIN_VENT?'var(--green)':'var(--amber)'}">🛒 ${_v>=1000?'+1000':_v} vendidas</b>`:' · <span style="color:var(--amber)">🛒 sin dato de ventas</span>';})()}</div>
         </div>
         <div style="text-align:right;flex:0 0 auto">
           ${tieneCuenta?`<div style="font-size:1.35rem;font-weight:700;color:${col};line-height:1">${c.margen.toFixed(0)}%${dudas?' <span title="Hay dudas de que sea el mismo producto: abrilo y mirá las dos fotos" style="font-size:.8em">⚠️</span>':''}</div>`:'<div style="font-size:.68rem;color:var(--muted)">⏳ sin medir</div>'}
@@ -12060,7 +12061,10 @@ function candidatosHTML(){
       </div>
     </details>`;
   };
-  const _arriba=vivos.filter(c=>!_esRojo(c)), _rojos=vivos.filter(_esRojo);
+  // MENOS DE 100 VENDIDAS = NO SE PUEDE PEDIR (03/10/2026, él: "¿por qué hay de menos de 100 ventas?"): van
+  // abajo en su propio desplegable, igual que los que no llegan al %. Arriba sólo lo que se puede comprar.
+  const _pocas=c=>{const v=candVentasDe(c);return v==null||v<CAND_MIN_VENT;};
+  const _arriba=vivos.filter(c=>!_esRojo(c)&&!_pocas(c)), _rojos=vivos.filter(_esRojo), _flojas=vivos.filter(c=>!_esRojo(c)&&_pocas(c));
   // ORDENAR (03/10/2026, pedido suyo: "poder buscar de mayor a menor los que más unidades vendieron, mayor
   // porcentaje y eso"). Los sin dato van siempre al final.
   {const k=_candOrden, val=c=>{const n=x=>(x!=null&&isFinite(x))?Number(x):null;
@@ -12070,7 +12074,7 @@ function candidatosHTML(){
       if(k==='barato')return parseFloat(c.usd)>0?-parseFloat(c.usd):null;
       return n(c.margen);};
     const ord=(a,b)=>{const va=val(a),vb=val(b);if(va==null&&vb==null)return 0;if(va==null)return 1;if(vb==null)return -1;return vb-va;};
-    _arriba.sort(ord);_rojos.sort(ord);}
+    _arriba.sort(ord);_rojos.sort(ord);_flojas.sort(ord);}
   // CUÁNTOS DAN (02/10/2026, pedido suyo: *"antes de arrancar la lista poné cuántos candidatos con % positivo en
   // verde hay, así voy viendo cuando sube productos nuevos"*). Verde = medido y en el piso o arriba.
   const _verdes=_arriba.filter(c=>c.margen!=null&&isFinite(c.margen)).length, _sinMed=_arriba.length-_verdes;
@@ -12083,6 +12087,7 @@ function candidatosHTML(){
   const _ob=(k,t)=>`<button class="btn" style="font-size:.66rem;padding:4px 11px;${_candOrden===k?'background:var(--blue);color:#fff;font-weight:700':''}" onclick="candOrdenar('${k}')">${t}</button>`;
   const _orden=`<div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin:0 0 10px"><span style="font-size:.66rem;color:var(--muted)">Ordenar de mayor a menor:</span>${_ob('pct','% de ganancia')}${_ob('vend','🛒 más vendidos')}${_ob('gan','$ por unidad')}${_ob('usd','$ por dólar invertido')}${_ob('barato','más barato')}</div>`;
   return cab+simPYHTML()+pyEnCaminoHTML()+pedNuevosResumenHTML()+_cuenta+_orden+_arriba.map(_card).join('')
+    +(_flojas.length?`<details style="margin-top:10px"><summary style="cursor:pointer;font-size:.7rem;color:var(--amber)">🟠 ${_flojas.length} con menos de ${CAND_MIN_VENT} vendidas en ML (o sin el dato) · no se pueden pedir · tocá para verlos</summary><div style="display:flex;flex-direction:column;gap:8px;margin-top:8px">${_flojas.map(_card).join('')}</div></details>`:'')
     +(_rojos.length?`<details style="margin-top:10px"><summary style="cursor:pointer;font-size:.7rem;color:var(--red)">🔻 ${_rojos.length} no llega${_rojos.length===1?'':'n'} al ${CAND_PISO_PCT}% · tocá para verlos</summary><div style="display:flex;flex-direction:column;gap:8px;margin-top:8px">${_rojos.map(_card).join('')}</div></details>`:'')
     +candDescartadosHTML();
 }
