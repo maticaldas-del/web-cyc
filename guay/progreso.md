@@ -220,3 +220,10 @@ Nikon (25) · 116518 SSD SanDisk Plus 2TB (ML matcheó otro) · 80077 dock Satel
   80%+ revisados con el precio de hoy: Lexar 141677 y 138585 OK · Kingston A400 31431 y Cabotine 91832 tenían catálogo de 1
   vendedor caro → mlId cambiado (MLA37578501 / MLA24087543) y campos de cálculo borrados para remedir · Corsair Void Elite
   negro 55654 descartado. **Falta:** que el robot mida ~400 (se largó `candidatos:max=500:go`) y mirar los nuevos 80%+.
+- 03/10 · Tanda 5: los 747 nuevos ya medidos (0 sin medir). 80%+ revisados con el precio de HOY: Lexar 141677 y 138585 OK ·
+  Waflera Atma WS027DRN Mickey 136506 OK (mismo producto, +10 mil vendidas; catálogo $270.000 y otra publicación a $190.000,
+  igual da +80%; nota cargada) · Álbum Panini Mundial 2026 157274 DESCARTADO (el catálogo era el Gold tapa dura; el común
+  sale ~$3.000) · Kingston A400 31431 y Cabotine 91832 re-medidos contra el catálogo correcto: 4,8% y −12,9%.
+  **Resultado de hoy: 746 activos · 58 dan 25%+ · 18 entre 20 y 25%.** En total (con los de antes) 100 dan 25%+.
+  **Queda para otro día (decisión de Matías):** re-buscar con otras palabras los 3.085 "no están en ML" y los 744 con
+  resultado pero sin ficha de catálogo.

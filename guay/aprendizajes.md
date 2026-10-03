@@ -257,3 +257,5 @@ match de las categorías que sí dan: **routers, memorias, accesorios de cámara
 - **Marcas de Nissei que no están en ML:** Klasse, Keepdata, G-Tide, FTX, Maxwell, Babaria, Bio Balance.
 - **Un catálogo de 1 solo vendedor puede tener precio inflado:** si da 80%+, buscar el mismo modelo en otro catálogo o fuera
   de él; si cambiás `mlId`, borrá los campos de cálculo para que el robot lo vuelva a medir.
+- **Álbumes y coleccionables (03/10):** el catálogo de ML puede ser la edición especial (tapa dura, Gold, lleno). Comparar
+  contra la edición común antes de creerle a un 80%+.
