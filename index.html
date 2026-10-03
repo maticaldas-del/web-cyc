@@ -2430,7 +2430,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='21.78';
+const APP_VERSION='21.79';
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
 // muestre la versión y la fecha de actualización y que tenga un desplegable predeterminado cerrado".
 // Y el mismo día: "que ponga fecha de cada modificación y haya una barrita para scrollear y que
@@ -2441,6 +2441,7 @@ const APP_VERSION='21.78';
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'21.79',f:'03/10/2026',h:'21:10',c:[{n:1,t:'📈 Línea de tiempo más grande; el stock es una sola franja (unidades + con/sin stock abajo) y la explicación de colores va en un desplegable.'}]},
   {v:'21.78',f:'03/10/2026',h:'20:55',c:[{n:1,t:'📈 Línea de tiempo: línea nueva de stock en unidades, coloreada por los días que alcanza al ritmo de ese momento: falta, justo, bien, sobra, exceso.'}]},
   {v:'21.77',f:'03/10/2026',h:'20:40',c:[{n:1,t:'📈 Línea de tiempo: el precio es lo COBRADO por unidad los días con ventas (antes podía mostrar el de una publicación pausada) y sólo cuentan las publicaciones activas. Las líneas de precio y costo ya no exageran cambios chicos (escala mínima de 20%).'}]},
   {v:'21.76',f:'03/10/2026',h:'20:15',c:[{n:1,t:'📈 Línea de tiempo: línea nueva del costo por unidad de cada día (el mismo con el que se calculó la ganancia), para ver si un cambio en el % vino del precio o del costo.'}]},
@@ -8374,7 +8375,7 @@ function prodById(id){return id?(state.products||[]).find(p=>p.id===id):null;}
 // que no está es "no se sabe" y se pinta en gris, nunca como cero.
 // Los cambios de precio con su motivo salen de `cyc/supervisor/eventos` (rescate, subir, bajar, remate,
 // escalera, prueba, a mano).
-let _lineaRango=365, _lineaCache={};
+let _lineaRango=365, _lineaCache={}, _lineaDetAb=false;
 function _lineaFmtDia(k){const q=k.split('_');return q[2]+'/'+q[1]+'/'+q[0].slice(2);}
 function _lineaDias(n){const out=[];const hoy=new Date();for(let i=n;i>=1;i--){const d=new Date(hoy.getTime()-i*864e5);out.push(dateToKey(d));}return out;}
 function _lineaJunta(porMla){
@@ -8470,9 +8471,12 @@ function lineaPintar(prodId){
   const pvs=Object.values(pd); const qMin=pvs.length?Math.max(-50,Math.min(...pvs)):0, qMax=pvs.length?Math.min(250,Math.max(...pvs)):1;
   const hayEst=ks.some(k=>dias[k]&&(dias[k].rem||dias[k].esc!=null)), hayCaja=ks.some(k=>dias[k]&&dias[k].caja), hayVis=ks.some(k=>dias[k]&&dias[k].vis>0), hayGan=Object.keys(gd).length>0;
   // Los carriles que no tienen NADA en el rango no se dibujan (una franja toda gris no dice nada).
-  const L={};let _y=0;const _lane=(n,h,si)=>{if(!si)return;L[n]=[_y,h];_y+=h+8;};
-  _lane('vent',64,true);_lane('stu',40,suv.length>0);_lane('pct',46,pvs.length>0);_lane('cos',40,cvs.length>0);_lane('vis',26,hayVis);_lane('st',14,true);_lane('pr',46,true);_lane('est',14,hayEst);_lane('caja',14,hayCaja);
+  const L={};let _y=0;const _lane=(n,h0,si)=>{if(!si)return;const h=Math.round(h0*1.45);L[n]=[_y,h];_y+=h+8;};
+  _lane('vent',64,true);_lane('st',suv.length?54:14,true);_lane('pct',46,pvs.length>0);_lane('cos',40,cvs.length>0);_lane('vis',26,hayVis);_lane('pr',46,true);_lane('est',14,hayEst);_lane('caja',14,hayCaja);
   const H=_y-8;
+  // STOCK UNIFICADO (03/10/2026, él: "hay dos stock, unifiquémoslo"): la línea de unidades arriba y, abajo,
+  // la franja finita de con/sin stock para los días sin el número exacto.
+  const _stBh=suv.length?8:L.st[1], _stB0=L.st[0]+L.st[1]-_stBh;
   const _conSt=d=>!!d&&(d.u>0||d.st>0||(d.vis>0&&!(d.st!=null&&d.stN>=d.pubs)));
   const _stIni=ks.find(k=>dias[k]&&(dias[k].u>0||dias[k].st!=null||dias[k].vis>0))||'9999';
   let svg='';
@@ -8495,7 +8499,7 @@ function lineaPintar(prodId){
     // dato del producto queda gris (ahí todavía no existía o no se miraba).
     // Y si no hay dato de stock pero tuvo VISITAS, había stock (él, mismo día).
     const stK=_conSt(d)?'si':(k>=_stIni?'no':null);
-    svg+=`<rect x="${x}" y="${L.st[0]}" width="${bw}" height="${L.st[1]}" fill="${stK==='si'?'var(--green)':stK==='no'?'var(--red)':'rgba(128,128,128,.25)'}" opacity="${stK?'.75':'1'}"/>`;
+    svg+=`<rect x="${x}" y="${_stB0}" width="${bw}" height="${_stBh}" fill="${stK==='si'?'var(--green)':stK==='no'?'var(--red)':'rgba(128,128,128,.25)'}" opacity="${stK?'.75':'1'}"/>`;
     // precio
     if(d&&d.p>0)ptsP.push(`${(x+bw/2).toFixed(1)},${(L.pr[0]+L.pr[1]-(pMax>pMin?(d.p-pMin)/(pMax-pMin):.5)*L.pr[1]).toFixed(1)}`);
     // estado: remate / escalera
@@ -8513,11 +8517,11 @@ function lineaPintar(prodId){
   if(L.cos){const yc=c=>L.cos[0]+L.cos[1]-(cMax>cMin?(c-cMin)/(cMax-cMin):.5)*L.cos[1];const pts=[];ks.forEach((k,i)=>{if(cu[k]!=null)pts.push(`${(X(i)+bw/2).toFixed(1)},${yc(cu[k]).toFixed(1)}`);});
     if(pts.length>1)svg+=`<polyline points="${pts.join(' ')}" fill="none" stroke="#f59e0b" stroke-width="1.5"/>`;
     svg+=`<text x="${W-2}" y="${L.cos[0]+9}" font-size="10" text-anchor="end" fill="var(--muted)">${fmt(Math.max(...cvs))}</text>`+(Math.max(...cvs)>Math.min(...cvs)?`<text x="${W-2}" y="${L.cos[0]+L.cos[1]}" font-size="10" text-anchor="end" fill="var(--muted)">${fmt(Math.min(...cvs))}</text>`:'');}
-  if(L.stu){const ys=v=>L.stu[0]+L.stu[1]-v/sMax*L.stu[1];let prev=null,prevI=-9;
+  if(suv.length){const ys=v=>L.st[0]+(L.st[1]-9)-v/sMax*(L.st[1]-9);let prev=null,prevI=-9;
     ks.forEach((k,i)=>{if(stU[k]==null){prev=null;return;}const pt=[X(i)+bw/2,ys(stU[k])];const c=_stCol(stD[k]);
       if(prev&&i-prevI<=3)svg+=`<line x1="${prev[0].toFixed(1)}" y1="${prev[1].toFixed(1)}" x2="${pt[0].toFixed(1)}" y2="${pt[1].toFixed(1)}" stroke="${c}" stroke-width="2"/>`;
       else svg+=`<circle cx="${pt[0].toFixed(1)}" cy="${pt[1].toFixed(1)}" r="1.5" fill="${c}"/>`;prev=pt;prevI=i;});
-    svg+=`<text x="${W-2}" y="${L.stu[0]+9}" font-size="10" text-anchor="end" fill="var(--muted)">${Math.round(sMax)} u.</text><text x="${W-2}" y="${L.stu[0]+L.stu[1]}" font-size="10" text-anchor="end" fill="var(--muted)">0</text>`;}
+    svg+=`<text x="${W-2}" y="${L.st[0]+9}" font-size="10" text-anchor="end" fill="var(--muted)">${Math.round(sMax)} u.</text>`;}
   if(ptsP.length>1)svg+=`<polyline points="${ptsP.join(' ')}" fill="none" stroke="var(--text)" stroke-width="1.5"/>`;
   // marcas de cambios de precio
   const motivoTxt={rescate:'🛟 rescate (subió a la meta)',subir:'📈 suba del robot',bajar:'📉 baja del robot',remate:'🔻 remate',escalera:'🪜 escalera',prueba:'🧪 prueba +5%',mano:'✋ a mano',volver:'↩️ vuelto atrás'};
@@ -8547,21 +8551,22 @@ function lineaPintar(prodId){
   const btn=n=>`<button class="btn" onclick="lineaRango(${n},'${prodId}')" style="font-size:.66rem;padding:3px 10px;${_lineaRango===n?'background:var(--green);color:#000;border-color:var(--green)':''}">${n} días</button>`;
   const ley=(c,t)=>`<span style="display:inline-flex;align-items:center;gap:4px;margin-right:10px"><span style="width:10px;height:10px;border-radius:2px;background:${c};display:inline-block"></span>${t}</span>`;
   const lab=(y,t)=>`<div style="position:absolute;left:0;top:${y/ (H+16)*100}%;font-size:.58rem;color:var(--muted);transform:translateY(-1px)">${t}</div>`;
-  m.innerHTML=`<div style="background:var(--surface);border:1px solid var(--border2);border-radius:12px;max-width:1100px;width:100%;padding:14px 16px;margin-top:20px">
+  m.innerHTML=`<div style="background:var(--surface);border:1px solid var(--border2);border-radius:12px;max-width:1500px;width:100%;padding:14px 16px;margin-top:20px">
     <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap">
       <div style="font-size:.9rem;font-weight:700">📈 ${p.name}</div>
       <div style="display:flex;gap:6px;align-items:center">${btn(365)}${btn(90)}${btn(30)}<button class="btn" onclick="document.getElementById('linea-modal').remove()" style="font-size:.7rem;padding:3px 10px">✕</button></div>
     </div>
     <div style="font-size:.7rem;color:var(--muted);margin:6px 0 8px;line-height:1.6">${_lineaRango} días · <b style="color:var(--text)">${uT} u. vendidas</b>${uRT?` (${uRT} en remate)`:''}${hayGan&&gPct!=null&&isFinite(gPct)?` · ganancia <b style="color:${pctColor(gPct)}">${gPct.toFixed(0)}%</b>`:''} · ${vT} visitas · stock: <span style="color:var(--green)">${dCon} d con</span> · <span style="color:var(--red)">${dSin} d sin</span> · ${dNo} d sin dato${dRem?` · ${dRem} d rematando`:''}${pIni&&pFin?` · precio ${fmt(pIni)} → ${fmt(pFin)}`:''} · ${mlas_cnt(C)} publicación(es)${C.fallo?' · <span style="color:var(--amber)">alguna publicación no se pudo leer</span>':''}</div>
     <div style="position:relative;padding-left:58px">
-      ${lab(L.vent[0]+28,'ventas')}${L.pct?lab(L.pct[0]+18,'% ganancia'):''}${L.cos?lab(L.cos[0]+15,'costo c/u'):''}${L.stu?lab(L.stu[0]+15,'stock u.'):''}${L.vis?lab(L.vis[0]+9,'visitas'):''}${lab(L.st[0]+2,'stock')}${lab(L.pr[0]+18,'precio')}${L.est?lab(L.est[0]+2,'remate'):''}${L.caja?lab(L.caja[0]+2,'caja'):''}
+      ${lab(L.vent[0]+28,'ventas')}${L.pct?lab(L.pct[0]+18,'% ganancia'):''}${L.cos?lab(L.cos[0]+15,'costo c/u'):''}${L.vis?lab(L.vis[0]+9,'visitas'):''}${lab(L.st[0]+(suv.length?20:2),'stock')}${lab(L.pr[0]+18,'precio')}${L.est?lab(L.est[0]+2,'remate'):''}${L.caja?lab(L.caja[0]+2,'caja'):''}
       <svg viewBox="0 0 ${W} ${H+16}" preserveAspectRatio="none" style="width:100%;height:${Math.round((H+16)*1.1)}px;display:block">${svg}</svg>
     </div>
-    <div style="font-size:.64rem;color:var(--muted);margin-top:8px;line-height:1.9">
+    <details style="margin-top:8px" ${_lineaDetAb?'open':''} ontoggle="_lineaDetAb=this.open"><summary style="cursor:pointer;font-size:.68rem;color:var(--muted)">Qué significa cada color ▾</summary>
+    <div style="font-size:.64rem;color:var(--muted);margin-top:6px;line-height:1.9">
       ${ley('var(--green)','vendió / con stock / caja ganada')}${ley('#f59e0b','vendido en remate / caja compartida')}${ley('var(--red)','sin stock / caja perdida')}${ley('#60a5fa','visitas')}${ley('#f97316','rematando')}${ley('#a855f7','escalera')}${ley('rgba(128,128,128,.35)','no se sabe')}
       <span style="margin-right:10px">📦 stock en unidades, color por los días que alcanza: <span style="color:var(--red)">━ falta (−7)</span> <span style="color:#f97316">━ justo (7-20)</span> <span style="color:var(--green)">━ bien (20-45)</span> <span style="color:#eab308">━ sobra (45-90)</span> <span style="color:#a855f7">━ exceso (+90)</span></span><span style="margin-right:10px"><span style="color:#f59e0b">━</span> costo por unidad (el de la ganancia de ese día)</span><span style="margin-right:10px">📊 % de ganancia: la línea toma el color del nivel de ese día (🔴 Bajo · 🟠 Justo · 🟢 Bien · 🩵 Bueno · 🔵 Excelente · 🟣 Estrella · 💎 JOYA), misma cuenta que Ventas</span><span style="margin-right:10px">▲▼ cambio de precio (con su motivo)</span><br>
-      Pasá el mouse (o tocá) un día para ver todo lo que pasó. El precio es el más barato de sus publicaciones; ventas, visitas y stock suman todas. Stock, caja y remate de los días viejos no los guarda ML: quedan en gris.
-    </div></div>`;
+      Pasá el mouse (o tocá) un día para ver todo lo que pasó. El precio es el más barato de sus publicaciones; ventas, visitas y stock suman todas. Stock, caja y remate de los días viejos no los guarda ML: quedan en gris. En stock: la línea son las unidades en Full (cuando se sabe el número) y la franja finita de abajo dice si hubo o no hubo stock ese día.
+    </div></details></div>`;
 }
 function mlas_cnt(C){return Object.keys(C.porMla||{}).length;}
 function lineaBtn(prodId,txt){return prodId?`<button class="btn" onclick="lineaAbrir('${prodId}',event)" title="Línea de tiempo: stock, ventas, precio y remates de los últimos 365 días" style="font-size:.64rem;padding:2px 7px;line-height:1.2">${txt||'📈'}</button>`:'';}
