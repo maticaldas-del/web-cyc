@@ -197,3 +197,10 @@ Nikon (25) · 116518 SSD SanDisk Plus 2TB (ML matcheó otro) · 80077 dock Satel
   hay que cargar esa fecha con `updNisseiListado('<id>','2026-08-21')` y el panel los baja a "falta revisar".
 - Corrección tanda 1: 103737 LS1008G, 110348 LS108G (sin vendidos) y 137572 XZ005-G6 (1 vendido) descartados. Cargados por la
   regla nueva (tope US$ 215, sin filtrar margen): 45168 Extreme 128, 65318 Ultra 128, 40027 Ultra Fit 64. Activos hoy: 15.
+- 03/10 · Tanda 2 (sola, Matías durmiendo): probados con fila de Nissei → los 32 con `updPyLink` (link + foto); los 12 sin
+  Nissei siguen en pySinStock. Nuevos (tope US$ 215, 100+ vendidas): 416 fichas de ML revisadas por foto (memorias, foto,
+  cuidado personal, auriculares) → **111 cargados** · **64 pendientes** (la ficha encontrada era otro color: buscar la del color
+  exacto) · 241 descartados (124 otro modelo, 55 otro producto, 26 no está en ML, 9 auricular de cable US$ 6-7, 6 son 110V,
+  6 otra versión, resto otro código/edición/montura). Pedido de Matías evaluado: Sérum Medicube 158281 NO da (vendedor nuevo a
+  $36.000, Matías lo sacó); Lexar 138585 y 141677 dan 80%+ con el precio de ML de hoy confirmado.
+  **Sigue:** fichas de color de los 64 · redes y perfumería (445 fichas) · revisar fotos y cargar.

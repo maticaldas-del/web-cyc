@@ -240,3 +240,9 @@ match de las categorías que sí dan: **routers, memorias, accesorios de cámara
 - **Vendidos de ML:** leerlos del subtítulo de LA ficha ("Nuevo | +500 vendidos"), no de otros productos de la página.
 - **Tope de compra US$ 215 crudo** (03/10): de ahí para abajo cargar todo lo que sea el mismo producto con 100+ vendidas, sin
   filtrar por margen (lo mide el robot).
+- **Vendidos (03/10, tanda 2):** sólo del subtítulo de la ficha de catálogo ("Nuevo | +N vendidos"). Si no aparece, NO hay
+  ventas — no tomar el número de otro producto de la misma página.
+- **La ficha `/p/<ID>/s`** lista los vendedores con sus precios.
+- **Color exacto:** el selector de la ficha ("Botón N de M, Color") lleva al `/p/` de cada color; cargar el del color pedido.
+- **Parecidos que NO son el mismo:** FreeClip vs FreeClip 2 · KF432 vs KF436 · EF vs RF · Xpro vs Xpro II · SDSQUNR vs A1 ·
+  HS80 inalámbrico vs USB · 110V (Paraguay) vs 220V (ML).
