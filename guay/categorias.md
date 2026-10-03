@@ -1,8 +1,9 @@
 # Categorías de Nissei para barrer (03/10/2026) — en parte aprobado
 
 > **03/10/2026 · Matías aprobó: "excluí sólo lo grande de verdad".** Lo GRANDE queda excluido (ver abajo).
-> Consumibles y aspiradoras se SIGUEN revisando (dieron margen). Maquillaje (1) y térmicos (2) siguen
-> **a confirmar** — no se excluyen hasta que él lo diga.
+> Consumibles y aspiradoras se SIGUEN revisando (dieron margen). Térmicos (2) sigue **a confirmar**.
+> **MAQUILLAJE ENTRA TODO (03/10, Matías):** *"todo el mundo de maquillaje, labial, base, rubor y todo lo relacionado
+> recontra van. porque si no se venden en ml se venden en la perfumería, así que es importante"*.
 
 ## Método
 Barrer TODAS las categorías de comprasparaguay con `?page=N&loja=nissei`. De `/categorias/` salen 523;
@@ -18,8 +19,8 @@ adaptador-inalambrico · repetidor-de-senal · otros-equipos-de-red · cajon-par
 ## B) Excluidas enteras
 **Ya acordadas:** celular · notebook · tablet · camara-de-monitoreo-dvr · camara-digital · filmadora ·
 camara-para-auto · camera-infantil · camara-de-marcha-atras · placa-madre · placa-de-video · monitor ·
-impresora · tv · computadora · servidor · labial · base · rubor · lapiz · sombra-de-ojos · corrector ·
-polvo · delineador · termo.
+impresora · tv · computadora · servidor · termo.
+(**Labial, base, rubor, lápiz, sombra de ojos, corrector, polvo y delineador SALIERON de esta lista el 03/10: van.**)
 **Grandes de verdad, EXCLUIDAS desde el 03/10 (aprobado):** aire-acondicionado · heladera · lavarropas-secarropas ·
 microondas · horno-electrico · cocina-electrica · hidrolavadora · monopatin · scooter · bicicleta-eletrica ·
 moto-electrica · silla-y-mesa · valija · musculacion-gimnasia · robo-cortador-de-grama · caja-fuerte ·
@@ -31,14 +32,15 @@ papel fotográfico, pila, etc.: el Canon CLI-151 dio 34% y el papel KP108 31%).
 Relojes, teclados, mouse, parlantes, cables, capilar, skincare, fuentes, procesadores, juegos, etc.
 
 ## Propuesta de pasar a excluidas — A CONFIRMAR
-1. **Maquillaje por categoría:** gloss · rimel · iluminador · otras-maquillajes · pincel-para-maquillaje ·
-   esponja-para-maquillaje · espejo-de-maquillaje · mascara-para-pestanas · balsamo-labial
+1. ~~Excluir maquillaje~~ → **AL REVÉS, 03/10: todo el maquillaje entra** (labial, base, rubor, lápiz, sombra, corrector,
+   polvo, delineador, gloss, rímel, iluminador, otras-maquillajes, pinceles, esponjas, espejos, máscara de pestañas,
+   bálsamo labial). Va con PRIORIDAD: tiene segunda salida en la perfumería.
 2. **Térmicos:** taza-vaso-termico · caja-bolsa-termica · fiambrera-termica · botella-de-agua
 3. ~~Grandes/pesados~~ → **resuelto el 03/10:** excluidos los grandes de verdad (arriba), aspiradora sigue.
 4. ~~Consumibles~~ → **resuelto el 03/10:** se siguen revisando.
 
 ## Reglas generales (ya vigentes)
-Tope US$ 215 crudo · nombre con D&G/maquillaje/termo/celular/notebook/tablet/TV/monitor/impresora/cámara
+Tope US$ 215 crudo · nombre con D&G/termo/celular/notebook/tablet/TV/monitor/impresora/cámara
 afuera · lo que ya está en el panel afuera · en ML el mismo modelo/color/ml/voltaje (110V afuera), sin packs
 distintos · 100+ vendidas en la ficha de catálogo · fotos comparadas a mano · 80%+ se mira con el precio de
 hoy (si el catálogo es de 1 vendedor, buscar el mismo modelo fuera).

@@ -194,7 +194,7 @@ que en cada una aparecen todos. Una descarga que da justo 10.000 es esta pared, 
 4. **Mismo juego, distinta caja (PEGI europea vs americana):** es el mismo producto. Pero un pack con DLC o una edición
    distinta NO lo es.
 
-- **Maquillaje (rubor, sombras, lápices, correctores, polvos, gloss, máscaras, iluminadores) no da** (02/10): en ML casi no
+- ~~**Maquillaje no da** (02/10)~~ **ANULADO el 03/10: el maquillaje ENTRA TODO, ver abajo.** Lo que decía:: en ML casi no
   tienen ventas o se venden baratos contra el costo de Nissei. En el próximo barrido se pasan rápido.
 
 - **Cada color/variante es otro catálogo** también en teclados (Pop Keys) y cables (largo): medir contra el del mismo color/largo.
@@ -262,3 +262,8 @@ match de las categorías que sí dan: **routers, memorias, accesorios de cámara
 - **Categorías (03/10, aprobado por Matías):** se excluyen sólo las categorías GRANDES de verdad (heladera, lavarropas,
   aire, microondas, hornos, bicis/monopatines/motos, muebles, valijas, gimnasio, sillas/escritorios gamer, gabinetes,
   UPS, robots de limpieza). Aspiradoras, drones y consumibles se siguen revisando. Detalle en `guay/categorias.md`.
+- **MAQUILLAJE ENTRA TODO (03/10, regla de Matías):** *"todo el mundo de maquillaje, labial, base, rubor y todo lo
+  relacionado recontra van. porque si no se venden en ml se venden en la perfumería"*. Se barre todo el maquillaje y
+  "maquillaje" ya NO es palabra excluida. Tiene segunda salida (la perfumería), así que es prioridad.
+  **Falta que él diga** si para el maquillaje se aflojan las varas de ML (100 vendidas, 25%); hasta entonces se cargan
+  igual que el resto y los que no las cumplen se anotan aparte en `progreso.md` para mostrárselos.
