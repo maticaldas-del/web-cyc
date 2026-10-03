@@ -25038,11 +25038,14 @@ async function main() {
           const b = Math.min(x.q, Math.max(0, baseRest)); baseRest -= b;
           const e = x.q - b;
           if (b > 0) { base += (x.tot / x.q - ev.de) * (x.neto / x.tot) * b; uBase += b; }
+          // LAS VENTAS "DE MÁS" TAMBIÉN CUENTAN SÓLO LO COBRADO DE MENOS (03/10/2026, eligió la (a) con el
+          // Xiaomi Watch S5: una baja de 3,5% figuraba "ganó +$112.868"). Bajar el precio no CREA la venta,
+          // la ADELANTA: la mercadería no se vence y lo más probable es que se vendiera igual más adelante al
+          // precio viejo. Lo que el remate hace de verdad es cobrar menos (se resta acá) y ahorrar el
+          // almacenamiento de lo que salió antes (se suma abajo). Sus palabras: "que sea justo, no jugar en
+          // contra del robot tampoco". `uOk` queda como las unidades paradas que salieron, sin pesos.
           if (e > 0) {
-            const g = x.neto - costo * x.q - x.tot * imp;
-            const div = costo * x.q + x.tot * imp + env * x.q;
-            const pct = div > 0 ? g / div * 100 : null;
-            if (pct != null && Math.round(pct) >= REM_PISO) { gan += g / x.q * e; uOk += e; } else uBajo += e;
+            gan += (x.tot / x.q - ev.de) * (x.neto / x.tot) * e; uOk += e;
             extras.push({ ts: x.ts, u: e });
           }
         }
@@ -25424,7 +25427,7 @@ async function main() {
       console.log(`${resumen.ganaron} dejaron más · ${resumen.perdieron} dejaron menos · ${resumen.quiebres} con el volumen sin contar por quiebre de stock`);
       console.log(`No cuentan (🛟 recuperar margen por costo/inflación): ${resumen.rescates.n} cambios · ${$s(resumen.rescates.total)}`);
       console.log(`Remates y escalera: ${resumen.remates.n} · ventas al ${REM_PISO}%+ ${$s(resumen.remates.gan)} · lo que igual se vendía, más barato ${$s(resumen.remates.base)} · almacenamiento evitado ${resumen.remates.almUD} unidades-día${resumen.remates.alm ? ' = ' + $s(resumen.remates.alm) : ''}${resumen.remates.sinTarifa ? ' (falta la tarifa: no suma en pesos)' : ''}`);
-      for (const x of atrib.filter((y) => y.rem)) console.log(`  🔨 ${x.nom} (${x.cuenta}) ${$s(x.de)}→${$s(x.a)} · ${x.dias} d · al ${REM_PISO}%+ ${x.rem.uOk} u. ${$s(x.rem.gan)} · abajo ${x.rem.uBajo} u. · iba igual ${x.rem.uBase} u. ${$s(x.rem.base)} · almac. ${x.rem.almUD} u-día${x.rem.alm != null ? ' ' + $s(x.rem.alm) : ''}${x.rem.almNota ? ' (' + x.rem.almNota + ')' : ''}`);
+      for (const x of atrib.filter((y) => y.rem)) console.log(`  🔨 ${x.nom} (${x.cuenta}) ${$s(x.de)}→${$s(x.a)} · ${x.dias} d · salieron ${x.rem.uOk} u. paradas · cobrado de menos ${$s(x.rem.gan)} · iba igual ${x.rem.uBase} u. ${$s(x.rem.base)} · almac. ${x.rem.almUD} u-día${x.rem.alm != null ? ' ' + $s(x.rem.alm) : ''}${x.rem.almNota ? ' (' + x.rem.almNota + ')' : ''}`);
       { const cm = {}; for (const x of registros) cm[x.motivo] = (cm[x.motivo] || 0) + 1; console.log(`Motivos: ${Object.entries(cm).map(([k, n]) => k + ' ' + n).join(' · ')}`); }
       for (const x of resumen.items.slice(0, 15)) console.log(`  ${x.total >= 0 ? '+' : ''}${$s(x.total)} · ${x.nom} (${x.cuenta}) ${$s(x.de)}→${$s(x.a)} · ${x.dias} d · ${x.uA}→${x.uD} u. · precio ${$s(x.precio)} · volumen ${$s(x.volumen)}${x.quiebre ? ' · sin stock' : ''}`);
       console.log('');

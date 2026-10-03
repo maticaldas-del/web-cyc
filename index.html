@@ -2430,7 +2430,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='21.69';
+const APP_VERSION='21.70';
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
 // muestre la versión y la fecha de actualización y que tenga un desplegable predeterminado cerrado".
 // Y el mismo día: "que ponga fecha de cada modificación y haya una barrita para scrollear y que
@@ -2441,6 +2441,7 @@ const APP_VERSION='21.69';
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'21.70',f:'03/10/2026',h:'18:35',c:[{n:3,t:'🤖 Robot de precios: remates y escalera ya no suman la ganancia entera de lo que vendieron (bajar el precio adelanta la venta, no la crea). Cuentan lo cobrado de menos y el almacenamiento ahorrado. Ej.: el Watch S5 dejaba de figurar con +$112.868.'}]},
   {v:'21.69',f:'03/10/2026',h:'18:25',c:[{n:1,t:'📈 Línea de tiempo: franja nueva de 💰 ganancia por día (verde ganó, roja perdió) y arriba la ganancia del período en $ y %, con la misma cuenta que Ventas. Las franjas de remate, caja y visitas no se dibujan si en ese período no tienen nada.'}]},
   {v:'21.68',f:'03/10/2026',h:'17:58',c:[{n:1,t:'📈 Línea de tiempo de cada producto (365, 90 o 30 días): stock, ventas (las de remate en ámbar), visitas, precio con sus cambios ▲▼ y el motivo, remate/escalera y caja de compra. Se abre con el botón 📈 en Arqueo → Productos, Rotación de stock y Ventas x Producto. Pasando el mouse (o tocando) un día dice todo lo que pasó.'}]},
   {v:'21.67',f:'03/10/2026',h:'12:38',c:[{n:1,t:'Paraguay: "Productos probados" y "Productos nuevos" se prenden y apagan por separado: uno solo o los dos juntos (probados arriba, nuevos abajo).'}]},
@@ -15516,7 +15517,7 @@ function renderMetAuto(){
     ${cuerpo}${espera}
     <details style="margin-top:10px"><summary style="cursor:pointer;font-size:.6rem;color:var(--muted)">¿Qué cuenta?</summary><div style="font-size:.6rem;color:var(--muted);line-height:1.45;margin-top:4px">
       Sólo lo que el robot decidió mirando el mercado (📈 subir, 📉 bajar, 🧪 prueba de suba, 🔨 remate y 🪜 escalera), y sólo después de 7 días. No cuenta recuperar margen por costo o inflación (lo ibas a hacer igual) ni lo que tocaste a mano.
-      "Sin robot" es que el precio se quedaba donde estaba: se compara el mismo tiempo antes y después. En remates y escalera suma la ganancia de lo vendido al 20% o más y el almacenamiento que no se pagó.
+      "Sin robot" es que el precio se quedaba donde estaba: se compara el mismo tiempo antes y después. En remates y escalera NO se suma la ganancia de lo que se vendió (bajar el precio adelanta la venta, no la crea): cuenta lo que se cobró de menos y el almacenamiento que se dejó de pagar.
     </div></details>
     ${metVigBox()}
   </div>`;
