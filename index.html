@@ -2430,7 +2430,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='21.73';
+const APP_VERSION='21.74';
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
 // muestre la versión y la fecha de actualización y que tenga un desplegable predeterminado cerrado".
 // Y el mismo día: "que ponga fecha de cada modificación y haya una barrita para scrollear y que
@@ -2441,6 +2441,7 @@ const APP_VERSION='21.73';
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'21.74',f:'03/10/2026',h:'19:55',c:[{n:1,t:'📈 Línea de tiempo, stock: día que vendió = con stock; día sin dato y sin ventas = sin stock (rojo). Gris sólo antes del primer dato del producto.'}]},
   {v:'21.73',f:'03/10/2026',h:'19:40',c:[{n:3,t:'Pedidos y Armar caja: si un producto perdió (o recuperó) la caja de compra o cambió el precio 5% o más, el ritmo se mide SÓLO desde ese cambio, cuando hay datos suficientes (14 días con stock, o 7 con 3 ventas, o 7 sin vender cuando antes ya habría vendido 3). La tarjeta lo dice con 🔀. Si no hay datos, sigue el ritmo de siempre.'}]},
   {v:'21.72',f:'03/10/2026',h:'19:05',c:[{n:1,t:'📈 Línea de tiempo: se sacó la franja de ganancia en $; en su lugar va el % de ganancia como línea (igual que el precio), pintada día por día con el color de su nivel (Bajo a JOYA).'}]},
   {v:'21.71',f:'03/10/2026',h:'18:45',c:[{n:1,t:'📈 Línea de tiempo: la franja de stock ya no pinta rojo un día en que se vendió, ni cuando sólo una publicación vieja dice 0 y las otras no tienen dato (queda gris).'}]},
@@ -8442,6 +8443,7 @@ function lineaPintar(prodId){
   const L={};let _y=0;const _lane=(n,h,si)=>{if(!si)return;L[n]=[_y,h];_y+=h+8;};
   _lane('vent',64,true);_lane('pct',46,pvs.length>0);_lane('vis',26,hayVis);_lane('st',14,true);_lane('pr',46,true);_lane('est',14,hayEst);_lane('caja',14,hayCaja);
   const H=_y-8;
+  const _stIni=ks.find(k=>dias[k]&&(dias[k].u>0||dias[k].st!=null))||'9999';
   let svg='';
   // fondo de meses
   let lastM=''; ks.forEach((k,i)=>{const mm=k.slice(0,7);if(mm!==lastM){lastM=mm;svg+=`<line x1="${X(i)}" y1="0" x2="${X(i)}" y2="${H}" stroke="rgba(128,128,128,.25)" stroke-width="1"/><text x="${X(i)+2}" y="${H+12}" font-size="10" fill="var(--muted)">${['ene','feb','mar','abr','may','jun','jul','ago','sep','oct','nov','dic'][Number(k.slice(5,7))-1]}</text>`;}});
@@ -8458,7 +8460,9 @@ function lineaPintar(prodId){
     // STOCK (03/10/2026, él con las Cartas Casino: "dice que no hay stock, está en rojo y vendió siempre").
     // Si ese día vendió, había stock, diga lo que diga el registro. Y "sin stock" sólo si TODAS las
     // publicaciones que aparecen ese día informan cero: una vieja en 0 no puede tapar a otra sin dato.
-    const stK=!d?null:(d.u>0||d.st>0)?'si':(d.st!=null&&d.stN>=d.pubs?'no':null);
+    // Regla suya del 03/10/2026: día sin dato y sin ventas = SIN stock. Sólo antes del primer día con algún
+    // dato del producto queda gris (ahí todavía no existía o no se miraba).
+    const stK=(d&&(d.u>0||d.st>0))?'si':(k>=_stIni?'no':null);
     svg+=`<rect x="${x}" y="${L.st[0]}" width="${bw}" height="${L.st[1]}" fill="${stK==='si'?'var(--green)':stK==='no'?'var(--red)':'rgba(128,128,128,.25)'}" opacity="${stK?'.75':'1'}"/>`;
     // precio
     if(d&&d.p>0)ptsP.push(`${(x+bw/2).toFixed(1)},${(L.pr[0]+L.pr[1]-(pMax>pMin?(d.p-pMin)/(pMax-pMin):.5)*L.pr[1]).toFixed(1)}`);
@@ -8486,7 +8490,7 @@ function lineaPintar(prodId){
       d&&d.u!=null?`🛒 vendió ${d.u} u.${d.uR?` (${d.uR} en remate)`:''}`:'🛒 ventas: sin dato',
       gd[k]?`💰 ganancia ${fmt(gd[k].gan)}${(()=>{const q=pctGananciaVP(gd[k].gan,gd[k].costo,gd[k].gest);return q!=null&&isFinite(q)?` (${q.toFixed(0)}%)`:'';})()}`:'',
       d&&d.vis!=null?`👀 ${d.vis} visitas`:'',
-      d&&(d.u>0||d.st>0)?`📦 tenía stock${d.st>0?` (${d.st} u. en Full)`:' (vendió)'}`:(d&&d.st!=null&&d.stN>=d.pubs?'📦 sin stock en Full':'📦 stock: no se sabe'),
+      d&&(d.u>0||d.st>0)?`📦 tenía stock${d.st>0?` (${d.st} u. en Full)`:' (vendió)'}`:(k>=_stIni?(d&&d.st!=null?'📦 sin stock en Full':'📦 sin stock (no vendió y no hay dato)'):'📦 todavía no se miraba'),
       d&&d.p>0?`💲 precio ${fmt(d.p)}`:'',
       d&&d.mg!=null?`📊 margen ${Number(d.mg).toFixed(0)}%`:'',
       d&&d.esc!=null?`🪜 escalera, escalón ${d.esc}%`:(d&&d.rem?'🔻 rematando':''),
@@ -8495,7 +8499,7 @@ function lineaPintar(prodId){
     svg+=`<rect x="${X(i)}" y="0" width="${Math.max(bw,1)}" height="${H}" fill="transparent"><title>${t}</title></rect>`;});
   // resumen del rango
   let uT=0,uRT=0,dCon=0,dSin=0,dNo=0,dRem=0,vT=0; ks.forEach(k=>{const d=dias[k];if(d&&d.u)uT+=d.u;if(d&&d.uR)uRT+=d.uR;if(d&&d.vis)vT+=d.vis;
-    const s=!d?null:(d.u>0||d.st>0)?1:(d.st!=null&&d.stN>=d.pubs?0:null);if(s===1)dCon++;else if(s===0)dSin++;else dNo++;if(d&&(d.rem||d.esc!=null))dRem++;});
+    const s=(d&&(d.u>0||d.st>0))?1:(k>=_stIni?0:null);if(s===1)dCon++;else if(s===0)dSin++;else dNo++;if(d&&(d.rem||d.esc!=null))dRem++;});
   let gT=0,cT=0,eT=0;Object.values(gd).forEach(g=>{gT+=g.gan;cT+=g.costo;eT+=g.gest;});const gPct=hayGan?pctGananciaVP(gT,cT,eT):null;
   const pIni=ks.map(k=>dias[k]&&dias[k].p).find(x=>x>0), pFin=[...ks].reverse().map(k=>dias[k]&&dias[k].p).find(x=>x>0);
   const btn=n=>`<button class="btn" onclick="lineaRango(${n},'${prodId}')" style="font-size:.66rem;padding:3px 10px;${_lineaRango===n?'background:var(--green);color:#000;border-color:var(--green)':''}">${n} días</button>`;
