@@ -2430,7 +2430,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='21.52';
+const APP_VERSION='21.53';
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
 // muestre la versión y la fecha de actualización y que tenga un desplegable predeterminado cerrado".
 // Y el mismo día: "que ponga fecha de cada modificación y haya una barrita para scrollear y que
@@ -2441,6 +2441,7 @@ const APP_VERSION='21.52';
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'21.53',f:'03/10/2026',h:'15:00',c:[{n:3,t:'Paraguay: el máximo de compra de los PROBADOS (tarjeta, canasta y pedido) se calcula al 20%; los NUEVOS siguen al 25%. Bs As sigue igual.'}]},
   {v:'21.52',f:'03/10/2026',h:'14:45',c:[{n:2,t:'Paraguay: el pedido se arma en UN solo lugar, la pestaña 🧾 Pedido (probados + nuevos, tope, llenar, mensaje y Ya lo pedí). En Nuevos queda sólo la casilla de cada tarjeta y un renglón con lo cargado. El tope cuenta probados y nuevos juntos.'}]},
   {v:'21.51',f:'03/10/2026',h:'14:20',c:[{n:3,t:'Paraguay · Probados: arriba sólo lo que DA (Nissei lo tiene, precio mirado en los últimos 7 días y deja 20% o más, porque ya se sabe que se vende). Lo que no da, no hay o falta revisar va abajo en un desplegable con el motivo. El precio lo actualiza Guay recorriendo los probados primero.'}]},
   {v:'21.50',f:'03/10/2026',h:'13:40',c:[{n:2,t:'Pedidos: una ficha reusada para otro producto (Buds 6 → Buds 6 Play) ya no pide comprar con las ventas del producto viejo. Las ventas siguen en Ventas, sólo dejan de contar para el ritmo.'}]},
@@ -14139,6 +14140,9 @@ function maxCompraDe(p,metaPct){
   const c2=P===precio?{com:comHoy}:comisionEnPrecio(comHoy,precio,P);
   if(!c2)return {motivo:'sincom'};
   const impPct=(Number(mg.mlExtra)>0&&precio>0)?(Number(mg.mlExtra)/precio*100):0;
+  // Regla suya del 03/10/2026: PROBADOS de Paraguay se miden al 20% (ya se sabe que se venden);
+  // NUEVOS siguen al 25% (CAND_PISO_PCT, en el robot). Bs As no cambia.
+  if(!(metaPct>0)&&p.origen==='py')metaPct=PY_PROB_PISO;
   const m=(metaPct>0?metaPct:(parseFloat((state.mlconfig||{}).targetPct)||25))/100;
   const imp=Math.round(P*impPct/100);
   const netoP=P-c2.com-gest;
