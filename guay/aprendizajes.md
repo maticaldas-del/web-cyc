@@ -215,5 +215,5 @@ match de las categorías que sí dan: **routers, memorias, accesorios de cámara
   queda siempre en rojo (confirmar el producto no confirma el precio).
 - **Regla:** todo candidato de 80% o más → abrir la página de ML y mirar el precio de HOY (incluidas las ofertas "X% OFF")
   antes de cargar unidades. Y antes de cerrar un pedido, mirar los precios de ML de todo lo cargado.
-- **Regla de Matías (03/10):** sin **25 vendidas o más** en ML no se cargan unidades (el panel y `pedir` lo frenan;
+- **Regla de Matías (03/10):** sin **100 vendidas o más** (corregido por él el mismo día: "sino no sirve") en ML no se cargan unidades (el panel y `pedir` lo frenan;
   sin el dato tampoco entra). Cargá siempre `vendCarga`.
