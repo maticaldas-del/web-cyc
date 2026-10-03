@@ -2430,7 +2430,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='21.76';
+const APP_VERSION='21.77';
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
 // muestre la versión y la fecha de actualización y que tenga un desplegable predeterminado cerrado".
 // Y el mismo día: "que ponga fecha de cada modificación y haya una barrita para scrollear y que
@@ -2441,6 +2441,7 @@ const APP_VERSION='21.76';
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'21.77',f:'03/10/2026',h:'20:40',c:[{n:1,t:'📈 Línea de tiempo: el precio es lo COBRADO por unidad los días con ventas (antes podía mostrar el de una publicación pausada) y sólo cuentan las publicaciones activas. Las líneas de precio y costo ya no exageran cambios chicos (escala mínima de 20%).'}]},
   {v:'21.76',f:'03/10/2026',h:'20:15',c:[{n:1,t:'📈 Línea de tiempo: línea nueva del costo por unidad de cada día (el mismo con el que se calculó la ganancia), para ver si un cambio en el % vino del precio o del costo.'}]},
   {v:'21.75',f:'03/10/2026',h:'20:05',c:[{n:2,t:'Stock por día (línea de tiempo y cálculo de ritmo del robot): sin dato de stock, si tuvo ventas o visitas había stock; sin ventas ni visitas, no había.'}]},
   {v:'21.74',f:'03/10/2026',h:'19:55',c:[{n:1,t:'📈 Línea de tiempo, stock: día que vendió = con stock; día sin dato y sin ventas = sin stock (rojo). Gris sólo antes del primer dato del producto.'}]},
@@ -8390,13 +8391,17 @@ function _lineaJunta(porMla){
       if(x.vis!=null){o.vis=(o.vis||0)+Number(x.vis||0);}
       if(x.tot!=null){o.tot=(o.tot||0)+Number(x.tot||0);}
       if(x.st!=null){o.st=(o.st||0)+Number(x.st||0);o.stN++;}
-      if(x.p!=null&&Number(x.p)>0)o.p=o.p==null?Number(x.p):Math.min(o.p,Number(x.p));
+      if(x.p!=null&&Number(x.p)>0){o.p=o.p==null?Number(x.p):Math.min(o.p,Number(x.p));
+        // El precio de una publicación PAUSADA no es el que se cobra (Cartas Casino: la línea decía $2.706 de una
+        // pausada y se cobraba $3.310). Vale el de las activas o las que vendieron ese día.
+        if(x.est==='active'||Number(x.u)>0)o.pA=o.pA==null?Number(x.p):Math.min(o.pA,Number(x.p));}
       if(x.caja){const r={g:3,c:2,p:1,n:0};if(o.caja==null||(r[x.caja]||0)>(r[o.caja]||0))o.caja=x.caja;}
       if(x.rem)o.rem=true;
       if(x.esc!=null)o.esc=o.esc==null?Number(x.esc):Math.min(o.esc,Number(x.esc));
       if(x.mg!=null)o.mg=o.mg==null?Number(x.mg):Math.min(o.mg,Number(x.mg));
     }
   }
+  for(const o of Object.values(dias))if(o.pA!=null)o.p=o.pA;
   return dias;
 }
 async function lineaAbrir(prodId,ev){
@@ -8428,7 +8433,12 @@ function lineaPintar(prodId){
   // Escalas
   const maxU=Math.max(1,...ks.map(k=>(dias[k]&&dias[k].u)||0));
   const maxV=Math.max(1,...ks.map(k=>(dias[k]&&dias[k].vis)||0));
-  const ps=ks.map(k=>dias[k]&&dias[k].p).filter(x=>x>0); const pMin=ps.length?Math.min(...ps):0, pMax=ps.length?Math.max(...ps):1;
+  // Los días con ventas en el panel: el precio es lo COBRADO por unidad (03/10/2026), no el de la publicación.
+  for(const k of ks){const ents=Object.values((state.ventaprod||{})[k]||{}).filter(v=>v&&!v.cancelada&&(prodDeVenta(v)||{}).id===prodId);
+    let t=0,q=0;ents.forEach(v=>{t+=Number(v.total)||0;q+=Number(v.qty)||0;});if(q>0&&t>0){(dias[k]=dias[k]||{u:null,uR:null,vis:null,st:null,stN:0,p:null,caja:null,rem:false,esc:null,mg:null,tot:null,pubs:0}).p=Math.round(t/q);dias[k].pCob=true;}}
+  // Escala con un rango mínimo del 20%: un cambio de 3% no puede verse como un salto (él, con el costo: "$1.007 a $1.036").
+  const _esc=(mn,mx)=>{if(!(mx>0))return[0,1];if(mx-mn<mx*0.2){const c=(mx+mn)/2;return[c-mx*0.1,c+mx*0.1];}return[mn,mx];};
+  const ps=ks.map(k=>dias[k]&&dias[k].p).filter(x=>x>0); const [pMin,pMax]=ps.length?_esc(Math.min(...ps),Math.max(...ps)):[0,1];
   // Carriles: y y alto
   // La GANANCIA de cada día sale de las ventas del panel con la MISMA cuenta que Ventas e Inicio
   // (efectivoCostoVP, gestDivVP, pctGananciaVP), no de la línea del robot: así no puede decir otro número.
@@ -8443,7 +8453,7 @@ function lineaPintar(prodId){
   // veo si aumentó o bajó"). Es el costo con el que el panel calculó la ganancia de las ventas de ese día
   // (efectivoCostoVP: costo del mes y dólar del mes) ÷ unidades. Los días sin ventas siguen el último.
   const cu={};{let ult=null;for(const k of ks){if(gd[k]&&gd[k].cu>0)ult=gd[k].cu;if(ult!=null)cu[k]=ult;}}
-  const cvs=Object.values(cu);const cMin=cvs.length?Math.min(...cvs):0,cMax=cvs.length?Math.max(...cvs):1;
+  const cvs=Object.values(cu);const [cMin,cMax]=cvs.length?_esc(Math.min(...cvs),Math.max(...cvs)):[0,1];
   const pvs=Object.values(pd); const qMin=pvs.length?Math.max(-50,Math.min(...pvs)):0, qMax=pvs.length?Math.min(250,Math.max(...pvs)):1;
   const hayEst=ks.some(k=>dias[k]&&(dias[k].rem||dias[k].esc!=null)), hayCaja=ks.some(k=>dias[k]&&dias[k].caja), hayVis=ks.some(k=>dias[k]&&dias[k].vis>0), hayGan=Object.keys(gd).length>0;
   // Los carriles que no tienen NADA en el rango no se dibujan (una franja toda gris no dice nada).
@@ -8481,7 +8491,7 @@ function lineaPintar(prodId){
     // caja de compra
     const cj=d&&d.caja; if(L.caja)svg+=`<rect x="${x}" y="${L.caja[0]}" width="${bw}" height="${L.caja[1]}" fill="${cj==='g'?'var(--green)':cj==='c'?'#f59e0b':cj==='p'?'var(--red)':cj==='n'?'#94a3b8':'rgba(128,128,128,.15)'}"/>`;
   });
-  if(ps.length)svg+=`<text x="${W-2}" y="${L.pr[0]+9}" font-size="10" text-anchor="end" fill="var(--muted)">${fmt(pMax)}</text>`+(pMax>pMin?`<text x="${W-2}" y="${L.pr[0]+L.pr[1]}" font-size="10" text-anchor="end" fill="var(--muted)">${fmt(pMin)}</text>`:'');
+  if(ps.length)svg+=`<text x="${W-2}" y="${L.pr[0]+9}" font-size="10" text-anchor="end" fill="var(--muted)">${fmt(Math.max(...ps))}</text>`+(Math.max(...ps)>Math.min(...ps)?`<text x="${W-2}" y="${L.pr[0]+L.pr[1]}" font-size="10" text-anchor="end" fill="var(--muted)">${fmt(Math.min(...ps))}</text>`:'');
   if(L.pct){const yq=q=>L.pct[0]+L.pct[1]-(qMax>qMin?(Math.max(qMin,Math.min(qMax,q))-qMin)/(qMax-qMin):.5)*L.pct[1];let prev=null;
     ks.forEach((k,i)=>{if(pd[k]==null)return;const pt=[X(i)+bw/2,yq(pd[k])];
       if(prev)svg+=`<line x1="${prev[0].toFixed(1)}" y1="${prev[1].toFixed(1)}" x2="${pt[0].toFixed(1)}" y2="${pt[1].toFixed(1)}" stroke="${pctColor(pd[k])}" stroke-width="2"/>`;
@@ -8489,7 +8499,7 @@ function lineaPintar(prodId){
     svg+=`<text x="${W-2}" y="${L.pct[0]+9}" font-size="10" text-anchor="end" fill="var(--muted)">${Math.round(qMax)}%</text>`+(qMax>qMin?`<text x="${W-2}" y="${L.pct[0]+L.pct[1]}" font-size="10" text-anchor="end" fill="var(--muted)">${Math.round(qMin)}%</text>`:'');}
   if(L.cos){const yc=c=>L.cos[0]+L.cos[1]-(cMax>cMin?(c-cMin)/(cMax-cMin):.5)*L.cos[1];const pts=[];ks.forEach((k,i)=>{if(cu[k]!=null)pts.push(`${(X(i)+bw/2).toFixed(1)},${yc(cu[k]).toFixed(1)}`);});
     if(pts.length>1)svg+=`<polyline points="${pts.join(' ')}" fill="none" stroke="#f59e0b" stroke-width="1.5"/>`;
-    svg+=`<text x="${W-2}" y="${L.cos[0]+9}" font-size="10" text-anchor="end" fill="var(--muted)">${fmt(cMax)}</text>`+(cMax>cMin?`<text x="${W-2}" y="${L.cos[0]+L.cos[1]}" font-size="10" text-anchor="end" fill="var(--muted)">${fmt(cMin)}</text>`:'');}
+    svg+=`<text x="${W-2}" y="${L.cos[0]+9}" font-size="10" text-anchor="end" fill="var(--muted)">${fmt(Math.max(...cvs))}</text>`+(Math.max(...cvs)>Math.min(...cvs)?`<text x="${W-2}" y="${L.cos[0]+L.cos[1]}" font-size="10" text-anchor="end" fill="var(--muted)">${fmt(Math.min(...cvs))}</text>`:'');}
   if(ptsP.length>1)svg+=`<polyline points="${ptsP.join(' ')}" fill="none" stroke="var(--text)" stroke-width="1.5"/>`;
   // marcas de cambios de precio
   const motivoTxt={rescate:'🛟 rescate (subió a la meta)',subir:'📈 suba del robot',bajar:'📉 baja del robot',remate:'🔻 remate',escalera:'🪜 escalera',prueba:'🧪 prueba +5%',mano:'✋ a mano',volver:'↩️ vuelto atrás'};
@@ -8504,7 +8514,7 @@ function lineaPintar(prodId){
       cu[k]!=null?`🏷️ costo ${fmt(cu[k])} c/u${gd[k]&&gd[k].cu>0?'':' (el último conocido)'}`:'',
       d&&d.vis!=null?`👀 ${d.vis} visitas`:'',
       _conSt(d)?`📦 tenía stock${d.st>0?` (${d.st} u. en Full)`:d.u>0?' (vendió)':' (tuvo visitas)'}`:(k>=_stIni?(d&&d.st!=null?'📦 sin stock en Full':'📦 sin stock (sin dato, sin ventas ni visitas)'):'📦 todavía no se miraba'),
-      d&&d.p>0?`💲 precio ${fmt(d.p)}`:'',
+      d&&d.p>0?`💲 ${d.pCob?'cobrado':'precio'} ${fmt(d.p)}${d.pCob?' por unidad':''}`:'',
       d&&d.mg!=null?`📊 margen ${Number(d.mg).toFixed(0)}%`:'',
       d&&d.esc!=null?`🪜 escalera, escalón ${d.esc}%`:(d&&d.rem?'🔻 rematando':''),
       d&&d.caja?`🥊 caja: ${{g:'la ganábamos',c:'compartida',p:'la perdíamos',n:'no es de catálogo'}[d.caja]||d.caja}`:'',
