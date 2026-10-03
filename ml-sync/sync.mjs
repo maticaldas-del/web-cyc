@@ -6086,7 +6086,7 @@ async function correrCandidatos(db, products, labels, accounts, soloPrueba, prue
   };
 
   const nuevosQueDan = [];
-  let mirados = 0, calculados = 0, consultas = 0, sinCuenta = 0, yaCalc = 0;
+  let mirados = 0, calculados = 0, consultas = 0, sinCuenta = 0, yaCalc = 0, esperan12 = 0;
   const descartes = [];
   // ── LOS QUE SE CAEN SIN LLEGAR A TENER NÚMERO SE CUENTAN Y SE NOMBRAN (18/09/2026) ────────
   // La corrida de ese día imprimió **"16 mirados · 11 medidos · 0 ya medidos · 2 descartados"**,
@@ -6256,6 +6256,13 @@ async function correrCandidatos(db, products, labels, accounts, soloPrueba, prue
     // candidatos, el paso nocturno se cuelga y se lleva puesto el resumen del día. Las que quedan
     // sin medir se CUENTAN Y SE NOMBRAN —no es que no sirvan, es que no se alcanzó a mirarlas— y
     // salen en la vuelta siguiente. Un tope mudo es el descarte por omisión de siempre.
+    // EL QUE DIO ABAJO DEL PISO HACE MENOS DE 12 H NO SE VUELVE A PREGUNTAR (03/10/2026). La segunda
+    // medición tiene que ser de otro momento (N3, ver abajo): volver a preguntar antes no puede
+    // descartarlo y se gastaba el tope entero en ésos. Con 747 cargados de una, tres corridas
+    // seguidas midieron los mismos ~260 y dejaron 236 nuevos sin mirar nunca.
+    if (Number(c.margen) < CAND_PISO_PCT && isFinite(c.margen) && c.margen != null && Number(c.calcVer) === CAND_CALC_VER
+      && (Number(c.mlCuotasPct) || 0) === cuoPct && Math.abs((Number(c.puestoUSD) || 0) - puesto) < 0.01
+      && Number(c.calcTs) > 0 && Date.now() - Number(c.calcTs) < 12 * 3600e3) { esperan12++; continue; }
     if (consultas >= CAND_MAX_ML) { sinCuenta++; continue; }
     consultas++;
     let cat = null, mlTit = '', mlPrecio = 0, vendedores = 0, mlLink = '', lt = 'gold_special';
@@ -6619,7 +6626,7 @@ async function correrCandidatos(db, products, labels, accounts, soloPrueba, prue
     console.log(`   — por qué están descartados esos ${yaNo} (se pueden devolver desde el panel):`);
     for (const [m, n] of Object.entries(motivosNo).sort((a, b) => b[1] - a[1])) console.log(`      ${String(n).padStart(3)} × ${m}`);
   }
-  console.log(`── ${mirados} mirados = ${baratos} descartados sin preguntar + ${yaCalc} ya venían medidos + ${calculados} medidos hoy + ${sinDato.length} sin dato + ${sinCuenta} sin alcanzar ──`);
+  console.log(`── ${mirados} mirados = ${baratos} descartados sin preguntar + ${yaCalc} ya venían medidos + ${calculados} medidos hoy + ${sinDato.length} sin dato + ${sinCuenta} sin alcanzar + ${esperan12} esperando la 2ª medición ──`);
   console.log(`   ${consultas} consultas a ML · ${descartes.length} descartados en total · ${enObserva.length} en observación · ${nuevosQueDan.length} que dan`);
   for (const d of descartes) console.log(`   ✕ ${d}`);
   if (enObserva.length) {
@@ -6633,7 +6640,7 @@ async function correrCandidatos(db, products, labels, accounts, soloPrueba, prue
   if (sinCuenta) console.log(`   ⏳ ${sinCuenta} quedaron sin medir por el tope de ${CAND_MAX_ML} consultas por vuelta. No es que no sirvan: salen en la corrida siguiente.`);
   // LA CUENTA TIENE QUE CERRAR, Y SI NO CIERRA SE DICE. Si falta uno, se fue por un `continue`
   // callado — y un candidato que desaparece en silencio puede ser justo el que daba 50%.
-  const _cierra = baratos + yaCalc + calculados + sinDato.length + sinCuenta;
+  const _cierra = baratos + yaCalc + calculados + sinDato.length + sinCuenta + esperan12;
   if (_cierra !== mirados) console.log(`   ⚠️ NO CIERRA: miré ${mirados} y sólo puedo explicar ${_cierra}. Hay ${mirados - _cierra} saliendo en silencio.`);
   // Y el chequeo de arriba, contra la lista ENTERA: es el que faltaba (ver el comentario del
   // bucle). Sin éste, 39 candidatos podían no aparecer en ningún renglón y la cuenta "cerraba".
