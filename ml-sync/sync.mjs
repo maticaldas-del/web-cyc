@@ -18223,6 +18223,29 @@ async function main() {
       console.log(rel === nuevo ? `✓ Releído de la base: "${rel}"` : `✗ NO quedó: la base dice "${rel}"`);
       return;
     }
+    // BILLING_PROBE=ventasdesde:<id o palabra>=<AAAA-MM-DD|->[:go] → LAS VENTAS ANTERIORES NO CUENTAN PARA EL RITMO (03/10/2026).
+    // Caso real: la ficha "Xiaomi Redmi Buds 6" se renombró a "Buds 6 Play" (otro producto) y arrastraba
+    // las ventas del Buds 6 viejo: Pedidos pedía comprar con ese ritmo algo que recién se manda por
+    // primera vez. Las ventas NO se tocan (siguen en Ventas y en la plata): sólo dejan de contar para
+    // cuánto comprar o mandar (`ventasHistoricas` en la web). Con `-` se saca la marca.
+    if (/^ventasdesde:/.test(String(process.env.BILLING_PROBE || ''))) {
+      const _vdRaw = String(process.env.BILLING_PROBE).slice('ventasdesde:'.length);
+      const go = /:go$/i.test(_vdRaw);
+      const [qRaw, fRaw] = (go ? _vdRaw.replace(/:go$/i, '') : _vdRaw).split('=');
+      const q = (qRaw || '').trim(), f = (fRaw || '').trim();
+      if (!q || !f || !(/^\d{4}-\d{2}-\d{2}$/.test(f) || f === '-')) { console.log('Usá: ventasdesde:<id o palabra>=<AAAA-MM-DD>[:go]  ·  =- saca la marca'); return; }
+      let hits = products.filter((x) => x.id === q);
+      if (!hits.length) hits = products.filter((x) => norm(x.name || '').includes(norm(q)));
+      if (hits.length !== 1) { console.log(`"${q}" agarra ${hits.length} ficha(s): ${hits.map((x) => x.id + ' ' + x.name).join(' | ') || '—'}. Tiene que ser una sola.`); return; }
+      const pr = hits[0];
+      const ts = f === '-' ? null : Date.parse(f + 'T00:00:00-03:00');
+      console.log(`${go ? 'APLICANDO' : 'PRUEBA'}: ${pr.id} · "${pr.name}" · ${ts ? 'las ventas anteriores al ' + f + ' no cuentan para el ritmo' : 'se saca la marca'}`);
+      if (!go) { console.log('Para aplicar, agregá :go al final.'); return; }
+      await db.patch('cyc/products/' + pr.id, { ventasDesde: ts });
+      const rel = await db.get('cyc/products/' + pr.id + '/ventasDesde');
+      console.log((rel || null) === ts ? '✓ Releído de la base.' : `✗ NO quedó: la base dice ${rel}`);
+      return;
+    }
     if (/^nuevoprod:/.test(String(process.env.BILLING_PROBE || ''))) {
       const _npRaw = String(process.env.BILLING_PROBE).slice(10);
       const partes = _npRaw.split('|').map((x) => x.trim());

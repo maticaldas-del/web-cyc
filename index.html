@@ -2430,7 +2430,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='21.49';
+const APP_VERSION='21.50';
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
 // muestre la versión y la fecha de actualización y que tenga un desplegable predeterminado cerrado".
 // Y el mismo día: "que ponga fecha de cada modificación y haya una barrita para scrollear y que
@@ -2441,6 +2441,7 @@ const APP_VERSION='21.49';
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'21.50',f:'03/10/2026',h:'13:40',c:[{n:2,t:'Pedidos: una ficha reusada para otro producto (Buds 6 → Buds 6 Play) ya no pide comprar con las ventas del producto viejo. Las ventas siguen en Ventas, sólo dejan de contar para el ritmo.'}]},
   {v:'21.49',f:'03/10/2026',h:'13:10',c:[{n:3,t:'Paraguay: la pestaña "🧾 Pedido" junta el pedido del momento — probados y nuevos juntos, con el total, el tope y un solo mensaje para Nissei — y abajo los pedidos ya hechos. En Probados cada tarjeta tiene "🧾 pedir __ u." (o "+ las sugeridas"). "✅ Ya lo pedí (todo)" registra los probados como reposición y los nuevos como pedido de nuevos.'},{n:2,t:'El mínimo para cargar un producto nuevo al pedido pasa a 100 vendidas en ML.'}]},
   {v:'21.48',f:'03/10/2026',h:'12:30',c:[{n:3,t:'Paraguay · Productos nuevos: no se pueden cargar unidades de un candidato con menos de 25 vendidas en ML (o sin el dato). Y un margen de 80% o más sigue en rojo aunque hayas confirmado que es el mismo producto: el Polo Black decía 88% y en ML ya estaba en oferta a la mitad.'}]},
   {v:'21.47',f:'03/10/2026',h:'11:40',c:[{n:1,t:'Paraguay · Productos nuevos: cada candidato dice en su renglón cuántas ventas tiene en ML (🛒 N vendidas), en verde de 25 para arriba.'}]},
@@ -9832,6 +9833,9 @@ function ventasHistoricas(p,cuenta,variante){
   Object.keys(state.ventaprod||{}).filter(k=>k>=fk&&k<=tk).forEach(k=>{
     Object.values(state.ventaprod[k]||{}).forEach(v=>{
       if(!ventaEsDe(v,p)||_esCancelada(v)||ventaEnRemate(v,k))return;
+      // `ventasDesde` (03/10/2026, Buds 6 → Buds 6 Play): la ficha se reusó para OTRO producto y las ventas
+      // viejas son del anterior. No cuentan para el ritmo; siguen en Ventas y en la plata.
+      if(p.ventasDesde&&(v.ts||Date.parse(k.replace(/_/g,'-')+'T12:00:00-03:00'))<p.ventasDesde)return;
       if(cuenta&&v.cuenta!==cuenta)return;
       if(variante){const va=v.variante||varDeMla[v.mla]||'';if(va!==variante)return;}
       const q=v.qty||0;if(q<=0)return;
