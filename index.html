@@ -2430,7 +2430,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='21.51';
+const APP_VERSION='21.52';
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
 // muestre la versión y la fecha de actualización y que tenga un desplegable predeterminado cerrado".
 // Y el mismo día: "que ponga fecha de cada modificación y haya una barrita para scrollear y que
@@ -2441,6 +2441,7 @@ const APP_VERSION='21.51';
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'21.52',f:'03/10/2026',h:'14:45',c:[{n:2,t:'Paraguay: el pedido se arma en UN solo lugar, la pestaña 🧾 Pedido (probados + nuevos, tope, llenar, mensaje y Ya lo pedí). En Nuevos queda sólo la casilla de cada tarjeta y un renglón con lo cargado. El tope cuenta probados y nuevos juntos.'}]},
   {v:'21.51',f:'03/10/2026',h:'14:20',c:[{n:3,t:'Paraguay · Probados: arriba sólo lo que DA (Nissei lo tiene, precio mirado en los últimos 7 días y deja 20% o más, porque ya se sabe que se vende). Lo que no da, no hay o falta revisar va abajo en un desplegable con el motivo. El precio lo actualiza Guay recorriendo los probados primero.'}]},
   {v:'21.50',f:'03/10/2026',h:'13:40',c:[{n:2,t:'Pedidos: una ficha reusada para otro producto (Buds 6 → Buds 6 Play) ya no pide comprar con las ventas del producto viejo. Las ventas siguen en Ventas, sólo dejan de contar para el ritmo.'}]},
   {v:'21.49',f:'03/10/2026',h:'13:10',c:[{n:3,t:'Paraguay: la pestaña "🧾 Pedido" junta el pedido del momento — probados y nuevos juntos, con el total, el tope y un solo mensaje para Nissei — y abajo los pedidos ya hechos. En Probados cada tarjeta tiene "🧾 pedir __ u." (o "+ las sugeridas"). "✅ Ya lo pedí (todo)" registra los probados como reposición y los nuevos como pedido de nuevos.'},{n:2,t:'El mínimo para cargar un producto nuevo al pedido pasa a 100 vendidas en ML.'}]},
@@ -11026,7 +11027,9 @@ function pedLlenarPlan(vivos,tope,maxU,minV){
   return {suma,total:Math.round(total*100)/100,sinVentas,flojos,viajando};
 }
 async function pedNuevosLlenar(){
-  const tope=pedTopeUSD(), maxU=pedMaxU(), minV=pedMinVent();
+  // El tope es del pedido ENTERO (03/10/2026): lo cargado en probados se descuenta antes de llenar con nuevos.
+  const _crA=pyArmadoFilas().reduce((t,f)=>t+f.usd*f.u,0);
+  const tope=Math.max(0,pedTopeUSD()-_crA), maxU=pedMaxU(), minV=pedMinVent();
   const vivos=candList().filter(candEnArmado);
   const {suma,total,sinVentas,flojos,viajando}=pedLlenarPlan(vivos,tope,maxU,minV);
   if(!suma.length){
@@ -11499,7 +11502,7 @@ function pedidoMomentoHTML(){
   const tc=curTC(), u2=n=>'US$ '+Number(n).toFixed(2);
   const crA=A.reduce((t,f)=>t+f.usd*f.u,0), crudo=crA+N.crudo, uds=A.reduce((t,f)=>t+f.u,0)+N.unidades;
   const puesto=crudo*RECARGO_PY, tope=pedTopeUSD();
-  if(!A.length&&!N.filas.length)return `<div style="margin-bottom:16px;padding:12px 13px;background:var(--surface2);border:1px dashed var(--border2);border-radius:10px;font-size:.74rem;color:var(--muted)">🧾 <b style="color:var(--text)">Pedido del momento: vacío.</b> Cargá unidades en <b>✅ Productos probados</b> (la casilla "🧾 pedir" de cada tarjeta) o en <b>🆕 Productos nuevos</b>, y aparece todo acá junto.</div>`;
+  if(!A.length&&!N.filas.length)return `<div style="margin-bottom:16px;padding:12px 13px;background:var(--surface2);border:1px dashed var(--border2);border-radius:10px;font-size:.74rem;color:var(--muted)">🧾 <b style="color:var(--text)">Pedido del momento: vacío.</b> Cargá unidades en <b>✅ Productos probados</b> (la casilla "🧾 pedir" de cada tarjeta) o en <b>🆕 Productos nuevos</b>, y aparece todo acá junto. <button class="btn btn-add" style="font-size:.64rem;padding:4px 10px;margin-left:6px" onclick="pedNuevosLlenar()">🪄 Llenar con nuevos</button></div>`;
   const inp=(val,on)=>`<input type="number" min="0" step="1" value="${val}" onchange="${on}" style="width:56px;font-size:.85rem;padding:4px 6px;text-align:center;background:var(--surface);border:1px solid var(--border);border-radius:6px;color:var(--text)">`;
   const fila=(nom,cod,u,usd,on,quitar,extra)=>`<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;padding:7px 0;border-bottom:1px dashed var(--border)">
       <div style="flex:1;min-width:170px"><div style="font-size:.82rem;font-weight:600;line-height:1.3">${nom}</div>
@@ -11512,9 +11515,13 @@ function pedidoMomentoHTML(){
   const filasA=A.map(f=>fila(f.nom,f.cod,f.u,f.usd,`pyArmSet('${f.pid}',this.value)`,`pyArmSet('${f.pid}',0)`,
     (f.sinHoy?'<span style="color:var(--amber)">sin precio de hoy: es lo que pagaste</span>':'precio de hoy')
     +(f.maxWeb!=null?` · <span style="color:${f.caro?'var(--red)':'var(--green)'}">máx ${u2(f.maxWeb)}${f.caro?' · 🔴 a este precio no da':''}</span>`:''))).join('');
-  const filasN=N.filas.map(f=>{const P=candPuedePedir(f.c);const m=Number(f.c.margen);
-    return fila(f.c.nombre,String(f.c.cod||'').trim(),f.u,f.usd,`candSetPedir('${f.c.id}',this.value)`,`candSetPedir('${f.c.id}',0)`,
-      (isFinite(m)&&f.c.margen!=null?`te queda ${m.toFixed(0)}%`:'sin medir')+(P.ok?'':` · <span style="color:var(--red);font-weight:700">🚫 ${P.motivo}</span>`));}).join('');
+  const maxU=pedMaxU(), minV=pedMinVent();
+  const filasN=N.filas.map(f=>pedNuevoFilaHTML(f,maxU,tc)).join('');
+  const cfg=`<div style="display:flex;gap:7px;flex-wrap:wrap;align-items:flex-end;margin:10px 0 4px">
+      ${[['pedTopeUSD',tope,'Tope del pedido (US$, probados + nuevos)'],['pedMaxU',maxU,'Máx. u. por nuevo'],['pedMinVent',minV,'Mín. vendidas en ML']]
+        .map(([k,v,t])=>`<label style="flex:1;min-width:105px"><div style="font-size:.6rem;color:var(--muted);margin-bottom:3px">${t}</div>
+          <input type="number" min="0" step="${k==='pedTopeUSD'?'10':'1'}" value="${v}" onchange="pedNuevosCfg('${k}',this.value)" style="width:100%;font-size:.74rem;padding:5px 7px;background:var(--surface);border:1px solid var(--border);border-radius:6px;color:var(--text)"></label>`).join('')}
+    </div>`;
   const conCod=[...A.filter(f=>f.cod).map(f=>`${f.cod} x ${f.u}`),...N.filas.filter(f=>String(f.c.cod||'').trim()).map(f=>`${String(f.c.cod).trim()} x ${f.u}`)];
   const sinCod=A.filter(f=>!f.cod).length+N.sinCod.length;
   const pasa=crudo-tope;
@@ -11525,13 +11532,16 @@ function pedidoMomentoHTML(){
       <span style="font-family:'Syne',sans-serif;font-size:1.45rem;color:${pasa>0?'var(--amber)':'var(--green)'}">${u2(crudo)} <span style="font-size:.7rem;color:var(--muted)">en la web · ${u2(puesto)} puesto${tc?' · '+fmt(Math.round(puesto*tc)):''}</span></span>
     </div>
     <div style="font-size:.66rem;color:${pasa>0?'var(--amber)':'var(--muted)'};margin-top:2px">${pasa>0?`⚠️ te pasás ${u2(pasa)} de tu tope de ${u2(tope)}`:`tope ${u2(tope)} · te quedan ${u2(-pasa)}`}</div>
+    ${cfg}
     ${A.length?tit('✅ Probados (reposición)',A.length,crA)+filasA:''}
     ${N.filas.length?tit('🆕 Nuevos',N.filas.length,N.crudo)+filasN:''}
     ${conCod.length?`<div style="margin-top:10px"><div style="font-size:.64rem;color:var(--muted);margin-bottom:4px">Para mandarle a <b>Nissei</b> — código y unidades, todo junto${sinCod?` · <span style="color:var(--amber)">${sinCod} sin código no entran</span>`:''}</div>
       <button onclick="copiarTexto(this.nextElementSibling)" style="margin:4px 0;padding:8px 13px;border-radius:8px;border:1px solid var(--border2);background:var(--surface);color:var(--text);font-family:'DM Mono',monospace;font-size:.76rem;cursor:pointer">📋 Copiar mensaje</button><textarea readonly onclick="this.select()" style="width:100%;min-height:${Math.min(260,22+conCod.length*17)}px;background:rgba(0,0,0,.28);border:1px solid var(--border2);border-radius:6px;color:var(--text);font-family:'DM Mono',monospace;font-size:.7rem;padding:7px 9px;resize:vertical">${conCod.join('\n')}</textarea></div>`:''}
     <div style="margin-top:10px;display:flex;gap:8px;flex-wrap:wrap">
       <button class="btn btn-add" style="font-size:.7rem;padding:6px 14px" onclick="pyMomentoYaLoPedi()" title="Cuando ya lo pagaste: los probados pasan a En camino como reposición y los nuevos como pedido de nuevos.">✅ Ya lo pedí (todo)</button>
+      <button class="btn btn-add" style="font-size:.66rem;padding:6px 12px" onclick="pedNuevosLlenar()" title="Agrega nuevos que pasan el ${CAND_PISO_PCT}% y tu vara de ventas, los que más dejan por dólar, hasta el tope (descontando lo de probados). No saca nada.">🪄 Llenar con nuevos hasta el tope</button>
       ${A.length?`<button class="btn" style="font-size:.62rem;padding:5px 11px" onclick="pyArmadoVaciar()">Vaciar probados</button>`:''}
+      ${N.filas.length?`<button class="btn" style="font-size:.62rem;padding:5px 11px" onclick="pedNuevosVaciar()">Vaciar nuevos</button>`:''}
     </div>
   </div>`;
 }
@@ -11602,6 +11612,17 @@ function pedNuevoFilaHTML(f,maxU,tc){
     ${R.dudas.length?`<div style="font-size:.78rem;margin-top:7px;line-height:1.5;padding:7px 10px;border-radius:8px;background:rgba(239,68,68,.1);border:1px solid rgba(239,68,68,.4);color:var(--red)"><b>🚨 ¿Es el mismo producto? Abrí los dos links antes de comprarlo.</b><br>${R.dudas.join(' · ')}</div>`:''}
     ${P.ok?'':`<div style="font-size:.76rem;margin-top:6px"><span style="color:var(--red);font-weight:700">🚫 ${P.motivo}</span> · <a href="#" onclick="event.preventDefault();candSetPedir('${c.id}',0)" style="color:var(--red);font-weight:700">sacarlo del pedido</a></div>`}
     <div style="font-size:.76rem;margin-top:7px">${R.links.join(' &nbsp;·&nbsp; ')}</div>
+  </div>`;
+}
+// EL PEDIDO SE ARMA EN UN SOLO LUGAR (03/10/2026, él: *"sacalo de acá o no? hay dos pedidos sino"*): en
+// Nuevos queda sólo un renglón que dice cuánto hay cargado y lleva a la pestaña 🧾 Pedido, donde están los
+// renglones, el tope, el botón de llenar, el mensaje y "Ya lo pedí". La casilla de cada tarjeta sigue acá.
+function pedNuevosResumenHTML(){
+  const N=pedNuevos(candList().filter(candEnArmado).filter(c=>candEnPedido(c)!=='viajando'));
+  return `<div style="margin:14px 0 6px;padding:10px 13px;background:var(--surface2);border:1px solid rgba(34,197,94,.4);border-radius:10px;display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+    <span style="font-size:.8rem;font-weight:700">🧾 ${N.filas.length?`${N.filas.length} nuevo(s) en el pedido · ${N.unidades} u. · US$ ${N.crudo.toFixed(2)}`:'Todavía no cargaste ningún nuevo'}</span>
+    <span style="font-size:.66rem;color:var(--muted)">poné las unidades en cada tarjeta de abajo · el pedido (con los probados, el tope y el mensaje) está en la pestaña 🧾 Pedido</span>
+    <button class="btn btn-add" style="font-size:.66rem;padding:5px 12px;margin-left:auto" onclick="pySetVista('hechos')">Ver el pedido →</button>
   </div>`;
 }
 function pedNuevosHTML(vivos){
@@ -11924,7 +11945,7 @@ function candidatosHTML(){
       ? `<div class="empty-msg" style="font-size:.68rem;line-height:1.6">No queda ninguno para evaluar: ${enPed?`<b>${enPed}</b> está${enPed===1?'':'n'} en el pedido de arriba`:''}${enPed&&enVia?' y ':''}${enVia?`<b>${enVia}</b> ya ${enVia===1?'viaja':'viajan'}`:''}.</div>`
       : `<div class="empty-msg" style="font-size:.68rem;line-height:1.6">Todavía no hay ninguno.<br>
       El chat de Paraguay los carga cuando encuentra algo en comprasparaguay <b>que Nissei ofrezca</b> (ahí salen juntos el código, el precio y que hay stock), cueste menos de US$ 250 puesto y no sea de una marca que ML frena.</div>`;
-    return cab+simPYHTML()+pyEnCaminoHTML()+pedNuevosHTML(vivos0)+vacio;
+    return cab+simPYHTML()+pyEnCaminoHTML()+pedNuevosResumenHTML()+vacio;
   }
   // El que más margen deja, primero. Los que todavía no tienen la cuenta hecha van al final:
   // no se pueden comparar contra los medidos y ponerlos arriba sería invitar a decidir sin número.
@@ -12060,7 +12081,7 @@ function candidatosHTML(){
   </div>`;
   const _ob=(k,t)=>`<button class="btn" style="font-size:.66rem;padding:4px 11px;${_candOrden===k?'background:var(--blue);color:#fff;font-weight:700':''}" onclick="candOrdenar('${k}')">${t}</button>`;
   const _orden=`<div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin:0 0 10px"><span style="font-size:.66rem;color:var(--muted)">Ordenar de mayor a menor:</span>${_ob('pct','% de ganancia')}${_ob('vend','🛒 más vendidos')}${_ob('gan','$ por unidad')}${_ob('usd','$ por dólar invertido')}${_ob('barato','más barato')}</div>`;
-  return cab+simPYHTML()+pyEnCaminoHTML()+pedNuevosHTML(vivos0)+_cuenta+_orden+_arriba.map(_card).join('')
+  return cab+simPYHTML()+pyEnCaminoHTML()+pedNuevosResumenHTML()+_cuenta+_orden+_arriba.map(_card).join('')
     +(_rojos.length?`<details style="margin-top:10px"><summary style="cursor:pointer;font-size:.7rem;color:var(--red)">🔻 ${_rojos.length} no llega${_rojos.length===1?'':'n'} al ${CAND_PISO_PCT}% · tocá para verlos</summary><div style="display:flex;flex-direction:column;gap:8px;margin-top:8px">${_rojos.map(_card).join('')}</div></details>`:'')
     +candDescartadosHTML();
 }
