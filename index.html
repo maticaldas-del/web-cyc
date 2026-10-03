@@ -2430,7 +2430,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='21.81';
+const APP_VERSION='21.82';
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
 // muestre la versión y la fecha de actualización y que tenga un desplegable predeterminado cerrado".
 // Y el mismo día: "que ponga fecha de cada modificación y haya una barrita para scrollear y que
@@ -2441,6 +2441,7 @@ const APP_VERSION='21.81';
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'21.82',f:'03/10/2026',h:'21:45',c:[{n:1,t:'📈 Línea de tiempo: vuelve a ser UNA línea de costo, el costo real (mercadería + IIBB + monotributo). El detalle de cada parte sale al pasar el mouse.'}]},
   {v:'21.81',f:'03/10/2026',h:'21:35',c:[{n:1,t:'📈 Línea de tiempo: dos líneas de costo. Llena = costo real (mercadería + IIBB + monotributo); punteada = sólo mercadería. Al pasar el mouse dice cada parte y el % de impuestos sobre lo cobrado.'}]},
   {v:'21.80',f:'03/10/2026',h:'21:25',c:[{n:1,t:'📈 Línea de tiempo: la línea de costo es sólo la mercadería (costo × dólar del mes). Antes sumaba IIBB y monotributo, que van como % del precio cobrado y la hacían moverse con cada venta.'}]},
   {v:'21.79',f:'03/10/2026',h:'21:10',c:[{n:1,t:'📈 Línea de tiempo más grande; el stock es una sola franja (unidades + con/sin stock abajo) y la explicación de colores va en un desplegable.'}]},
@@ -8459,11 +8460,11 @@ function lineaPintar(prodId){
   // EL COSTO POR UNIDAD (03/10/2026, él: "agreguemos con una línea el costo del producto de ese día, así
   // veo si aumentó o bajó"). Es el costo con el que el panel calculó la ganancia de las ventas de ese día
   // (efectivoCostoVP: costo del mes y dólar del mes) ÷ unidades. Los días sin ventas siguen el último.
-  // DOS LÍNEAS DE COSTO (03/10/2026, él: "quiero lo real, si aumentó el IIBB voy a pensar que el costo es el
+  // LA LÍNEA DE COSTO REAL (03/10/2026; se probó con dos líneas y él prefirió una, él: "quiero lo real, si aumentó el IIBB voy a pensar que el costo es el
   // mismo"): llena = costo REAL por unidad (mercadería + IIBB + monotributo, lo que se resta para la ganancia);
   // punteada = sólo la mercadería (costo × dólar del mes). La distancia entre las dos son los impuestos.
   const cu={},ct={};{let ult=null,ulT=null;for(const k of ks){if(gd[k]&&gd[k].cu>0){ult=gd[k].cu;ulT=gd[k].ct;}if(ult!=null){cu[k]=ult;ct[k]=ulT;}}}
-  const cvs=[...Object.values(cu),...Object.values(ct).filter(x=>x>0)];const [cMin,cMax]=cvs.length?_esc(Math.min(...cvs),Math.max(...cvs)):[0,1];
+  const cvs=Object.values(ct).filter(x=>x>0);const [cMin,cMax]=cvs.length?_esc(Math.min(...cvs),Math.max(...cvs)):[0,1];
   // LA LÍNEA DE STOCK EN UNIDADES (03/10/2026, él: "una línea de stock y que el color coordine con buen stock,
   // falta o exceso, con intermedios, 5 colores"). El color son los DÍAS QUE ALCANZA ese stock al ritmo de ese
   // momento: ventas de los 30 días anteriores ÷ días con stock en esa ventana (3 ventas o más; si no, el ritmo
@@ -8523,7 +8524,6 @@ function lineaPintar(prodId){
       else svg+=`<circle cx="${pt[0].toFixed(1)}" cy="${pt[1].toFixed(1)}" r="1.5" fill="${pctColor(pd[k])}"/>`;prev=pt;});
     svg+=`<text x="${W-2}" y="${L.pct[0]+9}" font-size="10" text-anchor="end" fill="var(--muted)">${Math.round(qMax)}%</text>`+(qMax>qMin?`<text x="${W-2}" y="${L.pct[0]+L.pct[1]}" font-size="10" text-anchor="end" fill="var(--muted)">${Math.round(qMin)}%</text>`:'');}
   if(L.cos){const yc=c=>L.cos[0]+L.cos[1]-(cMax>cMin?(c-cMin)/(cMax-cMin):.5)*L.cos[1];const pts=[];ks.forEach((k,i)=>{if(cu[k]!=null)pts.push(`${(X(i)+bw/2).toFixed(1)},${yc(cu[k]).toFixed(1)}`);});
-    if(pts.length>1)svg+=`<polyline points="${pts.join(' ')}" fill="none" stroke="#f59e0b" stroke-width="1.2" stroke-dasharray="4 3" opacity=".8"/>`;
     const ptT=[];ks.forEach((k,i)=>{if(ct[k]>0)ptT.push(`${(X(i)+bw/2).toFixed(1)},${yc(ct[k]).toFixed(1)}`);});
     if(ptT.length>1)svg+=`<polyline points="${ptT.join(' ')}" fill="none" stroke="#f59e0b" stroke-width="2"/>`;
     svg+=`<text x="${W-2}" y="${L.cos[0]+9}" font-size="10" text-anchor="end" fill="var(--muted)">${fmt(Math.max(...cvs))}</text>`+(Math.max(...cvs)>Math.min(...cvs)?`<text x="${W-2}" y="${L.cos[0]+L.cos[1]}" font-size="10" text-anchor="end" fill="var(--muted)">${fmt(Math.min(...cvs))}</text>`:'');}
@@ -8574,7 +8574,7 @@ function lineaPintar(prodId){
     <details style="margin-top:8px" ${_lineaDetAb?'open':''} ontoggle="_lineaDetAb=this.open"><summary style="cursor:pointer;font-size:.68rem;color:var(--muted)">Qué significa cada color ▾</summary>
     <div style="font-size:.64rem;color:var(--muted);margin-top:6px;line-height:1.9">
       ${ley('var(--green)','vendió / con stock / caja ganada')}${ley('#f59e0b','vendido en remate / caja compartida')}${ley('var(--red)','sin stock / caja perdida')}${ley('#60a5fa','visitas')}${ley('#f97316','rematando')}${ley('#a855f7','escalera')}${ley('rgba(128,128,128,.35)','no se sabe')}
-      <span style="margin-right:10px">📦 stock en unidades, color por los días que alcanza: <span style="color:var(--red)">━ falta (−7)</span> <span style="color:#f97316">━ justo (7-20)</span> <span style="color:var(--green)">━ bien (20-45)</span> <span style="color:#eab308">━ sobra (45-90)</span> <span style="color:#a855f7">━ exceso (+90)</span></span><span style="margin-right:10px"><span style="color:#f59e0b">━</span> costo REAL por unidad (mercadería + IIBB + monotributo, lo que se resta para la ganancia) · <span style="color:#f59e0b">┄</span> sólo la mercadería (costo × dólar del mes). La distancia entre las dos son los impuestos: si se separan, subió el impuesto</span><span style="margin-right:10px">📊 % de ganancia: la línea toma el color del nivel de ese día (🔴 Bajo · 🟠 Justo · 🟢 Bien · 🩵 Bueno · 🔵 Excelente · 🟣 Estrella · 💎 JOYA), misma cuenta que Ventas</span><span style="margin-right:10px">▲▼ cambio de precio (con su motivo)</span><br>
+      <span style="margin-right:10px">📦 stock en unidades, color por los días que alcanza: <span style="color:var(--red)">━ falta (−7)</span> <span style="color:#f97316">━ justo (7-20)</span> <span style="color:var(--green)">━ bien (20-45)</span> <span style="color:#eab308">━ sobra (45-90)</span> <span style="color:#a855f7">━ exceso (+90)</span></span><span style="margin-right:10px"><span style="color:#f59e0b">━</span> costo real por unidad (mercadería × dólar del mes + IIBB y monotributo, que son % de lo cobrado: por eso se mueve un poco; el detalle sale al pasar el mouse)</span><span style="margin-right:10px">📊 % de ganancia: la línea toma el color del nivel de ese día (🔴 Bajo · 🟠 Justo · 🟢 Bien · 🩵 Bueno · 🔵 Excelente · 🟣 Estrella · 💎 JOYA), misma cuenta que Ventas</span><span style="margin-right:10px">▲▼ cambio de precio (con su motivo)</span><br>
       Pasá el mouse (o tocá) un día para ver todo lo que pasó. El precio es el más barato de sus publicaciones; ventas, visitas y stock suman todas. Stock, caja y remate de los días viejos no los guarda ML: quedan en gris. En stock: la línea son las unidades en Full (cuando se sabe el número) y la franja finita de abajo dice si hubo o no hubo stock ese día.
     </div></details></div>`;
 }
