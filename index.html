@@ -2429,7 +2429,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='21.45';
+const APP_VERSION='21.46';
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
 // muestre la versión y la fecha de actualización y que tenga un desplegable predeterminado cerrado".
 // Y el mismo día: "que ponga fecha de cada modificación y haya una barrita para scrollear y que
@@ -2440,6 +2440,7 @@ const APP_VERSION='21.45';
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'21.46',f:'03/10/2026',h:'11:20',c:[{n:1,t:'Paraguay · Productos nuevos: botones para ordenar la lista de mayor a menor por % de ganancia, más vendidos en ML, $ por unidad, $ por dólar invertido o más barato. Se acuerda del último que elegiste.'}]},
   {v:'21.45',f:'03/10/2026',h:'11:05',c:[{n:1,t:'Puntaje del día: 7 puntos = $115.000 de ganancia en el día (lo que hace falta para que a cada uno de los 3 le queden $900.000 por mes pagando todo). 10 puntos en $230.000.'}]},
   {v:'21.44',f:'03/10/2026',h:'10:50',c:[{n:1,t:'Puntaje del día: ahora sale sólo de la ganancia en pesos (más ganancia = más puntaje). 7 al llegar a lo que hace falta por día para cumplir el mes, 10 en la meta grande.'}]},
   {v:'21.43',f:'03/10/2026',h:'10:30',c:[{n:1,t:'Inicio · Ventas del día: el recuadro de la derecha ahora es el PUNTAJE DEL DÍA (de 0 a 10): 6 puntos por la ganancia contra lo que hace falta ganar por día para cumplir el mes, y 4 por el % de ganancia. Ya no repite el %.'}]},
@@ -11928,6 +11929,16 @@ function candidatosHTML(){
     </details>`;
   };
   const _arriba=vivos.filter(c=>!_esRojo(c)), _rojos=vivos.filter(_esRojo);
+  // ORDENAR (03/10/2026, pedido suyo: "poder buscar de mayor a menor los que más unidades vendieron, mayor
+  // porcentaje y eso"). Los sin dato van siempre al final.
+  {const k=_candOrden, val=c=>{const n=x=>(x!=null&&isFinite(x))?Number(x):null;
+      if(k==='vend')return n(candVentasDe(c));
+      if(k==='gan')return n(c.ganancia);
+      if(k==='usd')return (parseFloat(c.usd)>0&&n(c.ganancia)!=null)?c.ganancia/(parseFloat(c.usd)*RECARGO_PY):null;
+      if(k==='barato')return parseFloat(c.usd)>0?-parseFloat(c.usd):null;
+      return n(c.margen);};
+    const ord=(a,b)=>{const va=val(a),vb=val(b);if(va==null&&vb==null)return 0;if(va==null)return 1;if(vb==null)return -1;return vb-va;};
+    _arriba.sort(ord);_rojos.sort(ord);}
   // CUÁNTOS DAN (02/10/2026, pedido suyo: *"antes de arrancar la lista poné cuántos candidatos con % positivo en
   // verde hay, así voy viendo cuando sube productos nuevos"*). Verde = medido y en el piso o arriba.
   const _verdes=_arriba.filter(c=>c.margen!=null&&isFinite(c.margen)).length, _sinMed=_arriba.length-_verdes;
@@ -11937,7 +11948,9 @@ function candidatosHTML(){
     ${_sinMed?`<span style="font-size:.7rem;color:var(--muted)">· ⏳ ${_sinMed} sin medir</span>`:''}
     ${_rojos.length?`<span style="font-size:.7rem;color:var(--red)">· 🔻 ${_rojos.length} no llega${_rojos.length===1?'':'n'}</span>`:''}
   </div>`;
-  return cab+simPYHTML()+pyEnCaminoHTML()+pedNuevosHTML(vivos0)+_cuenta+_arriba.map(_card).join('')
+  const _ob=(k,t)=>`<button class="btn" style="font-size:.66rem;padding:4px 11px;${_candOrden===k?'background:var(--blue);color:#fff;font-weight:700':''}" onclick="candOrdenar('${k}')">${t}</button>`;
+  const _orden=`<div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin:0 0 10px"><span style="font-size:.66rem;color:var(--muted)">Ordenar de mayor a menor:</span>${_ob('pct','% de ganancia')}${_ob('vend','🛒 más vendidos')}${_ob('gan','$ por unidad')}${_ob('usd','$ por dólar invertido')}${_ob('barato','más barato')}</div>`;
+  return cab+simPYHTML()+pyEnCaminoHTML()+pedNuevosHTML(vivos0)+_cuenta+_orden+_arriba.map(_card).join('')
     +(_rojos.length?`<details style="margin-top:10px"><summary style="cursor:pointer;font-size:.7rem;color:var(--red)">🔻 ${_rojos.length} no llega${_rojos.length===1?'':'n'} al ${CAND_PISO_PCT}% · tocá para verlos</summary><div style="display:flex;flex-direction:column;gap:8px;margin-top:8px">${_rojos.map(_card).join('')}</div></details>`:'')
     +candDescartadosHTML();
 }
@@ -11946,6 +11959,8 @@ function candidatosHTML(){
 // El panel se redibuja solo cada vez que llega un dato (ventas cada 2 min, etc.) y la tarjeta
 // abierta volvía a nacer cerrada "al ratito". Se recuerda cuáles están abiertas (02/10/2026).
 const _candAbiertos=new Set();
+let _candOrden=(()=>{try{return localStorage.getItem('cycCandOrden')||'pct';}catch(e){return 'pct';}})();
+function candOrdenar(k){_candOrden=k;try{localStorage.setItem('cycCandOrden',k);}catch(e){}renderPedidos();}
 function candToggle(id,ab){if(ab)_candAbiertos.add(id);else _candAbiertos.delete(id);}
 function candDescartadosHTML(){
   const desc=candList().filter(c=>c.no);
