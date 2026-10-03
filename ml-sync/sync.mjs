@@ -11141,6 +11141,24 @@ async function main() {
       console.log(`\nTOTAL: ${totU} u. · US$ ${totUsd.toFixed(2)} crudo · US$ ${(totUsd * RECARGO_PAR).toFixed(2)} puesto`);
       return;
     }
+    // BILLING_PROBE=candresumen → CUÁNTOS CANDIDATOS DAN, SIN LA LISTA ENTERA (03/10/2026) · SOLO LEE.
+    if (/^candresumen$/.test(String(process.env.BILLING_PROBE || ''))) {
+      const cands = (await db.get('cyc/candidatos_py')) || {};
+      const vivos = Object.values(cands).filter((c) => c && c.nombre && !c.no && !c.prodId);
+      const med = vivos.filter((c) => c.margen != null && isFinite(c.margen) && Number(c.calcVer) === CAND_CALC_VER);
+      const dan = med.filter((c) => Number(c.margen) >= CAND_PISO_PCT);
+      const v100 = dan.filter((c) => (Number(c.vendCarga ?? c.mlVendidas) || 0) >= CAND_MIN_VENT);
+      const descart = Object.values(cands).filter((c) => c && c.no);
+      console.log(`=== CANDIDATOS · ${vivos.length} vivos · ${med.length} medidos · ${vivos.length - med.length} sin medir · ${descart.length} descartados en total ===`);
+      console.log(`Dan ${CAND_PISO_PCT}% o más: ${dan.length} (con ${CAND_MIN_VENT}+ vendidas: ${v100.length}) · abajo del piso esperando 2ª medición: ${med.length - dan.length}`);
+      const tramos = [[80, 1e9], [50, 80], [35, 50], [25, 35]];
+      for (const [lo, hi] of tramos) console.log(`  ${lo}%${hi < 1e9 ? '-' + hi + '%' : '+'}: ${dan.filter((c) => c.margen >= lo && c.margen < hi).length}`);
+      console.log('\n80%+ (mirar con el precio de hoy):');
+      dan.filter((c) => c.margen >= 80).sort((a, b) => b.margen - a.margen).forEach((c) => console.log(`  ${Number(c.margen).toFixed(1)}% · ${String(c.nombre).slice(0, 80)} · cód ${c.cod || '—'} · ML $${c.mlPrecio} (${c.mlVendedores ?? '?'} vend.)`));
+      const tot = dan.reduce((a, c) => a + (Number(c.usd) || 0) * 2, 0);
+      console.log(`\nComprar 2 de cada uno de los que dan: US$ ${tot.toFixed(0)} crudo.`);
+      return;
+    }
     if (/^vercampos(:|$)/.test(String(process.env.BILLING_PROBE || ''))) {
       const q = String(process.env.BILLING_PROBE).slice('vercampos'.length).replace(/^:/, '').trim().toLowerCase();
       const cands = (await db.get('cyc/candidatos_py')) || {};
