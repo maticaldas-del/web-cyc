@@ -2430,7 +2430,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='21.57';
+const APP_VERSION='21.58';
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
 // muestre la versión y la fecha de actualización y que tenga un desplegable predeterminado cerrado".
 // Y el mismo día: "que ponga fecha de cada modificación y haya una barrita para scrollear y que
@@ -2441,6 +2441,7 @@ const APP_VERSION='21.57';
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'21.58',f:'03/10/2026',h:'16:45',c:[{n:3,t:'Techo de precio en ML: de $600.000 a $650.000 (el robot puede subir hasta ahí).'}]},
   {v:'21.57',f:'03/10/2026',h:'16:30',c:[{n:3,t:'Pedidos y Armar caja: TODA venta que dejó menos de 20% deja de contar para calcular cuánto comprar o mandar (antes hacía falta además una prueba de remate y se colaban). Las ventas siguen en Ventas y en la plata.'}]},
   {v:'21.56',f:'03/10/2026',h:'16:10',c:[{n:3,t:'Pedidos Paraguay: se acabaron los pedidos "a mano" con cantidades fijas. El panel decide: si con lo que hay alcanza, o el producto todavía no llegó y no tiene ventas (como el TP-Link TL-WN822N), sale de la lista; si hace falta, pone la cantidad según lo que vende. Bs As no cambia.'}]},
   {v:'21.55',f:'03/10/2026',h:'15:45',c:[{n:1,t:'Paraguay · Probados: cada tarjeta muestra las dos fotos (Paraguay y ML) y los dos links, como en Nuevos.'},{n:1,t:'Paraguay · Nuevos: el simulador va al final y el historial de pedidos se fue (está en 🧾 Pedido).'},{n:1,t:'Pedidos: se escondieron los botones Todos / Urgente / Poco stock / Suficiente.'}]},
@@ -3723,9 +3724,9 @@ const ML_CARGO_FIJO=1230;
 // el robot para los candidatos de Paraguay (`CAND_ENVIO_ARRIBA`). Errar para el lado caro hace ver
 // el margen MENOR, que es el lado seguro cuando el número decide una compra.
 const SIM_ENVIO_ARRIBA=6190;
-// El techo duro de precio, regla suya del 13/08/2026: nunca por encima de $600.000. Acá no frena
+// El techo duro de precio, regla suya del 13/08/2026: nunca por encima de $650.000. Acá no frena
 // nada —esto sólo simula— pero un renglón que propone un precio arriba del techo tiene que decirlo.
-const SIM_TECHO=600000;
+const SIM_TECHO=650000;
 // El piso para un producto NUEVO es 25%, regla suya del 15/09/2026: *"el % sano es de 25 hacia
 // arriba"*. Es el MISMO número que usa el robot para los candidatos de Paraguay (`SIM_PISO_PCT`).
 // Ojo: NO es `metaMargenML()`, que lee el piso de lo que ya vendés (hoy 23) — son dos cosas.

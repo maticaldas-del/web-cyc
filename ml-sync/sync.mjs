@@ -489,11 +489,11 @@ function redondeoSube(x) {
   return (x < UMBRAL_ENVIO_GRATIS && r >= UMBRAL_ENVIO_GRATIS) ? UMBRAL_ENVIO_GRATIS - 1 : r;
 }
 // LOS TRES FRENOS DE TODA SUBA, EN UN SOLO LUGAR (revisión max #14, 25/09/2026): el techo de
-// $600.000 (regla 3), no cruzar los $33.000 para arriba (regla 2: se frena en $32.999) y no más de
+// $650.000 (regla 3), no cruzar los $33.000 para arriba (regla 2: se frena en $32.999) y no más de
 // +25% de una. Vivían en algunas cuentas y no en las funciones que escriben en ML, así que un
 // comando a mano (`volver`, `submargen`, `bajopiso`, `preciosgo`) los podía saltear.
 // Devuelve { to } con el precio ya ajustado, o { err } si no se puede subir.
-const TECHO_DURO = 600000;
+const TECHO_DURO = 650000;   // 03/10/2026: subido de $650.000 a $650.000 (regla suya)
 function frenosSuba(from, to) {
   from = Number(from) || 0; to = Number(to) || 0;
   if (!(from > 0) || !(to > from)) return { err: 'no-sube' };
@@ -2446,7 +2446,7 @@ async function calcSubirPorMargen(db, o) {
   const soloProds = o.soloProds || null;
   const soloMlas = o.soloMlas || null;   // el rescate al vender mira SÓLO la publicación que vendió
   const TOPE_ENVIO = 33000;   // arriba de esto ML te cobra el envío: no se cruza
-  const TECHO = 600000;       // regla suya del 13/08/2026
+  const TECHO = 650000;       // regla suya del 13/08/2026
   const finS = (await db.get('cyc/finanzas')) || {};
   const tcS = parseFloat(finS.tipo_cambio) || 1500;
   const monoS = parseFloat(((await db.get('cyc/monotributo')) || {}).pct) || 0;
@@ -2646,7 +2646,7 @@ async function calcSubirPorMargen(db, o) {
 // que se lee "20%" también suba— y se lleva a la meta (`targetPct`).
 //
 // LOS FRENOS, todos los de siempre más dos:
-//  · los de `calcSubirPorMargen`: nunca baja · $32.999 si cruzaría los $33.000 · techo $600.000 ·
+//  · los de `calcSubirPorMargen`: nunca baja · $32.999 si cruzaría los $33.000 · techo $650.000 ·
 //    lo marcado `liquidando` afuera;
 //  · como mucho +25% de una (el tope de `raisePriceTo`). Si hace falta más, sube 25% y lo dice: el
 //    resto lo completa el robot de ventas en la próxima venta;
@@ -3034,7 +3034,7 @@ async function calcPrueba(db, o) {
 async function calcSubirPuede(db, o) {
   const { dias = 30, maxSuba = 0.10, products = [], labels = [], accounts = {} } = o || {};
   const COLCHON = 0.99;      // 1% abajo del competidor: quedar a $4 es demasiado al filo
-  const TOPE_DURO = 600000;  // regla suya del 13/08/2026
+  const TOPE_DURO = 650000;  // regla suya del 13/08/2026
   const MIN_AIRE = 0.03;     // abajo de 3% no vale la pena tocar nada
   const PASOS = 12;          // precios que se prueban entre el de hoy y el techo
   // ── NO SE RECOMIENDA SUBIR LO QUE NECESITÁS VENDER (14/09/2026) ──────────────────────
@@ -8541,7 +8541,7 @@ async function main() {
       // agarra las dos cosas a la vez: una venta que salió baja y un costo que él cambió.
       // Se toca si el margen REDONDEADO da `subeDesde` o menos y se lleva a `targetPct`.
       // Frenos: el interruptor `subeventa` · `liquidando` · supervisor 🔴 · +25% como mucho de
-      // una · $33.000 y $600.000 · tope de RESCATE_MAX por noche (lo que sobra sale mañana).
+      // una · $33.000 y $650.000 · tope de RESCATE_MAX por noche (lo que sobra sale mañana).
       // Para no preguntarle a ML por las ~400 publicaciones, primero se filtra con el margen que
       // `netoweb` acaba de calcular (el peor neto de cada producto) con 5 puntos de colchón.
       const RESCATE_MAX = 25;
@@ -11538,7 +11538,7 @@ async function main() {
     // Lo que hace cuando está prendido: en cada venta calcula el margen real (neto de ML − costo −
     // IIBB − monotributo) y, si quedó abajo del piso, sube el precio hasta la meta y avisa por
     // Telegram. Lo que NO hace nunca, y en cada caso avisa en vez de tocar:
-    //   · cruzar los $33.000 · pasar el techo de $600.000 · subir más de +25% de una
+    //   · cruzar los $33.000 · pasar el techo de $650.000 · subir más de +25% de una
     //   · tocar dos veces la misma publicación en 12 h · tocar un miembro de un grupo de precio
     //   · tocar algo que no llegue a `subeDesde` (22/09/2026: sube sólo desde 20% para abajo)
     // Sin argumento solo dice cómo está.
@@ -16795,7 +16795,7 @@ async function main() {
           console.log(`      Para bajar: alpiso o bajarcaja, que sí calculan en cuánto queda.`);
           continue;
         }
-        // Los tres frenos de toda suba (techo $600.000, barrera $33.000, +25%), los mismos de
+        // Los tres frenos de toda suba (techo $650.000, barrera $33.000, +25%), los mismos de
         // `raisePriceTo` (revisión max #14): el PUT directo de acá los salteaba.
         const frV = frenosSuba(actual, x.precio);
         if (frV.err) { err++; console.log(`  ✗ ${x.mla} · ${nom}: ${money(Math.round(actual))} → ${money(x.precio)} NO: ${frV.err}`); continue; }
@@ -17636,7 +17636,7 @@ async function main() {
     // vez por hora), así que las llamadas a ML son sólo las que pueden dar candidata.
     if (/^subirpuede(:|$)/.test(String(process.env.BILLING_PROBE || ''))) {
       const DIAS = parseFloat(String(process.env.BILLING_PROBE).split(':')[1]) || 30;
-      // El colchón contra el competidor, el techo duro de $600.000 y el aire mínimo YA NO VIVEN
+      // El colchón contra el competidor, el techo duro de $650.000 y el aire mínimo YA NO VIVEN
       // ACÁ: están en `calcSubirPuede`, que es la que hace la cuenta (ver abajo por qué).
       // EL ESCALÓN MÁXIMO POR VEZ. La primera corrida (12/09/2026) mostró por qué hace falta: en
       // los Paulvic el "competidor más barato de arriba" estaba al DOBLE ($14.360 contra $28.990),
@@ -22368,7 +22368,7 @@ async function main() {
     //
     // El precio se busca con la calculadora OFICIAL de ML, no con una fórmula copiada: se prueba un
     // precio, se le pregunta a ML cuánto cobra de comisión, y se repite hasta llegar al piso.
-    // Respeta las reglas: NUNCA baja, frena en $32.999 si cruzaría los $33.000, no pasa de $600.000,
+    // Respeta las reglas: NUNCA baja, frena en $32.999 si cruzaría los $33.000, no pasa de $650.000,
     // no toca el grupo Paulvic, y las publicaciones con variantes van con la lista completa.
     // BILLING_PROBE=porcosto[:<palabra>][:go] → ¿QUÉ HACE EL ROBOT SI CAMBIA EL COSTO? (23/09/2026)
     // Corre `subirPorCosto`, la MISMA función de la vuelta de cada hora.
@@ -25484,7 +25484,7 @@ async function main() {
       //  · sin variantes, sin marca `liquidando`, con `autoPrecios` prendido;
       //  · volver a BAJAR no deja abajo del piso del negocio (margen medido a ese precio, con la
       //    comisión de ML, el envío del lado de los $33.000, cuotas, IIBB y monotributo); volver a
-      //    SUBIR pasa por los frenos de siempre (+25% de una, $33.000, $600.000) — si no entra entero,
+      //    SUBIR pasa por los frenos de siempre (+25% de una, $33.000, $650.000) — si no entra entero,
       //    no se hace a medias: se pregunta.
       // Tope 5 por noche. Memoria `cyc/supervisor/revertido/<id>` (se anota ANTES de tocar ML, así dos
       // corridas no lo hacen dos veces). Queda en `cyc/autoprecio` con `por:'volver'`, que NO suma en
@@ -34743,7 +34743,7 @@ async function main() {
   const targetPct = parseFloat(cfg.targetPct) || 32; // margen objetivo (piso + 2 de colchón)
   const minPct = parseFloat(cfg.minPct) || 30;        // umbral para actuar
   const MAX_UP = 1.25; // tope de seguridad: nunca subir más de +25% de una
-  const TECHO_PRECIO = 600000; // regla suya del 13/08/2026: nunca subir por encima de esto
+  const TECHO_PRECIO = 650000; // regla suya del 13/08/2026: nunca subir por encima de esto
   // El % de monotributo se descuenta de CADA venta, igual que el IIBB. Va acá porque el aviso de
   // "margen bajo" lo necesita: sin él la cuenta daba varios puntos de más y el aviso no salía.
   const monoVenta = parseFloat(((await db.get('cyc/monotributo')) || {}).pct) || 0;
@@ -35468,7 +35468,7 @@ async function main() {
             // envío de hoy deja de valer: la "suba" puede dejar el margen PEOR que antes. Cuando el
             // precio nuevo pasa la barrera, no se toca nada y se avisa para que lo decidas vos.
             const cruzaUmbral = unit < UMBRAL_ENVIO_GRATIS && sugUnit >= UMBRAL_ENVIO_GRATIS;
-            // TECHO DURO de $600.000 (regla suya del 13/08/2026): si para llegar a la meta hay que
+            // TECHO DURO de $650.000 (regla suya del 13/08/2026): si para llegar a la meta hay que
             // pasarlo, no se toca y se avisa.
             const pasaTecho = sugUnit > TECHO_PRECIO;
             // Grupo de precio (Paulvic): subir un miembro sube a todo el grupo en la nivelación.
