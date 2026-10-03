@@ -2430,7 +2430,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='21.55';
+const APP_VERSION='21.56';
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
 // muestre la versión y la fecha de actualización y que tenga un desplegable predeterminado cerrado".
 // Y el mismo día: "que ponga fecha de cada modificación y haya una barrita para scrollear y que
@@ -2441,6 +2441,7 @@ const APP_VERSION='21.55';
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'21.56',f:'03/10/2026',h:'16:10',c:[{n:3,t:'Pedidos Paraguay: se acabaron los pedidos "a mano" con cantidades fijas. El panel decide: si con lo que hay alcanza, o el producto todavía no llegó y no tiene ventas (como el TP-Link TL-WN822N), sale de la lista; si hace falta, pone la cantidad según lo que vende. Bs As no cambia.'}]},
   {v:'21.55',f:'03/10/2026',h:'15:45',c:[{n:1,t:'Paraguay · Probados: cada tarjeta muestra las dos fotos (Paraguay y ML) y los dos links, como en Nuevos.'},{n:1,t:'Paraguay · Nuevos: el simulador va al final y el historial de pedidos se fue (está en 🧾 Pedido).'},{n:1,t:'Pedidos: se escondieron los botones Todos / Urgente / Poco stock / Suficiente.'}]},
   {v:'21.54',f:'03/10/2026',h:'15:20',c:[{n:2,t:'Paraguay · Nuevos: los que tienen menos de 100 vendidas en ML (o sin el dato) bajan a su propio desplegable "no se pueden pedir"; arriba sólo lo que se puede comprar. Las vendidas se pintan verdes desde 100.'}]},
   {v:'21.53',f:'03/10/2026',h:'15:00',c:[{n:3,t:'Paraguay: el máximo de compra de los PROBADOS (tarjeta, canasta y pedido) se calcula al 20%; los NUEVOS siguen al 25%. Bs As sigue igual.'}]},
@@ -10335,7 +10336,12 @@ async function syncPedidosAuto(){
   // limpiar pedidos auto obsoletos
   for(const coll of ['pedidos','pedidos_py']){
     const arr=state[coll]||(state[coll]=[]);
-    for(const ped of [...arr.filter(x=>x.auto)]){
+    // PARAGUAY YA NO TIENE PEDIDOS "A MANO" (03/10/2026). Él: "no llegó y ya me hace pedir más, ¿en base a
+    // qué?" — el TP-Link TL-WN822N tenía un pedido cargado a mano el 02/10 (2 u. fijas, de antes de que
+    // el producto llegara) y el panel no lo toca nunca. Regla suya: él no carga nada a mano. En Paraguay
+    // los cargados a mano pasan a manejarse como los automáticos: si la cuenta dice comprar 0 (o no hay
+    // con qué medir, como algo que nunca llegó) se van; si hace falta, el panel pone la cantidad.
+    for(const ped of [...arr.filter(x=>x.auto||(coll==='pedidos_py'&&x.auto===false))]){
       const pid=ped.prodId;
       const r=pid?resumen[pid]:null;
       if(!r||r.aComprar===0||r.coll!==coll||!expectedIds.has(ped.id)){
@@ -10356,6 +10362,7 @@ async function syncPedidosAuto(){
   for(const coll of ['pedidos','pedidos_py']){
     for(const ped of (state[coll]||[])){
       if(ped.auto!==false||!ped.prodId)continue;
+      if(coll==='pedidos_py')continue;   // Paraguay: los maneja el panel (ver arriba)
       const r=resumen[ped.prodId];if(!r)continue;
       const notaM=`30d: ${r.vendidosNorm} vendidos · ~${r.diasCubiertos}d cubiertos`
         +pedTresLugares(r)
@@ -10386,7 +10393,7 @@ async function syncPedidosAuto(){
     // 02/10/2026: un pedido con id automático pero marcado a mano (por ej. devuelto de la papelera)
     // ya lo actualizó el bloque de arriba campo por campo. Escribirlo acá ENTERO en el mismo update
     // hacía fallar TODA la escritura ("path … is an ancestor of another path"). Manda lo de a mano.
-    if(existing&&existing.auto===false)continue;
+    if(existing&&existing.auto===false&&coll!=='pedidos_py')continue;
     if(existing){
       const same=existing.cantidad===r.aComprar&&existing.estado===estado&&existing.nota===nota&&existing.producto===r.p.name&&JSON.stringify(existing.variantesNec||null)===JSON.stringify(variantesNec)&&(existing.proveedor||null)===(provNom)&&existing.riesgo===r.riesgo&&existing.gan30d===r.gan30d;
       if(same)continue;
