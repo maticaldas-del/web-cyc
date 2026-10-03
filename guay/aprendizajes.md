@@ -265,5 +265,4 @@ match de las categorías que sí dan: **routers, memorias, accesorios de cámara
 - **MAQUILLAJE ENTRA TODO (03/10, regla de Matías):** *"todo el mundo de maquillaje, labial, base, rubor y todo lo
   relacionado recontra van. porque si no se venden en ml se venden en la perfumería"*. Se barre todo el maquillaje y
   "maquillaje" ya NO es palabra excluida. Tiene segunda salida (la perfumería), así que es prioridad.
-  **Falta que él diga** si para el maquillaje se aflojan las varas de ML (100 vendidas, 25%); hasta entonces se cargan
-  igual que el resto y los que no las cumplen se anotan aparte en `progreso.md` para mostrárselos.
+  **Vara DECIDIDA el 03/10: la misma que todos los nuevos** — 25% de margen y 100+ vendidas. No se afloja.

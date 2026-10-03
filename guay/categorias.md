@@ -34,7 +34,7 @@ Relojes, teclados, mouse, parlantes, cables, capilar, skincare, fuentes, procesa
 ## Propuesta de pasar a excluidas — A CONFIRMAR
 1. ~~Excluir maquillaje~~ → **AL REVÉS, 03/10: todo el maquillaje entra** (labial, base, rubor, lápiz, sombra, corrector,
    polvo, delineador, gloss, rímel, iluminador, otras-maquillajes, pinceles, esponjas, espejos, máscara de pestañas,
-   bálsamo labial). Va con PRIORIDAD: tiene segunda salida en la perfumería.
+   bálsamo labial). Va con PRIORIDAD: tiene segunda salida en la perfumería. Vara: la de todos los nuevos (25%, 100+ vendidas).
 2. **Térmicos:** taza-vaso-termico · caja-bolsa-termica · fiambrera-termica · botella-de-agua
 3. ~~Grandes/pesados~~ → **resuelto el 03/10:** excluidos los grandes de verdad (arriba), aspiradora sigue.
 4. ~~Consumibles~~ → **resuelto el 03/10:** se siguen revisando.
