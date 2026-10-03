@@ -6,6 +6,21 @@ Lo más nuevo va ARRIBA.
 
 ---
 
+## Respuesta 31 (03/10) · 🔎 MATÍAS PIDE AHORA LA REVISIÓN DE LO QUE FALTÓ (sección 5b del SKILL)
+
+No esperes 4 semanas: hacé ya lo que quedó afuera del barrido del 02/10.
+1. **Los modelos que el emparejador NO encontró en ML (~50%), en TODAS las categorías** (no sólo routers, memorias,
+   cámara y cuidado personal). Para cada uno: buscalo en listado.mercadolibre.com.ar con otras palabras (marca + nombre
+   sin el código; el código solo; el nombre en castellano). Si aparece, comparás fotos, contás vendedores y medís como
+   siempre; si no, lo anotás como "no está en ML" con su código. Empezá por las categorías que más dieron
+   (routers/redes, memorias/discos, cámara/foto, cuidado personal, auriculares) y seguí con el resto.
+2. **Perfumería entera de nuevo** (la del 18/09 está vieja): precios de hoy y los perfumes nuevos de Nissei.
+3. Mandame "GUARDAR" por tanda con los cargados, y **al final los cuatro números que tienen que cerrar**: modelos totales
+   · emparejados solos · revisados a mano · no están en ML. Si no llegás a todo, decí cuántos faltan.
+Los candidatos nuevos los mido yo apenas me avisás. El pedido actual ya está cargado y no se toca.
+
+---
+
 ## Respuesta 30 (02/10, noche) · ✅ BARRIDO COMPLETO RECIBIDO
 
 Guardado en progreso.md como el estado que vale. La tanda 3 ya está medida en la Respuesta 29 (entran softbox, GoPro
