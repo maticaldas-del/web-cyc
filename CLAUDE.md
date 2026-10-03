@@ -1353,7 +1353,7 @@ julio, a CYC le quedan **~$2.000.000/mes** después de todo eso.
    cobra el envío gratis y el margen se da vuelta. Si para llegar al 30% hay que cruzarla, se deja
    en **$32.999** y se avisa que quedó abajo del piso a propósito. NO se cruza. (Decidido por él
    el 13/08/2026; antes había que preguntar cada vez.)
-3. **TECHO DURO: nunca subir un precio por encima de $600.000.** Regla suya del 13/08/2026. Si
+3. **TECHO DURO: nunca subir un precio por encima de $650.000.** Regla suya del 13/08/2026 (era $600.000; subido a $650.000 el 03/10/2026, "podemos vender productos hasta 650.000 pesos monto final en ML"). Si
    para llegar al 30% haría falta cruzar ese número, se deja donde está y se avisa.
 4. **El piso de margen es 22% (desde el 24/09, sale de `pisobase`) y la BASE a la que se sube es 25%** (07/09/2026, suyo: *"dejalo
    23/25%"*). Vuelven a ser dos números distintos, que es como tiene que ser — ver abajo por qué.
