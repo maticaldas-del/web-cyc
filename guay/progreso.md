@@ -180,3 +180,15 @@ cuidado personal, auriculares, el resto, y perfumería entera con precios de hoy
 (hay CX 80U), Adyan Oud Essential, Galaxy A06 128GB (sólo 64GB), VS Bliss, VS Starlit, Redmi Watch 4 (hay 5/6), Azzaro Pour
 Homme 200ml (sólo 100ml), Cabotine 30ml (sólo 100ml), Halloween 100ml (sólo MY World 125ml), Philips TAT2206, PS Portal,
 MicroSD SanDisk Ultra 128GB con adaptador (sólo sin adaptador). Sigue con la revisión manual y perfumería.
+
+## 03/10 · TANDA 1 DE LA REVISIÓN (Guay)
+Barrido entero de comprasparaguay por categoría con loja=nissei: 13.720 modelos, 284 categorías. Redes terminado
+(179 revisados, 39 no están en ML); memorias y foto en parte; corriendo cuidado personal, auriculares y perfumería (1.196).
+CARGADOS 15: 103737 LS1008G · 110348 LS108G · 106507 Archer C6 V4 · 116940 Archer C20 blanco (Nissei dice AC1200, es el
+C20 AC750) · 154709 TL-SG108PE · 22518 TL-WA855RE · 62623 UE200 · 137572 XZ005-G6 · 56163 SanDisk Ultra Shift 64 negro ·
+140179 Lexar 633x 64 · 146423 Lexar V40 32 · 141677 Lexar LRW310X (80%+, hoy $86.330) · 138585 Lexar 800x Pro 256 (80%+,
+hoy $386.409) · 122344 Godox FC16 Canon · 106436 SanDisk Extreme 64.
+DESCARTADOS: 64590 TL-WPA4220TKIT y 111003 Mercusys MR60X (50 vendidas) · 127671 Xiaomi AX3000T (5) · 155620 GWN7700 (en ML
+sólo 7700P) · 118416 Mercusys ME30 (sólo pack x2) · Teltonika TSW100/101/110/114/202/212 (0 vendidas) · 126672 Godox FC16
+Nikon (25) · 116518 SSD SanDisk Plus 2TB (ML matcheó otro) · 80077 dock Satellite AX-234 (ML es Fideco) · 45168 Extreme 128,
+65318 Ultra 128 SDSQUNR, 40027 Ultra Fit 64: no dan.

@@ -228,3 +228,7 @@ match de las categorías que sí dan: **routers, memorias, accesorios de cámara
 - **Link y foto de comprasparaguay de cada PROBADO (03/10):** al recorrer los probados, además del precio, cargar
   `updPyLink('<id>', '<link de la página del producto en comprasparaguay>', '<link https de la foto>')`. El panel muestra
   las dos fotos (Paraguay y ML) y los dos links en cada tarjeta de probados, como en Nuevos.
+- **(Tanda 1 del 03/10)** La ficha de ML que aparece primero suele ser una cara de 1 vendedor y da 80%+ falso: buscar
+  siempre el mismo modelo más barato antes de cargar. · Sacar color, voltaje y sufijos tipo /15 de la búsqueda: el código
+  de modelo sin sufijo encuentra más. · Nissei a veces escribe mal la spec (C20 "AC1200" es AC750): mandan foto y código.
+- **Regla de Matías (03/10):** toda venta que dejó menos de 20% no cuenta para el ritmo de pedidos (eran remates).
