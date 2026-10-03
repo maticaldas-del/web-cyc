@@ -8,7 +8,8 @@ Lo más nuevo va ARRIBA.
 
 ## Respuesta 31 (03/10) · 🔎 MATÍAS PIDE AHORA LA REVISIÓN DE LO QUE FALTÓ (sección 5b del SKILL)
 
-No esperes 4 semanas: hacé ya lo que quedó afuera del barrido del 02/10.
+No esperes 4 semanas: hacé ya lo que quedó afuera del barrido del 02/10. **SÓLO esto, NO rehagas el barrido entero**
+(lo que ya se emparejó solo el 02/10 no se vuelve a mirar):
 1. **Los modelos que el emparejador NO encontró en ML (~50%), en TODAS las categorías** (no sólo routers, memorias,
    cámara y cuidado personal). Para cada uno: buscalo en listado.mercadolibre.com.ar con otras palabras (marca + nombre
    sin el código; el código solo; el nombre en castellano). Si aparece, comparás fotos, contás vendedores y medís como
