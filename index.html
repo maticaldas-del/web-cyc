@@ -2430,7 +2430,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='21.72';
+const APP_VERSION='21.73';
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
 // muestre la versión y la fecha de actualización y que tenga un desplegable predeterminado cerrado".
 // Y el mismo día: "que ponga fecha de cada modificación y haya una barrita para scrollear y que
@@ -2441,6 +2441,7 @@ const APP_VERSION='21.72';
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'21.73',f:'03/10/2026',h:'19:40',c:[{n:3,t:'Pedidos y Armar caja: si un producto perdió (o recuperó) la caja de compra o cambió el precio 5% o más, el ritmo se mide SÓLO desde ese cambio, cuando hay datos suficientes (14 días con stock, o 7 con 3 ventas, o 7 sin vender cuando antes ya habría vendido 3). La tarjeta lo dice con 🔀. Si no hay datos, sigue el ritmo de siempre.'}]},
   {v:'21.72',f:'03/10/2026',h:'19:05',c:[{n:1,t:'📈 Línea de tiempo: se sacó la franja de ganancia en $; en su lugar va el % de ganancia como línea (igual que el precio), pintada día por día con el color de su nivel (Bajo a JOYA).'}]},
   {v:'21.71',f:'03/10/2026',h:'18:45',c:[{n:1,t:'📈 Línea de tiempo: la franja de stock ya no pinta rojo un día en que se vendió, ni cuando sólo una publicación vieja dice 0 y las otras no tienen dato (queda gris).'}]},
   {v:'21.70',f:'03/10/2026',h:'18:35',c:[{n:3,t:'🤖 Robot de precios: remates y escalera ya no suman la ganancia entera de lo que vendieron (bajar el precio adelanta la venta, no la crea). Cuentan lo cobrado de menos y el almacenamiento ahorrado. Ej.: el Watch S5 dejaba de figurar con +$112.868.'}]},
@@ -9878,6 +9879,27 @@ function ritmoNormalDe(pid,loc){
   (loc?[loc]:LOCS).forEach(l=>{const r=rn[pid+'__'+sid(l)];if(r&&Number(r.pd)>0){pd+=Number(r.pd);hay=true;if(r.f)f=true;}});
   return hay?{pd,f}:null;
 }
+// ── EL RITMO DESDE QUE CAMBIÓ LA CAJA O EL PRECIO (03/10/2026) ──────────────────────────────────
+// Él: "quiero que sea preciso y no se equivoque con los pedidos y tenga en cuenta todo" (sin que le
+// pregunte nada). El robot (`ritmo:go`, cada noche) busca en la línea de tiempo el último cambio de caja
+// (ganada/compartida ↔ perdida) o de precio (5%+) de cada producto×cuenta y mide el ritmo SÓLO desde ahí
+// (`ra`). Se usa cuando alcanza para medir: 14+ días con stock, o 7+ con 3 ventas o más, o 7+ días sin
+// vender nada cuando al ritmo de antes ya tendría que haber vendido 3. Si no alcanza, sigue el ritmo de
+// siempre (no se adivina con una o dos ventas). Las otras cuentas del producto entran con su ritmo de 30
+// días (`p30`, misma cuenta del robot).
+function _raSirve(ra){return !!ra&&ra.d>=7&&ra.pd!=null&&(ra.d>=14||ra.u>=3||(ra.u===0&&(Number(ra.pdA)||0)*ra.d>=3));}
+function ritmoActualDe(pid,loc){
+  const rn=state.ritmonormal||{};let pd=0,hay=false;const cambio=[];
+  (loc?[loc]:LOCS).forEach(l=>{const r=rn[pid+'__'+sid(l)];if(!r)return;
+    if(_raSirve(r.ra)){pd+=Number(r.ra.pd)||0;hay=true;cambio.push({l,...r.ra});}
+    else if(r.p30&&r.p30.pd!=null)pd+=Number(r.p30.pd)||0;});
+  return hay?{pd,cambio}:null;
+}
+function _raTexto(c){
+  const d=String(c.desde||'').split('_');const f=d.length===3?d[2]+'/'+d[1]:'';
+  const qu=c.por==='caja'?(c.a==='p'?'perdió la caja de compra':'recuperó la caja de compra'):`cambió el precio (${fmt(c.de)} → ${fmt(c.a)})`;
+  return `${c.l}: ${qu} el ${f} · desde ahí vende ${(c.pd*30).toFixed(1)}/mes${c.pdA!=null?` (antes ${(c.pdA*30).toFixed(1)}/mes)`:''}`;
+}
 function pedVentasNorm(prodOrName){
   const target=(prodOrName&&typeof prodOrName==='object')?prodOrName:prodByName(prodOrName);
   const tname=target?target.name:(prodOrName||'');
@@ -9957,7 +9979,10 @@ function pedVentasNorm(prodOrName){
   // fue remate). Lo real es lo que vendía SIN remate: el robot lo mide sobre hasta 365 días con stock.
   let rn=null;
   if(remate>0&&target){const r=ritmoNormalDe(target.id);if(r){rn=r;vDia=r.pd;hist=null;}}
-  return{vendidos,vendidosNorm,diasHistorial,factor,dConS,vDia,hist,pocasVentas:rn?false:pocasVentas,remate,rn};
+  // Si cambió la caja o el precio y hay datos desde el cambio, manda ese ritmo (ver ritmoActualDe).
+  let reg=null;
+  if(!rn&&target){const r=ritmoActualDe(target.id);if(r){reg=r;vDia=r.pd;hist=null;}}
+  return{vendidos,vendidosNorm,diasHistorial,factor,dConS,vDia,hist,pocasVentas:(rn||reg)?false:pocasVentas,remate,rn,reg};
 }
 // ── A QUÉ CUENTA MANDAR LO QUE HAY EN LA OFICINA ───────────────────────────
 // El problema que resuelve: cuando está armando la caja tiene mercadería de varios productos y no
@@ -9988,7 +10013,8 @@ function ventasPorCuenta(p){
   });
   const factor=PED_MAX_DAYS/diasHistorial;
   // Con ventas de remate en esa cuenta manda el ritmo NORMAL del robot (01/10/2026), igual que Pedidos.
-  LOCS.forEach(l=>{const r=rem[l]>0?ritmoNormalDe(p.id,l):null;out[l]=r?Math.round(r.pd*PED_MAX_DAYS):Math.round(out[l]*factor);});
+  // Y si en esa cuenta cambió la caja o el precio y hay datos desde el cambio, manda ese ritmo (03/10/2026).
+  LOCS.forEach(l=>{const r=rem[l]>0?ritmoNormalDe(p.id,l):null;const ra=r?null:ritmoActualDe(p.id,l);out[l]=r?Math.round(r.pd*PED_MAX_DAYS):ra?Math.round(ra.pd*PED_MAX_DAYS):Math.round(out[l]*factor);});
   return out;
 }
 // ── CUÁNTO VENDÍA CUANDO SÍ TENÍA MERCADERÍA ───────────────────────────────
@@ -10327,7 +10353,7 @@ async function syncPedidosAuto(){
     // "PAUSADOS POR PRECIO" SE SACÓ EL 01/10/2026, decisión suya: *"sacar eso de precios TODO. ya que si no da no lo compro"*.
     // Lo que estaba pausado vuelve a Pedidos; si el precio no da, simplemente no lo compra.
     if(noTraerDe(p.id))continue;   // "no traer más"
-    const {vendidos,vendidosNorm,diasHistorial,dConS,vDia,hist,remate,pocasVentas,rn}=pedVentasNorm(p);
+    const {vendidos,vendidosNorm,diasHistorial,dConS,vDia,hist,remate,pocasVentas,rn,reg}=pedVentasNorm(p);
     // Antes acá decía `if(vendidos===0)continue` a secas, y ése era el renglón que dejaba afuera
     // para siempre a lo que no vendió POR FALTA DE STOCK. Ahora sólo se saltea si tampoco hay
     // ritmo viejo con qué medirlo: sin ningún dato no se puede opinar, y ahí sí se calla.
@@ -10494,7 +10520,7 @@ async function syncPedidosAuto(){
     // real. Se guarda para poder MOSTRAR la cuenta en la tarjeta (ver cuentaPedidoHTML): sin eso,
     // "6 vendidos" y "4 en camino" invitan a la resta equivocada.
     const objetivoU=varCuenta?varCuenta.obj:Math.max(necesario+stock,0);
-    resumen[p.id]={p,vendidos,vendidosNorm,stock,diasHistorial,diasCubiertos,necesario,enOficina,enCamino,aComprar,variantesNec,coll,gan30d,riesgo,riesgoComprar,riesgoMandar,dConS,vDia,objetivoU,targetDias:TARGET_DIAS_P,hist,remate,rn,pocasVentas,varCuenta};
+    resumen[p.id]={p,vendidos,vendidosNorm,stock,diasHistorial,diasCubiertos,necesario,enOficina,enCamino,aComprar,variantesNec,coll,gan30d,riesgo,riesgoComprar,riesgoMandar,dConS,vDia,objetivoU,targetDias:TARGET_DIAS_P,hist,remate,rn,reg,pocasVentas,varCuenta};
   }
   // 3. IDs que deberían existir como auto-pedidos
   const expectedIds=new Set();
@@ -14123,7 +14149,7 @@ function cuentaPed(r){
   // `cHist` marca que la velocidad NO salió de este mes sino del ritmo viejo (ver pedVentasNorm).
   return{cObjetivo:r.objetivoU||0,cDias:Math.round(r.dConS||0),cVdia:Math.round((r.vDia||0)*100)/100,
     cVend:r.vendidos||0,cCamino:r.varCuenta?r.varCuenta.cam:(r.enCamino||0),cCasa:r.varCuenta?r.varCuenta.casa:(r.enOficina||0),cML:r.varCuenta?r.varCuenta.ml:(r.stock||0),cPocas:!!r.pocasVentas,
-    cHist:r.hist?{u:r.hist.u,dias:Math.round(r.hist.dias)}:null,cTarget:r.targetDias||PED_MAX_DAYS,cRemate:r.remate||0,cRN:r.rn?{mes:Math.round(r.rn.pd*30*10)/10,f:!!r.rn.f}:null};
+    cHist:r.hist?{u:r.hist.u,dias:Math.round(r.hist.dias)}:null,cTarget:r.targetDias||PED_MAX_DAYS,cRemate:r.remate||0,cRN:r.rn?{mes:Math.round(r.rn.pd*30*10)/10,f:!!r.rn.f}:null,cReg:r.reg?{mes:Math.round(r.reg.pd*30*10)/10,txt:r.reg.cambio.map(_raTexto)}:null};
 }
 // ── "ESTE RENGLÓN NO CIERRA": EL CHEQUEO AUTOMÁTICO DE PEDIDOS ─────────────────────
 // Pedido suyo, anotado desde el 16/09/2026: *"un producto no puede destrabar más por mes que lo
@@ -14184,7 +14210,9 @@ function pedSinSentido(p){
 function cuentaPedidoHTML(p){
   // Lo vendido en remate no pide reponer (ver ventaEnRemate): se dice cuánto quedó afuera, así no
   // se lee como que el producto vende menos sin motivo.
-  const rem=(p.cRemate||0)>0?`<div style="flex-basis:100%;font-size:.6rem;color:var(--muted);margin-top:2px">🔒 No cuento <strong style="color:var(--text)">${fmtN(p.cRemate)}</strong> u. vendidas abajo del piso (${parseFloat((state.mlconfig||{}).minPct)||30}%): lo que se vende rematado no se vuelve a comprar.${p.cRN?` Uso lo que vende sin remate: <strong style="color:var(--text)">${fmtN(p.cRN.mes)}/mes</strong>${p.cRN.f?' (todavía con pocos días medidos)':''}.`:''}</div>`:'';
+  let rem=(p.cRemate||0)>0?`<div style="flex-basis:100%;font-size:.6rem;color:var(--muted);margin-top:2px">🔒 No cuento <strong style="color:var(--text)">${fmtN(p.cRemate)}</strong> u. vendidas abajo del piso (${parseFloat((state.mlconfig||{}).minPct)||30}%): lo que se vende rematado no se vuelve a comprar.${p.cRN?` Uso lo que vende sin remate: <strong style="color:var(--text)">${fmtN(p.cRN.mes)}/mes</strong>${p.cRN.f?' (todavía con pocos días medidos)':''}.`:''}</div>`:'';
+  const regH=p.cReg?`<div style="flex-basis:100%;font-size:.6rem;color:var(--amber);margin-top:2px">🔀 ${p.cReg.txt.join(' · ')}. Por eso el ritmo que uso es <strong style="color:var(--text)">${fmtN(p.cReg.mes)}/mes</strong> (lo de antes del cambio ya no vale).</div>`:'';
+  rem=rem+regH;
   if(!(p.cObjetivo>0)||!(p.cVdia>0))return rem;
   const pasos=[p.cHist
     ? `<span style="color:var(--amber)">este mes no vendió porque estuvo en CERO</span> · vendía <strong style="color:var(--text)">${p.cVdia}</strong> por día cuando tenía (<strong style="color:var(--text)">${fmtN(p.cHist.u)}</strong> en ${p.cHist.dias} días)`

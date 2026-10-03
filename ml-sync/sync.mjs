@@ -4790,6 +4790,30 @@ async function restaurarLiquidando(db, todas) {
 //    hora por hora (`cyc/stocklog/cambios`) y el diario; antes de eso no se sabe. Con 30 días
 //    "sabidos" o más es FIRME; si no, completa con los días sin dato (desde la primera venta) y queda
 //    marcado flojo (`f`). Lo usan la salida del remate, la entrada por "sobra", Pedidos y Armar caja.
+// ── EL RITMO DESDE QUE CAMBIÓ ALGO (03/10/2026, él: "quiero que sea preciso y no se equivoque con los
+// pedidos y tenga en cuenta todo", sin que el robot le pregunte nada). Un producto que vendía bien y
+// perdió la caja de compra (o al que se le movió el precio 5%+) sigue pidiendo comprar con el ritmo de
+// antes. Acá se busca, mirando hasta 120 días para atrás, el último día en que cambió la CAJA (ganada o
+// compartida ↔ perdida) o el PRECIO (5% o más contra el de hoy), y se mide el ritmo SÓLO desde ahí
+// (ventas sin remate ÷ días con stock). `p30` es el ritmo de los últimos 30 días con la misma cuenta,
+// para las cuentas donde no cambió nada. Pedidos y Armar caja deciden cuándo hay datos suficientes.
+function _ritmoRegimen(hD, cajaHoy, pHoy) {
+  const g = (c) => c === 'p' ? 'p' : (c === 'g' || c === 'c') ? 'g' : null;
+  let cH = g(cajaHoy), pH = pHoy > 0 ? pHoy : 0;
+  for (let i = hD.length - 1; i >= 0 && (!cH || !pH); i--) { if (!cH && g(hD[i].caja)) cH = g(hD[i].caja); if (!pH && hD[i].p > 0) pH = hD[i].p; }
+  const frD = (r) => r.fr != null ? r.fr : (r.u > 0 ? 1 : null);
+  const med = (arr) => { let d = 0, u = 0; for (const r of arr) { if (r.rem) continue; const f = frD(r); if (f == null) continue; d += f; u += r.u; } return { d: Math.round(d * 10) / 10, u, pd: d > 0 ? Math.round(u / d * 1000) / 1000 : null }; };
+  const p30 = med(hD.slice(-30));
+  let desde = -1, por = null, de = null;
+  for (let i = hD.length - 1; i >= Math.max(0, hD.length - 120); i--) {
+    const r = hD[i];
+    if (cH && g(r.caja) && g(r.caja) !== cH) { desde = i + 1; por = 'caja'; de = g(r.caja); break; }
+    if (pH && r.p > 0 && Math.abs(r.p / pH - 1) >= 0.05) { desde = i + 1; por = 'precio'; de = r.p; break; }
+  }
+  if (desde < 0 || desde >= hD.length) return { p30 };
+  const act = med(hD.slice(desde)), ant = med(hD.slice(Math.max(0, desde - 60), desde));
+  return { p30, ra: { desde: hD[desde].dk, por, de, a: por === 'caja' ? cH : pH, ...act, pdA: ant.pd, dA: ant.d } };
+}
 function _rnDia(ts) { return new Date(ts - 3 * 3600e3).toISOString().slice(0, 10).replace(/-/g, '_'); }
 function calcRitmoNormal(o) {
   const { links = {}, inv = {}, vp = {}, nosubir = {}, rescateventa = {}, autoprecio = {}, cambios = {}, diario = {}, precios = {}, hoyTs = Date.now(), DIAS = 365, primerVp = null } = o || {};
@@ -4862,13 +4886,18 @@ function calcRitmoNormal(o) {
   const ritmo = {}, hoyDiario = {};
   for (const [k, mlas] of Object.entries(pubsDe)) {
     let dG = 0, dU = 0, uG = 0, uU = 0, uR = 0, nR = 0;
+    const hD = [];   // día por día, para el ritmo desde el último cambio (_ritmoRegimen)
     for (const dk of dias) {
       const x = (ven[k] || {})[dk] || { u: 0, r: 0 };
       uR += x.r;
-      if (esRemDia(k, dk)) { nR++; continue; }
+      const diR = diario[dk] && diario[dk][k];
+      const rec = { dk, u: x.u, rem: false, fr: null, caja: diR ? diR[2] : '', p: diR ? Number(diR[1]) || 0 : 0 };
+      hD.push(rec);
+      if (esRemDia(k, dk)) { nR++; rec.rem = true; continue; }
       let fr = fracStock(k, dk);
       if (fr == null) { const di = diario[dk] && diario[dk][k]; if (di && di[0] != null) fr = Number(di[0]) > 0 ? 1 : 0; }
       if (fr != null && fr === 0 && x.u > 0) fr = 1;   // vendió: había stock (el registro se equivocó)
+      rec.fr = fr;
       if (fr == null) { if (primera[k] && dk >= primera[k]) { dU += 1; uU += x.u; } continue; }
       dG += fr; uG += x.u;
     }
@@ -4889,6 +4918,10 @@ function calcRitmoNormal(o) {
     // ahora es el del cierre de ayer.
     const xh = (ven[k] || {})[diaK] || { u: 0, r: 0 };
     hoyDiario[k] = [st, pMin || 0, caja, marcaDesde[k] ? 1 : 0, xh.u + xh.r, xh.r];
+    if (!k.includes('__v__')) {
+      const rg = _ritmoRegimen(hD, caja, pMin || 0);
+      if (rg.ra || rg.p30.pd != null) ritmo[k] = { ...(ritmo[k] || { pd: null, ts: hoyTs }), p30: rg.p30, ...(rg.ra ? { ra: rg.ra } : {}) };
+    }
   }
   return { ritmo, hoyDiario, diaK };
 }
@@ -14695,6 +14728,15 @@ async function main() {
       const rs = Object.values(R.ritmo);
       console.log(`=== RITMO NORMAL ${GO ? '' : '(PRUEBA — no escribo nada)'} ===`);
       console.log(`${rs.length} claves · ${rs.filter((x) => x.pd != null && !x.f).length} firmes (30+ días con stock sabidos) · ${rs.filter((x) => x.f).length} flojas · ${rs.filter((x) => x.pd == null).length} sin ritmo · línea de tiempo: ${nLin} publicaciones, ${Object.keys(diario).length} días`);
+      {
+        const sirveRa = (ra) => ra && ra.d >= 7 && (ra.d >= 14 || ra.u >= 3 || (ra.u === 0 && (ra.pdA || 0) * ra.d >= 3));
+        const conRa = Object.entries(R.ritmo).filter(([, r]) => r.ra);
+        console.log(`\n🔀 CAMBIO DE CAJA O PRECIO en ${conRa.length} claves (ritmo medido desde el cambio) · ${conRa.filter(([, r]) => sirveRa(r.ra)).length} con datos suficientes para que Pedidos lo use:`);
+        for (const [k, r] of conRa.filter(([, r]) => sirveRa(r.ra)).slice(0, 60)) {
+          const ra = r.ra; const nom = String(((links || {})[Object.keys(links || {}).find((m) => (links[m] || {}).prodId && k.startsWith(links[m].prodId + '__'))] || {}).title || k).slice(0, 38);
+          console.log(`  ${nom} · ${k.split('__')[1]} · desde ${ra.desde} por ${ra.por === 'caja' ? 'caja ' + (ra.de === 'p' ? 'perdida→ganada' : 'ganada→perdida') : 'precio ' + money(ra.de) + '→' + money(ra.a)} · ${(ra.pd * 30).toFixed(1)}/mes (${ra.u} u. en ${ra.d} d) · antes ${ra.pdA != null ? (ra.pdA * 30).toFixed(1) + '/mes' : '?'}`);
+        }
+      }
       // Lo que está rematando, con su ritmo normal (el control que él pidió).
       const nomP = (k) => { const m = Object.entries(links || {}).find(([, e]) => e && k.startsWith(e.prodId + '__')); return m ? String(m[1].title || m[0]).slice(0, 45) : k; };
       const sidR = (x) => String(x).replace(/[^a-z0-9]/gi, '_');
