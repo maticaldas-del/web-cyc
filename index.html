@@ -2429,7 +2429,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='21.42';
+const APP_VERSION='21.43';
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
 // muestre la versión y la fecha de actualización y que tenga un desplegable predeterminado cerrado".
 // Y el mismo día: "que ponga fecha de cada modificación y haya una barrita para scrollear y que
@@ -2440,6 +2440,7 @@ const APP_VERSION='21.42';
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'21.43',f:'03/10/2026',h:'10:30',c:[{n:1,t:'Inicio · Ventas del día: el recuadro de la derecha ahora es el PUNTAJE DEL DÍA (de 0 a 10): 6 puntos por la ganancia contra lo que hace falta ganar por día para cumplir el mes, y 4 por el % de ganancia. Ya no repite el %.'}]},
   {v:'21.42',f:'03/10/2026',h:'10:05',c:[{n:1,t:'Inicio · Ventas de hoy: al lado de la ganancia sale el nivel del día (🔴 Bajo, 🟠 Justo, 🟢 Bien, 🩵 Bueno… 💎 JOYA) con su color, el mismo de cada venta en Ventas x Producto.'}]},
   {v:'21.41',f:'02/10/2026',h:'19:05',c:[{n:1,t:'Ventas en el celular: la lista vuelve a estar en un cuadro con su propio scroll, en vez de una lista interminable.'}]},
   {v:'21.40',f:'02/10/2026',h:'18:40',c:[{n:2,t:'Pedidos: arreglado el cartel "Algo falló: update failed". Un pedido marcado a mano que tenía el mismo número que uno automático hacía que el panel no pudiera guardar ningún cambio de Pedidos.'}]},
@@ -16230,6 +16231,24 @@ function _homeDiaTot(k){
 let _homeHoyOff=0,_vpIrDia=null;
 function homeHoyMover(d,ev){if(ev)ev.stopPropagation();_homeHoyOff=Math.max(0,_homeHoyOff+d);renderHomeHoy();}
 function homeHoyIr(){if(_homeHoyOff>0){const x=new Date();x.setDate(x.getDate()-_homeHoyOff);_vpIrDia=dateToKey(x).replace(/_/g,'-');}goPage('ventaprod');}
+// ── EL PUNTAJE DEL DÍA (03/10/2026, pedido suyo: "el puntaje del día según la ganancia") ──────────
+// Misma vara que el Puntaje del mes, llevada a un día: 6 puntos por la ganancia contra lo que hace falta
+// ganar por día para cumplir el mes (retiro + gastos + objetivo de CYC ÷ días del mes) y 4 por el % de
+// ganancia (0 en el piso del negocio, lleno en la meta de margen del Puntaje).
+function _puntajeDia(fecha,h){
+  if(!h||!(h.ventas>0))return null;
+  const ym=fecha.getFullYear()+'_'+String(fecha.getMonth()+1).padStart(2,'0');
+  let P;try{P=calcPuntajeMes(ym);}catch(e){return null;}
+  if(!P||!(P.diasMes>0))return null;
+  const target=((P.fijos||0)+(P.meta||0))/P.diasMes;
+  const ptsGan=target>0?6*Math.max(0,Math.min(1,h.gan/target)):(h.gan>0?6:0);
+  const cfg=puntCfg(ym);
+  const pisoM=Math.min(parseFloat((state.mlconfig||{}).minPct)||22,cfg.margenMeta-1);
+  const ptsMg=h.pct==null||!isFinite(h.pct)?0:4*_lerpCurve(h.pct,[[pisoM,0],[cfg.margenMeta,1]]);
+  const score=Math.round((ptsGan+ptsMg)*10)/10;
+  const nivel=score>=9?'🏆 Día excelente':score>=8?'🌟 Muy buen día':score>=7?'✅ Buen día':score>=6?'🟢 Aprobado':score>=5?'🟠 A mejorar':'🔴 Flojo';
+  return{score,nivel,target,ptsGan,ptsMg};
+}
 function renderHomeHoy(){
   const el=document.getElementById('home-hoy');if(!el||!state.ventaprod)return;
   const hoy=new Date();hoy.setDate(hoy.getDate()-_homeHoyOff);const h=_homeDiaTot(dateToKey(hoy));
@@ -16248,9 +16267,9 @@ function renderHomeHoy(){
     <div style="display:flex;flex-wrap:wrap;gap:10px 34px;align-items:flex-end">
       <div><div style="font-family:'Syne',sans-serif;font-weight:800;font-size:clamp(2.3rem,9vw,3.4rem);line-height:1;letter-spacing:-.01em">${fmt(h.bruto)}</div><div style="font-size:.78rem;color:var(--muted);margin-top:6px">facturado · <b style="color:var(--text)">${h.ventas}</b> venta${h.ventas===1?'':'s'} · <b style="color:var(--text)">${h.u}</b> u.</div></div>
       <div><div style="font-family:'Syne',sans-serif;font-weight:800;font-size:clamp(1.6rem,6vw,2.2rem);line-height:1;color:${h.gan>=0?'var(--green)':'var(--red)'}">${fmt(h.gan)}</div><div style="font-size:.78rem;color:var(--muted);margin-top:6px">ganancia · <b style="color:${h.gan>=0?'var(--green)':'var(--red)'}">${pctTxt}</b></div></div>
-      ${(()=>{const _n=h.pct===null||!isFinite(h.pct)?null:_pctNivel(h.pct);if(!_n)return '';const _c=_n.c;
-        return `<div style="align-self:center;padding:8px 14px;border-radius:12px;color:${_c};background:color-mix(in srgb,${_c} 12%,transparent);border:1px solid color-mix(in srgb,${_c} 35%,transparent);text-align:center" title="El mismo nivel que sale en cada venta de Ventas x Producto, para el % de ganancia del día.">
-          <div style="font-family:'Syne',sans-serif;font-weight:800;font-size:1.35rem;line-height:1">${pctTxt}</div><div style="font-size:.74rem;font-weight:700;margin-top:4px">${_n.l}</div></div>`;})()}
+      ${(()=>{const D=_puntajeDia(hoy,h);if(!D)return '';const _c=puntColor(D.score);
+        return `<div style="align-self:center;padding:8px 14px;border-radius:12px;color:${_c};background:color-mix(in srgb,${_c} 12%,transparent);border:1px solid color-mix(in srgb,${_c} 35%,transparent);text-align:center" title="Puntaje del día (de 0 a 10): ${D.ptsGan.toFixed(1)} de 6 por la ganancia contra lo que hace falta por día (${fmt(D.target)}: retiro + gastos + el objetivo de CYC del mes, repartidos en los días) y ${D.ptsMg.toFixed(1)} de 4 por el % de ganancia (0 en el piso, lleno en la meta). Misma vara que el Puntaje del mes.">
+          <div style="font-family:'Syne',sans-serif;font-weight:800;font-size:1.35rem;line-height:1">${D.score.toFixed(1).replace('.',',')}<span style="font-size:.6em;opacity:.7"> /10</span></div><div style="font-size:.74rem;font-weight:700;margin-top:4px">${D.nivel}</div></div>`;})()}
     </div>
     <div style="display:flex;align-items:center;gap:8px 14px;flex-wrap:wrap;margin-top:14px;padding-top:10px;border-top:1px solid rgba(34,197,94,.2);font-size:.72rem;color:var(--muted)">
       ${h.ult?`<span>última venta <b style="color:var(--text)">${new Date(h.ult).toLocaleTimeString('es-AR',{hour:'2-digit',minute:'2-digit',hour12:false})}</b> ·</span>`:''}
