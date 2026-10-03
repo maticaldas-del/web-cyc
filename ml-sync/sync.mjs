@@ -18190,6 +18190,26 @@ async function main() {
     // producto cargado dos veces: la publicación queda pegada a una ficha y la otra queda huérfana.
     // Por eso, antes de crear, busca si ya hay alguna con nombre parecido y NO crea si la encuentra:
     // avisa cuál es y con qué id, para que se decida a mano.
+    // BILLING_PROBE=renombrar:<id de ficha>=<nombre nuevo>[:go] → LE CAMBIA EL NOMBRE A UNA FICHA (03/10/2026).
+    // Lo mismo que el campo de nombre de la ficha en el panel: las ventas, el stock y los pedidos van por
+    // el id, así que no se pierde nada. Se niega si otra ficha ya se llama así (rompería las búsquedas).
+    if (/^renombrar:/.test(String(process.env.BILLING_PROBE || ''))) {
+      const _rnRaw = String(process.env.BILLING_PROBE).slice(10);
+      const go = /:go$/i.test(_rnRaw);
+      const [idRaw, ...rest] = (go ? _rnRaw.replace(/:go$/i, '') : _rnRaw).split('=');
+      const rid = (idRaw || '').trim(), nuevo = rest.join('=').trim();
+      if (!rid || !nuevo) { console.log('Usá: renombrar:<id de ficha>=<nombre nuevo>[:go]'); return; }
+      const pr = products.find((x) => x.id === rid);
+      if (!pr) { console.log(`No hay ninguna ficha con id ${rid}.`); return; }
+      const choca = products.find((x) => x.id !== rid && norm(x.name || '') === norm(nuevo));
+      if (choca) { console.log(`🔴 Ya hay otra ficha que se llama así: ${choca.id} · "${choca.name}". No toco nada.`); return; }
+      console.log(`${go ? 'APLICANDO' : 'PRUEBA'}: "${pr.name}" → "${nuevo}" (${rid})`);
+      if (!go) { console.log('Para aplicar, agregá :go al final.'); return; }
+      await db.patch('cyc/products/' + rid, { name: nuevo });
+      const rel = (await db.get('cyc/products/' + rid + '/name')) || '';
+      console.log(rel === nuevo ? `✓ Releído de la base: "${rel}"` : `✗ NO quedó: la base dice "${rel}"`);
+      return;
+    }
     if (/^nuevoprod:/.test(String(process.env.BILLING_PROBE || ''))) {
       const _npRaw = String(process.env.BILLING_PROBE).slice(10);
       const partes = _npRaw.split('|').map((x) => x.trim());
