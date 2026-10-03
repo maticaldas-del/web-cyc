@@ -399,7 +399,7 @@ input.qty:focus{border-color:var(--accent2)}
 .pedidos-add{display:flex;gap:10px;flex-wrap:wrap;padding:14px;background:var(--surface);border:1px solid var(--border);border-radius:var(--r);margin-bottom:14px;align-items:center}
 .pedidos-add input,.pedidos-add select{background:var(--surface2);border:1px solid var(--border2);border-radius:6px;color:var(--text);font-family:'DM Mono',monospace;font-size:.74rem;padding:8px 12px;outline:none;transition:border .15s}
 .pedidos-add input:focus,.pedidos-add select:focus{border-color:var(--accent2)}
-.pedido-filters{display:flex;gap:8px;margin-bottom:14px;flex-wrap:wrap}
+.pedido-filters{display:none} /* 03/10/2026, él: "nunca los uso". Sólo se esconden: el filtro queda en 'todos'. */
 .pf-btn{padding:6px 14px;border-radius:7px;border:1px solid var(--border2);background:var(--surface);font-family:'DM Mono',monospace;font-size:.67rem;cursor:pointer;color:var(--muted);transition:all .15s}
 .pf-btn:hover{border-color:var(--border2);color:var(--text)}
 .pf-btn.active-pend{background:rgba(239,68,68,.12);color:var(--red);border-color:rgba(239,68,68,.25)}
@@ -2430,7 +2430,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='21.54';
+const APP_VERSION='21.55';
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
 // muestre la versión y la fecha de actualización y que tenga un desplegable predeterminado cerrado".
 // Y el mismo día: "que ponga fecha de cada modificación y haya una barrita para scrollear y que
@@ -2441,6 +2441,7 @@ const APP_VERSION='21.54';
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'21.55',f:'03/10/2026',h:'15:45',c:[{n:1,t:'Paraguay · Probados: cada tarjeta muestra las dos fotos (Paraguay y ML) y los dos links, como en Nuevos.'},{n:1,t:'Paraguay · Nuevos: el simulador va al final y el historial de pedidos se fue (está en 🧾 Pedido).'},{n:1,t:'Pedidos: se escondieron los botones Todos / Urgente / Poco stock / Suficiente.'}]},
   {v:'21.54',f:'03/10/2026',h:'15:20',c:[{n:2,t:'Paraguay · Nuevos: los que tienen menos de 100 vendidas en ML (o sin el dato) bajan a su propio desplegable "no se pueden pedir"; arriba sólo lo que se puede comprar. Las vendidas se pintan verdes desde 100.'}]},
   {v:'21.53',f:'03/10/2026',h:'15:00',c:[{n:3,t:'Paraguay: el máximo de compra de los PROBADOS (tarjeta, canasta y pedido) se calcula al 20%; los NUEVOS siguen al 25%. Bs As sigue igual.'}]},
   {v:'21.52',f:'03/10/2026',h:'14:45',c:[{n:2,t:'Paraguay: el pedido se arma en UN solo lugar, la pestaña 🧾 Pedido (probados + nuevos, tope, llenar, mensaje y Ya lo pedí). En Nuevos queda sólo la casilla de cada tarjeta y un renglón con lo cargado. El tope cuenta probados y nuevos juntos.'}]},
@@ -4538,6 +4539,14 @@ async function updNisseiCod(id,val){
   await fbSet('products/'+id+'/codPy',c);
   await log('Código Nissei de '+p.name+': '+(c||'(vacío)'));
   renderProds();
+}
+// Guay: link y foto de la página de comprasparaguay de un PROBADO (03/10/2026). Sólo https.
+async function updPyLink(id,link,foto){
+  const p=state.products.find(x=>x.id===id);if(!p)return 'no existe '+id;
+  const L=String(link||'').trim(), F=String(foto||'').trim();
+  if(L&&/^https:\/\//.test(L)){p.pyLink=L;await fbSet('products/'+id+'/pyLink',L);}
+  if(F&&/^https:\/\//.test(F)){p.pyFoto=F;await fbSet('products/'+id+'/pyFoto',F);}
+  return 'ok';
 }
 async function updNisseiUSD(id,val){
   const p=state.products.find(x=>x.id===id);if(!p)return;
@@ -11947,7 +11956,7 @@ function candidatosHTML(){
       ? `<div class="empty-msg" style="font-size:.68rem;line-height:1.6">No queda ninguno para evaluar: ${enPed?`<b>${enPed}</b> está${enPed===1?'':'n'} en el pedido de arriba`:''}${enPed&&enVia?' y ':''}${enVia?`<b>${enVia}</b> ya ${enVia===1?'viaja':'viajan'}`:''}.</div>`
       : `<div class="empty-msg" style="font-size:.68rem;line-height:1.6">Todavía no hay ninguno.<br>
       El chat de Paraguay los carga cuando encuentra algo en comprasparaguay <b>que Nissei ofrezca</b> (ahí salen juntos el código, el precio y que hay stock), cueste menos de US$ 250 puesto y no sea de una marca que ML frena.</div>`;
-    return cab+simPYHTML()+pyEnCaminoHTML()+pedNuevosResumenHTML()+vacio;
+    return cab+pedNuevosResumenHTML()+vacio+simPYHTML();
   }
   // El que más margen deja, primero. Los que todavía no tienen la cuenta hecha van al final:
   // no se pueden comparar contra los medidos y ponerlos arriba sería invitar a decidir sin número.
@@ -12086,10 +12095,12 @@ function candidatosHTML(){
   </div>`;
   const _ob=(k,t)=>`<button class="btn" style="font-size:.66rem;padding:4px 11px;${_candOrden===k?'background:var(--blue);color:#fff;font-weight:700':''}" onclick="candOrdenar('${k}')">${t}</button>`;
   const _orden=`<div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin:0 0 10px"><span style="font-size:.66rem;color:var(--muted)">Ordenar de mayor a menor:</span>${_ob('pct','% de ganancia')}${_ob('vend','🛒 más vendidos')}${_ob('gan','$ por unidad')}${_ob('usd','$ por dólar invertido')}${_ob('barato','más barato')}</div>`;
-  return cab+simPYHTML()+pyEnCaminoHTML()+pedNuevosResumenHTML()+_cuenta+_orden+_arriba.map(_card).join('')
+  // 03/10/2026, él: el simulador y el historial "ahí no se usan y molestan": el simulador va al final y el
+  // historial de pedidos vive en la pestaña 🧾 Pedido.
+  return cab+pedNuevosResumenHTML()+_cuenta+_orden+_arriba.map(_card).join('')
     +(_flojas.length?`<details style="margin-top:10px"><summary style="cursor:pointer;font-size:.7rem;color:var(--amber)">🟠 ${_flojas.length} con menos de ${CAND_MIN_VENT} vendidas en ML (o sin el dato) · no se pueden pedir · tocá para verlos</summary><div style="display:flex;flex-direction:column;gap:8px;margin-top:8px">${_flojas.map(_card).join('')}</div></details>`:'')
     +(_rojos.length?`<details style="margin-top:10px"><summary style="cursor:pointer;font-size:.7rem;color:var(--red)">🔻 ${_rojos.length} no llega${_rojos.length===1?'':'n'} al ${CAND_PISO_PCT}% · tocá para verlos</summary><div style="display:flex;flex-direction:column;gap:8px;margin-top:8px">${_rojos.map(_card).join('')}</div></details>`:'')
-    +candDescartadosHTML();
+    +candDescartadosHTML()+`<div style="margin-top:16px">${simPYHTML()}</div>`;
 }
 // LO DESCARTADO NO SE ESCONDE. Una lista que saca renglones sin decirlo es una lista que miente —
 // la misma regla que el desplegable de `nomandar` en Armar caja.
@@ -12191,6 +12202,8 @@ async function candFichaDesde(src,opts){
   p.costFullUSD=Math.round(puesto*100)/100;
   if(src.cod)p.codPy=String(src.cod);
   if(usd>0){p.nisseiUSD=usd;p.nisseiTs=src.ts||Date.now();}
+  if(/^https:\/\//.test(String(src.link||'')))p.pyLink=String(src.link).slice(0,300);
+  if(/^https:\/\//.test(String(src.foto||'')))p.pyFoto=String(src.foto).slice(0,300);
   await fbSet('products/'+p.id,p);
   if(src.id&&(state.candidatos||{})[src.id]){
     await fbSet('candidatos_py/'+src.id+'/prodId',p.id);
@@ -14267,7 +14280,25 @@ function _pedidoItemHtml(p,opts){
   // 🧾 PEDIR, EN PROBADOS DE PARAGUAY (03/10/2026): la casilla va DEBAJO de la tarjeta, afuera del
   // <details>, para que se vea aunque esté cerrada y tocarla no la abra. Lo cargado va al "🧾 Pedido".
   const _armU=(_prod&&_prod.origen==='py'&&!esPedidoPaulvic(p))?(parseInt(((state.pyArmado||{})[_prod.id]||{}).u)||0):null;
-  const _armHTML=_armU==null?'':`<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;padding:6px 12px 8px;margin:-4px 0 10px;font-size:.78rem;background:var(--surface);border:1px solid var(--border);border-top:none;border-radius:0 0 10px 10px">
+  // FOTOS Y LINKS COMO EN NUEVOS (03/10/2026, él: "que muestre igual que en nuevos ambos links, ambas fotos").
+  // ML: la foto y el link de su publicación viva. Paraguay: `pyLink`/`pyFoto` de la ficha (los carga Guay con
+  // updPyLink) o, si no, los del candidato del que salió la ficha.
+  const _pyVis=_armU==null?'':(()=>{
+    const L=Object.entries(state.mllinks||{}).filter(([,e])=>e&&e.prodId===_prod.id&&!e.ignored);
+    const viva=L.find(([,e])=>e.status==='active'&&e.foto)||L.find(([,e])=>e.foto)||L.find(([,e])=>e.status==='active')||L[0];
+    const mla=viva?viva[0]:'', fML=viva&&viva[1].foto&&/^https:\/\//.test(viva[1].foto)?viva[1].foto:'';
+    const cand=Object.values(state.candidatos||{}).find(c=>c&&c.prodId===_prod.id)||{};
+    const lPY=String(_prod.pyLink||cand.link||'').trim(), fPY0=String(_prod.pyFoto||cand.foto||'').trim();
+    const fPY=/^https:\/\//.test(fPY0)?fPY0:'';
+    const ph=(u,t)=>u?`<a href="${u}" onclick="event.preventDefault();_mostrarLightbox(this.getAttribute('href'),'')" style="cursor:zoom-in;text-align:center;text-decoration:none;color:var(--muted);font-size:.66rem"><img src="${u}" loading="lazy" onerror="this.style.display='none'" style="width:84px;height:84px;object-fit:contain;background:#fff;border-radius:8px;display:block">${t}</a>`
+      :`<div style="width:84px;height:84px;border:1px dashed var(--border);border-radius:8px;font-size:.62rem;color:var(--muted);display:flex;align-items:center;justify-content:center;text-align:center">${t}<br>sin foto</div>`;
+    const A=(h,t)=>`<a href="${h.replace(/"/g,'&quot;')}" target="_blank" rel="noopener" style="color:var(--accent);text-decoration:none;font-weight:600">${t}</a>`;
+    const mlUrl=/^MLA\d+$/.test(mla)?'https://articulo.mercadolibre.com.ar/MLA-'+mla.slice(3):'';
+    return `<div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;width:100%">
+      <div style="display:flex;gap:6px">${ph(fPY,'🇵🇾 Paraguay')}${ph(fML,'🏷️ ML')}</div>
+      <div style="font-size:.76rem;line-height:1.8">${mlUrl?A(mlUrl,'🔗 verlo en ML'):'<span style="color:var(--muted)">🔗 sin publicación en ML</span>'}<br>${/^https:\/\//.test(lPY)?A(lPY,'🇵🇾 verlo en comprasparaguay'):'<span style="color:var(--amber)">🇵🇾 falta el link de comprasparaguay (lo carga Guay)</span>'}</div>
+    </div>`;})();
+  const _armHTML=_armU==null?'':`<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;padding:6px 12px 8px;margin:-4px 0 10px;font-size:.78rem;background:var(--surface);border:1px solid var(--border);border-top:none;border-radius:0 0 10px 10px">${_pyVis}
       <span style="font-weight:700;color:${_armU>0?'var(--green)':'var(--muted)'}">🧾 pedir</span>
       <input type="number" min="0" step="1" value="${_armU||''}" placeholder="0" onchange="pyArmSet('${_prod.id}',this.value)" style="width:58px;font-size:.88rem;padding:4px 6px;text-align:center;background:var(--surface2);border:1px solid ${_armU>0?'var(--green)':'var(--border)'};border-radius:6px;color:var(--text)"> u.
       ${_armU>0?`<span style="color:var(--green)">✓ en el pedido</span>`:`<button class="btn" style="font-size:.66rem;padding:3px 9px" onclick="pyArmSet('${_prod.id}',${parseInt(p.cantidad)||1})">+ las ${fmtN(p.cantidad||1)} sugeridas</button>`}
