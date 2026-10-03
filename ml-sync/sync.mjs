@@ -5675,7 +5675,11 @@ const RECARGO_PAR_PCT = Math.round((RECARGO_PAR - 1) * 100);
 // Un cero de stock que vuelve dentro de este tiempo se toma como pasajero: se conserva la fecha de
 // entrada anterior en `cyc/stockhist` (decisión suya del 24/09/2026, opción a).
 const STOCKHIST_CERO_PASAJERO_MS = 48 * 3600 * 1000;
-const CAND_TOPE_USD = 250;      // suyo: un producto caro se come el pedido de US$1.000 entero
+const CAND_TOPE_USD = 250;      // YA NO DESCARTA (03/10/2026): ver la regla del techo de abajo. Queda sólo como texto viejo.
+// REGLA SUYA DEL 03/10/2026: *"comprar productos hasta un monto que, quedándonos el 25% después de pagar todo,
+// no se venda a más de $650.000"*. O sea: no hay tope en dólares; el candidato se mide a su precio de ML, pero
+// nunca por encima de TECHO_DURO. Si el competidor está más caro que el techo, se mide a $650.000 (lo más que
+// podemos vender) y tiene que dar el 25% ahí.
 const CAND_PISO_PCT = 25;       // suyo: "el % sano es de 25 hacia arriba"
 const CAND_MIN_VENT = 100;      // suyo, 03/10/2026: "100 unidades mínimo vendidas, sino no sirve" para entrar al pedido
 const CAND_ENVIO_ARRIBA = 6190; // el peor envío de Full medido en ventas reales, arriba de la barrera
@@ -5713,7 +5717,7 @@ const CAND_FRESCO_MS = 20 * 3600 * 1000;
 // entran al pedido. Un cambio en la fórmula cuenta igual que un campo nuevo, por cuarta vez.
 // QUINTA VEZ, 23/09/2026: el recargo de Paraguay pasó de 15% a 17%. Cambia el costo puesto de
 // TODOS los candidatos, o sea la cuenta: sin subir esto, los que dan se quedaban con el 15%.
-const CAND_CALC_VER = 9;
+const CAND_CALC_VER = 10;   // 10: 03/10/2026, se mide al techo de $650.000 si el competidor está más caro
 
 // ── UN DESCARTE POR MARGEN NO ES "NUNCA MÁS" (19/09/2026) ─────────────────────────────────
 // Regla suya, textual: *"yo no pondría ningún producto en NUNCA MÁS. salvo producto que después
@@ -6195,7 +6199,6 @@ async function correrCandidatos(db, products, labels, accounts, soloPrueba, prue
     // ── LOS DESCARTES BARATOS PRIMERO, que no cuestan ninguna consulta ──
     if (c.enNissei === false) { baratos++; await fuera('en comprasparaguay no lo ofrece Nissei: no se compra'); continue; }
     if (!(usd > 0)) { baratos++; await fuera('sin precio cargado: no se puede medir nada'); continue; }
-    if (puesto > CAND_TOPE_USD) { baratos++; await fuera(`puesto sale US$ ${puesto.toFixed(2)}, pasa tu tope de US$ ${CAND_TOPE_USD}`); continue; }
     { const _mf = marcaFrenadaDe(c, marcasNo); if (_mf) { baratos++; await fuera(`marca frenada: ${_mf}`); continue; } }
     // ── EL QUE YA TIENE LA CUENTA HECHA SE EVALÚA IGUAL (18/09/2026) ────────────────────
     // Acá había un `continue` pelado con el comentario *"ya tiene la cuenta hecha"*. Lo que hacía
@@ -6466,7 +6469,9 @@ async function correrCandidatos(db, products, labels, accounts, soloPrueba, prue
     // peor de Full medido en ventas reales, que hace ver el margen MENOR — el lado seguro cuando
     // el número decide una compra que no se puede rehacer hasta que llegue.
     const cuentaCand = (precio, ltx, catx) => cuentaCandidato(precio, ltx, catx, puesto, tc, monoP, feeAt, cuoPct);
-    const rMin = await cuentaCand(mlPrecio, lt, cat);
+    const precioMedir = Math.min(mlPrecio, TECHO_DURO);
+    if (mlPrecio > TECHO_DURO) console.log(`      en ML se vende a ${money(Math.round(mlPrecio))}, arriba del techo: lo mido a ${money(TECHO_DURO)}, lo más que podemos vender`);
+    const rMin = await cuentaCand(precioMedir, lt, cat);
     if (!rMin) {
       if (!soloPrueba) await db.set(`cyc/candidatos_py/${id}/motivo`, 'ML no me contestó cuánto cobra de comisión a ese precio. Lo reintento la próxima vuelta.');
       console.log('      → ML no contestó cuánto cobra de comisión a ese precio. Lo reintento la próxima vuelta.');
@@ -6510,7 +6515,7 @@ async function correrCandidatos(db, products, labels, accounts, soloPrueba, prue
       // filtro por palabras que ya falló seis veces. El margen contra el gemelo queda al lado, en rojo
       // en el panel, para que se mire con las fotos y, si es el mismo, se cargue ese link.
       if (gemelo) {
-        const rG = await cuentaCand(gemelo.precio, lt, cat);
+        const rG = await cuentaCand(Math.min(gemelo.precio, TECHO_DURO), lt, cat);
         if (rG) {
           gemelo.margen = Math.round(rG.margen * 10) / 10;
           gemelo.margenAntes = Math.round(margen * 10) / 10;
@@ -14875,7 +14880,6 @@ async function main() {
         else {
           console.log(`  💵 Paraguay: US$ ${usd.toFixed(2)} crudo → US$ ${puesto.toFixed(2)} puesto (+${RECARGO_PAR_PCT}%) = ${money(Math.round(puesto * tc))}`);
           console.log(`     cargado hace ${dCarga == null ? '?' : dCarga} día(s). ⚠️ Ojo: eso es cuándo se CARGÓ, no cuándo se miró el precio en comprasparaguay — esa fecha todavía no se guarda.`);
-          if (puesto > CAND_TOPE_USD) { frenos.push(`puesto sale US$ ${puesto.toFixed(2)}, pasa tu tope de US$ ${CAND_TOPE_USD}`); console.log(`     ❌ pasa tu tope de US$ ${CAND_TOPE_USD} la unidad`); }
         }
 
         // 3 · ¿ES EL MISMO PRODUCTO? Primero: ¿lo emparejó por código o adivinando por nombre?
@@ -15031,7 +15035,7 @@ async function main() {
         else console.log(`  🛒 ventas en ML: ${vChat} ✓ (+${RV_VENT_PEDIDO})`);
 
         // 6 · LA CUENTA, HECHA DE NUEVO Y CONTRA EL PRECIO DE HOY.
-        const r = await cuentaCandidato(mlPrecio, (ref && ref.listing_type_id) || 'gold_special', ref && ref.category_id, puesto, tc, monoP, feeAt);
+        const r = await cuentaCandidato(Math.min(mlPrecio, TECHO_DURO), (ref && ref.listing_type_id) || 'gold_special', ref && ref.category_id, puesto, tc, monoP, feeAt);   // techo $650.000 (03/10)
         if (!r) {
           frenos.push('ML no contestó la comisión a ese precio');
           console.log('  🧮 ❌ ML no me dijo cuánto cobra de comisión a ese precio. Sin eso no hay margen.');
