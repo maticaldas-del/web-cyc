@@ -174,3 +174,9 @@ sección 5b del SKILL.
 Guay en la PC de Matías, sin bajar el repo (el control de seguridad lo frenó; Matías le pegó la tarea a mano). No lee
 respuestas.md: lo que CYC WEB tenga que decirle va por Matías. Orden: routers/redes, memorias/discos, cámara/foto,
 cuidado personal, auriculares, el resto, y perfumería entera con precios de hoy. GUARDAR cada ~20 cargados.
+
+## 03/10 · PROBADOS LISTOS (Guay)
+32 con precio de hoy (fila Nissei, fechados 03/10; dieron iguales a los que había) · 12 Nissei no tiene: Sennheiser CX 80S
+(hay CX 80U), Adyan Oud Essential, Galaxy A06 128GB (sólo 64GB), VS Bliss, VS Starlit, Redmi Watch 4 (hay 5/6), Azzaro Pour
+Homme 200ml (sólo 100ml), Cabotine 30ml (sólo 100ml), Halloween 100ml (sólo MY World 125ml), Philips TAT2206, PS Portal,
+MicroSD SanDisk Ultra 128GB con adaptador (sólo sin adaptador). Sigue con la revisión manual y perfumería.
