@@ -259,3 +259,6 @@ match de las categorías que sí dan: **routers, memorias, accesorios de cámara
   de él; si cambiás `mlId`, borrá los campos de cálculo para que el robot lo vuelva a medir.
 - **Álbumes y coleccionables (03/10):** el catálogo de ML puede ser la edición especial (tapa dura, Gold, lleno). Comparar
   contra la edición común antes de creerle a un 80%+.
+- **Categorías (03/10, aprobado por Matías):** se excluyen sólo las categorías GRANDES de verdad (heladera, lavarropas,
+  aire, microondas, hornos, bicis/monopatines/motos, muebles, valijas, gimnasio, sillas/escritorios gamer, gabinetes,
+  UPS, robots de limpieza). Aspiradoras, drones y consumibles se siguen revisando. Detalle en `guay/categorias.md`.
