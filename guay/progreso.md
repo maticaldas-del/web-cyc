@@ -169,3 +169,8 @@ cepillo-para-el-pelo, convertidor-de-medios, accesorios-para-reloj, utensilios-p
 Esta pasada (02/10) quedó así a propósito, por decisión de Matías. **La próxima es 100%:** categorías enteras + perfumería
 entera de nuevo + revisión a mano de TODOS los modelos que el emparejador no encontró (~50%), en todas las categorías. Ver
 sección 5b del SKILL.
+
+## 03/10 · Mensaje 29: ARRANCÓ LA REVISIÓN DE LO QUE FALTÓ (R31)
+Guay en la PC de Matías, sin bajar el repo (el control de seguridad lo frenó; Matías le pegó la tarea a mano). No lee
+respuestas.md: lo que CYC WEB tenga que decirle va por Matías. Orden: routers/redes, memorias/discos, cámara/foto,
+cuidado personal, auriculares, el resto, y perfumería entera con precios de hoy. GUARDAR cada ~20 cargados.
