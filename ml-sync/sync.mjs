@@ -11095,6 +11095,43 @@ async function main() {
     // El chat de compras escribía cuotasGan/pedirU desde la consola, los releía bien y horas después no
     // estaban. Esto lee la BASE (no la caché del navegador) y muestra los campos que carga el chat.
     // Solo lee.
+    // BILLING_PROBE=evalpedido:<cod>*<u>;… → EVALUAR UN PEDIDO YA ARMADO (03/10/2026) · SOLO LEE.
+    // Busca cada código en los candidatos y en las fichas (también por el final: al chat se le
+    // pierde el primer dígito) y dice margen, ventas, edad del precio y avisos. No escribe nada.
+    if (/^evalpedido:/.test(String(process.env.BILLING_PROBE || ''))) {
+      const items = String(process.env.BILLING_PROBE).slice('evalpedido:'.length).split(';').map((x) => x.trim()).filter(Boolean)
+        .map((x) => { const [c, u] = x.split('*'); return { cod: String(c || '').replace(/\D/g, ''), u: parseInt(u, 10) || 0 }; });
+      const cands = (await db.get('cyc/candidatos_py')) || {};
+      const prods = (await db.get('cyc/products')) || {};
+      const sinSt = (await db.get('cyc/py_sinstock')) || {};
+      const _same = (a, b) => { a = String(a || '').replace(/\D/g, ''); b = String(b || '').replace(/\D/g, ''); if (!a || !b) return false; if (a === b) return true; const [l, s] = a.length >= b.length ? [a, b] : [b, a]; return l.length - s.length <= 1 && s.length >= 4 && l.endsWith(s); };
+      const _d = (ts) => (Number(ts) > 0 ? Math.floor((Date.now() - Number(ts)) / 864e5) : null);
+      let totU = 0, totUsd = 0;
+      console.log('=== EVALUAR PEDIDO · SOLO LEE ===');
+      for (const it of items) {
+        const cs = Object.entries(cands).filter(([, c]) => c && _same(c.cod, it.cod));
+        const ps = Object.entries(prods).filter(([, p]) => p && _same(p.codPy, it.cod));
+        console.log(`\n${it.cod} × ${it.u}`);
+        if (!cs.length && !ps.length) console.log('  ❌ NO ESTÁ en candidatos ni en fichas');
+        for (const [id, c] of cs) {
+          const v = c.vendCarga != null ? c.vendCarga : c.mlVendidas;
+          const usd = Number(c.usd) || 0;
+          if (!ps.length) { totU += it.u; totUsd += usd * it.u; }
+          console.log(`  CAND ${id} · ${String(c.nombre).slice(0, 70)}${c.cod !== it.cod ? ` (cód guardado ${c.cod})` : ''}`);
+          console.log(`    US$ ${usd || '—'} · margen ${c.margen ?? '—'}% · ML $${c.mlPrecio ?? '—'} (${c.mlVend ?? '?'} vend.) · vendidas ${v ?? '—'} · medido hace ${_d(c.calcTs) ?? '—'} d · precio cargado hace ${_d(c.ts || c.creado) ?? '—'} d${c.no ? ' · ⚠️ DESCARTADO: ' + (c.motivo || c.noMotivo || '') : ''}${c.prodId ? ' · ya tiene ficha ' + c.prodId : ''}${c.pedidoEn ? ' · pedidoEn ' + c.pedidoEn : ''} · pedirU ${c.pedirU ?? 0} · mismoOk ${c.mismoOk ?? '—'}`);
+          if (c.mlReparos) console.log(`    ⚠️ reparos: ${JSON.stringify(c.mlReparos).slice(0, 200)}`);
+          if (c.mlSinFull != null || c.mlConFull != null) console.log(`    más barato sin Full ${c.mlSinFull ?? '—'} · con Full ${c.mlConFull ?? '—'} · máx ${c.mlMax ?? '—'}`);
+        }
+        for (const [id, p] of ps) {
+          const nu = Number(p.nisseiUSD) || 0;
+          totU += it.u; totUsd += nu * it.u;
+          console.log(`  FICHA ${id} · ${String(p.name).slice(0, 70)} · origen ${p.origen || '—'}`);
+          console.log(`    pagaste US$ ${p.costUSD ?? '—'} · Nissei hoy US$ ${nu || '—'} (mirado hace ${_d(p.nisseiTs) ?? '—'} d${p.nisseiListado ? ', último listado ' + p.nisseiListado : ''}) · neto ML ${p.netoCalc ?? '—'} · margen guardado ${p.netoCalcPct ?? p.margenML ?? '—'}${sinSt[id] ? ' · ⚠️ marcado Nissei no lo tiene' : ''}`);
+        }
+      }
+      console.log(`\nTOTAL: ${totU} u. · US$ ${totUsd.toFixed(2)} crudo · US$ ${(totUsd * RECARGO_PAR).toFixed(2)} puesto`);
+      return;
+    }
     if (/^vercampos(:|$)/.test(String(process.env.BILLING_PROBE || ''))) {
       const q = String(process.env.BILLING_PROBE).slice('vercampos'.length).replace(/^:/, '').trim().toLowerCase();
       const cands = (await db.get('cyc/candidatos_py')) || {};
