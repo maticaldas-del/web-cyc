@@ -192,3 +192,8 @@ DESCARTADOS: 64590 TL-WPA4220TKIT y 111003 Mercusys MR60X (50 vendidas) · 12767
 sólo 7700P) · 118416 Mercusys ME30 (sólo pack x2) · Teltonika TSW100/101/110/114/202/212 (0 vendidas) · 126672 Godox FC16
 Nikon (25) · 116518 SSD SanDisk Plus 2TB (ML matcheó otro) · 80077 dock Satellite AX-234 (ML es Fideco) · 45168 Extreme 128,
 65318 Ultra 128 SDSQUNR, 40027 Ultra Fit 64: no dan.
+- 03/10 · Probados corroborados de nuevo en vivo: 32 con precio · 12 no tiene. **15 de los 32 dicen "Último listado 21 de
+  agosto"** en comprasparaguay (26291, 92568, 40510, 26187, 20139, 152721, 88420, 82786, 138358, 143603, 142930, 90702…):
+  hay que cargar esa fecha con `updNisseiListado('<id>','2026-08-21')` y el panel los baja a "falta revisar".
+- Corrección tanda 1: 103737 LS1008G, 110348 LS108G (sin vendidos) y 137572 XZ005-G6 (1 vendido) descartados. Cargados por la
+  regla nueva (tope US$ 215, sin filtrar margen): 45168 Extreme 128, 65318 Ultra 128, 40027 Ultra Fit 64. Activos hoy: 15.

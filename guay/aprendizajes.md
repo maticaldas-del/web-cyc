@@ -235,3 +235,8 @@ match de las categorías que sí dan: **routers, memorias, accesorios de cámara
 - **SE ACABÓ EL TOPE DE US$ 250 (03/10/2026, regla de Matías):** *"comprar productos hasta un monto que, quedándonos el 25%
   después de pagar todo, no se venda a más de $650.000"*. Cargá también los caros: el robot los mide al precio de ML y, si
   el competidor está arriba de $650.000 (el techo de venta), los mide a $650.000. Si ahí no da 25%, los descarta él.
+- **"Último listado" de comprasparaguay (03/10):** si dice una fecha vieja, el precio puede no ser el de hoy aunque lo mires
+  hoy. Cargala con `updNisseiListado('<id>','AAAA-MM-DD')`: con más de 14 días el panel no lo pone en "da".
+- **Vendidos de ML:** leerlos del subtítulo de LA ficha ("Nuevo | +500 vendidos"), no de otros productos de la página.
+- **Tope de compra US$ 215 crudo** (03/10): de ahí para abajo cargar todo lo que sea el mismo producto con 100+ vendidas, sin
+  filtrar por margen (lo mide el robot).
