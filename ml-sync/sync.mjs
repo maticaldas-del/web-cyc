@@ -4895,7 +4895,9 @@ function calcRitmoNormal(o) {
       hD.push(rec);
       if (esRemDia(k, dk)) { nR++; rec.rem = true; continue; }
       let fr = fracStock(k, dk);
-      if (fr == null) { const di = diario[dk] && diario[dk][k]; if (di && di[0] != null) fr = Number(di[0]) > 0 ? 1 : 0; }
+      if (fr == null) { const di = diario[dk] && diario[dk][k]; if (di && di[0] != null) fr = Number(di[0]) > 0 ? 1 : 0;
+        // Sin dato de stock: con visitas había stock, sin visitas (ni ventas) no (regla suya del 03/10/2026).
+        else if (di && di[6] != null) fr = Number(di[6]) > 0 ? 1 : 0; }
       if (fr != null && fr === 0 && x.u > 0) fr = 1;   // vendió: había stock (el registro se equivocó)
       rec.fr = fr;
       if (fr == null) { if (primera[k] && dk >= primera[k]) { dU += 1; uU += x.u; } continue; }
@@ -14713,12 +14715,13 @@ async function main() {
           const e = (links || {})[mla]; if (!e || !e.prodId || !e.cuenta) continue; nLin++;
           const kP = e.prodId + '__' + sidD(e.cuenta); const ks = e.variant ? [kP, kP + '__v__' + sidD(e.variant)] : [kP];
           for (const [dk, r] of Object.entries(dias || {})) for (const k of ks) {
-            const d = ((diario[dk] = diario[dk] || {})[k] = diario[dk][k] || [null, 0, '', 0, 0, 0]);
+            const d = ((diario[dk] = diario[dk] || {})[k] = diario[dk][k] || [null, 0, '', 0, 0, 0, null]);
             if (r.st != null) d[0] = Math.max(d[0] || 0, Number(r.st) || 0);
             if (r.p > 0 && (!d[1] || r.p < d[1])) d[1] = r.p;
             if ((rk[r.caja] || 0) > (rk[d[2]] || 0)) d[2] = r.caja;
             if (r.rem === 1) d[3] = 1;
             d[4] += Number(r.u) || 0; d[5] += Number(r.uR) || 0;
+            if (r.vis != null) d[6] = (d[6] || 0) + (Number(r.vis) || 0);
           }
         }
       } catch (e) { console.log(`⚠️ no pude leer la línea de tiempo (${String(e).slice(0, 80)}): sigo sin ella`); }
