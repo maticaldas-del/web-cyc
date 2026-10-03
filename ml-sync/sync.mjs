@@ -11187,6 +11187,9 @@ async function main() {
       console.log(`${mla}: ${ks.length} días (${ks[0] || '—'} → ${ks[ks.length - 1] || '—'}) · campos: ${JSON.stringify(cnt)}`);
       for (const k of ks.slice(-75)) { const x = d[k]; console.log(`  ${k} ${['st', 'p', 'u', 'uR', 'vis', 'caja', 'ptw', 'rem', 'esc', 'mg', 'est'].map((f) => x[f] != null ? f + '=' + x[f] : '').filter(Boolean).join(' ')}${x.inc ? ' (inc)' : ''}`); }
       console.log('autoprecio:', JSON.stringify((await db.get('cyc/autoprecio/' + mla)) || null).slice(0, 1500));
+      console.log('priced:', JSON.stringify((await db.get('mlapi/priced/' + mla)) || null).slice(0, 600));
+      console.log('prueba:', JSON.stringify((await db.get('cyc/prueba/' + mla)) || null).slice(0, 600));
+      { const ev = (await db.get('cyc/supervisor/eventos')) || {}; for (const [k, e] of Object.entries(ev)) if (e && (e.mla === mla || String(k).includes(mla))) console.log('evento', k, JSON.stringify(e).slice(0, 300)); }
       for (const pre of ['', 'c_', 'o_', 'b_', 'r_', 's_']) { const v = await db.get('cyc/avisados/' + pre + mla); if (v != null) console.log('avisados', pre || '(sin)', JSON.stringify(v).slice(0, 200)); }
       return;
     }
