@@ -164,3 +164,8 @@ medios-virgene, cinta-para-impresora, pelicula-para-tablet, balsamo-labial, pelu
 molinete, radio-reloj-despertador, mesa-de-mezcla, sensor-de-estacionamiento, espejo-de-maquillaje, bluetooth,
 vasos-copas-tazas, rinonera, bebe, equipos-para-conferencias, nebulizador, cargador-para-notebook,
 cepillo-para-el-pelo, convertidor-de-medios, accesorios-para-reloj, utensilios-para-asado, carteira-para-criptomoedas.
+
+## PARA EL PRÓXIMO BARRIDO (pedido de Matías, 03/10): TODO
+Esta pasada (02/10) quedó así a propósito, por decisión de Matías. **La próxima es 100%:** categorías enteras + perfumería
+entera de nuevo + revisión a mano de TODOS los modelos que el emparejador no encontró (~50%), en todas las categorías. Ver
+sección 5b del SKILL.

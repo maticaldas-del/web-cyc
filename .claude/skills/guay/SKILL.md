@@ -55,6 +55,17 @@ fuente:'chat', enNissei:true, ts:Date.now()})`. Ruta `candidatos_py` (NO `candid
 del CATÁLOGO de ML (lo de /p/); nada calculado (el margen lo escribe el robot). Antes, mirá en
 `state.candidatos` que no esté ya (por `cod` o `mlId`).
 
+## 5b · EL BARRIDO TIENE QUE SER 100% (regla de Matías, 03/10/2026)
+Textual: *"para la próxima quiero que lo haga todo. lo que no pudo comparar y perfumería"*. Un barrido NO está terminado hasta:
+1. **Todas las categorías decididas, enteras** (lista en `guay/progreso.md`), bajadas por categoría (nunca por /busca/).
+2. **Perfumería entera, de nuevo, en cada barrido** (no vale la del 18/09).
+3. **Cada modelo que el emparejador NO encontró en ML se revisa a mano**, en TODAS las categorías (no sólo las que dieron):
+   buscalo en listado.mercadolibre.com.ar con otras palabras (marca + nombre, sin el código; el código solo; en castellano).
+   Si de verdad no se vende en ML, anotalo como "no está en ML" con el código. Si aparece, se mide como cualquier otro.
+4. Al terminar, mandá a CYC WEB el conteo: modelos totales · emparejados solos · revisados a mano · no están en ML. **Los
+   cuatro números tienen que cerrar**: si falta alguno, el barrido no está completo y se dice cuántos.
+Si no alcanza el tiempo, decí cuánto falta; nunca lo des por completo.
+
 ## 6 · El pedido (lo armás VOS, decisión de Matías del 02/10)
 Nada en el panel ni en el robot llena el pedido solo: las unidades entran únicamente con
 `candSetPedir(id, u)` (o el botón 🪄 si Matías lo aprieta). Lo armás vos, con tope US$ 1.000 crudos,
