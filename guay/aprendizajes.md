@@ -252,3 +252,8 @@ match de las categorías que sí dan: **routers, memorias, accesorios de cámara
   vs Nano); los Deco/Halo vienen en packs distintos (M4/M5/S7/X20/X60/E4) — el pack tiene que ser el mismo.
 - **Color:** si el color de Nissei no existe en ML o tiene menos de 100 vendidas, se descarta (no se toma otro color).
 - **Medir muchos de una:** si cargás cientos, pedile a Claude `candidatos:max=400:go` (la corrida normal mide 40).
+- **Revisión por foto obligatoria (03/10):** ~45% de lo que el buscador de ML matchea es otro modelo/variante (auriculares,
+  perfumes y cosmética los peores).
+- **Marcas de Nissei que no están en ML:** Klasse, Keepdata, G-Tide, FTX, Maxwell, Babaria, Bio Balance.
+- **Un catálogo de 1 solo vendedor puede tener precio inflado:** si da 80%+, buscar el mismo modelo en otro catálogo o fuera
+  de él; si cambiás `mlId`, borrá los campos de cálculo para que el robot lo vuelva a medir.

@@ -212,3 +212,11 @@ Nikon (25) · 116518 SSD SanDisk Plus 2TB (ML matcheó otro) · 80077 dock Satel
   concentración, tamaño o género, testers). **Sigue:** el resto de las categorías de Nissei (5.338 modelos en 258 categorías,
   sin celulares/notebooks/TV/cámaras/monitores/impresoras/placas/maquillaje/termos/sillas/UPS/robots, tope US$ 215).
   El robot había medido 18 de los 350: se largó `candidatos:max=400:go` para medirlos todos de una.
+- 03/10 · **Tanda 4 (final): TODO Nissei barrido** (por categoría, loja=nissei). 13.720 modelos en 284 categorías · 5.654
+  descartados sin ir a ML (114 ya en el panel, 1.592 arriba de US$ 215/250, 3.116 de categorías excluidas, 832 por nombre) ·
+  8.066 buscados en ML: 3.085 no están, 744 sin ficha de catálogo, 2.063 fichas con 100+ vendidas revisadas por foto →
+  **747 candidatos activos** (≤ US$ 215, 100+ vendidas, mismo modelo/color/tamaño, sin catálogos repetidos; 30 códigos ya
+  estaban y no se duplicaron). Probados: 32 con precio + link + foto, 12 Nissei no tiene.
+  80%+ revisados con el precio de hoy: Lexar 141677 y 138585 OK · Kingston A400 31431 y Cabotine 91832 tenían catálogo de 1
+  vendedor caro → mlId cambiado (MLA37578501 / MLA24087543) y campos de cálculo borrados para remedir · Corsair Void Elite
+  negro 55654 descartado. **Falta:** que el robot mida ~400 (se largó `candidatos:max=500:go`) y mirar los nuevos 80%+.
