@@ -2430,7 +2430,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='21.66';
+const APP_VERSION='21.67';
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
 // muestre la versión y la fecha de actualización y que tenga un desplegable predeterminado cerrado".
 // Y el mismo día: "que ponga fecha de cada modificación y haya una barrita para scrollear y que
@@ -2441,6 +2441,7 @@ const APP_VERSION='21.66';
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'21.67',f:'03/10/2026',h:'12:38',c:[{n:1,t:'Paraguay: "Productos probados" y "Productos nuevos" se prenden y apagan por separado: uno solo o los dos juntos (probados arriba, nuevos abajo).'}]},
   {v:'21.66',f:'03/10/2026',h:'12:31',c:[{n:1,t:'🧾 Pedido: botones para ordenar la lista por % de ganancia, $ por unidad, más barato, subtotal, ventas o nombre (dentro de perfumería y resto). Queda recordado.'}]},
   {v:'21.65',f:'03/10/2026',h:'12:30',c:[{n:1,t:'🧾 Pedido: la lista de productos va dividida en 🌸 PERFUMERÍA y 📦 RESTO, igual que el mensaje a Nissei. Se sacó la lista aparte de fotos.'}]},
   {v:'21.64',f:'03/10/2026',h:'12:27',c:[{n:1,t:'🧾 Pedido: las fotos de abajo del mensaje son las de comprasparaguay (la de ese código); si no hay, la de ML y lo dice.'}]},
@@ -10554,7 +10555,16 @@ function pySetModo(m){pyModo=m;renderPedidos();}
 // NO se esconde nada que decida: lo que cambia es CUÁL de los dos pedidos estás armando, y el
 // botón dice siempre en cuál estás.
 let pyVista='probados';
-function pySetVista(v){pyVista=v;renderPedidos();}
+// PROBADOS Y NUEVOS SE PUEDEN PRENDER JUNTOS (03/10/2026, él: "clickear y sumar los dos juntos o clickear uno solo"):
+// tocar uno lo suma o lo saca; nunca quedan los dos apagados. 🧾 Pedido sigue siendo una vista aparte.
+function pySetVista(v){
+  if(v==='hechos'){pyVista='hechos';}
+  else{const on={probados:pyVista==='probados'||pyVista==='ambos',nuevos:pyVista==='nuevos'||pyVista==='ambos'};
+    if(pyVista==='hechos'){on.probados=v==='probados';on.nuevos=v==='nuevos';}
+    else{on[v]=!on[v]; if(!on.probados&&!on.nuevos)on[v]=true;}
+    pyVista=on.probados&&on.nuevos?'ambos':on.probados?'probados':'nuevos';}
+  renderPedidos();
+}
 const pyTope=()=>pyModo==='viaje'?PY_VIAJE_USD:PY_ENVIO_USD;
 function _pyLlenar(orden){
   let queda=pyTope(),val=0;const out=[];
@@ -14611,14 +14621,14 @@ function renderPedidos(){
   //  · PROBADOS → la canasta de US$ 1.000, los pedidos de reposición y lo que dejó de convenir
   //  · NUEVOS   → "Para probar" y el armado del pedido de productos nuevos
   if(!isBsas){
-    const _tab=(v,txt,tit)=>`<button class="btn" style="font-size:.64rem;padding:5px 13px;${pyVista===v?'background:var(--blue);color:#fff;font-weight:700':''}" title="${tit}" onclick="pySetVista('${v}')">${txt}</button>`;
+    const _tab=(v,txt,tit)=>`<button class="btn" style="font-size:.64rem;padding:5px 13px;${(pyVista===v||(pyVista==='ambos'&&v!=='hechos'))?'background:var(--blue);color:#fff;font-weight:700':''}" title="${tit}" onclick="pySetVista('${v}')">${txt}</button>`;
     const _tabs=`<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px">
       ${_tab('probados','✅ Productos probados','Lo que YA vendés: cuánto hay que reponer para no quedarte sin stock, y lo que dejó de convenir al precio de Paraguay de hoy.')}
       ${_tab('nuevos','🆕 Productos nuevos','Lo que todavía NO vendés: los candidatos que trae el chat de Paraguay y el armado de ese pedido.')}
       ${_tab('hechos',`🧾 Pedido${(()=>{const n=pyArmadoFilas().length+pedNuevos(candList().filter(candEnArmado).filter(c=>candEnPedido(c)!=='viajando')).filas.length;return n?' ('+n+' cargados)':'';})()}`,'El pedido del momento (probados + nuevos juntos, con el mensaje para Nissei) y abajo los pedidos ya hechos: en camino y llegados.')}
     </div>`;
     // PROBADOS = IDÉNTICO A BS AS (01/10/2026, pedido suyo): sólo la lista de pedidos, sin canasta ni precios.
-    el.innerHTML=_tabs+(pyVista==='nuevos'?candidatosHTML():pyVista==='hechos'?pedidoMomentoHTML()+`<div style="font-size:.8rem;font-weight:700;margin:6px 0 8px">📦 Pedidos hechos (${pyCompras().length})</div>`+pyHechosHTML():el.innerHTML);
+    el.innerHTML=_tabs+(pyVista==='nuevos'?candidatosHTML():pyVista==='ambos'?el.innerHTML+`<div style="font-size:.8rem;font-weight:700;margin:18px 0 8px;padding-top:10px;border-top:2px solid var(--border2)">🆕 Productos nuevos</div>`+candidatosHTML():pyVista==='hechos'?pedidoMomentoHTML()+`<div style="font-size:.8rem;font-weight:700;margin:6px 0 8px">📦 Pedidos hechos (${pyCompras().length})</div>`+pyHechosHTML():el.innerHTML);
   }
 }
 
