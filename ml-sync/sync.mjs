@@ -25103,6 +25103,12 @@ async function main() {
       try { cfgSup = (await db.get('cyc/mlconfig')) || {}; } catch { cfgSup = {}; }
       try { monoSup = parseFloat(((await db.get('cyc/monotributo')) || {}).pct) || 0; } catch { monoSup = 0; }
       try { histSup = (await db.get('cyc/stockhist')) || {}; } catch { histSup = null; }
+      // EL VALOR DE VENDER ANTES (04/10/2026, él con el Watch S5: "vendió 2 relojes que quizás no vendíamos en meses,
+      // eso es costo de oportunidad"). La plata de la mercadería vuelve antes; se valora a la tasa que CYC le paga a
+      // los socios por su capital (2% por mes). Los días adelantados salen del ritmo NORMAL del producto en esa cuenta
+      // (365 días sin remate): la unidad Nº i se habría vendido el día i ÷ ritmo; se vendió antes. Tope 180 días.
+      const TASA_MES = 0.02, ADEL_TOPE = 180;
+      let rnSup = {}; try { rnSup = (await db.get('cyc/ritmonormal')) || {}; } catch { rnSup = {}; }
       const tarifaAlm = cfgSup.almacTarifa || {};
       const palGS = (Array.isArray(cfgSup.cupoGrandes) ? cfgSup.cupoGrandes
         : (typeof cfgSup.cupoGrandes === 'string' ? cfgSup.cupoGrandes.split(',') : null)) || ['tendedero', 'tender'];
@@ -25149,6 +25155,12 @@ async function main() {
         const S0 = Number(ev.st0) >= 0 && ev.st0 != null ? Number(ev.st0)
           : (() => { const s = stockDe(ev.mla); return s == null ? null : s + ventC.filter((x) => x.ts > ev.ts).reduce((a, x) => a + x.q, 0); })();
         const rC = ventC.filter((x) => x.ts < ev.ts && x.ts >= ev.ts - 60 * 864e5).reduce((a, x) => a + x.q, 0) / 60;
+        let adel = 0, adelD = 0, adelNota = '';
+        {
+          const pdN = key ? Number((rnSup[key] || {}).pd) || 0 : 0, pdB = Math.max(pdN, r0);
+          if (!(pdB > 0)) adelNota = 'sin ritmo normal medido: no se puede saber cuánto se adelantó';
+          else { let i = 0; for (const x of dv) for (let j = 0; j < x.q; j++) { i++; const dR = (x.ts - ev.ts) / 864e5; const ad = Math.min(ADEL_TOPE, Math.max(0, i / pdB - dR)); adelD += ad; adel += costo * TASA_MES / 30 * ad; } }
+        }
         if (histSup == null) almNota = 'no se pudo leer desde cuándo está en Full';
         else if (!extras.length) almNota = 'no vendió nada que no se vendiera igual';
         else if (!desde) almNota = 'sin fecha de entrada a Full';
@@ -25170,7 +25182,8 @@ async function main() {
         }
         const r1 = (n) => Math.round(n * 10) / 10;
         return { gan: Math.round(gan), base: Math.round(base), alm, almUD, almNota, uOk: r1(uOk), uBajo: r1(uBajo), uBase: r1(uBase),
-          r0: Math.round(r0 * 300) / 10, total: Math.round(gan + base + (alm || 0)) };
+          adel: Math.round(adel), adelD: Math.round(adelD), adelNota,
+          r0: Math.round(r0 * 300) / 10, total: Math.round(gan + base + (alm || 0) + adel) };
       };
 
       // ── EL MOTIVO DE CADA CAMBIO (25/09/2026) ────────────────────────────────────
@@ -25518,7 +25531,7 @@ async function main() {
       console.log(`${resumen.ganaron} dejaron más · ${resumen.perdieron} dejaron menos · ${resumen.quiebres} con el volumen sin contar por quiebre de stock`);
       console.log(`No cuentan (🛟 recuperar margen por costo/inflación): ${resumen.rescates.n} cambios · ${$s(resumen.rescates.total)}`);
       console.log(`Remates y escalera: ${resumen.remates.n} · ventas al ${REM_PISO}%+ ${$s(resumen.remates.gan)} · lo que igual se vendía, más barato ${$s(resumen.remates.base)} · almacenamiento evitado ${resumen.remates.almUD} unidades-día${resumen.remates.alm ? ' = ' + $s(resumen.remates.alm) : ''}${resumen.remates.sinTarifa ? ' (falta la tarifa: no suma en pesos)' : ''}`);
-      for (const x of atrib.filter((y) => y.rem)) console.log(`  🔨 ${x.nom} (${x.cuenta}) ${$s(x.de)}→${$s(x.a)} · ${x.dias} d · salieron ${x.rem.uOk} u. paradas · cobrado de menos ${$s(x.rem.gan)} · iba igual ${x.rem.uBase} u. ${$s(x.rem.base)} · almac. ${x.rem.almUD} u-día${x.rem.alm != null ? ' ' + $s(x.rem.alm) : ''}${x.rem.almNota ? ' (' + x.rem.almNota + ')' : ''}`);
+      for (const x of atrib.filter((y) => y.rem)) console.log(`  🔨 ${x.nom} (${x.cuenta}) ${$s(x.de)}→${$s(x.a)} · ${x.dias} d · salieron ${x.rem.uOk} u. paradas · cobrado de menos ${$s(x.rem.gan)} · plata adelantada +${$s(x.rem.adel)} (${x.rem.adelD} días-unidad${x.rem.adelNota ? ', ' + x.rem.adelNota : ''}) · iba igual ${x.rem.uBase} u. ${$s(x.rem.base)} · almac. ${x.rem.almUD} u-día${x.rem.alm != null ? ' ' + $s(x.rem.alm) : ''}${x.rem.almNota ? ' (' + x.rem.almNota + ')' : ''}`);
       { const cm = {}; for (const x of registros) cm[x.motivo] = (cm[x.motivo] || 0) + 1; console.log(`Motivos: ${Object.entries(cm).map(([k, n]) => k + ' ' + n).join(' · ')}`); }
       for (const x of resumen.items.slice(0, 15)) console.log(`  ${x.total >= 0 ? '+' : ''}${$s(x.total)} · ${x.nom} (${x.cuenta}) ${$s(x.de)}→${$s(x.a)} · ${x.dias} d · ${x.uA}→${x.uD} u. · precio ${$s(x.precio)} · volumen ${$s(x.volumen)}${x.quiebre ? ' · sin stock' : ''}`);
       console.log('');

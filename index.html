@@ -2431,7 +2431,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='21.84';
+const APP_VERSION='21.85';
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
 // muestre la versión y la fecha de actualización y que tenga un desplegable predeterminado cerrado".
 // Y el mismo día: "que ponga fecha de cada modificación y haya una barrita para scrollear y que
@@ -2442,6 +2442,7 @@ const APP_VERSION='21.84';
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'21.85',f:'04/10/2026',h:'12:43',c:[{n:3,t:'🤖 Robot de precios: remates y escalera suman ahora la plata que vuelve antes (vender antes de lo que se vendería a su ritmo normal, valorado al 2% por mes, la tasa de los socios), además de restar lo cobrado de menos.'}]},
   {v:'21.84',f:'04/10/2026',h:'04:07',c:[{n:2,t:'🧾 Pedido del momento: bloque 🙋 Uso personal. Va en el mensaje a Nissei y en el total a pagar, pero no es de CYC: no cuenta en el tope, no tiene margen y no crea ficha ni stock.'}]},
   {v:'21.83',f:'03/10/2026',h:'22:00',c:[{n:1,t:'📈 Línea de tiempo: en productos con colores/aromas se puede elegir cada variante (arranca en "Todas juntas"): stock, ventas, visitas, precio y ganancia de ese color solo.'},{n:3,t:'Robot de precios: si el tope de +25% por suba dejó un rescate corto de la meta (ej. Pizarra Mágica en 21%), la noche siguiente lo sigue subiendo hasta el 25%.'}]},
   {v:'21.82',f:'03/10/2026',h:'21:45',c:[{n:1,t:'📈 Línea de tiempo: vuelve a ser UNA línea de costo, el costo real (mercadería + IIBB + monotributo). El detalle de cada parte sale al pasar el mouse.'}]},
@@ -15662,7 +15663,7 @@ function renderMetAuto(){
     ${cuerpo}${espera}
     <details style="margin-top:10px"><summary style="cursor:pointer;font-size:.6rem;color:var(--muted)">¿Qué cuenta?</summary><div style="font-size:.6rem;color:var(--muted);line-height:1.45;margin-top:4px">
       Sólo lo que el robot decidió mirando el mercado (📈 subir, 📉 bajar, 🧪 prueba de suba, 🔨 remate y 🪜 escalera), y sólo después de 7 días. No cuenta recuperar margen por costo o inflación (lo ibas a hacer igual) ni lo que tocaste a mano.
-      "Sin robot" es que el precio se quedaba donde estaba: se compara el mismo tiempo antes y después. En remates y escalera NO se suma la ganancia de lo que se vendió (bajar el precio adelanta la venta, no la crea): cuenta lo que se cobró de menos y el almacenamiento que se dejó de pagar.
+      "Sin robot" es que el precio se quedaba donde estaba: se compara el mismo tiempo antes y después. En remates y escalera NO se suma la ganancia de lo que se vendió (bajar el precio adelanta la venta, no la crea): cuenta lo que se cobró de menos, el almacenamiento que se dejó de pagar y la plata que volvió antes (la mercadería vendida antes de lo que se habría vendido a su ritmo normal, valorada al 2% por mes que se les paga a los socios).
     </div></details>
     ${metVigBox()}
   </div>`;
