@@ -3652,6 +3652,8 @@ async function calcCajaBarata(db, o) {
   // "sobra" se mide contra éste: con las ventas de 30 días un remate en curso inflaba el ritmo.
   let rnCb = {}; try { rnCb = (await db.get('cyc/ritmonormal')) || {}; } catch { rnCb = {}; }
   const histCb = (await db.get('cyc/stockhist')) || {};
+  // Los lotes del Excel de ML (`lotesfull`): la antigüedad REAL de la mercadería en Full.
+  let lotesCb = {}; try { lotesCb = (await db.get('cyc/lotesfull')) || {}; } catch { lotesCb = {}; }
   const vpCb = (await db.get('cyc/ventaprod')) || {}; setDevLive(vpCb);
   const monoP = parseFloat(((await db.get('cyc/monotributo')) || {}).pct) || 0;
   let cuotasCb = null;
@@ -3733,7 +3735,7 @@ async function calcCajaBarata(db, o) {
   // Primer filtro, GRATIS: sale de lo que el robot ya escribió en `cyc/mllinks` cada hora
   // (`caja` y `cajaPtw`). Recién después se le pregunta algo a ML, así las llamadas son sólo
   // las que pueden terminar en candidata — la lección de velocidad del 13/09.
-  const fuera = { vendio: 0, sinStock: 0, sinPtw: 0, reciente: 0, sinFecha: 0, hermanaGana: 0 };
+  const fuera = { vendio: 0, sinStock: 0, sinPtw: 0, reciente: 0, sinFecha: 0, hermanaGana: 0, sobraJoven: 0 };
   const cand = [];
   // Producto×cuenta que YA tiene una publicación activa ganando la caja. Ahí bajar OTRA
   // publicación del mismo producto en la misma cuenta no trae ventas: el botón de comprar ya es
@@ -3760,10 +3762,27 @@ async function calcCajaBarata(db, o) {
         const edS = edadFullCb(e.prodId, e.cuenta);
         if (edS != null && edS < 30) { fuera.reciente++; continue; }
         if (ganaCb.has(e.prodId + '__' + e.cuenta)) { fuera.hermanaGana++; continue; }
+        // NO SE BAJA POR SOBRA HASTA QUE EL STOCK ANTIGUO ESTÉ CERCA (04/10/2026, eligió la a). Lo
+        // midió el supervisor con el Pendrive 32gb: antes de los 120 días (4 meses) ML cobra $0 de
+        // stock antiguo, así que sostener cuesta ~1%/mes del costo y la baja regala 5-10% del precio.
+        // Se baja recién cuando la unidad MÁS VIEJA tiene SOBRA_EDAD_MIN días o más: del lote más
+        // viejo del Excel de ML si está cargado, si no de `stockhist` (si es aproximada, la real es
+        // igual o mayor: se usa igual). Sin ninguna fecha no se baja: no se sabe si se acerca.
+        const edadViejaS = (() => {
+          const L = e.inv ? lotesCb[e.inv] : null;
+          if (L && Array.isArray(L.lotes)) {
+            const ref = Date.parse(String(L.ref || '') + 'T03:00:00Z');
+            const ts = L.lotes.filter((x) => Number(x.u) > 0 && Number(x.dias) >= 0).map((x) => ref - Number(x.dias) * 864e5);
+            if (ref > 0 && ts.length) return Math.floor((Date.now() - Math.min(...ts)) / 864e5);
+          }
+          const h = histCb[e.prodId + '__' + sidCb(e.cuenta)];
+          return h && h.desde ? Math.floor((Date.now() - h.desde) / 864e5) : null;
+        })();
+        if (edadViejaS == null || edadViejaS < SOBRA_EDAD_MIN) { fuera.sobraJoven++; continue; }
         const ptwS = Number(e.cajaPtw) || 0;
         if (!(ptwS > 0)) { fuera.sinPtw++; continue; }
         cand.push({ mla, e, st: ds.st, ptw: ptwS, quieta: quietaDe(mla, e.prodId, e.cuenta, e.variant),
-          sobre: { dias: ds.dias, porMes: Math.round(ds.vend * 30 / dias), edad: edadFullCb(e.prodId, e.cuenta) } });
+          sobre: { dias: ds.dias, porMes: Math.round(ds.vend * 30 / dias), edad: edadFullCb(e.prodId, e.cuenta), edadVieja: edadViejaS } });
         continue;
       }
     }
@@ -5711,6 +5730,9 @@ async function resolveTgChat(db) {
 // antes estaba escrito 1,15 en nueve lugares. Ojo: vale para pedidos de ~US$ 500; uno de US$ 1.000
 // diluye el costo fijo y baja a ~13%.
 const RECARGO_PAR = 1.17;
+// Desde cuántos días de la unidad más vieja en Full se baja por "sobra de stock" (04/10/2026, eligió
+// la a): ML cobra stock antiguo desde los 120 días; antes de eso sostener cuesta ~1%/mes y no paga bajar.
+const SOBRA_EDAD_MIN = 100;
 const RECARGO_PAR_PCT = Math.round((RECARGO_PAR - 1) * 100);
 // Un cero de stock que vuelve dentro de este tiempo se toma como pasajero: se conserva la fecha de
 // entrada anterior en `cyc/stockhist` (decisión suya del 24/09/2026, opción a).
@@ -8390,7 +8412,8 @@ async function main() {
       console.log(`\nSE GANA LA CAJA Y EL MARGEN AGUANTA (no venden · sano ${CBR_SANO}%): ${sanasCbr.length}`);
       console.log(`   candidatas miradas ${cbr.mirados} · descartadas: ${cbr.fuera.vendio} vendieron`
         + ` · ${cbr.fuera.sinStock} sin stock · ${cbr.fuera.sinPtw} sin precio de caja de ML`
-        + (cbr.fuera.hermanaGana ? ` · ${cbr.fuera.hermanaGana} les sobra stock pero otra publicación suya ya gana la caja` : ''));
+        + (cbr.fuera.hermanaGana ? ` · ${cbr.fuera.hermanaGana} les sobra stock pero otra publicación suya ya gana la caja` : '')
+        + (cbr.fuera.sobraJoven ? ` · ${cbr.fuera.sobraJoven} les sobra stock pero la unidad más vieja tiene menos de ${SOBRA_EDAD_MIN} d en Full (antes de los 120 no se paga stock antiguo: no se baja)` : ''));
       // Las que NO llegan al margen sano se listan igual, con cuánto habría que bajar y en cuánto
       // quedarían. Un "8 quedaron con margen flaco" sin decir cuáles esconde la que está en 24%
       // por dos pesos — y ésa la quiero ver yo. Van al log, no al mensaje.
