@@ -10704,9 +10704,12 @@ async function main() {
       const soloCta = _ps.slice(1).find((s) => s && s !== 'go') || null;
       const dormir = (ms) => new Promise((r) => setTimeout(r, ms));
       const raw = async (path, tok, opt = {}) => {
-        const r = await fetch(ML_API + path, { ...opt, headers: { Authorization: 'Bearer ' + tok, ...(opt.headers || {}) } });
-        const buf = Buffer.from(await r.arrayBuffer());
-        return { st: r.status, ct: r.headers.get('content-type') || '', buf, txt: () => buf.toString('utf8') };
+        for (let i = 0; ; i++) {
+          const r = await fetch(ML_API + path, { ...opt, headers: { Authorization: 'Bearer ' + tok, ...(opt.headers || {}) } });
+          const buf = Buffer.from(await r.arrayBuffer());
+          if (r.status === 429 && i < 4) { console.log(`    (429, espero ${30 * (i + 1)} s)`); await dormir(30000 * (i + 1)); continue; }
+          return { st: r.status, ct: r.headers.get('content-type') || '', buf, txt: () => buf.toString('utf8') };
+        }
       };
       const _links = (await db.get('cyc/mllinks')) || {};
       const { execFileSync } = await import('node:child_process');
@@ -10714,11 +10717,15 @@ async function main() {
         if (soloCta && label.toLowerCase() !== soloCta.toLowerCase()) continue;
         const acc = accounts[label]; if (!acc?.refresh_token) continue;
         let tok;
-        try {
-          const t = await mlRefresh(ML_CLIENT_ID, ML_CLIENT_SECRET, acc.refresh_token);
-          await db.patch('mlapi/tokens/' + label, { refresh_token: t.refresh_token, updated_ts: Date.now() });
-          tok = t.access_token;
-        } catch (e) { console.log(`${label}: no pude entrar (${e.message})`); continue; }
+        for (let i = 0; i < 4 && !tok; i++) {
+          try {
+            const rt = (await db.get('mlapi/tokens/' + label + '/refresh_token')) || acc.refresh_token;
+            const t = await mlRefresh(ML_CLIENT_ID, ML_CLIENT_SECRET, rt);
+            await db.patch('mlapi/tokens/' + label, { refresh_token: t.refresh_token, updated_ts: Date.now() });
+            tok = t.access_token;
+          } catch (e) { console.log(`${label}: no pude entrar (${String(e.message).slice(0, 80)}) · reintento en 40 s`); await dormir(40000); }
+        }
+        if (!tok) continue;
         console.log(`\n══════ ${label} ══════`);
 
         // 4) Reposición (otra API, 500 por minuto): primero, porque no gasta cupo de facturación.
@@ -10726,18 +10733,19 @@ async function main() {
         console.log(`\n· Reposición de Full · ${ups.length} productos de muestra`);
         for (const up of ups) {
           const r = await raw(`/marketplace/fbm/user-products/${up}/replenishment?country=AR`, tok);
-          console.log(`  [${r.st}] ${up} → ${r.txt().replace(/\s+/g, ' ').slice(0, 900)}`);
+          let lin = r.txt().replace(/\s+/g, ' ').slice(0, 300);
+          try { const j = JSON.parse(r.txt());
+            lin = `stock ${j.stock?.total_stock} · urg ${j.stock?.shipping_urgency} · 30d ${j.sales?.sales_totals?.units_sold?.[0]?.full} u · semanas (vend/sin stock) ${(j.sales?.sales_history || []).map((h) => h.units_sold + '/' + h.days_out_of_stock).join(' ')} · reco ${JSON.stringify(j.recommendation)} · benef ${JSON.stringify(j.eligibility_benefits)} · tags ${(j.product?.tags || []).join(',')}`;
+          } catch {}
+          console.log(`  [${r.st}] ${up} → ${lin}`);
           await dormir(400);
         }
 
-        let keys = [];
-        { const r = await raw('/billing/integration/monthly/periods?group=ML&document_type=BILL&limit=3', tok);
-          try { keys = (JSON.parse(r.txt()).results || []).map((x) => ({ key: x.key || x.period?.key, st: x.period_status })); } catch {}
-          console.log(`\n· Períodos [${r.st}]: ${keys.map((k) => k.key + ' ' + (k.st || '')).join(' · ') || r.txt().slice(0, 200)}`); }
+        // El período es el primer día del mes. Se toma el mes ANTERIOR (ya cerrado: trae el cobro de
+        // almacenamiento del cierre). Sin pedir la lista de períodos, que gasta cupo de facturación.
+        const _d = new Date(); _d.setUTCDate(1); _d.setUTCMonth(_d.getUTCMonth() - 1);
+        const kc = _d.toISOString().slice(0, 8) + '01';
         await dormir(13000);
-        // El mes cerrado más nuevo (el abierto todavía no tiene los cargos de almacenamiento del cierre).
-        const kc = (keys.find((k) => String(k.st || '').toUpperCase() === 'CLOSED') || keys[1] || keys[0] || {}).key;
-        if (!kc) { console.log('  sin período: sigo con la cuenta siguiente'); continue; }
 
         // 1) Resumen por tipo de cargo
         { const r = await raw(`/billing/integration/periods/key/${kc}/summary/details?group=ML&document_type=BILL`, tok);
