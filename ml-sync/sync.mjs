@@ -10686,6 +10686,120 @@ async function main() {
       console.log('\n   (Solo lecturas. No se tocó ML, ni MercadoPago, ni la base.)');
       return;
     }
+    // BILLING_PROBE=cargosfull[:<cuenta>][:go] → ¿QUÉ PRODUCTOS PAGAN ALMACENAMIENTO Y STOCK ANTIGUO? (04/10/2026)
+    //
+    // `probaralmacena` (02/09) probó 10 rutas inventadas y dio 404 en todas. Leyendo la documentación de
+    // ML aparecieron TRES puertas que nunca se probaron, con la forma exacta que dice la página:
+    //  1. /billing/integration/periods/key/<per>/summary/details  → el resumen del mes por TIPO de cargo
+    //  2. /billing/integration/periods/key/<per>/group/ML/details → cada cargo, renglón por renglón
+    //  3. POST /billing/integration/periods/key/<per>/reports con group FULL → el "reporte de Fulfillment"
+    //     (XLSX), que es el mismo Excel de cargos que se baja a mano desde ML.
+    // Y una cuarta, de otro lado: /marketplace/fbm/user-products/<upid>/replenishment → lo que ML
+    // recomienda mandar a Full, con ventas por semana, días sin stock y si es elegible al beneficio AGING.
+    // SOLO LEE, salvo con `:go`, que PIDE generar el reporte de Full (no mueve plata: crea un archivo).
+    // No imprime datos de compradores: los cargos son de la cuenta y los productos son nuestros.
+    if (String(process.env.BILLING_PROBE || '').startsWith('cargosfull')) {
+      const _ps = String(process.env.BILLING_PROBE).split(':').map((s) => s.trim());
+      const GO = _ps.includes('go');
+      const soloCta = _ps.slice(1).find((s) => s && s !== 'go') || null;
+      const dormir = (ms) => new Promise((r) => setTimeout(r, ms));
+      const raw = async (path, tok, opt = {}) => {
+        const r = await fetch(ML_API + path, { ...opt, headers: { Authorization: 'Bearer ' + tok, ...(opt.headers || {}) } });
+        const buf = Buffer.from(await r.arrayBuffer());
+        return { st: r.status, ct: r.headers.get('content-type') || '', buf, txt: () => buf.toString('utf8') };
+      };
+      const _links = (await db.get('cyc/mllinks')) || {};
+      const { execFileSync } = await import('node:child_process');
+      for (const label of labels) {
+        if (soloCta && label.toLowerCase() !== soloCta.toLowerCase()) continue;
+        const acc = accounts[label]; if (!acc?.refresh_token) continue;
+        let tok;
+        try {
+          const t = await mlRefresh(ML_CLIENT_ID, ML_CLIENT_SECRET, acc.refresh_token);
+          await db.patch('mlapi/tokens/' + label, { refresh_token: t.refresh_token, updated_ts: Date.now() });
+          tok = t.access_token;
+        } catch (e) { console.log(`${label}: no pude entrar (${e.message})`); continue; }
+        console.log(`\n══════ ${label} ══════`);
+
+        // 4) Reposición (otra API, 500 por minuto): primero, porque no gasta cupo de facturación.
+        const ups = [...new Set(Object.values(_links).filter((v) => v && v.cuenta === label && v.upid && v.inv && !v.ignored).map((v) => v.upid))].slice(0, 4);
+        console.log(`\n· Reposición de Full · ${ups.length} productos de muestra`);
+        for (const up of ups) {
+          const r = await raw(`/marketplace/fbm/user-products/${up}/replenishment?country=AR`, tok);
+          console.log(`  [${r.st}] ${up} → ${r.txt().replace(/\s+/g, ' ').slice(0, 900)}`);
+          await dormir(400);
+        }
+
+        let keys = [];
+        { const r = await raw('/billing/integration/monthly/periods?group=ML&document_type=BILL&limit=3', tok);
+          try { keys = (JSON.parse(r.txt()).results || []).map((x) => ({ key: x.key || x.period?.key, st: x.period_status })); } catch {}
+          console.log(`\n· Períodos [${r.st}]: ${keys.map((k) => k.key + ' ' + (k.st || '')).join(' · ') || r.txt().slice(0, 200)}`); }
+        await dormir(13000);
+        // El mes cerrado más nuevo (el abierto todavía no tiene los cargos de almacenamiento del cierre).
+        const kc = (keys.find((k) => String(k.st || '').toUpperCase() === 'CLOSED') || keys[1] || keys[0] || {}).key;
+        if (!kc) { console.log('  sin período: sigo con la cuenta siguiente'); continue; }
+
+        // 1) Resumen por tipo de cargo
+        { const r = await raw(`/billing/integration/periods/key/${kc}/summary/details?group=ML&document_type=BILL`, tok);
+          console.log(`\n· Resumen ${kc} [${r.st}]`);
+          try { const j = JSON.parse(r.txt()); const bi = j.bill_includes || j;
+            for (const c of [...(bi.charges || []), ...(bi.bonuses || [])]) console.log(`    ${String(c.type).padEnd(6)} ${money(Math.round(c.amount || 0)).padStart(12)}  ${c.label}`);
+            if (!(bi.charges || []).length) console.log('    ' + r.txt().replace(/\s+/g, ' ').slice(0, 600));
+          } catch { console.log('    ' + r.txt().slice(0, 400)); } }
+        await dormir(13000);
+
+        // 2) Detalle renglón por renglón: qué tipos trae y si alguno es de Full con producto adentro.
+        { const r = await raw(`/billing/integration/periods/key/${kc}/group/ML/details?document_type=BILL&limit=50`, tok);
+          console.log(`\n· Detalle ${kc} [${r.st}]`);
+          try { const j = JSON.parse(r.txt()); const rs = j.results || [];
+            console.log(`    total ${j.total ?? j.paging?.total ?? '?'} · claves arriba: ${Object.keys(j).join(',')}`);
+            const nombres = (o, pre = '') => Object.entries(o || {}).flatMap(([k, v]) => v && typeof v === 'object' && !Array.isArray(v) ? nombres(v, pre + k + '.') : [pre + k]);
+            if (rs[0]) console.log(`    campos: ${nombres(rs[0]).join(', ')}`);
+            const tipos = {};
+            for (const x of rs) { const ci = x.charge_info || x; const t = [ci.detail_type, ci.detail_sub_type, ci.transaction_detail].filter(Boolean).join(' / ') || '?'; tipos[t] = (tipos[t] || 0) + 1; }
+            for (const [t, n] of Object.entries(tipos)) console.log(`    ${String(n).padStart(3)} × ${t}`);
+          } catch { console.log('    ' + r.txt().slice(0, 400)); } }
+        await dormir(13000);
+
+        // 3) El reporte de Fulfillment (XLSX). Pedirlo crea un archivo: sólo con :go.
+        if (!GO) { console.log('\n· Reporte de Full: sin :go no lo pido'); continue; }
+        let fid = null;
+        { const r = await raw(`/billing/integration/periods/key/${kc}/reports`, tok, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ group: 'FULL', document_type: 'BILL', report_format: 'XLSX' }) });
+          console.log(`\n· Pedir reporte FULL ${kc} [${r.st}] ${r.txt().slice(0, 300)}`);
+          try { const j = JSON.parse(r.txt()); fid = j.fileId || j.file_id || j.id || null; } catch {} }
+        if (!fid) continue;
+        let listo = false;
+        for (let i = 0; i < 14 && !listo; i++) {
+          await dormir(13000);
+          const r = await raw(`/billing/integration/reports/${encodeURIComponent(fid)}/status?document_type=BILL`, tok);
+          const s = r.txt(); console.log(`    estado [${r.st}] ${s.slice(0, 120)}`);
+          if (/READY/i.test(s)) listo = true; if (/ERROR/i.test(s)) break;
+        }
+        if (!listo) { console.log('    no quedó listo a tiempo'); continue; }
+        await dormir(13000);
+        const r = await raw(`/billing/integration/reports/${encodeURIComponent(fid)}?document_type=BILL`, tok);
+        console.log(`    descarga [${r.st}] ${r.ct} · ${r.buf.length} bytes`);
+        if (r.st !== 200 || r.buf.length < 100) { console.log('    ' + r.txt().slice(0, 300)); continue; }
+        const dir = `/tmp/full_${label}`; mkdirSync(dir, { recursive: true });
+        writeFileSync(dir + '/r.xlsx', r.buf);
+        try { execFileSync('unzip', ['-o', '-q', dir + '/r.xlsx', '-d', dir]); } catch (e) { console.log('    no pude abrir el xlsx: ' + e.message); continue; }
+        const dec = (s) => s.replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&quot;/g, '"').replace(/&apos;/g, "'").replace(/&amp;/g, '&');
+        let ss = [];
+        try { ss = [...readFileSync(dir + '/xl/sharedStrings.xml', 'utf8').matchAll(/<si>([\s\S]*?)<\/si>/g)].map((m) => dec([...m[1].matchAll(/<t[^>]*>([\s\S]*?)<\/t>/g)].map((x) => x[1]).join(''))); } catch {}
+        let hojas = [];
+        try { hojas = execFileSync('ls', [dir + '/xl/worksheets']).toString().split('\n').filter((f) => f.endsWith('.xml')); } catch {}
+        for (const h of hojas) {
+          const xml = readFileSync(dir + '/xl/worksheets/' + h, 'utf8');
+          const filas = [...xml.matchAll(/<row[^>]*>([\s\S]*?)<\/row>/g)].map((m) => [...m[1].matchAll(/<c ([^>]*?)(?:\/>|>([\s\S]*?)<\/c>)/g)].map((c) => {
+            const v = (c[2] || '').match(/<v>([\s\S]*?)<\/v>/); const isT = /t="s"/.test(c[1]); const inl = (c[2] || '').match(/<t[^>]*>([\s\S]*?)<\/t>/);
+            return inl ? dec(inl[1]) : v ? (isT ? ss[+v[1]] : v[1]) : '';
+          }));
+          console.log(`\n    hoja ${h}: ${filas.length} renglones`);
+          for (const f of filas.slice(0, 14)) console.log('      | ' + f.map((x) => String(x).slice(0, 28)).join(' | ').slice(0, 400));
+        }
+      }
+      return;
+    }
     // BILLING_PROBE=probaralmacena[:MLA] → ¿ML NOS DICE QUÉ PRODUCTOS PAGAN ALMACENAMIENTO?
     //
     // Pregunta suya del 02/09/2026: "la api de ml te puede decir que productos estan pagando o por
