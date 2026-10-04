@@ -40,7 +40,7 @@ process.on('SIGTERM', () => _alCortar('SIGTERM'));
 // los que escriben en cantidad o en plata se niegan de entrada, y cualquier otro corre con la base,
 // ML, Mercado Pago y Telegram en sólo lectura (se deja renovar y guardar el token de ML, que ML rota).
 const EN_CONSULTA = process.env.GITHUB_WORKFLOW === 'ml-consulta' || process.env.ML_CONSULTA === '1';
-const CONSULTA_ESCRIBE = new Set(['vincular', 'pasara', 'nomandar', 'fijarvar', 'cupo', 'poncosto', 'tamfull']);
+const CONSULTA_ESCRIBE = new Set(['vincular', 'pasara', 'nomandar', 'fijarvar', 'cupo', 'poncosto', 'tamfull', 'lotesfull']);
 const CONSULTA_NIEGA = new Set(['ofi', 'ancla', 'responder', 'pyped', 'cajallego', 'abrircaja', 'compray', 'pedir', 'dispo', 'saldoml',
   'armarsaldo', 'avisos', 'cajasllegaron', 'netoweb', 'netoreal', 'candidatos', 'supervisor', 'sacapromos', 'pausar', 'liquidando',
   'unapub', 'volver', 'submargen', 'fijar', 'activarfull', 'meta', 'ciclo', 'marcano', 'pausaprecio', 'cargargasto', 'retiromes']);
@@ -10708,6 +10708,35 @@ async function main() {
       await db.patch('cyc/mlconfig/tamFull', upd);
       const re = (await db.get('cyc/mlconfig/tamFull')) || {};
       const ok = Object.entries(upd).filter(([k, v]) => (re[k] || null) === v).length;
+      console.log(`✓ releído: ${ok} de ${Object.keys(upd).length}`);
+      return;
+    }
+    // BILLING_PROBE=lotesfull:<cuenta>@<AAAA-MM-DD>;<código>=<tamaño>:<días>x<u>,<días>x<u>;…[;go]
+    // LOS LOTES DEL EXCEL "CARGOS POR STOCK ANTIGUO" DE ML (04/10/2026). Él lo baja de ML (Ayelen no tiene: no paga
+    // stock antiguo). Cada renglón trae el tamaño de Full y la antigüedad de cada lote a la fecha del cargo (la fecha
+    // de arriba: "al 12/10/2026"). Se guarda en `cyc/lotesfull/<código>` = {cuenta, tam, ref, lotes:[{dias,u}]} y
+    // el supervisor lo usa para la antigüedad (FIFO: el lote más viejo primero) y el tamaño. Sin `;go` sólo muestra.
+    if (String(process.env.BILLING_PROBE || '').startsWith('lotesfull')) {
+      const partes = String(process.env.BILLING_PROBE).slice('lotesfull'.length).replace(/^:/, '').split(';').map((x) => x.trim()).filter(Boolean);
+      const go = partes.includes('go');
+      const cab = (partes.shift() || '').match(/^([a-záéíóúñ]+)@(\d{4}-\d{2}-\d{2})$/i);
+      if (!cab) { console.log('✗ va lotesfull:<cuenta>@<AAAA-MM-DD>;<código>=<tamaño>:<días>x<u>,…[;go]'); return; }
+      const upd = {};
+      for (const pz of partes.filter((x) => x !== 'go')) {
+        const m = pz.match(/^([A-Z]{4}\d{5})=(pequeno|pequeño|mediano|grande|extragrande):([\dx.,]+)$/i);
+        if (!m) { console.log(`✗ no entiendo "${pz}"`); return; }
+        const lotes = m[3].split(',').map((t) => t.split('x').map(Number)).filter((a) => a.length === 2 && a[0] >= 0 && a[1] >= 0).map(([dias, u]) => ({ dias, u }));
+        if (!lotes.length) { console.log(`✗ "${pz}" sin lotes`); return; }
+        upd[m[1].toUpperCase()] = { cuenta: cab[1].toLowerCase(), tam: m[2].toLowerCase().replace('ñ', 'n'), ref: cab[2], lotes, ts: Date.now() };
+      }
+      for (const [k, v] of Object.entries(upd)) {
+        const entra = v.lotes.map((x) => new Date(Date.parse(v.ref + 'T03:00:00Z') - x.dias * 864e5).toISOString().slice(0, 10) + ' (' + x.u + ' u.)').join(' · ');
+        console.log(`  ${k} · ${v.cuenta} · ${v.tam} · entró ${entra}`);
+      }
+      if (!go) { console.log('(prueba: con ;go se guarda)'); return; }
+      await db.patch('cyc/lotesfull', upd);
+      const re = (await db.get('cyc/lotesfull')) || {};
+      const ok = Object.keys(upd).filter((k) => re[k] && re[k].ref === upd[k].ref && (re[k].lotes || []).length === upd[k].lotes.length).length;
       console.log(`✓ releído: ${ok} de ${Object.keys(upd).length}`);
       return;
     }
@@ -25263,15 +25292,28 @@ async function main() {
       // Medida contra su Excel "Cargos por stock antiguo" del 04/10/2026 (3 cuentas): hasta 4 meses $0, 4-6 meses
       // pequeño $350 / mediano $470, 6-12 meses pequeño $3.250 / mediano $4.485. Grande y +12 meses no se vieron.
       const stockAntiguoSup = cfgSup.stockAntiguo || {
-        pequeno: [[0, 120, 0], [120, 180, 350], [180, 365, 3250], [365, 1e9, null]],
-        mediano: [[0, 120, 0], [120, 180, 470], [180, 365, 4485], [365, 1e9, null]],
+        // Tabla completa de ML (captura suya del 04/10/2026): 4-6 meses · 6-12 meses · más de 12 meses.
+        pequeno: [[0, 120, 0], [120, 180, 350], [180, 365, 3250], [365, 1e9, 7900]],
+        mediano: [[0, 120, 0], [120, 180, 470], [180, 365, 4485], [365, 1e9, 10930]],
+        grande: [[0, 120, 0], [120, 180, 1355], [180, 365, 18280], [365, 1e9, 39365]],
+        extragrande: [[0, 120, 0], [120, 180, 4680], [180, 365, 47840], [365, 1e9, 92400]],
+      };
+      // Los lotes que ML informa en su Excel "Cargos por stock antiguo" (`cyc/lotesfull/<código de Full>`, comando
+      // `lotesfull`): tamaño y fecha de entrada de cada lote. Mandan sobre `stockhist` para la antigüedad (ML descuenta
+      // por lote, el más viejo primero).
+      let lotesSup = {}; try { lotesSup = (await db.get('cyc/lotesfull')) || {}; } catch { lotesSup = {}; }
+      const loteViejoDe = (l) => {
+        const L = l && l.inv ? lotesSup[l.inv] : null; if (!L || !Array.isArray(L.lotes)) return null;
+        const ref = Date.parse(String(L.ref || '') + 'T03:00:00Z'); if (!(ref > 0)) return null;
+        const ts = L.lotes.filter((x) => Number(x.u) > 0 && Number(x.dias) >= 0).map((x) => ref - Number(x.dias) * 864e5);
+        return ts.length ? Math.min(...ts) : null;
       };
       const DIA_CIERRE_ALM = { adriana: 10, luciana: 12, matias: 12, ayelen: 12 };
       // Tamaño de Full por producto: el que dice ML en su Excel (`cyc/mlconfig/tamFull/<código de Full>`); si no está,
       // grande por las palabras de `cupoGrandes` y si no pequeño.
       const tamFullCfg = cfgSup.tamFull || {};
       const tamFullDe = (l, p) => {
-        const t = l && l.inv ? tamFullCfg[l.inv] : null;
+        const t = l && l.inv ? ((lotesSup[l.inv] || {}).tam || tamFullCfg[l.inv]) : null;
         if (t) return t;
         return esGrandeS(p) ? 'grande' : 'pequeno';
       };
@@ -25289,11 +25331,29 @@ async function main() {
       // ahí con stock hasta que se vendieron los dos"). `cyc/stockhist` guarda desde cuándo hay stock SIN cortes
       // (`desde`, o `desdePrev`→`cero` si ya se agotó): entre esas dos fechas hubo stock todos los días. Así se saben
       // los días CON stock antes del cambio sin depender del registro hora por hora, que arrancó el 24/09.
-      const periodoStock = (key) => {
+      const periodoHist = (key) => {
         const h = histSup && key ? histSup[key] : null; if (!h) return null;
         if (Number(h.desde) > 0) return [Number(h.desde), Infinity];
         if (Number(h.desdePrev) > 0) return [Number(h.desdePrev), Number(h.cero) > 0 ? Number(h.cero) : Infinity];
         return null;
+      };
+      // El período de stock SIN CORTES que contiene el momento `t` (regla suya del 04/10: "si un producto estuvo un día
+      // sin stock necesito saberlo"). Primero el registro hora por hora (`cyc/stocklog/cambios`, sin tolerancia: una hora
+      // en cero corta el período); antes de su primer renglón —cuando empezó a mirarse, 24/09/2026— vale `stockhist`.
+      const periodoStock = (key, t, keyV) => {
+        const k = keyV && slog.cambios && slog.cambios[keyV] ? keyV : key;
+        const c = k && slog.cambios ? slog.cambios[k] : null;
+        const base = periodoHist(key);
+        if (!c || !(t > 0)) return base;
+        const ev = Object.entries(c).map(([ts, v]) => [Number(ts), Number(v)]).filter((x) => x[0] > 0).sort((a, b) => a[0] - b[0]);
+        if (!ev.length) return base;
+        let i = -1; for (let j = 0; j < ev.length; j++) if (ev[j][0] <= t) i = j;
+        if (i < 0) return base && base[0] <= t && base[1] >= t ? [base[0], Math.min(base[1], ev[0][0])] : base;
+        if (ev[i][1] !== 1) return [t, t];                     // en ese momento estaba en CERO
+        const fin = (ev.slice(i + 1).find((x) => x[1] === 0) || [0])[0] || Infinity;
+        // primer renglón = cuando empezó a mirarse: lo de antes lo dice stockhist (si cubre ese momento)
+        const ini = i === 0 && base && base[0] < ev[0][0] && base[1] >= ev[0][0] ? base[0] : ev[i][0];
+        return [ini, fin];
       };
       const RV_MIN_DIAS = 14;   // con menos días al precio viejo no se mide un ritmo
       const cuentaRemate = (ev, costo, finT) => {
@@ -25301,17 +25361,20 @@ async function main() {
         const imp = (mlExtraPct(cuenta) + monoSup) / 100;
         const vs = porMla[ev.mla] || [];
         const key = l.prodId && cuenta ? l.prodId + '__' + sidS(cuenta) : null;
-        const per = periodoStock(key);
-        const desde = per ? per[0] : null;
+        const keyV = l.variant && key ? key + '__v__' + sidS(l.variant) : null;
+        const per = periodoStock(key, ev.ts, keyV);
+        const lv = loteViejoDe(l);
+        const desde = lv || (per ? per[0] : null);
         // La ventana "al precio viejo": desde el cambio anterior de ESA publicación (o 90 días), y nunca antes de que
         // llegara la mercadería. Si el período de stock empezó DESPUÉS del cambio, no se puede saber.
         const prev = (porMlaEv[ev.mla] || []).filter((o) => o !== ev && o.ts < ev.ts - 60e3).sort((a, b) => b.ts - a.ts)[0];
         let ws = Math.max(ev.ts - 90 * 864e5, prev ? prev.ts : -Infinity);
-        let rOld = null, rDias = 0, rNota = '';
+        let rOld = null, rDias = 0, rNota = '', kOld = 0;
         if (per && per[0] <= ev.ts && per[1] >= ev.ts) {
           ws = Math.max(ws, per[0]); rDias = (ev.ts - ws) / 864e5;
           // la venta de la hora anterior al cambio no se cuenta (el robot actúa justo después de una venta)
           const u = vs.filter((x) => x.ts >= ws && x.ts < ev.ts - 36e5).reduce((a, x) => a + x.q, 0);
+          kOld = u;
           if (rDias >= RV_MIN_DIAS) rOld = u / rDias;
           else rNota = `al precio viejo tuvo stock sólo ${Math.round(rDias)} d`;
         } else rNota = 'no se sabe si tenía stock antes del cambio';
@@ -25320,6 +25383,11 @@ async function main() {
           const r60 = vs.filter((x) => x.ts < ev.ts && x.ts >= ev.ts - 60 * 864e5).reduce((a, x) => a + x.q, 0) / 60;
           rOld = Math.max(pdN, r60); rNota += (rNota ? ' · ' : '') + 'se usa el ritmo normal (lado prudente)';
         }
+        // LA REGLA FIRME (04/10/2026, él: "algo firme, que no dependa de una pequeña duda (…) los dos queremos que dé
+        // positivo, estamos sesgados"). El ritmo medido es una muestra: con 0 ventas en 38 días el ritmo de verdad
+        // podía ser 2 por mes. Se toma el TECHO razonable (regla del 3: (ventas + 3) ÷ días con stock), o sea se supone
+        // que sin el robot se vendía lo más que era creíble. Así el robot sólo cobra lo que no se explica ni con eso.
+        const rCf = Math.max(rOld, (kOld + 3) / Math.max(rDias, RV_MIN_DIAS));
         const dv = vs.filter((x) => x.ts > ev.ts + 60e3 && x.ts <= finT).sort((a, b) => a.ts - b.ts);
         // UNIDAD POR UNIDAD (regla suya del 04/10: "pongo un producto al 100%, pasan 40 días y no vende, el robot lo
         // baja al 25% (…) sería injusto restarle por algo que no vendió o no vendió tanto a un precio alto").
@@ -25334,7 +25402,7 @@ async function main() {
           const pu = x.tot / x.q, nu = x.neto / x.q, dR = (x.ts - ev.ts) / 864e5;
           for (let j = 0; j < x.q; j++) {
             i++;
-            const tNat = rOld > 0 ? i / rOld : Infinity;
+            const tNat = rCf > 0 ? i / rCf : Infinity;
             // Pendrive 32gb (04/10): "hay 90 días de stock, lo bajo para que venda" y vendió el doble de rápido.
             // Sólo se resta lo cobrado de menos en las unidades que al precio viejo se vendían DENTRO DE LA MISMA
             // VENTANA medida (ritmo viejo × días medidos). Las que salieron de más en esa ventana son venta que el
@@ -25343,9 +25411,10 @@ async function main() {
               uBase++; base += (pu - ev.de) * (nu / pu);
               const ad = Math.max(0, tNat - dR); if (ad > 0) { adelD += ad; adel += costo * TASA_MES / 30 * ad; uAd.push({ t0: x.ts, ad }); }
             } else {
+              // Salió antes de lo que salía sin el robot. NO se le cuenta la ganancia: esa unidad se vendía igual más
+              // adelante (él: "no podés atribuirle toda la ganancia al bot, y si al otro día se vendía?"). Lo único
+              // nuevo es el TIEMPO: la plata adelantada (1%/mes sobre el costo) y el stock antiguo que se evitó.
               uOk++;
-              const g = nu - costo - pu * imp, mg = (costo + pu * imp) > 0 ? g / (costo + pu * imp) * 100 : 0;
-              if (mg >= 20) gan += g;
               const ad = Math.max(0, Math.min(tNat, ADEL_TOPE) - dR); adelD += ad; adel += costo * TASA_MES / 30 * ad; uAd.push({ t0: x.ts, ad });
             }
           }
@@ -25377,7 +25446,7 @@ async function main() {
         const r1 = (n) => Math.round(n * 10) / 10;
         return { gan: Math.round(gan), base: Math.round(base), alm, almUD, almNota, uOk: r1(uOk), uBase: r1(uBase),
           adel: Math.round(adel), adelD: Math.round(adelD), adelNota: rNota,
-          rOld: Math.round(rOld * 300) / 10, rDias: Math.round(rDias), total: Math.round(gan + base + (alm || 0) + adel) };
+          rOld: Math.round(rOld * 300) / 10, rDias: Math.round(rDias), total: Math.round(base + (alm || 0) + adel), rCf: Math.round(rCf * 300) / 10 };
       };
 
       // ── EL MOTIVO DE CADA CAMBIO (25/09/2026) ────────────────────────────────────
@@ -25725,7 +25794,7 @@ async function main() {
       console.log(`${resumen.ganaron} dejaron más · ${resumen.perdieron} dejaron menos · ${resumen.quiebres} con el volumen sin contar por quiebre de stock`);
       console.log(`No cuentan (🛟 recuperar margen por costo/inflación): ${resumen.rescates.n} cambios · ${$s(resumen.rescates.total)}`);
       console.log(`Remates y escalera: ${resumen.remates.n} · ventas al ${REM_PISO}%+ ${$s(resumen.remates.gan)} · lo que igual se vendía, más barato ${$s(resumen.remates.base)} · almacenamiento evitado ${resumen.remates.almUD} unidades-día${resumen.remates.alm ? ' = ' + $s(resumen.remates.alm) : ''}${resumen.remates.sinTarifa ? ' (falta la tarifa: no suma en pesos)' : ''}`);
-      for (const x of atrib.filter((y) => y.rem)) console.log(`  🔨 ${x.nom} (${x.cuenta}) ${$s(x.de)}→${$s(x.a)} · ${x.dias} d · ritmo al precio viejo ${x.rem.rOld} u/mes (${x.rem.rDias} d con stock${x.rem.adelNota ? ', ' + x.rem.adelNota : ''}) · se vendían igual ${x.rem.uBase} u.: cobrado de menos ${$s(x.rem.base)} · salieron de más por la baja ${x.rem.uOk} u.: ganancia ${$s(x.rem.gan)} · plata adelantada +${$s(x.rem.adel)} (${x.rem.adelD} días-unidad) · stock antiguo evitado ${x.rem.almUD} cierre(s)${x.rem.alm != null ? ' ' + $s(x.rem.alm) : ''}${x.rem.almNota ? ' (' + x.rem.almNota + ')' : ''}`);
+      for (const x of atrib.filter((y) => y.rem)) console.log(`  🔨 ${x.nom} (${x.cuenta}) ${$s(x.de)}→${$s(x.a)} · ${x.dias} d · ritmo al precio viejo ${x.rem.rOld} u/mes (${x.rem.rDias} d con stock${x.rem.adelNota ? ', ' + x.rem.adelNota : ''}) · techo creíble ${x.rem.rCf} u/mes · se vendían igual ${x.rem.uBase} u.: cobrado de menos ${$s(x.rem.base)} · salieron antes por la baja ${x.rem.uOk} u. (sólo cuenta el tiempo, no la ganancia) · plata adelantada +${$s(x.rem.adel)} (${x.rem.adelD} días-unidad) · stock antiguo evitado ${x.rem.almUD} cierre(s)${x.rem.alm != null ? ' ' + $s(x.rem.alm) : ''}${x.rem.almNota ? ' (' + x.rem.almNota + ')' : ''}`);
       { const cm = {}; for (const x of registros) cm[x.motivo] = (cm[x.motivo] || 0) + 1; console.log(`Motivos: ${Object.entries(cm).map(([k, n]) => k + ' ' + n).join(' · ')}`); }
       for (const x of resumen.items.slice(0, 15)) console.log(`  ${x.total >= 0 ? '+' : ''}${$s(x.total)} · ${x.nom} (${x.cuenta}) ${$s(x.de)}→${$s(x.a)} · ${x.dias} d · ${x.uA}→${x.uD} u. · precio ${$s(x.precio)} · volumen ${$s(x.volumen)}${x.quiebre ? ' · sin stock' : ''}`);
       console.log('');
