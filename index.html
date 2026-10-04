@@ -1943,6 +1943,7 @@ function startApp(){
     state.notraer=d.notraer||{};
     state.pausaPrecio=d.pausado_precio||{};   // 'no lo compro por ahora, el precio no da' (se revisa solo)
     state.pySinStock=d.py_sinstock||{};
+    state.techoFull=d.techofull||{};        // a cuánto se puede vender teniendo Full (lo escribe el robot de noche, 04/10/2026)
     state.pyPersonal=d.py_personal||{};     // USO PERSONAL en el pedido (04/10/2026): no es mercadería de CYC
     state.pyArmado=d.py_armado||{};          // unidades de PROBADOS cargadas en el pedido del momento (03/10/2026)       // 'el mayorista no tenía esto hoy' (ver la canasta de US$1.000)
     state.candidatos=d.candidatos_py||{};     // 'Para probar': productos que todavía no vendemos
@@ -2431,7 +2432,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='21.86';
+const APP_VERSION='21.87';
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
 // muestre la versión y la fecha de actualización y que tenga un desplegable predeterminado cerrado".
 // Y el mismo día: "que ponga fecha de cada modificación y haya una barrita para scrollear y que
@@ -2442,6 +2443,7 @@ const APP_VERSION='21.86';
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'21.87',f:'04/10/2026',h:'15:02',c:[{n:3,t:'🇵🇾 Pedidos Paraguay: el máximo de compra tiene en cuenta que tenemos Full. Si el más barato de ML no tiene Full, se calcula vendiendo hasta 10% más caro que él (nunca arriba del más barato con Full). La tarjeta lo dice.'},{n:3,t:'🤖 Robot de precios: la 📈 puede pasar a un competidor sin Full hasta 10%, de a +3%. Si se pierde la caja, en la vuelta de la hora vuelve solo al precio anterior y no lo intenta por 14 días.'}]},
   {v:'21.86',f:'04/10/2026',h:'14:12',c:[{n:1,t:'🌸 Pedido: un perfume cuyo nombre no dice "perfume" (ej. Ferrari Negro) ahora va en PERFUMERÍA: se mira el rubro de su publicación en ML.'}]},
   {v:'21.85',f:'04/10/2026',h:'12:43',c:[{n:3,t:'🤖 Robot de precios: remates y escalera suman ahora la plata que vuelve antes (vender antes de lo que se vendería a su ritmo normal, valorado al 1% por mes en dólares, el interés que paga CYC), además de restar lo cobrado de menos.'}]},
   {v:'21.84',f:'04/10/2026',h:'04:07',c:[{n:2,t:'🧾 Pedido del momento: bloque 🙋 Uso personal. Va en el mensaje a Nissei y en el total a pagar, pero no es de CYC: no cuenta en el tope, no tiene margen y no crea ficha ni stock.'}]},
@@ -14518,7 +14520,7 @@ function pedPyLineaHTML(prod){
   }else partes.push(`<span style="color:var(--muted)" title="Nadie cargó todavía el precio de comprasparaguay de este producto: sin eso no se sabe si conviene reponerlo.">🇵🇾 hoy —</span>`);
   if(r&&!r.motivo){
     if(mx!=null){
-      const donde={caja:`a ${fmt(r.P)}, lo que pide ML para ganar la caja`,ganas:`a ${fmt(r.P)}, tu precio de hoy (ya ganás la caja)`,nocat:`a ${fmt(r.P)}, tu precio de hoy (no es de catálogo)`,hoy:`a ${fmt(r.P)}, tu precio de hoy`,vieja:`a ${fmt(r.P)}, tu precio de hoy (publicaciones pausadas)`}[r.fuente]||'';
+      const donde={full:`a ${fmt(r.P)}, lo que se puede cobrar teniendo Full${r.techo&&r.techo.cS?` (el más barato SIN Full está a ${fmt(r.techo.cS)}: se lo pasa hasta +10%)`:''}${r.techo&&r.techo.cF?` · el más barato CON Full: ${fmt(r.techo.cF)}`:''}`,caja:`a ${fmt(r.P)}, lo que pide ML para ganar la caja`,ganas:`a ${fmt(r.P)}, tu precio de hoy (ya ganás la caja)`,nocat:`a ${fmt(r.P)}, tu precio de hoy (no es de catálogo)`,hoy:`a ${fmt(r.P)}, tu precio de hoy`,vieja:`a ${fmt(r.P)}, tu precio de hoy (publicaciones pausadas)`}[r.fuente]||'';
       partes.push(`<span title="${q(`Lo más que podés pagar (puesto) para quedar en ${r.meta}% vendiendo ${donde}, con todo adentro (comisión, envío de Full, IIBB, monotributo, envío/embalaje y reclamos).${r.usdPy>0?` En la web de Paraguay: ${f2(r.usdPy)} antes del 17%.`:''}${tc>0?' = '+fmt(Math.round(mx*tc))+'.':''}`)}">💰 máx <b>${f2(mx)}</b></span>`);
     }else partes.push(`<span style="color:var(--red)" title="${q(`Vendiendo a ${fmt(r.P)} no hay precio de compra que deje ${r.meta}%.`)}">💰 máx: no llega</span>`);
   }else partes.push(`<span style="color:var(--muted)" title="No hay publicación viva con el neto calculado: no se puede medir.">💰 máx sin medir</span>`);
@@ -14535,6 +14537,21 @@ function maxCompraDe(p,metaPct){
   else if(c&&(c.st==='losing'||c.st==='sharing')&&c.ptw>0){P=Math.round(c.ptw);fuente='caja';}
   else if(c&&c.st==='winning')fuente='ganas';
   else if(!c||c.st==='nocat')fuente='nocat';
+  // TENER FULL VALE PRECIO (04/10/2026). Pedido suyo con el Animale: "si el flaco no tiene Full y
+  // nosotros sí, lo vendemos más caro y seguimos ganando: que al comparar Nissei con ML lo tenga en
+  // cuenta". El robot deja de noche en `cyc/techofull/<MLA>` a cuánto se puede vender: el más barato
+  // CON Full ×0,99 o el más barato SIN Full +10%, el menor. Vale para Paraguay y si no estamos
+  // perdiendo la caja (ahí manda lo que pide ML). Sólo sube el precio de la cuenta, nunca lo baja.
+  let techo=null;
+  if(p.origen==='py'&&fuente!=='caja'){
+    const T=state.techoFull||{};
+    for(const [mla,e] of Object.entries(state.mllinks||{})){
+      if(!e||e.prodId!==p.id||e.ignored||(e.status||'')==='closed')continue;
+      const t=T[mla]; if(!t||!(t.t>0)||Date.now()-(Number(t.ts)||0)>4*864e5)continue;
+      if(!techo||t.t<techo.t)techo=t;
+    }
+    if(techo&&techo.t>P){P=Math.round(techo.t);fuente='full';}else techo=null;
+  }
   const precio=Math.round(mg.precio),gest=Number(mg.gest)||0;
   const comHoy=precio-(Number(mg.neto)||0)-gest;
   if(!(comHoy>0))return {motivo:'sincom'};
@@ -14554,7 +14571,7 @@ function maxCompraDe(p,metaPct){
   const usd=tc>0?(merc/tc-ship)/(1+dev/100):null;
   const chk=simMargen({precio:P,mercaderia:merc,gest,comision:c2.com,impPct,cuotasPct:0});
   return {P,fuente,merc:Math.round(merc),usd,usdPy:usd!=null?usd/RECARGO_PY:null,meta:Math.round(m*100),
-    chk:chk.margen,hoyUSD:costUSDof(p)||0,esPy:p.origen==='py'};
+    chk:chk.margen,hoyUSD:costUSDof(p)||0,esPy:p.origen==='py',techo};
 }
 // Fotos (Paraguay y ML), links y datos básicos de un PROBADO de Paraguay (03/10/2026). La usan la tarjeta de
 // Probados y el renglón del 🧾 Pedido: una sola función, así muestran lo mismo.
@@ -14598,15 +14615,16 @@ function pyProbVeredicto(ped){
   if(!mx||mx.motivo)return{k:'sinrev',txt:'sin margen medido en ML: no se puede saber si da'};
   if(!(mx.usdPy>0))return{k:'noda',txt:`ni regalado llega al ${PY_PROB_PISO}%`};
   const mxW=Math.floor(mx.usdPy*100)/100;
-  if(nu>mxW+0.005)return{k:'noda',txt:`Nissei US$ ${nu.toFixed(2)} · máx para ${PY_PROB_PISO}%: US$ ${mxW.toFixed(2)}`};
-  return{k:'da',txt:`Nissei US$ ${nu.toFixed(2)} · máx US$ ${mxW.toFixed(2)} · mirado hace ${dias} d`};
+  const fullTxt=mx.fuente==='full'?` · vendiéndolo a ${fmt(mx.P)} con Full${mx.techo&&mx.techo.cS?` (el más barato sin Full: ${fmt(mx.techo.cS)})`:''}`:'';
+  if(nu>mxW+0.005)return{k:'noda',txt:`Nissei US$ ${nu.toFixed(2)} · máx para ${PY_PROB_PISO}%: US$ ${mxW.toFixed(2)}${fullTxt}`};
+  return{k:'da',txt:`Nissei US$ ${nu.toFixed(2)} · máx US$ ${mxW.toFixed(2)} · mirado hace ${dias} d${fullTxt}`};
 }
 function maxCompraHTML(p){
   const r=maxCompraDe(p); if(!r)return'';
   const st='flex-basis:100%;font-size:.62rem;line-height:1.5;margin-top:2px';
   if(r.motivo)return `<div style="${st};color:var(--muted)">💰 Máximo para comprar: <span style="color:var(--amber)">sin medir</span> (no hay publicación viva con el neto calculado)</div>`;
   if(!(r.merc>0)||!(r.usd>0))return `<div style="${st};color:var(--red)">💰 Vendiendo a ${fmt(r.P)} ${r.fuente==='caja'?'(lo que pide ML para ganar la caja)':''} <b>no hay precio de compra que deje ${r.meta}%</b>: ni regalado llega.</div>`;
-  const donde={caja:`a ${fmt(r.P)}, lo que pide ML para ganar la caja`,ganas:`a ${fmt(r.P)}, tu precio de hoy (ya ganás la caja)`,nocat:`a ${fmt(r.P)}, tu precio de hoy (no es de catálogo: no hay competidor medido)`,hoy:`a ${fmt(r.P)}, tu precio de hoy`,vieja:`a ${fmt(r.P)}, tu precio de hoy (sus publicaciones están pausadas: la caja de compra que se ve es de cuando estaban activas y no se usa)`}[r.fuente];
+  const donde={full:`a ${fmt(r.P)}, lo que se puede cobrar teniendo Full${r.techo&&r.techo.cS?` (el más barato SIN Full está a ${fmt(r.techo.cS)}: se lo pasa hasta +10%)`:''}${r.techo&&r.techo.cF?` · el más barato CON Full: ${fmt(r.techo.cF)}`:''}`,caja:`a ${fmt(r.P)}, lo que pide ML para ganar la caja`,ganas:`a ${fmt(r.P)}, tu precio de hoy (ya ganás la caja)`,nocat:`a ${fmt(r.P)}, tu precio de hoy (no es de catálogo: no hay competidor medido)`,hoy:`a ${fmt(r.P)}, tu precio de hoy`,vieja:`a ${fmt(r.P)}, tu precio de hoy (sus publicaciones están pausadas: la caja de compra que se ve es de cuando estaban activas y no se usa)`}[r.fuente];
   const cmp=r.hoyUSD>0?(r.hoyUSD<=r.usd?` · hoy lo pagaste US$ ${r.hoyUSD.toFixed(2).replace('.',',')} <span style="color:var(--green)">✓ entra</span>`:` · hoy lo pagaste US$ ${r.hoyUSD.toFixed(2).replace('.',',')} <span style="color:var(--red)">✕ te pasás</span>`):'';
   const py=r.esPy&&r.usdPy>0?` · en la web de Paraguay: <b>US$ ${r.usdPy.toFixed(2).replace('.',',')}</b> (antes del 17%)`:'';
   return `<div style="${st};color:var(--muted)" title="Es lo más que podés pagar la mercadería para que, vendiéndola ${donde}, te quede ${r.meta}% con todo adentro (comisión de ML a ese precio, envío de Full, IIBB, monotributo, envío/embalaje y reclamos). Puesta en tu oficina: ${fmt(r.merc)}.">💰 Máximo para comprar: <b style="color:var(--text)">US$ ${r.usd.toFixed(2).replace('.',',')}</b>${py} · para quedar en ${r.meta}% vendiendo ${donde}${cmp}</div>`;

@@ -3036,6 +3036,148 @@ async function calcPrueba(db, o) {
   }
   return res;
 }
+
+// ── A CUÁNTO SE PUEDE VENDER TENIENDO FULL (04/10/2026) ─────────────────────────────────────────
+// Pedido suyo con el Animale Sexy Mujer: Pedidos Paraguay decía "no da" midiendo a NUESTRO precio de
+// hoy ($80.000), cuando el más barato del catálogo NO tiene Full ($81.000) y nosotros sí: *"lo
+// vendemos a 85.000 quedamos ganando porque el flaco no tiene full (…) lo que yo dije que sea
+// automático es que al comparar precio de nissei y ml tenga en cuenta eso"*. Y el tope, también suyo:
+// *"un comprador no paga $15.000 de más solo porque le llegue un día antes (…) lo importante es estar
+// en ganando"* → se le pasa a uno SIN Full como mucho **10%** (`TECHO_PASA_SIN_FULL`).
+// El techo de cada publicación de catálogo (activa o pausada, con ficha):
+//   · el más barato CON Full o Flex (de otro vendedor) × 0,99 — a ése no se lo pasa nunca;
+//   · el más barato SIN Full × 1,10;
+//   · se queda con el MENOR de los dos. Sin competidores: no hay techo.
+//   · la barrera de $33.000 no se cruza si hoy estamos abajo, y nunca arriba de $650.000.
+// Los del exterior (`cbt`) no cuentan, como en todo el robot. Se guarda en `cyc/techofull/<MLA>`
+// (aparte de mllinks: el alta y la venta reescriben esos renglones) y la pantalla lo usa en el
+// máximo de compra de Paraguay. SÓLO LEE DE ML: no toca ningún precio.
+const TECHO_PASA_SIN_FULL = 0.10;
+function techoConFull(ofertas, precioHoy) {
+  const ofs = (ofertas || []).filter((o) => o && Number(o.price) > 0 && !esOfertaDeAfuera(o));
+  if (!ofs.length) return null;
+  const rapido = (o) => esOfertaFull(o) || esOfertaFlex(o);
+  const cF = ofs.filter(rapido).map((o) => Number(o.price));
+  const cS = ofs.filter((o) => !rapido(o)).map((o) => Number(o.price));
+  const minF = cF.length ? Math.min(...cF) : 0, minS = cS.length ? Math.min(...cS) : 0;
+  const tF = minF ? Math.floor((minF * 0.99) / 10) * 10 : Infinity;
+  const tS = minS ? Math.floor((minS * (1 + TECHO_PASA_SIN_FULL)) / 10) * 10 : Infinity;
+  let t = Math.min(tF, tS);
+  if (!isFinite(t)) return null;
+  let barrera = false;
+  if (precioHoy > 0 && precioHoy < UMBRAL_ENVIO_GRATIS && t >= UMBRAL_ENVIO_GRATIS) { t = UMBRAL_ENVIO_GRATIS - 1; barrera = true; }
+  t = Math.min(t, 650000);
+  return { t, cF: minF || null, cS: minS || null, nF: cF.length, nS: cS.length, por: tF <= tS ? 'full' : 'sinfull', barrera };
+}
+async function calcTechoFull(db, o) {
+  const { labels = [], accounts = {}, DRY = true } = o || {};
+  const links = (await db.get('cyc/mllinks')) || {};
+  const sids = {}; for (const l of labels) if (accounts[l]?.seller_id) sids[String(accounts[l].seller_id)] = l;
+  const out = {}, res = { mirados: 0, catalogo: 0, conTecho: 0, sinComp: 0, fallos: [], leidas: {}, pasa: [] };
+  const cacheCat = {};
+  for (const label of labels) {
+    const acc = accounts[label]; if (!acc?.refresh_token) continue;
+    let tok;
+    try {
+      const t = await mlRefresh(ML_CLIENT_ID, ML_CLIENT_SECRET, acc.refresh_token);
+      await db.patch('mlapi/tokens/' + label, { refresh_token: t.refresh_token, updated_ts: Date.now() });
+      tok = t.access_token;
+    } catch { res.fallos.push(label + ' (token)'); continue; }
+    const ids = Object.entries(links).filter(([m, e]) => m.startsWith('MLA') && e && e.cuenta === label && e.prodId
+      && !e.ignored && !e.noVendemosMas && (e.status || '') !== 'closed').map(([m]) => m);
+    let ok = true;
+    for (let k = 0; k < ids.length; k += 20) {
+      let arr;
+      try { arr = await mlGet('/items?ids=' + ids.slice(k, k + 20).join(',') + '&attributes=id,price,status,catalog_product_id', tok); }
+      catch { ok = false; continue; }
+      for (const row of (arr || [])) {
+        const b = row && row.body; if (!b || !b.id) continue;
+        res.mirados++;
+        if (!b.catalog_product_id) continue;
+        res.catalogo++;
+        const cp = b.catalog_product_id;
+        if (cacheCat[cp] === undefined) {
+          try { const comp = await mlGet(`/products/${cp}/items`, tok); cacheCat[cp] = comp?.results || []; }
+          catch (e) { cacheCat[cp] = /: 404\b/.test(String(e && e.message)) ? [] : null; }
+          await new Promise((r) => setTimeout(r, 150));
+        }
+        if (cacheCat[cp] == null) { ok = false; continue; }
+        const otros = cacheCat[cp].filter((x) => x && !sids[String(x.seller_id)]);
+        const tc = techoConFull(otros, Number(b.price) || 0);
+        if (!tc) { out[b.id] = null; res.sinComp++; continue; }
+        out[b.id] = { ...tc, p: Math.round(Number(b.price) || 0), st: b.status || null, ts: Date.now() };
+        res.conTecho++;
+        if (tc.cS && tc.t > tc.cS) res.pasa.push({ mla: b.id, cuenta: label, nom: String((links[b.id] || {}).title || '').slice(0, 40), p: Math.round(Number(b.price) || 0), ...tc });
+      }
+    }
+    res.leidas[label] = ok;
+  }
+  if (!DRY && Object.keys(out).length) await db.patch('cyc/techofull', out);
+  return res;
+}
+// ── SI AL PASAR AL QUE NO TIENE FULL SE PERDIÓ LA CAJA, SE VUELVE SOLO (04/10/2026) ─────────────
+// La 📈 de la noche puede pasar a un competidor SIN Full hasta 10% (`calcSubirPuede`). Si en las
+// 48 h siguientes la vuelta de la hora ve que esa publicación ya no gana la caja y el precio sigue
+// siendo el que puso el robot, lo vuelve al de antes y no lo intenta de nuevo por 14 días
+// (`vueltoSinFull`). Bajar pasa por `setPriceTo` con el margen medido al precio de antes (comisión
+// preguntada a ML, envío, cuotas, IIBB y monotributo): si ese margen no llega al piso, no se toca y
+// queda en el log. Con `autoPrecios: off` no hace nada.
+async function volverSinFull(db, accounts, labels, DRY) {
+  const out = { mirados: 0, vueltos: [], no: [] };
+  const cfg = (await db.get('cyc/mlconfig')) || {};
+  if (String(cfg.autoPrecios || '').toLowerCase() === 'off') return out;
+  const ap = (await db.get('cyc/autoprecio')) || {};
+  const ahora = Date.now();
+  const cand = Object.entries(ap).filter(([, r]) => r && r.pasaSinFull && !r.vueltoSinFull && r.tipo === 'sube'
+    && ahora - (Number(r.ts) || 0) < 48 * 3600e3 && Number(r.de) > 0 && Number(r.a) > Number(r.de));
+  if (!cand.length) return out;
+  const links = (await db.get('cyc/mllinks')) || {};
+  const pIdx = {}; for (const p of Object.values((await db.get('cyc/products')) || {})) if (p && p.id) pIdx[p.id] = p;
+  const tc = parseFloat(((await db.get('cyc/finanzas')) || {}).tipo_cambio) || 0;
+  const monoP = parseFloat(((await db.get('cyc/monotributo')) || {}).pct) || 0;
+  const vp = (await db.get('cyc/ventaprod')) || {}; setDevLive(vp);
+  const tok = {};
+  for (const [mla, r] of cand) {
+    const e = links[mla] || {};
+    out.mirados++;
+    const no = (why) => out.no.push({ mla, nom: r.nom || '', why });
+    if (e.caja !== 'losing' && e.caja !== 'sharing') continue;   // sigue ganando: queda
+    const cta = e.cuenta || r.cuenta;
+    if (!(tc > 0)) { no('sin dólar cargado: no mido el margen'); continue; }
+    if (tok[cta] === undefined) {
+      try { const acc = accounts[cta]; const t = await mlRefresh(ML_CLIENT_ID, ML_CLIENT_SECRET, acc.refresh_token);
+        await db.patch('mlapi/tokens/' + cta, { refresh_token: t.refresh_token, updated_ts: Date.now() }); tok[cta] = t.access_token; }
+      catch { tok[cta] = null; }
+    }
+    const tk = tok[cta]; if (!tk) { no('sin token'); continue; }
+    let b; try { b = await mlGet(`/items/${mla}?attributes=id,price,listing_type_id,category_id,site_id,variations,status`, tk); } catch { b = null; }
+    if (!b || !(b.price > 0)) { no('ML no devolvió la publicación'); continue; }
+    if ((b.variations || []).length) { no('tiene variantes'); continue; }
+    if (Math.abs(Number(b.price) - Number(r.a)) > 10) { no('el precio ya no es el que puso el robot: no se toca'); continue; }
+    let cj = null; try { cj = await mlGet('/items/' + mla + '/price_to_win?version=v2', tk); } catch { cj = null; }
+    if (!cj || !cj.status) { no('ML no contestó la caja'); continue; }
+    if (cj.status === 'winning') continue;
+    const de = Math.round(Number(r.de));
+    const costo = (() => { try { return costoPesos(pIdx[e.prodId], 1, tc).costo || 0; } catch { return 0; } })();
+    let cuo = null; try { const cq = (await db.get('cyc/mlcuotas/' + mla)) || {}; cuo = cuotaPremiumDe({ [mla]: cq.pct != null ? cq : undefined }, mla, b.listing_type_id); } catch { cuo = null; }
+    let com = null;
+    try { const d = await mlGet(`/sites/${b.site_id || 'MLA'}/listing_prices?price=${de}&listing_type_id=${b.listing_type_id}&category_id=${b.category_id}`, tk);
+      const ob = Array.isArray(d) ? d[0] : d; if (typeof ob?.sale_fee_amount === 'number') com = ob.sale_fee_amount; } catch { com = null; }
+    let env = 0;
+    if (de >= UMBRAL_ENVIO_GRATIS) { let rr = null; try { rr = await envioSegunML(mla, tk); } catch { rr = null; } env = rr && Number(rr.envio) > 0 ? Number(rr.envio) : null; }
+    if (!(costo > 0) || cuo == null || com == null || env == null) { no('no pude medir el margen al precio de antes'); continue; }
+    const m = (mlExtraPct(cta) + monoP) / 100;
+    const mg = (de - com - de * cuo - env - costo - de * m) / (costo + de * m + env) * 100;
+    if (DRY) { out.vueltos.push({ mla, nom: r.nom, de: r.a, a: de, mg, prueba: true }); continue; }
+    try { await db.patch('cyc/autoprecio/' + mla, { vueltoSinFull: ahora }); } catch { no('no pude anotar la vuelta: no la hago a ciegas'); continue; }
+    const res = await setPriceTo(mla, null, de, tk, { margen: Math.floor(mg * 10) / 10 - 0.5 });
+    if (!res || !res.ok) { no(`no se pudo volver (${String((res && res.err) || '?').slice(0, 70)}) · queda en ${money(r.a)}`); continue; }
+    let quedo = null; try { quedo = Number((await mlGet('/items/' + mla + '?attributes=price', tk))?.price) || null; } catch { quedo = null; }
+    try { await db.set('cyc/autoprecio/' + mla, { tipo: 'baja', por: 'volver', de: Number(r.a), a: res.to || de, ts: Date.now(), nom: r.nom || '', cuenta: cta, vueltoSinFull: ahora, margen: Math.round(mg * 10) / 10 }); } catch { /* */ }
+    out.vueltos.push({ mla, nom: r.nom, de: r.a, a: res.to || de, mg, quedo });
+  }
+  return out;
+}
 async function calcSubirPuede(db, o) {
   const { dias = 30, maxSuba = 0.10, products = [], labels = [], accounts = {} } = o || {};
   const COLCHON = 0.99;      // 1% abajo del competidor: quedar a $4 es demasiado al filo
@@ -3143,6 +3285,11 @@ async function calcSubirPuede(db, o) {
     return true;
   });
   const liquidando = nosubirOk ? Object.keys(nosubir).length : 0;
+  // Lo que el robot ya devolvió por haber perdido la caja al pasar a uno sin Full: 14 días sin probar.
+  const vueltoSinFull = {};
+  try { const ap = (await db.get('cyc/autoprecio')) || {};
+    for (const [m, r] of Object.entries(ap)) if (r && r.vueltoSinFull && Date.now() - Number(r.vueltoSinFull) < 14 * 864e5) vueltoSinFull[m] = true;
+  } catch { /* sin memoria: no se pasa a nadie (abajo, `vueltoSinFull` no se puede consultar) */ for (const m of Object.keys(links)) vueltoSinFull[m] = true; }
   let sinCat = 0, sinLugar = 0, sinDato = 0;
   for (const [mla, e] of Object.entries(links)) {
     if (!e || !e.prodId || e.ignored || (e.status || '') !== 'active') continue;
@@ -3164,12 +3311,29 @@ async function calcSubirPuede(db, o) {
     if (!precio || !b?.catalog_product_id) { sinDato++; continue; }
     let comp = null;
     try { comp = await mlGet(`/products/${b.catalog_product_id}/items`, tk); } catch { sinDato++; continue; }
-    const res = (comp?.results || []).filter((x) => x && x.price > 0 && !sids[String(x.seller_id)]);
+    const res = (comp?.results || []).filter((x) => x && x.price > 0 && !sids[String(x.seller_id)] && !esOfertaDeAfuera(x));
     const arriba = res.filter((x) => x.price > precio).sort((a, b2) => a.price - b2.price);
     if (!arriba.length) { sinLugar++; continue; }          // nadie arriba: no se puede acotar
-    const techo = Math.floor((arriba[0].price * COLCHON) / 10) * 10;
+    // PASAR AL QUE NO TIENE FULL (04/10/2026, "dale, armalo con 10%"). El de arriba que tiene Full
+    // (o Flex) es un techo duro, como siempre. El que NO tiene Full se puede pasar, pero nunca más de
+    // 10% arriba del más barato sin Full del catálogo (`TECHO_PASA_SIN_FULL`, la misma cuenta que usa
+    // Pedidos Paraguay): "un comprador no paga $15.000 de más por un día antes". Al pasarlo se sube
+    // de a +3% (`PASO_PASA`), y si la caja se pierde la vuelta de la hora lo devuelve solo.
+    const rapido = (x) => esOfertaFull(x) || esOfertaFlex(x);
+    const arribaF = arriba.filter(rapido);
+    const sinF = res.filter((x) => !rapido(x)).map((x) => x.price);
+    const minS = sinF.length ? Math.min(...sinF) : 0;
+    const techoViejo = Math.floor((arriba[0].price * COLCHON) / 10) * 10;
+    const techoF = arribaF.length ? Math.floor((arribaF[0].price * COLCHON) / 10) * 10 : Infinity;
+    const techoS = minS ? Math.floor((minS * (1 + TECHO_PASA_SIN_FULL)) / 10) * 10 : Infinity;
+    let techo = techoViejo, pasaSinFull = false;
+    if (!vueltoSinFull[mla]) {
+      const tNuevo = Math.min(techoF, Math.max(techoViejo, techoS));
+      if (isFinite(tNuevo) && tNuevo > techoViejo) { techo = tNuevo; pasaSinFull = true; }
+    }
     if (techo <= precio * (1 + MIN_AIRE)) { sinLugar++; continue; }
-    const escalon = Math.floor((precio * (1 + maxSuba)) / 10) * 10;
+    const PASO_PASA = 0.035;
+    const escalon = Math.floor((precio * (1 + (pasaSinFull && precio * (1 + PASO_PASA) > techoViejo ? PASO_PASA : maxSuba))) / 10) * 10;
     const cortoPorEscalon = escalon < techo;
     const techo2 = Math.min(techo, escalon);
     // LA BARRERA DE LOS $33.000 NO SE CRUZA (regla suya del 13/08/2026).
@@ -3179,6 +3343,7 @@ async function calcSubirPuede(db, o) {
     const dsF = diasStockDe(e);
     filas.push({ mla, cuenta: e.cuenta, nom: (p.name || '').slice(0, 34), precio, tope, topeMax: tope,
       rival: arriba[0].price, u: uMes[mla] || 0, techo, cortoPorEscalon,
+      pasaSinFull: pasaSinFull && Math.min(techo, escalon) > techoViejo, rivalSinFull: minS || null,
       topeBarrera: tope !== techo2, conVars: conVarsSub,
       diasSin: diasSinDe(mla), st: dsF ? dsF.st : null, diasStock: dsF ? dsF.dias : null });
   }
@@ -9044,7 +9209,7 @@ async function main() {
             : t.tipo === 'remate'
               ? { tipo: 'baja', por: 'remate', de: r.from || f.precio, a: r.to || t.a, ts: hoyTs, nom: f.nom, cuenta: f.cuenta, margen: Math.round(f.mgPw * 10) / 10, piso: t.piso }
               : { tipo: t.tipo, de: r.from || f.precio, a: r.to || t.a, ts: hoyTs, nom: f.nom, cuenta: f.cuenta,
-                ...(t.tipo === 'sube' ? { u30: f.u } : { margen: Math.round(f.mgPw * 10) / 10 }) };
+                ...(t.tipo === 'sube' ? { u30: f.u, ...(f.pasaSinFull ? { pasaSinFull: true, rivalSinFull: f.rivalSinFull || null } : {}) } : { margen: Math.round(f.mgPw * 10) / 10 }) };
           await _anotar(() => db.set('cyc/autoprecio/' + f.mla, reg), 'el registro del robot (autoprecio)', f);
           if (autoprecio) autoprecio[f.mla] = reg;   // etapa 4: la memoria de esta corrida también se entera
           if (t.tipo === 'escalera') {
@@ -17997,6 +18162,22 @@ async function main() {
       return;
     }
 
+    // `techofull[:go]` (04/10/2026): a cuánto se puede vender cada publicación de catálogo teniendo
+    // Full (ver `calcTechoFull`). Sin `:go` sólo muestra; con `:go` guarda `cyc/techofull`, que usa
+    // Pedidos Paraguay para el máximo de compra. Corre solo en ml-daily antes de los avisos.
+    if (/^techofull(:|$)/.test(String(process.env.BILLING_PROBE || ''))) {
+      const GO = /:go$/.test(String(process.env.BILLING_PROBE || ''));
+      console.log(`=== TECHO CON FULL ${GO ? '(SE GUARDA)' : '(PRUEBA: no se guarda nada)'} ===\n`);
+      const r = await calcTechoFull(db, { labels, accounts, DRY: !GO });
+      console.log(`Publicaciones con ficha: ${r.mirados} · de catálogo: ${r.catalogo} · con techo: ${r.conTecho} · sin competidores: ${r.sinComp}`);
+      for (const [l, ok] of Object.entries(r.leidas)) if (!ok) console.log(`⚠️ ${l}: alguna lectura falló (lo que no se leyó queda como estaba)`);
+      if (r.fallos.length) console.log(`⚠️ no pude entrar a: ${r.fallos.join(', ')}`);
+      console.log(`\n── Donde el más barato NO tiene Full y se lo puede pasar (hasta +${Math.round(TECHO_PASA_SIN_FULL * 100)}%) · ${r.pasa.length} ──`);
+      for (const f of r.pasa.sort((a, b) => (b.t / b.p) - (a.t / a.p)).slice(0, 60)) {
+        console.log(`  ${f.mla} (${f.cuenta}) · hoy ${money(f.p)} · sin Full ${money(f.cS)}${f.cF ? ` · con Full ${money(f.cF)}` : ' · nadie más con Full'} → techo ${money(f.t)}${f.barrera ? ' (barrera $33.000)' : ''}`);
+      }
+      return;
+    }
     // BILLING_PROBE=subirpuede[:<días>] → ¿DÓNDE HAY LUGAR PARA SUBIR SIN PERDER VENTAS?
     //
     // Pregunta suya del 12/09/2026: *"se puede automatizar que se aumente sola una publicacion que
@@ -36766,6 +36947,12 @@ async function main() {
       console.log(`🥊 Caja de compra · ${rb.mirados} publicaciones activas · ganamos ${rb.winning} · compartimos ${rb.sharing} · perdemos ${rb.losing} · sin catálogo ${rb.nocat}`);
       console.log(`🏷️  Rubros · ${rb.cats.size} categorías distintas · ${rb.catsNuevas} nombre(s) nuevo(s)${rb.catsFaltan ? ` · quedan ${rb.catsFaltan} para la vuelta siguiente` : ''} · 📷 ${rb.fotos} con foto`);
     } catch (e) { console.log('No pude leer la caja de compra: ' + e.message); }
+    // Si una suba que pasó a un competidor sin Full perdió la caja, se vuelve al precio anterior (04/10/2026).
+    try {
+      const vs = await volverSinFull(db, accounts, labels, DRY);
+      for (const x of vs.vueltos) console.log(`↩️ ${x.nom} (${x.mla}): pasé al que no tiene Full y perdí la caja → vuelvo ${money(x.de)} → ${money(x.a)} (${x.mg.toFixed(1)}%)${x.prueba ? ' [prueba]' : ''}`);
+      for (const x of vs.no) console.log(`↩️ ${x.nom} (${x.mla}): perdió la caja después de pasar al que no tiene Full, NO lo volví: ${x.why}`);
+    } catch (e) { console.log('No pude revisar las subas que pasaron a uno sin Full: ' + e.message); }
 
     // LA REPUTACIÓN DE LAS CUATRO CUENTAS. Va acá al lado y no en un bloque propio porque es lo
     // mismo: una lectura horaria que no toca ML ni precios, sólo anota en el panel.
