@@ -2431,7 +2431,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='21.85';
+const APP_VERSION='21.86';
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
 // muestre la versión y la fecha de actualización y que tenga un desplegable predeterminado cerrado".
 // Y el mismo día: "que ponga fecha de cada modificación y haya una barrita para scrollear y que
@@ -2442,6 +2442,7 @@ const APP_VERSION='21.85';
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'21.86',f:'04/10/2026',h:'14:12',c:[{n:1,t:'🌸 Pedido: un perfume cuyo nombre no dice "perfume" (ej. Ferrari Negro) ahora va en PERFUMERÍA: se mira el rubro de su publicación en ML.'}]},
   {v:'21.85',f:'04/10/2026',h:'12:43',c:[{n:3,t:'🤖 Robot de precios: remates y escalera suman ahora la plata que vuelve antes (vender antes de lo que se vendería a su ritmo normal, valorado al 1% por mes en dólares, el interés que paga CYC), además de restar lo cobrado de menos.'}]},
   {v:'21.84',f:'04/10/2026',h:'04:07',c:[{n:2,t:'🧾 Pedido del momento: bloque 🙋 Uso personal. Va en el mensaje a Nissei y en el total a pagar, pero no es de CYC: no cuenta en el tope, no tiene margen y no crea ficha ni stock.'}]},
   {v:'21.83',f:'03/10/2026',h:'22:00',c:[{n:1,t:'📈 Línea de tiempo: en productos con colores/aromas se puede elegir cada variante (arranca en "Todas juntas"): stock, ventas, visitas, precio y ganancia de ese color solo.'},{n:3,t:'Robot de precios: si el tope de +25% por suba dejó un rescate corto de la meta (ej. Pizarra Mágica en 21%), la noche siguiente lo sigue subiendo hasta el 25%.'}]},
@@ -11804,7 +11805,22 @@ function pyArmadoFilas(){
 // EL MENSAJE PARA NISSEI SALE EN DOS BLOQUES: PERFUMERÍA Y EL RESTO (03/10/2026, lo pidió Nissei). Perfume = el
 // nombre dice perfume/EDP/EDT/parfum/eau de/body splash/colonia/fragrance (misma idea que `repartopy` del robot).
 // Si todo es de un solo lado, sale la lista sola. Lo usan los tres lugares que arman el mensaje.
-function esPerfumeNom(t){return /perfum|\bedp\b|\bedt\b|parfum|eau de|body splash|body mist|col[oô]nia|fragr[aâ]n|\bsplash\b/i.test(String(t||''));}
+const _PERF_RE=/perfum|\bedp\b|\bedt\b|parfum|eau de|body splash|body mist|col[oô]nia|fragr[aâ]n|\bsplash\b/i;
+// CON EL NOMBRE SOLO NO ALCANZA (04/10/2026): "Ferrari Negro" es perfume y el nombre no lo dice. Si el nombre no
+// lo nombra, se mira la ficha con ese nombre: el rubro de ML de sus publicaciones (`dom`, ej. MLA-PERFUMES) o su
+// título; y si es un candidato, el título del catálogo de ML que midió el robot (`mlTit`).
+function esPerfumeNom(t){
+  const n=String(t||'').trim(); if(!n)return false; if(_PERF_RE.test(n))return true;
+  const nl=n.toLowerCase();
+  const p=(state.products||[]).find(x=>String(x.name||'').trim().toLowerCase()===nl);
+  if(p)for(const e of Object.values(state.mllinks||{})){
+    if(!e||e.prodId!==p.id)continue;
+    if(/PERFUME|FRAGRANCE|COLOGNE|BODY_SPLASH|BODY_MIST/i.test(String(e.dom||''))||_PERF_RE.test(String(e.title||'')))return true;
+  }
+  for(const c of Object.values(state.candidatos||{}))
+    if(c&&String(c.nombre||'').trim().toLowerCase()===nl&&_PERF_RE.test(String(c.mlTit||'')))return true;
+  return false;
+}
 function nisseiMsgLineas(items){
   const t=x=>`${x.cod} x ${x.u}`;
   const p=items.filter(x=>esPerfumeNom(x.nom)).map(t), r=items.filter(x=>!esPerfumeNom(x.nom)).map(t);
