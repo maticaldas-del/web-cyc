@@ -25328,20 +25328,25 @@ async function main() {
         // Si cae más allá (o el ritmo viejo es cero): a ese precio no salía → NO se resta nada; se suma su ganancia
         // si quedó en 20% o más (regla suya del 25/09) y lo ahorrado en 180 días (plata y stock antiguo).
         let base = 0, gan = 0, adel = 0, adelD = 0, uBase = 0, uOk = 0; const uAd = []; let i = 0;
+        const ventL = Math.min(ADEL_TOPE, Math.max(0, (finT - ev.ts) / 864e5));
         for (const x of dv) {
           if (!(x.tot > 0) || !(x.neto > 0)) continue;
           const pu = x.tot / x.q, nu = x.neto / x.q, dR = (x.ts - ev.ts) / 864e5;
           for (let j = 0; j < x.q; j++) {
             i++;
             const tNat = rOld > 0 ? i / rOld : Infinity;
-            if (tNat <= ADEL_TOPE) {
+            // Pendrive 32gb (04/10): "hay 90 días de stock, lo bajo para que venda" y vendió el doble de rápido.
+            // Sólo se resta lo cobrado de menos en las unidades que al precio viejo se vendían DENTRO DE LA MISMA
+            // VENTANA medida (ritmo viejo × días medidos). Las que salieron de más en esa ventana son venta que el
+            // precio viejo no daba en ese plazo: no se castigan (suma su ganancia si quedó en 20%+, regla del 25/09).
+            if (tNat <= ventL) {
               uBase++; base += (pu - ev.de) * (nu / pu);
               const ad = Math.max(0, tNat - dR); if (ad > 0) { adelD += ad; adel += costo * TASA_MES / 30 * ad; uAd.push({ t0: x.ts, ad }); }
             } else {
               uOk++;
               const g = nu - costo - pu * imp, mg = (costo + pu * imp) > 0 ? g / (costo + pu * imp) * 100 : 0;
               if (mg >= 20) gan += g;
-              const ad = Math.max(0, ADEL_TOPE - dR); adelD += ad; adel += costo * TASA_MES / 30 * ad; uAd.push({ t0: x.ts, ad });
+              const ad = Math.max(0, Math.min(tNat, ADEL_TOPE) - dR); adelD += ad; adel += costo * TASA_MES / 30 * ad; uAd.push({ t0: x.ts, ad });
             }
           }
         }
@@ -25720,7 +25725,7 @@ async function main() {
       console.log(`${resumen.ganaron} dejaron más · ${resumen.perdieron} dejaron menos · ${resumen.quiebres} con el volumen sin contar por quiebre de stock`);
       console.log(`No cuentan (🛟 recuperar margen por costo/inflación): ${resumen.rescates.n} cambios · ${$s(resumen.rescates.total)}`);
       console.log(`Remates y escalera: ${resumen.remates.n} · ventas al ${REM_PISO}%+ ${$s(resumen.remates.gan)} · lo que igual se vendía, más barato ${$s(resumen.remates.base)} · almacenamiento evitado ${resumen.remates.almUD} unidades-día${resumen.remates.alm ? ' = ' + $s(resumen.remates.alm) : ''}${resumen.remates.sinTarifa ? ' (falta la tarifa: no suma en pesos)' : ''}`);
-      for (const x of atrib.filter((y) => y.rem)) console.log(`  🔨 ${x.nom} (${x.cuenta}) ${$s(x.de)}→${$s(x.a)} · ${x.dias} d · ritmo al precio viejo ${x.rem.rOld} u/mes (${x.rem.rDias} d con stock${x.rem.adelNota ? ', ' + x.rem.adelNota : ''}) · se vendían igual ${x.rem.uBase} u.: cobrado de menos ${$s(x.rem.base)} · a ese precio no salían ${x.rem.uOk} u.: ganancia ${$s(x.rem.gan)} · plata adelantada +${$s(x.rem.adel)} (${x.rem.adelD} días-unidad) · stock antiguo evitado ${x.rem.almUD} cierre(s)${x.rem.alm != null ? ' ' + $s(x.rem.alm) : ''}${x.rem.almNota ? ' (' + x.rem.almNota + ')' : ''}`);
+      for (const x of atrib.filter((y) => y.rem)) console.log(`  🔨 ${x.nom} (${x.cuenta}) ${$s(x.de)}→${$s(x.a)} · ${x.dias} d · ritmo al precio viejo ${x.rem.rOld} u/mes (${x.rem.rDias} d con stock${x.rem.adelNota ? ', ' + x.rem.adelNota : ''}) · se vendían igual ${x.rem.uBase} u.: cobrado de menos ${$s(x.rem.base)} · salieron de más por la baja ${x.rem.uOk} u.: ganancia ${$s(x.rem.gan)} · plata adelantada +${$s(x.rem.adel)} (${x.rem.adelD} días-unidad) · stock antiguo evitado ${x.rem.almUD} cierre(s)${x.rem.alm != null ? ' ' + $s(x.rem.alm) : ''}${x.rem.almNota ? ' (' + x.rem.almNota + ')' : ''}`);
       { const cm = {}; for (const x of registros) cm[x.motivo] = (cm[x.motivo] || 0) + 1; console.log(`Motivos: ${Object.entries(cm).map(([k, n]) => k + ' ' + n).join(' · ')}`); }
       for (const x of resumen.items.slice(0, 15)) console.log(`  ${x.total >= 0 ? '+' : ''}${$s(x.total)} · ${x.nom} (${x.cuenta}) ${$s(x.de)}→${$s(x.a)} · ${x.dias} d · ${x.uA}→${x.uD} u. · precio ${$s(x.precio)} · volumen ${$s(x.volumen)}${x.quiebre ? ' · sin stock' : ''}`);
       console.log('');
