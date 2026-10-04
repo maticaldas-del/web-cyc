@@ -41,7 +41,7 @@ process.on('SIGTERM', () => _alCortar('SIGTERM'));
 // ML, Mercado Pago y Telegram en sólo lectura (se deja renovar y guardar el token de ML, que ML rota).
 const EN_CONSULTA = process.env.GITHUB_WORKFLOW === 'ml-consulta' || process.env.ML_CONSULTA === '1';
 const CONSULTA_ESCRIBE = new Set(['vincular', 'pasara', 'nomandar', 'fijarvar', 'cupo', 'poncosto', 'tamfull', 'lotesfull']);
-const CONSULTA_NIEGA = new Set(['ofi', 'ancla', 'responder', 'pyped', 'cajallego', 'abrircaja', 'compray', 'pedir', 'dispo', 'saldoml',
+const CONSULTA_NIEGA = new Set(['candcuotas', 'ofi', 'ancla', 'responder', 'pyped', 'cajallego', 'abrircaja', 'compray', 'pedir', 'dispo', 'saldoml',
   'armarsaldo', 'avisos', 'cajasllegaron', 'netoweb', 'netoreal', 'candidatos', 'supervisor', 'sacapromos', 'pausar', 'liquidando',
   'unapub', 'volver', 'submargen', 'fijar', 'activarfull', 'meta', 'ciclo', 'marcano', 'pausaprecio', 'cargargasto', 'retiromes']);
 let CONSULTA_SOLO_LEE = false;
@@ -15344,6 +15344,36 @@ async function main() {
       const malos = cambios.filter((x) => (Number((rele[x.id] || {}).pedirU) || 0) !== x.u || (x.baja && !(rele[x.id] || {}).no));
       console.log(`\n✓ Guardados ${ok} de ${cambios.length}. Releído de la base: ${cambios.length - malos.length} de ${cambios.length} quedaron bien.`);
       for (const x of malos) console.log(`   ❌ ${x.c.nombre} quedó en ${Number((rele[x.id] || {}).pedirU) || 0} y le pedí ${x.u}`);
+      return;
+    }
+    // BILLING_PROBE=candcuotas:<palabra>=<cuotas>[;go] → "LA QUE GANA DA N CUOTAS" (04/10/2026).
+    // Lo marcó él con el Mercedes-Benz Man: el panel decía 28% y la publicación que gana en ML ofrece
+    // 9 cuotas sin interés al mismo precio — para pelearla hay que darlas, y eso se come el margen.
+    // El campo `cuotasGan` lo cargaba sólo el chat de compras; regla suya del 26/09: él no marca nada
+    // a mano, me lo dice y lo hago yo. Escribe `cuotasGan`, SACA EL PRODUCTO DEL PEDIDO (el margen
+    // que lo dejó entrar ya no vale) y lo vuelve a medir en la misma corrida con la cuenta de siempre.
+    // Una palabra que agarra varios candidatos no escribe nada. Sin `go` sólo muestra.
+    if (/^candcuotas:/.test(String(process.env.BILLING_PROBE || ''))) {
+      const _cc = String(process.env.BILLING_PROBE).slice('candcuotas:'.length);
+      const APLICAR = /(^|;)go$/.test(_cc);
+      const m = _cc.replace(/(^|;)go$/, '').match(/^(.+?)=(\d+)$/);
+      if (!m) { console.log('Usá: candcuotas:<palabra>=<cuotas>[;go]  (0 = la que gana no da cuotas)'); return; }
+      const nrm = (t) => String(t || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9]+/g, ' ').trim();
+      const q = nrm(m[1]), n = parseInt(m[2], 10);
+      const cands = (await db.get('cyc/candidatos_py')) || {};
+      const hits = Object.entries(cands).filter(([, c]) => c && c.nombre && !c.prodId && !c.no && nrm(c.nombre).includes(q));
+      if (hits.length !== 1) { console.log(hits.length ? `"${m[1]}" agarra ${hits.length}: ${hits.map(([, c]) => c.nombre).join(' | ')}. No escribo nada.` : `"${m[1]}" no agarra ningún candidato vivo.`); return; }
+      const [id, c] = hits[0];
+      console.log(`${c.nombre}\n  hoy: ${c.margen ?? '—'}% · cuotas de la que gana ${c.cuotasGan ?? '—'} · ${Number(c.pedirU) || 0} u. en el pedido\n  queda: cuotas ${n}${Number(c.pedirU) > 0 ? ' · sale del pedido hasta que se vuelva a medir' : ''}`);
+      if (!APLICAR) { console.log('PRUEBA: no escribí nada. Agregá ;go'); return; }
+      await db.set(`cyc/candidatos_py/${id}/cuotasGan`, n);
+      if (Number(c.pedirU) > 0) await db.set(`cyc/candidatos_py/${id}/pedirU`, 0);
+      const rl = (await db.get(`cyc/candidatos_py/${id}`)) || {};
+      console.log(`✓ releído: cuotas ${rl.cuotasGan} · ${Number(rl.pedirU) || 0} u. en el pedido`);
+      console.log('\n--- se vuelve a medir con la cuenta de siempre ---');
+      await correrCandidatos(db, products, labels, accounts, false);
+      const fin = (await db.get(`cyc/candidatos_py/${id}`)) || {};
+      console.log(`\n➡️ ${c.nombre}: ${fin.margen ?? '—'}%${fin.mlCuotas ? ` (cuotas −$${Math.round(fin.mlCuotas)}, ${fin.mlCuotasPct}%)` : ''}${fin.no ? ' · DESCARTADO: ' + (fin.motivo || '') : ''}`);
       return;
     }
     // BILLING_PROBE=revisarcompra[:<palabras,separadas,por,coma>] → LA ÚLTIMA MIRADA ANTES DE
