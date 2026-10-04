@@ -15368,6 +15368,9 @@ async function main() {
       if (!APLICAR) { console.log('PRUEBA: no escribí nada. Agregá ;go'); return; }
       await db.set(`cyc/candidatos_py/${id}/cuotasGan`, n);
       if (Number(c.pedirU) > 0) await db.set(`cyc/candidatos_py/${id}/pedirU`, 0);
+      // Primero en la fila: la vuelta mide de la medición más vieja a la más nueva con tope de 40, y sin
+      // esto quedaba en la cola (la primera corrida no lo alcanzó y mostró el número viejo).
+      await db.set(`cyc/candidatos_py/${id}/calcTs`, 0);
       const rl = (await db.get(`cyc/candidatos_py/${id}`)) || {};
       console.log(`✓ releído: cuotas ${rl.cuotasGan} · ${Number(rl.pedirU) || 0} u. en el pedido`);
       console.log('\n--- se vuelve a medir con la cuenta de siempre ---');
