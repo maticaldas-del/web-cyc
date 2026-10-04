@@ -40,7 +40,7 @@ process.on('SIGTERM', () => _alCortar('SIGTERM'));
 // los que escriben en cantidad o en plata se niegan de entrada, y cualquier otro corre con la base,
 // ML, Mercado Pago y Telegram en sólo lectura (se deja renovar y guardar el token de ML, que ML rota).
 const EN_CONSULTA = process.env.GITHUB_WORKFLOW === 'ml-consulta' || process.env.ML_CONSULTA === '1';
-const CONSULTA_ESCRIBE = new Set(['vincular', 'pasara', 'nomandar', 'fijarvar', 'cupo', 'poncosto']);
+const CONSULTA_ESCRIBE = new Set(['vincular', 'pasara', 'nomandar', 'fijarvar', 'cupo', 'poncosto', 'tamfull']);
 const CONSULTA_NIEGA = new Set(['ofi', 'ancla', 'responder', 'pyped', 'cajallego', 'abrircaja', 'compray', 'pedir', 'dispo', 'saldoml',
   'armarsaldo', 'avisos', 'cajasllegaron', 'netoweb', 'netoreal', 'candidatos', 'supervisor', 'sacapromos', 'pausar', 'liquidando',
   'unapub', 'volver', 'submargen', 'fijar', 'activarfull', 'meta', 'ciclo', 'marcano', 'pausaprecio', 'cargargasto', 'retiromes']);
@@ -10684,6 +10684,31 @@ async function main() {
       console.log('OJO: `shipping_preferences` es la capacidad de FLEX (paquetes que despachás vos por día),');
       console.log('     NO el cupo de Full. Si contesta, eso NO contesta la pregunta.');
       console.log('\n   (Solo lecturas. No se tocó ML, ni MercadoPago, ni la base.)');
+      return;
+    }
+    // BILLING_PROBE=tamfull[:<código de Full>=<pequeno|mediano|grande>;…][;go] → EL TAMAÑO QUE ML LE DA A CADA PRODUCTO EN FULL
+    // (04/10/2026). La tarifa de stock antiguo depende del tamaño y ML lo informa sólo en su Excel de cargos
+    // ("Tamaño": Pequeño/Mediano). Se guarda por código de Full (`cyc/mlconfig/tamFull/<inv>`); lo que no está
+    // cargado se toma pequeño (salvo los grandes de `cupoGrandes`). Sin `;go` sólo muestra.
+    if (String(process.env.BILLING_PROBE || '').startsWith('tamfull')) {
+      const arg = String(process.env.BILLING_PROBE).slice('tamfull'.length).replace(/^:/, '');
+      const partes = arg.split(';').map((x) => x.trim()).filter(Boolean);
+      const go = partes.includes('go');
+      const actual = (await db.get('cyc/mlconfig/tamFull')) || {};
+      const upd = {};
+      for (const pz of partes.filter((x) => x !== 'go')) {
+        const m = pz.match(/^([A-Z]{4}\d{5})=(pequeno|pequeño|mediano|grande|-)$/i);
+        if (!m) { console.log(`✗ no entiendo "${pz}" (va <código>=pequeno|mediano|grande)`); return; }
+        upd[m[1].toUpperCase()] = m[2] === '-' ? null : m[2].toLowerCase().replace('ñ', 'n');
+      }
+      console.log('Cargado hoy:', Object.entries(actual).map(([k, v]) => k + '=' + v).join(' · ') || '(nada)');
+      if (!Object.keys(upd).length) return;
+      console.log('A cargar:', Object.entries(upd).map(([k, v]) => k + '=' + v).join(' · '));
+      if (!go) { console.log('(prueba: con ;go se guarda)'); return; }
+      await db.patch('cyc/mlconfig/tamFull', upd);
+      const re = (await db.get('cyc/mlconfig/tamFull')) || {};
+      const ok = Object.entries(upd).filter(([k, v]) => (re[k] || null) === v).length;
+      console.log(`✓ releído: ${ok} de ${Object.keys(upd).length}`);
       return;
     }
     // BILLING_PROBE=cargosfull[:<cuenta>][:go] → ¿QUÉ PRODUCTOS PAGAN ALMACENAMIENTO Y STOCK ANTIGUO? (04/10/2026)
@@ -25235,7 +25260,21 @@ async function main() {
       // Tabla del cargo por stock antiguo, por tamaño: [desde días, hasta días, $ por unidad por cierre] (null = no se sabe).
       // Leída de su pantalla de ML el 04/10/2026 (pequeño: 4-6 meses $350, 6-12 meses $3.250; hasta 2 meses $0).
       // Se puede pisar con `cyc/mlconfig/stockAntiguo`.
-      const stockAntiguoSup = cfgSup.stockAntiguo || { pequeno: [[0, 60, 0], [60, 120, null], [120, 180, 350], [180, 365, 3250], [365, 1e9, null]] };
+      // Medida contra su Excel "Cargos por stock antiguo" del 04/10/2026 (3 cuentas): hasta 4 meses $0, 4-6 meses
+      // pequeño $350 / mediano $470, 6-12 meses pequeño $3.250 / mediano $4.485. Grande y +12 meses no se vieron.
+      const stockAntiguoSup = cfgSup.stockAntiguo || {
+        pequeno: [[0, 120, 0], [120, 180, 350], [180, 365, 3250], [365, 1e9, null]],
+        mediano: [[0, 120, 0], [120, 180, 470], [180, 365, 4485], [365, 1e9, null]],
+      };
+      const DIA_CIERRE_ALM = { adriana: 10, luciana: 12, matias: 12, ayelen: 12 };
+      // Tamaño de Full por producto: el que dice ML en su Excel (`cyc/mlconfig/tamFull/<código de Full>`); si no está,
+      // grande por las palabras de `cupoGrandes` y si no pequeño.
+      const tamFullCfg = cfgSup.tamFull || {};
+      const tamFullDe = (l, p) => {
+        const t = l && l.inv ? tamFullCfg[l.inv] : null;
+        if (t) return t;
+        return esGrandeS(p) ? 'grande' : 'pequeno';
+      };
       const palGS = (Array.isArray(cfgSup.cupoGrandes) ? cfgSup.cupoGrandes
         : (typeof cfgSup.cupoGrandes === 'string' ? cfgSup.cupoGrandes.split(',') : null)) || ['tendedero', 'tender'];
       const esGrandeS = (p) => p && (p.grandeFull === true || (p.grandeFull !== false && palGS.some((w) => w && norm(p.name || '').includes(norm(String(w).trim())))));
@@ -25246,63 +25285,81 @@ async function main() {
         const k = l.prodId + '__' + sidS(l.cuenta);
         (porClave[k] = porClave[k] || []).push(...arr);
       }
+      // ¿A QUÉ RITMO SE VENDÍA AL PRECIO VIEJO? (04/10/2026, regla suya con el Xiaomi Watch S5: "llegó el 17/8 y estuvo
+      // ahí con stock hasta que se vendieron los dos"). `cyc/stockhist` guarda desde cuándo hay stock SIN cortes
+      // (`desde`, o `desdePrev`→`cero` si ya se agotó): entre esas dos fechas hubo stock todos los días. Así se saben
+      // los días CON stock antes del cambio sin depender del registro hora por hora, que arrancó el 24/09.
+      const periodoStock = (key) => {
+        const h = histSup && key ? histSup[key] : null; if (!h) return null;
+        if (Number(h.desde) > 0) return [Number(h.desde), Infinity];
+        if (Number(h.desdePrev) > 0) return [Number(h.desdePrev), Number(h.cero) > 0 ? Number(h.cero) : Infinity];
+        return null;
+      };
+      const RV_MIN_DIAS = 14;   // con menos días al precio viejo no se mide un ritmo
       const cuentaRemate = (ev, costo, finT) => {
         const l = links[ev.mla] || {}, cuenta = l.cuenta || '', p = pIdx[l.prodId] || {};
-        const env = Number(p.netoCalcEnvio) > 0 ? Number(p.netoCalcEnvio) : (Number(p.gestFull) || 0);
         const imp = (mlExtraPct(cuenta) + monoSup) / 100;
         const vs = porMla[ev.mla] || [];
-        const r0 = vs.filter((x) => x.ts < ev.ts && x.ts >= ev.ts - 60 * 864e5).reduce((a, x) => a + x.q, 0) / 60;
+        const key = l.prodId && cuenta ? l.prodId + '__' + sidS(cuenta) : null;
+        const per = periodoStock(key);
+        const desde = per ? per[0] : null;
+        // La ventana "al precio viejo": desde el cambio anterior de ESA publicación (o 90 días), y nunca antes de que
+        // llegara la mercadería. Si el período de stock empezó DESPUÉS del cambio, no se puede saber.
+        const prev = (porMlaEv[ev.mla] || []).filter((o) => o !== ev && o.ts < ev.ts - 60e3).sort((a, b) => b.ts - a.ts)[0];
+        let ws = Math.max(ev.ts - 90 * 864e5, prev ? prev.ts : -Infinity);
+        let rOld = null, rDias = 0, rNota = '';
+        if (per && per[0] <= ev.ts && per[1] >= ev.ts) {
+          ws = Math.max(ws, per[0]); rDias = (ev.ts - ws) / 864e5;
+          // la venta de la hora anterior al cambio no se cuenta (el robot actúa justo después de una venta)
+          const u = vs.filter((x) => x.ts >= ws && x.ts < ev.ts - 36e5).reduce((a, x) => a + x.q, 0);
+          if (rDias >= RV_MIN_DIAS) rOld = u / rDias;
+          else rNota = `al precio viejo tuvo stock sólo ${Math.round(rDias)} d`;
+        } else rNota = 'no se sabe si tenía stock antes del cambio';
+        if (rOld == null) {
+          const pdN = key ? Number((rnSup[key] || {}).pd) || 0 : 0;
+          const r60 = vs.filter((x) => x.ts < ev.ts && x.ts >= ev.ts - 60 * 864e5).reduce((a, x) => a + x.q, 0) / 60;
+          rOld = Math.max(pdN, r60); rNota += (rNota ? ' · ' : '') + 'se usa el ritmo normal (lado prudente)';
+        }
         const dv = vs.filter((x) => x.ts > ev.ts + 60e3 && x.ts <= finT).sort((a, b) => a.ts - b.ts);
-        const L = (finT - ev.ts) / 864e5;
-        let baseRest = r0 * L, gan = 0, base = 0, uOk = 0, uBajo = 0, uBase = 0;
-        const extras = [];
+        // UNIDAD POR UNIDAD (regla suya del 04/10: "pongo un producto al 100%, pasan 40 días y no vende, el robot lo
+        // baja al 25% (…) sería injusto restarle por algo que no vendió o no vendió tanto a un precio alto").
+        // La unidad Nº i, al precio viejo, se habría vendido el día i ÷ ritmo. Si eso cae dentro de ADEL_TOPE (180 d):
+        // se vendía igual → se RESTA lo cobrado de menos y se suma la plata adelantada y el stock antiguo evitado.
+        // Si cae más allá (o el ritmo viejo es cero): a ese precio no salía → NO se resta nada; se suma su ganancia
+        // si quedó en 20% o más (regla suya del 25/09) y lo ahorrado en 180 días (plata y stock antiguo).
+        let base = 0, gan = 0, adel = 0, adelD = 0, uBase = 0, uOk = 0; const uAd = []; let i = 0;
         for (const x of dv) {
           if (!(x.tot > 0) || !(x.neto > 0)) continue;
-          const b = Math.min(x.q, Math.max(0, baseRest)); baseRest -= b;
-          const e = x.q - b;
-          if (b > 0) { base += (x.tot / x.q - ev.de) * (x.neto / x.tot) * b; uBase += b; }
-          // LAS VENTAS "DE MÁS" TAMBIÉN CUENTAN SÓLO LO COBRADO DE MENOS (03/10/2026, eligió la (a) con el
-          // Xiaomi Watch S5: una baja de 3,5% figuraba "ganó +$112.868"). Bajar el precio no CREA la venta,
-          // la ADELANTA: la mercadería no se vence y lo más probable es que se vendiera igual más adelante al
-          // precio viejo. Lo que el remate hace de verdad es cobrar menos (se resta acá) y ahorrar el
-          // almacenamiento de lo que salió antes (se suma abajo). Sus palabras: "que sea justo, no jugar en
-          // contra del robot tampoco". `uOk` queda como las unidades paradas que salieron, sin pesos.
-          if (e > 0) {
-            gan += (x.tot / x.q - ev.de) * (x.neto / x.tot) * e; uOk += e;
-            extras.push({ ts: x.ts, u: e });
+          const pu = x.tot / x.q, nu = x.neto / x.q, dR = (x.ts - ev.ts) / 864e5;
+          for (let j = 0; j < x.q; j++) {
+            i++;
+            const tNat = rOld > 0 ? i / rOld : Infinity;
+            if (tNat <= ADEL_TOPE) {
+              uBase++; base += (pu - ev.de) * (nu / pu);
+              const ad = Math.max(0, tNat - dR); if (ad > 0) { adelD += ad; adel += costo * TASA_MES / 30 * ad; uAd.push({ t0: x.ts, ad }); }
+            } else {
+              uOk++;
+              const g = nu - costo - pu * imp, mg = (costo + pu * imp) > 0 ? g / (costo + pu * imp) * 100 : 0;
+              if (mg >= 20) gan += g;
+              const ad = Math.max(0, ADEL_TOPE - dR); adelD += ad; adel += costo * TASA_MES / 30 * ad; uAd.push({ t0: x.ts, ad });
+            }
           }
         }
-        // El almacenamiento.
+        // EL STOCK ANTIGUO QUE SE EVITÓ: ML cobra al cierre de cada facturación (Adriana el 10, el resto el 12; Excel
+        // "Cargos por stock antiguo" del 04/10/2026) un monto por unidad según tamaño y antigüedad.
         let almUD = 0, alm = null, almNota = '';
-        const key = l.prodId && cuenta ? l.prodId + '__' + sidS(cuenta) : null;
-        const h = histSup && key ? histSup[key] : null;
-        const desde = h ? (Number(h.desde) > 0 ? Number(h.desde) : (Number(h.desdePrev) > 0 ? Number(h.desdePrev) : null)) : null;
-        const ventC = porClave[key] || [];
-        const S0 = Number(ev.st0) >= 0 && ev.st0 != null ? Number(ev.st0)
-          : (() => { const s = stockDe(ev.mla); return s == null ? null : s + ventC.filter((x) => x.ts > ev.ts).reduce((a, x) => a + x.q, 0); })();
-        const rC = ventC.filter((x) => x.ts < ev.ts && x.ts >= ev.ts - 60 * 864e5).reduce((a, x) => a + x.q, 0) / 60;
-        let adel = 0, adelD = 0, adelNota = ''; const uAd = [];
-        {
-          const pdN = key ? Number((rnSup[key] || {}).pd) || 0 : 0, pdB = Math.max(pdN, r0);
-          if (!(pdB > 0)) adelNota = 'sin ritmo normal medido: no se puede saber cuánto se adelantó';
-          else { let i = 0; for (const x of dv) for (let j = 0; j < x.q; j++) { i++; const dR = (x.ts - ev.ts) / 864e5; const ad = Math.min(ADEL_TOPE, Math.max(0, i / pdB - dR)); adelD += ad; adel += costo * TASA_MES / 30 * ad; if (ad > 0) uAd.push({ t0: x.ts, ad }); } }
-        }
-        // EL CARGO POR STOCK ANTIGUO QUE SE EVITÓ (04/10/2026, tarifa leída de su pantalla de ML "Gestión de stock
-        // Full"). ML cobra al cierre de cada facturación un monto POR UNIDAD según el tamaño y la antigüedad de la
-        // unidad en Full. Cada unidad vendida antes de tiempo (ver arriba) se habría quedado hasta su fecha "normal":
-        // se suman los cierres que habría atravesado, con la antigüedad que tendría en cada uno. Un tramo sin tarifa
-        // conocida no se inventa: se cuenta y se dice.
         if (histSup == null) almNota = 'no se pudo leer desde cuándo está en Full';
         else if (!uAd.length) almNota = 'no vendió nada antes de tiempo';
         else if (!desde) almNota = 'sin fecha de entrada a Full';
         else {
-          const tam = esGrandeS(p) ? 'grande' : 'pequeno', tabla = (stockAntiguoSup || {})[tam];
-          if (!Array.isArray(tabla)) almNota = `falta la tarifa de stock antiguo de productos ${tam === 'grande' ? 'grandes' : 'pequeños'}`;
+          const tam = tamFullDe(l, p), tabla = (stockAntiguoSup || {})[tam];
+          if (!Array.isArray(tabla)) almNota = `falta la tarifa de stock antiguo de productos ${tam}`;
           else {
+            const dCierre = DIA_CIERRE_ALM[sidS(cuenta).toLowerCase()] || 12;
             let suma = 0, falta = 0, cierres = 0;
             for (const { t0, ad } of uAd) {
               const t1 = t0 + ad * 864e5;
-              const c = new Date(t0); c.setUTCDate(13); c.setUTCHours(3, 0, 0, 0); if (c.getTime() <= t0) c.setUTCMonth(c.getUTCMonth() + 1);
+              const c = new Date(t0); c.setUTCDate(dCierre); c.setUTCHours(3, 0, 0, 0); if (c.getTime() <= t0) c.setUTCMonth(c.getUTCMonth() + 1);
               for (; c.getTime() <= t1; c.setUTCMonth(c.getUTCMonth() + 1)) {
                 const edad = (c.getTime() - desde) / 864e5, tr = tabla.find((b) => edad >= b[0] && edad < b[1]);
                 if (!tr) continue; cierres++; if (tr[2] == null) falta++; else suma += Number(tr[2]) || 0;
@@ -25313,9 +25370,9 @@ async function main() {
           }
         }
         const r1 = (n) => Math.round(n * 10) / 10;
-        return { gan: Math.round(gan), base: Math.round(base), alm, almUD, almNota, uOk: r1(uOk), uBajo: r1(uBajo), uBase: r1(uBase),
-          adel: Math.round(adel), adelD: Math.round(adelD), adelNota,
-          r0: Math.round(r0 * 300) / 10, total: Math.round(gan + base + (alm || 0) + adel) };
+        return { gan: Math.round(gan), base: Math.round(base), alm, almUD, almNota, uOk: r1(uOk), uBase: r1(uBase),
+          adel: Math.round(adel), adelD: Math.round(adelD), adelNota: rNota,
+          rOld: Math.round(rOld * 300) / 10, rDias: Math.round(rDias), total: Math.round(gan + base + (alm || 0) + adel) };
       };
 
       // ── EL MOTIVO DE CADA CAMBIO (25/09/2026) ────────────────────────────────────
@@ -25663,7 +25720,7 @@ async function main() {
       console.log(`${resumen.ganaron} dejaron más · ${resumen.perdieron} dejaron menos · ${resumen.quiebres} con el volumen sin contar por quiebre de stock`);
       console.log(`No cuentan (🛟 recuperar margen por costo/inflación): ${resumen.rescates.n} cambios · ${$s(resumen.rescates.total)}`);
       console.log(`Remates y escalera: ${resumen.remates.n} · ventas al ${REM_PISO}%+ ${$s(resumen.remates.gan)} · lo que igual se vendía, más barato ${$s(resumen.remates.base)} · almacenamiento evitado ${resumen.remates.almUD} unidades-día${resumen.remates.alm ? ' = ' + $s(resumen.remates.alm) : ''}${resumen.remates.sinTarifa ? ' (falta la tarifa: no suma en pesos)' : ''}`);
-      for (const x of atrib.filter((y) => y.rem)) console.log(`  🔨 ${x.nom} (${x.cuenta}) ${$s(x.de)}→${$s(x.a)} · ${x.dias} d · salieron ${x.rem.uOk} u. paradas · cobrado de menos ${$s(x.rem.gan)} · plata adelantada +${$s(x.rem.adel)} (${x.rem.adelD} días-unidad${x.rem.adelNota ? ', ' + x.rem.adelNota : ''}) · iba igual ${x.rem.uBase} u. ${$s(x.rem.base)} · stock antiguo evitado ${x.rem.almUD} cierre(s)${x.rem.alm != null ? ' ' + $s(x.rem.alm) : ''}${x.rem.almNota ? ' (' + x.rem.almNota + ')' : ''}`);
+      for (const x of atrib.filter((y) => y.rem)) console.log(`  🔨 ${x.nom} (${x.cuenta}) ${$s(x.de)}→${$s(x.a)} · ${x.dias} d · ritmo al precio viejo ${x.rem.rOld} u/mes (${x.rem.rDias} d con stock${x.rem.adelNota ? ', ' + x.rem.adelNota : ''}) · se vendían igual ${x.rem.uBase} u.: cobrado de menos ${$s(x.rem.base)} · a ese precio no salían ${x.rem.uOk} u.: ganancia ${$s(x.rem.gan)} · plata adelantada +${$s(x.rem.adel)} (${x.rem.adelD} días-unidad) · stock antiguo evitado ${x.rem.almUD} cierre(s)${x.rem.alm != null ? ' ' + $s(x.rem.alm) : ''}${x.rem.almNota ? ' (' + x.rem.almNota + ')' : ''}`);
       { const cm = {}; for (const x of registros) cm[x.motivo] = (cm[x.motivo] || 0) + 1; console.log(`Motivos: ${Object.entries(cm).map(([k, n]) => k + ' ' + n).join(' · ')}`); }
       for (const x of resumen.items.slice(0, 15)) console.log(`  ${x.total >= 0 ? '+' : ''}${$s(x.total)} · ${x.nom} (${x.cuenta}) ${$s(x.de)}→${$s(x.a)} · ${x.dias} d · ${x.uA}→${x.uD} u. · precio ${$s(x.precio)} · volumen ${$s(x.volumen)}${x.quiebre ? ' · sin stock' : ''}`);
       console.log('');
