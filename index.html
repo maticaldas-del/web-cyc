@@ -2432,7 +2432,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='21.87';
+const APP_VERSION='21.88';
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
 // muestre la versión y la fecha de actualización y que tenga un desplegable predeterminado cerrado".
 // Y el mismo día: "que ponga fecha de cada modificación y haya una barrita para scrollear y que
@@ -2443,6 +2443,7 @@ const APP_VERSION='21.87';
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'21.88',f:'04/10/2026',h:'16:55',c:[{n:1,t:'📈 Línea de tiempo: el precio ya no toma publicaciones muertas (sin ventas y que no están activas). Antes una vieja a $2.700 hacía saltar la línea y el remate de las Cartas Españolas a $2.830 se veía como una suba.'}]},
   {v:'21.87',f:'04/10/2026',h:'15:02',c:[{n:3,t:'🇵🇾 Pedidos Paraguay: el máximo de compra tiene en cuenta que tenemos Full. Si el más barato de ML no tiene Full, se calcula vendiendo hasta 10% más caro que él (nunca arriba del más barato con Full). La tarjeta lo dice.'},{n:3,t:'🤖 Robot de precios: la 📈 puede pasar a un competidor sin Full hasta 10%, de a +3%. Si se pierde la caja, en la vuelta de la hora vuelve solo al precio anterior y no lo intenta por 14 días.'}]},
   {v:'21.86',f:'04/10/2026',h:'14:12',c:[{n:1,t:'🌸 Pedido: un perfume cuyo nombre no dice "perfume" (ej. Ferrari Negro) ahora va en PERFUMERÍA: se mira el rubro de su publicación en ML.'}]},
   {v:'21.85',f:'04/10/2026',h:'12:43',c:[{n:3,t:'🤖 Robot de precios: remates y escalera suman ahora la plata que vuelve antes (vender antes de lo que se vendería a su ritmo normal, valorado al 1% por mes en dólares, el interés que paga CYC), además de restar lo cobrado de menos.'}]},
@@ -8394,6 +8395,14 @@ function _lineaJunta(porMla){
   // tienen dato ese día lo informan (si falta una, el total no se sabe).
   const dias={};
   for(const [mla,d] of Object.entries(porMla)){
+    // ¿ESTA PUBLICACIÓN VENDE? (04/10/2026, él con las Cartas Españolas: "la ▼ no se ve en la línea del precio").
+    // Los días viejos no traen estado, y una publicación muerta (Cartas Españolas MLA1472525435, $2.700, nunca
+    // vendió y ya no figura) ganaba el "más barato": la línea saltaba entre $2.700 y $3.200 y el remate a $2.830
+    // se veía como una SUBA. Sin estado ese día, su precio vale sólo si en su último día conocido estaba activa
+    // o si vendió alguna vez en lo guardado.
+    const _ks=Object.keys(d||{}).filter(k=>d[k]&&typeof d[k]==='object').sort();
+    const _ult=_ks.length?d[_ks[_ks.length-1]]:null;
+    const vive=(_ult&&_ult.est==='active')||_ks.some(k=>Number(d[k].u)>0);
     for(const [k,x] of Object.entries(d||{})){
       if(!x||typeof x!=='object')continue;
       const o=dias[k]=dias[k]||{u:null,uR:null,vis:null,st:null,stN:0,p:null,caja:null,rem:false,esc:null,mg:null,tot:null,pubs:0};
@@ -8406,7 +8415,7 @@ function _lineaJunta(porMla){
       if(x.p!=null&&Number(x.p)>0){o.p=o.p==null?Number(x.p):Math.min(o.p,Number(x.p));
         // El precio de una publicación PAUSADA no es el que se cobra (Cartas Casino: la línea decía $2.706 de una
         // pausada y se cobraba $3.310). Vale el de las activas o las que vendieron ese día.
-        if(x.est==='active'||Number(x.u)>0)o.pA=o.pA==null?Number(x.p):Math.min(o.pA,Number(x.p));}
+        if(x.est==='active'||Number(x.u)>0||(x.est==null&&vive))o.pA=o.pA==null?Number(x.p):Math.min(o.pA,Number(x.p));}
       if(x.caja){const r={g:3,c:2,p:1,n:0};if(o.caja==null||(r[x.caja]||0)>(r[o.caja]||0))o.caja=x.caja;}
       if(x.rem)o.rem=true;
       if(x.esc!=null)o.esc=o.esc==null?Number(x.esc):Math.min(o.esc,Number(x.esc));
