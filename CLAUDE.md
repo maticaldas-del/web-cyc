@@ -833,6 +833,11 @@ descartó por eso.** Cómo quedó:
    cuenta; el detalle trae `items_info`. Probe `cargosfull[:go]`. La API de reposición
    (`/marketplace/fbm/user-products/<upid>/replenishment?country=AR`) da 6 semanas de ventas y días sin stock.
 
+**SOBRA DE STOCK: NO SE BAJA ANTES DE LOS 100 DÍAS (04/10/2026, eligió la a).** `calcCajaBarata` (rama "sobra") sólo
+propone bajar si la unidad MÁS VIEJA en Full tiene `SOBRA_EDAD_MIN` = 100 días o más (lote más viejo de `cyc/lotesfull`;
+si no, `stockhist`; sin fecha no baja). Motivo: antes de los 120 días ML cobra $0 de stock antiguo y la baja regala más de
+lo que cuesta sostener. Primera prueba (04/10): 2 frenadas por esta regla. **No volver a proponer bajar por sobra antes.**
+
 ## EL PISO SALE DEL NEGOCIO: 22% NARANJA · 25% BASE (24/09/2026)
 
 Pedido suyo: naranja = *"CYC queda en 0 pagando TODO"* (mercadería, ML, impuestos, gastos del mes y
