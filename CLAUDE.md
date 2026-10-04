@@ -809,6 +809,20 @@ privada unificados · las dos facturas de Sancor analizadas.
 **Versión del panel: 20.16 · caché `cyc-v294`**. El ciclo del robot quedó **prendido**.
 
 
+## CÓMO SE JUZGA UN REMATE DEL ROBOT (04/10/2026, `cuentaRemate` en el supervisor)
+Él, con el Watch S5 y el Pendrive 32gb: *"sería injusto restarle por algo que no vendía, o no vendía tanto, a un precio alto"*.
+ · **El ritmo al precio viejo** sale sólo de los días en que hubo stock seguido (`stockhist` `desde` / `desdePrev`-`cero`; su razonamiento
+   "si cumple 2 meses el 17/10, llegó el 17/08 y estuvo con stock hasta que se vendió" es correcto, salvo cortes de menos de 48 h y fechas `aprox`).
+   Con menos de 14 días con stock se usa el ritmo normal (lado prudente).
+ · **Unidad por unidad:** las que el precio viejo vendía DENTRO de la misma ventana medida → se resta lo cobrado de menos. Las que salieron de más →
+   no se castigan; suman su ganancia sólo si quedaron en 20%+ (regla del 25/09), más la plata adelantada (1%/mes sobre el costo) y el stock antiguo evitado.
+ · **Stock antiguo (Excel de ML del 04/10):** pequeño $0 hasta 120 d · $350 de 120-180 d · $3.250 de 180-365 d; mediano $470 / $4.485; grande y +12 meses sin tarifa.
+   Cierre: Adriana el 10, el resto el 12. Tamaño por código de Full en `cyc/mlconfig/tamFull` (comando `tamfull:<INV>=pequeno|mediano|grande;go`).
+ · Primer resultado: Watch S5 **+$146.310** (antes −$22.561), Pendrive 32gb **−$3.386** (3 de 6 se vendían igual; las otras 3 quedaron al 18%, abajo de su 20%).
+ · **Cargos de Full por producto:** el resumen de facturación trae CFWA (almacenamiento), CFBA (prolongado) y CFRS (retiro) por cuenta; el detalle tiene
+   `items_info`. Probe `cargosfull[:go]` (el `:go` pide el reporte FULL en Excel, va por ml-sync). La API de reposición
+   (`/marketplace/fbm/user-products/<upid>/replenishment?country=AR`) da 6 semanas de ventas y días sin stock por producto.
+
 ## EL PISO SALE DEL NEGOCIO: 22% NARANJA · 25% BASE (24/09/2026)
 
 Pedido suyo: naranja = *"CYC queda en 0 pagando TODO"* (mercadería, ML, impuestos, gastos del mes y
