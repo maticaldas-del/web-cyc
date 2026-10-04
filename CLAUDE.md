@@ -838,6 +838,21 @@ propone bajar si la unidad MÁS VIEJA en Full tiene `SOBRA_EDAD_MIN` = 100 días
 si no, `stockhist`; sin fecha no baja). Motivo: antes de los 120 días ML cobra $0 de stock antiguo y la baja regala más de
 lo que cuesta sostener. Primera prueba (04/10): 2 frenadas por esta regla. **No volver a proponer bajar por sobra antes.**
 
+## TENER FULL VALE PRECIO: PEDIDOS PARAGUAY Y LA 📈 LO USAN SOLOS (04/10/2026, v21.87 · `cyc-v466`)
+Él, con el Animale Sexy Mujer: *"si el flaco no tiene full y nosotros sí, lo vendemos a 85.000 y quedamos ganando
+(…) lo que yo dije que sea automático es que al comparar precio de nissei y ml tenga en cuenta eso"* y el tope:
+*"un comprador no paga $15.000 de más por un día antes"* → **10%**.
+ · **Robot `techofull[:go]`** (en ml-daily, antes de avisos): por cada publicación de catálogo con ficha (activa o
+   pausada) guarda `cyc/techofull/<MLA>` `{t, cF, cS, nF, nS, por, barrera, p, ts}`: techo = el MENOR entre el más
+   barato CON Full/Flex ×0,99 y el más barato SIN Full ×1,10 (`TECHO_PASA_SIN_FULL`, función `techoConFull`).
+   Sin los del exterior, $32.999 si hoy estamos abajo de la barrera, nunca arriba de $650.000.
+ · **Web `maxCompraDe`**: en productos de Paraguay, si no estamos perdiendo la caja (ahí manda el ptw de ML), el
+   precio de venta = máx(hoy, techo de ≤4 días), `fuente:'full'`; la tarjeta y el veredicto de Probados lo dicen.
+ · **(A) La 📈 (`calcSubirPuede`)** puede pasar a un competidor sin Full hasta ese mismo techo, de a +3,5%; el que
+   tiene Full sigue siendo techo duro. La suba queda `pasaSinFull` en `cyc/autoprecio`. **`volverSinFull`** (vuelta
+   de la hora): si en 48 h perdió la caja y el precio sigue igual, vuelve al anterior (margen medido, `setPriceTo`)
+   y marca `vueltoSinFull`: 14 días sin volver a pasar al sin Full.
+
 ## EL PISO SALE DEL NEGOCIO: 22% NARANJA · 25% BASE (24/09/2026)
 
 Pedido suyo: naranja = *"CYC queda en 0 pagando TODO"* (mercadería, ML, impuestos, gastos del mes y
