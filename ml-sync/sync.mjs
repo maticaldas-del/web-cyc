@@ -3933,16 +3933,7 @@ async function calcCajaBarata(db, o) {
         // Se baja recién cuando la unidad MÁS VIEJA tiene SOBRA_EDAD_MIN días o más: del lote más
         // viejo del Excel de ML si está cargado, si no de `stockhist` (si es aproximada, la real es
         // igual o mayor: se usa igual). Sin ninguna fecha no se baja: no se sabe si se acerca.
-        const edadViejaS = (() => {
-          const L = e.inv ? lotesCb[e.inv] : null;
-          if (L && Array.isArray(L.lotes)) {
-            const ref = Date.parse(String(L.ref || '') + 'T03:00:00Z');
-            const ts = L.lotes.filter((x) => Number(x.u) > 0 && Number(x.dias) >= 0).map((x) => ref - Number(x.dias) * 864e5);
-            if (ref > 0 && ts.length) return Math.floor((Date.now() - Math.min(...ts)) / 864e5);
-          }
-          const h = histCb[e.prodId + '__' + sidCb(e.cuenta)];
-          return h && h.desde ? Math.floor((Date.now() - h.desde) / 864e5) : null;
-        })();
+        const edadViejaS = edadViejaFull(e, e.prodId + '__' + sidCb(e.cuenta), lotesCb, histCb);
         if (edadViejaS == null || edadViejaS < SOBRA_EDAD_MIN) { fuera.sobraJoven++; continue; }
         const ptwS = Number(e.cajaPtw) || 0;
         if (!(ptwS > 0)) { fuera.sinPtw++; continue; }
@@ -5898,6 +5889,19 @@ const RECARGO_PAR = 1.17;
 // Desde cuántos días de la unidad más vieja en Full se baja por "sobra de stock" (04/10/2026, eligió
 // la a): ML cobra stock antiguo desde los 120 días; antes de eso sostener cuesta ~1%/mes y no paga bajar.
 const SOBRA_EDAD_MIN = 100;
+// La edad de la unidad MÁS VIEJA en Full de una publicación: del lote más viejo del Excel de ML
+// (`cyc/lotesfull`) si está cargado, si no de `stockhist` (si es aproximada, la real es igual o mayor).
+// null = no se sabe. La usan la entrada al remate por sobra (`calcCajaBarata`) y su salida (`ritmo`).
+function edadViejaFull(e, clave, lotes, hist) {
+  const L = e && e.inv ? (lotes || {})[e.inv] : null;
+  if (L && Array.isArray(L.lotes)) {
+    const ref = Date.parse(String(L.ref || '') + 'T03:00:00Z');
+    const ts = L.lotes.filter((x) => Number(x.u) > 0 && Number(x.dias) >= 0).map((x) => ref - Number(x.dias) * 864e5);
+    if (ref > 0 && ts.length) return Math.floor((Date.now() - Math.min(...ts)) / 864e5);
+  }
+  const h = (hist || {})[clave];
+  return h && h.desde ? Math.floor((Date.now() - h.desde) / 864e5) : null;
+}
 const RECARGO_PAR_PCT = Math.round((RECARGO_PAR - 1) * 100);
 // Un cero de stock que vuelve dentro de este tiempo se toma como pasajero: se conserva la fecha de
 // entrada anterior en `cyc/stockhist` (decisión suya del 24/09/2026, opción a).
@@ -9207,7 +9211,7 @@ async function main() {
             : t.tipo === 'escalera'
               ? { tipo: 'baja', por: 'escalera', de: r.from || f.precio, a: r.to || t.a, ts: hoyTs, nom: f.nom, cuenta: f.cuenta, margen: Math.round(f.mgPw * 10) / 10, piso: t.piso }
             : t.tipo === 'remate'
-              ? { tipo: 'baja', por: 'remate', de: r.from || f.precio, a: r.to || t.a, ts: hoyTs, nom: f.nom, cuenta: f.cuenta, margen: Math.round(f.mgPw * 10) / 10, piso: t.piso }
+              ? { tipo: 'baja', por: 'remate', de: r.from || f.precio, a: r.to || t.a, ts: hoyTs, nom: f.nom, cuenta: f.cuenta, margen: Math.round(f.mgPw * 10) / 10, piso: t.piso, ...(f.sobre ? { sobra: true } : {}) }
               : { tipo: t.tipo, de: r.from || f.precio, a: r.to || t.a, ts: hoyTs, nom: f.nom, cuenta: f.cuenta,
                 ...(t.tipo === 'sube' ? { u30: f.u, ...(f.pasaSinFull ? { pasaSinFull: true, rivalSinFull: f.rivalSinFull || null } : {}) } : { margen: Math.round(f.mgPw * 10) / 10 }) };
           await _anotar(() => db.set('cyc/autoprecio/' + f.mla, reg), 'el registro del robot (autoprecio)', f);
@@ -15115,6 +15119,9 @@ async function main() {
       const [links, inv, vp, nosubir, rescateventa, autoprecio, cambios, precios] = await Promise.all([
         db.get('cyc/mllinks'), db.get('cyc/inventory'), db.get('cyc/ventaprod'), db.get('cyc/nosubir'),
         db.get('cyc/rescateventa'), db.get('cyc/autoprecio'), db.get('cyc/stocklog/cambios'), db.get('cyc/supervisor/precios')]);
+      // Para la SALIDA POR EDAD (04/10/2026): los lotes de Full, la fecha de entrada y la memoria de avisados
+      // (`o_<MLA>` = el remate entró por sobra de stock). Si alguna no se lee, esa salida no opina.
+      const [lotesR, histR, avisR] = await Promise.all(['cyc/lotesfull', 'cyc/stockhist', 'cyc/avisados'].map((r) => db.get(r).catch(() => null)));
       // El "diario" por clave sale de la LÍNEA DE TIEMPO de cada publicación (`linea`): stock, precio,
       // caja, remate y ventas de cada día, hasta 365 días para atrás.
       let diario = {}, nLin = 0;
@@ -15164,9 +15171,20 @@ async function main() {
         function claveMla(m) { const x = (links || {})[m]; if (!x || !x.prodId || !x.cuenta) return ''; const b = x.prodId + '__' + sidR(x.cuenta); return x.variant && k !== kP ? b + '__v__' + sidR(x.variant) : b; }
         const pd = r && r.pd > 0 ? r.pd : null; const diasSt = pd ? Math.round(st / pd) : null;
         console.log(`  🔒 ${String(e.title || mla).slice(0, 45)} (${e.cuenta}) · ${st} u. · ritmo normal ${pd ? (pd * 30).toFixed(1) + '/mes' : 'sin dato'}${r && r.f ? ' (flojo)' : ''} · ${diasSt != null ? diasSt + ' d de stock normal' : '?'} · vendió ${v30} en 30 d · ${auto ? 'remate del robot' : String(d.motivo || 'a mano').slice(0, 30)}`);
-        if (auto && pd && st > 0 && v30 > 0 && st <= RN_SANO_DIAS * pd) salen.push({ mla, e, st, pd, diasSt });
+        if (auto && pd && st > 0 && v30 > 0 && st <= RN_SANO_DIAS * pd) { salen.push({ mla, e, st, pd, diasSt }); continue; }
+        // SALIDA POR EDAD (04/10/2026, él con las Cartas Españolas: "eso está en remate por sobrestock, con la
+        // regla nueva ¿no debería sacarlo? se miran 120 días ahora"). La regla de los 100 días
+        // (SOBRA_EDAD_MIN) sólo frenaba la ENTRADA; un remate por sobra que arrancó antes seguía. Ahora un
+        // remate AUTOMÁTICO que entró por sobra (autoprecio `sobra` o avisado `o_`) se termina si la unidad más
+        // vieja en Full tiene menos de SOBRA_EDAD_MIN días: hoy no entraría. Sin fecha no opina (queda como está).
+        const apR = (autoprecio || {})[mla];
+        const porSobra = !!(apR && apR.por === 'remate' && apR.sobra) || !!(avisR && avisR['o_' + mla]);
+        if (auto && porSobra && lotesR && histR) {
+          const ed = edadViejaFull(e, kP, lotesR, histR);
+          if (ed != null && ed < SOBRA_EDAD_MIN) { console.log(`     ↳ entró por sobra y la unidad más vieja tiene ${ed} d en Full (< ${SOBRA_EDAD_MIN}): hoy no entraría`); salen.push({ mla, e, st, pd, diasSt, edad: ed }); }
+        }
       }
-      if (salen.length) console.log(`\n✅ YA TIENEN STOCK SANO (≤ ${RN_SANO_DIAS} d de venta normal): ${salen.map((x) => String(x.e.title || x.mla).slice(0, 40) + ' ' + x.st + ' u.').join(' · ')}`);
+      if (salen.length) console.log(`\n✅ SALEN DEL REMATE (stock sano o sobra joven) (≤ ${RN_SANO_DIAS} d de venta normal): ${salen.map((x) => String(x.e.title || x.mla).slice(0, 40) + ' ' + x.st + ' u.').join(' · ')}`);
       if (!GO) { console.log('\nPRUEBA: no escribí nada. Con :go guarda el ritmo y saca el remate de los que ya están sanos.'); return; }
       try { await db.set('cyc/ritmonormal', R.ritmo); console.log(`✓ ritmo normal guardado (${rs.length} claves) · diario del ${R.diaK}`); }
       catch (e) { console.log(`⚠️ no pude guardar el ritmo normal: ${String(e).slice(0, 100)}`); process.exitCode = 1; }
@@ -15176,11 +15194,11 @@ async function main() {
           await marcarLiquidando(db, x.mla, null, true);
           try { await db.set('cyc/escalera/' + x.mla, null); } catch { /* */ }
           try { if ((autoprecio || {})[x.mla]) await db.set('cyc/autoprecio/' + x.mla + '/remateTerminado', Date.now()); } catch { /* el rescate esperará los 30 días */ }
-          hechas.push(`${String(x.e.title || x.mla).slice(0, 40)} (${x.e.cuenta}) · quedan ${x.st} u. = ${x.diasSt} d de venta normal`);
+          hechas.push(`${String(x.e.title || x.mla).slice(0, 40)} (${x.e.cuenta}) · ` + (x.edad != null ? `la unidad más vieja tiene ${x.edad} d en Full: falta para el stock antiguo, no se remata por sobra` : `quedan ${x.st} u. = ${x.diasSt} d de venta normal`));
           console.log(`   🔓 saqué el remate: ${hechas[hechas.length - 1]}`);
         } catch (e) { console.log(`   ⚠️ no pude sacar el remate de ${x.mla}: ${String(e && e.message || e).slice(0, 100)}`); }
       }
-      if (hechas.length) await sendAlerta(['🔓 TERMINÉ EL REMATE (ya tienen stock sano)', ...hechas.map((t) => '· ' + t), '', 'El rescate de la noche los vuelve a la base.'].join('\n'), { info: true });
+      if (hechas.length) await sendAlerta(['🔓 TERMINÉ EL REMATE (stock sano, o sobra de mercadería que todavía no llega al stock antiguo)', ...hechas.map((t) => '· ' + t), '', 'El rescate de la noche los vuelve a la base.'].join('\n'), { info: true });
       return;
     }
     // BILLING_PROBE=pedir:<palabra>=<unidades>[;<otra>=<u>][;go] → CARGA LAS UNIDADES DEL PEDIDO
