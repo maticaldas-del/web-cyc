@@ -11221,6 +11221,25 @@ async function main() {
     // BILLING_PROBE=lineaver:<MLA> → LA LÍNEA DE TIEMPO GUARDADA DE UNA PUBLICACIÓN + SU HISTORIAL DE PRECIOS DEL ROBOT · SOLO LEE.
     // BILLING_PROBE=ventasdia:<palabras>[:<días>] → POR QUÉ SE MOVIÓ EL % DE UN PRODUCTO (03/10/2026). Día por día y
     // cuenta: unidades, precio cobrado por unidad, neto por unidad, lo que se quedó ML (%) y la publicación. SOLO LEE.
+    // BILLING_PROBE=personal:<cód>*<u>*<usd>*<nombre>[;…][;go] · personal:-<cód>[;go] → USO PERSONAL en el pedido del
+    // momento (04/10/2026): va en el mensaje a Nissei y en el total, pero no es de CYC (ver pyPersonalFilas en la web).
+    if (/^personal:/.test(String(process.env.BILLING_PROBE || ''))) {
+      const partes = String(process.env.BILLING_PROBE).slice('personal:'.length).split(';').map((x) => x.trim()).filter(Boolean);
+      const GO = partes[partes.length - 1] === 'go'; if (GO) partes.pop();
+      const sidP = (x) => String(x).replace(/[^a-z0-9]/gi, '_'); const upd = {};
+      for (const p of partes) {
+        if (p.startsWith('-')) { upd[sidP(p.slice(1))] = null; console.log(`  saco ${p.slice(1)}`); continue; }
+        const [cod, u, usd, ...nom] = p.split('*');
+        const r = { cod: String(cod).trim(), u: parseInt(u) || 0, usd: parseFloat(String(usd).replace(',', '.')) || 0, nom: nom.join('*').trim(), ts: Date.now() };
+        if (!r.cod || !(r.u > 0) || !r.nom) { console.log(`  ⚠️ no entiendo "${p}"`); continue; }
+        upd[sidP(r.cod)] = r; console.log(`  ${r.cod} · ${r.nom} · ${r.u} u. · US$ ${r.usd}`);
+      }
+      if (!GO) { console.log('PRUEBA: con ;go guarda'); return; }
+      await db.patch('cyc/py_personal', upd);
+      const rel = (await db.get('cyc/py_personal')) || {};
+      console.log(`✓ guardado · en uso personal hay ${Object.keys(rel).length}: ${Object.values(rel).map((x) => x.cod + ' x' + x.u).join(', ')}`);
+      return;
+    }
     if (/^ventasdia:/.test(String(process.env.BILLING_PROBE || ''))) {
       const [q0, dd] = String(process.env.BILLING_PROBE).slice('ventasdia:'.length).split(':');
       const pal = q0.toLowerCase().split(/\s+/).filter(Boolean); const DIAS = parseInt(dd) || 60;
