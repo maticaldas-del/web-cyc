@@ -31997,6 +31997,34 @@ async function main() {
       return;
     }
 
+    // BILLING_PROBE=verlinea:<palabras>[:días] → LA LÍNEA DE TIEMPO CRUDA DE UNA FICHA (04/10/2026). Pedido suyo
+    // con un gráfico donde la ▼ no se veía en la línea del precio. Por publicación y día: estado, precio y
+    // unidades que guarda mlapi/linea, más los cambios de cyc/supervisor/eventos. SOLO LEE.
+    if (/^verlinea:/.test(String(process.env.BILLING_PROBE || ''))) {
+      const _n = (x) => String(x || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+      const ar = String(process.env.BILLING_PROBE).slice('verlinea:'.length).split(':');
+      const pals = ar[0].split('+').map(_n).map((x) => x.trim()).filter(Boolean);
+      const nd = Math.max(1, Math.min(120, Number(ar[1]) || 30));
+      const fichas = products.filter((p) => pals.every((w) => _n(p.name).includes(w)));
+      console.log(`=== LÍNEA CRUDA "${pals.join(' ')}" · ${nd} días · ${fichas.length} ficha(s) ===`);
+      const lk = (await db.get('cyc/mllinks').catch(() => null)) || {};
+      const ev = (await db.get('cyc/supervisor/eventos').catch(() => null)) || {};
+      const desde = new Date(Date.now() - nd * 864e5).toISOString().slice(0, 10).replace(/-/g, '_');
+      for (const p of fichas) {
+        console.log(`\n■ ${p.name} (${p.id})`);
+        for (const [mla, l] of Object.entries(lk)) {
+          if (!l || l.prodId !== p.id || l.ignored) continue;
+          const li = (await db.get('mlapi/linea/' + mla).catch(() => null)) || {};
+          console.log(`  ${mla} · ${l.cuenta || l.account || '?'} · ${l.variant || 'sin color'} · ${String(l.title || '').slice(0, 50)}`);
+          const ks = Object.keys(li).filter((k) => k >= desde).sort();
+          console.log('    ' + (ks.map((k) => { const x = li[k] || {}; return `${k.slice(5).replace('_', '/')} ${x.est ? String(x.est).slice(0, 3) : '?'} $${x.p ?? '?'}${x.u ? ' u' + x.u : ''}`; }).join(' | ') || 'sin días'));
+          for (const e of Object.values(ev)) if (e && e.mla === mla && e.ts && e.ts >= Date.now() - nd * 864e5)
+            console.log(`    ⇄ ${new Date(e.ts).toISOString().slice(0, 16)} ${e.motivo || '?'} ${e.de} → ${e.a}`);
+        }
+      }
+      return;
+    }
+
     // BILLING_PROBE=porquebajo:<palabras> → ¿POR QUÉ EL ROBOT BAJÓ ESTO Y QUÉ MARCAS LE PUSO? (30/09/2026)
     // Pedido suyo con las Cartas Españolas vendidas al 6%: "¿está bien bajada? ¿quiere decir que no
     // las traigo nunca más? se vendieron muchísimas en la historia". Junta por ficha (palabras con "+"):
