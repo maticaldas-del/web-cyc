@@ -25104,12 +25104,16 @@ async function main() {
       try { monoSup = parseFloat(((await db.get('cyc/monotributo')) || {}).pct) || 0; } catch { monoSup = 0; }
       try { histSup = (await db.get('cyc/stockhist')) || {}; } catch { histSup = null; }
       // EL VALOR DE VENDER ANTES (04/10/2026, él con el Watch S5: "vendió 2 relojes que quizás no vendíamos en meses,
-      // eso es costo de oportunidad"). La plata de la mercadería vuelve antes; se valora a la tasa que CYC le paga a
-      // los socios por su capital (2% por mes). Los días adelantados salen del ritmo NORMAL del producto en esa cuenta
+      // eso es costo de oportunidad"). La plata de la mercadería vuelve antes; se valora a la tasa que CYC paga hoy por
+      // el capital (1% por mes en dólares, 04/10/2026). Los días adelantados salen del ritmo NORMAL del producto en esa cuenta
       // (365 días sin remate): la unidad Nº i se habría vendido el día i ÷ ritmo; se vendió antes. Tope 180 días.
-      const TASA_MES = 0.02, ADEL_TOPE = 180;
+      const TASA_MES = 0.01, ADEL_TOPE = 180;   // 1% mensual en dólares: lo que paga CYC hoy (dicho por él el 04/10/2026)
       let rnSup = {}; try { rnSup = (await db.get('cyc/ritmonormal')) || {}; } catch { rnSup = {}; }
       const tarifaAlm = cfgSup.almacTarifa || {};
+      // Tabla del cargo por stock antiguo, por tamaño: [desde días, hasta días, $ por unidad por cierre] (null = no se sabe).
+      // Leída de su pantalla de ML el 04/10/2026 (pequeño: 4-6 meses $350, 6-12 meses $3.250; hasta 2 meses $0).
+      // Se puede pisar con `cyc/mlconfig/stockAntiguo`.
+      const stockAntiguoSup = cfgSup.stockAntiguo || { pequeno: [[0, 60, 0], [60, 120, null], [120, 180, 350], [180, 365, 3250], [365, 1e9, null]] };
       const palGS = (Array.isArray(cfgSup.cupoGrandes) ? cfgSup.cupoGrandes
         : (typeof cfgSup.cupoGrandes === 'string' ? cfgSup.cupoGrandes.split(',') : null)) || ['tendedero', 'tender'];
       const esGrandeS = (p) => p && (p.grandeFull === true || (p.grandeFull !== false && palGS.some((w) => w && norm(p.name || '').includes(norm(String(w).trim())))));
@@ -25155,30 +25159,36 @@ async function main() {
         const S0 = Number(ev.st0) >= 0 && ev.st0 != null ? Number(ev.st0)
           : (() => { const s = stockDe(ev.mla); return s == null ? null : s + ventC.filter((x) => x.ts > ev.ts).reduce((a, x) => a + x.q, 0); })();
         const rC = ventC.filter((x) => x.ts < ev.ts && x.ts >= ev.ts - 60 * 864e5).reduce((a, x) => a + x.q, 0) / 60;
-        let adel = 0, adelD = 0, adelNota = '';
+        let adel = 0, adelD = 0, adelNota = ''; const uAd = [];
         {
           const pdN = key ? Number((rnSup[key] || {}).pd) || 0 : 0, pdB = Math.max(pdN, r0);
           if (!(pdB > 0)) adelNota = 'sin ritmo normal medido: no se puede saber cuánto se adelantó';
-          else { let i = 0; for (const x of dv) for (let j = 0; j < x.q; j++) { i++; const dR = (x.ts - ev.ts) / 864e5; const ad = Math.min(ADEL_TOPE, Math.max(0, i / pdB - dR)); adelD += ad; adel += costo * TASA_MES / 30 * ad; } }
+          else { let i = 0; for (const x of dv) for (let j = 0; j < x.q; j++) { i++; const dR = (x.ts - ev.ts) / 864e5; const ad = Math.min(ADEL_TOPE, Math.max(0, i / pdB - dR)); adelD += ad; adel += costo * TASA_MES / 30 * ad; if (ad > 0) uAd.push({ t0: x.ts, ad }); } }
         }
+        // EL CARGO POR STOCK ANTIGUO QUE SE EVITÓ (04/10/2026, tarifa leída de su pantalla de ML "Gestión de stock
+        // Full"). ML cobra al cierre de cada facturación un monto POR UNIDAD según el tamaño y la antigüedad de la
+        // unidad en Full. Cada unidad vendida antes de tiempo (ver arriba) se habría quedado hasta su fecha "normal":
+        // se suman los cierres que habría atravesado, con la antigüedad que tendría en cada uno. Un tramo sin tarifa
+        // conocida no se inventa: se cuenta y se dice.
         if (histSup == null) almNota = 'no se pudo leer desde cuándo está en Full';
-        else if (!extras.length) almNota = 'no vendió nada que no se vendiera igual';
+        else if (!uAd.length) almNota = 'no vendió nada antes de tiempo';
         else if (!desde) almNota = 'sin fecha de entrada a Full';
-        else if (desde > ev.ts) almNota = 'entró mercadería después del cambio: no se puede separar';
-        else if (!(S0 > 0)) almNota = 'sin el stock del día del cambio';
         else {
-          const pagaDesde = desde + ALM_DIAS * 864e5;
-          for (let d = ev.ts + 864e5; d <= ahora; d += 864e5) {
-            if (d < pagaDesde) continue;
-            const idos = extras.filter((x) => x.ts <= d).reduce((a, x) => a + x.u, 0);
-            const sinRobot = Math.max(0, S0 - rC * (d - ev.ts) / 864e5);
-            almUD += Math.min(idos, sinRobot);
+          const tam = esGrandeS(p) ? 'grande' : 'pequeno', tabla = (stockAntiguoSup || {})[tam];
+          if (!Array.isArray(tabla)) almNota = `falta la tarifa de stock antiguo de productos ${tam === 'grande' ? 'grandes' : 'pequeños'}`;
+          else {
+            let suma = 0, falta = 0, cierres = 0;
+            for (const { t0, ad } of uAd) {
+              const t1 = t0 + ad * 864e5;
+              const c = new Date(t0); c.setUTCDate(13); c.setUTCHours(3, 0, 0, 0); if (c.getTime() <= t0) c.setUTCMonth(c.getUTCMonth() + 1);
+              for (; c.getTime() <= t1; c.setUTCMonth(c.getUTCMonth() + 1)) {
+                const edad = (c.getTime() - desde) / 864e5, tr = tabla.find((b) => edad >= b[0] && edad < b[1]);
+                if (!tr) continue; cierres++; if (tr[2] == null) falta++; else suma += Number(tr[2]) || 0;
+              }
+            }
+            almUD = cierres; alm = Math.round(suma);
+            almNota = falta ? `${falta} cierre(s) en un tramo de antigüedad sin tarifa cargada (no se cuentan)` : (cierres ? '' : 'no habría llegado a un cierre con cargo');
           }
-          almUD = Math.round(almUD * 10) / 10;
-          const t = Number(esGrandeS(p) ? tarifaAlm.grande : tarifaAlm.chico);
-          if (!almUD) almNota = pagaDesde > ahora ? `todavía no habría empezado a pagar (arranca el ${new Date(pagaDesde - 3 * 3600e3).toISOString().slice(8, 10)}/${new Date(pagaDesde - 3 * 3600e3).toISOString().slice(5, 7)})` : 'sin el robot se habría vendido igual antes de pagar';
-          else if (t > 0) alm = Math.round(almUD * t);
-          else almNota = 'falta la tarifa de almacenamiento de ML';
         }
         const r1 = (n) => Math.round(n * 10) / 10;
         return { gan: Math.round(gan), base: Math.round(base), alm, almUD, almNota, uOk: r1(uOk), uBajo: r1(uBajo), uBase: r1(uBase),
@@ -25531,7 +25541,7 @@ async function main() {
       console.log(`${resumen.ganaron} dejaron más · ${resumen.perdieron} dejaron menos · ${resumen.quiebres} con el volumen sin contar por quiebre de stock`);
       console.log(`No cuentan (🛟 recuperar margen por costo/inflación): ${resumen.rescates.n} cambios · ${$s(resumen.rescates.total)}`);
       console.log(`Remates y escalera: ${resumen.remates.n} · ventas al ${REM_PISO}%+ ${$s(resumen.remates.gan)} · lo que igual se vendía, más barato ${$s(resumen.remates.base)} · almacenamiento evitado ${resumen.remates.almUD} unidades-día${resumen.remates.alm ? ' = ' + $s(resumen.remates.alm) : ''}${resumen.remates.sinTarifa ? ' (falta la tarifa: no suma en pesos)' : ''}`);
-      for (const x of atrib.filter((y) => y.rem)) console.log(`  🔨 ${x.nom} (${x.cuenta}) ${$s(x.de)}→${$s(x.a)} · ${x.dias} d · salieron ${x.rem.uOk} u. paradas · cobrado de menos ${$s(x.rem.gan)} · plata adelantada +${$s(x.rem.adel)} (${x.rem.adelD} días-unidad${x.rem.adelNota ? ', ' + x.rem.adelNota : ''}) · iba igual ${x.rem.uBase} u. ${$s(x.rem.base)} · almac. ${x.rem.almUD} u-día${x.rem.alm != null ? ' ' + $s(x.rem.alm) : ''}${x.rem.almNota ? ' (' + x.rem.almNota + ')' : ''}`);
+      for (const x of atrib.filter((y) => y.rem)) console.log(`  🔨 ${x.nom} (${x.cuenta}) ${$s(x.de)}→${$s(x.a)} · ${x.dias} d · salieron ${x.rem.uOk} u. paradas · cobrado de menos ${$s(x.rem.gan)} · plata adelantada +${$s(x.rem.adel)} (${x.rem.adelD} días-unidad${x.rem.adelNota ? ', ' + x.rem.adelNota : ''}) · iba igual ${x.rem.uBase} u. ${$s(x.rem.base)} · stock antiguo evitado ${x.rem.almUD} cierre(s)${x.rem.alm != null ? ' ' + $s(x.rem.alm) : ''}${x.rem.almNota ? ' (' + x.rem.almNota + ')' : ''}`);
       { const cm = {}; for (const x of registros) cm[x.motivo] = (cm[x.motivo] || 0) + 1; console.log(`Motivos: ${Object.entries(cm).map(([k, n]) => k + ' ' + n).join(' · ')}`); }
       for (const x of resumen.items.slice(0, 15)) console.log(`  ${x.total >= 0 ? '+' : ''}${$s(x.total)} · ${x.nom} (${x.cuenta}) ${$s(x.de)}→${$s(x.a)} · ${x.dias} d · ${x.uA}→${x.uD} u. · precio ${$s(x.precio)} · volumen ${$s(x.volumen)}${x.quiebre ? ' · sin stock' : ''}`);
       console.log('');
