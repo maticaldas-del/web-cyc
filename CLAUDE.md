@@ -846,6 +846,19 @@ propone bajar si la unidad MÁS VIEJA en Full tiene `SOBRA_EDAD_MIN` = 100 días
 si no, `stockhist`; sin fecha no baja). Motivo: antes de los 120 días ML cobra $0 de stock antiguo y la baja regala más de
 lo que cuesta sostener. Primera prueba (04/10): 2 frenadas por esta regla. **No volver a proponer bajar por sobra antes.**
 
+## LAS CUOTAS DEL QUE HAY QUE IGUALAR, AHORA SOLAS (04/10/2026, v21.90 · `cyc-v469`)
+Él: *"ya lo habíamos hablado lo de las cuotas, cómo puede ser que no se tenga en cuenta algo tan importante"*.
+Antes sólo contaban si el chat cargaba `cuotasGan`. ML lo dice en cada oferta de `/products/<id>/items` (medido con
+`verofertas` en el Mercedes Man): `listing_type_id:'gold_pro'` (Premium) o una etiqueta `pcj-…` (campaña de cuotas,
+aunque sea Clásica: la ganadora del Mercedes Man era así). `cuotasDeOferta` → 6 cuotas Premium, 9 campaña (tabla
+`CUOTAS_PCT_ML`, la del chat). **Candidatos** lo usan si no hay `cuotasGan` (guardan `mlCuotasAuto`; `CAND_CALC_VER`=11
+vuelve a medir todos). **`techofull`** guarda `cuoT` (el que pone el techo) y `cuoMin` (el más barato); la web
+(`maxCompraDe`) descuenta esas cuotas en el máximo de compra de los probados y lo dice en ámbar.
+**Línea de tiempo (mismo día):** carril "$ ganancia/día" (promedio de 7 días) y abajo, por cada cambio de precio, ganancia
+por día con stock antes (14 d) y después (hasta 14 d o el cambio siguiente). Pedido suyo con el Metatarso. Y el precio de
+los días sin estado sale de la publicación que vendió más reciente (el serrucho $2.999↔$3.810 era la de Adriana pausada).
+**Arqueo → Productos:** botones Todos · 🇦🇷 Bs As · 🇵🇾 Paraguay (`prodOrigenVer`, recordado en `cycProdOrigen`).
+
 ## TENER FULL VALE PRECIO: PEDIDOS PARAGUAY Y LA 📈 LO USAN SOLOS (04/10/2026, v21.87 · `cyc-v466`)
 Él, con el Animale Sexy Mujer: *"si el flaco no tiene full y nosotros sí, lo vendemos a 85.000 y quedamos ganando
 (…) lo que yo dije que sea automático es que al comparar precio de nissei y ml tenga en cuenta eso"* y el tope:
