@@ -809,19 +809,29 @@ privada unificados · las dos facturas de Sancor analizadas.
 **Versión del panel: 20.16 · caché `cyc-v294`**. El ciclo del robot quedó **prendido**.
 
 
-## CÓMO SE JUZGA UN REMATE DEL ROBOT (04/10/2026, `cuentaRemate` en el supervisor)
-Él, con el Watch S5 y el Pendrive 32gb: *"sería injusto restarle por algo que no vendía, o no vendía tanto, a un precio alto"*.
- · **El ritmo al precio viejo** sale sólo de los días en que hubo stock seguido (`stockhist` `desde` / `desdePrev`-`cero`; su razonamiento
-   "si cumple 2 meses el 17/10, llegó el 17/08 y estuvo con stock hasta que se vendió" es correcto, salvo cortes de menos de 48 h y fechas `aprox`).
-   Con menos de 14 días con stock se usa el ritmo normal (lado prudente).
- · **Unidad por unidad:** las que el precio viejo vendía DENTRO de la misma ventana medida → se resta lo cobrado de menos. Las que salieron de más →
-   no se castigan; suman su ganancia sólo si quedaron en 20%+ (regla del 25/09), más la plata adelantada (1%/mes sobre el costo) y el stock antiguo evitado.
- · **Stock antiguo (Excel de ML del 04/10):** pequeño $0 hasta 120 d · $350 de 120-180 d · $3.250 de 180-365 d; mediano $470 / $4.485; grande y +12 meses sin tarifa.
-   Cierre: Adriana el 10, el resto el 12. Tamaño por código de Full en `cyc/mlconfig/tamFull` (comando `tamfull:<INV>=pequeno|mediano|grande;go`).
- · Primer resultado: Watch S5 **+$146.310** (antes −$22.561), Pendrive 32gb **−$3.386** (3 de 6 se vendían igual; las otras 3 quedaron al 18%, abajo de su 20%).
- · **Cargos de Full por producto:** el resumen de facturación trae CFWA (almacenamiento), CFBA (prolongado) y CFRS (retiro) por cuenta; el detalle tiene
-   `items_info`. Probe `cargosfull[:go]` (el `:go` pide el reporte FULL en Excel, va por ml-sync). La API de reposición
-   (`/marketplace/fbm/user-products/<upid>/replenishment?country=AR`) da 6 semanas de ventas y días sin stock por producto.
+## CÓMO SE JUZGA UN REMATE DEL ROBOT (04/10/2026, `cuentaRemate` en el supervisor) · REGLA FIRME
+Él: *"algo firme, que no dependa de una pequeña duda (…) los dos queremos que dé positivo, estamos sesgados"* y *"no podés
+atribuirle toda la ganancia al bot, y si al otro día se vendía?"*. **La versión de esa misma tarde (Watch S5 +$146.310) se
+descartó por eso.** Cómo quedó:
+ · **Días con stock:** del registro hora por hora (`cyc/stocklog/cambios`, sin tolerancia: una hora en cero corta). Antes
+   del 24/09 (cuando arrancó) vale `stockhist`, que es aproximado. Por color si la publicación es de un color.
+ · **Sin el robot se supone lo MÁS que era creíble vender:** techo = (ventas al precio viejo + 3) ÷ días con stock (regla
+   del 3; mínimo 14 días). Con 0 ventas en 38 días eso es 2,4 por mes, no cero.
+ · **Unidad por unidad:** si el techo la vendía dentro de la misma ventana → se RESTA lo cobrado de menos. Si salió antes →
+   **NO se suma su ganancia** (se vendía igual más adelante): sólo el tiempo = plata adelantada (1%/mes sobre el costo) y
+   el stock antiguo evitado con la tarifa de ML.
+ · **Stock antiguo, tabla completa de ML (04/10):** a los 4-6 meses / 6-12 / +12 → pequeño $350/$3.250/$7.900 ·
+   mediano $470/$4.485/$10.930 · grande $1.355/$18.280/$39.365 · extragrande $4.680/$47.840/$92.400. Hasta 4 meses $0.
+   Cierre: Adriana el 10, el resto el 12.
+ · **Lotes del Excel de ML** en `cyc/lotesfull/<código de Full>` (comando `lotesfull:<cuenta>@<fecha del cargo>;<código>=<tamaño>:<días>x<u>,…;go`,
+   la antigüedad es a la fecha del cargo). Cargados el 04/10 los 16 códigos de Adriana, Luciana y Matías (Ayelen no tiene).
+   Mandan sobre `stockhist` para la antigüedad (lote más viejo) y el tamaño.
+ · **Resultado 04/10:** Watch S5 **+$1.971** · Pendrive 32gb **−$4.615** (4 de 6 se vendían igual) · Alargue −$579 · Cartas
+   Españolas −$263. **Lo que se ve:** bajar por sobra de stock ANTES de los 120 días (cuando todavía no se paga stock
+   antiguo) casi nunca paga: sostener 30 días más cuesta ~1% del costo y la baja regala 5-10% del precio.
+ · **Cargos de Full por producto:** el resumen de facturación trae CFWA (almacenamiento), CFBA (prolongado), CFRS (retiro) por
+   cuenta; el detalle trae `items_info`. Probe `cargosfull[:go]`. La API de reposición
+   (`/marketplace/fbm/user-products/<upid>/replenishment?country=AR`) da 6 semanas de ventas y días sin stock.
 
 ## EL PISO SALE DEL NEGOCIO: 22% NARANJA · 25% BASE (24/09/2026)
 
