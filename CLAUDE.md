@@ -1583,6 +1583,7 @@ Los que más se usan:
 | `ancla:<cuenta>=<pesos>[;…][;go]` | **el disponible de MP que él lee**, cargado desde el chat (26/09): punto de partida en pesos + casilla en dólares |
 | `pausaprecio[:<palabra>\|:-<palabra>][:go]` | **"No lo compro por ahora" desde el chat** (26/09) · con `-` lo devuelve a Pedidos |
 | `marcano:<marca>[:go]` | **"esta marca no se compra"** (26/09): la guarda en `marcasFrenadas`, tacha los candidatos de esa marca (la busca también en el NOMBRE, no sólo en el campo marca) y les saca las unidades del pedido · `-` adelante la vuelve a permitir · prohibida hoy: **Dolce & Gabbana** |
+| `candcuotas:<palabra>=<cuotas>[;go]` | **"la que gana da N cuotas"** (04/10): escribe `cuotasGan` del candidato, lo saca del pedido y lo vuelve a medir en la misma corrida · el Mercedes-Benz Man pasó de 27,5% a 0,8% con 9 cuotas |
 | `premiumvs` | **Premium contra Clásica** (idea 2 de la etapa 6, 27/09): cuánto cuesta ser Premium por venta (comisión + cuotas) y cuánto menos se puede vender en Clásica ganando lo mismo · solo lee |
 
 Casi todos son de solo lectura. Los que escriben piden `:go` explícito.
