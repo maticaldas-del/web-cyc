@@ -858,6 +858,7 @@ vuelve a medir todos). **`techofull`** guarda `cuoT` (el que pone el techo) y `c
 por día con stock antes (14 d) y después (hasta 14 d o el cambio siguiente). Pedido suyo con el Metatarso. Y el precio de
 los días sin estado sale de la publicación que vendió más reciente (el serrucho $2.999↔$3.810 era la de Adriana pausada).
 **Arqueo → Productos:** botones Todos · 🇦🇷 Bs As · 🇵🇾 Paraguay (`prodOrigenVer`, recordado en `cycProdOrigen`).
+**Mismo día (v21.91 · `cyc-v470`):** probes nuevos `candml:<palabra>=<MLA o link /p/>[;go]` (fija el catálogo de ML de un candidato y lo vuelve a medir; el Britney Midnight Fantasy con `MLA68228795` dio **23,8% a $69.900, sin cuotas**) y `auditlinea[:días]` (solo lee: junta cada ficha con la `_lineaJunta` REAL de index.html y busca serrucho, línea ≠ cobrado, venta con stock 0 y precio de publicaciones no activas). Corrida de 90 días sobre 157 fichas: serrucho sólo en Paulvic (son aromas a distintos precios dentro de una ficha), 1 caso de línea ≠ cobrado (Protector talón), las "ventas con stock 0" son el último día de stock, y las 133 "precio de no activa" son fichas sin ninguna publicación viva (no es error). El globito de la línea ahora dice "no vendió" y el % de la última venta en los días sin ventas.
 
 ## TENER FULL VALE PRECIO: PEDIDOS PARAGUAY Y LA 📈 LO USAN SOLOS (04/10/2026, v21.87 · `cyc-v466`)
 Él, con el Animale Sexy Mujer: *"si el flaco no tiene full y nosotros sí, lo vendemos a 85.000 y quedamos ganando
