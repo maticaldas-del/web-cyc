@@ -41,7 +41,7 @@ process.on('SIGTERM', () => _alCortar('SIGTERM'));
 // ML, Mercado Pago y Telegram en sólo lectura (se deja renovar y guardar el token de ML, que ML rota).
 const EN_CONSULTA = process.env.GITHUB_WORKFLOW === 'ml-consulta' || process.env.ML_CONSULTA === '1';
 const CONSULTA_ESCRIBE = new Set(['vincular', 'pasara', 'nomandar', 'fijarvar', 'cupo', 'poncosto', 'tamfull', 'lotesfull']);
-const CONSULTA_NIEGA = new Set(['candcuotas', 'ofi', 'ancla', 'responder', 'pyped', 'cajallego', 'abrircaja', 'compray', 'pedir', 'dispo', 'saldoml',
+const CONSULTA_NIEGA = new Set(['candcuotas', 'candml', 'ofi', 'ancla', 'responder', 'pyped', 'cajallego', 'abrircaja', 'compray', 'pedir', 'dispo', 'saldoml',
   'armarsaldo', 'avisos', 'cajasllegaron', 'netoweb', 'netoreal', 'candidatos', 'supervisor', 'sacapromos', 'pausar', 'liquidando',
   'unapub', 'volver', 'submargen', 'fijar', 'activarfull', 'meta', 'ciclo', 'marcano', 'pausaprecio', 'cargargasto', 'retiromes']);
 let CONSULTA_SOLO_LEE = false;
@@ -32078,6 +32078,102 @@ async function main() {
       return;
     }
 
+    // BILLING_PROBE=auditlinea[:días] → ¿LA LÍNEA DE TIEMPO DICE LA VERDAD EN TODAS LAS FICHAS? (04/10/2026). SOLO LEE.
+    // Pedido suyo después del serrucho del Metatarso: "vi que hubo varios errores parecidos, podés corroborar en
+    // todas las publicaciones". Junta cada ficha con `_lineaJunta` SACADA DE index.html (la misma que dibuja el
+    // gráfico, no una copia) y busca, en la ventana pedida:
+    //  · SERRUCHO: el precio va A → B → A en días seguidos (más de 3% de salto) — la marca de una publicación
+    //    que se cuela algunos días y otros no.
+    //  · PRECIO QUE NO ES EL COBRADO: días con ventas donde lo cobrado por unidad se aleja más de 15% del
+    //    precio que muestra la línea.
+    //  · VENTA SIN STOCK: una publicación que dice stock 0 el mismo día que vendió.
+    //  · PRECIO SIN PUBLICACIÓN VIVA: días donde ninguna publicación activa ni con ventas dio el precio y la
+    //    línea lo sacó de una pausada o sin estado.
+    if (/^auditlinea(:|$)/.test(String(process.env.BILLING_PROBE || ''))) {
+      const nd = Math.max(7, Math.min(400, Number(String(process.env.BILLING_PROBE).split(':')[1]) || 90));
+      let src = '';
+      try { src = readFileSync(new URL('../index.html', import.meta.url), 'utf8'); } catch {}
+      const i0 = src.indexOf('function _lineaJunta(');
+      const i1 = i0 >= 0 ? src.indexOf('\nasync function lineaAbrir', i0) : -1;
+      if (i0 < 0 || i1 < 0) { console.log('⚠️ no encontré _lineaJunta en index.html: no audito con otra cuenta'); return; }
+      const junta = new Function(src.slice(i0, i1) + '\nreturn _lineaJunta;')();
+      const lk = (await db.get('cyc/mllinks').catch(() => null)) || {};
+      const desde = new Date(Date.now() - nd * 864e5).toISOString().slice(0, 10).replace(/-/g, '_');
+      const porProd = {};
+      for (const [mla, l] of Object.entries(lk)) if (l && l.prodId && !l.ignored) (porProd[l.prodId] = porProd[l.prodId] || []).push(mla);
+      const nom = (id) => (products.find((p) => p.id === id) || {}).name || id;
+      const malos = { serr: [], cobro: [], sinst: [], muerto: [] };
+      let fichas = 0, dias = 0, sinLinea = 0;
+      for (const [pid, mlas] of Object.entries(porProd)) {
+        const porMla = {};
+        for (const mla of mlas) {
+          const li = await db.get('mlapi/linea/' + mla).catch(() => null);
+          if (li && typeof li === 'object') porMla[mla] = Object.fromEntries(Object.entries(li).filter(([k]) => k >= desde));
+        }
+        if (!Object.values(porMla).some((x) => Object.keys(x).length)) { sinLinea++; continue; }
+        fichas++;
+        const d = junta(porMla);
+        const ks = Object.keys(d).sort(); dias += ks.length;
+        // serrucho
+        let serr = 0; const ej = [];
+        for (let i = 1; i < ks.length - 1; i++) {
+          const a = d[ks[i - 1]].p, b = d[ks[i]].p, c = d[ks[i + 1]].p;
+          if (a && b && c && a === c && Math.abs(b - a) / a > 0.03) { serr++; if (ej.length < 3) ej.push(`${ks[i].slice(5).replace('_', '/')} $${a}→$${b}→$${c}`); }
+        }
+        if (serr >= 2) malos.serr.push({ pid, n: serr, ej });
+        // cobrado vs línea
+        let cob = 0; const ejc = [];
+        for (const k of ks) { const o = d[k]; if (o.u > 0 && o.tot > 0 && o.p > 0) { const pu = o.tot / o.u; if (Math.abs(pu - o.p) / o.p > 0.15) { cob++; if (ejc.length < 3) ejc.push(`${k.slice(5).replace('_', '/')} línea $${o.p} · cobró $${Math.round(pu)}`); } } }
+        if (cob >= 2) malos.cobro.push({ pid, n: cob, ej: ejc });
+        // venta sin stock (por publicación) y precio sin publicación viva (en la junta)
+        for (const [mla, li] of Object.entries(porMla)) {
+          let n = 0; const e2 = [];
+          for (const [k, x] of Object.entries(li)) if (x && Number(x.u) > 0 && x.st === 0) { n++; if (e2.length < 3) e2.push(k.slice(5).replace('_', '/')); }
+          if (n >= 2) malos.sinst.push({ pid, mla, n, ej: e2 });
+        }
+        let muer = 0; const ejm = [];
+        for (const k of ks) {
+          const vivos = Object.values(porMla).some((li) => li[k] && li[k].p > 0 && (li[k].est === 'active' || Number(li[k].u) > 0));
+          if (!vivos && d[k].p > 0) { muer++; if (ejm.length < 2) ejm.push(`${k.slice(5).replace('_', '/')} $${d[k].p}`); }
+        }
+        if (muer >= 7) malos.muerto.push({ pid, n: muer, ej: ejm });
+      }
+      console.log(`=== AUDITORÍA DE LA LÍNEA DE TIEMPO · ${nd} días · ${fichas} fichas con línea · ${dias} días-ficha · ${sinLinea} fichas sin nada guardado ===`);
+      const imp = (tit, arr, f) => { console.log(`\n${tit}: ${arr.length}`); for (const x of arr.sort((a, b) => b.n - a.n).slice(0, 40)) console.log('  · ' + f(x)); if (arr.length > 40) console.log(`  … y ${arr.length - 40} más`); };
+      imp('🪚 SERRUCHO (precio A→B→A, 2 o más veces)', malos.serr, (x) => `${nom(x.pid)} · ${x.n} veces · ${x.ej.join(' · ')}`);
+      imp('💲 LA LÍNEA NO ES LO COBRADO (más de 15%, 2+ días)', malos.cobro, (x) => `${nom(x.pid)} · ${x.n} días · ${x.ej.join(' · ')}`);
+      imp('📦 VENDIÓ CON STOCK 0 GUARDADO (2+ días)', malos.sinst, (x) => `${nom(x.pid)} · ${x.mla} · ${x.n} días · ${x.ej.join(', ')}`);
+      imp('🪦 PRECIO SACADO DE UNA PUBLICACIÓN NO ACTIVA (7+ días)', malos.muerto, (x) => `${nom(x.pid)} · ${x.n} días · ej. ${x.ej.join(' · ')}`);
+      return;
+    }
+    // BILLING_PROBE=candml:<palabra>=<código o link del catálogo de ML>[;go] → "ÉSTE ES EL CATÁLOGO BUENO" (04/10/2026).
+    // Él pasó el link correcto del Britney Midnight Fantasy. Escribe `mlId` del candidato (una sola coincidencia, si
+    // no no escribe), lo pone primero en la fila y lo vuelve a medir en la misma corrida. NO toca las unidades del
+    // pedido: si la medición nueva no llega al piso, la pantalla lo pinta en rojo y lo decide él. Sin `go` sólo muestra.
+    if (/^candml:/.test(String(process.env.BILLING_PROBE || ''))) {
+      const _cm = String(process.env.BILLING_PROBE).slice('candml:'.length);
+      const APLICAR = /(^|;)go$/.test(_cm);
+      const m = _cm.replace(/(^|;)go$/, '').match(/^(.+?)=(.+)$/);
+      const idML = m ? String(m[2]).trim().toUpperCase().replace(/^.*\/P\//, '').split(/[?#/]/)[0] : '';
+      if (!m || !/^MLA\d+$/.test(idML)) { console.log('Usá: candml:<palabra>=<MLA… o link /p/MLA…>[;go]'); return; }
+      const nrm = (t) => String(t || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[^a-z0-9]+/g, ' ').trim();
+      const q = nrm(m[1]);
+      const cands = (await db.get('cyc/candidatos_py')) || {};
+      const hits = Object.entries(cands).filter(([, c]) => c && c.nombre && !c.prodId && nrm(c.nombre).includes(q));
+      if (hits.length !== 1) { console.log(hits.length ? `"${m[1]}" agarra ${hits.length}: ${hits.map(([, c]) => c.nombre).join(' | ')}. No escribo nada.` : `"${m[1]}" no agarra ningún candidato.`); return; }
+      const [id, c] = hits[0];
+      console.log(`${c.nombre}\n  hoy: catálogo ${c.mlId || '(por nombre)'} · ${c.margen ?? '—'}% · ${Number(c.pedirU) || 0} u. en el pedido${c.no ? ' · DESCARTADO: ' + (c.motivo || '') : ''}\n  queda: catálogo ${idML}`);
+      if (!APLICAR) { console.log('PRUEBA: no escribí nada. Agregá ;go'); return; }
+      await db.set(`cyc/candidatos_py/${id}/mlId`, idML);
+      await db.set(`cyc/candidatos_py/${id}/calcTs`, 0);
+      const rl = (await db.get(`cyc/candidatos_py/${id}`)) || {};
+      console.log(`✓ releído: catálogo ${rl.mlId}`);
+      console.log('\n--- se vuelve a medir con la cuenta de siempre ---');
+      await correrCandidatos(db, products, labels, accounts, false);
+      const fin = (await db.get(`cyc/candidatos_py/${id}`)) || {};
+      console.log(`\n➡️ ${c.nombre}: ${fin.margen ?? '—'}% · ML ${fin.mlTitulo || fin.mlTit || '?'} · $${fin.mlPrecio || '?'}${fin.mlCuotasPct ? ` · cuotas ${fin.mlCuotasPct}%${fin.mlCuotasAuto ? ' (las vio el robot)' : ''}` : ' · sin cuotas'} · ${Number(fin.pedirU) || 0} u.${fin.no ? ' · DESCARTADO: ' + (fin.motivo || '') : ''}`);
+      return;
+    }
     // BILLING_PROBE=verlinea:<palabras>[:días] → LA LÍNEA DE TIEMPO CRUDA DE UNA FICHA (04/10/2026). Pedido suyo
     // con un gráfico donde la ▼ no se veía en la línea del precio. Por publicación y día: estado, precio y
     // unidades que guarda mlapi/linea, más los cambios de cyc/supervisor/eventos. SOLO LEE.
