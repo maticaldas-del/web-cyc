@@ -2432,7 +2432,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='21.90';
+const APP_VERSION='21.91';
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
 // muestre la versión y la fecha de actualización y que tenga un desplegable predeterminado cerrado".
 // Y el mismo día: "que ponga fecha de cada modificación y haya una barrita para scrollear y que
@@ -2443,6 +2443,7 @@ const APP_VERSION='21.90';
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'21.91',f:'04/10/2026',h:'18:40',c:[{n:1,t:'📈 Línea de tiempo: al pasar el mouse, todos los días dicen lo mismo. Un día sin ventas dice "no vendió" (antes "sin dato") y muestra el % de ganancia de la última venta, con su fecha.'}]},
   {v:'21.90',f:'04/10/2026',h:'18:05',c:[{n:3,t:'💳 Paraguay: si el que hay que igualar en ML da cuotas sin interés (es Premium o está en una campaña de cuotas), el máximo de compra y el % de los candidatos ya las descuentan solos. Antes sólo si el chat las cargaba a mano.'},{n:2,t:'📈 Línea de tiempo: carril nuevo "$ ganancia/día" (promedio de 7 días) y abajo, por cada cambio de precio, cuánto dejaba por día antes y después (sólo días con stock).'},{n:1,t:'📈 Línea de tiempo: el precio ya no salta a una publicación pausada los días sin ventas (el serrucho del Metatarso).'},{n:1,t:'📦 Arqueo → Productos: botones Todos · 🇦🇷 Bs As · 🇵🇾 Paraguay.'}]},
   {v:'21.89',f:'04/10/2026',h:'17:20',c:[{n:1,t:'🇵🇾 Pedidos Paraguay (probados y nuevos): botones Todo · 🧴 Perfumes · 📦 Resto para ver sólo una parte. El pedido armado y el mensaje para Nissei no cambian.'}]},
   {v:'21.88',f:'04/10/2026',h:'16:55',c:[{n:1,t:'📈 Línea de tiempo: el precio ya no toma publicaciones muertas (sin ventas y que no están activas). Antes una vieja a $2.700 hacía saltar la línea y el remate de las Cartas Españolas a $2.830 se veía como una suba.'}]},
@@ -8602,9 +8603,15 @@ function lineaPintar(prodId){
   ks.forEach((k,i)=>{const es=evK[k];if(!es)return;const sube=es.some(e=>Number(e.a)>Number(e.de));
     svg+=`<text x="${X(i)+bw/2}" y="${L.pr[0]-2}" font-size="11" text-anchor="middle" fill="${sube?'var(--green)':'var(--red)'}">${sube?'▲':'▼'}</text>`;});
   // capa de "pasar el mouse": un rectángulo invisible por día con todo el dato
+  // EL GLOBITO DICE LO MISMO TODOS LOS DÍAS (04/10/2026, él: "cuando paso el mouse quiero que me muestre la misma
+  // info en todos, ahí no me muestra el % de ganancia de un día cualquiera"). Un día sin ventas no tiene % propio:
+  // se muestra el de la última venta, con su fecha. Y "sin dato" sólo antes de la primera venta guardada.
+  const _gdK=Object.keys(gd).sort(), _gd0=_gdK[0]||'9999';let _pdU=null,_pdUk=null;const pdUlt={};
+  ks.forEach(k=>{if(pd[k]!=null){_pdU=pd[k];_pdUk=k;}if(_pdU!=null)pdUlt[k]=[_pdU,_pdUk];});
   ks.forEach((k,i)=>{const d=dias[k];const es=evK[k]||[];
     const t=[`${_lineaFmtDia(k)}`,
-      d&&d.u!=null?`🛒 vendió ${d.u} u.${d.uR?` (${d.uR} en remate)`:''}`:'🛒 ventas: sin dato',
+      d&&d.u!=null&&d.u>0?`🛒 vendió ${d.u} u.${d.uR?` (${d.uR} en remate)`:''}`:(k>=_gd0||(d&&d.u===0)?'🛒 no vendió':'🛒 ventas: sin dato'),
+      !gd[k]&&pdUlt[k]?`💰 % ganancia de la última venta (${_lineaFmtDia(pdUlt[k][1])}): ${pdUlt[k][0].toFixed(0)}%`:'',
       g7[k]!=null?`💵 ganancia promedio de los últimos 7 días: ${fmt(Math.round(g7[k]))} por día`:'',
       gd[k]?`💰 ganancia ${fmt(gd[k].gan)}${(()=>{const q=pctGananciaVP(gd[k].gan,gd[k].costo,gd[k].gest);return q!=null&&isFinite(q)?` (${q.toFixed(0)}%)`:'';})()}`:'',
       stU[k]!=null?`📦 ${stU[k]} u. en Full · alcanza ${stD[k]>=999?'+999':Math.round(stD[k])} d (${_stTxt(stD[k])})`:'',
