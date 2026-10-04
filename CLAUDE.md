@@ -833,6 +833,14 @@ descartó por eso.** Cómo quedó:
    cuenta; el detalle trae `items_info`. Probe `cargosfull[:go]`. La API de reposición
    (`/marketplace/fbm/user-products/<upid>/replenishment?country=AR`) da 6 semanas de ventas y días sin stock.
 
+**Y LO QUE YA ESTABA REMATADO POR SOBRA SALE SOLO (04/10/2026, él con las Cartas Españolas).** En `ritmo:go` (noche):
+remate automático que entró por sobra (`autoprecio.sobra` o avisado `o_<MLA>`) cuya unidad más vieja tiene menos de
+`SOBRA_EDAD_MIN` días (`edadViejaFull`, compartida con la entrada) → saca `liquidando` y el rescate lo vuelve a 25%.
+Prueba en seco: salen Cartas Españolas (36 d), Hub USB 7 puertos (43 d) y Cortadora Sportsman (47 d).
+Probe nuevo `verlinea:<palabras>[:días]` (solo lee): la línea de tiempo cruda por publicación. La línea del precio
+de la web (v21.88) ya no toma publicaciones muertas (sin estado, sin ventas). v21.89: botones Todo/🧴 Perfumes/📦 Resto
+en Paraguay probados y nuevos (`_pyRubro`, sólo lo que se ve).
+
 **SOBRA DE STOCK: NO SE BAJA ANTES DE LOS 100 DÍAS (04/10/2026, eligió la a).** `calcCajaBarata` (rama "sobra") sólo
 propone bajar si la unidad MÁS VIEJA en Full tiene `SOBRA_EDAD_MIN` = 100 días o más (lote más viejo de `cyc/lotesfull`;
 si no, `stockhist`; sin fecha no baja). Motivo: antes de los 120 días ML cobra $0 de stock antiguo y la baja regala más de
