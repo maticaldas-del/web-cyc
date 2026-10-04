@@ -2432,7 +2432,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='21.88';
+const APP_VERSION='21.89';
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
 // muestre la versión y la fecha de actualización y que tenga un desplegable predeterminado cerrado".
 // Y el mismo día: "que ponga fecha de cada modificación y haya una barrita para scrollear y que
@@ -2443,6 +2443,7 @@ const APP_VERSION='21.88';
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'21.89',f:'04/10/2026',h:'17:20',c:[{n:1,t:'🇵🇾 Pedidos Paraguay (probados y nuevos): botones Todo · 🧴 Perfumes · 📦 Resto para ver sólo una parte. El pedido armado y el mensaje para Nissei no cambian.'}]},
   {v:'21.88',f:'04/10/2026',h:'16:55',c:[{n:1,t:'📈 Línea de tiempo: el precio ya no toma publicaciones muertas (sin ventas y que no están activas). Antes una vieja a $2.700 hacía saltar la línea y el remate de las Cartas Españolas a $2.830 se veía como una suba.'}]},
   {v:'21.87',f:'04/10/2026',h:'15:02',c:[{n:3,t:'🇵🇾 Pedidos Paraguay: el máximo de compra tiene en cuenta que tenemos Full. Si el más barato de ML no tiene Full, se calcula vendiendo hasta 10% más caro que él (nunca arriba del más barato con Full). La tarjeta lo dice.'},{n:3,t:'🤖 Robot de precios: la 📈 puede pasar a un competidor sin Full hasta 10%, de a +3%. Si se pierde la caja, en la vuelta de la hora vuelve solo al precio anterior y no lo intenta por 14 días.'}]},
   {v:'21.86',f:'04/10/2026',h:'14:12',c:[{n:1,t:'🌸 Pedido: un perfume cuyo nombre no dice "perfume" (ej. Ferrari Negro) ahora va en PERFUMERÍA: se mira el rubro de su publicación en ML.'}]},
@@ -11837,6 +11838,13 @@ function nisseiMsgLineas(items){
   const p=items.filter(x=>esPerfumeNom(x.nom)).map(t), r=items.filter(x=>!esPerfumeNom(x.nom)).map(t);
   return p.length&&r.length?['PERFUMERÍA',...p,'','RESTO',...r]:items.map(t);
 }
+// PERFUMES Y RESTO EN PARAGUAY (04/10/2026, pedido suyo: "en pedidos paraguay nuevos y probados, poner la sección
+// de perfumes y resto"). Un solo selector para las dos pestañas, recordado en el aparato. Es SÓLO lo que se ve:
+// el pedido armado, los totales y el mensaje para Nissei siguen viendo todo. Perfume = esPerfumeNom (misma regla
+// que parte el mensaje para Nissei).
+let _pyRubro=(()=>{try{return localStorage.getItem('cycPyRubro')||'todos';}catch(e){return'todos';}})();
+function pySetRubro(v){_pyRubro=v;try{localStorage.setItem('cycPyRubro',v);}catch(e){}renderPedidos();}
+function _pyRubroOk(nom){if(_pyRubro==='todos')return true;const p=esPerfumeNom(nom);return _pyRubro==='perf'?p:!p;}
 function _pedOrden(){try{return localStorage.getItem('cycPedOrden')||'orig';}catch(e){return'orig';}}
 function _pedOrdenSet(k){try{localStorage.setItem('cycPedOrden',k);}catch(e){} if(typeof renderPedidos==='function')renderPedidos();}
 // ── USO PERSONAL EN EL PEDIDO (04/10/2026, él: "agregame estas dos, una y una en el pedido. Es para mí, uso
@@ -12326,7 +12334,7 @@ function candidatosHTML(){
   const vivos0=todos.filter(candEnArmado);
   const enPed=vivos0.filter(c=>candEnPedido(c)==='cargado').length;
   const enVia=vivos0.filter(c=>candEnPedido(c)==='viajando').length;
-  const vivos=vivos0.filter(c=>!candEnPedido(c));
+  const vivos=vivos0.filter(c=>!candEnPedido(c)&&_pyRubroOk(c.nombre));
   const fuera=todos.length-vivos0.length;
   const chip=(txt,col,tit)=>`<span class="pi-var-toggle" style="cursor:default;background:color-mix(in srgb,${col} 12%,transparent);color:${col};border-color:color-mix(in srgb,${col} 35%,transparent)" title="${String(tit||'').replace(/"/g,'&quot;')}">${txt}</span>`;
   const cab=`<div style="margin:22px 0 10px;padding-top:16px;border-top:1px solid var(--border)">
@@ -14931,7 +14939,8 @@ function renderPedidos(){
   const searchId=isBsas?'ped-search':'ped-py-search';
   const q=normTxt(document.getElementById(searchId)?.value||'');
   if(q)peds=peds.filter(p=>normTxt(p.producto||'').includes(q)||normTxt(p.nota||'').includes(q));
-  if(!peds.length){el.innerHTML='<div class="empty-msg">Sin pedidos'+(pedidoFilter!=='todos'?' en esta categoría':'')+'.</div>';return;}
+  if(!isBsas)peds=peds.filter(p=>_pyRubroOk(p.producto));
+  if(!peds.length){el.innerHTML='<div class="empty-msg">Sin pedidos'+(!isBsas&&_pyRubro!=='todos'?(_pyRubro==='perf'?' de perfumes':' (fuera de perfumes)'):'')+(pedidoFilter!=='todos'?' en esta categoría':'')+'.</div>';return;}
   // "POR PROVEEDOR" SE SACÓ EL 18/09/2026. Decisión suya: *"eliminar el por proveedor, nunca se
   // uso. borrar lo relacionado"*. Agrupaba los pedidos por proveedor y le sumaba el descuento por
   // volumen de cada uno; nunca se apretó el botón. La lista va siempre ordenada por la plata que
@@ -14970,7 +14979,7 @@ function renderPedidos(){
       ${_tab('probados','✅ Productos probados','Lo que YA vendés: cuánto hay que reponer para no quedarte sin stock, y lo que dejó de convenir al precio de Paraguay de hoy.')}
       ${_tab('nuevos','🆕 Productos nuevos','Lo que todavía NO vendés: los candidatos que trae el chat de Paraguay y el armado de ese pedido.')}
       ${_tab('hechos',`🧾 Pedido${(()=>{const n=pyArmadoFilas().length+pedNuevos(candList().filter(candEnArmado).filter(c=>candEnPedido(c)!=='viajando')).filas.length;return n?' ('+n+' cargados)':'';})()}`,'El pedido del momento (probados + nuevos juntos, con el mensaje para Nissei) y abajo los pedidos ya hechos: en camino y llegados.')}
-    </div>`;
+    </div>`+(pyVista!=='hechos'?`<div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin:-4px 0 12px"><span style="font-size:.66rem;color:var(--muted)">Mostrar:</span>${[['todos','Todo'],['perf','🧴 Perfumes'],['resto','📦 Resto']].map(([v,t])=>`<button class="btn" style="font-size:.64rem;padding:4px 11px;${_pyRubro===v?'background:#7c3aed;color:#fff;border-color:#7c3aed;font-weight:700':''}" onclick="pySetRubro('${v}')">${t}</button>`).join('')}</div>`:'');
     // PROBADOS = IDÉNTICO A BS AS (01/10/2026, pedido suyo): sólo la lista de pedidos, sin canasta ni precios.
     el.innerHTML=_tabs+(pyVista==='nuevos'?candidatosHTML():pyVista==='ambos'?el.innerHTML+`<div style="font-size:.8rem;font-weight:700;margin:18px 0 8px;padding-top:10px;border-top:2px solid var(--border2)">🆕 Productos nuevos</div>`+candidatosHTML():pyVista==='hechos'?pedidoMomentoHTML()+`<div style="font-size:.8rem;font-weight:700;margin:6px 0 8px">📦 Pedidos hechos (${pyCompras().length})</div>`+pyHechosHTML():el.innerHTML);
   }
