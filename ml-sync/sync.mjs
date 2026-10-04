@@ -3064,10 +3064,15 @@ function techoConFull(ofertas, precioHoy) {
   const tS = minS ? Math.floor((minS * (1 + TECHO_PASA_SIN_FULL)) / 10) * 10 : Infinity;
   let t = Math.min(tF, tS);
   if (!isFinite(t)) return null;
+  // CUOTAS (04/10/2026): si el que pone el techo da cuotas sin interés, para venderle a ese precio hay
+  // que darlas también; si el más barato de todos las da, lo mismo para ganarle la caja.
+  const oT = tF <= tS ? ofs.filter(rapido).find((o) => Number(o.price) === minF) : ofs.filter((o) => !rapido(o)).find((o) => Number(o.price) === minS);
+  const minT = Math.min(...ofs.map((o) => Number(o.price)));
+  const cuoT = cuotasDeOferta(oT), cuoMin = cuotasDeOferta(ofs.find((o) => Number(o.price) === minT));
   let barrera = false;
   if (precioHoy > 0 && precioHoy < UMBRAL_ENVIO_GRATIS && t >= UMBRAL_ENVIO_GRATIS) { t = UMBRAL_ENVIO_GRATIS - 1; barrera = true; }
   t = Math.min(t, 650000);
-  return { t, cF: minF || null, cS: minS || null, nF: cF.length, nS: cS.length, por: tF <= tS ? 'full' : 'sinfull', barrera };
+  return { t, cF: minF || null, cS: minS || null, nF: cF.length, nS: cS.length, por: tF <= tS ? 'full' : 'sinfull', barrera, cuoT: cuoT || null, cuoMin: cuoMin || null };
 }
 async function calcTechoFull(db, o) {
   const { labels = [], accounts = {}, DRY = true } = o || {};
@@ -5950,7 +5955,8 @@ const CAND_FRESCO_MS = 20 * 3600 * 1000;
 // entran al pedido. Un cambio en la fórmula cuenta igual que un campo nuevo, por cuarta vez.
 // QUINTA VEZ, 23/09/2026: el recargo de Paraguay pasó de 15% a 17%. Cambia el costo puesto de
 // TODOS los candidatos, o sea la cuenta: sin subir esto, los que dan se quedaban con el 15%.
-const CAND_CALC_VER = 10;   // 10: 03/10/2026, se mide al techo de $650.000 si el competidor está más caro
+const CAND_CALC_VER = 11;   // 11: 04/10/2026, el robot ve solo si el que hay que igualar da cuotas (Premium o campaña `pcj`)
+// 10: 03/10/2026, se mide al techo de $650.000 si el competidor está más caro
 
 // ── UN DESCARTE POR MARGEN NO ES "NUNCA MÁS" (19/09/2026) ─────────────────────────────────
 // Regla suya, textual: *"yo no pondría ningún producto en NUNCA MÁS. salvo producto que después
@@ -6100,6 +6106,26 @@ function precioAIgualar(ofertas) {
     premioPct: (baratoFull && baratoSinFull && baratoFull > baratoSinFull)
       ? (baratoFull - baratoSinFull) / baratoSinFull * 100 : 0,
   };
+}
+// ── ¿EL QUE HAY QUE IGUALAR DA CUOTAS SIN INTERÉS? (04/10/2026) ────────────────────────────
+// Él, con el Animale Sexy Mujer y el Mercedes-Benz Man: *"ya lo habíamos hablado lo de las cuotas,
+// cómo puede ser que no se tenga en cuenta algo tan importante. arreglalo y que quede bien"*. Hasta
+// hoy las cuotas de la que gana sólo entraban si el chat cargaba `cuotasGan` a mano: si no lo cargaba,
+// el margen se medía como si se vendiera sin cuotas. ML SÍ lo dice en cada oferta del catálogo
+// (`/products/<id>/items`, medido con `verofertas` el 04/10 en el Mercedes Man):
+//   · `listing_type_id: 'gold_pro'` → Premium: da cuotas sin interés;
+//   · una etiqueta `pcj-…` (ej. `pcj-co-funded`) → campaña de cuotas sin interés, aunque sea Clásica.
+//     Era justo la que ganaba el Mercedes Man (Clásica, 9 cuotas).
+// ML no dice CUÁNTAS cuotas: se toma 6 para Premium y 9 para la campaña (la del Mercedes Man), con
+// la misma tabla que usa el chat. Si el chat cargó `cuotasGan` a mano, manda lo suyo.
+const CUOTAS_PCT_ML = { 3: 8.9, 6: 13.4, 9: 17.8, 12: 21.6 };
+const CUOTAS_AUTO_PREMIUM = 6, CUOTAS_AUTO_CAMPANA = 9;
+function cuotasDeOferta(o) {
+  if (!o) return 0;
+  const tags = (o.tags || []).map((x) => String(x).toLowerCase());
+  if (tags.some((t) => t.startsWith('pcj'))) return CUOTAS_AUTO_CAMPANA;
+  if (String(o.listing_type_id || '') === 'gold_pro') return CUOTAS_AUTO_PREMIUM;
+  return 0;
 }
 // ── LA CUENTA DE UN CANDIDATO, EN UNA SOLA FUNCIÓN (19/09/2026) ───────────────────────────
 // Vivía adentro de `correrCandidatos`, que es el que decide la compra. Salió afuera porque ahora
@@ -6463,9 +6489,11 @@ async function correrCandidatos(db, products, labels, accounts, soloPrueba, prue
     // abajo. Cuesta una consulta más por candidato flojo, una sola vez, y es el lado seguro:
     // lo que BORRA algo tiene que ser más exigente que lo que lo muestra.
     const cuoN = parseInt(c.cuotasGan) || 0;
-    const cuoPct = cuoPctDe(cuoN);
+    let cuoPct = cuoPctDe(cuoN), cuoAuto = 0;
+    // Sin `cuotasGan` cargado vale lo que el robot vio la última vez (`mlCuotasAuto`, 04/10/2026).
+    const _cuoOk = cuoN ? (Number(c.mlCuotasPct) || 0) === cuoPct : (!(Number(c.mlCuotasPct) > 0) || !!c.mlCuotasAuto);
     const _cacheOk = c.margen != null && isFinite(c.margen) && Number(c.calcVer) === CAND_CALC_VER
-      && (Number(c.mlCuotasPct) || 0) === cuoPct
+      && _cuoOk
       && Number(c.margen) >= CAND_PISO_PCT && Math.abs((Number(c.puestoUSD) || 0) - puesto) < 0.01;
     // Fresca (menos de 20 h) o sin consultas disponibles esta vuelta: se usa la guardada. Vieja o
     // con el precio de Paraguay cambiado: sigue de largo y se vuelve a medir.
@@ -6492,7 +6520,7 @@ async function correrCandidatos(db, products, labels, accounts, soloPrueba, prue
     // descartarlo y se gastaba el tope entero en ésos. Con 747 cargados de una, tres corridas
     // seguidas midieron los mismos ~260 y dejaron 236 nuevos sin mirar nunca.
     if (Number(c.margen) < CAND_PISO_PCT && isFinite(c.margen) && c.margen != null && Number(c.calcVer) === CAND_CALC_VER
-      && (Number(c.mlCuotasPct) || 0) === cuoPct && Math.abs((Number(c.puestoUSD) || 0) - puesto) < 0.01
+      && _cuoOk && Math.abs((Number(c.puestoUSD) || 0) - puesto) < 0.01
       && Number(c.calcTs) > 0 && Date.now() - Number(c.calcTs) < 12 * 3600e3) { esperan12++; continue; }
     if (consultas >= CAND_MAX_ML) { sinCuenta++; continue; }
     consultas++;
@@ -6627,6 +6655,8 @@ async function correrCandidatos(db, products, labels, accounts, soloPrueba, prue
       const ref = _pi ? _pi.ref : ofertas[0];
       cat = ref && ref.category_id ? ref.category_id : null;
       if (ref && ref.listing_type_id) lt = ref.listing_type_id;
+      if (!cuoN) { const ca = cuotasDeOferta(ref); if (ca) { cuoAuto = ca; cuoPct = cuoPctDe(ca);
+        console.log(`      💳 el que hay que igualar da cuotas sin interés (${ref.listing_type_id === 'gold_pro' ? 'es Premium' : 'campaña de cuotas de ML'}): cuento ${ca} cuotas = ${cuoPct}% del precio`); } }
       // Se DICE contra quién se mide y por qué: un precio de referencia que no es el más barato de
       // la lista se lee como un error si no se explica.
       if (_pi && _pi.premioPct > 0) {
@@ -6768,7 +6798,7 @@ async function correrCandidatos(db, products, labels, accounts, soloPrueba, prue
     // se confunden leyendo rápido, y son la diferencia entre "hay competencia" y "esto se vende".
     console.log(`      ventas en ML: ${mlVendidas == null ? 'ML no las contestó (no es cero: es que no las sé)'
       : `${mlVendidas} en toda la ficha${mlVendidasMin != null ? ` · ${mlVendidasMin} el más barato` : ''}`}`);
-    console.log(`      medido contra el MÁS BARATO (el peor caso): costo ${money(Math.round(costo))} + impuestos ${money(Math.round(impuestos))} + envío ${money(envio)}${cuotas > 0 ? ` + cuotas ${money(Math.round(cuotas))} (la que gana da ${cuoN} cuotas: ${cuoPct}%)` : ''} → ${margen.toFixed(1)}% · ${money(Math.round(ganancia))} por unidad`);
+    console.log(`      medido contra el MÁS BARATO (el peor caso): costo ${money(Math.round(costo))} + impuestos ${money(Math.round(impuestos))} + envío ${money(envio)}${cuotas > 0 ? ` + cuotas ${money(Math.round(cuotas))} (la que gana da ${cuoN || cuoAuto} cuotas${cuoAuto ? ', lo vio el robot' : ''}: ${cuoPct}%)` : ''} → ${margen.toFixed(1)}% · ${money(Math.round(ganancia))} por unidad`);
     if (!soloPrueba) {
       await db.patch(`cyc/candidatos_py/${id}`, {
         mlTit, mlPrecio: Math.round(mlPrecio), mlMax, mlVendedores: vendedores, mlVendidas, mlVendidasMin, mlComision: Math.round(fee), mlLink, mlPorNombre: porNombre,
@@ -6786,7 +6816,7 @@ async function correrCandidatos(db, products, labels, accounts, soloPrueba, prue
         mlConFull: _pi ? _pi.conFull : null,
         mlFlex: _pi ? _pi.conFlex : null,
         margen: Math.round(margen * 10) / 10, ganancia: Math.round(ganancia),
-        mlCuotasPct: cuoPct, mlCuotas: cuotas > 0 ? Math.round(cuotas) : null,
+        mlCuotasPct: cuoPct, mlCuotas: cuotas > 0 ? Math.round(cuotas) : null, mlCuotasAuto: cuoAuto || null,
         // Los tres de la caja de compra se BORRAN: se escribieron en la corrida del 18/09 y
         // siempre valían 0 porque `buy_box_winner` viene null (ver arriba). Dejarlos sería dejar
         // un cero que se lee como un dato.
