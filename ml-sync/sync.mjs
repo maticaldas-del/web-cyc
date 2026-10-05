@@ -21238,6 +21238,16 @@ async function main() {
     // nunca un nombre ni un valor. Es la misma regla de `campos`.
     //
     // Se pregunta SIN TOKEN a propósito: es exactamente lo que puede hacer un desconocido.
+    // BILLING_PROBE=pesobase → ¿CUÁNTO BAJA LA WEB AL ABRIR? (05/10/2026, él: "la web tarda en cargar").
+    // La web lee `cyc` ENTERO. Mide el tamaño de cada parte (sólo nombres y kilos, ningún dato). SOLO LEE.
+    if (String(process.env.BILLING_PROBE || '') === 'pesobase') {
+      const t0 = Date.now(); const cyc = (await db.get('cyc')) || {}; const seg = ((Date.now() - t0) / 1000).toFixed(1);
+      const filas = Object.keys(cyc).map((k) => [k, JSON.stringify(cyc[k] ?? null).length, (cyc[k] && typeof cyc[k] === 'object') ? Object.keys(cyc[k]).length : 1]).sort((a, b) => b[1] - a[1]);
+      const tot = filas.reduce((s, f) => s + f[1], 0);
+      console.log(`=== LO QUE BAJA LA WEB AL ABRIR (cyc entero) · ${(tot / 1048576).toFixed(1)} MB · el robot tardó ${seg} s en leerlo ===`);
+      for (const [k, b, n] of filas.slice(0, 30)) console.log(`  ${(b / 1048576).toFixed(2).padStart(6)} MB · ${String((b / tot * 100).toFixed(1)).padStart(5)}% · ${k} (${n} claves)`);
+      return;
+    }
     if (String(process.env.BILLING_PROBE || '') === 'reglas') {
       console.log('=== ¿LA BASE SE PUEDE LEER SIN CONTRASEÑA? ===');
       console.log('Se le pide a Firebase SIN token, que es lo que puede hacer cualquiera.');
