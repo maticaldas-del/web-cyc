@@ -21240,6 +21240,24 @@ async function main() {
     // Se pregunta SIN TOKEN a propósito: es exactamente lo que puede hacer un desconocido.
     // BILLING_PROBE=pesobase → ¿CUÁNTO BAJA LA WEB AL ABRIR? (05/10/2026, él: "la web tarda en cargar").
     // La web lee `cyc` ENTERO. Mide el tamaño de cada parte (sólo nombres y kilos, ningún dato). SOLO LEE.
+    // BILLING_PROBE=movbak[:go] → MUDA LA COPIA DE SEGURIDAD DE LAS VENTAS FUERA DE `cyc` (05/10/2026).
+    // La web baja `cyc` entero al abrir y la copia (2,5 MB) no la usa ninguna pantalla. Se copia a
+    // `mlapi/ventaprod_bak`, se relee y se compara la cantidad de ventas; sólo si coincide se borra la vieja.
+    if (/^movbak(:go)?$/.test(String(process.env.BILLING_PROBE || ''))) {
+      const GOm = /:go$/.test(process.env.BILLING_PROBE);
+      const cuenta = (o) => { let n = 0; for (const d of Object.values(o || {})) n += Object.keys(d || {}).length; return n; };
+      const vieja = await db.get('cyc/ventaprod_bak');
+      if (!vieja) { console.log('No hay copia en cyc/ventaprod_bak: nada que mudar.'); return; }
+      const nV = cuenta(vieja);
+      console.log(`Copia vieja: ${nV} ventas en ${Object.keys(vieja).length} días.`);
+      if (!GOm) { console.log('PRUEBA: no escribí nada. Para aplicar: movbak:go'); return; }
+      await db.set('mlapi/ventaprod_bak', vieja);
+      const nN = cuenta(await db.get('mlapi/ventaprod_bak'));
+      if (nN !== nV) { console.log(`✗ La copia nueva tiene ${nN} ventas y la vieja ${nV}: NO borro la vieja.`); return; }
+      await db.set('cyc/ventaprod_bak', null);
+      console.log(`✓ Mudada: ${nN} ventas en mlapi/ventaprod_bak (releído) · borrada de cyc.`);
+      return;
+    }
     if (String(process.env.BILLING_PROBE || '') === 'pesobase') {
       const t0 = Date.now(); const cyc = (await db.get('cyc')) || {}; const seg = ((Date.now() - t0) / 1000).toFixed(1);
       const filas = Object.keys(cyc).map((k) => [k, JSON.stringify(cyc[k] ?? null).length, (cyc[k] && typeof cyc[k] === 'object') ? Object.keys(cyc[k]).length : 1]).sort((a, b) => b[1] - a[1]);
@@ -35245,22 +35263,22 @@ async function main() {
   if (process.env.BACKUP_VP) {
     const vp = (await db.get('cyc/ventaprod')) || {}; setDevLive(vp);
     let n = 0; for (const day of Object.values(vp)) n += Object.keys(day || {}).length;
-    await db.set('cyc/ventaprod_bak', vp);
-    console.log(`✓ Backup hecho: ${n} ventas copiadas a cyc/ventaprod_bak`);
+    await db.set('mlapi/ventaprod_bak', vp);
+    console.log(`✓ Backup hecho: ${n} ventas copiadas a mlapi/ventaprod_bak`);
     return;
   }
   // PURGE_VP: borra todas las ventas (SOLO si ya existe el backup). Para el rebuild.
   if (process.env.PURGE_VP) {
-    const bak = await db.get('cyc/ventaprod_bak');
-    if (!bak) { console.log('✗ No hay backup (cyc/ventaprod_bak). No borro nada.'); return; }
+    const bak = await db.get('mlapi/ventaprod_bak');
+    if (!bak) { console.log('✗ No hay backup (mlapi/ventaprod_bak). No borro nada.'); return; }
     let nb = 0; for (const day of Object.values(bak)) nb += Object.keys(day || {}).length;
     await db.set('cyc/ventaprod', null);
-    console.log(`✓ Ventas borradas. (Backup a salvo con ${nb} ventas en cyc/ventaprod_bak.)`);
+    console.log(`✓ Ventas borradas. (Backup a salvo con ${nb} ventas en mlapi/ventaprod_bak.)`);
     return;
   }
   // RESTORE_VP: vuelve atrás desde el backup (por si algo salió mal).
   if (process.env.RESTORE_VP) {
-    const bak = await db.get('cyc/ventaprod_bak');
+    const bak = await db.get('mlapi/ventaprod_bak');
     if (!bak) { console.log('✗ No hay backup para restaurar.'); return; }
     await db.set('cyc/ventaprod', bak);
     console.log('✓ Ventas restauradas desde el backup.');
@@ -35270,7 +35288,7 @@ async function main() {
   // últimos N meses (por defecto 12): las que trajo el robot (origen ml-api) y tienen
   // número de venta. Borra el resto: viejas, sin nº de venta o cargadas a mano (no
   // confiables). Con DRY_RUN=1 solo muestra qué borraría (no toca nada). En firme
-  // hace backup a cyc/ventaprod_bak ANTES de borrar (se puede restaurar con RESTORE_VP).
+  // hace backup a mlapi/ventaprod_bak ANTES de borrar (se puede restaurar con RESTORE_VP).
   if (process.env.CLEAN_VP) {
     const months = parseInt(process.env.CLEAN_VP, 10) || 12;
     const cutoff = Date.now() - Math.round(months * 30.44 * 864e5);
@@ -35303,8 +35321,8 @@ async function main() {
     console.log('Ejemplos de las que se borrarían:');
     sample.forEach((s) => console.log('   ✕ ' + s));
     if (DRY) { console.log('\n(DRY: no se borró nada. Sacá el modo prueba para ejecutar.)'); return; }
-    await db.set('cyc/ventaprod_bak', vp);
-    console.log(`\n✓ Backup de las ${total} ventas en cyc/ventaprod_bak (se puede restaurar con RESTORE_VP).`);
+    await db.set('mlapi/ventaprod_bak', vp);
+    console.log(`\n✓ Backup de las ${total} ventas en mlapi/ventaprod_bak (se puede restaurar con RESTORE_VP).`);
     for (let i = 0; i < delPaths.length; i += 2000) {
       const chunk = {}; delPaths.slice(i, i + 2000).forEach((p) => chunk[p] = null);
       await db.patch('cyc/ventaprod', chunk);
@@ -35383,10 +35401,10 @@ async function main() {
     console.log('Facturación AFIP que queda CONGELADA por mes (cyc/fact_mes):');
     for (const [a, bym] of Object.entries(frozen)) for (const [ym, val] of Object.entries(bym)) console.log(`  ${a} ${ym.replace('_', '-')}: $${Math.round(val).toLocaleString('es-AR')}`);
     if (DRY) { console.log('\n(DRY: no se tocó nada.)'); return; }
-    await db.set('cyc/ventaprod_bak', vp);
+    await db.set('mlapi/ventaprod_bak', vp);
     await db.set('cyc/fact_mes_bak', factMes);
     await db.set('cyc/fact_cancel_bak', factCancel);
-    console.log('✓ Backups en cyc/ventaprod_bak, cyc/fact_mes_bak, cyc/fact_cancel_bak.');
+    console.log('✓ Backups en mlapi/ventaprod_bak, cyc/fact_mes_bak, cyc/fact_cancel_bak.');
     const fmUpd = {}; const fcDel = {};
     for (const [a, bym] of Object.entries(frozen)) for (const [ym, val] of Object.entries(bym)) fmUpd[`${a}/${ym}`] = Math.round(val);
     for (const [a, bym] of Object.entries(factCancel)) for (const ym of Object.keys(bym || {})) if (delMonths.has(ym)) fcDel[`${a}/${ym}`] = null;
@@ -35420,7 +35438,7 @@ async function main() {
   // RESYNC_VP: re-sincroniza las ventas al producto que HOY tiene su publicación
   // (según cyc/mllinks). Arregla las ventas que quedaron con el nombre viejo cuando se
   // cambió un match y no se reflejó. Actualiza nombre, prodId, variante y costo. Backup
-  // en cyc/ventaprod_bak. DRY_RUN=1 solo muestra cuántas cambiarían, por producto.
+  // en mlapi/ventaprod_bak. DRY_RUN=1 solo muestra cuántas cambiarían, por producto.
   //
   // SE PUEDE PASAR UN MLA Y ARREGLA SÓLO ESA PUBLICACIÓN: `RESYNC_VP=MLA3932382684`.
   // Hace falta porque correrlo entero es mucho más grande de lo que parece. El 10/09/2026 él
@@ -35488,11 +35506,11 @@ async function main() {
     }
     if (DRY) { console.log('\n(DRY: no se tocó nada.)'); return; }
     if (n) {
-      await db.set('cyc/ventaprod_bak', vp);
+      await db.set('mlapi/ventaprod_bak', vp);
       const keys = Object.keys(updates);
       for (let i = 0; i < keys.length; i += 3000) { const chunk = {}; keys.slice(i, i + 3000).forEach((k) => chunk[k] = updates[k]); await db.patch('cyc/ventaprod', chunk); }
     }
-    console.log(`\n✓ Re-sincronizadas ${n} ventas (backup en cyc/ventaprod_bak).`);
+    console.log(`\n✓ Re-sincronizadas ${n} ventas (backup en mlapi/ventaprod_bak).`);
     return;
   }
   if (process.env.DUMP_MAP) {
