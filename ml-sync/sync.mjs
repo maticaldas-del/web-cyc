@@ -2301,11 +2301,37 @@ async function filtrarRescate(db, rr, o) {
       if (!(Number(r.total) < 0) || Number(r.ts) < (ultTs[r.mla] || 0)) continue;
       bajaPerdio[r.mla] = r;
     }
+    // LO PIENSA ANTES DE DESHACER (05/10/2026). Él: *"que lo piense, quizás en algún caso es mejor dejarla
+    // como está y gana más"*. La cuenta del remate (total < 0) mira lo que se vendía igual; la otra vara es
+    // la ganancia POR DÍA antes y después de la baja (descontado lo que se movió la tienda), el juicio del
+    // supervisor en su ventana más larga. Se deshace SÓLO si las dos dicen que perdió (juicio dudoso o
+    // malo). Si por día gana más así, se deja. Si no hay juicio (pocas ventas, sin stock) o da igual, duda:
+    // no toca y lo dice en el aviso.
+    const evS2 = (await db.get('cyc/supervisor/eventos')) || {};
+    for (const [mla, r] of Object.entries(bajaPerdio)) {
+      const ev = Object.values(evS2).find((e) => e && e.mla === mla && Math.abs(Number(e.ts) - Number(r.ts)) < 864e5
+        && Math.abs(Number(e.a) - Number(r.a)) / Number(r.a) < 0.01);
+      const evs = (ev && ev.ev) || {};
+      const W = evs.d30 ? 30 : evs.d15 ? 15 : evs.d7 ? 7 : 0;
+      r._juicio = W ? { ...evs['d' + W], W } : null;
+    }
   } catch { /* sin el resumen no se aprende */ }
   for (const x of rr.subir) {
     if (malosSup.has(x.mla)) { rescSup.push(x); continue; }
     const bpX = bajaPerdio[x.mla];
-    const aprende = !!(bpX && Math.abs(x.de - Number(bpX.a)) / Number(bpX.a) < 0.01);
+    const sigue = !!(bpX && Math.abs(x.de - Number(bpX.a)) / Number(bpX.a) < 0.01);
+    const jz = sigue ? bpX._juicio : null;
+    const aprende = sigue && !!jz && (jz.v === 'malo' || jz.v === 'dudoso');
+    if (sigue && !aprende) {
+      const porDia = (g, w) => money(Math.round(Number(g) / w));
+      const base = `mi baja del ${fechaR(Number(bpX.ts))} (${money(bpX.de)} → ${money(bpX.a)}, ${bpX.motivo}) dio ${money(bpX.total)} contra lo que se vendía igual`;
+      const why = !jz ? `🤔 ${base}, pero todavía no tengo la ganancia por día para comparar: no la deshago, la sigo mirando`
+        : jz.v === 'bueno' ? `🤔 ${base}, pero por día gana MÁS así (${porDia(jz.gA, jz.W)} → ${porDia(jz.gD, jz.W)}/día en ${jz.W} d${jz.tienda ? ', descontada la tienda' : ''}): la dejo como está`
+        : jz.v === 'igual' ? `🤔 ${base}, y por día gana casi lo mismo (${porDia(jz.gA, jz.W)} → ${porDia(jz.gD, jz.W)}/día en ${jz.W} d): no está claro, la dejo · decidí vos`
+        : `🤔 ${base}, y la ganancia por día no se puede juzgar (${jz.v === 'pocos' ? 'pocas ventas' : 'estuvo sin stock'}): la dejo · decidí vos`;
+      console.log(`   🤔 ${x.nom || x.mla} (${x.label || ''}): ${why.slice(3)}`);
+      rescFren.push({ ...x, why }); continue;
+    }
     // UNA SUBA POR PUBLICACIÓN CADA 24 H, TAMBIÉN DE NOCHE (P2 de la segunda vuelta, 25/09/2026).
     // La regla vivía sólo en el rescate al vender: una venta a las 23:30 subía +25% y a las 00:07 el
     // rescate de la noche subía otro +25% (+56% en 40 minutos) sin que nadie midiera la primera.
@@ -2372,7 +2398,7 @@ async function filtrarRescate(db, rr, o) {
       }
     }
     if (aprende) {
-      x.aprendio = `mi baja del ${fechaR(Number(bpX.ts))} (${money(bpX.de)} → ${money(bpX.a)}, ${bpX.motivo}) dejó ${money(bpX.total)}: la deshago`;
+      x.aprendio = `mi baja del ${fechaR(Number(bpX.ts))} (${money(bpX.de)} → ${money(bpX.a)}, ${bpX.motivo}) dejó ${money(bpX.total)} y por día ganaba más antes (${money(Math.round(jz.gA / jz.W))} → ${money(Math.round(jz.gD / jz.W))}/día en ${jz.W} d): la deshago`;
       console.log(`   🧠 ${x.nom || x.mla} (${x.label || ''}): ${x.aprendio}`);
     }
     rescates.push(x);
