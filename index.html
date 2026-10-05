@@ -2433,7 +2433,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='21.95';
+const APP_VERSION='21.96';
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
 // muestre la versión y la fecha de actualización y que tenga un desplegable predeterminado cerrado".
 // Y el mismo día: "que ponga fecha de cada modificación y haya una barrita para scrollear y que
@@ -2444,6 +2444,7 @@ const APP_VERSION='21.95';
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'21.96',f:'05/10/2026',h:'11:15',c:[{n:1,t:'📈 Línea de tiempo: los botones de color aparecen aunque el color no se haya fijado a mano; se saca del título de cada publicación (ej. Pizarra Mágica 8.5: Azul, Negro, Rojo, Rosa, Verde, Violeta).'}]},
   {v:'21.95',f:'05/10/2026',h:'01:30',c:[{n:1,t:'🖼️ Ventas x Producto: cada producto vendido lleva su foto (la de la publicación que vendió, con el color justo). Se toca para verla grande.'}]},
   {v:'21.94',f:'05/10/2026',h:'01:05',c:[{n:1,t:'💸 Ventas: el globito del puntaje por día ahora dice cuánto cobra cada uno si ese ritmo dura todo el mes (7 ≈ $900.000 c/u), con la regla nueva de la ganancia ÷ 3.'}]},
   {v:'21.93',f:'05/10/2026',h:'00:40',c:[{n:2,t:'📈 Línea de tiempo: el stock también se deduce de los lotes del Excel de ML. Si la unidad más vieja entró hace 120 días, esos 120 días salen con stock aunque nadie la haya visitado.'}]},
@@ -8494,14 +8495,18 @@ function lineaRango(n,prodId){_lineaRango=n;lineaPintar(prodId);}
 // caja), ventas (por `variante` de la venta o de su publicación) y el ritmo del color (`ritmonormal …__v__`).
 let _lineaVar='',_lineaVarsL=[''];
 function lineaVar(v,prodId){_lineaVar=v;lineaPintar(prodId);}
-function _lineaVarDeVenta(v){return String(v.variante||((state.mllinks||{})[v.mla]||{}).variant||'').trim();}
+// 05/10/2026: el color de cada publicación sale de mllinks.variant o, si no se fijó a mano, del TÍTULO (_varPorMla,
+// la misma regla que Pedidos y Armar caja). Antes sólo valía lo fijado a mano y la Pizarra 8.5 no mostraba colores.
+let _lineaVarMap={};
+function _lineaVarDeVenta(v){return String(v.variante||_lineaVarMap[v.mla]||'').trim();}
 function lineaPintar(prodId){
   const m=document.getElementById('linea-modal'); const C=_lineaCache[prodId]; const p=prodById(prodId); if(!m||!C||!p)return;
   const _lk=state.mllinks||{};
-  const _vars=[...new Set(Object.keys(C.porMla).map(m=>String((_lk[m]||{}).variant||'').trim()).filter(Boolean))].sort();
+  _lineaVarMap=_varPorMla(p);
+  const _vars=[...new Set(Object.keys(C.porMla).map(m=>String(_lineaVarMap[m]||'').trim()).filter(Boolean))].sort();
   if(_lineaVar&&!_vars.includes(_lineaVar))_lineaVar='';
   _lineaVarsL=['',..._vars];
-  const _mlaOk=m=>!_lineaVar||String((_lk[m]||{}).variant||'').trim()===_lineaVar;
+  const _mlaOk=m=>!_lineaVar||String(_lineaVarMap[m]||'').trim()===_lineaVar;
   const _vOk=v=>!_lineaVar||_lineaVarDeVenta(v)===_lineaVar;
   const porMlaF={};for(const [m,d] of Object.entries(C.porMla))if(_mlaOk(m))porMlaF[m]=d;
   const dias=_lineaJunta(porMlaF); const ks=_lineaDias(_lineaRango); const N=ks.length;
