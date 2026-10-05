@@ -11695,6 +11695,21 @@ async function main() {
       console.log(`✓ guardado · en uso personal hay ${Object.keys(rel).length}: ${Object.values(rel).map((x) => x.cod + ' x' + x.u).join(', ')}`);
       return;
     }
+    // BILLING_PROBE=pyestado → QUÉ HAY CARGADO EN EL PEDIDO DEL MOMENTO Y EN USO PERSONAL (05/10/2026) · SOLO LEE.
+    if (/^pyestado$/.test(String(process.env.BILLING_PROBE || ''))) {
+      const arm = (await db.get('cyc/py_armado')) || {}; const prods = (await db.get('cyc/products')) || {};
+      console.log('── PROBADOS cargados (py_armado):');
+      for (const [k, v] of Object.entries(arm)) console.log(`  ${(prods[k] || {}).name || k} · ${JSON.stringify(v)}`);
+      const per = (await db.get('cyc/py_personal')) || {};
+      console.log('── USO PERSONAL hoy:'); for (const v of Object.values(per)) console.log(`  ${v.cod} · ${v.nom} · ${v.u} u. · US$ ${v.usd}`);
+      const hist = (await db.get('cyc/py_personal_hist')) || {};
+      console.log('── USO PERSONAL ya pedido (historial):');
+      for (const [ts, g] of Object.entries(hist)) for (const v of Object.values(g || {})) console.log(`  ${new Date(Number(ts) - 3 * 3600e3).toISOString().slice(0, 16)} · ${v.cod} · ${v.nom} · ${v.u} u. · US$ ${v.usd}`);
+      const cands = (await db.get('cyc/candidatos_py')) || {};
+      console.log('── CANDIDATOS con unidades o viajando:');
+      for (const c of Object.values(cands)) if (c && ((parseInt(c.pedirU) || 0) > 0 || c.pedidoEn)) console.log(`  ${c.nombre} · cód ${c.cod} · pedirU ${c.pedirU || 0} · pedidoEn ${c.pedidoEn || '—'}`);
+      return;
+    }
     if (/^ventasdia:/.test(String(process.env.BILLING_PROBE || ''))) {
       const [q0, dd] = String(process.env.BILLING_PROBE).slice('ventasdia:'.length).split(':');
       const pal = q0.toLowerCase().split(/\s+/).filter(Boolean); const DIAS = parseInt(dd) || 60;
