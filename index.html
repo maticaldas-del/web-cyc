@@ -2005,6 +2005,7 @@ function startApp(){
     // quedó en cero (`cero`). Lo viene anotando el robot. Sirve para medir a qué velocidad se vende
     // algo DIVIDIENDO POR LOS DÍAS QUE HUBO STOCK y no por 30 fijo (ver diasConStock).
     state.stockhist=d.stockhist||{};
+    state.lotesfull=d.lotesfull||{};            // los lotes del Excel de ML: cuántos días lleva cada unidad en Full
     // LO QUE TRAJO EL ROBOT DE PRECIOS: lo calcula el supervisor todas las noches (cyc/supervisor/resumen).
     // La pantalla no hace ninguna cuenta: una segunda copia de la atribución diría otro número.
     state.supResumen=(d.supervisor&&d.supervisor.resumen)||null;
@@ -2432,7 +2433,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='21.92';
+const APP_VERSION='21.93';
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
 // muestre la versión y la fecha de actualización y que tenga un desplegable predeterminado cerrado".
 // Y el mismo día: "que ponga fecha de cada modificación y haya una barrita para scrollear y que
@@ -2443,6 +2444,7 @@ const APP_VERSION='21.92';
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'21.93',f:'05/10/2026',h:'00:40',c:[{n:2,t:'📈 Línea de tiempo: el stock también se deduce de los lotes del Excel de ML. Si la unidad más vieja entró hace 120 días, esos 120 días salen con stock aunque nadie la haya visitado.'}]},
   {v:'21.92',f:'05/10/2026',h:'00:15',c:[{n:2,t:'📈 Línea de tiempo: un día sin ventas ni visitas ya no sale en rojo "sin stock" si el robot ve ese producto en Full desde antes. Pasaba con lo que vende poco (el cortapelo a pila se veía sin stock teniendo 9 u.).'}]},
   {v:'21.91',f:'04/10/2026',h:'18:40',c:[{n:1,t:'📈 Línea de tiempo: al pasar el mouse, todos los días dicen lo mismo. Un día sin ventas dice "no vendió" (antes "sin dato") y muestra el % de ganancia de la última venta, con su fecha.'}]},
   {v:'21.90',f:'04/10/2026',h:'18:05',c:[{n:3,t:'💳 Paraguay: si el que hay que igualar en ML da cuotas sin interés (es Premium o está en una campaña de cuotas), el máximo de compra y el % de los candidatos ya las descuentan solos. Antes sólo si el chat las cargaba a mano.'},{n:2,t:'📈 Línea de tiempo: carril nuevo "$ ganancia/día" (promedio de 7 días) y abajo, por cada cambio de precio, cuánto dejaba por día antes y después (sólo días con stock).'},{n:1,t:'📈 Línea de tiempo: el precio ya no salta a una publicación pausada los días sin ventas (el serrucho del Metatarso).'},{n:1,t:'📦 Arqueo → Productos: botones Todos · 🇦🇷 Bs As · 🇵🇾 Paraguay.'}]},
@@ -8552,7 +8554,14 @@ function lineaPintar(prodId){
   // hay stock en una cuenta, desde que `cyc/stockhist` lo vio entrar (o desde que empezó a mirar) ese día cuenta CON
   // stock. La regla suya del 03/10 (sin dato y sin ventas = sin stock) queda para los días que el historial no cubre.
   const _stHistDesde=(()=>{const H=state.stockhist||{};let m=null;LOCS.forEach(l=>{const q=_lineaVar?getQV(prodId,l,_lineaVar):getQ(prodId,l);if(q<=0)return;
-    const h=H[_lineaVar?invKeyV(prodId,l,_lineaVar):invKey(prodId,l)];const t=h&&Number(h.desde);if(t>0&&(m==null||t<m))m=t;});return m==null?null:dateToKey(new Date(m));})();
+    const h=H[_lineaVar?invKeyV(prodId,l,_lineaVar):invKey(prodId,l)];const t=h&&Number(h.desde);if(t>0&&(m==null||t<m))m=t;});
+    // Y LOS LOTES DEL EXCEL DE ML (05/10/2026, él con la Pad 2: "vos sabés cuántos días faltan para que me cobren, entonces
+    // ya sabés cuántos días con stock estuvo"). La unidad más vieja que sigue en Full entró hace N días a la fecha del
+    // cargo: desde ese día hubo stock sin cortes. Gana la fecha más vieja entre el historial y los lotes.
+    const LF=state.lotesfull||{};Object.keys(porMlaF).forEach(mla=>{const inv=((state.mllinks||{})[mla]||{}).inv;const L=inv&&LF[inv];
+      if(!L||!Array.isArray(L.lotes))return;const ref=Date.parse(String(L.ref||'')+'T03:00:00Z');if(!(ref>0))return;
+      L.lotes.forEach(x=>{if(!(Number(x.u)>0&&Number(x.dias)>=0))return;const t=ref-Number(x.dias)*864e5;if(m==null||t<m)m=t;});});
+    return m==null?null:dateToKey(new Date(m));})();
   const _conSt=(d,k)=>(!!d&&(d.u>0||d.st>0||(d.vis>0&&!(d.st!=null&&d.stN>=d.pubs))))||(!!k&&_stHistDesde!=null&&k>=_stHistDesde&&!(d&&d.st!=null&&d.stN>=d.pubs&&!(d.st>0)));
   const _stIni=ks.find(k=>dias[k]&&(dias[k].u>0||dias[k].st!=null||dias[k].vis>0))||'9999';
   let svg='';
