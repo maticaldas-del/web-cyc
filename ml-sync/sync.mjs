@@ -5965,6 +5965,92 @@ function edadViejaFull(e, clave, lotes, hist) {
   return h && h.desde ? Math.floor((Date.now() - h.desde) / 864e5) : null;
 }
 const RECARGO_PAR_PCT = Math.round((RECARGO_PAR - 1) * 100);
+// ── EL RECARGO REAL DE CADA PEDIDO Y EL COSTO QUE SUBE SOLO (05/10/2026) ──────────────────────
+// Pedido suyo: *"ese 17% es mentiroso. depende de cuánto se cobre en cada envío"* y *"que se actualicen
+// solos los precios al hacer el pedido de paraguay, pero solo si el producto aumentó. Juguemos a la
+// defensiva"*, *"que los productos anteriores al aumento también tomen el aumento"* y *"el precio se
+// actualiza cuando TODOS los gastos del pedido estén cargados"*.
+// Los gastos que tienen que estar: los pesos de los dólares, el correo, el que retira y despacha y la
+// diferencia de la transferencia (cambista; si no hubo, se carga 0 a propósito). "Otros" no frena.
+// La web arma la MISMA lista para la cruz/tilde de cada pedido (`pyGastosLista`): si se toca una, la otra.
+const PY_GASTOS = [
+  { k: 'mercaderia', campo: 'merc', nom: 'pesos de los dólares' },
+  { k: 'envio', campo: 'envio', nom: 'correo' },
+  { k: 'retira', campo: 'retira', nom: 'el que retira y despacha' },
+  { k: 'cambista', campo: 'cambio', nom: 'diferencia de la transferencia', cero: true },
+];
+function pyGastoCargado(c, g) {
+  const v = Number(((c && c.pagos) || {})[g.k]);
+  if (v > 0) return true;
+  return !!(g.cero && Array.isArray(c && c.pagosOk) && c.pagosOk.includes(g.k));
+}
+// null si falta algo (con la lista de lo que falta en `falta`).
+function recargoRealPedido(c) {
+  const falta = PY_GASTOS.filter((g) => !pyGastoCargado(c, g)).map((g) => g.nom);
+  const tc = parseFloat(c && c.tcPedido) || parseFloat(c && c.tcPanel) || 0;
+  const usd = parseFloat(c && c.usdCrudo) || 0;
+  if (!(tc > 0)) falta.push('el dólar del día del pedido');
+  if (!(usd > 0)) falta.push('los dólares crudos');
+  if (falta.length) return { r: null, falta };
+  const p = c.pagos || {};
+  const tot = (Number(p.mercaderia) || 0) + (Number(p.cambista) || 0) + (Number(p.envio) || 0) + (Number(p.retira) || 0) + (Number(p.otros) || 0);
+  const r = tot / tc / usd;
+  // Un recargo abajo de 1 o arriba de 1,6 no es un pedido: es un dato mal cargado. No se usa.
+  if (!(r >= 1 && r <= 1.6)) return { r: null, falta: [`el recargo da ${((r - 1) * 100).toFixed(1)}%: algún número está mal`] };
+  return { r: Math.round(r * 10000) / 10000, falta: [] };
+}
+// Sube el costo de las fichas de este pedido que salieron MÁS CARAS que lo que tienen. Nunca baja.
+// La ficha ENTERA toma el costo nuevo (decisión suya); las ventas de meses pasados quedan con el viejo
+// congelado en `precios_hist_prod`, igual que `poncosto`. Probados = renglón con `prodId` y sin `id`;
+// nuevos = el candidato ya tiene ficha (si todavía no, la ficha se crea al llegar con este recargo).
+async function aplicarCostosPedido(db, idPedido, c, GO) {
+  const { r, falta } = recargoRealPedido(c);
+  if (!r) { console.log(`\n💲 Costos: todavía no. Falta: ${falta.join(', ')}. Cuando esté todo, el costo de lo que aumentó se actualiza solo.`); return null; }
+  const products = (await db.get('cyc/products')) || {};
+  const cands = (await db.get('cyc/candidatos_py')) || {};
+  const vp = (await db.get('cyc/ventaprod')) || {}; setDevLive(vp);
+  const php = (await db.get('cyc/precios_hist_prod')) || {};
+  const tc = parseFloat(c.tcPedido) || parseFloat(c.tcPanel) || 0;
+  const cambios = [], iguales = [], sinFicha = [];
+  for (const it of (c.items || [])) {
+    if (!it) continue;
+    const pid = it.id ? ((cands[it.id] || {}).prodId || null) : (it.prodId || null);
+    const usd = parseFloat(it.usd) || 0;
+    if (!pid || !products[pid]) { sinFicha.push(it.nom || it.cod || '?'); continue; }
+    if (!(usd > 0)) { sinFicha.push((it.nom || '?') + ' (sin precio)'); continue; }
+    const p = products[pid];
+    const antes = parseFloat(p.costUSD) || 0;
+    const nuevo = Math.round(usd * r * 100) / 100;
+    if (antes > 0 && nuevo <= antes * 1.005) { iguales.push({ nom: p.name, antes, nuevo }); continue; }
+    cambios.push({ pid, p, antes, nuevo });
+  }
+  console.log(`\n💲 COSTOS CON EL RECARGO REAL DE ESTE PEDIDO: ${((r - 1) * 100).toFixed(1)}% (el panel estimaba ${RECARGO_PAR_PCT}%)`);
+  for (const x of cambios) console.log(`  ⬆️ ${x.p.name}: US$ ${x.antes.toFixed(2)} → US$ ${x.nuevo.toFixed(2)}`);
+  for (const x of iguales) console.log(`  = ${x.nom}: tiene US$ ${x.antes.toFixed(2)}, este pedido sale US$ ${x.nuevo.toFixed(2)} · no se toca (sólo sube)`);
+  if (sinFicha.length) console.log(`  · sin ficha todavía (se crea al llegar con este recargo): ${sinFicha.join(', ')}`);
+  if (!GO) { console.log(`  (prueba: no se tocó ninguna ficha)`); return { r, cambios, iguales }; }
+  for (const x of cambios) {
+    if (x.antes > 0) {
+      const meses = new Set();
+      for (const [dk, o] of Object.entries(vp)) for (const v of Object.values(o || {})) {
+        if (v && (v.prodId ? v.prodId === x.pid : norm(v.prod || '') === norm(x.p.name || ''))) meses.add(String(dk).slice(0, 7));
+      }
+      for (const ym of meses) if (!(php[ym] && php[ym][x.pid] != null)) await db.set(`cyc/precios_hist_prod/${ym}/${x.pid}`, x.antes);
+    }
+    const dev = DEV_LIVE[x.pid] != null ? DEV_LIVE[x.pid] : (parseFloat(x.p.devPct) || 0);
+    const full = Math.round((x.nuevo * (1 + dev / 100) + (parseFloat(x.p.shipUSD) || 0)) * 100) / 100;
+    await db.patch('cyc/products/' + x.pid, { costUSD: x.nuevo, cost: Math.round(x.nuevo * (tc || 0)), costFullUSD: full });
+  }
+  const ver = (await db.get('cyc/products')) || {};
+  const mal = cambios.filter((x) => Math.abs((parseFloat((ver[x.pid] || {}).costUSD) || 0) - x.nuevo) > 0.005);
+  await db.patch('cyc/compraspy/' + idPedido, {
+    recargo: r,
+    costosAplicados: { ts: Date.now(), recargo: r, subieron: cambios.map((x) => ({ prodId: x.pid, nom: x.p.name, antes: x.antes, despues: x.nuevo })), iguales: iguales.length },
+  });
+  console.log(mal.length ? `  ✗ ${mal.length} no quedaron: revisalo.` : `  ✓ ${cambios.length} ficha(s) con el costo nuevo (releído). Las ventas de meses pasados siguen con el viejo.`);
+  if (cambios.length) console.log(`  Esta noche netoweb recalcula el margen con el costo nuevo, y el rescate sube lo que haya quedado bajo.`);
+  return { r, cambios, iguales };
+}
 // Un cero de stock que vuelve dentro de este tiempo se toma como pasajero: se conserva la fecha de
 // entrada anterior en `cyc/stockhist` (decisión suya del 24/09/2026, opción a).
 const STOCKHIST_CERO_PASAJERO_MS = 48 * 3600 * 1000;
@@ -33420,6 +33506,9 @@ async function main() {
         const plan = [];
         const prods = Object.values((await db.get('cyc/products')) || {}).filter((p) => p && p.name);
         const cands = (await db.get('cyc/candidatos_py')) || {};
+        // 05/10/2026: si los gastos del pedido ya están todos, la ficha nace con el recargo REAL.
+        const _recReal = recargoRealPedido(c).r;
+        const _recUsar = _recReal || RECARGO_PAR;
         {
           for (const it of (c.items || [])) {
             if (!it || !it.id) continue;
@@ -33439,8 +33528,8 @@ async function main() {
             plan.push(misma ? { src, estado: 'repe', rep: [misma] } : { src, estado: 'crear', par });
           }
           const cr = plan.filter((x) => x.estado === 'crear');
-          console.log(`Fichas a crear: ${cr.length}`);
-          cr.forEach((x) => console.log(`  + ${x.src.nombre} · US$ ${(parseFloat(x.src.usd) || 0).toFixed(2)} × ${RECARGO_PAR} = US$ ${r2((parseFloat(x.src.usd) || 0) * RECARGO_PAR).toFixed(2)}${x.src.cod ? ' · cód ' + x.src.cod : ''}${(parseFloat(x.src.usd) || 0) > 0 ? '' : ' · ⚠️ SIN PRECIO: queda en costo 0'}`));
+          console.log(`Fichas a crear: ${cr.length}${_recReal ? ` · con el recargo REAL de este pedido (${((_recReal - 1) * 100).toFixed(1)}%)` : ` · con el ${RECARGO_PAR_PCT}% estimado (faltan gastos del pedido; cuando estén, sube solo si sale más caro)`}`);
+          cr.forEach((x) => console.log(`  + ${x.src.nombre} · US$ ${(parseFloat(x.src.usd) || 0).toFixed(2)} × ${_recUsar} = US$ ${r2((parseFloat(x.src.usd) || 0) * _recUsar).toFixed(2)}${x.src.cod ? ' · cód ' + x.src.cod : ''}${(parseFloat(x.src.usd) || 0) > 0 ? '' : ' · ⚠️ SIN PRECIO: queda en costo 0'}`));
           plan.filter((x) => x.estado === 'repe').forEach((x) => console.log(`  = ya tiene ficha (mismo código o nombre), se engancha: ${x.src.nombre} → ${x.rep[0].name}`));
           cr.filter((x) => x.par && x.par.length).forEach((x) => console.log(`  ℹ️ se crea aunque se parece a: ${x.src.nombre} ~ ${x.par.slice(0, 3).map((p) => p.name).join(' | ')}`));
           plan.filter((x) => x.estado === 'ya').forEach((x) => console.log(`  = ya tenía ficha: ${x.src.nombre}`));
@@ -33466,7 +33555,7 @@ async function main() {
         for (const x of plan.filter((y) => y.estado === 'crear')) {
           if (CORTAR) { _pyCortado = true; break; }   // etapa 4: no se empieza otra ficha si cancelaron la corrida
           const usd = parseFloat(x.src.usd) || 0;
-          const puesto = usd > 0 ? r2(usd * RECARGO_PAR) : 0;
+          const puesto = usd > 0 ? r2(usd * _recUsar) : 0;
           const p = { id: 'p' + Date.now() + String(i++), name: String(x.src.nombre).trim().slice(0, 90), costUSD: puesto, cost: puesto * (tc || 0), origen: 'py', costFullUSD: puesto, altaChat: Date.now() };
           if (x.src.cod) p.codPy = String(x.src.cod);
           if (usd > 0) { p.nisseiUSD = usd; p.nisseiTs = x.src.ts || Date.now(); }
@@ -33505,6 +33594,8 @@ async function main() {
             || (it.prodId && (prods.find((pp) => pp.id === it.prodId) || {}).name) || it.nom;
           const _ofi = (c.items || []).filter((it) => it && _nomOfi(it) && (parseInt(it.u) || 0) > 0 && !/[;=]/.test(_nomOfi(it))).map((it) => `=${_nomOfi(it)}=+${parseInt(it.u)}`);
           if (_ofi.length) console.log(`⚠️ Contalas en la oficina (hasta entonces no suman en el patrimonio). Si llegó todo: ofi:${_ofi.join(';')};go`); }
+        // 05/10/2026: lo que ya tenía ficha (probados y nuevos enganchados) sube su costo si este pedido salió más caro.
+        if (_recReal) { try { await aplicarCostosPedido(db, id, rel || c, true); } catch (eC) { console.log('⚠️ no pude revisar los costos: ' + ((eC && eC.message) || eC)); } }
         return;
       }
       // pyped:juntar:<AAAA-MM-DD>[:go] → junta la reposición vieja `pyr<fecha>` adentro del pedido `py<fecha>`
@@ -33743,6 +33834,8 @@ async function main() {
           pagos: { mercaderia: Math.round(merc), cambista: Math.round(cambio), envio: Math.round(envio), retira: Math.round(retira), otros: Math.round(otros) },
           items: itemsFin, nota: campos.nota || (ya && ya.nota) || '', tcPanel: tcRef || null,
           usdPanel, kgCorreo: kgPedido > 0 ? kgPedido : null,
+          // Qué gastos se cargaron A PROPÓSITO (aunque sea 0): un 0 escrito no es lo mismo que uno que falta.
+          pagosOk: [...new Set([...(((ya && ya.pagosOk) || [])), ...PY_GASTOS.filter((g) => campos[g.campo] != null).map((g) => g.k)])],
           incompleto: !(envio > 0), ts: Date.now(),
           // Revisión max #21: lo que crea compray por su cuenta es HISTORIAL (guarda los pesos y el
           // recargo, no cuenta "en camino" en el Arqueo). Con |camino queda viajando y lleva "Ya llegó".
@@ -33776,10 +33869,12 @@ async function main() {
         else console.log(`\n  ${items.length} producto(s) guardados con su código y sus unidades.`);
         if (!itemsFin.length) console.log(`  ⚠️ No había ningún candidato con unidades cargadas en el panel ni detalle guardado, así que el detalle por producto queda vacío.`);
         if (usdPanel) console.log(`  ⚠️ El panel tenía anotado US$ ${usdPanel.toFixed(2)} y vos mandás US$ ${usd.toFixed(2)}: el recargo se mide contra lo que MANDASTE. Los dos quedan guardados.`);
-        if (!GO) { console.log(`\nNo se guardó nada (falta |go).`); return; }
+        if (!GO) { await aplicarCostosPedido(db, id, rec, false); console.log(`\nNo se guardó nada (falta |go).`); return; }
         await db.set('cyc/compraspy/' + id, rec);
         const rel = await db.get('cyc/compraspy/' + id);
         console.log(rel && rel.usdCrudo === usd ? `\n✓ Guardado y releído: cyc/compraspy/${id}` : `\n⚠️ Se escribió pero al releer no coincide. Mirar a mano.`);
+        // Con TODOS los gastos cargados, el costo de lo que aumentó se actualiza solo (05/10/2026).
+        if (rel && rel.usdCrudo === usd) await aplicarCostosPedido(db, id, rel, true);
         return;
       }
 

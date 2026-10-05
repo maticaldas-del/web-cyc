@@ -2433,7 +2433,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='21.98';
+const APP_VERSION='21.99';
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
 // muestre la versión y la fecha de actualización y que tenga un desplegable predeterminado cerrado".
 // Y el mismo día: "que ponga fecha de cada modificación y haya una barrita para scrollear y que
@@ -2444,6 +2444,7 @@ const APP_VERSION='21.98';
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'21.99',f:'05/10/2026',h:'13:47',c:[{n:3,t:'🇵🇾 Cada pedido de Paraguay usa su recargo REAL (no el 17% fijo). Con todos los gastos cargados (pesos, correo, el que despacha y la transferencia) el costo de las fichas que salieron más caras sube solo; si salió más barato no se toca. Las ventas de meses pasados siguen con el costo viejo.'},{n:2,t:'🇵🇾 En Pedidos hechos cada pedido muestra sus gastos con ✓ cargado o ✗ falta, y qué costos subieron.'}]},
   {v:'21.98',f:'05/10/2026',h:'13:32',c:[{n:2,t:'🇵🇾 Pedidos ya no te pide comprar lo que viene viajando de Paraguay (ni lo que llegó y falta contar en la oficina): se descuenta como "en camino".'}]},
   {v:'21.97',f:'05/10/2026',h:'13:13',c:[{n:2,t:'🇵🇾 El pedido a Paraguay es UNO solo: probados y nuevos van juntos en el mismo pedido, separados adentro. "Ya lo pedí" pregunta una vez y "Ya llegó" crea las fichas de los nuevos y te recuerda contar los probados.'}]},
   {v:'21.96',f:'05/10/2026',h:'11:15',c:[{n:1,t:'📈 Línea de tiempo: los botones de color aparecen aunque el color no se haya fijado a mano; se saca del título de cada publicación (ej. Pizarra Mágica 8.5: Azul, Negro, Rojo, Rosa, Verde, Violeta).'}]},
@@ -11708,7 +11709,7 @@ async function pyPedidoLlego(id){
     // El id lleva el número de orden porque varias se crean en el MISMO milisegundo: sin eso la
     // segunda pisaría a la primera y se perdería una ficha sin que nada lo dijera.
     try{
-      const r=await candFichaDesde(crear[i].src,{idSuf:i});
+      const r=await candFichaDesde(crear[i].src,{idSuf:i,recargo:pyRecargoReal(c).r});
       if(r.ok)hechas.push(r.p.name); else fallaron.push(crear[i].src.nombre+' ('+r.motivo+')');
     }catch(e){fallaron.push(crear[i].src.nombre+' (no se pudo guardar)');}
   }
@@ -11757,10 +11758,41 @@ async function pyPedidoBorrar(id){
   renderPedidos();toast('Borrado');
 }
 // Qué tiene adentro un pedido: probados (prodId sin id) y nuevos (id). Un `pyr` viejo es todo probados.
+// EL RECARGO REAL DE CADA PEDIDO (05/10/2026). Misma lista y misma cuenta que `PY_GASTOS` /
+// `recargoRealPedido` del robot: si se toca una, la otra. Con TODOS los gastos cargados el robot sube el
+// costo de las fichas que salieron más caras (nunca baja) y las nuevas nacen con este recargo.
+const PY_GASTOS=[{k:'mercaderia',nom:'Pesos de los dólares',campo:'merc'},{k:'envio',nom:'Correo',campo:'envio'},
+  {k:'retira',nom:'El que retira y despacha',campo:'retira'},{k:'cambista',nom:'Diferencia de la transferencia',campo:'cambio',cero:true}];
+function pyGastoCargado(c,g){const v=Number(((c&&c.pagos)||{})[g.k]);if(v>0)return true;return!!(g.cero&&Array.isArray(c&&c.pagosOk)&&c.pagosOk.includes(g.k));}
+function pyRecargoReal(c){
+  const falta=PY_GASTOS.filter(g=>!pyGastoCargado(c,g)).map(g=>g.nom);
+  const tc=parseFloat(c&&c.tcPedido)||parseFloat(c&&c.tcPanel)||0,usd=parseFloat(c&&c.usdCrudo)||0;
+  if(!(tc>0))falta.push('el dólar del día del pedido');if(!(usd>0))falta.push('los dólares crudos');
+  if(falta.length)return{r:null,falta};
+  const p=c.pagos||{};const tot=(Number(p.mercaderia)||0)+(Number(p.cambista)||0)+(Number(p.envio)||0)+(Number(p.retira)||0)+(Number(p.otros)||0);
+  const r=tot/tc/usd;if(!(r>=1&&r<=1.6))return{r:null,falta:['el recargo da '+((r-1)*100).toFixed(1)+'%: algún número está mal']};
+  return{r:Math.round(r*10000)/10000,falta:[]};
+}
+function pyGastosChecklistHTML(c){
+  const p=c.pagos||{};const R=pyRecargoReal(c);
+  const fila=(ok,nom,val,gris)=>`<div style="display:flex;justify-content:space-between;gap:10px;font-size:.68rem;padding:3px 0;border-bottom:1px dashed var(--border)"><span>${ok?'<b style="color:var(--green)">✓</b>':(gris?'<span style="color:var(--muted)">·</span>':'<b style="color:var(--red)">✗</b>')} ${nom}</span><span style="color:${ok?'var(--text)':(gris?'var(--muted)':'var(--red)')}">${val}</span></div>`;
+  const filas=PY_GASTOS.map(g=>{const ok=pyGastoCargado(c,g);const v=Number(p[g.k])||0;
+    let val=ok?fmt(Math.round(v)):'falta';
+    if(g.k==='envio'&&ok&&c.kgCorreo)val+=` <span style="color:var(--muted)">· ${c.kgCorreo} kg</span>`;
+    if(g.cero&&ok&&!(v>0))val='no hubo';
+    return fila(ok,g.nom,val);}).join('')
+    +(Number(p.otros)>0?fila(true,'Otros',fmt(Math.round(Number(p.otros)))):'');
+  const ca=c.costosAplicados;
+  const pie=R.r
+    ?`<div style="font-size:.66rem;margin-top:6px;line-height:1.55">Recargo REAL de este pedido: <b>${((R.r-1)*100).toFixed(1)}%</b> <span style="color:var(--muted)">(el panel estimaba ${Math.round((RECARGO_PY-1)*100)}%)</span><br>${ca?`💲 Costos revisados: <b>${(ca.subieron||[]).length}</b> ficha(s) subieron${(ca.subieron||[]).length?': '+(ca.subieron||[]).map(x=>`${x.nom} US$ ${Number(x.antes).toFixed(2)} → <b>${Number(x.despues).toFixed(2)}</b>`).join(' · '):''}${ca.iguales?` · ${ca.iguales} no (salieron igual o más baratas, no se tocan)`:''}`:'<span style="color:var(--amber)">💲 Falta que el robot revise los costos (se hace al cargar el último gasto).</span>'}</div>`
+    :`<div style="font-size:.64rem;color:var(--amber);margin-top:6px;line-height:1.55">Falta: ${R.falta.join(', ')}. Hasta que estén todos, el costo de las fichas no se toca y lo nuevo se calcula con el ${Math.round((RECARGO_PY-1)*100)}% estimado.</div>`;
+  return `<div style="background:var(--surface);border:1px solid ${R.r?'rgba(34,197,94,.35)':'rgba(239,68,68,.35)'};border-radius:8px;padding:9px 11px;margin-bottom:10px">
+    <div style="font-size:.6rem;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:4px">Gastos del pedido · ${PY_GASTOS.filter(g=>pyGastoCargado(c,g)).length} de ${PY_GASTOS.length}</div>${filas}${pie}</div>`;
+}
 function pyPedidoPartes(c){const its=(c&&c.items)||[];return{prob:its.filter(x=>x&&!x.id),nuev:its.filter(x=>x&&x.id)};}
 function pyPedidoEtiqueta(c){const P=pyPedidoPartes(c);
   return P.prob.length&&P.nuev.length?`Pedido (${P.prob.length} probado${P.prob.length===1?'':'s'} + ${P.nuev.length} nuevo${P.nuev.length===1?'':'s'})`:P.prob.length?'Pedido · probados':'Pedido · nuevos';}
-function _pyItsHTML(its){
+function _pyItsHTML(its,rec){const _r=rec>=1?rec:RECARGO_PY;
   return its.slice().sort((a,b)=>((b.usd||0)*b.u)-((a.usd||0)*a.u)).map(it=>{
       const sub=(it.usd||0)*it.u;
       const lML=it.mlId?(/^https?:/i.test(it.mlId)?it.mlId:'https://www.mercadolibre.com.ar/p/'+String(it.mlId).trim()):'';
@@ -11769,7 +11801,7 @@ function _pyItsHTML(its){
           <div style="font-size:.7rem;font-weight:600;line-height:1.3">${it.nom||'—'}</div>
           <div style="font-size:.6rem;color:var(--muted);margin-top:2px;line-height:1.7">
             ${it.cod?'🔖 '+it.cod:'<span style="color:var(--amber)">🔖 sin código</span>'}
-            ${it.usd?` · US$ ${it.usd.toFixed(2)} + 17% = US$ ${(Math.round(it.usd*RECARGO_PY*100)/100).toFixed(2)} c/u`:' · <span style="color:var(--amber)">sin precio</span>'}
+            ${it.usd?` · US$ ${it.usd.toFixed(2)} + ${((_r-1)*100).toFixed(rec>=1?1:0)}%${rec>=1?' real':''} = US$ ${(Math.round(it.usd*_r*100)/100).toFixed(2)} c/u`:' · <span style="color:var(--amber)">sin precio</span>'}
             ${it.margen!=null?` · margen medido al pedirlo <b style="color:${it.margen>=CAND_PISO_PCT?'var(--green)':'var(--amber)'}">${it.margen.toFixed(1)}%</b>`:' · <span style="color:var(--muted)">sin margen medido</span>'}
             ${it.pesoKg!=null?` · ${it.pesoKg.toFixed(3)} kg c/u`:(it.pesoTxt?` · peso "${it.pesoTxt}" <span style="color:var(--amber)">(sin unidad, no lo cuento)</span>`:'')}
             ${(lML||it.link)?`<br>${lML?`<a href="${lML}" target="_blank" rel="noopener" style="color:#60a5fa">ver en ML</a>`:''}${lML&&it.link?' · ':''}${it.link?`<a href="${it.link}" target="_blank" rel="noopener" style="color:#60a5fa">ver en comprasparaguay</a>`:''}`:'<br><span style="color:var(--amber)">sin links guardados</span>'}
@@ -11794,7 +11826,7 @@ function pyPedidoDetalleHTML(c){
       <div style="flex:1;min-width:190px;background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:9px 11px">
         <div style="font-size:.6rem;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:4px">La plata</div>
         ${fila('mercadería cruda','US$ '+(c.usdCrudo||0).toFixed(2),'El precio de comprasparaguay, sin el 17%.')}
-        ${fila('con el '+Math.round(((c.recargo||RECARGO_PY)-1)*100)+'%','US$ '+puesto.toFixed(2),'Ese 17% ya incluye comprar los dólares y el flete hasta la oficina.')}
+        ${fila('con el '+(((c.recargo||RECARGO_PY)-1)*100).toFixed(c.recargo&&c.recargo!==RECARGO_PY?1:0)+'%'+(pyRecargoReal(c).r?' real':' estimado'),'US$ '+puesto.toFixed(2),'Incluye comprar los dólares, el correo y el que despacha. Con todos los gastos cargados es el recargo REAL de este pedido; si no, el estimado.')}
         ${tc?fila('en pesos',fmt(Math.round(puesto*tc))+' <span style="color:var(--muted);font-size:.9em">· dólar '+fmt(Math.round(tc))+'</span>','Con el dólar del DÍA del pedido, no el de hoy: lo que compraste a un precio no cambia solo.'):fila('en pesos','<span style="color:var(--amber)">no había dólar cargado ese día</span>')}
         ${c.gananciaEst?fila('si se vende todo deja','<b style="color:var(--green)">'+fmt(c.gananciaEst)+'</b>','Estimado con el margen medido de cada producto al momento del pedido.'):''}
       </div>
@@ -11813,6 +11845,7 @@ function pyPedidoDetalleHTML(c){
         ${sinPeso>0&&c.pesoKg!=null?`<div style="font-size:.6rem;color:var(--muted);margin-top:3px;line-height:1.5">le faltan ${sinPeso} unidad${sinPeso===1?'':'es'} sin peso cargado</div>`:''}
       </div>
     </div>
+    ${pyGastosChecklistHTML(c)}
     <div style="background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:9px 11px;margin-bottom:10px">
       <div style="font-size:.6rem;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:4px">Los gastos reales</div>
       ${hayPagos?`${fila('mercadería',fmt(Math.round(Number(pagos.mercaderia)||0)))}
@@ -11828,7 +11861,7 @@ function pyPedidoDetalleHTML(c){
       :`<div style="font-size:.63rem;color:var(--muted);line-height:1.6">Todavía no están cargados. Van cuando tengas la factura y el flete, con <code style="font-size:.95em">compray:${c.fecha}|usd=${(c.usdCrudo||0).toFixed(2)}|merc=&lt;pesos&gt;|envio=&lt;pesos&gt;|go</code> desde el chat.<br>Sin eso el recargo real de esta compra no se puede medir y el panel sigue usando el 17%.</div>`}
     </div>
     ${(()=>{const P=pyPedidoPartes(c);const grp=[['✅ Probados',P.prob],['🆕 Nuevos',P.nuev]].filter(g=>g[1].length);
-      return grp.map(([t,its])=>`<div style="font-size:.6rem;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;margin:8px 0 5px">${grp.length>1?t:'Los productos'} · ${its.length}</div>`+_pyItsHTML(its)).join('')||'<div style="font-size:.63rem;color:var(--muted)">Sin detalle por producto.</div>';})()}
+      return grp.map(([t,its])=>`<div style="font-size:.6rem;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;margin:8px 0 5px">${grp.length>1?t:'Los productos'} · ${its.length}</div>`+_pyItsHTML(its,pyRecargoReal(c).r)).join('')||'<div style="font-size:.63rem;color:var(--muted)">Sin detalle por producto.</div>';})()}
 
     <div style="display:flex;gap:7px;flex-wrap:wrap;margin-top:10px">
       ${c.estado==='camino'?`<button class="btn btn-add" style="font-size:.66rem;padding:6px 12px" onclick="pyPedidoLlego('${c.id}')">📦 Ya llegó</button>`:''}
@@ -12720,7 +12753,7 @@ async function candFichaDesde(src,opts){
   const nombre=String(src.nombre||'').trim();
   if(!nombre)return{ok:false,motivo:'sin nombre'};
   const usd=parseFloat(src.usd)||0;
-  const puesto=usd>0?Math.round(usd*RECARGO_PY*100)/100:0;
+  const puesto=usd>0?Math.round(usd*(o.recargo>=1?o.recargo:RECARGO_PY)*100)/100:0;
   const tc=curTC();
   const p={id:'p'+Date.now()+String(o.idSuf==null?'':o.idSuf),name:nombre.slice(0,90),costUSD:puesto,cost:puesto*tc,origen:'py'};
   p.costFullUSD=Math.round(puesto*100)/100;
