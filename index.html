@@ -2433,7 +2433,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='21.93';
+const APP_VERSION='21.94';
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
 // muestre la versión y la fecha de actualización y que tenga un desplegable predeterminado cerrado".
 // Y el mismo día: "que ponga fecha de cada modificación y haya una barrita para scrollear y que
@@ -2444,6 +2444,7 @@ const APP_VERSION='21.93';
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'21.94',f:'05/10/2026',h:'01:05',c:[{n:1,t:'💸 Ventas: el globito del puntaje por día ahora dice cuánto cobra cada uno si ese ritmo dura todo el mes (7 ≈ $900.000 c/u), con la regla nueva de la ganancia ÷ 3.'}]},
   {v:'21.93',f:'05/10/2026',h:'00:40',c:[{n:2,t:'📈 Línea de tiempo: el stock también se deduce de los lotes del Excel de ML. Si la unidad más vieja entró hace 120 días, esos 120 días salen con stock aunque nadie la haya visitado.'}]},
   {v:'21.92',f:'05/10/2026',h:'00:15',c:[{n:2,t:'📈 Línea de tiempo: un día sin ventas ni visitas ya no sale en rojo "sin stock" si el robot ve ese producto en Full desde antes. Pasaba con lo que vende poco (el cortapelo a pila se veía sin stock teniendo 9 u.).'}]},
   {v:'21.91',f:'04/10/2026',h:'18:40',c:[{n:1,t:'📈 Línea de tiempo: al pasar el mouse, todos los días dicen lo mismo. Un día sin ventas dice "no vendió" (antes "sin dato") y muestra el % de ganancia de la última venta, con su fecha.'}]},
@@ -8935,7 +8936,7 @@ function vpAggByAccount(entries){
 // ~$760.000), le queden ~$900.000 en el mes → (2.560.000 + 900.000) / 30 ≈ $115.000 por día.
 // De 5 para arriba, cada punto son $15.000/día más (≈ $450.000 más por mes para CYC).
 const GAN_DIA_TABLA=[[0,0],[17000,1],[34000,2],[51000,3],[68000,4],[85000,5],[100000,6],[115000,7],[130000,8],[145000,9],[160000,10]];
-const GAN_DIA_TABLA_TXT='Guía: ganancia promedio por día → puntos. '+GAN_DIA_TABLA.slice(1).map(([g,p])=>p+' = $'+g.toLocaleString('es-AR')).join(' · ')+'. 5 = cubre justo retiro + gastos (CYC en cero) · 7 = a CYC le quedan ~$900.000 en el mes. No es el Puntaje del mes (ése mira además margen, faltantes, stock y reclamos).';
+const GAN_DIA_TABLA_TXT='Guía: ganancia promedio por día → puntos. '+GAN_DIA_TABLA.slice(1).map(([g,p])=>p+' = $'+g.toLocaleString('es-AR')).join(' · ')+'. Sostenido todo el mes, con ~$700.000 de gastos y la ganancia ÷ 3: 4 ≈ $450.000 c/u · 5 ≈ $600.000 c/u · 7 ≈ $900.000 c/u · 10 ≈ $1.400.000 c/u. Es el promedio de los días del período, no un solo día bueno. No es el Puntaje del mes (ése mira además margen, faltantes, stock y reclamos).';
 function ganDiaPts(g){
   if(!(g>0))return 0;
   const T=GAN_DIA_TABLA;if(g>=T[T.length-1][0])return 10;
