@@ -2433,7 +2433,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='22.00';
+const APP_VERSION='22.01';
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
 // muestre la versión y la fecha de actualización y que tenga un desplegable predeterminado cerrado".
 // Y el mismo día: "que ponga fecha de cada modificación y haya una barrita para scrollear y que
@@ -2444,6 +2444,7 @@ const APP_VERSION='22.00';
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'22.01',f:'05/10/2026',h:'14:55',c:[{n:1,t:'🇵🇾 Pedidos hechos: el recargo de cada pedido dice el REAL cuando están los gastos, o el 17% estimado si faltan. El pedido del 21/09 ya no dice "15%" (era el número viejo de cuando se registró).'}]},
   {v:'22.00',f:'05/10/2026',h:'14:45',c:[{n:1,t:'🇵🇾 La lista de gastos del pedido cuenta la diferencia de la transferencia aunque se haya cargado como "otros" (el pedido del 21/09 decía que faltaba y estaba).'}]},
   {v:'21.99',f:'05/10/2026',h:'13:47',c:[{n:3,t:'🇵🇾 Cada pedido de Paraguay usa su recargo REAL (no el 17% fijo). Con todos los gastos cargados (pesos, correo, el que despacha y la transferencia) el costo de las fichas que salieron más caras sube solo; si salió más barato no se toca. Las ventas de meses pasados siguen con el costo viejo.'},{n:2,t:'🇵🇾 En Pedidos hechos cada pedido muestra sus gastos con ✓ cargado o ✗ falta, y qué costos subieron.'}]},
   {v:'21.98',f:'05/10/2026',h:'13:32',c:[{n:2,t:'🇵🇾 Pedidos ya no te pide comprar lo que viene viajando de Paraguay (ni lo que llegó y falta contar en la oficina): se descuenta como "en camino".'}]},
@@ -7173,7 +7174,7 @@ function pyEnCaminoUSD(){
   return Object.values(state.compraspy||{}).reduce((t,c)=>{
     // Sólo lo que de verdad viaja (revisión max #21): lo que cargó compray como historial no cuenta.
     if(!c||c.estado!=='camino')return t;
-    const r=parseFloat(c.recargo)>1?parseFloat(c.recargo):RECARGO_PY;
+    const r=pyRecargoReal(c).r||(parseFloat(c.recargo)>1?parseFloat(c.recargo):RECARGO_PY);
     return t+(parseFloat(c.usdCrudo)||0)*r;
   },0);
 }
@@ -11816,7 +11817,7 @@ function _pyItsHTML(its,rec){const _r=rec>=1?rec:RECARGO_PY;
 }
 function pyPedidoDetalleHTML(c){
   const tc=c.tcPedido||0;
-  const puesto=Math.round((c.usdCrudo||0)*(c.recargo||RECARGO_PY)*100)/100;
+  const puesto=Math.round((c.usdCrudo||0)*(pyRecargoReal(c).r||RECARGO_PY)*100)/100;
   const pagos=c.pagos||{};
   const totARS=(Number(pagos.mercaderia)||0)+(Number(pagos.cambista)||0)+(Number(pagos.envio)||0)+(Number(pagos.retira)||0)+(Number(pagos.otros)||0);
   const hayPagos=totARS>0;
@@ -11827,7 +11828,7 @@ function pyPedidoDetalleHTML(c){
       <div style="flex:1;min-width:190px;background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:9px 11px">
         <div style="font-size:.6rem;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:4px">La plata</div>
         ${fila('mercadería cruda','US$ '+(c.usdCrudo||0).toFixed(2),'El precio de comprasparaguay, sin el 17%.')}
-        ${fila('con el '+(((c.recargo||RECARGO_PY)-1)*100).toFixed(c.recargo&&c.recargo!==RECARGO_PY?1:0)+'%'+(pyRecargoReal(c).r?' real':' estimado'),'US$ '+puesto.toFixed(2),'Incluye comprar los dólares, el correo y el que despacha. Con todos los gastos cargados es el recargo REAL de este pedido; si no, el estimado.')}
+        ${fila('con el '+(pyRecargoReal(c).r?((pyRecargoReal(c).r-1)*100).toFixed(1)+'% real':Math.round((RECARGO_PY-1)*100)+'% estimado'),'US$ '+puesto.toFixed(2),'Incluye comprar los dólares, el correo y el que despacha. Con todos los gastos cargados es el recargo REAL de este pedido; si no, el estimado.')}
         ${tc?fila('en pesos',fmt(Math.round(puesto*tc))+' <span style="color:var(--muted);font-size:.9em">· dólar '+fmt(Math.round(tc))+'</span>','Con el dólar del DÍA del pedido, no el de hoy: lo que compraste a un precio no cambia solo.'):fila('en pesos','<span style="color:var(--amber)">no había dólar cargado ese día</span>')}
         ${c.gananciaEst?fila('si se vende todo deja','<b style="color:var(--green)">'+fmt(c.gananciaEst)+'</b>','Estimado con el margen medido de cada producto al momento del pedido.'):''}
       </div>
@@ -11855,7 +11856,7 @@ function pyPedidoDetalleHTML(c){
         ${fila('correo',(Number(pagos.envio)||0)>0?fmt(Math.round(Number(pagos.envio))):'<span style="color:var(--amber)">falta</span>','El flete. Hasta que no esté, el recargo real sale más barato de lo que es.')}
         ${Number(pagos.otros)>0?fila('otros',fmt(Math.round(Number(pagos.otros)))):''}
         ${fila('<b>TOTAL</b>','<b>'+fmt(Math.round(totARS))+'</b>')}
-        ${tc&&c.usdCrudo>0?fila('recargo REAL de esta compra','<b>'+(((totARS/tc)/c.usdCrudo-1)*100).toFixed(1)+'%</b> <span style="color:var(--muted)">· el panel usa '+Math.round(((c.recargo||RECARGO_PY)-1)*100)+'%</span>','Lo que de verdad te salió poner esta mercadería en la oficina, contra el 17% que el panel le suma a todo.'):''}
+        ${tc&&c.usdCrudo>0?fila('recargo REAL de esta compra','<b>'+(((totARS/tc)/c.usdCrudo-1)*100).toFixed(1)+'%</b> <span style="color:var(--muted)">· el panel estima '+Math.round((RECARGO_PY-1)*100)+'% antes de comprar</span>','Lo que de verdad te salió poner esta mercadería en la oficina, contra el '+Math.round((RECARGO_PY-1)*100)+'% que el panel estima antes de tener los gastos.'):''}
         ${tc&&c.usdCrudo>0&&((Number(pagos.envio)||0)+(Number(pagos.retira)||0)+(Number(pagos.otros)||0))>0?fila('de eso, FIJO por pedido','<b>'+fmt(Math.round((Number(pagos.envio)||0)+(Number(pagos.retira)||0)+(Number(pagos.otros)||0)))+'</b> <span style="color:var(--muted)">· en uno del doble pesaría la mitad</span>','El correo y el que despacha no cambian si pedís más mercadería. Por eso los pedidos chicos salen más caros por unidad.'):''}
         ${c.usdPanel?`<div style="font-size:.6rem;color:var(--muted);margin-top:4px">El panel tenía anotado US$ ${c.usdPanel.toFixed(2)} y mandaste US$ ${(c.usdCrudo||0).toFixed(2)}: el recargo se mide contra lo que mandaste.</div>`:''}
         ${c.incompleto?`<div style="font-size:.6rem;color:var(--amber);margin-top:4px">⚠️ Falta el correo, así que ese recargo está CORTO: el real es más alto.</div>`:''}`
@@ -11877,7 +11878,7 @@ function pyEnCaminoHTML(tipo){
   const llegados=todas.filter(c=>c.estado!=='camino').slice(0,6);
   if(!camino.length&&!llegados.length)return '';
   const tarjeta=(c,enCamino)=>{
-    const puesto=Math.round((c.usdCrudo||0)*(c.recargo||RECARGO_PY)*100)/100;
+    const puesto=Math.round((c.usdCrudo||0)*(pyRecargoReal(c).r||RECARGO_PY)*100)/100;
     const dias=Math.max(0,Math.floor((Date.now()-Date.parse(c.fecha+'T12:00:00-03:00'))/86400e3));
     const lleg=enCamino?pyMasHabiles(c.fecha,PY_DIAS_LLEGADA):null;
     const tarde=lleg?Date.now()>lleg.getTime()+86400e3:false;
@@ -11911,7 +11912,7 @@ function pyHechosHTML(){
   if(!todas.length)return '<div style="font-size:.72rem;color:var(--muted);padding:12px">Todavía no hay pedidos a Paraguay hechos. Se registran al tocar "✅ Ya lo pedí" o cuando CYC WEB los carga.</div>';
   const camino=todas.filter(c=>c.estado==='camino'), resto=todas.filter(c=>c.estado!=='camino');
   const tarjeta=(c,enCamino)=>{
-    const puesto=Math.round((c.usdCrudo||0)*(c.recargo||RECARGO_PY)*100)/100;
+    const puesto=Math.round((c.usdCrudo||0)*(pyRecargoReal(c).r||RECARGO_PY)*100)/100;
     const dias=Math.max(0,Math.floor((Date.now()-Date.parse(c.fecha+'T12:00:00-03:00'))/86400e3));
     const lleg=enCamino?pyMasHabiles(c.fecha,PY_DIAS_LLEGADA):null;
     const tarde=lleg?Date.now()>lleg.getTime()+86400e3:false;
