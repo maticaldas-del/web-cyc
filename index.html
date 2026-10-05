@@ -2432,7 +2432,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='21.91';
+const APP_VERSION='21.92';
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
 // muestre la versión y la fecha de actualización y que tenga un desplegable predeterminado cerrado".
 // Y el mismo día: "que ponga fecha de cada modificación y haya una barrita para scrollear y que
@@ -2443,6 +2443,7 @@ const APP_VERSION='21.91';
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'21.92',f:'05/10/2026',h:'00:15',c:[{n:2,t:'📈 Línea de tiempo: un día sin ventas ni visitas ya no sale en rojo "sin stock" si el robot ve ese producto en Full desde antes. Pasaba con lo que vende poco (el cortapelo a pila se veía sin stock teniendo 9 u.).'}]},
   {v:'21.91',f:'04/10/2026',h:'18:40',c:[{n:1,t:'📈 Línea de tiempo: al pasar el mouse, todos los días dicen lo mismo. Un día sin ventas dice "no vendió" (antes "sin dato") y muestra el % de ganancia de la última venta, con su fecha.'}]},
   {v:'21.90',f:'04/10/2026',h:'18:05',c:[{n:3,t:'💳 Paraguay: si el que hay que igualar en ML da cuotas sin interés (es Premium o está en una campaña de cuotas), el máximo de compra y el % de los candidatos ya las descuentan solos. Antes sólo si el chat las cargaba a mano.'},{n:2,t:'📈 Línea de tiempo: carril nuevo "$ ganancia/día" (promedio de 7 días) y abajo, por cada cambio de precio, cuánto dejaba por día antes y después (sólo días con stock).'},{n:1,t:'📈 Línea de tiempo: el precio ya no salta a una publicación pausada los días sin ventas (el serrucho del Metatarso).'},{n:1,t:'📦 Arqueo → Productos: botones Todos · 🇦🇷 Bs As · 🇵🇾 Paraguay.'}]},
   {v:'21.89',f:'04/10/2026',h:'17:20',c:[{n:1,t:'🇵🇾 Pedidos Paraguay (probados y nuevos): botones Todo · 🧴 Perfumes · 📦 Resto para ver sólo una parte. El pedido armado y el mensaje para Nissei no cambian.'}]},
@@ -8545,7 +8546,14 @@ function lineaPintar(prodId){
   // STOCK UNIFICADO (03/10/2026, él: "hay dos stock, unifiquémoslo"): la línea de unidades arriba y, abajo,
   // la franja finita de con/sin stock para los días sin el número exacto.
   const _stBh=suv.length?8:L.st[1], _stB0=L.st[0]+L.st[1]-_stBh;
-  const _conSt=d=>!!d&&(d.u>0||d.st>0||(d.vis>0&&!(d.st!=null&&d.stN>=d.pubs)));
+  // EL HISTORIAL DEL ROBOT TAMBIÉN DICE CUÁNDO HUBO STOCK (05/10/2026). Él, con el cortapelo a pila: "dejó de tener
+  // stock sin tener ventas, está muy raro". No era cierto: la línea no tenía el número de stock de esos días (el relleno
+  // para atrás no llegó) y el producto, que vende 1 por mes, salía en ROJO cada día sin venta ni visita. Ahora, si hoy
+  // hay stock en una cuenta, desde que `cyc/stockhist` lo vio entrar (o desde que empezó a mirar) ese día cuenta CON
+  // stock. La regla suya del 03/10 (sin dato y sin ventas = sin stock) queda para los días que el historial no cubre.
+  const _stHistDesde=(()=>{const H=state.stockhist||{};let m=null;LOCS.forEach(l=>{const q=_lineaVar?getQV(prodId,l,_lineaVar):getQ(prodId,l);if(q<=0)return;
+    const h=H[_lineaVar?invKeyV(prodId,l,_lineaVar):invKey(prodId,l)];const t=h&&Number(h.desde);if(t>0&&(m==null||t<m))m=t;});return m==null?null:dateToKey(new Date(m));})();
+  const _conSt=(d,k)=>(!!d&&(d.u>0||d.st>0||(d.vis>0&&!(d.st!=null&&d.stN>=d.pubs))))||(!!k&&_stHistDesde!=null&&k>=_stHistDesde&&!(d&&d.st!=null&&d.stN>=d.pubs&&!(d.st>0)));
   const _stIni=ks.find(k=>dias[k]&&(dias[k].u>0||dias[k].st!=null||dias[k].vis>0))||'9999';
   let svg='';
   // fondo de meses
@@ -8566,7 +8574,7 @@ function lineaPintar(prodId){
     // Regla suya del 03/10/2026: día sin dato y sin ventas = SIN stock. Sólo antes del primer día con algún
     // dato del producto queda gris (ahí todavía no existía o no se miraba).
     // Y si no hay dato de stock pero tuvo VISITAS, había stock (él, mismo día).
-    const stK=_conSt(d)?'si':(k>=_stIni?'no':null);
+    const stK=_conSt(d,k)?'si':(k>=_stIni?'no':null);
     svg+=`<rect x="${x}" y="${_stB0}" width="${bw}" height="${_stBh}" fill="${stK==='si'?'var(--green)':stK==='no'?'var(--red)':'rgba(128,128,128,.25)'}" opacity="${stK?'.75':'1'}"/>`;
     // precio
     if(d&&d.p>0)ptsP.push(`${(x+bw/2).toFixed(1)},${(L.pr[0]+L.pr[1]-(pMax>pMin?(d.p-pMin)/(pMax-pMin):.5)*L.pr[1]).toFixed(1)}`);
@@ -8617,7 +8625,7 @@ function lineaPintar(prodId){
       stU[k]!=null?`📦 ${stU[k]} u. en Full · alcanza ${stD[k]>=999?'+999':Math.round(stD[k])} d (${_stTxt(stD[k])})`:'',
       cu[k]!=null?`🏷️ costo real ${ct[k]>0?fmt(ct[k]):'?'} c/u = mercadería ${fmt(cu[k])} (dólar del mes $${Math.round(tcForYM(k.slice(0,7))||0)}) + IIBB y monotributo ${ct[k]>0?fmt(ct[k]-cu[k]):'?'}${gd[k]&&gd[k].impPct!=null?` (${gd[k].impPct.toFixed(1)}% de lo cobrado)`:''}${gd[k]&&gd[k].cu>0?'':' · el último conocido'}`:'',
       d&&d.vis!=null?`👀 ${d.vis} visitas`:'',
-      _conSt(d)?`📦 tenía stock${d.st>0?` (${d.st} u. en Full)`:d.u>0?' (vendió)':' (tuvo visitas)'}`:(k>=_stIni?(d&&d.st!=null?'📦 sin stock en Full':'📦 sin stock (sin dato, sin ventas ni visitas)'):'📦 todavía no se miraba'),
+      _conSt(d,k)?`📦 tenía stock${d&&d.st>0?` (${d.st} u. en Full)`:d&&d.u>0?' (vendió)':d&&d.vis>0?' (tuvo visitas)':` (el robot lo ve en Full desde el ${_lineaFmtDia(_stHistDesde)})`}`:(k>=_stIni?(d&&d.st!=null?'📦 sin stock en Full':'📦 sin stock (sin dato, sin ventas ni visitas)'):'📦 todavía no se miraba'),
       d&&d.p>0?`💲 ${d.pCob?'cobrado':'precio'} ${fmt(d.p)}${d.pCob?' por unidad':''}`:'',
       d&&d.mg!=null?`📊 margen ${Number(d.mg).toFixed(0)}%`:'',
       d&&d.esc!=null?`🪜 escalera, escalón ${d.esc}%`:(d&&d.rem?'🔻 rematando':''),
@@ -8626,7 +8634,7 @@ function lineaPintar(prodId){
     svg+=`<rect x="${X(i)}" y="0" width="${Math.max(bw,1)}" height="${H}" fill="transparent"><title>${t}</title></rect>`;});
   // resumen del rango
   let uT=0,uRT=0,dCon=0,dSin=0,dNo=0,dRem=0,vT=0; ks.forEach(k=>{const d=dias[k];if(d&&d.u)uT+=d.u;if(d&&d.uR)uRT+=d.uR;if(d&&d.vis)vT+=d.vis;
-    const s=_conSt(d)?1:(k>=_stIni?0:null);if(s===1)dCon++;else if(s===0)dSin++;else dNo++;if(d&&(d.rem||d.esc!=null))dRem++;});
+    const s=_conSt(d,k)?1:(k>=_stIni?0:null);if(s===1)dCon++;else if(s===0)dSin++;else dNo++;if(d&&(d.rem||d.esc!=null))dRem++;});
   let gT=0,cT=0,eT=0;Object.values(gd).forEach(g=>{gT+=g.gan;cT+=g.costo;eT+=g.gest;});const gPct=hayGan?pctGananciaVP(gT,cT,eT):null;
   const pIni=ks.map(k=>dias[k]&&dias[k].p).find(x=>x>0), pFin=[...ks].reverse().map(k=>dias[k]&&dias[k].p).find(x=>x>0);
   // ¿EL CAMBIO DE PRECIO DEJÓ MÁS PLATA? (04/10/2026, él con el Metatarso: "quizás lo aumentó un 10% y se vendió un
@@ -8635,7 +8643,7 @@ function lineaPintar(prodId){
   const _evD=[];{const vistos=new Set();for(const e of C.evP){if(!e||!e.ts||!_mlaOk(e.mla)||!(Number(e.de)>0)||!(Number(e.a)>0))continue;
     const kk=dateToKey(new Date(e.ts));const i=ks.indexOf(kk);if(i<0||vistos.has(kk))continue;vistos.add(kk);_evD.push({i,k:kk,e});}}
   _evD.sort((a,b)=>a.i-b.i);
-  const _ven=(a,b)=>{let g=0,u=0,dc=0;for(let j=Math.max(0,a);j<=Math.min(N-1,b);j++){const kk=ks[j];if(!_conSt(dias[kk]))continue;dc++;if(gd[kk])g+=gd[kk].gan;if(dias[kk]&&dias[kk].u)u+=dias[kk].u;}return{g,u,dc};};
+  const _ven=(a,b)=>{let g=0,u=0,dc=0;for(let j=Math.max(0,a);j<=Math.min(N-1,b);j++){const kk=ks[j];if(!_conSt(dias[kk],kk))continue;dc++;if(gd[kk])g+=gd[kk].gan;if(dias[kk]&&dias[kk].u)u+=dias[kk].u;}return{g,u,dc};};
   const _adHTML=_evD.map((x,n)=>{const ant=n>0?_evD[n-1].i:-1,sig=n<_evD.length-1?_evD[n+1].i:N;
     const A=_ven(Math.max(ant+1,x.i-14),x.i-1),D=_ven(x.i+1,Math.min(sig-1,x.i+14));
     const e=x.e,sube=Number(e.a)>Number(e.de),pct=(Number(e.a)/Number(e.de)-1)*100;
