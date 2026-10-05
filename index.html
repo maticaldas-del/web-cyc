@@ -2433,7 +2433,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='21.94';
+const APP_VERSION='21.95';
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
 // muestre la versión y la fecha de actualización y que tenga un desplegable predeterminado cerrado".
 // Y el mismo día: "que ponga fecha de cada modificación y haya una barrita para scrollear y que
@@ -2444,6 +2444,7 @@ const APP_VERSION='21.94';
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'21.95',f:'05/10/2026',h:'01:30',c:[{n:1,t:'🖼️ Ventas x Producto: cada producto vendido lleva su foto (la de la publicación que vendió, con el color justo). Se toca para verla grande.'}]},
   {v:'21.94',f:'05/10/2026',h:'01:05',c:[{n:1,t:'💸 Ventas: el globito del puntaje por día ahora dice cuánto cobra cada uno si ese ritmo dura todo el mes (7 ≈ $900.000 c/u), con la regla nueva de la ganancia ÷ 3.'}]},
   {v:'21.93',f:'05/10/2026',h:'00:40',c:[{n:2,t:'📈 Línea de tiempo: el stock también se deduce de los lotes del Excel de ML. Si la unidad más vieja entró hace 120 días, esos 120 días salen con stock aunque nadie la haya visitado.'}]},
   {v:'21.92',f:'05/10/2026',h:'00:15',c:[{n:2,t:'📈 Línea de tiempo: un día sin ventas ni visitas ya no sale en rojo "sin stock" si el robot ve ese producto en Full desde antes. Pasaba con lo que vende poco (el cortapelo a pila se veía sin stock teniendo 9 u.).'}]},
@@ -3361,6 +3362,18 @@ function fotoChipHTML(p,px,variante,cuenta){
     :(f.fuente==='ml-var'?'Foto de la publicación de ESTA variante · tocá para verla grande'
     :'Foto de la publicación de ML · tocá para verla grande');
   return `<img src="${f.url}" alt="" loading="lazy" onclick="verFoto('${p.id}',''${_vArg})" title="${tit}" style="${comun};object-fit:cover;background:#fff;border:1px solid rgba(148,163,184,.25)" onerror="this.style.display='none'">`;
+}
+// LA FOTO DE LO QUE SE VENDIÓ (05/10/2026, pedido suyo: "¿se puede poner foto del producto vendido?").
+// Primero la de la PUBLICACIÓN que vendió (es exactamente lo que se mandó, color incluido); si esa no
+// tiene, la de la ficha con las reglas de siempre (fotoChipHTML). Sin ninguna, no dibuja nada.
+function fotoVentaHTML(v,px){
+  const L=(state.mllinks||{})[v.mla]||{}; const p=prodDeVenta(v); const lado=px||30;
+  let h='';
+  if(L.foto&&/^https:\/\/[^/]*mlstatic\.com\//.test(L.foto)){
+    const _a=p?`onclick="verFoto('${p.id}','',${JSON.stringify(String(v.variante||'')).replace(/"/g,'&quot;')},${JSON.stringify(String(v.cuenta||'')).replace(/"/g,'&quot;')})"`:'';
+    h=`<img src="${L.foto}" alt="" loading="lazy" ${_a} title="Foto de la publicación que vendió · tocá para verla grande" style="width:${lado}px;height:${lado}px;border-radius:6px;object-fit:cover;background:#fff;border:1px solid rgba(148,163,184,.25);cursor:zoom-in" onerror="this.style.display='none'">`;
+  } else if(p) h=fotoChipHTML(p,lado,v.variante,v.cuenta);
+  return h?`<span style="display:inline-block;vertical-align:middle;margin-right:7px;line-height:0">${h}</span>`:'';
 }
 // Vincular una foto por URL (ej: imagen de la publicacion de ML). Pensado para que lo use cowork.
 async function setFotoUrl(prodId,url){
@@ -9491,7 +9504,7 @@ function renderVentaProd(){
       const _cambios=grp.items.map(v=>isCancelled?'':cambioVentaHTML(v,Number(v.ts)||0));
       const _hayCambio=_cambios.some(x=>x);
       const _pill=isCancelled?'':(gpct===null?`<span class="db nc" style="font-size:.66rem" title="${_sinFicha?'Esta venta no está enganchada a ninguna ficha: el panel no sabe qué producto es ni cuánto costó. Se arregla vinculando la publicación.':'La ficha no tiene costo cargado.'}">${_sinFicha?'sin ficha':'sin costo'}</span>`:`<span class="db ${_est?'nc':''}" style="font-size:.72rem;padding:3px 9px;${_est?'color:var(--muted)':_pillSt}">${_est?'≈ ':''}${gpct>=0?'+':''}${gpct.toFixed(0)}%</span>`);
-      const _items=grp.items.map((v,i)=>`<div style="font-size:.8rem;line-height:1.35;${isCancelled?'opacity:.45;text-decoration:line-through':''}"><span style="color:var(--muted)">${v.qty}×</span> ${nombreDeVenta(v)}${v.variante?` <span style="padding:1px 6px;border-radius:4px;background:rgba(124,58,237,.12);color:#a78bfa;font-size:.66rem;white-space:nowrap">${v.variante}</span>`:''}${_cambios[i]?` <span style="font-size:.66rem" title="Cambió de precio antes de esta venta · mirá el detalle">${_cambios[i].includes('⬆️')?'⬆️':'⬇️'}</span>`:''}</div>`).join('');
+      const _items=grp.items.map((v,i)=>`<div style="font-size:.8rem;line-height:1.35;${isCancelled?'opacity:.45;text-decoration:line-through':''}">${fotoVentaHTML(v,38)}<span style="color:var(--muted)">${v.qty}×</span> ${nombreDeVenta(v)}${v.variante?` <span style="padding:1px 6px;border-radius:4px;background:rgba(124,58,237,.12);color:#a78bfa;font-size:.66rem;white-space:nowrap">${v.variante}</span>`:''}${_cambios[i]?` <span style="font-size:.66rem" title="Cambió de precio antes de esta venta · mirá el detalle">${_cambios[i].includes('⬆️')?'⬆️':'⬇️'}</span>`:''}</div>`).join('');
       const _avisoIco=(rescLabel&&rescLabel.includes('⚠️'))?' <span title="El robot no pudo subirla · mirá el detalle">⚠️</span>':'';
       const _abierto=vpDetOpen.has(grp.gid);
       const _dl=(k,val)=>`<div style="display:flex;justify-content:space-between;gap:10px;padding:3px 0;border-bottom:1px dashed var(--border)"><span style="color:var(--muted)">${k}</span><span style="text-align:right">${val}</span></div>`;
@@ -9515,7 +9528,7 @@ function renderVentaProd(){
       // EN LA PC VA EL RENGLÓN DE ANTES; LA TARJETA ES SÓLO PARA EL TELÉFONO (30/09/2026, él:
       // "en la pc quiero como estaba antes. que quede así en el celu"). Se arman las dos y el CSS
       // (.vp-pc / .vp-cel, corte 640px) muestra una sola.
-      const lines=grp.items.map(v=>`<div style="display:flex;justify-content:space-between;font-size:.72rem;padding:2px 0;${isCancelled?'opacity:.45;text-decoration:line-through':''}"><span>${v.qty}× ${nombreDeVenta(v)}${v.variante?` <span style="padding:1px 5px;border-radius:3px;background:rgba(124,58,237,.12);color:#a78bfa;font-size:.62rem">${v.variante}</span>`:''}${isCancelled?'':(()=>{const x=cambioVentaHTML(v,Number(v.ts)||0);return x?' '+x:'';})()}</span><span style="color:var(--muted)">${(!isCancelled&&(v.total||0)>0)?`total ${fmt(v.total)} · `:''}${isCancelled?'':'neto '+fmt(v.neto||0)}</span></div>`).join('');
+      const lines=grp.items.map(v=>`<div style="display:flex;justify-content:space-between;font-size:.72rem;padding:2px 0;align-items:center;${isCancelled?'opacity:.45;text-decoration:line-through':''}"><span>${fotoVentaHTML(v,30)}${v.qty}× ${nombreDeVenta(v)}${v.variante?` <span style="padding:1px 5px;border-radius:3px;background:rgba(124,58,237,.12);color:#a78bfa;font-size:.62rem">${v.variante}</span>`:''}${isCancelled?'':(()=>{const x=cambioVentaHTML(v,Number(v.ts)||0);return x?' '+x:'';})()}</span><span style="color:var(--muted)">${(!isCancelled&&(v.total||0)>0)?`total ${fmt(v.total)} · `:''}${isCancelled?'':'neto '+fmt(v.neto||0)}</span></div>`).join('');
       const _pcHtml=`<div class="ingreso-item vp-pc" style="flex-direction:column;align-items:stretch;gap:4px;${isCancelled?'border-color:rgba(239,68,68,.25);background:rgba(239,68,68,.04)':''}">
         <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
           <span class="who-badge" style="font-size:.6rem;${isCancelled?'opacity:.6':''}">${cuenta}</span>
