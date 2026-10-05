@@ -6062,6 +6062,12 @@ const CAND_TOPE_USD = 250;      // YA NO DESCARTA (03/10/2026): ver la regla del
 // nunca por encima de TECHO_DURO. Si el competidor está más caro que el techo, se mide a $650.000 (lo más que
 // podemos vender) y tiene que dar el 25% ahí.
 const CAND_PISO_PCT = 25;       // suyo: "el % sano es de 25 hacia arriba"
+// PERFUMES AL 20% (05/10/2026, él: "no tengo muchos perfumes en la lista, bajar la ganancia mínima a 20%,
+// solo en perfumes"). Vale para lo NUEVO de Paraguay (candidatos). Perfume = el nombre o el título de ML lo
+// dice (misma idea que `repartopy` y que `esPerfumeNom` de la web). El resto sigue en CAND_PISO_PCT.
+const CAND_PISO_PERFUME = 20;
+const RE_CAND_PERF = /perfum|parfum|\bedp\b|\bedt\b|eau de|fragan|fragr|body splash|body mist|\bcolonia\b|\bsplash\b/i;
+function candPisoDe(c) { return c && RE_CAND_PERF.test(`${c.nombre || ''} ${c.mlTit || ''}`) ? CAND_PISO_PERFUME : CAND_PISO_PCT; }
 const CAND_MIN_VENT = 100;      // suyo, 03/10/2026: "100 unidades mínimo vendidas, sino no sirve" para entrar al pedido
 const CAND_ENVIO_ARRIBA = 6190; // el peor envío de Full medido en ventas reales, arriba de la barrera
 // A mano se puede pedir más: `candidatos:go:max=400` (03/10/2026, Guay cargó 350 de una). El 40 es para
@@ -6453,7 +6459,7 @@ async function correrCandidatos(db, products, labels, accounts, soloPrueba, prue
     return { mirados: 0, calculados: 0, avisados: 0 };
   }
   console.log(`=== PARA PROBAR · la cuenta de ML ${soloPrueba ? '(PRUEBA)' : ''} ===`);
-  console.log(`${entradas.length} candidato(s) en la lista · dólar ${money(tc)} · piso ${CAND_PISO_PCT}% · tope US$ ${CAND_TOPE_USD}`);
+  console.log(`${entradas.length} candidato(s) en la lista · dólar ${money(tc)} · piso ${CAND_PISO_PCT}% (perfumes ${CAND_PISO_PERFUME}%) · tope US$ ${CAND_TOPE_USD}`);
   if (!entradas.length) {
     console.log('La lista está vacía: el chat de Paraguay todavía no cargó ninguno. No es un error.');
     return { mirados: 0, calculados: 0, avisados: 0 };
@@ -6529,7 +6535,9 @@ async function correrCandidatos(db, products, labels, accounts, soloPrueba, prue
       // una foto de un momento es justo lo que él no quiere.
       // No se desmarca antes de medir: se mide, y el RESULTADO decide. Si da, se limpia la cruz
       // más abajo; si no da, `fuera()` lo vuelve a marcar y le suma una a la cuenta del "nunca".
-      if (candDescarteBlando(c) && (Date.now() - (Number(c.noTs) || 0)) >= CAND_REMEDIR_DIAS * 86400000) {
+      // Y el perfume descartado con un margen que hoy ya pasa su piso del 20% vuelve YA, sin esperar los 7 días.
+      const _pasaPerf = candPisoDe(c) < CAND_PISO_PCT && c.margen != null && isFinite(c.margen) && Number(c.margen) >= candPisoDe(c);
+      if (candDescarteBlando(c) && (_pasaPerf || (Date.now() - (Number(c.noTs) || 0)) >= CAND_REMEDIR_DIAS * 86400000)) {
         revividos.push(c.nombre);
       } else {
       yaNo++;
@@ -6538,8 +6546,8 @@ async function correrCandidatos(db, products, labels, accounts, soloPrueba, prue
       // uno, que es la lista completa otra vez. Lo que hay que contar es de QUÉ se murieron.
       const _t = String(c.motivo || '');
       const m = !_t ? 'lo descartaron a mano desde el panel (sin motivo anotado)'
-        : /por segunda vez/.test(_t) ? `abajo de tu piso de ${CAND_PISO_PCT}%, medido DOS veces`
-        : /abajo de tu piso/.test(_t) ? `abajo de tu piso de ${CAND_PISO_PCT}% con UNA sola medición`
+        : /por segunda vez/.test(_t) ? `abajo de tu piso de ${candPisoDe(c)}%, medido DOS veces`
+        : /abajo de tu piso/.test(_t) ? `abajo de tu piso de ${candPisoDe(c)}% con UNA sola medición`
         : /Nissei/i.test(_t) ? 'en comprasparaguay no lo ofrece Nissei'
         : /sin precio/i.test(_t) ? 'sin precio cargado'
         : /tope/i.test(_t) ? `pasa tu tope de US$ ${CAND_TOPE_USD}`
@@ -6583,7 +6591,7 @@ async function correrCandidatos(db, products, labels, accounts, soloPrueba, prue
       // descarte BLANDO (se vuelve a medir a los 7 días) del DURO (marca frenada, sin Nissei, sin
       // precio, pasa el tope): esos no cambian solos y quedan.
       const blando = margenHoy != null && isFinite(margenHoy);
-      const lejos = blando && margenHoy < (CAND_PISO_PCT - CAND_LEJOS_PTS);
+      const lejos = blando && margenHoy < (candPisoDe(c) - CAND_LEJOS_PTS);
       // Sólo cuentan las SEGUIDAS (revisión max (rev4)): un descarte cerca del piso vuelve la cuenta
       // a cero. Antes sólo se borraba al pasar el piso y uno que alternaba 12% y 24% terminaba tachado.
       const bajas = lejos ? (Number(c.bajasLejos) || 0) + 1 : 0;
@@ -6639,7 +6647,7 @@ async function correrCandidatos(db, products, labels, accounts, soloPrueba, prue
     const _cuoOk = cuoN ? (Number(c.mlCuotasPct) || 0) === cuoPct : (!(Number(c.mlCuotasPct) > 0) || !!c.mlCuotasAuto);
     const _cacheOk = c.margen != null && isFinite(c.margen) && Number(c.calcVer) === CAND_CALC_VER
       && _cuoOk
-      && Number(c.margen) >= CAND_PISO_PCT && Math.abs((Number(c.puestoUSD) || 0) - puesto) < 0.01;
+      && Number(c.margen) >= candPisoDe(c) && Math.abs((Number(c.puestoUSD) || 0) - puesto) < 0.01;
     // Fresca (menos de 20 h) o sin consultas disponibles esta vuelta: se usa la guardada. Vieja o
     // con el precio de Paraguay cambiado: sigue de largo y se vuelve a medir.
     if (_cacheOk && (Date.now() - (Number(c.calcTs) || 0) < CAND_FRESCO_MS || consultas >= CAND_MAX_ML)) {
@@ -6664,7 +6672,7 @@ async function correrCandidatos(db, products, labels, accounts, soloPrueba, prue
     // medición tiene que ser de otro momento (N3, ver abajo): volver a preguntar antes no puede
     // descartarlo y se gastaba el tope entero en ésos. Con 747 cargados de una, tres corridas
     // seguidas midieron los mismos ~260 y dejaron 236 nuevos sin mirar nunca.
-    if (Number(c.margen) < CAND_PISO_PCT && isFinite(c.margen) && c.margen != null && Number(c.calcVer) === CAND_CALC_VER
+    if (Number(c.margen) < candPisoDe(c) && isFinite(c.margen) && c.margen != null && Number(c.calcVer) === CAND_CALC_VER
       && _cuoOk && Math.abs((Number(c.puestoUSD) || 0) - puesto) < 0.01
       && Number(c.calcTs) > 0 && Date.now() - Number(c.calcTs) < 12 * 3600e3) { esperan12++; continue; }
     if (consultas >= CAND_MAX_ML) { sinCuenta++; continue; }
@@ -6905,7 +6913,7 @@ async function correrCandidatos(db, products, labels, accounts, soloPrueba, prue
     // producto en LAS DOS direcciones (ni le falta ni le sobra tamaño, modelo o variante). Si ese
     // gemelo es más barato, el margen se mide contra él (el peor caso) y se dice por qué.
     let gemelo = null;
-    if (margen >= CAND_PISO_PCT && mlTit) {
+    if (margen >= candPisoDe({ ...c, mlTit }) && mlTit) {
       const prodIdMed = (String(mlLink).match(/MLA\d+/) || [])[0];
       const vistos = new Map();
       for (const q of [mlTit, String(c.nombre || '')]) {
@@ -6999,7 +7007,7 @@ async function correrCandidatos(db, products, labels, accounts, soloPrueba, prue
     // faltaba que la vuelta siguiente VOLVIERA a medir, y el atajo de "ya tiene la cuenta hecha"
     // se lo comía antes (ver el comentario largo de ese `if`). 27 candidatos se descartaron con
     // una sola lectura mientras esta línea afirmaba que no podía pasar.
-    if (margen < CAND_PISO_PCT) {
+    if (margen < candPisoDe({ ...c, mlTit })) {
       const antesM = (c.margen != null && isFinite(c.margen)) ? Number(c.margen) : null;
       const primera = antesM == null;
       // N3 de la segunda vuelta (25/09/2026): la segunda medición tiene que ser de OTRO momento.
@@ -7007,12 +7015,12 @@ async function correrCandidatos(db, products, labels, accounts, soloPrueba, prue
       // mediciones" podían ser dos lecturas del mismo rato (15 minutos), justo lo que el freno quiere
       // evitar. Hacen falta 12 horas entre una y otra; si no, cuenta como observación.
       const muyJuntas = !primera && Number(c.calcTs) > 0 && Date.now() - Number(c.calcTs) < 12 * 3600e3;
-      if (primera || antesM >= CAND_PISO_PCT || muyJuntas) {
+      if (primera || antesM >= candPisoDe({ ...c, mlTit }) || muyJuntas) {
         console.log(`      ⚠️ da ${margen.toFixed(1)}%, abajo del piso, ${primera ? 'y es la PRIMERA medición' : muyJuntas ? `y la medición anterior (${antesM.toFixed(1)}%) es de hace menos de 12 h` : `pero la medición anterior daba ${antesM.toFixed(1)}%`}. NO lo descarto por un solo número: si la próxima vuelta sigue abajo, ahí sí.`);
         enObserva.push(`${c.nombre} → ${primera ? `primera medición: ${margen.toFixed(1)}%` : `cayó a ${margen.toFixed(1)}% (antes ${antesM.toFixed(1)}%)`}`);
         continue;
       }
-      await fuera(`da ${margen.toFixed(1)}%, abajo de tu piso de ${CAND_PISO_PCT}% por segunda vez (antes ${antesM.toFixed(1)}%)`, margen); continue;
+      await fuera(`da ${margen.toFixed(1)}%, abajo de tu piso de ${candPisoDe({ ...c, mlTit })}% por segunda vez (antes ${antesM.toFixed(1)}%)`, margen); continue;
     }
     // SI ESTABA DESCARTADO Y AHORA DA, SE LE SACA LA CRUZ. Es la otra mitad de volver a medir:
     // sin esto se mediría todas las semanas y seguiría escondido en el desplegable de descartados.
@@ -11729,7 +11737,7 @@ async function main() {
       const cands = (await db.get('cyc/candidatos_py')) || {};
       const vivos = Object.values(cands).filter((c) => c && c.nombre && !c.no && !c.prodId);
       const med = vivos.filter((c) => c.margen != null && isFinite(c.margen) && Number(c.calcVer) === CAND_CALC_VER);
-      const dan = med.filter((c) => Number(c.margen) >= CAND_PISO_PCT);
+      const dan = med.filter((c) => Number(c.margen) >= candPisoDe(c));
       const v100 = dan.filter((c) => (Number(c.vendCarga ?? c.mlVendidas) || 0) >= CAND_MIN_VENT);
       const descart = Object.values(cands).filter((c) => c && c.no);
       console.log(`=== CANDIDATOS · ${vivos.length} vivos · ${med.length} medidos · ${vivos.length - med.length} sin medir · ${descart.length} descartados en total ===`);
@@ -14908,7 +14916,7 @@ async function main() {
         else if (Number(c.vendCarga) < 25) p.push(`pocas ventas (${c.vendCarga})`);
         const m = (c.margen != null && isFinite(c.margen)) ? Number(c.margen) : null;
         if (m == null) p.push('sin medir todavía');
-        else if (m < CAND_PISO_PCT) p.push(`abajo del piso (${m}%)`);
+        else if (m < candPisoDe(c)) p.push(`abajo del piso (${m}%)`);
         if (c.mlTit) for (const r of chequeoMismoProducto(c.nombre, c.mlTit)) p.push('⚠️ ' + r);
         if (c.mlGemelo && c.mlGemelo.id) p.push(`⚠️ catálogo gemelo ${c.mlGemelo.id} a $${c.mlGemelo.precio} → ${c.mlGemelo.margen}%`);
         if (Number(c.pedirU) > 0 && m == null) p.push(`${c.pedirU} u. cargadas SIN margen medido`);
@@ -15471,7 +15479,7 @@ async function main() {
         const puede = c.no ? 'está descartado de la lista'
           : _viaja(c) ? `ya está viajando en el pedido del ${_viaja(c)}`
           : (c.margen == null || !isFinite(mg)) ? 'todavía no está medido en ML'
-          : (mg < CAND_PISO_PCT) ? `da ${mg.toFixed(1)}% y tu piso es ${CAND_PISO_PCT}%`
+          : (mg < candPisoDe(c)) ? `da ${mg.toFixed(1)}% y tu piso es ${candPisoDe(c)}%`
           : !(_vendP(c) >= CAND_MIN_VENT) ? (_vendP(c) == null ? `no tiene cargadas las vendidas en ML (mínimo ${CAND_MIN_VENT})` : `vendió ${_vendP(c)} en ML y el mínimo es ${CAND_MIN_VENT}`) : '';
         if (puede && p.u > antes) { problemas.push(`"${p.busca}" → ${c.nombre}: NO se puede pedir, ${puede}`); continue; }
         cambios.push({ id, c, antes, u: p.u, baja: !!p.baja });
@@ -15845,7 +15853,7 @@ async function main() {
           if (Math.abs(dif) >= 5) { reparos.push(`el margen se movió de ${antes.toFixed(1)}% a ${r.margen.toFixed(1)}%`); console.log(`     ⚠️ SE MOVIÓ: la medición guardada decía ${antes.toFixed(1)}% y hoy da ${r.margen.toFixed(1)}% (${dif > 0 ? '+' : ''}${dif.toFixed(1)} puntos). Alguien cambió el precio.`); }
           else console.log(`     (la medición anterior daba ${antes.toFixed(1)}% · se movió ${dif > 0 ? '+' : ''}${dif.toFixed(1)} puntos)`);
         }
-        if (r.margen < CAND_PISO_PCT) { frenos.push(`hoy da ${r.margen.toFixed(1)}%, abajo de tu piso de ${CAND_PISO_PCT}%`); console.log(`     ❌ ABAJO DE TU PISO DE ${CAND_PISO_PCT}%`); }
+        if (r.margen < candPisoDe(c)) { frenos.push(`hoy da ${r.margen.toFixed(1)}%, abajo de tu piso de ${candPisoDe(c)}%`); console.log(`     ❌ ABAJO DE TU PISO DE ${candPisoDe(c)}%`); }
         // UN MARGEN MUY ALTO NO ES UNA BUENA NOTICIA: ES UNA SEÑAL (19/09/2026).
         // Sale del DualSense. Cuando el catálogo de ML no es el mismo producto —una edición
         // limitada, un pack, un combo— el precio contra el que se mide es mucho más alto, y eso

@@ -2433,7 +2433,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='22.02';
+const APP_VERSION='22.03';
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
 // muestre la versión y la fecha de actualización y que tenga un desplegable predeterminado cerrado".
 // Y el mismo día: "que ponga fecha de cada modificación y haya una barrita para scrollear y que
@@ -2444,6 +2444,7 @@ const APP_VERSION='22.02';
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'22.03',f:'05/10/2026',h:'21:05',c:[{n:3,t:'🇵🇾 Productos nuevos de Paraguay: los PERFUMES entran desde 20% de ganancia (el resto sigue en 25%). Los perfumes descartados que ya daban 20% vuelven a la lista'}]},
   {v:'22.02',f:'05/10/2026',h:'15:10',c:[{n:2,t:'Línea de tiempo: el resumen dice el stock de hoy en unidades, con su color (falta · justo · bien · sobra · exceso) y cuántos días alcanza'},{n:1,t:'Ficha de Paraguay: el "× 1,15" decía el recargo viejo; ahora dice el 17% que usa la cuenta'},{n:1,t:"Ficha: ya no dice 'habría que cruzar los $33.000' en un producto que ya está arriba de la barrera"}]},
   {v:'22.01',f:'05/10/2026',h:'14:55',c:[{n:1,t:'🇵🇾 Pedidos hechos: el recargo de cada pedido dice el REAL cuando están los gastos, o el 17% estimado si faltan. El pedido del 21/09 ya no dice "15%" (era el número viejo de cuando se registró).'}]},
   {v:'22.00',f:'05/10/2026',h:'14:45',c:[{n:1,t:'🇵🇾 La lista de gastos del pedido cuenta la diferencia de la transferencia aunque se haya cargado como "otros" (el pedido del 21/09 decía que faltaba y estaba).'}]},
@@ -11122,6 +11123,12 @@ const CAND_VENCE_DIAS=45;
 // botón para sacarlo de un toque. Y BAJAR siempre se puede, aunque el producto ya no dé: si no,
 // lo que se cargó cuando todavía daba quedaría trabado adentro del pedido para siempre.
 const CAND_PISO_PCT=25;
+// PERFUMES AL 20% (05/10/2026, él: "bajar la ganancia mínima a 20% a ver si entran algunos, solo en perfumes").
+// Sólo lo NUEVO de Paraguay. Perfume = esPerfumeNom (nombre o ficha) o el título de ML que midió el robot.
+// MISMA regla que candPisoDe del robot (sync.mjs): si se toca una, se toca la otra.
+const CAND_PISO_PERFUME=20;
+function candPisoDe(c){if(!c)return CAND_PISO_PCT;const t=String(c.nombre||c.nom||'');return (esPerfumeNom(t)||_PERF_RE.test(String(c.mlTit||'')))?CAND_PISO_PERFUME:CAND_PISO_PCT;}
+const CAND_PISO_TXT=()=>`${CAND_PISO_PCT}% (perfumes ${CAND_PISO_PERFUME}%)`;
 const CAND_MIN_VENT=100; // suyo, 03/10/2026: "100 unidades mínimo vendidas, sino no sirve" para cargar unidades
 // ── LOS TRES NÚMEROS DEL PEDIDO LOS ELIGE ÉL, Y VIVEN EN LA BASE (19/09/2026) ────────
 // Pedido suyo: *"tope del pedido (…) poder elegir tope de unidades por producto"*.
@@ -11166,7 +11173,7 @@ function candPuedePedir(c){
   if(candEnPedido(c)==='viajando'){const pe=(state.compraspy||{})[c.pedidoEn]||{};return{ok:false,motivo:`ya está viajando en el pedido del ${pe.fecha||'?'}`};}
   const m=Number(c.margen);
   if(c.margen==null||!isFinite(m))return{ok:false,motivo:'todavía no está medido en ML'};
-  if(m<CAND_PISO_PCT)return{ok:false,motivo:`da ${m.toFixed(1)}% y tu piso es ${CAND_PISO_PCT}%`};
+  if(m<candPisoDe(c))return{ok:false,motivo:`da ${m.toFixed(1)}% y tu piso es ${candPisoDe(c)}%`};
   // Regla suya del 03/10/2026: "100 unidades mínimo vendidas, sino no sirve". Sin el dato tampoco entra:
   // de lo que no se sabe si se vende no se compra. (El mismo freno está en el comando `pedir`.)
   const v=candVentasDe(c);
@@ -11406,7 +11413,7 @@ async function candSetPedir(id,v){
   // cuadradito de la tarjeta o del renglón del pedido. Una casilla apagada se puede esquivar.
   const P=candPuedePedir(c);
   if(!P.ok&&n>antes){
-    alert(`No se puede pedir este producto.\n\n${c?c.nombre:''}\n\nMotivo: ${P.motivo}.\n\nTu piso es ${CAND_PISO_PCT}%. Si el precio en ML cambió, el robot lo vuelve a medir esta noche y la casilla se abre sola.`);
+    alert(`No se puede pedir este producto.\n\n${c?c.nombre:''}\n\nMotivo: ${P.motivo}.\n\nTu piso es ${candPisoDe(c)}%. Si el precio en ML cambió, el robot lo vuelve a medir esta noche y la casilla se abre sola.`);
     renderPedidos();return;
   }
   if(c)c.pedirU=n;
@@ -11813,7 +11820,7 @@ function _pyItsHTML(its,rec){const _r=rec>=1?rec:RECARGO_PY;
           <div style="font-size:.6rem;color:var(--muted);margin-top:2px;line-height:1.7">
             ${it.cod?'🔖 '+it.cod:'<span style="color:var(--amber)">🔖 sin código</span>'}
             ${it.usd?` · US$ ${it.usd.toFixed(2)} + ${((_r-1)*100).toFixed(rec>=1?1:0)}%${rec>=1?' real':''} = US$ ${(Math.round(it.usd*_r*100)/100).toFixed(2)} c/u`:' · <span style="color:var(--amber)">sin precio</span>'}
-            ${it.margen!=null?` · margen medido al pedirlo <b style="color:${it.margen>=CAND_PISO_PCT?'var(--green)':'var(--amber)'}">${it.margen.toFixed(1)}%</b>`:' · <span style="color:var(--muted)">sin margen medido</span>'}
+            ${it.margen!=null?` · margen medido al pedirlo <b style="color:${it.margen>=candPisoDe(it)?'var(--green)':'var(--amber)'}">${it.margen.toFixed(1)}%</b>`:' · <span style="color:var(--muted)">sin margen medido</span>'}
             ${it.pesoKg!=null?` · ${it.pesoKg.toFixed(3)} kg c/u`:(it.pesoTxt?` · peso "${it.pesoTxt}" <span style="color:var(--amber)">(sin unidad, no lo cuento)</span>`:'')}
             ${(lML||it.link)?`<br>${lML?`<a href="${lML}" target="_blank" rel="noopener" style="color:#60a5fa">ver en ML</a>`:''}${lML&&it.link?' · ':''}${it.link?`<a href="${it.link}" target="_blank" rel="noopener" style="color:#60a5fa">ver en comprasparaguay</a>`:''}`:'<br><span style="color:var(--amber)">sin links guardados</span>'}
           </div>
@@ -12108,7 +12115,7 @@ function pedidoMomentoHTML(){
       <button onclick="copiarTexto(this.nextElementSibling)" style="margin:4px 0;padding:8px 13px;border-radius:8px;border:1px solid var(--border2);background:var(--surface);color:var(--text);font-family:'DM Mono',monospace;font-size:.76rem;cursor:pointer">📋 Copiar mensaje</button><textarea readonly onclick="this.select()" style="width:100%;min-height:${Math.min(260,22+conCod.length*17)}px;background:rgba(0,0,0,.28);border:1px solid var(--border2);border-radius:6px;color:var(--text);font-family:'DM Mono',monospace;font-size:.7rem;padding:7px 9px;resize:vertical">${conCod.join('\n')}</textarea></div>`:''}
     <div style="margin-top:10px;display:flex;gap:8px;flex-wrap:wrap">
       <button class="btn btn-add" style="font-size:.7rem;padding:6px 14px" onclick="pyMomentoYaLoPedi()" title="Cuando ya lo pagaste: los probados pasan a En camino como reposición y los nuevos como pedido de nuevos.">✅ Ya lo pedí (todo)</button>
-      <button class="btn btn-add" style="font-size:.66rem;padding:6px 12px" onclick="pedNuevosLlenar()" title="Agrega nuevos que pasan el ${CAND_PISO_PCT}% y tu vara de ventas, los que más dejan por dólar, hasta el tope (descontando lo de probados). No saca nada.">🪄 Llenar con nuevos hasta el tope</button>
+      <button class="btn btn-add" style="font-size:.66rem;padding:6px 12px" onclick="pedNuevosLlenar()" title="Agrega nuevos que pasan el ${CAND_PISO_TXT()} y tu vara de ventas, los que más dejan por dólar, hasta el tope (descontando lo de probados). No saca nada.">🪄 Llenar con nuevos hasta el tope</button>
       <button class="btn" style="font-size:.62rem;padding:5px 11px" onclick="pyPersonalAgregar()" title="Algo para vos: va en el mensaje a Nissei pero no es de CYC">🙋 + uso personal</button>
       ${A.length?`<button class="btn" style="font-size:.62rem;padding:5px 11px" onclick="pyArmadoVaciar()">Vaciar probados</button>`:''}
       ${N.filas.length?`<button class="btn" style="font-size:.62rem;padding:5px 11px" onclick="pedNuevosVaciar()">Vaciar nuevos</button>`:''}
@@ -12233,7 +12240,7 @@ function pedNuevosHTML(vivos){
         </div>
       </div>
       ${P.sinPrecio.length?`<div style="font-size:.62rem;color:var(--red);margin-top:5px">⚠️ ${P.sinPrecio.length} sin precio cargado: no suman al total, así que el número de arriba está corto.</div>`:''}
-      ${P.noDan.length?`<div style="font-size:.62rem;color:var(--red);margin-top:5px">🚫 <b>${P.noDan.length} ya no llega(n) a tu piso de ${CAND_PISO_PCT}%</b> y están sumando en el total. Se cargaron cuando todavía daban. No los saco solo: abajo tienen el botón.</div>`:''}
+      ${P.noDan.length?`<div style="font-size:.62rem;color:var(--red);margin-top:5px">🚫 <b>${P.noDan.length} ya no llega(n) a tu piso de ${CAND_PISO_TXT()}</b> y están sumando en el total. Se cargaron cuando todavía daban. No los saco solo: abajo tienen el botón.</div>`:''}
     </div>
     <div style="display:flex;gap:7px;flex-wrap:wrap;align-items:flex-end;margin-bottom:9px">
       ${[['pedTopeUSD',tope,'Tope del pedido (US$)','Hasta cuántos dólares de mercadería CRUDA (sin el 17%) querés gastar. No frena: si te pasás lo dice en rojo y seguís.'],
@@ -12247,7 +12254,7 @@ function pedNuevosHTML(vivos){
     </div>
     <div style="display:flex;gap:7px;flex-wrap:wrap;margin-bottom:9px">
       <button class="btn btn-add" style="font-size:.66rem;padding:6px 12px" onclick="pedNuevosLlenar()"
-        title="Agrega los que más plata dejan por cada dólar gastado hasta llegar al tope. NO saca nada de lo que ya cargaste, y sólo agarra los que pasan el ${CAND_PISO_PCT}% y tu vara de ventas.">🪄 Llenar hasta el tope</button>
+        title="Agrega los que más plata dejan por cada dólar gastado hasta llegar al tope. NO saca nada de lo que ya cargaste, y sólo agarra los que pasan el ${CAND_PISO_TXT()} y tu vara de ventas.">🪄 Llenar hasta el tope</button>
       ${P.filas.length?`<button class="btn btn-add" style="font-size:.66rem;padding:6px 12px;background:rgba(56,189,248,.15);color:#38bdf8;border:1px solid rgba(56,189,248,.35)" onclick="pyPedidoHecho()"
         title="Congela este pedido y lo pasa a 'En camino', con el código, el precio y el margen de cada producto. Sale de acá y deja de recomendarse.">✅ Ya lo pedí</button>`:''}
       ${P.filas.length?`<button class="btn" style="font-size:.66rem;padding:6px 12px;color:var(--red);border-color:rgba(239,68,68,.35)" onclick="pedNuevosVaciar()">🗑️ Vaciar el pedido</button>`:''}
@@ -12532,14 +12539,14 @@ function candidatosHTML(){
   // LOS QUE NO LLEGAN AL PISO, JUNTOS ABAJO Y CERRADOS (02/10/2026, pedido suyo: *"todos los candidatos
   // que dan abajo de 25% (los rojos) ponerlos juntos ABAJO en un desplegable cerrado, así no molestan"*).
   // No se esconden: el robot los vuelve a medir y si cruzan el piso vuelven arriba solos.
-  const _esRojo=c=>c.margen!=null&&isFinite(c.margen)&&Number(c.margen)<CAND_PISO_PCT;
+  const _esRojo=c=>c.margen!=null&&isFinite(c.margen)&&Number(c.margen)<candPisoDe(c);
   const _card=c=>{
     const d=candDias(c);
     const usd=parseFloat(c.usd)||0;
     const puesto=usd>0?Math.round(usd*RECARGO_PY*100)/100:0;
     const pesos=puesto>0?Math.round(puesto*curTC()):0;
     const tieneCuenta=c.margen!=null&&isFinite(c.margen);
-    const col=!tieneCuenta?'var(--muted)':(c.margen>=CAND_PISO_PCT?'var(--green)':'var(--red)');
+    const col=!tieneCuenta?'var(--muted)':(c.margen>=candPisoDe(c)?'var(--green)':'var(--red)');
     const info=[];
     if(c.cod)info.push(chip('🔖 '+c.cod,'var(--muted)','El código con el que se pide. Es el de Nissei que usa comprasparaguay, no el número interno de la lista de Nissei.'));
     if(c.marca)info.push(chip('🏷️ '+c.marca,'var(--muted)','La marca, para poder frenarla entera si ML la pide documentar.'));
@@ -12626,7 +12633,7 @@ function candidatosHTML(){
         ${(()=>{const Q=candPuedePedir(c),uu=Math.max(0,parseInt(c.pedirU)||0);
           if(Q.ok)return `<label style="display:flex;align-items:center;gap:5px;font-size:.64rem;color:var(--muted)" title="Las unidades de este producto para el pedido. Se suman arriba. No compra nada: sólo arma la lista.">pedir
           <input type="number" min="0" step="1" value="${uu}" onchange="candSetPedir('${c.id}',this.value)" style="width:56px;font-size:.68rem;padding:4px 6px;background:var(--surface2);border:1px solid var(--border);border-radius:6px;color:var(--text)"> u.</label>`;
-          return `<span style="font-size:.64rem;color:var(--red);font-weight:600" title="Tu piso es ${CAND_PISO_PCT}%. El robot lo vuelve a medir todas las noches: si el precio de ML cambia y pasa el piso, la casilla se abre sola.">🚫 no se puede pedir: ${Q.motivo}</span>`
+          return `<span style="font-size:.64rem;color:var(--red);font-weight:600" title="Tu piso es ${candPisoDe(c)}%. El robot lo vuelve a medir todas las noches: si el precio de ML cambia y pasa el piso, la casilla se abre sola.">🚫 no se puede pedir: ${Q.motivo}</span>`
             +(uu>0?` <span style="font-size:.64rem;color:var(--red);font-weight:700">· tiene ${uu} u. cargadas</span> <button class="btn" style="font-size:.62rem;padding:4px 10px;color:var(--red);border-color:rgba(239,68,68,.35)" onclick="candSetPedir('${c.id}',0)">✕ sacarlo del pedido</button>`:'');
         })()}
         ${(dudas&&!RP.mismoOk)?`<button class="btn" style="font-size:.66rem;padding:5px 12px;color:var(--green);border-color:rgba(34,197,94,.45)" onclick="candMismoOk('${c.id}')" title="Miraste las dos fotos y es el mismo producto: saca los avisos rojos de este candidato (vale para este catálogo de ML).">✅ Es el mismo producto</button>`:''}
@@ -12657,7 +12664,7 @@ function candidatosHTML(){
   const _verdes=_arriba.filter(c=>c.margen!=null&&isFinite(c.margen)).length, _sinMed=_arriba.length-_verdes;
   const _cuenta=`<div style="display:flex;gap:14px;flex-wrap:wrap;align-items:baseline;margin:6px 0 10px;padding:10px 12px;border-radius:10px;background:color-mix(in srgb,var(--green) 10%,transparent);border:1px solid color-mix(in srgb,var(--green) 35%,transparent)">
     <span style="font-size:1.5rem;font-weight:800;color:var(--green)">${_verdes}</span>
-    <span style="font-size:.78rem;color:var(--green);font-weight:600">dan ${CAND_PISO_PCT}% o más</span>
+    <span style="font-size:.78rem;color:var(--green);font-weight:600">dan ${CAND_PISO_TXT()} o más</span>
     ${_sinMed?`<span style="font-size:.7rem;color:var(--muted)">· ⏳ ${_sinMed} sin medir</span>`:''}
     ${_rojos.length?`<span style="font-size:.7rem;color:var(--red)">· 🔻 ${_rojos.length} no llega${_rojos.length===1?'':'n'}</span>`:''}
   </div>`;
@@ -12667,7 +12674,7 @@ function candidatosHTML(){
   // historial de pedidos vive en la pestaña 🧾 Pedido.
   return cab+pedNuevosResumenHTML()+_cuenta+_orden+_arriba.map(_card).join('')
     +(_flojas.length?`<details style="margin-top:10px"><summary style="cursor:pointer;font-size:.7rem;color:var(--amber)">🟠 ${_flojas.length} con menos de ${CAND_MIN_VENT} vendidas en ML (o sin el dato) · no se pueden pedir · tocá para verlos</summary><div style="display:flex;flex-direction:column;gap:8px;margin-top:8px">${_flojas.map(_card).join('')}</div></details>`:'')
-    +(_rojos.length?`<details style="margin-top:10px"><summary style="cursor:pointer;font-size:.7rem;color:var(--red)">🔻 ${_rojos.length} no llega${_rojos.length===1?'':'n'} al ${CAND_PISO_PCT}% · tocá para verlos</summary><div style="display:flex;flex-direction:column;gap:8px;margin-top:8px">${_rojos.map(_card).join('')}</div></details>`:'')
+    +(_rojos.length?`<details style="margin-top:10px"><summary style="cursor:pointer;font-size:.7rem;color:var(--red)">🔻 ${_rojos.length} no llega${_rojos.length===1?'':'n'} al ${CAND_PISO_TXT()} · tocá para verlos</summary><div style="display:flex;flex-direction:column;gap:8px;margin-top:8px">${_rojos.map(_card).join('')}</div></details>`:'')
     +candDescartadosHTML()+`<div style="margin-top:16px">${simPYHTML()}</div>`;
 }
 // LO DESCARTADO NO SE ESCONDE. Una lista que saca renglones sin decirlo es una lista que miente —
