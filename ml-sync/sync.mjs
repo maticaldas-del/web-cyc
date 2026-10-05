@@ -33319,7 +33319,8 @@ async function main() {
         const cam = Object.entries(compras).filter(([, c]) => c && c.estado === 'camino').sort((a, b) => String(a[1].fecha).localeCompare(String(b[1].fecha)));
         console.log(`=== PEDIDOS A PARAGUAY EN CAMINO (${cam.length}) ===`);
         for (const [id, c] of cam) {
-          console.log(`\n· ${id} · ${c.tipo === 'repo' ? 'REPOSICIÓN' : 'NUEVOS'} del ${c.fecha} · ${c.productos || (c.items || []).length} producto(s) · ${c.unidades || 0} u. · US$ ${(parseFloat(c.usdCrudo) || 0).toFixed(2)}`);
+          const _nR = (c.items || []).filter((x) => x && x.prodId && !x.id).length, _nN = (c.items || []).filter((x) => x && x.id).length;
+          console.log(`\n· ${id} · ${_nR && _nN ? `PEDIDO (${_nR} probados + ${_nN} nuevos)` : (c.tipo === 'repo' || _nR) ? 'REPOSICIÓN' : 'NUEVOS'} del ${c.fecha} · ${c.productos || (c.items || []).length} producto(s) · ${c.unidades || 0} u. · US$ ${(parseFloat(c.usdCrudo) || 0).toFixed(2)}`);
           for (const it of (c.items || [])) console.log(`    ${it.u} u. · ${it.nom || it.cod || '?'}`);
         }
         return;
@@ -33336,7 +33337,9 @@ async function main() {
       const guardar = async (id, prev, rec, items, sumarPor) => {
         if (prev) {
           const its = (Array.isArray(prev.items) ? prev.items : []).map((x) => ({ ...x }));
-          for (const it of items) { const o = its.find((x) => x && x[sumarPor] === it[sumarPor]); if (o) o.u = (parseInt(o.u) || 0) + it.u; else its.push(it); }
+          // Un renglón de reposición (prodId sin id) sólo se suma con otro de reposición: un nuevo puede
+          // traer prodId (det=) y no es el mismo renglón.
+          for (const it of items) { const o = its.find((x) => x && x[sumarPor] === it[sumarPor] && (sumarPor !== 'prodId' || !x.id)); if (o) o.u = (parseInt(o.u) || 0) + it.u; else its.push(it); }
           const upd = { items: its, usdCrudo: r2((parseFloat(prev.usdCrudo) || 0) + rec.usdCrudo), productos: its.length, unidades: (parseInt(prev.unidades) || 0) + rec.unidades };
           await db.patch('cyc/compraspy/' + id, upd);
         } else await db.set('cyc/compraspy/' + id, rec);
@@ -33360,14 +33363,17 @@ async function main() {
           if (p.origen !== 'py') problemas.push(`"${pr.busca}" → ${p.name} no es de Paraguay (origen ${p.origen || 'bsas'}). Si es correcto, cambiale el origen primero.`);
         }
         if (problemas.length) { console.log('❌ NO ESCRIBO NADA:'); problemas.forEach((x) => console.log('   ' + x)); return; }
-        const id = 'pyr' + hoyAR.replace(/-/g, '');
+        // UN SOLO PEDIDO (05/10/2026, él: *"el pedido quiero que sea uno solo, no separar por nuevos de
+        // probados"*): la reposición va al MISMO registro del día que los nuevos (`py<fecha>`); adentro se
+        // separan por renglón (prodId sin id = probado, id = nuevo). Los `pyr<fecha>` viejos siguen valiendo.
+        const id = 'py' + hoyAR.replace(/-/g, '');
         const st = await previoHoy(id); if (st.bloqueado) return;
         const crudo = r2(items.reduce((a, x) => a + x.usd * x.u, 0)), uds = items.reduce((a, x) => a + x.u, 0);
         console.log(`=== REPOSICIÓN A PARAGUAY · YA LO PEDÍ ${GO ? '' : '(PRUEBA — no escribo nada)'} ===`);
         items.forEach((x) => console.log(`  ${x.u} u. · US$ ${x.usd.toFixed(2)} · ${x.nom}${x.cod ? ' · cód ' + x.cod : ' · ⚠️ sin código'}`));
-        console.log(`  TOTAL ${items.length} producto(s) · ${uds} u. · US$ ${crudo.toFixed(2)} crudos${st.prev ? ' · se SUMA a la reposición de hoy que ya estaba en camino' : ''}`);
+        console.log(`  TOTAL ${items.length} producto(s) · ${uds} u. · US$ ${crudo.toFixed(2)} crudos${st.prev ? ' · se SUMA al pedido de hoy que ya estaba en camino' : ''}`);
         if (!GO) { console.log('\nNo se guardó nada (falta ;go).'); return; }
-        await guardar(id, st.prev, { fecha: hoyAR, ts: Date.now(), estado: 'camino', origen: 'chat', tipo: 'repo', usdCrudo: crudo, recargo: RECARGO_PAR, tcPedido: tc || null, productos: items.length, unidades: uds, items }, items, 'prodId');
+        await guardar(id, st.prev, { fecha: hoyAR, ts: Date.now(), estado: 'camino', origen: 'chat', usdCrudo: crudo, recargo: RECARGO_PAR, tcPedido: tc || null, productos: items.length, unidades: uds, items }, items, 'prodId');
         return;
       }
 
@@ -33409,11 +33415,12 @@ async function main() {
         const c = compras[id];
         if (!c) { console.log(`No existe el pedido ${id}. Corré \`pyped\` para ver los que están en camino.`); return; }
         if (c.estado !== 'camino') { console.log(`El pedido ${id} está "${c.estado}", no en camino: no se toca.`); return; }
-        console.log(`=== LLEGÓ EL PEDIDO ${id} (${c.tipo === 'repo' ? 'reposición' : 'productos nuevos'} del ${c.fecha}) ${GO ? '' : '(PRUEBA — no escribo nada)'} ===`);
+        const _repIts = (c.items || []).filter((x) => x && x.prodId && !x.id);
+        console.log(`=== LLEGÓ EL PEDIDO ${id} (${_repIts.length ? _repIts.length + ' probado(s)' : ''}${_repIts.length && (c.items || []).some((x) => x && x.id) ? ' + ' : ''}${(c.items || []).some((x) => x && x.id) ? (c.items || []).filter((x) => x && x.id).length + ' nuevo(s)' : ''} del ${c.fecha}) ${GO ? '' : '(PRUEBA — no escribo nada)'} ===`);
         const plan = [];
         const prods = Object.values((await db.get('cyc/products')) || {}).filter((p) => p && p.name);
         const cands = (await db.get('cyc/candidatos_py')) || {};
-        if (c.tipo !== 'repo') {
+        {
           for (const it of (c.items || [])) {
             if (!it || !it.id) continue;
             const k = cands[it.id];
@@ -33438,9 +33445,10 @@ async function main() {
           cr.filter((x) => x.par && x.par.length).forEach((x) => console.log(`  ℹ️ se crea aunque se parece a: ${x.src.nombre} ~ ${x.par.slice(0, 3).map((p) => p.name).join(' | ')}`));
           plan.filter((x) => x.estado === 'ya').forEach((x) => console.log(`  = ya tenía ficha: ${x.src.nombre}`));
           plan.filter((x) => x.estado === 'nonombre').forEach(() => console.log(`  ⚠️ un renglón sin nombre: no se puede crear`));
-        } else {
-          console.log('Reposición: no crea fichas (ya las tienen). Hay que contar estas unidades en la oficina:');
-          (c.items || []).forEach((it) => console.log(`  ${it.u} u. · ${it.nom || it.cod || '?'}`));
+        }
+        if (_repIts.length) {
+          console.log('Probados (reposición): no crean fichas (ya las tienen). Hay que contar estas unidades en la oficina:');
+          _repIts.forEach((it) => console.log(`  ${it.u} u. · ${it.nom || it.cod || '?'}`));
         }
         if (!GO) { console.log('\nNo se guardó nada (falta :go).'); return; }
         const hechas = [];
@@ -33479,11 +33487,11 @@ async function main() {
         await db.set('cyc/compraspy/' + id + '/fechaLlego', hoyAR);
         // D6 (29/09, eligió la b): foto de la oficina al llegar una reposición. La canasta sigue restando
         // lo llegado hasta que la oficina suba (o 7 días): si no, lo volvería a pedir sin contar.
-        if (c.tipo === 'repo') {
+        if (_repIts.length) {
           try {
             const _inv = (await db.get('cyc/inventory')) || {};
             const _ofiLl = {};
-            for (const it of (c.items || [])) if (it && it.prodId && !(it.prodId in _ofiLl)) _ofiLl[it.prodId] = parseInt(_inv[it.prodId + '__' + sid('Oficina Mati')]) || 0;
+            for (const it of _repIts) if (!(it.prodId in _ofiLl)) _ofiLl[it.prodId] = parseInt(_inv[it.prodId + '__' + sid('Oficina Mati')]) || 0;
             await db.set('cyc/compraspy/' + id + '/ofiAlLlegar', _ofiLl);
           } catch (eO) { console.log('⚠️ no pude guardar la foto de la oficina: la canasta puede volver a pedirla hasta que la cuentes'); }
         }
@@ -33499,7 +33507,36 @@ async function main() {
           if (_ofi.length) console.log(`⚠️ Contalas en la oficina (hasta entonces no suman en el patrimonio). Si llegó todo: ofi:${_ofi.join(';')};go`); }
         return;
       }
-      console.log('No conozco ese paso. Usá: pyped · pyped:repo:… · pyped:nuevos · pyped:llego:<id>');
+      // pyped:juntar:<AAAA-MM-DD>[:go] → junta la reposición vieja `pyr<fecha>` adentro del pedido `py<fecha>`
+      // (05/10/2026, para los registros hechos antes de que el pedido fuera uno solo). Los dos tienen que estar
+      // en camino y sin pesos cargados. Si sólo está el `pyr`, se pasa a `py`. Relee al final.
+      if (sub === 'juntar') {
+        const fk = arg.trim().replace(/-/g, '');
+        if (!/^\d{8}$/.test(fk)) { console.log('Usá: pyped:juntar:<AAAA-MM-DD>[:go]'); return; }
+        const idR = 'pyr' + fk, idP = 'py' + fk;
+        const R = compras[idR], P = compras[idP] || null;
+        if (!R) { console.log(`No hay reposición ${idR}: no hay nada que juntar.`); return; }
+        const malo = (x) => x && (x.estado !== 'camino' || (x.pagos && Number(x.pagos.mercaderia) > 0));
+        if (malo(R) || malo(P)) { console.log('❌ Alguno de los dos ya llegó o ya tiene los pesos: no los toco.'); return; }
+        const its = (P && Array.isArray(P.items) ? P.items : []).map((x) => ({ ...x }));
+        for (const it of (R.items || [])) { if (!it) continue; const o = its.find((x) => x && !x.id && x.prodId && x.prodId === it.prodId); if (o) o.u = (parseInt(o.u) || 0) + (parseInt(it.u) || 0); else { const n = { ...it }; delete n.id; its.push(n); } }
+        const base = P ? { ...P } : { ...R };
+        delete base.tipo;
+        const rec = { ...base, items: its, productos: its.length,
+          unidades: its.reduce((a, x) => a + (parseInt(x && x.u) || 0), 0),
+          usdCrudo: r2(its.reduce((a, x) => a + (parseFloat(x && x.usd) || 0) * (parseInt(x && x.u) || 0), 0)) };
+        console.log(`=== JUNTAR ${idR} → ${idP} ${GO ? '' : '(PRUEBA — no escribo nada)'} ===`);
+        its.forEach((x) => console.log(`  ${x.id ? 'nuevo  ' : 'probado'} · ${x.u} u. · US$ ${(parseFloat(x.usd) || 0).toFixed(2)} · ${x.nom || x.cod}`));
+        console.log(`  TOTAL ${rec.productos} producto(s) · ${rec.unidades} u. · US$ ${rec.usdCrudo.toFixed(2)} crudos`);
+        if (!GO) { console.log('\nNo se guardó nada (falta :go).'); return; }
+        await db.set('cyc/compraspy/' + idP, rec);
+        const rel = await db.get('cyc/compraspy/' + idP);
+        if (!rel || (rel.items || []).length !== its.length) { console.log('⚠️ Se escribió pero al releer no coincide: NO borro la reposición. Mirar a mano.'); return; }
+        await db.set('cyc/compraspy/' + idR, null);
+        console.log(`\n✓ Juntado y releído: ${idP} (${its.length} renglones). ${idR} borrado.`);
+        return;
+      }
+      console.log('No conozco ese paso. Usá: pyped · pyped:repo:… · pyped:nuevos · pyped:llego:<id> · pyped:juntar:<fecha>');
       return;
     }
 
@@ -33646,7 +33683,10 @@ async function main() {
             const cod = m[0] || '', u = parseInt(m[1]) || 0, pu = num(m[2]);
             if (!cod || !(u > 0) || !(pu > 0)) { console.log(`  ⚠️ No entiendo "${tr}" — se espera codigo*unidades*precio. No guardo NADA.`); return; }
             const hit = buscar(cod);
-            const o = { id: (hit && hit.src.id) || ('x' + cod), nom: (hit && String(hit.src.nom || hit.src.nombre || '').slice(0, 120)) || cod, cod, u, usd: pu };
+            // Un renglón de reposición (prodId sin id) sigue siendo de reposición: no se le inventa un id,
+            // si no "Llegó" lo trataría como nuevo y le crearía otra ficha (05/10/2026, pedido único).
+            const _esRepoHit = hit && !hit.src.id && hit.src.prodId;
+            const o = { ...(_esRepoHit ? {} : { id: (hit && hit.src.id) || ('x' + cod) }), nom: (hit && String(hit.src.nom || hit.src.nombre || '').slice(0, 120)) || cod, cod, u, usd: pu };
             if (hit) {
               for (const k of ['mlId', 'link', 'margen', 'ganancia', 'pesoKg', 'pesoTxt', 'prodId']) if (hit.src[k] != null) o[k] = hit.src[k];
               if (o.margen != null) o.margen = Math.round(parseFloat(o.margen) * 10) / 10;
