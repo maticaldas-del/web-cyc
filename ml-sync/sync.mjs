@@ -25822,6 +25822,24 @@ async function main() {
       }
 
       // ── 3. EVALUAR LO QUE CUMPLIÓ 7, 15 Y 30 DÍAS ──────────────────────────────
+      // CONTRA LA TIENDA (05/10/2026, idea suya: medir con la ganancia por día). Antes/después de un
+      // producto se lleva TODO lo que pasó esas semanas (temporada, inflación, un mes bueno): si toda
+      // la tienda ganó 10% más por día y el producto tocado 15% más, al cambio le toca 5%, no 15%.
+      // Se compara contra el RESTO de la tienda (sin esa publicación). Es la MISMA ganancia por día
+      // (neto − mercadería) que ya usaba el juicio. Si la tienda no tiene dato de los dos lados, o se
+      // movió más del doble/mitad (algo raro, no una tendencia), no se ajusta y se dice.
+      const _tdaV = [];
+      const _costoC = {};
+      for (const [m, arr] of Object.entries(porMla)) {
+        const c = _costoC[m] != null ? _costoC[m] : (_costoC[m] = costoDe(m));
+        for (const x of arr) _tdaV.push({ ts: x.ts, u: x.q, g: c > 0 ? x.neto - c * x.q : 0, conC: c > 0 });
+      }
+      _tdaV.sort((x, y) => x.ts - y.ts);
+      const _tdaPre = [{ u: 0, g: 0 }];
+      for (const x of _tdaV) { const l = _tdaPre[_tdaPre.length - 1]; _tdaPre.push({ u: l.u + x.u, g: l.g + (x.conC ? x.g : 0) }); }
+      const _tdaIdx = (t) => { let lo = 0, hi = _tdaV.length; while (lo < hi) { const md = (lo + hi) >> 1; if (_tdaV[md].ts <= t) lo = md + 1; else hi = md; } return lo; };
+      const tiendaEntre = (t0, t1) => { const i = _tdaIdx(t0), j = _tdaIdx(t1); return { u: _tdaPre[j].u - _tdaPre[i].u, g: _tdaPre[j].g - _tdaPre[i].g }; };
+      const TIENDA_MIN = 0.5, TIENDA_MAX = 2;
       const evalNuevas = [];
       for (const [id, ev] of Object.entries(todos)) {
         const nch = cambiosEv[id] || { noches: ev.noches || 0, nochesSin: ev.nochesSin || 0 };
@@ -25847,6 +25865,15 @@ async function main() {
           const otro = Object.values(todos).some((o) => o !== ev && o.mla === ev.mla && o.ts > ev.ts + 864e5 && o.ts < ev.ts + W * 864e5);
           const usaPlata = costo > 0;
           const mA = usaPlata ? A.g : A.u, mD = usaPlata ? D.g : D.u;
+          // El resto de la tienda en las mismas dos ventanas (sin esta publicación).
+          const tA = tiendaEntre(ev.ts - W * 864e5, ev.ts), tD = tiendaEntre(ev.ts, ev.ts + W * 864e5);
+          const rA = usaPlata ? tA.g - A.g : tA.u - A.u, rD = usaPlata ? tD.g - D.g : tD.u - D.u;
+          let tienda = null, tiendaNota = '';
+          if (rA > 0 && rD > 0) {
+            const t = rD / rA;
+            if (t >= TIENDA_MIN && t <= TIENDA_MAX) tienda = t;
+            else tiendaNota = 'la tienda se movió demasiado (' + (t * 100 - 100).toFixed(0) + '%): no se descontó';
+          } else tiendaNota = 'sin dato de la tienda: no se descontó';
           // Sin stock medido (los cambios de antes de que existiera el supervisor) se mira el de HOY:
           // si hoy está en cero, un "no vendió" puede ser el quiebre y no el precio.
           const stHoy = stockDe(ev.mla);
@@ -25862,10 +25889,10 @@ async function main() {
           else if (A.u < 3 && D.u < 3) v = 'pocos';
           else if (mA <= 0) v = mD > 0 ? 'bueno' : 'igual';
           else {
-            const rel = (mD - mA) / Math.abs(mA);
+            const rel = (mD - mA * (tienda || 1)) / Math.abs(mA * (tienda || 1));
             v = rel >= 0.05 ? 'bueno' : rel >= -0.10 ? 'igual' : rel >= -0.30 ? 'dudoso' : 'malo';
           }
-          const res = { v, uA: A.u, uD: D.u, gA: Math.round(A.g), gD: Math.round(D.g), plata: usaPlata, otro, stockMedido: nch.noches > 0, ts: ahora };
+          const res = { v, uA: A.u, uD: D.u, gA: Math.round(A.g), gD: Math.round(D.g), plata: usaPlata, otro, stockMedido: nch.noches > 0, tienda: tienda != null ? Math.round(tienda * 1000) / 1000 : null, tiendaNota: tiendaNota || null, ts: ahora };
           evalNuevas.push({ id, ev, W, res });
         }
       }
@@ -26058,7 +26085,8 @@ async function main() {
         const pd = (n) => $s(n / W) + '/día';
         const cmp = res.plata ? `ganancia ${pd(res.gA)} → ${pd(res.gD)}` : `(sin costo cargado: se mide por unidades)`;
         const u = `${(res.uA / W).toFixed(2)} → ${(res.uD / W).toFixed(2)} u/día`;
-        const notas = [res.otro ? 'hubo otro cambio de precio en el medio' : '', ev.aprox ? 'fecha aprox.' : '', res.stockMedido ? '' : 'stock no medido'].filter(Boolean).join(' · ');
+        const tdaTxt = res.tienda != null && Math.abs(res.tienda - 1) >= 0.01 ? `el resto de la tienda ${res.tienda > 1 ? 'ganó' : 'perdió'} ${Math.abs(res.tienda * 100 - 100).toFixed(0)}% esas semanas: ya está descontado` : (res.tiendaNota || '');
+        const notas = [tdaTxt, res.otro ? 'hubo otro cambio de precio en el medio' : '', ev.aprox ? 'fecha aprox.' : '', res.stockMedido ? '' : 'stock no medido'].filter(Boolean).join(' · ');
         return `${ICO[res.v]} a ${W} días · ${nomDe(ev.mla)} (${cuenta})\n   ${dir} ${precio} · ${ev.origen}\n   ${cmp} · ${u}${notas ? `\n   ${notas}` : ''}`;
       };
       console.log(`=== SUPERVISOR DE PRECIOS ${MANDAR ? '(SE GUARDA Y SE AVISA)' : '(PRUEBA: no se guarda nada)'} ===`);
