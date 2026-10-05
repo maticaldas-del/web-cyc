@@ -2433,7 +2433,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='22.01';
+const APP_VERSION='22.02';
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
 // muestre la versión y la fecha de actualización y que tenga un desplegable predeterminado cerrado".
 // Y el mismo día: "que ponga fecha de cada modificación y haya una barrita para scrollear y que
@@ -2444,6 +2444,7 @@ const APP_VERSION='22.01';
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'22.02',f:'05/10/2026',h:'15:10',c:[{n:2,t:'Línea de tiempo: el resumen dice el stock de hoy en unidades, con su color (falta · justo · bien · sobra · exceso) y cuántos días alcanza'},{n:1,t:'Ficha de Paraguay: el "× 1,15" decía el recargo viejo; ahora dice el 17% que usa la cuenta'},{n:1,t:"Ficha: ya no dice 'habría que cruzar los $33.000' en un producto que ya está arriba de la barrera"}]},
   {v:'22.01',f:'05/10/2026',h:'14:55',c:[{n:1,t:'🇵🇾 Pedidos hechos: el recargo de cada pedido dice el REAL cuando están los gastos, o el 17% estimado si faltan. El pedido del 21/09 ya no dice "15%" (era el número viejo de cuando se registró).'}]},
   {v:'22.00',f:'05/10/2026',h:'14:45',c:[{n:1,t:'🇵🇾 La lista de gastos del pedido cuenta la diferencia de la transferencia aunque se haya cargado como "otros" (el pedido del 21/09 decía que faltaba y estaba).'}]},
   {v:'21.99',f:'05/10/2026',h:'13:47',c:[{n:3,t:'🇵🇾 Cada pedido de Paraguay usa su recargo REAL (no el 17% fijo). Con todos los gastos cargados (pesos, correo, el que despacha y la transferencia) el costo de las fichas que salieron más caras sube solo; si salió más barato no se toca. Las ventas de meses pasados siguen con el costo viejo.'},{n:2,t:'🇵🇾 En Pedidos hechos cada pedido muestra sus gastos con ✓ cargado o ✗ falta, y qué costos subieron.'}]},
@@ -4103,7 +4104,8 @@ function flujoPlataHTML(p){
   // permiso suyo (el Ferrari a $59.900, los VS a $49.000) YA pagaron el envío de verdad, o sea que
   // tienen gest > 0 y esta condición no los toca. Sólo marca a los que no tienen el dato.
   const cruzaBarrera=precioUsado>=UMBRAL_ENVIO_GRATIS&&gest<=0;
-  const pisoCruza=precioPiso!=null&&precioPiso>=UMBRAL_ENVIO_GRATIS;
+  // La barrera sólo frena SUBIR a través de ella: si hoy ya está arriba, el precio del piso no "cruza" nada (05/10/2026, Sony EX15AP a $70.000).
+  const pisoCruza=precioPiso!=null&&precioPiso>=UMBRAL_ENVIO_GRATIS&&precioUsado<UMBRAL_ENVIO_GRATIS;
   const paso=(lbl,val,col,signo,peso,pie,cls)=>`<div class="fl-paso ${cls||'fl-mid'}" style="text-align:center;padding:0 2px;min-width:76px">
       <div style="font-size:.5rem;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;line-height:1.3;margin-bottom:2px">${lbl}</div>
       <div style="font-family:'DM Mono',monospace;font-size:${peso?'.8rem':'.68rem'};font-weight:${peso?'700':'500'};color:${col};white-space:nowrap">${signo||''}${fmt(val)}</div>
@@ -4573,7 +4575,7 @@ function paraguayHtml(p){
       <div><label title="El código de NISSEI, el que se usa para hacer el pedido. NO es el número interno que muestra la lista de Nissei.">Código Nissei ⓘ</label><br><input type="text" style="width:110px" value="${(p.codPy||'').replace(/"/g,'&quot;')}" oninput="guardarProdLuego('${p.id}',this.value,updNisseiCod)" onchange="updNisseiCod('${p.id}',this.value)" placeholder="p. ej. 91832"></div>
       <div><label title="El precio en dólares que muestra comprasparaguay, CRUDO, sin el 17%.">Precio Nissei US$ ⓘ</label><br><input type="number" min="0" step="0.01" style="width:100px" value="${nu||''}" oninput="guardarProdLuego('${p.id}',this.value,updNisseiUSD)" onchange="updNisseiUSD('${p.id}',this.value)"></div>
       ${nu>0?`<div style="font-size:.66rem;padding-bottom:6px;color:var(--muted)" title="El 17% incluye la compra del dólar con sus comisiones y el traslado hasta tu oficina.">
-        × 1,15 = <b style="color:var(--text)">US$ ${puesto.toFixed(2)}</b> puesto
+        × ${RECARGO_PY.toFixed(2).replace('.',',')} = <b style="color:var(--text)">US$ ${puesto.toFixed(2)}</b> puesto
       </div>`:''}
     </div>
     ${nu>0?`<div style="display:flex;gap:16px;flex-wrap:wrap;margin-top:6px;padding-top:7px;border-top:1px solid rgba(239,68,68,.18)">
@@ -8669,6 +8671,13 @@ function lineaPintar(prodId){
   let uT=0,uRT=0,dCon=0,dSin=0,dNo=0,dRem=0,vT=0; ks.forEach(k=>{const d=dias[k];if(d&&d.u)uT+=d.u;if(d&&d.uR)uRT+=d.uR;if(d&&d.vis)vT+=d.vis;
     const s=_conSt(d,k)?1:(k>=_stIni?0:null);if(s===1)dCon++;else if(s===0)dSin++;else dNo++;if(d&&(d.rem||d.esc!=null))dRem++;});
   let gT=0,cT=0,eT=0;Object.values(gd).forEach(g=>{gT+=g.gan;cT+=g.costo;eT+=g.gest;});const gPct=hayGan?pctGananciaVP(gT,cT,eT):null;
+  // EL STOCK DE HOY EN EL RESUMEN (05/10/2026, él: "que muestre el número de unidades en stock, con su color de
+  // excedente, faltan"). Unidades en Full de las 4 cuentas (o del color elegido) y los días que alcanzan al ritmo de
+  // los últimos 30 días con stock (3+ ventas; si no, el ritmo normal del año): MISMOS colores que la línea de stock.
+  const _stHoy=(()=>{let q=0;LOCS.forEach(l=>{q+=Math.max(0,Number(_lineaVar?getQV(prodId,l,_lineaVar):getQ(prodId,l))||0);});
+    let u=0,dc=0;for(let j=Math.max(0,N-30);j<N;j++){const kk=ks[j];if(_conSt(dias[kk],kk)){dc++;u+=Math.max(0,((dias[kk]&&dias[kk].u)||0)-((dias[kk]&&dias[kk].uR)||0));}}
+    const pdia=(u>=3&&dc>=7)?u/dc:_rnP;const dd=pdia>0?q/pdia:(q>0?999:0);
+    return `stock hoy: <b style="color:${_stCol(dd)}">${q} u.</b> <span style="color:${_stCol(dd)}">(${q>0?(dd>=999?'sin ventas para medir':'alcanza '+Math.round(dd)+' d'):'agotado'} · ${_stTxt(dd)})</span>`;})();
   const pIni=ks.map(k=>dias[k]&&dias[k].p).find(x=>x>0), pFin=[...ks].reverse().map(k=>dias[k]&&dias[k].p).find(x=>x>0);
   // ¿EL CAMBIO DE PRECIO DEJÓ MÁS PLATA? (04/10/2026, él con el Metatarso: "quizás lo aumentó un 10% y se vendió un
   // 20% menos"). Por cada cambio del rango: ganancia por día CON STOCK en los 14 días antes y en los días después
@@ -8696,7 +8705,7 @@ function lineaPintar(prodId){
       <div style="display:flex;gap:6px;align-items:center">${btn(365)}${btn(90)}${btn(30)}<button class="btn" onclick="document.getElementById('linea-modal').remove()" style="font-size:.7rem;padding:3px 10px">✕</button></div>
     </div>
     ${_vars.length>1?`<div style="display:flex;gap:5px;flex-wrap:wrap;margin-top:8px">${['',..._vars].map((v,i)=>`<button class="btn" onclick="lineaVar(_lineaVarsL[${i}],'${prodId}')" style="font-size:.62rem;padding:2px 9px;${_lineaVar===v?'background:#7c3aed;color:#fff;border-color:#7c3aed':''}">${v||'Todas juntas'}</button>`).join('')}</div>`:''}
-    <div style="font-size:.7rem;color:var(--muted);margin:6px 0 8px;line-height:1.6">${_lineaRango} días · <b style="color:var(--text)">${uT} u. vendidas</b>${uRT?` (${uRT} en remate)`:''}${hayGan&&gPct!=null&&isFinite(gPct)?` · ganancia <b style="color:${pctColor(gPct)}">${gPct.toFixed(0)}%</b>`:''} · ${vT} visitas · stock: <span style="color:var(--green)">${dCon} d con</span> · <span style="color:var(--red)">${dSin} d sin</span> · ${dNo} d sin dato${dRem?` · ${dRem} d rematando`:''}${pIni&&pFin?` · precio ${fmt(pIni)} → ${fmt(pFin)}`:''} · ${Object.keys(porMlaF).length} publicación(es)${C.fallo?' · <span style="color:var(--amber)">alguna publicación no se pudo leer</span>':''}</div>
+    <div style="font-size:.7rem;color:var(--muted);margin:6px 0 8px;line-height:1.6">${_lineaRango} días · <b style="color:var(--text)">${uT} u. vendidas</b>${uRT?` (${uRT} en remate)`:''}${hayGan&&gPct!=null&&isFinite(gPct)?` · ganancia <b style="color:${pctColor(gPct)}">${gPct.toFixed(0)}%</b>`:''} · ${vT} visitas · ${_stHoy} · historial: <span style="color:var(--green)">${dCon} d con</span> · <span style="color:var(--red)">${dSin} d sin</span> · ${dNo} d sin dato${dRem?` · ${dRem} d rematando`:''}${pIni&&pFin?` · precio ${fmt(pIni)} → ${fmt(pFin)}`:''} · ${Object.keys(porMlaF).length} publicación(es)${C.fallo?' · <span style="color:var(--amber)">alguna publicación no se pudo leer</span>':''}</div>
     <div style="position:relative;padding-left:58px">
       ${lab(L.vent[0]+28,'ventas')}${L.gan?lab(L.gan[0]+15,'$ ganancia/día'):''}${L.pct?lab(L.pct[0]+18,'% ganancia'):''}${L.cos?lab(L.cos[0]+15,'costo c/u'):''}${L.vis?lab(L.vis[0]+9,'visitas'):''}${lab(L.st[0]+(suv.length?20:2),'stock')}${lab(L.pr[0]+18,'precio')}${L.est?lab(L.est[0]+2,'remate'):''}${L.caja?lab(L.caja[0]+2,'caja'):''}
       <svg viewBox="0 0 ${W} ${H+16}" preserveAspectRatio="none" style="width:100%;height:${Math.round((H+16)*1.1)}px;display:block">${svg}</svg>
