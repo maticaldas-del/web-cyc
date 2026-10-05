@@ -2433,7 +2433,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='21.99';
+const APP_VERSION='22.00';
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
 // muestre la versión y la fecha de actualización y que tenga un desplegable predeterminado cerrado".
 // Y el mismo día: "que ponga fecha de cada modificación y haya una barrita para scrollear y que
@@ -2444,6 +2444,7 @@ const APP_VERSION='21.99';
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'22.00',f:'05/10/2026',h:'14:45',c:[{n:1,t:'🇵🇾 La lista de gastos del pedido cuenta la diferencia de la transferencia aunque se haya cargado como "otros" (el pedido del 21/09 decía que faltaba y estaba).'}]},
   {v:'21.99',f:'05/10/2026',h:'13:47',c:[{n:3,t:'🇵🇾 Cada pedido de Paraguay usa su recargo REAL (no el 17% fijo). Con todos los gastos cargados (pesos, correo, el que despacha y la transferencia) el costo de las fichas que salieron más caras sube solo; si salió más barato no se toca. Las ventas de meses pasados siguen con el costo viejo.'},{n:2,t:'🇵🇾 En Pedidos hechos cada pedido muestra sus gastos con ✓ cargado o ✗ falta, y qué costos subieron.'}]},
   {v:'21.98',f:'05/10/2026',h:'13:32',c:[{n:2,t:'🇵🇾 Pedidos ya no te pide comprar lo que viene viajando de Paraguay (ni lo que llegó y falta contar en la oficina): se descuenta como "en camino".'}]},
   {v:'21.97',f:'05/10/2026',h:'13:13',c:[{n:2,t:'🇵🇾 El pedido a Paraguay es UNO solo: probados y nuevos van juntos en el mismo pedido, separados adentro. "Ya lo pedí" pregunta una vez y "Ya llegó" crea las fichas de los nuevos y te recuerda contar los probados.'}]},
@@ -11762,8 +11763,8 @@ async function pyPedidoBorrar(id){
 // `recargoRealPedido` del robot: si se toca una, la otra. Con TODOS los gastos cargados el robot sube el
 // costo de las fichas que salieron más caras (nunca baja) y las nuevas nacen con este recargo.
 const PY_GASTOS=[{k:'mercaderia',nom:'Pesos de los dólares',campo:'merc'},{k:'envio',nom:'Correo',campo:'envio'},
-  {k:'retira',nom:'El que retira y despacha',campo:'retira'},{k:'cambista',nom:'Diferencia de la transferencia',campo:'cambio',cero:true}];
-function pyGastoCargado(c,g){const v=Number(((c&&c.pagos)||{})[g.k]);if(v>0)return true;return!!(g.cero&&Array.isArray(c&&c.pagosOk)&&c.pagosOk.includes(g.k));}
+  {k:'retira',nom:'El que retira y despacha',campo:'retira'},{k:'cambista',alt:'otros',nom:'Diferencia de la transferencia / otros',campo:'cambio',cero:true}];
+function pyGastoCargado(c,g){const _p=(c&&c.pagos)||{};const v=(Number(_p[g.k])||0)+(g.alt?(Number(_p[g.alt])||0):0);if(v>0)return true;return!!(g.cero&&Array.isArray(c&&c.pagosOk)&&c.pagosOk.includes(g.k));}
 function pyRecargoReal(c){
   const falta=PY_GASTOS.filter(g=>!pyGastoCargado(c,g)).map(g=>g.nom);
   const tc=parseFloat(c&&c.tcPedido)||parseFloat(c&&c.tcPanel)||0,usd=parseFloat(c&&c.usdCrudo)||0;
@@ -11776,12 +11777,12 @@ function pyRecargoReal(c){
 function pyGastosChecklistHTML(c){
   const p=c.pagos||{};const R=pyRecargoReal(c);
   const fila=(ok,nom,val,gris)=>`<div style="display:flex;justify-content:space-between;gap:10px;font-size:.68rem;padding:3px 0;border-bottom:1px dashed var(--border)"><span>${ok?'<b style="color:var(--green)">✓</b>':(gris?'<span style="color:var(--muted)">·</span>':'<b style="color:var(--red)">✗</b>')} ${nom}</span><span style="color:${ok?'var(--text)':(gris?'var(--muted)':'var(--red)')}">${val}</span></div>`;
-  const filas=PY_GASTOS.map(g=>{const ok=pyGastoCargado(c,g);const v=Number(p[g.k])||0;
+  const filas=PY_GASTOS.map(g=>{const ok=pyGastoCargado(c,g);const v=(Number(p[g.k])||0)+(g.alt?(Number(p[g.alt])||0):0);
     let val=ok?fmt(Math.round(v)):'falta';
     if(g.k==='envio'&&ok&&c.kgCorreo)val+=` <span style="color:var(--muted)">· ${c.kgCorreo} kg</span>`;
     if(g.cero&&ok&&!(v>0))val='no hubo';
     return fila(ok,g.nom,val);}).join('')
-    +(Number(p.otros)>0?fila(true,'Otros',fmt(Math.round(Number(p.otros)))):'');
+    ;
   const ca=c.costosAplicados;
   const pie=R.r
     ?`<div style="font-size:.66rem;margin-top:6px;line-height:1.55">Recargo REAL de este pedido: <b>${((R.r-1)*100).toFixed(1)}%</b> <span style="color:var(--muted)">(el panel estimaba ${Math.round((RECARGO_PY-1)*100)}%)</span><br>${ca?`💲 Costos revisados: <b>${(ca.subieron||[]).length}</b> ficha(s) subieron${(ca.subieron||[]).length?': '+(ca.subieron||[]).map(x=>`${x.nom} US$ ${Number(x.antes).toFixed(2)} → <b>${Number(x.despues).toFixed(2)}</b>`).join(' · '):''}${ca.iguales?` · ${ca.iguales} no (salieron igual o más baratas, no se tocan)`:''}`:'<span style="color:var(--amber)">💲 Falta que el robot revise los costos (se hace al cargar el último gasto).</span>'}</div>`
