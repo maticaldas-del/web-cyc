@@ -854,6 +854,7 @@ aunque sea Clásica: la ganadora del Mercedes Man era así). `cuotasDeOferta` �
 `CUOTAS_PCT_ML`, la del chat). **Candidatos** lo usan si no hay `cuotasGan` (guardan `mlCuotasAuto`; `CAND_CALC_VER`=11
 vuelve a medir todos). **`techofull`** guarda `cuoT` (el que pone el techo) y `cuoMin` (el más barato); la web
 (`maxCompraDe`) descuenta esas cuotas en el máximo de compra de los probados y lo dice en ámbar.
+**EL SUPERVISOR SE COMPARA CONTRA LA TIENDA (05/10/2026), idea suya:** *"¿y si usamos la línea de $ ganancia/día?"*. Los juicios 🟢/🔴 ya eran ganancia por día antes/después; ahora se divide por lo que se movió el RESTO de la tienda en esas mismas ventanas (`tiendaEntre`, sin esa publicación). Si la tienda ganó 10% más y el producto 15%, al cambio le toca ~5%. Si la tienda se movió más del doble o menos de la mitad, o no hay dato, no se descuenta y el renglón lo dice. **El total en pesos de "Robot de precios" NO cambió** (sigue siendo sólo lo firme): esto toca sólo los juicios, que son los que frenan subas (🔴) y piden volver atrás.
 **Línea de tiempo (mismo día):** carril "$ ganancia/día" (promedio de 7 días) y abajo, por cada cambio de precio, ganancia
 por día con stock antes (14 d) y después (hasta 14 d o el cambio siguiente). Pedido suyo con el Metatarso. Y el precio de
 los días sin estado sale de la publicación que vendió más reciente (el serrucho $2.999↔$3.810 era la de Adriana pausada).
