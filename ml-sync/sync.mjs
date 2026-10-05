@@ -14004,7 +14004,7 @@ async function main() {
       const tokUno = await (async () => {
         for (const l of labels) {
           const a2 = accounts[l]; if (!a2?.refresh_token) continue;
-          try { const t2 = await mlRefresh(ML_CLIENT_ID, ML_CLIENT_SECRET, a2.refresh_token); return t2.access_token; } catch { /* sigue */ }
+          try { const t2 = await mlRefresh(ML_CLIENT_ID, ML_CLIENT_SECRET, a2.refresh_token); await db.patch('mlapi/tokens/' + l, { refresh_token: t2.refresh_token, updated_ts: Date.now() }); return t2.access_token; } catch { /* sigue */ }
         }
         return null;
       })();
@@ -16908,7 +16908,7 @@ async function main() {
       const label = labels.find((l) => accounts[l]?.refresh_token);
       if (!label) { console.log('No hay ninguna cuenta con token.'); return; }
       let tok;
-      try { tok = (await mlRefresh(ML_CLIENT_ID, ML_CLIENT_SECRET, accounts[label].refresh_token)).access_token; }
+      try { const tR = await mlRefresh(ML_CLIENT_ID, ML_CLIENT_SECRET, accounts[label].refresh_token); await db.patch('mlapi/tokens/' + label, { refresh_token: tR.refresh_token, updated_ts: Date.now() }); tok = tR.access_token; }
       catch { console.log('No pude renovar el token.'); return; }
 
       console.log(`=== ¿PUEDE EL ROBOT MIRAR PRECIOS SOLO? · buscando "${busca}" ===\n`);
@@ -24578,7 +24578,7 @@ async function main() {
         for (const label of labels) {
           const acc = accounts[label];
           if (!acc?.refresh_token) continue;
-          let tk; try { tk = (await mlRefresh(ML_CLIENT_ID, ML_CLIENT_SECRET, acc.refresh_token)).access_token; } catch { continue; }
+          let tk; try { const tR = await mlRefresh(ML_CLIENT_ID, ML_CLIENT_SECRET, acc.refresh_token); await db.patch('mlapi/tokens/' + label, { refresh_token: tR.refresh_token, updated_ts: Date.now() }); tk = tR.access_token; } catch { continue; }
           try {
             const arr = await mlGet('/items?ids=' + mla + '&attributes=id,status,available_quantity,title', tk);
             const row = (arr || [])[0]; const bb = row?.body || {};
@@ -24718,7 +24718,7 @@ async function main() {
           for (const label of labels) {
             const acc = accounts[label];
             if (!acc?.refresh_token) continue;
-            let tk; try { tk = (await mlRefresh(ML_CLIENT_ID, ML_CLIENT_SECRET, acc.refresh_token)).access_token; } catch { continue; }
+            let tk; try { const tR = await mlRefresh(ML_CLIENT_ID, ML_CLIENT_SECRET, acc.refresh_token); await db.patch('mlapi/tokens/' + label, { refresh_token: tR.refresh_token, updated_ts: Date.now() }); tk = tR.access_token; } catch { continue; }
             const faltan = huerf.filter((m) => !info[m]);
             if (!faltan.length) break;
             for (let k = 0; k < faltan.length; k += 20) {
@@ -36123,18 +36123,33 @@ async function main() {
     // Revisión final: si la renovación (o guardar el token nuevo) falla en UNA cuenta, antes se cortaba
     // la vuelta entera y las otras tres quedaban sin leer. Ahora se saltea esa cuenta, se dice en el log
     // (sin el token) y se avisa por Telegram una vez por día por cuenta (se anota sólo si salió).
+    // 05/10/2026: el aviso salía por UNA falla suelta y a la vuelta siguiente andaba (Matías y Luciana,
+    // renovados bien 40 min después). ML rota el refresh_token en cada uso, así que si otra corrida
+    // (ml-consulta, ml-daily, chequeo) lo renovó un instante antes, el que tenemos en memoria ya no
+    // sirve. Ahora: si falla, se relee el token de la base y se reintenta una vez a los 5 s; y el
+    // Telegram sale sólo si fallan DOS vueltas seguidas (mlapi/tokenfallo/<cuenta>).
     let t;
     try {
-      t = await mlRefresh(ML_CLIENT_ID, ML_CLIENT_SECRET, acc.refresh_token);
+      try {
+        t = await mlRefresh(ML_CLIENT_ID, ML_CLIENT_SECRET, acc.refresh_token);
+      } catch (e1) {
+        await new Promise((r) => setTimeout(r, 5000));
+        const fresco = (await db.get('mlapi/tokens/' + label)) || {};
+        t = await mlRefresh(ML_CLIENT_ID, ML_CLIENT_SECRET, fresco.refresh_token || acc.refresh_token);
+        console.log(`ℹ️ ${label}: la renovación del permiso falló una vez y anduvo al reintentar${fresco.refresh_token && fresco.refresh_token !== acc.refresh_token ? ' (otra corrida lo había renovado)' : ''}`);
+      }
       await db.patch('mlapi/tokens/' + label, { refresh_token: t.refresh_token, updated_ts: Date.now() });
+      if (!DRY) { try { if (await db.get('mlapi/tokenfallo/' + label)) await db.set('mlapi/tokenfallo/' + label, null); } catch { /* no importa */ } }
     } catch (eTok) {
       const why = String((eTok && eTok.message) || eTok).replace(/(access|refresh)_token["':=\s]+[^"',\s}]+/gi, '$1_token=…').slice(0, 140);
       console.log(`⚠️ ${label}: no pude renovar el permiso de ML (${why}) — salteo esta cuenta esta vuelta`);
       if (!DRY) {
         try {
+          const nFallo = (Number(await db.get('mlapi/tokenfallo/' + label)) || 0) + 1;
+          await db.set('mlapi/tokenfallo/' + label, nFallo);
           const hoyTk = new Date(Date.now() - 3 * 3600e3).toISOString().slice(0, 10);
           const memTk = String((await db.get('mlapi/avisotoken/' + label)) || '');
-          if (memTk !== hoyTk) {
+          if (nFallo >= 2 && memTk !== hoyTk) {
             const okTk = await sendAlerta(`⚠️ <b>${label}: no pude renovar el permiso de MercadoLibre</b>\nEsa cuenta no se está leyendo (ventas, stock, precios). Las otras siguen. Si se repite, hay que volver a autorizar la aplicación en esa cuenta.`);
             if (okTk) await db.set('mlapi/avisotoken/' + label, hoyTk);
           }
