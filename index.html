@@ -2433,7 +2433,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='21.97';
+const APP_VERSION='21.98';
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
 // muestre la versión y la fecha de actualización y que tenga un desplegable predeterminado cerrado".
 // Y el mismo día: "que ponga fecha de cada modificación y haya una barrita para scrollear y que
@@ -2444,6 +2444,7 @@ const APP_VERSION='21.97';
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'21.98',f:'05/10/2026',h:'13:32',c:[{n:2,t:'🇵🇾 Pedidos ya no te pide comprar lo que viene viajando de Paraguay (ni lo que llegó y falta contar en la oficina): se descuenta como "en camino".'}]},
   {v:'21.97',f:'05/10/2026',h:'13:13',c:[{n:2,t:'🇵🇾 El pedido a Paraguay es UNO solo: probados y nuevos van juntos en el mismo pedido, separados adentro. "Ya lo pedí" pregunta una vez y "Ya llegó" crea las fichas de los nuevos y te recuerda contar los probados.'}]},
   {v:'21.96',f:'05/10/2026',h:'11:15',c:[{n:1,t:'📈 Línea de tiempo: los botones de color aparecen aunque el color no se haya fijado a mano; se saca del título de cada publicación (ej. Pizarra Mágica 8.5: Azul, Negro, Rojo, Rosa, Verde, Violeta).'}]},
   {v:'21.95',f:'05/10/2026',h:'01:30',c:[{n:1,t:'🖼️ Ventas x Producto: cada producto vendido lleva su foto (la de la publicación que vendió, con el color justo). Se toca para verla grande.'}]},
@@ -10530,6 +10531,9 @@ async function syncPedidosAuto(){
   }
   if(Object.keys(_vencUpd).length)db.ref('cyc').update(_vencUpd).catch(()=>{});
   const _trPed=enTransito();   // lo despachado y todavía sin llegar: ya es tuyo, no se compra de nuevo
+  // LO PEDIDO A PARAGUAY QUE VIAJA (o llegó y falta contar) TAMBIÉN ES TUYO (05/10/2026, él con el Animale
+  // Sexy: *"me lo sigue pidiendo y ya lo compramos"*). Antes sólo la canasta lo descontaba.
+  const _pyViaja=(()=>{const m={...pyRepoEnCamino()};try{for(const[k,v]of Object.entries(pyRepoSinContar()))m[k]=(m[k]||0)+v;}catch(e){}return m;})();
   for(const p of (state.products||[])){
     // En la papelera = no se vende más. Se saltea ACÁ, antes de calcular nada: así no vuelve a
     // aparecer en Pedidos y tampoco suma "riesgo", que es lo que alimenta el Puntaje del mes y el
@@ -10659,10 +10663,11 @@ async function syncPedidosAuto(){
     // la pantalla te pedía comprar de nuevo algo que ya habías comprado y que estaba viajando.
     // Y le pega justo a lo que más rota, que es lo que más seguido se despacha.
     // "Armar caja" ya lo contaba desde el 19/08; Pedidos se quedó afuera.
-    const enCamino=transitoTotal(_trPed,p.id);
+    const enPy=_pyViaja[p.id]||0;   // pedido a Paraguay, sin color: se resta del total
+    const enCamino=transitoTotal(_trPed,p.id)+enPy;
     // En los productos con variantes ya se descontó casa y camino VARIANTE POR VARIANTE, que es más
-    // fino: restar los totales otra vez lo contaría dos veces.
-    const aComprar=aComprarVar!=null?aComprarVar:Math.max(0,necesario-enOficina-enCamino);
+    // fino: restar los totales otra vez lo contaría dos veces. Lo de Paraguay no trae color: va al total.
+    const aComprar=aComprarVar!=null?Math.max(0,aComprarVar-enPy):Math.max(0,necesario-enOficina-enCamino);
     const diasCubProd=diasCubiertos;
     if(varDiasCub!=null&&varDiasCub<diasCubiertos)diasCubiertos=varDiasCub;
     // "Dinero en riesgo": ganancia diaria del producto × cuántos de los próximos 30 días vas a pasar REALMENTE sin stock.
