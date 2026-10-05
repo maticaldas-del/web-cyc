@@ -2280,8 +2280,32 @@ async function filtrarRescate(db, rr, o) {
     return { rescates, rescFren, rescSup };
   }
   const fechaR = (ts) => new Date(ts - 3 * 3600e3).toISOString().slice(5, 10).split('-').reverse().join('/');
+  // EL ROBOT APRENDE DE SUS PROPIAS BAJAS (05/10/2026). Él, con el Pendrive 32gb (remate por sobra que el
+  // supervisor midió en −$4.563): *"quiero que el robot tome las decisiones y las tome bien y que aprenda,
+  // hoy sí o sí tiene que subirlo"*. Una baja DEL ROBOT (remate, escalera o bajar) que el supervisor ya
+  // MIDIÓ (7+ días) y dio plata de MENOS, que es el último cambio de esa publicación y cuyo precio de hoy
+  // sigue siendo el que dejó, se rescata sin los dos frenos que la dejaban trabada: "lo bajé yo hace menos
+  // de 30 días" y "tiene más de 60 días de stock". Los dos tienen sentido para una baja que funciona; para
+  // una que ya se probó que pierde, son el robot defendiendo su propio error. Los demás frenos siguen
+  // (liquidando, bajado a mano, comparte la caja, 15 días sin vender, una suba por día, +25%).
+  // Sin el resumen del supervisor no se aprende nada: quedan los frenos de siempre.
+  const bajaPerdio = {};
+  try {
+    const rsS = (await db.get('cyc/supervisor/resumen')) || {};
+    const ultTs = {};
+    const regs = Array.isArray(rsS.todos) ? rsS.todos : [];
+    for (const r of regs) if (r && r.mla && Number(r.ts) > (ultTs[r.mla] || 0)) ultTs[r.mla] = Number(r.ts);
+    for (const r of regs) {
+      if (!r || !r.mla || r.estado !== 'medido' || !['remate', 'escalera', 'bajar'].includes(r.motivo)) continue;
+      if (!(Number(r.de) > 0 && Number(r.a) > 0 && Number(r.a) < Number(r.de))) continue;
+      if (!(Number(r.total) < 0) || Number(r.ts) < (ultTs[r.mla] || 0)) continue;
+      bajaPerdio[r.mla] = r;
+    }
+  } catch { /* sin el resumen no se aprende */ }
   for (const x of rr.subir) {
     if (malosSup.has(x.mla)) { rescSup.push(x); continue; }
+    const bpX = bajaPerdio[x.mla];
+    const aprende = !!(bpX && Math.abs(x.de - Number(bpX.a)) / Number(bpX.a) < 0.01);
     // UNA SUBA POR PUBLICACIÓN CADA 24 H, TAMBIÉN DE NOCHE (P2 de la segunda vuelta, 25/09/2026).
     // La regla vivía sólo en el rescate al vender: una venta a las 23:30 subía +25% y a las 00:07 el
     // rescate de la noche subía otro +25% (+56% en 40 minutos) sin que nadie midiera la primera.
@@ -2306,7 +2330,8 @@ async function filtrarRescate(db, rr, o) {
     const apB = autoprecio && autoprecio[x.mla];
     // Excepción: un remate que el robot TERMINÓ porque el stock ya quedó sano (`ritmo:go`, 01/10/2026)
     // sí se rescata: terminar el remate es justamente para volver a la base.
-    if (apB && apB.tipo === 'baja' && hoyTs - (apB.ts || 0) < 30 * 864e5 && !(Number(apB.remateTerminado) > (Number(apB.ts) || 0))) {
+    const remTerm = !!(apB && Number(apB.remateTerminado) > (Number(apB.ts) || 0));
+    if (apB && apB.tipo === 'baja' && hoyTs - (apB.ts || 0) < 30 * 864e5 && !remTerm && !aprende) {
       rescFren.push({ ...x, why: `lo bajé yo el ${fechaR(apB.ts)} (${money(apB.de)} → ${money(apB.a)}${apB.por ? ' · ' + apB.por : ' · para ganar la caja'}) · no lo vuelvo a subir solo antes de 30 días` });
       continue;
     }
@@ -2341,8 +2366,14 @@ async function filtrarRescate(db, rr, o) {
       }
       if (st != null && pd > 0) {
         const dSt = Math.round((parseInt(st) || 0) / pd);
-        if (dSt > RESC_DSTOCK) { rescFren.push({ ...x, why: `tiene ${parseInt(st) || 0} u. = ${dSt} días de stock${volvio != null ? ` (al ritmo desde que volvió el stock, hace ${volvio} d)` : ''}: primero hay que venderlo, subir lo frena` }); continue; }
+        // Un remate que el robot terminó (la sobra todavía no llegaba al stock antiguo) o una baja suya que
+        // ya perdió plata no se frenan por los días de stock: ésa fue justo la cuenta equivocada.
+        if (dSt > RESC_DSTOCK && !aprende && !remTerm) { rescFren.push({ ...x, why: `tiene ${parseInt(st) || 0} u. = ${dSt} días de stock${volvio != null ? ` (al ritmo desde que volvió el stock, hace ${volvio} d)` : ''}: primero hay que venderlo, subir lo frena` }); continue; }
       }
+    }
+    if (aprende) {
+      x.aprendio = `mi baja del ${fechaR(Number(bpX.ts))} (${money(bpX.de)} → ${money(bpX.a)}, ${bpX.motivo}) dejó ${money(bpX.total)}: la deshago`;
+      console.log(`   🧠 ${x.nom || x.mla} (${x.label || ''}): ${x.aprendio}`);
     }
     rescates.push(x);
   }
