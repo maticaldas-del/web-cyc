@@ -32279,7 +32279,7 @@ async function main() {
           const li = (await db.get('mlapi/linea/' + mla).catch(() => null)) || {};
           console.log(`  ${mla} · ${l.cuenta || l.account || '?'} · ${l.variant || 'sin color'} · ${String(l.title || '').slice(0, 50)}`);
           const ks = Object.keys(li).filter((k) => k >= desde).sort();
-          console.log('    ' + (ks.map((k) => { const x = li[k] || {}; return `${k.slice(5).replace('_', '/')} ${x.est ? String(x.est).slice(0, 3) : '?'} $${x.p ?? '?'}${x.u ? ' u' + x.u : ''}`; }).join(' | ') || 'sin días'));
+          console.log('    ' + (ks.map((k) => { const x = li[k] || {}; return `${k.slice(5).replace('_', '/')} ${x.est ? String(x.est).slice(0, 3) : '?'} $${x.p ?? '?'}${x.u ? ' u' + x.u : ''} st${x.st ?? '?'}${x.stF ? '(' + x.stF + ')' : ''}${x.vis ? ' v' + x.vis : ''}${x.rem ? ' R' : ''}`; }).join(' | ') || 'sin días'));
           for (const e of Object.values(ev)) if (e && e.mla === mla && e.ts && e.ts >= Date.now() - nd * 864e5)
             console.log(`    ⇄ ${new Date(e.ts).toISOString().slice(0, 16)} ${e.motivo || '?'} ${e.de} → ${e.a}`);
         }
