@@ -18590,7 +18590,10 @@ async function main() {
       const prods = (await db.get('cyc/products')) || {};
       const links = (await db.get('cyc/mllinks')) || {};
       const cands = (await db.get('cyc/candidatos_py')) || {};
-      const pys = Object.values(prods).filter((p) => p && p.id && p.origen === 'py');
+      // Eligió la (a) el 06/10: SÓLO las fichas que nacieron de un producto NUEVO de Paraguay (un candidato
+      // que llegó y quedó enganchado con `prodId`). Las fichas viejas, con su nombre corto, no se tocan.
+      const deCand = new Set(Object.values(cands).filter((c) => c && c.prodId).map((c) => c.prodId));
+      const pys = Object.values(prods).filter((p) => p && p.id && p.origen === 'py' && deCand.has(p.id));
       const porProd = {};
       for (const [mla, e] of Object.entries(links)) {
         if (!e || e.ignored || !e.prodId || (e.status || '') === 'closed') continue;
@@ -18630,7 +18633,7 @@ async function main() {
         if (nuevo === String(p.name || '').trim()) { iguales.push(p); continue; }
         cambios.push({ p, nuevo, de });
       }
-      console.log(`Fichas de Paraguay: ${pys.length} · ya iguales a ML: ${iguales.length} · a cambiar: ${cambios.length} · sin título de ML: ${sinDato.length}\n`);
+      console.log(`Fichas de Paraguay que entraron como productos nuevos: ${pys.length} · ya iguales a ML: ${iguales.length} · a cambiar: ${cambios.length} · sin título de ML: ${sinDato.length}\n`);
       for (const c of cambios) console.log(`  ${c.p.name}\n    → ${c.nuevo}   (de ${c.de})`);
       if (sinDato.length) { console.log('\nSin publicación ni catálogo confiable (quedan como están):'); sinDato.forEach((p) => console.log(`  · ${p.name}`)); }
       if (!GO) { console.log('\nNo se guardó nada (falta :go).'); return; }
