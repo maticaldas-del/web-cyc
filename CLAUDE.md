@@ -809,6 +809,20 @@ privada unificados · las dos facturas de Sancor analizadas.
 **Versión del panel: 20.16 · caché `cyc-v294`**. El ciclo del robot quedó **prendido**.
 
 
+## LA BARRERA DE $33.000 SE CRUZA SÓLO SI PAGA · LA SOBRA SE DECIDE CON PLATA (06/10/2026, v22.20 · `cyc-v500`)
+Él: *"si puede pasar los 33.000, el tema es que a partir de ese monto se le agrega costo de envío: no va a convenir subir de
+32.000 a 37.000"*. **Esto cambia la regla 2**: `frenosSuba`/`redondeoSube` siguen frenando en $32.999 salvo `o.cruza`, que sólo
+piden la 📈 (`calcSubirPuede`: prueba siempre $32.999 y, arriba, resta el envío = máx(`CAND_ENVIO_ARRIBA`, `netoCalcEnvio`,
+`gestFull`); cruza si deja más por venta) y el rescate (`calcSubirPorMargen`: vuelve a buscar la meta con ese envío y cruza si deja
+más que $32.999 y entra en +25%). IIBB + monotributo ya iban como % del precio sobre lo que sube (él preguntó; sí se cuentan).
+Sobra (reemplaza los 100 días; `SOBRA_EDAD_MIN` quedó sin uso): `lotesFifo` (stock de hoy = lo que entró MÁS NUEVO: cajas
+marcadas llegadas con `recFecha` menos faltantes, `cajasLlegadasPorClave`, y los lotes del Excel; lo no cubierto = la fecha más
+vieja: Excel/stockhist/`altaTs`; sin nada, "hoy") → `cargoAntiguoProy` (al ritmo de hoy, lo viejo sale primero, tabla de ML por
+tamaño, cierres 10/12, 36 meses) → entra sólo si el cargo > 0, y baja sólo si cargo + 1%/mes de plata parada > lo que regala
+(`resigna` × unidades arriba de 30 días de ritmo). La salida en `ritmo:go` usa la misma cuenta al ritmo normal.
+Métricas: el % del mes en curso compara contra el anterior HASTA EL MISMO DÍA (`getAllPrevMetKeys` mes); el chip muestra también
+el anterior entero. **Él después dijo que la métrica vieja "estaba bien" (el mes pasado cerró en 35,3%)**: se dejaron los dos números.
+
 ## VÍA LIBRE PARA SUBIR Y BAJAR (06/10/2026, v22.18 + robot)
 Él: *"que el robot pueda subir o bajar tanto como quiera (siempre mirando que el precio sea el que el robot quiera)"* y
 *"vía libre para subir y bajar precio"*. Se sacaron los topes POR VEZ: la 📈 ya no sube de a +10,5%/+3,5% (va derecho al techo:
