@@ -809,6 +809,15 @@ privada unificados · las dos facturas de Sancor analizadas.
 **Versión del panel: 20.16 · caché `cyc-v294`**. El ciclo del robot quedó **prendido**.
 
 
+## COMPRAR PIDE 25% PARA TODO · VENDER SIGUE CON EL ROBOT COMO ESTABA (06/10/2026)
+Regla suya, textual: *"el 25 para todo es para comprar productos. Tanto probados como nuevos. Los que ya están en stock que
+siga como estaba el robot. Son dos cosas distintas."* **COMPRAR** (Paraguay nuevos, perfumes incluidos, y probados) = 25%
+mínimo, sin excepción: `CAND_PISO_PCT`/`CAND_PISO_PERFUME` (los dos 25, robot y web) y `PY_PROB_PISO` = 25 (era 20 desde el
+03/10). El 20% para perfumes nuevos duró un día (05/10) y él lo volvió atrás. **VENDER** no se tocó: `minPct` 22, `subeDesde`
+20, meta 25, escalera y remate como estaban. Los Victoria's Secret se venden a ~$44.000 y dejan ~18% (envío de Full arriba de
+$33.000): por eso salen "no da" para reponer, y es correcto. Probados que pierden la caja se miden con el precio de la caja
+(`maxCompraDe`); se le ofreció medir con el precio de hoy si vende igual y no lo eligió todavía.
+
 ## CÓMO SE JUZGA UN REMATE DEL ROBOT (04/10/2026, `cuentaRemate` en el supervisor) · REGLA FIRME
 Él: *"algo firme, que no dependa de una pequeña duda (…) los dos queremos que dé positivo, estamos sesgados"* y *"no podés
 atribuirle toda la ganancia al bot, y si al otro día se vendía?"*. **La versión de esa misma tarde (Watch S5 +$146.310) se
