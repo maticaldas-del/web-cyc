@@ -2451,7 +2451,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='22.25';
+const APP_VERSION='22.26';
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
 // muestre la versión y la fecha de actualización y que tenga un desplegable predeterminado cerrado".
 // Y el mismo día: "que ponga fecha de cada modificación y haya una barrita para scrollear y que
@@ -2462,6 +2462,7 @@ const APP_VERSION='22.25';
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'22.26',f:'06/10/2026',h:'15:24',c:[{n:2,t:'🚦 Pedidos: un producto con colores pasa a rojo si alguno de los colores que se venden no tiene stock en ningún lado (antes salía naranja). La tarjeta dice cuántos colores están así'}]},
   {v:'22.25',f:'06/10/2026',h:'15:15',c:[{n:2,t:'🚦 Pedidos vuelve a ordenarse por la plata que se pierde (lo que más pierde, arriba), como antes. El color sólo dice cuáles no hay en ningún lado: un naranja que vende mucho puede ir arriba de un rojo'}]},
   {v:'22.24',f:'06/10/2026',h:'15:14',c:[{n:1,t:'🚦 Pedidos: los colores que no hace falta comprar (alcanza con lo de casa y lo que viaja) ya no van como renglón: quedan en una línea abajo con sus días. Se mandan desde Armar caja'}]},
   {v:'22.23',f:'06/10/2026',h:'15:12',c:[{n:2,t:'🚦 Pedidos ordena primero por color: arriba los rojos, después los naranjas y al final los amarillos. Adentro de cada color, como antes: lo que más plata destraba'}]},
@@ -10113,6 +10114,7 @@ function setPedidoSection(sec,btn){
 // ── EL SEMÁFORO DE PEDIDOS (06/10/2026) ── lo calcula syncPedidosAuto (cSem). Un pedido viejo sin
 // ese dato cae al estado de antes: en cero en todos lados = rojo, urgente = naranja, el resto amarillo.
 function _pedSem(p){
+  if(p&&(parseInt(p.cSemCol)||0)>0)return 'rojo';
   if(p&&(p.cSem==='rojo'||p.cSem==='naranja'||p.cSem==='amarillo'))return p.cSem;
   const tot=(parseInt(p&&p.cML)||0)+(parseInt(p&&p.cCasa)||0)+(parseInt(p&&p.cCamino)||0);
   if(p&&p.cML!=null&&tot<=0)return 'rojo';
@@ -10824,7 +10826,8 @@ async function syncPedidosAuto(){
     // 🟡 amarillo = más de 14 días (hasta los 20 del objetivo). No toca `estado`, puntaje ni riesgo.
     const semTot=stock+enOficina+enCamino;
     const semDias=varSemDias!=null?Math.min(cubreCasa,varSemDias):cubreCasa;
-    const sem=semTot<=0?'rojo':((semDias<=PED_DIAS_ROJO||varSemCero>0)?'naranja':'amarillo');
+    // Con colores: si UN color que vende está en cero en todos lados, el producto es rojo (06/10/2026, él: "si hay rojo en una publicación con variantes que sea rojo").
+    const sem=(semTot<=0||varSemCero>0)?'rojo':(semDias<=PED_DIAS_ROJO?'naranja':'amarillo');
     const riesgoComprar=Math.round((gan30d/30)*diasTapaCompra);
     const riesgoMandar=Math.round((gan30d/30)*diasTapaCasa);
     // Si hay unidades en casa no se puede repartir el pedido por variante con confianza (no se
@@ -15168,7 +15171,7 @@ function _pedidoItemHtml(p,opts){
       ${_armU>0?`<span style="color:var(--green)">✓ en el pedido</span>`:`<button class="btn" style="font-size:.66rem;padding:3px 9px" onclick="pyArmSet('${_prod.id}',${parseInt(p.cantidad)||1})">+ las ${fmtN(p.cantidad||1)} sugeridas</button>`}
     </div>`;
   const _sem=_enCam?null:_pedSem(p);
-  const _semTxt=!_sem?'':_sem==='rojo'?'🔴 sin stock en ningún lado':(p.cSemDias!=null&&p.cSemDias<999?`${_sem==='naranja'?'🟠':'🟡'} alcanza ~${p.cSemDias} d`:'')+(p.cSemCol>0?` · ${p.cSemCol} color${p.cSemCol>1?'es':''} en cero`:'');
+  const _semTxt=!_sem?'':_sem==='rojo'?(p.cSemCol>0?`🔴 ${p.cSemCol} color${p.cSemCol>1?'es':''} sin stock en ningún lado`:'🔴 sin stock en ningún lado'):(p.cSemDias!=null&&p.cSemDias<999?`${_sem==='naranja'?'🟠':'🟡'} alcanza ~${p.cSemDias} d`:'')+(p.cSemCol>0?` · ${p.cSemCol} color${p.cSemCol>1?'es':''} en cero`:'');
   return `<details class="ped-card ${_est}${_sem?' sem-'+_sem:''}"${_abierto?' open':''} ontoggle="_setPedCardOpen('${p.id}',this.open)">
     <summary class="ped-head">
       ${_prod?fotoChipHTML(_prod,38,p.variante||''):''}
