@@ -856,6 +856,14 @@ ml-sync, y después BORRAR los .enc del repo. Nunca subir la imagen sin cifrar n
 Él también puede subirla desde la web (📎 subir comprobante): subir = pagado.
 Y v22.12: en Armar caja lo que tiene unidades cargadas va siempre arriba.
 
+## EL RESCATE ANTES DE VENDER SUMA COMO MÉRITO DEL ROBOT (06/10/2026, v22.15)
+Regla suya con el Ferrari Negro: *"si el rescate es antes de una venta sí cuenta. si se aumenta porque hubo una venta de % bajo
+y luego se sube al día, no"*. En el supervisor: rescate de la noche (`por:'margen'`) o por costo → motivo **`rescatep`**, está en
+`SUP_CUENTA` y suma. Rescate al vender (`origen:'robot al vender'` o `por:'venta'`) → sigue `rescate`, no suma. Eventos viejos sin
+`por`: si la publicación vendió en las 3 h anteriores a la suba, fue por la venta (`esRescatePrevio`). Primera corrida: 13 rescates
+previos pasan a sumar, 56 siguen afuera. El rescate del Ferrari del 08/09 ($61.870→$68.510, +$31.069) fue AL VENDER: no suma. La suba
+"subir" del 29/09 sí suma (+$13.794 con la venta de 2 del 05/10). `verlinea` ahora muestra la cuenta del supervisor de cada cambio.
+
 ## COMPRAR: 24% PARA TODO (06/10/2026 a la noche, v22.11)
 Él, con el Ferrari Negro en 24,9%: *"na, que entre. o sea arriba del 24% TODO"*. `CAND_PISO_PCT`, `CAND_PISO_PERFUME` y `PY_PROB_PISO` = **24** (web y robot). Lo de abajo (25%) queda como historia. Vender no cambió.
 
