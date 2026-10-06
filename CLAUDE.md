@@ -809,6 +809,18 @@ privada unificados · las dos facturas de Sancor analizadas.
 **Versión del panel: 20.16 · caché `cyc-v294`**. El ciclo del robot quedó **prendido**.
 
 
+## VÍA LIBRE PARA SUBIR Y BAJAR (06/10/2026, v22.18 + robot)
+Él: *"que el robot pueda subir o bajar tanto como quiera (siempre mirando que el precio sea el que el robot quiera)"* y
+*"vía libre para subir y bajar precio"*. Se sacaron los topes POR VEZ: la 📈 ya no sube de a +10,5%/+3,5% (va derecho al techo:
+Full ×0,99 / sin Full ×1,10, `maxSuba:0`, `raisePriceTo(...,{libre:true})`), y las bajas de la noche (bajar, remate, escalera)
+ya no frenan en 24,5% (`setPriceTo` con `chequeo.libre`, sin `minA` en `escPrecioPara`, remate al ptw). **Quedan:** piso del margen,
+nunca abajo de 0%, barrera $33.000 (y su re-medición), techo $650.000, `liquidando`, 14 días entre subas, `volverSinFull` (48 h)
+y el supervisor que deshace lo que perdió plata. El rescate (+25%) y los comandos a mano siguen con su tope.
+Pantalla (v22.17/22.18): en Probados cada producto dice UN solo % "si lo pedís hoy" (`margenSiComproPY` sobre `maxCompraDe`, al
+precio que se puede cobrar) en la etiqueta del nombre, y la ficha usa la misma cuenta y dice a qué precio.
+**Pendiente con él:** la regla de sobra de 100 días (04/10) tiene agujeros (lotes congelados, mira la edad de hoy y no la edad a la
+que se va a vender, no compara el cargo contra lo que se regala); se le propuso cambiarla.
+
 ## LOS NÚMEROS DE COMPRA SE MIDEN SOLOS CADA NOCHE (06/10/2026, v22.05 · `cyc-v485`)
 Él: *"con el tiempo los costos cambian y si yo no te decía estamos viendo mal"* · *"IIBB poner lo real en todas"* ·
 *"una publicación a 100.000 en 6 cuotas capaz le gana a una de 90.000 sin cuotas. Eso lo tenés que ver vos"*.
