@@ -465,6 +465,14 @@ input.qty:focus{border-color:var(--accent2)}
 .ped-card.sem-naranja .ped-buy b{color:#f97316}
 .ped-card.sem-amarillo .ped-buy b{color:#ca8a04}
 .ped-sem{font-style:normal;font-size:.6rem;letter-spacing:.02em;margin-top:1px}
+.ped-vars{width:100%;display:flex;flex-direction:column;gap:5px;margin:0 0 8px}
+.ped-var-fila{display:flex;align-items:center;gap:10px;padding:7px 10px;background:var(--surface2,rgba(127,127,127,.06));border:1px solid var(--border);border-left:4px solid var(--border2);border-radius:6px}
+.ped-var-txt{flex:1;min-width:0;display:flex;flex-direction:column;gap:2px}
+.ped-var-txt b{font-size:.85rem;font-weight:700}
+.ped-var-txt i{font-style:normal;font-size:.68rem;color:var(--muted)}
+.ped-var-u{display:flex;flex-direction:column;align-items:flex-end;white-space:nowrap;flex-shrink:0}
+.ped-var-u b{font-family:'Syne',sans-serif;font-weight:800;font-size:1.35rem;line-height:1}
+.ped-var-u i{font-style:normal;font-size:.58rem;color:var(--muted)}
 .ped-caret{display:inline-block;font-size:.62rem;color:var(--muted);width:16px;text-align:center;flex-shrink:0;transition:transform .15s}
 .ped-card[open] .ped-caret{transform:rotate(180deg)}
 .ped-body{display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding:11px 14px 12px;border-top:1px solid var(--border)}
@@ -2443,7 +2451,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='22.21';
+const APP_VERSION='22.22';
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
 // muestre la versión y la fecha de actualización y que tenga un desplegable predeterminado cerrado".
 // Y el mismo día: "que ponga fecha de cada modificación y haya una barrita para scrollear y que
@@ -2454,6 +2462,7 @@ const APP_VERSION='22.21';
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'22.22',f:'06/10/2026',h:'15:08',c:[{n:2,t:'🚦 Pedidos: al abrir un producto con colores o aromas aparecen directamente sus variantes, cada una con su color del semáforo (🔴 sin stock en ningún lado · 🟠 14 días o menos · 🟡 más) y las unidades a comprar, como un producto normal. Primero las rojas'},{n:3,t:'🤖 Remate por sobra: después de terminarlo y volver a la base, el robot espera 3 días (más si vende poco) y si no vendió lo que tenía que vender, vuelve a rematar'}]},
   {v:'22.21',f:'06/10/2026',h:'15:03',c:[{n:2,t:'🚦 Pedidos con semáforo: 🔴 no hay en ningún lado (ni en ML, ni viajando, ni en tu oficina) · 🟠 alcanza 14 días o menos, o algún color que vende está en cero · 🟡 más de 14 días. Cada tarjeta dice para cuántos días alcanza, y los botones de arriba filtran por color'}]},
   {v:'22.20',f:'06/10/2026',h:'14:44',c:[{n:3,t:'🤖 La barrera de los $33.000: el robot la puede cruzar sólo si, restando el envío que ML cobra arriba de ese monto (y IIBB + monotributo sobre lo que sube), deja más plata por venta que quedándose en $32.999'},{n:3,t:'📦 Sobra de stock: ya no es "100 días fijos". Cuenta los lotes en orden de llegada (ML vende primero lo viejo), siempre con fecha, proyecta lo que ML va a cobrar de stock antiguo al ritmo de hoy y baja sólo si eso es más que lo que se regala bajando'},{n:2,t:'📈 Métricas: el % del mes en curso se compara también contra el mes anterior HASTA EL MISMO DÍA (y abajo sigue el mes anterior entero)'}]},
   {v:'22.19',f:'06/10/2026',h:'15:10',c:[{n:3,t:'🤖 Robot de precios: si el robot vuelve al precio de antes de una baja (o suba) suya, ya no se lo cuenta como ganancia: "sin robot" el precio nunca se había movido. Si pasa de largo, sólo cuenta lo que va más allá'},{n:2,t:'🤖 Robot de precios por mes: cada peso va al mes de la venta que lo dejó. Lo que ganó o perdió en septiembre no aparece en octubre'},{n:1,t:'🧾 En cada venta, el "$X de más por la suba" sigue la misma regla'}]},
@@ -10747,7 +10756,7 @@ async function syncPedidosAuto(){
         varCuenta={obj:varDefs.reduce((a,x)=>a+x.vTarget,0),ml:varDefs.reduce((a,x)=>a+x.vStock,0),
           casa:varDefs.reduce((a,x)=>a+x.vCasa,0),cam:varDefs.reduce((a,x)=>a+x.vCam+x.vPv,0)};
       }
-      variantesNec=varDefs.length?varDefs.map(({v,vComprar:q,vStock,vCam,vPv,vCasa,vHist,vTarget})=>({v,q,ml:vStock,cam:vCam,casa:vCasa,obj:vTarget,...(vPv?{pv:vPv}:{}),...(vHist?{hist:true}:{})})):null;
+      variantesNec=varDefs.length?varDefs.map(({v,vComprar:q,vStock,vCam,vPv,vCasa,vHist,vTarget,vRate})=>({v,q,ml:vStock,cam:vCam,casa:vCasa,obj:vTarget,dias:vRate>0?Math.min(999,Math.round((vStock+vCam+vCasa+(vPv||0))/vRate)):null,...(vPv?{pv:vPv}:{}),...(vHist?{hist:true}:{})})):null;
     } else {
       const targetStock=Math.ceil(vDia*TARGET_DIAS_P);
       necesario=Math.max(0,targetStock-stock);
@@ -14757,6 +14766,23 @@ function cuentaPedidoHTML(p){
 // decisión (con unidades en casa no hay que comprar, hay que MANDAR).
 // Los pedidos viejos no tienen estos campos guardados: ahí no se inventa nada, se muestra el chip
 // como antes hasta que el panel lo vuelva a calcular.
+// Semáforo de UNA variante: misma vara que el producto (ML + camino + casa). Pedido viejo sin `dias`: sólo rojo o amarillo.
+const _PED_SEM_ORD={rojo:0,naranja:1,amarillo:2};
+function pedVarSem(x){
+  const tot=(x.ml||0)+(x.cam||0)+(x.casa||0)+(x.pv||0);
+  if(x.ml!=null&&tot<=0)return 'rojo';
+  return (x.dias!=null&&x.dias<=PED_DIAS_ROJO)?'naranja':'amarillo';
+}
+function pedVarFila(x){
+  const q=x.q||0,sem=pedVarSem(x),n=v=>fmtN(v||0);
+  const col={rojo:'var(--red)',naranja:'#f97316',amarillo:'#ca8a04'}[sem];
+  const lug=(x.ml!=null||x.cam!=null||x.casa!=null)?`📦 ${n(x.ml)} en ML · 🚚 ${n(x.cam)} en camino · 🏠 ${n(x.casa)} en casa${x.pv>0?` · 🧴 ${n(x.pv)} al Paulvic`:''}`:'';
+  const dTxt=sem==='rojo'?'🔴 sin stock en ningún lado':(x.dias!=null&&x.dias<999?`${sem==='naranja'?'🟠':'🟡'} alcanza ~${x.dias} d`:'');
+  return `<div class="ped-var-fila sem-${sem}" style="border-left-color:${col}">
+    <div class="ped-var-txt"><b>${x.v}</b>${x.hist?' <span style="color:var(--amber);font-size:.8em">· ritmo viejo</span>':''}<i>${[dTxt,lug].filter(Boolean).join(' · ')}</i></div>
+    ${q>0?`<span class="ped-var-u" style="color:${col}"><b>${n(q)}</b><i>u. a comprar</i></span>`:`<span class="ped-var-u" style="color:var(--green)"><b>✓</b><i>mandar de casa</i></span>`}
+  </div>`;
+}
 function pedVarChip(x){
   const q=x.q||0;
   const tieneLugares=(x.ml!=null||x.cam!=null||x.casa!=null);
@@ -15080,7 +15106,11 @@ function _pedidoItemHtml(p,opts){
   const vars=Array.isArray(p.variantesNec)&&p.variantesNec.length?p.variantesNec:null;
   const varsSorted=vars?[...vars].sort((a,b)=>b.q-a.q):null;
   const _vOpen=varsSorted&&_openPedVars.has(p.id);
-  const varToggle=varsSorted?`<details class="pi-var-det"${_vOpen?' open':''} ontoggle="_setPedVarOpen('${p.id}',this.open)"><summary class="pi-var-toggle">Variantes (${varsSorted.length})</summary><div class="pi-var-list">${varsSorted.map(x=>pedVarChip(x)).join('')}</div></details>`:'';
+  void _vOpen;
+  // LAS VARIANTES A LA VISTA (06/10/2026, pedido suyo: "al hacer click aparezcan las variantes directamente
+  // con su respectivo color y unidades a comprar, como cualquier otro producto normal"). Al abrir la tarjeta
+  // cada color es un renglón con su semáforo y sus unidades, sin otro desplegable. Primero los rojos.
+  const varToggle=varsSorted?`<div class="ped-vars">${[...varsSorted].sort((a,b)=>(_PED_SEM_ORD[pedVarSem(a)]-_PED_SEM_ORD[pedVarSem(b)])||((b.q||0)-(a.q||0))).map(x=>pedVarFila(x)).join('')}</div>`:'';
   const _prod=(state.products||[]).find(x=>x.id===p.prodId||(x.name&&normTxt(x.name)===normTxt(p.producto||'')));
   // El botón sale con CUALQUIER foto, no sólo con la cargada a mano: antes miraba `_prod.foto`,
   // que sólo se prende al subir una, así que con la foto automática de ML el botón no aparecía.
@@ -15140,12 +15170,12 @@ function _pedidoItemHtml(p,opts){
       <span class="ped-caret">▼</span>
     </summary>
     <div class="ped-body">
+      ${varToggle}
       ${fotoBtn}${copiarBtn}
       ${p.nota?`<span class="pi-nota">${p.nota}</span>`:'<span class="pi-nota" style="flex:0"></span>'}
       ${_enCam?'':riesgoBadge}
       ${(()=>{const _r=pedSinSentido(p);return _r?`<span class="pi-var-toggle" style="background:rgba(245,158,11,.14);color:var(--amber);border-color:rgba(245,158,11,.35);cursor:default" title="${_r.det.join(' · ').replace(/"/g,'&quot;')}">⚠️ este renglón no cierra${_r.n>1?' ('+_r.n+')':''}</span>`:'';})()}
       ${origenBtn}
-      ${varToggle}
       ${cuentaPedidoHTML(p)}
       ${opts.verdDet?`<div style="flex-basis:100%;font-size:.62rem;line-height:1.5;color:var(--muted)">🇵🇾 ${opts.verdDet}</div>`:''}${_prod?maxCompraHTML(_prod):''}
       <button class="pi-prov ${p.proveedor?'':'sin-prov'}" onclick="setPedidoProveedor('${p.id}')">${p.proveedor?p.proveedor.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'):'+ proveedor'}</button>

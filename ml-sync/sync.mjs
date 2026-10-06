@@ -15678,6 +15678,18 @@ async function main() {
     // (`RN_SANO_DIAS`). Se saca la marca liquidando y el rescate de la noche lo vuelve a la base (25%).
     // Antes la marca se caía recién en 0 unidades: se remataban también las del mes normal, y si
     // llegaba una caja antes de quedar en cero no salía nunca.
+    // BILLING_PROBE=preciosotravez[:go] → BORRA LA MARCA "el robot de precios ya corrió hoy" (06/10/2026).
+    // Pedido suyo: *"¿por qué esperar? los precios de hoy estaban mal con las reglas anteriores"*. Sólo
+    // saca `cyc/robotprecios/dia`; la próxima corrida de ml-daily vuelve a pasar por TODOS los frenos.
+    if (/^preciosotravez(:|$)/.test(String(process.env.BILLING_PROBE || ''))) {
+      const GO = /:go$/.test(String(process.env.BILLING_PROBE));
+      const m = await db.get('cyc/robotprecios/dia').catch(() => '(no se pudo leer)');
+      console.log(`marca del día: ${m || '(vacía)'}`);
+      if (!GO) { console.log('PRUEBA: con :go la borro.'); return; }
+      await db.set('cyc/robotprecios/dia', null);
+      console.log(`✓ borrada · releída: ${(await db.get('cyc/robotprecios/dia')) || '(vacía)'}`);
+      return;
+    }
     if (/^ritmo(:|$)/.test(String(process.env.BILLING_PROBE || ''))) {
       const GO = /:go$/.test(String(process.env.BILLING_PROBE));
       const RN_SANO_DIAS = 30;
