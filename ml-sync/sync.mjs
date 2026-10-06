@@ -3126,7 +3126,7 @@ async function medirParamCompra(db, accounts, labels, GO) {
   console.log(`\n🚚 ENVÍO DE FULL arriba de $33.000 · ${env.length} publicaciones con el envío medido en ventas`);
   if (env.length >= 5) {
     out.envioArriba = Math.round(pct(env, 0.5));
-    console.log(`   el más barato ${money(Math.min(...env))} · el del medio ${money(pct(env, 0.5))} · 75% ${money(out.envioArriba)} · el más caro ${money(Math.max(...env))}`);
+    console.log(`   el más barato ${money(Math.min(...env))} · el del medio ${money(pct(env, 0.5))} · 75% ${money(pct(env, 0.75))} · el más caro ${money(Math.max(...env))}`);
     console.log(`   → se usa ${money(out.envioArriba)} (antes ${money(CAND_ENVIO_ARRIBA)}): el del medio (los candidatos son casi todos livianos; el 75% lo empujan los grandes)`);
   } else console.log(`   ⚠️ menos de 5: no alcanza para cambiar el número. Queda ${money(CAND_ENVIO_ARRIBA)}.`);
   out.envioN = env.length;
