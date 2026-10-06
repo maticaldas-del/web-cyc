@@ -2435,7 +2435,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='22.17';
+const APP_VERSION='22.18';
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
 // muestre la versión y la fecha de actualización y que tenga un desplegable predeterminado cerrado".
 // Y el mismo día: "que ponga fecha de cada modificación y haya una barrita para scrollear y que
@@ -2446,6 +2446,7 @@ const APP_VERSION='22.17';
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'22.18',f:'06/10/2026',h:'14:20',c:[{n:1,t:'🇵🇾 Pedidos Paraguay: el "da / no da · pidiéndolo queda N%" va adentro de la tarjeta, abajo del nombre'},{n:2,t:'🇵🇾 La ficha del producto calcula "si lo reponés hoy" igual que Pedidos (antes una decía 22% y la otra 48%), y las dos dicen a qué precio de venta'}]},
   {v:'22.17',f:'06/10/2026',h:'14:05',c:[{n:1,t:'🇵🇾 Pedidos Paraguay: un solo % por producto, el que te queda si lo pedís hoy al precio de Nissei (se sacó el "te queda" calculado con lo que pagaste la última vez)'}]},
   {v:'22.16',f:'06/10/2026',h:'02:10',c:[{n:2,t:'Robot de precios: ahora cuenta TODO lo que el robot cambia solo, también cuando vuelve atrás un cambio que perdía plata. Lo único que sigue afuera es la suba que hace después de una venta con % bajo.'}]},
   {v:'22.15',f:'06/10/2026',h:'01:30',c:[{n:3,t:'🤖 Robot de precios: el rescate que sube ANTES de que una venta salga mal (el de la noche o por costo) ahora suma como mérito del robot; el que sube después de una venta con % bajo sigue sin sumar'}]},
@@ -4594,8 +4595,12 @@ function paraguayHtml(p){
   // intactos: `costFullUSDof` recalcula solo cuando alguno de esos está cargado, así que el
   // `costFullUSD` guardado (que tiene el costo VIEJO adentro) no puede tapar la cuenta.
   const mgHoy=margenMLDe(p);
-  const mgRepo=puesto>0?margenMLDe({...p,costUSD:puesto,costFullUSD:null,shipUSD:(p.shipUSD!=null?p.shipUSD:0)}):null;
-  const pintar=(m)=>(!m||m.margen==null)?'var(--muted)':(m.margen>=25?'var(--green)':m.margen>=23?'var(--amber)':'var(--red)');
+  // 06/10/2026: el de reponer sale de margenSiComproPY, la MISMA cuenta que Pedidos (él vio 22% acá y 48% allá:
+  // acá se medía al precio de hoy y allá al que se puede cobrar teniendo Full). Si no se puede, el de antes.
+  let mgRepo=null,_rpP=0,_rpF='';
+  try{const _mx=maxCompraDe(p,PY_PROB_PISO);const _m=margenSiComproPY(_mx,nu);if(_m!=null){mgRepo={margen:_m};_rpP=_mx.P;_rpF=_mx.fuente;}}catch(e){}
+  if(!mgRepo&&puesto>0)mgRepo=margenMLDe({...p,costUSD:puesto,costFullUSD:null,shipUSD:(p.shipUSD!=null?p.shipUSD:0)});
+  const pintar=(m)=>(!m||m.margen==null)?'var(--muted)':(m.margen>=25?'var(--green)':m.margen>=PY_PROB_PISO?'var(--amber)':'var(--red)');
   return `<div style="display:flex;flex-direction:column;gap:4px;background:rgba(239,68,68,.05);border:1px solid rgba(239,68,68,.25);border-radius:8px;padding:8px 12px">
     <div style="font-size:.6rem;color:#f87171;text-transform:uppercase;letter-spacing:.08em;margin-bottom:2px">🇵🇾 Paraguay <span style="text-transform:none;letter-spacing:0;font-size:.92em;color:var(--muted)">· mirado ${cuando}</span></div>
     <div style="display:flex;align-items:flex-end;gap:10px;flex-wrap:wrap">
@@ -4611,11 +4616,11 @@ function paraguayHtml(p){
         <div style="font-size:1.15rem;font-weight:700;color:${pintar(mgHoy)}">${mgHoy&&mgHoy.margen!=null?mgHoy.margen.toFixed(0)+'%':'—'}</div>
       </div>
       <div style="font-size:.64rem;line-height:1.45">
-        <div style="color:var(--muted)">si lo REPONÉS hoy · US$ ${puesto.toFixed(2)}</div>
+        <div style="color:var(--muted)">si lo REPONÉS hoy · US$ ${puesto.toFixed(2)}${_rpP&&mgHoy&&_rpP!==Math.round(mgHoy.precio||0)?` · vendiéndolo a ${fmt(_rpP)}${_rpF==='full'?' (con Full)':_rpF==='caja'?' (para ganar la caja)':''}`:''}</div>
         <div style="font-size:1.15rem;font-weight:700;color:${pintar(mgRepo)}">${mgRepo&&mgRepo.margen!=null?mgRepo.margen.toFixed(0)+'%':'—'}</div>
       </div>
       <div style="flex:1;min-width:190px;font-size:.62rem;color:var(--muted);line-height:1.5;padding-top:2px">
-        ${mgRepo&&mgRepo.margen!=null&&mgRepo.margen<25
+        ${mgRepo&&mgRepo.margen!=null&&mgRepo.margen<PY_PROB_PISO
           ? `<span style="color:var(--amber)"><b>A este precio no conviene comprarlo.</b> El de la izquierda no cambia: lo que ya tenés se sigue vendiendo igual.</span>`
           : `El precio de Paraguay <b>no toca</b> el costo ni ningún precio de venta. Sólo dice si conviene volver a comprarlo.`}
         ${diasPy!=null&&diasPy>30?`<br><span style="color:var(--amber)">⚠️ este precio se miró hace ${diasPy} días.</span>`:''}
@@ -14952,8 +14957,8 @@ function pyProbVisHTML(_prod){
     // UN SOLO % (07/10/2026, él: "porque dice que me queda un 35 y arriba un 48%? (…) que me muestre un % por
     // producto, el que me quedaría si lo pido"). El 35% era con lo que pagaste la última vez; acá va sólo el
     // de pedirlo HOY al precio de Nissei (la misma cuenta del veredicto de arriba: margenSiComproPY).
-    let mgPed=null;try{const _mx=maxCompraDe(_prod,PY_PROB_PISO);mgPed=margenSiComproPY(_mx,parseFloat(_prod.nisseiUSD)||0);}catch(e){}
-    const datos=mg&&mg.precio>0?`<div style="font-size:.74rem;color:var(--muted);flex-basis:100%">🏷️ tu precio en ML <b style="color:var(--text)">${fmt(Math.round(mg.precio))}</b>${mgPed!=null?` · si lo pedís hoy te queda <b style="color:${typeof pctColor==='function'?pctColor(mgPed):'var(--text)'}">${Math.round(mgPed)}%</b>`:''}${_prod.nisseiUSD?` · 🇵🇾 Nissei US$ ${Number(_prod.nisseiUSD).toFixed(2)}${_prod.nisseiTs?' (mirado '+new Date(Number(_prod.nisseiTs)).toLocaleDateString('es-AR')+')':''}`:''}${_prod.codPy?` · 🔖 ${_prod.codPy}`:''}</div>`:'';
+    let mgPed=null,_mxP=0,_mxF='';try{const _mx=maxCompraDe(_prod,PY_PROB_PISO);mgPed=margenSiComproPY(_mx,parseFloat(_prod.nisseiUSD)||0);if(_mx&&!_mx.motivo){_mxP=_mx.P;_mxF=_mx.fuente;}}catch(e){}
+    const datos=mg&&mg.precio>0?`<div style="font-size:.74rem;color:var(--muted);flex-basis:100%">🏷️ tu precio en ML <b style="color:var(--text)">${fmt(Math.round(mg.precio))}</b>${mgPed!=null?` · si lo pedís hoy te queda <b style="color:${typeof pctColor==='function'?pctColor(mgPed):'var(--text)'}">${Math.round(mgPed)}%</b>${_mxP&&_mxP!==Math.round(mg.precio)?` vendiéndolo a <b style="color:var(--text)">${fmt(_mxP)}</b>${_mxF==='full'?' (lo que se puede cobrar teniendo Full)':_mxF==='caja'?' (lo que pide ML para ganar la caja)':''}`:''}`:''}${_prod.nisseiUSD?` · 🇵🇾 Nissei US$ ${Number(_prod.nisseiUSD).toFixed(2)}${_prod.nisseiTs?' (mirado '+new Date(Number(_prod.nisseiTs)).toLocaleDateString('es-AR')+')':''}`:''}${_prod.codPy?` · 🔖 ${_prod.codPy}`:''}</div>`:'';
     return `${datos}<div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;width:100%">
       <div style="display:flex;gap:6px">${ph(fPY,'🇵🇾 Paraguay')}${ph(fML,'🏷️ ML')}</div>
       <div style="font-size:.76rem;line-height:1.8">${mlUrl?A(mlUrl,'🔗 verlo en ML'):'<span style="color:var(--muted)">🔗 sin publicación en ML</span>'}<br>${/^https:\/\//.test(lPY)?A(lPY,'🇵🇾 verlo en comprasparaguay'):'<span style="color:var(--amber)">🇵🇾 falta el link de comprasparaguay (lo carga Guay)</span>'}</div>
@@ -15083,7 +15088,7 @@ function _pedidoItemHtml(p,opts){
   return `<details class="ped-card ${_est}"${_abierto?' open':''} ontoggle="_setPedCardOpen('${p.id}',this.open)">
     <summary class="ped-head">
       ${_prod?fotoChipHTML(_prod,38,p.variante||''):''}
-      <span class="ped-name">${p.producto||'—'}${p.variante?` <span style="padding:1px 6px;border-radius:4px;background:rgba(124,58,237,.15);color:#a78bfa;font-size:.65rem;font-family:'DM Mono',monospace;font-weight:400">${p.variante}</span>`:''}</span>
+      <span class="ped-name">${p.producto||'—'}${p.variante?` <span style="padding:1px 6px;border-radius:4px;background:rgba(124,58,237,.15);color:#a78bfa;font-size:.65rem;font-family:'DM Mono',monospace;font-weight:400">${p.variante}</span>`:''}${opts.etiqueta||''}</span>
       ${_prod?maxCompraChip(_prod):''}
       <span class="ped-buy"><b>${fmtN(p.cantidad||1)}</b><i>u. a comprar${p.auto===false?' · a mano':''}</i></span>
       <span class="ped-caret">▼</span>
@@ -15306,7 +15311,11 @@ function renderPedidos(){
     // SIMPLE A LA VISTA, EL DETALLE ADENTRO (06/10/2026, él: "lo quiero más simple, el detalle al abrir el
     // detalle en el producto"). Arriba de la tarjeta sólo el veredicto y en cuánto queda; el renglón largo
     // (precio de Nissei, máximo, Full, cuotas) va adentro de la tarjeta, al lado del máximo de compra.
-    const card=({p,v})=>`<div style="font-size:.72rem;margin:0 0 3px 4px;color:${v.k==='da'?'var(--green)':v.k==='noda'?'var(--red)':'var(--muted)'}">${v.k==='da'?'✅ da':v.k==='noda'?'🔴 no da':v.k==='notiene'?'⚪':'❔'}${v.k==='da'||v.k==='noda'?(v.corto?' · '+v.corto:''):' · '+v.txt}</div>`+_pedidoItemHtml(p,{showRiesgo:true,verdDet:(v.k==='da'||v.k==='noda')?v.txt:''});
+    // La etiqueta "da / no da · pidiéndolo queda N%" va ADENTRO de la tarjeta, debajo del nombre (06/10/2026,
+    // pedido suyo: "eso en verde, ponelo en la etiqueta del producto").
+    const card=({p,v})=>{const col=v.k==='da'?'var(--green)':v.k==='noda'?'var(--red)':'var(--muted)';
+      const et=`<span style="display:block;margin-top:3px;font-family:'DM Mono',monospace;font-weight:500;font-size:.72rem;color:${col}">${v.k==='da'?'✅ da':v.k==='noda'?'🔴 no da':v.k==='notiene'?'⚪':'❔'}${v.k==='da'||v.k==='noda'?(v.corto?' · '+v.corto:''):' · '+v.txt}</span>`;
+      return _pedidoItemHtml(p,{showRiesgo:true,etiqueta:et,verdDet:(v.k==='da'||v.k==='noda')?v.txt:''});};
     const grupo=(t,arr,col)=>arr.length?`<div style="font-size:.76rem;font-weight:700;color:${col};margin:12px 0 6px">${t} (${arr.length})</div>`+arr.map(card).join(''):'';
     const resto=G.noda.length+G.notiene.length+G.sinrev.length;
     el.innerHTML=`<div style="font-size:.72rem;color:var(--muted);margin:2px 0 8px">✅ Arriba sólo lo que <b style="color:var(--text)">da</b>: Nissei lo tiene, el precio se miró en los últimos ${PY_PROB_FRESCO_DIAS} días y deja ${PY_PROB_PISO}% o más. Lo deja al día Guay, que recorre los probados primero.</div>`
