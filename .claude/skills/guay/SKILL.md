@@ -20,6 +20,19 @@ Te podés cortar en cualquier momento: **guardá a medida que avanzás, nunca al
    Chrome y mandale el primer mensaje** (sección 7).
 4. Herramientas en `guay/herramientas/`, datos de Nissei ya bajados en `guay/datos/` (con fecha: reconfirmá precios).
 
+## 0b · LO QUE CAMBIÓ DESDE EL ÚLTIMO BARRIDO (03/10) — manda sobre lo de abajo y sobre aprendizajes.md
+- **El piso para COMPRAR es 24%, no 25%** (Matías, 06/10: *"arriba del 24% TODO"*): probados, nuevos y perfumes.
+  `candSetPedir` ya deja cargar desde 24%. Vender no cambió (el robot sigue igual).
+- **Las cuotas las mira el ROBOT solo** (04/10 y 06/10): lee de ML si la publicación que gana da cuotas (Premium o
+  campaña `pcj`) y mide las dos salidas —pagar las cuotas como ella o pelear SIN cuotas un poco más barato— y se queda con
+  la que deja más. **Ya NO hace falta cargar `cuotasGan` a mano** (sigue sirviendo sólo para corregir al robot).
+- **El recargo de Paraguay y el envío de Full ya no son fijos**: el robot los mide cada noche con los pedidos y ventas
+  reales. Vos cargá el precio CRUDO y nada más, como siempre.
+- **El IIBB es el de la cuenta real** donde va el producto (perfumes → Adriana; el resto → la que menos factura).
+- **El pedido a Paraguay es UNO solo** (probados y nuevos juntos, 05/10). Lo pedido viajando ya no se vuelve a pedir.
+- **Las fichas nuevas nacen con el título de ML** (06/10): no hace falta escribir nombres lindos en `nombre`.
+- **Marca prohibida:** Dolce & Gabbana (sigue).
+
 ## 1 · Dónde
 - Panel CYC: https://maticaldas-del.github.io/web-cyc/ (Matías ya está logueado en su Chrome).
 - comprasparaguay: **sólo Nissei**, con el listado `https://comprasparaguay.com.ar/busca/?loja=nissei`
@@ -48,7 +61,7 @@ Por categoría, en el orden de `progreso.md` (perfumería al final). Buscá en M
 - comparar las dos fotos · un link de ML distinto por producto · ignorar envío internacional ·
   anotar los vendidos de la más barata.
 - sirve con 100+ vendidos y precio que hace pensar que da margen. **El margen NO lo calculás vos**
-  (lo calcula el robot contra la publicación que gana; las cuotas NO se cuentan).
+  (lo calcula el robot contra la publicación que gana, con las cuotas incluidas: ver 0b).
 Cargá cada uno YA, de a uno, desde la consola del panel (el formulario ya no existe):
 `fbSet('candidatos_py/c'+Date.now(), {nombre, cod, usd, link, mlId, vendCarga, foto, marca,
 fuente:'chat', enNissei:true, ts:Date.now()})`. Ruta `candidatos_py` (NO `candidatos`); `mlId` = id
@@ -70,7 +83,7 @@ Si no alcanza el tiempo, decí cuánto falta; nunca lo des por completo.
 Nada en el panel ni en el robot llena el pedido solo: las unidades entran únicamente con
 `candSetPedir(id, u)` (o el botón 🪄 si Matías lo aprieta). Lo armás vos, con tope US$ 1.000 crudos,
 mitad probados y mitad nuevos, poniendo lo mejor (más %, más ventas, más seguro), máx. 2 u. por nuevo.
-`candSetPedir` no deja cargar lo que el robot todavía no midió o da menos de 25%: el robot mide de
+`candSetPedir` no deja cargar lo que el robot todavía no midió o da menos de 24%: el robot mide de
 noche y al mediodía (40 por vuelta); si necesitás que mida antes, pedíselo a "CYC WEB".
 Cargá el pedido de a poco a medida que aparecen los buenos, así si te cortás queda uno decente.
 

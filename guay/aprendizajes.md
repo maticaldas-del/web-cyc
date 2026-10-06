@@ -266,3 +266,10 @@ match de las categorías que sí dan: **routers, memorias, accesorios de cámara
   relacionado recontra van. porque si no se venden en ml se venden en la perfumería"*. Se barre todo el maquillaje y
   "maquillaje" ya NO es palabra excluida. Tiene segunda salida (la perfumería), así que es prioridad.
   **Vara DECIDIDA el 03/10: la misma que todos los nuevos** — 25% de margen y 100+ vendidas. No se afloja.
+
+## 06/10/2026 · ACTUALIZACIÓN ANTES DEL BARRIDO SIGUIENTE (CYC WEB)
+- Piso para comprar: **24%** para todo (antes 25%). Donde abajo dice 25%, leé 24%.
+- Cuotas: el robot las detecta solo en cada oferta de ML y elige pagarlas o pelear sin cuotas. `cuotasGan` a mano ya no
+  hace falta (sólo para corregir). Lo de "joysticks/micrófonos con 6-9 cuotas no llegan" sigue valiendo como pista.
+- Recargo y envío de Full medidos por el robot cada noche; IIBB de la cuenta real. El chat no suma nada: precio crudo.
+- Pedido a Paraguay único (probados + nuevos). Fichas nuevas con el título de ML.
