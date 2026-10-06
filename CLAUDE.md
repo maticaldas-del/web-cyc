@@ -819,6 +819,8 @@ cae al estado). Los botones de filtro y los contadores van por color. **`estado`
 exactamente cuáles son las que no hay stock en ningún lado"*. Un naranja que vende mucho (Cartas Casino) va arriba de rojos. No
 volver a ordenar por semáforo. Colores sin nada que comprar: una línea gris abajo de la tarjeta (v22.24).
 
+**v22.27/22.28:** en Pedidos el máximo de compra de Bs As y Paulvic va SÓLO en pesos y grande (`.ped-max.ars`); Paraguay sigue en dólares.
+
 ## DESPUÉS DE SALIR DEL REMATE POR SOBRA: 3 DÍAS DE PRUEBA (06/10/2026)
 Él: *"entra en remate, en 5 días vende 10: que lo suba con margen de 3 días y si no se vendió lo suficiente que tenía que vender
 esos 3 días que vuelva a bajar"*. La salida ya existía (`ritmo:go`, la noche que el stock queda sano, y el rescate de esa misma noche
