@@ -809,6 +809,25 @@ privada unificados · las dos facturas de Sancor analizadas.
 **Versión del panel: 20.16 · caché `cyc-v294`**. El ciclo del robot quedó **prendido**.
 
 
+## LOS NÚMEROS DE COMPRA SE MIDEN SOLOS CADA NOCHE (06/10/2026, v22.05 · `cyc-v485`)
+Él: *"con el tiempo los costos cambian y si yo no te decía estamos viendo mal"* · *"IIBB poner lo real en todas"* ·
+*"una publicación a 100.000 en 6 cuotas capaz le gana a una de 90.000 sin cuotas. Eso lo tenés que ver vos"*.
+ · **`paramcompra[:go]`** (ml-daily, antes de `techofull`) guarda `cyc/mlconfig/paramCompra`: `envioArriba` (p75 del envío
+   medido en `netopub` arriba de $33.000, 5+ filas, 45 d) · `recargo` (promedio de los últimos 3 pedidos con `recargoRealPedido`,
+   hace falta 2+) · `cuentaNuevos` (la que menos facturó en 90 d) · `cuotasDescSin` (mediana de cuánto más barato tiene que
+   estar uno SIN cuotas para que ML le dé la caja contra el ganador CON cuotas, medido con `price_to_win` de nuestras
+   publicaciones de catálogo; 3+ casos o null). Robot (`cargarParamCompra`) y web (`_aplicarParamCompra`) aplican los mismos
+   topes (envío 3.000–25.000, recargo 1,05–1,4, desc 0–0,3); sin dato quedan 6.190 y 17%.
+ · **Bug arreglado:** con un catálogo de referencia Premium (`gold_pro`) se pedía la comisión Premium, que YA trae las cuotas,
+   y encima se sumaban las cuotas: se cobraban DOS veces. Ahora candidatos/revisarcompra/gondola piden siempre Clásica
+   (`gold_special`) y las cuotas van aparte. `CAND_CALC_VER`=12 (vuelve a medir todos).
+ · **IIBB real:** `cuentaCandidato` usa `mlExtraPct(cuenta)`; la cuenta es `cuentaNuevoDe` (perfume → Adriana, si no
+   `cuentaNuevos`). Antes era 4,8% fijo.
+ · **Con o sin cuotas (`cuentaCandidatoMejor`):** si la que gana da cuotas, mide pagar cuotas como ella y también pelear SIN
+   cuotas a precio × (1 − `cuotasDescSin`), y se queda con lo que deja más (`mlVia` igual|cuotas|sincuotas, `mlPrecioVenta`).
+   La tarjeta lo dice en verde cuando conviene sin cuotas.
+ · Percepciones por cuenta (`ML_EXTRA_PCT`) siguen siendo las medidas a mano en agosto.
+
 ## COMPRAR PIDE 25% PARA TODO · VENDER SIGUE CON EL ROBOT COMO ESTABA (06/10/2026)
 Regla suya, textual: *"el 25 para todo es para comprar productos. Tanto probados como nuevos. Los que ya están en stock que
 siga como estaba el robot. Son dos cosas distintas."* **COMPRAR** (Paraguay nuevos, perfumes incluidos, y probados) = 25%
