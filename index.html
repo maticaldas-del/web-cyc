@@ -2453,7 +2453,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='22.29';
+const APP_VERSION='22.30';
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
 // muestre la versión y la fecha de actualización y que tenga un desplegable predeterminado cerrado".
 // Y el mismo día: "que ponga fecha de cada modificación y haya una barrita para scrollear y que
@@ -2464,6 +2464,7 @@ const APP_VERSION='22.29';
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'22.30',f:'06/10/2026',h:'19:10',c:[{n:2,t:'🤖 Robot de precios (Métricas): los cambios de menos de 7 días se ven desde la primera venta, en gris, con lo que ya cobraron de más o de menos por el precio y el día en que sale el resultado final. No suman al total hasta los 7 días.'}]},
   {v:'22.29',f:'06/10/2026',h:'18:55',c:[{n:1,t:'⬆️ Ventas: cada venta muestra el último cambio de precio de los 30 días anteriores (antes sólo 7)'}]},
   {v:'22.28',f:'06/10/2026',h:'16:12',c:[{n:1,t:'🧴 Pedidos Paulvic: el máximo de compra también en pesos y grande, como Bs As'}]},
   {v:'22.27',f:'06/10/2026',h:'15:26',c:[{n:1,t:'🇦🇷 Pedidos Bs As: el máximo de compra va sólo en pesos y más grande (sin dólares)'}]},
@@ -16168,6 +16169,35 @@ function renderMetAuto(){
       <div style="font-size:.6rem;color:var(--muted)">${fh(x.ts)} · ${MET_AUTO_MOT[x.motivo]||x.motivo||'?'} · ${x.de?fmt(n(x.de)):'?'} → ${x.a?fmt(n(x.a)):'?'} (${sube?'+':''}${pct}%)${n(x.deRef)>0?' · medido contra '+fmt(n(x.deRef))+', el precio antes del robot':''}${x._mesParcial?' · sólo lo vendido en '+mesTxt(metAutoMes):''}</div>
     </div>`;
   };
+  // EN CURSO, A LA VISTA Y EN GRIS (06/10/2026, eligió la (a)): él preguntó por qué esperar una semana
+  // si la plata de la suba ya se cobró. Lo cobrado de más (o de menos) desde el cambio es firme y se
+  // muestra desde la primera venta; lo que NO se sabe todavía es si se vendió menos (suba) o más (baja)
+  // por el precio, y eso necesita 7 días. Por eso va en gris y no suma al total de arriba: una baja
+  // arranca cobrando menos y recién después muestra lo que vendió de más, y una suba al revés.
+  // Si llegó otro cambio antes de los 7 días el robot lo deja "en curso" para siempre: se dice.
+  const filaCurso=x=>{
+    const sube=n(x.a)>n(x.de),rem=x.motivo==='remate'||x.motivo==='escalera',u=n(x.uD);
+    const fin=n(x.ts)+7*864e5,cortado=fin<=Date.now();
+    const v=rem?n(x.total):n(x.precio);
+    const que=u<=0?'todavía no vendió desde el cambio'
+      :rem?`${u} u. vendidas · va ${sg(v)}`
+      :`${u} u. vendidas · ya cobró ${fmt(Math.round(Math.abs(v)))} de ${v<0?'menos':'más'} por ${sube?'la suba':'la baja'}`;
+    const cuando=cortado?'otro cambio de precio llegó antes de los 7 días: queda sólo lo cobrado'
+      :rem?`el resultado final sale el ${fh(fin).slice(0,5)}`:`el resultado final (si vendió ${sube?'menos':'más'} por el precio) sale el ${fh(fin).slice(0,5)}`;
+    return `<div style="padding:6px 0;border-bottom:1px solid rgba(148,163,184,.1);font-size:.68rem;color:var(--muted)">
+      <div style="display:flex;justify-content:space-between;gap:8px;align-items:baseline">
+        <span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${sube?'⬆️':'⬇️'} ${x.nom||x.mla}${x.cuenta?' · '+x.cuenta:''}</span>
+        <b style="white-space:nowrap">${u>0?sg(v):'—'}</b>
+      </div>
+      <div style="font-size:.6rem">${fh(x.ts)} · ${MET_AUTO_MOT[x.motivo]||x.motivo||'?'} · ${x.de?fmt(n(x.de)):'?'} → ${x.a?fmt(n(x.a)):'?'} · ${que} · ${cuando}</div>
+    </div>`;
+  };
+  const curso=enCurso.slice().sort((a,b)=>n(b.ts)-n(a.ts));
+  const cursoTotV=curso.reduce((a,x)=>a+(x.motivo==='remate'||x.motivo==='escalera'?n(x.total):n(x.precio)),0);
+  const bloqueCurso=curso.length?`<div style="margin-top:14px">
+    <div style="font-size:.6rem;color:var(--muted);text-transform:uppercase;letter-spacing:.04em">⏳ En curso · lo que ya se cobró (todavía no es el resultado)</div>
+    <div style="font-size:.62rem;color:var(--muted);margin:2px 0 6px">${curso.length} cambio${curso.length===1?'':'s'} · ${sg(cursoTotV)} cobrado${curso.length===1?'':'s'} por el precio · no suma arriba hasta los 7 días</div>
+    ${curso.map(filaCurso).join('')}</div>`:'';
   const ok=conf.slice().sort((a,b)=>n(a.total)-n(b.total));
   const cuerpo=ok.length?`
     <div style="font-size:.6rem;color:var(--muted);text-transform:uppercase;letter-spacing:.04em">${confTot<0?'Plata de MENOS':'Plata de más'} que dejaron las decisiones del robot · ${metAutoMes==='todos'?'todos los meses':mesTxt(metAutoMes)}</div>
@@ -16177,9 +16207,9 @@ function renderMetAuto(){
     :`<div style="font-size:.72rem;color:var(--muted)">Todavía no hay ningún resultado${metAutoMes==='todos'?'':' en '+mesTxt(metAutoMes)}: cada cambio necesita 7 días para saber si ganó o perdió.</div>`;
   el.innerHTML=`<div class="chart-box">${viejo}
     <div style="display:flex;flex-wrap:wrap;gap:5px;margin-bottom:12px">${chipsMes}</div>
-    ${cuerpo}${notaDesh}${espera}
+    ${cuerpo}${notaDesh}${bloqueCurso}
     <details style="margin-top:10px"><summary style="cursor:pointer;font-size:.6rem;color:var(--muted)">¿Qué cuenta?</summary><div style="font-size:.6rem;color:var(--muted);line-height:1.45;margin-top:4px">
-      Sólo lo que el robot decidió mirando el mercado (📈 subir, 📉 bajar, 🧪 prueba de suba, 🔨 remate y 🪜 escalera), y sólo después de 7 días. No cuenta recuperar margen por costo o inflación (lo ibas a hacer igual) ni lo que tocaste a mano.
+      Sólo lo que el robot decidió mirando el mercado (📈 subir, 📉 bajar, 🧪 prueba de suba, 🔨 remate y 🪜 escalera), y sólo después de 7 días. Antes de eso el cambio aparece abajo, en gris, con lo que ya se cobró de más o de menos por el precio: eso es plata firme, pero si se vendió menos (o más) por el precio recién se sabe a la semana. No cuenta recuperar margen por costo o inflación (lo ibas a hacer igual) ni lo que tocaste a mano.
       "Sin robot" es que el precio se quedaba donde estaba: se compara el mismo tiempo antes y después. En remates y escalera NO se suma la ganancia de lo que se vendió (bajar el precio adelanta la venta, no la crea): cuenta lo que se cobró de menos, el almacenamiento que se dejó de pagar y la plata que volvió antes (la mercadería vendida antes de lo que se habría vendido a su ritmo normal, valorada al 1% por mes en dólares, el interés que paga CYC).
     </div></details>
     ${metVigBox()}
