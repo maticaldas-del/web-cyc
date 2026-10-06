@@ -26185,7 +26185,12 @@ async function main() {
       //  · ✋ a mano.
       // Un cambio viejo sin motivo guardado: si `cyc/autoprecio` tiene ESE mismo cambio, sale de ahí;
       // si no, una SUBA sin motivo cuenta como rescate (el lado que no se atribuye plata de más).
-      const SUP_CUENTA = new Set(['subir', 'bajar', 'remate', 'escalera', 'prueba']);
+      // RESCATE ANTES DE VENDER SÍ CUENTA (06/10/2026, regla suya con el Ferrari Negro): "si el rescate
+      // es antes de una venta sí cuenta. si se aumenta porque hubo una venta de % bajo y luego se sube
+      // al día, no". O sea: el rescate de la noche (por margen) o por costo, que sube ANTES de que una
+      // venta salga mal, es mérito del robot → motivo `rescatep`, suma. El que sube DESPUÉS de una venta
+      // con % bajo (robot al vender, `por:'venta'`) sigue siendo `rescate` y no suma.
+      const SUP_CUENTA = new Set(['subir', 'bajar', 'remate', 'escalera', 'prueba', 'rescatep']);
       function motivoDeAuto(a) {
         const por = a && a.por;
         if (por === 'margen' || por === 'venta' || por === 'costo') return 'rescate';
@@ -26203,6 +26208,18 @@ async function main() {
         if (m) return m;
         return ev.a > 0 && ev.de > 0 && ev.a < ev.de ? 'bajar' : 'rescate';
       };
+      // ¿El rescate fue ANTES de una venta (cuenta) o por una venta de % bajo (no cuenta)?
+      const esRescatePrevio = (ev) => {
+        if (ev.origen === 'robot al vender') return false;
+        if (ev.por) return ev.por === 'margen' || ev.por === 'costo';
+        if (ev.origen === 'robot por costo') return true;
+        if (ev.origen !== 'robot de noche') return false;
+        const a = autop[ev.mla];
+        if (a && Math.abs((Number(a.ts) || 0) - ev.ts) < 5 * 60e3 && a.por) return a.por === 'margen' || a.por === 'costo';
+        // sin el `por` guardado: si esa publicación vendió en las 3 horas de antes, la suba fue por la venta
+        return !(porMla[ev.mla] || []).some((x) => x.ts <= ev.ts && ev.ts - x.ts < 3 * 3600e3);
+      };
+      const motivoFinal = (ev) => { const m = motivoDe(ev); return m === 'rescate' && esRescatePrevio(ev) ? 'rescatep' : m; };
 
       // ── 1. LOS CAMBIOS NUEVOS ──────────────────────────────────────────────────
       const nuevos = {};
@@ -26221,7 +26238,7 @@ async function main() {
       for (const [mla, a] of Object.entries(autop)) {
         if (!a || !a.ts || ahora - a.ts > MAX_DIAS * 864e5) continue;
         if (a.estado === 'subiendo') continue;   // etapa 4: una suba que quedó a medias no es un cambio medido
-        agregar({ mla, ts: a.ts, a: Math.round(a.a || 0) || null, de: Math.round(a.de || 0) || null, origen: a.por === 'costo' ? 'robot por costo' : 'robot de noche', aprox: false, motivo: motivoDeAuto(a) });
+        agregar({ mla, ts: a.ts, a: Math.round(a.a || 0) || null, de: Math.round(a.de || 0) || null, origen: a.por === 'costo' ? 'robot por costo' : 'robot de noche', aprox: false, motivo: motivoDeAuto(a), por: a.por || null });
       }
       // La foto: lo que cambió entre la noche pasada y hoy y NO lo anotó el robot.
       const todosEv = () => [...Object.values(eventos), ...Object.values(nuevos)];
@@ -26367,7 +26384,7 @@ async function main() {
         origen: ev.origen, motivo, de: ev.de || null, a: ev.a || null, ts: ev.ts, aprox: !!ev.aprox });
       const motivosNuevos = {};
       for (const [id, ev] of Object.entries(todos)) {
-        const motivo = motivoDe(ev);
+        const motivo = motivoFinal(ev);
         if (!ev.motivo) { if (nuevos[id]) nuevos[id].motivo = motivo; else motivosNuevos[id] = motivo; }
         if (!ROBOT.has(ev.origen)) { manuales++; registros.push({ ...base(id, ev, motivo), estado: 'mano' }); continue; }
         if (!(ev.de > 0) || !(ev.a > 0)) { sinPrecio++; registros.push({ ...base(id, ev, motivo), estado: 'sinprecio' }); continue; }
@@ -32664,7 +32681,7 @@ async function main() {
             console.log(`    ⇄ ${new Date(e.ts).toISOString().slice(0, 16)} ${e.motivo || '?'} ${e.de} → ${e.a}`);
           // Y lo que el supervisor contó de cada cambio (06/10/2026: "¿por qué la suba del Ferrari no figura?").
           for (const x of (Array.isArray(rsSup.todos) ? rsSup.todos : [])) if (x && x.mla === mla)
-            console.log(`    Σ ${new Date(x.ts).toISOString().slice(0, 16)} ${x.motivo || '?'} ${x.de}→${x.a} · ${x.estado} · ${x.dias ?? '?'} d · u antes ${x.uA ?? '-'} · u después ${x.uD ?? '-'} · precio ${x.precio ?? '-'} · volumen ${x.volumen ?? '-'} · total ${x.total ?? '-'} · cuenta ${x.enTotal ? 'SÍ' : 'NO'}${x.quiebre ? ' · quiebre' : ''}${x.volSinDato ? ' · vol sin dato' : ''}`);
+            console.log(`    Σ ${new Date(x.ts).toISOString().slice(0, 16)} ${x.motivo || '?'} (${x.origen || '?'}) ${x.de}→${x.a} · ${x.estado} · ${x.dias ?? '?'} d · u antes ${x.uA ?? '-'} · u después ${x.uD ?? '-'} · precio ${x.precio ?? '-'} · volumen ${x.volumen ?? '-'} · total ${x.total ?? '-'} · cuenta ${x.enTotal ? 'SÍ' : 'NO'}${x.quiebre ? ' · quiebre' : ''}${x.volSinDato ? ' · vol sin dato' : ''}`);
         }
       }
       return;
