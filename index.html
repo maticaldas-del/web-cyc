@@ -2434,7 +2434,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='22.07';
+const APP_VERSION='22.08';
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
 // muestre la versión y la fecha de actualización y que tenga un desplegable predeterminado cerrado".
 // Y el mismo día: "que ponga fecha de cada modificación y haya una barrita para scrollear y que
@@ -2445,6 +2445,7 @@ const APP_VERSION='22.07';
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'22.08',f:'06/10/2026',h:'22:35',c:[{n:1,t:'📦 Armar caja: cuando ninguna cuenta necesita un producto, dice cuenta por cuenta cuánto tiene en Full, en camino, cuánto vendió y por qué no hace falta mandar'}]},
   {v:'22.07',f:'06/10/2026',h:'21:50',c:[{n:1,t:'🇵🇾 Las fichas nuevas de Paraguay nacen con el título de ML, no el de comprasparaguay (que viene en portugués)'}]},
   {v:'22.06',f:'06/10/2026',h:'21:30',c:[{n:2,t:'🇵🇾 Probados que no dan: dicen en cuánto % quedaría si lo pedís igual al precio de Nissei'}]},
   {v:'22.05',f:'06/10/2026',h:'12:30',c:[{n:3,t:'🇵🇾 Paraguay: el envío de Full arriba de $33.000 y el recargo del pedido salen de lo MEDIDO cada noche (ya no números fijos)'},{n:3,t:'🇵🇾 Candidatos: cuando la que gana da cuotas, el robot mide también pelear SIN cuotas más barato y se queda con lo que deja más'},{n:2,t:'🇵🇾 Candidatos: el IIBB es el real de la cuenta donde va el producto (perfumes Adriana, el resto la que menos factura)'}]},
@@ -6026,10 +6027,15 @@ function renderOfiCaja(){
     else if(f.nadieNecesita){
       // Se dice la CUENTA, no sólo la conclusión: cuántas hay en Full, cuántas van en camino y a
       // qué ritmo vende. Es el número con el que se decide cuando ML dice lo contrario.
-      const det=(f.porQueNo||[]).map(c=>`${c.cuenta}: ${c.enML} en Full`
+      // Un renglón por cuenta, con el MOTIVO de cada una (06/10/2026, él: "quiero que diga stock en
+      // donde esta. ya que ninguna lo necesita, quiero saber porque").
+      const det=(f.porQueNo||[]).map(c=>`<div>· <b>${c.cuenta}</b>: ${c.enML} en Full`
         +(c.camino>0?` + ${c.camino} en camino`:'')
-        +` · vende ${c.vMes} por mes`
-        +(c.dias!=null&&c.dias<900?` → le alcanza ${Math.round(c.dias)} días`:(c.vMes<=0?' → no vendió ninguna':''))).join(' · ');
+        +` · vendió ${c.vMes} en ${PED_MAX_DAYS} días`
+        +(c.pocas?` → con ${c.vMes===1?'una sola venta':'2 ventas'} no se saca un ritmo y tiene stock: no se manda más`
+          :c.dias!=null&&c.dias<900?` → le alcanza para ${Math.round(c.dias)} días`
+          :c.vMes<=0?` → tiene stock y no vendió ninguna: mandar más no lo hace vender`:'')
+        +`</div>`).join('');
       pie=`<div style="font-size:.66rem;color:var(--green);margin-top:5px">✓ Ninguna cuenta lo necesita: a todas les alcanza para ${REPO_DIAS_COBERTURA} días o más. Dejalo en casa.`
         +(det?`<div style="color:var(--muted);margin-top:2px">${det}</div>`:'')
         +`<div style="color:var(--muted);margin-top:2px">Si ML te pide mandar igual, es porque su mínimo son 4 u. y no descuenta lo que va en camino.</div></div>`;
@@ -10410,7 +10416,7 @@ function _repartoVariantes(p,hayTotal,tr){
       // *"ml me pide que mande y la web de cyc no, que hago?"*. Dos pantallas que se contradicen
       // sin decir por qué obligan a elegir a ciegas — la misma lección del cero sin explicación.
       porQueNo:sug.length===0&&publicadas.length>0?cand.slice(0,4).map(c=>({
-        cuenta:c.cuenta,enML:c.enML,camino:c.camino,vMes:c.vMes,dias:c.dias})):null});
+        cuenta:c.cuenta,enML:c.enML,camino:c.camino,vMes:c.vMes,dias:c.dias,pocas:c.pocas})):null});
   }
   // Lo contado sin aroma (la casilla del producto quedó con más que la suma de sus variantes):
   // se muestra aparte para que no desaparezca de la pantalla sin decir nada.
@@ -10467,7 +10473,12 @@ function repartoOficina(){
     }
     filas.push({p,hay,sug,sobra:quedan,
       sinPublicar:reales.length===0,
-      nadieNecesita:sug.length===0&&publicadas.length>0});
+      nadieNecesita:sug.length===0&&publicadas.length>0,
+      // Igual que la rama con variantes: el POR QUÉ con los números de cada cuenta. Faltaba acá y
+      // los productos sin colores decían "ninguna lo necesita" sin decir dónde estaba el stock
+      // (06/10/2026, la Mini Linterna COB: "quiero saber porque").
+      porQueNo:sug.length===0&&publicadas.length>0?cand.map(c=>({
+        cuenta:c.cuenta,enML:c.enML,camino:c.camino,vMes:c.vMes,dias:c.dias,pocas:c.pocas})):null});
   });
   // Primero lo que más urge mandar: la cuenta más apretada de cada producto.
   filas.sort((a,b)=>{
