@@ -41,7 +41,7 @@ process.on('SIGTERM', () => _alCortar('SIGTERM'));
 // ML, Mercado Pago y Telegram en sólo lectura (se deja renovar y guardar el token de ML, que ML rota).
 const EN_CONSULTA = process.env.GITHUB_WORKFLOW === 'ml-consulta' || process.env.ML_CONSULTA === '1';
 const CONSULTA_ESCRIBE = new Set(['vincular', 'pasara', 'nomandar', 'fijarvar', 'cupo', 'poncosto', 'tamfull', 'lotesfull']);
-const CONSULTA_NIEGA = new Set(['candcuotas', 'candml', 'ofi', 'ancla', 'responder', 'pyped', 'cajallego', 'abrircaja', 'compray', 'pedir', 'dispo', 'saldoml',
+const CONSULTA_NIEGA = new Set(['candcuotas', 'candml', 'ofi', 'pvped', 'ancla', 'responder', 'pyped', 'cajallego', 'abrircaja', 'compray', 'pedir', 'dispo', 'saldoml',
   'armarsaldo', 'avisos', 'cajasllegaron', 'netoweb', 'netoreal', 'candidatos', 'supervisor', 'sacapromos', 'pausar', 'liquidando',
   'unapub', 'volver', 'submargen', 'fijar', 'activarfull', 'meta', 'ciclo', 'marcano', 'pausaprecio', 'cargargasto', 'retiromes']);
 let CONSULTA_SOLO_LEE = false;
@@ -33578,6 +33578,114 @@ async function main() {
       await db.set('cyc/pausado_precio/' + p.id, entry);
       if (pedE) await db.set(`cyc/${coll}/${pedE[0]}`, null);
       console.log('✓ Guardado.');
+      return;
+    }
+
+    // BILLING_PROBE=pvped[:...] → LOS PEDIDOS AL PAULVIC, DESDE EL CHAT (06/10/2026). Pedido suyo:
+    // *"cuando hago un pedido de paulvic te lo paso y lo descontás de pedir, ponelo como llegando (…) y
+    // cuando llega te paso lo que llegó, lo más normal es que llegue todo como lo pedí, pero puede ser
+    // que llegue menos"*. Vive en `cyc/pedidospv/<id>`; la web (Pedidos → Paulvic) lo muestra arriba y
+    // resta lo pedido, aroma por aroma, de lo que hay que comprar. Sin `go` SOLO MUESTRA.
+    //   pvped                                         → los pedidos en camino
+    //   pvped:<aroma>=<u>[;<aroma>=<u>][;fecha=AAAA-MM-DD][;go]  → "ya lo pedí" (`=` adelante = nombre exacto)
+    //   pvped:llego:<id|ultimo>[;<aroma>=<u>…][;go]   → llegó. Sin aromas = llegó TODO lo pedido; con aromas,
+    //                                                   lo que se nombra reemplaza lo pedido (0 = no vino) y lo
+    //                                                   que no se nombra llegó completo. Lo que llegó se SUMA a
+    //                                                   la oficina (misma cuenta que `ofi`) y lo que faltó se anota.
+    if (/^pvped(:|$)/.test(String(process.env.BILLING_PROBE || ''))) {
+      const _raw = String(process.env.BILLING_PROBE).replace(/^pvped:?/, '');
+      const GO = /(^|[;:])go$/.test(_raw);
+      const cuerpo = _raw.replace(/([;:])?go$/, '');
+      const nrm = (t) => String(t || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[^a-z0-9]+/g, ' ').trim();
+      const hoyAR = new Date(Date.now() - 3 * 3600e3).toISOString().slice(0, 10);
+      const OFI_LOC = 'Oficina Mati';
+      const peds = (await db.get('cyc/pedidospv')) || {};
+      const prods = Object.values((await db.get('cyc/products')) || {}).filter((p) => p && p.name);
+      const pvFichas = prods.filter((p) => nrm(p.name).includes('paulvic') && (p.variantes || []).length);
+      const buscaVar = (p, txt) => {
+        const ex = txt.startsWith('='), q = nrm(txt.replace(/^=/, ''));
+        const vs = (p.variantes || []).filter((v) => nrm(v) === q);
+        if (vs.length || ex) return vs;
+        const vw = (p.variantes || []).filter((v) => (' ' + nrm(v) + ' ').includes(' ' + q + ' '));
+        return vw.length ? vw : (p.variantes || []).filter((v) => nrm(v).includes(q));
+      };
+      const leerPares = (txt) => txt.split(';').map((x) => x.trim()).filter(Boolean).map((x) => { const m = x.match(/^(.+?)=(\d+)$/); return m ? { busca: m[1].trim(), u: parseInt(m[2], 10) } : { busca: x, u: null }; });
+      const lista = (c) => (c.items || []).filter(Boolean);
+      if (!cuerpo) {
+        const cam = Object.entries(peds).filter(([, c]) => c && c.estado === 'camino').sort((a, b) => String(a[1].fecha).localeCompare(String(b[1].fecha)));
+        console.log(`=== PEDIDOS AL PAULVIC EN CAMINO (${cam.length}) ===`);
+        for (const [id, c] of cam) {
+          console.log(`\n· ${id} · del ${c.fecha} · ${lista(c).length} aroma(s) · ${lista(c).reduce((a, x) => a + (parseInt(x.u) || 0), 0)} u.`);
+          for (const it of lista(c)) console.log(`    ${it.u} u. · ${it.v}`);
+        }
+        return;
+      }
+      if (pvFichas.length !== 1) { console.log(`❌ Fichas del Paulvic con aromas: ${pvFichas.length} (${pvFichas.map((p) => p.name).join(' | ') || 'ninguna'}). Tiene que haber una sola: no escribo nada.`); return; }
+      const P = pvFichas[0];
+      const [sub, ...resto] = cuerpo.split(':');
+      if (sub === 'llego') {
+        const [idArg, ...rest2] = resto.join(':').split(';');
+        const cam = Object.entries(peds).filter(([, c]) => c && c.estado === 'camino').sort((a, b) => String(b[1].fecha).localeCompare(String(a[1].fecha)));
+        const hit = (!idArg || idArg === 'ultimo') ? cam[0] : cam.find(([id, c]) => id === idArg || c.fecha === idArg);
+        if (!hit) { console.log(`❌ No encuentro un pedido en camino "${idArg || 'ultimo'}". En camino: ${cam.map(([id]) => id).join(', ') || 'ninguno'}`); return; }
+        const [id, c] = hit;
+        const cambios = {}, problemas = [];
+        for (const pr of leerPares(rest2.join(';'))) {
+          if (pr.u == null) { problemas.push(`"${pr.busca}" → se espera <aroma>=<unidades>`); continue; }
+          const vs = buscaVar(P, pr.busca);
+          if (vs.length !== 1) { problemas.push(`"${pr.busca}" → ${vs.length ? 'agarra ' + vs.length + ': ' + vs.join(' | ') : 'no es un aroma de ' + P.name}`); continue; }
+          cambios[vs[0]] = pr.u;
+        }
+        if (problemas.length) { console.log('❌ NO ESCRIBO NADA:'); problemas.forEach((x) => console.log('   ' + x)); return; }
+        const llego = [], falto = [];
+        for (const it of lista(c)) {
+          const pedido = parseInt(it.u) || 0, vino = cambios[it.v] != null ? cambios[it.v] : pedido;
+          llego.push({ v: it.v, u: vino });
+          if (vino < pedido) falto.push({ v: it.v, u: pedido - vino });
+        }
+        for (const v of Object.keys(cambios)) if (!lista(c).some((x) => x.v === v) && cambios[v] > 0) llego.push({ v, u: cambios[v], extra: true });
+        console.log(`=== LLEGÓ EL PEDIDO AL PAULVIC ${id} (del ${c.fecha}) ${GO ? '' : '(PRUEBA — no escribo nada)'} ===`);
+        for (const x of llego) { const pe = (lista(c).find((y) => y.v === x.v) || {}).u || 0; console.log(`  ${x.v}: pedidas ${pe} · llegaron ${x.u}${x.extra ? ' (no estaba en el pedido)' : x.u < pe ? '  ⚠️ faltaron ' + (pe - x.u) : ''}`); }
+        if (!GO) { console.log('\nNo se guardó nada (falta ;go). Con ;go las que llegaron se SUMAN a la oficina.'); return; }
+        // Primero se cierra el pedido (que deje de restar en Pedidos) y recién después se suma a la oficina,
+        // releyendo cada clave justo antes: si la corrida se corta en el medio, se ve qué faltó.
+        await db.patch('cyc/pedidospv/' + id, { estado: 'llego', fechaLlego: hoyAR, llego, falto: falto.length ? falto : null });
+        const kTot = P.id + '__' + sid(OFI_LOC), kVar = (v) => kTot + '__v__' + sid(v);
+        for (const x of llego) {
+          if (!(x.u > 0)) continue;
+          const antes = parseInt(await db.get('cyc/inventory/' + kVar(x.v))) || 0;
+          const tA = parseInt(await db.get('cyc/inventory/' + kTot)) || 0;
+          await db.patch('cyc/inventory', { [kVar(x.v)]: antes + x.u, [kTot]: tA + x.u });
+          console.log(`  🏠 oficina · ${x.v}: ${antes} → ${antes + x.u}`);
+        }
+        const rel = await db.get('cyc/pedidospv/' + id);
+        console.log(rel && rel.estado === 'llego' ? `\n✓ Guardado y releído: llegó, y lo que vino está en la oficina.${falto.length ? ' Faltaron ' + falto.reduce((a, x) => a + x.u, 0) + ' u.: vuelven a pedirse solas en Pedidos.' : ''}` : '\n⚠️ Se escribió pero al releer no coincide. Mirar a mano.');
+        return;
+      }
+      let fecha = hoyAR;
+      const pares = leerPares(cuerpo);
+      const fArg = cuerpo.match(/(?:^|;)fecha=(\d{4}-\d{2}-\d{2})/); if (fArg) fecha = fArg[1];
+      const items = [], problemas = [];
+      for (const pr of pares.filter((x) => !/^fecha$/i.test(x.busca) && !/^fecha=/.test(x.busca))) {
+        if (!(pr.u > 0)) { problemas.push(`"${pr.busca}" → se espera <aroma>=<unidades>`); continue; }
+        const vs = buscaVar(P, pr.busca);
+        if (vs.length !== 1) { problemas.push(`"${pr.busca}" → ${vs.length ? 'agarra ' + vs.length + ': ' + vs.join(' | ') : 'no es un aroma de ' + P.name}`); continue; }
+        const o = items.find((x) => x.v === vs[0]); if (o) o.u += pr.u; else items.push({ v: vs[0], u: pr.u });
+      }
+      if (!items.length && !problemas.length) problemas.push('no hay ningún aroma');
+      if (problemas.length) { console.log('❌ NO ESCRIBO NADA:'); problemas.forEach((x) => console.log('   ' + x)); return; }
+      const id = 'pv' + fecha.replace(/-/g, '');
+      const prev = peds[id];
+      if (prev && prev.estado !== 'camino') { console.log(`❌ Ya hay un pedido ${id} marcado como llegado: no lo piso. Usá fecha=<otro día>.`); return; }
+      const its = prev ? lista(prev).map((x) => ({ ...x })) : [];
+      for (const it of items) { const o = its.find((x) => x.v === it.v); if (o) o.u = (parseInt(o.u) || 0) + it.u; else its.push({ ...it }); }
+      console.log(`=== PEDIDO AL PAULVIC ${id} · ${P.name} ${GO ? '' : '(PRUEBA — no escribo nada)'} ===${prev ? '\n(ya había uno de ese día en camino: se SUMA)' : ''}`);
+      for (const it of items) console.log(`  ${it.u} u. · ${it.v}`);
+      console.log(`  total: ${its.reduce((a, x) => a + x.u, 0)} u. en ${its.length} aroma(s)`);
+      if (!GO) { console.log('\nNo se guardó nada (falta ;go).'); return; }
+      await db.set('cyc/pedidospv/' + id, { prodId: P.id, fecha, ts: (prev && prev.ts) || Date.now(), estado: 'camino', items: its });
+      const rel = await db.get('cyc/pedidospv/' + id);
+      console.log(rel && rel.estado === 'camino' && lista(rel).length === its.length ? `\n✓ Guardado y releído: cyc/pedidospv/${id} (en camino). Pedidos → Paulvic ya lo descuenta.` : '\n⚠️ Se escribió pero al releer no coincide. Mirar a mano.');
       return;
     }
 

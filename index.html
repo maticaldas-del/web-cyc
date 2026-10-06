@@ -1948,6 +1948,7 @@ function startApp(){
     state.pyArmado=d.py_armado||{};          // unidades de PROBADOS cargadas en el pedido del momento (03/10/2026)       // 'el mayorista no tenía esto hoy' (ver la canasta de US$1.000)
     state.candidatos=d.candidatos_py||{};     // 'Para probar': productos que todavía no vendemos
     state.compraspy=d.compraspy||{};          // los pedidos a Paraguay ya hechos: en camino y llegados
+    state.pedidospv=d.pedidospv||{};          // los pedidos al Paulvic en camino (06/10/2026, los carga el robot con `pvped`)
     _limpiarEnCamino(); // borra los "en camino" que hayan quedado marcados (la función ya no existe)
     state.proveedores=d.proveedores?Object.values(d.proveedores).sort((a,b)=>(a.nombre||'').localeCompare(b.nombre||'','es',{sensitivity:'base'})).map(pv=>({...pv,condiciones:pv.condiciones?Object.values(pv.condiciones).sort((a,b)=>(a.minUSD||0)-(b.minUSD||0)):[]})):[];
     state.metricas =d.metricas ||{};
@@ -2434,7 +2435,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='22.12';
+const APP_VERSION='22.13';
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
 // muestre la versión y la fecha de actualización y que tenga un desplegable predeterminado cerrado".
 // Y el mismo día: "que ponga fecha de cada modificación y haya una barrita para scrollear y que
@@ -2445,6 +2446,7 @@ const APP_VERSION='22.12';
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'22.13',f:'06/10/2026',h:'23:50',c:[{n:2,t:'🧴 Pedidos → Paulvic: lo que ya le pediste al Paulvic se ve arriba como «todavía no llegó» y se descuenta, aroma por aroma, de lo que hay que comprar'}]},
   {v:'22.12',f:'06/10/2026',h:'23:30',c:[{n:1,t:'📦 Armar caja: lo que ya tiene unidades cargadas va siempre arriba de la lista'}]},
   {v:'22.11',f:'06/10/2026',h:'23:15',c:[{n:3,t:'🇵🇾 Comprar: el mínimo pasa a 24% para todo (probados, nuevos y perfumes). Lo que queda en 24,x% ahora entra'}]},
   {v:'22.10',f:'06/10/2026',h:'23:05',c:[{n:1,t:'🇵🇾 Pedidos Paraguay probados: arriba de cada tarjeta sólo "da / no da · pidiéndolo queda N%"; el detalle (precio de Nissei, máximo, Full, cuotas) está al abrir la tarjeta'}]},
@@ -10581,6 +10583,7 @@ async function syncPedidosAuto(){
   const _trPed=enTransito();   // lo despachado y todavía sin llegar: ya es tuyo, no se compra de nuevo
   // LO PEDIDO A PARAGUAY QUE VIAJA (o llegó y falta contar) TAMBIÉN ES TUYO (05/10/2026, él con el Animale
   // Sexy: *"me lo sigue pidiendo y ya lo compramos"*). Antes sólo la canasta lo descontaba.
+  const _pvViaja=pvEnCamino();   // pedido al Paulvic que todavía no llegó, por aroma
   const _pyViaja=(()=>{const m={...pyRepoEnCamino()};try{for(const[k,v]of Object.entries(pyRepoSinContar()))m[k]=(m[k]||0)+v;}catch(e){}return m;})();
   for(const p of (state.products||[])){
     // En la papelera = no se vende más. Se saltea ACÁ, antes de calcular nada: así no vuelve a
@@ -10648,13 +10651,14 @@ async function syncPedidosAuto(){
         const vFalta=Math.max(0,vTarget-vStock);                       // lo que falta llegar a tener en ML
         const vCasa=parseInt(state.inventory[invKeyV(p.id,OFI,v)])||0; // de esta variante, en casa
         const vCam=LOCS.reduce((a,l)=>a+transitoDe(_trPed,p.id,l,v),0);// de esta variante, viajando
+        const vPv=parseInt((_pvViaja[p.id]||{})[v])||0;                  // de esta variante, pedida al Paulvic
         // ── EL COLOR AGOTADO HACE MÁS DE UN MES SE PIDE CON SU RITMO VIEJO (26/09/2026, rev4,
         // decisión 5, opción a) ── Un color en cero hace 40 días vendió 0 en la ventana: objetivo 0 y
         // no se pedía NUNCA mientras los otros colores vendieran (el círculo de la Lupa 75mm, por
         // color). Misma función y misma condición que Armar caja: sólo si vendió 0 en 30 días Y no
         // hay nada en ML, en casa ni viajando. Con pocas ventas viejas, la misma regla de pedVentasNorm.
         let vHist=false,vFalta2=vFalta;
-        if(!(varSalesMap[p.id][v]>0)&&vStock<=0&&vCasa<=0&&vCam<=0){
+        if(!(varSalesMap[p.id][v]>0)&&vStock<=0&&vCasa<=0&&vCam<=0&&vPv<=0){
           const h=ventasHistoricas(p,'',v);
           if(h&&h.vDia>0){
             const vd=(h.u<PED_MIN_VENTAS_RITMO&&h.desdeDias>h.dias)?h.u/h.desdeDias:h.vDia;
@@ -10662,8 +10666,8 @@ async function syncPedidosAuto(){
             if(vTarget>0){vHist=true;vFalta2=vTarget;}
           }
         }
-        const vComprar=Math.max(0,vFalta2-vCasa-vCam);
-        return{v,vFalta:vFalta2,vComprar,vStock,vCasa,vCam,vHist,vTarget,vRate:vHist?(vTarget/TARGET_DIAS_P):_vRate};
+        const vComprar=Math.max(0,vFalta2-vCasa-vCam-vPv);
+        return{v,vFalta:vFalta2,vComprar,vStock,vCasa,vCam,vPv,vHist,vTarget,vRate:vHist?(vTarget/TARGET_DIAS_P):_vRate};
       }).filter(x=>x.vFalta>0);
       necesario=varDefs.reduce((s,x)=>s+x.vFalta,0);
       // El desglose muestra lo que hay que COMPRAR de cada una: si de una variante ya tenés en casa
@@ -10690,9 +10694,9 @@ async function syncPedidosAuto(){
           if(vDia>0)varDiasRiesgo=Math.min(30,_conRate.reduce((a,x)=>a+Math.min(1,x.vRate/vDia)*Math.max(0,30-x.vStock/x.vRate),0));
         }
         varCuenta={obj:varDefs.reduce((a,x)=>a+x.vTarget,0),ml:varDefs.reduce((a,x)=>a+x.vStock,0),
-          casa:varDefs.reduce((a,x)=>a+x.vCasa,0),cam:varDefs.reduce((a,x)=>a+x.vCam,0)};
+          casa:varDefs.reduce((a,x)=>a+x.vCasa,0),cam:varDefs.reduce((a,x)=>a+x.vCam+x.vPv,0)};
       }
-      variantesNec=varDefs.length?varDefs.map(({v,vComprar:q,vStock,vCam,vCasa,vHist,vTarget})=>({v,q,ml:vStock,cam:vCam,casa:vCasa,obj:vTarget,...(vHist?{hist:true}:{})})):null;
+      variantesNec=varDefs.length?varDefs.map(({v,vComprar:q,vStock,vCam,vPv,vCasa,vHist,vTarget})=>({v,q,ml:vStock,cam:vCam,casa:vCasa,obj:vTarget,...(vPv?{pv:vPv}:{}),...(vHist?{hist:true}:{})})):null;
     } else {
       const targetStock=Math.ceil(vDia*TARGET_DIAS_P);
       necesario=Math.max(0,targetStock-stock);
@@ -10712,7 +10716,8 @@ async function syncPedidosAuto(){
     // Y le pega justo a lo que más rota, que es lo que más seguido se despacha.
     // "Armar caja" ya lo contaba desde el 19/08; Pedidos se quedó afuera.
     const enPy=_pyViaja[p.id]||0;   // pedido a Paraguay, sin color: se resta del total
-    const enCamino=transitoTotal(_trPed,p.id)+enPy;
+    const enPv=Object.values(_pvViaja[p.id]||{}).reduce((a,x)=>a+(parseInt(x)||0),0);   // pedido al Paulvic (con variantes ya se restó aroma por aroma)
+    const enCamino=transitoTotal(_trPed,p.id)+enPy+enPv;
     // En los productos con variantes ya se descontó casa y camino VARIANTE POR VARIANTE, que es más
     // fino: restar los totales otra vez lo contaría dos veces. Lo de Paraguay no trae color: va al total.
     const aComprar=aComprarVar!=null?Math.max(0,aComprarVar-enPy):Math.max(0,necesario-enOficina-enCamino);
@@ -12840,6 +12845,30 @@ async function candCrearFicha(id){
 // Unidades de reposición que YA viajan (decisión 2 de 5, 26/09/2026, opción a): lo pedido con el
 // "Ya lo pedí" de la canasta queda en `compraspy` en camino. Sin restarlo, la canasta de mañana
 // pediría otra vez lo mismo, porque el stock recién sube cuando llega y se cuenta en la oficina.
+// ── LO PEDIDO AL PAULVIC QUE TODAVÍA NO LLEGÓ (06/10/2026) ──────────────────────────
+// Pedido suyo: *"cuando hago un pedido de paulvic te lo paso y lo descontás de pedir, ponelo como llegando"*.
+// Lo carga el robot (`pvped`) en `cyc/pedidospv/<id>` con el nombre EXACTO del aroma de la ficha; acá se
+// junta {prodId:{aroma:u}} de los que siguen en camino. Al llegar (`pvped:llego`) sale de acá y entra a la oficina.
+function pvEnCamino(){
+  const m={};
+  for(const c of Object.values(state.pedidospv||{})){
+    if(!c||c.estado!=='camino'||!c.prodId)continue;
+    const o=m[c.prodId]||(m[c.prodId]={});
+    for(const it of (c.items||[]))if(it&&it.v)o[it.v]=(o[it.v]||0)+(parseInt(it.u)||0);
+  }
+  return m;
+}
+function pvEnCaminoHTML(){
+  const cam=Object.entries(state.pedidospv||{}).filter(([,c])=>c&&c.estado==='camino').sort((a,b)=>String(a[1].fecha).localeCompare(String(b[1].fecha)));
+  if(!cam.length)return '';
+  const dd=f=>{const p=String(f||'').split('-');return p.length===3?p[2]+'/'+p[1]:(f||'?');};
+  return `<div style="padding:10px 12px;margin-bottom:10px;border:1px solid var(--accent2);border-radius:var(--r);background:var(--surface)">
+    <div style="font-size:.8rem;font-weight:600;margin-bottom:4px">🚚 Pedido al Paulvic, todavía no llegó</div>
+    <div style="font-size:.66rem;color:var(--muted);margin-bottom:6px">Ya está descontado de lo que hay que comprar. Cuando llegue, decime qué vino y lo paso a tu oficina.</div>
+    ${cam.map(([id,c])=>{const its=(c.items||[]).filter(Boolean);const tot=its.reduce((a,x)=>a+(parseInt(x.u)||0),0);
+      return `<div style="font-size:.72rem;margin-top:4px"><strong>del ${dd(c.fecha)}</strong> · ${tot} u. en ${its.length} aroma(s)<div style="color:var(--muted);margin-top:2px">${its.map(x=>`${String(x.v).replace(/[<>&]/g,'')} ×${parseInt(x.u)||0}`).join(' · ')}</div></div>`;}).join('')}
+  </div>`;
+}
 function pyRepoEnCamino(){
   const m={};
   for(const c of Object.values(state.compraspy||{})){
@@ -14548,7 +14577,7 @@ function pedSinSentido(p){
   // pedido guardado antes de este cambio no trae el objetivo de cada color: ahí no se opina.
   const _vars=Array.isArray(p.variantesNec)&&p.variantesNec.length?p.variantesNec:null;
   if(_vars){
-    const malas=_vars.filter(x=>(x.q||0)>0&&x.obj>0&&((x.ml||0)+(x.casa||0)+(x.cam||0))>=x.obj);
+    const malas=_vars.filter(x=>(x.q||0)>0&&x.obj>0&&((x.ml||0)+(x.casa||0)+(x.cam||0)+(x.pv||0))>=x.obj);
     if(malas.length)m.push(malas.slice(0,4).map(x=>`${x.v}: pide comprar ${fmtN(x.q)} y ya tenés ${fmtN((x.ml||0)+(x.casa||0)+(x.cam||0))} entre ML, tu casa y en camino para un objetivo de ${fmtN(x.obj)}`).join(' · ')+(malas.length>4?` · y ${malas.length-4} color(es) más`:''));
   } else if(pedir>0&&p.cObjetivo>0){
     const tenes=(p.cML||0)+(p.cCasa||0)+(p.cCamino||0);
@@ -14608,7 +14637,7 @@ function pedVarChip(x){
     : `${x.v}<strong style="color:var(--green)">✓ mandar</strong>`;
   if(!tieneLugares)return `<span class="pi-var-chip">${cab}</span>`;
   const n=v=>fmtN(v||0);
-  const lug=`<span class="pi-var-lug">📦 ${n(x.ml)} en ML · 🚚 ${n(x.cam)} en camino · 🏠 ${n(x.casa)} en casa</span>`;
+  const lug=`<span class="pi-var-lug">📦 ${n(x.ml)} en ML · 🚚 ${n(x.cam)} en camino · 🏠 ${n(x.casa)} en casa${x.pv>0?` · 🧴 ${n(x.pv)} pedidas al Paulvic`:''}</span>`;
   return `<span class="pi-var-chip pi-var-chip-col" title="${q>0?`Hay que COMPRAR ${n(q)} de ${x.v}.${x.hist?' Está agotado hace más de un mes: la cantidad sale de lo que vendía antes de agotarse (hasta 180 días atrás), igual que en Armar caja.':''}`:`De ${x.v} no hay que comprar: con lo que tenés en casa o en camino alcanza. Hay que MANDARLA.`}">${cab}${lug}</span>`;
 }
 // ── LA PLATA DEL PRODUCTO, EN LA TARJETA DE PEDIDOS (17/09/2026) ─────────────────────
@@ -15153,10 +15182,10 @@ function renderPedidos(){
       const hayPaulvicProd=(state.products||[]).some(x=>normTxt(x.name||'').includes('paulvic')||(x.proveedorId&&(state.proveedores||[]).find(pv=>pv.id===x.proveedorId&&normTxt(pv.nombre||'').includes('paulvic'))));
       let msg='Sin pedidos paulvic'+(pedidoFilter!=='todos'?' en esta categoría':'')+'.';
       if(!hayPaulvicProd)msg='No hay productos Paulvic cargados en el catálogo.';
-      el.innerHTML=`<div class="empty-msg">${msg}</div>`;
+      el.innerHTML=pvEnCaminoHTML()+`<div class="empty-msg">${msg}</div>`;
       return;
     }
-    el.innerHTML=peds.slice().sort(_pedSortFnRiesgo).map(p=>_pedidoItemHtml(p,{showRiesgo:true})).join('');
+    el.innerHTML=pvEnCaminoHTML()+peds.slice().sort(_pedSortFnRiesgo).map(p=>_pedidoItemHtml(p,{showRiesgo:true})).join('');
     return;
   }
   const isBsas=pedidoSection==='bsas';
