@@ -836,6 +836,9 @@ publicación → `mlTit` del candidato sin reparos). Aplicado el 06/10: **11 de 
 De ahora en más `pyped:llego` y `candFichaDesde` crean la ficha ya con el `mlTit`. Probados que no dan muestran *"pidiéndolo queda
 en N%"* (`margenSiComproPY`, v22.06).
 
+## COMPRAR: 24% PARA TODO (06/10/2026 a la noche, v22.11)
+Él, con el Ferrari Negro en 24,9%: *"na, que entre. o sea arriba del 24% TODO"*. `CAND_PISO_PCT`, `CAND_PISO_PERFUME` y `PY_PROB_PISO` = **24** (web y robot). Lo de abajo (25%) queda como historia. Vender no cambió.
+
 ## COMPRAR PIDE 25% PARA TODO · VENDER SIGUE CON EL ROBOT COMO ESTABA (06/10/2026)
 Regla suya, textual: *"el 25 para todo es para comprar productos. Tanto probados como nuevos. Los que ya están en stock que
 siga como estaba el robot. Son dos cosas distintas."* **COMPRAR** (Paraguay nuevos, perfumes incluidos, y probados) = 25%
