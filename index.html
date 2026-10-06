@@ -2435,7 +2435,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='22.16';
+const APP_VERSION='22.17';
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
 // muestre la versión y la fecha de actualización y que tenga un desplegable predeterminado cerrado".
 // Y el mismo día: "que ponga fecha de cada modificación y haya una barrita para scrollear y que
@@ -2446,6 +2446,7 @@ const APP_VERSION='22.16';
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'22.17',f:'06/10/2026',h:'14:05',c:[{n:1,t:'🇵🇾 Pedidos Paraguay: un solo % por producto, el que te queda si lo pedís hoy al precio de Nissei (se sacó el "te queda" calculado con lo que pagaste la última vez)'}]},
   {v:'22.16',f:'06/10/2026',h:'02:10',c:[{n:2,t:'Robot de precios: ahora cuenta TODO lo que el robot cambia solo, también cuando vuelve atrás un cambio que perdía plata. Lo único que sigue afuera es la suba que hace después de una venta con % bajo.'}]},
   {v:'22.15',f:'06/10/2026',h:'01:30',c:[{n:3,t:'🤖 Robot de precios: el rescate que sube ANTES de que una venta salga mal (el de la noche o por costo) ahora suma como mérito del robot; el que sube después de una venta con % bajo sigue sin sumar'}]},
   {v:'22.14',f:'07/10/2026',h:'00:20',c:[{n:3,t:'🧴 Paulvic: lo que llegó y no se pagó aparece «💸 falta pagar» y cuenta como deuda en el Arqueo hasta que se carga el comprobante'},{n:2,t:'🧾 Los comprobantes de pago (pueden ser varios) se ven en foto en Pedidos → Paulvic'}]},
@@ -14948,7 +14949,11 @@ function pyProbVisHTML(_prod){
     const A=(h,t)=>`<a href="${h.replace(/"/g,'&quot;')}" target="_blank" rel="noopener" style="color:var(--accent);text-decoration:none;font-weight:600">${t}</a>`;
     const mlUrl=/^MLA\d+$/.test(mla)?'https://articulo.mercadolibre.com.ar/MLA-'+mla.slice(3):'';
     const mg=margenMLDe(_prod);
-    const datos=mg&&mg.precio>0?`<div style="font-size:.74rem;color:var(--muted);flex-basis:100%">🏷️ tu precio en ML <b style="color:var(--text)">${fmt(Math.round(mg.precio))}</b>${mg.margen!=null?` · te queda <b style="color:${typeof pctColor==='function'?pctColor(mg.margen):'var(--text)'}">${Math.round(mg.margen)}%</b>`:''}${_prod.nisseiUSD?` · 🇵🇾 Nissei US$ ${Number(_prod.nisseiUSD).toFixed(2)}${_prod.nisseiTs?' (mirado '+new Date(Number(_prod.nisseiTs)).toLocaleDateString('es-AR')+')':''}`:''}${_prod.codPy?` · 🔖 ${_prod.codPy}`:''}</div>`:'';
+    // UN SOLO % (07/10/2026, él: "porque dice que me queda un 35 y arriba un 48%? (…) que me muestre un % por
+    // producto, el que me quedaría si lo pido"). El 35% era con lo que pagaste la última vez; acá va sólo el
+    // de pedirlo HOY al precio de Nissei (la misma cuenta del veredicto de arriba: margenSiComproPY).
+    let mgPed=null;try{const _mx=maxCompraDe(_prod,PY_PROB_PISO);mgPed=margenSiComproPY(_mx,parseFloat(_prod.nisseiUSD)||0);}catch(e){}
+    const datos=mg&&mg.precio>0?`<div style="font-size:.74rem;color:var(--muted);flex-basis:100%">🏷️ tu precio en ML <b style="color:var(--text)">${fmt(Math.round(mg.precio))}</b>${mgPed!=null?` · si lo pedís hoy te queda <b style="color:${typeof pctColor==='function'?pctColor(mgPed):'var(--text)'}">${Math.round(mgPed)}%</b>`:''}${_prod.nisseiUSD?` · 🇵🇾 Nissei US$ ${Number(_prod.nisseiUSD).toFixed(2)}${_prod.nisseiTs?' (mirado '+new Date(Number(_prod.nisseiTs)).toLocaleDateString('es-AR')+')':''}`:''}${_prod.codPy?` · 🔖 ${_prod.codPy}`:''}</div>`:'';
     return `${datos}<div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;width:100%">
       <div style="display:flex;gap:6px">${ph(fPY,'🇵🇾 Paraguay')}${ph(fML,'🏷️ ML')}</div>
       <div style="font-size:.76rem;line-height:1.8">${mlUrl?A(mlUrl,'🔗 verlo en ML'):'<span style="color:var(--muted)">🔗 sin publicación en ML</span>'}<br>${/^https:\/\//.test(lPY)?A(lPY,'🇵🇾 verlo en comprasparaguay'):'<span style="color:var(--amber)">🇵🇾 falta el link de comprasparaguay (lo carga Guay)</span>'}</div>
