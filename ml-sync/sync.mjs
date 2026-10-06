@@ -26190,7 +26190,11 @@ async function main() {
       // al día, no". O sea: el rescate de la noche (por margen) o por costo, que sube ANTES de que una
       // venta salga mal, es mérito del robot → motivo `rescatep`, suma. El que sube DESPUÉS de una venta
       // con % bajo (robot al vender, `por:'venta'`) sigue siendo `rescate` y no suma.
-      const SUP_CUENTA = new Set(['subir', 'bajar', 'remate', 'escalera', 'prueba', 'rescatep']);
+      // TODO LO QUE EL ROBOT TOCA SOLO CUENTA (06/10/2026, suyo): "todo lo que toque el precio
+      // automáticamente se tiene que tener en cuenta". Se sumó `volver` (el robot deshace un cambio
+      // suyo que perdía, o vuelve de pasar a un sin Full): es una decisión del robot y su efecto se mide
+      // igual. La ÚNICA excepción sigue siendo el rescate DESPUÉS de una venta baja (regla suya de hoy).
+      const SUP_CUENTA = new Set(['subir', 'bajar', 'remate', 'escalera', 'prueba', 'rescatep', 'volver']);
       function motivoDeAuto(a) {
         const por = a && a.por;
         if (por === 'margen' || por === 'venta' || por === 'costo') return 'rescate';
@@ -26724,8 +26728,8 @@ async function main() {
       //    SUBIR pasa por los frenos de siempre (+25% de una, $33.000, $650.000) — si no entra entero,
       //    no se hace a medias: se pregunta.
       // Tope 5 por noche. Memoria `cyc/supervisor/revertido/<id>` (se anota ANTES de tocar ML, así dos
-      // corridas no lo hacen dos veces). Queda en `cyc/autoprecio` con `por:'volver'`, que NO suma en
-      // "lo que trajo el robot" (es deshacer, no una decisión nueva).
+      // corridas no lo hacen dos veces). Queda en `cyc/autoprecio` con `por:'volver'`, que desde el
+      // 06/10/2026 SÍ suma en "lo que trajo el robot" (todo lo automático cuenta, regla suya).
       await correrVolver();
 
       // ── 5b. AVISAR CUANDO LA AUTOMATIZACIÓN HACE PERDER PLATA (23/09/2026) ──────

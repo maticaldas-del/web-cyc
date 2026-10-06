@@ -2435,7 +2435,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='22.15';
+const APP_VERSION='22.16';
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
 // muestre la versión y la fecha de actualización y que tenga un desplegable predeterminado cerrado".
 // Y el mismo día: "que ponga fecha de cada modificación y haya una barrita para scrollear y que
@@ -2446,6 +2446,7 @@ const APP_VERSION='22.15';
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'22.16',f:'06/10/2026',h:'02:10',c:[{n:2,t:'Robot de precios: ahora cuenta TODO lo que el robot cambia solo, también cuando vuelve atrás un cambio que perdía plata. Lo único que sigue afuera es la suba que hace después de una venta con % bajo.'}]},
   {v:'22.15',f:'06/10/2026',h:'01:30',c:[{n:3,t:'🤖 Robot de precios: el rescate que sube ANTES de que una venta salga mal (el de la noche o por costo) ahora suma como mérito del robot; el que sube después de una venta con % bajo sigue sin sumar'}]},
   {v:'22.14',f:'07/10/2026',h:'00:20',c:[{n:3,t:'🧴 Paulvic: lo que llegó y no se pagó aparece «💸 falta pagar» y cuenta como deuda en el Arqueo hasta que se carga el comprobante'},{n:2,t:'🧾 Los comprobantes de pago (pueden ser varios) se ven en foto en Pedidos → Paulvic'}]},
   {v:'22.13',f:'06/10/2026',h:'23:50',c:[{n:2,t:'🧴 Pedidos → Paulvic: lo que ya le pediste al Paulvic se ve arriba como «todavía no llegó» y se descuenta, aroma por aroma, de lo que hay que comprar'}]},
@@ -16021,7 +16022,7 @@ function renderMetAuto(){
   const MES=['ene','feb','mar','abr','may','jun','jul','ago','sep','oct','nov','dic'];
   const mesTxt=ym=>{const [y,m]=ym.split('-');return MES[+m-1]+' '+y;};
   const delMes=todos.filter(x=>metAutoMes==='todos'||ymDe(x.ts)===metAutoMes);
-  const lista=delMes.filter(x=>metAutoMot==='todas'?true:metAutoMot==='cuentan'?!!x.enTotal||(x.estado!=='medido'&&['subir','bajar','remate','escalera','prueba','rescatep'].includes(x.motivo)):x.motivo===metAutoMot);
+  const lista=delMes.filter(x=>metAutoMot==='todas'?true:metAutoMot==='cuentan'?!!x.enTotal||(x.estado!=='medido'&&['subir','bajar','remate','escalera','prueba','rescatep','volver'].includes(x.motivo)):x.motivo===metAutoMot);
   // El total grande: SÓLO lo medido que cuenta (decisiones del robot mirando el mercado), del mes elegido.
   const med=delMes.filter(x=>(x.estado==='medido'||x.estado==='encurso')&&x.enTotal);
   const tot=med.reduce((a,x)=>a+n(x.total),0),pre=med.reduce((a,x)=>a+n(x.precio),0),vol=med.reduce((a,x)=>a+n(x.volumen),0);
