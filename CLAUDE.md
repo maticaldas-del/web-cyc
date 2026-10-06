@@ -863,6 +863,10 @@ y luego se sube al día, no"*. En el supervisor: rescate de la noche (`por:'marg
 `por`: si la publicación vendió en las 3 h anteriores a la suba, fue por la venta (`esRescatePrevio`). Primera corrida: 13 rescates
 previos pasan a sumar, 56 siguen afuera. El rescate del Ferrari del 08/09 ($61.870→$68.510, +$31.069) fue AL VENDER: no suma. La suba
 "subir" del 29/09 sí suma (+$13.794 con la venta de 2 del 05/10). `verlinea` ahora muestra la cuenta del supervisor de cada cambio.
+**Y TODO LO AUTOMÁTICO CUENTA (mismo día, v22.16), él: *"todo lo que toque el precio automáticamente se tiene que tener en
+cuenta"*.** Cuentan: subir (📈 y grupos), bajar, remate, escalera, prueba 🧪, rescate antes de vender y desde ahora **`volver`**
+(el robot deshace un cambio suyo que perdía, o vuelve de pasar a un sin Full). La ÚNICA excepción es el rescate DESPUÉS de una
+venta con % bajo. Sacar promociones no se mide aparte (si mueve el precio, la foto de la noche lo ve como cambio a mano).
 
 ## COMPRAR: 24% PARA TODO (06/10/2026 a la noche, v22.11)
 Él, con el Ferrari Negro en 24,9%: *"na, que entre. o sea arriba del 24% TODO"*. `CAND_PISO_PCT`, `CAND_PISO_PERFUME` y `PY_PROB_PISO` = **24** (web y robot). Lo de abajo (25%) queda como historia. Vender no cambió.
