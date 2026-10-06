@@ -33611,6 +33611,7 @@ async function main() {
       };
       const leerPares = (txt) => txt.split(';').map((x) => x.trim()).filter(Boolean).map((x) => { const m = x.match(/^(.+?)=(\d+)$/); return m ? { busca: m[1].trim(), u: parseInt(m[2], 10) } : { busca: x, u: null }; });
       const lista = (c) => (c.items || []).filter(Boolean);
+      const sub0 = (t) => String(t).split(/[:;]/)[0];
       if (!cuerpo) {
         const cam = Object.entries(peds).filter(([, c]) => c && c.estado === 'camino').sort((a, b) => String(a[1].fecha).localeCompare(String(b[1].fecha)));
         console.log(`=== PEDIDOS AL PAULVIC EN CAMINO (${cam.length}) ===`);
@@ -33618,6 +33619,79 @@ async function main() {
           console.log(`\n· ${id} · del ${c.fecha} · ${lista(c).length} aroma(s) · ${lista(c).reduce((a, x) => a + (parseInt(x.u) || 0), 0)} u.`);
           for (const it of lista(c)) console.log(`    ${it.u} u. · ${it.v}`);
         }
+        const imp = Object.entries(peds).filter(([, c]) => c && c.estado === 'llego' && !c.pagado);
+        console.log(`\n=== LLEGARON Y FALTA PAGAR (${imp.length}) ===`);
+        for (const [id, c] of imp) console.log(`· ${id} · llegó el ${c.fechaLlego || '?'} · ${(c.llego || []).reduce((a, x) => a + (parseInt(x.u) || 0), 0)} u.`);
+        return;
+      }
+      // ── EL PAGO, CON SU COMPROBANTE EN FOTO (06/10/2026) ──────────────────────────────────────
+      // Él: *"los pedidos de paulvic siempre se pagan cuando llegan (…) que aparezca que llegó pero que
+      // falta pagar, hasta que te paso el comprobante de pago, y ese comprobante quiero que lo cargues en
+      // foto en la web (…) puede ser más de una transferencia de distintas cuentas"*.
+      // EL COMPROBANTE TRAE NOMBRES Y CUIT DE TERCEROS Y EL REPO ES PÚBLICO: la foto viaja CIFRADA.
+      // `pvped:clave;go` arma una vez un par de llaves: la privada queda SÓLO en la base (`mlapi/comprobkey`,
+      // detrás del login) y la pública sale en el log, que es lo único que hace falta para cifrar. El chat
+      // cifra cada foto con la pública y la deja en `ml-sync/comprob/<id>/*.enc`; acá se descifra y se guarda
+      // en `comprobantes/pv/<id>/<n>` (fuera de `cyc`: la web la baja sólo al tocarla, como las fotos).
+      //   pvped:clave[;go]                                    → muestra / arma la llave pública
+      //   pvped:pago:<id|ultimo>[;monto=<pesos>][;fecha=AAAA-MM-DD][;sinfoto][;go] → pagado, con sus fotos
+      if (cuerpo === 'clave') {
+        const k = await db.get('mlapi/comprobkey');
+        if (k && k.pub) { console.log('=== LLAVE PÚBLICA PARA CIFRAR COMPROBANTES (ya existía) ===\n' + k.pub); return; }
+        if (!GO) { console.log('No hay llave todavía. Con ;go se arma (la privada queda sólo en la base).'); return; }
+        const { generateKeyPairSync } = await import('node:crypto');
+        const kp = generateKeyPairSync('rsa', { modulusLength: 3072, publicKeyEncoding: { type: 'spki', format: 'pem' }, privateKeyEncoding: { type: 'pkcs8', format: 'pem' } });
+        await db.set('mlapi/comprobkey', { pub: kp.publicKey, priv: kp.privateKey, ts: Date.now() });
+        const rel = await db.get('mlapi/comprobkey');
+        console.log(rel && rel.pub === kp.publicKey ? '✓ Llave armada y releída. LLAVE PÚBLICA:\n' + kp.publicKey : '⚠️ Se escribió pero al releer no coincide.');
+        return;
+      }
+      if (sub0(cuerpo) === 'pago') {
+        const partes = cuerpo.split(';');
+        const idArg = partes[0].replace(/^pago:?/, '');
+        const opt = Object.fromEntries(partes.slice(1).map((x) => { const i = x.indexOf('='); return i < 0 ? [x.trim(), true] : [x.slice(0, i).trim(), x.slice(i + 1).trim()]; }));
+        const imp = Object.entries(peds).filter(([, c]) => c && c.estado === 'llego' && !c.pagado).sort((a, b) => String(b[1].fechaLlego || b[1].fecha).localeCompare(String(a[1].fechaLlego || a[1].fecha)));
+        const hit = (!idArg || idArg === 'ultimo') ? imp[0] : Object.entries(peds).find(([id, c]) => id === idArg || (c && c.fecha === idArg));
+        if (!hit) { console.log(`❌ No encuentro el pedido "${idArg || 'ultimo'}". Llegados sin pagar: ${imp.map(([id]) => id).join(', ') || 'ninguno'}`); return; }
+        const [id, c] = hit;
+        if (c.estado !== 'llego') { console.log(`❌ ${id} todavía figura en camino: primero va pvped:llego. No escribo nada.`); return; }
+        const { readdirSync } = await import('node:fs');
+        let archivos = [];
+        try { archivos = readdirSync(new URL('./comprob/' + id + '/', import.meta.url)).filter((f) => f.endsWith('.enc')).sort(); } catch { /* sin carpeta */ }
+        if (!archivos.length && !opt.sinfoto) { console.log(`❌ No hay comprobantes en ml-sync/comprob/${id}/. Sin foto no lo marco pagado (o pasá ;sinfoto).`); return; }
+        const fotos = [];
+        if (archivos.length) {
+          const k = await db.get('mlapi/comprobkey');
+          if (!k || !k.priv) { console.log('❌ No hay llave en la base (pvped:clave;go). No escribo nada.'); return; }
+          const { privateDecrypt, createDecipheriv, constants } = await import('node:crypto');
+          for (const f of archivos) {
+            try {
+              const e = JSON.parse(readFileSync(new URL('./comprob/' + id + '/' + f, import.meta.url), 'utf8'));
+              const aes = privateDecrypt({ key: k.priv, padding: constants.RSA_PKCS1_OAEP_PADDING, oaepHash: 'sha256' }, Buffer.from(e.k, 'base64'));
+              const ct = Buffer.from(e.ct, 'base64');
+              const d = createDecipheriv('aes-256-gcm', aes, Buffer.from(e.iv, 'base64'));
+              d.setAuthTag(ct.subarray(ct.length - 16));
+              const bin = Buffer.concat([d.update(ct.subarray(0, ct.length - 16)), d.final()]);
+              if (!/^image\/(jpeg|png|webp)$/.test(e.mime || '')) throw new Error('no es una imagen');
+              fotos.push('data:' + e.mime + ';base64,' + bin.toString('base64'));
+              console.log(`  📎 ${f}: ${Math.round(bin.length / 1024)} KB`);
+            } catch (err) { console.log(`❌ ${f} no se pudo abrir (${err.message}). No escribo nada.`); return; }
+          }
+          if (fotos.some((x) => x.length > 4.5e6)) { console.log('❌ Alguna foto pasa los 4 MB. No escribo nada.'); return; }
+        }
+        const monto = opt.monto ? parseInt(String(opt.monto).replace(/\D/g, ''), 10) || null : null;
+        const fecha = /^\d{4}-\d{2}-\d{2}$/.test(opt.fecha || '') ? opt.fecha : hoyAR;
+        console.log(`=== PAGO DEL PEDIDO AL PAULVIC ${id} ${GO ? '' : '(PRUEBA — no escribo nada)'} ===\n  ${fotos.length} comprobante(s) · pagado el ${fecha}${monto ? ' · $' + monto.toLocaleString('es-AR') : ''}`);
+        if (!GO) return;
+        const prevN = parseInt(c.comprobantes) || 0;
+        const upd = {};
+        fotos.forEach((x, i) => { upd[String(prevN + i)] = x; });
+        if (fotos.length) await db.patch('comprobantes/pv/' + id, upd);
+        await db.patch('cyc/pedidospv/' + id, { pagado: true, fechaPago: fecha, montoPago: monto || c.montoPago || null, comprobantes: prevN + fotos.length });
+        const rel = await db.get('cyc/pedidospv/' + id);
+        const relF = fotos.length ? await db.get('comprobantes/pv/' + id) : null;
+        const okF = !fotos.length || (relF && fotos.every((x, i) => relF[String(prevN + i)] === x));
+        console.log(rel && rel.pagado && okF ? `\n✓ Guardado y releído: ${id} pagado, con ${prevN + fotos.length} comprobante(s) en la web.` : '\n⚠️ Se escribió pero al releer no coincide. Mirar a mano.');
         return;
       }
       if (pvFichas.length !== 1) { console.log(`❌ Fichas del Paulvic con aromas: ${pvFichas.length} (${pvFichas.map((p) => p.name).join(' | ') || 'ninguna'}). Tiene que haber una sola: no escribo nada.`); return; }

@@ -2435,7 +2435,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='22.13';
+const APP_VERSION='22.14';
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
 // muestre la versión y la fecha de actualización y que tenga un desplegable predeterminado cerrado".
 // Y el mismo día: "que ponga fecha de cada modificación y haya una barrita para scrollear y que
@@ -2446,6 +2446,7 @@ const APP_VERSION='22.13';
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'22.14',f:'07/10/2026',h:'00:20',c:[{n:3,t:'🧴 Paulvic: lo que llegó y no se pagó aparece «💸 falta pagar» y cuenta como deuda en el Arqueo hasta que se carga el comprobante'},{n:2,t:'🧾 Los comprobantes de pago (pueden ser varios) se ven en foto en Pedidos → Paulvic'}]},
   {v:'22.13',f:'06/10/2026',h:'23:50',c:[{n:2,t:'🧴 Pedidos → Paulvic: lo que ya le pediste al Paulvic se ve arriba como «todavía no llegó» y se descuenta, aroma por aroma, de lo que hay que comprar'}]},
   {v:'22.12',f:'06/10/2026',h:'23:30',c:[{n:1,t:'📦 Armar caja: lo que ya tiene unidades cargadas va siempre arriba de la lista'}]},
   {v:'22.11',f:'06/10/2026',h:'23:15',c:[{n:3,t:'🇵🇾 Comprar: el mínimo pasa a 24% para todo (probados, nuevos y perfumes). Lo que queda en 24,x% ahora entra'}]},
@@ -7285,10 +7286,15 @@ function calcArqueo(){
   });
   const vsr=_arqViewYM?0:vendidoSinReporte().usd;
   activos+=vsr;
+  // Lo que llegó del Paulvic y todavía no se pagó (06/10/2026): la mercadería ya está contada en la
+  // oficina, así que lo que se le debe va como deuda. Sin esto el patrimonio subía de golpe el día que
+  // llega y volvía a bajar al pagar, sin que pasara nada.
+  const pvDeuda=_arqViewYM?0:pvDeudaUSD();
+  deudas+=pvDeuda;
   const efect=['efectivo','mp_disp','mp_liq'].reduce((s,k)=>s+(parseFloat(state.finanzas[k])||0),0)+vsr;
   const deben=['deben_cyc'].reduce((s,k)=>s+(parseFloat(state.finanzas[k])||0),0);
-  const deuda=['tarjeta','deuda_cyc','dolares_mati','dolares_tito'].reduce((s,k)=>s+(Math.abs(parseFloat(state.finanzas[k])||0)),0);
-  return{stockVal,stockML,stockLocal,stockCamino,activos,deudas,corregir,efect,deben,deuda,vsr,total:stockVal+activos-deudas+corregir};
+  const deuda=['tarjeta','deuda_cyc','dolares_mati','dolares_tito'].reduce((s,k)=>s+(Math.abs(parseFloat(state.finanzas[k])||0)),0)+pvDeuda;
+  return{stockVal,stockML,stockLocal,stockCamino,activos,deudas,corregir,efect,deben,deuda,vsr,pvDeuda,total:stockVal+activos-deudas+corregir};
 }
 
 // Panel de reconciliación: ¿la ganancia del mes se ve reflejada en el crecimiento del patrimonio?
@@ -7646,7 +7652,7 @@ function updateArqueo(){try{if(!_arqViewYM)_btnCerrarTxt();}catch(_){}
   const prevDeuda=prev?['tarjeta','deuda_cyc','dolares_mati','dolares_tito'].reduce((s,k)=>s+(Math.abs(parseFloat(prev.finanzas?.[k])||0)),0):null;
   const dbkEf=document.getElementById('dbk_efectivo');if(dbkEf)dbkEf.innerHTML=prevEfect!==null?deltaBadge(c.efect,prevEfect):'';
   const dbkDb=document.getElementById('dbk_deben');if(dbkDb)dbkDb.innerHTML=prevDeben!==null?deltaBadge(c.deben,prevDeben):'';
-  const dbkDd=document.getElementById('dbk_deudas');if(dbkDd)dbkDd.innerHTML=prevDeuda!==null?deltaBadge(c.deuda,prevDeuda,true):'';
+  const dbkDd=document.getElementById('dbk_deudas');if(dbkDd)dbkDd.innerHTML=(prevDeuda!==null?deltaBadge(c.deuda,prevDeuda,true):'')+(c.pvDeuda>0?`<div style="font-size:.62rem;color:var(--amber);margin-top:3px">incluye ${fmtUS(c.pvDeuda)} del Paulvic · llegó, falta pagar</div>`:'');
   const dbkT=document.getElementById('dbk_total_day');
   if(dbkT)dbkT.innerHTML='';
   if(!_arqViewYM)saveDailySnap();
@@ -12858,16 +12864,86 @@ function pvEnCamino(){
   }
   return m;
 }
+// ── LLEGÓ PERO FALTA PAGAR (06/10/2026) ──────────────────────────────────────────────────────
+// Él: *"los pedidos de paulvic siempre se pagan cuando llegan (…) que aparezca que llegó, pero que falta
+// pagar, hasta que te paso el comprobante"*. Estados: camino → llego (sin `pagado`) → llego + `pagado`.
+// Lo que se debe se valúa al costo de la ficha, el mismo con el que la oficina lo suma al patrimonio:
+// así la deuda y la mercadería se cancelan justo y el día que llega el patrimonio no se mueve.
+function pvDeudaUSD(){
+  let t=0;
+  for(const c of Object.values(state.pedidospv||{})){
+    if(!c||c.estado!=='llego'||c.pagado||!c.prodId)continue;
+    const p=prodById(c.prodId);if(!p)continue;
+    const u=(c.llego||c.items||[]).filter(Boolean).reduce((a,x)=>a+(parseInt(x.u)||0),0);
+    t+=u*(costP(p)||0);
+  }
+  return t;
+}
+async function pvVerComprob(id,n){
+  try{
+    toast('Cargando comprobante…');
+    const snap=await db.ref('comprobantes/pv/'+id+'/'+n).once('value');
+    const src=snap.val();
+    if(src)_mostrarLightbox(src,'Pago al Paulvic · comprobante '+(n+1));else toast('No encuentro ese comprobante','err');
+  }catch(e){toast('Error: '+e.message,'err');}
+}
+// Por si él lo quiere subir directo desde el teléfono: misma compresión que las fotos de producto,
+// pero más grande (1600 px) porque un comprobante se tiene que poder leer. Subirlo = pagado.
+function pvSubirComprob(id){
+  const inp=document.createElement('input');inp.type='file';inp.accept='image/*';
+  inp.onchange=e=>{
+    const f=e.target.files&&e.target.files[0];if(!f)return;
+    if(!/^image\//.test(f.type)){toast('Eso no es una imagen','err');return;}
+    toast('Procesando comprobante…');
+    const r=new FileReader();
+    r.onload=ev=>{const img=new Image();img.onload=async()=>{
+      try{
+        const max=1600;let w=img.width,h=img.height;
+        if(w>h&&w>max){h=Math.round(h*max/w);w=max;}else if(h>=w&&h>max){w=Math.round(w*max/h);h=max;}
+        const cv=document.createElement('canvas');cv.width=w;cv.height=h;
+        const ctx=cv.getContext('2d');ctx.fillStyle='#fff';ctx.fillRect(0,0,w,h);ctx.drawImage(img,0,0,w,h);
+        let q=0.8,url=cv.toDataURL('image/jpeg',q);
+        while(url.length>1500*1024&&q>0.4){q-=0.1;url=cv.toDataURL('image/jpeg',q);}
+        const res=await db.ref('cyc/pedidospv/'+id+'/comprobantes').transaction(n=>(parseInt(n)||0)+1);
+        const n=(parseInt(res.snapshot.val())||1)-1;
+        try{await db.ref('comprobantes/pv/'+id+'/'+n).set(url);}
+        catch(e2){await db.ref('cyc/pedidospv/'+id+'/comprobantes').transaction(x=>Math.max(0,(parseInt(x)||0)-1));throw e2;}
+        const hoy=new Date(Date.now()-3*3600e3).toISOString().slice(0,10);
+        const c=(state.pedidospv||{})[id]||{};
+        await db.ref('cyc/pedidospv/'+id).update({pagado:true,fechaPago:c.fechaPago||hoy});
+        await log('Comprobante de pago al Paulvic cargado ('+id+')');
+        toast('Comprobante guardado ✓');
+      }catch(err){toast('No se guardó el comprobante: '+err.message,'err',6000);}
+    };img.onerror=()=>toast('No se pudo leer la imagen','err');img.src=ev.target.result;};
+    r.readAsDataURL(f);
+  };
+  inp.click();
+}
 function pvEnCaminoHTML(){
-  const cam=Object.entries(state.pedidospv||{}).filter(([,c])=>c&&c.estado==='camino').sort((a,b)=>String(a[1].fecha).localeCompare(String(b[1].fecha)));
-  if(!cam.length)return '';
+  const todos=Object.entries(state.pedidospv||{}).filter(([,c])=>c);
+  const cam=todos.filter(([,c])=>c.estado==='camino').sort((a,b)=>String(a[1].fecha).localeCompare(String(b[1].fecha)));
+  const imp=todos.filter(([,c])=>c.estado==='llego'&&!c.pagado).sort((a,b)=>String(a[1].fechaLlego||'').localeCompare(String(b[1].fechaLlego||'')));
+  // Pagados en los últimos 45 días, para tener el comprobante a mano.
+  const lim=new Date(Date.now()-45*864e5-3*3600e3).toISOString().slice(0,10);
+  const pag=todos.filter(([,c])=>c.estado==='llego'&&c.pagado&&String(c.fechaPago||c.fechaLlego||'')>=lim).sort((a,b)=>String(b[1].fechaPago||'').localeCompare(String(a[1].fechaPago||'')));
+  if(!cam.length&&!imp.length&&!pag.length)return '';
   const dd=f=>{const p=String(f||'').split('-');return p.length===3?p[2]+'/'+p[1]:(f||'?');};
-  return `<div style="padding:10px 12px;margin-bottom:10px;border:1px solid var(--accent2);border-radius:var(--r);background:var(--surface)">
-    <div style="font-size:.8rem;font-weight:600;margin-bottom:4px">🚚 Pedido al Paulvic, todavía no llegó</div>
+  const esc=t=>String(t).replace(/[<>&]/g,'');
+  const uDe=a=>(a||[]).filter(Boolean).reduce((s,x)=>s+(parseInt(x.u)||0),0);
+  const lista=a=>(a||[]).filter(Boolean).map(x=>`${esc(x.v)} ×${parseInt(x.u)||0}`).join(' · ');
+  const comps=(id,c)=>{const n=parseInt(c.comprobantes)||0;return n?Array.from({length:n},(_,i)=>`<button class="btn btn-ghost btn-sm" style="font-size:.66rem;padding:2px 8px;margin:4px 4px 0 0" onclick="pvVerComprob('${id}',${i})">🧾 comprobante${n>1?' '+(i+1):''}</button>`).join(''):'';};
+  const caja=(borde,html)=>`<div style="padding:10px 12px;margin-bottom:10px;border:1px solid ${borde};border-radius:var(--r);background:var(--surface)">${html}</div>`;
+  let h='';
+  if(imp.length)h+=caja('var(--amber)',`<div style="font-size:.8rem;font-weight:600;margin-bottom:4px;color:var(--amber)">💸 Llegó del Paulvic · falta pagar</div>
+    <div style="font-size:.66rem;color:var(--muted);margin-bottom:6px">Ya está en tu oficina y cuenta como deuda en el Arqueo hasta que me pases el comprobante (puede ser más de una transferencia).</div>
+    ${imp.map(([id,c])=>{const u=uDe(c.llego||c.items),p=prodById(c.prodId),usd=u*((p&&costP(p))||0);
+      return `<div style="font-size:.72rem;margin-top:6px"><strong>pedido del ${dd(c.fecha)}</strong> · llegó el ${dd(c.fechaLlego)} · ${u} u.${usd>0?` · se debe ~${fmtUS(usd)}`:''}<div style="color:var(--muted);margin-top:2px">${lista(c.llego||c.items)}</div>${comps(id,c)}<button class="btn btn-ghost btn-sm" style="font-size:.66rem;padding:2px 8px;margin-top:4px" onclick="pvSubirComprob('${id}')">📎 subir comprobante</button></div>`;}).join('')}`);
+  if(cam.length)h+=caja('var(--accent2)',`<div style="font-size:.8rem;font-weight:600;margin-bottom:4px">🚚 Pedido al Paulvic, todavía no llegó</div>
     <div style="font-size:.66rem;color:var(--muted);margin-bottom:6px">Ya está descontado de lo que hay que comprar. Cuando llegue, decime qué vino y lo paso a tu oficina.</div>
-    ${cam.map(([id,c])=>{const its=(c.items||[]).filter(Boolean);const tot=its.reduce((a,x)=>a+(parseInt(x.u)||0),0);
-      return `<div style="font-size:.72rem;margin-top:4px"><strong>del ${dd(c.fecha)}</strong> · ${tot} u. en ${its.length} aroma(s)<div style="color:var(--muted);margin-top:2px">${its.map(x=>`${String(x.v).replace(/[<>&]/g,'')} ×${parseInt(x.u)||0}`).join(' · ')}</div></div>`;}).join('')}
-  </div>`;
+    ${cam.map(([id,c])=>{const its=(c.items||[]).filter(Boolean);
+      return `<div style="font-size:.72rem;margin-top:4px"><strong>del ${dd(c.fecha)}</strong> · ${uDe(its)} u. en ${its.length} aroma(s)<div style="color:var(--muted);margin-top:2px">${lista(its)}</div></div>`;}).join('')}`);
+  if(pag.length)h+=`<details style="margin-bottom:10px"><summary style="font-size:.72rem;color:var(--muted);cursor:pointer">✅ Pagados (${pag.length}) · comprobantes</summary>${pag.map(([id,c])=>`<div style="font-size:.7rem;margin-top:6px">pedido del ${dd(c.fecha)} · pagado el ${dd(c.fechaPago)}${c.montoPago?' · $'+Number(c.montoPago).toLocaleString('es-AR'):''} · ${uDe(c.llego||c.items)} u.<div>${comps(id,c)||'<span style="color:var(--muted)">sin foto</span>'}</div></div>`).join('')}</details>`;
+  return h;
 }
 function pyRepoEnCamino(){
   const m={};
