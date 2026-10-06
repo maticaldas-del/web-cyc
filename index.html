@@ -2434,7 +2434,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='22.05';
+const APP_VERSION='22.06';
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
 // muestre la versión y la fecha de actualización y que tenga un desplegable predeterminado cerrado".
 // Y el mismo día: "que ponga fecha de cada modificación y haya una barrita para scrollear y que
@@ -2445,6 +2445,7 @@ const APP_VERSION='22.05';
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'22.06',f:'06/10/2026',h:'21:30',c:[{n:2,t:'🇵🇾 Probados que no dan: dicen en cuánto % quedaría si lo pedís igual al precio de Nissei'}]},
   {v:'22.05',f:'06/10/2026',h:'12:30',c:[{n:3,t:'🇵🇾 Paraguay: el envío de Full arriba de $33.000 y el recargo del pedido salen de lo MEDIDO cada noche (ya no números fijos)'},{n:3,t:'🇵🇾 Candidatos: cuando la que gana da cuotas, el robot mide también pelear SIN cuotas más barato y se queda con lo que deja más'},{n:2,t:'🇵🇾 Candidatos: el IIBB es el real de la cuenta donde va el producto (perfumes Adriana, el resto la que menos factura)'}]},
   {v:'22.04',f:'06/10/2026',h:'00:15',c:[{n:3,t:'🇵🇾 Paraguay: el mínimo para comprar vuelve a ser 25% para TODO (nuevos, perfumes y probados). Probados estaba en 20%'}]},
   {v:'22.03',f:'05/10/2026',h:'21:05',c:[{n:3,t:'🇵🇾 Productos nuevos de Paraguay: los PERFUMES entran desde 20% de ganancia (el resto sigue en 25%). Los perfumes descartados que ya daban 20% vuelven a la lista'}]},
@@ -14792,7 +14793,16 @@ function maxCompraDe(p,metaPct){
   const usd=tc>0?(merc/tc-ship)/(1+dev/100):null;
   const chk=simMargen({precio:P,mercaderia:merc,gest,comision:c2.com,impPct,cuotasPct:cuoPct});
   return {P,fuente,cuoN,cuoPct,cuo,merc:Math.round(merc),usd,usdPy:usd!=null?usd/RECARGO_PY:null,meta:Math.round(m*100),
-    chk:chk.margen,hoyUSD:costUSDof(p)||0,esPy:p.origen==='py',techo};
+    chk:chk.margen,hoyUSD:costUSDof(p)||0,esPy:p.origen==='py',techo,netoP,imp,gest,ship,dev,tc};
+}
+// El % que quedaría comprando a un precio de Paraguay dado (06/10/2026, pedido suyo: "que los que no den
+// muestren el % que quedaría pidiendo"). Es maxCompraDe dada vuelta: mismo precio de venta, misma comisión,
+// mismo envío, mismas cuotas e impuestos; sólo cambia la mercadería.
+function margenSiComproPY(mx,nuUSD){
+  if(!mx||mx.motivo||!(nuUSD>0)||!(mx.tc>0))return null;
+  const merc=(nuUSD*RECARGO_PY*(1+(mx.dev||0)/100)+(mx.ship||0))*mx.tc;
+  const base=merc+mx.imp+mx.gest; if(!(base>0))return null;
+  return (mx.netoP-merc-mx.imp)/base*100;
 }
 // Fotos (Paraguay y ML), links y datos básicos de un PROBADO de Paraguay (03/10/2026). La usan la tarjeta de
 // Probados y el renglón del 🧾 Pedido: una sola función, así muestran lo mismo.
@@ -14834,11 +14844,12 @@ function pyProbVeredicto(ped){
     if(dl>14)return{k:'sinrev',txt:`comprasparaguay dice "último listado ${pr.nisseiListado.split('-').reverse().slice(0,2).join('/')}": el precio puede no ser el de hoy, preguntá antes`};}
   const mx=maxCompraDe(pr,PY_PROB_PISO);
   if(!mx||mx.motivo)return{k:'sinrev',txt:'sin margen medido en ML: no se puede saber si da'};
-  if(!(mx.usdPy>0))return{k:'noda',txt:`ni regalado llega al ${PY_PROB_PISO}%`};
+  const mgPed=margenSiComproPY(mx,nu), pedTxt=mgPed!=null?` · pidiéndolo queda en <b>${Math.round(mgPed)}%</b>`:'';
+  if(!(mx.usdPy>0))return{k:'noda',txt:`ni regalado llega al ${PY_PROB_PISO}%${pedTxt}`};
   const mxW=Math.floor(mx.usdPy*100)/100;
   const fullTxt=(mx.fuente==='full'?` · vendiéndolo a ${fmt(mx.P)} con Full${mx.techo&&mx.techo.cS?` (el más barato sin Full: ${fmt(mx.techo.cS)})`:''}`:'')
     +(mx.cuoN?` · 💳 el que hay que igualar da cuotas sin interés: descuento ${mx.cuoN} cuotas (${fmt(mx.cuo)}, ${mx.cuoPct}%)`:'');
-  if(nu>mxW+0.005)return{k:'noda',txt:`Nissei US$ ${nu.toFixed(2)} · máx para ${PY_PROB_PISO}%: US$ ${mxW.toFixed(2)}${fullTxt}`};
+  if(nu>mxW+0.005)return{k:'noda',txt:`Nissei US$ ${nu.toFixed(2)}${pedTxt} · máx para ${PY_PROB_PISO}%: US$ ${mxW.toFixed(2)}${fullTxt}`};
   return{k:'da',txt:`Nissei US$ ${nu.toFixed(2)} · máx US$ ${mxW.toFixed(2)} · mirado hace ${dias} d${fullTxt}`};
 }
 function maxCompraHTML(p){
