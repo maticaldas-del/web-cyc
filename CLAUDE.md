@@ -815,6 +815,9 @@ alcanza 14 días o menos (`PED_DIAS_ROJO`) o algún color que vende está en cer
 más de 14 (el objetivo son 20). Rojo y naranja separados a propósito. Lo calcula `syncPedidosAuto` (`sem`, `semDias`, `semColCero`)
 y se guarda en cada pedido como `cSem`/`cSemDias`/`cSemCol` (vía `cuentaPed`); la pantalla lee `_pedSem` (pedido viejo sin `cSem`:
 cae al estado). Los botones de filtro y los contadores van por color. **`estado` no se tocó**: puntaje, riesgo y orden siguen igual.
+**EL ORDEN ES POR PLATA, NO POR COLOR (regla suya, v22.25):** *"siempre compramos las que salen primero, pero ahora sabemos
+exactamente cuáles son las que no hay stock en ningún lado"*. Un naranja que vende mucho (Cartas Casino) va arriba de rojos. No
+volver a ordenar por semáforo. Colores sin nada que comprar: una línea gris abajo de la tarjeta (v22.24).
 
 ## DESPUÉS DE SALIR DEL REMATE POR SOBRA: 3 DÍAS DE PRUEBA (06/10/2026)
 Él: *"entra en remate, en 5 días vende 10: que lo suba con margen de 3 días y si no se vendió lo suficiente que tenía que vender
