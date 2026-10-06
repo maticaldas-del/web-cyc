@@ -3110,6 +3110,104 @@ async function calcPrueba(db, o) {
 // (aparte de mllinks: el alta y la venta reescriben esos renglones) y la pantalla lo usa en el
 // máximo de compra de Paraguay. SÓLO LEE DE ML: no toca ningún precio.
 const TECHO_PASA_SIN_FULL = 0.10;
+// ── MEDIR LOS NÚMEROS DE COMPRA (06/10/2026) · ver `cargarParamCompra` ──────────────────────────
+async function medirParamCompra(db, accounts, labels, GO) {
+  const out = { ts: Date.now() };
+  const pct = (arr, q) => { const a = [...arr].sort((x, y) => x - y); return a.length ? a[Math.min(a.length - 1, Math.floor(q * (a.length - 1) + 0.5))] : null; };
+  // 1 · ENVÍO arriba de $33.000, sólo lo MEDIDO en ventas (no lo estimado), de los últimos 45 días.
+  const np = (await db.get('cyc/netopub')) || {};
+  const env = [];
+  for (const r of Object.values(np)) {
+    if (!r || !(Number(r.precio) >= UMBRAL_ENVIO_GRATIS) || !(Number(r.envio) > 0)) continue;
+    if (r.envioML || r.sinEnvio || r.sinMedir) continue;
+    if (!(Date.now() - (Number(r.ts) || 0) < 45 * 864e5)) continue;
+    env.push(Number(r.envio));
+  }
+  console.log(`\n🚚 ENVÍO DE FULL arriba de $33.000 · ${env.length} publicaciones con el envío medido en ventas`);
+  if (env.length >= 5) {
+    out.envioArriba = Math.round(pct(env, 0.75));
+    console.log(`   el más barato ${money(Math.min(...env))} · el del medio ${money(pct(env, 0.5))} · 75% ${money(out.envioArriba)} · el más caro ${money(Math.max(...env))}`);
+    console.log(`   → se usa ${money(out.envioArriba)} (antes ${money(CAND_ENVIO_ARRIBA)}): 3 de cada 4 publicaciones pagan eso o menos`);
+  } else console.log(`   ⚠️ menos de 5: no alcanza para cambiar el número. Queda ${money(CAND_ENVIO_ARRIBA)}.`);
+  out.envioN = env.length;
+  // 2 · RECARGO de Paraguay: promedio de los últimos 3 pedidos con TODOS los gastos (mínimo 2).
+  const compras = (await db.get('cyc/compraspy')) || {};
+  const recs = Object.entries(compras).map(([k, c]) => ({ k, f: String((c && c.fecha) || k), r: recargoRealPedido(c || {}).r }))
+    .filter((x) => x.r).sort((a, b) => b.f.localeCompare(a.f)).slice(0, 3);
+  console.log(`\n🇵🇾 RECARGO REAL DE PARAGUAY · pedidos con todos los gastos: ${recs.map((x) => `${x.f} ${((x.r - 1) * 100).toFixed(1)}%`).join(' · ') || 'ninguno'}`);
+  if (recs.length >= 2) {
+    out.recargo = Math.round(recs.reduce((t, x) => t + x.r, 0) / recs.length * 1000) / 1000;
+    console.log(`   → se usa ${((out.recargo - 1) * 100).toFixed(1)}% (antes ${RECARGO_PAR_PCT}%)`);
+  } else console.log(`   ⚠️ hacen falta 2 pedidos completos (uno solo puede ser raro). Queda ${RECARGO_PAR_PCT}%.`);
+  out.recargoPedidos = recs.map((x) => x.k);
+  // 3 · CUENTA de lo que no es perfume: la que menos facturó en 90 días (la que elige `repartopy`).
+  const vp = (await db.get('cyc/ventaprod')) || {};
+  const CTAS = ['adriana', 'luciana', 'ayelen', 'matias'];
+  const ctaDe = (x) => { const c = String(x || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, ''); return CTAS.find((k) => c.startsWith(k)) || null; };
+  const desde = Date.now() - 90 * 864e5, fact = { adriana: 0, luciana: 0, ayelen: 0, matias: 0 };
+  for (const [k, ents] of Object.entries(vp)) {
+    const ts = Date.parse(k.slice(0, 10).replace(/_/g, '-'));
+    if (!isFinite(ts) || ts < desde) continue;
+    for (const v of Object.values(ents || {})) { if (!v || v.cancelada) continue; const c = ctaDe(v.cuenta); if (c) fact[c] += Number(v.total) || 0; }
+  }
+  out.cuentaNuevos = [...CTAS].sort((a, b) => fact[a] - fact[b])[0];
+  console.log(`\n🧾 IIBB · perfumes → Adriana ${ML_EXTRA_PCT.adriana}% · el resto → ${out.cuentaNuevos} ${ML_EXTRA_PCT[out.cuentaNuevos]}% (la que menos facturó en 90 días)`);
+  // 4 · CUOTAS: ¿cuánto más barato tiene que estar uno SIN cuotas para ganarle la caja al que da cuotas?
+  const links = (await db.get('cyc/mllinks')) || {};
+  const muestras = [], sinCuoGana = [];
+  let consultas = 0;
+  const espera = () => new Promise((r) => setTimeout(r, 300));
+  for (const label of labels) {
+    const acc = accounts[label]; if (!acc?.refresh_token) continue;
+    let tok;
+    try { const t = await mlRefresh(ML_CLIENT_ID, ML_CLIENT_SECRET, acc.refresh_token); await db.patch('mlapi/tokens/' + label, { refresh_token: t.refresh_token, updated_ts: Date.now() }); tok = t.access_token; }
+    catch { console.log(`   (${label}: no pude entrar)`); continue; }
+    const ids = Object.entries(links).filter(([m, e]) => m.startsWith('MLA') && e && e.cuenta === label && !e.ignored
+      && ['losing', 'sharing', 'winning'].includes(e.caja)).map(([m]) => m).slice(0, 60);
+    for (let k = 0; k < ids.length; k += 20) {
+      let arr; try { arr = await mlGet('/items?ids=' + ids.slice(k, k + 20).join(',') + '&attributes=id,title,status,price,catalog_listing,catalog_product_id,listing_type_id', tok); } catch { continue; }
+      for (const row of (arr || [])) {
+        const b = row.body || {};
+        if (!b.id || b.status !== 'active' || !b.catalog_listing || !b.catalog_product_id || b.listing_type_id === 'gold_pro') continue;
+        if (consultas > 160) break;
+        let ptw = null, ofs = [];
+        try { consultas++; ptw = await mlGet('/items/' + b.id + '/price_to_win?version=v2', tok); await espera(); } catch { continue; }
+        try { consultas++; const it = await mlGet('/products/' + b.catalog_product_id + '/items', tok); ofs = ((it && it.results) || []).filter((o) => !esOfertaDeAfuera(o) && String(o.item_id) !== b.id); await espera(); } catch { continue; }
+        const conCuo = ofs.filter((o) => cuotasDeOferta(o) > 0 && Number(o.price) > 0);
+        if (!conCuo.length || !ptw) continue;
+        const tit = String(b.title || b.id).slice(0, 40);
+        if (ptw.status === 'winning') {
+          // Ganamos SIN cuotas: el más barato que da cuotas está arriba nuestro → con esa diferencia alcanzó.
+          const mc = Math.min(...conCuo.map((o) => Number(o.price)));
+          if (mc > Number(b.price)) sinCuoGana.push({ tit, d: 1 - Number(b.price) / mc });
+          continue;
+        }
+        const wp = Number(ptw.winner && ptw.winner.price) || 0, pw = Number(ptw.price_to_win) || 0;
+        if (!(wp > 0) || !(pw > 0)) continue;
+        const wid = ptw.winner && (ptw.winner.item_id || ptw.winner.id);
+        const w = (wid && ofs.find((o) => String(o.item_id) === String(wid))) || conCuo.find((o) => Math.abs(Number(o.price) - wp) / wp < 0.01);
+        if (!w || !cuotasDeOferta(w)) continue;   // el que gana no da cuotas: esto mide otra cosa
+        const ratio = pw / wp;
+        if (!(ratio > 0.5 && ratio < 1.1)) continue;
+        muestras.push({ tit, cuenta: label, wp: Math.round(wp), pw: Math.round(pw), cuo: cuotasDeOferta(w), d: Math.max(0, 1 - ratio) });
+      }
+    }
+  }
+  console.log(`\n💳 CUOTAS CONTRA SIN CUOTAS · ${consultas} consultas a ML`);
+  for (const m of muestras) console.log(`   perdemos con ${m.tit} (${m.cuenta}) · el que gana da ${m.cuo} cuotas a ${money(m.wp)} · ML dice que SIN cuotas se gana a ${money(m.pw)} → ${(m.d * 100).toFixed(1)}% más barato`);
+  for (const m of sinCuoGana) console.log(`   ganamos SIN cuotas con ${m.tit} estando ${(m.d * 100).toFixed(1)}% abajo del más barato que da cuotas`);
+  if (muestras.length >= 3) {
+    out.cuotasDescSin = Math.round(pct(muestras.map((m) => m.d), 0.5) * 1000) / 1000;
+    console.log(`   → uno sin cuotas tiene que estar ${(out.cuotasDescSin * 100).toFixed(1)}% más barato (el del medio de ${muestras.length} casos medidos por ML)`);
+  } else {
+    out.cuotasDescSin = null;
+    console.log(`   ⚠️ ${muestras.length} caso(s): hacen falta 3 para fijar el número. Mientras tanto se mide sólo igualando CON cuotas (lo de antes).`);
+  }
+  out.cuotasN = muestras.length;
+  if (GO) { await db.set('cyc/mlconfig/paramCompra', out); const rel = await db.get('cyc/mlconfig/paramCompra'); console.log(`\n${rel && rel.ts === out.ts ? '✓ guardado' : '⚠️ no se pudo releer lo guardado'} en cyc/mlconfig/paramCompra`); }
+  else console.log('\n(PRUEBA: no se guardó nada. Con :go queda guardado y lo usan el robot y la web.)');
+  return out;
+}
 function techoConFull(ofertas, precioHoy) {
   const ofs = (ofertas || []).filter((o) => o && Number(o.price) > 0 && !esOfertaDeAfuera(o));
   if (!ofs.length) return null;
@@ -5947,7 +6045,7 @@ async function resolveTgChat(db) {
 // se calcula todo. Pasado a 17% el 23/09/2026, pedido suyo. UN solo número para todo el robot:
 // antes estaba escrito 1,15 en nueve lugares. Ojo: vale para pedidos de ~US$ 500; uno de US$ 1.000
 // diluye el costo fijo y baja a ~13%.
-const RECARGO_PAR = 1.17;
+let RECARGO_PAR = 1.17;   // ojo: lo pisa `cargarParamCompra` con el recargo MEDIDO en los pedidos (06/10/2026)
 // Desde cuántos días de la unidad más vieja en Full se baja por "sobra de stock" (04/10/2026, eligió
 // la a): ML cobra stock antiguo desde los 120 días; antes de eso sostener cuesta ~1%/mes y no paga bajar.
 const SOBRA_EDAD_MIN = 100;
@@ -5964,7 +6062,7 @@ function edadViejaFull(e, clave, lotes, hist) {
   const h = (hist || {})[clave];
   return h && h.desde ? Math.floor((Date.now() - h.desde) / 864e5) : null;
 }
-const RECARGO_PAR_PCT = Math.round((RECARGO_PAR - 1) * 100);
+let RECARGO_PAR_PCT = Math.round((RECARGO_PAR - 1) * 100);
 // ── EL RECARGO REAL DE CADA PEDIDO Y EL COSTO QUE SUBE SOLO (05/10/2026) ──────────────────────
 // Pedido suyo: *"ese 17% es mentiroso. depende de cuánto se cobre en cada envío"* y *"que se actualicen
 // solos los precios al hacer el pedido de paraguay, pero solo si el producto aumentó. Juguemos a la
@@ -6069,7 +6167,39 @@ const CAND_PISO_PERFUME = 25;   // 06/10/2026, él: "lo mínimo que nos quede de
 const RE_CAND_PERF = /perfum|parfum|\bedp\b|\bedt\b|eau de|fragan|fragr|body splash|body mist|\bcolonia\b|\bsplash\b/i;
 function candPisoDe(c) { return c && RE_CAND_PERF.test(`${c.nombre || ''} ${c.mlTit || ''}`) ? CAND_PISO_PERFUME : CAND_PISO_PCT; }
 const CAND_MIN_VENT = 100;      // suyo, 03/10/2026: "100 unidades mínimo vendidas, sino no sirve" para entrar al pedido
-const CAND_ENVIO_ARRIBA = 6190; // el peor envío de Full medido en ventas reales, arriba de la barrera
+let CAND_ENVIO_ARRIBA = 6190; // el envío de Full arriba de la barrera · lo pisa `cargarParamCompra` con lo medido
+// ── LOS NÚMEROS CON LOS QUE SE DECIDE UNA COMPRA SE ACTUALIZAN SOLOS (06/10/2026) ──────────────
+// Pedido suyo: *"el envío ahora cobra más. todo eso quiero que lo mantengas actualizado al robot.
+// Porque con el tiempo los costos cambian y si yo no te decía estamos viendo mal"*. Hasta hoy el
+// envío ($6.190), el recargo de Paraguay (17%) y el IIBB (4,8% para todos) estaban escritos a mano.
+// Ahora los mide `paramcompra:go` todas las noches (ml-daily, antes de `candidatos`) y los guarda en
+// `cyc/mlconfig/paramCompra`; cada corrida los lee al arrancar. Si no están o están fuera de rango,
+// quedan los de arriba (que son los de siempre). La web lee el mismo nodo.
+//  · envío arriba de $33.000: el 75% más caro de lo que ML cobró de verdad en nuestras publicaciones
+//    (`cyc/netopub`, sólo los MEDIDOS en ventas, no estimados);
+//  · recargo de Paraguay: el promedio de los últimos pedidos con TODOS los gastos cargados (hace falta
+//    al menos 2: uno solo puede ser un pedido raro);
+//  · IIBB: el real de la cuenta donde iría el producto (perfume → Adriana · el resto → la que menos
+//    facturó en 90 días, que es la que elige `repartopy`);
+//  · cuotas: cuánto más barato tiene que estar uno SIN cuotas para que ML le dé la caja contra uno que
+//    SÍ da cuotas. Lo dice ML mismo: en nuestras publicaciones que pierden la caja contra uno con
+//    cuotas, `price_to_win` es el precio sin cuotas que gana. Se toma el del medio (hace falta 3+ casos).
+let CUOTAS_DESC_SIN = null;      // fracción (0,08 = 8% más barato) · null = no medido
+let CUENTA_NUEVOS = 'ayelen';
+let PARAM_COMPRA = null;
+async function cargarParamCompra(db) {
+  let pc = null; try { pc = await db.get('cyc/mlconfig/paramCompra'); } catch { pc = null; }
+  if (!pc || typeof pc !== 'object') return null;
+  const env = Number(pc.envioArriba), rec = Number(pc.recargo), cd = Number(pc.cuotasDescSin);
+  if (env >= 3000 && env <= 25000) CAND_ENVIO_ARRIBA = Math.round(env);
+  if (rec >= 1.05 && rec <= 1.4) { RECARGO_PAR = Math.round(rec * 1000) / 1000; RECARGO_PAR_PCT = Math.round((RECARGO_PAR - 1) * 100); }
+  if (pc.cuotasDescSin != null && cd >= 0 && cd <= 0.3) CUOTAS_DESC_SIN = cd;
+  if (ML_EXTRA_PCT[String(pc.cuentaNuevos || '').toLowerCase()] != null) CUENTA_NUEVOS = String(pc.cuentaNuevos).toLowerCase();
+  PARAM_COMPRA = pc;
+  return pc;
+}
+// La cuenta donde iría un producto nuevo: perfume → Adriana (rubro), el resto → la que menos factura.
+function cuentaNuevoDe(c) { return c && RE_CAND_PERF.test(`${c.nombre || ''} ${c.mlTit || ''}`) ? 'adriana' : CUENTA_NUEVOS; }
 // A mano se puede pedir más: `candidatos:go:max=400` (03/10/2026, Guay cargó 350 de una). El 40 es para
 // que la corrida de la noche no se cuelgue; una corrida a mano no lleva nada atrás.
 const CAND_MAX_ML = (() => { const m = String(process.env.BILLING_PROBE || '').match(/^candidatos\b.*\bmax=(\d+)/); return m ? Math.min(500, Math.max(1, parseInt(m[1], 10))) : 40; })();
@@ -6106,7 +6236,8 @@ const CAND_FRESCO_MS = 20 * 3600 * 1000;
 // entran al pedido. Un cambio en la fórmula cuenta igual que un campo nuevo, por cuarta vez.
 // QUINTA VEZ, 23/09/2026: el recargo de Paraguay pasó de 15% a 17%. Cambia el costo puesto de
 // TODOS los candidatos, o sea la cuenta: sin subir esto, los que dan se quedaban con el 15%.
-const CAND_CALC_VER = 11;   // 11: 04/10/2026, el robot ve solo si el que hay que igualar da cuotas (Premium o campaña `pcj`)
+const CAND_CALC_VER = 12;   // 12: 06/10/2026, comisión siempre Clásica (Premium cobraba cuotas 2 veces), IIBB real, envío medido y cuotas vs sin cuotas
+//    // 11: 04/10/2026, el robot ve solo si el que hay que igualar da cuotas (Premium o campaña `pcj`)
 // 10: 03/10/2026, se mide al techo de $650.000 si el competidor está más caro
 
 // ── UN DESCARTE POR MARGEN NO ES "NUNCA MÁS" (19/09/2026) ─────────────────────────────────
@@ -6293,18 +6424,42 @@ function cuotasDeOferta(o) {
 // CUOTAS DE LA QUE GANA (02/10/2026). Regla suya: "Mismo precio en 2 cuotas" lo pone ML a TODAS
 // y no cuesta; pero si la publicación que GANA ofrece 6 o 9 cuotas sin interés, para competir hay
 // que ofrecerlas y eso es costo. `cuoPct` es ese costo en % del precio (0 = sin cuotas).
-async function cuentaCandidato(precio, ltx, catx, puestoUSD, tc, monoP, feeAt, cuoPct = 0) {
+async function cuentaCandidato(precio, ltx, catx, puestoUSD, tc, monoP, feeAt, cuoPct = 0, cuenta = null) {
   if (!(precio > 0) || !catx) return null;
   const fee2 = await feeAt(precio, ltx, catx);
   if (fee2 == null) return null;
   const envio2 = precio >= UMBRAL_ENVIO_GRATIS ? CAND_ENVIO_ARRIBA : 0;
   const costo2 = puestoUSD * tc;
-  const impuestos2 = precio * (4.8 + monoP) / 100;   // IIBB promedio + monotributo
+  // IIBB REAL de la cuenta donde iría (06/10/2026, él: "IIBB poner lo real en todas"). Antes era 4,8%
+  // para todos: a un perfume (Adriana, 3,80%) le restaba un punto de más.
+  const iibb = cuenta ? mlExtraPct(cuenta) : mlExtraPct(CUENTA_NUEVOS);
+  const impuestos2 = precio * (iibb + monoP) / 100;   // IIBB de la cuenta + monotributo
   const costoTot2 = costo2 + impuestos2;
   const cuotas2 = precio * (Number(cuoPct) || 0) / 100;
   const ganancia2 = (precio - fee2 - envio2 - cuotas2) - costoTot2;
-  return { fee: fee2, envio: envio2, cuotas: cuotas2, costo: costo2, impuestos: impuestos2, ganancia: ganancia2,
+  return { fee: fee2, envio: envio2, cuotas: cuotas2, costo: costo2, impuestos: impuestos2, ganancia: ganancia2, iibb,
     margen: (costoTot2 + envio2) > 0 ? (ganancia2 / (costoTot2 + envio2)) * 100 : 0 };
+}
+// ── CUOTAS O MÁS BARATO SIN CUOTAS: EL PUNTO MEDIO (06/10/2026) ─────────────────────────────
+// Él: *"si el mejor vendedor tiene cuotas hay que poner cuotas y pagar como hace él. Pero nosotros no
+// vendemos casi nunca en cuotas. ML pone ganando al que tiene mejor propuesta. Una publicación a 100.000
+// en 6 cuotas capaz le gana a una de 90.000 sin cuotas. Eso lo tenés que ver vos"*.
+// Se miden las DOS formas de pelear y gana la que deja más margen:
+//  · CON cuotas: al mismo precio que él, pagando las cuotas (el % de la tabla de ML);
+//  · SIN cuotas: más barato, en el precio que ML le da la caja a uno sin cuotas contra uno con cuotas
+//    (`CUOTAS_DESC_SIN`, medido por `paramcompra` con `price_to_win` de nuestras publicaciones).
+// Sin ese dato medido sólo se mide la primera, que es lo de antes.
+// LA COMISIÓN SE PREGUNTA SIEMPRE COMO CLÁSICA (`gold_special`), y es un arreglo: hasta hoy, si el que
+// hay que igualar era Premium, se le preguntaba a ML la comisión de PREMIUM —que ya trae adentro el
+// costo de las cuotas— y ENCIMA se sumaban las cuotas aparte. Se cobraban dos veces.
+async function cuentaCandidatoMejor(precio, catx, puestoUSD, tc, monoP, feeAt, cuoPct, cuenta) {
+  const con = await cuentaCandidato(precio, 'gold_special', catx, puestoUSD, tc, monoP, feeAt, cuoPct, cuenta);
+  if (!con) return null;
+  if (!(cuoPct > 0) || CUOTAS_DESC_SIN == null) return { ...con, via: cuoPct > 0 ? 'cuotas' : 'igual', precioVenta: Math.round(precio) };
+  const pSin = Math.floor(precio * (1 - CUOTAS_DESC_SIN) / 10) * 10;
+  const sin = pSin > 0 ? await cuentaCandidato(pSin, 'gold_special', catx, puestoUSD, tc, monoP, feeAt, 0, cuenta) : null;
+  if (sin && sin.margen > con.margen) return { ...sin, via: 'sincuotas', precioVenta: pSin, margenConCuotas: con.margen };
+  return { ...con, via: 'cuotas', precioVenta: Math.round(precio), margenSinCuotas: sin ? sin.margen : null, precioSin: sin ? pSin : null };
 }
 // ── ¿ES EL MISMO PRODUCTO? EL CHEQUEO DE TÍTULOS, COMPARTIDO (19/09/2026) ───────────
 // Vivía adentro de `revisarcompra`. Salió afuera cuando hubo que usarlo también sobre los
@@ -6891,7 +7046,8 @@ async function correrCandidatos(db, products, labels, accounts, soloPrueba, prue
     // abajo de los $33.000 ML no le cobra envío al vendedor y es CERO de verdad; arriba se usa el
     // peor de Full medido en ventas reales, que hace ver el margen MENOR — el lado seguro cuando
     // el número decide una compra que no se puede rehacer hasta que llegue.
-    const cuentaCand = (precio, ltx, catx) => cuentaCandidato(precio, ltx, catx, puesto, tc, monoP, feeAt, cuoPct);
+    const cuentaN = cuentaNuevoDe({ ...c, mlTit });
+    const cuentaCand = (precio, ltx, catx) => cuentaCandidatoMejor(precio, catx, puesto, tc, monoP, feeAt, cuoPct, cuentaN);
     const precioMedir = Math.min(mlPrecio, TECHO_DURO);
     if (mlPrecio > TECHO_DURO) console.log(`      en ML se vende a ${money(Math.round(mlPrecio))}, arriba del techo: lo mido a ${money(TECHO_DURO)}, lo más que podemos vender`);
     const rMin = await cuentaCand(precioMedir, lt, cat);
@@ -6902,6 +7058,8 @@ async function correrCandidatos(db, products, labels, accounts, soloPrueba, prue
       continue;
     }
     const { costo, impuestos, envio, ganancia, margen, fee, cuotas } = rMin;
+    if (rMin.via === 'sincuotas') console.log(`      💳➜💵 conviene pelear SIN cuotas: a ${money(rMin.precioVenta)} (${Math.round(CUOTAS_DESC_SIN * 100)}% abajo del que da cuotas) queda ${rMin.margen.toFixed(1)}% · igualándolo CON cuotas quedaría ${rMin.margenConCuotas.toFixed(1)}%`);
+    else if (rMin.via === 'cuotas' && rMin.margenSinCuotas != null) console.log(`      💳 conviene igualarlo CON cuotas (${rMin.margen.toFixed(1)}%) · sin cuotas a ${money(rMin.precioSin)} quedaría ${rMin.margenSinCuotas.toFixed(1)}%`);
     calculados++;
     // ── ¿HAY OTRO CATÁLOGO DEL MISMO PRODUCTO MÁS BARATO? (02/10/2026) ─────────────────────────
     // Lo encontró el chat de compras con el Montblanc Presence: estaba medido contra MLA19479922
@@ -6970,6 +7128,8 @@ async function correrCandidatos(db, products, labels, accounts, soloPrueba, prue
         mlFlex: _pi ? _pi.conFlex : null,
         margen: Math.round(margen * 10) / 10, ganancia: Math.round(ganancia),
         mlCuotasPct: cuoPct, mlCuotas: cuotas > 0 ? Math.round(cuotas) : null, mlCuotasAuto: cuoAuto || null,
+        // Cómo conviene pelear y en qué cuenta se midió (06/10/2026): 'sincuotas' = más barato sin cuotas.
+        mlVia: rMin.via || null, mlPrecioVenta: rMin.precioVenta || null, mlCuentaIIBB: cuentaN, mlIIBB: rMin.iibb || null,
         // Los tres de la caja de compra se BORRAN: se escribieron en la corrida del 18/09 y
         // siempre valían 0 porque `buy_box_winner` viene null (ver arriba). Dejarlos sería dejar
         // un cero que se lee como un dato.
@@ -7376,6 +7536,7 @@ async function main() {
   // antes que cualquier cosa que pueda mover un precio: si esto no corrió, PISO_DURO vale 30 y lo
   // único que puede pasar es que un comando se niegue a bajar. Fallar hacia el lado seguro.
   try { await cargarPisoDuro(db); } catch { /* queda en 30, que es el lado conservador */ }
+  try { await cargarParamCompra(db); } catch { /* quedan los números de siempre */ }
   // La lista de "no me lo subas, lo estoy liquidando". Si esto falla, NOSUBIR_OK queda en false y
   // raisePrice/raisePriceTo se niegan a subir NADA esta vuelta — ver el comentario de cargarNoSubir.
   try {
@@ -15837,7 +15998,10 @@ async function main() {
         else console.log(`  🛒 ventas en ML: ${vChat} ✓ (+${RV_VENT_PEDIDO})`);
 
         // 6 · LA CUENTA, HECHA DE NUEVO Y CONTRA EL PRECIO DE HOY.
-        const r = await cuentaCandidato(Math.min(mlPrecio, TECHO_DURO), (ref && ref.listing_type_id) || 'gold_special', ref && ref.category_id, puesto, tc, monoP, feeAt);   // techo $650.000 (03/10)
+        // Misma cuenta que `candidatos`: Clásica, cuotas del que hay que igualar (o del chat), IIBB de la
+        // cuenta donde iría y la mejor de las dos formas de pelear (06/10/2026).
+        const _cuoR = Number(c.cuotasGan) >= 3 ? ({ 3: 8.9, 6: 13.4, 9: 17.8, 12: 21.6 })[[3, 6, 9, 12].find((k) => Number(c.cuotasGan) <= k) || 12] : (CUOTAS_PCT_ML[cuotasDeOferta(ref)] || 0);
+        const r = await cuentaCandidatoMejor(Math.min(mlPrecio, TECHO_DURO), ref && ref.category_id, puesto, tc, monoP, feeAt, _cuoR, cuentaNuevoDe(c));   // techo $650.000 (03/10)
         if (!r) {
           frenos.push('ML no contestó la comisión a ese precio');
           console.log('  🧮 ❌ ML no me dijo cuánto cobra de comisión a ese precio. Sin eso no hay margen.');
@@ -15845,7 +16009,7 @@ async function main() {
         }
         const pctCom = mlPrecio > 0 ? (r.fee / mlPrecio) * 100 : 0;
         console.log(`  🧮 la cuenta de HOY, contra el más barato (${money(Math.round(mlPrecio))}):`);
-        console.log(`     ML se queda ${money(Math.round(r.fee))} (${pctCom.toFixed(1)}%, preguntado a ML) · envío de Full ${money(r.envio)}${r.envio === 0 ? ' (abajo de $33.000 no cobra)' : ' (el peor medido)'} · IIBB+monotributo ${money(Math.round(r.impuestos))}`);
+        console.log(`     ML se queda ${money(Math.round(r.fee))} (${pctCom.toFixed(1)}%, preguntado a ML) · envío de Full ${money(r.envio)}${r.envio === 0 ? ' (abajo de $33.000 no cobra)' : ' (el medido de nuestras ventas)'} · IIBB ${r.iibb}% + monotributo ${money(Math.round(r.impuestos))}${r.cuotas > 0 ? ` · cuotas ${money(Math.round(r.cuotas))}` : ''}${r.via === 'sincuotas' ? ` · conviene SIN cuotas a ${money(r.precioVenta)}` : ''}`);
         console.log(`     mercadería puesta ${money(Math.round(r.costo))}  →  te quedan ${money(Math.round(r.ganancia))} por unidad · margen ${r.margen.toFixed(1)}%`);
         const antes = (c.margen != null && isFinite(c.margen)) ? Number(c.margen) : null;
         if (antes != null) {
@@ -16884,7 +17048,7 @@ async function main() {
         console.log(`   Se mide contra el MÁS BARATO con Full: es el peor caso y el precio al que de verdad vas a tener que vender.`);
       }
       // 3) la cuenta, con la comisión que ML cobra a ESE precio
-      const _ltG = _ofBarata.listing_type_id || 'gold_special';
+      const _ltG = 'gold_special';   // nosotros vendemos en Clásica (06/10: la Premium traía las cuotas adentro)
       const _catG = _ofBarata.category_id || prodG.category_id;
       if (!_catG) { console.log('\n❌ ML no dice la categoría de esa publicación, así que no puedo pedirle la comisión.'); return; }
       // `cuentaCandidato` espera el costo en dólares por un tipo de cambio. Acá el costo YA viene
@@ -18414,6 +18578,12 @@ async function main() {
     // `techofull[:go]` (04/10/2026): a cuánto se puede vender cada publicación de catálogo teniendo
     // Full (ver `calcTechoFull`). Sin `:go` sólo muestra; con `:go` guarda `cyc/techofull`, que usa
     // Pedidos Paraguay para el máximo de compra. Corre solo en ml-daily antes de los avisos.
+    if (/^paramcompra(:|$)/.test(String(process.env.BILLING_PROBE || ''))) {
+      const GO = /:go$/.test(String(process.env.BILLING_PROBE || ''));
+      console.log(`=== LOS NÚMEROS CON LOS QUE SE DECIDE UNA COMPRA ${GO ? '(SE GUARDAN)' : '(PRUEBA)'} ===`);
+      await medirParamCompra(db, accounts, labels, GO);
+      return;
+    }
     if (/^techofull(:|$)/.test(String(process.env.BILLING_PROBE || ''))) {
       const GO = /:go$/.test(String(process.env.BILLING_PROBE || ''));
       console.log(`=== TECHO CON FULL ${GO ? '(SE GUARDA)' : '(PRUEBA: no se guarda nada)'} ===\n`);

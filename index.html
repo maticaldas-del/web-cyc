@@ -1979,6 +1979,7 @@ function startApp(){
     // uno que se hundió solo, porque el remedio es opuesto (a uno se lo deja, al otro se lo sube).
     state.nosubir=d.nosubir||{};
     state.mlconfig=d.mlconfig||{};   // config del robot (auto-precio, meta, umbral)
+    try{_aplicarParamCompra();}catch(e){}
     state.monotributo=d.monotributo||{}; // monotributo: montos por cuenta + % que calcula el robot
     // Facturas que emitió el facturador automático de ML, por cuenta. Las carga el robot una vez
     // por día (probe facsync). facturas_sin son las ventas que quedaron SIN factura: eso es lo que
@@ -2433,7 +2434,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='22.04';
+const APP_VERSION='22.05';
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
 // muestre la versión y la fecha de actualización y que tenga un desplegable predeterminado cerrado".
 // Y el mismo día: "que ponga fecha de cada modificación y haya una barrita para scrollear y que
@@ -2444,6 +2445,7 @@ const APP_VERSION='22.04';
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'22.05',f:'06/10/2026',h:'12:30',c:[{n:3,t:'🇵🇾 Paraguay: el envío de Full arriba de $33.000 y el recargo del pedido salen de lo MEDIDO cada noche (ya no números fijos)'},{n:3,t:'🇵🇾 Candidatos: cuando la que gana da cuotas, el robot mide también pelear SIN cuotas más barato y se queda con lo que deja más'},{n:2,t:'🇵🇾 Candidatos: el IIBB es el real de la cuenta donde va el producto (perfumes Adriana, el resto la que menos factura)'}]},
   {v:'22.04',f:'06/10/2026',h:'00:15',c:[{n:3,t:'🇵🇾 Paraguay: el mínimo para comprar vuelve a ser 25% para TODO (nuevos, perfumes y probados). Probados estaba en 20%'}]},
   {v:'22.03',f:'05/10/2026',h:'21:05',c:[{n:3,t:'🇵🇾 Productos nuevos de Paraguay: los PERFUMES entran desde 20% de ganancia (el resto sigue en 25%). Los perfumes descartados que ya daban 20% vuelven a la lista'}]},
   {v:'22.02',f:'05/10/2026',h:'15:10',c:[{n:2,t:'Línea de tiempo: el resumen dice el stock de hoy en unidades, con su color (falta · justo · bien · sobra · exceso) y cuántos días alcanza'},{n:1,t:'Ficha de Paraguay: el "× 1,15" decía el recargo viejo; ahora dice el 17% que usa la cuenta'},{n:1,t:"Ficha: ya no dice 'habría que cruzar los $33.000' en un producto que ya está arriba de la barrera"}]},
@@ -3782,7 +3784,7 @@ const UMBRAL_ENVIO_GRATIS=33000;
 // correo, ~$103.600) pesa menos en uno más grande. Los textos de la pantalla dicen "17%" a mano:
 // si este número cambia, buscar "17%" en las pantallas de Paraguay.
 // El costo de lo YA comprado NO cambia: es lo que se pagó y vive en cada ficha.
-const RECARGO_PY=1.17;
+let RECARGO_PY=1.17;   // lo pisa _aplicarParamCompra con el recargo MEDIDO en los pedidos (06/10/2026)
 // ── EL CARGO FIJO DE ML, Y POR QUÉ LA COMISIÓN NO ES UN % PAREJO ──────────────────────────
 // Medido con `comisiones` el 11/09/2026 preguntándole a ML publicación por publicación: la
 // comisión NO es un porcentaje parejo, es **un % del precio MÁS un cargo fijo por venta**. Por eso
@@ -3793,7 +3795,17 @@ const ML_CARGO_FIJO=1230;
 // El peor envío de Full medido en ventas REALES arriba de la barrera. Es el MISMO número que usa
 // el robot para los candidatos de Paraguay (`CAND_ENVIO_ARRIBA`). Errar para el lado caro hace ver
 // el margen MENOR, que es el lado seguro cuando el número decide una compra.
-const SIM_ENVIO_ARRIBA=6190;
+let SIM_ENVIO_ARRIBA=6190;
+// ── LOS NÚMEROS DE COMPRA, LOS MISMOS QUE EL ROBOT (06/10/2026) ──────────────────────────────
+// Él: "con el tiempo los costos cambian y si yo no te decía estamos viendo mal". El robot los mide
+// todas las noches (`paramcompra`) y los deja en cyc/mlconfig/paramCompra; acá se aplican los mismos
+// topes que en el robot. Si no están, quedan los de siempre.
+function _aplicarParamCompra(){
+  const pc=(state.mlconfig||{}).paramCompra; if(!pc||typeof pc!=='object')return;
+  const env=Number(pc.envioArriba),rec=Number(pc.recargo);
+  if(env>=3000&&env<=25000)SIM_ENVIO_ARRIBA=Math.round(env);
+  if(rec>=1.05&&rec<=1.4)RECARGO_PY=Math.round(rec*1000)/1000;
+}
 // El techo duro de precio, regla suya del 13/08/2026: nunca por encima de $650.000. Acá no frena
 // nada —esto sólo simula— pero un renglón que propone un precio arriba del techo tiene que decirlo.
 const SIM_TECHO=650000;
@@ -11289,6 +11301,7 @@ function candPreciosPartes(c){
   else if(c.mlConFull)R.full=(`📦 <span style="color:var(--muted)">${c.mlConFull} con Full${c.mlFlex?` · ${c.mlFlex} con Flex`:''}</span>`);
   // CUOTAS DE LA QUE GANA (02/10/2026): si la publicación ganadora da 6+ cuotas sin interés hay que
   // ofrecerlas para competir, y el robot ya las restó del margen (`mlCuotas`). Se dice acá.
+  if(c.mlVia==='sincuotas'&&Number(c.mlPrecioVenta)>0)R.full=(R.full?R.full+' · ':'')+`💳➜💵 <b style="color:var(--green)">la que gana da cuotas, pero conviene pelear SIN cuotas a ${fmt(Number(c.mlPrecioVenta))}</b> <span style="color:var(--muted)">(el % de abajo es a ese precio)</span>`;
   if(Number(c.mlCuotas)>0)R.full=(R.full?R.full+' · ':'')+`💳 <b style="color:var(--amber)">la que gana da ${parseInt(c.cuotasGan)||Number(c.mlCuotasAuto)||'?'} cuotas${!parseInt(c.cuotasGan)&&c.mlCuotasAuto?' (lo vio el robot: Premium o campaña de cuotas)':''}</b>: −${fmt(Number(c.mlCuotas))} (${Number(c.mlCuotasPct)||0}%) ya descontado del %`;
   // LAS VENTAS DEL PRODUCTO EN ML (18/09/2026, pedido suyo). Regla suya: *"en ML tiene que haber
   // ventas de verdad (+25 vendidos para arriba): un vendedor solo no molesta, uno sin ventas no
