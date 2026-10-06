@@ -2451,7 +2451,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='22.23';
+const APP_VERSION='22.24';
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
 // muestre la versión y la fecha de actualización y que tenga un desplegable predeterminado cerrado".
 // Y el mismo día: "que ponga fecha de cada modificación y haya una barrita para scrollear y que
@@ -2462,6 +2462,7 @@ const APP_VERSION='22.23';
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'22.24',f:'06/10/2026',h:'15:14',c:[{n:1,t:'🚦 Pedidos: los colores que no hace falta comprar (alcanza con lo de casa y lo que viaja) ya no van como renglón: quedan en una línea abajo con sus días. Se mandan desde Armar caja'}]},
   {v:'22.23',f:'06/10/2026',h:'15:12',c:[{n:2,t:'🚦 Pedidos ordena primero por color: arriba los rojos, después los naranjas y al final los amarillos. Adentro de cada color, como antes: lo que más plata destraba'}]},
   {v:'22.22',f:'06/10/2026',h:'15:08',c:[{n:2,t:'🚦 Pedidos: al abrir un producto con colores o aromas aparecen directamente sus variantes, cada una con su color del semáforo (🔴 sin stock en ningún lado · 🟠 14 días o menos · 🟡 más) y las unidades a comprar, como un producto normal. Primero las rojas'},{n:3,t:'🤖 Remate por sobra: después de terminarlo y volver a la base, el robot espera 3 días (más si vende poco) y si no vendió lo que tenía que vender, vuelve a rematar'}]},
   {v:'22.21',f:'06/10/2026',h:'15:03',c:[{n:2,t:'🚦 Pedidos con semáforo: 🔴 no hay en ningún lado (ni en ML, ni viajando, ni en tu oficina) · 🟠 alcanza 14 días o menos, o algún color que vende está en cero · 🟡 más de 14 días. Cada tarjeta dice para cuántos días alcanza, y los botones de arriba filtran por color'}]},
@@ -15111,7 +15112,12 @@ function _pedidoItemHtml(p,opts){
   // LAS VARIANTES A LA VISTA (06/10/2026, pedido suyo: "al hacer click aparezcan las variantes directamente
   // con su respectivo color y unidades a comprar, como cualquier otro producto normal"). Al abrir la tarjeta
   // cada color es un renglón con su semáforo y sus unidades, sin otro desplegable. Primero los rojos.
-  const varToggle=varsSorted?`<div class="ped-vars">${[...varsSorted].sort((a,b)=>(_PED_SEM_ORD[pedVarSem(a)]-_PED_SEM_ORD[pedVarSem(b)])||((b.q||0)-(a.q||0))).map(x=>pedVarFila(x)).join('')}</div>`:'';
+  // Los colores que NO hay que comprar (alcanza con lo de casa y lo que viaja) no van como renglón (06/10/2026,
+  // él con la Terracota "✓ mandar de casa · 46 d": "¿y esto para qué?"): Pedidos es para comprar. Van en una
+  // sola línea abajo, para que se sepa por qué no están; mandarlos es cosa de Armar caja.
+  const _vComp=varsSorted?varsSorted.filter(x=>(x.q||0)>0):[];
+  const _vMand=varsSorted?varsSorted.filter(x=>!((x.q||0)>0)):[];
+  const varToggle=varsSorted?`<div class="ped-vars">${[..._vComp].sort((a,b)=>(_PED_SEM_ORD[pedVarSem(a)]-_PED_SEM_ORD[pedVarSem(b)])||((b.q||0)-(a.q||0))).map(x=>pedVarFila(x)).join('')}${_vMand.length?`<div style="font-size:.68rem;color:var(--muted);padding:2px 4px">✓ no hace falta comprar ${_vMand.length===1?'este color':'estos '+_vMand.length+' colores'} (alcanza con lo de casa y lo que viaja, mandalos desde Armar caja): ${_vMand.map(x=>x.v+(x.dias!=null&&x.dias<999?' ~'+x.dias+' d':'')).join(' · ')}</div>`:''}</div>`:'';
   const _prod=(state.products||[]).find(x=>x.id===p.prodId||(x.name&&normTxt(x.name)===normTxt(p.producto||'')));
   // El botón sale con CUALQUIER foto, no sólo con la cargada a mano: antes miraba `_prod.foto`,
   // que sólo se prende al subir una, así que con la foto automática de ML el botón no aparecía.
