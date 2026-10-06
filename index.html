@@ -2434,7 +2434,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='22.09';
+const APP_VERSION='22.10';
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
 // muestre la versión y la fecha de actualización y que tenga un desplegable predeterminado cerrado".
 // Y el mismo día: "que ponga fecha de cada modificación y haya una barrita para scrollear y que
@@ -2445,6 +2445,7 @@ const APP_VERSION='22.09';
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'22.10',f:'06/10/2026',h:'23:05',c:[{n:1,t:'🇵🇾 Pedidos Paraguay probados: arriba de cada tarjeta sólo "da / no da · pidiéndolo queda N%"; el detalle (precio de Nissei, máximo, Full, cuotas) está al abrir la tarjeta'}]},
   {v:'22.09',f:'06/10/2026',h:'22:50',c:[{n:1,t:'🔢 Contar lo que hay: al lado de cada cuenta aparece el código de la etiqueta de Full de esa variante, igual que en Armar caja'}]},
   {v:'22.08',f:'06/10/2026',h:'22:35',c:[{n:1,t:'📦 Armar caja: cuando ninguna cuenta necesita un producto, dice cuenta por cuenta cuánto tiene en Full, en camino, cuánto vendió y por qué no hace falta mandar'}]},
   {v:'22.07',f:'06/10/2026',h:'21:50',c:[{n:1,t:'🇵🇾 Las fichas nuevas de Paraguay nacen con el título de ML, no el de comprasparaguay (que viene en portugués)'}]},
@@ -14861,12 +14862,13 @@ function pyProbVeredicto(ped){
   const mx=maxCompraDe(pr,PY_PROB_PISO);
   if(!mx||mx.motivo)return{k:'sinrev',txt:'sin margen medido en ML: no se puede saber si da'};
   const mgPed=margenSiComproPY(mx,nu), pedTxt=mgPed!=null?` · pidiéndolo queda en <b>${Math.round(mgPed)}%</b>`:'';
-  if(!(mx.usdPy>0))return{k:'noda',txt:`ni regalado llega al ${PY_PROB_PISO}%${pedTxt}`};
+  const corto=mgPed!=null?`pidiéndolo queda en ${Math.round(mgPed)}%`:'';
+  if(!(mx.usdPy>0))return{k:'noda',corto,txt:`ni regalado llega al ${PY_PROB_PISO}%${pedTxt}`};
   const mxW=Math.floor(mx.usdPy*100)/100;
   const fullTxt=(mx.fuente==='full'?` · vendiéndolo a ${fmt(mx.P)} con Full${mx.techo&&mx.techo.cS?` (el más barato sin Full: ${fmt(mx.techo.cS)})`:''}`:'')
     +(mx.cuoN?` · 💳 el que hay que igualar da cuotas sin interés: descuento ${mx.cuoN} cuotas (${fmt(mx.cuo)}, ${mx.cuoPct}%)`:'');
-  if(nu>mxW+0.005)return{k:'noda',txt:`Nissei US$ ${nu.toFixed(2)}${pedTxt} · máx para ${PY_PROB_PISO}%: US$ ${mxW.toFixed(2)}${fullTxt}`};
-  return{k:'da',txt:`Nissei US$ ${nu.toFixed(2)} · máx US$ ${mxW.toFixed(2)} · mirado hace ${dias} d${fullTxt}`};
+  if(nu>mxW+0.005)return{k:'noda',corto,txt:`Nissei US$ ${nu.toFixed(2)}${pedTxt} · máx para ${PY_PROB_PISO}%: US$ ${mxW.toFixed(2)}${fullTxt}`};
+  return{k:'da',corto,txt:`Nissei US$ ${nu.toFixed(2)} · máx US$ ${mxW.toFixed(2)} · mirado hace ${dias} d${fullTxt}`};
 }
 function maxCompraHTML(p){
   const r=maxCompraDe(p); if(!r)return'';
@@ -14976,7 +14978,7 @@ function _pedidoItemHtml(p,opts){
       ${origenBtn}
       ${varToggle}
       ${cuentaPedidoHTML(p)}
-      ${_prod?maxCompraHTML(_prod):''}
+      ${opts.verdDet?`<div style="flex-basis:100%;font-size:.62rem;line-height:1.5;color:var(--muted)">🇵🇾 ${opts.verdDet}</div>`:''}${_prod?maxCompraHTML(_prod):''}
       <button class="pi-prov ${p.proveedor?'':'sin-prov'}" onclick="setPedidoProveedor('${p.id}')">${p.proveedor?p.proveedor.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'):'+ proveedor'}</button>
       ${accionBtns}
       <span class="pi-ts">${p.ts?ts2s(p.ts):''}</span>
@@ -15183,7 +15185,10 @@ function renderPedidos(){
     // en un desplegable, con el motivo (ver pyProbVeredicto).
     const G={da:[],noda:[],notiene:[],sinrev:[]};
     peds.slice().sort(_pedSortFnRiesgo).forEach(p=>{const v=pyProbVeredicto(p);G[v.k].push({p,v});});
-    const card=({p,v})=>`<div style="font-size:.72rem;margin:0 0 3px 4px;color:${v.k==='da'?'var(--green)':v.k==='noda'?'var(--red)':'var(--muted)'}">${v.k==='da'?'✅ da':v.k==='noda'?'🔴 no da':v.k==='notiene'?'⚪':'❔'} · ${v.txt}</div>`+_pedidoItemHtml(p,{showRiesgo:true});
+    // SIMPLE A LA VISTA, EL DETALLE ADENTRO (06/10/2026, él: "lo quiero más simple, el detalle al abrir el
+    // detalle en el producto"). Arriba de la tarjeta sólo el veredicto y en cuánto queda; el renglón largo
+    // (precio de Nissei, máximo, Full, cuotas) va adentro de la tarjeta, al lado del máximo de compra.
+    const card=({p,v})=>`<div style="font-size:.72rem;margin:0 0 3px 4px;color:${v.k==='da'?'var(--green)':v.k==='noda'?'var(--red)':'var(--muted)'}">${v.k==='da'?'✅ da':v.k==='noda'?'🔴 no da':v.k==='notiene'?'⚪':'❔'}${v.k==='da'||v.k==='noda'?(v.corto?' · '+v.corto:''):' · '+v.txt}</div>`+_pedidoItemHtml(p,{showRiesgo:true,verdDet:(v.k==='da'||v.k==='noda')?v.txt:''});
     const grupo=(t,arr,col)=>arr.length?`<div style="font-size:.76rem;font-weight:700;color:${col};margin:12px 0 6px">${t} (${arr.length})</div>`+arr.map(card).join(''):'';
     const resto=G.noda.length+G.notiene.length+G.sinrev.length;
     el.innerHTML=`<div style="font-size:.72rem;color:var(--muted);margin:2px 0 8px">✅ Arriba sólo lo que <b style="color:var(--text)">da</b>: Nissei lo tiene, el precio se miró en los últimos ${PY_PROB_FRESCO_DIAS} días y deja ${PY_PROB_PISO}% o más. Lo deja al día Guay, que recorre los probados primero.</div>`
