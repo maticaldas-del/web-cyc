@@ -810,8 +810,8 @@ privada unificados · las dos facturas de Sancor analizadas.
 
 
 ## PEDIDOS CON SEMÁFORO (06/10/2026, v22.21 · `cyc-v501`)
-Regla suya: cuenta **ML + en camino + oficina**. 🔴 **rojo** = no hay en ningún lado (se pierde plata hoy) · 🟠 **naranja** =
-alcanza 14 días o menos (`PED_DIAS_ROJO`) o algún color que vende está en cero en todos lados (se va a cortar) · 🟡 **amarillo** =
+Regla suya: cuenta **ML + en camino + oficina**. 🔴 **rojo** = no hay en ningún lado, o (con colores) algún color que vende está en cero en todos lados (v22.26) · 🟠 **naranja** =
+alcanza 14 días o menos (`PED_DIAS_ROJO`) (se va a cortar) · 🟡 **amarillo** =
 más de 14 (el objetivo son 20). Rojo y naranja separados a propósito. Lo calcula `syncPedidosAuto` (`sem`, `semDias`, `semColCero`)
 y se guarda en cada pedido como `cSem`/`cSemDias`/`cSemCol` (vía `cuentaPed`); la pantalla lee `_pedSem` (pedido viejo sin `cSem`:
 cae al estado). Los botones de filtro y los contadores van por color. **`estado` no se tocó**: puntaje, riesgo y orden siguen igual.
