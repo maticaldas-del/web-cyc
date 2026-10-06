@@ -836,6 +836,15 @@ publicación → `mlTit` del candidato sin reparos). Aplicado el 06/10: **11 de 
 De ahora en más `pyped:llego` y `candFichaDesde` crean la ficha ya con el `mlTit`. Probados que no dan muestran *"pidiéndolo queda
 en N%"* (`margenSiComproPY`, v22.06).
 
+## PEDIDOS AL PAULVIC EN CAMINO (06/10/2026, v22.13)
+Él: *"cuando hago un pedido de paulvic te lo paso y lo descontás de pedir, ponelo como llegando (…) y cuando llega te paso lo que
+llegó"*. `cyc/pedidospv/<id>` (`pv<AAAAMMDD>`, aromas con el nombre exacto de la ficha "Paulvic TODOS"). Comando `pvped` (ml-sync):
+`pvped:<aroma>=<u>;…[;fecha=AAAA-MM-DD];go` (ya lo pedí) · `pvped:llego:<id|ultimo>[;<aroma>=<u>…];go` (llegó: sin aromas = todo;
+con aromas reemplaza lo pedido, 0 = no vino; lo que vino se SUMA a la oficina, lo que faltó se anota y vuelve a pedirse solo).
+La web (`pvEnCamino`) lo resta aroma por aroma en Pedidos y lo muestra arriba de la pestaña Paulvic. **No entra al patrimonio**
+(no sabemos si ya está pagado). Cargado el 06/10: `pv20261006`, 12 aromas, 40 u.
+Y v22.12: en Armar caja lo que tiene unidades cargadas va siempre arriba.
+
 ## COMPRAR: 24% PARA TODO (06/10/2026 a la noche, v22.11)
 Él, con el Ferrari Negro en 24,9%: *"na, que entre. o sea arriba del 24% TODO"*. `CAND_PISO_PCT`, `CAND_PISO_PERFUME` y `PY_PROB_PISO` = **24** (web y robot). Lo de abajo (25%) queda como historia. Vender no cambió.
 
