@@ -457,6 +457,14 @@ input.qty:focus{border-color:var(--accent2)}
 .ped-card.pendiente .ped-buy b{color:var(--red)}
 .ped-card.poco_stock .ped-buy b{color:var(--amber)}
 .ped-card.suficiente .ped-buy b{color:var(--green)}
+/* SEMÁFORO (06/10/2026): manda sobre el estado viejo. Rojo = no hay en ningún lado · naranja = ≤14 días o un color en cero · amarillo = más. */
+.ped-card.sem-rojo{border-left-color:var(--red)}
+.ped-card.sem-naranja{border-left-color:#f97316}
+.ped-card.sem-amarillo{border-left-color:#eab308}
+.ped-card.sem-rojo .ped-buy b{color:var(--red)}
+.ped-card.sem-naranja .ped-buy b{color:#f97316}
+.ped-card.sem-amarillo .ped-buy b{color:#ca8a04}
+.ped-sem{font-style:normal;font-size:.6rem;letter-spacing:.02em;margin-top:1px}
 .ped-caret{display:inline-block;font-size:.62rem;color:var(--muted);width:16px;text-align:center;flex-shrink:0;transition:transform .15s}
 .ped-card[open] .ped-caret{transform:rotate(180deg)}
 .ped-body{display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding:11px 14px 12px;border-top:1px solid var(--border)}
@@ -981,9 +989,9 @@ footer{margin-top:32px;padding-top:14px;border-top:1px solid var(--border);font-
     <input class="search-box" id="ped-search" type="search" placeholder="Buscar pedido..." oninput="renderPedidos()" style="margin-bottom:10px">
     <div class="pedido-filters">
       <button class="pf-btn active-all" id="pf-todos" onclick="setPedidoFilter('todos',this)">Todos</button>
-      <button class="pf-btn" id="pf-pendiente" onclick="setPedidoFilter('pendiente',this)">🔴 Urgente</button>
-      <button class="pf-btn" id="pf-poco_stock" onclick="setPedidoFilter('poco_stock',this)">🟡 Poco stock</button>
-      <button class="pf-btn" id="pf-suficiente" onclick="setPedidoFilter('suficiente',this)">🟢 Suficiente</button>
+      <button class="pf-btn" id="pf-rojo" onclick="setPedidoFilter('rojo',this)">🔴 Sin stock</button>
+      <button class="pf-btn" id="pf-naranja" onclick="setPedidoFilter('naranja',this)">🟠 14 días o menos</button>
+      <button class="pf-btn" id="pf-amarillo" onclick="setPedidoFilter('amarillo',this)">🟡 Más de 14 días</button>
     </div>
     <div id="pedidos-list"><div class="empty-msg">Sin pedidos cargados.</div></div>
   </div>
@@ -994,9 +1002,9 @@ footer{margin-top:32px;padding-top:14px;border-top:1px solid var(--border);font-
     <input class="search-box" id="ped-py-search" type="search" placeholder="Buscar pedido..." oninput="renderPedidos()" style="margin-bottom:10px">
     <div class="pedido-filters">
       <button class="pf-btn active-all" id="pf-py-todos" onclick="setPedidoFilter('todos',this)">Todos</button>
-      <button class="pf-btn" id="pf-py-pendiente" onclick="setPedidoFilter('pendiente',this)">🔴 Urgente</button>
-      <button class="pf-btn" id="pf-py-poco_stock" onclick="setPedidoFilter('poco_stock',this)">🟡 Poco stock</button>
-      <button class="pf-btn" id="pf-py-suficiente" onclick="setPedidoFilter('suficiente',this)">🟢 Suficiente</button>
+      <button class="pf-btn" id="pf-py-rojo" onclick="setPedidoFilter('rojo',this)">🔴 Sin stock</button>
+      <button class="pf-btn" id="pf-py-naranja" onclick="setPedidoFilter('naranja',this)">🟠 14 días o menos</button>
+      <button class="pf-btn" id="pf-py-amarillo" onclick="setPedidoFilter('amarillo',this)">🟡 Más de 14 días</button>
     </div>
     <div id="pedidos-py-list"><div class="empty-msg">Sin pedidos cargados.</div></div>
   </div>
@@ -1007,9 +1015,9 @@ footer{margin-top:32px;padding-top:14px;border-top:1px solid var(--border);font-
     <input class="search-box" id="ped-paulvic-search" type="search" placeholder="Buscar pedido paulvic..." oninput="renderPedidos()" style="margin-bottom:10px">
     <div class="pedido-filters">
       <button class="pf-btn active-all" id="pf-paulvic-todos" onclick="setPedidoFilter('todos',this)">Todos</button>
-      <button class="pf-btn" id="pf-paulvic-pendiente" onclick="setPedidoFilter('pendiente',this)">🔴 Urgente</button>
-      <button class="pf-btn" id="pf-paulvic-poco_stock" onclick="setPedidoFilter('poco_stock',this)">🟡 Poco stock</button>
-      <button class="pf-btn" id="pf-paulvic-suficiente" onclick="setPedidoFilter('suficiente',this)">🟢 Suficiente</button>
+      <button class="pf-btn" id="pf-paulvic-rojo" onclick="setPedidoFilter('rojo',this)">🔴 Sin stock</button>
+      <button class="pf-btn" id="pf-paulvic-naranja" onclick="setPedidoFilter('naranja',this)">🟠 14 días o menos</button>
+      <button class="pf-btn" id="pf-paulvic-amarillo" onclick="setPedidoFilter('amarillo',this)">🟡 Más de 14 días</button>
     </div>
     <div id="pedidos-paulvic-list"><div class="empty-msg">Sin pedidos cargados.</div></div>
   </div>
@@ -2435,7 +2443,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='22.20';
+const APP_VERSION='22.21';
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
 // muestre la versión y la fecha de actualización y que tenga un desplegable predeterminado cerrado".
 // Y el mismo día: "que ponga fecha de cada modificación y haya una barrita para scrollear y que
@@ -2446,6 +2454,7 @@ const APP_VERSION='22.20';
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'22.21',f:'06/10/2026',h:'15:03',c:[{n:2,t:'🚦 Pedidos con semáforo: 🔴 no hay en ningún lado (ni en ML, ni viajando, ni en tu oficina) · 🟠 alcanza 14 días o menos, o algún color que vende está en cero · 🟡 más de 14 días. Cada tarjeta dice para cuántos días alcanza, y los botones de arriba filtran por color'}]},
   {v:'22.20',f:'06/10/2026',h:'14:44',c:[{n:3,t:'🤖 La barrera de los $33.000: el robot la puede cruzar sólo si, restando el envío que ML cobra arriba de ese monto (y IIBB + monotributo sobre lo que sube), deja más plata por venta que quedándose en $32.999'},{n:3,t:'📦 Sobra de stock: ya no es "100 días fijos". Cuenta los lotes en orden de llegada (ML vende primero lo viejo), siempre con fecha, proyecta lo que ML va a cobrar de stock antiguo al ritmo de hoy y baja sólo si eso es más que lo que se regala bajando'},{n:2,t:'📈 Métricas: el % del mes en curso se compara también contra el mes anterior HASTA EL MISMO DÍA (y abajo sigue el mes anterior entero)'}]},
   {v:'22.19',f:'06/10/2026',h:'15:10',c:[{n:3,t:'🤖 Robot de precios: si el robot vuelve al precio de antes de una baja (o suba) suya, ya no se lo cuenta como ganancia: "sin robot" el precio nunca se había movido. Si pasa de largo, sólo cuenta lo que va más allá'},{n:2,t:'🤖 Robot de precios por mes: cada peso va al mes de la venta que lo dejó. Lo que ganó o perdió en septiembre no aparece en octubre'},{n:1,t:'🧾 En cada venta, el "$X de más por la suba" sigue la misma regla'}]},
   {v:'22.18',f:'06/10/2026',h:'14:20',c:[{n:1,t:'🇵🇾 Pedidos Paraguay: el "da / no da · pidiéndolo queda N%" va adentro de la tarjeta, abajo del nombre'},{n:2,t:'🇵🇾 La ficha del producto calcula "si lo reponés hoy" igual que Pedidos (antes una decía 22% y la otra 48%), y las dos dicen a qué precio de venta'}]},
@@ -10089,11 +10098,27 @@ function setPedidoSection(sec,btn){
   renderPedidos();
 }
 
+// ── EL SEMÁFORO DE PEDIDOS (06/10/2026) ── lo calcula syncPedidosAuto (cSem). Un pedido viejo sin
+// ese dato cae al estado de antes: en cero en todos lados = rojo, urgente = naranja, el resto amarillo.
+function _pedSem(p){
+  if(p&&(p.cSem==='rojo'||p.cSem==='naranja'||p.cSem==='amarillo'))return p.cSem;
+  const tot=(parseInt(p&&p.cML)||0)+(parseInt(p&&p.cCasa)||0)+(parseInt(p&&p.cCamino)||0);
+  if(p&&p.cML!=null&&tot<=0)return 'rojo';
+  return (p&&(p.estado||'pendiente')==='pendiente')?'naranja':'amarillo';
+}
+const _PED_SEM_FILTROS=['rojo','naranja','amarillo'];
+function _pedFiltrar(peds){return _PED_SEM_FILTROS.includes(pedidoFilter)?peds.filter(p=>_pedSem(p)===pedidoFilter):peds.filter(p=>p.estado===pedidoFilter);}
+function _pedSemCount(peds){
+  const c={rojo:0,naranja:0,amarillo:0};peds.forEach(p=>c[_pedSem(p)]++);
+  return `<div class="pcount"><strong style="color:var(--red)">${c.rojo}</strong>🔴 Sin stock</div>
+      <div class="pcount"><strong style="color:#f97316">${c.naranja}</strong>🟠 ≤14 días</div>
+      <div class="pcount"><strong style="color:#ca8a04">${c.amarillo}</strong>🟡 +14 días</div>`;
+}
 function setPedidoFilter(f,btn){
   pedidoFilter=f;
   const secEl=document.getElementById('ped-section-'+pedidoSection);
   if(secEl)secEl.querySelectorAll('.pf-btn').forEach(b=>b.className='pf-btn');
-  const cls={todos:'active-all',pendiente:'active-pend',poco_stock:'active-ped',suficiente:'active-rec',pedido:'active-ped',recibido:'active-rec'};
+  const cls={todos:'active-all',rojo:'active-pend',naranja:'active-ped',amarillo:'active-ped',pendiente:'active-pend',poco_stock:'active-ped',suficiente:'active-rec',pedido:'active-ped',recibido:'active-rec'};
   btn.className='pf-btn '+(cls[f]||'');
   renderPedidos();
 }
@@ -10631,7 +10656,7 @@ async function syncPedidosAuto(){
     const coll=p.origen==='py'?'pedidos_py':'pedidos';
     const TARGET_DIAS_P=pedTargetDiasDe(p);   // 30 días, o 95 si el proveedor tarda 2 meses
     const hasVars=(p.variantes||[]).length>0;
-    let necesario,variantesNec,aComprarVar=null,varDiasCub=null,varCuenta=null,varDiasRiesgo=null;
+    let necesario,variantesNec,aComprarVar=null,varDiasCub=null,varCuenta=null,varDiasRiesgo=null,varSemDias=null,varSemCero=0;
     if(hasVars&&varSalesMap[p.id]){
       // calcular necesario por variante: stock real de esa variante vs target
       const normFactor=PED_MAX_DAYS/diasHistorial;
@@ -10692,6 +10717,10 @@ async function syncPedidosAuto(){
         return{v,vFalta:vFalta2,vComprar,vStock,vCasa,vCam,vPv,vHist,vTarget,vRate:vHist?(vTarget/TARGET_DIAS_P):_vRate};
       }).filter(x=>x.vFalta>0);
       necesario=varDefs.reduce((s,x)=>s+x.vFalta,0);
+      // SEMÁFORO (06/10/2026): los días que cubre el color MÁS justo contando ML + casa + camino, y
+      // cuántos colores que venden están en cero en todos lados.
+      varDefs.forEach(x=>{const t=x.vStock+x.vCasa+x.vCam+x.vPv;if(t<=0)varSemCero++;
+        if(x.vRate>0){const d=Math.round(t/x.vRate);if(varSemDias==null||d<varSemDias)varSemDias=d;}});
       // El desglose muestra lo que hay que COMPRAR de cada una: si de una variante ya tenés en casa
       // lo que falta, no entra en el pedido aunque ML esté en cero (hay que mandarla, no comprarla).
       const _aComp=varDefs.filter(x=>x.vComprar>0);
@@ -10777,6 +10806,13 @@ async function syncPedidosAuto(){
     const diasTapaCasa=vDia>0?Math.min(diasEnRiesgo,(enOficina+enCamino)/vDia):0;
     const diasTapaCompra=vDia>0?Math.min(Math.max(0,diasEnRiesgo-diasTapaCasa),aComprar/vDia):0;
     const cubreCasa=vDia>0?Math.round((stock+enOficina+enCamino)/vDia):999;
+    // ── EL SEMÁFORO DE PEDIDOS (06/10/2026, regla suya) ──────────────────────────────
+    // Cuenta ML + en camino + oficina. 🔴 rojo = no hay en NINGÚN lado (se pierde plata hoy) ·
+    // 🟠 naranja = alcanza 14 días o menos, o algún color que vende está en cero (se va a cortar) ·
+    // 🟡 amarillo = más de 14 días (hasta los 20 del objetivo). No toca `estado`, puntaje ni riesgo.
+    const semTot=stock+enOficina+enCamino;
+    const semDias=varSemDias!=null?Math.min(cubreCasa,varSemDias):cubreCasa;
+    const sem=semTot<=0?'rojo':((semDias<=PED_DIAS_ROJO||varSemCero>0)?'naranja':'amarillo');
     const riesgoComprar=Math.round((gan30d/30)*diasTapaCompra);
     const riesgoMandar=Math.round((gan30d/30)*diasTapaCasa);
     // Si hay unidades en casa no se puede repartir el pedido por variante con confianza (no se
@@ -10788,7 +10824,7 @@ async function syncPedidosAuto(){
     // real. Se guarda para poder MOSTRAR la cuenta en la tarjeta (ver cuentaPedidoHTML): sin eso,
     // "6 vendidos" y "4 en camino" invitan a la resta equivocada.
     const objetivoU=varCuenta?varCuenta.obj:Math.max(necesario+stock,0);
-    resumen[p.id]={p,vendidos,vendidosNorm,stock,diasHistorial,diasCubiertos,necesario,enOficina,enCamino,aComprar,variantesNec,coll,gan30d,riesgo,riesgoComprar,riesgoMandar,dConS,vDia,objetivoU,targetDias:TARGET_DIAS_P,hist,remate,rn,reg,pocasVentas,varCuenta};
+    resumen[p.id]={p,vendidos,vendidosNorm,stock,diasHistorial,diasCubiertos,necesario,enOficina,enCamino,aComprar,variantesNec,coll,gan30d,riesgo,riesgoComprar,riesgoMandar,dConS,vDia,objetivoU,targetDias:TARGET_DIAS_P,hist,remate,rn,reg,pocasVentas,varCuenta,sem,semDias:semTot<=0?0:Math.min(semDias,999),semColCero:varSemCero};
   }
   // 3. IDs que deberían existir como auto-pedidos
   const expectedIds=new Set();
@@ -10862,7 +10898,7 @@ async function syncPedidosAuto(){
     // hacía fallar TODA la escritura ("path … is an ancestor of another path"). Manda lo de a mano.
     if(existing&&existing.auto===false&&coll!=='pedidos_py')continue;
     if(existing){
-      const same=existing.cantidad===r.aComprar&&existing.estado===estado&&existing.nota===nota&&existing.producto===r.p.name&&JSON.stringify(existing.variantesNec||null)===JSON.stringify(variantesNec)&&(existing.proveedor||null)===(provNom)&&existing.riesgo===r.riesgo&&existing.gan30d===r.gan30d;
+      const same=existing.cantidad===r.aComprar&&existing.estado===estado&&existing.nota===nota&&existing.producto===r.p.name&&JSON.stringify(existing.variantesNec||null)===JSON.stringify(variantesNec)&&(existing.proveedor||null)===(provNom)&&existing.riesgo===r.riesgo&&existing.gan30d===r.gan30d&&(existing.cSem||null)===(r.sem||null)&&existing.cSemDias===(r.semDias!=null?r.semDias:null)&&(existing.cSemCol||0)===(r.semColCero||0);
       if(same)continue;
       existing.cantidad=r.aComprar;existing.estado=estado;existing.nota=nota;existing.producto=r.p.name;existing.prodId=pid;existing.variantesNec=variantesNec;existing.proveedor=provNom;existing.riesgo=r.riesgo;existing.gan30d=r.gan30d;Object.assign(existing,cuentaPed(r));
       delete existing.variante;
@@ -14628,7 +14664,7 @@ function cuentaPed(r){
   // `cHist` marca que la velocidad NO salió de este mes sino del ritmo viejo (ver pedVentasNorm).
   return{cObjetivo:r.objetivoU||0,cDias:Math.round(r.dConS||0),cVdia:Math.round((r.vDia||0)*100)/100,
     cVend:r.vendidos||0,cCamino:r.varCuenta?r.varCuenta.cam:(r.enCamino||0),cCasa:r.varCuenta?r.varCuenta.casa:(r.enOficina||0),cML:r.varCuenta?r.varCuenta.ml:(r.stock||0),cPocas:!!r.pocasVentas,
-    cHist:r.hist?{u:r.hist.u,dias:Math.round(r.hist.dias)}:null,cTarget:r.targetDias||PED_MAX_DAYS,cRemate:r.remate||0,cRN:r.rn?{mes:Math.round(r.rn.pd*30*10)/10,f:!!r.rn.f}:null,cReg:r.reg?{mes:Math.round(r.reg.pd*30*10)/10,txt:r.reg.cambio.map(_raTexto)}:null};
+    cHist:r.hist?{u:r.hist.u,dias:Math.round(r.hist.dias)}:null,cTarget:r.targetDias||PED_MAX_DAYS,cSem:r.sem||null,cSemDias:r.semDias!=null?r.semDias:null,cSemCol:r.semColCero||0,cRemate:r.remate||0,cRN:r.rn?{mes:Math.round(r.rn.pd*30*10)/10,f:!!r.rn.f}:null,cReg:r.reg?{mes:Math.round(r.reg.pd*30*10)/10,txt:r.reg.cambio.map(_raTexto)}:null};
 }
 // ── "ESTE RENGLÓN NO CIERRA": EL CHEQUEO AUTOMÁTICO DE PEDIDOS ─────────────────────
 // Pedido suyo, anotado desde el 16/09/2026: *"un producto no puede destrabar más por mes que lo
@@ -15093,12 +15129,14 @@ function _pedidoItemHtml(p,opts){
       <input type="number" min="0" step="1" value="${_armU||''}" placeholder="0" onchange="pyArmSet('${_prod.id}',this.value)" style="width:58px;font-size:.88rem;padding:4px 6px;text-align:center;background:var(--surface2);border:1px solid ${_armU>0?'var(--green)':'var(--border)'};border-radius:6px;color:var(--text)"> u.
       ${_armU>0?`<span style="color:var(--green)">✓ en el pedido</span>`:`<button class="btn" style="font-size:.66rem;padding:3px 9px" onclick="pyArmSet('${_prod.id}',${parseInt(p.cantidad)||1})">+ las ${fmtN(p.cantidad||1)} sugeridas</button>`}
     </div>`;
-  return `<details class="ped-card ${_est}"${_abierto?' open':''} ontoggle="_setPedCardOpen('${p.id}',this.open)">
+  const _sem=_enCam?null:_pedSem(p);
+  const _semTxt=!_sem?'':_sem==='rojo'?'🔴 sin stock en ningún lado':(p.cSemDias!=null&&p.cSemDias<999?`${_sem==='naranja'?'🟠':'🟡'} alcanza ~${p.cSemDias} d`:'')+(p.cSemCol>0?` · ${p.cSemCol} color${p.cSemCol>1?'es':''} en cero`:'');
+  return `<details class="ped-card ${_est}${_sem?' sem-'+_sem:''}"${_abierto?' open':''} ontoggle="_setPedCardOpen('${p.id}',this.open)">
     <summary class="ped-head">
       ${_prod?fotoChipHTML(_prod,38,p.variante||''):''}
       <span class="ped-name">${p.producto||'—'}${p.variante?` <span style="padding:1px 6px;border-radius:4px;background:rgba(124,58,237,.15);color:#a78bfa;font-size:.65rem;font-family:'DM Mono',monospace;font-weight:400">${p.variante}</span>`:''}${opts.etiqueta||''}</span>
       ${_prod?maxCompraChip(_prod):''}
-      <span class="ped-buy"><b>${fmtN(p.cantidad||1)}</b><i>u. a comprar${p.auto===false?' · a mano':''}</i></span>
+      <span class="ped-buy"><b>${fmtN(p.cantidad||1)}</b><i>u. a comprar${p.auto===false?' · a mano':''}</i>${_semTxt?`<i class="ped-sem" title="Cuenta lo que hay en ML + en camino + en tu oficina, al ritmo de venta">${_semTxt}</i>`:''}</span>
       <span class="ped-caret">▼</span>
     </summary>
     <div class="ped-body">
@@ -15244,8 +15282,7 @@ function renderPedidos(){
     const riesgoTotal=peds.reduce((s,p)=>s+(p.riesgo||0),0);
     const cntEl=document.getElementById('pedidos-prioridad-count');
     if(cntEl)cntEl.innerHTML=`
-      <div class="pcount"><strong style="color:var(--red)">${cnt.pendiente||0}</strong>Urgente</div>
-      <div class="pcount"><strong style="color:var(--amber)">${cnt.poco_stock||0}</strong>Poco stock</div>
+      ${_pedSemCount(peds)}
       <div class="pcount"><strong style="color:var(--red)">${fmt(riesgoTotal)}</strong>En riesgo (30d)</div>
       <div class="pcount"><strong>${peds.length}</strong>Total</div>${_pedCostoChip(peds)}`;
     const q=normTxt(document.getElementById('ped-prioridad-search')?.value||'');
@@ -15262,14 +15299,12 @@ function renderPedidos(){
     peds.forEach(p=>cnt[p.estado||'pendiente']=(cnt[p.estado||'pendiente']||0)+1);
     const cntEl=document.getElementById('pedidos-paulvic-count');
     if(cntEl)cntEl.innerHTML=`
-      <div class="pcount"><strong style="color:var(--red)">${cnt.pendiente}</strong>Urgente</div>
-      <div class="pcount"><strong style="color:var(--amber)">${cnt.poco_stock}</strong>Poco stock</div>
-      <div class="pcount"><strong style="color:var(--green)">${cnt.suficiente}</strong>Suficiente</div>
+      ${_pedSemCount(peds)}
       <div class="pcount"><strong>${peds.length}</strong>Total</div>${_pedCostoChip(peds)}`;
     if(pedidoFilter==='todos'){
       peds=peds.filter(p=>(p.estado||'pendiente')!=='suficiente');
     } else {
-      peds=peds.filter(p=>p.estado===pedidoFilter);
+      peds=_pedFiltrar(peds);
     }
     const q=normTxt(document.getElementById('ped-paulvic-search')?.value||'');
     if(q)peds=peds.filter(p=>normTxt(p.producto||'').includes(q)||normTxt(p.nota||'').includes(q));
@@ -15296,11 +15331,9 @@ function renderPedidos(){
   const cnt={pendiente:0,poco_stock:0,suficiente:0};peds.forEach(p=>{const e=p.estado==='en_camino'?'pendiente':(p.estado||'pendiente');cnt[e]=(cnt[e]||0)+1;});
   const cntEl=document.getElementById(countId);
   if(cntEl)cntEl.innerHTML=`
-    <div class="pcount"><strong style="color:var(--red)">${cnt.pendiente}</strong>Urgente</div>
-    <div class="pcount"><strong style="color:var(--amber)">${cnt.poco_stock}</strong>Poco stock</div>
-    <div class="pcount"><strong style="color:var(--green)">${cnt.suficiente}</strong>Suficiente</div>
+    ${_pedSemCount(peds)}
     <div class="pcount"><strong>${peds.length}</strong>Total</div>${_pedCostoChip(peds)}`;
-  if(pedidoFilter!=='todos')peds=peds.filter(p=>p.estado===pedidoFilter);
+  if(pedidoFilter!=='todos')peds=_pedFiltrar(peds);
   const searchId=isBsas?'ped-search':'ped-py-search';
   const q=normTxt(document.getElementById(searchId)?.value||'');
   if(q)peds=peds.filter(p=>normTxt(p.producto||'').includes(q)||normTxt(p.nota||'').includes(q));
