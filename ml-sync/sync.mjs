@@ -18578,6 +18578,72 @@ async function main() {
     // `techofull[:go]` (04/10/2026): a cuánto se puede vender cada publicación de catálogo teniendo
     // Full (ver `calcTechoFull`). Sin `:go` sólo muestra; con `:go` guarda `cyc/techofull`, que usa
     // Pedidos Paraguay para el máximo de compra. Corre solo en ml-daily antes de los avisos.
+    // `nombreml[:go]` (06/10/2026). Pedido suyo: "quiero que los nombres sean los de ML idénticos. los que
+    // entran de Paraguay. o tienen cosas en portugués". Para cada ficha de Paraguay toma el título de su
+    // publicación de ML, LEÍDO de ML en el momento (activas primero). Si tiene varias publicaciones con
+    // títulos distintos (colores) usa las palabras que comparten todas, si son 3 o más; si no, no adivina.
+    // Sin publicación usa el título del catálogo de ML que midió `candidatos` (sin reparos). Cambia también
+    // el nombre que muestran sus pedidos. Sin `:go` sólo muestra.
+    if (/^nombreml(:|$)/.test(String(process.env.BILLING_PROBE || ''))) {
+      const GO = /:go$/.test(String(process.env.BILLING_PROBE || ''));
+      console.log(`=== NOMBRES DE ML EN LAS FICHAS DE PARAGUAY ${GO ? '(SE GUARDAN)' : '(PRUEBA: no se guarda nada)'} ===\n`);
+      const prods = (await db.get('cyc/products')) || {};
+      const links = (await db.get('cyc/mllinks')) || {};
+      const cands = (await db.get('cyc/candidatos_py')) || {};
+      const pys = Object.values(prods).filter((p) => p && p.id && p.origen === 'py');
+      const porProd = {};
+      for (const [mla, e] of Object.entries(links)) {
+        if (!e || e.ignored || !e.prodId || (e.status || '') === 'closed') continue;
+        (porProd[e.prodId] = porProd[e.prodId] || []).push({ mla, cuenta: String(e.cuenta || '').toLowerCase() });
+      }
+      const tit = {};
+      for (const [label, acc] of Object.entries(accounts)) {
+        const lb = String(label).toLowerCase();
+        const ids = []; for (const p of pys) for (const l of porProd[p.id] || []) if (l.cuenta === lb) ids.push(l.mla);
+        if (!ids.length) continue;
+        let tok = acc.access_token;
+        try { const t = await mlRefresh(ML_CLIENT_ID, ML_CLIENT_SECRET, acc.refresh_token); await db.patch('mlapi/tokens/' + label, { refresh_token: t.refresh_token, updated_ts: Date.now() }); tok = t.access_token; } catch {}
+        for (let k = 0; k < ids.length; k += 20) {
+          try { const arr = await mlGet('/items?ids=' + ids.slice(k, k + 20).join(',') + '&attributes=id,title,status', tok);
+            for (const r of arr || []) if (r && r.code === 200 && r.body && r.body.title) tit[r.body.id] = { t: String(r.body.title).trim(), st: r.body.status };
+          } catch (e) { console.log(`⚠️ ${label}: no pude leer un lote (${e.message || e})`); }
+        }
+      }
+      const cambios = [], iguales = [], sinDato = [];
+      for (const p of pys) {
+        const ls = (porProd[p.id] || []).map((l) => tit[l.mla]).filter(Boolean);
+        const act = ls.filter((x) => x.st === 'active'); const usar = act.length ? act : ls;
+        const distintos = [...new Set(usar.map((x) => x.t))];
+        let nuevo = null, de = '';
+        if (distintos.length === 1) { nuevo = distintos[0]; de = 'su publicación'; }
+        else if (distintos.length > 1) {
+          const pal = distintos.map((t) => t.split(/\s+/)); const com = [];
+          for (let i = 0; i < Math.min(...pal.map((x) => x.length)); i++) { const w = pal[0][i]; if (pal.every((x) => x[i] === w)) com.push(w); else break; }
+          if (com.length >= 3) { nuevo = com.join(' '); de = `lo que comparten sus ${distintos.length} publicaciones`; }
+        }
+        if (!nuevo) {
+          const c = Object.values(cands).find((x) => x && x.prodId === p.id && x.mlTit && !(x.mlReparos && String(x.mlReparos).length));
+          if (c) { nuevo = String(c.mlTit).trim(); de = 'el catálogo de ML (no tiene publicación)'; }
+        }
+        if (!nuevo) { sinDato.push(p); continue; }
+        nuevo = nuevo.slice(0, 90);
+        if (nuevo === String(p.name || '').trim()) { iguales.push(p); continue; }
+        cambios.push({ p, nuevo, de });
+      }
+      console.log(`Fichas de Paraguay: ${pys.length} · ya iguales a ML: ${iguales.length} · a cambiar: ${cambios.length} · sin título de ML: ${sinDato.length}\n`);
+      for (const c of cambios) console.log(`  ${c.p.name}\n    → ${c.nuevo}   (de ${c.de})`);
+      if (sinDato.length) { console.log('\nSin publicación ni catálogo confiable (quedan como están):'); sinDato.forEach((p) => console.log(`  · ${p.name}`)); }
+      if (!GO) { console.log('\nNo se guardó nada (falta :go).'); return; }
+      const peds = (await db.get('cyc/pedidos_py')) || {};
+      let ok = 0, pedOk = 0;
+      for (const c of cambios) {
+        await db.patch('cyc/products/' + c.p.id, { name: c.nuevo, nombreViejo: c.p.name });
+        const rel = await db.get('cyc/products/' + c.p.id + '/name'); if (rel === c.nuevo) ok++;
+        for (const [k, pd] of Object.entries(peds)) if (pd && pd.prodId === c.p.id && pd.producto !== c.nuevo) { await db.patch('cyc/pedidos_py/' + k, { producto: c.nuevo }); pedOk++; }
+      }
+      console.log(`\n✓ ${ok} de ${cambios.length} fichas renombradas (releído) · ${pedOk} pedido(s) actualizados. El nombre viejo queda en nombreViejo.`);
+      return;
+    }
     if (/^paramcompra(:|$)/.test(String(process.env.BILLING_PROBE || ''))) {
       const GO = /:go$/.test(String(process.env.BILLING_PROBE || ''));
       console.log(`=== LOS NÚMEROS CON LOS QUE SE DECIDE UNA COMPRA ${GO ? '(SE GUARDAN)' : '(PRUEBA)'} ===`);
@@ -33764,7 +33830,7 @@ async function main() {
           if (CORTAR) { _pyCortado = true; break; }   // etapa 4: no se empieza otra ficha si cancelaron la corrida
           const usd = parseFloat(x.src.usd) || 0;
           const puesto = usd > 0 ? r2(usd * _recUsar) : 0;
-          const p = { id: 'p' + Date.now() + String(i++), name: String(x.src.nombre).trim().slice(0, 90), costUSD: puesto, cost: puesto * (tc || 0), origen: 'py', costFullUSD: puesto, altaChat: Date.now() };
+          const p = { id: 'p' + Date.now() + String(i++), name: String(((cands[x.src.id] || {}).mlTit && !((cands[x.src.id] || {}).mlReparos || '').length) ? cands[x.src.id].mlTit : x.src.nombre).trim().slice(0, 90), costUSD: puesto, cost: puesto * (tc || 0), origen: 'py', costFullUSD: puesto, altaChat: Date.now() };
           if (x.src.cod) p.codPy = String(x.src.cod);
           if (usd > 0) { p.nisseiUSD = usd; p.nisseiTs = x.src.ts || Date.now(); }
           try {
