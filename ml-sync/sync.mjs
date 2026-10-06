@@ -4031,6 +4031,8 @@ async function calcCajaBarata(db, o) {
   // stock antiguo de ML y el tamaño de Full de cada producto. Ver `lotesFifo` / `cargoAntiguoProy`.
   let cfgCbS = {}; try { cfgCbS = (await db.get('cyc/mlconfig')) || {}; } catch { cfgCbS = {}; }
   let cajasPCb = {}; try { cajasPCb = cajasLlegadasPorClave((await db.get('cyc/envios_full')) || {}); } catch { cajasPCb = {}; }
+  // Los remates que `ritmo:go` terminó (06/10/2026): para mirar si después de volver a la base vende lo que tiene que vender.
+  let salidaCb = {}; try { salidaCb = (await db.get('cyc/salidaremate')) || {}; } catch { salidaCb = {}; }
   const vpCb = (await db.get('cyc/ventaprod')) || {}; setDevLive(vpCb);
   const monoP = parseFloat(((await db.get('cyc/monotributo')) || {}).pct) || 0;
   let cuotasCb = null;
@@ -4070,8 +4072,8 @@ async function calcCajaBarata(db, o) {
     const st = parseInt(invCb[k]) || 0;
     const vend = uProdCtaCb[pid + '__' + cta] || 0;
     if (!(vend > 0) || !(st > 0)) return null;
-    const rn = rnCb[k]; if (rn && Number(rn.pd) > 0) return { st, vend, dias: Math.round(st / Number(rn.pd)), normal: true };
-    return { st, vend, dias: Math.round(st / (vend / dias)) };
+    const rn = rnCb[k]; if (rn && Number(rn.pd) > 0) return { st, vend, pd: Number(rn.pd), dias: Math.round(st / Number(rn.pd)), normal: true };
+    return { st, vend, pd: vend / dias, dias: Math.round(st / (vend / dias)) };
   };
 
   // ── EL RELOJ DEL MODO REMATE (16/09/2026) ────────────────────────────────────────
@@ -4112,7 +4114,7 @@ async function calcCajaBarata(db, o) {
   // Primer filtro, GRATIS: sale de lo que el robot ya escribió en `cyc/mllinks` cada hora
   // (`caja` y `cajaPtw`). Recién después se le pregunta algo a ML, así las llamadas son sólo
   // las que pueden terminar en candidata — la lección de velocidad del 13/09.
-  const fuera = { vendio: 0, sinStock: 0, sinPtw: 0, reciente: 0, sinFecha: 0, hermanaGana: 0, sobraJoven: 0 };
+  const fuera = { vendio: 0, sinStock: 0, sinPtw: 0, reciente: 0, sinFecha: 0, hermanaGana: 0, sobraJoven: 0, esperaSalida: 0 };
   const cand = [];
   // Producto×cuenta que YA tiene una publicación activa ganando la caja. Ahí bajar OTRA
   // publicación del mismo producto en la misma cuenta no trae ventas: el botón de comprar ya es
@@ -4132,7 +4134,35 @@ async function calcCajaBarata(db, o) {
     // Una publicación de UN color no entra por acá: los días de stock son del producto entero, y a
     // ese color puede no sobrarle nada (lo agarró la revisión del 23/09 con 12 colores de sábanas).
     if (sobreDias > 0 && !e.variant && (uCb[mla] || 0) > 0 && (e.caja === 'losing' || e.caja === 'sharing')) {
-      const ds = diasStockCb(e.prodId, e.cuenta);
+      let ds = diasStockCb(e.prodId, e.cuenta);
+      // ── DESPUÉS DE SALIR DEL REMATE, ¿VENDE LO QUE TIENE QUE VENDER? (06/10/2026, pedido suyo) ──
+      // *"entra en remate, en 5 días vende 10: que lo suba con margen de 3 días y si no se vendió lo
+      // suficiente que tenía que vender esos 3 días, que vuelva a bajar"*. `ritmo:go` termina el remate
+      // la noche que el stock queda sano y el rescate lo vuelve a la base. Acá, en los 30 días siguientes,
+      // se espera al menos 3 días (o los que hagan falta para esperar 2 ventas, hasta 14) y se mide el
+      // ritmo REAL desde la salida: si vende MENOS que el normal, la cuenta del stock antiguo se hace con
+      // ese ritmo más lento — si así ML va a cobrar, vuelve al remate (los mismos frenos y la misma vara de
+      // plata). Si vende igual o más, se mide como siempre y se queda en la base.
+      let trasSalida = null;
+      const srS = salidaCb[mla];
+      if (ds && srS && Number(srS.ts) > 0 && Date.now() - Number(srS.ts) < 30 * 864e5 && ds.pd > 0) {
+        const dEsp = Math.min(14, Math.max(3, Math.ceil(2 / ds.pd)));
+        const dDesde = (Date.now() - Number(srS.ts)) / 864e5;
+        if (dDesde < dEsp) { fuera.esperaSalida++; continue; }
+        let uDes = 0;
+        for (const [k, ents] of Object.entries(vpCb)) {
+          const tsD = Date.parse(k.slice(0, 10).replace(/_/g, '-'));
+          if (!isFinite(tsD) || tsD < Number(srS.ts) - 864e5) continue;
+          for (const v of Object.values(ents || {})) {
+            if (!v || v.cancelada || v.prodId !== e.prodId || v.cuenta !== e.cuenta) continue;
+            if ((Number(v.ts) || tsD) < Number(srS.ts)) continue;
+            uDes += v.qty || 1;
+          }
+        }
+        const rPost = uDes / dDesde;
+        trasSalida = { dias: Math.round(dDesde), u: uDes, esperado: Math.round(ds.pd * dDesde * 10) / 10 };
+        if (rPost < ds.pd) ds = { ...ds, pd: rPost, dias: rPost > 0 ? Math.round(ds.st / rPost) : 99999, postSalida: true };
+      }
       if (ds && ds.dias > sobreDias) {
         // Lo que llegó hace menos de 30 días no se remata por "sobra": la caja recién entró y todavía
         // no tuvo tiempo de venderse (la misma gracia que la web, ROT_GRACIA_DIAS).
@@ -4153,7 +4183,7 @@ async function calcCajaBarata(db, o) {
         const hS = histCb[kS];
         const fbS = Math.min(...[hS && hS.desde, e.altaTs].map(Number).filter((x) => x > 0), Infinity);
         const lotesS = lotesFifo(ds.st, e.inv ? lotesCb[e.inv] : null, cajasPCb[e.prodId + '__' + e.cuenta], isFinite(fbS) ? fbS : 0);
-        const rDiaS = ds.dias > 0 ? ds.st / ds.dias : 0;
+        const rDiaS = ds.pd != null ? ds.pd : (ds.dias > 0 ? ds.st / ds.dias : 0);
         const { tam: tamS, tabla: tablaS } = tablaAntiguoDe(e, pIdx[e.prodId], lotesCb, cfgCbS);
         const cargoS = cargoAntiguoProy(lotesS, rDiaS, tablaS, DIA_CIERRE_ALM_CTA[_ctaSinTilde(e.cuenta)] || 12);
         const edadViejaS = Math.floor((Date.now() - lotesS[0].ts) / 864e5);
@@ -4162,7 +4192,7 @@ async function calcCajaBarata(db, o) {
         if (!(ptwS > 0)) { fuera.sinPtw++; continue; }
         cand.push({ mla, e, st: ds.st, ptw: ptwS, quieta: quietaDe(mla, e.prodId, e.cuenta, e.variant),
           sobre: { dias: ds.dias, porMes: Math.round(ds.vend * 30 / dias), edad: edadFullCb(e.prodId, e.cuenta), edadVieja: edadViejaS,
-            cargo: cargoS.pesos, rDia: rDiaS, tam: tamS, fuenteFecha: lotesS[0].f } });
+            cargo: cargoS.pesos, rDia: rDiaS, tam: tamS, fuenteFecha: lotesS[0].f, trasSalida } });
         continue;
       }
     }
@@ -9102,6 +9132,7 @@ async function main() {
       console.log(`   candidatas miradas ${cbr.mirados} · descartadas: ${cbr.fuera.vendio} vendieron`
         + ` · ${cbr.fuera.sinStock} sin stock · ${cbr.fuera.sinPtw} sin precio de caja de ML`
         + (cbr.fuera.hermanaGana ? ` · ${cbr.fuera.hermanaGana} les sobra stock pero otra publicación suya ya gana la caja` : '')
+        + (cbr.fuera.esperaSalida ? ` · ${cbr.fuera.esperaSalida} salieron del remate hace poco: espero 3+ días a ver si venden lo que tienen que vender` : '')
         + (cbr.fuera.sobraJoven ? ` · ${cbr.fuera.sobraJoven} les sobra stock pero al ritmo de hoy se venden antes de que ML cobre stock antiguo (lotes en orden de llegada): no se baja` : ''));
       // Las que NO llegan al margen sano se listan igual, con cuánto habría que bajar y en cuánto
       // quedarían. Un "8 quedaron con margen flaco" sin decir cuáles esconde la que está en 24%
@@ -9398,8 +9429,10 @@ async function main() {
         // Más de 24,5% de una: baja 24,5% y sigue en la próxima vuelta, como la escalera (etapa 1,
         // 27/09 · antes quedaba trabada para siempre). El margen a ese precio es MAYOR que en la caja.
         .filter((f) => !f.conVars && (f.sobre || f.vis != null) && f.mgPw >= pisoEsc(f) + 0.5 && f.mgPw >= PISO_AUTORIZADO + 0.5
-          && !recienteAuto(f.mla, 'sube', 14) && !recienteAuto(f.mla, 'baja', BAJAR_ESPERA_DIAS)
-          && !(pricedRem[f.mla] && hoyTs - (pricedRem[f.mla].ts || 0) < 14 * 864e5)
+          // Si volvió a la base al TERMINAR un remate y no vendió lo que tenía que vender (`sobre.trasSalida`),
+          // la espera después de esa suba ya se midió adentro (3+ días): no se suman los 14 de siempre.
+          && !recienteAuto(f.mla, 'sube', f.sobre && f.sobre.trasSalida ? 0 : 14) && !recienteAuto(f.mla, 'baja', BAJAR_ESPERA_DIAS)
+          && !(pricedRem[f.mla] && hoyTs - (pricedRem[f.mla].ts || 0) < (f.sobre && f.sobre.trasSalida ? 0 : 14) * 864e5)
           // Lo que él marcó liquidando a mano no es nuestro (la escalera ya lo respetaba): P3, 25/09.
           && !(NOSUBIR[f.mla] && !esMarcaRobot(NOSUBIR[f.mla])));
       { const idsR = new Set(rescates.map((x) => x.mla)); autoRemate.splice(0, autoRemate.length, ...autoRemate.filter((f) => !idsR.has(f.mla))); }
@@ -15737,6 +15770,7 @@ async function main() {
           await marcarLiquidando(db, x.mla, null, true);
           try { await db.set('cyc/escalera/' + x.mla, null); } catch { /* */ }
           try { if ((autoprecio || {})[x.mla]) await db.set('cyc/autoprecio/' + x.mla + '/remateTerminado', Date.now()); } catch { /* el rescate esperará los 30 días */ }
+          try { await db.set('cyc/salidaremate/' + x.mla, { ts: Date.now(), st: x.st, pd: Math.round((x.pd || 0) * 1000) / 1000 }); } catch { /* sin esto, la vuelta al remate espera los 14 días de siempre */ }
           hechas.push(`${String(x.e.title || x.mla).slice(0, 40)} (${x.e.cuenta}) · ` + (x.edad != null ? `la unidad más vieja tiene ${x.edad} d en Full: falta para el stock antiguo, no se remata por sobra` : `quedan ${x.st} u. = ${x.diasSt} d de venta normal`));
           console.log(`   🔓 saqué el remate: ${hechas[hechas.length - 1]}`);
         } catch (e) { console.log(`   ⚠️ no pude sacar el remate de ${x.mla}: ${String(e && e.message || e).slice(0, 100)}`); }
