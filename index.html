@@ -440,6 +440,7 @@ input.qty:focus{border-color:var(--accent2)}
 .ped-max{display:flex;flex-direction:column;align-items:flex-end;white-space:nowrap;flex-shrink:0;margin-right:10px}
 .ped-max b{font-family:'DM Mono',monospace;font-size:1.45rem;font-weight:500;color:var(--text);line-height:1.05}
 .ped-max i{font-style:normal;font-size:.8rem;color:var(--muted);margin-top:2px}
+.ped-max.ars b{font-size:1.85rem}
 /* En el celu (01/10/2026, pedido suyo: "el precio máximo más grande y el texto también, lo más grande que se pueda"):
    el nombre y la flechita van arriba solos, y abajo el máximo (izquierda) y las unidades (derecha), así no aprietan el nombre. */
 @media(max-width:640px){
@@ -448,6 +449,7 @@ input.qty:focus{border-color:var(--accent2)}
   .ped-caret{order:2}
   .ped-max{order:3;flex:1 1 auto;align-items:flex-start;margin-right:0}
   .ped-max b{font-size:1.7rem}
+  .ped-max.ars b{font-size:2.1rem}
   .ped-max i{font-size:.85rem}
   .ped-buy{order:4}
 }
@@ -2451,7 +2453,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='22.26';
+const APP_VERSION='22.27';
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
 // muestre la versión y la fecha de actualización y que tenga un desplegable predeterminado cerrado".
 // Y el mismo día: "que ponga fecha de cada modificación y haya una barrita para scrollear y que
@@ -2462,6 +2464,7 @@ const APP_VERSION='22.26';
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'22.27',f:'06/10/2026',h:'15:26',c:[{n:1,t:'🇦🇷 Pedidos Bs As: el máximo de compra va sólo en pesos y más grande (sin dólares)'}]},
   {v:'22.26',f:'06/10/2026',h:'15:24',c:[{n:2,t:'🚦 Pedidos: un producto con colores pasa a rojo si alguno de los colores que se venden no tiene stock en ningún lado (antes salía naranja). La tarjeta dice cuántos colores están así'}]},
   {v:'22.25',f:'06/10/2026',h:'15:15',c:[{n:2,t:'🚦 Pedidos vuelve a ordenarse por la plata que se pierde (lo que más pierde, arriba), como antes. El color sólo dice cuáles no hay en ningún lado: un naranja que vende mucho puede ir arriba de un rojo'}]},
   {v:'22.24',f:'06/10/2026',h:'15:14',c:[{n:1,t:'🚦 Pedidos: los colores que no hace falta comprar (alcanza con lo de casa y lo que viaja) ya no van como renglón: quedan en una línea abajo con sus días. Se mandan desde Armar caja'}]},
@@ -15075,9 +15078,10 @@ function maxCompraHTML(p){
   if(r.motivo)return `<div style="${st};color:var(--muted)">💰 Máximo para comprar: <span style="color:var(--amber)">sin medir</span> (no hay publicación viva con el neto calculado)</div>`;
   if(!(r.merc>0)||!(r.usd>0))return `<div style="${st};color:var(--red)">💰 Vendiendo a ${fmt(r.P)} ${r.fuente==='caja'?'(lo que pide ML para ganar la caja)':''} <b>no hay precio de compra que deje ${r.meta}%</b>: ni regalado llega.</div>`;
   const donde={full:`a ${fmt(r.P)}, lo que se puede cobrar teniendo Full${r.techo&&r.techo.cS?` (el más barato SIN Full está a ${fmt(r.techo.cS)}: se lo pasa hasta +10%)`:''}${r.techo&&r.techo.cF?` · el más barato CON Full: ${fmt(r.techo.cF)}`:''}`,caja:`a ${fmt(r.P)}, lo que pide ML para ganar la caja`,ganas:`a ${fmt(r.P)}, tu precio de hoy (ya ganás la caja)`,nocat:`a ${fmt(r.P)}, tu precio de hoy (no es de catálogo: no hay competidor medido)`,hoy:`a ${fmt(r.P)}, tu precio de hoy`,vieja:`a ${fmt(r.P)}, tu precio de hoy (sus publicaciones están pausadas: la caja de compra que se ve es de cuando estaban activas y no se usa)`}[r.fuente];
-  const cmp=r.hoyUSD>0?(r.hoyUSD<=r.usd?` · hoy lo pagaste US$ ${r.hoyUSD.toFixed(2).replace('.',',')} <span style="color:var(--green)">✓ entra</span>`:` · hoy lo pagaste US$ ${r.hoyUSD.toFixed(2).replace('.',',')} <span style="color:var(--red)">✕ te pasás</span>`):'';
+  const _pg=v=>(!r.esPy&&curTC()>0)?fmt(Math.round(v*curTC())):'US$ '+v.toFixed(2).replace('.',',');
+  const cmp=r.hoyUSD>0?(r.hoyUSD<=r.usd?` · hoy lo pagaste ${_pg(r.hoyUSD)} <span style="color:var(--green)">✓ entra</span>`:` · hoy lo pagaste ${_pg(r.hoyUSD)} <span style="color:var(--red)">✕ te pasás</span>`):'';
   const py=r.esPy&&r.usdPy>0?` · en la web de Paraguay: <b>US$ ${r.usdPy.toFixed(2).replace('.',',')}</b> (antes del 17%)`:'';
-  return `<div style="${st};color:var(--muted)" title="Es lo más que podés pagar la mercadería para que, vendiéndola ${donde}, te quede ${r.meta}% con todo adentro (comisión de ML a ese precio, envío de Full, IIBB, monotributo, envío/embalaje y reclamos). Puesta en tu oficina: ${fmt(r.merc)}.">💰 Máximo para comprar: <b style="color:var(--text)">US$ ${r.usd.toFixed(2).replace('.',',')}</b>${py} · para quedar en ${r.meta}% vendiendo ${donde}${r.cuoN?` · 💳 <span style="color:var(--amber)">el que hay que igualar da cuotas sin interés: van descontadas ${r.cuoN} cuotas (${fmt(r.cuo)})</span>`:''}${cmp}</div>`;
+  return `<div style="${st};color:var(--muted)" title="Es lo más que podés pagar la mercadería para que, vendiéndola ${donde}, te quede ${r.meta}% con todo adentro (comisión de ML a ese precio, envío de Full, IIBB, monotributo, envío/embalaje y reclamos). Puesta en tu oficina: ${fmt(r.merc)}.">💰 Máximo para comprar: <b style="color:var(--text)">${!r.esPy&&curTC()>0?fmt(Math.round(r.usd*curTC())):'US$ '+r.usd.toFixed(2).replace('.',',')}</b>${py} · para quedar en ${r.meta}% vendiendo ${donde}${r.cuoN?` · 💳 <span style="color:var(--amber)">el que hay que igualar da cuotas sin interés: van descontadas ${r.cuoN} cuotas (${fmt(r.cuo)})</span>`:''}${cmp}</div>`;
 }
 // El máximo de compra A LA VISTA en la cabecera de la tarjeta, en dólares y pesos (24/09/2026,
 // pedido suyo: "que aparezca en dólares y pesos, sin tener que abrir el detalle"). Es la MISMA
@@ -15090,6 +15094,8 @@ function maxCompraChip(p){
   // Pedido suyo del 26/09/2026: "que lo muestre grande en pesos el costo máximo". Pesos grande,
   // dólares chico abajo. Sin dólar cargado queda como antes (sólo dólares), no se inventa el cambio.
   const usdTxt='US$ '+r.usd.toFixed(2).replace('.',',');
+  // Bs As se maneja todo en pesos (06/10/2026, pedido suyo): sin dólares y el número más grande.
+  if(!r.esPy&&ars)return `<span class="ped-max ars" title="Lo más que podés pagar cada unidad para quedar en ${r.meta}% vendiendo a ${fmt(r.P)}. El detalle está adentro."><b>${ars}</b><i>máx. compra</i></span>`;
   return `<span class="ped-max" title="Lo más que podés pagar cada unidad para quedar en ${r.meta}% vendiendo a ${fmt(r.P)}. El detalle está adentro."><b>${ars||usdTxt}</b><i>${ars?usdTxt+' · ':''}máx. compra</i></span>`;
 }
 // COPIAR EL PEDIDO PARA WHATSAPP (01/10/2026, pedido suyo con el Paulvic: "yo lo paso por wsp, me
