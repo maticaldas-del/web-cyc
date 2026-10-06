@@ -828,6 +828,14 @@ privada unificados · las dos facturas de Sancor analizadas.
    La tarjeta lo dice en verde cuando conviene sin cuotas.
  · Percepciones por cuenta (`ML_EXTRA_PCT`) siguen siendo las medidas a mano en agosto.
 
+## LAS FICHAS NUEVAS DE PARAGUAY LLEVAN EL NOMBRE DE ML (06/10/2026, v22.07)
+Él: *"quiero que los nombres sean los de ml idénticos. los que entran de paraguay. o tienen cosas en portugués"*. Eligió la (a):
+SÓLO las fichas que nacieron de un producto NUEVO (candidato con `prodId`); las viejas con nombre corto no se tocan.
+`nombreml[:go]` pone el título de su publicación leído de ML (varias con títulos distintos → lo que comparten, 3+ palabras; sin
+publicación → `mlTit` del candidato sin reparos). Aplicado el 06/10: **11 de 11** renombradas, el nombre viejo en `nombreViejo`.
+De ahora en más `pyped:llego` y `candFichaDesde` crean la ficha ya con el `mlTit`. Probados que no dan muestran *"pidiéndolo queda
+en N%"* (`margenSiComproPY`, v22.06).
+
 ## COMPRAR PIDE 25% PARA TODO · VENDER SIGUE CON EL ROBOT COMO ESTABA (06/10/2026)
 Regla suya, textual: *"el 25 para todo es para comprar productos. Tanto probados como nuevos. Los que ya están en stock que
 siga como estaba el robot. Son dos cosas distintas."* **COMPRAR** (Paraguay nuevos, perfumes incluidos, y probados) = 25%
