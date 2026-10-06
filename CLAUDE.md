@@ -809,6 +809,19 @@ privada unificados · las dos facturas de Sancor analizadas.
 **Versión del panel: 20.16 · caché `cyc-v294`**. El ciclo del robot quedó **prendido**.
 
 
+## RESPUESTAS SUYAS DEL 06/10/2026 A LA LISTA DE PENDIENTES
+ · **Ferrari Negro costUSD 19: CORRECTO**, dicho por él. No tocar.
+ · **Pad 2: la promo agendada de ML (12–25/10, −15%) → SACARLA**, pedido suyo.
+ · **CK Be 100 del pedido `py20261005`: NO cuenta.** Es para uso personal del padre: no va en `compray det=`, no
+   crea ficha, no entra al costo. **Recordarle** los pesos del pedido (dólares, correo, el que despacha) ANTES del "Llegó".
+ · **Sancor: se deja como está.** No volver a proponer cambiar de plan.
+ · **Gastos de septiembre (Sancor y cargos de Full): RECORDÁRSELOS.**
+ · **Tarifa de almacenamiento: ya está.** La lista que pasó es la de STOCK ANTIGUO (04/10, `STOCK_ANTIGUO_TABLA`), que es
+   lo que usan el remate y la sobra. `almactarifa`/`cyc/mlconfig/almacTarifa` quedó viejo y sin uso: no pedirla más.
+ · **Clave de la IA (`ANTHROPIC_API_KEY`): por ahora NO.** No volver a ofrecerla hasta que él diga.
+ · **Productos nuevos de Adriana sin costo:** se crean las fichas con costo 0 y se vinculan; él pasa los costos
+   después. **Recordarle los costos** (con `poncosto`).
+
 ## PEDIDOS CON SEMÁFORO (06/10/2026, v22.21 · `cyc-v501`)
 Regla suya: cuenta **ML + en camino + oficina**. 🔴 **rojo** = no hay en ningún lado, o (con colores) algún color que vende está en cero en todos lados (v22.26) · 🟠 **naranja** =
 alcanza 14 días o menos (`PED_DIAS_ROJO`) (se va a cortar) · 🟡 **amarillo** =
