@@ -6065,7 +6065,7 @@ const CAND_PISO_PCT = 25;       // suyo: "el % sano es de 25 hacia arriba"
 // PERFUMES AL 20% (05/10/2026, él: "no tengo muchos perfumes en la lista, bajar la ganancia mínima a 20%,
 // solo en perfumes"). Vale para lo NUEVO de Paraguay (candidatos). Perfume = el nombre o el título de ML lo
 // dice (misma idea que `repartopy` y que `esPerfumeNom` de la web). El resto sigue en CAND_PISO_PCT.
-const CAND_PISO_PERFUME = 20;
+const CAND_PISO_PERFUME = 25;   // 06/10/2026, él: "lo mínimo que nos quede de ganancia es 25%. Menos nunca"
 const RE_CAND_PERF = /perfum|parfum|\bedp\b|\bedt\b|eau de|fragan|fragr|body splash|body mist|\bcolonia\b|\bsplash\b/i;
 function candPisoDe(c) { return c && RE_CAND_PERF.test(`${c.nombre || ''} ${c.mlTit || ''}`) ? CAND_PISO_PERFUME : CAND_PISO_PCT; }
 const CAND_MIN_VENT = 100;      // suyo, 03/10/2026: "100 unidades mínimo vendidas, sino no sirve" para entrar al pedido
@@ -6459,7 +6459,7 @@ async function correrCandidatos(db, products, labels, accounts, soloPrueba, prue
     return { mirados: 0, calculados: 0, avisados: 0 };
   }
   console.log(`=== PARA PROBAR · la cuenta de ML ${soloPrueba ? '(PRUEBA)' : ''} ===`);
-  console.log(`${entradas.length} candidato(s) en la lista · dólar ${money(tc)} · piso ${CAND_PISO_PCT}% (perfumes ${CAND_PISO_PERFUME}%) · tope US$ ${CAND_TOPE_USD}`);
+  console.log(`${entradas.length} candidato(s) en la lista · dólar ${money(tc)} · piso ${CAND_PISO_PCT}% · tope US$ ${CAND_TOPE_USD}`);
   if (!entradas.length) {
     console.log('La lista está vacía: el chat de Paraguay todavía no cargó ninguno. No es un error.');
     return { mirados: 0, calculados: 0, avisados: 0 };

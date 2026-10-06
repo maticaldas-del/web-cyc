@@ -2433,7 +2433,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='22.03';
+const APP_VERSION='22.04';
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
 // muestre la versión y la fecha de actualización y que tenga un desplegable predeterminado cerrado".
 // Y el mismo día: "que ponga fecha de cada modificación y haya una barrita para scrollear y que
@@ -2444,6 +2444,7 @@ const APP_VERSION='22.03';
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'22.04',f:'06/10/2026',h:'00:15',c:[{n:3,t:'🇵🇾 Paraguay: el mínimo para comprar vuelve a ser 25% para TODO (nuevos, perfumes y probados). Probados estaba en 20%'}]},
   {v:'22.03',f:'05/10/2026',h:'21:05',c:[{n:3,t:'🇵🇾 Productos nuevos de Paraguay: los PERFUMES entran desde 20% de ganancia (el resto sigue en 25%). Los perfumes descartados que ya daban 20% vuelven a la lista'}]},
   {v:'22.02',f:'05/10/2026',h:'15:10',c:[{n:2,t:'Línea de tiempo: el resumen dice el stock de hoy en unidades, con su color (falta · justo · bien · sobra · exceso) y cuántos días alcanza'},{n:1,t:'Ficha de Paraguay: el "× 1,15" decía el recargo viejo; ahora dice el 17% que usa la cuenta'},{n:1,t:"Ficha: ya no dice 'habría que cruzar los $33.000' en un producto que ya está arriba de la barrera"}]},
   {v:'22.01',f:'05/10/2026',h:'14:55',c:[{n:1,t:'🇵🇾 Pedidos hechos: el recargo de cada pedido dice el REAL cuando están los gastos, o el 17% estimado si faltan. El pedido del 21/09 ya no dice "15%" (era el número viejo de cuando se registró).'}]},
@@ -11126,9 +11127,9 @@ const CAND_PISO_PCT=25;
 // PERFUMES AL 20% (05/10/2026, él: "bajar la ganancia mínima a 20% a ver si entran algunos, solo en perfumes").
 // Sólo lo NUEVO de Paraguay. Perfume = esPerfumeNom (nombre o ficha) o el título de ML que midió el robot.
 // MISMA regla que candPisoDe del robot (sync.mjs): si se toca una, se toca la otra.
-const CAND_PISO_PERFUME=20;
+const CAND_PISO_PERFUME=25;   // 06/10/2026, él: "lo mínimo que nos quede es 25%. Menos nunca" (el 20% de perfumes duró un día)
 function candPisoDe(c){if(!c)return CAND_PISO_PCT;const t=String(c.nombre||c.nom||'');return (esPerfumeNom(t)||_PERF_RE.test(String(c.mlTit||'')))?CAND_PISO_PERFUME:CAND_PISO_PCT;}
-const CAND_PISO_TXT=()=>`${CAND_PISO_PCT}% (perfumes ${CAND_PISO_PERFUME}%)`;
+const CAND_PISO_TXT=()=>`${CAND_PISO_PCT}%`;
 const CAND_MIN_VENT=100; // suyo, 03/10/2026: "100 unidades mínimo vendidas, sino no sirve" para cargar unidades
 // ── LOS TRES NÚMEROS DEL PEDIDO LOS ELIGE ÉL, Y VIVEN EN LA BASE (19/09/2026) ────────
 // Pedido suyo: *"tope del pedido (…) poder elegir tope de unidades por producto"*.
@@ -14764,7 +14765,7 @@ function maxCompraDe(p,metaPct){
   const c2=P===precio?{com:comHoy}:comisionEnPrecio(comHoy,precio,P);
   if(!c2)return {motivo:'sincom'};
   const impPct=(Number(mg.mlExtra)>0&&precio>0)?(Number(mg.mlExtra)/precio*100):0;
-  // Regla suya del 03/10/2026: PROBADOS de Paraguay se miden al 20% (ya se sabe que se venden);
+  // PROBADOS de Paraguay: 20% del 03/10 al 06/10/2026; desde el 06/10 al 25% como todo (él: "menos nunca").
   // NUEVOS siguen al 25% (CAND_PISO_PCT, en el robot). Bs As no cambia.
   if(!(metaPct>0)&&p.origen==='py')metaPct=PY_PROB_PISO;
   const m=(metaPct>0?metaPct:(parseFloat((state.mlconfig||{}).targetPct)||25))/100;
@@ -14808,7 +14809,7 @@ function pyProbVisHTML(_prod){
 //   noda    → Nissei lo tiene pero más caro que ese máximo (o ni regalado llega)
 //   notiene → Nissei no lo tenía (`py_sinstock`)
 //   sinrev  → sin precio de Nissei, o mirado hace más de PY_PROB_FRESCO_DIAS: falta que Guay lo revise
-const PY_PROB_PISO=20, PY_PROB_FRESCO_DIAS=7;
+const PY_PROB_PISO=25, PY_PROB_FRESCO_DIAS=7;   // 06/10/2026: era 20; él: "lo mínimo es 25%, menos nunca"
 function pyProbVeredicto(ped){
   const pr=(state.products||[]).find(x=>x.id===ped.prodId)||prodByName(ped.producto);
   if(!pr)return{k:'sinrev',txt:'sin ficha'};
