@@ -1080,6 +1080,7 @@ con más de una semana no"*). En Ventas x Producto, al lado del nombre: **⬆️
 quién**, el último cambio de los 7 días ANTERIORES a esa venta (`cambioVentaHTML`). Junta
 `cyc/supervisor/eventos` (todos, los a mano con hora aproximada y visibles desde la noche siguiente) y
 `cyc/autoprecio` (el último del robot, al instante), sin repetir el mismo cambio. No calcula nada.
+**06/10/2026 (v22.29): la ventana pasó de 7 a 30 días** (`CAMBIO_VENTA_DIAS`), pedido suyo: *"quiero que muestre lo de ese mes si el robot subió o bajó"*. Lo disparó el Protector talón Triples Rosa: la prueba 🧪 del 28/09 ($3.790→$3.980) no salía en la venta del 06/10 (8 días después).
 
 **Y EL MISMO DÍA LAS VENTAS "NO CARGABAN": era el ciclo apagado 2 h 30** — alguien corrió `poncosto`
 a mano a las 13:46 y no volvió a prender `ciclo`. La web estaba bien.
