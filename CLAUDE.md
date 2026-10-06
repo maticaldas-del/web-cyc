@@ -821,6 +821,17 @@ precio que se puede cobrar) en la etiqueta del nombre, y la ficha usa la misma c
 **Pendiente con él:** la regla de sobra de 100 días (04/10) tiene agujeros (lotes congelados, mira la edad de hoy y no la edad a la
 que se va a vender, no compara el cargo contra lo que se regala); se le propuso cambiarla.
 
+## LO QUE EL ROBOT DESHACE DE SÍ MISMO NO ES MÉRITO · Y LOS RESULTADOS VAN POR MES (06/10/2026, v22.19)
+Él, con las Cartas Españolas (remate a $2.830 por la regla vieja, rescate a $3.470, la venta decía "+$301 de más por la
+suba"): *"el robot se va a dar esa ganancia por un error que cometió él"*. En el supervisor (`refSinRobot`): si un cambio
+del robot va en dirección contraria al cambio anterior del robot en esa publicación, se mide contra el precio de ANTES de
+esa cadena de cambios del robot (los seguidos en la misma dirección, sin uno a mano en el medio). Si vuelve hasta ese precio
+(±1%) → motivo `deshace`, no suma (gris); si pasa de largo → sólo cuenta lo de más (`deRef`). Remate/escalera no se tocan.
+La venta (`cambioVentaHTML`) usa el registro del supervisor: `deshace` → "no es ganancia"; con `deRef` mide contra ese.
+**Por mes, pedido suyo:** cada registro trae `mes: {AAAA-MM: pesos}` según el mes de la VENTA (remate repartido por
+unidades; volumen al fin de la ventana). La tarjeta de Métricas filtra por esa clave: lo de septiembre no aparece en
+octubre; un cambio de septiembre que vende en octubre suma en octubre sólo lo de octubre.
+
 ## LOS NÚMEROS DE COMPRA SE MIDEN SOLOS CADA NOCHE (06/10/2026, v22.05 · `cyc-v485`)
 Él: *"con el tiempo los costos cambian y si yo no te decía estamos viendo mal"* · *"IIBB poner lo real en todas"* ·
 *"una publicación a 100.000 en 6 cuotas capaz le gana a una de 90.000 sin cuotas. Eso lo tenés que ver vos"*.
