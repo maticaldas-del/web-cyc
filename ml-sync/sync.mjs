@@ -32649,6 +32649,8 @@ async function main() {
       console.log(`=== LÍNEA CRUDA "${pals.join(' ')}" · ${nd} días · ${fichas.length} ficha(s) ===`);
       const lk = (await db.get('cyc/mllinks').catch(() => null)) || {};
       const ev = (await db.get('cyc/supervisor/eventos').catch(() => null)) || {};
+      const rsSup = (await db.get('cyc/supervisor/resumen').catch(() => null)) || {};
+      console.log(`resumen del supervisor: ${rsSup.ts ? new Date(rsSup.ts).toISOString().slice(0, 16) : 'sin fecha'}`);
       const desde = new Date(Date.now() - nd * 864e5).toISOString().slice(0, 10).replace(/-/g, '_');
       for (const p of fichas) {
         console.log(`\n■ ${p.name} (${p.id})`);
@@ -32660,6 +32662,9 @@ async function main() {
           console.log('    ' + (ks.map((k) => { const x = li[k] || {}; return `${k.slice(5).replace('_', '/')} ${x.est ? String(x.est).slice(0, 3) : '?'} $${x.p ?? '?'}${x.u ? ' u' + x.u : ''} st${x.st ?? '?'}${x.stF ? '(' + x.stF + ')' : ''}${x.vis ? ' v' + x.vis : ''}${x.rem ? ' R' : ''}`; }).join(' | ') || 'sin días'));
           for (const e of Object.values(ev)) if (e && e.mla === mla && e.ts && e.ts >= Date.now() - nd * 864e5)
             console.log(`    ⇄ ${new Date(e.ts).toISOString().slice(0, 16)} ${e.motivo || '?'} ${e.de} → ${e.a}`);
+          // Y lo que el supervisor contó de cada cambio (06/10/2026: "¿por qué la suba del Ferrari no figura?").
+          for (const x of (Array.isArray(rsSup.todos) ? rsSup.todos : [])) if (x && x.mla === mla)
+            console.log(`    Σ ${new Date(x.ts).toISOString().slice(0, 16)} ${x.motivo || '?'} ${x.de}→${x.a} · ${x.estado} · ${x.dias ?? '?'} d · u antes ${x.uA ?? '-'} · u después ${x.uD ?? '-'} · precio ${x.precio ?? '-'} · volumen ${x.volumen ?? '-'} · total ${x.total ?? '-'} · cuenta ${x.enTotal ? 'SÍ' : 'NO'}${x.quiebre ? ' · quiebre' : ''}${x.volSinDato ? ' · vol sin dato' : ''}`);
         }
       }
       return;
