@@ -3562,6 +3562,12 @@ y trabaja con un token, no anónimo. Verificado en el código antes de proponer 
 login**, y la contraseña de la pantalla está protegiendo de verdad. **No hay nada que tocar.**
 Y el pendiente de seguridad que arrastraba esta lista desde el 17/09 **no existía**: era una
 conclusión mía sobre un dato que nunca había medido.
+**⚠️ Y ESO ESTABA INCOMPLETO (06/10/2026): Firebase le mandó un mail "reglas inseguras".** Las reglas
+son "cualquiera CON SESIÓN lee y escribe todo". El 401 sin token es cierto, pero no prueba nada si
+**cualquiera puede crearse una cuenta**: la clave de Firebase está en `index.html` (público) y el
+registro con email está prendido por defecto. Medí "sin cuenta" y concluí "cerrado" sin preguntar
+quién puede tener cuenta. Arreglo propuesto: apagar el registro (Authentication → Configuración →
+Acciones del usuario) y reglas con la lista de usuarios permitidos (su cuenta + la del robot).
 
 ## LO QUE EL CHAT DE COMPRAS YA BARRIÓ, PARA NO HACERLO DOS VECES (18/09/2026)
 
