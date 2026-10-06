@@ -809,6 +809,13 @@ privada unificados · las dos facturas de Sancor analizadas.
 **Versión del panel: 20.16 · caché `cyc-v294`**. El ciclo del robot quedó **prendido**.
 
 
+## PEDIDOS CON SEMÁFORO (06/10/2026, v22.21 · `cyc-v501`)
+Regla suya: cuenta **ML + en camino + oficina**. 🔴 **rojo** = no hay en ningún lado (se pierde plata hoy) · 🟠 **naranja** =
+alcanza 14 días o menos (`PED_DIAS_ROJO`) o algún color que vende está en cero en todos lados (se va a cortar) · 🟡 **amarillo** =
+más de 14 (el objetivo son 20). Rojo y naranja separados a propósito. Lo calcula `syncPedidosAuto` (`sem`, `semDias`, `semColCero`)
+y se guarda en cada pedido como `cSem`/`cSemDias`/`cSemCol` (vía `cuentaPed`); la pantalla lee `_pedSem` (pedido viejo sin `cSem`:
+cae al estado). Los botones de filtro y los contadores van por color. **`estado` no se tocó**: puntaje, riesgo y orden siguen igual.
+
 ## LA BARRERA DE $33.000 SE CRUZA SÓLO SI PAGA · LA SOBRA SE DECIDE CON PLATA (06/10/2026, v22.20 · `cyc-v500`)
 Él: *"si puede pasar los 33.000, el tema es que a partir de ese monto se le agrega costo de envío: no va a convenir subir de
 32.000 a 37.000"*. **Esto cambia la regla 2**: `frenosSuba`/`redondeoSube` siguen frenando en $32.999 salvo `o.cruza`, que sólo
