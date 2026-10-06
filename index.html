@@ -2435,7 +2435,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='22.19';
+const APP_VERSION='22.20';
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
 // muestre la versión y la fecha de actualización y que tenga un desplegable predeterminado cerrado".
 // Y el mismo día: "que ponga fecha de cada modificación y haya una barrita para scrollear y que
@@ -2446,6 +2446,7 @@ const APP_VERSION='22.19';
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'22.20',f:'06/10/2026',h:'14:44',c:[{n:3,t:'🤖 La barrera de los $33.000: el robot la puede cruzar sólo si, restando el envío que ML cobra arriba de ese monto (y IIBB + monotributo sobre lo que sube), deja más plata por venta que quedándose en $32.999'},{n:3,t:'📦 Sobra de stock: ya no es "100 días fijos". Cuenta los lotes en orden de llegada (ML vende primero lo viejo), siempre con fecha, proyecta lo que ML va a cobrar de stock antiguo al ritmo de hoy y baja sólo si eso es más que lo que se regala bajando'},{n:2,t:'📈 Métricas: el % del mes en curso se compara también contra el mes anterior HASTA EL MISMO DÍA (y abajo sigue el mes anterior entero)'}]},
   {v:'22.19',f:'06/10/2026',h:'15:10',c:[{n:3,t:'🤖 Robot de precios: si el robot vuelve al precio de antes de una baja (o suba) suya, ya no se lo cuenta como ganancia: "sin robot" el precio nunca se había movido. Si pasa de largo, sólo cuenta lo que va más allá'},{n:2,t:'🤖 Robot de precios por mes: cada peso va al mes de la venta que lo dejó. Lo que ganó o perdió en septiembre no aparece en octubre'},{n:1,t:'🧾 En cada venta, el "$X de más por la suba" sigue la misma regla'}]},
   {v:'22.18',f:'06/10/2026',h:'14:20',c:[{n:1,t:'🇵🇾 Pedidos Paraguay: el "da / no da · pidiéndolo queda N%" va adentro de la tarjeta, abajo del nombre'},{n:2,t:'🇵🇾 La ficha del producto calcula "si lo reponés hoy" igual que Pedidos (antes una decía 22% y la otra 48%), y las dos dicen a qué precio de venta'}]},
   {v:'22.17',f:'06/10/2026',h:'14:05',c:[{n:1,t:'🇵🇾 Pedidos Paraguay: un solo % por producto, el que te queda si lo pedís hoy al precio de Nissei (se sacó el "te queda" calculado con lo que pagaste la última vez)'}]},
@@ -15596,7 +15597,7 @@ function getAllPrevMetKeys(scope){
   if(scope==='90d'){const to=new Date(d);to.setDate(d.getDate()-90);const fr=new Date(d);fr.setDate(d.getDate()-179);return all.filter(k=>k>=dateToKey(fr)&&k<=dateToKey(to));}
   if(scope==='365d'){const to=new Date(d);to.setDate(d.getDate()-365);const fr=new Date(d);fr.setDate(d.getDate()-729);return all.filter(k=>k>=dateToKey(fr)&&k<=dateToKey(to));}
   if(scope==='dia'){const v=document.getElementById('met-date')?.value||todayStr();const dt=new Date(v+'T12:00:00');dt.setDate(dt.getDate()-1);return all.filter(k=>k===dateToKey(dt));}
-  if(scope==='mes'){const m=document.getElementById('met-mes')?.value||String(d.getMonth()+1).padStart(2,'0'),y=document.getElementById('met-anio')?.value||d.getFullYear();const pd=new Date(Number(y),Number(m)-2,1);return all.filter(k=>k.startsWith(pd.getFullYear()+'_'+String(pd.getMonth()+1).padStart(2,'0')));}
+  if(scope==='mes'){const m=document.getElementById('met-mes')?.value||String(d.getMonth()+1).padStart(2,'0'),y=document.getElementById('met-anio')?.value||d.getFullYear();const pd=new Date(Number(y),Number(m)-2,1);const enCurso=Number(y)===d.getFullYear()&&Number(m)===d.getMonth()+1;/* mes en curso: el anterior hasta el MISMO día (06/10/2026) */return all.filter(k=>k.startsWith(pd.getFullYear()+'_'+String(pd.getMonth()+1).padStart(2,'0'))&&(!enCurso||Number(k.slice(8,10))<=d.getDate()));}
   if(scope==='ano'){const y=document.getElementById('met-ano-val')?.value||d.getFullYear();return all.filter(k=>k.startsWith((Number(y)-1)+'_'));}
   return[];
 }
@@ -15697,7 +15698,7 @@ function getPrevMetLabel(scope){
   if(scope==='90d')return '90d anteriores';
   if(scope==='365d')return '365d anteriores';
   if(scope==='dia'){const v=document.getElementById('met-date')?.value||todayStr();const dt=new Date(v+'T12:00:00');dt.setDate(dt.getDate()-1);return dt.toLocaleDateString('es-AR',{weekday:'short',day:'numeric',month:'short'});}
-  if(scope==='mes'){const m=document.getElementById('met-mes')?.value||String(d.getMonth()+1).padStart(2,'0'),y=document.getElementById('met-anio')?.value||d.getFullYear();const pd=new Date(Number(y),Number(m)-2,1);return MONTHS[pd.getMonth()]+' '+pd.getFullYear();}
+  if(scope==='mes'){const m=document.getElementById('met-mes')?.value||String(d.getMonth()+1).padStart(2,'0'),y=document.getElementById('met-anio')?.value||d.getFullYear();const pd=new Date(Number(y),Number(m)-2,1);const enC=Number(y)===d.getFullYear()&&Number(m)===d.getMonth()+1;return MONTHS[pd.getMonth()]+' '+pd.getFullYear()+(enC?' (hasta el '+d.getDate()+')':'');}
   if(scope==='ano'){const y=document.getElementById('met-ano-val')?.value||d.getFullYear();return 'año '+(Number(y)-1);}
   if(scope==='todo')return'';   // no hay nada antes del primer registro
   return'';
@@ -16628,6 +16629,12 @@ function renderMetPctAvg(buckets,bucketsPrev,bucketsYear){
   const el=document.getElementById('met-pct-avg');if(!el)return;
   const avgPct=(bkts)=>{let g=0,c=0;bkts.forEach(keys=>keys.forEach(k=>MET_ACCTS.forEach(a=>{g+=metGetValDay(k,a,'ganancia');c+=metCostoPctDay(k,a);})));return c>0?g/c*100:null;};
   const cur=avgPct(buckets),prev=avgPct(bucketsPrev),year=avgPct(bucketsYear);
+  // A LA MISMA ALTURA (06/10/2026, él: "¿por qué dice que vamos abajo si el gráfico muestra que estamos
+  // arriba?"): el período en curso se comparaba contra el anterior ENTERO (6 días de octubre contra todo
+  // septiembre). Ahora la flecha compara contra el anterior cortado en el mismo día que el actual.
+  let nCur=0;buckets.forEach((keys,i)=>{let c=0;keys.forEach(k=>MET_ACCTS.forEach(a=>{c+=metCostoPctDay(k,a);}));if(c>0)nCur=i+1;});
+  const enCurso=nCur>0&&nCur<buckets.length;
+  const prevAlt=enCurso?avgPct(bucketsPrev.slice(0,nCur)):prev,yearAlt=enCurso?avgPct((bucketsYear||[]).slice(0,nCur)):year;
   const fmtP=v=>v==null?'s/datos':v.toFixed(1)+'%';
   const delta=(a,b,ref)=>{if(a==null||b==null)return'';const d=a-b,up=d>=0;
     return ` <span style="color:${up?'var(--green)':'var(--red)'};font-size:.6rem;font-weight:600;white-space:nowrap">${up?'▲':'▼'} ${Math.abs(d).toFixed(1)} pts vs ${ref}</span>`;};
@@ -16636,9 +16643,9 @@ function renderMetPctAvg(buckets,bucketsPrev,bucketsYear){
     +`<span style="font-size:1rem;font-weight:700;color:var(--text)">${fmtP(val)}</span>${extra}</div>`;
   // revisión max (rev4): el título decía "meta 40%" escrito a mano; va la meta del Puntaje de este mes.
   try{const sp=document.getElementById('met-pct-period');if(sp){const n=new Date();sp.textContent='· markup sobre costo · meta '+puntCfg(n.getFullYear()+'_'+String(n.getMonth()+1).padStart(2,'0')).margenMeta+'%';}}catch(e){}
-  el.innerHTML=chip(CMP_CUR,'Promedio actual',cur,delta(cur,prev,'anterior'))
-    +chip(CMP_PREV,'Período anterior',prev)
-    +(year!=null?chip(CMP_YEAR,'Año pasado',year,delta(cur,year,'año pasado')):'');
+  el.innerHTML=chip(CMP_CUR,'Promedio actual',cur,delta(cur,prevAlt,enCurso?'anterior a esta altura':'anterior'))
+    +chip(CMP_PREV,enCurso?'Anterior a esta altura':'Período anterior',prevAlt,enCurso&&prev!=null?`<span style="font-size:.6rem;color:var(--muted)">entero: ${fmtP(prev)}</span>`:'')
+    +(year!=null?chip(CMP_YEAR,'Año pasado',yearAlt,delta(cur,yearAlt,'año pasado')):'');
 }
 
 // Gráfico de % de ganancia (markup = ganancia/costo·100) por período. Solo tiene datos

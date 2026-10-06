@@ -484,8 +484,10 @@ async function avisarBloqueoML(db, DRY) {
 // REDONDEAR PARA ARRIBA SIN CRUZAR LA BARRERA (23/09/2026, lo agarró la revisión): las funciones
 // que suben redondean a la decena de arriba, y un $32.999 pedido a propósito quedaba en $33.000 —
 // justo arriba de la barrera, donde ML cobra ~$6.000 de envío en cada venta (regla 2).
-function redondeoSube(x) {
+// `cruza` (06/10/2026): cuando la 📈 ya midió que pasar la barrera paga CON el envío restado, se deja cruzar.
+function redondeoSube(x, cruza) {
   const r = Math.ceil(x / 10) * 10;
+  if (cruza) return r;
   return (x < UMBRAL_ENVIO_GRATIS && r >= UMBRAL_ENVIO_GRATIS) ? UMBRAL_ENVIO_GRATIS - 1 : r;
 }
 // LOS TRES FRENOS DE TODA SUBA, EN UN SOLO LUGAR (revisión max #14, 25/09/2026): el techo de
@@ -497,7 +499,10 @@ const TECHO_DURO = 650000;   // 03/10/2026: subido de $650.000 a $650.000 (regla
 function frenosSuba(from, to, o) {
   from = Number(from) || 0; to = Number(to) || 0;
   if (!(from > 0) || !(to > from)) return { err: 'no-sube' };
-  if (from < UMBRAL_ENVIO_GRATIS && to >= UMBRAL_ENVIO_GRATIS) {
+  // CRUZAR LA BARRERA SÓLO SI PAGA (06/10/2026, él: "si puede pasar los 33.000, el tema es que a partir
+  // de ese monto se le agrega costo de envío: no va a convenir subir de 32.000 a 37.000"). Sólo quien
+  // midió la ganancia CON el envío restado puede pedir `cruza`; todo lo demás sigue frenando en $32.999.
+  if (!(o && o.cruza) && from < UMBRAL_ENVIO_GRATIS && to >= UMBRAL_ENVIO_GRATIS) {
     to = UMBRAL_ENVIO_GRATIS - 1;
     if (to <= from) return { err: 'no-sube: la barrera de los $33.000 no se cruza' };
   }
@@ -592,7 +597,7 @@ async function raisePriceTo(itemId, objetivo, token, o) {
   // suba que no pasó. Se niega, igual que setPriceTo: para eso está raiseVariations.
   if ((item.variations || []).length) return { ok: false, err: 'tiene variantes: se sube variante por variante (raiseVariations)' };
   if (!item.price) return { ok: false, err: 'sin-precio' };
-  const frT = frenosSuba(item.price, redondeoSube(objetivo), o);
+  const frT = frenosSuba(item.price, redondeoSube(objetivo, o && o.cruza), o);
   if (frT.err) return { ok: false, err: frT.err };
   const to = frT.to;
   try {
@@ -2679,10 +2684,33 @@ async function calcSubirPorMargen(db, o) {
         if (!ok) { frenados.push({ mla, label, nom, why: 'no llego a la meta ni subiendo mucho' }); continue; }
         if (P <= precio0) { frenados.push({ mla, label, nom, why: 'la cuenta da un precio MENOR — no se baja' }); continue; }
         if (P > TECHO) { frenados.push({ mla, label, nom, why: `pasa el techo de ${money(TECHO)} (haría falta ${money(P)})` }); continue; }
-        let final = P, nota = '';
-        if (precio0 < TOPE_ENVIO && P >= TOPE_ENVIO) { final = 32999; nota = ` (frenado en la barrera de los ${money(TOPE_ENVIO)}; para el piso hacían falta ${money(P)})`; }
+        let final = P, nota = '', cruza = false;
+        if (precio0 < TOPE_ENVIO && P >= TOPE_ENVIO) {
+          // CRUZAR SÓLO SI PAGA (06/10/2026, regla suya): arriba de la barrera ML cobra el envío de Full en
+          // cada venta, así que se vuelve a buscar el precio de la meta CON ese envío (el mayor entre lo
+          // medido arriba y el de la ficha) y se cruza sólo si deja más plata por venta que $32.999 y
+          // entra en el +25% del rescate. Si no, se frena en $32.999 como siempre.
+          final = 32999; nota = ` (frenado en la barrera de los ${money(TOPE_ENVIO)}; para el piso hacían falta ${money(P)})`;
+          const envA = Math.max(CAND_ENVIO_ARRIBA, Number(p.netoCalcEnvio) || 0, Number(p.gestFull) || 0);
+          const netoA = async (Q) => { const c = await feeAt(b.site_id || 'MLA', Q, b.listing_type_id, b.category_id, t.access_token); return c == null ? null : Q - c - envA - Q * cuoS; };
+          let Q = Math.max(P, TOPE_ENVIO), okA = false;
+          for (let it = 0; it < 14; it++) {
+            const n = await netoA(Q); if (n == null) break;
+            const m = costoTotDe(Q) * (1 + META) + META * envA;
+            if (n >= m) { okA = true; break; }
+            Q = Math.ceil((Q + (m - n) * 1.5) / 10) * 10;
+            if (Q > TECHO) break;
+          }
+          const nB = await netoDe(32999);
+          const nQ = okA ? await netoA(Q) : null;
+          const ganB = nB == null ? null : nB - costoTotDe(32999), ganQ = nQ == null ? null : nQ - costoTotDe(Q);
+          if (okA && Q <= TECHO && Q <= precio0 * 1.25 && ganB != null && ganQ != null && ganQ > ganB) {
+            final = Q; cruza = true;
+            nota = ` (cruza la barrera: con ${money(envA)} de envío por venta deja ${money(Math.round(ganQ))} contra ${money(Math.round(ganB))} en $32.999)`;
+          } else if (okA && ganB != null && ganQ != null) nota += ` · cruzar a ${money(Q)} con envío ${money(envA)} dejaba ${money(Math.round(ganQ))} contra ${money(Math.round(ganB))}${Q > precio0 * 1.25 ? ' y pasaba el +25%' : ''}`;
+        }
         if (final <= precio0) { frenados.push({ mla, label, nom, why: `ya está en la barrera de los ${money(TOPE_ENVIO)}` }); continue; }
-        subir.push({ mla, label, nom, prod: p.name, de: Math.round(precio0), a: final, nota, vars, tok: t.access_token, pct: ((n0 - costoTot) / (costoTot + envio) * 100), envioDeTarifa });
+        subir.push({ mla, label, nom, prod: p.name, de: Math.round(precio0), a: final, nota, cruza, vars, tok: t.access_token, pct: ((n0 - costoTot) / (costoTot + envio) * 100), envioDeTarifa });
       }
     }
   }
@@ -3500,15 +3528,18 @@ async function calcSubirPuede(db, o) {
     const escalon = !(maxSuba > 0) ? Infinity : Math.floor((precio * (1 + (pasaSinFull && precio * (1 + PASO_PASA) > techoViejo ? PASO_PASA : maxSuba))) / 10) * 10;
     const cortoPorEscalon = escalon < techo;
     const techo2 = Math.min(techo, escalon);
-    // LA BARRERA DE LOS $33.000 NO SE CRUZA (regla suya del 13/08/2026).
-    const tope = (precio < UMBRAL_ENVIO_GRATIS && techo2 >= UMBRAL_ENVIO_GRATIS) ? UMBRAL_ENVIO_GRATIS - 1 : techo2;
+    // LA BARRERA DE LOS $33.000 (06/10/2026, regla nueva suya): se puede cruzar, pero SÓLO si con el
+    // envío de Full que ML empieza a cobrar arriba deja más plata que quedarse en $32.999. Eso lo decide
+    // la prueba de precios de abajo (`cruzaPosible`): acá el techo ya no se corta.
+    const cruzaPosible = precio < UMBRAL_ENVIO_GRATIS && techo2 >= UMBRAL_ENVIO_GRATIS;
+    const tope = techo2;
     if (tope > TOPE_DURO) { sinLugar++; continue; }
     if (tope <= precio * (1 + MIN_AIRE)) { sinLugar++; continue; }
     const dsF = diasStockDe(e);
-    filas.push({ mla, cuenta: e.cuenta, nom: (p.name || '').slice(0, 34), precio, tope, topeMax: tope,
+    filas.push({ mla, cuenta: e.cuenta, prodId: e.prodId, nom: (p.name || '').slice(0, 34), precio, tope, topeMax: tope,
       rival: arriba[0].price, u: uMes[mla] || 0, techo, cortoPorEscalon,
       pasaSinFull: pasaSinFull && Math.min(techo, escalon) > techoViejo, rivalSinFull: minS || null,
-      topeBarrera: tope !== techo2, conVars: conVarsSub,
+      topeBarrera: false, cruzaPosible, conVars: conVarsSub,
       diasSin: diasSinDe(mla), st: dsF ? dsF.st : null, diasStock: dsF ? dsF.dias : null });
   }
 
@@ -3526,16 +3557,30 @@ async function calcSubirPuede(db, o) {
       };
       const comHoy = await fee(f.precio);
       const imp = (mlExtraPct(f.cuenta) + monoP) / 100;
-      for (let i = PASOS; i >= 1; i--) {
-        const P = Math.floor((f.precio + ((f.topeMax - f.precio) * i) / PASOS) / 10) * 10;
-        if (P <= f.precio) continue;
+      // Arriba de la barrera ML cobra el envío de Full en CADA venta: se resta entero. Se usa el mayor
+      // entre lo medido en nuestras ventas de arriba (`CAND_ENVIO_ARRIBA`) y el envío de la ficha, para
+      // errar del lado caro. Y $32.999 se prueba SIEMPRE: es contra lo que compite cruzar.
+      const pF = f.cruzaPosible ? (pIdx[f.prodId] || {}) : {};
+      const envArr = Math.max(CAND_ENVIO_ARRIBA, Number(pF.netoCalcEnvio) || 0, Number(pF.gestFull) || 0);
+      const cands = [];
+      for (let i = PASOS; i >= 1; i--) cands.push(Math.floor((f.precio + ((f.topeMax - f.precio) * i) / PASOS) / 10) * 10);
+      if (f.cruzaPosible) cands.push(UMBRAL_ENVIO_GRATIS - 1);
+      const extraDe = {};
+      for (const P of cands) {
+        if (P <= f.precio || P > f.topeMax || extraDe[P] != null) continue;
         let ex;
         try { ex = (P - f.precio) - ((await fee(P)) - comHoy) - (P - f.precio) * imp; }
         catch { continue; }
+        if (f.cruzaPosible && P >= UMBRAL_ENVIO_GRATIS) ex -= envArr;
+        extraDe[P] = ex;
         if (f.extraU == null || ex > f.extraU) { f.extraU = ex; f.mejor = P; }
       }
+      f.envArriba = f.cruzaPosible ? envArr : null;
+      f.extraBarrera = extraDe[UMBRAL_ENVIO_GRATIS - 1] != null ? extraDe[UMBRAL_ENVIO_GRATIS - 1] : null;
     } catch { /* queda en null y la fila se descarta abajo */ }
     f.tope = f.mejor != null ? f.mejor : f.tope;
+    f.cruza = !!(f.cruzaPosible && f.mejor != null && f.mejor >= UMBRAL_ENVIO_GRATIS);
+    f.topeBarrera = !!(f.cruzaPosible && f.mejor === UMBRAL_ENVIO_GRATIS - 1);
     // LA PLATA DEL MES NO PUEDE SUPONER STOCK QUE NO TENÉS. La Linterna Minera vende 12 por mes
     // y le queda **1 unidad**: el "+$5.856/mes" salía de multiplicar por 12 unidades que no se
     // pueden vender. Hasta reponer, subirla deja $488, no $5.856 — y ese número es el que decide
@@ -3982,6 +4027,16 @@ async function calcCajaBarata(db, o) {
   const histCb = (await db.get('cyc/stockhist')) || {};
   // Los lotes del Excel de ML (`lotesfull`): la antigüedad REAL de la mercadería en Full.
   let lotesCb = {}; try { lotesCb = (await db.get('cyc/lotesfull')) || {}; } catch { lotesCb = {}; }
+  // Para la sobra (06/10/2026): las cajas que llegaron (fecha y unidades por producto×cuenta), la tabla de
+  // stock antiguo de ML y el tamaño de Full de cada producto. Ver `lotesFifo` / `cargoAntiguoProy`.
+  let cfgCbS = {}; try { cfgCbS = (await db.get('cyc/mlconfig')) || {}; } catch { cfgCbS = {}; }
+  let cajasPCb = {}; try { cajasPCb = cajasLlegadasPorClave((await db.get('cyc/envios_full')) || {}); } catch { cajasPCb = {}; }
+  const palGCb = (Array.isArray(cfgCbS.cupoGrandes) ? cfgCbS.cupoGrandes : (typeof cfgCbS.cupoGrandes === 'string' ? cfgCbS.cupoGrandes.split(',') : null)) || ['tendedero', 'tender'];
+  const tamCb = (e, p) => {
+    const t = e && e.inv ? ((lotesCb[e.inv] || {}).tam || (cfgCbS.tamFull || {})[e.inv]) : null;
+    if (t) return t;
+    return p && (p.grandeFull === true || (p.grandeFull !== false && palGCb.some((w) => w && norm(p.name || '').includes(norm(String(w).trim()))))) ? 'grande' : 'pequeno';
+  };
   const vpCb = (await db.get('cyc/ventaprod')) || {}; setDevLive(vpCb);
   const monoP = parseFloat(((await db.get('cyc/monotributo')) || {}).pct) || 0;
   let cuotasCb = null;
@@ -4096,12 +4151,25 @@ async function calcCajaBarata(db, o) {
         // Se baja recién cuando la unidad MÁS VIEJA tiene SOBRA_EDAD_MIN días o más: del lote más
         // viejo del Excel de ML si está cargado, si no de `stockhist` (si es aproximada, la real es
         // igual o mayor: se usa igual). Sin ninguna fecha no se baja: no se sabe si se acerca.
-        const edadViejaS = edadViejaFull(e, e.prodId + '__' + sidCb(e.cuenta), lotesCb, histCb);
-        if (edadViejaS == null || edadViejaS < SOBRA_EDAD_MIN) { fuera.sobraJoven++; continue; }
+        // DESDE EL 06/10/2026 la edad fija de 100 días se reemplazó por PLATA: lotes en orden de llegada
+        // (lo viejo se vende primero), siempre con fecha, y el cargo de stock antiguo PROYECTADO al ritmo
+        // de hoy. Si ML no va a cobrar nada antes de que se venda, bajar sólo regala: no entra. Si va a
+        // cobrar, entra y abajo (cuando se sabe cuánto se regala por unidad) se compara.
+        const kS = e.prodId + '__' + sidCb(e.cuenta);
+        const hS = histCb[kS];
+        const fbS = Math.min(...[hS && hS.desde, e.altaTs].map(Number).filter((x) => x > 0), Infinity);
+        const lotesS = lotesFifo(ds.st, e.inv ? lotesCb[e.inv] : null, cajasPCb[e.prodId + '__' + e.cuenta], isFinite(fbS) ? fbS : 0);
+        const rDiaS = ds.dias > 0 ? ds.st / ds.dias : 0;
+        const tamS = tamCb(e, pIdx[e.prodId]);
+        const tablaS = (cfgCbS.stockAntiguo || {})[tamS] || STOCK_ANTIGUO_TABLA[tamS] || STOCK_ANTIGUO_TABLA.pequeno;
+        const cargoS = cargoAntiguoProy(lotesS, rDiaS, tablaS, DIA_CIERRE_ALM_CTA[_ctaSinTilde(e.cuenta)] || 12);
+        const edadViejaS = Math.floor((Date.now() - lotesS[0].ts) / 864e5);
+        if (!(cargoS.pesos > 0)) { fuera.sobraJoven++; continue; }
         const ptwS = Number(e.cajaPtw) || 0;
         if (!(ptwS > 0)) { fuera.sinPtw++; continue; }
         cand.push({ mla, e, st: ds.st, ptw: ptwS, quieta: quietaDe(mla, e.prodId, e.cuenta, e.variant),
-          sobre: { dias: ds.dias, porMes: Math.round(ds.vend * 30 / dias), edad: edadFullCb(e.prodId, e.cuenta), edadVieja: edadViejaS } });
+          sobre: { dias: ds.dias, porMes: Math.round(ds.vend * 30 / dias), edad: edadFullCb(e.prodId, e.cuenta), edadVieja: edadViejaS,
+            cargo: cargoS.pesos, rDia: rDiaS, tam: tamS, fuenteFecha: lotesS[0].f } });
         continue;
       }
     }
@@ -4290,6 +4358,20 @@ async function calcCajaBarata(db, o) {
       resigna, resignaTot: resigna == null ? null : resigna * c.st, cuo, conVars,
       sobre: c.sobre || null,
     };
+    // LO QUE SE AHORRA CONTRA LO QUE SE REGALA (06/10/2026, él: "que compare, no?"). Se regala `resigna`
+    // por cada unidad que se vende barata: las que sobran arriba de 30 días de ritmo (después el rescate la
+    // vuelve a la base). Se ahorra el cargo de stock antiguo proyectado más 1% por mes del costo de la plata
+    // parada de esas unidades. Si regala igual o más, no se baja: va al log con los dos números.
+    if (c.sobre && resigna != null) {
+      const uEx = Math.max(0, c.st - Math.round(30 * (c.sobre.rDia || 0)));
+      const mesesEx = Math.max(0, (c.sobre.dias - 30) / 2 / 30);
+      const plataParada = Math.round(costo * 0.01 * uEx * mesesEx);
+      fila.sobre = { ...c.sobre, uEx, regalo: Math.max(0, resigna) * uEx, ahorro: (c.sobre.cargo || 0) + plataParada, plataParada };
+      if (fila.sobre.regalo >= fila.sobre.ahorro) {
+        noSano.push({ ...fila, why: `bajar regala ${money(fila.sobre.regalo)} (${uEx} u. × ${money(Math.max(0, resigna))}) y ahorra ${money(fila.sobre.ahorro)} (stock antiguo ${money(c.sobre.cargo || 0)} + plata parada ${money(plataParada)}): no conviene` });
+        continue;
+      }
+    }
     if (mgPw >= exigido) filas.push(fila);
     else noSano.push({ ...fila, why: `bajando ${baja.toFixed(0)}% queda en ${mgPw.toFixed(1)}%, y el sano es ${exigido}%` });
   }
@@ -6066,6 +6148,89 @@ function edadViejaFull(e, clave, lotes, hist) {
   }
   const h = (hist || {})[clave];
   return h && h.desde ? Math.floor((Date.now() - h.desde) / 864e5) : null;
+}
+// ── LA SOBRA, CON PLATA Y NO CON UNA EDAD FIJA (06/10/2026) ──────────────────────────────────────────
+// Él, sobre la regla de los 100 días: *"ML siempre vende las unidades viejas primero: si había 10 y ahora hay
+// 20, entraron 10, quedaron 10 viejas y 10 nuevas; cuando se venden 10 recién ahí el stock que queda es el nuevo
+// y se toma de esa fecha"* · *"que compare"* (lo que se ahorra contra lo que se regala) · *"que tenga fecha"*.
+// 1. LOTES EN ORDEN DE LLEGADA (`lotesFifo`): el stock de HOY se le asigna a lo que entró MÁS NUEVO (cajas
+//    marcadas llegadas con su fecha, y los lotes del Excel de ML con su fecha de referencia), y lo que no
+//    alcanza a cubrirse es lo más viejo. Así el Excel congelado deja de mandar: después de su fecha, lo que
+//    llegó en cajas va adelante y lo que ya se vendió sale de lo más viejo.
+// 2. SIEMPRE CON FECHA: lote del Excel → caja → `stockhist` (aunque sea aproximada) → alta de la publicación
+//    → primera venta. Sólo si no hay NADA queda "hoy" (y se dice).
+// 3. A FUTURO (`cargoAntiguoProy`): al ritmo de hoy (lo viejo sale primero) se proyecta cuántas unidades van a
+//    seguir en Full en cada cierre de mes de ML y con qué edad, y se suma lo que ML va a cobrar con su tabla.
+// 4. SE COMPARA: bajar conviene sólo si ese cargo (más 1% por mes del costo de la plata parada) es MAYOR que lo
+//    que se regala bajando (lo que se deja de ganar por unidad × las unidades que sobran arriba de 30 días).
+const STOCK_ANTIGUO_TABLA = {
+  pequeno: [[0, 120, 0], [120, 180, 350], [180, 365, 3250], [365, 1e9, 7900]],
+  mediano: [[0, 120, 0], [120, 180, 470], [180, 365, 4485], [365, 1e9, 10930]],
+  grande: [[0, 120, 0], [120, 180, 1355], [180, 365, 18280], [365, 1e9, 39365]],
+  extragrande: [[0, 120, 0], [120, 180, 4680], [180, 365, 47840], [365, 1e9, 92400]],
+};
+const DIA_CIERRE_ALM_CTA = { adriana: 10, luciana: 12, matias: 12, ayelen: 12 };
+const _ctaSinTilde = (c) => String(c || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '');
+// Entradas con fecha de un producto×cuenta, de la más nueva a la más vieja. `cajas` = [{ts, u}] (cajas
+// marcadas llegadas), `L` = lote del Excel {ref, lotes:[{dias,u}]}. Las cajas anteriores al Excel ya están
+// adentro de él (no se cuentan dos veces).
+function lotesFifo(st, L, cajas, fallbackTs) {
+  st = Math.max(0, Math.round(Number(st) || 0));
+  const ent = [];
+  let refL = 0;
+  if (L && Array.isArray(L.lotes)) {
+    refL = Date.parse(String(L.ref || '') + 'T03:00:00Z') || 0;
+    if (refL > 0) for (const x of L.lotes) if (Number(x.u) > 0 && Number(x.dias) >= 0) ent.push({ ts: refL - Number(x.dias) * 864e5, u: Number(x.u), f: 'excel' });
+  }
+  for (const c of cajas || []) if (c && c.ts > 0 && c.u > 0 && c.ts > refL) ent.push({ ts: c.ts, u: c.u, f: 'caja' });
+  ent.sort((a, b) => b.ts - a.ts);
+  const out = []; let falta = st;
+  for (const x of ent) { if (falta <= 0) break; const u = Math.min(falta, x.u); out.push({ ts: x.ts, u, f: x.f }); falta -= u; }
+  if (falta > 0) {
+    // Lo que no cubren las entradas con fecha es MÁS VIEJO que todas ellas: la fecha conocida más vieja.
+    const masVieja = ent.length ? Math.min(ent[ent.length - 1].ts, fallbackTs > 0 ? fallbackTs : Infinity) : fallbackTs;
+    out.push({ ts: masVieja > 0 && isFinite(masVieja) ? masVieja : Date.now(), u: falta, f: masVieja > 0 && isFinite(masVieja) ? 'antes' : 'sinfecha' });
+  }
+  return out.sort((a, b) => a.ts - b.ts);   // de la más vieja a la más nueva
+}
+// Las cajas que llegaron, por producto×cuenta (cuenta como la guarda el envío): [{ts, u}], sin lo que faltó.
+function cajasLlegadasPorClave(envios) {
+  const out = {};
+  for (const env of Object.values(envios || {})) {
+    if (!env || !env.cuenta) continue;
+    for (const c of (Array.isArray(env.cajasDet) ? env.cajasDet : [])) {
+      if (!c || !c.recibida) continue;
+      const ts = Date.parse(String(c.recFecha || env.fecha || '').slice(0, 10) + 'T15:00:00Z');
+      if (!(ts > 0)) continue;
+      const falt = {}; for (const f of (Array.isArray(c.faltan) ? c.faltan : [])) if (f && f.prodId) falt[f.prodId] = (falt[f.prodId] || 0) + Math.max(0, (Number(f.pide) || 0) - (Number(f.llego) || 0));
+      const porP = {}; for (const it of (c.items || [])) if (it && it.prodId && it.u > 0) porP[it.prodId] = (porP[it.prodId] || 0) + Number(it.u);
+      for (const [pid, u] of Object.entries(porP)) { const uu = u - (falt[pid] || 0); if (uu > 0) (out[pid + '__' + env.cuenta] = out[pid + '__' + env.cuenta] || []).push({ ts, u: uu }); }
+    }
+  }
+  return out;
+}
+// Lo que ML va a cobrar de stock antiguo de acá a 3 años si se sigue vendiendo a `rDia` (lo viejo primero).
+function cargoAntiguoProy(lotes, rDia, tabla, diaCierre, ahora) {
+  ahora = ahora || Date.now(); rDia = Math.max(0, Number(rDia) || 0);
+  const tarifa = (edad) => { for (const [a, b, $] of tabla || []) if (edad >= a && edad < b) return $; return 0; };
+  let pesos = 0, uConCargo = 0;
+  const d = new Date(ahora - 3 * 3600e3);
+  let y = d.getUTCFullYear(), m = d.getUTCMonth();
+  if (d.getUTCDate() >= diaCierre) m++;
+  for (let k = 0; k < 36; k++) {
+    const T = Date.UTC(y, m + k, diaCierre, 3);
+    let vendidas = rDia * (T - ahora) / 864e5, quedan = 0, cargoMes = 0;
+    for (const l of lotes) {
+      const sale = Math.min(l.u, vendidas); vendidas -= sale;
+      const u = l.u - sale; if (u <= 0) continue;
+      quedan += u;
+      const t = tarifa((T - l.ts) / 864e5);
+      if (t > 0) { cargoMes += u * t; uConCargo = Math.max(uConCargo, u); }
+    }
+    pesos += cargoMes;
+    if (quedan <= 0) break;
+  }
+  return { pesos: Math.round(pesos), uConCargo: Math.round(uConCargo) };
 }
 let RECARGO_PAR_PCT = Math.round((RECARGO_PAR - 1) * 100);
 // ── EL RECARGO REAL DE CADA PEDIDO Y EL COSTO QUE SUBE SOLO (05/10/2026) ──────────────────────
@@ -8931,7 +9096,7 @@ async function main() {
       console.log(`   candidatas miradas ${cbr.mirados} · descartadas: ${cbr.fuera.vendio} vendieron`
         + ` · ${cbr.fuera.sinStock} sin stock · ${cbr.fuera.sinPtw} sin precio de caja de ML`
         + (cbr.fuera.hermanaGana ? ` · ${cbr.fuera.hermanaGana} les sobra stock pero otra publicación suya ya gana la caja` : '')
-        + (cbr.fuera.sobraJoven ? ` · ${cbr.fuera.sobraJoven} les sobra stock pero la unidad más vieja tiene menos de ${SOBRA_EDAD_MIN} d en Full (antes de los 120 no se paga stock antiguo: no se baja)` : ''));
+        + (cbr.fuera.sobraJoven ? ` · ${cbr.fuera.sobraJoven} les sobra stock pero al ritmo de hoy se venden antes de que ML cobre stock antiguo (lotes en orden de llegada): no se baja` : ''));
       // Las que NO llegan al margen sano se listan igual, con cuánto habría que bajar y en cuánto
       // quedarían. Un "8 quedaron con margen flaco" sin decir cuáles esconde la que está en 24%
       // por dos pesos — y ésa la quiero ver yo. Van al log, no al mensaje.
@@ -9481,7 +9646,7 @@ async function main() {
               const nuevos = {}; for (const v of f.vars) if ((v.price || 0) < t.a) nuevos[String(v.id)] = t.a;
               r = await raiseVariations(f.mla, nuevos, tk);
               if (r && r.ok) { if (r.parcial) console.log(`   ⚠️ ${f.mla}: subí sólo algunas variantes; ${(r.saltadas || []).length} no (${(r.saltadas || []).map((z) => z.why).join(', ')})`); r = { ok: true, from: f.precio, to: t.a, parcial: !!r.parcial, saltadas: r.saltadas || [] }; }
-            } else r = await raisePriceTo(f.mla, t.a, tk);
+            } else r = await raisePriceTo(f.mla, t.a, tk, { cruza: !!(f.cruza && t.a >= UMBRAL_ENVIO_GRATIS) });
           } else if (t.tipo === 'sube') {
             // ANTES DE SUBIR SE LE VUELVE A PREGUNTAR LA CAJA A ML (revisión max #8): la 📈 decide con
             // el "ganás la caja" de la vuelta de la hora, que puede ser viejo. Si ya no la gana, o ML no
@@ -9492,7 +9657,7 @@ async function main() {
             if (cjS.status !== 'winning') { fallidosAuto.push({ ...t, err: `ya no gana la caja (ML dice "${cjS.status}"): no se sube` }); continue; }
             _msubN = await _marcarSubiendo(db, f.mla, { de: f.precio, a: t.a, nom: f.nom, cuenta: f.cuenta });
             if (!_msubN.ok) { fallidosAuto.push({ ...t, err: 'no pude anotar la suba antes de hacerla: no subo a ciegas' }); continue; }
-            r = await raisePriceTo(f.mla, t.a, tk, { libre: true });
+            r = await raisePriceTo(f.mla, t.a, tk, { libre: true, cruza: !!f.cruza });
           } else {
             let it = null;
             try { it = await mlGet('/items/' + f.mla + '?attributes=id,variations,listing_type_id,category_id,site_id', tk); } catch { it = null; }
@@ -15484,6 +15649,7 @@ async function main() {
       // Para la SALIDA POR EDAD (04/10/2026): los lotes de Full, la fecha de entrada y la memoria de avisados
       // (`o_<MLA>` = el remate entró por sobra de stock). Si alguna no se lee, esa salida no opina.
       const [lotesR, histR, avisR] = await Promise.all(['cyc/lotesfull', 'cyc/stockhist', 'cyc/avisados'].map((r) => db.get(r).catch(() => null)));
+      let cajasR = {}; try { cajasR = cajasLlegadasPorClave((await db.get('cyc/envios_full')) || {}); } catch { cajasR = {}; }
       // El "diario" por clave sale de la LÍNEA DE TIEMPO de cada publicación (`linea`): stock, precio,
       // caja, remate y ventas de cada día, hasta 365 días para atrás.
       let diario = {}, nLin = 0;
@@ -15541,9 +15707,17 @@ async function main() {
         // vieja en Full tiene menos de SOBRA_EDAD_MIN días: hoy no entraría. Sin fecha no opina (queda como está).
         const apR = (autoprecio || {})[mla];
         const porSobra = !!(apR && apR.por === 'remate' && apR.sobra) || !!(avisR && avisR['o_' + mla]);
-        if (auto && porSobra && lotesR && histR) {
-          const ed = edadViejaFull(e, kP, lotesR, histR);
-          if (ed != null && ed < SOBRA_EDAD_MIN) { console.log(`     ↳ entró por sobra y la unidad más vieja tiene ${ed} d en Full (< ${SOBRA_EDAD_MIN}): hoy no entraría`); salen.push({ mla, e, st, pd, diasSt, edad: ed }); }
+        // Desde el 06/10/2026 la misma vara que la entrada: si al ritmo NORMAL ML no va a cobrar stock antiguo
+        // antes de que se venda (lotes en orden de llegada, siempre con fecha), el remate por sobra se termina.
+        if (auto && porSobra && lotesR && histR && st > 0 && pd) {
+          const hR = histR[kP];
+          const fbR = Math.min(...[hR && hR.desde, e.altaTs].map(Number).filter((x) => x > 0), Infinity);
+          const lotesX = lotesFifo(st, e.inv ? lotesR[e.inv] : null, (cajasR || {})[e.prodId + '__' + e.cuenta], isFinite(fbR) ? fbR : 0);
+          const tamX = (e.inv && (lotesR[e.inv] || {}).tam) || 'pequeno';
+          const cgX = cargoAntiguoProy(lotesX, pd, STOCK_ANTIGUO_TABLA[tamX] || STOCK_ANTIGUO_TABLA.pequeno, DIA_CIERRE_ALM_CTA[_ctaSinTilde(e.cuenta)] || 12);
+          const ed = Math.floor((ahoraR - lotesX[0].ts) / 864e5);
+          if (!(cgX.pesos > 0)) { console.log(`     ↳ entró por sobra: la unidad más vieja tiene ${ed} d y al ritmo normal se vende antes de que ML cobre stock antiguo: hoy no entraría`); salen.push({ mla, e, st, pd, diasSt, edad: ed }); }
+          else console.log(`     ↳ sobra: al ritmo normal ML cobraría ${money(cgX.pesos)} de stock antiguo (la más vieja tiene ${ed} d): sigue`);
         }
       }
       if (salen.length) console.log(`\n✅ SALEN DEL REMATE (stock sano o sobra joven) (≤ ${RN_SANO_DIAS} d de venta normal): ${salen.map((x) => String(x.e.title || x.mla).slice(0, 40) + ' ' + x.st + ' u.').join(' · ')}`);
@@ -18751,7 +18925,8 @@ async function main() {
           if (f.topeStock) console.log(`     ⚠️ con ${f.st} u. no llegás a vender lo del mes: la plata de arriba ya está`
             + ` topeada por el stock. Reponiendo, sube.`);
           console.log(`     el competidor más barato que está arriba: ${money(f.rival)}`
-            + (f.topeBarrera ? `   ⚠️ topado en ${money(UMBRAL_ENVIO_GRATIS - 1)}: no se cruza la barrera` : ''));
+            + (f.topeBarrera ? `   ⚠️ topado en ${money(UMBRAL_ENVIO_GRATIS - 1)}: cruzar la barrera, con ${money(f.envArriba)} de envío por venta, dejaba menos` : '')
+            + (f.cruza ? `   ✅ cruza la barrera: aun pagando ${money(f.envArriba)} de envío por venta deja más que $32.999 (${f.extraBarrera == null ? '?' : money(Math.round(f.extraBarrera))} c/u)` : ''));
           if (f.cortoPorEscalon) console.log(`     ⚠️ el techo del competidor daba hasta ${money(f.techo)}`
             + ` (+${(((f.techo - f.precio) / f.precio) * 100).toFixed(0)}%): se frena en +${(MAX_SUBA * 100).toFixed(0)}%`
             + ` y se vuelve a medir el mes que viene`);
