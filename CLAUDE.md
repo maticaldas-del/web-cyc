@@ -821,6 +821,11 @@ privada unificados · las dos facturas de Sancor analizadas.
  · **Clave de la IA (`ANTHROPIC_API_KEY`): por ahora NO.** No volver a ofrecerla hasta que él diga.
  · **Productos nuevos de Adriana sin costo:** se crean las fichas con costo 0 y se vinculan; él pasa los costos
    después. **Recordarle los costos** (con `poncosto`).
+   **Hechas el 06/10 (costo 0, faltan sus costos):** Cuba Paris Prestige Platinum `p1791316566103` → `MLA4032379874` ·
+   Halloween Man 75ml `p1791316673662` → `MLA2155300569` · Cuba Blue 100ml `p1791316782281` → `MLA2155294525`.
+   Y dos Paulvic de Adriana fijadas a "Paulvic TODOS" (llevan el costo del Paulvic): Scandal Bliss `MLA1695210793` ·
+   Infinite Fame `MLA1682456369` (ésta en revisión de ML).
+ · **Pad 2:** el 06/10 sólo había promos `candidate` (propuestas de ML, no hacen nada). El robot la saca sola si se acepta.
 
 ## PEDIDOS CON SEMÁFORO (06/10/2026, v22.21 · `cyc-v501`)
 Regla suya: cuenta **ML + en camino + oficina**. 🔴 **rojo** = no hay en ningún lado, o (con colores) algún color que vende está en cero en todos lados (v22.26) · 🟠 **naranja** =
