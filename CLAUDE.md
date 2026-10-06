@@ -816,6 +816,16 @@ más de 14 (el objetivo son 20). Rojo y naranja separados a propósito. Lo calcu
 y se guarda en cada pedido como `cSem`/`cSemDias`/`cSemCol` (vía `cuentaPed`); la pantalla lee `_pedSem` (pedido viejo sin `cSem`:
 cae al estado). Los botones de filtro y los contadores van por color. **`estado` no se tocó**: puntaje, riesgo y orden siguen igual.
 
+## DESPUÉS DE SALIR DEL REMATE POR SOBRA: 3 DÍAS DE PRUEBA (06/10/2026)
+Él: *"entra en remate, en 5 días vende 10: que lo suba con margen de 3 días y si no se vendió lo suficiente que tenía que vender
+esos 3 días que vuelva a bajar"*. La salida ya existía (`ritmo:go`, la noche que el stock queda sano, y el rescate de esa misma noche
+lo vuelve a la base). Nuevo: al salir se guarda `cyc/salidaremate/<MLA>` `{ts, st, pd}`; en los 30 días siguientes `calcCajaBarata`
+(rama sobra) espera `max(3, días para esperar 2 ventas)` (tope 14) y mide el ritmo REAL desde la salida: si es menor que el normal,
+proyecta el stock antiguo con ese ritmo y, si ML cobraría, vuelve al remate (`sobre.trasSalida`, sin la espera de 14 días tras una suba).
+Probe `preciosotravez[:go]`: borra `cyc/robotprecios/dia` para que ml-daily vuelva a tocar precios el mismo día.
+**Pedidos v22.22:** al abrir una tarjeta con variantes salen directo los colores (`pedVarFila`), cada uno con su semáforo
+(`pedVarSem`, `variantesNec[].dias`) y unidades a comprar; primero los rojos. Se fue el desplegable "Variantes (N)".
+
 ## LA BARRERA DE $33.000 SE CRUZA SÓLO SI PAGA · LA SOBRA SE DECIDE CON PLATA (06/10/2026, v22.20 · `cyc-v500`)
 Él: *"si puede pasar los 33.000, el tema es que a partir de ese monto se le agrega costo de envío: no va a convenir subir de
 32.000 a 37.000"*. **Esto cambia la regla 2**: `frenosSuba`/`redondeoSube` siguen frenando en $32.999 salvo `o.cruza`, que sólo
