@@ -843,6 +843,17 @@ llegó"*. `cyc/pedidospv/<id>` (`pv<AAAAMMDD>`, aromas con el nombre exacto de l
 con aromas reemplaza lo pedido, 0 = no vino; lo que vino se SUMA a la oficina, lo que faltó se anota y vuelve a pedirse solo).
 La web (`pvEnCamino`) lo resta aroma por aroma en Pedidos y lo muestra arriba de la pestaña Paulvic. **No entra al patrimonio**
 (no sabemos si ya está pagado). Cargado el 06/10: `pv20261006`, 12 aromas, 40 u.
+**EL PAGO (07/10/2026, v22.14), él: *"los pedidos de paulvic siempre se pagan cuando llegan (…) que aparezca que llegó, pero que
+falta pagar, hasta que te paso el comprobante, y ese comprobante quiero que lo cargues en foto en la web (…) puede ser más de una
+transferencia de distintas cuentas"*.** Estados: `camino` → `llego` sin `pagado` (tarjeta 💸 "falta pagar"; en el Arqueo lo llegado
+× costo de la ficha va como DEUDA, `pvDeudaUSD`, así la oficina y la deuda se cancelan) → `pagado` (`fechaPago`, `montoPago`,
+`comprobantes` = cuántas fotos). Las fotos viven en `comprobantes/pv/<id>/<n>` (FUERA de `cyc`, se bajan al tocar 🧾).
+**EL COMPROBANTE TRAE NOMBRES/CUIT DE TERCEROS Y EL REPO ES PÚBLICO: la foto viaja CIFRADA.** `pvped:clave;go` armó un par de llaves:
+la privada vive SÓLO en `mlapi/comprobkey`; la pública sale en el log. Para cargar: tomar la imagen que él manda
+(`/root/.claude/uploads/<sesión>/…`), `node ml-sync/tools/cifrar.mjs <pub.pem> <imagen> ml-sync/comprob/<id>/1.enc` (una por
+transferencia), commit+push a `claude/add-folder-78ysyb`, correr `pvped:pago:<id|ultimo>[;monto=<pesos>][;fecha=AAAA-MM-DD];go` por
+ml-sync, y después BORRAR los .enc del repo. Nunca subir la imagen sin cifrar ni poner nombres en el comando (el log es público).
+Él también puede subirla desde la web (📎 subir comprobante): subir = pagado.
 Y v22.12: en Armar caja lo que tiene unidades cargadas va siempre arriba.
 
 ## COMPRAR: 24% PARA TODO (06/10/2026 a la noche, v22.11)
