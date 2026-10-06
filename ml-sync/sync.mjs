@@ -4031,12 +4031,6 @@ async function calcCajaBarata(db, o) {
   // stock antiguo de ML y el tamaño de Full de cada producto. Ver `lotesFifo` / `cargoAntiguoProy`.
   let cfgCbS = {}; try { cfgCbS = (await db.get('cyc/mlconfig')) || {}; } catch { cfgCbS = {}; }
   let cajasPCb = {}; try { cajasPCb = cajasLlegadasPorClave((await db.get('cyc/envios_full')) || {}); } catch { cajasPCb = {}; }
-  const palGCb = (Array.isArray(cfgCbS.cupoGrandes) ? cfgCbS.cupoGrandes : (typeof cfgCbS.cupoGrandes === 'string' ? cfgCbS.cupoGrandes.split(',') : null)) || ['tendedero', 'tender'];
-  const tamCb = (e, p) => {
-    const t = e && e.inv ? ((lotesCb[e.inv] || {}).tam || (cfgCbS.tamFull || {})[e.inv]) : null;
-    if (t) return t;
-    return p && (p.grandeFull === true || (p.grandeFull !== false && palGCb.some((w) => w && norm(p.name || '').includes(norm(String(w).trim()))))) ? 'grande' : 'pequeno';
-  };
   const vpCb = (await db.get('cyc/ventaprod')) || {}; setDevLive(vpCb);
   const monoP = parseFloat(((await db.get('cyc/monotributo')) || {}).pct) || 0;
   let cuotasCb = null;
@@ -4160,8 +4154,7 @@ async function calcCajaBarata(db, o) {
         const fbS = Math.min(...[hS && hS.desde, e.altaTs].map(Number).filter((x) => x > 0), Infinity);
         const lotesS = lotesFifo(ds.st, e.inv ? lotesCb[e.inv] : null, cajasPCb[e.prodId + '__' + e.cuenta], isFinite(fbS) ? fbS : 0);
         const rDiaS = ds.dias > 0 ? ds.st / ds.dias : 0;
-        const tamS = tamCb(e, pIdx[e.prodId]);
-        const tablaS = (cfgCbS.stockAntiguo || {})[tamS] || STOCK_ANTIGUO_TABLA[tamS] || STOCK_ANTIGUO_TABLA.pequeno;
+        const { tam: tamS, tabla: tablaS } = tablaAntiguoDe(e, pIdx[e.prodId], lotesCb, cfgCbS);
         const cargoS = cargoAntiguoProy(lotesS, rDiaS, tablaS, DIA_CIERRE_ALM_CTA[_ctaSinTilde(e.cuenta)] || 12);
         const edadViejaS = Math.floor((Date.now() - lotesS[0].ts) / 864e5);
         if (!(cargoS.pesos > 0)) { fuera.sobraJoven++; continue; }
@@ -6171,6 +6164,19 @@ const STOCK_ANTIGUO_TABLA = {
 };
 const DIA_CIERRE_ALM_CTA = { adriana: 10, luciana: 12, matias: 12, ayelen: 12 };
 const _ctaSinTilde = (c) => String(c || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '');
+// Tamaño de Full y tabla de stock antiguo de un producto×cuenta: UNA sola función para la entrada a la sobra
+// (`calcCajaBarata`) y la salida (`ritmo`). Con dos copias la salida medía el Tendedero como pequeño y la
+// entrada como grande: entraba y salía del remate en noches seguidas. Orden: lote del Excel de ML → `tamFull`
+// de la config → la ficha (`grandeFull` o las palabras de `cupoGrandes`) → pequeño.
+function tablaAntiguoDe(e, p, lotes, cfg) {
+  cfg = cfg || {};
+  let tam = e && e.inv ? (((lotes || {})[e.inv] || {}).tam || (cfg.tamFull || {})[e.inv]) : null;
+  if (!tam) {
+    const pal = (Array.isArray(cfg.cupoGrandes) ? cfg.cupoGrandes : (typeof cfg.cupoGrandes === 'string' ? cfg.cupoGrandes.split(',') : null)) || ['tendedero', 'tender'];
+    tam = p && (p.grandeFull === true || (p.grandeFull !== false && pal.some((w) => w && norm(p.name || '').includes(norm(String(w).trim()))))) ? 'grande' : 'pequeno';
+  }
+  return { tam, tabla: (cfg.stockAntiguo || {})[tam] || STOCK_ANTIGUO_TABLA[tam] || STOCK_ANTIGUO_TABLA.pequeno };
+}
 // Entradas con fecha de un producto×cuenta, de la más nueva a la más vieja. `cajas` = [{ts, u}] (cajas
 // marcadas llegadas), `L` = lote del Excel {ref, lotes:[{dias,u}]}. Las cajas anteriores al Excel ya están
 // adentro de él (no se cuentan dos veces).
@@ -15650,6 +15656,7 @@ async function main() {
       // (`o_<MLA>` = el remate entró por sobra de stock). Si alguna no se lee, esa salida no opina.
       const [lotesR, histR, avisR] = await Promise.all(['cyc/lotesfull', 'cyc/stockhist', 'cyc/avisados'].map((r) => db.get(r).catch(() => null)));
       let cajasR = {}; try { cajasR = cajasLlegadasPorClave((await db.get('cyc/envios_full')) || {}); } catch { cajasR = {}; }
+      let cfgR = {}, pIdxR = {}; try { cfgR = (await db.get('cyc/mlconfig')) || {}; for (const p of Object.values((await db.get('cyc/products')) || {})) if (p && p.id) pIdxR[p.id] = p; } catch { /* sin eso, tamaño pequeño */ }
       // El "diario" por clave sale de la LÍNEA DE TIEMPO de cada publicación (`linea`): stock, precio,
       // caja, remate y ventas de cada día, hasta 365 días para atrás.
       let diario = {}, nLin = 0;
@@ -15713,8 +15720,8 @@ async function main() {
           const hR = histR[kP];
           const fbR = Math.min(...[hR && hR.desde, e.altaTs].map(Number).filter((x) => x > 0), Infinity);
           const lotesX = lotesFifo(st, e.inv ? lotesR[e.inv] : null, (cajasR || {})[e.prodId + '__' + e.cuenta], isFinite(fbR) ? fbR : 0);
-          const tamX = (e.inv && (lotesR[e.inv] || {}).tam) || 'pequeno';
-          const cgX = cargoAntiguoProy(lotesX, pd, STOCK_ANTIGUO_TABLA[tamX] || STOCK_ANTIGUO_TABLA.pequeno, DIA_CIERRE_ALM_CTA[_ctaSinTilde(e.cuenta)] || 12);
+          const { tabla: tablaX } = tablaAntiguoDe(e, pIdxR[e.prodId], lotesR, cfgR);
+          const cgX = cargoAntiguoProy(lotesX, pd, tablaX, DIA_CIERRE_ALM_CTA[_ctaSinTilde(e.cuenta)] || 12);
           const ed = Math.floor((ahoraR - lotesX[0].ts) / 864e5);
           if (!(cgX.pesos > 0)) { console.log(`     ↳ entró por sobra: la unidad más vieja tiene ${ed} d y al ritmo normal se vende antes de que ML cobre stock antiguo: hoy no entraría`); salen.push({ mla, e, st, pd, diasSt, edad: ed }); }
           else console.log(`     ↳ sobra: al ritmo normal ML cobraría ${money(cgX.pesos)} de stock antiguo (la más vieja tiene ${ed} d): sigue`);
