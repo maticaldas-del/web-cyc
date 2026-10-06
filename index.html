@@ -2451,7 +2451,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='22.24';
+const APP_VERSION='22.25';
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
 // muestre la versión y la fecha de actualización y que tenga un desplegable predeterminado cerrado".
 // Y el mismo día: "que ponga fecha de cada modificación y haya una barrita para scrollear y que
@@ -2462,6 +2462,7 @@ const APP_VERSION='22.24';
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'22.25',f:'06/10/2026',h:'15:15',c:[{n:2,t:'🚦 Pedidos vuelve a ordenarse por la plata que se pierde (lo que más pierde, arriba), como antes. El color sólo dice cuáles no hay en ningún lado: un naranja que vende mucho puede ir arriba de un rojo'}]},
   {v:'22.24',f:'06/10/2026',h:'15:14',c:[{n:1,t:'🚦 Pedidos: los colores que no hace falta comprar (alcanza con lo de casa y lo que viaja) ya no van como renglón: quedan en una línea abajo con sus días. Se mandan desde Armar caja'}]},
   {v:'22.23',f:'06/10/2026',h:'15:12',c:[{n:2,t:'🚦 Pedidos ordena primero por color: arriba los rojos, después los naranjas y al final los amarillos. Adentro de cada color, como antes: lo que más plata destraba'}]},
   {v:'22.22',f:'06/10/2026',h:'15:08',c:[{n:2,t:'🚦 Pedidos: al abrir un producto con colores o aromas aparecen directamente sus variantes, cada una con su color del semáforo (🔴 sin stock en ningún lado · 🟠 14 días o menos · 🟡 más) y las unidades a comprar, como un producto normal. Primero las rojas'},{n:3,t:'🤖 Remate por sobra: después de terminarlo y volver a la base, el robot espera 3 días (más si vende poco) y si no vendió lo que tenía que vender, vuelve a rematar'}]},
@@ -15199,10 +15200,10 @@ const _pedSortFn=(a,b)=>{const o={pendiente:0,poco_stock:1,suficiente:2};return(
 // arriba de todo por una plata que NO se destraba comprando — es el caso de la Cinta 7.5M que él
 // marcó el 23/08/2026. Con el mismo número en los dos lados, el orden se puede leer de la pantalla.
 const _pedSortFnRiesgo=(a,b)=>{
-  // Primero el COLOR del semáforo (06/10/2026, él: "¿por qué hay naranjas arriba de rojos?"): rojos, naranjas,
-  // amarillos. Adentro de cada color, como siempre: lo que más plata destraba comprando.
-  const sa=_PED_SEM_ORD[_pedSem(a)],sb=_PED_SEM_ORD[_pedSem(b)];
-  if(sa!==sb)return sa-sb;
+  // EL ORDEN ES POR PLATA, NO POR COLOR (06/10/2026, él): "quiero que la lista muestre primero los que más
+  // plata se pierde (…) cartas casino se venden tantas por día que puede que quede arriba de muchos rojos.
+  // Tenemos dos parámetros: siempre compramos los que salen primero, y el color dice cuáles no hay en
+  // ningún lado". O sea: el orden decide qué se compra, el semáforo informa. No ordenar por color.
   const r=x=>(x.riesgoComprar!=null?x.riesgoComprar:x.riesgo)||0;
   return r(b)-r(a)||(b.riesgo||0)-(a.riesgo||0);
 };
