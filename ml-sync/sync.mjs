@@ -26387,16 +26387,54 @@ async function main() {
       // quiero todos los detalles posibles. fecha, hora, %, $, todo"). `atrib` sigue siendo sólo lo
       // que cuenta en el total.
       const registros = [];
+      // ── LO QUE EL ROBOT DESHACE DE SÍ MISMO NO ES MÉRITO (06/10/2026) ──────────────
+      // Regla suya, con las Cartas Españolas (remate a $2.830 por la regla vieja, después vuelta a
+      // $3.470): *"el robot se va a dar esa ganancia por un error que cometió él"*. "Sin robot" el
+      // precio nunca se movía: si un cambio vuelve para atrás uno suyo, se mide contra el precio de
+      // ANTES de esa cadena de cambios del robot, no contra el precio que dejó él mismo.
+      //  · vuelve hasta ese precio (±1%) → motivo `deshace`: no suma ni resta, se muestra en gris;
+      //  · pasa de largo → sólo cuenta lo que va más allá de ese precio.
+      // La cadena = los cambios del robot seguidos en la MISMA dirección justo antes (sin uno a mano).
+      const refSinRobot = (ev) => {
+        if (!(ev.de > 0) || !(ev.a > 0) || ev.a === ev.de) return null;
+        const prev = (porMlaEv[ev.mla] || []).filter((o) => o !== ev && o.ts < ev.ts - 60e3).sort((a, b) => b.ts - a.ts);
+        const p0 = prev[0];
+        if (!p0 || !ROBOT.has(p0.origen) || !(p0.de > 0) || !(p0.a > 0) || p0.a === p0.de) return null;
+        const dP = Math.sign(p0.a - p0.de);
+        if (Math.sign(ev.a - ev.de) === dP) return null;
+        let ref = p0.de;
+        for (let i = 1; i < prev.length; i++) {
+          const o = prev[i];
+          if (!ROBOT.has(o.origen) || !(o.de > 0) || !(o.a > 0) || Math.sign(o.a - o.de) !== dP) break;
+          ref = o.de;
+        }
+        return ref;
+      };
+      // ── POR MES (06/10/2026, pedido suyo: "que los movimientos del bot aparezcan por mes") ──
+      // Cada peso va al mes de la VENTA que lo dejó: un cambio de septiembre que vende en octubre suma
+      // en octubre lo de octubre, y septiembre no se mueve más.
+      const ymDe = (t) => new Date(t - 3 * 3600e3).toISOString().slice(0, 7);
+      const sumMes = (m, t, v) => { if (!v) return; const k = ymDe(t); m[k] = (m[k] || 0) + v; };
+      const redMes = (m) => { const o = {}; for (const [k, v] of Object.entries(m)) { const r = Math.round(v); if (r) o[k] = r; } return o; };
       const base = (id, ev, motivo) => ({ id, mla: ev.mla, nom: nomDe(ev.mla), cuenta: (links[ev.mla] || {}).cuenta || '',
         origen: ev.origen, motivo, de: ev.de || null, a: ev.a || null, ts: ev.ts, aprox: !!ev.aprox });
       const motivosNuevos = {};
       for (const [id, ev] of Object.entries(todos)) {
-        const motivo = motivoFinal(ev);
+        let motivo = motivoFinal(ev);
         if (!ev.motivo) { if (nuevos[id]) nuevos[id].motivo = motivo; else motivosNuevos[id] = motivo; }
         if (!ROBOT.has(ev.origen)) { manuales++; registros.push({ ...base(id, ev, motivo), estado: 'mano' }); continue; }
         if (!(ev.de > 0) || !(ev.a > 0)) { sinPrecio++; registros.push({ ...base(id, ev, motivo), estado: 'sinprecio' }); continue; }
         const costo = costoDe(ev.mla);
         if (!(costo > 0)) { sinCosto++; registros.push({ ...base(id, ev, motivo), estado: 'sincosto' }); continue; }
+        let deEf = ev.de, deRef = null;
+        if (motivo !== 'remate' && motivo !== 'escalera') {
+          const ref = refSinRobot(ev);
+          if (ref) {
+            deRef = ref;
+            if (ev.a > ev.de ? ev.a <= ref * 1.01 : ev.a >= ref * 0.99) motivo = 'deshace';
+            else deEf = ref;
+          }
+        }
         const sig = (porMlaEv[ev.mla] || []).filter((o) => o !== ev && o.ts > ev.ts + 60e3).sort((a, b) => a.ts - b.ts)[0];
         const finT = Math.min(ahora, ev.ts + 30 * 864e5, sig ? sig.ts : Infinity);
         const L = (finT - ev.ts) / 864e5;
@@ -26408,6 +26446,9 @@ async function main() {
             uD: dv.reduce((a, x) => a + x.q, 0), cobrado: Math.round(dv.reduce((a, x) => a + x.neto, 0)),
             gD: Math.round(dv.reduce((a, x) => a + x.neto - costo * x.q, 0)),
             precio: rm.base, volumen: 0, total: rm.total, enTotal: true, rem: rm };
+          { const m = {}, uT = dv.reduce((a, x) => a + x.q, 0);
+            if (uT > 0) for (const x of dv) sumMes(m, x.ts, rm.total * x.q / uT); else sumMes(m, finT, rm.total);
+            rg.mes = redMes(m); }
           registros.push(rg); atrib.push(rg);
           continue;
         }
@@ -26421,7 +26462,8 @@ async function main() {
           // IIBB + monotributo se llevan su % también de lo cobrado de más (etapa 1, 27/09): sin eso el
           // efecto precio salía 4-10% más grande de lo que queda.
           const impS = (mlExtraPct((links[ev.mla] || {}).cuenta || '') + monoSup) / 100;
-          let pr = 0; for (const x of dv) { if (x.tot > 0 && x.neto > 0) pr += (x.tot / x.q - ev.de) * (x.neto / x.tot - impS) * x.q; }
+          let pr = 0; const mesC = {};
+          for (const x of dv) { if (x.tot > 0 && x.neto > 0) { const e = (x.tot / x.q - deEf) * (x.neto / x.tot - impS) * x.q; pr += e; sumMes(mesC, x.ts, e); } }
           // LO DEL PRECIO CUENTA DESDE EL PRIMER DÍA (25/09/2026, él: "cartas casino se vendía a 1000
           // ayer y hoy a 1100, se vendían 10 por día y hoy se vendieron 10: ganaste extra $1.000, ¿no?").
           // Sí: cada unidad que ya se vendió al precio nuevo es plata cobrada de más (o de menos), neta
@@ -26433,7 +26475,7 @@ async function main() {
           const rg = { ...base(id, ev, motivo), estado: 'encurso', dias: Math.round(L * 10) / 10,
             uD: dv.reduce((a, x) => a + x.q, 0), cobrado: Math.round(dv.reduce((a, x) => a + x.neto, 0)),
             precio: Math.round(pr), volumen: 0, total: Math.round(pr), enTotal: enT,
-            gD: Math.round(dv.reduce((a, x) => a + x.neto - costo * x.q, 0)) };
+            gD: Math.round(dv.reduce((a, x) => a + x.neto - costo * x.q, 0)), mes: redMes(mesC), deRef };
           registros.push(rg);
           if (enT) atrib.push(rg);
           continue;
@@ -26449,11 +26491,12 @@ async function main() {
         const gA = antesV.reduce((s, x) => s + x.neto - costo * x.q, 0);
         const gD = despV.reduce((s, x) => s + x.neto - costo * x.q, 0);
         // efecto precio, venta por venta
-        let precio = 0;
+        let precio = 0; const mesM = {};
         for (const x of despV) {
           if (!(x.tot > 0) || !(x.neto > 0)) continue;
           const pu = x.tot / x.q;
-          precio += (pu - ev.de) * (x.neto / x.tot - (mlExtraPct((links[ev.mla] || {}).cuenta || '') + monoSup) / 100) * x.q;
+          const e = (pu - deEf) * (x.neto / x.tot - (mlExtraPct((links[ev.mla] || {}).cuenta || '') + monoSup) / 100) * x.q;
+          precio += e; sumMes(mesM, x.ts, e);
         }
         // ganancia por unidad al precio VIEJO: la de después menos lo que agregó el precio, o si no
         // vendió nada después, la medida antes
@@ -26488,7 +26531,8 @@ async function main() {
         const evs = ev.ev || {}; const juicio = (evalNuevas.filter((x) => x.id === id).sort((a, b) => b.W - a.W)[0] || {}).res;
         const v = quiebreR ? 'sinstock' : ((juicio || evs.d30 || evs.d15 || evs.d7 || {}).v || '');
         const reg = { ...base(id, ev, motivo), estado: 'medido', dias: Math.round(L), diasX: Math.round(L * 100) / 100, uA, uD, gD: Math.round(gD), cobrado: Math.round(despV.reduce((a, x) => a + x.neto, 0)), precio: Math.round(precio), volumen: Math.round(volumen),
-          total: Math.round(precio + volumen), v, quiebre: quiebreR, volSinDato: !volConfiable && !quiebreR, enTotal: SUP_CUENTA.has(motivo) };
+          total: Math.round(precio + volumen), v, quiebre: quiebreR, volSinDato: !volConfiable && !quiebreR, enTotal: SUP_CUENTA.has(motivo), deRef };
+        sumMes(mesM, finT, volumen); reg.mes = redMes(mesM);
         registros.push(reg);
         if (reg.enTotal) atrib.push(reg);
       }

@@ -2435,7 +2435,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='22.18';
+const APP_VERSION='22.19';
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
 // muestre la versión y la fecha de actualización y que tenga un desplegable predeterminado cerrado".
 // Y el mismo día: "que ponga fecha de cada modificación y haya una barrita para scrollear y que
@@ -2446,6 +2446,7 @@ const APP_VERSION='22.18';
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'22.19',f:'06/10/2026',h:'15:10',c:[{n:3,t:'🤖 Robot de precios: si el robot vuelve al precio de antes de una baja (o suba) suya, ya no se lo cuenta como ganancia: "sin robot" el precio nunca se había movido. Si pasa de largo, sólo cuenta lo que va más allá'},{n:2,t:'🤖 Robot de precios por mes: cada peso va al mes de la venta que lo dejó. Lo que ganó o perdió en septiembre no aparece en octubre'},{n:1,t:'🧾 En cada venta, el "$X de más por la suba" sigue la misma regla'}]},
   {v:'22.18',f:'06/10/2026',h:'14:20',c:[{n:1,t:'🇵🇾 Pedidos Paraguay: el "da / no da · pidiéndolo queda N%" va adentro de la tarjeta, abajo del nombre'},{n:2,t:'🇵🇾 La ficha del producto calcula "si lo reponés hoy" igual que Pedidos (antes una decía 22% y la otra 48%), y las dos dicen a qué precio de venta'}]},
   {v:'22.17',f:'06/10/2026',h:'14:05',c:[{n:1,t:'🇵🇾 Pedidos Paraguay: un solo % por producto, el que te queda si lo pedís hoy al precio de Nissei (se sacó el "te queda" calculado con lo que pagaste la última vez)'}]},
   {v:'22.16',f:'06/10/2026',h:'02:10',c:[{n:2,t:'Robot de precios: ahora cuenta TODO lo que el robot cambia solo, también cuando vuelve atrás un cambio que perdía plata. Lo único que sigue afuera es la suba que hace después de una venta con % bajo.'}]},
@@ -8814,9 +8815,15 @@ function cambioVentaHTML(v,tsVenta){
   // de lo que cobra ML con la proporción neto/precio de ESTA venta, por las unidades vendidas.
   const tot=Number(v&&v.total)||0,net=Number(v&&v.neto)||0,q=Number(v&&v.qty)||1;
   let extra='';
-  if(tot>0&&net>0&&c.de>0){
-    const ex=Math.round((tot/q-c.de)*(net/tot)*q);
-    if(ex)extra=` · <b>${ex>0?'+':'−'}${fmt(Math.abs(ex))} ${ex>0?'de más':'de menos'} por ${sube?'la suba':'la baja'}</b>`;
+  // LO QUE EL ROBOT DESHACE DE SÍ MISMO NO ES GANANCIA (06/10/2026, él con las Cartas Españolas): si el
+  // supervisor marcó ese cambio como "deshace" (vuelve al precio de antes de un remate/baja suya), no
+  // hay plata de más; si pasó de largo, se mide desde ese precio de antes (deRef), igual que el robot.
+  const _sr=((state.supResumen&&Array.isArray(state.supResumen.todos))?state.supResumen.todos:[]).find(x=>x&&x.mla===(v&&v.mla)&&Math.abs((Number(x.ts)||0)-c.ts)<10*60e3);
+  const deMed=_sr&&Number(_sr.deRef)>0?Number(_sr.deRef):c.de;
+  if(_sr&&_sr.motivo==='deshace')extra=` · <span style="color:var(--muted)">volvió al precio de antes de una baja del robot: no es ganancia</span>`;
+  else if(tot>0&&net>0&&deMed>0){
+    const ex=Math.round((tot/q-deMed)*(net/tot)*q);
+    if(ex)extra=` · <b>${ex>0?'+':'−'}${fmt(Math.abs(ex))} ${ex>0?'de más':'de menos'} por ${sube?'la suba':'la baja'}${deMed!==c.de?' (contra '+fmt(deMed)+', el precio antes del robot)':''}</b>`;
   }
   return`<span style="font-size:.62rem;color:${sube?'var(--amber)':'#60a5fa'}" title="Cambios de precio de esta publicación en los ${CAMBIO_VENTA_DIAS} días antes de esta venta:\n${tip}${cs.some(x=>x.aprox)?'\n(aprox.: fue a mano; la hora sale de comparar dos noches)':''}${extra?'\nLo de más/menos: (precio cobrado − precio de antes) × lo que deja ML de cada peso de esta venta × unidades.':''}">${sube?'⬆️':'⬇️'} ${sube?'+':''}${String(pct).replace('.',',')}% ${hace} · ${fmt(c.de)}→${fmt(c.a)} · ${c.quien}${cs.length>1?` · ${cs.length} cambios`:''}${extra}</span>`;
 }
@@ -16004,7 +16011,7 @@ function renderMetOrigen(keys){
 // que el robot midió (no hay una segunda cuenta de atribución). El total grande suma sólo lo que el
 // robot decidió mirando el mercado (`enTotal`): los rescates por costo/inflación se ven, pero no suman.
 let metAutoMes='todos',metAutoMot='cuentan';
-const MET_AUTO_MOT={prueba:'🧪 Prueba de suba (sin catálogo)',subir:'📈 Subir (había lugar)',bajar:'📉 Bajar para ganar la caja',remate:'🔨 Remate',escalera:'🪜 Escalera',rescate:'🛟 Rescate después de una venta baja (no cuenta)',rescatep:'🛟 Rescate antes de vender',volver:'↩️ Volvió atrás (el cambio perdía plata)',mano:'✋ A mano'};
+const MET_AUTO_MOT={prueba:'🧪 Prueba de suba (sin catálogo)',subir:'📈 Subir (había lugar)',bajar:'📉 Bajar para ganar la caja',remate:'🔨 Remate',escalera:'🪜 Escalera',rescate:'🛟 Rescate después de una venta baja (no cuenta)',rescatep:'🛟 Rescate antes de vender',volver:'↩️ Volvió atrás (el cambio perdía plata)',deshace:'↩️ Deshizo un cambio suyo (no cuenta)',mano:'✋ A mano'};
 function metAutoSet(k,v){if(k==='mes')metAutoMes=v;else metAutoMot=v;renderMetAuto();}
 let metVigAbierto=false;
 // El desplegable con todo lo que vigila el robot (antes era la tarjeta 🧪 Vigilancia aparte).
@@ -16031,11 +16038,16 @@ function renderMetAuto(){
   const todos=Array.isArray(r.todos)?r.todos:null;
   if(!todos){el.innerHTML=`<div class="chart-box">${viejo}<div style="color:var(--muted);font-size:.72rem">La cuenta nueva (por mes, por motivo y sin contar lo que es inflación) la arma el robot en su próxima vuelta de la noche.</div>${metVigBox()}</div>`;return;}
   const ymDe=t=>{const d=new Date(t);return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0');};
-  const meses=[...new Set(todos.map(x=>ymDe(x.ts)))].sort().reverse();
+  // POR MES (06/10/2026, pedido suyo): cada peso va al mes de la VENTA que lo dejó (x.mes lo arma el
+  // robot). Un cambio de septiembre que vende en octubre suma en octubre sólo lo de octubre, y lo que
+  // ganó o perdió en septiembre no aparece en octubre. Sin x.mes (cuenta vieja) va al mes del cambio.
+  const mesesDe=x=>{const k=x.mes&&typeof x.mes==='object'?Object.keys(x.mes):[];return k.length?k:[ymDe(x.ts)];};
+  const meses=[...new Set(todos.flatMap(mesesDe))].sort().reverse();
   if(metAutoMes!=='todos'&&!meses.includes(metAutoMes))metAutoMes='todos';
   const MES=['ene','feb','mar','abr','may','jun','jul','ago','sep','oct','nov','dic'];
   const mesTxt=ym=>{const [y,m]=ym.split('-');return MES[+m-1]+' '+y;};
-  const delMes=todos.filter(x=>metAutoMes==='todos'||ymDe(x.ts)===metAutoMes);
+  const delMes=metAutoMes==='todos'?todos:todos.filter(x=>mesesDe(x).includes(metAutoMes)).map(x=>x.mes&&Object.keys(x.mes).length?{...x,total:n(x.mes[metAutoMes]),precio:n(x.mes[metAutoMes]),volumen:0,_mesParcial:ymDe(x.ts)!==metAutoMes||Object.keys(x.mes).length>1}:x);
+  const deshechos=delMes.filter(x=>x.motivo==='deshace'&&x.estado==='medido').length;
   const lista=delMes.filter(x=>metAutoMot==='todas'?true:metAutoMot==='cuentan'?!!x.enTotal||(x.estado!=='medido'&&['subir','bajar','remate','escalera','prueba','rescatep','volver'].includes(x.motivo)):x.motivo===metAutoMot);
   // El total grande: SÓLO lo medido que cuenta (decisiones del robot mirando el mercado), del mes elegido.
   const med=delMes.filter(x=>(x.estado==='medido'||x.estado==='encurso')&&x.enTotal);
@@ -16055,6 +16067,7 @@ function renderMetAuto(){
   // aparece: ni número, ni renglón. Los rescates por costo/inflación tampoco (no son mérito del robot).
   const enCurso=delMes.filter(x=>x.estado==='encurso'&&x.enTotal);
   const prox=enCurso.length?Math.min(...enCurso.map(x=>n(x.ts)))+7*864e5:null;
+  const notaDesh=deshechos?`<div style="font-size:.6rem;color:var(--muted);margin-top:6px">${deshechos} cambio${deshechos===1?'':'s'} que deshicieron una baja o suba del propio robot no cuenta${deshechos===1?'':'n'}: volver al precio de antes no es mérito.</div>`:'';
   const espera=enCurso.length?`<div style="font-size:.6rem;color:var(--muted);margin-top:8px">${enCurso.length} cambio${enCurso.length===1?'':'s'}${conf.length?' más':''} todavía no ${enCurso.length===1?'tiene':'tienen'} 7 días: ${enCurso.length===1?'aparece':'van apareciendo'} solo${enCurso.length===1?'':'s'}${prox?' desde el '+fh(prox).slice(0,5):''}.</div>`:'';
   const fila=x=>{
     const sube=n(x.a)>n(x.de);
@@ -16064,7 +16077,7 @@ function renderMetAuto(){
         <span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${sube?'⬆️':'⬇️'} ${x.nom||x.mla}${x.cuenta?' · '+x.cuenta:''}</span>
         <b style="white-space:nowrap;color:${col(x.total)}">${n(x.total)>0?'ganó ':n(x.total)<0?'perdió ':'igual '}${sg(x.total)}</b>
       </div>
-      <div style="font-size:.6rem;color:var(--muted)">${fh(x.ts)} · ${MET_AUTO_MOT[x.motivo]||x.motivo||'?'} · ${x.de?fmt(n(x.de)):'?'} → ${x.a?fmt(n(x.a)):'?'} (${sube?'+':''}${pct}%)</div>
+      <div style="font-size:.6rem;color:var(--muted)">${fh(x.ts)} · ${MET_AUTO_MOT[x.motivo]||x.motivo||'?'} · ${x.de?fmt(n(x.de)):'?'} → ${x.a?fmt(n(x.a)):'?'} (${sube?'+':''}${pct}%)${n(x.deRef)>0?' · medido contra '+fmt(n(x.deRef))+', el precio antes del robot':''}${x._mesParcial?' · sólo lo vendido en '+mesTxt(metAutoMes):''}</div>
     </div>`;
   };
   const ok=conf.slice().sort((a,b)=>n(a.total)-n(b.total));
@@ -16076,7 +16089,7 @@ function renderMetAuto(){
     :`<div style="font-size:.72rem;color:var(--muted)">Todavía no hay ningún resultado${metAutoMes==='todos'?'':' en '+mesTxt(metAutoMes)}: cada cambio necesita 7 días para saber si ganó o perdió.</div>`;
   el.innerHTML=`<div class="chart-box">${viejo}
     <div style="display:flex;flex-wrap:wrap;gap:5px;margin-bottom:12px">${chipsMes}</div>
-    ${cuerpo}${espera}
+    ${cuerpo}${notaDesh}${espera}
     <details style="margin-top:10px"><summary style="cursor:pointer;font-size:.6rem;color:var(--muted)">¿Qué cuenta?</summary><div style="font-size:.6rem;color:var(--muted);line-height:1.45;margin-top:4px">
       Sólo lo que el robot decidió mirando el mercado (📈 subir, 📉 bajar, 🧪 prueba de suba, 🔨 remate y 🪜 escalera), y sólo después de 7 días. No cuenta recuperar margen por costo o inflación (lo ibas a hacer igual) ni lo que tocaste a mano.
       "Sin robot" es que el precio se quedaba donde estaba: se compara el mismo tiempo antes y después. En remates y escalera NO se suma la ganancia de lo que se vendió (bajar el precio adelanta la venta, no la crea): cuenta lo que se cobró de menos, el almacenamiento que se dejó de pagar y la plata que volvió antes (la mercadería vendida antes de lo que se habría vendido a su ritmo normal, valorada al 1% por mes en dólares, el interés que paga CYC).
