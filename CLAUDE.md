@@ -812,7 +812,7 @@ privada unificados · las dos facturas de Sancor analizadas.
 ## LOS NÚMEROS DE COMPRA SE MIDEN SOLOS CADA NOCHE (06/10/2026, v22.05 · `cyc-v485`)
 Él: *"con el tiempo los costos cambian y si yo no te decía estamos viendo mal"* · *"IIBB poner lo real en todas"* ·
 *"una publicación a 100.000 en 6 cuotas capaz le gana a una de 90.000 sin cuotas. Eso lo tenés que ver vos"*.
- · **`paramcompra[:go]`** (ml-daily, antes de `techofull`) guarda `cyc/mlconfig/paramCompra`: `envioArriba` (p75 del envío
+ · **`paramcompra[:go]`** (ml-daily, antes de `techofull`) guarda `cyc/mlconfig/paramCompra`: `envioArriba` (el del MEDIO del envío
    medido en `netopub` arriba de $33.000, 5+ filas, 45 d) · `recargo` (promedio de los últimos 3 pedidos con `recargoRealPedido`,
    hace falta 2+) · `cuentaNuevos` (la que menos facturó en 90 d) · `cuotasDescSin` (mediana de cuánto más barato tiene que
    estar uno SIN cuotas para que ML le dé la caja contra el ganador CON cuotas, medido con `price_to_win` de nuestras
