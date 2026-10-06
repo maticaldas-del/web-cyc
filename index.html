@@ -2434,7 +2434,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='22.08';
+const APP_VERSION='22.09';
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
 // muestre la versión y la fecha de actualización y que tenga un desplegable predeterminado cerrado".
 // Y el mismo día: "que ponga fecha de cada modificación y haya una barrita para scrollear y que
@@ -2445,6 +2445,7 @@ const APP_VERSION='22.08';
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'22.09',f:'06/10/2026',h:'22:50',c:[{n:1,t:'🔢 Contar lo que hay: al lado de cada cuenta aparece el código de la etiqueta de Full de esa variante, igual que en Armar caja'}]},
   {v:'22.08',f:'06/10/2026',h:'22:35',c:[{n:1,t:'📦 Armar caja: cuando ninguna cuenta necesita un producto, dice cuenta por cuenta cuánto tiene en Full, en camino, cuánto vendió y por qué no hace falta mandar'}]},
   {v:'22.07',f:'06/10/2026',h:'21:50',c:[{n:1,t:'🇵🇾 Las fichas nuevas de Paraguay nacen con el título de ML, no el de comprasparaguay (que viene en portugués)'}]},
   {v:'22.06',f:'06/10/2026',h:'21:30',c:[{n:2,t:'🇵🇾 Probados que no dan: dicen en cuánto % quedaría si lo pedís igual al precio de Nissei'}]},
@@ -6256,7 +6257,8 @@ function renderOfiContar(){
       const q=variante?getQV(p.id,l,variante):getQ(p.id,l);
       const col=fuera?'var(--muted)':(q>0?'var(--text)':'var(--red)');
       const cam=transitoDe(_trC,p.id,l,variante||'');
-      return `<span style="margin-right:9px${fuera?';opacity:.6':''}">${l} <strong style="color:${col}">${fmtN(q)}</strong>${cam>0?` <span style="color:var(--amber)">+${fmtN(cam)} en camino</span>`:''}</span>`;
+      const cod=etiquetaFullDe(p.id,l,variante||'');
+      return `<span style="margin-right:9px${fuera?';opacity:.6':''}">${l} <strong style="color:${col}">${fmtN(q)}</strong>${cod?` <span title="Código de la etiqueta de Full en ${l}" style="font-family:monospace;color:var(--blue,#38bdf8)">${String(cod).replace(/[^A-Za-z0-9]/g,"")}</span>`:''}${cam>0?` <span style="color:var(--amber)">+${fmtN(cam)} en camino</span>`:''}</span>`;
     };
     const hay=LOCS.filter(l=>ctas.includes(l));
     const propias=hay.filter(l=>!noRepoDe(p.id,l));
@@ -6309,7 +6311,7 @@ function renderOfiContar(){
         return `<div style="display:flex;align-items:center;gap:10px;padding:7px 0 7px 12px;border-top:1px solid var(--border)">
           <div style="flex:1;min-width:0">
             <div style="font-size:.75rem;line-height:1.3;word-break:break-word">${v}</div>
-            <div style="font-size:.6rem;color:var(--muted);margin-top:2px">${cta?`en Full de ${cta}: ${fmtN(enFull)}`:`en Full · ${porCuenta(p,v)}`}</div>
+            <div style="font-size:.6rem;color:var(--muted);margin-top:2px">${cta?`en Full de ${cta}: ${fmtN(enFull)}${(c=>c?` · <span style="font-family:monospace;color:var(--blue,#38bdf8)">${String(c).replace(/[^A-Za-z0-9]/g,"")}</span>`:'')(etiquetaFullDe(p.id,cta,v))}`:`en Full · ${porCuenta(p,v)}`}</div>
           </div>
           ${casilla(hay,hay>0,`setOfiVar('${p.id}',${JSON.stringify(v).replace(/"/g,'&quot;')},this.value)`)}
           ${sumaCasilla('ofisum'+(++_sumN),`ofiSumarVar('${p.id}',${JSON.stringify(v).replace(/"/g,'&quot;')},'ofisum${_sumN}')`)}
@@ -6329,7 +6331,7 @@ function renderOfiContar(){
     return `<div style="display:flex;align-items:center;gap:10px;padding:10px 12px;background:${enCasa>0?'var(--surface2)':'var(--surface)'};border:1px solid var(--border);border-radius:8px;margin-bottom:6px">
       <div style="flex:1;min-width:0">
         <div style="font-size:.8rem;line-height:1.3;word-break:break-word">${p.name}</div>
-        <div style="font-size:.62rem;color:var(--muted);margin-top:2px">${cta?`en Full de ${cta}: ${fmtN(getQ(p.id,cta))}`:`en Full · ${porCuenta(p,'')}`}</div>
+        <div style="font-size:.62rem;color:var(--muted);margin-top:2px">${cta?`en Full de ${cta}: ${fmtN(getQ(p.id,cta))}${(c=>c?` · <span style="font-family:monospace;color:var(--blue,#38bdf8)">${String(c).replace(/[^A-Za-z0-9]/g,"")}</span>`:'')(etiquetaFullDe(p.id,cta,''))}`:`en Full · ${porCuenta(p,'')}`}</div>
       </div>
       ${casilla(enCasa,enCasa>0,`setQ('${p.id}','${OFI}',this.value);syncOfiMati();renderOfiContar()`)}
       ${sumaCasilla('ofisum'+(++_sumN),`ofiSumar('${p.id}','ofisum${_sumN}')`)}
