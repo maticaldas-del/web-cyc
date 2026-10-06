@@ -2434,7 +2434,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='22.10';
+const APP_VERSION='22.11';
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
 // muestre la versión y la fecha de actualización y que tenga un desplegable predeterminado cerrado".
 // Y el mismo día: "que ponga fecha de cada modificación y haya una barrita para scrollear y que
@@ -2445,6 +2445,7 @@ const APP_VERSION='22.10';
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'22.11',f:'06/10/2026',h:'23:15',c:[{n:3,t:'🇵🇾 Comprar: el mínimo pasa a 24% para todo (probados, nuevos y perfumes). Lo que queda en 24,x% ahora entra'}]},
   {v:'22.10',f:'06/10/2026',h:'23:05',c:[{n:1,t:'🇵🇾 Pedidos Paraguay probados: arriba de cada tarjeta sólo "da / no da · pidiéndolo queda N%"; el detalle (precio de Nissei, máximo, Full, cuotas) está al abrir la tarjeta'}]},
   {v:'22.09',f:'06/10/2026',h:'22:50',c:[{n:1,t:'🔢 Contar lo que hay: al lado de cada cuenta aparece el código de la etiqueta de Full de esa variante, igual que en Armar caja'}]},
   {v:'22.08',f:'06/10/2026',h:'22:35',c:[{n:1,t:'📦 Armar caja: cuando ninguna cuenta necesita un producto, dice cuenta por cuenta cuánto tiene en Full, en camino, cuánto vendió y por qué no hace falta mandar'}]},
@@ -11151,11 +11152,11 @@ const CAND_VENCE_DIAS=45;
 // punta a punta acá. Lo que ya estaba queda EN ROJO, se cuenta arriba con su aviso y tiene un
 // botón para sacarlo de un toque. Y BAJAR siempre se puede, aunque el producto ya no dé: si no,
 // lo que se cargó cuando todavía daba quedaría trabado adentro del pedido para siempre.
-const CAND_PISO_PCT=25;
+const CAND_PISO_PCT=24;   // 06/10/2026, él: "que entre. o sea arriba del 24% TODO"
 // PERFUMES AL 20% (05/10/2026, él: "bajar la ganancia mínima a 20% a ver si entran algunos, solo en perfumes").
 // Sólo lo NUEVO de Paraguay. Perfume = esPerfumeNom (nombre o ficha) o el título de ML que midió el robot.
 // MISMA regla que candPisoDe del robot (sync.mjs): si se toca una, se toca la otra.
-const CAND_PISO_PERFUME=25;   // 06/10/2026, él: "lo mínimo que nos quede es 25%. Menos nunca" (el 20% de perfumes duró un día)
+const CAND_PISO_PERFUME=24;   // 06/10/2026: 24 para todo lo que se compra (él: "que entre. o sea arriba del 24% TODO")
 function candPisoDe(c){if(!c)return CAND_PISO_PCT;const t=String(c.nombre||c.nom||'');return (esPerfumeNom(t)||_PERF_RE.test(String(c.mlTit||'')))?CAND_PISO_PERFUME:CAND_PISO_PCT;}
 const CAND_PISO_TXT=()=>`${CAND_PISO_PCT}%`;
 const CAND_MIN_VENT=100; // suyo, 03/10/2026: "100 unidades mínimo vendidas, sino no sirve" para cargar unidades
@@ -14849,7 +14850,7 @@ function pyProbVisHTML(_prod){
 //   noda    → Nissei lo tiene pero más caro que ese máximo (o ni regalado llega)
 //   notiene → Nissei no lo tenía (`py_sinstock`)
 //   sinrev  → sin precio de Nissei, o mirado hace más de PY_PROB_FRESCO_DIAS: falta que Guay lo revise
-const PY_PROB_PISO=25, PY_PROB_FRESCO_DIAS=7;   // 06/10/2026: era 20; él: "lo mínimo es 25%, menos nunca"
+const PY_PROB_PISO=24, PY_PROB_FRESCO_DIAS=7;   // 06/10/2026: 24 (él: "arriba del 24% TODO"; el Ferrari Negro quedaba en 24,9% y no entraba)
 function pyProbVeredicto(ped){
   const pr=(state.products||[]).find(x=>x.id===ped.prodId)||prodByName(ped.producto);
   if(!pr)return{k:'sinrev',txt:'sin ficha'};

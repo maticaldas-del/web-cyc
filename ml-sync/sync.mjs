@@ -6159,11 +6159,11 @@ const CAND_TOPE_USD = 250;      // YA NO DESCARTA (03/10/2026): ver la regla del
 // no se venda a más de $650.000"*. O sea: no hay tope en dólares; el candidato se mide a su precio de ML, pero
 // nunca por encima de TECHO_DURO. Si el competidor está más caro que el techo, se mide a $650.000 (lo más que
 // podemos vender) y tiene que dar el 25% ahí.
-const CAND_PISO_PCT = 25;       // suyo: "el % sano es de 25 hacia arriba"
+const CAND_PISO_PCT = 24;       // suyo: "el % sano es de 25 hacia arriba"
 // PERFUMES AL 20% (05/10/2026, él: "no tengo muchos perfumes en la lista, bajar la ganancia mínima a 20%,
 // solo en perfumes"). Vale para lo NUEVO de Paraguay (candidatos). Perfume = el nombre o el título de ML lo
 // dice (misma idea que `repartopy` y que `esPerfumeNom` de la web). El resto sigue en CAND_PISO_PCT.
-const CAND_PISO_PERFUME = 25;   // 06/10/2026, él: "lo mínimo que nos quede de ganancia es 25%. Menos nunca"
+const CAND_PISO_PERFUME = 24;   // 06/10/2026: 24 para todo lo que se compra (él: "arriba del 24% TODO")
 const RE_CAND_PERF = /perfum|parfum|\bedp\b|\bedt\b|eau de|fragan|fragr|body splash|body mist|\bcolonia\b|\bsplash\b/i;
 function candPisoDe(c) { return c && RE_CAND_PERF.test(`${c.nombre || ''} ${c.mlTit || ''}`) ? CAND_PISO_PERFUME : CAND_PISO_PCT; }
 const CAND_MIN_VENT = 100;      // suyo, 03/10/2026: "100 unidades mínimo vendidas, sino no sirve" para entrar al pedido
