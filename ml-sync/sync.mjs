@@ -494,7 +494,7 @@ function redondeoSube(x) {
 // comando a mano (`volver`, `submargen`, `bajopiso`, `preciosgo`) los podía saltear.
 // Devuelve { to } con el precio ya ajustado, o { err } si no se puede subir.
 const TECHO_DURO = 650000;   // 03/10/2026: subido de $650.000 a $650.000 (regla suya)
-function frenosSuba(from, to) {
+function frenosSuba(from, to, o) {
   from = Number(from) || 0; to = Number(to) || 0;
   if (!(from > 0) || !(to > from)) return { err: 'no-sube' };
   if (from < UMBRAL_ENVIO_GRATIS && to >= UMBRAL_ENVIO_GRATIS) {
@@ -502,7 +502,9 @@ function frenosSuba(from, to) {
     if (to <= from) return { err: 'no-sube: la barrera de los $33.000 no se cruza' };
   }
   if (to > TECHO_DURO) return { err: `pasa-el-techo-de-${TECHO_DURO}` };
-  if (to > from * 1.25) return { err: 'suba-mayor-a-25%' };
+  // El +25% no frena a la 📈 (06/10/2026, él: "que el robot pueda subir tanto como quiera, siempre
+  // mirando que el precio sea el que el robot quiera"): su techo ya sale del competidor con Full medido.
+  if (!(o && o.libre) && to > from * 1.25) return { err: 'suba-mayor-a-25%' };
   return { to };
 }
 async function raiseVariations(itemId, nuevos, token) {
@@ -579,7 +581,7 @@ async function raiseVariations(itemId, nuevos, token) {
 // multiplicador se aplica sobre lo que ML tenga en ese instante y, si el precio
 // cambió desde que se leyó, el resultado se pasa del objetivo.
 // Sube o deja igual, nunca baja. Tope de seguridad: no sube más de 25%.
-async function raisePriceTo(itemId, objetivo, token) {
+async function raisePriceTo(itemId, objetivo, token, o) {
   const _ns = await _chequeoNoSubir(itemId);
   if (!_ns.ok) return { ok: false, err: _ns.err };
   let item;
@@ -590,7 +592,7 @@ async function raisePriceTo(itemId, objetivo, token) {
   // suba que no pasó. Se niega, igual que setPriceTo: para eso está raiseVariations.
   if ((item.variations || []).length) return { ok: false, err: 'tiene variantes: se sube variante por variante (raiseVariations)' };
   if (!item.price) return { ok: false, err: 'sin-precio' };
-  const frT = frenosSuba(item.price, redondeoSube(objetivo));
+  const frT = frenosSuba(item.price, redondeoSube(objetivo), o);
   if (frT.err) return { ok: false, err: frT.err };
   const to = frT.to;
   try {
@@ -3492,8 +3494,10 @@ async function calcSubirPuede(db, o) {
       if (isFinite(tNuevo) && tNuevo > techoViejo) { techo = tNuevo; pasaSinFull = true; }
     }
     if (techo <= precio * (1 + MIN_AIRE)) { sinLugar++; continue; }
+    // SIN ESCALONES (06/10/2026, él: "que el robot pueda subir tanto como quiera"): con maxSuba 0 (la
+    // noche) se sube derecho al techo. El probe `subirpuede` puede seguir pasando un escalón.
     const PASO_PASA = 0.035;
-    const escalon = Math.floor((precio * (1 + (pasaSinFull && precio * (1 + PASO_PASA) > techoViejo ? PASO_PASA : maxSuba))) / 10) * 10;
+    const escalon = !(maxSuba > 0) ? Infinity : Math.floor((precio * (1 + (pasaSinFull && precio * (1 + PASO_PASA) > techoViejo ? PASO_PASA : maxSuba))) / 10) * 10;
     const cortoPorEscalon = escalon < techo;
     const techo2 = Math.min(techo, escalon);
     // LA BARRERA DE LOS $33.000 NO SE CRUZA (regla suya del 13/08/2026).
@@ -3934,8 +3938,7 @@ async function escPrecioPara(mg, precio, ptw, paso) {
     }
     a = Math.ceil(hi / 10) * 10; mgA = await mg(a);
   }
-  const minA = Math.ceil(precio * 0.755 / 10) * 10;
-  if (a < minA) { a = minA; mgA = await mg(a); llega = false; }
+  // Sin tope de baja por vez desde el 06/10/2026 (vía libre): el escalón se baja entero.
   return { a, mgA, llega };
 }
 // CUOTAS DE LAS PREMIUM EN LAS BAJAS (etapa 1, 27/09/2026). netoweb y margenAlDia ya restaban las
@@ -5377,7 +5380,9 @@ async function setPriceTo(itemId, variationId, nuevo, token, chequeo) {
     base = item.price; body = { price: to };
   }
   if (to >= base) return { ok: false, err: 'no-baja' };
-  if (to < base * 0.75) return { ok: false, err: 'baja-mayor-a-25%' };
+  // VÍA LIBRE PARA BAJAR (06/10/2026, él: "vía libre para subir y bajar precio"): las bajas automáticas
+  // de la noche (`libre`) van derecho al precio que calcularon; el piso del margen sigue mandando arriba.
+  if (!(chequeo && chequeo.libre) && to < base * 0.75) return { ok: false, err: 'baja-mayor-a-25%' };
   try {
     const r = await fetch(ML_API + '/items/' + itemId, {
       method: 'PUT',
@@ -8686,7 +8691,7 @@ async function main() {
         catch { console.log('⚠️ No pude borrar la memoria de avisos; sigue igual.\n'); }
       }
 
-      const sub = await calcSubirPuede(db, { dias: 30, maxSuba: 0.10, products, labels, accounts });
+      const sub = await calcSubirPuede(db, { dias: 30, maxSuba: 0, products, labels, accounts });
       const zm = await calcZonaMuerta(db, { dias: 30, products, labels, accounts });
       const par = await calcBajarStock(db, { dias: 30, products, tc });
       const frn = await calcFrenoCaja(db, { products, tc });
@@ -9096,7 +9101,7 @@ async function main() {
       } catch { supLeido = false; }
       const bajoHoyMano = (f) => { const fo = fotoSup[f.mla]; return !!(fo && Number(fo.p) > Number(f.precio || 0) + 5 && !recienteAuto(f.mla, 'baja', 2)); };
       const autoSube = nuevasSub.filter((f) => supLeido && f.u >= AUTO_MIN_U && f.diasSin != null && f.diasSin <= AUTO_MAX_DSIN
-        && f.subePct <= 10.5 && !recienteAuto(f.mla, 'baja', 30) && !malosSup.has(f.mla)
+        && !recienteAuto(f.mla, 'baja', 30) && !malosSup.has(f.mla)
         // Una suba del robot (al vender o de noche) espera 14 días antes de la siguiente, igual que la
         // espera de los avisos: si no, la 📈 sumaba +10,5% al día siguiente de un rescate (P2, 25/09).
         && !recienteAuto(f.mla, 'sube', SUBIR_ESPERA_DIAS) && !bajoManoSup.has(f.mla) && !bajoHoyMano(f)
@@ -9120,7 +9125,7 @@ async function main() {
       const autoBaja = [...sanasCbr.filter((f) => cbrAutoIds.has(f.mla)), ...sobreSanas.filter((f) => sobreAutoIds.has(f.mla))]
         // Revisión final: `!f.conVars` — con variantes no se baja solo (setPriceTo se niega) y ocupaba
         // uno de los AUTO_MAX lugares de la noche para fallar noche tras noche.
-        .filter((f) => !f.conVars && f.mgPw >= CBR_SANO + 0.5 && f.baja <= 24.5 && !recienteAuto(f.mla, 'sube', 14)
+        .filter((f) => !f.conVars && f.mgPw >= CBR_SANO + 0.5 && !recienteAuto(f.mla, 'sube', 14)
           // Sin la lista de liquidando no se sabe qué marcó él: esa noche no se baja nada (revisión max).
           && NOSUBIR_OK && !(NOSUBIR[f.mla] && !esMarcaRobot(NOSUBIR[f.mla])));
       if (!NOSUBIR_OK) console.log('   ⚠️ no pude leer la lista de liquidando: esta noche no se baja nada solo (ni remate, ni escalera, ni baja por caja)');
@@ -9411,7 +9416,7 @@ async function main() {
         // Las vueltas 2 y 3 de la noche (ya corrió hoy) no tocan precios: lo que la 1ª hubiera hecho
         // solo tampoco se anota como avisado, si no quedaba trabado 7-10 días (etapa 1, 27/09).
         if (yaCorrioHoy) for (const t of [...tareasR, ..._sb, ...autoRemate.map((f) => ({ f })), ...escTareas]) diferidasAuto.add(t.f.mla);
-        const tareas = [...tareasR, ..._sb.slice(0, AUTO_MAX), ...autoRemate.slice(0, REMATE_AUTO_MAX).map((f) => ({ tipo: 'remate', f, a: Math.max(Math.floor(f.ptw / 10) * 10, Math.ceil(f.precio * 0.755 / 10) * 10), piso: pisoEsc(f) })), ...escTareas];
+        const tareas = [...tareasR, ..._sb.slice(0, AUTO_MAX), ...autoRemate.slice(0, REMATE_AUTO_MAX).map((f) => ({ tipo: 'remate', f, a: Math.floor(f.ptw / 10) * 10, piso: pisoEsc(f) })), ...escTareas];
         // Etapa 4 (30/09/2026): la lista `liquidando` se cargó al arrancar `avisos` (minutos antes). Si
         // él marcó algo en el medio, la noche no lo veía y lo bajaba. Se relee justo antes de las tareas;
         // si no se puede leer, esta noche no se baja nada (las subas igual releen la marca una por una).
@@ -9487,7 +9492,7 @@ async function main() {
             if (cjS.status !== 'winning') { fallidosAuto.push({ ...t, err: `ya no gana la caja (ML dice "${cjS.status}"): no se sube` }); continue; }
             _msubN = await _marcarSubiendo(db, f.mla, { de: f.precio, a: t.a, nom: f.nom, cuenta: f.cuenta });
             if (!_msubN.ok) { fallidosAuto.push({ ...t, err: 'no pude anotar la suba antes de hacerla: no subo a ciegas' }); continue; }
-            r = await raisePriceTo(f.mla, t.a, tk);
+            r = await raisePriceTo(f.mla, t.a, tk, { libre: true });
           } else {
             let it = null;
             try { it = await mlGet('/items/' + f.mla + '?attributes=id,variations,listing_type_id,category_id,site_id', tk); } catch { it = null; }
@@ -9537,13 +9542,13 @@ async function main() {
               } catch (eM) { fallidosAuto.push({ ...t, err: eM && eM.marcaAMano ? eM.message : 'no pude marcarla liquidando: no la bajo (el rescate la volvería a subir)' }); continue; }
               // Se declara medio punto MENOS: el precio se redondea a la decena de abajo.
               r = await setPriceTo(f.mla, null, t.a, tk, t.tipo === 'escalera'
-                ? { margen: Math.floor(f.mgPw * 10) / 10, autorizado: `escalera de remate, pedido de Matías del 24/09/2026 (de a 5 puntos cada 7 días sin vender, hasta 0%) · escalón al ${t.piso}%` }
-                : { margen: f.mgPw - 0.5, autorizado: `remate automático, permiso de Matías del 23/09/2026 (hasta 0%) · escalón al ${t.piso}%` });
+                ? { libre: true, margen: Math.floor(f.mgPw * 10) / 10, autorizado: `escalera de remate, pedido de Matías del 24/09/2026 (de a 5 puntos cada 7 días sin vender, hasta 0%) · escalón al ${t.piso}%` }
+                : { libre: true, margen: f.mgPw - 0.5, autorizado: `remate automático, permiso de Matías del 23/09/2026 (hasta 0%) · escalón al ${t.piso}%` });
               // Si no se bajó, la marca se saca: si no, quedaría congelada contra toda suba sin
               // haberse rematado nunca.
               // Se VUELVE a como estaba (no se borra todo): las marcas que él puso a mano se quedan.
               if (!r || !r.ok) { try { await restaurarLiquidando(db, marcadas); } catch { /* */ } }
-            } else r = await setPriceTo(f.mla, null, t.a, tk, { margen: f.mgPw });
+            } else r = await setPriceTo(f.mla, null, t.a, tk, { libre: true, margen: f.mgPw });
           }
           if (!r || !r.ok) { await _soltarSubiendo(db, f.mla, _msubN); fallidosAuto.push({ ...t, err: (r && r.err) || '?' }); continue; }
           // REGLA 6: se relee de ML. Que la escritura no dé error no quiere decir que haya quedado.
@@ -9653,7 +9658,6 @@ async function main() {
         if (!supLeido) r.push('no pude leer el supervisor');
         if (!(f.u >= AUTO_MIN_U)) r.push(`vendió ${f.u} en 30 d (pido ${AUTO_MIN_U} o más para estar seguro)`);
         if (f.diasSin == null || f.diasSin > AUTO_MAX_DSIN) r.push(`la última venta fue hace ${f.diasSin == null ? '?' : f.diasSin} d`);
-        if (f.subePct > 10.5) r.push(`la suba sería de ${Number(f.subePct).toFixed(1)}% (solo hago hasta 10,5%)`);
         if (autoprecio == null) r.push('no pude leer la memoria de precios del robot');
         else if (recienteAuto(f.mla, 'baja', 30)) r.push('la bajé hace menos de 30 d');
         if (malosSup.has(f.mla)) r.push('un cambio anterior le salió 🔴 malo');
@@ -9674,7 +9678,6 @@ async function main() {
           if (recienteAuto(f.mla, 'sube', 14)) r.push('la subí hace menos de 14 d');
         }
         if (f.conVars) r.push('tiene variantes: esa baja la hacés vos');
-        if (sana && f.baja > 24.5) r.push(`habría que bajar ${Number(f.baja).toFixed(1)}% (solo hago hasta 24,5% por vez)`);
         const piso = sana ? CBR_SANO + 0.5 : Math.max(pisoEsc(f), PISO_AUTORIZADO) + 0.5;
         if (f.mgPw < piso) r.push(`quedaría en ${Number(f.mgPw).toFixed(1)}%, abajo de ${piso}%`);
         if (!sana && !f.sobre && f.vis == null) r.push('no pude leer las visitas');
