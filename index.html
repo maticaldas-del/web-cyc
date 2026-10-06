@@ -2434,7 +2434,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='22.11';
+const APP_VERSION='22.12';
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
 // muestre la versión y la fecha de actualización y que tenga un desplegable predeterminado cerrado".
 // Y el mismo día: "que ponga fecha de cada modificación y haya una barrita para scrollear y que
@@ -2445,6 +2445,7 @@ const APP_VERSION='22.11';
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'22.12',f:'06/10/2026',h:'23:30',c:[{n:1,t:'📦 Armar caja: lo que ya tiene unidades cargadas va siempre arriba de la lista'}]},
   {v:'22.11',f:'06/10/2026',h:'23:15',c:[{n:3,t:'🇵🇾 Comprar: el mínimo pasa a 24% para todo (probados, nuevos y perfumes). Lo que queda en 24,x% ahora entra'}]},
   {v:'22.10',f:'06/10/2026',h:'23:05',c:[{n:1,t:'🇵🇾 Pedidos Paraguay probados: arriba de cada tarjeta sólo "da / no da · pidiéndolo queda N%"; el detalle (precio de Nissei, máximo, Full, cuotas) está al abrir la tarjeta'}]},
   {v:'22.09',f:'06/10/2026',h:'22:50',c:[{n:1,t:'🔢 Contar lo que hay: al lado de cada cuenta aparece el código de la etiqueta de Full de esa variante, igual que en Armar caja'}]},
@@ -5984,7 +5985,11 @@ function renderOfiCaja(){
   // sólo por el nombre del producto, que es lo único que se sabe de él.
   const _q=normTxt(document.getElementById('ofi-caja-search')?.value||'');
   const _coincide=f=>normTxt(f.p.name).includes(_q)||(f.variante?normTxt(f.variante).includes(_q):false);
-  const verLista=_q?vis.filter(_coincide):vis;
+  const verLista=_q?vis.filter(_coincide):vis.slice();
+  // LO QUE YA TIENE UNIDADES EN LA CAJA VA SIEMPRE ARRIBA (06/10/2026, pedido suyo: "todo lo que
+  // tenga 1 cargado que esté siempre arriba"). Antes quedaba mezclado abajo de renglones en 0 y había
+  // que buscarlo para revisar la caja. El orden de adentro de cada grupo no se toca (sort estable).
+  verLista.sort((a,b)=>((cajaAct[_ck(b.p.id,b.variante)]||0)>0)-((cajaAct[_ck(a.p.id,a.variante)]||0)>0));
   // Cuando no encuentra nada se dice, y con cuántos renglones había: una lista vacía sin
   // explicación se lee como "no tenés nada", que es otra cosa.
   if(_q&&!verLista.length){
