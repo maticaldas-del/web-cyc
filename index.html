@@ -2453,7 +2453,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='22.28';
+const APP_VERSION='22.29';
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
 // muestre la versión y la fecha de actualización y que tenga un desplegable predeterminado cerrado".
 // Y el mismo día: "que ponga fecha de cada modificación y haya una barrita para scrollear y que
@@ -2464,6 +2464,7 @@ const APP_VERSION='22.28';
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'22.29',f:'06/10/2026',h:'18:55',c:[{n:1,t:'⬆️ Ventas: cada venta muestra el último cambio de precio de los 30 días anteriores (antes sólo 7)'}]},
   {v:'22.28',f:'06/10/2026',h:'16:12',c:[{n:1,t:'🧴 Pedidos Paulvic: el máximo de compra también en pesos y grande, como Bs As'}]},
   {v:'22.27',f:'06/10/2026',h:'15:26',c:[{n:1,t:'🇦🇷 Pedidos Bs As: el máximo de compra va sólo en pesos y más grande (sin dólares)'}]},
   {v:'22.26',f:'06/10/2026',h:'15:24',c:[{n:2,t:'🚦 Pedidos: un producto con colores pasa a rojo si alguno de los colores que se venden no tiene stock en ningún lado (antes salía naranja). La tarjeta dice cuántos colores están así'}]},
@@ -8807,7 +8808,7 @@ function nombreDeVenta(v){const p=prodDeVenta(v);return p?p.name:((v&&v.prod)||'
 //  · cyc/autoprecio/<MLA> — el ÚLTIMO cambio del robot, con la hora exacta. Hace falta porque un
 //    cambio de hoy todavía no llegó al supervisor, que corre de noche.
 // Sólo los de los 7 días ANTERIORES a la venta: más viejo ya no explica nada (regla suya).
-const CAMBIO_VENTA_DIAS=7;
+const CAMBIO_VENTA_DIAS=30;  // 06/10/2026, pedido suyo: "quiero que muestre lo de ese mes si el robot subió o bajó" (antes 7: la suba del Protector talón del 28/09 no salía en la venta del 06/10)
 const _origenAuto=a=>a.por==='venta'?'el robot, al vender':a.por==='margen'?'el robot (rescate)':a.por==='remate'?'el robot (remate)':a.por==='costo'?'el robot (costo)':'el robot, de noche';
 function cambiosPrecioDe(mla,tsVenta){
   if(!mla||!(tsVenta>0))return[];
