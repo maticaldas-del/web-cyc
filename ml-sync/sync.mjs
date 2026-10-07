@@ -35293,7 +35293,10 @@ async function main() {
         // que se compara el correo de un pedido contra el siguiente.
         const kgPedido = campos.kg != null ? num(campos.kg) : (yaG && yaG.kgCorreo != null ? Number(yaG.kgCorreo) : null);
         if (!(usd > 0)) { console.log('Falta `usd=` (los dólares CRUDOS de comprasparaguay, sin el recargo). Sin eso no hay contra qué medir.'); return; }
-        if (!(merc > 0)) { console.log('Falta `merc=` (los pesos que salieron por la mercadería).'); return; }
+        // Un pedido que YA existe (lo guardó "Ya lo pedí") puede recibir los gastos de a uno: el
+        // correo llega días después de los dólares, o antes (07/10/2026: el correo del pedido del
+        // 05/10 llegó sin nada más cargado). Queda INCOMPLETO y fuera del promedio hasta que estén todos.
+        if (!(merc > 0) && !yaG) { console.log('Falta `merc=` (los pesos que salieron por la mercadería).'); return; }
         if (envio == null) { console.log('Falta `envio=` (los pesos del correo). Si todavía no lo sabés poné `envio=0`: queda marcado INCOMPLETO y no entra en el promedio.'); return; }
         const id = idCompra;
         const ya = guardadas[id];
@@ -35395,13 +35398,14 @@ async function main() {
           usdPanel, kgCorreo: kgPedido > 0 ? kgPedido : null,
           // Qué gastos se cargaron A PROPÓSITO (aunque sea 0): un 0 escrito no es lo mismo que uno que falta.
           pagosOk: [...new Set([...(((ya && ya.pagosOk) || [])), ...PY_GASTOS.filter((g) => campos[g.campo] != null).map((g) => g.k)])],
-          incompleto: !(envio > 0), ts: Date.now(),
+          incompleto: !(envio > 0) || !(merc > 0), ts: Date.now(),
           // Revisión max #21: lo que crea compray por su cuenta es HISTORIAL (guarda los pesos y el
           // recargo, no cuenta "en camino" en el Arqueo). Con |camino queda viajando y lleva "Ya llegó".
           estado: (ya && ya.estado) || (partes.some((x) => /^camino$/i.test(x)) ? 'camino' : 'historial'),
         };
         const totARS = merc + cambio + envio + retira + otros;
         const dolarMerc = merc / usd;                       // el dólar efectivo de la mercadería
+        const faltaPy = recargoRealPedido(rec).falta || [];
         const fijos = envio + retira + otros;
         console.log(`=== COMPRA A PARAGUAY DEL ${fecha} ===`);
         if (ya) console.log(`⚠️ Ya había una compra guardada con esta fecha (${ya.usdCrudo} US$ crudos). Se pisa.`);
@@ -35411,8 +35415,10 @@ async function main() {
         console.log(`  TOTAL                    ${money(Math.round(totARS))}`);
         if (kgPedido > 0 && envio > 0) console.log(`  el correo: ${kgPedido} kg · ${money(Math.round(envio / kgPedido))} por kilo`);
         console.log('');
-        console.log(`  el dólar que pagaste por la mercadería: ${money(Math.round(dolarMerc))}${tcRef ? ` · el del día del pedido es ${money(Math.round(tcRef))} (${(((dolarMerc + (cambio / usd)) / tcRef - 1) * 100).toFixed(1)}% más caro con el cambista adentro)` : ''}`);
-        if (tcRef > 0) {
+        if (merc > 0) console.log(`  el dólar que pagaste por la mercadería: ${money(Math.round(dolarMerc))}${tcRef ? ` · el del día del pedido es ${money(Math.round(tcRef))} (${(((dolarMerc + (cambio / usd)) / tcRef - 1) * 100).toFixed(1)}% más caro con el cambista adentro)` : ''}`);
+        if (faltaPy.length) {
+          console.log(`  ⚠️ Todavía falta: ${faltaPy.join(', ')}. Sin eso el recargo de este pedido no se puede medir (saldría de menos).`);
+        } else if (tcRef > 0) {
           const puestoUSD = totARS / tcRef;
           const rec1 = (puestoUSD / usd - 1) * 100;
           console.log(`  RECARGO REAL DE ESTA COMPRA: ${rec1.toFixed(1)}%  (el panel usa ${RECARGO_PAR_PCT}%)`);
@@ -35422,7 +35428,7 @@ async function main() {
         } else {
           console.log(`  ⚠️ No hay tipo de cambio cargado en Finanzas, así que el recargo en % no se puede calcular. Se guarda igual.`);
         }
-        if (rec.incompleto) console.log(`  ⚠️ INCOMPLETO: sin el envío. Queda guardado pero NO entra en el promedio — un recargo sin el flete sale más barato de lo real.`);
+        if (rec.incompleto) console.log(`  ⚠️ INCOMPLETO: queda guardado pero NO entra en el promedio — un recargo sin todos los gastos sale más barato de lo real.`);
         if (itemsDet) console.log(`\n  ${itemsDet.length} producto(s) escritos con los precios REALES de la factura (reemplazan a los ${yaItems.length} que había).`);
         else if (usaViejos) console.log(`\n  ${yaItems.length} producto(s) ya estaban guardados con este pedido: NO se tocan, sólo se agregan los pesos.`);
         else console.log(`\n  ${items.length} producto(s) guardados con su código y sus unidades.`);
@@ -35455,12 +35461,16 @@ async function main() {
         const totARS = (p.mercaderia || 0) + (p.cambista || 0) + (p.envio || 0) + (p.retira || 0) + (p.otros || 0);
         const tc = parseFloat(c.tcPedido) || parseFloat(c.tcPanel) || tcPanel || 0;
         const usd = parseFloat(c.usdCrudo) || 0;
-        const recPct = (tc > 0 && usd > 0) ? (totARS / tc / usd - 1) * 100 : null;
-        console.log(`\n── ${c.fecha}${c.incompleto ? '  ⚠️ INCOMPLETO (falta el envío)' : ''}`);
+        // Un pedido al que le falta algún gasto NO tiene recargo: con los pesos en cero daba "−100%" y
+        // entraba al promedio como si fuera una compra completa (07/10/2026, el pedido del 05/10).
+        const faltaC = recargoRealPedido(c).falta || [];
+        const recPct = (tc > 0 && usd > 0 && !faltaC.length) ? (totARS / tc / usd - 1) * 100 : null;
+        console.log(`\n── ${c.fecha}${faltaC.length ? `  ⚠️ INCOMPLETO · falta: ${faltaC.join(', ')}` : ''}`);
         console.log(`     US$ ${usd.toFixed(2)} crudos · ${(c.items || []).length} producto(s) · ${(c.items || []).reduce((a, x) => a + (x.u || 0), 0)} unidades`);
-        console.log(`     recargo real: ${recPct == null ? '? (faltaba el tipo de cambio)' : recPct.toFixed(1) + '%'}`);
+        console.log(`     recargo real: ${recPct == null ? (faltaC.length ? '? (faltan gastos)' : '? (faltaba el tipo de cambio)') : recPct.toFixed(1) + '%'}`);
+        if (c.pagos && c.pagos.envio > 0) console.log(`     correo ${money(Math.round(c.pagos.envio))}${c.kgCorreo ? ` · ${c.kgCorreo} kg` : ''}`);
         if (c.nota) console.log(`     ${c.nota}`);
-        if (recPct == null || c.incompleto) continue;
+        if (recPct == null || faltaC.length) continue;
         const fijoUSD = ((p.envio || 0) + (p.retira || 0) + (p.otros || 0)) / tc;
         const varPct = ((p.mercaderia || 0) + (p.cambista || 0)) / tc / usd - 1;
         sumU += usd; sumFijoU += fijoUSD; sumVar += varPct * usd; n++;
@@ -35479,7 +35489,7 @@ async function main() {
           const p = c.pagos || {};
           const tc = parseFloat(c.tcPedido) || parseFloat(c.tcPanel) || tcPanel || 0;
           const usd = parseFloat(c.usdCrudo) || 0;
-          if (!(tc > 0 && usd > 0)) continue;
+          if (!(tc > 0 && usd > 0) || !((p.mercaderia || 0) > 0)) continue;
           sumU += usd;
           sumFijoU += ((p.envio || 0) + (p.retira || 0) + (p.otros || 0)) / tc;
           sumVar += (((p.mercaderia || 0) + (p.cambista || 0)) / tc / usd - 1) * usd;
