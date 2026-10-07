@@ -16969,6 +16969,9 @@ async function main() {
         const v = parseInt(String(vend).replace(/\D/g, ''), 10);
         const okHttps = (u) => /^https:\/\//.test(u) ? u.slice(0, 300) : '';
         const fotoUrl = okHttps(foto) || (/^[0-9a-f]{20,}\.(webp|jpg|jpeg|png)$/i.test(foto) ? 'https://bucket-prod.us-ord-10.linodeobjects.com/site/media/fotos/produtos/thumbs/big/' + foto : '');
+        // SIN FOTO NO SE CARGA (07/10/2026, él: *"sin foto tampoco acepto"*): sin la foto de comprasparaguay no se
+        // puede comparar contra la de ML. Se saltea este renglón (no frena los demás) y se dice.
+        if (!fotoUrl) { console.log(`✗ sin foto de comprasparaguay, no lo cargo: ${nom}`); continue; }
         const c = { nombre: nom.slice(0, 160), cod: String(cod), usd, mlId, enNissei: true, fuente: 'chat', ts: Date.now() };
         if (isFinite(v) && v > 0) c.vendCarga = v;
         if (okHttps(link)) c.link = okHttps(link);
@@ -33663,6 +33666,8 @@ async function main() {
         const c = cands[m[1]]; const cat = c && catDe(c);
         if (!c || !cat) { console.log(`  ✗ ${m[1]}: no existe o no está medido contra un catálogo`); mal++; continue; }
         const v = { v: m[2].toLowerCase(), nota: String(m[3] || '').trim().slice(0, 200), cat, ts: Date.now() };
+        // Sin las DOS fotos no se puede decir "es el mismo": queda como duda (07/10/2026, "sin foto tampoco acepto").
+        if (v.v === 'ok' && (!/^https:\/\//.test(String(c.foto || '')) || !/^https:\/\//.test(String(c.mlFoto || '')))) { v.v = 'duda'; v.nota = ('falta ' + (!/^https:\/\//.test(String(c.foto || '')) ? 'la foto de comprasparaguay' : 'la foto de ML') + (v.nota ? ' · ' + v.nota : '')).slice(0, 200); }
         up[`${m[1]}/revClaude`] = v;
         if (v.v === 'no' && !c.prodId && c.mismoOk !== cat) _sacar(m[1], c, cat, v.nota, v.ts);
         console.log(`  ${v.v === 'ok' ? '✓' : v.v === 'no' ? '❌' : '🤔'} ${m[1]} · ${String(c.nombre).slice(0, 60)} → ${v.v}${v.nota ? ' (' + v.nota + ')' : ''}`);

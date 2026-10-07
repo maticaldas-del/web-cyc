@@ -82,6 +82,7 @@ FORMATO DE LOS MENSAJES (así se cargan sin que nadie tenga que reescribir nada)
    Si cambia el link de comprasparaguay, agregalo así: =<código>/<US$>@<link>. Las palabras tienen que agarrar UNA sola ficha (si dudás, usá el nombre exacto de la ficha con = adelante, ej. =Victoria's Secret=28118/14).
 2) Candidatos nuevos → un mensaje que empiece con "CANDIDATOS" y una línea así (un producto por bloque, separados por ;):
    candalta:<nombre de comprasparaguay>|<código Nissei>|<US$ crudo>|<MLA del catálogo de ML>|<vendidos en ML>|<link de comprasparaguay>|<archivo de la foto o link https de la foto>;<otro…>;go
+   LA FOTO ES OBLIGATORIA: sin la foto de comprasparaguay no se carga (no se puede comparar contra la de ML). Si la página no tiene foto, ese producto no va.
    Sin "|" ni ";" adentro de los nombres. El catálogo es el código MLA de la dirección /p/MLA… de ML.
    Antes de mandarlo fijate que el código no esté ya en el panel (candidatos o productos): si está, no lo mandes y anotalo en el resumen.
 3) Resumen → un mensaje que empiece con "RESUMEN": la cuenta del barrido (total = descartados por regla + ya en el panel + mirados en ML; y de los mirados: sin catálogo en ML, sin vendedor local con Full/Flex, margen bajo, distinto modelo/color, cargados), dónde quedaste si no terminaste, y las dudas para Matías con los dos títulos y los dos links.

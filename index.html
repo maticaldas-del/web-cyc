@@ -2453,7 +2453,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='22.38';
+const APP_VERSION='22.39';
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
 // muestre la versión y la fecha de actualización y que tenga un desplegable predeterminado cerrado".
 // Y el mismo día: "que ponga fecha de cada modificación y haya una barrita para scrollear y que
@@ -2464,6 +2464,7 @@ const APP_VERSION='22.38';
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'22.39',f:'07/10/2026',h:'20:25',c:[{n:2,t:'🇵🇾 Productos nuevos: sin las DOS fotos (comprasparaguay y ML) no va arriba ni se puede meter al pedido: queda abajo como incompleto. El chat de compras ya no carga candidatos sin foto.'}]},
   {v:'22.38',f:'07/10/2026',h:'20:15',c:[{n:2,t:'🇵🇾 Productos nuevos: arriba quedan sólo los candidatos YA analizados que dan. Los que el robot todavía no midió contra ML van a un desplegable cerrado abajo (⏳ sin analizar) y suben solos cuando den. Y lo que Claude ve por las fotos que es otro producto se saca de la lista (va a Descartados).'}]},
   {v:'22.37',f:'07/10/2026',h:'16:04',c:[{n:2,t:'📦 Armar caja: una cuenta que todavía no tiene la publicación ya no recibe el mínimo de 4 si otra cuenta tiene stock de ese color en Full (ej. P47 blanco y rojo en Matías). El renglón dice cuántas quedan y dónde.'}]},
   {v:'22.36',f:'07/10/2026',h:'15:52',c:[{n:2,t:'📈 Línea de tiempo: los meses viejos (antes de que el panel guardara las ventas) ahora muestran costo, ganancia y % estimados: el costo de la ficha hacia atrás con el dólar de cada mes, y lo que deposita ML sacado de una venta parecida. Dicen ≈ estimada al pasar el dedo.'}]},
@@ -11351,6 +11352,9 @@ function candPuedePedir(c){
   const m=Number(c.margen);
   if(c.margen==null||!isFinite(m))return{ok:false,motivo:'todavía no está medido en ML'};
   if(m<candPisoDe(c))return{ok:false,motivo:`da ${m.toFixed(1)}% y tu piso es ${candPisoDe(c)}%`};
+  // Sin las dos fotos no se compra (07/10/2026, "sin foto tampoco acepto"): no se puede ver que sea el mismo producto.
+  if(!/^https:\/\//.test(String(c.foto||'')))return{ok:false,motivo:'falta la foto de comprasparaguay'};
+  if(!/^https:\/\//.test(String(c.mlFoto||'')))return{ok:false,motivo:'falta la foto de ML'};
   // Regla suya del 03/10/2026: "100 unidades mínimo vendidas, sino no sirve". Sin el dato tampoco entra:
   // de lo que no se sabe si se vende no se compra. (El mismo freno está en el comando `pedir`.)
   const v=candVentasDe(c);
@@ -12867,9 +12871,11 @@ function candidatosHTML(){
   // SIN MEDIR NO VA ARRIBA (07/10/2026, él: *"quiero que lo que me quede ahí en la lista sean productos que estén
   // completos y que pasaron por análisis (...) yo no los quiero ver, o que estén en la lista de abajo"*). Lo que el robot
   // todavía no midió contra ML (o se le sacó el catálogo por no ser el mismo) va a un desplegable cerrado abajo.
-  const _medido=c=>c.margen!=null&&isFinite(c.margen);
+  // SIN LAS DOS FOTOS TAMPOCO (07/10/2026, él con el Sony MDR-E9LP sin foto de Paraguay: *"sin foto tampoco acepto"*):
+  // sin la de comprasparaguay y la de ML no se puede ver que sean el mismo producto, así que no está completo.
+  const _medido=c=>{if(c.margen==null||!isFinite(c.margen))return false;const R=candPreciosPartes(c);return !!(R.fotoPY&&R.fotoML);};
   const _sinAnalizar=vivos.filter(c=>!_medido(c));
-  const _arriba=vivos.filter(c=>_medido(c)&&!_esRojo(c)&&!_pocas(c)), _rojos=vivos.filter(_esRojo), _flojas=vivos.filter(c=>_medido(c)&&!_esRojo(c)&&_pocas(c));
+  const _arriba=vivos.filter(c=>_medido(c)&&!_esRojo(c)&&!_pocas(c)), _rojos=vivos.filter(c=>_medido(c)&&_esRojo(c)), _flojas=vivos.filter(c=>_medido(c)&&!_esRojo(c)&&_pocas(c));
   // ORDENAR (03/10/2026, pedido suyo: "poder buscar de mayor a menor los que más unidades vendieron, mayor
   // porcentaje y eso"). Los sin dato van siempre al final.
   {const k=_candOrden, val=c=>{const n=x=>(x!=null&&isFinite(x))?Number(x):null;
@@ -12886,7 +12892,7 @@ function candidatosHTML(){
   const _cuenta=`<div style="display:flex;gap:14px;flex-wrap:wrap;align-items:baseline;margin:6px 0 10px;padding:10px 12px;border-radius:10px;background:color-mix(in srgb,var(--green) 10%,transparent);border:1px solid color-mix(in srgb,var(--green) 35%,transparent)">
     <span style="font-size:1.5rem;font-weight:800;color:var(--green)">${_verdes}</span>
     <span style="font-size:.78rem;color:var(--green);font-weight:600">dan ${CAND_PISO_TXT()} o más</span>
-    ${_sinAnalizar.length?`<span style="font-size:.7rem;color:var(--muted)">· ⏳ ${_sinAnalizar.length} todavía sin analizar (abajo)</span>`:''}
+    ${_sinAnalizar.length?`<span style="font-size:.7rem;color:var(--muted)">· ⏳ ${_sinAnalizar.length} sin analizar o incompletos (abajo)</span>`:''}
     ${_rojos.length?`<span style="font-size:.7rem;color:var(--red)">· 🔻 ${_rojos.length} no llega${_rojos.length===1?'':'n'}</span>`:''}
   </div>`;
   const _ob=(k,t)=>`<button class="btn" style="font-size:.66rem;padding:4px 11px;${_candOrden===k?'background:var(--blue);color:#fff;font-weight:700':''}" onclick="candOrdenar('${k}')">${t}</button>`;
@@ -12896,7 +12902,7 @@ function candidatosHTML(){
   return cab+pedNuevosResumenHTML()+_cuenta+_orden+_arriba.map(_card).join('')
     +(_flojas.length?`<details style="margin-top:10px"><summary style="cursor:pointer;font-size:.7rem;color:var(--amber)">🟠 ${_flojas.length} con menos de ${CAND_MIN_VENT} vendidas en ML (o sin el dato) · no se pueden pedir · tocá para verlos</summary><div style="display:flex;flex-direction:column;gap:8px;margin-top:8px">${_flojas.map(_card).join('')}</div></details>`:'')
     +(_rojos.length?`<details style="margin-top:10px"><summary style="cursor:pointer;font-size:.7rem;color:var(--red)">🔻 ${_rojos.length} no llega${_rojos.length===1?'':'n'} al ${CAND_PISO_TXT()} · tocá para verlos</summary><div style="display:flex;flex-direction:column;gap:8px;margin-top:8px">${_rojos.map(_card).join('')}</div></details>`:'')
-    +(_sinAnalizar.length?`<details style="margin-top:10px"><summary style="cursor:pointer;font-size:.7rem;color:var(--muted)">⏳ ${_sinAnalizar.length} todavía sin analizar · el robot los mide contra ML de a 40 por vuelta (noche y mediodía) y suben solos si dan · tocá para verlos</summary><div style="display:flex;flex-direction:column;gap:8px;margin-top:8px">${_sinAnalizar.map(_card).join('')}</div></details>`:'')
+    +(_sinAnalizar.length?`<details style="margin-top:10px"><summary style="cursor:pointer;font-size:.7rem;color:var(--muted)">⏳ ${_sinAnalizar.length} sin analizar o incompletos (falta la medición de ML o alguna de las dos fotos) · suben solos cuando estén completos y den · tocá para verlos</summary><div style="display:flex;flex-direction:column;gap:8px;margin-top:8px">${_sinAnalizar.map(_card).join('')}</div></details>`:'')
     +candDescartadosHTML()+`<div style="margin-top:16px">${simPYHTML()}</div>`;
 }
 // LO DESCARTADO NO SE ESCONDE. Una lista que saca renglones sin decirlo es una lista que miente —
