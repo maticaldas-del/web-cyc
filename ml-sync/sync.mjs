@@ -33630,7 +33630,7 @@ async function main() {
       }
       return;
     }
-    // BILLING_PROBE=revcand:<id>=<ok|no|duda>[!nota];…[;go] → LA PASADA DE CLAUDE (07/10/2026).
+    // BILLING_PROBE=revcand:<id>=<ok|no|duda|mismo>[!nota];…[;go] → LA PASADA DE CLAUDE (07/10/2026).
     // Escribe `revClaude` {v, nota, cat, ts} en cada candidato, atado al catálogo de HOY. Sin `;go` sólo muestra.
     // `ok` y `duda` son sólo una marca. `no` (fotos distintas, sin dudas) DESCARTA el candidato: regla suya del
     // 07/10/2026, con el videoportero Hikvision DS-KB8113 (76% contra otro modelo): *"si claude vio fotos distintas
@@ -33661,13 +33661,16 @@ async function main() {
         if (!sacar.length) { console.log('No hay candidatos marcados "no es el mismo" para sacar.'); return; }
       }
       for (const parte of (/^aplicarno(;|$)/i.test(raw.trim()) ? [] : raw.split(';').map((x) => x.trim()).filter((x) => x && x.toLowerCase() !== 'go'))) {
-        const m = parte.match(/^(c\d+)\s*=\s*(ok|no|duda)(?:!(.*))?$/i);
+        const m = parte.match(/^(c\d+)\s*=\s*(ok|no|duda|mismo)(?:!(.*))?$/i);
         if (!m) { console.log(`  ✗ no entiendo "${parte}"`); mal++; continue; }
         const c = cands[m[1]]; const cat = c && catDe(c);
         if (!c || !cat) { console.log(`  ✗ ${m[1]}: no existe o no está medido contra un catálogo`); mal++; continue; }
+        // `mismo` = lo decidió ÉL (como el botón ✅ Es el mismo producto del panel): pone `mismoOk` para ESE catálogo,
+        // que saca los avisos rojos, y deja la marca de Claude en ok.
+        if (m[2].toLowerCase() === 'mismo') { up[`${m[1]}/mismoOk`] = cat; up[`${m[1]}/mismoOkTs`] = Date.now(); m[2] = 'ok'; }
         const v = { v: m[2].toLowerCase(), nota: String(m[3] || '').trim().slice(0, 200), cat, ts: Date.now() };
         // Sin las DOS fotos no se puede decir "es el mismo": queda como duda (07/10/2026, "sin foto tampoco acepto").
-        if (v.v === 'ok' && (!/^https:\/\//.test(String(c.foto || '')) || !/^https:\/\//.test(String(c.mlFoto || '')))) { v.v = 'duda'; v.nota = ('falta ' + (!/^https:\/\//.test(String(c.foto || '')) ? 'la foto de comprasparaguay' : 'la foto de ML') + (v.nota ? ' · ' + v.nota : '')).slice(0, 200); }
+        if (v.v === 'ok' && !up[`${m[1]}/mismoOk`] && (!/^https:\/\//.test(String(c.foto || '')) || !/^https:\/\//.test(String(c.mlFoto || '')))) { v.v = 'duda'; v.nota = ('falta ' + (!/^https:\/\//.test(String(c.foto || '')) ? 'la foto de comprasparaguay' : 'la foto de ML') + (v.nota ? ' · ' + v.nota : '')).slice(0, 200); }
         up[`${m[1]}/revClaude`] = v;
         if (v.v === 'no' && !c.prodId && c.mismoOk !== cat) _sacar(m[1], c, cat, v.nota, v.ts);
         console.log(`  ${v.v === 'ok' ? '✓' : v.v === 'no' ? '❌' : '🤔'} ${m[1]} · ${String(c.nombre).slice(0, 60)} → ${v.v}${v.nota ? ' (' + v.nota + ')' : ''}`);
