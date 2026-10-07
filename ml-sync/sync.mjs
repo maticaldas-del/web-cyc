@@ -3449,7 +3449,7 @@ async function calcCerebro(db, o) {
           else { D.mgA = Math.round(gF.mg * 10) / 10; if (accion === 'baja' && gF.mg < PISO && tipoMot !== 'volver') { accion = 'nada'; motivo = `a ${money(objetivo)} queda en ${gF.mg.toFixed(1)}%, abajo del piso`; } }
           if (accion === 'baja' && gF && gF.mg < 0) { accion = 'nada'; motivo = 'volver dejaría el margen abajo de cero'; }
         }
-        Object.assign(D, { accion, a: accion !== 'nada' ? objetivo : null, motivo, tipoMot, cruza, base: tipoMot === 'escasez' ? (M.base && Number(M.base) < p0 ? Number(M.base) : p0) : null, eLearn });
+        Object.assign(D, { accion, a: accion !== 'nada' ? objetivo : null, motivo, tipoMot, cruza, base: tipoMot === 'escasez' ? (enEsc ? Number(M.base) : p0) : null, rBaseEsc: enEsc ? Number(M.rb) : rEff / fDem, memPrev: M, eLearn });
         dec(D);
       }
     }
@@ -33245,6 +33245,38 @@ async function main() {
         console.log(`   ${mla} · ${l.cuenta || '?'} · ${l.title || l.titulo} · ${l.prodId ? 'ficha ' + (pIdx[l.prodId] || {}).name : 'SIN FICHA'}${l.hidden ? ' · oculta' : ''}`);
       }
       if (!k) console.log('   ninguna (si es nueva, la da de alta el robot en la vuelta de la hora)');
+      return;
+    }
+
+    // BILLING_PROBE=cerebro[:<palabras>|:todas] → QUÉ HARÍA EL CEREBRO DE PRECIOS (07/10/2026). SOLO LEE.
+    // Corre `calcCerebro` (la MISMA función de la noche) y dice, publicación por publicación, qué haría y
+    // por qué. Sin palabras muestra sólo las que cambiaría y las que está midiendo; `:todas` muestra todo.
+    if (/^cerebro(:|$)/.test(String(process.env.BILLING_PROBE || ''))) {
+      const arg = String(process.env.BILLING_PROBE).slice('cerebro'.length).replace(/^:/, '').trim().toLowerCase();
+      const todas = arg === 'todas', pal = todas ? [] : arg.split(/[+ ]/).filter(Boolean);
+      const filtro = pal.length ? new RegExp(pal.map((w) => w.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).join('.*'), 'i') : null;
+      const tokC = {};
+      for (const label of labels) {
+        const acc = accounts[label]; if (!acc?.refresh_token) continue;
+        try { const t = await mlRefresh(ML_CLIENT_ID, ML_CLIENT_SECRET, acc.refresh_token); await db.patch('mlapi/tokens/' + label, { refresh_token: t.refresh_token, updated_ts: Date.now() }); tokC[label] = t.access_token; }
+        catch { console.log(`(${label}: no pude entrar)`); }
+      }
+      const cz = await calcCerebro(db, { tokens: tokC, filtro });
+      if (cz.err) { console.log('⚠️ ' + cz.err); return; }
+      console.log(`\n=== 🧠 CEREBRO · ${cz.dec.length} publicación(es) mirada(s) · ${Object.entries(cz.resumen).map(([k, v]) => `${k} ${v}`).join(' · ')} ===`);
+      if (cz.fecha) console.log(`📅 ${cz.fecha.nom} ${cz.fecha.dias > 0 ? `en ${cz.fecha.dias} d` : 'hoy'}${cz.fecha.regalo ? ' · lo regalable ×1,4 de demanda' : ''}`);
+      const f2 = (x) => x == null ? '—' : (Math.round(x * 100) / 100).toLocaleString('es-AR');
+      const orden = { sube: 0, baja: 1, nada: 2 };
+      const ver = cz.dec.filter((d) => todas || pal.length || d.accion !== 'nada' || d.midiendo || d.enEscasez)
+        .sort((a, b) => (orden[a.accion] - orden[b.accion]) || String(a.nom).localeCompare(String(b.nom)));
+      for (const d of ver) {
+        const cab = d.accion === 'sube' ? `⬆️ SUBIR ${money(d.p0)} → ${money(d.a)}${d.cruza ? ' (cruza $33.000)' : ''}` : d.accion === 'baja' ? `⬇️ BAJAR ${money(d.p0)} → ${money(d.a)}` : `· ${d.p0 ? money(d.p0) : ''}`;
+        console.log(`\n${d.mla} · ${d.cuenta} · ${d.nom}\n   ${cab} · ${d.motivo}`);
+        if (d.st != null) console.log(`   stock ${d.st}${d.cam ? ` · viajan ${d.cam}` : ''}${d.ofi ? ' · hay en la oficina' : ''} · reponer ~${d.lead} d · ritmo hoy ${f2(d.rNow)}/d (${d.uNow} u. en ${f2(d.sdNow)} d) · antes ${f2(d.rPrev)}/d${d.pPrev ? ` a ${money(d.pPrev)}` : ''} · margen ${d.mg0 ?? '—'}%${d.mgA != null ? ` → ${d.mgA}%` : ''}${d.plNow != null ? ` · plata/día ${money(d.plNow)} vs ${money(d.plPrev)}` : ''}${d.eNueva ? ` · elasticidad medida ${f2(d.eNueva)}` : ''}`);
+      }
+      const nadaM = {}; for (const d of cz.dec) if (d.accion === 'nada') { const k = String(d.motivo).replace(/\$[\d.]+|\d+([.,]\d+)?/g, '#').slice(0, 70); nadaM[k] = (nadaM[k] || 0) + 1; }
+      console.log('\n── las que no toca, por motivo ──');
+      for (const [k, n] of Object.entries(nadaM).sort((a, b) => b[1] - a[1]).slice(0, 25)) console.log(`   ${n} · ${k}`);
       return;
     }
 
