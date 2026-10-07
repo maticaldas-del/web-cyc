@@ -2453,7 +2453,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='22.32';
+const APP_VERSION='22.33';
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
 // muestre la versión y la fecha de actualización y que tenga un desplegable predeterminado cerrado".
 // Y el mismo día: "que ponga fecha de cada modificación y haya una barrita para scrollear y que
@@ -2464,6 +2464,7 @@ const APP_VERSION='22.32';
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'22.33',f:'06/10/2026',h:'22:45',c:[{n:2,t:'❌ Para probar (Paraguay): botón "No es el mismo producto" en la tarjeta y en el renglón del pedido. Saca la medición, el robot deja de usar ese catálogo de ML para ese producto y el caso queda guardado para revisar por qué se equivocó.'}]},
   {v:'22.32',f:'06/10/2026',h:'21:45',c:[{n:1,t:'🔍 Robot de precios (Métricas): buscador de producto. Muestra lo que ganó o perdió, lo en curso, los otros cambios que no suman (rescates, a mano) y si lo está vigilando'}]},
   {v:'22.31',f:'06/10/2026',h:'21:25',c:[{n:1,t:'📈 Línea de tiempo: la línea "$ ganancia/día" arranca desde el primer día del gráfico (antes empezaba recién el 7º, porque el promedio de 7 días no miraba los días anteriores al período).'}]},
   {v:'22.30',f:'06/10/2026',h:'19:10',c:[{n:2,t:'🤖 Robot de precios (Métricas): los cambios de menos de 7 días se ven desde la primera venta, en gris, con lo que ya cobraron de más o de menos por el precio y el día en que sale el resultado final. No suman al total hasta los 7 días.'}]},
@@ -11375,6 +11376,34 @@ async function candMismoOk(id){
   await fbUpdate({['candidatos_py/'+id+'/mismoOk']:cat,['candidatos_py/'+id+'/mismoOkTs']:Date.now()});
   renderPedidos();toast('Marcado como el mismo producto ✓');
 }
+// ❌ NO ES EL MISMO PRODUCTO (07/10/2026, pedido suyo con la Webcam Emeet C950 medida contra la C960:
+// *"que quede guardado para que vos veas qué pasó con esos, cuál fue el error, para mejorarlo"*).
+// Dos cosas: (1) el caso queda en `cyc/emparejamal/<cand>_<ts>` con los dos títulos, quién eligió el
+// catálogo (el link del chat o la búsqueda del robot) y qué avisos había — lo lee el probe
+// `emparejamal` para ver qué regla falló; (2) el candidato pierde la medición (sin margen no se puede
+// pedir) y ese catálogo queda en `mlNoEs`: el robot no lo vuelve a usar, ni por búsqueda ni como gemelo.
+async function candNoEsMismo(id){
+  const c=(state.candidatos||{})[id];if(!c)return;
+  const cat=candCatId(c);
+  if(!cat&&!c.mlTit){toast('Todavía no se emparejó con nada de ML','err');return;}
+  const nota=prompt(`"${c.nombre}"\nNO es el mismo que el de ML:\n"${c.mlTit||cat}"\n\n¿Qué los diferencia? (opcional · ej: "otro modelo C950/C960", "es pack x2", "otro tamaño")\n\nEl robot deja de medirlo contra ese catálogo y el caso queda guardado para ver por qué se equivocó.`,'');
+  if(nota===null)return; // canceló: se mira ANTES de cualquier valor por defecto
+  const ts=Date.now();
+  let avisos=[];try{avisos=(candPreciosPartes(c).dudas||[]).map(x=>String(x).replace(/<[^>]*>/g,'').slice(0,200));}catch(e){}
+  const reg={cand:id,nombre:String(c.nombre||'').slice(0,160),cod:String(c.cod||'').slice(0,40),usd:parseFloat(c.usd)||null,
+    linkPy:/^https:\/\//.test(String(c.link||''))?String(c.link).slice(0,300):'',mlCat:cat||'',mlTit:String(c.mlTit||'').slice(0,160),
+    origen:c.mlPorNombre===false?'link':'nombre',margen:(c.margen!=null&&isFinite(c.margen))?Number(c.margen):null,
+    mlPrecio:Number(c.mlPrecio)||null,avisos,mismoOkAntes:c.mismoOk||null,nota:String(nota).trim().slice(0,300),ts};
+  const up={mlId:null,mlLink:null,mlTit:null,mlFoto:null,mlPrecio:null,mlMax:null,mlVendedores:null,mlComision:null,
+    margen:null,ganancia:null,calcVer:null,mlGemelo:null,mlReparos:null,mismoOk:null,mismoOkTs:null,
+    motivo:`❌ Marcaste que ${cat||'el catálogo de ML'} no es este producto. El robot lo vuelve a buscar sin ese catálogo; si el chat de compras tiene el link correcto, que lo cargue.`};
+  const u={['emparejamal/'+id+'_'+ts]:reg};
+  for(const k in up)u['candidatos_py/'+id+'/'+k]=up[k];
+  if(cat)u['candidatos_py/'+id+'/mlNoEs/'+cat]=ts;
+  try{await fbUpdate(u);}catch(e){toast('No se pudo guardar: '+(e&&e.message||e),'err');return;}
+  Object.assign(c,up);if(cat){c.mlNoEs=c.mlNoEs||{};c.mlNoEs[cat]=ts;}
+  renderPedidos();toast('Guardado ✓ · ese catálogo no se vuelve a usar para este producto');
+}
 // Medir contra el catálogo MÁS BARATO del mismo producto que encontró el robot. Borra el margen
 // para que no se pueda pedir hasta que el robot lo vuelva a medir contra ése.
 async function candUsarGemelo(id){
@@ -12325,7 +12354,7 @@ function pedNuevoFilaHTML(f,maxU,tc,sinCab){
     ${R.full?`<div style="font-size:.74rem;margin-top:7px;line-height:1.5">${R.full}</div>`:''}
     ${R.dudas.length?`<div style="font-size:.78rem;margin-top:7px;line-height:1.5;padding:7px 10px;border-radius:8px;background:rgba(239,68,68,.1);border:1px solid rgba(239,68,68,.4);color:var(--red)"><b>🚨 ¿Es el mismo producto? Abrí los dos links antes de comprarlo.</b><br>${R.dudas.join(' · ')}</div>`:''}
     ${P.ok?'':`<div style="font-size:.76rem;margin-top:6px"><span style="color:var(--red);font-weight:700">🚫 ${P.motivo}</span> · <a href="#" onclick="event.preventDefault();candSetPedir('${c.id}',0)" style="color:var(--red);font-weight:700">sacarlo del pedido</a></div>`}
-    <div style="font-size:.76rem;margin-top:7px">${R.links.join(' &nbsp;·&nbsp; ')}</div>
+    <div style="font-size:.76rem;margin-top:7px">${R.links.join(' &nbsp;·&nbsp; ')}${(c.mlTit||candCatId(c))?` &nbsp;·&nbsp; <a href="#" onclick="event.preventDefault();candNoEsMismo('${c.id}')" style="color:var(--red);font-weight:700" title="El producto de ML no es éste: saca la medición y guarda el caso para ver por qué se equivocó.">❌ no es el mismo</a>`:''}</div>
   </div>`;
 }
 // EL PEDIDO SE ARMA EN UN SOLO LUGAR (03/10/2026, él: *"sacalo de acá o no? hay dos pedidos sino"*): en
@@ -12765,6 +12794,7 @@ function candidatosHTML(){
             +(uu>0?` <span style="font-size:.64rem;color:var(--red);font-weight:700">· tiene ${uu} u. cargadas</span> <button class="btn" style="font-size:.62rem;padding:4px 10px;color:var(--red);border-color:rgba(239,68,68,.35)" onclick="candSetPedir('${c.id}',0)">✕ sacarlo del pedido</button>`:'');
         })()}
         ${(dudas&&!RP.mismoOk)?`<button class="btn" style="font-size:.66rem;padding:5px 12px;color:var(--green);border-color:rgba(34,197,94,.45)" onclick="candMismoOk('${c.id}')" title="Miraste las dos fotos y es el mismo producto: saca los avisos rojos de este candidato (vale para este catálogo de ML).">✅ Es el mismo producto</button>`:''}
+        ${(c.mlTit||candCatId(c))?`<button class="btn" style="font-size:.66rem;padding:5px 12px;color:var(--red);border-color:rgba(239,68,68,.45)" onclick="candNoEsMismo('${c.id}')" title="El producto de ML no es éste (otro modelo, tamaño, pack…). Saca la medición, el robot deja de usar ese catálogo y el caso queda guardado para ver por qué se equivocó.">❌ No es el mismo producto</button>`:''}
         ${c.mlGemelo&&c.mlGemelo.id?`<button class="btn" style="font-size:.66rem;padding:5px 12px;color:var(--amber);border-color:rgba(245,158,11,.45)" onclick="candUsarGemelo('${c.id}')" title="Hay otro catálogo del mismo producto más barato. Medirlo contra ése (el peor caso).">🔁 Medir contra el más barato (${c.mlGemelo.margen}%)</button>`:''}
         <button class="btn btn-add" style="font-size:.66rem;padding:5px 12px" onclick="candCrearFicha('${c.id}')" title="Crea la ficha del producto con su costo y su código ya cargados, marcada como Paraguay. No compra nada ni publica nada en ML.">👍 Crear ficha</button>
         <button class="btn" style="font-size:.66rem;padding:5px 12px;color:var(--muted)" onclick="candDescartar('${c.id}')" title="No vuelve a aparecer. Se puede deshacer desde acá abajo.">👎 No me interesa</button>

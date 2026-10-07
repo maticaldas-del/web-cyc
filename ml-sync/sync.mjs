@@ -6690,7 +6690,7 @@ const _rvNorm = (t) => _rvBase(t).replace(/(\d)([a-z])/g, '$1 $2').replace(/([a-
 // EL CODIGO DE MODELO: los pedacitos que mezclan letras y numeros (mdr zx310ap, tl wn822n,
 // m612, h101). Se sacan los que son la MEDIDA y no el modelo -- 100ml, 256gb -- porque esos
 // los tiene cualquier producto de la misma familia y no distinguen nada.
-const _rvMod = (t) => (_rvBase(t).match(/[a-z0-9]+/g) || []).filter((w) => w.length >= 3 && /[a-z]/.test(w) && /\d/.test(w) && !/^\d+(ml|gb|mb|tb|kg|mm|cm|hz|mah|w|v|g|l)$/.test(w));
+const _rvMod = (t) => (_rvBase(t).match(/[a-z0-9]+/g) || []).filter((w) => w.length >= 3 && /[a-z]/.test(w) && /\d/.test(w) && !/^\d+(ml|gb|mb|tb|kg|mm|cm|hz|mah|w|v|g|l|p|fps|mp)$/.test(w));
 const _rvPal = (t) => new Set(_rvNorm(t).split(' ').filter((w) => w && !RV_VACIAS.has(w) && w.length >= 3 && !/^\d+$/.test(w)));
 // TODOS los numeros, incluidos los de UN digito. La primera version pedia dos o mas y se
 // comia justo el caso anotado: "Xiaomi Redmi Watch 4" contra "Xiaomi Redmi Redmi Watch 3"
@@ -6776,7 +6776,12 @@ function chequeoMismoProducto(nombre, mlTit) {
   const numFaltan = [..._rvNum(nombre)].filter((x) => !_rvNum(t).has(x));
   const motivos = [];
   if (extraVar.length) motivos.push(`ML dice "${extraVar.join(', ')}" y el candidato no`);
-  if (modCP.length && !modOK.length) motivos.push(`el modelo (${modCP.join(', ')}) no está en el título de ML`);
+  // EL MODELO QUE CHOCA (07/10/2026, la Webcam Emeet C950 medida contra la C960): las mismas letras con
+  // otro número es OTRO modelo. Antes no avisaba porque "1080p" coincidía y contaba como modelo.
+  const modML = _rvMod(t), choque = [];
+  for (const x of modCP) if (!mlPlano.includes(x)) { const lx = x.replace(/\d+/g, '#'); for (const y of modML) if (y !== x && y.replace(/\d+/g, '#') === lx && !_rvBase(nombre).replace(/ /g, '').includes(y)) choque.push(`${x}/${y}`); }
+  if (choque.length) motivos.push(`otro modelo: el candidato dice ${choque.map((z) => z.split('/')[0].toUpperCase()).join(', ')} y ML ${choque.map((z) => z.split('/')[1].toUpperCase()).join(', ')}`);
+  else if (modCP.length && !modOK.length) motivos.push(`el modelo (${modCP.join(', ')}) no está en el título de ML`);
   if (!modCP.length && faltan.length) motivos.push(`en ML no está(n): ${faltan.join(', ')}`);
   if (!modCP.length && numFaltan.length) motivos.push(`el tamaño ${numFaltan.join(', ')} no está en ML`);
   if (_rvColorChoca(nombre, t)) motivos.push(`el color no coincide (candidato: ${[..._rvColores(nombre)].join('/')} · ML: ${[..._rvColores(t)].join('/')})`);
@@ -7082,7 +7087,16 @@ async function correrCandidatos(db, products, labels, accounts, soloPrueba, prue
     let porNombre = false;
     try {
       let prod = null;
+      // ❌ "NO ES EL MISMO PRODUCTO" (07/10/2026): los catálogos que él rechazó desde el panel viven en
+      // `mlNoEs` y no se vuelven a usar para este candidato, ni por link ni por búsqueda ni como gemelo.
+      const noEs = new Set(Object.keys((c && c.mlNoEs) || {}).map((x) => String(x).toUpperCase()));
       const idFijo = String(c.mlId || '').trim().toUpperCase().replace(/^.*\/P\//, '').split(/[?#]/)[0];
+      if (/^MLA\d+$/.test(idFijo) && noEs.has(idFijo)) {
+        console.log(`  · ${c.nombre}\n      → el link de ML (${idFijo}) es un catálogo que marcaste "no es el mismo producto". No lo uso.`);
+        if (!soloPrueba) await db.set(`cyc/candidatos_py/${id}/motivo`, `El link de ML ${idFijo} lo marcaste como "no es el mismo producto". Falta el link correcto.`);
+        sinDato.push(`${c.nombre} → el link de ML es uno marcado "no es el mismo"`);
+        continue;
+      }
       if (/^MLA\d+$/.test(idFijo)) {
         try { prod = await mlGet(`/products/${idFijo}`, tok); } catch { prod = null; }
         if (!prod || !prod.id) {
@@ -7094,9 +7108,10 @@ async function correrCandidatos(db, products, labels, accounts, soloPrueba, prue
       } else {
         porNombre = true;
         const q = encodeURIComponent(String(c.nombre).slice(0, 80));
-        const bus = await mlGet(`/products/search?site_id=MLA&q=${q}&limit=3`, tok);
+        const bus = await mlGet(`/products/search?site_id=MLA&q=${q}&limit=${noEs.size ? 6 : 3}`, tok);
         const res = (bus && (bus.results || bus.paging ? bus.results : null)) || [];
-        prod = res[0];
+        prod = res.find((r) => r && r.id && !noEs.has(String(r.id).toUpperCase()));
+        if (!prod && res.length && noEs.size) console.log(`      (la búsqueda sólo trajo catálogos que marcaste "no es el mismo")`);
       }
       if (!prod || !prod.id) {
         if (!soloPrueba) await db.set(`cyc/candidatos_py/${id}/motivo`, 'ML no tiene este producto en su catálogo. Hay que mirarlo a mano.');
@@ -7285,7 +7300,7 @@ async function correrCandidatos(db, products, labels, accounts, soloPrueba, prue
         try {
           consultas++;
           const busG = await mlGet(`/products/search?site_id=MLA&q=${encodeURIComponent(q.slice(0, 80))}&limit=5`, tok);
-          for (const r of ((busG && busG.results) || [])) if (r && r.id && r.id !== prodIdMed && !vistos.has(r.id)) vistos.set(r.id, String(r.name || r.title || ''));
+          for (const r of ((busG && busG.results) || [])) if (r && r.id && r.id !== prodIdMed && !vistos.has(r.id) && !Object.prototype.hasOwnProperty.call((c && c.mlNoEs) || {}, r.id)) vistos.set(r.id, String(r.name || r.title || ''));
         } catch (eG) { console.log(`      (no pude buscar otros catálogos del mismo producto: ${String(eG.message || eG).slice(0, 80)})`); }
       }
       const iguales = [...vistos].filter(([, t]) => _esGemelo(c.nombre, mlTit, t));
@@ -32817,6 +32832,29 @@ async function main() {
         console.log(`   ${mla} · ${l.cuenta || '?'} · ${l.title || l.titulo} · ${l.prodId ? 'ficha ' + (pIdx[l.prodId] || {}).name : 'SIN FICHA'}${l.hidden ? ' · oculta' : ''}`);
       }
       if (!k) console.log('   ninguna (si es nueva, la da de alta el robot en la vuelta de la hora)');
+      return;
+    }
+
+    // BILLING_PROBE=emparejamal → LOS "NO ES EL MISMO PRODUCTO" QUE MARCÓ ÉL (07/10/2026). SOLO LEE.
+    // Pedido suyo: *"que quede guardado para que vos veas qué pasó con esos, cuál fue el error, para
+    // mejorarlo"*. Cada caso lo guarda el botón ❌ del panel en `cyc/emparejamal`. Acá se dice, uno por uno:
+    // quién eligió el catálogo (el link del chat o la búsqueda del robot por nombre), qué avisos tenía en
+    // ese momento, y si la regla de HOY (`chequeoMismoProducto`) lo avisaría — si no, es la regla la que
+    // hay que mejorar con ese ejemplo. Imprime nombres de producto, nada de compradores.
+    if (/^emparejamal(:|$)/.test(String(process.env.BILLING_PROBE || ''))) {
+      const regs = Object.entries((await db.get('cyc/emparejamal')) || {}).map(([k, r]) => ({ k, ...(r || {}) })).sort((a, b) => (a.ts || 0) - (b.ts || 0));
+      console.log(`\n=== ❌ "NO ES EL MISMO PRODUCTO" · ${regs.length} caso(s) ===`);
+      let calla = 0;
+      for (const r of regs) {
+        const hoy = chequeoMismoProducto(r.nombre || '', r.mlTit || '');
+        if (!hoy.length) calla++;
+        console.log(`\n· ${new Date(r.ts || 0).toISOString().slice(0, 10)} · ${r.nombre}`);
+        console.log(`    ML: "${r.mlTit}" (${r.mlCat || '?'}) · ${r.origen === 'link' ? 'lo eligió el LINK del chat' : 'lo encontró el ROBOT buscando por nombre'} · margen ${r.margen ?? '—'}%`);
+        if (r.nota) console.log(`    él: ${r.nota}`);
+        console.log(`    avisos que tenía: ${(r.avisos || []).length ? r.avisos.join(' · ') : 'NINGUNO'}${r.mismoOkAntes ? ' · ⚠️ estaba marcado "es el mismo"' : ''}`);
+        console.log(`    la regla de hoy: ${hoy.length ? '✓ lo avisa → ' + hoy.join(' · ') : '✗ NO lo avisa — hay que mejorarla con este ejemplo'}`);
+      }
+      console.log(`\nResumen: ${regs.length} caso(s) · ${regs.filter((r) => r.origen === 'link').length} por link del chat · ${regs.filter((r) => r.origen !== 'link').length} por búsqueda del robot · la regla de hoy NO avisaría ${calla}.`);
       return;
     }
 
