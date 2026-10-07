@@ -2453,7 +2453,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='22.37';
+const APP_VERSION='22.38';
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
 // muestre la versión y la fecha de actualización y que tenga un desplegable predeterminado cerrado".
 // Y el mismo día: "que ponga fecha de cada modificación y haya una barrita para scrollear y que
@@ -2464,6 +2464,7 @@ const APP_VERSION='22.37';
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'22.38',f:'07/10/2026',h:'20:15',c:[{n:2,t:'🇵🇾 Productos nuevos: arriba quedan sólo los candidatos YA analizados que dan. Los que el robot todavía no midió contra ML van a un desplegable cerrado abajo (⏳ sin analizar) y suben solos cuando den. Y lo que Claude ve por las fotos que es otro producto se saca de la lista (va a Descartados).'}]},
   {v:'22.37',f:'07/10/2026',h:'16:04',c:[{n:2,t:'📦 Armar caja: una cuenta que todavía no tiene la publicación ya no recibe el mínimo de 4 si otra cuenta tiene stock de ese color en Full (ej. P47 blanco y rojo en Matías). El renglón dice cuántas quedan y dónde.'}]},
   {v:'22.36',f:'07/10/2026',h:'15:52',c:[{n:2,t:'📈 Línea de tiempo: los meses viejos (antes de que el panel guardara las ventas) ahora muestran costo, ganancia y % estimados: el costo de la ficha hacia atrás con el dólar de cada mes, y lo que deposita ML sacado de una venta parecida. Dicen ≈ estimada al pasar el dedo.'}]},
   {v:'22.35',f:'07/10/2026',h:'13:39',c:[{n:1,t:'📈 Línea de tiempo: ahora muestra también el día de HOY, incompleto (las ventas de hoy y el stock de ahora; las visitas y la caja llegan a la noche).'}]},
@@ -12863,7 +12864,12 @@ function candidatosHTML(){
   // MENOS DE 100 VENDIDAS = NO SE PUEDE PEDIR (03/10/2026, él: "¿por qué hay de menos de 100 ventas?"): van
   // abajo en su propio desplegable, igual que los que no llegan al %. Arriba sólo lo que se puede comprar.
   const _pocas=c=>{const v=candVentasDe(c);return v==null||v<CAND_MIN_VENT;};
-  const _arriba=vivos.filter(c=>!_esRojo(c)&&!_pocas(c)), _rojos=vivos.filter(_esRojo), _flojas=vivos.filter(c=>!_esRojo(c)&&_pocas(c));
+  // SIN MEDIR NO VA ARRIBA (07/10/2026, él: *"quiero que lo que me quede ahí en la lista sean productos que estén
+  // completos y que pasaron por análisis (...) yo no los quiero ver, o que estén en la lista de abajo"*). Lo que el robot
+  // todavía no midió contra ML (o se le sacó el catálogo por no ser el mismo) va a un desplegable cerrado abajo.
+  const _medido=c=>c.margen!=null&&isFinite(c.margen);
+  const _sinAnalizar=vivos.filter(c=>!_medido(c));
+  const _arriba=vivos.filter(c=>_medido(c)&&!_esRojo(c)&&!_pocas(c)), _rojos=vivos.filter(_esRojo), _flojas=vivos.filter(c=>_medido(c)&&!_esRojo(c)&&_pocas(c));
   // ORDENAR (03/10/2026, pedido suyo: "poder buscar de mayor a menor los que más unidades vendieron, mayor
   // porcentaje y eso"). Los sin dato van siempre al final.
   {const k=_candOrden, val=c=>{const n=x=>(x!=null&&isFinite(x))?Number(x):null;
@@ -12873,14 +12879,14 @@ function candidatosHTML(){
       if(k==='barato')return parseFloat(c.usd)>0?-parseFloat(c.usd):null;
       return n(c.margen);};
     const ord=(a,b)=>{const va=val(a),vb=val(b);if(va==null&&vb==null)return 0;if(va==null)return 1;if(vb==null)return -1;return vb-va;};
-    _arriba.sort(ord);_rojos.sort(ord);_flojas.sort(ord);}
+    _arriba.sort(ord);_rojos.sort(ord);_flojas.sort(ord);_sinAnalizar.sort(ord);}
   // CUÁNTOS DAN (02/10/2026, pedido suyo: *"antes de arrancar la lista poné cuántos candidatos con % positivo en
   // verde hay, así voy viendo cuando sube productos nuevos"*). Verde = medido y en el piso o arriba.
   const _verdes=_arriba.filter(c=>c.margen!=null&&isFinite(c.margen)).length, _sinMed=_arriba.length-_verdes;
   const _cuenta=`<div style="display:flex;gap:14px;flex-wrap:wrap;align-items:baseline;margin:6px 0 10px;padding:10px 12px;border-radius:10px;background:color-mix(in srgb,var(--green) 10%,transparent);border:1px solid color-mix(in srgb,var(--green) 35%,transparent)">
     <span style="font-size:1.5rem;font-weight:800;color:var(--green)">${_verdes}</span>
     <span style="font-size:.78rem;color:var(--green);font-weight:600">dan ${CAND_PISO_TXT()} o más</span>
-    ${_sinMed?`<span style="font-size:.7rem;color:var(--muted)">· ⏳ ${_sinMed} sin medir</span>`:''}
+    ${_sinAnalizar.length?`<span style="font-size:.7rem;color:var(--muted)">· ⏳ ${_sinAnalizar.length} todavía sin analizar (abajo)</span>`:''}
     ${_rojos.length?`<span style="font-size:.7rem;color:var(--red)">· 🔻 ${_rojos.length} no llega${_rojos.length===1?'':'n'}</span>`:''}
   </div>`;
   const _ob=(k,t)=>`<button class="btn" style="font-size:.66rem;padding:4px 11px;${_candOrden===k?'background:var(--blue);color:#fff;font-weight:700':''}" onclick="candOrdenar('${k}')">${t}</button>`;
@@ -12890,6 +12896,7 @@ function candidatosHTML(){
   return cab+pedNuevosResumenHTML()+_cuenta+_orden+_arriba.map(_card).join('')
     +(_flojas.length?`<details style="margin-top:10px"><summary style="cursor:pointer;font-size:.7rem;color:var(--amber)">🟠 ${_flojas.length} con menos de ${CAND_MIN_VENT} vendidas en ML (o sin el dato) · no se pueden pedir · tocá para verlos</summary><div style="display:flex;flex-direction:column;gap:8px;margin-top:8px">${_flojas.map(_card).join('')}</div></details>`:'')
     +(_rojos.length?`<details style="margin-top:10px"><summary style="cursor:pointer;font-size:.7rem;color:var(--red)">🔻 ${_rojos.length} no llega${_rojos.length===1?'':'n'} al ${CAND_PISO_TXT()} · tocá para verlos</summary><div style="display:flex;flex-direction:column;gap:8px;margin-top:8px">${_rojos.map(_card).join('')}</div></details>`:'')
+    +(_sinAnalizar.length?`<details style="margin-top:10px"><summary style="cursor:pointer;font-size:.7rem;color:var(--muted)">⏳ ${_sinAnalizar.length} todavía sin analizar · el robot los mide contra ML de a 40 por vuelta (noche y mediodía) y suben solos si dan · tocá para verlos</summary><div style="display:flex;flex-direction:column;gap:8px;margin-top:8px">${_sinAnalizar.map(_card).join('')}</div></details>`:'')
     +candDescartadosHTML()+`<div style="margin-top:16px">${simPYHTML()}</div>`;
 }
 // LO DESCARTADO NO SE ESCONDE. Una lista que saca renglones sin decirlo es una lista que miente —
