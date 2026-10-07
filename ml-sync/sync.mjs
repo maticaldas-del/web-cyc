@@ -3381,7 +3381,12 @@ async function calcCerebro(db, o) {
         const tc0 = techo[mla] || null;
         let techoCat = Infinity;
         if (b.catalog_listing) {
-          if (e.caja && e.caja !== 'winning') { nada(`es de catálogo y no gana la caja (${e.caja}): subir la deja más lejos; bajar lo decide la caja barata`); continue; }
+          // En escasez perder la caja es a propósito (se quiere vender menos): no se corta acá, así puede volver al
+          // precio de antes cuando llegue la reposición. Lo que no puede es seguir subiendo (más abajo).
+          if (e.caja && e.caja !== 'winning') {
+            if (!(Number(M.base) > 0 && Number(M.rb) > 0)) { nada(`es de catálogo y no gana la caja (${e.caja}): subir la deja más lejos; bajar lo decide la caja barata`); continue; }
+            D.noGanaEsc = true;
+          }
           if (tc0 && Number(tc0.t) > 0) techoCat = Number(tc0.t);
         }
         const techoMax = Math.min(TECHO_DURO, techoCat);
@@ -3509,6 +3514,7 @@ async function calcCerebro(db, o) {
           else { D.mgA = Math.round(gF.mg * 10) / 10; if (accion === 'baja' && gF.mg < PISO && tipoMot !== 'volver') { accion = 'nada'; motivo = `a ${money(objetivo)} queda en ${gF.mg.toFixed(1)}%, abajo del piso`; } }
           if (accion === 'baja' && gF && gF.mg < 0) { accion = 'nada'; motivo = 'volver dejaría el margen abajo de cero'; }
         }
+        if (D.noGanaEsc && accion === 'sube') { accion = 'nada'; objetivo = null; motivo = `en escasez y ya no gana la caja (${e.caja}): no sube más, espera la reposición para volver al precio de antes`; tipoMot = ''; }
         Object.assign(D, { accion, a: accion !== 'nada' ? objetivo : null, motivo, tipoMot, cruza, base: tipoMot === 'escasez' ? (enEsc ? Number(M.base) : p0) : null, rBaseEsc: enEsc ? Number(M.rb) : rEff / fDem, memPrev: M, eLearn });
         dec(D);
       }
@@ -9744,6 +9750,11 @@ async function main() {
       // EL CEREBRO (07/10/2026): con `cyc/mlconfig/cerebro = 'on'` reemplaza a la 📈 y a la 🧪 y saca las
       // esperas fijas de las bajas (ver `calcCerebro`).
       const CEREBRO_ON = String(cfgAv.cerebro || 'on') !== 'off';   // prendido desde el 07/10/2026 (él: "seguí"); se apaga con cerebro = 'off'
+      // Lo que el cerebro tiene en ESCASEZ (subió a propósito para que el stock alcance hasta reponer) no lo baja la
+      // caja barata: si no, perder la caja a propósito se deshace a la noche siguiente y vuelve el ping-pong.
+      // Sin la memoria del cerebro no se baja nada por caja barata esa noche (el lado seguro).
+      let memCer = {}; if (CEREBRO_ON) { try { memCer = (await db.get('cyc/cerebro')) || {}; } catch { memCer = null; } }
+      const enEscasezCer = (mla) => CEREBRO_ON && (memCer == null || !!(memCer[mla] && Number(memCer[mla].base) > 0 && Number(memCer[mla].rb) > 0));
       // LA MARCA VA ANTES DE TOCAR NADA (23/09/2026, revisión): `ml-daily` se intenta 3 veces por
       // noche y dos corridas pueden superponerse. Escribiéndola al final, la segunda la leía vacía y
       // volvía a subir otro +25%. Si no se puede escribir, esta noche no se toca ningún precio.
@@ -9818,7 +9829,7 @@ async function main() {
       const autoBaja = [...sanasCbr.filter((f) => cbrAutoIds.has(f.mla)), ...sobreSanas.filter((f) => sobreAutoIds.has(f.mla))]
         // Revisión final: `!f.conVars` — con variantes no se baja solo (setPriceTo se niega) y ocupaba
         // uno de los AUTO_MAX lugares de la noche para fallar noche tras noche.
-        .filter((f) => !f.conVars && f.mgPw >= CBR_SANO + 0.5 && (CEREBRO_ON || !recienteAuto(f.mla, 'sube', 14))
+        .filter((f) => !f.conVars && f.mgPw >= CBR_SANO + 0.5 && (CEREBRO_ON || !recienteAuto(f.mla, 'sube', 14)) && !enEscasezCer(f.mla)
           // Sin la lista de liquidando no se sabe qué marcó él: esa noche no se baja nada (revisión max).
           && NOSUBIR_OK && !(NOSUBIR[f.mla] && !esMarcaRobot(NOSUBIR[f.mla])));
       if (!NOSUBIR_OK) console.log('   ⚠️ no pude leer la lista de liquidando: esta noche no se baja nada solo (ni remate, ni escalera, ni baja por caja)');
@@ -27386,6 +27397,9 @@ async function main() {
         let hechosV = 0;
         for (const x of candV) {
           const no = (m) => { noVolvio.set(x.id, m); console.log(`   ↩️ no vuelvo ${x.nom} (${x.cuenta}): ${m}`); };
+          // Lo que cambió el cerebro lo juzga el cerebro (plata por día, su propia paciencia y la escasez a propósito):
+          // con dos jueces una suba por escasez —que está hecha para vender MENOS— la deshacía el supervisor.
+          { const ap = autop[x.mla]; if (ap && ap.por === 'cerebro' && Math.abs((Number(ap.ts) || 0) - (Number(x.ts) || 0)) < 864e5) { no('lo cambió el cerebro: lo juzga él'); continue; } }
           if ((x.diasX ?? x.dias) < VOLVER_DIAS) { no(`lleva ${x.dias} d medido, espero a los ${VOLVER_DIAS}`); continue; }
           if (x.quiebre || x.volSinDato) { no(x.quiebre ? 'estuvo sin stock en el medio: la pérdida puede ser el quiebre, no el precio' : 'no se miró el stock todo el tiempo: no sé si la pérdida es por el precio'); continue; }
           if ((porMlaEv[x.mla] || []).some((o) => o.ts > x.ts + 60e3)) { no('después tuvo otro cambio de precio'); continue; }
