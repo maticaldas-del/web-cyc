@@ -33269,6 +33269,48 @@ async function main() {
       return;
     }
 
+    // BILLING_PROBE=pctmes:<palabras> → ¿POR QUÉ CAMBIÓ EL % DE GANANCIA DE UN PRODUCTO? (07/10/2026). SOLO LEE.
+    // Él, con la línea de tiempo del Centímetro: "el % de ganancia baja y el precio de venta y costos se mantienen,
+    // ¿hay algún error?". Abre el % quincena por quincena en sus partes, con la MISMA cuenta que la web
+    // (`armarCostoWeb`): precio, neto de ML, mercadería (costo del mes × dólar del mes), impuestos y estimadas.
+    if (/^pctmes:/.test(String(process.env.BILLING_PROBE || ''))) {
+      const pal = String(process.env.BILLING_PROBE).slice(7).toLowerCase().split(/[+ ]/).filter(Boolean);
+      const prods = Object.values((await db.get('cyc/products')) || {}).filter((p) => p && p.id && pal.every((w) => String(p.name || '').toLowerCase().includes(w)));
+      if (!prods.length) { console.log('ninguna ficha con esas palabras'); return; }
+      const ids = new Set(prods.map((p) => p.id));
+      const vp = (await db.get('cyc/ventaprod')) || {}; setDevLive(vp);
+      const costoDe = await armarCostoWeb(db, vp);
+      const mono = (await db.get('cyc/monotributo')) || {};
+      const hist = (await db.get('cyc/precios_hist_prod')) || {};
+      const tcMes = (await db.get('cyc/tc_mes')) || {};
+      console.log(`fichas: ${prods.map((p) => p.name + ' (' + p.id + ', costo hoy US$ ' + p.costUSD + ')').join(' · ')}`);
+      console.log(`monotributo: vigente ${mono.pct}% · por mes ${JSON.stringify(mono.hist || {})}`);
+      const g = {};
+      for (const [dk, ents] of Object.entries(vp)) {
+        if (dk < '2026_05') continue;
+        for (const v of Object.values(ents || {})) {
+          if (!v || v.cancelada || !ids.has(v.prodId)) continue;
+          const q = Number(dk.slice(8, 10)) <= 15 ? 'a' : 'b';
+          const k = dk.slice(0, 7) + q;
+          const c = costoDe(v, dk);
+          const x = (g[k] = g[k] || { u: 0, tot: 0, neto: 0, costo: 0, imp: 0, gest: 0, est: 0, n: 0, carr: 0 });
+          const qq = Number(v.qty) || 1;
+          x.u += qq; x.tot += Number(v.total) || 0; x.neto += Number(v.neto) || 0; x.costo += c.costo; x.gest += c.gest; x.n++;
+          x.imp += (Number(v.total) || 0) * (mlExtraPct(v.cuenta) + (parseFloat((mono.hist || {})[dk.slice(0, 7)]) || parseFloat(mono.pct) || 0)) / 100;
+          if (v.netoEstimado) x.est++;
+          if (v.numVenta && Object.values(ents).filter((o) => o && o.numVenta === v.numVenta).length > 1) x.carr++;
+        }
+      }
+      console.log('\nquincena  · u.  · precio/u · neto/u (ML se queda) · mercadería/u · impuestos/u · % ganancia · estimadas · en carrito · costo del mes US$ · dólar del mes');
+      for (const k of Object.keys(g).sort()) {
+        const x = g[k], ym = k.slice(0, 7);
+        const pct = (x.neto - x.costo) / (x.costo + x.gest) * 100;
+        const hc = prods.map((p) => (hist[ym] && hist[ym][p.id] != null) ? hist[ym][p.id] : 'hoy').join('/');
+        console.log(`${k} · ${String(x.u).padStart(4)} · ${money(x.tot / x.u)} · ${money(x.neto / x.u)} (${(100 - x.neto / x.tot * 100).toFixed(1)}%) · ${money((x.costo - x.imp) / x.u)} · ${money(x.imp / x.u)} · ${pct.toFixed(1)}% · ${x.est} · ${x.carr} · ${hc} · ${tcMes[ym] || '(sin dólar del mes)'}`);
+      }
+      return;
+    }
+
     // BILLING_PROBE=cerebro[:<palabras>|:todas] → QUÉ HARÍA EL CEREBRO DE PRECIOS (07/10/2026). SOLO LEE.
     // Corre `calcCerebro` (la MISMA función de la noche) y dice, publicación por publicación, qué haría y
     // por qué. Sin palabras muestra sólo las que cambiaría y las que está midiendo; `:todas` muestra todo.
