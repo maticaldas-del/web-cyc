@@ -33628,28 +33628,58 @@ async function main() {
       return;
     }
     // BILLING_PROBE=revcand:<id>=<ok|no|duda>[!nota];…[;go] → LA PASADA DE CLAUDE (07/10/2026).
-    // Escribe `revClaude` {v, nota, cat, ts} en cada candidato, atado al catálogo de HOY. No borra nada,
-    // no descarta nada y no toca el pedido: es una marca para que él vea qué miré. Sin `;go` sólo muestra.
+    // Escribe `revClaude` {v, nota, cat, ts} en cada candidato, atado al catálogo de HOY. Sin `;go` sólo muestra.
+    // `ok` y `duda` son sólo una marca. `no` (fotos distintas, sin dudas) DESCARTA el candidato: regla suya del
+    // 07/10/2026, con el videoportero Hikvision DS-KB8113 (76% contra otro modelo): *"si claude vio fotos distintas
+    // y claramente el producto es distinto y no hay dudas, que lo saque. ¿de qué me sirve sino? es para llenar
+    // espacio sin sentido"*. Descarte DURO (`noTipo:'claude'`, no se revive solo), ese catálogo queda en `mlNoEs`,
+    // se le sacan las unidades del armado (no si ya viaja) y queda en `cyc/emparejamal`. Se devuelve desde el panel.
+    // `revcand:aplicarno[;go]` aplica eso a los que ya estaban marcados `no` antes de esta regla.
     if (/^revcand:/.test(String(process.env.BILLING_PROBE || ''))) {
       const raw = String(process.env.BILLING_PROBE).slice('revcand:'.length);
       const go = /(^|;)go$/i.test(raw.trim());
       const cands = (await db.get('cyc/candidatos_py')) || {};
       const catDe = (c) => ((String(c.mlLink || '').match(/\/p\/(MLA\d+)/i) || [])[1] || String(c.mlId || '').toUpperCase().replace(/^.*\/P\//, '').split(/[?#]/)[0] || '').toUpperCase();
-      const up = {}; let mal = 0;
-      for (const parte of raw.split(';').map((x) => x.trim()).filter((x) => x && x.toLowerCase() !== 'go')) {
+      const up = {}; let mal = 0; const sacar = [];
+      const _sacar = (id, c, cat, nota, ts) => {
+        up[`${id}/no`] = true; up[`${id}/noTs`] = ts; up[`${id}/noTipo`] = 'claude';
+        up[`${id}/motivo`] = `🤖 Claude miró las fotos: NO es el mismo producto que el catálogo ${cat}${nota ? ' — ' + nota : ''}.`;
+        up[`${id}/mlNoEs/${cat}`] = ts;
+        if (!c.pedidoEn && (parseInt(c.pedirU, 10) || 0) > 0) up[`${id}/pedirU`] = 0;
+        sacar.push({ id, c, cat, nota, ts });
+      };
+      if (/^aplicarno(;|$)/i.test(raw.trim())) {
+        for (const [id, c] of Object.entries(cands)) {
+          const rc = c && c.revClaude; const cat = c && catDe(c);
+          if (!rc || rc.v !== 'no' || !cat || rc.cat !== cat || c.no || c.prodId || c.mismoOk === cat) continue;
+          _sacar(id, c, cat, String(rc.nota || ''), Date.now());
+          console.log(`  ❌ ${id} · ${String(c.nombre).slice(0, 60)} → se saca${rc.nota ? ' (' + rc.nota + ')' : ''}${c.pedidoEn ? ' · ⚠️ ya viaja: no toco sus unidades' : ''}`);
+        }
+        if (!sacar.length) { console.log('No hay candidatos marcados "no es el mismo" para sacar.'); return; }
+      }
+      for (const parte of (/^aplicarno(;|$)/i.test(raw.trim()) ? [] : raw.split(';').map((x) => x.trim()).filter((x) => x && x.toLowerCase() !== 'go'))) {
         const m = parte.match(/^(c\d+)\s*=\s*(ok|no|duda)(?:!(.*))?$/i);
         if (!m) { console.log(`  ✗ no entiendo "${parte}"`); mal++; continue; }
         const c = cands[m[1]]; const cat = c && catDe(c);
         if (!c || !cat) { console.log(`  ✗ ${m[1]}: no existe o no está medido contra un catálogo`); mal++; continue; }
         const v = { v: m[2].toLowerCase(), nota: String(m[3] || '').trim().slice(0, 200), cat, ts: Date.now() };
         up[`${m[1]}/revClaude`] = v;
+        if (v.v === 'no' && !c.prodId && c.mismoOk !== cat) _sacar(m[1], c, cat, v.nota, v.ts);
         console.log(`  ${v.v === 'ok' ? '✓' : v.v === 'no' ? '❌' : '🤔'} ${m[1]} · ${String(c.nombre).slice(0, 60)} → ${v.v}${v.nota ? ' (' + v.nota + ')' : ''}`);
       }
       if (mal) { console.log(`\n${mal} renglón(es) con problema: NO escribo nada.`); return; }
-      if (!go) { console.log(`\n(prueba: con ;go al final se escriben ${Object.keys(up).length})`); return; }
+      if (sacar.length) console.log(`\n${sacar.length} se sacan de "Para probar" (fotos distintas): ${sacar.map((x) => String(x.c.nombre).slice(0, 40)).join(' · ')}`);
+      if (!go) { console.log(`(prueba: con ;go al final se escriben)`); return; }
       await db.patch('cyc/candidatos_py', up);
-      let ok = 0; for (const k of Object.keys(up)) { const r = await db.get('cyc/candidatos_py/' + k); if (r && r.v === up[k].v && r.cat === up[k].cat) ok++; }
-      console.log(`\n✓ escritas ${Object.keys(up).length} · releídas ${ok}`);
+      for (const x of sacar) {
+        try {
+          await db.set(`cyc/emparejamal/${x.id}_${x.ts}`, { cand: x.id, nombre: String(x.c.nombre || '').slice(0, 160), cod: String(x.c.cod || '').slice(0, 40), mlCat: x.cat, mlTit: String(x.c.mlTit || '').slice(0, 160), origen: x.c.mlPorNombre === false ? 'link' : 'nombre', margen: (x.c.margen != null && isFinite(x.c.margen)) ? Number(x.c.margen) : null, nota: ('Claude (fotos): ' + (x.nota || '')).slice(0, 300), ts: x.ts });
+        } catch { console.log(`⚠️ no pude anotar ${x.id} en emparejamal`); }
+      }
+      let ok = 0; const revK = Object.keys(up).filter((k) => /\/revClaude$/.test(k));
+      for (const k of revK) { const r = await db.get('cyc/candidatos_py/' + k); if (r && r.v === up[k].v && r.cat === up[k].cat) ok++; }
+      let okNo = 0; for (const x of sacar) { if ((await db.get(`cyc/candidatos_py/${x.id}/no`)) === true) okNo++; }
+      console.log(`\n✓ marcas ${revK.length} (releídas ${ok}) · sacados ${sacar.length} (releídos ${okNo})`);
       return;
     }
     // BILLING_PROBE=emparejamal → LOS "NO ES EL MISMO PRODUCTO" QUE MARCÓ ÉL (07/10/2026). SOLO LEE.

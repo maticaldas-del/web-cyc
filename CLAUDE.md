@@ -874,7 +874,7 @@ linodeobjects.com`, no en la página que da 403; las de ML en `http2.mlstatic.co
  3. `python3 ml-sync/revfotos/revfotos.py comando <carpeta> '{"<id>":"no!<por qué>","<id>":"duda!<por qué>"}'`
     arma el `revcand:…;go` (el resto va ok) y se corre por **ml-consulta** (`revcand` puede escribir ahí).
  4. El panel muestra en cada candidato "🤖 Claude: es el mismo" (verde) o lo pone en rojo con el motivo.
-    **No descarta ni saca nada del pedido: la última palabra es suya** (✅ es el mismo / ❌ no es el mismo).
+    **DESDE EL 07/10/2026 A LA NOCHE, un `no` de Claude (fotos distintas, sin dudas) SACA el candidato** (regla suya con el videoportero Hikvision DS-KB8113: *"si claude vio fotos distintas y claramente el producto es distinto y no hay dudas, que lo saque"*): descarte duro `noTipo:'claude'`, el catálogo a `mlNoEs`, unidades del armado a 0 (no si ya viaja), registro en `cyc/emparejamal`; se devuelve desde Descartados. `duda` sigue sólo marcando. Los marcados antes se sacaron con `revcand:aplicarno;go`.
 **Qué mirar:** el número de modelo (5500/5600, 4cv/5cv, Vivoactive 5/6), otra línea de la misma marca
 (SP Luxe Oil ≠ Oil Reflections, JBL Grip ≠ Flip 7), la versión (Sonoff MINIR4 naranja ≠ MINIR4M Matter
 verde), el tamaño/ml, pack o combo, y el color. Una foto de distinto ángulo o con caja NO es otro producto.
