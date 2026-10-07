@@ -3156,6 +3156,16 @@ async function calcPrueba(db, o) {
 // Memoria por publicación: `cyc/cerebro/<MLA>` { e (elasticidad aprendida), fallos {precio: ts}, base
 // (precio antes de una escasez), ult (última decisión) }.
 const CEREBRO_EVID_U = 4, CEREBRO_EVID_MAX_DIAS = 21, CEREBRO_CAIDA = 0.85, CEREBRO_ELAST = 1.5;
+// Escasez: lejos del precio de siempre la gente se va al competidor (elasticidad mínima 3) y ML pausa saltos grandes (07/10/2026).
+const CEREBRO_ELAST_ESC = 3, CEREBRO_ESC_MAX_MULT = 2.5;
+// Unidades que se esperan vender si la demanda es Poisson(lam) y hay S en stock: E[min(N, S)].
+function esperadoMinPoisson(lam, S) {
+  if (!(lam > 0) || !(S > 0)) return 0;
+  if (lam > 60 && S < lam * 0.6) return S;
+  let pk = Math.exp(-lam), cdf = pk, e = 0;
+  for (let k = 0; k < Math.min(S, 2000); k++) { e += 1 - cdf; pk = pk * lam / (k + 1); cdf += pk; }
+  return e;
+}
 const CEREBRO_LEAD_DIAS = 21, CEREBRO_LEAD_OFI = 10, CEREBRO_SOBRA_DIAS = 90, CEREBRO_FALLO_DIAS = 30;
 const RE_REGALO = /perfum|parfum|\bedp\b|\bedt\b|eau de|body splash|body mist|colonia|reloj|watch|smartwatch|auricular|\bbuds\b|parlante|joystick|control|mando|juguete|lego|muñec|peluche|cartera|billetera|mochila|termo|plancha|secador|cortapelo|afeitad|maquill|labial|crema|estuche|kit|set de|waflera|sandwichera|cafetera|mate/i;
 function _nDomingoAR(y, m, n) { const d = new Date(Date.UTC(y, m, 1)); return Date.UTC(y, m, 1 + ((7 - d.getUTCDay()) % 7) + (n - 1) * 7, 3); }
@@ -3435,17 +3445,37 @@ async function calcCerebro(db, o) {
         const coverRef = rRef > 0 ? S / rRef : Infinity;
         const escasoRef = !noTraer && rRef > 0 && coverRef < lead && u30 >= 2;
         if (escasoRef) {
-          const rObj = S / lead;
-          const fac = Math.pow(rRef / rObj, 1 / eLearn);
-          // Tope del modelo: la elasticidad se mide con cambios chicos; más de +35% sobre el precio de antes
-          // de la escasez es adivinar. Y por escasez no se cruza la barrera de $33.000 (ahí ML cobra el envío).
-          // Sin tope propio (07/10/2026, él con el espejo de $8.250 → $50.871: "si se vende a 50.000 es un golazo (…) lo
-          // puede hacer"): el techo es el competidor de catálogo y los $650.000. La barrera se cruza sólo si cada unidad
-          // deja más con el envío restado (más abajo). Si no vende, la paciencia de la apuesta decide cuándo volver.
-          const obj = Math.min(techoMax, Math.round(pRef * fac));
-          D.escTope = obj === techoMax ? 'competidor' : null;
-          if (obj > p0 * 1.02) { objetivo = obj; accion = 'sube'; tipoMot = 'escasez'; motivo = `escasez: ${S} u. en Full a ${rRef.toFixed(2)}/día (al precio de ${money(pRef)}) alcanzan ${coverRef.toFixed(1)} d y reponer tarda ~${Math.round(lead)} d${cam ? ` (viajan ${cam.u})` : ''}${fDem > 1 ? ` · ${fecha.nom} en ${fecha.dias} d` : ''}`; }
+          // EL PRECIO DE LA ESCASEZ = EL QUE MÁS PLATA DEJA, NO EL QUE HACE DURAR EL STOCK (07/10/2026). Él, con el
+          // espejo de $8.250 → $49.190 (1 u., ML lo pausó): "es mejor que venda a 8.250 y no ninguno a 49.000 (…) busca
+          // el punto donde más plata podamos hacer". Se elige, entre precio de antes ×1,05 y ×CEREBRO_ESC_MAX_MULT, el
+          // que más plata EXTRA deja contra vender al precio de antes: (lo que deja cada unidad − lo que dejaba) × las
+          // unidades que se esperan vender hasta que llegue la reposición (no más que el stock). Lo que no se vende NO
+          // se pierde: sigue ahí y se vende después al precio de antes, por eso cuenta sólo el extra.
+          // La demanda lejos del precio de siempre cae MUCHO más rápido que con un cambio chico (hay competidores al
+          // precio de siempre): elasticidad mínima CEREBRO_ELAST_ESC. Y un salto de más de ×2,5 ML lo toma por error y
+          // pausa la publicación (pasó con el espejo, ×6).
+          const eEsc = Math.max(eLearn, CEREBRO_ELAST_ESC);
+          const gB = await gan(pRef);
+          let best = null;
+          if (gB) {
+            for (let mm = 1.05; mm <= CEREBRO_ESC_MAX_MULT + 1e-9; mm += 0.05) {
+              const pp = Math.round(pRef * mm);
+              if (pp > techoMax) break;
+              const gp = await gan(pp); if (!gp) continue;
+              const eu = esperadoMinPoisson(rRef * Math.pow(mm, -eEsc) * lead, S);
+              const val = (gp.g - gB.g) * eu;
+              if (!best || val > best.val) best = { pp, val, eu, mm };
+            }
+          }
+          const obj = best && best.val > 0 ? best.pp : null;
+          D.escOpt = best ? { mult: Math.round(best.mm * 100) / 100, vende: Math.round(best.eu * 100) / 100, extra: Math.round(best.val), e: eEsc } : null;
+          D.escTope = obj && obj >= Math.round(techoMax) - 10 ? 'competidor' : null;
+          const txtE = `escasez: ${S} u. en Full a ${rRef.toFixed(2)}/día (al precio de ${money(pRef)}) alcanzan ${coverRef.toFixed(1)} d y reponer tarda ~${Math.round(lead)} d${cam ? ` (viajan ${cam.u})` : ''}${fDem > 1 ? ` · ${fecha.nom} en ${fecha.dias} d` : ''}`;
+          const txtO = best ? ` · el que más deja es ${money(obj)} (×${D.escOpt.mult}): se esperan vender ~${D.escOpt.vende} u. hasta reponer y dejan ~${money(D.escOpt.extra)} más que al precio de antes` : '';
+          if (obj && obj > p0 * 1.02) { objetivo = obj; accion = 'sube'; tipoMot = 'escasez'; motivo = txtE + txtO; }
+          else if (obj && enEsc && p0 > obj * 1.1) { objetivo = obj; accion = 'baja'; tipoMot = 'escasez'; motivo = txtE + txtO + ` · estaba en ${money(p0)}, más caro que lo que conviene`; }
           else D.enEscasez = true;
+          if (accion !== 'nada' && p0 < UMBRAL_ENVIO_GRATIS && objetivo >= UMBRAL_ENVIO_GRATIS) D.escCruza = true;   // ya lo midió con el envío restado
         }
         // 2) TERMINÓ LA ESCASEZ (al ritmo del precio de antes ya alcanza): vuelve a ese precio.
         if (accion === 'nada' && !escasoRef && enEsc && Number(M.base) < p0 && coverRef >= lead * 1.2 && (!fecha || !fecha.regalo || !esRegalo || hoyTs > fecha.ts)) {
@@ -3500,7 +3530,8 @@ async function calcCerebro(db, o) {
         if (accion === 'nada' && !motivo) motivo = rBase > 0 ? 'nada para cambiar' : `no vendió en ${T != null ? 'este precio' : '30 días'}: lo manejan la caja barata, el remate y la escalera`;
         // LA BARRERA DE LOS $33.000: se cruza sólo si deja más plata por día con el envío restado.
         let cruza = false;
-        if (accion === 'sube' && p0 < UMBRAL_ENVIO_GRATIS && objetivo >= UMBRAL_ENVIO_GRATIS) {
+        if (D.escCruza) cruza = true;
+        else if (accion === 'sube' && p0 < UMBRAL_ENVIO_GRATIS && objetivo >= UMBRAL_ENVIO_GRATIS) {
           const gA = await gan(objetivo), gB = await gan(UMBRAL_ENVIO_GRATIS - 1);
           const rate = (P) => rEff * Math.pow(p0 / P, eLearn);
           const escasoB = tipoMot === 'escasez';
