@@ -3555,7 +3555,7 @@ anduvo es el mismo error que leer un cero como buena noticia.
 
 ## EL "PROMPT GUAY": EL CHAT QUE MIRA LOS PRECIOS DE PARAGUAY (17/09/2026)
 
-**EL TEXTO VIGENTE ESTÁ EN `ml-sync/PROMPT_GUAY.md` (desde el 07/10/2026).** Cuando lo pida, se le pasa ESE archivo entero.
+**EL TEXTO VIGENTE ESTÁ EN `ml-sync/PROMPT_GUAY.md` (desde el 07/10/2026).** **El chat de compras lo LEE SOLO de la web cada vez que arranca** (raw.githubusercontent.com/maticaldas-del/web-cyc/claude/add-folder-78ysyb/ml-sync/PROMPT_GUAY.md): a Matías le alcanza con decirle *"Leé esa dirección y hacé lo que dice"*. **Cualquier regla de compras nueva se escribe en ese archivo y se sube a `claude/add-folder-78ysyb`**, si no la próxima corrida no la ve. Cuando lo pida, se le pasa ESE archivo entero.
 Cambios de esa versión, pedidos suyos: (1) arranca solo sin preguntar y barre **TODO** el catálogo de Nissei en
 comprasparaguay (~13.800; la vez anterior miró sólo ~1.000 por su cuenta), con la cuenta total = descartados + ya en el panel
 + mirados, y dónde quedó si no termina; (2) **les manda él mismo los resultados al chat CYC** (claude.ai/code, la sesión
