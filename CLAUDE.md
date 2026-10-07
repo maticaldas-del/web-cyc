@@ -824,11 +824,17 @@ la noche, después del rescate/caja barata/remate/escalera. **Reemplaza a la �
    precio nuevo deja menos de 85% de la plata por día de antes → vuelve y anota ese precio como "no funcionó"
    30 días. Si dejó igual o más (o no hay contra qué comparar y vende) → otro escalón para arriba: +6/10/15% según
    lo rápido que vende, hasta el competidor de catálogo (`cyc/techofull`).
- · **Escasez**: si el stock en Full se acaba antes de poder reponer (7 d si viaja una caja o hay en la oficina, 21 d
-   si hay que comprar), sube sin esperar hasta que el stock dure justo eso (elasticidad aprendida, default 1,5).
-   **Sin tope propio**: puse +35% y él lo sacó (*"si se vende a 50.000 es un golazo (…) lo puede hacer"*, con el espejo
-   de $8.250 → $50.871 por 1 unidad). Techo = competidor de catálogo y $650.000; la barrera se cruza sólo si cada
+ · **Escasez** (si el stock en Full se acaba antes de poder reponer: 7 d si viaja una caja o hay en la oficina, 21 d
+   si hay que comprar). **REHECHA EL 07/10 a la tarde**: la primera versión subía "hasta que el stock dure justo eso" y
+   llevó el espejo de $8.250 a $49.190 — **ML lo pausó creyendo que era un error** y casi seguro no vendía ninguno. Él:
+   *"es mejor que venda los 8.250 y no ninguno a 49.000 (…) busca el punto donde más plata podamos hacer"*. Ahora prueba
+   precios de ×1,05 a ×2,5 del precio de siempre y elige el que más PLATA EXTRA deja: (ganancia por unidad a ese precio −
+   la de siempre) × unidades que se esperan vender hasta reponer (Poisson, `esperadoMinPoisson`). Lo que no se vende
+   ahora se vende después al precio de siempre, así que sólo cuenta lo de más. Demanda que cae fuerte lejos del precio de
+   siempre (`CEREBRO_ELAST_ESC` = 3) y **tope ×2,5** (`CEREBRO_ESC_MAX_MULT`, para que ML no lo pause). Si ya está más
+   caro que ese punto (10%+), lo BAJA. Techo = competidor de catálogo y $650.000; la barrera se cruza sólo si cada
    unidad deja más con el envío restado. Al llegar la reposición vuelve solo al precio de antes.
+   **Ojo: lo que pausó ML no lo mira el cerebro** (sólo activas); el espejo hubo que corregirlo aparte.
  · **Paciencia de la apuesta alta** (suyo: *"si vende 1 por semana y gana 1.000 y lo sube y gana 7.000 puede esperar
    7 semanas (…) pero también el costo si se le comienza a cobrar stock"*): mientras el precio nuevo no vendió nada,
    espera hasta que al ritmo de antes se hubieran vendido tantas unidades como veces más deja cada una, descontando
