@@ -826,8 +826,15 @@ la noche, después del rescate/caja barata/remate/escalera. **Reemplaza a la �
    lo rápido que vende, hasta el competidor de catálogo (`cyc/techofull`).
  · **Escasez**: si el stock en Full se acaba antes de poder reponer (7 d si viaja una caja o hay en la oficina, 21 d
    si hay que comprar), sube sin esperar hasta que el stock dure justo eso (elasticidad aprendida, default 1,5).
-   **Tope +35% sobre el precio de antes de la escasez y no cruza los $33.000** (la primera prueba, sin tope, quería
-   llevar un espejo de $8.250 a $50.871 con 1 unidad). Al llegar la reposición vuelve solo a ese precio.
+   **Sin tope propio**: puse +35% y él lo sacó (*"si se vende a 50.000 es un golazo (…) lo puede hacer"*, con el espejo
+   de $8.250 → $50.871 por 1 unidad). Techo = competidor de catálogo y $650.000; la barrera se cruza sólo si cada
+   unidad deja más con el envío restado. Al llegar la reposición vuelve solo al precio de antes.
+ · **Paciencia de la apuesta alta** (suyo: *"si vende 1 por semana y gana 1.000 y lo sube y gana 7.000 puede esperar
+   7 semanas (…) pero también el costo si se le comienza a cobrar stock"*): mientras el precio nuevo no vendió nada,
+   espera hasta que al ritmo de antes se hubieran vendido tantas unidades como veces más deja cada una, descontando
+   el stock parado (capital 2%/mes + almacenamiento de Full si pasó los 60 días y está cargada `almactarifa`). Si vende
+   aunque sea una, se juzga normal (plata por día).
+ · **`cerebro:go` por ml-sync** aplica ya lo que haría la noche (respeta `autoPrecios` y `cerebro` en off).
  · **Sobra stock (+90 días) y no es de catálogo** → −7%, nunca abajo del piso.
  · **Fechas**: Día de la Madre/Padre/Niño, Navidad, Reyes, San Valentín, Amigo → lo regalable ×1,4 de demanda
    en la ventana previa (no baja). Black Friday/CyberMonday → no explora subas.
