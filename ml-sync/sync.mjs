@@ -9628,7 +9628,7 @@ async function main() {
       let AUTO_ON = MANDAR && !DRY && String(cfgAv.autoPrecios || 'on') !== 'off' && !yaCorrioHoy;
       // EL CEREBRO (07/10/2026): con `cyc/mlconfig/cerebro = 'on'` reemplaza a la 📈 y a la 🧪 y saca las
       // esperas fijas de las bajas (ver `calcCerebro`).
-      const CEREBRO_ON = String(cfgAv.cerebro || 'off') === 'on';
+      const CEREBRO_ON = String(cfgAv.cerebro || 'on') !== 'off';   // prendido desde el 07/10/2026 (él: "seguí"); se apaga con cerebro = 'off'
       // LA MARCA VA ANTES DE TOCAR NADA (23/09/2026, revisión): `ml-daily` se intenta 3 veces por
       // noche y dos corridas pueden superponerse. Escribiéndola al final, la segunda la leía vacía y
       // volvía a subir otro +25%. Si no se puede escribir, esta noche no se toca ningún precio.
@@ -10290,6 +10290,8 @@ async function main() {
           const mid = cz.dec.filter((d) => d.midiendo).length, esc = cz.dec.filter((d) => d.enEscasez).length;
           console.log(`   midiendo un precio: ${mid} · en escasez (precio ya ajustado): ${esc}`);
         }
+        // Con el cerebro prendido la 📈 no corre: sus renglones no van al aviso como "dudas" (las decide él).
+        if (CEREBRO_ON) nuevasSub.splice(0, nuevasSub.length);
       }
       // Lo que se hizo solo sale de las listas "para decidir". Lo que falló QUEDA, con su número,
       // para que lo decida él: un cambio que no se pudo hacer no puede desaparecer en silencio.
