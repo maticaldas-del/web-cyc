@@ -809,6 +809,35 @@ privada unificados · las dos facturas de Sancor analizadas.
 **Versión del panel: 20.16 · caché `cyc-v294`**. El ciclo del robot quedó **prendido**.
 
 
+## EL CEREBRO DE PRECIOS: SIN ESPERAS FIJAS, DECIDE POR PLATA POR DÍA (07/10/2026)
+
+Pedido suyo con el Ferrari Negro (el robot lo subió el 29/09 y esperaba 14 días): *"14 días no es mucho? (…) si
+subimos mucho nadie se va a ofender, simplemente no vendemos (…) que el robot lo evalúe, no tiene regla de subida
+ni de bajada ni tiempo entre ellas. siempre pensando en ganar lo máximo posible (…) ganancias, costo, oportunidades
+ganadas y perdidas, stock, fechas especiales. TODO"*. Vive en `calcCerebro` (sync.mjs) y corre en `avisos:go` de
+la noche, después del rescate/caja barata/remate/escalera. **Reemplaza a la 📈 y a la 🧪**, y saca las esperas de
+10 y 14 días de las bajas a ganar la caja. Prendido por defecto; se apaga con `cyc/mlconfig/cerebro = 'off'`.
+ · **Plata por día** = ventas por día con stock (registro hora por hora, contando ventas sólo desde que el registro
+   mira esa clave) × lo que deja cada unidad (comisión de ML preguntada a ESE precio, envío por lado de la barrera,
+   cuotas Premium, IIBB + monotributo, costo de la ficha).
+ · **Cuándo juzgar**: cuando al ritmo de antes ya tendrían que haberse vendido 4 u. (o 21 días con stock). Si el
+   precio nuevo deja menos de 85% de la plata por día de antes → vuelve y anota ese precio como "no funcionó"
+   30 días. Si dejó igual o más (o no hay contra qué comparar y vende) → otro escalón para arriba: +6/10/15% según
+   lo rápido que vende, hasta el competidor de catálogo (`cyc/techofull`).
+ · **Escasez**: si el stock en Full se acaba antes de poder reponer (7 d si viaja una caja o hay en la oficina, 21 d
+   si hay que comprar), sube sin esperar hasta que el stock dure justo eso (elasticidad aprendida, default 1,5).
+   **Tope +35% sobre el precio de antes de la escasez y no cruza los $33.000** (la primera prueba, sin tope, quería
+   llevar un espejo de $8.250 a $50.871 con 1 unidad). Al llegar la reposición vuelve solo a ese precio.
+ · **Sobra stock (+90 días) y no es de catálogo** → −7%, nunca abajo del piso.
+ · **Fechas**: Día de la Madre/Padre/Niño, Navidad, Reyes, San Valentín, Amigo → lo regalable ×1,4 de demanda
+   en la ventana previa (no baja). Black Friday/CyberMonday → no explora subas.
+ · Memoria `cyc/cerebro/<MLA>` {e, fallos, base, rb, ult} · registro `cyc/autoprecio` con `por:'cerebro'` (el
+   supervisor lo cuenta como subir/bajar) · comando **`cerebro[:<palabras>|:todas]`** (solo lee, va por ml-consulta).
+ · No toca: variantes, liquidando, lo que él bajó a mano en 60 d, de catálogo que no gana la caja, Premium sin
+   cuotas medidas, sin stock en Full, lo que ya tocó otro esa noche.
+ · **Primera prueba en seco (07/10)**: 136 miradas · 15 para subir (el Ferrari Negro $75.360 → $93.500 por escasez,
+   techo del competidor) · 18 midiendo · el resto sin cambios por motivo.
+
 ## LA PASADA DE CLAUDE POR LAS FOTOS DE "PARA PROBAR" (07/10/2026, v22.34)
 
 Pedido suyo: *"el robot sube las fotos y todo. pero cuando termina que te va mandando a vos. quiero que
