@@ -3301,7 +3301,11 @@ async function calcCerebro(db, o) {
   // Candidatas: activas, con ficha y costo, con stock en Full, no ocultas.
   const porCta = {};
   for (const [mla, e] of Object.entries(links)) {
-    if (!e || e.ignored || e.noVendemosMas || !e.prodId || !/^MLA\d+$/.test(mla) || (e.status || '') !== 'active' || !e.cuenta) continue;
+    // LO QUE ML FRENÓ POR UN PRECIO QUE PUSO EL CEREBRO TAMBIÉN SE MIRA (07/10/2026). El espejo pasó de $8.250 a
+    // $49.190 y ML lo puso en revisión ("waiting_for_patch": espera que el vendedor corrija). Mirando sólo las
+    // activas, el cerebro no podía corregir su propio exceso y la publicación quedaba frenada con stock adentro.
+    const frenoCer = (e && (e.status || '') !== 'closed' && mem[mla] && mem[mla].ult);
+    if (!e || e.ignored || e.noVendemosMas || !e.prodId || !/^MLA\d+$/.test(mla) || ((e.status || '') !== 'active' && !frenoCer) || !e.cuenta) continue;
     if (soloMla && !soloMla.has(mla)) continue;
     if (filtro && !filtro.test(String(e.title || '') + ' ' + String((prodById[e.prodId] || {}).name || ''))) continue;
     (porCta[e.cuenta] = porCta[e.cuenta] || []).push(mla);
@@ -3311,7 +3315,7 @@ async function calcCerebro(db, o) {
     const tk = tokens[cta];
     if (!tk) { for (const mla of ids) dec({ mla, nom: String(links[mla].title || '').slice(0, 50), cuenta: cta, accion: 'nada', motivo: 'sin permiso de la cuenta esta vuelta' }); continue; }
     for (let k = 0; k < ids.length; k += 20) {
-      let arr; try { arr = await mlGet('/items?ids=' + ids.slice(k, k + 20).join(',') + '&attributes=id,status,price,catalog_listing,listing_type_id,category_id,site_id,variations', tk); } catch { arr = null; }
+      let arr; try { arr = await mlGet('/items?ids=' + ids.slice(k, k + 20).join(',') + '&attributes=id,status,sub_status,price,catalog_listing,listing_type_id,category_id,site_id,variations', tk); } catch { arr = null; }
       if (!arr) { for (const mla of ids.slice(k, k + 20)) dec({ mla, nom: String(links[mla].title || '').slice(0, 50), cuenta: cta, accion: 'nada', motivo: 'ML no contestó la publicación' }); continue; }
       for (const row of arr) {
         const b = (row && row.body) || {}; const mla = b.id; if (!mla || !links[mla]) continue;
@@ -3320,7 +3324,8 @@ async function calcCerebro(db, o) {
         const p0 = Math.round(Number(b.price) || 0);
         const D = { mla, nom, cuenta: cta, p0, catalogo: !!b.catalog_listing, accion: 'nada', motivo: '' };
         const nada = (m) => dec(Object.assign(D, { motivo: m }));
-        if (b.status !== 'active') { nada('no está activa'); continue; }
+        D.frenadaML = b.status === 'under_review' && (b.sub_status || []).includes('waiting_for_patch') && !!(mem[mla] && mem[mla].ult);
+        if (b.status !== 'active' && !D.frenadaML) { nada('no está activa'); continue; }
         if ((b.variations || []).length) { nada('tiene variantes: la maneja el robot de siempre (regla 7)'); continue; }
         if (!(p0 > 0)) { nada('sin precio'); continue; }
         if (!NOSUBIR_OK) { nada('no pude leer la lista de liquidando'); continue; }
@@ -3545,6 +3550,8 @@ async function calcCerebro(db, o) {
           else { D.mgA = Math.round(gF.mg * 10) / 10; if (accion === 'baja' && gF.mg < PISO && tipoMot !== 'volver') { accion = 'nada'; motivo = `a ${money(objetivo)} queda en ${gF.mg.toFixed(1)}%, abajo del piso`; } }
           if (accion === 'baja' && gF && gF.mg < 0) { accion = 'nada'; motivo = 'volver dejaría el margen abajo de cero'; }
         }
+        if (D.frenadaML && accion !== 'baja') { accion = 'nada'; objetivo = null; motivo = `ML la tiene en revisión esperando que se corrija el precio, y el cerebro no la ve más cara de lo que conviene (${motivo || 'sin cambio'}): mirala vos`; tipoMot = ''; }
+        else if (D.frenadaML) motivo += ' · ML la había puesto en revisión por el precio: con esto se corrige';
         if (D.noGanaEsc && accion === 'sube') { accion = 'nada'; objetivo = null; motivo = `en escasez y ya no gana la caja (${e.caja}): no sube más, espera la reposición para volver al precio de antes`; tipoMot = ''; }
         Object.assign(D, { accion, a: accion !== 'nada' ? objetivo : null, motivo, tipoMot, cruza, base: tipoMot === 'escasez' ? (enEsc ? Number(M.base) : p0) : null, rBaseEsc: enEsc ? Number(M.rb) : rEff / fDem, memPrev: M, eLearn });
         dec(D);
@@ -3595,6 +3602,7 @@ async function aplicarCerebro(db, cz, o) {
     if (!r || !r.ok) { await _soltarSubiendo(db, d.mla, msub); fallidos.push({ ...t, err: (r && r.err) || '?' }); continue; }
     let quedo = null;
     try { quedo = Number((await mlGet('/items/' + d.mla + '?attributes=price', tk))?.price) || null; } catch { quedo = null; }
+    if (d.frenadaML) { let st = null; try { st = await mlGet('/items/' + d.mla + '?attributes=status,sub_status', tk); } catch { st = null; } console.log(`   · ${d.nom}: estaba en revisión de ML · ahora ${st ? st.status + (st.sub_status && st.sub_status.length ? ' (' + st.sub_status.join(',') + ')' : '') : 'no pude releer el estado'}`); }
     hechos.push({ ...t, de: r.from || d.p0, a: r.to || d.a, quedo });
     const reg = { tipo: d.accion === 'sube' ? 'sube' : 'baja', por: 'cerebro', mot: d.tipoMot, motivo: String(d.motivo).slice(0, 300), de: r.from || d.p0, a: r.to || d.a, ts: hoyTs, nom: d.nom, cuenta: d.cuenta, u30: d.u30 };
     await anotar(() => db.set('cyc/autoprecio/' + d.mla, reg), 'el registro del robot (autoprecio)', t.f);
