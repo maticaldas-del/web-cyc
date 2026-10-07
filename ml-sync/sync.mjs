@@ -16939,6 +16939,58 @@ async function main() {
       if (!APLICAR || prueba) console.log('\nPRUEBA: no escribí nada ni mandé ningún mensaje. Para aplicar: candidatos:go');
       return;
     }
+    // BILLING_PROBE=candalta:<nombre>|<código>|<US$>|<catálogo ML>|<vendidos>|<link CP>|<foto>;…[;go]
+    // CARGA CANDIDATOS NUEVOS DE "PARA PROBAR" DESDE EL CHAT (07/10/2026). El chat de compras manda la
+    // lista y acá se escribe en `cyc/candidatos_py` con los mismos campos que deja él: nombre, código,
+    // precio crudo de Nissei, catálogo de ML, vendidos que vio (`vendCarga`), link y foto de
+    // comprasparaguay. La medición la hace `candidatos` (noche y mediodía), no este comando.
+    // Frenos: no carga lo que ya está como candidato o como ficha (mismo código, también por el final,
+    // o mismo nombre) y lo dice. Si un renglón está mal escrito no escribe ninguno. Sin `;go` muestra.
+    if (/^candalta:/.test(String(process.env.BILLING_PROBE || ''))) {
+      const _ca = String(process.env.BILLING_PROBE).slice('candalta:'.length);
+      const APLICAR = /(^|;)go\s*$/.test(_ca);
+      const filas = _ca.replace(/(^|;)go\s*$/, '').split(';').map((x) => x.trim()).filter(Boolean);
+      if (!filas.length) { console.log('Usá: candalta:<nombre>|<código>|<US$>|<MLA del catálogo>|<vendidos>|<link CP>|<foto>[;…][;go]'); return; }
+      const cands = (await db.get('cyc/candidatos_py')) || {};
+      const _dg = (x) => String(x || '').replace(/\D/g, '');
+      const codIg = (a, b) => { const x = _dg(a), y = _dg(b); if (!x || !y) return false; if (x === y) return true; const [c1, c2] = x.length < y.length ? [x, y] : [y, x]; return c1.length >= 5 && c2.endsWith(c1); };
+      const _n = (t) => String(t || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[^a-z0-9]+/g, ' ').trim();
+      console.log(`=== CANDIDATOS NUEVOS ${APLICAR ? '(APLICANDO)' : '(PRUEBA: no escribo nada)'} ===\n`);
+      const plan = []; let malos = 0;
+      for (const f of filas) {
+        const [nom, cod, usdS, ml, vend, link, foto] = f.split('|').map((x) => (x || '').trim());
+        const usd = parseFloat(String(usdS).replace(',', '.'));
+        const mlId = (String(ml).match(/MLA\d+/) || [''])[0];
+        if (!nom || !_dg(cod) || !(usd > 0) || !mlId) { console.log(`❌ mal escrito (falta nombre, código, precio o catálogo de ML): ${f.slice(0, 120)}`); malos++; continue; }
+        const yaC = Object.entries(cands).find(([, c]) => c && (codIg(c.cod, cod) || _n(c.nombre) === _n(nom)));
+        if (yaC) { console.log(`= ya es candidato, no lo cargo: ${nom} → ${yaC[1].nombre} (${yaC[0]})${yaC[1].no ? ' · descartado: ' + String(yaC[1].motivo || '').slice(0, 80) : ''}`); continue; }
+        const yaP = products.find((p) => codIg(p.codPy, cod) || _n(p.name) === _n(nom));
+        if (yaP) { console.log(`= ya es producto probado, no lo cargo: ${nom} → ${yaP.name} (${yaP.id})`); continue; }
+        const v = parseInt(String(vend).replace(/\D/g, ''), 10);
+        const okHttps = (u) => /^https:\/\//.test(u) ? u.slice(0, 300) : '';
+        const fotoUrl = okHttps(foto) || (/^[0-9a-f]{20,}\.(webp|jpg|jpeg|png)$/i.test(foto) ? 'https://bucket-prod.us-ord-10.linodeobjects.com/site/media/fotos/produtos/thumbs/big/' + foto : '');
+        const c = { nombre: nom.slice(0, 160), cod: String(cod), usd, mlId, enNissei: true, fuente: 'chat', ts: Date.now() };
+        if (isFinite(v) && v > 0) c.vendCarga = v;
+        if (okHttps(link)) c.link = okHttps(link);
+        if (fotoUrl) c.foto = fotoUrl;
+        console.log(`+ ${c.nombre} · cód ${c.cod} · US$ ${usd.toFixed(2)} · ML ${mlId} · vendidos ${c.vendCarga ?? '—'}${c.link ? '' : ' · sin link CP'}${c.foto ? '' : ' · sin foto'}`);
+        plan.push(c);
+      }
+      if (malos) { console.log(`\n${malos} renglón(es) mal escritos: NO escribo ninguno.`); return; }
+      if (!plan.length) { console.log('\nNada nuevo para cargar.'); return; }
+      if (!APLICAR) { console.log(`\nPRUEBA: ${plan.length} para cargar. Para aplicar, agregá ";go" al final.`); return; }
+      let ok = 0; const base = Date.now();
+      for (let i = 0; i < plan.length; i++) {
+        const id = 'c' + base + String(i);
+        await db.set('cyc/candidatos_py/' + id, plan[i]);
+        const r = await db.get('cyc/candidatos_py/' + id);
+        const bien = r && r.cod === plan[i].cod && Math.abs(r.usd - plan[i].usd) < 0.005;
+        if (bien) ok++;
+        console.log(`  ${bien ? '✓' : '❌'} ${plan[i].nombre} (${id})`);
+      }
+      console.log(`\n${ok} de ${plan.length} cargados. Los mide \`candidatos\` en su próxima vuelta (o candidatos:go).`);
+      return;
+    }
     // BILLING_PROBE=pyprecio:<id|palabras>=<código>/<US$>[@<link>];<id|palabras>=nohabia;…[;go]
     // EL PRECIO Y EL CÓDIGO DE PARAGUAY DE UNA FICHA, DESDE EL CHAT (07/10/2026). Pedido del chat de
     // compras (etapa 1): cargar el Precio Nissei y el Código Nissei de los probados SIN tocar el
