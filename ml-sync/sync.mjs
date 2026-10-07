@@ -6778,8 +6778,13 @@ function chequeoMismoProducto(nombre, mlTit) {
   if (extraVar.length) motivos.push(`ML dice "${extraVar.join(', ')}" y el candidato no`);
   // EL MODELO QUE CHOCA (07/10/2026, la Webcam Emeet C950 medida contra la C960): las mismas letras con
   // otro número es OTRO modelo. Antes no avisaba porque "1080p" coincidía y contaba como modelo.
-  const modML = _rvMod(t), choque = [];
-  for (const x of modCP) if (!mlPlano.includes(x)) { const lx = x.replace(/\d+/g, '#'); for (const y of modML) if (y !== x && y.replace(/\d+/g, '#') === lx && !_rvBase(nombre).replace(/ /g, '').includes(y)) choque.push(`${x}/${y}`); }
+  // También los modelos de DOS caracteres, letra + número (X8/X6 del mouse Attack Shark, 07/10/2026): no
+  // entran en `_rvMod` (pide 3+) porque solos dan ruido, pero cuando los dos títulos traen uno con la MISMA
+  // letra y otro número, es otro modelo.
+  const _mod2 = (tt) => [...new Set([..._rvMod(tt), ...((_rvBase(tt).match(/\b[a-z]\d\b/g)) || [])])];
+  const modML = _mod2(t), choque = [];
+  const enML = (x) => (x.length > 2 ? mlPlano.includes(x) : (` ${_rvBase(t)} `).includes(` ${x} `));
+  for (const x of _mod2(nombre)) if (!enML(x)) { const lx = x.replace(/\d+/g, '#'); for (const y of modML) if (y !== x && y.replace(/\d+/g, '#') === lx && !_rvBase(nombre).replace(/ /g, '').includes(y)) choque.push(`${x}/${y}`); }
   if (choque.length) motivos.push(`otro modelo: el candidato dice ${choque.map((z) => z.split('/')[0].toUpperCase()).join(', ')} y ML ${choque.map((z) => z.split('/')[1].toUpperCase()).join(', ')}`);
   else if (modCP.length && !modOK.length) motivos.push(`el modelo (${modCP.join(', ')}) no está en el título de ML`);
   if (!modCP.length && faltan.length) motivos.push(`en ML no está(n): ${faltan.join(', ')}`);
