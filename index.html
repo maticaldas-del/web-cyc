@@ -2453,7 +2453,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='22.36';
+const APP_VERSION='22.37';
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
 // muestre la versión y la fecha de actualización y que tenga un desplegable predeterminado cerrado".
 // Y el mismo día: "que ponga fecha de cada modificación y haya una barrita para scrollear y que
@@ -2464,6 +2464,7 @@ const APP_VERSION='22.36';
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'22.37',f:'07/10/2026',h:'16:04',c:[{n:2,t:'📦 Armar caja: una cuenta que todavía no tiene la publicación ya no recibe el mínimo de 4 si otra cuenta tiene stock de ese color en Full (ej. P47 blanco y rojo en Matías). El renglón dice cuántas quedan y dónde.'}]},
   {v:'22.36',f:'07/10/2026',h:'15:52',c:[{n:2,t:'📈 Línea de tiempo: los meses viejos (antes de que el panel guardara las ventas) ahora muestran costo, ganancia y % estimados: el costo de la ficha hacia atrás con el dólar de cada mes, y lo que deposita ML sacado de una venta parecida. Dicen ≈ estimada al pasar el dedo.'}]},
   {v:'22.35',f:'07/10/2026',h:'13:39',c:[{n:1,t:'📈 Línea de tiempo: ahora muestra también el día de HOY, incompleto (las ventas de hoy y el stock de ahora; las visitas y la caja llegan a la noche).'}]},
   {v:'22.34',f:'06/10/2026',h:'23:20',c:[{n:2,t:'🤖 Para probar: cada candidato dice si Claude ya miró las dos fotos y los títulos (✓ es el mismo · ❌ no es · 🤔 dudoso). Lo que dio NO o dudoso sale en rojo; la última palabra es tuya.'}]},
@@ -6087,7 +6088,8 @@ function renderOfiCaja(){
       const det=(f.porQueNo||[]).map(c=>`<div>· <b>${c.cuenta}</b>: ${c.enML} en Full`
         +(c.camino>0?` + ${c.camino} en camino`:'')
         +` · vendió ${c.vMes} en ${PED_MAX_DAYS} días`
-        +(c.pocas?` → con ${c.vMes===1?'una sola venta':'2 ventas'} no se saca un ritmo y tiene stock: no se manda más`
+        +(c.sinPub&&c.enML+c.camino<=0&&(c.otras||[]).length?` → todavía no tiene publicación y quedan ${(c.otras||[]).map(o=>`${o.u} en Full de ${o.cuenta}`).join(' y ')}: cuando se acaben, se manda`
+          :c.pocas?` → con ${c.vMes===1?'una sola venta':'2 ventas'} no se saca un ritmo y tiene stock: no se manda más`
           :c.dias!=null&&c.dias<900?` → le alcanza para ${Math.round(c.dias)} días`
           :c.vMes<=0?` → tiene stock y no vendió ninguna: mandar más no lo hace vender`:'')
         +`</div>`).join('');
@@ -10469,6 +10471,22 @@ function cuentasPorVariante(p,varDeMla){
   });
   return out;
 }
+// LA CUENTA NUEVA NO RECIBE EL MÍNIMO SI OTRA CUENTA TODAVÍA TIENE STOCK DE ESO EN FULL (07/10/2026, él eligió
+// la a). Lo marcó con los P47 blanco y rojo: Ayelen todavía no tiene la publicación (`pasara`) y la pantalla le
+// pedía 4 de cada uno, con 11 blanco y 5 rojo adentro del Full de Matías. La mercadería no se mueve entre
+// cuentas: lo de Matías se vende ahí, y recién cuando se acabe tiene sentido estrenar la de Ayelen. Es la
+// misma idea de C1 (Pedidos mira las 4 cuentas juntas). Sólo para la cuenta SIN publicación: una cuenta que
+// ya publica y está en cero sigue recibiendo el mínimo, porque en cero no vende.
+function _stockOtrasCuentas(l,qDe){
+  const out=[];
+  for(const o of LOCS){if(o===l)continue;const u=Math.max(0,Number(qDe(o))||0);if(u>0)out.push({cuenta:o,u});}
+  return out;
+}
+function _pisoCeroAplica(c){
+  if(!(c.stock<=0))return false;
+  if(c.sinPub&&(c.otras||[]).length)return false;
+  return true;
+}
 function _repartoVariantes(p,hayTotal,tr){
   const varDeMla=_varPorMla(p);
   const ventasV=ventasPorCuentaVar(p,varDeMla);
@@ -10503,8 +10521,9 @@ function _repartoVariantes(p,hayTotal,tr){
       // Pedidos, PED_MIN_VENTAS_RITMO). No se pide nada por ritmo; si la cuenta está en cero igual
       // recibe el mínimo de REPO_PISO_CERO, más abajo.
       const pocas=vMes>0&&vMes<PED_MIN_VENTAS_RITMO;
+      const otras=_stockOtrasCuentas(l,o=>getQV(p.id,o,va));
       return{cuenta:l,vMes,vDia,dConS,stock,enML,camino,dias,hist,pocas,sinPub:!reales.includes(l),falta:pocas?0:Math.max(0,objetivo-stock),
-        etiq:etiquetaFullDe(p.id,l,va)};
+        otras,etiq:etiquetaFullDe(p.id,l,va)};
     }).sort((a,b)=>{
       const da=a.dias==null?9999:a.dias, db=b.dias==null?9999:b.dias;
       if(da!==db)return da-db;
@@ -10516,7 +10535,7 @@ function _repartoVariantes(p,hayTotal,tr){
       // Sin una sola unidad en Full la publicación NO VENDE. Aunque la cuenta "no lo necesite"
       // según los días de stock, si está en cero hay que mandarle algo: es la diferencia entre
       // vender y no vender, no un ajuste de reposición.
-      const necesita=c.stock<=0?Math.max(REPO_PISO_CERO,c.falta):c.falta;
+      const necesita=_pisoCeroAplica(c)?Math.max(REPO_PISO_CERO,c.falta):c.falta;
       if(necesita<=0)continue;
       const mandar=Math.min(quedan,necesita);
       quedan-=mandar;
@@ -10531,7 +10550,7 @@ function _repartoVariantes(p,hayTotal,tr){
       // *"ml me pide que mande y la web de cyc no, que hago?"*. Dos pantallas que se contradicen
       // sin decir por qué obligan a elegir a ciegas — la misma lección del cero sin explicación.
       porQueNo:sug.length===0&&publicadas.length>0?cand.slice(0,4).map(c=>({
-        cuenta:c.cuenta,enML:c.enML,camino:c.camino,vMes:c.vMes,dias:c.dias,pocas:c.pocas})):null});
+        cuenta:c.cuenta,enML:c.enML,camino:c.camino,vMes:c.vMes,dias:c.dias,pocas:c.pocas,sinPub:c.sinPub,otras:c.otras})):null});
   }
   // Lo contado sin aroma (la casilla del producto quedó con más que la suma de sus variantes):
   // se muestra aparte para que no desaparezca de la pantalla sin decir nada.
@@ -10564,8 +10583,9 @@ function repartoOficina(){
       const objetivo=objetivoRepo(vDia);
       // C8 (29/09): con 1 o 2 ventas no se saca un ritmo — ver la rama con variantes.
       const pocas=(ventas[l]||0)>0&&(ventas[l]||0)<PED_MIN_VENTAS_RITMO;
+      const otras=_stockOtrasCuentas(l,o=>getQ(p.id,o));
       return{cuenta:l,vMes:ventas[l]||0,vDia,dConS,stock,enML,camino,dias,hist,pocas,sinPub:!reales.includes(l),falta:pocas?0:Math.max(0,objetivo-stock),
-        etiq:etiquetaFullDe(p.id,l,null)};
+        otras,etiq:etiquetaFullDe(p.id,l,null)};
     }).sort((a,b)=>{
       // Primero a la que se le acaba antes. Las que no venden van al final.
       const da=a.dias==null?9999:a.dias, db=b.dias==null?9999:b.dias;
@@ -10580,7 +10600,7 @@ function repartoOficina(){
       // siempre. Sin esto un producto sin ventas daba objetivo 0, falta 0, y la pantalla contestaba
       // "ninguna cuenta lo necesita" con la publicación parada en cero — que es justo cuando más
       // hace falta mandar. Pasaba con la Linterna Multifuncion (23/08/2026).
-      const necesita=c.stock<=0?Math.max(REPO_PISO_CERO,c.falta):c.falta;
+      const necesita=_pisoCeroAplica(c)?Math.max(REPO_PISO_CERO,c.falta):c.falta;
       if(necesita<=0)continue;                // ya tiene para los días de cobertura
       const mandar=Math.min(quedan,necesita);
       quedan-=mandar;
@@ -10593,7 +10613,7 @@ function repartoOficina(){
       // los productos sin colores decían "ninguna lo necesita" sin decir dónde estaba el stock
       // (06/10/2026, la Mini Linterna COB: "quiero saber porque").
       porQueNo:sug.length===0&&publicadas.length>0?cand.map(c=>({
-        cuenta:c.cuenta,enML:c.enML,camino:c.camino,vMes:c.vMes,dias:c.dias,pocas:c.pocas})):null});
+        cuenta:c.cuenta,enML:c.enML,camino:c.camino,vMes:c.vMes,dias:c.dias,pocas:c.pocas,sinPub:c.sinPub,otras:c.otras})):null});
   });
   // Primero lo que más urge mandar: la cuenta más apretada de cada producto.
   filas.sort((a,b)=>{

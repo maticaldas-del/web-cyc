@@ -3058,6 +3058,16 @@ con ninguna, no hay de dónde sacar un costo y nadie lo puede inventar. Ahí va 
 
 **Y después de vincular va `netoweb`**, si no el producto sigue mostrando "—" en el panel.
 
+## LA CUENTA NUEVA NO RECIBE EL MÍNIMO SI OTRA TIENE STOCK DE ESO (07/10/2026, v22.37, eligió la a)
+
+Lo marcó él con los P47 blanco y rojo: Armar caja le pedía 4 de cada uno para Ayelen (marcada con `pasara`,
+sin publicación) teniendo **11 blanco y 5 rojo en el Full de Matías** (el rojo, 77 días sin vender). La pantalla
+no los veía porque Matías tiene el P47 en `nomandar`. Ahora `_pisoCeroAplica`: una cuenta **sin publicación**
+no recibe el mínimo de `REPO_PISO_CERO` si otra cuenta tiene stock de ese color en Full (`_stockOtrasCuentas`),
+y el renglón dice cuántas quedan y dónde. Una cuenta que YA publica y está en cero sigue recibiendo el mínimo.
+Misma idea que C1 (Pedidos mira las 4 cuentas juntas). **Mercado Libre: en Matías quedan P47 azul 10 · blanco 11 ·
+rojo 5 (07/10).**
+
 ## UNA SOLA CUENTA POR PRODUCTO (09/09/2026)
 
 Norma suya: *"quiero comenzar a dividir las publicaciones por cuentas. no quiero publicacion
