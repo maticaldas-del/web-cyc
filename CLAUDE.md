@@ -1407,6 +1407,9 @@ julio, a CYC le quedan **~$2.000.000/mes** después de todo eso.
 - `ml-sync/sync.mjs` — el robot. Trae las ventas, ajusta precios y manda avisos por Telegram.
 - Firebase Realtime Database, namespace `cyc/` — todos los datos.
 - GitHub Actions — corre el robot. La rama por defecto es `claude/add-folder-78ysyb`.
+  **REGLA SUYA (07/10/2026): cada cambio se sube TAMBIÉN a `claude/add-folder-78ysyb`, siempre y sin
+  preguntar** (*"actualiza automaticamente siempre. siempre lo hiciste asi"*). La web y el robot salen de
+  esa rama: un cambio que queda sólo en la rama de la sesión no lo ve nadie.
 
 ### Los "probes": cómo pedirle cosas al robot
 
