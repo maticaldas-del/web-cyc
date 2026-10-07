@@ -2453,7 +2453,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='22.31';
+const APP_VERSION='22.32';
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
 // muestre la versión y la fecha de actualización y que tenga un desplegable predeterminado cerrado".
 // Y el mismo día: "que ponga fecha de cada modificación y haya una barrita para scrollear y que
@@ -2464,6 +2464,7 @@ const APP_VERSION='22.31';
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'22.32',f:'06/10/2026',h:'21:45',c:[{n:1,t:'🔍 Robot de precios (Métricas): buscador de producto. Muestra lo que ganó o perdió, lo en curso, los otros cambios que no suman (rescates, a mano) y si lo está vigilando'}]},
   {v:'22.31',f:'06/10/2026',h:'21:25',c:[{n:1,t:'📈 Línea de tiempo: la línea "$ ganancia/día" arranca desde el primer día del gráfico (antes empezaba recién el 7º, porque el promedio de 7 días no miraba los días anteriores al período).'}]},
   {v:'22.30',f:'06/10/2026',h:'19:10',c:[{n:2,t:'🤖 Robot de precios (Métricas): los cambios de menos de 7 días se ven desde la primera venta, en gris, con lo que ya cobraron de más o de menos por el precio y el día en que sale el resultado final. No suman al total hasta los 7 días.'}]},
   {v:'22.29',f:'06/10/2026',h:'18:55',c:[{n:1,t:'⬆️ Ventas: cada venta muestra el último cambio de precio de los 30 días anteriores (antes sólo 7)'}]},
@@ -16106,7 +16107,13 @@ function renderMetOrigen(keys){
 // `resumen.todos` CADA cambio con su motivo y su plata ya medida; acá sólo se FILTRA y se SUMA lo
 // que el robot midió (no hay una segunda cuenta de atribución). El total grande suma sólo lo que el
 // robot decidió mirando el mercado (`enTotal`): los rescates por costo/inflación se ven, pero no suman.
-let metAutoMes='todos',metAutoMot='cuentan';
+let metAutoMes='todos',metAutoMot='cuentan',metAutoQ='';
+// BUSCAR UN PRODUCTO (07/10/2026), pedido suyo: "quiero poder buscar producto, para ver cómo va el
+// robot en ese". Filtra lo confirmado, lo en curso y lo que vigila por nombre, MLA o cuenta, y además
+// muestra los cambios de ese producto que NO suman (rescates, a mano): sin eso la historia queda a medias.
+const metAutoNorm=t=>String(t||'').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'');
+const metAutoMatch=x=>{const q=metAutoNorm(metAutoQ).trim();if(!q)return true;const h=metAutoNorm((x.nom||'')+' '+(x.mla||'')+' '+(x.cuenta||''));return q.split(/\s+/).every(w=>h.includes(w));};
+function metAutoBuscar(v){metAutoQ=v;renderMetAuto();const i=document.getElementById('met-auto-q');if(i){i.focus();const L=i.value.length;try{i.setSelectionRange(L,L);}catch(e){}}}
 const MET_AUTO_MOT={prueba:'🧪 Prueba de suba (sin catálogo)',subir:'📈 Subir (había lugar)',bajar:'📉 Bajar para ganar la caja',remate:'🔨 Remate',escalera:'🪜 Escalera',rescate:'🛟 Rescate después de una venta baja (no cuenta)',rescatep:'🛟 Rescate antes de vender',volver:'↩️ Volvió atrás (el cambio perdía plata)',deshace:'↩️ Deshizo un cambio suyo (no cuenta)',mano:'✋ A mano'};
 function metAutoSet(k,v){if(k==='mes')metAutoMes=v;else metAutoMot=v;renderMetAuto();}
 let metVigAbierto=false;
@@ -16115,7 +16122,7 @@ function metVigBox(){
   const V=state.vigilancia,f=V&&V.filas?Object.values(V.filas):[];
   const enP=f.filter(x=>x&&(x.estado==='prueba'||x.estado==='candidata')).length,cat=f.filter(x=>x&&x.estado==='catalogo').length;
   const res=f.length?`${f.length} publicaciones que venden · ${cat} de catálogo · ${enP} en prueba de suba`:'todavía sin foto';
-  return `<details style="margin-top:12px;border-top:1px solid rgba(148,163,184,.16);padding-top:8px"${metVigAbierto?' open':''} ontoggle="metVigAbierto=this.open">
+  return `<details style="margin-top:12px;border-top:1px solid rgba(148,163,184,.16);padding-top:8px"${metVigAbierto||metAutoNorm(metAutoQ).trim()?' open':''} ontoggle="metVigAbierto=this.open">
     <summary style="cursor:pointer;font-size:.66rem;color:var(--text)">👀 Qué está mirando ahora <span style="color:var(--muted)">· ${res}</span></summary>
     <div id="met-vig" style="margin-top:8px"></div></details>`;
 }
@@ -16142,7 +16149,9 @@ function renderMetAuto(){
   if(metAutoMes!=='todos'&&!meses.includes(metAutoMes))metAutoMes='todos';
   const MES=['ene','feb','mar','abr','may','jun','jul','ago','sep','oct','nov','dic'];
   const mesTxt=ym=>{const [y,m]=ym.split('-');return MES[+m-1]+' '+y;};
-  const delMes=metAutoMes==='todos'?todos:todos.filter(x=>mesesDe(x).includes(metAutoMes)).map(x=>x.mes&&Object.keys(x.mes).length?{...x,total:n(x.mes[metAutoMes]),precio:n(x.mes[metAutoMes]),volumen:0,_mesParcial:ymDe(x.ts)!==metAutoMes||Object.keys(x.mes).length>1}:x);
+  let delMes=metAutoMes==='todos'?todos:todos.filter(x=>mesesDe(x).includes(metAutoMes)).map(x=>x.mes&&Object.keys(x.mes).length?{...x,total:n(x.mes[metAutoMes]),precio:n(x.mes[metAutoMes]),volumen:0,_mesParcial:ymDe(x.ts)!==metAutoMes||Object.keys(x.mes).length>1}:x);
+  const buscando=!!metAutoNorm(metAutoQ).trim();
+  if(buscando)delMes=delMes.filter(metAutoMatch);
   const deshechos=delMes.filter(x=>x.motivo==='deshace'&&x.estado==='medido').length;
   const lista=delMes.filter(x=>metAutoMot==='todas'?true:metAutoMot==='cuentan'?!!x.enTotal||(x.estado!=='medido'&&['subir','bajar','remate','escalera','prueba','rescatep','volver'].includes(x.motivo)):x.motivo===metAutoMot);
   // El total grande: SÓLO lo medido que cuenta (decisiones del robot mirando el mercado), del mes elegido.
@@ -16212,15 +16221,28 @@ function renderMetAuto(){
     <div style="font-size:.62rem;color:var(--muted);margin-bottom:10px"><span style="color:var(--green)">${ok.filter(x=>n(x.total)>0).length} ganaron ${sg(ok.reduce((a,x)=>a+Math.max(0,n(x.total)),0))}</span> · <span style="color:var(--red)">${ok.filter(x=>n(x.total)<0).length} perdieron ${sg(ok.reduce((a,x)=>a+Math.min(0,n(x.total)),0))}</span></div>
     ${ok.map(fila).join('')}`
     :`<div style="font-size:.72rem;color:var(--muted)">Todavía no hay ningún resultado${metAutoMes==='todos'?'':' en '+mesTxt(metAutoMes)}: cada cambio necesita 7 días para saber si ganó o perdió.</div>`;
+  // Buscando: lo que también le pasó a ese producto y NO suma (rescates, a mano, deshacer), en gris.
+  const otros=buscando?delMes.filter(x=>!x.enTotal).sort((a,b)=>n(b.ts)-n(a.ts)):[];
+  const filaOtro=x=>{const sube=n(x.a)>n(x.de);const pct=n(x.de)&&n(x.a)?((n(x.a)/n(x.de)-1)*100).toFixed(1).replace('.',','):'?';
+    return `<div style="padding:6px 0;border-bottom:1px solid rgba(148,163,184,.1);font-size:.68rem;color:var(--muted)">
+      <div style="display:flex;justify-content:space-between;gap:8px;align-items:baseline"><span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${sube?'⬆️':'⬇️'} ${x.nom||x.mla}${x.cuenta?' · '+x.cuenta:''}</span><b style="white-space:nowrap">${x.estado==='medido'||x.estado==='encurso'?sg(x.total):'—'}</b></div>
+      <div style="font-size:.6rem">${fh(x.ts)} · ${MET_AUTO_MOT[x.motivo]||x.motivo||'?'} · ${x.de?fmt(n(x.de)):'?'} → ${x.a?fmt(n(x.a)):'?'} (${sube?'+':''}${pct}%) · no suma</div></div>`;};
+  const bloqueOtros=otros.length?`<div style="margin-top:14px"><div style="font-size:.6rem;color:var(--muted);text-transform:uppercase;letter-spacing:.04em">Otros cambios de precio de lo buscado (no suman)</div>${otros.map(filaOtro).join('')}</div>`:'';
+  const nada=buscando&&!delMes.length?`<div style="font-size:.72rem;color:var(--muted);margin-top:8px">El robot no le cambió el precio a nada que coincida con «${metAutoQ.replace(/[<>&"]/g,'')}»${metAutoMes==='todos'?'':' en '+mesTxt(metAutoMes)}. Abajo, en «Qué está mirando ahora», se ve si lo está vigilando.</div>`:'';
+  const qAttr=String(metAutoQ).replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;');
+  const caja=`<input id="met-auto-q" type="search" value="${qAttr}" placeholder="🔍 Buscar un producto (nombre, MLA o cuenta)" oninput="metAutoBuscar(this.value)" style="width:100%;box-sizing:border-box;font-size:16px;padding:8px 10px;margin-bottom:10px;border-radius:8px;border:1px solid rgba(148,163,184,.3);background:transparent;color:var(--text)">`;
+  const cuerpoB=buscando&&!delMes.length?nada:cuerpo;
   el.innerHTML=`<div class="chart-box">${viejo}
+    ${caja}
     <div style="display:flex;flex-wrap:wrap;gap:5px;margin-bottom:12px">${chipsMes}</div>
-    ${cuerpo}${notaDesh}${bloqueCurso}
+    ${cuerpoB}${notaDesh}${bloqueCurso}${bloqueOtros}
     <details style="margin-top:10px"><summary style="cursor:pointer;font-size:.6rem;color:var(--muted)">¿Qué cuenta?</summary><div style="font-size:.6rem;color:var(--muted);line-height:1.45;margin-top:4px">
       Sólo lo que el robot decidió mirando el mercado (📈 subir, 📉 bajar, 🧪 prueba de suba, 🔨 remate y 🪜 escalera), y sólo después de 7 días. Antes de eso el cambio aparece abajo, en gris, con lo que ya se cobró de más o de menos por el precio: eso es plata firme, pero si se vendió menos (o más) por el precio recién se sabe a la semana. No cuenta recuperar margen por costo o inflación (lo ibas a hacer igual) ni lo que tocaste a mano.
       "Sin robot" es que el precio se quedaba donde estaba: se compara el mismo tiempo antes y después. En remates y escalera NO se suma la ganancia de lo que se vendió (bajar el precio adelanta la venta, no la crea): cuenta lo que se cobró de menos, el almacenamiento que se dejó de pagar y la plata que volvió antes (la mercadería vendida antes de lo que se habría vendido a su ritmo normal, valorada al 1% por mes en dólares, el interés que paga CYC).
     </div></details>
     ${metVigBox()}
   </div>`;
+  renderMetVig();
 }
 // ── 🧪 VIGILANCIA DE PRECIOS (idea 6 de la etapa 6, 27/09/2026) ──────────────────────────────────
 // Pedido suyo: "tener como un panel de control para ver (…) todos los cambios de las publicaciones, y
@@ -16249,7 +16271,7 @@ function renderMetVig(){
   const cnt={};filas.forEach(f=>cnt[f.estado]=(cnt[f.estado]||0)+1);
   const orden=['candidata','prueba','cerrada','tope','espera','no','catalogo','sinleer'];
   filas.sort((a,b)=>orden.indexOf(a.estado)-orden.indexOf(b.estado)||n(b.u30)-n(a.u30));
-  const vis=filas.filter(f=>metVigFiltro==='todas'||f.estado===metVigFiltro);
+  const vis=filas.filter(f=>(metVigFiltro==='todas'||f.estado===metVigFiltro)&&metAutoMatch(f));
   const dias=Math.floor((Date.now()-n(V.ts))/864e5);
   const chip=(v,lbl,on)=>`<button onclick="metVigSet('${v}')" style="font-size:.6rem;padding:3px 8px;border-radius:12px;border:1px solid ${on?'var(--green)':'rgba(148,163,184,.3)'};background:${on?'rgba(52,211,153,.12)':'transparent'};color:${on?'var(--green)':'var(--muted)'};cursor:pointer">${lbl}</button>`;
   const chips=[chip('todas','Todas ('+filas.length+')',metVigFiltro==='todas'),...orden.filter(k=>cnt[k]).map(k=>chip(k,MET_VIG_EST[k][0]+' '+MET_VIG_EST[k][1].split(' (')[0].split(':')[0]+' ('+cnt[k]+')',metVigFiltro===k))].join('');
