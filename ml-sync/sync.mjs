@@ -40,7 +40,7 @@ process.on('SIGTERM', () => _alCortar('SIGTERM'));
 // los que escriben en cantidad o en plata se niegan de entrada, y cualquier otro corre con la base,
 // ML, Mercado Pago y Telegram en sólo lectura (se deja renovar y guardar el token de ML, que ML rota).
 const EN_CONSULTA = process.env.GITHUB_WORKFLOW === 'ml-consulta' || process.env.ML_CONSULTA === '1';
-const CONSULTA_ESCRIBE = new Set(['vincular', 'pasara', 'nomandar', 'fijarvar', 'cupo', 'poncosto', 'tamfull', 'lotesfull']);
+const CONSULTA_ESCRIBE = new Set(['revcand', 'vincular', 'pasara', 'nomandar', 'fijarvar', 'cupo', 'poncosto', 'tamfull', 'lotesfull']);
 const CONSULTA_NIEGA = new Set(['candcuotas', 'candml', 'ofi', 'pvped', 'ancla', 'responder', 'pyped', 'cajallego', 'abrircaja', 'compray', 'pedir', 'dispo', 'saldoml',
   'armarsaldo', 'avisos', 'cajasllegaron', 'netoweb', 'netoreal', 'candidatos', 'supervisor', 'sacapromos', 'pausar', 'liquidando',
   'unapub', 'volver', 'submargen', 'fijar', 'activarfull', 'meta', 'ciclo', 'marcano', 'pausaprecio', 'cargargasto', 'retiromes']);
@@ -32841,6 +32841,58 @@ async function main() {
       return;
     }
 
+    // BILLING_PROBE=fotosrev[:todos|:<palabras>] → LO QUE CLAUDE TIENE QUE MIRAR (07/10/2026). SOLO LEE.
+    // Pedido suyo: *"quiero que vayas revisando las fotos y los productos. así ya tienen una pasada tuya y
+    // por último los reviso yo"*. Lista los candidatos vivos ya medidos contra un catálogo de ML que Claude
+    // todavía no miró (o que el robot cambió de catálogo), con los dos títulos y las DOS fotos, del que más
+    // margen da al que menos. Fotos y títulos son de productos, no hay datos de nadie.
+    if (/^fotosrev(:|$)/.test(String(process.env.BILLING_PROBE || ''))) {
+      const arg = String(process.env.BILLING_PROBE).slice('fotosrev'.length).replace(/^:/, '').trim().toLowerCase();
+      const todos = arg === 'todos', pal = todos ? [] : arg.split(/[+ ]/).filter(Boolean);
+      const cands = (await db.get('cyc/candidatos_py')) || {};
+      const catDe = (c) => ((String(c.mlLink || '').match(/\/p\/(MLA\d+)/i) || [])[1] || String(c.mlId || '').toUpperCase().replace(/^.*\/P\//, '').split(/[?#]/)[0] || '').toUpperCase();
+      const lista = Object.entries(cands).map(([id, c]) => ({ id, ...(c || {}) }))
+        .filter((c) => c.nombre && c.mlTit && !c.no && !c.prodId && catDe(c))
+        .filter((c) => !pal.length || pal.every((w) => String(c.nombre).toLowerCase().includes(w)))
+        .filter((c) => todos || pal.length || !(c.revClaude && c.revClaude.cat === catDe(c)))
+        .sort((a, b) => (Number(b.margen) || -999) - (Number(a.margen) || -999));
+      console.log(`\n=== 🤖 PARA MIRAR · ${lista.length} candidato(s) ===`);
+      for (const c of lista) {
+        const r = c.revClaude && c.revClaude.cat === catDe(c) ? ` · ya mirado: ${c.revClaude.v}${c.revClaude.nota ? ' (' + c.revClaude.nota + ')' : ''}` : '';
+        console.log(`\n@@ ${c.id} · margen ${c.margen ?? '—'}% · ${catDe(c)}${c.mismoOk ? ' · él marcó ✅ es el mismo' : ''}${r}`);
+        console.log(`   PY: ${c.nombre}`);
+        console.log(`   ML: ${c.mlTit}`);
+        console.log(`   fotoPY: ${c.foto || '(sin foto)'}`);
+        console.log(`   fotoML: ${c.mlFoto || '(sin foto)'}`);
+        if (Array.isArray(c.mlReparos) && c.mlReparos.length) console.log(`   avisos: ${c.mlReparos.join(' · ')}`);
+      }
+      return;
+    }
+    // BILLING_PROBE=revcand:<id>=<ok|no|duda>[!nota];…[;go] → LA PASADA DE CLAUDE (07/10/2026).
+    // Escribe `revClaude` {v, nota, cat, ts} en cada candidato, atado al catálogo de HOY. No borra nada,
+    // no descarta nada y no toca el pedido: es una marca para que él vea qué miré. Sin `;go` sólo muestra.
+    if (/^revcand:/.test(String(process.env.BILLING_PROBE || ''))) {
+      const raw = String(process.env.BILLING_PROBE).slice('revcand:'.length);
+      const go = /(^|;)go$/i.test(raw.trim());
+      const cands = (await db.get('cyc/candidatos_py')) || {};
+      const catDe = (c) => ((String(c.mlLink || '').match(/\/p\/(MLA\d+)/i) || [])[1] || String(c.mlId || '').toUpperCase().replace(/^.*\/P\//, '').split(/[?#]/)[0] || '').toUpperCase();
+      const up = {}; let mal = 0;
+      for (const parte of raw.split(';').map((x) => x.trim()).filter((x) => x && x.toLowerCase() !== 'go')) {
+        const m = parte.match(/^(c\d+)\s*=\s*(ok|no|duda)(?:!(.*))?$/i);
+        if (!m) { console.log(`  ✗ no entiendo "${parte}"`); mal++; continue; }
+        const c = cands[m[1]]; const cat = c && catDe(c);
+        if (!c || !cat) { console.log(`  ✗ ${m[1]}: no existe o no está medido contra un catálogo`); mal++; continue; }
+        const v = { v: m[2].toLowerCase(), nota: String(m[3] || '').trim().slice(0, 200), cat, ts: Date.now() };
+        up[`${m[1]}/revClaude`] = v;
+        console.log(`  ${v.v === 'ok' ? '✓' : v.v === 'no' ? '❌' : '🤔'} ${m[1]} · ${String(c.nombre).slice(0, 60)} → ${v.v}${v.nota ? ' (' + v.nota + ')' : ''}`);
+      }
+      if (mal) { console.log(`\n${mal} renglón(es) con problema: NO escribo nada.`); return; }
+      if (!go) { console.log(`\n(prueba: con ;go al final se escriben ${Object.keys(up).length})`); return; }
+      await db.patch('cyc/candidatos_py', up);
+      let ok = 0; for (const k of Object.keys(up)) { const r = await db.get('cyc/candidatos_py/' + k); if (r && r.v === up[k].v && r.cat === up[k].cat) ok++; }
+      console.log(`\n✓ escritas ${Object.keys(up).length} · releídas ${ok}`);
+      return;
+    }
     // BILLING_PROBE=emparejamal → LOS "NO ES EL MISMO PRODUCTO" QUE MARCÓ ÉL (07/10/2026). SOLO LEE.
     // Pedido suyo: *"que quede guardado para que vos veas qué pasó con esos, cuál fue el error, para
     // mejorarlo"*. Cada caso lo guarda el botón ❌ del panel en `cyc/emparejamal`. Acá se dice, uno por uno:

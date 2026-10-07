@@ -2453,7 +2453,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='22.33';
+const APP_VERSION='22.34';
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
 // muestre la versión y la fecha de actualización y que tenga un desplegable predeterminado cerrado".
 // Y el mismo día: "que ponga fecha de cada modificación y haya una barrita para scrollear y que
@@ -2464,6 +2464,7 @@ const APP_VERSION='22.33';
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'22.34',f:'06/10/2026',h:'23:20',c:[{n:2,t:'🤖 Para probar: cada candidato dice si Claude ya miró las dos fotos y los títulos (✓ es el mismo · ❌ no es · 🤔 dudoso). Lo que dio NO o dudoso sale en rojo; la última palabra es tuya.'}]},
   {v:'22.33',f:'06/10/2026',h:'22:45',c:[{n:2,t:'❌ Para probar (Paraguay): botón "No es el mismo producto" en la tarjeta y en el renglón del pedido. Saca la medición, el robot deja de usar ese catálogo de ML para ese producto y el caso queda guardado para revisar por qué se equivocó.'}]},
   {v:'22.32',f:'06/10/2026',h:'21:45',c:[{n:1,t:'🔍 Robot de precios (Métricas): buscador de producto. Muestra lo que ganó o perdió, lo en curso, los otros cambios que no suman (rescates, a mano) y si lo está vigilando'}]},
   {v:'22.31',f:'06/10/2026',h:'21:25',c:[{n:1,t:'📈 Línea de tiempo: la línea "$ ganancia/día" arranca desde el primer día del gráfico (antes empezaba recién el 7º, porque el promedio de 7 días no miraba los días anteriores al período).'}]},
@@ -11534,6 +11535,15 @@ function candPreciosPartes(c){
   const okFoto=u=>/^https:\/\//.test(String(u||''))?String(u).replace(/"/g,'&quot;'):'';
   const okML=u=>{let h='';try{h=new URL(String(u||'')).hostname.toLowerCase();}catch(e){}return (h==='mlstatic.com'||h.endsWith('.mlstatic.com'))?okFoto(u):'';};
   R.fotoML=okML(c.mlFoto); R.fotoPY=okFoto(c.foto);
+  // 🤖 LA PASADA DE CLAUDE (07/10/2026, pedido suyo: *"quiero que vayas revisando las fotos y los
+  // productos. así ya tienen una pasada tuya y por último los reviso yo"*). La escribe el comando
+  // `revcand` en `revClaude` {v: ok|no|duda, nota, cat}. Vale para ESE catálogo: si el robot pasa a medir
+  // contra otro, la pasada no cuenta y vuelve a la lista de pendientes. No decide nada: la última
+  // palabra es suya (los botones ✅ / ❌).
+  const RC=c.revClaude; R.revClaude=(RC&&RC.v&&RC.cat&&RC.cat===candCatId(c))?RC:null;
+  if(R.revClaude&&!R.mismoOk&&R.revClaude.v!=='ok')R.dudas=[...R.dudas,`🤖 Claude miró las fotos: ${R.revClaude.v==='no'?'NO es el mismo':'dudoso'}${R.revClaude.nota?' — '+String(R.revClaude.nota).replace(/</g,'&lt;'):''}`];
+  if(R.revClaude&&R.revClaude.v==='ok')E.push(`<span style="color:var(--green)" title="Claude comparó las dos fotos y los títulos. La última palabra es tuya.">🤖 Claude: es el mismo${R.revClaude.nota?' ('+String(R.revClaude.nota).replace(/</g,'&lt;')+')':''}</span>`);
+  else if(!R.revClaude&&R.medido)E.push('<span style="color:var(--muted)">🤖 Claude todavía no lo miró</span>');
   R.links=E;
   return R;
 }
