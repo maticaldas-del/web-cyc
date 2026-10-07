@@ -1611,6 +1611,8 @@ Los que más se usan:
 | `ancla:<cuenta>=<pesos>[;…][;go]` | **el disponible de MP que él lee**, cargado desde el chat (26/09): punto de partida en pesos + casilla en dólares |
 | `pausaprecio[:<palabra>\|:-<palabra>][:go]` | **"No lo compro por ahora" desde el chat** (26/09) · con `-` lo devuelve a Pedidos |
 | `marcano:<marca>[:go]` | **"esta marca no se compra"** (26/09): la guarda en `marcasFrenadas`, tacha los candidatos de esa marca (la busca también en el NOMBRE, no sólo en el campo marca) y les saca las unidades del pedido · `-` adelante la vuelve a permitir · prohibida hoy: **Dolce & Gabbana** |
+| `pyprecio:<palabras>=<código>/<US$>[@link];<palabras>=nohabia[;go]` | **precio y código de Paraguay de las fichas probadas** (07/10) · no toca el costo · con precio saca la marca "no había" · las palabras tienen que agarrar UNA ficha |
+| `candalta:<nombre>\|<código>\|<US$>\|<MLA catálogo>\|<vendidos>\|<link CP>\|<foto>;…[;go]` | **carga candidatos nuevos de "Para probar"** que manda el chat de compras (07/10) · no repite candidatos ni fichas (mismo código o nombre) · los mide `candidatos` |
 | `premiumvs` | **Premium contra Clásica** (idea 2 de la etapa 6, 27/09): cuánto cuesta ser Premium por venta (comisión + cuotas) y cuánto menos se puede vender en Clásica ganando lo mismo · solo lee |
 
 Casi todos son de solo lectura. Los que escriben piden `:go` explícito.
@@ -3552,6 +3554,13 @@ anduvo es el mismo error que leer un cero como buena noticia.
    robot y este chat son los mismos desde cualquier PC.
 
 ## EL "PROMPT GUAY": EL CHAT QUE MIRA LOS PRECIOS DE PARAGUAY (17/09/2026)
+
+**EL TEXTO VIGENTE ESTÁ EN `ml-sync/PROMPT_GUAY.md` (desde el 07/10/2026).** Cuando lo pida, se le pasa ESE archivo entero.
+Cambios de esa versión, pedidos suyos: (1) arranca solo sin preguntar y barre **TODO** el catálogo de Nissei en
+comprasparaguay (~13.800; la vez anterior miró sólo ~1.000 por su cuenta), con la cuenta total = descartados + ya en el panel
++ mirados, y dónde quedó si no termina; (2) **les manda él mismo los resultados al chat CYC** (claude.ai/code, la sesión
+"CYC"), ya en formato de comando: `pyprecio:` para los probados y `candalta:` para los nuevos; plan B, correrlos él en
+GitHub → ml-sync → Run workflow. Matías no copia nada.
 
 Pedido suyo: *"pasame el prompt que le tengo que mandar al chat nuevo (…) seguramente te vuelva a
 pedir el texto muchas veces, pongamosle un nombre asi siempre te pido eso y ya sabes de lo que
