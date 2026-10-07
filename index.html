@@ -2453,7 +2453,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='22.30';
+const APP_VERSION='22.31';
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
 // muestre la versión y la fecha de actualización y que tenga un desplegable predeterminado cerrado".
 // Y el mismo día: "que ponga fecha de cada modificación y haya una barrita para scrollear y que
@@ -2464,6 +2464,7 @@ const APP_VERSION='22.30';
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'22.31',f:'06/10/2026',h:'21:25',c:[{n:1,t:'📈 Línea de tiempo: la línea "$ ganancia/día" arranca desde el primer día del gráfico (antes empezaba recién el 7º, porque el promedio de 7 días no miraba los días anteriores al período).'}]},
   {v:'22.30',f:'06/10/2026',h:'19:10',c:[{n:2,t:'🤖 Robot de precios (Métricas): los cambios de menos de 7 días se ven desde la primera venta, en gris, con lo que ya cobraron de más o de menos por el precio y el día en que sale el resultado final. No suman al total hasta los 7 días.'}]},
   {v:'22.29',f:'06/10/2026',h:'18:55',c:[{n:1,t:'⬆️ Ventas: cada venta muestra el último cambio de precio de los 30 días anteriores (antes sólo 7)'}]},
   {v:'22.28',f:'06/10/2026',h:'16:12',c:[{n:1,t:'🧴 Pedidos Paulvic: el máximo de compra también en pesos y grande, como Bs As'}]},
@@ -8644,7 +8645,13 @@ function lineaPintar(prodId){
   // LA GANANCIA EN PESOS POR DÍA (04/10/2026, él con el Metatarso: "vende 10 a 40% y gana 100, después vende 7 a
   // 60% y gana 108: ahí sabemos que fue positivo"). Promedio de los últimos 7 días (con los días sin ventas en cero):
   // un día suelto sube y baja demasiado. Sale de `gd`, la MISMA ganancia que Ventas.
-  const g7={};ks.forEach((k,i)=>{if(i<6)return;let t=0;for(let j=i-6;j<=i;j++){const g=gd[ks[j]];if(g)t+=g.gan;}g7[k]=t/7;});
+  // LOS 6 DÍAS ANTERIORES AL PERÍODO TAMBIÉN CUENTAN (07/10/2026, él: "falta esa línea de ganancia por día"):
+  // sin ellos la línea arrancaba recién el 7º día del gráfico. Misma cuenta que `gd` (neto − efectivoCostoVP).
+  const _ksAll=_lineaDias(ks.length+6).slice(0,6).concat(ks);
+  const _ganPre={};_ksAll.slice(0,6).forEach(k=>{const ents=Object.values((state.ventaprod||{})[k]||{}).filter(v=>v&&!v.cancelada&&(prodDeVenta(v)||{}).id===prodId&&_vOk(v));
+    if(ents.length)_ganPre[k]=ents.reduce((a,v)=>a+(v.neto||0)-efectivoCostoVP(v),0);});
+  const _ganK=k=>gd[k]?gd[k].gan:(_ganPre[k]||0);
+  const g7={};ks.forEach((k,i)=>{const ia=i+6;let t=0;for(let j=ia-6;j<=ia;j++)t+=_ganK(_ksAll[j]);g7[k]=t/7;});
   const g7v=Object.values(g7);const gMax=g7v.length?Math.max(0,...g7v):1,gMin=g7v.length?Math.min(0,...g7v):0;
   _lane('vent',64,true);_lane('st',suv.length?54:14,true);_lane('gan',40,g7v.some(x=>x!==0));_lane('pct',46,pvs.length>0);_lane('cos',40,cvs.length>0);_lane('vis',26,hayVis);_lane('pr',46,true);_lane('est',14,hayEst);_lane('caja',14,hayCaja);
   const H=_y-8;
