@@ -3522,6 +3522,35 @@ anduvo es el mismo error que leer un cero como buena noticia.
 
 **REGLA SUYA DEL 02/10/2026: NUNCA USAR nissei.com.** Textual: *"nunca uses nissei usa el promt guay que tiene todo ahi explicado"*. Precios y códigos salen SÓLO de comprasparaguay (la fila de Nissei), como dice el `PROMPT GUAY`. Probado ese día desde la nube con la red abierta: comprasparaguay muestra la verificación de Cloudflare ("no eres un bot") y no se saltea; ese trabajo lo hace el chat local en su Chrome.
 
+## LAS REGLAS DE CATEGORÍAS DEL CHAT DE COMPRAS (aprobadas por él el 03/10/2026)
+
+**VIVÍAN SÓLO EN LA MEMORIA LOCAL DE LA PC DONDE CORRIÓ EL CHAT DE COMPRAS** (archivo
+`guay-reglas-categorias-nissei.md` en esa PC), así que en otra PC no existían. Se copiaron acá el
+07/10/2026, cuando él preguntó si podía hacer el pedido desde otra PC. **Van adentro del `PROMPT GUAY`.**
+ · **Antes de mirar ML:** precio crudo de Nissei arriba de US$ 215 → afuera · ya está en el panel
+   (candidato o probado) → afuera · Dolce & Gabbana → afuera (`marcano`).
+ · **Categorías que no se miran:** celular, notebook, tablet, cámaras (monitoreo/DVR, digital,
+   filmadora, auto, infantil, marcha atrás), placa madre, placa de video, monitor, impresora, TV,
+   computadora, servidor; y lo grande: gabinete, silla y escritorio gamer, UPS, robot de limpieza,
+   aire acondicionado, heladera, lavarropas, microondas, horno y cocina eléctrica, hidrolavadora,
+   monopatín, scooter, bici y moto eléctrica, sillas y mesas, valijas, musculación, cortadora de pasto
+   robot, caja fuerte.
+ · **Se miran normal:** aspiradoras, drones (hasta US$ 215), consumibles (cartuchos, tóner, filamento
+   y resina 3D, pilas, medios vírgenes, chocolate).
+ · **Termos y térmicos** (termo, taza/vaso térmico, caja/bolsa térmica, fiambrera, botella): afuera
+   hasta que él decida.
+ · **Maquillaje: todo adentro** (labial, base, rubor, lápiz, sombra, corrector, polvo, delineador,
+   gloss, rímel, iluminador, pinceles, esponjas, espejo, bálsamo), sin mínimo de vendidas, porque se
+   vende en la perfumería aunque no salga en ML. **El tono tiene que coincidir EXACTO** (marca + línea +
+   tono + versión + tamaño); catálogo de ML sin el tono → afuera. **Ese día aprobó 15% para maquillaje,
+   pero desde el 06/10 (v22.04) el panel pide 25% para TODO** y no deja cargar en el pedido lo que no
+   llega: el maquillaje se carga como candidato igual, pero sólo entra al pedido si da 25%.
+ · **El resto:** mismo modelo, color, capacidad y voltaje (110V afuera), nada de packs distintos,
+   nuevos con 100+ vendidas en el catálogo.
+ · **Lo que no viaja entre PCs y SÍ hace falta:** Claude en Chrome con la sesión de comprasparaguay
+   (la página tiene la verificación de Cloudflare: la pasa él a mano en su navegador). El panel, el
+   robot y este chat son los mismos desde cualquier PC.
+
 ## EL "PROMPT GUAY": EL CHAT QUE MIRA LOS PRECIOS DE PARAGUAY (17/09/2026)
 
 Pedido suyo: *"pasame el prompt que le tengo que mandar al chat nuevo (…) seguramente te vuelva a
