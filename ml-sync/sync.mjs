@@ -3208,6 +3208,9 @@ async function calcCerebro(db, o) {
   let slog; try { slog = (await db.get('cyc/stocklog/cambios')) || {}; } catch { slog = null; }
   if (!slog) { res.err = 'no pude leer el registro de stock hora por hora: sin eso no se pueden contar los días con stock'; return res; }
   let stockhist = {}; try { stockhist = (await db.get('cyc/stockhist')) || {}; } catch { stockhist = {}; }
+  // El stock antiguo: lotes del Excel de ML (`lotesfull`), cajas llegadas con fecha y la tabla de ML por tamaño.
+  let lotesFull = {}; try { lotesFull = (await db.get('cyc/lotesfull')) || {}; } catch { lotesFull = {}; }
+  const cajasPC = cajasLlegadasPorClave(envios);
   if (!(tc > 0)) { res.err = 'no hay dólar cargado: sin costo en pesos no se puede medir'; return res; }
   try { await cargarParamCompra(db); } catch { /* quedan los de siempre */ }
   const PISO = Number.isFinite(parseFloat(cfg.minPct)) ? parseFloat(cfg.minPct) : PISO_DURO;
@@ -3389,19 +3392,31 @@ async function calcCerebro(db, o) {
         // Mientras el precio nuevo NO vendió nada, se espera hasta que al ritmo de antes se hubieran vendido tantas
         // unidades como veces más deja cada una al precio nuevo (lo que se pierde esperando = lo que gana UNA venta),
         // descontando lo que cuesta tener el stock parado: el capital (2% por mes, lo que se les paga a los socios) y
-        // el almacenamiento de Full si ya pasó los 60 días y está cargada la tarifa (`almactarifa`). Si vendió aunque
-        // sea una, se juzga como cualquier precio (plata por día contra la de antes).
+        // el STOCK ANTIGUO que ML cobraría de más por esperar: la tabla de ML por tamaño y antigüedad (desde los 4 meses,
+        // `tablaAntiguoDe`), con los lotes en orden de llegada (Excel de ML → cajas → `stockhist`), proyectada al ritmo
+        // de antes empezando hoy contra empezando dentro de los días de espera (`cargoAntiguoProy`, la misma cuenta que
+        // la sobra). Si vendió aunque sea una, se juzga como cualquier precio (plata por día contra la de antes).
         let pacienciaU = CEREBRO_EVID_U, gPrevU = null;
         if (T != null && pPrev > 0 && p0 > pPrev * 1.02) {
           const gpx = await gan(pPrev); gPrevU = gpx ? gpx.g : null;
           if (gpx && gpx.g > 0 && g0.g > gpx.g && rPrev > 0) {
-            const tarA = Number((cfg.almacTarifa || {}).chico) || 0;
-            const edadSt = (() => { const h = (stockhist || {})[kV && stockhist && stockhist[kV] ? kV : kP]; const t = h && Number(h.desde); return t > 0 ? (hoyTs - t) / 864e5 : 0; })();
-            const hDia = costo * 0.02 / 30 + (edadSt >= 60 ? tarA : 0);    // costo de tener 1 u. parada 1 día
+            const capDia = st * costo * 0.02 / 30;                           // capital parado de todo el stock, por día
             const ganaEsperaDia = rPrev * gpx.g;                             // lo que deja vender al precio de antes, por día
             const ratio = g0.g / gpx.g;
-            pacienciaU = Math.max(CEREBRO_EVID_U, ratio * ganaEsperaDia / (ganaEsperaDia + st * hDia));
-            D.apuesta = { ratio: Math.round(ratio * 10) / 10, dias: Math.round(pacienciaU / rPrev) };
+            const hs = (stockhist || {})[kV && stockhist[kV] ? kV : kP];
+            const fb = Math.min(...[hs && hs.desde, e.altaTs].map(Number).filter((x) => x > 0), Infinity);
+            const lotes = lotesFifo(st, e.inv ? lotesFull[e.inv] : null, cajasPC[e.prodId + '__' + e.cuenta], isFinite(fb) ? fb : 0);
+            const { tabla } = tablaAntiguoDe(e, p, lotesFull, cfg);
+            const cierre = DIA_CIERRE_ALM_CTA[_ctaSinTilde(cta)] || 12;
+            const ant0 = cargoAntiguoProy(lotes, rPrev, tabla, cierre, hoyTs).pesos;
+            const extraAnt = (W) => Math.max(0, cargoAntiguoProy(lotes, rPrev, tabla, cierre, hoyTs, W).pesos - ant0);
+            let W = ratio * ganaEsperaDia / (ganaEsperaDia + capDia) / rPrev, antDia = 0;
+            for (let it = 0; it < 3 && W > 0; it++) {                       // el costo depende de cuánto se espera: se ajusta
+              antDia = extraAnt(W) / W;
+              W = ratio * ganaEsperaDia / (ganaEsperaDia + capDia + antDia) / rPrev;
+            }
+            pacienciaU = Math.max(CEREBRO_EVID_U, W * rPrev);
+            D.apuesta = { ratio: Math.round(ratio * 10) / 10, dias: Math.round(pacienciaU / rPrev), antiguoDia: Math.round(antDia), sinFecha: lotes.some((l) => l.f === 'sinfecha') };
           }
         }
         const umbralU = uNow > 0 ? CEREBRO_EVID_U : pacienciaU;
@@ -3455,7 +3470,7 @@ async function calcCerebro(db, o) {
           const falta = Math.max(0, umbralU / Math.max(rPrev != null ? rPrev : rBase, 0.05) - sdNow);
           D.midiendo = true;
           motivo = D.apuesta && uNow === 0
-            ? `apuesta a ${money(p0)}: cada venta deja ${D.apuesta.ratio} veces lo de antes (${money(pPrev)}) · todavía no vendió (${sdNow.toFixed(1)} d con stock) · espera ~${Math.ceil(falta)} d más antes de volver`
+            ? `apuesta a ${money(p0)}: cada venta deja ${D.apuesta.ratio} veces lo de antes (${money(pPrev)}) · todavía no vendió (${sdNow.toFixed(1)} d con stock) · espera ~${Math.ceil(falta)} d más antes de volver${D.apuesta.antiguoDia > 0 ? ` (esperar suma ~${money(D.apuesta.antiguoDia)}/día de stock antiguo)` : ''}`
             : `midiendo el precio de ${money(p0)}: ${uNow} u. en ${sdNow.toFixed(1)} d con stock · se juzga en ~${Math.min(Math.ceil(falta), rPrev == null ? CEREBRO_EVID_MAX_DIAS : 999)} d más con stock`;
         }
         // 4) EXPLORAR PARA ARRIBA (vende, no sobra, sin fecha de ofertas).
@@ -6694,8 +6709,11 @@ function cajasLlegadasPorClave(envios) {
   return out;
 }
 // Lo que ML va a cobrar de stock antiguo de acá a 3 años si se sigue vendiendo a `rDia` (lo viejo primero).
-function cargoAntiguoProy(lotes, rDia, tabla, diaCierre, ahora) {
+// `demoraDias` (opcional): las ventas recién arrancan dentro de esos días (el cerebro lo usa para medir cuánto
+// stock antiguo de más cuesta esperar con un precio alto que no vende).
+function cargoAntiguoProy(lotes, rDia, tabla, diaCierre, ahora, demoraDias) {
   ahora = ahora || Date.now(); rDia = Math.max(0, Number(rDia) || 0);
+  const dem = Math.max(0, Number(demoraDias) || 0) * 864e5;
   const tarifa = (edad) => { for (const [a, b, $] of tabla || []) if (edad >= a && edad < b) return $; return 0; };
   let pesos = 0, uConCargo = 0;
   const d = new Date(ahora - 3 * 3600e3);
@@ -6703,7 +6721,7 @@ function cargoAntiguoProy(lotes, rDia, tabla, diaCierre, ahora) {
   if (d.getUTCDate() >= diaCierre) m++;
   for (let k = 0; k < 36; k++) {
     const T = Date.UTC(y, m + k, diaCierre, 3);
-    let vendidas = rDia * (T - ahora) / 864e5, quedan = 0, cargoMes = 0;
+    let vendidas = rDia * Math.max(0, T - ahora - dem) / 864e5, quedan = 0, cargoMes = 0;
     for (const l of lotes) {
       const sale = Math.min(l.u, vendidas); vendidas -= sale;
       const u = l.u - sale; if (u <= 0) continue;
@@ -11958,6 +11976,21 @@ async function main() {
     if (String(process.env.BILLING_PROBE || '').startsWith('lotesfull')) {
       const partes = String(process.env.BILLING_PROBE).slice('lotesfull'.length).replace(/^:/, '').split(';').map((x) => x.trim()).filter(Boolean);
       const go = partes.includes('go');
+      // Sin nada: lista lo que ya está cargado (solo lee), por cuenta, con la ficha a la que apunta cada código.
+      if (!partes.length) {
+        const lf = (await db.get('cyc/lotesfull')) || {};
+        const lk = (await db.get('cyc/mllinks')) || {};
+        const pr = (await db.get('cyc/products')) || {};
+        const nomInv = {}; for (const e of Object.values(lk)) if (e && e.inv && e.prodId) nomInv[e.inv] = ((pr[e.prodId] || {}).name || e.title || '').slice(0, 45);
+        const ks = Object.keys(lf).sort((a, b) => String(lf[a].cuenta).localeCompare(String(lf[b].cuenta)) || a.localeCompare(b));
+        console.log(`=== LOTES DE STOCK ANTIGUO CARGADOS: ${ks.length} código(s) ===`);
+        for (const k of ks) {
+          const v = lf[k] || {}; const u = (v.lotes || []).reduce((s, x) => s + (Number(x.u) || 0), 0);
+          const viejo = Math.max(0, ...(v.lotes || []).map((x) => Number(x.dias) || 0));
+          console.log(`  ${k} · ${String(v.cuenta || '?').padEnd(8)} · ${String(v.tam || '?').padEnd(11)} · al ${v.ref} · ${u} u. · lote más viejo ${viejo} d · ${nomInv[k] || '(sin publicación vinculada con ese código)'}`);
+        }
+        return;
+      }
       const cab = (partes.shift() || '').match(/^([a-záéíóúñ]+)@(\d{4}-\d{2}-\d{2})$/i);
       if (!cab) { console.log('✗ va lotesfull:<cuenta>@<AAAA-MM-DD>;<código>=<tamaño>:<días>x<u>,…[;go]'); return; }
       const upd = {};
