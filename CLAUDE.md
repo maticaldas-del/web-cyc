@@ -3568,6 +3568,11 @@ son "cualquiera CON SESIÓN lee y escribe todo". El 401 sin token es cierto, per
 registro con email está prendido por defecto. Medí "sin cuenta" y concluí "cerrado" sin preguntar
 quién puede tener cuenta. Arreglo propuesto: apagar el registro (Authentication → Configuración →
 Acciones del usuario) y reglas con la lista de usuarios permitidos (su cuenta + la del robot).
+**HECHO EL 07/10/2026.** En Authentication había UNA sola cuenta (la suya, de jul 2026): él, su padre y
+el robot entran con la misma. Nadie se había creado otra. Reglas publicadas: `.read`/`.write` sólo con
+`auth.uid` igual a ese UID (el UID no se anota acá). Verificado con `reglas`: sin token las tres puertas
+dan 401, y en la misma corrida el robot leyó su configuración de la base con su sesión. **Si algún día se
+suma otra cuenta, hay que agregar su UID a las reglas o no va a poder leer nada.**
 
 ## LO QUE EL CHAT DE COMPRAS YA BARRIÓ, PARA NO HACERLO DOS VECES (18/09/2026)
 
