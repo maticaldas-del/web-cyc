@@ -844,6 +844,15 @@ la noche, después del rescate/caja barata/remate/escalera. **Reemplaza a la �
    cuotas medidas, sin stock en Full, lo que ya tocó otro esa noche.
  · **Primera prueba en seco (07/10)**: 136 miradas · 15 para subir (el Ferrari Negro $75.360 → $93.500 por escasez,
    techo del competidor) · 18 midiendo · el resto sin cambios por motivo.
+ · **Ajustes del 07/10 antes de largarlo:** la paciencia de la apuesta alta mide el STOCK ANTIGUO real (`STOCK_ANTIGUO_TABLA` +
+   `cyc/lotesfull`, lo que se sumaría por esperar; `almacTarifa` no existe ni hace falta) · de catálogo en escasez que pierde la caja
+   no sube más y espera la reposición · la caja barata no baja lo que el cerebro tiene en escasez (`enEscasezCer`) · el "volver
+   atrás" del supervisor no toca lo que cambió el cerebro (lo juzga él) · `lotesfull` sin argumentos lista los lotes cargados (16).
+ · **PRIMERA CORRIDA REAL, 07/10/2026 ~15:00 de acá (`cerebro:go`): 15 subidas · 0 fallidas · todas releídas de ML.** Escasez:
+   Espejo 8" $8.250→$49.190 · Plantillas Metatarso $4.190→$8.410 · Plantillas Silicona $7.280→$15.980 · Ferrari Negro
+   $75.360→$93.500 · Rodillera $7.800→$10.980 · Paulvic Barbarella $14.360→$18.580 · Sábanas 140 (un color) $21.150→$25.030.
+   Pruebas: Centímetro Blanco +15% · Filtros Matías +15% · Batidor, Lupa 100mm, Separador, Sábanas (otro color) +10% · Mazo
+   docena +6% · Piedra Pómez +4% (competidor). Lo de escasez vuelve solo al precio de antes cuando llega la reposición.
 
 ## LA PASADA DE CLAUDE POR LAS FOTOS DE "PARA PROBAR" (07/10/2026, v22.34)
 
