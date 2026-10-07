@@ -3263,6 +3263,18 @@ async function calcCerebro(db, o) {
     return ms / 864e5;
   };
   const uEntre = (mla, t0, t1) => (ventas[mla] || []).filter(([t]) => t >= t0 && t < t1).reduce((s, x) => s + x[1], 0);
+  // Ventas y días con stock de una ventana, contando las ventas SÓLO desde que el registro mira esa clave:
+  // si no, las ventas de antes del registro se dividían por pocos días y el ritmo salía inflado (medido el
+  // 07/10: el Centímetro daba 19 por día "antes" cuando vende ~3).
+  const ventana = (k, mla, t0, t1, finExcl = 0) => {
+    const cs = Object.keys(slog[k] || {}).map(Number).filter((t) => t > 0);
+    if (!cs.length) return null;
+    const desde = Math.max(t0, Math.min(...cs));
+    if (desde >= t1) return null;
+    const d = diasStock(k, desde, t1);
+    if (d == null) return null;
+    return { d, u: uEntre(mla, desde, t1 - finExcl), desde };
+  };
   const feeCache = new Map();
   const feeAt = async (b, P, tk) => {
     const k = `${b.listing_type_id}|${b.category_id}|${Math.round(P)}`;
@@ -3327,20 +3339,22 @@ async function calcCerebro(db, o) {
         if (ult && Math.abs(ult.a - p0) / p0 <= 0.02) { T = ult.ts; pPrev = ult.de || null; Tprev = chs.length > 1 ? chs[chs.length - 2].ts : null; }
         else if (ult && hoyTs - ult.ts < 3 * 864e5) { nada('el precio cambió hace poco y todavía no está registrado: se mira mañana'); continue; }
         const t0Now = T != null ? T : hoyTs - 30 * 864e5;
-        const sdNow = diasStock(kS, t0Now, hoyTs);
-        if (sdNow == null) { nada('no se mira el stock de esta clave hora por hora: no se pueden contar los días con stock'); continue; }
-        const uNow = uEntre(mla, t0Now, hoyTs);
+        const vNow = ventana(kS, mla, t0Now, hoyTs);
+        if (vNow == null) { nada('no se mira el stock de esta clave hora por hora: no se pueden contar los días con stock'); continue; }
+        const sdNow = vNow.d, uNow = vNow.u;
         const rNow = sdNow >= 1 ? uNow / sdNow : null;
         let rPrev = null, sdPrev = null, uPrev = null;
         if (T != null) {
-          const t0P = Math.max(T - 30 * 864e5, Tprev || 0);
-          sdPrev = diasStock(kS, t0P, T);
-          uPrev = uEntre(mla, t0P, T - 3600e3);
-          rPrev = sdPrev != null && sdPrev >= 3 ? uPrev / sdPrev : null;
+          // El régimen de antes: desde el cambio anterior; si fue muy corto (menos de 7 días con stock),
+          // los 30 días previos enteros (mezcla precios parecidos, pero no inventa un ritmo con 3 días).
+          let vP = ventana(kS, mla, Math.max(T - 30 * 864e5, Tprev || 0), T, 3600e3);
+          if (!vP || vP.d < 7) { const vP2 = ventana(kS, mla, T - 30 * 864e5, T, 3600e3); if (vP2 && (!vP || vP2.d > vP.d)) vP = vP2; }
+          if (vP) { sdPrev = vP.d; uPrev = vP.u; rPrev = sdPrev >= 5 ? uPrev / sdPrev : null; }
         }
         const u30 = uEntre(mla, hoyTs - 30 * 864e5, hoyTs);
-        const sd30 = diasStock(kS, hoyTs - 30 * 864e5, hoyTs) || 0;
-        const rBase = rNow != null ? rNow : (rPrev != null ? rPrev : (sd30 >= 1 ? u30 / sd30 : 0));
+        const v30 = ventana(kS, mla, hoyTs - 30 * 864e5, hoyTs);
+        const sd30 = v30 ? v30.d : 0;
+        const rBase = rNow != null ? rNow : (rPrev != null ? rPrev : (sd30 >= 1 ? v30.u / sd30 : 0));
         const ultVenta = Math.max(0, ...(ventas[mla] || []).map((x) => x[0]));
         const dSin = ultVenta ? Math.floor((hoyTs - ultVenta) / 864e5) : null;
         Object.assign(D, { st, rNow, rPrev, uNow, sdNow: Math.round(sdNow * 10) / 10, uPrev, sdPrev: sdPrev == null ? null : Math.round(sdPrev * 10) / 10, pPrev, T, dSin, u30 });
@@ -3381,7 +3395,11 @@ async function calcCerebro(db, o) {
         if (escasoRef) {
           const rObj = S / lead;
           const fac = Math.pow(rRef / rObj, 1 / eLearn);
-          const obj = Math.min(techoMax, Math.round(pRef * fac));
+          // Tope del modelo: la elasticidad se mide con cambios chicos; más de +35% sobre el precio de antes
+          // de la escasez es adivinar. Y por escasez no se cruza la barrera de $33.000 (ahí ML cobra el envío).
+          let obj = Math.min(techoMax, Math.round(pRef * Math.min(fac, 1.35)));
+          if (pRef < UMBRAL_ENVIO_GRATIS && obj >= UMBRAL_ENVIO_GRATIS) obj = UMBRAL_ENVIO_GRATIS - 1;
+          D.escTope = obj === techoMax ? 'competidor' : obj === UMBRAL_ENVIO_GRATIS - 1 ? 'barrera' : fac > 1.35 ? '35%' : null;
           if (obj > p0 * 1.02) { objetivo = obj; accion = 'sube'; tipoMot = 'escasez'; motivo = `escasez: ${S} u. en Full a ${rRef.toFixed(2)}/día (al precio de ${money(pRef)}) alcanzan ${coverRef.toFixed(1)} d y reponer tarda ~${Math.round(lead)} d${cam ? ` (viajan ${cam.u})` : ''}${fDem > 1 ? ` · ${fecha.nom} en ${fecha.dias} d` : ''}`; }
           else D.enEscasez = true;
         }
@@ -3403,10 +3421,11 @@ async function calcCerebro(db, o) {
               objetivo = pPrev; accion = pPrev < p0 ? 'baja' : 'sube'; tipoMot = 'volver';
               motivo = `a ${money(p0)} deja ${money(plNow)}/día y a ${money(pPrev)} dejaba ${money(plPrev)}/día (${uNow} u. en ${sdNow.toFixed(1)} d con stock contra ${uPrev} en ${sdPrev.toFixed(1)}): vuelve`;
               D.falloPrecio = p0;
-            } else D.juicio = plNow >= plPrev ? 'ganó' : 'igual';
+            } else if (plNow < plPrev * CEREBRO_CAIDA) { D.juicio = 'peor'; motivo = `a ${money(p0)} vende menos (${money(plNow)}/día contra ${money(plPrev)}), pero el stock se acaba antes de reponer igual: se queda`; }
+            else D.juicio = plNow >= plPrev ? 'ganó' : 'igual';
           }
         }
-        if (accion === 'nada' && D.enEscasez && !motivo) motivo = `en escasez: ${S} u. y reponer tarda ~${Math.round(lead)} d · el precio ya está donde tiene que estar`;
+        if (accion === 'nada' && D.enEscasez && !motivo) motivo = `en escasez: ${S} u. y reponer tarda ~${Math.round(lead)} d · ${D.escTope === 'competidor' ? 'ya está en el techo del competidor de catálogo' : D.escTope === 'barrera' ? 'ya está pegado a la barrera de $33.000' : 'el precio ya está donde tiene que estar'}`;
         const pocaEvid = T != null && !enough && (rPrev != null || (uNow < CEREBRO_EVID_U && sdNow < CEREBRO_EVID_MAX_DIAS));
         if (accion === 'nada' && !motivo && pocaEvid) {
           const falta = Math.max(0, CEREBRO_EVID_U / Math.max(rPrev != null ? rPrev : rBase, 0.05) - sdNow);
@@ -3414,7 +3433,7 @@ async function calcCerebro(db, o) {
           motivo = `midiendo el precio de ${money(p0)}: ${uNow} u. en ${sdNow.toFixed(1)} d con stock · se juzga en ~${Math.min(Math.ceil(falta), CEREBRO_EVID_MAX_DIAS)} d más con stock`;
         }
         // 4) EXPLORAR PARA ARRIBA (vende, no sobra, sin fecha de ofertas).
-        if (accion === 'nada' && !D.midiendo && !D.enEscasez && !(fecha && fecha.ofertas) && rBase > 0 && dSin != null && dSin <= 14 && coverDias <= 60) {
+        if (accion === 'nada' && !D.midiendo && !D.enEscasez && D.juicio !== 'peor' && !(fecha && fecha.ofertas) && rBase > 0 && dSin != null && dSin <= 14 && coverDias <= 60) {
           const paso = rEff >= 1 ? 0.15 : rEff >= 0.3 ? 0.10 : 0.06;
           let P = Math.round(p0 * (1 + paso));
           if (P >= fallaDesde) P = Math.round((p0 + fallaDesde) / 2);
@@ -3426,7 +3445,7 @@ async function calcCerebro(db, o) {
           } else motivo = techoCat < Infinity && p0 >= techoCat - 20 ? 'ya está pegado al competidor de catálogo' : fallaDesde < Infinity ? `más arriba ya probó ${money(fallaDesde)} y dejó menos` : 'en el techo';
         }
         // 5) SOBRA STOCK y no es de catálogo: un escalón para abajo, sin pasar el piso.
-        if (accion === 'nada' && !D.midiendo && !b.catalog_listing && rBase > 0 && coverDias > CEREBRO_SOBRA_DIAS && !(fecha && fecha.regalo && esRegalo && hoyTs < fecha.ts)) {
+        if (accion === 'nada' && !D.midiendo && D.juicio !== 'peor' && !b.catalog_listing && rBase > 0 && coverDias > CEREBRO_SOBRA_DIAS && !(fecha && fecha.regalo && esRegalo && hoyTs < fecha.ts)) {
           const P = Math.floor(p0 * 0.93 / 10) * 10;
           const gP = await gan(P);
           if (gP && gP.mg >= PISO + 0.5) { objetivo = P; accion = 'baja'; tipoMot = 'sobra'; motivo = `sobra stock: ${S} u. alcanzan ${coverDias.toFixed(0)} d a ${rEff.toFixed(2)}/día · prueba −7% (queda en ${gP.mg.toFixed(1)}%)`; }
