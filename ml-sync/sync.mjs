@@ -6770,7 +6770,8 @@ function chequeoMismoProducto(nombre, mlTit) {
   if (!t) return [];
   const pCP = _rvPal(nombre), pML = _rvPal(t);
   const faltan = [...pCP].filter((w) => !pML.has(w));
-  const extraVar = [...pML].filter((w) => !pCP.has(w) && RV_VARIANTE.has(w));
+  // "doble banda" es "dual band" en castellano, no un pack doble (router TP-Link C50, 07/10/2026).
+  const extraVar = [...pML].filter((w) => !pCP.has(w) && RV_VARIANTE.has(w) && !(w === 'doble' && /\bdoble banda\b/.test(_rvBase(t)) && !/\bdoble\b/.test(_rvBase(t).replace(/\bdoble banda\b/g, ''))));
   const mlPlano = _rvBase(t).replace(/ /g, '');
   const modCP = _rvMod(nombre), modOK = modCP.filter((x) => mlPlano.includes(x));
   const numFaltan = [..._rvNum(nombre)].filter((x) => !_rvNum(t).has(x));
