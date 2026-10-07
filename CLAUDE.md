@@ -809,6 +809,32 @@ privada unificados · las dos facturas de Sancor analizadas.
 **Versión del panel: 20.16 · caché `cyc-v294`**. El ciclo del robot quedó **prendido**.
 
 
+## LA PASADA DE CLAUDE POR LAS FOTOS DE "PARA PROBAR" (07/10/2026, v22.34)
+
+Pedido suyo: *"el robot sube las fotos y todo. pero cuando termina que te va mandando a vos. quiero que
+vayas revisando las fotos y los productos. así ya tienen una pasada tuya y por último los reviso yo"*.
+**Las fotos SÍ se pueden bajar desde el chat** (las de comprasparaguay están en `bucket-prod.us-ord-10.
+linodeobjects.com`, no en la página que da 403; las de ML en `http2.mlstatic.com`). Cómo se hace:
+ 1. `fotosrev` por **ml-consulta** (solo lee): lista los candidatos vivos, medidos, que Claude todavía no
+    miró PARA ESE CATÁLOGO, del que más margen da al que menos, con los dos títulos y las dos fotos.
+    El log es largo: `get_job_logs` con `tail_lines` 8000 lo guarda en un archivo.
+ 2. `python3 ml-sync/revfotos/revfotos.py armar <ese archivo> <carpeta del scratchpad> 25` baja las fotos
+    (la de PY en tamaño `thumbs/big`) y arma hojas de 4 (foto PY | foto ML | títulos). Se miran con Read.
+ 3. `python3 ml-sync/revfotos/revfotos.py comando <carpeta> '{"<id>":"no!<por qué>","<id>":"duda!<por qué>"}'`
+    arma el `revcand:…;go` (el resto va ok) y se corre por **ml-consulta** (`revcand` puede escribir ahí).
+ 4. El panel muestra en cada candidato "🤖 Claude: es el mismo" (verde) o lo pone en rojo con el motivo.
+    **No descarta ni saca nada del pedido: la última palabra es suya** (✅ es el mismo / ❌ no es el mismo).
+**Qué mirar:** el número de modelo (5500/5600, 4cv/5cv, Vivoactive 5/6), otra línea de la misma marca
+(SP Luxe Oil ≠ Oil Reflections, JBL Grip ≠ Flip 7), la versión (Sonoff MINIR4 naranja ≠ MINIR4M Matter
+verde), el tamaño/ml, pack o combo, y el color. Una foto de distinto ángulo o con caja NO es otro producto.
+**Primera pasada, 07/10/2026: 89 candidatos de 25%+ · 79 ok · 7 NO** (videoportero Hikvision, JBL Grip/Flip 7,
+Sonoff MINIR4/MINIR4M, Wella SP Luxe/Oil Reflections, Garmin Vivoactive 5/6, Ryzen 5 5500/5600, Striker
+Vivid 4cv/5cv) **· 3 dudosos** (los dos correctores Ana Hickmann con otro envase, Gamesir X5S). Los 590 abajo
+del 25% no se miraron (no se pueden pedir). **Se repite sola todos los días** con una rutina (ver abajo).
+El botón ❌ del panel guarda cada caso en `cyc/emparejamal`; `emparejamal` dice si la regla de títulos de
+hoy (`chequeoMismoProducto`) lo avisaría. Regla mejorada el 07/10: modelos que chocan (C950/C960, X8/X6),
+la resolución (1080p) ya no cuenta como modelo, y "doble banda" no es un pack doble.
+
 ## EL PISO SALE DEL NEGOCIO: 22% NARANJA · 25% BASE (24/09/2026)
 
 Pedido suyo: naranja = *"CYC queda en 0 pagando TODO"* (mercadería, ML, impuestos, gastos del mes y
