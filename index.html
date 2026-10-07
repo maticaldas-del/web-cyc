@@ -2453,7 +2453,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='22.34';
+const APP_VERSION='22.35';
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
 // muestre la versión y la fecha de actualización y que tenga un desplegable predeterminado cerrado".
 // Y el mismo día: "que ponga fecha de cada modificación y haya una barrita para scrollear y que
@@ -2464,6 +2464,7 @@ const APP_VERSION='22.34';
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'22.35',f:'07/10/2026',h:'13:39',c:[{n:1,t:'📈 Línea de tiempo: ahora muestra también el día de HOY, incompleto (las ventas de hoy y el stock de ahora; las visitas y la caja llegan a la noche).'}]},
   {v:'22.34',f:'06/10/2026',h:'23:20',c:[{n:2,t:'🤖 Para probar: cada candidato dice si Claude ya miró las dos fotos y los títulos (✓ es el mismo · ❌ no es · 🤔 dudoso). Lo que dio NO o dudoso sale en rojo; la última palabra es tuya.'}]},
   {v:'22.33',f:'06/10/2026',h:'22:45',c:[{n:2,t:'❌ Para probar (Paraguay): botón "No es el mismo producto" en la tarjeta y en el renglón del pedido. Saca la medición, el robot deja de usar ese catálogo de ML para ese producto y el caso queda guardado para revisar por qué se equivocó.'}]},
   {v:'22.32',f:'06/10/2026',h:'21:45',c:[{n:1,t:'🔍 Robot de precios (Métricas): buscador de producto. Muestra lo que ganó o perdió, lo en curso, los otros cambios que no suman (rescates, a mano) y si lo está vigilando'}]},
@@ -8507,7 +8508,8 @@ function prodById(id){return id?(state.products||[]).find(p=>p.id===id):null;}
 // escalera, prueba, a mano).
 let _lineaRango=365, _lineaCache={}, _lineaDetAb=false;
 function _lineaFmtDia(k){const q=k.split('_');return q[2]+'/'+q[1]+'/'+q[0].slice(2);}
-function _lineaDias(n){const out=[];const hoy=new Date();for(let i=n;i>=1;i--){const d=new Date(hoy.getTime()-i*864e5);out.push(dateToKey(d));}return out;}
+// Incluye HOY (07/10/2026, él: "el último día que muestra es de ayer. se puede poner el de hoy aunque sea incompleto").
+function _lineaDias(n){const out=[];const hoy=new Date();for(let i=n-1;i>=0;i--){const d=new Date(hoy.getTime()-i*864e5);out.push(dateToKey(d));}return out;}
 function _lineaJunta(porMla){
   // Junta las publicaciones del producto día por día: unidades, visitas y stock se SUMAN; el precio es el
   // más barato; la caja, la mejor; remate/escalera si alguna lo estaba. Stock: sólo si TODAS las que
@@ -8597,7 +8599,14 @@ function lineaPintar(prodId){
   const _mlaOk=m=>!_lineaVar||String(_lineaVarMap[m]||'').trim()===_lineaVar;
   const _vOk=v=>!_lineaVar||_lineaVarDeVenta(v)===_lineaVar;
   const porMlaF={};for(const [m,d] of Object.entries(C.porMla))if(_mlaOk(m))porMlaF[m]=d;
-  const dias=_lineaJunta(porMlaF); const ks=_lineaDias(_lineaRango); const N=ks.length;
+  const dias=_lineaJunta(porMlaF);
+  // HOY, INCOMPLETO: la línea del robot es hasta AYER (la escribe de noche). El día de hoy se arma con lo que el
+  // panel ya sabe: las ventas de hoy y el stock de ahora en las 4 cuentas. Sin visitas ni caja (eso lo trae la noche).
+  {const _hk=dateToKey(new Date());if(!dias[_hk]){const ents=Object.values((state.ventaprod||{})[_hk]||{}).filter(v=>v&&!v.cancelada&&(prodDeVenta(v)||{}).id===prodId&&_vOk(v));
+    let st=0;LOCS.forEach(l=>{st+=_lineaVar?getQV(prodId,l,_lineaVar):getQ(prodId,l);});
+    const _ay=dateToKey(new Date(Date.now()-864e5));
+    dias[_hk]={u:ents.reduce((a,v)=>a+(Number(v.qty)||1),0),uR:null,vis:null,st,stN:1,p:(dias[_ay]&&dias[_ay].p)||null,caja:null,rem:false,esc:null,mg:null,tot:null,pubs:1,hoy:true};}}
+  const ks=_lineaDias(_lineaRango); const N=ks.length;
   const W=1000, X=i=>i*W/N, bw=Math.max(W/N,0.6);
   // Escalas
   const maxU=Math.max(1,...ks.map(k=>(dias[k]&&dias[k].u)||0));
@@ -8739,7 +8748,7 @@ function lineaPintar(prodId){
   const _gdK=Object.keys(gd).sort(), _gd0=_gdK[0]||'9999';let _pdU=null,_pdUk=null;const pdUlt={};
   ks.forEach(k=>{if(pd[k]!=null){_pdU=pd[k];_pdUk=k;}if(_pdU!=null)pdUlt[k]=[_pdU,_pdUk];});
   ks.forEach((k,i)=>{const d=dias[k];const es=evK[k]||[];
-    const t=[`${_lineaFmtDia(k)}`,
+    const t=[`${_lineaFmtDia(k)}${d&&d.hoy?' · HOY (incompleto: hasta ahora)':''}`,
       d&&d.u!=null&&d.u>0?`🛒 vendió ${d.u} u.${d.uR?` (${d.uR} en remate)`:''}`:(k>=_gd0||(d&&d.u===0)?'🛒 no vendió':'🛒 ventas: sin dato'),
       !gd[k]&&pdUlt[k]?`💰 % ganancia de la última venta (${_lineaFmtDia(pdUlt[k][1])}): ${pdUlt[k][0].toFixed(0)}%`:'',
       g7[k]!=null?`💵 ganancia promedio de los últimos 7 días: ${fmt(Math.round(g7[k]))} por día`:'',
