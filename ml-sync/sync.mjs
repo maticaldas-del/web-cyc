@@ -32820,6 +32820,63 @@ async function main() {
       return;
     }
 
+    // BILLING_PROBE=sincosto[:todo] → LOS PERFUMES SIN COSTO HOY (07/10/2026). SOLO LEE.
+    // Pedido suyo: "me decís los perfumes que no tienen costo hoy?". Dos casos, que se arreglan distinto:
+    //  · FICHA con costo 0 → se arregla con `poncosto`.
+    //  · PUBLICACIÓN de perfume SIN ficha → no hay de dónde sacar costo: `vincular` o `nuevoprod`.
+    // Perfume = el mismo RE de `repartopy`, sobre el nombre de la ficha y los títulos de sus publicaciones.
+    // Con `:todo` lista todos los productos sin costo, no sólo perfumes. Dice además las ventas de 30 días
+    // que quedaron sin ganancia por eso.
+    if (/^sincosto(:|$)/.test(String(process.env.BILLING_PROBE || ''))) {
+      const todo = /:todo/.test(String(process.env.BILLING_PROBE));
+      const RE_PERF = /perfum|parfum|\bedp\b|\bedt\b|eau de|fragan|body splash|body mist|\bcolonia\b/i;
+      const lk = (await db.get('cyc/mllinks')) || {};
+      const titulos = {}; const pubs = {};
+      for (const [mla, l] of Object.entries(lk)) {
+        if (!l) continue;
+        const t = l.title || l.titulo || '';
+        if (l.prodId) { (titulos[l.prodId] = titulos[l.prodId] || []).push(t); (pubs[l.prodId] = pubs[l.prodId] || []).push({ mla, l }); }
+      }
+      const sinCostoP = (p) => !(Number(p.costUSD) > 0) && !(Number(p.cost) > 0);
+      const esPerf = (p) => RE_PERF.test(`${p.name || ''} ${(titulos[p.id] || []).join(' ')}`);
+      const inv = (await db.get('cyc/inventory')) || {};
+      const stockDe = (id) => Object.entries(inv).filter(([k]) => k.startsWith(id + '__') && !k.includes('__v__')).reduce((a, [, v]) => a + Math.max(0, Number(v) || 0), 0);
+      // ventas de 30 días por ficha y por publicación
+      const vp = (await db.get('cyc/ventaprod')) || {};
+      const desde = new Date(Date.now() - 30 * 864e5).toISOString().slice(0, 10).replace(/-/g, '_');
+      const vProd = {}; const vMla = {};
+      for (const [dk, o] of Object.entries(vp)) {
+        if (dk < desde) continue;
+        for (const v of Object.values(o || {})) {
+          if (!v || v.cancelada) continue;
+          const u = Number(v.cantidad) || 1;
+          if (v.prodId) vProd[v.prodId] = (vProd[v.prodId] || 0) + u;
+          if (v.mla) vMla[v.mla] = (vMla[v.mla] || 0) + u;
+        }
+      }
+      console.log(`=== ${todo ? 'PRODUCTOS' : 'PERFUMES'} SIN COSTO HOY ===\n`);
+      console.log('── FICHAS CON COSTO EN 0 (se arreglan con poncosto)');
+      let k = 0;
+      for (const p of products) {
+        if (!sinCostoP(p) || (!todo && !esPerf(p))) continue; k++;
+        const ps = (pubs[p.id] || []).map(({ mla, l }) => `${mla} ${l.cuenta || '?'}${l.status && l.status !== 'active' ? ' (' + l.status + ')' : ''}${l.hidden ? ' oculta' : ''}`);
+        console.log(`   ${p.id} · ${p.name} · stock ${stockDe(p.id)} u. · vendió ${vProd[p.id] || 0} en 30 d · ${ps.length ? ps.join(' · ') : 'sin publicación vinculada'}`);
+      }
+      if (!k) console.log('   ninguna');
+      console.log('\n── PUBLICACIONES SIN FICHA (sin ficha no hay costo · vincular o nuevoprod)');
+      k = 0;
+      for (const [mla, l] of Object.entries(lk)) {
+        if (!l || l.prodId || l.noVendemosMas) continue;
+        const t = l.title || l.titulo || '';
+        if (!todo && !RE_PERF.test(t)) continue;
+        if (l.status === 'closed' && !vMla[mla]) continue;
+        k++;
+        console.log(`   ${mla} · ${l.cuenta || '?'} · ${t} · ${l.status || 'estado ?'}${l.hidden ? ' · oculta' : ''} · vendió ${vMla[mla] || 0} en 30 d`);
+      }
+      if (!k) console.log('   ninguna');
+      return;
+    }
+
     // BILLING_PROBE=histmono → EL MONOTRIBUTO QUE EL PANEL LE COBRA A CADA MES (30/09/2026). SOLO LEE.
     // Para la deuda de la recategorización a H desde junio: qué % usó cada mes, sobre cuánta
     // facturación, y cuánto integrado dan esas cuentas (para comparar contra lo que se pagó).
