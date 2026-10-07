@@ -2453,7 +2453,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='22.35';
+const APP_VERSION='22.36';
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
 // muestre la versión y la fecha de actualización y que tenga un desplegable predeterminado cerrado".
 // Y el mismo día: "que ponga fecha de cada modificación y haya una barrita para scrollear y que
@@ -2464,6 +2464,7 @@ const APP_VERSION='22.35';
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'22.36',f:'07/10/2026',h:'15:52',c:[{n:2,t:'📈 Línea de tiempo: los meses viejos (antes de que el panel guardara las ventas) ahora muestran costo, ganancia y % estimados: el costo de la ficha hacia atrás con el dólar de cada mes, y lo que deposita ML sacado de una venta parecida. Dicen ≈ estimada al pasar el dedo.'}]},
   {v:'22.35',f:'07/10/2026',h:'13:39',c:[{n:1,t:'📈 Línea de tiempo: ahora muestra también el día de HOY, incompleto (las ventas de hoy y el stock de ahora; las visitas y la caja llegan a la noche).'}]},
   {v:'22.34',f:'06/10/2026',h:'23:20',c:[{n:2,t:'🤖 Para probar: cada candidato dice si Claude ya miró las dos fotos y los títulos (✓ es el mismo · ❌ no es · 🤔 dudoso). Lo que dio NO o dudoso sale en rojo; la última palabra es tuya.'}]},
   {v:'22.33',f:'06/10/2026',h:'22:45',c:[{n:2,t:'❌ Para probar (Paraguay): botón "No es el mismo producto" en la tarjeta y en el renglón del pedido. Saca la medición, el robot deja de usar ese catálogo de ML para ese producto y el caso queda guardado para revisar por qué se equivocó.'}]},
@@ -8625,6 +8626,21 @@ function lineaPintar(prodId){
       // Para la LÍNEA del costo va sólo la MERCADERÍA (costo × dólar del mes): el costo de la ganancia trae además
       // IIBB + monotributo como % del precio cobrado, y eso hacía que la línea se moviera con cada venta (03/10/2026).
       const vv={...v,_dateKey:k};const ex=_efectivoCostoVP(vv),im=impuestosDeVenta(vv);mer+=Math.max(0,ex-im);imp+=im;tot+=Number(v.total)||0;});gd[k]={gan:neto-costo,costo,gest,cu:q>0&&mer>0?mer/q:null,ct:q>0&&mer>0?(mer+imp)/q:null,impPct:tot>0?imp/tot*100:null};}
+  // LOS DÍAS VIEJOS, ESTIMADOS (07/10/2026, él con el Pack Cubreasiento: "no hiciste que el costo vaya hacia atrás en
+  // el tiempo así tenemos un aprox de cuánta ganancia se hizo"). Las ventas de antes de que el panel las guarde salen de
+  // la línea del robot (unidades y lo cobrado, SIN lo que depositó ML). Se arma una venta igual a las del panel, con la
+  // MISMA cuenta (efectivoCostoVP: costo del mes o el de hoy hacia atrás, dólar del mes, IIBB y monotributo), y lo que
+  // deposita ML sale de la venta del panel de ESA publicación con el precio más parecido (misma proporción, así el cargo
+  // fijo y el envío se parecen). Sin ninguna venta del panel para comparar no se inventa nada. Queda marcado `est`.
+  {const ref={};for(const [k,dd] of Object.entries(state.ventaprod||{}))for(const v of Object.values(dd||{})){if(!v||v.cancelada||!(Number(v.total)>0)||!(Number(v.neto)>0)||v.netoEstimado||(prodDeVenta(v)||{}).id!==prodId||!_vOk(v))continue;
+      const q=Number(v.qty)||1;(ref[v.mla||'*']=ref[v.mla||'*']||[]).push({pu:Number(v.total)/q,r:Number(v.neto)/Number(v.total)});(ref['*']=ref['*']||[]).push({pu:Number(v.total)/q,r:Number(v.neto)/Number(v.total)});}
+    const ratioDe=(mla,pu)=>{const L0=(ref[mla]&&ref[mla].length?ref[mla]:ref['*'])||[];if(!L0.length)return null;let b=null;for(const x of L0)if(!b||Math.abs(Math.log(x.pu/pu))<Math.abs(Math.log(b.pu/pu)))b=x;return b.r;};
+    for(const k of ks){if(gd[k])continue;let neto=0,costo=0,gest=0,q=0,mer=0,imp=0,tot=0;
+      for(const [mla,d] of Object.entries(porMlaF)){const x=d&&d[k];if(!x||!(Number(x.u)>0)||!(Number(x.tot)>0))continue;
+        const u=Number(x.u),t=Number(x.tot);const r=Number(x.neto)>0?Number(x.neto)/t:ratioDe(mla,t/u);if(r==null)continue;
+        const lk=(state.mllinks||{})[mla]||{};const v={prodId,prod:'',mla,cuenta:lk.cuenta||'',qty:u,total:t,neto:Math.round(t*r),_dateKey:k};
+        neto+=v.neto;costo+=efectivoCostoVP(v);gest+=gestDivVP(v);q+=u;const ex=_efectivoCostoVP(v),im=impuestosDeVenta(v);mer+=Math.max(0,ex-im);imp+=im;tot+=t;}
+      if(q>0)gd[k]={gan:neto-costo,costo,gest,cu:mer>0?mer/q:null,ct:mer>0?(mer+imp)/q:null,impPct:tot>0?imp/tot*100:null,est:true};}}
   // EL % DE GANANCIA COMO LÍNEA (03/10/2026, él: "sacá la ganancia y el % ponelo como una línea, idéntico
   // al precio, del color del nivel de % que vendió ese día"). Cada tramo toma el color de su día con la MISMA
   // tabla de niveles que todo el panel (pctColor: Bajo, Justo, Bien, Bueno, Excelente, Estrella, JOYA).
@@ -8636,7 +8652,9 @@ function lineaPintar(prodId){
   // LA LÍNEA DE COSTO REAL (03/10/2026; se probó con dos líneas y él prefirió una, él: "quiero lo real, si aumentó el IIBB voy a pensar que el costo es el
   // mismo"): llena = costo REAL por unidad (mercadería + IIBB + monotributo, lo que se resta para la ganancia);
   // punteada = sólo la mercadería (costo × dólar del mes). La distancia entre las dos son los impuestos.
-  const cu={},ct={};{let ult=null,ulT=null;for(const k of ks){if(gd[k]&&gd[k].cu>0){ult=gd[k].cu;ulT=gd[k].ct;}if(ult!=null){cu[k]=ult;ct[k]=ulT;}}}
+  const cu={},ct={};{let ult=null,ulT=null;for(const k of ks){if(gd[k]&&gd[k].cu>0){ult=gd[k].cu;ulT=gd[k].ct;}if(ult!=null){cu[k]=ult;ct[k]=ulT;}}
+    // Y para atrás, hasta el principio del gráfico, con el primer costo conocido (07/10/2026, pedido suyo).
+    const k1=ks.find(k=>cu[k]!=null);if(k1)for(const k of ks){if(k===k1)break;cu[k]=cu[k1];ct[k]=ct[k1];}}
   const cvs=Object.values(ct).filter(x=>x>0);const [cMin,cMax]=cvs.length?_esc(Math.min(...cvs),Math.max(...cvs)):[0,1];
   // LA LÍNEA DE STOCK EN UNIDADES (03/10/2026, él: "una línea de stock y que el color coordine con buen stock,
   // falta o exceso, con intermedios, 5 colores"). El color son los DÍAS QUE ALCANZA ese stock al ritmo de ese
@@ -8752,7 +8770,7 @@ function lineaPintar(prodId){
       d&&d.u!=null&&d.u>0?`🛒 vendió ${d.u} u.${d.uR?` (${d.uR} en remate)`:''}`:(k>=_gd0||(d&&d.u===0)?'🛒 no vendió':'🛒 ventas: sin dato'),
       !gd[k]&&pdUlt[k]?`💰 % ganancia de la última venta (${_lineaFmtDia(pdUlt[k][1])}): ${pdUlt[k][0].toFixed(0)}%`:'',
       g7[k]!=null?`💵 ganancia promedio de los últimos 7 días: ${fmt(Math.round(g7[k]))} por día`:'',
-      gd[k]?`💰 ganancia ${fmt(gd[k].gan)}${(()=>{const q=pctGananciaVP(gd[k].gan,gd[k].costo,gd[k].gest);return q!=null&&isFinite(q)?` (${q.toFixed(0)}%)`:'';})()}`:'',
+      gd[k]?`💰 ${gd[k].est?'≈ ganancia estimada':'ganancia'} ${fmt(gd[k].gan)}${(()=>{const q=pctGananciaVP(gd[k].gan,gd[k].costo,gd[k].gest);return q!=null&&isFinite(q)?` (${q.toFixed(0)}%)`:'';})()}`:'',
       stU[k]!=null?`📦 ${stU[k]} u. en Full · alcanza ${stD[k]>=999?'+999':Math.round(stD[k])} d (${_stTxt(stD[k])})`:'',
       cu[k]!=null?`🏷️ costo real ${ct[k]>0?fmt(ct[k]):'?'} c/u = mercadería ${fmt(cu[k])} (dólar del mes $${Math.round(tcForYM(k.slice(0,7))||0)}) + IIBB y monotributo ${ct[k]>0?fmt(ct[k]-cu[k]):'?'}${gd[k]&&gd[k].impPct!=null?` (${gd[k].impPct.toFixed(1)}% de lo cobrado)`:''}${gd[k]&&gd[k].cu>0?'':' · el último conocido'}`:'',
       d&&d.vis!=null?`👀 ${d.vis} visitas`:'',
