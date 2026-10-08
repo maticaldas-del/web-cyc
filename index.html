@@ -2453,7 +2453,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='22.49';
+const APP_VERSION='22.50';
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
 // muestre la versión y la fecha de actualización y que tenga un desplegable predeterminado cerrado".
 // Y el mismo día: "que ponga fecha de cada modificación y haya una barrita para scrollear y que
@@ -2464,6 +2464,7 @@ const APP_VERSION='22.49';
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'22.50',f:'08/10/2026',h:'03:10',c:[{n:1,t:'🇵🇾 El pedido que estás armando va en un desplegable: cerrado muestra sólo cuánto va (US$, en rojo si pasa el tope) y cuántos productos; tocándolo se abre todo. Si lo dejás abierto, sigue abierto al cargar unidades.'}]},
   {v:'22.49',f:'08/10/2026',h:'03:00',c:[{n:1,t:'🇵🇾 Pedidos hechos: la tarjeta cerrada muestra grande lo que salió el pedido puesto en la oficina, en dólares.'}]},
   {v:'22.48',f:'08/10/2026',h:'02:55',c:[{n:1,t:'🇵🇾 Pedidos hechos más simples: cerrado muestra sólo la fecha, el % de recargo y en qué está. Productos, unidades y plata, adentro.'}]},
   {v:'22.47',f:'08/10/2026',h:'02:45',c:[{n:2,t:'🇵🇾 Costos de un pedido: los productos de PRIMERA compra ya no dicen que "subieron" (no había costo anterior): dicen que su costo quedó con el recargo real en vez del 17% estimado. Los que ya tenías y subieron van aparte con ⬆️.'}]},
@@ -12482,11 +12483,19 @@ function pedNuevosHTML(vivos){
   const pasa=Math.round((P.crudo-tope)*100)/100;
   const conCod=P.filas.filter(f=>String(f.c.cod||'').trim());
   const txt=nisseiMsgLineas(conCod.map(f=>({cod:String(f.c.cod).trim(),u:f.u,nom:f.c.nombre}))).join('\n');
-  return `<div style="margin:14px 0 4px;padding:12px 13px;background:var(--surface2);border-radius:10px;border:1px solid var(--border)">
-    <div style="display:flex;align-items:baseline;gap:8px;flex-wrap:wrap;margin-bottom:9px">
-      <div style="font-size:.76rem;font-weight:700">🧾 Armar el pedido</div>
-      <div style="font-size:.6rem;color:var(--muted)">poné las unidades en cada producto de abajo · la web sólo hace las cuentas</div>
-    </div>
+  // Desplegable y minimalista (08/10/2026, él: "el pedido del momento también desplegable, si quiero verlo le hago
+  // click"). Cerrado muestra sólo lo que va, en dólares grande. Se acuerda si lo dejaste abierto: cargar unidades
+  // redibuja la pantalla y sin eso se cerraría solo en cada casilla.
+  return `<details ${window._pedArmOpen?'open':''} ontoggle="window._pedArmOpen=this.open" style="margin:14px 0 4px;background:var(--surface2);border-radius:10px;border:1px solid ${pasa>0?'rgba(239,68,68,.45)':'var(--border)'}">
+    <summary style="cursor:pointer;padding:11px 13px;display:flex;align-items:center;gap:10px;list-style:none">
+      <span style="font-size:1rem">🧾</span>
+      <span style="font-size:.78rem;font-weight:700;white-space:nowrap">Pedido que estás armando</span>
+      <span style="font-size:1.05rem;font-weight:800;color:${pasa>0?'var(--red)':'var(--text)'};white-space:nowrap">US$ ${P.crudo.toLocaleString('es-AR',{minimumFractionDigits:2,maximumFractionDigits:2})}</span>
+      <span style="font-size:.66rem;color:var(--muted);white-space:nowrap">${P.filas.length} prod. · ${P.unidades} u.</span>
+      <span style="margin-left:auto;font-size:.6rem;color:var(--muted)">▾</span>
+    </summary>
+    <div style="padding:0 13px 12px">
+    <div style="font-size:.6rem;color:var(--muted);margin-bottom:9px">poné las unidades en cada producto de abajo · la web sólo hace las cuentas</div>
     <div style="background:var(--surface);border-radius:9px;padding:11px 13px;margin-bottom:9px">
       <div style="font-size:.6rem;color:var(--muted);letter-spacing:.04em">TOTAL DEL PEDIDO · mercadería, sin el 17%</div>
       <div style="font-size:2.1rem;font-weight:700;line-height:1.15;margin:2px 0 3px">US$ ${P.crudo.toFixed(2)}</div>
@@ -12529,7 +12538,8 @@ function pedNuevosHTML(vivos){
       <div style="font-size:.63rem;color:var(--muted);margin-bottom:5px">Para mandarle a <strong>Nissei</strong> — código y unidades${P.sinCod.length?` · <span style="color:var(--amber)">${P.sinCod.length} no entra(n): falta cargarle el código</span>`:''}</div>
       <button onclick="copiarTexto(this.nextElementSibling)" style="margin:6px 0;padding:9px 14px;border-radius:8px;border:1px solid var(--border2);background:var(--surface2);color:var(--text);font-family:'DM Mono',monospace;font-size:.78rem;cursor:pointer">📋 Copiar mensaje</button><textarea readonly onclick="this.select()" style="width:100%;min-height:${Math.min(160,22+conCod.length*17)}px;background:rgba(0,0,0,.28);border:1px solid var(--border2);border-radius:6px;color:var(--text);font-family:'DM Mono',monospace;font-size:.7rem;padding:7px 9px;resize:vertical">${txt}</textarea>
     </div>`:''}
-  </div>`;
+    </div>
+  </details>`;
 }
 // ── SIMULADOR REAL DE PRECIO (18/09/2026) ─────────────────────────────────────────────────
 // Pedido suyo: *"el chat local que busca precios en compraparaguai tiene problemas al saber cuanto
