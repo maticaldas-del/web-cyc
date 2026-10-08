@@ -4592,7 +4592,12 @@ async function calcCajaBarata(db, o) {
     // Sólo si la del color es REAL: las `__v__` se crearon todas el 24/09 con `aprox:true` y tapaban
     // la fecha real del producto (etapa 1, 27/09): sin gracia de 30 días y la escalera caía a altaTs.
     const h = (hv && hv.desde && hv.aprox === false) ? hv : histCb[pid + '__' + sidCb(cta)];
-    if (!h || !h.desde || h.aprox !== false) return null;
+    if (!h || !h.desde) return null;
+    // UNA FECHA APROXIMADA ES UN MÍNIMO, NO UN INVENTO (08/10/2026). Él, con el Xiaomi Watch 5 Lite (en Full desde
+    // el 18/08, 0 ventas en el año, 2 visitas por mes): *"¿por qué no lo baja más? hace muchísimo que está dando
+    // vueltas y no se vende"*. La escalera lo dejaba afuera por "sin fecha real": su registro es de antes de la
+    // marca `aprox`. Pero la fecha aproximada es el día en que el robot lo VIO por primera vez con stock: la
+    // mercadería está ahí por lo menos desde entonces. Usarla puede hacer esperar de más, nunca bajar antes.
     return Math.floor((Date.now() - h.desde) / 864e5);
   };
   const quietaDe = (mla, pid, cta, vari) => {
