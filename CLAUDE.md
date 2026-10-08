@@ -1192,6 +1192,8 @@ la otra publicación, `MLA3690637828`, quedó igual sola porque ML les sincroniz
 
 ## EL RECARGO DE PARAGUAY PASÓ DE 15% A 17% (23/09/2026)
 
+**PENDIENTE (08/10/2026), dicho por él: con los gastos del PRÓXIMO pedido se vuelve a evaluar el 17%.** Medidos hasta hoy: 21/09 **19,9%** (dólar +5,5% · cambista 1,4% · retira 9,8% · correo 2,5%) y 05/10 **22,4%** (dólar +7,4% · cambista 1,3% · retira 11,2% · correo 2,5%, % sobre la factura al dólar del panel). Los dos pasan el 17%. Cuando estén los gastos del tercero, proponerle el número nuevo con los tres a la vista.
+
 Pedido suyo: *"cambialo a 17"*. La compra del 21/09 costó **19,9% arriba de la FACTURA**
 (US$ 469,40) pero **~17,3% arriba del precio que muestra la WEB** (US$ 479,70), porque el mayorista
 cobró US$ 10,30 menos que la lista. **Todo el panel calcula contra el precio de la web**, así que el
