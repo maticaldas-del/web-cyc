@@ -16174,7 +16174,7 @@ async function main() {
         const inv = (await db.get('cyc/inventory')) || {};
         const netopub = (await db.get('cyc/netopub')) || {};
         const escalera = (await db.get('cyc/escalera')) || {};
-        const filas = {}; let leidas = 0, sinLeer = 0;
+        const filas = {}; let leidas = 0, sinLeer = 0, visUna = 0, visErr = '';
         const desdeY = new Date(Date.parse(ayerK.replace(/_/g, '-') + 'T03:00:00Z')).toISOString(), hastaY = new Date(Date.parse(ayerK.replace(/_/g, '-') + 'T03:00:00Z') + DMS - 1000).toISOString();
         for (const [cta, mlas] of Object.entries(mlasCta)) {
           const t = await tokDe(cta);
@@ -16190,7 +16190,15 @@ async function main() {
             for (let i = 0; i < mlas.length; i += 40) {
               const lote = mlas.slice(i, i + 40);
               try { const r = await g429(`/visits/items?ids=${lote.join(',')}&date_from=${encodeURIComponent(desdeY)}&date_to=${encodeURIComponent(hastaY)}`, t.tk);
-                for (const m of lote) { const raw = r && r[m]; const v = typeof raw === 'number' ? raw : (raw && typeof raw.total_visits === 'number' ? raw.total_visits : null); if (v != null) vis[m] = v; } } catch { /* sin visitas */ }
+                for (const m of lote) { const raw = r && (Array.isArray(r) ? r.find((x) => x && x.item_id === m) : r[m]); const v = typeof raw === 'number' ? raw : (raw && typeof raw.total_visits === 'number' ? raw.total_visits : null); if (v != null) vis[m] = v; } } catch (e) { visErr = String((e && e.message) || e).slice(0, 120); }
+            }
+            // LAS VISITAS DEJARON DE GUARDARSE (08/10/2026: desde ~01/10 la línea no tiene visitas). El pedido por lote
+            // fallaba callado. Lo que no vino por lote se pide publicación por publicación con la MISMA puerta que el
+            // relleno para atrás (`time_window`, que sí anda) y se toma el día de ayer.
+            for (const m of mlas) {
+              if (vis[m] != null || (links[m] && links[m].status === 'closed')) continue;
+              try { const r = await g429(`/items/${m}/visits/time_window?last=3&unit=day`, t.tk);
+                for (const x of ((r && r.results) || [])) { const ts = Date.parse(x.date); if (isFinite(ts) && diaDe(ts + 3 * 3600e3) === ayerK) { vis[m] = Number(x.total) || 0; visUna++; } } } catch { /* queda sin visitas */ }
             }
           }
           for (const mla of mlas) {
@@ -16221,6 +16229,7 @@ async function main() {
         }
         const n = await escribir(filas, false);
         console.log(`${Object.keys(filas).length} publicaciones · ${leidas} leídas de ML · ${sinLeer} sin leer (quedan incompletas) · ${n} datos ${GO ? 'guardados' : 'a guardar'} · día ${ayerK}`);
+        console.log(`visitas: ${Object.values(filas).filter((f) => f[ayerK].vis != null).length} con dato (${visUna} pedidas una por una)${visErr ? ' · el pedido por lote falló: ' + visErr.replace(/ids=[^&]*/, 'ids=…') : ''}`);
         // Poda a los 400 días (una vez por mes alcanza: el día 1).
         if (GO && new Date(T0).getUTCDate() === 2) {
           const corte = diaDe(T0 - 400 * DMS); let podados = 0;
@@ -16269,7 +16278,7 @@ async function main() {
           if (GO) await db.set('mlapi/lineaprog/ventas', { ok: !cortadas.length, ts: Date.now(), cortadas });
         }
         if (fase === 'visitas') {
-          const hecho = (prog.visitas && prog.visitas.mlas) || {};
+          const hecho = /:rehacer/.test(_lp) ? {} : ((prog.visitas && prog.visitas.mlas) || {});
           let n = 0, ok = 0, mal = 0, pend = 0;
           for (const [cta, mlas] of Object.entries(mlasCta)) {
             const t = await tokDe(cta); if (!t) continue;
