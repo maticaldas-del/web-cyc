@@ -2454,7 +2454,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='22.61';
+const APP_VERSION='22.62';
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
 // muestre la versión y la fecha de actualización y que tenga un desplegable predeterminado cerrado".
 // Y el mismo día: "que ponga fecha de cada modificación y haya una barrita para scrollear y que
@@ -2465,6 +2465,7 @@ const APP_VERSION='22.61';
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'22.62',f:'08/10/2026',h:'15:05',c:[{n:1,t:'🔎 Revisión: nueva etapa 8 · Datos e historial (las líneas de tiempo). Como nunca se hizo, el cartel de Inicio la pide ya.'}]},
   {v:'22.61',f:'08/10/2026',h:'14:45',c:[{n:2,t:'📈 Línea de tiempo: la línea de stock sumaba el mismo stock una vez por cada publicación del producto (el Centímetro decía 413 u. y eran ~107). Ahora cuenta una vez por cuenta (o por color). Lo mismo en la línea de todos los productos.'}]},
   {v:'22.60',f:'08/10/2026',h:'14:20',c:[{n:2,t:'📊 Métricas → % de ganancia: el mes anterior muestra su promedio FINAL (todo el mes) y la flecha compara contra ése. Lo que llevaba a esta misma altura queda abajo, chico.'}]},
   {v:'22.59',f:'08/10/2026',h:'14:05',c:[{n:1,t:'📈 Línea de tiempo, caja: lo que no es de catálogo (no hay caja que ganar) y lo que está pausado ya no sale en gris como "no se sabe": tiene su color y el globito lo dice.'}]},
@@ -3600,6 +3601,7 @@ const REV_ETAPAS=[
   {n:5,nom:'Fallas mudas y privacidad',que:'cuando ML no contesta y se guarda como dato; datos de terceros en los registros públicos',esf:'Alto'},
   {n:6,nom:'Ideas nuevas',que:'datos que ML ya da y no usamos, cosas que hacés a mano y se pueden automatizar (sólo propone)',esf:'Alto'},
   {n:7,nom:'Diseño',que:'la web más cómoda, sencilla y linda: qué sobra, qué cuesta encontrar, qué se ve mal en el teléfono (sólo propone)',esf:'Alto'},
+  {n:8,nom:'Datos e historial',que:'las líneas de tiempo de cada producto y de todos juntos: que cada día cuente bien (nada contado dos veces, nada vacío leído como cero) y coincida con Ventas y el Arqueo',esf:'Alto'},
 ];
 const REV_CADA_DIAS=7;
 // ── LA REVISIÓN LA MANEJA CLAUDE, NO ÉL (26/09/2026, pedido suyo) ─────────────────────────────
