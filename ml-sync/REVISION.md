@@ -227,3 +227,8 @@ Todo lo que guarda la historia día por día y las pantallas que la dibujan.
 - **Ritmo normal** (`cyc/ritmonormal`, `ritmo:go`): ventas sin remate ÷ días con stock sin remate.
 - Chequear: totales de un día contra Ventas de ese día · stock contra el Arqueo · que un día sin
   lectura no se dibuje como cero · que hoy diga "incompleto".
+
+- **Línea de tiempo: "alcanza N días" con una sola cuenta (08/10/2026, v22.75):** el resumen usaba `_conSt` (días con stock
+  supuestos por el historial) y la línea `conS` (sólo días con venta o stock anotado): el Pendrive 32gb decía 52 d · sobra
+  arriba y verde en la línea (real ~31 d). Ahora los dos usan `_pdiaAntes(i)`. Chequear: que no vuelva a haber dos cuentas
+  del mismo ritmo en la línea.

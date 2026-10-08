@@ -2461,7 +2461,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='22.74';
+const APP_VERSION='22.75';
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
 // muestre la versión y la fecha de actualización y que tenga un desplegable predeterminado cerrado".
 // Y el mismo día: "que ponga fecha de cada modificación y haya una barrita para scrollear y que
@@ -2472,6 +2472,7 @@ const APP_VERSION='22.74';
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'22.75',f:'08/10/2026',h:'20:05',c:[{n:2,t:'📈 Línea de tiempo: el "stock hoy · alcanza N días" de arriba y el color de la línea de stock ahora usan la misma cuenta del ritmo de venta (antes arriba podía decir "sobra" y la línea "bien").'}]},
   {v:'22.74',f:'08/10/2026',h:'19:55',c:[{n:1,t:'🧠 Vuelven los 🧠 de cada venta (dicen por qué está a ese precio). El "🧠 qué pasó" de Ventas de hoy (y de Ventas) aparece sólo si ese día pasó algo importante, y lo cuenta Claude.'}]},
   {v:'22.73',f:'08/10/2026',h:'19:35',c:[{n:1,t:'🧠 En Ventas el botón aparece sólo si ese día pasó algo importante con esa publicación, y dice qué pasó.'}]},
   {v:'22.72',f:'08/10/2026',h:'19:18',c:[{n:1,t:'🧠 El botón sólo aparece donde Claude escribió algo para ese lugar. Si no hay nota, no hay botón.'}]},
@@ -8736,10 +8737,15 @@ function lineaPintar(prodId){
   // momento: ventas de los 30 días anteriores ÷ días con stock en esa ventana (3 ventas o más; si no, el ritmo
   // normal del año que mide el robot). 🔴 menos de 7 d · 🟠 7-20 · 🟢 20-45 · 🟡 45-90 · 🟣 más de 90.
   const _rnP=(()=>{if(_lineaVar){const rn=state.ritmonormal||{};let pd=0;LOCS.forEach(l=>{const r=rn[prodId+'__'+sid(l)+'__v__'+sid(_lineaVar)];if(r&&Number(r.pd)>0)pd+=Number(r.pd);});return pd>0?pd:null;}const r=ritmoNormalDe(prodId);return r&&r.pd>0?r.pd:null;})();
-  const stU={},stD={};{const conS=k=>{const d=dias[k];return !!d&&(d.u>0||d.st>0||(d.vis>0&&d.st==null));};
+  // EL RITMO PARA "CUÁNTOS DÍAS ALCANZA", UNA SOLA CUENTA (08/10/2026, él con el Pendrive 32gb: el resumen decía 52 d ·
+  // sobra en amarillo y la línea terminaba en verde). El resumen contaba como días con stock también los que el historial
+  // suponía, y el ritmo le daba menor. Ahora el resumen y la línea usan `_pdiaAntes(i)`: los 30 días antes del índice i,
+  // contando sólo los días que vendió o tuvieron stock anotado.
+  const _conSR=k=>{const d=dias[k];return !!d&&(d.u>0||d.st>0||(d.vis>0&&d.st==null));};
+  const _pdiaAntes=i=>{let u=0,dc=0;for(let j=Math.max(0,i-30);j<i;j++){const kk=ks[j],dd=dias[kk];if(_conSR(kk)){dc++;u+=Math.max(0,(dd.u||0)-(dd.uR||0));}}return (u>=3&&dc>=7)?u/dc:_rnP;};
+  const stU={},stD={};{
     ks.forEach((k,i)=>{const d=dias[k];if(!d||d.st==null||!(d.stN>=d.pubs))return;stU[k]=d.st;
-      let u=0,dc=0;for(let j=Math.max(0,i-30);j<i;j++){const kk=ks[j],dd=dias[kk];if(conS(kk)){dc++;u+=Math.max(0,(dd.u||0)-(dd.uR||0));}}
-      const pdia=(u>=3&&dc>=7)?u/dc:_rnP;stD[k]=pdia>0?d.st/pdia:(d.st>0?999:0);});}
+      const pdia=_pdiaAntes(i);stD[k]=pdia>0?d.st/pdia:(d.st>0?999:0);});}
   // LAS LLEGADAS DE MERCADERÍA (08/10/2026, él: "que en stock tenga una pequeña marca indicando que llegaron
   // unidades"). Entre dos días con el número de stock (a 3 días o menos): lo que hay hoy − lo que había + lo vendido
   // en el medio. 2 u. o más (o desde cero) es una llegada; 1 u. suelta puede ser una devolución y no se marca.
@@ -8879,8 +8885,7 @@ function lineaPintar(prodId){
   // excedente, faltan"). Unidades en Full de las 4 cuentas (o del color elegido) y los días que alcanzan al ritmo de
   // los últimos 30 días con stock (3+ ventas; si no, el ritmo normal del año): MISMOS colores que la línea de stock.
   const _stHoy=(()=>{let q=0;LOCS.forEach(l=>{q+=Math.max(0,Number(_lineaVar?getQV(prodId,l,_lineaVar):getQ(prodId,l))||0);});
-    let u=0,dc=0;for(let j=Math.max(0,N-30);j<N;j++){const kk=ks[j];if(_conSt(dias[kk],kk)){dc++;u+=Math.max(0,((dias[kk]&&dias[kk].u)||0)-((dias[kk]&&dias[kk].uR)||0));}}
-    const pdia=(u>=3&&dc>=7)?u/dc:_rnP;const dd=pdia>0?q/pdia:(q>0?999:0);
+    const pdia=_pdiaAntes(N);const dd=pdia>0?q/pdia:(q>0?999:0);
     return `stock hoy: <b style="color:${_stCol(dd)}">${q} u.</b> <span style="color:${_stCol(dd)}">(${q>0?(dd>=999?'sin ventas para medir':'alcanza '+Math.round(dd)+' d'):'agotado'} · ${_stTxt(dd)})</span>`;})();
   const pIni=ks.map(k=>dias[k]&&dias[k].p).find(x=>x>0), pFin=[...ks].reverse().map(k=>dias[k]&&dias[k].p).find(x=>x>0);
   // ¿EL CAMBIO DE PRECIO DEJÓ MÁS PLATA? (04/10/2026, él con el Metatarso: "quizás lo aumentó un 10% y se vendió un
