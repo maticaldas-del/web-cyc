@@ -723,8 +723,8 @@ Pedido suyo: *"me gustaria que vos tambien veas lo que me manda y ver si lo pode
 mensaje sin que yo te escriba (…) siempre y cuando sea algo que vos puedas hacer algo, sino no me mandes nada"*.
  · `sendAlerta` guarda copia de cada aviso que SALIÓ en `mlapi/alertaslog/<ts>`; se lee con `alertas[:horas]`
    (ml-consulta, solo lee, tapa números largos).
- · Rutina `trig_01475PwdPVJ1qTnYswcDxRq8` (8:47, 11:47, 14:47, 17:47, 20:47 y 23:47 de acá) que entra a esta sesión,
-   lee las últimas 3 h y, si hay algo que puedo resolver dentro de sus reglas, lo hago, releo y le mando UNA
+ · Rutina `trig_01475PwdPVJ1qTnYswcDxRq8` (**10:47 y 22:47 de acá**, dos por día desde el mismo 08/10: *"me manda poco
+   telegram"*) que entra a esta sesión, lee las últimas 12 h (`alertas:12`) y, si hay algo que puedo resolver dentro de sus reglas, lo hago, releo y le mando UNA
    notificación. Si no hay nada, no se manda nada.
  · Ese mismo día: el robot trataba `paused_by_seller` como "la pausó ML" y no activaba lo que él creó pausado. Arreglado
    (`activarPausadasFull`). Piedra Gua Sha activada (59%) · Kit Jade subido $5.299 → $5.420 (25%) para que se active solo ·
