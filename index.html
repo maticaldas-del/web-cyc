@@ -2453,7 +2453,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='22.48';
+const APP_VERSION='22.49';
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
 // muestre la versión y la fecha de actualización y que tenga un desplegable predeterminado cerrado".
 // Y el mismo día: "que ponga fecha de cada modificación y haya una barrita para scrollear y que
@@ -2464,6 +2464,7 @@ const APP_VERSION='22.48';
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'22.49',f:'08/10/2026',h:'03:00',c:[{n:1,t:'🇵🇾 Pedidos hechos: la tarjeta cerrada muestra grande lo que salió el pedido puesto en la oficina, en dólares.'}]},
   {v:'22.48',f:'08/10/2026',h:'02:55',c:[{n:1,t:'🇵🇾 Pedidos hechos más simples: cerrado muestra sólo la fecha, el % de recargo y en qué está. Productos, unidades y plata, adentro.'}]},
   {v:'22.47',f:'08/10/2026',h:'02:45',c:[{n:2,t:'🇵🇾 Costos de un pedido: los productos de PRIMERA compra ya no dicen que "subieron" (no había costo anterior): dicen que su costo quedó con el recargo real en vez del 17% estimado. Los que ya tenías y subieron van aparte con ⬆️.'}]},
   {v:'22.46',f:'08/10/2026',h:'02:30',c:[{n:1,t:'🇵🇾 Gastos del pedido: la mercadería va al dólar del panel y lo que el dólar salió más caro es un gasto más, así los % de todos los gastos suman el recargo real. Los costos revisados van en un desplegable.'}]},
@@ -12116,6 +12117,7 @@ function pyPedidoResumenHTML(c,enCamino,dias,tarde){
   const col=enCamino?(tarde?'var(--amber)':'#38bdf8'):'var(--green)';
   return `<span style="font-size:1rem">${enCamino?'🚚':'📦'}</span>
     <span style="font-size:.82rem;font-weight:700;white-space:nowrap">${dm(c.fecha)}</span>
+    <span style="font-size:1.05rem;font-weight:800;color:var(--text);white-space:nowrap" title="Lo que te salió el pedido puesto en la oficina: la factura más todos los gastos${pyRecargoReal(c).r?'':' (con el 17% estimado: faltan gastos)'}">US$ ${(Math.round((parseFloat(c.usdCrudo)||0)*(pyRecargoReal(c).r||RECARGO_PY)*100)/100).toLocaleString('es-AR',{minimumFractionDigits:2,maximumFractionDigits:2})}</span>
     ${pyRecargoChip(c)}
     <span style="margin-left:auto;font-size:.68rem;color:${col};font-weight:700;white-space:nowrap">${est}</span>
     <span style="font-size:.6rem;color:var(--muted)">▾</span>`;
