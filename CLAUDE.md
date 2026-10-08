@@ -826,6 +826,18 @@ mensaje sin que yo te escriba (…) siempre y cuando sea algo que vos puedas hac
    (05/10→19/10, las 4) · "SEMANA DEL BIENESTAR" (19→26/10) · "OFERTAS OCTUBRE" (19/10→02/11). No entramos en ninguno
    (regla 8); en las revisiones del 10 y 11/10 se mira si perdimos cajas de compra o ventas contra los que sí entraron.
 
+### PROMOS DE ML: SE ENTRA SÓLO SI LA BAJA YA ESTABA PENSADA (08/10/2026) · Y VENTAS SÓLO CON LO IMPORTANTE
+ · **Excepción a la regla 8, suya:** *"si tenés identificada una publicación que vas a bajar y falta poco para una promo (y la
+   promo te da algún beneficio) activala, porque es probable que ML ayude un poquito"*. `analizapromo[:días]` (solo lee) y
+   `entrarpromo:<MLA>=<precio>@<id>|motivo;go` (ml-sync; `=salir` para salir). Las que entra Claude viven en
+   `cyc/promoclaude/<MLA>` y la vuelta de la hora / `sacapromos` no las sacan hasta que terminan. **No se entra en promos para
+   bajar precios en general.** Medido el 08/10: los eventos (Día de la Madre, Ofertas Octubre, relámpago) piden 5% mínimo y
+   ML no pone plata.
+ · **El 🧠 de Ventas**, suyo: *"escribí algo si fue importante en el día, si no no"* → nota `venta:<MLA>@<AAAA-MM-DD>=nota|…`
+   (clave `venta__<AAAA_MM_DD>__<MLA>`); sin nota no hay botón. Productos y Rotación llevan la nota de precio; Pedidos y Armar
+   caja, la de unidades. *"Quiero que todos los lugares que tengan opción de poner cerebro llenarlas"*: se llenan de a
+   tandas en cada revisión de 12 h.
+
 ## ⏰ PENDIENTE: EL PEDIDO AL PAULVIC DEL 06/10 (08/10/2026)
 
 40 u. en 12 aromas, todavía en camino (`cyc/pedidospv`). Le mandaron **$246.283,77** para pagar (≈ $6.157 c/u; la ficha
