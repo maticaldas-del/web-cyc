@@ -822,6 +822,12 @@ algun momento van a volver a tener stock"*.
    "sobra stock", "lo bajé yo en 30 días" ni "comparte la caja". Con stock adentro siguen.
  · **"Lo bajaste vos a mano" ya no frena** ni el rescate ni el cerebro: él no toca precios, y lo que manda rematar se
    baja con `unapub:…:bajar=`, que marca `liquidando` (eso sí frena).
+ · **El Watch 5 Lite (Matías, 0 ventas en el año, 2 visitas/mes) no entraba a la escalera**: su registro de entrada a
+   Full es de antes de la marca `aprox` ("SIN MARCA") y `edadFullCb` exigía fecha real. Ahora una fecha aproximada
+   cuenta como MÍNIMO (la mercadería está ahí por lo menos desde que el robot la vio): puede esperar de más, nunca
+   bajar antes. La escalera dice en el log por qué deja afuera a cada una, y `porquebajo` muestra el registro crudo.
+ · **Pad 2 (`MLA1782639641`) se deja como está**: está marcada liquidando a mano (19/09), ya GANA la caja a $425.700
+   (7,8%) y no vende — bajar más no gana nada, ya es el botón de comprar. El problema es la demanda, no el precio.
  · **Quedan, a propósito:** liquidando · supervisor 🔴 · una suba por día y +25% por suba (sigue al día siguiente) ·
    techo $650.000 · barrera $33.000 salvo que deje más · nunca bajar del piso por elección · variantes (regla 7) ·
    Premium sin cuotas medidas · ML no contestó · releer de ML.
