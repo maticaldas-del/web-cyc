@@ -16711,9 +16711,18 @@ async function main() {
           const inv = (await db.get('cyc/inventory')) || {};
           let ok = 0, mal = 0, pend = 0, n = 0, parcial = 0; const errLog = [];
           const porMla = {};   // mla → dk → suma de sus depósitos
-          for (const [iv, x] of Object.entries(invDe)) {
+          // PRIMERO LO QUE IMPORTA (08/10/2026, él: "quiero tener la máxima línea de stock posible en todos los
+          // productos"). ML deja leer ~25 depósitos por noche (cupo 429), así que el orden decide quién tiene la línea
+          // primero: publicaciones activas con stock hoy, después activas, después con ficha. Un depósito sin
+          // ninguna publicación con ficha no lo dibuja ninguna línea de producto: se deja para el final.
+          const _prio = (x) => { let best = 0; for (const mla of x.mlas) { const e = links[mla] || {}; if (!e.prodId) continue;
+            const k = e.prodId + '__' + sidL(e.cuenta) + (e.variant ? '__v__' + sidL(e.variant) : ''); const act = String(e.status || '') === 'active';
+            const conSt = (parseInt(inv[k]) || 0) > 0; best = Math.max(best, act && conSt ? 3 : act || conSt ? 2 : 1); } return best; };
+          const _orden = Object.entries(invDe).sort((a, b) => _prio(b[1]) - _prio(a[1]));
+          let pendUtil = 0;
+          for (const [iv, x] of _orden) {
             if (hecho[iv]) continue;
-            if (!tiempo()) { pend++; continue; }
+            if (!tiempo()) { pend++; if (_prio(x) >= 2) pendUtil++; continue; }
             const t = await tokDe(x.cta); if (!t) { mal++; continue; }
             // De lo más NUEVO a lo más viejo, mes por mes. Si ML no contesta un mes (o no guarda tan
             // atrás), se para ahí y se usa lo que se pudo leer: desde ese punto para adelante la cuenta
@@ -16763,7 +16772,7 @@ async function main() {
             if (!por429) hecho[iv] = 1; ok++;
           }
           n = await escribir(porMla, true);
-          console.log(`stock: ${ok} depósitos reconstruidos (${parcial} sin llegar al año entero: para atrás queda sin dato) · ${mal} que ML no dejó leer · ${pend} pendientes · ${n} días`);
+          console.log(`stock: ${ok} depósitos reconstruidos (${parcial} sin llegar al año entero: para atrás queda sin dato) · ${mal} que ML no dejó leer · ${pend} pendientes (${pendUtil} de publicaciones activas o con stock) · ${n} días`);
           for (const t of errLog) console.log('   ML contestó: ' + t);
           if (GO) await db.set('mlapi/lineaprog/stock', { inv: hecho, ts: Date.now(), ok: !pend });
         }

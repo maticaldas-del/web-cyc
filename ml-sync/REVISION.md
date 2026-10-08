@@ -105,6 +105,8 @@ Todo lo que guarda la historia día por día y las pantallas que la dibujan.
   del día con la misma cuenta que Ventas, cambios del robot desde supervisor + autoprecio sin repetir.
 - **Relleno hacia atrás** (`linea:atras`, `mlapi/lineaprog`): ventas, visitas (`:rehacer`), precio,
   stock a medias por cupo de ML.
+  Desde el 08/10 el stock va primero por los depósitos de publicaciones activas con stock, después activas
+  o con stock, y al final los sin ficha (`_prio`); el log dice cuántos pendientes son útiles (`pendUtil`).
 - **En la línea de un producto (08/10/2026)**: precio y costo comparten carril y escala (`pcMin/pcMax`,
   piso = el más bajo de los dos, techo = el más alto); llegadas de stock (`stIn`: stock de hoy − el
   anterior + lo vendido en el medio, 2+ u. o desde cero) con marca celeste; el globito es por carril.
