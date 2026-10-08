@@ -34617,7 +34617,7 @@ async function main() {
       const prodIdx = {}; for (const p0 of (Array.isArray(products) ? products : Object.values(products || {}))) if (p0 && p0.id) prodIdx[p0.id] = p0;
       for (const ents of Object.values(vp)) for (const v of Object.values(ents || {})) {
         if (!v) continue; const ts = Number(v.ts) || Date.parse(v.ts || '') || 0; if (ts < desde) continue;
-        if (v.cancelada) malas.push(`${v.tipoCancelacion === 'reclamo' ? 'RECLAMO' : (v.tipoCancelacion || 'cancelada')} · ${v.cuenta || '?'} · ${corta(v.prod, 40)} · ${money(Number(v.total) || 0)}`);
+        if (v.cancelada) malas.push(`${v.tipoCancelacion === 'reclamo' ? 'RECLAMO' : (v.tipoCancelacion || 'cancelada')} · ${v.cuenta || '?'} · ${corta(v.prod, 40)} · ${money(Number(v.total) || Number((v.antesCancel || {}).total) || 0)}`);
         else { const pp = v.prodId && prodIdx[v.prodId]; if (!pp || !(Number(pp.costUSD) > 0 || Number(pp.costFullUSD) > 0)) sinCosto[corta(v.prod, 40)] = (sinCosto[corta(v.prod, 40)] || 0) + (Number(v.qty) || 1); }
       }
       console.log(`\n── 7 · CANCELADAS Y RECLAMOS (${malas.length}) · VENDIDAS SIN COSTO O SIN FICHA (${Object.keys(sinCosto).length}) ──`);
