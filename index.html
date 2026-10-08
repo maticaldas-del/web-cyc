@@ -2453,7 +2453,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='22.43';
+const APP_VERSION='22.44';
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
 // muestre la versión y la fecha de actualización y que tenga un desplegable predeterminado cerrado".
 // Y el mismo día: "que ponga fecha de cada modificación y haya una barrita para scrollear y que
@@ -2464,6 +2464,7 @@ const APP_VERSION='22.43';
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'22.44',f:'08/10/2026',h:'02:05',c:[{n:1,t:'🇵🇾 Pedidos hechos: cada pedido muestra con la tarjeta cerrada el % extra que se le cargó ("+22,4% real", o "+17% estimado" si faltan gastos). Productos y unidades salen de la factura cargada.'}]},
   {v:'22.43',f:'08/10/2026',h:'01:55',c:[{n:1,t:'🇵🇾 Pedidos hechos: los gastos van en UNA sola caja (antes eran dos con los mismos montos). Cada gasto con ✓/✗, su monto, de qué es y su % sobre la mercadería; abajo el total y el recargo real abierto en dólar y gastos.'}]},
   {v:'22.42',f:'08/10/2026',h:'01:40',c:[{n:1,t:'🇵🇾 Pedidos hechos · Los gastos reales: al lado de cada gasto (cambista, el que retira, correo) sale qué % es de la mercadería, para comparar un pedido contra otro.'}]},
   {v:'22.41',f:'08/10/2026',h:'09:45',c:[{n:1,t:'🇵🇾 Pedidos hechos · Los gastos reales: cada renglón con su nombre (mercadería con el dólar al que la pagaste, comisión del cambista y envío de los dólares, el que retira, correo con los kilos), sin "otros". El recargo real se abre en sus dos partes: cuánto más caro salió el dólar y cuánto suman los gastos del pedido.'}]},
@@ -12053,6 +12054,13 @@ function pyGastosChecklistHTML(c){
   return `<div style="background:var(--surface);border:1px solid ${R.r?'rgba(34,197,94,.35)':'rgba(239,68,68,.35)'};border-radius:8px;padding:9px 11px;margin-bottom:10px">
     <div style="display:flex;justify-content:space-between;font-size:.6rem;${gris};text-transform:uppercase;letter-spacing:.06em;margin-bottom:4px"><span>Gastos del pedido · ${PY_GASTOS.filter(g=>pyGastoCargado(c,g)).length} de ${PY_GASTOS.length}</span><span>% sobre la mercadería</span></div>${filas}${pie}${nota}</div>`;
 }
+// Productos y unidades salen del detalle guardado (si se corrigió con la factura, `productos`/`unidades` quedaban viejos).
+function pyPedidoCuenta(c){const its=Array.isArray(c&&c.items)?c.items.filter(Boolean):[];
+  return its.length?{p:its.length,u:its.reduce((a,x)=>a+(Number(x.u)||0),0)}:{p:(c&&c.productos)||0,u:(c&&c.unidades)||0};}
+// El % extra que se le cargó al pedido, a la vista con la tarjeta cerrada (08/10/2026, pedido suyo).
+function pyRecargoChip(c){const R=pyRecargoReal(c);
+  if(R.r){const v=(R.r-1)*100;return `<span style="font-size:.7rem;font-weight:700;color:${v>(RECARGO_PY-1)*100+0.05?'var(--amber)':'var(--green)'}" title="Recargo real de este pedido: dólar más caro + cambista + el que retira + correo, sobre el precio de la factura">+${v.toFixed(1).replace('.',',')}% real</span>`;}
+  return `<span style="font-size:.66rem;color:var(--muted)" title="Faltan gastos: ${R.falta.join(', ').replace(/"/g,'&quot;')}">+${Math.round((RECARGO_PY-1)*100)}% estimado · faltan gastos</span>`;}
 function pyPedidoPartes(c){const its=(c&&c.items)||[];return{prob:its.filter(x=>x&&!x.id),nuev:its.filter(x=>x&&x.id)};}
 function pyPedidoEtiqueta(c){const P=pyPedidoPartes(c);
   return P.prob.length&&P.nuev.length?`Pedido (${P.prob.length} probado${P.prob.length===1?'':'s'} + ${P.nuev.length} nuevo${P.nuev.length===1?'':'s'})`:P.prob.length?'Pedido · probados':'Pedido · nuevos';}
@@ -12102,7 +12110,7 @@ function pyPedidoDetalleHTML(c){
           : fila('hace','<b>'+Math.max(0,Math.floor((Date.now()-Date.parse(c.fecha+'T12:00:00-03:00'))/86400e3))+' días</b>')}
         ${c.estado==='camino'?(()=>{const lleg=pyMasHabiles(c.fecha,PY_DIAS_LLEGADA);const f=lleg.toISOString().slice(0,10);const tarde=Date.now()>lleg.getTime()+86400e3;
           return fila('llegaría aprox.',`<span style="color:${tarde?'var(--amber)':'var(--text)'}">${f}${tarde?' · ya se pasó':''}</span>`,'Son '+PY_DIAS_LLEGADA+' días hábiles, que es lo que tarda el pedido de Paraguay. No cuenta feriados: por eso dice "aprox".');})():''}
-        ${fila('productos / unidades',(c.productos||0)+' / '+(c.unidades||0))}
+        ${fila('productos / unidades',pyPedidoCuenta(c).p+' / '+pyPedidoCuenta(c).u)}
         ${c.pesoKg!=null
           ? fila('peso aprox.', (c.pesoKg).toFixed(2)+' kg'+(sinPeso>0?` <span style="color:var(--amber)">· es un PISO</span>`:''), sinPeso>0?`Medido sobre ${c.pesoUnidades} de ${c.unidades} unidades: a ${sinPeso} no les habían cargado el peso, así que el pedido pesa MÁS que esto. El correo cobra por peso.`:'Todas las unidades tenían el peso cargado.')
           : fila('peso aprox.','<span style="color:var(--amber)">no se pudo medir</span>','Ningún producto tenía el peso cargado con su unidad. Un peso inventado decide mal lo que cobra el correo, así que no se inventa.')}
@@ -12134,7 +12142,7 @@ function pyEnCaminoHTML(tipo){
       <summary style="cursor:pointer;padding:9px 11px;display:flex;align-items:center;gap:9px;flex-wrap:wrap;list-style:none">
         <span style="font-size:.95rem">${enCamino?'🚚':'📦'}</span>
         <span style="font-size:.72rem;font-weight:700">${pyPedidoEtiqueta(c)} del ${c.fecha}</span>
-        <span style="font-size:.64rem;color:var(--muted)">${c.productos||0} producto${c.productos===1?'':'s'} · ${c.unidades||0} u. · US$ ${puesto.toFixed(2)} puesto</span>
+        <span style="font-size:.64rem;color:var(--muted)">${pyPedidoCuenta(c).p} producto${pyPedidoCuenta(c).p===1?'':'s'} · ${pyPedidoCuenta(c).u} u. · US$ ${puesto.toFixed(2)} puesto</span>${pyRecargoChip(c)}
         <span style="margin-left:auto;font-size:.62rem;color:${enCamino?(tarde?'var(--amber)':'#38bdf8'):'var(--green)'};font-weight:700">
           ${enCamino?`en camino · hace ${dias} d${tarde?' · ya se pasó':''}`:c.estado==='llego'?`llegó${c.fechaLlego?' el '+c.fechaLlego:''}`:'historial · cargado por chat'}
         </span>
@@ -12168,7 +12176,7 @@ function pyHechosHTML(){
       <summary style="cursor:pointer;padding:10px 12px;display:flex;align-items:center;gap:9px;flex-wrap:wrap;list-style:none">
         <span style="font-size:1rem">${enCamino?'🚚':'📦'}</span>
         <span style="font-size:.8rem;font-weight:700">${pyPedidoEtiqueta(c)} · ${c.fecha}</span>
-        <span style="font-size:.7rem;color:var(--muted)">${c.productos||0} producto${c.productos===1?'':'s'} · ${c.unidades||0} u. · US$ ${puesto.toFixed(2)} puesto</span>
+        <span style="font-size:.7rem;color:var(--muted)">${pyPedidoCuenta(c).p} producto${pyPedidoCuenta(c).p===1?'':'s'} · ${pyPedidoCuenta(c).u} u. · US$ ${puesto.toFixed(2)} puesto</span>${pyRecargoChip(c)}
         <span style="margin-left:auto;font-size:.68rem;color:${enCamino?(tarde?'var(--amber)':'#38bdf8'):'var(--green)'};font-weight:700">
           ${enCamino?`en camino · hace ${dias} d${tarde?' · ya se pasó':''}`:c.estado==='llego'?`llegó${c.fechaLlego?' el '+c.fechaLlego:''}`:'historial'}
         </span>
