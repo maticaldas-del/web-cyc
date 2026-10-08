@@ -121,6 +121,8 @@ todas las etapas.
   Primera corrida (08/10): `RE_REGALO` contaba los termómetros como regalo (`termo` sin borde de palabra) y `mate`
   agarraba "automático": corregido con `\btermos?\b` y `\bmate\b`. Las ventas guardadas arrancan el 01/05/2026: sólo
   se pueden medir Padre, Amigo y Niño 2026, y ningún evento de ofertas de ML todavía.
+  Los eventos de ML viven en `listarEventosML` (sección 14b y comando `eventos[:días]`, solo lee): él avisó del evento
+  del 10/10 que el calendario fijo no tenía.
 
 - **% del mes pasado en Métricas** (`renderMetPctAvg`): el chip del período anterior usa el promedio
   del mes ENTERO, y "a esta altura" va en chico.

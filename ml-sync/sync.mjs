@@ -3337,6 +3337,32 @@ function fechasEspeciales(y) {
     { nom: 'Black Friday', ts: bf, pre: 2, dur: 4, ofertas: true },
   ];
 }
+// LOS EVENTOS QUE ARMA ML (08/10/2026). Él: *"el 10/10 ML hace un evento. eso no lo viste"*. Se leen de las promociones
+// que ML le ofrece a cada cuenta (`/seller-promotions/users/<id>`): nombre, tipo, fechas y estado. SOLO LEE: no se acepta
+// ninguna (regla 8). Lo usan la sección 14b del `informe` y el comando `eventos`.
+async function listarEventosML(tokI, ahoraI, dias, labels, accounts) {
+  const hl = (t) => new Date(t - 3 * 3600e3).toISOString().slice(5, 16).replace('T', ' ');
+  const ev = {}; let leidas = 0;
+  for (const label of labels) {
+    const tk = tokI[label], acc = accounts[label]; if (!tk || !acc?.seller_id) continue;
+    try {
+      const u = await mlGet('/seller-promotions/users/' + acc.seller_id + '?app_version=v2', tk); leidas++;
+      for (const pr of (Array.isArray(u) ? u : (u.results || []))) {
+        const st = Date.parse(pr.start_date || '') || 0, fi = Date.parse(pr.finish_date || '') || 0;
+        if ((fi && fi < ahoraI) || (st && st - ahoraI > dias * 864e5)) continue;
+        const k = (pr.name || pr.type || '?') + '|' + String(pr.start_date || '').slice(0, 10) + '|' + String(pr.finish_date || '').slice(0, 10);
+        const x = (ev[k] = ev[k] || { nom: pr.name || '(sin nombre)', tipo: pr.type, st, fi, ctas: new Set(), est: new Set() });
+        x.ctas.add(label); if (pr.status) x.est.add(pr.status);
+      }
+    } catch (e) { console.log(`(eventos de ML de ${label}: no contestó · ${String(e.message).slice(0, 80)})`); }
+  }
+  const evs = Object.values(ev).sort((a, b) => (a.st || 0) - (b.st || 0));
+  console.log(`── 14b · EVENTOS QUE ARMA ML (${evs.length} · leídas ${leidas} cuentas) · no entramos en ninguno (regla 8) ──`);
+  for (const x of evs.slice(0, 40)) console.log(`· ${String(x.nom).slice(0, 60)} · ${x.tipo || '?'} · ${x.st ? hl(x.st) : '?'} → ${x.fi ? hl(x.fi) : '?'} · ${[...x.ctas].join(',')} · ${[...x.est].join(',')}`);
+  if (evs.length > 40) console.log(`  … y ${evs.length - 40} más`);
+  return evs;
+}
+
 // La fecha especial que está corriendo hoy (en su ventana previa o en sus días), o null.
 function fechaEspecialHoy(hoyTs) {
   const y = new Date(hoyTs - 3 * 3600e3).getUTCFullYear();
@@ -34704,25 +34730,20 @@ async function main() {
           console.log(`· ${f.nom} · ${hl(f.ts).slice(0, 5)} · ${dd > 0 ? 'en ' + dd + ' d' : 'hoy'} · ${ahoraI >= ini ? 'YA EMPEZÓ la ventana de antes' : 'la ventana de antes arranca el ' + hl(ini).slice(0, 5)}${f.regalo ? ' · regalos' : ''}${f.ofertas ? ' · ofertas' : ''}`);
         }
         if (!prox.length) console.log('· ninguna en los próximos 60 días');
-        const ev = {};
-        for (const label of labels) {
-          const tk = tokI[label], acc = accounts[label]; if (!tk || !acc?.seller_id) continue;
-          try {
-            const u = await mlGet('/seller-promotions/users/' + acc.seller_id + '?app_version=v2', tk);
-            for (const pr of (Array.isArray(u) ? u : (u.results || []))) {
-              const st = Date.parse(pr.start_date || '') || 0, fi = Date.parse(pr.finish_date || '') || 0;
-              if ((fi && fi < ahoraI) || (st && st - ahoraI > 60 * 864e5)) continue;
-              const k = (pr.name || pr.type || '?') + '|' + String(pr.start_date || '').slice(0, 10) + '|' + String(pr.finish_date || '').slice(0, 10);
-              const x = (ev[k] = ev[k] || { nom: pr.name || '(sin nombre)', tipo: pr.type, st, fi, ctas: new Set(), est: new Set() });
-              x.ctas.add(label); if (pr.status) x.est.add(pr.status);
-            }
-          } catch { console.log(`(eventos de ML de ${label}: no contestó)`); }
-        }
-        const evs = Object.values(ev).sort((a, b) => (a.st || 0) - (b.st || 0));
-        console.log(`── 14b · EVENTOS QUE ARMA ML (${evs.length}) · no entramos en ninguno (regla 8) ──`);
-        for (const x of evs.slice(0, 25)) console.log(`· ${corta(x.nom, 55)} · ${x.tipo || '?'} · ${x.st ? hl(x.st).slice(0, 5) : '?'} → ${x.fi ? hl(x.fi).slice(0, 5) : '?'} · ${[...x.ctas].join(',')} · ${[...x.est].join(',')}`);
-        if (evs.length > 25) console.log(`  … y ${evs.length - 25} más`);
+        await listarEventosML(tokI, ahoraI, 60, labels, accounts);
       } catch (eF) { console.log('fechas: no pude armarlas · ' + eF.message); }
+      return;
+    }
+
+    // BILLING_PROBE=eventos[:días] → los eventos que arma ML en los próximos días (60 si no se dice). SOLO LEE.
+    if (/^eventos(:|$)/.test(String(process.env.BILLING_PROBE || ''))) {
+      const dE = Number(String(process.env.BILLING_PROBE).split(':')[1]) || 60; const tokE = {};
+      for (const label of labels) {
+        const acc = accounts[label]; if (!acc?.refresh_token) continue;
+        try { const t = await mlRefresh(ML_CLIENT_ID, ML_CLIENT_SECRET, acc.refresh_token); await db.patch('mlapi/tokens/' + label, { refresh_token: t.refresh_token, updated_ts: Date.now() }); tokE[label] = t.access_token; }
+        catch { console.log(`(${label}: no pude entrar)`); }
+      }
+      await listarEventosML(tokE, Date.now(), dE, labels, accounts);
       return;
     }
 
