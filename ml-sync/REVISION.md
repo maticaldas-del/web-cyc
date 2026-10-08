@@ -32,6 +32,13 @@ todas las etapas.
   Chequear: que nada que mueva un precio quede prendido con `autoPrecios: off` · que `decido` respete techo,
   barrera (sólo `!cruza`), piso (sólo `!piso`), 0%, variantes, liquidando · que el supervisor cuente `por:'claude'`
   como subir/bajar · que la rutina lea el expediente y no repita lo que ya hizo.
+  · **Pausadas y novedades también las decide Claude:** con `autoPrecios: off` la vuelta de la hora sólo MIDE las
+  pausadas con stock en Full (no activa ni avisa); Claude las activa con `decido:<MLA>=activar` o
+  `=<precio>!activar` (sólo si queda al precio pedido y deja el piso, o con `!piso`; sólo pausas nuestras, no las de ML;
+  relee el estado). **`informe[:horas]`** (ml-consulta, solo lee) junta en un log lo que la revisión necesita: avisos,
+  ventas, lo que ya decidió Claude y cómo le fue, lo que haría el robot (cerebro sin aplicar), pausadas con stock y
+  publicaciones nuevas. Sacar promos (regla 8) sigue automático. **ml-sync cancela la corrida anterior si se dispara
+  otra: los `decido` van TODOS en un solo comando por revisión.**
 - **Cerebro de precios** (`calcCerebro`, `cyc/cerebro/<MLA>`, `avisos:go`): plata por día, escasez
   (tope ×2,5, ML pausó el espejo a $49.190), paciencia de la apuesta alta, vuelta al precio de antes
   al llegar la reposición, fechas especiales.

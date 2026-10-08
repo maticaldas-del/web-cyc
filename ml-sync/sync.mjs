@@ -3584,10 +3584,10 @@ async function calcCerebro(db, o) {
         // piso sólo con `piso`. No pasa por las reglas del cerebro: ésas las pensó Claude antes.
         const fz = forzar && forzar[mla];
         if (fz) {
-          let P = Math.round(Number(fz.p) || 0);
+          let P = Math.round(Number(fz.p) || 0) || p0;   // 0 = dejar el precio (sólo activar)
           const motF = 'Claude: ' + String(fz.motivo || 'sin motivo escrito').slice(0, 240);
           Object.assign(D, { st, mg0: Math.round(g0.mg * 10) / 10, tipoMot: 'claude', memPrev: mem[mla] || {} });
-          if (!(P > 0) || Math.abs(P - p0) < 10) { nada(`${motF} · ${money(P)} es el precio de hoy: nada que cambiar`); continue; }
+          if (!(P > 0) || Math.abs(P - p0) < 10) { D.mismoPrecio = true; nada(`${motF} · ${money(P)} es el precio de hoy: nada que cambiar`); continue; }
           const sube = P > p0;
           if (sube && P > TECHO_DURO) { nada(`${motF} · ${money(P)} pasa el techo de ${money(TECHO_DURO)}`); continue; }
           let cruza = false;
@@ -34551,6 +34551,70 @@ async function main() {
       return;
     }
 
+    // BILLING_PROBE=informe[:<horas>] → TODO LO QUE CLAUDE TIENE QUE MIRAR EN SU REVISIÓN, EN UN SOLO LOG (08/10/2026).
+    // SOLO LEE. Pensado para gastar pocos tokens: una línea por cosa. Junta (1) los avisos que salieron, (2) lo que se
+    // vendió en esas horas, (3) lo que ya decidió Claude y cómo le fue desde entonces, (4) lo que el robot HARÍA con
+    // cada publicación (la cuenta del cerebro, sin aplicar: escasez, plata por día, ritmo antes/ahora, margen),
+    // (5) las pausadas con stock en Full y (6) las publicaciones nuevas. Con eso Claude decide y aplica con `decido`.
+    if (/^informe(:|$)/.test(String(process.env.BILLING_PROBE || ''))) {
+      const hrs = Number(String(process.env.BILLING_PROBE).split(':')[1]) || 12;
+      const ahoraI = Date.now(), desde = ahoraI - hrs * 3600e3;
+      const hl = (t) => new Date(t - 3 * 3600e3).toISOString().slice(5, 16).replace('T', ' ');
+      const corta = (t, n) => String(t || '').replace(/\s+/g, ' ').replace(/\d{9,}/g, (m) => '…' + m.slice(-4)).slice(0, n);
+      const [links, vp, ap, alog] = await Promise.all(['cyc/mllinks', 'cyc/ventaprod', 'cyc/autoprecio', 'mlapi/alertaslog'].map((r) => db.get(r).then((v) => v || {}).catch(() => ({}))));
+      console.log(`=== 💭 INFORME PARA CLAUDE · últimas ${hrs} h · ${hl(ahoraI)} (hora de acá) ===`);
+      // 1) Avisos
+      const al = Object.values(alog).filter((x) => x && x.ts >= desde).sort((a, b) => a.ts - b.ts);
+      console.log(`\n── 1 · AVISOS DE TELEGRAM (${al.length}) ──`);
+      for (const x of al.slice(-15)) console.log(`· ${hl(x.ts)} ${corta(String(x.t || '').replace(/<[^>]+>/g, ''), 220)}`);
+      // 2) Ventas
+      const ventasMla = {}; const vtsTodas = [];
+      for (const ents of Object.values(vp)) for (const v of Object.values(ents || {})) {
+        if (!v || v.cancelada || !v.mla) continue;
+        const ts = Number(v.ts) || Date.parse(v.ts || '') || 0; if (ts < ahoraI - 60 * 864e5) continue;
+        vtsTodas.push({ mla: v.mla, ts, q: Number(v.qty) || 1, tot: Number(v.total) || 0 });
+      }
+      for (const v of vtsTodas) if (v.ts >= desde) { const x = (ventasMla[v.mla] = ventasMla[v.mla] || { u: 0, tot: 0 }); x.u += v.q; x.tot += v.tot; }
+      const vr = Object.entries(ventasMla).sort((a, b) => b[1].u - a[1].u);
+      console.log(`\n── 2 · VENTAS (${vr.reduce((s2, [, x]) => s2 + x.u, 0)} u. en ${vr.length} publicaciones) ──`);
+      for (const [m, x] of vr.slice(0, 30)) console.log(`· ${m} · ${(links[m] || {}).cuenta || '?'} · ${corta((links[m] || {}).title, 40)} · ${x.u} u. a ${money(Math.round(x.tot / x.u))}`);
+      if (vr.length > 30) console.log(`  … y ${vr.length - 30} publicaciones más`);
+      // 3) Lo que decidió Claude (60 días) y cómo le fue
+      const uEnt = (m, t0, t1) => vtsTodas.filter((v) => v.mla === m && v.ts >= t0 && v.ts < t1).reduce((s2, v) => s2 + v.q, 0);
+      const cl = Object.entries(ap).filter(([, a]) => a && a.por === 'claude' && ahoraI - (Number(a.ts) || 0) < 60 * 864e5).sort((a, b) => b[1].ts - a[1].ts);
+      console.log(`\n── 3 · LO QUE DECIDÍ YO (${cl.length}) · ventas desde el cambio contra el mismo tiempo antes ──`);
+      for (const [m, a] of cl) { const d = (ahoraI - a.ts) / 864e5; console.log(`· ${m} · ${a.cuenta} · ${corta(a.nom, 35)} · ${money(a.de)}→${money(a.a)} hace ${d.toFixed(1)} d · vendió ${uEnt(m, a.ts, ahoraI)} u. (antes ${uEnt(m, a.ts - (ahoraI - a.ts), a.ts)}) · ${corta(String(a.motivo || '').replace(/^Claude: /, ''), 90)}`); }
+      // 4) Lo que haría el robot (cerebro, sin aplicar)
+      const tokI = {};
+      for (const label of labels) {
+        const acc = accounts[label]; if (!acc?.refresh_token) continue;
+        try { const t = await mlRefresh(ML_CLIENT_ID, ML_CLIENT_SECRET, acc.refresh_token); await db.patch('mlapi/tokens/' + label, { refresh_token: t.refresh_token, updated_ts: Date.now() }); tokI[label] = t.access_token; }
+        catch { console.log(`(${label}: no pude entrar)`); }
+      }
+      const cz = await calcCerebro(db, { tokens: tokI });
+      const f2 = (x) => x == null ? '—' : (Math.round(x * 100) / 100).toLocaleString('es-AR');
+      if (cz.err) console.log(`\n── 4 · CEREBRO: ⚠️ ${cz.err}`);
+      else {
+        const ver = cz.dec.filter((d) => d.accion !== 'nada' || d.enEscasez || d.midiendo || d.juicio || (ventasMla[d.mla]));
+        console.log(`\n── 4 · LO QUE HARÍA EL ROBOT (${cz.dec.length} miradas · ${Object.entries(cz.resumen).map(([k, v]) => `${k} ${v}`).join(' · ')}) · muestro ${ver.length} ──`);
+        if (cz.fecha) console.log(`📅 ${cz.fecha.nom} ${cz.fecha.dias > 0 ? `en ${cz.fecha.dias} d` : 'hoy'}`);
+        for (const d of ver) {
+          const que = d.accion === 'sube' ? `⬆️ ${money(d.p0)}→${money(d.a)}` : d.accion === 'baja' ? `⬇️ ${money(d.p0)}→${money(d.a)}` : `· ${money(d.p0)}`;
+          console.log(`${d.mla} · ${d.cuenta} · ${corta(d.nom, 34)} · ${que} · st ${d.st ?? '?'}${d.cam ? '+' + d.cam : ''} · ritmo ${f2(d.rNow)} (antes ${f2(d.rPrev)}${d.pPrev ? ' a ' + money(d.pPrev) : ''}) · mg ${d.mg0 ?? '—'}%${d.mgA != null ? '→' + d.mgA + '%' : ''}${d.plNow != null ? ` · $/día ${money(d.plNow)} vs ${money(d.plPrev)}` : ''} · ${corta(d.motivo, 150)}`);
+        }
+        const nadaM = {}; for (const d of cz.dec) if (!ver.includes(d)) { const k = corta(String(d.motivo).replace(/\$[\d.]+|\d+([.,]\d+)?/g, '#'), 60); nadaM[k] = (nadaM[k] || 0) + 1; }
+        console.log('  las demás, por motivo: ' + Object.entries(nadaM).sort((a, b) => b[1] - a[1]).slice(0, 12).map(([k, n]) => `${n}× ${k}`).join(' | '));
+      }
+      // 5) Pausadas con stock en Full (misma cuenta que la vuelta de la hora, sin activar nada)
+      console.log(`\n── 5 · PAUSADAS CON STOCK EN FULL ──`);
+      try { const pisoI = (await pisoConfig(db)) / 100; await activarPausadasFull(db, links, tokI, true, products, pisoI); } catch (eP) { console.log('no pude medirlas: ' + eP.message); }
+      // 6) Publicaciones nuevas
+      const nuevas = Object.entries(links).filter(([m, e]) => /^MLA/.test(m) && e && Number(e.altaTs) >= desde);
+      console.log(`\n── 6 · PUBLICACIONES NUEVAS (${nuevas.length}) ──`);
+      for (const [m, e] of nuevas.slice(0, 20)) console.log(`· ${m} · ${e.cuenta} · ${corta(e.title, 50)} · ${e.prodId ? 'con ficha' : '⚠️ SIN FICHA'} · ${e.status || '?'}`);
+      return;
+    }
+
     // BILLING_PROBE=decido:<MLA>=<precio>[!piso][!cruza]|<motivo>[;<MLA>=…][;go] → LOS PRECIOS QUE DECIDE CLAUDE
     // (08/10/2026). Regla suya: *"que haya solo robots automáticos de api para cosas que no hay que pensar, como
     // ventas y cosas así de datos. TODO lo que sea pensar lo veas exclusivamente vos"*. El robot ya no mueve
@@ -34582,10 +34646,13 @@ async function main() {
       const forzar = {}; const malos = [];
       for (const x of partes) {
         const [izq, ...mot] = x.split('|');
-        const mm = String(izq).match(/^\s*(MLA\d+)\s*=\s*([\d.,$\s]+)((?:!\w+)*)\s*$/i);
-        if (!mm) { malos.push(x); continue; }
-        const banderas = mm[3].toLowerCase();
-        forzar[mm[1].toUpperCase()] = { p: Math.round(pesosArg(mm[2]) / 10) * 10, motivo: mot.join('|').trim(), piso: banderas.includes('!piso'), cruza: banderas.includes('!cruza') };
+        // `MLA=7550`, `MLA=7550!activar`, `MLA=activar` (deja el precio y la activa), banderas `!piso` `!cruza`.
+        const mm = String(izq).match(/^\s*(MLA\d+)\s*=\s*(activar|[\d.,$\s]+)?((?:!\w+)*)\s*$/i);
+        if (!mm || (!mm[2] && !/!activar/i.test(mm[3] || ''))) { malos.push(x); continue; }
+        const banderas = String(mm[3] || '').toLowerCase();
+        const soloAct = /^activar$/i.test(String(mm[2] || '').trim()) || !mm[2];
+        forzar[mm[1].toUpperCase()] = { p: soloAct ? 0 : Math.round(pesosArg(mm[2]) / 10) * 10, motivo: mot.join('|').trim(), piso: banderas.includes('!piso'), cruza: banderas.includes('!cruza'),
+          activar: soloAct || banderas.includes('!activar') };
       }
       if (malos.length) { console.log(`No entendí: ${malos.join(' · ')}\nVa así: decido:MLA123=7550|vende igual a este precio;MLA456=4190!piso|motivo;go`); return; }
       if (!Object.keys(forzar).length) { console.log('No pasaste ningún precio.'); return; }
@@ -34602,7 +34669,7 @@ async function main() {
       for (const m of Object.keys(forzar)) if (!vistos.has(m)) console.log(`\n${m} · no la miré: no está vinculada, no está activa o es de otra cosa (sin ficha, oculta, "no la vendemos más")`);
       for (const d of cz.dec) {
         console.log(`\n${d.mla} · ${d.cuenta} · ${d.nom}`);
-        if (d.accion === 'nada') { console.log(`   ✗ no se toca: ${d.motivo}`); continue; }
+        if (d.accion === 'nada') { console.log(`   ✗ ${d.mismoPrecio ? 'el precio queda igual' : 'no se toca'}: ${d.motivo}${forzar[d.mla] && forzar[d.mla].activar ? ' · (y la activo si está pausada y deja el piso)' : ''}`); continue; }
         console.log(`   ${d.accion === 'sube' ? '⬆️ SUBIR' : '⬇️ BAJAR'} ${money(d.p0)} → ${money(d.a)}${d.cruza ? ' (cruza $33.000)' : ''} · margen ${d.mg0}% → ${d.mgA}%${d.pisoAut ? ' (abajo del piso, con !piso)' : ''}${d.gPorU ? ` · por unidad ${money(d.gPorU.antes)} → ${money(d.gPorU.despues)}` : ''}`);
         console.log(`   ${d.motivo}`);
       }
@@ -34610,6 +34677,32 @@ async function main() {
       let apP = null; try { apP = (await db.get('cyc/autoprecio')) || {}; } catch { apP = null; }
       const ac = await aplicarCerebro(db, cz, { tokens: tokP, aplica: true, autoprecio: apP });
       console.log(`\n✓ hechos: ${ac.hechos.length} · no se pudo: ${ac.fallidos.length} · sin anotar: ${ac.sinAnotar.length}`);
+      // ACTIVAR (`!activar`): sólo si quedó al precio pedido y ese precio deja el piso (o vino con !piso).
+      const PISOd = await pisoConfig(db);
+      const hechosM = new Set(ac.hechos.map((h) => h.f.mla));
+      for (const [mla, fz] of Object.entries(forzar)) {
+        if (!fz.activar) continue;
+        const d = cz.dec.find((x) => x.mla === mla);
+        const no = (m) => console.log(`   ▶️✗ ${d ? d.nom : mla}: no la activo · ${m}`);
+        if (!d) { no('no la miré (ver arriba)'); continue; }
+        if (d.accion === 'nada' && !d.mismoPrecio) { no(d.motivo); continue; }
+        if (d.accion !== 'nada' && !hechosM.has(mla)) { no('el precio no quedó como pedí'); continue; }
+        const mg = d.accion !== 'nada' ? Number(d.mgA) : Number(d.mg0);
+        if (!(mg >= PISOd) && !fz.piso) { no(`a ese precio queda en ${mg}%, abajo del piso del ${PISOd}%`); continue; }
+        const tk = tokP[d.cuenta]; if (!tk) { no('sin permiso de la cuenta'); continue; }
+        try {
+          const it = await mlGet('/items/' + mla + '?attributes=status,sub_status', tk);
+          if (it.status === 'active') { console.log(`   ▶️ ${d.nom}: ya estaba activa`); continue; }
+          if (it.status !== 'paused' || (it.sub_status || []).some((x) => x !== 'out_of_stock' && x !== 'paused_by_seller' && x !== 'paused')) { no(`ML la tiene en ${it.status}${(it.sub_status || []).length ? ' (' + it.sub_status.join(',') + ')' : ''}: no es una pausa nuestra`); continue; }
+          const r = await fetch(ML_API + '/items/' + mla, { method: 'PUT', headers: { Authorization: 'Bearer ' + tk, 'Content-Type': 'application/json' }, body: JSON.stringify({ status: 'active' }) });
+          let det = ''; if (!r.ok) { try { det = (await r.text() || '').slice(0, 200); } catch { det = ''; } }
+          _anotarEscrituraML(r, mla, 'activar la publicación', det);
+          if (!r.ok) { no(`ML dijo ${r.status} ${det}`); continue; }
+          const it2 = await mlGet('/items/' + mla + '?attributes=status', tk);
+          console.log(`   ▶️ ${d.nom}: ACTIVADA · releída de ML: ${it2.status} ${it2.status === 'active' ? '✓' : '✗'}`);
+          try { await db.patch('mlapi/cerebroact/' + mla, { ts: Date.now(), ok: true, d: `la activó Claude · ${fz.motivo || ''}`.slice(0, 250), simple: `Estaba pausada con stock en Full: la activé. ${fz.motivo || ''}`.slice(0, 300) }); } catch { /* el 🧠 muestra lo de antes */ }
+        } catch (eA) { no(String(eA.message || eA).slice(0, 100)); }
+      }
       return;
     }
 
@@ -40137,9 +40230,13 @@ async function main() {
     try {
       const cfgP = (await db.get('cyc/mlconfig')) || {};
       const piso = (parseFloat(cfgP.minPct) || 30) / 100;
-      const rAct = await activarPausadasFull(db, map, tokensRun, DRY, products, piso);
+      // CON CLAUDE DECIDIENDO (`autoPrecios: off`, 08/10/2026) no activa nada solo ni avisa: sólo mide (queda en el
+      // log y en `pausadas`/`informe`) y la decisión la toma Claude en su revisión con `decido:<MLA>=…!activar`.
+      const claudeDecide = String(cfgP.autoPrecios || 'on') === 'off';
+      if (claudeDecide) console.log('Pausadas con stock en Full: decide Claude (sólo las mido, no activo ninguna)');
+      const rAct = await activarPausadasFull(db, map, tokensRun, DRY || claudeDecide, products, piso);
       let okAct = true;
-      for (const a of rAct.avisos) if (!(await sendAlerta(a))) okAct = false;
+      if (!claudeDecide) for (const a of rAct.avisos) if (!(await sendAlerta(a))) okAct = false;
       // Se anota SÓLO si el mensaje salió. Anotarlo igual dejaría esas publicaciones calladas una
       // semana por un aviso que nunca llegó — la misma regla que el aviso diario.
       if (okAct && Object.keys(rAct.anotar).length) {
