@@ -34690,6 +34690,84 @@ async function main() {
         const tc = await db.get('cyc/finanzas/tipo_cambio');
         console.log(`· dólar del panel: ${tc || '⚠️ sin cargar'}`);
       } catch (eR) { console.log('reputación/promos/dólar: no pude leerlos · ' + eR.message); }
+      // 14) FECHAS QUE VIENEN (08/10/2026, él: *"quiero que sepas cuándo son, analizarlas. pueden aparecer fechas creadas
+      // por ML"*). Las del calendario (las mismas de `fechasEspeciales`, que usa el cerebro) y los EVENTOS que arma ML,
+      // leídos de las promociones de cada cuenta (sólo nombre, tipo y fechas; no se acepta ni se toca ninguna: regla 8).
+      // Lo que pasó en cada fecha los años anteriores lo mide el comando `fechas`.
+      try {
+        const y0 = new Date(ahoraI - 3 * 3600e3).getUTCFullYear();
+        const prox = [...fechasEspeciales(y0), ...fechasEspeciales(y0 + 1)].filter((f) => f.ts + (f.dur || 1) * 864e5 > ahoraI && f.ts - ahoraI < 60 * 864e5).sort((a, b) => a.ts - b.ts);
+        console.log(`\n── 14 · FECHAS QUE VIENEN (60 días) ──`);
+        for (const f of prox) {
+          const dd = Math.ceil((f.ts - ahoraI) / 864e5), ini = f.ts - f.pre * 864e5;
+          console.log(`· ${f.nom} · ${hl(f.ts).slice(0, 5)} · ${dd > 0 ? 'en ' + dd + ' d' : 'hoy'} · ${ahoraI >= ini ? 'YA EMPEZÓ la ventana de antes' : 'la ventana de antes arranca el ' + hl(ini).slice(0, 5)}${f.regalo ? ' · regalos' : ''}${f.ofertas ? ' · ofertas' : ''}`);
+        }
+        if (!prox.length) console.log('· ninguna en los próximos 60 días');
+        const ev = {};
+        for (const label of labels) {
+          const tk = tokI[label], acc = accounts[label]; if (!tk || !acc?.seller_id) continue;
+          try {
+            const u = await mlGet('/seller-promotions/users/' + acc.seller_id + '?app_version=v2', tk);
+            for (const pr of (Array.isArray(u) ? u : (u.results || []))) {
+              const st = Date.parse(pr.start_date || '') || 0, fi = Date.parse(pr.finish_date || '') || 0;
+              if ((fi && fi < ahoraI) || (st && st - ahoraI > 60 * 864e5)) continue;
+              const k = (pr.name || pr.type || '?') + '|' + String(pr.start_date || '').slice(0, 10) + '|' + String(pr.finish_date || '').slice(0, 10);
+              const x = (ev[k] = ev[k] || { nom: pr.name || '(sin nombre)', tipo: pr.type, st, fi, ctas: new Set(), est: new Set() });
+              x.ctas.add(label); if (pr.status) x.est.add(pr.status);
+            }
+          } catch { console.log(`(eventos de ML de ${label}: no contestó)`); }
+        }
+        const evs = Object.values(ev).sort((a, b) => (a.st || 0) - (b.st || 0));
+        console.log(`── 14b · EVENTOS QUE ARMA ML (${evs.length}) · no entramos en ninguno (regla 8) ──`);
+        for (const x of evs.slice(0, 25)) console.log(`· ${corta(x.nom, 55)} · ${x.tipo || '?'} · ${x.st ? hl(x.st).slice(0, 5) : '?'} → ${x.fi ? hl(x.fi).slice(0, 5) : '?'} · ${[...x.ctas].join(',')} · ${[...x.est].join(',')}`);
+        if (evs.length > 25) console.log(`  … y ${evs.length - 25} más`);
+      } catch (eF) { console.log('fechas: no pude armarlas · ' + eF.message); }
+      return;
+    }
+
+    // BILLING_PROBE=fechas → ¿QUÉ PASÓ EN CADA FECHA ESPECIAL? (08/10/2026). SOLO LEE, no pregunta nada a ML. Pedido suyo:
+    // *"analizá todo para maximizar siempre resultados. por ejemplo en las promos de ML funciona subir precios (te di un
+    // ejemplo, no sé si es así o no)"*. Para cada fecha ya pasada que tenga ventas de antes: unidades por día en los días
+    // previos (o en el evento, si es de ofertas) contra las 4 semanas anteriores, separando lo regalable (`RE_REGALO`, lo
+    // mismo que usa el cerebro) del resto, y el precio promedio por unidad. Que suba todo junto no es la fecha: es el
+    // negocio creciendo; por eso se compara regalable contra no regalable. Así se sabe si el ×1,4 del cerebro es real.
+    if (/^fechas(:|$)/.test(String(process.env.BILLING_PROBE || ''))) {
+      const vpF = (await db.get('cyc/ventaprod')) || {};
+      const vts = []; const ahoraF = Date.now();
+      for (const ents of Object.values(vpF)) for (const v of Object.values(ents || {})) {
+        if (!v || v.cancelada) continue; const ts = Number(v.ts) || Date.parse(v.ts || '') || 0; if (!ts) continue;
+        vts.push({ ts, q: Number(v.qty) || 1, tot: Number(v.total) || 0, reg: RE_REGALO.test(String(v.prod || '')), prod: String(v.prod || '').slice(0, 40) });
+      }
+      if (!vts.length) { console.log('No hay ventas guardadas.'); return; }
+      const minTs = Math.min(...vts.map((v) => v.ts));
+      const dF = (t) => new Date(t - 3 * 3600e3).toISOString().slice(0, 10);
+      console.log(`=== 📅 QUÉ PASÓ EN CADA FECHA · ventas guardadas desde ${dF(minTs)} (${vts.length} renglones) ===`);
+      const med = (t0, t1, f) => { let u = 0, tot = 0; for (const v of vts) if (v.ts >= t0 && v.ts < t1 && f(v)) { u += v.q; tot += v.tot; } return { ud: u / ((t1 - t0) / 864e5), u, pu: u ? tot / u : 0 }; };
+      const r2 = (x) => (Math.round(x * 10) / 10).toLocaleString('es-AR');
+      const yMin = new Date(minTs).getUTCFullYear(), yMax = new Date(ahoraF).getUTCFullYear();
+      const evs = [];
+      for (let y = yMin; y <= yMax; y++) evs.push(...fechasEspeciales(y));
+      // Hot Sale (CACE, ML participa): fechas de 2025 y 2026 aproximadas (2º lunes de mayo, 3 días).
+      for (let y = yMin; y <= yMax; y++) { const m1 = new Date(Date.UTC(y, 4, 1)).getUTCDay(); evs.push({ nom: 'Hot Sale (aprox)', ts: Date.UTC(y, 4, 1 + ((1 - m1 + 7) % 7) + 7, 3), pre: 2, dur: 3, ofertas: true }); }
+      evs.sort((a, b) => a.ts - b.ts);
+      let n = 0;
+      for (const f of evs) {
+        const ini = f.ofertas ? f.ts : f.ts - f.pre * 864e5, fin = f.ofertas ? f.ts + (f.dur || 1) * 864e5 : f.ts;
+        const b0 = (f.ofertas ? f.ts - f.pre * 864e5 : ini) - 28 * 864e5, b1 = b0 + 28 * 864e5;
+        if (b0 < minTs || fin > ahoraF) continue; n++;
+        const bR = med(b0, b1, (v) => v.reg), eR = med(ini, fin, (v) => v.reg), bN = med(b0, b1, (v) => !v.reg), eN = med(ini, fin, (v) => !v.reg);
+        const xR = bR.ud ? eR.ud / bR.ud : null, xN = bN.ud ? eN.ud / bN.ud : null;
+        console.log(`\n· ${f.nom} ${dF(f.ts)} · ${f.ofertas ? 'durante el evento' : `los ${f.pre} días de antes`} contra las 4 semanas previas`);
+        console.log(`   regalable: ${r2(bR.ud)} → ${r2(eR.ud)} u/día${xR ? ' (×' + r2(xR) + ')' : ''} · precio prom ${money(Math.round(bR.pu))} → ${money(Math.round(eR.pu))}`);
+        console.log(`   el resto:  ${r2(bN.ud)} → ${r2(eN.ud)} u/día${xN ? ' (×' + r2(xN) + ')' : ''} · precio prom ${money(Math.round(bN.pu))} → ${money(Math.round(eN.pu))}`);
+        if (xR && xN) console.log(`   ➜ lo regalable rindió ×${r2(xR / xN)} contra el resto${f.regalo ? ' (el cerebro supone ×1,4)' : ''}`);
+        if (f.regalo) {
+          const porP = {}; for (const v of vts) if (v.reg) { const k = v.prod; const x = (porP[k] = porP[k] || { b: 0, e: 0 }); if (v.ts >= b0 && v.ts < b1) x.b += v.q; else if (v.ts >= ini && v.ts < fin) x.e += v.q; }
+          const top = Object.entries(porP).filter(([, x]) => x.e >= 3).map(([k, x]) => [k, x, (x.e / ((fin - ini) / 864e5)) / Math.max(x.b / 28, 0.05)]).sort((a, b) => b[1].e - a[1].e).slice(0, 6);
+          if (top.length) console.log('   los que más vendieron: ' + top.map(([k, x, l]) => `${k} ${x.e} u. (×${r2(l)})`).join(' · '));
+        }
+      }
+      if (!n) console.log('Ninguna fecha pasada tiene 4 semanas de ventas antes: todavía no se puede medir.');
       return;
     }
 

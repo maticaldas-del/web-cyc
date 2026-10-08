@@ -110,6 +110,15 @@ todas las etapas.
   vieja no quede contradiciendo los números de hoy (la revisión de 12 h las reescribe cuando cambian).
 
 ## 2 · PLATA
+- **Cada lugar, su nota (08/10/2026, v22.71):** él: *"en ventas por qué aumentó el precio o por qué no, y en pedidos por qué
+  pide x unidades"*. `cerebroAbrir`: con `ped` o `ctx:'caja'` muestra SÓLO las notas `ped__`/`caja__`; con `ctx:'venta'`
+  (Ventas x Producto) y en Productos/Rotación, las notas de precio (`claudeexp/<MLA>`). **Chequear:** el mismo producto
+  dice cosas distintas en Ventas y en Pedidos; ninguna nota de precio se cuela en Pedidos.
+- **Fechas y eventos de ML (08/10/2026):** sección 14 del `informe` (calendario de `fechasEspeciales` a 60 días + eventos
+  leídos de `/seller-promotions/users/<id>`, sólo nombre/tipo/fechas, sin tocar ninguno, regla 8) y comando `fechas`
+  (solo lee): por cada fecha pasada, unidades por día y precio promedio de lo regalable contra el resto, contra las 4
+  semanas previas. **Chequear:** que el ×1,4 del cerebro coincida con lo medido; que un evento leído de ML no se acepte.
+
 - **% del mes pasado en Métricas** (`renderMetPctAvg`): el chip del período anterior usa el promedio
   del mes ENTERO, y "a esta altura" va en chico.
 - **Costo real por mes** (probe `costomes`): costo congelado del mes o el de hoy, dólar del mes.
