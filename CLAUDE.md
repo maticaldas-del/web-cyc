@@ -757,6 +757,9 @@ mensaje sin que yo te escriba (…) siempre y cuando sea algo que vos puedas hac
  · Rutina `trig_01475PwdPVJ1qTnYswcDxRq8` (**10:47 y 22:47 de acá**, dos por día desde el mismo 08/10: *"me manda poco
    telegram"*) que entra a esta sesión, lee las últimas 12 h (`alertas:12`) y, si hay algo que puedo resolver dentro de sus reglas, lo hago, releo y le mando UNA
    notificación. Si no hay nada, no se manda nada.
+   **Desde la decisión "2a" del 08/10 a la tarde, la rutina NO mueve precios ni publicaciones** (nada de subir, bajar,
+   activar, pausar ni sacar promos: eso lo decide el cerebro de noche). Resuelve sólo lo que no es precio (cajas, vínculos,
+   releer datos) y lo de precios se lo explica en palabras simples con (a)/(b). Prompt de la rutina actualizado ese día.
  · Ese mismo día: el robot trataba `paused_by_seller` como "la pausó ML" y no activaba lo que él creó pausado. Arreglado
    (`activarPausadasFull`). Piedra Gua Sha activada (59%) · Kit Jade subido $5.299 → $5.420 (25%) para que se active solo ·
    Linterna COB (`MLA3998033920`) sigue pausada: da 5%, falta su costo real.
