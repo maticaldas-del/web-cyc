@@ -35104,6 +35104,27 @@ async function main() {
       return;
     }
 
+    // BILLING_PROBE=pedidosnotas → SOLO LEE (08/10/2026). Cada renglón de Pedidos (Bs As, Paraguay y Paulvic) con la cuenta
+    // que guardó el panel (`cuentaPed`: vende por día con stock, en Full, en casa, en camino, objetivo y días) y si ya tiene
+    // nota de Claude, para escribir la nota del 🧠 de CADA pedido (`decido:ped:<prodId>[#variante]=nota|…`).
+    if (/^pedidosnotas$/.test(String(process.env.BILLING_PROBE || ''))) {
+      let cx = {}; try { cx = (await db.get('mlapi/claudeexp')) || {}; } catch { cx = {}; }
+      const colls = [['pedidos', 'Bs As (y Paulvic)'], ['pedidos_py', 'PY']];
+      for (const [c, nom] of colls) {
+        let arr = {}; try { arr = (await db.get('cyc/' + c)) || {}; } catch { console.log(`(${c}: no pude leer)`); continue; }
+        const L = Object.values(arr).filter((x) => x && x.prodId);
+        console.log(`\n── ${nom} · ${L.length} pedidos ──`);
+        for (const x of L) {
+          const vk = x.variante ? '__v__' + sid(String(x.variante).toLowerCase()) : '';
+          const tiene = cx['ped__' + x.prodId + vk] ? `nota ${new Date(cx['ped__' + x.prodId + vk].ts - 3 * 3600e3).toISOString().slice(5, 16)}` : 'SIN NOTA';
+          const vN = Array.isArray(x.variantesNec) ? x.variantesNec : (x.variantesNec ? Object.values(x.variantesNec) : []);
+          const vs = vN.map((v) => `${v.v || '?'}: comprar ${v.q ?? '?'} (ML ${v.ml ?? 0} · casa ${v.casa ?? 0} · camino ${v.cam ?? 0}${v.obj != null ? ' · objetivo ' + v.obj : ''}${v.dias != null ? ' · alcanza ' + v.dias + ' d' : ''})`).join(' | ');
+          console.log(`${x.prodId}${x.variante ? '#' + x.variante : ''} · ${String(x.producto || '').slice(0, 50)} · comprar ${x.cantidad ?? '?'} · ${x.estado || '?'} · vende ${x.cVdia ?? '?'}/d (${x.cVend ?? '?'} u. en ${x.cDias ?? '?'} d con stock) · ML ${x.cML ?? '?'} · casa ${x.cCasa ?? '?'} · camino ${x.cCamino ?? '?'} · objetivo ${x.cObjetivo ?? '?'} (${x.cTarget ?? '?'} d)${x.cHist ? ` · ritmo viejo ${x.cHist.u} u./${x.cHist.dias} d` : ''}${x.cPocas ? ' · pocas ventas' : ''}${x.cRemate ? ` · ${x.cRemate} en remate` : ''} · riesgo $${Math.round(Number(x.riesgoComprar ?? x.riesgo) || 0)}/mes${x.auto === false ? ' · a mano' : ''} · ${tiene}${vs ? `\n     colores: ${vs}` : ''}`);
+        }
+      }
+      return;
+    }
+
     // BILLING_PROBE=decido:<MLA>=<precio>[!piso][!cruza]|<motivo>[;<MLA>=…][;go] → LOS PRECIOS QUE DECIDE CLAUDE
     // (08/10/2026). Regla suya: *"que haya solo robots automáticos de api para cosas que no hay que pensar, como
     // ventas y cosas así de datos. TODO lo que sea pensar lo veas exclusivamente vos"*. El robot ya no mueve
