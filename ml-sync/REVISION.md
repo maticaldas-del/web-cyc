@@ -119,6 +119,9 @@ todas las etapas.
   publicaciones (precio, margen, stock), nunca datos de compradores. Chequear: que el `go` sea el del comando.
 - **`pedidosnotas` (08/10/2026, solo lee):** cada renglón de Pedidos con la cuenta guardada (`cuentaPed`) y si ya tiene nota
   de Claude, para escribir la de cada pedido. Chequear: que la clave de variante sea la misma que arma la web (`sid`).
+- **`cajasnotas` (08/10/2026, solo lee):** lo que hay en la oficina por producto y color, con cada cuenta que lo publica (Full,
+  camino, vendidas 30 d, días que alcanza) para escribir la nota del 🧠 de Armar caja. No calcula cuánto mandar (eso es la
+  web). Chequear: claves de inventario de la oficina (`__Oficina_Mati`) y de color (`__v__`).
 - **Promos de ML: excepción a la regla 8 (08/10/2026).** Él: *"si tenés identificada una publicación que vas a bajar y
   falta poco para una promo (y la promo te da algún beneficio) activala"*. `analizapromo[:días][:palabras]` (solo lee)
   lista las promos candidatas de cada publicación activa, mide el margen al precio de la promo con `calcCerebro` y

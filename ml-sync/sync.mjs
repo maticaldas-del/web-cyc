@@ -35104,6 +35104,58 @@ async function main() {
       return;
     }
 
+    // BILLING_PROBE=cajasnotas → SOLO LEE (08/10/2026). Lo que hay en la oficina, producto por producto (y color), con cada
+    // cuenta que lo publica: en Full, en camino, vendidas en 30 días y días que alcanza. Sirve para escribir la nota del 🧠 de
+    // Armar caja (`decido:caja:<prodId>@<cuenta>[#variante]=nota|…`). No calcula cuánto mandar: eso lo hace la web.
+    if (/^cajasnotas$/.test(String(process.env.BILLING_PROBE || ''))) {
+      const [inv, links, vp, envs, prods, norepo] = await Promise.all(['cyc/inventory', 'cyc/mllinks', 'cyc/ventaprod', 'cyc/envios_full', 'cyc/products', 'cyc/norepo'].map((k) => db.get(k).catch(() => null)));
+      let cx = {}; try { cx = (await db.get('mlapi/claudeexp')) || {}; } catch { cx = {}; }
+      const I = inv || {}, Lk = links || {}, NR = norepo || {};
+      const sidL = (x) => String(x).replace(/[^a-z0-9]/gi, '_');
+      const OFIK = 'Oficina_Mati', CT = ['Adriana', 'Luciana', 'Ayelen', 'Matias'];
+      const hace30 = Date.now() - 30 * 864e5;
+      const vend = {};   // prod__cta[__v__var] -> u
+      for (const ents of Object.values(vp || {})) for (const v of Object.values(ents || {})) {
+        if (!v || v.cancelada || !v.mla) continue;
+        const ts = Number(v.ts) || Date.parse(v.ts || '') || 0; if (ts < hace30) continue;
+        const e = Lk[v.mla]; if (!e || !e.prodId || !e.cuenta) continue;
+        const k = e.prodId + '__' + sidL(e.cuenta); vend[k] = (vend[k] || 0) + (Number(v.qty) || 1);
+        if (e.variant) { const kv = k + '__v__' + sidL(String(e.variant)); vend[kv] = (vend[kv] || 0) + (Number(v.qty) || 1); }
+      }
+      const cam = {};
+      for (const env of Object.values(envs || {})) for (const c of (Array.isArray(env && env.cajasDet) ? env.cajasDet : [])) {
+        if (!c || c.recibida) continue;
+        for (const it of (c.items || [])) { if (!it || !it.prodId) continue; const k = it.prodId + '__' + sidL(env.cuenta || '') + (it.variante ? '__v__' + sidL(String(it.variante)) : ''); cam[k] = (cam[k] || 0) + (Number(it.u) || 0); const k0 = it.prodId + '__' + sidL(env.cuenta || ''); if (it.variante) cam[k0] = (cam[k0] || 0) + (Number(it.u) || 0); }
+      }
+      const pubCta = {}; for (const [m, e] of Object.entries(Lk)) if (e && e.prodId && !e.ignored && !e.noVendemosMas && /^MLA/i.test(m) && (e.status || '') !== 'closed') (pubCta[e.prodId] = pubCta[e.prodId] || new Set()).add(e.cuenta);
+      let n = 0;
+      for (const p of Object.values(prods || {})) {
+        if (!p || !p.id) continue;
+        const ofi = Math.max(0, parseInt(I[p.id + '__' + OFIK]) || 0);
+        if (!(ofi > 0)) continue;
+        const ctas = CT.filter((c) => (pubCta[p.id] || new Set()).has(c) && !NR[p.id + '__' + c.toLowerCase()] && !NR[p.id + '__' + c]);
+        n++;
+        console.log(`\n${p.id} · ${String(p.name || '').slice(0, 50)} · en la oficina ${ofi}${ctas.length ? '' : ' · ninguna cuenta lo publica'}`);
+        const vars = (p.variantes || []).map(String);
+        for (const c of ctas) {
+          const k = p.id + '__' + sidL(c);
+          const full = Math.max(0, parseInt(I[k]) || 0), cm = cam[k] || 0, u = vend[k] || 0;
+          const dias = u > 0 ? Math.round((full + cm) / (u / 30)) : null;
+          const nk = 'caja__' + p.id + '__' + c.toLowerCase();
+          console.log(`   ${c}: Full ${full} · camino ${cm} · vendió ${u} en 30 d · alcanza ${dias == null ? '—' : dias + ' d'} · ${cx[nk] ? 'tiene nota' : 'SIN NOTA'}`);
+          for (const vr of vars) {
+            const kv = k + '__v__' + sidL(vr), ov = Math.max(0, parseInt(I[p.id + '__' + OFIK + '__v__' + sidL(vr)]) || 0);
+            const fv = Math.max(0, parseInt(I[kv]) || 0), cv = cam[kv] || 0, uv = vend[kv] || 0;
+            if (!(ov > 0) && !(uv > 0)) continue;
+            const dv = uv > 0 ? Math.round((fv + cv) / (uv / 30)) : null;
+            console.log(`      #${vr}: casa ${ov} · Full ${fv} · camino ${cv} · vendió ${uv} · alcanza ${dv == null ? '—' : dv + ' d'}`);
+          }
+        }
+      }
+      console.log(`\n${n} productos con mercadería en la oficina.`);
+      return;
+    }
+
     // BILLING_PROBE=pedidosnotas → SOLO LEE (08/10/2026). Cada renglón de Pedidos (Bs As, Paraguay y Paulvic) con la cuenta
     // que guardó el panel (`cuentaPed`: vende por día con stock, en Full, en casa, en camino, objetivo y días) y si ya tiene
     // nota de Claude, para escribir la nota del 🧠 de CADA pedido (`decido:ped:<prodId>[#variante]=nota|…`).
