@@ -85,6 +85,16 @@ todas las etapas.
   (2 por día, 10:47 y 22:47, `alertas:12`: la ventana tiene que tapar las 12 h entre vueltas). Chequear: que sólo se guarde lo que
   salió, que no quede nada de terceros en el texto impreso, y que el log no crezca sin fin (podar a 30 días).
 
+## 7 · DISEÑO
+- **Métricas → Tendencia** (`_metBarraOn`, `_metLegendClick`, `cycMetBarras` en localStorage): las barras
+  de ganancia y gastos del día arrancan apagadas; se prenden en la leyenda y queda recordado. Chequear
+  que al apagarlas la escala del gráfico se ajuste a las líneas.
+- **El cambio de precio en cada venta** (`cambioVentaHTML`, 08/10/2026): con 2+ cambios en los 7 días
+  muestra desde el precio de antes del primero hasta el último (y la plata de más contra ese precio);
+  % de ganancia antes (≈, la misma venta al precio viejo: `comisionEnPrecio`, envío de Full por lado de
+  la barrera, IIBB en proporción) → después (el real), con `pctColor`. Chequear que el % de "después"
+  sea el mismo de la píldora de la venta.
+
 ## 8 · DATOS E HISTORIAL (nueva, 08/10/2026)
 Todo lo que guarda la historia día por día y las pantallas que la dibujan.
 - **Línea de tiempo por producto** (`mlapi/linea/<MLA>/<día>`, `_lineaJunta`, `lineaPintar`): stock,
@@ -95,6 +105,10 @@ Todo lo que guarda la historia día por día y las pantallas que la dibujan.
   del día con la misma cuenta que Ventas, cambios del robot desde supervisor + autoprecio sin repetir.
 - **Relleno hacia atrás** (`linea:atras`, `mlapi/lineaprog`): ventas, visitas (`:rehacer`), precio,
   stock a medias por cupo de ML.
+- **En la línea de un producto (08/10/2026)**: precio y costo comparten carril y escala (`pcMin/pcMax`,
+  piso = el más bajo de los dos, techo = el más alto); llegadas de stock (`stIn`: stock de hoy − el
+  anterior + lo vendido en el medio, 2+ u. o desde cero) con marca celeste; el globito es por carril.
+  Chequear que una devolución de 1 u. no se marque como llegada.
 - **Ritmo normal** (`cyc/ritmonormal`, `ritmo:go`): ventas sin remate ÷ días con stock sin remate.
 - Chequear: totales de un día contra Ventas de ese día · stock contra el Arqueo · que un día sin
   lectura no se dibuje como cero · que hoy diga "incompleto".
