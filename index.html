@@ -2454,7 +2454,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='22.57';
+const APP_VERSION='22.58';
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
 // muestre la versión y la fecha de actualización y que tenga un desplegable predeterminado cerrado".
 // Y el mismo día: "que ponga fecha de cada modificación y haya una barrita para scrollear y que
@@ -2465,6 +2465,7 @@ const APP_VERSION='22.57';
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'22.58',f:'08/10/2026',h:'13:25',c:[{n:1,t:'📈 Línea de tiempo: la caja de HOY seguía en gris en algunos productos (los que ya tenían un renglón de hoy a medias en la línea del robot). Ahora hoy siempre toma la caja de la última lectura.'}]},
   {v:'22.57',f:'08/10/2026',h:'13:15',c:[{n:2,t:'📈 Línea de tiempo: las visitas no se guardaban desde el 01/10 (el pedido a ML fallaba callado). Ya se guardan de nuevo y se rellenan los días que faltaron.'},{n:1,t:'📈 Línea de todo: el día de hoy toma la caja, el stock y el remate de ahora.'}]},
   {v:'22.56',f:'08/10/2026',h:'12:58',c:[{n:2,t:'📈 Línea de tiempo de TODOS los productos juntos (Métricas → "📈 Línea de todo", o el botón "📈 Todos" adentro de la línea de un producto): ventas, ganancia por día, % de ganancia, stock en Full, visitas, un índice de precio, cuántas publicaciones subieron y bajaron cada día (con la lista entera de subas y bajadas y su motivo), remate y caja.'},{n:1,t:'📈 Línea de tiempo: el día de HOY ya muestra si ganamos o perdemos la caja (la última lectura del robot, que es cada hora).'}]},
   {v:'22.55',f:'08/10/2026',h:'11:05',c:[{n:3,t:'🤖 Las cuotas de las Premium se contaban DOS veces en el robot de precios (rescate, cerebro, caja barata, escalera) cuando ML ya las cobra adentro de la comisión, como en electrónica. Por eso vio el Watch S5 en 4% cuando sus ventas dejaron ~21%. Ahora se cuentan una sola vez.'}]},
@@ -8634,14 +8635,16 @@ function lineaPintar(prodId){
   const dias=_lineaJunta(porMlaF);
   // HOY, INCOMPLETO: la línea del robot es hasta AYER (la escribe de noche). El día de hoy se arma con lo que el
   // panel ya sabe: las ventas de hoy y el stock de ahora en las 4 cuentas. Sin visitas (eso lo trae la noche); la caja sale de la lectura de cada hora.
-  {const _hk=dateToKey(new Date());if(!dias[_hk]){const ents=Object.values((state.ventaprod||{})[_hk]||{}).filter(v=>v&&!v.cancelada&&(prodDeVenta(v)||{}).id===prodId&&_vOk(v));
+  // Y AUNQUE LA LÍNEA YA TENGA UN RENGLÓN DE HOY (08/10/2026): el relleno para atrás escribe hoy a medias (sólo stock o
+  // visitas de alguna publicación) y con eso este bloque no corría y la caja de hoy quedaba en gris. Hoy manda lo de ahora.
+  {const _hk=dateToKey(new Date());const _prevH=dias[_hk]||null;{const ents=Object.values((state.ventaprod||{})[_hk]||{}).filter(v=>v&&!v.cancelada&&(prodDeVenta(v)||{}).id===prodId&&_vOk(v));
     let st=0;LOCS.forEach(l=>{st+=_lineaVar?getQV(prodId,l,_lineaVar):getQ(prodId,l);});
     const _ay=dateToKey(new Date(Date.now()-864e5));
     // LA CAJA DE HOY (08/10/2026, él: "porque no muestra ahora si ganamos o perdemos la caja"): el robot la lee
     // cada HORA y la deja en mllinks (`caja`). Misma regla que la noche: sólo publicaciones activas, gana la mejor.
     const _rc={winning:3,sharing:2,losing:1},_cc={winning:'g',sharing:'c',losing:'p'};let cjH=null,cjR=0;
     Object.keys(C.porMla).filter(_mlaOk).forEach(m=>{const e=_lk[m]||{};if((e.status||'')!=='active')return;const r=_rc[e.caja]||0;if(r>cjR){cjR=r;cjH=_cc[e.caja];}});
-    dias[_hk]={u:ents.reduce((a,v)=>a+(Number(v.qty)||1),0),uR:null,vis:null,st,stN:1,p:(dias[_ay]&&dias[_ay].p)||null,caja:cjH,rem:false,esc:null,mg:null,tot:null,pubs:1,hoy:true};}}
+    dias[_hk]={u:ents.reduce((a,v)=>a+(Number(v.qty)||1),0),uR:null,vis:null,st,stN:1,p:(dias[_ay]&&dias[_ay].p)||null,caja:cjH||(_prevH&&_prevH.caja)||null,rem:!!(_prevH&&_prevH.rem),esc:_prevH?_prevH.esc:null,mg:_prevH?_prevH.mg:null,tot:null,pubs:1,hoy:true};if(_prevH&&_prevH.vis!=null)dias[_hk].vis=_prevH.vis;if(_prevH&&_prevH.p>0&&!dias[_hk].p)dias[_hk].p=_prevH.p;}}
   const ks=_lineaDias(_lineaRango); const N=ks.length;
   const W=1000, X=i=>i*W/N, bw=Math.max(W/N,0.6);
   // Escalas
