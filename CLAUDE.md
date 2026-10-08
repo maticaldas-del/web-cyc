@@ -707,6 +707,16 @@ vinculado · `capital` usa los campos reales del Arqueo y no cuenta la oficina d
    fichas, códigos completos, Full ~19%, nada internacional, ventas y link, costo fijo del pedido).
  · Recordatorio del 01/10 10:00 de los movimientos de MP sigue agendado.
 
+## 🔎 REGLA SUYA DEL 08/10/2026: CADA CAMBIO SE ANOTA EN SU ETAPA DE LA REVISIÓN
+
+Él: *"tengo que decirte esto siempre. salvo que cada movimiento, cambio que hagas lo agregues a una
+etapa existente o una nueva"*. **Todo cambio o cosa nueva se anota en `ml-sync/REVISION.md`, en su
+etapa, EN EL MISMO COMMIT** (qué es · dónde vive · qué chequear). Si no entra en ninguna, se crea una
+etapa nueva ahí y en `REV_ETAPAS` (`index.html`). La revisión de cada etapa arranca leyendo ese
+archivo. **Etapa 8 · Datos e historial** creada ese día (líneas de tiempo); como nunca se hizo,
+Inicio la pide ya. Y lo que se mira en TODAS: contar dos veces lo mismo (el stock ×4 del Centímetro),
+fallas leídas como dato, dos fórmulas para un número, datos de terceros en el registro público.
+
 ## ⏩ DÓNDE QUEDAMOS — LEER PRIMERO (22/09/2026, cierre del chat)
 
 Él cambió de chat y pidió dejar todo escrito para arrancar del otro. **Esto es lo que quedó abierto,
