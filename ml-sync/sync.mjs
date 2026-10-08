@@ -34977,6 +34977,16 @@ async function main() {
       const idDe = (o) => o.pr.id || o.pr.type;
       console.log(`\n── 2 · ✅ CONVIENE ENTRAR · ${conviene.length} ──`);
       for (const r of conviene) { console.log('  ' + lin(r)); console.log(`     ${r.por}`); console.log(`     entrarpromo:${r.mla}=${r.o.P}@${idDe(r.o)}${r.mg < PISOa ? '!piso' : ''}|${r.por.replace(/[;|]/g, ',')}`); }
+      // Las que ML paga en parte, SIEMPRE a la vista con sus números (aunque no lleguen al piso): son las únicas donde la
+      // promo trae plata y no sólo vidriera. Con el crudo de ML para ver qué paga cada uno.
+      const conML = [...conviene, ...cuestaMas, ...sinPlan, ...noSe].filter((r) => r.o && r.o.mlPaga);
+      console.log(`\n── 2b · 💰 PROMOS DONDE ML PONE PLATA · ${conML.length} ──`);
+      for (const r of conML) {
+        console.log('  ' + lin(r) + (r.why ? ` · ${r.why}` : ''));
+        const pr = r.o.pr;
+        console.log(`     ML paga ${pr.meli_percentage}% del descuento · vos ${pr.seller_percentage != null ? pr.seller_percentage + '%' : '?'} · precio de la promo ${money(Math.round(Number(pr.price) || r.o.P))} · lista ${money(Math.round(r.o.orig))}${pr.start_date ? ` · ${String(pr.start_date).slice(0, 10)} → ${String(pr.finish_date || '').slice(0, 10)}` : ''}`);
+        console.log('     crudo: ' + JSON.stringify(pr).slice(0, 400));
+      }
       console.log(`\n── 3 · 🟠 LA IBA A BAJAR, PERO LA PROMO PIDE BAJAR MÁS · ${cuestaMas.length} ──`);
       for (const r of cuestaMas) { console.log('  ' + lin(r)); console.log(`     ${r.why}`); }
       console.log(`\n── 4 · SIN BAJA PENSADA (no entro: sería bajar el precio por bajar) · ${sinPlan.length} ──`);
