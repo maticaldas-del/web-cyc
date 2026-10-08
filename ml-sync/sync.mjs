@@ -17015,6 +17015,8 @@ async function main() {
         for (const x of ca.subieron) {
           const prim = x.primera != null ? !!x.primera : !prob.has(x.prodId);
           if (!prim || !x.prodId) continue;
+          const _h = Object.entries(php).filter(([, o]) => o && o[x.prodId] != null).map(([ym, o]) => `${ym}=${Number(o[x.prodId]).toFixed(2)}`);
+          console.log(`  · ${x.nom || x.prodId} (pedido ${pid0}): estimado ${Number(x.antes).toFixed(2)} → real ${Number(x.despues).toFixed(2)} · congelados: ${_h.join(', ') || 'ninguno'}`);
           for (const [ym, o] of Object.entries(php)) {
             if (!o || o[x.prodId] == null) continue;
             if (ymPed && ym < ymPed) continue;
