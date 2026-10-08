@@ -808,6 +808,20 @@ mensaje sin que yo te escriba (…) siempre y cuando sea algo que vos puedas hac
  · **Espejo 8" (`MLA3018947968`)** frenado por ML (`waiting_for_patch`) desde la suba a $49.190: *"yo lo arreglo,
    haceme acordar"*. Recordárselo en cada revisión mientras siga frenado.
 
+### CADA LUGAR DICE LO SUYO, Y LAS FECHAS (08/10/2026, v22.71 · `cyc-v551`)
+ · Él: *"si clickeo el cerebro en la misma publicación pero en distintos lugares, que diga distintas cosas: en ventas por
+   qué aumentó el precio o por qué no, y en pedidos por qué pide x unidades"*. Pedidos y Armar caja muestran SÓLO las notas
+   `ped__`/`caja__`; Ventas x Producto (`ctx:'venta'`), Productos y Rotación muestran las de precio (`claudeexp/<MLA>`).
+ · Y *"quiero que sepas cuándo son las fechas, analizarlas, pueden aparecer fechas creadas por ML (…) por ejemplo en las
+   promos de ML funciona subir precios (no sé si es así)"*: sección 14 del `informe` (calendario a 60 días + eventos que
+   arma ML, leídos de sus promociones sin tocar ninguna) y comando `fechas` (solo lee: cada fecha pasada, lo regalable
+   contra el resto). **Las ventas guardadas arrancan el 01/05/2026**: sólo se midieron Padre, Amigo y Niño 2026 y ningún
+   evento de ofertas de ML. Lo de "subir en las promos de ML" queda como IDEA A MEDIR: la primera oportunidad es el
+   CyberMonday del 02/11/2026. `RE_REGALO` contaba los termómetros como regalo: corregido.
+   **Medido (con el arreglo):** lo regalable contra el resto rindió ×0,3 (Padre), ×1 (Amigo) y ×1,2 (Niño). O sea que
+   el ×1,4 que supone el cerebro NO está confirmado: son pocas unidades y se mezclan los quiebres de stock. En las
+   revisiones no se aplica a ciegas: se mira lo que de verdad vende esa semana. Día de la Madre 18/10: se mide en vivo.
+
 ## ⏰ PENDIENTE: EL PEDIDO AL PAULVIC DEL 06/10 (08/10/2026)
 
 40 u. en 12 aromas, todavía en camino (`cyc/pedidospv`). Le mandaron **$246.283,77** para pagar (≈ $6.157 c/u; la ficha
