@@ -34030,6 +34030,9 @@ async function main() {
           console.log(`   · ${mla} · ${l.cuenta || '?'} · ${l.status || '?'}${h && h.desde ? ' · stock desde ' + f(h.desde) + (h.aprox ? ' aprox' : '') : ''}`);
           bits.forEach((b) => console.log('       ' + b));
         }
+        // El registro de entrada a Full CRUDO (08/10/2026): la escalera decía "sin fecha real" del Watch 5 Lite y
+        // este comando mostraba "stock desde 18/08" — sin ver la marca `aprox` de cada clave no se sabía por qué.
+        for (const [k, h] of Object.entries(sh || {})) if (k.startsWith(p.id + '__') && h) console.log(`   registro ${k.slice(p.id.length + 2)}: desde ${h.desde ? f(h.desde) : '—'} · aprox ${h.aprox === true ? 'sí' : h.aprox === false ? 'no (fecha real)' : 'SIN MARCA'}${h.cero ? ' · en cero desde ' + f(h.cero) : ''}${h.desdePrev ? ' · antes ' + f(h.desdePrev) : ''}`);
         console.log('');
       }
       return;
