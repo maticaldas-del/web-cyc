@@ -2454,7 +2454,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='22.64';
+const APP_VERSION='22.65';
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
 // muestre la versión y la fecha de actualización y que tenga un desplegable predeterminado cerrado".
 // Y el mismo día: "que ponga fecha de cada modificación y haya una barrita para scrollear y que
@@ -2465,6 +2465,7 @@ const APP_VERSION='22.64';
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'22.65',f:'08/10/2026',h:'14:50',c:[{n:2,t:'🧠 Botón del cerebro en Productos, Rotación, Pedidos, Contar lo que hay y cada venta: al tocarlo dice qué miró cada regla anoche con esa publicación, qué se hizo, el último cambio del robot y lo que recuerda el cerebro (precios que no funcionaron, escasez). En Pedidos dice además por qué pide esas unidades.'},{n:3,t:'El cerebro manda solo: el supervisor ya no vuelve precios atrás por su cuenta (lo juzga el cerebro con plata por día) y los grupos de precio no se nivelan solos.'},{n:2,t:'En una fecha de regalos (Día de la Madre, Navidad…) el cerebro puede volver a probar un precio que antes no funcionó.'}]},
   {v:'22.64',f:'08/10/2026',h:'14:37',c:[{n:3,t:'🧠 El cerebro de precios decide PRIMERO cada noche: lo que él decide no lo toca ninguna otra regla, y la base, la caja barata, el remate y la escalera sólo actúan donde él no decidió nada y sin volver a poner un precio que él ya vio que no funcionó.'},{n:3,t:'Se sacó el rescate al vender: una venta baja queda marcada "🧠 lo mira el cerebro" y el precio se decide esa noche. Lo que el cerebro dejó arriba del piso no se lleva a la base.'},{n:3,t:'Pausadas con mercadería en Full abajo del piso: se llevan a la base y se activan solas en la hora siguiente. Las que tienen unidades en depósito o que pausaste vos no se tocan.'},{n:3,t:'El cerebro no vuelve a subir lo que tiene stock de sobra, y no prueba subas en lo que el supervisor juzgó 🔴 en 60 días.'},{n:2,t:'Aviso de pérdidas: lo del cerebro va como información (no te pide decidir) y una suba por escasez cuenta sólo lo cobrado de más.'},{n:3,t:'Escalera arriba de $33.000: si a $32.990 ya cumple el escalón, baja ahí (antes podía quedar en un precio caro arriba de la barrera).'},{n:1,t:'🔎 Etapa 1 (precios) cerrada.'}]},
   {v:'22.63',f:'08/10/2026',h:'14:20',c:[{n:3,t:'🔎 Revisión etapa 1 (precios): si ML no contesta de noche, las Premium que ya traen las cuotas en la comisión no vuelven a contarlas dos veces (el rescate subía de más).'},{n:3,t:'Rescate: llega justo a la base 25% (antes pedía 1-4% de más), puede cruzar los $33.000 cuando midió que paga, mira también los colores pausados de un producto sano y, al vender, toca todo lo de 24% o menos.'},{n:3,t:'Una Clásica sin ventas propias ya no mide el envío con las ventas de su hermana Premium (en el Watch S5 daba ~$65.000 de envío).'},{n:3,t:'Cerebro: no juzga un precio de un día con las ventas de otro precio, no vuelve a subir una suba de más que ya se corrigió, y al terminar la escasez (o si el precio de antes quedó abajo del piso) baja hasta el precio que deja el piso en vez de quedar trabado.'},{n:3,t:'Corrección de subas de más: si la suba cruzó los $33.000 puede volver abajo, y si la suba fue en varias noches vuelve al precio de antes de la primera.'},{n:3,t:'Caja barata y remate: sin la comisión de ML no se baja lo que sobra; lo que caía en el medio punto de colchón ya no queda quieto para siempre; unapub/bajar no bajan una Premium sin cuotas medidas.'},{n:2,t:'Las marcas "subiendo"/"bajando" del robot vencen a las 24 h (si una corrida se cortaba, la publicación quedaba trabada para siempre); un "volver atrás" que ML rechaza ya no deja una baja fantasma.'},{n:2,t:'Supervisor: el aviso de pérdidas cuenta sólo lo medido (7+ días), igual que la web; las subas del rescate al vender no se pierden si se corrigen al día siguiente; el rescate no deshace las bajas del cerebro.'},{n:1,t:'Métricas: los cambios del cerebro dicen 🧠 Cerebro, la corrección dice que no suma, "¿Qué cuenta?" dice lo que de verdad suma, y "Qué está mirando ahora" avisa que es una foto vieja desde que está el cerebro.'}]},
   {v:'22.62',f:'08/10/2026',h:'15:05',c:[{n:1,t:'🔎 Revisión: nueva etapa 8 · Datos e historial (las líneas de tiempo). Como nunca se hizo, el cartel de Inicio la pide ya.'}]},
@@ -4304,7 +4305,7 @@ function renderProds(){
         ${fotoChipHTML(p,64)}
         <input class="pname-edit" type="text" value="${p.name.replace(/"/g,'&quot;')}" onchange="updProdName('${p.id}',this.value)" title="Editar nombre (el vínculo de ventas es por ID interno, no se pierde nada)">
         <button class="btn" style="white-space:nowrap;background:${p.origen==='py'?'rgba(239,68,68,.15)':'rgba(59,130,246,.12)'};color:${p.origen==='py'?'#f87171':'#60a5fa'};border:1px solid ${p.origen==='py'?'rgba(239,68,68,.3)':'rgba(59,130,246,.3)'}" onclick="toggleProdOrigen('${p.id}')" title="Origen del producto: define en qué sección de Pedidos aparece (BS AS o Paraguay)">${p.origen==='py'?'🇵🇾 Paraguay':'🇦🇷 BS AS'}</button>
-        ${lineaBtn(p.id,'📈 línea')}
+        ${lineaBtn(p.id,'📈 línea')}${cerebroBtn(p.id)}
         <button class="btn btn-del" onclick="delProd('${p.id}')">✕</button>
       </div>
       <div style="display:flex;flex-wrap:wrap;gap:14px;align-items:flex-end">
@@ -6159,7 +6160,7 @@ function renderOfiCaja(){
         onchange="setCajaItem('${f.p.id}',${JSON.stringify(f.variante||'').replace(/"/g,'&quot;')},this.value,${tope})">`:'';
     return `<div style="padding:12px 14px;background:var(--surface);border:1px solid ${enCaja>0?'var(--accent2)':'var(--border)'};border-radius:var(--r);margin-bottom:8px">
       <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap">
-        ${fotoChipHTML(f.p,36,f.variante,ofiFiltroCuenta)}
+        ${fotoChipHTML(f.p,36,f.variante,ofiFiltroCuenta)}${cerebroBtn(f.p.id,{variante:f.variante||'',cuenta:ofiFiltroCuenta&&ofiFiltroCuenta!=='todas'?ofiFiltroCuenta:''})}
         <div class="pi-prod" style="flex:1;min-width:150px">${f.p.name}${f.variante?` <span style="color:var(--accent2);font-weight:700">· ${f.variante}</span>`:(f.sinContarPorAroma?' <span style="color:var(--muted);font-weight:400">· sin variante</span>':'')}</div>
         <div style="font-size:.68rem;color:var(--muted)">tenés ${f.hay} u.${otras>0?` <span style="color:var(--amber)">(${otras} en otra caja)</span>`:''}</div>
         ${casilla}
@@ -9041,6 +9042,79 @@ function lineaTodoPintar(){
     </div></details></div>`;
 }
 function mlas_cnt(C){return Object.keys(C.porMla||{}).length;}
+// ── 🧠 EL BOTÓN DEL CEREBRO (08/10/2026) ─────────────────────────────────────────────────────────
+// Pedido suyo: *"que en todos los productos, pedidos y cosas haya un botoncito de 'cerebro' y al clickear que me
+// diga por qué tomó esa decisión"*. Muestra, por publicación, el EXPEDIENTE que arma el robot cada noche
+// (`mlapi/cerebroexp/<MLA>`: lo que dijo cada regla y lo que se hizo), lo que decidió la activación de pausadas
+// de cada hora (`mlapi/cerebroact/<MLA>`), el último cambio del robot y la memoria del cerebro (`cyc/cerebro`).
+// En Pedidos suma por qué pide esas unidades (la misma cuenta de la tarjeta, `cuentaPedidoHTML`). No calcula
+// nada nuevo: dice lo que ya decidieron el robot y el panel.
+function cerebroBtn(prodId,o){
+  if(!prodId)return '';
+  o=o||{};
+  const at=(k,v)=>v?` data-${k}="${String(v).replace(/"/g,'&quot;')}"`:'';
+  return `<button class="btn" onclick="cerebroAbrir(this,event)" data-p="${prodId}"${at('c',o.cuenta)}${at('v',o.variante)}${at('m',o.mla)}${at('ped',o.ped)}${at('coll',o.coll)} title="🧠 Por qué el cerebro decidió esto" style="font-size:.64rem;padding:2px 7px;line-height:1.2">🧠</button>`;
+}
+function _cerMlas(prodId,cuenta,variante,mla){
+  if(mla)return [mla];
+  const vs=variante?sid(String(variante).toLowerCase()):'';
+  return Object.entries(state.mllinks||{}).filter(([k,e])=>e&&e.prodId===prodId&&!e.ignored&&/^MLA/i.test(k)
+    &&(!cuenta||String(e.cuenta||'').toLowerCase()===String(cuenta).toLowerCase())
+    &&(!vs||!e.variant||sid(String(e.variant).toLowerCase())===vs)).map(([k])=>k);
+}
+const _cerEsc=t=>String(t==null?'':t).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+function _cerFecha(ts){if(!ts)return '?';const d=new Date(Number(ts)-3*3600e3);return d.toISOString().slice(8,10)+'/'+d.toISOString().slice(5,7)+' '+d.toISOString().slice(11,16);}
+async function cerebroAbrir(el,ev){
+  if(ev&&ev.stopPropagation)ev.stopPropagation();
+  const d=el.dataset||{};const p=prodById(d.p);if(!p)return;
+  let m=document.getElementById('cerebro-modal');
+  if(!m){m=document.createElement('div');m.id='cerebro-modal';m.style.cssText='position:fixed;inset:0;z-index:9000;background:rgba(0,0,0,.6);display:flex;align-items:flex-start;justify-content:center;overflow:auto;padding:16px';
+    m.onclick=e=>{if(e.target===m)m.remove();};document.body.appendChild(m);}
+  const caja=(h)=>`<div style="background:var(--surface);border:1px solid var(--border2);border-radius:12px;max-width:760px;width:100%;padding:14px 16px;margin-top:20px;font-size:.78rem;line-height:1.45">${h}</div>`;
+  const tit=`🧠 ${_cerEsc(p.name)}${d.v?' · '+_cerEsc(d.v):''}${d.c?' · '+_cerEsc(d.c):''}`;
+  m.innerHTML=caja(`<b>${tit}</b><div style="color:var(--muted);margin-top:6px">Leyendo lo que decidió el cerebro…</div>`);
+  const mlas=_cerMlas(d.p,d.c,d.v,d.m);
+  const exp={},act={};
+  await Promise.all(mlas.map(async k=>{
+    try{exp[k]=(await db.ref('mlapi/cerebroexp/'+k).once('value')).val();}catch(e){exp[k]=undefined;}
+    try{act[k]=(await db.ref('mlapi/cerebroact/'+k).once('value')).val();}catch(e){act[k]=undefined;}
+  }));
+  let mem={};try{const sn=await db.ref('cyc/cerebro').once('value');mem=sn.val()||{};}catch(e){mem=null;}
+  const L=state.mllinks||{},AP=state.autoprecio||{};
+  let h=`<div style="display:flex;justify-content:space-between;align-items:center;gap:10px"><b style="font-size:.9rem">${tit}</b><button class="btn" onclick="document.getElementById('cerebro-modal').remove()">Cerrar</button></div>`;
+  // El pedido (si se abrió desde Pedidos): por qué pide esas unidades.
+  if(d.ped){
+    let ped=null;for(const c of [d.coll,'pedidos','pedidos_py'].filter(Boolean)){const arr=state[c];if(Array.isArray(arr)){ped=arr.find(x=>x&&x.id===d.ped)||null;if(ped)break;}}
+    if(ped){
+      let ct='';try{ct=cuentaPedidoHTML(ped)||'';}catch(e){ct='';}
+      h+=`<div style="margin-top:12px;padding:10px;border-radius:8px;background:var(--bg);border:1px solid var(--border)"><b>🛒 Por qué pide ${fmtN(ped.cantidad||0)} u.</b>
+        <div style="display:flex;flex-wrap:wrap;gap:6px;margin-top:6px">${ct||'<span style="color:var(--muted)">este pedido no tiene la cuenta guardada (es viejo o cargado a mano)</span>'}</div>
+        ${ped.nota?`<div style="margin-top:6px;color:var(--muted)">${ped.nota}</div>`:''}</div>`;
+    }
+  }
+  if(!mlas.length)h+=`<div style="margin-top:12px;color:var(--muted)">No tiene publicaciones vinculadas: el cerebro de precios no la mira.</div>`;
+  for(const k of mlas){
+    const e=L[k]||{},x=exp[k],a=act[k],ap=AP[k],M=mem&&mem[k];
+    let mgTxt='';try{const _np=(state.netopub||{})[k];const mm=_np?margenMLDe(p,_np):null;if(mm&&mm.margen!=null)mgTxt=` · margen hoy ${Math.round(mm.margen)}%`;}catch(er){}
+    h+=`<div style="margin-top:12px;padding:10px;border-radius:8px;background:var(--bg);border:1px solid var(--border)">
+      <div><b>${_cerEsc(e.cuenta||'')}</b> · ${k}${e.variant?' · '+_cerEsc(e.variant):''} · <span style="color:var(--muted)">${_cerEsc(e.status||'?')}${e.subStatus?' ('+_cerEsc(e.subStatus)+')':''}</span>${x&&x.precio?` · ${fmt(x.precio)}`:''}${mgTxt}</div>`;
+    if(x===undefined)h+=`<div style="color:var(--amber);margin-top:4px">No pude leer lo que decidió el cerebro.</div>`;
+    else if(!x)h+=`<div style="color:var(--muted);margin-top:4px">Anoche ninguna regla tuvo nada que decir de esta publicación (o el expediente todavía no se armó: arranca la noche del 08/10/2026).</div>`;
+    else{
+      const fin=x.final?`<span style="color:var(--green)">✅ ${fmt(x.final.de)} → ${fmt(x.final.a)}</span>`:`<span style="color:var(--muted)">no cambió el precio${x.aplica?'':' (esa noche no se tocaban precios)'}</span>`;
+      h+=`<div style="margin-top:4px">Noche del ${_cerFecha(x.ts)}: ${fin}</div><ul style="margin:6px 0 0 16px;padding:0">${(x.pasos||[]).map(z=>`<li style="margin:2px 0"><b>${_cerEsc(z.r)}</b> — ${_cerEsc(z.d)}</li>`).join('')}</ul>`;
+    }
+    if(a)h+=`<div style="margin-top:6px">${a.ok?'▶️':'⏸️'} Activación (${_cerFecha(a.ts)}): ${_cerEsc(a.d)}</div>`;
+    if(ap&&ap.a)h+=`<div style="margin-top:6px;color:var(--muted)">Último cambio del robot: ${_cerFecha(ap.ts)} · ${fmt(ap.de)} → ${fmt(ap.a)} · ${_cerEsc(ap.por||ap.tipo||'')}${ap.motivo?' · '+_cerEsc(String(ap.motivo).slice(0,200)):''}</div>`;
+    if(M){
+      const fl=Object.entries(M.fallos||{}).filter(([,t])=>Date.now()-Number(t)<30*864e5).map(([pr])=>fmt(Number(pr)));
+      const memTxt=[M.ult?`última decisión: ${_cerEsc(M.ult.mot||'')} ${fmt(M.ult.de)} → ${fmt(M.ult.a)} (${_cerFecha(M.ult.ts)})`:'',Number(M.base)>0?`en escasez desde ${fmt(M.base)} (vuelve ahí cuando llegue la reposición)`:'',fl.length?`precios que no funcionaron (30 d): ${fl.join(', ')}`:'',Number(M.e)>0?`sensibilidad al precio aprendida: ${M.e}`:''].filter(Boolean);
+      if(memTxt.length)h+=`<div style="margin-top:6px;color:var(--muted)">Memoria del cerebro: ${memTxt.join(' · ')}</div>`;
+    }
+    h+=`</div>`;
+  }
+  m.innerHTML=caja(h);
+}
 function lineaBtn(prodId,txt){return prodId?`<button class="btn" onclick="lineaAbrir('${prodId}',event)" title="Línea de tiempo: stock, ventas, precio y remates de los últimos 365 días" style="font-size:.64rem;padding:2px 7px;line-height:1.2">${txt||'📈'}</button>`:'';}
 // Resuelve el producto de una venta: por ID interno (prodId) si existe, sino por nombre (compat).
 function prodDeVenta(v){return (v&&v.prodId)?(prodById(v.prodId)||prodByName(v&&v.prod)):prodByName(v&&v.prod);}
@@ -9859,7 +9933,7 @@ function renderVentaProd(){
       const _cambios=grp.items.map(v=>isCancelled?'':cambioVentaHTML(v,Number(v.ts)||0));
       const _hayCambio=_cambios.some(x=>x);
       const _pill=isCancelled?'':(gpct===null?`<span class="db nc" style="font-size:.66rem" title="${_sinFicha?'Esta venta no está enganchada a ninguna ficha: el panel no sabe qué producto es ni cuánto costó. Se arregla vinculando la publicación.':'La ficha no tiene costo cargado.'}">${_sinFicha?'sin ficha':'sin costo'}</span>`:`<span class="db ${_est?'nc':''}" style="font-size:.72rem;padding:3px 9px;${_est?'color:var(--muted)':_pillSt}">${_est?'≈ ':''}${gpct>=0?'+':''}${gpct.toFixed(0)}%</span>`);
-      const _items=grp.items.map((v,i)=>`<div style="font-size:.8rem;line-height:1.35;${isCancelled?'opacity:.45;text-decoration:line-through':''}">${fotoVentaHTML(v,38)}<span style="color:var(--muted)">${v.qty}×</span> ${nombreDeVenta(v)}${v.variante?` <span style="padding:1px 6px;border-radius:4px;background:rgba(124,58,237,.12);color:#a78bfa;font-size:.66rem;white-space:nowrap">${v.variante}</span>`:''}${_cambios[i]?` <span style="font-size:.66rem" title="Cambió de precio antes de esta venta · mirá el detalle">${_cambios[i].includes('⬆️')?'⬆️':'⬇️'}</span>`:''}</div>`).join('');
+      const _items=grp.items.map((v,i)=>`<div style="font-size:.8rem;line-height:1.35;${isCancelled?'opacity:.45;text-decoration:line-through':''}">${fotoVentaHTML(v,38)}<span style="color:var(--muted)">${v.qty}×</span> ${nombreDeVenta(v)}${v.variante?` <span style="padding:1px 6px;border-radius:4px;background:rgba(124,58,237,.12);color:#a78bfa;font-size:.66rem;white-space:nowrap">${v.variante}</span>`:''}${_cambios[i]?` <span style="font-size:.66rem" title="Cambió de precio antes de esta venta · mirá el detalle">${_cambios[i].includes('⬆️')?'⬆️':'⬇️'}</span>`:''}${(()=>{const _pp=prodDeVenta(v);return _pp?' '+cerebroBtn(_pp.id,{mla:v.mla}):'';})()}</div>`).join('');
       const _avisoIco=(rescLabel&&rescLabel.includes('⚠️'))?' <span title="El robot no pudo subirla · mirá el detalle">⚠️</span>':'';
       const _abierto=vpDetOpen.has(grp.gid);
       const _dl=(k,val)=>`<div style="display:flex;justify-content:space-between;gap:10px;padding:3px 0;border-bottom:1px dashed var(--border)"><span style="color:var(--muted)">${k}</span><span style="text-align:right">${val}</span></div>`;
@@ -9883,7 +9957,7 @@ function renderVentaProd(){
       // EN LA PC VA EL RENGLÓN DE ANTES; LA TARJETA ES SÓLO PARA EL TELÉFONO (30/09/2026, él:
       // "en la pc quiero como estaba antes. que quede así en el celu"). Se arman las dos y el CSS
       // (.vp-pc / .vp-cel, corte 640px) muestra una sola.
-      const lines=grp.items.map(v=>`<div style="display:flex;justify-content:space-between;font-size:.72rem;padding:2px 0;align-items:center;${isCancelled?'opacity:.45;text-decoration:line-through':''}"><span>${fotoVentaHTML(v,30)}${v.qty}× ${nombreDeVenta(v)}${v.variante?` <span style="padding:1px 5px;border-radius:3px;background:rgba(124,58,237,.12);color:#a78bfa;font-size:.62rem">${v.variante}</span>`:''}${isCancelled?'':(()=>{const x=cambioVentaHTML(v,Number(v.ts)||0);return x?' '+x:'';})()}</span><span style="color:var(--muted)">${(!isCancelled&&(v.total||0)>0)?`total ${fmt(v.total)} · `:''}${isCancelled?'':'neto '+fmt(v.neto||0)}</span></div>`).join('');
+      const lines=grp.items.map(v=>`<div style="display:flex;justify-content:space-between;font-size:.72rem;padding:2px 0;align-items:center;${isCancelled?'opacity:.45;text-decoration:line-through':''}"><span>${fotoVentaHTML(v,30)}${v.qty}× ${nombreDeVenta(v)}${v.variante?` <span style="padding:1px 5px;border-radius:3px;background:rgba(124,58,237,.12);color:#a78bfa;font-size:.62rem">${v.variante}</span>`:''}${isCancelled?'':(()=>{const x=cambioVentaHTML(v,Number(v.ts)||0);return x?' '+x:'';})()}${(()=>{const _pp=prodDeVenta(v);return _pp?' '+cerebroBtn(_pp.id,{mla:v.mla}):'';})()}</span><span style="color:var(--muted)">${(!isCancelled&&(v.total||0)>0)?`total ${fmt(v.total)} · `:''}${isCancelled?'':'neto '+fmt(v.neto||0)}</span></div>`).join('');
       const _pcHtml=`<div class="ingreso-item vp-pc" style="flex-direction:column;align-items:stretch;gap:4px;${isCancelled?'border-color:rgba(239,68,68,.25);background:rgba(239,68,68,.04)':''}">
         <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
           <span class="who-badge" style="font-size:.6rem;${isCancelled?'opacity:.6':''}">${cuenta}</span>
@@ -15018,7 +15092,7 @@ function renderRotacionStock(){
     return filas;
   };
   tbody.innerHTML=rows.map(r=>`<tr>
-    <td class="rc-n" data-l="Producto" style="max-width:200px" title="${r.name}"><div style="display:flex;align-items:center;gap:7px;min-width:0">${fotoChipHTML(prodById(r.pid),26)}<span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0">${r.name}</span>${lineaBtn(r.pid)}</div></td>
+    <td class="rc-n" data-l="Producto" style="max-width:200px" title="${r.name}"><div style="display:flex;align-items:center;gap:7px;min-width:0">${fotoChipHTML(prodById(r.pid),26)}<span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0">${r.name}</span>${lineaBtn(r.pid)}${cerebroBtn(r.pid)}</div></td>
     <td class="rc-s" data-l="Stock" style="text-align:right">${r.stock} u.</td>
     <td class="rc-s" data-l="Capital">${r.capital>0?fmt(r.capital):'—'}</td>
     <td class="rc-s" data-l="Ventas período" style="text-align:right">${r.ventasPeriodo} u.</td>
@@ -15571,7 +15645,7 @@ function _pedidoItemHtml(p,opts){
     </summary>
     <div class="ped-body">
       ${varToggle}
-      ${fotoBtn}${copiarBtn}
+      ${fotoBtn}${copiarBtn}${_prod?cerebroBtn(_prod.id,{ped:p.id,variante:p.variante||''}):''}
       ${p.nota?`<span class="pi-nota">${p.nota}</span>`:'<span class="pi-nota" style="flex:0"></span>'}
       ${_enCam?'':riesgoBadge}
       ${(()=>{const _r=pedSinSentido(p);return _r?`<span class="pi-var-toggle" style="background:rgba(245,158,11,.14);color:var(--amber);border-color:rgba(245,158,11,.35);cursor:default" title="${_r.det.join(' · ').replace(/"/g,'&quot;')}">⚠️ este renglón no cierra${_r.n>1?' ('+_r.n+')':''}</span>`:'';})()}

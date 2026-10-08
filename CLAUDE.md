@@ -451,6 +451,15 @@ todas las reglas, conocimientos, parámetros, TODO (…) al salir una respuesta 
 tomar una decisión (quizás la misma, porque ahora viene Navidad)"*. O sea: rehacer el robot de precios como UN
 solo cerebro con todas las reglas adentro (base, caja barata, remate, escalera, corrección, activar pausadas,
 supervisor, fechas, escasez) y una sola salida por publicación. **Se habla con él antes de tocar nada.**
+**ARRANCÓ EL 08/10 (él: *"dale (…) quiero que el cerebro maneje TODO. y que en todos los productos, pedidos y cosas
+haya un botoncito de 'cerebro' y al clickear que me diga por qué tomó esa decisión (…) dejame a mí las decisiones
+importantes y que no tengas respuesta clara, el resto configuralo vos"*). v22.65:** botón 🧠 (`cerebroBtn`) en Productos,
+Rotación, Pedidos, Contar lo que hay y Ventas, que lee el expediente de la noche (`mlapi/cerebroexp/<MLA>`) · el
+supervisor ya no vuelve precios con el cerebro prendido · `nivelarGrupos` apagado con el cerebro · en fechas de
+regalos se puede reintentar un precio que falló. **Regla para lo que venga: toda regla que mire o mueva un precio
+anota en el expediente (`expA`) y corre DENTRO de la noche del cerebro, nunca como corrector aparte.** También pidió
+el inventario de TODOS los robots automáticos (nombre, qué revisa, qué hace, cada cuánto) y que los que corren cada
+tanto también pasen por el cerebro.
 
 ### ETAPA 2 (PLATA) · 28/09/2026 · v20.78 `cyc-v356`
 4 revisores (Arqueo · robot de MP · gastos/mes · monedas), 17 reales. **HECHAS las obvias:** cargar el disponible

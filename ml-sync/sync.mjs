@@ -2164,7 +2164,7 @@ async function activarPausadasFull(db, links, tokensRun, DRY, products, piso) {
   if (porMargen.length) {
     avisos.push(`⏸️ <b>Con stock en Full y siguen pausadas</b>\nNo llegan al ${(PISO * 100).toFixed(0)}% con su precio de hoy:\n`
       + porMargen.map(lineaP).join('\n')
-      + `\n<i>Para poder activarlas hay que subirles el precio primero.</i>`);
+      + `\n<i>El cerebro las lleva a la base esta noche y en la vuelta siguiente se activan solas (salvo que algo lo frene: lo dice el botón 🧠).</i>`);
   }
   // ESTE SEGUNDO BLOQUE NO EXISTÍA Y ERA EL QUE MÁS FALTABA. El mensaje filtraba por `x.precio`
   // y se comía los motivos que se resuelven ANTES de mirar el precio, que son justo los que dejan
@@ -2194,6 +2194,13 @@ async function activarPausadasFull(db, links, tokensRun, DRY, products, piso) {
   }
   // Renglón por renglón al log SIEMPRE, avisadas o no: un total sin el detalle esconde cuál es.
   for (const x of noLlegan) console.log(`   ⏸️ ${x.nom} · ${x.label} · ${x.stock} u. → ${x.why}`);
+  // Para el botón 🧠 de la web (08/10/2026): qué decidió esta vuelta con cada pausada con stock en Full.
+  if (!DRY && (activadas.length || noLlegan.length)) {
+    const act = {};
+    for (const x of activadas) act[x.mla] = { ts: ahoraP, ok: true, d: `pausada con ${x.stock} u. en Full y a ${money(Math.round(x.precio))} queda en ${x.mg.toFixed(1)}%: la activé` };
+    for (const x of noLlegan) act[x.mla] = { ts: ahoraP, ok: false, d: `pausada con ${x.stock} u. en Full: no la activé · ${String(x.why).slice(0, 200)}` };
+    try { await db.patch('mlapi/cerebroact', act); } catch { /* el botón muestra la de antes */ }
+  }
   return { avisos, anotar: anotarP };
 }
 
@@ -3571,7 +3578,12 @@ async function calcCerebro(db, o) {
         const M = mem[mla] || {};
         const eLearn = Number(M.e) > 0 ? Number(M.e) : CEREBRO_ELAST;
         const fallos = Object.entries(M.fallos || {}).filter(([, ts]) => hoyTs - ts < CEREBRO_FALLO_DIAS * 864e5).map(([pp]) => Number(pp)).filter((x) => x > 0);
-        const fallaDesde = fallos.length ? Math.min(...fallos) : Infinity;
+        // UN PRECIO QUE NO FUNCIONÓ SE PUEDE VOLVER A PROBAR EN UNA FECHA DE REGALOS (08/10/2026, él: *"quizás vuelve
+        // a ser la misma que falló antes, porque ahora viene Navidad, mantengamos el precio que antes perdió"*). Lo que
+        // falló un mes normal no dice nada de la semana antes del Día de la Madre o de Navidad: ahí la demanda de lo
+        // regalable es otra (`fDem`). Fuera de esa ventana, lo que falló en 30 días sigue siendo el techo.
+        const fallaDesde = (fDem > 1 || !fallos.length) ? Infinity : Math.min(...fallos);
+        if (fDem > 1 && fallos.length) D.reintentaFecha = true;
         // REPOSICIÓN: cuánto stock tiene para vender hasta que pueda llegar más.
         const cam = camino[kV && camino[kV] ? kV : kP] || null;
         const hayOfi = ofiDe(e.prodId) > 0;
@@ -10159,6 +10171,16 @@ async function main() {
       const diferidasAuto = new Set();   // quedaron afuera SÓLO por el tope: no se anotan como avisadas (#25)
       const AUTO_MIN_U = 4, AUTO_MAX_DSIN = 7;
       const hechosAuto = [], fallidosAuto = [], pruebasCerradas = [];
+      // EL EXPEDIENTE DE CADA PUBLICACIÓN (08/10/2026, pedido suyo: *"que en todos los productos (…) haya un
+      // botoncito de 'cerebro' y al clickear que me diga por qué tomó esa decisión"*). Cada regla que mira una
+      // publicación esta noche anota lo que dijo; al final se guarda en `mlapi/cerebroexp/<MLA>` (FUERA de `cyc/`:
+      // la web lee `cyc` entero al abrir y esto sólo hace falta al tocar el botón).
+      const EXP = {}, EXPI = {};
+      const expA = (mla, regla, dijo, info) => {
+        if (!mla || !dijo) return;
+        (EXP[mla] = EXP[mla] || []).push({ r: regla, d: String(dijo).slice(0, 300) });
+        if (info) EXPI[mla] = { ...(EXPI[mla] || {}), ...Object.fromEntries(Object.entries(info).filter(([, v]) => v != null && v !== '')) };
+      };
       // Etapa 5: lo que se anota DESPUÉS de cambiar un precio de verdad (autoprecio, escalera,
       // notraer, avisados) iba con `catch {}`: si fallaba, el cambio quedaba hecho en ML sin memoria
       // (el supervisor no lo juzga, la escalera salta escalones, se vuelve a proponer). Se reintenta
@@ -10467,7 +10489,7 @@ async function main() {
           // Lo que la escalera deja afuera se DICE en el log (08/10/2026): con el Watch 5 Lite él preguntó "¿por qué
           // no lo baja más?" y el log decía "0 candidatas" sin nombrar a nadie — el descarte mudo de siempre.
           const escFuera = [];
-          const escNo = (f, why) => { escFuera.push(`${(f.nom || f.mla).slice(0, 34)} (${f.cuenta || ''}): ${why}`); };
+          const escNo = (f, why) => { escFuera.push(`${(f.nom || f.mla).slice(0, 34)} (${f.cuenta || ''}): ${why}`); expA(f.mla, '🪜 escalera', why, { nom: f.nom, cuenta: f.cuenta, precio: f.precio }); };
           for (const f of [...remNo, ...cbr.noSano, ...(cbr.sinVisitas || [])]) {
             if (!f || !f.mla || f.sobre || vistas.has(f.mla)) continue;
             vistas.add(f.mla);
@@ -10563,8 +10585,9 @@ async function main() {
             if (paso == null) { console.log(`   · ${f.nom}: ya está en ${mgHoy.toFixed(1)}%, no queda escalón abajo`); continue; }
             const ptw = Math.round(f.ptw || 0);
             const { a, mgA, llega } = await escPrecioPara(mg, precio, ptw, paso);
-            if (mgA == null || mgA < PISO_AUTORIZADO || mgA < paso - 0.5 || a >= precio) { console.log(`   · ${f.nom}: no hay precio más bajo que deje ${paso}% (hoy ${mgHoy.toFixed(1)}%)`); continue; }
+            if (mgA == null || mgA < PISO_AUTORIZADO || mgA < paso - 0.5 || a >= precio) { expA(f.mla, '🪜 escalera', `no hay precio más bajo que deje el escalón de ${paso}% (hoy ${mgHoy.toFixed(1)}%)`); console.log(`   · ${f.nom}: no hay precio más bajo que deje ${paso}% (hoy ${mgHoy.toFixed(1)}%)`); continue; }
             const marcarNo = !mem && (u180[e.prodId] || 0) < NOTRAER_MIN_U && !(notraerMem[e.prodId] && notraerMem[e.prodId].permitido);
+            expA(f.mla, '🪜 escalera', `${c.quieta} d sin vender: propone el escalón de ${paso}% · ${money(precio)} → ${money(a)} (queda en ${mgA.toFixed(1)}%)`, { nom: f.nom, cuenta: cta, precio });
             escTareas.push({ tipo: 'escalera', piso: paso, pasoOk: llega ? paso : (mem ? mem.paso : 100), a, marcarNo, prodId: e.prodId,
               f: { mla: f.mla, nom: f.nom, cuenta: cta, precio, mgPw: mgA, ptw, st: f.st } });
             console.log(`   · ${f.nom} (${cta}) · ${c.quieta} d sin vender · hoy ${mgHoy.toFixed(1)}% → escalón ${paso}%: ${money(precio)} → ${money(a)} (queda en ${mgA.toFixed(1)}%${llega ? '' : ', baja 24,5% y sigue la vuelta que viene'})${marcarNo ? ' · 🚫 se marca NO TRAER MÁS' : ''}`);
@@ -10594,6 +10617,10 @@ async function main() {
           const ac = await aplicarCerebro(db, cz, { tokens: tokC, hoyTs, aplica, tocadas: new Set(), autoprecio });
           hechosAuto.push(...ac.hechos); fallidosAuto.push(...ac.fallidos); sinAnotar.push(...ac.sinAnotar);
           if (CEREBRO_ON) for (const d of cz.dec) if (d.accion !== 'nada') cerTocadas.add(d.mla);
+          for (const d of cz.dec) {
+            const extra = [d.plNow != null && d.plPrev != null ? `deja ${money(d.plNow)}/día (antes ${money(d.plPrev)}/día)` : '', d.enEscasez ? 'en escasez' : '', d.midiendo ? 'midiendo el precio nuevo' : '', d.mg0 != null ? `margen hoy ${d.mg0}%` : '', d.reintentaFecha ? 'fecha de regalos: puede volver a probar un precio que antes no funcionó' : ''].filter(Boolean).join(' · ');
+            expA(d.mla, '🧠 plata por día', `${d.accion === 'nada' ? 'no cambia' : (d.accion === 'sube' ? 'SUBE' : 'BAJA') + ` ${money(d.p0)} → ${money(d.a)}`}: ${d.motivo || '—'}${extra ? ' · ' + extra : ''}`, { nom: d.nom, cuenta: d.cuenta, precio: d.p0 });
+          }
           const mid = cz.dec.filter((d) => d.midiendo).length, esc = cz.dec.filter((d) => d.enEscasez).length;
           console.log(`   midiendo un precio: ${mid} · en escasez (precio ya ajustado): ${esc}`);
         }
@@ -10612,7 +10639,7 @@ async function main() {
             let why = null;
             if (cerTocadas.has(mla)) why = 'esta noche la decide el cerebro';
             else if (precioDe) { const P = precioDe(f), x = P > 0 ? cerNoFunciono(mla, P) : null; if (x) why = `el cerebro ya probó ${money(x)} y no funcionó (plata por día): no se vuelve a poner`; }
-            if (why) { fuera.push({ nom: f.nom || (f.f && f.f.nom) || mla, why }); arr.splice(k, 1); }
+            if (why) { fuera.push({ nom: f.nom || (f.f && f.f.nom) || mla, why }); arr.splice(k, 1); expA(mla, '🧠 manda el cerebro', `${tipo}: no · ${why}`); }
           }
           if (fuera.length) console.log(`   🧠 ${tipo}: ${fuera.length} quedan para el cerebro · ${fuera.slice(0, 8).map((x) => x.nom + ' (' + x.why + ')').join(' · ')}`);
         };
@@ -10893,6 +10920,40 @@ async function main() {
       }
       // Con el cerebro prendido la 📈 no corre: sus renglones no van al aviso como "dudas" (las decide él).
       if (CEREBRO_ON) nuevasSub.splice(0, nuevasSub.length);
+      // ── EL EXPEDIENTE: lo que dijo cada regla + lo que se hizo, por publicación (08/10/2026) ──────────────
+      {
+        const fmtP = (x) => (x != null && isFinite(Number(x)) ? `${Number(x).toFixed(1)}%` : '?');
+        for (const x of rescates) expA(x.mla, '🛟 base 25%', `está en ${fmtP(x.pct)}: llevarlo a la base · ${money(x.de)} → ${money(x.a)}${x.pausadaFull ? ' (pausada con stock en Full: después se activa sola)' : x.sinStock ? ' (sin stock: queda listo para cuando vuelva)' : ''}`, { nom: x.nom, cuenta: x.label, precio: x.de });
+        for (const x of rescFren) expA(x.mla, '🛟 base 25%', `está en ${fmtP(x.pct)}, no se sube: ${x.why}`, { nom: x.nom, cuenta: x.label, precio: x.de });
+        for (const x of rescSup) expA(x.mla, '🛟 base 25%', `está en ${fmtP(x.pct)}, no se sube: una suba le salió 🔴 en el supervisor`, { nom: x.nom, cuenta: x.label, precio: x.de });
+        for (const x of rescSinMedir) expA(x.mla, '🛟 base 25%', `no se pudo medir: ${x.why}`, { nom: x.nom, cuenta: x.label });
+        for (const x of corregirAv) expA(x.mla, '↘️ corrección', `una suba del robot quedó de más y no vendió desde entonces: ${money(x.de)} → ${money(x.a)} (queda en ${fmtP(x.mg)})`, { nom: x.nom, cuenta: x.label, precio: x.de });
+        for (const x of corrFren) expA(x.mla, '↘️ corrección', `no se corrige: ${x.why}`, { nom: x.nom, cuenta: x.label });
+        const cajaTxt = (f) => `ganar la caja pide ${money(f.ptw)} y ahí queda en ${fmtP(f.mgPw)}`;
+        for (const f of sanasCbr) expA(f.mla, '🥊 caja de compra', `no vende y ${cajaTxt(f)}: se puede bajar a ganarla`, { nom: f.nom, cuenta: f.cuenta, precio: f.precio });
+        for (const f of sobreSanas) expA(f.mla, '🥊 caja de compra', `sobra stock y ${cajaTxt(f)}: se puede bajar a ganarla`, { nom: f.nom, cuenta: f.cuenta, precio: f.precio });
+        for (const [arr, txt] of [[remE1, `escalón 1 del remate (${REM_D1}+ d sin vender, hasta ${REM_P1}%)`], [remE2, `escalón 2 del remate (${REM_D2}+ d, hasta ${REM_P2}%)`], [remE3, `escalón 3 del remate (${REM_D3}+ d, hasta ${REM_P3}%)`], [sobrePaga, 'sobra stock y ya paga almacenamiento (hasta ' + REM_P1 + '%)'], [sobreE3, `sobra stock para ${REM_D3}+ d (hasta ${REM_P3}%)`]])
+          for (const f of arr) expA(f.mla, '🔨 remate', `${txt} · ${cajaTxt(f)}`, { nom: f.nom, cuenta: f.cuenta, precio: f.precio });
+        for (const f of remNo) expA(f.mla, '🔨 remate', `no vende pero todavía no entra en ningún escalón (${f.quieta != null ? f.quieta + ' d sin vender · ' : ''}${cajaTxt(f)})`, { nom: f.nom, cuenta: f.cuenta, precio: f.precio });
+        for (const f of (cbr.noSano || [])) expA(f.mla, '🥊 caja de compra', f.why ? `${cajaTxt(f)} · ${f.why}` : `ni ganando la caja llega: ${cajaTxt(f)}`, { nom: f.nom, cuenta: f.cuenta, precio: f.precio });
+        for (const f of (cbr.sinDato || [])) expA(f.mla, '❔ sin dato', f.why || 'no se pudo medir');
+        for (const t of hechosAuto) {
+          const tipoTxt = { rescate: 'llevado a la base', corrige: 'corregida la suba de más', baja: 'bajado a ganar la caja', remate: 'rematado', escalera: 'escalón de la escalera', cerebro: 'decidido por el cerebro', prueba: 'prueba de suba', sube: 'subido' }[t.tipo] || t.tipo;
+          expA(t.f.mla, '✅ HECHO', `${tipoTxt}: ${money(t.de)} → ${money(t.a)}${t.quedo != null ? ` · releído de ML: ${money(t.quedo)}` : ''}`, { nom: t.f.nom, cuenta: t.f.cuenta });
+          EXPI[t.f.mla] = { ...(EXPI[t.f.mla] || {}), final: { tipo: t.tipo, de: t.de, a: t.a } };
+        }
+        for (const t of fallidosAuto) expA(t.f.mla, '✗ no se pudo', `${t.tipo || ''}: ${t.err}`, { nom: t.f.nom, cuenta: t.f.cuenta });
+        const nExp = Object.keys(EXP).length;
+        if (MANDAR && !DRY && !yaCorrioHoy && nExp) {
+          const out = {};
+          for (const [m, pasos] of Object.entries(EXP)) {
+            const i = EXPI[m] || {};
+            out[m] = { ts: hoyTs, nom: String(i.nom || '').slice(0, 60), cuenta: i.cuenta || '', precio: Number(i.precio) || null, final: i.final || null, aplica: !!AUTO_ON, pasos: pasos.slice(0, 20) };
+          }
+          try { await db.set('mlapi/cerebroexp', out); console.log(`   🧠 expediente guardado: ${nExp} publicación(es)`); }
+          catch (e) { console.log(`   ⚠️ no pude guardar el expediente del cerebro (${String(e && e.message || e).slice(0, 60)}): el botón 🧠 de la web muestra el de ayer`); }
+        } else console.log(`   🧠 expediente armado: ${nExp} publicación(es) (no se guarda: prueba o ya corrió hoy)`);
+      }
       // Lo que se hizo solo sale de las listas "para decidir". Lo que falló QUEDA, con su número,
       // para que lo decida él: un cambio que no se pudo hacer no puede desaparecer en silencio.
       const hechoIds = new Set(hechosAuto.map((x) => x.f.mla));
@@ -27596,6 +27657,7 @@ async function main() {
       const REM_PISO = 20, ALM_DIAS = 60;
       let cfgSup = {}, monoSup = 0, histSup = {};
       try { cfgSup = (await db.get('cyc/mlconfig')) || {}; } catch { cfgSup = {}; }
+      const CEREBRO_SUP = String(cfgSup.cerebro || 'on') !== 'off';   // el cerebro juzga y vuelve atrás; el supervisor sólo mide (08/10/2026)
       try { monoSup = parseFloat(((await db.get('cyc/monotributo')) || {}).pct) || 0; } catch { monoSup = 0; }
       try { histSup = (await db.get('cyc/stockhist')) || {}; } catch { histSup = null; }
       // EL VALOR DE VENDER ANTES (04/10/2026, él con el Watch S5: "vendió 2 relojes que quizás no vendíamos en meses,
@@ -28251,6 +28313,11 @@ async function main() {
           // Lo que cambió el cerebro lo juzga el cerebro (plata por día, su propia paciencia y la escasez a propósito):
           // con dos jueces una suba por escasez —que está hecha para vender MENOS— la deshacía el supervisor.
           { const ap = autop[x.mla]; if (ap && ap.por === 'cerebro' && Math.abs((Number(ap.ts) || 0) - (Number(x.ts) || 0)) < 864e5) { no('lo cambió el cerebro: lo juzga él'); continue; } }
+          // CON EL CEREBRO PRENDIDO EL SUPERVISOR NO TOCA PRECIOS (08/10/2026, pedido suyo: *"quiero que el cerebro
+          // maneje TODO (…) al salir esa respuesta sea correcta y nadie más la corrija"*). El cerebro ya juzga cada
+          // noche el ÚLTIMO cambio de cada publicación con plata por día (sea de quien sea) y vuelve atrás lo que dejó
+          // menos (`calcCerebro`, paso 3). El supervisor mide y avisa; no es un segundo juez que mueve precios.
+          if (CEREBRO_SUP) { no('lo juzga el cerebro esta noche con plata por día (el supervisor ya no mueve precios)'); continue; }
           if ((x.diasX ?? x.dias) < VOLVER_DIAS) { no(`lleva ${x.dias} d medido, espero a los ${VOLVER_DIAS}`); continue; }
           if (x.quiebre || x.volSinDato) { no(x.quiebre ? 'estuvo sin stock en el medio: la pérdida puede ser el quiebre, no el precio' : 'no se miró el stock todo el tiempo: no sé si la pérdida es por el precio'); continue; }
           if ((porMlaEv[x.mla] || []).some((o) => o.ts > x.ts + 60e3)) { no('después tuvo otro cambio de precio'); continue; }
@@ -28433,8 +28500,9 @@ async function main() {
         const nuevasTodas = medP.filter((x) => !x.rem && x.total <= -1000 && !revertidos.has(x.id) && !(memP[x.id] && x.total > 2 * memP[x.id]));
         // LO DEL CEREBRO NO SE TE PREGUNTA (08/10/2026, decisión 5a): el cerebro juzga solo sus cambios con plata por
         // día y vuelve atrás lo que no funcionó. Va en el aviso como información, sin pedir que decidas.
-        const nuevasCer = nuevasTodas.filter((x) => x.por === 'cerebro');
-        const nuevasP = nuevasTodas.filter((x) => x.por !== 'cerebro');
+        // Con el cerebro prendido TODO es información: él juzga cada cambio y vuelve lo que corresponde.
+        const nuevasCer = nuevasTodas.filter((x) => CEREBRO_SUP || x.por === 'cerebro');
+        const nuevasP = nuevasTodas.filter((x) => !CEREBRO_SUP && x.por !== 'cerebro');
         const totSinRem = medP.filter((x) => !x.rem).reduce((a, x) => a + (Number(x.total) || 0), 0);
         const totMedP = Math.round(medP.reduce((a, x) => a + (Number(x.total) || 0), 0));
         const ganoMedP = Math.round(medP.reduce((a, x) => a + Math.max(0, Number(x.total) || 0), 0));
@@ -28452,7 +28520,7 @@ async function main() {
               ...(noVolvio.has(x.id) ? [`   🤔 no lo volví solo: ${noVolvio.get(x.id)}`] : []), '');
           }
           if (nuevasCer.length) {
-            L2.push('🧠 Del cerebro (las juzga él solo con plata por día; no hace falta que decidas):');
+            L2.push(CEREBRO_SUP ? '🧠 Las juzga el cerebro solo, cada noche, con plata por día (vuelve atrás lo que corresponde; no hace falta que decidas):' : '🧠 Del cerebro (las juzga él solo con plata por día; no hace falta que decidas):');
             for (const x of nuevasCer.sort((a, b) => a.total - b.total)) L2.push(`   ${x.a > x.de ? '⬆️' : '⬇️'} ${nomDe(x.mla)} (${x.cuenta || '?'}) ${$s(x.de)} → ${$s(x.a)} · ${$s(-x.total)} menos en ${x.dias} d${x.mot === 'escasez' ? ' (escasez: cuenta sólo lo cobrado)' : ''}`);
             L2.push('');
           }
@@ -39828,7 +39896,11 @@ async function main() {
     try {
       const pName = {}; for (const p of products) pName[p.id] = p.name || '';
       const sellerIds = {}; for (const l of labels) if (accounts[l]?.seller_id) sellerIds[l] = accounts[l].seller_id;
-      const avisos = await nivelarGrupos(db, map, tokensRun, DRY, pName, sellerIds);
+      // Con el cerebro prendido los grupos no se nivelan solos (08/10/2026): el cerebro decide el precio de CADA
+      // publicación y un nivelador de afuera lo corregiría cada hora. Si algún día hace falta, va adentro del cerebro.
+      let cerOnG = true; try { cerOnG = String(((await db.get('cyc/mlconfig')) || {}).cerebro || 'on') !== 'off'; } catch { cerOnG = true; }
+      if (cerOnG) console.log('Grupos de precio: no se nivelan solos (decide el cerebro)');
+      const avisos = cerOnG ? [] : await nivelarGrupos(db, map, tokensRun, DRY, pName, sellerIds);
       for (const a of avisos) await sendAlerta(a, { info: true });
     } catch (e) { console.log('No pude nivelar los grupos de precio: ' + e.message); }
     // ACTIVAR LAS PAUSADAS QUE TIENEN STOCK EN FULL Y LLEGAN AL PISO. Va acá, en la misma vuelta
