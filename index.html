@@ -2453,7 +2453,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='22.45';
+const APP_VERSION='22.46';
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
 // muestre la versión y la fecha de actualización y que tenga un desplegable predeterminado cerrado".
 // Y el mismo día: "que ponga fecha de cada modificación y haya una barrita para scrollear y que
@@ -2464,6 +2464,7 @@ const APP_VERSION='22.45';
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'22.46',f:'08/10/2026',h:'02:30',c:[{n:1,t:'🇵🇾 Gastos del pedido: la mercadería va al dólar del panel y lo que el dólar salió más caro es un gasto más, así los % de todos los gastos suman el recargo real. Los costos revisados van en un desplegable.'}]},
   {v:'22.45',f:'08/10/2026',h:'02:15',c:[{n:1,t:'🇵🇾 Pedidos hechos: al abrir un pedido lo primero son los gastos (la plata), después la plata y los días, y la mercadería va abajo en un desplegable cerrado. Así se comparan pedidos sin bajar tanto.'}]},
   {v:'22.44',f:'08/10/2026',h:'02:05',c:[{n:1,t:'🇵🇾 Pedidos hechos: cada pedido muestra con la tarjeta cerrada el % extra que se le cargó ("+22,4% real", o "+17% estimado" si faltan gastos). Productos y unidades salen de la factura cargada.'}]},
   {v:'22.43',f:'08/10/2026',h:'01:55',c:[{n:1,t:'🇵🇾 Pedidos hechos: los gastos van en UNA sola caja (antes eran dos con los mismos montos). Cada gasto con ✓/✗, su monto, de qué es y su % sobre la mercadería; abajo el total y el recargo real abierto en dólar y gastos.'}]},
@@ -12017,39 +12018,45 @@ function pyRecargoReal(c){
   return{r:Math.round(r*10000)/10000,falta:[]};
 }
 function pyGastosChecklistHTML(c){
-  // UNA SOLA CAJA con todos los gastos del pedido (08/10/2026, pedido suyo: "unificá eso de los gastos, los
-  // dos dicen lo mismo y se me hace lío. no quiero que se pierda ninguna info"). Antes eran dos cajas
-  // (✓/✗ y "Los gastos reales") con los mismos montos. Acá va todo: el ✓/✗, el monto, de qué es
-  // cada uno, el % sobre la mercadería (para comparar pedidos), el total y el recargo abierto en sus dos partes.
+  // UNA SOLA CAJA con todos los gastos del pedido (08/10/2026, pedidos suyos: "unificá eso de los gastos"
+  // y "que la diferencia de dólares al comprar también se ponga como gasto, todo junto").
+  // La mercadería va al dólar del panel (lo que vale la factura) y lo que el dólar salió más caro es un
+  // gasto más. Así los % de los gastos suman EXACTO el recargo real y se comparan pedido contra pedido.
   const p=c.pagos||{};const R=pyRecargoReal(c);
   const _m=Number(p.mercaderia)||0,_usd=parseFloat(c.usdCrudo)||0,_tc=parseFloat(c.tcPedido)||parseFloat(c.tcPanel)||0;
   const _dolPag=_m>0&&_usd>0?_m/_usd:0;
-  const _pct=v=>(v/_m*100).toFixed(1).replace('.',',');
+  const _base=_usd>0&&_tc>0?_usd*_tc:_m;            // la mercadería al dólar del panel
+  const _dif=_m>0&&_usd>0&&_tc>0?_m-_base:0;          // lo que el dólar salió más caro (o más barato)
+  const _pct=v=>(v/_base*100).toFixed(1).replace('.',',');
   const gris='color:var(--muted)';
+  const celPc=t=>`<span style="${gris};font-size:.9em;display:inline-block;min-width:3.6em;text-align:right">${t||''}</span>`;
   const fila=(ok,nom,sub,val,pc,cero)=>`<div style="display:flex;justify-content:space-between;align-items:baseline;gap:10px;font-size:.68rem;padding:4px 0;border-bottom:1px dashed var(--border)">
     <span>${ok?'<b style="color:var(--green)">✓</b>':'<b style="color:var(--red)">✗</b>'} ${nom}${sub?` <span style="${gris};font-size:.9em">· ${sub}</span>`:''}</span>
-    <span style="white-space:nowrap;color:${ok?'var(--text)':'var(--red)'}">${ok?(cero?'<span style="'+gris+'">no hubo</span>':val):'falta'}${ok&&pc?` <span style="${gris};font-size:.9em;display:inline-block;min-width:3.4em;text-align:right">${pc}</span>`:(ok?'<span style="display:inline-block;min-width:3.4em"></span>':'')}</span></div>`;
+    <span style="white-space:nowrap;color:${ok?'var(--text)':'var(--red)'}">${ok?(cero?'<span style="'+gris+'">no hubo</span>':val):'falta'}${celPc(ok?pc:'')}</span></div>`;
   const G=k=>PY_GASTOS.find(g=>g.k===k);
   const val=g=>(Number(p[g.k])||0)+(g.alt?(Number(p[g.alt])||0):0);
+  const okM=pyGastoCargado(c,G('mercaderia'));
   let filas='';
-  { const g=G('mercaderia'),ok=pyGastoCargado(c,g);
-    filas+=fila(ok,'Mercadería',(_usd?'US$ '+_usd.toFixed(2):'')+(_dolPag?' a '+fmt(Math.round(_dolPag)):''),fmt(Math.round(_m)),''); }
-  for(const [k,sub] of [['cambista',''],['retira',''],['envio',c.kgCorreo?String(c.kgCorreo).replace('.',',')+' kg':'']]){
+  if(_usd>0&&_tc>0){
+    filas+=fila(true,'Mercadería',`US$ ${_usd.toFixed(2)} al dólar del panel (${fmt(Math.round(_tc))})`,fmt(Math.round(_base)),'');
+    filas+=fila(okM,'Dólar más caro al comprar',_dolPag?`lo pagaste ${fmt(Math.round(_dolPag))}`:'',(_dif<0?'−':'')+fmt(Math.round(Math.abs(_dif))),okM?(_dif<0?'−':'')+_pct(Math.abs(_dif))+'%':'');
+  } else filas+=fila(okM,'Mercadería',_usd?'US$ '+_usd.toFixed(2):'',fmt(Math.round(_m)),'');
+  for(const k of ['cambista','retira','envio']){
     const g=G(k),ok=pyGastoCargado(c,g),v=val(g);
-    filas+=fila(ok,k==='cambista'?'Cambista y envío de los dólares':g.nom,sub,fmt(Math.round(v)),_m>0&&v>0?_pct(v)+'%':'',g.cero&&!(v>0));
+    filas+=fila(ok,k==='cambista'?'Cambista y envío de los dólares':g.nom,k==='envio'&&c.kgCorreo?String(c.kgCorreo).replace('.',',')+' kg':'',fmt(Math.round(v)),_base>0&&v>0?_pct(v)+'%':'',g.cero&&!(v>0));
   }
   const tot=(Number(p.mercaderia)||0)+(Number(p.cambista)||0)+(Number(p.envio)||0)+(Number(p.retira)||0)+(Number(p.otros)||0);
-  const gast=tot-_m;
-  filas+=`<div style="display:flex;justify-content:space-between;gap:10px;font-size:.72rem;padding:5px 0 2px"><b>Total</b><span style="white-space:nowrap"><b>${fmt(Math.round(tot))}</b>${_m>0&&gast>0?` <span style="${gris};font-size:.85em;display:inline-block;min-width:3.4em;text-align:right">+${_pct(gast)}%</span>`:''}</span></div>`;
+  const recTxt=R.r?((R.r-1)*100).toFixed(1).replace('.',','):null;
+  filas+=`<div style="display:flex;justify-content:space-between;gap:10px;font-size:.72rem;padding:5px 0 2px"><b>Total</b><span style="white-space:nowrap"><b>${fmt(Math.round(tot))}</b>${celPc(recTxt?'<b style="color:var(--text)">+'+recTxt+'%</b>':'')}</span></div>`;
   const ca=c.costosAplicados;
   let pie;
   if(R.r){
-    const rec=((R.r-1)*100).toFixed(1).replace('.',','),dol=_dolPag&&_tc?(_dolPag/_tc-1)*100:null;
+    const sub=(ca&&ca.subieron)||[];
     pie=`<div style="font-size:.68rem;margin-top:8px;padding-top:7px;border-top:1px solid var(--border);line-height:1.7">
-      <div style="display:flex;justify-content:space-between;gap:10px"><b>Recargo real del pedido</b><span><b style="font-size:1.1em">${rec}%</b> <span style="${gris}">· el panel estimaba ${Math.round((RECARGO_PY-1)*100)}%</span></span></div>
-      ${dol!=null?`<div style="display:flex;justify-content:space-between;gap:10px;${gris}"><span>&nbsp;&nbsp;· el dólar salió más caro</span><span>${(dol>=0?'+':'')+dol.toFixed(1).replace('.',',')}% · ${fmt(Math.round(_dolPag))} contra ${fmt(Math.round(_tc))} del panel</span></div>`:''}
-      ${_m>0?`<div style="display:flex;justify-content:space-between;gap:10px;${gris}"><span>&nbsp;&nbsp;· los gastos del pedido</span><span>+${_pct(gast)}% · ${fmt(Math.round(gast))} · en uno del doble pesarían la mitad</span></div>`:''}
-      <div style="margin-top:4px">${ca?`💲 Costos revisados: <b>${(ca.subieron||[]).length}</b> ficha(s) subieron${(ca.subieron||[]).length?': '+(ca.subieron||[]).map(x=>`${x.nom} US$ ${Number(x.antes).toFixed(2)} → <b>${Number(x.despues).toFixed(2)}</b>`).join(' · '):''}${ca.iguales?` · ${ca.iguales} no (salieron igual o más baratas, no se tocan)`:''}`:'<span style="color:var(--amber)">💲 Falta que el robot revise los costos (se hace al cargar el último gasto).</span>'}</div></div>`;
+      <div style="display:flex;justify-content:space-between;gap:10px"><b>Recargo real del pedido</b><span><b style="font-size:1.1em">${recTxt}%</b> <span style="${gris}">· el panel estimaba ${Math.round((RECARGO_PY-1)*100)}% · en uno del doble los gastos fijos pesarían la mitad</span></span></div>
+      ${ca?`<details style="margin-top:4px"><summary style="cursor:pointer;list-style:none">💲 Costos revisados: <b>${sub.length}</b> ficha${sub.length===1?'':'s'} subi${sub.length===1?'ó':'eron'}${ca.iguales?` · ${ca.iguales} no`:''} <span style="${gris}">▾</span></summary>
+        <div style="padding:4px 0 0 14px">${sub.map(x=>`<div>${x.nom} · US$ ${Number(x.antes).toFixed(2)} → <b>${Number(x.despues).toFixed(2)}</b></div>`).join('')}${ca.iguales?`<div style="${gris}">${ca.iguales} salieron igual o más baratas: no se tocan.</div>`:''}${!sub.length&&!ca.iguales?`<div style="${gris}">Ninguna cambió.</div>`:''}</div></details>`
+        :'<div style="color:var(--amber);margin-top:4px">💲 Falta que el robot revise los costos (se hace al cargar el último gasto).</div>'}</div>`;
   } else pie=`<div style="font-size:.64rem;color:var(--amber);margin-top:6px;line-height:1.55">Falta: ${R.falta.join(', ')}. Hasta que estén todos, el costo de las fichas no se toca y lo nuevo se calcula con el ${Math.round((RECARGO_PY-1)*100)}% estimado.</div>`;
   const nota=c.usdPanel?`<div style="font-size:.6rem;${gris};margin-top:4px">El panel tenía anotado US$ ${Number(c.usdPanel).toFixed(2)} y la factura dice US$ ${_usd.toFixed(2)}: el recargo se mide contra la factura.</div>`:'';
   return `<div style="background:var(--surface);border:1px solid ${R.r?'rgba(34,197,94,.35)':'rgba(239,68,68,.35)'};border-radius:8px;padding:9px 11px;margin-bottom:10px">
