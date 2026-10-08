@@ -40,7 +40,7 @@ process.on('SIGTERM', () => _alCortar('SIGTERM'));
 // los que escriben en cantidad o en plata se niegan de entrada, y cualquier otro corre con la base,
 // ML, Mercado Pago y Telegram en sólo lectura (se deja renovar y guardar el token de ML, que ML rota).
 const EN_CONSULTA = process.env.GITHUB_WORKFLOW === 'ml-consulta' || process.env.ML_CONSULTA === '1';
-const CONSULTA_ESCRIBE = new Set(['revcand', 'vincular', 'pasara', 'nomandar', 'fijarvar', 'cupo', 'poncosto', 'tamfull', 'lotesfull']);
+const CONSULTA_ESCRIBE = new Set(['lineatodo', 'revcand', 'vincular', 'pasara', 'nomandar', 'fijarvar', 'cupo', 'poncosto', 'tamfull', 'lotesfull']);
 const CONSULTA_NIEGA = new Set(['candcuotas', 'candml', 'ofi', 'pvped', 'ancla', 'responder', 'pyped', 'cajallego', 'abrircaja', 'compray', 'pedir', 'dispo', 'saldoml',
   'armarsaldo', 'avisos', 'cajasllegaron', 'netoweb', 'netoreal', 'candidatos', 'supervisor', 'sacapromos', 'pausar', 'liquidando',
   'unapub', 'volver', 'submargen', 'fijar', 'activarfull', 'meta', 'ciclo', 'marcano', 'pausaprecio', 'cargargasto', 'retiromes']);
@@ -5827,6 +5827,47 @@ function _ritmoRegimen(hD, cajaHoy, pHoy) {
   return { p30, ra: { desde: hD[desde].dk, por, de, a: por === 'caja' ? cH : pH, ...act, pdA: ant.pd, dA: ant.d } };
 }
 function _rnDia(ts) { return new Date(ts - 3 * 3600e3).toISOString().slice(0, 10).replace(/-/g, '_'); }
+// LA LÍNEA DE TIEMPO DE TODOS LOS PRODUCTOS JUNTOS (08/10/2026). Pedido suyo, con la línea de las Cartas Casino:
+// *"se puede hacer esta línea pero que estén todos los productos. TODO, ya sé que hay cosas que no va a tener
+// mucho sentido. pero quiero verlo. con todo, aumentos, bajadas. todo"*. La línea de cada publicación son ~230.000
+// días guardados: bajarla entera al teléfono son muchos MB. El robot la junta día por día en `mlapi/lineatodo`
+// (un renglón por día) y la web la dibuja. Un campo que no está = no se sabe (nunca un cero inventado).
+//   n  publicaciones con algún dato ese día        u/tot/uR  unidades, facturado y unidades en remate (todas)
+//   vis/visN  visitas y cuántas publicaciones las informan   st/stN  stock en Full y cuántas lo informan
+//   g/c/p  publicaciones activas que GANAN / COMPARTEN / PIERDEN la caja   rem/esc  rematando · en la escalera
+//   pl/pN  suma de log(precio hoy ÷ precio del día anterior conocido) y cuántas: el índice de precio
+//   sb/bj  publicaciones a las que les SUBIÓ / BAJÓ el precio ese día (más de 0,5%)
+function calcLineaTodo(lin, links) {
+  const out = {};
+  const o = (k) => (out[k] = out[k] || { n: 0 });
+  for (const [mla, dias] of Object.entries(lin || {})) {
+    const e = (links || {})[mla]; if (!e || e.ignored) continue;
+    const ks = Object.keys(dias || {}).filter((k) => /^\d{4}_\d{2}_\d{2}$/.test(k) && dias[k] && typeof dias[k] === 'object').sort();
+    let pAnt = null;
+    for (const k of ks) {
+      const r = dias[k], x = o(k); x.n++;
+      if (r.u != null) x.u = (x.u || 0) + (Number(r.u) || 0);
+      if (r.tot != null) x.tot = (x.tot || 0) + Math.round(Number(r.tot) || 0);
+      if (r.uR != null) x.uR = (x.uR || 0) + (Number(r.uR) || 0);
+      if (r.vis != null) { x.vis = (x.vis || 0) + (Number(r.vis) || 0); x.visN = (x.visN || 0) + 1; }
+      if (r.st != null) { x.st = (x.st || 0) + Math.max(0, Number(r.st) || 0); x.stN = (x.stN || 0) + 1; }
+      const activa = r.est == null || r.est === 'active';
+      if (activa && (r.caja === 'g' || r.caja === 'c' || r.caja === 'p')) x[r.caja] = (x[r.caja] || 0) + 1;
+      if (r.rem === 1) x.rem = (x.rem || 0) + 1;
+      if (r.esc != null) x.esc = (x.esc || 0) + 1;
+      const p = Number(r.p) || 0;
+      if (p > 0) {
+        if (pAnt > 0) {
+          const q = p / pAnt;
+          if (q > 0.5 && q < 2) { x.pl = (x.pl || 0) + Math.log(q); x.pN = (x.pN || 0) + 1; if (q > 1.005) x.sb = (x.sb || 0) + 1; else if (q < 0.995) x.bj = (x.bj || 0) + 1; }
+        }
+        pAnt = p;
+      }
+    }
+  }
+  for (const x of Object.values(out)) if (x.pl != null) x.pl = Math.round(x.pl * 1e5) / 1e5;
+  return out;
+}
 function calcRitmoNormal(o) {
   const { links = {}, inv = {}, vp = {}, nosubir = {}, rescateventa = {}, autoprecio = {}, cambios = {}, diario = {}, precios = {}, hoyTs = Date.now(), DIAS = 365, primerVp = null } = o || {};
   const sid = (x) => String(x).replace(/[^a-z0-9]/gi, '_');
@@ -16379,6 +16420,19 @@ async function main() {
       console.log(`✓ borrada · releída: ${(await db.get('cyc/robotprecios/dia')) || '(vacía)'}`);
       return;
     }
+    // BILLING_PROBE=lineatodo[:go] → ARMA YA LA LÍNEA DE TODOS LOS PRODUCTOS (`mlapi/lineatodo`, ver `calcLineaTodo`).
+    // La noche la arma sola dentro de `ritmo:go`; esto es para no esperar. Sólo junta lo que ya está guardado.
+    if (/^lineatodo(:|$)/.test(String(process.env.BILLING_PROBE || ''))) {
+      const GO = /:go$/.test(String(process.env.BILLING_PROBE));
+      const [lin, links] = await Promise.all([db.get('mlapi/linea'), db.get('cyc/mllinks')]);
+      const LT = calcLineaTodo(lin || {}, links || {});
+      const ks = Object.keys(LT).sort();
+      console.log(`=== LÍNEA DE TODOS ${GO ? '' : '(PRUEBA — no escribo nada)'} ===`);
+      console.log(`${Object.keys(lin || {}).length} publicaciones con línea · ${ks.length} días (${ks[0] || '—'} → ${ks[ks.length - 1] || '—'})`);
+      for (const k of ks.slice(-5)) { const x = LT[k]; console.log(`  ${k}: ${x.n} pub · ${x.u ?? '?'} u. · vis ${x.vis ?? '?'} · stock ${x.st ?? '?'} (${x.stN || 0}) · caja g${x.g || 0}/c${x.c || 0}/p${x.p || 0} · ▲${x.sb || 0} ▼${x.bj || 0}`); }
+      if (GO) { await db.set('mlapi/lineatodo', { dias: LT, ts: Date.now() }); const r = await db.get('mlapi/lineatodo/ts'); console.log(`✓ guardada · releída: ${r ? new Date(r).toISOString() : 'NO'}`); }
+      return;
+    }
     if (/^ritmo(:|$)/.test(String(process.env.BILLING_PROBE || ''))) {
       const GO = /:go$/.test(String(process.env.BILLING_PROBE));
       const RN_SANO_DIAS = 30;
@@ -16410,6 +16464,9 @@ async function main() {
             if (r.vis != null) d[6] = (d[6] || 0) + (Number(r.vis) || 0);
           }
         }
+        // Y la línea de TODOS los productos juntos (08/10/2026), con la misma lectura: ver `calcLineaTodo`.
+        try { const LT = calcLineaTodo(lin, links); if (GO && Object.keys(LT).length) await db.set('mlapi/lineatodo', { dias: LT, ts: Date.now() }); console.log(`línea de todos: ${Object.keys(LT).length} días ${GO ? 'guardados' : '(prueba)'}`); }
+        catch (e) { console.log(`⚠️ no pude armar la línea de todos (${String(e).slice(0, 80)})`); }
       } catch (e) { console.log(`⚠️ no pude leer la línea de tiempo (${String(e).slice(0, 80)}): sigo sin ella`); }
       const R = calcRitmoNormal({ links: links || {}, inv: inv || {}, vp: vp || {}, nosubir: nosubir || {}, rescateventa: rescateventa || {},
         autoprecio: autoprecio || {}, cambios: cambios || {}, diario, precios: precios || {}, hoyTs: ahoraR,
