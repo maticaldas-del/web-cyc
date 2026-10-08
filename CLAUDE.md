@@ -1385,6 +1385,12 @@ Matías, revendedor en MercadoLibre desde Argentina. **No es programador: hablal
 sin términos técnicos.** Nada de "endpoint", "commit", "deploy". Si hay que nombrar algo técnico,
 explicalo con una frase en criollo.
 
+**REGLA SUYA DEL 08/10/2026: LAS DECISIONES SE LE PASAN TODAS JUNTAS, SIEMPRE.** Textual: *"quiero que me
+pases todo lo que hay que decidir todo junto siempre. guardar en memoria para proximas runs"*. Esto
+reemplaza el "de a una por mensaje" de las revisiones de septiembre: en una revisión (o en cualquier
+trabajo) todo lo que es decisión suya va en UN solo mensaje, numerado, cada una corta con (a)
+sugerida y (b), y él contesta todas de una (ej. "1a 2b 3a…").
+
 **REGLA SUYA DEL 24/09/2026: "elegí vos qué hacer, excepto que sea una decisión muy importante,
 grande y difícil".** O sea: en lo chico y reversible (una perilla, cómo se muestra algo, cuál de dos
 arreglos parecidos) se elige la opción sugerida, se hace y se le cuenta. Preguntar sólo lo grande:
