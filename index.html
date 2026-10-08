@@ -2453,7 +2453,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='22.47';
+const APP_VERSION='22.48';
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
 // muestre la versión y la fecha de actualización y que tenga un desplegable predeterminado cerrado".
 // Y el mismo día: "que ponga fecha de cada modificación y haya una barrita para scrollear y que
@@ -2464,6 +2464,7 @@ const APP_VERSION='22.47';
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'22.48',f:'08/10/2026',h:'02:55',c:[{n:1,t:'🇵🇾 Pedidos hechos más simples: cerrado muestra sólo la fecha, el % de recargo y en qué está. Productos, unidades y plata, adentro.'}]},
   {v:'22.47',f:'08/10/2026',h:'02:45',c:[{n:2,t:'🇵🇾 Costos de un pedido: los productos de PRIMERA compra ya no dicen que "subieron" (no había costo anterior): dicen que su costo quedó con el recargo real en vez del 17% estimado. Los que ya tenías y subieron van aparte con ⬆️.'}]},
   {v:'22.46',f:'08/10/2026',h:'02:30',c:[{n:1,t:'🇵🇾 Gastos del pedido: la mercadería va al dólar del panel y lo que el dólar salió más caro es un gasto más, así los % de todos los gastos suman el recargo real. Los costos revisados van en un desplegable.'}]},
   {v:'22.45',f:'08/10/2026',h:'02:15',c:[{n:1,t:'🇵🇾 Pedidos hechos: al abrir un pedido lo primero son los gastos (la plata), después la plata y los días, y la mercadería va abajo en un desplegable cerrado. Así se comparan pedidos sin bajar tanto.'}]},
@@ -12081,7 +12082,7 @@ function pyPedidoCuenta(c){const its=Array.isArray(c&&c.items)?c.items.filter(Bo
   return its.length?{p:its.length,u:its.reduce((a,x)=>a+(Number(x.u)||0),0)}:{p:(c&&c.productos)||0,u:(c&&c.unidades)||0};}
 // El % extra que se le cargó al pedido, a la vista con la tarjeta cerrada (08/10/2026, pedido suyo).
 function pyRecargoChip(c){const R=pyRecargoReal(c);
-  if(R.r){const v=(R.r-1)*100;return `<span style="font-size:.7rem;font-weight:700;color:${v>(RECARGO_PY-1)*100+0.05?'var(--amber)':'var(--green)'}" title="Recargo real de este pedido: dólar más caro + cambista + el que retira + correo, sobre el precio de la factura">+${v.toFixed(1).replace('.',',')}% real</span>`;}
+  if(R.r){const v=(R.r-1)*100;return `<span style="font-size:.7rem;font-weight:700;color:${v>(RECARGO_PY-1)*100+0.05?'var(--amber)':'var(--green)'}" title="Recargo real de este pedido: dólar más caro + cambista + el que retira + correo, sobre el precio de la factura">+${v.toFixed(1).replace('.',',')}% <span style="font-weight:400;font-size:.85em;color:var(--muted)">recargo</span></span>`;}
   return `<span style="font-size:.66rem;color:var(--muted)" title="Faltan gastos: ${R.falta.join(', ').replace(/"/g,'&quot;')}">+${Math.round((RECARGO_PY-1)*100)}% estimado · faltan gastos</span>`;}
 function pyPedidoPartes(c){const its=(c&&c.items)||[];return{prob:its.filter(x=>x&&!x.id),nuev:its.filter(x=>x&&x.id)};}
 function pyPedidoEtiqueta(c){const P=pyPedidoPartes(c);
@@ -12106,6 +12107,18 @@ function _pyItsHTML(its,rec){const _r=rec>=1?rec:RECARGO_PY;
           <div style="color:var(--muted);font-size:.9em;margin-top:2px">${it.usd?'US$ '+sub.toFixed(2):'—'}</div>
         </div>
       </div>`;}).join('');
+}
+// La tarjeta cerrada de un pedido: sólo lo importante (08/10/2026, él: "más minimalista, solo lo importante,
+// el detalle adentro al clickearlo"). Fecha, el % que se le cargó y en qué está. Todo lo demás, al abrirla.
+function pyPedidoResumenHTML(c,enCamino,dias,tarde){
+  const dm=f=>{const m=String(f||'').match(/^\d{4}-(\d{2})-(\d{2})/);return m?m[2]+'/'+m[1]:(f||'—');};
+  const est=enCamino?`en camino · ${dias} d${tarde?' · atrasado':''}`:c.estado==='llego'?`llegó${c.fechaLlego?' '+dm(c.fechaLlego):''}`:'historial';
+  const col=enCamino?(tarde?'var(--amber)':'#38bdf8'):'var(--green)';
+  return `<span style="font-size:1rem">${enCamino?'🚚':'📦'}</span>
+    <span style="font-size:.82rem;font-weight:700;white-space:nowrap">${dm(c.fecha)}</span>
+    ${pyRecargoChip(c)}
+    <span style="margin-left:auto;font-size:.68rem;color:${col};font-weight:700;white-space:nowrap">${est}</span>
+    <span style="font-size:.6rem;color:var(--muted)">▾</span>`;
 }
 function pyPedidoDetalleHTML(c){
   const tc=c.tcPedido||0;
@@ -12164,15 +12177,7 @@ function pyEnCaminoHTML(tipo){
     const lleg=enCamino?pyMasHabiles(c.fecha,PY_DIAS_LLEGADA):null;
     const tarde=lleg?Date.now()>lleg.getTime()+86400e3:false;
     return `<details style="margin-bottom:7px;background:var(--surface);border:1px solid ${enCamino?(tarde?'var(--amber)':'rgba(56,189,248,.35)'):'var(--border)'};border-radius:9px">
-      <summary style="cursor:pointer;padding:9px 11px;display:flex;align-items:center;gap:9px;flex-wrap:wrap;list-style:none">
-        <span style="font-size:.95rem">${enCamino?'🚚':'📦'}</span>
-        <span style="font-size:.72rem;font-weight:700">${pyPedidoEtiqueta(c)} del ${c.fecha}</span>
-        <span style="font-size:.64rem;color:var(--muted)">${pyPedidoCuenta(c).p} producto${pyPedidoCuenta(c).p===1?'':'s'} · ${pyPedidoCuenta(c).u} u. · US$ ${puesto.toFixed(2)} puesto</span>${pyRecargoChip(c)}
-        <span style="margin-left:auto;font-size:.62rem;color:${enCamino?(tarde?'var(--amber)':'#38bdf8'):'var(--green)'};font-weight:700">
-          ${enCamino?`en camino · hace ${dias} d${tarde?' · ya se pasó':''}`:c.estado==='llego'?`llegó${c.fechaLlego?' el '+c.fechaLlego:''}`:'historial · cargado por chat'}
-        </span>
-        <span style="font-size:.6rem;color:var(--muted)">▼</span>
-      </summary>
+      <summary style="cursor:pointer;padding:10px 12px;display:flex;align-items:center;gap:10px;list-style:none">${pyPedidoResumenHTML(c,enCamino,dias,tarde)}</summary>
       ${pyPedidoDetalleHTML(c)}
     </details>`;
   };
@@ -12198,15 +12203,7 @@ function pyHechosHTML(){
     const lleg=enCamino?pyMasHabiles(c.fecha,PY_DIAS_LLEGADA):null;
     const tarde=lleg?Date.now()>lleg.getTime()+86400e3:false;
     return `<details style="margin-bottom:8px;background:var(--surface);border:1px solid ${enCamino?(tarde?'var(--amber)':'rgba(56,189,248,.35)'):'var(--border)'};border-radius:9px">
-      <summary style="cursor:pointer;padding:10px 12px;display:flex;align-items:center;gap:9px;flex-wrap:wrap;list-style:none">
-        <span style="font-size:1rem">${enCamino?'🚚':'📦'}</span>
-        <span style="font-size:.8rem;font-weight:700">${pyPedidoEtiqueta(c)} · ${c.fecha}</span>
-        <span style="font-size:.7rem;color:var(--muted)">${pyPedidoCuenta(c).p} producto${pyPedidoCuenta(c).p===1?'':'s'} · ${pyPedidoCuenta(c).u} u. · US$ ${puesto.toFixed(2)} puesto</span>${pyRecargoChip(c)}
-        <span style="margin-left:auto;font-size:.68rem;color:${enCamino?(tarde?'var(--amber)':'#38bdf8'):'var(--green)'};font-weight:700">
-          ${enCamino?`en camino · hace ${dias} d${tarde?' · ya se pasó':''}`:c.estado==='llego'?`llegó${c.fechaLlego?' el '+c.fechaLlego:''}`:'historial'}
-        </span>
-        <span style="font-size:.62rem;color:var(--muted)">▼</span>
-      </summary>
+      <summary style="cursor:pointer;padding:10px 12px;display:flex;align-items:center;gap:10px;list-style:none">${pyPedidoResumenHTML(c,enCamino,dias,tarde)}</summary>
       ${pyPedidoDetalleHTML(c)}
     </details>`;
   };
