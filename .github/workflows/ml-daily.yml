@@ -1,7 +1,7 @@
 name: ml-daily
 
 # Resumen de ventas del día al celular por Telegram.
-# Corre solo todas las noches (23:00 ART = 02:00 UTC) + prueba manual.
+# Corre solo todas las noches (programado 00:07/00:21/00:43 ART; GitHub lo atrasa ~6 h) + prueba manual.
 
 on:
   schedule:
@@ -257,7 +257,8 @@ jobs:
       # decisiones de precio que son de Mati. Si ese canal no está configurado NO manda nada y lo
       # dice en el log — el lado seguro acá es no mandar.
       #
-      # NO TOCA NINGÚN PRECIO. El ":go" sólo quiere decir "mandá el mensaje".
+      # DESDE EL 23/09 SÍ TOCA PRECIOS (era sólo aviso): acá corre el CEREBRO DE PRECIOS, primero, y después
+      # la base, la corrección, la caja barata, el remate y la escalera donde él no decidió (08/10/2026).
       - name: Avisos de precio al canal privado
         id: avisos
         # Sólo con el margen de ESTA noche: si netoweb falló, el robot de precios no decide con
@@ -279,7 +280,7 @@ jobs:
       # se evalúe cómo le fue en los próximos 7, 15 y 30 días". Saca la foto de los precios de hoy
       # (de lo que netoweb acaba de recalcular) para ver también los cambios a mano, y evalúa los
       # cambios que cumplieron 7/15/30 días: plata por día antes contra después. Avisa sólo lo nuevo.
-      # NO TOCA NINGÚN PRECIO.
+      # Con el cerebro prendido NO TOCA NINGÚN PRECIO (el "volver atrás" lo hace el cerebro, 08/10/2026).
       - name: Supervisor de precios
         id: supervisor
         # si falla no se lleva puesto el resto del paso nocturno
