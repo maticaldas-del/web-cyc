@@ -793,6 +793,17 @@ mensaje sin que yo te escriba (…) siempre y cuando sea algo que vos puedas hac
    (`activarPausadasFull`). Piedra Gua Sha activada (59%) · Kit Jade subido $5.299 → $5.420 (25%) para que se active solo ·
    Linterna COB (`MLA3998033920`) sigue pausada: da 5%, falta su costo real.
 
+### TODA BAJA DE PRECIO VA PRIMERO COMO PROMO (08/10/2026, regla suya)
+Él: *"es mejor tener $10.000 tachado y queda $8.000 por un tiempo y no bajar directo a 8.000. La persona ve cuánto se está
+ahorrando (…) antes de bajar el precio poner una promo con un descuento que quede el mismo neto. Es más, a veces ML se hace cargo
+de algo de ese descuento"*. Cómo se hace: cuando Claude decide bajar (caja de compra, remate, escalera, sobra stock), primero mira
+`analizapromo:<días>:<palabras>` de esa publicación y entra con `entrarpromo` al precio pensado: un evento o compartida de ML si la
+hay (mejor si ML pone algo), si no el **descuento propio (PRICE_DISCOUNT)**, mínimo 5%, dura 14 días y se renueva en la revisión
+si sigue haciendo falta. Recién si ML no deja ese precio en ninguna promo, se baja el precio de lista con `decido`. **Nunca se sube
+el precio de lista para inflar el tachado** (ML lo controla contra el precio de los últimos días y además es engañar al
+comprador). **El robot que saca promos cada hora queda como guardián**: no toca las que entró Claude (`cyc/promoclaude`) y saca
+las que ML o alguien puso sin análisis (las campañas que ML mete solo; ya pasó dos veces con 40-55% de descuento).
+
 ### LAS VUELTAS DE CLAUDE: 4 POR DÍA (08/10/2026)
 08:52 y 20:52 revisión completa (`trig_01475PwdPVJ1qTnYswcDxRq8`) · **12:52 y 16:52 vuelta corta** (`trig_01FCaQqzU5MA422N6Z8nH63Z`,
 pedida por él: *"dale, agregalas"*): sólo preguntas nuevas y urgencias de lo que vende fuerte (sin stock, frenada por ML, caja
