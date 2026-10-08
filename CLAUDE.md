@@ -807,6 +807,12 @@ las que ML o alguien puso sin análisis (las campañas que ML mete solo; ya pas�
 siempre en ML en cualquier producto"*.** Las 4 vueltas del día corren `analizapromo`. Su sección **2c** arma el descuento propio
 (`entrarpromo:<MLA>=<precio>@PRICE_DISCOUNT`) para cada baja pensada que ninguna promo de ML cubre, y `entrarpromo` ya no exige que
 ML lo liste como opción (sólo frena si la publicación está en otra promo de ML o si el descuento es menor al 5%).
+**Y CÓMO SE DECIDE, suyo del mismo día (eligió la a, con una aclaración):** *"no quiero poner reglas. si pasa tal cosa, hacé tal
+cosa. sino que vos lo evalúes también. esa es la idea principal"*. O sea: el descuento va **en principio** donde de todos modos
+iba a bajar el precio (perdió la caja, sobra stock, no vende), y no se pone por poner en lo que ya vende bien — pero **no es una
+regla mecánica**: cada caso se piensa con lo que pasó (ritmo, stock, caja, fechas, lo que pone ML, cómo respondieron cambios
+anteriores). Si una publicación que vende bien tiene un buen motivo para un descuento (una fecha, ML pone plata, sobra stock para
+la temporada), se hace y se explica en el 🧠. Las secciones de `analizapromo` son una ayuda, no la decisión.
 
 ### LAS VUELTAS DE CLAUDE: 4 POR DÍA (08/10/2026)
 08:52 y 20:52 revisión completa (`trig_01475PwdPVJ1qTnYswcDxRq8`) · **12:52 y 16:52 vuelta corta** (`trig_01FCaQqzU5MA422N6Z8nH63Z`,
