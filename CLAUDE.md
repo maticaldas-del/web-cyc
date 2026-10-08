@@ -766,7 +766,7 @@ Pedido suyo: *"me gustaria que vos tambien veas lo que me manda y ver si lo pode
 mensaje sin que yo te escriba (…) siempre y cuando sea algo que vos puedas hacer algo, sino no me mandes nada"*.
  · `sendAlerta` guarda copia de cada aviso que SALIÓ en `mlapi/alertaslog/<ts>`; se lee con `alertas[:horas]`
    (ml-consulta, solo lee, tapa números largos).
- · Rutina `trig_01475PwdPVJ1qTnYswcDxRq8` (**10:47 y 22:47 de acá**, dos por día desde el mismo 08/10: *"me manda poco
+ · Rutina `trig_01475PwdPVJ1qTnYswcDxRq8` (**08:52 y 20:52 de acá**, dos por día desde el mismo 08/10: *"me manda poco
    telegram"*) que entra a esta sesión, lee las últimas 12 h (`alertas:12`) y, si hay algo que puedo resolver dentro de sus reglas, lo hago, releo y le mando UNA
    notificación. Si no hay nada, no se manda nada.
    ~~Desde la decisión "2a" la rutina NO mueve precios~~ — **REEMPLAZADO ESE MISMO 08/10 (~17:40): AHORA LA RUTINA ES LA
@@ -774,11 +774,13 @@ mensaje sin que yo te escriba (…) siempre y cuando sea algo que vos puedas hac
    cosas así de datos. TODO lo que sea pensar lo veas exclusivamente vos"* y *"si el cerebro del robot no piensa, solo
    sigue reglas, entonces no sirve. Quiero que piense como lo hacés vos (…) de última que el cerebro seas vos"*.
    `autoPrecios: off` (`decido:modo=claude;go`): el robot de noche sólo CALCULA lo que haría (expediente 🧠) y no toca nada.
-   En cada vuelta (10:47 y 22:47): leer `alertas:12` y `cerebro:todas` (lo que haría el robot, con ritmo, stock, margen,
-   plata/día) y `pausadas`; PENSAR cada caso con todo lo que pasó en esas 12 h (no seguir la regla a ciegas: ej. la
+   En cada vuelta (08:52 y 20:52): leer **`informe:12`** (ml-consulta, UN solo log: avisos —también los que el filtro
+   no mandó—, ventas, lo que ya decidí y cómo le fue, lo que haría el robot, pausadas, nuevas, canceladas, pedidos, cajas,
+   preguntas sin responder, frenadas por ML, caja perdida, sin stock que vendían, reputación, promos sin leer, dólar); PENSAR cada caso con todo lo que pasó en esas 12 h (no seguir la regla a ciegas: ej. la
    escasez que termina no vuelve al precio de antes si a este precio sigue vendiendo y deja más); aplicar con
    **`decido:<MLA>=<precio>[!piso][!cruza]|<motivo en criollo>;…;go`** por ml-sync (sin `;go` es prueba, por ml-consulta).
-   El motivo es lo que él lee en el 🧠. Siguen automáticos por mecánicos: sacar promos, activar pausadas que ya dejan el
+   El motivo es lo que él lee en el 🧠. **Las preguntas de compradores también las contesto yo** (sección 10 del informe)
+   con **`contesto:<id>=<respuesta>;…;go`** por ml-sync, sólo las que sé SIN DUDA (regla del 27/09). Siguen automáticos por mecánicos: sacar promos, activar pausadas que ya dejan el
    piso, cajas, stock, vínculos, ventas. Notificación sólo si hice algo (una línea por cambio) o si hay una decisión suya.
    **Y LA AUDITORÍA DEL ROBOT** (pedido suyo del mismo día: *"el robot no piensa, capaz que pasa algo importante y no te
    lo dice porque no está programado para eso"*): `ml-sync/AUDITORIA.md` + rutina `trig_0138cyCgYeEHjqeayqiQPqWQ`

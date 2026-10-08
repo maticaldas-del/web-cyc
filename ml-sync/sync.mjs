@@ -43,7 +43,7 @@ const EN_CONSULTA = process.env.GITHUB_WORKFLOW === 'ml-consulta' || process.env
 const CONSULTA_ESCRIBE = new Set(['lineatodo', 'revcand', 'vincular', 'pasara', 'nomandar', 'fijarvar', 'cupo', 'poncosto', 'tamfull', 'lotesfull']);
 const CONSULTA_NIEGA = new Set(['candcuotas', 'candml', 'ofi', 'pvped', 'ancla', 'responder', 'pyped', 'cajallego', 'abrircaja', 'compray', 'pedir', 'dispo', 'saldoml',
   'armarsaldo', 'avisos', 'cajasllegaron', 'netoweb', 'netoreal', 'candidatos', 'supervisor', 'sacapromos', 'pausar', 'liquidando',
-  'unapub', 'volver', 'submargen', 'fijar', 'activarfull', 'decido', 'meta', 'ciclo', 'marcano', 'pausaprecio', 'cargargasto', 'retiromes']);
+  'unapub', 'volver', 'submargen', 'fijar', 'activarfull', 'decido', 'contesto', 'meta', 'ciclo', 'marcano', 'pausaprecio', 'cargargasto', 'retiromes']);
 let CONSULTA_SOLO_LEE = false;
 if (EN_CONSULTA) {
   const _cmd = String(process.env.BILLING_PROBE || '').trim();
@@ -34563,10 +34563,16 @@ async function main() {
       const corta = (t, n) => String(t || '').replace(/\s+/g, ' ').replace(/\d{9,}/g, (m) => '…' + m.slice(-4)).slice(0, n);
       const [links, vp, ap, alog] = await Promise.all(['cyc/mllinks', 'cyc/ventaprod', 'cyc/autoprecio', 'mlapi/alertaslog'].map((r) => db.get(r).then((v) => v || {}).catch(() => ({}))));
       console.log(`=== 💭 INFORME PARA CLAUDE · últimas ${hrs} h · ${hl(ahoraI)} (hora de acá) ===`);
-      // 1) Avisos
-      const al = Object.values(alog).filter((x) => x && x.ts >= desde).sort((a, b) => a.ts - b.ts);
-      console.log(`\n── 1 · AVISOS DE TELEGRAM (${al.length}) ──`);
-      for (const x of al.slice(-15)) console.log(`· ${hl(x.ts)} ${corta(String(x.t || '').replace(/<[^>]+>/g, ''), 220)}`);
+      // 1) Avisos: TODOS los que armó el robot, también los que el filtro no mandó a Telegram (`info`: pasos de la
+      // noche que fallaron, promos no leídas, etc.). La auditoría del 08/10 vio que `alertaslog` sólo guarda lo que
+      // SALIÓ, así que lo que el filtro se tragaba no me llegaba nunca. Vienen de `mlapi/cerebroavisos/<día>`.
+      const dkI = (x) => new Date(x - 3 * 3600e3).toISOString().slice(0, 10).replace(/-/g, '_');
+      const diasAv = [...new Set([dkI(desde), dkI(ahoraI), dkI(desde + (ahoraI - desde) / 2)])];
+      const cav = [];
+      for (const dd of diasAv) { try { for (const x of Object.values((await db.get('mlapi/cerebroavisos/' + dd)) || {})) if (x && x.ts >= desde) cav.push(x); } catch { /* */ } }
+      const al = cav.length ? cav.sort((a, b) => a.ts - b.ts) : Object.values(alog).filter((x) => x && x.ts >= desde).sort((a, b) => a.ts - b.ts).map((x) => ({ ...x, va: true }));
+      console.log(`\n── 1 · AVISOS DEL ROBOT (${al.length} · ${al.filter((x) => x.va).length} salieron por Telegram) ──`);
+      for (const x of al.slice(-25)) console.log(`${x.va ? '📨' : '🔇'} ${hl(x.ts)} ${corta(String(x.t || '').replace(/<[^>]+>/g, ''), 220)}${x.va ? '' : ' · (no salió: ' + corta(x.por, 40) + ')'}`);
       // 2) Ventas
       const ventasMla = {}; const vtsTodas = [];
       for (const ents of Object.values(vp)) for (const v of Object.values(ents || {})) {
@@ -34641,6 +34647,90 @@ async function main() {
         console.log(`\n── 9 · CAJAS EN CAMINO A FULL (${nAb} abiertas · ${abiertas.length} con 9+ días) ──`);
         for (const x of abiertas.slice(0, 15)) console.log(x);
       } catch (eC) { console.log('cajas: no pude leerlas · ' + eC.message); }
+      // 10-14: lo que faltaba (auditoría del 08/10/2026). Preguntas, publicaciones frenadas por ML, caja de compra
+      // perdida en lo que vende, quiebres de stock de lo que vende, reputación, promos sin leer y el dólar.
+      const u30 = {}; for (const v of vtsTodas) if (v.ts >= ahoraI - 30 * 864e5) u30[v.mla] = (u30[v.mla] || 0) + v.q;
+      const tit = (m) => corta((links[m] || {}).title, 45);
+      // 10) Preguntas sin responder, leídas de ML en el momento. El texto se tapa (mails, teléfonos) y se corta:
+      // el registro es público. Las preguntas de ML son públicas en la publicación, pero igual va lo justo.
+      try {
+        const taparQ = (x) => String(x || '').replace(/\S+@\S+/g, '[mail]').replace(/\d[\d\s.-]{5,}\d/g, '[número]').replace(/https?:\/\/\S+/g, '[link]');
+        const qsT = [];
+        for (const label of labels) {
+          const tk = tokI[label]; const acc = accounts[label]; if (!tk || !acc?.seller_id) continue;
+          try { const q = await mlGet(`/questions/search?seller_id=${acc.seller_id}&status=UNANSWERED&api_version=4&limit=50&sort=date_created_asc`, tk); for (const x of (q?.questions || [])) qsT.push({ ...x, _c: label }); }
+          catch { console.log(`(preguntas de ${label}: ML no contestó)`); }
+        }
+        const edad = (x) => (ahoraI - Date.parse(x.date_created || '')) / 864e5;
+        const recientes = qsT.filter((x) => edad(x) <= 7).sort((a, b) => edad(a) - edad(b));
+        const porC = {}; for (const x of qsT) porC[x._c] = (porC[x._c] || 0) + 1;
+        console.log(`\n── 10 · PREGUNTAS SIN RESPONDER (${qsT.length} · ${Object.entries(porC).map(([k, v]) => k + ' ' + v).join(' · ')} · ${recientes.length} de los últimos 7 días · la más vieja ${qsT.length ? Math.round(Math.max(...qsT.map(edad))) : 0} d) ──`);
+        for (const x of recientes.slice(0, 20)) console.log(`· q${x.id} · ${x._c} · ${x.item_id} · ${tit(x.item_id)} · ${(links[x.item_id] || {}).status || '?'} · hace ${edad(x) < 1 ? Math.round(edad(x) * 24) + ' h' : Math.round(edad(x)) + ' d'} · «${corta(taparQ(x.text), 160)}»`);
+        if (qsT.length > recientes.length) console.log(`  (las ${qsT.length - recientes.length} de más de 7 días: comando preguntas)`);
+      } catch (eQ) { console.log('preguntas: no pude leerlas · ' + eQ.message); }
+      // 11) Publicaciones frenadas por ML (revisión, documentación, infracción) o cerradas, de lo que vende o tiene ficha
+      const raro = Object.entries(links).filter(([m, e]) => /^MLA/.test(m) && e && !e.oculta && !e.noVendemosMas && (e.status === 'under_review' || e.status === 'inactive' || /under_review|pending_documentation|waiting_for_patch|forbidden|picture_download_pending|moderation/.test(e.subStatus || '')) && (u30[m] || e.prodId));
+      console.log(`\n── 11 · PUBLICACIONES FRENADAS POR ML O CERRADAS (${raro.length}) ──`);
+      for (const [m, e] of raro.sort((a, b) => (u30[b[0]] || 0) - (u30[a[0]] || 0)).slice(0, 15)) console.log(`· ${m} · ${e.cuenta} · ${tit(m)} · ${e.status}${e.subStatus ? ' (' + e.subStatus + ')' : ''} · vendió ${u30[m] || 0} u. en 30 d`);
+      // 12) Caja de compra perdida en lo que vende, y quiebres: lo que vendía y hoy está sin stock
+      const perd = Object.entries(links).filter(([m, e]) => e && e.status === 'active' && e.caja === 'losing' && (u30[m] || 0) >= 2).sort((a, b) => (u30[b[0]] || 0) - (u30[a[0]] || 0));
+      console.log(`\n── 12 · PIERDEN LA CAJA DE COMPRA Y VENDÍAN (${perd.length}) ──`);
+      for (const [m, e] of perd.slice(0, 12)) console.log(`· ${m} · ${e.cuenta} · ${tit(m)} · ${u30[m]} u. en 30 d · ML pide ${e.cajaPtw ? money(e.cajaPtw) : '?'}${e.cajaTs ? ' (hace ' + Math.round((ahoraI - e.cajaTs) / 36e5) + ' h)' : ''}`);
+      const quie = Object.entries(links).filter(([m, e]) => e && !e.oculta && !e.noVendemosMas && /out_of_stock/.test(e.subStatus || '') && (u30[m] || 0) >= 2).sort((a, b) => (u30[b[0]] || 0) - (u30[a[0]] || 0));
+      console.log(`── 12b · SIN STOCK Y VENDÍAN (${quie.length} · ${quie.reduce((s2, [m]) => s2 + (u30[m] || 0), 0)} u. vendidas en 30 d) ──`);
+      for (const [m, e] of quie.slice(0, 15)) console.log(`· ${m} · ${e.cuenta} · ${tit(m)} · ${u30[m]} u. en 30 d`);
+      // 13) Reputación, promos sin leer y el dólar
+      try {
+        const rep = (await db.get('cyc/reputacion')) || {};
+        const pct = (x) => x == null ? '?' : (Math.round(Number(x) * 1000) / 10) + '%';
+        console.log(`\n── 13 · REPUTACIÓN · PROMOS · DÓLAR ──`);
+        console.log('· ' + Object.entries(rep).map(([k, r]) => `${k} ${String((r || {}).nivel || '?').replace(/^\d_/, '')}${(r || {}).power ? '/' + r.power : ''} reclamos ${pct((r || {}).reclamos)} cancel ${pct((r || {}).cancelaciones)} demoras ${pct((r || {}).demoras)}${(r || {}).ts && ahoraI - r.ts > 2 * 864e5 ? ' ⚠️ dato de hace ' + Math.round((ahoraI - r.ts) / 864e5) + ' d' : ''}`).join(' | '));
+        const psl = (await db.get('mlapi/promosinleer')) || {};
+        console.log(`· promociones sin poder leer: ${Number(psl.n) || 0}${psl.ts ? ' (' + hl(psl.ts) + ')' : ''}`);
+        const tc = await db.get('cyc/finanzas/tipo_cambio');
+        console.log(`· dólar del panel: ${tc || '⚠️ sin cargar'}`);
+      } catch (eR) { console.log('reputación/promos/dólar: no pude leerlos · ' + eR.message); }
+      return;
+    }
+
+    // BILLING_PROBE=contesto:<id de pregunta>=<respuesta>[;<id>=<respuesta>][;go] → LAS PREGUNTAS LAS CONTESTA CLAUDE
+    // (08/10/2026). Desde que Claude es el cerebro de la página, las preguntas que las reglas no entienden las lee él en
+    // la revisión de cada 12 h (sección 10 del `informe`) y contesta las que sabe SIN DUDA (regla suya del 27/09: *"si
+    // tiene una pequeña duda que no conteste"*). Busca de qué cuenta es la pregunta, se fija que siga sin respuesta,
+    // pasa el mismo freno que la IA (`respuestaIAValida`: 10-500 caracteres, sin teléfonos, mails, links ni números
+    // largos), la manda y RELEE de ML que quedó contestada. Registro en `cyc/respuestasauto/<id>` con `cat:'claude'`.
+    // Sin `;go` sólo muestra. La respuesta no puede llevar `;`. Va por ml-sync (escribe en ML).
+    if (/^contesto:/.test(String(process.env.BILLING_PROBE || ''))) {
+      const partesC = String(process.env.BILLING_PROBE).slice('contesto:'.length).split(';').map((x) => x.trim()).filter(Boolean);
+      const GOc = partesC.includes('go');
+      const tokC = {};
+      for (const label of labels) { const acc = accounts[label]; if (!acc?.refresh_token) continue; try { const t = await mlRefresh(ML_CLIENT_ID, ML_CLIENT_SECRET, acc.refresh_token); await db.patch('mlapi/tokens/' + label, { refresh_token: t.refresh_token, updated_ts: Date.now() }); tokC[label] = t.access_token; } catch { console.log(`(${label}: no pude entrar)`); } }
+      const taparC = (x) => String(x || '').replace(/\S+@\S+/g, '[mail]').replace(/\d[\d\s.-]{5,}\d/g, '[número]');
+      let ok = 0, mal = 0;
+      console.log(`=== 💬 RESPUESTAS DE CLAUDE · ${GOc ? 'SE MANDAN' : 'PRUEBA (sin ;go no se manda nada)'} ===`);
+      for (const pc of partesC.filter((x) => x !== 'go')) {
+        const mm = pc.match(/^q?(\d+)\s*=\s*([\s\S]+)$/);
+        if (!mm) { console.log(`✗ No entendí "${pc.slice(0, 60)}": va <id>=<respuesta>`); mal++; continue; }
+        const qid = mm[1]; const txt = mm[2].trim();
+        if (!respuestaIAValida(txt)) { console.log(`✗ q${qid}: la respuesta no pasa el freno (10-500 caracteres, sin teléfonos/mails/links/números largos)`); mal++; continue; }
+        let q = null, cta = null;
+        for (const label of Object.keys(tokC)) {
+          try { const r = await mlGet('/questions/' + qid + '?api_version=4', tokC[label]); if (r && String(r.seller_id) === String(accounts[label].seller_id)) { q = r; cta = label; break; } } catch { /* de otra cuenta */ }
+        }
+        if (!q) { console.log(`✗ q${qid}: no la encontré en ninguna cuenta`); mal++; continue; }
+        console.log(`· q${qid} · ${cta} · ${q.item_id} · «${taparC(q.text).slice(0, 160)}»\n   → «${txt}»`);
+        if (String(q.status).toUpperCase() !== 'UNANSWERED') { console.log(`   ya no está sin responder (${q.status}): no se manda`); continue; }
+        if (!GOc) continue;
+        try {
+          const r = await fetch(ML_API + '/answers', { method: 'POST', headers: { Authorization: 'Bearer ' + tokC[cta], 'Content-Type': 'application/json' }, body: JSON.stringify({ question_id: Number(qid), text: txt }), signal: AbortSignal.timeout(25000) });
+          if (!r.ok) { console.log(`   ✗ ML no la aceptó (${r.status}): ${(await r.text().catch(() => '')).slice(0, 160)}`); mal++; continue; }
+          const rel = await mlGet('/questions/' + qid + '?api_version=4', tokC[cta]).catch(() => null);
+          if (rel && String(rel.status).toUpperCase() === 'ANSWERED') { ok++; console.log('   ✓ contestada (releída de ML)'); try { await db.set('cyc/respuestasauto/' + qid, { cat: 'claude', cuenta: cta, mla: q.item_id, ts: Date.now() }); } catch { /* */ } }
+          else { mal++; console.log(`   ⚠️ la mandé pero al releer dice ${rel ? rel.status : 'nada'}`); }
+        } catch (eA) { mal++; console.log('   ✗ no pude mandarla: ' + eA.message); }
+      }
+      console.log(`\n${GOc ? `Contestadas: ${ok}` : 'Prueba terminada'}${mal ? ` · con problema: ${mal}` : ''}`);
+      if (mal) process.exitCode = 1;
       return;
     }
 
