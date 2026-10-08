@@ -2264,28 +2264,10 @@ async function filtrarRescate(db, rr, o) {
   // de 7 días no hay ritmo que medir y el freno no opina (la venta que disparó esto ya dice que vende).
   let histR = {};
   try { histR = (await db.get('cyc/stockhist')) || {}; } catch { histR = {}; }
-  const bajoAMano = {};
-  try {
-    const evR = (await db.get('cyc/supervisor/eventos')) || {};
-    for (const ev of Object.values(evR)) {
-      if (!ev || !ev.mla || !/a mano/.test(String(ev.origen || ''))) continue;
-      if (hoyTs - (ev.ts || 0) > 60 * 864e5) continue;
-      if (Number(ev.a) > 0 && Number(ev.de) > 0 && Number(ev.a) < Number(ev.de)) {
-        if (!bajoAMano[ev.mla] || ev.ts > bajoAMano[ev.mla].ts) bajoAMano[ev.mla] = ev;
-      }
-    }
-    // Y LO QUE BAJÓ HOY: la foto de esta noche la saca el supervisor DESPUÉS de este paso, así
-    // que una baja a mano de hoy todavía no es un evento. Se compara el precio de ML de ahora
-    // contra la foto de anoche: si está más bajo y no lo bajó el robot, lo bajó él.
-    const fotoR = (await db.get('cyc/supervisor/precios')) || {};
-    for (const [mla, f] of Object.entries(fotoR)) if (f && f.p > 0) bajoAMano['_foto_' + mla] = f;
-  } catch {
-    // SIN ESTO NO SE SABE QUÉ BAJÓ ÉL A MANO, y subirle algo que él bajó a propósito es lo que este
-    // freno existe para evitar. Antes el catch seguía de largo y el freno se apagaba en silencio
-    // (F4 de la segunda vuelta, 25/09/2026). Ahora esa vuelta no se rescata nada y se dice.
-    for (const x of rr.subir) rescFren.push({ ...x, why: 'no pude leer qué bajaste vos a mano (la foto de precios): esta vuelta no subo nada' });
-    return { rescates, rescFren, rescSup };
-  }
+  // "LO BAJASTE VOS A MANO" YA NO FRENA EL RESCATE (08/10/2026). Regla suya: *"no toque nada yo (…) sacar todas
+  // esas reglas que no dejan moverse tranquilo al robot"*. Él no toca precios a mano (23/09: "todo va a ser por el
+  // robot o yo te escribo por acá"), y la foto de precios llegó a marcar "a mano" un cambio que nadie hizo. Lo que
+  // él manda rematar se baja con `unapub:…:bajar=`, que marca `liquidando`, y eso sí sigue frenando.
   const fechaR = (ts) => new Date(ts - 3 * 3600e3).toISOString().slice(5, 10).split('-').reverse().join('/');
   // EL ROBOT APRENDE DE SUS PROPIAS BAJAS (05/10/2026). Él, con el Pendrive 32gb (remate por sobra que el
   // supervisor midió en −$4.563): *"quiero que el robot tome las decisiones y las tome bien y que aprenda,
@@ -2347,15 +2329,20 @@ async function filtrarRescate(db, rr, o) {
       rescFren.push({ ...x, why: `ya lo subí hace ${Math.max(1, Math.round((hoyTs - apS.ts) / 3600e3))} h (${money(apS.de)} → ${money(apS.a)}) · una suba por día como mucho, sigue mañana` });
       continue;
     }
-    const fAnoche = bajoAMano['_foto_' + x.mla];
-    // El cambio de las últimas 36 h lo explica el robot SÓLO si el precio de hoy es el que dejó él
-    // (revisión max #9): si después de una suba del robot él lo bajó a mano, el precio de hoy queda
-    // más abajo que el que dejó el robot, y eso es suyo.
-    const apR = autoprecio && autoprecio[x.mla];
-    const loExplicaRobot = apR && hoyTs - (apR.ts || 0) < 36 * 3600e3 && !(Number(apR.a) > 0 && x.de < Number(apR.a) * 0.995);
-    const bajoHoy = fAnoche && x.de < fAnoche.p * 0.995 && !loExplicaRobot;
-    const bm = bajoAMano[x.mla] || (bajoHoy ? { ts: hoyTs, de: fAnoche.p, a: x.de } : null);
-    if (bm) { rescFren.push({ ...x, why: `lo bajaste vos a mano el ${fechaR(bm.ts)} (${money(bm.de)} → ${money(bm.a)}) · no lo subo solo; si ya no lo estás rematando, decime` }); continue; }
+    // SIN STOCK O PAUSADA SE RESCATA IGUAL (08/10/2026). Regla suya: *"si no hay stock o esta pausado es lo
+    // mismo, ya que en algun momento van a volver a tener stock"*. "No vende" y "le sobra stock" son frenos
+    // para la mercadería que está ADENTRO de Full y no sale (subir la frena más), y lo mismo "lo bajé yo hace poco" (era para ganar la caja o rematar
+    // esa mercadería, que ya no está) y "comparte la caja" (sin stock no comparte nada); sin nada adentro no vende
+    // porque no hay qué vender, y lo que hay que dejar listo es el precio para cuando vuelva. Si el stock no
+    // se sabe (sin ficha o sin dato) los frenos quedan como antes.
+    const eLs = lnk[x.mla] || {};
+    let stX = null;
+    if (eLs.prodId) {
+      const kS = eLs.prodId + '__' + sidR(x.label), kSV = eLs.variant ? kS + '__v__' + sidR(eLs.variant) : null;
+      const vS = kSV && invR[kSV] != null ? invR[kSV] : invR[kS];
+      if (vS != null) stX = Math.max(0, parseInt(vS) || 0);
+    }
+    if (stX === 0) { x.sinStock = true; rescates.push(x); continue; }
     // LO QUE BAJÓ EL PROPIO ROBOT EN 30 DÍAS NO SE RESCATA (24/09/2026, punto 3 de la revisión).
     // El remate y la escalera ya marcan `liquidando`, pero esa marca se cae sola al quedar en 0 u.,
     // y la baja para ganar la caja no marca nada: si después el margen cae (un costo que sube) el
@@ -2751,14 +2738,20 @@ async function calcSubirPorMargen(db, o) {
 //    foto NO se actualiza (el cambio se mira en la vuelta siguiente).
 // Cada suba se relee de ML (regla 6), queda en `cyc/autoprecio/<MLA>` con `por:'costo'` (así el
 // supervisor la juzga y el robot de la noche no la baja en 14 días) y se avisa por Telegram.
+// ── EL ROBOT SUBE TODO LO QUE QUEDE ABAJO DE LA BASE (08/10/2026) ─────────────────────────────
+// Regla suya, textual: *"hay una regla creo que dice que el robot sube si cae de 20%, eso sacalo. que el
+// robot maneje a su disposicion los precios para la mayor ganancia. sacar todas esas reglas que no dejan
+// moverse tranquilo al robot"*. `cyc/mlconfig/subeDesde` (20) YA NO SE USA: el rescate toca todo lo que
+// quede abajo de la base (`targetPct`, 25) con un punto de colchón para no mover precios por centavos
+// (redondeado 24% o menos → se lleva al 25%). Vale para la noche, la venta y el cambio de costo.
+function subeDesdeDe(cfg) { return (parseFloat(cfg && cfg.targetPct) || 25) - 1; }
 const costoFirma = (p) => `${parseFloat(p.costUSD) || 0}|${parseFloat(p.shipUSD) || 0}`;
 async function subirPorCosto(db, o) {
   const { products, labels, accounts, tokens, DRY } = o;
   const log = o.log || console.log;
   const cfg = (await db.get('cyc/mlconfig')) || {};
   const prendido = cfg.autoSubeVenta === true;
-  const _sd = parseFloat(cfg.subeDesde);
-  const SUBE_DESDE = Number.isFinite(_sd) ? _sd : 20;
+  const SUBE_DESDE = subeDesdeDe(cfg);   // ya no es `subeDesde` (08/10/2026): la base menos un punto
   const META = (parseFloat(cfg.targetPct) || 25) / 100;
   let snap;
   try { snap = await db.get('cyc/costosnap'); }
@@ -3330,7 +3323,7 @@ async function calcCerebro(db, o) {
         if (!(p0 > 0)) { nada('sin precio'); continue; }
         if (!NOSUBIR_OK) { nada('no pude leer la lista de liquidando'); continue; }
         if (NOSUBIR[mla]) { nada('liquidando: la maneja el remate'); continue; }
-        if (bajoMano.has(mla)) { nada('la bajaste vos a mano en 60 días'); continue; }
+        // "La bajaste vos a mano" ya no frena (08/10/2026): él no toca precios, y lo que manda rematar lo marca liquidando.
         if (autop[mla] && autop[mla].estado === 'subiendo') { nada('hay una suba en curso de otra corrida'); continue; }
         const costo = Math.round(costoPesos(p, 1, tc).costo || 0);
         if (!(costo > 0)) { nada('la ficha no tiene costo'); continue; }
@@ -9886,7 +9879,7 @@ async function main() {
       // Para no preguntarle a ML por las ~400 publicaciones, primero se filtra con el margen que
       // `netoweb` acaba de calcular (el peor neto de cada producto) con 5 puntos de colchón.
       const RESCATE_MAX = 25;
-      const SUBE_DESDE_AV = Number.isFinite(parseFloat(cfgAv.subeDesde)) ? parseFloat(cfgAv.subeDesde) : 20;
+      const SUBE_DESDE_AV = subeDesdeDe(cfgAv);   // la base menos un punto (08/10/2026: se sacó la regla del 20%)
       const META_AV = (parseFloat(cfgAv.targetPct) || 25) / 100;
       let rescates = [], rescFren = [], rescSup = [], rescSinMedir = [];
       if (cfgAv.autoSubeVenta === true && NOSUBIR_OK && supLeido) {
@@ -13251,9 +13244,10 @@ async function main() {
       const _sv = _pz[1];
       const cfgS = (await db.get('cyc/mlconfig')) || {};
       const estaba = cfgS.autoSubeVenta === true;
-      const _sdA = parseFloat(cfgS.subeDesde);
-      const desdeAct = Number.isFinite(_sdA) ? _sdA : 20;
+      const desdeAct = subeDesdeDe(cfgS);
       if (_sv === 'desde') {
+        console.log(`Esto ya no se usa (08/10/2026, pedido suyo: "sacar la regla del 20%"). El robot sube todo lo que quede en ${desdeAct}% o menos (la base ${cfgS.targetPct ?? 25}% menos un punto) y lo lleva a la base. Para moverlo se cambia la base con meta:<piso>:<base>.`);
+        return;
         const n = parseFloat(_pz[2]);
         if (!Number.isFinite(n) || n < 0 || n > 100) { console.log('Falta el número. Va así: subeventa:desde:20'); return; }
         // Un número MÁS ALTO que el piso no hace nada: el robot sólo mira las ventas que caen abajo
@@ -13365,7 +13359,7 @@ async function main() {
       console.log(`Gastos promedio: ${money(Math.round(gastos))} + retiro ${money(RETIRO)} = FIJOS ${money(Math.round(fijos))} por mes\n`);
       console.log(`🟠 NARANJA (CYC en 0 pagando todo): ${r1(naranja)}%`);
       console.log(`🟢 VERDE (la ganancia es el triple: a CYC le queda un tercio y cubre todo): ${r1(verde)}%`);
-      console.log(`\nHoy el robot usa: piso ${cfg.minPct}% · base ${cfg.targetPct}% · sube solo desde ${cfg.subeDesde ?? 20}%`);
+      console.log(`\nHoy el robot usa: piso ${cfg.minPct}% · base ${cfg.targetPct}% · sube solo desde ${subeDesdeDe(cfg)}% o menos (la base menos un punto)`);
       console.log(`Con el margen de hoy (${r1(mHoy)}%) CYC ${mHoy >= naranja ? 'cubre' : 'NO cubre'} los fijos: queda ${money(Math.round(ganMes - fijos))} por mes.`);
       // Sólo el PISO: el verde (el triple) es una referencia, no la base del robot (ver arriba).
       const piso = Math.round(naranja), baseHoy = Number(cfg.targetPct);
@@ -37681,8 +37675,7 @@ async function main() {
   // exacto, un margen de 20,4% se imprime "20%" y no subiría: él leería su propia regla cumplida y
   // el robot haciendo otra cosa. Si la cuenta que invita el mensaje no es la que hace el sistema,
   // el mensaje está mal.
-  const _sd = parseFloat(cfg.subeDesde);
-  const SUBE_DESDE = Number.isFinite(_sd) ? _sd : 20;
+  const SUBE_DESDE = subeDesdeDe(cfg);   // ya no es `subeDesde` (08/10/2026): la base menos un punto
   // Palabras de los grupos de precio (Paulvic). Un miembro de un grupo NO se sube solo: el grupo se
   // nivela entero al precio más alto, así que tocar uno mueve a todos.
   const palabrasGrupo = Object.values((await db.get('cyc/mlconfig/gruposPrecio')) || {})

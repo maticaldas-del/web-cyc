@@ -809,6 +809,23 @@ privada unificados · las dos facturas de Sancor analizadas.
 **Versión del panel: 20.16 · caché `cyc-v294`**. El ciclo del robot quedó **prendido**.
 
 
+## SE SACÓ LA REGLA DEL 20%: EL ROBOT SUBE TODO LO QUE QUEDA ABAJO DE LA BASE (08/10/2026, v22.53)
+
+Él, con Animale Sexy y las Sábanas 140x190 en 20-21% sin que nadie las tocara: *"hay una regla creo que dice que el
+robot sube si cae de 20%, eso sacalo. que el robot maneje a su disposicion los precios para la mayor ganancia. sacar
+todas esas reglas que no dejan moverse tranquilo al robot"* y *"si no hay stock o esta pausado es lo mismo, ya que en
+algun momento van a volver a tener stock"*.
+ · **`cyc/mlconfig/subeDesde` ya no se usa.** El rescate (noche, al vender y por costo) toca lo que dé **24% o menos**
+   (`subeDesdeDe(cfg)` = `targetPct` − 1, el punto es para no mover precios por centavos) y lo lleva a la base 25%.
+   `subeventa:desde` sólo dice que ya no se usa. **No volver a poner un umbral abajo de la base.**
+ · **Sin stock en Full (o pausada) se rescata igual**: en `filtrarRescate`, con stock 0 conocido no frenan "no vende",
+   "sobra stock", "lo bajé yo en 30 días" ni "comparte la caja". Con stock adentro siguen.
+ · **"Lo bajaste vos a mano" ya no frena** ni el rescate ni el cerebro: él no toca precios, y lo que manda rematar se
+   baja con `unapub:…:bajar=`, que marca `liquidando` (eso sí frena).
+ · **Quedan, a propósito:** liquidando · supervisor 🔴 · una suba por día y +25% por suba (sigue al día siguiente) ·
+   techo $650.000 · barrera $33.000 salvo que deje más · nunca bajar del piso por elección · variantes (regla 7) ·
+   Premium sin cuotas medidas · ML no contestó · releer de ML.
+
 ## EL CEREBRO DE PRECIOS: SIN ESPERAS FIJAS, DECIDE POR PLATA POR DÍA (07/10/2026)
 
 Pedido suyo con el Ferrari Negro (el robot lo subió el 29/09 y esperaba 14 días): *"14 días no es mucho? (…) si
