@@ -844,6 +844,15 @@ algun momento van a volver a tener stock"*.
    techo $650.000 · barrera $33.000 salvo que deje más · nunca bajar del piso por elección · variantes (regla 7) ·
    Premium sin cuotas medidas · ML no contestó · releer de ML.
 
+## SUPERVISOR: LA REGLA FIRME GANA AUNQUE AL PRECIO VIEJO NO HAYA VENDIDO NADA (08/10/2026, eligió la a)
+
+Lo planteó él con el Watch S5 en rojo (escalera del 25/09, 0 ventas en 38 días a $445.120, vendió 2 después de bajar).
+El ritmo "sin robot" (`rCf` en `cuentaRemate`) sale SÓLO de las ventas al precio viejo: (ventas + 3) ÷ días con stock
+(0 + 3 ÷ 38 = 2,4 por mes). Las ventas de después del cambio NUNCA entran en ese ritmo. Chocaba con su regla del mismo
+04/10 ("pasan 40 días y no vende, el robot lo baja, sería injusto restarle"): **decidió que gane la regla firme** (no
+engañarse a favor del robot; en lo que vende poco, 30-40 días sin ventas es poca prueba). **No volver a proponer ritmo 0
+cuando al precio viejo no vendió nada.**
+
 ## EL CEREBRO DE PRECIOS: SIN ESPERAS FIJAS, DECIDE POR PLATA POR DÍA (07/10/2026)
 
 Pedido suyo con el Ferrari Negro (el robot lo subió el 29/09 y esperaba 14 días): *"14 días no es mucho? (…) si
