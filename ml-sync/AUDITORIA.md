@@ -24,6 +24,9 @@ se anota en `REVISION.md` en su etapa y abajo en el historial.
    renuevan, avisos que se tragó el filtro de Telegram (`mlapi/cerebroavisos`), dólar y tipo de cambio al día.
 6. **Comparar:** ¿cada cosa importante de 1-5 estaba en el `informe`? Si no → faltante del robot.
 
+**Ojo al auditar: las consultas van de a 2, no de a 6.** La primera auditoría largó 6 a la vez y ML contestó 429 en
+las cajas (casi todos los renglones "sin leer") y en 57 de 406 promociones: eso es ruido mío, no un faltante del robot.
+
 ## Cada cuánto (lo maneja Claude solo)
 - Arranca **todos los días** (08/10, 09/10, 10/10).
 - Si **3 auditorías seguidas** no encuentran nada nuevo → cada **3-4 días**; 2 limpias más → **1 por semana**;
@@ -34,4 +37,4 @@ se anota en `REVISION.md` en su etapa y abajo en el historial.
 ## Historial
 | fecha | qué encontré | qué arreglé | próxima |
 |---|---|---|---|
-| | | | 08/10 21:30 (la primera) |
+| 08/10 18:10 (adelantada, la pidió él) | **Faltaban 5 cosas en el informe:** (1) los avisos que el filtro no manda a Telegram (`info`: pasos de la noche que fallaron, promos no leídas…) — el informe leía `alertaslog`, que sólo guarda lo que salió · (2) las preguntas sin responder: 81, la más vieja de 213 días · (3) las publicaciones frenadas por ML: el Espejo 8" está en revisión (`waiting_for_patch`) desde la suba a $49.190 · (4) los que pierden la caja y vendían (20) · (5) los que vendían y están sin stock (37, 447 u. en 30 d; el Centímetro Rosa y Gris vendieron 203 u.) · además reputación, promos sin leer y dólar | informe con secciones 1 (todos los avisos) y 10-13 · comando `contesto` para que Claude conteste preguntas | 09/10 21:30 (diaria: encontró cosas) |
