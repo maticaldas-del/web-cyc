@@ -2358,7 +2358,8 @@ async function filtrarRescate(db, rr, o) {
     // Excepción: un remate que el robot TERMINÓ porque el stock ya quedó sano (`ritmo:go`, 01/10/2026)
     // sí se rescata: terminar el remate es justamente para volver a la base.
     const remTerm = !!(apB && Number(apB.remateTerminado) > (Number(apB.ts) || 0));
-    if (apB && apB.tipo === 'baja' && apB.por !== 'correccion' && hoyTs - (apB.ts || 0) < 30 * 864e5 && !remTerm && !aprende) {
+    // Una baja marcada 'bajando' (08/10/2026) es un "volver" que ML no dejó hacer: el precio no bajó, no frena.
+    if (apB && apB.tipo === 'baja' && apB.estado !== 'bajando' && apB.por !== 'correccion' && hoyTs - (apB.ts || 0) < 30 * 864e5 && !remTerm && !aprende) {
       rescFren.push({ ...x, why: `lo bajé yo el ${fechaR(apB.ts)} (${money(apB.de)} → ${money(apB.a)}${apB.por ? ' · ' + apB.por : ' · para ganar la caja'}) · no lo vuelvo a subir solo antes de 30 días` });
       continue;
     }
@@ -3295,7 +3296,8 @@ async function calcCerebro(db, o) {
     if (baja && hoyTs - ev.ts < 60 * 864e5 && !/^robot/.test(String(ev.origen || ''))) bajoMano.add(ev.mla);
   }
   for (const [mla, a] of Object.entries(autop)) {
-    if (!a || !(Number(a.ts) > 0) || !(Number(a.a) > 0) || a.estado === 'subiendo') continue;
+    // 'bajando' también (08/10/2026): es una baja de "volver" a medio hacer, no un precio que se puso.
+    if (!a || !(Number(a.ts) > 0) || !(Number(a.a) > 0) || a.estado === 'subiendo' || a.estado === 'bajando') continue;
     const arr = (cambios[mla] = cambios[mla] || []);
     if (!arr.some((x) => Math.abs(x.ts - a.ts) < 10 * 60e3)) arr.push({ ts: Number(a.ts), de: Number(a.de) || 0, a: Number(a.a), origen: 'robot' });
   }
@@ -4949,6 +4951,13 @@ async function calcCajaBarata(db, o) {
     // por cada unidad que se vende barata: las que sobran arriba de 30 días de ritmo (después el rescate la
     // vuelve a la base). Se ahorra el cargo de stock antiguo proyectado más 1% por mes del costo de la plata
     // parada de esas unidades. Si regala igual o más, no se baja: va al log con los dos números.
+    // SIN LA COMISIÓN DE HOY NO HAY COMPARACIÓN (08/10/2026, etapa 1): si ML no contestó (429), `resigna`
+    // queda null y antes este freno se salteaba y la fila caía a `filas` como si conviniera. Lado seguro:
+    // sin el dato que frena, no se baja; se mira la noche siguiente.
+    if (c.sobre && resigna == null) {
+      sinDato.push({ mla: c.mla, why: 'ML no me dio la comisión al precio de hoy: sin eso no puedo comparar lo que se regala contra lo que se ahorra' });
+      continue;
+    }
     if (c.sobre && resigna != null) {
       const uEx = Math.max(0, c.st - Math.round(30 * (c.sobre.rDia || 0)));
       const mesesEx = Math.max(0, (c.sobre.dias - 30) / 2 / 30);
@@ -9663,16 +9672,22 @@ async function main() {
       //     es el piso del escalón 1 del remate, el mismo número y por el mismo motivo.
       //   · abajo de eso → al log, con cuánto quedaría. Nunca al mensaje con precio.
       const SOBRE_SANO = CBR_SANO;
+      // SE CLASIFICA CON EL MISMO MEDIO PUNTO CON QUE SE APLICA (08/10/2026, etapa 1). Antes se clasificaba
+      // con el piso pelado y se aplicaba con piso + 0,5: una de 20,2% quedaba en el escalón 1, el remate la
+      // descartaba (20,2 < 20,5) y la escalera no la veía (no estaba en `remNo`). Quieta para siempre. Ahora
+      // lo que no llega al colchón de un nivel cae al siguiente, y lo que no llega a ninguno va a `remNo`,
+      // que es lo que recorre la escalera (con sus 45 días y su espera de 7).
+      const CLAS_COLCHON = 0.5;
       const sobreSanas = [], sobrePaga = [], sobreE3 = [], sobreNo = [];
       for (const f of cbr.filas.filter((x) => x.sobre)) {
-        if (f.mgPw >= SOBRE_SANO) sobreSanas.push(f);
-        else if (f.sobre.edad != null && f.sobre.edad >= SOBRE_DIAS && f.mgPw >= REM_P1) sobrePaga.push(f);
+        if (f.mgPw >= SOBRE_SANO + CLAS_COLCHON) sobreSanas.push(f);
+        else if (f.sobre.edad != null && f.sobre.edad >= SOBRE_DIAS && f.mgPw >= REM_P1 + CLAS_COLCHON) sobrePaga.push(f);
         // Escalón 3 de lo que sobra: stock para más de REM_D3 días. NO se exige la fecha real de
         // entrada: con stock para 4 meses va a pagar almacenamiento seguro, la tenga anotada o no
         // (suyo, 23/09: *"si hay productos que van a pagar stock antiguo, bajarlo al 0% y vender
         // todo es no perder dinero"*). Con la fecha exigida quedaban afuera el Timer (282 d) y el
         // Pendrive 32gb (163 d), que son justo el caso.
-        else if (f.sobre.dias >= REM_D3 && f.mgPw >= REM_P3) sobreE3.push(f);
+        else if (f.sobre.dias >= REM_D3 && f.mgPw >= REM_P3 + CLAS_COLCHON) sobreE3.push(f);
         else sobreNo.push(f);
       }
       const sobreNoSano = cbr.noSano.filter((x) => x.sobre);
@@ -9689,10 +9704,10 @@ async function main() {
       // que no hace falta regalar.
       const sanasCbr = [], remE1 = [], remE2 = [], remE3 = [], remNo = [];
       for (const f of cbr.filas) {
-        if (f.mgPw >= CBR_SANO) sanasCbr.push(f);
-        else if (f.quieta != null && f.quieta >= REM_D2 && f.mgPw >= REM_P2) remE2.push(f);
-        else if (f.quieta != null && f.quieta >= REM_D1 && f.mgPw >= REM_P1) remE1.push(f);
-        else if (f.quieta != null && f.quieta >= REM_D3 && f.mgPw >= REM_P3) remE3.push(f);
+        if (f.mgPw >= CBR_SANO + CLAS_COLCHON) sanasCbr.push(f);
+        else if (f.quieta != null && f.quieta >= REM_D2 && f.mgPw >= REM_P2 + CLAS_COLCHON) remE2.push(f);
+        else if (f.quieta != null && f.quieta >= REM_D1 && f.mgPw >= REM_P1 + CLAS_COLCHON) remE1.push(f);
+        else if (f.quieta != null && f.quieta >= REM_D3 && f.mgPw >= REM_P3 + CLAS_COLCHON) remE3.push(f);
         else remNo.push(f);
       }
       // ── Y LA MISMA PUBLICACIÓN TAMPOCO PUEDE SALIR EN DOS SECCIONES (15/09/2026) ──────
@@ -27432,9 +27447,26 @@ async function main() {
       }
       for (const [mla, a] of Object.entries(autop)) {
         if (!a || !a.ts || ahora - a.ts > MAX_DIAS * 864e5) continue;
-        if (a.estado === 'subiendo') continue;   // etapa 4: una suba que quedó a medias no es un cambio medido
+        if (a.estado === 'subiendo' || a.estado === 'bajando') continue;   // etapa 4: una suba (o una baja de "volver", 08/10/2026) que quedó a medias no es un cambio medido
         agregar({ mla, ts: a.ts, a: Math.round(a.a || 0) || null, de: Math.round(a.de || 0) || null, origen: a.por === 'costo' ? 'robot por costo' : 'robot de noche', aprox: false, motivo: motivoDeAuto(a), por: a.por || null });
       }
+      // LAS SUBAS DEL RESCATE AL VENDER, DESDE SU ETIQUETA (08/10/2026, etapa 1). Arriba sólo se ve el ÚLTIMO
+      // registro de `cyc/autoprecio`: si la noche corrigió esa suba (`por:'correccion'`) antes de que corra el
+      // supervisor, el registro de la venta se pisó y la suba desaparecía de la línea de tiempo (o quedaba
+      // "a mano"). `cyc/rescateventa` guarda cada suba hecha ({estado:'subido', de, a, mla, ts}) y no se pisa.
+      // Mismo ts que el registro de autoprecio, así que si los dos están, `agregar` no lo duplica.
+      try {
+        const rvSup = (await db.get('cyc/rescateventa')) || {};
+        for (const r of Object.values(rvSup)) {
+          if (!r || r.estado !== 'subido' || !/^MLA/i.test(String(r.mla || '')) || !(Number(r.ts) > 0) || ahora - r.ts > MAX_DIAS * 864e5) continue;
+          const aR = Math.round(Number(r.a) || 0), deR = Math.round(Number(r.de) || 0);
+          if (!(aR > 0) || !(deR > 0)) continue;
+          // Lo de noches pasadas que la foto ya anotó como "a mano" (por este mismo agujero) no se vuelve a
+          // agregar: saldría el mismo cambio dos veces. Queda como estaba.
+          if (Object.values(eventos).some((ev) => ev && ev.mla === r.mla && ev.origen === 'fuera del robot (a mano)' && Math.abs((Number(ev.ts) || 0) - r.ts) < 2 * 864e5)) continue;
+          agregar({ mla: r.mla, ts: Number(r.ts), a: aR, de: deR, origen: 'robot al vender', aprox: false, motivo: 'rescate', por: 'venta' });
+        }
+      } catch (e) { console.log(`⚠️ no pude leer cyc/rescateventa (${String(e).slice(0, 60)}): las subas al vender salen sólo de autoprecio`); }
       // La foto: lo que cambió entre la noche pasada y hoy y NO lo anotó el robot.
       const todosEv = () => [...Object.values(eventos), ...Object.values(nuevos)];
       const fotosNuevas = {};
@@ -27604,8 +27636,10 @@ async function main() {
       const ymDe = (t) => new Date(t - 3 * 3600e3).toISOString().slice(0, 7);
       const sumMes = (m, t, v) => { if (!v) return; const k = ymDe(t); m[k] = (m[k] || 0) + v; };
       const redMes = (m) => { const o = {}; for (const [k, v] of Object.entries(m)) { const r = Math.round(v); if (r) o[k] = r; } return o; };
+      // `por` va en cada registro (08/10/2026, etapa 1): sin él la web no podía distinguir un cambio del
+      // cerebro ('cerebro') o una corrección de una suba de más ('correccion') de un subir/bajar común.
       const base = (id, ev, motivo) => ({ id, mla: ev.mla, nom: nomDe(ev.mla), cuenta: (links[ev.mla] || {}).cuenta || '',
-        origen: ev.origen, motivo, de: ev.de || null, a: ev.a || null, ts: ev.ts, aprox: !!ev.aprox });
+        origen: ev.origen, motivo, por: ev.por || null, de: ev.de || null, a: ev.a || null, ts: ev.ts, aprox: !!ev.aprox });
       const motivosNuevos = {};
       for (const [id, ev] of Object.entries(todos)) {
         let motivo = motivoFinal(ev);
@@ -27867,7 +27901,7 @@ async function main() {
           try { await db.set('cyc/supervisor/revertido/' + x.id, { ts: ahora, de: x.a, a: x.de, estado: 'intentando' }); }
           catch { no('no pude anotar que lo voy a volver: no lo toco a ciegas'); continue; }
           hechosV++;
-          let r, msub = null;
+          let r, msub = null, apPrevV;
           if (sube) {
             msub = await _marcarSubiendo(db, x.mla, { por: 'volver', de: x.a, a: x.de, nom: x.nom, cuenta: cta });
             if (!msub.ok) { no('no pude anotar la suba antes de hacerla'); continue; }
@@ -27875,12 +27909,19 @@ async function main() {
           } else {
             // Marca ANTES de bajar (como _marcarSubiendo): si la corrida se corta en el medio, la foto
             // de mañana no lo toma como una baja a mano.
+            // Y SE GUARDA LO QUE HABÍA (08/10/2026, etapa 1): si ML rechaza la baja, la marca "bajando" quedaba
+            // para siempre — el supervisor la agregaba como un cambio del robot a un precio que nunca se puso,
+            // el rescate la tomaba como "lo bajé yo" y el cambio original no se volvía a intentar. Si falla, se
+            // devuelve lo de antes (igual que `_soltarSubiendo`). Sin poder leer lo de antes, no se toca.
+            try { apPrevV = await db.get('cyc/autoprecio/' + x.mla); }
+            catch { no('no pude leer la memoria del robot antes de bajar: no lo toco a ciegas'); try { await db.set('cyc/supervisor/revertido/' + x.id, null); } catch { /* */ } hechosV--; continue; }
             try { await db.set('cyc/autoprecio/' + x.mla, { tipo: 'baja', por: 'volver', estado: 'bajando', de: x.a, a: x.de, ts: Date.now(), nom: x.nom, cuenta: cta, volvioDe: x.id }); }
             catch { no('no pude anotar la baja antes de hacerla'); try { await db.set('cyc/supervisor/revertido/' + x.id, null); } catch { /* */ } hechosV--; continue; }
             r = await setPriceTo(x.mla, null, x.de, tk, { margen: Math.floor(mgV * 10) / 10 - 0.5 });
           }
           if (!r || !r.ok) {
             if (msub) await _soltarSubiendo(db, x.mla, msub);
+            if (!sube) { try { await db.set('cyc/autoprecio/' + x.mla, apPrevV ?? null); } catch { /* queda "bajando": el supervisor, el cerebro y el rescate la saltean */ } }
             try { await db.set('cyc/supervisor/revertido/' + x.id, { ts: ahora, estado: 'fallo', err: String((r && r.err) || '?').slice(0, 120) }); } catch { /* */ }
             fallosV.push(`${x.nom} (${cta}) ${$s(x.a)}→${$s(x.de)}: ${String((r && r.err) || '?').slice(0, 80)}`);
             no(`ML no lo dejó: ${String((r && r.err) || '?').slice(0, 80)}`); continue;
@@ -27986,9 +28027,18 @@ async function main() {
         // menos (la (a) del Watch S5) dan negativo POR DISEÑO —rematar cuesta precio, se hace para liberar
         // plata y lugar—. Siguen en la tarjeta y en el total; no disparan el "decime cuál volver" ni el
         // aviso de neto negativo, que miran sólo las decisiones que buscan ganar más (subir/bajar/prueba).
-        const nuevasP = atrib.filter((x) => !x.rem && x.total <= -1000 && !revertidos.has(x.id) && !(memP[x.id] && x.total > 2 * memP[x.id]));
-        const totSinRem = atrib.filter((x) => !x.rem).reduce((a, x) => a + (Number(x.total) || 0), 0);
-        const netoNeg = resumen.n > 0 && totSinRem < 0;
+        // SÓLO LO MEDIDO (08/10/2026, etapa 1): `atrib` trae también lo EN CURSO (menos de 7 días), que
+        // es sólo el efecto precio de las primeras ventas y no tiene `uA` (salía "vendió undefined antes").
+        // La web no lo suma al total grande (confTot = sólo medido) y `correrVolver` tampoco lo mira: acá
+        // pedía "decime cuál volver" sobre algo que todavía no se puede juzgar. Lo en curso no pide
+        // decisión, no anota avisoPerdida y no entra en el total del mensaje.
+        const medP = atrib.filter((x) => x.estado === 'medido');
+        const nuevasP = medP.filter((x) => !x.rem && x.total <= -1000 && !revertidos.has(x.id) && !(memP[x.id] && x.total > 2 * memP[x.id]));
+        const totSinRem = medP.filter((x) => !x.rem).reduce((a, x) => a + (Number(x.total) || 0), 0);
+        const totMedP = Math.round(medP.reduce((a, x) => a + (Number(x.total) || 0), 0));
+        const ganoMedP = Math.round(medP.reduce((a, x) => a + Math.max(0, Number(x.total) || 0), 0));
+        const perdioMedP = Math.round(medP.reduce((a, x) => a + Math.min(0, Number(x.total) || 0), 0));
+        const netoNeg = medP.length > 0 && totSinRem < 0;
         const avisarNeto = netoNeg && !memP._netoNeg;
         if (nuevasP.length || avisarNeto || revertidos.size) {
           const L2 = ['🔻 EL ROBOT DE PRECIOS HIZO PERDER PLATA', 'Comparado contra no haber tocado el precio, con el mismo tiempo antes y después.', ''];
@@ -28000,7 +28050,7 @@ async function main() {
               `   dejó ${$s(-x.total)} MENOS en ${x.dias} d · vendió ${x.uA} antes y ${x.uD} después`,
               ...(noVolvio.has(x.id) ? [`   🤔 no lo volví solo: ${noVolvio.get(x.id)}`] : []), '');
           }
-          L2.push(`Total de la automatización: ${resumen.total >= 0 ? '+' : ''}${$s(resumen.total)} (ganó ${$s(resumen.gano)} · perdió ${$s(-resumen.perdio)} · ${resumen.n} cambios)`);
+          L2.push(`Total de la automatización (lo medido, 7+ días): ${totMedP >= 0 ? '+' : ''}${$s(totMedP)} (ganó ${$s(ganoMedP)} · perdió ${$s(-perdioMedP || 0)} · ${medP.length} cambios${atrib.length > medP.length ? ` · ${atrib.length - medP.length} en curso sin contar` : ''})`);
           if (netoNeg) L2.push('⚠️ HOY EL NETO ES NEGATIVO: la automatización deja menos plata que no tenerla.');
           if (nuevasP.length) L2.push('', 'Éstos no los volví solo porque tengo dudas (el motivo va en cada uno). Decime cuál volver atrás.');
           const okP = MANDAR ? await sendAlerta(L2.join('\n'), (nuevasP.length || avisarNeto) ? undefined : { info: true }) : false;
@@ -30178,7 +30228,7 @@ async function main() {
       const tc = parseFloat(fin.tipo_cambio) || 1500;
       const monoP = parseFloat(((await db.get('cyc/monotributo')) || {}).pct) || 0;
       const cuotasCfg = (await db.get('cyc/mlcuotas')) || {};
-      const cuo = (() => { const v = cuotasCfg[MLA] && parseFloat(cuotasCfg[MLA].pct); return isFinite(v) && v > 0 ? v / 100 : 0; })();
+      let cuo = (() => { const v = cuotasCfg[MLA] && parseFloat(cuotasCfg[MLA].pct); return isFinite(v) && v > 0 ? v / 100 : 0; })();
       const e = links[MLA] || {};
       const label = labels.find((l) => l === e.cuenta) || labels.find((l) => accounts[l]?.refresh_token);
       if (!label) { console.log('No hay ninguna cuenta con token.'); return; }
@@ -30186,7 +30236,15 @@ async function main() {
       catch { console.log(`(${label}: no pude renovar el token)`); return; }
       await db.patch('mlapi/tokens/' + label, { refresh_token: t.refresh_token, updated_ts: Date.now() });
       let b; try { b = await mlGet('/items/' + MLA, t.access_token); } catch (err) { console.log('ML no me dio la publicación: ' + String(err.message || err).slice(0, 120)); return; }
+      // LAS CUOTAS CON LA MISMA REGLA QUE LA NOCHE (08/10/2026, etapa 1): `cuotaPremiumDe`. Antes una
+      // Premium sin entrada en cyc/mlcuotas (dada de alta después de la última corrida de `cuotas`) daba
+      // cuotas 0% y `bajar=`/`empatar` bajaban con un margen de más. Sin la cuota medida se muestra igual
+      // pero NO se baja: `cuoSinMedirU` frena los dos.
+      const cuoMedU = cuotaPremiumDe(cuotasCfg, MLA, b.listing_type_id);
+      const cuoSinMedirU = cuoMedU == null;
+      if (!cuoSinMedirU) cuo = cuoMedU;
       console.log(`=== ${MLA} · ${String(b.title || '').slice(0, 60)} ===`);
+      if (cuoSinMedirU) console.log('⚠️ Es Premium y no tengo las cuotas medidas (cyc/mlcuotas): el margen de abajo va SIN cuotas y es de más. No se baja (corré cuotas).');
       console.log(`Cuenta ${label} · estado ${b.status}${(b.sub_status || []).length ? ' (' + b.sub_status.join(', ') + ')' : ''} · stock ${b.available_quantity} · vendidas ${b.sold_quantity}`);
       console.log(`\n── PRECIOS QUE TIENE ML ──`);
       console.log(`  price (el de lista, el que leo yo) : ${money(Math.round(b.price || 0))}`);
@@ -30337,6 +30395,7 @@ async function main() {
           const _pw = Math.floor(Number(ptw.price_to_win) / 10) * 10;
           const _r2 = await margenA(_pw, envioMax);
           console.log(`\n── EMPATAR LA CAJA ──`);
+          if (cuoSinMedirU) { console.log('  Es Premium y no tengo las cuotas medidas: no se baja (corré cuotas). No toco nada.'); return; }
           if (!_r2) { console.log('  ML no me dio la comisión a ese precio. No toco nada.'); return; }
           console.log(`  ${money(Math.round(b.price || 0))} → ${money(_pw)}  (−${((1 - _pw / (b.price || 1)) * 100).toFixed(1)}%) · queda en ${_r2.mg.toFixed(1)}%`);
           console.log(`  Por unidad pasás de ganar ${money(Math.round((hoy && (hoy.neto - costo - hoy.mlx)) || 0))} a ${money(Math.round(_r2.neto - costo - _r2.mlx))}.`);
@@ -30389,6 +30448,7 @@ async function main() {
         const _pd = Math.floor((pesosArg(_crudo) || 0) / 10) * 10;
         console.log(`\n── BAJAR A UN PRECIO EXACTO ──`);
         if (!(_pd > 0)) { console.log(`  No entendí el precio ("${_crudo}"). Va así: bajar=60000`); return; }
+        if (cuoSinMedirU) { console.log('  Es Premium y no tengo las cuotas medidas: no se baja (corré cuotas). No toco nada.'); return; }
         // ESTE COMANDO SÓLO BAJA. Subir tiene su propio camino (`volver`), que no necesita medir
         // ningún margen porque subir nunca puede dejarte vendiendo a pérdida.
         if (_pd >= (b.price || 0)) { console.log(`  ${money(_pd)} NO es más barato que el precio de hoy (${money(Math.round(b.price || 0))}). Esto sólo BAJA: para subir va \`volver:${MLA}=${_pd}:go\`.`); return; }
@@ -30662,10 +30722,6 @@ async function main() {
       const tc = parseFloat(fin.tipo_cambio) || 1500;
       const monoP = parseFloat(((await db.get('cyc/monotributo')) || {}).pct) || 0;
       const cuotasCfg = (await db.get('cyc/mlcuotas')) || {};
-      const pctCuotas = (mla) => {
-        const v = cuotasCfg[mla] && parseFloat(cuotasCfg[mla].pct);
-        return isFinite(v) && v > 0 ? v / 100 : 0;
-      };
       const priced = (await db.get('mlapi/priced')) || {};
       const pIdx = {}; for (const p of products) pIdx[p.id] = p;
       // Miembros de grupos de precio: los nivela solo el robot, bajarlos no sirve.
@@ -30780,7 +30836,10 @@ async function main() {
             if (!isFinite(envio)) { sinDato.push({ label, mla, nom, why: 'no pude deducir el envío' }); continue; }
             if (envio < 0) envio = 0;
             if (!isFinite(envioMin) || envioMin < 0) envioMin = 0;
-            const cuo = pctCuotas(mla);
+            // Las cuotas con la regla de la noche (`cuotaPremiumDe`, 08/10/2026, etapa 1): una Premium sin
+            // entrada en cyc/mlcuotas daba 0% y se bajaba con un margen de más. Sin la cuota medida, no se baja.
+            const cuo = cuotaPremiumDe(cuotasCfg, mla, lt);
+            if (cuo == null) { sinDato.push({ label, mla, nom, why: 'es Premium y no tengo las cuotas medidas: no se baja (corré cuotas)' }); continue; }
             const neto = precio - com - envio - precio * cuo;
             const mlx = precio * m;
             const mg = (neto - costo - mlx) / (costo + mlx + envio);
