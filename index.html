@@ -1940,6 +1940,12 @@ function startApp(){
       if(txt)txt.textContent=_cycSinDatos?'sin datos: volvé a entrar':(ok?'en línea':'reconectando...');
     });
   });
+  // QUÉ NOTAS ESCRIBIÓ CLAUDE (08/10/2026, él: *"si no hay nada que no aparezca"*): el botón 🧠 sólo se dibuja donde
+  // hay una nota mía para ESE lugar. Se escucha `mlapi/claudeexp` y al cambiar se vuelve a dibujar.
+  db.ref('mlapi/claudeexp').on('value',snap=>{
+    const v=snap.val()||{};_cerNotas=new Set(Object.keys(v).filter(k=>v[k]&&v[k].simple));
+    if(typeof renderPronto==='function')renderPronto();
+  },()=>{_cerNotas=null;});
   db.ref('cyc').on('value',snap=>{
     const d=snap.val()||{};
     state.products=d.products ?Object.values(d.products).sort((a,b)=>(a.name||'').localeCompare(b.name||'','es',{sensitivity:'base'})):[];
@@ -2455,7 +2461,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='22.71';
+const APP_VERSION='22.72';
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
 // muestre la versión y la fecha de actualización y que tenga un desplegable predeterminado cerrado".
 // Y el mismo día: "que ponga fecha de cada modificación y haya una barrita para scrollear y que
@@ -2466,6 +2472,7 @@ const APP_VERSION='22.71';
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'22.72',f:'08/10/2026',h:'19:18',c:[{n:1,t:'🧠 El botón sólo aparece donde Claude escribió algo para ese lugar. Si no hay nota, no hay botón.'}]},
   {v:'22.71',f:'08/10/2026',h:'19:11',c:[{n:1,t:'🧠 Cada lugar dice lo suyo: en Ventas, Productos y Rotación, por qué cambió (o no) el precio; en Pedidos y Armar caja, por qué van esas unidades.'}]},
   {v:'22.70',f:'08/10/2026',h:'18:50',c:[{n:1,t:'💭 El 🧠 muestra SÓLO lo que escribió Claude, con su fecha. Si todavía no escribí nada, dice eso y nada más (sin textos armados solos). En Pedidos y en Armar caja el 🧠 va a decir por qué se piden o se mandan esas unidades, escrito por Claude.'}]},
   {v:'22.69',f:'08/10/2026',h:'17:55',c:[{n:2,t:'💭 El botón 🧠 muestra lo que escribió Claude: por qué cambió (o no) cada precio, y cuándo revisó las demás. Las pausadas con stock en Full también las activa Claude en su revisión, no el robot.'}]},
@@ -9071,9 +9078,26 @@ function mlas_cnt(C){return Object.keys(C.porMla||{}).length;}
 // de cada hora (`mlapi/cerebroact/<MLA>`), el último cambio del robot y la memoria del cerebro (`cyc/cerebro`).
 // En Pedidos suma por qué pide esas unidades (la misma cuenta de la tarjeta, `cuentaPedidoHTML`). No calcula
 // nada nuevo: dice lo que ya decidieron el robot y el panel.
+let _cerNotas=null;
+// ¿Escribió Claude algo para ESTE lugar? Mismas claves que lee `cerebroAbrir`: en Pedidos `ped__<prod>` (con o sin
+// variante), en Armar caja `caja__<prod>__<cuenta>` (de esa cuenta o de cualquiera si se miran todas), en el resto la
+// nota de precio de alguna publicación del producto.
+function _cerHayNota(prodId,o){
+  const S=_cerNotas;if(!S||!S.size)return false;
+  const vk=o.variante?'__v__'+sid(String(o.variante).toLowerCase()):'';
+  if(o.ped)return S.has(`ped__${prodId}${vk}`)||S.has(`ped__${prodId}`);
+  if(o.ctx==='caja'){
+    const ct=o.cuenta?String(o.cuenta).toLowerCase().replace(/í/g,'i'):'';
+    for(const k of S){if(!k.startsWith(`caja__${prodId}__`))continue;const r=k.slice(`caja__${prodId}__`.length);
+      const [kc,kv]=r.split('__v__');if(ct&&kc!==ct)continue;if(kv&&vk&&'__v__'+kv!==vk)continue;if(kv&&!vk)continue;return true;}
+    return false;
+  }
+  return _cerMlas(prodId,o.cuenta,o.variante,o.mla).some(k=>S.has(k));
+}
 function cerebroBtn(prodId,o){
   if(!prodId)return '';
   o=o||{};
+  if(String((state.mlconfig||{}).autoPrecios||'on')==='off'&&!_cerHayNota(prodId,o))return '';
   const at=(k,v)=>v?` data-${k}="${String(v).replace(/"/g,'&quot;')}"`:'';
   return `<button class="btn" onclick="cerebroAbrir(this,event)" data-p="${prodId}"${at('c',o.cuenta)}${at('v',o.variante)}${at('m',o.mla)}${at('ped',o.ped)}${at('coll',o.coll)}${at('ctx',o.ctx)} title="🧠 Por qué el cerebro decidió esto" style="font-size:.64rem;padding:2px 7px;line-height:1.2">🧠</button>`;
 }
