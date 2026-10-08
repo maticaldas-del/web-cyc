@@ -32700,6 +32700,32 @@ async function main() {
       return;
     }
 
+    // BILLING_PROBE=demoracaja[:<días>] → CUÁNTO TARDA UNA CAJA DESDE QUE SE DESPACHA HASTA QUE ESTÁ A LA VENTA EN FULL
+    // (08/10/2026). SOLO LEE. Mide con las cajas que el ROBOT marcó llegadas COMPLETAS (las marca apenas entra la
+    // última unidad, así que la fecha es la de "a la venta"); las marcadas a mano o con faltantes van aparte.
+    if (/^demoracaja(:|$)/.test(String(process.env.BILLING_PROBE || ''))) {
+      const dias = parseInt(String(process.env.BILLING_PROBE).split(':')[1]) || 120;
+      const envs = (await db.get('cyc/envios_full')) || {};
+      const desde = new Date(Date.now() - dias * 864e5).toISOString().slice(0, 10);
+      const dd = (a, b) => Math.round((Date.parse(b + 'T12:00:00-03:00') - Date.parse(a + 'T12:00:00-03:00')) / 864e5);
+      const auto = [], otras = [];
+      for (const [id, e] of Object.entries(envs)) {
+        if (!e || !e.fecha || e.fecha < desde) continue;
+        for (const c of (Array.isArray(e.cajasDet) ? e.cajasDet : Object.values(e.cajasDet || {}))) {
+          if (!c || !c.recibida || !c.recFecha) continue;
+          const d = dd(String(e.fecha).slice(0, 10), String(c.recFecha).slice(0, 10));
+          if (!(d >= 0 && d < 90)) continue;
+          (c.recAuto && !c.faltan ? auto : otras).push({ d, cuenta: e.cuenta || '?', desp: e.fecha, rec: c.recFecha, u: (c.items || []).reduce((a, x) => a + (Number(x.u) || 0), 0), mano: !c.recAuto, falt: !!c.faltan });
+        }
+      }
+      const est = (arr) => { if (!arr.length) return 'sin datos'; const v = arr.map((x) => x.d).sort((a, b) => a - b); const med = v[Math.floor(v.length / 2)]; const prom = v.reduce((a, b) => a + b, 0) / v.length; return `${arr.length} cajas · mitad en ${med} d o menos · promedio ${prom.toFixed(1)} d · mín ${v[0]} · máx ${v[v.length - 1]}`; };
+      console.log(`=== CUÁNTO TARDA UNA CAJA EN ESTAR A LA VENTA (despachadas desde ${desde}) ===`);
+      console.log(`  ✅ marcadas solas por el robot, completas: ${est(auto)}`);
+      for (const x of auto.sort((a, b) => a.desp.localeCompare(b.desp))) console.log(`     ${x.desp} → ${x.rec} · ${x.d} d · ${x.cuenta} · ${x.u} u.`);
+      console.log(`  ✋ a mano o con faltantes (la fecha es cuando se marcó, no cuando entró): ${est(otras)}`);
+      for (const x of otras.sort((a, b) => a.desp.localeCompare(b.desp))) console.log(`     ${x.desp} → ${x.rec} · ${x.d} d · ${x.cuenta} · ${x.u} u.${x.mano ? ' · a mano' : ''}${x.falt ? ' · con faltantes' : ''}`);
+      return;
+    }
     // BILLING_PROBE=faltaron[:<días>] → ¿CUÁNTA MERCADERÍA BORRÓ DEL PATRIMONIO EL MARCADO DE CAJAS?
     //
     // Pregunta suya del 22/09/2026, mirando el Arqueo: *"hace 6 hr estábamos en 8.100 de patrimonio
