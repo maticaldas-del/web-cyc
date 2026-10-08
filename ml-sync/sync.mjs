@@ -34948,7 +34948,10 @@ async function main() {
           else P = floor10(o.maxP) >= o.minP ? floor10(o.maxP) : Math.floor(o.maxP);
           if (!(P > 0)) continue;
           // Con ML poniendo plata, lo que te queda es más que el precio de la promo: el descuento lo pagás sólo en tu parte.
-          const Pef = o.mlPaga && o.orig > P ? Math.round(o.orig - (o.orig - P) * (100 - o.mlPaga) / 100) : P;
+          // `meli_percentage` y `seller_percentage` son % del precio de lista (medido el 08/10 en "Ofertas compartidas 10.10":
+          // Kiss Sexy 5% de descuento = ML 2,555 + vos 2,445). Lo que te queda es la lista menos TU parte.
+          const sP = Number(o.pr.seller_percentage);
+          const Pef = o.mlPaga && o.orig > P ? Math.round(Number.isFinite(sP) ? o.orig * (1 - sP / 100) : P + o.orig * o.mlPaga / 100) : P;
           const puntaje = (o.mlPaga ? 2e9 : 0) + (bajarA > 0 && P >= floor10(Math.min(bajarA, o.maxP || bajarA)) ? 1e9 : 0) + Pef;
           if (!best || puntaje > best.puntaje) best = { ...o, P, Pef, puntaje, bajarA };
         }
